@@ -6,5 +6,7 @@
 // exact State-selected TCP/TLS or QUIC-v2 attempt and retains peer selection and
 // session lifetime. The old generation-2 Node-leg dial is absent; retained
 // native listeners and reciprocal decoding remain with their actual consumers.
-// Route never chooses a fallback and has no H3 reader or peer runtime.
+// The retained User Route owns only its sender-side Entry and relay exchanges;
+// the retired Initiator receiving and direct OHTTP forwarding adapters are
+// absent. Route never chooses a fallback and has no H3 reader or peer runtime.
 package route

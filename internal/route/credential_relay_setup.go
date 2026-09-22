@@ -42,19 +42,6 @@ func EncodeCredentialRelaySetup(input CredentialRelaySetup) ([]byte, error) {
 	return credentialRelayRecord(credentialRelaySetupKind, input)
 }
 
-// DecodeCredentialRelaySetup rejects malformed or substituted issuance setup.
-func DecodeCredentialRelaySetup(raw []byte) (CredentialRelaySetup, error) {
-	return decodeCredentialRelayRecord(raw, credentialRelaySetupKind)
-}
-
-// EncodeCredentialRelayReady returns the exact accepted setup confirmation.
-func EncodeCredentialRelayReady(input CredentialRelayReady) ([]byte, error) {
-	if err := validCredentialRelaySetup(input.Setup); err != nil {
-		return nil, err
-	}
-	return credentialRelayRecord(credentialRelayReadyKind, input.Setup)
-}
-
 // DecodeCredentialRelayReady rejects malformed or substituted confirmation.
 func DecodeCredentialRelayReady(raw []byte) (CredentialRelayReady, error) {
 	setup, err := decodeCredentialRelayRecord(raw, credentialRelayReadyKind)

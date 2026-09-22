@@ -49,7 +49,7 @@ func TestIssuerRejectsChangedOrUnavailableDutyBeforeLedgerAccess(t *testing.T) {
 	}
 	server.StartTLS()
 	defer server.Close()
-	httpClient, err := HTTPClient(publicIdentifier(issuerPublic), credentialCertificate(t, initiatorPrivate, 21))
+	httpClient, err := issuerPinnedHTTPClient(publicIdentifier(issuerPublic), credentialCertificate(t, initiatorPrivate, 21))
 	if err != nil {
 		t.Fatal(err)
 	}

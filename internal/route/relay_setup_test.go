@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-func TestRelaySetupRoundTripAndExactReady(t *testing.T) {
+func TestRelaySetupSenderVectorAndExactReady(t *testing.T) {
 	setup := relaySetupFixture()
 	raw, err := EncodeRelaySetup(setup)
 	if err != nil {
@@ -17,20 +17,13 @@ func TestRelaySetupRoundTripAndExactReady(t *testing.T) {
 	if hex.EncodeToString(raw) != want {
 		t.Fatalf("canonical RelaySetup = %x, want %s", raw, want)
 	}
-	decoded, err := DecodeRelaySetup(raw)
-	if err != nil || decoded != setup {
-		t.Fatalf("decoded setup = %+v, %v", decoded, err)
-	}
-	readyRaw, err := EncodeRelayReady(RelayReady{Setup: setup})
+	readyRaw, err := relayEnvelope(relayReadyKind, setup)
 	if err != nil {
 		t.Fatal(err)
 	}
-	ready, err := DecodeRelayReady(readyRaw)
-	if err != nil || ready.Setup != setup {
-		t.Fatalf("decoded ready = %+v, %v", ready, err)
-	}
-	if err := setup.VerifyRelayReady(ready); err != nil {
-		t.Fatal(err)
+	ready, err := ReadRelayReady(bytes.NewReader(readyRaw))
+	if err != nil || setup.VerifyRelayReady(ready) != nil {
+		t.Fatalf("RelayReady = %+v, %v", ready, err)
 	}
 	ready.Setup.NextNodeID[0] ^= 1
 	if err := setup.VerifyRelayReady(ready); err == nil {
@@ -38,21 +31,21 @@ func TestRelaySetupRoundTripAndExactReady(t *testing.T) {
 	}
 }
 
-func TestRelaySetupRejectsMalformedAndWrongRoles(t *testing.T) {
+func TestRelaySenderRejectsWrongRoleAndMalformedReady(t *testing.T) {
 	setup := relaySetupFixture()
-	raw, err := EncodeRelaySetup(setup)
+	setup.TransitRole = IntroductionRole
+	if _, err := EncodeRelaySetup(setup); err == nil {
+		t.Fatal("RelaySetup sender accepted a wrong role")
+	}
+	valid := relaySetupFixture()
+	readyRaw, err := relayEnvelope(relayReadyKind, valid)
 	if err != nil {
 		t.Fatal(err)
 	}
-	badRole := append([]byte(nil), raw...)
-	badRole[len(routeWireMagic)+2+2+1+1+len(Profile)+32+8+32+32] = IntroductionRole
-	for index, input := range [][]byte{nil, raw[:len(raw)-1], append(raw, 0), badRole} {
-		if _, err := DecodeRelaySetup(input); err == nil {
-			t.Fatalf("mutation %d was accepted", index)
+	for index, input := range [][]byte{nil, readyRaw[:len(readyRaw)-1], append(readyRaw, 0)} {
+		if _, err := DecodeRelayReady(input); err == nil {
+			t.Fatalf("ready mutation %d was accepted", index)
 		}
-	}
-	if _, err := ReadRelaySetup(bytes.NewReader(raw)); err != nil {
-		t.Fatal(err)
 	}
 }
 

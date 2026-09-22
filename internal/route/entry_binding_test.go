@@ -9,17 +9,14 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/hex"
-	"errors"
 	"math/big"
 	"net"
-	"sync"
 	"testing"
 	"time"
 )
 
-func TestEntryBindingV2CanonicalVector(t *testing.T) {
-	input := entryBindingFixture()
-	raw, err := EncodeEntryBinding(input)
+func TestEntryBindingV2CanonicalSenderVector(t *testing.T) {
+	raw, err := EncodeEntryBinding(entryBindingFixture())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -27,53 +24,14 @@ func TestEntryBindingV2CanonicalVector(t *testing.T) {
 	if hex.EncodeToString(raw) != want {
 		t.Fatalf("canonical EntryBinding vector = %x, want %s", raw, want)
 	}
-	decoded, err := DecodeEntryBinding(raw)
-	if err != nil || !equalEntryBinding(decoded, input) {
-		t.Fatalf("decoded EntryBinding = %+v, %v", decoded, err)
+	invalid := entryBindingFixture()
+	invalid.Invite = nil
+	if _, err := EncodeEntryBinding(invalid); err == nil {
+		t.Fatal("EntryBinding sender accepted an empty Invite")
 	}
 }
 
-func TestEntryBindingV2RejectsWrongKindAndMalformedInvite(t *testing.T) {
-	raw, err := EncodeEntryBinding(entryBindingFixture())
-	if err != nil {
-		t.Fatal(err)
-	}
-	wrongKind := append([]byte(nil), raw...)
-	wrongKind[len(routeWireMagic)+2+2] = legBindingKind
-	truncated := raw[:len(raw)-1]
-	for index, value := range [][]byte{nil, wrongKind, truncated, append(raw, 0)} {
-		if _, err := DecodeEntryBinding(value); err == nil {
-			t.Fatalf("mutation %d was accepted", index)
-		}
-	}
-}
-
-func TestEntryBindingV2RejectsRouteV1Identity(t *testing.T) {
-	raw, err := EncodeEntryBinding(entryBindingFixture())
-	if err != nil {
-		t.Fatal(err)
-	}
-	legacy := append([]byte(nil), raw...)
-	copy(legacy, "ardents-interactive-route-v1\x00")
-	if _, err := DecodeEntryBinding(legacy); err == nil {
-		t.Fatal("Route v1 EntryBinding identity was accepted by Route v2")
-	}
-}
-
-func TestEntryBindingV2RejectsRouteV1Body(t *testing.T) {
-	raw, err := EncodeEntryBinding(entryBindingFixture())
-	if err != nil {
-		t.Fatal(err)
-	}
-	legacy := append([]byte(nil), raw...)
-	legacy[len(routeWireMagic)+2] = 0
-	legacy[len(routeWireMagic)+3] = 1
-	if _, err := DecodeEntryBinding(legacy); err == nil {
-		t.Fatal("Route v1 EntryBinding body was accepted by Route v2")
-	}
-}
-
-func TestEntryBindingBindsFreshMutualTLSClientKey(t *testing.T) {
+func TestEntryBindingUsesFreshMutualTLSClientKeyDigest(t *testing.T) {
 	client := entryBindingCertificate(t, 31)
 	server := entryBindingCertificate(t, 32)
 	clientRaw, serverRaw := net.Pipe()
@@ -106,65 +64,9 @@ func TestEntryBindingBindsFreshMutualTLSClientKey(t *testing.T) {
 	}
 }
 
-func TestAdmitEntryBindingRejectsSubstitutionAndConsumesOneTuple(t *testing.T) {
-	certificate := entryBindingCertificate(t, 41)
-	digest, err := ClientTLSKeyDigest(certificate.Leaf)
-	if err != nil {
-		t.Fatal(err)
-	}
-	binding := entryBindingFixture()
-	binding.ClientKeyDigest = digest
-	recipient, err := ClientTLSPublicKey(certificate.Leaf)
-	if err != nil {
-		t.Fatal(err)
-	}
-	admission := EntryAdmission{InviteID: identifier(42), NetworkID: binding.NetworkID, Digest: binding.Digest,
-		Epoch: binding.Epoch, InitiatorNodeID: binding.InitiatorNodeID, RecipientPublicKey: recipient, NotAfter: binding.NotAfter.Add(time.Minute)}
-	var lock sync.Mutex
-	consumed := map[[96]byte]struct{}{}
-	admit := func(raw []byte, attachment, clientKey, receivedRecipient [32]byte, notAfter time.Time) (EntryAdmission, error) {
-		if !bytes.Equal(raw, binding.Invite) {
-			return EntryAdmission{}, errors.New("wrong opaque Invite")
-		}
-		if notAfter != binding.NotAfter {
-			return EntryAdmission{}, errors.New("wrong binding expiry")
-		}
-		if receivedRecipient != recipient {
-			return EntryAdmission{}, errors.New("wrong Invite recipient")
-		}
-		var key [96]byte
-		copy(key[:32], admission.InviteID[:])
-		copy(key[32:64], attachment[:])
-		copy(key[64:], clientKey[:])
-		lock.Lock()
-		defer lock.Unlock()
-		if _, exists := consumed[key]; exists {
-			return EntryAdmission{}, errors.New("replayed Entry binding")
-		}
-		consumed[key] = struct{}{}
-		return admission, nil
-	}
-	if err := AdmitEntryBinding(binding, certificate.Leaf, binding.NotAfter.Add(-time.Second), admit); err != nil {
-		t.Fatal(err)
-	}
-	if err := AdmitEntryBinding(binding, certificate.Leaf, binding.NotAfter.Add(-time.Second), admit); err == nil {
-		t.Fatal("replayed Entry binding was consumed twice")
-	}
-	other := entryBindingCertificate(t, 43)
-	if err := AdmitEntryBinding(binding, other.Leaf, binding.NotAfter.Add(-time.Second), admit); err == nil {
-		t.Fatal("different TLS client key was accepted")
-	}
-}
-
 func entryBindingFixture() EntryBinding {
 	return EntryBinding{NetworkID: identifier(21), Digest: identifier(22), AttachmentID: identifier(23), InitiatorNodeID: identifier(24),
 		Epoch: 25, NotAfter: time.Unix(1_750_000_000, 0).UTC(), ClientKeyDigest: identifier(26), Invite: []byte{1, 2, 3, 4}}
-}
-
-func equalEntryBinding(left, right EntryBinding) bool {
-	return left.NetworkID == right.NetworkID && left.Digest == right.Digest && left.AttachmentID == right.AttachmentID &&
-		left.InitiatorNodeID == right.InitiatorNodeID && left.Epoch == right.Epoch && left.NotAfter.Equal(right.NotAfter) &&
-		left.ClientKeyDigest == right.ClientKeyDigest && bytes.Equal(left.Invite, right.Invite)
 }
 
 func entryBindingCertificate(t *testing.T, serial int64) tls.Certificate {

@@ -143,12 +143,14 @@ owner either removes it or reviews it with a concrete retirement condition.
 An absent listed symbol also fails the gate, so the registry cannot silently
 accumulate stale exemptions. `make check` includes this audit.
 
-After removal of the old Initiator engine, the exact Entry-admission,
-relay-grammar, credential-forwarding, and reachability-forwarding symbols that
-lost their production caller are recorded as one temporary reviewed group.
-Their dedicated Entry/relay/OHTTP closure audit owns separate deletion; the
-one-engine change does not turn that wider Route/Entry/crypto closure into an
-implicit deletion.
+The dedicated Initiator closure audit removed the production-dead Entry
+admission engine, receiving relay grammar, and direct credential/reachability
+OHTTP adapters. Its architecture oracle requires those files and declarations
+to remain absent while naming the sender declarations retained for User Route.
+Endpoint and Node behavior tests use test-local reciprocal fixtures; those
+fixtures are evidence for the retained sender behavior, not production receiver
+reachability. Shared sender codec leaves and the standalone reachability Relay
+remain exactly classified under their existing owners in the deadcode registry.
 
 The old Node-leg dial, TCP/QUIC client adapters, and client confirmation
 entrypoint are absent. The retained reciprocal decoder remains in its exact
@@ -366,7 +368,9 @@ cleanliness.
 
 The closed text Endpoint's durable Entry Set owner and its persistence and
 class-specific adjacency tests compile on Linux, matching their sole production
-consumer. Legacy Entry Invite and receiving-admission checks remain portable.
+consumer. Legacy Entry Invite validation and retained admission-history
+decoding remain portable; receiving-admission checks were retired with the old
+Initiator closure.
 
 Holder-request construction and its end-to-end Custody allocation tests run on
 Linux with the text Endpoint client. The shared request decoder, proof verifier,

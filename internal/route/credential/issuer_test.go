@@ -53,7 +53,7 @@ func TestClientObtainsOnlyExactRoleScopedGrantThroughOHTTP(t *testing.T) {
 	defer server.Close()
 	var issuerKey [32]byte
 	copy(issuerKey[:], issuerPublic)
-	httpClient, err := HTTPClient(issuerKey, initiatorCertificate)
+	httpClient, err := issuerPinnedHTTPClient(issuerKey, initiatorCertificate)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -165,6 +165,23 @@ func issuerExchange(client *http.Client, origin string) Exchange {
 		}
 		return body, nil
 	}
+}
+
+func issuerPinnedHTTPClient(expected [32]byte, certificate tls.Certificate) (*http.Client, error) {
+	transport := &http.Transport{Proxy: nil, DisableCompression: true, DisableKeepAlives: true, ForceAttemptHTTP2: false,
+		MaxConnsPerHost: 1, TLSClientConfig: &tls.Config{MinVersion: tls.VersionTLS13, MaxVersion: tls.VersionTLS13,
+			Certificates: []tls.Certificate{certificate}, InsecureSkipVerify: true, SessionTicketsDisabled: true,
+			NextProtos: []string{"http/1.1"}, VerifyConnection: func(state tls.ConnectionState) error {
+				if len(state.PeerCertificates) != 1 {
+					return errors.New("issuer fixture certificate is unavailable")
+				}
+				public, ok := state.PeerCertificates[0].PublicKey.(ed25519.PublicKey)
+				if !ok || len(public) != len(expected) || string(public) != string(expected[:]) {
+					return errors.New("issuer fixture certificate does not match")
+				}
+				return nil
+			}}}
+	return &http.Client{Transport: transport}, nil
 }
 
 func credentialID(marker byte) [32]byte {

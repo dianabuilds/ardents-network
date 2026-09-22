@@ -8,7 +8,6 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"errors"
-	"io"
 	"math/big"
 	"net"
 	"time"
@@ -35,35 +34,6 @@ type EntryAttachmentRequest struct {
 	ClientCertificate               tls.Certificate
 }
 
-// EntryAttachmentAcceptance is the Initiator's narrow state and replay port.
-// Its verifier and consumer are supplied by the owning Entry/State
-// composition; Route never receives a State root or durable replay map.
-type EntryAttachmentAcceptance struct {
-	NetworkID, Digest, InitiatorNodeID [32]byte
-	Epoch                              uint64
-	Deadline                           time.Time
-	AdmissionDeadline                  time.Time
-	Certificate                        tls.Certificate
-	Admit                              EntryBindingAdmitter
-}
-
-// EntryAdmitterPort adapts Entry's durable one-operation admission to Route's
-// opaque port. It exposes no Entry root, candidate, User identifier, or raw
-// State fact to the Route accept loop.
-func EntryAdmitterPort(value *entry.Admitter) EntryBindingAdmitter {
-	if value == nil {
-		return nil
-	}
-	return func(invite []byte, attachment, clientKey, recipient [32]byte, notAfter time.Time) (EntryAdmission, error) {
-		authorization, err := value.AdmitAndConsume(invite, attachment, clientKey, recipient, notAfter)
-		if err != nil {
-			return EntryAdmission{}, err
-		}
-		return EntryAdmission{InviteID: authorization.InviteID, NetworkID: authorization.NetworkID, Digest: authorization.Digest, RecipientPublicKey: authorization.RecipientPublicKey,
-			Epoch: authorization.Epoch, InitiatorNodeID: authorization.InitiatorNodeID, NotAfter: authorization.NotAfter}, nil
-	}
-}
-
 // OpenEntryAttachment creates one State-pinned native User-to-Initiator TLS
 // leg, then writes its exact EntryBinding. Entry owns candidate retries and
 // durable contact state; Route owns the fresh attachment identifier and
@@ -79,7 +49,7 @@ func OpenEntryAttachment(ctx context.Context, source EntryAcquirer, input EntryA
 	}
 	return source.Acquire(ctx, entry.Attempt{ID: input.AttachmentID, Deadline: input.Deadline},
 		func(contactCtx context.Context, candidate entry.Candidate, presentation entry.Presentation, deadline time.Time) (net.Conn, func() error, bool, error) {
-			if _, err := ClientTLSPublicKey(certificate.Leaf); err != nil {
+			if _, err := ClientTLSKeyDigest(certificate.Leaf); err != nil {
 				return nil, nil, false, err
 			}
 			secured, err := dialNativeEndpointTLS(contactCtx, candidate.Endpoint, candidate.PublicKey, certificate, deadline)
@@ -117,61 +87,6 @@ func entryAttachmentCertificate(source EntryAcquirer, supplied tls.Certificate) 
 		return tls.Certificate{}, errors.New("entry attachment has no enrolled recipient certificate")
 	}
 	return certificate, nil
-}
-
-// AcceptEntryAttachment performs the native Initiator-side TLS handshake,
-// reads one EntryBinding, and consumes its replay tuple before it returns the
-// usable attachment. It leaves no Route work allocated on refusal.
-func AcceptEntryAttachment(ctx context.Context, connection net.Conn, input EntryAttachmentAcceptance) (net.Conn, error) {
-	if connection == nil || input.NetworkID == [32]byte{} || input.Digest == [32]byte{} || input.InitiatorNodeID == [32]byte{} ||
-		input.Epoch == 0 || input.Deadline.IsZero() || input.Certificate.PrivateKey == nil || input.Admit == nil ||
-		!time.Now().Before(input.Deadline) {
-		return nil, errors.New("entry attachment acceptance is invalid")
-	}
-	admissionDeadline := input.AdmissionDeadline
-	if admissionDeadline.IsZero() {
-		admissionDeadline = input.Deadline
-	}
-	if !time.Now().Before(admissionDeadline) || admissionDeadline.After(input.Deadline) {
-		return nil, errors.New("entry attachment admission deadline is invalid")
-	}
-	secured := tls.Server(connection, nativeEndpointTransitTLS(input.Certificate))
-	if err := secured.SetDeadline(admissionDeadline); err != nil {
-		_ = connection.Close()
-		return nil, err
-	}
-	if err := secured.HandshakeContext(ctx); err != nil {
-		_ = connection.Close()
-		return nil, err
-	}
-	if secured.ConnectionState().NegotiatedProtocol != Profile {
-		_ = connection.Close()
-		return nil, errors.New("entry TLS ALPN is invalid")
-	}
-	binding, err := readEntryBinding(secured)
-	if err != nil {
-		_ = connection.Close()
-		return nil, err
-	}
-	if binding.NetworkID != input.NetworkID || binding.Digest != input.Digest || binding.Epoch != input.Epoch ||
-		binding.InitiatorNodeID != input.InitiatorNodeID || binding.NotAfter.After(input.Deadline) {
-		_ = connection.Close()
-		return nil, errors.New("entry binding does not match Initiator duty")
-	}
-	peer := secured.ConnectionState().PeerCertificates
-	if len(peer) != 1 {
-		_ = connection.Close()
-		return nil, errors.New("entry TLS client certificate is unavailable")
-	}
-	if err := AdmitEntryBinding(binding, peer[0], time.Now().UTC(), input.Admit); err != nil {
-		_ = connection.Close()
-		return nil, err
-	}
-	if err := secured.SetDeadline(time.Time{}); err != nil {
-		_ = connection.Close()
-		return nil, err
-	}
-	return secured, nil
 }
 
 func closedEntryOpener(connection net.Conn, cause error) (net.Conn, func() error, bool, error) {
@@ -233,21 +148,4 @@ func NewClientCertificate() (tls.Certificate, error) {
 		return tls.Certificate{}, err
 	}
 	return tls.Certificate{Certificate: [][]byte{raw}, PrivateKey: private, Leaf: leaf}, nil
-}
-
-func readEntryBinding(reader io.Reader) (EntryBinding, error) {
-	header := make([]byte, len(routeWireMagic)+2)
-	if _, err := io.ReadFull(reader, header); err != nil {
-		return EntryBinding{}, err
-	}
-	length := int(header[len(routeWireMagic)])<<8 | int(header[len(routeWireMagic)+1])
-	if length == 0 || length > maximumWireBody {
-		return EntryBinding{}, errors.New("entry binding wire length is invalid")
-	}
-	raw := append([]byte(nil), header...)
-	body := make([]byte, length)
-	if _, err := io.ReadFull(reader, body); err != nil {
-		return EntryBinding{}, err
-	}
-	return DecodeEntryBinding(append(raw, body...))
 }
