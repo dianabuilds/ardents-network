@@ -117,47 +117,6 @@ func (endpoint *endpoint) acquireTransitCredentialLifecycle(ctx context.Context,
 	}}, nil
 }
 
-// acquireUserRouteCredential is Endpoint's adapter for Route's already
-// selected membership Grant tuple. Route owns the Entry/Initiator carrier and
-// the exact User-route peers; Endpoint owns only the durable at-most-once
-// request, local key enrollment, and terminal spend record.
-func (endpoint *endpoint) acquireUserRouteCredential(ctx context.Context, input route.CredentialRequest) (route.Credential, error) {
-	if endpoint == nil || ctx == nil || input.Epoch.NetworkID != endpoint.network || input.Epoch.Digest == [32]byte{} || input.Epoch.Number == 0 ||
-		input.TransitRole != route.IntroductionRole || input.AttachmentID == [32]byte{} || input.At.IsZero() || !input.At.Before(input.NotAfter) || input.Exchange == nil ||
-		!validRouteTransitPeer(input.Initiator) || !validRouteTransitPeer(input.Transit) || input.Issuer.NodeID == [32]byte{} ||
-		input.Issuer.PublicKey == [32]byte{} || input.Issuer.Family == [32]byte{} {
-		return route.Credential{}, errors.New("user Route credential request is incomplete")
-	}
-	profile, err := credential.DecodeProfile(input.Issuer.Profile)
-	if err != nil || credential.VerifyProfile(profile, endpoint.network, input.Issuer.NodeID, input.Issuer.PublicKey, input.At, input.NotAfter) != nil {
-		return route.Credential{}, errors.New("current State transit issuer profile is invalid")
-	}
-	owner, err := endpoint.transitAcquire.owner(input.TransitRole)
-	if err != nil {
-		return route.Credential{}, errors.New("endpoint transit acquisition owner is unavailable")
-	}
-	scope := transitAcquisitionScope{NetworkID: endpoint.network, Digest: input.Epoch.Digest, Epoch: input.Epoch.Number,
-		IssuerNodeID: input.Issuer.NodeID, IssuerPublicKey: input.Issuer.PublicKey, IssuerProfileDigest: sha256.Sum256(input.Issuer.Profile),
-		GrantSignerPublicKey: profile.GrantSignerPublicKey, TransitNodeID: input.Transit.NodeID, AttachmentID: input.AttachmentID,
-		TransitRole: input.TransitRole, NotAfter: input.NotAfter}
-	acquired, err := endpoint.acquireTransitCredentialLifecycle(ctx, owner, scope, func(issueCtx context.Context, request credential.Request) (credential.Result, error) {
-		client, err := credential.OpenClient(credential.ClientConfig{NetworkID: endpoint.network, IssuerPublic: input.Issuer.PublicKey, Profile: profile,
-			At: input.At, Deadline: input.NotAfter, Exchange: credential.Exchange(input.Exchange)})
-		if err != nil {
-			return credential.Result{}, err
-		}
-		return client.Issue(issueCtx, request)
-	})
-	if err != nil {
-		return route.Credential{}, err
-	}
-	return route.Credential{Authorization: append([]byte(nil), acquired.attempt.Grant...), ClientCertificate: acquired.attempt.Certificate, Finish: acquired.finish}, nil
-}
-
-func validRouteTransitPeer(peer route.TransitPeer) bool {
-	return peer.NodeID != [32]byte{} && peer.PublicKey != [32]byte{} && peer.Family != [32]byte{} && peer.Endpoint != ""
-}
-
 func (endpoint *endpoint) acquireTransitCredential(ctx context.Context, view transitCredentialIssuerView, epoch state.ResolutionEpoch,
 	entry applicationEntry, initiator, transit transitPeer, role byte, slot reachability.Introduction,
 	at, deadline time.Time,

@@ -1,12 +1,11 @@
-// Package route retains the native Interactive Route v2 owner behind Open,
-// Attach, and Close. That legacy owner currently has no non-test caller; its
-// presence is not a maintained product path or evidence of successor-network
-// readiness. The package also implements the current closed Node Carrier and
-// wire mechanisms: Node's forwarding owner calls OpenClosedNodeCarrier for one
-// exact State-selected TCP/TLS or QUIC-v2 attempt and retains peer selection and
-// session lifetime. The old generation-2 Node-leg dial is absent; retained
-// native listeners and reciprocal decoding remain with their actual consumers.
-// The retained User Route owns only its sender-side Entry and relay exchanges;
-// the retired Initiator receiving and direct OHTTP forwarding adapters are
-// absent. Route never chooses a fallback and has no H3 reader or peer runtime.
+// Package route implements the current closed Node Carrier and wire mechanisms.
+// Node's forwarding owner calls OpenClosedNodeCarrier for one exact
+// State-selected TCP/TLS or QUIC-v2 attempt and retains peer selection and
+// session lifetime. The production-dead Interactive User Route v2 Open/Attach
+// owner, its private reachability exchange, and its relay and Introduction
+// sender orchestration are absent. Shared Attachment evidence, Entry and
+// Endpoint-transit admission, credential-relay grammar, native listeners, and
+// reciprocal decoding remain only with their actual consumers. The old
+// generation-2 Node-leg dial is absent. Route never chooses a fallback and has
+// no H3 reader or peer runtime.
 package route

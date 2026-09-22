@@ -39,28 +39,6 @@ func publicationStoreRoot(t *testing.T) string {
 	return root
 }
 
-// reachabilityStoreRoot creates the owner-only directory for a reachability
-// Store root, independent of the test process umask.
-func reachabilityStoreRoot(t *testing.T) string {
-	t.Helper()
-	root := filepath.Join(t.TempDir(), "reachability-store")
-	if err := os.Mkdir(root, 0o700); err != nil {
-		t.Fatal(err)
-	}
-	return root
-}
-
-// credentialIssuerRoot creates the owner-only directory for a credential issuer root,
-// independent of the test process umask.
-func credentialIssuerRoot(t *testing.T) string {
-	t.Helper()
-	root := filepath.Join(t.TempDir(), "issuer-root")
-	if err := os.Mkdir(root, 0o700); err != nil {
-		t.Fatal(err)
-	}
-	return root
-}
-
 // transitAcquisitionRoot creates the owner-only directory for a transit
 // acquisition store root, independent of the test process umask.
 func transitAcquisitionRoot(t *testing.T) string {

@@ -127,6 +127,28 @@ func wireIdentifier(reader *wireReader, name string) ([32]byte, error) {
 	return result, nil
 }
 
+func readRouteRecord(reader io.Reader) ([]byte, error) {
+	if reader == nil {
+		return nil, errors.New("route record reader is unavailable")
+	}
+	header := make([]byte, len(routeWireMagic)+2)
+	if _, err := io.ReadFull(reader, header); err != nil {
+		return nil, err
+	}
+	if string(header[:len(routeWireMagic)]) != routeWireMagic {
+		return nil, errors.New("route record magic is invalid")
+	}
+	length := int(header[len(routeWireMagic)])<<8 | int(header[len(routeWireMagic)+1])
+	if length == 0 || length > maximumWireBody {
+		return nil, errors.New("route record length is invalid")
+	}
+	body := make([]byte, length)
+	if _, err := io.ReadFull(reader, body); err != nil {
+		return nil, err
+	}
+	return append(header, body...), nil
+}
+
 func writeAll(writer io.Writer, value []byte) error {
 	for len(value) != 0 {
 		count, err := writer.Write(value)

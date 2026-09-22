@@ -24,16 +24,6 @@ func WriteIntroductionSlotRegistration(writer io.Writer, input IntroductionSlotR
 	return writeAll(writer, raw)
 }
 
-// WriteSealedIntroduction writes one User sealed submission without exposing
-// its Service-only plaintext to the Introduction duty.
-func WriteSealedIntroduction(writer io.Writer, input SealedIntroduction) error {
-	raw, err := EncodeSealedIntroduction(input)
-	if err != nil {
-		return err
-	}
-	return writeAll(writer, raw)
-}
-
 // ReadIntroductionControlRecord reads the one closed Publisher registration
 // or User submission form. A sealed Raw value is the exact canonical byte
 // sequence to forward on the live slot; the duty must never decrypt it.
