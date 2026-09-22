@@ -74,8 +74,5 @@ func snapshotTransitRole(snapshot dutyFacts) byte {
 	if snapshot.Assignment == "introduction" {
 		return route.IntroductionRole
 	}
-	if snapshot.Assignment == "responder" {
-		return route.ResponderRole
-	}
 	return 0
 }

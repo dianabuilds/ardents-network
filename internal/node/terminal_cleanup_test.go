@@ -21,11 +21,6 @@ func TestRoleDrainsReportListenerCleanupFailures(t *testing.T) {
 				pre: make(map[net.Conn]struct{}), active: make(map[net.Conn]struct{})}
 			return running.Drain(context.Background())
 		}},
-		{name: "Responder", drain: func() error {
-			running := &responder{plan: responderPlan{responderConfig: responderConfig{DrainTimeout: time.Second}}, listener: terminalFailingListener{err: injected},
-				pre: make(map[net.Conn]struct{}), active: make(map[route.Carrier]struct{})}
-			return running.Drain(context.Background())
-		}},
 		{name: "Rendezvous", drain: func() error {
 			running := &rendezvous{plan: rendezvousPlan{rendezvousConfig: rendezvousConfig{DrainTimeout: time.Second}}, listener: terminalFailingCarrierListener{err: injected},
 				pre: make(map[route.PendingCarrier]struct{}), waiting: make(map[[32]byte]*rendezvousLeg), active: make(map[route.Carrier]struct{}),
@@ -75,16 +70,6 @@ func TestWorkerCleanupFailuresSurviveActiveRemoval(t *testing.T) {
 			running.deliveries <- struct{}{}
 			running.work.Add(1)
 			running.forward(slot, reachability, nil)
-			return running.Drain(context.Background())
-		}},
-		{name: "Responder", run: func() error {
-			raw := &terminalFailingNetConn{err: injected}
-			next := terminalFailingCarrier{err: injected}
-			running := &responder{plan: responderPlan{responderConfig: responderConfig{DrainTimeout: time.Second, RelayByteLimit: 1}}, listener: terminalFailingListener{},
-				relays: make(chan struct{}, 1), pre: make(map[net.Conn]struct{}), active: map[route.Carrier]struct{}{raw: {}, next: {}}}
-			running.relays <- struct{}{}
-			running.work.Add(1)
-			running.relay(raw, raw, next)
 			return running.Drain(context.Background())
 		}},
 		{name: "Rendezvous", run: func() error {

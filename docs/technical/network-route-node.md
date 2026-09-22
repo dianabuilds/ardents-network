@@ -108,13 +108,16 @@ existing authority checks.
 Existing old roots, keys, floors, plans, and installation records remain
 unchanged evidence. Historical profile recognition may authenticate an already
 pinned owned installation for retirement only; it cannot authorize execution
-of an old duty or rewrite persisted identity. The old Initiator engine, its
-Entry-admission adapter, and its command composition have been deleted after
-the command refusal became current.
+of an old duty or rewrite persisted identity. The old Initiator and Responder
+engines and their command composition have been deleted after the command
+refusal became current. The Initiator Entry-admission adapter is also absent.
 The remaining old engines are owned by separate bounded deletion slices.
 The adjacent production-dead Entry/relay/OHTTP closure is enumerated exactly by
 the deadcode registry and belongs to its dedicated closure audit; it is not
 silently deleted as part of the one-engine change.
+The production-dead old Node-leg dial and reciprocal-confirmation closure is
+likewise enumerated exactly for its own bounded closure audit; shared Carrier,
+listener, TLS/QUIC, and closed Node Carrier behavior remains current.
 No retirement path inherits a duty,
 regenerates a key, resets a root or floor, converts state, or adopts foreign
 files. Exclusive old engines and compatibility readers remain until later
@@ -216,11 +219,12 @@ migration operations, and cleanup mechanics remain private to each Adapter.
 Network State owns the supported choice. Signed Node Record v1 canonically
 means TCP/TLS; v2 contains one signed explicit Carrier Profile. Unknown
 profiles are rejected before assignment. The retained old Rendezvous listens
-with its own record's profile, and the retained old Responder uses the selected
-Rendezvous candidate's profile. The deleted Initiator engine previously used
-the same selected-candidate rule. `OpenNodeLeg` and `ListenNodeCarrier` accept exactly one
-profile and never race or fall back. A State successor drains and withdraws the
-old duty; it does not rewrite an active attachment.
+with its own record's profile. The deleted Initiator and Responder engines
+previously used the selected-candidate rule. The retained old `OpenNodeLeg`
+tracer and current `ListenNodeCarrier` accept exactly one profile and never
+race or fall back; the tracer is production-dead and separately bounded for
+removal. A State successor drains and withdraws the old duty; it does not
+rewrite an active attachment.
 
 One qualification-only operational seam admits a literal loopback or private
 IPv4 listen address for a State-selected closed Route duty. A host-owned,

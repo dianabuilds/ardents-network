@@ -316,13 +316,5 @@ func selectedDutyCarrier(snapshot dutyFacts) string {
 	if snapshot.Assignment == "rendezvous" {
 		return snapshot.CarrierProfile
 	}
-	if snapshot.Assignment != "responder" {
-		return ""
-	}
-	for index := uint8(0); index < snapshot.CandidateCount; index++ {
-		if snapshot.Candidates[index].Assignment == "rendezvous" {
-			return snapshot.Candidates[index].CarrierProfile
-		}
-	}
 	return ""
 }

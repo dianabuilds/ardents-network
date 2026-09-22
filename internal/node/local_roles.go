@@ -18,8 +18,6 @@ func retainLocalDuty(config runtimeConfig, snapshot dutyFacts, state string) err
 		class = "route-rendezvous"
 	case "introduction":
 		class = "route-introduction"
-	case "responder":
-		class = "route-responder"
 	case "transit-issuance":
 		class = "transit-issuance"
 	}

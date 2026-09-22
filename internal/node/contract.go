@@ -126,7 +126,6 @@ type Config struct {
 	Probe                ProbeConfig
 	Rendezvous           RendezvousProfile
 	Introduction         IntroductionProfile
-	Responder            ResponderProfile
 	TransitIssuer        TransitIssuerProfile
 	ClosedIssuer         ClosedIssuerProfile
 	// ClosedForwarding supplies the isolated receiving spend journal and Node
@@ -182,16 +181,6 @@ type IntroductionProfile struct {
 	HandshakeLimit, SlotLimit, DeliveryLimit uint16
 	AdmissionTimeout                         time.Duration
 	DrainTimeout                             time.Duration
-}
-
-// ResponderProfile contains finite C-2 first-hop admission and relay bounds.
-// It does not contain Publisher or Service material.
-type ResponderProfile struct {
-	Certificate                tls.Certificate
-	HandshakeLimit, RelayLimit uint16
-	RelayByteLimit             uint64
-	AdmissionTimeout           time.Duration
-	DrainTimeout               time.Duration
 }
 
 // TransitIssuerProfile contains only the initialized owner root, listener
