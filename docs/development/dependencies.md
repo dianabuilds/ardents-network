@@ -426,6 +426,97 @@ exercise the required second Carrier seam. Remove this direct use if QUIC is
 withdrawn as a maintained profile. Any version change repeats license,
 advisory, MTU, cancellation, resource, and hostile-network qualification.
 
+### Existing QUIC finding: return-path reply budget
+
+**Finding ID:** `ARDENTS-QUIC-2026-09-21-RETURN-PATH-REPLY-BUDGET`.
+This is a locally recorded component observation, not a CVE, GHSA, upstream
+report, proof of novelty, or demonstrated attack against an Ardents deployment.
+It concerns `quic-go v0.62.0`, with module checksum
+`h1:ZHDjCk5OacATwGvs8PWE97CTvX7AqZiVoW7++ZOXTf8=` and `go.mod` checksum
+`h1:RAro2j2yN9a9EiPACLHT9IB2NXCvGQmmo/alT0yYI0w=`. The upstream source
+identity is immutable release tag `v0.62.0`, annotated-tag object
+`738877626f361538cf07bc4c40cef79483a3ddbf`, peeled commit
+`793f74d8e03368c5aded128af6f48d21dbb47f73`; the release and source were
+rechecked on 2026-09-23.
+
+**Observed evidence and limit:** retained Windows and Linux loopback,
+user-space NAT-mapping probes on Go 1.26.8 report a 32-byte inbound event and
+a 1200-byte path-probe reply while the old mapping is retained. Their original
+nonzero exits remain evidence rather than being converted into passes. The
+evidence establishes that result for the probe fixture and source inspection;
+it does not establish kernel-NAT behavior, source-address spoofing,
+third-party reflection, sustained rate or lifetime, a CVE-class exploit, or
+behavior in the exact Ardents TLS/ALPN/listener profile. In particular, the
+actual Linux OOB send path and the full admitted profile combination were not
+measured.
+
+The local evidence is retained outside Git at
+`C:\Users\vitek\AppData\Local\Temp\ardents-handover-model-11a26ed48d104b1a826aa64fd2e1ea9c`.
+It is identified, rather than replaced by an inference, by:
+
+- `quic-applicability-note.md` SHA-256
+  `9890cd1a2fc3eca600e557d216ea002c60aa8aaefae7d0e63641d49feca94cf7`;
+- `finding-disposition-and-g10-lanes.md` SHA-256
+  `6226691653199302de7551d0b5f7ad413b6d3928fa1168855f0766436753bbd6`;
+- `quic-nat-probe/inputs.json` SHA-256
+  `b04da0ed3675d31184e2564a8ae37981dbd37264add8bea2e7f9204309bdc42c`,
+  with retained Windows result SHA-256
+  `0a2539282e89204a01735aa3da7fdba96738080ba6e153677abcf9877b73b97b`
+  and Linux old-map-dropped result SHA-256
+  `0eeb48547b21cbcd91f38a89f0d5884fb0976c09c29d4063e659513a57cfa3f0`;
+- `quic-egress-probe/inputs.json` SHA-256
+  `892ceb4fc280634bc40f81b70bb6d8647ca3b21dd7fd17e0066aea13b04c592d`.
+
+These hashes and the pinned module/source identities make the repository
+record independently inspectable; the temporary directory is not the only
+basis for this disposition. Its raw captures are provenance, not a current
+qualification result.
+
+**Admitted-use disposition at `dev@6134408ff561db83ff4f98f2aad2f1ef11198701`:**
+the affected server use remains unresolved. `ListenClosedSharedCarrier` is
+selected by the forwarding, resolution, introduction, join, and issuer Node
+listeners; `ListenClosedRoleCarrier` is selected by the credential token
+listener. When either selects QUIC, it is the server-side path covered by this
+finding's source inspection. The live server callers and the three route
+adapter files were checked at that commit; their SHA-256 identities are
+recorded in the issue evidence.
+
+`OpenClosedNodeCarrier` and `OpenClosedRoleCarrier` are outgoing-only uses.
+For this finding's claimed reflector role, source inspection supports a
+bounded non-applicability argument: the observed new-remote-address handling
+is server-side. It does not qualify client receive accounting, general QUIC
+safety, or a future client migration feature. TCP/TLS selections do not
+execute the QUIC path. QUIC fixture tests exercise the adapters but neither
+turn the server disposition into qualified use nor replace the missing
+profile-specific measurement. `ListenNodeCarrier` remains declared with a
+test caller only; it is not a current non-test server caller.
+
+**Current disposition:** the unresolved applicability/qualification of the
+affected QUIC server use blocks its admission under the maintenance and
+vulnerability acceptance rule. Removing a historical caller, a quiet advisory
+scan, or passing adapter tests does not close that blocker. No fix, replacement,
+private fork, upstream report, or network experiment is selected by this
+record.
+
+**Upstream/advisory review (accessed 2026-09-23):** the official release and
+GitHub advisory records were checked. The published identifiers
+`GHSA-vvgj-x9jq-8cj9`/`CVE-2026-40898`, `GHSA-g754-hx8w-x2g6`/`CVE-2025-64702`,
+`GHSA-47m2-4cr7-mhcw`/`CVE-2025-59530`, and
+`GHSA-j972-j939-p2v3`/`CVE-2025-29785` describe other defects and their
+published affected ranges end before v0.62.0. They do not identify this local
+finding. This review is not an assertion that no other advisory exists or that
+the component is free of vulnerabilities.
+
+The disposition must be revisited if the module, checksum, source, Go version,
+QUIC configuration, server caller, path-migration behavior, platform/backend,
+or an upstream/advisory record changes. Closure requires a preserved,
+exact-artifact profile measurement that covers each admitted QUIC server
+listener on its supported platform and TLS/ALPN/configuration, demonstrates
+the selected mitigation or enforceable non-applicability boundary, and records
+the relevant bounded-rate/lifetime and cleanup result. A subsequent dependency
+or architecture decision must then satisfy this document's normal review and
+qualification requirements.
+
 **Offline supply:** an explicit preparation step runs `go mod download` and
 `go mod verify` outside the repository, then supplies a temporary vendor context
 to a Docker build with `--network=none`. No vendor tree, module cache, generated
