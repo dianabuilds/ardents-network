@@ -513,24 +513,9 @@
     },
     {
       "symbols": [
-        "internal/route.ConfirmNodeLegBinding",
-        "internal/route.LegBinding.VerifyReciprocal",
-        "internal/route.OpenNodeLeg",
-        "internal/route.nativeNodeTLS",
-        "internal/route.openQUICNodeCarrier",
-        "internal/route.openTCPNodeCarrier",
-        "internal/route.preflightNodeCarrier",
-        "internal/route.quicNodeCarrier.abort"
-      ],
-      "classification": "retained old Node-leg dial closure",
-      "rationale": "Issue #116 removes the last production Responder engine caller after Issue #114 removed Initiator. The old Node-leg dial and reciprocal confirmation closure remains outside either one-engine deletion; shared Carrier profiles, listeners and closed Node Carrier adapters stay reachable.",
-      "owner": "Product Owner and Codex",
-      "retirement": "Issue #159 must repeat exact Windows/Linux caller analysis and remove only the proven exclusive OpenNodeLeg dial closure while preserving shared Carrier, TLS, QUIC, listener and closed-duty consumers."
-    },
-    {
-      "symbols": [
         "internal/route.AcceptNodeLegBinding",
         "internal/route.EntryAdmitterPort",
+        "internal/route.LegBinding.VerifyReciprocal",
         "internal/route.OpenSealedIntroduction",
         "internal/route.ReadCredentialRelaySetup",
         "internal/route.ReadRelaySetup",

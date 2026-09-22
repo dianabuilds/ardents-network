@@ -150,11 +150,11 @@ Their dedicated Entry/relay/OHTTP closure audit owns separate deletion; the
 one-engine change does not turn that wider Route/Entry/crypto closure into an
 implicit deletion.
 
-After removal of the old Responder engine, the exact old Node-leg dial and
-reciprocal-confirmation symbols that lost their production caller are one
-temporary reviewed group. Their dedicated closure audit owns deletion; the
-one-engine change preserves shared Carrier profiles, listeners, TLS/QUIC
-primitives, and closed Node Carrier behavior.
+The old Node-leg dial, TCP/QUIC client adapters, and client confirmation
+entrypoint are absent. The retained reciprocal decoder remains in its exact
+reviewed grammar group. Current closed TCP/TLS and QUIC tests prove exact peer
+rejection, cancellation before handshake, caller-owned lifetime after a
+completed handshake, and unchanged Carrier profile bounds.
 
 The headless command inventory declares the four-command Network artifact lane;
 the text-worker inventory declares its separately owned Application lane under

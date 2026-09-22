@@ -183,3 +183,9 @@ func entryBindingCertificate(t *testing.T, serial int64) tls.Certificate {
 	}
 	return tls.Certificate{Certificate: [][]byte{raw}, PrivateKey: private, Leaf: leaf}
 }
+
+func identifierFromKey(key ed25519.PublicKey) [32]byte {
+	var result [32]byte
+	copy(result[:], key)
+	return result
+}

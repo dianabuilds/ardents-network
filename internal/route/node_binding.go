@@ -5,23 +5,6 @@ import (
 	"io"
 )
 
-// ConfirmNodeLegBinding sends local's exact native Node-to-Node LegBinding
-// then requires the reciprocal peer record. Call it only after the adjacent
-// TLS 1.3 handshake selected the native Profile.
-func ConfirmNodeLegBinding(connection io.ReadWriter, local LegBinding) error {
-	if connection == nil {
-		return errors.New("native Route leg connection is unavailable")
-	}
-	if err := WriteNodeLegBinding(connection, local); err != nil {
-		return err
-	}
-	peer, err := ReadNodeLegBinding(connection)
-	if err != nil {
-		return err
-	}
-	return local.VerifyReciprocal(peer)
-}
-
 // AcceptNodeLegBinding receives a peer's native Node-to-Node LegBinding,
 // verifies it is reciprocal to local, then returns local's one response. It
 // never accepts legacy H3 framing or a Node-selected Profile/version.

@@ -4,6 +4,7 @@
 // readiness. The package also implements the current closed Node Carrier and
 // wire mechanisms: Node's forwarding owner calls OpenClosedNodeCarrier for one
 // exact State-selected TCP/TLS or QUIC-v2 attempt and retains peer selection and
-// session lifetime. Route never chooses a fallback and has no H3 reader or peer
-// runtime.
+// session lifetime. The old generation-2 Node-leg dial is absent; retained
+// native listeners and reciprocal decoding remain with their actual consumers.
+// Route never chooses a fallback and has no H3 reader or peer runtime.
 package route

@@ -12,10 +12,12 @@ import (
 	"io"
 	"math/big"
 	"net"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/quic-go/quic-go"
 )
 
 type rendezvousMaterials struct {
@@ -151,8 +153,80 @@ func openRendezvousLeg(ctx context.Context, endpoint string, certificate tls.Cer
 
 func openRendezvousCarrier(ctx context.Context, config rendezvousConfig, certificate tls.Certificate, server [32]byte,
 	binding route.LegBinding) (route.Carrier, error) {
-	return route.OpenNodeLeg(ctx, route.NodeLegRequest{CarrierProfile: config.CarrierProfile, Endpoint: config.ListenAddress,
-		Certificate: certificate, ExpectedPeerKey: server, Binding: binding, Deadline: binding.NotAfter})
+	switch config.CarrierProfile {
+	case route.CarrierTCP:
+		return openRendezvousLeg(ctx, config.ListenAddress, certificate, server, binding)
+	case route.CarrierQUIC:
+		return openRendezvousQUICLeg(ctx, config.ListenAddress, certificate, server, binding)
+	default:
+		return nil, errors.New("Rendezvous test Carrier Profile is unsupported")
+	}
+}
+
+type rendezvousQUICCarrier struct {
+	stream     *quic.Stream
+	connection *quic.Conn
+	closeOnce  sync.Once
+	closeErr   error
+}
+
+func (carrier *rendezvousQUICCarrier) Read(buffer []byte) (int, error) {
+	return carrier.stream.Read(buffer)
+}
+
+func (carrier *rendezvousQUICCarrier) Write(buffer []byte) (int, error) {
+	return carrier.stream.Write(buffer)
+}
+
+func (carrier *rendezvousQUICCarrier) SetDeadline(deadline time.Time) error {
+	return carrier.stream.SetDeadline(deadline)
+}
+
+func (carrier *rendezvousQUICCarrier) Close() error {
+	carrier.closeOnce.Do(func() {
+		carrier.closeErr = errors.Join(carrier.stream.Close(), carrier.connection.CloseWithError(0, "test-carrier-close"))
+	})
+	return carrier.closeErr
+}
+
+func openRendezvousQUICLeg(ctx context.Context, endpoint string, certificate tls.Certificate, server [32]byte,
+	binding route.LegBinding) (route.Carrier, error) {
+	connection, err := quic.DialAddr(ctx, endpoint, rendezvousClientTLS(certificate, server), rendezvousQUICConfig())
+	if err != nil {
+		return nil, err
+	}
+	stream, err := connection.OpenStreamSync(ctx)
+	if err != nil {
+		_ = connection.CloseWithError(1, "test-carrier-open-failed")
+		return nil, err
+	}
+	carrier := &rendezvousQUICCarrier{stream: stream, connection: connection}
+	if err := carrier.SetDeadline(binding.NotAfter); err != nil {
+		_ = carrier.Close()
+		return nil, err
+	}
+	if err := route.WriteNodeLegBinding(carrier, binding); err != nil {
+		_ = carrier.Close()
+		return nil, err
+	}
+	peer, err := route.ReadNodeLegBinding(carrier)
+	if err != nil || binding.VerifyReciprocal(peer) != nil {
+		_ = carrier.Close()
+		return nil, fmt.Errorf("Rendezvous reciprocal QUIC LegBinding is invalid: read=%v verify=%v", err, binding.VerifyReciprocal(peer))
+	}
+	if err := carrier.SetDeadline(time.Time{}); err != nil {
+		_ = carrier.Close()
+		return nil, err
+	}
+	return carrier, nil
+}
+
+func rendezvousQUICConfig() *quic.Config {
+	return &quic.Config{Versions: []quic.Version{quic.Version1}, HandshakeIdleTimeout: time.Second,
+		MaxIdleTimeout: 5 * time.Second, KeepAlivePeriod: time.Second, MaxIncomingStreams: -1, MaxIncomingUniStreams: -1,
+		InitialPacketSize: 1200, InitialStreamReceiveWindow: 32 << 10, MaxStreamReceiveWindow: 32 << 10,
+		InitialConnectionReceiveWindow: 64 << 10, MaxConnectionReceiveWindow: 64 << 10,
+		AllowConnectionWindowIncrease: func(*quic.Conn, uint64) bool { return false }, EnableDatagrams: false, Allow0RTT: false}
 }
 
 func submitRejectedLeg(ctx context.Context, endpoint string, certificate tls.Certificate, server [32]byte,
