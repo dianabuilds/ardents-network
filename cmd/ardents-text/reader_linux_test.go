@@ -17,7 +17,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/application/textdocument"
 )
 
-func textReadSocket(t *testing.T, peer *textReadPeer) string {
+func textReadSocket(t *testing.T, peer connection.Interface) string {
 	t.Helper()
 	dir, err := os.MkdirTemp("", "text-read-")
 	if err != nil {
@@ -75,6 +75,42 @@ func TestTextReadNeverPresentsPartialOrFailedConnection(t *testing.T) {
 			output.Len() != 0 || peer.opens.Load() != 1 || !output.closed {
 			t.Fatal("failed response produced output or retried")
 		}
+	}
+}
+
+func TestTextReadPreservesRefusedSetupClassWithoutPresentingItsReason(t *testing.T) {
+	peer := &refusingTextReadPeer{outcome: connection.Outcome{Class: connection.ServiceUnavailable, Reason: "private fixture detail"}}
+	socket := textReadSocket(t, peer)
+	output := &textOutput{}
+	err := readText(t.Context(), socket, io.NopCloser(strings.NewReader("fixture-link\n")), output)
+	var refusal connection.SetupRefusalError
+	if !errors.As(err, &refusal) || refusal.Outcome().Class != connection.ServiceUnavailable ||
+		output.Len() != 0 || !output.closed || peer.opens.Load() != 1 || textFailure(err) != "text operation unavailable" {
+		t.Fatalf("refused setup = %v, output=%d, closed=%t, opens=%d", err, output.Len(), output.closed, peer.opens.Load())
+	}
+}
+
+func TestTextReadCancellationDuringSetupJoinsWithoutPresentation(t *testing.T) {
+	peer := &setupBlockingTextReadPeer{entered: make(chan struct{})}
+	socket := textReadSocket(t, peer)
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	output := &textOutput{}
+	done := make(chan error, 1)
+	go func() { done <- readText(ctx, socket, io.NopCloser(strings.NewReader("fixture-link\n")), output) }()
+	select {
+	case <-peer.entered:
+	case <-time.After(time.Second):
+		t.Fatal("reader did not reach setup")
+	}
+	cancel()
+	select {
+	case err := <-done:
+		if !errors.Is(err, context.Canceled) || output.Len() != 0 || !output.closed {
+			t.Fatalf("cancelled setup = %v, output=%d, closed=%t", err, output.Len(), output.closed)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("reader setup cancellation did not join")
 	}
 }
 

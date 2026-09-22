@@ -372,6 +372,13 @@ initializes UI signal handling only after dispatch excludes the fixed worker
 entrypoints. This is a real local client; it does not supply a launch receipt,
 grant, authenticated State, or a replacement for protected Endpoint composition.
 
+When AAI3 refuses setup, the local client retains its bounded outcome class in
+`connection.SetupRefusalError`. The trusted command maps local cancellation and
+timeout to its existing stable diagnostics and presents every other setup
+outcome as unavailable. It does not present the refusal reason, destination,
+or Endpoint detail; cancellation or timeout takes precedence when cleanup
+joins it with another setup failure.
+
 The trusted UI imports the owner-selected file under the local owner's
 permissions and submits only its bounded snapshot through the existing
 owner-authorized Administration boundary. Endpoint's separate service account

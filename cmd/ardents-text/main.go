@@ -14,6 +14,7 @@ import (
 	"path/filepath"
 	"syscall"
 
+	"github.com/dianabuilds/ardents-network/internal/application/interfacev2/connection"
 	"github.com/dianabuilds/ardents-network/internal/application/textdocument"
 )
 
@@ -61,6 +62,15 @@ func run(arguments []string) error {
 }
 
 func textFailure(err error) string {
+	var refusal connection.SetupRefusalError
+	if errors.As(err, &refusal) {
+		switch refusal.Outcome().Class {
+		case connection.LocalCancellation:
+			return "text read cancelled"
+		case connection.LocalTimeout:
+			return "text read timed out"
+		}
+	}
 	switch {
 	case errors.Is(err, context.Canceled):
 		return "text read cancelled"

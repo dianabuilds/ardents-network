@@ -149,6 +149,20 @@ Administration operations remain separately authorized; Publish dispatches the
 Endpoint-owned `StartPublisher` transaction, not a raw Credential/signer
 request. The Connection Interface cannot invoke either operation.
 
+The fixed text reader has these setup outcomes:
+
+| Observed condition | AAI3 caller result | Command presentation |
+|---|---|---|
+| The caller cancels its `Dial` context or reaches its deadline while setup is pending | Raw `context.Canceled` or `context.DeadlineExceeded`; the local caller context takes precedence | The existing cancellation or timeout diagnostic |
+| Server-side setup returns a delivered `LocalCancellation` or `LocalTimeout` refusal | The same bounded class in `connection.SetupRefusalError` | The existing cancellation or timeout diagnostic |
+| Endpoint refuses the typed Target Link with a bounded outcome, such as the retired alpha destination | The same outcome class in `connection.SetupRefusalError` | The existing generic unavailable diagnostic |
+| Endpoint setup fails without a bounded refusal | `ServiceUnavailable` with the fixed safe reason | The existing generic unavailable diagnostic |
+
+This table applies only to the selected Target-Link text reader. It does not
+extend the Interface to Name, a generic Application, or a stream-terminal
+result. The caller can inspect the bounded class for its local behavior; it
+does not present the refusal reason, Target Link, or Endpoint failure detail.
+
 For a User connection, Endpoint parses and binds the Target Link to its Network,
 activates its local capability, and passes only the authenticated Target to the
 opened `route.Route`. Route owns the volatile State/Entry/private-reachability/

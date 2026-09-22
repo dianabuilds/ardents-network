@@ -34,6 +34,21 @@ type Outcome struct {
 	Reason string
 }
 
+// SetupRefusalError carries one bounded AAI3 setup refusal to the local
+// caller. It keeps the class distinct from unclassified Endpoint failures.
+// Its Outcome is the exact bounded value decoded from the local transport.
+type SetupRefusalError struct{ outcome Outcome }
+
+func (failure SetupRefusalError) Error() string {
+	if failure.outcome.Reason == "" {
+		return string(failure.outcome.Class)
+	}
+	return string(failure.outcome.Class) + ": " + failure.outcome.Reason
+}
+
+// Outcome returns the bounded class and diagnostic carried by this refusal.
+func (failure SetupRefusalError) Outcome() Outcome { return failure.outcome }
+
 // Stream is one authenticated opaque Application byte stream. Read and Write
 // may proceed concurrently; the transport splits writes into frames of at
 // most 16 KiB. CloseInput delivers EOF to the Service while preserving Read

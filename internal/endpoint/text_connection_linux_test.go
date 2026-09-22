@@ -4,6 +4,7 @@ package endpoint
 
 import (
 	"context"
+	"errors"
 	"path/filepath"
 	"sync"
 	"testing"
@@ -73,6 +74,10 @@ func TestTextConnectionRetiresAlphaDestinationBeforeEffects(t *testing.T) {
 	stream, err := connection.Dial(t.Context(), path, connection.Request{Destination: connection.TargetLink, Value: "ardents-alpha://retained.example"})
 	if stream != nil || err == nil || err.Error() != "service unavailable: alpha service link is retired" {
 		t.Fatalf("retired Alpha destination = (%v, %v)", stream, err)
+	}
+	var refusal connection.SetupRefusalError
+	if !errors.As(err, &refusal) || refusal.Outcome().Class != connection.ServiceUnavailable {
+		t.Fatalf("retired Alpha destination lost its setup class: %v", err)
 	}
 	contextOwner.mu.Lock()
 	launched := contextOwner.lastJob != nil
