@@ -85,8 +85,12 @@ fresh, exclusive owner-only issuer root and exports only exact public
 SPKI/profile inputs. The legacy Transit issuer initialization schema is
 recognized only for a pre-effect retirement refusal and cannot read an identity
 key or create/reopen a root; `issuer serve` likewise admits only the closed
-issuer reservation. The closed issuer receives no admission-authority private
-key. Preserve its durable
+issuer reservation. The old Node-side Transit signer, listener, State-duty
+projection, issuer Handler, and mutable root ledger are absent. Existing old
+root bytes are not opened, converted, or erased. The signed Transit profile
+decoder and one-use client remain for the separately owned Endpoint acquisition
+path; they confer no receiving authority. The closed issuer receives no
+admission-authority private key. Preserve its durable
 reservation and receiving ledgers with atomic write/flush/reopen before
 acknowledgement. Provision successor hourly keys before use; never replace
 bytes under an already signed key/window or reuse a key across cohorts.

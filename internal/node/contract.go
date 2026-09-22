@@ -55,9 +55,6 @@ type DutyView interface {
 	DutyCandidateValidFrom(uint8) time.Time
 	DutyCandidateValidUntil(uint8) time.Time
 	DutyCandidateAssignmentNotAfter(uint8) time.Time
-	DutyTransitIssuanceNodeID() [32]byte
-	DutyTransitIssuanceProfile() []byte
-	DutyTransitIssuanceProfileDigest() [32]byte
 	DutyAuthorityCount() uint8
 	DutyAuthorityID(uint8) [32]byte
 	DutyAuthorityPublicKey(uint8) [32]byte
@@ -66,36 +63,31 @@ type DutyView interface {
 // dutyFacts is the Node-owned immutable copy of one DutyView. It is also useful to
 // behavior-test the lifecycle without a Network State runtime.
 type dutyFacts struct {
-	Generation                  string
-	NetworkID                   [32]byte
-	Epoch                       uint64
-	Digest                      [32]byte
-	EpochValidFrom              time.Time
-	ValidUntil                  time.Time
-	Profile                     string
-	Conflicting                 bool
-	RecordPresent               bool
-	NodeID                      [32]byte
-	NodePublicKey               [32]byte
-	RecordGeneration            uint64
-	RecordValidFrom             time.Time
-	RecordValidUntil            time.Time
-	DeclaredFamily              string
-	ProbeEndpoint               string
-	CarrierProfile              string
-	ProbeCapacity               uint16
-	Assignment                  string
-	AssignmentDigest            [32]byte
-	Fresh                       bool
-	Candidates                  [64]dutyCandidate
-	CandidateCount              uint8
-	Authorities                 [16]dutyAuthority
-	AuthorityCount              uint8
-	TransitIssuerProfileDigest  [32]byte
-	TransitIssuerNodeID         [32]byte
-	TransitIssuerProfile        []byte
-	TransitGrantSignerID        [32]byte
-	TransitGrantSignerPublicKey [32]byte
+	Generation       string
+	NetworkID        [32]byte
+	Epoch            uint64
+	Digest           [32]byte
+	EpochValidFrom   time.Time
+	ValidUntil       time.Time
+	Profile          string
+	Conflicting      bool
+	RecordPresent    bool
+	NodeID           [32]byte
+	NodePublicKey    [32]byte
+	RecordGeneration uint64
+	RecordValidFrom  time.Time
+	RecordValidUntil time.Time
+	DeclaredFamily   string
+	ProbeEndpoint    string
+	CarrierProfile   string
+	ProbeCapacity    uint16
+	Assignment       string
+	AssignmentDigest [32]byte
+	Fresh            bool
+	Candidates       [64]dutyCandidate
+	CandidateCount   uint8
+	Authorities      [16]dutyAuthority
+	AuthorityCount   uint8
 }
 
 // dutyCandidate is one narrow State-authorized peer fact. It deliberately
@@ -125,7 +117,6 @@ type Config struct {
 	Current              func() (DutyView, error)
 	Probe                ProbeConfig
 	Rendezvous           RendezvousProfile
-	TransitIssuer        TransitIssuerProfile
 	ClosedIssuer         ClosedIssuerProfile
 	// ClosedForwarding supplies the isolated receiving spend journal and Node
 	// TLS key for an accepted generation-3 adjacent/interior forwarding duty.
@@ -170,16 +161,6 @@ type RendezvousProfile struct {
 	PairByteLimit                           uint64
 	AdmissionTimeout                        time.Duration
 	DrainTimeout                            time.Duration
-}
-
-// TransitIssuerProfile contains only the initialized owner root, listener
-// certificate, and finite local reservations. State supplies the listener,
-// exact public profile, permitted Initiator, and duty lifetime.
-type TransitIssuerProfile struct {
-	Root            string
-	Certificate     tls.Certificate
-	ConnectionLimit uint16
-	DrainTimeout    time.Duration
 }
 
 // ClosedIssuerProfile contains the isolated RSA-PSS issuer root and bounded
@@ -311,13 +292,6 @@ func (facts dutyFacts) DutyCandidateAssignmentNotAfter(index uint8) time.Time {
 		return time.Time{}
 	}
 	return facts.Candidates[index].AssignmentNotAfter
-}
-func (facts dutyFacts) DutyTransitIssuanceProfileDigest() [32]byte {
-	return facts.TransitIssuerProfileDigest
-}
-func (facts dutyFacts) DutyTransitIssuanceNodeID() [32]byte { return facts.TransitIssuerNodeID }
-func (facts dutyFacts) DutyTransitIssuanceProfile() []byte {
-	return append([]byte(nil), facts.TransitIssuerProfile...)
 }
 func (facts dutyFacts) DutyAuthorityCount() uint8 { return facts.AuthorityCount }
 func (facts dutyFacts) DutyAuthorityID(index uint8) [32]byte {

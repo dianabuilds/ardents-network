@@ -17,32 +17,6 @@ const (
 	profileDomain        = "ardents-transit-issuance-profile-v3"
 )
 
-// EncodeProfile serializes one signed issuer OHTTP profile. State treats the
-// bytes as opaque; callers must verify it against State's selected Node key.
-func EncodeProfile(profile Profile) ([]byte, error) {
-	if !validProfile(profile) {
-		return nil, errors.New("transit issuance profile is invalid")
-	}
-	out := make([]byte, 0, 4+1+32*4+8+2+len(profile.KeyConfig)+32+ed25519.SignatureSize)
-	out = append(out, "ATIP"...)
-	out = append(out, profile.Version)
-	for _, value := range [][32]byte{profile.NetworkID, profile.NodeID, profile.GrantSignerID} {
-		out = append(out, value[:]...)
-	}
-	if profile.Version >= grantProfileVersion {
-		out = append(out, profile.GrantSignerPublicKey[:]...)
-	}
-	if profile.Version == profileVersion {
-		out = append(out, profile.InitiatorNodeID[:]...)
-		out = append(out, profile.InitiatorPublicKey[:]...)
-	}
-	out = binary.BigEndian.AppendUint64(out, uint64(profile.AssignmentNotAfter.UnixNano()))
-	out = binary.BigEndian.AppendUint16(out, uint16(len(profile.KeyConfig)))
-	out = append(out, profile.KeyConfig...)
-	out = append(out, profile.KeyConfigDigest[:]...)
-	return append(out, profile.Signature...), nil
-}
-
 // DecodeProfile decodes bounded opaque State profile bytes without selecting
 // or trusting their Node association.
 func DecodeProfile(raw []byte) (Profile, error) {

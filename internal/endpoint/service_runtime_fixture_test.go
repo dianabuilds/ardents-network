@@ -154,7 +154,7 @@ func issueEndpointTransitFixtureGrant(t *testing.T, network, digest, attachment,
 	if err != nil {
 		t.Fatal(err)
 	}
-	raw, err := route.IssueTransitGrant(route.TransitGrant{IssuerID: sha256.Sum256(public), GrantID: grantID,
+	raw, err := issueTransitGrantFixture(route.TransitGrant{IssuerID: sha256.Sum256(public), GrantID: grantID,
 		NetworkID: network, Digest: digest, AttachmentID: attachment, TransitNodeID: node, ClientKeyDigest: digestKey,
 		Epoch: epoch, TransitRole: role, NotAfter: notAfter}, private)
 	if err != nil {

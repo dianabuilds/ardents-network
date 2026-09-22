@@ -27,7 +27,7 @@ func TestTransitClientCertificateRequiresGrantLocalEnrollment(t *testing.T) {
 	grant := route.TransitGrant{IssuerID: sha256.Sum256(authority.Public().(ed25519.PublicKey)), GrantID: transitClientTestID(202),
 		NetworkID: transitClientTestID(203), Digest: transitClientTestID(204), AttachmentID: transitClientTestID(205), TransitNodeID: transitClientTestID(206),
 		ClientKeyDigest: digest, Epoch: 1, TransitRole: route.IntroductionRole, NotAfter: time.Now().UTC().Add(time.Minute).Truncate(time.Second)}
-	raw, err := route.IssueTransitGrant(grant, authority)
+	raw, err := issueTransitGrantFixture(grant, authority)
 	if err != nil {
 		t.Fatal(err)
 	}

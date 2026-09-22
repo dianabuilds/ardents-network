@@ -256,9 +256,7 @@ func currentFacts(config runtimeConfig) (dutyFacts, error) {
 		RecordValidFrom: view.DutyRecordValidFrom(), RecordValidUntil: view.DutyRecordValidUntil(),
 		DeclaredFamily: view.DutyDeclaredFamily(), ProbeEndpoint: view.DutyProbeEndpoint(), CarrierProfile: view.DutyCarrierProfile(),
 		ProbeCapacity: view.DutyProbeCapacity(), Assignment: view.DutyAssignment(),
-		AssignmentDigest: view.DutyAssignmentDigest(), CandidateCount: view.DutyCandidateCount(),
-		TransitIssuerProfileDigest: view.DutyTransitIssuanceProfileDigest(), TransitIssuerNodeID: view.DutyTransitIssuanceNodeID(),
-		TransitIssuerProfile: view.DutyTransitIssuanceProfile()}
+		AssignmentDigest: view.DutyAssignmentDigest(), CandidateCount: view.DutyCandidateCount()}
 	if result.CandidateCount > uint8(len(result.Candidates)) {
 		return dutyFacts{}, errors.New("node duty view candidate count is outside its bound")
 	}
@@ -278,9 +276,6 @@ func currentFacts(config runtimeConfig) (dutyFacts, error) {
 			DomainProofDigest: view.DutyCandidateDomainProofDigest(index), Endpoint: view.DutyCandidateEndpoint(index), CarrierProfile: view.DutyCandidateCarrierProfile(index),
 			Capacity: view.DutyCandidateCapacity(index), Assignment: view.DutyCandidateAssignment(index),
 			ValidFrom: view.DutyCandidateValidFrom(index), ValidUntil: view.DutyCandidateValidUntil(index), AssignmentNotAfter: view.DutyCandidateAssignmentNotAfter(index)}
-	}
-	if err := attachTransitGrantSigner(&result, config.now().UTC()); err != nil {
-		return dutyFacts{}, err
 	}
 	return result, nil
 }

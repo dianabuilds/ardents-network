@@ -439,9 +439,6 @@
         "internal/node.dutyFacts.DutyRecordPresent",
         "internal/node.dutyFacts.DutyRecordValidFrom",
         "internal/node.dutyFacts.DutyRecordValidUntil",
-        "internal/node.dutyFacts.DutyTransitIssuanceNodeID",
-        "internal/node.dutyFacts.DutyTransitIssuanceProfile",
-        "internal/node.dutyFacts.DutyTransitIssuanceProfileDigest",
         "internal/node.dutyFacts.DutyValidUntil",
         "internal/node.rendezvous.Close"
       ],
@@ -452,14 +449,18 @@
     },
     {
       "symbols": [
-        "internal/route/credential.InitializeIssuerRoot",
-        "internal/route/credential.encodeIssuerMaterial",
-        "internal/route/credential.issuerRootStore.initialize"
+        "internal/route/credential.DecodeProfile",
+        "internal/route/credential.VerifyProfile",
+        "internal/route/credential.pad",
+        "internal/route/credential.profileTranscript",
+        "internal/route/credential.unpad",
+        "internal/route/credential.validProfile",
+        "internal/route/credential.validRequest"
       ],
-      "classification": "retained old Transit issuer bootstrap fixture",
-      "rationale": "#155 removes the final production command caller. These exact constructors remain only to create authentic durable roots for the retained old Transit issuer engine's restart, conflict, and cleanup behavior evidence; moving them into tests would duplicate the persisted format and hide compatibility failures.",
+      "classification": "retained Endpoint Transit acquisition decoder closure",
+      "rationale": "#117 removes the old Node receiving issuer. These exact decoder, verifier, and client-message dependencies remain direct consumers of the explicitly out-of-scope Endpoint acquisition and fixed-Grant verification closures already registered in this allowlist; none can sign, initialize, open, or serve an issuer root.",
       "owner": "Product Owner and Codex",
-      "retirement": "Delete these constructors with the old Node-side Transit issuer engine in #117 after that slice disposes its authentic-root behavior tests; preserve existing root readers and floors until their named consumers are removed."
+      "retirement": "Delete or reconnect them only with the dedicated post-#112 Endpoint transit caller audit; preserve the signed-history decoder and one-use client until that bounded consumer disposition."
     },
     {
       "symbols": [
@@ -681,6 +682,16 @@
   "production": {
     "linux-amd64": [],
     "windows-amd64": [
+      {
+        "symbols": [
+          "internal/route.transitGrantBodyLength",
+          "internal/route.validTransitGrant"
+        ],
+        "classification": "Windows projection of retained Endpoint Transit Grant verification",
+        "rationale": "Linux production reaches these shared body-validation helpers through the selected text Endpoint. Windows has no selected protected text runtime, so the same retained verification closure is additionally dead only in that production projection.",
+        "owner": "Product Owner and Codex",
+        "retirement": "Remove with the retained Endpoint Transit acquisition and fixed-Grant verification closure after its dedicated post-#112 consumer disposition."
+      },
       {
         "symbols": [
           "internal/naming/alpha.Corpus.Bytes",

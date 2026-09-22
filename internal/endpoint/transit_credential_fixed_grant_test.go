@@ -23,7 +23,7 @@ func TestApplicationServiceAttachmentUsesOnlyCurrentSignedGrant(t *testing.T) {
 	grant := route.TransitGrant{IssuerID: issuer, GrantID: applicationGrantID(5), NetworkID: network, Digest: digest,
 		AttachmentID: attachment, TransitNodeID: introduction, ClientKeyDigest: applicationGrantID(6), Epoch: 7,
 		TransitRole: route.IntroductionRole, NotAfter: now.Add(time.Minute)}
-	raw, err := route.IssueTransitGrant(grant, private)
+	raw, err := issueTransitGrantFixture(grant, private)
 	if err != nil {
 		t.Fatal(err)
 	}

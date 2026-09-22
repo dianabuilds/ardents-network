@@ -4,6 +4,7 @@ import (
 	"crypto/ed25519"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"testing"
 	"time"
 )
@@ -12,7 +13,7 @@ func TestTransitGrantV1IssuesAndVerifiesCanonicalVector(t *testing.T) {
 	signer := ed25519.NewKeyFromSeed([]byte{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
 		1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1})
 	input := transitGrantFixture(signer)
-	raw, err := IssueTransitGrant(input, signer)
+	raw, err := issueTransitGrantFixture(input, signer)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -29,7 +30,7 @@ func TestTransitGrantV1IssuesAndVerifiesCanonicalVector(t *testing.T) {
 func TestTransitGrantV1RefusesChangedSignerAndMalformedBytes(t *testing.T) {
 	signer := ed25519.NewKeyFromSeed([]byte{2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
 		2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2})
-	raw, err := IssueTransitGrant(transitGrantFixture(signer), signer)
+	raw, err := issueTransitGrantFixture(transitGrantFixture(signer), signer)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -52,4 +53,23 @@ func transitGrantFixture(signer ed25519.PrivateKey) TransitGrant {
 	return TransitGrant{IssuerID: issuer, GrantID: identifier(81), NetworkID: identifier(82), Digest: identifier(83),
 		AttachmentID: identifier(84), TransitNodeID: identifier(85), ClientKeyDigest: identifier(86), Epoch: 87,
 		TransitRole: IntroductionRole, NotAfter: time.Unix(1_750_000_000, 0).UTC()}
+}
+
+func issueTransitGrantFixture(input TransitGrant, signer ed25519.PrivateKey) ([]byte, error) {
+	if err := validTransitGrant(input); err != nil || len(signer) != ed25519.PrivateKeySize ||
+		input.IssuerID != sha256.Sum256(signer.Public().(ed25519.PublicKey)) {
+		return nil, errors.New("transit grant fixture input is invalid")
+	}
+	body := make([]byte, 0, transitGrantBodyLength())
+	body = append(body, transitGrantPrefix...)
+	body = appendUint16(body, transitGrantVersion)
+	for _, value := range [][32]byte{input.IssuerID, input.GrantID, input.NetworkID, input.Digest, input.AttachmentID,
+		input.TransitNodeID, input.ClientKeyDigest} {
+		body = append(body, value[:]...)
+	}
+	body = appendUint64(body, input.Epoch)
+	body = append(body, input.TransitRole)
+	body = appendUint64(body, uint64(input.NotAfter.Unix()))
+	signature := ed25519.Sign(signer, append([]byte(transitGrantDomain), body...))
+	return append(body, signature...), nil
 }
