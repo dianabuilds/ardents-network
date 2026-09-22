@@ -187,11 +187,6 @@
       "path": "tests/qualification/native-rendezvous-host"
     },
     {
-      "id": "alpha-control-two-endpoints",
-      "owner": "network",
-      "path": "tests/qualification/alpha-control-two-endpoints"
-    },
-    {
       "id": "net32-idle-one-host",
       "owner": "network",
       "path": "tests/qualification/net32-idle-one-host"

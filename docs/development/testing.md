@@ -243,7 +243,11 @@ The maintained local profiles are:
 - `text-role-durable-state-capture`, the Linux-only isolated Role and Publisher
   durable-state observation; it retains secret-bearing raw observations only in
   an existing, writable, non-symlink directory outside the Git worktree;
-- `alpha-control-two-endpoints`;
+- the retired two-Endpoint alpha-control runner is no longer a contributor
+  route. Its historical receipts remain in their existing evidence locations;
+  its last source revision is retained in Git as `6ac9cba0856a7a0b92f2e8a4e11b246625f6716d`;
+  current enrolled-bundle and inspection regressions stay with
+  `headless-evidence` and its owned package tests;
 - `text-worker-network`, the installed confined worker/network composition invoked
   by `make text-worker-network-check`; requires all eight document/Carrier and elapsed-refresh cases,
   exact invocation evidence and terminal service success. State and authority setup

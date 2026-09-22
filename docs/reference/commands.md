@@ -218,7 +218,9 @@ historical evidence.
 
 `ardents-control` is a separate alpha-control program. It never starts an
 Endpoint, downloads bytes, changes Release/Network State roots, or turns an
-alpha name into canonical Namespace state.
+alpha name into canonical Namespace state. It has no current two-Endpoint
+qualification intake; the retained routes below own their own explicit inputs
+and inspection roots.
 
 | Route | Required flags | Result |
 |---|---|---|

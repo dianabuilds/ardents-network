@@ -18,7 +18,7 @@ else
 RACE_TEST_PREFIX := umask 077;
 endif
 
-.PHONY: architecture artifact-representation-check build check deadcode e2e format format-check fuzz headless-build headless-check headless-evidence heapdump-capture heapdump-role-map issue60-checks mod-check package-e2e package-ubuntu-deb prepare-native-rendezvous-host qualification qualification-alpha-control-two-endpoints qualification-endpoint-portable-ubuntu qualification-endpoint-replacement-ubuntu qualification-service-credential-response-linux quick-check staticcheck test test-race text-role-durable-state-capture tools-check tools-install unit vet vuln
+.PHONY: architecture artifact-representation-check build check deadcode e2e format format-check fuzz headless-build headless-check headless-evidence heapdump-capture heapdump-role-map issue60-checks mod-check package-e2e package-ubuntu-deb prepare-native-rendezvous-host qualification qualification-endpoint-portable-ubuntu qualification-endpoint-replacement-ubuntu qualification-service-credential-response-linux quick-check staticcheck test test-race text-role-durable-state-capture tools-check tools-install unit vet vuln
 
 define newline
 
@@ -109,9 +109,6 @@ qualification-endpoint-replacement-ubuntu:
 
 qualification-service-credential-response-linux:
 	sh ./tests/qualification/service-credential-response-linux/run-ubuntu.sh -timeout=2m
-
-qualification-alpha-control-two-endpoints:
-	powershell -NoProfile -ExecutionPolicy Bypass -File ./tests/qualification/alpha-control-two-endpoints/run-windows.ps1 -CandidateArchive "$(ALPHA_CONTROL_ARCHIVE)" -ArchiveSHA256 "$(ALPHA_CONTROL_ARCHIVE_SHA256)" -ManifestPin "$(ALPHA_CONTROL_MANIFEST_PIN)" -EndpointSHA256 "$(ALPHA_CONTROL_ENDPOINT_SHA256)" -ControlSHA256 "$(ALPHA_CONTROL_CONTROL_SHA256)" -Cohort "$(ALPHA_CONTROL_COHORT)" -Release "$(ALPHA_CONTROL_RELEASE)" -At "$(ALPHA_CONTROL_AT)" -VPS "$(ALPHA_CONTROL_VPS)" -SSHKey "$(ALPHA_CONTROL_SSH_KEY)" -User "$(ALPHA_CONTROL_VPS_USER)" -EvidenceOutput "$(ALPHA_CONTROL_EVIDENCE)"
 
 prepare-native-rendezvous-host:
 	sh ./tests/qualification/native-rendezvous-host/run-ubuntu.sh
