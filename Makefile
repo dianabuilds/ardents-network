@@ -18,7 +18,7 @@ else
 RACE_TEST_PREFIX := umask 077;
 endif
 
-.PHONY: architecture artifact-representation-check build check deadcode e2e format format-check fuzz headless-build headless-check headless-evidence heapdump-capture heapdump-role-map issue60-checks mod-check package-e2e package-ubuntu-deb prepare-native-rendezvous-host qualification qualification-endpoint-portable-ubuntu qualification-endpoint-replacement-ubuntu qualification-service-credential-response-linux quick-check staticcheck test test-race text-role-durable-state-capture tools-check tools-install unit vet vuln
+.PHONY: architecture artifact-representation-check build check deadcode e2e format format-check fuzz headless-build headless-check headless-evidence heapdump-capture heapdump-role-map issue60-checks mod-check package-e2e package-ubuntu-deb qualification qualification-endpoint-portable-ubuntu qualification-endpoint-replacement-ubuntu qualification-service-credential-response-linux quick-check staticcheck test test-race text-role-durable-state-capture tools-check tools-install unit vet vuln
 
 define newline
 
@@ -109,9 +109,6 @@ qualification-endpoint-replacement-ubuntu:
 
 qualification-service-credential-response-linux:
 	sh ./tests/qualification/service-credential-response-linux/run-ubuntu.sh -timeout=2m
-
-prepare-native-rendezvous-host:
-	sh ./tests/qualification/native-rendezvous-host/run-ubuntu.sh
 
 qualification: qualification-endpoint-portable-ubuntu qualification-endpoint-replacement-ubuntu
 
