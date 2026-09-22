@@ -16,11 +16,6 @@ func TestRoleDrainsReportListenerCleanupFailures(t *testing.T) {
 		name  string
 		drain func() error
 	}{
-		{name: "Introduction", drain: func() error {
-			running := &introduction{plan: introductionPlan{introductionConfig: introductionConfig{DrainTimeout: time.Second}}, listener: terminalFailingListener{err: injected},
-				pre: make(map[net.Conn]struct{}), active: make(map[net.Conn]struct{})}
-			return running.Drain(context.Background())
-		}},
 		{name: "Rendezvous", drain: func() error {
 			running := &rendezvous{plan: rendezvousPlan{rendezvousConfig: rendezvousConfig{DrainTimeout: time.Second}}, listener: terminalFailingCarrierListener{err: injected},
 				pre: make(map[route.PendingCarrier]struct{}), waiting: make(map[[32]byte]*rendezvousLeg), active: make(map[route.Carrier]struct{}),
@@ -59,19 +54,6 @@ func TestWorkerCleanupFailuresSurviveActiveRemoval(t *testing.T) {
 		name string
 		run  func() error
 	}{
-		{name: "Introduction", run: func() error {
-			connection := &terminalFailingNetConn{err: injected}
-			reachability := [32]byte{1}
-			slot := &introductionLiveSlot{registration: route.IntroductionSlotRegistration{NotAfter: time.Now().Add(time.Hour)}, raw: connection, connection: connection}
-			running := &introduction{plan: introductionPlan{introductionConfig: introductionConfig{DrainTimeout: time.Second}}, listener: terminalFailingListener{},
-				slotsCap: make(chan struct{}, 1), deliveries: make(chan struct{}, 1), pre: make(map[net.Conn]struct{}),
-				slots: map[[32]byte]*introductionLiveSlot{reachability: slot}, active: map[net.Conn]struct{}{connection: {}}}
-			running.slotsCap <- struct{}{}
-			running.deliveries <- struct{}{}
-			running.work.Add(1)
-			running.forward(slot, reachability, nil)
-			return running.Drain(context.Background())
-		}},
 		{name: "Rendezvous", run: func() error {
 			first := terminalFailingCarrier{err: injected}
 			second := terminalFailingCarrier{err: injected}
@@ -112,14 +94,3 @@ func (terminalFailingCarrier) Read([]byte) (int, error)    { return 0, net.ErrCl
 func (terminalFailingCarrier) Write([]byte) (int, error)   { return 0, net.ErrClosed }
 func (terminalFailingCarrier) SetDeadline(time.Time) error { return nil }
 func (carrier terminalFailingCarrier) Close() error        { return carrier.err }
-
-type terminalFailingNetConn struct{ err error }
-
-func (*terminalFailingNetConn) Read([]byte) (int, error)         { return 0, net.ErrClosed }
-func (*terminalFailingNetConn) Write([]byte) (int, error)        { return 0, net.ErrClosed }
-func (connection *terminalFailingNetConn) Close() error          { return connection.err }
-func (*terminalFailingNetConn) LocalAddr() net.Addr              { return testAddress("worker-local") }
-func (*terminalFailingNetConn) RemoteAddr() net.Addr             { return testAddress("worker-remote") }
-func (*terminalFailingNetConn) SetDeadline(time.Time) error      { return nil }
-func (*terminalFailingNetConn) SetReadDeadline(time.Time) error  { return nil }
-func (*terminalFailingNetConn) SetWriteDeadline(time.Time) error { return nil }

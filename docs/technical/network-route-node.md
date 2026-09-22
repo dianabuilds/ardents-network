@@ -108,10 +108,12 @@ existing authority checks.
 Existing old roots, keys, floors, plans, and installation records remain
 unchanged evidence. Historical profile recognition may authenticate an already
 pinned owned installation for retirement only; it cannot authorize execution
-of an old duty or rewrite persisted identity. The old Initiator and Responder
-engines and their command composition have been deleted after the command
-refusal became current. The Initiator Entry-admission adapter is also absent.
-The remaining old engines are owned by separate bounded deletion slices.
+of an old duty or rewrite persisted identity. The old Initiator, Responder, and
+Introduction engines and their command composition have been deleted after the
+command refusal became current. Their old plan stanzas remain only at that
+typed refusal boundary. The Initiator Entry-admission adapter is also absent.
+The remaining Rendezvous and Transit-issuance engines are owned by separate
+bounded deletion slices.
 The adjacent production-dead Entry/relay/OHTTP closure is enumerated exactly by
 the deadcode registry and belongs to its dedicated closure audit; it is not
 silently deleted as part of the one-engine change.
@@ -351,8 +353,8 @@ executing either generation.
 - Current process tests cover authenticated Source-to-State and closed Node
   lifecycles. The superseded positive old-role command and multi-host
   qualification procedures are absent; their historical receipts do not make
-  an old duty runnable. Direct behavior tests remain only for old engines that
-  still have their own pending deletion slices.
+  an old duty runnable. Direct behavior tests remain only for the Rendezvous
+  and Transit-issuance engines, which still have their own deletion slices.
 - A [historical mixed-host run](https://github.com/dianabuilds/ardents-network/blob/f82a52dde912e975df0b23bdcf459f1e5b71def3/docs/technical/network-route-node.md#verification-and-decisions)
   retains bounded functional integration evidence for its exact candidate.
   It supplies no current Route, privacy, host-profile, or public-operation

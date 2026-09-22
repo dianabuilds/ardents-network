@@ -142,8 +142,7 @@ func runIssuerNode(ctx context.Context, path string, output io.Writer) error {
 
 func validateIssuerRuntime(runtime nodeRuntime) error {
 	transit, closed := runtime.node.TransitIssuer.Root != "", runtime.node.ClosedIssuer.Root != ""
-	if transit == closed || runtime.node.Rendezvous.Certificate.PrivateKey != nil ||
-		runtime.node.Introduction.Certificate.PrivateKey != nil {
+	if transit == closed || runtime.node.Rendezvous.Certificate.PrivateKey != nil {
 		return errors.New("issuer serve requires exactly one isolated issuer reservation")
 	}
 	return nil

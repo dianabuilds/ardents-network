@@ -422,7 +422,9 @@ must return the typed old-duty retirement outcome while deliberately absent
 key, certificate, Source-root, State-root, and role-root paths remain absent.
 The complete command package retains independent positive and refusal coverage
 for `closed_issuer`, `closed_forwarding`, `closed_resolution`,
-`closed_introduction`, and `closed_data_join`. The old Initiator and Responder
-engines and their direct tests are absent; direct tests for other retained old
-engines remain only until their separate deletion slices and do not make the
-command reachable.
+`closed_introduction`, and `closed_data_join`. The old Initiator, Responder, and
+Introduction engines and their direct tests are absent; direct tests remain
+only for the old Rendezvous and Transit-issuance engines until their separate
+deletion slices and do not make the command reachable. The Introduction
+retirement oracle also keeps the current `startClosedIntroduction` dispatch
+present rather than treating the shared domain term as a retired symbol.

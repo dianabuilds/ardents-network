@@ -27,14 +27,3 @@ func transitIssuerStoreRoot(t *testing.T) string {
 	}
 	return root
 }
-
-// transitGrantRoot creates the owner-only directory for a transit grant root,
-// independent of the test process umask.
-func transitGrantRoot(t *testing.T) string {
-	t.Helper()
-	root := filepath.Join(t.TempDir(), "transit-grant")
-	if err := os.Mkdir(root, 0o700); err != nil {
-		t.Fatal(err)
-	}
-	return root
-}

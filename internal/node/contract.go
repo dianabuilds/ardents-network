@@ -125,7 +125,6 @@ type Config struct {
 	Current              func() (DutyView, error)
 	Probe                ProbeConfig
 	Rendezvous           RendezvousProfile
-	Introduction         IntroductionProfile
 	TransitIssuer        TransitIssuerProfile
 	ClosedIssuer         ClosedIssuerProfile
 	// ClosedForwarding supplies the isolated receiving spend journal and Node
@@ -171,16 +170,6 @@ type RendezvousProfile struct {
 	PairByteLimit                           uint64
 	AdmissionTimeout                        time.Duration
 	DrainTimeout                            time.Duration
-}
-
-// IntroductionProfile contains only the local certificate, finite resource
-// bounds, and opaque C-2 admission port. State supplies the listener identity
-// and expiry; this profile cannot decrypt Service material.
-type IntroductionProfile struct {
-	Certificate                              tls.Certificate
-	HandshakeLimit, SlotLimit, DeliveryLimit uint16
-	AdmissionTimeout                         time.Duration
-	DrainTimeout                             time.Duration
 }
 
 // TransitIssuerProfile contains only the initialized owner root, listener

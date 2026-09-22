@@ -71,6 +71,43 @@ func TestRetiredResponderEngineIsAbsent(t *testing.T) {
 	}
 }
 
+func TestRetiredIntroductionEngineIsAbsent(t *testing.T) {
+	t.Parallel()
+	root := repositoryRoot(t)
+	for _, relative := range []string{
+		"internal/node/introduction_contract.go",
+		"internal/node/introduction_duty.go",
+		"internal/node/introduction_listener.go",
+		"internal/node/introduction_test.go",
+		"internal/node/transit_grant_admission.go",
+		"internal/node/transit_grant_admission_test.go",
+	} {
+		if _, err := os.Stat(filepath.Join(root, filepath.FromSlash(relative))); !os.IsNotExist(err) {
+			t.Errorf("retired Introduction engine file still exists: %s", relative)
+		}
+	}
+
+	contracts := string(readProjectFile(t, root, "internal/node/contract.go"))
+	if strings.Contains(contracts, "type IntroductionProfile ") || strings.Contains(contracts, "Introduction         IntroductionProfile") {
+		t.Error("Node contract still exports the retired Introduction profile")
+	}
+	server := string(readProjectFile(t, root, "internal/node/duty_server.go"))
+	if strings.Contains(server, `case "introduction":`) {
+		t.Error("Node duty dispatch still starts the retired Introduction engine")
+	}
+	if !strings.Contains(server, "return startClosedIntroduction(config, snapshot)") {
+		t.Error("Node duty dispatch lost the current closed Introduction branch")
+	}
+	nativeDuty := string(readProjectFile(t, root, "internal/node/native_duty.go"))
+	if strings.Contains(nativeDuty, `case "introduction":`) {
+		t.Error("Node duty validation still admits the retired Introduction engine")
+	}
+	identity := string(readProjectFile(t, root, "cmd/ardents-node/node_identity.go"))
+	if strings.Contains(identity, "config.Introduction") {
+		t.Error("command composition still constructs the retired Introduction engine profile")
+	}
+}
+
 func TestRetiredOpenNodeLegIsAbsent(t *testing.T) {
 	t.Parallel()
 	root := repositoryRoot(t)
