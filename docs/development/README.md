@@ -34,6 +34,14 @@ specification.
 - [Network State, Entry, Route, and Node](../technical/network-route-node.md)
 - [Current command reference](../reference/commands.md)
 
+## Proposed network-core transition
+
+The [network-core project and transition map](network-core-transition.md)
+connects current owners and callers to bounded changes; its wire appendix is
+a proposal, not an accepted protocol. Accepted ADRs and current technical
+owners remain authoritative. GitHub issue #50 and its child issues own the
+execution order and delivery state.
+
 ## Retained audit receipts
 
 - [C0 run-2 Track A receipt](audit-receipts/c0-run-2-track-a.md) retains the
@@ -53,5 +61,7 @@ as defined by [documentation policy](documentation.md#promotion-and-retirement).
 Neither a retained record nor Git history is a current command, package, or
 Qualification contract.
 
-Completed experiment source is available from Git history and its accepted
-research record; no experiment is part of the current C0 tree.
+Retired experiment source is available from Git history and its research
+record. Experiment trees still present in the repository are research
+material, not maintained product modules or current Qualification claims;
+their removal preserves needed evidence and repairs current instructions.
