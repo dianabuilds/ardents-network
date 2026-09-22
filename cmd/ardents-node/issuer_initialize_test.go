@@ -9,6 +9,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"encoding/pem"
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -18,30 +19,21 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/route/credential"
 )
 
-func TestIssuerInitializeCommandPublishesOnlyStablePublicProfile(t *testing.T) {
+func TestTransitIssuerInitializeRefusesBeforeRootOrIdentity(t *testing.T) {
 	now := time.Now().UTC().Truncate(time.Second)
-	nodePublic, nodePrivate, err := ed25519.GenerateKey(rand.Reader)
-	if err != nil {
-		t.Fatal(err)
-	}
 	initiatorPublic, _, err := ed25519.GenerateKey(rand.Reader)
 	if err != nil {
 		t.Fatal(err)
 	}
-	privateDER, err := x509.MarshalPKCS8PrivateKey(nodePrivate)
-	if err != nil {
-		t.Fatal(err)
-	}
 	directory := t.TempDir()
-	identityPath := filepath.Join(directory, "node-identity.pem")
-	if err := os.WriteFile(identityPath, pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: privateDER}), 0o600); err != nil {
-		t.Fatal(err)
-	}
+	missing := filepath.Join(directory, "missing")
+	identityPath := filepath.Join(missing, "node-identity.pem")
+	root := filepath.Join(missing, "issuer-root")
 	network, nodeID, initiatorID := [32]byte{81}, [32]byte{82}, [32]byte{83}
 	planPath := filepath.Join(directory, "issuer-initialize.json")
 	plan := map[string]any{
 		"schema":               "ardents-transit-issuer-initialize-v1",
-		"root":                 filepath.Join(directory, "issuer-root"),
+		"root":                 root,
 		"network_id":           hex.EncodeToString(network[:]),
 		"node_id":              hex.EncodeToString(nodeID[:]),
 		"identity_key":         identityPath,
@@ -54,46 +46,37 @@ func TestIssuerInitializeCommandPublishesOnlyStablePublicProfile(t *testing.T) {
 	if err != nil || os.WriteFile(planPath, raw, 0o600) != nil {
 		t.Fatal("write issuer initialization plan")
 	}
-	initialize := func() []byte {
-		t.Helper()
-		var output bytes.Buffer
-		if err := run(context.Background(), []string{"issuer", "initialize", "--config", planPath}, &output); err != nil {
-			t.Fatal(err)
+	var output bytes.Buffer
+	err = run(context.Background(), []string{"issuer", "initialize", "--config", planPath}, &output)
+	if err == nil || err.Error() != "old Transit issuer start is retired" {
+		t.Fatalf("transit issuer initialize error = %v", err)
+	}
+	if output.Len() != 0 {
+		t.Fatalf("retired transit issuer initialize output = %q", output.Bytes())
+	}
+	for _, path := range []string{root, identityPath} {
+		if _, statErr := os.Stat(path); !errors.Is(statErr, os.ErrNotExist) {
+			t.Fatalf("retired transit issuer initialize changed %q: %v", path, statErr)
 		}
-		return output.Bytes()
-	}
-	first := initialize()
-	second := initialize()
-	if !bytes.Equal(first, second) {
-		t.Fatal("issuer initialize retry changed its public receipt")
-	}
-	var receipt struct {
-		Schema        string `json:"schema"`
-		Profile       []byte `json:"profile"`
-		ProfileSHA256 string `json:"profile_sha256"`
-	}
-	if err := json.Unmarshal(first, &receipt); err != nil {
-		t.Fatal(err)
-	}
-	profile, err := credential.DecodeProfile(receipt.Profile)
-	if err != nil || receipt.Schema != "ardents-transit-issuer-profile-v1" || profile.NetworkID != network ||
-		profile.NodeID != nodeID || profile.InitiatorNodeID != initiatorID || profile.InitiatorPublicKey != [32]byte(initiatorPublic) {
-		t.Fatalf("issuer initialization receipt/profile = %+v, %+v, %v", receipt, profile, err)
-	}
-	if err := credential.VerifyProfile(profile, network, nodeID, [32]byte(nodePublic), now, now.Add(15*time.Second)); err != nil {
-		t.Fatal(err)
 	}
 }
 
-func TestIssuerServeRejectsAnyOtherLocalDutyReservation(t *testing.T) {
+func TestIssuerServeRejectsTransitRuntimeAndPlanBeforeEffects(t *testing.T) {
 	issuer := node.TransitIssuerProfile{Root: filepath.Join(t.TempDir(), "issuer-root")}
-	if err := validateIssuerRuntime(nodeRuntime{node: node.Config{TransitIssuer: issuer}}); err != nil {
-		t.Fatalf("issuer-only runtime rejected: %v", err)
+	if err := validateIssuerRuntime(nodeRuntime{node: node.Config{TransitIssuer: issuer}}); err == nil {
+		t.Fatal("issuer serve validator accepted the retired Transit runtime")
 	}
-	withRendezvous := nodeRuntime{node: node.Config{TransitIssuer: issuer}}
-	withRendezvous.node.Rendezvous.Certificate.PrivateKey = ed25519.PrivateKey{1}
-	if err := validateIssuerRuntime(withRendezvous); err == nil {
-		t.Fatal("issuer serve accepted a Rendezvous reservation")
+
+	plan := oldDutyRetirementPlan(t)
+	plan.TransitIssuer = &transitIssuerPlan{Root: filepath.Join(filepath.Dir(plan.IdentityKey), "issuer-root")}
+	path := writeForwardingNodePlan(t, plan)
+	if err := runIssuerNode(t.Context(), path, new(bytes.Buffer)); !errors.Is(err, errOldNodeDutyRetired) {
+		t.Fatalf("transit issuer serve error = %v", err)
+	}
+	for _, effect := range []string{plan.TransitIssuer.Root, plan.IdentityKey, plan.StateRoot, plan.LocalRoleStateRoot} {
+		if _, statErr := os.Stat(effect); !errors.Is(statErr, os.ErrNotExist) {
+			t.Fatalf("retired transit issuer serve changed %q: %v", effect, statErr)
+		}
 	}
 }
 
@@ -104,6 +87,37 @@ func TestIssuerServeAcceptsOneClosedIssuerReservation(t *testing.T) {
 	}
 	if err := validateIssuerRuntime(nodeRuntime{node: node.Config{TransitIssuer: node.TransitIssuerProfile{Root: t.TempDir()}, ClosedIssuer: issuer}}); err == nil {
 		t.Fatal("issuer serve accepted both issuer reservations")
+	}
+}
+
+func TestClosedIssuerInitializeRejectsTransitFieldsBeforeEffects(t *testing.T) {
+	now := time.Now().UTC().Truncate(time.Hour)
+	directory := t.TempDir()
+	missing := filepath.Join(directory, "missing")
+	root := filepath.Join(missing, "closed-issuer-root")
+	identity := filepath.Join(missing, "identity.pem")
+	plan := map[string]any{
+		"schema": "ardents-closed-issuer-initialize-v1", "root": root,
+		"network_id": hex.EncodeToString(make([]byte, 32)), "node_id": hex.EncodeToString(make([]byte, 32)),
+		"identity_key": identity, "not_before": now.Format(time.RFC3339), "not_after": now.Add(time.Hour).Format(time.RFC3339),
+		"budget": 1,
+	}
+	raw, err := json.Marshal(plan)
+	if err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(directory, "mixed-issuer-initialize.json")
+	if err := os.WriteFile(path, raw, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	err = run(t.Context(), []string{"issuer", "initialize", "--config", path}, new(bytes.Buffer))
+	if err == nil || err.Error() != "closed issuer initialization plan is not canonical" {
+		t.Fatalf("mixed issuer initialization error = %v", err)
+	}
+	for _, effect := range []string{root, identity} {
+		if _, statErr := os.Stat(effect); !errors.Is(statErr, os.ErrNotExist) {
+			t.Fatalf("mixed issuer initialization changed %q: %v", effect, statErr)
+		}
 	}
 }
 

@@ -73,23 +73,25 @@ selects refusal of the old Node reservations, Source
 effect. It preserves the separately named closed duties, closed Source profile,
 and closed issuer. Existing owned Contributor installations retain only the
 [no-start retirement actions](rendezvous-contributor.md#selected-retirement-transition).
-The Node-reservation gate is integrated. Source, Transit issuer, Contributor,
-and no-start recovery gates are selected but not yet integrated; descriptions
-of those accepting routes below document the current adapter gap, not supported
-forward authority.
+The Node-reservation and Transit issuer command gates are integrated. Source,
+Contributor, and no-start recovery gates are selected but not yet integrated;
+descriptions of those accepting routes below document the current adapter gap,
+not supported forward authority.
 
-`ardents-node issuer initialize --config PATH` performs the owner-only bootstrap
-of one durable purpose-scoped Transit Grant issuer root. It emits only the
-stable public profile receipt; the retained root contains no Network State root
-key. Repeating the exact initialization reopens the same public binding.
+`ardents-node issuer initialize --config PATH` recognizes the bounded legacy
+`ardents-transit-issuer-initialize-v1` schema only to return
+`old Transit issuer start is retired`. That refusal follows bounded plan decode
+and precedes path validation, identity-key access, root creation and output.
+It does not convert, erase or reopen an existing Transit issuer root.
 
-`ardents-node issuer serve --config PATH` runs only that initialized issuer
-under its exact current `transit-issuance` State assignment. It accepts no
-parallel native duty reservation, rechecks the State-selected issuer,
-Initiator, profile, epoch, and deadline, and withdraws when that binding ceases
-to be current.
+`ardents-node issuer serve --config PATH` rejects a legacy `transit_issuer`
+reservation through the old-duty gate before plan-owned keys, certificates,
+State roots, issuer roots or listeners are opened. Its issuer validator accepts
+only one isolated `closed_issuer` runtime. The old Node-side Transit engine and
+its persisted history remain for the separate bounded deletion slice; this
+command supplies no accepting caller.
 
-The closed-profile issuer variant instead uses the closed_issuer stanza with
+The retained closed-profile issuer uses the `closed_issuer` stanza with
 an initialized signing root and a separate, existing owner-only admission_root
 for receiving Control-token spends, plus connection_limit and drain_timeout_ms.
 Both paths must be clean absolute paths and cannot identify the same root.

@@ -80,9 +80,13 @@ a new context needs a fresh permission within the operator's remaining hourly
 allocation. Neither that crash nor an unused permission refunds a signed
 allocation or an issuer debit.
 
-Issuer initialization generates dedicated class/window RSA keys in its fresh,
-exclusive owner-only issuer root and exports only exact public SPKI/profile
-inputs. It receives no admission-authority private key. Preserve its durable
+Closed issuer initialization generates dedicated class/window RSA keys in its
+fresh, exclusive owner-only issuer root and exports only exact public
+SPKI/profile inputs. The legacy Transit issuer initialization schema is
+recognized only for a pre-effect retirement refusal and cannot read an identity
+key or create/reopen a root; `issuer serve` likewise admits only the closed
+issuer reservation. The closed issuer receives no admission-authority private
+key. Preserve its durable
 reservation and receiving ledgers with atomic write/flush/reopen before
 acknowledgement. Provision successor hourly keys before use; never replace
 bytes under an already signed key/window or reuse a key across cohorts.
