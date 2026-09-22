@@ -116,7 +116,6 @@ func TestTestProfileRegistryIsFactualAndWired(t *testing.T) {
 	}
 	makefile := string(readProjectFile(t, root, "Makefile"))
 	required := map[string]bool{
-		"alpha-control-two-endpoints":       false,
 		"developer":                         false,
 		"deterministic":                     false,
 		"endpoint-portable-ubuntu":          false,
@@ -376,6 +375,30 @@ func TestRetiredBrowserSurfaceHasNoCurrentPaths(t *testing.T) {
 		} {
 			if strings.Contains(contents, forbidden) {
 				t.Errorf("current boundary %s retains retired Browser reference %q", relative, forbidden)
+			}
+		}
+	}
+}
+
+func TestRetiredAlphaControlQualificationHasNoCurrentPath(t *testing.T) {
+	root := repositoryRoot(t)
+	if _, err := os.Stat(filepath.Join(root, "tests", "qualification", "alpha-control-two-endpoints")); !errors.Is(err, os.ErrNotExist) {
+		t.Errorf("retired alpha-control qualification path still exists: %v", err)
+	}
+	for _, relative := range []string{
+		"Makefile",
+		"tests/profiles/profiles.json",
+		"docs/development/ownership.json",
+		"docs/development/testing.md",
+		"docs/reference/commands.md",
+	} {
+		contents := string(readProjectFile(t, root, relative))
+		for _, forbidden := range []string{
+			"alpha-control-two-endpoints",
+			"qualification-alpha-control-two-endpoints",
+		} {
+			if strings.Contains(contents, forbidden) {
+				t.Errorf("current boundary %s retains retired qualification reference %q", relative, forbidden)
 			}
 		}
 	}
