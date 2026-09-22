@@ -235,6 +235,9 @@ func testClosedForwardingOpenActualCarrierOutcome(t *testing.T, profile route.Ca
 		t.Fatal(err)
 	}
 	workers.Wait()
+	if err := server.sessions.joinedResult(); err != nil {
+		t.Fatal(err)
+	}
 	server.sessions.mu.Lock()
 	pending, published := len(server.sessions.pending), len(server.sessions.sessions)
 	server.sessions.mu.Unlock()
