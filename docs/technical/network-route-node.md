@@ -144,8 +144,12 @@ Contributor pre-Control recovery now authenticates and reconciles only owned
 interrupted-update evidence: it may Stop an active predecessor and clean exact
 residue, but never Starts, Restarts, or Enables either generation. An inactive
 installation remains inactive, while ambiguous or foreign evidence fails and
-is retained. The Source gate remains a separate integration change; its
-still-accepting adapter is not a supported forward contract.
+is retained. The Source gate is also integrated: a recognized
+`native_rendezvous_profile` returns `old Source profile is retired` after
+bounded Source-plan recognition and before trust-map, root, key, listener or
+Network work. Mixing that selector with the closed profile receives the same
+retirement outcome and cannot fall back. The explicit closed profile and its
+already pinned authority retain their previous State and Source behavior.
 
 ## Module ownership
 

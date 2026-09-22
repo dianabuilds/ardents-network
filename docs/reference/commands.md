@@ -73,13 +73,11 @@ selects refusal of the old Node reservations, Source
 effect. It preserves the separately named closed duties, closed Source profile,
 and closed issuer. Existing owned Contributor installations retain only the
 [no-start retirement actions](rendezvous-contributor.md#selected-retirement-transition).
-The Node-reservation, Transit issuer, and Contributor start command gates are
-integrated. Contributor pre-Control recovery is also no-start: it may
+The Node-reservation, Source-profile, Transit issuer, and Contributor start
+command gates are integrated. Contributor pre-Control recovery is also no-start: it may
 authenticate and reconcile only owned interrupted-update evidence, Stop an
 active predecessor, and clean exact residue, but cannot Start, Restart, or
-Enable either generation. Source retirement remains a separate adapter slice;
-descriptions of that accepting route below document the current gap, not
-supported forward authority.
+Enable either generation.
 
 `ardents-node issuer initialize --config PATH` recognizes the bounded legacy
 `ardents-transit-issuer-initialize-v1` schema only to return
@@ -106,10 +104,15 @@ storage makes startup unavailable.
 `ardents-node source --config PATH` runs one selected Direct-Origin Source
 server from an `ardents-source-server-v1` input and emits
 `ardents-source-event-v1` after its State view is ready.
+The retained `native_rendezvous_profile` field identifies old input only and
+returns `old Source profile is retired` after bounded schema recognition,
+before trust-map validation, root or key access, listener bind, output or
+Network work. Combining it with current profile fields receives the same
+refusal and cannot fall back.
 For the selected closed Route, the Source input specifies
 `state_profile: "ardents-route-v3"` and `state_profile_authority`, an Ed25519
 public key in hex already pinned by `authority_public`. Unsupported profiles,
-mixed legacy selection, missing or foreign pins are refused. These Source-only
+missing or foreign pins are refused. These Source-only
 fields cannot override a Node's duty-selected profile. The Source distributes
 signed Epoch evidence; this does not distribute the separate closed profile
 or qualify Node duties.
