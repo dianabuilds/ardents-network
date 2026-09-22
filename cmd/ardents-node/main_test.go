@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -58,29 +59,28 @@ func TestNodeOwnedPlansRejectRetiredH3Schemas(t *testing.T) {
 	}
 }
 
-func TestNodePlanRejectsLegacyResourceProfileForNativeDuty(t *testing.T) {
+func TestNodePlanRefusesOldDutyBeforeLegacyResourceProfileValidation(t *testing.T) {
 	t.Parallel()
 	path := filepath.Join(t.TempDir(), "native-legacy-resource.json")
 	raw := `{"schema":"ardents-node-plan-v1","local_role_state_root":"role","authority_public":["00"],"sources":[{},{}],"node_resource_profile":"h3-np1-v1","rendezvous":{}}`
 	if err := os.WriteFile(path, []byte(raw), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := readNodePlan(path); err == nil || !strings.Contains(err.Error(), "resource profile is unselected") {
+	if _, err := readNodePlan(path); !errors.Is(err, errOldNodeDutyRetired) {
 		t.Fatalf("native plan with legacy resource profile error = %v", err)
 	}
 }
 
-func TestNodePlanAcceptsDedicatedHostResourceProfileOnlyForRendezvous(t *testing.T) {
+func TestNodePlanRefusesOldDutyAcrossDedicatedHostProfileIdentities(t *testing.T) {
 	t.Parallel()
 	for _, test := range []struct {
-		name       string
-		profile    string
-		duty       string
-		wantDetail string
+		name    string
+		profile string
+		duty    string
 	}{
-		{name: "canonical Rendezvous", profile: "ardents-rendezvous-dedicated-host-v1", duty: `"rendezvous":{}`, wantDetail: "invalid fixed hexadecimal value"},
-		{name: "legacy Rendezvous", profile: "h4-5-rendezvous-alpha-v1", duty: `"rendezvous":{}`, wantDetail: "invalid fixed hexadecimal value"},
-		{name: "canonical Initiator", profile: "ardents-rendezvous-dedicated-host-v1", duty: `"initiator":{}`, wantDetail: "requires only one Rendezvous duty"},
+		{name: "canonical Rendezvous", profile: "ardents-rendezvous-dedicated-host-v1", duty: `"rendezvous":{}`},
+		{name: "legacy Rendezvous", profile: "h4-5-rendezvous-alpha-v1", duty: `"rendezvous":{}`},
+		{name: "canonical Initiator", profile: "ardents-rendezvous-dedicated-host-v1", duty: `"initiator":{}`},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			path := filepath.Join(t.TempDir(), "functional-alpha-resource.json")
@@ -89,7 +89,7 @@ func TestNodePlanAcceptsDedicatedHostResourceProfileOnlyForRendezvous(t *testing
 				t.Fatal(err)
 			}
 			_, err := readNodePlan(path)
-			if err == nil || !strings.Contains(err.Error(), test.wantDetail) {
+			if !errors.Is(err, errOldNodeDutyRetired) {
 				t.Fatalf("%s plan error = %v", test.name, err)
 			}
 		})

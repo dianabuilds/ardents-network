@@ -182,11 +182,6 @@
       "path": "tests/qualification/service-credential-response-linux"
     },
     {
-      "id": "native-rendezvous-multihost",
-      "owner": "network",
-      "path": "tests/qualification/native-rendezvous-multihost"
-    },
-    {
       "id": "native-rendezvous-host",
       "owner": "network",
       "path": "tests/qualification/native-rendezvous-host"

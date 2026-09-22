@@ -41,8 +41,7 @@ func TestClosedSourceProcessesDistributeAcceptedState(t *testing.T) {
 		if err := os.Chmod(roleRoot, 0o700); err != nil {
 			t.Fatal(err)
 		}
-		plan := nativeDutySourcePlan(network, authority.Public().(ed25519.PublicKey), now, root, roleRoot, address, server, clientAuthority.root, client.sourcePin)
-		delete(plan, "native_rendezvous_profile")
+		plan := sourceServerPlanFixture(network, authority.Public().(ed25519.PublicKey), now, root, roleRoot, address, server, clientAuthority.root, client.sourcePin)
 		plan["state_profile"] = "ardents-route-v3"
 		plan["state_profile_authority"] = hex.EncodeToString(authority.Public().(ed25519.PublicKey))
 		if index == 0 {
