@@ -174,6 +174,18 @@ profile identity remain evidence, not migration or execution authority. The
 [Network/Node owner](../technical/network-route-node.md#old-start-retirement)
 defines the exact selectors and effect boundary.
 
+[ADR-0090](../adr/0090-retire-name-operator-network-adapters.md) selects
+retirement of the old operator `name resolve` and `name control` HTTP/OHTTP
+adapters before any file, State, transport, output, or Namespace effect. Local
+canonical `name encode`, Namespace lifecycle/proofs, custody, and existing
+persisted evidence remain unchanged. This preserves human-facing Service Names
+as a product function without claiming a current operator network route: the
+successor protected wire, Resolver/Gateway topology, authority, governance,
+migration, and AAI3 integration remain unselected. The
+[Naming owner](../technical/naming.md#operator-name-network-command-retirement)
+defines the retained module and state boundary; runtime refusal remains a
+separate integration slice.
+
 ## C0 Network candidate
 
 The Network audit candidate is the headless maintained product surface:

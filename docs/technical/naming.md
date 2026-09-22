@@ -156,6 +156,34 @@ control cannot materialize, close, release, reclaim, or administratively
 recover a canonical Name. Its user-visible control outcome is `not-selected`;
 Target Links remain the complete current destination path.
 
+## Operator Name network command retirement
+
+[ADR-0090](../adr/0090-retire-name-operator-network-adapters.md) selects
+retirement of the old `ardents name resolve` and `ardents name control`
+HTTP/OHTTP adapters. A recognized command must refuse at command dispatch,
+before validating its remaining arguments, decoding context, reading an input
+or operation file, opening Network State, constructing or using transport,
+writing output, or changing Namespace state. The operator result explains that
+the old Name network command is retired and protected Service Name access is
+not yet selected; it supplies no Target-Link, AAI3, DNS, or other fallback.
+
+This command decision does not retire the Service Name product function.
+`ardents name encode` and canonical Naming bytes remain unchanged. Namespace
+lifecycle, proofs, pending journals, current materialization, and custody remain
+with their existing module consumers and stored evidence. Production custody
+continues to consume Namespace authority, record, and epoch contracts. The
+private-resolution package has maintained module behavior but, once the two
+commands refuse, no maintained production Gateway/Resolver composition; it is
+retained pending a separately scoped exact-consumer and compatibility decision.
+
+No existing State or Namespace root, Record, journal, floor, proof, or authority
+material is converted, reset, deleted, or promoted into successor authority.
+No successor wire, Resolver/Gateway topology, authority, governance, migration,
+or AAI3 Name path is selected. Until one is separately selected and delivered,
+there is no maintained operator command for network Name resolution or control.
+Runtime integration must prove zero transport attempts, no output, and
+unchanged State/Namespace paths for previously valid requests.
+
 ## Alpha corpus compatibility
 
 The Alpha Name Corpus is a separately authenticated historical local overlay;
