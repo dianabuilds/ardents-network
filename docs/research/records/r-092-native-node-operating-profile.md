@@ -86,13 +86,14 @@ follow-up must inject and measure the complete selected resource-pressure rule
 and retain its raw Linux observations, host identity, and source/binary digest
 outside Git.
 
-[`tests/qualification/native-rendezvous-host/`](../../../tests/qualification/native-rendezvous-host/)
-owns the retained, deliberately narrow host-eligibility preflight. It creates an external
-evidence directory and fail-closes before measurement unless the declared host
-is native Ubuntu LTS `x86-64`, has two visible CPUs, falls in the documented
-2-GiB raw-memory observation band, exposes cgroup v2, and has a separately
-captured link-evidence file. It is preparation only: it does not run a workload,
-assert pressure, or select capacity.
+The retired, deliberately narrow
+[`native-rendezvous-host` preflight source](https://github.com/dianabuilds/ardents-network/tree/ffb2473bc4de9d31489e54c779ae2b1e911dde5e/tests/qualification/native-rendezvous-host)
+is retained as historical evidence at its last repository revision. It created
+an external evidence directory and failed closed before measurement unless the
+declared host was native Ubuntu LTS `x86-64`, had two visible CPUs, fell in the
+documented 2-GiB raw-memory observation band, exposed cgroup v2, and had a
+separately captured link-evidence file. It was preparation only: it did not run
+a workload, assert pressure, or select capacity.
 
 The historical
 [`tests/qualification/h4-5-rendezvous/`](https://github.com/dianabuilds/ardents-network/tree/fbb42034757513ac009114a00b933aefa76d8ddf/tests/qualification/h4-5-rendezvous)

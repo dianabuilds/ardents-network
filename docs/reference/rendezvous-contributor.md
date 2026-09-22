@@ -6,6 +6,10 @@ the remaining commands exist only to inspect and remove an authenticated owned
 installation. This is not a public Contributor offer or a capacity/availability
 claim.
 
+The retired `prepare-native-rendezvous-host` repository entrypoint does not
+prepare a host for these retained actions. Existing installations, keys, units,
+and their no-start retirement lifecycle remain governed by this reference.
+
 The canonical profile identity is `ardents-rendezvous-dedicated-host-v1`.
 Readers accept the historical `h4-5-rendezvous-alpha-v1` identity only for
 already pinned bundles, Node plans, and installation records; runtime state,
