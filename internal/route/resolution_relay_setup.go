@@ -40,19 +40,6 @@ func EncodeResolutionRelaySetup(input ResolutionRelaySetup) ([]byte, error) {
 	return resolutionRelayRecord(resolutionRelaySetupKind, input)
 }
 
-// DecodeResolutionRelaySetup rejects incomplete or substituted lookup setup.
-func DecodeResolutionRelaySetup(raw []byte) (ResolutionRelaySetup, error) {
-	return decodeResolutionRelayRecord(raw, resolutionRelaySetupKind)
-}
-
-// EncodeResolutionRelayReady confirms the exact validated setup.
-func EncodeResolutionRelayReady(input ResolutionRelayReady) ([]byte, error) {
-	if err := validResolutionRelaySetup(input.Setup); err != nil {
-		return nil, err
-	}
-	return resolutionRelayRecord(resolutionRelayReadyKind, input.Setup)
-}
-
 // DecodeResolutionRelayReady rejects malformed or substituted confirmation.
 func DecodeResolutionRelayReady(raw []byte) (ResolutionRelayReady, error) {
 	setup, err := decodeResolutionRelayRecord(raw, resolutionRelayReadyKind)

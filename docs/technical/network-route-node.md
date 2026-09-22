@@ -114,9 +114,11 @@ command refusal became current. Their old plan stanzas remain only at that
 typed refusal boundary. The Initiator Entry-admission adapter is also absent.
 The remaining Rendezvous and Transit-issuance engines are owned by separate
 bounded deletion slices.
-The adjacent production-dead Entry/relay/OHTTP closure is enumerated exactly by
-the deadcode registry and belongs to its dedicated closure audit; it is not
-silently deleted as part of the one-engine change.
+The adjacent production-dead Initiator Entry admission, receiving relay grammar,
+and direct OHTTP forwarding adapters have been deleted by their dedicated
+closure audit. Retained User Route sender codecs and the standalone reachability
+Relay remain with their actual owners; test-local reciprocal fixtures do not
+restore a production receiving path.
 The old Node-leg dial and client confirmation entrypoint are also absent.
 Shared Carrier profiles, the reciprocal decoder, listeners, TLS/QUIC
 mechanics, and closed Node Carrier behavior remain current.
@@ -142,7 +144,7 @@ supported forward contract.
 | internal/network/source | Obtain one finite selected Direct-Origin source input with its credential, TLS transport, material selector, ordering, and exposure identity. | Accepting State or selecting a peer protocol. |
 | internal/network/duty | Persist the Endpoint-local Role Domain generation, watermark, expiry, conflict truth, and receiving-Node one-use Transit Grant spend ledger. | Network State publication, assignment creation, Route ownership, issuer custody, or Node process lifecycle. |
 | internal/resource | Resolve the current process's own cgroup-v2 directory, measure selected Linux process limits, and make the finite NORMAL, PROTECT, or DRAIN pressure decision. | Admission, listener shutdown, or a claim for unsupported platforms. |
-| internal/entry | Import and admit a signed State-referenced Entry Invite, maintain its bounded durable replay/replacement set, and open an adjacent contact lifecycle. Local import verifies the signed recipient against its retained Entry-root recipient identity before consuming a slot or replacing a predecessor; receiving admission independently verifies it against the presenting TLS key. | Complete Route selection, carrier choice, or User identity. |
+| internal/entry | Import and validate a signed State-referenced Entry Invite, maintain its bounded durable replay/replacement set, preserve decoding of retired admission history, and open an adjacent contact lifecycle. Local import verifies the signed recipient against its retained Entry-root recipient identity before consuming a slot or replacing a predecessor; no Initiator receiving admission engine remains. | Complete Route selection, receiving Entry admission, carrier choice, or User identity. |
 | internal/route | Retain the native Interactive User-route owner behind `Open`/`Attach`/`Close`, currently with no non-test caller after v1 participant retirement, and implement the closed v3 Node Carrier/wire used by `internal/node` through `OpenClosedNodeCarrier`. The [package map](../development/package-map.md) records the exact consumer boundary. | Treating the retained User-route implementation as a maintained product path or successor-network readiness; candidate ranking, carrier policy/fallback, H3 compatibility, peer runtime, Node profile, or durable State/Duty/credential-journal writing. |
 | internal/node | Run one bounded Contributor duty from authenticated admission through listener readiness, pressure reaction, drain, withdrawal, and a bounded terminal cleanup outcome. | State-root authority, assignment creation, or a separate probe runtime. |
 | internal/contributor | Own the one pinned-bundle, fixed-path systemd lifecycle for the dedicated Rendezvous installation. | Duty selection, Network State authority, public admission, co-residence, arbitrary service control, or capacity claims. |
@@ -183,6 +185,9 @@ one signed v2 Invite to a fresh User-to-Initiator TLS attempt key. Node-to-Node
 LegBinding and SealedIntroduction have fixed binary records; State/publication
 select supported generations, not a Node or peer value. The profile has no H3
 reader, direct fallback, generic record map, or version-negotiation path.
+The retained User Route sends EntryBinding and relay setup/envelopes and decodes
+their ready/results. Production Initiator-side binding admission, reciprocal
+relay reads/writes, and direct OHTTP forwarding are absent.
 
 Route owns volatile User-route composition and cleanup. It reserves caller
 capacity before reading State, then obtains only State's exact Gateway,

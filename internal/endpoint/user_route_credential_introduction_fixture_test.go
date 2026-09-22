@@ -56,11 +56,11 @@ func serveTargetLinkIntroduction(listener net.Listener, network, digest [32]byte
 }
 
 func targetLinkIntroductionRelayHandler(connection net.Conn, onReady func(net.Conn) error) error {
-	setup, err := route.ReadRelaySetup(connection)
+	setup, err := readInitiatorFixtureRecord(connection, 4)
 	if err != nil {
 		return err
 	}
-	if err := route.WriteRelayReady(connection, route.RelayReady{Setup: setup}); err != nil {
+	if err := writeInitiatorFixtureReady(connection, setup, 5); err != nil {
 		return err
 	}
 	if onReady != nil {

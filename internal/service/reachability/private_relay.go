@@ -50,7 +50,7 @@ func (relay *Relay) forward(writer http.ResponseWriter, request *http.Request) {
 		http.Error(writer, "invalid opaque request", http.StatusBadRequest)
 		return
 	}
-	response, err := ForwardOHTTP(request.Context(), relay.gateway, relay.client, body)
+	response, err := forwardOHTTP(request.Context(), relay.gateway, relay.client, body)
 	if err != nil {
 		http.Error(writer, "Gateway response invalid", http.StatusBadGateway)
 		return
@@ -64,10 +64,9 @@ func (relay *Relay) forward(writer http.ResponseWriter, request *http.Request) {
 	_, _ = writer.Write(response.Envelope)
 }
 
-// ForwardOHTTP exchanges exactly one opaque OHTTP envelope with one selected
-// Gateway. It accepts no caller headers, method, path, proxy target, or
-// streaming body, so callers cannot turn it into a generic HTTP forwarder.
-func ForwardOHTTP(ctx context.Context, gatewayURL string, client *http.Client, envelope []byte) (OHTTPResponse, error) {
+// forwardOHTTP is private to the retained standalone Relay owner. The retired
+// Initiator receiving path has no direct forwarding entrypoint.
+func forwardOHTTP(ctx context.Context, gatewayURL string, client *http.Client, envelope []byte) (OHTTPResponse, error) {
 	parsed, err := url.Parse(gatewayURL)
 	if ctx == nil || err != nil || parsed.Scheme != "https" || parsed.Host == "" || client == nil ||
 		len(envelope) == 0 || len(envelope) > maximumOHTTPEnvelope {
@@ -96,4 +95,8 @@ func privateForwardHTTPClient(client *http.Client) *http.Client {
 	configured := *client
 	configured.CheckRedirect = rejectPrivateRedirect
 	return &configured
+}
+
+func rejectPrivateRedirect(_ *http.Request, _ []*http.Request) error {
+	return errors.New("private reachability redirects are forbidden")
 }

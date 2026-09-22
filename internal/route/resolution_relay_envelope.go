@@ -33,20 +33,6 @@ func EncodeResolutionRelayEnvelope(input ResolutionRelayEnvelope) ([]byte, error
 	return resolutionEnvelopeRecord(resolutionRelayEnvelopeKind, input)
 }
 
-// DecodeResolutionRelayEnvelope rejects a malformed lookup request envelope.
-func DecodeResolutionRelayEnvelope(raw []byte) (ResolutionRelayEnvelope, error) {
-	return decodeResolutionEnvelopeRecord(raw, resolutionRelayEnvelopeKind)
-}
-
-// EncodeResolutionRelayResponse encodes one Initiator-to-Endpoint OHTTP
-// response envelope before both ends close the Entry attachment.
-func EncodeResolutionRelayResponse(input ResolutionRelayResponse) ([]byte, error) {
-	if input.Framing != ResolutionOHTTPResponse && input.Framing != ResolutionOHTTPChunkedResponse {
-		return nil, errors.New("resolution relay response framing is invalid")
-	}
-	return resolutionResponseRecord(input)
-}
-
 // DecodeResolutionRelayResponse rejects a malformed lookup response envelope.
 func DecodeResolutionRelayResponse(raw []byte) (ResolutionRelayResponse, error) {
 	reader, err := resolutionRouteBody(raw, resolutionRelayResponseKind)
@@ -71,33 +57,6 @@ func resolutionEnvelopeRecord(kind byte, input ResolutionRelayEnvelope) ([]byte,
 	body = appendUint16(body, routeWireVersion)
 	body = append(body, kind)
 	body = appendProfile(body)
-	body = appendUint16(body, uint16(len(input.OHTTP)))
-	body = append(body, input.OHTTP...)
-	return resolutionRouteEnvelope(body)
-}
-
-func decodeResolutionEnvelopeRecord(raw []byte, kind byte) (ResolutionRelayEnvelope, error) {
-	reader, err := resolutionRouteBody(raw, kind)
-	if err != nil {
-		return ResolutionRelayEnvelope{}, err
-	}
-	length := int(reader.uint16())
-	result := ResolutionRelayEnvelope{OHTTP: append([]byte(nil), reader.take(length)...)}
-	if reader.off != len(reader.raw) || len(result.OHTTP) != length || length == 0 || length > ResolutionEnvelopeCapacity {
-		return ResolutionRelayEnvelope{}, errors.New("resolution relay envelope is invalid")
-	}
-	return result, nil
-}
-
-func resolutionResponseRecord(input ResolutionRelayResponse) ([]byte, error) {
-	if len(input.OHTTP) == 0 || len(input.OHTTP) > ResolutionEnvelopeCapacity {
-		return nil, errors.New("resolution relay envelope is outside its capacity")
-	}
-	body := make([]byte, 0, 2+1+1+len(Profile)+1+2+len(input.OHTTP))
-	body = appendUint16(body, routeWireVersion)
-	body = append(body, resolutionRelayResponseKind)
-	body = appendProfile(body)
-	body = append(body, input.Framing)
 	body = appendUint16(body, uint16(len(input.OHTTP)))
 	body = append(body, input.OHTTP...)
 	return resolutionRouteEnvelope(body)

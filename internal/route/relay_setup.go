@@ -35,19 +35,6 @@ func EncodeRelaySetup(input RelaySetup) ([]byte, error) {
 	return relayEnvelope(relaySetupKind, input)
 }
 
-// DecodeRelaySetup rejects every malformed, surplus, unsupported, or
-// non-canonical setup record before a transit node can allocate a next-leg
-// dial or TLS worker.
-func DecodeRelaySetup(raw []byte) (RelaySetup, error) { return decodeRelayRecord(raw, relaySetupKind) }
-
-// EncodeRelayReady returns the canonical confirmation for one exact setup.
-func EncodeRelayReady(input RelayReady) ([]byte, error) {
-	if err := validRelaySetup(input.Setup); err != nil {
-		return nil, err
-	}
-	return relayEnvelope(relayReadyKind, input.Setup)
-}
-
 // DecodeRelayReady rejects a malformed or incomplete transit confirmation.
 func DecodeRelayReady(raw []byte) (RelayReady, error) {
 	setup, err := decodeRelayRecord(raw, relayReadyKind)

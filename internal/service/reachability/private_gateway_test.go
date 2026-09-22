@@ -1,15 +1,18 @@
 package reachability_test
 
 import (
+	"bytes"
 	"context"
 	"crypto/ed25519"
 	"crypto/rand"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/service/reachability"
+	"github.com/openpcc/ohttp"
 )
 
 func TestPrivateLookupPassesOnlyThroughRelayAndGateway(t *testing.T) {
@@ -125,12 +128,18 @@ func TestPrivateLookupClientUsesOnlyItsOpaqueExchangePort(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	server := httptest.NewTLSServer(gateway.Handler())
-	defer server.Close()
 	client, err := reachability.OpenClient(reachability.ClientConfig{NetworkID: fixture.network, GatewayPublic: gatewayPublic,
 		Profile: gateway.Profile(), At: fixture.now, Deadline: fixture.now.Add(5 * time.Second),
 		Exchange: func(ctx context.Context, envelope []byte) (reachability.OHTTPResponse, error) {
-			return reachability.ForwardOHTTP(ctx, server.URL, server.Client(), envelope)
+			request := httptest.NewRequestWithContext(ctx, http.MethodPost, "/resolve", bytes.NewReader(envelope))
+			request.Header.Set("Content-Type", ohttp.RequestMediaType)
+			response := httptest.NewRecorder()
+			gateway.Handler().ServeHTTP(response, request)
+			if response.Code != http.StatusOK {
+				return reachability.OHTTPResponse{}, errors.New("Gateway refused opaque fixture exchange")
+			}
+			return reachability.OHTTPResponse{Envelope: append([]byte(nil), response.Body.Bytes()...),
+				Chunked: response.Header().Get("Content-Type") == ohttp.ChunkedResponseMediaType}, nil
 		}})
 	if err != nil {
 		t.Fatal(err)

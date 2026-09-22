@@ -57,7 +57,7 @@ func TestIssuerReconcilesOneDurableBudgetUnitAcrossRestart(t *testing.T) {
 		server.StartTLS()
 		var issuerKey [32]byte
 		copy(issuerKey[:], issuerPublic)
-		httpClient, openErr := HTTPClient(issuerKey, initiatorCertificate)
+		httpClient, openErr := issuerPinnedHTTPClient(issuerKey, initiatorCertificate)
 		if openErr != nil {
 			t.Fatal(openErr)
 		}

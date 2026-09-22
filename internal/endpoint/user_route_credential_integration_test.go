@@ -355,52 +355,6 @@ func (fixture userRouteCredentialFixture) wait(t *testing.T) {
 	}
 }
 
-func resolutionRelayHandler(gatewayURL string, client *http.Client) func(net.Conn) error {
-	return func(connection net.Conn) error {
-		setup, err := route.ReadResolutionRelaySetup(connection)
-		if err == nil {
-			err = route.WriteResolutionRelayReady(connection, route.ResolutionRelayReady{Setup: setup})
-		}
-		envelope := route.ResolutionRelayEnvelope{}
-		if err == nil {
-			envelope, err = route.ReadResolutionRelayEnvelope(connection)
-		}
-		response := reachability.OHTTPResponse{}
-		if err == nil {
-			response, err = reachability.ForwardOHTTP(context.Background(), gatewayURL, client, envelope.OHTTP)
-		}
-		if err == nil {
-			framing := route.ResolutionOHTTPResponse
-			if response.Chunked {
-				framing = route.ResolutionOHTTPChunkedResponse
-			}
-			err = route.WriteResolutionRelayResponse(connection, route.ResolutionRelayResponse{OHTTP: response.Envelope, Framing: framing})
-		}
-		return err
-	}
-}
-
-func credentialRelayHandler(issuerURL string, client *http.Client) func(net.Conn) error {
-	return func(connection net.Conn) error {
-		setup, err := route.ReadCredentialRelaySetup(connection)
-		if err == nil {
-			err = route.WriteCredentialRelayReady(connection, route.CredentialRelayReady{Setup: setup})
-		}
-		envelope := route.CredentialRelayEnvelope{}
-		if err == nil {
-			envelope, err = route.ReadCredentialRelayEnvelope(connection)
-		}
-		response := []byte(nil)
-		if err == nil {
-			response, err = credential.ForwardOHTTP(context.Background(), issuerURL, client, envelope.OHTTP)
-		}
-		if err == nil {
-			err = route.WriteCredentialRelayResponse(connection, route.CredentialRelayResponse{OHTTP: response, Framing: route.CredentialOHTTPResponse})
-		}
-		return err
-	}
-}
-
 func mustEncodeGatewayProfile(t *testing.T, profile reachability.GatewayProfile) []byte {
 	t.Helper()
 	raw, err := reachability.EncodeGatewayProfile(profile)

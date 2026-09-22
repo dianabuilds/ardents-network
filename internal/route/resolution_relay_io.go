@@ -15,24 +15,6 @@ func WriteResolutionRelaySetup(writer io.Writer, input ResolutionRelaySetup) err
 	return writeAll(writer, raw)
 }
 
-// ReadResolutionRelaySetup reads one bounded lookup authorization.
-func ReadResolutionRelaySetup(reader io.Reader) (ResolutionRelaySetup, error) {
-	raw, err := readRouteRecord(reader)
-	if err != nil {
-		return ResolutionRelaySetup{}, err
-	}
-	return DecodeResolutionRelaySetup(raw)
-}
-
-// WriteResolutionRelayReady writes one exact lookup confirmation.
-func WriteResolutionRelayReady(writer io.Writer, input ResolutionRelayReady) error {
-	raw, err := EncodeResolutionRelayReady(input)
-	if err != nil {
-		return err
-	}
-	return writeAll(writer, raw)
-}
-
 // ReadResolutionRelayReady reads one bounded lookup confirmation.
 func ReadResolutionRelayReady(reader io.Reader) (ResolutionRelayReady, error) {
 	raw, err := readRouteRecord(reader)
@@ -45,24 +27,6 @@ func ReadResolutionRelayReady(reader io.Reader) (ResolutionRelayReady, error) {
 // WriteResolutionRelayEnvelope writes the sole opaque OHTTP request.
 func WriteResolutionRelayEnvelope(writer io.Writer, input ResolutionRelayEnvelope) error {
 	raw, err := EncodeResolutionRelayEnvelope(input)
-	if err != nil {
-		return err
-	}
-	return writeAll(writer, raw)
-}
-
-// ReadResolutionRelayEnvelope reads the sole opaque OHTTP request.
-func ReadResolutionRelayEnvelope(reader io.Reader) (ResolutionRelayEnvelope, error) {
-	raw, err := readResolutionRouteRecord(reader)
-	if err != nil {
-		return ResolutionRelayEnvelope{}, err
-	}
-	return DecodeResolutionRelayEnvelope(raw)
-}
-
-// WriteResolutionRelayResponse writes the sole opaque OHTTP response.
-func WriteResolutionRelayResponse(writer io.Writer, input ResolutionRelayResponse) error {
-	raw, err := EncodeResolutionRelayResponse(input)
 	if err != nil {
 		return err
 	}

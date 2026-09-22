@@ -15,24 +15,6 @@ func WriteRelaySetup(writer io.Writer, input RelaySetup) error {
 	return writeAll(writer, raw)
 }
 
-// ReadRelaySetup reads one bounded canonical RelaySetup record.
-func ReadRelaySetup(reader io.Reader) (RelaySetup, error) {
-	raw, err := readRouteRecord(reader)
-	if err != nil {
-		return RelaySetup{}, err
-	}
-	return DecodeRelaySetup(raw)
-}
-
-// WriteRelayReady writes one canonical transit confirmation.
-func WriteRelayReady(writer io.Writer, input RelayReady) error {
-	raw, err := EncodeRelayReady(input)
-	if err != nil {
-		return err
-	}
-	return writeAll(writer, raw)
-}
-
 // ReadRelayReady reads one bounded canonical transit confirmation.
 func ReadRelayReady(reader io.Reader) (RelayReady, error) {
 	raw, err := readRouteRecord(reader)

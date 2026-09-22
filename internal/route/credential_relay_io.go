@@ -33,22 +33,6 @@ func WriteCredentialRelaySetup(writer io.Writer, input CredentialRelaySetup) err
 	return writeAll(writer, raw)
 }
 
-func ReadCredentialRelaySetup(reader io.Reader) (CredentialRelaySetup, error) {
-	raw, err := readRouteRecord(reader)
-	if err != nil {
-		return CredentialRelaySetup{}, err
-	}
-	return DecodeCredentialRelaySetup(raw)
-}
-
-func WriteCredentialRelayReady(writer io.Writer, input CredentialRelayReady) error {
-	raw, err := EncodeCredentialRelayReady(input)
-	if err != nil {
-		return err
-	}
-	return writeAll(writer, raw)
-}
-
 func ReadCredentialRelayReady(reader io.Reader) (CredentialRelayReady, error) {
 	raw, err := readRouteRecord(reader)
 	if err != nil {
@@ -59,25 +43,6 @@ func ReadCredentialRelayReady(reader io.Reader) (CredentialRelayReady, error) {
 
 func WriteCredentialRelayEnvelope(writer io.Writer, input CredentialRelayEnvelope) error {
 	raw, err := encodeCredentialRelayEnvelope(credentialRelayEnvelopeKind, input)
-	if err != nil {
-		return err
-	}
-	return writeAll(writer, raw)
-}
-
-func ReadCredentialRelayEnvelope(reader io.Reader) (CredentialRelayEnvelope, error) {
-	raw, err := readCredentialRouteRecord(reader)
-	if err != nil {
-		return CredentialRelayEnvelope{}, err
-	}
-	return decodeCredentialRelayEnvelope(raw, credentialRelayEnvelopeKind)
-}
-
-func WriteCredentialRelayResponse(writer io.Writer, input CredentialRelayResponse) error {
-	if input.Framing != CredentialOHTTPResponse {
-		return errors.New("credential relay response framing is invalid")
-	}
-	raw, err := encodeCredentialRelayResponse(input)
 	if err != nil {
 		return err
 	}
@@ -100,33 +65,6 @@ func encodeCredentialRelayEnvelope(kind byte, input CredentialRelayEnvelope) ([]
 	body = appendUint16(body, routeWireVersion)
 	body = append(body, kind)
 	body = appendProfile(body)
-	body = appendUint16(body, uint16(len(input.OHTTP)))
-	body = append(body, input.OHTTP...)
-	return credentialRouteEnvelope(body)
-}
-
-func decodeCredentialRelayEnvelope(raw []byte, kind byte) (CredentialRelayEnvelope, error) {
-	reader, err := credentialRouteBody(raw, kind)
-	if err != nil {
-		return CredentialRelayEnvelope{}, err
-	}
-	length := int(reader.uint16())
-	result := CredentialRelayEnvelope{OHTTP: append([]byte(nil), reader.take(length)...)}
-	if reader.off != len(reader.raw) || len(result.OHTTP) != length || length == 0 || length > CredentialEnvelopeCapacity {
-		return CredentialRelayEnvelope{}, errors.New("credential relay envelope is invalid")
-	}
-	return result, nil
-}
-
-func encodeCredentialRelayResponse(input CredentialRelayResponse) ([]byte, error) {
-	if len(input.OHTTP) == 0 || len(input.OHTTP) > CredentialEnvelopeCapacity {
-		return nil, errors.New("credential relay response is outside its capacity")
-	}
-	body := make([]byte, 0, 2+1+1+len(Profile)+1+2+len(input.OHTTP))
-	body = appendUint16(body, routeWireVersion)
-	body = append(body, credentialRelayResponseKind)
-	body = appendProfile(body)
-	body = append(body, input.Framing)
 	body = appendUint16(body, uint16(len(input.OHTTP)))
 	body = append(body, input.OHTTP...)
 	return credentialRouteEnvelope(body)

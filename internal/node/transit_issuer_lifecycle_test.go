@@ -1,15 +1,24 @@
 package node
 
 import (
+	"bytes"
 	"context"
 	"crypto/ed25519"
+	"crypto/tls"
 	"errors"
+	"io"
+	"net/http"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/credential"
+)
+
+const (
+	transitIssuerFixtureOHTTPRequestMediaType  = "message/ohttp-req"
+	transitIssuerFixtureOHTTPResponseMediaType = "message/ohttp-res"
 )
 
 func TestTransitIssuerCleanupReportsHTTPAndRootFailures(t *testing.T) {
@@ -68,18 +77,50 @@ func TestRunServesRootBackedTransitIssuerThenStopsOnStateSuccessor(t *testing.T)
 		PollInterval:  10 * time.Millisecond, Quarantine: time.Millisecond, LocalRoleStateRoot: localRoleStateRoot(t), CheckPlacement: func() error { return nil },
 		Emit: func(_ context.Context, event Event) error { events <- event; return nil }}
 	results := make(chan Result, 1)
-	errors := make(chan error, 1)
-	go func() { result, runErr := Run(context.Background(), config); results <- result; errors <- runErr }()
+	runErrors := make(chan error, 1)
+	runContext, cancelRun := context.WithCancel(t.Context())
+	runDone := make(chan struct{})
+	go func() {
+		defer close(runDone)
+		result, runErr := Run(runContext, config)
+		results <- result
+		runErrors <- runErr
+	}()
+	t.Cleanup(func() {
+		cancelRun()
+		select {
+		case <-runDone:
+		case <-time.After(testLifecycleWait):
+			t.Error("Transit issuer fixture did not join after cancellation")
+		}
+	})
 	waitForStateEvent(t, events, "READY")
 
-	httpClient, err := credential.HTTPClient(issuerPublic, initiatorCertificate)
+	httpClient, err := transitIssuerFixtureHTTPClient(issuerPublic, initiatorCertificate)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer httpClient.CloseIdleConnections()
 	client, err := credential.OpenClient(credential.ClientConfig{NetworkID: network, IssuerPublic: issuerPublic, Profile: profile,
 		At: now, Deadline: now.Add(15 * time.Second), Exchange: func(ctx context.Context, envelope []byte) ([]byte, error) {
-			return credential.ForwardOHTTP(ctx, "https://"+snapshot.ProbeEndpoint, httpClient, envelope)
+			request, requestErr := http.NewRequestWithContext(ctx, http.MethodPost, "https://"+snapshot.ProbeEndpoint, bytes.NewReader(envelope))
+			if requestErr != nil {
+				return nil, requestErr
+			}
+			request.Header.Set("Content-Type", transitIssuerFixtureOHTTPRequestMediaType)
+			response, requestErr := httpClient.Do(request)
+			if requestErr != nil {
+				return nil, requestErr
+			}
+			defer response.Body.Close()
+			if response.StatusCode != http.StatusOK || response.Header.Get("Content-Type") != transitIssuerFixtureOHTTPResponseMediaType {
+				return nil, errors.New("transit issuer fixture response is unavailable")
+			}
+			body, requestErr := io.ReadAll(io.LimitReader(response.Body, (2<<10)+1))
+			if requestErr != nil || len(body) == 0 || len(body) > 2<<10 {
+				return nil, errors.New("transit issuer fixture response envelope is invalid")
+			}
+			return body, nil
 		}})
 	if err != nil {
 		t.Fatal(err)
@@ -107,7 +148,24 @@ func TestRunServesRootBackedTransitIssuerThenStopsOnStateSuccessor(t *testing.T)
 	case <-time.After(testLifecycleWait):
 		t.Fatal("State successor did not stop the Transit Grant issuer")
 	}
-	if err := <-errors; err != nil {
+	if err := <-runErrors; err != nil {
 		t.Fatal(err)
 	}
+}
+
+func transitIssuerFixtureHTTPClient(expected [32]byte, certificate tls.Certificate) (*http.Client, error) {
+	transport := &http.Transport{Proxy: nil, DisableCompression: true, DisableKeepAlives: true, ForceAttemptHTTP2: false,
+		MaxConnsPerHost: 1, TLSClientConfig: &tls.Config{MinVersion: tls.VersionTLS13, MaxVersion: tls.VersionTLS13,
+			Certificates: []tls.Certificate{certificate}, InsecureSkipVerify: true, SessionTicketsDisabled: true,
+			NextProtos: []string{"http/1.1"}, VerifyConnection: func(state tls.ConnectionState) error {
+				if len(state.PeerCertificates) != 1 {
+					return errors.New("transit issuer fixture certificate is unavailable")
+				}
+				public, ok := state.PeerCertificates[0].PublicKey.(ed25519.PublicKey)
+				if !ok || len(public) != len(expected) || string(public) != string(expected[:]) {
+					return errors.New("transit issuer fixture certificate does not match")
+				}
+				return nil
+			}}}
+	return &http.Client{Transport: transport}, nil
 }

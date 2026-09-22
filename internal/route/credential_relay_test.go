@@ -6,21 +6,17 @@ import (
 	"time"
 )
 
-func TestCredentialRelayRequiresExactSelectedIssuer(t *testing.T) {
+func TestCredentialRelaySenderRequiresExactSelectedIssuer(t *testing.T) {
 	setup := credentialRelaySetupFixture()
-	raw, err := EncodeCredentialRelaySetup(setup)
+	setupRaw, err := EncodeCredentialRelaySetup(setup)
+	if err != nil || len(setupRaw) == 0 {
+		t.Fatalf("CredentialRelaySetup encode = %x, %v", setupRaw, err)
+	}
+	readyRaw, err := credentialRelayRecord(credentialRelayReadyKind, setup)
 	if err != nil {
 		t.Fatal(err)
 	}
-	decoded, err := DecodeCredentialRelaySetup(raw)
-	if err != nil || decoded != setup {
-		t.Fatalf("CredentialRelaySetup = %+v, %v", decoded, err)
-	}
-	readyRaw, err := EncodeCredentialRelayReady(CredentialRelayReady{Setup: setup})
-	if err != nil {
-		t.Fatal(err)
-	}
-	ready, err := DecodeCredentialRelayReady(readyRaw)
+	ready, err := ReadCredentialRelayReady(bytes.NewReader(readyRaw))
 	if err != nil || setup.VerifyCredentialRelayReady(ready) != nil {
 		t.Fatalf("CredentialRelayReady = %+v, %v", ready, err)
 	}
@@ -28,37 +24,35 @@ func TestCredentialRelayRequiresExactSelectedIssuer(t *testing.T) {
 	if err := setup.VerifyCredentialRelayReady(ready); err == nil {
 		t.Fatal("CredentialRelayReady accepted a substituted issuer")
 	}
-	for _, malformed := range [][]byte{raw[:len(raw)-1], append(raw, 0)} {
-		if _, err := DecodeCredentialRelaySetup(malformed); err == nil {
-			t.Fatal("CredentialRelaySetup accepted malformed bytes")
-		}
-	}
 }
 
-func TestCredentialRelayIOKeepsOpaqueRequestSeparateFromResponse(t *testing.T) {
-	setup := credentialRelaySetupFixture()
-	var wire bytes.Buffer
-	if err := WriteCredentialRelaySetup(&wire, setup); err != nil {
+func TestCredentialRelaySenderKeepsOpaqueRequestSeparateFromResponse(t *testing.T) {
+	var request bytes.Buffer
+	if err := WriteCredentialRelayEnvelope(&request, CredentialRelayEnvelope{OHTTP: []byte{1, 2, 3}}); err != nil {
 		t.Fatal(err)
 	}
-	if err := WriteCredentialRelayEnvelope(&wire, CredentialRelayEnvelope{OHTTP: []byte{1, 2, 3}}); err != nil {
-		t.Fatal(err)
+	if _, err := DecodeCredentialRelayReady(request.Bytes()); err == nil {
+		t.Fatal("credential ready accepted a request envelope")
 	}
-	got, err := ReadCredentialRelaySetup(&wire)
-	if err != nil || got != setup {
-		t.Fatalf("CredentialRelaySetup IO = %+v, %v", got, err)
-	}
-	envelope, err := ReadCredentialRelayEnvelope(&wire)
-	if err != nil || !bytes.Equal(envelope.OHTTP, []byte{1, 2, 3}) {
-		t.Fatalf("CredentialRelayEnvelope IO = %x, %v", envelope.OHTTP, err)
-	}
-	responseRaw, err := encodeCredentialRelayResponse(CredentialRelayResponse{OHTTP: []byte{4, 5}, Framing: CredentialOHTTPResponse})
+	responseRaw, err := credentialResponseFixture([]byte{4, 5})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := decodeCredentialRelayEnvelope(responseRaw, credentialRelayEnvelopeKind); err == nil {
-		t.Fatal("credential response decoded as request")
+	response, err := ReadCredentialRelayResponse(bytes.NewReader(responseRaw))
+	if err != nil || response.Framing != CredentialOHTTPResponse || !bytes.Equal(response.OHTTP, []byte{4, 5}) {
+		t.Fatalf("CredentialRelayResponse = %+v, %v", response, err)
 	}
+}
+
+func credentialResponseFixture(payload []byte) ([]byte, error) {
+	body := make([]byte, 0, 2+1+1+len(Profile)+1+2+len(payload))
+	body = appendUint16(body, routeWireVersion)
+	body = append(body, credentialRelayResponseKind)
+	body = appendProfile(body)
+	body = append(body, CredentialOHTTPResponse)
+	body = appendUint16(body, uint16(len(payload)))
+	body = append(body, payload...)
+	return credentialRouteEnvelope(body)
 }
 
 func credentialRelaySetupFixture() CredentialRelaySetup {
