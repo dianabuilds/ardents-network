@@ -15,7 +15,7 @@ process seam.
 |---|---|---|---|
 | Network participant | ardents | keep and deepen | Headless Endpoint, Network State, Service Instance, Entry, and current naming adapters. |
 | Network participant | ardents-node | keep | Source, Node duty, Transit Grant issuer, and dedicated-host Contributor process lifecycle. |
-| Network participant | ardents-control | keep after contraction | Enrollment-pinned alpha-control/corpus reader and the sole corpus-floor acceptance adapter. |
+| Network participant | ardents-control | keep after contraction | Enrollment-pinned alpha-control/corpus reader and bounded closed-profile operator adapter; it has no corpus-floor mutation authority. |
 | Network participant | ardents-custody | keep and deepen | Separate interactive Authority trust zone. It is intentionally not merged into Endpoint or Node. |
 
 The root cmd directory is Go's conventional collection of thin executable
@@ -31,7 +31,7 @@ and the headless command inventory under tests/profiles.
 | ardents | endpoint replacement-self-test | keep internal-only; invoked by the replacement controller, not an operator route |
 | ardents | name encode/resolve/control | deepen/research: keep current evidence, but later recompose naming access behind the selected Application product boundary rather than expanding direct operator input |
 | ardents-node | source, node, issuer initialize/serve, contributor apply/diagnose/restart/drain/withdraw/remove | keep |
-| ardents-control | inspect-bundle, inspect-transitions, inspect-alpha-corpus, accept-alpha-corpus | keep |
+| ardents-control | inspect-bundle, inspect-transitions, inspect-alpha-corpus | keep |
 | ardents-custody | create-service-authority, issue-service-credential, inspect-envelope, verify-record, export-recovery-bundle, restore-recovery-bundle, purge-record | keep |
 
 ## Retired surface
@@ -45,6 +45,7 @@ qualification owner and are rejected:
 | ardents-control inspect | caller-keyed low-level ACA1 reader with its own mutable floor duplicated the enrollment-pinned participant inspection |
 | ardents-control inspect-public-control | rendered a future public-control declaration that was definitionally never qualified and had only a unit-test caller |
 | completed ardents-control simulate-* routes | historical planning-campaign generators retired by ADR-0060 |
+| ardents-control accept-alpha-corpus | retired fresh corpus intake; the exact route returns `accept-alpha-corpus is retired` before parsing arguments or opening any file or floor, while read-only corpus inspection remains |
 | ardents-release-custody initialize/inspect | completed RC1/RC2 release-seed ceremony; retired by ADR-0067 |
 | ardents-state-custody initialize-alpha-genesis | completed fixed functional-alpha genesis ceremony; retired by ADR-0067 |
 | ardents endpoint headless with `ardents-headless-runtime-v1` | retired startup schema; refused before plan-owned runtime effects without converting retained roots or floors |

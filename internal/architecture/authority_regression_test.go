@@ -10,7 +10,7 @@ import (
 	"testing"
 )
 
-func TestAlphaCorpusDiagnosticHasNoPersistentFloorAuthority(t *testing.T) {
+func TestAlphaCorpusCommandsHaveNoPersistentFloorAuthority(t *testing.T) {
 	root := repositoryRoot(t)
 	command := string(readProjectFile(t, root, "cmd/ardents-control/main.go"))
 	start := strings.Index(command, "func inspectAlphaCorpus(")
@@ -27,10 +27,23 @@ func TestAlphaCorpusDiagnosticHasNoPersistentFloorAuthority(t *testing.T) {
 			t.Errorf("inspect-alpha-corpus retains floor authority %q", forbidden)
 		}
 	}
-	acceptance := string(readProjectFile(t, root, "cmd/ardents-control/alpha_corpus_bundle.go"))
-	for _, required := range []string{"func acceptAlphaCorpus(", "alpha.OpenPersistentFloor(", "floor.Observe("} {
-		if !strings.Contains(acceptance, required) {
-			t.Errorf("accept-alpha-corpus lacks sole floor mutation seam %q", required)
+	if !strings.Contains(command, `case "accept-alpha-corpus":`) || !strings.Contains(command, `errors.New("accept-alpha-corpus is retired")`) {
+		t.Error("accept-alpha-corpus lacks its stable retirement refusal")
+	}
+	commandRoot := filepath.Join(root, "cmd", "ardents-control")
+	entries, err := os.ReadDir(commandRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".go") || strings.HasSuffix(entry.Name(), "_test.go") {
+			continue
+		}
+		content := string(readProjectFile(t, root, filepath.Join("cmd", "ardents-control", entry.Name())))
+		for _, forbidden := range []string{"OpenPersistentFloor", ".Observe("} {
+			if strings.Contains(content, forbidden) {
+				t.Errorf("%s retains alpha corpus floor mutation authority %q", entry.Name(), forbidden)
+			}
 		}
 	}
 }

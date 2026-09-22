@@ -515,8 +515,10 @@ this removal creates none.
 Under
 [ADR-0088](../adr/0088-retire-alpha-service-links-and-corpus-intake.md),
 the Alpha Service Link transition is an explicit final refusal, not a grace
-period. Fresh `accept-alpha-corpus` intake is refused before the command opens,
-creates, or changes either named floor. The independent
+period. Fresh `accept-alpha-corpus` intake now returns its stable retirement
+refusal before parsing arguments or opening, creating, or changing either named
+floor. The former accepting adapter and its floor-mutation authority are
+absent. The independent
 `inspect-alpha-corpus` command remains a read-only supplied-bytes diagnostic and
 does not confer Endpoint authority. Every accepting Alpha destination adapter
 is then removed or refuses before a corpus floor read, resolver call, Network
@@ -527,9 +529,9 @@ deletes existing corpus floor files. Those bytes retain their serial, digest,
 signed withdrawal, rollback, and conflict evidence, but do not authorize
 continued Alpha resolution. Removing the read-only parser or reader requires a
 separate bounded change that proves all non-test consumers absent and records a
-Product Owner migration or data-retention decision. Until the retirement is
-integrated, the command reference identifies the still-present accepting
-surface rather than presenting this selected boundary as implemented behavior.
+Product Owner migration or data-retention decision. Existing Alpha destination
+adapters retain their separately bounded retirement step; intake retirement
+does not claim that existing-link transition is already integrated.
 
 Endpoint is a composition Module, not a second durable domain owner. It owns
 no Namespace, Network State, Release, Update, Custody, or Route-selection
