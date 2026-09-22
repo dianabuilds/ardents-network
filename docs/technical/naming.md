@@ -166,6 +166,9 @@ or operation file, opening Network State, constructing or using transport,
 writing output, or changing Namespace state. The operator result explains that
 the old Name network command is retired and protected Service Name access is
 not yet selected; it supplies no Target-Link, AAI3, DNS, or other fallback.
+The command now enforces this boundary with the exact refusal `name network
+command is retired; protected Service Name access is not selected`. Its former
+plan/context, State-view, receipt, and operation adapters are absent.
 
 This command decision does not retire the Service Name product function.
 `ardents name encode` and canonical Naming bytes remain unchanged. Namespace
@@ -181,8 +184,13 @@ material is converted, reset, deleted, or promoted into successor authority.
 No successor wire, Resolver/Gateway topology, authority, governance, migration,
 or AAI3 Name path is selected. Until one is separately selected and delivered,
 there is no maintained operator command for network Name resolution or control.
-Runtime integration must prove zero transport attempts, no output, and
-unchanged State/Namespace paths for previously valid requests.
+The command regression first executes the former resolve and control shapes
+against an authenticated State root, a committed Namespace root, and live
+Relay/Gateway handlers. It then proves zero transport attempts, no output,
+and byte-for-byte unchanged contents of those same durable roots after both
+retired command invocations. Canonical
+encoding retains its exact behavior vector, while the Namespace and resolution
+Modules retain their own focused behavior suites.
 
 ## Alpha corpus compatibility
 

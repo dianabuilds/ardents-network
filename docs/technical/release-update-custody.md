@@ -90,8 +90,10 @@ implementation defects in the current Module.
 
 ## Explicit limits
 
-- `ardents name control` consumes the retained complete signed control wire;
-  it is an operator input boundary, not a second Authority signing route.
+- The retired `ardents name control` command refuses before reading its former
+  operation input. Custody still prepares only the retained complete signed
+  control wire for its module contract; no maintained operator network route
+  consumes it, and it is not a second Authority signing route.
 - Endpoint replacement has no Vault/root input. The current replacement-owner
   test proves byte-for-byte preservation of an encrypted Authority Vault and a
   persisted Release-floor root across successful replacement, stop refusal,

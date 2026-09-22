@@ -183,8 +183,9 @@ as a product function without claiming a current operator network route: the
 successor protected wire, Resolver/Gateway topology, authority, governance,
 migration, and AAI3 integration remain unselected. The
 [Naming owner](../technical/naming.md#operator-name-network-command-retirement)
-defines the retained module and state boundary; runtime refusal remains a
-separate integration slice.
+defines the retained module and state boundary. The refusal is integrated and
+the command-owned HTTP/OHTTP adapters are absent; this does not make protected
+Service Name access available.
 
 ## C0 Network candidate
 
