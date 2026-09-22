@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -10,7 +11,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/route"
 )
 
-func TestNodePlanReaderNormalizesDedicatedHostProfile(t *testing.T) {
+func TestNodePlanReaderRefusesDedicatedHostProfilesForOldDuty(t *testing.T) {
 	certificatePath, keyPath, nodeID := writeRendezvousListenCredential(t)
 	rootA := writeNodeProfileInput(t, "source-a.pem", "source A root")
 	rootB := writeNodeProfileInput(t, "source-b.pem", "source B root")
@@ -39,12 +40,8 @@ func TestNodePlanReaderNormalizesDedicatedHostProfile(t *testing.T) {
 			if err := os.WriteFile(path, raw, 0o600); err != nil {
 				t.Fatal(err)
 			}
-			runtime, err := readNodePlan(path)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if runtime.node.ResourceProfile != "ardents-rendezvous-dedicated-host-v1" {
-				t.Fatalf("normalized runtime profile = %q", runtime.node.ResourceProfile)
+			if _, err := readNodePlan(path); !errors.Is(err, errOldNodeDutyRetired) {
+				t.Fatalf("old dedicated-host profile error = %v", err)
 			}
 		})
 	}

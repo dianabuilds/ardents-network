@@ -113,9 +113,14 @@ regenerates a key, resets a root or floor, converts state, or adopts foreign
 files. Exclusive old engines and compatibility readers remain until later
 bounded changes prove their accepting callers and other consumers absent.
 
-The accepted boundary is not yet the current adapter behavior: its command
-gates and no-start Contributor recovery are separate integration changes. The
-gap does not make the still-accepting old paths a supported forward contract.
+The Node-plan gate is integrated: all five old reservations return the stable
+`old Node duty reservation is retired` outcome immediately after bounded plan
+decoding and schema/completeness recognition, before key, certificate, Source
+root, State root, listener, resource, or duty construction. A mixed old and
+closed plan receives that same refusal and cannot use the closed reservation as
+a fallback. Source, Transit-issuer, Contributor, and no-start recovery gates
+remain separate integration changes; their still-accepting adapters are not a
+supported forward contract.
 
 ## Module ownership
 
@@ -285,16 +290,17 @@ tracers. Any new source transport, peer announcement, public bootstrap,
 directory, carrier fallback, or supported Node operating profile requires its
 own decision, compatibility rule, and Qualification evidence.
 
-The sole accepted native resource profile is
-`ardents-rendezvous-dedicated-host-v1`. It is accepted only for an exact Rendezvous-only
-Node plan and rejected for Initiator, Introduction, Responder, mixed duties,
-or arbitrary native configurations. Its 1-CPU, 192/256-MiB, 128-MiB Go,
-64-task, and 256-FD placement is qualified only for the project-operated
-dedicated-host Functional Alpha. The retained `h3-*` guard profiles may still
-support their retired-role tests, but native Route code cannot inherit them.
-Readers accept the historical `h4-5-rendezvous-alpha-v1` identity only to
-reopen already pinned bundles, Node plans, and installation records; runtime
-state, new records, and reports normalize to the canonical product identity.
+The retained native resource profile identity is
+`ardents-rendezvous-dedicated-host-v1`. Its 1-CPU, 192/256-MiB, 128-MiB Go,
+64-task, and 256-FD bounds remain evidence for an already owned dedicated-host
+Contributor installation; they do not authorize a new Rendezvous Node start.
+The Node command refuses an old reservation before resource-profile validation
+and no longer normalizes the historical `h4-5-rendezvous-alpha-v1` identity
+into a runnable plan. Contributor ownership readers may recognize either
+identity only to authenticate pinned evidence and perform the separately
+bounded retirement operations. Retained engine tests and `h3-*` guard profiles
+are compatibility evidence pending their own deletion slices, not accepting
+command routes.
 
 The Linux Contributor command writes only the bounded last lifecycle and resource
 events into its private diagnostic directory. Its Contributor Module verifies

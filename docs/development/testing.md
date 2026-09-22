@@ -213,7 +213,6 @@ The maintained local profiles are:
 - `qualification`, the aggregate selected Ubuntu Endpoint lifecycle profile;
 - `endpoint-portable-ubuntu` and `endpoint-replacement-ubuntu`;
 - `service-credential-response-linux`;
-- `native-rendezvous-multihost`;
 - `text-role-durable-state-capture`, the Linux-only isolated Role and Publisher
   durable-state observation; it retains secret-bearing raw observations only in
   an existing, writable, non-symlink directory outside the Git worktree;
@@ -232,6 +231,7 @@ The maintained local profiles are:
   `ardents-custody`, `ardents-node` and `ardents-text` candidate binaries through
   both Carriers, with exact empty, 64 KiB and 4 MiB command cases. It is functional
   journey evidence, not full host, privacy, hostile-network or p95 qualification.
+
 - `text-worker-policy`, the root-driven installed authorization matrix invoked
   by `make text-worker-policy-check`; it does not qualify the complete host.
 - `text-worker-lifecycle`, the separately selected installed Endpoint launch/Grant/
@@ -401,3 +401,13 @@ IPC acceptance. The removed accepting client fixtures no longer qualify AAI2;
 the AAI2 codec/server/client and exclusive Endpoint adapter are absent, while
 the independent Administration client round trip remains covered. Shared
 directional-close evidence remains with AAI3 and native Service Connection.
+
+The `ardents-node node --config` retirement oracle submits each old
+`rendezvous`, `initiator`, `introduction`, `responder`, and `transit_issuer`
+reservation plus a mixed old/closed plan through the real command adapter. Each
+must return the typed old-duty retirement outcome while deliberately absent
+key, certificate, Source-root, State-root, and role-root paths remain absent.
+The complete command package retains independent positive and refusal coverage
+for `closed_issuer`, `closed_forwarding`, `closed_resolution`,
+`closed_introduction`, and `closed_data_join`. Retained direct old-engine tests
+are compatibility/deletion evidence only and do not make the command reachable.

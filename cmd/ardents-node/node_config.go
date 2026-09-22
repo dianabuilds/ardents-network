@@ -15,7 +15,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/route"
 )
 
-const legacyRendezvousDedicatedHostResourceProfile = "h4-5-rendezvous-alpha-v1"
+var errOldNodeDutyRetired = errors.New("old Node duty reservation is retired")
 
 type nodePlan struct {
 	HostingRoot          string `json:"hosting_root,omitempty"`
@@ -151,10 +151,10 @@ func readNodePlan(path string) (nodeRuntime, error) {
 	if plan.Schema != "ardents-node-plan-v1" || plan.LocalRoleStateRoot == "" || len(plan.Sources) != 2 || len(plan.AuthorityPublic) == 0 || len(plan.AuthorityPublic) > 16 {
 		return nodeRuntime{}, errors.New("node plan is not canonical or complete")
 	}
-	nativeDuty := plan.Rendezvous != nil || plan.Initiator != nil || plan.Introduction != nil || plan.Responder != nil || plan.TransitIssuer != nil || plan.ClosedIssuer != nil || plan.ClosedForwarding != nil || plan.ClosedResolution != nil || plan.ClosedIntroduction != nil || plan.ClosedDataJoin != nil
-	if plan.NodeResourceProfile == legacyRendezvousDedicatedHostResourceProfile {
-		plan.NodeResourceProfile = node.RendezvousDedicatedHostResourceProfile
+	if duty := oldNodeDutyReservation(plan); duty != "" {
+		return nodeRuntime{}, fmt.Errorf("%w: %s", errOldNodeDutyRetired, duty)
 	}
+	nativeDuty := plan.Rendezvous != nil || plan.Initiator != nil || plan.Introduction != nil || plan.Responder != nil || plan.TransitIssuer != nil || plan.ClosedIssuer != nil || plan.ClosedForwarding != nil || plan.ClosedResolution != nil || plan.ClosedIntroduction != nil || plan.ClosedDataJoin != nil
 	if plan.NativeRendezvousProfile && !nativeDuty {
 		return nodeRuntime{}, errors.New("native Route State profile requires one local native duty")
 	}
@@ -248,6 +248,23 @@ func readNodePlan(path string) (nodeRuntime, error) {
 	}
 	return nodeRuntime{state: state, node: nodeConfig, diagnosticDirectory: plan.DiagnosticDirectory,
 		clockObservation: clockObservation}, nil
+}
+
+func oldNodeDutyReservation(plan nodePlan) string {
+	switch {
+	case plan.Rendezvous != nil:
+		return "rendezvous"
+	case plan.Initiator != nil:
+		return "initiator"
+	case plan.Introduction != nil:
+		return "introduction"
+	case plan.Responder != nil:
+		return "responder"
+	case plan.TransitIssuer != nil:
+		return "transit_issuer"
+	default:
+		return ""
+	}
 }
 
 // closedIntroductionPlan contains local reservations only. State selects the

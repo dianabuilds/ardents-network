@@ -73,8 +73,10 @@ selects refusal of the old Node reservations, Source
 effect. It preserves the separately named closed duties, closed Source profile,
 and closed issuer. Existing owned Contributor installations retain only the
 [no-start retirement actions](rendezvous-contributor.md#selected-retirement-transition).
-These gates are selected but not yet integrated; descriptions of accepting old
-routes below document the current adapter gap, not supported forward authority.
+The Node-reservation gate is integrated. Source, Transit issuer, Contributor,
+and no-start recovery gates are selected but not yet integrated; descriptions
+of those accepting routes below document the current adapter gap, not supported
+forward authority.
 
 `ardents-node issuer initialize --config PATH` performs the owner-only bootstrap
 of one durable purpose-scoped Transit Grant issuer root. It emits only the
@@ -107,16 +109,21 @@ signed Epoch evidence; this does not distribute the separate closed profile
 or qualify Node duties.
 
 `ardents-node node --config PATH` runs one separately keyed Node process from
-an `ardents-node-plan-v1` input. It
-owns one admitted native duty, pressure reaction, drain, withdrawal, and joined
-cleanup; lifecycle JSON uses `ardents-node-event-v1`. On Linux, `SIGTERM` and
-the foreground interrupt request that local withdrawal before process exit.
-An arbitrary Node config is not a supported Node operating profile. A config
-file is a bounded Node-owned input, not a general Node configuration contract. The Rendezvous,
-Initiator, Introduction and Responder stanzas must set their finite
-`admission_timeout_ms`: it bounds TLS
-and binding admission only, is capped by the current State expiry, and has no
-implicit default or retry/fallback behavior.
+an `ardents-node-plan-v1` input. The schema remains shared with current closed
+duties, but the old `rendezvous`, `initiator`, `introduction`, `responder`, and
+`transit_issuer` reservations return `old Node duty reservation is retired`
+after bounded plan recognition and before any plan-owned key, certificate,
+Source root, State root, listener, resource, or duty effect. A mixed old and
+closed plan receives the same refusal; omission never selects an old default or
+a closed fallback. The retained old stanza fields and engines are compatibility
+and deletion inputs, not runnable command profiles.
+
+A current closed Node process owns one admitted duty, pressure reaction, drain,
+withdrawal, and joined cleanup; lifecycle JSON uses
+`ardents-node-event-v1`. On Linux, `SIGTERM` and foreground interrupt request
+local withdrawal before process exit. An arbitrary Node config is not a
+supported Node operating profile; the bounded config cannot override State's
+duty selection.
 
 The generation-3 forwarding reservation is `closed_forwarding`, containing
 only an existing owner-only receiving-spend `root`, `connection_limit` (1–16)
@@ -139,15 +146,6 @@ listener opens. The stanza accepts no endpoint, peer, role, profile digest or
 verification/storage callback. Descriptor lookup and publication use actual
 Control admission and the durable Store; this configuration alone does not
 establish Publisher readiness or private Introduction registration.
-The Rendezvous stanza may additionally set `listen_loopback_override` only to
-a literal loopback IP with the same numeric port as the authenticated
-State-advertised Rendezvous candidate. This is an operational bind adapter for
-a host-owned byte-transparent Carrier relay: State remains the sole owner of
-the advertised endpoint, identity, digest, Epoch, and Carrier profile. A
-hostname, unspecified or non-loopback address, zero/out-of-range port, or port
-mismatch is rejected. Omitting the field retains the State endpoint as the
-listener and does not change existing plan behavior.
-
 On Linux, `ardents-node contributor` exposes the complete
 `ardents-rendezvous-dedicated-host-v1` dedicated-host lifecycle: `apply`, `diagnose`,
 `restart`, `drain`, `withdraw`, and confirmed `remove`. It accepts no other

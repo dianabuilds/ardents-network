@@ -38,8 +38,7 @@ func runClosedIssuerProcess(t *testing.T, node, endpoint string, acceptArguments
 		name := fmt.Sprintf("issuer-command-source-%d.test", index)
 		server := makeLeaf(t, makeAuthority(t, name), name, true)
 		address := freeAddress(t)
-		plan := nativeDutySourcePlan(network, public, time.Now().UTC(), root, roleRoot, address, server, clientAuthority.root, client.sourcePin)
-		delete(plan, "native_rendezvous_profile")
+		plan := sourceServerPlanFixture(network, public, time.Now().UTC(), root, roleRoot, address, server, clientAuthority.root, client.sourcePin)
 		plan["state_profile"], plan["state_profile_authority"], plan["materialization_index"] = "ardents-route-v3", hex.EncodeToString(public), 1
 		stop := startSource(t, node, writeJSON(t, fmt.Sprintf("issuer-source-%d.json", index), plan))
 		t.Cleanup(stop)
