@@ -403,7 +403,7 @@ func TestTransitAcquisitionReadsAcceptedV1IntroductionStateAsV2(t *testing.T) {
 
 func acquisitionGrant(t *testing.T, scope transitAcquisitionScope, request credential.Request, private ed25519.PrivateKey) []byte {
 	t.Helper()
-	raw, err := route.IssueTransitGrant(route.TransitGrant{IssuerID: sha256.Sum256(private.Public().(ed25519.PublicKey)), GrantID: request.RequestID,
+	raw, err := issueTransitGrantFixture(route.TransitGrant{IssuerID: sha256.Sum256(private.Public().(ed25519.PublicKey)), GrantID: request.RequestID,
 		NetworkID: scope.NetworkID, Digest: scope.Digest, AttachmentID: request.AttachmentID,
 		TransitNodeID: scope.TransitNodeID, ClientKeyDigest: request.ClientKeyDigest,
 		Epoch: scope.Epoch, TransitRole: scope.TransitRole, NotAfter: scope.NotAfter}, private)

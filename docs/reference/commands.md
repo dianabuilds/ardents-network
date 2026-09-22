@@ -87,9 +87,10 @@ It does not convert, erase or reopen an existing Transit issuer root.
 `ardents-node issuer serve --config PATH` rejects a legacy `transit_issuer`
 reservation through the old-duty gate before plan-owned keys, certificates,
 State roots, issuer roots or listeners are opened. Its issuer validator accepts
-only one isolated `closed_issuer` runtime. The old Node-side Transit engine and
-its persisted history remain for the separate bounded deletion slice; this
-command supplies no accepting caller.
+only one isolated `closed_issuer` runtime. The old Node-side Transit signer,
+listener, Handler, and mutable root ledger are absent. Existing root bytes are
+left untouched; no command reopens or migrates them. The signed-profile decoder
+and one-use client remain solely for the separate Endpoint acquisition path.
 
 The retained closed-profile issuer uses the `closed_issuer` stanza with
 an initialized signing root and a separate, existing owner-only admission_root
@@ -120,8 +121,9 @@ closed plan receives the same refusal; omission never selects an old default or
 a closed fallback. The retained old stanza fields identify refused input. The
 Initiator, Responder, and Introduction engines and their command composition
 are absent; their plan stanzas remain only so the adapter can classify and
-refuse bounded input. The old Rendezvous and Transit-issuance engines retain
-separate deletion slices and are not runnable profiles.
+refuse bounded input. The old Transit-issuance engine is also absent while its
+stanza remains at that refusal boundary. Only the old Rendezvous engine retains
+a separate deletion slice; neither is a runnable command profile.
 
 A current closed Node process owns one admitted duty, pressure reaction, drain,
 withdrawal, and joined cleanup; lifecycle JSON uses

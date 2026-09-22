@@ -24,6 +24,12 @@ func closedIssuerFixtureRoot(t *testing.T) string {
 	return root
 }
 
+func credentialID(marker byte) [32]byte {
+	var value [32]byte
+	value[0] = marker
+	return value
+}
+
 func TestInitializeClosedIssuerRootPublishesExactSPKIInventory(t *testing.T) {
 	now := time.Unix(1_800_000_000, 0).UTC()
 	public, private, err := ed25519.GenerateKey(rand.Reader)

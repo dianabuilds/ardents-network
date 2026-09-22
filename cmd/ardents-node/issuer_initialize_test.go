@@ -62,11 +62,6 @@ func TestTransitIssuerInitializeRefusesBeforeRootOrIdentity(t *testing.T) {
 }
 
 func TestIssuerServeRejectsTransitRuntimeAndPlanBeforeEffects(t *testing.T) {
-	issuer := node.TransitIssuerProfile{Root: filepath.Join(t.TempDir(), "issuer-root")}
-	if err := validateIssuerRuntime(nodeRuntime{node: node.Config{TransitIssuer: issuer}}); err == nil {
-		t.Fatal("issuer serve validator accepted the retired Transit runtime")
-	}
-
 	plan := oldDutyRetirementPlan(t)
 	plan.TransitIssuer = &transitIssuerPlan{Root: filepath.Join(filepath.Dir(plan.IdentityKey), "issuer-root")}
 	path := writeForwardingNodePlan(t, plan)
@@ -84,9 +79,6 @@ func TestIssuerServeAcceptsOneClosedIssuerReservation(t *testing.T) {
 	issuer := node.ClosedIssuerProfile{Root: filepath.Join(t.TempDir(), "closed-issuer-root")}
 	if err := validateIssuerRuntime(nodeRuntime{node: node.Config{ClosedIssuer: issuer}}); err != nil {
 		t.Fatalf("closed issuer-only runtime rejected: %v", err)
-	}
-	if err := validateIssuerRuntime(nodeRuntime{node: node.Config{TransitIssuer: node.TransitIssuerProfile{Root: t.TempDir()}, ClosedIssuer: issuer}}); err == nil {
-		t.Fatal("issuer serve accepted both issuer reservations")
 	}
 }
 

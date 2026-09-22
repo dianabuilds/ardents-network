@@ -429,9 +429,13 @@ must return the typed old-duty retirement outcome while deliberately absent
 key, certificate, Source-root, State-root, and role-root paths remain absent.
 The complete command package retains independent positive and refusal coverage
 for `closed_issuer`, `closed_forwarding`, `closed_resolution`,
-`closed_introduction`, and `closed_data_join`. The old Initiator, Responder, and
-Introduction engines and their direct tests are absent; direct tests remain
-only for the old Rendezvous and Transit-issuance engines until their separate
-deletion slices and do not make the command reachable. The Introduction
-retirement oracle also keeps the current `startClosedIntroduction` dispatch
-present rather than treating the shared domain term as a retired symbol.
+`closed_introduction`, and `closed_data_join`. The old Initiator, Responder,
+Introduction, and Transit-issuance engines and their direct server tests are
+absent; direct tests remain only for the old Rendezvous engine until its
+separate deletion slice and do not make the command reachable. The Transit
+retirement oracle keeps the typed command refusal, Endpoint acquisition client,
+signed-profile decoder, and closed issuer/ledger while forbidding the old Node
+listener, signer, State-duty projection, Handler, and mutable root ledger. The
+Introduction retirement oracle also keeps the current
+`startClosedIntroduction` dispatch present rather than treating the shared
+domain term as a retired symbol.

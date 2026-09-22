@@ -23,19 +23,6 @@ type TransitGrant struct {
 	NotAfter                                                                           time.Time
 }
 
-// IssueTransitGrant returns the sole canonical Transit Grant v1 encoding. The
-// caller owns the State-authorized Grant-signing custody; Route only checks
-// that its signing key matches the declared current issuer identifier.
-func IssueTransitGrant(input TransitGrant, signer ed25519.PrivateKey) ([]byte, error) {
-	if err := validTransitGrant(input); err != nil || len(signer) != ed25519.PrivateKeySize ||
-		input.IssuerID != sha256.Sum256(signer.Public().(ed25519.PublicKey)) {
-		return nil, errors.New("transit grant issue input is invalid")
-	}
-	body := encodeTransitGrantBody(input)
-	signature := ed25519.Sign(signer, append([]byte(transitGrantDomain), body...))
-	return append(body, signature...), nil
-}
-
 // VerifyTransitGrant decodes one closed Transit Grant v1 and proves its
 // signature under one State-authorized Grant public key. Exact binding and one-use
 // spending remain the receiving Node's responsibility.
@@ -59,19 +46,6 @@ func DecodeTransitGrant(raw []byte) (TransitGrant, error) {
 		return TransitGrant{}, errors.New("transit grant decoding input is invalid")
 	}
 	return decodeTransitGrantBody(raw[:transitGrantBodyLength()])
-}
-
-func encodeTransitGrantBody(input TransitGrant) []byte {
-	body := make([]byte, 0, transitGrantBodyLength())
-	body = append(body, transitGrantPrefix...)
-	body = appendUint16(body, transitGrantVersion)
-	for _, value := range [][32]byte{input.IssuerID, input.GrantID, input.NetworkID, input.Digest, input.AttachmentID,
-		input.TransitNodeID, input.ClientKeyDigest} {
-		body = append(body, value[:]...)
-	}
-	body = appendUint64(body, input.Epoch)
-	body = append(body, input.TransitRole)
-	return appendUint64(body, uint64(input.NotAfter.Unix()))
 }
 
 func decodeTransitGrantBody(raw []byte) (TransitGrant, error) {

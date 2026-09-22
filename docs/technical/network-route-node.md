@@ -112,8 +112,10 @@ of an old duty or rewrite persisted identity. The old Initiator, Responder, and
 Introduction engines and their command composition have been deleted after the
 command refusal became current. Their old plan stanzas remain only at that
 typed refusal boundary. The Initiator Entry-admission adapter is also absent.
-The remaining Rendezvous and Transit-issuance engines are owned by separate
-bounded deletion slices.
+The remaining old Rendezvous engine is owned by its separate bounded deletion
+slice. The old Transit-issuance signer/listener/root-mutation engine is absent;
+the typed command refusal, signed-profile decoder, and Endpoint-owned
+acquisition client remain without a Node receiving caller.
 The adjacent production-dead Initiator Entry admission, receiving relay grammar,
 and direct OHTTP forwarding adapters have been deleted by their dedicated
 closure audit. The later User Route closure audit also removed the uncalled
@@ -134,9 +136,9 @@ The Node-plan gate is integrated: all five old reservations return the stable
 decoding and schema/completeness recognition, before key, certificate, Source
 root, State root, listener, resource, or duty construction. A mixed old and
 closed plan receives that same refusal and cannot use the closed reservation as
-a fallback. Source, Transit-issuer, Contributor, and no-start recovery gates
-remain separate integration changes; their still-accepting adapters are not a
-supported forward contract.
+a fallback. Source, Contributor, and no-start recovery gates remain separate
+integration changes; their still-accepting adapters are not a supported forward
+contract.
 
 ## Module ownership
 
@@ -357,7 +359,9 @@ executing either generation.
   lifecycles. The superseded positive old-role command and multi-host
   qualification procedures are absent; their historical receipts do not make
   an old duty runnable. Direct behavior tests remain only for the Rendezvous
-  and Transit-issuance engines, which still have their own deletion slices.
+  engine, which still has its own deletion slice. Transit credential tests now
+  cover only its retained signed-profile/client grammar and the separately
+  owned Endpoint acquisition path.
 - A [historical mixed-host run](https://github.com/dianabuilds/ardents-network/blob/f82a52dde912e975df0b23bdcf459f1e5b71def3/docs/technical/network-route-node.md#verification-and-decisions)
   retains bounded functional integration evidence for its exact candidate.
   It supplies no current Route, privacy, host-profile, or public-operation
