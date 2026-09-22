@@ -48,6 +48,26 @@ func TestAlphaCorpusCommandsHaveNoPersistentFloorAuthority(t *testing.T) {
 	}
 }
 
+func TestEndpointHasNoAlphaDestinationAdapter(t *testing.T) {
+	root := repositoryRoot(t)
+	endpointRoot := filepath.Join(root, "internal", "endpoint")
+	entries, err := os.ReadDir(endpointRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".go") || strings.HasSuffix(entry.Name(), "_test.go") {
+			continue
+		}
+		content := string(readProjectFile(t, root, filepath.Join("internal", "endpoint", entry.Name())))
+		for _, forbidden := range []string{"internal/naming/alpha/private", "ResolveAlpha(", "ResolveAcceptedAlpha("} {
+			if strings.Contains(content, forbidden) {
+				t.Errorf("%s retains Alpha destination adapter %q", entry.Name(), forbidden)
+			}
+		}
+	}
+}
+
 func TestTransitIssuerRootCustodyIsNotExportedFromDuty(t *testing.T) {
 	root := repositoryRoot(t)
 	exported := exportedPackageDeclarations(t, filepath.Join(root, "internal", "network", "duty"))

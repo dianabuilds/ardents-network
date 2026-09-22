@@ -55,14 +55,15 @@
       "symbols": [
         "internal/naming/alpha.IssueCorpus",
         "internal/naming/alpha.NewSessionFloor",
+        "internal/naming/alpha.ParseServiceLink",
         "internal/naming/alpha.SessionFloor.Observe",
         "internal/naming/alpha.canonicalMilliseconds",
         "internal/naming/alpha.validateInput"
       ],
-      "classification": "unwired closed-alpha tracer",
-      "rationale": "The alpha corpus/floor candidate has deterministic behavior evidence but no selected C0 command reaches this package directly.",
+      "classification": "retained Alpha corpus/link compatibility",
+      "rationale": "ADR-0088 retires live Alpha destinations while retaining the corpus parser and reader needed to interpret existing floor evidence; #113 removes the last Endpoint destination consumer without deleting that compatibility surface.",
       "owner": "Product Owner and Codex",
-      "retirement": "Connect it through an accepted C0 command contract or remove it in the ADR that rejects the candidate."
+      "retirement": "Remove only with the separate ADR-0088 data-retention decision and a bounded package audit; these symbols must not be reconnected to a live destination path without a superseding accepted decision."
     },
     {
       "symbols": [
@@ -93,7 +94,11 @@
         "internal/naming/alpha/private.NewGateway",
         "internal/naming/alpha/private.NewRelay",
         "internal/naming/alpha/private.Open",
+        "internal/naming/alpha/private.Client.Resolve",
+        "internal/naming/alpha/private.Client.begin",
+        "internal/naming/alpha/private.decodeResponse",
         "internal/naming/alpha/private.decodeRequest",
+        "internal/naming/alpha/private.encodeRequest",
         "internal/naming/alpha/private.encodeResponse",
         "internal/naming/alpha/private.gateway.Handler",
         "internal/naming/alpha/private.gateway.Profile",
@@ -101,16 +106,18 @@
         "internal/naming/alpha/private.isolatedClient",
         "internal/naming/alpha/private.privateRelayHTTPClient",
         "internal/naming/alpha/private.profileTranscript",
+        "internal/naming/alpha/private.pad",
         "internal/naming/alpha/private.rejectAlphaPrivateRedirect",
         "internal/naming/alpha/private.relay.Handler",
         "internal/naming/alpha/private.relay.forward",
         "internal/naming/alpha/private.signProfile",
+        "internal/naming/alpha/private.unpad",
         "internal/naming/alpha/private.validProfile"
       ],
-      "classification": "unwired private-resolution tracer",
-      "rationale": "The private alpha-resolution candidate is covered by deterministic protocol tests but has no selected production command route.",
+      "classification": "retained historical private Alpha resolver",
+      "rationale": "ADR-0088 retires the Alpha network path and #113 removes its sole Endpoint destination adapter. This cohesive package remains only as deterministic historical component evidence because deleting the whole Alpha library is outside the bounded adapter retirement.",
       "owner": "Product Owner and Codex",
-      "retirement": "Wire it into the accepted private-resolution operation or remove it with the rejected candidate."
+      "retirement": "Remove this complete private Alpha resolver in a separate bounded package-retirement change with package-map, dependency and historical-evidence disposition; never reconnect it without a superseding accepted decision."
     },
     {
       "symbols": [
@@ -807,8 +814,6 @@
           "internal/endpoint.endpoint.Close",
           "internal/endpoint.endpoint.OpenPublisherIntroduction",
           "internal/endpoint.endpoint.OpenServiceAdministration",
-          "internal/endpoint.endpoint.ResolveAcceptedAlpha",
-          "internal/endpoint.endpoint.ResolveAlpha",
           "internal/endpoint.endpoint.StartPublisher",
           "internal/endpoint.endpoint.TargetFromLink",
           "internal/endpoint.endpoint.Withdraw",
@@ -889,16 +894,9 @@
           "internal/naming/alpha.Binding.Serial",
           "internal/naming/alpha.Binding.Target",
           "internal/naming/alpha.Corpus.Resolve",
-          "internal/naming/alpha.ParseServiceLink",
           "internal/naming/alpha.PersistentFloor.Current",
           "internal/naming/alpha.ServiceLink.Name",
           "internal/naming/alpha.ServiceLink.String",
-          "internal/naming/alpha/private.Client.Resolve",
-          "internal/naming/alpha/private.Client.begin",
-          "internal/naming/alpha/private.decodeResponse",
-          "internal/naming/alpha/private.encodeRequest",
-          "internal/naming/alpha/private.pad",
-          "internal/naming/alpha/private.unpad",
           "internal/route.DecodeIntroductionSlotReady",
           "internal/route.EncodeEndpointTransitBinding",
           "internal/route.EncodeIntroductionSlotRegistration",

@@ -219,7 +219,10 @@ history; they are not current command compatibility promises.
 None of these routes launches a browser, opens a Service, chooses a Relay/Gateway, or
 makes an `ardents-alpha://` link a public DNS/HTTPS address. The retired intake
 route retains no supplied bytes: it refuses before parsing arguments or opening
-files and does not fetch or install an Endpoint.
+files and does not fetch or install an Endpoint. The Endpoint has no accepting
+Alpha destination adapter: the historical prefix receives `alpha service link
+is retired` before a retained corpus-floor read, resolver/network work, or any
+Target-Link fallback.
 
 ## Trusted text UI and workers
 

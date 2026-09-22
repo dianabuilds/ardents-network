@@ -521,17 +521,20 @@ floor. The former accepting adapter and its floor-mutation authority are
 absent. The independent
 `inspect-alpha-corpus` command remains a read-only supplied-bytes diagnostic and
 does not confer Endpoint authority. Every accepting Alpha destination adapter
-is then removed or refuses before a corpus floor read, resolver call, Network
-or Route work, dial, Target-Link fallback, or conversion.
+is absent. The maintained Target-Link seam recognizes the exact historical
+`ardents-alpha://` prefix only to return `alpha service link is retired`; it
+does so before Target-Link decoding, a corpus-floor read, resolver call,
+Network or Route work, dial, fallback, or conversion.
 
 The transition neither converts an Alpha Link or old Target nor resets or
 deletes existing corpus floor files. Those bytes retain their serial, digest,
 signed withdrawal, rollback, and conflict evidence, but do not authorize
-continued Alpha resolution. Removing the read-only parser or reader requires a
-separate bounded change that proves all non-test consumers absent and records a
-Product Owner migration or data-retention decision. Existing Alpha destination
-adapters retain their separately bounded retirement step; intake retirement
-does not claim that existing-link transition is already integrated.
+continued Alpha resolution. No maintained non-test destination consumes the
+read-only corpus parser or persistent-floor reader after this transition. They
+remain a compatibility obligation, not live authority. Removing them still
+requires a separate bounded change that records a Product Owner migration or
+data-retention decision; this transition neither supplies that decision nor
+treats consumer absence as permission to delete retained bytes.
 
 Endpoint is a composition Module, not a second durable domain owner. It owns
 no Namespace, Network State, Release, Update, Custody, or Route-selection

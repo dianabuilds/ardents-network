@@ -153,10 +153,12 @@ Administration interface.
 
 [ADR-0088](../adr/0088-retire-alpha-service-links-and-corpus-intake.md)
 selects final retirement of Alpha Service Links and fresh corpus intake rather
-than a grace period or conversion. Human-facing Service Names remain a product
-function over the protected protocol; they do not keep the legacy Alpha
-network path alive. Existing floor bytes remain retained evidence pending a
-separate data decision. The
+than a grace period or conversion. Both transitions are integrated: intake
+refuses before floor effects, and the Endpoint has no accepting Alpha
+destination adapter or Target-Link fallback. Human-facing Service Names remain
+a product function over the protected protocol; they do not keep the legacy
+Alpha network path alive. Existing floor bytes remain retained evidence pending
+a separate data decision. The
 [Endpoint contract](../technical/endpoint-service-runtime.md#alpha-destination-retirement)
 owns the exact effect and compatibility boundary.
 
