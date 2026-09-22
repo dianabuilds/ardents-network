@@ -29,7 +29,8 @@ and the headless command inventory under tests/profiles.
 |---|---|---|
 | ardents | accept-offline, refresh-sources; service-instance initialize/accept; endpoint enrollment-check/enroll/enroll-installed/headless/publish/withdraw/user-unit/installed-user-unit/replace/replacement-recovery/rollback; entry recipient/import | keep |
 | ardents | endpoint replacement-self-test | keep internal-only; invoked by the replacement controller, not an operator route |
-| ardents | name encode/resolve/control | deepen/research: keep current evidence, but later recompose naming access behind the selected Application product boundary rather than expanding direct operator input |
+| ardents | name encode | keep local canonical encoding; this is not network Name availability |
+| ardents | name resolve/control | retirement selected by ADR-0090 but not yet integrated; effect-free refusal has no successor or fallback implied |
 | ardents-node | source (including the explicit current closed profile), node with closed reservations, issuer initialize/serve, contributor diagnose/drain/withdraw/remove | keep; old Source selector, Node duty reservations and Contributor start inputs retired |
 | ardents-control | inspect-bundle, inspect-transitions, inspect-alpha-corpus | keep |
 | ardents-custody | create-service-authority, issue-service-credential, inspect-envelope, verify-record, export-recovery-bundle, restore-recovery-bundle, purge-record | keep |
