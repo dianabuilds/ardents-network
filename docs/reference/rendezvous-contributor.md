@@ -9,6 +9,37 @@ Readers accept the historical `h4-5-rendezvous-alpha-v1` identity only for
 already pinned bundles, Node plans, and installation records; runtime state,
 new records, and reports use the canonical identity.
 
+## Selected retirement transition
+
+[ADR-0089](../adr/0089-retire-old-node-starts-preserve-owned-shutdown.md)
+retires `apply` and `restart` for both canonical and historical profile inputs.
+They must refuse before filesystem, systemd, supervisor, root, listener, or
+Network effects. The accepting behavior described below is the current
+pre-integration adapter and is not selected forward operator authority.
+
+An exactly authenticated existing installation retains `diagnose`, `drain`,
+`withdraw`, and confirmed `remove` solely to retire owned resources. Neither
+these actions nor interrupted-update recovery may Start, Restart, Enable, or
+complete an update by executing the current, previous, or next generation.
+`diagnose` authenticates managed evidence and reads status. `drain` may Stop an
+active owned unit and wait finitely for `WITHDRAWN`, but never starts an
+inactive unit. `withdraw` additionally Disables it. `remove` retains the exact
+deployment confirmation and inactive, disabled, `WITHDRAWN` preconditions and
+deletes only the managed installation.
+
+If an interrupted or ambiguous installation cannot be authenticated and
+retired without execution, the command fails explicitly and retains evidence.
+It does not choose a generation by convenience, rewrite the stored profile,
+adopt foreign files, or direct manual systemd/filesystem mutation as a
+supported recovery. Historical profile recognition authenticates retained
+evidence only and never grants a new start.
+
+This contract does not assert that a real owned installation exists or know
+its host, profile, deployment/generation, active/enabled/update state, or
+external bundle, journal, and snapshot residue. Those facts must come from the
+bounded authenticated no-start observation of the installation being retired;
+missing facts never authorize execution or foreign-state adoption.
+
 ## Exact supported shape
 
 The profile runs one `rendezvous` duty and nothing else inside its dedicated

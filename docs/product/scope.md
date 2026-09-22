@@ -162,6 +162,18 @@ a separate data decision. The
 [Endpoint contract](../technical/endpoint-service-runtime.md#alpha-destination-retirement)
 owns the exact effect and compatibility boundary.
 
+[ADR-0089](../adr/0089-retire-old-node-starts-preserve-owned-shutdown.md)
+retires every new old Node-role, Source-profile, Transit-issuer, and Contributor
+apply/restart start rather than keeping a second accepting network path. The
+selected closed Node duties, closed Source profile, and closed issuer remain
+unchanged. An exactly authenticated existing Contributor installation retains
+only bounded no-start diagnose, drain, withdraw, and confirmed removal: neither
+an operator action nor interrupted-update recovery may revive old executable
+bytes. Existing roots, keys, floors, installation records, and historical
+profile identity remain evidence, not migration or execution authority. The
+[Network/Node owner](../technical/network-route-node.md#old-start-retirement)
+defines the exact selectors and effect boundary.
+
 ## C0 Network candidate
 
 The Network audit candidate is the headless maintained product surface:

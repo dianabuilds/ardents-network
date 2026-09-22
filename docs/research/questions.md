@@ -27,6 +27,13 @@ implementation-linked; their maintained contracts are owned respectively by
 [ADR-0067](../adr/0067-retire-completed-local-alpha-ceremonies.md).
 R-135 is decided and promoted to [ADR-0068](../adr/0068-bind-transit-issuer-roots-to-state-generation.md);
 its maintained contract belongs to [Transit Grant acquisition](../technical/transit-grant-acquisition.md).
+
+R-155 is decided and promoted to
+[ADR-0089](../adr/0089-retire-old-node-starts-preserve-owned-shutdown.md).
+The [Network/Node owner](../technical/network-route-node.md#old-start-retirement)
+and [Contributor runbook](../reference/rendezvous-contributor.md#selected-retirement-transition)
+hold the maintained retirement boundary; implementation remains in the GitHub
+ledger rather than this research queue.
 R-136 is decided and promoted to [ADR-0070](../adr/0070-own-volatile-user-route-orchestration.md);
 its maintained Route/Endpoint boundary belongs to [Network Route and Node](../technical/network-route-node.md)
 and [Endpoint and Service runtime](../technical/endpoint-service-runtime.md).

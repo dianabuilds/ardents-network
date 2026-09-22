@@ -83,6 +83,40 @@ does not release another owner's lease, and every successful caller still
 closes its own store. This local coordination does not extend any Route,
 permission, registration or protocol deadline.
 
+## Old start retirement
+
+[ADR-0089](../adr/0089-retire-old-node-starts-preserve-owned-shutdown.md)
+selects an effect-free refusal for every new old execution selection:
+
+- Node reservations `rendezvous`, `initiator`, `introduction`, `responder`,
+  and `transit_issuer`, including their old runtime assignments;
+- Source `native_rendezvous_profile`;
+- `ardents-transit-issuer-initialize-v1` and issuer serve selected by the old
+  Transit issuer reservation; and
+- Contributor `apply` and `restart`, for canonical and historical profile
+  inputs.
+
+Each adapter must identify and refuse its old selection before opening or
+creating a state root or key, binding a listener, invoking a supervisor, or
+starting Network work. Refusal cannot select another profile or fall back to a
+closed duty. The plan and command schemas are not retired wholesale: probe
+behavior is outside this decision, and `closed_issuer`, `closed_forwarding`,
+`closed_resolution`, `closed_introduction`, `closed_data_join`, the explicit
+closed Source profile, and closed issuer initialize/serve retain their exact
+existing authority checks.
+
+Existing old roots, keys, floors, plans, and installation records remain
+unchanged evidence. Historical profile recognition may authenticate an already
+pinned owned installation for retirement only; it cannot authorize execution
+or rewrite persisted identity. No retirement path inherits a duty,
+regenerates a key, resets a root or floor, converts state, or adopts foreign
+files. Exclusive old engines and compatibility readers remain until later
+bounded changes prove their accepting callers and other consumers absent.
+
+The accepted boundary is not yet the current adapter behavior: its command
+gates and no-start Contributor recovery are separate integration changes. The
+gap does not make the still-accepting old paths a supported forward contract.
+
 ## Module ownership
 
 | Module | Interface responsibility | Excluded responsibility |
@@ -269,6 +303,10 @@ one hardened systemd unit, requires exact generation successors, rolls back a
 failed or interrupted update, and exposes only diagnose/restart/drain/withdraw
 and confirmed removal. The operator contract is the
 [Rendezvous Contributor runbook](../reference/rendezvous-contributor.md).
+Under the selected retirement transition, that update recovery must be split:
+retained retirement actions may authenticate, inspect, Stop, Disable, and
+remove owned state but may not Start, Restart, Enable, or finish an update by
+executing either generation.
 
 ## Verification and decisions
 
