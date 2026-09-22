@@ -150,6 +150,12 @@ Their dedicated Entry/relay/OHTTP closure audit owns separate deletion; the
 one-engine change does not turn that wider Route/Entry/crypto closure into an
 implicit deletion.
 
+After removal of the old Responder engine, the exact old Node-leg dial and
+reciprocal-confirmation symbols that lost their production caller are one
+temporary reviewed group. Their dedicated closure audit owns deletion; the
+one-engine change preserves shared Carrier profiles, listeners, TLS/QUIC
+primitives, and closed Node Carrier behavior.
+
 The headless command inventory declares the four-command Network artifact lane;
 the text-worker inventory declares its separately owned Application lane under
 `tests/profiles/`. Architecture tests check actual transitive dependency
@@ -416,6 +422,7 @@ must return the typed old-duty retirement outcome while deliberately absent
 key, certificate, Source-root, State-root, and role-root paths remain absent.
 The complete command package retains independent positive and refusal coverage
 for `closed_issuer`, `closed_forwarding`, `closed_resolution`,
-`closed_introduction`, and `closed_data_join`. The old Initiator engine and its
-direct tests are absent; direct tests for other retained old engines remain only
-until their separate deletion slices and do not make the command reachable.
+`closed_introduction`, and `closed_data_join`. The old Initiator and Responder
+engines and their direct tests are absent; direct tests for other retained old
+engines remain only until their separate deletion slices and do not make the
+command reachable.

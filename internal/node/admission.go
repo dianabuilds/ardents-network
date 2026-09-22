@@ -50,7 +50,7 @@ func resolveConfig(input Config) (runtimeConfig, error) {
 		}
 	}
 	if probePlan == nil && input.Rendezvous.Certificate.PrivateKey == nil && input.Introduction.Certificate.PrivateKey == nil &&
-		input.Responder.Certificate.PrivateKey == nil && input.TransitIssuer.Certificate.PrivateKey == nil && input.ClosedIssuer.Certificate.PrivateKey == nil && input.ClosedForwarding.Certificate.PrivateKey == nil && input.ClosedResolution.Certificate.PrivateKey == nil && input.ClosedIntroduction.Certificate.PrivateKey == nil && input.ClosedDataJoin.Certificate.PrivateKey == nil {
+		input.TransitIssuer.Certificate.PrivateKey == nil && input.ClosedIssuer.Certificate.PrivateKey == nil && input.ClosedForwarding.Certificate.PrivateKey == nil && input.ClosedResolution.Certificate.PrivateKey == nil && input.ClosedIntroduction.Certificate.PrivateKey == nil && input.ClosedDataJoin.Certificate.PrivateKey == nil {
 		return runtimeConfig{}, errors.New("node needs one local listener profile")
 	}
 	if input.ClosedForwarding.CarrierRelayEndpoint != "" &&
@@ -63,7 +63,7 @@ func resolveConfig(input Config) (runtimeConfig, error) {
 		case "h3-np1-v1", "h3-s-v1", "h3-s-v1-strong":
 		case resource.RendezvousDedicatedHostProfile:
 			if probePlan != nil || input.Rendezvous.Certificate.PrivateKey == nil ||
-				input.Introduction.Certificate.PrivateKey != nil || input.Responder.Certificate.PrivateKey != nil || input.TransitIssuer.Certificate.PrivateKey != nil || input.ClosedIssuer.Certificate.PrivateKey != nil || input.ClosedForwarding.Certificate.PrivateKey != nil || input.ClosedResolution.Certificate.PrivateKey != nil || input.ClosedIntroduction.Certificate.PrivateKey != nil || input.ClosedDataJoin.Certificate.PrivateKey != nil {
+				input.Introduction.Certificate.PrivateKey != nil || input.TransitIssuer.Certificate.PrivateKey != nil || input.ClosedIssuer.Certificate.PrivateKey != nil || input.ClosedForwarding.Certificate.PrivateKey != nil || input.ClosedResolution.Certificate.PrivateKey != nil || input.ClosedIntroduction.Certificate.PrivateKey != nil || input.ClosedDataJoin.Certificate.PrivateKey != nil {
 				return runtimeConfig{}, errors.New("functional-alpha resource profile requires only one Rendezvous duty")
 			}
 		default:

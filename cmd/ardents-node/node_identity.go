@@ -36,12 +36,6 @@ func loadNodeIdentity(plan nodePlan, networkID [32]byte) (node.Config, error) {
 			AdmissionTimeout: time.Duration(plan.Introduction.AdmissionTimeoutMS) * time.Millisecond,
 			DrainTimeout:     time.Duration(plan.Introduction.DrainTimeoutMS) * time.Millisecond}
 	}
-	if plan.Responder != nil {
-		config.Responder = node.ResponderProfile{Certificate: certificate, HandshakeLimit: plan.Responder.HandshakeLimit,
-			RelayLimit: plan.Responder.RelayLimit, RelayByteLimit: plan.Responder.RelayByteLimit,
-			AdmissionTimeout: time.Duration(plan.Responder.AdmissionTimeoutMS) * time.Millisecond,
-			DrainTimeout:     time.Duration(plan.Responder.DrainTimeoutMS) * time.Millisecond}
-	}
 	if plan.TransitIssuer != nil {
 		config.TransitIssuer = node.TransitIssuerProfile{Root: plan.TransitIssuer.Root, Certificate: certificate,
 			ConnectionLimit: plan.TransitIssuer.ConnectionLimit, DrainTimeout: time.Duration(plan.TransitIssuer.DrainTimeoutMS) * time.Millisecond}
