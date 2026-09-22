@@ -58,10 +58,10 @@ one. A component or arithmetic pass cannot qualify the complete system.
 
 Primary sources were accessed on 2026-09-07; repository inspection used HEAD
 0dd9fc09d9cf4938132d1ac43284c144cda10e1d plus the existing design working tree.
-The disposable [TLS](../../../experiments/r-152-layered-tls/README.md),
-[arithmetic](../../../experiments/r-152-privacy-envelope/README.md) and
-[contract](../../../experiments/r-152-contract-probes/README.md) probes retain
-their predeclared checks and reproduction inputs. Captures and generated
+The TLS and arithmetic probes were retired after their unique measurements and
+limits were recorded below. Their exact historical source is commit
+[`61941f41c2b1d71700bb441115e7e98bb66c4b63`](https://github.com/dianabuilds/ardents-network/tree/61941f41c2b1d71700bb441115e7e98bb66c4b63/experiments);
+the contract probe remains at its current path. Captures and generated
 artifacts stay outside Git.
 
 Failure coverage includes colluding role observations, active delay/drop,
@@ -206,6 +206,6 @@ implemented cost, installed boundary and hostile behavior still require P1–P11
 
 Closed architecture/design selection is complete. Canonical Names, autonomous
 public authority and stronger anonymity claims remain separate future decisions.
-Current behavior belongs only in the promoted owners. Retain the three
-disposable experiments and their honest evidence limits. No maintained subsystem
+Current behavior belongs only in the promoted owners. The retained contract
+probe and this record preserve the honest evidence limits. No maintained subsystem
 or public deployment is created by this documentation change.
