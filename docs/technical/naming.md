@@ -164,7 +164,11 @@ floor effect; the [command reference](../reference/commands.md#ardents-control)
 owns that observable refusal and the retained read-only inspection route.
 Existing accepted floor bytes remain unchanged evidence, including their
 serial, digest, withdrawal, rollback, and conflict facts; intake retirement
-does not make them authority for new acceptance or fallback.
+does not make them authority for new acceptance or fallback. No maintained
+Endpoint destination consumes those floors: the historical Alpha prefix is
+recognized only for its final refusal before any floor read or resolver work.
+The parser and persistent reader remain solely as the ADR-0088 compatibility
+obligation pending a separate data-retention decision.
 
 [ADR-0088](../adr/0088-retire-alpha-service-links-and-corpus-intake.md)
 retires fresh intake and live Alpha Service Links without grace or conversion.

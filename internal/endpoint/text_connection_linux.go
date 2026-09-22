@@ -48,10 +48,14 @@ func (owner *textConnection) Open(ctx context.Context, request connection.Reques
 	if owner == nil || ctx == nil || ctx.Err() != nil || request.Destination != connection.TargetLink {
 		return nil, errors.New("text destination unavailable")
 	}
-	destination, err := targetlink.Decode(request.Value)
-	if err != nil || destination.Network != owner.context.endpoint.network {
+	target, err := owner.context.endpoint.TargetFromLink(request.Value)
+	if errors.Is(err, ErrAlphaDestinationRetired) {
+		return nil, connection.Refuse(connection.Outcome{Class: connection.ServiceUnavailable, Reason: err.Error()})
+	}
+	if err != nil {
 		return nil, errors.New("text destination unavailable")
 	}
+	destination := targetlink.Link{Network: owner.context.endpoint.network, Target: target}
 	owner.mu.Lock()
 	if owner.closed || owner.pending != nil {
 		owner.mu.Unlock()

@@ -4,6 +4,7 @@ package endpoint
 
 import (
 	"context"
+	"path/filepath"
 	"sync"
 	"testing"
 	"time"
@@ -44,6 +45,40 @@ func TestTextConnectionRequiresSeparateAuthorityAndExactDestination(t *testing.T
 		if launched {
 			t.Fatal("invalid destination started worker")
 		}
+	}
+}
+
+func TestTextConnectionRetiresAlphaDestinationBeforeEffects(t *testing.T) {
+	endpoint, principal := textContextEndpoint(t)
+	contextOwner := admittedTextContext(t, endpoint, principal, broker.Connection)
+	owner, err := contextOwner.openTextConnection()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := owner.Close(); err != nil {
+			t.Error(err)
+		}
+	})
+	path := filepath.Join(t.TempDir(), "connection.sock")
+	server, err := connection.Listen(path, owner)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := server.Close(); err != nil {
+			t.Error(err)
+		}
+	})
+	stream, err := connection.Dial(t.Context(), path, connection.Request{Destination: connection.TargetLink, Value: "ardents-alpha://retained.example"})
+	if stream != nil || err == nil || err.Error() != "service unavailable: alpha service link is retired" {
+		t.Fatalf("retired Alpha destination = (%v, %v)", stream, err)
+	}
+	contextOwner.mu.Lock()
+	launched := contextOwner.lastJob != nil
+	contextOwner.mu.Unlock()
+	if launched {
+		t.Fatal("retired Alpha destination started worker")
 	}
 }
 
