@@ -14,8 +14,7 @@ import (
 // peer. Clients send no data until ACCEPT, so an early byte or disconnection
 // refuses setup rather than becoming an unbounded optimistic input queue.
 func (server *server) openAuthorizedAttachment(local *net.UnixConn, request Request) (Stream, context.CancelFunc, error) {
-	ctx, cancel := context.WithCancel(server.ctx)
-	timer := time.AfterFunc(15*time.Second, cancel)
+	ctx, cancel := context.WithTimeout(server.ctx, 15*time.Second)
 	var mu sync.Mutex
 	finished := false
 	monitorDone := make(chan struct{})
@@ -40,15 +39,13 @@ func (server *server) openAuthorizedAttachment(local *net.UnixConn, request Requ
 		_ = local.Close()
 	}
 	<-monitorDone
-	if !timer.Stop() {
-		cancel()
-	}
 	if openErr != nil || stream == nil || ctx.Err() != nil {
+		contextErr := ctx.Err()
 		cancel()
 		if stream != nil {
 			_ = stream.Close()
 		}
-		return nil, nil, errors.Join(openErr, ctx.Err(), errors.New("local Application setup did not complete"))
+		return nil, nil, errors.Join(openErr, contextErr, errors.New("local Application setup did not complete"))
 	}
 	if err := local.SetReadDeadline(time.Time{}); err != nil {
 		cancel()

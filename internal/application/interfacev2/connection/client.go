@@ -117,7 +117,7 @@ func Dial(ctx context.Context, path string, destination Request) (Client, error)
 		if refusalErr != nil {
 			return nil, setupError(ctx, errors.New("local Application Connection is unavailable"))
 		}
-		return nil, errors.New(string(outcome.Class) + ": " + outcome.Reason)
+		return nil, setupError(ctx, SetupRefusalError{outcome: outcome})
 	}
 	_ = connection.SetDeadline(time.Time{})
 	opened := newClientWithStop(connection, stopCancellation)

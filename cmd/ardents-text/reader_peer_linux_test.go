@@ -24,6 +24,30 @@ type textReadPeer struct {
 	requestBytes atomic.Int32
 }
 
+type refusingTextReadPeer struct {
+	outcome connection.Outcome
+	opens   atomic.Int32
+}
+
+func (peer *refusingTextReadPeer) Open(_ context.Context, request connection.Request) (connection.Stream, error) {
+	if request.Destination != connection.TargetLink || request.Value != "fixture-link" {
+		return nil, errors.New("fixture refused destination")
+	}
+	peer.opens.Add(1)
+	return nil, connection.Refuse(peer.outcome)
+}
+
+type setupBlockingTextReadPeer struct{ entered chan struct{} }
+
+func (peer *setupBlockingTextReadPeer) Open(ctx context.Context, request connection.Request) (connection.Stream, error) {
+	if request.Destination != connection.TargetLink || request.Value != "fixture-link" {
+		return nil, errors.New("fixture refused destination")
+	}
+	close(peer.entered)
+	<-ctx.Done()
+	return nil, ctx.Err()
+}
+
 func textResponse(body []byte) []byte {
 	response := make([]byte, 13, 13+len(body))
 	copy(response, "ARDTXT01")

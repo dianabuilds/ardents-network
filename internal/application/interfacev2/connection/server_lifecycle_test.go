@@ -117,6 +117,33 @@ func TestSetupPeerLossCancelsOwnerAndJoinsServer(t *testing.T) {
 	}
 }
 
+type setupRefusalOwner struct{ outcome connection.Outcome }
+
+func (owner setupRefusalOwner) Open(context.Context, connection.Request) (connection.Stream, error) {
+	return nil, connection.Refuse(owner.outcome)
+}
+
+func TestDialPreservesRefusedSetupOutcome(t *testing.T) {
+	path := shortSocketPath(t)
+	server, err := connection.Listen(path, setupRefusalOwner{outcome: connection.Outcome{Class: connection.ServiceUnavailable, Reason: "selected service is unavailable"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if closeErr := server.Close(); closeErr != nil {
+			t.Error(closeErr)
+		}
+	})
+	client, err := connection.Dial(t.Context(), path, connection.Request{Destination: connection.TargetLink, Value: "ardents-target:v1:unavailable"})
+	if client != nil || err == nil {
+		t.Fatalf("refused setup = client %v, error %v", client, err)
+	}
+	var refusal connection.SetupRefusalError
+	if !errors.As(err, &refusal) || refusal.Outcome().Class != connection.ServiceUnavailable || refusal.Outcome().Reason != "selected service is unavailable" {
+		t.Fatalf("refused setup lost its outcome: %v", err)
+	}
+}
+
 func TestServerRefusesCleanTerminalWhenApplicationCleanupFails(t *testing.T) {
 	failure := errors.New("cleanup failed")
 	stream := &waitingStream{closed: make(chan struct{}), done: make(chan connection.Outcome, 1), closeErr: failure}
