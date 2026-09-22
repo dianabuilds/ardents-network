@@ -145,12 +145,15 @@ accumulate stale exemptions. `make check` includes this audit.
 
 The dedicated Initiator closure audit removed the production-dead Entry
 admission engine, receiving relay grammar, and direct credential/reachability
-OHTTP adapters. Its architecture oracle requires those files and declarations
-to remain absent while naming the sender declarations retained for User Route.
-Endpoint and Node behavior tests use test-local reciprocal fixtures; those
-fixtures are evidence for the retained sender behavior, not production receiver
-reachability. Shared sender codec leaves and the standalone reachability Relay
-remain exactly classified under their existing owners in the deadcode registry.
+OHTTP adapters. The User Route closure oracle additionally requires the
+uncalled Open/Attach owner, private reachability exchange, and exclusive relay
+and Introduction sender files and declarations to remain absent. It also names
+the shared Attachment evidence and current Introduction receiver surfaces that
+must remain. Endpoint and Node behavior tests may use bounded test-local
+reciprocal fixtures; those fixtures do not restore production reachability.
+Shared credential-relay codec leaves and the standalone reachability Relay
+remain exactly classified under their current consumers in the deadcode
+registry.
 
 The old Node-leg dial, TCP/QUIC client adapters, and client confirmation
 entrypoint are absent. The retained reciprocal decoder remains in its exact

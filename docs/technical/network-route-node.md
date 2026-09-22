@@ -116,9 +116,11 @@ The remaining Rendezvous and Transit-issuance engines are owned by separate
 bounded deletion slices.
 The adjacent production-dead Initiator Entry admission, receiving relay grammar,
 and direct OHTTP forwarding adapters have been deleted by their dedicated
-closure audit. Retained User Route sender codecs and the standalone reachability
-Relay remain with their actual owners; test-local reciprocal fixtures do not
-restore a production receiving path.
+closure audit. The later User Route closure audit also removed the uncalled
+Open/Attach owner, its private reachability exchange, and its exclusive relay
+and Introduction sender orchestration. Shared credential-relay grammar and the
+standalone reachability Relay remain with their actual consumers; test-local
+reciprocal fixtures do not restore a production receiving path.
 The old Node-leg dial and client confirmation entrypoint are also absent.
 Shared Carrier profiles, the reciprocal decoder, listeners, TLS/QUIC
 mechanics, and closed Node Carrier behavior remain current.
@@ -145,7 +147,7 @@ supported forward contract.
 | internal/network/duty | Persist the Endpoint-local Role Domain generation, watermark, expiry, conflict truth, and receiving-Node one-use Transit Grant spend ledger. | Network State publication, assignment creation, Route ownership, issuer custody, or Node process lifecycle. |
 | internal/resource | Resolve the current process's own cgroup-v2 directory, measure selected Linux process limits, and make the finite NORMAL, PROTECT, or DRAIN pressure decision. | Admission, listener shutdown, or a claim for unsupported platforms. |
 | internal/entry | Import and validate a signed State-referenced Entry Invite, maintain its bounded durable replay/replacement set, preserve decoding of retired admission history, and open an adjacent contact lifecycle. Local import verifies the signed recipient against its retained Entry-root recipient identity before consuming a slot or replacing a predecessor; no Initiator receiving admission engine remains. | Complete Route selection, receiving Entry admission, carrier choice, or User identity. |
-| internal/route | Retain the native Interactive User-route owner behind `Open`/`Attach`/`Close`, currently with no non-test caller after v1 participant retirement, and implement the closed v3 Node Carrier/wire used by `internal/node` through `OpenClosedNodeCarrier`. The [package map](../development/package-map.md) records the exact consumer boundary. | Treating the retained User-route implementation as a maintained product path or successor-network readiness; candidate ranking, carrier policy/fallback, H3 compatibility, peer runtime, Node profile, or durable State/Duty/credential-journal writing. |
+| internal/route | Implement the closed v3 Node Carrier/wire used by `internal/node` through `OpenClosedNodeCarrier` and retain only shared Attachment evidence, admission, listener, credential-relay, and wire mechanisms with current consumers. The production-dead Interactive User Route v2 Open/Attach owner is absent. The [package map](../development/package-map.md) records the exact consumer boundary. | Reintroducing the removed User-route composition as a maintained product path or treating its removal as successor-network readiness; candidate ranking, carrier policy/fallback, H3 compatibility, peer runtime, Node profile, or durable State/Duty/credential-journal writing. |
 | internal/node | Run one bounded Contributor duty from authenticated admission through listener readiness, pressure reaction, drain, withdrawal, and a bounded terminal cleanup outcome. | State-root authority, assignment creation, or a separate probe runtime. |
 | internal/contributor | Own the one pinned-bundle, fixed-path systemd lifecycle for the dedicated Rendezvous installation. | Duty selection, Network State authority, public admission, co-residence, arbitrary service control, or capacity claims. |
 
@@ -185,23 +187,19 @@ one signed v2 Invite to a fresh User-to-Initiator TLS attempt key. Node-to-Node
 LegBinding and SealedIntroduction have fixed binary records; State/publication
 select supported generations, not a Node or peer value. The profile has no H3
 reader, direct fallback, generic record map, or version-negotiation path.
-The retained User Route sends EntryBinding and relay setup/envelopes and decodes
-their ready/results. Production Initiator-side binding admission, reciprocal
-relay reads/writes, and direct OHTTP forwarding are absent.
+The production-dead Interactive User Route v2 Open/Attach owner and its
+EntryBinding, private reachability, relay-setup, sealed-Introduction sender, and
+volatile composition paths are absent. This removes no shared listener,
+Endpoint-transit admission, credential-relay grammar, closed Source prefix, or
+current Node Carrier consumer and selects no successor wire.
 
-Route owns volatile User-route composition and cleanup. It reserves caller
-capacity before reading State, then obtains only State's exact Gateway,
-Initiator, and issuer facts; carries private reachability through Entry;
-verifies the Descriptor against the authenticated Target; and uses its exact
-Introduction/Rendezvous slot to return an opaque Attachment and immutable
-evidence to Service Connection. Endpoint owns Service-Link/capability binding
-and its durable credential journal through a narrow callback; it cannot choose
-a Route carrier or peer. Service Connection, not Route, decides whether an
-attachment must be replaced. Entry may retain replay and adjacent-contact state
-but cannot construct a complete Route from that state. Caller and Route
-shutdown may race to close one active Attachment; all closers join the same
-terminal cleanup, receive the same result, and cannot reuse the carrier after
-close begins.
+The retained Attachment is a small shared authenticated-connection value, not
+a complete Route plan or a composition owner. It delegates the existing
+`net.Conn` contract, exposes immutable evidence, and publishes one cleanup
+result to concurrent closers. No production constructor or accepting startup
+for the removed User Route is retained. Endpoint continues to own its durable
+credential journal, Entry retains replay and adjacent-contact state, and
+Service Connection owns replacement decisions through its own attachment type.
 
 Entry owns every carrier/attachment cleanup lease returned by `Acquire`. Its
 owner rejects new acquisition as soon as close begins, cancels and joins an

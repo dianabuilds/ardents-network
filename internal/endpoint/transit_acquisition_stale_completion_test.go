@@ -6,15 +6,12 @@ import (
 	"crypto/ed25519"
 	"crypto/rand"
 	"errors"
-	"net"
 	"path/filepath"
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/credential"
-	"github.com/dianabuilds/ardents-network/internal/service/reachability"
 )
 
 func TestTransitCredentialLifecycleIgnoresStaleIssuerOutcomes(t *testing.T) {
@@ -129,77 +126,4 @@ func TestTransitAcquisitionRejectsStaleReadyPresentation(t *testing.T) {
 		!bytes.Equal(state.Grant, thirdGrant) || len(state.PrivateKey) == 0 {
 		t.Fatalf("stale ready-to-present transition changed the third acquisition: %+v", state)
 	}
-}
-
-func TestPublisherAndUserShareOneIntroductionCompletionOwner(t *testing.T) {
-	fixture := openUserRouteCredentialFixture(t, route.IntroductionDelivered)
-	defer fixture.close()
-	introductionRelay := fixture.entry.handlers[2]
-	fixture.entry.handlers = []func(net.Conn) error{fixture.resolutionRelay, fixture.resolutionRelay, fixture.credentialRelay, introductionRelay}
-	fixture.entryCalls = len(fixture.entry.handlers)
-	deadline := fixture.now.Add(15 * time.Second)
-	publisherEntry := &userRouteCredentialEntry{contact: fixture.entry.contact, handlers: []func(net.Conn) error{
-		fixture.credentialRelay, fixture.credentialRelay,
-	}, errs: make(chan error, 2)}
-	publisherView := userRoutePublisherView{userRouteCredentialState: fixture.view, attachment: state.PublisherAttachment{
-		NetworkID: fixture.network, Digest: fixture.view.epoch.Digest, Epoch: fixture.view.epoch.Number, NotAfter: deadline,
-		Introduction: state.PublisherTransitPeer{NodeID: fixture.view.introduction.NodeID, PublicKey: fixture.view.introduction.PublicKey,
-			Family: [32]byte{91}, Endpoint: fixture.view.introduction.Endpoint},
-		Rendezvous: state.PublisherTransitPeer{NodeID: fixture.view.rendezvous.NodeID, PublicKey: fixture.view.rendezvous.PublicKey,
-			Family: [32]byte{92}, Endpoint: fixture.view.rendezvous.Endpoint},
-		Responder: state.PublisherTransitPeer{NodeID: [32]byte{93}, PublicKey: [32]byte{94}, Family: [32]byte{95}, Endpoint: "127.0.0.1:3"},
-	}}
-	publisher, err := fixture.endpoint.acquirePublisherProfile(t.Context(), publisherView, publisherEntry, fixture.credential, fixture.now)
-	if err != nil {
-		t.Fatal(err)
-	}
-	publisherEntry.wait(t, 2)
-	firstRequestID := fixture.endpoint.transitAcquire.introduction.stateForTest().RequestID
-	if _, err := fixture.route.Attach(t.Context(), route.Intent{Target: fixture.target}); err == nil {
-		t.Fatal("User replacement did not refuse the live Publisher Introduction attempt")
-	}
-	attachment, err := fixture.route.Attach(t.Context(), route.Intent{Target: fixture.target})
-	if err != nil || attachment == nil {
-		t.Fatalf("User successor attachment = %v, %v", attachment, err)
-	}
-	if err := attachment.Close(); err != nil {
-		t.Fatal(err)
-	}
-	fixture.wait(t)
-	current := fixture.endpoint.transitAcquire.introduction.stateForTest()
-	if current.Phase != transitSpent || current.RequestID == firstRequestID {
-		t.Fatalf("User successor did not own the spent Introduction attempt: %+v", current)
-	}
-	if err := publisher.credentials.introduction(true); !errors.Is(err, errTransitAcquisitionStale) {
-		t.Fatalf("late Publisher Introduction completion = %v, want stale-attempt rejection", err)
-	}
-	if state := fixture.endpoint.transitAcquire.introduction.stateForTest(); state.Phase != transitSpent || state.RequestID != current.RequestID {
-		t.Fatalf("late Publisher completion changed User result: %+v", state)
-	}
-	if err := publisher.credentials.responder(false); err != nil {
-		t.Fatalf("Publisher Responder cleanup = %v", err)
-	}
-
-	exhaustedEntry := &userRouteCredentialEntry{contact: fixture.entry.contact, handlers: []func(net.Conn) error{fixture.credentialRelay}, errs: make(chan error, 1)}
-	slot := reachability.Introduction{StateDigest: fixture.view.epoch.Digest, Epoch: fixture.view.epoch.Number,
-		IntroductionNodeID: fixture.view.introduction.NodeID, RendezvousNodeID: fixture.view.rendezvous.NodeID,
-		NotAfter: deadline, SubmissionMode: reachability.SubmissionMembershipGrant}
-	_, err = fixture.endpoint.acquireTransitCredential(t.Context(), fixture.view, fixture.view.epoch, exhaustedEntry,
-		transitPeer{NodeID: fixture.view.initiator.NodeID, PublicKey: fixture.view.initiator.PublicKey, Family: fixture.entry.contact.FamilyID, Endpoint: fixture.view.initiator.Endpoint},
-		transitPeer{NodeID: fixture.view.introduction.NodeID, PublicKey: fixture.view.introduction.PublicKey, Family: [32]byte{91}, Endpoint: fixture.view.introduction.Endpoint},
-		route.IntroductionRole, slot, fixture.now, deadline)
-	exhaustedEntry.wait(t, 1)
-	var outcome transitAcquisitionOutcomeError
-	if !errors.As(err, &outcome) || outcome.outcome != credential.Exhausted {
-		t.Fatalf("fourth issuer request = %v, want finite-budget exhaustion", err)
-	}
-}
-
-type userRoutePublisherView struct {
-	userRouteCredentialState
-	attachment state.PublisherAttachment
-}
-
-func (view userRoutePublisherView) PublisherAttachment(time.Time, time.Time) (state.PublisherAttachment, bool) {
-	return view.attachment, true
 }

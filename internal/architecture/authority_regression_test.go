@@ -155,7 +155,6 @@ func TestMaintainedTruthDoesNotClaimUnownedCompositionOrUnprovenCleanup(t *testi
 	}{
 		{"docs/technical/naming.md", []string{"production Gateway or Resolver path", "Production Resolution consumes"}},
 		{"docs/technical/network-route-node.md", []string{"listener's start snapshot identifies"}},
-		{"internal/route/route.go", []string{"returns one atomic current fact", "Once Close returns, no Route selection or resource"}},
 		{"internal/route/native_attachment.go", []string{"Close releases the authenticated Entry attempt"}},
 		{"internal/node/lifecycle.go", []string{"returns only after terminal cleanup"}},
 	}

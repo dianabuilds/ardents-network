@@ -37,8 +37,8 @@ func TestRetiredInitiatorEngineIsAbsent(t *testing.T) {
 	if strings.Contains(identity, "config.Initiator") {
 		t.Error("command composition still constructs the retired Initiator engine profile")
 	}
-	relayIO := string(readProjectFile(t, root, "internal/route/relay_setup_io.go"))
-	if strings.Contains(relayIO, "ReadEntryOperation") {
+	entryAttachment := string(readProjectFile(t, root, "internal/route/entry_attachment.go"))
+	if strings.Contains(entryAttachment, "ReadEntryOperation") {
 		t.Error("Route still exposes the retired Initiator-only entry-operation dispatcher")
 	}
 }

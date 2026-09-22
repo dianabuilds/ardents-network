@@ -7,6 +7,16 @@ import (
 	"time"
 )
 
+// Evidence is the immutable, verified fact retained with one legacy native
+// Attachment. It exposes no State selection or credential data.
+type Evidence struct {
+	AuthenticatedTarget [32]byte
+	AuthorityPublic     [32]byte
+	Publication         []byte
+	Generation          uint64
+	AttachmentID        [32]byte
+}
+
 // Attachment is one admitted, fully authenticated User Route byte carrier.
 // It owns the Entry cleanup and Route resource release exactly once while the
 // caller receives only net.Conn and immutable post-verification Evidence.
@@ -16,7 +26,6 @@ type Attachment struct {
 
 	mu     sync.Mutex
 	close  func() error
-	finish func(error)
 	done   chan struct{}
 	result error
 }
@@ -61,23 +70,13 @@ func (attachment *Attachment) Close() error {
 		attachment.mu.Unlock()
 		return errors.New("user Route attachment is unavailable")
 	}
-	cleanup, finish := attachment.close, attachment.finish
+	cleanup := attachment.close
 	attachment.done = make(chan struct{})
 	attachment.connection, attachment.close = nil, nil
 	attachment.mu.Unlock()
 	result := cleanup()
-	if finish != nil {
-		finish(result)
-	} else {
-		attachment.publish(result)
-	}
+	attachment.publish(result)
 	return result
-}
-
-func (attachment *Attachment) bindCompletion(finish func(error)) {
-	attachment.mu.Lock()
-	attachment.finish = finish
-	attachment.mu.Unlock()
 }
 
 func (attachment *Attachment) publish(result error) {
