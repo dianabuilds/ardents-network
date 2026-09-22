@@ -49,8 +49,8 @@ func resolveConfig(input Config) (runtimeConfig, error) {
 			return runtimeConfig{}, err
 		}
 	}
-	if probePlan == nil && input.Rendezvous.Certificate.PrivateKey == nil &&
-		input.ClosedIssuer.Certificate.PrivateKey == nil && input.ClosedForwarding.Certificate.PrivateKey == nil && input.ClosedResolution.Certificate.PrivateKey == nil && input.ClosedIntroduction.Certificate.PrivateKey == nil && input.ClosedDataJoin.Certificate.PrivateKey == nil {
+	if probePlan == nil && input.ClosedIssuer.Certificate.PrivateKey == nil && input.ClosedForwarding.Certificate.PrivateKey == nil &&
+		input.ClosedResolution.Certificate.PrivateKey == nil && input.ClosedIntroduction.Certificate.PrivateKey == nil && input.ClosedDataJoin.Certificate.PrivateKey == nil {
 		return runtimeConfig{}, errors.New("node needs one local listener profile")
 	}
 	if input.ClosedForwarding.CarrierRelayEndpoint != "" &&
@@ -61,11 +61,6 @@ func resolveConfig(input Config) (runtimeConfig, error) {
 	if enforcePressure {
 		switch input.ResourceProfile {
 		case "h3-np1-v1", "h3-s-v1", "h3-s-v1-strong":
-		case resource.RendezvousDedicatedHostProfile:
-			if probePlan != nil || input.Rendezvous.Certificate.PrivateKey == nil ||
-				input.ClosedIssuer.Certificate.PrivateKey != nil || input.ClosedForwarding.Certificate.PrivateKey != nil || input.ClosedResolution.Certificate.PrivateKey != nil || input.ClosedIntroduction.Certificate.PrivateKey != nil || input.ClosedDataJoin.Certificate.PrivateKey != nil {
-				return runtimeConfig{}, errors.New("functional-alpha resource profile requires only one Rendezvous duty")
-			}
 		default:
 			return runtimeConfig{}, errors.New("node resource profile is not supported")
 		}
@@ -141,17 +136,7 @@ func assessAdmission(config runtimeConfig, snapshot dutyFacts) admission {
 		return admission{kind: admissionReady}
 	}
 	if snapshot.Profile == route.Profile {
-		if err := validateNativeDutyProfile(config, snapshot); err != nil {
-			return admission{kind: admissionPrepared, reason: err.Error()}
-		}
-		if snapshot.Conflicting || !snapshot.Fresh || now.Before(snapshot.EpochValidFrom) ||
-			now.Before(snapshot.RecordValidFrom) || !now.Before(snapshot.ValidUntil) || !now.Before(snapshot.RecordValidUntil) {
-			return admission{kind: admissionPrepared, reason: "freshness or validity is not satisfied"}
-		}
-		if err := config.CheckPlacement(); err != nil {
-			return admission{kind: admissionPrepared, reason: "resource placement is not ready: " + boundedReason(err)}
-		}
-		return admission{kind: admissionReady}
+		return admission{kind: admissionPrepared, reason: nativeRouteUnavailableReason}
 	}
 	if snapshot.Profile != "h3-role-probe-v1" || snapshot.Assignment == "" || snapshot.ProbeCapacity == 0 {
 		return admission{kind: admissionPrepared, reason: "profile or deterministic assignment is inactive"}

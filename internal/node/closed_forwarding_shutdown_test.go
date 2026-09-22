@@ -17,8 +17,8 @@ import (
 // inner TLS handler, Stop and Drain are the real production path.
 func TestClosedForwardingStopDrainsIdleAuthenticatedCarrier(t *testing.T) {
 	fixture := newClosedBootstrapFixture(t)
-	certificate, key := rendezvousCertificate(t, 231, "forwarding-stop-server")
-	peerCertificate, peerKey := rendezvousCertificate(t, 232, "forwarding-stop-peer")
+	certificate, key := nodeCertificate(t, 231, "forwarding-stop-server")
+	peerCertificate, peerKey := nodeCertificate(t, 232, "forwarding-stop-peer")
 	fixture.snapshot.ProbeEndpoint = reserveAddress(t)
 	fixture.snapshot.CarrierProfile = string(route.ClosedCarrierTCP)
 	fixture.snapshot.NodePublicKey = key

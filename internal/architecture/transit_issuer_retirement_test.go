@@ -38,10 +38,6 @@ func TestRetiredTransitIssuerReceivingEngineIsAbsent(t *testing.T) {
 	if strings.Contains(server, `case "transit-issuance":`) || strings.Contains(server, "startTransitIssuer") {
 		t.Error("Node duty dispatch still starts the retired Transit issuer engine")
 	}
-	nativeDuty := string(readProjectFile(t, root, "internal/node/native_duty.go"))
-	if strings.Contains(nativeDuty, `case "transit-issuance":`) || strings.Contains(nativeDuty, "validateTransitIssuerProfile") {
-		t.Error("Node duty validation still admits the retired Transit issuer engine")
-	}
 	identity := string(readProjectFile(t, root, "cmd/ardents-node/node_identity.go"))
 	if strings.Contains(identity, "config.TransitIssuer") {
 		t.Error("command composition still constructs the retired Transit issuer engine profile")

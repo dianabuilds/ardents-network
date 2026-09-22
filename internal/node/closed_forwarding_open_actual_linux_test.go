@@ -44,8 +44,8 @@ func testClosedForwardingOpenActualCarrierOutcome(t *testing.T, profile route.Ca
 		fixture.snapshot.Candidates[index].ValidUntil = fixture.view.Profile.NotAfter
 		fixture.snapshot.Candidates[index].AssignmentNotAfter = fixture.view.Profile.NotAfter
 	}
-	clientCertificate, clientKey := rendezvousCertificate(t, 276, "forwarding-open-client")
-	peerCertificate, peerKey := rendezvousCertificate(t, 277, "forwarding-open-peer")
+	clientCertificate, clientKey := nodeCertificate(t, 276, "forwarding-open-client")
+	peerCertificate, peerKey := nodeCertificate(t, 277, "forwarding-open-peer")
 	endpoint := closedForwardingActualCarrierEndpoint(t, profile)
 	fixture.snapshot.Candidates[1].Endpoint = endpoint
 	fixture.snapshot.Candidates[1].CarrierProfile = string(profile)
@@ -235,6 +235,9 @@ func testClosedForwardingOpenActualCarrierOutcome(t *testing.T, profile route.Ca
 		t.Fatal(err)
 	}
 	workers.Wait()
+	if err := server.sessions.joinedResult(); err != nil {
+		t.Fatal(err)
+	}
 	server.sessions.mu.Lock()
 	pending, published := len(server.sessions.pending), len(server.sessions.sessions)
 	server.sessions.mu.Unlock()

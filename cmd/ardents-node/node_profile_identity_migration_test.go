@@ -12,7 +12,7 @@ import (
 )
 
 func TestNodePlanReaderRefusesDedicatedHostProfilesForOldDuty(t *testing.T) {
-	certificatePath, keyPath, nodeID := writeRendezvousListenCredential(t)
+	certificatePath, keyPath, nodeID := writeNodeCredential(t)
 	rootA := writeNodeProfileInput(t, "source-a.pem", "source A root")
 	rootB := writeNodeProfileInput(t, "source-b.pem", "source B root")
 	for _, profile := range []string{"ardents-rendezvous-dedicated-host-v1", "h4-5-rendezvous-alpha-v1"} {
@@ -48,7 +48,7 @@ func TestNodePlanReaderRefusesDedicatedHostProfilesForOldDuty(t *testing.T) {
 }
 
 func TestNodePlanSelectsClosedProfileOnlyForPinnedClosedIssuer(t *testing.T) {
-	certificatePath, keyPath, nodeID := writeRendezvousListenCredential(t)
+	certificatePath, keyPath, nodeID := writeNodeCredential(t)
 	rootA := writeNodeProfileInput(t, "source-a.pem", "source A root")
 	rootB := writeNodeProfileInput(t, "source-b.pem", "source B root")
 	plan := nodePlan{sourceServerPlan: sourceServerPlan{Schema: "ardents-node-plan-v1", StateRoot: t.TempDir(), LocalRoleStateRoot: t.TempDir(),

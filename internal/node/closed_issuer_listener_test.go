@@ -20,7 +20,7 @@ import (
 func TestRunServesClosedIssuerThenDrainsOnClosedProfileSuccessor(t *testing.T) {
 	now := time.Now().UTC().Truncate(time.Second)
 	until := now.Truncate(time.Hour).Add(time.Hour)
-	certificate, public := rendezvousCertificate(t, 211, "closed-issuer")
+	certificate, public := nodeCertificate(t, 211, "closed-issuer")
 	network, issuerID := [32]byte{41}, [32]byte{42}
 	generation, digest := sha256.Sum256([]byte("closed node generation")), sha256.Sum256([]byte("closed node digest"))
 	root := closedIssuerFixtureRoot(t)

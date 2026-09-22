@@ -107,7 +107,7 @@ func runIssuerNode(ctx context.Context, path string, output io.Writer) error {
 }
 
 func validateIssuerRuntime(runtime nodeRuntime) error {
-	if runtime.node.ClosedIssuer.Root == "" || runtime.node.Rendezvous.Certificate.PrivateKey != nil {
+	if runtime.node.ClosedIssuer.Root == "" {
 		return errors.New("issuer serve requires exactly one isolated issuer reservation")
 	}
 	return nil

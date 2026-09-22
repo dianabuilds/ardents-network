@@ -56,7 +56,7 @@ func newClosedBootstrapNetwork(t *testing.T, carrier route.CarrierProfile) *clos
 	certificates := [3]tls.Certificate{}
 	keys := [3][32]byte{}
 	for index := range certificates {
-		certificates[index], keys[index] = rendezvousCertificate(t, int64(161+index), fmt.Sprintf("bootstrap-%d", index))
+		certificates[index], keys[index] = nodeCertificate(t, int64(161+index), fmt.Sprintf("bootstrap-%d", index))
 	}
 	issuerRoot := filepath.Join(t.TempDir(), "issuer")
 	receipt, err := credential.InitializeClosedIssuerRoot(credential.ClosedIssuerRootConfig{Root: issuerRoot, NetworkID: profile.NetworkID,

@@ -116,7 +116,6 @@ type Config struct {
 	IdentityKey          ed25519.PrivateKey
 	Current              func() (DutyView, error)
 	Probe                ProbeConfig
-	Rendezvous           RendezvousProfile
 	ClosedIssuer         ClosedIssuerProfile
 	// ClosedForwarding supplies the isolated receiving spend journal and Node
 	// TLS key for an accepted generation-3 adjacent/interior forwarding duty.
@@ -145,22 +144,6 @@ type Config struct {
 	CheckPlacement  func() error
 	// Emit must honor ctx cancellation and return before its deadline.
 	Emit func(context.Context, Event) error
-}
-
-// RendezvousProfile contains the local cryptographic material and explicit
-// finite reservations used to materialize one State-assigned Rendezvous duty.
-// State supplies the listener, epoch, peers, identities, and expiry; this
-// profile never discovers or selects them.
-type RendezvousProfile struct {
-	// LoopbackListenOverride is an optional operational bind Adapter. State
-	// remains authoritative for the advertised endpoint; an override may only
-	// replace its host with a literal loopback address at the same port.
-	LoopbackListenOverride                  string
-	Certificate                             tls.Certificate
-	HandshakeLimit, WaitingLimit, PairLimit uint16
-	PairByteLimit                           uint64
-	AdmissionTimeout                        time.Duration
-	DrainTimeout                            time.Duration
 }
 
 // ClosedIssuerProfile contains the isolated RSA-PSS issuer root and bounded
