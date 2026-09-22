@@ -1,14 +1,15 @@
 ---
-status: accepted; browser-presentation portion superseded by ADR-0045
+status: partially superseded by ADR-0045 and ADR-0088
 date: 2026-08-25
+partially-superseded-by: ADR-0045 (browser presentation); ADR-0088 (live Alpha Service Link and corpus replacement)
 ---
 
 # ADR-0040 — Keep named alpha outside the canonical Namespace
 
-**Supersession note:** the finite alpha-corpus and non-Namespace decisions in
-this ADR remain accepted. Its former explicit-loopback browser presentation
-was superseded by ADR-0045's Firefox-only no-port `.ard` path; it remains only
-historical compatibility evidence.
+**Supersession note:** the finite corpus identity, non-Namespace boundary, and
+no-fallback rule remain accepted. ADR-0045 superseded the browser presentation.
+ADR-0088 supersedes live Alpha Service Link resolution and corpus replacement;
+those portions remain historical compatibility evidence.
 
 ## Context
 

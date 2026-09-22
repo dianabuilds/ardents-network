@@ -79,6 +79,7 @@ Current decisions:
 
 Completed retirement decisions:
 
+- [0088 — Retire Alpha Service Links and fresh corpus intake](0088-retire-alpha-service-links-and-corpus-intake.md)
 - [0029 — Retire Update V0 custody evidence by owned root migration](0029-retire-update-v0-custody-evidence.md)
 - [0030 — Retire Update V0 as an unobserved test format](0030-retire-update-v0-as-test-format.md)
 - [0059 — Retire fixed historical candidate assembly](0059-retire-fixed-alpha-candidate-assembly.md)

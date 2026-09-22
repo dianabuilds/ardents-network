@@ -158,14 +158,17 @@ Target Links remain the complete current destination path.
 
 ## Alpha corpus compatibility
 
-The Alpha Name Corpus remains a separately authenticated local overlay; it is
-not canonical Namespace state. The maintained
-[command reference](../reference/commands.md#ardents-control) owns the corpus
-inspection and acceptance routes. Accepted serials and control/corpus floors
-remain authoritative: an exact repeat is harmless, a higher serial may replace
-the current corpus, and lower or same-serial conflicting bytes are rejected.
-An authenticated total withdrawal makes alpha resolution unavailable without
-restoring older bytes or falling back to another destination.
+The Alpha Name Corpus is a separately authenticated historical local overlay;
+it is not canonical Namespace state. Until the selected retirement is
+integrated, the [command reference](../reference/commands.md#ardents-control)
+describes the currently present corpus commands and accepted floors retain
+their existing monotonic rules. An authenticated total withdrawal makes alpha
+resolution unavailable without restoring older bytes or falling back.
+
+[ADR-0088](../adr/0088-retire-alpha-service-links-and-corpus-intake.md)
+retires fresh intake and live Alpha Service Links without grace or conversion.
+The [Endpoint contract](endpoint-service-runtime.md#alpha-destination-retirement)
+owns the refusal order and retained-floor boundary.
 
 There is no current C0 participant intake procedure or promoted corpus download
 source. Fresh C0 Endpoint plans use Target Links; the complete historical alpha
