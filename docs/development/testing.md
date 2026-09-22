@@ -471,6 +471,21 @@ confirmed remove recognized. The exact now-unreachable Apply closure and its
 consumer-audit deletion condition are listed in the production deadcode
 registry; its behavior tests do not make either command route accepting.
 
+The `ardents name resolve/control` retirement oracle submits both recognized
+command shapes, including absent inputs and incomplete remaining arguments,
+through the real command dispatch. The complete inputs first exercise the
+former Resolution and control clients against a recovered authenticated State
+root, a committed Namespace root, and live Relay/Gateway handlers. Every
+retired command case returns the exact refusal with no output; a recording
+default transport observes zero attempts, and all files in those same State
+and Namespace roots remain byte-for-byte unchanged. Local canonical
+`name encode` retains its exact byte vector. Removing the command-only
+HTTP/OHTTP adapters makes the exact private Resolution and adjacent Namespace
+verification closure production-dead; ADR-0090 retains it as uncomposed module
+and compatibility evidence pending a separate package/data-consumer audit, so
+every newly unreachable symbol and its deletion condition are recorded in the
+common deadcode registry rather than reconnected to a command.
+
 The Contributor no-start recovery oracle drives authentic active-current,
 inactive-current, and interrupted-predecessor fixtures through public
 `Profile.Control`, plus incomplete residue and a foreign persisted profile.

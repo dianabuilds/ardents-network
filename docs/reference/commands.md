@@ -35,8 +35,8 @@ configuration format or an authority source.
 | `entry recipient <entry-import-plan.json>` | Create or reopen the Entry-owned root as needed and print the retained public recipient key for the offline issuer. It never exports the private TLS key or mutates an Invite slot. |
 | `entry import <entry-import-plan.json>` | Import one signed State-referenced Entry Invite into Entry-owned durable replay and replacement state. It returns `wrong-recipient` without mutating that state when the signed recipient does not match the root's retained recipient identity. |
 | `name encode <name>` | Print one canonical Service Name wire encoding as lowercase hexadecimal. |
-| `name resolve <input-file> <name> <context-hex>` | Selected for retirement but not yet integrated: return an operator-readable refusal at command dispatch before reading input, opening State, constructing or using HTTP/OHTTP transport, writing output, or changing Namespace state. |
-| `name control <input-file> <operation-file> <context-hex>` | Selected for retirement but not yet integrated at the same effect-free boundary as `name resolve`; no control operation, Namespace mutation, migration, or fallback is selected. |
+| `name resolve <input-file> <name> <context-hex>` | Return `name network command is retired; protected Service Name access is not selected` at command dispatch before validating the remaining arguments, reading input, opening State, constructing or using HTTP/OHTTP transport, writing output, or changing Namespace state. |
+| `name control <input-file> <operation-file> <context-hex>` | Return the same retirement refusal at command dispatch before validating the remaining arguments or reading the operation; no control operation, Namespace mutation, migration, or fallback is selected. |
 
 `endpoint headless` refuses `ardents-headless-runtime-v1` before opening any
 plan-owned runtime resource. The exact refusal and retained-data boundary are
@@ -56,9 +56,9 @@ The old Name operator network adapters have their own selected
 [retirement boundary](../technical/naming.md#operator-name-network-command-retirement).
 Their retirement preserves local `name encode`, canonical Namespace
 lifecycle/proofs, custody, and existing evidence; it does not deliver protected
-Service Name access. Until the separate runtime slice is integrated, the table
-records the accepted transition rather than claiming the current binary already
-enforces it.
+Service Name access. The command dispatch now enforces the refusal, and the
+command-owned HTTP/OHTTP plan, State-view, receipt, and operation adapters are
+absent. The retained resolution Module is not a production operator route.
 
 The current State and source event schemas are coordinated C0 command outputs:
 there is no H3 reader or compatibility window. Resource observations are
