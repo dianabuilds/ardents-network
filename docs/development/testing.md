@@ -450,6 +450,15 @@ Introduction retirement oracle also keeps the current
 `startClosedIntroduction` dispatch present rather than treating the shared
 domain term as a retired symbol.
 
+The `ardents-node source --config` retirement oracle submits old-only and
+mixed old/closed `native_rendezvous_profile` plans through the real command
+adapter. Both return `old Source profile is retired` with no output while the
+deliberately absent State and local-role roots remain absent; deliberately
+missing TLS inputs also prove the refusal precedes key access and listener
+creation. The closed Source process test independently starts the explicit
+`ardents-route-v3` profile with its previously pinned signer and verifies the
+same signed State bytes through the real Source transport.
+
 The `ardents-node contributor` start-retirement oracle submits recognized
 `apply` and `restart` command shapes through the real command adapter. Both
 must return `old Contributor start is retired` with no output before platform

@@ -30,7 +30,7 @@ and the headless command inventory under tests/profiles.
 | ardents | accept-offline, refresh-sources; service-instance initialize/accept; endpoint enrollment-check/enroll/enroll-installed/headless/publish/withdraw/user-unit/installed-user-unit/replace/replacement-recovery/rollback; entry recipient/import | keep |
 | ardents | endpoint replacement-self-test | keep internal-only; invoked by the replacement controller, not an operator route |
 | ardents | name encode/resolve/control | deepen/research: keep current evidence, but later recompose naming access behind the selected Application product boundary rather than expanding direct operator input |
-| ardents-node | source, node with closed reservations, issuer initialize/serve, contributor diagnose/drain/withdraw/remove | keep; old Node duty reservations and Contributor start inputs retired |
+| ardents-node | source (including the explicit current closed profile), node with closed reservations, issuer initialize/serve, contributor diagnose/drain/withdraw/remove | keep; old Source selector, Node duty reservations and Contributor start inputs retired |
 | ardents-control | inspect-bundle, inspect-transitions, inspect-alpha-corpus | keep |
 | ardents-custody | create-service-authority, issue-service-credential, inspect-envelope, verify-record, export-recovery-bundle, restore-recovery-bundle, purge-record | keep |
 
@@ -50,6 +50,7 @@ qualification owner and are rejected:
 | ardents-state-custody initialize-alpha-genesis | completed fixed functional-alpha genesis ceremony; retired by ADR-0067 |
 | ardents endpoint headless with `ardents-headless-runtime-v1` | retired startup schema; refused before plan-owned runtime effects without converting retained roots or floors |
 | ardents endpoint open | retired generic AAI2 route; the exact legacy syntax returns `endpoint open is retired` before effects, and its codec/server/client plus exclusive Endpoint adapter are absent |
+| ardents-node source with `native_rendezvous_profile` | retired old Source profile selector; the retained field returns `old Source profile is retired` before trust-map, root, key, listener, output, or Network effects, including mixed old/current input |
 | ardents-node node with `rendezvous`, `initiator`, `introduction`, `responder`, or `transit_issuer` reservation | retired old duty starts; the v1 plan schema and separately named closed reservations remain, while each old selector returns a stable typed refusal before plan-owned runtime effects |
 | ardents-node contributor `apply` or `restart` | retired old Contributor starts; their recognized command shapes return a stable refusal before platform, bundle, installation, supervisor, output, or Network effects; retirement-only diagnose/drain/withdraw/remove remain |
 

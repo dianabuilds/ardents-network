@@ -51,7 +51,7 @@ func TestClosedSourceProcessesDistributeAcceptedState(t *testing.T) {
 				reason string
 			}{
 				{"state_profile", "unselected", "unsupported or ambiguous"},
-				{"native_rendezvous_profile", true, "unsupported or ambiguous"},
+				{"native_rendezvous_profile", true, "old Source profile is retired"},
 				{"state_profile_authority", "", "source State profile authority:"},
 				{"state_profile_authority", hex.EncodeToString(nodeKey.Public().(ed25519.PublicKey)), "not pinned by State"},
 				{"state_profile", "", "requires an explicit State profile"},

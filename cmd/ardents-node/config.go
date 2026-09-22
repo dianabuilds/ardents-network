@@ -38,6 +38,8 @@ type sourceStore interface {
 	Close() error
 }
 
+var errOldSourceProfileRetired = errors.New("old Source profile is retired")
+
 func openSource(path string, emit func([]byte) error) (sourceStore, error) {
 	var err error
 	var plan sourceServerPlan
@@ -47,17 +49,17 @@ func openSource(path string, emit func([]byte) error) (sourceStore, error) {
 	if plan.Schema != "ardents-source-server-v1" || plan.LocalRoleStateRoot == "" {
 		return nil, errors.New("source server plan is not canonical")
 	}
+	if plan.NativeRendezvousProfile {
+		return nil, errOldSourceProfileRetired
+	}
 	if len(plan.ClientKeyDigests) == 0 || len(plan.ClientKeyDigests) > 3 {
 		return nil, errors.New("source server trust-map count is invalid")
 	}
 	config := state.Config{Root: plan.StateRoot, LocalRoleStateRoot: plan.LocalRoleStateRoot, Threshold: plan.Threshold,
 		Source:         source.Config{ServeAddress: plan.Listen, MaterialIndex: plan.MaterializationIndex},
 		RuntimeProfile: plan.RuntimeProfile}
-	if plan.NativeRendezvousProfile {
-		config.AcceptedProfile = route.Profile
-	}
 	if plan.StateProfile != "" {
-		if plan.NativeRendezvousProfile || plan.StateProfile != route.ClosedRouteProfile {
+		if plan.StateProfile != route.ClosedRouteProfile {
 			return nil, errors.New("source State profile is unsupported or ambiguous")
 		}
 		config.ClosedProfileAuthority = make(ed25519.PublicKey, ed25519.PublicKeySize)
