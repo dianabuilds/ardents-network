@@ -29,7 +29,7 @@ The complete P1 input is exactly unsigned record || signature. Ed25519.Verify(pu
 | N2 | Sign the complete 145-byte unsigned record below. Version 1 is encoded as 18 01 instead of shortest 01; length becomes 000d. Signature below is valid for these exact noncanonical bytes. | Malformed/noncanonical EndpointSet, despite valid signature. Do not normalize and then accept. |
 | N3 | Start from P1 unsigned, replace its 32-byte Network at offsets 5..36 with 0x12 repeated 32 times, and use the N3 signature below. | Signature valid, Network mismatch against the fixed 0x11 Network; reject before View inclusion. |
 | N4 | Submit complete P1 under the current ardents-route-v3 consumer. | Reject unknown schema 3 before State acceptance; never reinterpret as schema 2 text. |
-| N5 | Submit a correctly signed schema-2/v2-Carrier record under the proposed successor profile. | Reject old record format for successor duty even if the signer/key is known; preserve it only as historical evidence. |
+| N5 | Submit the exactly signed schema-2/v2-Carrier S2 record below under the proposed successor profile. | Reject old record format for successor duty even if the signer/key is known; preserve it only as historical evidence. |
 
 N2 exact unsigned record:
 
@@ -38,6 +38,12 @@ N2 exact unsigned record:
     N2 signature = 454050c58d8fcaf60d75ac97cc83a7687a0ad075207920ee7de07b3c5fdd9850bf036cb8c9ceaf18d70eb221bb6fc507f0652b660b8f0c1ba162f4a6d05a3c0c
 
     N3 signature = 307766ef01ad368c41ac8dcc1f65031d80ddc7d7bf1f37e02ea62444270d76d26e3158682cc740b443ec08faa3c89ff82267d234eb6d9c60c53919370e811b0f
+
+S2 is a signed **old schema-2** compatibility fixture with the same Network, Node, times, family, capability, capacity and seed. Its one endpoint is the 11-byte ASCII text "192.0.2.1:1" and its one Carrier is the 26-byte text "ardents-carrier-tcp-tls-v2". Current generation-3 State may accept it only with matching Epoch authority, roots and profile; the proposed successor must reject it for new duty. Its signature verifies over the exact 169-byte unsigned prefix (233 bytes including signature):
+
+    S2 unsigned = 41524e52021111111111111111111111111111111111111111111111111111111111111111222222222222222222222222222222222222222222222222222222222222222200000000000000010000000000000000000000007fffffff0166020b3139322e302e322e313a311a617264656e74732d636172726965722d7463702d746c732d7632000103a107bff3ce10be1d70dd18e74bc09967e4d6309ba50d5f1ddc8664125531b8
+
+    S2 signature = 9b8b4d30efc3bda7478df2383dd0b434e4e969a8ae86efa176b766ab3adf2dbde6714cdf2e599bde5d5a41ee3a1a9ab5aff261d926e7dc1839bc67025cd11207
 
 N2's signature must verify against N2 unsigned bytes and must not verify against P1 unsigned bytes. N3's signature must verify against the precisely modified N3 unsigned bytes and must not verify against P1 unsigned bytes. N1 must fail signature verification. Reject code ordering and the exact successor profile name require the accepted State owner decision; this file does not assert current runtime result codes.
 
