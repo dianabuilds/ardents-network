@@ -119,6 +119,9 @@ Each row is the entire proposed `uint32be(L) || CBOR body` in hex. These short e
 | ABORT wrong arity | `00 00 00 03 81 18 3e` | Reject wrong arity. |
 | ACK final flag encoded as integer 0 | `00 00 00 06 85 02 00 01 01 00` | Reject wrong field type. |
 | DATA empty payload | `00 00 00 05 84 01 00 00 40` | Reject payload length zero. |
+| DATA direction 2 | `00 00 00 06 84 01 02 00 41 41` | Reject out-of-range direction despite valid CBOR uint. |
+| ABORT code 4 | `00 00 00 04 82 18 3e 04` | Reject out-of-range code. |
+| REFUSE code 3 | `00 00 00 04 82 18 3f 03` | Reject out-of-range code. |
 | L=0 | `00 00 00 00` | Reject before body allocation. |
 | L=16,449 | `00 00 40 41` | Reject before body allocation. |
 | Truncated ABORT at EOF | `00 00 00 04 82 18 3e` then EOF | Reject incomplete body, no effects. |
