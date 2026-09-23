@@ -69,7 +69,7 @@ Old peer/new peer mismatch, missing or different ALPN, hostile length prefix, sh
 
 For a framing negative vector, the old v2 prefix begins with ASCII `arde` (`61 72 64 65`), which the proposed four-byte big-endian length parser would read as `0x61726465` (>16,448); it must reject before allocating the body. Conversely, a candidate frame starts with a bounded four-byte length (`00 00 ...`) and cannot match the old fixed prefix. These are wire deductions; actual mixed-peer tests and a new-side ALPN guard remain required. The [protected Route owner](../../technical/protected-route-protocol.md) also explicitly retains current Service Connection wire records and the salted local ConnectionContext input; it must be changed in the same accepted contract cutover, without discarding retained root/floor bytes.
 
-**Open evidence:** Encoder/decoder verification of the computed bounds and canonicality, exact positive/negative vectors across the registry, mixed-peer Endpoint tests, and a complete external retained-asset/floor inventory. The source caller and TLS/ADR inventory above does not establish those tests or a migration permission. No implementation or qualification result is inferred.
+**Open evidence:** Encoder/decoder verification of the computed bounds, canonicality and all registry vectors, mixed-peer Endpoint tests, and a complete external retained-asset/floor inventory. The source caller and TLS/ADR inventory above does not establish those tests or a migration permission. No implementation or qualification result is inferred.
 
 ## Candidate framing vectors (schema only)
 
@@ -93,7 +93,7 @@ Each row is the entire proposed `uint32be(L) || CBOR body` in hex. These short e
 | L=16,449 | `00 00 40 41` | Reject before body allocation. |
 | Truncated ABORT at EOF | `00 00 00 04 82 18 3e` then EOF | Reject incomplete body, no effects. |
 
-The positive rows are not complete registry coverage. Exact encoded positive/negative vectors for PROPOSE/C0/OFFER, CONFIRM/OPEN_READY, both continuation intents, SETTLED_RECEIPT, ASSIGN/ASSIGNED, PROBE/REPLY and maximum-size DATA remain required before #214 acceptance. RFC 8949 core deterministic restrictions must be tested across each shape, not inferred from these examples.
+The [companion registry vectors](r-158-connection-wire-vectors.md) now specify exact complete syntax-only positive frames for all 16 candidate message kinds, one exact trailing-item rejection derivative per kind, and a maximum-size DATA frame recipe. They do not prove parser, encoder, canonical-byte or authority behavior. RFC 8949 core deterministic restrictions and type/range rejection must be tested across the shapes, not inferred from these examples.
 
 ## Options
 
