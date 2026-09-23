@@ -488,8 +488,8 @@ is server-side. It does not qualify client receive accounting, general QUIC
 safety, or a future client migration feature. TCP/TLS selections do not
 execute the QUIC path. QUIC fixture tests exercise the adapters but neither
 turn the server disposition into qualified use nor replace the missing
-profile-specific measurement. `ListenNodeCarrier` remains declared with a
-test caller only; it is not a current non-test server caller.
+profile-specific measurement. The removed `ListenNodeCarrier` is not a current
+server caller.
 
 **Current disposition:** the unresolved applicability/qualification of the
 affected QUIC server use blocks its admission under the maintenance and
