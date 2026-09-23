@@ -76,8 +76,8 @@ func verifyTextWorkerPropertiesVersion(unit, service textManagerProperties, name
 			return errors.New("text worker inherited resources are unavailable")
 		}
 	}
-	if inventoryOfUnit(name) == streamInventory && !service.exact("Slice", "s", "ardents-qualification-owner.slice") {
-		return errors.New("qualification worker owner slice is unavailable")
+	if !textWorkerSliceVerified(service, inventoryOfUnit(name)) {
+		return errors.New("text worker owner slice is unavailable")
 	}
 	if !service.exact("Environment", "as", []string{"GOMAXPROCS=2", "GOMEMLIMIT=96MiB"}) ||
 		!service.exact("SystemCallArchitectures", "as", []string{"native"}) ||
@@ -88,6 +88,17 @@ func verifyTextWorkerPropertiesVersion(unit, service textManagerProperties, name
 		return err
 	}
 	return verifyTextWorkerSyscalls(service)
+}
+
+func textWorkerSlice(inventory workerInventory) string {
+	if inventory == streamInventory {
+		return "ardents-qualification-owner.slice"
+	}
+	return "system.slice"
+}
+
+func textWorkerSliceVerified(service textManagerProperties, inventory workerInventory) bool {
+	return service.exact("Slice", "s", textWorkerSlice(inventory))
 }
 
 func verifyInstalledWorkerExec(service textManagerProperties, role string, pid uint32, inventory workerInventory) error {

@@ -31,6 +31,38 @@ func TestTextWorkerSyscallObservationAcceptsNativeAMD64Expansion(t *testing.T) {
 	}
 }
 
+func TestTextWorkerSliceKeepsInventoriesInTheirVerifiedCgroupRoots(t *testing.T) {
+	if got := textWorkerSlice(textInventory); got != "system.slice" {
+		t.Fatalf("text worker slice = %q, want system.slice", got)
+	}
+	if got := textWorkerSlice(streamInventory); got != "ardents-qualification-owner.slice" {
+		t.Fatalf("qualification worker slice = %q, want qualification owner slice", got)
+	}
+	for _, test := range []struct {
+		name      string
+		inventory workerInventory
+		value     *textManagerValue
+		want      bool
+	}{
+		{name: "normal exact", inventory: textInventory, value: &textManagerValue{Type: "s", Data: json.RawMessage(`"system.slice"`)}, want: true},
+		{name: "normal template subslice", inventory: textInventory, value: &textManagerValue{Type: "s", Data: json.RawMessage(`"system-ardents\\x2dtext\\x2dreader.slice"`)}},
+		{name: "normal missing", inventory: textInventory},
+		{name: "normal wrong type", inventory: textInventory, value: &textManagerValue{Type: "as", Data: json.RawMessage(`["system.slice"]`)}},
+		{name: "qualification exact", inventory: streamInventory, value: &textManagerValue{Type: "s", Data: json.RawMessage(`"ardents-qualification-owner.slice"`)}, want: true},
+		{name: "qualification system", inventory: streamInventory, value: &textManagerValue{Type: "s", Data: json.RawMessage(`"system.slice"`)}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			service := textManagerProperties{}
+			if test.value != nil {
+				service["Slice"] = *test.value
+			}
+			if got := textWorkerSliceVerified(service, test.inventory); got != test.want {
+				t.Fatalf("slice verification = %t, want %t", got, test.want)
+			}
+		})
+	}
+}
+
 func syscallFilterObservation(t *testing.T, names []string) json.RawMessage {
 	t.Helper()
 	body, err := json.Marshal([]any{false, names})
