@@ -404,7 +404,11 @@ func writeMatrix(path string, checks []check) error {
 	entries := make([]entry, 0)
 	appendEntry := func(selected check, names []string) {
 		pattern := "^(" + strings.Join(names, "|") + ")$"
-		entries = append(entries, entry{len(entries), selected.pkg, pattern, selected.race})
+		race := selected.race
+		if len(names) == 1 && dedicatedPRCheck(names[0]) {
+			race = true
+		}
+		entries = append(entries, entry{len(entries), selected.pkg, pattern, race})
 	}
 	for _, selected := range checks {
 		names := []string{}
