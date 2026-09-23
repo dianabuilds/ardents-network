@@ -142,4 +142,4 @@ The source inventory and all 16 syntax vectors support a bounded *format proposa
 
 ## Disposition
 
-Open. R-158/#214 is the sole selected C0 research question while R-157/#78 awaits the Product Owner's retained-maxima choice. No runtime code, wire profile, ADR or authority rule changes through this record.
+Prepared for the Product Owner's new-profile-versus-v2 choice; #214 remains open. R-158 is no longer the selected active C0 research question. The proposed syntax table, vectors, caller/ADR trace and refusal matrix can inform an explicit technical-owner/ADR decision; they do not accept or enable a wire profile. No runtime code, retained data/floor, authority rule or current ADR changes through this record.
