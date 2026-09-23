@@ -81,6 +81,13 @@ required settings make the platform unavailable before Grant delivery:
 - RootDirectory points to the immutable root owned by root. It contains only
   the verified static worker executable and empty required runtime mount points.
   WorkingDirectory=/ is explicit.
+- Each normal fixed reader and Publisher template explicitly sets
+  `Slice=system.slice`. The Endpoint verifies that effective Service property
+  before Grant delivery, and accepts only the resulting direct
+  `/system.slice/<canonical-unit>` cgroup path. A template instance's implicit
+  per-template subslice, another slice, nested path or sibling never becomes
+  an accepted worker cgroup. The separate stream-qualification inventory retains
+  its selected qualification-owner slice.
 - DynamicUser=yes; no supplementary groups; CapabilityBoundingSet and
   AmbientCapabilities empty; NoNewPrivileges=yes.
 - PrivateNetwork=yes; PrivateIPC=yes; PrivateDevices=yes; PrivateTmp=yes;
