@@ -141,7 +141,16 @@ func startTextRoleProcess(t *testing.T, index int, config node.Config, root stri
 		if _, err := fmt.Fprintln(stdin, "stop"); err != nil {
 			return err
 		}
-		expect("role-stopped")
+		line, lineErr := reader.ReadString('\n')
+		if lineErr != nil || strings.TrimSpace(line) != "role-stopped" {
+			_ = stdin.Close()
+			childOutput, outputErr := io.ReadAll(io.LimitReader(reader, 64<<10))
+			_, drainErr := io.Copy(io.Discard, reader)
+			waitErr := command.Wait()
+			joined = true
+			cancel()
+			return fmt.Errorf("role%d expected %q got %q: %v; child wait: %v; child stderr: %s; child stdout: %s; stdout capture: %v; stdout drain: %v", index, "role-stopped", line, lineErr, waitErr, stderr.String(), childOutput, outputErr, drainErr)
+		}
 		_ = stdin.Close()
 		_, readErr := io.Copy(io.Discard, reader)
 		err := command.Wait()
