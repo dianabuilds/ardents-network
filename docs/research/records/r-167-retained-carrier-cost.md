@@ -90,6 +90,12 @@ The cgroup layout defect was repaired and integrated through [#276](https://gith
 
 These installed attempts supplied **no** R-167 Carrier-cost, hostile-peer or warm-latency result. They cannot be counted as a negative workload verdict, a qualification pass, or a reason to choose either pool policy. Resume the named experiment only after the exact installed journey works and preserve all failures as separate evidence.
 
+### Later installed reachability — prerequisite only, 2026-09-23
+
+After #276 repaired the installed cgroup layout, the #277 cleanup-only Endpoint build (SHA-256 `2fd38719b8509abaa25170b1744aa9c01ce4989d21ab5855794281bd0914dfb1`) with unchanged stock worker, test, and units completed separate fresh Ubuntu/systemd 255 installed command cells: TCP/TLS-v2 empty-text PASS in 422.07 s and QUIC-v2 empty-text PASS in 422.38 s. Each included a real 300-second Descriptor refresh, reread, withdrawal, refusal, and no retained workers. Exact test and journal hashes and the limits of this evidence are recorded in [#277](https://github.com/dianabuilds/ardents-network/issues/277#issuecomment-5800458957). The later PR head has a separate mandatory CI failure in the initial-publication/Route path, tracked as [#281](https://github.com/dianabuilds/ardents-network/issues/281); the original variable `service-join` refusal in #277 remains unclassified.
+
+These two PASS results show that both installed Carrier cells are reachable with the cleanup-only component. They measured neither the last-child Carrier lease nor exact parent host-reservation release, pool keepalive/close traffic, shared installed ledger state, hostile late packets, or warm latency. They therefore are not the named R-167 experiment, do not establish a fixed qualifying candidate, and do not select either pool policy. The named installed traffic and latency comparison remains pending after the prerequisite repair and its own gates.
+
 ## Options
 
 1. **Retain useful Carriers with a pool-owned host reservation.** Supports current reuse intent if a finite per-profile tx/rx/time bound and shared-ledger owner are accepted. It adds up to 32 concurrent idle obligations and must release them only after a proven traffic quiescence boundary. The current source and provider profile do not supply those numbers.
