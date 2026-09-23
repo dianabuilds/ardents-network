@@ -23,10 +23,14 @@ import (
 // Private roots are shared immutable artifacts, never writable job state.
 // No system permission is installed or elevated by this owner.
 type textWorkerCleanup struct {
-	instance textWorkerInstance
-	events   *os.File
-	once     sync.Once
-	err      error
+	instance       textWorkerInstance
+	events         *os.File
+	readCgroup     func(*os.File) (bool, bool, error)
+	readProperties func(context.Context, string, string) (textManagerProperties, textManagerProperties, error)
+	stop           func(context.Context, string, string) error
+	joinTimeout    time.Duration
+	once           sync.Once
+	err            error
 }
 
 func newTextWorkerCleanup(instance textWorkerInstance) (*textWorkerCleanup, error) {
@@ -56,31 +60,35 @@ func (owner *textWorkerCleanup) Close() error {
 func (owner *textWorkerCleanup) join() error {
 	// Cleanup must survive cancellation of the job's context. The manager's
 	// selected two-second stop is inside this independent finite join bound.
-	ctx, cancel := context.WithTimeout(context.Background(), 8*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), owner.timeout())
 	defer cancel()
-	removed, _, initialErr := readTextWorkerCgroup(owner.events)
+	removed, _, initialErr := owner.observeCgroup()
 	if removed && initialErr == nil {
 		return nil
 	}
-	unit, service, err := readTextWorkerProperties(ctx, owner.instance.name, owner.instance.role)
+	unit, service, err := owner.observeProperties(ctx)
 	if err != nil {
 		// A crashing unit can disappear between the first observation and the
-		// manager query. Only the original kernel object's removal resolves it.
-		if gone, _, observedErr := readTextWorkerCgroup(owner.events); gone && observedErr == nil && initialErr == nil {
+		// manager query. Only retirement of the original pinned cgroup resolves
+		// that race; a replacement manager invocation is never stopped.
+		if owner.waitForPinnedCgroupRetirement(ctx, initialErr) {
 			return nil
 		}
-		return errors.New("text worker cleanup invocation is unavailable")
+		return firstTextWorkerCleanupFailure(initialErr, "text worker cleanup invocation is unavailable")
 	}
 	if !sameTextWorkerCleanupInstance(owner.instance, unit, service) {
-		return errors.New("text worker cleanup invocation changed")
+		if owner.waitForPinnedCgroupRetirement(ctx, initialErr) {
+			return nil
+		}
+		return firstTextWorkerCleanupFailure(initialErr, "text worker cleanup invocation changed")
 	}
-	if err := stopTextWorkerInstance(ctx, owner.instance.name, owner.instance.role); err != nil {
+	if err := owner.stopInstance(ctx); err != nil {
 		return errors.Join(initialErr, err)
 	}
 	ticker := time.NewTicker(20 * time.Millisecond)
 	defer ticker.Stop()
 	for {
-		gone, populated, err := readTextWorkerCgroup(owner.events)
+		gone, populated, err := owner.observeCgroup()
 		if err != nil {
 			return errors.Join(initialErr, err)
 		}
@@ -90,6 +98,63 @@ func (owner *textWorkerCleanup) join() error {
 		select {
 		case <-ctx.Done():
 			return errors.Join(initialErr, errors.New("text worker cgroup cleanup did not complete"))
+		case <-ticker.C:
+		}
+	}
+}
+
+func firstTextWorkerCleanupFailure(initialErr error, fallback string) error {
+	if initialErr != nil {
+		return initialErr
+	}
+	return errors.New(fallback)
+}
+
+func (owner *textWorkerCleanup) timeout() time.Duration {
+	if owner != nil && owner.joinTimeout > 0 {
+		return owner.joinTimeout
+	}
+	return 8 * time.Second
+}
+
+func (owner *textWorkerCleanup) observeCgroup() (bool, bool, error) {
+	if owner != nil && owner.readCgroup != nil {
+		return owner.readCgroup(owner.events)
+	}
+	return readTextWorkerCgroup(owner.events)
+}
+
+func (owner *textWorkerCleanup) observeProperties(ctx context.Context) (textManagerProperties, textManagerProperties, error) {
+	if owner != nil && owner.readProperties != nil {
+		return owner.readProperties(ctx, owner.instance.name, owner.instance.role)
+	}
+	return readTextWorkerProperties(ctx, owner.instance.name, owner.instance.role)
+}
+
+func (owner *textWorkerCleanup) stopInstance(ctx context.Context) error {
+	if owner != nil && owner.stop != nil {
+		return owner.stop(ctx, owner.instance.name, owner.instance.role)
+	}
+	return stopTextWorkerInstance(ctx, owner.instance.name, owner.instance.role)
+}
+
+func (owner *textWorkerCleanup) waitForPinnedCgroupRetirement(ctx context.Context, initialErr error) bool {
+	if initialErr != nil {
+		return false
+	}
+	ticker := time.NewTicker(20 * time.Millisecond)
+	defer ticker.Stop()
+	for {
+		removed, populated, err := owner.observeCgroup()
+		if err != nil {
+			return false
+		}
+		if (removed || !populated) && ctx.Err() == nil {
+			return true
+		}
+		select {
+		case <-ctx.Done():
+			return false
 		case <-ticker.C:
 		}
 	}

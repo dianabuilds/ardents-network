@@ -3,9 +3,13 @@
 package endpoint
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
+	"os"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestTextWorkerCgroupObservationNeverInfersEmptyFromMissingData(t *testing.T) {
@@ -109,5 +113,100 @@ func TestTextWorkerCleanupFailureCannotBecomeSuccessOnRepeat(t *testing.T) {
 	first := owner.Close()
 	if first == nil || owner.Close() != first {
 		t.Fatal("missing cleanup identity became reusable after failure")
+	}
+}
+
+func TestTextWorkerCleanupAcceptsRetiredOrEmptyPinnedCgroupAfterInvocationMismatch(t *testing.T) {
+	for name, final := range map[string]struct{ removed, populated bool }{
+		"removed": {removed: true}, "empty": {},
+	} {
+		t.Run(name, func(t *testing.T) {
+			instance, unit, service := textCleanupObservation(t)
+			unit["InvocationID"] = textManagerValue{Type: "ay", Data: json.RawMessage(`[2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]`)}
+			observations := []struct {
+				removed, populated bool
+				err                error
+			}{{populated: true}, {removed: final.removed, populated: final.populated}}
+			owner := &textWorkerCleanup{
+				instance: instance,
+				readCgroup: func(*os.File) (bool, bool, error) {
+					observation := observations[0]
+					observations = observations[1:]
+					return observation.removed, observation.populated, observation.err
+				},
+				readProperties: func(context.Context, string, string) (textManagerProperties, textManagerProperties, error) {
+					return unit, service, nil
+				},
+				joinTimeout: time.Second,
+				stop: func(context.Context, string, string) error {
+					t.Fatal("cleanup tried to stop a changed invocation")
+					return nil
+				},
+			}
+			if err := owner.join(); err != nil {
+				t.Fatalf("retired or empty pinned cgroup after changed invocation = %v", err)
+			}
+		})
+	}
+}
+
+func TestTextWorkerCleanupRetainsInvocationMismatchWhilePinnedCgroupPopulated(t *testing.T) {
+	instance, unit, service := textCleanupObservation(t)
+	unit["InvocationID"] = textManagerValue{Type: "ay", Data: json.RawMessage(`[2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]`)}
+	owner := &textWorkerCleanup{
+		instance:   instance,
+		readCgroup: func(*os.File) (bool, bool, error) { return false, true, nil },
+		readProperties: func(context.Context, string, string) (textManagerProperties, textManagerProperties, error) {
+			return unit, service, nil
+		},
+		joinTimeout: time.Millisecond,
+		stop: func(context.Context, string, string) error {
+			t.Fatal("cleanup tried to stop a changed invocation")
+			return nil
+		},
+	}
+	if err := owner.join(); err == nil || err.Error() != "text worker cleanup invocation changed" {
+		t.Fatalf("populated pinned cgroup lost invocation mismatch: %v", err)
+	}
+}
+
+func TestTextWorkerCleanupRetainsInitialPinnedCgroupObservationFailure(t *testing.T) {
+	instance, unit, service := textCleanupObservation(t)
+	unit["InvocationID"] = textManagerValue{Type: "ay", Data: json.RawMessage(`[2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]`)}
+	initial := errors.New("pinned observation failed")
+	owner := &textWorkerCleanup{
+		instance:    instance,
+		readCgroup:  func(*os.File) (bool, bool, error) { return false, false, initial },
+		joinTimeout: time.Second,
+		readProperties: func(context.Context, string, string) (textManagerProperties, textManagerProperties, error) {
+			return unit, service, nil
+		},
+	}
+	if err := owner.join(); !errors.Is(err, initial) {
+		t.Fatalf("initial pinned cgroup failure was replaced: %v", err)
+	}
+}
+
+func TestTextWorkerCleanupRejectsRetiredPinnedCgroupAfterJoinDeadline(t *testing.T) {
+	instance, unit, service := textCleanupObservation(t)
+	unit["InvocationID"] = textManagerValue{Type: "ay", Data: json.RawMessage(`[2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]`)}
+	observations := []struct {
+		removed, populated bool
+	}{{populated: true}, {removed: true}}
+	owner := &textWorkerCleanup{
+		instance: instance,
+		readCgroup: func(*os.File) (bool, bool, error) {
+			observation := observations[0]
+			observations = observations[1:]
+			return observation.removed, observation.populated, nil
+		},
+		readProperties: func(ctx context.Context, _ string, _ string) (textManagerProperties, textManagerProperties, error) {
+			<-ctx.Done()
+			return unit, service, nil
+		},
+		joinTimeout: time.Millisecond,
+	}
+	if err := owner.join(); err == nil || err.Error() != "text worker cleanup invocation changed" {
+		t.Fatalf("expired cleanup accepted retired cgroup: %v", err)
 	}
 }
