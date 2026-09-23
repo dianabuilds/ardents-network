@@ -167,7 +167,11 @@ func requireInstalledTextWorkerCollectionPolicy(t *testing.T, ctx context.Contex
 	if err := verify(); err != nil {
 		t.Fatalf("installed property positive control: %v", err)
 	}
-	t.Logf("verified installed %s worker Slice=%q ControlGroup=%q", instance.role, textWorkerSlice(textInventory), instance.cgroup)
+	var slice string
+	if json.Unmarshal(service["Slice"].Data, &slice) != nil {
+		t.Fatal("verified worker Slice could not be decoded")
+	}
+	t.Logf("verified installed %s worker Slice=%q ControlGroup=%q", instance.role, slice, instance.cgroup)
 	for _, invalid := range []textManagerValue{
 		{Type: "s", Data: json.RawMessage(`"inactive"`)},
 		{Type: "s", Data: json.RawMessage(`"unknown"`)},
