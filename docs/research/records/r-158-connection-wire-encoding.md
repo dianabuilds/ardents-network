@@ -71,6 +71,30 @@ For a framing negative vector, the old v2 prefix begins with ASCII `arde` (`61 7
 
 **Open evidence:** Encoder/decoder verification of the computed bounds and canonicality, exact positive/negative vectors across the registry, mixed-peer Endpoint tests, and a complete external retained-asset/floor inventory. The source caller and TLS/ADR inventory above does not establish those tests or a migration permission. No implementation or qualification result is inferred.
 
+## Candidate framing vectors (schema only)
+
+Each row is the entire proposed `uint32be(L) || CBOR body` in hex. These short examples exercise syntax only; they convey no valid Instance proof, phase, authority or workload acceptance. The expected result applies to a prospective strict new-profile parser after exact ALPN selection. No parser has been run against these vectors.
+
+| Case | Exact framed bytes | Expected schema result |
+| --- | --- | --- |
+| DATA: direction A→B, offset 0, one byte `A` | `00 00 00 06 84 01 00 00 41 41` | Accept shape. |
+| ACK: direction A→B, accepted/limit 1, final false | `00 00 00 06 85 02 00 01 01 f4` | Accept shape. |
+| EOF: direction A→B, final offset 1 | `00 00 00 04 83 03 00 01` | Accept shape. |
+| ABORT: code 2 | `00 00 00 04 82 18 3e 02` | Accept shape. |
+| REFUSE: code 1 | `00 00 00 04 82 18 3f 01` | Accept shape. |
+| Non-minimal kind 62 | `00 00 00 05 82 19 00 3e 02` | Reject non-canonical integer. |
+| Indefinite array | `00 00 00 05 9f 18 3e 02 ff` | Reject indefinite form. |
+| Unknown kind 64 | `00 00 00 04 82 18 40 00` | Reject unknown kind. |
+| Trailing CBOR null | `00 00 00 05 82 18 3e 02 f6` | Reject trailing item. |
+| ABORT wrong arity | `00 00 00 03 81 18 3e` | Reject wrong arity. |
+| ACK final flag encoded as integer 0 | `00 00 00 06 85 02 00 01 01 00` | Reject wrong field type. |
+| DATA empty payload | `00 00 00 05 84 01 00 00 40` | Reject payload length zero. |
+| L=0 | `00 00 00 00` | Reject before body allocation. |
+| L=16,449 | `00 00 40 41` | Reject before body allocation. |
+| Truncated ABORT at EOF | `00 00 00 04 82 18 3e` then EOF | Reject incomplete body, no effects. |
+
+The positive rows are not complete registry coverage. Exact encoded positive/negative vectors for PROPOSE/C0/OFFER, CONFIRM/OPEN_READY, both continuation intents, SETTLED_RECEIPT, ASSIGN/ASSIGNED, PROBE/REPLY and maximum-size DATA remain required before #214 acceptance. RFC 8949 core deterministic restrictions must be tested across each shape, not inferred from these examples.
+
 ## Options
 
 1. Select the candidate's one incompatible Connection profile after the exact table, old/new refusal, retained-state inventory and consequential ADR/owner change are accepted. Advantage: the proposed messages share one bounded grammar. Risk: the current v2 owner and callers require coordinated replacement; parser bounds alone cannot authorize new phases.
