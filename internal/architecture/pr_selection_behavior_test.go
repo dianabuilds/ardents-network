@@ -91,7 +91,11 @@ func TestPRSelectionFollowsConsumersAndKeepsUnrelatedTestsOut(t *testing.T) {
 		t.Fatal(err)
 	}
 	var matrix struct {
-		Include []struct{ Package, Run string }
+		Include []struct {
+			Package string
+			Run     string
+			Race    bool
+		}
 	}
 	if err := json.Unmarshal(body, &matrix); err != nil {
 		t.Fatal(err)
@@ -125,6 +129,9 @@ func TestPRSelectionFollowsConsumersAndKeepsUnrelatedTestsOut(t *testing.T) {
 		consumerGroups++
 		if entry.Run == "^(TestTextPublicationIsolatedRoleObservations)$" {
 			dedicated = true
+			if !entry.Race {
+				t.Fatalf("dedicated role-observation check must use the race detector: %+v", entry)
+			}
 		}
 		names := strings.Split(strings.TrimSuffix(strings.TrimPrefix(entry.Run, "^("), ")$"), "|")
 		if len(names) > 16 {
