@@ -25,6 +25,14 @@
       "prerequisites": ["dedicated Ubuntu 24.04 x86-64/systemd255/cgroup v2 lifecycle environment", "root-owned candidate commands, worker, E2E binary and temporary unit with independent SHA-256 values", "inactive temporary Endpoint service selecting TestInstalledClosedTextCommandsThroughNodeProcesses", "49-minute Go test deadline within an independent 51-minute outer command limit"],
       "invalid_environment": "the dedicated installed command-journey environment is unavailable"
     },
+    {
+      "id": "text-command-permission-boundary",
+      "state": "active",
+      "make_target": "text-command-permission-boundary-check",
+      "surface": "installed real-UTC Permission-expiry refresh refusal for one selected protected Carrier",
+      "prerequisites": ["dedicated installed Ubuntu 24.04 x86-64/systemd255/cgroup v2 lifecycle environment", "root-owned candidate commands, worker, E2E binary and temporary unit SHA-256 values", "explicit ARDENTS_TEXT_COMMAND_BOUNDARY_CARRIER selection", "issued Permission whose scheduled refresh occurs from its NotAfter through thirty seconds later", "inactive temporary Endpoint service selecting TestInstalledClosedTextCommandsRejectRefreshAtPermissionBoundary"],
+      "invalid_environment": "the dedicated installed boundary environment or selected real UTC window is unavailable"
+    },
       {
         "id": "text-worker-tree",
       "state": "active",

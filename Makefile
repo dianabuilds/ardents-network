@@ -173,7 +173,7 @@ text-worker-lifecycle-check:
 text-worker-tree-check:
 	sh ./tests/qualification/text-worker-tree/run-ubuntu.sh
 
-.PHONY: text-worker-network-check text-worker-recovery-check text-command-network-check text-worker-escape-check
+.PHONY: text-worker-network-check text-worker-recovery-check text-command-network-check text-command-permission-boundary-check text-worker-escape-check
 text-worker-network-check:
 	sh ./tests/qualification/text-worker-network/run-ubuntu.sh
 
@@ -182,6 +182,9 @@ text-worker-recovery-check:
 
 text-command-network-check:
 	sh ./tests/qualification/text-command-network/run-ubuntu.sh
+
+text-command-permission-boundary-check:
+	sh ./tests/qualification/text-command-network/run-ubuntu.sh boundary
 
 text-worker-escape-check:
 	sh ./tests/qualification/text-worker-escape/run-ubuntu.sh

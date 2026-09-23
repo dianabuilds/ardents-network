@@ -262,6 +262,11 @@ The maintained local profiles are:
   `ardents-custody`, `ardents-node` and `ardents-text` candidate binaries through
   both Carriers, with exact empty, 64 KiB and 4 MiB command cases. It is functional
   journey evidence, not full host, privacy, hostile-network or p95 qualification.
+- `text-command-permission-boundary`, the separately selected installed UTC-boundary
+  oracle invoked by `make text-command-permission-boundary-check` once for each
+  Carrier. It requires a signed Permission whose scheduled refresh falls at or within
+  thirty seconds after actual expiry, then observes fail-closed token refusal, unavailable
+  Link, retained Descriptor bytes and no worker units under the same Endpoint.
 
 - `text-worker-policy`, the root-driven installed authorization matrix invoked
   by `make text-worker-policy-check`; it does not qualify the complete host.

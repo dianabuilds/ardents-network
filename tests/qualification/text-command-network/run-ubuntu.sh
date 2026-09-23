@@ -60,10 +60,20 @@ cmp -s "$command_root/ardents-text" "$worker" || fail 'invalid environment: UI a
 [ -z "$(systemctl show ardents-endpoint.service -p DropInPaths --value)" ] ||
 	fail 'invalid environment: qualification unit has drop-ins'
 
+mode=${1-network}
+case "$mode" in
+network) root=TestInstalledClosedTextCommandsThroughNodeProcesses; limit=3060; go_timeout=49m ;;
+boundary)
+	root=TestInstalledClosedTextCommandsRejectRefreshAtPermissionBoundary
+	case "${ARDENTS_TEXT_COMMAND_BOUNDARY_CARRIER-}" in ardents-carrier-tcp-tls-v2|ardents-carrier-quic-v2) ;; *) fail 'invalid environment: select one boundary Carrier' ;; esac
+	limit=900; go_timeout=14m
+	;;
+*) fail 'unknown installed command profile' ;;
+esac
 run_log=$(mktemp /var/tmp/ardents-text-command-network.XXXXXX) || fail 'invalid environment: command evidence log unavailable'
 trap 'rm -f "$run_log"' EXIT HUP INT TERM
 if ! ARDENTS_TEXT_COMMAND_QUALIFICATION=1 ARDENTS_E2E_COMMAND_ROOT="$command_root" \
-	timeout --signal=TERM --kill-after=30s 3060s "$binary" -test.run='^TestInstalledClosedTextCommandsThroughNodeProcesses$' -test.v -test.timeout=49m >"$run_log" 2>&1; then
+	timeout --signal=TERM --kill-after=30s "${limit}s" "$binary" -test.run="^${root}$" -test.v -test.timeout="$go_timeout" >"$run_log" 2>&1; then
 	cat "$run_log"
 	fail 'installed command journey test failed'
 fi
@@ -73,9 +83,14 @@ printf '%s\n' "$test_output"
 	[ "$(systemctl show ardents-endpoint.service -p MainPID --value)" = 0 ] ||
 	fail 'installed command journey retained the temporary Endpoint'
 
-root=TestInstalledClosedTextCommandsThroughNodeProcesses
 [ "$(printf '%s\n' "$test_output" | grep -c "^[[:space:]]*--- PASS: $root (" || true)" = 1 ] ||
 	fail 'installed command journey lacks root test evidence'
+if [ "$mode" = boundary ]; then
+	carrier=$ARDENTS_TEXT_COMMAND_BOUNDARY_CARRIER
+	[ "$(printf '%s\n' "$test_output" | grep -c "^[[:space:]]*--- PASS: $root/$carrier (" || true)" = 1 ] || fail 'installed boundary journey lacks selected Carrier evidence'
+	printf 'installed-profile=text-command-permission-boundary; carrier=%s; result=passed; whole-host-qualification=not-established\n' "$carrier"
+	exit 0
+fi
 for carrier in ardents-carrier-tcp-tls-v2 ardents-carrier-quic-v2; do
 	[ "$(printf '%s\n' "$test_output" | grep -c "^[[:space:]]*--- PASS: $root/$carrier (" || true)" = 1 ] ||
 		fail 'installed command journey lacks exact Carrier evidence'
