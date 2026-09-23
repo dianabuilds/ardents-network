@@ -23,7 +23,7 @@ The present ARDP generation is 3. OPEN has no credit field; ACCEPT carries a u32
 
 - **H1, current promise is backed:** every admitted lane may use all credit already granted without refusal solely because an ancestor DATA queue is full. A legal simultaneous burst that exceeds an ancestor cap falsifies H1. The arithmetic and existing queue test below already falsify it.
 - **H2, internal-only reservation is sufficient with all selected maxima unchanged:** keep 64 KiB initially granted in each direction, admit the selected lane count, and keep the 4 MiB prefix cap. A summed promise above the cap falsifies H2. It is falsified even before frame overhead.
-- **H3, explicit paired credit change can back the promise:** account complete data frames against a shared prefix and duty escrow before advertising credit, with a separately reserved control path; require a bounded grant for each direction at opening and return capacity only after actual consumption or joined retirement. This remains a candidate until nested expansion, compatibility and workload latency are checked.
+- **H3, explicit paired credit change can back the promise:** account complete data frames against the receiving prefix and duty escrow before advertising credit, with a separately reserved control path; require a bounded grant for each direction at opening and return capacity only after actual consumption or joined retirement. At a nested seam, either bound and reserve outer expansion or prove that its separately backed lane credit and backpressure can defer a legal inner frame without refusing it or blocking sibling control. This remains a candidate until that proof, compatibility and workload latency are checked.
 - **H0:** no candidate preserves the selected workload and resource ceilings; then change the product/technical contract explicitly before implementation.
 
 ## Evaluation criteria
@@ -62,7 +62,7 @@ An admitted peer may send minimum-size BYTES frames, spend its entire advertised
 
 **Sourced fact:** `ClosedForwardingChannel.NextAvailable` retains a delivered DATA charge until `Credit` after downstream consumption. `QueueReverse` charges complete reverse frames, including their 16-byte header, while forward `bytes` charges the payload to the shared queue. `ClosedDutyLimits` accounts current queued data, not promises. These asymmetric counters must be reconciled before selecting units for a new grant.
 
-**Open evidence:** The maximum complete outer-frame/TLS expansion of one nested inner grant and the minimum per-lane grant compatible with the selected text workload have not been derived or measured. Source allows up to 258 lanes including two reserved controls, while the current forwarding `open` map rejects at 256; the #78 capacity calculation must use the accepted count and must not silently treat this implementation discrepancy as a new product decision.
+**Open evidence:** The bounded outer-frame/TLS expansion or an alternative safe nested backpressure proof, and the minimum per-lane grant compatible with the selected text workload, have not been derived or measured. Source allows up to 258 lanes including two reserved controls, while the current forwarding `open` map rejects at 256; the #78 capacity calculation must use the accepted count and must not silently treat this implementation discrepancy as a new product decision.
 
 ## State-transition table to close before decision
 
@@ -72,13 +72,13 @@ An admitted peer may send minimum-size BYTES frames, spend its entire advertised
 | Simultaneous lawful burst | Receiving a complete frame moves its charged size from promise to retained work without increasing total escrow; no full-queue refusal within a grant. | Current 65th-lane test expects such a refusal. |
 | Delivered, CREDIT pending | Keep the charge until real consumer removal; reserve any returned grant before it can be emitted. | Current forwarding owner retains its charge until `Credit`; cross-owner promise accounting is absent. |
 | EOF, CLOSE, cancel | Unused promise is released only after no accepted in-flight frame can arrive; queued/delivered charges and failed writes have one terminal owner. | Exact release/Join ordering needs owner-level proof. |
-| Nested parent | Inner promise includes a conservative complete outer/TLS expansion against each ancestor; no child grows a parent's finite byte/time allowance. | Current nested queue charges only actual queued bytes; expansion bound remains open. |
+| Nested parent | Each ancestor backs its own outer credit. Inner work either reserves a proven expansion at the ancestor or waits behind safe backpressure without a legal-frame refusal or sibling-control stall; no child grows the finite parent byte/time allowance. | Current nested queue charges actual bytes to its Source parent; neither alternative is proved. |
 
 ## Options
 
 1. **Larger prefix/duty queues while retaining 64 KiB initial grants.** This preserves current wire fields but needs at least 32 MiB for 256 lanes in two directions before headers/control/nesting; the 64 MiB duty and memory/qualification budget may also need revision. It cannot be silently called the current 4 MiB contract.
 2. **Fewer simultaneously admitted lanes per parent.** This can preserve current grant size and cap only by changing the effective concurrency contract and demonstrating ordinary multi-parent composition and workload. It is not an internal fix while the present lane count is required.
-3. **Paired generation/credit change with hierarchical escrow.** Keep the queue and lane ceilings, select complete-frame credit units and bounded initial grants in both directions, then reserve before OPEN/ACCEPT/CREDIT. This needs exact compatibility disposition, nested expansion and latency evidence; a proposed numeric split alone is insufficient.
+3. **Paired generation/credit change with receiving-pool escrow.** Keep the queue and lane ceilings, select complete-frame credit units and bounded initial grants in both directions, then reserve before OPEN/ACCEPT/CREDIT. Prove a bounded nested expansion reservation or safe backpressure at each nested seam. This needs exact compatibility disposition and latency evidence; a proposed numeric split alone is insufficient.
 
 ## Recommendation
 
