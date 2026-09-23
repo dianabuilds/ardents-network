@@ -49,6 +49,8 @@ Old peer/new peer mismatch, missing or different ALPN, hostile length prefix, sh
 
 **Sourced fact:** The candidate's §2 states bounded length, CBOR forms, arity and nesting; §8 gives predicted maxima, including 16,399 bytes for DATA body, 518 for OFFER and 340 for PROPOSE. Those are candidate calculations and have not been independently verified against every schema or current caller.
 
+**Sourced caller fact:** The current `Profile` constant is also encoded into `internal/service/connection/context.go:Context` under a retained v1 ConnectionContext domain, and `ValidateRecovery` requires that exact value. Endpoint sets it in `text_service_binding.go`; `text_service_stream.go` uses `NewAuthenticatedStream`, while `service_connection.go` has direct v2 Challenge/Proof read/write callers. A blanket string replacement would therefore change the immutable logical digest and recovery admission, beyond #214's parser decision. The wire profile identity and any new context/binding identity must be assigned to their respective accepted owners; #215 handles binding semantics, and an exact caller cutover must reject mixed records before Application effects.
+
 **Open evidence:** Exact v2 record and TLS caller inventory, any retained persisted identity/floor requiring compatibility, independent CBOR shape/maximum proof, and the old/new peer refusal matrix. No implementation or qualification result is inferred.
 
 ## Options
