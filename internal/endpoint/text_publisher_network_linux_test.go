@@ -7,9 +7,11 @@ import (
 	"context"
 	"errors"
 	"runtime"
+	"strings"
 	"testing"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/application/broker"
 	"github.com/dianabuilds/ardents-network/internal/route"
 )
 
@@ -90,8 +92,25 @@ func TestTextPublisherNetworkRetainsSnapshotAcrossReaders(t *testing.T) {
 				} else {
 					clear(decoded.Ciphertext)
 				}
-				if err := readerOwner.submitTextIntroduction(ctx, refusedJob, refused); err == nil {
+				submitErr := readerOwner.submitTextIntroduction(ctx, refusedJob, refused)
+				if submitErr == nil {
 					t.Fatal("corrupt capsule was accepted")
+				}
+				cleanupFailure := errors.Is(submitErr, route.ErrClosedSourceCleanup)
+				childRefused := strings.Contains(submitErr.Error(), "closed bootstrap child refused")
+				readerOwner.mu.Lock()
+				_, _, profileErr := readerOwner.textPermissionProfileLocked()
+				live := readerOwner.liveTextServiceJobLocked(refusedJob, broker.Connection)
+				source := readerOwner.currentTextSourceLocked() != nil
+				permission := readerOwner.permission != nil
+				closed := readerOwner.closed
+				resolution := readerOwner.resolution != nil
+				opening := readerOwner.source.openingInProgressLocked()
+				issuance := readerOwner.issuance != nil
+				readerOwner.mu.Unlock()
+				if cleanupFailure || childRefused || profileErr != nil || !live || !source || !permission || closed {
+					t.Fatalf("corrupt capsule changed reader ownership: cleanup=%t childRefused=%t profile=%v live=%t source=%t permission=%t closed=%t resolution=%t opening=%t issuance=%t; refusal: %v",
+						cleanupFailure, childRefused, profileErr, live, source, permission, closed, resolution, opening, issuance, submitErr)
 				}
 				publisherOwner.mu.Lock()
 				receivedRefusal := publisherOwner.introductionOpenings != beforeRefusal
@@ -124,7 +143,7 @@ func TestTextPublisherNetworkRetainsSnapshotAcrossReaders(t *testing.T) {
 					t.Fatal(ctx.Err())
 				}
 			}
-			for range 2 {
+			for readerIndex := range 2 {
 				readerJob := liveTextCapsuleJob(t, readerOwner)
 				reader := textServiceWorkerFixture(t, &textServiceBinding{owner: readerOwner, job: readerJob}, nil)
 				until := time.Now().UTC().Add(2 * time.Minute).Unix()
@@ -136,7 +155,7 @@ func TestTextPublisherNetworkRetainsSnapshotAcrossReaders(t *testing.T) {
 					case <-time.After(10 * time.Second):
 						t.Fatal("Publisher did not join after read failure")
 					}
-					t.Fatalf("network read length %d wanted %d: %v; Publisher: %v", len(actual), len(body), err, serveErr)
+					t.Fatalf("reader %d network read length %d wanted %d: %v; Publisher: %v", readerIndex+1, len(actual), len(body), err, serveErr)
 				}
 				if !reader.completedCurrent() {
 					t.Fatal("reader returned before retirement")
