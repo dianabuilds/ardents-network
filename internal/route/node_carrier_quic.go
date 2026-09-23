@@ -8,8 +8,8 @@ import (
 	"github.com/quic-go/quic-go"
 )
 
-// quicNodeCarrier is the shared authenticated QUIC byte lane used by current
-// closed dial and listener adapters and by the retained native listener.
+// quicNodeCarrier is the authenticated QUIC byte lane used by the current
+// closed Node dial.
 type quicNodeCarrier struct {
 	stream     *quic.Stream
 	connection *quic.Conn
@@ -34,14 +34,6 @@ func (carrier *quicNodeCarrier) Close() error {
 		carrier.closeErr = errors.Join(carrier.stream.Close(), carrier.connection.CloseWithError(0, "carrier-close"))
 	})
 	return carrier.closeErr
-}
-
-func nodeQUICConfig() *quic.Config {
-	return &quic.Config{Versions: []quic.Version{quic.Version1}, HandshakeIdleTimeout: time.Second,
-		MaxIdleTimeout: 5 * time.Second, KeepAlivePeriod: time.Second, MaxIncomingStreams: -1, MaxIncomingUniStreams: -1,
-		InitialPacketSize: 1200, InitialStreamReceiveWindow: 32 << 10, MaxStreamReceiveWindow: 32 << 10,
-		InitialConnectionReceiveWindow: 64 << 10, MaxConnectionReceiveWindow: 64 << 10,
-		AllowConnectionWindowIncrease: func(*quic.Conn, uint64) bool { return false }, EnableDatagrams: false, Allow0RTT: false}
 }
 
 var _ Carrier = (*quicNodeCarrier)(nil)
