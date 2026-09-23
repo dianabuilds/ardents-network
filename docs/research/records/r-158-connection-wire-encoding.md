@@ -57,7 +57,19 @@ Old peer/new peer mismatch, missing or different ALPN, hostile length prefix, sh
 
 **ALPN refusal derivation (Go 1.26.8 source, not an end-to-end test):** Current `secureTextClient` and `secureTextPublisher` configure no `NextProtos`. Go `crypto/tls.negotiateALPN` returns an empty protocol without error if either side has no ALPN list; `checkALPN` also permits an empty server choice for ordinary TLS. Thus a new peer merely advertising `ardents-connection/1` can finish TLS against an old peer. The candidate must require `ConnectionState().NegotiatedProtocol == "ardents-connection/1"` on *both* new client and server before any new Connection frame or Application effect, and close on empty/mismatch. With two nonempty, disjoint ALPN lists Go rejects the handshake; a v2 peer's empty list instead requires the new-side exact post-handshake guard. This is a proposed refusal rule to verify with real old/new Endpoint pairs, not a claim that current runtime enforces it. No fallback to v2 is implied.
 
-**Open evidence:** Exact v2 record and TLS caller inventory, any retained persisted identity/floor requiring compatibility, encoder/decoder verification of the computed bounds and canonicality, negative parser vectors, and the old/new peer refusal matrix. No implementation or qualification result is inferred.
+**Proposed old/new refusal matrix (still untested end to end):**
+
+| Client / Publisher | TLS observation | Required new-profile outcome |
+| --- | --- | --- |
+| New / new, both offering only `ardents-connection/1` | Exact ALPN selected | Parse only the proposed bounded CBOR grammar after the exact-profile guard; ordinary semantic admission is still separate. |
+| New / current v2 | Current Publisher offers no ALPN, so ordinary Go TLS can complete with empty negotiated protocol. | New client closes before sending a Connection frame or Application bytes. |
+| Current v2 / new | Current client offers no ALPN, so ordinary Go TLS can complete with empty negotiated protocol. | New Publisher closes before reading any v2 frame or causing Connection/Application effects. |
+| New / peer with a different nonempty ALPN list | No common ALPN; Go TLS refuses the handshake. | No fallback list or retry with an empty profile. |
+| Current v2 / current v2 | Empty ALPN and v2 records remain a pair of old-runtime peers. | This is not a new-profile connection or an authorization to preserve an alternate new-runtime parser. Deployment cutover must retire old peers explicitly. |
+
+For a framing negative vector, the old v2 prefix begins with ASCII `arde` (`61 72 64 65`), which the proposed four-byte big-endian length parser would read as `0x61726465` (>16,448); it must reject before allocating the body. Conversely, a candidate frame starts with a bounded four-byte length (`00 00 ...`) and cannot match the old fixed prefix. These are wire deductions; actual mixed-peer tests and a new-side ALPN guard remain required. The [protected Route owner](../../technical/protected-route-protocol.md) also explicitly retains current Service Connection wire records and the salted local ConnectionContext input; it must be changed in the same accepted contract cutover, without discarding retained root/floor bytes.
+
+**Open evidence:** Encoder/decoder verification of the computed bounds and canonicality, exact positive/negative vectors across the registry, mixed-peer Endpoint tests, and a complete external retained-asset/floor inventory. The source caller and TLS/ADR inventory above does not establish those tests or a migration permission. No implementation or qualification result is inferred.
 
 ## Options
 
