@@ -102,4 +102,4 @@ Provisional direction: investigate option 3 if the Product Owner retains both 25
 
 ## Disposition
 
-Open and prepared. #78 is paused pending the Product Owner's choice of which existing maxima to retain; #214 is the sole selected C0 research question while that choice is pending. #79 is not ready. The exact formula, numbers, wire generation and implementation scope must be promoted to the protected-route protocol owner and, if consequential, an accepted ADR. This record is provenance, not a runtime contract. No experiment code was created.
+Open and prepared. #78 is paused pending the Product Owner's choice of which existing maxima to retain; the active C0 research question, if any, is tracked in GitHub Issues rather than selected by this record. #79 is not ready. The exact formula, numbers, wire generation and implementation scope must be promoted to the protected-route protocol owner and, if consequential, an accepted ADR. This record is provenance, not a runtime contract. No experiment code was created.
