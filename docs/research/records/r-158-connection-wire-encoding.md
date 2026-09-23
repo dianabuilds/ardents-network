@@ -95,6 +95,8 @@ This table transcribes candidate §3/§5 shapes and independently checked maximu
 | 48 PROBE / 49 PROBE_REPLY | `[kind,nonce:b32]` | 2 | 37 each |
 | 62 ABORT / 63 REFUSE | `[kind,code:u64]` | 2 | 4 each |
 
+Candidate field ranges additionally fix direction and role to 0/1, intent to 0/1, ABORT code to 0..3 and REFUSE code to 0..2; generation/revision are positive and do not wrap. ASSIGN carries one or two distinct b32 paths in lexicographic order. Time values are positive Unix seconds through 2^63-1 and still require the separate time/authority owner. A syntactically valid value does not authorize a phase or effect.
+
 Candidate envelope `L=1..16448`; before data-ready, reject `L>1024` from the prefix before body allocation. All non-DATA kinds are limited to 1,024 body bytes even after data-ready. DATA alone may use the larger envelope, with its own 16,384-byte payload bound. A decoder must reject non-minimal integers/lengths, indefinite items, maps, tags, floats, negative integers, null/undefined, unknown kinds, wrong type/arity, partial frames and trailing bytes before any semantic effect. The maximum 16,448-byte read allocation is a framing ceiling, not a per-peer work or throughput budget. Authorization and phase admission remain separate.
 
 ## Candidate framing vectors (schema only)
