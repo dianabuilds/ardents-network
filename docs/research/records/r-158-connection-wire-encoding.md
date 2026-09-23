@@ -73,6 +73,30 @@ For a framing negative vector, the old v2 prefix begins with ASCII `arde` (`61 7
 
 **Open evidence:** Encoder/decoder verification of the computed bounds, canonicality and all registry vectors, mixed-peer Endpoint tests, and a complete external retained-asset/floor inventory. The source caller and TLS/ADR inventory above does not establish those tests or a migration permission. No implementation or qualification result is inferred.
 
+## Candidate syntax table for decision
+
+This table transcribes candidate §3/§5 shapes and independently checked maximum *body* lengths; it is proposed, not the current technical contract. `b32`/`b64` mean exact-length CBOR byte strings; `u64` means an unsigned CBOR integer with the shortest form. Every array is definite, has exact listed arity, and has no optional or trailing fields. The four-byte prefix is additional to these body lengths. C0 is nested inside OFFER and is not its own wire kind.
+
+| Kind | Exact typed body array | Arity | Max body bytes |
+| --- | --- | ---: | ---: |
+| 1 DATA | `[1,direction:u64,offset:u64,payload:bstr(1..16384)]` | 4 | 16,399 |
+| 2 ACK | `[2,direction:u64,acceptedOffset:u64,receiveLimit:u64,finalAccepted:bool]` | 5 | 22 |
+| 3 EOF | `[3,direction:u64,finalOffset:u64]` | 3 | 12 |
+| 16 PROPOSE | `[16,1,network:b32,target:b32,instanceKey:b32,instanceGeneration:u64,publicationDigest:b32,profileDigest:b32,initiatorBinding:b32,nonceA:b32,routeBinding:b32,limitsA:[u64,u64,u64],bounds:[u64,u64,u64]]` | 13 | 340 |
+| 17 OFFER | `[17,C0,instanceSignature:b64,proofB:b32]` | 4 | 518 |
+| nested C0 | `[1,network:b32,target:b32,instanceKey:b32,instanceGeneration:u64,publicationDigest:b32,profileDigest:b32,initiatorBinding:b32,nonceA:b32,nonceB:b32,handle:b32,limits:[u64,u64,u64,u64],bounds:[u64,u64,u64],proposeDigest:b32]` | 14 | 416 |
+| 18 CONFIRM | `[18,handle:b32,H0:b32,proofA:b32]` | 4 | 104 |
+| 19 OPEN_READY | `[19,handle:b32,H0:b32,proofB:b32]` | 4 | 104 |
+| 32 CONTINUE_REQUEST | `[32,role:u64,handle:b32,H0:b32,intent:u64,attemptNonce:b32,routeBinding:b32,proof:b32]` | 8 | 175 |
+| 33 CONTINUE_ACCEPT | `[33,role:u64,requestDigest:b32,proof:b32]` | 4 | 72 |
+| 34 SETTLED_RECEIPT | `[34,role:u64,requestDigest:b32,finalA:u64,finalB:u64,proof:b32]` | 6 | 90 |
+| 40 ASSIGN | `[40,revision:u64,paths:[1..2 × b32]]` | 3 | 81 |
+| 41 ASSIGNED | `[41,revision:u64,setDigest:b32,retainedPresent:bool]` | 4 | 47 |
+| 48 PROBE / 49 PROBE_REPLY | `[kind,nonce:b32]` | 2 | 37 each |
+| 62 ABORT / 63 REFUSE | `[kind,code:u64]` | 2 | 4 each |
+
+Candidate envelope `L=1..16448`; before data-ready, reject `L>1024` from the prefix before body allocation. All non-DATA kinds are limited to 1,024 body bytes even after data-ready. DATA alone may use the larger envelope, with its own 16,384-byte payload bound. A decoder must reject non-minimal integers/lengths, indefinite items, maps, tags, floats, negative integers, null/undefined, unknown kinds, wrong type/arity, partial frames and trailing bytes before any semantic effect. The maximum 16,448-byte read allocation is a framing ceiling, not a per-peer work or throughput budget. Authorization and phase admission remain separate.
+
 ## Candidate framing vectors (schema only)
 
 Each row is the entire proposed `uint32be(L) || CBOR body` in hex. These short examples exercise syntax only; they convey no valid Instance proof, phase, authority or workload acceptance. The expected result applies to a prospective strict new-profile parser after exact ALPN selection. No parser has been run against these vectors.
