@@ -77,20 +77,30 @@ type installedCommandJournalEvent struct {
 	Message   string `json:"MESSAGE"`
 }
 
-func installedCommandRefreshFailureTime(line string) (time.Time, bool, error) {
+type installedCommandRefreshFailureEvent struct {
+	at    time.Time
+	stage string
+}
+
+func installedCommandRefreshFailureTime(line string) (installedCommandRefreshFailureEvent, bool, error) {
 	var event installedCommandJournalEvent
 	if err := json.Unmarshal([]byte(line), &event); err != nil {
-		return time.Time{}, false, err
+		return installedCommandRefreshFailureEvent{}, false, err
 	}
-	if !strings.Contains(event.Message, `"kind":"headless-runtime-publication-refresh-failed"`) ||
-		!strings.Contains(event.Message, `"failure":"rotation-source-prefix-opening-entry-token-take-permission"`) {
-		return time.Time{}, false, nil
+	if !strings.Contains(event.Message, `"kind":"headless-runtime-publication-refresh-failed"`) {
+		return installedCommandRefreshFailureEvent{}, false, nil
 	}
 	microseconds, err := strconv.ParseInt(event.Timestamp, 10, 64)
 	if err != nil {
-		return time.Time{}, false, fmt.Errorf("decode journal realtime timestamp: %w", err)
+		return installedCommandRefreshFailureEvent{}, false, fmt.Errorf("decode journal realtime timestamp: %w", err)
 	}
-	return time.UnixMicro(microseconds).UTC(), true, nil
+	var detail struct {
+		Failure string `json:"failure"`
+	}
+	if err := json.Unmarshal([]byte(event.Message), &detail); err != nil {
+		return installedCommandRefreshFailureEvent{}, false, fmt.Errorf("decode refresh failure: %w", err)
+	}
+	return installedCommandRefreshFailureEvent{at: time.UnixMicro(microseconds).UTC(), stage: detail.Failure}, true, nil
 }
 
 type installedCommandRefreshFailureWindow uint8
@@ -124,19 +134,21 @@ func waitInstalledCommandRefreshExpiry(t *testing.T, invocation string, permissi
 			if strings.TrimSpace(line) == "" {
 				continue
 			}
-			occurred, matching, err := installedCommandRefreshFailureTime(line)
+			failure, matching, err := installedCommandRefreshFailureTime(line)
 			if err != nil {
 				t.Fatalf("invalid Endpoint journal event: %v", err)
 			}
 			if !matching {
 				continue
 			}
-			switch classifyInstalledCommandRefreshFailure(occurred, publisher.NotAfter) {
+			if failure.stage != "rotation-source-prefix-opening-entry-token-take-permission" {
+				t.Fatalf("refresh failed unexpectedly before expiry observation: stage=%s at %s", failure.stage, failure.at)
+			}
+			switch classifyInstalledCommandRefreshFailure(failure.at, publisher.NotAfter) {
 			case installedCommandRefreshFailureBeforeExpiry:
-				t.Logf("ignored pre-expiry refresh failure at %s", occurred)
-				continue
+				t.Fatalf("refresh failed before publisher Permission expiry at %s", failure.at)
 			case installedCommandRefreshFailureAfterWindow:
-				t.Fatalf("scheduled refresh failure occurred outside Permission observation window: %s", occurred)
+				t.Fatalf("scheduled refresh failure occurred outside Permission observation window: %s", failure.at)
 			default:
 				return
 			}
@@ -172,14 +184,22 @@ func TestInstalledCommandRefreshFailureTimeRequiresEventTimestamp(t *testing.T) 
 			if err != nil {
 				t.Fatal(err)
 			}
-			occurred, matching, err := installedCommandRefreshFailureTime(string(line))
-			if err != nil || !matching || !occurred.Equal(event.at) {
-				t.Fatalf("decode event: %s / %t / %v", occurred, matching, err)
+			failure, matching, err := installedCommandRefreshFailureTime(string(line))
+			if err != nil || !matching || !failure.at.Equal(event.at) || failure.stage != "rotation-source-prefix-opening-entry-token-take-permission" {
+				t.Fatalf("decode event: %s / %s / %t / %v", failure.at, failure.stage, matching, err)
 			}
-			if window := classifyInstalledCommandRefreshFailure(occurred, expires); window != event.window {
+			if window := classifyInstalledCommandRefreshFailure(failure.at, expires); window != event.window {
 				t.Fatalf("event window = %d, want %d", window, event.window)
 			}
 		})
+	}
+}
+
+func TestInstalledCommandRefreshFailureParsesUnexpectedStage(t *testing.T) {
+	line := `{"__REALTIME_TIMESTAMP":"1790287200000000","MESSAGE":"{\"kind\":\"headless-runtime-publication-refresh-failed\",\"failure\":\"registration-ended-protocol\"}"}`
+	failure, matching, err := installedCommandRefreshFailureTime(line)
+	if err != nil || !matching || failure.stage != "registration-ended-protocol" {
+		t.Fatalf("unexpected stage = %q, matching=%t, err=%v", failure.stage, matching, err)
 	}
 }
 
