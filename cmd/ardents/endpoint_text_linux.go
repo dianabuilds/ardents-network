@@ -101,12 +101,14 @@ func writeHeadlessTextEvent(ctx context.Context, output headlessTextEventOutput,
 		digest = hex.EncodeToString(event.RequestDigest[:])
 	}
 	return json.NewEncoder(output).Encode(struct {
-		Kind                 string `json:"kind"`
-		NetworkID            string `json:"network_id"`
-		Surface              string `json:"surface,omitempty"`
-		Failure              string `json:"failure,omitempty"`
-		RequestDigest        string `json:"request_digest,omitempty"`
-		ApplicationSocket    string `json:"application_socket,omitempty"`
-		AdministrationSocket string `json:"administration_socket,omitempty"`
-	}{Kind: "headless-runtime-" + event.Kind, NetworkID: hex.EncodeToString(event.NetworkID[:]), Surface: event.Surface, Failure: event.Failure, RequestDigest: digest, ApplicationSocket: event.ApplicationAddress, AdministrationSocket: event.AdministrationAddress})
+		Schema               string    `json:"schema"`
+		Kind                 string    `json:"kind"`
+		At                   time.Time `json:"at"`
+		NetworkID            string    `json:"network_id"`
+		Surface              string    `json:"surface,omitempty"`
+		Failure              string    `json:"failure,omitempty"`
+		RequestDigest        string    `json:"request_digest,omitempty"`
+		ApplicationSocket    string    `json:"application_socket,omitempty"`
+		AdministrationSocket string    `json:"administration_socket,omitempty"`
+	}{Schema: "ardents-headless-runtime-event-v1", Kind: "headless-runtime-" + event.Kind, At: event.At, NetworkID: hex.EncodeToString(event.NetworkID[:]), Surface: event.Surface, Failure: event.Failure, RequestDigest: digest, ApplicationSocket: event.ApplicationAddress, AdministrationSocket: event.AdministrationAddress})
 }

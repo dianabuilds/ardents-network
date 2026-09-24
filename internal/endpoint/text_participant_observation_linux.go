@@ -12,15 +12,19 @@ import (
 // first background delivery failure until the participant can stop and report it.
 type textParticipantObservation struct {
 	observe func(context.Context, TextParticipantEvent) error
+	now     func() time.Time
 	mu      sync.Mutex
 	failed  chan error
 }
 
-func newTextParticipantObservation(observe func(context.Context, TextParticipantEvent) error) *textParticipantObservation {
-	return &textParticipantObservation{observe: observe, failed: make(chan error, 1)}
+func newTextParticipantObservation(observe func(context.Context, TextParticipantEvent) error, now func() time.Time) *textParticipantObservation {
+	return &textParticipantObservation{observe: observe, now: now, failed: make(chan error, 1)}
 }
 
 func (output *textParticipantObservation) emit(ctx context.Context, event TextParticipantEvent) error {
+	if event.At.IsZero() {
+		event.At = output.now().UTC()
+	}
 	output.mu.Lock()
 	defer output.mu.Unlock()
 	return output.observe(ctx, event)

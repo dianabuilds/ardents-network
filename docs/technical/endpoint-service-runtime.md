@@ -365,7 +365,7 @@ and full network lifecycle
 qualification. No caller-supplied Target, permission file or local context
 identifier may bypass these owners.
 
-The participant serializes local lifecycle output. A background failure event uses a
+The participant serializes local lifecycle output. Each event records UTC occurrence time before output delivery; the local JSON-line adapter uses `schema`, `kind`, and `at` for correlation with Node lifecycle events while retaining the existing bounded, role-specific fields. A background failure event uses a
 bounded observer context; if delivery fails, the participant ends the generation,
 joins its owners, and returns the output failure instead of silently discarding it.
 

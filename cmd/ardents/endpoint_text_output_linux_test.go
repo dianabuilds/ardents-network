@@ -17,15 +17,18 @@ import (
 
 func TestHeadlessTextRefreshFailureEventExposesOnlyFixedCategory(t *testing.T) {
 	output := &headlessTextBufferedOutput{}
-	event := endpointapi.TextParticipantEvent{Kind: "publication-refresh-failed", NetworkID: [32]byte{1}, Failure: "rotation"}
+	at := time.Date(2026, time.September, 25, 9, 30, 0, 0, time.UTC)
+	event := endpointapi.TextParticipantEvent{At: at, Kind: "publication-refresh-failed", NetworkID: [32]byte{1}, Failure: "rotation"}
 	if err := writeHeadlessTextEvent(t.Context(), output, event); err != nil {
 		t.Fatal(err)
 	}
 	var observed struct {
-		Kind    string `json:"kind"`
-		Failure string `json:"failure"`
+		Schema  string    `json:"schema"`
+		Kind    string    `json:"kind"`
+		At      time.Time `json:"at"`
+		Failure string    `json:"failure"`
 	}
-	if err := json.Unmarshal(output.Bytes(), &observed); err != nil || observed.Kind != "headless-runtime-publication-refresh-failed" || observed.Failure != "rotation" {
+	if err := json.Unmarshal(output.Bytes(), &observed); err != nil || observed.Schema != "ardents-headless-runtime-event-v1" || observed.Kind != "headless-runtime-publication-refresh-failed" || !observed.At.Equal(at) || observed.Failure != "rotation" {
 		t.Fatalf("refresh event = %#v / %v", observed, err)
 	}
 }

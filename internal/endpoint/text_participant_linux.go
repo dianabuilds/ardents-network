@@ -90,7 +90,11 @@ func useTextParticipant(ctx context.Context, config TextParticipantConfig, withd
 }
 
 func (endpoint *endpoint) runTextInterfaces(ctx context.Context, config TextParticipantConfig) (outcome error) {
-	output := newTextParticipantObservation(config.Observe)
+	clock := config.Clock
+	if clock == nil {
+		clock = time.Now
+	}
+	output := newTextParticipantObservation(config.Observe, clock)
 	defer func() { outcome = errors.Join(outcome, output.pendingFailure()) }()
 	var contexts [2]*textContext
 	for index, role := range []struct {
