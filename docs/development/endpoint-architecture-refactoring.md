@@ -60,9 +60,10 @@ contract in `docs/technical/endpoint-service-runtime.md`.
    cycle. A new package gets `doc.go`, behavior tests, and a package-map entry
    in the same change.
 4. Treat the token-attempt journal as the first candidate for a separate
-   durable owner. Its current root-lock and sync calls are shared with transit
-   acquisition. Resolve that ownership boundary before moving files; do not
-   export transit-specific names merely to make the move compile.
+   durable owner. Its root access, lease, and sync mechanics now belong to
+   `internal/endpoint/durableroot`, shared with transit acquisition. Moving
+   the journal itself still requires a caller-facing attempt contract and its
+   exact package dependency map.
 5. Keep the text workload name on code that really depends on the selected
    text Application. Use responsibility names for mechanisms only after their
    ownership is clear. A bulk `text_` to `participant_` rename is not the

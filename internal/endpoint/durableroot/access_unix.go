@@ -1,6 +1,6 @@
 //go:build !windows
 
-package endpoint
+package durableroot
 
 import (
 	"errors"
@@ -8,7 +8,7 @@ import (
 	"syscall"
 )
 
-func secureEndpointRoot(root string, _ os.FileInfo) error {
+func Secure(root string) error {
 	if err := os.Chmod(root, 0o700); err != nil {
 		return err
 	}

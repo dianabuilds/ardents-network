@@ -12,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/endpoint/durableroot"
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/credential"
 )
@@ -97,7 +98,7 @@ type transitAcquisition struct {
 	mu     sync.Mutex
 	root   string
 	clock  func() time.Time
-	lease  endpointRootLease
+	lease  *durableroot.Lease
 	state  transitAcquisitionState
 	closed bool
 	failed error
@@ -114,14 +115,14 @@ func openTransitAcquisition(config transitAcquisitionConfig) (*transitAcquisitio
 	if err := prepareTransitAcquisitionRoot(root, config.Create); err != nil {
 		return nil, err
 	}
-	lease, err := acquireEndpointRootLease(filepath.Join(root, "owner.lock"))
+	lease, err := durableroot.Acquire(filepath.Join(root, "owner.lock"))
 	if err != nil {
 		return nil, err
 	}
 	opened := false
 	defer func() {
 		if !opened {
-			_ = lease.release()
+			_ = lease.Release()
 		}
 	}()
 	if err := initializeTransitAcquisitionRoot(root, config.Create); err != nil {
@@ -350,7 +351,7 @@ func (owner *transitAcquisition) Close() error {
 		return nil
 	}
 	owner.closed = true
-	return owner.lease.release()
+	return owner.lease.Release()
 }
 
 func (state transitAcquisitionState) request() credential.Request {

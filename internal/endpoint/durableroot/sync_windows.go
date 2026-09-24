@@ -1,10 +1,10 @@
 //go:build windows
 
-package endpoint
+package durableroot
 
 import "syscall"
 
-func endpointSyncDirectory(path string) error {
+func SyncDirectory(path string) error {
 	name, err := syscall.UTF16PtrFromString(path)
 	if err != nil {
 		return err
@@ -17,10 +17,10 @@ func endpointSyncDirectory(path string) error {
 	}
 	flushErr := syscall.FlushFileBuffers(handle)
 	closeErr := syscall.CloseHandle(handle)
-	return errorsJoinEndpoint(flushErr, closeErr)
+	return joinSyncErrors(flushErr, closeErr)
 }
 
-func errorsJoinEndpoint(first, second error) error {
+func joinSyncErrors(first, second error) error {
 	if first != nil {
 		return first
 	}

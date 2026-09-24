@@ -16,6 +16,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
 	"github.com/dianabuilds/ardents-network/internal/custody"
+	"github.com/dianabuilds/ardents-network/internal/endpoint/durableroot"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/route/credential"
 )
@@ -296,7 +297,7 @@ func runTextEndpointCrashChild(t *testing.T, root string) {
 	if err := os.Rename(pending, filepath.Join(root, "boundary.json")); err != nil {
 		t.Fatal(err)
 	}
-	if err := endpointSyncDirectory(root); err != nil {
+	if err := durableroot.SyncDirectory(root); err != nil {
 		t.Fatal(err)
 	}
 	<-time.After(time.Minute)

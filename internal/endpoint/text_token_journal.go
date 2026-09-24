@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/binary"
 	"errors"
+	"github.com/dianabuilds/ardents-network/internal/endpoint/durableroot"
 	"os"
 	"path/filepath"
 	"sync"
@@ -34,7 +35,7 @@ type textTokenJournal struct {
 	root     string
 	identity os.FileInfo
 	network  [32]byte
-	lease    endpointRootLease
+	lease    *durableroot.Lease
 	clock    func() time.Time
 	floor    time.Time
 	records  map[[32]byte]textTokenAttempt
@@ -120,7 +121,7 @@ func (journal *textTokenJournal) Close() error {
 	defer journal.mu.Unlock()
 	if !journal.closed {
 		journal.closed = true
-		journal.failure = errors.Join(journal.failure, journal.lease.release())
+		journal.failure = errors.Join(journal.failure, journal.lease.Release())
 	}
 	return journal.failure
 }

@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
+	"github.com/dianabuilds/ardents-network/internal/endpoint/durableroot"
 	"io"
 	"os"
 	"path/filepath"
@@ -42,15 +43,15 @@ func openTextTokenJournal(root string, network [32]byte, clock func() time.Time)
 			return nil, errors.New("text token journal marker unavailable")
 		}
 	}
-	if err := secureEndpointRoot(root, info); err != nil {
+	if err := durableroot.Secure(root); err != nil {
 		return nil, err
 	}
-	lease, err := acquireEndpointRootLease(filepath.Join(root, "owner.lock"))
+	lease, err := durableroot.Acquire(filepath.Join(root, "owner.lock"))
 	if err != nil {
 		return nil, err
 	}
 	journal := &textTokenJournal{root: root, network: network, clock: clock, lease: lease, records: make(map[[32]byte]textTokenAttempt)}
-	fail := func(cause error) (*textTokenJournal, error) { return nil, errors.Join(cause, lease.release()) }
+	fail := func(cause error) (*textTokenJournal, error) { return nil, errors.Join(cause, lease.Release()) }
 	if fresh {
 		current, err := os.ReadDir(root)
 		if err != nil || len(current) != 1 || current[0].Name() != "owner.lock" {
@@ -63,7 +64,7 @@ func openTextTokenJournal(root string, network [32]byte, clock func() time.Time)
 		if err := writeTextTokenJournalFile(filepath.Join(root, "attempts"), journal.header(journal.floor)); err != nil {
 			return fail(err)
 		}
-		if err := endpointSyncDirectory(root); err != nil {
+		if err := durableroot.SyncDirectory(root); err != nil {
 			return fail(err)
 		}
 	} else if err := journal.load(); err != nil {
@@ -151,7 +152,7 @@ func (journal *textTokenJournal) replace(records map[[32]byte]textTokenAttempt, 
 	if err := os.Rename(path, filepath.Join(journal.root, "attempts")); err != nil {
 		return err
 	}
-	if err := endpointSyncDirectory(journal.root); err != nil {
+	if err := durableroot.SyncDirectory(journal.root); err != nil {
 		return err
 	}
 	info, err := pinTextTokenJournalFile(journal.root)

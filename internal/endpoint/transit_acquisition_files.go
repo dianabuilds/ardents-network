@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"github.com/dianabuilds/ardents-network/internal/endpoint/durableroot"
 	"io"
 	"os"
 	"path/filepath"
@@ -23,7 +24,7 @@ func prepareTransitAcquisitionRoot(root string, create bool) error {
 	if !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
 		return errors.New("transit acquisition root is not an owned directory")
 	}
-	if err := secureEndpointRoot(root, info); err != nil {
+	if err := durableroot.Secure(root); err != nil {
 		return err
 	}
 	entries, err := os.ReadDir(root)
@@ -80,7 +81,7 @@ func initializeTransitAcquisitionRoot(root string, create bool) error {
 	if writeErr != nil || closeErr != nil {
 		return errors.Join(writeErr, closeErr)
 	}
-	return endpointSyncDirectory(root)
+	return durableroot.SyncDirectory(root)
 }
 
 func loadTransitAcquisitionState(root string) (transitAcquisitionState, error) {
@@ -134,5 +135,5 @@ func replaceTransitAcquisitionState(root string, raw []byte) error {
 	if err := os.Rename(path, filepath.Join(root, "current.json")); err != nil {
 		return err
 	}
-	return endpointSyncDirectory(root)
+	return durableroot.SyncDirectory(root)
 }

@@ -1,6 +1,6 @@
 //go:build windows
 
-package endpoint
+package durableroot
 
 import (
 	"errors"
@@ -10,7 +10,7 @@ import (
 	"golang.org/x/sys/windows"
 )
 
-func secureEndpointRoot(root string, _ os.FileInfo) error {
+func Secure(root string) error {
 	user, err := windows.GetCurrentProcessToken().GetTokenUser()
 	if err != nil || user == nil || user.User.Sid == nil {
 		return errors.New("read Endpoint root owner SID")

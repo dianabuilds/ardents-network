@@ -1,10 +1,10 @@
 //go:build !windows
 
-package endpoint
+package durableroot
 
 import "os"
 
-func endpointSyncDirectory(path string) error {
+func SyncDirectory(path string) error {
 	directory, err := os.Open(path)
 	if err != nil {
 		return err
