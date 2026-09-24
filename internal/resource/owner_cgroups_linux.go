@@ -11,7 +11,8 @@ import (
 // MeasureOwnerCgroups includes the current Endpoint cgroup and its verified
 // worker cgroups. memory.current includes kernel and cache charges too, so it
 // is retained separately from the sum of resident pages of every process in
-// these cgroups and descendants. A disappearing process invalidates the sample.
+// these cgroups and descendants. A disappearing process triggers one complete
+// re-inventory; a second disappearance invalidates the sample.
 func MeasureOwnerCgroups(workers []string) (Sample, error) {
 	current, err := currentCgroupDirectory()
 	if err != nil {

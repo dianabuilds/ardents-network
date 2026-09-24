@@ -2,7 +2,72 @@
 
 package resource
 
-import "testing"
+import (
+	"errors"
+	"os"
+	"path/filepath"
+	"testing"
+)
+
+func TestOwnerResidentBytesRetriesOneDisappearingProcess(t *testing.T) {
+	group := t.TempDir()
+	if err := os.Mkdir(filepath.Join(group, "child"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	inventories, statmReads := 0, 0
+	got, err := ownerResidentBytesWithReader([]string{group}, func(path string, _ int) (string, error) {
+		switch path {
+		case filepath.Join(group, "cgroup.procs"), filepath.Join(group, "child", "cgroup.procs"):
+			inventories++
+			if inventories <= 2 {
+				return "42\n", nil
+			}
+			return "43\n", nil
+		case filepath.Join("/proc", "42", "statm"):
+			statmReads++
+			return "", os.ErrNotExist
+		case filepath.Join("/proc", "43", "statm"):
+			statmReads++
+			return "10 3 0 0 0 0 0", nil
+		default:
+			return "", errors.New("unexpected path")
+		}
+	})
+	if err != nil || got != 3*uint64(os.Getpagesize()) || inventories != 4 || statmReads != 2 {
+		t.Fatalf("resident retry = %d, %v after %d inventories and %d statm reads", got, err, inventories, statmReads)
+	}
+}
+
+func TestOwnerResidentBytesRejectsRepeatedOrNonProcessInventoryFailure(t *testing.T) {
+	group := t.TempDir()
+	repeated := 0
+	if _, err := ownerResidentBytesWithReader([]string{group}, func(path string, _ int) (string, error) {
+		if path == filepath.Join(group, "cgroup.procs") {
+			return "42\n", nil
+		}
+		repeated++
+		return "", os.ErrNotExist
+	}); err == nil || repeated != 2 {
+		t.Fatalf("repeated disappearance = %v after %d reads", err, repeated)
+	}
+	cgroupReads := 0
+	if _, err := ownerResidentBytesWithReader([]string{group}, func(path string, _ int) (string, error) {
+		cgroupReads++
+		return "", os.ErrNotExist
+	}); err == nil || cgroupReads != 1 {
+		t.Fatalf("inventory disappearance = %v after %d reads", err, cgroupReads)
+	}
+	statmReads := 0
+	if _, err := ownerResidentBytesWithReader([]string{group}, func(path string, _ int) (string, error) {
+		if path == filepath.Join(group, "cgroup.procs") {
+			return "42\n", nil
+		}
+		statmReads++
+		return "", os.ErrPermission
+	}); err == nil || statmReads != 1 {
+		t.Fatalf("non-ENOENT statm failure = %v after %d reads", err, statmReads)
+	}
+}
 
 func TestOwnerResidentPagesRejectMalformedAndOverflowingCounters(t *testing.T) {
 	if got, err := residentBytes("1000 17 0 0 0 0 0", 4096); err != nil || got != 69632 {
