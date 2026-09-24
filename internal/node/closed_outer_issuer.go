@@ -43,16 +43,24 @@ func closedIssuerNodeHandler(config runtimeConfig, certificate tls.Certificate, 
 				}
 				return issuer.ServeAdmittedAfterHello(childContext, connection, channel, hello, lane)
 			}
-			serveClosedIssuerInner(childContext, lane, certificate, deadline, carrier.NodeKey, serve, admitted)
+			serveClosedIssuerInner(childContext, lane, certificate, deadline, carrier.NodeKey, serve, admitted, func(reason string) {
+				emitClosedRouteDiagnostic(config, reason)
+			})
 		})
 	}
 }
 
-func serveClosedIssuerInner(ctx context.Context, lane *route.ClosedOuterBridgeLane, certificate tls.Certificate, deadline time.Time, adjacency [32]byte, serve func(context.Context, io.ReadWriter, [32]byte, route.ClosedHello) error, admitted func(net.Conn, route.ClosedLaneFrame) error) {
+func serveClosedIssuerInner(ctx context.Context, lane *route.ClosedOuterBridgeLane, certificate tls.Certificate, deadline time.Time, adjacency [32]byte, serve func(context.Context, io.ReadWriter, [32]byte, route.ClosedHello) error, admitted func(net.Conn, route.ClosedLaneFrame) error, observe func(string)) {
 	status := byte(1)
-	defer func() { _ = lane.CloseWithStatus(status) }()
-	secured, err := route.AcceptClosedRoleTLS(ctx, lane, certificate, deadline)
-	if err != nil {
+	reason := ""
+	defer func() {
+		_ = lane.CloseWithStatus(status)
+		if reason != "" && observe != nil {
+			observe(reason)
+		}
+	}()
+	secured, reason := acceptClosedIssuerTLS(ctx, lane, certificate, deadline)
+	if reason != "" {
 		return
 	}
 	defer func() {
@@ -84,6 +92,18 @@ func serveClosedIssuerInner(ctx context.Context, lane *route.ClosedOuterBridgeLa
 			status = 0
 		}
 	}
+}
+
+func closedIssuerInnerTLSFailureReason(err error) string {
+	return "issuer-inner-tls-" + closedRouteDiagnosticCause(err)
+}
+
+func acceptClosedIssuerTLS(ctx context.Context, connection net.Conn, certificate tls.Certificate, deadline time.Time) (*tls.Conn, string) {
+	secured, err := route.AcceptClosedRoleTLS(ctx, connection, certificate, deadline)
+	if err != nil {
+		return nil, closedIssuerInnerTLSFailureReason(err)
+	}
+	return secured, ""
 }
 
 func closedSharedPeerCurrent(config runtimeConfig, snapshot dutyFacts, key [32]byte, now time.Time) bool {

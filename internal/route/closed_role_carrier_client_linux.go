@@ -5,10 +5,12 @@ package route
 import (
 	"context"
 	"errors"
-	"github.com/quic-go/quic-go"
+	"io"
 	"net"
 	"strings"
 	"time"
+
+	"github.com/quic-go/quic-go"
 )
 
 // closedRoleOpenFailure retains the exact opening error while recording the
@@ -45,6 +47,8 @@ func closedRoleOpenFailureDetail(cause error) string {
 		stages = append(stages, "canceled")
 	case errors.Is(cause, context.DeadlineExceeded):
 		stages = append(stages, "deadline")
+	case errors.Is(cause, io.EOF):
+		stages = append(stages, "eof")
 	default:
 		var networkError net.Error
 		if errors.As(cause, &networkError) && networkError.Timeout() {

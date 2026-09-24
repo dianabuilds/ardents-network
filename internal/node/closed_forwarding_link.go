@@ -40,6 +40,27 @@ type closedForwardingOpenResult struct {
 	err  error
 }
 
+type closedForwardingOpenFailure struct {
+	stage string
+	cause error
+}
+
+func (failure *closedForwardingOpenFailure) Error() string { return failure.cause.Error() }
+
+func (failure *closedForwardingOpenFailure) Unwrap() error { return failure.cause }
+
+func closedForwardingOpenFailureAt(stage string, cause error) error {
+	return &closedForwardingOpenFailure{stage: stage, cause: cause}
+}
+
+func closedForwardingOpenFailureStage(cause error) string {
+	var failure *closedForwardingOpenFailure
+	if errors.As(cause, &failure) && failure.stage != "" {
+		return failure.stage
+	}
+	return "unknown"
+}
+
 func closedForwardingNonCancellationError(err error) error {
 	if err == nil || errors.Is(err, context.Canceled) && !errors.Is(err, context.DeadlineExceeded) {
 		joined, ok := err.(interface{ Unwrap() []error })
@@ -84,6 +105,7 @@ func (openings *closedForwardingOpenings) start(server *closedForwardingServer, 
 		link, err := server.openForwardingLink(child, event.Open, event.Restriction, event.Lane, channel, write, abort)
 		if err != nil && child.Err() == nil {
 			abort()
+			emitClosedRouteDiagnostic(server.config, "forward-open-"+closedForwardingOpenFailureStage(err)+"-"+closedRouteDiagnosticCause(err))
 		}
 		openings.results <- closedForwardingOpenResult{lane: event.Lane, link: link, err: err}
 		if openings.wake != nil {
@@ -323,24 +345,24 @@ func (server *closedForwardingServer) openForwardingLink(ctx context.Context, op
 	handshakeDeadline := closedForwardingHandshakeDeadline(open.Deadline, server.clock().UTC())
 	handshakeCtx, cancelHandshake, err := closedForwardingHandshakeContext(ctx, handshakeDeadline)
 	if err != nil {
-		return nil, err
+		return nil, closedForwardingOpenFailureAt("deadline", err)
 	}
 	defer cancelHandshake()
 	updated, err := currentFacts(server.config)
 	if err != nil {
-		return nil, err
+		return nil, closedForwardingOpenFailureAt("facts", err)
 	}
 	candidate, err := closedForwardRecipient(server.config, updated, open, server.clock())
 	if err != nil {
-		return nil, err
+		return nil, closedForwardingOpenFailureAt("recipient", err)
 	}
 	receiver, available := closedRouteReceiver(server.config, updated, route.ClosedPurposeForwarding, server.clock())
 	if !available {
-		return nil, errors.New("closed forwarding receiver is unavailable")
+		return nil, closedForwardingOpenFailureAt("receiver", errors.New("closed forwarding receiver is unavailable"))
 	}
 	dialEndpoint, err := closedCarrierDialAddress(candidate.Endpoint, server.config.ClosedForwarding.CarrierRelayEndpoint)
 	if err != nil {
-		return nil, err
+		return nil, closedForwardingOpenFailureAt("dial-address", err)
 	}
 	key := route.ClosedCarrierKey{NetworkID: receiver.NetworkID, ProfileDigest: receiver.ProfileDigest, LocalNodeID: receiver.NodeID,
 		PeerNodeID: candidate.NodeID, PeerKey: candidate.PublicKey, CarrierProfile: route.CarrierProfile(candidate.CarrierProfile)}
@@ -360,19 +382,19 @@ func (server *closedForwardingServer) openForwardingLink(ctx context.Context, op
 			Certificate: server.certificate, ExpectedPeerKey: candidate.PublicKey, Deadline: handshakeDeadline})
 	})
 	if err != nil {
-		return nil, err
+		return nil, closedForwardingOpenFailureAt("carrier", err)
 	}
 	session, err := server.sessions.acquire(handshakeCtx, key, lease, handshakeDeadline, func() (route.ClosedHello, error) {
 		return server.closedForwardingOuterHello(updated, open)
 	})
 	if err != nil {
 		_ = lease.Release()
-		return nil, err
+		return nil, closedForwardingOpenFailureAt("session", err)
 	}
 	remoteLane, reverse, err := session.attach(open, restriction, func(frame route.ClosedLaneFrame) error { frame.Lane = lane; return channel.QueueReverse(frame) }, func() bool { return channel.ReverseRetired(lane) })
 	if err != nil {
 		_ = lease.Release()
-		return nil, err
+		return nil, closedForwardingOpenFailureAt("attach", err)
 	}
 	link := &closedForwardingLink{session: session, remoteLane: remoteLane, localLane: lane, deadline: open.Deadline, reverse: reverse, lease: lease, write: write, channel: channel, done: make(chan struct{}), stopped: make(chan struct{}), abort: abort}
 	go link.copyReverse()
