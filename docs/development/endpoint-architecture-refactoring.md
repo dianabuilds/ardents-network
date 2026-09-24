@@ -78,8 +78,8 @@ in one file.
 
 A common diagnostic navigation surface may normalize time, owner, event
 class, and safe reason. Owner-specific event fields and privacy limits stay
-typed. Background delivery failures need a terminally observable outcome;
-an in-memory buffer alone cannot report an event when no later write succeeds.
+typed. Background delivery failures terminate the participant and return to its caller;
+a private observation owner serializes output and retains the first such failure.
 
 ## Integration rule for this worktree
 

@@ -363,6 +363,11 @@ protected composition still requires installed command
 and full network lifecycle
 qualification. No caller-supplied Target, permission file or local context
 identifier may bypass these owners.
+
+The participant serializes local lifecycle output. A background failure event uses a
+bounded observer context; if delivery fails, the participant ends the generation,
+joins its owners, and returns the output failure instead of silently discarding it.
+
 The coalesced authenticated stream requires its directional Terminal receipt
 and peer confirmation even when only the initial Attachment is available.
 Missing confirmation cannot yield a successful bounded outcome. The protected
