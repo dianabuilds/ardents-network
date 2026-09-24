@@ -34,7 +34,7 @@ type textTokenJournal struct {
 	root     string
 	identity os.FileInfo
 	network  [32]byte
-	lease    transitAcquisitionLease
+	lease    endpointRootLease
 	clock    func() time.Time
 	floor    time.Time
 	records  map[[32]byte]textTokenAttempt

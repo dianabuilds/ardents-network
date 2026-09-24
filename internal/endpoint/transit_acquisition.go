@@ -97,7 +97,7 @@ type transitAcquisition struct {
 	mu     sync.Mutex
 	root   string
 	clock  func() time.Time
-	lease  transitAcquisitionLease
+	lease  endpointRootLease
 	state  transitAcquisitionState
 	closed bool
 	failed error
@@ -114,7 +114,7 @@ func openTransitAcquisition(config transitAcquisitionConfig) (*transitAcquisitio
 	if err := prepareTransitAcquisitionRoot(root, config.Create); err != nil {
 		return nil, err
 	}
-	lease, err := acquireTransitAcquisitionLease(filepath.Join(root, "owner.lock"))
+	lease, err := acquireEndpointRootLease(filepath.Join(root, "owner.lock"))
 	if err != nil {
 		return nil, err
 	}

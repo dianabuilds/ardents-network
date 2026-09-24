@@ -8,21 +8,21 @@ import (
 	"syscall"
 )
 
-type transitAcquisitionLease struct{ file *os.File }
+type endpointRootLease struct{ file *os.File }
 
-func acquireTransitAcquisitionLease(path string) (transitAcquisitionLease, error) {
+func acquireEndpointRootLease(path string) (endpointRootLease, error) {
 	file, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR, 0o600)
 	if err != nil {
-		return transitAcquisitionLease{}, err
+		return endpointRootLease{}, err
 	}
 	if err := syscall.Flock(int(file.Fd()), syscall.LOCK_EX|syscall.LOCK_NB); err != nil {
 		_ = file.Close()
-		return transitAcquisitionLease{}, errors.New("transit acquisition root is already owned")
+		return endpointRootLease{}, errors.New("Endpoint root is already owned")
 	}
-	return transitAcquisitionLease{file: file}, nil
+	return endpointRootLease{file: file}, nil
 }
 
-func (lease transitAcquisitionLease) release() error {
+func (lease endpointRootLease) release() error {
 	if lease.file == nil {
 		return nil
 	}

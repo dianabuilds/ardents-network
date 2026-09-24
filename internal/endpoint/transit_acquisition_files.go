@@ -23,7 +23,7 @@ func prepareTransitAcquisitionRoot(root string, create bool) error {
 	if !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
 		return errors.New("transit acquisition root is not an owned directory")
 	}
-	if err := secureTransitAcquisitionRoot(root, info); err != nil {
+	if err := secureEndpointRoot(root, info); err != nil {
 		return err
 	}
 	entries, err := os.ReadDir(root)

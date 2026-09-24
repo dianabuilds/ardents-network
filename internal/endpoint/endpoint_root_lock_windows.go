@@ -9,26 +9,26 @@ import (
 	"golang.org/x/sys/windows"
 )
 
-type transitAcquisitionLease struct {
+type endpointRootLease struct {
 	file       *os.File
 	overlapped windows.Overlapped
 }
 
-func acquireTransitAcquisitionLease(path string) (transitAcquisitionLease, error) {
+func acquireEndpointRootLease(path string) (endpointRootLease, error) {
 	file, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR, 0o600)
 	if err != nil {
-		return transitAcquisitionLease{}, err
+		return endpointRootLease{}, err
 	}
-	lease := transitAcquisitionLease{file: file}
+	lease := endpointRootLease{file: file}
 	if err := windows.LockFileEx(windows.Handle(file.Fd()), windows.LOCKFILE_EXCLUSIVE_LOCK|windows.LOCKFILE_FAIL_IMMEDIATELY,
 		0, 1, 0, &lease.overlapped); err != nil {
 		_ = file.Close()
-		return transitAcquisitionLease{}, errors.New("transit acquisition root is already owned")
+		return endpointRootLease{}, errors.New("Endpoint root is already owned")
 	}
 	return lease, nil
 }
 
-func (lease transitAcquisitionLease) release() error {
+func (lease endpointRootLease) release() error {
 	if lease.file == nil {
 		return nil
 	}

@@ -37,7 +37,7 @@ implementation has private owners rather than one undifferentiated state bag:
 | Publisher prefixes | `textIntroductionPrefixLifecycle`, `textResponderPrefixLifecycle` | Separate Route handles and opening lifetimes; borrowed Source is not closed by either. |
 | Publication | `textPublicationPairLifecycle`, refresh lifecycle, Context coordinators | Instance and Publication ownership spans Context and Endpoint locks. |
 | Permission and issuance | `textPermission`, `textIssuanceOperation` | Stock, pending batch, and exact Source reservation share the Context admission lock. |
-| Token attempt storage | `textTokenJournal` | Own mutex and durable root; root security, lock, and sync primitives are currently shared with transit acquisition. |
+| Token attempt storage | `textTokenJournal` | Own mutex and durable root; Endpoint-owned root access, lease, and sync primitives are shared with transit acquisition; their names and files now reflect this ownership. |
 | Resolution and JOIN | Context flights and narrow acquisitions | Exact current prefix must be checked again after network effects. |
 | Job and worker | `textJobIdentity`, `textWorkerLifetime` | Context retains the job reservation; worker owns process and cgroup cleanup. |
 

@@ -42,10 +42,10 @@ func openTextTokenJournal(root string, network [32]byte, clock func() time.Time)
 			return nil, errors.New("text token journal marker unavailable")
 		}
 	}
-	if err := secureTransitAcquisitionRoot(root, info); err != nil {
+	if err := secureEndpointRoot(root, info); err != nil {
 		return nil, err
 	}
-	lease, err := acquireTransitAcquisitionLease(filepath.Join(root, "owner.lock"))
+	lease, err := acquireEndpointRootLease(filepath.Join(root, "owner.lock"))
 	if err != nil {
 		return nil, err
 	}
