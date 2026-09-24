@@ -18,6 +18,7 @@ configuration format or an authority source.
 | `accept-offline --state-root PATH --network-id HEX --authorities HEX,... --threshold N --at RFC3339 --epoch PATH --inputs PATH --materialization PATH --profile NAME` | Accept one complete authenticated offline Network State generation under the exact selected State profile. It emits one `ardents-state-event-v1` `generation-accepted` JSON event. |
 | `accept-closed-profile --state-root PATH --network-id HEX --authorities HEX,... --threshold N --at RFC3339 --profile ardents-route-v3 --closed-profile-authority HEX --closed-profile PATH` | Submit one signed `ARDCPR03` only to an already accepted State root under its explicit pinned closed-profile signer. It neither accepts an Epoch nor contacts Source. An exact retry is harmless; a different valid digest records durable conflict and makes the closed profile unavailable. It emits one `ardents-state-event-v1` `closed-profile-accepted` JSON event containing only the State generation, Epoch and profile digest. |
 | `refresh-sources --state-root PATH --source-plan PATH [--once|--resume]` | Run one selected Direct-Origin Source wave, resume from current State, or wait for the plan-owned `ardents-source-plan-v1` refresh interval. `--once` and `--resume` are mutually exclusive. It emits an `ardents-source-event-v1` `source-wave-accepted` event only after actual acceptance. |
+| `diagnostics timeline` | Read app JSON lines or journalctl JSON from standard input and stream a local timeline of Node, Source, and Endpoint events. It reads no authority root, contacts no peer, and saves no history. |
 | `service-instance initialize --config PATH` | Create or reopen one host-owned Service Instance generation from an `ardents-service-instance-initialize-v1` plan whose `request_file` names one new public output, and emit its stable public request plus `request_sha256` for the independently transferred custody ceremony. The command exposes neither private key, Service Authority, Credential, Target, Route, nor Browser state. |
 | `service-instance accept --root PATH --response PATH` | Atomically accept only the exact canonical public Authority response for that pending root. An exact repeat is harmless; malformed or different input terminally rejects/conflicts rather than replacing the generation. |
 | `ardents-text link <administration-socket>` | Explicitly present the canonical Target Link of the currently committed text publication through the private Administration socket. Refuse unavailable, uncommitted or withdrawn publication; this operation does not publish or retry. Output is owned interruptible terminal/pipe presentation and is absent from ordinary diagnostics. |
@@ -37,6 +38,21 @@ configuration format or an authority source.
 | `name encode <name>` | Print one canonical Service Name wire encoding as lowercase hexadecimal. |
 | `name resolve <input-file> <name> <context-hex>` | Return `name network command is retired; protected Service Name access is not selected` at command dispatch before validating the remaining arguments, reading input, opening State, constructing or using HTTP/OHTTP transport, writing output, or changing Namespace state. |
 | `name control <input-file> <operation-file> <context-hex>` | Return the same retirement refusal at command dispatch before validating the remaining arguments or reading the operation; no control operation, Namespace mutation, migration, or fallback is selected. |
+
+The diagnostic timeline accepts the bounded runtime schemas from Node,
+Source, and the headless Endpoint. For a live local view, pipe an authorized
+journal stream into it, for example:
+
+    journalctl -f -o json | ardents diagnostics timeline
+
+Each tab-separated row is occurrence time (UTC), clock origin (event or journal),
+owner, journal process ID, role, Carrier, kind, state, and quoted bounded reason. It preserves input order.
+Old Source events without an occurrence time use the journal receipt time when
+available. Unknown schemas and unrelated journal messages are ignored; malformed
+recognized categories fail without printing their raw content. The projection
+omits Network IDs, destinations, addresses, permission commitments, tokens,
+document bytes, and all other fields. It is a local navigation view of existing
+events, not an authority source, telemetry export, or complete Route trace.
 
 `endpoint headless` refuses `ardents-headless-runtime-v1` before opening any
 plan-owned runtime resource. The exact refusal and retained-data boundary are

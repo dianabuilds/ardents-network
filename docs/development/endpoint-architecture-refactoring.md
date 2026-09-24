@@ -79,9 +79,9 @@ must not replace independent canonical-vector builders. A fixture move must
 remove actual duplication or setup cost, rather than gather unrelated helpers
 in one file.
 
-A common diagnostic navigation surface may normalize time, owner, event
-class, and safe reason. Owner-specific event fields and privacy limits stay
-typed. Background delivery failures terminate the participant and return to its caller;
+The local diagnostic timeline normalizes time, owner, event class, and safe
+reason from bounded Node, Source, and Endpoint runtime schemas.
+Owner-specific event fields and privacy limits stay typed. Background delivery failures terminate the participant and return to its caller;
 a private observation owner serializes output and retains the first such failure.
 
 ## Integration rule for this worktree

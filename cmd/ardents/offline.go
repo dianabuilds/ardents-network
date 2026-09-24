@@ -8,11 +8,22 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"os"
 
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 )
 
-func run(ctx context.Context, arguments []string, output io.Writer) (resultErr error) {
+func run(ctx context.Context, arguments []string, output io.Writer) error {
+	return runWithInput(ctx, arguments, os.Stdin, output)
+}
+
+func runWithInput(ctx context.Context, arguments []string, input io.ReadCloser, output io.Writer) error {
+	if len(arguments) > 0 && arguments[0] == "diagnostics" {
+		if len(arguments) != 2 || arguments[1] != "timeline" {
+			return errors.New("usage: ardents diagnostics timeline")
+		}
+		return runDiagnosticTimeline(ctx, input, output)
+	}
 	if len(arguments) > 0 && arguments[0] == "endpoint" {
 		return runEndpoint(ctx, arguments, output)
 	}
@@ -32,7 +43,7 @@ func run(ctx context.Context, arguments []string, output io.Writer) (resultErr e
 		return runAcceptClosedProfile(arguments[1:], output)
 	}
 	if len(arguments) == 0 || arguments[0] != "accept-offline" {
-		return errors.New("usage: ardents <accept-offline|accept-closed-profile|refresh-sources|endpoint|entry|name|service-instance> arguments")
+		return errors.New("usage: ardents <accept-offline|accept-closed-profile|refresh-sources|diagnostics|endpoint|entry|name|service-instance> arguments")
 	}
 	return runAcceptOffline(ctx, arguments[1:], output)
 }

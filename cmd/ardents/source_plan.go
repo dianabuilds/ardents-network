@@ -73,12 +73,13 @@ func runRefreshSources(ctx context.Context, arguments []string, output io.Writer
 	err = events.encode(struct {
 		Schema             string    `json:"schema"`
 		Kind               string    `json:"kind"`
+		At                 time.Time `json:"at"`
 		Generation         string    `json:"generation"`
 		Epoch              uint64    `json:"epoch"`
 		SourceAttempts     uint16    `json:"source_attempts"`
 		SourceOutcomes     [4]string `json:"source_outcomes"`
 		LatestCompleteness string    `json:"latest_completeness"`
-	}{"ardents-source-event-v1", "source-wave-accepted", snapshot.Generation, snapshot.Epoch,
+	}{"ardents-source-event-v1", "source-wave-accepted", time.Now().UTC(), snapshot.Generation, snapshot.Epoch,
 		snapshot.SourceAttempts, snapshot.SourceOutcomes, snapshot.LatestCompleteness})
 	if err != nil || once || config.AutomaticRefreshInterval == 0 {
 		return err
