@@ -131,6 +131,7 @@ func TestTestProfileRegistryIsFactualAndWired(t *testing.T) {
 		"race":                              false,
 		"service-credential-response-linux": false,
 		"text-command-network":              false,
+		"text-command-permission-boundary":  false,
 		"text-worker-network":               false,
 		"text-worker-recovery":              false,
 		"text-worker-tree":                  false,

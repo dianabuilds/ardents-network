@@ -29,3 +29,13 @@ Each of the six document/Carrier cases observes a real five-minute Descriptor
 refresh. The Go test deadline is therefore 49 minutes and the independent
 outer command limit is 51 minutes; a timeout is retained as evidence rather
 than retried or treated as a pass.
+
+For the Permission-expiry boundary, run
+`make text-command-permission-boundary-check` once with
+`ARDENTS_TEXT_COMMAND_BOUNDARY_CARRIER=ardents-carrier-tcp-tls-v2` and once
+with `ARDENTS_TEXT_COMMAND_BOUNDARY_CARRIER=ardents-carrier-quic-v2`. Each
+invocation uses the actual UTC hour and fails as an invalid environment unless
+the signed Permissions place the five-minute refresh within 30 seconds after
+`NotAfter`; it records the fail-closed token refusal, unavailable Link, no
+worker units, same Endpoint invocation, and unchanged persisted Descriptor
+record.

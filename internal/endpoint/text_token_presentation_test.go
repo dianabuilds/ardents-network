@@ -106,6 +106,29 @@ func TestTextTokenCancellationAfterDurableMarkRetainsBurn(t *testing.T) {
 	}
 }
 
+func TestTextTokenPresentationRejectsPermissionAtNotAfter(t *testing.T) {
+	endpoint, owner, _, profile, hello, original := textTokenPresentationFixture(t)
+	defer clear(original)
+	owner.mu.Lock()
+	returned, err := owner.takeTextTokenLocked(profile, owner.permission.accepted.NotAfter, hello, 2, t.Context())
+	remaining := len(owner.permission.stock[0].tokens)
+	unchanged := remaining == 1 && bytes.Equal(owner.permission.stock[0].tokens[0], original)
+	owner.mu.Unlock()
+	if err == nil || len(returned) != 0 || !unchanged || textTokenTransferFailureStage(err) != "permission" {
+		t.Fatalf("expired Permission presented a token: bytes=%d unchanged=%t stage=%s err=%v", len(returned), unchanged, textTokenTransferFailureStage(err), err)
+	}
+	journal, err := endpoint.textTokenJournal()
+	if err != nil {
+		t.Fatal(err)
+	}
+	journal.mu.Lock()
+	records := len(journal.records)
+	journal.mu.Unlock()
+	if records != 0 {
+		t.Fatal("expired Permission wrote a token journal receipt")
+	}
+}
+
 func textTokenPresentationFixture(t *testing.T) (*endpoint, *textContext, route.ClosedBootstrapSelection,
 	state.ClosedProfileView, route.ClosedHello, []byte) {
 	t.Helper()

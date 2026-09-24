@@ -21,6 +21,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/application/interfacev1/administration"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
+	"github.com/dianabuilds/ardents-network/internal/route/credential"
 )
 
 // Root orchestrates real commands outside the Endpoint service. The ordinary
@@ -42,7 +43,7 @@ func TestInstalledClosedTextCommandsThroughNodeProcesses(t *testing.T) {
 				t.Run(document.name, func(t *testing.T) {
 					authority := createClosedCommandAuthority(t, [32]byte{1})
 					testClosedIssuerProvisioningParticipant(t, carrier, 16, authority.Public, nil, func(config state.Config, binary, resolutionRoot string, sourcePlan map[string]any) {
-						runInstalledClosedTextParticipant(t, config, binary, resolutionRoot, authority, sourcePlan, document.body)
+						runInstalledClosedTextParticipant(t, config, binary, resolutionRoot, authority, sourcePlan, document.body, false)
 					})
 				})
 			}
@@ -50,7 +51,26 @@ func TestInstalledClosedTextCommandsThroughNodeProcesses(t *testing.T) {
 	}
 }
 
-func runInstalledClosedTextParticipant(t *testing.T, config state.Config, binary, resolutionRoot string, authority closedCommandAuthority, sourcePlan map[string]any, body []byte) {
+// The real UTC boundary is selected outside this test once for each Carrier.
+// A missing or unsuitable window fails; it never turns this negative cell into
+// a skipped or clock-shifted positive journey.
+func TestInstalledClosedTextCommandsRejectRefreshAtPermissionBoundary(t *testing.T) {
+	if os.Geteuid() != 0 || os.Getenv("ARDENTS_TEXT_COMMAND_QUALIFICATION") != "1" || os.Getenv("ARDENTS_E2E_COMMAND_ROOT") == "" {
+		t.Fatal("invalid environment: select the dedicated installed root command profile with prebuilt commands")
+	}
+	carrier := os.Getenv("ARDENTS_TEXT_COMMAND_BOUNDARY_CARRIER")
+	if carrier != "ardents-carrier-tcp-tls-v2" && carrier != "ardents-carrier-quic-v2" {
+		t.Fatal("invalid environment: select exactly one installed boundary Carrier")
+	}
+	t.Run(carrier, func(t *testing.T) {
+		authority := createClosedCommandAuthority(t, [32]byte{1})
+		testClosedIssuerProvisioningParticipant(t, carrier, 16, authority.Public, nil, func(config state.Config, binary, resolutionRoot string, sourcePlan map[string]any) {
+			runInstalledClosedTextParticipant(t, config, binary, resolutionRoot, authority, sourcePlan, bytes.Repeat([]byte("x"), 64<<10), true)
+		})
+	})
+}
+
+func runInstalledClosedTextParticipant(t *testing.T, config state.Config, binary, resolutionRoot string, authority closedCommandAuthority, sourcePlan map[string]any, body []byte, expiryBoundary bool) {
 	t.Helper()
 	account, err := user.Lookup("ardents-endpoint")
 	if err != nil {
@@ -132,9 +152,22 @@ func runInstalledClosedTextParticipant(t *testing.T, config state.Config, binary
 	assertInstalledCommandEqualSourceFamiliesRefuse(t, binary, plan, plan["network_source_plan"].(string), path("equal-family-runtime.json"), uid, gid)
 	t.Log("completed: Service Instance acquired through commands and Endpoint inputs prepared")
 	invocation := startInstalledCommandEndpoint(t, binary, planPath)
+	permissions := make(map[string]credential.Permission, 2)
 	for _, role := range []string{"reader", "publisher"} {
 		request := waitInstalledCommandRequest(t, invocation, path(role+".request"))
 		response := authority.issue(t, request)
+		permission, err := credential.DecodePermission(response)
+		if err != nil {
+			t.Fatalf("decode issued %s Permission: %v", role, err)
+		}
+		permissions[role] = permission
+		// Reader import is needed before the Endpoint requests the publisher
+		// Permission. Once both actual Custody responses are available, reject an
+		// uncovered positive cell before the publisher response can expose either
+		// command socket or permit publication.
+		if role == "publisher" && !expiryBoundary {
+			requireInstalledCommandRefreshCoverage(t, time.Now(), permissions)
+		}
 		staged := path(role + ".response.pending")
 		if err := os.WriteFile(staged, response, 0600); err != nil {
 			t.Fatal(err)
@@ -169,11 +202,15 @@ func runInstalledClosedTextParticipant(t *testing.T, config state.Config, binary
 		}
 		return output
 	}
+	if expiryBoundary {
+		waitInstalledCommandRefreshPublishPhase(t, permissions)
+	}
 	publicationStarted := time.Now()
 	if output := run("publish", nil, "publish", path("publisher.sock"), document); len(output) != 0 {
 		t.Fatal("publish produced unexpected output")
 	}
 	firstPublication := readInstalledCommandDescriptor(t, resolutionRoot, view.Profile)
+	firstRecord := readInstalledCommandDescriptorRecord(t, resolutionRoot)
 	t.Log("completed: publication command and independently verified signed Descriptor")
 	destination := run("published Link", nil, "link", path("publisher.sock"))
 	if len(destination) < 2 || bytes.Count(destination, []byte{'\n'}) != 1 || destination[len(destination)-1] != '\n' {
@@ -183,6 +220,27 @@ func runInstalledClosedTextParticipant(t *testing.T, config state.Config, binary
 		t.Fatal("ordinary command document mismatch")
 	}
 	t.Log("completed: initial exact 64 KiB document read")
+	if expiryBoundary {
+		requireInstalledCommandRefreshExpiry(t, firstPublication, permissions)
+		waitInstalledCommandRefreshExpiry(t, invocation, permissions)
+		if !bytes.Equal(firstRecord, readInstalledCommandDescriptorRecord(t, resolutionRoot)) {
+			t.Fatal("expired refresh changed the retained Descriptor floor")
+		}
+		refused, cancelRefused := context.WithTimeout(t.Context(), 20*time.Second)
+		output, diagnostic, linkErr := installedCommandExecAs(refused, nil, uid, gid, "bash", "-o", "pipefail", "-c", `cat | "$@" | cat`, "ardents-text-command", textBinary, "link", path("publisher.sock"))
+		cancelRefused()
+		var exit *exec.ExitError
+		if !errors.As(linkErr, &exit) || exit.ExitCode() != 2 || len(output) != 0 || strings.TrimSpace(string(diagnostic)) != "text operation unavailable" {
+			t.Fatalf("expired Permission retained a Link or failed for another reason: %v / %s", linkErr, diagnostic)
+		}
+		active := strings.TrimSpace(string(installedCommandTool(t, "systemctl", "show", "ardents-endpoint.service", "-p", "ActiveState", "--value")))
+		retainedInvocation := strings.TrimSpace(string(installedCommandTool(t, "systemctl", "show", "ardents-endpoint.service", "-p", "InvocationID", "--value")))
+		workers := installedCommandTool(t, "systemctl", "list-units", "--state=active,activating,deactivating", "--no-legend", "ardents-text-reader@*.service", "ardents-text-publisher@*.service")
+		if active != "active" || retainedInvocation != invocation || len(bytes.TrimSpace(workers)) != 0 {
+			t.Fatal("expired refresh did not retire registration workers under the same live Endpoint")
+		}
+		return
+	}
 	observeInstalledCommandRefresh(t, resolutionRoot, view.Profile, firstPublication, publicationStarted, invocation)
 	t.Log("completed: observed signed Descriptor refresh and elapsed overlap")
 	if actual := run("read after refresh", destination, "read", path("reader.sock")); !bytes.Equal(actual, body) {
