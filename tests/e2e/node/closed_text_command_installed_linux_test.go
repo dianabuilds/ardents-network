@@ -165,7 +165,7 @@ func runInstalledClosedTextParticipant(t *testing.T, config state.Config, binary
 		output, diagnostic, err := installedCommandExecAs(ctx, input, uid, gid, "bash", append([]string{"-o", "pipefail", "-c", `cat | "$@" | cat`, "ardents-text-command", textBinary}, args...)...)
 		if err != nil {
 			journal := installedCommandTool(t, "journalctl", "--no-pager", "-o", "cat", "_SYSTEMD_INVOCATION_ID="+invocation)
-			t.Fatalf("ordinary text stage %s (%s) failed: %v / %s\nEndpoint journal:\n%s", stage, args[0], err, diagnostic, journal)
+			t.Fatalf("ordinary text stage %s (%s) failed: %v / %s\nEndpoint journal:\n%s\nNode route diagnostics:\n%s", stage, args[0], err, diagnostic, journal, installedCommandRouteDiagnostics(t, sourcePlan))
 		}
 		return output
 	}
@@ -214,6 +214,40 @@ func runInstalledClosedTextParticipant(t *testing.T, config state.Config, binary
 		t.Fatalf("withdrawal retained worker units: %s", workers)
 	}
 	t.Log("completed: withdrawal, exact Link refusal, same live Endpoint, and no retained workers")
+}
+
+func installedCommandRouteDiagnostics(t *testing.T, sourcePlan map[string]any) string {
+	t.Helper()
+	rawPaths, present := sourcePlan["route_diagnostic_paths"]
+	if !present {
+		return "none configured"
+	}
+	paths, ok := rawPaths.([]string)
+	if !ok {
+		return "invalid configured paths"
+	}
+	var reasons []string
+	for _, directory := range paths {
+		raw, err := os.ReadFile(filepath.Join(directory, "route-diagnostic.json"))
+		if errors.Is(err, os.ErrNotExist) {
+			continue
+		}
+		if err != nil {
+			return "unreadable diagnostic"
+		}
+		var event struct {
+			Kind   string `json:"kind"`
+			Reason string `json:"reason"`
+		}
+		if json.Unmarshal(raw, &event) != nil || event.Kind != "route-diagnostic" || event.Reason == "" {
+			return "invalid diagnostic"
+		}
+		reasons = append(reasons, event.Reason)
+	}
+	if len(reasons) == 0 {
+		return "none observed"
+	}
+	return strings.Join(reasons, "\n")
 }
 
 // Equal Source families are forbidden before State opens or either configured

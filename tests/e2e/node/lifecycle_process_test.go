@@ -51,6 +51,7 @@ type nodeEvent struct {
 	Epoch            uint64   `json:"epoch"`
 	Assignment       string   `json:"assignment"`
 	AssignmentDigest [32]byte `json:"assignment_digest"`
+	Reason           string   `json:"reason"`
 }
 
 func TestTwoNodeProcessesRefreshWithdrawRestartAndReassign(t *testing.T) {

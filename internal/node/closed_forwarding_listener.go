@@ -253,10 +253,12 @@ func (server *closedForwardingServer) serveAccepted(ctx context.Context, accepte
 func (server *closedForwardingServer) serveOuter(ctx context.Context, carrier route.ClosedSharedCarrier) {
 	updated, err := currentFacts(server.config)
 	if err != nil {
+		emitClosedRouteDiagnostic(server.config, "forward-outer-facts-"+closedRouteDiagnosticCause(err))
 		return
 	}
 	receiver, available := closedRouteReceiver(server.config, updated, route.ClosedPurposeForwarding, server.clock())
 	if !available {
+		emitClosedRouteDiagnostic(server.config, "forward-outer-receiver-unavailable")
 		return
 	}
 	deadline := receiver.NotAfter
@@ -264,18 +266,26 @@ func (server *closedForwardingServer) serveOuter(ctx context.Context, carrier ro
 		ProfileDigest: receiver.ProfileDigest, NodeID: receiver.NodeID, RecordDigest: receiver.RecordDigest, DutyGeneration: receiver.DutyGeneration,
 		RoleDomain: receiver.RoleDomain, Subrole: receiver.Subrole, Deadline: deadline}, server.receiving.limits, server.clock)
 	if err != nil {
+		emitClosedRouteDiagnostic(server.config, "forward-outer-handshake-"+closedRouteDiagnosticCause(err))
 		return
 	}
-	serveClosedOuter(ctx, carrier.Connection, outer, func(childContext context.Context, lane *route.ClosedOuterBridgeLane) {
+	serveClosedOuterObserved(ctx, carrier.Connection, outer, func(childContext context.Context, lane *route.ClosedOuterBridgeLane) {
 		server.serveInner(childContext, lane, deadline, carrier.NodeKey)
-	})
+	}, func(reason string) { emitClosedRouteDiagnostic(server.config, "forward-"+reason) })
 }
 
 func (server *closedForwardingServer) serveInner(ctx context.Context, lane *route.ClosedOuterBridgeLane, deadline time.Time, incomingKey [32]byte) {
 	status := byte(1)
-	defer func() { _ = lane.CloseWithStatus(status) }()
-	secured, err := route.AcceptClosedRoleTLS(ctx, lane, server.certificate, deadline)
+	reason := ""
+	defer func() {
+		_ = lane.CloseWithStatus(status)
+		if reason != "" {
+			emitClosedRouteDiagnostic(server.config, reason)
+		}
+	}()
+	secured, err := acceptClosedInnerTLS(ctx, lane, server.certificate, deadline)
 	if err != nil {
+		reason = "forward-inner-tls-" + closedRouteDiagnosticCause(err)
 		return
 	}
 	defer func() {
