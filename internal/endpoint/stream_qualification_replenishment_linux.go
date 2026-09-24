@@ -116,13 +116,7 @@ func (owner *textContext) ensureQualificationTokenReserve(ctx context.Context, r
 		owner.mu.Unlock()
 		return errors.Join(err, errors.New("qualification token reserve unavailable"))
 	}
-	ready := 0
-	for _, stock := range owner.permission.stock {
-		if stock.challenge.ReceiverNodeID == receiver && stock.challenge.ProfileDigest == profile.Digest && stock.challenge.Class == class &&
-			stock.challenge.WindowStart == owner.permission.accepted.NotBefore {
-			ready += len(stock.tokens)
-		}
-	}
+	ready := owner.permission.stockCountFor(profile.Digest, receiver, class)
 	remaining := owner.permission.accepted.Maxima[class-1] - owner.permission.reserved[class-1]
 	owner.mu.Unlock()
 	missing := min(minimum-ready, int(remaining))
@@ -143,15 +137,7 @@ func (owner *textContext) ensureQualificationIssuerReserve(ctx context.Context, 
 		owner.mu.Unlock()
 		return errors.Join(err, ctx.Err(), errors.New("qualification issuer reserve unavailable"))
 	}
-	ready := 0
-	for _, stock := range owner.permission.stock {
-		if stock.challenge.ReceiverNodeID == profile.IssuerNodeID &&
-			stock.challenge.ReceiverDutyGeneration == profile.IssuerDutyGeneration &&
-			stock.challenge.ProfileDigest == profile.Digest && stock.challenge.Class == 1 &&
-			stock.challenge.WindowStart == owner.permission.accepted.NotBefore {
-			ready += len(stock.tokens)
-		}
-	}
+	ready := owner.permission.stockCountForDuty(profile.Digest, profile.IssuerNodeID, profile.IssuerDutyGeneration, 1)
 	remaining := owner.permission.accepted.Maxima[0] - owner.permission.reserved[0]
 	prefixLive := owner.currentTextSourceLocked() != nil
 	owner.mu.Unlock()
@@ -197,13 +183,7 @@ func (owner *textContext) presentQualifiedRefill(ctx context.Context, job *textJ
 		owner.mu.Unlock()
 		return nil, errors.New("qualification refill authority unavailable")
 	}
-	stocked := false
-	for _, stock := range owner.permission.stock {
-		if stock.challenge.ReceiverNodeID == hello.RecipientNodeID && stock.challenge.ReceiverDutyGeneration == hello.RecipientDutyGeneration &&
-			stock.challenge.ProfileDigest == profile.Digest && stock.challenge.Class == 2 && stock.challenge.WindowStart == owner.permission.accepted.NotBefore && len(stock.tokens) != 0 {
-			stocked = true
-		}
-	}
+	stocked := owner.permission.stockCountForDuty(profile.Digest, hello.RecipientNodeID, hello.RecipientDutyGeneration, 2) != 0
 	owner.mu.Unlock()
 	if !stocked {
 		if err := owner.issueTextTokensForOpening(ctx, [][32]byte{hello.RecipientNodeID}, 2, nil, false); err != nil {

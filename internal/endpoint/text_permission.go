@@ -30,6 +30,33 @@ type textPermission struct {
 	accepted credential.Permission
 }
 
+// stockCountFor inspects candidate stock before Route supplies the exact
+// recipient duty. Presentation still matches and verifies the full challenge;
+// this preflight grants no spending authority.
+func (permission *textPermission) stockCountFor(profileDigest, receiver [32]byte, class uint8) int {
+	return permission.countStock(profileDigest, receiver, 0, class, false)
+}
+
+// stockCountForDuty uses a known recipient duty when the caller has one.
+func (permission *textPermission) stockCountForDuty(profileDigest, receiver [32]byte, duty uint64, class uint8) int {
+	return permission.countStock(profileDigest, receiver, duty, class, true)
+}
+
+func (permission *textPermission) countStock(profileDigest, receiver [32]byte, duty uint64, class uint8, exactDuty bool) int {
+	if permission == nil {
+		return 0
+	}
+	ready := 0
+	for _, stock := range permission.stock {
+		if stock.challenge.ReceiverNodeID == receiver && stock.challenge.ProfileDigest == profileDigest &&
+			stock.challenge.Class == class && stock.challenge.WindowStart == permission.accepted.NotBefore &&
+			(!exactDuty || stock.challenge.ReceiverDutyGeneration == duty) {
+			ready += len(stock.tokens)
+		}
+	}
+	return ready
+}
+
 // requestTextPermission returns only the public holder-signed request and its
 // exact approval digest. A repeat in the same hour returns the existing request;
 // changing the allocation/profile cannot silently create a replacement holder.

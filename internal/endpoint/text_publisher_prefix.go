@@ -126,13 +126,7 @@ func (owner *textContext) ensureTextPublisherStock(role textPublisherPrefixOpeni
 	pending := owner.permission.pending != nil
 	var missing [][32]byte
 	for _, receiver := range [][32]byte{selection.EntryNodeID, selection.InteriorNodeID} {
-		found := false
-		for _, stock := range owner.permission.stock {
-			if stock.challenge.ReceiverNodeID == receiver && stock.challenge.ProfileDigest == profile.Digest && stock.challenge.Class == 2 && stock.challenge.WindowStart == owner.permission.accepted.NotBefore && len(stock.tokens) != 0 {
-				found = true
-			}
-		}
-		if !found {
+		if owner.permission.stockCountFor(profile.Digest, receiver, 2) == 0 {
 			missing = append(missing, receiver)
 		}
 	}

@@ -180,16 +180,8 @@ func (owner *textContext) prepareTextSubmissionStockWithCancellation(ctx context
 		return [32]byte{}, state.ClosedProfileView{}, err
 	}
 	owner.mu.Lock()
-	stocked := false
 	profile, _, err := owner.textPermissionProfileLocked()
-	if err == nil && owner.permission != nil {
-		for _, stock := range owner.permission.stock {
-			if stock.challenge.ReceiverNodeID == receiver && stock.challenge.ProfileDigest == profile.Digest &&
-				stock.challenge.Class == 1 && stock.challenge.WindowStart == owner.permission.accepted.NotBefore && len(stock.tokens) != 0 {
-				stocked = true
-			}
-		}
-	}
+	stocked := err == nil && owner.permission.stockCountFor(profile.Digest, receiver, 1) != 0
 	owner.mu.Unlock()
 	if err != nil {
 		return [32]byte{}, state.ClosedProfileView{}, err

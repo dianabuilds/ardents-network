@@ -121,14 +121,9 @@ func (owner *textContext) ensureTextResolutionStock(flight *textResolutionFlight
 		owner.mu.Unlock()
 		return errors.New("text resolution stock owner changed")
 	}
-	if owner.permission.pending == nil {
-		for _, stock := range owner.permission.stock {
-			if stock.challenge.ReceiverNodeID == flight.receiver && stock.challenge.ProfileDigest == profile.Digest && stock.challenge.Class == 1 &&
-				stock.challenge.WindowStart == owner.permission.accepted.NotBefore && len(stock.tokens) != 0 {
-				owner.mu.Unlock()
-				return nil
-			}
-		}
+	if owner.permission.pending == nil && owner.permission.stockCountFor(profile.Digest, flight.receiver, 1) != 0 {
+		owner.mu.Unlock()
+		return nil
 	}
 	owner.mu.Unlock()
 	return owner.issueTextTokens(flight.context, [][32]byte{flight.receiver}, 1)

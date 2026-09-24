@@ -36,7 +36,7 @@ implementation has private owners rather than one undifferentiated state bag:
 | Source prefix | `textSourceLifecycle` | Exact handle identity and opening retirement remain atomic with Context admission. |
 | Publisher prefixes | `textIntroductionPrefixLifecycle`, `textResponderPrefixLifecycle` | Separate Route handles and opening lifetimes; borrowed Source is not closed by either. |
 | Publication | `textPublicationPairLifecycle`, refresh lifecycle, Context coordinators | Instance and Publication ownership spans Context and Endpoint locks. |
-| Permission and issuance | `textPermission`, `textIssuanceOperation` | `textPermission` burns and verifies its own stock under the Context admission lock; Context performs the durable token-attempt mark and surviving-owner check before presentation. Pending batch and exact Source reservation share that lock. |
+| Permission and issuance | `textPermission`, `textIssuanceOperation` | `textPermission` owns candidate-stock inspection, then burns and verifies the exact challenge under the Context admission lock; Context performs the durable token-attempt mark and surviving-owner check before presentation. Pending batch and exact Source reservation share that lock. |
 | Token attempt storage | `tokenjournal.Journal` | Own mutex, replay/time floors, and durable attempts; consumes the shared `durableroot` access, lease, and sync API. |
 | Resolution and JOIN | Context flights and narrow acquisitions | Exact current prefix must be checked again after network effects. |
 | Job and worker | `textJobIdentity`, `textWorkerLifetime` | Context retains the job reservation; worker owns process and cgroup cleanup. |

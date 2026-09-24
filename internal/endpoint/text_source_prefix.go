@@ -163,14 +163,7 @@ func (owner *textContext) ensureTextPrefixStock(ctx context.Context, opening *te
 	}
 	var missing [][32]byte
 	for _, receiver := range [][32]byte{selection.EntryNodeID, selection.InteriorNodeID} {
-		ready := false
-		for _, stock := range owner.permission.stock {
-			if stock.challenge.ReceiverNodeID == receiver && stock.challenge.ProfileDigest == selection.ProfileDigest &&
-				stock.challenge.Class == 2 && stock.challenge.WindowStart == owner.permission.accepted.NotBefore && len(stock.tokens) > 0 {
-				ready = true
-			}
-		}
-		if !ready {
+		if owner.permission.stockCountFor(selection.ProfileDigest, receiver, 2) == 0 {
 			missing = append(missing, receiver)
 		}
 	}

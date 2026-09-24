@@ -242,14 +242,8 @@ func (owner *textContext) prepareTextJoinStock(ctx context.Context, attempt *tex
 	bounded, cancel := context.WithDeadline(ctx, facts.Deadline)
 	owner.mu.Lock()
 	profile, _, err := owner.textPermissionProfileLocked()
-	stocked := false
-	if err == nil && prefix.currentLocked(owner) && owner.permission != nil {
-		for _, stock := range owner.permission.stock {
-			if stock.challenge.ReceiverNodeID == node && stock.challenge.ProfileDigest == profile.Digest && stock.challenge.Class == 2 && stock.challenge.WindowStart == owner.permission.accepted.NotBefore && len(stock.tokens) != 0 {
-				stocked = true
-			}
-		}
-	}
+	stocked := err == nil && prefix.currentLocked(owner) &&
+		owner.permission.stockCountFor(profile.Digest, node, 2) != 0
 	owner.mu.Unlock()
 	if err == nil && !stocked {
 		err = owner.issueTextJoinTokens(bounded, [][32]byte{node}, 2, prefix,

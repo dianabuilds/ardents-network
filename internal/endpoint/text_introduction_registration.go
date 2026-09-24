@@ -103,14 +103,8 @@ func (owner *textContext) openTextRegistration(ctx context.Context, revision uin
 	}
 	flight.receiver = receiver
 	owner.mu.Lock()
-	ready := false
-	if owner.permission != nil && owner.permission.pending == nil {
-		for _, stock := range owner.permission.stock {
-			if stock.challenge.ReceiverNodeID == receiver && stock.challenge.ProfileDigest == profile.Digest && stock.challenge.Class == 3 && stock.challenge.WindowStart == owner.permission.accepted.NotBefore && len(stock.tokens) != 0 {
-				ready = true
-			}
-		}
-	}
+	ready := owner.permission != nil && owner.permission.pending == nil &&
+		owner.permission.stockCountFor(profile.Digest, receiver, 3) != 0
 	owner.mu.Unlock()
 	if !ready {
 		if err := owner.issueTextTokens(attempt, [][32]byte{receiver}, 3); err != nil {
