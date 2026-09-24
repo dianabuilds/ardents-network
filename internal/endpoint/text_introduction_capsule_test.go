@@ -48,7 +48,7 @@ func liveTextCapsuleJob(t *testing.T, owner *textContext) *textJobIdentity {
 func TestTextIntroductionCapsuleBindsRealInstanceAndServiceStream(t *testing.T) {
 	for _, carrier := range []route.CarrierProfile{route.ClosedCarrierTCP, route.ClosedCarrierQUIC} {
 		t.Run(string(carrier), func(t *testing.T) {
-			endpoint, publisher, source := startTextRoleNetwork(t, carrier, true, true)
+			endpoint, publisher, source := startTextRoleNetwork(t, textRoleNetworkFixture{carrier: carrier, resolution: true, publisher: true})
 			// Rendezvous eligibility is a public-State fixture. It is never dialed
 			// here; the actual data-pair transport below is a separate explicit seam.
 			source.mu.Lock()

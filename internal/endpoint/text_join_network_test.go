@@ -29,7 +29,7 @@ func addTextDataJoinState(source *textSourceStateFixture) {
 func TestTextRouteJoinConnectsSourceAndResponder(t *testing.T) {
 	for _, carrier := range []route.CarrierProfile{route.ClosedCarrierTCP, route.ClosedCarrierQUIC} {
 		t.Run(string(carrier), func(t *testing.T) {
-			endpoint, publisher, source := startTextRoleNetworkWithJoin(t, carrier, true, true, true)
+			endpoint, publisher, source := startTextRoleNetwork(t, textRoleNetworkFixture{carrier: carrier, resolution: true, publisher: true, join: true})
 			reader := textPermissionContextFixture(t, endpoint, fixtureID(211), broker.Connection)
 			source.issuePermission(t, reader, [3]uint32{64, 64, 0})
 			if _, err := reader.openTextPrefix(t.Context()); err != nil {

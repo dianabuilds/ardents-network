@@ -55,45 +55,36 @@ func waitTextNetworkFixtureStart(t *testing.T) {
 	}
 }
 
+type textRoleNetworkFixture struct {
+	carrier    route.CarrierProfile
+	resolution bool
+	publisher  bool
+	join       bool
+	// reservedWindow is set only by a child process whose parent selected
+	// the current Permission window before starting its bounded episode.
+	reservedWindow bool
+	runner         func(*testing.T, int, node.Config) func() error
+	configure      []func(int, *node.Config)
+}
+
 // The qualified-worker and accepted-State seams are explicit fixtures. The
-// five Node runtimes, Custody allocation, issuer keys, Endpoint stock/journal,
-// source selection, forwarding and nested role TLS are production consumers.
-func startTextIssuanceNetwork(t *testing.T, carrier route.CarrierProfile) (*endpoint, *textContext, *textSourceStateFixture) {
+// selected Node runtimes, Custody allocation, issuer keys, Endpoint stock and
+// journal, Source selection, forwarding, and nested role TLS remain real.
+func startTextRoleNetwork(t *testing.T, fixture textRoleNetworkFixture) (*endpoint, *textContext, *textSourceStateFixture) {
 	t.Helper()
-	return startTextControlNetwork(t, carrier, false)
-}
-
-func startTextControlNetwork(t *testing.T, carrier route.CarrierProfile, resolution bool) (*endpoint, *textContext, *textSourceStateFixture) {
-	return startTextRoleNetwork(t, carrier, resolution, false)
-}
-
-func startTextRoleNetwork(t *testing.T, carrier route.CarrierProfile, resolution, publisher bool, configure ...func(int, *node.Config)) (*endpoint, *textContext, *textSourceStateFixture) {
-	return startTextRoleNetworkWithJoin(t, carrier, resolution, publisher, false, configure...)
-}
-
-func startTextRoleNetworkWithJoin(t *testing.T, carrier route.CarrierProfile, resolution, publisher, join bool, configure ...func(int, *node.Config)) (*endpoint, *textContext, *textSourceStateFixture) {
-	return startTextRoleNetworkWithRunner(t, carrier, resolution, publisher, join, nil, configure...)
-}
-
-// The optional runner isolates test observers; ordinary callers retain Node.Run.
-func startTextRoleNetworkWithRunner(t *testing.T, carrier route.CarrierProfile, resolution, publisher, join bool, runner func(*testing.T, int, node.Config) func() error, configure ...func(int, *node.Config)) (*endpoint, *textContext, *textSourceStateFixture) {
-	t.Helper()
-	waitTextNetworkFixtureStart(t)
-	return startTextRoleNetworkWithReservedFixtureWindow(t, carrier, resolution, publisher, join, runner, configure...)
-}
-
-// startTextRoleNetworkWithReservedFixtureWindow is for a child test process
-// whose parent selected the same two-minute Permission window before imposing
-// its own timeout. It must only run the bounded carrier episode.
-func startTextRoleNetworkWithReservedFixtureWindow(t *testing.T, carrier route.CarrierProfile, resolution, publisher, join bool, runner func(*testing.T, int, node.Config) func() error, configure ...func(int, *node.Config)) (*endpoint, *textContext, *textSourceStateFixture) {
-	t.Helper()
+	if fixture.publisher && !fixture.resolution || fixture.join && !fixture.publisher {
+		t.Fatal("text role network fixture requires resolution before publisher and publisher before JOIN")
+	}
+	if !fixture.reservedWindow {
+		waitTextNetworkFixtureStart(t)
+	}
 	endpoint, owner, source := textSourceContextFixture(t)
 	count := 5
-	if resolution {
+	if fixture.resolution {
 		count = 7
 		addTextResolutionState(source)
 	}
-	if publisher {
+	if fixture.publisher {
 		if err := owner.Close(); err != nil {
 			t.Fatal(err)
 		}
@@ -102,7 +93,7 @@ func startTextRoleNetworkWithReservedFixtureWindow(t *testing.T, carrier route.C
 		addTextResponderPrefixState(source)
 		count = 15
 	}
-	if join {
+	if fixture.join {
 		addTextDataJoinState(source)
 		count = 16
 	}
@@ -116,14 +107,14 @@ func startTextRoleNetworkWithReservedFixtureWindow(t *testing.T, carrier route.C
 		candidate.PublicKey = key
 		candidate.Family = fmt.Sprintf("text-network-family-%d", index)
 		candidate.FamilyID = sha256.Sum256([]byte(candidate.Family))
-		candidate.CarrierProfile = string(carrier)
-		candidate.Endpoint, reservations[index] = reserveTextNetworkAddress(t, carrier)
+		candidate.CarrierProfile = string(fixture.carrier)
+		candidate.Endpoint, reservations[index] = reserveTextNetworkAddress(t, fixture.carrier)
 	}
 	maxima := [3]uint32{34, 34, 0}
-	if resolution {
+	if fixture.resolution {
 		maxima[0] = 64
 	}
-	if publisher {
+	if fixture.publisher {
 		// Match the bounded Publisher permission used by the installed
 		// qualification. The retained-set fixture spends substantially more than
 		// the single-journey stock while remaining inside the real 16,384 total.
@@ -132,13 +123,13 @@ func startTextRoleNetworkWithReservedFixtureWindow(t *testing.T, carrier route.C
 	issuerRoot := prepareTextIssuancePermissionWithIdentity(t, owner, source, certificates[4].PrivateKey.(ed25519.PrivateKey), maxima)
 	endpoint.closedTokenRoot = textNetworkPrivateRoot(t)
 	last := 4
-	if resolution {
+	if fixture.resolution {
 		last = 5 // Introduction facts are explicit fixtures; no fake registration server.
 	}
-	if publisher {
+	if fixture.publisher {
 		last = 14
 	}
-	if join {
+	if fixture.join {
 		last = 15
 	}
 	for index := last; index >= 0; index-- {
@@ -149,7 +140,7 @@ func startTextRoleNetworkWithReservedFixtureWindow(t *testing.T, carrier route.C
 		snapshot.RecordGeneration = source.view.Nodes[index].DutyGeneration
 		snapshot.RecordValidFrom, snapshot.RecordValidUntil = candidate.ValidFrom, candidate.ValidUntil
 		snapshot.DeclaredFamily, snapshot.ProbeEndpoint = candidate.Family, candidate.Endpoint
-		snapshot.CarrierProfile, snapshot.ProbeCapacity = string(carrier), 16
+		snapshot.CarrierProfile, snapshot.ProbeCapacity = string(fixture.carrier), 16
 		root := textNetworkPrivateRoot(t)
 		local, err := duty.Open(duty.Config{Root: root, Clock: time.Now, Create: true})
 		if err != nil {
@@ -198,14 +189,14 @@ func startTextRoleNetworkWithReservedFixtureWindow(t *testing.T, carrier route.C
 				Certificate: certificates[index], ConnectionLimit: 8, DrainTimeout: 2 * time.Second,
 				AdmissionTraffic: resource.HostingTraffic{Tx: 32 << 20, Rx: 32 << 20}, TerminationTraffic: resource.HostingTraffic{Tx: 64 << 10, Rx: 64 << 10}}
 		}
-		for _, apply := range configure {
+		for _, apply := range fixture.configure {
 			apply(index, &config)
 		}
 		// Hold every selected port until its listener is about to start, so
 		// earlier Node activity cannot allocate a later candidate's port.
 		reservations[index]()
-		if runner != nil {
-			stop := runner(t, index, config)
+		if fixture.runner != nil {
+			stop := fixture.runner(t, index, config)
 			t.Cleanup(func() {
 				if err := stop(); err != nil {
 					t.Error(err)

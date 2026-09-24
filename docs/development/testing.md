@@ -111,8 +111,13 @@ does not execute or qualify them. Windows retains the pre-existing Endpoint
 journey and an explicit unsupported text-command refusal. Shared State,
 Custody, Node and protocol consumers keep their own platform contracts. The
 Endpoint-originating Route bootstrap/prefix client and its stream, credit,
-JOIN and network-issuance tests also execute in the Linux profiles. Receiving
-Node checks that do not require that client remain on both platforms. Codec
+JOIN and network-issuance tests also execute in the Linux profiles. The
+Endpoint role-network fixture names its selected Carrier, resolution, Publisher,
+and JOIN roles explicitly; it substitutes accepted State and worker qualification
+while starting the actual Node runtimes, Custody allocation, token stock,
+Route forwarding, and role TLS. Its reserved-window variant is used only when
+the child observation process inherits a Permission hour selected by its parent.
+Receiving Node checks that do not require that client remain on both platforms. Codec
 round trips, private-capsule cryptography and network tests that construct
 Endpoint operations execute with the Linux client. Shared outer-handshake
 admission and receiving-listener address/certificate fixtures remain separately

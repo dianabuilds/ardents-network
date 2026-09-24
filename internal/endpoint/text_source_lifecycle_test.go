@@ -67,7 +67,7 @@ func (handle *textSourceHandle) Replenish(ctx context.Context, present route.Clo
 }
 
 func TestTextSourceHandleRejectsUseAfterIdleRetirement(t *testing.T) {
-	endpoint, owner, _ := startTextIssuanceNetwork(t, route.ClosedCarrierTCP)
+	endpoint, owner, _ := startTextRoleNetwork(t, textRoleNetworkFixture{carrier: route.ClosedCarrierTCP})
 	defer func() { _ = endpoint.Close() }()
 	handle, err := owner.openTextPrefix(t.Context())
 	if err != nil {

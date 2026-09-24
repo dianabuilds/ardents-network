@@ -16,7 +16,7 @@ func TestTextIssuanceStartsAfterIdleListeners(t *testing.T) {
 	for _, carrier := range []route.CarrierProfile{route.ClosedCarrierTCP, route.ClosedCarrierQUIC} {
 		t.Run(string(carrier), func(t *testing.T) {
 			t.Parallel()
-			endpoint, owner, _ := startTextIssuanceNetwork(t, carrier)
+			endpoint, owner, _ := startTextRoleNetwork(t, textRoleNetworkFixture{carrier: carrier})
 			defer func() {
 				if err := endpoint.Close(); err != nil {
 					t.Error(err)

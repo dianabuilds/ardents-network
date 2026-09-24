@@ -21,7 +21,7 @@ import (
 func TestTextPublisherCommitsInstanceSignedDescriptor(t *testing.T) {
 	for _, carrier := range []route.CarrierProfile{route.ClosedCarrierTCP, route.ClosedCarrierQUIC} {
 		t.Run(string(carrier), func(t *testing.T) {
-			endpoint, owner, source := startTextRoleNetwork(t, carrier, true, true)
+			endpoint, owner, source := startTextRoleNetwork(t, textRoleNetworkFixture{carrier: carrier, resolution: true, publisher: true})
 			public, authority, err := ed25519.GenerateKey(rand.Reader)
 			if err != nil {
 				t.Fatal(err)

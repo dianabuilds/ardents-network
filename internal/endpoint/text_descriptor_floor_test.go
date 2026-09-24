@@ -193,7 +193,7 @@ func TestTextDescriptorFloorBelongsToContextAcrossWorkerLoss(t *testing.T) {
 func TestTextResolutionNetworkCannotRollBackLocalDescriptorFloor(t *testing.T) {
 	for _, carrier := range []route.CarrierProfile{route.ClosedCarrierTCP, route.ClosedCarrierQUIC} {
 		t.Run(string(carrier), func(t *testing.T) {
-			_, owner, source := startTextControlNetwork(t, carrier, true)
+			_, owner, source := startTextRoleNetwork(t, textRoleNetworkFixture{carrier: carrier, resolution: true})
 			prefix, err := owner.openTextPrefix(t.Context())
 			if err != nil {
 				t.Fatal(err)

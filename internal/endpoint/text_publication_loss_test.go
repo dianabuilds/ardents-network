@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/network/state"
+	"github.com/dianabuilds/ardents-network/internal/node"
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/service/publication"
 )
@@ -17,7 +18,7 @@ import (
 // Descriptor handovers. Only accepted State and worker qualification are fixtures.
 func startTextRegisteredPublisherNetwork(t *testing.T, carrier route.CarrierProfile, gate *textDescriptorACKGate) (*endpoint, *textContext, *textSourceStateFixture, *textIntroductionRegistration) {
 	t.Helper()
-	endpoint, owner, source := startTextRoleNetwork(t, carrier, true, true, gate.configure(t))
+	endpoint, owner, source := startTextRoleNetwork(t, textRoleNetworkFixture{carrier: carrier, resolution: true, publisher: true, configure: []func(int, *node.Config){gate.configure(t)}})
 	source.mu.Lock()
 	source.view.NodeCount, source.snapshot.CandidateCount = 16, 16
 	source.view.Nodes[15] = state.ClosedRouteNodeView{NodeID: fixtureID(202), RecordDigest: fixtureID(203), DutyGeneration: 16, RoleDomain: 2, Subrole: 4}

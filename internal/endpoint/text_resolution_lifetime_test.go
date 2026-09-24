@@ -33,7 +33,7 @@ func (source *textPausedResolutionState) CurrentClosedRoute() (state.ClosedRoute
 }
 
 func TestTextResolutionCloseJoinsInFlightStateSelection(t *testing.T) {
-	endpoint, owner, source := startTextControlNetwork(t, route.ClosedCarrierTCP, true)
+	endpoint, owner, source := startTextRoleNetwork(t, textRoleNetworkFixture{carrier: route.ClosedCarrierTCP, resolution: true})
 	paused := &textPausedResolutionState{textSourceStateFixture: source, entered: make(chan struct{}), release: make(chan struct{})}
 	endpoint.closedState = paused
 	prefix, err := owner.openTextPrefix(t.Context())
@@ -131,7 +131,7 @@ func TestTextResolutionCompletionRetainsFailedCleanup(t *testing.T) {
 }
 
 func TestTextResolutionOldAcquisitionCannotCommitAfterSourceReplacement(t *testing.T) {
-	endpoint, owner, source := startTextControlNetwork(t, route.ClosedCarrierTCP, true)
+	endpoint, owner, source := startTextRoleNetwork(t, textRoleNetworkFixture{carrier: route.ClosedCarrierTCP, resolution: true})
 	defer func() { _ = endpoint.Close() }()
 	old, err := owner.openTextPrefix(t.Context())
 	if err != nil {
