@@ -35,10 +35,37 @@ func textTokenTransferFailureStage(cause error) string {
 }
 
 // takeTextTokenLocked is shared only after the exact opening or issuance
-// flight has independently authorized its role. It burns stock before journal
-// append and rechecks the surviving owner before releasing bytes to Route.
+// flight has independently authorized its role. It durably marks consumed stock
+// and rechecks the surviving context before releasing bytes to Route.
 func (owner *textContext) takeTextTokenLocked(profile state.ClosedProfileView, now time.Time, hello route.ClosedHello, class uint8, attempt context.Context) ([]byte, error) {
 	permission := owner.permission
+	token, err := permission.consumeTextToken(profile, now, hello, class)
+	if err != nil {
+		return nil, err
+	}
+	journal, err := owner.endpoint.textTokenJournal()
+	if err == nil {
+		err = journal.Mark(token, tokenjournal.Attempt{Profile: profile.Digest, Receiver: hello.RecipientNodeID, Duty: hello.RecipientDutyGeneration,
+			Window: permission.accepted.NotBefore, Class: class, Nonce: hello.ChannelNonce})
+	}
+	if err != nil {
+		clear(token)
+		owner.closeErr = errors.Join(owner.closeErr, err)
+		owner.closed = true
+		owner.endpoint.failTextContexts(err)
+		return nil, textTokenTransferFailureAt("journal", err)
+	}
+	currentProfile, currentTime, currentErr := owner.textPermissionProfileLocked()
+	if currentErr != nil || currentProfile != profile || !currentTime.Before(permission.accepted.NotAfter) || attempt.Err() != nil {
+		clear(token)
+		return nil, textTokenTransferFailureAt("owner", errors.Join(currentErr, attempt.Err(), errors.New("text token owner changed after durable mark")))
+	}
+	return token, nil
+}
+
+// consumeTextToken burns one exact stock entry under textContext.mu before
+// verifying its signature. An invalid token is never returned or restored.
+func (permission *textPermission) consumeTextToken(profile state.ClosedProfileView, now time.Time, hello route.ClosedHello, class uint8) ([]byte, error) {
 	if permission.profile != profile || now.Before(permission.accepted.NotBefore) || !now.Before(permission.accepted.NotAfter) {
 		return nil, textTokenTransferFailureAt("permission", errors.New("text token permission expired"))
 	}
@@ -67,23 +94,6 @@ func (owner *textContext) takeTextTokenLocked(profile state.ClosedProfileView, n
 		if err := credential.VerifyClosedToken(challenge, spki, token); err != nil {
 			clear(token)
 			return nil, textTokenTransferFailureAt("verification", err)
-		}
-		journal, err := owner.endpoint.textTokenJournal()
-		if err == nil {
-			err = journal.Mark(token, tokenjournal.Attempt{Profile: profile.Digest, Receiver: hello.RecipientNodeID, Duty: hello.RecipientDutyGeneration,
-				Window: challenge.WindowStart, Class: class, Nonce: hello.ChannelNonce})
-		}
-		if err != nil {
-			clear(token)
-			owner.closeErr = errors.Join(owner.closeErr, err)
-			owner.closed = true
-			owner.endpoint.failTextContexts(err)
-			return nil, textTokenTransferFailureAt("journal", err)
-		}
-		currentProfile, currentTime, currentErr := owner.textPermissionProfileLocked()
-		if currentErr != nil || currentProfile != profile || !currentTime.Before(permission.accepted.NotAfter) || attempt.Err() != nil {
-			clear(token)
-			return nil, textTokenTransferFailureAt("owner", errors.Join(currentErr, attempt.Err(), errors.New("text token owner changed after durable mark")))
 		}
 		return token, nil
 	}

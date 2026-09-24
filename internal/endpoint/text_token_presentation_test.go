@@ -5,6 +5,7 @@ package endpoint
 import (
 	"bytes"
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -61,6 +62,24 @@ func TestTextTokenPresentationBurnsStockBeforeReturningBytes(t *testing.T) {
 	defer reopened.Close()
 	if err := reopened.Mark(original, journalAttemptFromReceipt(receipts[0])); err == nil {
 		t.Fatal("context restart revived spent token")
+	}
+}
+
+// Invalid issuer stock is consumed locally and never becomes a durable attempt
+// or bytes presented to Route.
+func TestTextTokenInvalidStockCannotReachJournal(t *testing.T) {
+	endpoint, owner, _, profile, hello, original := textTokenPresentationFixture(t)
+	defer clear(original)
+	owner.mu.Lock()
+	owner.permission.stock[0].tokens[0][0] ^= 0xff
+	returned, err := owner.takeTextTokenLocked(profile, time.Now().UTC(), hello, 2, t.Context())
+	remaining := len(owner.permission.stock[0].tokens)
+	owner.mu.Unlock()
+	if err == nil || len(returned) != 0 || remaining != 0 || textTokenTransferFailureStage(err) != "verification" {
+		t.Fatalf("invalid stock transfer: bytes=%d remaining=%d stage=%s err=%v", len(returned), remaining, textTokenTransferFailureStage(err), err)
+	}
+	if _, err := os.Stat(filepath.Join(endpoint.closedTokenRoot, "attempts")); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("invalid stock reached durable journal: %v", err)
 	}
 }
 
