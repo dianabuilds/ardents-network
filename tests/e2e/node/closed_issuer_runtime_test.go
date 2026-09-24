@@ -139,16 +139,12 @@ func runClosedIssuerProcess(t *testing.T, node, endpoint string, acceptArguments
 	}
 	// Each process reached READY and must remain alive after the last Node
 	// starts. This does not prove continuous duty readiness or an Endpoint exchange.
-	for _, process := range live {
-		select {
-		case <-process.done:
-			t.Fatalf("closed topology Node exited after readiness: %v", process.terminalErr())
-		default:
-		}
+	plan["route_diagnostic_paths"] = diagnostics
+	plan["diagnostic_node_processes"] = live
+	if liveness := installedCommandExitedNodeLiveness(t, plan); liveness != "" {
+		t.Fatalf("closed topology Node exited after readiness\nNode liveness:\n%s", liveness)
 	}
 	if nodeCount != 3 {
-		plan["route_diagnostic_paths"] = diagnostics
-		plan["diagnostic_node_processes"] = live
 		participant(resolutionRoot, plan)
 		return
 	}
