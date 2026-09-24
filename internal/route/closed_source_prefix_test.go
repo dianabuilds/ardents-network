@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"net"
+	"syscall"
 	"testing"
 	"time"
 
@@ -93,5 +94,33 @@ func TestClosedSourcePrefixLifetimeExtendsBeyondBootstrapWindow(t *testing.T) {
 	remaining := end.Sub(now)
 	if remaining < 29*time.Minute || remaining > 30*time.Minute {
 		t.Fatalf("retained source prefix lifetime = %s, want the bounded 1,800-second class-2 lease", remaining)
+	}
+}
+
+func TestClosedSourceOpenFailureDetailClassifiesWrappedTCPDialSyscalls(t *testing.T) {
+	for _, test := range []struct {
+		name  string
+		cause error
+		want  string
+	}{
+		{name: "refused", cause: syscall.ECONNREFUSED, want: "refused"},
+		{name: "network unreachable", cause: syscall.ENETUNREACH, want: "network-unreachable"},
+		{name: "host unreachable", cause: syscall.EHOSTUNREACH, want: "host-unreachable"},
+		{name: "address unavailable", cause: syscall.EADDRNOTAVAIL, want: "address-unavailable"},
+		{name: "reset", cause: syscall.ECONNRESET, want: "reset"},
+		{name: "permission", cause: syscall.EACCES, want: "permission"},
+		{name: "resource", cause: syscall.EMFILE, want: "resource"},
+		{name: "invalid", cause: syscall.EINVAL, want: "invalid"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			cause := &net.OpError{Op: "dial", Net: "tcp", Err: test.cause}
+			failure := closedSourceOpenFailureAt("entry-carrier", closedRoleOpenFailureAt("tcp-dial", cause))
+			if got := ClosedSourceOpenFailureDetail(failure); got != "entry-carrier-tcp-dial-"+test.want {
+				t.Fatalf("closed Source TCP dial detail = %q", got)
+			}
+			if !errors.Is(failure, test.cause) {
+				t.Fatal("closed Source TCP dial failure lost its syscall cause")
+			}
+		})
 	}
 }

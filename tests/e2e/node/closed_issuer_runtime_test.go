@@ -148,6 +148,7 @@ func runClosedIssuerProcess(t *testing.T, node, endpoint string, acceptArguments
 	}
 	if nodeCount != 3 {
 		plan["route_diagnostic_paths"] = diagnostics
+		plan["diagnostic_node_processes"] = live
 		participant(resolutionRoot, plan)
 		return
 	}

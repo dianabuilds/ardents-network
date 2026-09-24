@@ -8,6 +8,7 @@ import (
 	"io"
 	"net"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/quic-go/quic-go"
@@ -49,6 +50,24 @@ func closedRoleOpenFailureDetail(cause error) string {
 		stages = append(stages, "deadline")
 	case errors.Is(cause, io.EOF):
 		stages = append(stages, "eof")
+	case errors.Is(cause, net.ErrClosed):
+		stages = append(stages, "closed")
+	case errors.Is(cause, syscall.ECONNREFUSED):
+		stages = append(stages, "refused")
+	case errors.Is(cause, syscall.ENETUNREACH):
+		stages = append(stages, "network-unreachable")
+	case errors.Is(cause, syscall.EHOSTUNREACH):
+		stages = append(stages, "host-unreachable")
+	case errors.Is(cause, syscall.EADDRNOTAVAIL):
+		stages = append(stages, "address-unavailable")
+	case errors.Is(cause, syscall.ECONNRESET):
+		stages = append(stages, "reset")
+	case errors.Is(cause, syscall.EACCES) || errors.Is(cause, syscall.EPERM):
+		stages = append(stages, "permission")
+	case errors.Is(cause, syscall.EMFILE) || errors.Is(cause, syscall.ENFILE) || errors.Is(cause, syscall.ENOBUFS):
+		stages = append(stages, "resource")
+	case errors.Is(cause, syscall.EINVAL):
+		stages = append(stages, "invalid")
 	default:
 		var networkError net.Error
 		if errors.As(cause, &networkError) && networkError.Timeout() {
