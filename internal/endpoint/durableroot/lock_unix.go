@@ -17,7 +17,7 @@ func Acquire(path string) (*Lease, error) {
 	}
 	if err := syscall.Flock(int(file.Fd()), syscall.LOCK_EX|syscall.LOCK_NB); err != nil {
 		_ = file.Close()
-		return nil, errors.New("Endpoint root is already owned")
+		return nil, errors.New("endpoint root is already owned")
 	}
 	return &Lease{file: file}, nil
 }

@@ -17,7 +17,7 @@ func Secure(root string) error {
 		return err
 	}
 	if status.Mode&syscall.S_IFMT != syscall.S_IFDIR || status.Mode&0o777 != 0o700 || status.Uid != uint32(os.Geteuid()) {
-		return errors.New("Endpoint root is not private to the Endpoint user")
+		return errors.New("endpoint root is not private to the endpoint user")
 	}
 	return nil
 }

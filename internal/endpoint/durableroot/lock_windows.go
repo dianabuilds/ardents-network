@@ -23,7 +23,7 @@ func Acquire(path string) (*Lease, error) {
 	if err := windows.LockFileEx(windows.Handle(file.Fd()), windows.LOCKFILE_EXCLUSIVE_LOCK|windows.LOCKFILE_FAIL_IMMEDIATELY,
 		0, 1, 0, &lease.overlapped); err != nil {
 		_ = file.Close()
-		return nil, errors.New("Endpoint root is already owned")
+		return nil, errors.New("endpoint root is already owned")
 	}
 	return lease, nil
 }
