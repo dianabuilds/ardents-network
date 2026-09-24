@@ -202,6 +202,9 @@ func runInstalledClosedTextParticipant(t *testing.T, config state.Config, binary
 		}
 		return output
 	}
+	if expiryBoundary {
+		waitInstalledCommandRefreshPublishPhase(t, permissions)
+	}
 	publicationStarted := time.Now()
 	if output := run("publish", nil, "publish", path("publisher.sock"), document); len(output) != 0 {
 		t.Fatal("publish produced unexpected output")

@@ -72,6 +72,67 @@ func requireInstalledCommandRefreshExpiry(t *testing.T, first reachability.Verif
 	}
 }
 
+const installedCommandRefreshPublishLead = 4*time.Minute + 50*time.Second
+
+// The refresh is scheduled five minutes after the first Descriptor. Align the
+// boundary cell's publish phase to the actual issued Permission rather than VM
+// boot time, which varies independently from the Endpoint path under test. A
+// ten-second allowance places the scheduled refresh inside its post-expiry
+// observation window even when publication reaches the Store on the next tick.
+func installedCommandRefreshPublishPhaseError(now time.Time, permissions map[string]credential.Permission) (time.Time, error) {
+	var target time.Time
+	for _, role := range []string{"reader", "publisher"} {
+		permission, ok := permissions[role]
+		if !ok {
+			return time.Time{}, fmt.Errorf("%s Permission missing", role)
+		}
+		candidate := permission.NotAfter.Add(-installedCommandRefreshPublishLead)
+		if target.IsZero() {
+			target = candidate
+		} else if !target.Equal(candidate) {
+			return time.Time{}, fmt.Errorf("Permissions have different refresh publish phases: %s / %s", target, candidate)
+		}
+	}
+	if !now.UTC().Before(target) {
+		return time.Time{}, fmt.Errorf("now %s is after refresh publish phase %s", now.UTC(), target)
+	}
+	return target, nil
+}
+
+func waitInstalledCommandRefreshPublishPhase(t *testing.T, permissions map[string]credential.Permission) {
+	t.Helper()
+	target, err := installedCommandRefreshPublishPhaseError(time.Now(), permissions)
+	if err != nil {
+		t.Fatalf("invalid installed expiry-boundary publish prerequisite: %v", err)
+	}
+	timer := time.NewTimer(time.Until(target))
+	defer timer.Stop()
+	select {
+	case <-t.Context().Done():
+		t.Fatal(t.Context().Err())
+	case <-timer.C:
+	}
+}
+
+func TestInstalledCommandRefreshPublishPhaseRequiresFutureSharedPermission(t *testing.T) {
+	expires := time.Date(2026, time.September, 24, 16, 0, 0, 0, time.UTC)
+	permissions := map[string]credential.Permission{
+		"reader":    {NotAfter: expires},
+		"publisher": {NotAfter: expires},
+	}
+	target, err := installedCommandRefreshPublishPhaseError(expires.Add(-installedCommandRefreshPublishLead-time.Nanosecond), permissions)
+	if err != nil || !target.Equal(expires.Add(-installedCommandRefreshPublishLead)) {
+		t.Fatalf("publish phase = %s / %v", target, err)
+	}
+	if _, err := installedCommandRefreshPublishPhaseError(expires.Add(-installedCommandRefreshPublishLead), permissions); err == nil {
+		t.Fatal("publish phase accepted a late caller")
+	}
+	permissions["publisher"] = credential.Permission{NotAfter: expires.Add(time.Second)}
+	if _, err := installedCommandRefreshPublishPhaseError(expires.Add(-6*time.Minute), permissions); err == nil {
+		t.Fatal("publish phase accepted mismatched Permissions")
+	}
+}
+
 type installedCommandJournalEvent struct {
 	Timestamp string `json:"__REALTIME_TIMESTAMP"`
 	Message   string `json:"MESSAGE"`
