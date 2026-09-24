@@ -1,6 +1,6 @@
 //go:build linux
 
-package endpoint
+package tokenjournal
 
 import (
 	"bytes"
@@ -10,44 +10,44 @@ import (
 	"time"
 )
 
-func tokenJournalFixture(t *testing.T) (*textTokenJournal, *time.Time, textTokenAttempt, []byte) {
+func tokenJournalFixture(t *testing.T) (*Journal, *time.Time, Attempt, []byte) {
 	t.Helper()
 	now := time.Unix(1_800_000_000, 0).UTC()
-	journal, err := openTextTokenJournal(t.TempDir(), [32]byte{1}, func() time.Time { return now })
+	journal, err := Open(t.TempDir(), [32]byte{1}, func() time.Time { return now })
 	if err != nil {
 		t.Fatal(err)
 	}
-	record := textTokenAttempt{profile: [32]byte{2}, receiver: [32]byte{3}, duty: 4, window: now.Truncate(time.Hour), class: 2, attempt: [32]byte{5}}
+	record := Attempt{Profile: [32]byte{2}, Receiver: [32]byte{3}, Duty: 4, Window: now.Truncate(time.Hour), Class: 2, Nonce: [32]byte{5}}
 	t.Cleanup(func() { _ = journal.Close() })
 	return journal, &now, record, bytes.Repeat([]byte{6}, 354)
 }
 
 func TestTextTokenJournalPersistsBurnWithoutSecretsOrReplay(t *testing.T) {
 	journal, _, record, token := tokenJournalFixture(t)
-	if err := journal.mark(token, record); err != nil {
+	if err := journal.Mark(token, record); err != nil {
 		t.Fatal(err)
 	}
 	raw, err := os.ReadFile(filepath.Join(journal.root, "attempts"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(raw) != textTokenJournalHeader+textTokenAttemptSize || bytes.Contains(raw, token) {
+	if len(raw) != journalHeader+attemptSize || bytes.Contains(raw, token) {
 		t.Fatal("journal shape or secret retention wrong")
 	}
-	if other, err := openTextTokenJournal(journal.root, journal.network, journal.clock); err == nil {
+	if other, err := Open(journal.root, journal.network, journal.clock); err == nil {
 		_ = other.Close()
 		t.Fatal("concurrent journal ownership")
 	}
 	if err := journal.Close(); err != nil {
 		t.Fatal(err)
 	}
-	reopened, err := openTextTokenJournal(journal.root, journal.network, journal.clock)
+	reopened, err := Open(journal.root, journal.network, journal.clock)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer reopened.Close()
-	record.attempt[0]++
-	if err := reopened.mark(token, record); err == nil {
+	record.Nonce[0]++
+	if err := reopened.Mark(token, record); err == nil {
 		t.Fatal("restart revived potentially spent token")
 	}
 	if len(reopened.records) != 1 {
@@ -59,7 +59,7 @@ func TestTextTokenJournalRefusesMissingPartialOrForeignRetainedState(t *testing.
 	for _, fault := range []string{"missing", "partial", "foreign", "clock"} {
 		t.Run(fault, func(t *testing.T) {
 			journal, now, record, token := tokenJournalFixture(t)
-			if err := journal.mark(token, record); err != nil {
+			if err := journal.Mark(token, record); err != nil {
 				t.Fatal(err)
 			}
 			if err := journal.Close(); err != nil {
@@ -88,7 +88,7 @@ func TestTextTokenJournalRefusesMissingPartialOrForeignRetainedState(t *testing.
 			case "clock":
 				*now = now.Add(-time.Second)
 			}
-			if reopened, err := openTextTokenJournal(journal.root, journal.network, journal.clock); err == nil {
+			if reopened, err := Open(journal.root, journal.network, journal.clock); err == nil {
 				_ = reopened.Close()
 				t.Fatal("ambiguous state reset")
 			}
@@ -105,14 +105,14 @@ func TestTextTokenJournalPoisonsOwnerOnReplacedFile(t *testing.T) {
 	if err := os.WriteFile(path, journal.header(journal.floor), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if err := journal.mark(token, record); err == nil {
+	if err := journal.Mark(token, record); err == nil {
 		t.Fatal("replacement accepted")
 	}
 	if len(journal.records) != 0 || journal.failure == nil {
 		t.Fatal("failed mark consumed no durable authority but owner stayed usable")
 	}
 	token[0]++
-	if err := journal.mark(token, record); err == nil {
+	if err := journal.Mark(token, record); err == nil {
 		t.Fatal("failed owner recovered silently")
 	}
 	if err := journal.Close(); err == nil {
@@ -123,13 +123,13 @@ func TestTextTokenJournalPoisonsOwnerOnReplacedFile(t *testing.T) {
 func TestTextTokenJournalPrunesOnlyAfterWindowCleanupMargin(t *testing.T) {
 	journal, now, record, token := tokenJournalFixture(t)
 	defer journal.Close()
-	if err := journal.mark(token, record); err != nil {
+	if err := journal.Mark(token, record); err != nil {
 		t.Fatal(err)
 	}
-	*now = record.window.Add(time.Hour + 59*time.Second)
-	record.window = record.window.Add(time.Hour)
+	*now = record.Window.Add(time.Hour + 59*time.Second)
+	record.Window = record.Window.Add(time.Hour)
 	token[0]++
-	if err := journal.mark(token, record); err != nil {
+	if err := journal.Mark(token, record); err != nil {
 		t.Fatal(err)
 	}
 	if len(journal.records) != 2 {
@@ -137,7 +137,7 @@ func TestTextTokenJournalPrunesOnlyAfterWindowCleanupMargin(t *testing.T) {
 	}
 	*now = now.Add(time.Second)
 	token[0]++
-	if err := journal.mark(token, record); err != nil {
+	if err := journal.Mark(token, record); err != nil {
 		t.Fatal(err)
 	}
 	if len(journal.records) != 2 {
@@ -146,7 +146,7 @@ func TestTextTokenJournalPrunesOnlyAfterWindowCleanupMargin(t *testing.T) {
 	if err := journal.Close(); err != nil {
 		t.Fatal(err)
 	}
-	reopened, err := openTextTokenJournal(journal.root, journal.network, journal.clock)
+	reopened, err := Open(journal.root, journal.network, journal.clock)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -158,10 +158,10 @@ func TestTextTokenJournalPrunesOnlyAfterWindowCleanupMargin(t *testing.T) {
 
 func TestTextTokenJournalPruningCrashRetainsDeletionTimeFloor(t *testing.T) {
 	journal, now, record, token := tokenJournalFixture(t)
-	if err := journal.mark(token, record); err != nil {
+	if err := journal.Mark(token, record); err != nil {
 		t.Fatal(err)
 	}
-	pruningTime := record.window.Add(time.Hour + time.Minute)
+	pruningTime := record.Window.Add(time.Hour + time.Minute)
 	*now = pruningTime
 	// Stop at the durable compaction boundary, before the next append.
 	if err := journal.prune(pruningTime); err != nil {
@@ -173,13 +173,13 @@ func TestTextTokenJournalPruningCrashRetainsDeletionTimeFloor(t *testing.T) {
 	if err := journal.Close(); err != nil {
 		t.Fatal(err)
 	}
-	*now = record.window.Add(30 * time.Minute)
-	if reopened, err := openTextTokenJournal(journal.root, journal.network, journal.clock); err == nil {
+	*now = record.Window.Add(30 * time.Minute)
+	if reopened, err := Open(journal.root, journal.network, journal.clock); err == nil {
 		defer reopened.Close()
 		t.Fatal("restart accepted time before durable receipt deletion")
 	}
 	*now = pruningTime
-	reopened, err := openTextTokenJournal(journal.root, journal.network, journal.clock)
+	reopened, err := Open(journal.root, journal.network, journal.clock)
 	if err != nil {
 		t.Fatal(err)
 	}

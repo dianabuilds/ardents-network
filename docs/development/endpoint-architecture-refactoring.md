@@ -37,7 +37,7 @@ implementation has private owners rather than one undifferentiated state bag:
 | Publisher prefixes | `textIntroductionPrefixLifecycle`, `textResponderPrefixLifecycle` | Separate Route handles and opening lifetimes; borrowed Source is not closed by either. |
 | Publication | `textPublicationPairLifecycle`, refresh lifecycle, Context coordinators | Instance and Publication ownership spans Context and Endpoint locks. |
 | Permission and issuance | `textPermission`, `textIssuanceOperation` | Stock, pending batch, and exact Source reservation share the Context admission lock. |
-| Token attempt storage | `textTokenJournal` | Own mutex and durable root; Endpoint-owned root access, lease, and sync primitives are shared with transit acquisition; their names and files now reflect this ownership. |
+| Token attempt storage | `tokenjournal.Journal` | Own mutex, replay/time floors, and durable attempts; consumes the shared `durableroot` access, lease, and sync API. |
 | Resolution and JOIN | Context flights and narrow acquisitions | Exact current prefix must be checked again after network effects. |
 | Job and worker | `textJobIdentity`, `textWorkerLifetime` | Context retains the job reservation; worker owns process and cgroup cleanup. |
 
@@ -59,11 +59,10 @@ contract in `docs/technical/endpoint-service-runtime.md`.
    small caller-facing contract, a non-test caller, and an import graph with no
    cycle. A new package gets `doc.go`, behavior tests, and a package-map entry
    in the same change.
-4. Treat the token-attempt journal as the first candidate for a separate
-   durable owner. Its root access, lease, and sync mechanics now belong to
-   `internal/endpoint/durableroot`, shared with transit acquisition. Moving
-   the journal itself still requires a caller-facing attempt contract and its
-   exact package dependency map.
+4. Keep the extracted `internal/endpoint/tokenjournal` as the durable
+   attempt owner. Endpoint supplies only the selected token and its binding;
+   the journal owns replay/time floors and persisted receipts through
+   `durableroot`. Its integration tests read durable bytes independently.
 5. Keep the text workload name on code that really depends on the selected
    text Application. Use responsibility names for mechanisms only after their
    ownership is clear. A bulk `text_` to `participant_` rename is not the

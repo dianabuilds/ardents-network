@@ -7,6 +7,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/endpoint/tokenjournal"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/credential"
@@ -69,8 +70,8 @@ func (owner *textContext) takeTextTokenLocked(profile state.ClosedProfileView, n
 		}
 		journal, err := owner.endpoint.textTokenJournal()
 		if err == nil {
-			err = journal.mark(token, textTokenAttempt{profile: profile.Digest, receiver: hello.RecipientNodeID, duty: hello.RecipientDutyGeneration,
-				window: challenge.WindowStart, class: class, attempt: hello.ChannelNonce})
+			err = journal.Mark(token, tokenjournal.Attempt{Profile: profile.Digest, Receiver: hello.RecipientNodeID, Duty: hello.RecipientDutyGeneration,
+				Window: challenge.WindowStart, Class: class, Nonce: hello.ChannelNonce})
 		}
 		if err != nil {
 			clear(token)

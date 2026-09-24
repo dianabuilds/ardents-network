@@ -17,6 +17,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
 	"github.com/dianabuilds/ardents-network/internal/custody"
 	"github.com/dianabuilds/ardents-network/internal/endpoint/durableroot"
+	"github.com/dianabuilds/ardents-network/internal/endpoint/tokenjournal"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/route/credential"
 )
@@ -132,9 +133,9 @@ func TestTextEndpointCrashDropsVolatileAuthorityAndRetainsSpend(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	record := textTokenAttempt{profile: boundary.AttemptProfile, receiver: boundary.Receiver, duty: boundary.Duty,
-		window: boundary.Window, class: 2, attempt: boundary.Nonce}
-	if err := journal.mark(boundary.Token, record); err == nil {
+	record := tokenjournal.Attempt{Profile: boundary.AttemptProfile, Receiver: boundary.Receiver, Duty: boundary.Duty,
+		Window: boundary.Window, Class: 2, Nonce: boundary.Nonce}
+	if err := journal.Mark(boundary.Token, record); err == nil {
 		t.Fatal("restart revived a token already durably marked before the crash")
 	}
 	receipts := readTextTokenReceipts(t, reopened.closedTokenRoot, reopened.network)
@@ -270,19 +271,19 @@ func runTextEndpointCrashChild(t *testing.T, root string) {
 		t.Fatal(err)
 	}
 	token := bytes.Repeat([]byte{0xa5}, 354)
-	record := textTokenAttempt{profile: fixtureID(252), receiver: fixtureID(253), duty: 7,
-		window: now.Truncate(time.Hour), class: 2, attempt: fixtureID(254)}
-	journal, err := openTextTokenJournal(filepath.Join(root, "tokens"), profile.NetworkID, clock)
+	record := tokenjournal.Attempt{Profile: fixtureID(252), Receiver: fixtureID(253), Duty: 7,
+		Window: now.Truncate(time.Hour), Class: 2, Nonce: fixtureID(254)}
+	journal, err := tokenjournal.Open(filepath.Join(root, "tokens"), profile.NetworkID, clock)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := journal.mark(token, record); err != nil {
+	if err := journal.Mark(token, record); err != nil {
 		t.Fatal(err)
 	}
 	boundary := textEndpointCrashBoundary{Profile: profile, Principal: principal, Capability: oldCapability,
 		PermissionRequest: requestRaw, PermissionResponse: issued.AdmissionPermission, PermissionDigest: digest,
-		Token: token, AttemptProfile: record.profile, Receiver: record.receiver, Nonce: record.attempt,
-		Duty: record.duty, Window: record.window, AdmissionActive: endpoint.admission.Active(),
+		Token: token, AttemptProfile: record.Profile, Receiver: record.Receiver, Nonce: record.Nonce,
+		Duty: record.Duty, Window: record.Window, AdmissionActive: endpoint.admission.Active(),
 		WorkerGrantActive: workerGrant.Active(), JobLive: owner.job != nil, StockCount: stockCount}
 	raw, err := json.Marshal(boundary)
 	if err != nil {

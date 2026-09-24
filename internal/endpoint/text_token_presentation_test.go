@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/endpoint/tokenjournal"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/credential"
@@ -53,12 +54,12 @@ func TestTextTokenPresentationBurnsStockBeforeReturningBytes(t *testing.T) {
 	if err := endpoint.Close(); err != nil {
 		t.Fatal(err)
 	}
-	reopened, err := openTextTokenJournal(endpoint.closedTokenRoot, endpoint.network, time.Now)
+	reopened, err := tokenjournal.Open(endpoint.closedTokenRoot, endpoint.network, time.Now)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer reopened.Close()
-	if err := reopened.mark(original, textTokenAttemptFromReceipt(receipts[0])); err == nil {
+	if err := reopened.Mark(original, journalAttemptFromReceipt(receipts[0])); err == nil {
 		t.Fatal("context restart revived spent token")
 	}
 }
@@ -86,12 +87,12 @@ func TestTextTokenCancellationAfterDurableMarkRetainsBurn(t *testing.T) {
 	if err := endpoint.Close(); err != nil {
 		t.Fatal(err)
 	}
-	reopened, err := openTextTokenJournal(endpoint.closedTokenRoot, endpoint.network, time.Now)
+	reopened, err := tokenjournal.Open(endpoint.closedTokenRoot, endpoint.network, time.Now)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer reopened.Close()
-	if err := reopened.mark(original, textTokenAttemptFromReceipt(receipts[0])); err == nil {
+	if err := reopened.Mark(original, journalAttemptFromReceipt(receipts[0])); err == nil {
 		t.Fatal("restart revived token burned before cancellation")
 	}
 }

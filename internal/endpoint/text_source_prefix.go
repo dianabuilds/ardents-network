@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 
+	"github.com/dianabuilds/ardents-network/internal/endpoint/tokenjournal"
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/credential"
 )
@@ -131,14 +132,14 @@ func (operation *textPrefixOpeningOperation) presentTextToken(selection route.Cl
 	return token, nil
 }
 
-func (endpoint *endpoint) textTokenJournal() (*textTokenJournal, error) {
+func (endpoint *endpoint) textTokenJournal() (*tokenjournal.Journal, error) {
 	endpoint.textMu.Lock()
 	defer endpoint.textMu.Unlock()
 	if endpoint.textClosed || endpoint.closedTokenRoot == "" {
 		return nil, errors.New("text token journal root unavailable")
 	}
 	if endpoint.closedTokenJournal == nil {
-		journal, err := openTextTokenJournal(endpoint.closedTokenRoot, endpoint.network, endpoint.clock)
+		journal, err := tokenjournal.Open(endpoint.closedTokenRoot, endpoint.network, endpoint.clock)
 		if err != nil {
 			return nil, err
 		}

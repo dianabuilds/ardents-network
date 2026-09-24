@@ -1,23 +1,25 @@
 //go:build linux
 
-package endpoint
+package tokenjournal
 
 import (
 	"bytes"
 	"encoding/binary"
 	"errors"
-	"github.com/dianabuilds/ardents-network/internal/endpoint/durableroot"
 	"io"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/endpoint/durableroot"
 )
 
-const textTokenJournalMarker = "ardents-token-attempts-v1\n"
+const journalMarker = "ardents-token-attempts-v1\n"
 
-func openTextTokenJournal(root string, network [32]byte, clock func() time.Time) (*textTokenJournal, error) {
+// Open claims one existing private root and refuses ambiguous retained state.
+func Open(root string, network [32]byte, clock func() time.Time) (*Journal, error) {
 	if !filepath.IsAbs(root) || filepath.Clean(root) != root || network == [32]byte{} || clock == nil || clock().IsZero() {
 		return nil, errors.New("text token journal configuration invalid")
 	}
@@ -39,7 +41,7 @@ func openTextTokenJournal(root string, network [32]byte, clock func() time.Time)
 	}
 	if !fresh {
 		marker, err := os.ReadFile(filepath.Join(root, "root.marker"))
-		if err != nil || string(marker) != textTokenJournalMarker {
+		if err != nil || string(marker) != journalMarker {
 			return nil, errors.New("text token journal marker unavailable")
 		}
 	}
@@ -50,18 +52,18 @@ func openTextTokenJournal(root string, network [32]byte, clock func() time.Time)
 	if err != nil {
 		return nil, err
 	}
-	journal := &textTokenJournal{root: root, network: network, clock: clock, lease: lease, records: make(map[[32]byte]textTokenAttempt)}
-	fail := func(cause error) (*textTokenJournal, error) { return nil, errors.Join(cause, lease.Release()) }
+	journal := &Journal{root: root, network: network, clock: clock, lease: lease, records: make(map[[32]byte]Attempt)}
+	fail := func(cause error) (*Journal, error) { return nil, errors.Join(cause, lease.Release()) }
 	if fresh {
 		current, err := os.ReadDir(root)
 		if err != nil || len(current) != 1 || current[0].Name() != "owner.lock" {
 			return fail(errors.New("text token journal changed before claim"))
 		}
-		if err := writeTextTokenJournalFile(filepath.Join(root, "root.marker"), []byte(textTokenJournalMarker)); err != nil {
+		if err := writeJournalFile(filepath.Join(root, "root.marker"), []byte(journalMarker)); err != nil {
 			return fail(err)
 		}
 		journal.floor = clock().UTC().Truncate(time.Second)
-		if err := writeTextTokenJournalFile(filepath.Join(root, "attempts"), journal.header(journal.floor)); err != nil {
+		if err := writeJournalFile(filepath.Join(root, "attempts"), journal.header(journal.floor)); err != nil {
 			return fail(err)
 		}
 		if err := durableroot.SyncDirectory(root); err != nil {
@@ -77,35 +79,35 @@ func openTextTokenJournal(root string, network [32]byte, clock func() time.Time)
 			}
 		}
 	}
-	journal.identity, err = pinTextTokenJournalFile(root)
+	journal.identity, err = pinJournalFile(root)
 	if err != nil {
 		return fail(err)
 	}
 	return journal, nil
 }
 
-func (journal *textTokenJournal) header(floor time.Time) []byte {
-	raw := append([]byte(textTokenJournalMagic), journal.network[:]...)
+func (journal *Journal) header(floor time.Time) []byte {
+	raw := append([]byte(journalMagic), journal.network[:]...)
 	return binary.BigEndian.AppendUint64(raw, uint64(floor.Unix()))
 }
 
-func (journal *textTokenJournal) load() error {
+func (journal *Journal) load() error {
 	file, err := os.Open(filepath.Join(journal.root, "attempts"))
 	if err != nil {
 		return err
 	}
-	raw, err := io.ReadAll(io.LimitReader(file, textTokenJournalHeader+maximumTextTokenAttempts*textTokenAttemptSize+1))
+	raw, err := io.ReadAll(io.LimitReader(file, journalHeader+maximumAttempts*attemptSize+1))
 	err = errors.Join(err, file.Close())
 	if err != nil {
 		return err
 	}
-	if len(raw) < textTokenJournalHeader || len(raw) > textTokenJournalHeader+maximumTextTokenAttempts*textTokenAttemptSize ||
-		(len(raw)-textTokenJournalHeader)%textTokenAttemptSize != 0 || string(raw[:8]) != textTokenJournalMagic || !bytes.Equal(raw[8:40], journal.network[:]) {
+	if len(raw) < journalHeader || len(raw) > journalHeader+maximumAttempts*attemptSize ||
+		(len(raw)-journalHeader)%attemptSize != 0 || string(raw[:8]) != journalMagic || !bytes.Equal(raw[8:40], journal.network[:]) {
 		return errors.New("text token journal is incomplete or foreign")
 	}
 	journal.floor = time.Unix(int64(binary.BigEndian.Uint64(raw[40:48])), 0).UTC()
-	for offset := textTokenJournalHeader; offset < len(raw); offset += textTokenAttemptSize {
-		record, err := decodeTextTokenAttempt(raw[offset : offset+textTokenAttemptSize])
+	for offset := journalHeader; offset < len(raw); offset += attemptSize {
+		record, err := decodeAttempt(raw[offset : offset+attemptSize])
 		if err != nil {
 			return err
 		}
@@ -123,7 +125,7 @@ func (journal *textTokenJournal) load() error {
 	return nil
 }
 
-func (journal *textTokenJournal) replace(records map[[32]byte]textTokenAttempt, floor time.Time) error {
+func (journal *Journal) replace(records map[[32]byte]Attempt, floor time.Time) error {
 	raw := journal.header(floor)
 	keys := make([][32]byte, 0, len(records))
 	for hash := range records {
@@ -131,7 +133,7 @@ func (journal *textTokenJournal) replace(records map[[32]byte]textTokenAttempt, 
 	}
 	sort.Slice(keys, func(i, j int) bool { return bytes.Compare(keys[i][:], keys[j][:]) < 0 })
 	for _, hash := range keys {
-		raw = append(raw, encodeTextTokenAttempt(records[hash])...)
+		raw = append(raw, encodeAttempt(records[hash])...)
 	}
 	file, err := os.CreateTemp(journal.root, ".attempts-")
 	if err != nil {
@@ -155,7 +157,7 @@ func (journal *textTokenJournal) replace(records map[[32]byte]textTokenAttempt, 
 	if err := durableroot.SyncDirectory(journal.root); err != nil {
 		return err
 	}
-	info, err := pinTextTokenJournalFile(journal.root)
+	info, err := pinJournalFile(journal.root)
 	if err != nil {
 		return err
 	}
@@ -163,7 +165,7 @@ func (journal *textTokenJournal) replace(records map[[32]byte]textTokenAttempt, 
 	return nil
 }
 
-func writeTextTokenJournalFile(path string, raw []byte) error {
+func writeJournalFile(path string, raw []byte) error {
 	file, err := os.OpenFile(path, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600)
 	if err != nil {
 		return err
@@ -177,7 +179,7 @@ func writeTextTokenJournalFile(path string, raw []byte) error {
 
 // File.Stat pins Windows file identity now; pathname Stat can resolve its
 // identity lazily only after the pathname has already been replaced.
-func pinTextTokenJournalFile(root string) (os.FileInfo, error) {
+func pinJournalFile(root string) (os.FileInfo, error) {
 	file, err := os.Open(filepath.Join(root, "attempts"))
 	if err != nil {
 		return nil, err

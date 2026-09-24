@@ -351,7 +351,8 @@ Local network tests exercise this result projection with explicit qualification
 fixtures. The installed profile uses the actual AAI3 owner and launcher, but
 that revised profile still requires execution on its qualified host.
 The protected `RunTextParticipant` composition opens the accepted closed State,
-Entry sets, token journal and existing Instance binding. It qualifies and
+Entry sets, the `internal/endpoint/tokenjournal` durable attempt owner, and
+existing Instance binding. It qualifies and
 provisions both retained text contexts before opening the AAI3 Connection and
 snapshot Administration transports, rechecks permission currentness before
 exposure, and joins servers, contexts and persistent owners on shutdown.
