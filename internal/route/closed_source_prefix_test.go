@@ -3,6 +3,7 @@
 package route
 
 import (
+	"context"
 	"errors"
 	"net"
 	"testing"
@@ -19,6 +20,35 @@ func TestClosedSourceOpenFailureRetainsStageAndCause(t *testing.T) {
 	}
 	if !errors.Is(failure, cause) {
 		t.Fatal("closed Source open failure lost its cause")
+	}
+}
+
+func TestClosedSourceOpenFailureDetailRetainsCarrierBoundary(t *testing.T) {
+	cause := errors.New("transport unavailable")
+	failure := closedSourceOpenFailureAt("entry-carrier", closedRoleOpenFailureAt("quic-dial", cause))
+	if got := ClosedSourceOpenFailureDetail(failure); got != "entry-carrier-quic-dial-other" {
+		t.Fatalf("closed Source open detail = %q", got)
+	}
+	if !errors.Is(failure, cause) {
+		t.Fatal("closed Source open detail lost its cause")
+	}
+}
+
+func TestClosedSourceOpenFailureDetailRetainsNestedTCPBoundary(t *testing.T) {
+	cause := errors.New("handshake refused")
+	failure := closedSourceOpenFailureAt("entry-carrier", closedRoleOpenFailureAt("tcp-tls", closedRoleOpenFailureAt("tls-handshake", cause)))
+	if got := ClosedSourceOpenFailureDetail(failure); got != "entry-carrier-tcp-tls-tls-handshake-other" {
+		t.Fatalf("closed Source nested open detail = %q", got)
+	}
+	if !errors.Is(failure, cause) {
+		t.Fatal("closed Source nested open detail lost its cause")
+	}
+}
+
+func TestClosedSourceOpenFailureDetailRetainsDeadlineCategory(t *testing.T) {
+	failure := closedSourceOpenFailureAt("interior-tls", closedRoleOpenFailureAt("tls-handshake", context.DeadlineExceeded))
+	if got := ClosedSourceOpenFailureDetail(failure); got != "interior-tls-tls-handshake-deadline" {
+		t.Fatalf("closed Source deadline detail = %q", got)
 	}
 }
 

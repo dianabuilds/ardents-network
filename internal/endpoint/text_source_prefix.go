@@ -97,7 +97,7 @@ func (owner *textContext) openTextPrefix(ctx context.Context) (*textSourceHandle
 			return operation.presentTextToken(selection, hello, class)
 		})
 		if openErr != nil {
-			stage := route.ClosedSourceOpenFailureStage(openErr)
+			stage := route.ClosedSourceOpenFailureDetail(openErr)
 			if presentation := textTokenPresentationFailureStage(openErr); presentation != "unknown" {
 				stage += "-" + presentation
 			}

@@ -86,6 +86,38 @@ func TestTextAdministrationRefusesCancelledAndInvalidSnapshots(t *testing.T) {
 	}
 }
 
+func TestTextAdministrationReportsFixedStartupFailure(t *testing.T) {
+	endpoint, principal := textContextEndpoint(t)
+	publisher := admittedTextContext(t, endpoint, principal, broker.Administration)
+	administration, err := publisher.openTextAdministration()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = administration.Close() })
+	reported := make(chan string, 1)
+	publisher.mu.Lock()
+	publisher.publicationFailure = func(failure string) { reported <- failure }
+	publisher.mu.Unlock()
+	release, err := endpoint.acquireTextLaunch(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer release()
+	startup, cancel := context.WithTimeout(t.Context(), 100*time.Millisecond)
+	defer cancel()
+	if err := administration.PublishSnapshot(startup, []byte("document")); err == nil {
+		t.Fatal("blocked startup published")
+	}
+	select {
+	case failure := <-reported:
+		if failure != "launch-worker" {
+			t.Fatalf("publication startup failure = %q", failure)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("blocked startup did not report its fixed failure")
+	}
+}
+
 // Hold the real Endpoint launch gate before any host activation. Cancellation
 // must join that pending launch; the fixture never supplies isolation success.
 func TestTextAdministrationJoinsStartupBeforeWithdrawalOrClose(t *testing.T) {

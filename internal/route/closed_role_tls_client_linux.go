@@ -19,16 +19,16 @@ func OpenClosedRoleTLS(ctx context.Context, raw net.Conn, expectedServer [32]byt
 	}
 	secured := tls.Client(raw, closedRoleClientTLS(expectedServer))
 	if err := secured.SetDeadline(deadline); err != nil {
-		return nil, err
+		return nil, closedRoleOpenFailureAt("tls-deadline-set", err)
 	}
 	if err := secured.HandshakeContext(ctx); err != nil {
-		return nil, err
+		return nil, closedRoleOpenFailureAt("tls-handshake", err)
 	}
 	if err := validClosedRoleTLSState(secured.ConnectionState(), expectedServer, false); err != nil {
-		return nil, err
+		return nil, closedRoleOpenFailureAt("tls-state", err)
 	}
 	if err := secured.SetDeadline(time.Time{}); err != nil {
-		return nil, err
+		return nil, closedRoleOpenFailureAt("tls-deadline-clear", err)
 	}
 	return secured, nil
 }

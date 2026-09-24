@@ -94,6 +94,9 @@ func (owner *textContext) openTextPublisherPrefix(ctx context.Context, role text
 		prefix, openErr = open(attempt, source, selection, func(hello route.ClosedHello, class uint8) ([]byte, error) {
 			return owner.presentTextPublisherForwardingToken(role, domain, flight, selection, hello, class)
 		})
+		if openErr != nil {
+			openErr = textPrefixPreparationFailureAt("opening-"+route.ClosedSourceOpenFailureDetail(openErr), openErr)
+		}
 	}
 	if !stop() {
 		<-interrupted

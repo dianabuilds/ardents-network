@@ -64,6 +64,24 @@ func ClosedSourceOpenFailureStage(cause error) string {
 	return "unknown"
 }
 
+// ClosedSourceOpenFailureDetail reports a fixed nested Carrier or TLS opening
+// boundary when the Source opening reached one. It retains the existing outer
+// stage for callers that only need the Source owner boundary.
+func ClosedSourceOpenFailureDetail(cause error) string {
+	var failure *closedSourceOpenFailure
+	if !errors.As(cause, &failure) || failure.stage == "" {
+		return "unknown"
+	}
+	stage := ClosedSourceOpenFailureStage(cause)
+	if stage != "entry-carrier" && stage != "interior-tls" {
+		return stage
+	}
+	if nested := closedRoleOpenFailureDetail(failure.cause); nested != "unknown" {
+		return stage + "-" + nested
+	}
+	return stage
+}
+
 func OpenClosedSourcePrefix(ctx context.Context, source ClosedBootstrapState, selection ClosedBootstrapSelection, present ClosedTokenPresenter) (*ClosedSourcePrefix, error) {
 	return openClosedPrefix(ctx, source, selection, 1, present)
 }
