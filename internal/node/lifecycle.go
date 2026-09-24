@@ -127,7 +127,7 @@ func runDuty(ctx context.Context, config runtimeConfig, machine *stateMachine, s
 		case <-ticker.C:
 			pressure, sample, pressureErr := config.resourcePressure(server)
 			if pressureErr != nil {
-				return fail(config, machine, server, "resource pressure evidence is unavailable", pressureErr)
+				return fail(config, machine, server, "resource pressure evidence is unavailable: "+resourceSampleFailureStage(pressureErr), pressureErr)
 			}
 			now := config.now()
 			if !now.Before(nextResourceEvidence) {

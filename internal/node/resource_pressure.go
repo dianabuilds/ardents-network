@@ -1,6 +1,12 @@
 package node
 
-import "github.com/dianabuilds/ardents-network/internal/resource"
+import (
+	"context"
+	"errors"
+	"strings"
+
+	"github.com/dianabuilds/ardents-network/internal/resource"
+)
 
 type pressureLevel byte
 
@@ -30,4 +36,28 @@ func (config *runtimeConfig) resourcePressure(server *probeServer) (pressureLeve
 		return pressureProtect, observation.Sample, nil
 	}
 	return pressureNormal, observation.Sample, nil
+}
+
+// resourceSampleFailureStage retains a fixed local owner category for the
+// lifecycle evidence path. It never returns an underlying operating-system or
+// provider error.
+func resourceSampleFailureStage(err error) string {
+	switch {
+	case errors.Is(err, context.Canceled):
+		return "canceled"
+	case errors.Is(err, context.DeadlineExceeded):
+		return "deadline"
+	case strings.Contains(err.Error(), "hosting lock"):
+		return "hosting-lock"
+	case strings.Contains(err.Error(), "hosting state"):
+		return "hosting-state"
+	case strings.Contains(err.Error(), "hosting observation"):
+		return "hosting-observation"
+	case strings.Contains(err.Error(), "hosting interface"):
+		return "hosting-interface"
+	case strings.Contains(err.Error(), "owner cgroup"):
+		return "owner-cgroup"
+	default:
+		return "other"
+	}
 }

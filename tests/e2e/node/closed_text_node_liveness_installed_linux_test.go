@@ -78,8 +78,15 @@ func installedCommandLifecycleReason(raw []byte) string {
 		return "state-unavailable"
 	case "local role state is unavailable":
 		return "role-state-unavailable"
-	case "resource pressure evidence is unavailable":
-		return "resource-evidence-unavailable"
+	case "resource pressure evidence is unavailable: canceled",
+		"resource pressure evidence is unavailable: deadline",
+		"resource pressure evidence is unavailable: hosting-lock",
+		"resource pressure evidence is unavailable: hosting-state",
+		"resource pressure evidence is unavailable: hosting-observation",
+		"resource pressure evidence is unavailable: hosting-interface",
+		"resource pressure evidence is unavailable: owner-cgroup",
+		"resource pressure evidence is unavailable: other":
+		return strings.TrimPrefix(event.Reason, "resource pressure evidence is unavailable: ")
 	case "external evidence channel failed":
 		return "evidence-unavailable"
 	case "Node role cleanup failed":
