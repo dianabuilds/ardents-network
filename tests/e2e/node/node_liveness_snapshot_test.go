@@ -1,15 +1,19 @@
 package state_test
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"testing"
 	"time"
 )
+
+const installedCommandPrivateLifecycleDirectory = "ARDENTS_E2E_PRIVATE_NODE_LIFECYCLE_DIR"
 
 // installedCommandNodeLiveness reports only fixture-local node index, process
 // terminal class, and the latest fixed lifecycle state. It excludes process
@@ -36,6 +40,64 @@ func installedCommandExitedNodeLiveness(t *testing.T, sourcePlan map[string]any)
 		}
 	}
 	return ""
+}
+
+// installedCommandCapturePrivateNodeLifecycles retains failed lifecycle
+// records only when the installed VM explicitly supplies a private, root-only
+// evidence directory. It never returns record content to the test output.
+func installedCommandCapturePrivateNodeLifecycles(t *testing.T, sourcePlan map[string]any) string {
+	t.Helper()
+	directory := os.Getenv(installedCommandPrivateLifecycleDirectory)
+	if directory == "" {
+		return "not-configured"
+	}
+	if !filepath.IsAbs(directory) || filepath.Clean(directory) != directory {
+		return "unavailable"
+	}
+	info, err := os.Lstat(directory)
+	if err != nil || !info.IsDir() || info.Mode()&os.ModeSymlink != 0 || runtime.GOOS == "linux" && info.Mode().Perm()&0o077 != 0 {
+		return "unavailable"
+	}
+	directories, present := sourcePlan["route_diagnostic_paths"].([]string)
+	if !present {
+		return "unavailable"
+	}
+	processes, present := sourcePlan["diagnostic_node_processes"].([]*nodeProcess)
+	if present && len(processes) != len(directories) {
+		return "unavailable"
+	}
+	captured := 0
+	for index, source := range directories {
+		raw, readErr := os.ReadFile(filepath.Join(source, "lifecycle.json"))
+		if readErr != nil || !installedCommandFailedLifecycle(raw) {
+			continue
+		}
+		if !installedCommandWritePrivateNodeEvidence(directory, index, "lifecycle.json", raw) {
+			return "unavailable"
+		}
+		if present {
+			select {
+			case <-processes[index].done:
+				if !installedCommandWritePrivateNodeEvidence(directory, index, "stderr", processes[index].stderr.Bytes()) {
+					return "unavailable"
+				}
+			default:
+			}
+		}
+		captured++
+	}
+	return "captured-" + strconv.Itoa(captured)
+}
+
+func installedCommandWritePrivateNodeEvidence(directory string, index int, suffix string, content []byte) bool {
+	name := filepath.Join(directory, "node-"+strconv.Itoa(index)+"-"+suffix)
+	file, err := os.OpenFile(name, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
+	if err != nil {
+		return false
+	}
+	written, err := file.Write(content)
+	err = errors.Join(err, file.Sync(), file.Close())
+	return err == nil && written == len(content)
 }
 
 func installedCommandNodeLivenessAt(t *testing.T, sourcePlan map[string]any, observedAt time.Time) string {
@@ -87,6 +149,14 @@ func installedCommandLifecycleReason(raw []byte) string {
 		return "none"
 	}
 	return installedCommandLifecycleFailureReason(event.Reason)
+}
+
+func installedCommandFailedLifecycle(raw []byte) bool {
+	var event struct {
+		Kind  string `json:"kind"`
+		State string `json:"state"`
+	}
+	return json.Unmarshal(raw, &event) == nil && event.Kind == "lifecycle" && event.State == "FAILED"
 }
 
 // installedCommandLifecycleFailureReason maps only fixed Node lifecycle
@@ -203,5 +273,40 @@ func TestInstalledCommandExitedNodeLivenessReportsFixedSnapshot(t *testing.T) {
 	})
 	if !strings.Contains(got, "node-0 exited-nonzero lifecycle=FAILED reason=identity-mismatch") {
 		t.Fatalf("liveness = %q", got)
+	}
+}
+
+func TestInstalledCommandPrivateLifecycleCaptureRetainsOnlyFailedRecords(t *testing.T) {
+	source := t.TempDir()
+	if err := os.WriteFile(filepath.Join(source, "lifecycle.json"), []byte(`{"kind":"lifecycle","state":"FAILED","reason":"private lifecycle detail"}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	destination := filepath.Join(t.TempDir(), "private")
+	if err := os.Mkdir(destination, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	ready := t.TempDir()
+	if err := os.WriteFile(filepath.Join(ready, "lifecycle.json"), []byte(`{"kind":"lifecycle","state":"READY"}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	failedProcess := &nodeProcess{done: make(chan struct{}), stderr: bytes.NewBufferString("private stderr detail")}
+	close(failedProcess.done)
+	t.Setenv(installedCommandPrivateLifecycleDirectory, destination)
+	if got := installedCommandCapturePrivateNodeLifecycles(t, map[string]any{
+		"route_diagnostic_paths":    []string{source, ready},
+		"diagnostic_node_processes": []*nodeProcess{failedProcess, {done: make(chan struct{})}},
+	}); got != "captured-1" {
+		t.Fatalf("capture = %q", got)
+	}
+	raw, err := os.ReadFile(filepath.Join(destination, "node-0-lifecycle.json"))
+	if err != nil || string(raw) != `{"kind":"lifecycle","state":"FAILED","reason":"private lifecycle detail"}` {
+		t.Fatalf("private lifecycle record = %q, %v", raw, err)
+	}
+	if _, err := os.Stat(filepath.Join(destination, "node-1-lifecycle.json")); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("READY lifecycle was captured: %v", err)
+	}
+	stderr, err := os.ReadFile(filepath.Join(destination, "node-0-stderr"))
+	if err != nil || string(stderr) != "private stderr detail" {
+		t.Fatalf("private stderr = %q, %v", stderr, err)
 	}
 }

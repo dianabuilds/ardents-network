@@ -142,7 +142,7 @@ func runClosedIssuerProcess(t *testing.T, node, endpoint string, acceptArguments
 	plan["route_diagnostic_paths"] = diagnostics
 	plan["diagnostic_node_processes"] = live
 	if liveness := installedCommandExitedNodeLiveness(t, plan); liveness != "" {
-		t.Fatalf("closed topology Node exited after readiness\nNode liveness:\n%s", liveness)
+		t.Fatalf("closed topology Node exited after readiness\nPrivate Node lifecycle evidence: %s\nNode liveness:\n%s", installedCommandCapturePrivateNodeLifecycles(t, plan), liveness)
 	}
 	if nodeCount != 3 {
 		participant(resolutionRoot, plan)
