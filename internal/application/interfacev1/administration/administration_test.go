@@ -49,13 +49,58 @@ func TestLocalAdministrationDispatchesOnlyClosedOperations(t *testing.T) {
 		t.Fatal(err)
 	}
 	connection := raw.(*net.UnixConn)
-	_, _ = connection.Write([]byte("publish\nsurplus"))
-	_ = connection.CloseWrite()
-	response := make([]byte, 12)
-	read, _ := connection.Read(response)
+	request := []byte("publish\nsurplus")
+	written, writeErr := connection.Write(request)
+	if writeErr != nil || written != len(request) {
+		t.Fatalf("surplus request write = %d/%d, %v", written, len(request), writeErr)
+	}
+	if err := connection.CloseWrite(); err != nil {
+		t.Fatalf("surplus request half-close: %v", err)
+	}
+	response := make([]byte, len("unavailable\n"))
+	read, readErr := connection.Read(response)
 	_ = connection.Close()
 	if string(response[:read]) != "unavailable\n" {
-		t.Fatalf("surplus response = %q", response[:read])
+		t.Fatalf("surplus response = %q, read error = %v", response[:read], readErr)
+	}
+}
+
+func TestAdministrationSurplusRequestReceivesRefusalWithUnreadBody(t *testing.T) {
+	path := filepath.Join(os.TempDir(), fmt.Sprintf("aa-surplus-%d.sock", time.Now().UnixNano()))
+	t.Cleanup(func() { _ = os.Remove(path) })
+	reached := make(chan struct{}, 1)
+	server, err := Listen(path, testInterface{
+		publish:  func(context.Context) error { reached <- struct{}{}; return errors.New("surplus reached owner") },
+		withdraw: func(context.Context) error { return nil },
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = server.Close() })
+	raw, err := (&net.Dialer{}).DialContext(t.Context(), "unix", path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	connection := raw.(*net.UnixConn)
+	defer connection.Close()
+	if err := connection.SetDeadline(time.Now().Add(3 * time.Second)); err != nil {
+		t.Fatal(err)
+	}
+	request := append([]byte("publish\n"), make([]byte, 256)...)
+	if written, err := connection.Write(request); err != nil || written != len(request) {
+		t.Fatalf("surplus request write = %d/%d, %v", written, len(request), err)
+	}
+	if err := connection.CloseWrite(); err != nil {
+		t.Fatal(err)
+	}
+	response := make([]byte, len("unavailable\n"))
+	if _, err := io.ReadFull(connection, response); err != nil || string(response) != "unavailable\n" {
+		t.Fatalf("surplus refusal = %q, %v", response, err)
+	}
+	select {
+	case <-reached:
+		t.Fatal("surplus request reached publication owner")
+	default:
 	}
 }
 
