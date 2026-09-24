@@ -6,34 +6,39 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"syscall"
 	"testing"
 )
 
-func TestOwnerResidentBytesRetriesOneDisappearingProcess(t *testing.T) {
+func TestOwnerResidentBytesRetriesBoundedDisappearingProcesses(t *testing.T) {
 	group := t.TempDir()
-	if err := os.Mkdir(filepath.Join(group, "child"), 0o700); err != nil {
-		t.Fatal(err)
-	}
 	inventories, statmReads := 0, 0
 	got, err := ownerResidentBytesWithReader([]string{group}, func(path string, _ int) (string, error) {
 		switch path {
-		case filepath.Join(group, "cgroup.procs"), filepath.Join(group, "child", "cgroup.procs"):
+		case filepath.Join(group, "cgroup.procs"):
 			inventories++
-			if inventories <= 2 {
+			switch inventories {
+			case 1:
 				return "42\n", nil
+			case 2:
+				return "43\n", nil
+			default:
+				return "44\n", nil
 			}
-			return "43\n", nil
 		case filepath.Join("/proc", "42", "statm"):
 			statmReads++
 			return "", os.ErrNotExist
 		case filepath.Join("/proc", "43", "statm"):
+			statmReads++
+			return "", syscall.ESRCH
+		case filepath.Join("/proc", "44", "statm"):
 			statmReads++
 			return "10 3 0 0 0 0 0", nil
 		default:
 			return "", errors.New("unexpected path")
 		}
 	})
-	if err != nil || got != 3*uint64(os.Getpagesize()) || inventories != 4 || statmReads != 2 {
+	if err != nil || got != 3*uint64(os.Getpagesize()) || inventories != 3 || statmReads != 3 {
 		t.Fatalf("resident retry = %d, %v after %d inventories and %d statm reads", got, err, inventories, statmReads)
 	}
 }
@@ -47,7 +52,7 @@ func TestOwnerResidentBytesRejectsRepeatedOrNonProcessInventoryFailure(t *testin
 		}
 		repeated++
 		return "", os.ErrNotExist
-	}); err == nil || repeated != 2 {
+	}); err == nil || repeated != ownerResidentSampleAttempts {
 		t.Fatalf("repeated disappearance = %v after %d reads", err, repeated)
 	}
 	cgroupReads := 0
