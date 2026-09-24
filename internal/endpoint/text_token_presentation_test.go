@@ -36,11 +36,11 @@ func TestTextTokenPresentationBurnsStockBeforeReturningBytes(t *testing.T) {
 		t.Fatal("stock transfer wrong")
 	}
 	raw, err := os.ReadFile(filepath.Join(endpoint.closedTokenRoot, "attempts"))
-	if err != nil || len(raw) != textTokenJournalHeader+textTokenAttemptSize || bytes.Contains(raw, original) {
+	if err != nil || len(raw) != textTokenReceiptHeaderSize+textTokenReceiptSize || bytes.Contains(raw, original) {
 		t.Fatal("missing durable receipt or leaked token")
 	}
-	receipt, err := decodeTextTokenAttempt(raw[textTokenJournalHeader:])
-	if err != nil || receipt.attempt != hello.ChannelNonce || receipt.receiver != hello.RecipientNodeID {
+	receipts := parseTextTokenReceipts(t, raw, endpoint.network)
+	if len(receipts) != 1 || receipts[0].attempt != hello.ChannelNonce || receipts[0].receiver != hello.RecipientNodeID {
 		t.Fatal("receipt lost attempt binding")
 	}
 	hello.ChannelNonce[0]++
@@ -58,7 +58,7 @@ func TestTextTokenPresentationBurnsStockBeforeReturningBytes(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer reopened.Close()
-	if err := reopened.mark(original, receipt); err == nil {
+	if err := reopened.mark(original, textTokenAttemptFromReceipt(receipts[0])); err == nil {
 		t.Fatal("context restart revived spent token")
 	}
 }
@@ -76,18 +76,8 @@ func TestTextTokenCancellationAfterDurableMarkRetainsBurn(t *testing.T) {
 		t.Fatalf("cancelled durable spend returned token or wrong result: bytes=%d remaining=%d stage=%s err=%v",
 			len(returned), remaining, textTokenTransferFailureStage(err), err)
 	}
-	journal, err := endpoint.textTokenJournal()
-	if err != nil {
-		t.Fatal(err)
-	}
-	journal.mu.Lock()
-	var receipt textTokenAttempt
-	for _, retained := range journal.records {
-		receipt = retained
-	}
-	records := len(journal.records)
-	journal.mu.Unlock()
-	if records != 1 || receipt.attempt != hello.ChannelNonce {
+	receipts := readTextTokenReceipts(t, endpoint.closedTokenRoot, endpoint.network)
+	if len(receipts) != 1 || receipts[0].attempt != hello.ChannelNonce {
 		t.Fatal("cancelled spend lost its durable attempt receipt")
 	}
 	if err := owner.Close(); err != nil {
@@ -101,7 +91,7 @@ func TestTextTokenCancellationAfterDurableMarkRetainsBurn(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer reopened.Close()
-	if err := reopened.mark(original, receipt); err == nil {
+	if err := reopened.mark(original, textTokenAttemptFromReceipt(receipts[0])); err == nil {
 		t.Fatal("restart revived token burned before cancellation")
 	}
 }

@@ -72,7 +72,10 @@ contract in `docs/technical/endpoint-service-runtime.md`.
 ## Tests and diagnostics
 
 Tests beside an owner may use a temporary disk root or real loopback network
-when persistence or transport is the invariant under test. Shared fixtures
+when persistence or transport is the invariant under test.
+Endpoint integration tests inspect token-attempt receipts through an independent
+persisted-file oracle; journal implementation tests retain access to private
+state to verify poisoning, pruning, and crash boundaries. Shared fixtures
 must not replace independent canonical-vector builders. A fixture move must
 remove actual duplication or setup cost, rather than gather unrelated helpers
 in one file.

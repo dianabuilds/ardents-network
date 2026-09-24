@@ -137,11 +137,9 @@ func TestTextEndpointCrashDropsVolatileAuthorityAndRetainsSpend(t *testing.T) {
 	if err := journal.mark(boundary.Token, record); err == nil {
 		t.Fatal("restart revived a token already durably marked before the crash")
 	}
-	journal.mu.Lock()
-	records := len(journal.records)
-	journal.mu.Unlock()
-	if records != 1 {
-		t.Fatalf("restart changed durable spend journal: %d records", records)
+	receipts := readTextTokenReceipts(t, reopened.closedTokenRoot, reopened.network)
+	if len(receipts) != 1 {
+		t.Fatalf("restart changed durable spend journal: %d records", len(receipts))
 	}
 }
 

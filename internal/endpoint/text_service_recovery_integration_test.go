@@ -194,11 +194,7 @@ func TestTextJoinedServiceRecoversAcceptedRequestAcrossFreshProtectedRoute(t *te
 				t.Fatal(remote.err)
 			}
 			stopInitialReceiver := holdTextInitialIntroductionReceiver(t, ctx, publisher, publisherJob)
-			journal, err := reader.endpoint.textTokenJournal()
-			if err != nil {
-				t.Fatal(err)
-			}
-			initialTokens := textTokenJournalSnapshot(journal)
+			initialTokens := textTokenAttemptSnapshot(t, reader.endpoint)
 
 			body := bytes.Repeat([]byte("network recovery\n"), 4096)
 			snapshot, err := textdocument.NewSnapshot(body)
@@ -259,7 +255,7 @@ func TestTextJoinedServiceRecoversAcceptedRequestAcrossFreshProtectedRoute(t *te
 				t.Fatalf("recovery cleanup revived a Route instead of joining cancellation: client=%v Publisher=%v",
 					clientRecovery.outcome(), publisherRecovery.outcome())
 			}
-			if afterCleanup := textTokenJournalSnapshot(journal); !sameTextTokenAttemptSnapshot(recoveredTokens, afterCleanup) {
+			if afterCleanup := textTokenAttemptSnapshot(t, reader.endpoint); !sameTextTokenAttemptSnapshot(recoveredTokens, afterCleanup) {
 				t.Fatal("recovery cleanup spent another receiver token")
 			}
 			for _, owner := range []*textContext{reader, publisher} {
@@ -371,26 +367,12 @@ type openedTextService struct {
 	err    error
 }
 
-func textTokenAttemptSnapshot(t *testing.T, current *endpoint) map[[32]byte]textTokenAttempt {
+func textTokenAttemptSnapshot(t *testing.T, current *endpoint) map[[32]byte]textTokenReceipt {
 	t.Helper()
-	journal, err := current.textTokenJournal()
-	if err != nil {
-		t.Fatal(err)
-	}
-	return textTokenJournalSnapshot(journal)
+	return snapshotTextTokenReceipts(t, current.closedTokenRoot, current.network)
 }
 
-func textTokenJournalSnapshot(journal *textTokenJournal) map[[32]byte]textTokenAttempt {
-	journal.mu.Lock()
-	defer journal.mu.Unlock()
-	retained := make(map[[32]byte]textTokenAttempt, len(journal.records))
-	for digest, attempt := range journal.records {
-		retained[digest] = attempt
-	}
-	return retained
-}
-
-func assertFreshRecoveryTokenAttempts(t *testing.T, initial, recovered map[[32]byte]textTokenAttempt) {
+func assertFreshRecoveryTokenAttempts(t *testing.T, initial, recovered map[[32]byte]textTokenReceipt) {
 	t.Helper()
 	classes := [4]int{}
 	nonces := make(map[[32]byte]struct{}, len(recovered)-len(initial))
@@ -418,7 +400,7 @@ func assertFreshRecoveryTokenAttempts(t *testing.T, initial, recovered map[[32]b
 	}
 }
 
-func sameTextTokenAttemptSnapshot(left, right map[[32]byte]textTokenAttempt) bool {
+func sameTextTokenAttemptSnapshot(left, right map[[32]byte]textTokenReceipt) bool {
 	if len(left) != len(right) {
 		return false
 	}
