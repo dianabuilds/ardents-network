@@ -36,12 +36,13 @@ type processCert struct {
 }
 
 type nodeProcess struct {
-	command *exec.Cmd
-	events  chan nodeEvent
-	done    chan struct{}
-	stderr  *bytes.Buffer
-	waitMu  sync.Mutex
-	waitErr error
+	command  *exec.Cmd
+	events   chan nodeEvent
+	done     chan struct{}
+	stderr   *bytes.Buffer
+	finished time.Time
+	waitMu   sync.Mutex
+	waitErr  error
 }
 
 type nodeEvent struct {
@@ -292,6 +293,7 @@ func startNodeCommand(t *testing.T, binary string, arguments ...string) *nodePro
 		err := command.Wait()
 		process.waitMu.Lock()
 		process.waitErr = err
+		process.finished = time.Now()
 		process.waitMu.Unlock()
 		close(process.done)
 	}()
