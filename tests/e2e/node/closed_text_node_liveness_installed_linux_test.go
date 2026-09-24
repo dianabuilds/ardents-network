@@ -69,15 +69,57 @@ func installedCommandLifecycleReason(raw []byte) string {
 	if json.Unmarshal(raw, &event) != nil || event.State != "FAILED" {
 		return "none"
 	}
-	switch event.Reason {
-	case "node listener stopped":
+	return installedCommandLifecycleFailureReason(event.Reason)
+}
+
+// installedCommandLifecycleFailureReason maps only fixed Node lifecycle
+// reasons written by the installed command. It never returns the underlying
+// reason because that can contain State or local-host detail.
+func installedCommandLifecycleFailureReason(reason string) string {
+	switch {
+	case reason == "node listener stopped":
 		return "listener-stopped"
-	case "Node listener failed":
+	case reason == "Node listener failed":
 		return "listener-start-failed"
-	case "persistent Network State is unavailable":
+	case reason == "persistent Network State is unavailable":
 		return "state-unavailable"
-	case "local role state is unavailable":
+	case reason == "local role state is unavailable":
 		return "role-state-unavailable"
+	case reason == "local Node identity or key does not match verified state":
+		return "identity-mismatch"
+	case reason == "role-probe listener does not match the accepted Node Record":
+		return "listener-record-mismatch"
+	case reason == "assignment changed during quarantine":
+		return "assignment-changed"
+	case strings.HasPrefix(reason, "assignment lost readiness during quarantine:"):
+		return "assignment-readiness-lost"
+	case strings.HasPrefix(reason, "closed Route State is unavailable:"):
+		return "closed-route-state-unavailable"
+	case strings.HasPrefix(reason, "resource placement is not ready:"):
+		return "placement-unavailable"
+	case reason == "closed Route assignment is not locally implemented":
+		return "closed-route-assignment-unavailable"
+	case reason == "profile or deterministic assignment is inactive":
+		return "assignment-inactive"
+	case reason == "freshness or validity is not satisfied":
+		return "time-validity-unavailable"
+	case reason == "freshness, validity, or terminal duty bound is not satisfied":
+		return "time-duty-bound-unavailable"
+	case reason == "external evidence channel failed":
+		return "evidence-unavailable"
+	case reason == "Node role cleanup failed":
+		return "role-cleanup-failed"
+	case reason == "shutdown before assignment admission":
+		return "shutdown-before-admission"
+	case strings.HasPrefix(reason, "resource pressure evidence is unavailable: "):
+		return installedCommandResourceFailureReason(reason)
+	default:
+		return "other"
+	}
+}
+
+func installedCommandResourceFailureReason(reason string) string {
+	switch reason {
 	case "resource pressure evidence is unavailable: canceled",
 		"resource pressure evidence is unavailable: deadline",
 		"resource pressure evidence is unavailable: hosting-lock",
@@ -86,11 +128,7 @@ func installedCommandLifecycleReason(raw []byte) string {
 		"resource pressure evidence is unavailable: hosting-interface",
 		"resource pressure evidence is unavailable: owner-cgroup",
 		"resource pressure evidence is unavailable: other":
-		return strings.TrimPrefix(event.Reason, "resource pressure evidence is unavailable: ")
-	case "external evidence channel failed":
-		return "evidence-unavailable"
-	case "Node role cleanup failed":
-		return "role-cleanup-failed"
+		return strings.TrimPrefix(reason, "resource pressure evidence is unavailable: ")
 	default:
 		return "other"
 	}
@@ -146,5 +184,25 @@ func TestInstalledCommandNodeLivenessReportsFixedSnapshot(t *testing.T) {
 	}, time.Unix(110, 0))
 	if got != "node-0 exited-nonzero lifecycle=FAILED reason=listener-stopped resource=none exit-age=under-30s" {
 		t.Fatalf("liveness = %q", got)
+	}
+}
+
+func TestInstalledCommandLifecycleFailureReasonIsFixed(t *testing.T) {
+	for _, test := range []struct {
+		reason string
+		want   string
+	}{
+		{"local Node identity or key does not match verified state", "identity-mismatch"},
+		{"assignment lost readiness during quarantine: private State detail", "assignment-readiness-lost"},
+		{"closed Route State is unavailable: private State detail", "closed-route-state-unavailable"},
+		{"resource placement is not ready: private host detail", "placement-unavailable"},
+		{"resource pressure evidence is unavailable: hosting-lock", "hosting-lock"},
+		{"private failure detail", "other"},
+	} {
+		t.Run(test.want, func(t *testing.T) {
+			if got := installedCommandLifecycleFailureReason(test.reason); got != test.want {
+				t.Fatalf("reason %q = %q, want %q", test.reason, got, test.want)
+			}
+		})
 	}
 }
