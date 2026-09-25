@@ -8,8 +8,9 @@ govern behavior.
 
 ## Current Linux owner graph
 
-On the Linux amd64 candidate after the replay extraction, `go list` selects
-73 production and 77 test files in `internal/route`. Its capsule, ardp,
+On the Linux amd64 candidate after the replay extraction and completed #252
+v1 Node Carrier listener retirement, `go list` selects 74 production and 76
+test files in `internal/route`. Its capsule, ardp,
 terminal, and replay children have respectively 6/1, 3/1, 9/4, and 5/3
 production/test files. File prefixes show a likely cluster, but they do not
 establish an independent package boundary.
