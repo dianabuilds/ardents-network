@@ -169,6 +169,12 @@ already pinned authority retain their previous State and Source behavior.
 | internal/node | Run one bounded current closed Node duty from authenticated admission through listener readiness, pressure reaction, drain, withdrawal, and a bounded terminal cleanup outcome. All five old native duty engines are absent; their plan stanzas remain only at the command refusal boundary. | State-root authority, assignment creation, an old native duty listener, or a separate probe runtime. |
 | internal/contributor | Own the one pinned-bundle, fixed-path systemd lifecycle for the dedicated Rendezvous installation. | Duty selection, Network State authority, public admission, co-residence, arbitrary service control, or capacity claims. |
 
+Linux owner RSS sampling inventories the selected cgroup processes before
+reading each process's `statm`. If a process exits between those reads, the
+partial total is discarded and at most seven complete re-inventories are
+attempted. Continued churn and every other inventory or read error still fail
+closed; this does not relax Node cleanup or pressure decisions.
+
 Each Module exposes one consumer-relevant Interface while retaining codec,
 storage, replay, socket, and cleanup details privately. State readers receive
 immutable snapshots only after durable publication. A source, clock, or
