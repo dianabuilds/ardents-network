@@ -1,4 +1,4 @@
-package endpoint
+package transit
 
 import (
 	"bytes"
@@ -37,7 +37,7 @@ const (
 var (
 	errTransitAcquisitionTerminal     = errors.New("transit acquisition is terminal")
 	errInvalidTransitAcquisitionState = errors.New("transit acquisition state is invalid")
-	errTransitAcquisitionStale        = errors.New("transit acquisition completion belongs to a different attempt")
+	ErrStale                          = errors.New("transit acquisition completion belongs to a different attempt")
 )
 
 type transitAcquisitionPhase string
@@ -54,13 +54,13 @@ func (failure transitAcquisitionOutcomeError) Unwrap() error {
 	return errTransitAcquisitionTerminal
 }
 
-type transitAcquisitionConfig struct {
+type Config struct {
 	Root   string
 	Create bool
 	Clock  func() time.Time
 }
 
-type transitAcquisitionScope struct {
+type Scope struct {
 	NetworkID, Digest             [32]byte
 	Epoch                         uint64
 	IssuerNodeID, IssuerPublicKey [32]byte
@@ -94,7 +94,7 @@ type transitAcquisitionState struct {
 	Certificate, PrivateKey, Grant []byte
 }
 
-type transitAcquisition struct {
+type Acquisition struct {
 	mu     sync.Mutex
 	root   string
 	clock  func() time.Time
@@ -104,7 +104,7 @@ type transitAcquisition struct {
 	failed error
 }
 
-func openTransitAcquisition(config transitAcquisitionConfig) (*transitAcquisition, error) {
+func openAcquisition(config Config) (*Acquisition, error) {
 	if config.Root == "" || config.Clock == nil || config.Clock().IsZero() {
 		return nil, errors.New("transit acquisition configuration is incomplete")
 	}
@@ -132,7 +132,7 @@ func openTransitAcquisition(config transitAcquisitionConfig) (*transitAcquisitio
 	if err != nil {
 		return nil, err
 	}
-	owner := &transitAcquisition{root: root, clock: config.Clock, lease: lease, state: state}
+	owner := &Acquisition{root: root, clock: config.Clock, lease: lease, state: state}
 	if state.Phase == transitPresenting {
 		owner.state = terminalTransitAcquisition(state, transitBurned)
 		if err := owner.commitState(owner.state); err != nil {
@@ -148,7 +148,7 @@ func openTransitAcquisition(config transitAcquisitionConfig) (*transitAcquisitio
 	return owner, nil
 }
 
-func (owner *transitAcquisition) begin(scope transitAcquisitionScope) (transitAcquisitionAttempt, error) {
+func (owner *Acquisition) begin(scope Scope) (transitAcquisitionAttempt, error) {
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
 	if err := owner.usable(); err != nil {
@@ -208,14 +208,14 @@ func (owner *transitAcquisition) begin(scope transitAcquisitionScope) (transitAc
 	return owner.attempt()
 }
 
-func (owner *transitAcquisition) fail(requestID [32]byte) error {
+func (owner *Acquisition) fail(requestID [32]byte) error {
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
 	if err := owner.usable(); err != nil {
 		return err
 	}
 	if owner.state.RequestID != requestID {
-		return errTransitAcquisitionStale
+		return ErrStale
 	}
 	if owner.state.Phase != transitPending && owner.state.Phase != transitReady {
 		return errors.New("transit acquisition cannot fail from its current phase")
@@ -224,14 +224,14 @@ func (owner *transitAcquisition) fail(requestID [32]byte) error {
 	return owner.commitState(owner.state)
 }
 
-func (owner *transitAcquisition) commit(requestID [32]byte, result credential.Result) error {
+func (owner *Acquisition) commit(requestID [32]byte, result credential.Result) error {
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
 	if err := owner.usable(); err != nil {
 		return err
 	}
 	if owner.state.RequestID != requestID {
-		return errTransitAcquisitionStale
+		return ErrStale
 	}
 	if owner.state.Phase != transitPending {
 		return errors.New("transit acquisition is not pending")
@@ -257,14 +257,14 @@ func (owner *transitAcquisition) commit(requestID [32]byte, result credential.Re
 	return owner.commitState(owner.state)
 }
 
-func (owner *transitAcquisition) present(requestID [32]byte, scope transitAcquisitionScope) (transitAcquisitionAttempt, error) {
+func (owner *Acquisition) present(requestID [32]byte, scope Scope) (transitAcquisitionAttempt, error) {
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
 	if err := owner.usable(); err != nil {
 		return transitAcquisitionAttempt{}, err
 	}
 	if owner.state.RequestID != requestID {
-		return transitAcquisitionAttempt{}, errTransitAcquisitionStale
+		return transitAcquisitionAttempt{}, ErrStale
 	}
 	if owner.state.Phase != transitReady || !owner.state.matches(scope) {
 		return transitAcquisitionAttempt{}, errors.New("transit acquisition is not ready for this State duty")
@@ -276,26 +276,26 @@ func (owner *transitAcquisition) present(requestID [32]byte, scope transitAcquis
 	return owner.attempt()
 }
 
-func (owner *transitAcquisition) currentAttempt(requestID [32]byte) error {
+func (owner *Acquisition) currentAttempt(requestID [32]byte) error {
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
 	if err := owner.usable(); err != nil {
 		return err
 	}
 	if owner.state.RequestID != requestID {
-		return errTransitAcquisitionStale
+		return ErrStale
 	}
 	return nil
 }
 
-func (owner *transitAcquisition) finish(requestID [32]byte, presented bool) error {
+func (owner *Acquisition) finish(requestID [32]byte, presented bool) error {
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
 	if err := owner.usable(); err != nil {
 		return err
 	}
 	if owner.state.RequestID != requestID {
-		return errTransitAcquisitionStale
+		return ErrStale
 	}
 	if owner.state.Phase != transitPresenting {
 		return errors.New("transit acquisition is not presenting")
@@ -308,7 +308,7 @@ func (owner *transitAcquisition) finish(requestID [32]byte, presented bool) erro
 	return owner.commitState(owner.state)
 }
 
-func (owner *transitAcquisition) attempt() (transitAcquisitionAttempt, error) {
+func (owner *Acquisition) attempt() (transitAcquisitionAttempt, error) {
 	certificate, err := owner.state.certificate()
 	if err != nil {
 		return transitAcquisitionAttempt{}, err
@@ -317,7 +317,7 @@ func (owner *transitAcquisition) attempt() (transitAcquisitionAttempt, error) {
 		Grant: append([]byte(nil), owner.state.Grant...)}, nil
 }
 
-func (owner *transitAcquisition) usable() error {
+func (owner *Acquisition) usable() error {
 	if owner == nil || owner.closed {
 		return errors.New("transit acquisition owner is closed")
 	}
@@ -327,7 +327,7 @@ func (owner *transitAcquisition) usable() error {
 	return nil
 }
 
-func (owner *transitAcquisition) commitState(state transitAcquisitionState) error {
+func (owner *Acquisition) commitState(state transitAcquisitionState) error {
 	if !validTransitAcquisitionState(state) {
 		return errors.New("transit acquisition state is invalid")
 	}
@@ -341,7 +341,7 @@ func (owner *transitAcquisition) commitState(state transitAcquisitionState) erro
 	return err
 }
 
-func (owner *transitAcquisition) Close() error {
+func (owner *Acquisition) Close() error {
 	if owner == nil {
 		return nil
 	}
@@ -381,7 +381,7 @@ func (state transitAcquisitionState) certificate() (tls.Certificate, error) {
 	return tls.Certificate{Certificate: [][]byte{append([]byte(nil), state.Certificate...)}, PrivateKey: private, Leaf: leaf}, nil
 }
 
-func (state transitAcquisitionState) matches(scope transitAcquisitionScope) bool {
+func (state transitAcquisitionState) matches(scope Scope) bool {
 	return state.NetworkID == scope.NetworkID && state.Digest == scope.Digest && state.Epoch == scope.Epoch &&
 		state.IssuerNodeID == scope.IssuerNodeID && state.IssuerPublicKey == scope.IssuerPublicKey &&
 		state.IssuerProfileDigest == scope.IssuerProfileDigest && state.GrantSignerPublicKey == scope.GrantSignerPublicKey &&
@@ -396,7 +396,7 @@ func (state transitAcquisitionState) matchesGrant(grant route.TransitGrant) bool
 		grant.NotAfter.Equal(time.Unix(state.NotAfter, 0).UTC())
 }
 
-func validTransitAcquisitionScope(scope transitAcquisitionScope, now time.Time) bool {
+func validTransitAcquisitionScope(scope Scope, now time.Time) bool {
 	return scope.NetworkID != [32]byte{} && scope.Digest != [32]byte{} && scope.Epoch != 0 &&
 		scope.IssuerNodeID != [32]byte{} && scope.IssuerPublicKey != [32]byte{} && scope.IssuerProfileDigest != [32]byte{} &&
 		scope.GrantSignerPublicKey != [32]byte{} && scope.TransitNodeID != [32]byte{} &&

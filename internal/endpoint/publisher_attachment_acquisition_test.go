@@ -22,13 +22,13 @@ import (
 func TestPublisherPlanOrdersStateProjectedRolesSeparately(t *testing.T) {
 	t.Parallel()
 	now := time.Unix(2_100_000_000, 0).UTC()
-	network, digest := acquisitionID(81), acquisitionID(82)
+	network, digest := fixtureID(81), fixtureID(82)
 	initiatorFamily := "publisher-initiator"
-	initiator := transitPeer{NodeID: acquisitionID(83), PublicKey: acquisitionID(84), Family: sha256.Sum256([]byte(initiatorFamily)), Endpoint: "127.0.0.1:3183"}
+	initiator := transitPeer{NodeID: fixtureID(83), PublicKey: fixtureID(84), Family: sha256.Sum256([]byte(initiatorFamily)), Endpoint: "127.0.0.1:3183"}
 	projected := state.PublisherAttachment{NetworkID: network, Digest: digest, Epoch: 86,
-		Introduction: state.PublisherTransitPeer{NodeID: acquisitionID(87), PublicKey: acquisitionID(88), Family: acquisitionID(89), Endpoint: "127.0.0.1:3187"},
-		Rendezvous:   state.PublisherTransitPeer{NodeID: acquisitionID(90), PublicKey: acquisitionID(91), Family: acquisitionID(92), Endpoint: "127.0.0.1:3190"},
-		Responder:    state.PublisherTransitPeer{NodeID: acquisitionID(93), PublicKey: acquisitionID(94), Family: acquisitionID(95), Endpoint: "127.0.0.1:3193"}}
+		Introduction: state.PublisherTransitPeer{NodeID: fixtureID(87), PublicKey: fixtureID(88), Family: fixtureID(89), Endpoint: "127.0.0.1:3187"},
+		Rendezvous:   state.PublisherTransitPeer{NodeID: fixtureID(90), PublicKey: fixtureID(91), Family: fixtureID(92), Endpoint: "127.0.0.1:3190"},
+		Responder:    state.PublisherTransitPeer{NodeID: fixtureID(93), PublicKey: fixtureID(94), Family: fixtureID(95), Endpoint: "127.0.0.1:3193"}}
 	view := publisherAcquisitionView{epoch: state.ResolutionEpoch{NetworkID: network, Digest: digest, Number: 86}, attachment: projected,
 		initiator: state.ResolutionCandidate{NodeID: initiator.NodeID, PublicKey: initiator.PublicKey, Family: initiatorFamily,
 			Endpoint: initiator.Endpoint, Domain: "initiator"}}
@@ -55,16 +55,16 @@ func TestPublisherPlanOrdersStateProjectedRolesSeparately(t *testing.T) {
 
 func TestPublisherConfigurationReadsCurrentStateOnlyOnStart(t *testing.T) {
 	now := time.Now().UTC().Truncate(time.Second)
-	network, principal := acquisitionID(101), acquisitionID(102)
+	network, principal := fixtureID(101), fixtureID(102)
 	_, private, err := ed25519.GenerateKey(rand.Reader)
 	if err != nil {
 		t.Fatal(err)
 	}
 	instanceRoot, binding := publisherAcquisitionBinding(t, network, private, now)
 	credential := binding.Credential()
-	owner, err := newEndpoint(setup{NetworkID: network, BrokerID: acquisitionID(103),
+	owner, err := newEndpoint(setup{NetworkID: network, BrokerID: fixtureID(103),
 		AuthorityPublic: ed25519.PublicKey(credential.AuthorityPublic[:]), IntroductionPublic: ed25519.PublicKey(credential.IntroductionHPKEPublic[:]),
-		ConnectionPrincipal: acquisitionID(104), AdministrationPrincipal: principal, PublicationRoot: publicationStoreRoot(t),
+		ConnectionPrincipal: fixtureID(104), AdministrationPrincipal: principal, PublicationRoot: publicationStoreRoot(t),
 		TransitAcquisitionRoot: transitAcquisitionRoot(t), CreateTransitAcquisitionRoot: true, Clock: func() time.Time { return now }})
 
 	if err != nil {

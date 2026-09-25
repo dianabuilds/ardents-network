@@ -1,4 +1,4 @@
-package endpoint
+package transit
 
 import (
 	"bytes"
@@ -24,37 +24,36 @@ func TestTransitCredentialLifecycleIgnoresStaleIssuerOutcomes(t *testing.T) {
 			}
 			var signerPublic [32]byte
 			copy(signerPublic[:], signer.Public().(ed25519.PublicKey))
-			base := transitAcquisitionScope{NetworkID: acquisitionID(81), Digest: acquisitionID(82), Epoch: 83,
+			base := Scope{NetworkID: acquisitionID(81), Digest: acquisitionID(82), Epoch: 83,
 				IssuerNodeID: acquisitionID(84), IssuerPublicKey: acquisitionID(85), IssuerProfileDigest: acquisitionID(86),
 				GrantSignerPublicKey: signerPublic, TransitNodeID: acquisitionID(87), TransitRole: route.IntroductionRole,
 				NotAfter: now.Add(10 * time.Second)}
 			first, second, third := base, base, base
 			first.AttachmentID, second.AttachmentID, third.AttachmentID = acquisitionID(88), acquisitionID(89), acquisitionID(90)
 
-			owner, err := openTransitAcquisition(transitAcquisitionConfig{Root: filepath.Join(t.TempDir(), "transit-acquisition"), Create: true,
+			owner, err := openAcquisition(Config{Root: filepath.Join(t.TempDir(), "transit-acquisition"), Create: true,
 				Clock: func() time.Time { return now }})
 			if err != nil {
 				t.Fatal(err)
 			}
 			defer owner.Close()
-			endpoint := &endpoint{}
 			started := make(chan credential.Request, 1)
 			result := make(chan credential.Result, 1)
 			firstDone := make(chan error, 1)
 			go func() {
-				_, err := owner.acquire(t.Context(), first, func(_ context.Context, request credential.Request) (credential.Result, error) {
+				_, err := owner.Acquire(t.Context(), first, func(_ context.Context, request credential.Request) (credential.Result, error) {
 					started <- request
 					return <-result, nil
-				}, endpoint.enrollTransitClient)
+				}, enrollAcquisitionForTest)
 				firstDone <- err
 			}()
 			firstRequest := <-started
 			if _, err := owner.begin(second); err == nil {
 				t.Fatal("replacement acquisition did not invalidate the first attempt")
 			}
-			acquiredThird, err := owner.acquire(t.Context(), third, func(_ context.Context, request credential.Request) (credential.Result, error) {
+			acquiredThird, err := owner.Acquire(t.Context(), third, func(_ context.Context, request credential.Request) (credential.Result, error) {
 				return credential.Result{Outcome: credential.Issued, Grant: acquisitionGrant(t, third, request, signer)}, nil
-			}, endpoint.enrollTransitClient)
+			}, enrollAcquisitionForTest)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -63,14 +62,14 @@ func TestTransitCredentialLifecycleIgnoresStaleIssuerOutcomes(t *testing.T) {
 				late.Grant = acquisitionGrant(t, first, firstRequest, signer)
 			}
 			result <- late
-			if err := <-firstDone; !errors.Is(err, errTransitAcquisitionStale) {
+			if err := <-firstDone; !errors.Is(err, ErrStale) {
 				t.Fatalf("stale %s outcome error = %v, want stale-attempt rejection", outcome, err)
 			}
-			if state := owner.stateForTest(); state.Phase != transitPresenting || state.RequestID != acquiredThird.attempt.Request.RequestID ||
-				!bytes.Equal(state.Grant, acquiredThird.attempt.Grant) || len(state.PrivateKey) == 0 {
+			if state := owner.stateForTest(); state.Phase != transitPresenting || state.RequestID != acquiredThird.Request.RequestID ||
+				!bytes.Equal(state.Grant, acquiredThird.Grant) || len(state.PrivateKey) == 0 {
 				t.Fatalf("stale %s outcome changed the third acquisition: %+v", outcome, state)
 			}
-			if err := acquiredThird.finish(true); err != nil {
+			if err := acquiredThird.Finish(true); err != nil {
 				t.Fatalf("third completion failed: %v", err)
 			}
 		})
@@ -85,13 +84,13 @@ func TestTransitAcquisitionRejectsStaleReadyPresentation(t *testing.T) {
 	}
 	var signerPublic [32]byte
 	copy(signerPublic[:], signer.Public().(ed25519.PublicKey))
-	base := transitAcquisitionScope{NetworkID: acquisitionID(101), Digest: acquisitionID(102), Epoch: 103,
+	base := Scope{NetworkID: acquisitionID(101), Digest: acquisitionID(102), Epoch: 103,
 		IssuerNodeID: acquisitionID(104), IssuerPublicKey: acquisitionID(105), IssuerProfileDigest: acquisitionID(106),
 		GrantSignerPublicKey: signerPublic, TransitNodeID: acquisitionID(107), TransitRole: route.IntroductionRole,
 		NotAfter: now.Add(10 * time.Second)}
 	first, second, third := base, base, base
 	first.AttachmentID, second.AttachmentID, third.AttachmentID = acquisitionID(108), acquisitionID(109), acquisitionID(110)
-	owner, err := openTransitAcquisition(transitAcquisitionConfig{Root: filepath.Join(t.TempDir(), "transit-acquisition"), Create: true,
+	owner, err := openAcquisition(Config{Root: filepath.Join(t.TempDir(), "transit-acquisition"), Create: true,
 		Clock: func() time.Time { return now }})
 	if err != nil {
 		t.Fatal(err)
@@ -119,7 +118,7 @@ func TestTransitAcquisitionRejectsStaleReadyPresentation(t *testing.T) {
 	if _, err := owner.present(thirdAttempt.Request.RequestID, third); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := owner.present(firstAttempt.Request.RequestID, first); !errors.Is(err, errTransitAcquisitionStale) {
+	if _, err := owner.present(firstAttempt.Request.RequestID, first); !errors.Is(err, ErrStale) {
 		t.Fatalf("stale ready-to-present transition = %v, want stale-attempt rejection", err)
 	}
 	if state := owner.stateForTest(); state.Phase != transitPresenting || state.RequestID != thirdAttempt.Request.RequestID ||

@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
+	"github.com/dianabuilds/ardents-network/internal/endpoint/transit"
 	nativeconnection "github.com/dianabuilds/ardents-network/internal/service/connection"
 	"github.com/dianabuilds/ardents-network/internal/service/instance"
 	"github.com/dianabuilds/ardents-network/internal/service/publication"
@@ -177,7 +178,7 @@ type endpoint struct {
 	publications         *publication.Publication
 	resources            func(string, int) uint32
 	transitClients       map[[32]byte]tls.Certificate
-	transitAcquire       *transitAcquisitionSet
+	transitAcquire       *transit.Set
 	transitMu            sync.Mutex
 	publisherMu          sync.Mutex
 	publisherBinding     *instance.Binding
@@ -231,9 +232,9 @@ func newEndpoint(input setup) (*endpoint, error) {
 	if err != nil {
 		return nil, err
 	}
-	var transitAcquire *transitAcquisitionSet
+	var transitAcquire *transit.Set
 	if input.TransitAcquisitionRoot != "" {
-		transitAcquire, err = openTransitAcquisitionSet(transitAcquisitionConfig{Root: input.TransitAcquisitionRoot,
+		transitAcquire, err = transit.OpenSet(transit.Config{Root: input.TransitAcquisitionRoot,
 			Create: input.CreateTransitAcquisitionRoot, Clock: clock})
 		if err != nil {
 			return nil, err

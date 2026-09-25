@@ -9,6 +9,7 @@ import (
 	"errors"
 	"time"
 
+	transitacq "github.com/dianabuilds/ardents-network/internal/endpoint/transit"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/credential"
@@ -98,7 +99,7 @@ func (endpoint *endpoint) acquireTransitCredential(ctx context.Context, view tra
 	if err != nil || credential.VerifyProfile(profile, endpoint.network, issuer.NodeID, issuer.PublicKey, at, deadline) != nil {
 		return transitCredentialSubmission{}, errors.New("current State transit issuer profile is invalid")
 	}
-	owner, err := endpoint.transitAcquire.owner(role)
+	owner, err := endpoint.transitAcquire.Owner(role)
 	if err != nil {
 		return transitCredentialSubmission{}, errors.New("endpoint transit acquisition owner is unavailable")
 	}
@@ -106,11 +107,11 @@ func (endpoint *endpoint) acquireTransitCredential(ctx context.Context, view tra
 	if err != nil {
 		return transitCredentialSubmission{}, errors.New("credential relay attachment is unavailable")
 	}
-	scope := transitAcquisitionScope{NetworkID: endpoint.network, Digest: epoch.Digest, Epoch: epoch.Number,
+	scope := transitacq.Scope{NetworkID: endpoint.network, Digest: epoch.Digest, Epoch: epoch.Number,
 		IssuerNodeID: issuer.NodeID, IssuerPublicKey: issuer.PublicKey, IssuerProfileDigest: sha256.Sum256(issuer.Profile),
 		GrantSignerPublicKey: profile.GrantSignerPublicKey, TransitNodeID: transit.NodeID, TransitRole: role,
 		NotAfter: deadline}
-	acquired, err := owner.acquire(ctx, scope, func(issueCtx context.Context, request credential.Request) (credential.Result, error) {
+	acquired, err := owner.Acquire(ctx, scope, func(issueCtx context.Context, request credential.Request) (credential.Result, error) {
 		client, err := credential.OpenClient(credential.ClientConfig{NetworkID: endpoint.network, IssuerPublic: issuer.PublicKey, Profile: profile,
 			At: at, Deadline: deadline, Exchange: func(exchangeCtx context.Context, envelope []byte) ([]byte, error) {
 				return endpoint.exchangeTransitCredential(exchangeCtx, entry, epoch, initiator, issuer, carrierAttachment, deadline, envelope)
@@ -123,8 +124,8 @@ func (endpoint *endpoint) acquireTransitCredential(ctx context.Context, view tra
 	if err != nil {
 		return transitCredentialSubmission{}, err
 	}
-	return transitCredentialSubmission{authorization: acquired.attempt.Grant, attachment: acquired.attempt.Request.AttachmentID,
-		certificate: acquired.attempt.Certificate, finish: acquired.finish}, nil
+	return transitCredentialSubmission{authorization: acquired.Grant, attachment: acquired.Request.AttachmentID,
+		certificate: acquired.Certificate, finish: acquired.Finish}, nil
 }
 
 func (endpoint *endpoint) exchangeTransitCredential(ctx context.Context, source route.EntryAcquirer, epoch state.ResolutionEpoch,

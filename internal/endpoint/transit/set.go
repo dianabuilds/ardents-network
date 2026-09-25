@@ -1,4 +1,4 @@
-package endpoint
+package transit
 
 import (
 	"errors"
@@ -7,30 +7,30 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/route"
 )
 
-// transitAcquisitionSet gives each adjacent transit attachment its own
+// Set gives each adjacent transit attachment its own
 // at-most-once request/key journal. The root itself remains the Introduction
 // owner for v1 compatibility; Responder state has a distinct child root and
 // lease.
-type transitAcquisitionSet struct {
-	introduction *transitAcquisition
-	responder    *transitAcquisition
+type Set struct {
+	introduction *Acquisition
+	responder    *Acquisition
 }
 
-func openTransitAcquisitionSet(config transitAcquisitionConfig) (*transitAcquisitionSet, error) {
-	introduction, err := openTransitAcquisition(config)
+func OpenSet(config Config) (*Set, error) {
+	introduction, err := openAcquisition(config)
 	if err != nil {
 		return nil, err
 	}
-	responder, err := openTransitAcquisition(transitAcquisitionConfig{
+	responder, err := openAcquisition(Config{
 		Root: filepath.Join(config.Root, "responder"), Create: config.Create, Clock: config.Clock,
 	})
 	if err != nil {
 		return nil, errors.Join(err, introduction.Close())
 	}
-	return &transitAcquisitionSet{introduction: introduction, responder: responder}, nil
+	return &Set{introduction: introduction, responder: responder}, nil
 }
 
-func (owners *transitAcquisitionSet) owner(role byte) (*transitAcquisition, error) {
+func (owners *Set) Owner(role byte) (*Acquisition, error) {
 	if owners == nil {
 		return nil, errors.New("endpoint transit acquisition owners are unavailable")
 	}
@@ -44,7 +44,7 @@ func (owners *transitAcquisitionSet) owner(role byte) (*transitAcquisition, erro
 	}
 }
 
-func (owners *transitAcquisitionSet) Close() error {
+func (owners *Set) Close() error {
 	if owners == nil {
 		return nil
 	}

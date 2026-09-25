@@ -98,11 +98,11 @@ func TestRetiredUserRouteOwnerIsAbsent(t *testing.T) {
 		}
 	}
 
-	staleCompletion := string(readProjectFile(t, root, "internal/endpoint/transit_acquisition_stale_completion_test.go"))
+	staleCompletion := string(readProjectFile(t, root, "internal/endpoint/transit/stale_completion_test.go"))
 	if strings.Contains(staleCompletion, "func TestPublisherAndUserShareOneIntroductionCompletionOwner(") {
-		t.Error("Endpoint stale-completion tests still contain the retired User Route composition lane")
+		t.Error("Transit stale-completion tests still contain the retired User Route composition lane")
 	}
 	if !strings.Contains(staleCompletion, "func TestTransitCredentialLifecycleIgnoresStaleIssuerOutcomes(") {
-		t.Error("Endpoint lost the retained transit-acquisition stale-outcome oracle")
+		t.Error("Transit lost the retained transit-acquisition stale-outcome oracle")
 	}
 }
