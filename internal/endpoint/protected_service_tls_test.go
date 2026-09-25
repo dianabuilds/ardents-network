@@ -28,7 +28,7 @@ func (connection *authenticatedRetirementTestConn) AuthenticatedPeerRetired() bo
 	return connection.retired.Load()
 }
 
-func TestTextServiceTLSRouteRetirementWitnessSurvivesWrapperChain(t *testing.T) {
+func TestProtectedServiceTLSRouteRetirementWitnessSurvivesWrapperChain(t *testing.T) {
 	reader, publisher, _ := textServiceFixture(t)
 	ctx, cancel := context.WithTimeout(t.Context(), 2*time.Second)
 	defer cancel()
@@ -46,11 +46,11 @@ func TestTextServiceTLSRouteRetirementWitnessSurvivesWrapperChain(t *testing.T) 
 	clientResult := make(chan *securedAttachment, 1)
 	clientError := make(chan error, 1)
 	go func() {
-		secured, _, secureErr := secureTextClient(ctx, local, reader.credential, fixtureID(80), 1)
+		secured, _, secureErr := secureProtectedServiceClient(ctx, local, reader.credential, fixtureID(80), 1)
 		clientResult <- secured
 		clientError <- secureErr
 	}()
-	publisherSecured, _, err := secureTextPublisher(ctx, service, publisher.credential, lease, fixtureID(80), 1)
+	publisherSecured, _, err := secureProtectedServicePublisher(ctx, service, publisher.credential, lease, fixtureID(80), 1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -79,7 +79,7 @@ func TestTextServiceTLSRouteRetirementWitnessSurvivesWrapperChain(t *testing.T) 
 // These peers authenticate the actual Instance key but deliberately offer
 // a single TLS group. This checks the protected Service configuration, not
 // an installed-host or Route/Introduction claim.
-func TestTextServiceTLSOnlySelectedGroups(t *testing.T) {
+func TestProtectedServiceTLSOnlySelectedGroups(t *testing.T) {
 	for _, role := range []string{"reader", "publisher"} {
 		for _, group := range []tls.CurveID{tls.CurveP256, tls.X25519, tls.X25519MLKEM768} {
 			t.Run(role+"/"+group.String(), func(t *testing.T) {

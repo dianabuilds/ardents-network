@@ -145,7 +145,7 @@ func (binding *textServiceBinding) openTextServiceStreamWithRecovery(ctx context
 	var secured *securedAttachment
 	var continuity [32]byte
 	if client {
-		secured, continuity, err = secureTextClient(lifetime, transport, binding.credential, exporterContext, 1)
+		secured, continuity, err = secureProtectedServiceClient(lifetime, transport, binding.credential, exporterContext, 1)
 	} else {
 		if binding.owner.endpoint.publications == nil {
 			return nil, errors.New("text Publisher publication owner unavailable")
@@ -158,7 +158,7 @@ func (binding *textServiceBinding) openTextServiceStreamWithRecovery(ctx context
 			return nil, errors.New("text Publisher publication changed")
 		}
 		identity.Signer = lease
-		secured, continuity, err = secureTextPublisher(lifetime, transport, binding.credential, lease, exporterContext, 1)
+		secured, continuity, err = secureProtectedServicePublisher(lifetime, transport, binding.credential, lease, exporterContext, 1)
 	}
 	defer clear(continuity[:])
 	if err != nil {
@@ -167,7 +167,7 @@ func (binding *textServiceBinding) openTextServiceStreamWithRecovery(ctx context
 	// TLS exporter used the fresh Attachment context. Native records must
 	// continue to bind the immutable logical context shared by both Endpoints.
 	secured.context = binding.logical
-	first, err := nativeTextAttachment(secured)
+	first, err := newProtectedServiceAttachment(secured)
 	if err != nil {
 		return nil, err
 	}
@@ -211,12 +211,12 @@ func (binding *textServiceBinding) openTextServiceStreamWithRecovery(ctx context
 			var replacement *securedAttachment
 			var freshContinuity [32]byte
 			if client {
-				replacement, freshContinuity, err = secureTextClient(attempt, replacementRaw, binding.credential, freshContext, request.Generation)
+				replacement, freshContinuity, err = secureProtectedServiceClient(attempt, replacementRaw, binding.credential, freshContext, request.Generation)
 			} else {
 				if lease == nil || !binding.matchesPublication(lease.Current()) {
 					return nil, errors.New("text Publisher publication changed before recovery")
 				}
-				replacement, freshContinuity, err = secureTextPublisher(attempt, replacementRaw, binding.credential, lease, freshContext, request.Generation)
+				replacement, freshContinuity, err = secureProtectedServicePublisher(attempt, replacementRaw, binding.credential, lease, freshContext, request.Generation)
 			}
 			defer clear(freshContinuity[:])
 			if err != nil {
@@ -231,7 +231,7 @@ func (binding *textServiceBinding) openTextServiceStreamWithRecovery(ctx context
 			// The exporter was derived from the fresh Attachment context; native
 			// Continuity continues to authenticate the immutable logical context.
 			replacement.context = binding.logical
-			attached, err := nativeTextAttachment(replacement)
+			attached, err := newProtectedServiceAttachment(replacement)
 			if err != nil {
 				replacement.close()
 				return nil, err

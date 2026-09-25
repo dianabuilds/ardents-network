@@ -44,7 +44,7 @@ implementation has private owners rather than one undifferentiated state bag:
 | Descriptor history | `descriptorhistory.History` | Own per-Target verified publication/revision floors, conflict memory, capacity and context-retirement erasure; Context checks live authority before acceptance and before using a retained proof. |
 | Resolution and JOIN | Context flights and narrow acquisitions | Exact current prefix must be checked again after network effects. |
 | Job and worker | `textJobIdentity`, `textWorkerLifetime` | Context retains the job reservation; worker owns process and cgroup cleanup. |
-| Service TLS | `service_tls.go`, `text_service_tls.go` | Shared Instance authentication, handshake, and exporter handoff have one implementation. The selected protected path fixes X25519MLKEM768/X25519 groups and the authenticated Route retirement witness; the earlier Service path retains its existing default group policy. |
+| Service TLS | `service_tls.go`, `protected_service_tls.go` | Shared Instance authentication, handshake, and exporter handoff have one implementation. The selected protected path fixes X25519MLKEM768/X25519 groups and the authenticated Route retirement witness; the earlier Service path retains its existing default group policy. |
 
 Context-owned registration, withdrawal, and exchange flights are not separate
 modules merely because they have distinct filenames. The shutdown dependency
@@ -71,7 +71,9 @@ contract in `docs/technical/endpoint-service-runtime.md`.
 5. Keep the text workload name on code that really depends on the selected
    text Application. Use responsibility names for mechanisms only after their
    ownership is clear. A bulk `text_` to `participant_` rename is not the
-   architecture change.
+   architecture change. The protected Service TLS policy and Route-retirement
+   adapter use `protected_service_tls.go`; the workload-bound stream composition
+   remains in `text_service_stream.go`.
 
 ## Tests and diagnostics
 

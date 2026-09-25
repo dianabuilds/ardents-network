@@ -29,20 +29,20 @@ func (carrier *authenticatedRetirementCarrier) Read(value []byte) (int, error) {
 	return read, err
 }
 
-func nativeTextAttachment(attachment *securedAttachment) (*nativeconnection.Attachment, error) {
+func newProtectedServiceAttachment(attachment *securedAttachment) (*nativeconnection.Attachment, error) {
 	return nativeconnection.NewAttachment(&authenticatedRetirementCarrier{Conn: attachment.connection},
 		attachment.generation, attachment.context, attachment.exporterCommitment, attachment.close)
 }
 
 // The protected Service profile fixes both supported key-exchange groups.
 // The preceding runtime keeps its own compatibility TLS configuration.
-func secureTextClient(ctx context.Context, raw net.Conn, credential publicationCredential, exporterContext [32]byte,
+func secureProtectedServiceClient(ctx context.Context, raw net.Conn, credential publicationCredential, exporterContext [32]byte,
 	generation uint64) (*securedAttachment, [32]byte, error) {
 	return secureClient(ctx, raw, credential, exporterContext, generation,
 		[]tls.CurveID{tls.X25519MLKEM768, tls.X25519})
 }
 
-func secureTextPublisher(ctx context.Context, raw net.Conn, credential publicationCredential, signer crypto.Signer,
+func secureProtectedServicePublisher(ctx context.Context, raw net.Conn, credential publicationCredential, signer crypto.Signer,
 	exporterContext [32]byte, generation uint64) (*securedAttachment, [32]byte, error) {
 	return securePublisher(ctx, raw, credential, signer, exporterContext, generation,
 		[]tls.CurveID{tls.X25519MLKEM768, tls.X25519})

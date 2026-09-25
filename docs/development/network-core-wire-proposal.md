@@ -40,7 +40,7 @@ B-initiated канал возможен лишь при отдельно про�
 и tickets для этого профиля. Проверяется сквозной Service Instance key и его
 текущая авторизованная привязка Target/Publication, а не только сертификат relay.
 ALPN не несёт Target/Name и не заменяет эти проверки. Отсутствующий/иной ALPN
-отклоняется до сообщений. Текущий text_service_tls.go не задаёт этот ALPN:
+отклоняется до сообщений. Текущий protected_service_tls.go не задаёт этот ALPN:
 это предложенное изменение, не свойство существующего runtime.
 
 Никакой Connection handle, Name, C0, Kcont или доказательство local Principal
