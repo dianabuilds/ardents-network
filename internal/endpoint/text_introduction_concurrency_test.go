@@ -7,6 +7,7 @@ import (
 	"crypto/ed25519"
 	"crypto/rand"
 	"errors"
+	"fmt"
 	"os"
 	"testing"
 	"time"
@@ -88,39 +89,78 @@ func TestTextIntroductionDeliversFourConcurrentReaders(t *testing.T) {
 		owner *textContext
 		job   *textJobIdentity
 	}
+	type deliveryResult struct {
+		index      int
+		stage      string
+		connection [32]byte
+		err        error
+	}
 	work := make([]readerWork, len(readers))
 	for index, reader := range readers {
 		work[index] = readerWork{owner: reader, job: liveTextCapsuleJob(t, reader)}
 	}
 	start := make(chan struct{})
-	senders := make(chan error, len(work))
-	receivers := make(chan error, len(work))
-	for range work {
-		go func() {
+	senders := make(chan deliveryResult, len(work))
+	receivers := make(chan deliveryResult, len(work))
+	for index := range work {
+		go func(index int) {
 			<-start
-			_, err := publisher.receiveTextIntroduction(ctx, publisherJob)
-			receivers <- err
-		}()
+			attempt, err := publisher.receiveTextIntroduction(ctx, publisherJob)
+			result := deliveryResult{index: index, stage: "receive", err: err}
+			if attempt != nil && attempt.binding != nil {
+				result.connection = attempt.binding.facts.ConnectionNonce
+			}
+			receivers <- result
+		}(index)
 	}
-	for _, item := range work {
-		go func(item readerWork) {
+	for index, item := range work {
+		go func(index int, item readerWork) {
 			<-start
 			now := time.Now().UTC()
 			bounds := [3]int64{now.Add(time.Minute).Unix(), now.Add(time.Minute).Unix(), now.Add(time.Minute).Unix()}
 			attempt, err := item.owner.prepareTextIntroduction(ctx, item.job, destination, bounds)
-			if err == nil {
-				err = item.owner.submitTextIntroduction(ctx, item.job, attempt)
+			result := deliveryResult{index: index, stage: "prepare", err: err}
+			if attempt != nil && attempt.binding != nil {
+				result.connection = attempt.binding.facts.ConnectionNonce
 			}
-			senders <- err
-		}(item)
+			if err == nil {
+				result.stage = "submit"
+				result.err = item.owner.submitTextIntroduction(ctx, item.job, attempt)
+			}
+			senders <- result
+		}(index, item)
 	}
 	close(start)
 	var outcome error
+	sent := make(map[[32]byte]bool, len(work))
+	received := make(map[[32]byte]bool, len(work))
 	for range work {
-		outcome = errors.Join(outcome, <-senders, <-receivers)
+		sender, receiver := <-senders, <-receivers
+		if sender.err != nil {
+			outcome = errors.Join(outcome, fmt.Errorf("reader %d %s: %w", sender.index, sender.stage, sender.err))
+		} else if sender.connection == [32]byte{} || sent[sender.connection] {
+			outcome = errors.Join(outcome, fmt.Errorf("reader %d has no distinct Connection", sender.index))
+		} else {
+			sent[sender.connection] = true
+		}
+		if receiver.err != nil {
+			outcome = errors.Join(outcome, fmt.Errorf("publisher receiver %d: %w", receiver.index, receiver.err))
+		} else if receiver.connection == [32]byte{} || received[receiver.connection] {
+			outcome = errors.Join(outcome, fmt.Errorf("publisher receiver %d has no distinct Connection", receiver.index))
+		} else {
+			received[receiver.connection] = true
+		}
 	}
 	if outcome != nil {
 		t.Fatalf("four concurrent Introduction deliveries: %v", outcome)
+	}
+	if len(sent) != len(work) || len(received) != len(work) {
+		t.Fatalf("Introduction deliveries retained %d Reader and %d Publisher Connections, want %d each", len(sent), len(received), len(work))
+	}
+	for connection := range sent {
+		if !received[connection] {
+			t.Fatal("Publisher received a different Connection from the four Readers")
+		}
 	}
 }
 
