@@ -36,6 +36,7 @@ func TestInstalledCommandLifecycleFailureReasonIsFixed(t *testing.T) {
 		{"closed Route State is unavailable: private State detail", "closed-route-state-unavailable"},
 		{"resource placement is not ready: private host detail", "placement-unavailable"},
 		{"resource pressure evidence is unavailable: hosting-lock", "hosting-lock"},
+		{"resource pressure evidence is unavailable: owner-resident-process-churn", "owner-resident-process-churn"},
 		{"private failure detail", "other"},
 	} {
 		t.Run(test.want, func(t *testing.T) {

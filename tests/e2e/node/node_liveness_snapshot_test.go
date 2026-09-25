@@ -214,6 +214,7 @@ func installedCommandResourceFailureReason(reason string) string {
 		"resource pressure evidence is unavailable: hosting-observation",
 		"resource pressure evidence is unavailable: hosting-interface",
 		"resource pressure evidence is unavailable: owner-cgroup",
+		"resource pressure evidence is unavailable: owner-resident-process-churn",
 		"resource pressure evidence is unavailable: other":
 		return strings.TrimPrefix(reason, "resource pressure evidence is unavailable: ")
 	default:
