@@ -110,7 +110,7 @@ func (owner *textContext) openTextJoinedTransport(ctx context.Context, job *text
 }
 
 func (owner *textContext) openTextJoinedTransportAfterSetup(ctx context.Context, job *textJobIdentity, attempt *textIntroductionAttempt, setupComplete func()) (_ *textJoinedTransport, outcome error) {
-	if owner == nil || ctx == nil || ctx.Err() != nil || attempt == nil || attempt.binding == nil || attempt.binding.owner != owner || attempt.binding.job != job {
+	if owner == nil || ctx == nil || ctx.Err() != nil || attempt == nil || !attempt.binding.servesJob(owner, job) {
 		return nil, errors.New("text JOIN owner unavailable")
 	}
 	if err := attempt.binding.current(); err != nil {
@@ -288,7 +288,7 @@ func (owner *textContext) retainTextJoinedTransport(job *textJobIdentity, attemp
 	flight *textIntroductionExchange, acquisition textJoinAcquisition, joined *route.ClosedJoinedStream) bool {
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
-	if attempt == nil || attempt.binding == nil || attempt.binding.owner != owner || attempt.binding.job != job ||
+	if attempt == nil || !attempt.binding.servesJob(owner, job) ||
 		acquisition == nil || !acquisition.currentLocked(owner) || joined == nil ||
 		!owner.retainTextServiceTransportExchangeLocked(job, flight) {
 		return false

@@ -20,7 +20,7 @@ func (owner *textContext) acceptDispatchedTextIntroduction(ctx context.Context, 
 
 func (owner *textContext) acceptDispatchedTextRecovery(ctx context.Context, job *textJobIdentity, operation []byte,
 	original *textServiceBinding, request nativeconnection.Recovery) (*textIntroductionAttempt, error) {
-	if original == nil || original.owner != owner || original.job != job {
+	if !original.servesJob(owner, job) {
 		return nil, errors.New("text recovery binding unavailable")
 	}
 	if err := original.validateTextServiceRecovery(request); err != nil {
@@ -105,8 +105,7 @@ func (owner *textContext) acceptTextIntroductionGeneration(ctx context.Context, 
 		return nil, err
 	}
 	if original != nil {
-		if binding.logical != original.logical || binding.facts != original.facts || binding.credential != original.credential ||
-			binding.candidateView != original.candidateView {
+		if !binding.sameAuthorityAs(original) {
 			return nil, &textIntroductionRefusal{cause: errors.New("text recovery changed logical Service authority")}
 		}
 		binding = original

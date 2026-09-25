@@ -35,8 +35,8 @@ func (recovery *textIntroductionRecoveryOwner) admitGenerationLocked(binding *te
 }
 
 func (recovery *textIntroductionRecoveryOwner) acceptsLocked(key textIntroductionDeliveryKey) bool {
-	return recovery != nil && recovery.binding != nil && recovery.binding.recovery == recovery &&
-		len(recovery.delivery) == 0 && recovery.binding.facts.ConnectionNonce == key.connection &&
+	return recovery != nil && recovery.binding.ownsRecoveryLocked(recovery) &&
+		len(recovery.delivery) == 0 && recovery.binding.connectionNonce() == key.connection &&
 		key.generation >= recovery.generation && key.generation <= recovery.generation+1
 }
 
@@ -68,7 +68,7 @@ func (recovery *textIntroductionRecoveryOwner) handoffLocked(want textIntroducti
 // one transition with waiter selection.
 func (recovery *textIntroductionRecoveryOwner) bufferLocked(owner *textContext,
 	routed textIntroductionRoutedDelivery) bool {
-	if recovery == nil || recovery.binding == nil || recovery.binding.recovery != recovery ||
+	if recovery == nil || !recovery.binding.ownsRecoveryLocked(recovery) ||
 		len(recovery.delivery) != 0 || recovery.expiryDone != nil || routed.delivery == nil ||
 		!owner.endpoint.clock().Add(textIntroductionExpiryReserve).Before(routed.expires) {
 		return false
@@ -104,7 +104,7 @@ func (recovery *textIntroductionRecoveryOwner) expire(owner *textContext, ctx co
 	case <-timer.C:
 	}
 	owner.mu.Lock()
-	if recovery.expiryDone != done || recovery.binding == nil || recovery.binding.recovery != recovery {
+	if recovery.expiryDone != done || !recovery.binding.ownsRecoveryLocked(recovery) {
 		owner.mu.Unlock()
 		return
 	}

@@ -13,8 +13,8 @@ import (
 // Issuance remains on Source; the data prefix uses separate Domain-3 members.
 // This establishes only forwarding readiness, never a paired Attachment.
 func (owner *textContext) prepareTextResponder(ctx context.Context, job *textJobIdentity, accepted *textIntroductionAttempt) error {
-	if owner == nil || ctx == nil || ctx.Err() != nil || accepted == nil || accepted.binding == nil ||
-		accepted.binding.owner != owner || accepted.binding.job != job {
+	if owner == nil || ctx == nil || ctx.Err() != nil || accepted == nil ||
+		!accepted.binding.servesJob(owner, job) {
 		return errors.New("text Responder authority unavailable")
 	}
 	if err := accepted.binding.current(); err != nil {

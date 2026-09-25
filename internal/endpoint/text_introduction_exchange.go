@@ -13,8 +13,8 @@ import (
 )
 
 func (owner *textContext) submitTextIntroduction(ctx context.Context, job *textJobIdentity, prepared *textIntroductionAttempt) (outcome error) {
-	if owner == nil || ctx == nil || ctx.Err() != nil || prepared == nil || prepared.binding == nil ||
-		prepared.binding.owner != owner || prepared.binding.job != job {
+	if owner == nil || ctx == nil || ctx.Err() != nil || prepared == nil ||
+		!prepared.binding.servesJob(owner, job) {
 		return errors.New("text Introduction submission unavailable")
 	}
 	owner.mu.Lock()
@@ -87,13 +87,13 @@ func (owner *textContext) receiveTextRecovery(ctx context.Context, job *textJobI
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
-	if binding == nil || binding.owner != owner || binding.job != job {
+	if !binding.servesJob(owner, job) {
 		return nil, errors.New("text recovery receiver unavailable")
 	}
 	if err := binding.validateTextServiceRecovery(request); err != nil {
 		return nil, err
 	}
-	want := textIntroductionDeliveryKey{connection: binding.facts.ConnectionNonce, generation: request.Generation}
+	want := textIntroductionDeliveryKey{connection: binding.connectionNonce(), generation: request.Generation}
 	return owner.receiveTextIntroductionWith(ctx, job, want, binding, func(ctx context.Context, job *textJobIdentity, operation []byte) (*textIntroductionAttempt, error) {
 		return owner.acceptDispatchedTextRecovery(ctx, job, operation, binding, request)
 	}, nil)

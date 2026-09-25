@@ -20,7 +20,7 @@ import (
 // logical binding. Neither side can open another Application operation.
 func (owner *textContext) textServiceRouteRecoveryOpener(job *textJobIdentity,
 	binding *textServiceBinding) textServiceAttachmentOpener {
-	if owner == nil || binding == nil || binding.owner != owner || binding.job != job {
+	if owner == nil || !binding.servesJob(owner, job) {
 		return nil
 	}
 	return func(ctx context.Context, request nativeconnection.Recovery) (net.Conn, [32]byte, error) {
@@ -60,7 +60,7 @@ func (owner *textContext) textServiceRouteRecoveryOpener(job *textJobIdentity,
 // It creates fresh per-Attachment secrets without resetting any work deadline.
 func (owner *textContext) prepareTextRecovery(ctx context.Context, job *textJobIdentity, binding *textServiceBinding,
 	request nativeconnection.Recovery) (*textIntroductionAttempt, error) {
-	if owner == nil || ctx == nil || binding == nil || binding.owner != owner || binding.job != job ||
+	if owner == nil || ctx == nil || !binding.servesJob(owner, job) ||
 		owner.surface != broker.Connection {
 		return nil, errors.New("text recovery preparation unavailable")
 	}
@@ -70,7 +70,7 @@ func (owner *textContext) prepareTextRecovery(ctx context.Context, job *textJobI
 	if err := binding.validateTextServiceRecovery(request); err != nil {
 		return nil, err
 	}
-	verified, err := owner.lookupTextDescriptor(ctx, binding.facts.Target)
+	verified, err := owner.lookupTextDescriptor(ctx, binding.target())
 	if err != nil {
 		return nil, err
 	}
@@ -83,20 +83,20 @@ func (owner *textContext) prepareTextRecovery(ctx context.Context, job *textJobI
 		return nil, attemptErr
 	}
 	if err != nil || prefix == nil || !owner.liveTextServiceJobLocked(job, broker.Connection) ||
-		!binding.matchesPublication(verified.Current) || verified.Descriptor.ProfileDigest != binding.facts.ProfileDigest ||
-		profile.Digest != binding.facts.ProfileDigest || !owner.descriptorHistory.Matches(binding.facts.Target, binding.facts.PublicationDigest, recipient.Revision) ||
-		recipient.Revision < binding.introduction.Revision ||
+		!binding.matchesPublication(verified.Current) || verified.Descriptor.ProfileDigest != binding.profileDigest() ||
+		profile.Digest != binding.profileDigest() || !owner.descriptorHistory.Matches(binding.target(), binding.publicationDigest(), recipient.Revision) ||
+		recipient.Revision < binding.introductionLocked().Revision ||
 		recipient.Revision == 0 || recipient.Slot == [32]byte{} || recipient.RecipientKey == [32]byte{} ||
 		now.Before(recipient.NotBefore) || !now.Before(recipient.NotAfter) {
 		return nil, errors.Join(err, errors.New("text recovery recipient or authority unavailable"))
 	}
-	binding.introduction = recipient
+	binding.bindIntroductionLocked(recipient)
 	node, generation, until, err := prefix.dataJoinRecipient()
 	if err != nil {
 		return nil, err
 	}
 	deadline := now.Add(10 * time.Second).UTC().Truncate(time.Second)
-	for _, bound := range []time.Time{request.Deadline, until, recipient.NotAfter, time.Unix(binding.facts.WorkSafetyNotAfter, 0)} {
+	for _, bound := range []time.Time{request.Deadline, until, recipient.NotAfter, time.Unix(binding.workSafetyNotAfter(), 0)} {
 		if bound.Before(deadline) {
 			deadline = bound.UTC().Truncate(time.Second)
 		}
@@ -104,7 +104,7 @@ func (owner *textContext) prepareTextRecovery(ctx context.Context, job *textJobI
 	if !now.Before(deadline) {
 		return nil, errors.New("text recovery deadline unavailable")
 	}
-	facts := binding.facts
+	facts := binding.protectedFacts()
 	plaintext := introductioncapsule.Plaintext{Network: facts.Network, Target: facts.Target,
 		PublicationDigest: facts.PublicationDigest, Revision: recipient.Revision, RendezvousNode: node,
 		RendezvousDutyGeneration: generation, ProfileDigest: facts.ProfileDigest, ConnectionNonce: facts.ConnectionNonce,

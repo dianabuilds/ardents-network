@@ -47,12 +47,13 @@ func (dispatch *textIntroductionDispatch) recoveryCapacityReachedLocked(limit in
 }
 
 func (dispatch *textIntroductionDispatch) addRecoveryLocked(binding *textServiceBinding) *textIntroductionRecoveryOwner {
+	recovery := binding.claimRecoveryLocked()
+	if recovery == nil {
+		return nil
+	}
 	if dispatch.recovery == nil {
 		dispatch.recovery = make(map[*textIntroductionRecoveryOwner]struct{})
 	}
-	recovery := &textIntroductionRecoveryOwner{binding: binding, generation: 2,
-		delivery: make(chan textIntroductionRoutedDelivery, 1)}
-	binding.recovery = recovery
 	dispatch.recovery[recovery] = struct{}{}
 	return recovery
 }

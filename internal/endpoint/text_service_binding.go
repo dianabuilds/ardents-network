@@ -163,6 +163,103 @@ func (binding *textServiceBinding) matchesPublication(current publication.Curren
 		len(current.Record) != 0 && sha256.Sum256(current.Record) == current.Digest
 }
 
+// servesJob reports the exact immutable Context and job ownership.
+func (binding *textServiceBinding) servesJob(owner *textContext, job *textJobIdentity) bool {
+	return binding != nil && binding.owner == owner && binding.job == job
+}
+
+// servesOwnerJob reports the Context ownership of a present job identity.
+func (binding *textServiceBinding) servesOwnerJob(owner *textContext) bool {
+	return binding != nil && binding.owner == owner && binding.job != nil
+}
+
+// jobIdentity returns the immutable job bound at construction.
+func (binding *textServiceBinding) jobIdentity() *textJobIdentity {
+	return binding.job
+}
+
+// connectionNonce returns the immutable per-Connection nonce commitment.
+func (binding *textServiceBinding) connectionNonce() [32]byte {
+	return binding.facts.ConnectionNonce
+}
+
+// target returns the immutable publication Target.
+func (binding *textServiceBinding) target() [32]byte {
+	return binding.facts.Target
+}
+
+// profileDigest returns the immutable permission profile digest.
+func (binding *textServiceBinding) profileDigest() [32]byte {
+	return binding.facts.ProfileDigest
+}
+
+// publicationDigest returns the immutable publication digest.
+func (binding *textServiceBinding) publicationDigest() [32]byte {
+	return binding.facts.PublicationDigest
+}
+
+// workSafetyNotAfter returns the immutable work-safety deadline in Unix
+// seconds.
+func (binding *textServiceBinding) workSafetyNotAfter() int64 {
+	return binding.facts.WorkSafetyNotAfter
+}
+
+// protectedFacts copies the full immutable shared authority tuple.
+func (binding *textServiceBinding) protectedFacts() nativeconnection.ProtectedContextInput {
+	return binding.facts
+}
+
+// sameAuthorityAs compares every immutable authority fact of two bindings.
+func (binding *textServiceBinding) sameAuthorityAs(other *textServiceBinding) bool {
+	return binding != nil && other != nil && binding.logical == other.logical &&
+		binding.facts == other.facts && binding.credential == other.credential &&
+		binding.candidateView == other.candidateView
+}
+
+// dispatchRecoveryLocked returns the recovery slot only for the binding that
+// serves the exact Context and job.
+func (binding *textServiceBinding) dispatchRecoveryLocked(owner *textContext, job *textJobIdentity) *textIntroductionRecoveryOwner {
+	if !binding.servesJob(owner, job) {
+		return nil
+	}
+	return binding.recovery
+}
+
+// ownsRecoveryLocked reports whether this binding retains exactly that
+// recovery owner.
+func (binding *textServiceBinding) ownsRecoveryLocked(recovery *textIntroductionRecoveryOwner) bool {
+	return binding != nil && recovery != nil && binding.recovery == recovery
+}
+
+// hasRecoveryLocked reports an occupied recovery slot.
+func (binding *textServiceBinding) hasRecoveryLocked() bool {
+	return binding != nil && binding.recovery != nil
+}
+
+// claimRecoveryLocked creates the one recovery owner slot of this binding.
+// The shared Context lock makes creation and dispatcher registration one
+// transition.
+func (binding *textServiceBinding) claimRecoveryLocked() *textIntroductionRecoveryOwner {
+	if binding == nil || binding.recovery != nil {
+		return nil
+	}
+	recovery := &textIntroductionRecoveryOwner{binding: binding, generation: 2,
+		delivery: make(chan textIntroductionRoutedDelivery, 1)}
+	binding.recovery = recovery
+	return recovery
+}
+
+// bindIntroductionLocked records the verified Descriptor recipient for later
+// capsule issuance.
+func (binding *textServiceBinding) bindIntroductionLocked(recipient reachability.PrivateIntroduction) {
+	binding.introduction = recipient
+}
+
+// introductionLocked returns the current Descriptor recipient facts.
+func (binding *textServiceBinding) introductionLocked() reachability.PrivateIntroduction {
+	return binding.introduction
+}
+
 func (binding *textServiceBinding) textServiceRecovery() nativeconnection.Recovery {
 	if binding == nil || binding.owner == nil || binding.job == nil {
 		return nativeconnection.Recovery{}

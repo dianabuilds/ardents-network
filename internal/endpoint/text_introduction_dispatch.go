@@ -132,10 +132,10 @@ func (dispatch *textIntroductionDispatch) registerWaiter(owner *textContext, ctx
 	}
 	var recovery *textIntroductionRecoveryOwner
 	if want.generation > 1 {
-		if binding == nil || binding.owner != owner || binding.job != job || binding.recovery == nil {
+		recovery = binding.dispatchRecoveryLocked(owner, job)
+		if recovery == nil {
 			return nil, nil, errors.New("text Introduction recovery owner unavailable")
 		}
-		recovery = binding.recovery
 		if !recovery.admitGenerationLocked(binding, want.generation) {
 			return nil, nil, errors.New("text Introduction recovery generation unavailable")
 		}
@@ -170,12 +170,12 @@ func (dispatch *textIntroductionDispatch) releaseWaiter(owner *textContext, wait
 }
 
 func (owner *textContext) retainTextIntroductionRecovery(binding *textServiceBinding) error {
-	if owner == nil || binding == nil || binding.owner != owner || binding.job == nil {
+	if owner == nil || !binding.servesOwnerJob(owner) {
 		return errors.New("text Introduction recovery owner unavailable")
 	}
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
-	if !owner.liveTextServiceJobLocked(binding.job, broker.Administration) || binding.recovery != nil ||
+	if !owner.liveTextServiceJobLocked(binding.jobIdentity(), broker.Administration) || binding.hasRecoveryLocked() ||
 		owner.introductionDispatch.recoveryCapacityReachedLocked(owner.streamConnectionLimitLocked()) {
 		return errors.New("text Introduction recovery owner capacity unavailable")
 	}

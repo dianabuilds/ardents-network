@@ -118,9 +118,9 @@ func (owner *textContext) prepareResolvedTextIntroduction(ctx context.Context, j
 	if err != nil {
 		return nil, err
 	}
-	binding.introduction = verified.Descriptor.Private
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
+	binding.bindIntroductionLocked(verified.Descriptor.Private)
 	profile, now, err := owner.textPermissionProfileLocked()
 	prefix := owner.currentTextSourceLocked()
 	if err != nil || !owner.liveTextServiceJobLocked(job, broker.Connection) || ctx.Err() != nil || prefix == nil ||
@@ -140,7 +140,7 @@ func (owner *textContext) prepareResolvedTextIntroduction(ctx context.Context, j
 	if !now.Before(deadline) {
 		return nil, errors.New("text Introduction deadline unavailable")
 	}
-	facts := binding.facts
+	facts := binding.protectedFacts()
 	plaintext := introductioncapsule.Plaintext{Network: facts.Network, Target: facts.Target, PublicationDigest: facts.PublicationDigest,
 		Revision: verified.Descriptor.Private.Revision, RendezvousNode: node, RendezvousDutyGeneration: generation, ProfileDigest: facts.ProfileDigest,
 		ConnectionNonce: facts.ConnectionNonce, AttachmentGeneration: 1, Deadline: deadline, InitiatorBinding: facts.InitiatorBinding,
@@ -173,8 +173,8 @@ func (owner *textContext) prepareResolvedTextIntroduction(ctx context.Context, j
 // second wire attempt or weaken replay ownership.
 func (owner *textContext) refreshTextIntroduction(ctx context.Context, job *textJobIdentity,
 	attempt *textIntroductionAttempt, prefix *textSourceHandle) error {
-	if owner == nil || ctx == nil || ctx.Err() != nil || attempt == nil || attempt.binding == nil ||
-		attempt.binding.owner != owner || attempt.binding.job != job || prefix == nil ||
+	if owner == nil || ctx == nil || ctx.Err() != nil || attempt == nil ||
+		!attempt.binding.servesJob(owner, job) || prefix == nil ||
 		attempt.plaintext.AttachmentGeneration != 1 || attempt.submitted {
 		return errors.New("text Introduction refresh unavailable")
 	}
@@ -185,7 +185,7 @@ func (owner *textContext) refreshTextIntroduction(ctx context.Context, job *text
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
 	profile, now, err := owner.textPermissionProfileLocked()
-	introduction := attempt.binding.introduction
+	introduction := attempt.binding.introductionLocked()
 	if err != nil || !owner.liveTextServiceJobLocked(job, broker.Connection) || !prefix.currentLocked(owner) ||
 		ctx.Err() != nil || profile.Digest != attempt.plaintext.ProfileDigest ||
 		node != attempt.plaintext.RendezvousNode || generation != attempt.plaintext.RendezvousDutyGeneration ||
@@ -194,7 +194,7 @@ func (owner *textContext) refreshTextIntroduction(ctx context.Context, job *text
 		return errors.Join(err, ctx.Err(), errors.New("text Introduction refresh authority changed"))
 	}
 	deadline := now.Add(10 * time.Second).UTC().Truncate(time.Second)
-	for _, bound := range []time.Time{until, introduction.NotAfter, time.Unix(attempt.binding.facts.WorkSafetyNotAfter, 0)} {
+	for _, bound := range []time.Time{until, introduction.NotAfter, time.Unix(attempt.binding.workSafetyNotAfter(), 0)} {
 		if bound.Before(deadline) {
 			deadline = bound.UTC().Truncate(time.Second)
 		}
