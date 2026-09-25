@@ -7,7 +7,6 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"math/big"
-	"net"
 	"testing"
 	"time"
 )
@@ -32,25 +31,4 @@ func testCertificate(t *testing.T, serial int64, name string) (tls.Certificate, 
 	var fixed [32]byte
 	copy(fixed[:], public)
 	return tls.Certificate{Certificate: [][]byte{der}, PrivateKey: private, Leaf: leaf}, fixed
-}
-
-func availableAddress(t *testing.T) string {
-	t.Helper()
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		t.Fatal(err)
-	}
-	address := listener.Addr().String()
-	if err := listener.Close(); err != nil {
-		t.Fatal(err)
-	}
-	return address
-}
-
-func fixtureID(value byte) [32]byte {
-	var result [32]byte
-	for index := range result {
-		result[index] = value + byte(index)
-	}
-	return result
 }
