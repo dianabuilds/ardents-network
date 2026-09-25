@@ -7,6 +7,8 @@ import (
 	"net"
 	"testing"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 )
 
 func TestClosedSourceRefusedLaneStillConsumesReceivedBytes(t *testing.T) {
@@ -15,7 +17,7 @@ func TestClosedSourceRefusedLaneStillConsumesReceivedBytes(t *testing.T) {
 	defer peer.Close()
 	owner := newClosedSourceChannelOwner(local, time.Now().Add(time.Minute), local.Close)
 	owner.transferred = (32 << 20) - 20
-	if err := owner.receive(ClosedLaneFrame{Kind: closedFrameCredit, Lane: 1, Body: []byte{0, 0, 0, 1}}); err == nil {
+	if err := owner.receive(ardp.Frame{Kind: ardp.KindCredit, Lane: 1, Body: []byte{0, 0, 0, 1}}); err == nil {
 		t.Fatal("unallocated lane accepted")
 	}
 	if owner.transferred != 32<<20 {
@@ -25,12 +27,12 @@ func TestClosedSourceRefusedLaneStillConsumesReceivedBytes(t *testing.T) {
 
 func TestClosedSourceCloseCannotExceedAdmissionBudget(t *testing.T) {
 	owner, peer, end := sourceChannelsFixture(t)
-	received := make(chan ClosedLaneFrame, 2)
+	received := make(chan ardp.Frame, 2)
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
 		for {
-			frame, err := ReadClosedLaneFrame(peer)
+			frame, err := ardp.ReadFrame(peer)
 			if err != nil {
 				return
 			}
@@ -42,7 +44,7 @@ func TestClosedSourceCloseCannotExceedAdmissionBudget(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if frame := <-received; frame.Kind != closedFrameOpen {
+	if frame := <-received; frame.Kind != ardp.KindOpen {
 		t.Fatal("missing OPEN")
 	}
 	owner.mu.Lock()
@@ -63,7 +65,7 @@ func TestClosedSourceCloseCannotExceedAdmissionBudget(t *testing.T) {
 func TestClosedSourcePartialWriteDoesNotRefundByteAllowance(t *testing.T) {
 	owner, peer, end := sourceChannelsFixture(t)
 	opened := make(chan error, 1)
-	go func() { _, err := ReadClosedLaneFrame(peer); opened <- err }()
+	go func() { _, err := ardp.ReadFrame(peer); opened <- err }()
 	lane, err := owner.open(t.Context(), sourceIssuerOpen(end), end)
 	if err != nil {
 		t.Fatal(err)

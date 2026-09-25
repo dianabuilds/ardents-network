@@ -8,6 +8,7 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	"net"
 	"sync"
 	"time"
@@ -100,15 +101,15 @@ func ExchangeClosedBootstrap(ctx context.Context, source ClosedBootstrapState, s
 			break
 		}
 		peer := plan.peers[index+1]
-		purpose := ClosedPurposeForwarding
+		purpose := ardp.PurposeForwarding
 		if index == 1 {
-			purpose = ClosedPurposeIssuer
+			purpose = ardp.PurposeIssuer
 		}
 		body, err := EncodeClosedOpen(ClosedOpen{NextNodeID: peer.node, NextDutyGeneration: peer.generation, Purpose: purpose, Deadline: plan.deadline})
 		if err != nil {
 			return result, err
 		}
-		if err := WriteClosedLaneFrame(current, ClosedLaneFrame{Kind: closedFrameOpen, Lane: 1, Body: body}); err != nil {
+		if err := ardp.WriteFrame(current, ardp.Frame{Kind: ardp.KindOpen, Lane: 1, Body: body}); err != nil {
 			return result, err
 		}
 		child := newClosedRoleChildStream(current, plan.deadline, retirement.close, nil)
@@ -123,14 +124,14 @@ func ExchangeClosedBootstrap(ctx context.Context, source ClosedBootstrapState, s
 	if err := plan.current(source, selection); err != nil {
 		return result, err
 	}
-	if err := WriteClosedLaneFrame(current, ClosedLaneFrame{Kind: closedFrameOperation, Body: operation}); err != nil {
+	if err := ardp.WriteFrame(current, ardp.Frame{Kind: ardp.KindOperation, Body: operation}); err != nil {
 		return result, err
 	}
-	frame, err := ReadClosedLaneFrame(current)
+	frame, err := ardp.ReadFrame(current)
 	if err != nil {
 		return result, err
 	}
-	if frame.Kind != closedFrameResult || frame.Lane != 0 {
+	if frame.Kind != ardp.KindResult || frame.Lane != 0 {
 		return result, errors.New("closed bootstrap issuer result is invalid")
 	}
 	if _, err := terminal.DecodeIssuanceResult(frame.Body, result.Nonce); err != nil {
@@ -148,37 +149,37 @@ func ExchangeClosedBootstrap(ctx context.Context, source ClosedBootstrapState, s
 
 func beginClosedBootstrap(connection net.Conn, plan closedBootstrapPlan, index int) error {
 	peer := plan.peers[index]
-	hello := ClosedHello{NetworkID: plan.profile.NetworkID, StateGeneration: plan.profile.StateGeneration, StateDigest: plan.profile.StateDigest,
-		ProfileDigest: plan.profile.Digest, RecipientNodeID: peer.node, RecipientDutyGeneration: peer.generation, Purpose: ClosedPurposeForwarding, Deadline: plan.deadline}
+	hello := ardp.Hello{NetworkID: plan.profile.NetworkID, StateGeneration: plan.profile.StateGeneration, StateDigest: plan.profile.StateDigest,
+		ProfileDigest: plan.profile.Digest, RecipientNodeID: peer.node, RecipientDutyGeneration: peer.generation, Purpose: ardp.PurposeForwarding, Deadline: plan.deadline}
 	if index == 2 {
-		hello.Purpose = ClosedPurposeIssuer
+		hello.Purpose = ardp.PurposeIssuer
 	}
 	if _, err := rand.Read(hello.ChannelNonce[:]); err != nil {
 		return err
 	}
-	body, err := EncodeClosedHello(hello)
+	body, err := ardp.EncodeHello(hello)
 	if err != nil {
 		return err
 	}
-	if err := WriteClosedLaneFrame(connection, ClosedLaneFrame{Kind: closedFrameHello, Body: body}); err != nil {
+	if err := ardp.WriteFrame(connection, ardp.Frame{Kind: ardp.KindHello, Body: body}); err != nil {
 		return err
 	}
-	bootstrap := ClosedLaneFrame{Kind: closedFrameBootstrap, Body: EncodeClosedBootstrap(true)}
+	bootstrap := ardp.Frame{Kind: ardp.KindBootstrap, Body: ardp.EncodeBootstrap(true)}
 	if index != 2 {
-		if err := WriteClosedLaneFrame(connection, bootstrap); err != nil {
+		if err := ardp.WriteFrame(connection, bootstrap); err != nil {
 			return err
 		}
 	}
-	accepted, err := ReadClosedLaneFrame(connection)
+	accepted, err := ardp.ReadFrame(connection)
 	if err != nil {
 		return err
 	}
-	status, credit, err := DecodeClosedAcceptFrame(accepted)
+	status, credit, err := ardp.DecodeAcceptFrame(accepted)
 	if err != nil || status != 0 || credit != 64<<10 {
 		return errors.New("closed bootstrap admission is unavailable")
 	}
 	if index == 2 {
-		return WriteClosedLaneFrame(connection, bootstrap)
+		return ardp.WriteFrame(connection, bootstrap)
 	}
 	return nil
 }

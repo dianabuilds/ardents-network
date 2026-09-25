@@ -10,6 +10,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 )
 
 // The retained framing layer's CREDIT belongs to its parent reservation. A
@@ -27,7 +29,7 @@ func TestClosedRoleChildCreditDoesNotReuseCompletedPayloadDeadline(t *testing.T)
 		t.Fatal(err)
 	}
 	initial := make(chan error, 1)
-	workers.Go(func() { _, err := ReadClosedLaneFrame(peer); initial <- err })
+	workers.Go(func() { _, err := ardp.ReadFrame(peer); initial <- err })
 	if _, err := stream.Write([]byte("completed payload")); err != nil {
 		t.Fatal(err)
 	}
@@ -40,12 +42,12 @@ func TestClosedRoleChildCreditDoesNotReuseCompletedPayloadDeadline(t *testing.T)
 	}
 	received := make(chan error, 1)
 	workers.Go(func() {
-		if err := WriteClosedLaneFrame(peer, ClosedLaneFrame{Kind: closedFrameBytes, Lane: 1, Body: []byte{7}}); err != nil {
+		if err := ardp.WriteFrame(peer, ardp.Frame{Kind: ardp.KindBytes, Lane: 1, Body: []byte{7}}); err != nil {
 			received <- err
 			return
 		}
-		credit, err := ReadClosedLaneFrame(peer)
-		if err == nil && (credit.Kind != closedFrameCredit || binary.BigEndian.Uint32(credit.Body) != 1) {
+		credit, err := ardp.ReadFrame(peer)
+		if err == nil && (credit.Kind != ardp.KindCredit || binary.BigEndian.Uint32(credit.Body) != 1) {
 			err = io.ErrUnexpectedEOF
 		}
 		received <- err
@@ -94,7 +96,7 @@ func TestClosedRoleChildDeadlineInterruptsEmittedCredit(t *testing.T) {
 		}
 		read <- err
 	})
-	if err := WriteClosedLaneFrame(peer, ClosedLaneFrame{Kind: closedFrameBytes, Lane: 1, Body: []byte{7}}); err != nil {
+	if err := ardp.WriteFrame(peer, ardp.Frame{Kind: ardp.KindBytes, Lane: 1, Body: []byte{7}}); err != nil {
 		t.Fatal(err)
 	}
 	var prefix [1]byte
@@ -137,7 +139,7 @@ func TestClosedRoleChildPayloadDeadlineBoundsCreditWriterWait(t *testing.T) {
 		t.Fatal(err)
 	}
 	workers.Go(func() { var body [1]byte; _, _ = stream.Read(body[:]) })
-	if err := WriteClosedLaneFrame(peer, ClosedLaneFrame{Kind: closedFrameBytes, Lane: 1, Body: []byte{7}}); err != nil {
+	if err := ardp.WriteFrame(peer, ardp.Frame{Kind: ardp.KindBytes, Lane: 1, Body: []byte{7}}); err != nil {
 		t.Fatal(err)
 	}
 	var prefix [1]byte

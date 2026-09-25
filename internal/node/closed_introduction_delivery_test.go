@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	introductioncapsule "github.com/dianabuilds/ardents-network/internal/route/capsule"
 	"github.com/dianabuilds/ardents-network/internal/route/terminal"
 )
@@ -82,7 +83,7 @@ func TestClosedIntroductionDeliverySerializesIDsAndBoundsPending(t *testing.T) {
 	operations, closed := 0, 0
 	nonces := make(map[[32]byte]bool)
 	for closed < 4 {
-		frame, err := route.ReadClosedLaneFrame(peer)
+		frame, err := ardp.ReadFrame(peer)
 		if err != nil {
 			t.Fatal(err)
 		}

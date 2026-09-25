@@ -14,6 +14,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/resource"
 	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 )
 
 func TestClosedForwardingServeDirectRetainsOuterCleanupFailure(t *testing.T) {
@@ -35,7 +36,7 @@ func testClosedForwardingServeDirectOuterAdmission(t *testing.T, cleanup error) 
 	fixture.config.CurrentClosedProfile = func() (state.ClosedProfileView, bool) { return fixture.view.Profile, true }
 	host := &cleanupFailureHost{release: cleanup}
 	fixture.config.ClosedForwarding = ClosedForwardingProfile{Certificate: certificate, AdmissionTraffic: resource.HostingTraffic{Tx: 1}, TerminationTraffic: resource.HostingTraffic{Tx: 1}, host: host}
-	receiver, ok := closedRouteReceiver(fixture.config, fixture.snapshot, route.ClosedPurposeForwarding, fixture.now)
+	receiver, ok := closedRouteReceiver(fixture.config, fixture.snapshot, ardp.PurposeForwarding, fixture.now)
 	if !ok {
 		t.Fatal("receiver unavailable")
 	}
@@ -72,12 +73,12 @@ func testClosedForwardingServeDirectOuterAdmission(t *testing.T, cleanup error) 
 			if err == nil {
 				err = lane.BeginInnerHello()
 			}
-			var hello route.ClosedLaneFrame
+			var hello ardp.Frame
 			if err == nil {
-				hello, err = route.ReadClosedLaneFrame(secured)
+				hello, err = ardp.ReadFrame(secured)
 			}
 			if err == nil {
-				_, err = route.DecodeClosedHello(hello.Body)
+				_, err = ardp.DecodeHello(hello.Body)
 				if err == nil {
 					err = lane.Activate(mustClosedForwardingHello(t, receiver, fixture.now.Add(time.Hour)))
 				}
@@ -90,15 +91,15 @@ func testClosedForwardingServeDirectOuterAdmission(t *testing.T, cleanup error) 
 	}()
 	defer func() { _ = peer.Close(); <-parent }()
 	hello := mustClosedForwardingHello(t, receiver, fixture.now.Add(time.Hour))
-	body, _ := route.EncodeClosedHello(hello)
-	if err = route.WriteClosedLaneFrame(peer, route.ClosedLaneFrame{Kind: 1, Body: body}); err != nil {
+	body, _ := ardp.EncodeHello(hello)
+	if err = ardp.WriteFrame(peer, ardp.Frame{Kind: 1, Body: body}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err = route.ReadClosedLaneFrame(peer); err != nil {
+	if _, err = ardp.ReadFrame(peer); err != nil {
 		t.Fatal(err)
 	}
-	open, _ := route.EncodeClosedNodeOpen(route.ClosedOpen{NextNodeID: receiver.NodeID, NextDutyGeneration: receiver.DutyGeneration, Purpose: route.ClosedPurposeForwarding, Deadline: hello.Deadline}, route.ClosedChildOrdinary)
-	if err = route.WriteClosedLaneFrame(peer, route.ClosedLaneFrame{Kind: 4, Lane: 1, Body: open}); err != nil {
+	open, _ := route.EncodeClosedNodeOpen(route.ClosedOpen{NextNodeID: receiver.NodeID, NextDutyGeneration: receiver.DutyGeneration, Purpose: ardp.PurposeForwarding, Deadline: hello.Deadline}, route.ClosedChildOrdinary)
+	if err = ardp.WriteFrame(peer, ardp.Frame{Kind: 4, Lane: 1, Body: open}); err != nil {
 		t.Fatal(err)
 	}
 	innerRaw := &outerTestInnerConn{outer: peer, lane: 1}
@@ -106,18 +107,18 @@ func testClosedForwardingServeDirectOuterAdmission(t *testing.T, cleanup error) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	body, _ = route.EncodeClosedHello(hello)
-	if err = route.WriteClosedLaneFrame(inner, route.ClosedLaneFrame{Kind: 1, Body: body}); err != nil {
+	body, _ = ardp.EncodeHello(hello)
+	if err = ardp.WriteFrame(inner, ardp.Frame{Kind: 1, Body: body}); err != nil {
 		t.Fatal(err)
 	}
-	if err = route.WriteClosedLaneFrame(inner, route.ClosedLaneFrame{Kind: 2, Body: append([]byte{2}, token...)}); err != nil {
+	if err = ardp.WriteFrame(inner, ardp.Frame{Kind: 2, Body: append([]byte{2}, token...)}); err != nil {
 		t.Fatal(err)
 	}
 	drained := make(chan struct{})
 	go func() {
 		defer close(drained)
 		for {
-			if _, readErr := route.ReadClosedLaneFrame(peer); readErr != nil {
+			if _, readErr := ardp.ReadFrame(peer); readErr != nil {
 				return
 			}
 		}
@@ -148,7 +149,7 @@ func TestClosedForwardingServeDirectRetainsConstructorCleanupFailure(t *testing.
 	cleanup := errors.New("host release failed")
 	host := &cleanupFailureHost{release: cleanup}
 	fixture.config.ClosedForwarding = ClosedForwardingProfile{Certificate: certificate, AdmissionTraffic: resource.HostingTraffic{Tx: 1}, TerminationTraffic: resource.HostingTraffic{Tx: 1}, host: host}
-	receiver, available := closedRouteReceiver(fixture.config, fixture.snapshot, route.ClosedPurposeForwarding, fixture.now)
+	receiver, available := closedRouteReceiver(fixture.config, fixture.snapshot, ardp.PurposeForwarding, fixture.now)
 	if !available {
 		t.Fatal("fixture receiver unavailable")
 	}
@@ -200,7 +201,7 @@ func TestClosedForwardingServeDirectSuccessfulHandoffLeavesCleanupToForwarding(t
 	cleanup := errors.New("successor release failed")
 	host := &cleanupFailureHost{release: cleanup}
 	fixture.config.ClosedForwarding = ClosedForwardingProfile{Certificate: certificate, AdmissionTraffic: resource.HostingTraffic{Tx: 1}, TerminationTraffic: resource.HostingTraffic{Tx: 1}, host: host}
-	receiver, available := closedRouteReceiver(fixture.config, fixture.snapshot, route.ClosedPurposeForwarding, fixture.now)
+	receiver, available := closedRouteReceiver(fixture.config, fixture.snapshot, ardp.PurposeForwarding, fixture.now)
 	if !available {
 		t.Fatal("fixture receiver unavailable")
 	}
@@ -238,7 +239,7 @@ func TestClosedForwardingServeDirectSuccessfulHandoffLeavesCleanupToForwarding(t
 	}
 }
 
-func mustClosedForwardingHello(t *testing.T, receiver route.ClosedRoleReceiver, deadline time.Time) route.ClosedHello {
+func mustClosedForwardingHello(t *testing.T, receiver route.ClosedRoleReceiver, deadline time.Time) ardp.Hello {
 	t.Helper()
-	return route.ClosedHello{NetworkID: receiver.NetworkID, StateGeneration: receiver.StateGeneration, StateDigest: receiver.StateDigest, ProfileDigest: receiver.ProfileDigest, RecipientNodeID: receiver.NodeID, RecipientDutyGeneration: receiver.DutyGeneration, Purpose: route.ClosedPurposeForwarding, ChannelNonce: [32]byte{77}, Deadline: deadline}
+	return ardp.Hello{NetworkID: receiver.NetworkID, StateGeneration: receiver.StateGeneration, StateDigest: receiver.StateDigest, ProfileDigest: receiver.ProfileDigest, RecipientNodeID: receiver.NodeID, RecipientDutyGeneration: receiver.DutyGeneration, Purpose: ardp.PurposeForwarding, ChannelNonce: [32]byte{77}, Deadline: deadline}
 }

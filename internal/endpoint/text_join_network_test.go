@@ -13,6 +13,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 )
 
 func addTextDataJoinState(source *textSourceStateFixture) {
@@ -70,14 +71,14 @@ func exchangeTextRouteData(t *testing.T, reader, publisher *textContext, receive
 	prefixes := []textJoinPrefix{readerPrefix, responder}
 	for index, owner := range []*textContext{reader, publisher} {
 		go func() {
-			stream, err := prefixes[index].join(ctx, func(hello route.ClosedHello, class uint8) ([]byte, error) {
+			stream, err := prefixes[index].join(ctx, func(hello ardp.Hello, class uint8) ([]byte, error) {
 				owner.mu.Lock()
 				defer owner.mu.Unlock()
 				profile, now, err := owner.textPermissionProfileLocked()
 				if err != nil {
 					return nil, err
 				}
-				if hello.Purpose != route.ClosedPurposeDataJoin || hello.RecipientNodeID != receiver || class != 2 {
+				if hello.Purpose != ardp.PurposeDataJoin || hello.RecipientNodeID != receiver || class != 2 {
 					return nil, errors.New("JOIN crossed token purpose")
 				}
 				return owner.takeTextTokenLocked(profile, now, hello, class, ctx)

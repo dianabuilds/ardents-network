@@ -6,12 +6,14 @@ import (
 	"os"
 	"testing"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 )
 
 func TestClosedOuterWriterWaitsForReturnedCredit(t *testing.T) {
 	lane, bridge, _, _ := closedOuterAdmissionFixture(t)
-	frames := make(chan ClosedLaneFrame, 8)
-	bridge.write = func(frame ClosedLaneFrame, _ func() time.Time, _, _ bool) error { frames <- frame; return nil }
+	frames := make(chan ardp.Frame, 8)
+	bridge.write = func(frame ardp.Frame, _ func() time.Time, _, _ bool) error { frames <- frame; return nil }
 	if err := lane.SetWriteDeadline(time.Now().Add(2 * time.Second)); err != nil {
 		t.Fatal(err)
 	}
@@ -38,7 +40,7 @@ func TestClosedOuterWriterWaitsForReturnedCredit(t *testing.T) {
 	case <-time.After(40 * time.Millisecond):
 	}
 	body := binary.BigEndian.AppendUint32(nil, 1)
-	if _, err := bridge.Accept(ClosedLaneFrame{Kind: closedFrameCredit, Lane: 1, Body: body}); err != nil {
+	if _, err := bridge.Accept(ardp.Frame{Kind: ardp.KindCredit, Lane: 1, Body: body}); err != nil {
 		t.Fatal(err)
 	}
 	select {
@@ -50,7 +52,7 @@ func TestClosedOuterWriterWaitsForReturnedCredit(t *testing.T) {
 		t.Fatal("credit did not resume writer")
 	}
 	frame := <-frames
-	if frame.Kind != closedFrameBytes || len(frame.Body) != 1 || frame.Body[0] != 9 {
+	if frame.Kind != ardp.KindBytes || len(frame.Body) != 1 || frame.Body[0] != 9 {
 		t.Fatal("resumed payload changed")
 	}
 }
@@ -110,11 +112,11 @@ func TestClosedOuterCreditWaitDoesNotBlockSiblingLane(t *testing.T) {
 	case <-time.After(40 * time.Millisecond):
 	}
 	receiver := bridge.handshake.receiver
-	body, err := EncodeClosedNodeOpen(ClosedOpen{NextNodeID: receiver.NodeID, NextDutyGeneration: receiver.DutyGeneration, Purpose: ClosedPurposeForwarding, Deadline: receiver.Deadline}, ClosedChildOrdinary)
+	body, err := EncodeClosedNodeOpen(ClosedOpen{NextNodeID: receiver.NodeID, NextDutyGeneration: receiver.DutyGeneration, Purpose: ardp.PurposeForwarding, Deadline: receiver.Deadline}, ClosedChildOrdinary)
 	if err != nil {
 		t.Fatal(err)
 	}
-	sibling, err := bridge.Accept(ClosedLaneFrame{Kind: closedFrameOpen, Lane: 3, Body: body})
+	sibling, err := bridge.Accept(ardp.Frame{Kind: ardp.KindOpen, Lane: 3, Body: body})
 	if err != nil {
 		t.Fatal(err)
 	}

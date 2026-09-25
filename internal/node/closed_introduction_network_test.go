@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	"github.com/dianabuilds/ardents-network/internal/route/terminal"
 
 	"github.com/dianabuilds/ardents-network/internal/route"
@@ -15,7 +16,7 @@ import (
 func TestClosedIntroductionRegistrationOwnsSlotUntilExpiry(t *testing.T) {
 	for _, carrier := range []route.CarrierProfile{route.ClosedCarrierTCP, route.ClosedCarrierQUIC} {
 		t.Run(string(carrier), func(t *testing.T) {
-			fixture := newPrivateRecipientNetworkFixture(t, carrier, route.ClosedPurposeIntroduction, 3)
+			fixture := newPrivateRecipientNetworkFixture(t, carrier, ardp.PurposeIntroduction, 3)
 			request := terminal.RegistrationRequest{Nonce: [32]byte{101}, Slot: [32]byte{102}, Revision: 1, Expiry: time.Now().UTC().Add(5 * time.Second).Truncate(time.Second)}
 			first, closeFirst, status := registerIntroductionFixture(t, fixture, 0, request)
 			defer closeFirst()
@@ -72,10 +73,10 @@ func TestClosedIntroductionRegistrationOwnsSlotUntilExpiry(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if err := route.WriteClosedLaneFrame(valid, route.ClosedLaneFrame{Kind: 10, Body: body}); err != nil {
+			if err := ardp.WriteFrame(valid, ardp.Frame{Kind: 10, Body: body}); err != nil {
 				t.Fatal(err)
 			}
-			if frame, err := route.ReadClosedLaneFrame(valid); err == nil {
+			if frame, err := ardp.ReadFrame(valid); err == nil {
 				t.Fatalf("replayed nonce accepted: %+v", frame)
 			}
 		})
@@ -98,10 +99,10 @@ func sendRegistrationFixture(t *testing.T, connection net.Conn, request terminal
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := route.WriteClosedLaneFrame(connection, route.ClosedLaneFrame{Kind: 10, Body: body}); err != nil {
+	if err := ardp.WriteFrame(connection, ardp.Frame{Kind: 10, Body: body}); err != nil {
 		t.Fatal(err)
 	}
-	frame, err := route.ReadClosedLaneFrame(connection)
+	frame, err := ardp.ReadFrame(connection)
 	if err != nil || frame.Kind != 11 || frame.Lane != 0 {
 		t.Fatalf("registration result: %v", err)
 	}

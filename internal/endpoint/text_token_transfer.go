@@ -9,7 +9,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/endpoint/tokenjournal"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
-	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 )
 
 type textTokenTransferFailure struct {
@@ -36,7 +36,7 @@ func textTokenTransferFailureStage(cause error) string {
 // takeTextTokenLocked is shared only after the exact opening or issuance
 // flight has independently authorized its role. It durably marks consumed stock
 // and rechecks the surviving context before releasing bytes to Route.
-func (owner *textContext) takeTextTokenLocked(profile state.ClosedProfileView, now time.Time, hello route.ClosedHello, class uint8, attempt context.Context) ([]byte, error) {
+func (owner *textContext) takeTextTokenLocked(profile state.ClosedProfileView, now time.Time, hello ardp.Hello, class uint8, attempt context.Context) ([]byte, error) {
 	permission := owner.permission
 	token, err := permission.consumeTextToken(profile, now, hello, class)
 	if err != nil {

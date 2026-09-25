@@ -11,6 +11,8 @@ import (
 	"os"
 	"sync"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 )
 
 // Each bootstrap leg and the source Entry-to-Interior leg has one child.
@@ -72,19 +74,19 @@ func (stream *closedRoleChildStream) readFrames() {
 		_ = stream.retire() // Interrupt physical I/O only after owner notification.
 	}()
 	for {
-		frame, err := ReadClosedLaneFrame(stream.parent)
+		frame, err := ardp.ReadFrame(stream.parent)
 		if err != nil {
 			stream.finish(err)
 			return
 		}
 		if frame.Lane == 0 {
 			stream.mu.Lock()
-			stream.transferred += uint64(closedLaneHeaderSize + len(frame.Body))
+			stream.transferred += uint64(ardp.HeaderSize + len(frame.Body))
 			refill := stream.refill
-			if refill == nil || frame.Kind != closedFrameAccept {
+			if refill == nil || frame.Kind != ardp.KindAccept {
 				err = errors.New("closed bootstrap refill response is unavailable")
 			} else {
-				status, credit, decodeErr := DecodeClosedAcceptFrame(frame)
+				status, credit, decodeErr := ardp.DecodeAcceptFrame(frame)
 				if decodeErr != nil || status != 0 || credit != 64<<10 {
 					err = errors.Join(decodeErr, errors.New("closed bootstrap refill refused"))
 				}
@@ -106,29 +108,29 @@ func (stream *closedRoleChildStream) readFrames() {
 			return
 		}
 		stream.mu.Lock()
-		stream.transferred += uint64(closedLaneHeaderSize + len(frame.Body))
+		stream.transferred += uint64(ardp.HeaderSize + len(frame.Body))
 		switch frame.Kind {
-		case closedFrameBytes:
+		case ardp.KindBytes:
 			if stream.inputEOF || uint32(len(frame.Body)) > stream.receiveCredit {
 				err = errors.New("closed bootstrap receive credit exceeded")
 			} else {
 				stream.receiveCredit -= uint32(len(frame.Body))
 				stream.buffer = append(stream.buffer, frame.Body...)
 			}
-		case closedFrameCredit:
+		case ardp.KindCredit:
 			increment := binary.BigEndian.Uint32(frame.Body)
 			if increment > 64<<10-stream.credit {
 				err = errors.New("closed bootstrap credit exceeds outstanding bytes")
 			} else {
 				stream.credit += increment
 			}
-		case closedFrameEOF:
+		case ardp.KindEOF:
 			if stream.inputEOF {
 				err = errors.New("closed bootstrap duplicate EOF")
 			} else {
 				stream.inputEOF = true
 			}
-		case closedFrameClose:
+		case ardp.KindClose:
 			if frame.Body[0] == 0 {
 				stream.cleanPeerClose = stream.terminal == nil
 				err = io.EOF
@@ -200,7 +202,7 @@ func (stream *closedRoleChildStream) returnCredit() error {
 	stream.receiveCredit += count
 	stream.mu.Unlock()
 	body := binary.BigEndian.AppendUint32(nil, count)
-	err := stream.writeFrame(ClosedLaneFrame{Kind: closedFrameCredit, Lane: 1, Body: body}, true)
+	err := stream.writeFrame(ardp.Frame{Kind: ardp.KindCredit, Lane: 1, Body: body}, true)
 	if err != nil {
 		stream.finish(err)
 	}
@@ -213,10 +215,10 @@ func (stream *closedRoleChildStream) Write(value []byte) (int, error) {
 			return written, err
 		}
 		stream.mu.Lock()
-		count := min(len(value), closedLaneMaximum, int(stream.credit))
+		count := min(len(value), ardp.MaximumBodySize, int(stream.credit))
 		stream.credit -= uint32(count)
 		stream.mu.Unlock()
-		err := stream.writeFrame(ClosedLaneFrame{Kind: closedFrameBytes, Lane: 1, Body: value[:count]}, false)
+		err := stream.writeFrame(ardp.Frame{Kind: ardp.KindBytes, Lane: 1, Body: value[:count]}, false)
 		<-stream.writer
 		if err != nil {
 			stream.finish(err)
@@ -245,8 +247,8 @@ func (stream *closedRoleChildStream) beginTerminalWrite() func() {
 // replenish serializes the parent forwarding channel's lane-zero ADMIT and
 // consumes its one lane-zero ACCEPT. The same reader continues to own lane-one
 // child frames, so no second physical reader or protocol layer is introduced.
-func (stream *closedRoleChildStream) replenish(ctx context.Context, frame ClosedLaneFrame) error {
-	if frame.Kind != closedFrameAdmit || frame.Lane != 0 {
+func (stream *closedRoleChildStream) replenish(ctx context.Context, frame ardp.Frame) error {
+	if frame.Kind != ardp.KindAdmit || frame.Lane != 0 {
 		return errors.New("closed bootstrap refill frame is unavailable")
 	}
 	if err := stream.acquireWriter(true); err != nil {
@@ -330,7 +332,7 @@ func (stream *closedRoleChildStream) RemoteAddr() net.Addr { return stream.paren
 // CREDIT retains the original parent bound, whereas payload writes retain
 // the caller's exact deadline. Concurrent deadline updates still interrupt
 // an in-flight frame; no failed physical write is normalized into success.
-func (stream *closedRoleChildStream) writeFrame(frame ClosedLaneFrame, credit bool) error {
+func (stream *closedRoleChildStream) writeFrame(frame ardp.Frame, credit bool) error {
 	stream.mu.Lock()
 	deadline := stream.writeDeadline
 	if credit {
@@ -340,7 +342,7 @@ func (stream *closedRoleChildStream) writeFrame(frame ClosedLaneFrame, credit bo
 	terminal := stream.terminalWriters != 0
 	attempted := err == nil
 	if attempted {
-		stream.transferred += uint64(closedLaneHeaderSize + len(frame.Body))
+		stream.transferred += uint64(ardp.HeaderSize + len(frame.Body))
 		stream.physicalWriting = true
 		if !credit {
 			stream.payloadFrames++
@@ -353,7 +355,7 @@ func (stream *closedRoleChildStream) writeFrame(frame ClosedLaneFrame, credit bo
 		finishTerminal = beginClosedTerminalWrite(stream.parent)
 	}
 	if err == nil {
-		err = WriteClosedLaneFrame(stream.parent, frame)
+		err = ardp.WriteFrame(stream.parent, frame)
 	}
 	finishTerminal()
 	stream.mu.Lock()

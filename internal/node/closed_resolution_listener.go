@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	"github.com/dianabuilds/ardents-network/internal/service/reachability"
 )
 
@@ -31,7 +32,7 @@ func validateClosedResolutionProfile(local ClosedResolutionProfile, config runti
 		route.CarrierProfile(snapshot.CarrierProfile) != route.ClosedCarrierTCP && route.CarrierProfile(snapshot.CarrierProfile) != route.ClosedCarrierQUIC {
 		return errors.New("closed resolution local reservation is incomplete")
 	}
-	if _, ok := closedRouteReceiver(config, snapshot, route.ClosedPurposeReachability, now); !ok {
+	if _, ok := closedRouteReceiver(config, snapshot, ardp.PurposeReachability, now); !ok {
 		return errors.New("closed resolution State projection is unavailable")
 	}
 	return nil
@@ -46,7 +47,7 @@ func startClosedResolution(config runtimeConfig, snapshot dutyFacts) (*probeServ
 	if err != nil {
 		return nil, err
 	}
-	receiver, available := closedRouteReceiver(config, snapshot, route.ClosedPurposeReachability, config.now())
+	receiver, available := closedRouteReceiver(config, snapshot, ardp.PurposeReachability, config.now())
 	if !available {
 		return nil, errors.New("closed resolution State changed before reservation")
 	}

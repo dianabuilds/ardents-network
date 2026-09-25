@@ -12,6 +12,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/resource"
 	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 )
 
 func TestClosedNodeRestrictionRefusesValidPrivateTokenWithoutSpendingIt(t *testing.T) {
@@ -54,26 +55,26 @@ func TestClosedNodeRestrictionRefusesValidPrivateTokenWithoutSpendingIt(t *testi
 				t.Fatal(err)
 			}
 			receiver := fixture.receiver
-			hello := route.ClosedHello{NetworkID: receiver.NetworkID, StateGeneration: receiver.StateGeneration, StateDigest: receiver.StateDigest, ProfileDigest: receiver.ProfileDigest,
-				RecipientNodeID: receiver.NodeID, RecipientDutyGeneration: receiver.DutyGeneration, Purpose: route.ClosedPurposeForwarding, ChannelNonce: [32]byte{110}, Deadline: fixture.now.Add(9 * time.Second)}
-			body, err := route.EncodeClosedHello(hello)
+			hello := ardp.Hello{NetworkID: receiver.NetworkID, StateGeneration: receiver.StateGeneration, StateDigest: receiver.StateDigest, ProfileDigest: receiver.ProfileDigest,
+				RecipientNodeID: receiver.NodeID, RecipientDutyGeneration: receiver.DutyGeneration, Purpose: ardp.PurposeForwarding, ChannelNonce: [32]byte{110}, Deadline: fixture.now.Add(9 * time.Second)}
+			body, err := ardp.EncodeHello(hello)
 			if err != nil {
 				t.Fatal(err)
 			}
-			if err := route.WriteClosedLaneFrame(outer, route.ClosedLaneFrame{Kind: 1, Body: body}); err != nil {
+			if err := ardp.WriteFrame(outer, ardp.Frame{Kind: 1, Body: body}); err != nil {
 				t.Fatal(err)
 			}
-			if accepted, err := route.ReadClosedLaneFrame(outer); err != nil || accepted.Kind != 5 {
+			if accepted, err := ardp.ReadFrame(outer); err != nil || accepted.Kind != 5 {
 				t.Fatalf("outer acceptance: %+v %v", accepted, err)
 			}
 			for index, restriction := range []route.ClosedChildRestriction{route.ClosedChildIssuerBootstrap, route.ClosedChildOrdinary} {
 				lane := uint32(index*2 + 1)
 				body, err := route.EncodeClosedNodeOpen(route.ClosedOpen{NextNodeID: receiver.NodeID, NextDutyGeneration: receiver.DutyGeneration,
-					Purpose: route.ClosedPurposeForwarding, Deadline: fixture.now.Add(8 * time.Second)}, restriction)
+					Purpose: ardp.PurposeForwarding, Deadline: fixture.now.Add(8 * time.Second)}, restriction)
 				if err != nil {
 					t.Fatal(err)
 				}
-				if err := route.WriteClosedLaneFrame(outer, route.ClosedLaneFrame{Kind: 4, Lane: lane, Body: body}); err != nil {
+				if err := ardp.WriteFrame(outer, ardp.Frame{Kind: 4, Lane: lane, Body: body}); err != nil {
 					t.Fatal(err)
 				}
 				inner, err := route.OpenClosedRoleTLS(t.Context(), &outerTestInnerConn{outer: outer, lane: lane}, key, deadline)
@@ -82,17 +83,17 @@ func TestClosedNodeRestrictionRefusesValidPrivateTokenWithoutSpendingIt(t *testi
 				}
 				hello.ChannelNonce = [32]byte{byte(111 + index)}
 				hello.Deadline = fixture.now.Add(8 * time.Second)
-				body, err = route.EncodeClosedHello(hello)
+				body, err = ardp.EncodeHello(hello)
 				if err != nil {
 					t.Fatal(err)
 				}
-				if err := route.WriteClosedLaneFrame(inner, route.ClosedLaneFrame{Kind: 1, Body: body}); err != nil {
+				if err := ardp.WriteFrame(inner, ardp.Frame{Kind: 1, Body: body}); err != nil {
 					t.Fatal(err)
 				}
-				if err := route.WriteClosedLaneFrame(inner, route.ClosedLaneFrame{Kind: 2, Body: append([]byte{2}, token...)}); err != nil {
+				if err := ardp.WriteFrame(inner, ardp.Frame{Kind: 2, Body: append([]byte{2}, token...)}); err != nil {
 					t.Fatal(err)
 				}
-				accepted, err := route.ReadClosedLaneFrame(inner)
+				accepted, err := ardp.ReadFrame(inner)
 				if restriction == route.ClosedChildIssuerBootstrap {
 					if err == nil {
 						t.Fatalf("restricted child accepted valid private token: %+v", accepted)

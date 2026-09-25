@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 )
 
 // closedForwardingBlockedCloseCarrier makes cancellation observable before it
@@ -70,13 +71,13 @@ func TestClosedForwardingSessionCanceledLateAcceptWaitsForCloseAndReturnsNoSessi
 	workers.Add(1)
 	go func() {
 		defer workers.Done()
-		_, readErr := route.ReadClosedLaneFrame(peer)
+		_, readErr := ardp.ReadFrame(peer)
 		helloRead <- readErr
 		if readErr != nil {
 			return
 		}
 		<-allowAccept
-		acceptWritten <- route.WriteClosedLaneFrame(peer, accept)
+		acceptWritten <- ardp.WriteFrame(peer, accept)
 	}()
 	sessions := newClosedForwardingSessions()
 	ctx, cancel := context.WithCancel(t.Context())
@@ -91,8 +92,8 @@ func TestClosedForwardingSessionCanceledLateAcceptWaitsForCloseAndReturnsNoSessi
 	workers.Add(1)
 	go func() {
 		defer workers.Done()
-		session, acquireErr := sessions.acquire(ctx, key, lease, deadline, func() (route.ClosedHello, error) {
-			return route.ClosedHello{NetworkID: [32]byte{1}, StateGeneration: [32]byte{2}, StateDigest: [32]byte{3}, ProfileDigest: [32]byte{4}, RecipientNodeID: [32]byte{5}, RecipientDutyGeneration: 6, Purpose: route.ClosedPurposeForwarding, ChannelNonce: [32]byte{7}, Deadline: helloDeadline}, nil
+		session, acquireErr := sessions.acquire(ctx, key, lease, deadline, func() (ardp.Hello, error) {
+			return ardp.Hello{NetworkID: [32]byte{1}, StateGeneration: [32]byte{2}, StateDigest: [32]byte{3}, ProfileDigest: [32]byte{4}, RecipientNodeID: [32]byte{5}, RecipientDutyGeneration: 6, Purpose: ardp.PurposeForwarding, ChannelNonce: [32]byte{7}, Deadline: helloDeadline}, nil
 		})
 		creator <- outcome{session, acquireErr}
 	}()

@@ -7,6 +7,7 @@ import (
 	"crypto/rand"
 	"errors"
 
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	"github.com/dianabuilds/ardents-network/internal/route/terminal"
 )
 
@@ -25,7 +26,7 @@ func (prefix *ClosedSourcePrefix) ExchangeIssuer(ctx context.Context, present Cl
 		return ClosedIssuanceExchangeResult{}, err
 	}
 	defer clear(operation)
-	result.Body, err = prefix.exchangeControl(ctx, ClosedPurposeIssuer, prefix.plan.peers[2], present, operation)
+	result.Body, err = prefix.exchangeControl(ctx, ardp.PurposeIssuer, prefix.plan.peers[2], present, operation)
 	if err == nil {
 		_, err = terminal.DecodeIssuanceResult(result.Body, result.Nonce)
 	}

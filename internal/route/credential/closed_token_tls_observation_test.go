@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	"github.com/dianabuilds/ardents-network/internal/route/terminal"
 
 	"github.com/dianabuilds/ardents-network/internal/route"
@@ -40,12 +41,12 @@ func (connection *issuerTLSObservationConn) Read(p []byte) (int, error) {
 	connection.received = append(connection.received, p[:n]...)
 	return n, err
 }
-func issuerObservedFrames(t *testing.T, raw []byte) []route.ClosedLaneFrame {
+func issuerObservedFrames(t *testing.T, raw []byte) []ardp.Frame {
 	t.Helper()
 	input := bytes.NewReader(raw)
-	var frames []route.ClosedLaneFrame
+	var frames []ardp.Frame
 	for input.Len() > 0 {
-		frame, err := route.ReadClosedLaneFrame(input)
+		frame, err := ardp.ReadFrame(input)
 		if err != nil {
 			t.Fatal(err)
 		}

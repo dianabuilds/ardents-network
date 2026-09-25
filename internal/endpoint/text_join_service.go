@@ -11,6 +11,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
 	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 )
 
 // textJoinedTransport retains the bounded Endpoint exchange until the Service
@@ -272,11 +273,11 @@ func (owner *textContext) joinTextIntroduction(ctx context.Context, job *textJob
 	if err := attempt.binding.current(); err != nil {
 		return nil, err
 	}
-	return prefix.join(ctx, func(hello route.ClosedHello, class uint8) ([]byte, error) {
+	return prefix.join(ctx, func(hello ardp.Hello, class uint8) ([]byte, error) {
 		owner.mu.Lock()
 		defer owner.mu.Unlock()
 		current, now, err := owner.textPermissionProfileLocked()
-		if err != nil || current != profile || current.Digest != facts.ProfileDigest || !prefix.currentLocked(owner) || !owner.liveTextServiceJobLocked(job, owner.surface) || ctx.Err() != nil || !now.Before(facts.Deadline) || class != 2 || hello.Purpose != route.ClosedPurposeDataJoin || hello.RecipientNodeID != node || hello.RecipientDutyGeneration != generation || hello.NetworkID != current.NetworkID || hello.StateGeneration != current.StateGeneration || hello.StateDigest != current.StateDigest || hello.ProfileDigest != current.Digest || hello.ChannelNonce == [32]byte{} || !now.Before(hello.Deadline) || hello.Deadline.Unix() > facts.WorkSafetyNotAfter {
+		if err != nil || current != profile || current.Digest != facts.ProfileDigest || !prefix.currentLocked(owner) || !owner.liveTextServiceJobLocked(job, owner.surface) || ctx.Err() != nil || !now.Before(facts.Deadline) || class != 2 || hello.Purpose != ardp.PurposeDataJoin || hello.RecipientNodeID != node || hello.RecipientDutyGeneration != generation || hello.NetworkID != current.NetworkID || hello.StateGeneration != current.StateGeneration || hello.StateDigest != current.StateDigest || hello.ProfileDigest != current.Digest || hello.ChannelNonce == [32]byte{} || !now.Before(hello.Deadline) || hello.Deadline.Unix() > facts.WorkSafetyNotAfter {
 			return nil, errors.New("text JOIN token authority changed")
 		}
 		return owner.takeTextTokenLocked(current, now, hello, class, ctx)

@@ -8,6 +8,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 )
 
 func TestClosedForwardRecipientRequiresExactStateRecipientAndRecord(t *testing.T) {
@@ -24,7 +25,7 @@ func TestClosedForwardRecipientRequiresExactStateRecipientAndRecord(t *testing.T
 	view := state.ClosedRouteView{Profile: profile, NodeCount: 1}
 	view.Nodes[0] = state.ClosedRouteNodeView{NodeID: target, RecordDigest: recordDigest, RoleDomain: 1, Subrole: 1, DutyGeneration: 9}
 	config := runtimeConfig{Config: Config{CurrentClosedRoute: func() (state.ClosedRouteView, error) { return view, nil }}}
-	open := route.ClosedOpen{NextNodeID: target, NextDutyGeneration: 9, Purpose: route.ClosedPurposeForwarding, Deadline: now.Add(time.Second)}
+	open := route.ClosedOpen{NextNodeID: target, NextDutyGeneration: 9, Purpose: ardp.PurposeForwarding, Deadline: now.Add(time.Second)}
 	candidate, err := closedForwardRecipient(config, snapshot, open, now)
 	if err != nil || candidate != snapshot.Candidates[0] {
 		t.Fatalf("closed forward recipient = %+v / %v", candidate, err)

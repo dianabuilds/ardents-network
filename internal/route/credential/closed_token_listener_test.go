@@ -7,6 +7,7 @@ import (
 	"crypto/ed25519"
 	"crypto/rand"
 	"crypto/sha256"
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	"net"
 	"os"
 	"testing"
@@ -137,30 +138,30 @@ func closedTokenListenerIssuer(t *testing.T) (*ClosedTokenIssuer, state.ClosedPr
 
 func closedTokenListenerBootstrap(t *testing.T, connection net.Conn, profile state.ClosedProfileView, now time.Time, operation []byte) []byte {
 	t.Helper()
-	hello := route.ClosedHello{NetworkID: profile.NetworkID, StateGeneration: profile.StateGeneration, StateDigest: profile.StateDigest,
+	hello := ardp.Hello{NetworkID: profile.NetworkID, StateGeneration: profile.StateGeneration, StateDigest: profile.StateDigest,
 		ProfileDigest: profile.Digest, RecipientNodeID: profile.IssuerNodeID, RecipientDutyGeneration: profile.IssuerDutyGeneration,
-		Purpose: route.ClosedPurposeIssuer, ChannelNonce: [32]byte{74}, Deadline: now.Add(10 * time.Second)}
-	body, err := route.EncodeClosedHello(hello)
+		Purpose: ardp.PurposeIssuer, ChannelNonce: [32]byte{74}, Deadline: now.Add(10 * time.Second)}
+	body, err := ardp.EncodeHello(hello)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := route.WriteClosedLaneFrame(connection, route.ClosedLaneFrame{Kind: 1, Lane: 0, Body: body}); err != nil {
+	if err := ardp.WriteFrame(connection, ardp.Frame{Kind: 1, Lane: 0, Body: body}); err != nil {
 		t.Fatal(err)
 	}
-	accepted, err := route.ReadClosedLaneFrame(connection)
+	accepted, err := ardp.ReadFrame(connection)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if status, _, err := route.DecodeClosedAcceptFrame(accepted); err != nil || status != 0 {
+	if status, _, err := ardp.DecodeAcceptFrame(accepted); err != nil || status != 0 {
 		t.Fatalf("listener accept = %d / %v", status, err)
 	}
-	if err := route.WriteClosedLaneFrame(connection, route.ClosedLaneFrame{Kind: 3, Lane: 0, Body: route.EncodeClosedBootstrap(true)}); err != nil {
+	if err := ardp.WriteFrame(connection, ardp.Frame{Kind: 3, Lane: 0, Body: ardp.EncodeBootstrap(true)}); err != nil {
 		t.Fatal(err)
 	}
-	if err := route.WriteClosedLaneFrame(connection, route.ClosedLaneFrame{Kind: 10, Lane: 0, Body: operation}); err != nil {
+	if err := ardp.WriteFrame(connection, ardp.Frame{Kind: 10, Lane: 0, Body: operation}); err != nil {
 		t.Fatal(err)
 	}
-	result, err := route.ReadClosedLaneFrame(connection)
+	result, err := ardp.ReadFrame(connection)
 	if err != nil {
 		t.Fatal(err)
 	}

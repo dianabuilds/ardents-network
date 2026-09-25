@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
-	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	"github.com/dianabuilds/ardents-network/internal/service/instance"
 	"github.com/dianabuilds/ardents-network/internal/service/publication"
 	"github.com/dianabuilds/ardents-network/internal/service/reachability"
@@ -124,7 +124,7 @@ func (owner *textContext) publishTextDescriptor(ctx context.Context) (verified r
 	if err := owner.ensureTextResolutionStock(flight); err != nil {
 		return reachability.Verified{}, errors.Join(errors.New("text publication resolution token preparation failed"), err)
 	}
-	status, _, err := flight.source.exchangeDescriptor(attempt, func(hello route.ClosedHello, class uint8) ([]byte, error) {
+	status, _, err := flight.source.exchangeDescriptor(attempt, func(hello ardp.Hello, class uint8) ([]byte, error) {
 		return owner.presentTextResolutionToken(flight, hello, class)
 	}, [32]byte{}, raw)
 	if err != nil || status != 0 {

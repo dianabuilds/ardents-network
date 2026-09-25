@@ -7,6 +7,8 @@ import (
 	"encoding/binary"
 	"testing"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 )
 
 func TestClosedBootstrapForwardingOwnsRealReservationAndRefusesPrivateUpgrade(t *testing.T) {
@@ -36,15 +38,15 @@ func TestClosedBootstrapForwardingOwnsRealReservationAndRefusesPrivateUpgrade(t 
 	if len(governor.leases) != 1 || limits.channels != 1 {
 		t.Fatal("source release removed transferred pressure")
 	}
-	private, _ := EncodeClosedOpen(ClosedOpen{NextNodeID: [32]byte{2}, NextDutyGeneration: 1, Purpose: ClosedPurposeDataJoin, Deadline: now.Add(time.Second)})
-	if _, err := channel.Accept(ClosedLaneFrame{Kind: 4, Lane: 1, Body: private}); err == nil {
+	private, _ := EncodeClosedOpen(ClosedOpen{NextNodeID: [32]byte{2}, NextDutyGeneration: 1, Purpose: ardp.PurposeDataJoin, Deadline: now.Add(time.Second)})
+	if _, err := channel.Accept(ardp.Frame{Kind: 4, Lane: 1, Body: private}); err == nil {
 		t.Fatal("bootstrap admitted private purpose")
 	}
-	if _, err := channel.Accept(ClosedLaneFrame{Kind: 2, Lane: 0, Body: []byte{2}}); err == nil {
+	if _, err := channel.Accept(ardp.Frame{Kind: 2, Lane: 0, Body: []byte{2}}); err == nil {
 		t.Fatal("bootstrap silently upgraded to ADMIT")
 	}
-	open, _ := EncodeClosedOpen(ClosedOpen{NextNodeID: [32]byte{3}, NextDutyGeneration: 2, Purpose: ClosedPurposeIssuer, Deadline: now.Add(10 * time.Second)})
-	if _, err := channel.Accept(ClosedLaneFrame{Kind: 4, Lane: 1, Body: open}); err != nil {
+	open, _ := EncodeClosedOpen(ClosedOpen{NextNodeID: [32]byte{3}, NextDutyGeneration: 2, Purpose: ardp.PurposeIssuer, Deadline: now.Add(10 * time.Second)})
+	if _, err := channel.Accept(ardp.Frame{Kind: 4, Lane: 1, Body: open}); err != nil {
 		t.Fatal(err)
 	}
 	if governor.queued == 0 || channel.duty.controlQueued == 0 {
@@ -56,7 +58,7 @@ func TestClosedBootstrapForwardingOwnsRealReservationAndRefusesPrivateUpgrade(t 
 	if governor.queued != 0 || channel.duty.controlQueued != 0 {
 		t.Fatal("consumed OPEN retained queue")
 	}
-	frame := ClosedLaneFrame{Kind: 6, Lane: 1, Body: bytes.Repeat([]byte{1}, 16<<10)}
+	frame := ardp.Frame{Kind: 6, Lane: 1, Body: bytes.Repeat([]byte{1}, 16<<10)}
 	if err := channel.QueueReverse(frame); err != nil {
 		t.Fatal(err)
 	}
@@ -64,7 +66,7 @@ func TestClosedBootstrapForwardingOwnsRealReservationAndRefusesPrivateUpgrade(t 
 		t.Fatal(err)
 	}
 	channel.ReleaseReverse(frame)
-	credit := ClosedLaneFrame{Kind: 7, Lane: 1, Body: binary.BigEndian.AppendUint32(nil, uint32(len(frame.Body)))}
+	credit := ardp.Frame{Kind: 7, Lane: 1, Body: binary.BigEndian.AppendUint32(nil, uint32(len(frame.Body)))}
 	if _, err := channel.Accept(credit); err != nil {
 		t.Fatal(err)
 	}
@@ -75,7 +77,7 @@ func TestClosedBootstrapForwardingOwnsRealReservationAndRefusesPrivateUpgrade(t 
 		t.Fatal("duplicate credit enlarged receive window")
 	}
 	now = now.Add(10 * time.Second)
-	if _, err := channel.Accept(ClosedLaneFrame{Kind: 6, Lane: 1, Body: []byte{1}}); err == nil {
+	if _, err := channel.Accept(ardp.Frame{Kind: 6, Lane: 1, Body: []byte{1}}); err == nil {
 		t.Fatal("expired bootstrap accepted data")
 	}
 	if err := channel.AccountOutput(frame); err == nil {
@@ -105,23 +107,23 @@ func TestClosedBootstrapForwardingSharesQueueAcrossBothDirectionsAndDuties(t *te
 		}
 		channels = append(channels, channel)
 		defer channel.Cancel()
-		body, _ := EncodeClosedOpen(ClosedOpen{NextNodeID: [32]byte{8}, NextDutyGeneration: 1, Purpose: ClosedPurposeIssuer, Deadline: now.Add(time.Second)})
-		if _, err := channel.Accept(ClosedLaneFrame{Kind: 4, Lane: 1, Body: body}); err != nil {
+		body, _ := EncodeClosedOpen(ClosedOpen{NextNodeID: [32]byte{8}, NextDutyGeneration: 1, Purpose: ardp.PurposeIssuer, Deadline: now.Add(time.Second)})
+		if _, err := channel.Accept(ardp.Frame{Kind: 4, Lane: 1, Body: body}); err != nil {
 			t.Fatal(err)
 		}
 		channel.NextAvailable(nil)
-		if _, err := channel.Accept(ClosedLaneFrame{Kind: 6, Lane: 1, Body: bytes.Repeat([]byte{1}, 32<<10)}); err != nil {
+		if _, err := channel.Accept(ardp.Frame{Kind: 6, Lane: 1, Body: bytes.Repeat([]byte{1}, 32<<10)}); err != nil {
 			t.Fatal(err)
 		}
 		// Together with input this consumes exactly 64 KiB in the shared queue.
-		if err := channel.QueueReverse(ClosedLaneFrame{Kind: 6, Lane: 1, Body: bytes.Repeat([]byte{2}, (32<<10)-16)}); err != nil {
+		if err := channel.QueueReverse(ardp.Frame{Kind: 6, Lane: 1, Body: bytes.Repeat([]byte{2}, (32<<10)-16)}); err != nil {
 			t.Fatal(err)
 		}
 	}
 	if governor.queued != 256<<10 {
 		t.Fatalf("shared queue = %d", governor.queued)
 	}
-	if err := channels[0].QueueReverse(ClosedLaneFrame{Kind: 6, Lane: 1, Body: []byte{1}}); err == nil {
+	if err := channels[0].QueueReverse(ardp.Frame{Kind: 6, Lane: 1, Body: []byte{1}}); err == nil {
 		t.Fatal("shared bootstrap queue exceeded")
 	}
 	for _, channel := range channels {

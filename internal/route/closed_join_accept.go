@@ -8,6 +8,7 @@ import (
 	"net"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	"github.com/dianabuilds/ardents-network/internal/route/terminal"
 )
 
@@ -19,7 +20,7 @@ func (owner *ClosedJoinPairs) AcceptStream(ctx context.Context, lease *ClosedAdm
 	if owner == nil || ctx == nil || ctx.Err() != nil || lease == nil || connection == nil || !lease.claim.live() || lease.Class != 2 {
 		return errors.New("closed JOIN receiving admission unavailable")
 	}
-	body, err := EncodeClosedHello(lease.hello)
+	body, err := ardp.EncodeHello(lease.hello)
 	if err != nil {
 		return err
 	}
@@ -57,7 +58,7 @@ func (owner *ClosedJoinPairs) AcceptStream(ctx context.Context, lease *ClosedAdm
 			outcome = errors.Join(outcome, interruptErr)
 		}
 	}()
-	frame, err := ReadClosedLaneFrame(connection)
+	frame, err := ardp.ReadFrame(connection)
 	if err != nil {
 		return err
 	}
@@ -67,12 +68,12 @@ func (owner *ClosedJoinPairs) AcceptStream(ctx context.Context, lease *ClosedAdm
 		request, decodeErr := terminal.DecodeJoinRequest(frame.Body)
 		clear(frame.Body)
 		frame.Body = nil
-		if frame.Kind == closedFrameOperation && frame.Lane == 1 && decodeErr == nil {
+		if frame.Kind == ardp.KindOperation && frame.Lane == 1 && decodeErr == nil {
 			refusal, encodeErr := terminal.EncodeJoinResult(request.Nonce, 1)
 			if encodeErr != nil {
 				return errors.Join(err, encodeErr)
 			}
-			return errors.Join(err, WriteClosedLaneFrame(connection, ClosedLaneFrame{Kind: closedFrameResult, Lane: 1, Body: refusal}))
+			return errors.Join(err, ardp.WriteFrame(connection, ardp.Frame{Kind: ardp.KindResult, Lane: 1, Body: refusal}))
 		}
 		return err
 	}

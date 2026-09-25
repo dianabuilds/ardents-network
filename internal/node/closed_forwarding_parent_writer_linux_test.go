@@ -12,6 +12,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/resource"
 	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 )
 
 // A completed OPEN must not let one child's physical downstream write hold the
@@ -49,7 +50,7 @@ func TestClosedForwardingParentReaderServesIndependentChildWhileWriteBlocks(t *t
 	fixture.config.CurrentClosedProfile = func() (state.ClosedProfileView, bool) { return fixture.view.Profile, true }
 	host := &cleanupFailureHost{}
 	fixture.config.ClosedForwarding = ClosedForwardingProfile{Certificate: serverCertificate, AdmissionTraffic: resource.HostingTraffic{Tx: 1}, TerminationTraffic: resource.HostingTraffic{Tx: 1}, host: host}
-	receiver, ok := closedRouteReceiver(fixture.config, fixture.snapshot, route.ClosedPurposeForwarding, now)
+	receiver, ok := closedRouteReceiver(fixture.config, fixture.snapshot, ardp.PurposeForwarding, now)
 	if !ok {
 		t.Fatal("receiver unavailable")
 	}
@@ -122,26 +123,26 @@ func TestClosedForwardingParentReaderServesIndependentChildWhileWriteBlocks(t *t
 			peerDone <- errors.New("A TCP read bound is unavailable")
 			return
 		}
-		hello, readErr := route.ReadClosedLaneFrame(accepted.Connection)
+		hello, readErr := ardp.ReadFrame(accepted.Connection)
 		if readErr != nil || hello.Kind != 1 {
 			peerDone <- errors.New("A HELLO missing")
 			return
 		}
-		accept, frameErr := route.ClosedAcceptFrame(0, 64<<10)
+		accept, frameErr := ardp.AcceptFrame(0, 64<<10)
 		if frameErr == nil {
-			frameErr = route.WriteClosedLaneFrame(accepted.Connection, accept)
+			frameErr = ardp.WriteFrame(accepted.Connection, accept)
 		}
 		if frameErr != nil {
 			peerDone <- frameErr
 			return
 		}
-		child, readErr := route.ReadClosedLaneFrame(accepted.Connection)
+		child, readErr := ardp.ReadFrame(accepted.Connection)
 		if readErr != nil || child.Kind != 4 {
 			peerDone <- errors.New("A child OPEN missing")
 			return
 		}
 		close(aOpen)
-		frame, readErr := route.ReadClosedLaneFrame(accepted.Connection)
+		frame, readErr := ardp.ReadFrame(accepted.Connection)
 		if readErr != nil || frame.Kind != 6 || len(frame.Body) != 16<<10 {
 			peerDone <- errors.New("A first forwarded bytes missing")
 			return
@@ -149,7 +150,7 @@ func TestClosedForwardingParentReaderServesIndependentChildWhileWriteBlocks(t *t
 		close(aWriteStarted)
 		<-releaseA
 		for range 3 {
-			frame, readErr := route.ReadClosedLaneFrame(accepted.Connection)
+			frame, readErr := ardp.ReadFrame(accepted.Connection)
 			if readErr != nil || frame.Kind != 6 || len(frame.Body) != 16<<10 {
 				peerDone <- errors.New("A blocked bytes missing")
 				return
@@ -167,20 +168,20 @@ func TestClosedForwardingParentReaderServesIndependentChildWhileWriteBlocks(t *t
 			return
 		}
 		defer accepted.Connection.Close()
-		hello, readErr := route.ReadClosedLaneFrame(accepted.Connection)
+		hello, readErr := ardp.ReadFrame(accepted.Connection)
 		if readErr != nil || hello.Kind != 1 {
 			peerDone <- errors.New("B HELLO missing")
 			return
 		}
-		accept, frameErr := route.ClosedAcceptFrame(0, 64<<10)
+		accept, frameErr := ardp.AcceptFrame(0, 64<<10)
 		if frameErr == nil {
-			frameErr = route.WriteClosedLaneFrame(accepted.Connection, accept)
+			frameErr = ardp.WriteFrame(accepted.Connection, accept)
 		}
 		if frameErr != nil {
 			peerDone <- frameErr
 			return
 		}
-		child, readErr := route.ReadClosedLaneFrame(accepted.Connection)
+		child, readErr := ardp.ReadFrame(accepted.Connection)
 		if readErr != nil || child.Kind != 4 || child.Lane != 1 {
 			peerDone <- errors.New("B child OPEN missing")
 			return
@@ -203,7 +204,7 @@ func TestClosedForwardingParentReaderServesIndependentChildWhileWriteBlocks(t *t
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err = route.WriteClosedLaneFrame(client, route.ClosedLaneFrame{Kind: 4, Lane: 1, Body: aBody}); err != nil {
+	if err = ardp.WriteFrame(client, ardp.Frame{Kind: 4, Lane: 1, Body: aBody}); err != nil {
 		t.Fatal(err)
 	}
 	select {
@@ -215,7 +216,7 @@ func TestClosedForwardingParentReaderServesIndependentChildWhileWriteBlocks(t *t
 		t.Fatal("A OPEN did not complete")
 	}
 	for range 4 {
-		if err = route.WriteClosedLaneFrame(client, route.ClosedLaneFrame{Kind: 6, Lane: 1, Body: make([]byte, 16<<10)}); err != nil {
+		if err = ardp.WriteFrame(client, ardp.Frame{Kind: 6, Lane: 1, Body: make([]byte, 16<<10)}); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -226,12 +227,12 @@ func TestClosedForwardingParentReaderServesIndependentChildWhileWriteBlocks(t *t
 	case <-time.After(2 * time.Second):
 		t.Fatal("A downstream write did not start")
 	}
-	bOpen := route.ClosedOpen{NextNodeID: fixture.snapshot.Candidates[0].NodeID, NextDutyGeneration: fixture.view.Nodes[0].DutyGeneration, Purpose: route.ClosedPurposeForwarding, Deadline: now.Add(20 * time.Second)}
+	bOpen := route.ClosedOpen{NextNodeID: fixture.snapshot.Candidates[0].NodeID, NextDutyGeneration: fixture.view.Nodes[0].DutyGeneration, Purpose: ardp.PurposeForwarding, Deadline: now.Add(20 * time.Second)}
 	bBody, err := route.EncodeClosedOpen(bOpen)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err = route.WriteClosedLaneFrame(client, route.ClosedLaneFrame{Kind: 4, Lane: 3, Body: bBody}); err != nil {
+	if err = ardp.WriteFrame(client, ardp.Frame{Kind: 4, Lane: 3, Body: bBody}); err != nil {
 		t.Fatal(err)
 	}
 	select {
@@ -241,11 +242,11 @@ func TestClosedForwardingParentReaderServesIndependentChildWhileWriteBlocks(t *t
 	case <-time.After(2 * time.Second):
 		t.Fatal("B did not progress while A downstream write was held")
 	}
-	if err = route.WriteClosedLaneFrame(client, route.ClosedLaneFrame{Kind: 2, Lane: 0, Body: append([]byte{2}, closedRestrictionToken(t, fixture)...)}); err != nil {
+	if err = ardp.WriteFrame(client, ardp.Frame{Kind: 2, Lane: 0, Body: append([]byte{2}, closedRestrictionToken(t, fixture)...)}); err != nil {
 		t.Fatal(err)
 	}
 	_ = client.SetReadDeadline(time.Now().Add(time.Second))
-	frame, err := route.ReadClosedLaneFrame(client)
+	frame, err := ardp.ReadFrame(client)
 	if err != nil || frame.Kind != 5 {
 		t.Fatalf("control did not progress while A write was held: %+v / %v", frame, err)
 	}

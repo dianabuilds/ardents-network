@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/application/streamqualification"
-	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 )
 
 // Keep issuer admissions outside the next Introduction's ten-second wire
@@ -76,7 +76,7 @@ func (worker *qualifiedTextWorker) replenishStreams(ctx context.Context) error {
 	introduction := owner.introduction.currentLocked()
 	responder := owner.responder.currentLocked()
 	owner.mu.Unlock()
-	present := func(hello route.ClosedHello, class uint8) ([]byte, error) {
+	present := func(hello ardp.Hello, class uint8) ([]byte, error) {
 		return owner.presentQualifiedRefill(ctx, worker.job, hello, class)
 	}
 	if source != nil {
@@ -169,7 +169,7 @@ func (owner *textContext) ensureQualificationIssuerReserve(ctx context.Context, 
 	return owner.issueTextTokens(ctx, receivers, 1)
 }
 
-func (owner *textContext) presentQualifiedRefill(ctx context.Context, job *textJobIdentity, hello route.ClosedHello, class uint8) ([]byte, error) {
+func (owner *textContext) presentQualifiedRefill(ctx context.Context, job *textJobIdentity, hello ardp.Hello, class uint8) ([]byte, error) {
 	release, err := owner.acquireTextSourceOperation(ctx)
 	if err != nil {
 		return nil, err

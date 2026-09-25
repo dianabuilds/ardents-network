@@ -10,6 +10,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
 	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	"github.com/dianabuilds/ardents-network/internal/route/terminal"
 	"github.com/dianabuilds/ardents-network/internal/service/instance"
 )
@@ -117,7 +118,7 @@ func (owner *textContext) openTextRegistration(ctx context.Context, revision uin
 		return nil, err
 	}
 	createdAt := owner.endpoint.clock().UTC().Truncate(time.Second)
-	channel, err = flight.prefix.register(attempt, func(hello route.ClosedHello, class uint8) ([]byte, error) {
+	channel, err = flight.prefix.register(attempt, func(hello ardp.Hello, class uint8) ([]byte, error) {
 		return owner.presentTextRegistrationToken(flight, hello, class)
 	}, request)
 	if err != nil {
@@ -163,12 +164,12 @@ func (owner *textContext) finishTextRegistration(ctx context.Context, flight *te
 	return registered, nil
 }
 
-func (owner *textContext) presentTextRegistrationToken(flight *textRegistrationFlight, hello route.ClosedHello, class uint8) ([]byte, error) {
+func (owner *textContext) presentTextRegistrationToken(flight *textRegistrationFlight, hello ardp.Hello, class uint8) ([]byte, error) {
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
 	profile, now, err := owner.textPermissionProfileLocked()
 	if err != nil || owner.surface != broker.Administration || owner.registrationOpening != flight || !flight.prefix.currentLocked(&owner.introduction) || flight.context.Err() != nil || owner.permission == nil ||
-		class != 3 || hello.Purpose != route.ClosedPurposeIntroduction || hello.RecipientNodeID != flight.receiver || hello.NetworkID != profile.NetworkID || hello.ProfileDigest != profile.Digest ||
+		class != 3 || hello.Purpose != ardp.PurposeIntroduction || hello.RecipientNodeID != flight.receiver || hello.NetworkID != profile.NetworkID || hello.ProfileDigest != profile.Digest ||
 		hello.StateGeneration != profile.StateGeneration || hello.StateDigest != profile.StateDigest || hello.ChannelNonce == [32]byte{} || !now.Before(hello.Deadline) || hello.Deadline.After(profile.NotAfter) {
 		return nil, errors.New("text Publisher registration token authority unavailable")
 	}

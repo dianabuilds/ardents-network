@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	"github.com/dianabuilds/ardents-network/internal/route/terminal"
 
 	"github.com/dianabuilds/ardents-network/internal/route"
@@ -79,7 +80,7 @@ func TestClosedIssuerAdmittedOperationAfterTwoBootstrapBatches(t *testing.T) {
 				t.Fatalf("third bootstrap was not exhausted: %d / %v", exhausted.Status, err)
 			}
 			prefix, err := route.OpenClosedSourcePrefix(t.Context(), fixture, fixture.selection,
-				func(hello route.ClosedHello, class uint8) ([]byte, error) {
+				func(hello ardp.Hello, class uint8) ([]byte, error) {
 					for index := 0; index < 2; index++ {
 						if hello.RecipientNodeID == fixture.view.Nodes[index].NodeID && class == 2 && forward[index] != nil {
 							token := forward[index]
@@ -94,8 +95,8 @@ func TestClosedIssuerAdmittedOperationAfterTwoBootstrapBatches(t *testing.T) {
 			}
 			defer prefix.Close()
 			exchange := func(token []byte) (route.ClosedIssuanceExchangeResult, error) {
-				return prefix.ExchangeIssuer(t.Context(), func(hello route.ClosedHello, class uint8) ([]byte, error) {
-					if hello.RecipientNodeID != profile.IssuerNodeID || hello.Purpose != route.ClosedPurposeIssuer || class != 1 {
+				return prefix.ExchangeIssuer(t.Context(), func(hello ardp.Hello, class uint8) ([]byte, error) {
+					if hello.RecipientNodeID != profile.IssuerNodeID || hello.Purpose != ardp.PurposeIssuer || class != 1 {
 						return nil, errors.New("wrong receiving token challenge")
 					}
 					return bytes.Clone(token), nil

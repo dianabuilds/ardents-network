@@ -8,6 +8,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 )
 
 // textIssuanceOperation owns one admitted issuance attempt through transport
@@ -71,7 +72,7 @@ func (operation *textIssuanceOperation) run(caller context.Context, source route
 	if operation.prefix == nil {
 		result, exchangeErr = route.ExchangeClosedBootstrap(operation.context, source, selection, operation.request)
 	} else {
-		result, exchangeErr = operation.prefix.exchangeIssuer(operation.context, func(hello route.ClosedHello, tokenClass uint8) ([]byte, error) {
+		result, exchangeErr = operation.prefix.exchangeIssuer(operation.context, func(hello ardp.Hello, tokenClass uint8) ([]byte, error) {
 			return operation.presentTextIssuerToken(selection, hello, tokenClass)
 		}, operation.request)
 	}

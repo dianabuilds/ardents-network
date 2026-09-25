@@ -11,6 +11,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
 	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	"github.com/dianabuilds/ardents-network/internal/service/publication"
 	"github.com/dianabuilds/ardents-network/internal/service/reachability"
 )
@@ -215,7 +216,7 @@ func TestTextResolutionNetworkCannotRollBackLocalDescriptorFloor(t *testing.T) {
 			if err := owner.issueTextTokens(t.Context(), [][32]byte{receiver}, 1); err != nil {
 				t.Fatal(err)
 			}
-			status, _, err := prefix.ExchangeDescriptor(t.Context(), func(hello route.ClosedHello, class uint8) ([]byte, error) {
+			status, _, err := prefix.ExchangeDescriptor(t.Context(), func(hello ardp.Hello, class uint8) ([]byte, error) {
 				owner.mu.Lock()
 				defer owner.mu.Unlock()
 				profile, at, err := owner.textPermissionProfileLocked()

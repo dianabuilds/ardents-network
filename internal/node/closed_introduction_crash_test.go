@@ -18,6 +18,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	introductioncapsule "github.com/dianabuilds/ardents-network/internal/route/capsule"
 	"github.com/dianabuilds/ardents-network/internal/route/terminal"
 )
@@ -50,7 +51,7 @@ func TestClosedIntroductionClientCrashStopsDelivery(t *testing.T) {
 	}
 	for _, carrier := range []route.CarrierProfile{route.ClosedCarrierTCP, route.ClosedCarrierQUIC} {
 		t.Run(string(carrier), func(t *testing.T) {
-			fixture := newPrivateRecipientNetworkFixture(t, carrier, route.ClosedPurposeIntroduction, 3, 1)
+			fixture := newPrivateRecipientNetworkFixture(t, carrier, ardp.PurposeIntroduction, 3, 1)
 			request := terminal.RegistrationRequest{Nonce: [32]byte{121}, Slot: [32]byte{122}, Revision: 1, Expiry: time.Now().UTC().Add(60 * time.Second).Truncate(time.Second)}
 			input := introductionCrashClient{Profile: fixture.profile, Carrier: carrier, Endpoint: fixture.endpoint, Certificates: fixture.certificate.Certificate, PrivateKey: fixture.certificate.PrivateKey.(ed25519.PrivateKey), Receiver: fixture.receiver, ServerKey: fixture.serverKey, Token: fixture.tokens[0], Request: request}
 			root := t.TempDir()
@@ -168,7 +169,7 @@ func runIntroductionCrashClient(t *testing.T, path string) {
 	}
 	var pending uint32
 	for {
-		frame, err := route.ReadClosedLaneFrame(connection)
+		frame, err := ardp.ReadFrame(connection)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -191,7 +192,7 @@ func runIntroductionCrashClient(t *testing.T, path string) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if err := route.WriteClosedLaneFrame(connection, route.ClosedLaneFrame{Kind: 11, Lane: frame.Lane, Body: response}); err != nil {
+		if err := ardp.WriteFrame(connection, ardp.Frame{Kind: 11, Lane: frame.Lane, Body: response}); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -200,7 +201,7 @@ func runIntroductionCrashClient(t *testing.T, path string) {
 func submitIntroductionCrashFixture(t *testing.T, fixture *resolutionNetworkFixture, request terminal.RegistrationRequest, index int) (uint8, error) {
 	t.Helper()
 	submitter := *fixture
-	submitter.receiver.ExpectedPurpose = route.ClosedPurposeSubmission
+	submitter.receiver.ExpectedPurpose = ardp.PurposeSubmission
 	ctx, cancel := context.WithTimeout(t.Context(), 12*time.Second)
 	defer cancel()
 	connection, closeCarrier, err := submitter.openTerminal(ctx, fixture.supplementary[1][index], 1)
@@ -218,10 +219,10 @@ func submitIntroductionCrashFixture(t *testing.T, fixture *resolutionNetworkFixt
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := route.WriteClosedLaneFrame(connection, route.ClosedLaneFrame{Kind: 10, Body: raw}); err != nil {
+	if err := ardp.WriteFrame(connection, ardp.Frame{Kind: 10, Body: raw}); err != nil {
 		t.Fatal(err)
 	}
-	frame, err := route.ReadClosedLaneFrame(connection)
+	frame, err := ardp.ReadFrame(connection)
 	if err != nil {
 		return 1, err
 	}

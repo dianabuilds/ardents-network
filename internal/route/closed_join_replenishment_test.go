@@ -8,6 +8,8 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 )
 
 // Pairing, admission and time use the existing real-owner fixture. Finished
@@ -37,8 +39,8 @@ func replenishableJoinFixture(t *testing.T) (*closedJoinFixture, *ClosedJoinSide
 	return f, first, second
 }
 
-func joinRefillFrame() ClosedLaneFrame {
-	return ClosedLaneFrame{Kind: closedFrameAdmit, Body: append([]byte{2}, bytes.Repeat([]byte{91}, 354)...)}
+func joinRefillFrame() ardp.Frame {
+	return ardp.Frame{Kind: ardp.KindAdmit, Body: append([]byte{2}, bytes.Repeat([]byte{91}, 354)...)}
 }
 
 func TestClosedJoinReplenishmentKeepsOriginalAuthorityAndIndependentReserve(t *testing.T) {
@@ -60,7 +62,7 @@ func TestClosedJoinReplenishmentKeepsOriginalAuthorityAndIndependentReserve(t *t
 	// Pairing's ten-second deadline must not replace admitted data lifetime.
 	f.clock.Store(f.now.Add(11 * time.Second).Unix())
 	var encoded bytes.Buffer
-	if err := WriteClosedLaneFrame(&encoded, joinRefillFrame()); err != nil {
+	if err := ardp.WriteFrame(&encoded, joinRefillFrame()); err != nil {
 		t.Fatal(err)
 	}
 	before := side.used
@@ -68,7 +70,7 @@ func TestClosedJoinReplenishmentKeepsOriginalAuthorityAndIndependentReserve(t *t
 	if err != nil {
 		t.Fatal(err)
 	}
-	if side.used != before+closedLaneHeaderSize+355 {
+	if side.used != before+ardp.HeaderSize+355 {
 		t.Fatal("ADMIT was not charged to the old reserve")
 	}
 	if err := side.replenish(frame); err != nil {
@@ -113,7 +115,7 @@ func TestClosedJoinReplenishmentRejectsBeforeVerification(t *testing.T) {
 			case "child-lane":
 				frame.Lane = 1
 			case "wrong-kind":
-				frame.Kind = closedFrameOperation
+				frame.Kind = ardp.KindOperation
 			}
 			f.pairs.replenish = func(ClosedAdmissionVerification) (func() error, error) {
 				t.Error("invalid refill reached token spend")
@@ -132,9 +134,9 @@ func TestClosedJoinReplenishmentRejectsBeforeVerification(t *testing.T) {
 
 func TestClosedJoinReplenishmentCannotBorrowForItsOwnADMIT(t *testing.T) {
 	_, side, _ := replenishableJoinFixture(t)
-	side.used = side.byteLimit - closedLaneHeaderSize - 354
+	side.used = side.byteLimit - ardp.HeaderSize - 354
 	var encoded bytes.Buffer
-	if err := WriteClosedLaneFrame(&encoded, joinRefillFrame()); err != nil {
+	if err := ardp.WriteFrame(&encoded, joinRefillFrame()); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := side.readFrame(&encoded); err == nil {

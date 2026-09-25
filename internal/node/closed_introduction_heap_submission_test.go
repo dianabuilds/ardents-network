@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	introductioncapsule "github.com/dianabuilds/ardents-network/internal/route/capsule"
 	"github.com/dianabuilds/ardents-network/internal/route/terminal"
 )
@@ -20,7 +20,7 @@ import (
 func startHeapSubmission(t *testing.T, fixture *resolutionNetworkFixture, request terminal.RegistrationRequest) (net.Conn, func(), [32]byte, [2][32]byte, []byte) {
 	t.Helper()
 	submitter := *fixture
-	submitter.receiver.ExpectedPurpose = route.ClosedPurposeSubmission
+	submitter.receiver.ExpectedPurpose = ardp.PurposeSubmission
 	connection, closeCarrier, err := submitter.openTerminal(t.Context(), fixture.supplementary[1][0], 1)
 	if err != nil {
 		t.Fatal(err)
@@ -54,7 +54,7 @@ func startHeapSubmission(t *testing.T, fixture *resolutionNetworkFixture, reques
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := route.WriteClosedLaneFrame(connection, route.ClosedLaneFrame{Kind: 10, Body: operation}); err != nil {
+	if err := ardp.WriteFrame(connection, ardp.Frame{Kind: 10, Body: operation}); err != nil {
 		t.Fatal(err)
 	}
 	return connection, closeCarrier, nonce, private, sealed.Ciphertext

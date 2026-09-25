@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	"github.com/dianabuilds/ardents-network/internal/route/terminal"
 )
 
@@ -42,7 +43,7 @@ type ClosedJoinSide struct {
 	pair                           *closedJoinPair
 	duty                           *closedDutyChannel
 	stream                         *closedJoinStream
-	hello                          ClosedHello
+	hello                          ardp.Hello
 	exporter                       [32]byte
 	byteLimit                      uint64
 	releases                       []func() error
@@ -55,7 +56,7 @@ type ClosedJoinSide struct {
 }
 
 func NewClosedJoinPairs(receiver ClosedRoleReceiver, limits *ClosedDutyLimits) (*ClosedJoinPairs, error) {
-	if !validClosedRoleReceiver(receiver) || receiver.ExpectedPurpose != ClosedPurposeDataJoin ||
+	if !validClosedRoleReceiver(receiver) || receiver.ExpectedPurpose != ardp.PurposeDataJoin ||
 		receiver.RoleDomain != closedRoleDomainRendezvous || receiver.Subrole != closedDutyDataJoin || limits == nil || limits.clock == nil || limits.clock().IsZero() {
 		return nil, errors.New("closed JOIN duty unavailable")
 	}
@@ -65,8 +66,8 @@ func NewClosedJoinPairs(receiver ClosedRoleReceiver, limits *ClosedDutyLimits) (
 // Reserve accepts exactly one lane-1 JOIN after actual class-2 admission. It
 // transfers the original reservation only on success. A refused side retains
 // its caller-owned lease and cannot replace or cancel an existing reservation.
-func (owner *ClosedJoinPairs) Reserve(lease *ClosedAdmission, frame ClosedLaneFrame) (*ClosedJoinSide, error) {
-	if owner == nil || lease == nil || frame.Kind != closedFrameOperation || frame.Lane != 1 {
+func (owner *ClosedJoinPairs) Reserve(lease *ClosedAdmission, frame ardp.Frame) (*ClosedJoinSide, error) {
+	if owner == nil || lease == nil || frame.Kind != ardp.KindOperation || frame.Lane != 1 {
 		return nil, errors.New("closed JOIN lane unavailable")
 	}
 	request, err := terminal.DecodeJoinRequest(frame.Body)
@@ -78,7 +79,7 @@ func (owner *ClosedJoinPairs) Reserve(lease *ClosedAdmission, frame ClosedLaneFr
 	now, wall := owner.limits.clock().UTC(), time.Now()
 	r, h := owner.receiver, lease.hello
 	if owner.closed || !lease.claim.live() || lease.Class != 2 || lease.Bytes != closedClassBytes(2) ||
-		h.Purpose != ClosedPurposeDataJoin || h.NetworkID != r.NetworkID || h.StateGeneration != r.StateGeneration || h.StateDigest != r.StateDigest ||
+		h.Purpose != ardp.PurposeDataJoin || h.NetworkID != r.NetworkID || h.StateGeneration != r.StateGeneration || h.StateDigest != r.StateDigest ||
 		h.ProfileDigest != r.ProfileDigest || h.RecipientNodeID != r.NodeID || h.RecipientDutyGeneration != r.DutyGeneration ||
 		!now.Before(lease.Deadline) || lease.Deadline.After(r.NotAfter) || !now.Before(request.Deadline) || request.Deadline.After(lease.Deadline) {
 		return nil, errors.New("closed JOIN admission unavailable")
@@ -112,7 +113,7 @@ func (owner *ClosedJoinPairs) Reserve(lease *ClosedAdmission, frame ClosedLaneFr
 			}
 		})
 	}
-	side := &ClosedJoinSide{owner: owner, pair: pair, hello: lease.hello, exporter: lease.exporter, byteLimit: lease.Bytes, duty: duty, nonce: request.Nonce, used: 3*closedLaneHeaderSize + 209 + 355 + 5 + closedLaneHeaderSize + 4096, deadline: lease.Deadline, wallDeadline: wall.Add(lease.Deadline.Sub(now))}
+	side := &ClosedJoinSide{owner: owner, pair: pair, hello: lease.hello, exporter: lease.exporter, byteLimit: lease.Bytes, duty: duty, nonce: request.Nonce, used: 3*ardp.HeaderSize + 209 + 355 + 5 + ardp.HeaderSize + 4096, deadline: lease.Deadline, wallDeadline: wall.Add(lease.Deadline.Sub(now))}
 	if release != nil {
 		side.releases = append(side.releases, release)
 	}

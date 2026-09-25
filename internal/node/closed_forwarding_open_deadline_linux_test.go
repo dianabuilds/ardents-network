@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 )
 
 func TestClosedForwardingOpenExpiresWhileExactCarrierDialWaits(t *testing.T) {
@@ -34,7 +35,7 @@ func TestClosedForwardingOpenExpiresWhileExactCarrierDialWaits(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	receiver, available := closedRouteReceiver(fixture.config, fixture.snapshot, route.ClosedPurposeForwarding, fixture.now)
+	receiver, available := closedRouteReceiver(fixture.config, fixture.snapshot, ardp.PurposeForwarding, fixture.now)
 	if !available {
 		t.Fatal("forwarding receiver unavailable")
 	}

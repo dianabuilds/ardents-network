@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	"github.com/dianabuilds/ardents-network/internal/route/terminal"
 	"github.com/dianabuilds/ardents-network/internal/service/reachability"
 )
@@ -16,7 +17,7 @@ func (server *closedResolutionServer) current() bool {
 	if err != nil {
 		return false
 	}
-	receiver, ok := closedRouteReceiver(server.config, snapshot, route.ClosedPurposeReachability, server.config.now())
+	receiver, ok := closedRouteReceiver(server.config, snapshot, ardp.PurposeReachability, server.config.now())
 	return ok && receiver == server.receiver
 }
 
@@ -53,12 +54,12 @@ func (server *closedResolutionServer) serveInner(ctx context.Context, lane *rout
 	if lane.BeginInnerHello() != nil {
 		return
 	}
-	frame, err := route.ReadClosedLaneFrame(secured)
+	frame, err := ardp.ReadFrame(secured)
 	if err != nil || frame.Kind != 1 || frame.Lane != 0 {
 		return
 	}
-	hello, err := route.DecodeClosedHello(frame.Body)
-	if err != nil || hello.Purpose != route.ClosedPurposeReachability || lane.Activate(hello) != nil {
+	hello, err := ardp.DecodeHello(frame.Body)
+	if err != nil || hello.Purpose != ardp.PurposeReachability || lane.Activate(hello) != nil {
 		return
 	}
 	if server.serveAdmitted(ctx, secured, lane, frame) == nil {
@@ -66,7 +67,7 @@ func (server *closedResolutionServer) serveInner(ctx context.Context, lane *rout
 	}
 }
 
-func (server *closedResolutionServer) serveAdmitted(ctx context.Context, connection net.Conn, lane *route.ClosedOuterBridgeLane, hello route.ClosedLaneFrame) error {
+func (server *closedResolutionServer) serveAdmitted(ctx context.Context, connection net.Conn, lane *route.ClosedOuterBridgeLane, hello ardp.Frame) error {
 	exporter, err := route.ClosedRoleTLSExporter(connection)
 	if err != nil {
 		return err
@@ -79,7 +80,7 @@ func (server *closedResolutionServer) serveAdmitted(ctx context.Context, connect
 	if _, err := channel.Accept(hello); err != nil {
 		return err
 	}
-	frame, err := route.ReadClosedLaneFrame(connection)
+	frame, err := ardp.ReadFrame(connection)
 	if err != nil || frame.Kind != 2 || frame.Lane != 0 || len(frame.Body) != 355 || frame.Body[0] != 1 {
 		return errors.New("closed resolution requires Control admission")
 	}
@@ -94,15 +95,15 @@ func (server *closedResolutionServer) serveAdmitted(ctx context.Context, connect
 	if err := connection.SetDeadline(lease.Deadline); err != nil {
 		return err
 	}
-	accepted, err := route.ClosedAcceptFrame(0, 64<<10)
+	accepted, err := ardp.AcceptFrame(0, 64<<10)
 	if err != nil {
 		return err
 	}
 	used := uint64(16 + len(hello.Body) + 16 + len(frame.Body) + 16 + len(accepted.Body))
-	if err := route.WriteClosedLaneFrame(connection, accepted); err != nil {
+	if err := ardp.WriteFrame(connection, accepted); err != nil {
 		return err
 	}
-	operation, err := route.ReadClosedLaneFrame(connection)
+	operation, err := ardp.ReadFrame(connection)
 	if err != nil || operation.Kind != 10 || operation.Lane != 0 {
 		return errors.New("closed resolution operation is invalid")
 	}
@@ -121,7 +122,7 @@ func (server *closedResolutionServer) serveAdmitted(ctx context.Context, connect
 	if ctx.Err() != nil || !server.current() || !server.config.now().Before(lease.Deadline) {
 		return errors.New("closed resolution ended before acknowledgement")
 	}
-	return route.WriteClosedLaneFrame(connection, route.ClosedLaneFrame{Kind: 11, Body: result})
+	return ardp.WriteFrame(connection, ardp.Frame{Kind: 11, Body: result})
 }
 
 func (server *closedResolutionServer) resolve(request terminal.DescriptorRequest, now time.Time) ([]byte, error) {
@@ -167,7 +168,7 @@ func (server *closedResolutionServer) currentIntroduction(introduction reachabil
 	matches := 0
 	for index := uint8(0); index < view.NodeCount; index++ {
 		node := view.Nodes[index]
-		if node.NodeID != introduction.NodeID || !route.ClosedPurposePermitsDuty(route.ClosedPurposeIntroduction, node.RoleDomain, node.Subrole) {
+		if node.NodeID != introduction.NodeID || !route.ClosedPurposePermitsDuty(ardp.PurposeIntroduction, node.RoleDomain, node.Subrole) {
 			continue
 		}
 		for peerIndex := uint8(0); peerIndex < snapshot.CandidateCount; peerIndex++ {

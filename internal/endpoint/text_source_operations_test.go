@@ -10,6 +10,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/network/duty"
 	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 )
 
 func TestTextSourcePreparationFailureRetainsStageAndCause(t *testing.T) {
@@ -74,9 +75,9 @@ func TestTextTokenPresentationClassifiesConcurrentRoleCommit(t *testing.T) {
 		cancel()
 		close(flight.done)
 	}()
-	hello := route.ClosedHello{NetworkID: profile.NetworkID, StateGeneration: profile.StateGeneration, StateDigest: profile.StateDigest,
+	hello := ardp.Hello{NetworkID: profile.NetworkID, StateGeneration: profile.StateGeneration, StateDigest: profile.StateDigest,
 		ProfileDigest: profile.Digest, RecipientNodeID: selection.EntryNodeID, RecipientDutyGeneration: source.view.Nodes[0].DutyGeneration,
-		Purpose: route.ClosedPurposeForwarding, Deadline: time.Now().Add(10 * time.Second), ChannelNonce: fixtureID(199)}
+		Purpose: ardp.PurposeForwarding, Deadline: time.Now().Add(10 * time.Second), ChannelNonce: fixtureID(199)}
 	started := time.Now()
 	_, err = flight.presentTextToken(selection, hello, 2)
 	if got := textTokenPresentationFailureStage(err); got != "selection-role-members-conflict-read" {

@@ -8,6 +8,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/endpoint/tokenjournal"
 	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	"github.com/dianabuilds/ardents-network/internal/route/credential"
 )
 
@@ -94,7 +95,7 @@ func (owner *textContext) openTextPrefix(ctx context.Context) (*textSourceHandle
 	selection, openErr := owner.ensureTextPrefixStock(operation.context, operation)
 	var prefix *route.ClosedSourcePrefix
 	if openErr == nil {
-		prefix, openErr = route.OpenClosedSourcePrefix(operation.context, source, selection, func(hello route.ClosedHello, class uint8) ([]byte, error) {
+		prefix, openErr = route.OpenClosedSourcePrefix(operation.context, source, selection, func(hello ardp.Hello, class uint8) ([]byte, error) {
 			return operation.presentTextToken(selection, hello, class)
 		})
 		if openErr != nil {
@@ -110,14 +111,14 @@ func (owner *textContext) openTextPrefix(ctx context.Context) (*textSourceHandle
 	}
 	return operation.complete(ctx, prefix, openErr)
 }
-func (operation *textPrefixOpeningOperation) presentTextToken(selection route.ClosedBootstrapSelection, hello route.ClosedHello, class uint8) ([]byte, error) {
+func (operation *textPrefixOpeningOperation) presentTextToken(selection route.ClosedBootstrapSelection, hello ardp.Hello, class uint8) ([]byte, error) {
 	owner := operation.owner
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
 	profile, now, err := owner.textPermissionProfileLocked()
 	if err != nil || owner.permission == nil || owner.permission.accepted == (credential.Permission{}) || !operation.admittedLocked(owner) ||
 		hello.NetworkID != profile.NetworkID || hello.StateGeneration != profile.StateGeneration || hello.StateDigest != profile.StateDigest ||
-		hello.ProfileDigest != profile.Digest || hello.Purpose != route.ClosedPurposeForwarding || class != 2 ||
+		hello.ProfileDigest != profile.Digest || hello.Purpose != ardp.PurposeForwarding || class != 2 ||
 		hello.ChannelNonce == [32]byte{} || !now.Before(hello.Deadline) || hello.Deadline.After(profile.NotAfter) {
 		return nil, textTokenPresentationFailureAt("authority", errors.Join(err, errors.New("text token presentation authority unavailable")))
 	}

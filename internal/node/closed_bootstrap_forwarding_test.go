@@ -8,6 +8,7 @@ import (
 	"crypto/tls"
 	"encoding/hex"
 	"errors"
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	"testing"
 	"time"
 
@@ -51,13 +52,13 @@ func newClosedBootstrapFixture(t *testing.T) *closedBootstrapFixture {
 	}
 	fixture.config = runtimeConfig{Config: Config{CurrentClosedRoute: func() (state.ClosedRouteView, error) { return fixture.view, nil }}}
 	var available bool
-	fixture.receiver, available = closedRouteReceiver(fixture.config, fixture.snapshot, route.ClosedPurposeForwarding, fixture.now)
+	fixture.receiver, available = closedRouteReceiver(fixture.config, fixture.snapshot, ardp.PurposeForwarding, fixture.now)
 	if !available {
 		t.Fatal("fixture receiver unavailable")
 	}
 	fixture.peer = fixture.snapshot.Candidates[0].PublicKey
 	fixture.open = route.ClosedOpen{NextNodeID: profile.IssuerNodeID, NextDutyGeneration: profile.IssuerDutyGeneration,
-		Purpose: route.ClosedPurposeIssuer, Deadline: fixture.now.Add(time.Second)}
+		Purpose: ardp.PurposeIssuer, Deadline: fixture.now.Add(time.Second)}
 	return fixture
 }
 
@@ -114,7 +115,7 @@ func TestClosedBootstrapRecipientRequiresCurrentAdjacentAndExactIssuer(t *testin
 		"wrong issuer":       func(f *closedBootstrapFixture) { f.view.Profile.IssuerNodeID[0]++ },
 		"wrong issuer duty":  func(f *closedBootstrapFixture) { f.open.NextDutyGeneration++ },
 		"private purpose": func(f *closedBootstrapFixture) {
-			f.open.Purpose = route.ClosedPurposeDataJoin
+			f.open.Purpose = ardp.PurposeDataJoin
 			f.view.Nodes[2].Subrole = 4
 		},
 		"arbitrary endpoint": func(f *closedBootstrapFixture) { f.snapshot.Candidates[1].Endpoint = "example.invalid:443" },
@@ -131,8 +132,8 @@ func TestClosedBootstrapRecipientRequiresCurrentAdjacentAndExactIssuer(t *testin
 
 func TestClosedBootstrapRefusesUnsupportedReceiverBeforeReservation(t *testing.T) {
 	server := &closedForwardingServer{}
-	channel, _, err := server.admitBootstrap(route.ClosedRoleReceiver{Subrole: 3}, [32]byte{}, route.ClosedHello{}, 0,
-		route.ClosedLaneFrame{Kind: 3, Body: route.EncodeClosedBootstrap(true)})
+	channel, _, err := server.admitBootstrap(route.ClosedRoleReceiver{Subrole: 3}, [32]byte{}, ardp.Hello{}, 0,
+		ardp.Frame{Kind: 3, Body: ardp.EncodeBootstrap(true)})
 	if err == nil || channel != nil {
 		t.Fatal("unsupported receiver allocated bootstrap")
 	}
@@ -147,7 +148,7 @@ func TestClosedBootstrapEntryExportsOnlyRestrictedInteriorChild(t *testing.T) {
 	fixture.snapshot.Candidates[0].RecordDigest = fixture.view.Nodes[1].RecordDigest
 	fixture.config.now = func() time.Time { return fixture.now }
 	fixture.config.Current = func() (DutyView, error) { return fixture.snapshot, nil }
-	receiver, ok := closedRouteReceiver(fixture.config, fixture.snapshot, route.ClosedPurposeForwarding, fixture.now)
+	receiver, ok := closedRouteReceiver(fixture.config, fixture.snapshot, ardp.PurposeForwarding, fixture.now)
 	if !ok {
 		t.Fatal("Entry fixture unavailable")
 	}
@@ -160,26 +161,26 @@ func TestClosedBootstrapEntryExportsOnlyRestrictedInteriorChild(t *testing.T) {
 		t.Fatal(err)
 	}
 	server := &closedForwardingServer{config: fixture.config, receiving: &closedForwardingReceivingResources{limits: limits, bootstrap: governor}, clock: fixture.config.now}
-	hello := route.ClosedHello{NetworkID: receiver.NetworkID, StateGeneration: receiver.StateGeneration, StateDigest: receiver.StateDigest, ProfileDigest: receiver.ProfileDigest,
-		RecipientNodeID: receiver.NodeID, RecipientDutyGeneration: receiver.DutyGeneration, Purpose: route.ClosedPurposeForwarding, ChannelNonce: [32]byte{80}, Deadline: fixture.now.Add(8 * time.Second)}
-	channel, _, err := server.admitBootstrap(receiver, [32]byte{}, hello, 225, route.ClosedLaneFrame{Kind: 3, Body: route.EncodeClosedBootstrap(true)})
+	hello := ardp.Hello{NetworkID: receiver.NetworkID, StateGeneration: receiver.StateGeneration, StateDigest: receiver.StateDigest, ProfileDigest: receiver.ProfileDigest,
+		RecipientNodeID: receiver.NodeID, RecipientDutyGeneration: receiver.DutyGeneration, Purpose: ardp.PurposeForwarding, ChannelNonce: [32]byte{80}, Deadline: fixture.now.Add(8 * time.Second)}
+	channel, _, err := server.admitBootstrap(receiver, [32]byte{}, hello, 225, ardp.Frame{Kind: 3, Body: ardp.EncodeBootstrap(true)})
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer channel.Cancel()
 	next := fixture.view.Nodes[1]
-	body, err := route.EncodeClosedOpen(route.ClosedOpen{NextNodeID: next.NodeID, NextDutyGeneration: next.DutyGeneration, Purpose: route.ClosedPurposeForwarding, Deadline: hello.Deadline})
+	body, err := route.EncodeClosedOpen(route.ClosedOpen{NextNodeID: next.NodeID, NextDutyGeneration: next.DutyGeneration, Purpose: ardp.PurposeForwarding, Deadline: hello.Deadline})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := channel.Accept(route.ClosedLaneFrame{Kind: 4, Lane: 1, Body: body}); err != nil {
+	if _, err := channel.Accept(ardp.Frame{Kind: 4, Lane: 1, Body: body}); err != nil {
 		t.Fatal(err)
 	}
 	event, ok := channel.NextAvailable(nil)
 	if !ok || event.Restriction != route.ClosedChildIssuerBootstrap {
 		t.Fatalf("Entry did not propagate actual bootstrap reservation: %+v", event)
 	}
-	if _, err := channel.Accept(route.ClosedLaneFrame{Kind: 2, Body: make([]byte, 355)}); err == nil {
+	if _, err := channel.Accept(ardp.Frame{Kind: 2, Body: make([]byte, 355)}); err == nil {
 		t.Fatal("Entry bootstrap relabelled after ADMIT")
 	}
 }

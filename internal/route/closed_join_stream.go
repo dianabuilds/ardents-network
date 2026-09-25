@@ -8,11 +8,13 @@ import (
 	"io"
 	"net"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 )
 
 // One synchronous reader/writer per side holds enough aggregate reservation
 // for the incoming frame and the encoded output, including fixed RESULT.
-const closedJoinStreamQueue = 2 * (closedLaneHeaderSize + closedLaneMaximum)
+const closedJoinStreamQueue = 2 * (ardp.HeaderSize + ardp.MaximumBodySize)
 
 type closedJoinStream struct {
 	connection       net.Conn
@@ -119,7 +121,7 @@ func (side *ClosedJoinSide) Serve(ctx context.Context, connection net.Conn) (out
 	if err != nil {
 		return err
 	}
-	if err := side.writeFrame(connection, ClosedLaneFrame{Kind: closedFrameResult, Lane: 1, Body: result}); err != nil {
+	if err := side.writeFrame(connection, ardp.Frame{Kind: ardp.KindResult, Lane: 1, Body: result}); err != nil {
 		return err
 	}
 	clear(result)
@@ -135,7 +137,7 @@ func (side *ClosedJoinSide) Serve(ctx context.Context, connection net.Conn) (out
 		if err != nil {
 			return err
 		}
-		if frame.Kind == closedFrameAdmit {
+		if frame.Kind == ardp.KindAdmit {
 			if err := side.replenish(frame); err != nil {
 				return err
 			}
@@ -148,7 +150,7 @@ func (side *ClosedJoinSide) Serve(ctx context.Context, connection net.Conn) (out
 		if err := peer.writeFrame(peer.stream.connection, frame); err != nil {
 			return err
 		}
-		if frame.Kind == closedFrameClose {
+		if frame.Kind == ardp.KindClose {
 			owner.mu.Lock()
 			owner.expireLocked(side.pair, owner.limits.clock().UTC(), time.Now())
 			if side.pair.stopped || ctx.Err() != nil {
@@ -188,39 +190,39 @@ func (side *ClosedJoinSide) account(size uint64) error {
 	return nil
 }
 
-func (side *ClosedJoinSide) readFrame(reader io.Reader) (ClosedLaneFrame, error) {
-	var header [closedLaneHeaderSize]byte
-	if err := side.account(closedLaneHeaderSize); err != nil {
-		return ClosedLaneFrame{}, err
+func (side *ClosedJoinSide) readFrame(reader io.Reader) (ardp.Frame, error) {
+	var header [ardp.HeaderSize]byte
+	if err := side.account(ardp.HeaderSize); err != nil {
+		return ardp.Frame{}, err
 	}
 	if _, err := io.ReadFull(reader, header[:]); err != nil {
-		return ClosedLaneFrame{}, err
+		return ardp.Frame{}, err
 	}
 	length := binary.BigEndian.Uint32(header[12:16])
-	if string(header[:4]) != closedLaneMagic || binary.BigEndian.Uint16(header[4:6]) != closedLaneGeneration || header[7] != 0 || length > closedLaneMaximum {
-		return ClosedLaneFrame{}, errors.New("closed JOIN data header invalid")
+	if !ardp.ValidHeader(header[:]) {
+		return ardp.Frame{}, errors.New("closed JOIN data header invalid")
 	}
 	if err := side.account(uint64(length)); err != nil {
-		return ClosedLaneFrame{}, err
+		return ardp.Frame{}, err
 	}
-	frame := ClosedLaneFrame{Kind: header[6], Lane: binary.BigEndian.Uint32(header[8:12]), Body: make([]byte, length)}
+	frame := ardp.Frame{Kind: header[6], Lane: binary.BigEndian.Uint32(header[8:12]), Body: make([]byte, length)}
 	if _, err := io.ReadFull(reader, frame.Body); err != nil {
-		return ClosedLaneFrame{}, err
+		return ardp.Frame{}, err
 	}
-	if !validClosedFrame(frame) {
-		return ClosedLaneFrame{}, errors.New("closed JOIN data frame invalid")
+	if !ardp.ValidFrame(frame) {
+		return ardp.Frame{}, errors.New("closed JOIN data frame invalid")
 	}
 	return frame, nil
 }
 
-func (side *ClosedJoinSide) writeFrame(writer io.Writer, frame ClosedLaneFrame) error {
-	if err := side.account(uint64(closedLaneHeaderSize + len(frame.Body))); err != nil {
+func (side *ClosedJoinSide) writeFrame(writer io.Writer, frame ardp.Frame) error {
+	if err := side.account(uint64(ardp.HeaderSize + len(frame.Body))); err != nil {
 		return err
 	}
-	return WriteClosedLaneFrame(writer, frame)
+	return ardp.WriteFrame(writer, frame)
 }
 
-func (side *ClosedJoinSide) forwardFrame(frame ClosedLaneFrame) (*ClosedJoinSide, error) {
+func (side *ClosedJoinSide) forwardFrame(frame ardp.Frame) (*ClosedJoinSide, error) {
 	owner := side.owner
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
@@ -230,23 +232,23 @@ func (side *ClosedJoinSide) forwardFrame(frame ClosedLaneFrame) (*ClosedJoinSide
 		return nil, errors.New("closed JOIN data inactive")
 	}
 	switch frame.Kind {
-	case closedFrameBytes:
+	case ardp.KindBytes:
 		if side.stream.eof || uint64(len(frame.Body)) > side.stream.credit {
 			return nil, errors.New("closed JOIN data credit exceeded")
 		}
 		side.stream.credit -= uint64(len(frame.Body))
-	case closedFrameCredit:
+	case ardp.KindCredit:
 		increment := uint64(binary.BigEndian.Uint32(frame.Body))
 		if increment == 0 || increment > closedLaneCredit-peer.stream.credit {
 			return nil, errors.New("closed JOIN credit exceeds consumption")
 		}
 		peer.stream.credit += increment
-	case closedFrameEOF:
+	case ardp.KindEOF:
 		if side.stream.eof {
 			return nil, errors.New("closed JOIN repeated EOF")
 		}
 		side.stream.eof = true
-	case closedFrameClose:
+	case ardp.KindClose:
 	default:
 		return nil, errors.New("closed JOIN operation after activation")
 	}

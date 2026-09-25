@@ -14,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	"github.com/dianabuilds/ardents-network/internal/route/terminal"
 
 	"github.com/dianabuilds/ardents-network/internal/network/state"
@@ -47,15 +48,15 @@ type resolutionNetworkFixture struct {
 
 func newResolutionNetworkFixture(t *testing.T, carrier route.CarrierProfile) *resolutionNetworkFixture {
 	t.Helper()
-	return newPrivateRecipientNetworkFixture(t, carrier, route.ClosedPurposeReachability, 1)
+	return newPrivateRecipientNetworkFixture(t, carrier, ardp.PurposeReachability, 1)
 }
 
-func newPrivateRecipientNetworkFixture(t *testing.T, carrier route.CarrierProfile, purpose route.ClosedPurpose, class uint8, extraClasses ...uint8) *resolutionNetworkFixture {
+func newPrivateRecipientNetworkFixture(t *testing.T, carrier route.CarrierProfile, purpose ardp.Purpose, class uint8, extraClasses ...uint8) *resolutionNetworkFixture {
 	t.Helper()
 	return newPrivateRecipientNetworkFixtureWithStart(t, carrier, purpose, class, nil, extraClasses...)
 }
 
-func newPrivateRecipientNetworkFixtureWithStart(t *testing.T, carrier route.CarrierProfile, purpose route.ClosedPurpose, class uint8, startReceiver func(Config) (func() error, error), extraClasses ...uint8) *resolutionNetworkFixture {
+func newPrivateRecipientNetworkFixtureWithStart(t *testing.T, carrier route.CarrierProfile, purpose ardp.Purpose, class uint8, startReceiver func(Config) (func() error, error), extraClasses ...uint8) *resolutionNetworkFixture {
 	t.Helper()
 	now, until := privateRecipientFixtureStart(t)
 	serverCert, serverKey := nodeCertificate(t, 251, "resolution")
@@ -95,11 +96,11 @@ func newPrivateRecipientNetworkFixtureWithStart(t *testing.T, carrier route.Carr
 	view.Nodes[0] = state.ClosedRouteNodeView{NodeID: nodeID, RecordDigest: [32]byte{79}, RoleDomain: 2, Subrole: 5, DutyGeneration: 9}
 	view.Nodes[1] = state.ClosedRouteNodeView{NodeID: peerID, RecordDigest: snapshot.Candidates[0].RecordDigest, RoleDomain: 1, Subrole: 1, DutyGeneration: 10}
 	view.Nodes[2] = state.ClosedRouteNodeView{NodeID: introID, RecordDigest: snapshot.Candidates[1].RecordDigest, RoleDomain: 4, Subrole: 3, DutyGeneration: 11}
-	if purpose == route.ClosedPurposeIntroduction {
+	if purpose == ardp.PurposeIntroduction {
 		snapshot.Assignment = "introduction"
 		view.Nodes[0].RoleDomain, view.Nodes[0].Subrole = 4, 3
 	}
-	if purpose == route.ClosedPurposeDataJoin {
+	if purpose == ardp.PurposeDataJoin {
 		view.Nodes[0].RoleDomain, view.Nodes[0].Subrole = 2, 4
 	}
 	events := make(chan Event, 32)
@@ -108,11 +109,11 @@ func newPrivateRecipientNetworkFixtureWithStart(t *testing.T, carrier route.Carr
 		ClosedResolution: ClosedResolutionProfile{Root: t.TempDir(), AdmissionRoot: t.TempDir(), Certificate: serverCert, ConnectionLimit: 2, DrainTimeout: time.Second},
 		PollInterval:     10 * time.Millisecond, Quarantine: time.Millisecond, LocalRoleStateRoot: localRoleStateRoot(t), CheckPlacement: func() error { return nil },
 		Emit: func(_ context.Context, event Event) error { events <- event; return nil }}
-	if purpose == route.ClosedPurposeIntroduction {
+	if purpose == ardp.PurposeIntroduction {
 		config.ClosedResolution = ClosedResolutionProfile{}
 		config.ClosedIntroduction = ClosedIntroductionProfile{AdmissionRoot: t.TempDir(), Certificate: serverCert, ConnectionLimit: 8, DrainTimeout: time.Second}
 	}
-	if purpose == route.ClosedPurposeDataJoin {
+	if purpose == ardp.PurposeDataJoin {
 		config.ClosedResolution = ClosedResolutionProfile{}
 		config.ClosedDataJoin = ClosedDataJoinProfile{HostingRoot: config.HostingRoot, AdmissionRoot: t.TempDir(), Certificate: serverCert, ConnectionLimit: 8, DrainTimeout: time.Second}
 	}
@@ -131,7 +132,7 @@ func newPrivateRecipientNetworkFixtureWithStart(t *testing.T, carrier route.Carr
 	for _, extra := range extraClasses {
 		fixture.supplementary[extra] = privateRecipientTokens(t, root, profile, authority, receiver, extra)
 	}
-	if purpose == route.ClosedPurposeReachability {
+	if purpose == ardp.PurposeReachability {
 		fixture.current, fixture.signer = resolutionPublication(t, network, now, until)
 		fixture.introduction = reachability.PrivateIntroduction{Revision: 1, NodeID: introID, Slot: [32]byte{81}, RecipientKey: [32]byte{82}, NotBefore: now, NotAfter: minResolutionTime(now.Add(30*time.Second), until)}
 	}
@@ -186,7 +187,7 @@ func newPrivateRecipientNetworkFixtureWithStart(t *testing.T, carrier route.Carr
 		if !stop() {
 			return
 		}
-		if purpose == route.ClosedPurposeIntroduction {
+		if purpose == ardp.PurposeIntroduction {
 			ledger, err := route.OpenClosedSpendLedger(config.ClosedIntroduction.AdmissionRoot, route.ClosedSpendBinding{NetworkID: receiver.NetworkID, ProfileDigest: receiver.ProfileDigest, ReceiverNodeID: receiver.NodeID, ReceiverDutyGeneration: receiver.DutyGeneration})
 			if err != nil {
 				t.Error(err)
@@ -195,7 +196,7 @@ func newPrivateRecipientNetworkFixtureWithStart(t *testing.T, carrier route.Carr
 			}
 			return
 		}
-		if purpose == route.ClosedPurposeDataJoin {
+		if purpose == ardp.PurposeDataJoin {
 			ledger, err := route.OpenClosedSpendLedger(config.ClosedDataJoin.AdmissionRoot, route.ClosedSpendBinding{NetworkID: receiver.NetworkID, ProfileDigest: receiver.ProfileDigest, ReceiverNodeID: receiver.NodeID, ReceiverDutyGeneration: receiver.DutyGeneration})
 			if err != nil {
 				t.Error(err)

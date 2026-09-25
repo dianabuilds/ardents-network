@@ -9,6 +9,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 )
 
 func sourceChannelsFixture(t *testing.T) (*closedSourceChannels, net.Conn, time.Time) {
@@ -22,7 +24,7 @@ func sourceChannelsFixture(t *testing.T) (*closedSourceChannels, net.Conn, time.
 }
 
 func sourceIssuerOpen(end time.Time) ClosedOpen {
-	return ClosedOpen{NextNodeID: [32]byte{1}, NextDutyGeneration: 1, Purpose: ClosedPurposeIssuer, Deadline: end}
+	return ClosedOpen{NextNodeID: [32]byte{1}, NextDutyGeneration: 1, Purpose: ardp.PurposeIssuer, Deadline: end}
 }
 
 func waitSourceChannelState(t *testing.T, owner *closedSourceChannels, condition func() bool) {
@@ -47,12 +49,12 @@ func TestClosedSourceChannelsConcurrentOpenPreservesWireOrder(t *testing.T) {
 	received := make(chan error, 1)
 	go func() {
 		for index := uint32(0); index < count; index++ {
-			frame, err := ReadClosedLaneFrame(peer)
+			frame, err := ardp.ReadFrame(peer)
 			if err != nil {
 				received <- err
 				return
 			}
-			if frame.Kind != closedFrameOpen || frame.Lane != index*2+1 {
+			if frame.Kind != ardp.KindOpen || frame.Lane != index*2+1 {
 				received <- errors.New("concurrent OPEN IDs reached wire out of order")
 				return
 			}
@@ -122,8 +124,8 @@ func TestClosedSourceChannelsCancelQueuedOpenPreservesSibling(t *testing.T) {
 	owner, peer, end := sourceChannelsFixture(t)
 	opened := make(chan error, 1)
 	go func() {
-		frame, err := ReadClosedLaneFrame(peer)
-		if err == nil && (frame.Kind != closedFrameOpen || frame.Lane != 1) {
+		frame, err := ardp.ReadFrame(peer)
+		if err == nil && (frame.Kind != ardp.KindOpen || frame.Lane != 1) {
 			err = errors.New("first OPEN differs")
 		}
 		opened <- err
@@ -156,10 +158,10 @@ func TestClosedSourceChannelsCancelQueuedOpenPreservesSibling(t *testing.T) {
 	}
 	finished := make(chan error, 1)
 	go func() {
-		for _, expected := range []ClosedLaneFrame{
-			{Kind: closedFrameBytes, Lane: 1}, {Kind: closedFrameOpen, Lane: 5}, {Kind: closedFrameClose, Lane: 5},
+		for _, expected := range []ardp.Frame{
+			{Kind: ardp.KindBytes, Lane: 1}, {Kind: ardp.KindOpen, Lane: 5}, {Kind: ardp.KindClose, Lane: 5},
 		} {
-			frame, err := ReadClosedLaneFrame(peer)
+			frame, err := ardp.ReadFrame(peer)
 			if err != nil {
 				finished <- err
 				return
@@ -191,7 +193,7 @@ func TestClosedSourceChannelsDeadlineAffectsOnlyItsWaitingReader(t *testing.T) {
 	received := make(chan error, 1)
 	go func() {
 		for range 2 {
-			_, err := ReadClosedLaneFrame(peer)
+			_, err := ardp.ReadFrame(peer)
 			if err != nil {
 				received <- err
 				return
@@ -219,7 +221,7 @@ func TestClosedSourceChannelsDeadlineAffectsOnlyItsWaitingReader(t *testing.T) {
 	}
 	sent := make(chan error, 1)
 	go func() {
-		sent <- WriteClosedLaneFrame(peer, ClosedLaneFrame{Kind: closedFrameBytes, Lane: second.id, Body: []byte{9}})
+		sent <- ardp.WriteFrame(peer, ardp.Frame{Kind: ardp.KindBytes, Lane: second.id, Body: []byte{9}})
 	}()
 	if count, err := second.Read(data[:]); err != nil || count != 1 || data[0] != 9 {
 		t.Fatalf("sibling read affected: %d / %v", count, err)
@@ -234,7 +236,7 @@ func TestClosedSourceChannelsCloseCancelsQueuedPayloadBeforeSibling(t *testing.T
 	received := make(chan error, 1)
 	go func() {
 		for range 2 {
-			if _, err := ReadClosedLaneFrame(peer); err != nil {
+			if _, err := ardp.ReadFrame(peer); err != nil {
 				received <- err
 				return
 			}

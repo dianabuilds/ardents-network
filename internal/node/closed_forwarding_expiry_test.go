@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 )
 
 // The clock and admission are fixtures. The shared physical reader, queue
@@ -40,11 +41,11 @@ func TestClosedForwardingExpiredParentCannotRetireSharedCarrier(t *testing.T) {
 					t.Fatal(err)
 				}
 				defer channels[index].Cancel()
-				body, err := route.EncodeClosedOpen(route.ClosedOpen{NextNodeID: [32]byte{3}, NextDutyGeneration: 4, Purpose: route.ClosedPurposeIssuer, Deadline: end})
+				body, err := route.EncodeClosedOpen(route.ClosedOpen{NextNodeID: [32]byte{3}, NextDutyGeneration: 4, Purpose: ardp.PurposeIssuer, Deadline: end})
 				if err != nil {
 					t.Fatal(err)
 				}
-				if _, err := channels[index].Accept(route.ClosedLaneFrame{Kind: 4, Lane: 1, Body: body}); err != nil {
+				if _, err := channels[index].Accept(ardp.Frame{Kind: 4, Lane: 1, Body: body}); err != nil {
 					t.Fatal(err)
 				}
 				if _, ok := channels[index].NextAvailable(nil); !ok {
@@ -56,13 +57,13 @@ func TestClosedForwardingExpiredParentCannotRetireSharedCarrier(t *testing.T) {
 			session := &closedForwardingSession{owner: newClosedForwardingSessions(), carrier: local,
 				invalidate: func() error { return nil }, retired: make(map[uint32]struct{}),
 				children: map[uint32]*closedForwardingQueue{1: first, 3: second},
-				queues: map[uint32]func(route.ClosedLaneFrame) error{
-					1: func(frame route.ClosedLaneFrame) error { return channels[0].QueueReverse(frame) },
-					3: func(frame route.ClosedLaneFrame) error { frame.Lane = 1; return channels[1].QueueReverse(frame) },
+				queues: map[uint32]func(ardp.Frame) error{
+					1: func(frame ardp.Frame) error { return channels[0].QueueReverse(frame) },
+					3: func(frame ardp.Frame) error { frame.Lane = 1; return channels[1].QueueReverse(frame) },
 				}, retirements: map[uint32]func() bool{1: func() bool { return channels[0].ReverseRetired(1) }, 3: func() bool { return channels[1].ReverseRetired(1) }}}
 			if scenario.full {
 				for range 4 {
-					if !session.deliverReverse(route.ClosedLaneFrame{Kind: 6, Lane: 1, Body: []byte("full")}) {
+					if !session.deliverReverse(ardp.Frame{Kind: 6, Lane: 1, Body: []byte("full")}) {
 						t.Fatal("live queue refused")
 					}
 				}
@@ -94,10 +95,10 @@ func TestClosedForwardingExpiredParentCannotRetireSharedCarrier(t *testing.T) {
 			if err := peer.SetWriteDeadline(time.Now().Add(2 * time.Second)); err != nil {
 				t.Fatal(err)
 			}
-			if err := route.WriteClosedLaneFrame(peer, route.ClosedLaneFrame{Kind: 9, Lane: 1, Body: []byte{1}}); err != nil {
+			if err := ardp.WriteFrame(peer, ardp.Frame{Kind: 9, Lane: 1, Body: []byte{1}}); err != nil {
 				t.Fatal(err)
 			}
-			if err := route.WriteClosedLaneFrame(peer, route.ClosedLaneFrame{Kind: 6, Lane: 3, Body: []byte("sibling")}); err != nil {
+			if err := ardp.WriteFrame(peer, ardp.Frame{Kind: 6, Lane: 3, Body: []byte("sibling")}); err != nil {
 				t.Fatalf("expired child closed shared Carrier before live sibling: %v", err)
 			}
 			frame, ok := second.next()

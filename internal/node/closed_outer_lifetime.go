@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 )
 
 // serveClosedOuter owns the transport, every allocated inner handler, and
@@ -40,7 +41,7 @@ func serveClosedOuter(ctx context.Context, connection net.Conn, outer *route.Clo
 	}
 	first := true
 	for {
-		frame, err := route.ReadClosedLaneFrame(connection)
+		frame, err := ardp.ReadFrame(connection)
 		if err != nil {
 			return
 		}
@@ -49,7 +50,7 @@ func serveClosedOuter(ctx context.Context, connection net.Conn, outer *route.Clo
 			return
 		}
 		if first {
-			hello, err := route.DecodeClosedHello(frame.Body)
+			hello, err := ardp.DecodeHello(frame.Body)
 			if err != nil || connection.SetDeadline(hello.Deadline) != nil {
 				return
 			}

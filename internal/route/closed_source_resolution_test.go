@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/network/state"
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 )
 
 type resolutionSelectionState struct {
@@ -107,7 +108,7 @@ func TestClosedSourceResolutionRequiresUniqueCurrentStateRecipient(t *testing.T)
 				t.Fatal("invalid State recipient selected")
 			}
 			called := false
-			_, _, err := prefix.ExchangeDescriptor(t.Context(), func(ClosedHello, uint8) ([]byte, error) { called = true; return nil, nil }, [32]byte{91}, nil)
+			_, _, err := prefix.ExchangeDescriptor(t.Context(), func(ardp.Hello, uint8) ([]byte, error) { called = true; return nil, nil }, [32]byte{91}, nil)
 			if err == nil || called {
 				t.Fatal("invalid recipient reached network/presenter")
 			}

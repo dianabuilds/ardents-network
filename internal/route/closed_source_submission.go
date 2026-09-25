@@ -7,6 +7,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	introductioncapsule "github.com/dianabuilds/ardents-network/internal/route/capsule"
 	"github.com/dianabuilds/ardents-network/internal/route/terminal"
 )
@@ -15,7 +16,7 @@ func (prefix *ClosedSourcePrefix) submissionPeer() (closedBootstrapPeer, error) 
 	if prefix == nil || prefix.plan.domain != closedRoleDomainInitiator {
 		return closedBootstrapPeer{}, errors.New("capsule submission requires Source ownership")
 	}
-	return prefix.terminalPeer(ClosedPurposeSubmission)
+	return prefix.terminalPeer(ardp.PurposeSubmission)
 }
 
 // SubmissionRecipient supplies the current Introduction duty for receiver-local
@@ -46,7 +47,7 @@ func (prefix *ClosedSourcePrefix) SubmitIntroduction(ctx context.Context, presen
 	}
 	bounded, cancel := context.WithDeadline(ctx, capsule.Expiry)
 	defer cancel()
-	body, err := prefix.exchangeControl(bounded, ClosedPurposeSubmission, peer, present, operation)
+	body, err := prefix.exchangeControl(bounded, ardp.PurposeSubmission, peer, present, operation)
 	if err != nil {
 		return 0, err
 	}

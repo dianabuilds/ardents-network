@@ -10,6 +10,8 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 )
 
 // Pause the upper writer after its deadline succeeds but before frame emission.
@@ -41,7 +43,7 @@ func TestClosedSourceNestedCloseJoinsFailedQueueParent(t *testing.T) {
 	owner.queueParent = parent
 	owner.retainClosedRead = true
 	opened := make(chan error, 1)
-	go func() { _, err := ReadClosedLaneFrame(peer); opened <- err }()
+	go func() { _, err := ardp.ReadFrame(peer); opened <- err }()
 	lane, err := owner.open(t.Context(), sourceIssuerOpen(end), end)
 	if err != nil {
 		t.Fatal(err)
@@ -74,7 +76,7 @@ func checkSourceCloseBoundary(t *testing.T, mode string) {
 	go prefix.finishAfterChannels()
 	defer prefix.Close()
 	opened := make(chan error, 1)
-	go func() { _, err := ReadClosedLaneFrame(peer); opened <- err }()
+	go func() { _, err := ardp.ReadFrame(peer); opened <- err }()
 	lane, err := prefix.channels.open(context.Background(), sourceIssuerOpen(end), end)
 	if err != nil {
 		t.Fatal(err)
@@ -107,7 +109,7 @@ func checkSourceCloseBoundary(t *testing.T, mode string) {
 		if mode == "refused" {
 			status = 1
 		}
-		if err := WriteClosedLaneFrame(peer, ClosedLaneFrame{Kind: closedFrameClose, Lane: 1, Body: []byte{status}}); err != nil {
+		if err := ardp.WriteFrame(peer, ardp.Frame{Kind: ardp.KindClose, Lane: 1, Body: []byte{status}}); err != nil {
 			close(held.release)
 			t.Fatal(err)
 		}

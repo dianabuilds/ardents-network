@@ -6,6 +6,7 @@ import (
 	"net"
 
 	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 )
 
 func (server *closedDataJoinServer) current() bool {
@@ -13,7 +14,7 @@ func (server *closedDataJoinServer) current() bool {
 	if err != nil {
 		return false
 	}
-	receiver, ok := closedRouteReceiver(server.config, snapshot, route.ClosedPurposeDataJoin, server.config.now())
+	receiver, ok := closedRouteReceiver(server.config, snapshot, ardp.PurposeDataJoin, server.config.now())
 	return ok && receiver == server.receiver
 }
 
@@ -50,12 +51,12 @@ func (server *closedDataJoinServer) serveInner(ctx context.Context, lane *route.
 	if lane.BeginInnerHello() != nil {
 		return
 	}
-	frame, err := route.ReadClosedLaneFrame(secured)
+	frame, err := ardp.ReadFrame(secured)
 	if err != nil || frame.Kind != 1 || frame.Lane != 0 {
 		return
 	}
-	hello, err := route.DecodeClosedHello(frame.Body)
-	if err != nil || hello.Purpose != route.ClosedPurposeDataJoin || lane.Activate(hello) != nil {
+	hello, err := ardp.DecodeHello(frame.Body)
+	if err != nil || hello.Purpose != ardp.PurposeDataJoin || lane.Activate(hello) != nil {
 		return
 	}
 	if server.serveAdmitted(ctx, secured, lane, frame) == nil {
@@ -63,7 +64,7 @@ func (server *closedDataJoinServer) serveInner(ctx context.Context, lane *route.
 	}
 }
 
-func (server *closedDataJoinServer) serveAdmitted(ctx context.Context, connection net.Conn, lane *route.ClosedOuterBridgeLane, hello route.ClosedLaneFrame) error {
+func (server *closedDataJoinServer) serveAdmitted(ctx context.Context, connection net.Conn, lane *route.ClosedOuterBridgeLane, hello ardp.Frame) error {
 	exporter, err := route.ClosedRoleTLSExporter(connection)
 	if err != nil {
 		return err
@@ -76,7 +77,7 @@ func (server *closedDataJoinServer) serveAdmitted(ctx context.Context, connectio
 	if _, err := channel.Accept(hello); err != nil {
 		return err
 	}
-	frame, err := route.ReadClosedLaneFrame(connection)
+	frame, err := ardp.ReadFrame(connection)
 	if err != nil || frame.Kind != 2 || frame.Lane != 0 || len(frame.Body) != 355 || frame.Body[0] != 2 {
 		return errors.New("closed JOIN requires Data admission")
 	}
@@ -91,11 +92,11 @@ func (server *closedDataJoinServer) serveAdmitted(ctx context.Context, connectio
 	if err := connection.SetDeadline(lease.Deadline); err != nil {
 		return err
 	}
-	accepted, err := route.ClosedAcceptFrame(0, 64<<10)
+	accepted, err := ardp.AcceptFrame(0, 64<<10)
 	if err != nil {
 		return err
 	}
-	if err := route.WriteClosedLaneFrame(connection, accepted); err != nil {
+	if err := ardp.WriteFrame(connection, accepted); err != nil {
 		return err
 	}
 	if ctx.Err() != nil || !server.current() {

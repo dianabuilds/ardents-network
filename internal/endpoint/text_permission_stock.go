@@ -9,6 +9,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	"github.com/dianabuilds/ardents-network/internal/route/credential"
 )
 
@@ -132,7 +133,7 @@ func (permission *textPermission) acceptIssuedBatch(batch *textTokenBatch, nonce
 
 // consumeTextToken burns one exact stock entry under textContext.mu before
 // verifying its signature. An invalid token is never returned or restored.
-func (permission *textPermission) consumeTextToken(profile state.ClosedProfileView, now time.Time, hello route.ClosedHello, class uint8) ([]byte, error) {
+func (permission *textPermission) consumeTextToken(profile state.ClosedProfileView, now time.Time, hello ardp.Hello, class uint8) ([]byte, error) {
 	if !permission.currentFor(profile, now) {
 		return nil, textTokenTransferFailureAt("permission", errors.New("text token permission expired"))
 	}

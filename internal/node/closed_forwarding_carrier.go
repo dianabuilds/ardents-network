@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 )
 
 // closedForwardingSessions gives every retained Carrier one reader and one
@@ -38,7 +39,7 @@ type closedForwardingSession struct {
 	mu          sync.Mutex
 	writer      sync.Mutex
 	children    map[uint32]*closedForwardingQueue
-	queues      map[uint32]func(route.ClosedLaneFrame) error
+	queues      map[uint32]func(ardp.Frame) error
 	retirements map[uint32]func() bool
 	retired     map[uint32]struct{}
 	lastOdd     uint32
@@ -49,7 +50,7 @@ func newClosedForwardingSessions() *closedForwardingSessions {
 	return &closedForwardingSessions{sessions: make(map[route.ClosedCarrierKey]*closedForwardingSession), pending: make(map[route.ClosedCarrierKey]*closedForwardingSessionPending)}
 }
 
-func (sessions *closedForwardingSessions) acquire(ctx context.Context, key route.ClosedCarrierKey, binding *route.ClosedCarrierLease, deadline time.Time, hello func() (route.ClosedHello, error)) (*closedForwardingSession, error) {
+func (sessions *closedForwardingSessions) acquire(ctx context.Context, key route.ClosedCarrierKey, binding *route.ClosedCarrierLease, deadline time.Time, hello func() (ardp.Hello, error)) (*closedForwardingSession, error) {
 	if sessions == nil || ctx == nil || binding == nil || hello == nil {
 		return nil, errors.New("closed forwarding Carrier session is unavailable")
 	}
@@ -102,7 +103,7 @@ func (sessions *closedForwardingSessions) acquire(ctx context.Context, key route
 	// Only exact-key waiters join its published terminal result.
 }
 
-func (sessions *closedForwardingSessions) open(ctx context.Context, key route.ClosedCarrierKey, binding *route.ClosedCarrierLease, carrier route.Carrier, deadline time.Time, hello func() (route.ClosedHello, error), pending *closedForwardingSessionPending) (returned *closedForwardingSession, returnedErr error) {
+func (sessions *closedForwardingSessions) open(ctx context.Context, key route.ClosedCarrierKey, binding *route.ClosedCarrierLease, carrier route.Carrier, deadline time.Time, hello func() (ardp.Hello, error), pending *closedForwardingSessionPending) (returned *closedForwardingSession, returnedErr error) {
 	var result *closedForwardingSession
 	var resultErr error
 	var cancelErr error
@@ -155,7 +156,7 @@ func (sessions *closedForwardingSessions) open(ctx context.Context, key route.Cl
 		resultErr = err
 		return nil, resultErr
 	}
-	body, err := route.EncodeClosedHello(value)
+	body, err := ardp.EncodeHello(value)
 	if err != nil {
 		resultErr = err
 		return nil, resultErr
@@ -167,7 +168,7 @@ func (sessions *closedForwardingSessions) open(ctx context.Context, key route.Cl
 		resultErr = err
 		return nil, resultErr
 	}
-	if err := route.WriteClosedLaneFrame(carrier, route.ClosedLaneFrame{Kind: 1, Lane: 0, Body: body}); err != nil {
+	if err := ardp.WriteFrame(carrier, ardp.Frame{Kind: 1, Lane: 0, Body: body}); err != nil {
 		if ctx.Err() != nil {
 			resultErr = ctx.Err()
 			return nil, resultErr
@@ -175,7 +176,7 @@ func (sessions *closedForwardingSessions) open(ctx context.Context, key route.Cl
 		resultErr = err
 		return nil, resultErr
 	}
-	accepted, err := route.ReadClosedLaneFrame(carrier)
+	accepted, err := ardp.ReadFrame(carrier)
 	if err != nil {
 		if ctx.Err() != nil {
 			resultErr = ctx.Err()
@@ -184,7 +185,7 @@ func (sessions *closedForwardingSessions) open(ctx context.Context, key route.Cl
 		resultErr = err
 		return nil, resultErr
 	}
-	status, _, err := route.DecodeClosedAcceptFrame(accepted)
+	status, _, err := ardp.DecodeAcceptFrame(accepted)
 	if err != nil || status != 0 {
 		resultErr = errors.New("closed forwarding outer HELLO is unavailable")
 		return nil, resultErr
@@ -211,7 +212,7 @@ func (sessions *closedForwardingSessions) joinedResult() error {
 	return sessions.cleanupErr
 }
 
-func (session *closedForwardingSession) attach(open route.ClosedOpen, restriction route.ClosedChildRestriction, queue func(route.ClosedLaneFrame) error, retired func() bool) (uint32, *closedForwardingQueue, error) {
+func (session *closedForwardingSession) attach(open route.ClosedOpen, restriction route.ClosedChildRestriction, queue func(ardp.Frame) error, retired func() bool) (uint32, *closedForwardingQueue, error) {
 	if session == nil {
 		return 0, nil, errors.New("closed forwarding Carrier session is unavailable")
 	}
@@ -238,7 +239,7 @@ func (session *closedForwardingSession) attach(open route.ClosedOpen, restrictio
 	reverse := newClosedForwardingQueue(4 << 20)
 	session.children[lane] = reverse
 	if session.queues == nil {
-		session.queues = make(map[uint32]func(route.ClosedLaneFrame) error)
+		session.queues = make(map[uint32]func(ardp.Frame) error)
 	}
 	session.queues[lane] = queue
 	if session.retirements == nil {
@@ -248,7 +249,7 @@ func (session *closedForwardingSession) attach(open route.ClosedOpen, restrictio
 	session.mu.Unlock()
 	err = closedForwardingWriteDeadline(session.carrier, closedForwardingHandshakeDeadline(open.Deadline, time.Now().UTC()))
 	if err == nil {
-		err = route.WriteClosedLaneFrame(session.carrier, route.ClosedLaneFrame{Kind: 4, Lane: lane, Body: body})
+		err = ardp.WriteFrame(session.carrier, ardp.Frame{Kind: 4, Lane: lane, Body: body})
 	}
 	if err != nil {
 		_ = session.carrier.Close()
@@ -263,7 +264,7 @@ func (session *closedForwardingSession) attach(open route.ClosedOpen, restrictio
 // it may receive CLOSE while this writer is waiting. Generic Carrier EOF never
 // supplies this evidence. Once physical emission starts, every error remains
 // an error and retires the Carrier: a partial frame cannot be reused by siblings.
-func (session *closedForwardingSession) writeChildFrame(frame route.ClosedLaneFrame, deadline time.Time, reverse *closedForwardingQueue) (bool, error) {
+func (session *closedForwardingSession) writeChildFrame(frame ardp.Frame, deadline time.Time, reverse *closedForwardingQueue) (bool, error) {
 	if reverse.peerClosed() {
 		return false, nil
 	}
@@ -287,7 +288,7 @@ func (session *closedForwardingSession) writeChildFrame(frame route.ClosedLaneFr
 	if err := closedForwardingWriteDeadline(session.carrier, deadline); err != nil {
 		return false, err
 	}
-	err := route.WriteClosedLaneFrame(session.carrier, frame)
+	err := ardp.WriteFrame(session.carrier, frame)
 	if err != nil {
 		_ = session.carrier.Close()
 	}
@@ -318,7 +319,7 @@ func (session *closedForwardingSession) retire(lane uint32) {
 
 func (session *closedForwardingSession) copyReverse() {
 	for {
-		frame, err := route.ReadClosedLaneFrame(session.carrier)
+		frame, err := ardp.ReadFrame(session.carrier)
 		if err != nil || frame.Lane == 0 || (frame.Kind != 5 && frame.Kind != 6 && frame.Kind != 7 && frame.Kind != 8 && frame.Kind != 9) {
 			session.fail()
 			return
@@ -333,7 +334,7 @@ func (session *closedForwardingSession) copyReverse() {
 // Delivery and retirement hold the same lock through the channel operation.
 // A full bounded queue refuses the Carrier; its reader never waits behind one
 // slow child while other children need control or cancellation frames.
-func (session *closedForwardingSession) deliverReverse(frame route.ClosedLaneFrame) bool {
+func (session *closedForwardingSession) deliverReverse(frame ardp.Frame) bool {
 	session.mu.Lock()
 	defer session.mu.Unlock()
 	if session.closed {
@@ -391,20 +392,20 @@ func (session *closedForwardingSession) fail() {
 	session.owner.mu.Unlock()
 }
 
-func (server *closedForwardingServer) closedForwardingOuterHello(snapshot dutyFacts, open route.ClosedOpen) (route.ClosedHello, error) {
+func (server *closedForwardingServer) closedForwardingOuterHello(snapshot dutyFacts, open route.ClosedOpen) (ardp.Hello, error) {
 	if server.config.CurrentClosedProfile == nil {
-		return route.ClosedHello{}, errors.New("closed forwarding profile is unavailable")
+		return ardp.Hello{}, errors.New("closed forwarding profile is unavailable")
 	}
 	profile, available := server.config.CurrentClosedProfile()
 	if !available || !closedRouteProfileMatchesSnapshot(profile, snapshot, server.clock()) {
-		return route.ClosedHello{}, errors.New("closed forwarding profile is unavailable")
+		return ardp.Hello{}, errors.New("closed forwarding profile is unavailable")
 	}
 	var nonce [32]byte
 	if _, err := rand.Read(nonce[:]); err != nil || nonce == [32]byte{} {
-		return route.ClosedHello{}, errors.New("draw closed forwarding channel nonce")
+		return ardp.Hello{}, errors.New("draw closed forwarding channel nonce")
 	}
-	return route.ClosedHello{NetworkID: profile.NetworkID, StateGeneration: profile.StateGeneration, StateDigest: profile.StateDigest, ProfileDigest: profile.Digest,
-		RecipientNodeID: open.NextNodeID, RecipientDutyGeneration: open.NextDutyGeneration, Purpose: route.ClosedPurposeForwarding, ChannelNonce: nonce,
+	return ardp.Hello{NetworkID: profile.NetworkID, StateGeneration: profile.StateGeneration, StateDigest: profile.StateDigest, ProfileDigest: profile.Digest,
+		RecipientNodeID: open.NextNodeID, RecipientDutyGeneration: open.NextDutyGeneration, Purpose: ardp.PurposeForwarding, ChannelNonce: nonce,
 		Deadline: profile.NotAfter}, nil
 }
 

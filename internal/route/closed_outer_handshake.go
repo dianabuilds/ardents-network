@@ -5,6 +5,8 @@ import (
 	"errors"
 	"sync"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 )
 
 const (
@@ -37,10 +39,10 @@ type ClosedOuterHandshake struct {
 type closedOuterChild struct {
 	deadline                time.Time
 	pendingDeadline         time.Time
-	hello                   ClosedHello
+	hello                   ardp.Hello
 	restriction             ClosedChildRestriction
 	admitted                bool
-	purpose                 ClosedPurpose
+	purpose                 ardp.Purpose
 	bytes, credit, queued   uint32
 	innerHello, active, eof bool
 }
@@ -50,7 +52,7 @@ type closedOuterChild struct {
 type ClosedOpen struct {
 	NextNodeID         [32]byte
 	NextDutyGeneration uint64
-	Purpose            ClosedPurpose
+	Purpose            ardp.Purpose
 	Deadline           time.Time
 }
 
@@ -90,7 +92,7 @@ func (handshake *ClosedOuterHandshake) Close() {
 // Accept consumes one frame and returns only newly accepted opaque inner TLS
 // bytes. A caller must give those bytes to the separately authenticated inner
 // TLS state; this method never treats them as Application Data.
-func (handshake *ClosedOuterHandshake) Accept(frame ClosedLaneFrame) ([]byte, error) {
+func (handshake *ClosedOuterHandshake) Accept(frame ardp.Frame) ([]byte, error) {
 	if handshake == nil {
 		return nil, errors.New("closed outer handshake is unavailable")
 	}
@@ -100,10 +102,10 @@ func (handshake *ClosedOuterHandshake) Accept(frame ClosedLaneFrame) ([]byte, er
 		return nil, errors.New("closed outer handshake is unavailable")
 	}
 	if !handshake.hello {
-		if frame.Kind != closedFrameHello || frame.Lane != 0 {
+		if frame.Kind != ardp.KindHello || frame.Lane != 0 {
 			return nil, errors.New("closed outer HELLO is required")
 		}
-		hello, err := DecodeClosedHello(frame.Body)
+		hello, err := ardp.DecodeHello(frame.Body)
 		if err != nil || !handshake.matchesHello(hello) {
 			return nil, errors.New("closed outer HELLO is unavailable")
 		}
@@ -112,13 +114,13 @@ func (handshake *ClosedOuterHandshake) Accept(frame ClosedLaneFrame) ([]byte, er
 		return nil, nil
 	}
 	switch frame.Kind {
-	case closedFrameOpen:
+	case ardp.KindOpen:
 		return nil, handshake.open(frame)
-	case closedFrameBytes:
+	case ardp.KindBytes:
 		return handshake.bytes(frame)
-	case closedFrameEOF:
+	case ardp.KindEOF:
 		return nil, handshake.eof(frame)
-	case closedFrameClose:
+	case ardp.KindClose:
 		return nil, handshake.close(frame)
 	default:
 		return nil, errors.New("closed outer frame is unavailable")
@@ -127,7 +129,7 @@ func (handshake *ClosedOuterHandshake) Accept(frame ClosedLaneFrame) ([]byte, er
 
 // EncodeClosedOpen serializes one exact 49-byte OPEN body.
 func EncodeClosedOpen(open ClosedOpen) ([]byte, error) {
-	if open.NextNodeID == [32]byte{} || open.NextDutyGeneration == 0 || !validClosedPurpose(open.Purpose) || open.Deadline.IsZero() ||
+	if open.NextNodeID == [32]byte{} || open.NextDutyGeneration == 0 || !ardp.ValidPurpose(open.Purpose) || open.Deadline.IsZero() ||
 		open.Deadline != open.Deadline.UTC().Truncate(time.Second) {
 		return nil, errors.New("closed OPEN is invalid")
 	}
@@ -143,7 +145,7 @@ func DecodeClosedOpen(body []byte) (ClosedOpen, error) {
 	if len(body) != 49 {
 		return ClosedOpen{}, errors.New("closed OPEN length is invalid")
 	}
-	open := ClosedOpen{NextDutyGeneration: binary.BigEndian.Uint64(body[32:40]), Purpose: ClosedPurpose(body[40]),
+	open := ClosedOpen{NextDutyGeneration: binary.BigEndian.Uint64(body[32:40]), Purpose: ardp.Purpose(body[40]),
 		Deadline: time.Unix(int64(binary.BigEndian.Uint64(body[41:49])), 0).UTC()}
 	copy(open.NextNodeID[:], body[:32])
 	if _, err := EncodeClosedOpen(open); err != nil {
@@ -152,14 +154,14 @@ func DecodeClosedOpen(body []byte) (ClosedOpen, error) {
 	return open, nil
 }
 
-func (handshake *ClosedOuterHandshake) matchesHello(hello ClosedHello) bool {
+func (handshake *ClosedOuterHandshake) matchesHello(hello ardp.Hello) bool {
 	return hello.NetworkID == handshake.receiver.NetworkID && hello.StateGeneration == handshake.receiver.StateGeneration &&
 		hello.StateDigest == handshake.receiver.StateDigest && hello.ProfileDigest == handshake.receiver.ProfileDigest &&
 		hello.RecipientNodeID == handshake.receiver.NodeID && hello.RecipientDutyGeneration == handshake.receiver.DutyGeneration &&
-		hello.Purpose == ClosedPurposeForwarding && hello.Deadline.After(handshake.clock().UTC()) && !hello.Deadline.After(handshake.receiver.Deadline)
+		hello.Purpose == ardp.PurposeForwarding && hello.Deadline.After(handshake.clock().UTC()) && !hello.Deadline.After(handshake.receiver.Deadline)
 }
 
-func (handshake *ClosedOuterHandshake) open(frame ClosedLaneFrame) error {
+func (handshake *ClosedOuterHandshake) open(frame ardp.Frame) error {
 	if frame.Lane == 0 || frame.Lane%2 == 0 || frame.Lane <= handshake.lastOdd {
 		return errors.New("closed outer child lane is invalid")
 	}
@@ -186,7 +188,7 @@ func (handshake *ClosedOuterHandshake) open(frame ClosedLaneFrame) error {
 // the exact purpose that its OPEN selected. The caller invokes it only after
 // the opaque bytes have completed a separately authenticated inner TLS
 // handshake, and still passes that HELLO to the receiving role admission.
-func (handshake *ClosedOuterHandshake) VerifyInnerHello(lane uint32, hello ClosedHello) error {
+func (handshake *ClosedOuterHandshake) VerifyInnerHello(lane uint32, hello ardp.Hello) error {
 	if handshake == nil {
 		return errors.New("closed inner HELLO is unavailable")
 	}
@@ -196,7 +198,7 @@ func (handshake *ClosedOuterHandshake) VerifyInnerHello(lane uint32, hello Close
 		return errors.New("closed inner HELLO is unavailable")
 	}
 	child, exists := handshake.children[lane]
-	if !exists || !handshake.clock().UTC().Before(child.pendingDeadline) || !child.innerHello || !validClosedHello(hello) || hello.NetworkID != handshake.receiver.NetworkID || hello.StateGeneration != handshake.receiver.StateGeneration ||
+	if !exists || !handshake.clock().UTC().Before(child.pendingDeadline) || !child.innerHello || !ardp.ValidHello(hello) || hello.NetworkID != handshake.receiver.NetworkID || hello.StateGeneration != handshake.receiver.StateGeneration ||
 		hello.StateDigest != handshake.receiver.StateDigest || hello.ProfileDigest != handshake.receiver.ProfileDigest ||
 		hello.RecipientNodeID != handshake.receiver.NodeID || hello.RecipientDutyGeneration != handshake.receiver.DutyGeneration ||
 		hello.Purpose != child.purpose || !hello.Deadline.After(handshake.clock().UTC()) || hello.Deadline.After(child.deadline) {
@@ -223,7 +225,7 @@ func (handshake *ClosedOuterHandshake) BeginInnerHello(lane uint32) error {
 	return nil
 }
 
-func (handshake *ClosedOuterHandshake) bytes(frame ClosedLaneFrame) ([]byte, error) {
+func (handshake *ClosedOuterHandshake) bytes(frame ardp.Frame) ([]byte, error) {
 	child, exists := handshake.children[frame.Lane]
 	if !exists || len(frame.Body) == 0 || child.eof || !handshake.clock().UTC().Before(child.deadline) || !child.admitted && !handshake.clock().UTC().Before(child.pendingDeadline) {
 		return nil, errors.New("closed outer handshake bytes are unavailable")
@@ -244,7 +246,7 @@ func (handshake *ClosedOuterHandshake) bytes(frame ClosedLaneFrame) ([]byte, err
 	return append([]byte(nil), frame.Body...), nil
 }
 
-func (handshake *ClosedOuterHandshake) eof(frame ClosedLaneFrame) error {
+func (handshake *ClosedOuterHandshake) eof(frame ardp.Frame) error {
 	child, exists := handshake.children[frame.Lane]
 	if !exists || !child.innerHello || child.eof || len(frame.Body) != 0 {
 		return errors.New("closed outer lane EOF is unavailable")
@@ -254,7 +256,7 @@ func (handshake *ClosedOuterHandshake) eof(frame ClosedLaneFrame) error {
 	return nil
 }
 
-func (handshake *ClosedOuterHandshake) close(frame ClosedLaneFrame) error {
+func (handshake *ClosedOuterHandshake) close(frame ardp.Frame) error {
 	child, exists := handshake.children[frame.Lane]
 	if !exists || len(frame.Body) != 1 || frame.Body[0] > 6 {
 		return errors.New("closed outer lane close is unavailable")
@@ -269,24 +271,24 @@ func (handshake *ClosedOuterHandshake) close(frame ClosedLaneFrame) error {
 
 // ConsumeInnerBytes releases receive credit only after the receiving inner
 // TLS/role consumer has taken the opaque bytes from its bounded lane queue.
-func (handshake *ClosedOuterHandshake) ConsumeInnerBytes(lane uint32, bytes uint32) (ClosedLaneFrame, error) {
+func (handshake *ClosedOuterHandshake) ConsumeInnerBytes(lane uint32, bytes uint32) (ardp.Frame, error) {
 	if handshake == nil {
-		return ClosedLaneFrame{}, errors.New("closed outer lane credit is unavailable")
+		return ardp.Frame{}, errors.New("closed outer lane credit is unavailable")
 	}
 	handshake.mu.Lock()
 	defer handshake.mu.Unlock()
 	if handshake.duty == nil || bytes == 0 || !handshake.clock().UTC().Before(handshake.receiver.Deadline) {
-		return ClosedLaneFrame{}, errors.New("closed outer lane credit is unavailable")
+		return ardp.Frame{}, errors.New("closed outer lane credit is unavailable")
 	}
 	child, exists := handshake.children[lane]
 	if !exists || !child.innerHello || child.eof || bytes > child.queued || bytes > closedOuterLaneCredit-child.credit {
-		return ClosedLaneFrame{}, errors.New("closed outer lane credit is unavailable")
+		return ardp.Frame{}, errors.New("closed outer lane credit is unavailable")
 	}
 	child.queued -= bytes
 	child.credit += bytes
 	handshake.duty.limits.dequeue(uint64(bytes))
 	handshake.children[lane] = child
-	return ClosedLaneFrame{Kind: closedFrameCredit, Lane: lane, Body: binary.BigEndian.AppendUint32(nil, bytes)}, nil
+	return ardp.Frame{Kind: ardp.KindCredit, Lane: lane, Body: binary.BigEndian.AppendUint32(nil, bytes)}, nil
 }
 
 func validClosedOuterReceiver(receiver ClosedOuterReceiver) bool {

@@ -3,6 +3,7 @@
 package route
 
 import (
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	"testing"
 	"time"
 )
@@ -18,35 +19,35 @@ func TestClosedOuterHandshakeRefusesBootstrapAndSubstitutedRecipient(t *testing.
 	if err != nil {
 		t.Fatal(err)
 	}
-	hello := ClosedHello{NetworkID: receiver.NetworkID, StateGeneration: receiver.StateGeneration, StateDigest: receiver.StateDigest,
+	hello := ardp.Hello{NetworkID: receiver.NetworkID, StateGeneration: receiver.StateGeneration, StateDigest: receiver.StateDigest,
 		ProfileDigest: receiver.ProfileDigest, RecipientNodeID: receiver.NodeID, RecipientDutyGeneration: receiver.DutyGeneration,
-		Purpose: ClosedPurposeForwarding, ChannelNonce: [32]byte{8}, Deadline: receiver.Deadline}
-	helloBody, err := EncodeClosedHello(hello)
+		Purpose: ardp.PurposeForwarding, ChannelNonce: [32]byte{8}, Deadline: receiver.Deadline}
+	helloBody, err := ardp.EncodeHello(hello)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := handshake.Accept(ClosedLaneFrame{Kind: closedFrameHello, Body: helloBody}); err != nil {
+	if _, err := handshake.Accept(ardp.Frame{Kind: ardp.KindHello, Body: helloBody}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := handshake.Accept(ClosedLaneFrame{Kind: closedFrameBootstrap, Body: EncodeClosedBootstrap(true)}); err == nil {
+	if _, err := handshake.Accept(ardp.Frame{Kind: ardp.KindBootstrap, Body: ardp.EncodeBootstrap(true)}); err == nil {
 		t.Fatal("outer carrier accepted bootstrap")
 	}
 	otherNode := receiver.NodeID
 	otherNode[0]++
 	openBody, err := EncodeClosedNodeOpen(ClosedOpen{NextNodeID: otherNode, NextDutyGeneration: receiver.DutyGeneration,
-		Purpose: ClosedPurposeIssuer, Deadline: receiver.Deadline}, ClosedChildOrdinary)
+		Purpose: ardp.PurposeIssuer, Deadline: receiver.Deadline}, ClosedChildOrdinary)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := handshake.Accept(ClosedLaneFrame{Kind: closedFrameOpen, Lane: 1, Body: openBody}); err == nil {
+	if _, err := handshake.Accept(ardp.Frame{Kind: ardp.KindOpen, Lane: 1, Body: openBody}); err == nil {
 		t.Fatal("outer carrier accepted substituted recipient")
 	}
 	incompatible, err := EncodeClosedNodeOpen(ClosedOpen{NextNodeID: receiver.NodeID, NextDutyGeneration: receiver.DutyGeneration,
-		Purpose: ClosedPurposeDataJoin, Deadline: receiver.Deadline}, ClosedChildOrdinary)
+		Purpose: ardp.PurposeDataJoin, Deadline: receiver.Deadline}, ClosedChildOrdinary)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := handshake.Accept(ClosedLaneFrame{Kind: closedFrameOpen, Lane: 3, Body: incompatible}); err == nil {
+	if _, err := handshake.Accept(ardp.Frame{Kind: ardp.KindOpen, Lane: 3, Body: incompatible}); err == nil {
 		t.Fatal("outer carrier accepted an incompatible issuer assignment")
 	}
 }

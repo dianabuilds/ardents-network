@@ -37,6 +37,7 @@ github.com/dianabuilds/ardents-network/internal/node
 github.com/dianabuilds/ardents-network/internal/release
 github.com/dianabuilds/ardents-network/internal/resource
 github.com/dianabuilds/ardents-network/internal/route
+github.com/dianabuilds/ardents-network/internal/route/ardp
 github.com/dianabuilds/ardents-network/internal/route/capsule
 github.com/dianabuilds/ardents-network/internal/route/credential
 github.com/dianabuilds/ardents-network/internal/route/terminal

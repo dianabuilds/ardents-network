@@ -10,6 +10,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 )
 
 // nestedTerminalPhysicalBoundary stops one selected physical frame after its
@@ -90,14 +92,14 @@ type nestedSourceLaneResult struct {
 	err  error
 }
 
-func openNestedSourceLane(t *testing.T, owner *closedSourceChannels, peer net.Conn, end time.Time) (*closedSourceLane, ClosedLaneFrame) {
+func openNestedSourceLane(t *testing.T, owner *closedSourceChannels, peer net.Conn, end time.Time) (*closedSourceLane, ardp.Frame) {
 	t.Helper()
 	result := make(chan nestedSourceLaneResult, 1)
 	go func() {
 		lane, err := owner.open(t.Context(), sourceIssuerOpen(end), end)
 		result <- nestedSourceLaneResult{lane: lane, err: err}
 	}()
-	frame, err := ReadClosedLaneFrame(peer)
+	frame, err := ardp.ReadFrame(peer)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -105,13 +107,13 @@ func openNestedSourceLane(t *testing.T, owner *closedSourceChannels, peer net.Co
 	if opened.err != nil {
 		t.Fatal(opened.err)
 	}
-	if frame.Kind != closedFrameOpen || frame.Lane != opened.lane.id {
+	if frame.Kind != ardp.KindOpen || frame.Lane != opened.lane.id {
 		t.Fatalf("source OPEN = kind %d lane %d, want lane %d", frame.Kind, frame.Lane, opened.lane.id)
 	}
 	return opened.lane, frame
 }
 
-func installNestedSourcePeerLane(t *testing.T, owner *closedSourceChannels, frame ClosedLaneFrame, end time.Time) *closedSourceLane {
+func installNestedSourcePeerLane(t *testing.T, owner *closedSourceChannels, frame ardp.Frame, end time.Time) *closedSourceLane {
 	t.Helper()
 	open, err := DecodeClosedOpen(frame.Body)
 	if err != nil {
@@ -186,7 +188,7 @@ func TestClosedNestedTLSTerminalPrecedesQueuedSiblingAfterActiveCredit(t *testin
 
 	inboundDone := make(chan error, 1)
 	go func() {
-		inboundDone <- WriteClosedLaneFrame(serverTLS, ClosedLaneFrame{Kind: closedFrameBytes, Lane: upperLane.id, Body: []byte{1}})
+		inboundDone <- ardp.WriteFrame(serverTLS, ardp.Frame{Kind: ardp.KindBytes, Lane: upperLane.id, Body: []byte{1}})
 	}()
 	select {
 	case <-entered:
@@ -216,8 +218,8 @@ func TestClosedNestedTLSTerminalPrecedesQueuedSiblingAfterActiveCredit(t *testin
 	events := make(chan string, 2)
 	readErrors := make(chan error, 2)
 	go func() {
-		frame, err := ReadClosedLaneFrame(serverTLS)
-		if err == nil && (frame.Kind != closedFrameClose || frame.Lane != upperOpen.Lane) {
+		frame, err := ardp.ReadFrame(serverTLS)
+		if err == nil && (frame.Kind != ardp.KindClose || frame.Lane != upperOpen.Lane) {
 			err = errors.New("nested terminal frame changed")
 		}
 		readErrors <- err

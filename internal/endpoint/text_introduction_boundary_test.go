@@ -10,6 +10,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	introductioncapsule "github.com/dianabuilds/ardents-network/internal/route/capsule"
 )
 
@@ -73,7 +74,7 @@ func checkTextCapsuleAdmissionBoundaries(t *testing.T, publisher, reader *textCo
 				prior := source.snapshot.Candidates[rendezvous].FamilyID
 				var conflict [32]byte
 				for _, role := range source.view.Nodes[:source.view.NodeCount] {
-					purpose := []route.ClosedPurpose{route.ClosedPurposeReachability, route.ClosedPurposeIntroduction, route.ClosedPurposeIssuer}[index]
+					purpose := []ardp.Purpose{ardp.PurposeReachability, ardp.PurposeIntroduction, ardp.PurposeIssuer}[index]
 					if route.ClosedPurposePermitsDuty(purpose, role.RoleDomain, role.Subrole) {
 						for _, candidate := range source.snapshot.Candidates[:source.snapshot.CandidateCount] {
 							if candidate.NodeID == role.NodeID {

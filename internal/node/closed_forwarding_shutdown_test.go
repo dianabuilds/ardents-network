@@ -11,6 +11,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/resource"
 	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 )
 
 // State projection is a fixture; listener, Node authentication, framing,
@@ -45,25 +46,25 @@ func TestClosedForwardingStopDrainsIdleAuthenticatedCarrier(t *testing.T) {
 		t.Fatal(err)
 	}
 	receiver := fixture.receiver
-	hello := route.ClosedHello{NetworkID: receiver.NetworkID, StateGeneration: receiver.StateGeneration, StateDigest: receiver.StateDigest, ProfileDigest: receiver.ProfileDigest,
-		RecipientNodeID: receiver.NodeID, RecipientDutyGeneration: receiver.DutyGeneration, Purpose: route.ClosedPurposeForwarding,
+	hello := ardp.Hello{NetworkID: receiver.NetworkID, StateGeneration: receiver.StateGeneration, StateDigest: receiver.StateDigest, ProfileDigest: receiver.ProfileDigest,
+		RecipientNodeID: receiver.NodeID, RecipientDutyGeneration: receiver.DutyGeneration, Purpose: ardp.PurposeForwarding,
 		ChannelNonce: [32]byte{9}, Deadline: fixture.now.Add(9 * time.Second)}
-	body, err := route.EncodeClosedHello(hello)
+	body, err := ardp.EncodeHello(hello)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := route.WriteClosedLaneFrame(carrier, route.ClosedLaneFrame{Kind: 1, Body: body}); err != nil {
+	if err := ardp.WriteFrame(carrier, ardp.Frame{Kind: 1, Body: body}); err != nil {
 		t.Fatal(err)
 	}
-	if frame, err := route.ReadClosedLaneFrame(carrier); err != nil || frame.Kind != 5 {
+	if frame, err := ardp.ReadFrame(carrier); err != nil || frame.Kind != 5 {
 		t.Fatalf("outer accept: %+v %v", frame, err)
 	}
 	body, err = route.EncodeClosedNodeOpen(route.ClosedOpen{NextNodeID: receiver.NodeID, NextDutyGeneration: receiver.DutyGeneration,
-		Purpose: route.ClosedPurposeForwarding, Deadline: fixture.now.Add(8 * time.Second)}, route.ClosedChildOrdinary)
+		Purpose: ardp.PurposeForwarding, Deadline: fixture.now.Add(8 * time.Second)}, route.ClosedChildOrdinary)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := route.WriteClosedLaneFrame(carrier, route.ClosedLaneFrame{Kind: 4, Lane: 1, Body: body}); err != nil {
+	if err := ardp.WriteFrame(carrier, ardp.Frame{Kind: 4, Lane: 1, Body: body}); err != nil {
 		t.Fatal(err)
 	}
 	// A completed inner TLS handshake proves the production child handler has

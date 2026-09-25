@@ -16,6 +16,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	"github.com/dianabuilds/ardents-network/internal/route/credential"
 )
 
@@ -64,7 +65,7 @@ func TestClosedIssuerServesBootstrapInsideStateAuthorizedNodeCarrier(t *testing.
 	if !closedSharedPeerCurrent(resolved, snapshot, clientKey, time.Now()) {
 		t.Fatal("fixture does not authorize outer Node certificate")
 	}
-	if _, available := closedRouteReceiver(resolved, snapshot, route.ClosedPurposeIssuer, time.Now()); !available {
+	if _, available := closedRouteReceiver(resolved, snapshot, ardp.PurposeIssuer, time.Now()); !available {
 		t.Fatal("fixture does not authorize local issuer receiver")
 	}
 	runContext, cancel := context.WithCancel(context.Background())
@@ -78,22 +79,22 @@ func TestClosedIssuerServesBootstrapInsideStateAuthorizedNodeCarrier(t *testing.
 		t.Fatal(err)
 	}
 	defer outer.Close()
-	outerHello := route.ClosedHello{NetworkID: network, StateGeneration: generation, StateDigest: digest, ProfileDigest: profile.Digest, RecipientNodeID: issuerID, RecipientDutyGeneration: profile.IssuerDutyGeneration, Purpose: route.ClosedPurposeForwarding, ChannelNonce: [32]byte{67}, Deadline: now.Add(9 * time.Second)}
-	body, err := route.EncodeClosedHello(outerHello)
+	outerHello := ardp.Hello{NetworkID: network, StateGeneration: generation, StateDigest: digest, ProfileDigest: profile.Digest, RecipientNodeID: issuerID, RecipientDutyGeneration: profile.IssuerDutyGeneration, Purpose: ardp.PurposeForwarding, ChannelNonce: [32]byte{67}, Deadline: now.Add(9 * time.Second)}
+	body, err := ardp.EncodeHello(outerHello)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := route.WriteClosedLaneFrame(outer, route.ClosedLaneFrame{Kind: 1, Body: body}); err != nil {
+	if err := ardp.WriteFrame(outer, ardp.Frame{Kind: 1, Body: body}); err != nil {
 		t.Fatal(err)
 	}
-	if accepted, err := route.ReadClosedLaneFrame(outer); err != nil || accepted.Kind != 5 {
+	if accepted, err := ardp.ReadFrame(outer); err != nil || accepted.Kind != 5 {
 		t.Fatalf("outer accept = %+v / %v", accepted, err)
 	}
-	open, err := route.EncodeClosedNodeOpen(route.ClosedOpen{NextNodeID: issuerID, NextDutyGeneration: profile.IssuerDutyGeneration, Purpose: route.ClosedPurposeIssuer, Deadline: now.Add(8 * time.Second)}, route.ClosedChildIssuerBootstrap)
+	open, err := route.EncodeClosedNodeOpen(route.ClosedOpen{NextNodeID: issuerID, NextDutyGeneration: profile.IssuerDutyGeneration, Purpose: ardp.PurposeIssuer, Deadline: now.Add(8 * time.Second)}, route.ClosedChildIssuerBootstrap)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := route.WriteClosedLaneFrame(outer, route.ClosedLaneFrame{Kind: 4, Lane: 1, Body: open}); err != nil {
+	if err := ardp.WriteFrame(outer, ardp.Frame{Kind: 4, Lane: 1, Body: open}); err != nil {
 		t.Fatal(err)
 	}
 	innerRaw := &outerTestInnerConn{outer: outer, lane: 1}
@@ -103,16 +104,16 @@ func TestClosedIssuerServesBootstrapInsideStateAuthorizedNodeCarrier(t *testing.
 	}
 	defer inner.Close()
 	innerHello := outerHello
-	innerHello.Purpose, innerHello.ChannelNonce = route.ClosedPurposeIssuer, [32]byte{68}
+	innerHello.Purpose, innerHello.ChannelNonce = ardp.PurposeIssuer, [32]byte{68}
 	innerHello.Deadline = now.Add(8 * time.Second)
-	body, err = route.EncodeClosedHello(innerHello)
+	body, err = ardp.EncodeHello(innerHello)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := route.WriteClosedLaneFrame(inner, route.ClosedLaneFrame{Kind: 1, Body: body}); err != nil {
+	if err := ardp.WriteFrame(inner, ardp.Frame{Kind: 1, Body: body}); err != nil {
 		t.Fatal(err)
 	}
-	accepted, err := route.ReadClosedLaneFrame(inner)
+	accepted, err := ardp.ReadFrame(inner)
 	if err != nil || accepted.Kind != 5 {
 		t.Fatalf("inner issuer accept = %+v / %v", accepted, err)
 	}
@@ -136,7 +137,7 @@ func (connection *outerTestInnerConn) Read(value []byte) (int, error) {
 	connection.mu.Lock()
 	defer connection.mu.Unlock()
 	for len(connection.inbound) == 0 {
-		frame, err := route.ReadClosedLaneFrame(connection.outer)
+		frame, err := ardp.ReadFrame(connection.outer)
 		if err != nil {
 			return 0, err
 		}
@@ -160,7 +161,7 @@ func (connection *outerTestInnerConn) Write(value []byte) (int, error) {
 		if count > 16<<10 {
 			count = 16 << 10
 		}
-		if err := route.WriteClosedLaneFrame(connection.outer, route.ClosedLaneFrame{Kind: 6, Lane: connection.lane, Body: rest[:count]}); err != nil {
+		if err := ardp.WriteFrame(connection.outer, ardp.Frame{Kind: 6, Lane: connection.lane, Body: rest[:count]}); err != nil {
 			return 0, err
 		}
 		rest = rest[count:]

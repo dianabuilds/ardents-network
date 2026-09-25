@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	"github.com/dianabuilds/ardents-network/internal/route/terminal"
 )
 
@@ -30,7 +31,7 @@ func newClosedJoinFixture(t *testing.T) *closedJoinFixture {
 	f.clock.Store(f.now.Unix())
 	clock := func() time.Time { return time.Unix(f.clock.Load(), 0).UTC() }
 	f.receiver = ClosedRoleReceiver{NetworkID: [32]byte{1}, StateGeneration: [32]byte{2}, StateDigest: [32]byte{3}, ProfileDigest: [32]byte{4}, NodeID: [32]byte{5}, RecordDigest: [32]byte{6}, DutyGeneration: 6,
-		RoleDomain: 2, Subrole: 4, ExpectedPurpose: ClosedPurposeDataJoin, NotAfter: f.now.Add(time.Hour)}
+		RoleDomain: 2, Subrole: 4, ExpectedPurpose: ardp.PurposeDataJoin, NotAfter: f.now.Add(time.Hour)}
 	var err error
 	f.spends, err = OpenClosedSpendLedger(t.TempDir(), ClosedSpendBinding{NetworkID: f.receiver.NetworkID, ProfileDigest: f.receiver.ProfileDigest, ReceiverNodeID: f.receiver.NodeID, ReceiverDutyGeneration: 6})
 	if err != nil {
@@ -66,16 +67,16 @@ func (f *closedJoinFixture) admission(t *testing.T, class uint8) *ClosedAdmissio
 		t.Fatal(err)
 	}
 	r := f.receiver
-	hello := ClosedHello{NetworkID: r.NetworkID, StateGeneration: r.StateGeneration, StateDigest: r.StateDigest, ProfileDigest: r.ProfileDigest, RecipientNodeID: r.NodeID, RecipientDutyGeneration: r.DutyGeneration,
-		Purpose: ClosedPurposeDataJoin, ChannelNonce: [32]byte{f.nonce, 7}, Deadline: f.now.Add(time.Minute)}
-	body, err := EncodeClosedHello(hello)
+	hello := ardp.Hello{NetworkID: r.NetworkID, StateGeneration: r.StateGeneration, StateDigest: r.StateDigest, ProfileDigest: r.ProfileDigest, RecipientNodeID: r.NodeID, RecipientDutyGeneration: r.DutyGeneration,
+		Purpose: ardp.PurposeDataJoin, ChannelNonce: [32]byte{f.nonce, 7}, Deadline: f.now.Add(time.Minute)}
+	body, err := ardp.EncodeHello(hello)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := channel.Accept(ClosedLaneFrame{Kind: closedFrameHello, Body: body}); err != nil {
+	if _, err := channel.Accept(ardp.Frame{Kind: ardp.KindHello, Body: body}); err != nil {
 		t.Fatal(err)
 	}
-	lease, err := channel.Accept(ClosedLaneFrame{Kind: closedFrameAdmit, Body: append([]byte{class}, bytes.Repeat([]byte{f.nonce}, 354)...)})
+	lease, err := channel.Accept(ardp.Frame{Kind: ardp.KindAdmit, Body: append([]byte{class}, bytes.Repeat([]byte{f.nonce}, 354)...)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -95,7 +96,7 @@ func (f *closedJoinFixture) join(t *testing.T, role uint8, contextByte byte, sec
 	if err != nil {
 		t.Fatal(err)
 	}
-	side, err := f.pairs.Reserve(lease, ClosedLaneFrame{Kind: closedFrameOperation, Lane: 1, Body: raw})
+	side, err := f.pairs.Reserve(lease, ardp.Frame{Kind: ardp.KindOperation, Lane: 1, Body: raw})
 	if err == nil {
 		t.Cleanup(side.Close)
 	}
@@ -326,7 +327,7 @@ func TestClosedJoinPairingRefusalRetainsOriginalAdmission(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			frame := ClosedLaneFrame{Kind: closedFrameOperation, Lane: 1, Body: raw}
+			frame := ardp.Frame{Kind: ardp.KindOperation, Lane: 1, Body: raw}
 			switch reason {
 			case "lane":
 				frame.Lane = 3

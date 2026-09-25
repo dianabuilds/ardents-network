@@ -1,9 +1,10 @@
 # Route package refactoring boundary
 
 Status: working architecture analysis for the isolated refactoring branch. The
-terminal body extraction below is implemented and registered in the package
-map; the remaining Route split is still analysis, not a new Route contract or
-C0 execution ledger. The accepted Route and Carrier contracts govern behavior.
+terminal body and ARDP framing extractions below are implemented and registered
+in the package map; the remaining Route split is still analysis, not a new
+Route contract or C0 execution ledger. The accepted Route and Carrier contracts
+govern behavior.
 
 ## Current Linux owner graph
 
@@ -66,6 +67,19 @@ assertions remain in `internal/route`. Actual Route, Node, Endpoint, and
 are recorded in `package-map.md`. Recheck overlapping caller names and behavior
 when completed network-opening work is integrated; the network task retains
 its own uncommitted implementation.
+
+## ARDP framing owner
+
+`internal/route/ardp` owns the generation-3 lane header, frame-kind and body
+size checks, HELLO and bootstrap bodies, and fixed ACCEPT acknowledgement. Its
+canonical-byte tests moved with the codec. The purpose-to-duty assignment
+table remains in Route because it evaluates current role and duty facts, not
+wire syntax. JOIN's separate byte-accounted reader asks ARDP to validate the
+header before reserving its body; Route still owns accounting and physical
+stream lifetime. ARDP imports only `terminal` and the standard library, so
+Route, Node, Endpoint, and credential can consume it without an import cycle.
+They use the new types directly, with no retained `route.ClosedLaneFrame` or
+`route.ClosedHello` aliases.
 
 ## Intended seam
 

@@ -3,6 +3,8 @@ package route
 import (
 	"encoding/binary"
 	"errors"
+
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 )
 
 // ErrClosedForwardingChildRetired distinguishes an expected late completion
@@ -12,14 +14,14 @@ var ErrClosedForwardingChildRetired = errors.New("closed forwarding child is ret
 // QueueReverse reserves the next Carrier's complete frame before its shared
 // reader queues it. Both directions share the prefix and receiving-duty bounds;
 // bootstrap also shares its smaller aggregate queue and output budgets.
-func (channel *ClosedForwardingChannel) QueueReverse(frame ClosedLaneFrame) error {
+func (channel *ClosedForwardingChannel) QueueReverse(frame ardp.Frame) error {
 	if channel == nil {
 		return errors.New("closed forwarding reverse owner is unavailable")
 	}
 	channel.mu.Lock()
 	defer channel.mu.Unlock()
 	child, found := channel.children[frame.Lane]
-	size := uint64(closedLaneHeaderSize + len(frame.Body))
+	size := uint64(ardp.HeaderSize + len(frame.Body))
 	if !found {
 		return ErrClosedForwardingChildRetired
 	}
@@ -28,12 +30,12 @@ func (channel *ClosedForwardingChannel) QueueReverse(frame ClosedLaneFrame) erro
 		return ErrClosedForwardingChildRetired
 	}
 	switch frame.Kind {
-	case closedFrameAccept, closedFrameCredit, closedFrameEOF, closedFrameClose:
+	case ardp.KindAccept, ardp.KindCredit, ardp.KindEOF, ardp.KindClose:
 		if err := channel.reserveControlQueue(size); err != nil {
 			return err
 		}
 		child.reverseControlQueued += size
-	case closedFrameBytes:
+	case ardp.KindBytes:
 		if uint64(len(frame.Body)) > child.reverseCredit || size > closedPrefixQueueBytes-channel.queued {
 			return errors.New("closed forwarding reverse credit or queue exceeded")
 		}
@@ -54,7 +56,7 @@ func (channel *ClosedForwardingChannel) QueueReverse(frame ClosedLaneFrame) erro
 // returned. Its kind keeps control and data reservations distinct, including
 // failed writes. Child retirement already releases both classes; a late writer
 // cannot release another child's reserve or revive the retired lane.
-func (channel *ClosedForwardingChannel) ReleaseReverse(frame ClosedLaneFrame) {
+func (channel *ClosedForwardingChannel) ReleaseReverse(frame ardp.Frame) {
 	if channel == nil {
 		return
 	}
@@ -64,15 +66,15 @@ func (channel *ClosedForwardingChannel) ReleaseReverse(frame ClosedLaneFrame) {
 	if !found {
 		return
 	}
-	size := uint64(closedLaneHeaderSize + len(frame.Body))
+	size := uint64(ardp.HeaderSize + len(frame.Body))
 	switch frame.Kind {
-	case closedFrameAccept, closedFrameCredit, closedFrameEOF, closedFrameClose:
+	case ardp.KindAccept, ardp.KindCredit, ardp.KindEOF, ardp.KindClose:
 		if size > child.reverseControlQueued {
 			return
 		}
 		child.reverseControlQueued -= size
 		channel.releaseControlQueue(size)
-	case closedFrameBytes:
+	case ardp.KindBytes:
 		if size > child.reverseQueued {
 			return
 		}
@@ -87,7 +89,7 @@ func (channel *ClosedForwardingChannel) ReleaseReverse(frame ClosedLaneFrame) {
 
 // AccountOutput charges actual framed output before the serialized writer.
 // It never refunds a failed write or turns bootstrap success into admission.
-func (channel *ClosedForwardingChannel) AccountOutput(frame ClosedLaneFrame) error {
+func (channel *ClosedForwardingChannel) AccountOutput(frame ardp.Frame) error {
 	if channel == nil {
 		return errors.New("closed forwarding output is unavailable")
 	}
@@ -102,9 +104,9 @@ func (channel *ClosedForwardingChannel) AccountOutput(frame ClosedLaneFrame) err
 		}
 	}
 	if channel.bootstrap != nil {
-		return channel.bootstrap.Send(uint64(closedLaneHeaderSize + len(frame.Body)))
+		return channel.bootstrap.Send(uint64(ardp.HeaderSize + len(frame.Body)))
 	}
-	size := uint64(closedLaneHeaderSize + len(frame.Body))
+	size := uint64(ardp.HeaderSize + len(frame.Body))
 	if size > channel.byteLimit-channel.usedBytes {
 		return errors.New("closed forwarding output exhausted")
 	}
@@ -112,7 +114,7 @@ func (channel *ClosedForwardingChannel) AccountOutput(frame ClosedLaneFrame) err
 	return nil
 }
 
-func (channel *ClosedForwardingChannel) peerCredit(frame ClosedLaneFrame) (ClosedForwardingEvent, error) {
+func (channel *ClosedForwardingChannel) peerCredit(frame ardp.Frame) (ClosedForwardingEvent, error) {
 	child, found := channel.children[frame.Lane]
 	if !found || len(frame.Body) != 4 {
 		return ClosedForwardingEvent{}, errors.New("closed forwarding peer credit is invalid")
@@ -121,7 +123,7 @@ func (channel *ClosedForwardingChannel) peerCredit(frame ClosedLaneFrame) (Close
 	if increment == 0 || increment > closedLaneCredit-child.reverseCredit {
 		return ClosedForwardingEvent{}, errors.New("closed forwarding peer credit exceeds consumption")
 	}
-	if !channel.queueControl(ClosedForwardingEvent{Kind: closedFrameCredit, Lane: frame.Lane, Bytes: append([]byte(nil), frame.Body...)}) {
+	if !channel.queueControl(ClosedForwardingEvent{Kind: ardp.KindCredit, Lane: frame.Lane, Bytes: append([]byte(nil), frame.Body...)}) {
 		return ClosedForwardingEvent{}, errors.New("closed forwarding peer credit queue is exhausted")
 	}
 	child.reverseCredit += increment

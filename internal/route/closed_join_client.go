@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	"github.com/dianabuilds/ardents-network/internal/route/terminal"
 )
 
@@ -75,7 +76,7 @@ func (prefix *ClosedSourcePrefix) Join(ctx context.Context, present ClosedTokenP
 			release()
 		}
 	}()
-	lane, err := prefix.channels.open(ctx, ClosedOpen{NextNodeID: peer.node, NextDutyGeneration: peer.generation, Purpose: ClosedPurposeDataJoin, Deadline: end}, pending)
+	lane, err := prefix.channels.open(ctx, ClosedOpen{NextNodeID: peer.node, NextDutyGeneration: peer.generation, Purpose: ardp.PurposeDataJoin, Deadline: end}, pending)
 	if err != nil {
 		return nil, err
 	}
@@ -101,15 +102,15 @@ func (prefix *ClosedSourcePrefix) Join(ctx context.Context, present ClosedTokenP
 	if err := secured.SetDeadline(pending); err != nil {
 		return nil, err
 	}
-	hello := ClosedHello{NetworkID: prefix.plan.profile.NetworkID, StateGeneration: prefix.plan.profile.StateGeneration, StateDigest: prefix.plan.profile.StateDigest, ProfileDigest: prefix.plan.profile.Digest, RecipientNodeID: peer.node, RecipientDutyGeneration: peer.generation, Purpose: ClosedPurposeDataJoin, Deadline: end}
+	hello := ardp.Hello{NetworkID: prefix.plan.profile.NetworkID, StateGeneration: prefix.plan.profile.StateGeneration, StateDigest: prefix.plan.profile.StateDigest, ProfileDigest: prefix.plan.profile.Digest, RecipientNodeID: peer.node, RecipientDutyGeneration: peer.generation, Purpose: ardp.PurposeDataJoin, Deadline: end}
 	if _, err := rand.Read(hello.ChannelNonce[:]); err != nil {
 		return nil, err
 	}
-	body, err := EncodeClosedHello(hello)
+	body, err := ardp.EncodeHello(hello)
 	if err != nil {
 		return nil, err
 	}
-	if err := WriteClosedLaneFrame(secured, ClosedLaneFrame{Kind: closedFrameHello, Body: body}); err != nil {
+	if err := ardp.WriteFrame(secured, ardp.Frame{Kind: ardp.KindHello, Body: body}); err != nil {
 		return nil, err
 	}
 	if err := prefix.currentJoin(peer); err != nil {
@@ -126,14 +127,14 @@ func (prefix *ClosedSourcePrefix) Join(ctx context.Context, present ClosedTokenP
 	}
 	admit := append([]byte{2}, token...)
 	defer clear(admit)
-	if err := WriteClosedLaneFrame(secured, ClosedLaneFrame{Kind: closedFrameAdmit, Body: admit}); err != nil {
+	if err := ardp.WriteFrame(secured, ardp.Frame{Kind: ardp.KindAdmit, Body: admit}); err != nil {
 		return nil, err
 	}
-	accepted, err := ReadClosedLaneFrame(secured)
+	accepted, err := ardp.ReadFrame(secured)
 	if err != nil {
 		return nil, err
 	}
-	if status, credit, err := DecodeClosedAcceptFrame(accepted); err != nil || status != 0 || credit != 64<<10 {
+	if status, credit, err := ardp.DecodeAcceptFrame(accepted); err != nil || status != 0 || credit != 64<<10 {
 		return nil, errors.New("closed JOIN admission refused")
 	}
 	if err := lane.activate(); err != nil {
@@ -155,16 +156,16 @@ func (prefix *ClosedSourcePrefix) Join(ctx context.Context, present ClosedTokenP
 		return nil, err
 	}
 	defer clear(operation)
-	if err := WriteClosedLaneFrame(secured, ClosedLaneFrame{Kind: closedFrameOperation, Lane: 1, Body: operation}); err != nil {
+	if err := ardp.WriteFrame(secured, ardp.Frame{Kind: ardp.KindOperation, Lane: 1, Body: operation}); err != nil {
 		return nil, err
 	}
-	result, err := ReadClosedLaneFrame(secured)
+	result, err := ardp.ReadFrame(secured)
 	if err != nil {
 		return nil, err
 	}
 	defer clear(result.Body)
 	status, err := terminal.DecodeJoinResult(result.Body, request.Nonce)
-	if err != nil || status != 0 || result.Kind != closedFrameResult || result.Lane != 1 {
+	if err != nil || status != 0 || result.Kind != ardp.KindResult || result.Lane != 1 {
 		return nil, errors.New("closed JOIN result refused or mismatched")
 	}
 	if err := prefix.currentJoin(peer); err != nil {
@@ -195,7 +196,7 @@ func (prefix *ClosedSourcePrefix) joinPeer() (closedBootstrapPeer, time.Time, er
 	if err != nil {
 		return closedBootstrapPeer{}, time.Time{}, err
 	}
-	peer, err := prefix.terminalPeer(ClosedPurposeDataJoin)
+	peer, err := prefix.terminalPeer(ardp.PurposeDataJoin)
 	if err != nil || peer.node != node || peer.generation != generation {
 		return closedBootstrapPeer{}, time.Time{}, errors.New("closed JOIN recipient changed")
 	}

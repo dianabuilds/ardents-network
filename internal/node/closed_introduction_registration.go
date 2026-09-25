@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	"github.com/dianabuilds/ardents-network/internal/route/terminal"
 )
 
@@ -15,7 +16,7 @@ func (server *closedIntroductionServer) current() bool {
 	if err != nil {
 		return false
 	}
-	receiver, ok := closedRouteReceiver(server.config, snapshot, route.ClosedPurposeIntroduction, server.config.now())
+	receiver, ok := closedRouteReceiver(server.config, snapshot, ardp.PurposeIntroduction, server.config.now())
 	return ok && receiver == server.receiver
 }
 
@@ -52,12 +53,12 @@ func (server *closedIntroductionServer) serveInner(ctx context.Context, lane *ro
 	if lane.BeginInnerHello() != nil {
 		return
 	}
-	frame, err := route.ReadClosedLaneFrame(secured)
+	frame, err := ardp.ReadFrame(secured)
 	if err != nil || frame.Kind != 1 || frame.Lane != 0 {
 		return
 	}
-	hello, err := route.DecodeClosedHello(frame.Body)
-	if err != nil || (hello.Purpose != route.ClosedPurposeIntroduction && hello.Purpose != route.ClosedPurposeSubmission) || lane.Activate(hello) != nil {
+	hello, err := ardp.DecodeHello(frame.Body)
+	if err != nil || (hello.Purpose != ardp.PurposeIntroduction && hello.Purpose != ardp.PurposeSubmission) || lane.Activate(hello) != nil {
 		return
 	}
 	if server.serveAdmitted(ctx, secured, lane, frame) == nil {
@@ -65,21 +66,21 @@ func (server *closedIntroductionServer) serveInner(ctx context.Context, lane *ro
 	}
 }
 
-func (server *closedIntroductionServer) serveAdmitted(ctx context.Context, connection net.Conn, lane *route.ClosedOuterBridgeLane, hello route.ClosedLaneFrame) error {
+func (server *closedIntroductionServer) serveAdmitted(ctx context.Context, connection net.Conn, lane *route.ClosedOuterBridgeLane, hello ardp.Frame) error {
 	exporter, err := route.ClosedRoleTLSExporter(connection)
 	if err != nil {
 		return err
 	}
-	facts, err := route.DecodeClosedHello(hello.Body)
+	facts, err := ardp.DecodeHello(hello.Body)
 	if err != nil {
 		return err
 	}
 	receiver := server.receiver
 	receiver.ExpectedPurpose = facts.Purpose
 	class := byte(3)
-	if facts.Purpose == route.ClosedPurposeSubmission {
+	if facts.Purpose == ardp.PurposeSubmission {
 		class = 1
-	} else if facts.Purpose != route.ClosedPurposeIntroduction {
+	} else if facts.Purpose != ardp.PurposeIntroduction {
 		return errors.New("closed Introduction purpose unavailable")
 	}
 	channel, err := route.NewClosedAdmissionChannel(receiver, server.spends, server.limits, exporter,
@@ -90,7 +91,7 @@ func (server *closedIntroductionServer) serveAdmitted(ctx context.Context, conne
 	if _, err := channel.Accept(hello); err != nil {
 		return err
 	}
-	frame, err := route.ReadClosedLaneFrame(connection)
+	frame, err := ardp.ReadFrame(connection)
 	if err != nil || frame.Kind != 2 || frame.Lane != 0 || len(frame.Body) != 355 || frame.Body[0] != class {
 		return errors.New("closed Introduction requires Publication admission")
 	}
@@ -105,12 +106,12 @@ func (server *closedIntroductionServer) serveAdmitted(ctx context.Context, conne
 	if err := connection.SetDeadline(lease.Deadline); err != nil {
 		return err
 	}
-	accepted, err := route.ClosedAcceptFrame(0, 64<<10)
+	accepted, err := ardp.AcceptFrame(0, 64<<10)
 	if err != nil {
 		return err
 	}
 	used := uint64(16 + len(hello.Body) + 16 + len(frame.Body) + 16 + len(accepted.Body))
-	if err := route.WriteClosedLaneFrame(connection, accepted); err != nil {
+	if err := ardp.WriteFrame(connection, accepted); err != nil {
 		return err
 	}
 	if class == 1 {
@@ -120,7 +121,7 @@ func (server *closedIntroductionServer) serveAdmitted(ctx context.Context, conne
 }
 
 func (server *closedIntroductionServer) register(ctx context.Context, connection net.Conn, lease route.ClosedAdmission, used uint64) error {
-	operation, err := route.ReadClosedLaneFrame(connection)
+	operation, err := ardp.ReadFrame(connection)
 	if err != nil || operation.Kind != 10 || operation.Lane != 0 {
 		return errors.New("closed Introduction registration required")
 	}
@@ -141,7 +142,7 @@ func (server *closedIntroductionServer) register(ctx context.Context, connection
 		if err != nil {
 			return err
 		}
-		return route.WriteClosedLaneFrame(connection, route.ClosedLaneFrame{Kind: 11, Body: result})
+		return ardp.WriteFrame(connection, ardp.Frame{Kind: 11, Body: result})
 	}
 	defer server.retireSlot(slot)
 	if err := connection.SetDeadline(request.Expiry); err != nil {
@@ -158,7 +159,7 @@ func (server *closedIntroductionServer) register(ctx context.Context, connection
 	server.slotsMu.Lock()
 	slot.active = true
 	server.slotsMu.Unlock()
-	if err := route.WriteClosedLaneFrame(connection, route.ClosedLaneFrame{Kind: 11, Body: result}); err != nil {
+	if err := ardp.WriteFrame(connection, ardp.Frame{Kind: 11, Body: result}); err != nil {
 		server.retireSlot(slot)
 		<-slot.writer
 		return err

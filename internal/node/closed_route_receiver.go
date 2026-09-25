@@ -7,12 +7,13 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 )
 
 // closedRouteReceiver projects one local recipient from the exact State
 // accepted closed profile. It never accepts a plan-supplied digest, role or
 // duty, and a State successor makes the receiver unavailable before dial.
-func closedRouteReceiver(config runtimeConfig, snapshot dutyFacts, purpose route.ClosedPurpose, now time.Time) (route.ClosedRoleReceiver, bool) {
+func closedRouteReceiver(config runtimeConfig, snapshot dutyFacts, purpose ardp.Purpose, now time.Time) (route.ClosedRoleReceiver, bool) {
 	view, err := currentClosedRoute(config, snapshot, now)
 	if err != nil {
 		return route.ClosedRoleReceiver{}, false

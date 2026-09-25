@@ -2,11 +2,13 @@ package node
 
 import (
 	"context"
-	"github.com/dianabuilds/ardents-network/internal/route"
 	"io"
 	"net"
 	"testing"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 )
 
 func TestClosedOuterWriterDeadlineInterruptsRetainedCarrier(t *testing.T) {
@@ -37,24 +39,24 @@ func TestClosedOuterWriterDeadlineInterruptsRetainedCarrier(t *testing.T) {
 			written <- err
 		})
 	}()
-	hello := route.ClosedHello{NetworkID: receiver.NetworkID, StateGeneration: receiver.StateGeneration, StateDigest: receiver.StateDigest, ProfileDigest: receiver.ProfileDigest,
-		RecipientNodeID: receiver.NodeID, RecipientDutyGeneration: receiver.DutyGeneration, Purpose: route.ClosedPurposeForwarding, ChannelNonce: [32]byte{8}, Deadline: end}
-	body, err := route.EncodeClosedHello(hello)
+	hello := ardp.Hello{NetworkID: receiver.NetworkID, StateGeneration: receiver.StateGeneration, StateDigest: receiver.StateDigest, ProfileDigest: receiver.ProfileDigest,
+		RecipientNodeID: receiver.NodeID, RecipientDutyGeneration: receiver.DutyGeneration, Purpose: ardp.PurposeForwarding, ChannelNonce: [32]byte{8}, Deadline: end}
+	body, err := ardp.EncodeHello(hello)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := route.WriteClosedLaneFrame(peer, route.ClosedLaneFrame{Kind: 1, Body: body}); err != nil {
+	if err := ardp.WriteFrame(peer, ardp.Frame{Kind: 1, Body: body}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := route.ReadClosedLaneFrame(peer); err != nil {
+	if _, err := ardp.ReadFrame(peer); err != nil {
 		t.Fatal(err)
 	}
 	body, err = route.EncodeClosedNodeOpen(route.ClosedOpen{NextNodeID: receiver.NodeID, NextDutyGeneration: receiver.DutyGeneration,
-		Purpose: route.ClosedPurposeIssuer, Deadline: now.Add(2 * time.Second)}, route.ClosedChildIssuerBootstrap)
+		Purpose: ardp.PurposeIssuer, Deadline: now.Add(2 * time.Second)}, route.ClosedChildIssuerBootstrap)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := route.WriteClosedLaneFrame(peer, route.ClosedLaneFrame{Kind: 4, Lane: 1, Body: body}); err != nil {
+	if err := ardp.WriteFrame(peer, ardp.Frame{Kind: 4, Lane: 1, Body: body}); err != nil {
 		t.Fatal(err)
 	}
 	// Peer deliberately never reads the child's response. The Carrier's hour
@@ -90,11 +92,11 @@ func TestClosedForwardingInitialAcceptKeepsOperationDeadline(t *testing.T) {
 	}
 	defer lease.Release()
 	read := make(chan error, 1)
-	go func() { _, err := route.ReadClosedLaneFrame(peer); read <- err }()
+	go func() { _, err := ardp.ReadFrame(peer); read <- err }()
 	end := time.Now().UTC().Truncate(time.Second).Add(time.Hour)
-	hello := func() (route.ClosedHello, error) {
-		return route.ClosedHello{NetworkID: [32]byte{1}, StateGeneration: [32]byte{2}, StateDigest: [32]byte{3}, ProfileDigest: [32]byte{4},
-			RecipientNodeID: [32]byte{5}, RecipientDutyGeneration: 6, Purpose: route.ClosedPurposeForwarding, ChannelNonce: [32]byte{7}, Deadline: end}, nil
+	hello := func() (ardp.Hello, error) {
+		return ardp.Hello{NetworkID: [32]byte{1}, StateGeneration: [32]byte{2}, StateDigest: [32]byte{3}, ProfileDigest: [32]byte{4},
+			RecipientNodeID: [32]byte{5}, RecipientDutyGeneration: 6, Purpose: ardp.PurposeForwarding, ChannelNonce: [32]byte{7}, Deadline: end}, nil
 	}
 	result := make(chan error, 1)
 	go func() {
@@ -121,7 +123,7 @@ func TestClosedForwardingBlockedWriteRetiresPhysicalCarrier(t *testing.T) {
 	session := &closedForwardingSession{carrier: local}
 	returned := make(chan error, 1)
 	go func() {
-		_, err := session.writeChildFrame(route.ClosedLaneFrame{Kind: 6, Lane: 1, Body: []byte{1}}, time.Now().Add(100*time.Millisecond), newClosedForwardingQueue(64))
+		_, err := session.writeChildFrame(ardp.Frame{Kind: 6, Lane: 1, Body: []byte{1}}, time.Now().Add(100*time.Millisecond), newClosedForwardingQueue(64))
 		returned <- err
 	}()
 	select {

@@ -9,6 +9,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/resource"
 	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 )
 
 type admissionKind byte
@@ -103,23 +104,23 @@ func assessAdmission(config runtimeConfig, snapshot dutyFacts) admission {
 		stableConfig := config
 		stableConfig.CurrentClosedRoute = func() (state.ClosedRouteView, error) { return closedRoute, nil }
 		stableConfig.CurrentClosedProfile = func() (state.ClosedProfileView, bool) { return closedRoute.Profile, true }
-		if _, available := closedRouteReceiver(stableConfig, snapshot, route.ClosedPurposeIssuer, now); available {
+		if _, available := closedRouteReceiver(stableConfig, snapshot, ardp.PurposeIssuer, now); available {
 			if err := validateClosedIssuerProfile(config.ClosedIssuer, stableConfig, snapshot, now); err != nil {
 				return admission{kind: admissionPrepared, reason: err.Error()}
 			}
-		} else if _, available := closedRouteReceiver(stableConfig, snapshot, route.ClosedPurposeForwarding, now); available {
+		} else if _, available := closedRouteReceiver(stableConfig, snapshot, ardp.PurposeForwarding, now); available {
 			if err := validateClosedForwardingProfile(config.ClosedForwarding, stableConfig, snapshot, now); err != nil {
 				return admission{kind: admissionPrepared, reason: err.Error()}
 			}
-		} else if _, available := closedRouteReceiver(stableConfig, snapshot, route.ClosedPurposeReachability, now); available {
+		} else if _, available := closedRouteReceiver(stableConfig, snapshot, ardp.PurposeReachability, now); available {
 			if err := validateClosedResolutionProfile(config.ClosedResolution, stableConfig, snapshot, now); err != nil {
 				return admission{kind: admissionPrepared, reason: err.Error()}
 			}
-		} else if _, available := closedRouteReceiver(stableConfig, snapshot, route.ClosedPurposeIntroduction, now); available {
+		} else if _, available := closedRouteReceiver(stableConfig, snapshot, ardp.PurposeIntroduction, now); available {
 			if err := validateClosedIntroductionProfile(config.ClosedIntroduction, stableConfig, snapshot, now); err != nil {
 				return admission{kind: admissionPrepared, reason: err.Error()}
 			}
-		} else if _, available := closedRouteReceiver(stableConfig, snapshot, route.ClosedPurposeDataJoin, now); available {
+		} else if _, available := closedRouteReceiver(stableConfig, snapshot, ardp.PurposeDataJoin, now); available {
 			if err := validateClosedDataJoinProfile(config.ClosedDataJoin, stableConfig, snapshot, now); err != nil {
 				return admission{kind: admissionPrepared, reason: err.Error()}
 			}

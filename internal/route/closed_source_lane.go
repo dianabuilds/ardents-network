@@ -10,6 +10,8 @@ import (
 	"os"
 	"sync"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 )
 
 type closedSourceLane struct {
@@ -53,14 +55,14 @@ func (lane *closedSourceLane) writeErrorLocked(terminal bool) error {
 	return nil
 }
 
-func (lane *closedSourceLane) enqueueLocked(frame ClosedLaneFrame, cleanup time.Time) (*closedSourceWrite, error) {
+func (lane *closedSourceLane) enqueueLocked(frame ardp.Frame, cleanup time.Time) (*closedSourceWrite, error) {
 	owner := lane.owner
 	size := uint64(16 + len(frame.Body))
-	if err := lane.writeErrorLocked(frame.Kind == closedFrameClose); err != nil {
+	if err := lane.writeErrorLocked(frame.Kind == ardp.KindClose); err != nil {
 		return nil, err
 	}
-	control := frame.Kind != closedFrameBytes
-	terminal := frame.Kind == closedFrameClose || lane.terminalWriters != 0
+	control := frame.Kind != ardp.KindBytes
+	terminal := frame.Kind == ardp.KindClose || lane.terminalWriters != 0
 	if control && owner.controlsSize+size > 16<<10 || !owner.reserveQueuedLocked(size, control) {
 		return nil, errClosedSourceOutputQueueFull
 	}
@@ -82,7 +84,7 @@ func (lane *closedSourceLane) enqueueLocked(frame ClosedLaneFrame, cleanup time.
 	return request, nil
 }
 
-func (lane *closedSourceLane) send(frame ClosedLaneFrame, cleanup time.Time) error {
+func (lane *closedSourceLane) send(frame ardp.Frame, cleanup time.Time) error {
 	lane.owner.mu.Lock()
 	request, err := lane.enqueueLocked(frame, cleanup)
 	lane.owner.mu.Unlock()
@@ -260,7 +262,7 @@ func (lane *closedSourceLane) returnCredit() error {
 	lane.consumed = 0
 	lane.receiveCredit += count
 	owner.mu.Unlock()
-	err := lane.send(ClosedLaneFrame{Kind: closedFrameCredit, Lane: lane.id, Body: binary.BigEndian.AppendUint32(nil, count)}, time.Time{})
+	err := lane.send(ardp.Frame{Kind: ardp.KindCredit, Lane: lane.id, Body: binary.BigEndian.AppendUint32(nil, count)}, time.Time{})
 	// A joined outer parent can fail after these bytes were accepted but before
 	// CREDIT enters its queue. No credit is usable after that terminal state;
 	// retain the parent cause for the reader instead of replacing it with a
@@ -310,10 +312,10 @@ func (lane *closedSourceLane) Write(value []byte) (int, error) {
 			}
 			continue
 		}
-		count := min(len(value), closedLaneMaximum, int(lane.credit))
+		count := min(len(value), ardp.MaximumBodySize, int(lane.credit))
 		lane.credit -= uint32(count)
 		owner.mu.Unlock()
-		if err := lane.send(ClosedLaneFrame{Kind: closedFrameBytes, Lane: lane.id, Body: value[:count]}, time.Time{}); err != nil {
+		if err := lane.send(ardp.Frame{Kind: ardp.KindBytes, Lane: lane.id, Body: value[:count]}, time.Time{}); err != nil {
 			return written, err
 		}
 		written += count
@@ -343,9 +345,9 @@ func (lane *closedSourceLane) Close() error {
 		clear(lane.buffer)
 		lane.buffer = nil
 		var activeCredit *closedSourceWrite
-		if owner.active != nil && owner.active.lane == lane && owner.active.frame.Kind != closedFrameClose {
+		if owner.active != nil && owner.active.lane == lane && owner.active.frame.Kind != ardp.KindClose {
 			deadline := time.Now()
-			if owner.active.frame.Kind == closedFrameCredit {
+			if owner.active.frame.Kind == ardp.KindCredit {
 				activeCredit = owner.active
 				// This already emitted control frame can finish before CLOSE.
 				// Cutting it short needlessly retires the shared physical prefix.
@@ -359,7 +361,7 @@ func (lane *closedSourceLane) Close() error {
 			_ = owner.parent.SetWriteDeadline(deadline)
 		}
 		var opening <-chan struct{}
-		if owner.active != nil && owner.active.lane == lane && owner.active.frame.Kind == closedFrameOpen {
+		if owner.active != nil && owner.active.lane == lane && owner.active.frame.Kind == ardp.KindOpen {
 			opening = owner.active.done
 		}
 		owner.signalLocked()
@@ -380,7 +382,7 @@ func (lane *closedSourceLane) Close() error {
 		// ends before emission starts, its joined physical retirement replaces
 		// an undelivered child CLOSE without inventing a cleanup failure.
 		if opened && !parentEnded && !peerEndedJoin {
-			terminal, lane.closeErr = lane.enqueueLocked(ClosedLaneFrame{Kind: closedFrameClose, Lane: lane.id, Body: []byte{lane.closeStatus}}, cleanupEnd)
+			terminal, lane.closeErr = lane.enqueueLocked(ardp.Frame{Kind: ardp.KindClose, Lane: lane.id, Body: []byte{lane.closeStatus}}, cleanupEnd)
 		}
 		owner.mu.Unlock()
 		if terminal == nil && errors.Is(lane.closeErr, errClosedSourceOutputQueueFull) && owner.retainClosedRead && owner.queueParentEnded() {

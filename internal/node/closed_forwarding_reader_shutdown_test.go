@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 )
 
 // Delay only the return from Read after physical closure. This models a
@@ -95,14 +96,14 @@ func checkForwardingReaderShutdown(t *testing.T, closeErr error) {
 	helloRead := make(chan error, 1)
 	handshake := make(chan error, 1)
 	go func() {
-		_, err := route.ReadClosedLaneFrame(peer)
+		_, err := ardp.ReadFrame(peer)
 		helloRead <- err
 		if err == nil {
 			<-allowAccept
-			frame, encodeErr := route.ClosedAcceptFrame(0, 64<<10)
+			frame, encodeErr := ardp.AcceptFrame(0, 64<<10)
 			err = encodeErr
 			if err == nil {
-				err = route.WriteClosedLaneFrame(peer, frame)
+				err = ardp.WriteFrame(peer, frame)
 			}
 		}
 		handshake <- err
@@ -113,10 +114,10 @@ func checkForwardingReaderShutdown(t *testing.T, closeErr error) {
 	server.workers.Add(1)
 	go func() {
 		defer server.workers.Done()
-		_, acquireErr := server.sessions.acquire(context.Background(), key, lease, time.Now().Add(time.Second), func() (route.ClosedHello, error) {
-			return route.ClosedHello{NetworkID: [32]byte{1}, StateGeneration: [32]byte{2}, StateDigest: [32]byte{3},
+		_, acquireErr := server.sessions.acquire(context.Background(), key, lease, time.Now().Add(time.Second), func() (ardp.Hello, error) {
+			return ardp.Hello{NetworkID: [32]byte{1}, StateGeneration: [32]byte{2}, StateDigest: [32]byte{3},
 				ProfileDigest: [32]byte{4}, RecipientNodeID: [32]byte{5}, RecipientDutyGeneration: 1,
-				Purpose: route.ClosedPurposeForwarding, ChannelNonce: [32]byte{6}, Deadline: end}, nil
+				Purpose: ardp.PurposeForwarding, ChannelNonce: [32]byte{6}, Deadline: end}, nil
 		})
 		producerResult <- acquireErr
 		<-allowProducer

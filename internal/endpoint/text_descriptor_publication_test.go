@@ -11,6 +11,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
 	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	"github.com/dianabuilds/ardents-network/internal/service/publication"
 	"github.com/dianabuilds/ardents-network/internal/service/reachability"
 )
@@ -138,7 +139,7 @@ func lookupTextPublishedProof(t *testing.T, owner *textContext, target [32]byte)
 	if err := owner.issueTextTokens(t.Context(), [][32]byte{receiver}, 1); err != nil {
 		t.Fatal(err)
 	}
-	status, raw, err := prefix.ExchangeDescriptor(t.Context(), func(hello route.ClosedHello, class uint8) ([]byte, error) {
+	status, raw, err := prefix.ExchangeDescriptor(t.Context(), func(hello ardp.Hello, class uint8) ([]byte, error) {
 		owner.mu.Lock()
 		defer owner.mu.Unlock()
 		profile, now, err := owner.textPermissionProfileLocked()

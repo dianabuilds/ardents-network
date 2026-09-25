@@ -11,6 +11,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	"github.com/dianabuilds/ardents-network/internal/service/publication"
 	"github.com/dianabuilds/ardents-network/internal/service/reachability"
 )
@@ -51,7 +52,7 @@ func TestTextResolutionUsesIssuedControlThroughRetainedPrefix(t *testing.T) {
 			}
 			// The explicit Publisher fixture sends a genuine signed proof using
 			// actual issued stock; no success callback pre-populates the Store.
-			status, _, err := prefix.ExchangeDescriptor(t.Context(), func(hello route.ClosedHello, class uint8) ([]byte, error) {
+			status, _, err := prefix.ExchangeDescriptor(t.Context(), func(hello ardp.Hello, class uint8) ([]byte, error) {
 				owner.mu.Lock()
 				defer owner.mu.Unlock()
 				profile, now, err := owner.textPermissionProfileLocked()

@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	"github.com/dianabuilds/ardents-network/internal/route/terminal"
 	"github.com/dianabuilds/ardents-network/internal/service/reachability"
 )
@@ -23,11 +24,11 @@ func TestClosedTerminalBodiesRetainOuterLaneFraming(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, body := range [][]byte{lookup, publish} {
-		raw, err := EncodeClosedLaneFrame(ClosedLaneFrame{Kind: closedFrameOperation, Body: body})
+		raw, err := ardp.EncodeFrame(ardp.Frame{Kind: ardp.KindOperation, Body: body})
 		if err != nil {
 			t.Fatal(err)
 		}
-		frame, err := ReadClosedLaneFrame(bytes.NewReader(raw))
+		frame, err := ardp.ReadFrame(bytes.NewReader(raw))
 		if err != nil || !bytes.Equal(frame.Body, body) {
 			t.Fatalf("Descriptor outer lane changed: %v", err)
 		}
@@ -37,7 +38,7 @@ func TestClosedTerminalBodiesRetainOuterLaneFraming(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	frame, err := EncodeClosedLaneFrame(ClosedLaneFrame{Kind: closedFrameOperation, Lane: 1, Body: join})
+	frame, err := ardp.EncodeFrame(ardp.Frame{Kind: ardp.KindOperation, Lane: 1, Body: join})
 	if err != nil || len(frame) != 4112 {
 		t.Fatalf("JOIN outer lane changed: %v", err)
 	}

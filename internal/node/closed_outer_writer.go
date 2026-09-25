@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 )
 
 // A deadline update can interrupt only its own in-flight payload frame. The
@@ -27,7 +27,7 @@ type closedOuterWriter struct {
 }
 
 type closedOuterWriteRequest struct {
-	frame             route.ClosedLaneFrame
+	frame             ardp.Frame
 	deadline          func() time.Time
 	end               time.Time
 	control, terminal bool
@@ -35,7 +35,7 @@ type closedOuterWriteRequest struct {
 	err               error
 }
 
-func (owner *closedOuterWriter) write(frame route.ClosedLaneFrame, deadline func() time.Time, control, terminal bool) error {
+func (owner *closedOuterWriter) write(frame ardp.Frame, deadline func() time.Time, control, terminal bool) error {
 	request := &closedOuterWriteRequest{frame: frame, deadline: deadline, control: control, terminal: terminal, done: make(chan struct{})}
 	owner.state.Lock()
 	switch {
@@ -113,7 +113,7 @@ func (owner *closedOuterWriter) drain() {
 		err := owner.connection.SetWriteDeadline(end)
 		owner.state.Unlock()
 		if err == nil {
-			err = route.WriteClosedLaneFrame(owner.connection, request.frame)
+			err = ardp.WriteFrame(owner.connection, request.frame)
 		}
 		owner.state.Lock()
 		owner.active = nil

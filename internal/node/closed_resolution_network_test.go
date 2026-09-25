@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	"github.com/dianabuilds/ardents-network/internal/route/terminal"
 
 	"github.com/dianabuilds/ardents-network/internal/route"
@@ -93,10 +94,10 @@ func (fixture *resolutionNetworkFixture) exchange(ctx context.Context, token []b
 		return 0, nil, err
 	}
 	defer closeCarrier()
-	if err := route.WriteClosedLaneFrame(inner, route.ClosedLaneFrame{Kind: 10, Body: operation}); err != nil {
+	if err := ardp.WriteFrame(inner, ardp.Frame{Kind: 10, Body: operation}); err != nil {
 		return 0, nil, err
 	}
-	result, err := route.ReadClosedLaneFrame(inner)
+	result, err := ardp.ReadFrame(inner)
 	if err != nil || result.Kind != 11 || result.Lane != 0 {
 		return 0, nil, fmt.Errorf("Descriptor result: kind=%d error=%v", result.Kind, err)
 	}

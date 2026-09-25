@@ -14,6 +14,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	"github.com/dianabuilds/ardents-network/internal/route/credential"
 )
 
@@ -97,17 +98,17 @@ func TestClosedRouteReceiverRefusesDutyOrDigestMismatch(t *testing.T) {
 	view := state.ClosedRouteView{Profile: profile, NodeCount: 1}
 	view.Nodes[0] = state.ClosedRouteNodeView{NodeID: snapshot.NodeID, RecordDigest: [32]byte{8}, RoleDomain: 2, Subrole: 6, DutyGeneration: snapshot.RecordGeneration}
 	config := runtimeConfig{Config: Config{CurrentClosedRoute: func() (state.ClosedRouteView, error) { return view, nil }}}
-	receiver, available := closedRouteReceiver(config, snapshot, route.ClosedPurposeIssuer, now)
+	receiver, available := closedRouteReceiver(config, snapshot, ardp.PurposeIssuer, now)
 	if !available || receiver.DutyGeneration != snapshot.RecordGeneration || receiver.RecordDigest != view.Nodes[0].RecordDigest {
 		t.Fatalf("closed route receiver = %+v / %t", receiver, available)
 	}
 	view.Nodes[0].DutyGeneration++
-	if _, available := closedRouteReceiver(config, snapshot, route.ClosedPurposeIssuer, now); available {
+	if _, available := closedRouteReceiver(config, snapshot, ardp.PurposeIssuer, now); available {
 		t.Fatal("accepted a mismatched closed profile duty")
 	}
 	view.Nodes[0].DutyGeneration = snapshot.RecordGeneration
 	view.Nodes[0].RecordDigest = [32]byte{}
-	if _, available := closedRouteReceiver(config, snapshot, route.ClosedPurposeIssuer, now); available {
+	if _, available := closedRouteReceiver(config, snapshot, ardp.PurposeIssuer, now); available {
 		t.Fatal("accepted a missing closed profile record digest")
 	}
 }

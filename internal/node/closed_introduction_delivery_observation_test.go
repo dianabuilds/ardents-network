@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	introductioncapsule "github.com/dianabuilds/ardents-network/internal/route/capsule"
 	"github.com/dianabuilds/ardents-network/internal/route/terminal"
 )
@@ -24,7 +25,7 @@ func TestClosedIntroductionDeliveryObservation(t *testing.T) {
 	for _, carrier := range []route.CarrierProfile{route.ClosedCarrierTCP, route.ClosedCarrierQUIC} {
 		t.Run(string(carrier), func(t *testing.T) {
 			var receiver *closedIntroductionServer
-			fixture := newPrivateRecipientNetworkFixtureWithStart(t, carrier, route.ClosedPurposeIntroduction, 3, observedIntroductionStart(&receiver), 1)
+			fixture := newPrivateRecipientNetworkFixtureWithStart(t, carrier, ardp.PurposeIntroduction, 3, observedIntroductionStart(&receiver), 1)
 			observations := []introductionReceiverObservation{observeIntroductionReceiver(t, receiver, "startup")}
 			registrationTrace := new(introductionTranscript)
 			fixture.observe = func(connection net.Conn) net.Conn { return &introductionTranscriptConn{connection, registrationTrace} }
@@ -48,7 +49,7 @@ func TestClosedIntroductionDeliveryObservation(t *testing.T) {
 			submissions := make([]observedChannel, 0, 2)
 			for index := 0; index < 2; index++ {
 				submitter := *fixture
-				submitter.receiver.ExpectedPurpose = route.ClosedPurposeSubmission
+				submitter.receiver.ExpectedPurpose = ardp.PurposeSubmission
 				trace := new(introductionTranscript)
 				submitter.observe = func(connection net.Conn) net.Conn { return &introductionTranscriptConn{connection, trace} }
 				connection, closeSubmission, err := submitter.openTerminal(t.Context(), fixture.supplementary[1][index], 1)
@@ -74,10 +75,10 @@ func TestClosedIntroductionDeliveryObservation(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				if err := route.WriteClosedLaneFrame(connection, route.ClosedLaneFrame{Kind: 10, Body: operation}); err != nil {
+				if err := ardp.WriteFrame(connection, ardp.Frame{Kind: 10, Body: operation}); err != nil {
 					t.Fatal(err)
 				}
-				delivered, err := route.ReadClosedLaneFrame(registration)
+				delivered, err := ardp.ReadFrame(registration)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -104,14 +105,14 @@ func TestClosedIntroductionDeliveryObservation(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				if err := route.WriteClosedLaneFrame(registration, route.ClosedLaneFrame{Kind: 11, Lane: delivered.Lane, Body: result}); err != nil {
+				if err := ardp.WriteFrame(registration, ardp.Frame{Kind: 11, Lane: delivered.Lane, Body: result}); err != nil {
 					t.Fatal(err)
 				}
-				closed, err := route.ReadClosedLaneFrame(registration)
+				closed, err := ardp.ReadFrame(registration)
 				if err != nil || closed.Kind != 9 || closed.Lane != delivered.Lane || !bytes.Equal(closed.Body, []byte{0}) {
 					t.Fatalf("delivery CLOSE: %v", err)
 				}
-				reply, err := route.ReadClosedLaneFrame(connection)
+				reply, err := ardp.ReadFrame(connection)
 				if err != nil || reply.Kind != 11 || reply.Lane != 0 {
 					t.Fatalf("submission reply: %v", err)
 				}

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	introductioncapsule "github.com/dianabuilds/ardents-network/internal/route/capsule"
 	"github.com/dianabuilds/ardents-network/internal/route/terminal"
 )
@@ -37,7 +38,7 @@ type closedIntroductionDelivery struct {
 	result       chan uint8
 }
 
-func (slot *closedIntroductionSlot) write(ctx context.Context, frame route.ClosedLaneFrame, end time.Time) error {
+func (slot *closedIntroductionSlot) write(ctx context.Context, frame ardp.Frame, end time.Time) error {
 	bounded, cancel := context.WithDeadline(ctx, end)
 	defer cancel()
 	select {
@@ -60,7 +61,7 @@ func (slot *closedIntroductionSlot) write(ctx context.Context, frame route.Close
 }
 
 func (server *closedIntroductionServer) submit(ctx context.Context, connection net.Conn, lease route.ClosedAdmission, used uint64) error {
-	frame, err := route.ReadClosedLaneFrame(connection)
+	frame, err := ardp.ReadFrame(connection)
 	if err != nil || frame.Kind != 10 || frame.Lane != 0 {
 		return errors.New("closed Introduction submission required")
 	}
@@ -85,7 +86,7 @@ func (server *closedIntroductionServer) submit(ctx context.Context, connection n
 	if err != nil {
 		return err
 	}
-	return route.WriteClosedLaneFrame(connection, route.ClosedLaneFrame{Kind: 11, Body: body})
+	return ardp.WriteFrame(connection, ardp.Frame{Kind: 11, Body: body})
 }
 
 func (server *closedIntroductionServer) deliver(ctx context.Context, capsule introductioncapsule.Capsule) uint8 {
@@ -146,7 +147,7 @@ func (server *closedIntroductionServer) deliver(ctx context.Context, capsule int
 	delivery := &closedIntroductionDelivery{nonce: nonce, end: capsule.Expiry, result: make(chan uint8, 1)}
 	slot.pending[lane] = delivery
 	server.slotsMu.Unlock()
-	err = slot.writeReserved(bounded, route.ClosedLaneFrame{Kind: 10, Lane: lane, Body: operation}, capsule.Expiry)
+	err = slot.writeReserved(bounded, ardp.Frame{Kind: 10, Lane: lane, Body: operation}, capsule.Expiry)
 	<-slot.writer
 	if err != nil {
 		server.interruptSlot(slot)
@@ -164,7 +165,7 @@ func (server *closedIntroductionServer) deliver(ctx context.Context, capsule int
 	if !server.current() || !server.config.now().Before(capsule.Expiry) {
 		status = 1
 	}
-	if err := slot.write(bounded, route.ClosedLaneFrame{Kind: 9, Lane: lane, Body: []byte{status}}, capsule.Expiry); err != nil {
+	if err := slot.write(bounded, ardp.Frame{Kind: 9, Lane: lane, Body: []byte{status}}, capsule.Expiry); err != nil {
 		server.interruptSlot(slot)
 		return 1
 	}
@@ -177,7 +178,7 @@ func (server *closedIntroductionServer) interruptSlot(slot *closedIntroductionSl
 
 func (server *closedIntroductionServer) serveRegistration(ctx context.Context, slot *closedIntroductionSlot) error {
 	for {
-		operation, err := route.ReadClosedLaneFrame(slot.connection)
+		operation, err := ardp.ReadFrame(slot.connection)
 		if err != nil {
 			return err
 		}
@@ -227,11 +228,11 @@ func (server *closedIntroductionServer) serveRegistration(ctx context.Context, s
 		if err := slot.connection.SetWriteDeadline(slot.request.Expiry); err != nil {
 			return err
 		}
-		return route.WriteClosedLaneFrame(slot.connection, route.ClosedLaneFrame{Kind: 11, Body: body})
+		return ardp.WriteFrame(slot.connection, ardp.Frame{Kind: 11, Body: body})
 	}
 }
 
-func (slot *closedIntroductionSlot) writeReserved(ctx context.Context, frame route.ClosedLaneFrame, end time.Time) (outcome error) {
+func (slot *closedIntroductionSlot) writeReserved(ctx context.Context, frame ardp.Frame, end time.Time) (outcome error) {
 	if err := slot.connection.SetWriteDeadline(end); err != nil {
 		return err
 	}
@@ -247,5 +248,5 @@ func (slot *closedIntroductionSlot) writeReserved(ctx context.Context, frame rou
 		}
 		outcome = errors.Join(outcome, ctx.Err(), interruptErr)
 	}()
-	return route.WriteClosedLaneFrame(slot.connection, frame)
+	return ardp.WriteFrame(slot.connection, frame)
 }

@@ -10,6 +10,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 )
 
 // Hold the upper reader's terminal observation while the nested framing
@@ -71,7 +73,7 @@ func TestClosedSourceNestedTerminalPrecedesPhysicalRetirement(t *testing.T) {
 	release := func() { releaseOnce.Do(func() { close(held.release) }) }
 	defer func() { release(); prefix.Close() }()
 	opened := make(chan error, 1)
-	go func() { _, err := ReadClosedLaneFrame(peer); opened <- err }()
+	go func() { _, err := ardp.ReadFrame(peer); opened <- err }()
 	lane, err := prefix.channels.open(context.Background(), sourceIssuerOpen(end), end)
 	if err != nil {
 		t.Fatal(err)
@@ -79,7 +81,7 @@ func TestClosedSourceNestedTerminalPrecedesPhysicalRetirement(t *testing.T) {
 	if err := <-opened; err != nil {
 		t.Fatal(err)
 	}
-	if err := WriteClosedLaneFrame(peer, ClosedLaneFrame{Kind: closedFrameClose, Lane: 1, Body: []byte{0}}); err != nil {
+	if err := ardp.WriteFrame(peer, ardp.Frame{Kind: ardp.KindClose, Lane: 1, Body: []byte{0}}); err != nil {
 		t.Fatal(err)
 	}
 	select {

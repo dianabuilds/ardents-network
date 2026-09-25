@@ -6,9 +6,11 @@ import (
 	"encoding/hex"
 	"errors"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 )
 
-func (prefix *ClosedSourcePrefix) terminalPeer(purpose ClosedPurpose) (closedBootstrapPeer, error) {
+func (prefix *ClosedSourcePrefix) terminalPeer(purpose ardp.Purpose) (closedBootstrapPeer, error) {
 	if prefix == nil || prefix.channels == nil {
 		return closedBootstrapPeer{}, errors.New("closed resolution prefix unavailable")
 	}
@@ -16,8 +18,8 @@ func (prefix *ClosedSourcePrefix) terminalPeer(purpose ClosedPurpose) (closedBoo
 }
 
 // Resolve only current public duty facts; this function creates no channels.
-func closedTerminalPeer(source ClosedBootstrapState, selection ClosedBootstrapSelection, plan closedBootstrapPlan, purpose ClosedPurpose) (closedBootstrapPeer, error) {
-	if purpose != ClosedPurposeReachability && purpose != ClosedPurposeIntroduction && purpose != ClosedPurposeSubmission && purpose != ClosedPurposeDataJoin {
+func closedTerminalPeer(source ClosedBootstrapState, selection ClosedBootstrapSelection, plan closedBootstrapPlan, purpose ardp.Purpose) (closedBootstrapPeer, error) {
+	if purpose != ardp.PurposeReachability && purpose != ardp.PurposeIntroduction && purpose != ardp.PurposeSubmission && purpose != ardp.PurposeDataJoin {
 		return closedBootstrapPeer{}, errors.New("closed terminal purpose unavailable")
 	}
 	if err := plan.current(source, selection); err != nil {
@@ -86,12 +88,12 @@ func (prefix *ClosedSourcePrefix) DataJoinRecipient() ([32]byte, uint64, time.Ti
 }
 
 func closedDataJoinRecipient(source ClosedBootstrapState, selection ClosedBootstrapSelection, plan closedBootstrapPlan) ([32]byte, uint64, time.Time, error) {
-	peer, err := closedTerminalPeer(source, selection, plan, ClosedPurposeDataJoin)
+	peer, err := closedTerminalPeer(source, selection, plan, ardp.PurposeDataJoin)
 	if err != nil {
 		return [32]byte{}, 0, time.Time{}, err
 	}
 	controls := []closedBootstrapPeer{plan.peers[2]}
-	for _, purpose := range []ClosedPurpose{ClosedPurposeReachability, ClosedPurposeIntroduction} {
+	for _, purpose := range []ardp.Purpose{ardp.PurposeReachability, ardp.PurposeIntroduction} {
 		control, err := closedTerminalPeer(source, selection, plan, purpose)
 		if err != nil {
 			return [32]byte{}, 0, time.Time{}, err

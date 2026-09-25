@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	introductioncapsule "github.com/dianabuilds/ardents-network/internal/route/capsule"
 	"github.com/dianabuilds/ardents-network/internal/route/terminal"
 )
@@ -39,7 +40,7 @@ func TestClosedIntroductionDeliveryResultWriteCancels(t *testing.T) {
 		t.Fatal(err)
 	}
 	go func() {
-		result <- owner.writeFrame(ctx, ClosedLaneFrame{Kind: closedFrameResult, Lane: 2, Body: body}, time.Now().Add(10*time.Second))
+		result <- owner.writeFrame(ctx, ardp.Frame{Kind: ardp.KindResult, Lane: 2, Body: body}, time.Now().Add(10*time.Second))
 	}()
 	select {
 	case <-held.entered:
@@ -78,11 +79,11 @@ func TestClosedIntroductionDeliveryRejectsForeignReusedAndOverBudgetChildren(t *
 	}
 	end := time.Now().UTC().Add(8 * time.Second).Truncate(time.Second)
 	valid := operation([32]byte{1}, 1, end)
-	for _, frame := range []ClosedLaneFrame{
-		{Kind: closedFrameOperation, Lane: 1, Body: valid},
-		{Kind: closedFrameOperation, Lane: 2, Body: operation([32]byte{9}, 1, end)},
-		{Kind: closedFrameOperation, Lane: 2, Body: operation([32]byte{1}, 2, end)},
-		{Kind: closedFrameClose, Lane: 2, Body: []byte{0}},
+	for _, frame := range []ardp.Frame{
+		{Kind: ardp.KindOperation, Lane: 1, Body: valid},
+		{Kind: ardp.KindOperation, Lane: 2, Body: operation([32]byte{9}, 1, end)},
+		{Kind: ardp.KindOperation, Lane: 2, Body: operation([32]byte{1}, 2, end)},
+		{Kind: ardp.KindClose, Lane: 2, Body: []byte{0}},
 	} {
 		if err := newOwner().receiveDelivery(frame); err == nil {
 			t.Fatalf("invalid child accepted: kind=%d lane=%d", frame.Kind, frame.Lane)
@@ -92,31 +93,31 @@ func TestClosedIntroductionDeliveryRejectsForeignReusedAndOverBudgetChildren(t *
 	for lane := uint32(2); lane <= 32; lane += 2 {
 		// Independently test queue capacity; rate is exercised below.
 		owner.openings = [4]time.Time{}
-		if err := owner.receiveDelivery(ClosedLaneFrame{Kind: closedFrameOperation, Lane: lane, Body: valid}); err != nil {
+		if err := owner.receiveDelivery(ardp.Frame{Kind: ardp.KindOperation, Lane: lane, Body: valid}); err != nil {
 			t.Fatal(err)
 		}
 	}
 	owner.openings = [4]time.Time{}
-	if err := owner.receiveDelivery(ClosedLaneFrame{Kind: closedFrameOperation, Lane: 34, Body: valid}); err == nil {
+	if err := owner.receiveDelivery(ardp.Frame{Kind: ardp.KindOperation, Lane: 34, Body: valid}); err == nil {
 		t.Fatal("17th pending delivery accepted")
 	}
 	owner = newOwner()
 	owner.used = ClosedIntroductionRegistrationByteLimit - closedIntroductionDeliveryCost
-	if err := owner.receiveDelivery(ClosedLaneFrame{Kind: closedFrameOperation, Lane: 2, Body: valid}); err != nil {
+	if err := owner.receiveDelivery(ardp.Frame{Kind: ardp.KindOperation, Lane: 2, Body: valid}); err != nil {
 		t.Fatal(err)
 	}
 	for _, lane := range []uint32{2, 4} {
-		if err := owner.receiveDelivery(ClosedLaneFrame{Kind: closedFrameOperation, Lane: lane, Body: valid}); err == nil {
+		if err := owner.receiveDelivery(ardp.Frame{Kind: ardp.KindOperation, Lane: lane, Body: valid}); err == nil {
 			t.Fatal("reused lane or exhausted whole-registration budget accepted")
 		}
 	}
 	owner = newOwner()
 	for lane := uint32(2); lane <= 8; lane += 2 {
-		if err := owner.receiveDelivery(ClosedLaneFrame{Kind: closedFrameOperation, Lane: lane, Body: valid}); err != nil {
+		if err := owner.receiveDelivery(ardp.Frame{Kind: ardp.KindOperation, Lane: lane, Body: valid}); err != nil {
 			t.Fatal(err)
 		}
 	}
-	if err := owner.receiveDelivery(ClosedLaneFrame{Kind: closedFrameOperation, Lane: 10, Body: valid}); err == nil {
+	if err := owner.receiveDelivery(ardp.Frame{Kind: ardp.KindOperation, Lane: 10, Body: valid}); err == nil {
 		t.Fatal("fifth delivery in one second accepted")
 	}
 }
@@ -137,7 +138,7 @@ func TestClosedIntroductionRegistrationBudgetAdmitsRetainedPublisherSet(t *testi
 	for index := uint32(1); index <= 256; index++ {
 		owner.openings = [4]time.Time{}
 		lane := 2 * index
-		if err := owner.receiveDelivery(ClosedLaneFrame{Kind: closedFrameOperation, Lane: lane, Body: operation()}); err != nil {
+		if err := owner.receiveDelivery(ardp.Frame{Kind: ardp.KindOperation, Lane: lane, Body: operation()}); err != nil {
 			t.Fatalf("retained delivery %d: %v", index, err)
 		}
 		delivery := <-owner.deliveries
@@ -145,7 +146,7 @@ func TestClosedIntroductionRegistrationBudgetAdmitsRetainedPublisherSet(t *testi
 		clear(delivery.operation)
 	}
 	owner.openings = [4]time.Time{}
-	if err := owner.receiveDelivery(ClosedLaneFrame{Kind: closedFrameOperation, Lane: 514, Body: operation()}); err == nil {
+	if err := owner.receiveDelivery(ardp.Frame{Kind: ardp.KindOperation, Lane: 514, Body: operation()}); err == nil {
 		t.Fatal("delivery beyond retained Publisher set escaped registration budget")
 	}
 }

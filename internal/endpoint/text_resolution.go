@@ -9,6 +9,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	"github.com/dianabuilds/ardents-network/internal/service/reachability"
 )
 
@@ -73,7 +74,7 @@ func (owner *textContext) lookupTextDescriptor(ctx context.Context, target [32]b
 	if err := owner.ensureTextResolutionStock(flight); err != nil {
 		return reachability.Verified{}, err
 	}
-	status, raw, err := flight.source.exchangeDescriptor(attempt, func(hello route.ClosedHello, class uint8) ([]byte, error) {
+	status, raw, err := flight.source.exchangeDescriptor(attempt, func(hello ardp.Hello, class uint8) ([]byte, error) {
 		return owner.presentTextResolutionToken(flight, hello, class)
 	}, target, nil)
 	defer clear(raw)
@@ -95,12 +96,12 @@ func (owner *textContext) acceptTextResolutionResult(caller context.Context, fli
 	return owner.descriptorHistory.accept(raw, target, profile.NetworkID, profile.Digest, now)
 }
 
-func (owner *textContext) presentTextResolutionToken(flight *textResolutionFlight, hello route.ClosedHello, class uint8) ([]byte, error) {
+func (owner *textContext) presentTextResolutionToken(flight *textResolutionFlight, hello ardp.Hello, class uint8) ([]byte, error) {
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
 	profile, now, err := owner.textPermissionProfileLocked()
 	if err != nil || flight == nil || owner.resolution != flight || flight.source == nil || !flight.source.currentLocked(owner) || flight.context.Err() != nil ||
-		owner.permission == nil || hello.Purpose != route.ClosedPurposeReachability || class != 1 || hello.RecipientNodeID != flight.receiver ||
+		owner.permission == nil || hello.Purpose != ardp.PurposeReachability || class != 1 || hello.RecipientNodeID != flight.receiver ||
 		hello.NetworkID != profile.NetworkID || hello.StateGeneration != profile.StateGeneration || hello.StateDigest != profile.StateDigest ||
 		hello.ProfileDigest != profile.Digest || hello.ChannelNonce == [32]byte{} || !now.Before(hello.Deadline) || hello.Deadline.After(profile.NotAfter) {
 		return nil, errors.New("text resolution token authority unavailable")

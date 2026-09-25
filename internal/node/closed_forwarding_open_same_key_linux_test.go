@@ -12,6 +12,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 )
 
 // TestClosedForwardingOpenSameKeySharesOneActualOuterHello holds the first
@@ -87,20 +88,20 @@ func testClosedForwardingOpenSameKeyActualCarrier(t *testing.T, profile route.Ca
 			peerDone <- errors.New("same-key actual Carrier lost Node authentication")
 			return
 		}
-		hello, readErr := route.ReadClosedLaneFrame(connection)
+		hello, readErr := ardp.ReadFrame(connection)
 		if readErr != nil || hello.Kind != 1 || hello.Lane != 0 {
 			peerDone <- errors.New("same-key actual outer HELLO was not received")
 			return
 		}
-		if _, readErr = route.DecodeClosedHello(hello.Body); readErr != nil {
+		if _, readErr = ardp.DecodeHello(hello.Body); readErr != nil {
 			peerDone <- readErr
 			return
 		}
 		close(helloRead)
 		<-releaseAccept
-		accept, frameErr := route.ClosedAcceptFrame(0, 64<<10)
+		accept, frameErr := ardp.AcceptFrame(0, 64<<10)
 		if frameErr == nil {
-			frameErr = route.WriteClosedLaneFrame(connection, accept)
+			frameErr = ardp.WriteFrame(connection, accept)
 		}
 		if frameErr != nil {
 			peerDone <- frameErr
@@ -108,7 +109,7 @@ func testClosedForwardingOpenSameKeyActualCarrier(t *testing.T, profile route.Ca
 		}
 		lanes := make(map[uint32]struct{}, 2)
 		for range 2 {
-			child, childErr := route.ReadClosedLaneFrame(connection)
+			child, childErr := ardp.ReadFrame(connection)
 			if childErr != nil || child.Kind != 4 || child.Lane == 0 {
 				peerDone <- fmt.Errorf("same-key actual child OPEN = %+v / %w", child, childErr)
 				return
@@ -125,7 +126,7 @@ func testClosedForwardingOpenSameKeyActualCarrier(t *testing.T, profile route.Ca
 			lanes[child.Lane] = struct{}{}
 		}
 		for lane := range lanes {
-			if childErr := route.WriteClosedLaneFrame(connection, route.ClosedLaneFrame{Kind: 6, Lane: lane, Body: []byte("same-key-response")}); childErr != nil {
+			if childErr := ardp.WriteFrame(connection, ardp.Frame{Kind: 6, Lane: lane, Body: []byte("same-key-response")}); childErr != nil {
 				peerDone <- childErr
 				return
 			}
@@ -163,12 +164,12 @@ func testClosedForwardingOpenSameKeyActualCarrier(t *testing.T, profile route.Ca
 		_ = server.sessions.joinedResult()
 	}()
 
-	responses := make(chan route.ClosedLaneFrame, 2)
+	responses := make(chan ardp.Frame, 2)
 	firstChannel := closedForwardingActualChannel(t, deadline, open)
 	secondChannel := closedForwardingActualChannel(t, deadline, open)
 	openCaller := func(channel *route.ClosedForwardingChannel) {
 		link, openErr := server.openForwardingLink(context.Background(), open, route.ClosedChildOrdinary, 1,
-			channel, func(frame route.ClosedLaneFrame) error { responses <- frame; return nil }, func() {})
+			channel, func(frame ardp.Frame) error { responses <- frame; return nil }, func() {})
 		results <- openResult{link: link, err: openErr}
 	}
 	started++
@@ -237,12 +238,15 @@ func testClosedForwardingOpenSameKeyActualCarrier(t *testing.T, profile route.Ca
 		t.Fatal(err)
 	}
 	workers.Wait()
+	if err := server.sessions.joinedResult(); err != nil {
+		t.Fatal(err)
+	}
 	server.sessions.mu.Lock()
 	pending, published := len(server.sessions.pending), len(server.sessions.sessions)
 	server.sessions.mu.Unlock()
 	// Neither child wrote application bytes, so each released lease is unused
-	// and the pool closes this test-only Carrier. Its reader then retires the
-	// published session before the worker barrier completes.
+	// and the pool closes this test-only Carrier. Its reader retires the
+	// published session before the explicit reader join completes.
 	if pending != 0 || published != 0 {
 		t.Fatalf("same-key actual session state = pending %d published %d", pending, published)
 	}

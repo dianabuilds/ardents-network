@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	introductioncapsule "github.com/dianabuilds/ardents-network/internal/route/capsule"
 	"github.com/dianabuilds/ardents-network/internal/route/terminal"
 )
@@ -144,7 +145,7 @@ func TestClosedIntroductionProcessHeapObservation(t *testing.T) {
 				}
 			}
 			var process *introductionHeapProcess
-			fixture := newPrivateRecipientNetworkFixtureWithStart(t, carrier, route.ClosedPurposeIntroduction, 3, func(config Config) (func() error, error) {
+			fixture := newPrivateRecipientNetworkFixtureWithStart(t, carrier, ardp.PurposeIntroduction, 3, func(config Config) (func() error, error) {
 				var err error
 				process, err = startIntroductionHeapProcess(t, config, output)
 				if err != nil {
@@ -168,7 +169,7 @@ func TestClosedIntroductionProcessHeapObservation(t *testing.T) {
 			process.dump("registered")
 			submission, closeSubmission, sourceNonce, privateFields, ciphertext := startHeapSubmission(t, fixture, request)
 			defer closeSubmission()
-			frame, err := route.ReadClosedLaneFrame(registration)
+			frame, err := ardp.ReadFrame(registration)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -184,14 +185,14 @@ func TestClosedIntroductionProcessHeapObservation(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if err := route.WriteClosedLaneFrame(registration, route.ClosedLaneFrame{Kind: 11, Lane: frame.Lane, Body: body}); err != nil {
+			if err := ardp.WriteFrame(registration, ardp.Frame{Kind: 11, Lane: frame.Lane, Body: body}); err != nil {
 				t.Fatal(err)
 			}
-			closed, err := route.ReadClosedLaneFrame(registration)
+			closed, err := ardp.ReadFrame(registration)
 			if err != nil || closed.Kind != 9 || closed.Lane != frame.Lane {
 				t.Fatalf("delivery close: %v", err)
 			}
-			response, err := route.ReadClosedLaneFrame(submission)
+			response, err := ardp.ReadFrame(submission)
 			if err != nil || response.Kind != 11 || response.Lane != 0 {
 				t.Fatalf("submission response: %v", err)
 			}

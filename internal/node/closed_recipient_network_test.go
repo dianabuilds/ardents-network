@@ -6,9 +6,11 @@ import (
 	"context"
 	"crypto/rand"
 	"fmt"
-	"github.com/dianabuilds/ardents-network/internal/route"
 	"net"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 )
 
 func (fixture *resolutionNetworkFixture) openTerminal(ctx context.Context, token []byte, class uint8) (net.Conn, func(), error) {
@@ -23,19 +25,19 @@ func (fixture *resolutionNetworkFixture) openTerminal(ctx context.Context, token
 			_ = outer.Close()
 		}
 	}()
-	hello := route.ClosedHello{NetworkID: fixture.profile.NetworkID, StateGeneration: fixture.profile.StateGeneration, StateDigest: fixture.profile.StateDigest,
-		ProfileDigest: fixture.profile.Digest, RecipientNodeID: fixture.receiver.NodeID, RecipientDutyGeneration: fixture.receiver.DutyGeneration, Purpose: route.ClosedPurposeForwarding, Deadline: end}
+	hello := ardp.Hello{NetworkID: fixture.profile.NetworkID, StateGeneration: fixture.profile.StateGeneration, StateDigest: fixture.profile.StateDigest,
+		ProfileDigest: fixture.profile.Digest, RecipientNodeID: fixture.receiver.NodeID, RecipientDutyGeneration: fixture.receiver.DutyGeneration, Purpose: ardp.PurposeForwarding, Deadline: end}
 	if _, err := rand.Read(hello.ChannelNonce[:]); err != nil {
 		return nil, nil, err
 	}
-	body, err := route.EncodeClosedHello(hello)
+	body, err := ardp.EncodeHello(hello)
 	if err != nil {
 		return nil, nil, err
 	}
-	if err := route.WriteClosedLaneFrame(outer, route.ClosedLaneFrame{Kind: 1, Body: body}); err != nil {
+	if err := ardp.WriteFrame(outer, ardp.Frame{Kind: 1, Body: body}); err != nil {
 		return nil, nil, err
 	}
-	accepted, err := route.ReadClosedLaneFrame(outer)
+	accepted, err := ardp.ReadFrame(outer)
 	if err != nil || accepted.Kind != 5 {
 		return nil, nil, fmt.Errorf("outer accept: kind=%d error=%v", accepted.Kind, err)
 	}
@@ -43,7 +45,7 @@ func (fixture *resolutionNetworkFixture) openTerminal(ctx context.Context, token
 	if err != nil {
 		return nil, nil, err
 	}
-	if err := route.WriteClosedLaneFrame(outer, route.ClosedLaneFrame{Kind: 4, Lane: 1, Body: open}); err != nil {
+	if err := ardp.WriteFrame(outer, ardp.Frame{Kind: 4, Lane: 1, Body: open}); err != nil {
 		return nil, nil, err
 	}
 	secured, err := route.OpenClosedRoleTLS(ctx, &outerTestInnerConn{outer: outer, lane: 1}, fixture.serverKey, end)
@@ -58,23 +60,23 @@ func (fixture *resolutionNetworkFixture) openTerminal(ctx context.Context, token
 	if _, err := rand.Read(hello.ChannelNonce[:]); err != nil {
 		return nil, nil, err
 	}
-	body, err = route.EncodeClosedHello(hello)
+	body, err = ardp.EncodeHello(hello)
 	if err != nil {
 		return nil, nil, err
 	}
-	if err := route.WriteClosedLaneFrame(inner, route.ClosedLaneFrame{Kind: 1, Body: body}); err != nil {
+	if err := ardp.WriteFrame(inner, ardp.Frame{Kind: 1, Body: body}); err != nil {
 		return nil, nil, err
 	}
 	admit := append([]byte{class}, token...)
 	defer clear(admit)
-	if err := route.WriteClosedLaneFrame(inner, route.ClosedLaneFrame{Kind: 2, Body: admit}); err != nil {
+	if err := ardp.WriteFrame(inner, ardp.Frame{Kind: 2, Body: admit}); err != nil {
 		return nil, nil, err
 	}
-	accepted, err = route.ReadClosedLaneFrame(inner)
+	accepted, err = ardp.ReadFrame(inner)
 	if err != nil {
 		return nil, nil, fmt.Errorf("Control admission: %w", err)
 	}
-	if status, credit, err := route.DecodeClosedAcceptFrame(accepted); err != nil || status != 0 || credit != 64<<10 {
+	if status, credit, err := ardp.DecodeAcceptFrame(accepted); err != nil || status != 0 || credit != 64<<10 {
 		return nil, nil, fmt.Errorf("Control accept: status=%d credit=%d error=%v", status, credit, err)
 	}
 

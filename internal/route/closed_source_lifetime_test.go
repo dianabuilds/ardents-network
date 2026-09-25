@@ -7,6 +7,8 @@ import (
 	"testing"
 	"testing/synctest"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 )
 
 func TestClosedSourceChannelsRetiresAfterExactIdleWindow(t *testing.T) {
@@ -46,7 +48,7 @@ func TestClosedSourceChannelsIdleWindowStartsAfterAdmittedChildEnds(t *testing.T
 		frames := make(chan error, 1)
 		go func() {
 			for range 2 {
-				if _, err := ReadClosedLaneFrame(peer); err != nil {
+				if _, err := ardp.ReadFrame(peer); err != nil {
 					frames <- err
 					return
 				}

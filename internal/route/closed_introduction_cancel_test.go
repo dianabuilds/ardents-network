@@ -8,13 +8,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	"github.com/dianabuilds/ardents-network/internal/route/terminal"
 )
 
 func TestClosedIntroductionWithdrawalCancelInterruptsWrite(t *testing.T) {
 	parent, peer, end := sourceChannelsFixture(t)
 	opened := make(chan error, 1)
-	go func() { _, err := ReadClosedLaneFrame(peer); opened <- err }()
+	go func() { _, err := ardp.ReadFrame(peer); opened <- err }()
 	lane, err := parent.open(context.Background(), sourceIssuerOpen(end), end)
 	if err != nil {
 		t.Fatal(err)
@@ -32,7 +33,7 @@ func TestClosedIntroductionWithdrawalCancelInterruptsWrite(t *testing.T) {
 	defer cancel()
 	finished := make(chan error, 1)
 	go func() { finished <- owner.Withdraw(ctx) }()
-	waitSourceChannelState(t, parent, func() bool { return parent.active != nil && parent.active.frame.Kind == closedFrameBytes })
+	waitSourceChannelState(t, parent, func() bool { return parent.active != nil && parent.active.frame.Kind == ardp.KindBytes })
 	cancel()
 	select {
 	case err := <-finished:

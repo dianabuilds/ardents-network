@@ -6,24 +6,26 @@ import (
 	"io"
 	"testing"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 )
 
 // Credential/exporter fixtures isolate real receiving admission, spend-ledger
 // ownership and outer-lane lifetime. This does not qualify network credentials.
 func closedOuterAdmissionFixture(t *testing.T) (*ClosedOuterBridgeLane, *ClosedOuterBridge, *ClosedAdmission, *time.Time) {
 	t.Helper()
-	return closedOuterAdmissionFixtureFor(t, ClosedPurposeForwarding, 2)
+	return closedOuterAdmissionFixtureFor(t, ardp.PurposeForwarding, 2)
 }
 
-func closedOuterAdmissionFixtureFor(t *testing.T, purpose ClosedPurpose, class uint8) (*ClosedOuterBridgeLane, *ClosedOuterBridge, *ClosedAdmission, *time.Time) {
+func closedOuterAdmissionFixtureFor(t *testing.T, purpose ardp.Purpose, class uint8) (*ClosedOuterBridgeLane, *ClosedOuterBridge, *ClosedAdmission, *time.Time) {
 	t.Helper()
 	now := time.Unix(1_800_000_000, 0).UTC()
 	receiver := closedOuterHandshakeReceiver(now)
 	receiver.RoleDomain, receiver.Subrole, receiver.Deadline = 1, 2, now.Add(time.Hour)
-	if purpose == ClosedPurposeIssuer {
+	if purpose == ardp.PurposeIssuer {
 		receiver.RoleDomain, receiver.Subrole = 2, 6
 	}
-	if purpose == ClosedPurposeDataJoin {
+	if purpose == ardp.PurposeDataJoin {
 		receiver.RoleDomain, receiver.Subrole = 2, 4
 	}
 
@@ -36,18 +38,18 @@ func closedOuterAdmissionFixtureFor(t *testing.T, purpose ClosedPurpose, class u
 		t.Fatal(err)
 	}
 	t.Cleanup(outer.Close)
-	bridge, err := NewClosedOuterBridge(outer, func(uint32, time.Time) error { return nil }, func(ClosedLaneFrame, func() time.Time, bool, bool) error { return nil })
+	bridge, err := NewClosedOuterBridge(outer, func(uint32, time.Time) error { return nil }, func(ardp.Frame, func() time.Time, bool, bool) error { return nil })
 	if err != nil {
 		t.Fatal(err)
 	}
-	hello := ClosedHello{NetworkID: receiver.NetworkID, StateGeneration: receiver.StateGeneration, StateDigest: receiver.StateDigest,
+	hello := ardp.Hello{NetworkID: receiver.NetworkID, StateGeneration: receiver.StateGeneration, StateDigest: receiver.StateDigest,
 		ProfileDigest: receiver.ProfileDigest, RecipientNodeID: receiver.NodeID, RecipientDutyGeneration: receiver.DutyGeneration,
-		Purpose: ClosedPurposeForwarding, ChannelNonce: [32]byte{19}, Deadline: receiver.Deadline}
-	body, err := EncodeClosedHello(hello)
+		Purpose: ardp.PurposeForwarding, ChannelNonce: [32]byte{19}, Deadline: receiver.Deadline}
+	body, err := ardp.EncodeHello(hello)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := bridge.Accept(ClosedLaneFrame{Kind: closedFrameHello, Body: body}); err != nil {
+	if _, err := bridge.Accept(ardp.Frame{Kind: ardp.KindHello, Body: body}); err != nil {
 		t.Fatal(err)
 	}
 	end := now.Add(30 * time.Minute)
@@ -56,11 +58,11 @@ func closedOuterAdmissionFixtureFor(t *testing.T, purpose ClosedPurpose, class u
 	if err != nil {
 		t.Fatal(err)
 	}
-	lane, err := bridge.Accept(ClosedLaneFrame{Kind: closedFrameOpen, Lane: 1, Body: body})
+	lane, err := bridge.Accept(ardp.Frame{Kind: ardp.KindOpen, Lane: 1, Body: body})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := bridge.Accept(ClosedLaneFrame{Kind: closedFrameBytes, Lane: 1, Body: []byte{1}}); err != nil {
+	if _, err := bridge.Accept(ardp.Frame{Kind: ardp.KindBytes, Lane: 1, Body: []byte{1}}); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := io.ReadFull(lane, make([]byte, 1)); err != nil {
@@ -96,14 +98,14 @@ func closedOuterAdmissionFixtureFor(t *testing.T, purpose ClosedPurpose, class u
 	if err != nil {
 		t.Fatal(err)
 	}
-	body, err = EncodeClosedHello(hello)
+	body, err = ardp.EncodeHello(hello)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := admission.Accept(ClosedLaneFrame{Kind: closedFrameHello, Body: body}); err != nil {
+	if _, err := admission.Accept(ardp.Frame{Kind: ardp.KindHello, Body: body}); err != nil {
 		t.Fatal(err)
 	}
-	lease, err := admission.Accept(ClosedLaneFrame{Kind: closedFrameAdmit, Body: append([]byte{class}, bytes.Repeat([]byte{2}, 354)...)})
+	lease, err := admission.Accept(ardp.Frame{Kind: ardp.KindAdmit, Body: append([]byte{class}, bytes.Repeat([]byte{2}, 354)...)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -130,14 +132,14 @@ func TestClosedOuterAdmissionExtendsOnlyItsVerifiedChild(t *testing.T) {
 		t.Fatal("admitted deadline not bounded by actual lease")
 	}
 	*now = now.Add(11 * time.Second)
-	if _, err := bridge.Accept(ClosedLaneFrame{Kind: closedFrameBytes, Lane: 1, Body: []byte{2}}); err != nil {
+	if _, err := bridge.Accept(ardp.Frame{Kind: ardp.KindBytes, Lane: 1, Body: []byte{2}}); err != nil {
 		t.Fatalf("admitted child lost after handshake interval: %v", err)
 	}
 	if err := lane.admitVerified(lease); err == nil {
 		t.Fatal("admission reused")
 	}
 	*now = lease.Deadline
-	if _, err := bridge.Accept(ClosedLaneFrame{Kind: closedFrameBytes, Lane: 1, Body: []byte{2}}); err == nil {
+	if _, err := bridge.Accept(ardp.Frame{Kind: ardp.KindBytes, Lane: 1, Body: []byte{2}}); err == nil {
 		t.Fatal("child outlived admitted lease")
 	}
 }
@@ -162,7 +164,7 @@ func TestClosedOuterAdmissionRefusesUnboundOrExpiredAuthority(t *testing.T) {
 				t.Fatal("invalid admission extended child")
 			}
 			if fault == "unadmitted" {
-				if _, err := bridge.Accept(ClosedLaneFrame{Kind: closedFrameBytes, Lane: 1, Body: []byte{2}}); err == nil {
+				if _, err := bridge.Accept(ardp.Frame{Kind: ardp.KindBytes, Lane: 1, Body: []byte{2}}); err == nil {
 					t.Fatal("HELLO alone extended pending lane")
 				}
 			}
@@ -187,8 +189,8 @@ func TestClosedOuterAdmissionRequiresActualTLSOnThisLane(t *testing.T) {
 func TestClosedOuterRetirementDoesNotWaitForBlockedChildWrite(t *testing.T) {
 	lane, bridge, _, _ := closedOuterAdmissionFixture(t)
 	entered, release, done := make(chan struct{}), make(chan struct{}), make(chan error, 1)
-	bridge.write = func(frame ClosedLaneFrame, _ func() time.Time, _, _ bool) error {
-		if frame.Kind == closedFrameBytes {
+	bridge.write = func(frame ardp.Frame, _ func() time.Time, _, _ bool) error {
+		if frame.Kind == ardp.KindBytes {
 			close(entered)
 			<-release
 		}
@@ -198,7 +200,7 @@ func TestClosedOuterRetirementDoesNotWaitForBlockedChildWrite(t *testing.T) {
 	<-entered
 	retired := make(chan error, 1)
 	go func() {
-		_, err := bridge.Accept(ClosedLaneFrame{Kind: closedFrameClose, Lane: 1, Body: []byte{0}})
+		_, err := bridge.Accept(ardp.Frame{Kind: ardp.KindClose, Lane: 1, Body: []byte{0}})
 		retired <- err
 	}()
 	select {
@@ -220,8 +222,8 @@ func TestClosedOuterTerminalControlRemainsWritableAfterPayloadExpiry(t *testing.
 	lane, bridge, _, _ := closedOuterAdmissionFixture(t)
 	lane.lane.hardDeadline = time.Now().Add(-time.Second)
 	wrote := false
-	bridge.write = func(frame ClosedLaneFrame, deadline func() time.Time, _, _ bool) error {
-		if frame.Kind != closedFrameClose {
+	bridge.write = func(frame ardp.Frame, deadline func() time.Time, _, _ bool) error {
+		if frame.Kind != ardp.KindClose {
 			t.Fatal("expiry emitted payload")
 		}
 		end := deadline()
@@ -240,7 +242,7 @@ func TestClosedOuterTerminalControlRemainsWritableAfterPayloadExpiry(t *testing.
 }
 
 func TestClosedOuterControlAdmissionUsesItsActualLifetime(t *testing.T) {
-	lane, bridge, lease, now := closedOuterAdmissionFixtureFor(t, ClosedPurposeIssuer, 1)
+	lane, bridge, lease, now := closedOuterAdmissionFixtureFor(t, ardp.PurposeIssuer, 1)
 	if lease.Deadline != now.Add(30*time.Second) || lease.Bytes != 64<<10 {
 		t.Fatal("Control admission acquired forwarding limits")
 	}
@@ -248,20 +250,20 @@ func TestClosedOuterControlAdmissionUsesItsActualLifetime(t *testing.T) {
 		t.Fatal(err)
 	}
 	*now = now.Add(11 * time.Second)
-	if _, err := bridge.Accept(ClosedLaneFrame{Kind: closedFrameBytes, Lane: 1, Body: []byte{2}}); err != nil {
+	if _, err := bridge.Accept(ardp.Frame{Kind: ardp.KindBytes, Lane: 1, Body: []byte{2}}); err != nil {
 		t.Fatalf("Control admission expired at handshake bound: %v", err)
 	}
 	*now = lease.Deadline
-	if _, err := bridge.Accept(ClosedLaneFrame{Kind: closedFrameBytes, Lane: 1, Body: []byte{2}}); err == nil {
+	if _, err := bridge.Accept(ardp.Frame{Kind: ardp.KindBytes, Lane: 1, Body: []byte{2}}); err == nil {
 		t.Fatal("Control child outlived its thirty-second lease")
 	}
 }
 
 func TestClosedOuterAdmissionRejectsClassForAnotherPurpose(t *testing.T) {
 	for _, pair := range []struct {
-		purpose ClosedPurpose
+		purpose ardp.Purpose
 		class   uint8
-	}{{ClosedPurposeIssuer, 2}, {ClosedPurposeForwarding, 1}, {ClosedPurposeIssuer, 3}} {
+	}{{ardp.PurposeIssuer, 2}, {ardp.PurposeForwarding, 1}, {ardp.PurposeIssuer, 3}} {
 		lane, _, lease, _ := closedOuterAdmissionFixtureFor(t, pair.purpose, pair.class)
 		if err := lane.admitVerified(lease); err == nil {
 			t.Fatalf("class %d extended purpose %d", pair.class, pair.purpose)

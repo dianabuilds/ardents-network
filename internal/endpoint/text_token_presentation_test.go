@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	"github.com/dianabuilds/ardents-network/internal/route/terminal"
 
 	"github.com/dianabuilds/ardents-network/internal/endpoint/tokenjournal"
@@ -119,7 +120,7 @@ func TestTextTokenCancellationAfterDurableMarkRetainsBurn(t *testing.T) {
 }
 
 func textTokenPresentationFixture(t *testing.T) (*endpoint, *textContext, route.ClosedBootstrapSelection,
-	state.ClosedProfileView, route.ClosedHello, []byte) {
+	state.ClosedProfileView, ardp.Hello, []byte) {
 	t.Helper()
 	endpoint, owner, source := textSourceContextFixture(t)
 	root := prepareTextIssuancePermission(t, owner, source)
@@ -162,8 +163,8 @@ func textTokenPresentationFixture(t *testing.T) (*endpoint, *textContext, route.
 	}
 	original := bytes.Clone(tokens[0])
 	owner.permission.stock = []textTokenStock{{challenge: challenge, tokens: tokens}}
-	hello := route.ClosedHello{NetworkID: profile.NetworkID, StateGeneration: profile.StateGeneration, StateDigest: profile.StateDigest,
+	hello := ardp.Hello{NetworkID: profile.NetworkID, StateGeneration: profile.StateGeneration, StateDigest: profile.StateDigest,
 		ProfileDigest: profile.Digest, RecipientNodeID: challenge.ReceiverNodeID, RecipientDutyGeneration: duty,
-		Purpose: route.ClosedPurposeForwarding, ChannelNonce: [32]byte{242}, Deadline: profile.NotAfter}
+		Purpose: ardp.PurposeForwarding, ChannelNonce: [32]byte{242}, Deadline: profile.NotAfter}
 	return endpoint, owner, selection, profile, hello, original
 }

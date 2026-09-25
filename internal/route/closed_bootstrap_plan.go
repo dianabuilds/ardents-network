@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/network/state"
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 )
 
 // ClosedBootstrapState is the opened State owner's live public projection.
@@ -45,7 +46,7 @@ func prepareClosedBootstrap(source ClosedBootstrapState, selection ClosedBootstr
 }
 
 func prepareClosedPrefix(source ClosedBootstrapState, selection ClosedBootstrapSelection, adjacentDomain uint8, now time.Time) (closedBootstrapPlan, error) {
-	if !ClosedPurposePermitsDuty(ClosedPurposeForwarding, adjacentDomain, closedDutyAdjacent) {
+	if !ClosedPurposePermitsDuty(ardp.PurposeForwarding, adjacentDomain, closedDutyAdjacent) {
 		return closedBootstrapPlan{}, errors.New("closed prefix adjacent domain unavailable")
 	}
 	if source == nil || selection.ProfileDigest == [32]byte{} || selection.EntryNodeID == [32]byte{} || selection.InteriorNodeID == [32]byte{} {

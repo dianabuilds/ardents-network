@@ -10,6 +10,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 )
 
 func TestClosedSourceCloseLetsEmittedCreditFinishWithinCleanupBound(t *testing.T) {
@@ -25,7 +27,7 @@ func TestClosedSourceCloseLetsEmittedCreditFinishWithinCleanupBound(t *testing.T
 func testClosedSourceCreditCleanup(t *testing.T, stalled bool) {
 	owner, peer, end := sourceChannelsFixture(t)
 	opened := make(chan error, 1)
-	go func() { _, err := ReadClosedLaneFrame(peer); opened <- err }()
+	go func() { _, err := ardp.ReadFrame(peer); opened <- err }()
 	lane, err := owner.open(t.Context(), sourceIssuerOpen(end), end)
 	if err != nil {
 		t.Fatal(err)
@@ -35,7 +37,7 @@ func testClosedSourceCreditCleanup(t *testing.T, stalled bool) {
 	}
 	creditDone := make(chan error, 1)
 	go func() {
-		creditDone <- lane.send(ClosedLaneFrame{Kind: closedFrameCredit, Lane: lane.id, Body: binary.BigEndian.AppendUint32(nil, 1)}, time.Time{})
+		creditDone <- lane.send(ardp.Frame{Kind: ardp.KindCredit, Lane: lane.id, Body: binary.BigEndian.AppendUint32(nil, 1)}, time.Time{})
 	}()
 	// Hold the actual physical CREDIT after its first header byte. Closing this
 	// child must not cut a valid frame in half and poison the retained prefix.
@@ -75,21 +77,21 @@ func testClosedSourceCreditCleanup(t *testing.T, stalled bool) {
 		}
 		return
 	}
-	rest := make([]byte, closedLaneHeaderSize+4-1)
+	rest := make([]byte, ardp.HeaderSize+4-1)
 	if _, err := io.ReadFull(peer, rest); err != nil {
 		t.Fatal(err)
 	}
 	if err := <-creditDone; err != nil {
 		t.Fatal(err)
 	}
-	terminal, err := ReadClosedLaneFrame(peer)
-	if err != nil || terminal.Kind != closedFrameClose {
+	terminal, err := ardp.ReadFrame(peer)
+	if err != nil || terminal.Kind != ardp.KindClose {
 		t.Fatalf("terminal cleanup: %v / %v", terminal, err)
 	}
 	if err := <-closed; err != nil {
 		t.Fatal(err)
 	}
-	go func() { _, err := ReadClosedLaneFrame(peer); opened <- err }()
+	go func() { _, err := ardp.ReadFrame(peer); opened <- err }()
 	if _, err := owner.open(t.Context(), sourceIssuerOpen(end), end); err != nil {
 		t.Fatalf("retained prefix unavailable: %v", err)
 	}
@@ -106,7 +108,7 @@ func TestClosedSourceCloseIdentifiesInterruptedCredit(t *testing.T) {
 	var workers sync.WaitGroup
 	t.Cleanup(func() { _ = peer.Close(); _ = owner.Close(); workers.Wait() })
 	opened := make(chan error, 1)
-	workers.Go(func() { _, err := ReadClosedLaneFrame(peer); opened <- err })
+	workers.Go(func() { _, err := ardp.ReadFrame(peer); opened <- err })
 	lane, err := owner.open(t.Context(), sourceIssuerOpen(end), end)
 	if peerErr := <-opened; err != nil || peerErr != nil {
 		t.Fatal(errors.Join(err, peerErr))
@@ -114,7 +116,7 @@ func TestClosedSourceCloseIdentifiesInterruptedCredit(t *testing.T) {
 	credited := make(chan error, 1)
 	closed := make(chan error, 1)
 	workers.Go(func() {
-		credited <- lane.send(ClosedLaneFrame{Kind: closedFrameCredit, Lane: lane.id, Body: binary.BigEndian.AppendUint32(nil, 1)}, time.Time{})
+		credited <- lane.send(ardp.Frame{Kind: ardp.KindCredit, Lane: lane.id, Body: binary.BigEndian.AppendUint32(nil, 1)}, time.Time{})
 	})
 	var first [1]byte
 	if _, err := io.ReadFull(peer, first[:]); err != nil {

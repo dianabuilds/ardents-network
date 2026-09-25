@@ -13,6 +13,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/resource"
 	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 )
 
 type queuedForwardingListener struct {
@@ -92,7 +93,7 @@ func TestClosedForwardingDrainJoinsActualAcceptedProducerBeforeReader(t *testing
 	if err != nil {
 		t.Fatal(err)
 	}
-	receiver, available := closedRouteReceiver(fixture.config, fixture.snapshot, route.ClosedPurposeForwarding, now)
+	receiver, available := closedRouteReceiver(fixture.config, fixture.snapshot, ardp.PurposeForwarding, now)
 	if !available {
 		t.Fatal("forwarding receiver unavailable")
 	}
@@ -196,37 +197,37 @@ func TestClosedForwardingDrainJoinsActualAcceptedProducerBeforeReader(t *testing
 	accept := mustClosedForwardAccept(t)
 	peerStarted = true
 	go func() {
-		frame, peerErr := route.ReadClosedLaneFrame(peer)
+		frame, peerErr := ardp.ReadFrame(peer)
 		if peerErr == nil && (frame.Kind != 1 || frame.Lane != 0) {
 			peerErr = errors.New("outer HELLO was altered")
 		}
 		if peerErr == nil {
-			peerErr = route.WriteClosedLaneFrame(peer, accept)
+			peerErr = ardp.WriteFrame(peer, accept)
 		}
 		peerDone <- peerErr
 	}()
 
-	hello := route.ClosedHello{NetworkID: receiver.NetworkID, StateGeneration: receiver.StateGeneration, StateDigest: receiver.StateDigest,
+	hello := ardp.Hello{NetworkID: receiver.NetworkID, StateGeneration: receiver.StateGeneration, StateDigest: receiver.StateDigest,
 		ProfileDigest: receiver.ProfileDigest, RecipientNodeID: receiver.NodeID, RecipientDutyGeneration: receiver.DutyGeneration,
-		Purpose: route.ClosedPurposeForwarding, ChannelNonce: [32]byte{19}, Deadline: receiver.NotAfter}
-	helloBody, err := route.EncodeClosedHello(hello)
+		Purpose: ardp.PurposeForwarding, ChannelNonce: [32]byte{19}, Deadline: receiver.NotAfter}
+	helloBody, err := ardp.EncodeHello(hello)
 	if err == nil {
-		err = route.WriteClosedLaneFrame(client, route.ClosedLaneFrame{Kind: 1, Body: helloBody})
+		err = ardp.WriteFrame(client, ardp.Frame{Kind: 1, Body: helloBody})
 	}
 	if err == nil {
-		err = route.WriteClosedLaneFrame(client, route.ClosedLaneFrame{Kind: 2, Body: append([]byte{2}, token...)})
+		err = ardp.WriteFrame(client, ardp.Frame{Kind: 2, Body: append([]byte{2}, token...)})
 	}
 	if err != nil {
 		t.Fatal(err)
 	}
-	if frame, readErr := route.ReadClosedLaneFrame(client); readErr != nil || frame.Kind != 5 {
+	if frame, readErr := ardp.ReadFrame(client); readErr != nil || frame.Kind != 5 {
 		t.Fatalf("forwarding acceptance: %+v / %v", frame, readErr)
 	}
 	openBody, err := route.EncodeClosedOpen(open)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := route.WriteClosedLaneFrame(client, route.ClosedLaneFrame{Kind: 4, Lane: 1, Body: openBody}); err != nil {
+	if err := ardp.WriteFrame(client, ardp.Frame{Kind: 4, Lane: 1, Body: openBody}); err != nil {
 		t.Fatal(err)
 	}
 	select {

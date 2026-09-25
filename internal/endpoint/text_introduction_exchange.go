@@ -8,7 +8,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
-	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	nativeconnection "github.com/dianabuilds/ardents-network/internal/service/connection"
 )
 
@@ -45,12 +45,12 @@ func (owner *textContext) submitTextIntroduction(ctx context.Context, job *textJ
 		}
 		defer release()
 	}
-	status, err := prefix.submitIntroduction(bounded, func(hello route.ClosedHello, class uint8) ([]byte, error) {
+	status, err := prefix.submitIntroduction(bounded, func(hello ardp.Hello, class uint8) ([]byte, error) {
 		owner.mu.Lock()
 		defer owner.mu.Unlock()
 		current, now, err := owner.textPermissionProfileLocked()
 		if err != nil || !owner.liveTextServiceJobLocked(job, broker.Connection) || bounded.Err() != nil || !prefix.currentLocked(owner) ||
-			current != profile || class != 1 || hello.Purpose != route.ClosedPurposeSubmission || hello.RecipientNodeID != receiver ||
+			current != profile || class != 1 || hello.Purpose != ardp.PurposeSubmission || hello.RecipientNodeID != receiver ||
 			hello.NetworkID != current.NetworkID || hello.StateGeneration != current.StateGeneration || hello.StateDigest != current.StateDigest ||
 			hello.ProfileDigest != current.Digest || hello.ChannelNonce == [32]byte{} || !now.Before(hello.Deadline) ||
 			hello.Deadline.After(prepared.plaintext.Deadline) {

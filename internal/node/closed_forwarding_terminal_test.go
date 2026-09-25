@@ -5,14 +5,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 )
 
 func TestClosedForwardingTransportFailureIsNotPeerTerminal(t *testing.T) {
 	reverse := newClosedForwardingQueue(32)
 	reverse.close()
 	session := &closedForwardingSession{closed: true}
-	if written, err := session.writeChildFrame(route.ClosedLaneFrame{Kind: 9, Lane: 1, Body: []byte{5}}, time.Now().Add(time.Second), reverse); err == nil || written {
+	if written, err := session.writeChildFrame(ardp.Frame{Kind: 9, Lane: 1, Body: []byte{5}}, time.Now().Add(time.Second), reverse); err == nil || written {
 		t.Fatal("physical EOF was treated as successful child terminal")
 	}
 }
@@ -28,12 +28,12 @@ func TestClosedForwardingPartialWriteFailureSurvivesPeerTerminal(t *testing.T) {
 		var first [1]byte
 		_, err := peer.Read(first[:])
 		if err == nil {
-			err = reverse.push(route.ClosedLaneFrame{Kind: 9, Lane: 1, Body: []byte{0}}, nil)
+			err = reverse.push(ardp.Frame{Kind: 9, Lane: 1, Body: []byte{0}}, nil)
 		}
 		_ = peer.Close()
 		observed <- err
 	}()
-	written, err := session.writeChildFrame(route.ClosedLaneFrame{Kind: 6, Lane: 1, Body: []byte("payload")}, time.Now().Add(time.Second), reverse)
+	written, err := session.writeChildFrame(ardp.Frame{Kind: 6, Lane: 1, Body: []byte("payload")}, time.Now().Add(time.Second), reverse)
 	if peerErr := <-observed; peerErr != nil {
 		t.Fatal(peerErr)
 	}

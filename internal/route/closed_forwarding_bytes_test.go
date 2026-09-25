@@ -3,6 +3,8 @@ package route
 import (
 	"testing"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 )
 
 func TestClosedForwardingByteAllowanceIncludesAdmissionHeadersAndControl(t *testing.T) {
@@ -12,24 +14,24 @@ func TestClosedForwardingByteAllowanceIncludesAdmissionHeadersAndControl(t *test
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = channel.Cancel() })
-	body, err := EncodeClosedOpen(ClosedOpen{NextNodeID: [32]byte{1}, NextDutyGeneration: 1, Purpose: ClosedPurposeForwarding, Deadline: now.Add(time.Minute)})
+	body, err := EncodeClosedOpen(ClosedOpen{NextNodeID: [32]byte{1}, NextDutyGeneration: 1, Purpose: ardp.PurposeForwarding, Deadline: now.Add(time.Minute)})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := channel.Accept(ClosedLaneFrame{Kind: closedFrameOpen, Lane: 1, Body: body}); err != nil {
+	if _, err := channel.Accept(ardp.Frame{Kind: ardp.KindOpen, Lane: 1, Body: body}); err != nil {
 		t.Fatal(err)
 	}
 	if _, ok := channel.NextAvailable(nil); !ok {
 		t.Fatal("missing OPEN")
 	}
-	accepted, err := ClosedAcceptFrame(0, 64<<10)
+	accepted, err := ardp.AcceptFrame(0, 64<<10)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if err := channel.AccountOutput(accepted); err != nil {
 		t.Fatal(err)
 	}
-	oneByte := ClosedLaneFrame{Kind: closedFrameBytes, Lane: 1, Body: []byte{1}}
+	oneByte := ardp.Frame{Kind: ardp.KindBytes, Lane: 1, Body: []byte{1}}
 	if err := channel.QueueReverse(oneByte); err != nil {
 		t.Fatal(err)
 	}
@@ -47,19 +49,19 @@ func TestClosedForwardingByteAllowanceIncludesAdmissionHeadersAndControl(t *test
 		if size <= 0 {
 			t.Fatal("invalid predeclared accounting schedule")
 		}
-		if err := channel.AccountOutput(ClosedLaneFrame{Kind: closedFrameBytes, Lane: 1, Body: data[:size]}); err != nil {
+		if err := channel.AccountOutput(ardp.Frame{Kind: ardp.KindBytes, Lane: 1, Body: data[:size]}); err != nil {
 			t.Fatalf("refused output before its complete-byte allowance: %v", err)
 		}
 		remaining -= 16 + size
 	}
-	credit := ClosedLaneFrame{Kind: closedFrameCredit, Lane: 1, Body: []byte{0, 0, 0, 1}}
+	credit := ardp.Frame{Kind: ardp.KindCredit, Lane: 1, Body: []byte{0, 0, 0, 1}}
 	if _, err := channel.Accept(credit); err != nil {
 		t.Fatal("final receiver-accounted CREDIT was refused")
 	}
-	if err := channel.AccountOutput(ClosedLaneFrame{Kind: closedFrameEOF, Lane: 1}); err == nil {
+	if err := channel.AccountOutput(ardp.Frame{Kind: ardp.KindEOF, Lane: 1}); err == nil {
 		t.Fatal("empty control bypassed exhausted complete-byte allowance")
 	}
-	if _, err := channel.Accept(ClosedLaneFrame{Kind: closedFrameEOF, Lane: 1}); err == nil {
+	if _, err := channel.Accept(ardp.Frame{Kind: ardp.KindEOF, Lane: 1}); err == nil {
 		t.Fatal("incoming control bypassed exhausted complete-byte allowance")
 	}
 }
@@ -74,16 +76,16 @@ func TestClosedForwardingSemanticRefusalDoesNotRefundReceivedFrame(t *testing.T)
 	// This well-framed CREDIT names no live child. Its receipt still consumes
 	// the remaining allowance even though no child effect may be admitted.
 	channel.usedBytes = channel.byteLimit - 20
-	if _, err := channel.Accept(ClosedLaneFrame{Kind: closedFrameCredit, Lane: 1, Body: []byte{0, 0, 0, 1}}); err == nil {
+	if _, err := channel.Accept(ardp.Frame{Kind: ardp.KindCredit, Lane: 1, Body: []byte{0, 0, 0, 1}}); err == nil {
 		t.Fatal("unallocated child CREDIT accepted")
 	}
-	accepted, err := ClosedAcceptFrame(0, 64<<10)
+	accepted, err := ardp.AcceptFrame(0, 64<<10)
 	if err != nil {
 		t.Fatal(err)
 	}
 	// Use a 16-byte otherwise permitted output to distinguish the consumed
 	// 20-byte input from a merely rejected semantic operation.
-	if err := channel.AccountOutput(ClosedLaneFrame{Kind: closedFrameEOF}); err == nil {
+	if err := channel.AccountOutput(ardp.Frame{Kind: ardp.KindEOF}); err == nil {
 		t.Fatal("refused input restored allowance for output")
 	}
 	if err := channel.AccountOutput(accepted); err == nil {
