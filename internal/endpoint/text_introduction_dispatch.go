@@ -34,17 +34,6 @@ type textIntroductionWaiter struct {
 	delivery chan textIntroductionRoutedDelivery
 }
 
-// textIntroductionRecoveryOwner exists from initial acceptance until the
-// Publisher Service stream retires. It can therefore own the next valid
-// recovery capsule before the native Connection detects the failed Carrier.
-type textIntroductionRecoveryOwner struct {
-	binding    *textServiceBinding
-	generation uint64
-	delivery   chan textIntroductionRoutedDelivery
-	expiryStop context.CancelFunc
-	expiryDone chan struct{}
-}
-
 // dispatchTextIntroductionDelivery registers the exact local owner before it
 // competes for the one consumer gate. The consumer routes each claimed capsule
 // directly to an already registered waiter; unmatched inputs are refused while
@@ -97,7 +86,7 @@ func (owner *textContext) dispatchTextIntroductionDelivery(ctx context.Context, 
 			}
 			if target != nil && target != waiter {
 				target.delivery <- routed
-			} else if recovery != nil && !owner.bufferTextIntroductionRecoveryLocked(recovery, routed) {
+			} else if recovery != nil && !recovery.bufferLocked(owner, routed) {
 				recovery = nil
 			}
 			owner.mu.Unlock()
@@ -156,20 +145,7 @@ func (owner *textContext) registerTextIntroductionWaiter(ctx context.Context, jo
 	}
 	waiter, gate := owner.introductionDispatch.addWaiterLocked(want)
 	if recovery != nil {
-		select {
-		case routed := <-recovery.delivery:
-			if textIntroductionDeliveryMatches(routed.key, want) {
-				if recovery.expiryStop != nil {
-					recovery.expiryStop()
-					expiryDone = recovery.expiryDone
-					recovery.expiryStop, recovery.expiryDone = nil, nil
-				}
-				waiter.delivery <- routed
-			} else {
-				recovery.delivery <- routed
-			}
-		default:
-		}
+		expiryDone = recovery.handoffLocked(want, waiter)
 	}
 	return waiter, gate, nil
 }
@@ -194,66 +170,6 @@ func (owner *textContext) releaseTextIntroductionWaiter(waiter *textIntroduction
 		return nil
 	}
 	return routed.delivery.Complete(lifetime, 1)
-}
-
-func (owner *textContext) bufferTextIntroductionRecoveryLocked(recovery *textIntroductionRecoveryOwner,
-	routed textIntroductionRoutedDelivery) bool {
-	if recovery == nil || recovery.binding == nil || recovery.binding.recovery != recovery ||
-		len(recovery.delivery) != 0 || recovery.expiryDone != nil || routed.delivery == nil ||
-		!owner.endpoint.clock().Add(textIntroductionExpiryReserve).Before(routed.expires) {
-		return false
-	}
-	lifetime, stop := context.WithCancel(owner.lease.Context())
-	done := make(chan struct{})
-	recovery.delivery <- routed
-	recovery.expiryStop, recovery.expiryDone = stop, done
-	go owner.expireTextIntroductionRecovery(lifetime, stop, recovery, routed, done)
-	return true
-}
-
-func (owner *textContext) expireTextIntroductionRecovery(ctx context.Context, stop context.CancelFunc,
-	recovery *textIntroductionRecoveryOwner, routed textIntroductionRoutedDelivery, done chan struct{}) {
-	defer stop()
-	defer func() {
-		owner.mu.Lock()
-		if recovery.expiryDone == done {
-			recovery.expiryStop, recovery.expiryDone = nil, nil
-		}
-		owner.mu.Unlock()
-		close(done)
-	}()
-	wait := routed.expires.Sub(owner.endpoint.clock()) - textIntroductionExpiryReserve
-	if wait < 0 {
-		wait = 0
-	}
-	timer := time.NewTimer(wait)
-	defer timer.Stop()
-	select {
-	case <-ctx.Done():
-		return
-	case <-timer.C:
-	}
-	owner.mu.Lock()
-	if recovery.expiryDone != done || recovery.binding == nil || recovery.binding.recovery != recovery {
-		owner.mu.Unlock()
-		return
-	}
-	var expired textIntroductionRoutedDelivery
-	select {
-	case expired = <-recovery.delivery:
-	default:
-	}
-	lifetime := owner.lease.Context()
-	owner.mu.Unlock()
-	if expired.delivery == nil || expired.delivery != routed.delivery || lifetime.Err() != nil {
-		return
-	}
-	bounded, cancel := context.WithDeadline(lifetime, routed.expires)
-	err := expired.delivery.Complete(bounded, 1)
-	cancel()
-	if err != nil && lifetime.Err() == nil {
-		owner.endpoint.failTextContexts(err)
-	}
 }
 
 func (owner *textContext) retainTextIntroductionRecovery(binding *textServiceBinding) error {
@@ -283,16 +199,7 @@ func (binding *textServiceBinding) releaseTextIntroductionRecovery() error {
 	}
 	owner.introductionDispatch.removeRecoveryLocked(recovery)
 	binding.recovery = nil
-	expiryStop, expiryDone := recovery.expiryStop, recovery.expiryDone
-	recovery.expiryStop, recovery.expiryDone = nil, nil
-	if expiryStop != nil {
-		expiryStop()
-	}
-	var routed textIntroductionRoutedDelivery
-	select {
-	case routed = <-recovery.delivery:
-	default:
-	}
+	expiryDone, routed := recovery.retireLocked()
 	lifetime := owner.lease.Context()
 	owner.mu.Unlock()
 	if expiryDone != nil {

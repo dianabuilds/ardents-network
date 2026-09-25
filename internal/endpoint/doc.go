@@ -22,6 +22,8 @@
 //     text_introduction_admission.go, text_introduction_dispatch_state.go,
 //     and text_introduction_exchange_set.go own opening rate, delivery slots,
 //     and in-flight exchange membership under the Context lock.
+//     text_introduction_recovery.go owns buffered recovery delivery, its
+//     deadline refusal, and the join before waiter handoff or retirement.
 //   - text_permission.go and text_permission_stock.go own holder authority and
 //     issued stock; text_issuance_operation.go owns an admitted issuance attempt.
 //   - text_publication_pair_lifecycle.go and text_publication_refresh.go own
