@@ -42,6 +42,7 @@
 // filesystem lease and atomic-write primitives. The permissionfile package
 // owns the separate owner-private offline permission file handover. Tests follow their production
 // owner; the role-network fixture in text_issuance_network_test.go selects
-// the Carrier, while text_join_service_network_test.go exercises both selected
-// Carriers.
+// the Carrier, text_network_node_fixture_test.go owns each fixture Node's
+// readiness and joined cleanup, and text_join_service_network_test.go exercises
+// both selected Carriers.
 package endpoint

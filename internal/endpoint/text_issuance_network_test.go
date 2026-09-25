@@ -3,7 +3,6 @@
 package endpoint
 
 import (
-	"context"
 	"crypto/ed25519"
 	"crypto/sha256"
 	"crypto/tls"
@@ -166,9 +165,9 @@ func startTextRoleNetwork(t *testing.T, fixture textRoleNetworkFixture) (*endpoi
 		if err := local.Close(); err != nil {
 			t.Fatal(err)
 		}
-		ready := make(chan struct{}, 1)
 		history := &textNetworkNodeEvents{}
 		events[index] = history
+		runtime := newTextNetworkNodeRuntime(history)
 		config := node.Config{HostingRoot: textNetworkHostingRoot(t), NetworkID: snapshot.NetworkID, NodeID: snapshot.NodeID,
 			IdentityKey: certificates[index].PrivateKey.(ed25519.PrivateKey),
 			Current:     func() (node.DutyView, error) { return textNetworkDutyFixture{snapshot: snapshot}, nil },
@@ -183,17 +182,7 @@ func startTextRoleNetwork(t *testing.T, fixture textRoleNetworkFixture) (*endpoi
 			// lifecycle's maximum accepted cadence so those Nodes share at most one
 			// process/cgroup pressure-sampling wave per second. Admission remains
 			// fail-closed and startup does not wait for this READY-state ticker.
-			LocalRoleStateRoot: root, PollInterval: time.Second, CheckPlacement: func() error { return nil },
-			Emit: func(_ context.Context, event node.Event) error {
-				history.record(event)
-				if event.State == "READY" {
-					select {
-					case ready <- struct{}{}:
-					default:
-					}
-				}
-				return nil
-			},
+			LocalRoleStateRoot: root, PollInterval: time.Second, CheckPlacement: func() error { return nil }, Emit: runtime.emit,
 		}
 		if index == 15 {
 			config.ClosedDataJoin = node.ClosedDataJoinProfile{HostingRoot: config.HostingRoot, AdmissionRoot: textNetworkPrivateRoot(t), Certificate: certificates[index], ConnectionLimit: 8, DrainTimeout: 2 * time.Second}
@@ -215,46 +204,7 @@ func startTextRoleNetwork(t *testing.T, fixture textRoleNetworkFixture) (*endpoi
 		// Hold every selected port until its listener is about to start, so
 		// earlier Node activity cannot allocate a later candidate's port.
 		reservations[index]()
-		if fixture.runner != nil {
-			stop := fixture.runner(t, index, config)
-			t.Cleanup(func() {
-				if err := stop(); err != nil {
-					t.Error(err)
-				}
-			})
-			continue
-		}
-		// Nodes are fixture infrastructure. testing.T cancels its Context before
-		// Cleanup, which would race an unrelated network shutdown against the
-		// Endpoint's normal cleanup. The explicit cleanup below owns each Node.
-		ctx, cancel := context.WithCancel(context.Background())
-		done := make(chan error, 1)
-		go func() {
-			result, err := node.Run(ctx, config)
-			if err != nil {
-				err = fmt.Errorf("Node %d result %+v: %w", index, result, err)
-			}
-			done <- err
-		}()
-		t.Cleanup(func() {
-			cancel()
-			select {
-			case err := <-done:
-				if err != nil {
-					t.Error(err)
-				}
-			case <-time.After(4 * time.Second):
-				t.Error("Node runtime did not join")
-			}
-		})
-		select {
-		case <-ready:
-		case err := <-done:
-			done <- err
-			t.Fatalf("Node %d failed before READY: %v", index, err)
-		case <-time.After(5 * time.Second):
-			t.Fatalf("Node %d did not become READY", index)
-		}
+		runtime.start(t, index, config, fixture.runner)
 	}
 	// Registered after Node cleanup callbacks: LIFO keeps the real network
 	// available until all Endpoint channels and their workers have joined.
