@@ -33,43 +33,6 @@ type textServiceStream struct {
 	runErr     error // Internal terminal cause, read only after finished closes.
 }
 
-// textServiceTransport gives TLS, cancellation and final cleanup one physical
-// retirement. A close error remains observable after TLS has already closed it.
-type textServiceTransport struct {
-	net.Conn
-	once sync.Once
-	err  error
-}
-
-func (transport *textServiceTransport) AuthenticatedPeerRetired() bool {
-	witness, ok := transport.Conn.(interface{ AuthenticatedPeerRetired() bool })
-	return ok && witness.AuthenticatedPeerRetired()
-}
-
-// textServiceAttachmentOpener returns one already authorized protected Route
-// transport and its exact fresh capsule digest. The native Connection owns TLS,
-// exporter and retained-continuity verification before committing it.
-type textServiceAttachmentOpener func(context.Context, nativeconnection.Recovery) (net.Conn, [32]byte, error)
-
-func (transport *textServiceTransport) Close() error {
-	transport.once.Do(func() {
-		transport.err = transport.Conn.Close()
-		// A retirement attempt after an upstream cancellation has already torn
-		// down TLS is not a separate cleanup failure. Without this guard the
-		// per-stream Join cascade reproduces "text Service transport retirement
-		// failed" once per stream and the workload criteria never see a quiet
-		// shutdown.
-		if transport.err != nil && (errors.Is(transport.err, net.ErrClosed) ||
-			transport.err.Error() == "use of closed network connection") {
-			transport.err = nil
-		}
-		if transport.err != nil {
-			transport.err = errors.Join(errors.New("text Service transport retirement failed"), transport.err)
-		}
-	})
-	return transport.err
-}
-
 // openTextServiceStream binds the initial joined Route transport to a real TLS
 // and generation-3 native Service Connection. It owns raw on every return.
 // Recovery Attachments require the separate retained continuity owner; this
@@ -85,7 +48,7 @@ func (binding *textServiceBinding) openTextServiceStreamWithRecovery(ctx context
 	if raw == nil {
 		return nil, errors.New("text Service transport unavailable")
 	}
-	transport := &textServiceTransport{Conn: raw}
+	transport := &protectedServiceTransport{Conn: raw}
 	transferred := false
 	defer func() {
 		if !transferred {

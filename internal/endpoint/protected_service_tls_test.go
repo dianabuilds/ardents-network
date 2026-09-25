@@ -42,7 +42,7 @@ func TestProtectedServiceTLSRouteRetirementWitnessSurvivesWrapperChain(t *testin
 	local := &authenticatedRetirementTestConn{Conn: localRaw, retired: &localRetired, peerRetired: &remoteRetired}
 	remote := &authenticatedRetirementTestConn{Conn: remoteRaw, retired: &remoteRetired, peerRetired: &localRetired}
 	joined := &textJoinedTransport{Conn: remote, stop: func() {}, finish: func(err error) error { return err }}
-	service := &textServiceTransport{Conn: joined}
+	service := &protectedServiceTransport{Conn: joined}
 	clientResult := make(chan *securedAttachment, 1)
 	clientError := make(chan error, 1)
 	go func() {

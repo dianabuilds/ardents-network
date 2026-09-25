@@ -6,10 +6,48 @@ import (
 	"context"
 	"errors"
 	"net"
+	"sync"
 
 	nativeconnection "github.com/dianabuilds/ardents-network/internal/service/connection"
 	"github.com/dianabuilds/ardents-network/internal/service/publication"
 )
+
+// protectedServiceTransport gives TLS, cancellation and final cleanup one
+// physical retirement. A close error remains observable after TLS closes it.
+type protectedServiceTransport struct {
+	net.Conn
+	once sync.Once
+	err  error
+}
+
+func (transport *protectedServiceTransport) AuthenticatedPeerRetired() bool {
+	witness, ok := transport.Conn.(interface{ AuthenticatedPeerRetired() bool })
+	return ok && witness.AuthenticatedPeerRetired()
+}
+
+func (transport *protectedServiceTransport) Close() error {
+	transport.once.Do(func() {
+		transport.err = transport.Conn.Close()
+		// A retirement attempt after upstream cancellation has already torn
+		// down TLS is not a separate cleanup failure. Without this guard the
+		// per-stream Join cascade reproduces "text Service transport retirement
+		// failed" once per stream and the workload criteria never see a quiet
+		// shutdown.
+		if transport.err != nil && (errors.Is(transport.err, net.ErrClosed) ||
+			transport.err.Error() == "use of closed network connection") {
+			transport.err = nil
+		}
+		if transport.err != nil {
+			transport.err = errors.Join(errors.New("text Service transport retirement failed"), transport.err)
+		}
+	})
+	return transport.err
+}
+
+// textServiceAttachmentOpener returns one already authorized protected Route
+// transport and its exact fresh capsule digest. The native Connection owns TLS,
+// exporter and retained-continuity verification before committing it.
+type textServiceAttachmentOpener func(context.Context, nativeconnection.Recovery) (net.Conn, [32]byte, error)
 
 // openProtectedServiceInitialAttachment authenticates the first physical
 // transport. The caller owns the returned Publisher lease through stream
