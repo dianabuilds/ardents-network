@@ -4,6 +4,8 @@ import (
 	"io"
 	"testing"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 )
 
 func TestClosedOuterBridgeShutdownRetainsReservationsUntilHandlersJoin(t *testing.T) {
@@ -19,29 +21,29 @@ func TestClosedOuterBridgeShutdownRetainsReservationsUntilHandlersJoin(t *testin
 	}
 	defer outer.Close()
 	writes := 0
-	bridge, err := NewClosedOuterBridge(outer, func(uint32, time.Time) error { return nil }, func(ClosedLaneFrame, func() time.Time, bool, bool) error { writes++; return nil })
+	bridge, err := NewClosedOuterBridge(outer, func(uint32, time.Time) error { return nil }, func(ardp.Frame, func() time.Time, bool, bool) error { writes++; return nil })
 	if err != nil {
 		t.Fatal(err)
 	}
-	hello := ClosedHello{NetworkID: receiver.NetworkID, StateGeneration: receiver.StateGeneration, StateDigest: receiver.StateDigest,
+	hello := ardp.Hello{NetworkID: receiver.NetworkID, StateGeneration: receiver.StateGeneration, StateDigest: receiver.StateDigest,
 		ProfileDigest: receiver.ProfileDigest, RecipientNodeID: receiver.NodeID, RecipientDutyGeneration: receiver.DutyGeneration,
-		Purpose: ClosedPurposeForwarding, ChannelNonce: [32]byte{9}, Deadline: receiver.Deadline}
-	body, err := EncodeClosedHello(hello)
+		Purpose: ardp.PurposeForwarding, ChannelNonce: [32]byte{9}, Deadline: receiver.Deadline}
+	body, err := ardp.EncodeHello(hello)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := bridge.Accept(ClosedLaneFrame{Kind: closedFrameHello, Body: body}); err != nil {
+	if _, err := bridge.Accept(ardp.Frame{Kind: ardp.KindHello, Body: body}); err != nil {
 		t.Fatal(err)
 	}
-	body, err = EncodeClosedNodeOpen(ClosedOpen{NextNodeID: receiver.NodeID, NextDutyGeneration: receiver.DutyGeneration, Purpose: ClosedPurposeIssuer, Deadline: receiver.Deadline}, ClosedChildOrdinary)
+	body, err = EncodeClosedNodeOpen(ClosedOpen{NextNodeID: receiver.NodeID, NextDutyGeneration: receiver.DutyGeneration, Purpose: ardp.PurposeIssuer, Deadline: receiver.Deadline}, ClosedChildOrdinary)
 	if err != nil {
 		t.Fatal(err)
 	}
-	lane, err := bridge.Accept(ClosedLaneFrame{Kind: closedFrameOpen, Lane: 1, Body: body})
+	lane, err := bridge.Accept(ardp.Frame{Kind: ardp.KindOpen, Lane: 1, Body: body})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := bridge.Accept(ClosedLaneFrame{Kind: closedFrameBytes, Lane: 1, Body: []byte{1}}); err != nil {
+	if _, err := bridge.Accept(ardp.Frame{Kind: ardp.KindBytes, Lane: 1, Body: []byte{1}}); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := io.ReadFull(lane, make([]byte, 1)); err != nil {
@@ -50,10 +52,10 @@ func TestClosedOuterBridgeShutdownRetainsReservationsUntilHandlersJoin(t *testin
 	if err := lane.BeginInnerHello(); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := bridge.Accept(ClosedLaneFrame{Kind: closedFrameBytes, Lane: 1, Body: []byte{2, 3}}); err != nil {
+	if _, err := bridge.Accept(ardp.Frame{Kind: ardp.KindBytes, Lane: 1, Body: []byte{2, 3}}); err != nil {
 		t.Fatal(err)
 	}
-	waiting, err := bridge.Accept(ClosedLaneFrame{Kind: closedFrameOpen, Lane: 3, Body: body})
+	waiting, err := bridge.Accept(ardp.Frame{Kind: ardp.KindOpen, Lane: 3, Body: body})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -75,7 +77,7 @@ func TestClosedOuterBridgeShutdownRetainsReservationsUntilHandlersJoin(t *testin
 	if _, err := lane.Write([]byte{1}); err == nil {
 		t.Fatal("retired child wrote")
 	}
-	if _, err := bridge.Accept(ClosedLaneFrame{Kind: closedFrameOpen, Lane: 5, Body: body}); err == nil {
+	if _, err := bridge.Accept(ardp.Frame{Kind: ardp.KindOpen, Lane: 5, Body: body}); err == nil {
 		t.Fatal("closed bridge allocated a child")
 	}
 	if err := lane.CloseWithStatus(0); err != nil {

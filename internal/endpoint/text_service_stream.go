@@ -33,43 +33,6 @@ type textServiceStream struct {
 	runErr     error // Internal terminal cause, read only after finished closes.
 }
 
-// textServiceTransport gives TLS, cancellation and final cleanup one physical
-// retirement. A close error remains observable after TLS has already closed it.
-type textServiceTransport struct {
-	net.Conn
-	once sync.Once
-	err  error
-}
-
-func (transport *textServiceTransport) AuthenticatedPeerRetired() bool {
-	witness, ok := transport.Conn.(interface{ AuthenticatedPeerRetired() bool })
-	return ok && witness.AuthenticatedPeerRetired()
-}
-
-// textServiceAttachmentOpener returns one already authorized protected Route
-// transport and its exact fresh capsule digest. The native Connection owns TLS,
-// exporter and retained-continuity verification before committing it.
-type textServiceAttachmentOpener func(context.Context, nativeconnection.Recovery) (net.Conn, [32]byte, error)
-
-func (transport *textServiceTransport) Close() error {
-	transport.once.Do(func() {
-		transport.err = transport.Conn.Close()
-		// A retirement attempt after an upstream cancellation has already torn
-		// down TLS is not a separate cleanup failure. Without this guard the
-		// per-stream Join cascade reproduces "text Service transport retirement
-		// failed" once per stream and the workload criteria never see a quiet
-		// shutdown.
-		if transport.err != nil && (errors.Is(transport.err, net.ErrClosed) ||
-			transport.err.Error() == "use of closed network connection") {
-			transport.err = nil
-		}
-		if transport.err != nil {
-			transport.err = errors.Join(errors.New("text Service transport retirement failed"), transport.err)
-		}
-	})
-	return transport.err
-}
-
 // openTextServiceStream binds the initial joined Route transport to a real TLS
 // and generation-3 native Service Connection. It owns raw on every return.
 // Recovery Attachments require the separate retained continuity owner; this
@@ -85,7 +48,7 @@ func (binding *textServiceBinding) openTextServiceStreamWithRecovery(ctx context
 	if raw == nil {
 		return nil, errors.New("text Service transport unavailable")
 	}
-	transport := &textServiceTransport{Conn: raw}
+	transport := &protectedServiceTransport{Conn: raw}
 	transferred := false
 	defer func() {
 		if !transferred {
@@ -140,36 +103,17 @@ func (binding *textServiceBinding) openTextServiceStreamWithRecovery(ctx context
 		}
 	}()
 	client := binding.owner.surface == broker.Connection
+	var continuity [32]byte
+	defer clear(continuity[:])
+	first, acquired, err := binding.openProtectedServiceInitialAttachment(lifetime, transport, exporterContext, client, &continuity)
+	lease = acquired
+	if err != nil {
+		return nil, err
+	}
 	identity := nativeconnection.InstanceAuthentication{Network: binding.credential.NetworkID, Target: binding.credential.Target,
 		Public: binding.credential.InstancePublic, Generation: binding.credential.Generation}
-	var secured *securedAttachment
-	var continuity [32]byte
-	if client {
-		secured, continuity, err = secureTextClient(lifetime, transport, binding.credential, exporterContext, 1)
-	} else {
-		if binding.owner.endpoint.publications == nil {
-			return nil, errors.New("text Publisher publication owner unavailable")
-		}
-		lease, err = binding.owner.endpoint.publications.AcquireAt(lifetime, binding.owner.endpoint.clock().UTC())
-		if err != nil {
-			return nil, err
-		}
-		if !binding.matchesPublication(lease.Current()) {
-			return nil, errors.New("text Publisher publication changed")
-		}
+	if lease != nil {
 		identity.Signer = lease
-		secured, continuity, err = secureTextPublisher(lifetime, transport, binding.credential, lease, exporterContext, 1)
-	}
-	defer clear(continuity[:])
-	if err != nil {
-		return nil, err
-	}
-	// TLS exporter used the fresh Attachment context. Native records must
-	// continue to bind the immutable logical context shared by both Endpoints.
-	secured.context = binding.logical
-	first, err := nativeTextAttachment(secured)
-	if err != nil {
-		return nil, err
 	}
 	recovery := nativeconnection.Recovery{WorkSafetyNotAfter: binding.facts.WorkSafetyNotAfter,
 		WorkSafetyMaximum: binding.facts.WorkSafetyMaximum, NoNewRecoveryAfter: binding.facts.NoNewRecoveryAfter}
@@ -181,62 +125,8 @@ func (binding *textServiceBinding) openTextServiceStreamWithRecovery(ctx context
 	}
 	var opener nativeconnection.AttachmentOpener
 	if open != nil {
-		opener = func(attempt context.Context, request nativeconnection.Recovery) (_ *nativeconnection.Attachment, outcome error) {
-			if err := binding.validateTextServiceRecovery(request); err != nil {
-				return nil, err
-			}
-			replacementRaw, replacementDigest, err := open(attempt, request)
-			if err != nil {
-				return nil, err
-			}
-			if replacementRaw == nil || replacementDigest == [32]byte{} {
-				if replacementRaw != nil {
-					_ = replacementRaw.Close()
-				}
-				return nil, errors.New("text Service recovery Attachment is incomplete")
-			}
-			ownedRaw := true
-			defer func() {
-				if ownedRaw {
-					outcome = errors.Join(outcome, replacementRaw.Close())
-				}
-			}()
-			if err := errors.Join(attempt.Err(), binding.current()); err != nil {
-				return nil, err
-			}
-			freshContext, err := nativeconnection.ProtectedAttachmentContext(binding.logical, replacementDigest, request.Generation)
-			if err != nil {
-				return nil, err
-			}
-			var replacement *securedAttachment
-			var freshContinuity [32]byte
-			if client {
-				replacement, freshContinuity, err = secureTextClient(attempt, replacementRaw, binding.credential, freshContext, request.Generation)
-			} else {
-				if lease == nil || !binding.matchesPublication(lease.Current()) {
-					return nil, errors.New("text Publisher publication changed before recovery")
-				}
-				replacement, freshContinuity, err = secureTextPublisher(attempt, replacementRaw, binding.credential, lease, freshContext, request.Generation)
-			}
-			defer clear(freshContinuity[:])
-			if err != nil {
-				ownedRaw = false // TLS setup owns and closes raw on every failure.
-				return nil, err
-			}
-			ownedRaw = false
-			if err := errors.Join(attempt.Err(), binding.current()); err != nil || !client && !binding.matchesPublication(lease.Current()) {
-				replacement.close()
-				return nil, errors.Join(err, errors.New("text Service authority changed during recovery"))
-			}
-			// The exporter was derived from the fresh Attachment context; native
-			// Continuity continues to authenticate the immutable logical context.
-			replacement.context = binding.logical
-			attached, err := nativeTextAttachment(replacement)
-			if err != nil {
-				replacement.close()
-				return nil, err
-			}
-			return attached, nil
+		opener = func(attempt context.Context, request nativeconnection.Recovery) (*nativeconnection.Attachment, error) {
+			return binding.openProtectedServiceRecoveryAttachment(attempt, request, open, lease, client)
 		}
 	}
 	stream, err := nativeconnection.NewAuthenticatedStream(nativeconnection.StreamConfig{
@@ -262,50 +152,57 @@ func (binding *textServiceBinding) openTextServiceStreamWithRecovery(ctx context
 	}
 	transferred = true
 	recoveryTransferred = true
-	go func() {
-		_, runErr := stream.RunBounded(send, receive)
-		runErr = errors.Join(runErr, ctx.Err(), lifetime.Err(), binding.current())
-		connection.runErr = runErr
-		nativeFinished := false
-		select {
-		case <-stream.Done():
-			nativeFinished = true
-		default:
-		}
-		if nativeFinished {
-			connection.finishErr = cleanup()
-			if connection.finishErr != nil {
-				connection.finishErr = errors.Join(errors.New("text Service cleanup failed"), connection.finishErr)
-			}
-		}
-		outcome := applicationconnection.Outcome{Class: applicationconnection.CleanClose}
-		if runErr != nil || connection.finishErr != nil {
-			outcome = applicationconnection.Outcome{Class: applicationconnection.ServiceUnavailable, Reason: "text Service Connection interrupted"}
-			if errors.Is(runErr, context.DeadlineExceeded) {
-				outcome.Class = applicationconnection.LocalTimeout
-			} else if ctx.Err() != nil {
-				outcome.Class = applicationconnection.LocalCancellation
-			}
-		}
-		connection.done <- outcome
-		close(connection.done)
-		// RunBounded has completed the Application Terminal exchange. Its
-		// recovery-capable terminal-control tail may intentionally keep
-		// stream.Done open until the lifetime is canceled.
-		close(connection.retired)
-		if !nativeFinished {
-			<-stream.Done()
-			connection.finishErr = cleanup()
-			if connection.finishErr != nil {
-				connection.finishErr = errors.Join(errors.New("text Service cleanup failed"), connection.finishErr)
-			}
-		}
-		close(connection.finished)
-	}()
+	go connection.runNative(ctx, lifetime, stream, send, receive, cleanup)
 	if admissionErr != nil {
 		return nil, errors.Join(admissionErr, connection.Close())
 	}
 	return connection, nil
+}
+
+// runNative owns the stream's terminal outcome and joins physical cleanup
+// before signaling finished. A recovery-capable native tail may outlive the
+// Application outcome, so retired and finished remain distinct barriers.
+func (connection *textServiceStream) runNative(ctx, lifetime context.Context, stream *nativeconnection.Stream,
+	send, receive uint32, cleanup func() error,
+) {
+	_, runErr := stream.RunBounded(send, receive)
+	runErr = errors.Join(runErr, ctx.Err(), lifetime.Err(), connection.binding.current())
+	connection.runErr = runErr
+	nativeFinished := false
+	select {
+	case <-stream.Done():
+		nativeFinished = true
+	default:
+	}
+	if nativeFinished {
+		connection.finishErr = cleanup()
+		if connection.finishErr != nil {
+			connection.finishErr = errors.Join(errors.New("text Service cleanup failed"), connection.finishErr)
+		}
+	}
+	outcome := applicationconnection.Outcome{Class: applicationconnection.CleanClose}
+	if runErr != nil || connection.finishErr != nil {
+		outcome = applicationconnection.Outcome{Class: applicationconnection.ServiceUnavailable, Reason: "text Service Connection interrupted"}
+		if errors.Is(runErr, context.DeadlineExceeded) {
+			outcome.Class = applicationconnection.LocalTimeout
+		} else if ctx.Err() != nil {
+			outcome.Class = applicationconnection.LocalCancellation
+		}
+	}
+	connection.done <- outcome
+	close(connection.done)
+	// RunBounded has completed the Application Terminal exchange. Its
+	// recovery-capable terminal-control tail may intentionally keep
+	// stream.Done open until the lifetime is canceled.
+	close(connection.retired)
+	if !nativeFinished {
+		<-stream.Done()
+		connection.finishErr = cleanup()
+		if connection.finishErr != nil {
+			connection.finishErr = errors.Join(errors.New("text Service cleanup failed"), connection.finishErr)
+		}
+	}
+	close(connection.finished)
 }
 
 func (connection *textServiceStream) Done() <-chan applicationconnection.Outcome {

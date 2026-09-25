@@ -281,6 +281,11 @@ with the real installed launcher, Introduction/Route producers, Service authenti
 and confined worker protocols for empty, 64-KiB and 4-MiB documents on both Carriers.
 Its State, Authority/Instance provisioning and registration scheduling remain explicit
 fixtures; this does not qualify the complete protected journey or hostile host.
+The four-Reader retained qualification shares one local Introduction delivery
+slot. A Reader takes it immediately before submitting its capsule; completion
+or refusal releases it, and the next submission waits at least 300 ms. This
+paces acknowledged deliveries across the cohort despite variable preparation
+and Route timing while preserving the Publisher's four-openings-per-second cap.
 
 The Endpoint's text Publisher network producer retains one qualified worker
 across independent reads and owns Introduction receipt, JOIN and authenticated
@@ -351,7 +356,8 @@ Local network tests exercise this result projection with explicit qualification
 fixtures. The installed profile uses the actual AAI3 owner and launcher, but
 that revised profile still requires execution on its qualified host.
 The protected `RunTextParticipant` composition opens the accepted closed State,
-Entry sets, token journal and existing Instance binding. It qualifies and
+Entry sets, the `internal/endpoint/tokenjournal` durable attempt owner, and
+existing Instance binding. It qualifies and
 provisions both retained text contexts before opening the AAI3 Connection and
 snapshot Administration transports, rechecks permission currentness before
 exposure, and joins servers, contexts and persistent owners on shutdown.
@@ -363,6 +369,16 @@ protected composition still requires installed command
 and full network lifecycle
 qualification. No caller-supplied Target, permission file or local context
 identifier may bypass these owners.
+
+The participant serializes local lifecycle output. Each event records UTC occurrence time before output delivery; the local JSON-line adapter uses `schema`, `kind`, and `at` for correlation with Node lifecycle events while retaining the existing bounded, role-specific fields. A background failure event uses a
+bounded observer context; if delivery fails, the participant ends the generation,
+joins its owners, and returns the output failure instead of silently discarding it.
+After the event output is acquired and the participant has joined its owners,
+an uncanceled fatal return emits
+`headless-runtime-failed` with only `startup` or `running` as its failure category.
+It does not serialize the returned error; stderr retains that detail for local
+investigation. A failed event output is not retried through the same output.
+
 The coalesced authenticated stream requires its directional Terminal receipt
 and peer confirmation even when only the initial Attachment is available.
 Missing confirmation cannot yield a successful bounded outcome. The protected

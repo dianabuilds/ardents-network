@@ -4,12 +4,14 @@ import (
 	"bytes"
 	"testing"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 )
 
 func TestClosedNodeOpenRequiresAuthenticatedExactGrammar(t *testing.T) {
 	now := time.Unix(1_800_300_000, 0).UTC()
 	receiver := closedOuterHandshakeReceiver(now)
-	open := ClosedOpen{NextNodeID: receiver.NodeID, NextDutyGeneration: receiver.DutyGeneration, Purpose: ClosedPurposeIssuer, Deadline: receiver.Deadline}
+	open := ClosedOpen{NextNodeID: receiver.NodeID, NextDutyGeneration: receiver.DutyGeneration, Purpose: ardp.PurposeIssuer, Deadline: receiver.Deadline}
 	old, err := EncodeClosedOpen(open)
 	if err != nil {
 		t.Fatal(err)
@@ -27,10 +29,10 @@ func TestClosedNodeOpenRequiresAuthenticatedExactGrammar(t *testing.T) {
 			t.Fatal("Endpoint role accepted injected restriction")
 		}
 		var wire bytes.Buffer
-		if err := WriteClosedLaneFrame(&wire, ClosedLaneFrame{Kind: 4, Lane: 1, Body: raw}); err != nil {
+		if err := ardp.WriteFrame(&wire, ardp.Frame{Kind: 4, Lane: 1, Body: raw}); err != nil {
 			t.Fatal(err)
 		}
-		frame, err := ReadClosedLaneFrame(&wire)
+		frame, err := ardp.ReadFrame(&wire)
 		if err != nil || !bytes.Equal(frame.Body, raw) {
 			t.Fatalf("framed NodeOPEN: %v", err)
 		}
@@ -49,21 +51,21 @@ func TestClosedNodeOpenRequiresAuthenticatedExactGrammar(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer outer.Close()
-	bridge, err := NewClosedOuterBridge(outer, func(uint32, time.Time) error { return nil }, func(ClosedLaneFrame, func() time.Time, bool, bool) error { return nil })
+	bridge, err := NewClosedOuterBridge(outer, func(uint32, time.Time) error { return nil }, func(ardp.Frame, func() time.Time, bool, bool) error { return nil })
 	if err != nil {
 		t.Fatal(err)
 	}
-	hello := ClosedHello{NetworkID: receiver.NetworkID, StateGeneration: receiver.StateGeneration, StateDigest: receiver.StateDigest, ProfileDigest: receiver.ProfileDigest,
-		RecipientNodeID: receiver.NodeID, RecipientDutyGeneration: receiver.DutyGeneration, Purpose: ClosedPurposeForwarding, ChannelNonce: [32]byte{20}, Deadline: receiver.Deadline}
-	body, err := EncodeClosedHello(hello)
+	hello := ardp.Hello{NetworkID: receiver.NetworkID, StateGeneration: receiver.StateGeneration, StateDigest: receiver.StateDigest, ProfileDigest: receiver.ProfileDigest,
+		RecipientNodeID: receiver.NodeID, RecipientDutyGeneration: receiver.DutyGeneration, Purpose: ardp.PurposeForwarding, ChannelNonce: [32]byte{20}, Deadline: receiver.Deadline}
+	body, err := ardp.EncodeHello(hello)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := bridge.Accept(ClosedLaneFrame{Kind: 1, Body: body}); err != nil {
+	if _, err := bridge.Accept(ardp.Frame{Kind: 1, Body: body}); err != nil {
 		t.Fatal(err)
 	}
 	for _, raw := range [][]byte{old, append(append([]byte(nil), old...), 2)} {
-		if _, err := bridge.Accept(ClosedLaneFrame{Kind: 4, Lane: 1, Body: raw}); err == nil {
+		if _, err := bridge.Accept(ardp.Frame{Kind: 4, Lane: 1, Body: raw}); err == nil {
 			t.Fatal("outer accepted incompatible allocation")
 		}
 		if limits.children != 0 || len(bridge.lanes) != 0 {
@@ -75,7 +77,7 @@ func TestClosedNodeOpenRequiresAuthenticatedExactGrammar(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		lane, err := bridge.Accept(ClosedLaneFrame{Kind: 4, Lane: uint32(index*2 + 1), Body: raw})
+		lane, err := bridge.Accept(ardp.Frame{Kind: 4, Lane: uint32(index*2 + 1), Body: raw})
 		if err != nil || lane.Restriction() != restriction {
 			t.Fatalf("mixed child restriction %v %v", lane, err)
 		}
@@ -83,21 +85,21 @@ func TestClosedNodeOpenRequiresAuthenticatedExactGrammar(t *testing.T) {
 		if lane.Restriction() != restriction {
 			t.Fatal("caller rewrote retained child restriction")
 		}
-		if _, err := bridge.Accept(ClosedLaneFrame{Kind: 4, Lane: uint32(index*2 + 1), Body: raw}); err == nil {
+		if _, err := bridge.Accept(ardp.Frame{Kind: 4, Lane: uint32(index*2 + 1), Body: raw}); err == nil {
 			t.Fatal("same child was relabelled")
 		}
 	}
 	if limits.children != 2 {
 		t.Fatalf("mixed pool children=%d", limits.children)
 	}
-	if _, err := bridge.Accept(ClosedLaneFrame{Kind: 9, Lane: 1, Body: []byte{0}}); err != nil {
+	if _, err := bridge.Accept(ardp.Frame{Kind: 9, Lane: 1, Body: []byte{0}}); err != nil {
 		t.Fatal(err)
 	}
 	raw, err := EncodeClosedNodeOpen(open, ClosedChildOrdinary)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := bridge.Accept(ClosedLaneFrame{Kind: 4, Lane: 1, Body: raw}); err == nil {
+	if _, err := bridge.Accept(ardp.Frame{Kind: 4, Lane: 1, Body: raw}); err == nil {
 		t.Fatal("closed restricted ID reused as ordinary child")
 	}
 	if limits.children != 1 {

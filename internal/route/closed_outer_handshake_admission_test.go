@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"testing"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 )
 
 func TestClosedOuterHandshakeOnlyAllocatesBoundedInnerTLS(t *testing.T) {
@@ -17,56 +19,56 @@ func TestClosedOuterHandshakeOnlyAllocatesBoundedInnerTLS(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	hello := ClosedHello{NetworkID: receiver.NetworkID, StateGeneration: receiver.StateGeneration, StateDigest: receiver.StateDigest,
+	hello := ardp.Hello{NetworkID: receiver.NetworkID, StateGeneration: receiver.StateGeneration, StateDigest: receiver.StateDigest,
 		ProfileDigest: receiver.ProfileDigest, RecipientNodeID: receiver.NodeID, RecipientDutyGeneration: receiver.DutyGeneration,
-		Purpose: ClosedPurposeForwarding, ChannelNonce: [32]byte{8}, Deadline: receiver.Deadline}
-	helloBody, err := EncodeClosedHello(hello)
+		Purpose: ardp.PurposeForwarding, ChannelNonce: [32]byte{8}, Deadline: receiver.Deadline}
+	helloBody, err := ardp.EncodeHello(hello)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got, err := handshake.Accept(ClosedLaneFrame{Kind: closedFrameHello, Body: helloBody}); err != nil || got != nil {
+	if got, err := handshake.Accept(ardp.Frame{Kind: ardp.KindHello, Body: helloBody}); err != nil || got != nil {
 		t.Fatalf("outer HELLO = %x / %v", got, err)
 	}
 	openBody, err := EncodeClosedNodeOpen(ClosedOpen{NextNodeID: receiver.NodeID, NextDutyGeneration: receiver.DutyGeneration,
-		Purpose: ClosedPurposeIssuer, Deadline: receiver.Deadline}, ClosedChildOrdinary)
+		Purpose: ardp.PurposeIssuer, Deadline: receiver.Deadline}, ClosedChildOrdinary)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got, err := handshake.Accept(ClosedLaneFrame{Kind: closedFrameOpen, Lane: 1, Body: openBody}); err != nil || got != nil {
+	if got, err := handshake.Accept(ardp.Frame{Kind: ardp.KindOpen, Lane: 1, Body: openBody}); err != nil || got != nil {
 		t.Fatalf("outer OPEN = %x / %v", got, err)
 	}
 	innerTLS := bytes.Repeat([]byte{9}, closedOuterHandshakeBytes)
-	if got, err := handshake.Accept(ClosedLaneFrame{Kind: closedFrameBytes, Lane: 1, Body: innerTLS}); err != nil || !bytes.Equal(got, innerTLS) {
+	if got, err := handshake.Accept(ardp.Frame{Kind: ardp.KindBytes, Lane: 1, Body: innerTLS}); err != nil || !bytes.Equal(got, innerTLS) {
 		t.Fatalf("outer TLS bytes = %x / %v", got, err)
 	}
-	if _, err := handshake.Accept(ClosedLaneFrame{Kind: closedFrameBytes, Lane: 1, Body: []byte{1}}); err == nil {
+	if _, err := handshake.Accept(ardp.Frame{Kind: ardp.KindBytes, Lane: 1, Body: []byte{1}}); err == nil {
 		t.Fatal("accepted TLS handshake bytes beyond 4096 before inner HELLO")
 	}
 	if err := handshake.BeginInnerHello(1); err != nil {
 		t.Fatalf("begin inner HELLO = %v", err)
 	}
-	inner := ClosedHello{NetworkID: receiver.NetworkID, StateGeneration: receiver.StateGeneration, StateDigest: receiver.StateDigest,
+	inner := ardp.Hello{NetworkID: receiver.NetworkID, StateGeneration: receiver.StateGeneration, StateDigest: receiver.StateDigest,
 		ProfileDigest: receiver.ProfileDigest, RecipientNodeID: receiver.NodeID, RecipientDutyGeneration: receiver.DutyGeneration,
-		Purpose: ClosedPurposeIssuer, ChannelNonce: [32]byte{9}, Deadline: receiver.Deadline}
+		Purpose: ardp.PurposeIssuer, ChannelNonce: [32]byte{9}, Deadline: receiver.Deadline}
 	if err := handshake.VerifyInnerHello(1, inner); err != nil {
 		t.Fatalf("matching inner HELLO = %v", err)
 	}
-	inner.Purpose = ClosedPurposeDataJoin
+	inner.Purpose = ardp.PurposeDataJoin
 	if err := handshake.VerifyInnerHello(1, inner); err == nil {
 		t.Fatal("outer child accepted an inner HELLO for a different purpose")
 	}
 	operation := bytes.Repeat([]byte{7}, 16<<10)
-	if got, err := handshake.Accept(ClosedLaneFrame{Kind: closedFrameBytes, Lane: 1, Body: operation}); err != nil || !bytes.Equal(got, operation) {
+	if got, err := handshake.Accept(ardp.Frame{Kind: ardp.KindBytes, Lane: 1, Body: operation}); err != nil || !bytes.Equal(got, operation) {
 		t.Fatalf("post-TLS inner bytes = %x / %v", got, err)
 	}
 	credit, err := handshake.ConsumeInnerBytes(1, uint32(len(operation)))
-	if err != nil || credit.Kind != closedFrameCredit || credit.Lane != 1 || !bytes.Equal(credit.Body, []byte{0, 0, 64, 0}) {
+	if err != nil || credit.Kind != ardp.KindCredit || credit.Lane != 1 || !bytes.Equal(credit.Body, []byte{0, 0, 64, 0}) {
 		t.Fatalf("post-TLS credit = %+v / %v", credit, err)
 	}
-	if _, err := handshake.Accept(ClosedLaneFrame{Kind: closedFrameEOF, Lane: 1}); err != nil {
+	if _, err := handshake.Accept(ardp.Frame{Kind: ardp.KindEOF, Lane: 1}); err != nil {
 		t.Fatalf("post-TLS EOF = %v", err)
 	}
-	if _, err := handshake.Accept(ClosedLaneFrame{Kind: closedFrameBytes, Lane: 1, Body: []byte{7}}); err == nil {
+	if _, err := handshake.Accept(ardp.Frame{Kind: ardp.KindBytes, Lane: 1, Body: []byte{7}}); err == nil {
 		t.Fatal("accepted bytes after lane EOF")
 	}
 }

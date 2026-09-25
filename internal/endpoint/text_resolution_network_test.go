@@ -11,6 +11,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	"github.com/dianabuilds/ardents-network/internal/service/publication"
 	"github.com/dianabuilds/ardents-network/internal/service/reachability"
 )
@@ -36,7 +37,7 @@ func addTextResolutionState(source *textSourceStateFixture) {
 func TestTextResolutionUsesIssuedControlThroughRetainedPrefix(t *testing.T) {
 	for _, carrier := range []route.CarrierProfile{route.ClosedCarrierTCP, route.ClosedCarrierQUIC} {
 		t.Run(string(carrier), func(t *testing.T) {
-			_, owner, source := startTextControlNetwork(t, carrier, true)
+			_, owner, source := startTextRoleNetwork(t, textRoleNetworkFixture{carrier: carrier, resolution: true})
 			prefix, err := owner.openTextPrefix(t.Context())
 			if err != nil {
 				t.Fatal(err)
@@ -51,7 +52,7 @@ func TestTextResolutionUsesIssuedControlThroughRetainedPrefix(t *testing.T) {
 			}
 			// The explicit Publisher fixture sends a genuine signed proof using
 			// actual issued stock; no success callback pre-populates the Store.
-			status, _, err := prefix.ExchangeDescriptor(t.Context(), func(hello route.ClosedHello, class uint8) ([]byte, error) {
+			status, _, err := prefix.ExchangeDescriptor(t.Context(), func(hello ardp.Hello, class uint8) ([]byte, error) {
 				owner.mu.Lock()
 				defer owner.mu.Unlock()
 				profile, now, err := owner.textPermissionProfileLocked()

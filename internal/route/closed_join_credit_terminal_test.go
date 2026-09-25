@@ -10,6 +10,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 )
 
 // Pause only reads after the first inner frame. All frame writes and the EOF
@@ -51,7 +53,7 @@ func checkJoinedLateCredit(t *testing.T, mode string) {
 		if mode == "partial" {
 			// OPEN, then CREDIT for the first inner header and body.
 			for range 3 {
-				if _, err := ReadClosedLaneFrame(peer); err != nil {
+				if _, err := ardp.ReadFrame(peer); err != nil {
 					return
 				}
 			}
@@ -62,7 +64,7 @@ func checkJoinedLateCredit(t *testing.T, mode string) {
 			return
 		}
 		for {
-			if _, err := ReadClosedLaneFrame(peer); err != nil {
+			if _, err := ardp.ReadFrame(peer); err != nil {
 				return
 			}
 		}
@@ -82,7 +84,7 @@ func checkJoinedLateCredit(t *testing.T, mode string) {
 	}
 	first := []byte("first")
 	last := []byte(" final authenticated record")
-	held := &joinedReadBoundary{Conn: lane, remaining: closedLaneHeaderSize + len(first), entered: make(chan struct{}), release: make(chan struct{})}
+	held := &joinedReadBoundary{Conn: lane, remaining: ardp.HeaderSize + len(first), entered: make(chan struct{}), release: make(chan struct{})}
 	ctx, cancel := context.WithCancel(t.Context())
 	released := make(chan struct{})
 	stream := newClosedJoinedStream(ctx, held, lane, func() { close(released) })
@@ -118,14 +120,14 @@ func checkJoinedLateCredit(t *testing.T, mode string) {
 		}
 	})
 	var encoded []byte
-	for _, frame := range []ClosedLaneFrame{{Kind: closedFrameBytes, Lane: 1, Body: first}, {Kind: closedFrameBytes, Lane: 1, Body: last}, {Kind: closedFrameClose, Lane: 1, Body: []byte{0}}} {
-		raw, err := EncodeClosedLaneFrame(frame)
+	for _, frame := range []ardp.Frame{{Kind: ardp.KindBytes, Lane: 1, Body: first}, {Kind: ardp.KindBytes, Lane: 1, Body: last}, {Kind: ardp.KindClose, Lane: 1, Body: []byte{0}}} {
+		raw, err := ardp.EncodeFrame(frame)
 		if err != nil {
 			t.Fatal(err)
 		}
 		encoded = append(encoded, raw...)
 	}
-	if err := WriteClosedLaneFrame(peer, ClosedLaneFrame{Kind: closedFrameBytes, Lane: 1, Body: encoded}); err != nil {
+	if err := ardp.WriteFrame(peer, ardp.Frame{Kind: ardp.KindBytes, Lane: 1, Body: encoded}); err != nil {
 		t.Fatal(err)
 	}
 	select {
@@ -154,7 +156,7 @@ func checkJoinedLateCredit(t *testing.T, mode string) {
 		if mode == "refused" {
 			status = 1
 		}
-		if err := WriteClosedLaneFrame(peer, ClosedLaneFrame{Kind: closedFrameClose, Lane: 1, Body: []byte{status}}); err != nil {
+		if err := ardp.WriteFrame(peer, ardp.Frame{Kind: ardp.KindClose, Lane: 1, Body: []byte{status}}); err != nil {
 			t.Fatal(err)
 		}
 		waitSourceChannelState(t, outer, func() bool { return lane.remoteClosed })

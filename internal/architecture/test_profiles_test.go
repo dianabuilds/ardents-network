@@ -150,7 +150,8 @@ func TestTestProfileRegistryIsFactualAndWired(t *testing.T) {
 		if profile.State != "active" && profile.State != "inactive" {
 			t.Errorf("profile %q has invalid state %q", profile.ID, profile.State)
 		}
-		if profile.State == "active" && (profile.MakeTarget == "" || !strings.Contains(makefile, "\n"+profile.MakeTarget+":")) {
+		commands, targetExists := makeProfileTargetCommands(makefile, profile.MakeTarget)
+		if profile.State == "active" && (profile.MakeTarget == "" || !targetExists) {
 			t.Errorf("active profile %q names absent Make target %q", profile.ID, profile.MakeTarget)
 		}
 		if profile.State == "inactive" && (profile.MakeTarget != "" || profile.Activation == "") {
@@ -162,7 +163,7 @@ func TestTestProfileRegistryIsFactualAndWired(t *testing.T) {
 		if profile.InvalidEnvironment == "not applicable" && len(profile.Prerequisites) != 0 {
 			t.Errorf("profile %q cannot have prerequisites when invalid environment is not applicable", profile.ID)
 		}
-		if profile.Timeout != "" && !strings.Contains(makefile, "-timeout="+profile.Timeout) {
+		if profile.Timeout != "" && !strings.Contains(commands, "-timeout="+profile.Timeout) {
 			t.Errorf("profile %q timeout %q is absent from its Make entrypoint", profile.ID, profile.Timeout)
 		}
 	}

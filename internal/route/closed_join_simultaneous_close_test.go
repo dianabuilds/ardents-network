@@ -10,6 +10,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 )
 
 // Use the joined client's single-lane retirement policy and real framed I/O.
@@ -32,14 +34,14 @@ func checkClosedJoinedConcurrentTerminal(t *testing.T, status byte) {
 	var workers sync.WaitGroup
 	t.Cleanup(func() { _ = peer.Close(); _ = owner.Close(); workers.Wait() })
 	opened := make(chan error, 1)
-	workers.Go(func() { _, err := ReadClosedLaneFrame(peer); opened <- err })
+	workers.Go(func() { _, err := ardp.ReadFrame(peer); opened <- err })
 	lane, err := owner.open(t.Context(), sourceIssuerOpen(end), end)
 	if peerErr := <-opened; err != nil || peerErr != nil {
 		t.Fatal(errors.Join(err, peerErr))
 	}
 	credited, closed := make(chan error, 1), make(chan error, 1)
 	workers.Go(func() {
-		credited <- lane.send(ClosedLaneFrame{Kind: closedFrameCredit, Lane: lane.id, Body: binary.BigEndian.AppendUint32(nil, 1)}, time.Time{})
+		credited <- lane.send(ardp.Frame{Kind: ardp.KindCredit, Lane: lane.id, Body: binary.BigEndian.AppendUint32(nil, 1)}, time.Time{})
 	})
 	var first [1]byte
 	if _, err := io.ReadFull(peer, first[:]); err != nil {
@@ -47,12 +49,12 @@ func checkClosedJoinedConcurrentTerminal(t *testing.T, status byte) {
 	}
 	workers.Go(func() { closed <- lane.Close() })
 	waitSourceChannelState(t, owner, func() bool { return lane.closed })
-	if err := WriteClosedLaneFrame(peer, ClosedLaneFrame{Kind: closedFrameClose, Lane: lane.id, Body: []byte{status}}); err != nil {
+	if err := ardp.WriteFrame(peer, ardp.Frame{Kind: ardp.KindClose, Lane: lane.id, Body: []byte{status}}); err != nil {
 		t.Fatal(err)
 	}
 	// Reading this second real frame requires processing the preceding CLOSE.
 	// Its CREDIT would overflow a live lane and must still be ignored here.
-	if err := WriteClosedLaneFrame(peer, ClosedLaneFrame{Kind: closedFrameCredit, Lane: lane.id, Body: binary.BigEndian.AppendUint32(nil, 1)}); err != nil {
+	if err := ardp.WriteFrame(peer, ardp.Frame{Kind: ardp.KindCredit, Lane: lane.id, Body: binary.BigEndian.AppendUint32(nil, 1)}); err != nil {
 		t.Fatal(err)
 	}
 	owner.mu.Lock()
@@ -61,7 +63,7 @@ func checkClosedJoinedConcurrentTerminal(t *testing.T, status byte) {
 	if !observed || (status == 0 && cause != io.EOF) || (status != 0 && (cause == nil || cause == io.EOF)) || credit != 64<<10 {
 		t.Fatalf("local close discarded peer terminal or accepted late credit: terminal=%v cause=%v credit=%d", observed, cause, credit)
 	}
-	if _, err := io.ReadFull(peer, make([]byte, closedLaneHeaderSize+4-1)); err != nil {
+	if _, err := io.ReadFull(peer, make([]byte, ardp.HeaderSize+4-1)); err != nil {
 		t.Fatal(err)
 	}
 	select {
@@ -91,7 +93,7 @@ func TestClosedJoinedCloseRetainsRefusalDuringTerminalWrite(t *testing.T) {
 	var workers sync.WaitGroup
 	t.Cleanup(func() { _ = peer.Close(); _ = owner.Close(); workers.Wait() })
 	opened := make(chan error, 1)
-	workers.Go(func() { _, err := ReadClosedLaneFrame(peer); opened <- err })
+	workers.Go(func() { _, err := ardp.ReadFrame(peer); opened <- err })
 	lane, err := owner.open(t.Context(), sourceIssuerOpen(end), end)
 	if peerErr := <-opened; err != nil || peerErr != nil {
 		t.Fatal(errors.Join(err, peerErr))
@@ -102,10 +104,10 @@ func TestClosedJoinedCloseRetainsRefusalDuringTerminalWrite(t *testing.T) {
 	if _, err := io.ReadFull(peer, first[:]); err != nil {
 		t.Fatal(err)
 	}
-	if err := WriteClosedLaneFrame(peer, ClosedLaneFrame{Kind: closedFrameClose, Lane: lane.id, Body: []byte{1}}); err != nil {
+	if err := ardp.WriteFrame(peer, ardp.Frame{Kind: ardp.KindClose, Lane: lane.id, Body: []byte{1}}); err != nil {
 		t.Fatal(err)
 	}
-	if err := WriteClosedLaneFrame(peer, ClosedLaneFrame{Kind: closedFrameCredit, Lane: lane.id, Body: binary.BigEndian.AppendUint32(nil, 1)}); err != nil {
+	if err := ardp.WriteFrame(peer, ardp.Frame{Kind: ardp.KindCredit, Lane: lane.id, Body: binary.BigEndian.AppendUint32(nil, 1)}); err != nil {
 		t.Fatal(err)
 	}
 	owner.mu.Lock()
@@ -114,7 +116,7 @@ func TestClosedJoinedCloseRetainsRefusalDuringTerminalWrite(t *testing.T) {
 	if cause == nil || cause == io.EOF {
 		t.Fatal("peer refusal was not processed")
 	}
-	if _, err := io.ReadFull(peer, make([]byte, closedLaneHeaderSize)); err != nil {
+	if _, err := io.ReadFull(peer, make([]byte, ardp.HeaderSize)); err != nil {
 		t.Fatal(err)
 	}
 	select {

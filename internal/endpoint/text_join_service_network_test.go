@@ -81,7 +81,7 @@ func TestTextJoinedServiceTransfersDocumentThroughNetwork(t *testing.T) {
 			}
 			for _, owner := range []*textContext{reader, publisher} {
 				owner.mu.Lock()
-				pending := len(owner.introductionExchanges)
+				pending := len(owner.introductionExchanges.active)
 				owner.mu.Unlock()
 				if pending != 0 {
 					t.Errorf("completed Service retained %d exchanges", pending)
@@ -147,7 +147,7 @@ func textUnpublishedNetworkFixtureWithReaderMaxima(t *testing.T, carrier route.C
 
 func textPublisherNetworkWithInstance(t *testing.T, carrier route.CarrierProfile, acquire func([32]byte, time.Time, time.Time) (*instance.Root, *instance.Binding), configure ...func(int, *node.Config)) (*endpoint, *textContext, *textSourceStateFixture) {
 	t.Helper()
-	endpoint, publisher, source := startTextRoleNetworkWithJoin(t, carrier, true, true, true, configure...)
+	endpoint, publisher, source := startTextRoleNetwork(t, textRoleNetworkFixture{carrier: carrier, resolution: true, publisher: true, join: true, configure: configure})
 	now := time.Now().UTC().Truncate(time.Second)
 	root, binding := acquire(endpoint.network, now.Add(-time.Second), source.view.Profile.NotAfter)
 	credential, err := root.Credential()

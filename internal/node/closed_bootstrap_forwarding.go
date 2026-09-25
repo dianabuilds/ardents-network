@@ -7,6 +7,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 )
 
 // closedBootstrapRecipient checks the entire locally observable hop before
@@ -58,10 +59,10 @@ func closedBootstrapRecipient(config runtimeConfig, snapshot dutyFacts, receiver
 		candidate.FamilyID == previousFamily || now.Before(candidate.ValidFrom) || open.Deadline.After(candidate.ValidUntil) || open.Deadline.After(candidate.AssignmentNotAfter) {
 		return errors.New("closed bootstrap recipient conflicts")
 	}
-	if receiver.Subrole == 1 && next.RoleDomain == receiver.RoleDomain && next.Subrole == 2 && open.Purpose == route.ClosedPurposeForwarding {
+	if receiver.Subrole == 1 && next.RoleDomain == receiver.RoleDomain && next.Subrole == 2 && open.Purpose == ardp.PurposeForwarding {
 		return nil
 	}
-	if receiver.Subrole == 2 && next.RoleDomain == 2 && next.Subrole == 6 && open.Purpose == route.ClosedPurposeIssuer &&
+	if receiver.Subrole == 2 && next.RoleDomain == 2 && next.Subrole == 6 && open.Purpose == ardp.PurposeIssuer &&
 		next.NodeID == view.Profile.IssuerNodeID && next.DutyGeneration == view.Profile.IssuerDutyGeneration {
 		return nil
 	}
@@ -85,12 +86,12 @@ func closedBootstrapRole(view state.ClosedRouteView, id [32]byte) (state.ClosedR
 	return result, found
 }
 
-func (server *closedForwardingServer) admitBootstrap(receiver route.ClosedRoleReceiver, incomingKey [32]byte, hello route.ClosedHello, helloSize int, frame route.ClosedLaneFrame) (*route.ClosedForwardingChannel, time.Time, error) {
+func (server *closedForwardingServer) admitBootstrap(receiver route.ClosedRoleReceiver, incomingKey [32]byte, hello ardp.Hello, helloSize int, frame ardp.Frame) (*route.ClosedForwardingChannel, time.Time, error) {
 	if receiver.Subrole != 1 && receiver.Subrole != 2 || receiver.Subrole == 1 && incomingKey != [32]byte{} {
 		return nil, time.Time{}, errors.New("closed bootstrap receiving adjacency is unavailable")
 	}
-	issuer, err := route.DecodeClosedBootstrap(frame.Body)
-	if err != nil || !issuer || frame.Kind != 3 || frame.Lane != 0 || hello == (route.ClosedHello{}) {
+	issuer, err := ardp.DecodeBootstrap(frame.Body)
+	if err != nil || !issuer || frame.Kind != 3 || frame.Lane != 0 || hello == (ardp.Hello{}) {
 		return nil, time.Time{}, errors.New("closed bootstrap issuer operation is required")
 	}
 	adjacency := incomingKey

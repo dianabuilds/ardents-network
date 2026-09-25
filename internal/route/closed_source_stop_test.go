@@ -7,12 +7,14 @@ import (
 	"errors"
 	"testing"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 )
 
 func TestClosedSourceParentStopJoinsInterruptedChildClose(t *testing.T) {
 	owner, peer, end := sourceChannelsFixture(t)
 	opened := make(chan error, 1)
-	go func() { _, err := ReadClosedLaneFrame(peer); opened <- err }()
+	go func() { _, err := ardp.ReadFrame(peer); opened <- err }()
 	lane, err := owner.open(context.Background(), sourceIssuerOpen(end), end)
 	if err != nil {
 		t.Fatal(err)
@@ -23,7 +25,7 @@ func TestClosedSourceParentStopJoinsInterruptedChildClose(t *testing.T) {
 	closed := make(chan error, 1)
 	go func() { closed <- lane.Close() }()
 	// The peer deliberately stops reading: terminal CLOSE owns the real writer.
-	waitSourceChannelState(t, owner, func() bool { return owner.active != nil && owner.active.frame.Kind == closedFrameClose })
+	waitSourceChannelState(t, owner, func() bool { return owner.active != nil && owner.active.frame.Kind == ardp.KindClose })
 	if err := owner.Close(); err != nil {
 		t.Fatal(err)
 	}
@@ -40,7 +42,7 @@ func TestClosedSourceParentStopJoinsInterruptedChildClose(t *testing.T) {
 func TestClosedSourceChildCloseFailureStillRetiresParent(t *testing.T) {
 	owner, peer, end := sourceChannelsFixture(t)
 	opened := make(chan error, 1)
-	go func() { _, err := ReadClosedLaneFrame(peer); opened <- err }()
+	go func() { _, err := ardp.ReadFrame(peer); opened <- err }()
 	lane, err := owner.open(context.Background(), sourceIssuerOpen(end), end)
 	if err != nil {
 		t.Fatal(err)
@@ -50,7 +52,7 @@ func TestClosedSourceChildCloseFailureStillRetiresParent(t *testing.T) {
 	}
 	closed := make(chan error, 1)
 	go func() { closed <- lane.Close() }()
-	waitSourceChannelState(t, owner, func() bool { return owner.active != nil && owner.active.frame.Kind == closedFrameClose })
+	waitSourceChannelState(t, owner, func() bool { return owner.active != nil && owner.active.frame.Kind == ardp.KindClose })
 	if err := peer.Close(); err != nil {
 		t.Fatal(err)
 	}
@@ -84,7 +86,7 @@ func testClosedSourceQueuedClose(t *testing.T, failedRetirement bool) {
 	opened := make(chan error, 1)
 	go func() {
 		for range 2 {
-			if _, err := ReadClosedLaneFrame(peer); err != nil {
+			if _, err := ardp.ReadFrame(peer); err != nil {
 				opened <- err
 				return
 			}
@@ -110,7 +112,7 @@ func testClosedSourceQueuedClose(t *testing.T, failedRetirement bool) {
 	}
 	closed := make(chan error, 1)
 	go func() { closed <- second.Close() }()
-	waitSourceChannelState(t, owner, func() bool { return len(owner.terminals) == 1 && owner.terminals[0].frame.Kind == closedFrameClose })
+	waitSourceChannelState(t, owner, func() bool { return len(owner.terminals) == 1 && owner.terminals[0].frame.Kind == ardp.KindClose })
 	if err := peer.Close(); err != nil {
 		t.Fatal(err)
 	}

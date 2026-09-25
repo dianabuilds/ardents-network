@@ -3,11 +3,8 @@
 package endpoint
 
 import (
-	"context"
-	"errors"
 	"strings"
 	"testing"
-	"time"
 )
 
 func TestQualificationPublisherIncompleteErrorReportsProgressAndRegistrationReason(t *testing.T) {
@@ -17,102 +14,6 @@ func TestQualificationPublisherIncompleteErrorReportsProgressAndRegistrationReas
 		if !strings.Contains(message, want) {
 			t.Fatalf("error %q does not contain %q", message, want)
 		}
-	}
-}
-
-func TestQualificationIntroductionPacerSpacesSharedParticipants(t *testing.T) {
-	owner, err := NewStreamQualificationMeasurements(4)
-	if err != nil {
-		t.Fatal(err)
-	}
-	base := time.Unix(1000, 0)
-	for index := 0; index < 8; index++ {
-		scheduled, err := owner.reserveIntroductionOpening(base)
-		if err != nil {
-			t.Fatal(err)
-		}
-		want := base.Add(time.Duration(index) * streamQualificationIntroductionSpacing)
-		if !scheduled.Equal(want) {
-			t.Fatalf("opening %d scheduled at %v, want %v", index, scheduled, want)
-		}
-	}
-	catchUp := base.Add(time.Minute)
-	scheduled, err := owner.reserveIntroductionOpening(catchUp)
-	if err != nil || !scheduled.Equal(catchUp) {
-		t.Fatalf("idle pacer did not resume immediately: %v, %v", scheduled, err)
-	}
-}
-
-func TestQualificationIntroductionSetupLeavesPublisherCapacity(t *testing.T) {
-	owner, err := NewStreamQualificationMeasurements(4)
-	if err != nil {
-		t.Fatal(err)
-	}
-	releases := make([]func(), 0, streamQualificationSetupLimit)
-	for range streamQualificationSetupLimit {
-		release, err := owner.acquireIntroductionSetup(t.Context())
-		if err != nil {
-			t.Fatal(err)
-		}
-		releases = append(releases, release)
-	}
-	canceled, cancel := context.WithCancel(t.Context())
-	cancel()
-	if _, err := owner.acquireIntroductionSetup(canceled); !errors.Is(err, context.Canceled) {
-		t.Fatalf("full setup admission ignored cancellation: %v", err)
-	}
-	releases[0]()
-	replacement, err := owner.acquireIntroductionSetup(t.Context())
-	if err != nil {
-		t.Fatalf("released setup admission was not reusable: %v", err)
-	}
-	replacement()
-	for _, release := range releases[1:] {
-		release()
-	}
-}
-
-func TestQualificationOwnerBarrierRequiresEveryParticipant(t *testing.T) {
-	owner, err := NewStreamQualificationMeasurements(2)
-	if err != nil {
-		t.Fatal(err)
-	}
-	cancelled, cancel := context.WithCancel(context.Background())
-	cancel()
-	if err := owner.finish(cancelled); !errors.Is(err, context.Canceled) {
-		t.Fatalf("incomplete owner barrier: %v", err)
-	}
-	select {
-	case <-owner.ready:
-		t.Fatal("barrier released without second participant")
-	default:
-	}
-	if err := owner.finish(context.Background()); err != nil {
-		t.Fatal(err)
-	}
-	select {
-	case <-owner.ready:
-	default:
-		t.Fatal("complete owner barrier did not release")
-	}
-	if err := owner.finish(context.Background()); err == nil {
-		t.Fatal("duplicate completion accepted")
-	}
-}
-
-func TestQualificationOwnerCannotHideRetiredSibling(t *testing.T) {
-	owner, _ := NewStreamQualificationMeasurements(2)
-	for _, group := range []string{"/system.slice/reader-a.service", "/system.slice/reader-b.service"} {
-		if err := owner.add(group); err != nil {
-			t.Fatal(err)
-		}
-	}
-	owner.retire("/system.slice/reader-a.service")
-	if _, err := owner.measure(); err == nil {
-		t.Fatal("removed sibling was silently omitted")
-	}
-	if err := owner.add("/system.slice/reader-c.service"); err == nil {
-		t.Fatal("replacement reset owner measurement")
 	}
 }
 

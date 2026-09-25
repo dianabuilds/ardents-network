@@ -16,8 +16,8 @@ import (
 // Responder prefix and an opening that may replace its absence.
 type textResponderPrefixLifecycle struct {
 	live    *textResponderPrefixHandle
-	opening *textSourceFlight
-	set     *textSourceSet
+	opening *textOperationFlight
+	set     *textInteriorSet
 }
 
 // textResponderPrefixHandle exposes only operations belonging to one exact
@@ -30,7 +30,7 @@ type textResponderPrefixHandle struct {
 
 type textResponderPrefixRetirement struct {
 	prefix  *route.ClosedSourcePrefix
-	opening *textSourceFlight
+	opening *textOperationFlight
 }
 
 // textResponderJoinAcquisition binds one JOIN exchange to the exact Responder
@@ -68,11 +68,11 @@ func (lifecycle *textResponderPrefixLifecycle) openingAvailableLocked() bool {
 	return lifecycle != nil && lifecycle.live == nil && lifecycle.opening == nil
 }
 
-func (lifecycle *textResponderPrefixLifecycle) membersSlotLocked() **textSourceSet {
+func (lifecycle *textResponderPrefixLifecycle) membersSlotLocked() **textInteriorSet {
 	return &lifecycle.set
 }
 
-func (lifecycle *textResponderPrefixLifecycle) reserveOpeningLocked(flight *textSourceFlight) bool {
+func (lifecycle *textResponderPrefixLifecycle) reserveOpeningLocked(flight *textOperationFlight) bool {
 	if lifecycle == nil || flight == nil || lifecycle.live != nil || lifecycle.opening != nil {
 		return false
 	}
@@ -80,11 +80,11 @@ func (lifecycle *textResponderPrefixLifecycle) reserveOpeningLocked(flight *text
 	return true
 }
 
-func (lifecycle *textResponderPrefixLifecycle) openingCurrentLocked(flight *textSourceFlight) bool {
+func (lifecycle *textResponderPrefixLifecycle) openingCurrentLocked(flight *textOperationFlight) bool {
 	return lifecycle != nil && lifecycle.opening == flight
 }
 
-func (lifecycle *textResponderPrefixLifecycle) finishOpeningLocked(flight *textSourceFlight,
+func (lifecycle *textResponderPrefixLifecycle) finishOpeningLocked(flight *textOperationFlight,
 	prefix *route.ClosedSourcePrefix, cancel context.CancelFunc, publish bool) bool {
 	if lifecycle == nil || lifecycle.opening != flight {
 		return false

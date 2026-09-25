@@ -9,12 +9,14 @@ import (
 	"io"
 	"strconv"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 )
 
 // exchangeControl owns one confidential terminal Control lane. Both issuance
 // and Descriptor operations use this lifecycle; neither accepts an address,
 // key or recipient supplied by an Application.
-func (prefix *ClosedSourcePrefix) exchangeControl(ctx context.Context, purpose ClosedPurpose, peer closedBootstrapPeer, present ClosedTokenPresenter, operation []byte) (result []byte, outcome error) {
+func (prefix *ClosedSourcePrefix) exchangeControl(ctx context.Context, purpose ardp.Purpose, peer closedBootstrapPeer, present ClosedTokenPresenter, operation []byte) (result []byte, outcome error) {
 	if prefix == nil || prefix.channels == nil || ctx == nil || ctx.Err() != nil || present == nil {
 		return nil, errors.New("closed source Control owner unavailable")
 	}
@@ -62,18 +64,18 @@ func (prefix *ClosedSourcePrefix) exchangeControl(ctx context.Context, purpose C
 	if err != nil {
 		return nil, errors.Join(errors.New("closed source Control TLS unavailable"), err)
 	}
-	hello := ClosedHello{NetworkID: prefix.plan.profile.NetworkID, StateGeneration: prefix.plan.profile.StateGeneration,
+	hello := ardp.Hello{NetworkID: prefix.plan.profile.NetworkID, StateGeneration: prefix.plan.profile.StateGeneration,
 		StateDigest: prefix.plan.profile.StateDigest, ProfileDigest: prefix.plan.profile.Digest,
 		RecipientNodeID: peer.node, RecipientDutyGeneration: peer.generation,
 		Purpose: purpose, Deadline: end}
 	if _, err := rand.Read(hello.ChannelNonce[:]); err != nil {
 		return nil, err
 	}
-	body, err := EncodeClosedHello(hello)
+	body, err := ardp.EncodeHello(hello)
 	if err != nil {
 		return nil, err
 	}
-	if err := WriteClosedLaneFrame(secured, ClosedLaneFrame{Kind: closedFrameHello, Body: body}); err != nil {
+	if err := ardp.WriteFrame(secured, ardp.Frame{Kind: ardp.KindHello, Body: body}); err != nil {
 		return nil, errors.Join(errors.New("closed source Control HELLO write failed"), err)
 	}
 	if err := prefix.currentControl(purpose, peer); err != nil {
@@ -90,14 +92,14 @@ func (prefix *ClosedSourcePrefix) exchangeControl(ctx context.Context, purpose C
 	}
 	admit := append([]byte{1}, token...)
 	defer clear(admit)
-	if err := WriteClosedLaneFrame(secured, ClosedLaneFrame{Kind: closedFrameAdmit, Body: admit}); err != nil {
+	if err := ardp.WriteFrame(secured, ardp.Frame{Kind: ardp.KindAdmit, Body: admit}); err != nil {
 		return nil, errors.Join(errors.New("closed source Control ADMIT write failed"), err)
 	}
-	accepted, err := ReadClosedLaneFrame(secured)
+	accepted, err := ardp.ReadFrame(secured)
 	if err != nil {
 		return nil, errors.Join(errors.New("closed source Control admission response unavailable"), err)
 	}
-	if status, credit, err := DecodeClosedAcceptFrame(accepted); err != nil || status != 0 || credit != 64<<10 {
+	if status, credit, err := ardp.DecodeAcceptFrame(accepted); err != nil || status != 0 || credit != 64<<10 {
 		return nil, errors.New("closed source Control admission refused")
 	}
 	if err := lane.activate(); err != nil {
@@ -109,11 +111,11 @@ func (prefix *ClosedSourcePrefix) exchangeControl(ctx context.Context, purpose C
 	if err := prefix.currentControl(purpose, peer); err != nil {
 		return nil, err
 	}
-	if err := WriteClosedLaneFrame(secured, ClosedLaneFrame{Kind: closedFrameOperation, Body: operation}); err != nil {
+	if err := ardp.WriteFrame(secured, ardp.Frame{Kind: ardp.KindOperation, Body: operation}); err != nil {
 		return nil, errors.Join(errors.New("closed source Control operation write failed"), err)
 	}
-	frame, err := ReadClosedLaneFrame(secured)
-	if err != nil || frame.Kind != closedFrameResult || frame.Lane != 0 {
+	frame, err := ardp.ReadFrame(secured)
+	if err != nil || frame.Kind != ardp.KindResult || frame.Lane != 0 {
 		return nil, errors.Join(errors.New("closed source Control result unavailable"), err)
 	}
 

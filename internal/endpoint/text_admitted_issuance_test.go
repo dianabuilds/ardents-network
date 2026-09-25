@@ -3,8 +3,6 @@
 package endpoint
 
 import (
-	"os"
-	"path/filepath"
 	"testing"
 	"time"
 
@@ -15,7 +13,7 @@ import (
 func TestTextIssuanceUsesRetainedPrefixAfterTwoBootstrapBatches(t *testing.T) {
 	for _, carrier := range []route.CarrierProfile{route.ClosedCarrierTCP, route.ClosedCarrierQUIC} {
 		t.Run(string(carrier), func(t *testing.T) {
-			endpoint, owner, source := startTextIssuanceNetwork(t, carrier)
+			endpoint, owner, source := startTextRoleNetwork(t, textRoleNetworkFixture{carrier: carrier})
 			defer func() {
 				if err := endpoint.Close(); err != nil {
 					t.Error(err)
@@ -59,19 +57,12 @@ func TestTextIssuanceUsesRetainedPrefixAfterTwoBootstrapBatches(t *testing.T) {
 			if !valid || verified != 32 {
 				t.Fatalf("retained issuance state differs: valid=%v tokens=%d", valid, verified)
 			}
-			raw, err := os.ReadFile(filepath.Join(endpoint.closedTokenRoot, "attempts"))
-			if err != nil {
-				t.Fatal(err)
-			}
-			if len(raw) != textTokenJournalHeader+35*textTokenAttemptSize {
-				t.Fatalf("expected two forwarding and 33 issuer spend receipts, got %d bytes", len(raw))
+			receipts := readTextTokenReceipts(t, endpoint.closedTokenRoot, endpoint.network)
+			if len(receipts) != 35 {
+				t.Fatalf("expected two forwarding and 33 issuer spend receipts, got %d", len(receipts))
 			}
 			issuerAttempts := make(map[[32]byte]bool)
-			for offset := textTokenJournalHeader; offset < len(raw); offset += textTokenAttemptSize {
-				receipt, err := decodeTextTokenAttempt(raw[offset : offset+textTokenAttemptSize])
-				if err != nil {
-					t.Fatal(err)
-				}
+			for _, receipt := range receipts {
 				if receipt.receiver == profile.IssuerNodeID {
 					if issuerAttempts[receipt.attempt] {
 						t.Fatal("issuer reused an admission nonce")

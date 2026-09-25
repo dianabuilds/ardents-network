@@ -8,6 +8,8 @@ import (
 	"net"
 	"testing"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 )
 
 func TestClosedSourceRetainsTransportFailureForNextOpen(t *testing.T) {
@@ -44,8 +46,8 @@ func TestClosedSourceReadPreservesOriginalTransportFailure(t *testing.T) {
 	}
 	opened := make(chan error, 1)
 	go func() {
-		frame, err := ReadClosedLaneFrame(peer)
-		if err == nil && (frame.Kind != closedFrameOpen || frame.Lane != 1) {
+		frame, err := ardp.ReadFrame(peer)
+		if err == nil && (frame.Kind != ardp.KindOpen || frame.Lane != 1) {
 			err = errors.New("unexpected opening")
 		}
 		opened <- err

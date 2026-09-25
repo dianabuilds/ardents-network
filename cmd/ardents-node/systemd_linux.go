@@ -22,12 +22,6 @@ func (systemdSupervisor) Do(ctx context.Context, action contributor.SupervisorAc
 	switch action {
 	case contributor.SupervisorReload:
 		arguments = []string{"daemon-reload"}
-	case contributor.SupervisorEnable:
-		arguments = []string{"enable", contributorUnit}
-	case contributor.SupervisorStart:
-		arguments = []string{"start", contributorUnit}
-	case contributor.SupervisorRestart:
-		arguments = []string{"restart", contributorUnit}
 	case contributor.SupervisorStop:
 		arguments = []string{"stop", contributorUnit}
 	case contributor.SupervisorDisable:

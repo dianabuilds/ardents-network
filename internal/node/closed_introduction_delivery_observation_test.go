@@ -13,6 +13,9 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
+	introductioncapsule "github.com/dianabuilds/ardents-network/internal/route/capsule"
+	"github.com/dianabuilds/ardents-network/internal/route/terminal"
 )
 
 // Two real admitted submissions expose the receiving Introduction's remapping
@@ -22,11 +25,11 @@ func TestClosedIntroductionDeliveryObservation(t *testing.T) {
 	for _, carrier := range []route.CarrierProfile{route.ClosedCarrierTCP, route.ClosedCarrierQUIC} {
 		t.Run(string(carrier), func(t *testing.T) {
 			var receiver *closedIntroductionServer
-			fixture := newPrivateRecipientNetworkFixtureWithStart(t, carrier, route.ClosedPurposeIntroduction, 3, observedIntroductionStart(&receiver), 1)
+			fixture := newPrivateRecipientNetworkFixtureWithStart(t, carrier, ardp.PurposeIntroduction, 3, observedIntroductionStart(&receiver), 1)
 			observations := []introductionReceiverObservation{observeIntroductionReceiver(t, receiver, "startup")}
 			registrationTrace := new(introductionTranscript)
 			fixture.observe = func(connection net.Conn) net.Conn { return &introductionTranscriptConn{connection, registrationTrace} }
-			request := route.ClosedRegistrationRequest{Revision: 1, Expiry: time.Now().UTC().Add(30 * time.Second).Truncate(time.Second)}
+			request := terminal.RegistrationRequest{Revision: 1, Expiry: time.Now().UTC().Add(30 * time.Second).Truncate(time.Second)}
 			for _, value := range [][]byte{request.Nonce[:], request.Slot[:]} {
 				if _, err := rand.Read(value); err != nil {
 					t.Fatal(err)
@@ -46,7 +49,7 @@ func TestClosedIntroductionDeliveryObservation(t *testing.T) {
 			submissions := make([]observedChannel, 0, 2)
 			for index := 0; index < 2; index++ {
 				submitter := *fixture
-				submitter.receiver.ExpectedPurpose = route.ClosedPurposeSubmission
+				submitter.receiver.ExpectedPurpose = ardp.PurposeSubmission
 				trace := new(introductionTranscript)
 				submitter.observe = func(connection net.Conn) net.Conn { return &introductionTranscriptConn{connection, trace} }
 				connection, closeSubmission, err := submitter.openTerminal(t.Context(), fixture.supplementary[1][index], 1)
@@ -62,27 +65,27 @@ func TestClosedIntroductionDeliveryObservation(t *testing.T) {
 					t.Fatal(err)
 				}
 				var nonce [32]byte
-				capsule := route.ClosedIntroductionCapsule{Slot: request.Slot, Revision: request.Revision, Expiry: end, Ciphertext: make([]byte, 360)}
+				capsule := introductioncapsule.Capsule{Slot: request.Slot, Revision: request.Revision, Expiry: end, Ciphertext: make([]byte, 360)}
 				for _, value := range [][]byte{nonce[:], capsule.DeliveryNonce[:], capsule.Encapsulation[:], capsule.Ciphertext} {
 					if _, err := rand.Read(value); err != nil {
 						t.Fatal(err)
 					}
 				}
-				operation, err := route.EncodeClosedIntroductionSubmission(nonce, capsule)
+				operation, err := introductioncapsule.EncodeSubmission(nonce, capsule)
 				if err != nil {
 					t.Fatal(err)
 				}
-				if err := route.WriteClosedLaneFrame(connection, route.ClosedLaneFrame{Kind: 10, Body: operation}); err != nil {
+				if err := ardp.WriteFrame(connection, ardp.Frame{Kind: 10, Body: operation}); err != nil {
 					t.Fatal(err)
 				}
-				delivered, err := route.ReadClosedLaneFrame(registration)
+				delivered, err := ardp.ReadFrame(registration)
 				if err != nil {
 					t.Fatal(err)
 				}
 				if delivered.Kind != 10 || delivered.Lane != uint32(2*(index+1)) {
 					t.Fatal("unexpected receiving delivery lane")
 				}
-				forwarded, received, err := route.DecodeClosedIntroductionSubmission(delivered.Body)
+				forwarded, received, err := introductioncapsule.DecodeSubmission(delivered.Body)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -98,22 +101,22 @@ func TestClosedIntroductionDeliveryObservation(t *testing.T) {
 				if !bytes.Equal(operation[33:], delivered.Body[33:]) || received.DeliveryNonce != capsule.DeliveryNonce || !bytes.Equal(received.Ciphertext, capsule.Ciphertext) {
 					t.Fatal("Introduction changed opaque capsule")
 				}
-				result, err := route.EncodeClosedDescriptorResult(forwarded, 0, nil)
+				result, err := terminal.EncodeDescriptorResult(forwarded, 0, nil)
 				if err != nil {
 					t.Fatal(err)
 				}
-				if err := route.WriteClosedLaneFrame(registration, route.ClosedLaneFrame{Kind: 11, Lane: delivered.Lane, Body: result}); err != nil {
+				if err := ardp.WriteFrame(registration, ardp.Frame{Kind: 11, Lane: delivered.Lane, Body: result}); err != nil {
 					t.Fatal(err)
 				}
-				closed, err := route.ReadClosedLaneFrame(registration)
+				closed, err := ardp.ReadFrame(registration)
 				if err != nil || closed.Kind != 9 || closed.Lane != delivered.Lane || !bytes.Equal(closed.Body, []byte{0}) {
 					t.Fatalf("delivery CLOSE: %v", err)
 				}
-				reply, err := route.ReadClosedLaneFrame(connection)
+				reply, err := ardp.ReadFrame(connection)
 				if err != nil || reply.Kind != 11 || reply.Lane != 0 {
 					t.Fatalf("submission reply: %v", err)
 				}
-				verdict, proof, err := route.DecodeClosedDescriptorResult(reply.Body, nonce)
+				verdict, proof, err := terminal.DecodeDescriptorResult(reply.Body, nonce)
 				if err != nil || verdict != 0 || len(proof) != 0 {
 					t.Fatalf("submission nonce handback: %v", err)
 				}
@@ -132,7 +135,7 @@ func TestClosedIntroductionDeliveryObservation(t *testing.T) {
 				}
 				submissions = append(submissions, observedChannel{sent, read})
 			}
-			withdrawal := route.ClosedRegistrationRequest{Slot: request.Slot, Revision: request.Revision, Withdraw: true}
+			withdrawal := terminal.RegistrationRequest{Slot: request.Slot, Revision: request.Revision, Withdraw: true}
 			if _, err := rand.Read(withdrawal.Nonce[:]); err != nil {
 				t.Fatal(err)
 			}

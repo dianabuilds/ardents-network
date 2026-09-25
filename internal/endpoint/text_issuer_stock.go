@@ -7,6 +7,7 @@ import (
 	"errors"
 
 	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 )
 
 // prepareTextIssuerStock funds issuer admission only for current requested
@@ -48,14 +49,8 @@ func (owner *textContext) prepareTextIssuerStock(ctx context.Context, requested 
 		owner.mu.Unlock()
 		return nil
 	}
-	ready := 0
-	for _, stock := range permission.stock {
-		if stock.challenge.ReceiverNodeID == profile.IssuerNodeID && stock.challenge.ReceiverDutyGeneration == profile.IssuerDutyGeneration &&
-			stock.challenge.ProfileDigest == profile.Digest && stock.challenge.WindowStart == permission.accepted.NotBefore && stock.challenge.Class == 1 {
-			ready += len(stock.tokens)
-		}
-	}
-	remaining := permission.accepted.Maxima[0] - permission.reserved[0]
+	ready := permission.stockCountForDuty(profile.Digest, profile.IssuerNodeID, profile.IssuerDutyGeneration, 1)
+	remaining := permission.remaining(1)
 	if ready >= 2 || remaining == 0 || owner.currentTextSourceLocked() != nil && (ready == 0 || remaining < 2) {
 		owner.mu.Unlock()
 		return nil
@@ -69,14 +64,14 @@ func (owner *textContext) prepareTextIssuerStock(ctx context.Context, requested 
 	return owner.issueTextTokensForOpeningWithCancellation(ctx, receivers, 1, opening, true, false, acquisition, expected)
 }
 
-func (operation *textIssuanceOperation) presentTextIssuerToken(selection route.ClosedBootstrapSelection, hello route.ClosedHello, class uint8) ([]byte, error) {
+func (operation *textIssuanceOperation) presentTextIssuerToken(selection route.ClosedBootstrapSelection, hello ardp.Hello, class uint8) ([]byte, error) {
 	owner := operation.owner
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
 	profile, now, err := owner.textPermissionProfileLocked()
 	if err != nil || owner.issuance != operation || operation.context == nil || operation.context.Err() != nil ||
-		operation.prefix == nil || !operation.prefix.currentLocked(owner) || owner.permission == nil || owner.permission.pending == nil ||
-		owner.permission.pending.prefix != operation.prefix || hello.Purpose != route.ClosedPurposeIssuer || class != 1 ||
+		operation.prefix == nil || !operation.prefix.currentLocked(owner) || !owner.permission.pendingFor(operation.prefix) ||
+		hello.Purpose != ardp.PurposeIssuer || class != 1 ||
 		hello.NetworkID != profile.NetworkID || hello.StateGeneration != profile.StateGeneration || hello.StateDigest != profile.StateDigest ||
 		hello.ProfileDigest != profile.Digest || hello.RecipientNodeID != profile.IssuerNodeID || hello.RecipientDutyGeneration != profile.IssuerDutyGeneration ||
 		hello.ChannelNonce == [32]byte{} || !now.Before(hello.Deadline) || hello.Deadline.After(profile.NotAfter) {

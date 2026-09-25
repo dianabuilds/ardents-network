@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 )
 
 type closedForwardingObservedContext struct {
@@ -31,27 +32,27 @@ func TestClosedForwardingSessionSharesOneOuterHelloAndDemultiplexesChildren(t *t
 	server := make(chan struct{})
 	go func() {
 		defer close(server)
-		frame, err := route.ReadClosedLaneFrame(peer)
+		frame, err := ardp.ReadFrame(peer)
 		if err != nil || frame.Kind != 1 || frame.Lane != 0 {
 			return
 		}
-		if err := route.WriteClosedLaneFrame(peer, mustClosedForwardAccept(t)); err != nil {
+		if err := ardp.WriteFrame(peer, mustClosedForwardAccept(t)); err != nil {
 			return
 		}
 		for lane := uint32(1); lane <= 3; lane += 2 {
-			frame, err = route.ReadClosedLaneFrame(peer)
+			frame, err = ardp.ReadFrame(peer)
 			if err != nil || frame.Kind != 4 || frame.Lane != lane {
 				return
 			}
-			if err := route.WriteClosedLaneFrame(peer, route.ClosedLaneFrame{Kind: 6, Lane: lane, Body: []byte{byte(lane)}}); err != nil {
+			if err := ardp.WriteFrame(peer, ardp.Frame{Kind: 6, Lane: lane, Body: []byte{byte(lane)}}); err != nil {
 				return
 			}
 		}
 	}()
 	sessions := newClosedForwardingSessions()
-	hello := func() (route.ClosedHello, error) {
-		return route.ClosedHello{NetworkID: [32]byte{1}, StateGeneration: [32]byte{2}, StateDigest: [32]byte{3}, ProfileDigest: [32]byte{4},
-			RecipientNodeID: [32]byte{5}, RecipientDutyGeneration: 6, Purpose: route.ClosedPurposeForwarding, ChannelNonce: [32]byte{7}, Deadline: deadline}, nil
+	hello := func() (ardp.Hello, error) {
+		return ardp.Hello{NetworkID: [32]byte{1}, StateGeneration: [32]byte{2}, StateDigest: [32]byte{3}, ProfileDigest: [32]byte{4},
+			RecipientNodeID: [32]byte{5}, RecipientDutyGeneration: 6, Purpose: ardp.PurposeForwarding, ChannelNonce: [32]byte{7}, Deadline: deadline}, nil
 	}
 	pool, err := route.NewClosedCarrierPool(time.Now)
 	if err != nil {
@@ -67,7 +68,7 @@ func TestClosedForwardingSessionSharesOneOuterHelloAndDemultiplexesChildren(t *t
 	if err != nil {
 		t.Fatal(err)
 	}
-	open := route.ClosedOpen{NextNodeID: [32]byte{5}, NextDutyGeneration: 6, Purpose: route.ClosedPurposeForwarding, Deadline: deadline}
+	open := route.ClosedOpen{NextNodeID: [32]byte{5}, NextDutyGeneration: 6, Purpose: ardp.PurposeForwarding, Deadline: deadline}
 	first, firstReverse, err := session.attach(open, route.ClosedChildOrdinary, nil, nil)
 	if err != nil || first != 1 {
 		t.Fatalf("first child = %d / %v", first, err)
@@ -77,7 +78,7 @@ func TestClosedForwardingSessionSharesOneOuterHelloAndDemultiplexesChildren(t *t
 		t.Fatalf("second child = %d / %v", second, err)
 	}
 	for lane, reverse := range map[uint32]*closedForwardingQueue{first: firstReverse, second: secondReverse} {
-		received := make(chan route.ClosedLaneFrame, 1)
+		received := make(chan ardp.Frame, 1)
 		go func() { frame, _ := reverse.next(); received <- frame }()
 		select {
 		case frame := <-received:
@@ -138,23 +139,23 @@ func TestClosedForwardingSessionsReadyCarrierProgressesWhileOtherHelloBlocks(t *
 	workers.Add(1)
 	go func() {
 		defer workers.Done()
-		if _, readErr := route.ReadClosedLaneFrame(firstPeer); readErr != nil {
+		if _, readErr := ardp.ReadFrame(firstPeer); readErr != nil {
 			firstHelloRead <- readErr
 			return
 		}
 		firstHelloRead <- nil
 		<-releaseFirst
-		_ = route.WriteClosedLaneFrame(firstPeer, accept)
+		_ = ardp.WriteFrame(firstPeer, accept)
 	}()
 	workers.Add(1)
 	go func() {
 		defer workers.Done()
-		if _, readErr := route.ReadClosedLaneFrame(secondPeer); readErr == nil {
-			_ = route.WriteClosedLaneFrame(secondPeer, accept)
+		if _, readErr := ardp.ReadFrame(secondPeer); readErr == nil {
+			_ = ardp.WriteFrame(secondPeer, accept)
 		}
 	}()
-	hello := func() (route.ClosedHello, error) {
-		return route.ClosedHello{NetworkID: [32]byte{1}, StateGeneration: [32]byte{2}, StateDigest: [32]byte{3}, ProfileDigest: [32]byte{4}, RecipientNodeID: [32]byte{5}, RecipientDutyGeneration: 6, Purpose: route.ClosedPurposeForwarding, ChannelNonce: [32]byte{7}, Deadline: helloDeadline}, nil
+	hello := func() (ardp.Hello, error) {
+		return ardp.Hello{NetworkID: [32]byte{1}, StateGeneration: [32]byte{2}, StateDigest: [32]byte{3}, ProfileDigest: [32]byte{4}, RecipientNodeID: [32]byte{5}, RecipientDutyGeneration: 6, Purpose: ardp.PurposeForwarding, ChannelNonce: [32]byte{7}, Deadline: helloDeadline}, nil
 	}
 	sessions = newClosedForwardingSessions()
 	firstResult := make(chan error, 1)
@@ -264,25 +265,25 @@ func TestClosedForwardingSessionsReuseReadyCarrierWhileOtherHelloBlocks(t *testi
 		t.Fatal(err)
 	}
 	defer secondLease.Release()
-	hello := func() (route.ClosedHello, error) {
-		return route.ClosedHello{NetworkID: [32]byte{1}, StateGeneration: [32]byte{2}, StateDigest: [32]byte{3}, ProfileDigest: [32]byte{4}, RecipientNodeID: [32]byte{5}, RecipientDutyGeneration: 6, Purpose: route.ClosedPurposeForwarding, ChannelNonce: [32]byte{7}, Deadline: helloDeadline}, nil
+	hello := func() (ardp.Hello, error) {
+		return ardp.Hello{NetworkID: [32]byte{1}, StateGeneration: [32]byte{2}, StateDigest: [32]byte{3}, ProfileDigest: [32]byte{4}, RecipientNodeID: [32]byte{5}, RecipientDutyGeneration: 6, Purpose: ardp.PurposeForwarding, ChannelNonce: [32]byte{7}, Deadline: helloDeadline}, nil
 	}
 	accept := mustClosedForwardAccept(t)
 	secondReady := make(chan struct{})
 	workers.Add(1)
 	go func() {
 		defer workers.Done()
-		frame, readErr := route.ReadClosedLaneFrame(secondPeer)
+		frame, readErr := ardp.ReadFrame(secondPeer)
 		if readErr != nil || frame.Kind != 1 {
 			return
 		}
-		if route.WriteClosedLaneFrame(secondPeer, accept) != nil {
+		if ardp.WriteFrame(secondPeer, accept) != nil {
 			return
 		}
 		close(secondReady)
-		frame, readErr = route.ReadClosedLaneFrame(secondPeer)
+		frame, readErr = ardp.ReadFrame(secondPeer)
 		if readErr == nil && frame.Kind == 4 {
-			_ = route.WriteClosedLaneFrame(secondPeer, route.ClosedLaneFrame{Kind: 6, Lane: frame.Lane, Body: []byte{1}})
+			_ = ardp.WriteFrame(secondPeer, ardp.Frame{Kind: 6, Lane: frame.Lane, Body: []byte{1}})
 		}
 	}()
 	sessions = newClosedForwardingSessions()
@@ -299,7 +300,7 @@ func TestClosedForwardingSessionsReuseReadyCarrierWhileOtherHelloBlocks(t *testi
 	workers.Add(1)
 	go func() {
 		defer workers.Done()
-		if _, readErr := route.ReadClosedLaneFrame(firstPeer); readErr == nil {
+		if _, readErr := ardp.ReadFrame(firstPeer); readErr == nil {
 			close(firstSeen)
 		}
 	}()
@@ -319,7 +320,7 @@ func TestClosedForwardingSessionsReuseReadyCarrierWhileOtherHelloBlocks(t *testi
 	if err != nil || reused != ready {
 		t.Fatalf("ready Carrier reuse = %p / %p / %v", reused, ready, err)
 	}
-	open := route.ClosedOpen{NextNodeID: [32]byte{5}, NextDutyGeneration: 6, Purpose: route.ClosedPurposeForwarding, Deadline: helloDeadline}
+	open := route.ClosedOpen{NextNodeID: [32]byte{5}, NextDutyGeneration: 6, Purpose: ardp.PurposeForwarding, Deadline: helloDeadline}
 	lane, reverse, err := reused.attach(open, route.ClosedChildOrdinary, nil, nil)
 	if err != nil {
 		t.Fatal(err)
@@ -351,7 +352,7 @@ func TestClosedForwardingSessionCreatorCancellationInterruptsBlockedHello(t *tes
 	}
 	defer lease.Release()
 	seen := make(chan error, 1)
-	go func() { _, readErr := route.ReadClosedLaneFrame(peer); seen <- readErr }()
+	go func() { _, readErr := ardp.ReadFrame(peer); seen <- readErr }()
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	sessions := newClosedForwardingSessions()
@@ -359,8 +360,8 @@ func TestClosedForwardingSessionCreatorCancellationInterruptsBlockedHello(t *tes
 	deadline := time.Now().Add(5 * time.Second)
 	helloDeadline := time.Now().UTC().Truncate(time.Second).Add(time.Minute)
 	go func() {
-		_, acquireErr := sessions.acquire(ctx, key, lease, deadline, func() (route.ClosedHello, error) {
-			return route.ClosedHello{NetworkID: [32]byte{1}, StateGeneration: [32]byte{2}, StateDigest: [32]byte{3}, ProfileDigest: [32]byte{4}, RecipientNodeID: [32]byte{5}, RecipientDutyGeneration: 6, Purpose: route.ClosedPurposeForwarding, ChannelNonce: [32]byte{7}, Deadline: helloDeadline}, nil
+		_, acquireErr := sessions.acquire(ctx, key, lease, deadline, func() (ardp.Hello, error) {
+			return ardp.Hello{NetworkID: [32]byte{1}, StateGeneration: [32]byte{2}, StateDigest: [32]byte{3}, ProfileDigest: [32]byte{4}, RecipientNodeID: [32]byte{5}, RecipientDutyGeneration: 6, Purpose: ardp.PurposeForwarding, ChannelNonce: [32]byte{7}, Deadline: helloDeadline}, nil
 		})
 		result <- acquireErr
 	}()
@@ -385,9 +386,9 @@ func TestClosedForwardingSessionCreatorCancellationInterruptsBlockedHello(t *tes
 	}
 }
 
-func mustClosedForwardAccept(t *testing.T) route.ClosedLaneFrame {
+func mustClosedForwardAccept(t *testing.T) ardp.Frame {
 	t.Helper()
-	frame, err := route.ClosedAcceptFrame(0, 64<<10)
+	frame, err := ardp.AcceptFrame(0, 64<<10)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -401,7 +402,7 @@ func TestClosedForwardingRetirementRacesReverseDeliveryWithoutClosedChannelSend(
 		start, delivered, retired := make(chan struct{}), make(chan bool, 1), make(chan struct{})
 		go func() {
 			<-start
-			delivered <- session.deliverReverse(route.ClosedLaneFrame{Kind: 6, Lane: 1, Body: []byte{1}})
+			delivered <- session.deliverReverse(ardp.Frame{Kind: 6, Lane: 1, Body: []byte{1}})
 		}()
 		go func() { <-start; session.retire(1); close(retired) }()
 		close(start)
@@ -414,10 +415,10 @@ func TestClosedForwardingRetirementRacesReverseDeliveryWithoutClosedChannelSend(
 				break
 			}
 		}
-		if !session.deliverReverse(route.ClosedLaneFrame{Kind: 9, Lane: 1, Body: []byte{0}}) {
+		if !session.deliverReverse(ardp.Frame{Kind: 9, Lane: 1, Body: []byte{0}}) {
 			t.Fatal("retired terminal was refused")
 		}
-		if session.deliverReverse(route.ClosedLaneFrame{Kind: 6, Lane: 1, Body: []byte{1}}) {
+		if session.deliverReverse(ardp.Frame{Kind: 6, Lane: 1, Body: []byte{1}}) {
 			t.Fatal("terminated lane resurrected")
 		}
 	}
@@ -429,7 +430,7 @@ func TestClosedForwardingRetirementDoesNotRetainTombstoneAfterPeerClose(t *testi
 		lane := index*2 + 1
 		frames := newClosedForwardingQueue(68)
 		session.children[lane] = frames
-		if !session.deliverReverse(route.ClosedLaneFrame{Kind: 9, Lane: lane, Body: []byte{0}}) {
+		if !session.deliverReverse(ardp.Frame{Kind: 9, Lane: lane, Body: []byte{0}}) {
 			t.Fatalf("peer CLOSE %d was refused", index)
 		}
 		session.retire(lane)
@@ -454,7 +455,7 @@ func TestClosedForwardingQueueExhaustionTerminatesCarrierAndAllChildren(t *testi
 	done := make(chan struct{})
 	go func() { session.copyReverse(); close(done) }()
 	for range 4 + 1 {
-		if err := route.WriteClosedLaneFrame(peer, route.ClosedLaneFrame{Kind: 6, Lane: 1, Body: []byte{1}}); err != nil {
+		if err := ardp.WriteFrame(peer, ardp.Frame{Kind: 6, Lane: 1, Body: []byte{1}}); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -481,7 +482,7 @@ func TestClosedForwardingQueueExhaustionTerminatesCarrierAndAllChildren(t *testi
 	if _, open := second.next(); open {
 		t.Fatal("other child survived failed Carrier")
 	}
-	if session.deliverReverse(route.ClosedLaneFrame{Kind: 6, Lane: 3, Body: []byte{1}}) {
+	if session.deliverReverse(ardp.Frame{Kind: 6, Lane: 3, Body: []byte{1}}) {
 		t.Fatal("failed Carrier accepted late output")
 	}
 }

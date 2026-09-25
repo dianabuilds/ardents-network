@@ -6,6 +6,8 @@ import (
 	"context"
 	"errors"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 )
 
 const closedRefillThreshold = 8 << 20
@@ -54,22 +56,22 @@ func (prefix *ClosedSourcePrefix) Replenish(ctx context.Context, present ClosedT
 	return prefix.channels.replenish(ctx, prefix.hellos[1], present)
 }
 
-func closedRefillFrame(hello ClosedHello, present ClosedTokenPresenter) (ClosedLaneFrame, error) {
+func closedRefillFrame(hello ardp.Hello, present ClosedTokenPresenter) (ardp.Frame, error) {
 	if hello.ChannelNonce == [32]byte{} || !time.Now().Before(hello.Deadline) {
-		return ClosedLaneFrame{}, errors.New("refill original authority expired")
+		return ardp.Frame{}, errors.New("refill original authority expired")
 	}
 	token, err := present(hello, 2)
 	defer clear(token)
 	if err != nil {
-		return ClosedLaneFrame{}, err
+		return ardp.Frame{}, err
 	}
 	if len(token) != 354 {
-		return ClosedLaneFrame{}, errors.New("refill token invalid")
+		return ardp.Frame{}, errors.New("refill token invalid")
 	}
-	return ClosedLaneFrame{Kind: closedFrameAdmit, Lane: 0, Body: append([]byte{2}, token...)}, nil
+	return ardp.Frame{Kind: ardp.KindAdmit, Lane: 0, Body: append([]byte{2}, token...)}, nil
 }
 
-func (owner *closedSourceChannels) replenish(ctx context.Context, hello ClosedHello, present ClosedTokenPresenter) error {
+func (owner *closedSourceChannels) replenish(ctx context.Context, hello ardp.Hello, present ClosedTokenPresenter) error {
 	owner.mu.Lock()
 	used, base, terminal := owner.transferred, owner.refillBase, owner.terminal
 	owner.mu.Unlock()

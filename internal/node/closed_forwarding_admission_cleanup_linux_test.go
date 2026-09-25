@@ -19,6 +19,8 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/resource"
 	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
+	"github.com/dianabuilds/ardents-network/internal/route/replay"
 )
 
 type cleanupFailureHost struct {
@@ -57,11 +59,11 @@ func TestClosedForwardingServeDirectRetainsDuplicateSpendCleanupFailure(t *testi
 	fixture.config.CurrentClosedProfile = func() (state.ClosedProfileView, bool) { return fixture.view.Profile, true }
 	host := &cleanupFailureHost{}
 	fixture.config.ClosedForwarding = ClosedForwardingProfile{Certificate: certificate, AdmissionTraffic: resource.HostingTraffic{Tx: 1}, TerminationTraffic: resource.HostingTraffic{Tx: 1}, host: host}
-	receiver, available := closedRouteReceiver(fixture.config, fixture.snapshot, route.ClosedPurposeForwarding, fixture.now)
+	receiver, available := closedRouteReceiver(fixture.config, fixture.snapshot, ardp.PurposeForwarding, fixture.now)
 	if !available {
 		t.Fatal("fixture receiver unavailable")
 	}
-	spends, err := route.OpenClosedSpendLedger(t.TempDir(), route.ClosedSpendBinding{NetworkID: receiver.NetworkID, ProfileDigest: receiver.ProfileDigest, ReceiverNodeID: receiver.NodeID, ReceiverDutyGeneration: receiver.DutyGeneration})
+	spends, err := replay.Open(t.TempDir(), replay.Binding{NetworkID: receiver.NetworkID, ProfileDigest: receiver.ProfileDigest, ReceiverNodeID: receiver.NodeID, ReceiverDutyGeneration: receiver.DutyGeneration})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -109,11 +111,11 @@ func TestClosedForwardingServeDirectRetainsExpiredLeaseCleanupFailure(t *testing
 	cleanup := errors.New("host release failed")
 	host := &cleanupFailureHost{release: cleanup}
 	fixture.config.ClosedForwarding = ClosedForwardingProfile{Certificate: certificate, AdmissionTraffic: resource.HostingTraffic{Tx: 1}, TerminationTraffic: resource.HostingTraffic{Tx: 1}, host: host}
-	receiver, available := closedRouteReceiver(fixture.config, fixture.snapshot, route.ClosedPurposeForwarding, fixture.now)
+	receiver, available := closedRouteReceiver(fixture.config, fixture.snapshot, ardp.PurposeForwarding, fixture.now)
 	if !available {
 		t.Fatal("fixture receiver unavailable")
 	}
-	spends, err := route.OpenClosedSpendLedger(t.TempDir(), route.ClosedSpendBinding{NetworkID: receiver.NetworkID, ProfileDigest: receiver.ProfileDigest, ReceiverNodeID: receiver.NodeID, ReceiverDutyGeneration: receiver.DutyGeneration})
+	spends, err := replay.Open(t.TempDir(), replay.Binding{NetworkID: receiver.NetworkID, ProfileDigest: receiver.ProfileDigest, ReceiverNodeID: receiver.NodeID, ReceiverDutyGeneration: receiver.DutyGeneration})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -141,7 +143,7 @@ func TestClosedForwardingServeDirectRetainsExpiredLeaseCleanupFailure(t *testing
 	host.release = nil
 	leaseDeadline = fixture.now.Add(2 * time.Second)
 	calls.Store(0)
-	freshSpends, openErr := route.OpenClosedSpendLedger(t.TempDir(), route.ClosedSpendBinding{NetworkID: receiver.NetworkID, ProfileDigest: receiver.ProfileDigest, ReceiverNodeID: receiver.NodeID, ReceiverDutyGeneration: receiver.DutyGeneration})
+	freshSpends, openErr := replay.Open(t.TempDir(), replay.Binding{NetworkID: receiver.NetworkID, ProfileDigest: receiver.ProfileDigest, ReceiverNodeID: receiver.NodeID, ReceiverDutyGeneration: receiver.DutyGeneration})
 	if openErr != nil {
 		t.Fatal(openErr)
 	}
@@ -171,12 +173,12 @@ func TestClosedForwardingServeDirectRetainsSpendStorageCleanupFailure(t *testing
 	cleanup := errors.New("host release failed")
 	host := &cleanupFailureHost{release: cleanup}
 	fixture.config.ClosedForwarding = ClosedForwardingProfile{Certificate: certificate, AdmissionTraffic: resource.HostingTraffic{Tx: 1}, TerminationTraffic: resource.HostingTraffic{Tx: 1}, host: host}
-	receiver, available := closedRouteReceiver(fixture.config, fixture.snapshot, route.ClosedPurposeForwarding, fixture.now)
+	receiver, available := closedRouteReceiver(fixture.config, fixture.snapshot, ardp.PurposeForwarding, fixture.now)
 	if !available {
 		t.Fatal("fixture receiver unavailable")
 	}
 	root := t.TempDir()
-	spends, err := route.OpenClosedSpendLedger(root, route.ClosedSpendBinding{NetworkID: receiver.NetworkID, ProfileDigest: receiver.ProfileDigest, ReceiverNodeID: receiver.NodeID, ReceiverDutyGeneration: receiver.DutyGeneration})
+	spends, err := replay.Open(root, replay.Binding{NetworkID: receiver.NetworkID, ProfileDigest: receiver.ProfileDigest, ReceiverNodeID: receiver.NodeID, ReceiverDutyGeneration: receiver.DutyGeneration})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -232,11 +234,11 @@ func TestClosedForwardingServeDirectRetainsCapacityCleanupFailure(t *testing.T) 
 	cleanup := errors.New("host release failed")
 	host := &cleanupFailureHost{release: cleanup}
 	fixture.config.ClosedForwarding = ClosedForwardingProfile{Certificate: certificate, AdmissionTraffic: resource.HostingTraffic{Tx: 1}, TerminationTraffic: resource.HostingTraffic{Tx: 1}, host: host}
-	receiver, available := closedRouteReceiver(fixture.config, fixture.snapshot, route.ClosedPurposeForwarding, fixture.now)
+	receiver, available := closedRouteReceiver(fixture.config, fixture.snapshot, ardp.PurposeForwarding, fixture.now)
 	if !available {
 		t.Fatal("fixture receiver unavailable")
 	}
-	spends, err := route.OpenClosedSpendLedger(t.TempDir(), route.ClosedSpendBinding{NetworkID: receiver.NetworkID, ProfileDigest: receiver.ProfileDigest, ReceiverNodeID: receiver.NodeID, ReceiverDutyGeneration: receiver.DutyGeneration})
+	spends, err := replay.Open(t.TempDir(), replay.Binding{NetworkID: receiver.NetworkID, ProfileDigest: receiver.ProfileDigest, ReceiverNodeID: receiver.NodeID, ReceiverDutyGeneration: receiver.DutyGeneration})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -273,13 +275,13 @@ func TestClosedForwardingServeDirectRetainsCapacityCleanupFailure(t *testing.T) 
 
 func fillClosedForwardingDutyCapacity(t *testing.T, receiver route.ClosedRoleReceiver, limits *route.ClosedDutyLimits, now time.Time) []route.ClosedAdmission {
 	t.Helper()
-	spends, err := route.OpenClosedSpendLedger(t.TempDir(), route.ClosedSpendBinding{NetworkID: receiver.NetworkID, ProfileDigest: receiver.ProfileDigest, ReceiverNodeID: receiver.NodeID, ReceiverDutyGeneration: receiver.DutyGeneration})
+	spends, err := replay.Open(t.TempDir(), replay.Binding{NetworkID: receiver.NetworkID, ProfileDigest: receiver.ProfileDigest, ReceiverNodeID: receiver.NodeID, ReceiverDutyGeneration: receiver.DutyGeneration})
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = spends.Close() })
-	hello := route.ClosedHello{NetworkID: receiver.NetworkID, StateGeneration: receiver.StateGeneration, StateDigest: receiver.StateDigest, ProfileDigest: receiver.ProfileDigest, RecipientNodeID: receiver.NodeID, RecipientDutyGeneration: receiver.DutyGeneration, Purpose: route.ClosedPurposeForwarding, ChannelNonce: [32]byte{99}, Deadline: receiver.NotAfter}
-	body, err := route.EncodeClosedHello(hello)
+	hello := ardp.Hello{NetworkID: receiver.NetworkID, StateGeneration: receiver.StateGeneration, StateDigest: receiver.StateDigest, ProfileDigest: receiver.ProfileDigest, RecipientNodeID: receiver.NodeID, RecipientDutyGeneration: receiver.DutyGeneration, Purpose: ardp.PurposeForwarding, ChannelNonce: [32]byte{99}, Deadline: receiver.NotAfter}
+	body, err := ardp.EncodeHello(hello)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -291,12 +293,12 @@ func fillClosedForwardingDutyCapacity(t *testing.T, receiver route.ClosedRoleRec
 		if openErr != nil {
 			t.Fatal(openErr)
 		}
-		if _, openErr = channel.Accept(route.ClosedLaneFrame{Kind: 1, Body: body}); openErr != nil {
+		if _, openErr = channel.Accept(ardp.Frame{Kind: 1, Body: body}); openErr != nil {
 			t.Fatal(openErr)
 		}
 		token := make([]byte, 354)
 		token[0], token[1] = byte(index>>8), byte(index)
-		lease, admitErr := channel.Accept(route.ClosedLaneFrame{Kind: 2, Body: append([]byte{2}, token...)})
+		lease, admitErr := channel.Accept(ardp.Frame{Kind: 2, Body: append([]byte{2}, token...)})
 		if admitErr != nil {
 			t.Fatalf("capacity filler admission %d = %v", index, admitErr)
 		}
@@ -334,19 +336,19 @@ func closedForwardingServeDirectAccepted(t *testing.T, server *closedForwardingS
 	if err != nil {
 		t.Fatalf("inner client TLS = %v", err)
 	}
-	hello := route.ClosedHello{NetworkID: receiver.NetworkID, StateGeneration: receiver.StateGeneration, StateDigest: receiver.StateDigest, ProfileDigest: receiver.ProfileDigest, RecipientNodeID: receiver.NodeID, RecipientDutyGeneration: receiver.DutyGeneration, Purpose: route.ClosedPurposeForwarding, ChannelNonce: [32]byte{18}, Deadline: receiver.NotAfter}
-	body, err := route.EncodeClosedHello(hello)
+	hello := ardp.Hello{NetworkID: receiver.NetworkID, StateGeneration: receiver.StateGeneration, StateDigest: receiver.StateDigest, ProfileDigest: receiver.ProfileDigest, RecipientNodeID: receiver.NodeID, RecipientDutyGeneration: receiver.DutyGeneration, Purpose: ardp.PurposeForwarding, ChannelNonce: [32]byte{18}, Deadline: receiver.NotAfter}
+	body, err := ardp.EncodeHello(hello)
 	if err == nil {
-		err = route.WriteClosedLaneFrame(client, route.ClosedLaneFrame{Kind: 1, Body: body})
+		err = ardp.WriteFrame(client, ardp.Frame{Kind: 1, Body: body})
 	}
 	if err == nil {
-		err = route.WriteClosedLaneFrame(client, route.ClosedLaneFrame{Kind: 2, Body: append([]byte{2}, token...)})
+		err = ardp.WriteFrame(client, ardp.Frame{Kind: 2, Body: append([]byte{2}, token...)})
 	}
 	if err != nil {
 		_ = client.Close()
 		t.Fatal(err)
 	}
-	frame, err := route.ReadClosedLaneFrame(client)
+	frame, err := ardp.ReadFrame(client)
 	if err != nil || frame.Kind != 5 {
 		_ = client.Close()
 		t.Fatalf("forwarding acceptance = %+v / %v", frame, err)
@@ -374,17 +376,17 @@ func closedForwardingServeDirectAdmissionUntil(t *testing.T, server *closedForwa
 		serverErr := <-result
 		return errors.Join(err, serverErr)
 	}
-	hello := route.ClosedHello{NetworkID: receiver.NetworkID, StateGeneration: receiver.StateGeneration, StateDigest: receiver.StateDigest, ProfileDigest: receiver.ProfileDigest, RecipientNodeID: receiver.NodeID, RecipientDutyGeneration: receiver.DutyGeneration, Purpose: route.ClosedPurposeForwarding, ChannelNonce: [32]byte{17}, Deadline: admissionDeadline}
-	body, err := route.EncodeClosedHello(hello)
+	hello := ardp.Hello{NetworkID: receiver.NetworkID, StateGeneration: receiver.StateGeneration, StateDigest: receiver.StateDigest, ProfileDigest: receiver.ProfileDigest, RecipientNodeID: receiver.NodeID, RecipientDutyGeneration: receiver.DutyGeneration, Purpose: ardp.PurposeForwarding, ChannelNonce: [32]byte{17}, Deadline: admissionDeadline}
+	body, err := ardp.EncodeHello(hello)
 	if err == nil {
-		err = route.WriteClosedLaneFrame(client, route.ClosedLaneFrame{Kind: 1, Body: body})
+		err = ardp.WriteFrame(client, ardp.Frame{Kind: 1, Body: body})
 	}
 	if err == nil {
-		err = route.WriteClosedLaneFrame(client, route.ClosedLaneFrame{Kind: 2, Body: append([]byte{2}, token...)})
+		err = ardp.WriteFrame(client, ardp.Frame{Kind: 2, Body: append([]byte{2}, token...)})
 	}
-	var frame route.ClosedLaneFrame
+	var frame ardp.Frame
 	if err == nil {
-		frame, err = route.ReadClosedLaneFrame(client)
+		frame, err = ardp.ReadFrame(client)
 	}
 	_ = client.Close()
 	serverErr := <-result

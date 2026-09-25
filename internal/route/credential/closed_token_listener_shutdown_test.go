@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 )
 
 // This controlled listener pauses an already accepted socket at the handoff
@@ -51,7 +52,7 @@ func TestClosedTokenListenerDrainJoinsAcceptedSocketHandoff(t *testing.T) {
 	var handled atomic.Uint32
 	listener, err := StartClosedTokenListener(t.Context(), ClosedTokenListenerConfig{Issuer: &ClosedTokenIssuer{}, SharedListener: shared,
 		ConnectionLimit: 1, Clock: time.Now, NodeHandler: func(ctx context.Context, carrier route.ClosedSharedCarrier,
-			_ func(context.Context, io.ReadWriter, [32]byte, route.ClosedHello) error) {
+			_ func(context.Context, io.ReadWriter, [32]byte, ardp.Hello) error) {
 			handled.Add(1)
 			_ = carrier.Connection.Close()
 		}})
@@ -88,7 +89,7 @@ func TestClosedTokenListenerStopCancelsIdleNode(t *testing.T) {
 	defer cancel()
 	listener, err := StartClosedTokenListener(parent, ClosedTokenListenerConfig{Issuer: &ClosedTokenIssuer{}, SharedListener: shared,
 		ConnectionLimit: 1, Clock: time.Now, NodeHandler: func(ctx context.Context, carrier route.ClosedSharedCarrier,
-			_ func(context.Context, io.ReadWriter, [32]byte, route.ClosedHello) error) {
+			_ func(context.Context, io.ReadWriter, [32]byte, ardp.Hello) error) {
 			defer close(stopped)
 			defer carrier.Connection.Close()
 			close(started)

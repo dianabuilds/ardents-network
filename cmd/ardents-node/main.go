@@ -42,21 +42,5 @@ func run(ctx context.Context, arguments []string, output io.Writer) error {
 	if err != nil {
 		return err
 	}
-	snapshot, err := store.Current()
-	if err == nil {
-		err = events.encode(map[string]any{
-			"schema": "ardents-source-event-v1", "kind": "source-ready",
-			"generation": snapshot.Generation, "epoch": snapshot.Epoch,
-		})
-	}
-	if err != nil {
-		_ = store.Close()
-		return err
-	}
-	waitErr := store.Wait(ctx)
-	closeErr := store.Close()
-	if waitErr != nil {
-		return waitErr
-	}
-	return closeErr
+	return runOpenedSource(ctx, store, events)
 }

@@ -58,7 +58,7 @@ vet:
 	go vet ./...
 
 unit:
-	go test -p 1 $(UNIT_PACKAGES) -short -shuffle=on -count=1
+	go test -p 1 $(UNIT_PACKAGES) -short -shuffle=on -count=1 -timeout=15m
 
 heapdump-capture:
 	@test -n "$(ARDENTS_HEAPDUMP_INPUT_ROOT)" || (echo "ARDENTS_HEAPDUMP_INPUT_ROOT is required"; exit 2)
@@ -90,6 +90,7 @@ headless-evidence: export ARDENTS_E2E_PRODUCT_ARDENTS_NODE := $(abspath $(HEADLE
 headless-evidence: export ARDENTS_E2E_PRODUCT_ARDENTS_CUSTODY := $(abspath $(HEADLESS_CUSTODY_ARTIFACT))
 headless-evidence: export ARDENTS_E2E_CONTROL := $(abspath $(HEADLESS_CONTROL_ARTIFACT))
 headless-evidence: headless-build
+	@test "$(HEADLESS_GOOS)" = linux && test "$(HEADLESS_GOARCH)" = amd64 || (echo "headless-evidence requires Linux x86-64"; exit 2)
 	"$(HEADLESS_ARTIFACT_SHELL)" ./packaging/alpha-bundle/test.sh "$(HEADLESS_PLATFORM)" "$(abspath $(HEADLESS_ENDPOINT_ARTIFACT))" "$(abspath $(HEADLESS_NODE_ARTIFACT))" "$(abspath $(HEADLESS_CONTROL_ARTIFACT))" "$(abspath $(HEADLESS_CUSTODY_ARTIFACT))"
 	go test ./internal/enrollment -run '^(TestVerifyReturnsV3HeadlessArtifactsOutsideReleaseMetadata|TestVerifyRejectsUnknownInventoryAndExecutableSubstitution)$$' -count=1
 	go test ./tests/e2e/endpoint -run '^(TestEnrollmentCheckAcceptsExactRunningBundleAndRejectsChangedManifest|TestAlphaControlReaderVerifiesPinnedBundleAndCachedRestart)$$' -count=1
@@ -173,12 +174,15 @@ text-worker-lifecycle-check:
 text-worker-tree-check:
 	sh ./tests/qualification/text-worker-tree/run-ubuntu.sh
 
-.PHONY: text-worker-network-check text-worker-recovery-check text-command-network-check text-worker-escape-check
+.PHONY: text-worker-network-check text-worker-recovery-check text-command-network-build text-command-network-check text-worker-escape-check
 text-worker-network-check:
 	sh ./tests/qualification/text-worker-network/run-ubuntu.sh
 
 text-worker-recovery-check:
 	sh ./tests/qualification/text-worker-recovery/run-ubuntu.sh
+
+text-command-network-build:
+	sh ./tests/qualification/text-command-network/build-candidate.sh
 
 text-command-network-check:
 	sh ./tests/qualification/text-command-network/run-ubuntu.sh

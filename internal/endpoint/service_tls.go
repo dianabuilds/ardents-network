@@ -40,9 +40,10 @@ func (attachment *securedAttachment) close() {
 }
 
 func secureClient(ctx context.Context, raw net.Conn, credential publicationCredential, connectionContext [32]byte,
-	generation uint64) (*securedAttachment, [32]byte, error) {
+	generation uint64, groups []tls.CurveID) (*securedAttachment, [32]byte, error) {
 	config := &tls.Config{MinVersion: tls.VersionTLS13, MaxVersion: tls.VersionTLS13,
-		InsecureSkipVerify: true, SessionTicketsDisabled: true, VerifyConnection: verifyInstance(credential.InstancePublic)}
+		CurvePreferences: groups, InsecureSkipVerify: true, SessionTicketsDisabled: true,
+		VerifyConnection: verifyInstance(credential.InstancePublic)}
 	connection := tls.Client(raw, config)
 	if err := connection.HandshakeContext(ctx); err != nil {
 		raw.Close()
@@ -51,14 +52,15 @@ func secureClient(ctx context.Context, raw net.Conn, credential publicationCrede
 	return exportedAttachment(connection, connectionContext, generation)
 }
 
-func securePublisher(ctx context.Context, raw net.Conn, credential publicationCredential, signer crypto.Signer, connectionContext [32]byte, generation uint64) (*securedAttachment, [32]byte, error) {
+func securePublisher(ctx context.Context, raw net.Conn, credential publicationCredential, signer crypto.Signer,
+	connectionContext [32]byte, generation uint64, groups []tls.CurveID) (*securedAttachment, [32]byte, error) {
 	certificate, err := instanceCertificate(credential, signer)
 	if err != nil {
 		raw.Close()
 		return nil, [32]byte{}, err
 	}
 	config := &tls.Config{MinVersion: tls.VersionTLS13, MaxVersion: tls.VersionTLS13,
-		Certificates: []tls.Certificate{certificate}, SessionTicketsDisabled: true}
+		CurvePreferences: groups, Certificates: []tls.Certificate{certificate}, SessionTicketsDisabled: true}
 	connection := tls.Server(raw, config)
 	if err := connection.HandshakeContext(ctx); err != nil {
 		raw.Close()

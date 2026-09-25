@@ -7,27 +7,74 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"os"
 	"syscall"
 	"testing"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/diagnostics/timeline"
 	endpointapi "github.com/dianabuilds/ardents-network/internal/endpoint"
 )
 
 func TestHeadlessTextRefreshFailureEventExposesOnlyFixedCategory(t *testing.T) {
 	output := &headlessTextBufferedOutput{}
-	event := endpointapi.TextParticipantEvent{Kind: "publication-refresh-failed", NetworkID: [32]byte{1}, Failure: "rotation"}
+	at := time.Date(2026, time.September, 25, 9, 30, 0, 0, time.UTC)
+	event := endpointapi.TextParticipantEvent{At: at, Kind: "publication-refresh-failed", NetworkID: [32]byte{1}, Failure: "rotation"}
 	if err := writeHeadlessTextEvent(t.Context(), output, event); err != nil {
 		t.Fatal(err)
 	}
 	var observed struct {
-		Kind    string `json:"kind"`
-		Failure string `json:"failure"`
+		Schema  string    `json:"schema"`
+		Kind    string    `json:"kind"`
+		At      time.Time `json:"at"`
+		Failure string    `json:"failure"`
 	}
-	if err := json.Unmarshal(output.Bytes(), &observed); err != nil || observed.Kind != "headless-runtime-publication-refresh-failed" || observed.Failure != "rotation" {
+	if err := json.Unmarshal(output.Bytes(), &observed); err != nil || observed.Schema != "ardents-headless-runtime-event-v1" || observed.Kind != "headless-runtime-publication-refresh-failed" || !observed.At.Equal(at) || observed.Failure != "rotation" {
 		t.Fatalf("refresh event = %#v / %v", observed, err)
 	}
+}
+
+func TestHeadlessTextFatalEventKeepsWrappedFailureOutOfTimeline(t *testing.T) {
+	at := time.Date(2026, time.September, 25, 9, 30, 0, 0, time.UTC)
+	private := errors.New("private worker path and peer address")
+	for _, test := range []struct {
+		name, phase string
+		ready       bool
+	}{{"startup", "startup", false}, {"running", "running", true}} {
+		t.Run(test.name, func(t *testing.T) {
+			output := &headlessTextBufferedOutput{}
+			if err := reportHeadlessTextFailure(t.Context(), output, [32]byte{1}, func() time.Time { return at }, test.ready, false, private); !errors.Is(err, private) {
+				t.Fatalf("original failure lost: %v", err)
+			}
+			if bytes.Contains(output.Bytes(), []byte(private.Error())) {
+				t.Fatalf("private failure entered event: %q", output.Bytes())
+			}
+			var projected bytes.Buffer
+			err := timeline.Project(t.Context(), io.NopCloser(bytes.NewReader(output.Bytes())), &projected)
+			if err != nil || !bytes.Contains(projected.Bytes(), []byte("headless-runtime-failed\t-\t\""+test.phase+"\"")) {
+				t.Fatalf("fatal event timeline = %q, err=%v", projected.String(), err)
+			}
+		})
+	}
+	for _, test := range []struct {
+		name         string
+		ctx          context.Context
+		outputFailed bool
+	}{{"event output failed", t.Context(), true}, {"canceled", canceledHeadlessTextContext(), false}} {
+		t.Run(test.name, func(t *testing.T) {
+			output := &headlessTextBufferedOutput{}
+			if err := reportHeadlessTextFailure(test.ctx, output, [32]byte{1}, func() time.Time { return at }, false, test.outputFailed, private); !errors.Is(err, private) || output.Len() != 0 {
+				t.Fatalf("unexpected failure event: output=%q err=%v", output.Bytes(), err)
+			}
+		})
+	}
+}
+
+func canceledHeadlessTextContext() context.Context {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	return ctx
 }
 
 type headlessTextBufferedOutput struct{ bytes.Buffer }

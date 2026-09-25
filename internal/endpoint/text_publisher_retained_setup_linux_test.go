@@ -15,6 +15,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/application/interfacev2/connection"
 	"github.com/dianabuilds/ardents-network/internal/application/streamqualification"
 	"github.com/dianabuilds/ardents-network/internal/node"
+	"github.com/dianabuilds/ardents-network/internal/qualification"
 	"github.com/dianabuilds/ardents-network/internal/route"
 )
 
@@ -58,26 +59,30 @@ func TestTextPublisherBuildsRetainedQualificationSetAcrossFourReaders(t *testing
 		}
 	}
 	readerJobs := make([]*textJobIdentity, len(readers))
-	// The installed runner gives every Reader the same final-opening pacer.
+	// The installed runner gives every Reader the same delivery pacer.
 	// Independent preparation loops can drift together under a constrained
 	// scheduler, so their initial phase offsets alone do not enforce the
 	// Publisher's rolling four-openings-per-second admission boundary.
-	qualificationPacer := &StreamQualificationMeasurements{}
+	qualificationPacer := &qualification.Measurements{}
 	for index, owner := range readers {
 		job := liveTextCapsuleJob(t, owner)
-		job.qualification = &textQualificationRun{init: streamqualification.Init{Role: streamqualification.ReaderRole,
-			Profile: streamqualification.ClientToPublisher, Nonce: fixtureID(byte(247 + index)), Seed: fixtureID(246)}}
+		run, _ := qualification.NewRun(streamqualification.ReaderRole, streamqualification.ClientToPublisher, fixtureID(246))
+		_ = run.BindInvocation(fixtureID(byte(247 + index)))
+		var dummyReport streamqualification.Report
+		if err := run.Configure(&dummyReport, qualificationPacer.AcquireIntroductionOpening, qualificationPacer.AcquireIntroductionSetup, func() error { return nil }, func(context.Context, streamqualification.Report) error { return nil }); err != nil {
+			t.Fatalf("qualification run configuration: %v", err)
+		}
+		job.qualification = run
 		job.workload = mustTextServiceWorkloadBounds(t, 64<<20, 64<<20)
-		job.qualification.acquireIntroduction = qualificationPacer.acquireIntroductionOpening
-		job.qualification.acquireSetup = qualificationPacer.acquireIntroductionSetup
 		readerJobs[index] = job
 	}
 
 	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Minute)
 	defer cancel()
 	publisherJob := liveTextCapsuleJob(t, publisher)
-	publisherJob.qualification = &textQualificationRun{init: streamqualification.Init{Role: streamqualification.PublisherRole,
-		Profile: streamqualification.ClientToPublisher, Nonce: fixtureID(245), Seed: fixtureID(246)}}
+	pubRun, _ := qualification.NewRun(streamqualification.PublisherRole, streamqualification.ClientToPublisher, fixtureID(246))
+	_ = pubRun.BindInvocation(fixtureID(245))
+	publisherJob.qualification = pubRun
 	publisherJob.workload = mustTextServiceWorkloadBounds(t, 64<<20, 64<<20)
 	publisherWorker := &qualifiedTextWorker{job: publisherJob}
 	delivered := make(chan connection.Stream)
@@ -138,7 +143,7 @@ func TestTextPublisherBuildsRetainedQualificationSetAcrossFourReaders(t *testing
 					if err != nil {
 						return bound, fmt.Errorf("Reader %d submission reserve %d: %w", index, streamIndex, err)
 					}
-					releaseSetup, err := job.qualification.acquireSetup(setup)
+					releaseSetup, err := job.qualification.AcquireSetup(setup)
 					if err != nil {
 						return bound, fmt.Errorf("Reader %d setup admission %d: %w", index, streamIndex, err)
 					}

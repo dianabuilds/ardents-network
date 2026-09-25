@@ -10,10 +10,6 @@ type updateRecord struct {
 	Previous installationRecord `json:"previous"`
 }
 
-func updateRecordFor(previous installationRecord) updateRecord {
-	return updateRecord{Schema: "ardents-contributor-updating-v1", Previous: previous}
-}
-
 func readUpdateRecord(path string) (updateRecord, error) {
 	raw, err := readRegular(path, 64<<10)
 	if err != nil {

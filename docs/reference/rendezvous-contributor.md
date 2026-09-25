@@ -90,19 +90,18 @@ values.
 
 ## Authenticated input
 
-The configuration authority supplies exactly two things by separate channels:
+The retired installation path received two things by separate channels:
 
 1. one directory containing `manifest.json` plus the closed inventory named by
    `ardents-contributor-bundle-v1`; and
 2. the lowercase SHA-256 digest of the exact `manifest.json` bytes.
 
-The operator compares the second value with the independently received pin;
-the command verifies that pin before parsing the manifest, verifies every
-listed file digest, rejects extra/missing inventory, and accepts only the fixed
-Rendezvous plan and resource reservations. That format is now compatibility
-evidence for the retained implementation and its tests, not authority to
-transfer or apply a new bundle. Any pre-existing caller-owned transfer copy is
-external residue: retirement commands neither adopt nor delete it.
+The old installation path compared the pin before parsing the manifest and
+verified the closed inventory and Rendezvous plan. The bundle format is now
+historical evidence; the retained commands authenticate the persisted
+installation record and installed bytes instead. Any pre-existing caller-owned
+transfer copy is external residue: retirement commands neither adopt nor
+delete it.
 
 The historical command shape remains recognized so it can fail with the stable
 retirement result rather than being reinterpreted as another action:
@@ -112,10 +111,9 @@ retirement result rather than being reinterpreted as another action:
 ```
 
 It does not open or validate the bundle and cannot create or update an
-installation. The internal Apply and restart implementations remain temporarily
-pending a separate consumer/deletion audit; only their internal behavior tests
-call them, and neither has an accepting command caller. Retaining them is not
-authority to start an installation.
+installation. The internal Apply and restart implementations have been removed.
+Persisted installation and interrupted-update readers remain so existing owned
+state can be diagnosed, drained, withdrawn, or removed without starting old bytes.
 
 ## Diagnose, drain, withdrawal, and retired restart
 

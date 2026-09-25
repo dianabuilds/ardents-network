@@ -9,16 +9,76 @@ import (
 )
 
 // textPublicationPairLifecycle owns local visibility of the current
-// Publication/Registration pair, its bounded predecessor, and the drain
-// barrier. Durable Publication and Instance storage remain with their existing
-// owners; this lifecycle decides only when their acknowledged pair is usable.
+// Publication/Registration pair, its in-flight opening, bounded predecessor,
+// and drain barrier. Durable Publication and Instance storage remain with
+// their existing owners; this lifecycle decides when the acknowledged pair
+// is usable.
 type textPublicationPairLifecycle struct {
+	opening              *textRegistrationFlight
+	withdrawal           *textOperationFlight
 	registration         *textIntroductionRegistration
 	pendingRegistration  *textIntroductionRegistration
 	previousRegistration *textIntroductionRegistration
 	previousUntil        time.Time
 	registrationChanged  chan struct{}
 	publicationDraining  bool
+}
+
+func (lifecycle *textPublicationPairLifecycle) withdrawalInProgressLocked() bool {
+	return lifecycle != nil && lifecycle.withdrawal != nil
+}
+
+func (lifecycle *textPublicationPairLifecycle) withdrawalLocked() *textOperationFlight {
+	if lifecycle == nil {
+		return nil
+	}
+	return lifecycle.withdrawal
+}
+
+func (lifecycle *textPublicationPairLifecycle) reserveWithdrawalLocked(flight *textOperationFlight) bool {
+	if lifecycle == nil || flight == nil || lifecycle.withdrawal != nil {
+		return false
+	}
+	lifecycle.withdrawal = flight
+	return true
+}
+
+func (lifecycle *textPublicationPairLifecycle) finishWithdrawalLocked(flight *textOperationFlight) {
+	if lifecycle == nil || flight == nil || lifecycle.withdrawal != flight {
+		return
+	}
+	lifecycle.withdrawal = nil
+}
+
+func (lifecycle *textPublicationPairLifecycle) openingInProgressLocked() bool {
+	return lifecycle != nil && lifecycle.opening != nil
+}
+
+func (lifecycle *textPublicationPairLifecycle) openingLocked() *textRegistrationFlight {
+	if lifecycle == nil {
+		return nil
+	}
+	return lifecycle.opening
+}
+
+func (lifecycle *textPublicationPairLifecycle) reserveOpeningLocked(flight *textRegistrationFlight) bool {
+	if lifecycle == nil || flight == nil || lifecycle.opening != nil {
+		return false
+	}
+	lifecycle.opening = flight
+	return true
+}
+
+func (lifecycle *textPublicationPairLifecycle) openingCurrentLocked(flight *textRegistrationFlight) bool {
+	return lifecycle != nil && flight != nil && lifecycle.opening == flight
+}
+
+func (lifecycle *textPublicationPairLifecycle) finishOpeningLocked(flight *textRegistrationFlight) bool {
+	if !lifecycle.openingCurrentLocked(flight) {
+		return false
+	}
+	lifecycle.opening = nil
+	return true
 }
 
 type textPublicationPairRetirement struct {

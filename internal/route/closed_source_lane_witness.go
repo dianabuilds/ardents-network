@@ -2,7 +2,11 @@
 
 package route
 
-import "io"
+import (
+	"io"
+
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
+)
 
 // A verified peer CLOSE makes a later, unemitted CREDIT unnecessary. The
 // caller also requires the attempted write itself to have returned EOF, so a
@@ -24,7 +28,7 @@ func (lane *closedSourceLane) closeWriteWitness() (uint64, bool, bool) {
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
 	active := owner.active != nil && owner.active.lane == lane
-	payload := active && owner.active.frame.Kind != closedFrameCredit
+	payload := active && owner.active.frame.Kind != ardp.KindCredit
 	clean := !lane.closed && !active && lane.remoteClosed && lane.failure == io.EOF && owner.terminal == nil && !lane.physicalWriteFailed
 	return lane.closePayloadEmissions, payload, clean
 }

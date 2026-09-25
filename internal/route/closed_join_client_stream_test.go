@@ -10,6 +10,8 @@ import (
 	"net"
 	"testing"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 )
 
 type joinedFailureSplitConn struct {
@@ -23,21 +25,21 @@ func (connection *joinedFailureSplitConn) Read(value []byte) (int, error) {
 
 // Exercise the joined framing through a real Source lane. The peer consumes
 // outer frames but grants no inner credit; cancellation must unblock both layers.
-func joinedClientStreamFixture(t *testing.T) (*ClosedJoinedStream, context.CancelFunc, <-chan struct{}, <-chan ClosedLaneFrame, net.Conn) {
+func joinedClientStreamFixture(t *testing.T) (*ClosedJoinedStream, context.CancelFunc, <-chan struct{}, <-chan ardp.Frame, net.Conn) {
 	t.Helper()
 	owner, peer, end := sourceChannelsFixture(t)
-	frames := make(chan ClosedLaneFrame, 32)
+	frames := make(chan ardp.Frame, 32)
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
 		for {
-			frame, err := ReadClosedLaneFrame(peer)
+			frame, err := ardp.ReadFrame(peer)
 			if err != nil {
 				return
 			}
-			if frame.Kind == closedFrameBytes {
+			if frame.Kind == ardp.KindBytes {
 				frames <- frame
-				if err := WriteClosedLaneFrame(peer, ClosedLaneFrame{Kind: closedFrameCredit, Lane: 1, Body: binary.BigEndian.AppendUint32(nil, uint32(len(frame.Body)))}); err != nil {
+				if err := ardp.WriteFrame(peer, ardp.Frame{Kind: ardp.KindCredit, Lane: 1, Body: binary.BigEndian.AppendUint32(nil, uint32(len(frame.Body)))}); err != nil {
 					return
 				}
 			}
@@ -65,7 +67,7 @@ func TestClosedJoinedClientCancellationJoinsBlockedCreditWriter(t *testing.T) {
 	// Return only outer credit. Four complete inner frames consume the whole
 	// joined window, so the fifth cannot start before cancellation.
 	timeout := time.After(2 * time.Second)
-	for received := 0; received < 4*(closedLaneMaximum+closedLaneHeaderSize); {
+	for received := 0; received < 4*(ardp.MaximumBodySize+ardp.HeaderSize); {
 		select {
 		case frame := <-frames:
 			received += len(frame.Body)
@@ -107,15 +109,15 @@ func TestClosedJoinedClientAcceptsOuterLaneBeforeTransfer(t *testing.T) {
 
 func TestClosedJoinedPeerCloseJoinsLaneBeforeReleasingOuter(t *testing.T) {
 	stream, _, released, _, peer := joinedClientStreamFixture(t)
-	body, err := EncodeClosedLaneFrame(ClosedLaneFrame{Kind: closedFrameClose, Lane: 1, Body: []byte{0}})
+	body, err := ardp.EncodeFrame(ardp.Frame{Kind: ardp.KindClose, Lane: 1, Body: []byte{0}})
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, frame := range []ClosedLaneFrame{
-		{Kind: closedFrameBytes, Lane: stream.outer.id, Body: body},
-		{Kind: closedFrameClose, Lane: stream.outer.id, Body: []byte{0}},
+	for _, frame := range []ardp.Frame{
+		{Kind: ardp.KindBytes, Lane: stream.outer.id, Body: body},
+		{Kind: ardp.KindClose, Lane: stream.outer.id, Body: []byte{0}},
 	} {
-		if err := WriteClosedLaneFrame(peer, frame); err != nil {
+		if err := ardp.WriteFrame(peer, frame); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -144,7 +146,7 @@ func TestClosedJoinedReaderFailureInterruptsBlockedWriter(t *testing.T) {
 func checkClosedJoinedReaderFailureInterruptsBlockedWriter(t *testing.T, mode string) {
 	owner, peer, end := sourceChannelsFixture(t)
 	opened := make(chan error, 1)
-	go func() { _, err := ReadClosedLaneFrame(peer); opened <- err }()
+	go func() { _, err := ardp.ReadFrame(peer); opened <- err }()
 	lane, err := owner.open(t.Context(), sourceIssuerOpen(end), time.Now().Add(time.Second))
 	if err != nil {
 		t.Fatal(err)
@@ -170,7 +172,7 @@ func checkClosedJoinedReaderFailureInterruptsBlockedWriter(t *testing.T, mode st
 	written := make(chan error, 1)
 	go func() { _, writeErr := stream.Write([]byte{1}); written <- writeErr }()
 	waitSourceChannelState(t, owner, func() bool {
-		return owner.active != nil && owner.active.frame.Kind == closedFrameBytes
+		return owner.active != nil && owner.active.frame.Kind == ardp.KindBytes
 	})
 	if mode == "raw-eof" {
 		if err := readerPeer.Close(); err != nil {
@@ -178,7 +180,7 @@ func checkClosedJoinedReaderFailureInterruptsBlockedWriter(t *testing.T, mode st
 		}
 		readerPeerClosed = true
 	} else {
-		invalid, err := EncodeClosedLaneFrame(ClosedLaneFrame{Kind: closedFrameEOF, Lane: 1})
+		invalid, err := ardp.EncodeFrame(ardp.Frame{Kind: ardp.KindEOF, Lane: 1})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -235,16 +237,16 @@ func TestClosedJoinedClientDrainsCleanCloseBeforeReleasingBytes(t *testing.T) {
 		}
 		t.Run(name, func(t *testing.T) {
 			stream, cancel, released, _, peer := joinedClientStreamFixture(t)
-			for _, frame := range []ClosedLaneFrame{{Kind: closedFrameBytes, Lane: 1, Body: []byte("final authenticated record")}, {Kind: closedFrameClose, Lane: 1, Body: []byte{0}}} {
-				body, err := EncodeClosedLaneFrame(frame)
+			for _, frame := range []ardp.Frame{{Kind: ardp.KindBytes, Lane: 1, Body: []byte("final authenticated record")}, {Kind: ardp.KindClose, Lane: 1, Body: []byte{0}}} {
+				body, err := ardp.EncodeFrame(frame)
 				if err != nil {
 					t.Fatal(err)
 				}
-				if err := WriteClosedLaneFrame(peer, ClosedLaneFrame{Kind: closedFrameBytes, Lane: 1, Body: body}); err != nil {
+				if err := ardp.WriteFrame(peer, ardp.Frame{Kind: ardp.KindBytes, Lane: 1, Body: body}); err != nil {
 					t.Fatal(err)
 				}
 			}
-			if err := WriteClosedLaneFrame(peer, ClosedLaneFrame{Kind: closedFrameClose, Lane: 1, Body: []byte{0}}); err != nil {
+			if err := ardp.WriteFrame(peer, ardp.Frame{Kind: ardp.KindClose, Lane: 1, Body: []byte{0}}); err != nil {
 				t.Fatal(err)
 			}
 			select {
@@ -279,12 +281,12 @@ func TestClosedJoinedClientDrainsCleanCloseBeforeReleasingBytes(t *testing.T) {
 
 func TestClosedJoinedClientDoesNotHideMalformedFrameAfterCleanClose(t *testing.T) {
 	stream, _, released, _, peer := joinedClientStreamFixture(t)
-	for _, frame := range []ClosedLaneFrame{{Kind: closedFrameClose, Lane: 1, Body: []byte{0}}, {Kind: closedFrameClose, Lane: 1, Body: []byte{0}}} {
-		body, err := EncodeClosedLaneFrame(frame)
+	for _, frame := range []ardp.Frame{{Kind: ardp.KindClose, Lane: 1, Body: []byte{0}}, {Kind: ardp.KindClose, Lane: 1, Body: []byte{0}}} {
+		body, err := ardp.EncodeFrame(frame)
 		if err != nil {
 			t.Fatal(err)
 		}
-		if err := WriteClosedLaneFrame(peer, ClosedLaneFrame{Kind: closedFrameBytes, Lane: 1, Body: body}); err != nil {
+		if err := ardp.WriteFrame(peer, ardp.Frame{Kind: ardp.KindBytes, Lane: 1, Body: body}); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -303,7 +305,7 @@ func TestClosedJoinedClientTransportEOFWaitsForOuterTerminal(t *testing.T) {
 	stream, _, released, _, peer := joinedClientStreamFixture(t)
 	// This real framed EOF produces the same io.EOF retirement path as a clean
 	// role TLS close_notify. Keep the outer terminal behind a separate barrier.
-	if err := WriteClosedLaneFrame(peer, ClosedLaneFrame{Kind: closedFrameEOF, Lane: 1}); err != nil {
+	if err := ardp.WriteFrame(peer, ardp.Frame{Kind: ardp.KindEOF, Lane: 1}); err != nil {
 		t.Fatal(err)
 	}
 	waitSourceChannelState(t, stream.channels, func() bool { return stream.channels.terminal == io.EOF })
@@ -314,7 +316,7 @@ func TestClosedJoinedClientTransportEOFWaitsForOuterTerminal(t *testing.T) {
 	if retired {
 		t.Error("local retirement overtook the peer outer terminal")
 	}
-	if err := WriteClosedLaneFrame(peer, ClosedLaneFrame{Kind: closedFrameClose, Lane: 1, Body: []byte{0}}); err != nil {
+	if err := ardp.WriteFrame(peer, ardp.Frame{Kind: ardp.KindClose, Lane: 1, Body: []byte{0}}); err != nil {
 		t.Fatal(err)
 	}
 	select {
@@ -332,11 +334,11 @@ func TestClosedJoinedClientExposesOnlyAuthenticatedPeerRetirement(t *testing.T) 
 	if stream.AuthenticatedPeerRetired() {
 		t.Fatal("live child reported authenticated peer retirement")
 	}
-	body, err := EncodeClosedLaneFrame(ClosedLaneFrame{Kind: closedFrameClose, Lane: 1, Body: []byte{0}})
+	body, err := ardp.EncodeFrame(ardp.Frame{Kind: ardp.KindClose, Lane: 1, Body: []byte{0}})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := WriteClosedLaneFrame(peer, ClosedLaneFrame{Kind: closedFrameBytes, Lane: 1, Body: body}); err != nil {
+	if err := ardp.WriteFrame(peer, ardp.Frame{Kind: ardp.KindBytes, Lane: 1, Body: body}); err != nil {
 		t.Fatal(err)
 	}
 	var one [1]byte
@@ -346,7 +348,7 @@ func TestClosedJoinedClientExposesOnlyAuthenticatedPeerRetirement(t *testing.T) 
 	if !stream.AuthenticatedPeerRetired() {
 		t.Fatal("clean inner CLOSE(0) was not exposed")
 	}
-	if err := WriteClosedLaneFrame(peer, ClosedLaneFrame{Kind: closedFrameClose, Lane: 1, Body: []byte{0}}); err != nil {
+	if err := ardp.WriteFrame(peer, ardp.Frame{Kind: ardp.KindClose, Lane: 1, Body: []byte{0}}); err != nil {
 		t.Fatal(err)
 	}
 	select {
@@ -358,16 +360,16 @@ func TestClosedJoinedClientExposesOnlyAuthenticatedPeerRetirement(t *testing.T) 
 
 func TestClosedJoinedClientDrainsBytesBeforeUnexpectedTransportEOF(t *testing.T) {
 	stream, _, released, _, peer := joinedClientStreamFixture(t)
-	body, err := EncodeClosedLaneFrame(ClosedLaneFrame{Kind: closedFrameBytes, Lane: 1, Body: []byte("final authenticated record")})
+	body, err := ardp.EncodeFrame(ardp.Frame{Kind: ardp.KindBytes, Lane: 1, Body: []byte("final authenticated record")})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := WriteClosedLaneFrame(peer, ClosedLaneFrame{Kind: closedFrameBytes, Lane: 1, Body: body}); err != nil {
+	if err := ardp.WriteFrame(peer, ardp.Frame{Kind: ardp.KindBytes, Lane: 1, Body: body}); err != nil {
 		t.Fatal(err)
 	}
 	// Complete outer closure follows the bytes, but no inner CLOSE was sent.
 	// The accepted bytes precede the unexpected-EOF error, never replace it.
-	if err := WriteClosedLaneFrame(peer, ClosedLaneFrame{Kind: closedFrameClose, Lane: 1, Body: []byte{0}}); err != nil {
+	if err := ardp.WriteFrame(peer, ardp.Frame{Kind: ardp.KindClose, Lane: 1, Body: []byte{0}}); err != nil {
 		t.Fatal(err)
 	}
 	select {

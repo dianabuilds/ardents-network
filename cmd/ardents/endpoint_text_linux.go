@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -27,6 +28,10 @@ func runTextHeadlessRuntime(ctx context.Context, plan decodedHeadlessRuntimePlan
 	}
 	defer func() { outcome = errors.Join(outcome, opened.Close()) }()
 	clock := time.Now
+	var ready, outputFailed atomic.Bool
+	defer func() {
+		outcome = reportHeadlessTextFailure(ctx, opened, plan.NetworkID, clock, ready.Load(), outputFailed.Load(), outcome)
+	}()
 	network, refresh, err := headlessNetworkConfig(plan, clock)
 	if err != nil {
 		return err
@@ -39,8 +44,32 @@ func runTextHeadlessRuntime(ctx context.Context, plan decodedHeadlessRuntimePlan
 		return endpointapi.TextPermissionFiles{RequestPath: plan.RequestPath, ResponsePath: plan.ResponsePath, Maxima: plan.Maxima}
 	}
 	return endpointapi.RunTextParticipant(ctx, endpointapi.TextParticipantConfig{Network: network, RefreshNetwork: refresh, EntryRoot: plan.EntryStateRoot, LocalRoleRoot: plan.LocalRoleStateRoot, TokenRoot: plan.TextTokenRoot, PublicationRoot: plan.PublicationRoot, ServiceInstanceRoot: plan.ServiceInstanceRoot, ApplicationAddress: plan.ApplicationSocket, AdministrationAddress: plan.AdministrationSocket, BrokerID: plan.BrokerID, ConnectionPrincipal: plan.ConnectionPrincipal, AdministrationPrincipal: plan.AdministrationPrincipal, ReaderPermission: files(plan.ReaderPermission), PublisherPermission: files(plan.PublisherPermission), Clock: clock, Observe: func(reportCtx context.Context, event endpointapi.TextParticipantEvent) error {
-		return writeHeadlessTextEvent(reportCtx, opened, event)
+		if writeErr := writeHeadlessTextEvent(reportCtx, opened, event); writeErr != nil {
+			outputFailed.Store(true)
+			return writeErr
+		}
+		if event.Kind == "ready" {
+			ready.Store(true)
+		}
+		return nil
 	}})
+}
+
+func reportHeadlessTextFailure(ctx context.Context, output headlessTextEventOutput, networkID [32]byte, clock func() time.Time, ready, outputFailed bool, err error) error {
+	if err == nil || ctx.Err() != nil || outputFailed {
+		return err
+	}
+	failure := "startup"
+	if ready {
+		failure = "running"
+	}
+	// The raw error remains on stderr. The timeline gets only the local
+	// lifecycle phase; wrapped Route, peer and filesystem details stay out.
+	reportCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	return errors.Join(err, writeHeadlessTextEvent(reportCtx, output, endpointapi.TextParticipantEvent{
+		At: clock().UTC(), Kind: "failed", NetworkID: networkID, Failure: failure,
+	}))
 }
 
 // Reopen this exact descriptor; changing nonblocking flags on a dup would
@@ -101,12 +130,14 @@ func writeHeadlessTextEvent(ctx context.Context, output headlessTextEventOutput,
 		digest = hex.EncodeToString(event.RequestDigest[:])
 	}
 	return json.NewEncoder(output).Encode(struct {
-		Kind                 string `json:"kind"`
-		NetworkID            string `json:"network_id"`
-		Surface              string `json:"surface,omitempty"`
-		Failure              string `json:"failure,omitempty"`
-		RequestDigest        string `json:"request_digest,omitempty"`
-		ApplicationSocket    string `json:"application_socket,omitempty"`
-		AdministrationSocket string `json:"administration_socket,omitempty"`
-	}{Kind: "headless-runtime-" + event.Kind, NetworkID: hex.EncodeToString(event.NetworkID[:]), Surface: event.Surface, Failure: event.Failure, RequestDigest: digest, ApplicationSocket: event.ApplicationAddress, AdministrationSocket: event.AdministrationAddress})
+		Schema               string    `json:"schema"`
+		Kind                 string    `json:"kind"`
+		At                   time.Time `json:"at"`
+		NetworkID            string    `json:"network_id"`
+		Surface              string    `json:"surface,omitempty"`
+		Failure              string    `json:"failure,omitempty"`
+		RequestDigest        string    `json:"request_digest,omitempty"`
+		ApplicationSocket    string    `json:"application_socket,omitempty"`
+		AdministrationSocket string    `json:"administration_socket,omitempty"`
+	}{Schema: "ardents-headless-runtime-event-v1", Kind: "headless-runtime-" + event.Kind, At: event.At, NetworkID: hex.EncodeToString(event.NetworkID[:]), Surface: event.Surface, Failure: event.Failure, RequestDigest: digest, ApplicationSocket: event.ApplicationAddress, AdministrationSocket: event.AdministrationAddress})
 }

@@ -5,6 +5,8 @@ import (
 	"errors"
 	"sync"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 )
 
 const (
@@ -44,7 +46,7 @@ type ClosedForwardingChannel struct {
 	bootstrap    *ClosedBootstrapLease
 	authorize    ClosedForwardingAuthorizer
 	replenish    ClosedForwardingReplenisher
-	hello        ClosedHello
+	hello        ardp.Hello
 	exporter     [32]byte
 	releases     []func() error
 	clock        func() time.Time
@@ -101,7 +103,7 @@ func newClosedForwardingChannel(lease *ClosedAdmission, authorize ClosedForwardi
 // Accept accounts one child frame. It returns an event only after every local
 // bound and State authorization is satisfied; a caller may then attach its
 // separately owned next Carrier without a peer-selected fallback.
-func (channel *ClosedForwardingChannel) Accept(frame ClosedLaneFrame) (ClosedForwardingEvent, error) {
+func (channel *ClosedForwardingChannel) Accept(frame ardp.Frame) (ClosedForwardingEvent, error) {
 	if channel == nil {
 		return ClosedForwardingEvent{}, errors.New("closed forwarding channel is unavailable")
 	}
@@ -110,7 +112,7 @@ func (channel *ClosedForwardingChannel) Accept(frame ClosedLaneFrame) (ClosedFor
 	if channel.terminated || !channel.clock().UTC().Before(channel.deadline) {
 		return ClosedForwardingEvent{}, errors.New("closed forwarding channel is unavailable")
 	}
-	size := uint64(closedLaneHeaderSize + len(frame.Body))
+	size := uint64(ardp.HeaderSize + len(frame.Body))
 	if channel.bootstrap != nil {
 		if err := channel.bootstrap.Receive(size); err != nil {
 			return ClosedForwardingEvent{}, err
@@ -124,24 +126,24 @@ func (channel *ClosedForwardingChannel) Accept(frame ClosedLaneFrame) (ClosedFor
 		channel.usedBytes += size
 	}
 	switch frame.Kind {
-	case closedFrameOpen:
+	case ardp.KindOpen:
 		return channel.open(frame)
-	case closedFrameBytes:
+	case ardp.KindBytes:
 		return channel.bytes(frame)
-	case closedFrameCredit:
+	case ardp.KindCredit:
 		return channel.peerCredit(frame)
-	case closedFrameEOF:
+	case ardp.KindEOF:
 		return channel.eof(frame)
-	case closedFrameClose:
+	case ardp.KindClose:
 		return channel.close(frame)
-	case closedFrameAdmit:
+	case ardp.KindAdmit:
 		return channel.admit(frame)
 	default:
 		return ClosedForwardingEvent{}, errors.New("closed forwarding frame is unavailable")
 	}
 }
 
-func (channel *ClosedForwardingChannel) admit(frame ClosedLaneFrame) (ClosedForwardingEvent, error) {
+func (channel *ClosedForwardingChannel) admit(frame ardp.Frame) (ClosedForwardingEvent, error) {
 	if frame.Lane != 0 || channel.replenish == nil {
 		return ClosedForwardingEvent{}, errors.New("closed forwarding replenishment is unavailable")
 	}
@@ -166,7 +168,7 @@ func (channel *ClosedForwardingChannel) admit(frame ClosedLaneFrame) (ClosedForw
 	return ClosedForwardingEvent{}, nil
 }
 
-func (channel *ClosedForwardingChannel) open(frame ClosedLaneFrame) (ClosedForwardingEvent, error) {
+func (channel *ClosedForwardingChannel) open(frame ardp.Frame) (ClosedForwardingEvent, error) {
 	if frame.Lane%2 == 0 || frame.Lane <= channel.lastOdd || len(channel.children) >= closedForwardChildren {
 		return ClosedForwardingEvent{}, errors.New("closed forwarding child lane is invalid")
 	}
@@ -188,7 +190,7 @@ func (channel *ClosedForwardingChannel) open(frame ClosedLaneFrame) (ClosedForwa
 	}
 	channel.children[frame.Lane] = closedForwardChild{reservedControl: reservedControl, deadline: open.Deadline, credit: closedLaneCredit, reverseCredit: closedLaneCredit}
 	channel.lastOdd = frame.Lane
-	if !channel.queueControl(ClosedForwardingEvent{Kind: closedFrameOpen, Lane: frame.Lane, Open: open, Restriction: restriction}) {
+	if !channel.queueControl(ClosedForwardingEvent{Kind: ardp.KindOpen, Lane: frame.Lane, Open: open, Restriction: restriction}) {
 		delete(channel.children, frame.Lane)
 		channel.duty.releaseChildCapacity(reservedControl)
 		return ClosedForwardingEvent{}, errors.New("closed forwarding control queue is unavailable")
@@ -196,7 +198,7 @@ func (channel *ClosedForwardingChannel) open(frame ClosedLaneFrame) (ClosedForwa
 	return ClosedForwardingEvent{}, nil
 }
 
-func (channel *ClosedForwardingChannel) bytes(frame ClosedLaneFrame) (ClosedForwardingEvent, error) {
+func (channel *ClosedForwardingChannel) bytes(frame ardp.Frame) (ClosedForwardingEvent, error) {
 	child, found := channel.children[frame.Lane]
 	if !found || child.eof || !channel.clock().UTC().Before(child.deadline) || uint64(len(frame.Body)) > child.credit || channel.queued+uint64(len(frame.Body)) > closedPrefixQueueBytes {
 		return ClosedForwardingEvent{}, errors.New("closed forwarding bytes are unavailable")
@@ -217,7 +219,7 @@ func (channel *ClosedForwardingChannel) bytes(frame ClosedLaneFrame) (ClosedForw
 	return ClosedForwardingEvent{}, nil
 }
 
-func (channel *ClosedForwardingChannel) eof(frame ClosedLaneFrame) (ClosedForwardingEvent, error) {
+func (channel *ClosedForwardingChannel) eof(frame ardp.Frame) (ClosedForwardingEvent, error) {
 	child, found := channel.children[frame.Lane]
 	if !found || child.eof {
 		return ClosedForwardingEvent{}, errors.New("closed forwarding EOF is unavailable")
@@ -227,12 +229,12 @@ func (channel *ClosedForwardingChannel) eof(frame ClosedLaneFrame) (ClosedForwar
 	return ClosedForwardingEvent{}, nil
 }
 
-func (channel *ClosedForwardingChannel) close(frame ClosedLaneFrame) (ClosedForwardingEvent, error) {
+func (channel *ClosedForwardingChannel) close(frame ardp.Frame) (ClosedForwardingEvent, error) {
 	child, found := channel.children[frame.Lane]
 	if !found {
 		return ClosedForwardingEvent{}, errors.New("closed forwarding close is unavailable")
 	}
-	event := ClosedForwardingEvent{Kind: closedFrameClose, Lane: frame.Lane, Bytes: append([]byte(nil), frame.Body...)}
+	event := ClosedForwardingEvent{Kind: ardp.KindClose, Lane: frame.Lane, Bytes: append([]byte(nil), frame.Body...)}
 	if !channel.queueControl(event) {
 		return ClosedForwardingEvent{}, errors.New("closed forwarding control queue is unavailable")
 	}
@@ -246,24 +248,24 @@ func (channel *ClosedForwardingChannel) close(frame ClosedLaneFrame) (ClosedForw
 
 // Credit returns receive credit only after the caller's actual consumer has
 // removed bytes. It never exceeds the fixed 64 KiB window or parent lease.
-func (channel *ClosedForwardingChannel) Credit(lane uint32, bytes uint32) (ClosedLaneFrame, error) {
+func (channel *ClosedForwardingChannel) Credit(lane uint32, bytes uint32) (ardp.Frame, error) {
 	if channel == nil {
-		return ClosedLaneFrame{}, errors.New("closed forwarding credit is unavailable")
+		return ardp.Frame{}, errors.New("closed forwarding credit is unavailable")
 	}
 	channel.mu.Lock()
 	defer channel.mu.Unlock()
 	if channel.terminated || bytes == 0 || !channel.clock().UTC().Before(channel.deadline) {
-		return ClosedLaneFrame{}, errors.New("closed forwarding credit is unavailable")
+		return ardp.Frame{}, errors.New("closed forwarding credit is unavailable")
 	}
 	child, found := channel.children[lane]
 	if !found {
-		return ClosedLaneFrame{}, ErrClosedForwardingChildRetired
+		return ardp.Frame{}, ErrClosedForwardingChildRetired
 	}
 	if uint64(bytes) > closedLaneCredit-child.credit || uint64(bytes) > child.delivered {
-		return ClosedLaneFrame{}, errors.New("closed forwarding credit is unavailable")
+		return ardp.Frame{}, errors.New("closed forwarding credit is unavailable")
 	}
 	if uint64(bytes) > child.queued {
-		return ClosedLaneFrame{}, errors.New("closed forwarding credit is unavailable")
+		return ardp.Frame{}, errors.New("closed forwarding credit is unavailable")
 	}
 	child.credit += uint64(bytes)
 	child.queued -= uint64(bytes)
@@ -273,7 +275,7 @@ func (channel *ClosedForwardingChannel) Credit(lane uint32, bytes uint32) (Close
 	channel.children[lane] = child
 	body := make([]byte, 4)
 	binary.BigEndian.PutUint32(body, bytes)
-	return ClosedLaneFrame{Kind: closedFrameCredit, Lane: lane, Body: body}, nil
+	return ardp.Frame{Kind: ardp.KindCredit, Lane: lane, Body: body}, nil
 }
 
 // NextAvailable returns bounded work whose consumer is currently available.
@@ -304,7 +306,7 @@ func (channel *ClosedForwardingChannel) NextAvailable(available func(ClosedForwa
 		if !found || len(child.frames) == 0 {
 			continue
 		}
-		event := ClosedForwardingEvent{Kind: closedFrameBytes, Lane: lane, Bytes: child.frames[0]}
+		event := ClosedForwardingEvent{Kind: ardp.KindBytes, Lane: lane, Bytes: child.frames[0]}
 		if available != nil && !available(event) {
 			channel.ready = append(channel.ready, lane)
 			continue
@@ -317,7 +319,7 @@ func (channel *ClosedForwardingChannel) NextAvailable(available func(ClosedForwa
 			child.ready = false
 			if child.eof && !child.eofSent {
 				child.eofSent = true
-				if !channel.queueControl(ClosedForwardingEvent{Kind: closedFrameEOF, Lane: lane}) {
+				if !channel.queueControl(ClosedForwardingEvent{Kind: ardp.KindEOF, Lane: lane}) {
 					channel.terminated = true
 					channel.children[lane] = child
 					return ClosedForwardingEvent{}, false
@@ -329,7 +331,7 @@ func (channel *ClosedForwardingChannel) NextAvailable(available func(ClosedForwa
 	}
 	for lane, child := range channel.children {
 		if child.eof && !child.eofSent {
-			event := ClosedForwardingEvent{Kind: closedFrameEOF, Lane: lane}
+			event := ClosedForwardingEvent{Kind: ardp.KindEOF, Lane: lane}
 			if available != nil && !available(event) {
 				continue
 			}
@@ -355,10 +357,10 @@ func (channel *ClosedForwardingChannel) queueControl(event ClosedForwardingEvent
 }
 
 func closedForwardControlSize(event ClosedForwardingEvent) uint32 {
-	if event.Kind == closedFrameOpen {
-		return closedLaneHeaderSize + 50
+	if event.Kind == ardp.KindOpen {
+		return ardp.HeaderSize + 50
 	}
-	return closedLaneHeaderSize + uint32(len(event.Bytes))
+	return ardp.HeaderSize + uint32(len(event.Bytes))
 }
 
 // Cancel terminates every child before a caller joins its owned carriers.

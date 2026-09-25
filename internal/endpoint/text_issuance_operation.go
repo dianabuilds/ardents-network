@@ -8,6 +8,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 )
 
 // textIssuanceOperation owns one admitted issuance attempt through transport
@@ -71,7 +72,7 @@ func (operation *textIssuanceOperation) run(caller context.Context, source route
 	if operation.prefix == nil {
 		result, exchangeErr = route.ExchangeClosedBootstrap(operation.context, source, selection, operation.request)
 	} else {
-		result, exchangeErr = operation.prefix.exchangeIssuer(operation.context, func(hello route.ClosedHello, tokenClass uint8) ([]byte, error) {
+		result, exchangeErr = operation.prefix.exchangeIssuer(operation.context, func(hello ardp.Hello, tokenClass uint8) ([]byte, error) {
 			return operation.presentTextIssuerToken(selection, hello, tokenClass)
 		}, operation.request)
 	}
@@ -106,9 +107,8 @@ func (operation *textIssuanceOperation) complete(caller context.Context, result 
 	}
 	if err := caller.Err(); err != nil {
 		clear(result.Body)
-		if operation.discardCanceled && operation.permission.pending == operation.batch {
-			operation.batch.pending.Discard()
-			operation.permission.pending = nil
+		if operation.discardCanceled {
+			operation.permission.discardPendingBatch(operation.batch)
 		}
 		return err
 	}
@@ -117,27 +117,9 @@ func (operation *textIssuanceOperation) complete(caller context.Context, result 
 		// same-process retry. No new request, refund, fallback or resampling occurs.
 		return exchangeErr
 	}
-	tokens, err := operation.batch.pending.FinalizeTerminalOperation(result.Nonce, result.Body)
+	err := operation.permission.acceptIssuedBatch(operation.batch, result.Nonce, result.Body)
 	clear(result.Body)
-	operation.permission.pending = nil
-	if err != nil {
-		return err
-	}
-	for index, token := range tokens {
-		challenge := operation.batch.challenges[index]
-		found := false
-		for slot := range operation.permission.stock {
-			if operation.permission.stock[slot].challenge == challenge {
-				operation.permission.stock[slot].tokens = append(operation.permission.stock[slot].tokens, token)
-				found = true
-				break
-			}
-		}
-		if !found {
-			operation.permission.stock = append(operation.permission.stock, textTokenStock{challenge: challenge, tokens: [][]byte{token}})
-		}
-	}
-	return nil
+	return err
 }
 
 func (operation *textIssuanceOperation) finishLocked() {

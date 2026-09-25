@@ -5,6 +5,8 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 )
 
 func closedAdmissionClaimFixture(t *testing.T) (*ClosedDutyLimits, ClosedAdmission, time.Time) {
@@ -68,15 +70,15 @@ func TestClosedAdmissionMintedCopyLeavesForwardingOwnerLive(t *testing.T) {
 	if err := stale.Release(); err != nil {
 		t.Fatal(err)
 	}
-	open := ClosedOpen{NextNodeID: [32]byte{7}, NextDutyGeneration: 1, Purpose: ClosedPurposeForwarding, Deadline: now.Add(time.Minute)}
+	open := ClosedOpen{NextNodeID: [32]byte{7}, NextDutyGeneration: 1, Purpose: ardp.PurposeForwarding, Deadline: now.Add(time.Minute)}
 	body, err := EncodeClosedOpen(open)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err = channel.Accept(ClosedLaneFrame{Kind: closedFrameOpen, Lane: 1, Body: body}); err != nil {
+	if _, err = channel.Accept(ardp.Frame{Kind: ardp.KindOpen, Lane: 1, Body: body}); err != nil {
 		t.Fatalf("stale release prevented valid owner child admission: %v", err)
 	}
-	if event, ok := channel.NextAvailable(nil); !ok || event.Kind != closedFrameOpen || event.Open != open {
+	if event, ok := channel.NextAvailable(nil); !ok || event.Kind != ardp.KindOpen || event.Open != open {
 		t.Fatalf("valid owner did not receive its accepted child: %+v / %t", event, ok)
 	}
 }
@@ -129,12 +131,12 @@ func TestClosedAdmissionCopiedHandleCannotTransferTwiceWhileOwnerLives(t *testin
 	if _, err := newClosedForwardingChannel(&stale, func(ClosedOpen) error { return nil }, nil, func() time.Time { return now }); err == nil {
 		t.Fatal("copied handle created a second forwarding owner")
 	}
-	open := ClosedOpen{NextNodeID: [32]byte{8}, NextDutyGeneration: 1, Purpose: ClosedPurposeForwarding, Deadline: now.Add(time.Minute)}
+	open := ClosedOpen{NextNodeID: [32]byte{8}, NextDutyGeneration: 1, Purpose: ardp.PurposeForwarding, Deadline: now.Add(time.Minute)}
 	body, err := EncodeClosedOpen(open)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err = channel.Accept(ClosedLaneFrame{Kind: closedFrameOpen, Lane: 1, Body: body}); err != nil {
+	if _, err = channel.Accept(ardp.Frame{Kind: ardp.KindOpen, Lane: 1, Body: body}); err != nil {
 		t.Fatalf("first owner lost child capacity: %v", err)
 	}
 }
@@ -174,12 +176,12 @@ func TestClosedAdmissionCopiesHaveOneTransferOrReleaseWinner(t *testing.T) {
 		if released.Load() != 0 {
 			t.Fatalf("transfer winner released host reservation: %d", released.Load())
 		}
-		open := ClosedOpen{NextNodeID: [32]byte{9}, NextDutyGeneration: 1, Purpose: ClosedPurposeForwarding, Deadline: now.Add(time.Minute)}
+		open := ClosedOpen{NextNodeID: [32]byte{9}, NextDutyGeneration: 1, Purpose: ardp.PurposeForwarding, Deadline: now.Add(time.Minute)}
 		body, err := EncodeClosedOpen(open)
 		if err != nil {
 			t.Fatal(err)
 		}
-		if _, err = owner.Accept(ClosedLaneFrame{Kind: closedFrameOpen, Lane: 1, Body: body}); err != nil {
+		if _, err = owner.Accept(ardp.Frame{Kind: ardp.KindOpen, Lane: 1, Body: body}); err != nil {
 			t.Fatalf("transfer winner cannot admit child work: %v", err)
 		}
 		if channels, children := closedAdmissionClaimCounts(limits); channels != 1 || children != 1 {

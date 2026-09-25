@@ -19,13 +19,16 @@ substitute for independent review.
 
 ## Ordinary checks
 
-- `make unit` runs the positive deterministic package inventory.
+- `make unit` runs the positive deterministic package inventory with one
+  explicit 15-minute terminal timeout per package. The retained 256-stream
+  Linux Endpoint setup stays in that profile; exceeding the bound fails with
+  the Go runtime's goroutine dump.
 - `make e2e` runs the positive local process package inventory.
 - `make quick-check` runs formatting, architecture, vet, unit, the four named
   command builds, module tidiness, and the canonical artifact representation
   proof.
-- `make headless-check` builds the exact Network command inventory, checks the
-  enrollment-v3 artifact, runs bounded Endpoint, Source, Node, and Service
+- On Linux x86-64, `make headless-check` builds the exact Network command
+  inventory, checks the enrollment-v3 artifact, runs bounded Endpoint, Source, Node, and Service
   process evidence, then rebuilds and tests the headless command candidate in
   a fresh temporary tree containing no Browser/Application implementation. It
   also proves that canonical command bytes are unchanged when the same owned
@@ -55,6 +58,11 @@ substitute for independent review.
   Git; the test writes secret-bearing raw observations there and retains them
   locally. A non-Linux host or missing capture directory is an invalid profile,
   not a passing skip.
+- The installed `text-command-network` runner can retain its complete raw
+  output in an explicitly supplied owner-private directory outside Git. It
+  prints the file path before the long-running test and keeps failures and
+  timeouts for diagnosis; the caller retains candidate and host inventories
+  separately.
 - `make fuzz` mutation-fuzzes the selected State and Contributor targets for a
   bounded 30 seconds each. State owns canonical Epoch/Node Record framing and
   checks successful parser digest/key/raw invariants; Contributor owns strict
@@ -110,9 +118,21 @@ checks in the existing Linux deterministic/race profiles; a Windows unit pass
 does not execute or qualify them. Windows retains the pre-existing Endpoint
 journey and an explicit unsupported text-command refusal. Shared State,
 Custody, Node and protocol consumers keep their own platform contracts. The
-Endpoint-originating Route bootstrap/prefix client and its stream, credit,
-JOIN and network-issuance tests also execute in the Linux profiles. Receiving
-Node checks that do not require that client remain on both platforms. Codec
+[measured Linux Endpoint test cost](endpoint-test-cost.md) records one
+development baseline and the deliberate workload and Permission-hour waits;
+it does not change this checked profile. The Endpoint-originating Route
+bootstrap/prefix client and its stream, credit,
+JOIN and network-issuance tests also execute in the Linux profiles. The
+Endpoint role-network fixture names its selected Carrier, resolution, Publisher,
+and JOIN roles explicitly; it substitutes accepted State and worker qualification
+while starting the actual Node runtimes, Custody allocation, token stock,
+Route forwarding, and role TLS. Its reserved-window variant is used only when
+the child observation process inherits a Permission hour selected by its parent.
+On a failed test, the fixture reports the last 16 bounded state events per
+Node after their cleanup attempts. Periodic resource samples cannot displace
+the transition history; the retained fields are time, kind, state, Carrier,
+and reason, without resource samples or assignment material.
+Receiving Node checks that do not require that client remain on both platforms. Codec
 round trips, private-capsule cryptography and network tests that construct
 Endpoint operations execute with the Linux client. Shared outer-handshake
 admission and receiving-listener address/certificate fixtures remain separately
@@ -233,6 +253,9 @@ its later security, concurrency, or wire tracks.
 checked registry. Every active profile has one real Make entrypoint and exact
 prerequisites. Missing Docker, binaries, privilege, platform, host input, or
 artifact is an invalid environment, never a skip or passing result.
+The architecture gate checks a declared timeout against that Make target's
+recipe and its target dependencies, so another profile's timeout cannot satisfy
+the registry entry.
 
 The maintained local profiles are:
 
@@ -493,6 +516,9 @@ common deadcode registry rather than reconnected to a command.
 The Contributor no-start recovery oracle drives authentic active-current,
 inactive-current, and interrupted-predecessor fixtures through public
 `Profile.Control`, plus incomplete residue and a foreign persisted profile.
+Its retained-installation fixture checks the bundle pin and each file digest,
+then writes the installation record and managed files with the fixed retained
+systemd unit bytes, without invoking the retired Apply/start path.
 The supervisor trace must gain no Start/Restart call. Authenticated predecessor
 reconciliation may Stop the owned unit and leaves it inactive and `WITHDRAWN`;
 inactive recovery remains inactive, while ambiguous or foreign evidence

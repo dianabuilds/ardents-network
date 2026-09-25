@@ -9,14 +9,15 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/terminal"
 )
 
 // textIntroductionPrefixLifecycle is the sole owner of the Publisher's live
 // Introduction prefix and an opening that may replace its absence.
 type textIntroductionPrefixLifecycle struct {
 	live    *textIntroductionPrefixHandle
-	opening *textSourceFlight
-	set     *textSourceSet
+	opening *textOperationFlight
+	set     *textInteriorSet
 }
 
 // textIntroductionPrefixHandle exposes only operations belonging to the exact
@@ -29,7 +30,7 @@ type textIntroductionPrefixHandle struct {
 
 type textIntroductionPrefixRetirement struct {
 	prefix  *route.ClosedSourcePrefix
-	opening *textSourceFlight
+	opening *textOperationFlight
 }
 
 func (lifecycle *textIntroductionPrefixLifecycle) currentLocked() *textIntroductionPrefixHandle {
@@ -55,11 +56,11 @@ func (lifecycle *textIntroductionPrefixLifecycle) openingAvailableLocked() bool 
 	return lifecycle != nil && lifecycle.live == nil && lifecycle.opening == nil
 }
 
-func (lifecycle *textIntroductionPrefixLifecycle) membersSlotLocked() **textSourceSet {
+func (lifecycle *textIntroductionPrefixLifecycle) membersSlotLocked() **textInteriorSet {
 	return &lifecycle.set
 }
 
-func (lifecycle *textIntroductionPrefixLifecycle) reserveOpeningLocked(flight *textSourceFlight) bool {
+func (lifecycle *textIntroductionPrefixLifecycle) reserveOpeningLocked(flight *textOperationFlight) bool {
 	if lifecycle == nil || flight == nil || lifecycle.live != nil || lifecycle.opening != nil {
 		return false
 	}
@@ -67,11 +68,11 @@ func (lifecycle *textIntroductionPrefixLifecycle) reserveOpeningLocked(flight *t
 	return true
 }
 
-func (lifecycle *textIntroductionPrefixLifecycle) openingCurrentLocked(flight *textSourceFlight) bool {
+func (lifecycle *textIntroductionPrefixLifecycle) openingCurrentLocked(flight *textOperationFlight) bool {
 	return lifecycle != nil && lifecycle.opening == flight
 }
 
-func (lifecycle *textIntroductionPrefixLifecycle) finishOpeningLocked(flight *textSourceFlight,
+func (lifecycle *textIntroductionPrefixLifecycle) finishOpeningLocked(flight *textOperationFlight,
 	prefix *route.ClosedSourcePrefix, cancel context.CancelFunc, publish bool) bool {
 	if lifecycle == nil || lifecycle.opening != flight {
 		return false
@@ -172,7 +173,7 @@ func (handle *textIntroductionPrefixHandle) introductionRecipient() ([32]byte, t
 }
 
 func (handle *textIntroductionPrefixHandle) register(ctx context.Context, present route.ClosedTokenPresenter,
-	request route.ClosedRegistrationRequest) (*route.ClosedIntroductionRegistration, error) {
+	request terminal.RegistrationRequest) (*route.ClosedIntroductionRegistration, error) {
 	prefix, err := handle.routePrefix()
 	if err != nil {
 		return nil, err

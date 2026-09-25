@@ -127,7 +127,7 @@ func runDuty(ctx context.Context, config runtimeConfig, machine *stateMachine, s
 		case <-ticker.C:
 			pressure, sample, pressureErr := config.resourcePressure(server)
 			if pressureErr != nil {
-				return fail(config, machine, server, "resource pressure evidence is unavailable", pressureErr)
+				return fail(config, machine, server, resourcePressureFailureReason(pressureErr), pressureErr)
 			}
 			now := config.now()
 			if !now.Before(nextResourceEvidence) {
@@ -231,8 +231,8 @@ func terminalWithoutDuty(config runtimeConfig, machine *stateMachine, snapshot d
 	if err := machine.move(stateFailed); err != nil {
 		return Result{}, err
 	}
-	_ = emitState(config, *machine, snapshot, "shutdown before assignment admission")
-	return resultFor(machine, snapshot, "shutdown before assignment admission"), cause
+	eventErr := emitState(config, *machine, snapshot, "shutdown before assignment admission")
+	return resultFor(machine, snapshot, "shutdown before assignment admission"), errors.Join(cause, eventErr)
 }
 
 func sameDuty(first, second dutyFacts) bool {

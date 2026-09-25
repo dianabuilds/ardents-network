@@ -5,6 +5,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 )
 
 // TLS completion races the outer reader delivering the first encrypted HELLO.
@@ -22,29 +24,29 @@ func TestClosedOuterBridgeSerializesTLSCompletionWithIncomingBytes(t *testing.T)
 		if err != nil {
 			t.Fatal(err)
 		}
-		bridge, err := NewClosedOuterBridge(handshake, func(uint32, time.Time) error { return nil }, func(ClosedLaneFrame, func() time.Time, bool, bool) error { return nil })
+		bridge, err := NewClosedOuterBridge(handshake, func(uint32, time.Time) error { return nil }, func(ardp.Frame, func() time.Time, bool, bool) error { return nil })
 		if err != nil {
 			t.Fatal(err)
 		}
-		hello := ClosedHello{NetworkID: receiver.NetworkID, StateGeneration: receiver.StateGeneration, StateDigest: receiver.StateDigest,
+		hello := ardp.Hello{NetworkID: receiver.NetworkID, StateGeneration: receiver.StateGeneration, StateDigest: receiver.StateDigest,
 			ProfileDigest: receiver.ProfileDigest, RecipientNodeID: receiver.NodeID, RecipientDutyGeneration: receiver.DutyGeneration,
-			Purpose: ClosedPurposeForwarding, ChannelNonce: [32]byte{21}, Deadline: receiver.Deadline}
-		body, err := EncodeClosedHello(hello)
+			Purpose: ardp.PurposeForwarding, ChannelNonce: [32]byte{21}, Deadline: receiver.Deadline}
+		body, err := ardp.EncodeHello(hello)
 		if err != nil {
 			t.Fatal(err)
 		}
-		if _, err := bridge.Accept(ClosedLaneFrame{Kind: closedFrameHello, Body: body}); err != nil {
+		if _, err := bridge.Accept(ardp.Frame{Kind: ardp.KindHello, Body: body}); err != nil {
 			t.Fatal(err)
 		}
-		body, err = EncodeClosedNodeOpen(ClosedOpen{NextNodeID: receiver.NodeID, NextDutyGeneration: receiver.DutyGeneration, Purpose: ClosedPurposeIssuer, Deadline: receiver.Deadline}, ClosedChildOrdinary)
+		body, err = EncodeClosedNodeOpen(ClosedOpen{NextNodeID: receiver.NodeID, NextDutyGeneration: receiver.DutyGeneration, Purpose: ardp.PurposeIssuer, Deadline: receiver.Deadline}, ClosedChildOrdinary)
 		if err != nil {
 			t.Fatal(err)
 		}
-		lane, err := bridge.Accept(ClosedLaneFrame{Kind: closedFrameOpen, Lane: 1, Body: body})
+		lane, err := bridge.Accept(ardp.Frame{Kind: ardp.KindOpen, Lane: 1, Body: body})
 		if err != nil {
 			t.Fatal(err)
 		}
-		if _, err := bridge.Accept(ClosedLaneFrame{Kind: closedFrameBytes, Lane: 1, Body: []byte{1}}); err != nil {
+		if _, err := bridge.Accept(ardp.Frame{Kind: ardp.KindBytes, Lane: 1, Body: []byte{1}}); err != nil {
 			t.Fatal(err)
 		}
 		var received [1]byte
@@ -57,7 +59,7 @@ func TestClosedOuterBridgeSerializesTLSCompletionWithIncomingBytes(t *testing.T)
 		workers.Go(func() { <-start; beginErr = lane.BeginInnerHello() })
 		workers.Go(func() {
 			<-start
-			_, acceptErr = bridge.Accept(ClosedLaneFrame{Kind: closedFrameBytes, Lane: 1, Body: []byte{2}})
+			_, acceptErr = bridge.Accept(ardp.Frame{Kind: ardp.KindBytes, Lane: 1, Body: []byte{2}})
 		})
 		close(start)
 		workers.Wait()

@@ -1,0 +1,113 @@
+//go:build linux
+
+package descriptorhistory
+
+import (
+	"crypto/sha256"
+	"errors"
+	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/service/reachability"
+)
+
+// Each authorized context retains at most the receiving Store's 128 Targets.
+// Expired entries retain their floors until context retirement; capacity never
+// evicts an older floor or silently moves private history to another context.
+const MaximumTargets = 128
+
+type floor struct {
+	generation, revision                  uint64
+	publication, descriptor               [32]byte
+	notAfter                              int64
+	publicationConflict, revisionConflict bool
+}
+
+// History owns one context's private publication and revision floors. Its
+// caller serializes operations with the Context lock and clears it at retirement.
+type History struct {
+	floors map[[32]byte]floor
+}
+
+func (history *History) CanAdmit(target [32]byte) bool {
+	return history.Has(target) || len(history.floors) < MaximumTargets
+}
+
+// Has reports whether this exact Target has a retained floor, including a
+// conflicting one that must remain unavailable to ordinary matching.
+func (history *History) Has(target [32]byte) bool {
+	_, retained := history.floors[target]
+	return retained
+}
+
+func (history *History) Matches(target, publication [32]byte, revision uint64) bool {
+	floor, retained := history.floors[target]
+	return retained && !floor.publicationConflict && !floor.revisionConflict &&
+		floor.publication == publication && floor.revision == revision
+}
+
+func (history *History) Clear() {
+	clear(history.floors)
+	history.floors = nil
+}
+
+// Cleared reports that no private floor map remains allocated after
+// construction or Context retirement.
+func (history *History) Cleared() bool {
+	return history.floors == nil
+}
+
+// Called under the Context lock after the actual resolution flight rechecks its live
+// authority. Verify raw bytes here so no caller-assembled Verified can poison
+// the floor. Returned proof slices have no aliases to retained cache state.
+func (history *History) Accept(raw []byte, target, network, profile [32]byte, at time.Time) (reachability.Verified, error) {
+	verified, err := reachability.VerifyPrivate(raw, target, network, profile, at)
+	if err != nil {
+		return reachability.Verified{}, err
+	}
+	credential := verified.Current.Credential
+	candidate := floor{generation: credential.Generation, revision: verified.Descriptor.Private.Revision,
+		publication: verified.Current.Digest, descriptor: sha256.Sum256(raw), notAfter: credential.NotAfter}
+	prior, exists := history.floors[target]
+	if exists {
+		if candidate.generation < prior.generation {
+			return reachability.Verified{}, errors.New("text Descriptor publication is stale")
+		}
+		if candidate.generation > prior.generation {
+			if credential.NotBefore < prior.notAfter {
+				return reachability.Verified{}, errors.New("text Descriptor publication overlaps retained authority")
+			}
+		} else {
+			if candidate.publication != prior.publication {
+				prior.publicationConflict = true
+				// A conflicting branch cannot shorten the terminal authority interval
+				// against which every future Instance generation must be checked.
+				if candidate.notAfter > prior.notAfter {
+					prior.notAfter = candidate.notAfter
+				}
+				history.floors[target] = prior
+			}
+			if prior.publicationConflict {
+				return reachability.Verified{}, errors.New("text Descriptor publication remains conflicting")
+			}
+			if candidate.revision < prior.revision {
+				return reachability.Verified{}, errors.New("text Descriptor revision is stale")
+			}
+			if candidate.revision == prior.revision {
+				if candidate.descriptor != prior.descriptor {
+					prior.revisionConflict = true
+					history.floors[target] = prior
+				}
+				if prior.revisionConflict {
+					return reachability.Verified{}, errors.New("text Descriptor revision remains conflicting")
+				}
+			}
+		}
+	} else if len(history.floors) >= MaximumTargets {
+		return reachability.Verified{}, errors.New("text Descriptor context capacity exhausted")
+	}
+	if history.floors == nil {
+		history.floors = make(map[[32]byte]floor)
+	}
+	history.floors[target] = candidate
+	return verified, nil
+}

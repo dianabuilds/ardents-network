@@ -6,6 +6,9 @@ import (
 	"context"
 	"crypto/rand"
 	"errors"
+
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
+	"github.com/dianabuilds/ardents-network/internal/route/terminal"
 )
 
 // ResolutionRecipient derives the sole private resolution duty from the live
@@ -19,23 +22,23 @@ func (prefix *ClosedSourcePrefix) resolutionPeer() (closedBootstrapPeer, error) 
 	if prefix == nil || prefix.plan.domain != 1 {
 		return closedBootstrapPeer{}, errors.New("resolution requires the Source role")
 	}
-	return prefix.terminalPeer(ClosedPurposeReachability)
+	return prefix.terminalPeer(ardp.PurposeReachability)
 }
-func (prefix *ClosedSourcePrefix) currentControl(purpose ClosedPurpose, peer closedBootstrapPeer) error {
+func (prefix *ClosedSourcePrefix) currentControl(purpose ardp.Purpose, peer closedBootstrapPeer) error {
 	if err := prefix.plan.current(prefix.source, prefix.selection); err != nil {
 		return err
 	}
 	switch purpose {
-	case ClosedPurposeIssuer:
+	case ardp.PurposeIssuer:
 		if prefix.plan.domain == 1 && peer == prefix.plan.peers[2] {
 			return nil
 		}
-	case ClosedPurposeSubmission:
+	case ardp.PurposeSubmission:
 		current, err := prefix.submissionPeer()
 		if err == nil && current == peer {
 			return nil
 		}
-	case ClosedPurposeReachability:
+	case ardp.PurposeReachability:
 		current, err := prefix.resolutionPeer()
 		if err == nil && current == peer {
 			return nil
@@ -60,20 +63,20 @@ func (prefix *ClosedSourcePrefix) ExchangeDescriptor(ctx context.Context, presen
 	}
 	var operation []byte
 	if len(descriptor) == 0 {
-		operation, err = EncodeClosedDescriptorLookup(nonce, target)
+		operation, err = terminal.EncodeDescriptorLookup(nonce, target)
 	} else {
-		operation, err = EncodeClosedDescriptorPublication(nonce, descriptor)
+		operation, err = terminal.EncodeDescriptorPublication(nonce, descriptor)
 	}
 	if err != nil {
 		return 0, nil, err
 	}
 	defer clear(operation)
-	body, err := prefix.exchangeControl(ctx, ClosedPurposeReachability, peer, present, operation)
+	body, err := prefix.exchangeControl(ctx, ardp.PurposeReachability, peer, present, operation)
 	if err != nil {
 		return 0, nil, err
 	}
 	defer clear(body)
-	status, proof, err := DecodeClosedDescriptorResult(body, nonce)
+	status, proof, err := terminal.DecodeDescriptorResult(body, nonce)
 	if err == nil && status == 0 && (len(descriptor) == 0) != (len(proof) != 0) {
 		return 0, nil, errors.New("closed Descriptor result has wrong operation payload")
 	}

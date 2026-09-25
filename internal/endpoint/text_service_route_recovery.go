@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
-	"github.com/dianabuilds/ardents-network/internal/route"
+	introductioncapsule "github.com/dianabuilds/ardents-network/internal/route/capsule"
 	nativeconnection "github.com/dianabuilds/ardents-network/internal/service/connection"
 )
 
@@ -79,14 +79,12 @@ func (owner *textContext) prepareTextRecovery(ctx context.Context, job *textJobI
 	profile, now, err := owner.textPermissionProfileLocked()
 	prefix := owner.currentTextSourceLocked()
 	recipient := verified.Descriptor.Private
-	floor := owner.descriptorFloors[binding.facts.Target]
 	if attemptErr := ctx.Err(); attemptErr != nil {
 		return nil, attemptErr
 	}
 	if err != nil || prefix == nil || !owner.liveTextServiceJobLocked(job, broker.Connection) ||
 		!binding.matchesPublication(verified.Current) || verified.Descriptor.ProfileDigest != binding.facts.ProfileDigest ||
-		profile.Digest != binding.facts.ProfileDigest || floor.publicationConflict || floor.revisionConflict ||
-		floor.publication != binding.facts.PublicationDigest || floor.revision != recipient.Revision ||
+		profile.Digest != binding.facts.ProfileDigest || !owner.descriptorHistory.Matches(binding.facts.Target, binding.facts.PublicationDigest, recipient.Revision) ||
 		recipient.Revision < binding.introduction.Revision ||
 		recipient.Revision == 0 || recipient.Slot == [32]byte{} || recipient.RecipientKey == [32]byte{} ||
 		now.Before(recipient.NotBefore) || !now.Before(recipient.NotAfter) {
@@ -107,24 +105,24 @@ func (owner *textContext) prepareTextRecovery(ctx context.Context, job *textJobI
 		return nil, errors.New("text recovery deadline unavailable")
 	}
 	facts := binding.facts
-	plaintext := route.ClosedIntroductionPlaintext{Network: facts.Network, Target: facts.Target,
+	plaintext := introductioncapsule.Plaintext{Network: facts.Network, Target: facts.Target,
 		PublicationDigest: facts.PublicationDigest, Revision: recipient.Revision, RendezvousNode: node,
 		RendezvousDutyGeneration: generation, ProfileDigest: facts.ProfileDigest, ConnectionNonce: facts.ConnectionNonce,
 		AttachmentGeneration: request.Generation, Deadline: deadline, InitiatorBinding: facts.InitiatorBinding,
 		WorkSafetyNotAfter: facts.WorkSafetyNotAfter, WorkSafetyMaximum: facts.WorkSafetyMaximum,
 		NoNewRecoveryAfter: facts.NoNewRecoveryAfter}
-	capsule := route.ClosedIntroductionCapsule{Slot: recipient.Slot, Revision: recipient.Revision, Expiry: deadline}
+	capsule := introductioncapsule.Capsule{Slot: recipient.Slot, Revision: recipient.Revision, Expiry: deadline}
 	var requestNonce [32]byte
 	for _, value := range []*[32]byte{&plaintext.JoinSecret, &plaintext.HandshakeContext, &capsule.DeliveryNonce, &requestNonce} {
 		if _, err := rand.Read(value[:]); err != nil {
 			return nil, err
 		}
 	}
-	capsule, digest, err := route.SealClosedIntroduction(capsule, recipient.RecipientKey, plaintext)
+	capsule, digest, err := introductioncapsule.Seal(capsule, recipient.RecipientKey, plaintext)
 	if err != nil {
 		return nil, err
 	}
-	operation, err := route.EncodeClosedIntroductionSubmission(requestNonce, capsule)
+	operation, err := introductioncapsule.EncodeSubmission(requestNonce, capsule)
 	if err != nil {
 		return nil, err
 	}

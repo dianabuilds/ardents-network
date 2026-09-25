@@ -10,6 +10,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
 	"github.com/dianabuilds/ardents-network/internal/application/streamqualification"
+	"github.com/dianabuilds/ardents-network/internal/qualification"
 	"github.com/dianabuilds/ardents-network/internal/resource"
 	"github.com/dianabuilds/ardents-network/internal/service/targetlink"
 )
@@ -26,12 +27,12 @@ type StreamQualificationConfig struct {
 	ReaderIndex  int
 	Link         string
 	HostingRoot  string
-	Measurements *StreamQualificationMeasurements
+	Measurements *qualification.Measurements
 	Observe      func(context.Context, StreamQualificationEvent) error
 }
 
 type StreamQualificationEvent struct {
-	Artifact *StreamQualificationArtifact
+	Artifact *qualification.Artifact
 	Elapsed  time.Duration
 	Host     *resource.HostingSample
 	Usage    *resource.Sample
@@ -59,7 +60,7 @@ func RunStreamQualification(ctx context.Context, config StreamQualificationConfi
 	if ctx == nil || ctx.Err() != nil || config.Observe == nil || config.Seed == [32]byte{} || config.HostingRoot == "" || config.Measurements == nil {
 		return report, errors.New("qualification configuration unavailable")
 	}
-	qualification, err := newTextQualificationRun(config.Role, config.Profile, config.Seed)
+	qualification, err := qualification.NewRun(config.Role, config.Profile, config.Seed)
 	if err != nil {
 		return report, err
 	}
@@ -108,7 +109,7 @@ func RunStreamQualification(ctx context.Context, config StreamQualificationConfi
 	monitorCtx, stopMonitoring := context.WithCancel(lifetime)
 	monitor := make(chan error, 1)
 	sampleOwner := func(sampleCtx context.Context) error {
-		sample, usage, err := config.Measurements.sample(sampleCtx, host)
+		sample, usage, err := config.Measurements.Sample(sampleCtx, host)
 		if err != nil {
 			return err
 		}
@@ -179,10 +180,11 @@ func RunStreamQualification(ctx context.Context, config StreamQualificationConfi
 			snapshot.StartedElapsed = snapshot.Started.Sub(origin)
 			return config.Observe(observeCtx, StreamQualificationEvent{Elapsed: time.Since(origin), Kind: "stream-progress", Report: &snapshot})
 		}
-		if err := config.Measurements.add(worker.lifetime.cgroup); err != nil {
+		retireWorker, err := config.Measurements.RegisterWorker(worker.lifetime.cgroup)
+		if err != nil {
 			return err
 		}
-		defer config.Measurements.retire(worker.lifetime.cgroup)
+		defer retireWorker()
 		stopQualificationSampling := func() error {
 			stopErr := stopSamples()
 			finalCtx, finish := context.WithTimeout(context.Background(), time.Second)
@@ -191,10 +193,10 @@ func RunStreamQualification(ctx context.Context, config StreamQualificationConfi
 			finish()
 			barrierCtx, stopBarrier := context.WithTimeout(lifetime, 30*time.Second)
 			defer stopBarrier()
-			return errors.Join(stopErr, sampleErr, config.Measurements.finish(barrierCtx))
+			return errors.Join(stopErr, sampleErr, config.Measurements.Finish(barrierCtx))
 		}
-		if err := qualification.configure(&report, config.Measurements.acquireIntroductionOpening,
-			config.Measurements.acquireIntroductionSetup, stopQualificationSampling, observe); err != nil {
+		if err := qualification.Configure(&report, config.Measurements.AcquireIntroductionOpening,
+			config.Measurements.AcquireIntroductionSetup, stopQualificationSampling, observe); err != nil {
 			return err
 		}
 		if err := owner.provisionTextPermission(lifetime, permission.RequestPath, permission.ResponsePath, permission.Maxima, func(reportCtx context.Context, digest [32]byte) error {

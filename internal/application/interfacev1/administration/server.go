@@ -99,7 +99,7 @@ func (server *server) handle(connection *net.UnixConn) {
 	var trailing [1]byte
 	n, tailErr := connection.Read(trailing[:])
 	if err != nil || n != 0 || tailErr != io.EOF {
-		writeResponse(connection, "unavailable\n")
+		refuseMalformedRequest(connection, n, tailErr)
 		return
 	}
 	if string(raw) == "link\n" {
@@ -122,6 +122,18 @@ func (server *server) handle(connection *net.UnixConn) {
 		return
 	}
 	writeResponse(connection, response)
+}
+
+// refuseMalformedRequest drains a bounded surplus after the first extra byte.
+// Closing a Windows Unix socket with unread inbound bytes can reset the peer
+// before it receives the refusal. Requests beyond this bound are closed.
+func refuseMalformedRequest(connection *net.UnixConn, surplusRead int, surplusErr error) {
+	if surplusRead != 0 && surplusErr == nil {
+		if _, err := io.CopyN(io.Discard, connection, 4096); !errors.Is(err, io.EOF) {
+			return
+		}
+	}
+	writeResponse(connection, "unavailable\n")
 }
 
 func writeResponse(connection *net.UnixConn, response string) {

@@ -10,6 +10,8 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
+	introductioncapsule "github.com/dianabuilds/ardents-network/internal/route/capsule"
 )
 
 // This wrapper pauses a synchronous authority read at the last binding
@@ -45,18 +47,18 @@ func checkTextCapsuleAdmissionBoundaries(t *testing.T, publisher, reader *textCo
 			defer func() { endpoint.clock, endpoint.closedState = clock, source }()
 			plaintext := original.plaintext
 			plaintext.Deadline = clock().Add(10 * time.Second).UTC().Truncate(time.Second)
-			capsule := route.ClosedIntroductionCapsule{Slot: publisher.registration.request.Slot, Revision: plaintext.Revision,
+			capsule := introductioncapsule.Capsule{Slot: publisher.registration.request.Slot, Revision: plaintext.Revision,
 				Expiry: plaintext.Deadline, DeliveryNonce: fixtureID(byte(140 + index))}
-			sealed, _, err := route.SealClosedIntroduction(capsule, recipient, plaintext)
+			sealed, _, err := introductioncapsule.Seal(capsule, recipient, plaintext)
 			if err != nil {
 				t.Fatal(err)
 			}
-			operation, err := route.EncodeClosedIntroductionSubmission(fixtureID(byte(150+index)), sealed)
+			operation, err := introductioncapsule.EncodeSubmission(fixtureID(byte(150+index)), sealed)
 			if err != nil {
 				t.Fatal(err)
 			}
 			// Each case isolates admission from the separately tested rate limiter.
-			publisher.introductionOpenings = [4]time.Time{}
+			publisher.introductionAdmission.openings = [4]time.Time{}
 			if index < 3 {
 				source.mu.Lock()
 				rendezvous := -1
@@ -72,7 +74,7 @@ func checkTextCapsuleAdmissionBoundaries(t *testing.T, publisher, reader *textCo
 				prior := source.snapshot.Candidates[rendezvous].FamilyID
 				var conflict [32]byte
 				for _, role := range source.view.Nodes[:source.view.NodeCount] {
-					purpose := []route.ClosedPurpose{route.ClosedPurposeReachability, route.ClosedPurposeIntroduction, route.ClosedPurposeIssuer}[index]
+					purpose := []ardp.Purpose{ardp.PurposeReachability, ardp.PurposeIntroduction, ardp.PurposeIssuer}[index]
 					if route.ClosedPurposePermitsDuty(purpose, role.RoleDomain, role.Subrole) {
 						for _, candidate := range source.snapshot.Candidates[:source.snapshot.CandidateCount] {
 							if candidate.NodeID == role.NodeID {
@@ -106,7 +108,7 @@ func checkTextCapsuleAdmissionBoundaries(t *testing.T, publisher, reader *textCo
 			if err == nil || accepted != nil || strings.Contains(err.Error(), "rate unavailable") {
 				t.Errorf("invalid final admission accepted: %v", err)
 			}
-			if _, retained := publisher.introductionReplays[capsule.DeliveryNonce]; retained {
+			if _, retained := publisher.introductionAdmission.replays[capsule.DeliveryNonce]; retained {
 				t.Error("failed admission retained a successful delivery")
 			}
 		})

@@ -3,7 +3,8 @@ package credential
 import (
 	"encoding/binary"
 	"errors"
-	"github.com/dianabuilds/ardents-network/internal/route"
+
+	"github.com/dianabuilds/ardents-network/internal/route/terminal"
 )
 
 const closedTokenBatchCountOffset = len(closedTokenBatchMagic) + permissionSize + 32 + 1 + 8 + 346
@@ -15,7 +16,7 @@ func (issuer *ClosedTokenIssuer) IssueTerminalOperation(body []byte) ([]byte, er
 }
 
 func (issuer *ClosedTokenIssuer) issueTerminalOperation(body []byte, kind closedIssuanceKind) ([]byte, error) {
-	request, err := route.DecodeClosedIssuanceRequest(body)
+	request, err := terminal.DecodeIssuanceRequest(body)
 	if err != nil {
 		return nil, err
 	}
@@ -28,7 +29,7 @@ func (issuer *ClosedTokenIssuer) issueTerminalOperation(body []byte, kind closed
 	if encodeErr != nil {
 		return nil, encodeErr
 	}
-	return route.EncodeClosedIssuanceResult(request.Nonce, closedTokenTerminalStatus(result.Status), payload)
+	return terminal.EncodeIssuanceResult(request.Nonce, closedTokenTerminalStatus(result.Status), payload)
 }
 
 func decodeClosedTokenBatchPadded(raw []byte) ([]byte, error) {

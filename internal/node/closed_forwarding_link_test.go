@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 )
 
 func TestClosedForwardingLinkPreservesHalfCloseCreditsOnceAndJoinsReverse(t *testing.T) {
@@ -32,8 +33,8 @@ func testClosedForwardingLinkCompletion(t *testing.T, timing string) {
 		t.Fatal(err)
 	}
 	defer channel.Cancel()
-	body, _ := route.EncodeClosedOpen(route.ClosedOpen{NextNodeID: [32]byte{3}, NextDutyGeneration: 4, Purpose: route.ClosedPurposeIssuer, Deadline: deadline})
-	if _, err := channel.Accept(route.ClosedLaneFrame{Kind: 4, Lane: 1, Body: body}); err != nil {
+	body, _ := route.EncodeClosedOpen(route.ClosedOpen{NextNodeID: [32]byte{3}, NextDutyGeneration: 4, Purpose: ardp.PurposeIssuer, Deadline: deadline})
+	if _, err := channel.Accept(ardp.Frame{Kind: 4, Lane: 1, Body: body}); err != nil {
 		t.Fatal(err)
 	}
 	channel.NextAvailable(nil) // The already selected next hop is the explicit pipe fixture below.
@@ -61,8 +62,8 @@ func testClosedForwardingLinkCompletion(t *testing.T, timing string) {
 	reverse := newClosedForwardingQueue(4*16 + 4 + len("response") + 1)
 	session := &closedForwardingSession{owner: newClosedForwardingSessions(), carrier: local, invalidate: func() error { return nil },
 		children: map[uint32]*closedForwardingQueue{3: reverse}, retired: make(map[uint32]struct{}),
-		queues: map[uint32]func(route.ClosedLaneFrame) error{3: func(frame route.ClosedLaneFrame) error { frame.Lane = 1; return channel.QueueReverse(frame) }}}
-	published := make(chan route.ClosedLaneFrame, 8)
+		queues: map[uint32]func(ardp.Frame) error{3: func(frame ardp.Frame) error { frame.Lane = 1; return channel.QueueReverse(frame) }}}
+	published := make(chan ardp.Frame, 8)
 	aborted := make(chan struct{}, 1)
 	closeWriting, allowClose := make(chan struct{}), make(chan struct{})
 	var allowOnce sync.Once
@@ -70,7 +71,7 @@ func testClosedForwardingLinkCompletion(t *testing.T, timing string) {
 	defer releaseClose()
 	link := &closedForwardingLink{session: session, remoteLane: 3, localLane: 1, reverse: reverse, lease: lease, channel: channel,
 		done: make(chan struct{}), stopped: make(chan struct{}), abort: func() { aborted <- struct{}{} },
-		write: func(frame route.ClosedLaneFrame) error {
+		write: func(frame ardp.Frame) error {
 			if err := channel.AccountOutput(frame); err != nil {
 				return err
 			}
@@ -100,7 +101,7 @@ func testClosedForwardingLinkCompletion(t *testing.T, timing string) {
 	}()
 	go func() {
 		defer peer.Close()
-		frame, err := route.ReadClosedLaneFrame(peer)
+		frame, err := ardp.ReadFrame(peer)
 		if err != nil {
 			peerDone <- err
 			return
@@ -109,7 +110,7 @@ func testClosedForwardingLinkCompletion(t *testing.T, timing string) {
 			peerDone <- net.ErrClosed
 			return
 		}
-		frame, err = route.ReadClosedLaneFrame(peer)
+		frame, err = ardp.ReadFrame(peer)
 		if err != nil {
 			peerDone <- err
 			return
@@ -118,18 +119,18 @@ func testClosedForwardingLinkCompletion(t *testing.T, timing string) {
 			peerDone <- net.ErrClosed
 			return
 		}
-		for _, frame := range []route.ClosedLaneFrame{
+		for _, frame := range []ardp.Frame{
 			{Kind: 7, Lane: 3, Body: binary.BigEndian.AppendUint32(nil, uint32(len("request")))},
 			{Kind: 6, Lane: 3, Body: []byte("response")}, {Kind: 8, Lane: 3}, {Kind: 9, Lane: 3, Body: []byte{0}},
 		} {
-			if err := route.WriteClosedLaneFrame(peer, frame); err != nil {
+			if err := ardp.WriteFrame(peer, frame); err != nil {
 				peerDone <- err
 				return
 			}
 		}
 		peerDone <- nil
 	}()
-	for _, frame := range []route.ClosedLaneFrame{{Kind: 6, Lane: 1, Body: []byte("request")}, {Kind: 8, Lane: 1}} {
+	for _, frame := range []ardp.Frame{{Kind: 6, Lane: 1, Body: []byte("request")}, {Kind: 8, Lane: 1}} {
 		if _, err := channel.Accept(frame); err != nil {
 			t.Fatal(err)
 		}
@@ -137,7 +138,7 @@ func testClosedForwardingLinkCompletion(t *testing.T, timing string) {
 		if !available || event.Kind != frame.Kind {
 			t.Fatal("outbound event missing")
 		}
-		if written, err := session.writeChildFrame(route.ClosedLaneFrame{Kind: event.Kind, Lane: 3, Body: event.Bytes}, deadline, reverse); err != nil || !written {
+		if written, err := session.writeChildFrame(ardp.Frame{Kind: event.Kind, Lane: 3, Body: event.Bytes}, deadline, reverse); err != nil || !written {
 			t.Fatalf("outbound frame was not emitted: written=%v err=%v", written, err)
 		}
 	}
@@ -153,7 +154,7 @@ func testClosedForwardingLinkCompletion(t *testing.T, timing string) {
 	if timing == "queued-terminal" {
 		// The complete peer CLOSE and physical EOF are already observed, but
 		// the child copier has not run. Local cleanup cannot depend on it.
-		if _, err := channel.Accept(route.ClosedLaneFrame{Kind: 9, Lane: 1, Body: []byte{5}}); err != nil {
+		if _, err := channel.Accept(ardp.Frame{Kind: 9, Lane: 1, Body: []byte{5}}); err != nil {
 			t.Fatal(err)
 		}
 		links := map[uint32]*closedForwardingLink{1: link}
@@ -192,7 +193,7 @@ func testClosedForwardingLinkCompletion(t *testing.T, timing string) {
 		case <-time.After(time.Second):
 			t.Fatal("terminal writer not reached")
 		}
-		if _, err := channel.Accept(route.ClosedLaneFrame{Kind: 7, Lane: 1, Body: binary.BigEndian.AppendUint32(nil, uint32(len("response")))}); err != nil {
+		if _, err := channel.Accept(ardp.Frame{Kind: 7, Lane: 1, Body: binary.BigEndian.AppendUint32(nil, uint32(len("response")))}); err != nil {
 			t.Fatal(err)
 		}
 		finished := make(chan error, 1)
@@ -232,7 +233,7 @@ func testClosedForwardingLinkCompletion(t *testing.T, timing string) {
 	}
 	// The upstream owner releases its local child after receiving remote CLOSE.
 	// The next carrier has already ended, so cleanup must not write there again.
-	if _, err := channel.Accept(route.ClosedLaneFrame{Kind: 9, Lane: 1, Body: []byte{5}}); err != nil {
+	if _, err := channel.Accept(ardp.Frame{Kind: 9, Lane: 1, Body: []byte{5}}); err != nil {
 		t.Fatal(err)
 	}
 	links := map[uint32]*closedForwardingLink{1: link}
@@ -260,8 +261,8 @@ func TestClosedForwardingRetiredReverseCannotAbortSiblingOrSharedCarrier(t *test
 	}
 	defer channel.Cancel()
 	for _, lane := range []uint32{1, 3} {
-		body, _ := route.EncodeClosedOpen(route.ClosedOpen{NextNodeID: [32]byte{2}, NextDutyGeneration: 3, Purpose: route.ClosedPurposeIssuer, Deadline: deadline})
-		if _, err := channel.Accept(route.ClosedLaneFrame{Kind: 4, Lane: lane, Body: body}); err != nil {
+		body, _ := route.EncodeClosedOpen(route.ClosedOpen{NextNodeID: [32]byte{2}, NextDutyGeneration: 3, Purpose: ardp.PurposeIssuer, Deadline: deadline})
+		if _, err := channel.Accept(ardp.Frame{Kind: 4, Lane: lane, Body: body}); err != nil {
 			t.Fatal(err)
 		}
 		channel.NextAvailable(nil)
@@ -283,18 +284,18 @@ func TestClosedForwardingRetiredReverseCannotAbortSiblingOrSharedCarrier(t *test
 	defer sibling.Release()
 	first, second := newClosedForwardingQueue(80), newClosedForwardingQueue(80)
 	session := &closedForwardingSession{children: map[uint32]*closedForwardingQueue{3: first, 5: second}, retired: make(map[uint32]struct{}),
-		queues: map[uint32]func(route.ClosedLaneFrame) error{
-			3: func(frame route.ClosedLaneFrame) error { frame.Lane = 1; return channel.QueueReverse(frame) },
-			5: func(frame route.ClosedLaneFrame) error { frame.Lane = 3; return channel.QueueReverse(frame) },
+		queues: map[uint32]func(ardp.Frame) error{
+			3: func(frame ardp.Frame) error { frame.Lane = 1; return channel.QueueReverse(frame) },
+			5: func(frame ardp.Frame) error { frame.Lane = 3; return channel.QueueReverse(frame) },
 		}}
 	session.retirements = map[uint32]func() bool{3: func() bool { return channel.ReverseRetired(1) }, 5: func() bool { return channel.ReverseRetired(3) }}
-	late := route.ClosedLaneFrame{Kind: 6, Lane: 3, Body: []byte("late")}
+	late := ardp.Frame{Kind: 6, Lane: 3, Body: []byte("late")}
 	for range 4 {
 		if !session.deliverReverse(late) {
 			t.Fatal("live reverse refused")
 		}
 	}
-	if _, err := channel.Accept(route.ClosedLaneFrame{Kind: 9, Lane: 1, Body: []byte{1}}); err != nil {
+	if _, err := channel.Accept(ardp.Frame{Kind: 9, Lane: 1, Body: []byte{1}}); err != nil {
 		t.Fatal(err)
 	}
 	channel.NextAvailable(nil)
@@ -306,7 +307,7 @@ func TestClosedForwardingRetiredReverseCannotAbortSiblingOrSharedCarrier(t *test
 	aborted, written := false, false
 	link := &closedForwardingLink{session: session, remoteLane: 3, localLane: 1, reverse: first, lease: lease, channel: channel,
 		done: make(chan struct{}), stopped: make(chan struct{}), abort: func() { aborted = true },
-		write: func(frame route.ClosedLaneFrame) error {
+		write: func(frame ardp.Frame) error {
 			if err := channel.AccountOutput(frame); err != nil {
 				return err
 			}
@@ -323,7 +324,7 @@ func TestClosedForwardingRetiredReverseCannotAbortSiblingOrSharedCarrier(t *test
 	if _, err := sibling.Carrier(); err != nil {
 		t.Fatal("closed one child invalidated shared Carrier")
 	}
-	if !session.deliverReverse(route.ClosedLaneFrame{Kind: 6, Lane: 5, Body: []byte("sibling")}) {
+	if !session.deliverReverse(ardp.Frame{Kind: 6, Lane: 5, Body: []byte("sibling")}) {
 		t.Fatal("sibling reverse refused")
 	}
 	frame, _ := second.next()

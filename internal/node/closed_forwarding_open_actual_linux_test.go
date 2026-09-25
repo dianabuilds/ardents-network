@@ -12,6 +12,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 )
 
 // This is the caller boundary: TCP/TLS and QUIC both cross the real shared
@@ -85,12 +86,12 @@ func testClosedForwardingOpenActualCarrierOutcome(t *testing.T, profile route.Ca
 			peerDone <- errors.New("actual carrier lost Node authentication")
 			return
 		}
-		hello, readErr := route.ReadClosedLaneFrame(connection)
+		hello, readErr := ardp.ReadFrame(connection)
 		if readErr != nil || hello.Kind != 1 || hello.Lane != 0 {
 			peerDone <- errors.New("actual outer HELLO was not received")
 			return
 		}
-		if _, readErr = route.DecodeClosedHello(hello.Body); readErr != nil {
+		if _, readErr = ardp.DecodeHello(hello.Body); readErr != nil {
 			peerDone <- readErr
 			return
 		}
@@ -108,9 +109,9 @@ func testClosedForwardingOpenActualCarrierOutcome(t *testing.T, profile route.Ca
 		if status != 0 {
 			credit = 0
 		}
-		accept, frameErr := route.ClosedAcceptFrame(status, credit)
+		accept, frameErr := ardp.AcceptFrame(status, credit)
 		if frameErr == nil {
-			frameErr = route.WriteClosedLaneFrame(connection, accept)
+			frameErr = ardp.WriteFrame(connection, accept)
 		}
 		if frameErr != nil {
 			peerDone <- frameErr
@@ -123,7 +124,7 @@ func testClosedForwardingOpenActualCarrierOutcome(t *testing.T, profile route.Ca
 			peerDone <- nil
 			return
 		}
-		child, readErr := route.ReadClosedLaneFrame(connection)
+		child, readErr := ardp.ReadFrame(connection)
 		if readErr != nil || child.Kind != 4 || child.Lane != 1 {
 			peerDone <- errors.New("actual child OPEN was not received")
 			return
@@ -132,7 +133,7 @@ func testClosedForwardingOpenActualCarrierOutcome(t *testing.T, profile route.Ca
 			peerDone <- errors.New("actual child OPEN was altered")
 			return
 		}
-		if frameErr = route.WriteClosedLaneFrame(connection, route.ClosedLaneFrame{Kind: 6, Lane: child.Lane, Body: []byte("child-response")}); frameErr != nil {
+		if frameErr = ardp.WriteFrame(connection, ardp.Frame{Kind: 6, Lane: child.Lane, Body: []byte("child-response")}); frameErr != nil {
 			peerDone <- frameErr
 			return
 		}
@@ -169,7 +170,7 @@ func testClosedForwardingOpenActualCarrierOutcome(t *testing.T, profile route.Ca
 		cancel()
 		<-cancelJoined
 	})
-	outputs := make(chan route.ClosedLaneFrame, 1)
+	outputs := make(chan ardp.Frame, 1)
 	type openResult struct {
 		link *closedForwardingLink
 		err  error
@@ -179,7 +180,7 @@ func testClosedForwardingOpenActualCarrierOutcome(t *testing.T, profile route.Ca
 	workers.Add(1)
 	go func() {
 		defer workers.Done()
-		link, openErr := server.openForwardingLink(ctx, open, route.ClosedChildOrdinary, 1, channel, func(frame route.ClosedLaneFrame) error {
+		link, openErr := server.openForwardingLink(ctx, open, route.ClosedChildOrdinary, 1, channel, func(frame ardp.Frame) error {
 			outputs <- frame
 			return nil
 		}, func() {})
@@ -286,7 +287,7 @@ func closedForwardingActualChannel(t *testing.T, deadline time.Time, open route.
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err = channel.Accept(route.ClosedLaneFrame{Kind: 4, Lane: 1, Body: body}); err != nil {
+	if _, err = channel.Accept(ardp.Frame{Kind: 4, Lane: 1, Body: body}); err != nil {
 		t.Fatal(err)
 	}
 	if _, available := channel.NextAvailable(nil); !available {

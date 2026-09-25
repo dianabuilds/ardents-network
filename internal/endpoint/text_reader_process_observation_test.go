@@ -227,9 +227,12 @@ func textReaderLookupObservation(t *testing.T, owner *textContext, input textRea
 	holderDigest, permissionIDDigest := sha256.Sum256(permission.accepted.HolderKey[:]), sha256.Sum256(permission.accepted.PermissionID[:])
 	batches := permission.batches
 	reserved := permission.reserved
-	floor := owner.descriptorFloors[input.Target]
+	floorRetained := owner.descriptorHistory.Matches(input.Target, verified.Current.Digest, verified.Descriptor.Private.Revision)
 	owner.mu.Unlock()
-	if err := encoder.Encode(textReaderObservationEvent{Phase: "response-received-before-close", ResponseDescriptorSHA256: hex.EncodeToString(responseDigest[:]), ResponseRevision: verified.Descriptor.Private.Revision, HolderSHA256: hex.EncodeToString(holderDigest[:]), PermissionIDSHA256: hex.EncodeToString(permissionIDDigest[:]), IssuanceBatches: batches, Reserved: reserved, DescriptorFloorRevision: floor.revision}); err != nil {
+	if !floorRetained {
+		t.Fatal("reader lookup did not retain the verified Descriptor floor")
+	}
+	if err := encoder.Encode(textReaderObservationEvent{Phase: "response-received-before-close", ResponseDescriptorSHA256: hex.EncodeToString(responseDigest[:]), ResponseRevision: verified.Descriptor.Private.Revision, HolderSHA256: hex.EncodeToString(holderDigest[:]), PermissionIDSHA256: hex.EncodeToString(permissionIDDigest[:]), IssuanceBatches: batches, Reserved: reserved, DescriptorFloorRevision: verified.Descriptor.Private.Revision}); err != nil {
 		t.Fatal(err)
 	}
 	// This is the observer's known Store proof, accepted only after the real

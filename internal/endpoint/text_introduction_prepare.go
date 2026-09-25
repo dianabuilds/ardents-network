@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
-	"github.com/dianabuilds/ardents-network/internal/route"
+	introductioncapsule "github.com/dianabuilds/ardents-network/internal/route/capsule"
 	"github.com/dianabuilds/ardents-network/internal/service/reachability"
 	"github.com/dianabuilds/ardents-network/internal/service/targetlink"
 )
@@ -20,7 +20,7 @@ type textIntroductionAttempt struct {
 	submitted bool
 	joined    bool
 	binding   *textServiceBinding
-	plaintext route.ClosedIntroductionPlaintext
+	plaintext introductioncapsule.Plaintext
 	operation []byte
 	digest    [32]byte
 }
@@ -122,11 +122,9 @@ func (owner *textContext) prepareResolvedTextIntroduction(ctx context.Context, j
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
 	profile, now, err := owner.textPermissionProfileLocked()
-	floor := owner.descriptorFloors[destination.Target]
 	prefix := owner.currentTextSourceLocked()
 	if err != nil || !owner.liveTextServiceJobLocked(job, broker.Connection) || ctx.Err() != nil || prefix == nil ||
-		profile.Digest != verified.Descriptor.ProfileDigest || floor.publicationConflict || floor.revisionConflict ||
-		floor.publication != verified.Current.Digest || floor.revision != verified.Descriptor.Private.Revision {
+		profile.Digest != verified.Descriptor.ProfileDigest || !owner.descriptorHistory.Matches(destination.Target, verified.Current.Digest, verified.Descriptor.Private.Revision) {
 		return nil, errors.New("text Introduction resolution or local authority changed")
 	}
 	node, generation, until, err := prefix.dataJoinRecipient()
@@ -143,22 +141,22 @@ func (owner *textContext) prepareResolvedTextIntroduction(ctx context.Context, j
 		return nil, errors.New("text Introduction deadline unavailable")
 	}
 	facts := binding.facts
-	plaintext := route.ClosedIntroductionPlaintext{Network: facts.Network, Target: facts.Target, PublicationDigest: facts.PublicationDigest,
+	plaintext := introductioncapsule.Plaintext{Network: facts.Network, Target: facts.Target, PublicationDigest: facts.PublicationDigest,
 		Revision: verified.Descriptor.Private.Revision, RendezvousNode: node, RendezvousDutyGeneration: generation, ProfileDigest: facts.ProfileDigest,
 		ConnectionNonce: facts.ConnectionNonce, AttachmentGeneration: 1, Deadline: deadline, InitiatorBinding: facts.InitiatorBinding,
 		WorkSafetyNotAfter: facts.WorkSafetyNotAfter, WorkSafetyMaximum: facts.WorkSafetyMaximum, NoNewRecoveryAfter: facts.NoNewRecoveryAfter}
-	capsule := route.ClosedIntroductionCapsule{Slot: verified.Descriptor.Private.Slot, Revision: plaintext.Revision, Expiry: deadline}
+	capsule := introductioncapsule.Capsule{Slot: verified.Descriptor.Private.Slot, Revision: plaintext.Revision, Expiry: deadline}
 	var requestNonce [32]byte
 	for _, value := range []*[32]byte{&plaintext.JoinSecret, &plaintext.HandshakeContext, &capsule.DeliveryNonce, &requestNonce} {
 		if _, err := rand.Read(value[:]); err != nil {
 			return nil, err
 		}
 	}
-	capsule, digest, err := route.SealClosedIntroduction(capsule, verified.Descriptor.Private.RecipientKey, plaintext)
+	capsule, digest, err := introductioncapsule.Seal(capsule, verified.Descriptor.Private.RecipientKey, plaintext)
 	if err != nil {
 		return nil, err
 	}
-	operation, err := route.EncodeClosedIntroductionSubmission(requestNonce, capsule)
+	operation, err := introductioncapsule.EncodeSubmission(requestNonce, capsule)
 	if err != nil {
 		return nil, err
 	}
@@ -206,18 +204,18 @@ func (owner *textContext) refreshTextIntroduction(ctx context.Context, job *text
 	}
 	plaintext := attempt.plaintext
 	plaintext.Deadline = deadline
-	capsule := route.ClosedIntroductionCapsule{Slot: introduction.Slot, Revision: introduction.Revision, Expiry: deadline}
+	capsule := introductioncapsule.Capsule{Slot: introduction.Slot, Revision: introduction.Revision, Expiry: deadline}
 	var requestNonce [32]byte
 	for _, value := range []*[32]byte{&capsule.DeliveryNonce, &requestNonce} {
 		if _, err := rand.Read(value[:]); err != nil {
 			return err
 		}
 	}
-	capsule, digest, err := route.SealClosedIntroduction(capsule, introduction.RecipientKey, plaintext)
+	capsule, digest, err := introductioncapsule.Seal(capsule, introduction.RecipientKey, plaintext)
 	if err != nil {
 		return err
 	}
-	operation, err := route.EncodeClosedIntroductionSubmission(requestNonce, capsule)
+	operation, err := introductioncapsule.EncodeSubmission(requestNonce, capsule)
 	if err != nil {
 		return err
 	}

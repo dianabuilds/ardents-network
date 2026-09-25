@@ -33,7 +33,7 @@ func (source *textPausedResolutionState) CurrentClosedRoute() (state.ClosedRoute
 }
 
 func TestTextResolutionCloseJoinsInFlightStateSelection(t *testing.T) {
-	endpoint, owner, source := startTextControlNetwork(t, route.ClosedCarrierTCP, true)
+	endpoint, owner, source := startTextRoleNetwork(t, textRoleNetworkFixture{carrier: route.ClosedCarrierTCP, resolution: true})
 	paused := &textPausedResolutionState{textSourceStateFixture: source, entered: make(chan struct{}), release: make(chan struct{})}
 	endpoint.closedState = paused
 	prefix, err := owner.openTextPrefix(t.Context())
@@ -131,7 +131,7 @@ func TestTextResolutionCompletionRetainsFailedCleanup(t *testing.T) {
 }
 
 func TestTextResolutionOldAcquisitionCannotCommitAfterSourceReplacement(t *testing.T) {
-	endpoint, owner, source := startTextControlNetwork(t, route.ClosedCarrierTCP, true)
+	endpoint, owner, source := startTextRoleNetwork(t, textRoleNetworkFixture{carrier: route.ClosedCarrierTCP, resolution: true})
 	defer func() { _ = endpoint.Close() }()
 	old, err := owner.openTextPrefix(t.Context())
 	if err != nil {
@@ -181,7 +181,7 @@ func TestTextResolutionOldAcquisitionCannotCommitAfterSourceReplacement(t *testi
 
 	verified, commitErr := owner.acceptTextResolutionResult(t.Context(), flight, profile, target, raw)
 	owner.mu.Lock()
-	_, committed := owner.descriptorFloors[target]
+	committed := owner.descriptorHistory.Has(target)
 	retained := owner.currentTextSourceLocked() == replacement && owner.resolution == flight
 	owner.mu.Unlock()
 	if commitErr == nil || verified.Descriptor.Target != [32]byte{} || committed || !retained {

@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 )
 
 func TestClosedOuterLifetimeInterruptsAndJoinsAllChildren(t *testing.T) {
@@ -73,24 +74,24 @@ func TestClosedOuterLifetimeInterruptsAndJoinsAllChildren(t *testing.T) {
 				})
 				done <- finished.Load()
 			}()
-			hello := route.ClosedHello{NetworkID: receiver.NetworkID, StateGeneration: receiver.StateGeneration, StateDigest: receiver.StateDigest, ProfileDigest: receiver.ProfileDigest,
-				RecipientNodeID: receiver.NodeID, RecipientDutyGeneration: receiver.DutyGeneration, Purpose: route.ClosedPurposeForwarding, ChannelNonce: [32]byte{8}, Deadline: receiver.Deadline}
-			body, err := route.EncodeClosedHello(hello)
+			hello := ardp.Hello{NetworkID: receiver.NetworkID, StateGeneration: receiver.StateGeneration, StateDigest: receiver.StateDigest, ProfileDigest: receiver.ProfileDigest,
+				RecipientNodeID: receiver.NodeID, RecipientDutyGeneration: receiver.DutyGeneration, Purpose: ardp.PurposeForwarding, ChannelNonce: [32]byte{8}, Deadline: receiver.Deadline}
+			body, err := ardp.EncodeHello(hello)
 			if err != nil {
 				t.Fatal(err)
 			}
-			if err := route.WriteClosedLaneFrame(peer, route.ClosedLaneFrame{Kind: 1, Body: body}); err != nil {
+			if err := ardp.WriteFrame(peer, ardp.Frame{Kind: 1, Body: body}); err != nil {
 				t.Fatal(err)
 			}
-			if frame, err := route.ReadClosedLaneFrame(peer); err != nil || frame.Kind != 5 {
+			if frame, err := ardp.ReadFrame(peer); err != nil || frame.Kind != 5 {
 				t.Fatalf("outer HELLO: %+v %v", frame, err)
 			}
-			body, err = route.EncodeClosedNodeOpen(route.ClosedOpen{NextNodeID: receiver.NodeID, NextDutyGeneration: receiver.DutyGeneration, Purpose: route.ClosedPurposeIssuer, Deadline: receiver.Deadline}, route.ClosedChildOrdinary)
+			body, err = route.EncodeClosedNodeOpen(route.ClosedOpen{NextNodeID: receiver.NodeID, NextDutyGeneration: receiver.DutyGeneration, Purpose: ardp.PurposeIssuer, Deadline: receiver.Deadline}, route.ClosedChildOrdinary)
 			if err != nil {
 				t.Fatal(err)
 			}
 			for _, id := range []uint32{1, 3, 5} {
-				if err := route.WriteClosedLaneFrame(peer, route.ClosedLaneFrame{Kind: 4, Lane: id, Body: body}); err != nil {
+				if err := ardp.WriteFrame(peer, ardp.Frame{Kind: 4, Lane: id, Body: body}); err != nil {
 					t.Fatal(err)
 				}
 				select {
@@ -111,7 +112,7 @@ func TestClosedOuterLifetimeInterruptsAndJoinsAllChildren(t *testing.T) {
 			case "cancel":
 				cancel()
 			case "invalid-frame":
-				if err := route.WriteClosedLaneFrame(peer, route.ClosedLaneFrame{Kind: 3, Body: []byte{2}}); err != nil {
+				if err := ardp.WriteFrame(peer, ardp.Frame{Kind: 3, Body: []byte{2}}); err != nil {
 					t.Fatal(err)
 				}
 			}
@@ -139,7 +140,7 @@ func TestClosedOuterLifetimeInterruptsAndJoinsAllChildren(t *testing.T) {
 			case <-time.After(5 * time.Second):
 				t.Fatal("outer did not join")
 			}
-			if _, err := outer.Accept(route.ClosedLaneFrame{Kind: 4, Lane: 7, Body: body}); err == nil {
+			if _, err := outer.Accept(ardp.Frame{Kind: 4, Lane: 7, Body: body}); err == nil {
 				t.Fatal("retired outer allocated another child")
 			}
 		})

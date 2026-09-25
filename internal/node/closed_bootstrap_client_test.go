@@ -5,6 +5,8 @@ package node
 import (
 	"testing"
 
+	"github.com/dianabuilds/ardents-network/internal/route/terminal"
+
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/credential"
 )
@@ -22,7 +24,7 @@ func TestClosedBootstrapClientIssuesThroughEntryInteriorAndIssuer(t *testing.T) 
 				if err != nil {
 					t.Fatalf("network exchange %d: %v", attempt, err)
 				}
-				decoded, err := route.DecodeClosedIssuanceResult(result.Body, result.Nonce)
+				decoded, err := terminal.DecodeIssuanceResult(result.Body, result.Nonce)
 				if err != nil || decoded.Status != 0 {
 					t.Fatalf("issuer result: %d %v", decoded.Status, err)
 				}

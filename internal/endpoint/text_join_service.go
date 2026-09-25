@@ -11,6 +11,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
 	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 )
 
 // textJoinedTransport retains the bounded Endpoint exchange until the Service
@@ -47,7 +48,7 @@ func (transport *textJoinedTransport) AuthenticatedPeerRetired() bool {
 func (transport *textJoinedTransport) Close() error {
 	transport.once.Do(func() {
 		if transport.job != nil && transport.job.qualification != nil {
-			transport.job.qualification.releaseJoin(transport.joined)
+			transport.job.qualification.ReleaseJoin(transport.joined)
 		}
 		retirement := transport.Conn.Close()
 		if transport.revoked != nil && transport.revoked.Err() != nil && textRouteStopOnly(retirement) {
@@ -175,11 +176,6 @@ func (owner *textContext) openTextJoinedTransportAfterSetup(ctx context.Context,
 		}
 	}
 	if attempt.plaintext.AttachmentGeneration == 1 && owner.surface == broker.Connection {
-		if job.qualification != nil && job.qualification.acquireIntroduction != nil {
-			if err := job.qualification.acquireIntroduction(joining); err != nil {
-				return nil, err
-			}
-		}
 		if err := owner.refreshTextIntroduction(joining, job, attempt, source); err != nil {
 			return nil, err
 		}
@@ -242,14 +238,8 @@ func (owner *textContext) prepareTextJoinStock(ctx context.Context, attempt *tex
 	bounded, cancel := context.WithDeadline(ctx, facts.Deadline)
 	owner.mu.Lock()
 	profile, _, err := owner.textPermissionProfileLocked()
-	stocked := false
-	if err == nil && prefix.currentLocked(owner) && owner.permission != nil {
-		for _, stock := range owner.permission.stock {
-			if stock.challenge.ReceiverNodeID == node && stock.challenge.ProfileDigest == profile.Digest && stock.challenge.Class == 2 && stock.challenge.WindowStart == owner.permission.accepted.NotBefore && len(stock.tokens) != 0 {
-				stocked = true
-			}
-		}
-	}
+	stocked := err == nil && prefix.currentLocked(owner) &&
+		owner.permission.stockCountFor(profile.Digest, node, 2) != 0
 	owner.mu.Unlock()
 	if err == nil && !stocked {
 		err = owner.issueTextJoinTokens(bounded, [][32]byte{node}, 2, prefix,
@@ -283,11 +273,11 @@ func (owner *textContext) joinTextIntroduction(ctx context.Context, job *textJob
 	if err := attempt.binding.current(); err != nil {
 		return nil, err
 	}
-	return prefix.join(ctx, func(hello route.ClosedHello, class uint8) ([]byte, error) {
+	return prefix.join(ctx, func(hello ardp.Hello, class uint8) ([]byte, error) {
 		owner.mu.Lock()
 		defer owner.mu.Unlock()
 		current, now, err := owner.textPermissionProfileLocked()
-		if err != nil || current != profile || current.Digest != facts.ProfileDigest || !prefix.currentLocked(owner) || !owner.liveTextServiceJobLocked(job, owner.surface) || ctx.Err() != nil || !now.Before(facts.Deadline) || class != 2 || hello.Purpose != route.ClosedPurposeDataJoin || hello.RecipientNodeID != node || hello.RecipientDutyGeneration != generation || hello.NetworkID != current.NetworkID || hello.StateGeneration != current.StateGeneration || hello.StateDigest != current.StateDigest || hello.ProfileDigest != current.Digest || hello.ChannelNonce == [32]byte{} || !now.Before(hello.Deadline) || hello.Deadline.Unix() > facts.WorkSafetyNotAfter {
+		if err != nil || current != profile || current.Digest != facts.ProfileDigest || !prefix.currentLocked(owner) || !owner.liveTextServiceJobLocked(job, owner.surface) || ctx.Err() != nil || !now.Before(facts.Deadline) || class != 2 || hello.Purpose != ardp.PurposeDataJoin || hello.RecipientNodeID != node || hello.RecipientDutyGeneration != generation || hello.NetworkID != current.NetworkID || hello.StateGeneration != current.StateGeneration || hello.StateDigest != current.StateDigest || hello.ProfileDigest != current.Digest || hello.ChannelNonce == [32]byte{} || !now.Before(hello.Deadline) || hello.Deadline.Unix() > facts.WorkSafetyNotAfter {
 			return nil, errors.New("text JOIN token authority changed")
 		}
 		return owner.takeTextTokenLocked(current, now, hello, class, ctx)
@@ -304,7 +294,7 @@ func (owner *textContext) retainTextJoinedTransport(job *textJobIdentity, attemp
 		return false
 	}
 	if job.qualification != nil {
-		job.qualification.retainJoin(joined)
+		job.qualification.RetainJoin(joined)
 	}
 	return true
 }

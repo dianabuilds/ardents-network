@@ -9,6 +9,9 @@ import (
 	"net"
 	"sync"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
+	"github.com/dianabuilds/ardents-network/internal/route/terminal"
 )
 
 // Reserve bounded per-JOIN bookkeeping before handshake. Actual receive and
@@ -24,7 +27,7 @@ var ErrClosedJoinPeerCleanupDeadline = errors.New("closed JOIN peer cleanup dead
 // authentication. The retained Source/Responder prefix owns its parent route.
 type ClosedJoinedStream struct {
 	*closedSourceLane
-	hello               ClosedHello
+	hello               ardp.Hello
 	refillMu            sync.Mutex
 	channels            *closedSourceChannels
 	outer               *closedSourceLane
@@ -62,7 +65,7 @@ func newClosedJoinedStream(ctx context.Context, parent net.Conn, lane *closedSou
 	owner.last = 1
 	owner.retainClosedRead = true
 	owner.framedParent = lane
-	owner.transferred = 3*closedLaneHeaderSize + 209 + 355 + 5 + closedLaneHeaderSize + 4096 + closedLaneHeaderSize + closedTerminalOperationSize
+	owner.transferred = 3*ardp.HeaderSize + 209 + 355 + 5 + ardp.HeaderSize + 4096 + ardp.HeaderSize + terminal.BodySize
 	joined := &closedSourceLane{owner: owner, id: 1, end: lane.end, readEnd: lane.end, writeEnd: lane.end, credit: 64 << 10, receiveCredit: 64 << 10, opened: true, active: true, closeStatus: 0}
 	owner.lanes[1] = joined
 	stream := &ClosedJoinedStream{closedSourceLane: joined, channels: owner, outer: lane, context: ctx, finished: make(chan struct{})}
@@ -124,7 +127,7 @@ func (stream *ClosedJoinedStream) CloseWrite() error {
 		lane.owner.mu.Unlock()
 		return err
 	}
-	request, err := lane.enqueueLocked(ClosedLaneFrame{Kind: closedFrameEOF, Lane: 1}, time.Time{})
+	request, err := lane.enqueueLocked(ardp.Frame{Kind: ardp.KindEOF, Lane: 1}, time.Time{})
 	if err == nil {
 		lane.writeEOF = true
 	}

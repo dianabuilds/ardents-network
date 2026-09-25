@@ -8,14 +8,15 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
 	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 )
 
 type textPublisherPrefixOpening interface {
 	openingAvailableLocked() bool
-	membersSlotLocked() **textSourceSet
-	reserveOpeningLocked(*textSourceFlight) bool
-	openingCurrentLocked(*textSourceFlight) bool
-	finishOpeningLocked(*textSourceFlight, *route.ClosedSourcePrefix, context.CancelFunc, bool) bool
+	membersSlotLocked() **textInteriorSet
+	reserveOpeningLocked(*textOperationFlight) bool
+	openingCurrentLocked(*textOperationFlight) bool
+	finishOpeningLocked(*textOperationFlight, *route.ClosedSourcePrefix, context.CancelFunc, bool) bool
 }
 
 func (owner *textContext) openTextResponderPrefix(ctx context.Context) (*textResponderPrefixHandle, error) {
@@ -75,7 +76,7 @@ func (owner *textContext) openTextPublisherPrefix(ctx context.Context, role text
 		return nil, err
 	}
 	attempt, cancel := context.WithCancel(owner.lease.Context())
-	flight := &textSourceFlight{context: attempt, cancel: cancel, done: make(chan struct{})}
+	flight := &textOperationFlight{context: attempt, cancel: cancel, done: make(chan struct{})}
 	if !role.reserveOpeningLocked(flight) {
 		owner.mu.Unlock()
 		cancel()
@@ -91,7 +92,7 @@ func (owner *textContext) openTextPublisherPrefix(ctx context.Context, role text
 		if domain == 3 {
 			open = route.OpenClosedResponderPrefix
 		}
-		prefix, openErr = open(attempt, source, selection, func(hello route.ClosedHello, class uint8) ([]byte, error) {
+		prefix, openErr = open(attempt, source, selection, func(hello ardp.Hello, class uint8) ([]byte, error) {
 			return owner.presentTextPublisherForwardingToken(role, domain, flight, selection, hello, class)
 		})
 	}
@@ -116,23 +117,17 @@ func (owner *textContext) openTextPublisherPrefix(ctx context.Context, role text
 	return prefix, nil
 }
 
-func (owner *textContext) ensureTextPublisherStock(role textPublisherPrefixOpening, flight *textSourceFlight, selection route.ClosedBootstrapSelection) error {
+func (owner *textContext) ensureTextPublisherStock(role textPublisherPrefixOpening, flight *textOperationFlight, selection route.ClosedBootstrapSelection) error {
 	owner.mu.Lock()
 	profile, _, err := owner.textPermissionProfileLocked()
 	if err != nil || !role.openingCurrentLocked(flight) || flight.context.Err() != nil || owner.permission == nil {
 		owner.mu.Unlock()
 		return errors.New("text Publisher role stock unavailable")
 	}
-	pending := owner.permission.pending != nil
+	pending := owner.permission.hasPending()
 	var missing [][32]byte
 	for _, receiver := range [][32]byte{selection.EntryNodeID, selection.InteriorNodeID} {
-		found := false
-		for _, stock := range owner.permission.stock {
-			if stock.challenge.ReceiverNodeID == receiver && stock.challenge.ProfileDigest == profile.Digest && stock.challenge.Class == 2 && stock.challenge.WindowStart == owner.permission.accepted.NotBefore && len(stock.tokens) != 0 {
-				found = true
-			}
-		}
-		if !found {
+		if owner.permission.stockCountFor(profile.Digest, receiver, 2) == 0 {
 			missing = append(missing, receiver)
 		}
 	}
@@ -148,12 +143,12 @@ func (owner *textContext) ensureTextPublisherStock(role textPublisherPrefixOpeni
 	return nil
 }
 
-func (owner *textContext) presentTextPublisherForwardingToken(role textPublisherPrefixOpening, domain uint8, flight *textSourceFlight, selection route.ClosedBootstrapSelection, hello route.ClosedHello, class uint8) ([]byte, error) {
+func (owner *textContext) presentTextPublisherForwardingToken(role textPublisherPrefixOpening, domain uint8, flight *textOperationFlight, selection route.ClosedBootstrapSelection, hello ardp.Hello, class uint8) ([]byte, error) {
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
 	profile, now, err := owner.textPermissionProfileLocked()
 	if err != nil || owner.surface != broker.Administration || !role.openingCurrentLocked(flight) || flight.context.Err() != nil || owner.permission == nil ||
-		class != 2 || hello.Purpose != route.ClosedPurposeForwarding || hello.NetworkID != profile.NetworkID || hello.ProfileDigest != profile.Digest ||
+		class != 2 || hello.Purpose != ardp.PurposeForwarding || hello.NetworkID != profile.NetworkID || hello.ProfileDigest != profile.Digest ||
 		hello.StateGeneration != profile.StateGeneration || hello.StateDigest != profile.StateDigest || hello.ChannelNonce == [32]byte{} || !now.Before(hello.Deadline) || hello.Deadline.After(profile.NotAfter) {
 		return nil, errors.New("text Publisher role forwarding authority unavailable")
 	}

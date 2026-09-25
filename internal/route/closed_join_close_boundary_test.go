@@ -10,6 +10,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 )
 
 type joinedCloseWriteBoundary struct {
@@ -69,7 +71,7 @@ func checkJoinedCloseBoundary(t *testing.T, mode string) {
 					return
 				}
 			}
-			if _, err := ReadClosedLaneFrame(peer); err != nil {
+			if _, err := ardp.ReadFrame(peer); err != nil {
 				return
 			}
 		}
@@ -90,11 +92,11 @@ func checkJoinedCloseBoundary(t *testing.T, mode string) {
 	}
 	creditDone := make(chan error, 1)
 	if mode == "credit" || mode == "failed-credit" {
-		if err := WriteClosedLaneFrame(peer, ClosedLaneFrame{Kind: closedFrameBytes, Lane: lane.id, Body: []byte{1}}); err != nil {
+		if err := ardp.WriteFrame(peer, ardp.Frame{Kind: ardp.KindBytes, Lane: lane.id, Body: []byte{1}}); err != nil {
 			t.Fatal(err)
 		}
 		tasks.Go(func() { var value [1]byte; _, err := io.ReadFull(lane, value[:]); creditDone <- err })
-		waitSourceChannelState(t, outer, func() bool { return outer.active != nil && outer.active.frame.Kind == closedFrameCredit })
+		waitSourceChannelState(t, outer, func() bool { return outer.active != nil && outer.active.frame.Kind == ardp.KindCredit })
 	}
 	heldRead := &joinedReadBoundary{Conn: lane, entered: make(chan struct{}), release: make(chan struct{})}
 	heldWrite := &joinedCloseWriteBoundary{Conn: heldRead, partial: mode == "partial", entered: make(chan struct{}), release: make(chan struct{})}
@@ -151,7 +153,7 @@ func checkJoinedCloseBoundary(t *testing.T, mode string) {
 	if mode == "refused" {
 		status = 1
 	}
-	if err := WriteClosedLaneFrame(peer, ClosedLaneFrame{Kind: closedFrameClose, Lane: lane.id, Body: []byte{status}}); err != nil {
+	if err := ardp.WriteFrame(peer, ardp.Frame{Kind: ardp.KindClose, Lane: lane.id, Body: []byte{status}}); err != nil {
 		t.Fatal(err)
 	}
 	waitSourceChannelState(t, outer, func() bool { return lane.remoteClosed })

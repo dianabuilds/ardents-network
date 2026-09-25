@@ -124,8 +124,7 @@ and Introduction sender orchestration. Shared credential-relay grammar and the
 standalone reachability Relay remain with their actual consumers; test-local
 reciprocal fixtures do not restore a production receiving path.
 The old Node-leg dial and client confirmation entrypoint are also absent.
-The v1 `ListenNodeCarrier` remains in source but has no production caller;
-its only caller is its own test. Current Node duties use
+The v1 `ListenNodeCarrier` and its exclusive helpers are absent. Current Node duties use
 `ListenClosedSharedCarrier`; the direct role issuer uses
 `ListenClosedRoleCarrier`. Shared byte-lane and TLS/QUIC mechanics remain
 with those closed consumers. The v1 State/profile readers and reciprocal
@@ -251,13 +250,13 @@ an active attachment.
 
 ### Old native listener closure
 
-The one follow-up removal change can delete `node_carrier_listener.go`
+The closure removed `node_carrier_listener.go`
 (`ListenNodeCarrier`, `CarrierListener`, `PendingCarrier`, its private
 TCP/QUIC adapters, v1 server TLS and QUIC configuration) and
-`node_carrier_listener_test.go`. It can also delete their exclusive
-`nodeQUICConfig` from `node_carrier_quic.go` and the otherwise uncalled
-failure-class wrapper in `node_carrier_failure.go`. These symbols have no
-production caller or separately retained test. This is a source closure,
+`node_carrier_listener_test.go`, their exclusive `nodeQUICConfig` from
+`node_carrier_quic.go`, and the otherwise uncalled failure-class wrapper in
+`node_carrier_failure.go`. The removed symbols had no production caller or
+separately retained test. This is a source closure,
 not a change to accepted Carrier selection or wire behavior.
 
 Retain `Carrier` and the v1 profile constants in `node_carrier.go`: the
@@ -336,6 +335,12 @@ and measured. Unsupported platforms refuse rather than silently reporting
 capacity. Resource has no authority over a consumer's lifecycle: Endpoint,
 Node, and Route own their respective readiness, admission, drain, and shutdown
 reaction.
+When a READY Node cannot obtain required pressure evidence, it fails closed.
+Its lifecycle event uses the fixed reason `resource pressure sampling timed out`
+for a measurement deadline and the existing `resource pressure evidence is
+unavailable` reason for other errors. The event never copies raw measurement,
+filesystem, cgroup, or provider error text; the `Run` error retains the
+underlying cause for local diagnosis.
 
 ## Current limits and limitations
 

@@ -6,9 +6,9 @@ import (
 	"context"
 	"errors"
 	"sync"
-	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
+	"github.com/dianabuilds/ardents-network/internal/endpoint/descriptorhistory"
 )
 
 // textContextState owns platform-independent local authorization for a context.
@@ -20,21 +20,14 @@ type textContextState struct {
 	operationFailure  func(string)
 	refresh           textPublicationRefreshLifecycle
 	textPublicationPairLifecycle
-	introductionDelivery  chan struct{}
-	introductionWaiters   map[*textIntroductionWaiter]struct{}
-	introductionRecovery  map[*textIntroductionRecoveryOwner]struct{}
-	introductionExchanges map[*textIntroductionExchange]struct{}
-	introductionReplays   map[[32]byte]time.Time
-	introductionOpenings  [4]time.Time
-	descriptorFloors      map[[32]byte]textDescriptorFloor
-	withdrawal            *textSourceFlight
-	registrationOpening   *textRegistrationFlight
+	introductionDispatch  textIntroductionDispatch
+	introductionExchanges textIntroductionExchangeSet
+	introductionAdmission textIntroductionAdmission
+	descriptorHistory     descriptorhistory.History
 	introduction          textIntroductionPrefixLifecycle
 	responder             textResponderPrefixLifecycle
 	resolution            *textResolutionFlight
 	source                textSourceLifecycle
-	sourceSet             *textSourceSet
-	sourceOperations      chan struct{}
 	issuance              *textIssuanceOperation
 	mu                    sync.Mutex
 	endpoint              *endpoint

@@ -17,6 +17,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/application/streamqualification"
 	"github.com/dianabuilds/ardents-network/internal/endpoint"
+	"github.com/dianabuilds/ardents-network/internal/qualification"
 )
 
 type qualificationParticipantResult struct {
@@ -115,7 +116,7 @@ func run(ctx context.Context, arguments []string, output io.Writer) (outcome err
 	group, cancel := context.WithCancel(ctx)
 	defer cancel()
 	results := make(chan qualificationParticipantResult, len(configs))
-	ownerMeasurements, err := endpoint.NewStreamQualificationMeasurements(len(configs))
+	ownerMeasurements, err := qualification.NewMeasurements(len(configs))
 	if err != nil {
 		return err
 	}

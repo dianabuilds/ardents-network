@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/route"
+	introductioncapsule "github.com/dianabuilds/ardents-network/internal/route/capsule"
 )
 
 // A client can observe the failed Carrier before the Publisher's native
@@ -57,11 +58,11 @@ func TestTextRecoveryDeliveryMayArriveBeforePublisherFailureDetection(t *testing
 	stopInitial := holdTextInitialIntroductionReceiver(t, ctx, publisher, publisherJob)
 
 	publisher.mu.Lock()
-	before := publisher.introductionOpenings[3]
+	before := publisher.introductionAdmission.openings[3]
 	publisher.mu.Unlock()
 	submitted := make(chan error, 1)
 	go func() { submitted <- reader.submitTextIntroduction(ctx, readerJob, early) }()
-	waitTextIntroductionOpening(t, ctx, publisher, before)
+	waitTextIntroductionOpening(t, ctx, publisher, before, submitted, early.plaintext.Deadline)
 	select {
 	case err := <-submitted:
 		t.Fatalf("early recovery delivery was completed before its live owner waited: %v", err)
@@ -92,11 +93,11 @@ func TestTextRecoveryDeliveryMayArriveBeforePublisherFailureDetection(t *testing
 	}
 	defer clear(next.operation)
 	publisher.mu.Lock()
-	before = publisher.introductionOpenings[3]
+	before = publisher.introductionAdmission.openings[3]
 	publisher.mu.Unlock()
 	nextSubmitted := make(chan error, 1)
 	go func() { nextSubmitted <- reader.submitTextIntroduction(ctx, readerJob, next) }()
-	waitTextIntroductionOpening(t, ctx, publisher, before)
+	waitTextIntroductionOpening(t, ctx, publisher, before, nextSubmitted, next.plaintext.Deadline)
 	if err := <-nextSubmitted; err == nil {
 		t.Fatal("expired buffered recovery delivery was accepted")
 	}
@@ -118,7 +119,7 @@ func TestTextRecoveryDeliveryMayArriveBeforePublisherFailureDetection(t *testing
 		t.Fatal(err)
 	}
 	publisher.mu.Lock()
-	retained := len(publisher.introductionRecovery)
+	retained := len(publisher.introductionDispatch.recovery)
 	publisher.mu.Unlock()
 	if retained != 0 {
 		t.Fatalf("retired logical Connection retained %d recovery owners", retained)
@@ -210,7 +211,7 @@ func TestTextIntroductionOrphanRefusalOutlivesCanceledWaiter(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer clear(attempt.operation)
-	request, capsule, err := route.DecodeClosedIntroductionSubmission(attempt.operation)
+	request, capsule, err := introductioncapsule.DecodeSubmission(attempt.operation)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -222,11 +223,11 @@ func TestTextIntroductionOrphanRefusalOutlivesCanceledWaiter(t *testing.T) {
 	clear(capsule.Ciphertext)
 	capsule.Ciphertext = nil
 	capsule.Encapsulation = [32]byte{}
-	capsule, _, err = route.SealClosedIntroduction(capsule, recipient, facts)
+	capsule, _, err = introductioncapsule.Seal(capsule, recipient, facts)
 	if err != nil {
 		t.Fatal(err)
 	}
-	attempt.operation, err = route.EncodeClosedIntroductionSubmission(request, capsule)
+	attempt.operation, err = introductioncapsule.EncodeSubmission(request, capsule)
 	clear(capsule.Ciphertext)
 	if err != nil {
 		t.Fatal(err)
@@ -268,18 +269,24 @@ func TestTextIntroductionOrphanRefusalOutlivesCanceledWaiter(t *testing.T) {
 	}
 }
 
-func waitTextIntroductionOpening(t *testing.T, ctx context.Context, owner *textContext, before time.Time) {
+func waitTextIntroductionOpening(t *testing.T, ctx context.Context, owner *textContext, before time.Time,
+	submitted <-chan error, deadline time.Time,
+) {
 	t.Helper()
 	for {
 		owner.mu.Lock()
-		opened := owner.introductionOpenings[3]
+		opened := owner.introductionAdmission.openings[3]
 		owner.mu.Unlock()
 		if opened.After(before) {
 			return
 		}
 		select {
+		case err := <-submitted:
+			t.Fatalf("submission ended before Publisher inspected the delivery: %v (delivery deadline in %s)",
+				err, time.Until(deadline))
 		case <-ctx.Done():
-			t.Fatalf("Publisher did not inspect the early recovery delivery: %v", ctx.Err())
+			t.Fatalf("Publisher did not inspect the early recovery delivery: %v (delivery deadline in %s)",
+				ctx.Err(), time.Until(deadline))
 		default:
 			runtime.Gosched()
 		}

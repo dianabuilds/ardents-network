@@ -6,6 +6,10 @@ import (
 	"context"
 	"errors"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
+	introductioncapsule "github.com/dianabuilds/ardents-network/internal/route/capsule"
+	"github.com/dianabuilds/ardents-network/internal/route/terminal"
 )
 
 const closedIntroductionDeliveryCost = uint64(16 + 4096 + 16 + 16384 + 16 + 1)
@@ -101,13 +105,13 @@ func (delivery *ClosedIntroductionDelivery) Complete(ctx context.Context, status
 	clear(delivery.operation)
 	delivery.operation = nil
 	owner.mu.Unlock()
-	body, err := EncodeClosedDescriptorResult(delivery.nonce, status, nil)
+	body, err := terminal.EncodeDescriptorResult(delivery.nonce, status, nil)
 	if err != nil {
 		return err
 	}
 	bounded, cancel := context.WithDeadline(ctx, delivery.end)
 	defer cancel()
-	if err := owner.writeFrame(bounded, ClosedLaneFrame{Kind: closedFrameResult, Lane: delivery.lane, Body: body}, delivery.end); err != nil {
+	if err := owner.writeFrame(bounded, ardp.Frame{Kind: ardp.KindResult, Lane: delivery.lane, Body: body}, delivery.end); err != nil {
 		return errors.Join(err, owner.Close())
 	}
 	select {
@@ -121,7 +125,7 @@ func (delivery *ClosedIntroductionDelivery) Complete(ctx context.Context, status
 	}
 }
 
-func (owner *ClosedIntroductionRegistration) writeFrame(ctx context.Context, frame ClosedLaneFrame, end time.Time) (outcome error) {
+func (owner *ClosedIntroductionRegistration) writeFrame(ctx context.Context, frame ardp.Frame, end time.Time) (outcome error) {
 	bounded, cancel := context.WithDeadline(ctx, end)
 	defer cancel()
 	select {
@@ -150,12 +154,12 @@ func (owner *ClosedIntroductionRegistration) writeFrame(ctx context.Context, fra
 		}
 		outcome = errors.Join(outcome, bounded.Err(), interruptErr)
 	}()
-	return WriteClosedLaneFrame(owner.connection, frame)
+	return ardp.WriteFrame(owner.connection, frame)
 }
 
-func (owner *ClosedIntroductionRegistration) receiveDelivery(frame ClosedLaneFrame) error {
+func (owner *ClosedIntroductionRegistration) receiveDelivery(frame ardp.Frame) error {
 	// Called only by the joined reader with owner.mu held.
-	if frame.Kind == closedFrameClose {
+	if frame.Kind == ardp.KindClose {
 		delivery := owner.pending[frame.Lane]
 		if delivery == nil || !delivery.answered || frame.Body[0] != delivery.status {
 			return errors.New("closed Introduction delivery CLOSE invalid")
@@ -167,11 +171,11 @@ func (owner *ClosedIntroductionRegistration) receiveDelivery(frame ClosedLaneFra
 		close(delivery.done)
 		return nil
 	}
-	if frame.Kind != closedFrameOperation || frame.Lane == 0 || frame.Lane%2 != 0 || frame.Lane <= owner.lastDelivery ||
+	if frame.Kind != ardp.KindOperation || frame.Lane == 0 || frame.Lane%2 != 0 || frame.Lane <= owner.lastDelivery ||
 		owner.withdraw != [32]byte{} || len(owner.pending) >= 16 || owner.used+closedIntroductionDeliveryCost > ClosedIntroductionRegistrationByteLimit {
 		return errors.New("closed Introduction delivery lane or budget invalid")
 	}
-	nonce, capsule, err := DecodeClosedIntroductionSubmission(frame.Body)
+	nonce, capsule, err := introductioncapsule.DecodeSubmission(frame.Body)
 	if err != nil {
 		return err
 	}

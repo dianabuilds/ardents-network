@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 )
 
 func TestClosedForwardingQueuesFragmentedBytesAndTerminalWithinByteBudget(t *testing.T) {
@@ -16,12 +17,12 @@ func TestClosedForwardingQueuesFragmentedBytesAndTerminalWithinByteBudget(t *tes
 		t.Fatal(err)
 	}
 	opened := make(chan error, 1)
-	go func() { _, err := route.ReadClosedLaneFrame(peer); opened <- err }()
+	go func() { _, err := ardp.ReadFrame(peer); opened <- err }()
 	session := &closedForwardingSession{carrier: local, children: make(map[uint32]*closedForwardingQueue), retired: make(map[uint32]struct{})}
 	reserved := 0
-	lane, reverse, err := session.attach(route.ClosedOpen{NextNodeID: [32]byte{1}, NextDutyGeneration: 1, Purpose: route.ClosedPurposeIssuer,
+	lane, reverse, err := session.attach(route.ClosedOpen{NextNodeID: [32]byte{1}, NextDutyGeneration: 1, Purpose: ardp.PurposeIssuer,
 		Deadline: time.Now().UTC().Truncate(time.Second).Add(time.Second)}, route.ClosedChildIssuerBootstrap,
-		func(route.ClosedLaneFrame) error { reserved++; return nil }, nil)
+		func(ardp.Frame) error { reserved++; return nil }, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -30,14 +31,14 @@ func TestClosedForwardingQueuesFragmentedBytesAndTerminalWithinByteBudget(t *tes
 	}
 	session.children[lane].maximum = 64*17 + 17
 	for range 64 {
-		if !session.deliverReverse(route.ClosedLaneFrame{Kind: 6, Lane: lane, Body: []byte{1}}) {
+		if !session.deliverReverse(ardp.Frame{Kind: 6, Lane: lane, Body: []byte{1}}) {
 			t.Fatal("ordinary queue unexpectedly full")
 		}
 	}
-	if session.deliverReverse(route.ClosedLaneFrame{Kind: 6, Lane: lane, Body: make([]byte, 16<<10)}) {
+	if session.deliverReverse(ardp.Frame{Kind: 6, Lane: lane, Body: make([]byte, 16<<10)}) {
 		t.Fatal("terminal slot enlarged data allowance")
 	}
-	if !session.deliverReverse(route.ClosedLaneFrame{Kind: 9, Lane: lane, Body: []byte{0}}) {
+	if !session.deliverReverse(ardp.Frame{Kind: 9, Lane: lane, Body: []byte{0}}) {
 		t.Fatal("full data queue discarded terminal CLOSE")
 	}
 	if reserved != 65 {

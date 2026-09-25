@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 )
 
 // closedForwardingLink owns exactly one admitted child and its selected next
@@ -19,7 +20,7 @@ type closedForwardingLink struct {
 	localLane   uint32
 	reverse     *closedForwardingQueue
 	lease       *route.ClosedCarrierLease
-	write       func(route.ClosedLaneFrame) error
+	write       func(ardp.Frame) error
 	forward     sync.Mutex
 	forwardDone chan struct{}
 	deadline    time.Time
@@ -77,7 +78,7 @@ func newClosedForwardingOpenings(parent context.Context, wake ...func()) *closed
 	return &closedForwardingOpenings{ctx: ctx, cancel: cancel, results: make(chan closedForwardingOpenResult, 256), pending: make(map[uint32]context.CancelFunc), wake: notify}
 }
 
-func (openings *closedForwardingOpenings) start(server *closedForwardingServer, event route.ClosedForwardingEvent, channel *route.ClosedForwardingChannel, write func(route.ClosedLaneFrame) error, abort func()) {
+func (openings *closedForwardingOpenings) start(server *closedForwardingServer, event route.ClosedForwardingEvent, channel *route.ClosedForwardingChannel, write func(ardp.Frame) error, abort func()) {
 	child, cancel := context.WithCancel(openings.ctx)
 	openings.pending[event.Lane] = cancel
 	go func() {
@@ -188,7 +189,7 @@ func (link *closedForwardingLink) startForwarding(event route.ClosedForwardingEv
 	done := make(chan struct{})
 	link.forwardDone = done
 	link.forward.Unlock()
-	frame := route.ClosedLaneFrame{Kind: event.Kind, Lane: link.remoteLane, Body: append([]byte(nil), event.Bytes...)}
+	frame := ardp.Frame{Kind: event.Kind, Lane: link.remoteLane, Body: append([]byte(nil), event.Bytes...)}
 	go func() {
 		written, err := link.session.writeChildFrame(frame, link.deadline, link.reverse)
 		if err == nil && event.Kind == 6 && written {
@@ -234,7 +235,7 @@ func closedForwardingEventAvailable(event route.ClosedForwardingEvent, links map
 	return link != nil && link.availableForForwarding()
 }
 
-func (server *closedForwardingServer) drainForwarding(ctx context.Context, channel *route.ClosedForwardingChannel, links map[uint32]*closedForwardingLink, openings *closedForwardingOpenings, write func(route.ClosedLaneFrame) error, abort func()) error {
+func (server *closedForwardingServer) drainForwarding(ctx context.Context, channel *route.ClosedForwardingChannel, links map[uint32]*closedForwardingLink, openings *closedForwardingOpenings, write func(ardp.Frame) error, abort func()) error {
 	for {
 		if err := openings.collect(links); err != nil {
 			return err
@@ -284,7 +285,7 @@ func (server *closedForwardingServer) drainForwarding(ctx context.Context, chann
 				}
 				continue
 			}
-			frame := route.ClosedLaneFrame{Kind: event.Kind, Lane: link.remoteLane, Body: append([]byte(nil), event.Bytes...)}
+			frame := ardp.Frame{Kind: event.Kind, Lane: link.remoteLane, Body: append([]byte(nil), event.Bytes...)}
 			written, err := link.session.writeChildFrame(frame, link.deadline, link.reverse)
 			if err == nil && event.Kind == 6 && written {
 				err = link.lease.MarkUsed()
@@ -305,7 +306,7 @@ func (server *closedForwardingServer) drainForwarding(ctx context.Context, chann
 			if link == nil {
 				return errors.New("closed forwarding child is unavailable")
 			}
-			_, err := link.session.writeChildFrame(route.ClosedLaneFrame{Kind: event.Kind, Lane: link.remoteLane, Body: append([]byte(nil), event.Bytes...)}, link.deadline, link.reverse)
+			_, err := link.session.writeChildFrame(ardp.Frame{Kind: event.Kind, Lane: link.remoteLane, Body: append([]byte(nil), event.Bytes...)}, link.deadline, link.reverse)
 			if err != nil {
 				return err
 			}
@@ -319,7 +320,7 @@ func (server *closedForwardingServer) drainForwarding(ctx context.Context, chann
 	}
 }
 
-func (server *closedForwardingServer) openForwardingLink(ctx context.Context, open route.ClosedOpen, restriction route.ClosedChildRestriction, lane uint32, channel *route.ClosedForwardingChannel, write func(route.ClosedLaneFrame) error, abort func()) (*closedForwardingLink, error) {
+func (server *closedForwardingServer) openForwardingLink(ctx context.Context, open route.ClosedOpen, restriction route.ClosedChildRestriction, lane uint32, channel *route.ClosedForwardingChannel, write func(ardp.Frame) error, abort func()) (*closedForwardingLink, error) {
 	handshakeDeadline := closedForwardingHandshakeDeadline(open.Deadline, server.clock().UTC())
 	handshakeCtx, cancelHandshake, err := closedForwardingHandshakeContext(ctx, handshakeDeadline)
 	if err != nil {
@@ -334,7 +335,7 @@ func (server *closedForwardingServer) openForwardingLink(ctx context.Context, op
 	if err != nil {
 		return nil, err
 	}
-	receiver, available := closedRouteReceiver(server.config, updated, route.ClosedPurposeForwarding, server.clock())
+	receiver, available := closedRouteReceiver(server.config, updated, ardp.PurposeForwarding, server.clock())
 	if !available {
 		return nil, errors.New("closed forwarding receiver is unavailable")
 	}
@@ -362,14 +363,14 @@ func (server *closedForwardingServer) openForwardingLink(ctx context.Context, op
 	if err != nil {
 		return nil, err
 	}
-	session, err := server.sessions.acquire(handshakeCtx, key, lease, handshakeDeadline, func() (route.ClosedHello, error) {
+	session, err := server.sessions.acquire(handshakeCtx, key, lease, handshakeDeadline, func() (ardp.Hello, error) {
 		return server.closedForwardingOuterHello(updated, open)
 	})
 	if err != nil {
 		_ = lease.Release()
 		return nil, err
 	}
-	remoteLane, reverse, err := session.attach(open, restriction, func(frame route.ClosedLaneFrame) error { frame.Lane = lane; return channel.QueueReverse(frame) }, func() bool { return channel.ReverseRetired(lane) })
+	remoteLane, reverse, err := session.attach(open, restriction, func(frame ardp.Frame) error { frame.Lane = lane; return channel.QueueReverse(frame) }, func() bool { return channel.ReverseRetired(lane) })
 	if err != nil {
 		_ = lease.Release()
 		return nil, err

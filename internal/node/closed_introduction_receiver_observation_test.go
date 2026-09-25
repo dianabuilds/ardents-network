@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/terminal"
 )
 
 // Start the same receiver constructor used by the production Run adapter.
@@ -52,7 +53,7 @@ type introductionPendingObservation struct {
 	QueuedResults int
 }
 type introductionSlotObservation struct {
-	Request                      route.ClosedRegistrationRequest
+	Request                      terminal.RegistrationRequest
 	Active, WriterReserved, Done bool
 	Next                         uint32
 	Used, Maximum                uint64

@@ -13,7 +13,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/node"
-	"github.com/dianabuilds/ardents-network/internal/route"
+	introductioncapsule "github.com/dianabuilds/ardents-network/internal/route/capsule"
 	"github.com/dianabuilds/ardents-network/internal/service/reachability"
 )
 
@@ -151,13 +151,13 @@ func refuseTextBeforeDescriptorACK(t *testing.T, gate *textDescriptorACKGate, ow
 	}
 	plaintext := prior.plaintext
 	plaintext.Revision = proof.Descriptor.Private.Revision
-	capsule := route.ClosedIntroductionCapsule{Slot: proof.Descriptor.Private.Slot, Revision: plaintext.Revision,
+	capsule := introductioncapsule.Capsule{Slot: proof.Descriptor.Private.Slot, Revision: plaintext.Revision,
 		Expiry: plaintext.Deadline, DeliveryNonce: fixtureID(231)}
-	sealed, _, err := route.SealClosedIntroduction(capsule, proof.Descriptor.Private.RecipientKey, plaintext)
+	sealed, _, err := introductioncapsule.Seal(capsule, proof.Descriptor.Private.RecipientKey, plaintext)
 	if err != nil {
 		t.Fatal(err)
 	}
-	operation, err := route.EncodeClosedIntroductionSubmission(fixtureID(232), sealed)
+	operation, err := introductioncapsule.EncodeSubmission(fixtureID(232), sealed)
 	if err != nil {
 		t.Fatal(err)
 	}

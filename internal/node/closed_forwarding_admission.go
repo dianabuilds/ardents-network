@@ -8,6 +8,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/credential"
+	"github.com/dianabuilds/ardents-network/internal/route/replay"
 )
 
 // closedForwardingAdmissionVerifier reserves the installed host's declared
@@ -30,7 +31,7 @@ func closedForwardingAdmissionVerifier(config runtimeConfig, receiver route.Clos
 
 // closedForwardingReplenisher commits the same host envelope before it burns
 // a fresh token. The parent supplies its original immutable deadline.
-func closedForwardingReplenisher(config runtimeConfig, receiver route.ClosedRoleReceiver, host closedForwardingHost, spends *route.ClosedSpendLedger, local ClosedForwardingProfile) route.ClosedForwardingReplenisher {
+func closedForwardingReplenisher(config runtimeConfig, receiver route.ClosedRoleReceiver, host closedForwardingHost, spends *replay.Ledger, local ClosedForwardingProfile) route.ClosedForwardingReplenisher {
 	verify := closedRoleTokenVerifier(config, receiver)
 	return func(input route.ClosedAdmissionVerification) (func() error, error) {
 		approval, err := verify(input)

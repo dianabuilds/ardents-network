@@ -10,6 +10,8 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/network/state"
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
+	"github.com/dianabuilds/ardents-network/internal/route/terminal"
 )
 
 // The peer has the exact State-pinned role TLS key but deliberately delays its
@@ -41,11 +43,11 @@ func TestClosedJoinClientRejectsResultAfterSetupDeadline(t *testing.T) {
 	clientReturned := make(chan struct{})
 	go func() {
 		serverDone <- func() error {
-			opening, err := ReadClosedLaneFrame(server)
+			opening, err := ardp.ReadFrame(server)
 			if err != nil {
 				return err
 			}
-			if opening.Kind != closedFrameOpen || opening.Lane != 1 {
+			if opening.Kind != ardp.KindOpen || opening.Lane != 1 {
 				return errors.New("unexpected outer OPEN")
 			}
 			channels := newClosedSourceChannelOwner(server, end, server.Close)
@@ -57,35 +59,35 @@ func TestClosedJoinClientRejectsResultAfterSetupDeadline(t *testing.T) {
 			if err != nil {
 				return err
 			}
-			if _, err := ReadClosedLaneFrame(secured); err != nil {
+			if _, err := ardp.ReadFrame(secured); err != nil {
 				return err
 			}
-			if _, err := ReadClosedLaneFrame(secured); err != nil {
+			if _, err := ardp.ReadFrame(secured); err != nil {
 				return err
 			}
-			if err := WriteClosedLaneFrame(secured, ClosedLaneFrame{Kind: closedFrameAccept, Body: []byte{0, 0, 1, 0, 0}}); err != nil {
+			if err := ardp.WriteFrame(secured, ardp.Frame{Kind: ardp.KindAccept, Body: []byte{0, 0, 1, 0, 0}}); err != nil {
 				return err
 			}
-			operation, err := ReadClosedLaneFrame(secured)
+			operation, err := ardp.ReadFrame(secured)
 			if err != nil {
 				return err
 			}
-			request, err := DecodeClosedJoinRequest(operation.Body)
+			request, err := terminal.DecodeJoinRequest(operation.Body)
 			if err != nil {
 				return err
 			}
 			<-time.After(time.Until(setup.Add(100 * time.Millisecond)))
 			close(resultAttempted)
-			body, err := EncodeClosedJoinResult(request.Nonce, 0)
+			body, err := terminal.EncodeJoinResult(request.Nonce, 0)
 			if err != nil {
 				return err
 			}
-			err = WriteClosedLaneFrame(secured, ClosedLaneFrame{Kind: closedFrameResult, Lane: 1, Body: body})
+			err = ardp.WriteFrame(secured, ardp.Frame{Kind: ardp.KindResult, Lane: 1, Body: body})
 			<-clientReturned
 			return err
 		}()
 	}()
-	stream, err := prefix.Join(t.Context(), func(ClosedHello, uint8) ([]byte, error) { return make([]byte, 354), nil }, ClosedJoinIntent{Secret: [32]byte{1}, Context: [32]byte{2}, SetupDeadline: setup, WorkDeadline: end})
+	stream, err := prefix.Join(t.Context(), func(ardp.Hello, uint8) ([]byte, error) { return make([]byte, 354), nil }, ClosedJoinIntent{Secret: [32]byte{1}, Context: [32]byte{2}, SetupDeadline: setup, WorkDeadline: end})
 	close(clientReturned)
 	if stream != nil {
 		_ = stream.Close()

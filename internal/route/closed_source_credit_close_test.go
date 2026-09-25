@@ -11,6 +11,8 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 )
 
 // The upper CLOSE has reached Write but no lower output has begun. A genuine
@@ -63,7 +65,7 @@ func checkSourceConcurrentCredit(t *testing.T, partial bool) {
 		}
 	})
 	opened := make(chan error, 1)
-	helpers.Go(func() { _, err := ReadClosedLaneFrame(peer); opened <- err })
+	helpers.Go(func() { _, err := ardp.ReadFrame(peer); opened <- err })
 	lane, err := prefix.channels.open(context.Background(), sourceIssuerOpen(end), end)
 	if err := errors.Join(err, <-opened); err != nil {
 		t.Fatal(err)
@@ -79,7 +81,7 @@ func checkSourceConcurrentCredit(t *testing.T, partial bool) {
 	case <-time.After(time.Second):
 		t.Fatal("CLOSE did not reach its pre-emission boundary")
 	}
-	encoded, err := EncodeClosedLaneFrame(ClosedLaneFrame{Kind: closedFrameBytes, Lane: lane.id, Body: []byte("x")})
+	encoded, err := ardp.EncodeFrame(ardp.Frame{Kind: ardp.KindBytes, Lane: lane.id, Body: []byte("x")})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -92,19 +94,19 @@ func checkSourceConcurrentCredit(t *testing.T, partial bool) {
 			return
 		}
 		for range 2 {
-			frame, err := ReadClosedLaneFrame(peer)
+			frame, err := ardp.ReadFrame(peer)
 			if err != nil {
 				credited <- err
 				return
 			}
-			if frame.Kind != closedFrameCredit {
+			if frame.Kind != ardp.KindCredit {
 				credited <- errors.New("expected real CREDIT")
 				return
 			}
 		}
 		credited <- nil
 	})
-	if err := WriteClosedLaneFrame(peer, ClosedLaneFrame{Kind: closedFrameBytes, Lane: 1, Body: encoded}); err != nil {
+	if err := ardp.WriteFrame(peer, ardp.Frame{Kind: ardp.KindBytes, Lane: 1, Body: encoded}); err != nil {
 		t.Fatal(err)
 	}
 	if err := <-credited; err != nil {
@@ -127,7 +129,7 @@ func checkSourceConcurrentCredit(t *testing.T, partial bool) {
 			t.Fatal("CREDIT writer did not finish")
 		}
 	}
-	if err := WriteClosedLaneFrame(peer, ClosedLaneFrame{Kind: closedFrameClose, Lane: 1, Body: []byte{0}}); err != nil {
+	if err := ardp.WriteFrame(peer, ardp.Frame{Kind: ardp.KindClose, Lane: 1, Body: []byte{0}}); err != nil {
 		t.Fatal(err)
 	}
 	for {

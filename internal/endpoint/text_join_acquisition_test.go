@@ -11,7 +11,9 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
 	"github.com/dianabuilds/ardents-network/internal/application/streamqualification"
+	"github.com/dianabuilds/ardents-network/internal/qualification"
 	"github.com/dianabuilds/ardents-network/internal/route"
+	introductioncapsule "github.com/dianabuilds/ardents-network/internal/route/capsule"
 )
 
 type textJoinRetiredAfterRecipient struct {
@@ -65,7 +67,8 @@ func TestTextJoinOldAcquisitionCannotAttachAfterSourceReplacement(t *testing.T) 
 	endpoint, principal := textContextEndpoint(t)
 	owner := admittedTextContext(t, endpoint, principal, broker.Connection)
 	job := liveTextCapsuleJob(t, owner)
-	job.qualification = &textQualificationRun{init: streamqualification.Init{Role: streamqualification.ReaderRole}}
+	run, _ := qualification.NewRun(streamqualification.ReaderRole, streamqualification.ClientToPublisher, fixtureID(210))
+	job.qualification = run
 	attempt := &textIntroductionAttempt{binding: &textServiceBinding{owner: owner, job: job}}
 
 	owner.mu.Lock()
@@ -112,7 +115,7 @@ func TestTextJoinOldAcquisitionCannotAttachAfterSourceReplacement(t *testing.T) 
 	if owner.retainTextJoinedTransport(job, attempt, flight, acquisition, joined) {
 		t.Fatal("late old JOIN acquisition attached after Source replacement")
 	}
-	attached := job.qualification.retains(joined)
+	attached := job.qualification.Retains(joined)
 	owner.mu.Lock()
 	retained := flight.retained
 	owner.mu.Unlock()
@@ -139,7 +142,7 @@ func TestTextJoinSourceReplacementBeforeStockIssuanceDoesNotReserveAllocation(t 
 	deadline := time.Now().Add(time.Minute)
 	acquisition := &textJoinRetiredAfterRecipient{node: node.NodeID, generation: node.DutyGeneration,
 		deadline: deadline.Add(time.Minute), current: true}
-	attempt := &textIntroductionAttempt{plaintext: route.ClosedIntroductionPlaintext{
+	attempt := &textIntroductionAttempt{plaintext: introductioncapsule.Plaintext{
 		RendezvousNode: node.NodeID, RendezvousDutyGeneration: node.DutyGeneration, Deadline: deadline,
 	}}
 	owner.mu.Lock()

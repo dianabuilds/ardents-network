@@ -17,6 +17,8 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
+	"github.com/dianabuilds/ardents-network/internal/route/terminal"
 )
 
 // Captures exact plaintext bytes at the transmitting role-TLS boundary and
@@ -56,10 +58,10 @@ func (connection *introductionTranscriptConn) Read(p []byte) (int, error) {
 func TestClosedIntroductionRegistrationObservation(t *testing.T) {
 	for _, carrier := range []route.CarrierProfile{route.ClosedCarrierTCP, route.ClosedCarrierQUIC} {
 		t.Run(string(carrier), func(t *testing.T) {
-			fixture := newPrivateRecipientNetworkFixture(t, carrier, route.ClosedPurposeIntroduction, 3)
+			fixture := newPrivateRecipientNetworkFixture(t, carrier, ardp.PurposeIntroduction, 3)
 			capture := new(introductionTranscript)
 			fixture.observe = func(connection net.Conn) net.Conn { return &introductionTranscriptConn{connection, capture} }
-			request := route.ClosedRegistrationRequest{Revision: 1, Expiry: time.Now().UTC().Add(30 * time.Second).Truncate(time.Second)}
+			request := terminal.RegistrationRequest{Revision: 1, Expiry: time.Now().UTC().Add(30 * time.Second).Truncate(time.Second)}
 			if _, err := rand.Read(request.Nonce[:]); err != nil {
 				t.Fatal(err)
 			}
@@ -72,7 +74,7 @@ func TestClosedIntroductionRegistrationObservation(t *testing.T) {
 				t.Fatal("registration positive control refused")
 			}
 			before := captureIntroductionFiles(t, fixture.admissionRoot)
-			withdrawal := route.ClosedRegistrationRequest{Slot: request.Slot, Revision: request.Revision, Withdraw: true}
+			withdrawal := terminal.RegistrationRequest{Slot: request.Slot, Revision: request.Revision, Withdraw: true}
 			if _, err := rand.Read(withdrawal.Nonce[:]); err != nil {
 				t.Fatal(err)
 			}
@@ -89,18 +91,18 @@ func TestClosedIntroductionRegistrationObservation(t *testing.T) {
 			if len(requests) != 4 || requests[0].Kind != 1 || requests[1].Kind != 2 || requests[2].Kind != 10 || requests[3].Kind != 10 || len(responses) != 3 || responses[0].Kind != 5 || responses[1].Kind != 11 || responses[2].Kind != 11 {
 				t.Fatal("missing or extra protocol bytes in capture")
 			}
-			hello, err := route.DecodeClosedHello(requests[0].Body)
-			if err != nil || hello.Purpose != route.ClosedPurposeIntroduction || hello.RecipientNodeID != fixture.receiver.NodeID {
+			hello, err := ardp.DecodeHello(requests[0].Body)
+			if err != nil || hello.Purpose != ardp.PurposeIntroduction || hello.RecipientNodeID != fixture.receiver.NodeID {
 				t.Fatal("capture missed receiver binding")
 			}
 			if len(requests[1].Body) != 355 || requests[1].Body[0] != 3 || !bytes.Equal(requests[1].Body[1:], fixture.tokens[0]) {
 				t.Fatal("capture missed actual admitted token")
 			}
-			decoded, err := route.DecodeClosedRegistrationRequest(requests[2].Body)
+			decoded, err := terminal.DecodeRegistrationRequest(requests[2].Body)
 			if err != nil || decoded != request {
 				t.Fatal("capture missed visible registration fields")
 			}
-			decoded, err = route.DecodeClosedRegistrationRequest(requests[3].Body)
+			decoded, err = terminal.DecodeRegistrationRequest(requests[3].Body)
 			if err != nil || decoded != withdrawal {
 				t.Fatal("capture missed owning withdrawal")
 			}
@@ -144,12 +146,12 @@ func TestClosedIntroductionRegistrationObservation(t *testing.T) {
 		})
 	}
 }
-func decodeIntroductionTrace(t *testing.T, raw []byte) []route.ClosedLaneFrame {
+func decodeIntroductionTrace(t *testing.T, raw []byte) []ardp.Frame {
 	t.Helper()
 	input := bytes.NewReader(raw)
-	var frames []route.ClosedLaneFrame
+	var frames []ardp.Frame
 	for input.Len() != 0 {
-		frame, err := route.ReadClosedLaneFrame(input)
+		frame, err := ardp.ReadFrame(input)
 		if err != nil {
 			t.Fatalf("truncated capture: %v", err)
 		}

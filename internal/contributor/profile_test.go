@@ -17,43 +17,10 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/contributor"
 )
 
-func TestPinnedRendezvousBundleInstallsAndBecomesReady(t *testing.T) {
-	hostRoot := t.TempDir()
-	bundle, pin := writeContributorBundle(t, 1, strings.Repeat("31", 32))
-	supervisor := &profileSupervisor{hostRoot: hostRoot}
-	profile, err := contributor.Open(contributor.Config{Root: hostRoot, Supervisor: supervisor})
-	if err != nil {
-		t.Fatal(err)
-	}
-	report, err := profile.Apply(t.Context(), bundle, pin)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if report.Profile != "ardents-rendezvous-dedicated-host-v1" || report.Generation != 1 || report.LifecycleState != "READY" || !report.Active {
-		t.Fatalf("install report = %+v", report)
-	}
-	program := filepath.Join(hostRoot, "usr", "lib", "ardents-contributor", "current", "ardents-node")
-	if raw, readErr := os.ReadFile(program); readErr != nil || string(raw) != "functional-alpha-rendezvous-program-v1" {
-		t.Fatalf("installed program = %q, %v", raw, readErr)
-	}
-	unitPath := filepath.Join(hostRoot, "etc", "systemd", "system", "ardents-rendezvous-contributor.service")
-	unit, err := os.ReadFile(unitPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, required := range []string{"DynamicUser=yes", "User=ardents-contributor", "Group=ardents-contributor",
-		"ExecStartPre=+/bin/chown -R -- ardents-contributor:ardents-contributor /var/lib/private/ardents-contributor",
-		"CPUQuota=100%", "MemoryHigh=192M", "MemoryMax=256M", "TasksMax=64", "LimitNOFILE=256", "GOMAXPROCS=1", "GOMEMLIMIT=134217728", "StandardOutput=null", "StandardError=journal"} {
-		if !strings.Contains(string(unit), required) {
-			t.Fatalf("installed unit lacks %q:\n%s", required, unit)
-		}
-	}
-}
-
 func TestLifecycleDeadlineUsesOwnedMonotonicWait(t *testing.T) {
 	hostRoot := t.TempDir()
 	bundle, pin := writeContributorBundle(t, 1, strings.Repeat("39", 32))
-	supervisor := &profileSupervisor{hostRoot: hostRoot, suppressStartLifecycle: true}
+	supervisor := &profileSupervisor{hostRoot: hostRoot, suppressStopLifecycle: true}
 	now := time.Date(2026, 8, 29, 10, 0, 0, 0, time.UTC)
 	waits := 0
 	profile, err := contributor.Open(contributor.Config{Root: hostRoot, Supervisor: supervisor,
@@ -65,103 +32,12 @@ func TestLifecycleDeadlineUsesOwnedMonotonicWait(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := profile.Apply(t.Context(), bundle, pin); err == nil || !strings.Contains(err.Error(), "did not reach READY") {
-		t.Fatalf("missing READY error = %v", err)
+	installRetainedContributorFixture(t, hostRoot, bundle, pin, supervisor)
+	if _, err := profile.Control(t.Context(), contributor.Drain, ""); err == nil || !strings.Contains(err.Error(), "did not reach WITHDRAWN") {
+		t.Fatalf("missing WITHDRAWN error = %v", err)
 	}
 	if waits != 3 {
 		t.Fatalf("monotonic waits = %d, want 3", waits)
-	}
-}
-
-func TestSamePinnedBundleRecoversInterruptedFirstInstallation(t *testing.T) {
-	hostRoot := t.TempDir()
-	deployment := strings.Repeat("30", 32)
-	bundle, pin := writeContributorBundle(t, 1, deployment)
-	programRoot := filepath.Join(hostRoot, "usr", "lib", "ardents-contributor")
-	if err := os.MkdirAll(programRoot, 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(programRoot, "partial"), []byte("interrupted"), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	markerPath := filepath.Join(hostRoot, "var", "lib", "private", "ardents-contributor-installing.json")
-	if err := os.MkdirAll(filepath.Dir(markerPath), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	marker, _ := json.Marshal(map[string]any{"schema": "ardents-contributor-installing-v1", "deployment_id": deployment,
-		"generation": 1, "manifest_digest": pin})
-	if err := os.WriteFile(markerPath, marker, 0o600); err != nil {
-		t.Fatal(err)
-	}
-	supervisor := &profileSupervisor{hostRoot: hostRoot}
-	profile, err := contributor.Open(contributor.Config{Root: hostRoot, Supervisor: supervisor})
-	if err != nil {
-		t.Fatal(err)
-	}
-	report, err := profile.Apply(t.Context(), bundle, pin)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if report.Generation != 1 || !report.Active || report.LifecycleState != "READY" {
-		t.Fatalf("recovered install report = %+v", report)
-	}
-	if _, err := os.Lstat(markerPath); !os.IsNotExist(err) {
-		t.Fatalf("installation marker remains: %v", err)
-	}
-}
-
-func TestPinnedSuccessorUpdatesAndRestartsSameDeployment(t *testing.T) {
-	hostRoot := t.TempDir()
-	deployment := strings.Repeat("32", 32)
-	supervisor := &profileSupervisor{hostRoot: hostRoot}
-	profile, err := contributor.Open(contributor.Config{Root: hostRoot, Supervisor: supervisor})
-	if err != nil {
-		t.Fatal(err)
-	}
-	first, firstPin := writeContributorBundle(t, 1, deployment)
-	if _, err := profile.Apply(t.Context(), first, firstPin); err != nil {
-		t.Fatal(err)
-	}
-	second, secondPin := writeContributorBundle(t, 2, deployment)
-	report, err := profile.Apply(t.Context(), second, secondPin)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if report.Generation != 2 || report.LifecycleState != "READY" || !report.Active {
-		t.Fatalf("successor report = %+v", report)
-	}
-	program := filepath.Join(hostRoot, "usr", "lib", "ardents-contributor", "current", "ardents-node")
-	raw, err := os.ReadFile(program)
-	if err != nil || string(raw) != "functional-alpha-rendezvous-program-v2" {
-		t.Fatalf("updated program = %q, %v", raw, err)
-	}
-	manager := filepath.Join(hostRoot, "usr", "lib", "ardents-contributor", "ardents-node")
-	raw, err = os.ReadFile(manager)
-	if err != nil || string(raw) != "functional-alpha-rendezvous-program-v2" {
-		t.Fatalf("updated management program = %q, %v", raw, err)
-	}
-}
-
-func TestAmbiguousUpdateStopFailureRestartsPreviousReadyGeneration(t *testing.T) {
-	hostRoot := t.TempDir()
-	deployment := strings.Repeat("38", 32)
-	supervisor := &profileSupervisor{hostRoot: hostRoot}
-	profile, err := contributor.Open(contributor.Config{Root: hostRoot, Supervisor: supervisor})
-	if err != nil {
-		t.Fatal(err)
-	}
-	first, firstPin := writeContributorBundle(t, 1, deployment)
-	if _, err := profile.Apply(t.Context(), first, firstPin); err != nil {
-		t.Fatal(err)
-	}
-	supervisor.failNextStopAfterAction = true
-	second, secondPin := writeContributorBundle(t, 2, deployment)
-	if _, err := profile.Apply(t.Context(), second, secondPin); err == nil {
-		t.Fatal("ambiguous stop failure was reported as an installed successor")
-	}
-	report, err := profile.Control(t.Context(), contributor.Diagnose, "")
-	if err != nil || report.Generation != 1 || !report.Active || report.LifecycleState != "READY" {
-		t.Fatalf("restarted previous report = %+v, %v", report, err)
 	}
 }
 
@@ -169,14 +45,8 @@ func TestNextCommandRecoversUpdateInterruptedBetweenPreviousMoves(t *testing.T) 
 	hostRoot := t.TempDir()
 	deployment := strings.Repeat("39", 32)
 	supervisor := &profileSupervisor{hostRoot: hostRoot}
-	profile, err := contributor.Open(contributor.Config{Root: hostRoot, Supervisor: supervisor})
-	if err != nil {
-		t.Fatal(err)
-	}
 	first, firstPin := writeContributorBundle(t, 1, deployment)
-	if _, err := profile.Apply(t.Context(), first, firstPin); err != nil {
-		t.Fatal(err)
-	}
+	installRetainedContributorFixture(t, hostRoot, first, firstPin, supervisor)
 	programRoot := filepath.Join(hostRoot, "usr", "lib", "ardents-contributor")
 	if err := os.Rename(filepath.Join(programRoot, "current"), filepath.Join(programRoot, "previous")); err != nil {
 		t.Fatal(err)
@@ -198,7 +68,7 @@ func TestNextCommandRecoversUpdateInterruptedBetweenPreviousMoves(t *testing.T) 
 	}
 }
 
-func TestDiagnoseAndRestartReturnVerifiedReadyInstallation(t *testing.T) {
+func TestDiagnoseReturnsVerifiedReadyInstallation(t *testing.T) {
 	hostRoot := t.TempDir()
 	bundle, pin := writeContributorBundle(t, 1, strings.Repeat("33", 32))
 	supervisor := &profileSupervisor{hostRoot: hostRoot}
@@ -206,16 +76,29 @@ func TestDiagnoseAndRestartReturnVerifiedReadyInstallation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := profile.Apply(t.Context(), bundle, pin); err != nil {
-		t.Fatal(err)
-	}
+	installRetainedContributorFixture(t, hostRoot, bundle, pin, supervisor)
 	diagnosed, err := profile.Control(t.Context(), contributor.Diagnose, "")
 	if err != nil || !diagnosed.Active || diagnosed.LifecycleState != "READY" {
 		t.Fatalf("diagnose = %+v, %v", diagnosed, err)
 	}
-	restarted, err := profile.Control(t.Context(), contributor.Restart, "")
-	if err != nil || !restarted.Active || restarted.LifecycleState != "READY" || restarted.Generation != 1 {
-		t.Fatalf("restart = %+v, %v", restarted, err)
+}
+
+func TestControlRefusesRetiredRestartBeforeEffects(t *testing.T) {
+	hostRoot := t.TempDir()
+	supervisor := &profileSupervisor{hostRoot: hostRoot}
+	profile, err := contributor.Open(contributor.Config{Root: hostRoot, Supervisor: supervisor})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := profile.Control(t.Context(), contributor.Action(2), ""); err == nil {
+		t.Fatal("retired Restart action was accepted")
+	}
+	entries, err := os.ReadDir(hostRoot)
+	if err != nil || len(entries) != 0 {
+		t.Fatalf("retired Restart changed host root: %v, %v", entries, err)
+	}
+	if supervisor.startCount() != 0 || supervisor.stopCount() != 0 {
+		t.Fatal("retired Restart reached supervisor")
 	}
 }
 
@@ -227,15 +110,10 @@ func TestDrainStopsWorkAndWithdrawalAlsoDisablesService(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := profile.Apply(t.Context(), bundle, pin); err != nil {
-		t.Fatal(err)
-	}
+	installRetainedContributorFixture(t, hostRoot, bundle, pin, supervisor)
 	drained, err := profile.Control(t.Context(), contributor.Drain, "")
 	if err != nil || drained.Active || !drained.Enabled || drained.LifecycleState != "WITHDRAWN" {
 		t.Fatalf("drain = %+v, %v", drained, err)
-	}
-	if _, err := profile.Control(t.Context(), contributor.Restart, ""); err != nil {
-		t.Fatal(err)
 	}
 	withdrawn, err := profile.Control(t.Context(), contributor.Withdraw, "")
 	if err != nil || withdrawn.Active || withdrawn.Enabled || withdrawn.LifecycleState != "WITHDRAWN" {
@@ -252,9 +130,7 @@ func TestRemovalRequiresExactWithdrawnDeploymentAndLeavesBundle(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := profile.Apply(t.Context(), bundle, pin); err != nil {
-		t.Fatal(err)
-	}
+	installRetainedContributorFixture(t, hostRoot, bundle, pin, supervisor)
 	if _, err := profile.Control(t.Context(), contributor.Remove, strings.Repeat("00", 32)); err == nil {
 		t.Fatal("removal accepted the wrong deployment confirmation")
 	}
@@ -297,19 +173,16 @@ func TestRemovalRequiresExactWithdrawnDeploymentAndLeavesBundle(t *testing.T) {
 }
 
 type profileSupervisor struct {
-	hostRoot                string
-	mu                      sync.Mutex
-	active                  bool
-	enabled                 bool
-	failNextStart           bool
-	beforeNextStart         func()
-	failNextStopAfterAction bool
-	suppressStartLifecycle  bool
-	stopEntered             chan struct{}
-	releaseStop             chan struct{}
-	stopPaused              bool
-	stopCalls               int
-	startCalls              int
+	hostRoot              string
+	mu                    sync.Mutex
+	active                bool
+	enabled               bool
+	suppressStopLifecycle bool
+	stopEntered           chan struct{}
+	releaseStop           chan struct{}
+	stopPaused            bool
+	stopCalls             int
+	startCalls            int
 }
 
 func (supervisor *profileSupervisor) Do(ctx context.Context, action contributor.SupervisorAction) (contributor.SupervisorState, error) {
@@ -320,33 +193,20 @@ func (supervisor *profileSupervisor) Do(ctx context.Context, action contributor.
 	defer supervisor.mu.Unlock()
 	switch action {
 	case contributor.SupervisorReload:
-	case contributor.SupervisorEnable:
-		supervisor.enabled = true
-	case contributor.SupervisorStart, contributor.SupervisorRestart:
+	case contributor.SupervisorAction(2), contributor.SupervisorAction(3), contributor.SupervisorAction(4):
 		supervisor.startCalls++
-		if supervisor.beforeNextStart != nil {
-			beforeStart := supervisor.beforeNextStart
-			supervisor.beforeNextStart = nil
-			beforeStart()
-		}
-		if supervisor.failNextStart {
-			supervisor.failNextStart = false
-			return contributor.SupervisorState{}, errors.New("injected successor start failure")
-		}
-		supervisor.active = true
-		if !supervisor.suppressStartLifecycle {
-			writeLifecycle(tWriter{root: supervisor.hostRoot}, "READY")
-		}
+		return contributor.SupervisorState{}, errors.New("retired Contributor activation reached Supervisor")
 	case contributor.SupervisorStop:
 		supervisor.stopCalls++
 		supervisor.active = false
-		writeLifecycle(tWriter{root: supervisor.hostRoot}, "WITHDRAWN")
-		if supervisor.failNextStopAfterAction {
-			supervisor.failNextStopAfterAction = false
-			return contributor.SupervisorState{}, errors.New("injected ambiguous stop failure")
+		if !supervisor.suppressStopLifecycle {
+			writeLifecycle(tWriter{root: supervisor.hostRoot}, "WITHDRAWN")
 		}
 	case contributor.SupervisorDisable:
 		supervisor.enabled = false
+	case contributor.SupervisorStatus:
+	default:
+		return contributor.SupervisorState{}, errors.New("unknown Contributor Supervisor action")
 	}
 	return contributor.SupervisorState{Active: supervisor.active, Enabled: supervisor.enabled}, nil
 }

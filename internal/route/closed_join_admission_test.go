@@ -3,6 +3,8 @@ package route
 import (
 	"testing"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 )
 
 // Real admission/spend/outer lifetime owners; token verification and TLS
@@ -10,7 +12,7 @@ import (
 func TestClosedOuterDataJoinRequiresDataAdmissionAndRetainsOriginalLifetime(t *testing.T) {
 	for _, class := range []uint8{1, 2, 3} {
 		t.Run(string(rune('0'+class)), func(t *testing.T) {
-			lane, bridge, lease, now := closedOuterAdmissionFixtureFor(t, ClosedPurposeDataJoin, class)
+			lane, bridge, lease, now := closedOuterAdmissionFixtureFor(t, ardp.PurposeDataJoin, class)
 			original := lease.Deadline
 			err := lane.admitVerified(lease)
 			if class != 2 {
@@ -18,7 +20,7 @@ func TestClosedOuterDataJoinRequiresDataAdmissionAndRetainsOriginalLifetime(t *t
 					t.Fatal("non-data admission activated DataJoin lifetime")
 				}
 				*now = now.Add(11 * time.Second)
-				if _, err := bridge.Accept(ClosedLaneFrame{Kind: closedFrameBytes, Lane: 1, Body: []byte{2}}); err == nil {
+				if _, err := bridge.Accept(ardp.Frame{Kind: ardp.KindBytes, Lane: 1, Body: []byte{2}}); err == nil {
 					t.Fatal("wrong class outlived setup")
 				}
 				return
@@ -33,14 +35,14 @@ func TestClosedOuterDataJoinRequiresDataAdmissionAndRetainsOriginalLifetime(t *t
 				t.Fatal("DataJoin extended original admission")
 			}
 			*now = now.Add(11 * time.Second)
-			if _, err := bridge.Accept(ClosedLaneFrame{Kind: closedFrameBytes, Lane: 1, Body: []byte{2}}); err != nil {
+			if _, err := bridge.Accept(ardp.Frame{Kind: ardp.KindBytes, Lane: 1, Body: []byte{2}}); err != nil {
 				t.Fatalf("DataJoin carrier truncated to setup: %v", err)
 			}
 			if err := lane.admitVerified(lease); err == nil {
 				t.Fatal("DataJoin admission reused")
 			}
 			*now = original
-			if _, err := bridge.Accept(ClosedLaneFrame{Kind: closedFrameBytes, Lane: 1, Body: []byte{3}}); err == nil {
+			if _, err := bridge.Accept(ardp.Frame{Kind: ardp.KindBytes, Lane: 1, Body: []byte{3}}); err == nil {
 				t.Fatal("DataJoin outlived original admission")
 			}
 		})

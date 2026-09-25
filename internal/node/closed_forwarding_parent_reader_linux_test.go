@@ -13,6 +13,8 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/resource"
 	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
+	"github.com/dianabuilds/ardents-network/internal/route/replay"
 )
 
 // The parent reader must keep serving bounded lane-zero control while an
@@ -49,7 +51,7 @@ func TestClosedForwardingParentReaderServesControlWhileOpenBlocks(t *testing.T) 
 	fixture.config.CurrentClosedProfile = func() (state.ClosedProfileView, bool) { return fixture.view.Profile, true }
 	host := &cleanupFailureHost{}
 	fixture.config.ClosedForwarding = ClosedForwardingProfile{Certificate: serverCertificate, AdmissionTraffic: resource.HostingTraffic{Tx: 1}, TerminationTraffic: resource.HostingTraffic{Tx: 1}, host: host}
-	receiver, ok := closedRouteReceiver(fixture.config, fixture.snapshot, route.ClosedPurposeForwarding, now)
+	receiver, ok := closedRouteReceiver(fixture.config, fixture.snapshot, ardp.PurposeForwarding, now)
 	if !ok {
 		t.Fatal("receiver unavailable")
 	}
@@ -67,7 +69,7 @@ func TestClosedForwardingParentReaderServesControlWhileOpenBlocks(t *testing.T) 
 		_ = listener.Close()
 		t.Fatal(err)
 	}
-	spends, err := route.OpenClosedSpendLedger(t.TempDir(), route.ClosedSpendBinding{NetworkID: receiver.NetworkID, ProfileDigest: receiver.ProfileDigest,
+	spends, err := replay.Open(t.TempDir(), replay.Binding{NetworkID: receiver.NetworkID, ProfileDigest: receiver.ProfileDigest,
 		ReceiverNodeID: receiver.NodeID, ReceiverDutyGeneration: receiver.DutyGeneration})
 	if err != nil {
 		_ = listener.Close()
@@ -106,14 +108,14 @@ func TestClosedForwardingParentReaderServesControlWhileOpenBlocks(t *testing.T) 
 			return
 		}
 		defer accepted.Connection.Close()
-		frame, readErr := route.ReadClosedLaneFrame(accepted.Connection)
+		frame, readErr := ardp.ReadFrame(accepted.Connection)
 		if readErr != nil || frame.Kind != 1 {
 			peerDone <- errors.New("blocked downstream HELLO missing")
 			return
 		}
 		close(helloRead)
 		_ = accepted.Connection.SetReadDeadline(time.Now().Add(2 * time.Second))
-		_, readErr = route.ReadClosedLaneFrame(accepted.Connection)
+		_, readErr = ardp.ReadFrame(accepted.Connection)
 		if readErr == nil || errors.Is(readErr, io.ErrNoProgress) {
 			peerDone <- errors.New("A carrier remained open after CLOSE")
 			return
@@ -136,19 +138,19 @@ func TestClosedForwardingParentReaderServesControlWhileOpenBlocks(t *testing.T) 
 			return
 		}
 		defer accepted.Connection.Close()
-		if hello, readErr := route.ReadClosedLaneFrame(accepted.Connection); readErr != nil || hello.Kind != 1 {
+		if hello, readErr := ardp.ReadFrame(accepted.Connection); readErr != nil || hello.Kind != 1 {
 			peerDone <- errors.New("B HELLO missing")
 			return
 		}
-		accept, frameErr := route.ClosedAcceptFrame(0, 64<<10)
+		accept, frameErr := ardp.AcceptFrame(0, 64<<10)
 		if frameErr == nil {
-			frameErr = route.WriteClosedLaneFrame(accepted.Connection, accept)
+			frameErr = ardp.WriteFrame(accepted.Connection, accept)
 		}
 		if frameErr != nil {
 			peerDone <- frameErr
 			return
 		}
-		if child, readErr := route.ReadClosedLaneFrame(accepted.Connection); readErr != nil || child.Kind != 4 || child.Lane != 1 {
+		if child, readErr := ardp.ReadFrame(accepted.Connection); readErr != nil || child.Kind != 4 || child.Lane != 1 {
 			peerDone <- errors.New("B child OPEN missing")
 			return
 		}
@@ -169,7 +171,7 @@ func TestClosedForwardingParentReaderServesControlWhileOpenBlocks(t *testing.T) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err = route.WriteClosedLaneFrame(client, route.ClosedLaneFrame{Kind: 4, Lane: 1, Body: body}); err != nil {
+	if err = ardp.WriteFrame(client, ardp.Frame{Kind: 4, Lane: 1, Body: body}); err != nil {
 		t.Fatal(err)
 	}
 	select {
@@ -180,7 +182,7 @@ func TestClosedForwardingParentReaderServesControlWhileOpenBlocks(t *testing.T) 
 	case <-time.After(6 * time.Second):
 		t.Fatal("A did not begin blocked downstream HELLO")
 	}
-	if err = route.WriteClosedLaneFrame(client, route.ClosedLaneFrame{Kind: 9, Lane: 1, Body: []byte{1}}); err != nil {
+	if err = ardp.WriteFrame(client, ardp.Frame{Kind: 9, Lane: 1, Body: []byte{1}}); err != nil {
 		t.Fatal(err)
 	}
 	select {
@@ -190,12 +192,12 @@ func TestClosedForwardingParentReaderServesControlWhileOpenBlocks(t *testing.T) 
 	case <-time.After(3 * time.Second):
 		t.Fatal("A opener did not close after CLOSE")
 	}
-	bOpen := route.ClosedOpen{NextNodeID: fixture.snapshot.Candidates[0].NodeID, NextDutyGeneration: fixture.view.Nodes[0].DutyGeneration, Purpose: route.ClosedPurposeForwarding, Deadline: now.Add(20 * time.Second)}
+	bOpen := route.ClosedOpen{NextNodeID: fixture.snapshot.Candidates[0].NodeID, NextDutyGeneration: fixture.view.Nodes[0].DutyGeneration, Purpose: ardp.PurposeForwarding, Deadline: now.Add(20 * time.Second)}
 	bBody, err := route.EncodeClosedOpen(bOpen)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err = route.WriteClosedLaneFrame(client, route.ClosedLaneFrame{Kind: 4, Lane: 3, Body: bBody}); err != nil {
+	if err = ardp.WriteFrame(client, ardp.Frame{Kind: 4, Lane: 3, Body: bBody}); err != nil {
 		t.Fatal(err)
 	}
 	select {
@@ -205,13 +207,13 @@ func TestClosedForwardingParentReaderServesControlWhileOpenBlocks(t *testing.T) 
 	case <-time.After(time.Second):
 		t.Fatal("B did not progress while A blocked")
 	}
-	if err = route.WriteClosedLaneFrame(client, route.ClosedLaneFrame{Kind: 2, Lane: 0, Body: append([]byte{2}, closedRestrictionToken(t, fixture)...)}); err != nil {
+	if err = ardp.WriteFrame(client, ardp.Frame{Kind: 2, Lane: 0, Body: append([]byte{2}, closedRestrictionToken(t, fixture)...)}); err != nil {
 		t.Fatal(err)
 	}
 	if err = client.SetReadDeadline(time.Now().Add(time.Second)); err != nil {
 		t.Fatal(err)
 	}
-	frame, err := route.ReadClosedLaneFrame(client)
+	frame, err := ardp.ReadFrame(client)
 	if err != nil || frame.Kind != 5 {
 		t.Fatalf("control did not progress past blocked A: %+v / %v", frame, err)
 	}
@@ -235,15 +237,15 @@ func closedForwardingParentReaderAccepted(t *testing.T, server *closedForwarding
 		_ = serverRaw.Close()
 		t.Fatalf("inner client TLS: %v / %v", err, <-result)
 	}
-	hello := route.ClosedHello{NetworkID: receiver.NetworkID, StateGeneration: receiver.StateGeneration, StateDigest: receiver.StateDigest, ProfileDigest: receiver.ProfileDigest,
-		RecipientNodeID: receiver.NodeID, RecipientDutyGeneration: receiver.DutyGeneration, Purpose: route.ClosedPurposeForwarding, ChannelNonce: [32]byte{19}, Deadline: receiver.NotAfter}
-	body, err := route.EncodeClosedHello(hello)
+	hello := ardp.Hello{NetworkID: receiver.NetworkID, StateGeneration: receiver.StateGeneration, StateDigest: receiver.StateDigest, ProfileDigest: receiver.ProfileDigest,
+		RecipientNodeID: receiver.NodeID, RecipientDutyGeneration: receiver.DutyGeneration, Purpose: ardp.PurposeForwarding, ChannelNonce: [32]byte{19}, Deadline: receiver.NotAfter}
+	body, err := ardp.EncodeHello(hello)
 	if err == nil {
 		_ = client.SetWriteDeadline(time.Now().Add(time.Second))
-		err = route.WriteClosedLaneFrame(client, route.ClosedLaneFrame{Kind: 1, Body: body})
+		err = ardp.WriteFrame(client, ardp.Frame{Kind: 1, Body: body})
 	}
 	if err == nil {
-		err = route.WriteClosedLaneFrame(client, route.ClosedLaneFrame{Kind: 2, Body: append([]byte{2}, token...)})
+		err = ardp.WriteFrame(client, ardp.Frame{Kind: 2, Body: append([]byte{2}, token...)})
 	}
 	_ = client.SetWriteDeadline(time.Time{})
 	if err != nil {
@@ -251,7 +253,7 @@ func closedForwardingParentReaderAccepted(t *testing.T, server *closedForwarding
 		t.Fatalf("forwarding admission write: %v / %v", err, <-result)
 	}
 	_ = client.SetReadDeadline(time.Now().Add(time.Second))
-	frame, err := route.ReadClosedLaneFrame(client)
+	frame, err := ardp.ReadFrame(client)
 	_ = client.SetReadDeadline(time.Time{})
 	if err != nil || frame.Kind != 5 {
 		_ = client.Close()

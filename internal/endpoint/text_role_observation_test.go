@@ -52,7 +52,7 @@ func TestTextPublicationIsolatedRoleObservations(t *testing.T) {
 				processes = append(processes, process)
 				return process.stop
 			}
-			endpoint, owner, source := startTextRoleNetworkWithRunner(t, carrier, true, true, false, runner)
+			endpoint, owner, source := startTextRoleNetwork(t, textRoleNetworkFixture{carrier: carrier, resolution: true, publisher: true, runner: runner})
 			observe := func(phase string) {
 				t.Helper()
 				publisherProcess.capture(phase)

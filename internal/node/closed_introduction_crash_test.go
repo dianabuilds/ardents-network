@@ -18,6 +18,9 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
+	introductioncapsule "github.com/dianabuilds/ardents-network/internal/route/capsule"
+	"github.com/dianabuilds/ardents-network/internal/route/terminal"
 )
 
 // Only fixture credentials enter a parent-owned private temporary directory.
@@ -34,7 +37,7 @@ type introductionCrashClient struct {
 	Receiver     route.ClosedRoleReceiver
 	ServerKey    [32]byte
 	Token        []byte
-	Request      route.ClosedRegistrationRequest
+	Request      terminal.RegistrationRequest
 }
 
 func TestClosedIntroductionClientCrashStopsDelivery(t *testing.T) {
@@ -48,8 +51,8 @@ func TestClosedIntroductionClientCrashStopsDelivery(t *testing.T) {
 	}
 	for _, carrier := range []route.CarrierProfile{route.ClosedCarrierTCP, route.ClosedCarrierQUIC} {
 		t.Run(string(carrier), func(t *testing.T) {
-			fixture := newPrivateRecipientNetworkFixture(t, carrier, route.ClosedPurposeIntroduction, 3, 1)
-			request := route.ClosedRegistrationRequest{Nonce: [32]byte{121}, Slot: [32]byte{122}, Revision: 1, Expiry: time.Now().UTC().Add(60 * time.Second).Truncate(time.Second)}
+			fixture := newPrivateRecipientNetworkFixture(t, carrier, ardp.PurposeIntroduction, 3, 1)
+			request := terminal.RegistrationRequest{Nonce: [32]byte{121}, Slot: [32]byte{122}, Revision: 1, Expiry: time.Now().UTC().Add(60 * time.Second).Truncate(time.Second)}
 			input := introductionCrashClient{Profile: fixture.profile, Carrier: carrier, Endpoint: fixture.endpoint, Certificates: fixture.certificate.Certificate, PrivateKey: fixture.certificate.PrivateKey.(ed25519.PrivateKey), Receiver: fixture.receiver, ServerKey: fixture.serverKey, Token: fixture.tokens[0], Request: request}
 			root := t.TempDir()
 			if err := os.Chmod(root, 0700); err != nil {
@@ -166,7 +169,7 @@ func runIntroductionCrashClient(t *testing.T, path string) {
 	}
 	var pending uint32
 	for {
-		frame, err := route.ReadClosedLaneFrame(connection)
+		frame, err := ardp.ReadFrame(connection)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -180,25 +183,25 @@ func runIntroductionCrashClient(t *testing.T, path string) {
 		if frame.Kind != 10 || frame.Lane == 0 || frame.Lane%2 != 0 || pending != 0 {
 			t.Fatal("unexpected delivery frame")
 		}
-		nonce, capsule, err := route.DecodeClosedIntroductionSubmission(frame.Body)
+		nonce, capsule, err := introductioncapsule.DecodeSubmission(frame.Body)
 		if err != nil || capsule.Slot != input.Request.Slot {
 			t.Fatal("unexpected delivery capsule")
 		}
 		pending = frame.Lane
-		response, err := route.EncodeClosedDescriptorResult(nonce, 0, nil)
+		response, err := terminal.EncodeDescriptorResult(nonce, 0, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
-		if err := route.WriteClosedLaneFrame(connection, route.ClosedLaneFrame{Kind: 11, Lane: frame.Lane, Body: response}); err != nil {
+		if err := ardp.WriteFrame(connection, ardp.Frame{Kind: 11, Lane: frame.Lane, Body: response}); err != nil {
 			t.Fatal(err)
 		}
 	}
 }
 
-func submitIntroductionCrashFixture(t *testing.T, fixture *resolutionNetworkFixture, request route.ClosedRegistrationRequest, index int) (uint8, error) {
+func submitIntroductionCrashFixture(t *testing.T, fixture *resolutionNetworkFixture, request terminal.RegistrationRequest, index int) (uint8, error) {
 	t.Helper()
 	submitter := *fixture
-	submitter.receiver.ExpectedPurpose = route.ClosedPurposeSubmission
+	submitter.receiver.ExpectedPurpose = ardp.PurposeSubmission
 	ctx, cancel := context.WithTimeout(t.Context(), 12*time.Second)
 	defer cancel()
 	connection, closeCarrier, err := submitter.openTerminal(ctx, fixture.supplementary[1][index], 1)
@@ -211,22 +214,22 @@ func submitIntroductionCrashFixture(t *testing.T, fixture *resolutionNetworkFixt
 		t.Fatal(err)
 	}
 	nonce := [32]byte{byte(130 + index)}
-	capsule := route.ClosedIntroductionCapsule{Slot: request.Slot, Revision: request.Revision, Expiry: end, DeliveryNonce: [32]byte{byte(140 + index)}, Encapsulation: [32]byte{131}, Ciphertext: make([]byte, 360)}
-	raw, err := route.EncodeClosedIntroductionSubmission(nonce, capsule)
+	capsule := introductioncapsule.Capsule{Slot: request.Slot, Revision: request.Revision, Expiry: end, DeliveryNonce: [32]byte{byte(140 + index)}, Encapsulation: [32]byte{131}, Ciphertext: make([]byte, 360)}
+	raw, err := introductioncapsule.EncodeSubmission(nonce, capsule)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := route.WriteClosedLaneFrame(connection, route.ClosedLaneFrame{Kind: 10, Body: raw}); err != nil {
+	if err := ardp.WriteFrame(connection, ardp.Frame{Kind: 10, Body: raw}); err != nil {
 		t.Fatal(err)
 	}
-	frame, err := route.ReadClosedLaneFrame(connection)
+	frame, err := ardp.ReadFrame(connection)
 	if err != nil {
 		return 1, err
 	}
 	if frame.Kind != 11 || frame.Lane != 0 {
 		t.Fatal("unexpected submission result")
 	}
-	result, proof, err := route.DecodeClosedDescriptorResult(frame.Body, nonce)
+	result, proof, err := terminal.DecodeDescriptorResult(frame.Body, nonce)
 	if err != nil || len(proof) != 0 {
 		t.Fatalf("malformed submission result: %v", err)
 	}

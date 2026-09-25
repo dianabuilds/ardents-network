@@ -11,6 +11,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 )
 
 type joinedCreditWitnessBoundary struct {
@@ -49,7 +51,7 @@ func checkClosedJoinedOuterCreditOverlap(t *testing.T, failed bool) {
 					return
 				}
 			}
-			if _, err := ReadClosedLaneFrame(peer); err != nil {
+			if _, err := ardp.ReadFrame(peer); err != nil {
 				return
 			}
 		}
@@ -67,7 +69,7 @@ func checkClosedJoinedOuterCreditOverlap(t *testing.T, failed bool) {
 	if err := lane.activate(); err != nil {
 		t.Fatal(err)
 	}
-	heldRead := &joinedReadBoundary{Conn: lane, remaining: closedLaneHeaderSize + 1, entered: make(chan struct{}), release: make(chan struct{})}
+	heldRead := &joinedReadBoundary{Conn: lane, remaining: ardp.HeaderSize + 1, entered: make(chan struct{}), release: make(chan struct{})}
 	heldWrite := &joinedCloseWriteBoundary{Conn: heldRead, entered: make(chan struct{}), release: make(chan struct{})}
 	ctx, cancel := context.WithCancel(t.Context())
 	stream := newClosedJoinedStream(ctx, heldWrite, lane, func() {})
@@ -79,14 +81,14 @@ func checkClosedJoinedOuterCreditOverlap(t *testing.T, failed bool) {
 		_ = stream.Close()
 	})
 	var encoded []byte
-	for _, frame := range []ClosedLaneFrame{{Kind: 6, Lane: 1, Body: []byte("a")}, {Kind: 6, Lane: 1, Body: []byte("tail")}, {Kind: 9, Lane: 1, Body: []byte{0}}} {
-		raw, e := EncodeClosedLaneFrame(frame)
+	for _, frame := range []ardp.Frame{{Kind: 6, Lane: 1, Body: []byte("a")}, {Kind: 6, Lane: 1, Body: []byte("tail")}, {Kind: 9, Lane: 1, Body: []byte{0}}} {
+		raw, e := ardp.EncodeFrame(frame)
 		if e != nil {
 			t.Fatal(e)
 		}
 		encoded = append(encoded, raw...)
 	}
-	if err := WriteClosedLaneFrame(peer, ClosedLaneFrame{Kind: 6, Lane: lane.id, Body: encoded}); err != nil {
+	if err := ardp.WriteFrame(peer, ardp.Frame{Kind: 6, Lane: lane.id, Body: encoded}); err != nil {
 		t.Fatal(err)
 	}
 	select {
@@ -96,7 +98,7 @@ func checkClosedJoinedOuterCreditOverlap(t *testing.T, failed bool) {
 	}
 	outerCredit := make(chan error, 1)
 	workers.Go(func() {
-		outerCredit <- lane.send(ClosedLaneFrame{Kind: 7, Lane: lane.id, Body: binary.BigEndian.AppendUint32(nil, 1)}, time.Time{})
+		outerCredit <- lane.send(ardp.Frame{Kind: 7, Lane: lane.id, Body: binary.BigEndian.AppendUint32(nil, 1)}, time.Time{})
 	})
 	waitSourceChannelState(t, outer, func() bool { return outer.active != nil && outer.active.frame.Kind == 7 })
 	firstRead := make(chan error, 1)
@@ -106,7 +108,7 @@ func checkClosedJoinedOuterCreditOverlap(t *testing.T, failed bool) {
 	case <-time.After(time.Second):
 		t.Fatal("inner credit boundary")
 	}
-	if err := WriteClosedLaneFrame(peer, ClosedLaneFrame{Kind: 9, Lane: lane.id, Body: []byte{0}}); err != nil {
+	if err := ardp.WriteFrame(peer, ardp.Frame{Kind: 9, Lane: lane.id, Body: []byte{0}}); err != nil {
 		t.Fatal(err)
 	}
 	waitSourceChannelState(t, outer, func() bool { return lane.remoteClosed })
@@ -163,7 +165,7 @@ func TestClosedJoinedCreditWitnessDistinguishesPeerEOFAndLocalClose(t *testing.T
 			owner.lanes[1] = lane
 			owner.workers.Add(1)
 			go owner.write()
-			err := lane.send(ClosedLaneFrame{Kind: closedFrameCredit, Lane: 1, Body: binary.BigEndian.AppendUint32(nil, 1)}, time.Time{})
+			err := lane.send(ardp.Frame{Kind: ardp.KindCredit, Lane: 1, Body: binary.BigEndian.AppendUint32(nil, 1)}, time.Time{})
 			owner.mu.Lock()
 			if owner.terminal == nil {
 				owner.terminal = ErrClosedSourceStopped

@@ -25,7 +25,7 @@ func TestTextIntroductionCancelledOpeningDoesNotRetireSourceOrPublishPrefix(t *t
 	source.prefix.Store(&route.ClosedSourcePrefix{})
 	owner.source.live = source
 	attempt, cancel := context.WithCancel(t.Context())
-	flight := &textSourceFlight{context: attempt, cancel: cancel, done: make(chan struct{})}
+	flight := &textOperationFlight{context: attempt, cancel: cancel, done: make(chan struct{})}
 	if !owner.introduction.reserveOpeningLocked(flight) {
 		t.Fatal("Introduction lifecycle refused its first opening")
 	}
@@ -52,7 +52,7 @@ func TestTextIntroductionCancelledOpeningDoesNotRetireSourceOrPublishPrefix(t *t
 
 func TestTextIntroductionOldOpeningCannotAcquireReplacementHandle(t *testing.T) {
 	var lifecycle textIntroductionPrefixLifecycle
-	firstFlight := &textSourceFlight{}
+	firstFlight := &textOperationFlight{}
 	if !lifecycle.reserveOpeningLocked(firstFlight) {
 		t.Fatal("Introduction lifecycle refused first opening")
 	}
@@ -61,7 +61,7 @@ func TestTextIntroductionOldOpeningCannotAcquireReplacementHandle(t *testing.T) 
 		t.Fatal("Introduction lifecycle refused first completion")
 	}
 	retirement := lifecycle.stopLocked()
-	secondFlight := &textSourceFlight{}
+	secondFlight := &textOperationFlight{}
 	if !lifecycle.reserveOpeningLocked(secondFlight) {
 		t.Fatal("Introduction lifecycle refused replacement opening")
 	}

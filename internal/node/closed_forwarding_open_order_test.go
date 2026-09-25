@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 )
 
 func TestClosedForwardingConcurrentAttachPreservesWireIDOrder(t *testing.T) {
@@ -23,13 +24,13 @@ func TestClosedForwardingConcurrentAttachPreservesWireIDOrder(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer outer.Close()
-	body, err := route.EncodeClosedHello(route.ClosedHello{NetworkID: receiver.NetworkID, StateGeneration: receiver.StateGeneration, StateDigest: receiver.StateDigest,
-		ProfileDigest: receiver.ProfileDigest, RecipientNodeID: receiver.NodeID, RecipientDutyGeneration: receiver.DutyGeneration, Purpose: route.ClosedPurposeForwarding,
+	body, err := ardp.EncodeHello(ardp.Hello{NetworkID: receiver.NetworkID, StateGeneration: receiver.StateGeneration, StateDigest: receiver.StateDigest,
+		ProfileDigest: receiver.ProfileDigest, RecipientNodeID: receiver.NodeID, RecipientDutyGeneration: receiver.DutyGeneration, Purpose: ardp.PurposeForwarding,
 		ChannelNonce: [32]byte{8}, Deadline: receiver.Deadline})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := outer.Accept(route.ClosedLaneFrame{Kind: 1, Body: body}); err != nil {
+	if _, err := outer.Accept(ardp.Frame{Kind: 1, Body: body}); err != nil {
 		t.Fatal(err)
 	}
 	local, peer := net.Pipe()
@@ -41,7 +42,7 @@ func TestClosedForwardingConcurrentAttachPreservesWireIDOrder(t *testing.T) {
 	session := &closedForwardingSession{carrier: local, children: make(map[uint32]*closedForwardingQueue), retired: make(map[uint32]struct{})}
 	start := make(chan struct{})
 	results := make(chan error, count)
-	open := route.ClosedOpen{NextNodeID: receiver.NodeID, NextDutyGeneration: receiver.DutyGeneration, Purpose: route.ClosedPurposeIssuer, Deadline: receiver.Deadline}
+	open := route.ClosedOpen{NextNodeID: receiver.NodeID, NextDutyGeneration: receiver.DutyGeneration, Purpose: ardp.PurposeIssuer, Deadline: receiver.Deadline}
 	for range count {
 		workers.Go(func() {
 			<-start
@@ -51,7 +52,7 @@ func TestClosedForwardingConcurrentAttachPreservesWireIDOrder(t *testing.T) {
 	}
 	close(start)
 	for index := 0; index < count; index++ {
-		frame, err := route.ReadClosedLaneFrame(peer)
+		frame, err := ardp.ReadFrame(peer)
 		if err != nil {
 			t.Fatal(err)
 		}

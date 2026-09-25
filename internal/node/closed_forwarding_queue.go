@@ -2,8 +2,9 @@ package node
 
 import (
 	"errors"
-	"github.com/dianabuilds/ardents-network/internal/route"
 	"sync"
+
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 )
 
 // The shared reader never waits for a child writer. Queued complete frames
@@ -15,7 +16,7 @@ var errClosedForwardingQueueFull = errors.New("closed forwarding reverse queue i
 type closedForwardingQueue struct {
 	mu             sync.Mutex
 	changed        *sync.Cond
-	frames         []route.ClosedLaneFrame
+	frames         []ardp.Frame
 	bytes, maximum int
 	closed         bool
 	terminal       bool // Complete, reserved peer CLOSE; transport EOF alone is not terminal.
@@ -27,7 +28,7 @@ func newClosedForwardingQueue(maximum int) *closedForwardingQueue {
 	return queue
 }
 
-func (queue *closedForwardingQueue) push(frame route.ClosedLaneFrame, reserve func(route.ClosedLaneFrame) error) error {
+func (queue *closedForwardingQueue) push(frame ardp.Frame, reserve func(ardp.Frame) error) error {
 	queue.mu.Lock()
 	defer queue.mu.Unlock()
 	size := 16 + len(frame.Body)
@@ -48,17 +49,17 @@ func (queue *closedForwardingQueue) push(frame route.ClosedLaneFrame, reserve fu
 	return nil
 }
 
-func (queue *closedForwardingQueue) next() (route.ClosedLaneFrame, bool) {
+func (queue *closedForwardingQueue) next() (ardp.Frame, bool) {
 	queue.mu.Lock()
 	defer queue.mu.Unlock()
 	for len(queue.frames) == 0 && !queue.closed {
 		queue.changed.Wait()
 	}
 	if len(queue.frames) == 0 {
-		return route.ClosedLaneFrame{}, false
+		return ardp.Frame{}, false
 	}
 	frame := queue.frames[0]
-	queue.frames[0] = route.ClosedLaneFrame{}
+	queue.frames[0] = ardp.Frame{}
 	queue.frames = queue.frames[1:]
 	queue.bytes -= 16 + len(frame.Body)
 	if len(queue.frames) == 0 {

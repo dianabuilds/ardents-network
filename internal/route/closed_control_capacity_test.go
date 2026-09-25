@@ -3,6 +3,8 @@ package route
 import (
 	"testing"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 )
 
 func TestForwardingControlReservationSurvivesFullWorkSet(t *testing.T) {
@@ -46,7 +48,7 @@ func TestForwardingControlReservationSurvivesFullWorkSet(t *testing.T) {
 }
 
 func TestForwardingDataCannotClaimReservedControl(t *testing.T) {
-	for _, purpose := range []ClosedPurpose{ClosedPurposeForwarding, ClosedPurposeDataJoin, ClosedPurposeName, 0, 255} {
+	for _, purpose := range []ardp.Purpose{ardp.PurposeForwarding, ardp.PurposeDataJoin, ardp.PurposeName, 0, 255} {
 		if closedControlPurpose(purpose) {
 			t.Fatalf("purpose %d obtained control capacity", purpose)
 		}

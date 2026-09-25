@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
-	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	"github.com/dianabuilds/ardents-network/internal/service/instance"
 	"github.com/dianabuilds/ardents-network/internal/service/publication"
 	"github.com/dianabuilds/ardents-network/internal/service/reachability"
@@ -34,11 +34,38 @@ func (owner *textContext) publishTextDescriptor(ctx context.Context) (verified r
 	owner.mu.Lock()
 	profile, now, err := owner.textPermissionProfileLocked()
 	registered := owner.textPublicationPairLifecycle.publicationTargetLocked()
-	if err != nil || owner.surface != broker.Administration || registered == nil || owner.textPublicationPairLifecycle.drainingLocked() || owner.withdrawal != nil ||
-		owner.registrationOpening != nil || owner.permission == nil || owner.resolution != nil || owner.currentTextSourceLocked() == nil ||
-		endpoint.publisherBinding == nil || endpoint.publications == nil || endpoint.publisherSession != nil || endpoint.textPublisherOwner != nil && endpoint.textPublisherOwner != owner {
+	reason := ""
+	switch {
+	case err != nil:
+		reason = "permission profile: " + err.Error()
+	case owner.surface != broker.Administration:
+		reason = "context is not Administration"
+	case registered == nil:
+		reason = "Introduction registration is absent"
+	case owner.textPublicationPairLifecycle.drainingLocked():
+		reason = "Introduction registration is draining"
+	case owner.textPublicationPairLifecycle.withdrawalInProgressLocked():
+		reason = "Introduction registration withdrawal is in progress"
+	case owner.textPublicationPairLifecycle.openingInProgressLocked():
+		reason = "Introduction registration opening is in progress"
+	case owner.permission == nil:
+		reason = "Permission is absent"
+	case owner.resolution != nil:
+		reason = "resolution flight is active"
+	case owner.currentTextSourceLocked() == nil:
+		reason = "Source is absent"
+	case endpoint.publisherBinding == nil:
+		reason = "Publisher binding is absent"
+	case endpoint.publications == nil:
+		reason = "Publication owner is absent"
+	case endpoint.publisherSession != nil:
+		reason = "Publisher session is active"
+	case endpoint.textPublisherOwner != nil && endpoint.textPublisherOwner != owner:
+		reason = "another Publisher context owns the publication"
+	}
+	if reason != "" {
 		owner.mu.Unlock()
-		return verified, errors.New("text publication owner unavailable")
+		return verified, fmt.Errorf("text publication owner unavailable: %s", reason)
 	}
 	select {
 	case <-registered.channel.Done():
@@ -124,7 +151,7 @@ func (owner *textContext) publishTextDescriptor(ctx context.Context) (verified r
 	if err := owner.ensureTextResolutionStock(flight); err != nil {
 		return reachability.Verified{}, errors.Join(errors.New("text publication resolution token preparation failed"), err)
 	}
-	status, _, err := flight.source.exchangeDescriptor(attempt, func(hello route.ClosedHello, class uint8) ([]byte, error) {
+	status, _, err := flight.source.exchangeDescriptor(attempt, func(hello ardp.Hello, class uint8) ([]byte, error) {
 		return owner.presentTextResolutionToken(flight, hello, class)
 	}, [32]byte{}, raw)
 	if err != nil || status != 0 {

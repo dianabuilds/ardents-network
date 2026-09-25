@@ -10,6 +10,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
+	"github.com/dianabuilds/ardents-network/internal/route/terminal"
+
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/credential"
 )
@@ -72,12 +75,12 @@ func TestClosedIssuerAdmittedOperationAfterTwoBootstrapBatches(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			exhausted, err := route.DecodeClosedIssuanceResult(third.Body, third.Nonce)
+			exhausted, err := terminal.DecodeIssuanceResult(third.Body, third.Nonce)
 			if err != nil || exhausted.Status != 2 {
 				t.Fatalf("third bootstrap was not exhausted: %d / %v", exhausted.Status, err)
 			}
 			prefix, err := route.OpenClosedSourcePrefix(t.Context(), fixture, fixture.selection,
-				func(hello route.ClosedHello, class uint8) ([]byte, error) {
+				func(hello ardp.Hello, class uint8) ([]byte, error) {
 					for index := 0; index < 2; index++ {
 						if hello.RecipientNodeID == fixture.view.Nodes[index].NodeID && class == 2 && forward[index] != nil {
 							token := forward[index]
@@ -92,8 +95,8 @@ func TestClosedIssuerAdmittedOperationAfterTwoBootstrapBatches(t *testing.T) {
 			}
 			defer prefix.Close()
 			exchange := func(token []byte) (route.ClosedIssuanceExchangeResult, error) {
-				return prefix.ExchangeIssuer(t.Context(), func(hello route.ClosedHello, class uint8) ([]byte, error) {
-					if hello.RecipientNodeID != profile.IssuerNodeID || hello.Purpose != route.ClosedPurposeIssuer || class != 1 {
+				return prefix.ExchangeIssuer(t.Context(), func(hello ardp.Hello, class uint8) ([]byte, error) {
+					if hello.RecipientNodeID != profile.IssuerNodeID || hello.Purpose != ardp.PurposeIssuer || class != 1 {
 						return nil, errors.New("wrong receiving token challenge")
 					}
 					return bytes.Clone(token), nil
@@ -110,11 +113,11 @@ func TestClosedIssuerAdmittedOperationAfterTwoBootstrapBatches(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			firstResult, err := route.DecodeClosedIssuanceResult(first.Body, first.Nonce)
+			firstResult, err := terminal.DecodeIssuanceResult(first.Body, first.Nonce)
 			if err != nil {
 				t.Fatal(err)
 			}
-			retryResult, err := route.DecodeClosedIssuanceResult(retried.Body, retried.Nonce)
+			retryResult, err := terminal.DecodeIssuanceResult(retried.Body, retried.Nonce)
 			if err != nil || !bytes.Equal(firstResult.Payload, retryResult.Payload) {
 				t.Fatalf("exact batch retry on fresh admission differs: %v", err)
 			}

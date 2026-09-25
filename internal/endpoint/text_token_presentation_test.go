@@ -5,11 +5,16 @@ package endpoint
 import (
 	"bytes"
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
+	"github.com/dianabuilds/ardents-network/internal/route/terminal"
+
+	"github.com/dianabuilds/ardents-network/internal/endpoint/tokenjournal"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/credential"
@@ -36,11 +41,11 @@ func TestTextTokenPresentationBurnsStockBeforeReturningBytes(t *testing.T) {
 		t.Fatal("stock transfer wrong")
 	}
 	raw, err := os.ReadFile(filepath.Join(endpoint.closedTokenRoot, "attempts"))
-	if err != nil || len(raw) != textTokenJournalHeader+textTokenAttemptSize || bytes.Contains(raw, original) {
+	if err != nil || len(raw) != textTokenReceiptHeaderSize+textTokenReceiptSize || bytes.Contains(raw, original) {
 		t.Fatal("missing durable receipt or leaked token")
 	}
-	receipt, err := decodeTextTokenAttempt(raw[textTokenJournalHeader:])
-	if err != nil || receipt.attempt != hello.ChannelNonce || receipt.receiver != hello.RecipientNodeID {
+	receipts := parseTextTokenReceipts(t, raw, endpoint.network)
+	if len(receipts) != 1 || receipts[0].attempt != hello.ChannelNonce || receipts[0].receiver != hello.RecipientNodeID {
 		t.Fatal("receipt lost attempt binding")
 	}
 	hello.ChannelNonce[0]++
@@ -53,13 +58,31 @@ func TestTextTokenPresentationBurnsStockBeforeReturningBytes(t *testing.T) {
 	if err := endpoint.Close(); err != nil {
 		t.Fatal(err)
 	}
-	reopened, err := openTextTokenJournal(endpoint.closedTokenRoot, endpoint.network, time.Now)
+	reopened, err := tokenjournal.Open(endpoint.closedTokenRoot, endpoint.network, time.Now)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer reopened.Close()
-	if err := reopened.mark(original, receipt); err == nil {
+	if err := reopened.Mark(original, journalAttemptFromReceipt(receipts[0])); err == nil {
 		t.Fatal("context restart revived spent token")
+	}
+}
+
+// Invalid issuer stock is consumed locally and never becomes a durable attempt
+// or bytes presented to Route.
+func TestTextTokenInvalidStockCannotReachJournal(t *testing.T) {
+	endpoint, owner, _, profile, hello, original := textTokenPresentationFixture(t)
+	defer clear(original)
+	owner.mu.Lock()
+	owner.permission.stock[0].tokens[0][0] ^= 0xff
+	returned, err := owner.takeTextTokenLocked(profile, time.Now().UTC(), hello, 2, t.Context())
+	remaining := len(owner.permission.stock[0].tokens)
+	owner.mu.Unlock()
+	if err == nil || len(returned) != 0 || remaining != 0 || textTokenTransferFailureStage(err) != "verification" {
+		t.Fatalf("invalid stock transfer: bytes=%d remaining=%d stage=%s err=%v", len(returned), remaining, textTokenTransferFailureStage(err), err)
+	}
+	if _, err := os.Stat(filepath.Join(endpoint.closedTokenRoot, "attempts")); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("invalid stock reached durable journal: %v", err)
 	}
 }
 
@@ -76,18 +99,8 @@ func TestTextTokenCancellationAfterDurableMarkRetainsBurn(t *testing.T) {
 		t.Fatalf("cancelled durable spend returned token or wrong result: bytes=%d remaining=%d stage=%s err=%v",
 			len(returned), remaining, textTokenTransferFailureStage(err), err)
 	}
-	journal, err := endpoint.textTokenJournal()
-	if err != nil {
-		t.Fatal(err)
-	}
-	journal.mu.Lock()
-	var receipt textTokenAttempt
-	for _, retained := range journal.records {
-		receipt = retained
-	}
-	records := len(journal.records)
-	journal.mu.Unlock()
-	if records != 1 || receipt.attempt != hello.ChannelNonce {
+	receipts := readTextTokenReceipts(t, endpoint.closedTokenRoot, endpoint.network)
+	if len(receipts) != 1 || receipts[0].attempt != hello.ChannelNonce {
 		t.Fatal("cancelled spend lost its durable attempt receipt")
 	}
 	if err := owner.Close(); err != nil {
@@ -96,18 +109,18 @@ func TestTextTokenCancellationAfterDurableMarkRetainsBurn(t *testing.T) {
 	if err := endpoint.Close(); err != nil {
 		t.Fatal(err)
 	}
-	reopened, err := openTextTokenJournal(endpoint.closedTokenRoot, endpoint.network, time.Now)
+	reopened, err := tokenjournal.Open(endpoint.closedTokenRoot, endpoint.network, time.Now)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer reopened.Close()
-	if err := reopened.mark(original, receipt); err == nil {
+	if err := reopened.Mark(original, journalAttemptFromReceipt(receipts[0])); err == nil {
 		t.Fatal("restart revived token burned before cancellation")
 	}
 }
 
 func textTokenPresentationFixture(t *testing.T) (*endpoint, *textContext, route.ClosedBootstrapSelection,
-	state.ClosedProfileView, route.ClosedHello, []byte) {
+	state.ClosedProfileView, ardp.Hello, []byte) {
 	t.Helper()
 	endpoint, owner, source := textSourceContextFixture(t)
 	root := prepareTextIssuancePermission(t, owner, source)
@@ -133,7 +146,7 @@ func textTokenPresentationFixture(t *testing.T) (*endpoint, *textContext, route.
 		t.Fatal(err)
 	}
 	nonce := [32]byte{241}
-	operation, err := route.EncodeClosedIssuanceRequest(nonce, pending.Request())
+	operation, err := terminal.EncodeIssuanceRequest(nonce, pending.Request())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -150,8 +163,8 @@ func textTokenPresentationFixture(t *testing.T) (*endpoint, *textContext, route.
 	}
 	original := bytes.Clone(tokens[0])
 	owner.permission.stock = []textTokenStock{{challenge: challenge, tokens: tokens}}
-	hello := route.ClosedHello{NetworkID: profile.NetworkID, StateGeneration: profile.StateGeneration, StateDigest: profile.StateDigest,
+	hello := ardp.Hello{NetworkID: profile.NetworkID, StateGeneration: profile.StateGeneration, StateDigest: profile.StateDigest,
 		ProfileDigest: profile.Digest, RecipientNodeID: challenge.ReceiverNodeID, RecipientDutyGeneration: duty,
-		Purpose: route.ClosedPurposeForwarding, ChannelNonce: [32]byte{242}, Deadline: profile.NotAfter}
+		Purpose: ardp.PurposeForwarding, ChannelNonce: [32]byte{242}, Deadline: profile.NotAfter}
 	return endpoint, owner, selection, profile, hello, original
 }

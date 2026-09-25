@@ -9,15 +9,10 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
-	"github.com/dianabuilds/ardents-network/internal/route"
+	introductioncapsule "github.com/dianabuilds/ardents-network/internal/route/capsule"
 	nativeconnection "github.com/dianabuilds/ardents-network/internal/service/connection"
 	"github.com/dianabuilds/ardents-network/internal/service/reachability"
 )
-
-// At most four candidates per second over the 600-second registration plus
-// the required 60-second replay retention. Entries never move to another
-// context; failed/forged opening cannot clear accepted replay history.
-const maximumTextIntroductionReplays = 4 * (600 + 60)
 
 func (owner *textContext) acceptDispatchedTextIntroduction(ctx context.Context, job *textJobIdentity,
 	operation []byte) (*textIntroductionAttempt, error) {
@@ -41,7 +36,7 @@ func (owner *textContext) acceptTextIntroductionGeneration(ctx context.Context, 
 	if owner == nil || ctx == nil || ctx.Err() != nil {
 		return nil, errors.New("text Introduction caller unavailable")
 	}
-	_, capsule, err := route.DecodeClosedIntroductionSubmission(operation)
+	_, capsule, err := introductioncapsule.DecodeSubmission(operation)
 	if err != nil {
 		return nil, &textIntroductionRefusal{cause: err}
 	}
@@ -56,7 +51,7 @@ func (owner *textContext) acceptTextIntroductionGeneration(ctx context.Context, 
 	}
 	profile, now, err := owner.textPermissionProfileLocked()
 	registered := owner.textPublicationPairLifecycle.selectLocked(now, capsule.Slot, capsule.Revision)
-	if err != nil || !owner.liveTextServiceJobLocked(job, broker.Administration) || registered == nil || owner.withdrawal != nil ||
+	if err != nil || !owner.liveTextServiceJobLocked(job, broker.Administration) || registered == nil || owner.textPublicationPairLifecycle.withdrawalInProgressLocked() ||
 		endpoint.textPublisherOwner != owner || !endpoint.textPublicationLive || endpoint.publisherBinding == nil || endpoint.publications == nil ||
 		!registered.published || registered.recipient == nil {
 		return nil, errors.New("text Introduction registration authority unavailable")
@@ -70,7 +65,7 @@ func (owner *textContext) acceptTextIntroductionGeneration(ctx context.Context, 
 	default:
 	}
 	if !openingReserved {
-		if err := owner.reserveTextIntroductionOpeningLocked(capsule.DeliveryNonce, now); err != nil {
+		if err := owner.introductionAdmission.reserveOpeningLocked(capsule.DeliveryNonce, now); err != nil {
 			return nil, &textIntroductionRefusal{cause: err}
 		}
 	}
@@ -91,7 +86,7 @@ func (owner *textContext) acceptTextIntroductionGeneration(ctx context.Context, 
 		verified.Descriptor.Private.RecipientKey != registered.recipient.Public(now) {
 		return nil, errors.New("text Introduction private publication changed")
 	}
-	plaintext, digest, err := route.OpenClosedIntroduction(capsule, profile.Digest, registered.recipient, now)
+	plaintext, digest, err := introductioncapsule.Open(capsule, profile.Digest, registered.recipient, now)
 	if err != nil {
 		return nil, &textIntroductionRefusal{cause: err}
 	}
@@ -129,26 +124,6 @@ func (owner *textContext) acceptTextIntroductionGeneration(ctx context.Context, 
 	if ctx.Err() != nil || !owner.liveTextServiceJobLocked(job, broker.Administration) || !at.Before(capsule.Expiry) || !retained || registered.recipient.Public(at) == [32]byte{} {
 		return nil, errors.Join(ctx.Err(), errors.New("text Introduction authority ended during binding"))
 	}
-	if owner.introductionReplays == nil {
-		owner.introductionReplays = make(map[[32]byte]time.Time)
-	}
-	owner.introductionReplays[capsule.DeliveryNonce] = registered.request.Expiry.Add(60 * time.Second)
+	owner.introductionAdmission.retainAcceptedLocked(capsule.DeliveryNonce, registered.request.Expiry)
 	return &textIntroductionAttempt{binding: binding, plaintext: plaintext, digest: digest}, nil
-}
-
-func (owner *textContext) reserveTextIntroductionOpeningLocked(nonce [32]byte, now time.Time) error {
-	for retained, expiry := range owner.introductionReplays {
-		if !now.Before(expiry) {
-			delete(owner.introductionReplays, retained)
-		}
-	}
-	if _, replay := owner.introductionReplays[nonce]; replay || len(owner.introductionReplays) >= maximumTextIntroductionReplays {
-		return errors.New("text Introduction replay or capacity refusal")
-	}
-	if now.Before(owner.introductionOpenings[3]) || now.Before(owner.introductionOpenings[0].Add(time.Second)) {
-		return errors.New("text Introduction opening rate unavailable")
-	}
-	copy(owner.introductionOpenings[:3], owner.introductionOpenings[1:])
-	owner.introductionOpenings[3] = now
-	return nil
 }

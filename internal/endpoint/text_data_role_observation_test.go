@@ -89,7 +89,7 @@ func runTextDataJoinIsolatedRoleObservation(t *testing.T, carrier route.CarrierP
 		processes = append(processes, process)
 		return process.stop
 	}
-	endpoint, owner, source := startTextRoleNetworkWithReservedFixtureWindow(t, carrier, true, true, true, runner)
+	endpoint, owner, source := startTextRoleNetwork(t, textRoleNetworkFixture{carrier: carrier, resolution: true, publisher: true, join: true, runner: runner, reservedWindow: true})
 	observe := func(phase string) {
 		t.Helper()
 		publisherProcess.capture(phase)

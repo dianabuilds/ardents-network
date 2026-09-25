@@ -12,6 +12,9 @@ import (
 	"os"
 	"sync"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
+	"github.com/dianabuilds/ardents-network/internal/route/terminal"
 )
 
 // ClosedIntroductionRegistration owns one channel-bound slot. Done means the
@@ -29,7 +32,7 @@ type ClosedIntroductionRegistration struct {
 	prefix           *ClosedSourcePrefix
 	lane             *closedSourceLane
 	connection       net.Conn
-	request          ClosedRegistrationRequest
+	request          terminal.RegistrationRequest
 	stop             func() bool
 	interrupted      chan struct{}
 	done             chan struct{}
@@ -70,10 +73,10 @@ func (prefix *ClosedSourcePrefix) introductionPeer() (closedBootstrapPeer, error
 	if prefix == nil || prefix.plan.domain != closedRoleDomainIntroduction {
 		return closedBootstrapPeer{}, errors.New("registration requires Publisher Introduction role")
 	}
-	return prefix.terminalPeer(ClosedPurposeIntroduction)
+	return prefix.terminalPeer(ardp.PurposeIntroduction)
 }
 
-func (prefix *ClosedSourcePrefix) RegisterIntroduction(ctx context.Context, present ClosedTokenPresenter, request ClosedRegistrationRequest) (registration *ClosedIntroductionRegistration, outcome error) {
+func (prefix *ClosedSourcePrefix) RegisterIntroduction(ctx context.Context, present ClosedTokenPresenter, request terminal.RegistrationRequest) (registration *ClosedIntroductionRegistration, outcome error) {
 	if ctx == nil || ctx.Err() != nil || present == nil || request.Withdraw {
 		return nil, errors.New("closed Introduction registration unavailable")
 	}
@@ -88,7 +91,7 @@ func (prefix *ClosedSourcePrefix) RegisterIntroduction(ctx context.Context, pres
 	if _, err := rand.Read(request.Nonce[:]); err != nil {
 		return nil, err
 	}
-	operation, err := EncodeClosedRegistrationRequest(request)
+	operation, err := terminal.EncodeRegistrationRequest(request)
 	if err != nil {
 		return nil, err
 	}
@@ -96,7 +99,7 @@ func (prefix *ClosedSourcePrefix) RegisterIntroduction(ctx context.Context, pres
 	if request.Expiry.Before(pending) {
 		pending = request.Expiry
 	}
-	lane, err := prefix.channels.open(ctx, ClosedOpen{NextNodeID: peer.node, NextDutyGeneration: peer.generation, Purpose: ClosedPurposeIntroduction, Deadline: request.Expiry}, pending)
+	lane, err := prefix.channels.open(ctx, ClosedOpen{NextNodeID: peer.node, NextDutyGeneration: peer.generation, Purpose: ardp.PurposeIntroduction, Deadline: request.Expiry}, pending)
 	if err != nil {
 		return nil, err
 	}
@@ -113,16 +116,16 @@ func (prefix *ClosedSourcePrefix) RegisterIntroduction(ctx context.Context, pres
 		return nil, err
 	}
 	owner.connection = secured
-	hello := ClosedHello{NetworkID: prefix.plan.profile.NetworkID, StateGeneration: prefix.plan.profile.StateGeneration, StateDigest: prefix.plan.profile.StateDigest,
-		ProfileDigest: prefix.plan.profile.Digest, RecipientNodeID: peer.node, RecipientDutyGeneration: peer.generation, Purpose: ClosedPurposeIntroduction, Deadline: request.Expiry}
+	hello := ardp.Hello{NetworkID: prefix.plan.profile.NetworkID, StateGeneration: prefix.plan.profile.StateGeneration, StateDigest: prefix.plan.profile.StateDigest,
+		ProfileDigest: prefix.plan.profile.Digest, RecipientNodeID: peer.node, RecipientDutyGeneration: peer.generation, Purpose: ardp.PurposeIntroduction, Deadline: request.Expiry}
 	if _, err := rand.Read(hello.ChannelNonce[:]); err != nil {
 		return nil, err
 	}
-	body, err := EncodeClosedHello(hello)
+	body, err := ardp.EncodeHello(hello)
 	if err != nil {
 		return nil, err
 	}
-	if err := WriteClosedLaneFrame(secured, ClosedLaneFrame{Kind: closedFrameHello, Body: body}); err != nil {
+	if err := ardp.WriteFrame(secured, ardp.Frame{Kind: ardp.KindHello, Body: body}); err != nil {
 		return nil, err
 	}
 	current, err := prefix.introductionPeer()
@@ -140,27 +143,27 @@ func (prefix *ClosedSourcePrefix) RegisterIntroduction(ctx context.Context, pres
 	}
 	admit := append([]byte{3}, token...)
 	defer clear(admit)
-	if err := WriteClosedLaneFrame(secured, ClosedLaneFrame{Kind: closedFrameAdmit, Body: admit}); err != nil {
+	if err := ardp.WriteFrame(secured, ardp.Frame{Kind: ardp.KindAdmit, Body: admit}); err != nil {
 		return nil, err
 	}
-	accepted, err := ReadClosedLaneFrame(secured)
+	accepted, err := ardp.ReadFrame(secured)
 	if err != nil {
 		return nil, err
 	}
-	if status, credit, err := DecodeClosedAcceptFrame(accepted); err != nil || status != 0 || credit != 64<<10 {
+	if status, credit, err := ardp.DecodeAcceptFrame(accepted); err != nil || status != 0 || credit != 64<<10 {
 		return nil, errors.New("closed Introduction Publication admission refused")
 	}
 	if err := lane.activate(); err != nil {
 		return nil, err
 	}
-	if err := WriteClosedLaneFrame(secured, ClosedLaneFrame{Kind: closedFrameOperation, Body: operation}); err != nil {
+	if err := ardp.WriteFrame(secured, ardp.Frame{Kind: ardp.KindOperation, Body: operation}); err != nil {
 		return nil, err
 	}
-	frame, err := ReadClosedLaneFrame(secured)
-	if err != nil || frame.Kind != closedFrameResult || frame.Lane != 0 {
+	frame, err := ardp.ReadFrame(secured)
+	if err != nil || frame.Kind != ardp.KindResult || frame.Lane != 0 {
 		return nil, errors.Join(errors.New("closed Introduction registration result unavailable"), err)
 	}
-	if status, proof, err := DecodeClosedDescriptorResult(frame.Body, request.Nonce); err != nil || status != 0 || len(proof) != 0 {
+	if status, proof, err := terminal.DecodeDescriptorResult(frame.Body, request.Nonce); err != nil || status != 0 || len(proof) != 0 {
 		return nil, errors.New("closed Introduction registration refused")
 	}
 	current, err = prefix.introductionPeer()
@@ -181,18 +184,18 @@ func (owner *ClosedIntroductionRegistration) read() {
 	var err error
 	withdrawn := false
 	for err == nil && !withdrawn {
-		var frame ClosedLaneFrame
-		frame, err = ReadClosedLaneFrame(owner.connection)
+		var frame ardp.Frame
+		frame, err = ardp.ReadFrame(owner.connection)
 		if err != nil {
 			break
 		}
 		owner.mu.Lock()
 		if frame.Lane != 0 {
 			err = owner.receiveDelivery(frame)
-		} else if owner.withdraw == [32]byte{} || frame.Kind != closedFrameResult {
+		} else if owner.withdraw == [32]byte{} || frame.Kind != ardp.KindResult {
 			err = errors.New("closed Introduction registration received unexpected operation")
 		} else {
-			status, proof, decodeErr := DecodeClosedDescriptorResult(frame.Body, owner.withdraw)
+			status, proof, decodeErr := terminal.DecodeDescriptorResult(frame.Body, owner.withdraw)
 			if decodeErr != nil || status != 0 || len(proof) != 0 {
 				err = errors.New("closed Introduction withdrawal refused")
 			} else {
@@ -297,7 +300,7 @@ func (owner *ClosedIntroductionRegistration) Withdraw(ctx context.Context) (outc
 	}
 	owner.withdraw = nonce
 	owner.mu.Unlock()
-	operation, err := EncodeClosedRegistrationRequest(ClosedRegistrationRequest{Nonce: nonce, Slot: owner.request.Slot, Revision: owner.request.Revision, Withdraw: true})
+	operation, err := terminal.EncodeRegistrationRequest(terminal.RegistrationRequest{Nonce: nonce, Slot: owner.request.Slot, Revision: owner.request.Revision, Withdraw: true})
 	if err != nil {
 		return err
 	}
@@ -319,7 +322,7 @@ func (owner *ClosedIntroductionRegistration) Withdraw(ctx context.Context) (outc
 	if err := owner.connection.SetDeadline(end); err != nil {
 		return errors.Join(err, owner.Close())
 	}
-	if err := owner.writeFrame(ctx, ClosedLaneFrame{Kind: closedFrameOperation, Body: operation}, end); err != nil {
+	if err := owner.writeFrame(ctx, ardp.Frame{Kind: ardp.KindOperation, Body: operation}, end); err != nil {
 		return errors.Join(err, owner.Close())
 	}
 	select {

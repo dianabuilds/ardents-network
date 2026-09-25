@@ -15,7 +15,7 @@ func (owner *textContext) textIntroductionRecipientLocked() ([32]byte, uint64, t
 		return prefix.dataJoinRecipient()
 	}
 	source, ok := owner.endpoint.closedState.(route.ClosedBootstrapState)
-	if !ok || owner.sourceSet == nil {
+	if !ok || !owner.source.hasMembersLocked() {
 		return [32]byte{}, 0, time.Time{}, errors.New("text Introduction retained Source unavailable")
 	}
 	selection, err := owner.selectTextBootstrapLocked()

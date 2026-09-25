@@ -30,6 +30,7 @@ and the headless command inventory under tests/profiles.
 | ardents | accept-offline, refresh-sources; service-instance initialize/accept; endpoint enrollment-check/enroll/enroll-installed/headless/publish/withdraw/user-unit/installed-user-unit/replace/replacement-recovery/rollback; entry recipient/import | keep |
 | ardents | endpoint replacement-self-test | keep internal-only; invoked by the replacement controller, not an operator route |
 | ardents | name encode | keep local canonical encoding; this is not network Name availability |
+| ardents | diagnostics timeline | keep local, read-only projection of bounded runtime events from standard input; no storage, authority, or network effect |
 | ardents | name resolve/control | retired at command dispatch before arguments or effects; no successor or fallback is implied |
 | ardents-node | source (including the explicit current closed profile), node with closed reservations, issuer initialize/serve, contributor diagnose/drain/withdraw/remove | keep; old Source selector, Node duty reservations and Contributor start inputs retired |
 | ardents-control | inspect-bundle, inspect-transitions, inspect-alpha-corpus | keep |

@@ -14,8 +14,20 @@ import (
 // textSourceLifecycle is the only owner of the live Source opening and its
 // in-progress replacement. The zero value is ready for use under textContext.mu.
 type textSourceLifecycle struct {
-	live    *textSourceHandle
-	opening *textPrefixOpeningOperation
+	live       *textSourceHandle
+	opening    *textPrefixOpeningOperation
+	operations textSourceOperationGate
+	set        *textInteriorSet
+}
+
+// The retained Interior Set survives prefix replacement and belongs to this
+// context's Source lifecycle, not to an individual Route opening.
+func (lifecycle *textSourceLifecycle) membersSlotLocked() **textInteriorSet {
+	return &lifecycle.set
+}
+
+func (lifecycle *textSourceLifecycle) hasMembersLocked() bool {
+	return lifecycle != nil && lifecycle.set != nil
 }
 
 type textSourceRetirement struct {
@@ -304,6 +316,7 @@ func (lifecycle *textSourceLifecycle) detachLocked() (*route.ClosedSourcePrefix,
 
 func (lifecycle *textSourceLifecycle) stopLocked() *textSourceRetirement {
 	prefix, opening := lifecycle.detachLocked()
+	lifecycle.set = nil
 	return &textSourceRetirement{prefix: prefix, opening: opening}
 }
 

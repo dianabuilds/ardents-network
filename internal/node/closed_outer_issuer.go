@@ -8,19 +8,21 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	"github.com/dianabuilds/ardents-network/internal/route/credential"
+	"github.com/dianabuilds/ardents-network/internal/route/replay"
 )
 
 // closedIssuerNodeHandler owns one State-authenticated outer Carrier. It
 // creates no peer, route or fallback: every child terminates at this issuer.
-func closedIssuerNodeHandler(config runtimeConfig, certificate tls.Certificate, issuer *credential.ClosedTokenIssuer, spends *route.ClosedSpendLedger, limits *route.ClosedDutyLimits) credential.ClosedNodeBootstrapHandler {
-	return func(ctx context.Context, carrier route.ClosedSharedCarrier, serve func(context.Context, io.ReadWriter, [32]byte, route.ClosedHello) error) {
+func closedIssuerNodeHandler(config runtimeConfig, certificate tls.Certificate, issuer *credential.ClosedTokenIssuer, spends *replay.Ledger, limits *route.ClosedDutyLimits) credential.ClosedNodeBootstrapHandler {
+	return func(ctx context.Context, carrier route.ClosedSharedCarrier, serve func(context.Context, io.ReadWriter, [32]byte, ardp.Hello) error) {
 		defer carrier.Connection.Close()
 		updated, err := currentFacts(config)
 		if err != nil {
 			return
 		}
-		receiver, available := closedRouteReceiver(config, updated, route.ClosedPurposeIssuer, config.now())
+		receiver, available := closedRouteReceiver(config, updated, ardp.PurposeIssuer, config.now())
 		if !available {
 			return
 		}
@@ -32,7 +34,7 @@ func closedIssuerNodeHandler(config runtimeConfig, certificate tls.Certificate, 
 			return
 		}
 		serveClosedOuter(ctx, carrier.Connection, outer, func(childContext context.Context, lane *route.ClosedOuterBridgeLane) {
-			admitted := func(connection net.Conn, hello route.ClosedLaneFrame) error {
+			admitted := func(connection net.Conn, hello ardp.Frame) error {
 				exporter, err := route.ClosedRoleTLSExporter(connection)
 				if err != nil {
 					return err
@@ -48,7 +50,7 @@ func closedIssuerNodeHandler(config runtimeConfig, certificate tls.Certificate, 
 	}
 }
 
-func serveClosedIssuerInner(ctx context.Context, lane *route.ClosedOuterBridgeLane, certificate tls.Certificate, deadline time.Time, adjacency [32]byte, serve func(context.Context, io.ReadWriter, [32]byte, route.ClosedHello) error, admitted func(net.Conn, route.ClosedLaneFrame) error) {
+func serveClosedIssuerInner(ctx context.Context, lane *route.ClosedOuterBridgeLane, certificate tls.Certificate, deadline time.Time, adjacency [32]byte, serve func(context.Context, io.ReadWriter, [32]byte, ardp.Hello) error, admitted func(net.Conn, ardp.Frame) error) {
 	status := byte(1)
 	defer func() { _ = lane.CloseWithStatus(status) }()
 	secured, err := route.AcceptClosedRoleTLS(ctx, lane, certificate, deadline)
@@ -63,14 +65,14 @@ func serveClosedIssuerInner(ctx context.Context, lane *route.ClosedOuterBridgeLa
 	if err := lane.BeginInnerHello(); err != nil {
 		return
 	}
-	helloFrame, err := route.ReadClosedLaneFrame(secured)
+	helloFrame, err := ardp.ReadFrame(secured)
 	if err != nil {
 		return
 	}
 	if helloFrame.Kind != 1 || helloFrame.Lane != 0 {
 		return
 	}
-	hello, err := route.DecodeClosedHello(helloFrame.Body)
+	hello, err := ardp.DecodeHello(helloFrame.Body)
 	if err != nil || lane.Activate(hello) != nil {
 		return
 	}
@@ -97,7 +99,7 @@ func closedSharedPeerCurrent(config runtimeConfig, snapshot dutyFacts, key [32]b
 	matched := false
 	for index := uint8(0); index < view.NodeCount; index++ {
 		recipient := view.Nodes[index]
-		if recipient.NodeID == [32]byte{} || recipient.NodeID == snapshot.NodeID || recipient.DutyGeneration == 0 || !route.ClosedPurposePermitsDuty(route.ClosedPurposeForwarding, recipient.RoleDomain, recipient.Subrole) {
+		if recipient.NodeID == [32]byte{} || recipient.NodeID == snapshot.NodeID || recipient.DutyGeneration == 0 || !route.ClosedPurposePermitsDuty(ardp.PurposeForwarding, recipient.RoleDomain, recipient.Subrole) {
 			continue
 		}
 		for peerIndex := uint8(0); peerIndex < snapshot.CandidateCount; peerIndex++ {

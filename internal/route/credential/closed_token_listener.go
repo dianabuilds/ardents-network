@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 )
 
 const closedIssuerDirectAdjacency = byte(1)
@@ -31,7 +32,7 @@ type ClosedTokenListenerConfig struct {
 
 // ClosedNodeBootstrapHandler owns the Node-authenticated outer state and may
 // invoke serve only after it has completed inner TLS and verified inner HELLO.
-type ClosedNodeBootstrapHandler func(context.Context, route.ClosedSharedCarrier, func(context.Context, io.ReadWriter, [32]byte, route.ClosedHello) error)
+type ClosedNodeBootstrapHandler func(context.Context, route.ClosedSharedCarrier, func(context.Context, io.ReadWriter, [32]byte, ardp.Hello) error)
 
 // ClosedTokenListener owns bounded direct role bootstrap serving. Its caller
 // separately owns State refresh and issuer-root lifetime.
@@ -249,7 +250,7 @@ func (listener *ClosedTokenListener) serveConnection(ctx context.Context, connec
 	}
 }
 
-func (listener *ClosedTokenListener) serveVerified(ctx context.Context, carrier io.ReadWriter, adjacency [32]byte, hello route.ClosedHello) error {
+func (listener *ClosedTokenListener) serveVerified(ctx context.Context, carrier io.ReadWriter, adjacency [32]byte, hello ardp.Hello) error {
 	return listener.issuer.ServeBootstrapAfterHello(ctx, carrier, listener.controller, adjacency, hello)
 }
 

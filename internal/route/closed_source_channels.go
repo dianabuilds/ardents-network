@@ -11,6 +11,8 @@ import (
 	"os"
 	"sync"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 )
 
 // ErrClosedSourceStopped identifies intentional whole-prefix retirement. It is
@@ -54,7 +56,7 @@ type closedSourceWrite struct {
 	control   bool // Reservation class; encrypted terminal priority remains data.
 	terminal  bool // Scheduling class propagated through encrypted lower layers.
 	lane      *closedSourceLane
-	frame     ClosedLaneFrame
+	frame     ardp.Frame
 	end       time.Time // Nonzero only for terminal cleanup.
 	done      chan struct{}
 	err       error
@@ -147,7 +149,7 @@ func (owner *closedSourceChannels) open(ctx context.Context, open ClosedOpen, pe
 	owner.lanes[id] = lane
 	// Assign the monotonic ID and queue its OPEN under the same lock. A
 	// concurrent caller cannot put a higher ID on the wire first.
-	request, err := lane.enqueueLocked(ClosedLaneFrame{Kind: closedFrameOpen, Lane: id, Body: body}, time.Time{})
+	request, err := lane.enqueueLocked(ardp.Frame{Kind: ardp.KindOpen, Lane: id, Body: body}, time.Time{})
 	if err != nil {
 		delete(owner.lanes, id)
 		owner.mu.Unlock()
@@ -172,7 +174,7 @@ func (owner *closedSourceChannels) open(ctx context.Context, open ClosedOpen, pe
 func (owner *closedSourceChannels) read() {
 	defer owner.workers.Done()
 	for {
-		frame, err := ReadClosedLaneFrame(owner.parent)
+		frame, err := ardp.ReadFrame(owner.parent)
 		if err != nil {
 			owner.fail(err)
 			return
@@ -184,7 +186,7 @@ func (owner *closedSourceChannels) read() {
 	}
 }
 
-func (owner *closedSourceChannels) receive(frame ClosedLaneFrame) error {
+func (owner *closedSourceChannels) receive(frame ardp.Frame) error {
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
 	if owner.terminal != nil {
@@ -198,10 +200,10 @@ func (owner *closedSourceChannels) receive(frame ClosedLaneFrame) error {
 	if frame.Lane == 0 {
 		refill := owner.refill
 		var err error
-		if refill == nil || frame.Kind != closedFrameAccept {
+		if refill == nil || frame.Kind != ardp.KindAccept {
 			err = errors.New("closed source refill response is unavailable")
 		} else {
-			status, credit, decodeErr := DecodeClosedAcceptFrame(frame)
+			status, credit, decodeErr := ardp.DecodeAcceptFrame(frame)
 			if decodeErr != nil || status != 0 || credit != 64<<10 {
 				err = errors.Join(decodeErr, errors.New("closed source refill refused"))
 			}
@@ -217,13 +219,13 @@ func (owner *closedSourceChannels) receive(frame ClosedLaneFrame) error {
 		return errors.New("closed source peer used unallocated lane")
 	}
 	lane := owner.lanes[frame.Lane]
-	if lane == nil || (lane.closed && !(owner.retainClosedRead && frame.Kind == closedFrameClose)) {
+	if lane == nil || (lane.closed && !(owner.retainClosedRead && frame.Kind == ardp.KindClose)) {
 		// A locally closed lane can still have frames in flight. Its ID is
 		// never reused; discarding them grants no new credit or work.
 		return nil
 	}
 	switch frame.Kind {
-	case closedFrameBytes:
+	case ardp.KindBytes:
 		size := uint64(len(frame.Body))
 		if lane.eof || lane.remoteClosed || size > uint64(lane.receiveCredit) || !owner.reserveQueuedLocked(size, false) {
 			return errors.New("closed source receive allowance exceeded")
@@ -231,18 +233,18 @@ func (owner *closedSourceChannels) receive(frame ClosedLaneFrame) error {
 		lane.receiveCredit -= uint32(size)
 		lane.buffer = append(lane.buffer, frame.Body...)
 		lane.receivedData = true
-	case closedFrameCredit:
+	case ardp.KindCredit:
 		increment := binary.BigEndian.Uint32(frame.Body)
 		if increment == 0 || increment > 64<<10-lane.credit {
 			return errors.New("closed source peer credit exceeded")
 		}
 		lane.credit += increment
-	case closedFrameEOF:
+	case ardp.KindEOF:
 		if lane.eof || lane.remoteClosed {
 			return errors.New("closed source duplicate EOF")
 		}
 		lane.eof = true
-	case closedFrameClose:
+	case ardp.KindClose:
 		if lane.remoteClosed {
 			return errors.New("closed source duplicate CLOSE")
 		}
@@ -307,7 +309,7 @@ func (owner *closedSourceChannels) write() {
 		if !request.end.IsZero() {
 			deadline = request.end
 		}
-		err := request.lane.writeErrorLocked(request.frame.Kind == closedFrameClose)
+		err := request.lane.writeErrorLocked(request.frame.Kind == ardp.KindClose)
 		if err == nil && !time.Now().Before(deadline) {
 			err = os.ErrDeadlineExceeded
 		}
@@ -322,7 +324,7 @@ func (owner *closedSourceChannels) write() {
 		request.attempted = err == nil
 		if request.attempted {
 			request.lane.emissions++
-			if request.frame.Kind != closedFrameCredit {
+			if request.frame.Kind != ardp.KindCredit {
 				request.lane.closePayloadEmissions++
 			}
 		}
@@ -330,14 +332,14 @@ func (owner *closedSourceChannels) write() {
 		attempted := request.attempted
 		var before uint64
 		var busy bool
-		if owner.framing != nil && request.frame.Kind == closedFrameClose {
+		if owner.framing != nil && request.frame.Kind == ardp.KindClose {
 			before, busy, _ = owner.framing.writeWitness()
 		}
 		var parentBefore uint64
 		var parentBusy bool
-		parentWitness := owner.retainClosedRead && owner.framedParent != nil && (request.frame.Kind == closedFrameCredit || request.frame.Kind == closedFrameClose)
+		parentWitness := owner.retainClosedRead && owner.framedParent != nil && (request.frame.Kind == ardp.KindCredit || request.frame.Kind == ardp.KindClose)
 		if parentWitness {
-			if request.frame.Kind == closedFrameClose {
+			if request.frame.Kind == ardp.KindClose {
 				parentBefore, parentBusy, _ = owner.framedParent.closeWriteWitness()
 			} else {
 				parentBefore, parentBusy, _ = owner.framedParent.writeWitness()
@@ -348,17 +350,17 @@ func (owner *closedSourceChannels) write() {
 			finishTerminal = beginClosedTerminalWrite(owner.parent)
 		}
 		if attempted {
-			err = WriteClosedLaneFrame(owner.parent, request.frame)
+			err = ardp.WriteFrame(owner.parent, request.frame)
 		}
 		finishTerminal()
 		unwritten := false
 		if err != nil && attempted && parentWitness {
 			after, active, clean := owner.framedParent.writeWitness()
-			if request.frame.Kind == closedFrameClose {
+			if request.frame.Kind == ardp.KindClose {
 				after, active, clean = owner.framedParent.closeWriteWitness()
 			}
-			if parentBefore == after && (!parentBusy || request.frame.Kind == closedFrameCredit) && !active && clean {
-				if request.frame.Kind == closedFrameCredit {
+			if parentBefore == after && (!parentBusy || request.frame.Kind == ardp.KindCredit) && !active && clean {
+				if request.frame.Kind == ardp.KindCredit {
 					// A previously counted outer write may have completed. No new
 					// physical frame began, and no failed write passed the witness.
 					// Keep the reader alive to consume its already accepted tail.
@@ -374,7 +376,7 @@ func (owner *closedSourceChannels) write() {
 				}
 			}
 		}
-		if err != nil && attempted && owner.framing != nil && request.frame.Kind == closedFrameClose {
+		if err != nil && attempted && owner.framing != nil && request.frame.Kind == ardp.KindClose {
 			after, active, clean := owner.framing.writeWitness()
 			unwritten = before == after && !busy && !active && clean
 		}
@@ -389,7 +391,7 @@ func (owner *closedSourceChannels) write() {
 		}
 		request.unwritten = unwritten
 		owner.active = nil
-		if request.frame.Kind == closedFrameOpen {
+		if request.frame.Kind == ardp.KindOpen {
 			request.lane.opened = err == nil
 			if err != nil {
 				request.lane.failure = err

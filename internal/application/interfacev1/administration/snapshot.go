@@ -76,7 +76,7 @@ func (server *server) handleSnapshot(connection *net.UnixConn) {
 	}
 	var trailing [1]byte
 	if n, err := connection.Read(trailing[:]); n != 0 || err != io.EOF {
-		writeResponse(connection, "unavailable\n")
+		refuseMalformedRequest(connection, n, err)
 		return
 	}
 	if err := owner.PublishSnapshot(server.ctx, body); err != nil {

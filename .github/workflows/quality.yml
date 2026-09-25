@@ -110,6 +110,8 @@ jobs:
             failure=unclassified
             if grep -q 'panic: test timed out' "$test_log"; then failure=go-test-timeout
             elif grep -q 'race detected' "$test_log"; then failure=race-detected
+            elif grep -q '"FailedBuild"' "$test_log" && grep -q 'proxy.golang.org' "$test_log"; then failure=dependency-fetch
+            elif grep -q '"FailedBuild"' "$test_log"; then failure=go-build
             elif grep -q '\.CloseInput:' "$test_log"; then failure=retained-close-input
             elif grep -q '\.Done:.*run=.*context deadline exceeded' "$test_log"; then failure=retained-done-timeout
             elif grep -q '\.Done:.*run=.*context canceled' "$test_log"; then failure=retained-done-canceled

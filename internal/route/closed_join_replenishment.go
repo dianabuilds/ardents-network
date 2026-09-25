@@ -3,6 +3,8 @@ package route
 import (
 	"errors"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 )
 
 // NewReplenishableClosedJoinPairs retains receiver-side admission ownership
@@ -19,12 +21,12 @@ func NewReplenishableClosedJoinPairs(receiver ClosedRoleReceiver, limits *Closed
 	return owner, nil
 }
 
-func (side *ClosedJoinSide) replenish(frame ClosedLaneFrame) error {
+func (side *ClosedJoinSide) replenish(frame ardp.Frame) error {
 	if side == nil || side.owner == nil {
 		return errors.New("JOIN replenishment unavailable")
 	}
 	class, token, err := decodeClosedAdmit(frame.Body)
-	if err != nil || frame.Kind != closedFrameAdmit || frame.Lane != 0 || class != 2 {
+	if err != nil || frame.Kind != ardp.KindAdmit || frame.Lane != 0 || class != 2 {
 		return errors.New("JOIN replenishment control invalid")
 	}
 	side.controlMu.Lock()

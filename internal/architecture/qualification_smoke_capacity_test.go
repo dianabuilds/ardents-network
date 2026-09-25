@@ -18,12 +18,12 @@ func TestQualificationSmokeAllowsCompleteRetainedSetup(t *testing.T) {
 			"openQualificationReaderStreams(bounded, 64, qualificationReaderSetupParallelism",
 			"verified, err := owner.resolveTextIntroduction(bounded, worker.job, destination)",
 		},
-		filepath.Join("internal", "endpoint", "stream_qualification_measurements_linux.go"): {
-			"streamQualificationIntroductionSpacing = 300 * time.Millisecond",
-			"streamQualificationSetupLimit          = 15",
+		filepath.Join("internal", "qualification", "measurements_linux.go"): {
+			"IntroductionSpacing = 300 * time.Millisecond",
+			"SetupLimit          = 15",
 		},
 		filepath.Join("internal", "endpoint", "text_publisher_network_linux.go"): {
-			"qualificationPublisherOpeningParallelism = streamQualificationSetupLimit",
+			"qualificationPublisherOpeningParallelism = qualification.SetupLimit",
 			"qualificationPublisherOpeningBatch = 16",
 			"ensureQualificationPublisherJoinReserve(network, 32)",
 		},

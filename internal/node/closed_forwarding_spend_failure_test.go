@@ -16,6 +16,8 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/resource"
 	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
+	"github.com/dianabuilds/ardents-network/internal/route/replay"
 )
 
 func TestClosedForwardingStartRefusesAmbiguousSpendJournal(t *testing.T) {
@@ -33,7 +35,7 @@ func TestClosedForwardingStartRefusesAmbiguousSpendJournal(t *testing.T) {
 	if err := os.MkdirAll(root, 0o700); err != nil {
 		t.Fatal(err)
 	}
-	spends, err := route.OpenClosedSpendLedger(root, route.ClosedSpendBinding{NetworkID: fixture.receiver.NetworkID, ProfileDigest: fixture.receiver.ProfileDigest,
+	spends, err := replay.Open(root, replay.Binding{NetworkID: fixture.receiver.NetworkID, ProfileDigest: fixture.receiver.ProfileDigest,
 		ReceiverNodeID: fixture.receiver.NodeID, ReceiverDutyGeneration: fixture.receiver.DutyGeneration})
 	if err != nil {
 		t.Fatal(err)
@@ -143,7 +145,7 @@ func TestClosedForwardingServerRefusesAfterJournalMutationFailure(t *testing.T) 
 type closedForwardingAdmissionClient struct {
 	outer route.Carrier
 	inner route.Carrier
-	hello route.ClosedHello
+	hello ardp.Hello
 	token []byte
 }
 
@@ -155,22 +157,22 @@ func openClosedForwardingAdmission(t *testing.T, fixture *closedBootstrapFixture
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = outer.Close() })
-	hello := route.ClosedHello{NetworkID: fixture.receiver.NetworkID, StateGeneration: fixture.receiver.StateGeneration, StateDigest: fixture.receiver.StateDigest, ProfileDigest: fixture.receiver.ProfileDigest, RecipientNodeID: fixture.receiver.NodeID, RecipientDutyGeneration: fixture.receiver.DutyGeneration, Purpose: route.ClosedPurposeForwarding, ChannelNonce: [32]byte{nonce}, Deadline: fixture.now.Add(8 * time.Second)}
-	body, err := route.EncodeClosedHello(hello)
+	hello := ardp.Hello{NetworkID: fixture.receiver.NetworkID, StateGeneration: fixture.receiver.StateGeneration, StateDigest: fixture.receiver.StateDigest, ProfileDigest: fixture.receiver.ProfileDigest, RecipientNodeID: fixture.receiver.NodeID, RecipientDutyGeneration: fixture.receiver.DutyGeneration, Purpose: ardp.PurposeForwarding, ChannelNonce: [32]byte{nonce}, Deadline: fixture.now.Add(8 * time.Second)}
+	body, err := ardp.EncodeHello(hello)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := route.WriteClosedLaneFrame(outer, route.ClosedLaneFrame{Kind: 1, Body: body}); err != nil {
+	if err := ardp.WriteFrame(outer, ardp.Frame{Kind: 1, Body: body}); err != nil {
 		t.Fatal(err)
 	}
-	if frame, err := route.ReadClosedLaneFrame(outer); err != nil || frame.Kind != 5 {
+	if frame, err := ardp.ReadFrame(outer); err != nil || frame.Kind != 5 {
 		t.Fatalf("outer accept = %+v / %v", frame, err)
 	}
-	open, err := route.EncodeClosedNodeOpen(route.ClosedOpen{NextNodeID: fixture.receiver.NodeID, NextDutyGeneration: fixture.receiver.DutyGeneration, Purpose: route.ClosedPurposeForwarding, Deadline: hello.Deadline}, route.ClosedChildOrdinary)
+	open, err := route.EncodeClosedNodeOpen(route.ClosedOpen{NextNodeID: fixture.receiver.NodeID, NextDutyGeneration: fixture.receiver.DutyGeneration, Purpose: ardp.PurposeForwarding, Deadline: hello.Deadline}, route.ClosedChildOrdinary)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := route.WriteClosedLaneFrame(outer, route.ClosedLaneFrame{Kind: 4, Lane: 1, Body: open}); err != nil {
+	if err := ardp.WriteFrame(outer, ardp.Frame{Kind: 4, Lane: 1, Body: open}); err != nil {
 		t.Fatal(err)
 	}
 	inner, err := route.OpenClosedRoleTLS(t.Context(), &outerTestInnerConn{outer: outer, lane: 1}, serverKey, deadline)
@@ -178,21 +180,21 @@ func openClosedForwardingAdmission(t *testing.T, fixture *closedBootstrapFixture
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = inner.Close() })
-	body, err = route.EncodeClosedHello(hello)
+	body, err = ardp.EncodeHello(hello)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := route.WriteClosedLaneFrame(inner, route.ClosedLaneFrame{Kind: 1, Body: body}); err != nil {
+	if err := ardp.WriteFrame(inner, ardp.Frame{Kind: 1, Body: body}); err != nil {
 		t.Fatal(err)
 	}
 	return &closedForwardingAdmissionClient{outer: outer, inner: inner, hello: hello, token: token}
 }
 
 func (client *closedForwardingAdmissionClient) admit() error {
-	if err := route.WriteClosedLaneFrame(client.inner, route.ClosedLaneFrame{Kind: 2, Body: append([]byte{2}, client.token...)}); err != nil {
+	if err := ardp.WriteFrame(client.inner, ardp.Frame{Kind: 2, Body: append([]byte{2}, client.token...)}); err != nil {
 		return err
 	}
-	frame, err := route.ReadClosedLaneFrame(client.inner)
+	frame, err := ardp.ReadFrame(client.inner)
 	if err != nil {
 		return err
 	}

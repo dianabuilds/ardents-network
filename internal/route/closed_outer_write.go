@@ -4,6 +4,8 @@ import (
 	"errors"
 	"os"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 )
 
 // Write waits for this lane's actual peer credit within its current deadline.
@@ -39,11 +41,11 @@ func (lane *ClosedOuterBridgeLane) Write(value []byte) (int, error) {
 			timer.Stop()
 			continue
 		}
-		count := min(len(value), closedLaneMaximum, int(inner.outboundCredit))
+		count := min(len(value), ardp.MaximumBodySize, int(inner.outboundCredit))
 		inner.outboundCredit -= uint32(count)
 		terminal := inner.terminalWriters != 0
 		inner.mu.Unlock()
-		frame := ClosedLaneFrame{Kind: closedFrameBytes, Lane: inner.id, Body: append([]byte(nil), value[:count]...)}
+		frame := ardp.Frame{Kind: ardp.KindBytes, Lane: inner.id, Body: append([]byte(nil), value[:count]...)}
 		if err := inner.bridge.write(frame, inner.currentWriteDeadline, false, terminal); err != nil {
 			return written, err
 		}

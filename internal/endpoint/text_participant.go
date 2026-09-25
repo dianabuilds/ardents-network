@@ -37,6 +37,7 @@ type TextParticipantConfig struct {
 // TextParticipantEvent exposes only local lifecycle or the public commitment
 // for an offline approval. Observers must honor their context and join output.
 type TextParticipantEvent struct {
+	At                                        time.Time
 	Kind                                      string
 	NetworkID                                 [32]byte
 	Surface                                   string

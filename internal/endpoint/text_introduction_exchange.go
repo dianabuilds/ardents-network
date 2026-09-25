@@ -8,7 +8,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
-	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	nativeconnection "github.com/dianabuilds/ardents-network/internal/service/connection"
 )
 
@@ -38,12 +38,19 @@ func (owner *textContext) submitTextIntroduction(ctx context.Context, job *textJ
 	if err != nil {
 		return err
 	}
-	status, err := prefix.submitIntroduction(bounded, func(hello route.ClosedHello, class uint8) ([]byte, error) {
+	if job.qualification != nil {
+		release, err := job.qualification.AcquireIntroduction(bounded)
+		if err != nil {
+			return err
+		}
+		defer release()
+	}
+	status, err := prefix.submitIntroduction(bounded, func(hello ardp.Hello, class uint8) ([]byte, error) {
 		owner.mu.Lock()
 		defer owner.mu.Unlock()
 		current, now, err := owner.textPermissionProfileLocked()
 		if err != nil || !owner.liveTextServiceJobLocked(job, broker.Connection) || bounded.Err() != nil || !prefix.currentLocked(owner) ||
-			current != profile || class != 1 || hello.Purpose != route.ClosedPurposeSubmission || hello.RecipientNodeID != receiver ||
+			current != profile || class != 1 || hello.Purpose != ardp.PurposeSubmission || hello.RecipientNodeID != receiver ||
 			hello.NetworkID != current.NetworkID || hello.StateGeneration != current.StateGeneration || hello.StateDigest != current.StateDigest ||
 			hello.ProfileDigest != current.Digest || hello.ChannelNonce == [32]byte{} || !now.Before(hello.Deadline) ||
 			hello.Deadline.After(prepared.plaintext.Deadline) {
@@ -130,7 +137,7 @@ func (owner *textContext) receiveTextIntroductionWith(ctx context.Context, job *
 			prepared = nil
 		}
 	}()
-	delivery, err := owner.dispatchTextIntroductionDelivery(lifetime, job, want, binding)
+	delivery, err := owner.introductionDispatch.receive(owner, lifetime, job, want, binding)
 	if err != nil {
 		return nil, err
 	}
@@ -180,16 +187,8 @@ func (owner *textContext) prepareTextSubmissionStockWithCancellation(ctx context
 		return [32]byte{}, state.ClosedProfileView{}, err
 	}
 	owner.mu.Lock()
-	stocked := false
 	profile, _, err := owner.textPermissionProfileLocked()
-	if err == nil && owner.permission != nil {
-		for _, stock := range owner.permission.stock {
-			if stock.challenge.ReceiverNodeID == receiver && stock.challenge.ProfileDigest == profile.Digest &&
-				stock.challenge.Class == 1 && stock.challenge.WindowStart == owner.permission.accepted.NotBefore && len(stock.tokens) != 0 {
-				stocked = true
-			}
-		}
-	}
+	stocked := err == nil && owner.permission.stockCountFor(profile.Digest, receiver, 1) != 0
 	owner.mu.Unlock()
 	if err != nil {
 		return [32]byte{}, state.ClosedProfileView{}, err

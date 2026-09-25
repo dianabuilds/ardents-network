@@ -12,17 +12,18 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/network/state"
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 )
 
 // Endpoint returns a token only after verifying its challenge and durably
 // marking this attempt. Route calls it inside the intended authenticated TLS.
-type ClosedTokenPresenter func(ClosedHello, uint8) ([]byte, error)
+type ClosedTokenPresenter func(ardp.Hello, uint8) ([]byte, error)
 
 // ClosedSourcePrefix owns a fresh admitted Entry/Interior tree. Its stream
 // carries the Interior role protocol, never a direct Application Connection.
 type ClosedSourcePrefix struct {
 	refillMu         sync.Mutex
-	hellos           [2]ClosedHello
+	hellos           [2]ardp.Hello
 	interruptMu      sync.Mutex
 	interruptedEarly bool
 	source           ClosedBootstrapState
@@ -161,7 +162,7 @@ func openClosedPrefix(ctx context.Context, source ClosedBootstrapState, selectio
 	}
 	owner.channels = newClosedSourceChannelOwner(owner.connection, end, owner.retirement.close)
 	// HELLO, ADMIT and ACCEPT already consumed this admitted channel's budget.
-	owner.channels.transferred = closedAdmissionFrameBytes + closedLaneHeaderSize + 5
+	owner.channels.transferred = closedAdmissionFrameBytes + ardp.HeaderSize + 5
 	owner.channels.framing = owner.child
 	owner.channels.start()
 	owner.interruptMu.Unlock()
@@ -180,18 +181,18 @@ func closedSourcePrefixEnd(plan closedBootstrapPlan, snapshot state.Snapshot, no
 	return end
 }
 
-func admitClosedSourceObserved(connection net.Conn, plan closedBootstrapPlan, index int, role string, present ClosedTokenPresenter, observation *ClosedHello) error {
+func admitClosedSourceObserved(connection net.Conn, plan closedBootstrapPlan, index int, role string, present ClosedTokenPresenter, observation *ardp.Hello) error {
 	peer := plan.peers[index]
-	hello := ClosedHello{NetworkID: plan.profile.NetworkID, StateGeneration: plan.profile.StateGeneration, StateDigest: plan.profile.StateDigest,
-		ProfileDigest: plan.profile.Digest, RecipientNodeID: peer.node, RecipientDutyGeneration: peer.generation, Purpose: ClosedPurposeForwarding, Deadline: plan.deadline}
+	hello := ardp.Hello{NetworkID: plan.profile.NetworkID, StateGeneration: plan.profile.StateGeneration, StateDigest: plan.profile.StateDigest,
+		ProfileDigest: plan.profile.Digest, RecipientNodeID: peer.node, RecipientDutyGeneration: peer.generation, Purpose: ardp.PurposeForwarding, Deadline: plan.deadline}
 	if _, err := rand.Read(hello.ChannelNonce[:]); err != nil {
 		return closedSourceOpenFailureAt(role+"-nonce", err)
 	}
-	body, err := EncodeClosedHello(hello)
+	body, err := ardp.EncodeHello(hello)
 	if err != nil {
 		return closedSourceOpenFailureAt(role+"-hello", err)
 	}
-	if err := WriteClosedLaneFrame(connection, ClosedLaneFrame{Kind: closedFrameHello, Body: body}); err != nil {
+	if err := ardp.WriteFrame(connection, ardp.Frame{Kind: ardp.KindHello, Body: body}); err != nil {
 		return closedSourceOpenFailureAt(role+"-hello-write", err)
 	}
 	token, err := present(hello, 2)
@@ -205,14 +206,14 @@ func admitClosedSourceObserved(connection net.Conn, plan closedBootstrapPlan, in
 	}
 	admission := append([]byte{2}, token...)
 	defer clear(admission)
-	if err := WriteClosedLaneFrame(connection, ClosedLaneFrame{Kind: closedFrameAdmit, Body: admission}); err != nil {
+	if err := ardp.WriteFrame(connection, ardp.Frame{Kind: ardp.KindAdmit, Body: admission}); err != nil {
 		return closedSourceOpenFailureAt(role+"-admission-write", err)
 	}
-	accepted, err := ReadClosedLaneFrame(connection)
+	accepted, err := ardp.ReadFrame(connection)
 	if err != nil {
 		return closedSourceOpenFailureAt(role+"-accept-read", err)
 	}
-	status, credit, err := DecodeClosedAcceptFrame(accepted)
+	status, credit, err := ardp.DecodeAcceptFrame(accepted)
 	if err != nil || status != 0 || credit != 64<<10 {
 		return closedSourceOpenFailureAt(role+"-accept-refused", errors.Join(err, errors.New("closed source admission refused")))
 	}
@@ -257,11 +258,11 @@ func (prefix *ClosedSourcePrefix) openChild(ctx context.Context, peer closedBoot
 	if err := prefix.connection.SetDeadline(pending); err != nil {
 		return closedSourceOpenFailureAt("interior-open-deadline", err)
 	}
-	body, err := EncodeClosedOpen(ClosedOpen{NextNodeID: peer.node, NextDutyGeneration: peer.generation, Purpose: ClosedPurposeForwarding, Deadline: end})
+	body, err := EncodeClosedOpen(ClosedOpen{NextNodeID: peer.node, NextDutyGeneration: peer.generation, Purpose: ardp.PurposeForwarding, Deadline: end})
 	if err != nil {
 		return closedSourceOpenFailureAt("interior-open-frame", err)
 	}
-	if err := WriteClosedLaneFrame(prefix.connection, ClosedLaneFrame{Kind: closedFrameOpen, Lane: 1, Body: body}); err != nil {
+	if err := ardp.WriteFrame(prefix.connection, ardp.Frame{Kind: ardp.KindOpen, Lane: 1, Body: body}); err != nil {
 		return closedSourceOpenFailureAt("interior-open-write", err)
 	}
 	prefix.child = prefix.newChild(prefix.connection, end)

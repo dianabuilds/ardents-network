@@ -90,6 +90,12 @@ func useTextParticipant(ctx context.Context, config TextParticipantConfig, withd
 }
 
 func (endpoint *endpoint) runTextInterfaces(ctx context.Context, config TextParticipantConfig) (outcome error) {
+	clock := config.Clock
+	if clock == nil {
+		clock = time.Now
+	}
+	output := newTextParticipantObservation(config.Observe, clock)
+	defer func() { outcome = errors.Join(outcome, output.pendingFailure()) }()
 	var contexts [2]*textContext
 	for index, role := range []struct {
 		principal [32]byte
@@ -107,7 +113,7 @@ func (endpoint *endpoint) runTextInterfaces(ctx context.Context, config TextPart
 		defer func() { outcome = errors.Join(outcome, owner.Close()) }()
 		contexts[index] = owner
 		if err := owner.provisionTextPermission(ctx, role.files.RequestPath, role.files.ResponsePath, role.files.Maxima, func(reportCtx context.Context, digest [32]byte) error {
-			return config.Observe(reportCtx, TextParticipantEvent{Kind: "permission-required", NetworkID: endpoint.network, Surface: string(role.surface), RequestDigest: digest})
+			return output.emit(reportCtx, TextParticipantEvent{Kind: "permission-required", NetworkID: endpoint.network, Surface: string(role.surface), RequestDigest: digest})
 		}); err != nil {
 			return err
 		}
@@ -116,12 +122,12 @@ func (endpoint *endpoint) runTextInterfaces(ctx context.Context, config TextPart
 			owner.refreshFailure = func(failure string) {
 				// A failed refresh is local operational state. Its fixed category
 				// exposes neither a wrapped transport error nor private route data.
-				_ = config.Observe(context.Background(), TextParticipantEvent{Kind: "publication-refresh-failed", NetworkID: endpoint.network, Failure: failure})
+				output.background(TextParticipantEvent{Kind: "publication-refresh-failed", NetworkID: endpoint.network, Failure: failure})
 			}
 			owner.withdrawalFailure = func(failure string) {
 				// The category identifies the trusted local boundary that rejected an
 				// administrative withdrawal without exposing a wrapped error or data.
-				_ = config.Observe(context.Background(), TextParticipantEvent{Kind: "publication-withdrawal-failed", NetworkID: endpoint.network, Surface: string(role.surface), Failure: failure})
+				output.background(TextParticipantEvent{Kind: "publication-withdrawal-failed", NetworkID: endpoint.network, Surface: string(role.surface), Failure: failure})
 			}
 			owner.mu.Unlock()
 		}
@@ -130,7 +136,7 @@ func (endpoint *endpoint) runTextInterfaces(ctx context.Context, config TextPart
 			owner.operationFailure = func(failure string) {
 				// The category tells a local operator which trusted boundary failed
 				// without serializing a peer, route, document, or wrapped error.
-				_ = config.Observe(context.Background(), TextParticipantEvent{Kind: "connection-operation-failed", NetworkID: endpoint.network, Surface: string(role.surface), Failure: failure})
+				output.background(TextParticipantEvent{Kind: "connection-operation-failed", NetworkID: endpoint.network, Surface: string(role.surface), Failure: failure})
 			}
 			owner.mu.Unlock()
 		}
@@ -138,8 +144,7 @@ func (endpoint *endpoint) runTextInterfaces(ctx context.Context, config TextPart
 	for _, owner := range contexts {
 		owner.mu.Lock()
 		profile, now, err := owner.textPermissionProfileLocked()
-		permission := owner.permission
-		current := err == nil && permission != nil && permission.profile == profile && permission.accepted.Signature != [64]byte{} && !now.Before(permission.accepted.NotBefore) && now.Before(permission.accepted.NotAfter)
+		current := err == nil && owner.permission.currentFor(profile, now)
 		owner.mu.Unlock()
 		if !current {
 			return errors.New("text participant permission expired before command exposure")
@@ -168,9 +173,8 @@ func (endpoint *endpoint) runTextInterfaces(ctx context.Context, config TextPart
 		return err
 	}
 	defer func() { outcome = errors.Join(outcome, adminServer.Close()) }()
-	if err := config.Observe(ctx, TextParticipantEvent{Kind: "ready", NetworkID: endpoint.network, ApplicationAddress: config.ApplicationAddress, AdministrationAddress: config.AdministrationAddress}); err != nil {
+	if err := output.emit(ctx, TextParticipantEvent{Kind: "ready", NetworkID: endpoint.network, ApplicationAddress: config.ApplicationAddress, AdministrationAddress: config.AdministrationAddress}); err != nil {
 		return err
 	}
-	<-ctx.Done()
-	return nil
+	return output.wait(ctx)
 }

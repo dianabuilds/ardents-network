@@ -11,6 +11,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/network/duty"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 )
 
 type textRoleMember struct {
@@ -82,7 +83,7 @@ func (endpoint *endpoint) closedTextRoleMembers() (state.ClosedProfileView, []te
 			return state.ClosedProfileView{}, nil, now, textRoleMemberFailureAt("role-ambiguity", errors.New("text role ambiguous"))
 		}
 		seen[role.NodeID] = true
-		if !route.ClosedPurposePermitsDuty(route.ClosedPurposeForwarding, role.RoleDomain, role.Subrole) {
+		if !route.ClosedPurposePermitsDuty(ardp.PurposeForwarding, role.RoleDomain, role.Subrole) {
 			continue
 		}
 		found := false

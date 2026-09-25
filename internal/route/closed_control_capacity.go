@@ -1,8 +1,10 @@
 package route
 
-func closedControlPurpose(purpose ClosedPurpose) bool {
+import "github.com/dianabuilds/ardents-network/internal/route/ardp"
+
+func closedControlPurpose(purpose ardp.Purpose) bool {
 	switch purpose {
-	case ClosedPurposeIssuer, ClosedPurposeReachability, ClosedPurposeIntroduction, ClosedPurposeSubmission:
+	case ardp.PurposeIssuer, ardp.PurposeReachability, ardp.PurposeIntroduction, ardp.PurposeSubmission:
 		return true
 	}
 	return false

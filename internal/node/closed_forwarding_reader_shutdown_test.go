@@ -10,6 +10,8 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
+	"github.com/dianabuilds/ardents-network/internal/route/replay"
 )
 
 // Delay only the return from Read after physical closure. This models a
@@ -61,9 +63,9 @@ func checkForwardingReaderShutdown(t *testing.T, closeErr error) {
 		t.Fatal(err)
 	}
 	root := t.TempDir()
-	binding := route.ClosedSpendBinding{NetworkID: [32]byte{1}, ProfileDigest: [32]byte{2},
+	binding := replay.Binding{NetworkID: [32]byte{1}, ProfileDigest: [32]byte{2},
 		ReceiverNodeID: [32]byte{3}, ReceiverDutyGeneration: 1}
-	spends, err := route.OpenClosedSpendLedger(root, binding)
+	spends, err := replay.Open(root, binding)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -95,14 +97,14 @@ func checkForwardingReaderShutdown(t *testing.T, closeErr error) {
 	helloRead := make(chan error, 1)
 	handshake := make(chan error, 1)
 	go func() {
-		_, err := route.ReadClosedLaneFrame(peer)
+		_, err := ardp.ReadFrame(peer)
 		helloRead <- err
 		if err == nil {
 			<-allowAccept
-			frame, encodeErr := route.ClosedAcceptFrame(0, 64<<10)
+			frame, encodeErr := ardp.AcceptFrame(0, 64<<10)
 			err = encodeErr
 			if err == nil {
-				err = route.WriteClosedLaneFrame(peer, frame)
+				err = ardp.WriteFrame(peer, frame)
 			}
 		}
 		handshake <- err
@@ -113,10 +115,10 @@ func checkForwardingReaderShutdown(t *testing.T, closeErr error) {
 	server.workers.Add(1)
 	go func() {
 		defer server.workers.Done()
-		_, acquireErr := server.sessions.acquire(context.Background(), key, lease, time.Now().Add(time.Second), func() (route.ClosedHello, error) {
-			return route.ClosedHello{NetworkID: [32]byte{1}, StateGeneration: [32]byte{2}, StateDigest: [32]byte{3},
+		_, acquireErr := server.sessions.acquire(context.Background(), key, lease, time.Now().Add(time.Second), func() (ardp.Hello, error) {
+			return ardp.Hello{NetworkID: [32]byte{1}, StateGeneration: [32]byte{2}, StateDigest: [32]byte{3},
 				ProfileDigest: [32]byte{4}, RecipientNodeID: [32]byte{5}, RecipientDutyGeneration: 1,
-				Purpose: route.ClosedPurposeForwarding, ChannelNonce: [32]byte{6}, Deadline: end}, nil
+				Purpose: ardp.PurposeForwarding, ChannelNonce: [32]byte{6}, Deadline: end}, nil
 		})
 		producerResult <- acquireErr
 		<-allowProducer
@@ -149,7 +151,7 @@ func checkForwardingReaderShutdown(t *testing.T, closeErr error) {
 	default:
 		t.Fatal("Stop did not interrupt the outgoing Carrier")
 	}
-	if replacement, err := route.OpenClosedSpendLedger(root, binding); err == nil {
+	if replacement, err := replay.Open(root, binding); err == nil {
 		_ = replacement.Close()
 		t.Fatal("unjoined reader lost its root lease")
 	}
@@ -164,7 +166,7 @@ func checkForwardingReaderShutdown(t *testing.T, closeErr error) {
 	if err := server.Drain(readerOnly); !errors.Is(err, context.DeadlineExceeded) {
 		t.Fatalf("Drain completed without the retained reader after producer join: %v", err)
 	}
-	if replacement, err := route.OpenClosedSpendLedger(root, binding); err == nil {
+	if replacement, err := replay.Open(root, binding); err == nil {
 		_ = replacement.Close()
 		t.Fatal("unjoined reader lost its root lease after producer join")
 	}
@@ -177,7 +179,7 @@ func checkForwardingReaderShutdown(t *testing.T, closeErr error) {
 			t.Fatalf("joined cleanup changed its physical close result: %v", err)
 		}
 	}
-	reopened, err := route.OpenClosedSpendLedger(root, binding)
+	reopened, err := replay.Open(root, binding)
 	if err != nil {
 		t.Fatalf("joined shutdown retained root: %v", err)
 	}

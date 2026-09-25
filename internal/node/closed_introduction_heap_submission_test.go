@@ -9,16 +9,18 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
+	introductioncapsule "github.com/dianabuilds/ardents-network/internal/route/capsule"
+	"github.com/dianabuilds/ardents-network/internal/route/terminal"
 )
 
 // The parent alone owns recipient key and plaintext canaries. Real HPKE seals
 // them before the actual admitted Submission enters the receiving process.
 // Publication/Endpoint job ownership is a fixture, not a full Service journey.
-func startHeapSubmission(t *testing.T, fixture *resolutionNetworkFixture, request route.ClosedRegistrationRequest) (net.Conn, func(), [32]byte, [2][32]byte, []byte) {
+func startHeapSubmission(t *testing.T, fixture *resolutionNetworkFixture, request terminal.RegistrationRequest) (net.Conn, func(), [32]byte, [2][32]byte, []byte) {
 	t.Helper()
 	submitter := *fixture
-	submitter.receiver.ExpectedPurpose = route.ClosedPurposeSubmission
+	submitter.receiver.ExpectedPurpose = ardp.PurposeSubmission
 	connection, closeCarrier, err := submitter.openTerminal(t.Context(), fixture.supplementary[1][0], 1)
 	if err != nil {
 		t.Fatal(err)
@@ -39,20 +41,20 @@ func startHeapSubmission(t *testing.T, fixture *resolutionNetworkFixture, reques
 	if err != nil {
 		t.Fatal(err)
 	}
-	plaintext := route.ClosedIntroductionPlaintext{Network: fixture.profile.NetworkID, ProfileDigest: fixture.profile.Digest,
+	plaintext := introductioncapsule.Plaintext{Network: fixture.profile.NetworkID, ProfileDigest: fixture.profile.Digest,
 		Target: private[0], JoinSecret: private[1], PublicationDigest: [32]byte{201}, Revision: request.Revision,
 		RendezvousNode: [32]byte{202}, RendezvousDutyGeneration: 1, HandshakeContext: [32]byte{203}, ConnectionNonce: [32]byte{204},
 		AttachmentGeneration: 1, Deadline: end, InitiatorBinding: [32]byte{205}, WorkSafetyNotAfter: end.Unix(), WorkSafetyMaximum: end.Unix(), NoNewRecoveryAfter: end.Unix()}
-	envelope := route.ClosedIntroductionCapsule{Slot: request.Slot, Revision: request.Revision, Expiry: end, DeliveryNonce: delivery}
-	sealed, _, err := route.SealClosedIntroduction(envelope, [32]byte(key.PublicKey().Bytes()), plaintext)
+	envelope := introductioncapsule.Capsule{Slot: request.Slot, Revision: request.Revision, Expiry: end, DeliveryNonce: delivery}
+	sealed, _, err := introductioncapsule.Seal(envelope, [32]byte(key.PublicKey().Bytes()), plaintext)
 	if err != nil {
 		t.Fatal(err)
 	}
-	operation, err := route.EncodeClosedIntroductionSubmission(nonce, sealed)
+	operation, err := introductioncapsule.EncodeSubmission(nonce, sealed)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := route.WriteClosedLaneFrame(connection, route.ClosedLaneFrame{Kind: 10, Body: operation}); err != nil {
+	if err := ardp.WriteFrame(connection, ardp.Frame{Kind: 10, Body: operation}); err != nil {
 		t.Fatal(err)
 	}
 	return connection, closeCarrier, nonce, private, sealed.Ciphertext

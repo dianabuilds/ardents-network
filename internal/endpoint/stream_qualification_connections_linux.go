@@ -21,11 +21,10 @@ import (
 
 // Four qualification Readers share the Publisher's four-openings-per-second
 // dispatch ceiling. A one-second per-Reader interval, phase-shifted below,
-// keeps preparation ahead of the shared 300 ms actual-opening pacer. Each
-// Reader may overlap four
-// unfinished Route setups, for at most the Publisher's sixteen admitted
-// Introduction waiters across the cohort. StreamQualificationMeasurements
-// still spaces the actual cryptographic openings by 300 ms, below that ceiling.
+// keeps preparation ahead of the shared delivery pacer. Each Reader may
+// overlap four unfinished Route setups, for at most the Publisher's sixteen
+// admitted Introduction waiters across the cohort. The shared owner waits
+// 300 ms after each delivery result before admitting the next submission.
 const (
 	qualificationIntroductionInterval   = time.Second
 	qualificationReaderSetupParallelism = 4
@@ -118,7 +117,7 @@ func openQualificationReaderStreams(
 
 func (owner *textContext) streamConnectionLimitLocked() int {
 	if owner.job != nil && owner.job.qualification != nil {
-		schedule, err := owner.job.qualification.init.Profile.Definition(owner.job.qualification.init.Role)
+		schedule, err := owner.job.qualification.Init().Profile.Definition(owner.job.qualification.Init().Role)
 		if err == nil {
 			return int(schedule.OpenConnections)
 		}
@@ -211,8 +210,8 @@ func (worker *qualifiedTextWorker) runQualificationReader(ctx context.Context, d
 				return bound, fmt.Errorf("qualification Reader %d stream %d submission reserve: %w", reader, index, err)
 			}
 			releaseSetup := func() {}
-			if worker.job.qualification.acquireSetup != nil {
-				releaseSetup, err = worker.job.qualification.acquireSetup(setup)
+			if releaseSetup == nil {
+				releaseSetup, err = worker.job.qualification.AcquireSetup(setup)
 				if err != nil {
 					return bound, fmt.Errorf("qualification Reader %d stream %d setup admission: %w", reader, index, err)
 				}
@@ -235,7 +234,7 @@ func (worker *qualifiedTextWorker) runQualificationReader(ctx context.Context, d
 			releaseSetup()
 			id := qualificationStreamID(reader, index)
 			bound = streamqualification.BoundStream{ID: id, Stream: service}
-			if _, err := service.Write(qualificationHello(worker.job.qualification.init.Profile, worker.job.qualification.init.Seed, id)); err != nil {
+			if _, err := service.Write(qualificationHello(worker.job.qualification.Init().Profile, worker.job.qualification.Init().Seed, id)); err != nil {
 				return bound, fmt.Errorf("qualification Reader %d stream %d hello: %w", reader, index, err)
 			}
 			// Setup traffic consumes the same finite forwarding allowances as the
@@ -299,7 +298,7 @@ func (worker *qualifiedTextWorker) serveQualification(ctx, bounded context.Conte
 				return errors.Join(readErr, stream.Close())
 			}
 			id := binary.BigEndian.Uint32(hello[9:13])
-			expected := qualificationHello(worker.job.qualification.init.Profile, worker.job.qualification.init.Seed, id)
+			expected := qualificationHello(worker.job.qualification.Init().Profile, worker.job.qualification.Init().Seed, id)
 			if id == 0 || id > 511 || id%2 != 1 || seen[id] || string(hello[:]) != string(expected) {
 				return errors.Join(errors.New("qualification workload binding invalid"), stream.Close())
 			}
@@ -319,7 +318,7 @@ func (worker *qualifiedTextWorker) serveQualification(ctx, bounded context.Conte
 		}
 	}
 	report, err := worker.runQualifiedStreams(network, streams)
-	worker.job.qualification.publishReport(report)
+	worker.job.qualification.PublishReport(report)
 	return err
 }
 

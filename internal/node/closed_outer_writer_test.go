@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 )
 
 type closedOuterDeadlineObserved struct {
@@ -28,7 +29,7 @@ func TestClosedOuterWriterUpdatesOnlyActiveChildDeadline(t *testing.T) {
 	writer := &closedOuterWriter{connection: observed}
 	done := make(chan error, 1)
 	go func() {
-		done <- writer.write(route.ClosedLaneFrame{Kind: 6, Lane: 1, Body: []byte{1}}, func() time.Time { return time.Now().Add(time.Hour) }, false, false)
+		done <- writer.write(ardp.Frame{Kind: 6, Lane: 1, Body: []byte{1}}, func() time.Time { return time.Now().Add(time.Hour) }, false, false)
 	}()
 	<-observed.started
 	if err := writer.update(3, time.Now()); err != nil {
@@ -63,7 +64,7 @@ func TestClosedOuterWriterReadsQueuedDeadlineAfterSerialization(t *testing.T) {
 	requested, done := make(chan struct{}), make(chan error, 1)
 	go func() {
 		close(requested)
-		done <- writer.write(route.ClosedLaneFrame{Kind: 6, Lane: 1, Body: []byte{1}}, func() time.Time { mu.Lock(); defer mu.Unlock(); return end }, false, false)
+		done <- writer.write(ardp.Frame{Kind: 6, Lane: 1, Body: []byte{1}}, func() time.Time { mu.Lock(); defer mu.Unlock(); return end }, false, false)
 	}()
 	<-requested
 	mu.Lock()
@@ -88,7 +89,7 @@ func TestClosedOuterWriterBoundsActiveCreditForTerminalCleanup(t *testing.T) {
 	writer := &closedOuterWriter{connection: observed}
 	done := make(chan error, 1)
 	go func() {
-		done <- writer.write(route.ClosedLaneFrame{Kind: 7, Lane: 1, Body: []byte{0, 0, 0, 1}},
+		done <- writer.write(ardp.Frame{Kind: 7, Lane: 1, Body: []byte{0, 0, 0, 1}},
 			func() time.Time { return time.Now().Add(time.Hour) }, true, false)
 	}()
 	<-observed.started
@@ -118,7 +119,7 @@ func TestClosedOuterWriterTerminalCleanupDoesNotExtendActiveCreditDeadline(t *te
 	originalEnd := time.Now().Add(100 * time.Millisecond)
 	done := make(chan error, 1)
 	go func() {
-		done <- writer.write(route.ClosedLaneFrame{Kind: 7, Lane: 1, Body: []byte{0, 0, 0, 1}},
+		done <- writer.write(ardp.Frame{Kind: 7, Lane: 1, Body: []byte{0, 0, 0, 1}},
 			func() time.Time { return originalEnd }, true, false)
 	}()
 	<-observed.started
@@ -175,16 +176,16 @@ func TestClosedOuterChildCloseInterruptsItsPhysicalWriter(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			hello := route.ClosedHello{NetworkID: receiver.NetworkID, StateGeneration: receiver.StateGeneration, StateDigest: receiver.StateDigest,
+			hello := ardp.Hello{NetworkID: receiver.NetworkID, StateGeneration: receiver.StateGeneration, StateDigest: receiver.StateDigest,
 				ProfileDigest: receiver.ProfileDigest, RecipientNodeID: receiver.NodeID, RecipientDutyGeneration: receiver.DutyGeneration,
-				Purpose: route.ClosedPurposeForwarding, ChannelNonce: [32]byte{8}, Deadline: receiver.Deadline}
-			body, err := route.EncodeClosedHello(hello)
+				Purpose: ardp.PurposeForwarding, ChannelNonce: [32]byte{8}, Deadline: receiver.Deadline}
+			body, err := ardp.EncodeHello(hello)
 			if err != nil {
 				t.Fatal(err)
 			}
 			accepted := make(chan error, 1)
-			go func() { _, err := route.ReadClosedLaneFrame(peer); accepted <- err }()
-			if _, err := bridge.Accept(route.ClosedLaneFrame{Kind: 1, Body: body}); err != nil {
+			go func() { _, err := ardp.ReadFrame(peer); accepted <- err }()
+			if _, err := bridge.Accept(ardp.Frame{Kind: 1, Body: body}); err != nil {
 				t.Fatal(err)
 			}
 			if err := <-accepted; err != nil {
@@ -194,11 +195,11 @@ func TestClosedOuterChildCloseInterruptsItsPhysicalWriter(t *testing.T) {
 			observed.once = sync.Once{}
 			observed.started = make(chan struct{})
 			body, err = route.EncodeClosedNodeOpen(route.ClosedOpen{NextNodeID: receiver.NodeID, NextDutyGeneration: receiver.DutyGeneration,
-				Purpose: route.ClosedPurposeForwarding, Deadline: now.Add(30 * time.Minute)}, route.ClosedChildOrdinary)
+				Purpose: ardp.PurposeForwarding, Deadline: now.Add(30 * time.Minute)}, route.ClosedChildOrdinary)
 			if err != nil {
 				t.Fatal(err)
 			}
-			lane, err := bridge.Accept(route.ClosedLaneFrame{Kind: 4, Lane: 1, Body: body})
+			lane, err := bridge.Accept(ardp.Frame{Kind: 4, Lane: 1, Body: body})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -211,7 +212,7 @@ func TestClosedOuterChildCloseInterruptsItsPhysicalWriter(t *testing.T) {
 					closed <- lane.Close()
 					return
 				}
-				_, err := bridge.Accept(route.ClosedLaneFrame{Kind: 9, Lane: 1, Body: []byte{0}})
+				_, err := bridge.Accept(ardp.Frame{Kind: 9, Lane: 1, Body: []byte{0}})
 				closed <- err
 			}()
 			select {

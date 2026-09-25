@@ -11,6 +11,8 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
+	"github.com/dianabuilds/ardents-network/internal/route/replay"
 )
 
 // startClosedForwarding materializes one State-selected adjacent/interior
@@ -24,7 +26,7 @@ func startClosedForwarding(config runtimeConfig, snapshot dutyFacts) (*probeServ
 	if err != nil {
 		return nil, err
 	}
-	receiver, available := closedRouteReceiver(config, snapshot, route.ClosedPurposeForwarding, config.now())
+	receiver, available := closedRouteReceiver(config, snapshot, ardp.PurposeForwarding, config.now())
 	if !available {
 		return nil, errors.New("closed forwarding receiver is unavailable")
 	}
@@ -36,7 +38,7 @@ func startClosedForwarding(config runtimeConfig, snapshot dutyFacts) (*probeServ
 			return nil, err
 		}
 	}
-	receiving, err := openClosedForwardingReceivingResources(local.Root, route.ClosedSpendBinding{NetworkID: receiver.NetworkID, ProfileDigest: receiver.ProfileDigest,
+	receiving, err := openClosedForwardingReceivingResources(local.Root, replay.Binding{NetworkID: receiver.NetworkID, ProfileDigest: receiver.ProfileDigest,
 		ReceiverNodeID: receiver.NodeID, ReceiverDutyGeneration: receiver.DutyGeneration}, config.now)
 	if err != nil {
 		return nil, errors.Join(err, host.Close())
@@ -71,7 +73,7 @@ func validateClosedForwardingProfile(local ClosedForwardingProfile, config runti
 		!literalNodeEndpoint(snapshot.ProbeEndpoint) || (route.CarrierProfile(snapshot.CarrierProfile) != route.ClosedCarrierTCP && route.CarrierProfile(snapshot.CarrierProfile) != route.ClosedCarrierQUIC) {
 		return errors.New("closed forwarding local profile is incomplete")
 	}
-	if _, available := closedRouteReceiver(config, snapshot, route.ClosedPurposeForwarding, now); !available {
+	if _, available := closedRouteReceiver(config, snapshot, ardp.PurposeForwarding, now); !available {
 		return errors.New("closed forwarding State profile is unavailable")
 	}
 	return nil
@@ -255,7 +257,7 @@ func (server *closedForwardingServer) serveOuter(ctx context.Context, carrier ro
 	if err != nil {
 		return
 	}
-	receiver, available := closedRouteReceiver(server.config, updated, route.ClosedPurposeForwarding, server.clock())
+	receiver, available := closedRouteReceiver(server.config, updated, ardp.PurposeForwarding, server.clock())
 	if !available {
 		return
 	}
@@ -286,14 +288,14 @@ func (server *closedForwardingServer) serveInner(ctx context.Context, lane *rout
 	if err := lane.BeginInnerHello(); err != nil {
 		return
 	}
-	helloFrame, err := route.ReadClosedLaneFrame(secured)
+	helloFrame, err := ardp.ReadFrame(secured)
 	if err != nil {
 		return
 	}
 	if helloFrame.Kind != 1 || helloFrame.Lane != 0 {
 		return
 	}
-	hello, err := route.DecodeClosedHello(helloFrame.Body)
+	hello, err := ardp.DecodeHello(helloFrame.Body)
 	if err != nil || lane.Activate(hello) != nil {
 		return
 	}
@@ -302,7 +304,7 @@ func (server *closedForwardingServer) serveInner(ctx context.Context, lane *rout
 	}
 }
 
-func (server *closedForwardingServer) serveDirect(ctx context.Context, connection net.Conn, first *route.ClosedLaneFrame, incomingKey [32]byte, restriction route.ClosedChildRestriction, outerLane *route.ClosedOuterBridgeLane) (result error) {
+func (server *closedForwardingServer) serveDirect(ctx context.Context, connection net.Conn, first *ardp.Frame, incomingKey [32]byte, restriction route.ClosedChildRestriction, outerLane *route.ClosedOuterBridgeLane) (result error) {
 
 	initialDeadline := server.clock().UTC().Add(10 * time.Second)
 	if err := connection.SetDeadline(initialDeadline); err != nil {
@@ -316,7 +318,7 @@ func (server *closedForwardingServer) serveDirect(ctx context.Context, connectio
 	if err != nil {
 		return err
 	}
-	receiver, available := closedRouteReceiver(server.config, updated, route.ClosedPurposeForwarding, server.clock())
+	receiver, available := closedRouteReceiver(server.config, updated, ardp.PurposeForwarding, server.clock())
 	if !available {
 		return errors.New("closed forwarding receiver is unavailable")
 	}
@@ -327,7 +329,7 @@ func (server *closedForwardingServer) serveDirect(ctx context.Context, connectio
 	}
 	var forwarding *route.ClosedForwardingChannel
 	var writer sync.Mutex
-	write := func(frame route.ClosedLaneFrame) error {
+	write := func(frame ardp.Frame) error {
 		writer.Lock()
 		defer writer.Unlock()
 		if forwarding != nil {
@@ -335,7 +337,7 @@ func (server *closedForwardingServer) serveDirect(ctx context.Context, connectio
 				return err
 			}
 		}
-		return route.WriteClosedLaneFrame(connection, frame)
+		return ardp.WriteFrame(connection, frame)
 	}
 	links := make(map[uint32]*closedForwardingLink)
 	completed := make(chan struct{}, 1)
@@ -347,7 +349,7 @@ func (server *closedForwardingServer) serveDirect(ctx context.Context, connectio
 	}
 	openings := newClosedForwardingOpenings(ctx, wakeParent)
 	type parentRead struct {
-		frame route.ClosedLaneFrame
+		frame ardp.Frame
 		err   error
 	}
 	reads := make(chan parentRead, 1)
@@ -356,7 +358,7 @@ func (server *closedForwardingServer) serveDirect(ctx context.Context, connectio
 	go func() {
 		defer close(readerDone)
 		for {
-			frame, err := route.ReadClosedLaneFrame(connection)
+			frame, err := ardp.ReadFrame(connection)
 			select {
 			case reads <- parentRead{frame: frame, err: err}:
 			case <-stopReader:
@@ -380,9 +382,9 @@ func (server *closedForwardingServer) serveDirect(ctx context.Context, connectio
 			result = errors.Join(result, forwarding.Cancel())
 		}
 	}()
-	var hello route.ClosedHello
+	var hello ardp.Hello
 	helloSize := 0
-	accept := func(frame route.ClosedLaneFrame) error {
+	accept := func(frame ardp.Frame) error {
 		if restriction != route.ClosedChildOrdinary && restriction != route.ClosedChildIssuerBootstrap {
 			return errors.New("closed forwarding child restriction is invalid")
 		}
@@ -400,7 +402,7 @@ func (server *closedForwardingServer) serveDirect(ctx context.Context, connectio
 				if err := connection.SetDeadline(deadline); err != nil {
 					return err
 				}
-				accepted, err := route.ClosedAcceptFrame(0, 64<<10)
+				accepted, err := ardp.AcceptFrame(0, 64<<10)
 				if err != nil {
 					return err
 				}
@@ -411,7 +413,7 @@ func (server *closedForwardingServer) serveDirect(ctx context.Context, connectio
 				return admitErr
 			}
 			if lease.Class == 0 {
-				hello, _ = route.DecodeClosedHello(frame.Body)
+				hello, _ = ardp.DecodeHello(frame.Body)
 				helloSize = 16 + len(frame.Body)
 				return nil
 			}
@@ -434,7 +436,7 @@ func (server *closedForwardingServer) serveDirect(ctx context.Context, connectio
 			if err := connection.SetDeadline(lease.Deadline); err != nil {
 				return errors.Join(err, forwarding.Cancel())
 			}
-			accepted, frameErr := route.ClosedAcceptFrame(0, 64<<10)
+			accepted, frameErr := ardp.AcceptFrame(0, 64<<10)
 			if frameErr != nil {
 				return frameErr
 			}
@@ -453,7 +455,7 @@ func (server *closedForwardingServer) serveDirect(ctx context.Context, connectio
 			return acceptErr
 		}
 		if frame.Kind == 2 {
-			accepted, frameErr := route.ClosedAcceptFrame(0, 64<<10)
+			accepted, frameErr := ardp.AcceptFrame(0, 64<<10)
 			if frameErr != nil {
 				return frameErr
 			}

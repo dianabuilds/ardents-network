@@ -5,6 +5,7 @@ package endpoint
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net"
 	"os"
 	"path/filepath"
@@ -15,6 +16,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
 	"github.com/dianabuilds/ardents-network/internal/application/streamqualification"
 	"github.com/dianabuilds/ardents-network/internal/application/textdocument"
+	"github.com/dianabuilds/ardents-network/internal/qualification"
 )
 
 // The installed sockets and their PID/UID instance namespace belong to the
@@ -33,22 +35,22 @@ func (owner *textContext) launchTextWorker(ctx context.Context, snapshot []byte)
 	return owner.launchInstalledWorker(ctx, snapshot, nil, workload)
 }
 
-func (owner *textContext) launchStreamQualificationWorker(ctx context.Context, qualification *textQualificationRun) (*qualifiedTextWorker, error) {
+func (owner *textContext) launchStreamQualificationWorker(ctx context.Context, run *qualification.Run) (*qualifiedTextWorker, error) {
 	role := streamqualification.ReaderRole
 	if owner != nil && owner.surface == broker.Administration {
 		role = streamqualification.PublisherRole
 	}
-	if qualification == nil || qualification.init.Role != role {
+	if run == nil || run.Init().Role != role {
 		return nil, errors.New("qualification workload role is unavailable")
 	}
 	workload, err := streamQualificationServiceWorkloadBounds()
 	if err != nil {
 		return nil, err
 	}
-	return owner.launchInstalledWorker(ctx, nil, qualification, workload)
+	return owner.launchInstalledWorker(ctx, nil, run, workload)
 }
 
-func (owner *textContext) launchInstalledWorker(ctx context.Context, snapshot []byte, qualification *textQualificationRun,
+func (owner *textContext) launchInstalledWorker(ctx context.Context, snapshot []byte, run *qualification.Run,
 	workload textServiceWorkloadBounds) (*qualifiedTextWorker, error) {
 	if owner == nil || ctx == nil || ctx.Err() != nil {
 		return nil, errors.New("text worker launch is unavailable")
@@ -89,12 +91,12 @@ func (owner *textContext) launchInstalledWorker(ctx context.Context, snapshot []
 	}()
 	job.workload = workload
 	inventory := textInventory
-	if qualification != nil {
-		if err := qualification.bindInvocation(job.nonce); err != nil {
+	if run != nil {
+		if err := run.BindInvocation(job.nonce); err != nil {
 			return nil, err
 		}
 		inventory = streamInventory
-		job.qualification = qualification
+		job.qualification = run
 	}
 	bounded, cancel := context.WithTimeout(job.context, 15*time.Second)
 	defer cancel()
@@ -209,9 +211,13 @@ func awaitInstalledWorkerInstance(ctx context.Context, before textWorkerListing,
 	ticker := time.NewTicker(25 * time.Millisecond)
 	defer ticker.Stop()
 	var candidate string
+	var observationErr error
 	for {
 		after, err := listInstalledWorkerInstances(ctx, role, inventory)
 		if err != nil {
+			if ctx.Err() != nil && observationErr != nil {
+				return textWorkerInstance{}, fmt.Errorf("text worker activation did not become verifiable (last observation: %w)", observationErr)
+			}
 			return textWorkerInstance{}, err
 		}
 		name, err := newTextWorkerInstance(before, after, candidate)
@@ -224,9 +230,15 @@ func awaitInstalledWorkerInstance(ctx context.Context, before textWorkerListing,
 			if err == nil {
 				return observed, nil
 			}
+			// Property checks return fixed, non-secret categories. Keep the
+			// latest failure so a timed-out activation remains diagnosable.
+			observationErr = err
 		}
 		select {
 		case <-ctx.Done():
+			if observationErr != nil {
+				return textWorkerInstance{}, fmt.Errorf("text worker activation did not become verifiable (last observation: %w)", observationErr)
+			}
 			return textWorkerInstance{}, errors.New("text worker activation did not become verifiable")
 		case <-ticker.C:
 		}

@@ -18,6 +18,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/application/textdocument"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/route"
+	introductioncapsule "github.com/dianabuilds/ardents-network/internal/route/capsule"
 	"github.com/dianabuilds/ardents-network/internal/service/publication"
 	"github.com/dianabuilds/ardents-network/internal/service/targetlink"
 )
@@ -48,7 +49,7 @@ func liveTextCapsuleJob(t *testing.T, owner *textContext) *textJobIdentity {
 func TestTextIntroductionCapsuleBindsRealInstanceAndServiceStream(t *testing.T) {
 	for _, carrier := range []route.CarrierProfile{route.ClosedCarrierTCP, route.ClosedCarrierQUIC} {
 		t.Run(string(carrier), func(t *testing.T) {
-			endpoint, publisher, source := startTextRoleNetwork(t, carrier, true, true)
+			endpoint, publisher, source := startTextRoleNetwork(t, textRoleNetworkFixture{carrier: carrier, resolution: true, publisher: true})
 			// Rendezvous eligibility is a public-State fixture. It is never dialed
 			// here; the actual data-pair transport below is a separate explicit seam.
 			source.mu.Lock()
@@ -114,7 +115,7 @@ func TestTextIntroductionCapsuleBindsRealInstanceAndServiceStream(t *testing.T) 
 			if !attempt.plaintext.Deadline.After(agedDeadline) || bytes.Equal(attempt.operation, oldOperation) {
 				t.Fatal("prepared stock did not receive a fresh on-wire capsule lifetime")
 			}
-			_, sealed, err := route.DecodeClosedIntroductionSubmission(attempt.operation)
+			_, sealed, err := introductioncapsule.DecodeSubmission(attempt.operation)
 			if err != nil || len(attempt.operation) != 4096 {
 				t.Fatalf("capsule operation: %v", err)
 			}
@@ -125,23 +126,23 @@ func TestTextIntroductionCapsuleBindsRealInstanceAndServiceStream(t *testing.T) 
 			}
 			mutations := []struct {
 				name   string
-				change func(*route.ClosedIntroductionPlaintext)
+				change func(*introductioncapsule.Plaintext)
 			}{
-				{"Target", func(value *route.ClosedIntroductionPlaintext) { value.Target = fixtureID(190) }},
-				{"Rendezvous", func(value *route.ClosedIntroductionPlaintext) { value.RendezvousNode = source.view.Nodes[4].NodeID }},
-				{"authority bounds", func(value *route.ClosedIntroductionPlaintext) {
+				{"Target", func(value *introductioncapsule.Plaintext) { value.Target = fixtureID(190) }},
+				{"Rendezvous", func(value *introductioncapsule.Plaintext) { value.RendezvousNode = source.view.Nodes[4].NodeID }},
+				{"authority bounds", func(value *introductioncapsule.Plaintext) {
 					value.WorkSafetyMaximum = descriptor.Current.Credential.NotAfter + 1
 				}},
 			}
 			for index, mutation := range mutations {
 				altered := attempt.plaintext
 				mutation.change(&altered)
-				envelope := route.ClosedIntroductionCapsule{Slot: sealed.Slot, Revision: sealed.Revision, Expiry: sealed.Expiry, DeliveryNonce: fixtureID(byte(180 + index))}
-				changed, _, err := route.SealClosedIntroduction(envelope, descriptor.Descriptor.Private.RecipientKey, altered)
+				envelope := introductioncapsule.Capsule{Slot: sealed.Slot, Revision: sealed.Revision, Expiry: sealed.Expiry, DeliveryNonce: fixtureID(byte(180 + index))}
+				changed, _, err := introductioncapsule.Seal(envelope, descriptor.Descriptor.Private.RecipientKey, altered)
 				if err != nil {
 					t.Fatal(err)
 				}
-				operation, err := route.EncodeClosedIntroductionSubmission(fixtureID(byte(170+index)), changed)
+				operation, err := introductioncapsule.EncodeSubmission(fixtureID(byte(170+index)), changed)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -179,7 +180,7 @@ func TestTextIntroductionCapsuleBindsRealInstanceAndServiceStream(t *testing.T) 
 			responder := publisher.responder.currentLocked()
 			introduction := publisher.introduction.currentLocked()
 			distinct := responder != nil && introduction != nil && (publisher.currentTextSourceLocked() == nil || responder.prefix.Load() != publisher.currentTextSourceLocked().prefix.Load()) && responder.prefix.Load() != introduction.prefix.Load() &&
-				publisher.responder.set != nil && publisher.responder.set != publisher.sourceSet && publisher.responder.set != publisher.introduction.set &&
+				publisher.responder.set != nil && publisher.responder.set != publisher.source.set && publisher.responder.set != publisher.introduction.set &&
 				publisher.responder.set.interior[0].Domain == 3 && publisher.permission.reserved[1] > beforeForward && publisher.responder.opening == nil
 			publisher.mu.Unlock()
 			if !distinct {
@@ -202,7 +203,7 @@ func TestTextIntroductionCapsuleBindsRealInstanceAndServiceStream(t *testing.T) 
 			if _, err := publisher.acceptTextIntroduction(t.Context(), publisherJob, attempt.operation); err == nil || !strings.Contains(err.Error(), "replay") {
 				t.Fatalf("replayed capsule accepted: %v", err)
 			}
-			if publisher.introductionReplays[sealed.DeliveryNonce] != registered.request.Expiry.Add(60*time.Second) {
+			if publisher.introductionAdmission.replays[sealed.DeliveryNonce] != registered.request.Expiry.Add(60*time.Second) {
 				t.Fatal("replay retention does not cover original signed slot expiry")
 			}
 			exchangeTextCapsuleService(t, attempt, accepted)
@@ -231,7 +232,7 @@ func TestTextIntroductionCapsuleBindsRealInstanceAndServiceStream(t *testing.T) 
 			if err := registered.recipient.Close(); err != nil {
 				t.Fatal(err)
 			}
-			if _, _, err := route.OpenClosedIntroduction(sealed, source.view.Profile.Digest, registered.recipient, time.Now()); err == nil {
+			if _, _, err := introductioncapsule.Open(sealed, source.view.Profile.Digest, registered.recipient, time.Now()); err == nil {
 				t.Fatal("retired Instance recipient decrypted capsule")
 			}
 		})
@@ -285,24 +286,24 @@ func TestTextIntroductionReplayAndOpeningRateAreContextBounded(t *testing.T) {
 	owner := &textContext{}
 	now := time.Now().UTC()
 	for index := 0; index < 4; index++ {
-		if err := owner.reserveTextIntroductionOpeningLocked(fixtureID(byte(index+1)), now); err != nil {
+		if err := owner.introductionAdmission.reserveOpeningLocked(fixtureID(byte(index+1)), now); err != nil {
 			t.Fatal(err)
 		}
 	}
-	if err := owner.reserveTextIntroductionOpeningLocked(fixtureID(8), now.Add(time.Second-time.Nanosecond)); err == nil {
+	if err := owner.introductionAdmission.reserveOpeningLocked(fixtureID(8), now.Add(time.Second-time.Nanosecond)); err == nil {
 		t.Fatal("more than four openings in one second")
 	}
-	if err := owner.reserveTextIntroductionOpeningLocked(fixtureID(8), now.Add(time.Second)); err != nil {
+	if err := owner.introductionAdmission.reserveOpeningLocked(fixtureID(8), now.Add(time.Second)); err != nil {
 		t.Fatal(err)
 	}
-	if err := owner.reserveTextIntroductionOpeningLocked(fixtureID(9), now); err == nil {
+	if err := owner.introductionAdmission.reserveOpeningLocked(fixtureID(9), now); err == nil {
 		t.Fatal("clock rollback reopened rate allowance")
 	}
-	owner.introductionReplays = map[[32]byte]time.Time{fixtureID(10): now.Add(2 * time.Second)}
-	if err := owner.reserveTextIntroductionOpeningLocked(fixtureID(10), now.Add(time.Second)); err == nil {
+	owner.introductionAdmission.replays = map[[32]byte]time.Time{fixtureID(10): now.Add(2 * time.Second)}
+	if err := owner.introductionAdmission.reserveOpeningLocked(fixtureID(10), now.Add(time.Second)); err == nil {
 		t.Fatal("replay allowed before expiry")
 	}
-	if err := owner.reserveTextIntroductionOpeningLocked(fixtureID(10), now.Add(2*time.Second)); err != nil {
+	if err := owner.introductionAdmission.reserveOpeningLocked(fixtureID(10), now.Add(2*time.Second)); err != nil {
 		t.Fatal(err)
 	}
 }

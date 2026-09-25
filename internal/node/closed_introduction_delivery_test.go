@@ -9,6 +9,9 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
+	introductioncapsule "github.com/dianabuilds/ardents-network/internal/route/capsule"
+	"github.com/dianabuilds/ardents-network/internal/route/terminal"
 )
 
 // State acceptance and pending acknowledgements are explicit seams. This
@@ -20,14 +23,14 @@ func TestClosedIntroductionDeliverySerializesIDsAndBoundsPending(t *testing.T) {
 	now := time.Now().UTC().Truncate(time.Second)
 	var clock atomic.Int64
 	clock.Store(now.Unix())
-	slot := &closedIntroductionSlot{request: route.ClosedRegistrationRequest{Slot: [32]byte{1}, Revision: 1, Expiry: now.Add(30 * time.Second)},
+	slot := &closedIntroductionSlot{request: terminal.RegistrationRequest{Slot: [32]byte{1}, Revision: 1, Expiry: now.Add(30 * time.Second)},
 		connection: local, writer: make(chan struct{}, 1), done: make(chan struct{}), active: true, maximum: route.ClosedIntroductionRegistrationByteLimit,
 		pending: make(map[uint32]*closedIntroductionDelivery)}
 	server := &closedIntroductionServer{config: runtimeConfig{Config: Config{Current: func() (DutyView, error) {
 		return nil, errors.New("State intentionally unavailable at final acknowledgement")
 	}},
 		now: func() time.Time { return time.Unix(clock.Load(), 0) }}, slots: map[[32]byte]*closedIntroductionSlot{slot.request.Slot: slot}}
-	capsule := route.ClosedIntroductionCapsule{Slot: slot.request.Slot, Revision: 1, Expiry: now.Add(10 * time.Second), DeliveryNonce: [32]byte{2}, Encapsulation: [32]byte{3}, Ciphertext: bytes.Repeat([]byte{4}, 360)}
+	capsule := introductioncapsule.Capsule{Slot: slot.request.Slot, Revision: 1, Expiry: now.Add(10 * time.Second), DeliveryNonce: [32]byte{2}, Encapsulation: [32]byte{3}, Ciphertext: bytes.Repeat([]byte{4}, 360)}
 	slot.writer <- struct{}{}
 	released := false
 	defer func() {
@@ -80,7 +83,7 @@ func TestClosedIntroductionDeliverySerializesIDsAndBoundsPending(t *testing.T) {
 	operations, closed := 0, 0
 	nonces := make(map[[32]byte]bool)
 	for closed < 4 {
-		frame, err := route.ReadClosedLaneFrame(peer)
+		frame, err := ardp.ReadFrame(peer)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -90,7 +93,7 @@ func TestClosedIntroductionDeliverySerializesIDsAndBoundsPending(t *testing.T) {
 				t.Fatal("concurrent delivery IDs arrived out of order")
 			}
 			last = frame.Lane
-			nonce, received, err := route.DecodeClosedIntroductionSubmission(frame.Body)
+			nonce, received, err := introductioncapsule.DecodeSubmission(frame.Body)
 			if err != nil {
 				t.Fatal(err)
 			}

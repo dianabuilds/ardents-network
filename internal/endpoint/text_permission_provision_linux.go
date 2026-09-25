@@ -5,8 +5,9 @@ package endpoint
 import (
 	"context"
 	"errors"
-	"os"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/endpoint/permissionfile"
 )
 
 // provisionTextPermission is the participant's finite offline handover. The
@@ -16,11 +17,11 @@ func (owner *textContext) provisionTextPermission(ctx context.Context, requestPa
 	if owner == nil || ctx == nil || ctx.Err() != nil || report == nil || requestPath == responsePath {
 		return errors.New("text permission provisioning unavailable")
 	}
-	root, name, err := openTextPermissionDirectory(responsePath)
+	response, err := permissionfile.Open(responsePath)
 	if err != nil {
 		return err
 	}
-	defer func() { outcome = errors.Join(outcome, root.Close()) }()
+	defer func() { outcome = errors.Join(outcome, response.Close()) }()
 	// A new authorized context has no qualification receipt. Obtain one from
 	// the real installed launcher, then join the preparation invocation before
 	// exporting anything or waiting for offline approval. Empty INIT is valid
@@ -69,15 +70,15 @@ func (owner *textContext) provisionTextPermission(ctx context.Context, requestPa
 		if err := bounded.Err(); err != nil {
 			return err
 		}
-		_, err := root.Lstat(name)
-		if err == nil {
+		present, err := response.Present()
+		if err != nil {
+			return err
+		}
+		if present {
 			// The import reopens and identity-checks the canonical owner-only path.
 			// Invalid or partially written responses fail; they are never retried into
 			// success. The operator installs a complete response before exposing it.
 			return owner.importTextPermissionFile(bounded, responsePath, digest)
-		}
-		if !errors.Is(err, os.ErrNotExist) {
-			return errors.New("text permission response path unavailable")
 		}
 		timer := time.NewTimer(time.Second)
 		select {

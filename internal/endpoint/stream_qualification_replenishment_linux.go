@@ -8,7 +8,8 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/application/streamqualification"
-	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/qualification"
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 )
 
 // Keep issuer admissions outside the next Introduction's ten-second wire
@@ -40,8 +41,8 @@ func (worker *qualifiedTextWorker) runQualifiedStreams(ctx context.Context, stre
 			}
 		}
 	}()
-	attachment := &qualificationAttachment{ReadWriteCloser: worker.lifetime.attachment, sample: worker.job.qualification.stopSamples}
-	report, outcome = streamqualification.RunConnections(bounded, attachment, worker.job.qualification.init, streams, worker.job.qualification.observe)
+	attachment := qualification.NewAttachment(worker.lifetime.attachment, worker.job.qualification.StopSamples)
+	report, outcome = streamqualification.RunConnections(bounded, attachment, worker.job.qualification.Init(), streams, worker.job.qualification.Observe)
 	cancel()
 	outcome = errors.Join(outcome, <-stopped)
 	return report, outcome
@@ -59,10 +60,10 @@ func (worker *qualifiedTextWorker) replenishStreams(ctx context.Context) error {
 		owner.mu.Unlock()
 		return nil
 	}
-	joins := worker.job.qualification.joinedStreams()
+	joins := worker.job.qualification.JoinedStreams()
 	owner.mu.Unlock()
 	issuerReserve := qualificationIssuerReserve
-	if worker.job.qualification.init.Role == streamqualification.ReaderRole {
+	if worker.job.qualification.Init().Role == streamqualification.ReaderRole {
 		issuerReserve += (3 - worker.qualificationReader) * 9
 	}
 	if err := owner.ensureQualificationIssuerReserve(ctx, issuerReserve); err != nil {
@@ -76,7 +77,7 @@ func (worker *qualifiedTextWorker) replenishStreams(ctx context.Context) error {
 	introduction := owner.introduction.currentLocked()
 	responder := owner.responder.currentLocked()
 	owner.mu.Unlock()
-	present := func(hello route.ClosedHello, class uint8) ([]byte, error) {
+	present := func(hello ardp.Hello, class uint8) ([]byte, error) {
 		return owner.presentQualifiedRefill(ctx, worker.job, hello, class)
 	}
 	if source != nil {
@@ -96,7 +97,7 @@ func (worker *qualifiedTextWorker) replenishStreams(ctx context.Context) error {
 	}
 	for _, joined := range joins {
 		if err := joined.Replenish(ctx, present); err != nil {
-			retained := worker.job.qualification.retains(joined)
+			retained := worker.job.qualification.Retains(joined)
 			// A retiring transport's Service owner retains its terminal cause.
 			if retained {
 				return err
@@ -116,14 +117,8 @@ func (owner *textContext) ensureQualificationTokenReserve(ctx context.Context, r
 		owner.mu.Unlock()
 		return errors.Join(err, errors.New("qualification token reserve unavailable"))
 	}
-	ready := 0
-	for _, stock := range owner.permission.stock {
-		if stock.challenge.ReceiverNodeID == receiver && stock.challenge.ProfileDigest == profile.Digest && stock.challenge.Class == class &&
-			stock.challenge.WindowStart == owner.permission.accepted.NotBefore {
-			ready += len(stock.tokens)
-		}
-	}
-	remaining := owner.permission.accepted.Maxima[class-1] - owner.permission.reserved[class-1]
+	ready := owner.permission.stockCountFor(profile.Digest, receiver, class)
+	remaining := owner.permission.remaining(class)
 	owner.mu.Unlock()
 	missing := min(minimum-ready, int(remaining))
 	if missing <= 0 {
@@ -143,16 +138,8 @@ func (owner *textContext) ensureQualificationIssuerReserve(ctx context.Context, 
 		owner.mu.Unlock()
 		return errors.Join(err, ctx.Err(), errors.New("qualification issuer reserve unavailable"))
 	}
-	ready := 0
-	for _, stock := range owner.permission.stock {
-		if stock.challenge.ReceiverNodeID == profile.IssuerNodeID &&
-			stock.challenge.ReceiverDutyGeneration == profile.IssuerDutyGeneration &&
-			stock.challenge.ProfileDigest == profile.Digest && stock.challenge.Class == 1 &&
-			stock.challenge.WindowStart == owner.permission.accepted.NotBefore {
-			ready += len(stock.tokens)
-		}
-	}
-	remaining := owner.permission.accepted.Maxima[0] - owner.permission.reserved[0]
+	ready := owner.permission.stockCountForDuty(profile.Digest, profile.IssuerNodeID, profile.IssuerDutyGeneration, 1)
+	remaining := owner.permission.remaining(1)
 	prefixLive := owner.currentTextSourceLocked() != nil
 	owner.mu.Unlock()
 	if ready >= minimum || remaining == 0 {
@@ -183,7 +170,7 @@ func (owner *textContext) ensureQualificationIssuerReserve(ctx context.Context, 
 	return owner.issueTextTokens(ctx, receivers, 1)
 }
 
-func (owner *textContext) presentQualifiedRefill(ctx context.Context, job *textJobIdentity, hello route.ClosedHello, class uint8) ([]byte, error) {
+func (owner *textContext) presentQualifiedRefill(ctx context.Context, job *textJobIdentity, hello ardp.Hello, class uint8) ([]byte, error) {
 	release, err := owner.acquireTextSourceOperation(ctx)
 	if err != nil {
 		return nil, err
@@ -197,13 +184,7 @@ func (owner *textContext) presentQualifiedRefill(ctx context.Context, job *textJ
 		owner.mu.Unlock()
 		return nil, errors.New("qualification refill authority unavailable")
 	}
-	stocked := false
-	for _, stock := range owner.permission.stock {
-		if stock.challenge.ReceiverNodeID == hello.RecipientNodeID && stock.challenge.ReceiverDutyGeneration == hello.RecipientDutyGeneration &&
-			stock.challenge.ProfileDigest == profile.Digest && stock.challenge.Class == 2 && stock.challenge.WindowStart == owner.permission.accepted.NotBefore && len(stock.tokens) != 0 {
-			stocked = true
-		}
-	}
+	stocked := owner.permission.stockCountForDuty(profile.Digest, hello.RecipientNodeID, hello.RecipientDutyGeneration, 2) != 0
 	owner.mu.Unlock()
 	if !stocked {
 		if err := owner.issueTextTokensForOpening(ctx, [][32]byte{hello.RecipientNodeID}, 2, nil, false); err != nil {

@@ -13,13 +13,11 @@ import (
 type SupervisorAction byte
 
 const (
-	SupervisorReload SupervisorAction = iota + 1
-	SupervisorEnable
-	SupervisorStart
-	SupervisorRestart
-	SupervisorStop
-	SupervisorDisable
-	SupervisorStatus
+	SupervisorReload SupervisorAction = 1
+	// Values 2-4 were Enable, Start and Restart. Keep later values stable.
+	SupervisorStop    SupervisorAction = 5
+	SupervisorDisable SupervisorAction = 6
+	SupervisorStatus  SupervisorAction = 7
 )
 
 // SupervisorState is the bounded service-manager result visible to the Module.
@@ -28,15 +26,15 @@ type SupervisorState struct {
 	Enabled bool
 }
 
-// Action selects one supported operator lifecycle transition.
+// Action selects one retained operator retirement transition.
 type Action byte
 
 const (
-	Diagnose Action = iota + 1
-	Restart
-	Drain
-	Withdraw
-	Remove
+	Diagnose Action = 1
+	// Value 2 was the retired Restart action. Keep later values stable.
+	Drain    Action = 3
+	Withdraw Action = 4
+	Remove   Action = 5
 )
 
 // Supervisor is the sole external Adapter seam. Production supplies systemd;

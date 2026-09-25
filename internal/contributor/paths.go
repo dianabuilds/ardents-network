@@ -21,14 +21,3 @@ func newHostPaths(root string) hostPaths {
 		updating:   filepath.Join(privateRoot, "update.json"),
 		unit:       filepath.Join(root, "etc", "systemd", "system", "ardents-rendezvous-contributor.service")}
 }
-
-func installedPath(name string) string {
-	switch name {
-	case "ardents-node":
-		return "/usr/lib/ardents-contributor/current/ardents-node"
-	case "node.json":
-		return "/var/lib/private/ardents-contributor/config/current/node.json"
-	default:
-		return "/var/lib/private/ardents-contributor/config/current/" + name
-	}
-}

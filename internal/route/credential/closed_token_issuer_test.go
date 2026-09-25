@@ -7,10 +7,13 @@ import (
 	"crypto/ed25519"
 	"crypto/rand"
 	"crypto/sha256"
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	"net"
 	"os"
 	"testing"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/route/terminal"
 
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/route"
@@ -87,16 +90,16 @@ func TestClosedTokenIssuerReconcilesCommittedBatchAfterRestart(t *testing.T) {
 		t.Fatalf("issuer key precondition: %v", err)
 	}
 	nonce := [32]byte{51}
-	operation, err := route.EncodeClosedIssuanceRequest(nonce, raw)
+	operation, err := terminal.EncodeIssuanceRequest(nonce, raw)
 	if err != nil {
 		t.Fatal(err)
 	}
 	firstRaw := serveClosedIssuerBootstrap(t, issuer, profile, now, operation)
-	terminal, err := route.DecodeClosedIssuanceResult(firstRaw, nonce)
+	firstTerminal, err := terminal.DecodeIssuanceResult(firstRaw, nonce)
 	if err != nil {
 		t.Fatal(err)
 	}
-	first, err := DecodeClosedTokenBatchResult(terminal.Payload)
+	first, err := DecodeClosedTokenBatchResult(firstTerminal.Payload)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -132,7 +135,7 @@ func TestClosedTokenIssuerReconcilesCommittedBatchAfterRestart(t *testing.T) {
 		}
 	}()
 	retriedRaw := serveClosedIssuerBootstrap(t, issuer, profile, now, operation)
-	retriedTerminal, err := route.DecodeClosedIssuanceResult(retriedRaw, nonce)
+	retriedTerminal, err := terminal.DecodeIssuanceResult(retriedRaw, nonce)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -149,12 +152,12 @@ func TestClosedTokenIssuerReconcilesCommittedBatchAfterRestart(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer second.Discard()
-	secondOperation, err := route.EncodeClosedIssuanceRequest(nonce, second.Request())
+	secondOperation, err := terminal.EncodeIssuanceRequest(nonce, second.Request())
 	if err != nil {
 		t.Fatal(err)
 	}
 	exhaustedRaw := serveClosedIssuerBootstrap(t, issuer, profile, now, secondOperation)
-	exhaustedTerminal, err := route.DecodeClosedIssuanceResult(exhaustedRaw, nonce)
+	exhaustedTerminal, err := terminal.DecodeIssuanceResult(exhaustedRaw, nonce)
 	if err != nil || exhaustedTerminal.Status != 2 {
 		t.Fatalf("permission overflow terminal = %d / %v", exhaustedTerminal.Status, err)
 	}
@@ -175,30 +178,30 @@ func serveClosedIssuerBootstrap(t *testing.T, issuer *ClosedTokenIssuer, profile
 	}
 	done := make(chan error, 1)
 	go func() { done <- issuer.ServeBootstrap(t.Context(), server, controller, [32]byte{61}) }()
-	hello := route.ClosedHello{NetworkID: profile.NetworkID, StateGeneration: profile.StateGeneration, StateDigest: profile.StateDigest,
+	hello := ardp.Hello{NetworkID: profile.NetworkID, StateGeneration: profile.StateGeneration, StateDigest: profile.StateDigest,
 		ProfileDigest: profile.Digest, RecipientNodeID: profile.IssuerNodeID, RecipientDutyGeneration: profile.IssuerDutyGeneration,
-		Purpose: route.ClosedPurposeIssuer, ChannelNonce: [32]byte{62}, Deadline: now.Add(10 * time.Second)}
-	body, err := route.EncodeClosedHello(hello)
+		Purpose: ardp.PurposeIssuer, ChannelNonce: [32]byte{62}, Deadline: now.Add(10 * time.Second)}
+	body, err := ardp.EncodeHello(hello)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := route.WriteClosedLaneFrame(client, route.ClosedLaneFrame{Kind: 1, Lane: 0, Body: body}); err != nil {
+	if err := ardp.WriteFrame(client, ardp.Frame{Kind: 1, Lane: 0, Body: body}); err != nil {
 		t.Fatal(err)
 	}
-	accepted, err := route.ReadClosedLaneFrame(client)
+	accepted, err := ardp.ReadFrame(client)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if status, _, err := route.DecodeClosedAcceptFrame(accepted); err != nil || status != 0 {
+	if status, _, err := ardp.DecodeAcceptFrame(accepted); err != nil || status != 0 {
 		t.Fatalf("bootstrap accept = %d / %v", status, err)
 	}
-	if err := route.WriteClosedLaneFrame(client, route.ClosedLaneFrame{Kind: 3, Lane: 0, Body: route.EncodeClosedBootstrap(true)}); err != nil {
+	if err := ardp.WriteFrame(client, ardp.Frame{Kind: 3, Lane: 0, Body: ardp.EncodeBootstrap(true)}); err != nil {
 		t.Fatal(err)
 	}
-	if err := route.WriteClosedLaneFrame(client, route.ClosedLaneFrame{Kind: 10, Lane: 0, Body: operation}); err != nil {
+	if err := ardp.WriteFrame(client, ardp.Frame{Kind: 10, Lane: 0, Body: operation}); err != nil {
 		t.Fatal(err)
 	}
-	result, err := route.ReadClosedLaneFrame(client)
+	result, err := ardp.ReadFrame(client)
 	if err != nil {
 		t.Fatal(err)
 	}

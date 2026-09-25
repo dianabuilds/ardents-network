@@ -6,15 +6,10 @@ import (
 	"context"
 	"errors"
 
+	"github.com/dianabuilds/ardents-network/internal/endpoint/tokenjournal"
 	"github.com/dianabuilds/ardents-network/internal/route"
-	"github.com/dianabuilds/ardents-network/internal/route/credential"
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 )
-
-type textSourceFlight struct {
-	context context.Context
-	cancel  context.CancelFunc
-	done    chan struct{}
-}
 
 // textPrefixPreparationFailure distinguishes the local stages which can stop
 // an expired Source prefix from being replaced. It deliberately retains the
@@ -69,7 +64,7 @@ func (owner *textContext) openTextPrefix(ctx context.Context) (*textSourceHandle
 	}
 	owner.mu.Lock()
 	_, _, err := owner.textPermissionProfileLocked()
-	if err != nil || owner.permission == nil || owner.permission.accepted == (credential.Permission{}) || owner.currentTextSourceLocked() != nil || owner.source.openingInProgressLocked() || owner.issuance != nil {
+	if err != nil || !owner.permission.hasAccepted() || owner.currentTextSourceLocked() != nil || owner.source.openingInProgressLocked() || owner.issuance != nil {
 		owner.mu.Unlock()
 		return nil, textPrefixPreparationFailureAt("authority", errors.Join(err, errors.New("text prefix owner unavailable")))
 	}
@@ -93,7 +88,7 @@ func (owner *textContext) openTextPrefix(ctx context.Context) (*textSourceHandle
 	selection, openErr := owner.ensureTextPrefixStock(operation.context, operation)
 	var prefix *route.ClosedSourcePrefix
 	if openErr == nil {
-		prefix, openErr = route.OpenClosedSourcePrefix(operation.context, source, selection, func(hello route.ClosedHello, class uint8) ([]byte, error) {
+		prefix, openErr = route.OpenClosedSourcePrefix(operation.context, source, selection, func(hello ardp.Hello, class uint8) ([]byte, error) {
 			return operation.presentTextToken(selection, hello, class)
 		})
 		if openErr != nil {
@@ -109,20 +104,20 @@ func (owner *textContext) openTextPrefix(ctx context.Context) (*textSourceHandle
 	}
 	return operation.complete(ctx, prefix, openErr)
 }
-func (operation *textPrefixOpeningOperation) presentTextToken(selection route.ClosedBootstrapSelection, hello route.ClosedHello, class uint8) ([]byte, error) {
+func (operation *textPrefixOpeningOperation) presentTextToken(selection route.ClosedBootstrapSelection, hello ardp.Hello, class uint8) ([]byte, error) {
 	owner := operation.owner
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
 	profile, now, err := owner.textPermissionProfileLocked()
-	if err != nil || owner.permission == nil || owner.permission.accepted == (credential.Permission{}) || !operation.admittedLocked(owner) ||
+	if err != nil || !owner.permission.hasAccepted() || !operation.admittedLocked(owner) ||
 		hello.NetworkID != profile.NetworkID || hello.StateGeneration != profile.StateGeneration || hello.StateDigest != profile.StateDigest ||
-		hello.ProfileDigest != profile.Digest || hello.Purpose != route.ClosedPurposeForwarding || class != 2 ||
+		hello.ProfileDigest != profile.Digest || hello.Purpose != ardp.PurposeForwarding || class != 2 ||
 		hello.ChannelNonce == [32]byte{} || !now.Before(hello.Deadline) || hello.Deadline.After(profile.NotAfter) {
 		return nil, textTokenPresentationFailureAt("authority", errors.Join(err, errors.New("text token presentation authority unavailable")))
 	}
 	current, err := owner.selectTextBootstrapLocked()
 	if err != nil || current != selection || (hello.RecipientNodeID != current.EntryNodeID && hello.RecipientNodeID != current.InteriorNodeID) {
-		return nil, textTokenPresentationFailureAt("selection-"+textSourceSelectionFailureStage(err), errors.Join(err, errors.New("text token presentation source changed")))
+		return nil, textTokenPresentationFailureAt("selection-"+textInteriorSelectionFailureStage(err), errors.Join(err, errors.New("text token presentation source changed")))
 	}
 	token, err := owner.takeTextTokenLocked(profile, now, hello, class, operation.context)
 	if err != nil {
@@ -131,14 +126,14 @@ func (operation *textPrefixOpeningOperation) presentTextToken(selection route.Cl
 	return token, nil
 }
 
-func (endpoint *endpoint) textTokenJournal() (*textTokenJournal, error) {
+func (endpoint *endpoint) textTokenJournal() (*tokenjournal.Journal, error) {
 	endpoint.textMu.Lock()
 	defer endpoint.textMu.Unlock()
 	if endpoint.textClosed || endpoint.closedTokenRoot == "" {
 		return nil, errors.New("text token journal root unavailable")
 	}
 	if endpoint.closedTokenJournal == nil {
-		journal, err := openTextTokenJournal(endpoint.closedTokenRoot, endpoint.network, endpoint.clock)
+		journal, err := tokenjournal.Open(endpoint.closedTokenRoot, endpoint.network, endpoint.clock)
 		if err != nil {
 			return nil, err
 		}
@@ -150,7 +145,7 @@ func (endpoint *endpoint) textTokenJournal() (*textTokenJournal, error) {
 func (owner *textContext) ensureTextPrefixStock(ctx context.Context, opening *textPrefixOpeningOperation) (route.ClosedBootstrapSelection, error) {
 	owner.mu.Lock()
 	_, _, err := owner.textPermissionProfileLocked()
-	if err != nil || ctx.Err() != nil || owner.permission == nil || owner.permission.accepted == (credential.Permission{}) ||
+	if err != nil || ctx.Err() != nil || !owner.permission.hasAccepted() ||
 		owner.currentTextSourceLocked() != nil || !opening.admittedLocked(owner) || owner.issuance != nil {
 		owner.mu.Unlock()
 		return route.ClosedBootstrapSelection{}, textPrefixPreparationFailureAt("stock-authority", errors.Join(err, ctx.Err(), errors.New("text prefix stock owner unavailable")))
@@ -158,18 +153,11 @@ func (owner *textContext) ensureTextPrefixStock(ctx context.Context, opening *te
 	selection, err := owner.selectTextBootstrapLocked()
 	if err != nil {
 		owner.mu.Unlock()
-		return route.ClosedBootstrapSelection{}, textPrefixPreparationFailureAt("stock-selection-"+textSourceSelectionFailureStage(err), err)
+		return route.ClosedBootstrapSelection{}, textPrefixPreparationFailureAt("stock-selection-"+textInteriorSelectionFailureStage(err), err)
 	}
 	var missing [][32]byte
 	for _, receiver := range [][32]byte{selection.EntryNodeID, selection.InteriorNodeID} {
-		ready := false
-		for _, stock := range owner.permission.stock {
-			if stock.challenge.ReceiverNodeID == receiver && stock.challenge.ProfileDigest == selection.ProfileDigest &&
-				stock.challenge.Class == 2 && stock.challenge.WindowStart == owner.permission.accepted.NotBefore && len(stock.tokens) > 0 {
-				ready = true
-			}
-		}
-		if !ready {
+		if owner.permission.stockCountFor(selection.ProfileDigest, receiver, 2) == 0 {
 			missing = append(missing, receiver)
 		}
 	}

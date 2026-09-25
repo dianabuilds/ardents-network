@@ -16,9 +16,6 @@ func TestRepositorySeparatesUnitAndE2ETestsWithoutGenericLiveTree(t *testing.T) 
 	if _, err := os.Stat(filepath.Join(root, "tests", "live")); !os.IsNotExist(err) {
 		t.Error("generic tests/live tree is retired until a selected scenario owns a purpose-named boundary")
 	}
-	if _, err := os.Stat(filepath.Join(root, "internal", "qualification")); !os.IsNotExist(err) {
-		t.Error("qualification behavior must not become a maintained internal package")
-	}
 	qualificationRoot := filepath.Join(root, "tests", "qualification")
 	entries, err := os.ReadDir(qualificationRoot)
 	if err != nil {

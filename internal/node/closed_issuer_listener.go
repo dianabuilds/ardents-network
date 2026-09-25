@@ -9,7 +9,9 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	"github.com/dianabuilds/ardents-network/internal/route/credential"
+	"github.com/dianabuilds/ardents-network/internal/route/replay"
 )
 
 func startClosedIssuer(config runtimeConfig, snapshot dutyFacts) (*probeServer, error) {
@@ -33,11 +35,11 @@ func startClosedIssuer(config runtimeConfig, snapshot dutyFacts) (*probeServer, 
 	if err != nil {
 		return nil, err
 	}
-	receiver, available := closedRouteReceiver(config, snapshot, route.ClosedPurposeIssuer, config.now())
+	receiver, available := closedRouteReceiver(config, snapshot, ardp.PurposeIssuer, config.now())
 	if !available {
 		return nil, errors.Join(errors.New("closed issuer receiver is unavailable"), issuer.Close())
 	}
-	spends, err := route.OpenClosedSpendLedger(local.AdmissionRoot, route.ClosedSpendBinding{NetworkID: receiver.NetworkID,
+	spends, err := replay.Open(local.AdmissionRoot, replay.Binding{NetworkID: receiver.NetworkID,
 		ProfileDigest: receiver.ProfileDigest, ReceiverNodeID: receiver.NodeID, ReceiverDutyGeneration: receiver.DutyGeneration})
 	if err != nil {
 		return nil, errors.Join(err, issuer.Close())
@@ -97,7 +99,7 @@ func closedIssuerStateProfile(config runtimeConfig, snapshot dutyFacts, now time
 		!closedStateGenerationMatches(profile.StateGeneration, snapshot.Generation) {
 		return state.ClosedProfileView{}, false
 	}
-	receiver, available := closedRouteReceiver(config, snapshot, route.ClosedPurposeIssuer, now)
+	receiver, available := closedRouteReceiver(config, snapshot, ardp.PurposeIssuer, now)
 	if !available || receiver.NetworkID != profile.NetworkID || receiver.StateGeneration != profile.StateGeneration || receiver.StateDigest != profile.StateDigest ||
 		receiver.ProfileDigest != profile.Digest || receiver.NodeID != profile.IssuerNodeID || receiver.DutyGeneration != profile.IssuerDutyGeneration ||
 		receiver.NotAfter != profile.NotAfter {

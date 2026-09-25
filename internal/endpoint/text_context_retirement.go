@@ -4,7 +4,6 @@ package endpoint
 
 import (
 	"errors"
-	"time"
 )
 
 // textContextRetirement is one concrete snapshot of every child that was
@@ -20,7 +19,7 @@ type textContextRetirement struct {
 	source              *textSourceRetirement
 	issuance            *textIssuanceOperation
 	resolution          *textResolutionFlight
-	withdrawal          *textSourceFlight
+	withdrawal          *textOperationFlight
 	exchanges           []*textIntroductionExchange
 	job                 *textJobRetirement
 }
@@ -33,29 +32,16 @@ func (owner *textContext) stopTextContextChildrenLocked() *textContextRetirement
 	retirement.refresh = owner.refresh.stopAsync()
 	retirement.publication = owner.textPublicationPairLifecycle.stopLocked()
 	owner.signalTextRegistrationsLocked()
-	retirement.exchanges = make([]*textIntroductionExchange, 0, len(owner.introductionExchanges))
-	for exchange := range owner.introductionExchanges {
-		if !exchange.retained {
-			exchange.cancel()
-		}
-		retirement.exchanges = append(retirement.exchanges, exchange)
-	}
-	retirement.withdrawal = owner.withdrawal
+	retirement.exchanges = owner.introductionExchanges.stopLocked()
+	retirement.withdrawal = owner.textPublicationPairLifecycle.withdrawalLocked()
 	if retirement.withdrawal != nil {
 		retirement.withdrawal.cancel()
 	}
-	retirement.registrationOpening = owner.registrationOpening
+	retirement.registrationOpening = owner.textPublicationPairLifecycle.openingLocked()
 	retirement.registrationOpening.stop()
-	clear(owner.introductionWaiters)
-	owner.introductionWaiters = nil
-	clear(owner.introductionRecovery)
-	owner.introductionRecovery = nil
-	clear(owner.introductionReplays)
-	owner.introductionReplays = nil
-	owner.introductionOpenings = [4]time.Time{}
-	clear(owner.descriptorFloors)
-	owner.descriptorFloors = nil
-	owner.sourceSet = nil
+	owner.introductionDispatch.stopLocked()
+	owner.introductionAdmission.stopLocked()
+	owner.descriptorHistory.Clear()
 	retirement.introduction = owner.introduction.stopLocked()
 	retirement.responder = owner.responder.stopLocked()
 	retirement.source = owner.source.stopLocked()

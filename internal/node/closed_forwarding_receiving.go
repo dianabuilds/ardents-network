@@ -6,41 +6,42 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/replay"
 )
 
 // closedForwardingReceivingResources is the concrete owner of the receiver
 // state that must be initialized as one group before a forwarding server can
 // accept work. Pool, listener and host policy remain with startup composition.
 type closedForwardingReceivingResources struct {
-	spends       *route.ClosedSpendLedger
+	spends       *replay.Ledger
 	limits       *route.ClosedDutyLimits
 	bootstrap    *route.ClosedBootstrapController
-	closeSpends  func(*route.ClosedSpendLedger) error
+	closeSpends  func(*replay.Ledger) error
 	closeOnce    sync.Once
 	closeOutcome error
 }
 
 type closedForwardingReceivingOpeners struct {
-	openSpends   func(string, route.ClosedSpendBinding) (*route.ClosedSpendLedger, error)
-	closeSpends  func(*route.ClosedSpendLedger) error
+	openSpends   func(string, replay.Binding) (*replay.Ledger, error)
+	closeSpends  func(*replay.Ledger) error
 	newLimits    func(func() time.Time) (*route.ClosedDutyLimits, error)
 	newBootstrap func(func() time.Time) (*route.ClosedBootstrapController, error)
 }
 
 func defaultClosedForwardingReceivingOpeners() closedForwardingReceivingOpeners {
 	return closedForwardingReceivingOpeners{
-		openSpends:   route.OpenClosedSpendLedger,
-		closeSpends:  func(spends *route.ClosedSpendLedger) error { return spends.Close() },
+		openSpends:   replay.Open,
+		closeSpends:  func(spends *replay.Ledger) error { return spends.Close() },
 		newLimits:    route.NewClosedDutyLimits,
 		newBootstrap: route.NewClosedBootstrapController,
 	}
 }
 
-func openClosedForwardingReceivingResources(root string, binding route.ClosedSpendBinding, clock func() time.Time) (*closedForwardingReceivingResources, error) {
+func openClosedForwardingReceivingResources(root string, binding replay.Binding, clock func() time.Time) (*closedForwardingReceivingResources, error) {
 	return openClosedForwardingReceivingResourcesWith(root, binding, clock, defaultClosedForwardingReceivingOpeners())
 }
 
-func openClosedForwardingReceivingResourcesWith(root string, binding route.ClosedSpendBinding, clock func() time.Time, openers closedForwardingReceivingOpeners) (*closedForwardingReceivingResources, error) {
+func openClosedForwardingReceivingResourcesWith(root string, binding replay.Binding, clock func() time.Time, openers closedForwardingReceivingOpeners) (*closedForwardingReceivingResources, error) {
 	if openers.openSpends == nil || openers.closeSpends == nil || openers.newLimits == nil || openers.newBootstrap == nil {
 		return nil, errors.New("closed forwarding receiving resource initialization is unavailable")
 	}

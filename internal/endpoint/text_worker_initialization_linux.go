@@ -42,10 +42,10 @@ func initializeTextWorker(ctx context.Context, attachment *textWorkerAttachment,
 	}
 	var initializationErr error
 	if job.qualification != nil {
-		if inventoryOfUnit(instance.name) != streamInventory || job.qualification.init.Nonce != nonce {
+		if inventoryOfUnit(instance.name) != streamInventory || job.qualification.Init().Nonce != nonce {
 			return errors.New("qualification worker inventory or invocation differs")
 		}
-		initializationErr = streamqualification.InitializeWorker(attachment, job.qualification.init)
+		initializationErr = streamqualification.InitializeWorker(attachment, job.qualification.Init())
 	} else {
 		if inventoryOfUnit(instance.name) != textInventory {
 			return errors.New("text worker inventory differs")

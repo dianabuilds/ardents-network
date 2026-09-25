@@ -10,6 +10,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
+	"github.com/dianabuilds/ardents-network/internal/route/terminal"
+
 	"github.com/dianabuilds/ardents-network/internal/route"
 )
 
@@ -20,12 +23,12 @@ func sendJoinFixture(t *testing.T, fixture *resolutionNetworkFixture, token int,
 		t.Fatal(err)
 	}
 	t.Cleanup(closeConnection)
-	request := route.ClosedJoinRequest{Nonce: [32]byte{byte(token + 1), 101}, Secret: [32]byte{102}, Context: [32]byte{103}, Side: side, Deadline: time.Now().UTC().Add(10 * time.Second).Truncate(time.Second)}
-	raw, err := route.EncodeClosedJoinRequest(request)
+	request := terminal.JoinRequest{Nonce: [32]byte{byte(token + 1), 101}, Secret: [32]byte{102}, Context: [32]byte{103}, Side: side, Deadline: time.Now().UTC().Add(10 * time.Second).Truncate(time.Second)}
+	raw, err := terminal.EncodeJoinRequest(request)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := route.WriteClosedLaneFrame(connection, route.ClosedLaneFrame{Kind: 10, Lane: 1, Body: raw}); err != nil {
+	if err := ardp.WriteFrame(connection, ardp.Frame{Kind: 10, Lane: 1, Body: raw}); err != nil {
 		t.Fatal(err)
 	}
 	return connection, request.Nonce
@@ -34,10 +37,10 @@ func sendJoinFixture(t *testing.T, fixture *resolutionNetworkFixture, token int,
 func TestClosedJoinNodePairsThroughBothCarriers(t *testing.T) {
 	for _, carrier := range []route.CarrierProfile{route.ClosedCarrierTCP, route.ClosedCarrierQUIC} {
 		t.Run(string(carrier), func(t *testing.T) {
-			fixture := newPrivateRecipientNetworkFixture(t, carrier, route.ClosedPurposeDataJoin, 2)
+			fixture := newPrivateRecipientNetworkFixture(t, carrier, ardp.PurposeDataJoin, 2)
 			first, firstNonce := sendJoinFixture(t, fixture, 0, 1)
 			type resultRead struct {
-				frame route.ClosedLaneFrame
+				frame ardp.Frame
 				err   error
 			}
 			firstResult := make(chan resultRead, 1)
@@ -54,7 +57,7 @@ func TestClosedJoinNodePairsThroughBothCarriers(t *testing.T) {
 			})
 			go func() {
 				defer close(readerDone)
-				frame, err := route.ReadClosedLaneFrame(first)
+				frame, err := ardp.ReadFrame(first)
 				firstResult <- resultRead{frame, err}
 			}()
 			select {
@@ -63,11 +66,11 @@ func TestClosedJoinNodePairsThroughBothCarriers(t *testing.T) {
 			case <-time.After(25 * time.Millisecond):
 			}
 			duplicate, duplicateNonce := sendJoinFixture(t, fixture, 1, 1)
-			refusal, err := route.ReadClosedLaneFrame(duplicate)
+			refusal, err := ardp.ReadFrame(duplicate)
 			if err != nil {
 				t.Fatal(err)
 			}
-			if status, err := route.DecodeClosedJoinResult(refusal.Body, duplicateNonce); err != nil || status != 1 {
+			if status, err := terminal.DecodeJoinResult(refusal.Body, duplicateNonce); err != nil || status != 1 {
 				t.Fatal("duplicate side not refused locally")
 			}
 			// Duplicate refusal establishes the first reservation exists at the owner.
@@ -77,11 +80,11 @@ func TestClosedJoinNodePairsThroughBothCarriers(t *testing.T) {
 			default:
 			}
 			second, secondNonce := sendJoinFixture(t, fixture, 2, 2)
-			result, err := route.ReadClosedLaneFrame(second)
+			result, err := ardp.ReadFrame(second)
 			if err != nil {
 				t.Fatal(err)
 			}
-			if status, err := route.DecodeClosedJoinResult(result.Body, secondNonce); err != nil || status != 0 || result.Lane != 1 {
+			if status, err := terminal.DecodeJoinResult(result.Body, secondNonce); err != nil || status != 0 || result.Lane != 1 {
 				t.Fatal("second JOIN did not activate")
 			}
 			select {
@@ -89,7 +92,7 @@ func TestClosedJoinNodePairsThroughBothCarriers(t *testing.T) {
 				if result.err != nil {
 					t.Fatal(result.err)
 				}
-				if status, err := route.DecodeClosedJoinResult(result.frame.Body, firstNonce); err != nil || status != 0 || result.frame.Lane != 1 {
+				if status, err := terminal.DecodeJoinResult(result.frame.Body, firstNonce); err != nil || status != 0 || result.frame.Lane != 1 {
 					t.Fatal("first JOIN lost local nonce")
 				}
 			case <-time.After(3 * time.Second):
@@ -97,10 +100,10 @@ func TestClosedJoinNodePairsThroughBothCarriers(t *testing.T) {
 			}
 			transfer := func(from, to net.Conn, kind uint8, body []byte) {
 				t.Helper()
-				if err := route.WriteClosedLaneFrame(from, route.ClosedLaneFrame{Kind: kind, Lane: 1, Body: body}); err != nil {
+				if err := ardp.WriteFrame(from, ardp.Frame{Kind: kind, Lane: 1, Body: body}); err != nil {
 					t.Fatal(err)
 				}
-				frame, err := route.ReadClosedLaneFrame(to)
+				frame, err := ardp.ReadFrame(to)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -127,7 +130,7 @@ func TestClosedJoinNodePairsThroughBothCarriers(t *testing.T) {
 					t.Fatal(err)
 				}
 				for {
-					terminal, err := route.ReadClosedLaneFrame(outer)
+					terminal, err := ardp.ReadFrame(outer)
 					if err != nil {
 						t.Fatal(err)
 					}

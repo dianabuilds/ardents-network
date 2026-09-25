@@ -10,6 +10,8 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
+	"github.com/dianabuilds/ardents-network/internal/route/replay"
 )
 
 // ClosedIntroductionProfile reserves only the local durable spend
@@ -29,7 +31,7 @@ func validateClosedIntroductionProfile(local ClosedIntroductionProfile, config r
 		route.CarrierProfile(snapshot.CarrierProfile) != route.ClosedCarrierTCP && route.CarrierProfile(snapshot.CarrierProfile) != route.ClosedCarrierQUIC {
 		return errors.New("closed Introduction local reservation is incomplete")
 	}
-	if _, ok := closedRouteReceiver(config, snapshot, route.ClosedPurposeIntroduction, now); !ok {
+	if _, ok := closedRouteReceiver(config, snapshot, ardp.PurposeIntroduction, now); !ok {
 		return errors.New("closed Introduction State projection is unavailable")
 	}
 	return nil
@@ -66,11 +68,11 @@ func newClosedIntroductionServer(config runtimeConfig, snapshot dutyFacts) (*clo
 	if err != nil {
 		return nil, err
 	}
-	receiver, available := closedRouteReceiver(config, snapshot, route.ClosedPurposeIntroduction, config.now())
+	receiver, available := closedRouteReceiver(config, snapshot, ardp.PurposeIntroduction, config.now())
 	if !available {
 		return nil, errors.New("closed Introduction State changed before reservation")
 	}
-	spends, err := route.OpenClosedSpendLedger(local.AdmissionRoot, route.ClosedSpendBinding{NetworkID: receiver.NetworkID,
+	spends, err := replay.Open(local.AdmissionRoot, replay.Binding{NetworkID: receiver.NetworkID,
 		ProfileDigest: receiver.ProfileDigest, ReceiverNodeID: receiver.NodeID, ReceiverDutyGeneration: receiver.DutyGeneration})
 	if err != nil {
 		return nil, err
@@ -100,14 +102,14 @@ func newClosedIntroductionServer(config runtimeConfig, snapshot dutyFacts) (*clo
 }
 
 type closedIntroductionServer struct {
-	slotFloor   *route.ClosedIntroductionSlots
+	slotFloor   *replay.IntroductionSlots
 	config      runtimeConfig
 	receiver    route.ClosedRoleReceiver
 	certificate tls.Certificate
 	listener    route.ClosedSharedCarrierListener
 	slotsMu     sync.Mutex
 	slots       map[[32]byte]*closedIntroductionSlot
-	spends      *route.ClosedSpendLedger
+	spends      *replay.Ledger
 	limits      *route.ClosedDutyLimits
 	capacity    chan struct{}
 	active      atomic.Uint32

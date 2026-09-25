@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	"github.com/dianabuilds/ardents-network/internal/route/credential"
 )
 
@@ -46,7 +47,7 @@ func TestClosedSourcePrefixConsumesGenuineForwardingTokens(t *testing.T) {
 				tokens[challenge.ReceiverNodeID] = batch[index]
 			}
 			presented := 0
-			prefix, err := route.OpenClosedSourcePrefix(t.Context(), fixture, fixture.selection, func(hello route.ClosedHello, class uint8) ([]byte, error) {
+			prefix, err := route.OpenClosedSourcePrefix(t.Context(), fixture, fixture.selection, func(hello ardp.Hello, class uint8) ([]byte, error) {
 				token := tokens[hello.RecipientNodeID]
 				if class != 2 || len(token) != 354 {
 					return nil, errors.New("token already consumed or wrong receiver")
