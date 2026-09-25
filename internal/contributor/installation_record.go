@@ -3,12 +3,31 @@ package contributor
 import (
 	"crypto/sha256"
 	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 )
+
+type installedFileSpec struct {
+	name       string
+	maximum    int64
+	executable bool
+}
+
+// Historical installed inventory remains the verification contract for owned installations.
+var installedFileSpecs = []installedFileSpec{
+	{name: "ardents-node", maximum: 128 << 20, executable: true},
+	{name: "node.json", maximum: 64 << 10},
+	{name: "rendezvous-cert.pem", maximum: 64 << 10},
+	{name: "rendezvous-key.pem", maximum: 64 << 10},
+	{name: "rendezvous-identity.pem", maximum: 64 << 10},
+	{name: "source-client-cert.pem", maximum: 64 << 10},
+	{name: "source-client-key.pem", maximum: 64 << 10},
+	{name: "source-a-root.pem", maximum: 64 << 10},
+	{name: "source-b-root.pem", maximum: 64 << 10},
+	{name: "clock.observation", maximum: 64 << 10},
+}
 
 type installationRecord struct {
 	Schema          string            `json:"schema"`
@@ -18,46 +37,6 @@ type installationRecord struct {
 	ManifestDigest  string            `json:"manifest_digest"`
 	InstalledFiles  map[string]string `json:"installed_files"`
 	SystemdUnitHash string            `json:"systemd_unit_sha256"`
-}
-
-func ensureAbsent(paths ...string) error {
-	for _, path := range paths {
-		if _, err := os.Lstat(path); err == nil || !errors.Is(err, os.ErrNotExist) {
-			return errors.New("contributor host contains conflicting installation state")
-		}
-	}
-	return nil
-}
-
-func writeFileExclusive(path string, raw []byte, mode os.FileMode) error {
-	file, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, mode)
-	if err != nil {
-		return err
-	}
-	written, writeErr := file.Write(raw)
-	if writeErr == nil && written != len(raw) {
-		writeErr = errors.New("short Contributor file write")
-	}
-	return errors.Join(writeErr, file.Sync(), file.Close())
-}
-
-func writeFileAtomic(path string, raw []byte, mode os.FileMode) error {
-	temporary := path + ".new"
-	if err := os.Remove(temporary); err != nil && !errors.Is(err, os.ErrNotExist) {
-		return err
-	}
-	if err := writeFileExclusive(temporary, raw, mode); err != nil {
-		return err
-	}
-	return os.Rename(temporary, path)
-}
-
-func writeJSONAtomic(path string, value any, mode os.FileMode) error {
-	raw, err := json.Marshal(value)
-	if err != nil {
-		return err
-	}
-	return writeFileAtomic(path, append(raw, '\n'), mode)
 }
 
 func readInstallation(path string) (installationRecord, error) {
@@ -78,7 +57,7 @@ func readInstallation(path string) (installationRecord, error) {
 func validInstallationRecord(record *installationRecord) bool {
 	normalizedProfile, knownProfile := normalizeRendezvousDedicatedHostProfile(record.Profile)
 	if record.Schema != "ardents-contributor-installation-v1" || !knownProfile || !fixedHex(record.DeploymentID, 32) || record.Generation == 0 ||
-		!fixedHex(record.ManifestDigest, 32) || len(record.InstalledFiles) != len(bundleFileSpecs) || !fixedHex(record.SystemdUnitHash, 32) {
+		!fixedHex(record.ManifestDigest, 32) || len(record.InstalledFiles) != len(installedFileSpecs) || !fixedHex(record.SystemdUnitHash, 32) {
 		return false
 	}
 	record.Profile = normalizedProfile
@@ -86,7 +65,7 @@ func validInstallationRecord(record *installationRecord) bool {
 }
 
 func verifyInstalled(paths hostPaths, record installationRecord) error {
-	for _, spec := range bundleFileSpecs {
+	for _, spec := range installedFileSpecs {
 		path := filepath.Join(paths.configCurrent, spec.name)
 		if spec.executable {
 			path = filepath.Join(paths.programCurrent, spec.name)

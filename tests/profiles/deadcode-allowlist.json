@@ -11,29 +11,6 @@
     },
     {
       "symbols": [
-        "internal/contributor.Profile.Apply",
-        "internal/contributor.Profile.installAbsent",
-        "internal/contributor.Profile.recoverUncommittedInstallation",
-        "internal/contributor.Profile.restartCurrentGeneration",
-        "internal/contributor.Profile.rollbackUpdate",
-        "internal/contributor.Profile.update",
-        "internal/contributor.ensureAbsent",
-        "internal/contributor.installedPath",
-        "internal/contributor.markerFor",
-        "internal/contributor.openBundle",
-        "internal/contributor.updateRecordFor",
-        "internal/contributor.validateProfilePlan",
-        "internal/contributor.writeBundleDirectories",
-        "internal/contributor.writeDeployment",
-        "internal/contributor.writeJSONAtomic"
-      ],
-      "classification": "retained old Contributor apply engine",
-      "rationale": "Issue #158 retires both Contributor start commands before host effects. This exact Apply-only closure has deterministic legacy behavior tests but no production caller; deleting it together with recovery-adjacent helpers is outside the bounded command-gate slice.",
-      "owner": "Product Owner and Codex",
-      "retirement": "After #119 establishes the no-start recovery owner, run a bounded consumer audit and remove every symbol not required by retained diagnose, drain, withdraw, or confirmed remove behavior; do not reconnect Apply to a command."
-    },
-    {
-      "symbols": [
         "internal/endpoint/portable.Run",
         "internal/endpoint/portable.emit"
       ],

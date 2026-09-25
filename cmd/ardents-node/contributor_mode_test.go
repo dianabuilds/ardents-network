@@ -42,7 +42,7 @@ func TestContributorOldStartsRefuseBeforeEffects(t *testing.T) {
 	if err := os.WriteFile(installation, []byte(installationBefore), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	supervisor := &contributorSupervisorTrace{hostRoot: hostRoot}
+	supervisor := &contributorSupervisorTrace{}
 	environmentCalls := 0
 	previousEnvironment := loadContributorHostEnvironment
 	loadContributorHostEnvironment = func() (contributorHostEnvironment, error) {
@@ -59,7 +59,14 @@ func TestContributorOldStartsRefuseBeforeEffects(t *testing.T) {
 		{historicalBundle, historicalPin},
 		{foreignBundle, foreignPin},
 	} {
-		assertContributorCommandBundleValid(t, bundle.path, bundle.pin)
+		raw, err := os.ReadFile(filepath.Join(bundle.path, "manifest.json"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		digest := sha256.Sum256(raw)
+		if hex.EncodeToString(digest[:]) != bundle.pin {
+			t.Fatal("retired command fixture manifest does not match its pin")
+		}
 	}
 	for _, test := range []struct {
 		name      string
@@ -94,49 +101,12 @@ func TestContributorOldStartsRefuseBeforeEffects(t *testing.T) {
 }
 
 type contributorSupervisorTrace struct {
-	hostRoot        string
-	actions         []contributor.SupervisorAction
-	active, enabled bool
+	actions []contributor.SupervisorAction
 }
 
 func (trace *contributorSupervisorTrace) Do(_ context.Context, action contributor.SupervisorAction) (contributor.SupervisorState, error) {
 	trace.actions = append(trace.actions, action)
-	switch action {
-	case contributor.SupervisorEnable:
-		trace.enabled = true
-	case contributor.SupervisorStart, contributor.SupervisorRestart:
-		trace.active = true
-		path := filepath.Join(trace.hostRoot, "var", "lib", "private", "ardents-contributor", "diagnostics", "lifecycle.json")
-		if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
-			return contributor.SupervisorState{}, err
-		}
-		raw, err := json.Marshal(map[string]any{
-			"schema": "ardents-node-event-v1", "kind": "lifecycle", "state": "READY",
-			"at": "2026-08-29T10:00:00Z", "epoch": 7, "generation": "alpha",
-			"assignment": "rendezvous", "carrier_profile": "route-v1",
-			"assignment_digest": [32]byte{1},
-		})
-		if err != nil {
-			return contributor.SupervisorState{}, err
-		}
-		if err := os.WriteFile(path, append(raw, '\n'), 0o600); err != nil {
-			return contributor.SupervisorState{}, err
-		}
-	}
-	return contributor.SupervisorState{Active: trace.active, Enabled: trace.enabled}, nil
-}
-
-func assertContributorCommandBundleValid(t *testing.T, bundle, pin string) {
-	t.Helper()
-	hostRoot := t.TempDir()
-	supervisor := &contributorSupervisorTrace{hostRoot: hostRoot}
-	profile, err := contributor.Open(contributor.Config{Root: hostRoot, Supervisor: supervisor})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := profile.Apply(t.Context(), bundle, pin); err != nil {
-		t.Fatalf("command bundle fixture is not authentic: %v", err)
-	}
+	return contributor.SupervisorState{}, nil
 }
 
 func writeContributorCommandBundle(t *testing.T, profile, deployment string) (string, string) {

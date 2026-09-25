@@ -62,75 +62,23 @@ func TestLegacyInstallationReopensAndRejectsUnauthenticatedUpdateResidue(t *test
 	}
 }
 
-func TestLegacyInstallationRecordAdvancesToCanonicalSuccessor(t *testing.T) {
+func TestContributorInstallationRecordRefusesUnknownIdentity(t *testing.T) {
 	hostRoot := t.TempDir()
-	deployment := strings.Repeat("42", 32)
 	supervisor := &profileSupervisor{hostRoot: hostRoot}
 	profile, err := contributor.Open(contributor.Config{Root: hostRoot, Supervisor: supervisor})
 	if err != nil {
 		t.Fatal(err)
 	}
-	first, firstPin := writeContributorBundleProfiles(t, 1, deployment, legacyRendezvousProfile, legacyRendezvousProfile)
-	if _, err := profile.Apply(t.Context(), first, firstPin); err != nil {
-		t.Fatal(err)
+	bundle, pin := writeContributorBundle(t, 1, strings.Repeat("45", 32))
+	installRetainedContributorFixture(t, hostRoot, bundle, pin, supervisor)
+	startsBefore := supervisor.startCount()
+	writePersistedContributorProfile(t, contributorRecordPath(hostRoot), "unknown-profile-v1")
+	if _, err := profile.Control(t.Context(), contributor.Diagnose, ""); err == nil {
+		t.Fatal("unknown Contributor installation record profile was accepted")
 	}
-	recordPath := contributorRecordPath(hostRoot)
-	writePersistedContributorProfile(t, recordPath, legacyRendezvousProfile)
-
-	successor, successorPin := writeContributorBundle(t, 2, deployment)
-	report, err := profile.Apply(t.Context(), successor, successorPin)
-	if err != nil {
-		t.Fatal(err)
+	if starts := supervisor.startCount(); starts != startsBefore {
+		t.Fatalf("foreign installation identity started old bytes: calls = %d, want %d", starts, startsBefore)
 	}
-	if report.Profile != canonicalRendezvousProfile || report.Generation != 2 {
-		t.Fatalf("canonical successor report = %+v", report)
-	}
-	if got := persistedContributorProfile(t, recordPath); got != canonicalRendezvousProfile {
-		t.Fatalf("successor installation record profile = %q", got)
-	}
-}
-
-func TestContributorProfileReadersRefuseUnknownIdentity(t *testing.T) {
-	t.Run("bundle manifest", func(t *testing.T) {
-		bundle, pin := writeContributorBundleProfiles(t, 1, strings.Repeat("43", 32), "unknown-profile-v1", canonicalRendezvousProfile)
-		profile, err := contributor.Open(contributor.Config{Root: t.TempDir(), Supervisor: &profileSupervisor{}})
-		if err != nil {
-			t.Fatal(err)
-		}
-		if _, err := profile.Apply(t.Context(), bundle, pin); err == nil {
-			t.Fatal("unknown Contributor bundle profile was accepted")
-		}
-	})
-
-	t.Run("bundle Node plan", func(t *testing.T) {
-		bundle, pin := writeContributorBundleProfiles(t, 1, strings.Repeat("44", 32), canonicalRendezvousProfile, "unknown-profile-v1")
-		profile, err := contributor.Open(contributor.Config{Root: t.TempDir(), Supervisor: &profileSupervisor{}})
-		if err != nil {
-			t.Fatal(err)
-		}
-		if _, err := profile.Apply(t.Context(), bundle, pin); err == nil {
-			t.Fatal("unknown Contributor Node plan profile was accepted")
-		}
-	})
-
-	t.Run("installation record", func(t *testing.T) {
-		hostRoot := t.TempDir()
-		supervisor := &profileSupervisor{hostRoot: hostRoot}
-		profile, err := contributor.Open(contributor.Config{Root: hostRoot, Supervisor: supervisor})
-		if err != nil {
-			t.Fatal(err)
-		}
-		bundle, pin := writeContributorBundle(t, 1, strings.Repeat("45", 32))
-		installRetainedContributorFixture(t, hostRoot, bundle, pin, supervisor)
-		startsBefore := supervisor.startCount()
-		writePersistedContributorProfile(t, contributorRecordPath(hostRoot), "unknown-profile-v1")
-		if _, err := profile.Control(t.Context(), contributor.Diagnose, ""); err == nil {
-			t.Fatal("unknown Contributor installation record profile was accepted")
-		}
-		if starts := supervisor.startCount(); starts != startsBefore {
-			t.Fatalf("foreign installation identity started old bytes: calls = %d, want %d", starts, startsBefore)
-		}
-	})
 }
 
 func contributorRecordPath(hostRoot string) string {

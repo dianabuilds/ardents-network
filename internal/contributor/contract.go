@@ -13,13 +13,11 @@ import (
 type SupervisorAction byte
 
 const (
-	SupervisorReload SupervisorAction = iota + 1
-	SupervisorEnable
-	SupervisorStart
-	SupervisorRestart
-	SupervisorStop
-	SupervisorDisable
-	SupervisorStatus
+	SupervisorReload SupervisorAction = 1
+	// Values 2-4 were Enable, Start and Restart. Keep later values stable.
+	SupervisorStop    SupervisorAction = 5
+	SupervisorDisable SupervisorAction = 6
+	SupervisorStatus  SupervisorAction = 7
 )
 
 // SupervisorState is the bounded service-manager result visible to the Module.
