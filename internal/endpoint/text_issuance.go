@@ -22,11 +22,6 @@ type textTokenBatch struct {
 	pending    *credential.PendingClosedTokenBatch
 }
 
-type textTokenStock struct {
-	challenge credential.ClosedTokenContext
-	tokens    [][]byte
-}
-
 // issueTextTokens is the trusted context owner's issuance operation. The
 // retained Route members and intended receiver originate in Endpoint, never
 // on a worker attachment. There is at most one live exchange per context.

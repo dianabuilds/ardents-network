@@ -10,7 +10,6 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/endpoint/tokenjournal"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/route"
-	"github.com/dianabuilds/ardents-network/internal/route/credential"
 )
 
 type textTokenTransferFailure struct {
@@ -61,41 +60,4 @@ func (owner *textContext) takeTextTokenLocked(profile state.ClosedProfileView, n
 		return nil, textTokenTransferFailureAt("owner", errors.Join(currentErr, attempt.Err(), errors.New("text token owner changed after durable mark")))
 	}
 	return token, nil
-}
-
-// consumeTextToken burns one exact stock entry under textContext.mu before
-// verifying its signature. An invalid token is never returned or restored.
-func (permission *textPermission) consumeTextToken(profile state.ClosedProfileView, now time.Time, hello route.ClosedHello, class uint8) ([]byte, error) {
-	if permission.profile != profile || now.Before(permission.accepted.NotBefore) || !now.Before(permission.accepted.NotAfter) {
-		return nil, textTokenTransferFailureAt("permission", errors.New("text token permission expired"))
-	}
-	challenge := credential.ClosedTokenContext{NetworkID: profile.NetworkID, ProfileDigest: profile.Digest, IssuerNodeID: profile.IssuerNodeID,
-		ReceiverNodeID: hello.RecipientNodeID, ReceiverDutyGeneration: hello.RecipientDutyGeneration, Class: class, WindowStart: permission.accepted.NotBefore}
-	if int(profile.TokenKeyCount) > len(profile.TokenKeys) {
-		return nil, textTokenTransferFailureAt("key-inventory", errors.New("text token key inventory unavailable"))
-	}
-	var spki []byte
-	for _, key := range profile.TokenKeys[:profile.TokenKeyCount] {
-		if key.Class == class && key.WindowStart == challenge.WindowStart {
-			if spki != nil {
-				return nil, textTokenTransferFailureAt("key-ambiguity", errors.New("text token key ambiguous"))
-			}
-			spki = key.SPKI[:]
-		}
-	}
-	for index := range permission.stock {
-		stock := &permission.stock[index]
-		if stock.challenge != challenge || len(stock.tokens) == 0 {
-			continue
-		}
-		token := stock.tokens[0]
-		stock.tokens[0] = nil
-		stock.tokens = stock.tokens[1:]
-		if err := credential.VerifyClosedToken(challenge, spki, token); err != nil {
-			clear(token)
-			return nil, textTokenTransferFailureAt("verification", err)
-		}
-		return token, nil
-	}
-	return nil, textTokenTransferFailureAt("stock", errors.New("text forwarding token stock unavailable"))
 }
