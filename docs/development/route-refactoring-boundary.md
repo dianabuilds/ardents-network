@@ -38,6 +38,43 @@ It uses Closed Route types, so any split must migrate that consumer together
 with Endpoint and Node imports. A temporary `route` wrapper that imports a new
 closed package while that package imports `route` would create a cycle.
 
+## Candidate terminal-operation owner
+
+The next bounded extraction candidate is the fixed terminal body grammar,
+tentatively `internal/route/terminal`. Its production cohort is exactly
+`closed_issuance_operation.go`, `closed_issuance_client_operation_linux.go`,
+`closed_descriptor_operation.go`, `closed_descriptor_client_operation_linux.go`,
+`closed_join_operation.go`, `closed_join_client_operation_linux.go`,
+`closed_registration_operation.go`, and
+`closed_registration_encoding_linux.go`. Their four matching operation test
+files contain the canonical size, nonce, padding, expiry, and byte-offset
+oracles.
+This owner would import only `internal/service/reachability` and the standard
+library; it has no reason to import `internal/route`.
+
+The owner would expose the four request types, the issuance result type, and
+their existing encode/decode operations without the redundant `Closed` prefix.
+The 4-KiB and 16-KiB body sizes must have one definition shared with Route
+lane validation; merely copying the two constants would create independent
+wire contracts. The zero-padding rule belongs to this codec owner and must
+remain identical for Descriptor, JOIN, and registration bodies.
+
+The current Route tests for Descriptor and JOIN also assert outer lane
+framing. Keep those cross-layer assertions in `internal/route` while moving
+the pure body tests with the codec. Migrate actual Route, Node, Endpoint, and
+`route/credential` callers in the same compiling change; no delegating
+`route.Closed*` wrappers or test-only package may remain. Route may import
+the terminal codec, but the codec must not import Route. Register exact imports
+and command ownership in `package-map.md`, then verify Linux and Windows
+builds, affected behavior tests, and the full gate.
+
+This is a source-level candidate, not an accepted package split. The caller
+cohort includes `closed_introduction_client.go`,
+`closed_introduction_delivery.go`, and Node Introduction registration and
+delivery. Those owners overlap the live network opening work. Recheck their
+names and behavior after its completed changes are integrated before editing
+the cohort; the existing capsule extraction does not prove this split.
+
 ## Intended seam
 
 `internal/route` remains the owner of the currently shared Carrier and native
