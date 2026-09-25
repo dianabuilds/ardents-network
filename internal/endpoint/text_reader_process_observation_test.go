@@ -227,7 +227,7 @@ func textReaderLookupObservation(t *testing.T, owner *textContext, input textRea
 	holderDigest, permissionIDDigest := sha256.Sum256(permission.accepted.HolderKey[:]), sha256.Sum256(permission.accepted.PermissionID[:])
 	batches := permission.batches
 	reserved := permission.reserved
-	floor := owner.descriptorFloors[input.Target]
+	floor := owner.descriptorHistory.floors[input.Target]
 	owner.mu.Unlock()
 	if err := encoder.Encode(textReaderObservationEvent{Phase: "response-received-before-close", ResponseDescriptorSHA256: hex.EncodeToString(responseDigest[:]), ResponseRevision: verified.Descriptor.Private.Revision, HolderSHA256: hex.EncodeToString(holderDigest[:]), PermissionIDSHA256: hex.EncodeToString(permissionIDDigest[:]), IssuanceBatches: batches, Reserved: reserved, DescriptorFloorRevision: floor.revision}); err != nil {
 		t.Fatal(err)

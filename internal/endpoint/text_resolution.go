@@ -40,7 +40,7 @@ func (owner *textContext) lookupTextDescriptor(ctx context.Context, target [32]b
 		owner.mu.Unlock()
 		return reachability.Verified{}, errors.New("text resolution owner unavailable")
 	}
-	if _, retained := owner.descriptorFloors[target]; !retained && len(owner.descriptorFloors) >= maximumTextDescriptorTargets {
+	if !owner.descriptorHistory.canAdmit(target) {
 		owner.mu.Unlock()
 		return reachability.Verified{}, errors.New("text Descriptor context capacity exhausted")
 	}
@@ -92,7 +92,7 @@ func (owner *textContext) acceptTextResolutionResult(caller context.Context, fli
 		current != profile || !flight.source.currentLocked(owner) || flight.context.Err() != nil || caller.Err() != nil {
 		return reachability.Verified{}, errors.New("text resolution authority changed")
 	}
-	return owner.acceptTextDescriptorLocked(raw, target, profile.NetworkID, profile.Digest, now)
+	return owner.descriptorHistory.accept(raw, target, profile.NetworkID, profile.Digest, now)
 }
 
 func (owner *textContext) presentTextResolutionToken(flight *textResolutionFlight, hello route.ClosedHello, class uint8) ([]byte, error) {

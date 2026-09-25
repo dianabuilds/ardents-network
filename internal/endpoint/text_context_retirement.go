@@ -53,8 +53,7 @@ func (owner *textContext) stopTextContextChildrenLocked() *textContextRetirement
 	clear(owner.introductionReplays)
 	owner.introductionReplays = nil
 	owner.introductionOpenings = [4]time.Time{}
-	clear(owner.descriptorFloors)
-	owner.descriptorFloors = nil
+	owner.descriptorHistory.clear()
 	owner.sourceSet = nil
 	retirement.introduction = owner.introduction.stopLocked()
 	retirement.responder = owner.responder.stopLocked()

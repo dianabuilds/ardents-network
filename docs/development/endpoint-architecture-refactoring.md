@@ -39,6 +39,7 @@ implementation has private owners rather than one undifferentiated state bag:
 | Permission and issuance | `textPermission`, `textIssuanceOperation` | `textPermission` owns holder request creation, signed approval acceptance, exact retry matching and batch quota reservation, candidate-stock inspection, pending-batch cancellation, issued-token deposit, then burns and verifies the exact challenge under the Context admission lock; Context performs the durable token-attempt mark and surviving-owner check before presentation. Pending batch and exact Source reservation share that lock. |
 | Token attempt storage | `tokenjournal.Journal` | Own mutex, replay/time floors, and durable attempts; consumes the shared `durableroot` access, lease, and sync API. |
 | Transit Grant acquisition | `transit.Acquisition` in `internal/endpoint/transit` | Own pending, ready, presenting, and terminal journal transitions, including stale-completion rejection; Endpoint supplies only the issuer exchange and exact TLS enrollment. Its durable root uses `durableroot`. |
+| Descriptor history | `textDescriptorHistory` | Own per-Target verified publication/revision floors, conflict memory, capacity and context-retirement erasure; Context checks live authority before acceptance and before using a retained proof. |
 | Resolution and JOIN | Context flights and narrow acquisitions | Exact current prefix must be checked again after network effects. |
 | Job and worker | `textJobIdentity`, `textWorkerLifetime` | Context retains the job reservation; worker owns process and cgroup cleanup. |
 

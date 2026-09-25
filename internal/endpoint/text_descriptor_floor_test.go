@@ -66,7 +66,7 @@ func TestTextDescriptorFloorRejectsRollbackAndRetainsConflicts(t *testing.T) {
 	current, signer := textFloorPublication(t, authority, network, 1, now, now.Add(10*time.Minute))
 	owner := &textContext{}
 	accept := func(raw []byte, at time.Time) error {
-		_, err := owner.acceptTextDescriptorLocked(raw, current.Credential.Target, network, profile, at)
+		_, err := owner.descriptorHistory.accept(raw, current.Credential.Target, network, profile, at)
 		return err
 	}
 	first := textFloorDescriptor(t, current, signer, profile, node, 1, 10, now, now.Add(300*time.Second))
@@ -106,7 +106,7 @@ func TestTextDescriptorFloorRejectsRollbackAndRetainsConflicts(t *testing.T) {
 		t.Fatalf("higher revision failed to repair revision conflict: %v", err)
 	}
 	// Caller mutation cannot change the retained hashes or create cache aliases.
-	verified, err := owner.acceptTextDescriptorLocked(third, current.Credential.Target, network, profile, now)
+	verified, err := owner.descriptorHistory.accept(third, current.Credential.Target, network, profile, now)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -129,7 +129,7 @@ func TestTextDescriptorFloorPublicationConflictRetainsLongestAuthority(t *testin
 	first, signer := textFloorPublication(t, authority, network, 1, now, now.Add(100*time.Second))
 	firstRaw := textFloorDescriptor(t, first, signer, profile, node, 1, 10, now, now.Add(100*time.Second))
 	accept := func(raw []byte, at time.Time) error {
-		_, err := owner.acceptTextDescriptorLocked(raw, first.Credential.Target, network, profile, at)
+		_, err := owner.descriptorHistory.accept(raw, first.Credential.Target, network, profile, at)
 		return err
 	}
 	if err := accept(firstRaw, now); err != nil {
@@ -168,21 +168,21 @@ func TestTextDescriptorFloorBelongsToContextAcrossWorkerLoss(t *testing.T) {
 		t.Fatal(err)
 	}
 	target := fixtureID(9)
-	owner.descriptorFloors = map[[32]byte]textDescriptorFloor{target: {generation: 1, revision: 2, revisionConflict: true}}
+	owner.descriptorHistory.floors = map[[32]byte]textDescriptorFloor{target: {generation: 1, revision: 2, revisionConflict: true}}
 	owner.retireJob(job)
 	if err := owner.finishJobCleanup(job, nil); err != nil {
 		t.Fatal(err)
 	}
-	if !owner.descriptorFloors[target].revisionConflict {
+	if !owner.descriptorHistory.floors[target].revisionConflict {
 		t.Fatal("worker loss erased context floor")
 	}
-	if len(other.descriptorFloors) != 0 {
+	if len(other.descriptorHistory.floors) != 0 {
 		t.Fatal("context history shared with another authorization")
 	}
 	if err := owner.Close(); err != nil {
 		t.Fatal(err)
 	}
-	if owner.descriptorFloors != nil {
+	if owner.descriptorHistory.floors != nil {
 		t.Fatal("retired context retained private history")
 	}
 }
@@ -232,8 +232,8 @@ func TestTextResolutionNetworkCannotRollBackLocalDescriptorFloor(t *testing.T) {
 				t.Fatalf("actual first lookup: %v", err)
 			}
 			owner.mu.Lock()
-			floor := owner.descriptorFloors[current.Credential.Target]
-			_, err = owner.acceptTextDescriptorLocked(second, current.Credential.Target, profile.NetworkID, profile.Digest, now)
+			floor := owner.descriptorHistory.floors[current.Credential.Target]
+			_, err = owner.descriptorHistory.accept(second, current.Credential.Target, profile.NetworkID, profile.Digest, now)
 			owner.mu.Unlock()
 			if floor.revision != 1 || err != nil {
 				t.Fatalf("lookup failed to retain floor or prior observation invalid: %v", err)
@@ -242,7 +242,7 @@ func TestTextResolutionNetworkCannotRollBackLocalDescriptorFloor(t *testing.T) {
 				t.Fatal("actual resolver response rolled back locally retained revision")
 			}
 			owner.mu.Lock()
-			retained := owner.descriptorFloors[current.Credential.Target]
+			retained := owner.descriptorHistory.floors[current.Credential.Target]
 			healthy := owner.currentTextSourceLocked() == prefix && owner.resolution == nil && !owner.closed
 			owner.mu.Unlock()
 			if retained.revision != 2 || !healthy {
@@ -251,10 +251,10 @@ func TestTextResolutionNetworkCannotRollBackLocalDescriptorFloor(t *testing.T) {
 			// Explicit capacity fixture: retained hashes stand in for already
 			// observed Targets. The real admitted issuer/stock remains in use.
 			owner.mu.Lock()
-			for index := 1; len(owner.descriptorFloors) < maximumTextDescriptorTargets; index++ {
-				owner.descriptorFloors[fixtureID(byte(index))] = textDescriptorFloor{generation: 1, revision: 1}
+			for index := 1; len(owner.descriptorHistory.floors) < maximumTextDescriptorTargets; index++ {
+				owner.descriptorHistory.floors[fixtureID(byte(index))] = textDescriptorFloor{generation: 1, revision: 1}
 			}
-			_, err = owner.acceptTextDescriptorLocked(second, current.Credential.Target, profile.NetworkID, profile.Digest, now)
+			_, err = owner.descriptorHistory.accept(second, current.Credential.Target, profile.NetworkID, profile.Digest, now)
 			reserved, batches := owner.permission.reserved, owner.permission.batches
 			tokensBefore := 0
 			for _, stock := range owner.permission.stock {
@@ -272,8 +272,8 @@ func TestTextResolutionNetworkCannotRollBackLocalDescriptorFloor(t *testing.T) {
 			for _, stock := range owner.permission.stock {
 				tokensAfter += len(stock.tokens)
 			}
-			unchanged := len(owner.descriptorFloors) == maximumTextDescriptorTargets &&
-				owner.descriptorFloors[current.Credential.Target].revision == 2 && owner.permission.reserved == reserved &&
+			unchanged := len(owner.descriptorHistory.floors) == maximumTextDescriptorTargets &&
+				owner.descriptorHistory.floors[current.Credential.Target].revision == 2 && owner.permission.reserved == reserved &&
 				owner.permission.batches == batches && tokensBefore == tokensAfter && owner.resolution == nil && owner.issuance == nil
 			owner.mu.Unlock()
 			if !unchanged {

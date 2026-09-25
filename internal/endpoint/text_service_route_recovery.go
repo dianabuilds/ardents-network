@@ -79,14 +79,12 @@ func (owner *textContext) prepareTextRecovery(ctx context.Context, job *textJobI
 	profile, now, err := owner.textPermissionProfileLocked()
 	prefix := owner.currentTextSourceLocked()
 	recipient := verified.Descriptor.Private
-	floor := owner.descriptorFloors[binding.facts.Target]
 	if attemptErr := ctx.Err(); attemptErr != nil {
 		return nil, attemptErr
 	}
 	if err != nil || prefix == nil || !owner.liveTextServiceJobLocked(job, broker.Connection) ||
 		!binding.matchesPublication(verified.Current) || verified.Descriptor.ProfileDigest != binding.facts.ProfileDigest ||
-		profile.Digest != binding.facts.ProfileDigest || floor.publicationConflict || floor.revisionConflict ||
-		floor.publication != binding.facts.PublicationDigest || floor.revision != recipient.Revision ||
+		profile.Digest != binding.facts.ProfileDigest || !owner.descriptorHistory.matches(binding.facts.Target, binding.facts.PublicationDigest, recipient.Revision) ||
 		recipient.Revision < binding.introduction.Revision ||
 		recipient.Revision == 0 || recipient.Slot == [32]byte{} || recipient.RecipientKey == [32]byte{} ||
 		now.Before(recipient.NotBefore) || !now.Before(recipient.NotAfter) {

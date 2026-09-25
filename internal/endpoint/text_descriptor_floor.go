@@ -22,10 +22,32 @@ type textDescriptorFloor struct {
 	publicationConflict, revisionConflict bool
 }
 
-// Called under owner.mu after the actual resolution flight rechecks its live
+// textDescriptorHistory owns one context's private publication and revision
+// floors. The Context lock protects every method and retirement clears it.
+type textDescriptorHistory struct {
+	floors map[[32]byte]textDescriptorFloor
+}
+
+func (history *textDescriptorHistory) canAdmit(target [32]byte) bool {
+	_, retained := history.floors[target]
+	return retained || len(history.floors) < maximumTextDescriptorTargets
+}
+
+func (history *textDescriptorHistory) matches(target, publication [32]byte, revision uint64) bool {
+	floor, retained := history.floors[target]
+	return retained && !floor.publicationConflict && !floor.revisionConflict &&
+		floor.publication == publication && floor.revision == revision
+}
+
+func (history *textDescriptorHistory) clear() {
+	clear(history.floors)
+	history.floors = nil
+}
+
+// Called under the Context lock after the actual resolution flight rechecks its live
 // authority. Verify raw bytes here so no caller-assembled Verified can poison
 // the floor. Returned proof slices have no aliases to retained cache state.
-func (owner *textContext) acceptTextDescriptorLocked(raw []byte, target, network, profile [32]byte, at time.Time) (reachability.Verified, error) {
+func (history *textDescriptorHistory) accept(raw []byte, target, network, profile [32]byte, at time.Time) (reachability.Verified, error) {
 	verified, err := reachability.VerifyPrivate(raw, target, network, profile, at)
 	if err != nil {
 		return reachability.Verified{}, err
@@ -33,7 +55,7 @@ func (owner *textContext) acceptTextDescriptorLocked(raw []byte, target, network
 	credential := verified.Current.Credential
 	candidate := textDescriptorFloor{generation: credential.Generation, revision: verified.Descriptor.Private.Revision,
 		publication: verified.Current.Digest, descriptor: sha256.Sum256(raw), notAfter: credential.NotAfter}
-	prior, exists := owner.descriptorFloors[target]
+	prior, exists := history.floors[target]
 	if exists {
 		if candidate.generation < prior.generation {
 			return reachability.Verified{}, errors.New("text Descriptor publication is stale")
@@ -50,7 +72,7 @@ func (owner *textContext) acceptTextDescriptorLocked(raw []byte, target, network
 				if candidate.notAfter > prior.notAfter {
 					prior.notAfter = candidate.notAfter
 				}
-				owner.descriptorFloors[target] = prior
+				history.floors[target] = prior
 			}
 			if prior.publicationConflict {
 				return reachability.Verified{}, errors.New("text Descriptor publication remains conflicting")
@@ -61,19 +83,19 @@ func (owner *textContext) acceptTextDescriptorLocked(raw []byte, target, network
 			if candidate.revision == prior.revision {
 				if candidate.descriptor != prior.descriptor {
 					prior.revisionConflict = true
-					owner.descriptorFloors[target] = prior
+					history.floors[target] = prior
 				}
 				if prior.revisionConflict {
 					return reachability.Verified{}, errors.New("text Descriptor revision remains conflicting")
 				}
 			}
 		}
-	} else if len(owner.descriptorFloors) >= maximumTextDescriptorTargets {
+	} else if len(history.floors) >= maximumTextDescriptorTargets {
 		return reachability.Verified{}, errors.New("text Descriptor context capacity exhausted")
 	}
-	if owner.descriptorFloors == nil {
-		owner.descriptorFloors = make(map[[32]byte]textDescriptorFloor)
+	if history.floors == nil {
+		history.floors = make(map[[32]byte]textDescriptorFloor)
 	}
-	owner.descriptorFloors[target] = candidate
+	history.floors[target] = candidate
 	return verified, nil
 }

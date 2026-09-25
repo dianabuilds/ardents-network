@@ -90,7 +90,7 @@ func TestTextEndpointCrashDropsVolatileAuthorityAndRetainsSpend(t *testing.T) {
 	owner.mu.Lock()
 	fresh := owner.permission == nil && owner.job == nil && owner.verifiedJob == nil && owner.sourceSet == nil &&
 		owner.currentTextSourceLocked() == nil && owner.registration == nil && owner.previousRegistration == nil &&
-		owner.introductionExchanges == nil && owner.introductionReplays == nil && owner.descriptorFloors == nil
+		owner.introductionExchanges == nil && owner.introductionReplays == nil && owner.descriptorHistory.floors == nil
 	owner.mu.Unlock()
 	if !fresh {
 		t.Fatal("restart populated volatile permission, job, join, or Route state")

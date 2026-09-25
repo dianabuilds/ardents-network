@@ -26,7 +26,7 @@ type textContextState struct {
 	introductionExchanges map[*textIntroductionExchange]struct{}
 	introductionReplays   map[[32]byte]time.Time
 	introductionOpenings  [4]time.Time
-	descriptorFloors      map[[32]byte]textDescriptorFloor
+	descriptorHistory     textDescriptorHistory
 	withdrawal            *textSourceFlight
 	registrationOpening   *textRegistrationFlight
 	introduction          textIntroductionPrefixLifecycle

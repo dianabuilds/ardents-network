@@ -181,7 +181,7 @@ func TestTextResolutionOldAcquisitionCannotCommitAfterSourceReplacement(t *testi
 
 	verified, commitErr := owner.acceptTextResolutionResult(t.Context(), flight, profile, target, raw)
 	owner.mu.Lock()
-	_, committed := owner.descriptorFloors[target]
+	_, committed := owner.descriptorHistory.floors[target]
 	retained := owner.currentTextSourceLocked() == replacement && owner.resolution == flight
 	owner.mu.Unlock()
 	if commitErr == nil || verified.Descriptor.Target != [32]byte{} || committed || !retained {

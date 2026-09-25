@@ -122,11 +122,9 @@ func (owner *textContext) prepareResolvedTextIntroduction(ctx context.Context, j
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
 	profile, now, err := owner.textPermissionProfileLocked()
-	floor := owner.descriptorFloors[destination.Target]
 	prefix := owner.currentTextSourceLocked()
 	if err != nil || !owner.liveTextServiceJobLocked(job, broker.Connection) || ctx.Err() != nil || prefix == nil ||
-		profile.Digest != verified.Descriptor.ProfileDigest || floor.publicationConflict || floor.revisionConflict ||
-		floor.publication != verified.Current.Digest || floor.revision != verified.Descriptor.Private.Revision {
+		profile.Digest != verified.Descriptor.ProfileDigest || !owner.descriptorHistory.matches(destination.Target, verified.Current.Digest, verified.Descriptor.Private.Revision) {
 		return nil, errors.New("text Introduction resolution or local authority changed")
 	}
 	node, generation, until, err := prefix.dataJoinRecipient()
