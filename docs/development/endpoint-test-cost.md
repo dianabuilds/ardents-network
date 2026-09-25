@@ -60,3 +60,23 @@ clock substitution would therefore test inconsistent times; the time seam
 must be traced through the complete carrier episode before removing the guard.
 Separately, owner extraction can make focused tests compile and run without linking the
 entire Endpoint package. Neither improvement is proven by this timing run.
+
+## Reliability observation
+
+At `b29ca01f`, a five-run focused repetition of
+`TestTextIntroductionDeliversFourConcurrentReaders` in the same Linux image
+under Docker Desktop failed once before concurrent delivery: Reader 3 could
+not open its Source prefix (`connect: connection refused`).
+Several of the sixteen co-located Node runtimes reported `FAILED` about
+30 seconds after `READY` with `resource pressure evidence is unavailable` and
+`context deadline exceeded`. The first full-package failure had instead
+reached concurrent delivery; a repetition with its exact shuffle seed passed.
+These are distinct observed failure points, not evidence of one proven cause.
+
+The Endpoint test binary built from `b29ca01f` with Go 1.26.8 on Linux
+(`SHA-256 38f7e94a37752ec26e6f967b2fa714408d80d22e33cfec687244cc107e33482b`)
+passed three focused repetitions directly under Ubuntu 24.04 WSL2 with
+systemd 255. WSL2 still co-locates the sixteen fixture Nodes and is not the
+dedicated installed Ubuntu host required by the command-journey runner.
+These runs narrow the container-environment suspicion but do not make the
+earlier failures pass or qualify the final C0 candidate.
