@@ -1,4 +1,4 @@
-package main
+package timeline
 
 import (
 	"bufio"
@@ -11,9 +11,9 @@ import (
 	"time"
 )
 
-// runDiagnosticTimeline projects the three bounded runtime event schemas from
+// Project renders the three bounded runtime event schemas from
 // app JSON lines or journalctl JSON. It streams without retaining raw records.
-func runDiagnosticTimeline(ctx context.Context, input io.ReadCloser, output io.Writer) error {
+func Project(ctx context.Context, input io.ReadCloser, output io.Writer) error {
 	if ctx == nil || input == nil || output == nil {
 		return errors.New("diagnostic timeline input unavailable")
 	}

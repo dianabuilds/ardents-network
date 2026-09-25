@@ -10,6 +10,7 @@ import (
 	"io"
 	"os"
 
+	"github.com/dianabuilds/ardents-network/internal/diagnostics/timeline"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 )
 
@@ -22,7 +23,7 @@ func runWithInput(ctx context.Context, arguments []string, input io.ReadCloser, 
 		if len(arguments) != 2 || arguments[1] != "timeline" {
 			return errors.New("usage: ardents diagnostics timeline")
 		}
-		return runDiagnosticTimeline(ctx, input, output)
+		return timeline.Project(ctx, input, output)
 	}
 	if len(arguments) > 0 && arguments[0] == "endpoint" {
 		return runEndpoint(ctx, arguments, output)

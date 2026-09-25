@@ -7,11 +7,13 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"os"
 	"syscall"
 	"testing"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/diagnostics/timeline"
 	endpointapi "github.com/dianabuilds/ardents-network/internal/endpoint"
 )
 
@@ -48,9 +50,10 @@ func TestHeadlessTextFatalEventKeepsWrappedFailureOutOfTimeline(t *testing.T) {
 			if bytes.Contains(output.Bytes(), []byte(private.Error())) {
 				t.Fatalf("private failure entered event: %q", output.Bytes())
 			}
-			row, present, err := diagnosticTimelineRow(output.Bytes())
-			if err != nil || !present || !bytes.Contains([]byte(row), []byte("headless-runtime-failed\t-\t\""+test.phase+"\"")) {
-				t.Fatalf("fatal event timeline = %q, present=%v, err=%v", row, present, err)
+			var projected bytes.Buffer
+			err := timeline.Project(t.Context(), io.NopCloser(bytes.NewReader(output.Bytes())), &projected)
+			if err != nil || !bytes.Contains(projected.Bytes(), []byte("headless-runtime-failed\t-\t\""+test.phase+"\"")) {
+				t.Fatalf("fatal event timeline = %q, err=%v", projected.String(), err)
 			}
 		})
 	}

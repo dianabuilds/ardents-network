@@ -1,4 +1,4 @@
-package main
+package timeline
 
 import (
 	"bytes"
@@ -35,7 +35,7 @@ func TestDiagnosticTimelineCombinesRuntimeOwnersWithoutPrivateFields(t *testing.
 		input.WriteByte('\n')
 	}
 	var output bytes.Buffer
-	if err := runWithInput(t.Context(), []string{"diagnostics", "timeline"}, io.NopCloser(input), &output); err != nil {
+	if err := Project(t.Context(), io.NopCloser(input), &output); err != nil {
 		t.Fatal(err)
 	}
 	want := strings.Join([]string{
@@ -60,7 +60,7 @@ func TestDiagnosticTimelineRejectsMalformedKnownCategoryWithoutEcho(t *testing.T
 		"reason": "private-token",
 	})
 	var output bytes.Buffer
-	err := runDiagnosticTimeline(t.Context(), io.NopCloser(strings.NewReader(input+"\n")), &output)
+	err := Project(t.Context(), io.NopCloser(strings.NewReader(input+"\n")), &output)
 	if err == nil || output.Len() != 0 || strings.Contains(err.Error(), "private-token") {
 		t.Fatalf("malformed known event: output=%q err=%v", output.String(), err)
 	}
@@ -72,7 +72,7 @@ func TestDiagnosticTimelineCancellationClosesWaitingInput(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	var output bytes.Buffer
 	done := make(chan error, 1)
-	go func() { done <- runDiagnosticTimeline(ctx, reader, &output) }()
+	go func() { done <- Project(ctx, reader, &output) }()
 	cancel()
 	select {
 	case err := <-done:

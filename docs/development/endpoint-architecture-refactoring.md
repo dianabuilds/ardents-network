@@ -82,8 +82,9 @@ must not replace independent canonical-vector builders. A fixture move must
 remove actual duplication or setup cost, rather than gather unrelated helpers
 in one file.
 
-The local diagnostic timeline normalizes time, owner, event class, and safe
-reason from bounded Node, Source, and Endpoint runtime schemas.
+`internal/diagnostics/timeline` normalizes time, owner, event class, and safe
+reason from bounded Node, Source, and Endpoint runtime schemas. The command
+adapter only supplies input and output.
 Owner-specific event fields and privacy limits stay typed. Background delivery failures terminate the participant and return to its caller;
 a private observation owner serializes output and retains the first such failure.
 
