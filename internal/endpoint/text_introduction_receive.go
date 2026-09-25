@@ -20,16 +20,16 @@ func (owner *textContext) nextTextIntroductionDelivery(ctx context.Context) (*ro
 			owner.mu.Unlock()
 			return nil, errors.Join(ctx.Err(), errors.New("text Introduction receiver retired"))
 		}
-		if owner.textPublicationPairLifecycle.drainingLocked() {
+		if owner.publication.drainingLocked() {
 			owner.mu.Unlock()
 			return nil, errTextPublicationDraining
 		}
-		current := owner.textPublicationPairLifecycle.currentLocked()
-		previous, previousUntil := owner.textPublicationPairLifecycle.previousLocked()
+		current := owner.publication.currentLocked()
+		previous, previousUntil := owner.publication.previousLocked()
 		if !owner.endpoint.clock().Before(previousUntil) {
 			previous = nil
 		}
-		changed := owner.textPublicationPairLifecycle.changedLocked()
+		changed := owner.publication.changedLocked()
 		owner.mu.Unlock()
 		var ready, priorReady, done, priorDone <-chan struct{}
 		live := 0

@@ -28,9 +28,9 @@ func (run *textPublisherRun) Withdraw(ctx context.Context) error {
 	owner := run.owner
 	owner.mu.Lock()
 	failure := ""
-	if owner.textPublicationPairLifecycle.drainingLocked() {
+	if owner.publication.drainingLocked() {
 		failure = "publication-draining"
-	} else if owner.textPublicationPairLifecycle.currentLocked() == nil {
+	} else if owner.publication.currentLocked() == nil {
 		failure = "registration-absent"
 	} else if !owner.liveLocked(owner.endpoint, owner.surface) {
 		failure = "publisher-not-live"
@@ -46,7 +46,7 @@ func (run *textPublisherRun) Withdraw(ctx context.Context) error {
 	stopAbort := context.AfterFunc(bounded, func() { defer close(abortDone); run.cancel() })
 	run.withdrawDone = make(chan struct{})
 	withdrawn := run.withdrawDone
-	owner.textPublicationPairLifecycle.beginDrainLocked()
+	owner.publication.beginDrainLocked()
 	close(owner.publicationDrain)
 	owner.signalTextRegistrationsLocked()
 	owner.mu.Unlock()

@@ -22,7 +22,7 @@ func TestTextPublisherAcceptsIntroductionAfterSourceRetirement(t *testing.T) {
 			}
 			defer clear(prepared.operation)
 			publisher.mu.Lock()
-			prefix, registration, permission := publisher.currentTextSourceLocked(), publisher.registration, publisher.permission
+			prefix, registration, permission := publisher.currentTextSourceLocked(), publisher.publication.registration, publisher.permission
 			reserved := permission.reserved
 			publisher.mu.Unlock()
 			if err := prefix.Close(); err != nil {

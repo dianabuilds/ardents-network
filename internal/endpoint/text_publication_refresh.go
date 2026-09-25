@@ -182,7 +182,7 @@ func (owner *textContext) startTextRefreshLocked(registered *textIntroductionReg
 	owner.refresh.start(owner.lease.Context(), owner.runTextRefresh)
 }
 func (owner *textContext) signalTextRegistrationsLocked() {
-	owner.textPublicationPairLifecycle.signalLocked()
+	owner.publication.signalLocked()
 	owner.refresh.wake()
 }
 func (owner *textContext) stopTextRefresh() {
@@ -192,8 +192,8 @@ func (owner *textContext) stopTextRefresh() {
 func (owner *textContext) runTextRefresh(flight *textPublicationRefresh) {
 	for {
 		owner.mu.Lock()
-		registered := owner.textPublicationPairLifecycle.currentLocked()
-		previous, until := owner.textPublicationPairLifecycle.previousLocked()
+		registered := owner.publication.currentLocked()
+		previous, until := owner.publication.previousLocked()
 		var refreshAt, expiry time.Time
 		if registered != nil {
 			refreshAt, expiry = registered.refreshAt, registered.request.Expiry
@@ -212,7 +212,7 @@ func (owner *textContext) runTextRefresh(flight *textPublicationRefresh) {
 			previous.cancel()
 			err := previous.close()
 			owner.mu.Lock()
-			if owner.textPublicationPairLifecycle.removePreviousLocked(previous) {
+			if owner.publication.removePreviousLocked(previous) {
 				owner.signalTextRegistrationsLocked()
 			}
 			owner.mu.Unlock()
@@ -281,8 +281,8 @@ func textRefreshSourceContention(cause error) bool {
 func (owner *textContext) rotateTextPublication(flight *textPublicationRefresh, previous *textIntroductionRegistration) error {
 	owner.mu.Lock()
 	_, now, err := owner.textPermissionProfileLocked()
-	retained, _ := owner.textPublicationPairLifecycle.previousLocked()
-	if err != nil || owner.refresh.current() != flight || owner.textPublicationPairLifecycle.currentLocked() != previous || retained != nil ||
+	retained, _ := owner.publication.previousLocked()
+	if err != nil || owner.refresh.current() != flight || owner.publication.currentLocked() != previous || retained != nil ||
 		previous.request.Revision == ^uint64(0) || !owner.liveLocked(owner.endpoint, broker.Administration) {
 		owner.mu.Unlock()
 		return textRefreshFailureAt("rotation-authority", errors.New("text publication refresh owner unavailable"))
@@ -324,7 +324,7 @@ func (owner *textContext) failTextRefresh(flight *textPublicationRefresh, failur
 		owner.mu.Unlock()
 		return
 	}
-	current, pending, previous := owner.textPublicationPairLifecycle.detachLocked()
+	current, pending, previous := owner.publication.detachLocked()
 	report := owner.refreshFailure
 	owner.signalTextRegistrationsLocked()
 	owner.mu.Unlock()

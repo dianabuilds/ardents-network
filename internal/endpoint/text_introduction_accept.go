@@ -46,12 +46,12 @@ func (owner *textContext) acceptTextIntroductionGeneration(ctx context.Context, 
 	defer endpoint.publisherMu.Unlock()
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
-	if owner.textPublicationPairLifecycle.drainingLocked() {
+	if owner.publication.drainingLocked() {
 		return nil, errTextPublicationDraining
 	}
 	profile, now, err := owner.textPermissionProfileLocked()
-	registered := owner.textPublicationPairLifecycle.selectLocked(now, capsule.Slot, capsule.Revision)
-	if err != nil || !owner.liveTextServiceJobLocked(job, broker.Administration) || registered == nil || owner.textPublicationPairLifecycle.withdrawalInProgressLocked() ||
+	registered := owner.publication.selectLocked(now, capsule.Slot, capsule.Revision)
+	if err != nil || !owner.liveTextServiceJobLocked(job, broker.Administration) || registered == nil || owner.publication.withdrawalInProgressLocked() ||
 		endpoint.textPublisherOwner != owner || !endpoint.textPublicationLive || endpoint.publisherBinding == nil || endpoint.publications == nil ||
 		!registered.published || registered.recipient == nil {
 		return nil, errors.New("text Introduction registration authority unavailable")
@@ -120,7 +120,7 @@ func (owner *textContext) acceptTextIntroductionGeneration(ctx context.Context, 
 	default:
 	}
 	at := endpoint.clock().UTC()
-	retained := owner.textPublicationPairLifecycle.retainedLocked(registered, at)
+	retained := owner.publication.retainedLocked(registered, at)
 	if ctx.Err() != nil || !owner.liveTextServiceJobLocked(job, broker.Administration) || !at.Before(capsule.Expiry) || !retained || registered.recipient.Public(at) == [32]byte{} {
 		return nil, errors.Join(ctx.Err(), errors.New("text Introduction authority ended during binding"))
 	}

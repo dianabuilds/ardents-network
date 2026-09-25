@@ -62,7 +62,7 @@ func TestTextPublisherNetworkRetainsSnapshotAcrossReaders(t *testing.T) {
 				}
 				if fault.wrongTarget || fault.unknownGeneration {
 					publisherOwner.mu.Lock()
-					recipient := publisherOwner.registration.recipient.Public(time.Now().UTC())
+					recipient := publisherOwner.publication.registration.recipient.Public(time.Now().UTC())
 					publisherOwner.mu.Unlock()
 					facts := refused.plaintext
 					if fault.wrongTarget {

@@ -47,7 +47,7 @@ func checkTextCapsuleAdmissionBoundaries(t *testing.T, publisher, reader *textCo
 			defer func() { endpoint.clock, endpoint.closedState = clock, source }()
 			plaintext := original.plaintext
 			plaintext.Deadline = clock().Add(10 * time.Second).UTC().Truncate(time.Second)
-			capsule := introductioncapsule.Capsule{Slot: publisher.registration.request.Slot, Revision: plaintext.Revision,
+			capsule := introductioncapsule.Capsule{Slot: publisher.publication.registration.request.Slot, Revision: plaintext.Revision,
 				Expiry: plaintext.Deadline, DeliveryNonce: fixtureID(byte(140 + index))}
 			sealed, _, err := introductioncapsule.Seal(capsule, recipient, plaintext)
 			if err != nil {

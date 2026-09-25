@@ -15,11 +15,11 @@ import (
 // It is never a wire identity or evidence of installed confinement. Only the
 // verified launch boundary may give a worker a Principal and Grant.
 type textContextState struct {
-	refreshFailure    func(string)
-	withdrawalFailure func(string)
-	operationFailure  func(string)
-	refresh           textPublicationRefreshLifecycle
-	textPublicationPairLifecycle
+	refreshFailure        func(string)
+	withdrawalFailure     func(string)
+	operationFailure      func(string)
+	refresh               textPublicationRefreshLifecycle
+	publication           textPublicationPairLifecycle
 	introductionDispatch  textIntroductionDispatch
 	introductionExchanges textIntroductionExchangeSet
 	introductionAdmission textIntroductionAdmission

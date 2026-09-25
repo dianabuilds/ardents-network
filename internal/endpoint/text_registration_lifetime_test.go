@@ -17,7 +17,7 @@ func TestTextRegistrationCompletionRetainsFailedCleanup(t *testing.T) {
 	attempt, cancel := context.WithCancel(owner.lease.Context())
 	defer cancel()
 	flight := &textRegistrationFlight{context: attempt, cancel: cancel, done: make(chan struct{})}
-	if !owner.textPublicationPairLifecycle.reserveOpeningLocked(flight) {
+	if !owner.publication.reserveOpeningLocked(flight) {
 		t.Fatal("registration opening reservation unavailable")
 	}
 	original := errors.New("registration terminal CLOSE could not be emitted")

@@ -71,11 +71,11 @@ func TestTextPublisherCommitsInstanceSignedDescriptor(t *testing.T) {
 			// selected Instance into another independently admitted local context.
 			foreign := textPermissionContextFixture(t, endpoint, fixtureID(211), broker.Administration)
 			foreign.mu.Lock()
-			foreign.source.live, foreign.registration, foreign.permission = owner.currentTextSourceLocked(), first, owner.permission
+			foreign.source.live, foreign.publication.registration, foreign.permission = owner.currentTextSourceLocked(), first, owner.permission
 			foreign.mu.Unlock()
 			_, foreignErr := foreign.publishTextDescriptor(t.Context())
 			foreign.mu.Lock()
-			foreign.source.live, foreign.registration, foreign.permission = nil, nil, nil
+			foreign.source.live, foreign.publication.registration, foreign.permission = nil, nil, nil
 			foreign.mu.Unlock()
 			if foreignErr == nil || endpoint.textPublisherOwner != owner {
 				t.Fatal("another context stole the Instance publication")

@@ -30,14 +30,14 @@ type textContextRetirement struct {
 func (owner *textContext) stopTextContextChildrenLocked() *textContextRetirement {
 	retirement := &textContextRetirement{}
 	retirement.refresh = owner.refresh.stopAsync()
-	retirement.publication = owner.textPublicationPairLifecycle.stopLocked()
+	retirement.publication = owner.publication.stopLocked()
 	owner.signalTextRegistrationsLocked()
 	retirement.exchanges = owner.introductionExchanges.stopLocked()
-	retirement.withdrawal = owner.textPublicationPairLifecycle.withdrawalLocked()
+	retirement.withdrawal = owner.publication.withdrawalLocked()
 	if retirement.withdrawal != nil {
 		retirement.withdrawal.cancel()
 	}
-	retirement.registrationOpening = owner.textPublicationPairLifecycle.openingLocked()
+	retirement.registrationOpening = owner.publication.openingLocked()
 	retirement.registrationOpening.stop()
 	owner.introductionDispatch.stopLocked()
 	owner.introductionAdmission.stopLocked()

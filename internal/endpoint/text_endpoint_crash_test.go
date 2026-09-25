@@ -89,7 +89,7 @@ func TestTextEndpointCrashDropsVolatileAuthorityAndRetainsSpend(t *testing.T) {
 	defer owner.Close()
 	owner.mu.Lock()
 	fresh := owner.permission == nil && owner.job == nil && owner.verifiedJob == nil && owner.source.set == nil &&
-		owner.currentTextSourceLocked() == nil && owner.registration == nil && owner.previousRegistration == nil &&
+		owner.currentTextSourceLocked() == nil && owner.publication.registration == nil && owner.publication.previousRegistration == nil &&
 		owner.introductionExchanges.active == nil && owner.introductionAdmission.replays == nil && owner.descriptorHistory.Cleared()
 	owner.mu.Unlock()
 	if !fresh {
