@@ -24,7 +24,8 @@ coupling; directory depth and filename prefixes are not goals by themselves.
 The current `textResolutionSource` is implemented by Endpoint's exact Route
 prefix acquisition in `text_source_lifecycle.go`. It is not implemented by
 `internal/network/source`. Names and package moves must preserve this
-distinction.
+distinction. The separate [Route boundary map](route-refactoring-boundary.md)
+records why the closed file cluster cannot be moved by filename alone.
 
 ## Endpoint interior
 
