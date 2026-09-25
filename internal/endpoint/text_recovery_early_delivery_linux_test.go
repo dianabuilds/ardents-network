@@ -58,7 +58,7 @@ func TestTextRecoveryDeliveryMayArriveBeforePublisherFailureDetection(t *testing
 	stopInitial := holdTextInitialIntroductionReceiver(t, ctx, publisher, publisherJob)
 
 	publisher.mu.Lock()
-	before := publisher.introductionOpenings[3]
+	before := publisher.introductionAdmission.openings[3]
 	publisher.mu.Unlock()
 	submitted := make(chan error, 1)
 	go func() { submitted <- reader.submitTextIntroduction(ctx, readerJob, early) }()
@@ -93,7 +93,7 @@ func TestTextRecoveryDeliveryMayArriveBeforePublisherFailureDetection(t *testing
 	}
 	defer clear(next.operation)
 	publisher.mu.Lock()
-	before = publisher.introductionOpenings[3]
+	before = publisher.introductionAdmission.openings[3]
 	publisher.mu.Unlock()
 	nextSubmitted := make(chan error, 1)
 	go func() { nextSubmitted <- reader.submitTextIntroduction(ctx, readerJob, next) }()
@@ -273,7 +273,7 @@ func waitTextIntroductionOpening(t *testing.T, ctx context.Context, owner *textC
 	t.Helper()
 	for {
 		owner.mu.Lock()
-		opened := owner.introductionOpenings[3]
+		opened := owner.introductionAdmission.openings[3]
 		owner.mu.Unlock()
 		if opened.After(before) {
 			return

@@ -54,7 +54,7 @@ func TestTextPublisherNetworkRetainsSnapshotAcrossReaders(t *testing.T) {
 					t.Fatal(err)
 				}
 				publisherOwner.mu.Lock()
-				beforeRefusal := publisherOwner.introductionOpenings
+				beforeRefusal := publisherOwner.introductionAdmission.openings
 				publisherOwner.mu.Unlock()
 				request, capsule, err := introductioncapsule.DecodeSubmission(refused.operation)
 				if err != nil {
@@ -95,7 +95,7 @@ func TestTextPublisherNetworkRetainsSnapshotAcrossReaders(t *testing.T) {
 					t.Fatal("corrupt capsule was accepted")
 				}
 				publisherOwner.mu.Lock()
-				receivedRefusal := publisherOwner.introductionOpenings != beforeRefusal
+				receivedRefusal := publisherOwner.introductionAdmission.openings != beforeRefusal
 				publisherOwner.mu.Unlock()
 				if !receivedRefusal {
 					t.Fatal("corrupt capsule did not reach Publisher opening boundary")
@@ -109,7 +109,7 @@ func TestTextPublisherNetworkRetainsSnapshotAcrossReaders(t *testing.T) {
 			// Start the two independent valid reads in the next rate window so a
 			// faster CI runner cannot turn the fifth opening into the test oracle.
 			publisherOwner.mu.Lock()
-			resumeAt := publisherOwner.introductionOpenings[3].Add(time.Second + 10*time.Millisecond)
+			resumeAt := publisherOwner.introductionAdmission.openings[3].Add(time.Second + 10*time.Millisecond)
 			publisherOwner.mu.Unlock()
 			if wait := time.Until(resumeAt); wait > 0 {
 				timer := time.NewTimer(wait)

@@ -403,7 +403,7 @@ func (owner *textContext) inspectTextIntroductionDelivery(ctx context.Context, j
 		return textIntroductionDeliveryKey{}, capsule.Expiry, fmt.Errorf("text Introduction registration ended: %s", registered.channel.EndReason())
 	default:
 	}
-	if err := owner.reserveTextIntroductionOpeningLocked(capsule.DeliveryNonce, now); err != nil {
+	if err := owner.introductionAdmission.reserveOpeningLocked(capsule.DeliveryNonce, now); err != nil {
 		return textIntroductionDeliveryKey{}, capsule.Expiry, &textIntroductionRefusal{cause: err}
 	}
 	plaintext, _, err := introductioncapsule.Open(capsule, profile.Digest, registered.recipient, now)

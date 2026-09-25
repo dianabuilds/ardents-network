@@ -4,7 +4,6 @@ package endpoint
 
 import (
 	"errors"
-	"time"
 )
 
 // textContextRetirement is one concrete snapshot of every child that was
@@ -50,9 +49,7 @@ func (owner *textContext) stopTextContextChildrenLocked() *textContextRetirement
 	owner.introductionWaiters = nil
 	clear(owner.introductionRecovery)
 	owner.introductionRecovery = nil
-	clear(owner.introductionReplays)
-	owner.introductionReplays = nil
-	owner.introductionOpenings = [4]time.Time{}
+	owner.introductionAdmission.stopLocked()
 	owner.descriptorHistory.Clear()
 	owner.sourceSet = nil
 	retirement.introduction = owner.introduction.stopLocked()

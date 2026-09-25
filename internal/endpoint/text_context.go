@@ -6,7 +6,6 @@ import (
 	"context"
 	"errors"
 	"sync"
-	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
 	"github.com/dianabuilds/ardents-network/internal/endpoint/descriptorhistory"
@@ -25,8 +24,7 @@ type textContextState struct {
 	introductionWaiters   map[*textIntroductionWaiter]struct{}
 	introductionRecovery  map[*textIntroductionRecoveryOwner]struct{}
 	introductionExchanges map[*textIntroductionExchange]struct{}
-	introductionReplays   map[[32]byte]time.Time
-	introductionOpenings  [4]time.Time
+	introductionAdmission textIntroductionAdmission
 	descriptorHistory     descriptorhistory.History
 	withdrawal            *textSourceFlight
 	registrationOpening   *textRegistrationFlight

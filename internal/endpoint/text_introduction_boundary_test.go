@@ -58,7 +58,7 @@ func checkTextCapsuleAdmissionBoundaries(t *testing.T, publisher, reader *textCo
 				t.Fatal(err)
 			}
 			// Each case isolates admission from the separately tested rate limiter.
-			publisher.introductionOpenings = [4]time.Time{}
+			publisher.introductionAdmission.openings = [4]time.Time{}
 			if index < 3 {
 				source.mu.Lock()
 				rendezvous := -1
@@ -108,7 +108,7 @@ func checkTextCapsuleAdmissionBoundaries(t *testing.T, publisher, reader *textCo
 			if err == nil || accepted != nil || strings.Contains(err.Error(), "rate unavailable") {
 				t.Errorf("invalid final admission accepted: %v", err)
 			}
-			if _, retained := publisher.introductionReplays[capsule.DeliveryNonce]; retained {
+			if _, retained := publisher.introductionAdmission.replays[capsule.DeliveryNonce]; retained {
 				t.Error("failed admission retained a successful delivery")
 			}
 		})

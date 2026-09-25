@@ -203,7 +203,7 @@ func TestTextIntroductionCapsuleBindsRealInstanceAndServiceStream(t *testing.T) 
 			if _, err := publisher.acceptTextIntroduction(t.Context(), publisherJob, attempt.operation); err == nil || !strings.Contains(err.Error(), "replay") {
 				t.Fatalf("replayed capsule accepted: %v", err)
 			}
-			if publisher.introductionReplays[sealed.DeliveryNonce] != registered.request.Expiry.Add(60*time.Second) {
+			if publisher.introductionAdmission.replays[sealed.DeliveryNonce] != registered.request.Expiry.Add(60*time.Second) {
 				t.Fatal("replay retention does not cover original signed slot expiry")
 			}
 			exchangeTextCapsuleService(t, attempt, accepted)
@@ -286,24 +286,24 @@ func TestTextIntroductionReplayAndOpeningRateAreContextBounded(t *testing.T) {
 	owner := &textContext{}
 	now := time.Now().UTC()
 	for index := 0; index < 4; index++ {
-		if err := owner.reserveTextIntroductionOpeningLocked(fixtureID(byte(index+1)), now); err != nil {
+		if err := owner.introductionAdmission.reserveOpeningLocked(fixtureID(byte(index+1)), now); err != nil {
 			t.Fatal(err)
 		}
 	}
-	if err := owner.reserveTextIntroductionOpeningLocked(fixtureID(8), now.Add(time.Second-time.Nanosecond)); err == nil {
+	if err := owner.introductionAdmission.reserveOpeningLocked(fixtureID(8), now.Add(time.Second-time.Nanosecond)); err == nil {
 		t.Fatal("more than four openings in one second")
 	}
-	if err := owner.reserveTextIntroductionOpeningLocked(fixtureID(8), now.Add(time.Second)); err != nil {
+	if err := owner.introductionAdmission.reserveOpeningLocked(fixtureID(8), now.Add(time.Second)); err != nil {
 		t.Fatal(err)
 	}
-	if err := owner.reserveTextIntroductionOpeningLocked(fixtureID(9), now); err == nil {
+	if err := owner.introductionAdmission.reserveOpeningLocked(fixtureID(9), now); err == nil {
 		t.Fatal("clock rollback reopened rate allowance")
 	}
-	owner.introductionReplays = map[[32]byte]time.Time{fixtureID(10): now.Add(2 * time.Second)}
-	if err := owner.reserveTextIntroductionOpeningLocked(fixtureID(10), now.Add(time.Second)); err == nil {
+	owner.introductionAdmission.replays = map[[32]byte]time.Time{fixtureID(10): now.Add(2 * time.Second)}
+	if err := owner.introductionAdmission.reserveOpeningLocked(fixtureID(10), now.Add(time.Second)); err == nil {
 		t.Fatal("replay allowed before expiry")
 	}
-	if err := owner.reserveTextIntroductionOpeningLocked(fixtureID(10), now.Add(2*time.Second)); err != nil {
+	if err := owner.introductionAdmission.reserveOpeningLocked(fixtureID(10), now.Add(2*time.Second)); err != nil {
 		t.Fatal(err)
 	}
 }
