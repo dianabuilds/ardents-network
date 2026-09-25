@@ -94,12 +94,14 @@ func TestTextIntroductionDeliversFourConcurrentReaders(t *testing.T) {
 		stage      string
 		connection [32]byte
 		err        error
+		elapsed    time.Duration
 	}
 	work := make([]readerWork, len(readers))
 	for index, reader := range readers {
 		work[index] = readerWork{owner: reader, job: liveTextCapsuleJob(t, reader)}
 	}
 	start := make(chan struct{})
+	trigger := time.Now()
 	senders := make(chan deliveryResult, len(work))
 	receivers := make(chan deliveryResult, len(work))
 	for index := range work {
@@ -110,6 +112,7 @@ func TestTextIntroductionDeliversFourConcurrentReaders(t *testing.T) {
 			if attempt != nil && attempt.binding != nil {
 				result.connection = attempt.binding.facts.ConnectionNonce
 			}
+			result.elapsed = time.Since(trigger)
 			receivers <- result
 		}(index)
 	}
@@ -127,15 +130,18 @@ func TestTextIntroductionDeliversFourConcurrentReaders(t *testing.T) {
 				result.stage = "submit"
 				result.err = item.owner.submitTextIntroduction(ctx, item.job, attempt)
 			}
+			result.elapsed = time.Since(trigger)
 			senders <- result
 		}(index, item)
 	}
 	close(start)
 	var outcome error
+	results := make([]deliveryResult, 0, 2*len(work))
 	sent := make(map[[32]byte]bool, len(work))
 	received := make(map[[32]byte]bool, len(work))
 	for range work {
 		sender, receiver := <-senders, <-receivers
+		results = append(results, sender, receiver)
 		if sender.err != nil {
 			outcome = errors.Join(outcome, fmt.Errorf("reader %d %s: %w", sender.index, sender.stage, sender.err))
 		} else if sender.connection == [32]byte{} || sent[sender.connection] {
@@ -152,6 +158,9 @@ func TestTextIntroductionDeliversFourConcurrentReaders(t *testing.T) {
 		}
 	}
 	if outcome != nil {
+		for _, result := range results {
+			t.Logf("Introduction %s %d completed after %s: success=%t", result.stage, result.index, result.elapsed, result.err == nil)
+		}
 		t.Fatalf("four concurrent Introduction deliveries: %v", outcome)
 	}
 	if len(sent) != len(work) || len(received) != len(work) {
