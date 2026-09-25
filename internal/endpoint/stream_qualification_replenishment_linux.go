@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/application/streamqualification"
+	"github.com/dianabuilds/ardents-network/internal/qualification"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 )
 
@@ -40,8 +41,8 @@ func (worker *qualifiedTextWorker) runQualifiedStreams(ctx context.Context, stre
 			}
 		}
 	}()
-	attachment := &qualificationAttachment{ReadWriteCloser: worker.lifetime.attachment, sample: worker.job.qualification.stopSamples}
-	report, outcome = streamqualification.RunConnections(bounded, attachment, worker.job.qualification.init, streams, worker.job.qualification.observe)
+	attachment := qualification.NewAttachment(worker.lifetime.attachment, worker.job.qualification.StopSamples)
+	report, outcome = streamqualification.RunConnections(bounded, attachment, worker.job.qualification.Init(), streams, worker.job.qualification.observe)
 	cancel()
 	outcome = errors.Join(outcome, <-stopped)
 	return report, outcome

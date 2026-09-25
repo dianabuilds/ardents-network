@@ -32,7 +32,7 @@ type StreamQualificationConfig struct {
 }
 
 type StreamQualificationEvent struct {
-	Artifact *StreamQualificationArtifact
+	Artifact *qualification.Artifact
 	Elapsed  time.Duration
 	Host     *resource.HostingSample
 	Usage    *resource.Sample

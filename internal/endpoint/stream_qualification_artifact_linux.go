@@ -2,27 +2,15 @@
 
 package endpoint
 
-import "encoding/hex"
+import "github.com/dianabuilds/ardents-network/internal/qualification"
 
-// StreamQualificationArtifact reports the inventory verified before Grant
-// delivery. These diagnostics cannot be supplied back as launch authority.
-type StreamQualificationArtifact struct {
-	ManifestSHA256 string
-	Files          map[string]string
-	Cgroup         string
-}
-
-func (worker *textWorkerLifetime) qualificationArtifact() *StreamQualificationArtifact {
+func (worker *textWorkerLifetime) qualificationArtifact() *qualification.Artifact {
 	if worker.artifact == nil || worker.artifact.inventory != streamInventory {
 		return nil
 	}
-	report := &StreamQualificationArtifact{
-		ManifestSHA256: hex.EncodeToString(worker.artifact.manifestDigest[:]),
-		Files:          make(map[string]string, len(worker.artifact.files)),
-		Cgroup:         worker.cgroup,
-	}
+	files := make(map[string][32]byte, len(worker.artifact.files))
 	for path, digest := range worker.artifact.files {
-		report.Files[path] = hex.EncodeToString(digest[:])
+		files[path] = digest
 	}
-	return report
+	return qualification.ArtifactFrom(worker.artifact.manifestDigest, files, worker.cgroup)
 }
