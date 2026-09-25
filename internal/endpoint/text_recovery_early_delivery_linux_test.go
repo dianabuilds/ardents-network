@@ -62,7 +62,7 @@ func TestTextRecoveryDeliveryMayArriveBeforePublisherFailureDetection(t *testing
 	publisher.mu.Unlock()
 	submitted := make(chan error, 1)
 	go func() { submitted <- reader.submitTextIntroduction(ctx, readerJob, early) }()
-	waitTextIntroductionOpening(t, ctx, publisher, before)
+	waitTextIntroductionOpening(t, ctx, publisher, before, submitted, early.plaintext.Deadline)
 	select {
 	case err := <-submitted:
 		t.Fatalf("early recovery delivery was completed before its live owner waited: %v", err)
@@ -97,7 +97,7 @@ func TestTextRecoveryDeliveryMayArriveBeforePublisherFailureDetection(t *testing
 	publisher.mu.Unlock()
 	nextSubmitted := make(chan error, 1)
 	go func() { nextSubmitted <- reader.submitTextIntroduction(ctx, readerJob, next) }()
-	waitTextIntroductionOpening(t, ctx, publisher, before)
+	waitTextIntroductionOpening(t, ctx, publisher, before, nextSubmitted, next.plaintext.Deadline)
 	if err := <-nextSubmitted; err == nil {
 		t.Fatal("expired buffered recovery delivery was accepted")
 	}
@@ -269,7 +269,9 @@ func TestTextIntroductionOrphanRefusalOutlivesCanceledWaiter(t *testing.T) {
 	}
 }
 
-func waitTextIntroductionOpening(t *testing.T, ctx context.Context, owner *textContext, before time.Time) {
+func waitTextIntroductionOpening(t *testing.T, ctx context.Context, owner *textContext, before time.Time,
+	submitted <-chan error, deadline time.Time,
+) {
 	t.Helper()
 	for {
 		owner.mu.Lock()
@@ -279,8 +281,12 @@ func waitTextIntroductionOpening(t *testing.T, ctx context.Context, owner *textC
 			return
 		}
 		select {
+		case err := <-submitted:
+			t.Fatalf("submission ended before Publisher inspected the delivery: %v (delivery deadline in %s)",
+				err, time.Until(deadline))
 		case <-ctx.Done():
-			t.Fatalf("Publisher did not inspect the early recovery delivery: %v", ctx.Err())
+			t.Fatalf("Publisher did not inspect the early recovery delivery: %v (delivery deadline in %s)",
+				ctx.Err(), time.Until(deadline))
 		default:
 			runtime.Gosched()
 		}
