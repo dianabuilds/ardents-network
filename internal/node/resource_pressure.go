@@ -1,6 +1,11 @@
 package node
 
-import "github.com/dianabuilds/ardents-network/internal/resource"
+import (
+	"context"
+	"errors"
+
+	"github.com/dianabuilds/ardents-network/internal/resource"
+)
 
 type pressureLevel byte
 
@@ -9,6 +14,15 @@ const (
 	pressureProtect
 	pressureDrain
 )
+
+// Keep the external lifecycle reason bounded and independent of filesystem,
+// cgroup, or provider error text. The returned Run error retains the cause.
+func resourcePressureFailureReason(err error) string {
+	if errors.Is(err, context.DeadlineExceeded) {
+		return "resource pressure sampling timed out"
+	}
+	return "resource pressure evidence is unavailable"
+}
 
 func (config *runtimeConfig) resourcePressure(server *probeServer) (pressureLevel, resource.Sample, error) {
 	hosting, hostingErr := config.hostingPressure()

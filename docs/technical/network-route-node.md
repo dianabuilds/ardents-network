@@ -336,6 +336,12 @@ and measured. Unsupported platforms refuse rather than silently reporting
 capacity. Resource has no authority over a consumer's lifecycle: Endpoint,
 Node, and Route own their respective readiness, admission, drain, and shutdown
 reaction.
+When a READY Node cannot obtain required pressure evidence, it fails closed.
+Its lifecycle event uses the fixed reason `resource pressure sampling timed out`
+for a measurement deadline and the existing `resource pressure evidence is
+unavailable` reason for other errors. The event never copies raw measurement,
+filesystem, cgroup, or provider error text; the `Run` error retains the
+underlying cause for local diagnosis.
 
 ## Current limits and limitations
 
