@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/network/state"
+	"github.com/dianabuilds/ardents-network/internal/route/terminal"
 )
 
 // The peer has the exact State-pinned role TLS key but deliberately delays its
@@ -70,13 +71,13 @@ func TestClosedJoinClientRejectsResultAfterSetupDeadline(t *testing.T) {
 			if err != nil {
 				return err
 			}
-			request, err := DecodeClosedJoinRequest(operation.Body)
+			request, err := terminal.DecodeJoinRequest(operation.Body)
 			if err != nil {
 				return err
 			}
 			<-time.After(time.Until(setup.Add(100 * time.Millisecond)))
 			close(resultAttempted)
-			body, err := EncodeClosedJoinResult(request.Nonce, 0)
+			body, err := terminal.EncodeJoinResult(request.Nonce, 0)
 			if err != nil {
 				return err
 			}

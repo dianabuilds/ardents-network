@@ -8,6 +8,8 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/route/terminal"
 )
 
 type closedJoinFixture struct {
@@ -89,7 +91,7 @@ func (f *closedJoinFixture) join(t *testing.T, role uint8, contextByte byte, sec
 	t.Helper()
 	lease := f.admission(t, 2)
 	defer lease.Release()
-	raw, err := EncodeClosedJoinRequest(ClosedJoinRequest{Nonce: [32]byte{f.nonce, 8}, Secret: [32]byte{20}, Context: [32]byte{contextByte}, Side: role, Deadline: f.now.Add(time.Duration(seconds) * time.Second)})
+	raw, err := terminal.EncodeJoinRequest(terminal.JoinRequest{Nonce: [32]byte{f.nonce, 8}, Secret: [32]byte{20}, Context: [32]byte{contextByte}, Side: role, Deadline: f.now.Add(time.Duration(seconds) * time.Second)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -138,7 +140,7 @@ func TestClosedJoinPairingKeepsLocalResultsAndOriginalAdmission(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if status, err := DecodeClosedJoinResult(raw, side.nonce); err != nil || status != 0 {
+		if status, err := terminal.DecodeJoinResult(raw, side.nonce); err != nil || status != 0 {
 			t.Fatal("result lost local nonce")
 		}
 		if _, err := side.Result(); err == nil {
@@ -320,7 +322,7 @@ func TestClosedJoinPairingRefusalRetainsOriginalAdmission(t *testing.T) {
 				class = 1
 			}
 			lease := f.admission(t, class)
-			raw, err := EncodeClosedJoinRequest(ClosedJoinRequest{Nonce: [32]byte{90}, Secret: [32]byte{20}, Context: [32]byte{21}, Side: 2, Deadline: f.now.Add(10 * time.Second)})
+			raw, err := terminal.EncodeJoinRequest(terminal.JoinRequest{Nonce: [32]byte{90}, Secret: [32]byte{20}, Context: [32]byte{21}, Side: 2, Deadline: f.now.Add(10 * time.Second)})
 			if err != nil {
 				t.Fatal(err)
 			}

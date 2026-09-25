@@ -10,6 +10,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/route/terminal"
+
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/service/reachability"
 )
@@ -27,13 +29,13 @@ func TestClosedResolutionPublishesAndLooksUpThroughAdmittedNodeCarrier(t *testin
 				return raw
 			}
 			nonce := [32]byte{91}
-			lookup, err := route.EncodeClosedDescriptorLookup(nonce, fixture.current.Credential.Target)
+			lookup, err := terminal.EncodeDescriptorLookup(nonce, fixture.current.Credential.Target)
 			if err != nil {
 				t.Fatal(err)
 			}
 			publish := func(raw []byte) []byte {
 				t.Helper()
-				operation, err := route.EncodeClosedDescriptorPublication(nonce, raw)
+				operation, err := terminal.EncodeDescriptorPublication(nonce, raw)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -98,7 +100,7 @@ func (fixture *resolutionNetworkFixture) exchange(ctx context.Context, token []b
 	if err != nil || result.Kind != 11 || result.Lane != 0 {
 		return 0, nil, fmt.Errorf("Descriptor result: kind=%d error=%v", result.Kind, err)
 	}
-	status, proof, err := route.DecodeClosedDescriptorResult(result.Body, nonce)
+	status, proof, err := terminal.DecodeDescriptorResult(result.Body, nonce)
 	if err != nil {
 		return 0, nil, err
 	}

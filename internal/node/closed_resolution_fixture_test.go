@@ -14,6 +14,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/route/terminal"
+
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/credential"
@@ -250,7 +252,7 @@ func privateRecipientTokens(t *testing.T, root string, profile state.ClosedProfi
 	}
 	defer pending.Discard()
 	nonce := [32]byte{84}
-	request, err := route.EncodeClosedIssuanceRequest(nonce, pending.Request())
+	request, err := terminal.EncodeIssuanceRequest(nonce, pending.Request())
 	if err != nil {
 		t.Fatal(err)
 	}

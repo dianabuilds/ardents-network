@@ -1,6 +1,6 @@
 //go:build linux
 
-package route
+package terminal
 
 import (
 	"bytes"
@@ -12,25 +12,17 @@ import (
 
 func TestClosedDescriptorOperationsHaveExactTerminalFraming(t *testing.T) {
 	nonce, target := [32]byte{1}, [32]byte{2}
-	lookup, err := EncodeClosedDescriptorLookup(nonce, target)
+	lookup, err := EncodeDescriptorLookup(nonce, target)
 	if err != nil {
 		t.Fatal(err)
 	}
 	proof := bytes.Repeat([]byte{3}, reachability.MaximumPrivateDescriptorSize)
-	publish, err := EncodeClosedDescriptorPublication(nonce, proof)
+	publish, err := EncodeDescriptorPublication(nonce, proof)
 	if err != nil {
 		t.Fatal(err)
 	}
 	for _, body := range [][]byte{lookup, publish} {
-		raw, err := EncodeClosedLaneFrame(ClosedLaneFrame{Kind: closedFrameOperation, Body: body})
-		if err != nil {
-			t.Fatal(err)
-		}
-		frame, err := ReadClosedLaneFrame(bytes.NewReader(raw))
-		if err != nil {
-			t.Fatal(err)
-		}
-		request, err := DecodeClosedDescriptorRequest(frame.Body)
+		request, err := DecodeDescriptorRequest(body)
 		if err != nil || request.Nonce != nonce {
 			t.Fatalf("terminal request: %+v %v", request, err)
 		}
@@ -46,15 +38,15 @@ func TestClosedDescriptorOperationsHaveExactTerminalFraming(t *testing.T) {
 		if status != 0 {
 			payload = nil
 		}
-		body, err := EncodeClosedDescriptorResult(nonce, status, payload)
+		body, err := EncodeDescriptorResult(nonce, status, payload)
 		if err != nil || len(body) != 16384 {
 			t.Fatalf("unequal public result size: %v", err)
 		}
-		got, decoded, err := DecodeClosedDescriptorResult(body, nonce)
+		got, decoded, err := DecodeDescriptorResult(body, nonce)
 		if err != nil || got != status || !bytes.Equal(decoded, payload) {
 			t.Fatalf("result changed: %v", err)
 		}
-		if _, _, err := DecodeClosedDescriptorResult(body, [32]byte{9}); err == nil {
+		if _, _, err := DecodeDescriptorResult(body, [32]byte{9}); err == nil {
 			t.Fatal("result accepted different nonce")
 		}
 	}
@@ -62,11 +54,11 @@ func TestClosedDescriptorOperationsHaveExactTerminalFraming(t *testing.T) {
 
 func TestClosedDescriptorRejectsMalformedOperationAndResult(t *testing.T) {
 	nonce, target := [32]byte{1}, [32]byte{2}
-	lookup, err := EncodeClosedDescriptorLookup(nonce, target)
+	lookup, err := EncodeDescriptorLookup(nonce, target)
 	if err != nil {
 		t.Fatal(err)
 	}
-	publish, err := EncodeClosedDescriptorPublication(nonce, []byte{3})
+	publish, err := EncodeDescriptorPublication(nonce, []byte{3})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -89,17 +81,17 @@ func TestClosedDescriptorRejectsMalformedOperationAndResult(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			body := bytes.Clone(test.body)
 			test.mutate(body)
-			if _, err := DecodeClosedDescriptorRequest(body); err == nil {
+			if _, err := DecodeDescriptorRequest(body); err == nil {
 				t.Fatal("malformed operation accepted")
 			}
 		})
 	}
 	for _, body := range [][]byte{nil, lookup[:4095], append(bytes.Clone(lookup), 0), publish[:16383], append(bytes.Clone(publish), 0)} {
-		if _, err := DecodeClosedDescriptorRequest(body); err == nil {
+		if _, err := DecodeDescriptorRequest(body); err == nil {
 			t.Fatal("incorrect request length accepted")
 		}
 	}
-	result, err := EncodeClosedDescriptorResult(nonce, 0, []byte{3})
+	result, err := EncodeDescriptorResult(nonce, 0, []byte{3})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -109,19 +101,19 @@ func TestClosedDescriptorRejectsMalformedOperationAndResult(t *testing.T) {
 	} {
 		body := bytes.Clone(result)
 		mutate(body)
-		if _, _, err := DecodeClosedDescriptorResult(body, nonce); err == nil {
+		if _, _, err := DecodeDescriptorResult(body, nonce); err == nil {
 			t.Fatal("malformed result accepted")
 		}
 	}
 	for _, body := range [][]byte{nil, result[:16383], append(bytes.Clone(result), 0)} {
-		if _, _, err := DecodeClosedDescriptorResult(body, nonce); err == nil {
+		if _, _, err := DecodeDescriptorResult(body, nonce); err == nil {
 			t.Fatal("incorrect response length accepted")
 		}
 	}
-	if _, err := EncodeClosedDescriptorPublication(nonce, make([]byte, 15001)); err == nil {
+	if _, err := EncodeDescriptorPublication(nonce, make([]byte, 15001)); err == nil {
 		t.Fatal("oversized proof admitted")
 	}
-	if _, err := EncodeClosedDescriptorResult(nonce, 1, []byte{3}); err == nil {
+	if _, err := EncodeDescriptorResult(nonce, 1, []byte{3}); err == nil {
 		t.Fatal("refusal carried proof")
 	}
 }

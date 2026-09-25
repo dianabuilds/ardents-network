@@ -14,6 +14,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/route"
 	introductioncapsule "github.com/dianabuilds/ardents-network/internal/route/capsule"
+	"github.com/dianabuilds/ardents-network/internal/route/terminal"
 )
 
 // Two real admitted submissions expose the receiving Introduction's remapping
@@ -27,7 +28,7 @@ func TestClosedIntroductionDeliveryObservation(t *testing.T) {
 			observations := []introductionReceiverObservation{observeIntroductionReceiver(t, receiver, "startup")}
 			registrationTrace := new(introductionTranscript)
 			fixture.observe = func(connection net.Conn) net.Conn { return &introductionTranscriptConn{connection, registrationTrace} }
-			request := route.ClosedRegistrationRequest{Revision: 1, Expiry: time.Now().UTC().Add(30 * time.Second).Truncate(time.Second)}
+			request := terminal.RegistrationRequest{Revision: 1, Expiry: time.Now().UTC().Add(30 * time.Second).Truncate(time.Second)}
 			for _, value := range [][]byte{request.Nonce[:], request.Slot[:]} {
 				if _, err := rand.Read(value); err != nil {
 					t.Fatal(err)
@@ -99,7 +100,7 @@ func TestClosedIntroductionDeliveryObservation(t *testing.T) {
 				if !bytes.Equal(operation[33:], delivered.Body[33:]) || received.DeliveryNonce != capsule.DeliveryNonce || !bytes.Equal(received.Ciphertext, capsule.Ciphertext) {
 					t.Fatal("Introduction changed opaque capsule")
 				}
-				result, err := route.EncodeClosedDescriptorResult(forwarded, 0, nil)
+				result, err := terminal.EncodeDescriptorResult(forwarded, 0, nil)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -114,7 +115,7 @@ func TestClosedIntroductionDeliveryObservation(t *testing.T) {
 				if err != nil || reply.Kind != 11 || reply.Lane != 0 {
 					t.Fatalf("submission reply: %v", err)
 				}
-				verdict, proof, err := route.DecodeClosedDescriptorResult(reply.Body, nonce)
+				verdict, proof, err := terminal.DecodeDescriptorResult(reply.Body, nonce)
 				if err != nil || verdict != 0 || len(proof) != 0 {
 					t.Fatalf("submission nonce handback: %v", err)
 				}
@@ -133,7 +134,7 @@ func TestClosedIntroductionDeliveryObservation(t *testing.T) {
 				}
 				submissions = append(submissions, observedChannel{sent, read})
 			}
-			withdrawal := route.ClosedRegistrationRequest{Slot: request.Slot, Revision: request.Revision, Withdraw: true}
+			withdrawal := terminal.RegistrationRequest{Slot: request.Slot, Revision: request.Revision, Withdraw: true}
 			if _, err := rand.Read(withdrawal.Nonce[:]); err != nil {
 				t.Fatal(err)
 			}

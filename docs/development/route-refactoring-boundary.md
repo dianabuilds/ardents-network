@@ -1,8 +1,9 @@
 # Route package refactoring boundary
 
-Status: working architecture analysis for the isolated refactoring branch. This
-is not a new Route contract, a package-map change, or a C0 execution ledger.
-The accepted Route and Carrier contracts continue to govern behavior.
+Status: working architecture analysis for the isolated refactoring branch. The
+terminal body extraction below is implemented and registered in the package
+map; the remaining Route split is still analysis, not a new Route contract or
+C0 execution ledger. The accepted Route and Carrier contracts govern behavior.
 
 ## Current Linux owner graph
 
@@ -38,10 +39,10 @@ It uses Closed Route types, so any split must migrate that consumer together
 with Endpoint and Node imports. A temporary `route` wrapper that imports a new
 closed package while that package imports `route` would create a cycle.
 
-## Candidate terminal-operation owner
+## Terminal-operation owner
 
-The next bounded extraction candidate is the fixed terminal body grammar,
-tentatively `internal/route/terminal`. Its production cohort is exactly
+The fixed terminal body grammar is now owned by `internal/route/terminal`. Its
+production cohort came from
 `closed_issuance_operation.go`, `closed_issuance_client_operation_linux.go`,
 `closed_descriptor_operation.go`, `closed_descriptor_client_operation_linux.go`,
 `closed_join_operation.go`, `closed_join_client_operation_linux.go`,
@@ -49,31 +50,22 @@ tentatively `internal/route/terminal`. Its production cohort is exactly
 `closed_registration_encoding_linux.go`. Their four matching operation test
 files contain the canonical size, nonce, padding, expiry, and byte-offset
 oracles.
-This owner would import only `internal/service/reachability` and the standard
-library; it has no reason to import `internal/route`.
+This owner imports only `internal/service/reachability` and the standard
+library; it does not import `internal/route`.
 
-The owner would expose the four request types, the issuance result type, and
-their existing encode/decode operations without the redundant `Closed` prefix.
-The 4-KiB and 16-KiB body sizes must have one definition shared with Route
-lane validation; merely copying the two constants would create independent
-wire contracts. The zero-padding rule belongs to this codec owner and must
-remain identical for Descriptor, JOIN, and registration bodies.
+The owner exposes the four request types, the issuance result type, and their
+encode/decode operations without the redundant `Closed` prefix. Route lane
+validation uses `terminal.BodySize` and `terminal.SmallBodySize`; these sizes
+have one definition. The zero-padding rule belongs to this codec owner and
+remains identical for Descriptor, JOIN, and registration bodies.
 
-The current Route tests for Descriptor and JOIN also assert outer lane
-framing. Keep those cross-layer assertions in `internal/route` while moving
-the pure body tests with the codec. Migrate actual Route, Node, Endpoint, and
-`route/credential` callers in the same compiling change; no delegating
-`route.Closed*` wrappers or test-only package may remain. Route may import
-the terminal codec, but the codec must not import Route. Register exact imports
-and command ownership in `package-map.md`, then verify Linux and Windows
-builds, affected behavior tests, and the full gate.
-
-This is a source-level candidate, not an accepted package split. The caller
-cohort includes `closed_introduction_client.go`,
-`closed_introduction_delivery.go`, and Node Introduction registration and
-delivery. Those owners overlap the live network opening work. Recheck their
-names and behavior after its completed changes are integrated before editing
-the cohort; the existing capsule extraction does not prove this split.
+The pure body tests moved with the codec. Outer Descriptor and JOIN lane
+assertions remain in `internal/route`. Actual Route, Node, Endpoint, and
+`route/credential` callers use the new package directly, with no delegating
+`route.Closed*` wrappers. The exact imports and absence of command ownership
+are recorded in `package-map.md`. Recheck overlapping caller names and behavior
+when completed network-opening work is integrated; the network task retains
+its own uncommitted implementation.
 
 ## Intended seam
 

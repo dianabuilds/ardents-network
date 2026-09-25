@@ -1,4 +1,4 @@
-package route
+package terminal
 
 import (
 	"encoding/binary"
@@ -6,18 +6,18 @@ import (
 	"time"
 )
 
-// ClosedRegistrationRequest contains a channel-owned slot action, never
+// RegistrationRequest contains a channel-owned slot action, never
 // Service Authority, a Target or a Publisher callback address.
-type ClosedRegistrationRequest struct {
+type RegistrationRequest struct {
 	Nonce, Slot [32]byte
 	Revision    uint64
 	Expiry      time.Time
 	Withdraw    bool
 }
 
-func DecodeClosedRegistrationRequest(body []byte) (ClosedRegistrationRequest, error) {
-	var request ClosedRegistrationRequest
-	if len(body) != closedSmallTerminalOperation || body[0] != 3 && body[0] != 7 {
+func DecodeRegistrationRequest(body []byte) (RegistrationRequest, error) {
+	var request RegistrationRequest
+	if len(body) != SmallBodySize || body[0] != 3 && body[0] != 7 {
 		return request, errors.New("closed registration operation invalid")
 	}
 	copy(request.Nonce[:], body[1:33])
@@ -33,7 +33,7 @@ func DecodeClosedRegistrationRequest(body []byte) (ClosedRegistrationRequest, er
 		request.Expiry = time.Unix(int64(seconds), 0).UTC()
 		offset = 81
 	}
-	if request.Nonce == [32]byte{} || request.Slot == [32]byte{} || request.Revision == 0 || !closedDescriptorPadding(body[offset:]) {
+	if request.Nonce == [32]byte{} || request.Slot == [32]byte{} || request.Revision == 0 || !zeroPadding(body[offset:]) {
 		return request, errors.New("closed registration binding or padding invalid")
 	}
 	return request, nil

@@ -19,6 +19,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/route"
 	introductioncapsule "github.com/dianabuilds/ardents-network/internal/route/capsule"
+	"github.com/dianabuilds/ardents-network/internal/route/terminal"
 )
 
 // Only fixture credentials enter a parent-owned private temporary directory.
@@ -35,7 +36,7 @@ type introductionCrashClient struct {
 	Receiver     route.ClosedRoleReceiver
 	ServerKey    [32]byte
 	Token        []byte
-	Request      route.ClosedRegistrationRequest
+	Request      terminal.RegistrationRequest
 }
 
 func TestClosedIntroductionClientCrashStopsDelivery(t *testing.T) {
@@ -50,7 +51,7 @@ func TestClosedIntroductionClientCrashStopsDelivery(t *testing.T) {
 	for _, carrier := range []route.CarrierProfile{route.ClosedCarrierTCP, route.ClosedCarrierQUIC} {
 		t.Run(string(carrier), func(t *testing.T) {
 			fixture := newPrivateRecipientNetworkFixture(t, carrier, route.ClosedPurposeIntroduction, 3, 1)
-			request := route.ClosedRegistrationRequest{Nonce: [32]byte{121}, Slot: [32]byte{122}, Revision: 1, Expiry: time.Now().UTC().Add(60 * time.Second).Truncate(time.Second)}
+			request := terminal.RegistrationRequest{Nonce: [32]byte{121}, Slot: [32]byte{122}, Revision: 1, Expiry: time.Now().UTC().Add(60 * time.Second).Truncate(time.Second)}
 			input := introductionCrashClient{Profile: fixture.profile, Carrier: carrier, Endpoint: fixture.endpoint, Certificates: fixture.certificate.Certificate, PrivateKey: fixture.certificate.PrivateKey.(ed25519.PrivateKey), Receiver: fixture.receiver, ServerKey: fixture.serverKey, Token: fixture.tokens[0], Request: request}
 			root := t.TempDir()
 			if err := os.Chmod(root, 0700); err != nil {
@@ -186,7 +187,7 @@ func runIntroductionCrashClient(t *testing.T, path string) {
 			t.Fatal("unexpected delivery capsule")
 		}
 		pending = frame.Lane
-		response, err := route.EncodeClosedDescriptorResult(nonce, 0, nil)
+		response, err := terminal.EncodeDescriptorResult(nonce, 0, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -196,7 +197,7 @@ func runIntroductionCrashClient(t *testing.T, path string) {
 	}
 }
 
-func submitIntroductionCrashFixture(t *testing.T, fixture *resolutionNetworkFixture, request route.ClosedRegistrationRequest, index int) (uint8, error) {
+func submitIntroductionCrashFixture(t *testing.T, fixture *resolutionNetworkFixture, request terminal.RegistrationRequest, index int) (uint8, error) {
 	t.Helper()
 	submitter := *fixture
 	submitter.receiver.ExpectedPurpose = route.ClosedPurposeSubmission
@@ -227,7 +228,7 @@ func submitIntroductionCrashFixture(t *testing.T, fixture *resolutionNetworkFixt
 	if frame.Kind != 11 || frame.Lane != 0 {
 		t.Fatal("unexpected submission result")
 	}
-	result, proof, err := route.DecodeClosedDescriptorResult(frame.Body, nonce)
+	result, proof, err := terminal.DecodeDescriptorResult(frame.Body, nonce)
 	if err != nil || len(proof) != 0 {
 		t.Fatalf("malformed submission result: %v", err)
 	}

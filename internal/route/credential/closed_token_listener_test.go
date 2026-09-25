@@ -7,12 +7,15 @@ import (
 	"crypto/ed25519"
 	"crypto/rand"
 	"crypto/sha256"
-	"github.com/dianabuilds/ardents-network/internal/network/state"
-	"github.com/dianabuilds/ardents-network/internal/route"
 	"net"
 	"os"
 	"testing"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/route/terminal"
+
+	"github.com/dianabuilds/ardents-network/internal/network/state"
+	"github.com/dianabuilds/ardents-network/internal/route"
 )
 
 func TestClosedTokenListenerServesOnlyDirectRoleBootstrap(t *testing.T) {
@@ -46,7 +49,7 @@ func TestClosedTokenListenerServesOnlyDirectRoleBootstrap(t *testing.T) {
 			}
 			observed := &issuerTLSObservationConn{Conn: connection}
 			result := closedTokenListenerBootstrap(t, observed, profile, now, operation)
-			if _, err := route.DecodeClosedIssuanceResult(result, [32]byte{71}); err != nil {
+			if _, err := terminal.DecodeIssuanceResult(result, [32]byte{71}); err != nil {
 				t.Fatalf("listener result: %v", err)
 			}
 			_ = connection.Close()
@@ -107,7 +110,7 @@ func closedTokenListenerIssuer(t *testing.T) (*ClosedTokenIssuer, state.ClosedPr
 		t.Fatal(err)
 	}
 	t.Cleanup(pending.Discard)
-	operation, err := route.EncodeClosedIssuanceRequest([32]byte{71}, pending.Request())
+	operation, err := terminal.EncodeIssuanceRequest([32]byte{71}, pending.Request())
 	if err != nil {
 		t.Fatal(err)
 	}

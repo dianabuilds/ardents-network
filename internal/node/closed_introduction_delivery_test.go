@@ -10,6 +10,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/route"
 	introductioncapsule "github.com/dianabuilds/ardents-network/internal/route/capsule"
+	"github.com/dianabuilds/ardents-network/internal/route/terminal"
 )
 
 // State acceptance and pending acknowledgements are explicit seams. This
@@ -21,7 +22,7 @@ func TestClosedIntroductionDeliverySerializesIDsAndBoundsPending(t *testing.T) {
 	now := time.Now().UTC().Truncate(time.Second)
 	var clock atomic.Int64
 	clock.Store(now.Unix())
-	slot := &closedIntroductionSlot{request: route.ClosedRegistrationRequest{Slot: [32]byte{1}, Revision: 1, Expiry: now.Add(30 * time.Second)},
+	slot := &closedIntroductionSlot{request: terminal.RegistrationRequest{Slot: [32]byte{1}, Revision: 1, Expiry: now.Add(30 * time.Second)},
 		connection: local, writer: make(chan struct{}, 1), done: make(chan struct{}), active: true, maximum: route.ClosedIntroductionRegistrationByteLimit,
 		pending: make(map[uint32]*closedIntroductionDelivery)}
 	server := &closedIntroductionServer{config: runtimeConfig{Config: Config{Current: func() (DutyView, error) {

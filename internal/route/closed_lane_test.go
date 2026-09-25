@@ -7,6 +7,8 @@ import (
 	"encoding/binary"
 	"testing"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/route/terminal"
 )
 
 func TestClosedLaneHELLOAndBootstrapHaveExactV3Framing(t *testing.T) {
@@ -129,7 +131,7 @@ func TestClosedLaneRejectsUnknownAndWrongLaneFormsBeforeAllocation(t *testing.T)
 		{Kind: closedFrameCredit, Lane: 1, Body: []byte{0, 0, 0, 0}},
 		{Kind: closedFrameEOF, Lane: 1, Body: []byte{1}},
 		{Kind: closedFrameClose, Lane: 1, Body: []byte{7}},
-		{Kind: closedFrameOperation, Lane: 0, Body: make([]byte, closedSmallTerminalOperation-1)},
+		{Kind: closedFrameOperation, Lane: 0, Body: make([]byte, terminal.SmallBodySize-1)},
 		{Kind: closedFrameOperation, Lane: 1, Body: make([]byte, 4095)},
 		{Kind: closedFrameResult, Lane: 1, Body: make([]byte, 4096)},
 		{Kind: closedFrameKeepalive, Lane: 1},
@@ -141,7 +143,7 @@ func TestClosedLaneRejectsUnknownAndWrongLaneFormsBeforeAllocation(t *testing.T)
 	}
 	for _, frame := range []ClosedLaneFrame{
 		{Kind: closedFrameAdmit, Lane: 0, Body: make([]byte, 355)},
-		{Kind: closedFrameOperation, Lane: 1, Body: make([]byte, closedSmallTerminalOperation)},
+		{Kind: closedFrameOperation, Lane: 1, Body: make([]byte, terminal.SmallBodySize)},
 		{Kind: closedFrameKeepalive, Lane: 0},
 	} {
 		if _, err := EncodeClosedLaneFrame(frame); err != nil {

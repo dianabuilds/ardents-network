@@ -12,6 +12,8 @@ import (
 	"os"
 	"sync"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/route/terminal"
 )
 
 // ClosedIntroductionRegistration owns one channel-bound slot. Done means the
@@ -29,7 +31,7 @@ type ClosedIntroductionRegistration struct {
 	prefix           *ClosedSourcePrefix
 	lane             *closedSourceLane
 	connection       net.Conn
-	request          ClosedRegistrationRequest
+	request          terminal.RegistrationRequest
 	stop             func() bool
 	interrupted      chan struct{}
 	done             chan struct{}
@@ -73,7 +75,7 @@ func (prefix *ClosedSourcePrefix) introductionPeer() (closedBootstrapPeer, error
 	return prefix.terminalPeer(ClosedPurposeIntroduction)
 }
 
-func (prefix *ClosedSourcePrefix) RegisterIntroduction(ctx context.Context, present ClosedTokenPresenter, request ClosedRegistrationRequest) (registration *ClosedIntroductionRegistration, outcome error) {
+func (prefix *ClosedSourcePrefix) RegisterIntroduction(ctx context.Context, present ClosedTokenPresenter, request terminal.RegistrationRequest) (registration *ClosedIntroductionRegistration, outcome error) {
 	if ctx == nil || ctx.Err() != nil || present == nil || request.Withdraw {
 		return nil, errors.New("closed Introduction registration unavailable")
 	}
@@ -88,7 +90,7 @@ func (prefix *ClosedSourcePrefix) RegisterIntroduction(ctx context.Context, pres
 	if _, err := rand.Read(request.Nonce[:]); err != nil {
 		return nil, err
 	}
-	operation, err := EncodeClosedRegistrationRequest(request)
+	operation, err := terminal.EncodeRegistrationRequest(request)
 	if err != nil {
 		return nil, err
 	}
@@ -160,7 +162,7 @@ func (prefix *ClosedSourcePrefix) RegisterIntroduction(ctx context.Context, pres
 	if err != nil || frame.Kind != closedFrameResult || frame.Lane != 0 {
 		return nil, errors.Join(errors.New("closed Introduction registration result unavailable"), err)
 	}
-	if status, proof, err := DecodeClosedDescriptorResult(frame.Body, request.Nonce); err != nil || status != 0 || len(proof) != 0 {
+	if status, proof, err := terminal.DecodeDescriptorResult(frame.Body, request.Nonce); err != nil || status != 0 || len(proof) != 0 {
 		return nil, errors.New("closed Introduction registration refused")
 	}
 	current, err = prefix.introductionPeer()
@@ -192,7 +194,7 @@ func (owner *ClosedIntroductionRegistration) read() {
 		} else if owner.withdraw == [32]byte{} || frame.Kind != closedFrameResult {
 			err = errors.New("closed Introduction registration received unexpected operation")
 		} else {
-			status, proof, decodeErr := DecodeClosedDescriptorResult(frame.Body, owner.withdraw)
+			status, proof, decodeErr := terminal.DecodeDescriptorResult(frame.Body, owner.withdraw)
 			if decodeErr != nil || status != 0 || len(proof) != 0 {
 				err = errors.New("closed Introduction withdrawal refused")
 			} else {
@@ -297,7 +299,7 @@ func (owner *ClosedIntroductionRegistration) Withdraw(ctx context.Context) (outc
 	}
 	owner.withdraw = nonce
 	owner.mu.Unlock()
-	operation, err := EncodeClosedRegistrationRequest(ClosedRegistrationRequest{Nonce: nonce, Slot: owner.request.Slot, Revision: owner.request.Revision, Withdraw: true})
+	operation, err := terminal.EncodeRegistrationRequest(terminal.RegistrationRequest{Nonce: nonce, Slot: owner.request.Slot, Revision: owner.request.Revision, Withdraw: true})
 	if err != nil {
 		return err
 	}

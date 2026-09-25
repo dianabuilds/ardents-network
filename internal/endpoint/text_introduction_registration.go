@@ -10,6 +10,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
 	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/terminal"
 	"github.com/dianabuilds/ardents-network/internal/service/instance"
 )
 
@@ -44,7 +45,7 @@ type textIntroductionRegistration struct {
 	descriptor    []byte
 	channel       *route.ClosedIntroductionRegistration
 	node          [32]byte
-	request       route.ClosedRegistrationRequest
+	request       terminal.RegistrationRequest
 	cancel        context.CancelFunc
 }
 
@@ -111,7 +112,7 @@ func (owner *textContext) openTextRegistration(ctx context.Context, revision uin
 			return nil, err
 		}
 	}
-	request := route.ClosedRegistrationRequest{Revision: revision, Expiry: expiry}
+	request := terminal.RegistrationRequest{Revision: revision, Expiry: expiry}
 	if _, err := rand.Read(request.Slot[:]); err != nil {
 		return nil, err
 	}

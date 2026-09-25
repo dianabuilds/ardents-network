@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/terminal"
 )
 
 func (server *closedIntroductionServer) current() bool {
@@ -123,7 +124,7 @@ func (server *closedIntroductionServer) register(ctx context.Context, connection
 	if err != nil || operation.Kind != 10 || operation.Lane != 0 {
 		return errors.New("closed Introduction registration required")
 	}
-	request, err := route.DecodeClosedRegistrationRequest(operation.Body)
+	request, err := terminal.DecodeRegistrationRequest(operation.Body)
 	now := server.config.now()
 	if err != nil || request.Withdraw || !now.Before(request.Expiry) || request.Expiry.After(lease.Deadline) || request.Expiry.After(now.Add(600*time.Second)) ||
 		ctx.Err() != nil || !server.current() {
@@ -136,7 +137,7 @@ func (server *closedIntroductionServer) register(ctx context.Context, connection
 	slot := &closedIntroductionSlot{request: request, connection: connection, writer: make(chan struct{}, 1),
 		done: make(chan struct{}), pending: make(map[uint32]*closedIntroductionDelivery), used: used + closedIntroductionWithdrawalBytes, maximum: lease.Bytes}
 	if !server.reserveSlot(slot) {
-		result, err := route.EncodeClosedDescriptorResult(request.Nonce, 1, nil)
+		result, err := terminal.EncodeDescriptorResult(request.Nonce, 1, nil)
 		if err != nil {
 			return err
 		}
@@ -149,7 +150,7 @@ func (server *closedIntroductionServer) register(ctx context.Context, connection
 	if ctx.Err() != nil || !server.current() || !server.config.now().Before(request.Expiry) {
 		return errors.New("closed Introduction ended before registration acknowledgement")
 	}
-	result, err := route.EncodeClosedDescriptorResult(request.Nonce, 0, nil)
+	result, err := terminal.EncodeDescriptorResult(request.Nonce, 0, nil)
 	if err != nil {
 		return err
 	}

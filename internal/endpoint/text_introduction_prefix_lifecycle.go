@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/terminal"
 )
 
 // textIntroductionPrefixLifecycle is the sole owner of the Publisher's live
@@ -172,7 +173,7 @@ func (handle *textIntroductionPrefixHandle) introductionRecipient() ([32]byte, t
 }
 
 func (handle *textIntroductionPrefixHandle) register(ctx context.Context, present route.ClosedTokenPresenter,
-	request route.ClosedRegistrationRequest) (*route.ClosedIntroductionRegistration, error) {
+	request terminal.RegistrationRequest) (*route.ClosedIntroductionRegistration, error) {
 	prefix, err := handle.routePrefix()
 	if err != nil {
 		return nil, err

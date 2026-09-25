@@ -6,6 +6,8 @@ import (
 	"context"
 	"crypto/rand"
 	"errors"
+
+	"github.com/dianabuilds/ardents-network/internal/route/terminal"
 )
 
 // ResolutionRecipient derives the sole private resolution duty from the live
@@ -60,9 +62,9 @@ func (prefix *ClosedSourcePrefix) ExchangeDescriptor(ctx context.Context, presen
 	}
 	var operation []byte
 	if len(descriptor) == 0 {
-		operation, err = EncodeClosedDescriptorLookup(nonce, target)
+		operation, err = terminal.EncodeDescriptorLookup(nonce, target)
 	} else {
-		operation, err = EncodeClosedDescriptorPublication(nonce, descriptor)
+		operation, err = terminal.EncodeDescriptorPublication(nonce, descriptor)
 	}
 	if err != nil {
 		return 0, nil, err
@@ -73,7 +75,7 @@ func (prefix *ClosedSourcePrefix) ExchangeDescriptor(ctx context.Context, presen
 		return 0, nil, err
 	}
 	defer clear(body)
-	status, proof, err := DecodeClosedDescriptorResult(body, nonce)
+	status, proof, err := terminal.DecodeDescriptorResult(body, nonce)
 	if err == nil && status == 0 && (len(descriptor) == 0) != (len(proof) != 0) {
 		return 0, nil, errors.New("closed Descriptor result has wrong operation payload")
 	}

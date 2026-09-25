@@ -9,8 +9,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/route/terminal"
+
 	"github.com/dianabuilds/ardents-network/internal/network/state"
-	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/credential"
 )
 
@@ -78,7 +79,7 @@ func closedRestrictionToken(t *testing.T, fixture *closedBootstrapFixture) []byt
 	}
 	defer issuer.Close()
 	nonce := [32]byte{102}
-	operation, err := route.EncodeClosedIssuanceRequest(nonce, pending.Request())
+	operation, err := terminal.EncodeIssuanceRequest(nonce, pending.Request())
 	if err != nil {
 		t.Fatal(err)
 	}

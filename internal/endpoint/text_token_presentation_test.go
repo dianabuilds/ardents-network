@@ -11,6 +11,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/route/terminal"
+
 	"github.com/dianabuilds/ardents-network/internal/endpoint/tokenjournal"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/route"
@@ -143,7 +145,7 @@ func textTokenPresentationFixture(t *testing.T) (*endpoint, *textContext, route.
 		t.Fatal(err)
 	}
 	nonce := [32]byte{241}
-	operation, err := route.EncodeClosedIssuanceRequest(nonce, pending.Request())
+	operation, err := terminal.EncodeIssuanceRequest(nonce, pending.Request())
 	if err != nil {
 		t.Fatal(err)
 	}

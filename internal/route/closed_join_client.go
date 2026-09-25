@@ -8,6 +8,8 @@ import (
 	"errors"
 	"sync"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/route/terminal"
 )
 
 // ClosedJoinIntent is the Endpoint-owned pairing commitment and two distinct
@@ -144,11 +146,11 @@ func (prefix *ClosedSourcePrefix) Join(ctx context.Context, present ClosedTokenP
 	if prefix.plan.domain == 3 {
 		side = 2
 	}
-	request := ClosedJoinRequest{Secret: intent.Secret, Context: intent.Context, Side: side, Deadline: pending}
+	request := terminal.JoinRequest{Secret: intent.Secret, Context: intent.Context, Side: side, Deadline: pending}
 	if _, err := rand.Read(request.Nonce[:]); err != nil {
 		return nil, err
 	}
-	operation, err := EncodeClosedJoinRequest(request)
+	operation, err := terminal.EncodeJoinRequest(request)
 	if err != nil {
 		return nil, err
 	}
@@ -161,7 +163,7 @@ func (prefix *ClosedSourcePrefix) Join(ctx context.Context, present ClosedTokenP
 		return nil, err
 	}
 	defer clear(result.Body)
-	status, err := DecodeClosedJoinResult(result.Body, request.Nonce)
+	status, err := terminal.DecodeJoinResult(result.Body, request.Nonce)
 	if err != nil || status != 0 || result.Kind != closedFrameResult || result.Lane != 1 {
 		return nil, errors.New("closed JOIN result refused or mismatched")
 	}

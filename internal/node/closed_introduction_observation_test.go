@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/terminal"
 )
 
 // Captures exact plaintext bytes at the transmitting role-TLS boundary and
@@ -59,7 +60,7 @@ func TestClosedIntroductionRegistrationObservation(t *testing.T) {
 			fixture := newPrivateRecipientNetworkFixture(t, carrier, route.ClosedPurposeIntroduction, 3)
 			capture := new(introductionTranscript)
 			fixture.observe = func(connection net.Conn) net.Conn { return &introductionTranscriptConn{connection, capture} }
-			request := route.ClosedRegistrationRequest{Revision: 1, Expiry: time.Now().UTC().Add(30 * time.Second).Truncate(time.Second)}
+			request := terminal.RegistrationRequest{Revision: 1, Expiry: time.Now().UTC().Add(30 * time.Second).Truncate(time.Second)}
 			if _, err := rand.Read(request.Nonce[:]); err != nil {
 				t.Fatal(err)
 			}
@@ -72,7 +73,7 @@ func TestClosedIntroductionRegistrationObservation(t *testing.T) {
 				t.Fatal("registration positive control refused")
 			}
 			before := captureIntroductionFiles(t, fixture.admissionRoot)
-			withdrawal := route.ClosedRegistrationRequest{Slot: request.Slot, Revision: request.Revision, Withdraw: true}
+			withdrawal := terminal.RegistrationRequest{Slot: request.Slot, Revision: request.Revision, Withdraw: true}
 			if _, err := rand.Read(withdrawal.Nonce[:]); err != nil {
 				t.Fatal(err)
 			}
@@ -96,11 +97,11 @@ func TestClosedIntroductionRegistrationObservation(t *testing.T) {
 			if len(requests[1].Body) != 355 || requests[1].Body[0] != 3 || !bytes.Equal(requests[1].Body[1:], fixture.tokens[0]) {
 				t.Fatal("capture missed actual admitted token")
 			}
-			decoded, err := route.DecodeClosedRegistrationRequest(requests[2].Body)
+			decoded, err := terminal.DecodeRegistrationRequest(requests[2].Body)
 			if err != nil || decoded != request {
 				t.Fatal("capture missed visible registration fields")
 			}
-			decoded, err = route.DecodeClosedRegistrationRequest(requests[3].Body)
+			decoded, err = terminal.DecodeRegistrationRequest(requests[3].Body)
 			if err != nil || decoded != withdrawal {
 				t.Fatal("capture missed owning withdrawal")
 			}

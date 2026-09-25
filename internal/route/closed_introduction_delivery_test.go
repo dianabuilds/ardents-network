@@ -11,6 +11,7 @@ import (
 	"time"
 
 	introductioncapsule "github.com/dianabuilds/ardents-network/internal/route/capsule"
+	"github.com/dianabuilds/ardents-network/internal/route/terminal"
 )
 
 type introductionStalledWrite struct {
@@ -33,7 +34,7 @@ func TestClosedIntroductionDeliveryResultWriteCancels(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	result := make(chan error, 1)
-	body, err := EncodeClosedDescriptorResult([32]byte{1}, 0, nil)
+	body, err := terminal.EncodeDescriptorResult([32]byte{1}, 0, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -63,7 +64,7 @@ func TestClosedIntroductionDeliveryResultWriteCancels(t *testing.T) {
 
 func TestClosedIntroductionDeliveryRejectsForeignReusedAndOverBudgetChildren(t *testing.T) {
 	newOwner := func() *ClosedIntroductionRegistration {
-		return &ClosedIntroductionRegistration{request: ClosedRegistrationRequest{Slot: [32]byte{1}, Revision: 1, Expiry: time.Now().Add(time.Minute)},
+		return &ClosedIntroductionRegistration{request: terminal.RegistrationRequest{Slot: [32]byte{1}, Revision: 1, Expiry: time.Now().Add(time.Minute)},
 			deliveries: make(chan *ClosedIntroductionDelivery, 16), pending: make(map[uint32]*ClosedIntroductionDelivery)}
 	}
 	operation := func(slot [32]byte, revision uint64, end time.Time) []byte {
@@ -121,7 +122,7 @@ func TestClosedIntroductionDeliveryRejectsForeignReusedAndOverBudgetChildren(t *
 }
 
 func TestClosedIntroductionRegistrationBudgetAdmitsRetainedPublisherSet(t *testing.T) {
-	owner := &ClosedIntroductionRegistration{request: ClosedRegistrationRequest{Slot: [32]byte{1}, Revision: 1, Expiry: time.Now().Add(time.Minute)},
+	owner := &ClosedIntroductionRegistration{request: terminal.RegistrationRequest{Slot: [32]byte{1}, Revision: 1, Expiry: time.Now().Add(time.Minute)},
 		deliveries: make(chan *ClosedIntroductionDelivery, 16), pending: make(map[uint32]*ClosedIntroductionDelivery)}
 	owner.used = ClosedIntroductionRegistrationByteLimit - 256*closedIntroductionDeliveryCost
 	end := time.Now().UTC().Add(8 * time.Second).Truncate(time.Second)

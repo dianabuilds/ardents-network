@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/terminal"
 	"github.com/dianabuilds/ardents-network/internal/service/reachability"
 )
 
@@ -109,7 +110,7 @@ func (server *closedResolutionServer) serveAdmitted(ctx context.Context, connect
 	if used > lease.Bytes || ctx.Err() != nil || !server.config.now().Before(lease.Deadline) || !server.current() {
 		return errors.New("closed resolution admission ended")
 	}
-	request, err := route.DecodeClosedDescriptorRequest(operation.Body)
+	request, err := terminal.DecodeDescriptorRequest(operation.Body)
 	if err != nil {
 		return err
 	}
@@ -123,7 +124,7 @@ func (server *closedResolutionServer) serveAdmitted(ctx context.Context, connect
 	return route.WriteClosedLaneFrame(connection, route.ClosedLaneFrame{Kind: 11, Body: result})
 }
 
-func (server *closedResolutionServer) resolve(request route.ClosedDescriptorRequest, now time.Time) ([]byte, error) {
+func (server *closedResolutionServer) resolve(request terminal.DescriptorRequest, now time.Time) ([]byte, error) {
 	status := uint8(1)
 	var proof []byte
 	if len(request.Descriptor) != 0 {
@@ -148,7 +149,7 @@ func (server *closedResolutionServer) resolve(request route.ClosedDescriptorRequ
 			status = 3
 		}
 	}
-	return route.EncodeClosedDescriptorResult(request.Nonce, status, proof)
+	return terminal.EncodeDescriptorResult(request.Nonce, status, proof)
 }
 
 func (server *closedResolutionServer) currentIntroduction(introduction reachability.PrivateIntroduction, now time.Time) bool {

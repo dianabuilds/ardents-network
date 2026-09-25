@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/route/terminal"
+
 	"github.com/dianabuilds/ardents-network/internal/route"
 )
 
@@ -14,7 +16,7 @@ func TestClosedIntroductionRegistrationOwnsSlotUntilExpiry(t *testing.T) {
 	for _, carrier := range []route.CarrierProfile{route.ClosedCarrierTCP, route.ClosedCarrierQUIC} {
 		t.Run(string(carrier), func(t *testing.T) {
 			fixture := newPrivateRecipientNetworkFixture(t, carrier, route.ClosedPurposeIntroduction, 3)
-			request := route.ClosedRegistrationRequest{Nonce: [32]byte{101}, Slot: [32]byte{102}, Revision: 1, Expiry: time.Now().UTC().Add(5 * time.Second).Truncate(time.Second)}
+			request := terminal.RegistrationRequest{Nonce: [32]byte{101}, Slot: [32]byte{102}, Revision: 1, Expiry: time.Now().UTC().Add(5 * time.Second).Truncate(time.Second)}
 			first, closeFirst, status := registerIntroductionFixture(t, fixture, 0, request)
 			defer closeFirst()
 			if status != 0 {
@@ -25,7 +27,7 @@ func TestClosedIntroductionRegistrationOwnsSlotUntilExpiry(t *testing.T) {
 			if status != 1 {
 				t.Fatal("duplicate slot replaced its owning channel")
 			}
-			withdraw := route.ClosedRegistrationRequest{Nonce: [32]byte{103}, Slot: request.Slot, Revision: request.Revision, Withdraw: true}
+			withdraw := terminal.RegistrationRequest{Nonce: [32]byte{103}, Slot: request.Slot, Revision: request.Revision, Withdraw: true}
 			if status := sendRegistrationFixture(t, first, withdraw); status != 0 {
 				t.Fatal("owning withdrawal refused")
 			}
@@ -66,7 +68,7 @@ func TestClosedIntroductionRegistrationOwnsSlotUntilExpiry(t *testing.T) {
 			}
 			withdraw.Nonce = request.Nonce // Replaying the request nonce must close the registration.
 			withdraw.Slot, withdraw.Revision = request.Slot, request.Revision
-			body, err := route.EncodeClosedRegistrationRequest(withdraw)
+			body, err := terminal.EncodeRegistrationRequest(withdraw)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -80,7 +82,7 @@ func TestClosedIntroductionRegistrationOwnsSlotUntilExpiry(t *testing.T) {
 	}
 }
 
-func registerIntroductionFixture(t *testing.T, fixture *resolutionNetworkFixture, token int, request route.ClosedRegistrationRequest) (net.Conn, func(), uint8) {
+func registerIntroductionFixture(t *testing.T, fixture *resolutionNetworkFixture, token int, request terminal.RegistrationRequest) (net.Conn, func(), uint8) {
 	t.Helper()
 	connection, closeCarrier, err := fixture.openTerminal(t.Context(), fixture.tokens[token], 3)
 	if err != nil {
@@ -90,9 +92,9 @@ func registerIntroductionFixture(t *testing.T, fixture *resolutionNetworkFixture
 	return connection, closeCarrier, sendRegistrationFixture(t, connection, request)
 }
 
-func sendRegistrationFixture(t *testing.T, connection net.Conn, request route.ClosedRegistrationRequest) uint8 {
+func sendRegistrationFixture(t *testing.T, connection net.Conn, request terminal.RegistrationRequest) uint8 {
 	t.Helper()
-	body, err := route.EncodeClosedRegistrationRequest(request)
+	body, err := terminal.EncodeRegistrationRequest(request)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -103,7 +105,7 @@ func sendRegistrationFixture(t *testing.T, connection net.Conn, request route.Cl
 	if err != nil || frame.Kind != 11 || frame.Lane != 0 {
 		t.Fatalf("registration result: %v", err)
 	}
-	status, proof, err := route.DecodeClosedDescriptorResult(frame.Body, request.Nonce)
+	status, proof, err := terminal.DecodeDescriptorResult(frame.Body, request.Nonce)
 	if err != nil || len(proof) != 0 {
 		t.Fatalf("registration result payload: %v", err)
 	}

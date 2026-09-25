@@ -6,6 +6,8 @@ import (
 	"context"
 	"crypto/rand"
 	"errors"
+
+	"github.com/dianabuilds/ardents-network/internal/route/terminal"
 )
 
 // ExchangeIssuer performs one ordinary issuance through this admitted prefix.
@@ -18,14 +20,14 @@ func (prefix *ClosedSourcePrefix) ExchangeIssuer(ctx context.Context, present Cl
 	if _, err := rand.Read(result.Nonce[:]); err != nil {
 		return ClosedIssuanceExchangeResult{}, err
 	}
-	operation, err := EncodeClosedIssuanceRequest(result.Nonce, batch)
+	operation, err := terminal.EncodeIssuanceRequest(result.Nonce, batch)
 	if err != nil {
 		return ClosedIssuanceExchangeResult{}, err
 	}
 	defer clear(operation)
 	result.Body, err = prefix.exchangeControl(ctx, ClosedPurposeIssuer, prefix.plan.peers[2], present, operation)
 	if err == nil {
-		_, err = DecodeClosedIssuanceResult(result.Body, result.Nonce)
+		_, err = terminal.DecodeIssuanceResult(result.Body, result.Nonce)
 	}
 	if err != nil {
 		clear(result.Body)

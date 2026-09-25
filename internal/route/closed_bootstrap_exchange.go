@@ -11,6 +11,8 @@ import (
 	"net"
 	"sync"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/route/terminal"
 )
 
 // ClosedIssuanceExchangeResult is the exact encrypted issuer response and its fresh
@@ -32,7 +34,7 @@ func ExchangeClosedBootstrap(ctx context.Context, source ClosedBootstrapState, s
 	if _, err := rand.Read(result.Nonce[:]); err != nil {
 		return ClosedIssuanceExchangeResult{}, err
 	}
-	operation, err := EncodeClosedIssuanceRequest(result.Nonce, batch)
+	operation, err := terminal.EncodeIssuanceRequest(result.Nonce, batch)
 	if err != nil {
 		return ClosedIssuanceExchangeResult{}, err
 	}
@@ -131,7 +133,7 @@ func ExchangeClosedBootstrap(ctx context.Context, source ClosedBootstrapState, s
 	if frame.Kind != closedFrameResult || frame.Lane != 0 {
 		return result, errors.New("closed bootstrap issuer result is invalid")
 	}
-	if _, err := DecodeClosedIssuanceResult(frame.Body, result.Nonce); err != nil {
+	if _, err := terminal.DecodeIssuanceResult(frame.Body, result.Nonce); err != nil {
 		return result, err
 	}
 	if err := attempt.Err(); err != nil {

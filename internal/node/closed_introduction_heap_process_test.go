@@ -20,6 +20,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/route"
 	introductioncapsule "github.com/dianabuilds/ardents-network/internal/route/capsule"
+	"github.com/dianabuilds/ardents-network/internal/route/terminal"
 )
 
 type introductionHeapProcess struct {
@@ -152,7 +153,7 @@ func TestClosedIntroductionProcessHeapObservation(t *testing.T) {
 				return process.stop, nil
 			}, 1)
 			process.dump("startup")
-			request := route.ClosedRegistrationRequest{Revision: 1, Expiry: time.Now().UTC().Add(40 * time.Second).Truncate(time.Second)}
+			request := terminal.RegistrationRequest{Revision: 1, Expiry: time.Now().UTC().Add(40 * time.Second).Truncate(time.Second)}
 			if _, err := rand.Read(request.Slot[:]); err != nil {
 				t.Fatal(err)
 			}
@@ -179,7 +180,7 @@ func TestClosedIntroductionProcessHeapObservation(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			body, err := route.EncodeClosedDescriptorResult(nonce, 0, nil)
+			body, err := terminal.EncodeDescriptorResult(nonce, 0, nil)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -194,12 +195,12 @@ func TestClosedIntroductionProcessHeapObservation(t *testing.T) {
 			if err != nil || response.Kind != 11 || response.Lane != 0 {
 				t.Fatalf("submission response: %v", err)
 			}
-			verdict, proof, err := route.DecodeClosedDescriptorResult(response.Body, sourceNonce)
+			verdict, proof, err := terminal.DecodeDescriptorResult(response.Body, sourceNonce)
 			if err != nil || verdict != 0 || len(proof) != 0 {
 				t.Fatalf("submission result: %v", err)
 			}
 			closeSubmission()
-			withdrawal := route.ClosedRegistrationRequest{Slot: request.Slot, Revision: 1, Withdraw: true, Nonce: [32]byte{99}}
+			withdrawal := terminal.RegistrationRequest{Slot: request.Slot, Revision: 1, Withdraw: true, Nonce: [32]byte{99}}
 			if sendRegistrationFixture(t, registration, withdrawal) != 0 {
 				t.Fatal("heap role withdrawal refused")
 			}

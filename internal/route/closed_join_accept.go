@@ -7,6 +7,8 @@ import (
 	"errors"
 	"net"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/route/terminal"
 )
 
 // AcceptStream handles exactly one JOIN on an already admitted role TLS channel.
@@ -62,11 +64,11 @@ func (owner *ClosedJoinPairs) AcceptStream(ctx context.Context, lease *ClosedAdm
 	defer func() { clear(frame.Body) }()
 	side, err := owner.Reserve(lease, frame)
 	if err != nil {
-		request, decodeErr := DecodeClosedJoinRequest(frame.Body)
+		request, decodeErr := terminal.DecodeJoinRequest(frame.Body)
 		clear(frame.Body)
 		frame.Body = nil
 		if frame.Kind == closedFrameOperation && frame.Lane == 1 && decodeErr == nil {
-			refusal, encodeErr := EncodeClosedJoinResult(request.Nonce, 1)
+			refusal, encodeErr := terminal.EncodeJoinResult(request.Nonce, 1)
 			if encodeErr != nil {
 				return errors.Join(err, encodeErr)
 			}

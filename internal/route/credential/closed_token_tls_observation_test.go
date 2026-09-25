@@ -11,6 +11,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/dianabuilds/ardents-network/internal/route/terminal"
+
 	"github.com/dianabuilds/ardents-network/internal/route"
 )
 
@@ -58,7 +60,7 @@ func checkIssuerTLSObservation(t *testing.T, issuer *ClosedTokenIssuer, listener
 	if len(requests) != 3 || requests[0].Kind != 1 || requests[1].Kind != 3 || requests[2].Kind != 10 || !bytes.Equal(requests[2].Body, operation) || len(responses) != 2 || responses[0].Kind != 5 || responses[1].Kind != 11 || !bytes.Equal(responses[1].Body, result) {
 		t.Fatal("incomplete actual issuer TLS protocol observation")
 	}
-	outcome, err := route.DecodeClosedIssuanceResult(result, [32]byte{71})
+	outcome, err := terminal.DecodeIssuanceResult(result, [32]byte{71})
 	if err != nil || outcome.Status != 0 {
 		t.Fatalf("TLS issuer did not report successful issuance: %v", err)
 	}

@@ -9,6 +9,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/route"
 	introductioncapsule "github.com/dianabuilds/ardents-network/internal/route/capsule"
+	"github.com/dianabuilds/ardents-network/internal/route/terminal"
 )
 
 const closedIntroductionDeliveryBytes = uint64(16 + 4096 + 16 + 16384 + 16 + 1)
@@ -19,7 +20,7 @@ const closedIntroductionWithdrawalBytes = uint64(16 + 4096 + 16 + 16384)
 type closedIntroductionSlot struct {
 	dispatched    [4]time.Time
 	inFlight      int
-	request       route.ClosedRegistrationRequest
+	request       terminal.RegistrationRequest
 	connection    net.Conn
 	writer        chan struct{}
 	done          chan struct{}
@@ -80,7 +81,7 @@ func (server *closedIntroductionServer) submit(ctx context.Context, connection n
 	if !server.current() || ctx.Err() != nil || !server.config.now().Before(capsule.Expiry) {
 		return errors.New("closed Introduction submission ended before acknowledgement")
 	}
-	body, err := route.EncodeClosedDescriptorResult(nonce, status, nil)
+	body, err := terminal.EncodeDescriptorResult(nonce, status, nil)
 	if err != nil {
 		return err
 	}
@@ -190,7 +191,7 @@ func (server *closedIntroductionServer) serveRegistration(ctx context.Context, s
 				server.slotsMu.Unlock()
 				return errors.New("closed Introduction delivery acknowledgement unavailable")
 			}
-			status, proof, err := route.DecodeClosedDescriptorResult(operation.Body, pending.nonce)
+			status, proof, err := terminal.DecodeDescriptorResult(operation.Body, pending.nonce)
 			if err != nil || len(proof) != 0 {
 				server.slotsMu.Unlock()
 				return errors.New("closed Introduction delivery acknowledgement invalid")
@@ -203,13 +204,13 @@ func (server *closedIntroductionServer) serveRegistration(ctx context.Context, s
 		if operation.Kind != 10 || operation.Lane != 0 {
 			return errors.New("closed Introduction owning withdrawal required")
 		}
-		withdraw, err := route.DecodeClosedRegistrationRequest(operation.Body)
+		withdraw, err := terminal.DecodeRegistrationRequest(operation.Body)
 		if err != nil || !withdraw.Withdraw || withdraw.Nonce == slot.request.Nonce ||
 			withdraw.Slot != slot.request.Slot || withdraw.Revision != slot.request.Revision {
 			return errors.New("closed Introduction withdrawal binding invalid")
 		}
 		server.retireSlot(slot)
-		body, err := route.EncodeClosedDescriptorResult(withdraw.Nonce, 0, nil)
+		body, err := terminal.EncodeDescriptorResult(withdraw.Nonce, 0, nil)
 		if err != nil {
 			return err
 		}

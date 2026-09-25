@@ -8,6 +8,7 @@ import (
 	"time"
 
 	introductioncapsule "github.com/dianabuilds/ardents-network/internal/route/capsule"
+	"github.com/dianabuilds/ardents-network/internal/route/terminal"
 )
 
 const closedIntroductionDeliveryCost = uint64(16 + 4096 + 16 + 16384 + 16 + 1)
@@ -103,7 +104,7 @@ func (delivery *ClosedIntroductionDelivery) Complete(ctx context.Context, status
 	clear(delivery.operation)
 	delivery.operation = nil
 	owner.mu.Unlock()
-	body, err := EncodeClosedDescriptorResult(delivery.nonce, status, nil)
+	body, err := terminal.EncodeDescriptorResult(delivery.nonce, status, nil)
 	if err != nil {
 		return err
 	}

@@ -1,6 +1,6 @@
 //go:build linux
 
-package route
+package terminal
 
 import (
 	"encoding/binary"
@@ -8,12 +8,12 @@ import (
 	"time"
 )
 
-func EncodeClosedRegistrationRequest(request ClosedRegistrationRequest) ([]byte, error) {
+func EncodeRegistrationRequest(request RegistrationRequest) ([]byte, error) {
 	if request.Nonce == [32]byte{} || request.Slot == [32]byte{} || request.Revision == 0 ||
 		request.Withdraw && !request.Expiry.IsZero() || !request.Withdraw && (request.Expiry.Unix() <= 0 || !request.Expiry.Equal(request.Expiry.UTC().Truncate(time.Second))) {
 		return nil, errors.New("closed registration request invalid")
 	}
-	body := make([]byte, closedSmallTerminalOperation)
+	body := make([]byte, SmallBodySize)
 	body[0] = 3
 	if request.Withdraw {
 		body[0] = 7

@@ -1,17 +1,17 @@
 //go:build linux
 
-package route
+package terminal
 
 import (
 	"encoding/binary"
 	"errors"
 )
 
-func EncodeClosedJoinRequest(request ClosedJoinRequest) ([]byte, error) {
-	if !validClosedJoinRequest(request) {
+func EncodeJoinRequest(request JoinRequest) ([]byte, error) {
+	if !validJoinRequest(request) {
 		return nil, errors.New("closed JOIN request invalid")
 	}
-	body := make([]byte, closedSmallTerminalOperation)
+	body := make([]byte, SmallBodySize)
 	body[0] = 5
 	copy(body[1:33], request.Nonce[:])
 	copy(body[33:65], request.Secret[:])
@@ -21,8 +21,8 @@ func EncodeClosedJoinRequest(request ClosedJoinRequest) ([]byte, error) {
 	return body, nil
 }
 
-func DecodeClosedJoinResult(body []byte, nonce [32]byte) (uint8, error) {
-	if len(body) != closedTerminalOperationSize || nonce == [32]byte{} || body[32] > 4 || !closedDescriptorPadding(body[33:]) {
+func DecodeJoinResult(body []byte, nonce [32]byte) (uint8, error) {
+	if len(body) != BodySize || nonce == [32]byte{} || body[32] > 4 || !zeroPadding(body[33:]) {
 		return 0, errors.New("closed JOIN result or padding invalid")
 	}
 	var received [32]byte

@@ -13,8 +13,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/route/terminal"
+
 	"github.com/dianabuilds/ardents-network/internal/network/state"
-	"github.com/dianabuilds/ardents-network/internal/route"
 )
 
 type issuerReservationObservation struct {
@@ -123,7 +124,7 @@ func checkClosedIssuerSeparatePermissionObservation(t *testing.T, issuer *Closed
 		t.Fatal(err)
 	}
 	requestBytes := pending.Request()
-	operation, err := route.EncodeClosedIssuanceRequest(nonce, requestBytes)
+	operation, err := terminal.EncodeIssuanceRequest(nonce, requestBytes)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -12,6 +12,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/route/terminal"
+
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/route"
 )
@@ -87,16 +89,16 @@ func TestClosedTokenIssuerReconcilesCommittedBatchAfterRestart(t *testing.T) {
 		t.Fatalf("issuer key precondition: %v", err)
 	}
 	nonce := [32]byte{51}
-	operation, err := route.EncodeClosedIssuanceRequest(nonce, raw)
+	operation, err := terminal.EncodeIssuanceRequest(nonce, raw)
 	if err != nil {
 		t.Fatal(err)
 	}
 	firstRaw := serveClosedIssuerBootstrap(t, issuer, profile, now, operation)
-	terminal, err := route.DecodeClosedIssuanceResult(firstRaw, nonce)
+	firstTerminal, err := terminal.DecodeIssuanceResult(firstRaw, nonce)
 	if err != nil {
 		t.Fatal(err)
 	}
-	first, err := DecodeClosedTokenBatchResult(terminal.Payload)
+	first, err := DecodeClosedTokenBatchResult(firstTerminal.Payload)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -132,7 +134,7 @@ func TestClosedTokenIssuerReconcilesCommittedBatchAfterRestart(t *testing.T) {
 		}
 	}()
 	retriedRaw := serveClosedIssuerBootstrap(t, issuer, profile, now, operation)
-	retriedTerminal, err := route.DecodeClosedIssuanceResult(retriedRaw, nonce)
+	retriedTerminal, err := terminal.DecodeIssuanceResult(retriedRaw, nonce)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -149,12 +151,12 @@ func TestClosedTokenIssuerReconcilesCommittedBatchAfterRestart(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer second.Discard()
-	secondOperation, err := route.EncodeClosedIssuanceRequest(nonce, second.Request())
+	secondOperation, err := terminal.EncodeIssuanceRequest(nonce, second.Request())
 	if err != nil {
 		t.Fatal(err)
 	}
 	exhaustedRaw := serveClosedIssuerBootstrap(t, issuer, profile, now, secondOperation)
-	exhaustedTerminal, err := route.DecodeClosedIssuanceResult(exhaustedRaw, nonce)
+	exhaustedTerminal, err := terminal.DecodeIssuanceResult(exhaustedRaw, nonce)
 	if err != nil || exhaustedTerminal.Status != 2 {
 		t.Fatalf("permission overflow terminal = %d / %v", exhaustedTerminal.Status, err)
 	}

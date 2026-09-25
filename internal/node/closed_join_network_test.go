@@ -10,6 +10,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/route/terminal"
+
 	"github.com/dianabuilds/ardents-network/internal/route"
 )
 
@@ -20,8 +22,8 @@ func sendJoinFixture(t *testing.T, fixture *resolutionNetworkFixture, token int,
 		t.Fatal(err)
 	}
 	t.Cleanup(closeConnection)
-	request := route.ClosedJoinRequest{Nonce: [32]byte{byte(token + 1), 101}, Secret: [32]byte{102}, Context: [32]byte{103}, Side: side, Deadline: time.Now().UTC().Add(10 * time.Second).Truncate(time.Second)}
-	raw, err := route.EncodeClosedJoinRequest(request)
+	request := terminal.JoinRequest{Nonce: [32]byte{byte(token + 1), 101}, Secret: [32]byte{102}, Context: [32]byte{103}, Side: side, Deadline: time.Now().UTC().Add(10 * time.Second).Truncate(time.Second)}
+	raw, err := terminal.EncodeJoinRequest(request)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -67,7 +69,7 @@ func TestClosedJoinNodePairsThroughBothCarriers(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if status, err := route.DecodeClosedJoinResult(refusal.Body, duplicateNonce); err != nil || status != 1 {
+			if status, err := terminal.DecodeJoinResult(refusal.Body, duplicateNonce); err != nil || status != 1 {
 				t.Fatal("duplicate side not refused locally")
 			}
 			// Duplicate refusal establishes the first reservation exists at the owner.
@@ -81,7 +83,7 @@ func TestClosedJoinNodePairsThroughBothCarriers(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if status, err := route.DecodeClosedJoinResult(result.Body, secondNonce); err != nil || status != 0 || result.Lane != 1 {
+			if status, err := terminal.DecodeJoinResult(result.Body, secondNonce); err != nil || status != 0 || result.Lane != 1 {
 				t.Fatal("second JOIN did not activate")
 			}
 			select {
@@ -89,7 +91,7 @@ func TestClosedJoinNodePairsThroughBothCarriers(t *testing.T) {
 				if result.err != nil {
 					t.Fatal(result.err)
 				}
-				if status, err := route.DecodeClosedJoinResult(result.frame.Body, firstNonce); err != nil || status != 0 || result.frame.Lane != 1 {
+				if status, err := terminal.DecodeJoinResult(result.frame.Body, firstNonce); err != nil || status != 0 || result.frame.Lane != 1 {
 					t.Fatal("first JOIN lost local nonce")
 				}
 			case <-time.After(3 * time.Second):

@@ -5,6 +5,8 @@ import (
 	"errors"
 	"io"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/route/terminal"
 )
 
 const (
@@ -254,10 +256,10 @@ func validClosedFrame(frame ClosedLaneFrame) bool {
 		return frame.Lane != 0 && len(frame.Body) == 1 && frame.Body[0] <= 6
 	}
 	if frame.Kind == closedFrameOperation {
-		return len(frame.Body) == closedTerminalOperationSize || len(frame.Body) == closedSmallTerminalOperation
+		return len(frame.Body) == terminal.BodySize || len(frame.Body) == terminal.SmallBodySize
 	}
 	if frame.Kind == closedFrameResult {
-		return len(frame.Body) == closedTerminalOperationSize
+		return len(frame.Body) == terminal.BodySize
 	}
 	if frame.Kind == closedFrameKeepalive {
 		return frame.Lane == 0 && len(frame.Body) == 0

@@ -11,12 +11,13 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/route"
 	introductioncapsule "github.com/dianabuilds/ardents-network/internal/route/capsule"
+	"github.com/dianabuilds/ardents-network/internal/route/terminal"
 )
 
 // The parent alone owns recipient key and plaintext canaries. Real HPKE seals
 // them before the actual admitted Submission enters the receiving process.
 // Publication/Endpoint job ownership is a fixture, not a full Service journey.
-func startHeapSubmission(t *testing.T, fixture *resolutionNetworkFixture, request route.ClosedRegistrationRequest) (net.Conn, func(), [32]byte, [2][32]byte, []byte) {
+func startHeapSubmission(t *testing.T, fixture *resolutionNetworkFixture, request terminal.RegistrationRequest) (net.Conn, func(), [32]byte, [2][32]byte, []byte) {
 	t.Helper()
 	submitter := *fixture
 	submitter.receiver.ExpectedPurpose = route.ClosedPurposeSubmission

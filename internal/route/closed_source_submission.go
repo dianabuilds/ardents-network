@@ -8,6 +8,7 @@ import (
 	"time"
 
 	introductioncapsule "github.com/dianabuilds/ardents-network/internal/route/capsule"
+	"github.com/dianabuilds/ardents-network/internal/route/terminal"
 )
 
 func (prefix *ClosedSourcePrefix) submissionPeer() (closedBootstrapPeer, error) {
@@ -50,7 +51,7 @@ func (prefix *ClosedSourcePrefix) SubmitIntroduction(ctx context.Context, presen
 		return 0, err
 	}
 	defer clear(body)
-	status, proof, err := DecodeClosedDescriptorResult(body, nonce)
+	status, proof, err := terminal.DecodeDescriptorResult(body, nonce)
 	if err == nil && len(proof) != 0 {
 		err = errors.New("capsule submission returned unexpected proof")
 	}

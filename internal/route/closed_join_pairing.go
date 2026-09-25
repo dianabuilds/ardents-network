@@ -5,6 +5,8 @@ import (
 	"errors"
 	"sync"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/route/terminal"
 )
 
 // ClosedJoinPairs owns matching and activation within one receiving duty.
@@ -67,7 +69,7 @@ func (owner *ClosedJoinPairs) Reserve(lease *ClosedAdmission, frame ClosedLaneFr
 	if owner == nil || lease == nil || frame.Kind != closedFrameOperation || frame.Lane != 1 {
 		return nil, errors.New("closed JOIN lane unavailable")
 	}
-	request, err := DecodeClosedJoinRequest(frame.Body)
+	request, err := terminal.DecodeJoinRequest(frame.Body)
 	if err != nil {
 		return nil, err
 	}
@@ -196,7 +198,7 @@ func (side *ClosedJoinSide) Result() ([]byte, error) {
 		return nil, errors.New("closed JOIN result unavailable")
 	}
 	side.resultTaken = true
-	return EncodeClosedJoinResult(side.nonce, 0)
+	return terminal.EncodeJoinResult(side.nonce, 0)
 }
 
 func (side *ClosedJoinSide) ConfirmResult() error {

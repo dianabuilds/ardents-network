@@ -7,6 +7,8 @@ import (
 	"errors"
 	"testing"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/route/terminal"
 )
 
 func TestClosedIntroductionWithdrawalCancelInterruptsWrite(t *testing.T) {
@@ -23,7 +25,7 @@ func TestClosedIntroductionWithdrawalCancelInterruptsWrite(t *testing.T) {
 	// Exercise the registration lifecycle with real framing and a blocked mux
 	// writer. TLS and actual recipient admission are covered by network tests.
 	owner := &ClosedIntroductionRegistration{lane: lane, connection: lane, writer: make(chan struct{}, 1),
-		request: ClosedRegistrationRequest{Slot: [32]byte{1}, Revision: 1, Expiry: end},
+		request: terminal.RegistrationRequest{Slot: [32]byte{1}, Revision: 1, Expiry: end},
 		stop:    func() bool { return true }, done: make(chan struct{})}
 	go owner.read()
 	ctx, cancel := context.WithCancel(context.Background())

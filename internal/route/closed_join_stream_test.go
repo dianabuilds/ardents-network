@@ -11,6 +11,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/route/terminal"
 )
 
 // The stream tests use real loopback TCP carrying canonical frames and actual
@@ -89,7 +91,7 @@ func newClosedJoinStreamWithConnection(t *testing.T, wrap func(net.Conn) net.Con
 		if result.Kind != closedFrameResult || result.Lane != 1 {
 			t.Fatal("missing local JOIN result")
 		}
-		if status, err := DecodeClosedJoinResult(result.Body, f.sides[i].nonce); err != nil || status != 0 {
+		if status, err := terminal.DecodeJoinResult(result.Body, f.sides[i].nonce); err != nil || status != 0 {
 			t.Fatal("wrong local JOIN result")
 		}
 	}
