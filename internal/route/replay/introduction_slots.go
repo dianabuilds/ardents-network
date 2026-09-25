@@ -1,4 +1,4 @@
-package route
+package replay
 
 import (
 	"bytes"
@@ -13,10 +13,10 @@ import (
 
 const closedIntroductionSlotMaximum = 1024
 
-// ClosedIntroductionSlots retains only slot hashes and terminal expiry under
+// IntroductionSlots retains only slot hashes and terminal expiry under
 // the receiving duty's exclusive spend-root lease. It grants no registration.
-type ClosedIntroductionSlots struct {
-	owner   *ClosedSpendLedger
+type IntroductionSlots struct {
+	owner   *Ledger
 	path    string
 	entries map[[32]byte]time.Time
 	floor   time.Time
@@ -26,7 +26,7 @@ type ClosedIntroductionSlots struct {
 
 // IntroductionSlots opens the replay floor before the first class-3 spend.
 // A missing floor with prior spends is damage, never permission to reset it.
-func (ledger *ClosedSpendLedger) IntroductionSlots() (*ClosedIntroductionSlots, error) {
+func (ledger *Ledger) IntroductionSlots() (*IntroductionSlots, error) {
 	if ledger == nil {
 		return nil, errors.New("closed Introduction slot owner absent")
 	}
@@ -38,7 +38,7 @@ func (ledger *ClosedSpendLedger) IntroductionSlots() (*ClosedIntroductionSlots, 
 	if ledger.slots != nil {
 		return ledger.slots, nil
 	}
-	owner := &ClosedIntroductionSlots{owner: ledger, path: filepath.Join(filepath.Dir(ledger.path), "closed-introduction-slots"), entries: make(map[[32]byte]time.Time)}
+	owner := &IntroductionSlots{owner: ledger, path: filepath.Join(filepath.Dir(ledger.path), "closed-introduction-slots"), entries: make(map[[32]byte]time.Time)}
 	header := owner.header()
 	raw, err := readClosedSpendFile(owner.path, len(header)+closedIntroductionSlotMaximum*40)
 	if errors.Is(err, os.ErrNotExist) {
@@ -78,7 +78,7 @@ func (ledger *ClosedSpendLedger) IntroductionSlots() (*ClosedIntroductionSlots, 
 // Claim burns this slot until its original expiry before success can be sent.
 // Ambiguous persistence terminalizes the owner; reopening reads the actual
 // committed snapshot. It cannot be cleared by withdrawal or a fresh token.
-func (slots *ClosedIntroductionSlots) Claim(slot [32]byte, expiry, now time.Time) error {
+func (slots *IntroductionSlots) Claim(slot [32]byte, expiry, now time.Time) error {
 	if slots == nil || slot == [32]byte{} || now.IsZero() || !now.Before(expiry) || expiry.After(now.Add(600*time.Second)) || !expiry.Equal(expiry.UTC().Truncate(time.Second)) {
 		return errors.New("closed Introduction slot claim invalid")
 	}
@@ -124,7 +124,7 @@ func (slots *ClosedIntroductionSlots) Claim(slot [32]byte, expiry, now time.Time
 	return nil
 }
 
-func (slots *ClosedIntroductionSlots) header() []byte {
+func (slots *IntroductionSlots) header() []byte {
 	header := encodeClosedSpendHeader(slots.owner.binding)
 	copy(header[:8], "ARDISL01")
 	var seconds uint64

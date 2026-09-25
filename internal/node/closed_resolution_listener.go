@@ -11,6 +11,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
+	"github.com/dianabuilds/ardents-network/internal/route/replay"
 	"github.com/dianabuilds/ardents-network/internal/service/reachability"
 )
 
@@ -51,7 +52,7 @@ func startClosedResolution(config runtimeConfig, snapshot dutyFacts) (*probeServ
 	if !available {
 		return nil, errors.New("closed resolution State changed before reservation")
 	}
-	spends, err := route.OpenClosedSpendLedger(local.AdmissionRoot, route.ClosedSpendBinding{NetworkID: receiver.NetworkID,
+	spends, err := replay.Open(local.AdmissionRoot, replay.Binding{NetworkID: receiver.NetworkID,
 		ProfileDigest: receiver.ProfileDigest, ReceiverNodeID: receiver.NodeID, ReceiverDutyGeneration: receiver.DutyGeneration})
 	if err != nil {
 		return nil, err
@@ -99,7 +100,7 @@ type closedResolutionServer struct {
 	certificate tls.Certificate
 	listener    route.ClosedSharedCarrierListener
 	store       *reachability.Store
-	spends      *route.ClosedSpendLedger
+	spends      *replay.Ledger
 	limits      *route.ClosedDutyLimits
 	capacity    chan struct{}
 	active      atomic.Uint32

@@ -11,6 +11,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
+	"github.com/dianabuilds/ardents-network/internal/route/replay"
 )
 
 // Delay only the return from Read after physical closure. This models a
@@ -62,9 +63,9 @@ func checkForwardingReaderShutdown(t *testing.T, closeErr error) {
 		t.Fatal(err)
 	}
 	root := t.TempDir()
-	binding := route.ClosedSpendBinding{NetworkID: [32]byte{1}, ProfileDigest: [32]byte{2},
+	binding := replay.Binding{NetworkID: [32]byte{1}, ProfileDigest: [32]byte{2},
 		ReceiverNodeID: [32]byte{3}, ReceiverDutyGeneration: 1}
-	spends, err := route.OpenClosedSpendLedger(root, binding)
+	spends, err := replay.Open(root, binding)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -150,7 +151,7 @@ func checkForwardingReaderShutdown(t *testing.T, closeErr error) {
 	default:
 		t.Fatal("Stop did not interrupt the outgoing Carrier")
 	}
-	if replacement, err := route.OpenClosedSpendLedger(root, binding); err == nil {
+	if replacement, err := replay.Open(root, binding); err == nil {
 		_ = replacement.Close()
 		t.Fatal("unjoined reader lost its root lease")
 	}
@@ -165,7 +166,7 @@ func checkForwardingReaderShutdown(t *testing.T, closeErr error) {
 	if err := server.Drain(readerOnly); !errors.Is(err, context.DeadlineExceeded) {
 		t.Fatalf("Drain completed without the retained reader after producer join: %v", err)
 	}
-	if replacement, err := route.OpenClosedSpendLedger(root, binding); err == nil {
+	if replacement, err := replay.Open(root, binding); err == nil {
 		_ = replacement.Close()
 		t.Fatal("unjoined reader lost its root lease after producer join")
 	}
@@ -178,7 +179,7 @@ func checkForwardingReaderShutdown(t *testing.T, closeErr error) {
 			t.Fatalf("joined cleanup changed its physical close result: %v", err)
 		}
 	}
-	reopened, err := route.OpenClosedSpendLedger(root, binding)
+	reopened, err := replay.Open(root, binding)
 	if err != nil {
 		t.Fatalf("joined shutdown retained root: %v", err)
 	}

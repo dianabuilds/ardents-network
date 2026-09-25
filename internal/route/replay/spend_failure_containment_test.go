@@ -1,4 +1,4 @@
-package route
+package replay
 
 import (
 	"errors"
@@ -9,11 +9,11 @@ import (
 	"time"
 )
 
-func TestClosedSpendLedgerFailedAppendTerminalizesOpenOwner(t *testing.T) {
-	binding := ClosedSpendBinding{NetworkID: [32]byte{1}, ProfileDigest: [32]byte{2}, ReceiverNodeID: [32]byte{3}, ReceiverDutyGeneration: 4}
+func TestLedgerFailedAppendTerminalizesOpenOwner(t *testing.T) {
+	binding := Binding{NetworkID: [32]byte{1}, ProfileDigest: [32]byte{2}, ReceiverNodeID: [32]byte{3}, ReceiverDutyGeneration: 4}
 	root := t.TempDir()
 	window := time.Unix(1_800_000_000, 0).UTC().Truncate(time.Hour)
-	ledger, err := OpenClosedSpendLedger(root, binding)
+	ledger, err := Open(root, binding)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -36,7 +36,7 @@ func TestClosedSpendLedgerFailedAppendTerminalizesOpenOwner(t *testing.T) {
 	}
 }
 
-func TestClosedSpendLedgerAppendFailuresTerminalizeOpenOwner(t *testing.T) {
+func TestLedgerAppendFailuresTerminalizeOpenOwner(t *testing.T) {
 	for _, failure := range []struct {
 		name string
 		file closedSpendAppendFile
@@ -69,7 +69,7 @@ func TestClosedSpendLedgerAppendFailuresTerminalizeOpenOwner(t *testing.T) {
 	}
 }
 
-func TestClosedSpendLedgerPostCommitFailureRetainsCommittedSpendAfterReopen(t *testing.T) {
+func TestLedgerPostCommitFailureRetainsCommittedSpendAfterReopen(t *testing.T) {
 	for _, failure := range []struct {
 		name string
 		wrap func(*os.File) closedSpendAppendFile
@@ -102,7 +102,7 @@ func TestClosedSpendLedgerPostCommitFailureRetainsCommittedSpendAfterReopen(t *t
 			if err := ledger.Close(); !errors.Is(err, firstErr) {
 				t.Fatalf("Close = %v, want %v", err, firstErr)
 			}
-			reopened, err := OpenClosedSpendLedger(filepath.Dir(path), binding)
+			reopened, err := Open(filepath.Dir(path), binding)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -114,7 +114,7 @@ func TestClosedSpendLedgerPostCommitFailureRetainsCommittedSpendAfterReopen(t *t
 	}
 }
 
-func TestClosedSpendLedgerFailedPruneTerminalizesOpenOwnerAndReleasesLease(t *testing.T) {
+func TestLedgerFailedPruneTerminalizesOpenOwnerAndReleasesLease(t *testing.T) {
 	ledger, window := closedSpendFailureFixture(t)
 	committed := closedSpendFailureToken(1)
 	if err := ledger.Spend(committed, window, window.Add(time.Minute)); err != nil {
@@ -135,7 +135,7 @@ func TestClosedSpendLedgerFailedPruneTerminalizesOpenOwnerAndReleasesLease(t *te
 	if err := ledger.Close(); !errors.Is(err, pruneErr) {
 		t.Fatalf("Close = %v, want retained failure %v", err, pruneErr)
 	}
-	reopened, err := OpenClosedSpendLedger(filepath.Dir(root), binding)
+	reopened, err := Open(filepath.Dir(root), binding)
 	if err != nil {
 		t.Fatalf("Close did not release lease: %v", err)
 	}
@@ -145,10 +145,10 @@ func TestClosedSpendLedgerFailedPruneTerminalizesOpenOwnerAndReleasesLease(t *te
 	}
 }
 
-func closedSpendFailureFixture(t *testing.T) (*ClosedSpendLedger, time.Time) {
+func closedSpendFailureFixture(t *testing.T) (*Ledger, time.Time) {
 	t.Helper()
 	window := time.Unix(1_800_000_000, 0).UTC().Truncate(time.Hour)
-	ledger, err := OpenClosedSpendLedger(t.TempDir(), ClosedSpendBinding{NetworkID: [32]byte{1}, ProfileDigest: [32]byte{2}, ReceiverNodeID: [32]byte{3}, ReceiverDutyGeneration: 4})
+	ledger, err := Open(t.TempDir(), Binding{NetworkID: [32]byte{1}, ProfileDigest: [32]byte{2}, ReceiverNodeID: [32]byte{3}, ReceiverDutyGeneration: 4})
 	if err != nil {
 		t.Fatal(err)
 	}

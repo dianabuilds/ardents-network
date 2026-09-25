@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
+	"github.com/dianabuilds/ardents-network/internal/route/replay"
 	"github.com/dianabuilds/ardents-network/internal/route/terminal"
 
 	"github.com/dianabuilds/ardents-network/internal/network/state"
@@ -188,7 +189,7 @@ func newPrivateRecipientNetworkFixtureWithStart(t *testing.T, carrier route.Carr
 			return
 		}
 		if purpose == ardp.PurposeIntroduction {
-			ledger, err := route.OpenClosedSpendLedger(config.ClosedIntroduction.AdmissionRoot, route.ClosedSpendBinding{NetworkID: receiver.NetworkID, ProfileDigest: receiver.ProfileDigest, ReceiverNodeID: receiver.NodeID, ReceiverDutyGeneration: receiver.DutyGeneration})
+			ledger, err := replay.Open(config.ClosedIntroduction.AdmissionRoot, replay.Binding{NetworkID: receiver.NetworkID, ProfileDigest: receiver.ProfileDigest, ReceiverNodeID: receiver.NodeID, ReceiverDutyGeneration: receiver.DutyGeneration})
 			if err != nil {
 				t.Error(err)
 			} else if err := ledger.Close(); err != nil {
@@ -197,7 +198,7 @@ func newPrivateRecipientNetworkFixtureWithStart(t *testing.T, carrier route.Carr
 			return
 		}
 		if purpose == ardp.PurposeDataJoin {
-			ledger, err := route.OpenClosedSpendLedger(config.ClosedDataJoin.AdmissionRoot, route.ClosedSpendBinding{NetworkID: receiver.NetworkID, ProfileDigest: receiver.ProfileDigest, ReceiverNodeID: receiver.NodeID, ReceiverDutyGeneration: receiver.DutyGeneration})
+			ledger, err := replay.Open(config.ClosedDataJoin.AdmissionRoot, replay.Binding{NetworkID: receiver.NetworkID, ProfileDigest: receiver.ProfileDigest, ReceiverNodeID: receiver.NodeID, ReceiverDutyGeneration: receiver.DutyGeneration})
 			if err != nil {
 				t.Error(err)
 			} else if err := ledger.Close(); err != nil {

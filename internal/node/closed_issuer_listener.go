@@ -11,6 +11,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	"github.com/dianabuilds/ardents-network/internal/route/credential"
+	"github.com/dianabuilds/ardents-network/internal/route/replay"
 )
 
 func startClosedIssuer(config runtimeConfig, snapshot dutyFacts) (*probeServer, error) {
@@ -38,7 +39,7 @@ func startClosedIssuer(config runtimeConfig, snapshot dutyFacts) (*probeServer, 
 	if !available {
 		return nil, errors.Join(errors.New("closed issuer receiver is unavailable"), issuer.Close())
 	}
-	spends, err := route.OpenClosedSpendLedger(local.AdmissionRoot, route.ClosedSpendBinding{NetworkID: receiver.NetworkID,
+	spends, err := replay.Open(local.AdmissionRoot, replay.Binding{NetworkID: receiver.NetworkID,
 		ProfileDigest: receiver.ProfileDigest, ReceiverNodeID: receiver.NodeID, ReceiverDutyGeneration: receiver.DutyGeneration})
 	if err != nil {
 		return nil, errors.Join(err, issuer.Close())

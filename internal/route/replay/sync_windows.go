@@ -1,6 +1,6 @@
 //go:build windows
 
-package route
+package replay
 
 import "syscall"
 

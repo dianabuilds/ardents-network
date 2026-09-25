@@ -1,4 +1,4 @@
-package route
+package replay
 
 import (
 	"bytes"
@@ -22,23 +22,23 @@ const (
 	maximumClosedSpends         = 2 * 65536
 )
 
-// ClosedSpendBinding is the complete public receiving duty fact set that
+// Binding is the complete public receiving duty fact set that
 // owns a token spend journal. A journal cannot be rebound to a successor.
-type ClosedSpendBinding struct {
+type Binding struct {
 	NetworkID, ProfileDigest, ReceiverNodeID [32]byte
 	ReceiverDutyGeneration                   uint64
 }
 
-// ClosedSpendLedger durably burns a token before Route can enable a lane.
+// Ledger durably burns a token before Route can enable a lane.
 // It stores only the token digest and its receiver-local expiry, never a
 // holder key, permission, Target, or Application data.
-type ClosedSpendLedger struct {
+type Ledger struct {
 	closed         bool
 	failure        error
-	slots          *ClosedIntroductionSlots
+	slots          *IntroductionSlots
 	mu             sync.Mutex
 	path           string
-	binding        ClosedSpendBinding
+	binding        Binding
 	spent          map[[32]byte]time.Time
 	lease          closedSpendLease
 	openAppendFile func(string) (closedSpendAppendFile, error)
@@ -52,20 +52,20 @@ type closedSpendAppendFile interface {
 	Close() error
 }
 
-// OpenClosedSpendLedger opens one exclusive receiving-duty spend journal.
-func OpenClosedSpendLedger(root string, binding ClosedSpendBinding) (*ClosedSpendLedger, error) {
-	if !filepath.IsAbs(root) || filepath.Clean(root) != root || !validClosedSpendBinding(binding) {
+// Open opens one exclusive receiving-duty spend journal.
+func Open(root string, binding Binding) (*Ledger, error) {
+	if !filepath.IsAbs(root) || filepath.Clean(root) != root || !validBinding(binding) {
 		return nil, errors.New("closed spend ledger binding is invalid")
 	}
 	lease, err := acquireClosedSpendLease(filepath.Join(root, closedSpendLockName))
 	if err != nil {
 		return nil, err
 	}
-	fail := func(cause error) (*ClosedSpendLedger, error) { return nil, errors.Join(cause, lease.release()) }
+	fail := func(cause error) (*Ledger, error) { return nil, errors.Join(cause, lease.release()) }
 	path := filepath.Join(root, closedSpendLedgerName)
 	raw, err := readClosedSpendFile(path, closedSpendLedgerHeaderSize+maximumClosedSpends*closedSpendRecordSize)
 	if errors.Is(err, os.ErrNotExist) {
-		ledger := &ClosedSpendLedger{path: path, binding: binding, spent: make(map[[32]byte]time.Time), lease: lease}
+		ledger := &Ledger{path: path, binding: binding, spent: make(map[[32]byte]time.Time), lease: lease}
 		if err := writeClosedSpendExclusive(path, encodeClosedSpendHeader(binding)); err != nil {
 			return fail(err)
 		}
@@ -74,7 +74,7 @@ func OpenClosedSpendLedger(root string, binding ClosedSpendBinding) (*ClosedSpen
 	if err != nil {
 		return fail(err)
 	}
-	ledger, err := decodeClosedSpendLedger(path, binding, raw)
+	ledger, err := decodeLedger(path, binding, raw)
 	if err != nil {
 		return fail(err)
 	}
@@ -84,7 +84,7 @@ func OpenClosedSpendLedger(root string, binding ClosedSpendBinding) (*ClosedSpen
 
 // Close releases the process-held journal lease. It does not erase spent
 // records, which remain authoritative for the accepted duty/window.
-func (ledger *ClosedSpendLedger) Close() error {
+func (ledger *Ledger) Close() error {
 	if ledger == nil {
 		return nil
 	}
@@ -102,8 +102,8 @@ func (ledger *ClosedSpendLedger) Close() error {
 // Spend durably records a token digest before granting the caller work. A
 // duplicate or an ambiguous write is unavailable; expiry never revives a
 // token in memory and only bounds retained journal history after reopen.
-func (ledger *ClosedSpendLedger) Spend(token []byte, window, now time.Time) error {
-	if ledger == nil || len(token) != 354 || !validClosedSpendWindow(window) || now.IsZero() {
+func (ledger *Ledger) Spend(token []byte, window, now time.Time) error {
+	if ledger == nil || len(token) != 354 || !ValidWindow(window) || now.IsZero() {
 		return errors.New("closed token spend is invalid")
 	}
 	now = now.UTC()
@@ -137,7 +137,7 @@ func (ledger *ClosedSpendLedger) Spend(token []byte, window, now time.Time) erro
 	return nil
 }
 
-func (ledger *ClosedSpendLedger) prune(now time.Time) error {
+func (ledger *Ledger) prune(now time.Time) error {
 	retained := make(map[[32]byte]time.Time, len(ledger.spent))
 	for digest, window := range ledger.spent {
 		if now.Before(window.Add(time.Hour + time.Minute)) {
@@ -147,14 +147,14 @@ func (ledger *ClosedSpendLedger) prune(now time.Time) error {
 	if len(retained) == len(ledger.spent) {
 		return nil
 	}
-	if err := replaceClosedSpendLedger(ledger.path, ledger.binding, retained); err != nil {
+	if err := replaceLedger(ledger.path, ledger.binding, retained); err != nil {
 		return err
 	}
 	ledger.spent = retained
 	return nil
 }
 
-func (ledger *ClosedSpendLedger) appendRecord(digest [32]byte, window time.Time) error {
+func (ledger *Ledger) appendRecord(digest [32]byte, window time.Time) error {
 	openFile := ledger.openAppendFile
 	if openFile == nil {
 		openFile = func(path string) (closedSpendAppendFile, error) { return os.OpenFile(path, os.O_RDWR, 0) }
@@ -162,15 +162,16 @@ func (ledger *ClosedSpendLedger) appendRecord(digest [32]byte, window time.Time)
 	return appendClosedSpendRecord(openFile, ledger.path, digest, window)
 }
 
-func validClosedSpendBinding(binding ClosedSpendBinding) bool {
+func validBinding(binding Binding) bool {
 	return binding.NetworkID != [32]byte{} && binding.ProfileDigest != [32]byte{} && binding.ReceiverNodeID != [32]byte{} && binding.ReceiverDutyGeneration != 0
 }
 
-func validClosedSpendWindow(window time.Time) bool {
+// ValidWindow accepts only a canonical UTC hourly token-spend window.
+func ValidWindow(window time.Time) bool {
 	return !window.IsZero() && window == window.UTC() && window == window.Truncate(time.Hour)
 }
 
-func encodeClosedSpendHeader(binding ClosedSpendBinding) []byte {
+func encodeClosedSpendHeader(binding Binding) []byte {
 	raw := make([]byte, 0, closedSpendLedgerHeaderSize)
 	raw = append(raw, closedSpendLedgerMagic...)
 	for _, value := range [][32]byte{binding.NetworkID, binding.ProfileDigest, binding.ReceiverNodeID} {
@@ -179,18 +180,18 @@ func encodeClosedSpendHeader(binding ClosedSpendBinding) []byte {
 	return binary.BigEndian.AppendUint64(raw, binding.ReceiverDutyGeneration)
 }
 
-func decodeClosedSpendLedger(path string, binding ClosedSpendBinding, raw []byte) (*ClosedSpendLedger, error) {
-	return decodeClosedSpendLedgerWithRepair(path, binding, raw, truncateClosedSpendLedger)
+func decodeLedger(path string, binding Binding, raw []byte) (*Ledger, error) {
+	return decodeLedgerWithRepair(path, binding, raw, truncateLedger)
 }
 
-// decodeClosedSpendLedgerWithRepair accepts only one final crash tail. A
+// decodeLedgerWithRepair accepts only one final crash tail. A
 // complete record after an incomplete one is ambiguous and must remain intact
 // for operator investigation rather than silently discarding a spent token.
-func decodeClosedSpendLedgerWithRepair(path string, binding ClosedSpendBinding, raw []byte, repair func(string, int64) error) (*ClosedSpendLedger, error) {
+func decodeLedgerWithRepair(path string, binding Binding, raw []byte, repair func(string, int64) error) (*Ledger, error) {
 	if len(raw) < closedSpendLedgerHeaderSize || !bytes.Equal(raw[:8], []byte(closedSpendLedgerMagic)) || !bytes.Equal(raw[:closedSpendLedgerHeaderSize], encodeClosedSpendHeader(binding)) {
 		return nil, errors.New("closed spend ledger cannot be rebound")
 	}
-	ledger := &ClosedSpendLedger{path: path, binding: binding, spent: make(map[[32]byte]time.Time)}
+	ledger := &Ledger{path: path, binding: binding, spent: make(map[[32]byte]time.Time)}
 	offset := closedSpendLedgerHeaderSize
 	complete := len(raw) - (len(raw)-offset)%closedSpendRecordSize
 	repairAt := -1
@@ -205,7 +206,7 @@ func decodeClosedSpendLedgerWithRepair(path string, binding ClosedSpendBinding, 
 			repairAt = offset
 			break
 		}
-		if !validClosedSpendWindow(window) || digest == [32]byte{} || ledger.spent[digest] != (time.Time{}) || len(ledger.spent) >= maximumClosedSpends {
+		if !ValidWindow(window) || digest == [32]byte{} || ledger.spent[digest] != (time.Time{}) || len(ledger.spent) >= maximumClosedSpends {
 			return nil, errors.New("closed spend ledger record is invalid")
 		}
 		ledger.spent[digest] = window
@@ -293,7 +294,7 @@ func readClosedSpendFile(path string, maximum int) ([]byte, error) {
 	return raw, nil
 }
 
-func truncateClosedSpendLedger(path string, size int64) error {
+func truncateLedger(path string, size int64) error {
 	file, err := os.OpenFile(path, os.O_RDWR, 0)
 	if err != nil {
 		return err
@@ -308,7 +309,7 @@ func truncateClosedSpendLedger(path string, size int64) error {
 	return closeErr
 }
 
-func replaceClosedSpendLedger(path string, binding ClosedSpendBinding, spends map[[32]byte]time.Time) error {
+func replaceLedger(path string, binding Binding, spends map[[32]byte]time.Time) error {
 	if len(spends) > maximumClosedSpends {
 		return errors.New("closed spend ledger exceeds bound")
 	}
@@ -320,7 +321,7 @@ func replaceClosedSpendLedger(path string, binding ClosedSpendBinding, spends ma
 	raw := encodeClosedSpendHeader(binding)
 	for _, digest := range digests {
 		window := spends[digest]
-		if !validClosedSpendWindow(window) {
+		if !ValidWindow(window) {
 			return errors.New("closed spend ledger record is invalid")
 		}
 		record := make([]byte, closedSpendRecordSize)

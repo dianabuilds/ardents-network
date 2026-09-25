@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/replay"
 )
 
 func TestClosedForwardingReceivingRollbackRetainsInitializationAndCleanupFailures(t *testing.T) {
@@ -28,13 +29,13 @@ func TestClosedForwardingReceivingRollbackRetainsInitializationAndCleanupFailure
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			root := t.TempDir()
-			binding := route.ClosedSpendBinding{NetworkID: [32]byte{1}, ProfileDigest: [32]byte{2},
+			binding := replay.Binding{NetworkID: [32]byte{1}, ProfileDigest: [32]byte{2},
 				ReceiverNodeID: [32]byte{3}, ReceiverDutyGeneration: 4}
 			initial := errors.New("fixture initialization failed")
 			cleanup := errors.New("fixture spend cleanup failed")
 			closes := 0
 			openers := defaultClosedForwardingReceivingOpeners()
-			openers.closeSpends = func(spends *route.ClosedSpendLedger) error {
+			openers.closeSpends = func(spends *replay.Ledger) error {
 				closes++
 				return errors.Join(spends.Close(), cleanup)
 			}
@@ -50,7 +51,7 @@ func TestClosedForwardingReceivingRollbackRetainsInitializationAndCleanupFailure
 			if closes != 1 {
 				t.Fatalf("spend lease closed %d times", closes)
 			}
-			reopened, err := route.OpenClosedSpendLedger(root, binding)
+			reopened, err := replay.Open(root, binding)
 			if err != nil {
 				t.Fatalf("rollback retained spend root: %v", err)
 			}
@@ -63,7 +64,7 @@ func TestClosedForwardingReceivingRollbackRetainsInitializationAndCleanupFailure
 
 func TestClosedForwardingReceivingTransfersOnlyCompleteResources(t *testing.T) {
 	root := t.TempDir()
-	binding := route.ClosedSpendBinding{NetworkID: [32]byte{1}, ProfileDigest: [32]byte{2},
+	binding := replay.Binding{NetworkID: [32]byte{1}, ProfileDigest: [32]byte{2},
 		ReceiverNodeID: [32]byte{3}, ReceiverDutyGeneration: 4}
 	resources, err := openClosedForwardingReceivingResources(root, binding, time.Now)
 	if resources != nil {
@@ -80,7 +81,7 @@ func TestClosedForwardingReceivingTransfersOnlyCompleteResources(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	reopened, err := route.OpenClosedSpendLedger(root, binding)
+	reopened, err := replay.Open(root, binding)
 	if err != nil {
 		t.Fatalf("closed owner retained spend root: %v", err)
 	}

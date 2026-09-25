@@ -1,4 +1,4 @@
-package route
+package replay
 
 import (
 	"bytes"
@@ -8,12 +8,12 @@ import (
 	"time"
 )
 
-func TestClosedIntroductionSlotsSurviveLeaseTransferAndExpire(t *testing.T) {
+func TestIntroductionSlotsSurviveLeaseTransferAndExpire(t *testing.T) {
 	root := t.TempDir()
-	binding := ClosedSpendBinding{NetworkID: [32]byte{1}, ProfileDigest: [32]byte{2}, ReceiverNodeID: [32]byte{3}, ReceiverDutyGeneration: 4}
-	open := func() (*ClosedSpendLedger, *ClosedIntroductionSlots) {
+	binding := Binding{NetworkID: [32]byte{1}, ProfileDigest: [32]byte{2}, ReceiverNodeID: [32]byte{3}, ReceiverDutyGeneration: 4}
+	open := func() (*Ledger, *IntroductionSlots) {
 		t.Helper()
-		ledger, err := OpenClosedSpendLedger(root, binding)
+		ledger, err := Open(root, binding)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -56,8 +56,8 @@ func TestClosedIntroductionSlotsSurviveLeaseTransferAndExpire(t *testing.T) {
 	}
 }
 
-func TestClosedIntroductionSlotsCannotOpenAfterLeaseRelease(t *testing.T) {
-	ledger, err := OpenClosedSpendLedger(t.TempDir(), ClosedSpendBinding{NetworkID: [32]byte{1}, ProfileDigest: [32]byte{2}, ReceiverNodeID: [32]byte{3}, ReceiverDutyGeneration: 4})
+func TestIntroductionSlotsCannotOpenAfterLeaseRelease(t *testing.T) {
+	ledger, err := Open(t.TempDir(), Binding{NetworkID: [32]byte{1}, ProfileDigest: [32]byte{2}, ReceiverNodeID: [32]byte{3}, ReceiverDutyGeneration: 4})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -73,12 +73,12 @@ func TestClosedIntroductionSlotsCannotOpenAfterLeaseRelease(t *testing.T) {
 	}
 }
 
-func TestClosedIntroductionSlotsRefuseDamagedFloor(t *testing.T) {
+func TestIntroductionSlotsRefuseDamagedFloor(t *testing.T) {
 	for _, damage := range []string{"missing", "truncated", "foreign-binding"} {
 		t.Run(damage, func(t *testing.T) {
 			root := t.TempDir()
-			binding := ClosedSpendBinding{NetworkID: [32]byte{1}, ProfileDigest: [32]byte{2}, ReceiverNodeID: [32]byte{3}, ReceiverDutyGeneration: 4}
-			ledger, err := OpenClosedSpendLedger(root, binding)
+			binding := Binding{NetworkID: [32]byte{1}, ProfileDigest: [32]byte{2}, ReceiverNodeID: [32]byte{3}, ReceiverDutyGeneration: 4}
+			ledger, err := Open(root, binding)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -112,7 +112,7 @@ func TestClosedIntroductionSlotsRefuseDamagedFloor(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			reopened, err := OpenClosedSpendLedger(root, binding)
+			reopened, err := Open(root, binding)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -128,9 +128,9 @@ func TestClosedIntroductionSlotsRefuseDamagedFloor(t *testing.T) {
 	}
 }
 
-func TestClosedIntroductionSlotsPersistenceFailureStopsClaims(t *testing.T) {
+func TestIntroductionSlotsPersistenceFailureStopsClaims(t *testing.T) {
 	root := t.TempDir()
-	ledger, err := OpenClosedSpendLedger(root, ClosedSpendBinding{NetworkID: [32]byte{1}, ProfileDigest: [32]byte{2}, ReceiverNodeID: [32]byte{3}, ReceiverDutyGeneration: 4})
+	ledger, err := Open(root, Binding{NetworkID: [32]byte{1}, ProfileDigest: [32]byte{2}, ReceiverNodeID: [32]byte{3}, ReceiverDutyGeneration: 4})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -172,10 +172,10 @@ func TestClosedIntroductionSlotsPersistenceFailureStopsClaims(t *testing.T) {
 	}
 }
 
-func TestClosedIntroductionSlotsPruningRetainsTimeFloor(t *testing.T) {
+func TestIntroductionSlotsPruningRetainsTimeFloor(t *testing.T) {
 	root := t.TempDir()
-	binding := ClosedSpendBinding{NetworkID: [32]byte{1}, ProfileDigest: [32]byte{2}, ReceiverNodeID: [32]byte{3}, ReceiverDutyGeneration: 4}
-	ledger, err := OpenClosedSpendLedger(root, binding)
+	binding := Binding{NetworkID: [32]byte{1}, ProfileDigest: [32]byte{2}, ReceiverNodeID: [32]byte{3}, ReceiverDutyGeneration: 4}
+	ledger, err := Open(root, binding)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -194,7 +194,7 @@ func TestClosedIntroductionSlotsPruningRetainsTimeFloor(t *testing.T) {
 	if err := ledger.Close(); err != nil {
 		t.Fatal(err)
 	}
-	reopened, err := OpenClosedSpendLedger(root, binding)
+	reopened, err := Open(root, binding)
 	if err != nil {
 		t.Fatal(err)
 	}

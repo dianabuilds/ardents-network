@@ -9,12 +9,13 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
+	"github.com/dianabuilds/ardents-network/internal/route/replay"
 )
 
 func TestClosedAdmissionChannelBindsHELLOExporterBeforeBurningToken(t *testing.T) {
 	now := time.Unix(1_800_000_000, 0).UTC()
 	receiver := ClosedRoleReceiver{NetworkID: [32]byte{1}, StateGeneration: [32]byte{2}, StateDigest: [32]byte{3}, ProfileDigest: [32]byte{4}, NodeID: [32]byte{5}, RecordDigest: [32]byte{6}, DutyGeneration: 6, RoleDomain: closedRoleDomainRendezvous, Subrole: closedDutyIssuance, ExpectedPurpose: ardp.PurposeIssuer, NotAfter: now.Add(time.Hour)}
-	spends, err := OpenClosedSpendLedger(t.TempDir(), ClosedSpendBinding{NetworkID: receiver.NetworkID, ProfileDigest: receiver.ProfileDigest, ReceiverNodeID: receiver.NodeID, ReceiverDutyGeneration: receiver.DutyGeneration})
+	spends, err := replay.Open(t.TempDir(), replay.Binding{NetworkID: receiver.NetworkID, ProfileDigest: receiver.ProfileDigest, ReceiverNodeID: receiver.NodeID, ReceiverDutyGeneration: receiver.DutyGeneration})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -68,7 +69,7 @@ func TestClosedAdmissionChannelBindsHELLOExporterBeforeBurningToken(t *testing.T
 func TestClosedAdmissionHostRefusalDoesNotBurnToken(t *testing.T) {
 	now := time.Unix(1_800_000_000, 0).UTC()
 	receiver := ClosedRoleReceiver{NetworkID: [32]byte{1}, StateGeneration: [32]byte{2}, StateDigest: [32]byte{3}, ProfileDigest: [32]byte{4}, NodeID: [32]byte{5}, RecordDigest: [32]byte{6}, DutyGeneration: 6, RoleDomain: closedRoleDomainRendezvous, Subrole: closedDutyIssuance, ExpectedPurpose: ardp.PurposeIssuer, NotAfter: now.Add(time.Hour)}
-	spends, err := OpenClosedSpendLedger(t.TempDir(), ClosedSpendBinding{NetworkID: receiver.NetworkID, ProfileDigest: receiver.ProfileDigest, ReceiverNodeID: receiver.NodeID, ReceiverDutyGeneration: receiver.DutyGeneration})
+	spends, err := replay.Open(t.TempDir(), replay.Binding{NetworkID: receiver.NetworkID, ProfileDigest: receiver.ProfileDigest, ReceiverNodeID: receiver.NodeID, ReceiverDutyGeneration: receiver.DutyGeneration})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -117,7 +118,7 @@ func TestClosedAdmissionHostRefusalDoesNotBurnToken(t *testing.T) {
 func TestClosedAdmissionCapacityRefusalRetainsHostReleaseFailure(t *testing.T) {
 	now := time.Unix(1_800_000_000, 0).UTC()
 	receiver := ClosedRoleReceiver{NetworkID: [32]byte{1}, StateGeneration: [32]byte{2}, StateDigest: [32]byte{3}, ProfileDigest: [32]byte{4}, NodeID: [32]byte{5}, RecordDigest: [32]byte{6}, DutyGeneration: 6, RoleDomain: closedRoleDomainRendezvous, Subrole: closedDutyIssuance, ExpectedPurpose: ardp.PurposeIssuer, NotAfter: now.Add(time.Hour)}
-	spends, err := OpenClosedSpendLedger(t.TempDir(), ClosedSpendBinding{NetworkID: receiver.NetworkID, ProfileDigest: receiver.ProfileDigest, ReceiverNodeID: receiver.NodeID, ReceiverDutyGeneration: receiver.DutyGeneration})
+	spends, err := replay.Open(t.TempDir(), replay.Binding{NetworkID: receiver.NetworkID, ProfileDigest: receiver.ProfileDigest, ReceiverNodeID: receiver.NodeID, ReceiverDutyGeneration: receiver.DutyGeneration})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -166,7 +167,7 @@ func TestClosedAdmissionCapacityRefusalRetainsHostReleaseFailure(t *testing.T) {
 func TestClosedAdmissionDuplicateSpendRefusalReleasesOnlyFailedReservation(t *testing.T) {
 	now := time.Unix(1_800_000_000, 0).UTC()
 	receiver := ClosedRoleReceiver{NetworkID: [32]byte{1}, StateGeneration: [32]byte{2}, StateDigest: [32]byte{3}, ProfileDigest: [32]byte{4}, NodeID: [32]byte{5}, RecordDigest: [32]byte{6}, DutyGeneration: 6, RoleDomain: closedRoleDomainRendezvous, Subrole: closedDutyIssuance, ExpectedPurpose: ardp.PurposeIssuer, NotAfter: now.Add(time.Hour)}
-	spends, err := OpenClosedSpendLedger(t.TempDir(), ClosedSpendBinding{NetworkID: receiver.NetworkID, ProfileDigest: receiver.ProfileDigest, ReceiverNodeID: receiver.NodeID, ReceiverDutyGeneration: receiver.DutyGeneration})
+	spends, err := replay.Open(t.TempDir(), replay.Binding{NetworkID: receiver.NetworkID, ProfileDigest: receiver.ProfileDigest, ReceiverNodeID: receiver.NodeID, ReceiverDutyGeneration: receiver.DutyGeneration})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -237,7 +238,7 @@ func TestClosedAdmissionExpiredLeaseRefusalReleasesOnlyFailedReservation(t *test
 	now := time.Unix(1_800_000_000, 0).UTC()
 	clock := now
 	receiver := ClosedRoleReceiver{NetworkID: [32]byte{1}, StateGeneration: [32]byte{2}, StateDigest: [32]byte{3}, ProfileDigest: [32]byte{4}, NodeID: [32]byte{5}, RecordDigest: [32]byte{6}, DutyGeneration: 6, RoleDomain: closedRoleDomainRendezvous, Subrole: closedDutyIssuance, ExpectedPurpose: ardp.PurposeIssuer, NotAfter: now.Add(time.Hour)}
-	spends, err := OpenClosedSpendLedger(t.TempDir(), ClosedSpendBinding{NetworkID: receiver.NetworkID, ProfileDigest: receiver.ProfileDigest, ReceiverNodeID: receiver.NodeID, ReceiverDutyGeneration: receiver.DutyGeneration})
+	spends, err := replay.Open(t.TempDir(), replay.Binding{NetworkID: receiver.NetworkID, ProfileDigest: receiver.ProfileDigest, ReceiverNodeID: receiver.NodeID, ReceiverDutyGeneration: receiver.DutyGeneration})
 	if err != nil {
 		t.Fatal(err)
 	}

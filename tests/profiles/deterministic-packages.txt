@@ -41,6 +41,7 @@ github.com/dianabuilds/ardents-network/internal/route
 github.com/dianabuilds/ardents-network/internal/route/ardp
 github.com/dianabuilds/ardents-network/internal/route/capsule
 github.com/dianabuilds/ardents-network/internal/route/credential
+github.com/dianabuilds/ardents-network/internal/route/replay
 github.com/dianabuilds/ardents-network/internal/route/terminal
 github.com/dianabuilds/ardents-network/internal/service/connection
 github.com/dianabuilds/ardents-network/internal/service/instance

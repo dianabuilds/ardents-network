@@ -10,11 +10,12 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	"github.com/dianabuilds/ardents-network/internal/route/credential"
+	"github.com/dianabuilds/ardents-network/internal/route/replay"
 )
 
 // closedIssuerNodeHandler owns one State-authenticated outer Carrier. It
 // creates no peer, route or fallback: every child terminates at this issuer.
-func closedIssuerNodeHandler(config runtimeConfig, certificate tls.Certificate, issuer *credential.ClosedTokenIssuer, spends *route.ClosedSpendLedger, limits *route.ClosedDutyLimits) credential.ClosedNodeBootstrapHandler {
+func closedIssuerNodeHandler(config runtimeConfig, certificate tls.Certificate, issuer *credential.ClosedTokenIssuer, spends *replay.Ledger, limits *route.ClosedDutyLimits) credential.ClosedNodeBootstrapHandler {
 	return func(ctx context.Context, carrier route.ClosedSharedCarrier, serve func(context.Context, io.ReadWriter, [32]byte, ardp.Hello) error) {
 		defer carrier.Connection.Close()
 		updated, err := currentFacts(config)

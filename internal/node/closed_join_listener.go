@@ -13,6 +13,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/resource"
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
+	"github.com/dianabuilds/ardents-network/internal/route/replay"
 )
 
 // ClosedDataJoinProfile reserves only the local durable spend
@@ -52,7 +53,7 @@ func startClosedDataJoin(config runtimeConfig, snapshot dutyFacts) (*probeServer
 	if !available {
 		return nil, errors.New("closed JOIN State changed before reservation")
 	}
-	spends, err := route.OpenClosedSpendLedger(local.AdmissionRoot, route.ClosedSpendBinding{NetworkID: receiver.NetworkID,
+	spends, err := replay.Open(local.AdmissionRoot, replay.Binding{NetworkID: receiver.NetworkID,
 		ProfileDigest: receiver.ProfileDigest, ReceiverNodeID: receiver.NodeID, ReceiverDutyGeneration: receiver.DutyGeneration})
 	if err != nil {
 		return nil, err
@@ -105,7 +106,7 @@ type closedDataJoinServer struct {
 	receiver    route.ClosedRoleReceiver
 	certificate tls.Certificate
 	listener    route.ClosedSharedCarrierListener
-	spends      *route.ClosedSpendLedger
+	spends      *replay.Ledger
 	limits      *route.ClosedDutyLimits
 	capacity    chan struct{}
 	active      atomic.Uint32

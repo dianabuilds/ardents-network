@@ -1,6 +1,7 @@
 // Package route implements the current closed Node Carrier and authenticated
 // channel mechanics. The child ardp package owns generation-3 lane framing,
-// HELLO and bootstrap bytes; terminal owns fixed operation bodies.
+// HELLO and bootstrap bytes; terminal owns fixed operation bodies. The replay
+// package owns durable receiving-duty token spends and Introduction slots.
 // Node's forwarding owner calls OpenClosedNodeCarrier for one exact
 // State-selected TCP/TLS or QUIC-v2 attempt and retains peer selection and
 // session lifetime. The production-dead Interactive User Route v2 Open/Attach

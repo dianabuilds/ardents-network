@@ -1,18 +1,18 @@
 # Route package refactoring boundary
 
 Status: working architecture analysis for the isolated refactoring branch. The
-terminal body and ARDP framing extractions below are implemented and registered
+capsule, terminal body, ARDP framing, and replay extractions below are implemented and registered
 in the package map; the remaining Route split is still analysis, not a new
 Route contract or C0 execution ledger. The accepted Route and Carrier contracts
 govern behavior.
 
 ## Current Linux owner graph
 
-On the Linux amd64 candidate after the capsule extraction, `go list` selects
-86 production files in `internal/route`: 63 `closed_*.go` and 23 other
-files. It selects 83 test files, 69 of them `closed_*_test.go`. The child
-`internal/route/capsule` has six production files and one behavior test. File prefixes show a likely
-cluster, but they do not establish an independent package boundary.
+On the Linux amd64 candidate after the replay extraction, `go list` selects
+73 production and 77 test files in `internal/route`. Its capsule, ardp,
+terminal, and replay children have respectively 6/1, 3/1, 9/4, and 5/3
+production/test files. File prefixes show a likely cluster, but they do not
+establish an independent package boundary.
 
 The fixed Introduction capsule codec, HPKE transcript, and its canonical-byte
 test now belong to `internal/route/capsule`. Route, Endpoint, and Node consume
@@ -80,6 +80,17 @@ stream lifetime. ARDP imports only `terminal` and the standard library, so
 Route, Node, Endpoint, and credential can consume it without an import cycle.
 They use the new types directly, with no retained `route.ClosedLaneFrame` or
 `route.ClosedHello` aliases.
+
+## Receiving replay owner
+
+`internal/route/replay` owns the receiving duty's durable token-spend journal
+and Introduction-slot floor under one exclusive lease. It imports only the
+standard library. Route asks it to burn a token before admitted work; Node
+opens and joins the exact receiving root. Both callers use `replay.Open`,
+`replay.Ledger`, `replay.Binding`, and `replay.IntroductionSlots` directly,
+without retained `route.ClosedSpend*` wrappers. The fixed persisted file names,
+headers, crash-tail recovery, and slot time floor remain unchanged. Its owner
+tests move with the files; Route and Node retain admission and listener tests.
 
 ## Intended seam
 

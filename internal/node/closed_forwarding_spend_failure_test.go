@@ -17,6 +17,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/resource"
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
+	"github.com/dianabuilds/ardents-network/internal/route/replay"
 )
 
 func TestClosedForwardingStartRefusesAmbiguousSpendJournal(t *testing.T) {
@@ -34,7 +35,7 @@ func TestClosedForwardingStartRefusesAmbiguousSpendJournal(t *testing.T) {
 	if err := os.MkdirAll(root, 0o700); err != nil {
 		t.Fatal(err)
 	}
-	spends, err := route.OpenClosedSpendLedger(root, route.ClosedSpendBinding{NetworkID: fixture.receiver.NetworkID, ProfileDigest: fixture.receiver.ProfileDigest,
+	spends, err := replay.Open(root, replay.Binding{NetworkID: fixture.receiver.NetworkID, ProfileDigest: fixture.receiver.ProfileDigest,
 		ReceiverNodeID: fixture.receiver.NodeID, ReceiverDutyGeneration: fixture.receiver.DutyGeneration})
 	if err != nil {
 		t.Fatal(err)

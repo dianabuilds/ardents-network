@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
+	"github.com/dianabuilds/ardents-network/internal/route/replay"
 	"github.com/dianabuilds/ardents-network/internal/route/terminal"
 )
 
@@ -18,7 +19,7 @@ type closedJoinFixture struct {
 	clock    atomic.Int64
 	receiver ClosedRoleReceiver
 	limits   *ClosedDutyLimits
-	spends   *ClosedSpendLedger
+	spends   *replay.Ledger
 	pairs    *ClosedJoinPairs
 	nonce    byte
 }
@@ -33,7 +34,7 @@ func newClosedJoinFixture(t *testing.T) *closedJoinFixture {
 	f.receiver = ClosedRoleReceiver{NetworkID: [32]byte{1}, StateGeneration: [32]byte{2}, StateDigest: [32]byte{3}, ProfileDigest: [32]byte{4}, NodeID: [32]byte{5}, RecordDigest: [32]byte{6}, DutyGeneration: 6,
 		RoleDomain: 2, Subrole: 4, ExpectedPurpose: ardp.PurposeDataJoin, NotAfter: f.now.Add(time.Hour)}
 	var err error
-	f.spends, err = OpenClosedSpendLedger(t.TempDir(), ClosedSpendBinding{NetworkID: f.receiver.NetworkID, ProfileDigest: f.receiver.ProfileDigest, ReceiverNodeID: f.receiver.NodeID, ReceiverDutyGeneration: 6})
+	f.spends, err = replay.Open(t.TempDir(), replay.Binding{NetworkID: f.receiver.NetworkID, ProfileDigest: f.receiver.ProfileDigest, ReceiverNodeID: f.receiver.NodeID, ReceiverDutyGeneration: 6})
 	if err != nil {
 		t.Fatal(err)
 	}

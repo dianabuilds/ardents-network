@@ -12,6 +12,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
+	"github.com/dianabuilds/ardents-network/internal/route/replay"
 )
 
 // startClosedForwarding materializes one State-selected adjacent/interior
@@ -37,7 +38,7 @@ func startClosedForwarding(config runtimeConfig, snapshot dutyFacts) (*probeServ
 			return nil, err
 		}
 	}
-	receiving, err := openClosedForwardingReceivingResources(local.Root, route.ClosedSpendBinding{NetworkID: receiver.NetworkID, ProfileDigest: receiver.ProfileDigest,
+	receiving, err := openClosedForwardingReceivingResources(local.Root, replay.Binding{NetworkID: receiver.NetworkID, ProfileDigest: receiver.ProfileDigest,
 		ReceiverNodeID: receiver.NodeID, ReceiverDutyGeneration: receiver.DutyGeneration}, config.now)
 	if err != nil {
 		return nil, errors.Join(err, host.Close())
