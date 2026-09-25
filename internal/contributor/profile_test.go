@@ -198,7 +198,7 @@ func TestNextCommandRecoversUpdateInterruptedBetweenPreviousMoves(t *testing.T) 
 	}
 }
 
-func TestDiagnoseAndRestartReturnVerifiedReadyInstallation(t *testing.T) {
+func TestDiagnoseReturnsVerifiedReadyInstallation(t *testing.T) {
 	hostRoot := t.TempDir()
 	bundle, pin := writeContributorBundle(t, 1, strings.Repeat("33", 32))
 	supervisor := &profileSupervisor{hostRoot: hostRoot}
@@ -213,9 +213,24 @@ func TestDiagnoseAndRestartReturnVerifiedReadyInstallation(t *testing.T) {
 	if err != nil || !diagnosed.Active || diagnosed.LifecycleState != "READY" {
 		t.Fatalf("diagnose = %+v, %v", diagnosed, err)
 	}
-	restarted, err := profile.Control(t.Context(), contributor.Restart, "")
-	if err != nil || !restarted.Active || restarted.LifecycleState != "READY" || restarted.Generation != 1 {
-		t.Fatalf("restart = %+v, %v", restarted, err)
+}
+
+func TestControlRefusesRetiredRestartBeforeEffects(t *testing.T) {
+	hostRoot := t.TempDir()
+	supervisor := &profileSupervisor{hostRoot: hostRoot}
+	profile, err := contributor.Open(contributor.Config{Root: hostRoot, Supervisor: supervisor})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := profile.Control(t.Context(), contributor.Action(2), ""); err == nil {
+		t.Fatal("retired Restart action was accepted")
+	}
+	entries, err := os.ReadDir(hostRoot)
+	if err != nil || len(entries) != 0 {
+		t.Fatalf("retired Restart changed host root: %v, %v", entries, err)
+	}
+	if supervisor.startCount() != 0 || supervisor.stopCount() != 0 {
+		t.Fatal("retired Restart reached supervisor")
 	}
 }
 
@@ -233,9 +248,6 @@ func TestDrainStopsWorkAndWithdrawalAlsoDisablesService(t *testing.T) {
 	drained, err := profile.Control(t.Context(), contributor.Drain, "")
 	if err != nil || drained.Active || !drained.Enabled || drained.LifecycleState != "WITHDRAWN" {
 		t.Fatalf("drain = %+v, %v", drained, err)
-	}
-	if _, err := profile.Control(t.Context(), contributor.Restart, ""); err != nil {
-		t.Fatal(err)
 	}
 	withdrawn, err := profile.Control(t.Context(), contributor.Withdraw, "")
 	if err != nil || withdrawn.Active || withdrawn.Enabled || withdrawn.LifecycleState != "WITHDRAWN" {

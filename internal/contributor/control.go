@@ -12,6 +12,9 @@ func (profile *Profile) Control(ctx context.Context, action Action, confirmation
 	if profile == nil || ctx == nil {
 		return Report{}, errors.New("contributor profile is unavailable")
 	}
+	if action != Diagnose && action != Drain && action != Withdraw && action != Remove {
+		return Report{}, errors.New("contributor lifecycle action is retired or unavailable")
+	}
 	if action != Remove && confirmation != "" {
 		return Report{}, errors.New("contributor confirmation is not accepted for this action")
 	}
@@ -34,24 +37,6 @@ func (profile *Profile) Control(ctx context.Context, action Action, confirmation
 	}
 	switch action {
 	case Diagnose:
-		return profile.report(ctx)
-	case Restart:
-		if _, err := profile.report(ctx); err != nil {
-			return Report{}, err
-		}
-		if err := removeIfPresent(profile.paths.lifecycle); err != nil {
-			return Report{}, err
-		}
-		state, err := profile.supervisor.Do(ctx, SupervisorRestart)
-		if err != nil {
-			return Report{}, err
-		}
-		if !state.Active {
-			return Report{}, errors.New("restarted Contributor did not become active")
-		}
-		if _, err := profile.awaitLifecycle(ctx, profile.paths.lifecycle, "READY", 15*time.Second); err != nil {
-			return Report{}, err
-		}
 		return profile.report(ctx)
 	case Drain:
 		return profile.stop(ctx, false)
