@@ -80,3 +80,12 @@ systemd 255. WSL2 still co-locates the sixteen fixture Nodes and is not the
 dedicated installed Ubuntu host required by the command-journey runner.
 These runs narrow the container-environment suspicion but do not make the
 earlier failures pass or qualify the final C0 candidate.
+
+At `bcbeae9d`, the full Endpoint package test binary built with Go 1.26.8 on
+Linux (`SHA-256 25d97b116b869412f72604cefba6006d10594d342da6b406c82b594b5d636271`)
+passed directly under the same Ubuntu 24.04 WSL2 installation with `-test.short`,
+`-test.count=1`, a 15-minute terminal timeout, and shuffle seed
+`1790337552401827580`. The run emitted one QUIC UDP receive-buffer warning.
+This is a passing full Endpoint package run for that binary and environment;
+it does not erase the earlier Docker failures or verify the installed command
+journey on a dedicated Ubuntu host.
