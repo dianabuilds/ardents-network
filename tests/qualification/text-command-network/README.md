@@ -13,6 +13,12 @@ root-owned mode-0555 regular files:
 - `/usr/lib/ardents/text-worker-root/ardents-text`, byte-identical to the
   pinned `ardents-text` command candidate.
 
+Update the root-owned `/etc/ardents/text-worker-artifact.json` so its worker
+digest matches that exact candidate. Start the installed
+`ardents-text-reader.socket` and `ardents-text-publisher.socket` units; both
+must expose Endpoint-owned mode-0600 sockets under `/run/ardents-text/`.
+The runner checks these prerequisites before creating the network topology.
+
 Install a fresh root-owned mode-0644 `/run/systemd/system/ardents-endpoint.service`
 with no drop-ins. The root test binary itself temporarily replaces that unit
 with the unprivileged Endpoint command, then restores it. Provide independent

@@ -18,6 +18,7 @@ binary=/usr/lib/ardents/qualification/closed-text-commands.test
 unit=/run/systemd/system/ardents-endpoint.service
 command_root=/usr/lib/ardents/qualification/commands
 worker=/usr/lib/ardents/text-worker-root/ardents-text
+manifest=/etc/ardents/text-worker-artifact.json
 [ -n "${ARDENTS_TEXT_COMMAND_TEST_SHA256-}" ] && [ -n "${ARDENTS_TEXT_COMMAND_UNIT_SHA256-}" ] &&
 	[ -n "${ARDENTS_TEXT_COMMAND_ARDENTS_SHA256-}" ] && [ -n "${ARDENTS_TEXT_COMMAND_CUSTODY_SHA256-}" ] &&
 	[ -n "${ARDENTS_TEXT_COMMAND_NODE_SHA256-}" ] && [ -n "${ARDENTS_TEXT_COMMAND_CONTROL_SHA256-}" ] &&
@@ -52,6 +53,21 @@ check_command ardents-text "$ARDENTS_TEXT_COMMAND_TEXT_SHA256"
 printf '%s  %s\n' "$ARDENTS_TEXT_COMMAND_WORKER_SHA256" "$worker" | sha256sum --check --status ||
 	fail 'invalid environment: worker differs from declared candidate'
 cmp -s "$command_root/ardents-text" "$worker" || fail 'invalid environment: UI and worker do not share the candidate artifact'
+[ -f "$manifest" ] && [ ! -L "$manifest" ] && [ "$(stat -c %u:%g:%a "$manifest")" = 0:0:644 ] ||
+	fail 'invalid environment: root-owned worker manifest required'
+manifest_pair=$(printf '"%s":"%s"' "$worker" "$ARDENTS_TEXT_COMMAND_WORKER_SHA256")
+grep -Fq "$manifest_pair" "$manifest" ||
+	fail 'invalid environment: worker manifest differs from declared candidate'
+endpoint_uid=$(id -u ardents-endpoint)
+endpoint_gid=$(id -g ardents-endpoint)
+for role in reader publisher; do
+	socket_unit="ardents-text-$role.socket"
+	socket_path="/run/ardents-text/$role.sock"
+	[ "$(systemctl show "$socket_unit" -p ActiveState --value)" = active ] &&
+		[ -S "$socket_path" ] &&
+		[ "$(stat -c %u:%g:%a "$socket_path")" = "$endpoint_uid:$endpoint_gid:600" ] ||
+		fail "invalid environment: $role worker socket is not active for Endpoint"
+done
 
 [ "$(systemctl show ardents-endpoint.service -p FragmentPath --value)" = "$unit" ] ||
 	fail 'invalid environment: a different Endpoint unit is loaded'
