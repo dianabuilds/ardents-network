@@ -22,6 +22,19 @@ func collectNodeEvents(input io.Reader, process *nodeProcess) {
 			if process.firstRouteDiagnostic == "" {
 				process.firstRouteDiagnostic = event.Reason
 			}
+			if event.At.IsZero() {
+				event.At = time.Now().UTC()
+			}
+			const retainedRouteDiagnostics = 64
+			if len(process.routeDiagnostics) == retainedRouteDiagnostics {
+				dropped := process.routeDiagnostics[0].at
+				if dropped.After(process.latestDroppedRouteDiagnostic) {
+					process.latestDroppedRouteDiagnostic = dropped
+				}
+				copy(process.routeDiagnostics, process.routeDiagnostics[1:])
+				process.routeDiagnostics = process.routeDiagnostics[:retainedRouteDiagnostics-1]
+			}
+			process.routeDiagnostics = append(process.routeDiagnostics, routeDiagnosticObservation{at: event.At, reason: event.Reason})
 			process.waitMu.Unlock()
 		}
 		// Lifecycle consumers wait between operations. Periodic resource samples
@@ -89,5 +102,21 @@ func TestNodeLifecycleCollectionRetainsFirstRouteDiagnostic(t *testing.T) {
 	collectNodeEvents(strings.NewReader(input), process)
 	if got := process.firstRouteDiagnosticReason(); got != "issuer-inner-tls-eof" {
 		t.Fatalf("first route diagnostic = %q", got)
+	}
+}
+
+func TestNodeLifecycleCollectionRetainsBoundedDatedRouteDiagnostics(t *testing.T) {
+	process := &nodeProcess{events: make(chan nodeEvent, 80), done: make(chan struct{})}
+	var input strings.Builder
+	for range 65 {
+		input.WriteString(`{"schema":"ardents-node-event-v1","kind":"route-diagnostic","state":"FAILED","at":"2026-01-01T12:00:00Z","reason":"entry-carrier-tcp-dial-refused"}` + "\n")
+	}
+	collectNodeEvents(strings.NewReader(input.String()), process)
+	observed, truncated := process.routeDiagnosticsAfter(time.Date(2026, time.January, 1, 11, 59, 59, 0, time.UTC))
+	if !truncated || len(observed) != 64 || !observed[0].at.Equal(time.Date(2026, time.January, 1, 12, 0, 0, 0, time.UTC)) {
+		t.Fatalf("bounded Route observations = %d, truncated %t", len(observed), truncated)
+	}
+	if _, lost := process.routeDiagnosticsAfter(time.Date(2026, time.January, 1, 12, 0, 1, 0, time.UTC)); lost {
+		t.Fatal("older discarded diagnostics contaminated a later failure window")
 	}
 }

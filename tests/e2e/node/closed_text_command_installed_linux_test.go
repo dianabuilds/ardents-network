@@ -158,14 +158,21 @@ func runInstalledClosedTextParticipant(t *testing.T, config state.Config, binary
 	textBinary := buildCommand(t, "ardents-text")
 	// The UI reopens stdio for polling. User-owned pipeline endpoints keep
 	// that check real; pipefail retains the actual text command exit status.
+	var lastSuccessfulRouteCommand time.Time
 	run := func(stage string, input []byte, args ...string) []byte {
 		t.Helper()
+		started := time.Now().UTC()
 		ctx, cancel := context.WithTimeout(t.Context(), 45*time.Second)
 		defer cancel()
 		output, diagnostic, err := installedCommandExecAs(ctx, input, uid, gid, "bash", append([]string{"-o", "pipefail", "-c", `cat | "$@" | cat`, "ardents-text-command", textBinary}, args...)...)
 		if err != nil {
 			journal := installedCommandTool(t, "journalctl", "--no-pager", "-o", "cat", "_SYSTEMD_INVOCATION_ID="+invocation)
-			t.Fatalf("ordinary text stage %s (%s) failed: %v / %s\nEndpoint journal:\n%s\nNode route diagnostics:\n%s\nPrivate Node lifecycle evidence: %s\nNode liveness:\n%s", stage, args[0], err, diagnostic, journal, installedCommandRouteDiagnostics(t, sourcePlan), installedCommandCapturePrivateNodeLifecycles(t, sourcePlan), installedCommandNodeLiveness(t, sourcePlan))
+			t.Fatalf("ordinary text stage %s (%s) failed: %v / %s\nEndpoint journal:\n%s\nNode route diagnostics since prior successful Route command began:\n%s\nPrivate Node lifecycle evidence: %s\nNode liveness:\n%s", stage, args[0], err, diagnostic, journal, installedCommandRouteDiagnosticsSince(t, sourcePlan, lastSuccessfulRouteCommand), installedCommandCapturePrivateNodeLifecycles(t, sourcePlan), installedCommandNodeLiveness(t, sourcePlan))
+		}
+		// Link only reads local publication state; it must not advance the
+		// diagnostic window before the next command that actually uses Route.
+		if stage == "publish" || stage == "initial read" || stage == "read after refresh" {
+			lastSuccessfulRouteCommand = started
 		}
 		return output
 	}
