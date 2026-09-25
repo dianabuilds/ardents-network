@@ -113,6 +113,9 @@ func (endpoint *endpoint) runTextInterfaces(ctx context.Context, config TextPart
 		}
 		if role.surface == broker.Administration {
 			owner.mu.Lock()
+			owner.publicationFailure = func(failure string) {
+				_ = config.Observe(context.Background(), TextParticipantEvent{Kind: "publication-start-failed", NetworkID: endpoint.network, Surface: string(role.surface), Failure: failure})
+			}
 			owner.refreshFailure = func(failure string) {
 				// A failed refresh is local operational state. Its fixed category
 				// exposes neither a wrapped transport error nor private route data.

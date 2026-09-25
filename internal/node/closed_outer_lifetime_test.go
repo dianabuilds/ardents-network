@@ -42,8 +42,9 @@ func TestClosedOuterLifetimeInterruptsAndJoinsAllChildren(t *testing.T) {
 			defer releaseOnce.Do(func() { close(release) })
 			var sequence, finished atomic.Uint32
 			done := make(chan uint32, 1)
+			reasons := make(chan string, 1)
 			go func() {
-				serveClosedOuter(ctx, observed, outer, func(child context.Context, lane *route.ClosedOuterBridgeLane) {
+				serveClosedOuterObserved(ctx, observed, outer, func(child context.Context, lane *route.ClosedOuterBridgeLane) {
 					index := sequence.Add(1)
 					started <- struct{}{}
 					<-begin
@@ -70,7 +71,7 @@ func TestClosedOuterLifetimeInterruptsAndJoinsAllChildren(t *testing.T) {
 					}
 					<-release
 					finished.Add(1)
-				})
+				}, func(reason string) { reasons <- reason })
 				done <- finished.Load()
 			}()
 			hello := route.ClosedHello{NetworkID: receiver.NetworkID, StateGeneration: receiver.StateGeneration, StateDigest: receiver.StateDigest, ProfileDigest: receiver.ProfileDigest,
@@ -139,10 +140,48 @@ func TestClosedOuterLifetimeInterruptsAndJoinsAllChildren(t *testing.T) {
 			case <-time.After(5 * time.Second):
 				t.Fatal("outer did not join")
 			}
+			select {
+			case reason := <-reasons:
+				t.Fatalf("normal post-child termination emitted diagnostic %q", reason)
+			default:
+			}
 			if _, err := outer.Accept(route.ClosedLaneFrame{Kind: 4, Lane: 7, Body: body}); err == nil {
 				t.Fatal("retired outer allocated another child")
 			}
 		})
+	}
+}
+
+func TestClosedOuterObservedReportsPeerEOFBeforeChild(t *testing.T) {
+	now := time.Now().UTC().Truncate(time.Second)
+	receiver := route.ClosedOuterReceiver{NetworkID: [32]byte{1}, StateGeneration: [32]byte{2}, StateDigest: [32]byte{3}, ProfileDigest: [32]byte{4},
+		NodeID: [32]byte{5}, RecordDigest: [32]byte{6}, DutyGeneration: 7, RoleDomain: 2, Subrole: 6, Deadline: now.Add(time.Hour)}
+	limits, err := route.NewClosedDutyLimits(time.Now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	outer, err := route.NewClosedOuterHandshake(receiver, limits, time.Now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	reasons := make(chan string, 1)
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		serveClosedOuterObserved(t.Context(), closedOuterEOFConn{}, outer, func(context.Context, *route.ClosedOuterBridgeLane) {}, func(reason string) { reasons <- reason })
+	}()
+	select {
+	case reason := <-reasons:
+		if reason != "outer-read-eof" {
+			t.Fatalf("reason = %q", reason)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("missing pre-child peer EOF observation")
+	}
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		t.Fatal("outer did not terminate after peer EOF")
 	}
 }
 
@@ -151,6 +190,22 @@ type closedOuterObservedWriter struct {
 	writing chan struct{}
 	once    sync.Once
 }
+
+type closedOuterEOFConn struct{}
+
+func (closedOuterEOFConn) Read([]byte) (int, error)         { return 0, io.EOF }
+func (closedOuterEOFConn) Write(value []byte) (int, error)  { return len(value), nil }
+func (closedOuterEOFConn) Close() error                     { return nil }
+func (closedOuterEOFConn) LocalAddr() net.Addr              { return closedOuterEOFAddr{} }
+func (closedOuterEOFConn) RemoteAddr() net.Addr             { return closedOuterEOFAddr{} }
+func (closedOuterEOFConn) SetDeadline(time.Time) error      { return nil }
+func (closedOuterEOFConn) SetReadDeadline(time.Time) error  { return nil }
+func (closedOuterEOFConn) SetWriteDeadline(time.Time) error { return nil }
+
+type closedOuterEOFAddr struct{}
+
+func (closedOuterEOFAddr) Network() string { return "test" }
+func (closedOuterEOFAddr) String() string  { return "outer-eof" }
 
 func (connection *closedOuterObservedWriter) Write(value []byte) (int, error) {
 	if len(value) >= 7 && string(value[:4]) == "ARDP" && value[6] == 6 {

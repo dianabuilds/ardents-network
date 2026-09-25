@@ -30,6 +30,22 @@ func TestHeadlessTextRefreshFailureEventExposesOnlyFixedCategory(t *testing.T) {
 	}
 }
 
+func TestHeadlessTextPublicationStartFailureExposesOnlyFixedCategory(t *testing.T) {
+	output := &headlessTextBufferedOutput{}
+	event := endpointapi.TextParticipantEvent{Kind: "publication-start-failed", NetworkID: [32]byte{1}, Surface: "administration", Failure: "open-introduction-prefix-opening-entry-carrier-quic-dial-timeout"}
+	if err := writeHeadlessTextEvent(t.Context(), output, event); err != nil {
+		t.Fatal(err)
+	}
+	var observed struct {
+		Kind    string `json:"kind"`
+		Surface string `json:"surface"`
+		Failure string `json:"failure"`
+	}
+	if err := json.Unmarshal(output.Bytes(), &observed); err != nil || observed.Kind != "headless-runtime-publication-start-failed" || observed.Surface != "administration" || observed.Failure != event.Failure {
+		t.Fatalf("publication start event = %#v / %v", observed, err)
+	}
+}
+
 type headlessTextBufferedOutput struct{ bytes.Buffer }
 
 func (output *headlessTextBufferedOutput) SetWriteDeadline(time.Time) error { return nil }

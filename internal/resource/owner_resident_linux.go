@@ -4,17 +4,39 @@ package resource
 
 import (
 	"errors"
+	"fmt"
 	"io/fs"
 	"math"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
+	"syscall"
 )
+
+const ownerResidentSampleAttempts = 8
 
 // cgroup.procs includes thread-group leaders, so threads do not multiply RSS.
 // Nested cgroups are included; process IDs are deduplicated across observations.
 func ownerResidentBytes(groups []string) (uint64, error) {
+	return ownerResidentBytesWithReader(groups, boundedFile)
+}
+
+func ownerResidentBytesWithReader(groups []string, readFile func(string, int) (string, error)) (uint64, error) {
+	for attempt := 0; attempt < ownerResidentSampleAttempts; attempt++ {
+		total, err := ownerResidentBytesOnce(groups, readFile)
+		if err == nil {
+			return total, nil
+		}
+		if attempt+1 < ownerResidentSampleAttempts && errors.Is(err, ErrOwnerResidentProcessGone) {
+			continue
+		}
+		return 0, err
+	}
+	return 0, errors.New("owner resident sample retry exhausted")
+}
+
+func ownerResidentBytesOnce(groups []string, readFile func(string, int) (string, error)) (uint64, error) {
 	pids := make(map[string]bool)
 	directories := 0
 	for _, group := range groups {
@@ -29,7 +51,7 @@ func ownerResidentBytes(groups []string) (uint64, error) {
 			if directories > 4096 {
 				return errors.New("owner cgroup inventory exceeds bound")
 			}
-			body, err := boundedFile(filepath.Join(path, "cgroup.procs"), 64<<10)
+			body, err := readFile(filepath.Join(path, "cgroup.procs"), 64<<10)
 			if err != nil {
 				return err
 			}
@@ -54,8 +76,11 @@ func ownerResidentBytes(groups []string) (uint64, error) {
 	}
 	var total uint64
 	for pid := range pids {
-		body, err := boundedFile(filepath.Join("/proc", pid, "statm"), 4096)
+		body, err := readFile(filepath.Join("/proc", pid, "statm"), 4096)
 		if err != nil {
+			if errors.Is(err, os.ErrNotExist) || errors.Is(err, syscall.ESRCH) {
+				return 0, fmt.Errorf("%w: %w", ErrOwnerResidentProcessGone, err)
+			}
 			return 0, err
 		}
 		resident, err := residentBytes(body, uint64(os.Getpagesize()))

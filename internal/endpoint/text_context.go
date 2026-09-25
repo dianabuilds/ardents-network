@@ -15,10 +15,11 @@ import (
 // It is never a wire identity or evidence of installed confinement. Only the
 // verified launch boundary may give a worker a Principal and Grant.
 type textContextState struct {
-	refreshFailure    func(string)
-	withdrawalFailure func(string)
-	operationFailure  func(string)
-	refresh           textPublicationRefreshLifecycle
+	refreshFailure     func(string)
+	publicationFailure func(string)
+	withdrawalFailure  func(string)
+	operationFailure   func(string)
+	refresh            textPublicationRefreshLifecycle
 	textPublicationPairLifecycle
 	introductionDelivery  chan struct{}
 	introductionWaiters   map[*textIntroductionWaiter]struct{}
@@ -53,6 +54,18 @@ type textContextState struct {
 func (owner *textContext) reportTextOperationFailure(failure string) {
 	owner.mu.Lock()
 	report := owner.operationFailure
+	owner.mu.Unlock()
+	if report != nil {
+		report(failure)
+	}
+}
+
+// reportTextPublicationFailure exposes one fixed startup boundary to the
+// participant observer. It never emits a wrapped Route, peer, or authority
+// value.
+func (owner *textContext) reportTextPublicationFailure(failure string) {
+	owner.mu.Lock()
+	report := owner.publicationFailure
 	owner.mu.Unlock()
 	if report != nil {
 		report(failure)

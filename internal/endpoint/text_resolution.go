@@ -118,7 +118,14 @@ func (owner *textContext) ensureTextResolutionStock(flight *textResolutionFlight
 	owner.mu.Lock()
 	profile, _, err := owner.textPermissionProfileLocked()
 	if err != nil || owner.resolution != flight || flight.source == nil || !flight.source.currentLocked(owner) || flight.context.Err() != nil || owner.permission == nil {
+		detail := ""
+		if acquisition, ok := flight.source.(*textSourceResolutionAcquisition); ok && !acquisition.currentLocked(owner) {
+			detail = acquisition.retiredDetailLocked()
+		}
 		owner.mu.Unlock()
+		if detail != "" {
+			return errors.New("text resolution stock owner changed: Source terminal " + detail)
+		}
 		return errors.New("text resolution stock owner changed")
 	}
 	if owner.permission.pending == nil {

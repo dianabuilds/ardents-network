@@ -26,9 +26,10 @@ type textSourceRetirement struct {
 // textSourceHandle is a read-only capability for one exact published Source
 // opening. It deliberately exposes neither Close nor the underlying prefix.
 type textSourceHandle struct {
-	owner  *textSourceLifecycle
-	prefix atomic.Pointer[route.ClosedSourcePrefix]
-	cancel context.CancelFunc
+	owner         *textSourceLifecycle
+	prefix        atomic.Pointer[route.ClosedSourcePrefix]
+	cancel        context.CancelFunc
+	retiredDetail string // Guarded by the textContext owner mutex.
 }
 
 // textSourceJoinAcquisition binds one JOIN exchange to the exact Source handle
@@ -119,6 +120,17 @@ func (acquisition *textSourceResolutionAcquisition) currentLocked(owner *textCon
 	}
 	handle := acquisition.handle.Load()
 	return handle != nil && handle.currentLocked(owner)
+}
+
+func (acquisition *textSourceResolutionAcquisition) retiredDetailLocked() string {
+	if acquisition == nil {
+		return ""
+	}
+	handle := acquisition.handle.Load()
+	if handle == nil {
+		return ""
+	}
+	return handle.retiredDetail
 }
 
 func (acquisition *textSourceResolutionAcquisition) resolutionRecipient() ([32]byte, error) {
@@ -283,6 +295,7 @@ func (lifecycle *textSourceLifecycle) retireIdleLocked() error {
 		return nil
 	}
 	lifecycle.live = nil
+	handle.retiredDetail = prefix.TerminalDetail()
 	handle.cancel()
 	handle.prefix.Store(nil)
 	return prefix.Close()

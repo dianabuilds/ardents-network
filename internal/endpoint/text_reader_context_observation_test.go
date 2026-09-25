@@ -202,8 +202,11 @@ func (process *textReaderContextProcess) lookup(repeat bool) {
 			process.t.Fatal(err)
 		}
 	}
-	if err := process.decoder.Decode(&event); err != nil || event.Phase != "response-received-before-close" {
-		process.t.Fatalf("reader %s response event: %#v / %v", process.id, event, err)
+	if err := process.decoder.Decode(&event); err != nil {
+		process.t.Fatalf("reader %s response event: %s", process.id, process.childFailure(err))
+	}
+	if event.Phase != "response-received-before-close" {
+		process.t.Fatalf("reader %s response event: %#v", process.id, event)
 	}
 	response := sha256.Sum256(process.input.Expected)
 	if event.ResponseDescriptorSHA256 != hex.EncodeToString(response[:]) {

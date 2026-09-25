@@ -3,10 +3,14 @@
 package route
 
 import (
+	"context"
 	"errors"
 	"net"
+	"syscall"
 	"testing"
 	"time"
+
+	"github.com/quic-go/quic-go"
 
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 )
@@ -19,6 +23,49 @@ func TestClosedSourceOpenFailureRetainsStageAndCause(t *testing.T) {
 	}
 	if !errors.Is(failure, cause) {
 		t.Fatal("closed Source open failure lost its cause")
+	}
+}
+
+func TestClosedSourceOpenFailureDetailRetainsCarrierBoundary(t *testing.T) {
+	cause := errors.New("transport unavailable")
+	failure := closedSourceOpenFailureAt("entry-carrier", closedRoleOpenFailureAt("quic-dial", cause))
+	if got := ClosedSourceOpenFailureDetail(failure); got != "entry-carrier-quic-dial-other" {
+		t.Fatalf("closed Source open detail = %q", got)
+	}
+	if !errors.Is(failure, cause) {
+		t.Fatal("closed Source open detail lost its cause")
+	}
+}
+
+func TestClosedSourceOpenFailureDetailRetainsPeerVerificationBoundary(t *testing.T) {
+	failure := closedSourceOpenFailureAt("entry-carrier", closedRoleOpenFailureAt("quic-dial", errCarrierPeerMismatch))
+	if got := ClosedSourceOpenFailureDetail(failure); got != "entry-carrier-quic-dial-peer-mismatch" {
+		t.Fatalf("closed Source peer detail = %q", got)
+	}
+}
+
+func TestClosedSourceOpenFailureDetailClassifiesQUICCryptoHandshake(t *testing.T) {
+	failure := closedSourceOpenFailureAt("entry-carrier", closedRoleOpenFailureAt("quic-dial", &quic.TransportError{ErrorCode: quic.TransportErrorCode(0x100)}))
+	if got := ClosedSourceOpenFailureDetail(failure); got != "entry-carrier-quic-handshake" {
+		t.Fatalf("closed Source QUIC handshake detail = %q", got)
+	}
+}
+
+func TestClosedSourceOpenFailureDetailRetainsNestedTCPBoundary(t *testing.T) {
+	cause := errors.New("handshake refused")
+	failure := closedSourceOpenFailureAt("entry-carrier", closedRoleOpenFailureAt("tcp-tls", closedRoleOpenFailureAt("tls-handshake", cause)))
+	if got := ClosedSourceOpenFailureDetail(failure); got != "entry-carrier-tcp-tls-tls-handshake-other" {
+		t.Fatalf("closed Source nested open detail = %q", got)
+	}
+	if !errors.Is(failure, cause) {
+		t.Fatal("closed Source nested open detail lost its cause")
+	}
+}
+
+func TestClosedSourceOpenFailureDetailRetainsDeadlineCategory(t *testing.T) {
+	failure := closedSourceOpenFailureAt("interior-tls", closedRoleOpenFailureAt("tls-handshake", context.DeadlineExceeded))
+	if got := ClosedSourceOpenFailureDetail(failure); got != "interior-tls-tls-handshake-deadline" {
+		t.Fatalf("closed Source deadline detail = %q", got)
 	}
 }
 
@@ -63,5 +110,33 @@ func TestClosedSourcePrefixLifetimeExtendsBeyondBootstrapWindow(t *testing.T) {
 	remaining := end.Sub(now)
 	if remaining < 29*time.Minute || remaining > 30*time.Minute {
 		t.Fatalf("retained source prefix lifetime = %s, want the bounded 1,800-second class-2 lease", remaining)
+	}
+}
+
+func TestClosedSourceOpenFailureDetailClassifiesWrappedTCPDialSyscalls(t *testing.T) {
+	for _, test := range []struct {
+		name  string
+		cause error
+		want  string
+	}{
+		{name: "refused", cause: syscall.ECONNREFUSED, want: "refused"},
+		{name: "network unreachable", cause: syscall.ENETUNREACH, want: "network-unreachable"},
+		{name: "host unreachable", cause: syscall.EHOSTUNREACH, want: "host-unreachable"},
+		{name: "address unavailable", cause: syscall.EADDRNOTAVAIL, want: "address-unavailable"},
+		{name: "reset", cause: syscall.ECONNRESET, want: "reset"},
+		{name: "permission", cause: syscall.EACCES, want: "permission"},
+		{name: "resource", cause: syscall.EMFILE, want: "resource"},
+		{name: "invalid", cause: syscall.EINVAL, want: "invalid"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			cause := &net.OpError{Op: "dial", Net: "tcp", Err: test.cause}
+			failure := closedSourceOpenFailureAt("entry-carrier", closedRoleOpenFailureAt("tcp-dial", cause))
+			if got := ClosedSourceOpenFailureDetail(failure); got != "entry-carrier-tcp-dial-"+test.want {
+				t.Fatalf("closed Source TCP dial detail = %q", got)
+			}
+			if !errors.Is(failure, test.cause) {
+				t.Fatal("closed Source TCP dial failure lost its syscall cause")
+			}
+		})
 	}
 }

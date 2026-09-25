@@ -18,10 +18,12 @@ func closedIssuerNodeHandler(config runtimeConfig, certificate tls.Certificate, 
 		defer carrier.Connection.Close()
 		updated, err := currentFacts(config)
 		if err != nil {
+			emitClosedRouteDiagnostic(config, "issuer-outer-facts-"+closedRouteDiagnosticCause(err))
 			return
 		}
 		receiver, available := closedRouteReceiver(config, updated, route.ClosedPurposeIssuer, config.now())
 		if !available {
+			emitClosedRouteDiagnostic(config, "issuer-outer-receiver-unavailable")
 			return
 		}
 		deadline := receiver.NotAfter
@@ -29,9 +31,10 @@ func closedIssuerNodeHandler(config runtimeConfig, certificate tls.Certificate, 
 			StateDigest: receiver.StateDigest, ProfileDigest: receiver.ProfileDigest, NodeID: receiver.NodeID, RecordDigest: receiver.RecordDigest,
 			DutyGeneration: receiver.DutyGeneration, RoleDomain: receiver.RoleDomain, Subrole: receiver.Subrole, Deadline: deadline}, limits, config.now)
 		if err != nil {
+			emitClosedRouteDiagnostic(config, "issuer-outer-handshake-"+closedRouteDiagnosticCause(err))
 			return
 		}
-		serveClosedOuter(ctx, carrier.Connection, outer, func(childContext context.Context, lane *route.ClosedOuterBridgeLane) {
+		serveClosedOuterObserved(ctx, carrier.Connection, outer, func(childContext context.Context, lane *route.ClosedOuterBridgeLane) {
 			admitted := func(connection net.Conn, hello route.ClosedLaneFrame) error {
 				exporter, err := route.ClosedRoleTLSExporter(connection)
 				if err != nil {
@@ -43,16 +46,25 @@ func closedIssuerNodeHandler(config runtimeConfig, certificate tls.Certificate, 
 				}
 				return issuer.ServeAdmittedAfterHello(childContext, connection, channel, hello, lane)
 			}
-			serveClosedIssuerInner(childContext, lane, certificate, deadline, carrier.NodeKey, serve, admitted)
-		})
+			serveClosedIssuerInner(childContext, lane, certificate, deadline, carrier.NodeKey, serve, admitted, func(reason string) {
+				emitClosedRouteDiagnostic(config, reason)
+			})
+		}, func(reason string) { emitClosedRouteDiagnostic(config, "issuer-"+reason) })
 	}
 }
 
-func serveClosedIssuerInner(ctx context.Context, lane *route.ClosedOuterBridgeLane, certificate tls.Certificate, deadline time.Time, adjacency [32]byte, serve func(context.Context, io.ReadWriter, [32]byte, route.ClosedHello) error, admitted func(net.Conn, route.ClosedLaneFrame) error) {
+func serveClosedIssuerInner(ctx context.Context, lane *route.ClosedOuterBridgeLane, certificate tls.Certificate, deadline time.Time, adjacency [32]byte, serve func(context.Context, io.ReadWriter, [32]byte, route.ClosedHello) error, admitted func(net.Conn, route.ClosedLaneFrame) error, observe func(string)) {
 	status := byte(1)
-	defer func() { _ = lane.CloseWithStatus(status) }()
-	secured, err := route.AcceptClosedRoleTLS(ctx, lane, certificate, deadline)
+	reason := ""
+	defer func() {
+		_ = lane.CloseWithStatus(status)
+		if reason != "" && observe != nil {
+			observe(reason)
+		}
+	}()
+	secured, err := acceptClosedInnerTLS(ctx, lane, certificate, deadline)
 	if err != nil {
+		reason = closedIssuerInnerTLSFailureReason(err)
 		return
 	}
 	defer func() {
@@ -84,6 +96,14 @@ func serveClosedIssuerInner(ctx context.Context, lane *route.ClosedOuterBridgeLa
 			status = 0
 		}
 	}
+}
+
+func closedIssuerInnerTLSFailureReason(err error) string {
+	return "issuer-inner-tls-" + closedRouteDiagnosticCause(err)
+}
+
+func acceptClosedInnerTLS(ctx context.Context, connection net.Conn, certificate tls.Certificate, deadline time.Time) (*tls.Conn, error) {
+	return route.AcceptClosedRoleTLS(ctx, connection, certificate, deadline)
 }
 
 func closedSharedPeerCurrent(config runtimeConfig, snapshot dutyFacts, key [32]byte, now time.Time) bool {

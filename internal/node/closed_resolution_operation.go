@@ -36,7 +36,17 @@ func (server *closedResolutionServer) serveOuter(ctx context.Context, carrier ro
 
 func (server *closedResolutionServer) serveInner(ctx context.Context, lane *route.ClosedOuterBridgeLane) {
 	status := byte(1)
-	defer func() { _ = lane.CloseWithStatus(status) }()
+	resultSent := false
+	terminalReason := ""
+	defer func() {
+		closeErr := lane.CloseWithStatus(status)
+		if terminalReason != "" {
+			emitClosedRouteDiagnostic(server.config, terminalReason)
+		}
+		if closeErr != nil && resultSent {
+			emitClosedRouteDiagnostic(server.config, "resolution-result-lane-close-"+closedRouteDiagnosticCause(closeErr))
+		}
+	}()
 	if lane.Restriction() != route.ClosedChildOrdinary || !server.current() {
 		return
 	}
@@ -45,8 +55,11 @@ func (server *closedResolutionServer) serveInner(ctx context.Context, lane *rout
 		return
 	}
 	defer func() {
-		if secured.CloseWrite() != nil {
+		if err := secured.CloseWrite(); err != nil {
 			status = 1
+			if resultSent {
+				terminalReason = "resolution-result-tls-close-" + closedRouteDiagnosticCause(err)
+			}
 		}
 	}()
 	if lane.BeginInnerHello() != nil {
@@ -61,6 +74,7 @@ func (server *closedResolutionServer) serveInner(ctx context.Context, lane *rout
 		return
 	}
 	if server.serveAdmitted(ctx, secured, lane, frame) == nil {
+		resultSent = true
 		status = 0
 	}
 }

@@ -60,11 +60,15 @@ func runClosedIssuerProcess(t *testing.T, node, endpoint string, acceptArguments
 	certificate, key := closedIssuerListenCredential(t, identity, now)
 	order := sha256.Sum256([]byte("issuer-command-source-order"))
 	forwardingHostingRoot := initializeClosedForwardingHosting(t, node)
+	diagnostics := make([]string, 0, nodeCount)
+	issuerDiagnostics := t.TempDir()
+	diagnostics = append(diagnostics, issuerDiagnostics)
 	plan := map[string]any{"schema": "ardents-node-plan-v1", "state_root": root, "local_role_state_root": roleRoot,
 		"hosting_root": forwardingHostingRoot,
 		"network_id":   hex.EncodeToString(network[:]), "authority_public": []string{hex.EncodeToString(public)}, "threshold": 1,
 		"closed_profile_authority": hex.EncodeToString(public), "server_certificate": certificate, "server_key": key,
 		"node_id": hex.EncodeToString(issuer[:]), "identity_key": key, "clock_observation_file": clock,
+		"diagnostic_directory":  issuerDiagnostics,
 		"materialization_index": 1, "order_seed": hex.EncodeToString(order[:]), "sources": sources,
 		"source_client_certificate": client.certificate, "source_client_key": client.key,
 		"closed_issuer": map[string]any{"root": issuerRoot, "admission_root": t.TempDir(), "connection_limit": 2, "drain_timeout_ms": 1000}}
@@ -101,6 +105,9 @@ func runClosedIssuerProcess(t *testing.T, node, endpoint string, acceptArguments
 			t.Fatal(err)
 		}
 		forwardPlan["local_role_state_root"] = forwardRoles
+		forwardDiagnostics := t.TempDir()
+		diagnostics = append(diagnostics, forwardDiagnostics)
+		forwardPlan["diagnostic_directory"] = forwardDiagnostics
 		forwardPlan["node_id"], forwardPlan["materialization_index"] = identifierNode(byte(index+1)), index
 		forwardKey := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{byte(6 + index)}, ed25519.SeedSize))
 		cert, keyPath := closedIssuerListenCredential(t, forwardKey, now)
@@ -132,12 +139,10 @@ func runClosedIssuerProcess(t *testing.T, node, endpoint string, acceptArguments
 	}
 	// Each process reached READY and must remain alive after the last Node
 	// starts. This does not prove continuous duty readiness or an Endpoint exchange.
-	for _, process := range live {
-		select {
-		case <-process.done:
-			t.Fatalf("closed topology Node exited after readiness: %v", process.terminalErr())
-		default:
-		}
+	plan["route_diagnostic_paths"] = diagnostics
+	plan["diagnostic_node_processes"] = live
+	if liveness := installedCommandExitedNodeLiveness(t, plan); liveness != "" {
+		t.Fatalf("closed topology Node exited after readiness\nPrivate Node lifecycle evidence: %s\nNode liveness:\n%s", installedCommandCapturePrivateNodeLifecycles(t, plan), liveness)
 	}
 	if nodeCount != 3 {
 		participant(resolutionRoot, plan)

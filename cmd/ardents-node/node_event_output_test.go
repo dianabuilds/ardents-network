@@ -26,6 +26,7 @@ func TestNodeEventEmitterPublishesLatestBoundedDiagnostics(t *testing.T) {
 	for _, event := range []node.Event{
 		{Schema: "ardents-node-event-v1", Kind: "lifecycle", State: "READY", At: time.Now()},
 		{Schema: "ardents-node-event-v1", Kind: "resource-sample", State: "OBSERVED", At: time.Now(), Resource: &resource.Sample{MemoryBytes: 17 << 20}},
+		{Schema: "ardents-node-event-v1", Kind: "route-diagnostic", State: "FAILED", At: time.Now(), Reason: "issuer-outer-read-eof"},
 		{Schema: "ardents-node-event-v1", Kind: "lifecycle", State: "WITHDRAWN", At: time.Now()},
 	} {
 		if err := emit(ctx, event); err != nil {
@@ -34,6 +35,7 @@ func TestNodeEventEmitterPublishesLatestBoundedDiagnostics(t *testing.T) {
 	}
 	assertDiagnosticState(t, filepath.Join(diagnostics, "lifecycle.json"), "WITHDRAWN", 0)
 	assertDiagnosticState(t, filepath.Join(diagnostics, "resource.json"), "OBSERVED", 17<<20)
+	assertDiagnosticReason(t, filepath.Join(diagnostics, "route-diagnostic.json"), "issuer-outer-read-eof")
 }
 
 func TestNodeEventEmitterSerializesConcurrentDiagnostics(t *testing.T) {
@@ -118,5 +120,17 @@ func assertDiagnosticState(t *testing.T, path, state string, memory uint64) {
 	}
 	if event.State != state || memory > 0 && (event.Resource == nil || event.Resource.MemoryBytes != memory) {
 		t.Fatalf("diagnostic %s = %+v", path, event)
+	}
+}
+
+func assertDiagnosticReason(t *testing.T, path, reason string) {
+	t.Helper()
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var event node.Event
+	if err := json.Unmarshal(raw, &event); err != nil || event.Kind != "route-diagnostic" || event.Reason != reason {
+		t.Fatalf("diagnostic %s = %+v, %v", path, event, err)
 	}
 }

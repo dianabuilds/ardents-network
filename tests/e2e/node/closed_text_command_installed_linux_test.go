@@ -42,7 +42,7 @@ func TestInstalledClosedTextCommandsThroughNodeProcesses(t *testing.T) {
 				t.Run(document.name, func(t *testing.T) {
 					authority := createClosedCommandAuthority(t, [32]byte{1})
 					testClosedIssuerProvisioningParticipant(t, carrier, 16, authority.Public, nil, func(config state.Config, binary, resolutionRoot string, sourcePlan map[string]any) {
-						runInstalledClosedTextParticipant(t, config, binary, resolutionRoot, authority, sourcePlan, document.body)
+						runInstalledClosedTextParticipant(t, config, binary, resolutionRoot, authority, sourcePlan, document.body, true)
 					})
 				})
 			}
@@ -50,7 +50,7 @@ func TestInstalledClosedTextCommandsThroughNodeProcesses(t *testing.T) {
 	}
 }
 
-func runInstalledClosedTextParticipant(t *testing.T, config state.Config, binary, resolutionRoot string, authority closedCommandAuthority, sourcePlan map[string]any, body []byte) {
+func runInstalledClosedTextParticipant(t *testing.T, config state.Config, binary, resolutionRoot string, authority closedCommandAuthority, sourcePlan map[string]any, body []byte, observeRefresh bool) {
 	t.Helper()
 	account, err := user.Lookup("ardents-endpoint")
 	if err != nil {
@@ -158,14 +158,21 @@ func runInstalledClosedTextParticipant(t *testing.T, config state.Config, binary
 	textBinary := buildCommand(t, "ardents-text")
 	// The UI reopens stdio for polling. User-owned pipeline endpoints keep
 	// that check real; pipefail retains the actual text command exit status.
+	var lastSuccessfulRouteCommand time.Time
 	run := func(stage string, input []byte, args ...string) []byte {
 		t.Helper()
+		started := time.Now().UTC()
 		ctx, cancel := context.WithTimeout(t.Context(), 45*time.Second)
 		defer cancel()
 		output, diagnostic, err := installedCommandExecAs(ctx, input, uid, gid, "bash", append([]string{"-o", "pipefail", "-c", `cat | "$@" | cat`, "ardents-text-command", textBinary}, args...)...)
 		if err != nil {
 			journal := installedCommandTool(t, "journalctl", "--no-pager", "-o", "cat", "_SYSTEMD_INVOCATION_ID="+invocation)
-			t.Fatalf("ordinary text stage %s (%s) failed: %v / %s\nEndpoint journal:\n%s", stage, args[0], err, diagnostic, journal)
+			t.Fatalf("ordinary text stage %s (%s) failed: %v / %s\nEndpoint journal:\n%s\nNode route diagnostics since prior successful Route command began:\n%s\nPrivate Node lifecycle evidence: %s\nNode liveness:\n%s", stage, args[0], err, diagnostic, journal, installedCommandRouteDiagnosticsSince(t, sourcePlan, lastSuccessfulRouteCommand), installedCommandCapturePrivateNodeLifecycles(t, sourcePlan), installedCommandNodeLiveness(t, sourcePlan))
+		}
+		// Link only reads local publication state; it must not advance the
+		// diagnostic window before the next command that actually uses Route.
+		if stage == "publish" || stage == "initial read" || stage == "read after refresh" {
+			lastSuccessfulRouteCommand = started
 		}
 		return output
 	}
@@ -182,13 +189,15 @@ func runInstalledClosedTextParticipant(t *testing.T, config state.Config, binary
 	if actual := run("initial read", destination, "read", path("reader.sock")); !bytes.Equal(actual, body) {
 		t.Fatal("ordinary command document mismatch")
 	}
-	t.Log("completed: initial exact 64 KiB document read")
-	observeInstalledCommandRefresh(t, resolutionRoot, view.Profile, firstPublication, publicationStarted, invocation)
-	t.Log("completed: observed signed Descriptor refresh and elapsed overlap")
-	if actual := run("read after refresh", destination, "read", path("reader.sock")); !bytes.Equal(actual, body) {
-		t.Fatal("document changed after elapsed refresh")
+	t.Log("completed: initial exact document read")
+	if observeRefresh {
+		observeInstalledCommandRefresh(t, resolutionRoot, view.Profile, firstPublication, publicationStarted, invocation)
+		t.Log("completed: observed signed Descriptor refresh and elapsed overlap")
+		if actual := run("read after refresh", destination, "read", path("reader.sock")); !bytes.Equal(actual, body) {
+			t.Fatal("document changed after elapsed refresh")
+		}
+		t.Log("completed: exact document read through the original Link after refresh")
 	}
-	t.Log("completed: exact document read through the original Link after refresh")
 	withdrawal, cancelWithdrawal := context.WithTimeout(t.Context(), 15*time.Second)
 	outcome, withdrawalErr := administration.Request(withdrawal, path("publisher.sock"), administration.Withdraw)
 	cancelWithdrawal()
@@ -214,6 +223,52 @@ func runInstalledClosedTextParticipant(t *testing.T, config state.Config, binary
 		t.Fatalf("withdrawal retained worker units: %s", workers)
 	}
 	t.Log("completed: withdrawal, exact Link refusal, same live Endpoint, and no retained workers")
+}
+
+func installedCommandRouteDiagnostics(t *testing.T, sourcePlan map[string]any) string {
+	t.Helper()
+	if processes, present := sourcePlan["diagnostic_node_processes"].([]*nodeProcess); present {
+		var reasons []string
+		for _, process := range processes {
+			reason := process.firstRouteDiagnosticReason()
+			if reason != "" {
+				reasons = append(reasons, reason)
+			}
+		}
+		if len(reasons) > 0 {
+			return strings.Join(reasons, "\n")
+		}
+	}
+	rawPaths, present := sourcePlan["route_diagnostic_paths"]
+	if !present {
+		return "none configured"
+	}
+	paths, ok := rawPaths.([]string)
+	if !ok {
+		return "invalid configured paths"
+	}
+	var reasons []string
+	for _, directory := range paths {
+		raw, err := os.ReadFile(filepath.Join(directory, "route-diagnostic.json"))
+		if errors.Is(err, os.ErrNotExist) {
+			continue
+		}
+		if err != nil {
+			return "unreadable diagnostic"
+		}
+		var event struct {
+			Kind   string `json:"kind"`
+			Reason string `json:"reason"`
+		}
+		if json.Unmarshal(raw, &event) != nil || event.Kind != "route-diagnostic" || event.Reason == "" {
+			return "invalid diagnostic"
+		}
+		reasons = append(reasons, event.Reason)
+	}
+	if len(reasons) == 0 {
+		return "none observed"
+	}
+	return strings.Join(reasons, "\n")
 }
 
 // Equal Source families are forbidden before State opens or either configured

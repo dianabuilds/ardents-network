@@ -9,6 +9,20 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/route/credential"
 )
 
+func TestClosedBootstrapClientClassifiesUnreachableEntryCarrier(t *testing.T) {
+	fixture := newClosedBootstrapNetwork(t, route.ClosedCarrierTCP)
+	pending, _, _ := fixture.batch(t, 1)
+	defer pending.Discard()
+	fixture.snapshot.Candidates[0].Endpoint = reserveClosedBootstrapAddress(t, route.ClosedCarrierTCP)
+	_, err := route.ExchangeClosedBootstrap(t.Context(), fixture, fixture.selection, pending.Request())
+	if err == nil {
+		t.Fatal("unreachable Entry unexpectedly issued tokens")
+	}
+	if got := route.ClosedBootstrapFailureDetail(err); got != "entry-carrier-tcp-dial-refused" {
+		t.Fatalf("unreachable Entry boundary = %q; error = %v", got, err)
+	}
+}
+
 func TestClosedBootstrapClientIssuesThroughEntryInteriorAndIssuer(t *testing.T) {
 	for _, carrier := range []route.CarrierProfile{route.ClosedCarrierTCP, route.ClosedCarrierQUIC} {
 		t.Run(string(carrier), func(t *testing.T) {

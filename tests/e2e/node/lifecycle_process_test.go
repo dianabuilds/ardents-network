@@ -36,21 +36,33 @@ type processCert struct {
 }
 
 type nodeProcess struct {
-	command *exec.Cmd
-	events  chan nodeEvent
-	done    chan struct{}
-	stderr  *bytes.Buffer
-	waitMu  sync.Mutex
-	waitErr error
+	command                      *exec.Cmd
+	events                       chan nodeEvent
+	done                         chan struct{}
+	stderr                       *bytes.Buffer
+	finished                     time.Time
+	firstRouteDiagnostic         string
+	routeDiagnostics             []routeDiagnosticObservation
+	latestDroppedRouteDiagnostic time.Time
+	waitMu                       sync.Mutex
+	waitErr                      error
 }
 
 type nodeEvent struct {
-	Kind             string   `json:"kind"`
-	Schema           string   `json:"schema"`
-	State            string   `json:"state"`
-	Epoch            uint64   `json:"epoch"`
-	Assignment       string   `json:"assignment"`
-	AssignmentDigest [32]byte `json:"assignment_digest"`
+	Kind             string    `json:"kind"`
+	Schema           string    `json:"schema"`
+	State            string    `json:"state"`
+	At               time.Time `json:"at"`
+	Epoch            uint64    `json:"epoch"`
+	Assignment       string    `json:"assignment"`
+	AssignmentDigest [32]byte  `json:"assignment_digest"`
+	Reason           string    `json:"reason"`
+}
+
+func (process *nodeProcess) firstRouteDiagnosticReason() string {
+	process.waitMu.Lock()
+	defer process.waitMu.Unlock()
+	return process.firstRouteDiagnostic
 }
 
 func TestTwoNodeProcessesRefreshWithdrawRestartAndReassign(t *testing.T) {
@@ -291,6 +303,7 @@ func startNodeCommand(t *testing.T, binary string, arguments ...string) *nodePro
 		err := command.Wait()
 		process.waitMu.Lock()
 		process.waitErr = err
+		process.finished = time.Now()
 		process.waitMu.Unlock()
 		close(process.done)
 	}()

@@ -34,6 +34,17 @@ func TestTextPrefixPreparationFailureRetainsStageAndCause(t *testing.T) {
 	}
 }
 
+func TestTextPublisherStartupFailureRetainsFixedRouteDetail(t *testing.T) {
+	cause := errors.New("unavailable")
+	failure := textPublisherStartupFailureAt("open-introduction-prefix-opening-entry-carrier-quic-dial", cause)
+	if got := textPublisherStartupFailureStage(failure); got != "open-introduction-prefix-opening-entry-carrier-quic-dial" {
+		t.Fatalf("Publisher startup stage = %q", got)
+	}
+	if !errors.Is(failure, cause) {
+		t.Fatal("Publisher startup failure lost its cause")
+	}
+}
+
 func TestTextTokenPresentationFailureRetainsNestedStageAndCause(t *testing.T) {
 	cause := errors.New("local role conflict read unavailable")
 	role := textRoleMemberFailureAt("conflict-read", cause)

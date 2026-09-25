@@ -26,13 +26,41 @@ type textPublisherRun struct {
 	err          error
 }
 
+type textPublisherStartupFailure struct {
+	stage string
+	cause error
+}
+
+func (failure *textPublisherStartupFailure) Error() string { return failure.cause.Error() }
+
+func (failure *textPublisherStartupFailure) Unwrap() error { return failure.cause }
+
+func textPublisherStartupFailureAt(stage string, cause error) error {
+	return &textPublisherStartupFailure{stage: stage, cause: cause}
+}
+
+func textPublisherStartupFailureStage(cause error) string {
+	var failure *textPublisherStartupFailure
+	if errors.As(cause, &failure) && failure.stage != "" {
+		return failure.stage
+	}
+	return "unknown"
+}
+
+func textPublisherPrefixStartupFailureStage(boundary string, cause error) string {
+	if stage := textPrefixPreparationFailureStage(cause); stage != "unknown" {
+		return boundary + "-" + stage
+	}
+	return boundary
+}
+
 // startTextPublisher performs installed qualification before any registration
 // or Descriptor effect. The separately authorized context must already hold
 // its genuine offline permission; a snapshot cannot supply that authority.
 func (owner *textContext) startTextPublisher(ctx context.Context, snapshot []byte) (*textPublisherRun, error) {
 	worker, err := owner.launchTextWorker(ctx, snapshot)
 	if err != nil {
-		return nil, err
+		return nil, textPublisherStartupFailureAt("launch-worker", err)
 	}
 	run, err := worker.startPublication(ctx)
 	if err != nil {
@@ -72,35 +100,35 @@ func (worker *qualifiedTextWorker) startPublication(ctx context.Context) (_ *tex
 		owner.mu.Unlock()
 	}()
 	if operationErr != nil {
-		return nil, operationErr
+		return nil, textPublisherStartupFailureAt("begin-operation", operationErr)
 	}
 	if _, err := owner.openTextPrefix(ctx); err != nil {
-		return nil, err
+		return nil, textPublisherStartupFailureAt(textPublisherPrefixStartupFailureStage("open-source-prefix", err), err)
 	}
 	prefix, err := owner.openTextIntroductionPrefix(ctx)
 	if err != nil {
-		return nil, err
+		return nil, textPublisherStartupFailureAt(textPublisherPrefixStartupFailureStage("open-introduction-prefix", err), err)
 	}
 	if _, err := owner.openTextResponderPrefix(ctx); err != nil {
-		return nil, err
+		return nil, textPublisherStartupFailureAt(textPublisherPrefixStartupFailureStage("open-responder-prefix", err), err)
 	}
 	_, until, err := prefix.introductionRecipient()
 	if err != nil {
-		return nil, err
+		return nil, textPublisherStartupFailureAt("introduction-recipient", err)
 	}
 	expiry := owner.endpoint.clock().UTC().Truncate(time.Second).Add(600 * time.Second)
 	if until.Before(expiry) {
 		expiry = until
 	}
 	if _, err := owner.registerTextIntroduction(ctx, 1, expiry); err != nil {
-		return nil, err
+		return nil, textPublisherStartupFailureAt("register-introduction", err)
 	}
 	descriptor, err := owner.publishTextDescriptor(ctx)
 	if err != nil {
-		return nil, err
+		return nil, textPublisherStartupFailureAt("publish-descriptor", err)
 	}
 	if err := ctx.Err(); err != nil {
-		return nil, err
+		return nil, textPublisherStartupFailureAt("context", err)
 	}
 	run := &textPublisherRun{owner: owner, link: targetlink.Link{Network: owner.endpoint.network, Target: descriptor.Descriptor.Target}, cancel: cancel, done: make(chan struct{})}
 	transferred = true

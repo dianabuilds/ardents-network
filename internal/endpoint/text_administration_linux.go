@@ -85,6 +85,7 @@ func (owner *textAdministration) PublishSnapshot(ctx context.Context, snapshot [
 	}()
 	run, err := owner.context.startTextPublisher(startup, snapshot)
 	if err != nil {
+		owner.context.reportTextPublicationFailure(textPublisherStartupFailureStage(err))
 		return err
 	}
 	owner.mu.Lock()

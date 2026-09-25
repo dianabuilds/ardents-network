@@ -26,6 +26,8 @@ func nodeEventEmitter(output *os.File, directory string) func(context.Context, n
 			name = "lifecycle.json"
 		case "resource", "resource-sample":
 			name = "resource.json"
+		case "route-diagnostic":
+			name = "route-diagnostic.json"
 		default:
 			return nil
 		}

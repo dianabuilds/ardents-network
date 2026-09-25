@@ -61,6 +61,13 @@ func textPrefixPreparationFailureStage(cause error) string {
 	return "unknown"
 }
 
+func textBootstrapIssuanceFailureStage(cause error) string {
+	if stage := route.ClosedBootstrapFailureDetail(cause); stage != "unknown" {
+		return "stock-issuance-" + stage
+	}
+	return "stock-issuance"
+}
+
 // openTextPrefix uses only the context's retained members and finalized stock.
 // It never upgrades an issuance-bootstrap lane or accepts a worker peer list.
 func (owner *textContext) openTextPrefix(ctx context.Context) (*textSourceHandle, error) {
@@ -97,7 +104,7 @@ func (owner *textContext) openTextPrefix(ctx context.Context) (*textSourceHandle
 			return operation.presentTextToken(selection, hello, class)
 		})
 		if openErr != nil {
-			stage := route.ClosedSourceOpenFailureStage(openErr)
+			stage := route.ClosedSourceOpenFailureDetail(openErr)
 			if presentation := textTokenPresentationFailureStage(openErr); presentation != "unknown" {
 				stage += "-" + presentation
 			}
@@ -177,7 +184,7 @@ func (owner *textContext) ensureTextPrefixStock(ctx context.Context, opening *te
 	if len(missing) != 0 {
 		// Independent receiver inputs share one common class/window key.
 		if err := owner.issueTextTokensForOpening(ctx, missing, 2, opening, false); err != nil {
-			return route.ClosedBootstrapSelection{}, textPrefixPreparationFailureAt("stock-issuance", err)
+			return route.ClosedBootstrapSelection{}, textPrefixPreparationFailureAt(textBootstrapIssuanceFailureStage(err), err)
 		}
 	}
 	if err := owner.prepareTextIssuerStock(ctx, nil, 0, opening, nil, nil); err != nil {

@@ -21,6 +21,35 @@ type ClosedIssuanceExchangeResult struct {
 	Body  []byte
 }
 
+type closedBootstrapFailure struct {
+	stage string
+	cause error
+}
+
+func (failure *closedBootstrapFailure) Error() string { return failure.cause.Error() }
+
+func (failure *closedBootstrapFailure) Unwrap() error { return failure.cause }
+
+func closedBootstrapFailureAt(stage string, cause error) error {
+	return &closedBootstrapFailure{stage: stage, cause: cause}
+}
+
+// ClosedBootstrapFailureDetail returns the fixed local issuer-exchange
+// boundary. It never includes a peer, address, token, request, or TLS error.
+func ClosedBootstrapFailureDetail(cause error) string {
+	var failure *closedBootstrapFailure
+	if !errors.As(cause, &failure) || failure.stage == "" {
+		return "unknown"
+	}
+	stage := failure.stage
+	var nested *closedRoleOpenFailure
+	if errors.As(failure.cause, &nested) && closedRoleOpenFailureDetail(nested) != "unknown" {
+		nested := closedRoleOpenFailureDetail(nested)
+		stage += "-" + nested
+	}
+	return stage
+}
+
 // ExchangeClosedBootstrap executes one target-free issuance exchange through
 // the retained Entry and Interior members to the sole current issuer. All
 // addresses and keys come from live State. It performs no retry or resampling,
@@ -46,7 +75,7 @@ func ExchangeClosedBootstrap(ctx context.Context, source ClosedBootstrapState, s
 	entry := plan.peers[0]
 	connection, err := OpenClosedRoleCarrier(attempt, ClosedRoleCarrierRequest{CarrierProfile: entry.carrier, Endpoint: entry.endpoint, ExpectedServer: entry.key, Deadline: plan.deadline})
 	if err != nil {
-		return ClosedIssuanceExchangeResult{}, err
+		return ClosedIssuanceExchangeResult{}, closedBootstrapFailureAt("entry-carrier", err)
 	}
 	retirement := &closedRoleRetirement{transport: connection}
 	if secured, ok := connection.(*tls.Conn); ok {
@@ -113,7 +142,11 @@ func ExchangeClosedBootstrap(ctx context.Context, source ClosedBootstrapState, s
 		owned = append(owned, child)
 		inner, err := OpenClosedRoleTLS(attempt, child, peer.key, plan.deadline)
 		if err != nil {
-			return result, fmt.Errorf("closed bootstrap TLS %d: %w", index+1, err)
+			stage := "forwarding-tls"
+			if purpose == ClosedPurposeIssuer {
+				stage = "issuer-tls"
+			}
+			return result, closedBootstrapFailureAt(stage, fmt.Errorf("closed bootstrap TLS %d: %w", index+1, err))
 		}
 		current = inner
 		transport = child
