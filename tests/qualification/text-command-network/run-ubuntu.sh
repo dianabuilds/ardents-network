@@ -76,27 +76,38 @@ done
 [ -z "$(systemctl show ardents-endpoint.service -p DropInPaths --value)" ] ||
 	fail 'invalid environment: qualification unit has drop-ins'
 
-run_log=$(mktemp /var/tmp/ardents-text-command-network.XXXXXX) || fail 'invalid environment: command evidence log unavailable'
-trap 'rm -f "$run_log"' EXIT HUP INT TERM
-if ! ARDENTS_TEXT_COMMAND_QUALIFICATION=1 ARDENTS_E2E_COMMAND_ROOT="$command_root" \
-	timeout --signal=TERM --kill-after=30s 3060s "$binary" -test.run='^TestInstalledClosedTextCommandsThroughNodeProcesses$' -test.v -test.timeout=49m >"$run_log" 2>&1; then
-	cat "$run_log"
-	fail 'installed command journey test failed'
+if [ -n "${ARDENTS_TEXT_COMMAND_EVIDENCE_ROOT-}" ]; then
+    case "$ARDENTS_TEXT_COMMAND_EVIDENCE_ROOT" in
+        /*) ;;
+        *) fail 'invalid environment: command evidence root must be absolute' ;;
+    esac
+    [ -d "$ARDENTS_TEXT_COMMAND_EVIDENCE_ROOT" ] && [ ! -L "$ARDENTS_TEXT_COMMAND_EVIDENCE_ROOT" ] &&
+        [ "$(stat -c %u:%g:%a "$ARDENTS_TEXT_COMMAND_EVIDENCE_ROOT")" = 0:0:700 ] ||
+        fail 'invalid environment: owner-private command evidence root required'
+    run_log=$(umask 077; mktemp "$ARDENTS_TEXT_COMMAND_EVIDENCE_ROOT/command-journey.XXXXXXXX") ||
+        fail 'invalid environment: command evidence log unavailable'
+    printf 'command-evidence-log=%s\n' "$run_log" >&2
+else
+    run_log=$(mktemp /var/tmp/ardents-text-command-network.XXXXXX) || fail 'invalid environment: command evidence log unavailable'
+    trap 'rm -f "$run_log"' EXIT HUP INT TERM
 fi
-test_output=$(cat "$run_log")
-printf '%s\n' "$test_output"
+result=0
+ARDENTS_TEXT_COMMAND_QUALIFICATION=1 ARDENTS_E2E_COMMAND_ROOT="$command_root" \
+    timeout --signal=TERM --kill-after=30s 3060s "$binary" -test.run='^TestInstalledClosedTextCommandsThroughNodeProcesses$' -test.v -test.timeout=49m >"$run_log" 2>&1 || result=$?
+cat "$run_log"
+[ "$result" -eq 0 ] || fail "installed command journey test failed with exit status $result"
 [ "$(systemctl show ardents-endpoint.service -p ActiveState --value)" = inactive ] &&
 	[ "$(systemctl show ardents-endpoint.service -p MainPID --value)" = 0 ] ||
 	fail 'installed command journey retained the temporary Endpoint'
 
 root=TestInstalledClosedTextCommandsThroughNodeProcesses
-[ "$(printf '%s\n' "$test_output" | grep -c "^[[:space:]]*--- PASS: $root (" || true)" = 1 ] ||
+[ "$(grep -c "^[[:space:]]*--- PASS: $root (" "$run_log" || true)" = 1 ] ||
 	fail 'installed command journey lacks root test evidence'
 for carrier in ardents-carrier-tcp-tls-v2 ardents-carrier-quic-v2; do
-	[ "$(printf '%s\n' "$test_output" | grep -c "^[[:space:]]*--- PASS: $root/$carrier (" || true)" = 1 ] ||
+	[ "$(grep -c "^[[:space:]]*--- PASS: $root/$carrier (" "$run_log" || true)" = 1 ] ||
 		fail 'installed command journey lacks exact Carrier evidence'
 	for size in empty 64KiB 4MiB; do
-		[ "$(printf '%s\n' "$test_output" | grep -c "^[[:space:]]*--- PASS: $root/$carrier/$size (" || true)" = 1 ] ||
+		[ "$(grep -c "^[[:space:]]*--- PASS: $root/$carrier/$size (" "$run_log" || true)" = 1 ] ||
 			fail 'installed command journey lacks exact document evidence'
 	done
 done

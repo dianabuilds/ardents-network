@@ -58,6 +58,11 @@ substitute for independent review.
   Git; the test writes secret-bearing raw observations there and retains them
   locally. A non-Linux host or missing capture directory is an invalid profile,
   not a passing skip.
+- The installed `text-command-network` runner can retain its complete raw
+  output in an explicitly supplied owner-private directory outside Git. It
+  prints the file path before the long-running test and keeps failures and
+  timeouts for diagnosis; the caller retains candidate and host inventories
+  separately.
 - `make fuzz` mutation-fuzzes the selected State and Contributor targets for a
   bounded 30 seconds each. State owns canonical Epoch/Node Record framing and
   checks successful parser digest/key/raw invariants; Contributor owns strict

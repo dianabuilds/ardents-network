@@ -31,6 +31,14 @@ TCP/TLS and QUIC. Preserve the complete invocation journal and artifact/host
 inventories outside Git. This is functional journey evidence, not whole-host,
 privacy, hostile-network or p95 qualification.
 
+Set `ARDENTS_TEXT_COMMAND_EVIDENCE_ROOT` to an existing absolute, root-owned,
+mode-0700 directory outside the repository to retain the complete test output
+after either success or failure. The runner creates a unique mode-0600 file
+there and prints its path before starting the test, so an interrupted run can
+still be inspected. Without this variable, the output is printed to the caller
+and the temporary file is removed. The retained file may contain private
+runtime observations; keep its access and retention under local operator control.
+
 Each of the six document/Carrier cases observes a real five-minute Descriptor
 refresh. The Go test deadline is therefore 49 minutes and the independent
 outer command limit is 51 minutes; a timeout is retained as evidence rather
