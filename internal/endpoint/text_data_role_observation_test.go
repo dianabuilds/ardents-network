@@ -135,6 +135,12 @@ func runTextDataJoinIsolatedRoleObservation(t *testing.T, carrier route.CarrierP
 	}
 	published, err := owner.publishTextDescriptor(t.Context())
 	if err != nil {
+		// Resolution reports its fixed terminal result after the bounded lane
+		// close. Allow both one-second bounds to finish before collecting Nodes.
+		select {
+		case <-time.After(2 * time.Second):
+		case <-t.Context().Done():
+		}
 		for index, process := range processes {
 			t.Logf("Node role %d fixed failure events: %s", index, process.events())
 		}
