@@ -7,7 +7,9 @@ import (
 	"crypto/rand"
 	"crypto/tls"
 	"errors"
+	"io"
 	"net"
+	"os"
 	"sync"
 	"time"
 
@@ -251,6 +253,47 @@ func (prefix *ClosedSourcePrefix) Close() error {
 	return prefix.failure
 }
 
+// TerminalDetail reports only fixed local categories for the first channel
+// failure. It is diagnostic; it never changes the Source's terminal result.
+func (prefix *ClosedSourcePrefix) TerminalDetail() string {
+	if prefix == nil || prefix.channels == nil {
+		return "unknown"
+	}
+	channels := prefix.channels
+	channels.mu.Lock()
+	stage, cause := channels.terminalStage, channels.terminal
+	channels.mu.Unlock()
+	if cause == nil {
+		return "unknown"
+	}
+	category := "other"
+	switch {
+	case errors.Is(cause, ErrClosedSourceStopped):
+		category = "stopped"
+	case errors.Is(cause, io.EOF):
+		category = "eof"
+	case errors.Is(cause, context.Canceled):
+		category = "canceled"
+	case errors.Is(cause, context.DeadlineExceeded), errors.Is(cause, os.ErrDeadlineExceeded):
+		category = "deadline"
+	case errors.Is(cause, net.ErrClosed):
+		category = "closed"
+	case errors.Is(cause, ErrClosedSourceCleanup):
+		category = "cleanup"
+	default:
+		var networkError net.Error
+		if errors.As(cause, &networkError) && networkError.Timeout() {
+			category = "timeout"
+		}
+	}
+	switch stage {
+	case "owner", "read", "receive", "write", "lifetime", "child", "unknown":
+		return stage + "-" + category
+	default:
+		return "unknown-" + category
+	}
+}
+
 func (prefix *ClosedSourcePrefix) finish() {
 	prefix.once.Do(func() {
 		if prefix.channels != nil {
@@ -320,6 +363,6 @@ func (prefix *ClosedSourcePrefix) observeChildTerminal(cause error) {
 	if channels != nil {
 		// Publish the original nested cause before physical retirement. The
 		// upper reader may still be inside TLS or delivering buffered bytes.
-		channels.fail(cause)
+		channels.failAt("child", cause)
 	}
 }

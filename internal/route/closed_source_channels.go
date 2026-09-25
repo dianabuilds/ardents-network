@@ -41,6 +41,7 @@ type closedSourceChannels struct {
 	terminals, controls, data         []*closedSourceWrite
 	active                            *closedSourceWrite
 	terminal                          error
+	terminalStage                     string
 	terminalServed                    bool
 	workers                           sync.WaitGroup
 	done                              chan struct{}
@@ -78,9 +79,14 @@ func (owner *closedSourceChannels) signalLocked() {
 }
 
 func (owner *closedSourceChannels) fail(err error) {
+	owner.failAt("unknown", err)
+}
+
+func (owner *closedSourceChannels) failAt(stage string, err error) {
 	owner.mu.Lock()
 	if owner.terminal == nil {
 		owner.terminal = err
+		owner.terminalStage = stage
 		for _, queue := range [][]*closedSourceWrite{owner.terminals, owner.controls, owner.data} {
 			for _, request := range queue {
 				request.err = err
@@ -101,7 +107,7 @@ func (owner *closedSourceChannels) fail(err error) {
 }
 
 // stop records intentional whole-parent retirement before interrupting physical I/O.
-func (owner *closedSourceChannels) stop() { owner.fail(ErrClosedSourceStopped) }
+func (owner *closedSourceChannels) stop() { owner.failAt("owner", ErrClosedSourceStopped) }
 
 func (owner *closedSourceChannels) Close() error {
 	owner.closeOnce.Do(func() {
@@ -174,11 +180,11 @@ func (owner *closedSourceChannels) read() {
 	for {
 		frame, err := ReadClosedLaneFrame(owner.parent)
 		if err != nil {
-			owner.fail(err)
+			owner.failAt("read", err)
 			return
 		}
 		if err := owner.receive(frame); err != nil {
-			owner.fail(err)
+			owner.failAt("receive", err)
 			return
 		}
 	}
@@ -406,7 +412,7 @@ func (owner *closedSourceChannels) write() {
 		owner.mu.Unlock()
 		if err != nil && attempted {
 			// A failed physical write may have emitted a partial frame.
-			owner.fail(err)
+			owner.failAt("write", err)
 			return
 		}
 	}

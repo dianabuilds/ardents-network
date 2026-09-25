@@ -4,6 +4,7 @@ package endpoint
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
 
@@ -73,6 +74,13 @@ func TestTextSourceHandleRejectsUseAfterIdleRetirement(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	owner.mu.Lock()
+	acquisition := owner.source.acquireResolutionLocked()
+	owner.mu.Unlock()
+	if acquisition == nil {
+		t.Fatal("resolution acquisition unavailable")
+	}
+	defer acquisition.release()
 	if err := handle.Close(); err != nil {
 		t.Fatal(err)
 	}
@@ -85,5 +93,23 @@ func TestTextSourceHandleRejectsUseAfterIdleRetirement(t *testing.T) {
 	}
 	if _, _, _, err := handle.dataJoinRecipient(); err == nil {
 		t.Fatal("retired Source handle remained usable")
+	}
+	owner.mu.Lock()
+	detail := acquisition.retiredDetailLocked()
+	current := acquisition.currentLocked(owner)
+	owner.mu.Unlock()
+	if detail != "owner-stopped" || current {
+		t.Fatalf("retired Source detail = %q, current=%v", detail, current)
+	}
+	flight := &textResolutionFlight{context: t.Context(), source: acquisition}
+	owner.mu.Lock()
+	owner.resolution = flight
+	owner.mu.Unlock()
+	stockErr := owner.ensureTextResolutionStock(flight)
+	owner.mu.Lock()
+	owner.resolution = nil
+	owner.mu.Unlock()
+	if stockErr == nil || !strings.Contains(stockErr.Error(), "Source terminal owner-stopped") {
+		t.Fatalf("lost fixed Source terminal detail at stock guard: %v", stockErr)
 	}
 }

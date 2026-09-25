@@ -26,7 +26,7 @@ func (owner *closedSourceChannels) expire() {
 		}
 		if !time.Now().Before(until) {
 			owner.mu.Unlock()
-			owner.fail(errors.New("closed source lifetime ended"))
+			owner.failAt("lifetime", errors.New("closed source lifetime ended"))
 			return
 		}
 		changed := owner.changed
