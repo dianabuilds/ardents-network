@@ -18,9 +18,7 @@ func TestNextCommandRecoversUpdateInterruptedAfterPreviousGenerationWasMoved(t *
 		t.Fatal(err)
 	}
 	first, firstPin := writeContributorBundle(t, 1, deployment)
-	if _, err := profile.Apply(t.Context(), first, firstPin); err != nil {
-		t.Fatal(err)
-	}
+	installRetainedContributorFixture(t, hostRoot, first, firstPin, supervisor)
 	privateRoot := filepath.Join(hostRoot, "var", "lib", "private", "ardents-contributor")
 	installed, err := os.ReadFile(filepath.Join(privateRoot, "installation.json"))
 	if err != nil {
@@ -73,16 +71,11 @@ func TestControlRejectsIncompleteContributorUpdateResidueWithoutTransitionRecord
 		t.Run(test.name, func(t *testing.T) {
 			root := t.TempDir()
 			supervisor := &profileSupervisor{hostRoot: root}
-			profile, err := contributor.Open(contributor.Config{Root: root, Supervisor: supervisor})
-			if err != nil {
-				t.Fatal(err)
-			}
 			bundle, pin := writeContributorBundle(t, 1, strings.Repeat("5a", 32))
-			if _, err = profile.Apply(t.Context(), bundle, pin); err != nil {
-				t.Fatal(err)
-			}
+			installRetainedContributorFixture(t, root, bundle, pin, supervisor)
 			startsBefore := supervisor.startCount()
 			programResidue := filepath.Join(root, "usr", "lib", "ardents-contributor", test.residue)
+			var err error
 			if err = os.Mkdir(programResidue, 0o755); err != nil {
 				t.Fatal(err)
 			}
@@ -128,14 +121,8 @@ func TestControlRecoversIncompleteContributorUpdateResidueWithTransitionRecord(t
 	t.Parallel()
 	root := t.TempDir()
 	supervisor := &profileSupervisor{hostRoot: root}
-	profile, err := contributor.Open(contributor.Config{Root: root, Supervisor: supervisor})
-	if err != nil {
-		t.Fatal(err)
-	}
 	bundle, pin := writeContributorBundle(t, 1, strings.Repeat("5b", 32))
-	if _, err = profile.Apply(t.Context(), bundle, pin); err != nil {
-		t.Fatal(err)
-	}
+	installRetainedContributorFixture(t, root, bundle, pin, supervisor)
 	privateRoot := filepath.Join(root, "var", "lib", "private", "ardents-contributor")
 	previous, err := os.ReadFile(filepath.Join(privateRoot, "installation.json"))
 	if err != nil {
@@ -185,14 +172,8 @@ func TestControlRecoversIncompleteContributorUpdateResidueWithTransitionRecord(t
 func TestControlDoesNotRestartStoppedPredecessorBeforeCleaningUpdateRecord(t *testing.T) {
 	root := t.TempDir()
 	supervisor := &profileSupervisor{hostRoot: root}
-	profile, err := contributor.Open(contributor.Config{Root: root, Supervisor: supervisor})
-	if err != nil {
-		t.Fatal(err)
-	}
 	bundle, pin := writeContributorBundle(t, 1, strings.Repeat("5c", 32))
-	if _, err = profile.Apply(t.Context(), bundle, pin); err != nil {
-		t.Fatal(err)
-	}
+	installRetainedContributorFixture(t, root, bundle, pin, supervisor)
 	privateRoot := filepath.Join(root, "var", "lib", "private", "ardents-contributor")
 	previous, err := os.ReadFile(filepath.Join(privateRoot, "installation.json"))
 	if err != nil {
@@ -223,14 +204,8 @@ func TestWithdrawRecoversInterruptedUpdateWithoutStartAndRemoveKeepsConfirmation
 	root := t.TempDir()
 	deployment := strings.Repeat("5e", 32)
 	supervisor := &profileSupervisor{hostRoot: root}
-	profile, err := contributor.Open(contributor.Config{Root: root, Supervisor: supervisor})
-	if err != nil {
-		t.Fatal(err)
-	}
 	bundle, pin := writeContributorBundle(t, 1, deployment)
-	if _, err = profile.Apply(t.Context(), bundle, pin); err != nil {
-		t.Fatal(err)
-	}
+	installRetainedContributorFixture(t, root, bundle, pin, supervisor)
 	privateRoot := filepath.Join(root, "var", "lib", "private", "ardents-contributor")
 	previous, err := os.ReadFile(filepath.Join(privateRoot, "installation.json"))
 	if err != nil {
@@ -279,9 +254,7 @@ func TestDiagnoseRejectsModifiedManagementExecutable(t *testing.T) {
 		t.Fatal(err)
 	}
 	bundle, pin := writeContributorBundle(t, 1, strings.Repeat("5d", 32))
-	if _, err := profile.Apply(t.Context(), bundle, pin); err != nil {
-		t.Fatal(err)
-	}
+	installRetainedContributorFixture(t, root, bundle, pin, supervisor)
 	manager := filepath.Join(root, "usr", "lib", "ardents-contributor", "ardents-node")
 	if err := os.WriteFile(manager, []byte("altered-manager"), 0o755); err != nil {
 		t.Fatal(err)
