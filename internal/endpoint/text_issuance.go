@@ -5,7 +5,6 @@ package endpoint
 import (
 	"context"
 	"errors"
-	"slices"
 
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/credential"
@@ -138,35 +137,10 @@ func (owner *textContext) issueTextTokensForOpeningWithCancellation(ctx context.
 		}
 		challenges[index] = challenge
 	}
-	batch := permission.pending
-	if batch != nil {
-		if batch.refill != refill || !slices.Equal(batch.challenges, challenges) || batch.selection != selection ||
-			acquisition != nil && batch.prefix != expected ||
-			batch.prefix != nil && !batch.prefix.currentLocked(owner) {
-			owner.mu.Unlock()
-			return errors.New("text issuance retry must retain the original batch")
-		}
-	} else {
-		if owner.currentTextSourceLocked() == nil && permission.batches >= 2 {
-			owner.mu.Unlock()
-			return errors.New("text bootstrap batch allowance is exhausted")
-		}
-		if uint32(len(challenges)) > permission.accepted.Maxima[class-1]-permission.reserved[class-1] {
-			owner.mu.Unlock()
-			return errors.New("text issuance allocation is exhausted")
-		}
-		pending, err := credential.PrepareClosedTokenBatch(credential.ClosedTokenBatchConfig{Profile: profile, Contexts: challenges,
-			Permission: permission.accepted, HolderKey: permission.holder, Now: now})
-		if err != nil {
-			owner.mu.Unlock()
-			return err
-		}
-		batch = &textTokenBatch{refill: refill, prefix: owner.currentTextSourceLocked(), challenges: challenges, selection: selection, pending: pending}
-		permission.pending = batch
-		permission.reserved[class-1] += uint32(len(challenges))
-		if batch.prefix == nil {
-			permission.batches++
-		}
+	batch, err := permission.reserveBatchLocked(profile, now, challenges, selection, refill, owner.currentTextSourceLocked(), acquisition != nil, expected)
+	if err != nil {
+		owner.mu.Unlock()
+		return err
 	}
 	operation := newTextIssuanceOperation(owner, permission, profile, batch, discardCanceled)
 	owner.issuance = operation

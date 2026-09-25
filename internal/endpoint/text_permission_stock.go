@@ -4,6 +4,7 @@ package endpoint
 
 import (
 	"errors"
+	"slices"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/network/state"
@@ -41,6 +42,42 @@ func (permission *textPermission) countStock(profileDigest, receiver [32]byte, d
 		}
 	}
 	return ready
+}
+
+// reserveBatchLocked owns exact retry matching and allocation reservation. The
+// Context holds its admission lock while selecting the live Route prefix and
+// State challenges; the permission alone changes its batch and quota state.
+func (permission *textPermission) reserveBatchLocked(profile state.ClosedProfileView, now time.Time,
+	challenges []credential.ClosedTokenContext, selection route.ClosedBootstrapSelection, refill bool,
+	current *textSourceHandle, joined bool, expected *textSourceHandle) (*textTokenBatch, error) {
+	if batch := permission.pending; batch != nil {
+		if batch.refill != refill || !slices.Equal(batch.challenges, challenges) || batch.selection != selection ||
+			joined && batch.prefix != expected ||
+			batch.prefix != nil && (batch.prefix != current || current.prefix.Load() == nil) {
+			return nil, errors.New("text issuance retry must retain the original batch")
+		}
+		return batch, nil
+	}
+	prefix := current
+	if prefix == nil && permission.batches >= 2 {
+		return nil, errors.New("text bootstrap batch allowance is exhausted")
+	}
+	class := challenges[0].Class
+	if uint32(len(challenges)) > permission.accepted.Maxima[class-1]-permission.reserved[class-1] {
+		return nil, errors.New("text issuance allocation is exhausted")
+	}
+	pending, err := credential.PrepareClosedTokenBatch(credential.ClosedTokenBatchConfig{Profile: profile, Contexts: challenges,
+		Permission: permission.accepted, HolderKey: permission.holder, Now: now})
+	if err != nil {
+		return nil, err
+	}
+	batch := &textTokenBatch{refill: refill, prefix: prefix, challenges: challenges, selection: selection, pending: pending}
+	permission.pending = batch
+	permission.reserved[class-1] += uint32(len(challenges))
+	if prefix == nil {
+		permission.batches++
+	}
+	return batch, nil
 }
 
 // discardPendingBatch erases only the admitted batch. Its allocation remains
