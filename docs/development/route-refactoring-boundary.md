@@ -36,10 +36,13 @@ mass move compiles. The type-use audit confirmed the shared declarations above
 but could not fully type-check external imports in isolation, so a package move
 must still be checked by Linux and Windows builds and behavior tests.
 
-`internal/route/credential` imports `internal/route` in seven production files.
-It uses Closed Route types, so any split must migrate that consumer together
-with Endpoint and Node imports. A temporary `route` wrapper that imports a new
-closed package while that package imports `route` would create a cycle.
+`internal/route/credential` still imports `internal/route` in five Linux
+production files. `closed_token_listener.go`, `closed_token_bootstrap.go`, and
+`closed_token_admitted.go` use Closed Route lifecycle and Carrier types;
+`client.go` and `message.go` use the shared Transit Grant and role contract.
+Any split must migrate the Closed consumer together with Endpoint and Node
+imports. A temporary `route` wrapper that imports a new closed package while
+that package imports `route` would create a cycle.
 
 ## Terminal-operation owner
 
