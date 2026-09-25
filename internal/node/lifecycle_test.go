@@ -24,6 +24,21 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/resource"
 )
 
+func TestPreparedCancellationRetainsTerminalEventFailure(t *testing.T) {
+	outputErr := errors.New("terminal event output failed")
+	var observed Event
+	config := runtimeConfig{Config: Config{Emit: func(_ context.Context, event Event) error {
+		observed = event
+		return outputErr
+	}}, now: func() time.Time { return time.Unix(100, 0).UTC() }}
+	machine := stateMachine{current: statePrepared}
+	result, err := terminalWithoutDuty(config, &machine, dutyFacts{Assignment: "closed_issuer"}, context.Canceled)
+	if result.State != stateNames[stateFailed] || observed.State != stateNames[stateFailed] ||
+		!errors.Is(err, context.Canceled) || !errors.Is(err, outputErr) {
+		t.Fatalf("prepared cancellation = %+v, event %+v, %v", result, observed, err)
+	}
+}
+
 func TestWithdrawDoesNotPublishSuccessWhenRoleDrainFails(t *testing.T) {
 	cleanupErr := errors.New("injected role drain failure")
 	var events []Event

@@ -231,8 +231,8 @@ func terminalWithoutDuty(config runtimeConfig, machine *stateMachine, snapshot d
 	if err := machine.move(stateFailed); err != nil {
 		return Result{}, err
 	}
-	_ = emitState(config, *machine, snapshot, "shutdown before assignment admission")
-	return resultFor(machine, snapshot, "shutdown before assignment admission"), cause
+	eventErr := emitState(config, *machine, snapshot, "shutdown before assignment admission")
+	return resultFor(machine, snapshot, "shutdown before assignment admission"), errors.Join(cause, eventErr)
 }
 
 func sameDuty(first, second dutyFacts) bool {
