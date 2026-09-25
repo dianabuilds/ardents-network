@@ -14,9 +14,9 @@ import (
 type textPublisherPrefixOpening interface {
 	openingAvailableLocked() bool
 	membersSlotLocked() **textInteriorSet
-	reserveOpeningLocked(*textSourceFlight) bool
-	openingCurrentLocked(*textSourceFlight) bool
-	finishOpeningLocked(*textSourceFlight, *route.ClosedSourcePrefix, context.CancelFunc, bool) bool
+	reserveOpeningLocked(*textOperationFlight) bool
+	openingCurrentLocked(*textOperationFlight) bool
+	finishOpeningLocked(*textOperationFlight, *route.ClosedSourcePrefix, context.CancelFunc, bool) bool
 }
 
 func (owner *textContext) openTextResponderPrefix(ctx context.Context) (*textResponderPrefixHandle, error) {
@@ -76,7 +76,7 @@ func (owner *textContext) openTextPublisherPrefix(ctx context.Context, role text
 		return nil, err
 	}
 	attempt, cancel := context.WithCancel(owner.lease.Context())
-	flight := &textSourceFlight{context: attempt, cancel: cancel, done: make(chan struct{})}
+	flight := &textOperationFlight{context: attempt, cancel: cancel, done: make(chan struct{})}
 	if !role.reserveOpeningLocked(flight) {
 		owner.mu.Unlock()
 		cancel()
@@ -117,7 +117,7 @@ func (owner *textContext) openTextPublisherPrefix(ctx context.Context, role text
 	return prefix, nil
 }
 
-func (owner *textContext) ensureTextPublisherStock(role textPublisherPrefixOpening, flight *textSourceFlight, selection route.ClosedBootstrapSelection) error {
+func (owner *textContext) ensureTextPublisherStock(role textPublisherPrefixOpening, flight *textOperationFlight, selection route.ClosedBootstrapSelection) error {
 	owner.mu.Lock()
 	profile, _, err := owner.textPermissionProfileLocked()
 	if err != nil || !role.openingCurrentLocked(flight) || flight.context.Err() != nil || owner.permission == nil {
@@ -143,7 +143,7 @@ func (owner *textContext) ensureTextPublisherStock(role textPublisherPrefixOpeni
 	return nil
 }
 
-func (owner *textContext) presentTextPublisherForwardingToken(role textPublisherPrefixOpening, domain uint8, flight *textSourceFlight, selection route.ClosedBootstrapSelection, hello ardp.Hello, class uint8) ([]byte, error) {
+func (owner *textContext) presentTextPublisherForwardingToken(role textPublisherPrefixOpening, domain uint8, flight *textOperationFlight, selection route.ClosedBootstrapSelection, hello ardp.Hello, class uint8) ([]byte, error) {
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
 	profile, now, err := owner.textPermissionProfileLocked()

@@ -24,7 +24,6 @@ type textContextState struct {
 	introductionExchanges textIntroductionExchangeSet
 	introductionAdmission textIntroductionAdmission
 	descriptorHistory     descriptorhistory.History
-	withdrawal            *textSourceFlight
 	introduction          textIntroductionPrefixLifecycle
 	responder             textResponderPrefixLifecycle
 	resolution            *textResolutionFlight

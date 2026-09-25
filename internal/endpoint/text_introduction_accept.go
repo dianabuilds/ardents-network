@@ -51,7 +51,7 @@ func (owner *textContext) acceptTextIntroductionGeneration(ctx context.Context, 
 	}
 	profile, now, err := owner.textPermissionProfileLocked()
 	registered := owner.textPublicationPairLifecycle.selectLocked(now, capsule.Slot, capsule.Revision)
-	if err != nil || !owner.liveTextServiceJobLocked(job, broker.Administration) || registered == nil || owner.withdrawal != nil ||
+	if err != nil || !owner.liveTextServiceJobLocked(job, broker.Administration) || registered == nil || owner.textPublicationPairLifecycle.withdrawalInProgressLocked() ||
 		endpoint.textPublisherOwner != owner || !endpoint.textPublicationLive || endpoint.publisherBinding == nil || endpoint.publications == nil ||
 		!registered.published || registered.recipient == nil {
 		return nil, errors.New("text Introduction registration authority unavailable")

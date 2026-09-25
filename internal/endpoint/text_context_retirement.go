@@ -19,7 +19,7 @@ type textContextRetirement struct {
 	source              *textSourceRetirement
 	issuance            *textIssuanceOperation
 	resolution          *textResolutionFlight
-	withdrawal          *textSourceFlight
+	withdrawal          *textOperationFlight
 	exchanges           []*textIntroductionExchange
 	job                 *textJobRetirement
 }
@@ -33,7 +33,7 @@ func (owner *textContext) stopTextContextChildrenLocked() *textContextRetirement
 	retirement.publication = owner.textPublicationPairLifecycle.stopLocked()
 	owner.signalTextRegistrationsLocked()
 	retirement.exchanges = owner.introductionExchanges.stopLocked()
-	retirement.withdrawal = owner.withdrawal
+	retirement.withdrawal = owner.textPublicationPairLifecycle.withdrawalLocked()
 	if retirement.withdrawal != nil {
 		retirement.withdrawal.cancel()
 	}

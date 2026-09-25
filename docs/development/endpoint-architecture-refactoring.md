@@ -36,7 +36,7 @@ implementation has private owners rather than one undifferentiated state bag:
 | --- | --- | --- |
 | Source prefix | `textSourceLifecycle` | Exact handle identity, opening retirement, serialized operation gate, and retained Interior Set remain atomic with Context admission; the gate and set survive prefix replacement. |
 | Publisher prefixes | `textIntroductionPrefixLifecycle`, `textResponderPrefixLifecycle` | Separate Route handles and opening lifetimes; borrowed Source is not closed by either. |
-| Publication | `textPublicationPairLifecycle`, refresh lifecycle, Context coordinators | The Pair owner retains the active registration opening through install or cancellation. Instance and Publication ownership spans Context and Endpoint locks. |
+| Publication | `textPublicationPairLifecycle`, refresh lifecycle, Context coordinators | The Pair owner retains the active registration opening and withdrawal flight through install or cancellation. Context still coordinates their stop/join order; Instance and Publication ownership spans Context and Endpoint locks. |
 | Permission and issuance | `textPermission`, `textIssuanceOperation` | `textPermission` owns holder request creation, signed approval acceptance, currentness and remaining-quota checks, exact retry matching and batch quota reservation, candidate-stock inspection, pending-batch cancellation, issued-token deposit, then burns and verifies the exact challenge under the Context admission lock. Context asks the permission owner whether approval, an exact request, or a pending batch exists instead of reading those fields. Context performs the durable token-attempt mark and surviving-owner check before presentation. Pending batch and exact Source reservation share that lock. |
 | Token attempt storage | `tokenjournal.Journal` | Own mutex, replay/time floors, and durable attempts; consumes the shared `durableroot` access, lease, and sync API. |
 | Permission file handover | `permissionfile` | Own canonical owner-private request/response paths, exact retry, and request durability; Context retains currentness and offline approval authority. |
@@ -49,10 +49,12 @@ implementation has private owners rather than one undifferentiated state bag:
 | Job and worker | `textJobIdentity`, `textWorkerLifetime` | Context retains the job reservation; worker owns process and cgroup cleanup. |
 | Service TLS | `service_tls.go`, `protected_service_tls.go` | Shared Instance authentication, handshake, and exporter handoff have one implementation. The selected protected path fixes X25519MLKEM768/X25519 groups and the authenticated Route retirement witness; the earlier Service path retains its existing default group policy. |
 
-Context-owned registration, withdrawal, and exchange flights are not separate
-modules merely because they have distinct filenames. The shutdown dependency
-order is defined by `text_context_retirement.go` and the maintained technical
-contract in `docs/technical/endpoint-service-runtime.md`.
+The Context coordinates cancellation and join of Publication's opening and
+withdrawal flights, refresh, resolution, and Introduction exchanges. These
+lifetimes do not become separate modules merely because they have distinct
+files. The shutdown dependency order is defined by
+`text_context_retirement.go` and the maintained technical contract in
+`docs/technical/endpoint-service-runtime.md`.
 
 ## Target code shape
 

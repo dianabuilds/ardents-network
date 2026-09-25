@@ -16,7 +16,7 @@ import (
 // Introduction prefix and an opening that may replace its absence.
 type textIntroductionPrefixLifecycle struct {
 	live    *textIntroductionPrefixHandle
-	opening *textSourceFlight
+	opening *textOperationFlight
 	set     *textInteriorSet
 }
 
@@ -30,7 +30,7 @@ type textIntroductionPrefixHandle struct {
 
 type textIntroductionPrefixRetirement struct {
 	prefix  *route.ClosedSourcePrefix
-	opening *textSourceFlight
+	opening *textOperationFlight
 }
 
 func (lifecycle *textIntroductionPrefixLifecycle) currentLocked() *textIntroductionPrefixHandle {
@@ -60,7 +60,7 @@ func (lifecycle *textIntroductionPrefixLifecycle) membersSlotLocked() **textInte
 	return &lifecycle.set
 }
 
-func (lifecycle *textIntroductionPrefixLifecycle) reserveOpeningLocked(flight *textSourceFlight) bool {
+func (lifecycle *textIntroductionPrefixLifecycle) reserveOpeningLocked(flight *textOperationFlight) bool {
 	if lifecycle == nil || flight == nil || lifecycle.live != nil || lifecycle.opening != nil {
 		return false
 	}
@@ -68,11 +68,11 @@ func (lifecycle *textIntroductionPrefixLifecycle) reserveOpeningLocked(flight *t
 	return true
 }
 
-func (lifecycle *textIntroductionPrefixLifecycle) openingCurrentLocked(flight *textSourceFlight) bool {
+func (lifecycle *textIntroductionPrefixLifecycle) openingCurrentLocked(flight *textOperationFlight) bool {
 	return lifecycle != nil && lifecycle.opening == flight
 }
 
-func (lifecycle *textIntroductionPrefixLifecycle) finishOpeningLocked(flight *textSourceFlight,
+func (lifecycle *textIntroductionPrefixLifecycle) finishOpeningLocked(flight *textOperationFlight,
 	prefix *route.ClosedSourcePrefix, cancel context.CancelFunc, publish bool) bool {
 	if lifecycle == nil || lifecycle.opening != flight {
 		return false

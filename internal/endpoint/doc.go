@@ -25,7 +25,7 @@
 //   - text_permission.go and text_permission_stock.go own holder authority and
 //     issued stock; text_issuance_operation.go owns an admitted issuance attempt.
 //   - text_publication_pair_lifecycle.go and text_publication_refresh.go own
-//     the in-flight registration, publication pair, and refresh;
+//     the in-flight registration, withdrawal, publication pair, and refresh;
 //     text_descriptor_publication.go coordinates the signed Descriptor effect.
 //   - descriptorhistory owns per-Context verified Descriptor floors;
 //     text_resolution.go coordinates lookup and rechecks live authority.

@@ -34,7 +34,7 @@ func (owner *textContext) publishTextDescriptor(ctx context.Context) (verified r
 	owner.mu.Lock()
 	profile, now, err := owner.textPermissionProfileLocked()
 	registered := owner.textPublicationPairLifecycle.publicationTargetLocked()
-	if err != nil || owner.surface != broker.Administration || registered == nil || owner.textPublicationPairLifecycle.drainingLocked() || owner.withdrawal != nil ||
+	if err != nil || owner.surface != broker.Administration || registered == nil || owner.textPublicationPairLifecycle.drainingLocked() || owner.textPublicationPairLifecycle.withdrawalInProgressLocked() ||
 		owner.textPublicationPairLifecycle.openingInProgressLocked() || owner.permission == nil || owner.resolution != nil || owner.currentTextSourceLocked() == nil ||
 		endpoint.publisherBinding == nil || endpoint.publications == nil || endpoint.publisherSession != nil || endpoint.textPublisherOwner != nil && endpoint.textPublisherOwner != owner {
 		owner.mu.Unlock()

@@ -11,12 +11,6 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 )
 
-type textSourceFlight struct {
-	context context.Context
-	cancel  context.CancelFunc
-	done    chan struct{}
-}
-
 // textPrefixPreparationFailure distinguishes the local stages which can stop
 // an expired Source prefix from being replaced. It deliberately retains the
 // original cause without exposing that cause through the headless event.
