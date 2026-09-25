@@ -2,9 +2,10 @@
 
 package endpoint
 
-// textIntroductionDispatch owns the context-local waiter and recovery slots.
-// Every transition runs under textContext.mu; Context still decides whether a
-// job and its authority are live before admitting a slot.
+// textIntroductionDispatch owns the context-local waiter and recovery slots,
+// their single consumer gate, routing, and waiter cleanup. Slot transitions
+// run under textContext.mu; Context supplies live job and publication authority
+// before a slot is admitted or a claimed delivery is inspected.
 type textIntroductionDispatch struct {
 	delivery chan struct{}
 	waiters  map[*textIntroductionWaiter]struct{}
@@ -62,9 +63,7 @@ func (dispatch *textIntroductionDispatch) removeRecoveryLocked(recovery *textInt
 
 func (dispatch *textIntroductionDispatch) selectRecoveryLocked(key textIntroductionDeliveryKey) *textIntroductionRecoveryOwner {
 	for recovery := range dispatch.recovery {
-		if recovery.binding != nil && recovery.binding.recovery == recovery && len(recovery.delivery) == 0 &&
-			recovery.binding.facts.ConnectionNonce == key.connection && key.generation >= recovery.generation &&
-			key.generation <= recovery.generation+1 {
+		if recovery.acceptsLocked(key) {
 			return recovery
 		}
 	}

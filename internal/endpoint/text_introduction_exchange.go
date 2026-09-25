@@ -137,7 +137,7 @@ func (owner *textContext) receiveTextIntroductionWith(ctx context.Context, job *
 			prepared = nil
 		}
 	}()
-	delivery, err := owner.dispatchTextIntroductionDelivery(lifetime, job, want, binding)
+	delivery, err := owner.introductionDispatch.receive(owner, lifetime, job, want, binding)
 	if err != nil {
 		return nil, err
 	}

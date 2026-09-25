@@ -19,6 +19,27 @@ type textIntroductionRecoveryOwner struct {
 	expiryDone chan struct{}
 }
 
+// admitGenerationLocked advances only the next generation of this exact
+// binding. A stale or speculative later waiter cannot change which capsule
+// the recovery slot may retain.
+func (recovery *textIntroductionRecoveryOwner) admitGenerationLocked(binding *textServiceBinding,
+	generation uint64) bool {
+	if recovery == nil || recovery.binding != binding || generation < recovery.generation ||
+		generation > recovery.generation+1 {
+		return false
+	}
+	if generation > recovery.generation {
+		recovery.generation = generation
+	}
+	return true
+}
+
+func (recovery *textIntroductionRecoveryOwner) acceptsLocked(key textIntroductionDeliveryKey) bool {
+	return recovery != nil && recovery.binding != nil && recovery.binding.recovery == recovery &&
+		len(recovery.delivery) == 0 && recovery.binding.facts.ConnectionNonce == key.connection &&
+		key.generation >= recovery.generation && key.generation <= recovery.generation+1
+}
+
 // handoffLocked transfers a buffered capsule to its exact waiter and returns
 // the expiry join. The caller must wait for that join after dropping Context's
 // lock, so an expiring capsule cannot also be completed by the waiter.

@@ -34,18 +34,18 @@ type textIntroductionWaiter struct {
 	delivery chan textIntroductionRoutedDelivery
 }
 
-// dispatchTextIntroductionDelivery registers the exact local owner before it
+// receive registers the exact local owner before it
 // competes for the one consumer gate. The consumer routes each claimed capsule
 // directly to an already registered waiter; unmatched inputs are refused while
 // completion is still possible and never occupy registration capacity.
-func (owner *textContext) dispatchTextIntroductionDelivery(ctx context.Context, job *textJobIdentity,
+func (dispatch *textIntroductionDispatch) receive(owner *textContext, ctx context.Context, job *textJobIdentity,
 	want textIntroductionDeliveryKey, binding *textServiceBinding) (delivery textIntroductionRoutedDelivery, outcome error) {
-	waiter, gate, err := owner.registerTextIntroductionWaiter(ctx, job, want, binding)
+	waiter, gate, err := dispatch.registerWaiter(owner, ctx, job, want, binding)
 	if err != nil {
 		return textIntroductionRoutedDelivery{}, err
 	}
 	defer func() {
-		outcome = errors.Join(outcome, owner.releaseTextIntroductionWaiter(waiter))
+		outcome = errors.Join(outcome, dispatch.releaseWaiter(owner, waiter))
 		if outcome != nil {
 			delivery = textIntroductionRoutedDelivery{}
 		}
@@ -79,10 +79,10 @@ func (owner *textContext) dispatchTextIntroductionDelivery(ctx context.Context, 
 			}
 			routed := textIntroductionRoutedDelivery{delivery: claimed, key: key, expires: expires}
 			owner.mu.Lock()
-			target := owner.introductionDispatch.selectWaiterLocked(key)
+			target := dispatch.selectWaiterLocked(key)
 			recovery := (*textIntroductionRecoveryOwner)(nil)
 			if target == nil {
-				recovery = owner.introductionDispatch.selectRecoveryLocked(key)
+				recovery = dispatch.selectRecoveryLocked(key)
 			}
 			if target != nil && target != waiter {
 				target.delivery <- routed
@@ -111,7 +111,7 @@ func (owner *textContext) dispatchTextIntroductionDelivery(ctx context.Context, 
 	}
 }
 
-func (owner *textContext) registerTextIntroductionWaiter(ctx context.Context, job *textJobIdentity,
+func (dispatch *textIntroductionDispatch) registerWaiter(owner *textContext, ctx context.Context, job *textJobIdentity,
 	want textIntroductionDeliveryKey, binding *textServiceBinding) (*textIntroductionWaiter, chan struct{}, error) {
 	if owner == nil || ctx == nil || want.generation == 0 {
 		return nil, nil, errors.New("text Introduction dispatch unavailable")
@@ -127,7 +127,7 @@ func (owner *textContext) registerTextIntroductionWaiter(ctx context.Context, jo
 	if !owner.liveTextServiceJobLocked(job, broker.Administration) || ctx.Err() != nil {
 		return nil, nil, errors.Join(ctx.Err(), errors.New("text Introduction dispatch owner retired"))
 	}
-	if owner.introductionDispatch.waiterCapacityReachedLocked() {
+	if dispatch.waiterCapacityReachedLocked() {
 		return nil, nil, errors.New("text Introduction dispatch capacity unavailable")
 	}
 	var recovery *textIntroductionRecoveryOwner
@@ -136,29 +136,26 @@ func (owner *textContext) registerTextIntroductionWaiter(ctx context.Context, jo
 			return nil, nil, errors.New("text Introduction recovery owner unavailable")
 		}
 		recovery = binding.recovery
-		if recovery.binding != binding || want.generation < recovery.generation || want.generation > recovery.generation+1 {
+		if !recovery.admitGenerationLocked(binding, want.generation) {
 			return nil, nil, errors.New("text Introduction recovery generation unavailable")
 		}
-		if want.generation > recovery.generation {
-			recovery.generation = want.generation
-		}
 	}
-	waiter, gate := owner.introductionDispatch.addWaiterLocked(want)
+	waiter, gate := dispatch.addWaiterLocked(want)
 	if recovery != nil {
 		expiryDone = recovery.handoffLocked(want, waiter)
 	}
 	return waiter, gate, nil
 }
 
-// releaseTextIntroductionWaiter joins ownership of a delivery assigned at the
+// releaseWaiter joins ownership of a delivery assigned at the
 // same instant its waiter was canceled. A live context refuses that capsule;
 // terminal context cleanup instead closes the whole registration owner.
-func (owner *textContext) releaseTextIntroductionWaiter(waiter *textIntroductionWaiter) error {
+func (dispatch *textIntroductionDispatch) releaseWaiter(owner *textContext, waiter *textIntroductionWaiter) error {
 	if owner == nil || waiter == nil {
 		return nil
 	}
 	owner.mu.Lock()
-	owner.introductionDispatch.removeWaiterLocked(waiter)
+	dispatch.removeWaiterLocked(waiter)
 	var routed textIntroductionRoutedDelivery
 	select {
 	case routed = <-waiter.delivery:

@@ -19,8 +19,8 @@
 //     text_interior_set.go selects peers for Source and Publisher prefixes.
 //   - text_introduction_prefix_lifecycle.go and
 //     text_responder_prefix_lifecycle.go own the two Publisher prefixes.
-//     text_introduction_admission.go, text_introduction_dispatch_state.go,
-//     and text_introduction_exchange_set.go own opening rate, delivery slots,
+//     text_introduction_admission.go, text_introduction_dispatch.go,
+//     and text_introduction_exchange_set.go own opening rate, delivery routing,
 //     and in-flight exchange membership under the Context lock.
 //     text_introduction_recovery.go owns buffered recovery delivery, its
 //     deadline refusal, and the join before waiter handoff or retirement.
