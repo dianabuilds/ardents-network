@@ -18,7 +18,7 @@ func TestCancelledQualificationRunCannotPublishIntoReplacement(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	first, err := newTextQualificationRun(streamqualification.ReaderRole, streamqualification.ClientToPublisher, fixtureID(211))
+	first, err := newStreamQualificationRun(streamqualification.ReaderRole, streamqualification.ClientToPublisher, fixtureID(211))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -48,7 +48,7 @@ func TestCancelledQualificationRunCannotPublishIntoReplacement(t *testing.T) {
 		owner.retireJob(replacementJob)
 		_ = owner.finishJobCleanup(replacementJob, nil)
 	})
-	replacement, err := newTextQualificationRun(streamqualification.ReaderRole, streamqualification.ClientToPublisher, fixtureID(212))
+	replacement, err := newStreamQualificationRun(streamqualification.ReaderRole, streamqualification.ClientToPublisher, fixtureID(212))
 	if err != nil {
 		t.Fatal(err)
 	}

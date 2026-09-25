@@ -34,7 +34,7 @@ func (owner *textContext) launchTextWorker(ctx context.Context, snapshot []byte)
 	return owner.launchInstalledWorker(ctx, snapshot, nil, workload)
 }
 
-func (owner *textContext) launchStreamQualificationWorker(ctx context.Context, qualification *textQualificationRun) (*qualifiedTextWorker, error) {
+func (owner *textContext) launchStreamQualificationWorker(ctx context.Context, qualification *streamQualificationRun) (*qualifiedTextWorker, error) {
 	role := streamqualification.ReaderRole
 	if owner != nil && owner.surface == broker.Administration {
 		role = streamqualification.PublisherRole
@@ -49,7 +49,7 @@ func (owner *textContext) launchStreamQualificationWorker(ctx context.Context, q
 	return owner.launchInstalledWorker(ctx, nil, qualification, workload)
 }
 
-func (owner *textContext) launchInstalledWorker(ctx context.Context, snapshot []byte, qualification *textQualificationRun,
+func (owner *textContext) launchInstalledWorker(ctx context.Context, snapshot []byte, qualification *streamQualificationRun,
 	workload textServiceWorkloadBounds) (*qualifiedTextWorker, error) {
 	if owner == nil || ctx == nil || ctx.Err() != nil {
 		return nil, errors.New("text worker launch is unavailable")

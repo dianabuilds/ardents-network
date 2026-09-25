@@ -14,7 +14,9 @@ import (
 // retirement, and immutable joined cleanup result. The text context retains
 // only the admission reservation that points at this exact job.
 type textJobIdentity struct {
-	qualification *textQualificationRun
+	// The qualification run is bound to this exact Job so late callbacks
+	// cannot attach streams, samples or cleanup to its replacement.
+	qualification *streamQualificationRun
 	workload      textServiceWorkloadBounds
 	owner         *textContext
 	nonce         [32]byte

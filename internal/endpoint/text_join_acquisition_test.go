@@ -66,7 +66,7 @@ func TestTextJoinOldAcquisitionCannotAttachAfterSourceReplacement(t *testing.T) 
 	endpoint, principal := textContextEndpoint(t)
 	owner := admittedTextContext(t, endpoint, principal, broker.Connection)
 	job := liveTextCapsuleJob(t, owner)
-	job.qualification = &textQualificationRun{init: streamqualification.Init{Role: streamqualification.ReaderRole}}
+	job.qualification = &streamQualificationRun{init: streamqualification.Init{Role: streamqualification.ReaderRole}}
 	attempt := &textIntroductionAttempt{binding: &textServiceBinding{owner: owner, job: job}}
 
 	owner.mu.Lock()

@@ -48,6 +48,8 @@ verdicts outside Endpoint; extract runtime code only as a bounded, authorized
 participant operation becomes available to a non-test caller. The Context
 lock may still protect atomic cross-owner admission at that boundary; splitting
 it into separate locks is not a prerequisite for package extraction.
+The exact `streamQualificationRun` remains bound to its Job because JOIN,
+Connection limits, token refill and cleanup all recheck that invocation.
 
 ## Endpoint interior
 

@@ -11,10 +11,10 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/route"
 )
 
-// textQualificationRun owns state used only by the fixed qualification
+// streamQualificationRun owns state used only by the fixed qualification
 // caller. An ordinary text Job has no report, observer, sampling, or joined
 // stream state; a qualification Job only retains its exact run owner.
-type textQualificationRun struct {
+type streamQualificationRun struct {
 	mu                  sync.Mutex
 	init                streamqualification.Init
 	acquireIntroduction func(context.Context) (func(), error)
@@ -27,17 +27,17 @@ type textQualificationRun struct {
 	stopErr             error
 }
 
-func newTextQualificationRun(role streamqualification.Role, profile streamqualification.Profile, seed [32]byte) (*textQualificationRun, error) {
+func newStreamQualificationRun(role streamqualification.Role, profile streamqualification.Profile, seed [32]byte) (*streamQualificationRun, error) {
 	if seed == [32]byte{} {
 		return nil, errors.New("qualification workload seed is absent")
 	}
 	if _, err := profile.Definition(role); err != nil {
 		return nil, err
 	}
-	return &textQualificationRun{init: streamqualification.Init{Role: role, Profile: profile, Seed: seed}}, nil
+	return &streamQualificationRun{init: streamqualification.Init{Role: role, Profile: profile, Seed: seed}}, nil
 }
 
-func (run *textQualificationRun) bindInvocation(nonce [32]byte) error {
+func (run *streamQualificationRun) bindInvocation(nonce [32]byte) error {
 	if run == nil || nonce == [32]byte{} {
 		return errors.New("qualification invocation is unavailable")
 	}
@@ -50,7 +50,7 @@ func (run *textQualificationRun) bindInvocation(nonce [32]byte) error {
 	return nil
 }
 
-func (run *textQualificationRun) configure(report *streamqualification.Report,
+func (run *streamQualificationRun) configure(report *streamqualification.Report,
 	acquireIntroduction func(context.Context) (func(), error),
 	acquireSetup func(context.Context) (func(), error),
 	stopSampling func() error,
@@ -72,7 +72,7 @@ func (run *textQualificationRun) configure(report *streamqualification.Report,
 	return nil
 }
 
-func (run *textQualificationRun) stopSamples() error {
+func (run *streamQualificationRun) stopSamples() error {
 	if run == nil {
 		return nil
 	}
@@ -87,7 +87,7 @@ func (run *textQualificationRun) stopSamples() error {
 	return run.stopErr
 }
 
-func (run *textQualificationRun) publishReport(report streamqualification.Report) {
+func (run *streamQualificationRun) publishReport(report streamqualification.Report) {
 	if run == nil {
 		return
 	}
@@ -98,7 +98,7 @@ func (run *textQualificationRun) publishReport(report streamqualification.Report
 	}
 }
 
-func (run *textQualificationRun) retainJoin(joined *route.ClosedJoinedStream) {
+func (run *streamQualificationRun) retainJoin(joined *route.ClosedJoinedStream) {
 	if run == nil || joined == nil {
 		return
 	}
@@ -110,7 +110,7 @@ func (run *textQualificationRun) retainJoin(joined *route.ClosedJoinedStream) {
 	run.joins[joined] = struct{}{}
 }
 
-func (run *textQualificationRun) releaseJoin(joined *route.ClosedJoinedStream) {
+func (run *streamQualificationRun) releaseJoin(joined *route.ClosedJoinedStream) {
 	if run == nil {
 		return
 	}
@@ -119,7 +119,7 @@ func (run *textQualificationRun) releaseJoin(joined *route.ClosedJoinedStream) {
 	run.mu.Unlock()
 }
 
-func (run *textQualificationRun) joinedStreams() []*route.ClosedJoinedStream {
+func (run *streamQualificationRun) joinedStreams() []*route.ClosedJoinedStream {
 	if run == nil {
 		return nil
 	}
@@ -132,7 +132,7 @@ func (run *textQualificationRun) joinedStreams() []*route.ClosedJoinedStream {
 	return joins
 }
 
-func (run *textQualificationRun) retains(joined *route.ClosedJoinedStream) bool {
+func (run *streamQualificationRun) retains(joined *route.ClosedJoinedStream) bool {
 	if run == nil {
 		return false
 	}

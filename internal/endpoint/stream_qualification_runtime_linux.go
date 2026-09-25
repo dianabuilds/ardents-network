@@ -59,7 +59,7 @@ func RunStreamQualification(ctx context.Context, config StreamQualificationConfi
 	if ctx == nil || ctx.Err() != nil || config.Observe == nil || config.Seed == [32]byte{} || config.HostingRoot == "" || config.Measurements == nil {
 		return report, errors.New("qualification configuration unavailable")
 	}
-	qualification, err := newTextQualificationRun(config.Role, config.Profile, config.Seed)
+	qualification, err := newStreamQualificationRun(config.Role, config.Profile, config.Seed)
 	if err != nil {
 		return report, err
 	}
