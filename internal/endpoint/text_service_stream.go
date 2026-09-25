@@ -208,50 +208,57 @@ func (binding *textServiceBinding) openTextServiceStreamWithRecovery(ctx context
 	}
 	transferred = true
 	recoveryTransferred = true
-	go func() {
-		_, runErr := stream.RunBounded(send, receive)
-		runErr = errors.Join(runErr, ctx.Err(), lifetime.Err(), binding.current())
-		connection.runErr = runErr
-		nativeFinished := false
-		select {
-		case <-stream.Done():
-			nativeFinished = true
-		default:
-		}
-		if nativeFinished {
-			connection.finishErr = cleanup()
-			if connection.finishErr != nil {
-				connection.finishErr = errors.Join(errors.New("text Service cleanup failed"), connection.finishErr)
-			}
-		}
-		outcome := applicationconnection.Outcome{Class: applicationconnection.CleanClose}
-		if runErr != nil || connection.finishErr != nil {
-			outcome = applicationconnection.Outcome{Class: applicationconnection.ServiceUnavailable, Reason: "text Service Connection interrupted"}
-			if errors.Is(runErr, context.DeadlineExceeded) {
-				outcome.Class = applicationconnection.LocalTimeout
-			} else if ctx.Err() != nil {
-				outcome.Class = applicationconnection.LocalCancellation
-			}
-		}
-		connection.done <- outcome
-		close(connection.done)
-		// RunBounded has completed the Application Terminal exchange. Its
-		// recovery-capable terminal-control tail may intentionally keep
-		// stream.Done open until the lifetime is canceled.
-		close(connection.retired)
-		if !nativeFinished {
-			<-stream.Done()
-			connection.finishErr = cleanup()
-			if connection.finishErr != nil {
-				connection.finishErr = errors.Join(errors.New("text Service cleanup failed"), connection.finishErr)
-			}
-		}
-		close(connection.finished)
-	}()
+	go connection.runNative(ctx, lifetime, stream, send, receive, cleanup)
 	if admissionErr != nil {
 		return nil, errors.Join(admissionErr, connection.Close())
 	}
 	return connection, nil
+}
+
+// runNative owns the stream's terminal outcome and joins physical cleanup
+// before signaling finished. A recovery-capable native tail may outlive the
+// Application outcome, so retired and finished remain distinct barriers.
+func (connection *textServiceStream) runNative(ctx, lifetime context.Context, stream *nativeconnection.Stream,
+	send, receive uint32, cleanup func() error,
+) {
+	_, runErr := stream.RunBounded(send, receive)
+	runErr = errors.Join(runErr, ctx.Err(), lifetime.Err(), connection.binding.current())
+	connection.runErr = runErr
+	nativeFinished := false
+	select {
+	case <-stream.Done():
+		nativeFinished = true
+	default:
+	}
+	if nativeFinished {
+		connection.finishErr = cleanup()
+		if connection.finishErr != nil {
+			connection.finishErr = errors.Join(errors.New("text Service cleanup failed"), connection.finishErr)
+		}
+	}
+	outcome := applicationconnection.Outcome{Class: applicationconnection.CleanClose}
+	if runErr != nil || connection.finishErr != nil {
+		outcome = applicationconnection.Outcome{Class: applicationconnection.ServiceUnavailable, Reason: "text Service Connection interrupted"}
+		if errors.Is(runErr, context.DeadlineExceeded) {
+			outcome.Class = applicationconnection.LocalTimeout
+		} else if ctx.Err() != nil {
+			outcome.Class = applicationconnection.LocalCancellation
+		}
+	}
+	connection.done <- outcome
+	close(connection.done)
+	// RunBounded has completed the Application Terminal exchange. Its
+	// recovery-capable terminal-control tail may intentionally keep
+	// stream.Done open until the lifetime is canceled.
+	close(connection.retired)
+	if !nativeFinished {
+		<-stream.Done()
+		connection.finishErr = cleanup()
+		if connection.finishErr != nil {
+			connection.finishErr = errors.Join(errors.New("text Service cleanup failed"), connection.finishErr)
+		}
+	}
+	close(connection.finished)
 }
 
 func (connection *textServiceStream) Done() <-chan applicationconnection.Outcome {
