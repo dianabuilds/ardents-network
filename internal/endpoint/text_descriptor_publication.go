@@ -34,11 +34,38 @@ func (owner *textContext) publishTextDescriptor(ctx context.Context) (verified r
 	owner.mu.Lock()
 	profile, now, err := owner.textPermissionProfileLocked()
 	registered := owner.textPublicationPairLifecycle.publicationTargetLocked()
-	if err != nil || owner.surface != broker.Administration || registered == nil || owner.textPublicationPairLifecycle.drainingLocked() || owner.textPublicationPairLifecycle.withdrawalInProgressLocked() ||
-		owner.textPublicationPairLifecycle.openingInProgressLocked() || owner.permission == nil || owner.resolution != nil || owner.currentTextSourceLocked() == nil ||
-		endpoint.publisherBinding == nil || endpoint.publications == nil || endpoint.publisherSession != nil || endpoint.textPublisherOwner != nil && endpoint.textPublisherOwner != owner {
+	reason := ""
+	switch {
+	case err != nil:
+		reason = "permission profile: " + err.Error()
+	case owner.surface != broker.Administration:
+		reason = "context is not Administration"
+	case registered == nil:
+		reason = "Introduction registration is absent"
+	case owner.textPublicationPairLifecycle.drainingLocked():
+		reason = "Introduction registration is draining"
+	case owner.textPublicationPairLifecycle.withdrawalInProgressLocked():
+		reason = "Introduction registration withdrawal is in progress"
+	case owner.textPublicationPairLifecycle.openingInProgressLocked():
+		reason = "Introduction registration opening is in progress"
+	case owner.permission == nil:
+		reason = "Permission is absent"
+	case owner.resolution != nil:
+		reason = "resolution flight is active"
+	case owner.currentTextSourceLocked() == nil:
+		reason = "Source is absent"
+	case endpoint.publisherBinding == nil:
+		reason = "Publisher binding is absent"
+	case endpoint.publications == nil:
+		reason = "Publication owner is absent"
+	case endpoint.publisherSession != nil:
+		reason = "Publisher session is active"
+	case endpoint.textPublisherOwner != nil && endpoint.textPublisherOwner != owner:
+		reason = "another Publisher context owns the publication"
+	}
+	if reason != "" {
 		owner.mu.Unlock()
-		return verified, errors.New("text publication owner unavailable")
+		return verified, fmt.Errorf("text publication owner unavailable: %s", reason)
 	}
 	select {
 	case <-registered.channel.Done():
