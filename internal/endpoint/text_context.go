@@ -21,7 +21,7 @@ type textContextState struct {
 	refresh           textPublicationRefreshLifecycle
 	textPublicationPairLifecycle
 	introductionDispatch  textIntroductionDispatch
-	introductionExchanges map[*textIntroductionExchange]struct{}
+	introductionExchanges textIntroductionExchangeSet
 	introductionAdmission textIntroductionAdmission
 	descriptorHistory     descriptorhistory.History
 	withdrawal            *textSourceFlight

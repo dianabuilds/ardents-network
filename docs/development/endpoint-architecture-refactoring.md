@@ -45,6 +45,7 @@ implementation has private owners rather than one undifferentiated state bag:
 | Resolution and JOIN | Context flights and narrow acquisitions | Exact current prefix must be checked again after network effects. |
 | Introduction opening admission | `textIntroductionAdmission` | Own context-local four-per-second opening reservations and accepted delivery replay retention under the Context lock; shutdown clears both together. |
 | Introduction delivery dispatch | `textIntroductionDispatch` | Own context-local waiter slots, one consumer gate and recovery slots under the Context lock; Context checks job authority and joins claimed deliveries. |
+| Introduction exchange reservations | `textIntroductionExchangeSet` | Own active exchange membership, retention and shutdown cancellation under the Context lock; Context checks job authority and joins terminal completion. |
 | Job and worker | `textJobIdentity`, `textWorkerLifetime` | Context retains the job reservation; worker owns process and cgroup cleanup. |
 | Service TLS | `service_tls.go`, `protected_service_tls.go` | Shared Instance authentication, handshake, and exporter handoff have one implementation. The selected protected path fixes X25519MLKEM768/X25519 groups and the authenticated Route retirement witness; the earlier Service path retains its existing default group policy. |
 

@@ -32,13 +32,7 @@ func (owner *textContext) stopTextContextChildrenLocked() *textContextRetirement
 	retirement.refresh = owner.refresh.stopAsync()
 	retirement.publication = owner.textPublicationPairLifecycle.stopLocked()
 	owner.signalTextRegistrationsLocked()
-	retirement.exchanges = make([]*textIntroductionExchange, 0, len(owner.introductionExchanges))
-	for exchange := range owner.introductionExchanges {
-		if !exchange.retained {
-			exchange.cancel()
-		}
-		retirement.exchanges = append(retirement.exchanges, exchange)
-	}
+	retirement.exchanges = owner.introductionExchanges.stopLocked()
 	retirement.withdrawal = owner.withdrawal
 	if retirement.withdrawal != nil {
 		retirement.withdrawal.cancel()

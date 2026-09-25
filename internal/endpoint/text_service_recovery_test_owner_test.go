@@ -89,7 +89,7 @@ func (owner *textServiceRecoveryTestOwner) Close() {
 	}
 	for _, text := range contexts {
 		text.mu.Lock()
-		pending := len(text.introductionExchanges)
+		pending := len(text.introductionExchanges.active)
 		text.mu.Unlock()
 		if pending != 0 {
 			owner.t.Errorf("recovery test retained %d Introduction exchanges", pending)

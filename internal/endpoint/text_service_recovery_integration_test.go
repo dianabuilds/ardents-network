@@ -260,7 +260,7 @@ func TestTextJoinedServiceRecoversAcceptedRequestAcrossFreshProtectedRoute(t *te
 			}
 			for _, owner := range []*textContext{reader, publisher} {
 				owner.mu.Lock()
-				pending := len(owner.introductionExchanges)
+				pending := len(owner.introductionExchanges.active)
 				owner.mu.Unlock()
 				if pending != 0 {
 					t.Errorf("recovery retained %d Introduction exchanges", pending)

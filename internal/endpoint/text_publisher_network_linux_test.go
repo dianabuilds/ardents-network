@@ -167,7 +167,7 @@ func TestTextPublisherNetworkRetainsSnapshotAcrossReaders(t *testing.T) {
 				t.Fatal("Publisher returned before joined worker retirement")
 			}
 			publisherOwner.mu.Lock()
-			pending := len(publisherOwner.introductionExchanges)
+			pending := len(publisherOwner.introductionExchanges.active)
 			publisherOwner.mu.Unlock()
 			if pending != 0 {
 				t.Fatalf("Publisher retained %d exchanges after cancellation", pending)
