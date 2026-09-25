@@ -27,8 +27,8 @@ substitute for independent review.
 - `make quick-check` runs formatting, architecture, vet, unit, the four named
   command builds, module tidiness, and the canonical artifact representation
   proof.
-- `make headless-check` builds the exact Network command inventory, checks the
-  enrollment-v3 artifact, runs bounded Endpoint, Source, Node, and Service
+- On Linux x86-64, `make headless-check` builds the exact Network command
+  inventory, checks the enrollment-v3 artifact, runs bounded Endpoint, Source, Node, and Service
   process evidence, then rebuilds and tests the headless command candidate in
   a fresh temporary tree containing no Browser/Application implementation. It
   also proves that canonical command bytes are unchanged when the same owned
