@@ -30,11 +30,6 @@ type transitCredentialSubmission struct {
 	finish        func(bool) error
 }
 
-type acquiredTransitCredential struct {
-	attempt transitAcquisitionAttempt
-	finish  func(bool) error
-}
-
 // applicationServiceAttachment verifies the fixed Grant carried by a retained
 // Descriptor v1 publisher path. Decode failure is rejected before an
 // attachment identifier can be allocated.
@@ -68,53 +63,6 @@ func applicationAttachmentID() ([32]byte, error) {
 		return [32]byte{}, errors.New("application Connection could not create a Route attachment identifier")
 	}
 	return value, nil
-}
-
-// acquireTransitCredentialLifecycle owns Endpoint's durable at-most-once
-// journal transaction. Callers retain their role-specific State projection and
-// exchange construction; this helper never selects peers, scopes, or journals.
-func (endpoint *endpoint) acquireTransitCredentialLifecycle(ctx context.Context, owner *transitAcquisition,
-	scope transitAcquisitionScope,
-	issue func(context.Context, credential.Request) (credential.Result, error),
-) (acquiredTransitCredential, error) {
-	attempt, err := owner.begin(scope)
-	if err != nil {
-		return acquiredTransitCredential{}, err
-	}
-	if attempt.Phase == transitPending {
-		result, err := issue(ctx, attempt.Request)
-		if err != nil {
-			if errors.Is(err, credential.ErrExchangeUnavailable) {
-				if staleErr := owner.currentAttempt(attempt.Request.RequestID); staleErr != nil {
-					return acquiredTransitCredential{}, staleErr
-				}
-			} else {
-				if failErr := owner.fail(attempt.Request.RequestID); failErr != nil {
-					return acquiredTransitCredential{}, failErr
-				}
-			}
-			return acquiredTransitCredential{}, transitAcquisitionOutcomeError{outcome: credential.Unavailable}
-		}
-		if err := owner.commit(attempt.Request.RequestID, result); err != nil {
-			return acquiredTransitCredential{}, err
-		}
-		if result.Outcome != credential.Issued {
-			return acquiredTransitCredential{}, transitAcquisitionOutcomeError{outcome: result.Outcome}
-		}
-	}
-	presenting, err := owner.present(attempt.Request.RequestID, scope)
-	if err != nil {
-		return acquiredTransitCredential{}, err
-	}
-	erase, err := endpoint.enrollTransitClient(presenting.Grant, presenting.Certificate)
-	if err != nil {
-		_ = owner.finish(presenting.Request.RequestID, false)
-		return acquiredTransitCredential{}, err
-	}
-	return acquiredTransitCredential{attempt: presenting, finish: func(presented bool) error {
-		erase()
-		return owner.finish(presenting.Request.RequestID, presented)
-	}}, nil
 }
 
 func (endpoint *endpoint) acquireTransitCredential(ctx context.Context, view transitCredentialIssuerView, epoch state.ResolutionEpoch,
@@ -162,7 +110,7 @@ func (endpoint *endpoint) acquireTransitCredential(ctx context.Context, view tra
 		IssuerNodeID: issuer.NodeID, IssuerPublicKey: issuer.PublicKey, IssuerProfileDigest: sha256.Sum256(issuer.Profile),
 		GrantSignerPublicKey: profile.GrantSignerPublicKey, TransitNodeID: transit.NodeID, TransitRole: role,
 		NotAfter: deadline}
-	acquired, err := endpoint.acquireTransitCredentialLifecycle(ctx, owner, scope, func(issueCtx context.Context, request credential.Request) (credential.Result, error) {
+	acquired, err := owner.acquire(ctx, scope, func(issueCtx context.Context, request credential.Request) (credential.Result, error) {
 		client, err := credential.OpenClient(credential.ClientConfig{NetworkID: endpoint.network, IssuerPublic: issuer.PublicKey, Profile: profile,
 			At: at, Deadline: deadline, Exchange: func(exchangeCtx context.Context, envelope []byte) ([]byte, error) {
 				return endpoint.exchangeTransitCredential(exchangeCtx, entry, epoch, initiator, issuer, carrierAttachment, deadline, envelope)
@@ -171,7 +119,7 @@ func (endpoint *endpoint) acquireTransitCredential(ctx context.Context, view tra
 			return credential.Result{}, err
 		}
 		return client.Issue(issueCtx, request)
-	})
+	}, endpoint.enrollTransitClient)
 	if err != nil {
 		return transitCredentialSubmission{}, err
 	}

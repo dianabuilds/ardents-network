@@ -122,9 +122,9 @@ func TestTransitCredentialLifecycleIgnoresStalePresentationCompletion(t *testing
 	defer owner.Close()
 	endpoint := &endpoint{}
 	acquire := func(scope transitAcquisitionScope) (acquiredTransitCredential, error) {
-		return endpoint.acquireTransitCredentialLifecycle(t.Context(), owner, scope, func(_ context.Context, request credential.Request) (credential.Result, error) {
+		return owner.acquire(t.Context(), scope, func(_ context.Context, request credential.Request) (credential.Result, error) {
 			return credential.Result{Outcome: credential.Issued, Grant: acquisitionGrant(t, scope, request, signer)}, nil
-		})
+		}, endpoint.enrollTransitClient)
 	}
 
 	acquiredFirst, err := acquire(first)
@@ -201,20 +201,20 @@ func TestTransitCredentialLifecycleIgnoresStaleIssuerError(t *testing.T) {
 	release := make(chan struct{})
 	firstResult := make(chan error, 1)
 	go func() {
-		_, err := endpoint.acquireTransitCredentialLifecycle(t.Context(), owner, first, func(_ context.Context, request credential.Request) (credential.Result, error) {
+		_, err := owner.acquire(t.Context(), first, func(_ context.Context, request credential.Request) (credential.Result, error) {
 			started <- request
 			<-release
 			return credential.Result{}, errors.New("issuer stopped after the replacement")
-		})
+		}, endpoint.enrollTransitClient)
 		firstResult <- err
 	}()
 	<-started
 	if _, err := owner.begin(second); err == nil {
 		t.Fatal("replacement acquisition did not invalidate the first attempt")
 	}
-	acquiredThird, err := endpoint.acquireTransitCredentialLifecycle(t.Context(), owner, third, func(_ context.Context, request credential.Request) (credential.Result, error) {
+	acquiredThird, err := owner.acquire(t.Context(), third, func(_ context.Context, request credential.Request) (credential.Result, error) {
 		return credential.Result{Outcome: credential.Issued, Grant: acquisitionGrant(t, third, request, signer)}, nil
-	})
+	}, endpoint.enrollTransitClient)
 	if err != nil {
 		t.Fatal(err)
 	}

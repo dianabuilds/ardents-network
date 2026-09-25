@@ -42,19 +42,19 @@ func TestTransitCredentialLifecycleIgnoresStaleIssuerOutcomes(t *testing.T) {
 			result := make(chan credential.Result, 1)
 			firstDone := make(chan error, 1)
 			go func() {
-				_, err := endpoint.acquireTransitCredentialLifecycle(t.Context(), owner, first, func(_ context.Context, request credential.Request) (credential.Result, error) {
+				_, err := owner.acquire(t.Context(), first, func(_ context.Context, request credential.Request) (credential.Result, error) {
 					started <- request
 					return <-result, nil
-				})
+				}, endpoint.enrollTransitClient)
 				firstDone <- err
 			}()
 			firstRequest := <-started
 			if _, err := owner.begin(second); err == nil {
 				t.Fatal("replacement acquisition did not invalidate the first attempt")
 			}
-			acquiredThird, err := endpoint.acquireTransitCredentialLifecycle(t.Context(), owner, third, func(_ context.Context, request credential.Request) (credential.Result, error) {
+			acquiredThird, err := owner.acquire(t.Context(), third, func(_ context.Context, request credential.Request) (credential.Result, error) {
 				return credential.Result{Outcome: credential.Issued, Grant: acquisitionGrant(t, third, request, signer)}, nil
-			})
+			}, endpoint.enrollTransitClient)
 			if err != nil {
 				t.Fatal(err)
 			}
