@@ -53,6 +53,10 @@ will not remove the measured network work from the full gate.
 For development feedback, run the affected owner tests on Linux first, then
 run the full checked profile on the exact integration candidate. One candidate
 improvement is to make the Permission-hour fixture independent of a wall-clock
-wait while preserving the same signed-hour and expiry checks. Separately,
-owner extraction can make focused tests compile and run without linking the
+wait while preserving the same signed-hour and expiry checks. The Endpoint,
+Custody, and Node expose some injectable clocks, but Route bootstrap and
+several transport deadlines still read the process clock. A fixture-only
+clock substitution would therefore test inconsistent times; the time seam
+must be traced through the complete carrier episode before removing the guard.
+Separately, owner extraction can make focused tests compile and run without linking the
 entire Endpoint package. Neither improvement is proven by this timing run.

@@ -72,10 +72,14 @@ func diagnosticTimelineRow(raw []byte) (string, bool, error) {
 		owner, role, carrier, state, reason = "node", diagnosticString(fields, "assignment"),
 			diagnosticString(fields, "carrier_profile"), diagnosticString(fields, "state"), diagnosticString(fields, "reason")
 	case "ardents-source-event-v1":
-		if kind != "source-ready" && kind != "source-wave-accepted" {
+		if kind != "source-ready" && kind != "source-wave-accepted" && kind != "source-failed" {
 			return "", false, nil
 		}
-		owner = "source"
+		owner, reason = "source", diagnosticString(fields, "reason")
+		if (kind == "source-failed" && reason != "background-work" && reason != "cleanup") ||
+			(kind != "source-failed" && reason != "") {
+			return "", false, errors.New("source diagnostic has an invalid reason category")
+		}
 	case "ardents-headless-runtime-event-v1":
 		switch kind {
 		case "headless-runtime-ready", "headless-runtime-permission-required", "headless-runtime-failed",

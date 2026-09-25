@@ -131,7 +131,10 @@ these local storage paths confer no network authority. Missing admission
 storage makes startup unavailable.
 `ardents-node source --config PATH` runs one selected Direct-Origin Source
 server from an `ardents-source-server-v1` input and emits
-`ardents-source-event-v1` after its State view is ready.
+`ardents-source-event-v1` after its State view is ready. A terminal background
+or cleanup failure after readiness emits `source-failed` with only the bounded
+`background-work` or `cleanup` reason; the full error remains on stderr. Plan
+and State admission refusals still emit no runtime event.
 The retained `native_rendezvous_profile` field identifies old input only and
 returns `old Source profile is retired` after bounded schema recognition,
 before trust-map validation, root or key access, listener bind, output or

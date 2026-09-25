@@ -66,6 +66,34 @@ func TestDiagnosticTimelineRejectsMalformedKnownCategoryWithoutEcho(t *testing.T
 	}
 }
 
+func TestDiagnosticTimelineProjectsSourceFailureCategory(t *testing.T) {
+	input := diagnosticTestJSON(t, map[string]any{
+		"schema": "ardents-source-event-v1", "kind": "source-failed",
+		"at": "2026-09-25T12:30:00Z", "reason": "background-work",
+		"raw_error": "private source failure detail",
+	})
+	var output bytes.Buffer
+	if err := Project(t.Context(), io.NopCloser(strings.NewReader(input+"\n")), &output); err != nil {
+		t.Fatal(err)
+	}
+	want := "2026-09-25T12:30:00Z\tevent\tsource\t-\t-\t-\tsource-failed\t-\t\"background-work\"\n"
+	if output.String() != want {
+		t.Fatalf("source failure timeline = %q", output.String())
+	}
+}
+
+func TestDiagnosticTimelineRejectsUnrecognizedSourceFailureReason(t *testing.T) {
+	input := diagnosticTestJSON(t, map[string]any{
+		"schema": "ardents-source-event-v1", "kind": "source-failed",
+		"at": "2026-09-25T12:30:00Z", "reason": "private source failure detail",
+	})
+	var output bytes.Buffer
+	err := Project(t.Context(), io.NopCloser(strings.NewReader(input+"\n")), &output)
+	if err == nil || output.Len() != 0 || strings.Contains(err.Error(), "private source failure detail") {
+		t.Fatalf("unsafe Source diagnostic: output=%q err=%v", output.String(), err)
+	}
+}
+
 func TestDiagnosticTimelineCancellationClosesWaitingInput(t *testing.T) {
 	reader, writer := io.Pipe()
 	defer writer.Close()
