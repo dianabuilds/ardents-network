@@ -517,8 +517,8 @@ The Contributor no-start recovery oracle drives authentic active-current,
 inactive-current, and interrupted-predecessor fixtures through public
 `Profile.Control`, plus incomplete residue and a foreign persisted profile.
 Its retained-installation fixture checks the bundle pin and each file digest,
-then writes the installation record and managed files without invoking the
-retired Apply/start path.
+then writes the installation record and managed files with the fixed retained
+systemd unit bytes, without invoking the retired Apply/start path.
 The supervisor trace must gain no Start/Restart call. Authenticated predecessor
 reconciliation may Stop the owned unit and leaves it inactive and `WITHDRAWN`;
 inactive recovery remains inactive, while ambiguous or foreign evidence

@@ -64,7 +64,12 @@ func installRetainedContributorFixture(t *testing.T, root, bundle, pin string, s
 			}
 		}
 	}
-	unit := []byte("[Unit]\nDescription=Retained Contributor fixture\n")
+	// These bytes are the fixed unit installed by the retired Apply path.
+	// Keep them as independent historical evidence after that path is removed.
+	unit, err := os.ReadFile(filepath.Join("testdata", "retained-unit.service"))
+	if err != nil {
+		t.Fatal(err)
+	}
 	unitPath := filepath.Join(root, "etc", "systemd", "system", "ardents-rendezvous-contributor.service")
 	if err := os.MkdirAll(filepath.Dir(unitPath), 0o755); err != nil {
 		t.Fatal(err)
