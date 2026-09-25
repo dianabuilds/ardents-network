@@ -5,6 +5,7 @@ package endpoint
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net"
 	"os"
 	"path/filepath"
@@ -209,9 +210,13 @@ func awaitInstalledWorkerInstance(ctx context.Context, before textWorkerListing,
 	ticker := time.NewTicker(25 * time.Millisecond)
 	defer ticker.Stop()
 	var candidate string
+	var observationErr error
 	for {
 		after, err := listInstalledWorkerInstances(ctx, role, inventory)
 		if err != nil {
+			if ctx.Err() != nil && observationErr != nil {
+				return textWorkerInstance{}, fmt.Errorf("text worker activation did not become verifiable (last observation: %w)", observationErr)
+			}
 			return textWorkerInstance{}, err
 		}
 		name, err := newTextWorkerInstance(before, after, candidate)
@@ -224,9 +229,15 @@ func awaitInstalledWorkerInstance(ctx context.Context, before textWorkerListing,
 			if err == nil {
 				return observed, nil
 			}
+			// Property checks return fixed, non-secret categories. Keep the
+			// latest failure so a timed-out activation remains diagnosable.
+			observationErr = err
 		}
 		select {
 		case <-ctx.Done():
+			if observationErr != nil {
+				return textWorkerInstance{}, fmt.Errorf("text worker activation did not become verifiable (last observation: %w)", observationErr)
+			}
 			return textWorkerInstance{}, errors.New("text worker activation did not become verifiable")
 		case <-ticker.C:
 		}

@@ -81,6 +81,14 @@ func textManagerCall(ctx context.Context, path, iface, method, signature string,
 	command.Stdout = output
 	command.Stderr = io.Discard
 	if err := command.Run(); err != nil {
+		// Keep a bounded, input-free reason while preserving the refusal.
+		// The system bus response and stderr are never included in diagnostics.
+		if ctx.Err() != nil {
+			return textManagerValue{}, errors.New("text worker system manager query was cancelled")
+		}
+		if bounded.Err() != nil {
+			return textManagerValue{}, errors.New("text worker system manager query timed out")
+		}
 		return textManagerValue{}, errors.New("text worker system manager query failed")
 	}
 	var answer textManagerValue
