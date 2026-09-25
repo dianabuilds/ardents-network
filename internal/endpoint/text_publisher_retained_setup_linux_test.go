@@ -15,6 +15,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/application/interfacev2/connection"
 	"github.com/dianabuilds/ardents-network/internal/application/streamqualification"
 	"github.com/dianabuilds/ardents-network/internal/node"
+	"github.com/dianabuilds/ardents-network/internal/qualification"
 	"github.com/dianabuilds/ardents-network/internal/route"
 )
 
@@ -62,14 +63,14 @@ func TestTextPublisherBuildsRetainedQualificationSetAcrossFourReaders(t *testing
 	// Independent preparation loops can drift together under a constrained
 	// scheduler, so their initial phase offsets alone do not enforce the
 	// Publisher's rolling four-openings-per-second admission boundary.
-	qualificationPacer := &StreamQualificationMeasurements{}
+	qualificationPacer := &qualification.Measurements{}
 	for index, owner := range readers {
 		job := liveTextCapsuleJob(t, owner)
 		job.qualification = &streamQualificationRun{init: streamqualification.Init{Role: streamqualification.ReaderRole,
 			Profile: streamqualification.ClientToPublisher, Nonce: fixtureID(byte(247 + index)), Seed: fixtureID(246)}}
 		job.workload = mustTextServiceWorkloadBounds(t, 64<<20, 64<<20)
-		job.qualification.acquireIntroduction = qualificationPacer.acquireIntroductionOpening
-		job.qualification.acquireSetup = qualificationPacer.acquireIntroductionSetup
+		job.qualification.acquireIntroduction = qualificationPacer.AcquireIntroductionOpening
+		job.qualification.acquireSetup = qualificationPacer.AcquireIntroductionSetup
 		readerJobs[index] = job
 	}
 

@@ -70,9 +70,9 @@ func runStreamQualificationIdle(ctx context.Context, config StreamQualificationC
 		var usage resource.Sample
 		var err error
 		if fresh {
-			hostSample, usage, err = config.Measurements.sampleFresh(sampleCtx, host)
+			hostSample, usage, err = config.Measurements.SampleFresh(sampleCtx, host)
 		} else {
-			hostSample, usage, err = config.Measurements.sample(sampleCtx, host)
+			hostSample, usage, err = config.Measurements.Sample(sampleCtx, host)
 		}
 		if err != nil {
 			return resource.HostingSample{}, err

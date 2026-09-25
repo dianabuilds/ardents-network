@@ -8,12 +8,13 @@ import (
 	"sync"
 
 	"github.com/dianabuilds/ardents-network/internal/application/interfacev2/connection"
+	"github.com/dianabuilds/ardents-network/internal/qualification"
 )
 
 // The qualification Publisher keeps one slot below the dispatch hard cap and
 // explicitly reserves the matching forwarding stock before releasing each
 // opening. The shared Reader admission owner enforces the same bound.
-const qualificationPublisherOpeningParallelism = streamQualificationSetupLimit
+const qualificationPublisherOpeningParallelism = qualification.SetupLimit
 const qualificationPublisherOpeningBatch = 16
 
 func (worker *qualifiedTextWorker) produceNetwork(lifetime context.Context, delivered chan<- connection.Stream) error {

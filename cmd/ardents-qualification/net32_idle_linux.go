@@ -13,6 +13,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/application/streamqualification"
 	"github.com/dianabuilds/ardents-network/internal/endpoint"
+	"github.com/dianabuilds/ardents-network/internal/qualification"
 	"github.com/dianabuilds/ardents-network/internal/resource"
 )
 
@@ -32,7 +33,7 @@ type net32IdleVerdict struct {
 }
 
 func runNET32Idle(ctx context.Context, config endpoint.StreamQualificationConfig, emit func(any) error) (outcome error) {
-	measurements, err := endpoint.NewStreamQualificationMeasurements(1)
+	measurements, err := qualification.NewMeasurements(1)
 	if err != nil {
 		return err
 	}

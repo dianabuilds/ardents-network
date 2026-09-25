@@ -1,6 +1,6 @@
 //go:build linux
 
-package endpoint
+package qualification
 
 import (
 	"context"
@@ -15,18 +15,18 @@ import (
 // Qualification waits 300 ms after each remote delivery result before admitting
 // another, so preparation and network jitter cannot bunch Publisher openings.
 const (
-	streamQualificationIntroductionSpacing = 300 * time.Millisecond
-	streamQualificationSetupLimit          = 15
+	IntroductionSpacing = 300 * time.Millisecond
+	SetupLimit          = 15
 )
 
-// StreamQualificationMeasurements owns the complete local runner process and
+// Measurements owns the complete local runner process and
 // every verified worker launched by that runner. Sharing it across participants
 // prevents a Reader observation from silently omitting sibling worker processes.
 // A completion barrier keeps every worker present until all participants finish.
 // Retiring a worker invalidates later observations: its removed cgroup cannot
 // provide a trustworthy final CPU counter. Completed measurement windows remain
 // usable; overlapping windows must finish before any sibling is retired.
-type StreamQualificationMeasurements struct {
+type Measurements struct {
 	mu, sampleMu       sync.Mutex
 	openingOnce        sync.Once
 	setupOnce          sync.Once
@@ -42,14 +42,14 @@ type StreamQualificationMeasurements struct {
 	usageSample        resource.Sample
 }
 
-func (owner *StreamQualificationMeasurements) acquireIntroductionSetup(ctx context.Context) (func(), error) {
+func (owner *Measurements) AcquireIntroductionSetup(ctx context.Context) (func(), error) {
 	if owner == nil || ctx == nil {
 		return nil, errors.New("qualification Introduction setup canceled")
 	}
 	if err := ctx.Err(); err != nil {
 		return nil, errors.Join(errors.New("qualification Introduction setup canceled"), err)
 	}
-	owner.setupOnce.Do(func() { owner.setupSlots = make(chan struct{}, streamQualificationSetupLimit) })
+	owner.setupOnce.Do(func() { owner.setupSlots = make(chan struct{}, SetupLimit) })
 	select {
 	case owner.setupSlots <- struct{}{}:
 	case <-ctx.Done():
@@ -59,10 +59,10 @@ func (owner *StreamQualificationMeasurements) acquireIntroductionSetup(ctx conte
 	return func() { once.Do(func() { <-owner.setupSlots }) }, nil
 }
 
-// acquireIntroductionOpening holds the shared qualification slot through the
+// AcquireIntroductionOpening holds the shared qualification slot through the
 // remote delivery result. Spacing begins at release, so variable preparation
 // and network delay cannot bunch Publisher admissions into a rolling second.
-func (owner *StreamQualificationMeasurements) acquireIntroductionOpening(ctx context.Context) (func(), error) {
+func (owner *Measurements) AcquireIntroductionOpening(ctx context.Context) (func(), error) {
 	if owner == nil || ctx == nil {
 		return nil, errors.New("qualification Introduction pacing unavailable")
 	}
@@ -93,13 +93,13 @@ func (owner *StreamQualificationMeasurements) acquireIntroductionOpening(ctx con
 	var once sync.Once
 	return func() {
 		once.Do(func() {
-			owner.nextOpening = time.Now().Add(streamQualificationIntroductionSpacing)
+			owner.nextOpening = time.Now().Add(IntroductionSpacing)
 			<-owner.openingSlot
 		})
 	}, nil
 }
 
-func (owner *StreamQualificationMeasurements) sample(ctx context.Context, host *resource.Hosting) (resource.HostingSample, resource.Sample, error) {
+func (owner *Measurements) Sample(ctx context.Context, host *resource.Hosting) (resource.HostingSample, resource.Sample, error) {
 	owner.sampleMu.Lock()
 	defer owner.sampleMu.Unlock()
 	if owner.sampledAt.IsZero() || time.Since(owner.sampledAt) >= 900*time.Millisecond {
@@ -112,7 +112,7 @@ func (owner *StreamQualificationMeasurements) sample(ctx context.Context, host *
 	return hostSample, owner.usageSample, nil
 }
 
-func (owner *StreamQualificationMeasurements) sampleFresh(ctx context.Context, host *resource.Hosting) (resource.HostingSample, resource.Sample, error) {
+func (owner *Measurements) SampleFresh(ctx context.Context, host *resource.Hosting) (resource.HostingSample, resource.Sample, error) {
 	owner.sampleMu.Lock()
 	defer owner.sampleMu.Unlock()
 	if err := owner.sampleLocked(ctx, host); err != nil {
@@ -123,7 +123,7 @@ func (owner *StreamQualificationMeasurements) sampleFresh(ctx context.Context, h
 	return hostSample, owner.usageSample, nil
 }
 
-func (owner *StreamQualificationMeasurements) sampleLocked(ctx context.Context, host *resource.Hosting) error {
+func (owner *Measurements) sampleLocked(ctx context.Context, host *resource.Hosting) error {
 	hostSample, hostErr := host.Sample(ctx, 0)
 	usageSample, usageErr := owner.measure()
 	if err := errors.Join(hostErr, usageErr); err != nil {
@@ -133,7 +133,20 @@ func (owner *StreamQualificationMeasurements) sampleLocked(ctx context.Context, 
 	return nil
 }
 
-func (owner *StreamQualificationMeasurements) add(group string) error {
+// RegisterWorker adds one verified cgroup to the shared measurement window.
+// The returned release retires that exact worker and invalidates later samples.
+func (owner *Measurements) RegisterWorker(group string) (func(), error) {
+	if owner == nil {
+		return nil, errors.New("qualification owner worker registration invalid")
+	}
+	if err := owner.addWorker(group); err != nil {
+		return nil, err
+	}
+	var once sync.Once
+	return func() { once.Do(func() { owner.retireWorker(group) }) }, nil
+}
+
+func (owner *Measurements) addWorker(group string) error {
 	owner.sampleMu.Lock()
 	defer owner.sampleMu.Unlock()
 	owner.mu.Lock()
@@ -149,7 +162,7 @@ func (owner *StreamQualificationMeasurements) add(group string) error {
 	return nil
 }
 
-func (owner *StreamQualificationMeasurements) retire(group string) {
+func (owner *Measurements) retireWorker(group string) {
 	owner.sampleMu.Lock()
 	defer owner.sampleMu.Unlock()
 	owner.mu.Lock()
@@ -159,7 +172,7 @@ func (owner *StreamQualificationMeasurements) retire(group string) {
 	owner.sampledAt = time.Time{}
 }
 
-func (owner *StreamQualificationMeasurements) measure() (resource.Sample, error) {
+func (owner *Measurements) measure() (resource.Sample, error) {
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
 	if owner.retired {
@@ -172,16 +185,16 @@ func (owner *StreamQualificationMeasurements) measure() (resource.Sample, error)
 	return resource.MeasureOwnerCgroups(groups)
 }
 
-// NewStreamQualificationMeasurements fixes the number of local participants
+// NewMeasurements fixes the number of local participants
 // before launch. Runtime callers cannot add participants to an active window.
-func NewStreamQualificationMeasurements(participants int) (*StreamQualificationMeasurements, error) {
+func NewMeasurements(participants int) (*Measurements, error) {
 	if participants < 1 || participants > 5 {
 		return nil, errors.New("qualification participant count invalid")
 	}
-	return &StreamQualificationMeasurements{expected: participants, ready: make(chan struct{})}, nil
+	return &Measurements{expected: participants, ready: make(chan struct{})}, nil
 }
 
-func (owner *StreamQualificationMeasurements) finish(ctx context.Context) error {
+func (owner *Measurements) Finish(ctx context.Context) error {
 	owner.mu.Lock()
 	if owner.ready == nil || owner.finished >= owner.expected {
 		owner.mu.Unlock()
