@@ -42,7 +42,7 @@ func TestInstalledClosedTextCommandsThroughNodeProcesses(t *testing.T) {
 				t.Run(document.name, func(t *testing.T) {
 					authority := createClosedCommandAuthority(t, [32]byte{1})
 					testClosedIssuerProvisioningParticipant(t, carrier, 16, authority.Public, nil, func(config state.Config, binary, resolutionRoot string, sourcePlan map[string]any) {
-						runInstalledClosedTextParticipant(t, config, binary, resolutionRoot, authority, sourcePlan, document.body)
+						runInstalledClosedTextParticipant(t, config, binary, resolutionRoot, authority, sourcePlan, document.body, true)
 					})
 				})
 			}
@@ -50,7 +50,7 @@ func TestInstalledClosedTextCommandsThroughNodeProcesses(t *testing.T) {
 	}
 }
 
-func runInstalledClosedTextParticipant(t *testing.T, config state.Config, binary, resolutionRoot string, authority closedCommandAuthority, sourcePlan map[string]any, body []byte) {
+func runInstalledClosedTextParticipant(t *testing.T, config state.Config, binary, resolutionRoot string, authority closedCommandAuthority, sourcePlan map[string]any, body []byte, observeRefresh bool) {
 	t.Helper()
 	account, err := user.Lookup("ardents-endpoint")
 	if err != nil {
@@ -189,13 +189,15 @@ func runInstalledClosedTextParticipant(t *testing.T, config state.Config, binary
 	if actual := run("initial read", destination, "read", path("reader.sock")); !bytes.Equal(actual, body) {
 		t.Fatal("ordinary command document mismatch")
 	}
-	t.Log("completed: initial exact 64 KiB document read")
-	observeInstalledCommandRefresh(t, resolutionRoot, view.Profile, firstPublication, publicationStarted, invocation)
-	t.Log("completed: observed signed Descriptor refresh and elapsed overlap")
-	if actual := run("read after refresh", destination, "read", path("reader.sock")); !bytes.Equal(actual, body) {
-		t.Fatal("document changed after elapsed refresh")
+	t.Log("completed: initial exact document read")
+	if observeRefresh {
+		observeInstalledCommandRefresh(t, resolutionRoot, view.Profile, firstPublication, publicationStarted, invocation)
+		t.Log("completed: observed signed Descriptor refresh and elapsed overlap")
+		if actual := run("read after refresh", destination, "read", path("reader.sock")); !bytes.Equal(actual, body) {
+			t.Fatal("document changed after elapsed refresh")
+		}
+		t.Log("completed: exact document read through the original Link after refresh")
 	}
-	t.Log("completed: exact document read through the original Link after refresh")
 	withdrawal, cancelWithdrawal := context.WithTimeout(t.Context(), 15*time.Second)
 	outcome, withdrawalErr := administration.Request(withdrawal, path("publisher.sock"), administration.Withdraw)
 	cancelWithdrawal()
