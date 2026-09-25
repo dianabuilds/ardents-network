@@ -169,14 +169,8 @@ func TestNextCommandRecoversUpdateInterruptedBetweenPreviousMoves(t *testing.T) 
 	hostRoot := t.TempDir()
 	deployment := strings.Repeat("39", 32)
 	supervisor := &profileSupervisor{hostRoot: hostRoot}
-	profile, err := contributor.Open(contributor.Config{Root: hostRoot, Supervisor: supervisor})
-	if err != nil {
-		t.Fatal(err)
-	}
 	first, firstPin := writeContributorBundle(t, 1, deployment)
-	if _, err := profile.Apply(t.Context(), first, firstPin); err != nil {
-		t.Fatal(err)
-	}
+	installRetainedContributorFixture(t, hostRoot, first, firstPin, supervisor)
 	programRoot := filepath.Join(hostRoot, "usr", "lib", "ardents-contributor")
 	if err := os.Rename(filepath.Join(programRoot, "current"), filepath.Join(programRoot, "previous")); err != nil {
 		t.Fatal(err)
@@ -206,9 +200,7 @@ func TestDiagnoseReturnsVerifiedReadyInstallation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := profile.Apply(t.Context(), bundle, pin); err != nil {
-		t.Fatal(err)
-	}
+	installRetainedContributorFixture(t, hostRoot, bundle, pin, supervisor)
 	diagnosed, err := profile.Control(t.Context(), contributor.Diagnose, "")
 	if err != nil || !diagnosed.Active || diagnosed.LifecycleState != "READY" {
 		t.Fatalf("diagnose = %+v, %v", diagnosed, err)
@@ -242,9 +234,7 @@ func TestDrainStopsWorkAndWithdrawalAlsoDisablesService(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := profile.Apply(t.Context(), bundle, pin); err != nil {
-		t.Fatal(err)
-	}
+	installRetainedContributorFixture(t, hostRoot, bundle, pin, supervisor)
 	drained, err := profile.Control(t.Context(), contributor.Drain, "")
 	if err != nil || drained.Active || !drained.Enabled || drained.LifecycleState != "WITHDRAWN" {
 		t.Fatalf("drain = %+v, %v", drained, err)
@@ -264,9 +254,7 @@ func TestRemovalRequiresExactWithdrawnDeploymentAndLeavesBundle(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := profile.Apply(t.Context(), bundle, pin); err != nil {
-		t.Fatal(err)
-	}
+	installRetainedContributorFixture(t, hostRoot, bundle, pin, supervisor)
 	if _, err := profile.Control(t.Context(), contributor.Remove, strings.Repeat("00", 32)); err == nil {
 		t.Fatal("removal accepted the wrong deployment confirmation")
 	}

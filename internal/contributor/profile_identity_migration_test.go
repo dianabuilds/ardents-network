@@ -15,28 +15,17 @@ const (
 	legacyRendezvousProfile    = "h4-5-rendezvous-alpha-v1"
 )
 
-func TestLegacyBundleReopensAndRejectsUnauthenticatedUpdateResidue(t *testing.T) {
+func TestLegacyInstallationReopensAndRejectsUnauthenticatedUpdateResidue(t *testing.T) {
 	hostRoot := t.TempDir()
 	deployment := strings.Repeat("41", 32)
 	bundle, pin := writeContributorBundleProfiles(t, 1, deployment, legacyRendezvousProfile, legacyRendezvousProfile)
 	supervisor := &profileSupervisor{hostRoot: hostRoot}
-	profile, err := contributor.Open(contributor.Config{Root: hostRoot, Supervisor: supervisor})
-	if err != nil {
-		t.Fatal(err)
-	}
-	report, err := profile.Apply(t.Context(), bundle, pin)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if report.Profile != canonicalRendezvousProfile {
-		t.Fatalf("legacy bundle install report profile = %q", report.Profile)
-	}
+	installRetainedContributorFixture(t, hostRoot, bundle, pin, supervisor)
 	recordPath := contributorRecordPath(hostRoot)
-	if got := persistedContributorProfile(t, recordPath); got != canonicalRendezvousProfile {
-		t.Fatalf("legacy bundle installation record profile = %q", got)
+	if got := persistedContributorProfile(t, recordPath); got != legacyRendezvousProfile {
+		t.Fatalf("retained legacy installation record profile = %q", got)
 	}
 
-	writePersistedContributorProfile(t, recordPath, legacyRendezvousProfile)
 	reopened, err := contributor.Open(contributor.Config{Root: hostRoot, Supervisor: supervisor})
 	if err != nil {
 		t.Fatal(err)
@@ -132,9 +121,7 @@ func TestContributorProfileReadersRefuseUnknownIdentity(t *testing.T) {
 			t.Fatal(err)
 		}
 		bundle, pin := writeContributorBundle(t, 1, strings.Repeat("45", 32))
-		if _, err := profile.Apply(t.Context(), bundle, pin); err != nil {
-			t.Fatal(err)
-		}
+		installRetainedContributorFixture(t, hostRoot, bundle, pin, supervisor)
 		startsBefore := supervisor.startCount()
 		writePersistedContributorProfile(t, contributorRecordPath(hostRoot), "unknown-profile-v1")
 		if _, err := profile.Control(t.Context(), contributor.Diagnose, ""); err == nil {
