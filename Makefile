@@ -174,12 +174,15 @@ text-worker-lifecycle-check:
 text-worker-tree-check:
 	sh ./tests/qualification/text-worker-tree/run-ubuntu.sh
 
-.PHONY: text-worker-network-check text-worker-recovery-check text-command-network-check text-worker-escape-check
+.PHONY: text-worker-network-check text-worker-recovery-check text-command-network-build text-command-network-check text-worker-escape-check
 text-worker-network-check:
 	sh ./tests/qualification/text-worker-network/run-ubuntu.sh
 
 text-worker-recovery-check:
 	sh ./tests/qualification/text-worker-recovery/run-ubuntu.sh
+
+text-command-network-build:
+	sh ./tests/qualification/text-command-network/build-candidate.sh
 
 text-command-network-check:
 	sh ./tests/qualification/text-command-network/run-ubuntu.sh
