@@ -38,8 +38,8 @@ func TestTextPrefixPreparationFailureRetainsStageAndCause(t *testing.T) {
 func TestTextTokenPresentationFailureRetainsNestedStageAndCause(t *testing.T) {
 	cause := errors.New("local role conflict read unavailable")
 	role := textRoleMemberFailureAt("conflict-read", cause)
-	selection := textSourceSelectionFailureAt("role-members-"+textRoleMemberFailureStage(role), role)
-	failure := textTokenPresentationFailureAt("selection-"+textSourceSelectionFailureStage(selection), selection)
+	selection := textInteriorSelectionFailureAt("role-members-"+textRoleMemberFailureStage(role), role)
+	failure := textTokenPresentationFailureAt("selection-"+textInteriorSelectionFailureStage(selection), selection)
 	if got := textTokenPresentationFailureStage(failure); got != "selection-role-members-conflict-read" {
 		t.Fatalf("token presentation stage = %q", got)
 	}

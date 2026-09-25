@@ -29,7 +29,6 @@ type textContextState struct {
 	responder             textResponderPrefixLifecycle
 	resolution            *textResolutionFlight
 	source                textSourceLifecycle
-	sourceSet             *textSourceSet
 	issuance              *textIssuanceOperation
 	mu                    sync.Mutex
 	endpoint              *endpoint

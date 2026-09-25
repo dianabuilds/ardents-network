@@ -17,7 +17,7 @@ import (
 type textIntroductionPrefixLifecycle struct {
 	live    *textIntroductionPrefixHandle
 	opening *textSourceFlight
-	set     *textSourceSet
+	set     *textInteriorSet
 }
 
 // textIntroductionPrefixHandle exposes only operations belonging to the exact
@@ -56,7 +56,7 @@ func (lifecycle *textIntroductionPrefixLifecycle) openingAvailableLocked() bool 
 	return lifecycle != nil && lifecycle.live == nil && lifecycle.opening == nil
 }
 
-func (lifecycle *textIntroductionPrefixLifecycle) membersSlotLocked() **textSourceSet {
+func (lifecycle *textIntroductionPrefixLifecycle) membersSlotLocked() **textInteriorSet {
 	return &lifecycle.set
 }
 

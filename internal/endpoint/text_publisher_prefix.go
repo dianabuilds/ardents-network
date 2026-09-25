@@ -13,7 +13,7 @@ import (
 
 type textPublisherPrefixOpening interface {
 	openingAvailableLocked() bool
-	membersSlotLocked() **textSourceSet
+	membersSlotLocked() **textInteriorSet
 	reserveOpeningLocked(*textSourceFlight) bool
 	openingCurrentLocked(*textSourceFlight) bool
 	finishOpeningLocked(*textSourceFlight, *route.ClosedSourcePrefix, context.CancelFunc, bool) bool

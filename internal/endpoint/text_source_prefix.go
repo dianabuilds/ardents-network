@@ -123,7 +123,7 @@ func (operation *textPrefixOpeningOperation) presentTextToken(selection route.Cl
 	}
 	current, err := owner.selectTextBootstrapLocked()
 	if err != nil || current != selection || (hello.RecipientNodeID != current.EntryNodeID && hello.RecipientNodeID != current.InteriorNodeID) {
-		return nil, textTokenPresentationFailureAt("selection-"+textSourceSelectionFailureStage(err), errors.Join(err, errors.New("text token presentation source changed")))
+		return nil, textTokenPresentationFailureAt("selection-"+textInteriorSelectionFailureStage(err), errors.Join(err, errors.New("text token presentation source changed")))
 	}
 	token, err := owner.takeTextTokenLocked(profile, now, hello, class, operation.context)
 	if err != nil {
@@ -159,7 +159,7 @@ func (owner *textContext) ensureTextPrefixStock(ctx context.Context, opening *te
 	selection, err := owner.selectTextBootstrapLocked()
 	if err != nil {
 		owner.mu.Unlock()
-		return route.ClosedBootstrapSelection{}, textPrefixPreparationFailureAt("stock-selection-"+textSourceSelectionFailureStage(err), err)
+		return route.ClosedBootstrapSelection{}, textPrefixPreparationFailureAt("stock-selection-"+textInteriorSelectionFailureStage(err), err)
 	}
 	var missing [][32]byte
 	for _, receiver := range [][32]byte{selection.EntryNodeID, selection.InteriorNodeID} {

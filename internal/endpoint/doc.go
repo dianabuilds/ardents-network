@@ -15,7 +15,8 @@
 //
 //   - text_source_lifecycle.go and text_source_prefix.go own the exact Source
 //     opening, handle, and retirement. text_source_operations.go owns the
-//     serialized operation gate; text_source_set.go selects peers.
+//     serialized operation gate and retained Interior Set;
+//     text_interior_set.go selects peers for Source and Publisher prefixes.
 //   - text_introduction_prefix_lifecycle.go and
 //     text_responder_prefix_lifecycle.go own the two Publisher prefixes.
 //     text_introduction_admission.go, text_introduction_dispatch_state.go,

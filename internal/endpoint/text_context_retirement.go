@@ -42,7 +42,6 @@ func (owner *textContext) stopTextContextChildrenLocked() *textContextRetirement
 	owner.introductionDispatch.stopLocked()
 	owner.introductionAdmission.stopLocked()
 	owner.descriptorHistory.Clear()
-	owner.sourceSet = nil
 	retirement.introduction = owner.introduction.stopLocked()
 	retirement.responder = owner.responder.stopLocked()
 	retirement.source = owner.source.stopLocked()

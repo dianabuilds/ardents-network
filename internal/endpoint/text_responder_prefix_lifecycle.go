@@ -17,7 +17,7 @@ import (
 type textResponderPrefixLifecycle struct {
 	live    *textResponderPrefixHandle
 	opening *textSourceFlight
-	set     *textSourceSet
+	set     *textInteriorSet
 }
 
 // textResponderPrefixHandle exposes only operations belonging to one exact
@@ -68,7 +68,7 @@ func (lifecycle *textResponderPrefixLifecycle) openingAvailableLocked() bool {
 	return lifecycle != nil && lifecycle.live == nil && lifecycle.opening == nil
 }
 
-func (lifecycle *textResponderPrefixLifecycle) membersSlotLocked() **textSourceSet {
+func (lifecycle *textResponderPrefixLifecycle) membersSlotLocked() **textInteriorSet {
 	return &lifecycle.set
 }
 

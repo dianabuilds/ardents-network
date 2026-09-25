@@ -14,29 +14,29 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/route"
 )
 
-// The source Interior Set belongs to this local context, independently of its
-// worker and of Publisher Introduction/data domains. Both members are fixed
-// before dialing and neither transport failure nor worker loss resamples them.
-type textSourceSet struct {
+// Each Source, Introduction, and Responder lifecycle retains its own Interior
+// Set. Both members are fixed before dialing; transport failure and worker loss
+// do not resample the retained choice.
+type textInteriorSet struct {
 	chosen, notAfter time.Time
 	interior         [2]entry.ClosedSetMember
 }
 
-type textSourceSelectionFailure struct {
+type textInteriorSelectionFailure struct {
 	stage string
 	cause error
 }
 
-func (failure *textSourceSelectionFailure) Error() string { return failure.cause.Error() }
+func (failure *textInteriorSelectionFailure) Error() string { return failure.cause.Error() }
 
-func (failure *textSourceSelectionFailure) Unwrap() error { return failure.cause }
+func (failure *textInteriorSelectionFailure) Unwrap() error { return failure.cause }
 
-func textSourceSelectionFailureAt(stage string, cause error) error {
-	return &textSourceSelectionFailure{stage: stage, cause: cause}
+func textInteriorSelectionFailureAt(stage string, cause error) error {
+	return &textInteriorSelectionFailure{stage: stage, cause: cause}
 }
 
-func textSourceSelectionFailureStage(cause error) string {
-	var failure *textSourceSelectionFailure
+func textInteriorSelectionFailureStage(cause error) string {
+	var failure *textInteriorSelectionFailure
 	if errors.As(cause, &failure) && failure.stage != "" {
 		return failure.stage
 	}
@@ -44,24 +44,24 @@ func textSourceSelectionFailureStage(cause error) string {
 }
 
 func (owner *textContext) selectTextBootstrapLocked() (route.ClosedBootstrapSelection, error) {
-	return owner.selectTextAdjacentLocked(1, &owner.sourceSet)
+	return owner.selectTextAdjacentLocked(1, owner.source.membersSlotLocked())
 }
 
-func (owner *textContext) selectTextAdjacentLocked(domain uint8, retained **textSourceSet) (route.ClosedBootstrapSelection, error) {
+func (owner *textContext) selectTextAdjacentLocked(domain uint8, retained **textInteriorSet) (route.ClosedBootstrapSelection, error) {
 	profile, members, now, err := owner.endpoint.closedTextRoleMembers()
 	if err != nil {
-		return route.ClosedBootstrapSelection{}, textSourceSelectionFailureAt("role-members-"+textRoleMemberFailureStage(err), err)
+		return route.ClosedBootstrapSelection{}, textInteriorSelectionFailureAt("role-members-"+textRoleMemberFailureStage(err), err)
 	}
 	entries, err := owner.endpoint.textEntrySets()
 	if err != nil {
-		return route.ClosedBootstrapSelection{}, textSourceSelectionFailureAt("entries", err)
+		return route.ClosedBootstrapSelection{}, textInteriorSelectionFailureAt("entries", err)
 	}
 	pair, err := entries.Members(domain)
 	if err != nil {
-		return route.ClosedBootstrapSelection{}, textSourceSelectionFailureAt("entry-pair", err)
+		return route.ClosedBootstrapSelection{}, textInteriorSelectionFailureAt("entry-pair", err)
 	}
 	if (*retained) != nil && now.Before((*retained).chosen) {
-		return route.ClosedBootstrapSelection{}, textSourceSelectionFailureAt("time", errors.New("text source time regressed"))
+		return route.ClosedBootstrapSelection{}, textInteriorSelectionFailureAt("time", errors.New("text source time regressed"))
 	}
 	if (*retained) == nil || !now.Before((*retained).notAfter) {
 		if owner.permission.hasPending() {
@@ -69,7 +69,7 @@ func (owner *textContext) selectTextAdjacentLocked(domain uint8, retained **text
 		}
 		selected, err := chooseTextInteriorSet(members, pair, now, domain)
 		if err != nil {
-			return route.ClosedBootstrapSelection{}, textSourceSelectionFailureAt("choose", err)
+			return route.ClosedBootstrapSelection{}, textInteriorSelectionFailureAt("choose", err)
 		}
 		(*retained) = &selected
 	}
@@ -77,7 +77,7 @@ func (owner *textContext) selectTextAdjacentLocked(domain uint8, retained **text
 	// is a refusal here; this operation performs no automatic alternate attempt.
 	first, err := entries.CurrentMember(domain, 0)
 	if err != nil {
-		return route.ClosedBootstrapSelection{}, textSourceSelectionFailureAt("entry-current", err)
+		return route.ClosedBootstrapSelection{}, textInteriorSelectionFailureAt("entry-current", err)
 	}
 	interior := (*retained).interior[0]
 	current := false
@@ -86,16 +86,16 @@ func (owner *textContext) selectTextAdjacentLocked(domain uint8, retained **text
 			current = true
 		}
 	}
-	if !current || sourceMemberConflict(first, interior) {
-		return route.ClosedBootstrapSelection{}, textSourceSelectionFailureAt("membership", errors.New("text source member unavailable"))
+	if !current || interiorMemberConflict(first, interior) {
+		return route.ClosedBootstrapSelection{}, textInteriorSelectionFailureAt("membership", errors.New("text source member unavailable"))
 	}
 	return route.ClosedBootstrapSelection{ProfileDigest: profile.Digest, EntryNodeID: first.NodeID, InteriorNodeID: interior.NodeID}, nil
 }
 
-func chooseTextInteriorSet(members []textRoleMember, entries [2]entry.ClosedSetMember, now time.Time, domain uint8) (textSourceSet, error) {
+func chooseTextInteriorSet(members []textRoleMember, entries [2]entry.ClosedSetMember, now time.Time, domain uint8) (textInteriorSet, error) {
 	var eligible []entry.ClosedSetMember
 	for _, member := range members {
-		if member.Domain == domain && member.subrole == 2 && !sourceMemberConflict(entries[0], member.ClosedSetMember) && !sourceMemberConflict(entries[1], member.ClosedSetMember) {
+		if member.Domain == domain && member.subrole == 2 && !interiorMemberConflict(entries[0], member.ClosedSetMember) && !interiorMemberConflict(entries[1], member.ClosedSetMember) {
 			eligible = append(eligible, member.ClosedSetMember)
 		}
 	}
@@ -105,13 +105,13 @@ func chooseTextInteriorSet(members []textRoleMember, entries [2]entry.ClosedSetM
 	var pairs [][2]entry.ClosedSetMember
 	for _, first := range eligible {
 		for _, second := range eligible {
-			if !sourceMemberConflict(first, second) {
+			if !interiorMemberConflict(first, second) {
 				pairs = append(pairs, [2]entry.ClosedSetMember{first, second})
 			}
 		}
 	}
 	if len(pairs) == 0 {
-		return textSourceSet{}, errors.New("two eligible source Interior members unavailable")
+		return textInteriorSet{}, errors.New("two eligible source Interior members unavailable")
 	}
 	// The adjacent pair is already a private, durably random installation
 	// choice. Deriving the Interior pair from that retained choice keeps every
@@ -125,7 +125,7 @@ func chooseTextInteriorSet(members []textRoleMember, entries [2]entry.ClosedSetM
 	}
 	digest := sha256.Sum256(digestInput)
 	selected := binary.BigEndian.Uint64(digest[:8]) % uint64(len(pairs))
-	set := textSourceSet{chosen: now, notAfter: now.Add(30 * time.Minute), interior: pairs[selected]}
+	set := textInteriorSet{chosen: now, notAfter: now.Add(30 * time.Minute), interior: pairs[selected]}
 	for _, member := range set.interior {
 		if member.NotAfter.Before(set.notAfter) {
 			set.notAfter = member.NotAfter
@@ -134,6 +134,6 @@ func chooseTextInteriorSet(members []textRoleMember, entries [2]entry.ClosedSetM
 	return set, nil
 }
 
-func sourceMemberConflict(first, second entry.ClosedSetMember) bool {
+func interiorMemberConflict(first, second entry.ClosedSetMember) bool {
 	return first.NodeID == second.NodeID || first.PublicKey == second.PublicKey || first.FamilyID == second.FamilyID
 }

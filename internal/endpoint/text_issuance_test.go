@@ -243,7 +243,7 @@ func TestTextIssuanceRequiresPermissionBeforeSelectingAnyPeers(t *testing.T) {
 	if err := owner.issueTextTokens(t.Context(), [][32]byte{source.view.Nodes[0].NodeID}, 2); err == nil {
 		t.Fatal("missing permission admitted")
 	}
-	if endpoint.closedEntries != nil || owner.sourceSet != nil {
+	if endpoint.closedEntries != nil || owner.source.set != nil {
 		t.Fatal("unallocated owner selected peers")
 	}
 	canceled, cancel := context.WithCancel(t.Context())
