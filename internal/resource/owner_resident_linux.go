@@ -14,9 +14,7 @@ import (
 	"syscall"
 )
 
-var errOwnerResidentProcessGone = errors.New("owner process disappeared during resident sample")
-
-const ownerResidentSampleAttempts = 3
+const ownerResidentSampleAttempts = 8
 
 // cgroup.procs includes thread-group leaders, so threads do not multiply RSS.
 // Nested cgroups are included; process IDs are deduplicated across observations.
@@ -30,7 +28,7 @@ func ownerResidentBytesWithReader(groups []string, readFile func(string, int) (s
 		if err == nil {
 			return total, nil
 		}
-		if attempt+1 < ownerResidentSampleAttempts && errors.Is(err, errOwnerResidentProcessGone) {
+		if attempt+1 < ownerResidentSampleAttempts && errors.Is(err, ErrOwnerResidentProcessGone) {
 			continue
 		}
 		return 0, err
@@ -81,7 +79,7 @@ func ownerResidentBytesOnce(groups []string, readFile func(string, int) (string,
 		body, err := readFile(filepath.Join("/proc", pid, "statm"), 4096)
 		if err != nil {
 			if errors.Is(err, os.ErrNotExist) || errors.Is(err, syscall.ESRCH) {
-				return 0, fmt.Errorf("%w: %w", errOwnerResidentProcessGone, err)
+				return 0, fmt.Errorf("%w: %w", ErrOwnerResidentProcessGone, err)
 			}
 			return 0, err
 		}

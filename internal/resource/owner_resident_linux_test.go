@@ -6,6 +6,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strconv"
 	"syscall"
 	"testing"
 )
@@ -40,6 +41,24 @@ func TestOwnerResidentBytesRetriesBoundedDisappearingProcesses(t *testing.T) {
 	})
 	if err != nil || got != 3*uint64(os.Getpagesize()) || inventories != 3 || statmReads != 3 {
 		t.Fatalf("resident retry = %d, %v after %d inventories and %d statm reads", got, err, inventories, statmReads)
+	}
+}
+
+func TestOwnerResidentBytesSurvivesSevenCompleteProcessDepartures(t *testing.T) {
+	group := t.TempDir()
+	inventories := 0
+	got, err := ownerResidentBytesWithReader([]string{group}, func(path string, _ int) (string, error) {
+		if path == filepath.Join(group, "cgroup.procs") {
+			inventories++
+			return strconv.Itoa(40+inventories) + "\n", nil
+		}
+		if path == filepath.Join("/proc", "48", "statm") {
+			return "10 3 0 0 0 0 0", nil
+		}
+		return "", os.ErrNotExist
+	})
+	if err != nil || got != 3*uint64(os.Getpagesize()) || inventories != 8 {
+		t.Fatalf("resident retry = %d, %v after %d inventories", got, err, inventories)
 	}
 }
 

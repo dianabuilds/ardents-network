@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"testing"
+
+	"github.com/dianabuilds/ardents-network/internal/resource"
 )
 
 func TestResourceSampleFailureStageRetainsFixedOwnerCategory(t *testing.T) {
@@ -19,6 +21,7 @@ func TestResourceSampleFailureStageRetainsFixedOwnerCategory(t *testing.T) {
 		{name: "state", err: errors.New("hosting state checksum differs"), want: "hosting-state"},
 		{name: "observation", err: errors.New("hosting observation continuity is unavailable"), want: "hosting-observation"},
 		{name: "interface", err: errors.New("hosting interface counter is unavailable"), want: "hosting-interface"},
+		{name: "resident churn", err: fmt.Errorf("sample: %w", resource.ErrOwnerResidentProcessGone), want: "owner-resident-process-churn"},
 		{name: "cgroup", err: errors.New("owner cgroup inventory exceeds bound"), want: "owner-cgroup"},
 		{name: "unknown", err: errors.New("private implementation error"), want: "other"},
 	} {

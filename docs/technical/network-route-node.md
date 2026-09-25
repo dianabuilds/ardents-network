@@ -428,7 +428,7 @@ foreign evidence fails without adoption or cleanup.
 
 The Linux owner cgroup resident observation inventories every bounded descendant
 `cgroup.procs` entry and reads each process `statm`. A vanished process
-(`ENOENT` or `ESRCH`) discards that partial RSS total and permits at most two
+(`ENOENT` or `ESRCH`) discards that partial RSS total and permits at most seven
 complete re-inventories. A complete later inventory supplies the next RSS
 sample; continued churn or any other inventory, read, parse, or bound failure
 remains fail closed. This does not change `memory.current`, the whole-tree RSS

@@ -47,6 +47,8 @@ func resourceSampleFailureStage(err error) string {
 		return "canceled"
 	case errors.Is(err, context.DeadlineExceeded):
 		return "deadline"
+	case errors.Is(err, resource.ErrOwnerResidentProcessGone):
+		return "owner-resident-process-churn"
 	case strings.Contains(err.Error(), "hosting lock"):
 		return "hosting-lock"
 	case strings.Contains(err.Error(), "hosting state"):
