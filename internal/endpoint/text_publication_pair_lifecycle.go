@@ -61,12 +61,52 @@ func (lifecycle *textPublicationPairLifecycle) openingLocked() *textRegistration
 	return lifecycle.opening
 }
 
-func (lifecycle *textPublicationPairLifecycle) reserveOpeningLocked(flight *textRegistrationFlight) bool {
-	if lifecycle == nil || flight == nil || lifecycle.opening != nil {
+// beginOpeningLocked admits exactly one registration opening over the expected
+// predecessor. Another opening, an in-progress withdrawal, or a pair no longer
+// based on previous refuses admission; on success the flight becomes the
+// retained opening.
+func (lifecycle *textPublicationPairLifecycle) beginOpeningLocked(flight *textRegistrationFlight, previous *textIntroductionRegistration) bool {
+	if lifecycle == nil || flight == nil || lifecycle.opening != nil || lifecycle.withdrawal != nil ||
+		!lifecycle.openingBaseLocked(previous) {
 		return false
 	}
 	lifecycle.opening = flight
 	return true
+}
+
+// evictEndedTargetLocked removes the current publication target whose
+// registration channel has already ended and returns it for caller-owned
+// close and cancel. A withdrawal in progress retains the target for its own
+// completion.
+func (lifecycle *textPublicationPairLifecycle) evictEndedTargetLocked() *textIntroductionRegistration {
+	if lifecycle == nil || lifecycle.withdrawal != nil {
+		return nil
+	}
+	current := lifecycle.publicationTargetLocked()
+	if current == nil {
+		return nil
+	}
+	select {
+	case <-current.channel.Done():
+	default:
+		return nil
+	}
+	lifecycle.removeTargetLocked(current)
+	return current
+}
+
+// completeWithdrawalLocked retires the withdrawn target and its bounded
+// predecessor in one transition, clears the withdrawal flight, and returns the
+// predecessor for caller-owned close. Signaling waiters stays with the Context.
+func (lifecycle *textPublicationPairLifecycle) completeWithdrawalLocked(flight *textOperationFlight, registered *textIntroductionRegistration) *textIntroductionRegistration {
+	if lifecycle == nil {
+		return nil
+	}
+	lifecycle.removeTargetLocked(registered)
+	previous := lifecycle.previousRegistration
+	lifecycle.removePreviousLocked(previous)
+	lifecycle.finishWithdrawalLocked(flight)
+	return previous
 }
 
 func (lifecycle *textPublicationPairLifecycle) openingCurrentLocked(flight *textRegistrationFlight) bool {
