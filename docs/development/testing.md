@@ -253,6 +253,9 @@ its later security, concurrency, or wire tracks.
 checked registry. Every active profile has one real Make entrypoint and exact
 prerequisites. Missing Docker, binaries, privilege, platform, host input, or
 artifact is an invalid environment, never a skip or passing result.
+The architecture gate checks a declared timeout against that Make target's
+recipe and its target dependencies, so another profile's timeout cannot satisfy
+the registry entry.
 
 The maintained local profiles are:
 
