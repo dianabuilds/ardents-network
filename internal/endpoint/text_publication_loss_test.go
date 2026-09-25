@@ -15,9 +15,13 @@ import (
 
 // The same real registered Publisher setup feeds successful and interrupted
 // Descriptor handovers. Only accepted State and worker qualification are fixtures.
-func startTextRegisteredPublisherNetwork(t *testing.T, carrier route.CarrierProfile, gate *textDescriptorACKGate) (*endpoint, *textContext, *textSourceStateFixture, *textIntroductionRegistration) {
+func startTextRegisteredPublisherNetwork(t *testing.T, carrier route.CarrierProfile, gate *textDescriptorACKGate, expectation ...*textEndpointCloseExpectation) (*endpoint, *textContext, *textSourceStateFixture, *textIntroductionRegistration) {
 	t.Helper()
-	endpoint, owner, source := startTextRoleNetwork(t, carrier, true, true, gate.configure(t))
+	var closeExpectation *textEndpointCloseExpectation
+	if len(expectation) != 0 {
+		closeExpectation = expectation[0]
+	}
+	endpoint, owner, source := startTextRoleNetworkWithFixtureCloseExpectation(t, carrier, true, true, closeExpectation, gate.configure(t))
 	source.mu.Lock()
 	source.view.NodeCount, source.snapshot.CandidateCount = 16, 16
 	source.view.Nodes[15] = state.ClosedRouteNodeView{NodeID: fixtureID(202), RecordDigest: fixtureID(203), DutyGeneration: 16, RoleDomain: 2, Subrole: 4}
@@ -33,9 +37,7 @@ func startTextRegisteredPublisherNetwork(t *testing.T, carrier route.CarrierProf
 	now := time.Now().UTC().Truncate(time.Second)
 	root, binding := acceptedInstanceBinding(t, serviceInstanceFixtureRoot(t), endpoint.network, authority, now.Add(-time.Second), source.view.Profile.NotAfter)
 	t.Cleanup(func() {
-		if err := endpoint.Close(); err != nil {
-			t.Error(err)
-		}
+		checkTextFixtureEndpointClose(t, endpoint, closeExpectation)
 		if err := root.Close(); err != nil {
 			t.Error(err)
 		}

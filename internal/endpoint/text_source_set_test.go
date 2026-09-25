@@ -4,6 +4,7 @@ package endpoint
 
 import (
 	"encoding/hex"
+	"errors"
 	"net"
 	"os"
 	"sync"
@@ -43,8 +44,73 @@ func (source *textSourceStateFixture) Current() (state.Snapshot, error) {
 	return source.snapshot, nil
 }
 
-func textSourceContextFixture(t *testing.T) (*endpoint, *textContext, *textSourceStateFixture) {
+// textEndpointCloseExpectation permits one specifically retained Endpoint error
+// through fixture cleanup. It compares the actual Endpoint Close shape, rather
+// than a sentinel alone, so a second cleanup cause remains visible to the test.
+type textEndpointCloseExpectation struct {
+	mu       sync.Mutex
+	expected error
+}
+
+func (expectation *textEndpointCloseExpectation) allow(err error) {
+	expectation.mu.Lock()
+	defer expectation.mu.Unlock()
+	expectation.expected = err
+}
+
+func (expectation *textEndpointCloseExpectation) accepts(err error) bool {
+	if expectation == nil || err == nil {
+		return false
+	}
+	expectation.mu.Lock()
+	defer expectation.mu.Unlock()
+	if expectation.expected == nil {
+		return false
+	}
+	for err != expectation.expected {
+		joined, ok := err.(interface{ Unwrap() []error })
+		if !ok {
+			return false
+		}
+		children := joined.Unwrap()
+		if len(children) != 1 {
+			return false
+		}
+		err = children[0]
+	}
+	return true
+}
+
+func checkTextFixtureEndpointClose(t *testing.T, endpoint *endpoint, expectation *textEndpointCloseExpectation) {
 	t.Helper()
+	if err := endpoint.Close(); err != nil && !expectation.accepts(err) {
+		t.Error(err)
+	}
+}
+
+func TestTextEndpointCloseExpectationRejectsAdditionalFailure(t *testing.T) {
+	retained := errors.New("retained Route refusal")
+	expectation := &textEndpointCloseExpectation{}
+	expectation.allow(retained)
+	if !expectation.accepts(errors.Join(errors.Join(retained))) {
+		t.Fatal("fixture cleanup did not accept the exact retained failure")
+	}
+	for _, err := range []error{
+		errors.Join(retained, errors.New("outer cleanup failure")),
+		errors.Join(errors.Join(retained, errors.New("nested cleanup failure"))),
+	} {
+		if expectation.accepts(err) {
+			t.Fatal("fixture cleanup hid an additional failure")
+		}
+	}
+}
+
+func textSourceContextFixture(t *testing.T, expectation ...*textEndpointCloseExpectation) (*endpoint, *textContext, *textSourceStateFixture) {
+	t.Helper()
+	var closeExpectation *textEndpointCloseExpectation
+	if len(expectation) != 0 {
+		closeExpectation = expectation[0]
+	}
 	now := time.Now().UTC()
 	window := now.Truncate(time.Hour)
 	source := &textSourceStateFixture{}
@@ -94,9 +160,7 @@ func textSourceContextFixture(t *testing.T) (*endpoint, *textContext, *textSourc
 		t.Fatal(err)
 	}
 	t.Cleanup(func() {
-		if err := endpoint.Close(); err != nil {
-			t.Error(err)
-		}
+		checkTextFixtureEndpointClose(t, endpoint, closeExpectation)
 	})
 	owner := textPermissionContextFixture(t, endpoint, principal, broker.Connection)
 	return endpoint, owner, source

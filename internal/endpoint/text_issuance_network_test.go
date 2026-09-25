@@ -82,12 +82,22 @@ func startTextRoleNetworkWithRunner(t *testing.T, carrier route.CarrierProfile, 
 	return startTextRoleNetworkWithReservedFixtureWindow(t, carrier, resolution, publisher, join, runner, configure...)
 }
 
+func startTextRoleNetworkWithFixtureCloseExpectation(t *testing.T, carrier route.CarrierProfile, resolution, publisher bool, expectation *textEndpointCloseExpectation, configure ...func(int, *node.Config)) (*endpoint, *textContext, *textSourceStateFixture) {
+	t.Helper()
+	waitTextNetworkFixtureStart(t)
+	return startTextRoleNetworkWithReservedFixtureWindowAndFixtureCloseExpectation(t, carrier, resolution, publisher, false, nil, expectation, configure...)
+}
+
 // startTextRoleNetworkWithReservedFixtureWindow is for a child test process
 // whose parent selected the same two-minute Permission window before imposing
 // its own timeout. It must only run the bounded carrier episode.
 func startTextRoleNetworkWithReservedFixtureWindow(t *testing.T, carrier route.CarrierProfile, resolution, publisher, join bool, runner func(*testing.T, int, node.Config) func() error, configure ...func(int, *node.Config)) (*endpoint, *textContext, *textSourceStateFixture) {
+	return startTextRoleNetworkWithReservedFixtureWindowAndFixtureCloseExpectation(t, carrier, resolution, publisher, join, runner, nil, configure...)
+}
+
+func startTextRoleNetworkWithReservedFixtureWindowAndFixtureCloseExpectation(t *testing.T, carrier route.CarrierProfile, resolution, publisher, join bool, runner func(*testing.T, int, node.Config) func() error, expectation *textEndpointCloseExpectation, configure ...func(int, *node.Config)) (*endpoint, *textContext, *textSourceStateFixture) {
 	t.Helper()
-	endpoint, owner, source := textSourceContextFixture(t)
+	endpoint, owner, source := textSourceContextFixture(t, expectation)
 	count := 5
 	if resolution {
 		count = 7
@@ -248,9 +258,7 @@ func startTextRoleNetworkWithReservedFixtureWindow(t *testing.T, carrier route.C
 	// Registered after Node cleanup callbacks: LIFO keeps the real network
 	// available until all Endpoint channels and their workers have joined.
 	t.Cleanup(func() {
-		if err := endpoint.Close(); err != nil {
-			t.Error(err)
-		}
+		checkTextFixtureEndpointClose(t, endpoint, expectation)
 	})
 	return endpoint, owner, source
 }

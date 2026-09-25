@@ -3,6 +3,8 @@
 package endpoint
 
 import (
+	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -19,7 +21,8 @@ func TestTextInitialPublicationLossBeforeAcknowledgement(t *testing.T) {
 				t.Run(failure, func(t *testing.T) {
 					gate := newTextDescriptorACKGate()
 					gate.revision = 1
-					endpoint, owner, _, registered := startTextRegisteredPublisherNetwork(t, carrier, gate)
+					closeExpectation := &textEndpointCloseExpectation{}
+					endpoint, owner, _, registered := startTextRegisteredPublisherNetwork(t, carrier, gate, closeExpectation)
 					t.Cleanup(gate.open)
 					binding := endpoint.publisherBinding
 					gate.arm(t)
@@ -78,8 +81,11 @@ func TestTextInitialPublicationLossBeforeAcknowledgement(t *testing.T) {
 							t.Fatal("failed initial publication revived through exact retry")
 						}
 					}
-					if err := owner.Close(); err != nil {
-						t.Fatal(err)
+					closeErr := owner.Close()
+					if failure == "context revoke" && closeErr != nil {
+						t.Fatalf("context revocation retained owner cleanup failure: %v", closeErr)
+					} else if failure != "context revoke" && closeErr != nil {
+						t.Fatal(closeErr)
 					}
 					if recipient.Public(time.Now()) != [32]byte{} || binding.Public() != nil {
 						t.Fatal("closed initial publication retained recipient or Instance signer")
@@ -87,6 +93,24 @@ func TestTextInitialPublicationLossBeforeAcknowledgement(t *testing.T) {
 					if lease, err := endpoint.publications.Acquire(t.Context()); err == nil {
 						_ = lease.Close()
 						t.Fatal("closed initial publication retained local availability")
+					}
+					if failure == "context revoke" {
+						// Route may retire another retained context after this owner's
+						// successful close. Classify that Endpoint failure before its
+						// cleanup callbacks repeat Close.
+						endpointErr := endpoint.Close()
+						if endpointErr != nil {
+							endpoint.textMu.Lock()
+							retained := endpoint.textErr
+							endpoint.textMu.Unlock()
+							if retained == nil || !errors.Is(retained, route.ErrClosedSourceCleanup) || !strings.Contains(retained.Error(), "closed bootstrap child refused") {
+								t.Fatalf("context revocation retained unexpected Endpoint cleanup failure: %v", endpointErr)
+							}
+							closeExpectation.allow(retained)
+							if !closeExpectation.accepts(endpointErr) {
+								t.Fatalf("context revocation Endpoint cleanup retained an additional failure: %v", endpointErr)
+							}
+						}
 					}
 				})
 			}
