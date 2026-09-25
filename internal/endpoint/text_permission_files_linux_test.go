@@ -10,7 +10,6 @@ import (
 	"os"
 	"path/filepath"
 	"sync/atomic"
-	"syscall"
 	"testing"
 	"time"
 
@@ -188,68 +187,5 @@ func TestTextPermissionFilesConsumeActualCustodyApproval(t *testing.T) {
 	}
 	if err := owner.importTextPermissionFile(t.Context(), responsePath, digest); err == nil {
 		t.Fatal("closed context restored from file")
-	}
-}
-
-func TestTextPermissionFilesRefuseUnsafeFilesystemInputs(t *testing.T) {
-	rootPath := t.TempDir()
-	if err := os.Chmod(rootPath, 0700); err != nil {
-		t.Fatal(err)
-	}
-	root, name, err := openTextPermissionDirectory(filepath.Join(rootPath, "response"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer func() {
-		if err := root.Close(); err != nil {
-			t.Error(err)
-		}
-	}()
-	regular := filepath.Join(rootPath, "regular")
-	if err := os.WriteFile(regular, []byte("bounded"), 0600); err != nil {
-		t.Fatal(err)
-	}
-	for _, kind := range []string{"symlink", "hardlink", "fifo", "permissions", "oversize"} {
-		t.Run(kind, func(t *testing.T) {
-			path := filepath.Join(rootPath, name)
-			switch kind {
-			case "symlink":
-				err = os.Symlink(regular, path)
-			case "hardlink":
-				err = os.Link(regular, path)
-			case "fifo":
-				err = syscall.Mkfifo(path, 0600)
-			case "permissions":
-				err = os.WriteFile(path, []byte("wide"), 0600)
-				if err == nil {
-					err = os.Chmod(path, 0644)
-				}
-			case "oversize":
-				err = os.WriteFile(path, make([]byte, 229), 0600)
-			}
-			if err != nil {
-				t.Fatal(err)
-			}
-			defer func() {
-				if err := os.Remove(path); err != nil {
-					t.Error(err)
-				}
-			}()
-			if _, err := readTextPermissionFile(root, name, 228); err == nil {
-				t.Fatal("unsafe input accepted")
-			}
-		})
-	}
-	if err := os.Chmod(rootPath, 0755); err != nil {
-		t.Fatal(err)
-	}
-	if opened, _, err := openTextPermissionDirectory(filepath.Join(rootPath, name)); err == nil {
-		if err := opened.Close(); err != nil {
-			t.Error(err)
-		}
-		t.Fatal("shared directory accepted")
-	}
-	if _, _, err := openTextPermissionDirectory("relative/permission"); err == nil {
-		t.Fatal("relative path accepted")
 	}
 }

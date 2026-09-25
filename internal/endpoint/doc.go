@@ -32,7 +32,8 @@
 //
 // Durable token attempts and Transit Grant acquisition live in the child
 // tokenjournal and transit packages. The durableroot package owns their shared
-// filesystem lease and atomic-write primitives. Tests follow their production
+// filesystem lease and atomic-write primitives. The permissionfile package
+// owns the separate owner-private offline permission file handover. Tests follow their production
 // owner; the role-network fixture in text_issuance_network_test.go selects
 // the Carrier, while text_join_service_network_test.go exercises both selected
 // Carriers.
