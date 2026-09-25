@@ -7,6 +7,7 @@ import (
 	"context"
 	"crypto/ed25519"
 	"crypto/rand"
+	"encoding/json"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -99,6 +100,9 @@ func runTextDataJoinIsolatedRoleObservation(t *testing.T, carrier route.CarrierP
 		}
 	}
 	observe("startup")
+	if len(processes) == 0 || !json.Valid([]byte(processes[0].events())) {
+		t.Fatal("bounded Node failure observation protocol unavailable")
+	}
 	public, authority, err := ed25519.GenerateKey(rand.Reader)
 	if err != nil {
 		t.Fatal(err)
@@ -131,6 +135,9 @@ func runTextDataJoinIsolatedRoleObservation(t *testing.T, carrier route.CarrierP
 	}
 	published, err := owner.publishTextDescriptor(t.Context())
 	if err != nil {
+		for index, process := range processes {
+			t.Logf("Node role %d fixed failure events: %s", index, process.events())
+		}
 		t.Fatal(err)
 	}
 	if !bytes.Equal(lookupTextPublishedProof(t, owner, published.Descriptor.Target), registration.descriptor) {

@@ -22,6 +22,7 @@ import (
 type textRoleProcess struct {
 	capture func(string)
 	dump    func(string)
+	events  func() string
 	stop    func() error
 	output  string
 	heap    bool
@@ -133,6 +134,27 @@ func startTextRoleProcess(t *testing.T, index int, config node.Config, root stri
 			t.Fatal(err)
 		}
 		expect("role-dump " + phase)
+	}
+	process.events = func() string {
+		answer := make(chan string, 1)
+		go func() {
+			if _, err := fmt.Fprintln(stdin, "events"); err != nil {
+				answer <- "unavailable"
+				return
+			}
+			line, err := reader.ReadString('\n')
+			if err != nil || !strings.HasPrefix(line, "role-events ") {
+				answer <- "unavailable"
+				return
+			}
+			answer <- strings.TrimSpace(strings.TrimPrefix(line, "role-events "))
+		}()
+		select {
+		case result := <-answer:
+			return result
+		case <-time.After(500 * time.Millisecond):
+			return "unavailable"
+		}
 	}
 	process.stop = func() error {
 		if joined {

@@ -67,7 +67,9 @@ func runTextRoleObservationChild(t *testing.T, path string) {
 	clear(raw)
 	config := textRoleProcessConfig(input)
 	ready := make(chan struct{}, 1)
+	failureEvents := &textRoleFailureEvents{}
 	config.Emit = func(_ context.Context, event node.Event) error {
+		failureEvents.record(event)
 		if event.State == "READY" {
 			select {
 			case ready <- struct{}{}:
@@ -105,6 +107,10 @@ func runTextRoleObservationChild(t *testing.T, path string) {
 	scanner := bufio.NewScanner(os.Stdin)
 	for scanner.Scan() {
 		phase := scanner.Text()
+		if phase == "events" {
+			fmt.Println("role-events " + failureEvents.summary())
+			continue
+		}
 		if phase == "stop" {
 			cancel()
 			select {
