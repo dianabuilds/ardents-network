@@ -113,7 +113,10 @@ checks in the existing Linux deterministic/race profiles; a Windows unit pass
 does not execute or qualify them. Windows retains the pre-existing Endpoint
 journey and an explicit unsupported text-command refusal. Shared State,
 Custody, Node and protocol consumers keep their own platform contracts. The
-Endpoint-originating Route bootstrap/prefix client and its stream, credit,
+[measured Linux Endpoint test cost](endpoint-test-cost.md) records one
+development baseline and the deliberate workload and Permission-hour waits;
+it does not change this checked profile. The Endpoint-originating Route
+bootstrap/prefix client and its stream, credit,
 JOIN and network-issuance tests also execute in the Linux profiles. The
 Endpoint role-network fixture names its selected Carrier, resolution, Publisher,
 and JOIN roles explicitly; it substitutes accepted State and worker qualification
