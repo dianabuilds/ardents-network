@@ -41,7 +41,7 @@ implementation has private owners rather than one undifferentiated state bag:
 | Token attempt storage | `tokenjournal.Journal` | Own mutex, replay/time floors, and durable attempts; consumes the shared `durableroot` access, lease, and sync API. |
 | Permission file handover | `permissionfile` | Own canonical owner-private request/response paths, exact retry, and request durability; Context retains currentness and offline approval authority. |
 | Transit Grant acquisition | `transit.Acquisition` in `internal/endpoint/transit` | Own pending, ready, presenting, and terminal journal transitions, including stale-completion rejection; Endpoint supplies only the issuer exchange and exact TLS enrollment. Its durable root uses `durableroot`. |
-| Descriptor history | `textDescriptorHistory` | Own per-Target verified publication/revision floors, conflict memory, capacity and context-retirement erasure; Context checks live authority before acceptance and before using a retained proof. |
+| Descriptor history | `descriptorhistory.History` | Own per-Target verified publication/revision floors, conflict memory, capacity and context-retirement erasure; Context checks live authority before acceptance and before using a retained proof. |
 | Resolution and JOIN | Context flights and narrow acquisitions | Exact current prefix must be checked again after network effects. |
 | Job and worker | `textJobIdentity`, `textWorkerLifetime` | Context retains the job reservation; worker owns process and cgroup cleanup. |
 

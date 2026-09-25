@@ -1,6 +1,6 @@
 //go:build linux
 
-package endpoint
+package descriptorhistory
 
 import (
 	"crypto/sha256"
@@ -13,47 +13,59 @@ import (
 // Each authorized context retains at most the receiving Store's 128 Targets.
 // Expired entries retain their floors until context retirement; capacity never
 // evicts an older floor or silently moves private history to another context.
-const maximumTextDescriptorTargets = 128
+const MaximumTargets = 128
 
-type textDescriptorFloor struct {
+type floor struct {
 	generation, revision                  uint64
 	publication, descriptor               [32]byte
 	notAfter                              int64
 	publicationConflict, revisionConflict bool
 }
 
-// textDescriptorHistory owns one context's private publication and revision
-// floors. The Context lock protects every method and retirement clears it.
-type textDescriptorHistory struct {
-	floors map[[32]byte]textDescriptorFloor
+// History owns one context's private publication and revision floors. Its
+// caller serializes operations with the Context lock and clears it at retirement.
+type History struct {
+	floors map[[32]byte]floor
 }
 
-func (history *textDescriptorHistory) canAdmit(target [32]byte) bool {
+func (history *History) CanAdmit(target [32]byte) bool {
+	return history.Has(target) || len(history.floors) < MaximumTargets
+}
+
+// Has reports whether this exact Target has a retained floor, including a
+// conflicting one that must remain unavailable to ordinary matching.
+func (history *History) Has(target [32]byte) bool {
 	_, retained := history.floors[target]
-	return retained || len(history.floors) < maximumTextDescriptorTargets
+	return retained
 }
 
-func (history *textDescriptorHistory) matches(target, publication [32]byte, revision uint64) bool {
+func (history *History) Matches(target, publication [32]byte, revision uint64) bool {
 	floor, retained := history.floors[target]
 	return retained && !floor.publicationConflict && !floor.revisionConflict &&
 		floor.publication == publication && floor.revision == revision
 }
 
-func (history *textDescriptorHistory) clear() {
+func (history *History) Clear() {
 	clear(history.floors)
 	history.floors = nil
+}
+
+// Cleared reports that no private floor map remains allocated after
+// construction or Context retirement.
+func (history *History) Cleared() bool {
+	return history.floors == nil
 }
 
 // Called under the Context lock after the actual resolution flight rechecks its live
 // authority. Verify raw bytes here so no caller-assembled Verified can poison
 // the floor. Returned proof slices have no aliases to retained cache state.
-func (history *textDescriptorHistory) accept(raw []byte, target, network, profile [32]byte, at time.Time) (reachability.Verified, error) {
+func (history *History) Accept(raw []byte, target, network, profile [32]byte, at time.Time) (reachability.Verified, error) {
 	verified, err := reachability.VerifyPrivate(raw, target, network, profile, at)
 	if err != nil {
 		return reachability.Verified{}, err
 	}
 	credential := verified.Current.Credential
-	candidate := textDescriptorFloor{generation: credential.Generation, revision: verified.Descriptor.Private.Revision,
+	candidate := floor{generation: credential.Generation, revision: verified.Descriptor.Private.Revision,
 		publication: verified.Current.Digest, descriptor: sha256.Sum256(raw), notAfter: credential.NotAfter}
 	prior, exists := history.floors[target]
 	if exists {
@@ -90,11 +102,11 @@ func (history *textDescriptorHistory) accept(raw []byte, target, network, profil
 				}
 			}
 		}
-	} else if len(history.floors) >= maximumTextDescriptorTargets {
+	} else if len(history.floors) >= MaximumTargets {
 		return reachability.Verified{}, errors.New("text Descriptor context capacity exhausted")
 	}
 	if history.floors == nil {
-		history.floors = make(map[[32]byte]textDescriptorFloor)
+		history.floors = make(map[[32]byte]floor)
 	}
 	history.floors[target] = candidate
 	return verified, nil

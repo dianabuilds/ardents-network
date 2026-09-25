@@ -22,7 +22,7 @@
 //   - text_publication_pair_lifecycle.go and text_publication_refresh.go own
 //     publication registration and refresh; text_descriptor_publication.go
 //     coordinates the signed Descriptor effect.
-//   - text_descriptor_history.go owns per-Context verified Descriptor floors;
+//   - descriptorhistory owns per-Context verified Descriptor floors;
 //     text_resolution.go coordinates lookup and rechecks live authority.
 //   - text_job_lifecycle.go owns invocation identity and joined cleanup;
 //     text_worker_lifetime_linux.go owns the installed worker process lifetime.

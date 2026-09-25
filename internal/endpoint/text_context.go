@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
+	"github.com/dianabuilds/ardents-network/internal/endpoint/descriptorhistory"
 )
 
 // textContextState owns platform-independent local authorization for a context.
@@ -26,7 +27,7 @@ type textContextState struct {
 	introductionExchanges map[*textIntroductionExchange]struct{}
 	introductionReplays   map[[32]byte]time.Time
 	introductionOpenings  [4]time.Time
-	descriptorHistory     textDescriptorHistory
+	descriptorHistory     descriptorhistory.History
 	withdrawal            *textSourceFlight
 	registrationOpening   *textRegistrationFlight
 	introduction          textIntroductionPrefixLifecycle

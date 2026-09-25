@@ -84,7 +84,7 @@ func (owner *textContext) prepareTextRecovery(ctx context.Context, job *textJobI
 	}
 	if err != nil || prefix == nil || !owner.liveTextServiceJobLocked(job, broker.Connection) ||
 		!binding.matchesPublication(verified.Current) || verified.Descriptor.ProfileDigest != binding.facts.ProfileDigest ||
-		profile.Digest != binding.facts.ProfileDigest || !owner.descriptorHistory.matches(binding.facts.Target, binding.facts.PublicationDigest, recipient.Revision) ||
+		profile.Digest != binding.facts.ProfileDigest || !owner.descriptorHistory.Matches(binding.facts.Target, binding.facts.PublicationDigest, recipient.Revision) ||
 		recipient.Revision < binding.introduction.Revision ||
 		recipient.Revision == 0 || recipient.Slot == [32]byte{} || recipient.RecipientKey == [32]byte{} ||
 		now.Before(recipient.NotBefore) || !now.Before(recipient.NotAfter) {

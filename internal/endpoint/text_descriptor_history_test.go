@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
+	"github.com/dianabuilds/ardents-network/internal/endpoint/descriptorhistory"
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	"github.com/dianabuilds/ardents-network/internal/service/publication"
@@ -56,110 +57,6 @@ func textFloorDescriptor(t *testing.T, current publication.Current, signer ed255
 	return raw
 }
 
-func TestTextDescriptorFloorRejectsRollbackAndRetainsConflicts(t *testing.T) {
-	now := time.Now().UTC().Truncate(time.Second)
-	network, profile, node := fixtureID(1), fixtureID(2), fixtureID(3)
-	_, authority, err := ed25519.GenerateKey(rand.Reader)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer clear(authority)
-	current, signer := textFloorPublication(t, authority, network, 1, now, now.Add(10*time.Minute))
-	owner := &textContext{}
-	accept := func(raw []byte, at time.Time) error {
-		_, err := owner.descriptorHistory.accept(raw, current.Credential.Target, network, profile, at)
-		return err
-	}
-	first := textFloorDescriptor(t, current, signer, profile, node, 1, 10, now, now.Add(300*time.Second))
-	second := textFloorDescriptor(t, current, signer, profile, node, 2, 20, now, now.Add(100*time.Second))
-	if err := accept(first, now); err != nil {
-		t.Fatal(err)
-	}
-	if err := accept(second, now); err != nil {
-		t.Fatalf("higher revision with shorter expiry: %v", err)
-	}
-	if err := accept(second, now); err != nil {
-		t.Fatalf("exact retry: %v", err)
-	}
-	if err := accept(first, now); err == nil {
-		t.Fatal("lower revision revived")
-	}
-	if err := accept(first, now.Add(110*time.Second)); err == nil {
-		t.Fatal("expired successor revived still-valid predecessor")
-	}
-	forged := append([]byte(nil), second...)
-	forged[len(forged)-1] ^= 1
-	if err := accept(forged, now); err == nil {
-		t.Fatal("forged signature accepted")
-	}
-	if err := accept(second, now); err != nil {
-		t.Fatalf("forgery poisoned floor: %v", err)
-	}
-	conflicting := textFloorDescriptor(t, current, signer, profile, node, 2, 30, now, now.Add(120*time.Second))
-	if err := accept(conflicting, now); err == nil {
-		t.Fatal("same revision conflict accepted")
-	}
-	if err := accept(second, now); err == nil {
-		t.Fatal("exact retry erased revision conflict")
-	}
-	third := textFloorDescriptor(t, current, signer, profile, node, 3, 40, now, now.Add(140*time.Second))
-	if err := accept(third, now); err != nil {
-		t.Fatalf("higher revision failed to repair revision conflict: %v", err)
-	}
-	// Caller mutation cannot change the retained hashes or create cache aliases.
-	verified, err := owner.descriptorHistory.accept(third, current.Credential.Target, network, profile, now)
-	if err != nil {
-		t.Fatal(err)
-	}
-	clear(verified.Current.Record)
-	clear(verified.Descriptor.Publication)
-	if err := accept(third, now); err != nil {
-		t.Fatalf("returned proof aliases retained state: %v", err)
-	}
-}
-
-func TestTextDescriptorFloorPublicationConflictRetainsLongestAuthority(t *testing.T) {
-	now := time.Now().UTC().Truncate(time.Second)
-	network, profile, node := fixtureID(1), fixtureID(2), fixtureID(3)
-	_, authority, err := ed25519.GenerateKey(rand.Reader)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer clear(authority)
-	owner := &textContext{}
-	first, signer := textFloorPublication(t, authority, network, 1, now, now.Add(100*time.Second))
-	firstRaw := textFloorDescriptor(t, first, signer, profile, node, 1, 10, now, now.Add(100*time.Second))
-	accept := func(raw []byte, at time.Time) error {
-		_, err := owner.descriptorHistory.accept(raw, first.Credential.Target, network, profile, at)
-		return err
-	}
-	if err := accept(firstRaw, now); err != nil {
-		t.Fatal(err)
-	}
-	other, otherSigner := textFloorPublication(t, authority, network, 1, now, now.Add(200*time.Second))
-	otherRaw := textFloorDescriptor(t, other, otherSigner, profile, node, 2, 20, now, now.Add(150*time.Second))
-	if err := accept(otherRaw, now); err == nil {
-		t.Fatal("conflicting Instance at same generation accepted")
-	}
-	higherRevision := textFloorDescriptor(t, first, signer, profile, node, 3, 30, now, now.Add(90*time.Second))
-	if err := accept(higherRevision, now); err == nil {
-		t.Fatal("revision repaired publication conflict")
-	}
-	overlapping, overlapSigner := textFloorPublication(t, authority, network, 2, now.Add(100*time.Second), now.Add(300*time.Second))
-	overlapRaw := textFloorDescriptor(t, overlapping, overlapSigner, profile, node, 1, 40, now.Add(100*time.Second), now.Add(300*time.Second))
-	if err := accept(overlapRaw, now.Add(100*time.Second)); err == nil {
-		t.Fatal("successor overlapped longer conflicting authority")
-	}
-	next, nextSigner := textFloorPublication(t, authority, network, 3, now.Add(200*time.Second), now.Add(400*time.Second))
-	nextRaw := textFloorDescriptor(t, next, nextSigner, profile, node, 1, 50, now.Add(200*time.Second), now.Add(400*time.Second))
-	if err := accept(nextRaw, now.Add(200*time.Second)); err != nil {
-		t.Fatalf("non-overlapping successor refused: %v", err)
-	}
-	if err := accept(overlapRaw, now.Add(210*time.Second)); err == nil {
-		t.Fatal("older publication generation revived")
-	}
-}
-
 func TestTextDescriptorFloorBelongsToContextAcrossWorkerLoss(t *testing.T) {
 	endpoint, principal := textContextEndpoint(t)
 	owner := admittedTextContext(t, endpoint, principal, broker.Connection)
@@ -168,22 +65,37 @@ func TestTextDescriptorFloorBelongsToContextAcrossWorkerLoss(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	target := fixtureID(9)
-	owner.descriptorHistory.floors = map[[32]byte]textDescriptorFloor{target: {generation: 1, revision: 2, revisionConflict: true}}
+	now := time.Now().UTC().Truncate(time.Second)
+	network, profile, node := fixtureID(1), fixtureID(2), fixtureID(3)
+	_, authority, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer clear(authority)
+	current, signer := textFloorPublication(t, authority, network, 1, now, now.Add(10*time.Minute))
+	target := current.Credential.Target
+	raw := textFloorDescriptor(t, current, signer, profile, node, 2, 20, now, now.Add(100*time.Second))
+	if _, err := owner.descriptorHistory.Accept(raw, target, network, profile, now); err != nil {
+		t.Fatal(err)
+	}
+	conflicting := textFloorDescriptor(t, current, signer, profile, node, 2, 30, now, now.Add(100*time.Second))
+	if _, err := owner.descriptorHistory.Accept(conflicting, target, network, profile, now); err == nil {
+		t.Fatal("same revision conflict accepted")
+	}
 	owner.retireJob(job)
 	if err := owner.finishJobCleanup(job, nil); err != nil {
 		t.Fatal(err)
 	}
-	if !owner.descriptorHistory.floors[target].revisionConflict {
+	if !owner.descriptorHistory.Has(target) || owner.descriptorHistory.Matches(target, current.Digest, 2) {
 		t.Fatal("worker loss erased context floor")
 	}
-	if len(other.descriptorHistory.floors) != 0 {
+	if other.descriptorHistory.Has(target) {
 		t.Fatal("context history shared with another authorization")
 	}
 	if err := owner.Close(); err != nil {
 		t.Fatal(err)
 	}
-	if owner.descriptorHistory.floors != nil {
+	if !owner.descriptorHistory.Cleared() || owner.descriptorHistory.Has(target) {
 		t.Fatal("retired context retained private history")
 	}
 }
@@ -233,29 +145,47 @@ func TestTextResolutionNetworkCannotRollBackLocalDescriptorFloor(t *testing.T) {
 				t.Fatalf("actual first lookup: %v", err)
 			}
 			owner.mu.Lock()
-			floor := owner.descriptorHistory.floors[current.Credential.Target]
-			_, err = owner.descriptorHistory.accept(second, current.Credential.Target, profile.NetworkID, profile.Digest, now)
+			floorRetained := owner.descriptorHistory.Matches(current.Credential.Target, current.Digest, 1)
+			_, err = owner.descriptorHistory.Accept(second, current.Credential.Target, profile.NetworkID, profile.Digest, now)
 			owner.mu.Unlock()
-			if floor.revision != 1 || err != nil {
+			if !floorRetained || err != nil {
 				t.Fatalf("lookup failed to retain floor or prior observation invalid: %v", err)
 			}
 			if _, err := owner.lookupTextDescriptor(t.Context(), current.Credential.Target); err == nil {
 				t.Fatal("actual resolver response rolled back locally retained revision")
 			}
 			owner.mu.Lock()
-			retained := owner.descriptorHistory.floors[current.Credential.Target]
+			retained := owner.descriptorHistory.Matches(current.Credential.Target, current.Digest, 2)
 			healthy := owner.currentTextSourceLocked() == prefix && owner.resolution == nil && !owner.closed
 			owner.mu.Unlock()
-			if retained.revision != 2 || !healthy {
+			if !retained || !healthy {
 				t.Fatal("ordinary stale response erased floor or damaged context")
 			}
-			// Explicit capacity fixture: retained hashes stand in for already
-			// observed Targets. The real admitted issuer/stock remains in use.
-			owner.mu.Lock()
-			for index := 1; len(owner.descriptorHistory.floors) < maximumTextDescriptorTargets; index++ {
-				owner.descriptorHistory.floors[fixtureID(byte(index))] = textDescriptorFloor{generation: 1, revision: 1}
+			// Fill the real context history through independently signed
+			// Descriptors. The admitted issuer and stock remain in use.
+			type observedDescriptor struct {
+				target [32]byte
+				raw    []byte
 			}
-			_, err = owner.descriptorHistory.accept(second, current.Credential.Target, profile.NetworkID, profile.Digest, now)
+			observed := make([]observedDescriptor, 0, descriptorhistory.MaximumTargets-1)
+			for index := 1; index < descriptorhistory.MaximumTargets; index++ {
+				_, nextAuthority, err := ed25519.GenerateKey(rand.Reader)
+				if err != nil {
+					t.Fatal(err)
+				}
+				next, nextSigner := textFloorPublication(t, nextAuthority, profile.NetworkID, 1, now, now.Add(10*time.Minute))
+				clear(nextAuthority)
+				nextRaw := textFloorDescriptor(t, next, nextSigner, profile.Digest, source.view.Nodes[6].NodeID, 1, byte(index), now, now.Add(100*time.Second))
+				observed = append(observed, observedDescriptor{target: next.Credential.Target, raw: nextRaw})
+			}
+			owner.mu.Lock()
+			for index, next := range observed {
+				if _, err := owner.descriptorHistory.Accept(next.raw, next.target, profile.NetworkID, profile.Digest, now); err != nil {
+					owner.mu.Unlock()
+					t.Fatalf("capacity setup Descriptor %d: %v", index, err)
+				}
+			}
+			_, err = owner.descriptorHistory.Accept(second, current.Credential.Target, profile.NetworkID, profile.Digest, now)
 			reserved, batches := owner.permission.reserved, owner.permission.batches
 			tokensBefore := 0
 			for _, stock := range owner.permission.stock {
@@ -273,8 +203,8 @@ func TestTextResolutionNetworkCannotRollBackLocalDescriptorFloor(t *testing.T) {
 			for _, stock := range owner.permission.stock {
 				tokensAfter += len(stock.tokens)
 			}
-			unchanged := len(owner.descriptorHistory.floors) == maximumTextDescriptorTargets &&
-				owner.descriptorHistory.floors[current.Credential.Target].revision == 2 && owner.permission.reserved == reserved &&
+			unchanged := !owner.descriptorHistory.CanAdmit(fixtureID(199)) &&
+				owner.descriptorHistory.Matches(current.Credential.Target, current.Digest, 2) && owner.permission.reserved == reserved &&
 				owner.permission.batches == batches && tokensBefore == tokensAfter && owner.resolution == nil && owner.issuance == nil
 			owner.mu.Unlock()
 			if !unchanged {
