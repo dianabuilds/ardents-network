@@ -89,3 +89,21 @@ passed directly under the same Ubuntu 24.04 WSL2 installation with `-test.short`
 This is a passing full Endpoint package run for that binary and environment;
 it does not erase the earlier Docker failures or verify the installed command
 journey on a dedicated Ubuntu host.
+
+## Post-intake Ubuntu development check
+
+On 2026-09-25, the architecture branch at `9c17f772` (including the completed
+v1 Node Carrier listener removal from #252) ran under Ubuntu 24.04 WSL2 with
+Go 1.26.8 linux/amd64 and `CGO_ENABLED=0`. Dependencies came from the exact
+versions already present in the local Go module cache; the WSL network proxy
+was not used. `go test ./internal/route -count=1` passed, followed by
+`go test ./internal/endpoint -short -shuffle=on -count=1 -timeout=15m` passing
+in 689.430 seconds. A separate serial, shuffled `-count=1` run passed the
+`tests/e2e/network-source`, `tests/e2e/node`, `tests/e2e/endpoint`, and
+`tests/e2e/service` packages. The same commit passed `make check` on Windows.
+
+This is Linux development evidence for the integrated source, not the required
+root-owned installed command journey on a dedicated Ubuntu host. WSL lacks the
+local `make`, C compiler, and Go analysis tools needed for the complete Linux
+`make check` profile; that profile and the installed TCP/TLS and QUIC command
+journeys remain final-candidate acceptance work.
