@@ -143,7 +143,7 @@ func TestTextPublisherBuildsRetainedQualificationSetAcrossFourReaders(t *testing
 					if err != nil {
 						return bound, fmt.Errorf("Reader %d submission reserve %d: %w", index, streamIndex, err)
 					}
-					releaseSetup, err := job.qualification.acquireSetup(setup)
+					releaseSetup, err := job.qualification.AcquireSetup(setup)
 					if err != nil {
 						return bound, fmt.Errorf("Reader %d setup admission %d: %w", index, streamIndex, err)
 					}
