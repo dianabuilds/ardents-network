@@ -140,36 +140,17 @@ func (binding *textServiceBinding) openTextServiceStreamWithRecovery(ctx context
 		}
 	}()
 	client := binding.owner.surface == broker.Connection
+	var continuity [32]byte
+	defer clear(continuity[:])
+	first, acquired, err := binding.openProtectedServiceInitialAttachment(lifetime, transport, exporterContext, client, &continuity)
+	lease = acquired
+	if err != nil {
+		return nil, err
+	}
 	identity := nativeconnection.InstanceAuthentication{Network: binding.credential.NetworkID, Target: binding.credential.Target,
 		Public: binding.credential.InstancePublic, Generation: binding.credential.Generation}
-	var secured *securedAttachment
-	var continuity [32]byte
-	if client {
-		secured, continuity, err = secureProtectedServiceClient(lifetime, transport, binding.credential, exporterContext, 1)
-	} else {
-		if binding.owner.endpoint.publications == nil {
-			return nil, errors.New("text Publisher publication owner unavailable")
-		}
-		lease, err = binding.owner.endpoint.publications.AcquireAt(lifetime, binding.owner.endpoint.clock().UTC())
-		if err != nil {
-			return nil, err
-		}
-		if !binding.matchesPublication(lease.Current()) {
-			return nil, errors.New("text Publisher publication changed")
-		}
+	if lease != nil {
 		identity.Signer = lease
-		secured, continuity, err = secureProtectedServicePublisher(lifetime, transport, binding.credential, lease, exporterContext, 1)
-	}
-	defer clear(continuity[:])
-	if err != nil {
-		return nil, err
-	}
-	// TLS exporter used the fresh Attachment context. Native records must
-	// continue to bind the immutable logical context shared by both Endpoints.
-	secured.context = binding.logical
-	first, err := newProtectedServiceAttachment(secured)
-	if err != nil {
-		return nil, err
 	}
 	recovery := nativeconnection.Recovery{WorkSafetyNotAfter: binding.facts.WorkSafetyNotAfter,
 		WorkSafetyMaximum: binding.facts.WorkSafetyMaximum, NoNewRecoveryAfter: binding.facts.NoNewRecoveryAfter}

@@ -5,10 +5,45 @@ package endpoint
 import (
 	"context"
 	"errors"
+	"net"
 
 	nativeconnection "github.com/dianabuilds/ardents-network/internal/service/connection"
 	"github.com/dianabuilds/ardents-network/internal/service/publication"
 )
+
+// openProtectedServiceInitialAttachment authenticates the first physical
+// transport. The caller owns the returned Publisher lease through stream
+// cleanup, including when Attachment construction fails.
+func (binding *textServiceBinding) openProtectedServiceInitialAttachment(lifetime context.Context,
+	raw net.Conn, exporterContext [32]byte, client bool, continuity *[32]byte,
+) (*nativeconnection.Attachment, *publication.Lease, error) {
+	var secured *securedAttachment
+	var lease *publication.Lease
+	var err error
+	if client {
+		secured, *continuity, err = secureProtectedServiceClient(lifetime, raw, binding.credential, exporterContext, 1)
+	} else {
+		if binding.owner.endpoint.publications == nil {
+			return nil, nil, errors.New("text Publisher publication owner unavailable")
+		}
+		lease, err = binding.owner.endpoint.publications.AcquireAt(lifetime, binding.owner.endpoint.clock().UTC())
+		if err != nil {
+			return nil, nil, err
+		}
+		if !binding.matchesPublication(lease.Current()) {
+			return nil, lease, errors.New("text Publisher publication changed")
+		}
+		secured, *continuity, err = secureProtectedServicePublisher(lifetime, raw, binding.credential, lease, exporterContext, 1)
+	}
+	if err != nil {
+		return nil, lease, err
+	}
+	// TLS exporter used the fresh Attachment context. Native records must
+	// continue to bind the immutable logical context shared by both Endpoints.
+	secured.context = binding.logical
+	first, err := newProtectedServiceAttachment(secured)
+	return first, lease, err
+}
 
 // openProtectedServiceRecoveryAttachment owns one replacement Route transport
 // until TLS authenticates it and a native Attachment is constructed.
