@@ -75,7 +75,7 @@ func ExchangeClosedBootstrap(ctx context.Context, source ClosedBootstrapState, s
 	entry := plan.peers[0]
 	connection, err := OpenClosedRoleCarrier(attempt, ClosedRoleCarrierRequest{CarrierProfile: entry.carrier, Endpoint: entry.endpoint, ExpectedServer: entry.key, Deadline: plan.deadline})
 	if err != nil {
-		return ClosedIssuanceExchangeResult{}, err
+		return ClosedIssuanceExchangeResult{}, closedBootstrapFailureAt("entry-carrier", err)
 	}
 	retirement := &closedRoleRetirement{transport: connection}
 	if secured, ok := connection.(*tls.Conn); ok {
