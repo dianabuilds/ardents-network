@@ -68,7 +68,10 @@ func TestTextPublisherBuildsRetainedQualificationSetAcrossFourReaders(t *testing
 		job := liveTextCapsuleJob(t, owner)
 		run, _ := qualification.NewRun(streamqualification.ReaderRole, streamqualification.ClientToPublisher, fixtureID(246))
 		_ = run.BindInvocation(fixtureID(byte(247 + index)))
-		_ = run.Configure(nil, qualificationPacer.AcquireIntroductionOpening, qualificationPacer.AcquireIntroductionSetup, nil, nil)
+		var dummyReport streamqualification.Report
+		if err := run.Configure(&dummyReport, qualificationPacer.AcquireIntroductionOpening, qualificationPacer.AcquireIntroductionSetup, func() error { return nil }, func(context.Context, streamqualification.Report) error { return nil }); err != nil {
+			t.Fatalf("qualification run configuration: %v", err)
+		}
 		job.qualification = run
 		job.workload = mustTextServiceWorkloadBounds(t, 64<<20, 64<<20)
 		readerJobs[index] = job

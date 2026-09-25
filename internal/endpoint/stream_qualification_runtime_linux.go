@@ -195,7 +195,7 @@ func RunStreamQualification(ctx context.Context, config StreamQualificationConfi
 			defer stopBarrier()
 			return errors.Join(stopErr, sampleErr, config.Measurements.Finish(barrierCtx))
 		}
-		if err := qualification.configure(&report, config.Measurements.AcquireIntroductionOpening,
+		if err := qualification.Configure(&report, config.Measurements.AcquireIntroductionOpening,
 			config.Measurements.AcquireIntroductionSetup, stopQualificationSampling, observe); err != nil {
 			return err
 		}

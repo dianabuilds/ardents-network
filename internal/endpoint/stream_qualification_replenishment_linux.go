@@ -42,7 +42,7 @@ func (worker *qualifiedTextWorker) runQualifiedStreams(ctx context.Context, stre
 		}
 	}()
 	attachment := qualification.NewAttachment(worker.lifetime.attachment, worker.job.qualification.StopSamples)
-	report, outcome = streamqualification.RunConnections(bounded, attachment, worker.job.qualification.Init(), streams, worker.job.qualification.observe)
+	report, outcome = streamqualification.RunConnections(bounded, attachment, worker.job.qualification.Init(), streams, worker.job.qualification.Observe)
 	cancel()
 	outcome = errors.Join(outcome, <-stopped)
 	return report, outcome
@@ -60,10 +60,10 @@ func (worker *qualifiedTextWorker) replenishStreams(ctx context.Context) error {
 		owner.mu.Unlock()
 		return nil
 	}
-	joins := worker.job.qualification.joinedStreams()
+	joins := worker.job.qualification.JoinedStreams()
 	owner.mu.Unlock()
 	issuerReserve := qualificationIssuerReserve
-	if worker.job.qualification.init.Role == streamqualification.ReaderRole {
+	if worker.job.qualification.Init().Role == streamqualification.ReaderRole {
 		issuerReserve += (3 - worker.qualificationReader) * 9
 	}
 	if err := owner.ensureQualificationIssuerReserve(ctx, issuerReserve); err != nil {
@@ -97,7 +97,7 @@ func (worker *qualifiedTextWorker) replenishStreams(ctx context.Context) error {
 	}
 	for _, joined := range joins {
 		if err := joined.Replenish(ctx, present); err != nil {
-			retained := worker.job.qualification.retains(joined)
+			retained := worker.job.qualification.Retains(joined)
 			// A retiring transport's Service owner retains its terminal cause.
 			if retained {
 				return err

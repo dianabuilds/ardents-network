@@ -38,8 +38,8 @@ func (owner *textContext) submitTextIntroduction(ctx context.Context, job *textJ
 	if err != nil {
 		return err
 	}
-	if job.qualification != nil && job.qualification.acquireIntroduction != nil {
-		release, err := job.qualification.acquireIntroduction(bounded)
+	if job.qualification != nil {
+		release, err := job.qualification.AcquireIntroduction(bounded)
 		if err != nil {
 			return err
 		}

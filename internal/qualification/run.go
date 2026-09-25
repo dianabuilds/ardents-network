@@ -79,6 +79,27 @@ func (run *Run) Configure(report *streamqualification.Report,
 	return nil
 }
 
+func (run *Run) AcquireIntroduction(ctx context.Context) (func(), error) {
+	if run == nil || run.acquireIntroduction == nil {
+		return nil, errors.New("qualification introduction acquisition unavailable")
+	}
+	return run.acquireIntroduction(ctx)
+}
+
+func (run *Run) AcquireSetup(ctx context.Context) (func(), error) {
+	if run == nil || run.acquireSetup == nil {
+		return nil, errors.New("qualification setup acquisition unavailable")
+	}
+	return run.acquireSetup(ctx)
+}
+
+func (run *Run) Observe(ctx context.Context, report streamqualification.Report) error {
+	if run == nil || run.observe == nil {
+		return nil
+	}
+	return run.observe(ctx, report)
+}
+
 func (run *Run) StopSamples() error {
 	if run == nil {
 		return nil

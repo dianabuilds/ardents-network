@@ -48,7 +48,7 @@ func (transport *textJoinedTransport) AuthenticatedPeerRetired() bool {
 func (transport *textJoinedTransport) Close() error {
 	transport.once.Do(func() {
 		if transport.job != nil && transport.job.qualification != nil {
-			transport.job.qualification.releaseJoin(transport.joined)
+			transport.job.qualification.ReleaseJoin(transport.joined)
 		}
 		retirement := transport.Conn.Close()
 		if transport.revoked != nil && transport.revoked.Err() != nil && textRouteStopOnly(retirement) {
@@ -294,7 +294,7 @@ func (owner *textContext) retainTextJoinedTransport(job *textJobIdentity, attemp
 		return false
 	}
 	if job.qualification != nil {
-		job.qualification.retainJoin(joined)
+		job.qualification.RetainJoin(joined)
 	}
 	return true
 }
