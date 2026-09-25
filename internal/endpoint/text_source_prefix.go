@@ -9,7 +9,6 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/endpoint/tokenjournal"
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
-	"github.com/dianabuilds/ardents-network/internal/route/credential"
 )
 
 type textSourceFlight struct {
@@ -71,7 +70,7 @@ func (owner *textContext) openTextPrefix(ctx context.Context) (*textSourceHandle
 	}
 	owner.mu.Lock()
 	_, _, err := owner.textPermissionProfileLocked()
-	if err != nil || owner.permission == nil || owner.permission.accepted == (credential.Permission{}) || owner.currentTextSourceLocked() != nil || owner.source.openingInProgressLocked() || owner.issuance != nil {
+	if err != nil || !owner.permission.hasAccepted() || owner.currentTextSourceLocked() != nil || owner.source.openingInProgressLocked() || owner.issuance != nil {
 		owner.mu.Unlock()
 		return nil, textPrefixPreparationFailureAt("authority", errors.Join(err, errors.New("text prefix owner unavailable")))
 	}
@@ -116,7 +115,7 @@ func (operation *textPrefixOpeningOperation) presentTextToken(selection route.Cl
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
 	profile, now, err := owner.textPermissionProfileLocked()
-	if err != nil || owner.permission == nil || owner.permission.accepted == (credential.Permission{}) || !operation.admittedLocked(owner) ||
+	if err != nil || !owner.permission.hasAccepted() || !operation.admittedLocked(owner) ||
 		hello.NetworkID != profile.NetworkID || hello.StateGeneration != profile.StateGeneration || hello.StateDigest != profile.StateDigest ||
 		hello.ProfileDigest != profile.Digest || hello.Purpose != ardp.PurposeForwarding || class != 2 ||
 		hello.ChannelNonce == [32]byte{} || !now.Before(hello.Deadline) || hello.Deadline.After(profile.NotAfter) {
@@ -152,7 +151,7 @@ func (endpoint *endpoint) textTokenJournal() (*tokenjournal.Journal, error) {
 func (owner *textContext) ensureTextPrefixStock(ctx context.Context, opening *textPrefixOpeningOperation) (route.ClosedBootstrapSelection, error) {
 	owner.mu.Lock()
 	_, _, err := owner.textPermissionProfileLocked()
-	if err != nil || ctx.Err() != nil || owner.permission == nil || owner.permission.accepted == (credential.Permission{}) ||
+	if err != nil || ctx.Err() != nil || !owner.permission.hasAccepted() ||
 		owner.currentTextSourceLocked() != nil || !opening.admittedLocked(owner) || owner.issuance != nil {
 		owner.mu.Unlock()
 		return route.ClosedBootstrapSelection{}, textPrefixPreparationFailureAt("stock-authority", errors.Join(err, ctx.Err(), errors.New("text prefix stock owner unavailable")))

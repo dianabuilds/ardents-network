@@ -30,6 +30,24 @@ type textPermission struct {
 	accepted credential.Permission
 }
 
+// These predicates keep Context coordinators from interpreting retained
+// permission state. Callers still hold the Context admission lock.
+func (permission *textPermission) hasAccepted() bool {
+	return permission != nil && permission.accepted != (credential.Permission{})
+}
+
+func (permission *textPermission) hasPending() bool {
+	return permission != nil && permission.pending != nil
+}
+
+func (permission *textPermission) pendingFor(prefix *textSourceHandle) bool {
+	return permission.hasPending() && permission.pending.prefix == prefix
+}
+
+func (permission *textPermission) matchesRequest(digest [32]byte) bool {
+	return permission != nil && digest != [32]byte{} && permission.digest == digest
+}
+
 // currentFor is the permission owner's live authority check. Callers still
 // recheck their Context, job, and State authority under the Context lock.
 func (permission *textPermission) currentFor(profile state.ClosedProfileView, now time.Time) bool {

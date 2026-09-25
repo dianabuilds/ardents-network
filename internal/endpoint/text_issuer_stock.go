@@ -70,8 +70,8 @@ func (operation *textIssuanceOperation) presentTextIssuerToken(selection route.C
 	defer owner.mu.Unlock()
 	profile, now, err := owner.textPermissionProfileLocked()
 	if err != nil || owner.issuance != operation || operation.context == nil || operation.context.Err() != nil ||
-		operation.prefix == nil || !operation.prefix.currentLocked(owner) || owner.permission == nil || owner.permission.pending == nil ||
-		owner.permission.pending.prefix != operation.prefix || hello.Purpose != ardp.PurposeIssuer || class != 1 ||
+		operation.prefix == nil || !operation.prefix.currentLocked(owner) || !owner.permission.pendingFor(operation.prefix) ||
+		hello.Purpose != ardp.PurposeIssuer || class != 1 ||
 		hello.NetworkID != profile.NetworkID || hello.StateGeneration != profile.StateGeneration || hello.StateDigest != profile.StateDigest ||
 		hello.ProfileDigest != profile.Digest || hello.RecipientNodeID != profile.IssuerNodeID || hello.RecipientDutyGeneration != profile.IssuerDutyGeneration ||
 		hello.ChannelNonce == [32]byte{} || !now.Before(hello.Deadline) || hello.Deadline.After(profile.NotAfter) {

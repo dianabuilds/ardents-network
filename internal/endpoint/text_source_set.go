@@ -64,7 +64,7 @@ func (owner *textContext) selectTextAdjacentLocked(domain uint8, retained **text
 		return route.ClosedBootstrapSelection{}, textSourceSelectionFailureAt("time", errors.New("text source time regressed"))
 	}
 	if (*retained) == nil || !now.Before((*retained).notAfter) {
-		if owner.permission != nil && owner.permission.pending != nil {
+		if owner.permission.hasPending() {
 			return route.ClosedBootstrapSelection{}, errors.New("pending issuance cannot replace source set")
 		}
 		selected, err := chooseTextInteriorSet(members, pair, now, domain)

@@ -122,7 +122,7 @@ func (owner *textContext) ensureTextResolutionStock(flight *textResolutionFlight
 		owner.mu.Unlock()
 		return errors.New("text resolution stock owner changed")
 	}
-	if owner.permission.pending == nil && owner.permission.stockCountFor(profile.Digest, flight.receiver, 1) != 0 {
+	if !owner.permission.hasPending() && owner.permission.stockCountFor(profile.Digest, flight.receiver, 1) != 0 {
 		owner.mu.Unlock()
 		return nil
 	}

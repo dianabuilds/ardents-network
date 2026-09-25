@@ -55,7 +55,7 @@ func (owner *textContext) importTextPermissionFile(ctx context.Context, path str
 	}
 	owner.mu.Lock()
 	_, _, err := owner.textPermissionProfileLocked()
-	matches := owner.permission != nil && owner.permission.digest == digest && digest != [32]byte{}
+	matches := owner.permission.matchesRequest(digest)
 	owner.mu.Unlock()
 	if err != nil || !matches {
 		return errors.New("text permission import has no live request")

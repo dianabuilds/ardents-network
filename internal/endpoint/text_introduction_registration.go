@@ -105,7 +105,7 @@ func (owner *textContext) openTextRegistration(ctx context.Context, revision uin
 	}
 	flight.receiver = receiver
 	owner.mu.Lock()
-	ready := owner.permission != nil && owner.permission.pending == nil &&
+	ready := !owner.permission.hasPending() &&
 		owner.permission.stockCountFor(profile.Digest, receiver, 3) != 0
 	owner.mu.Unlock()
 	if !ready {

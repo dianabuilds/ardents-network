@@ -124,7 +124,7 @@ func (owner *textContext) ensureTextPublisherStock(role textPublisherPrefixOpeni
 		owner.mu.Unlock()
 		return errors.New("text Publisher role stock unavailable")
 	}
-	pending := owner.permission.pending != nil
+	pending := owner.permission.hasPending()
 	var missing [][32]byte
 	for _, receiver := range [][32]byte{selection.EntryNodeID, selection.InteriorNodeID} {
 		if owner.permission.stockCountFor(profile.Digest, receiver, 2) == 0 {
