@@ -36,7 +36,18 @@ func TestConcurrentDiagnoseCannotBypassWithdrawRootLease(t *testing.T) {
 	}
 	done := make(chan result, 1)
 	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
-	defer func() { cancel(); release() }()
+	joined := false
+	defer func() {
+		cancel()
+		release()
+		if !joined {
+			select {
+			case <-done:
+			case <-time.After(5 * time.Second):
+				t.Error("withdraw did not join after cancellation")
+			}
+		}
+	}()
 	go func() {
 		report, controlErr := withdrawer.Control(ctx, contributor.Withdraw, "")
 		done <- result{report, controlErr}
@@ -55,6 +66,7 @@ func TestConcurrentDiagnoseCannotBypassWithdrawRootLease(t *testing.T) {
 	release()
 	select {
 	case withdrawn := <-done:
+		joined = true
 		if withdrawn.err != nil || withdrawn.report.Active || withdrawn.report.Enabled || withdrawn.report.LifecycleState != "WITHDRAWN" {
 			t.Fatalf("withdraw = %+v, %v", withdrawn.report, withdrawn.err)
 		}

@@ -204,6 +204,9 @@ func (supervisor *profileSupervisor) Do(ctx context.Context, action contributor.
 		}
 	case contributor.SupervisorDisable:
 		supervisor.enabled = false
+	case contributor.SupervisorStatus:
+	default:
+		return contributor.SupervisorState{}, errors.New("unknown Contributor Supervisor action")
 	}
 	return contributor.SupervisorState{Active: supervisor.active, Enabled: supervisor.enabled}, nil
 }
