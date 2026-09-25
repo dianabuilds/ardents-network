@@ -144,8 +144,7 @@ func (endpoint *endpoint) runTextInterfaces(ctx context.Context, config TextPart
 	for _, owner := range contexts {
 		owner.mu.Lock()
 		profile, now, err := owner.textPermissionProfileLocked()
-		permission := owner.permission
-		current := err == nil && permission != nil && permission.profile == profile && permission.accepted.Signature != [64]byte{} && !now.Before(permission.accepted.NotBefore) && now.Before(permission.accepted.NotAfter)
+		current := err == nil && owner.permission.currentFor(profile, now)
 		owner.mu.Unlock()
 		if !current {
 			return errors.New("text participant permission expired before command exposure")

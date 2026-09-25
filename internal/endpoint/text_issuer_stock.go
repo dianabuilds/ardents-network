@@ -49,7 +49,7 @@ func (owner *textContext) prepareTextIssuerStock(ctx context.Context, requested 
 		return nil
 	}
 	ready := permission.stockCountForDuty(profile.Digest, profile.IssuerNodeID, profile.IssuerDutyGeneration, 1)
-	remaining := permission.accepted.Maxima[0] - permission.reserved[0]
+	remaining := permission.remaining(1)
 	if ready >= 2 || remaining == 0 || owner.currentTextSourceLocked() != nil && (ready == 0 || remaining < 2) {
 		owner.mu.Unlock()
 		return nil

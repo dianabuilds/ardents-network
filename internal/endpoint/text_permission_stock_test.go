@@ -6,8 +6,47 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/network/state"
+	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/credential"
 )
+
+func TestTextPermissionOwnsCurrentAuthorityAndRemainingAllocation(t *testing.T) {
+	window := time.Date(2026, time.September, 25, 10, 0, 0, 0, time.UTC)
+	profile := state.ClosedProfileView{NetworkID: fixtureID(1)}
+	permission := &textPermission{profile: profile, accepted: credential.Permission{
+		NotBefore: window, NotAfter: window.Add(time.Hour), Signature: [64]byte{1}, Maxima: [3]uint32{4, 2, 1},
+	}, reserved: [3]uint32{3, 2, 2}}
+	if !permission.currentFor(profile, window) || !permission.currentFor(profile, window.Add(time.Hour-time.Nanosecond)) ||
+		permission.currentFor(profile, window.Add(-time.Nanosecond)) || permission.currentFor(profile, window.Add(time.Hour)) {
+		t.Fatal("permission currentness did not respect its exact hour")
+	}
+	if permission.currentFor(state.ClosedProfileView{}, window) || (*textPermission)(nil).currentFor(profile, window) {
+		t.Fatal("foreign or missing permission admitted")
+	}
+	permission.accepted.Signature = [64]byte{}
+	if permission.currentFor(profile, window) {
+		t.Fatal("unsigned permission admitted")
+	}
+	if permission.remaining(1) != 1 || permission.remaining(2) != 0 || permission.remaining(3) != 0 ||
+		permission.remaining(0) != 0 || permission.remaining(4) != 0 || (*textPermission)(nil).remaining(1) != 0 {
+		t.Fatal("permission allocation underflowed or accepted an invalid class")
+	}
+}
+
+func TestTextPermissionRejectsEmptyOrInvalidClassBeforeBatchPreparation(t *testing.T) {
+	permission := &textPermission{accepted: credential.Permission{Maxima: [3]uint32{1, 1, 1}}}
+	for _, challenges := range [][]credential.ClosedTokenContext{
+		nil,
+		{{Class: 0}},
+		{{Class: 4}},
+	} {
+		if batch, err := permission.reserveBatchLocked(state.ClosedProfileView{}, time.Now(), challenges,
+			route.ClosedBootstrapSelection{}, false, nil, false, nil); err == nil || batch != nil {
+			t.Fatalf("invalid batch admitted: batch=%v err=%v", batch, err)
+		}
+	}
+}
 
 func TestTextPermissionStockPreflightSeparatesWindowClassAndKnownDuty(t *testing.T) {
 	window := time.Date(2026, time.September, 25, 10, 0, 0, 0, time.UTC)

@@ -30,6 +30,14 @@ type textPermission struct {
 	accepted credential.Permission
 }
 
+// currentFor is the permission owner's live authority check. Callers still
+// recheck their Context, job, and State authority under the Context lock.
+func (permission *textPermission) currentFor(profile state.ClosedProfileView, now time.Time) bool {
+	return permission != nil && permission.profile == profile &&
+		permission.accepted.Signature != [64]byte{} &&
+		!now.Before(permission.accepted.NotBefore) && now.Before(permission.accepted.NotAfter)
+}
+
 // textPermissionRequestScope is the exact current authority and allocation
 // selected by the Context before the permission owner creates or reuses a key.
 type textPermissionRequestScope struct {

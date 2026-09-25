@@ -103,7 +103,7 @@ func (owner *textContext) issueTextTokensForOpeningWithCancellation(ctx context.
 	}
 	permission := owner.permission
 	source, ok := owner.endpoint.closedState.(route.ClosedBootstrapState)
-	if !ok || permission == nil || permission.accepted == (credential.Permission{}) || permission.profile != profile ||
+	if !ok || !permission.currentFor(profile, now) ||
 		owner.issuance != nil || !opening.admittedLocked(owner) || !textJoinIssuanceCurrentLocked(owner, acquisition, expected) {
 		owner.mu.Unlock()
 		return errors.New("text issuance owner is unavailable")

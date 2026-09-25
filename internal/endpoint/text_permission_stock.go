@@ -44,6 +44,15 @@ func (permission *textPermission) countStock(profileDigest, receiver [32]byte, d
 	return ready
 }
 
+// remaining owns the allocation arithmetic so malformed retained state cannot
+// turn a spent grant into an apparently large unsigned balance.
+func (permission *textPermission) remaining(class uint8) uint32 {
+	if permission == nil || class < 1 || class > 3 || permission.reserved[class-1] > permission.accepted.Maxima[class-1] {
+		return 0
+	}
+	return permission.accepted.Maxima[class-1] - permission.reserved[class-1]
+}
+
 // reserveBatchLocked owns exact retry matching and allocation reservation. The
 // Context holds its admission lock while selecting the live Route prefix and
 // State challenges; the permission alone changes its batch and quota state.
@@ -62,8 +71,11 @@ func (permission *textPermission) reserveBatchLocked(profile state.ClosedProfile
 	if prefix == nil && permission.batches >= 2 {
 		return nil, errors.New("text bootstrap batch allowance is exhausted")
 	}
+	if len(challenges) == 0 {
+		return nil, errors.New("text issuance allocation is empty")
+	}
 	class := challenges[0].Class
-	if uint32(len(challenges)) > permission.accepted.Maxima[class-1]-permission.reserved[class-1] {
+	if class < 1 || class > 3 || uint32(len(challenges)) > permission.remaining(class) {
 		return nil, errors.New("text issuance allocation is exhausted")
 	}
 	pending, err := credential.PrepareClosedTokenBatch(credential.ClosedTokenBatchConfig{Profile: profile, Contexts: challenges,
@@ -121,7 +133,7 @@ func (permission *textPermission) acceptIssuedBatch(batch *textTokenBatch, nonce
 // consumeTextToken burns one exact stock entry under textContext.mu before
 // verifying its signature. An invalid token is never returned or restored.
 func (permission *textPermission) consumeTextToken(profile state.ClosedProfileView, now time.Time, hello route.ClosedHello, class uint8) ([]byte, error) {
-	if permission.profile != profile || now.Before(permission.accepted.NotBefore) || !now.Before(permission.accepted.NotAfter) {
+	if !permission.currentFor(profile, now) {
 		return nil, textTokenTransferFailureAt("permission", errors.New("text token permission expired"))
 	}
 	challenge := credential.ClosedTokenContext{NetworkID: profile.NetworkID, ProfileDigest: profile.Digest, IssuerNodeID: profile.IssuerNodeID,

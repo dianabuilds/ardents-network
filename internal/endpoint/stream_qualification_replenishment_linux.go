@@ -117,7 +117,7 @@ func (owner *textContext) ensureQualificationTokenReserve(ctx context.Context, r
 		return errors.Join(err, errors.New("qualification token reserve unavailable"))
 	}
 	ready := owner.permission.stockCountFor(profile.Digest, receiver, class)
-	remaining := owner.permission.accepted.Maxima[class-1] - owner.permission.reserved[class-1]
+	remaining := owner.permission.remaining(class)
 	owner.mu.Unlock()
 	missing := min(minimum-ready, int(remaining))
 	if missing <= 0 {
@@ -138,7 +138,7 @@ func (owner *textContext) ensureQualificationIssuerReserve(ctx context.Context, 
 		return errors.Join(err, ctx.Err(), errors.New("qualification issuer reserve unavailable"))
 	}
 	ready := owner.permission.stockCountForDuty(profile.Digest, profile.IssuerNodeID, profile.IssuerDutyGeneration, 1)
-	remaining := owner.permission.accepted.Maxima[0] - owner.permission.reserved[0]
+	remaining := owner.permission.remaining(1)
 	prefixLive := owner.currentTextSourceLocked() != nil
 	owner.mu.Unlock()
 	if ready >= minimum || remaining == 0 {
