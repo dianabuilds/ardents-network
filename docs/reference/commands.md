@@ -48,8 +48,9 @@ journal stream into it, for example:
 Each tab-separated row is occurrence time (UTC), clock origin (event or journal),
 owner, journal process ID, role, Carrier, kind, state, and quoted bounded reason. It preserves input order.
 Old Source events without an occurrence time use the journal receipt time when
-available. Unknown schemas and unrelated journal messages are ignored; malformed
-recognized categories fail without printing their raw content. The projection
+available. Unknown schemas and unrelated journal messages are ignored; corrupt
+input records and malformed recognized categories fail without printing their
+raw content. The projection
 omits Network IDs, destinations, addresses, permission commitments, tokens,
 document bytes, and all other fields. It is a local navigation view of existing
 events, not an authority source, telemetry export, or complete Route trace.

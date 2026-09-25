@@ -30,6 +30,7 @@ func TestDiagnosticTimelineCombinesRuntimeOwnersWithoutPrivateFields(t *testing.
 			"schema": "ardents-source-event-v1", "kind": "source-ready",
 		}), "__REALTIME_TIMESTAMP": fmt.Sprint(at.Add(2 * time.Second).UnixMicro()), "_PID": "4343"},
 		map[string]any{"schema": "unknown", "kind": "secret", "content": "private-document"},
+		map[string]any{"MESSAGE": "unrelated journal text", "__REALTIME_TIMESTAMP": fmt.Sprint(at.UnixMicro())},
 	} {
 		input.WriteString(diagnosticTestJSON(t, value))
 		input.WriteByte('\n')
@@ -63,6 +64,15 @@ func TestDiagnosticTimelineRejectsMalformedKnownCategoryWithoutEcho(t *testing.T
 	err := Project(t.Context(), io.NopCloser(strings.NewReader(input+"\n")), &output)
 	if err == nil || output.Len() != 0 || strings.Contains(err.Error(), "private-token") {
 		t.Fatalf("malformed known event: output=%q err=%v", output.String(), err)
+	}
+}
+
+func TestDiagnosticTimelineRejectsCorruptInputWithoutEcho(t *testing.T) {
+	input := `{"schema":"ardents-node-event-v1","kind":"lifecycle","private":"sensitive` + "\n"
+	var output bytes.Buffer
+	err := Project(t.Context(), io.NopCloser(strings.NewReader(input)), &output)
+	if err == nil || output.Len() != 0 || strings.Contains(err.Error(), "sensitive") {
+		t.Fatalf("corrupt diagnostic input: output=%q err=%v", output.String(), err)
 	}
 }
 

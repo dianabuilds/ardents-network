@@ -43,8 +43,8 @@ func Project(ctx context.Context, input io.ReadCloser, output io.Writer) error {
 
 func diagnosticTimelineRow(raw []byte) (string, bool, error) {
 	var fields map[string]json.RawMessage
-	if json.Unmarshal(raw, &fields) != nil {
-		return "", false, nil
+	if json.Unmarshal(raw, &fields) != nil || fields == nil {
+		return "", false, errors.New("runtime diagnostic input has an invalid JSON record")
 	}
 	journalAt := time.Time{}
 	pid := "-"
