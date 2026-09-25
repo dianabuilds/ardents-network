@@ -34,15 +34,10 @@ func (owner *textContext) nextTextIntroductionDelivery(ctx context.Context) (*ro
 		var ready, priorReady, done, priorDone <-chan struct{}
 		live := 0
 		for i, registered := range []*textIntroductionRegistration{current, previous} {
-			if registered == nil {
+			if registered == nil || registered.ended() {
 				continue
 			}
-			select {
-			case <-registered.channel.Done():
-				continue
-			default:
-			}
-			delivery, err := registered.channel.TakeDelivery(ctx)
+			delivery, err := registered.takeDelivery(ctx)
 			if err != nil {
 				continue
 			}
@@ -51,9 +46,9 @@ func (owner *textContext) nextTextIntroductionDelivery(ctx context.Context) (*ro
 			}
 			live++
 			if i == 0 {
-				ready, done = registered.channel.DeliveryAvailable(), registered.channel.Done()
+				ready, done = registered.deliverySignals()
 			} else {
-				priorReady, priorDone = registered.channel.DeliveryAvailable(), registered.channel.Done()
+				priorReady, priorDone = registered.deliverySignals()
 			}
 		}
 		if live == 0 {

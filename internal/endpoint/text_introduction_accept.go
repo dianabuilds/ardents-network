@@ -11,7 +11,6 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
 	introductioncapsule "github.com/dianabuilds/ardents-network/internal/route/capsule"
 	nativeconnection "github.com/dianabuilds/ardents-network/internal/service/connection"
-	"github.com/dianabuilds/ardents-network/internal/service/reachability"
 )
 
 func (owner *textContext) acceptDispatchedTextIntroduction(ctx context.Context, job *textJobIdentity,
@@ -53,16 +52,14 @@ func (owner *textContext) acceptTextIntroductionGeneration(ctx context.Context, 
 	registered := owner.publication.selectLocked(now, capsule.Slot, capsule.Revision)
 	if err != nil || !owner.liveTextServiceJobLocked(job, broker.Administration) || registered == nil || owner.publication.withdrawalInProgressLocked() ||
 		endpoint.textPublisherOwner != owner || !endpoint.textPublicationLive || endpoint.publisherBinding == nil || endpoint.publications == nil ||
-		!registered.published || registered.recipient == nil {
+		!registered.acceptingNowLocked() {
 		return nil, errors.New("text Introduction registration authority unavailable")
 	}
-	if capsule.Slot != registered.request.Slot || capsule.Revision != registered.request.Revision || !now.Before(capsule.Expiry) || capsule.Expiry.After(registered.request.Expiry) {
+	if !registered.matchesRequest(capsule.Slot, capsule.Revision) || !now.Before(capsule.Expiry) || capsule.Expiry.After(registered.expiry()) {
 		return nil, &textIntroductionRefusal{cause: errors.New("text Introduction registration input mismatch")}
 	}
-	select {
-	case <-registered.channel.Done():
-		return nil, fmt.Errorf("text Introduction registration ended: %s", registered.channel.EndReason())
-	default:
+	if registered.ended() {
+		return nil, fmt.Errorf("text Introduction registration ended: %s", registered.endReason())
 	}
 	if !openingReserved {
 		if err := owner.introductionAdmission.reserveOpeningLocked(capsule.DeliveryNonce, now); err != nil {
@@ -80,13 +77,13 @@ func (owner *textContext) acceptTextIntroductionGeneration(ctx context.Context, 
 		}
 	}()
 	current := lease.Current()
-	verified, err := reachability.VerifyPrivate(registered.descriptor, current.Credential.Target, profile.NetworkID, profile.Digest, now)
+	verified, err := registered.verifyDescriptorLocked(current.Credential.Target, profile.NetworkID, profile.Digest, now)
 	if err != nil || verified.Current.Digest != current.Digest || verified.Current.Credential != current.Credential ||
 		verified.Descriptor.Private.Slot != capsule.Slot || verified.Descriptor.Private.Revision != capsule.Revision ||
-		verified.Descriptor.Private.RecipientKey != registered.recipient.Public(now) {
+		verified.Descriptor.Private.RecipientKey != registered.recipientPublicLocked(now) {
 		return nil, errors.New("text Introduction private publication changed")
 	}
-	plaintext, digest, err := introductioncapsule.Open(capsule, profile.Digest, registered.recipient, now)
+	plaintext, digest, err := registered.openCapsuleLocked(capsule, profile.Digest, now)
 	if err != nil {
 		return nil, &textIntroductionRefusal{cause: err}
 	}
@@ -114,16 +111,14 @@ func (owner *textContext) acceptTextIntroductionGeneration(ctx context.Context, 
 		}
 		binding = original
 	}
-	select {
-	case <-registered.channel.Done():
-		return nil, fmt.Errorf("text Introduction registration ended during opening: %s", registered.channel.EndReason())
-	default:
+	if registered.ended() {
+		return nil, fmt.Errorf("text Introduction registration ended during opening: %s", registered.endReason())
 	}
 	at := endpoint.clock().UTC()
 	retained := owner.publication.retainedLocked(registered, at)
-	if ctx.Err() != nil || !owner.liveTextServiceJobLocked(job, broker.Administration) || !at.Before(capsule.Expiry) || !retained || registered.recipient.Public(at) == [32]byte{} {
+	if ctx.Err() != nil || !owner.liveTextServiceJobLocked(job, broker.Administration) || !at.Before(capsule.Expiry) || !retained || registered.recipientPublicLocked(at) == [32]byte{} {
 		return nil, errors.Join(ctx.Err(), errors.New("text Introduction authority ended during binding"))
 	}
-	owner.introductionAdmission.retainAcceptedLocked(capsule.DeliveryNonce, registered.request.Expiry)
+	owner.introductionAdmission.retainAcceptedLocked(capsule.DeliveryNonce, registered.expiry())
 	return &textIntroductionAttempt{binding: binding, plaintext: plaintext, digest: digest}, nil
 }

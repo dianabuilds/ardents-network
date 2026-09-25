@@ -263,20 +263,17 @@ func (owner *textContext) inspectTextIntroductionDelivery(ctx context.Context, j
 	if err != nil || ctx.Err() != nil || !owner.liveTextServiceJobLocked(job, broker.Administration) ||
 		registered == nil || owner.publication.withdrawalInProgressLocked() || endpoint.textPublisherOwner != owner ||
 		!endpoint.textPublicationLive || endpoint.publisherBinding == nil || endpoint.publications == nil ||
-		!registered.published || registered.recipient == nil ||
-		capsule.Slot != registered.request.Slot || capsule.Revision != registered.request.Revision ||
-		!now.Add(textIntroductionExpiryReserve).Before(capsule.Expiry) || capsule.Expiry.After(registered.request.Expiry) {
+		!registered.acceptingNowLocked() || !registered.matchesRequest(capsule.Slot, capsule.Revision) ||
+		!now.Add(textIntroductionExpiryReserve).Before(capsule.Expiry) || capsule.Expiry.After(registered.expiry()) {
 		return textIntroductionDeliveryKey{}, capsule.Expiry, &textIntroductionRefusal{cause: errors.New("text Introduction dispatch input unavailable")}
 	}
-	select {
-	case <-registered.channel.Done():
-		return textIntroductionDeliveryKey{}, capsule.Expiry, fmt.Errorf("text Introduction registration ended: %s", registered.channel.EndReason())
-	default:
+	if registered.ended() {
+		return textIntroductionDeliveryKey{}, capsule.Expiry, fmt.Errorf("text Introduction registration ended: %s", registered.endReason())
 	}
 	if err := owner.introductionAdmission.reserveOpeningLocked(capsule.DeliveryNonce, now); err != nil {
 		return textIntroductionDeliveryKey{}, capsule.Expiry, &textIntroductionRefusal{cause: err}
 	}
-	plaintext, _, err := introductioncapsule.Open(capsule, profile.Digest, registered.recipient, now)
+	plaintext, _, err := registered.openCapsuleLocked(capsule, profile.Digest, now)
 	if err != nil {
 		return textIntroductionDeliveryKey{}, capsule.Expiry, &textIntroductionRefusal{cause: err}
 	}

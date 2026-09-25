@@ -67,11 +67,9 @@ func (owner *textContext) publishTextDescriptor(ctx context.Context) (verified r
 		owner.mu.Unlock()
 		return verified, fmt.Errorf("text publication owner unavailable: %s", reason)
 	}
-	select {
-	case <-registered.channel.Done():
+	if registered.ended() {
 		owner.mu.Unlock()
 		return verified, errors.New("text registration ended")
-	default:
 	}
 	attempt, cancel := context.WithCancel(owner.lease.Context())
 	flight := &textResolutionFlight{context: attempt, cancel: cancel, done: make(chan struct{}), source: owner.currentTextSourceLocked()}
@@ -101,32 +99,29 @@ func (owner *textContext) publishTextDescriptor(ctx context.Context) (verified r
 		owner.mu.Unlock()
 		return verified, errors.New("text publication authority changed")
 	}
-	select {
-	case <-registered.channel.Done():
+	if registered.ended() {
 		owner.mu.Unlock()
 		return verified, errors.New("text registration ended")
-	default:
 	}
-	if len(registered.descriptor) == 0 {
+	if !registered.hasPrivateProofLocked() {
 		at = at.UTC().Truncate(time.Second)
-		recipient, err := binding.NewPrivateRecipient(registered.request.Revision, at, registered.request.Expiry)
+		revision, expiry := registered.registrationWindow()
+		recipient, err := binding.NewPrivateRecipient(revision, at, expiry)
 		if err != nil {
 			owner.mu.Unlock()
 			return verified, err
 		}
 		raw, _, err := reachability.IssuePrivate(reachability.PrivateIssueInput{Current: current, ProfileDigest: profile.Digest, InstanceSigner: binding,
-			Introduction: reachability.PrivateIntroduction{Revision: registered.request.Revision, NodeID: registered.node,
-				Slot: registered.request.Slot, RecipientKey: recipient.Public(at), NotBefore: at, NotAfter: registered.request.Expiry}})
+			Introduction: registered.privateIntroduction(recipient.Public(at), at)})
 		if err != nil {
 			owner.mu.Unlock()
 			return verified, errors.Join(err, recipient.Close())
 		}
-		registered.recipient, registered.descriptor = recipient, raw
 		joined := make(chan struct{})
-		registered.recipientDone = joined
-		go func() { defer close(joined); <-registered.channel.Done(); _ = recipient.Close() }()
+		registered.attachPrivateProofLocked(recipient, raw, joined)
+		go func() { defer close(joined); <-registered.doneSignal(); _ = recipient.Close() }()
 	}
-	raw := append([]byte(nil), registered.descriptor...)
+	raw := registered.copyDescriptorLocked()
 	owner.mu.Unlock()
 	// The exact context retains exclusive Instance ownership while the flight
 	// waits on the network. Legacy start/withdraw cannot acquire this owner;
@@ -164,17 +159,15 @@ func (owner *textContext) publishTextDescriptor(ctx context.Context) (verified r
 	live, at, err = owner.textPermissionProfileLocked()
 	if err != nil || live != profile || owner.publication.publicationTargetLocked() != registered || owner.publication.drainingLocked() || !flight.source.currentLocked(owner) ||
 		endpoint.textPublisherOwner != owner || endpoint.publisherBinding != binding || !endpoint.textPublicationLive || endpoint.publisherSession != nil ||
-		!owner.liveLocked(endpoint, broker.Administration) || attempt.Err() != nil || ctx.Err() != nil || registered.recipient.Public(at) == [32]byte{} {
+		!owner.liveLocked(endpoint, broker.Administration) || attempt.Err() != nil || ctx.Err() != nil || registered.recipientPublicLocked(at) == [32]byte{} {
 		return reachability.Verified{}, errors.New("text Descriptor acknowledgement outlived its owner")
 	}
-	select {
-	case <-registered.channel.Done():
+	if registered.ended() {
 		return reachability.Verified{}, errors.New("text registration ended before acknowledgement")
-	default:
 	}
 	verified, err = reachability.VerifyPrivate(raw, current.Credential.Target, profile.NetworkID, profile.Digest, at)
 	if err == nil {
-		wasPublished := registered.published
+		wasPublished := registered.publishedLocked()
 		if err := owner.publication.commitAcknowledgedLocked(ctx, registered, at); err != nil {
 			return reachability.Verified{}, err
 		}
@@ -217,12 +210,10 @@ func (owner *textContext) acquireTextPublication(ctx context.Context, registered
 		if ctx.Err() != nil || owner.publication.publicationTargetLocked() != registered || owner.publication.drainingLocked() || !owner.liveLocked(endpoint, broker.Administration) {
 			return nil, errors.New("text registration owner changed")
 		}
-		select {
-		case <-registered.channel.Done():
+		if registered.ended() {
 			return nil, errors.New("text registration ended")
-		default:
 		}
-		receipt := registered.channel.Receipt()
+		receipt := registered.ackReceipt()
 		if receipt == [32]byte{} {
 			return nil, errors.New("text registration has no acknowledgement")
 		}

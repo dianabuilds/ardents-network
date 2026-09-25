@@ -176,9 +176,7 @@ func textRefreshFailureStage(cause error) string {
 // Start once after a verified publication acknowledgement. Exact retries never
 // move the original refresh time or renew the signed registration lifetime.
 func (owner *textContext) startTextRefreshLocked(registered *textIntroductionRegistration) {
-	if registered.refreshAt.IsZero() {
-		registered.refreshAt = registered.createdAt.Add(300 * time.Second)
-	}
+	registered.scheduleRefreshLocked()
 	owner.refresh.start(owner.lease.Context(), owner.runTextRefresh)
 }
 func (owner *textContext) signalTextRegistrationsLocked() {
@@ -196,7 +194,7 @@ func (owner *textContext) runTextRefresh(flight *textPublicationRefresh) {
 		previous, until := owner.publication.previousLocked()
 		var refreshAt, expiry time.Time
 		if registered != nil {
-			refreshAt, expiry = registered.refreshAt, registered.request.Expiry
+			refreshAt, expiry = registered.refreshScheduleLocked()
 		}
 		now := owner.endpoint.clock().UTC()
 		live := owner.liveLocked(owner.endpoint, broker.Administration) && owner.refresh.current() == flight && registered != nil
@@ -230,10 +228,10 @@ func (owner *textContext) runTextRefresh(flight *textPublicationRefresh) {
 					case <-flight.context.Done():
 						timer.Stop()
 						return
-					case <-registered.channel.Done():
+					case <-registered.doneSignal():
 						timer.Stop()
 						if flight.context.Err() == nil {
-							owner.failTextRefresh(flight, "registration-ended-"+string(registered.channel.EndReason()), errors.New("text publication registration ended"))
+							owner.failTextRefresh(flight, registered.endedStage(), errors.New("text publication registration ended"))
 						}
 						return
 					case <-flight.wake:
@@ -261,10 +259,10 @@ func (owner *textContext) runTextRefresh(flight *textPublicationRefresh) {
 		case <-flight.context.Done():
 			timer.Stop()
 			return
-		case <-registered.channel.Done():
+		case <-registered.doneSignal():
 			timer.Stop()
 			if flight.context.Err() == nil {
-				owner.failTextRefresh(flight, "registration-ended-"+string(registered.channel.EndReason()), errors.New("text publication registration ended"))
+				owner.failTextRefresh(flight, registered.endedStage(), errors.New("text publication registration ended"))
 			}
 			return
 		case <-flight.wake:
@@ -283,7 +281,7 @@ func (owner *textContext) rotateTextPublication(flight *textPublicationRefresh, 
 	_, now, err := owner.textPermissionProfileLocked()
 	retained, _ := owner.publication.previousLocked()
 	if err != nil || owner.refresh.current() != flight || owner.publication.currentLocked() != previous || retained != nil ||
-		previous.request.Revision == ^uint64(0) || !owner.liveLocked(owner.endpoint, broker.Administration) {
+		previous.revisionExhausted() || !owner.liveLocked(owner.endpoint, broker.Administration) {
 		owner.mu.Unlock()
 		return textRefreshFailureAt("rotation-authority", errors.New("text publication refresh owner unavailable"))
 	}
@@ -306,7 +304,7 @@ func (owner *textContext) rotateTextPublication(flight *textPublicationRefresh, 
 	if !now.Before(expiry) {
 		return textRefreshFailureAt("rotation-expired", errors.New("text publication refresh expired"))
 	}
-	if _, err := owner.openTextRegistration(flight.context, previous.request.Revision+1, expiry, previous); err != nil {
+	if _, err := owner.openTextRegistration(flight.context, previous.nextRevision(), expiry, previous); err != nil {
 		return textRefreshFailureAt("rotation-registration", err)
 	}
 	_, err = owner.publishTextDescriptor(flight.context)

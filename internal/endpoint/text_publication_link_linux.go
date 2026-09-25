@@ -38,14 +38,12 @@ func (owner *textAdministration) PublishedLink(ctx context.Context) (link string
 	_, now, err := current.textPermissionProfileLocked()
 	registration := current.publication.currentLocked()
 	if err != nil || endpoint.textPublisherOwner != current || !current.liveTextServiceJobLocked(current.job, broker.Administration) ||
-		current.publicationStarting || current.publication.drainingLocked() || registration == nil || !registration.published || registration.refreshAt.IsZero() || !now.Before(registration.request.Expiry) ||
+		current.publicationStarting || current.publication.drainingLocked() || registration == nil || !registration.linkVisibleAtLocked(now) ||
 		endpoint.publications == nil || run.link.Network != endpoint.network || run.link.Target == [32]byte{} || ctx.Err() != nil {
 		return "", errors.New("text publication Link unavailable")
 	}
-	select {
-	case <-registration.channel.Done():
+	if registration.ended() {
 		return "", errors.New("text publication Link unavailable")
-	default:
 	}
 	lease, err := endpoint.publications.AcquireAt(ctx, now)
 	if err != nil {

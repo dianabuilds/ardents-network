@@ -83,12 +83,7 @@ func (lifecycle *textPublicationPairLifecycle) evictEndedTargetLocked() *textInt
 		return nil
 	}
 	current := lifecycle.publicationTargetLocked()
-	if current == nil {
-		return nil
-	}
-	select {
-	case <-current.channel.Done():
-	default:
+	if current == nil || !current.ended() {
 		return nil
 	}
 	lifecycle.removeTargetLocked(current)
@@ -159,7 +154,7 @@ func (lifecycle *textPublicationPairLifecycle) selectLocked(now time.Time, slot 
 	if lifecycle == nil {
 		return nil
 	}
-	if lifecycle.previousRegistration != nil && now.Before(lifecycle.previousUntil) && lifecycle.previousRegistration.request.Slot == slot && lifecycle.previousRegistration.request.Revision == revision {
+	if lifecycle.previousRegistration != nil && now.Before(lifecycle.previousUntil) && lifecycle.previousRegistration.matchesRequest(slot, revision) {
 		return lifecycle.previousRegistration
 	}
 	return lifecycle.registration
@@ -200,7 +195,7 @@ func (lifecycle *textPublicationPairLifecycle) commitAcknowledgedLocked(ctx cont
 	if lifecycle.publicationDraining || lifecycle.publicationTargetLocked() != registered || registered == nil {
 		return errors.New("text publication pair owner changed")
 	}
-	if registered.published {
+	if registered.publishedLocked() {
 		return nil
 	}
 	predecessor := lifecycle.registration
@@ -208,14 +203,11 @@ func (lifecycle *textPublicationPairLifecycle) commitAcknowledgedLocked(ctx cont
 	if predecessor != nil {
 		switchAt := at.UTC().Truncate(time.Second)
 		until = switchAt.Add(60 * time.Second)
-		if predecessor.request.Expiry.Before(until) {
-			until = predecessor.request.Expiry
+		if predecessor.expiry().Before(until) {
+			until = predecessor.expiry()
 		}
 		if switchAt.Before(until) {
-			if predecessor.recipient == nil {
-				return errors.New("text publication predecessor recipient unavailable")
-			}
-			if err := predecessor.recipient.RetainPredecessor(switchAt, until); err != nil {
+			if err := predecessor.retainPredecessorLocked(switchAt, until); err != nil {
 				return err
 			}
 		}
@@ -228,8 +220,7 @@ func (lifecycle *textPublicationPairLifecycle) commitAcknowledgedLocked(ctx cont
 	lifecycle.previousUntil = until
 	lifecycle.registration = registered
 	lifecycle.pendingRegistration = nil
-	registered.publishedAt = at
-	registered.published = true
+	registered.commitPublicationLocked(at)
 	return nil
 }
 
