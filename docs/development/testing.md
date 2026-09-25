@@ -128,6 +128,10 @@ and JOIN roles explicitly; it substitutes accepted State and worker qualificatio
 while starting the actual Node runtimes, Custody allocation, token stock,
 Route forwarding, and role TLS. Its reserved-window variant is used only when
 the child observation process inherits a Permission hour selected by its parent.
+On a failed test, the fixture reports the last 16 bounded state events per
+Node after their cleanup attempts. Periodic resource samples cannot displace
+the transition history; the retained fields are time, kind, state, Carrier,
+and reason, without resource samples or assignment material.
 Receiving Node checks that do not require that client remain on both platforms. Codec
 round trips, private-capsule cryptography and network tests that construct
 Endpoint operations execute with the Linux client. Shared outer-handshake

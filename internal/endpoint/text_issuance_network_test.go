@@ -97,6 +97,23 @@ func startTextRoleNetwork(t *testing.T, fixture textRoleNetworkFixture) (*endpoi
 		addTextDataJoinState(source)
 		count = 16
 	}
+	events := make([]*textNetworkNodeEvents, count)
+	// Node cleanup callbacks run first. A failed test then gets a bounded
+	// chronology for every selected duty, including events after READY.
+	t.Cleanup(func() {
+		if !t.Failed() {
+			return
+		}
+		for index, history := range events {
+			if history == nil {
+				continue
+			}
+			for _, event := range history.snapshot() {
+				t.Logf("Node %d: %s kind=%s state=%s carrier=%s reason=%s", index,
+					event.at.Format(time.RFC3339Nano), event.kind, event.state, event.carrier, event.reason)
+			}
+		}
+	})
 	reservations := make([]func(), count)
 	certificates := make([]tls.Certificate, count)
 	for index := range certificates {
@@ -150,6 +167,8 @@ func startTextRoleNetwork(t *testing.T, fixture textRoleNetworkFixture) (*endpoi
 			t.Fatal(err)
 		}
 		ready := make(chan struct{}, 1)
+		history := &textNetworkNodeEvents{}
+		events[index] = history
 		config := node.Config{HostingRoot: textNetworkHostingRoot(t), NetworkID: snapshot.NetworkID, NodeID: snapshot.NodeID,
 			IdentityKey: certificates[index].PrivateKey.(ed25519.PrivateKey),
 			Current:     func() (node.DutyView, error) { return textNetworkDutyFixture{snapshot: snapshot}, nil },
@@ -166,6 +185,7 @@ func startTextRoleNetwork(t *testing.T, fixture textRoleNetworkFixture) (*endpoi
 			// fail-closed and startup does not wait for this READY-state ticker.
 			LocalRoleStateRoot: root, PollInterval: time.Second, CheckPlacement: func() error { return nil },
 			Emit: func(_ context.Context, event node.Event) error {
+				history.record(event)
 				if event.State == "READY" {
 					select {
 					case ready <- struct{}{}:
