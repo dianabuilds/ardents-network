@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
-	"github.com/dianabuilds/ardents-network/internal/route"
+	introductioncapsule "github.com/dianabuilds/ardents-network/internal/route/capsule"
 	nativeconnection "github.com/dianabuilds/ardents-network/internal/service/connection"
 	"github.com/dianabuilds/ardents-network/internal/service/reachability"
 )
@@ -41,7 +41,7 @@ func (owner *textContext) acceptTextIntroductionGeneration(ctx context.Context, 
 	if owner == nil || ctx == nil || ctx.Err() != nil {
 		return nil, errors.New("text Introduction caller unavailable")
 	}
-	_, capsule, err := route.DecodeClosedIntroductionSubmission(operation)
+	_, capsule, err := introductioncapsule.DecodeSubmission(operation)
 	if err != nil {
 		return nil, &textIntroductionRefusal{cause: err}
 	}
@@ -91,7 +91,7 @@ func (owner *textContext) acceptTextIntroductionGeneration(ctx context.Context, 
 		verified.Descriptor.Private.RecipientKey != registered.recipient.Public(now) {
 		return nil, errors.New("text Introduction private publication changed")
 	}
-	plaintext, digest, err := route.OpenClosedIntroduction(capsule, profile.Digest, registered.recipient, now)
+	plaintext, digest, err := introductioncapsule.Open(capsule, profile.Digest, registered.recipient, now)
 	if err != nil {
 		return nil, &textIntroductionRefusal{cause: err}
 	}

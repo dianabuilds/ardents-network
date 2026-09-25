@@ -7,5 +7,7 @@
 // Endpoint-transit admission, credential-relay grammar, native listeners, and
 // reciprocal decoding remain only with their actual consumers. The old
 // generation-2 Node-leg dial is absent. Route never chooses a fallback and has
-// no H3 reader or peer runtime.
+// no H3 reader or peer runtime. The child capsule package owns the fixed
+// Introduction submission and recipient HPKE codec; Route carries its opaque
+// operation and does not interpret its private plaintext.
 package route

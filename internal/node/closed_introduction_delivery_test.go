@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/route"
+	introductioncapsule "github.com/dianabuilds/ardents-network/internal/route/capsule"
 )
 
 // State acceptance and pending acknowledgements are explicit seams. This
@@ -27,7 +28,7 @@ func TestClosedIntroductionDeliverySerializesIDsAndBoundsPending(t *testing.T) {
 		return nil, errors.New("State intentionally unavailable at final acknowledgement")
 	}},
 		now: func() time.Time { return time.Unix(clock.Load(), 0) }}, slots: map[[32]byte]*closedIntroductionSlot{slot.request.Slot: slot}}
-	capsule := route.ClosedIntroductionCapsule{Slot: slot.request.Slot, Revision: 1, Expiry: now.Add(10 * time.Second), DeliveryNonce: [32]byte{2}, Encapsulation: [32]byte{3}, Ciphertext: bytes.Repeat([]byte{4}, 360)}
+	capsule := introductioncapsule.Capsule{Slot: slot.request.Slot, Revision: 1, Expiry: now.Add(10 * time.Second), DeliveryNonce: [32]byte{2}, Encapsulation: [32]byte{3}, Ciphertext: bytes.Repeat([]byte{4}, 360)}
 	slot.writer <- struct{}{}
 	released := false
 	defer func() {
@@ -90,7 +91,7 @@ func TestClosedIntroductionDeliverySerializesIDsAndBoundsPending(t *testing.T) {
 				t.Fatal("concurrent delivery IDs arrived out of order")
 			}
 			last = frame.Lane
-			nonce, received, err := route.DecodeClosedIntroductionSubmission(frame.Body)
+			nonce, received, err := introductioncapsule.DecodeSubmission(frame.Body)
 			if err != nil {
 				t.Fatal(err)
 			}

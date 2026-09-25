@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/route"
+	introductioncapsule "github.com/dianabuilds/ardents-network/internal/route/capsule"
 )
 
 func TestTextPublisherAcceptsIntroductionAfterSourceRetirement(t *testing.T) {
@@ -34,7 +35,7 @@ func TestTextPublisherAcceptsIntroductionAfterSourceRetirement(t *testing.T) {
 			}
 			// A validly sealed but wrong Target/Rendezvous must still refuse before
 			// Source or Responder work, including when the prior Source is retired.
-			_, capsule, err := route.DecodeClosedIntroductionSubmission(prepared.operation)
+			_, capsule, err := introductioncapsule.DecodeSubmission(prepared.operation)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -45,12 +46,12 @@ func TestTextPublisherAcceptsIntroductionAfterSourceRetirement(t *testing.T) {
 				} else {
 					wrong.Target = fixtureID(232)
 				}
-				envelope := route.ClosedIntroductionCapsule{Slot: capsule.Slot, Revision: capsule.Revision, Expiry: capsule.Expiry, DeliveryNonce: fixtureID(byte(233 + index))}
-				sealed, _, err := route.SealClosedIntroduction(envelope, registration.recipient.Public(time.Now()), wrong)
+				envelope := introductioncapsule.Capsule{Slot: capsule.Slot, Revision: capsule.Revision, Expiry: capsule.Expiry, DeliveryNonce: fixtureID(byte(233 + index))}
+				sealed, _, err := introductioncapsule.Seal(envelope, registration.recipient.Public(time.Now()), wrong)
 				if err != nil {
 					t.Fatal(err)
 				}
-				operation, err := route.EncodeClosedIntroductionSubmission(fixtureID(byte(235+index)), sealed)
+				operation, err := introductioncapsule.EncodeSubmission(fixtureID(byte(235+index)), sealed)
 				if err != nil {
 					t.Fatal(err)
 				}

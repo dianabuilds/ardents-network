@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/route"
+	introductioncapsule "github.com/dianabuilds/ardents-network/internal/route/capsule"
 )
 
 // A client can observe the failed Carrier before the Publisher's native
@@ -210,7 +211,7 @@ func TestTextIntroductionOrphanRefusalOutlivesCanceledWaiter(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer clear(attempt.operation)
-	request, capsule, err := route.DecodeClosedIntroductionSubmission(attempt.operation)
+	request, capsule, err := introductioncapsule.DecodeSubmission(attempt.operation)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -222,11 +223,11 @@ func TestTextIntroductionOrphanRefusalOutlivesCanceledWaiter(t *testing.T) {
 	clear(capsule.Ciphertext)
 	capsule.Ciphertext = nil
 	capsule.Encapsulation = [32]byte{}
-	capsule, _, err = route.SealClosedIntroduction(capsule, recipient, facts)
+	capsule, _, err = introductioncapsule.Seal(capsule, recipient, facts)
 	if err != nil {
 		t.Fatal(err)
 	}
-	attempt.operation, err = route.EncodeClosedIntroductionSubmission(request, capsule)
+	attempt.operation, err = introductioncapsule.EncodeSubmission(request, capsule)
 	clear(capsule.Ciphertext)
 	if err != nil {
 		t.Fatal(err)

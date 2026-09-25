@@ -1,4 +1,4 @@
-package route
+package capsule
 
 import (
 	"time"
@@ -7,9 +7,9 @@ import (
 const closedIntroductionPlaintextSize = 344
 const closedIntroductionCiphertextSize = closedIntroductionPlaintextSize + 16
 
-// ClosedIntroductionPlaintext is recipient-only. These fields are candidate
+// Plaintext is recipient-only. These fields are candidate
 // input, never caller-established authority or permission to dial a Node.
-type ClosedIntroductionPlaintext struct {
+type Plaintext struct {
 	Network, Target, PublicationDigest                           [32]byte
 	Revision                                                     uint64
 	RendezvousNode                                               [32]byte

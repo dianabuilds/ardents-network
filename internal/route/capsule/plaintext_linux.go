@@ -1,6 +1,6 @@
 //go:build linux
 
-package route
+package capsule
 
 import (
 	"encoding/binary"
@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-func encodeClosedIntroductionPlaintext(value ClosedIntroductionPlaintext) ([]byte, error) {
+func encodeClosedIntroductionPlaintext(value Plaintext) ([]byte, error) {
 	if !validClosedIntroductionPlaintext(value) {
 		return nil, errors.New("closed Introduction plaintext invalid")
 	}
@@ -31,8 +31,8 @@ func encodeClosedIntroductionPlaintext(value ClosedIntroductionPlaintext) ([]byt
 	return raw, nil
 }
 
-func decodeClosedIntroductionPlaintext(raw []byte) (ClosedIntroductionPlaintext, error) {
-	var value ClosedIntroductionPlaintext
+func decodeClosedIntroductionPlaintext(raw []byte) (Plaintext, error) {
+	var value Plaintext
 	if len(raw) != closedIntroductionPlaintextSize {
 		return value, errors.New("closed Introduction plaintext length invalid")
 	}
@@ -65,17 +65,17 @@ func decodeClosedIntroductionPlaintext(raw []byte) (ClosedIntroductionPlaintext,
 		seconds = binary.BigEndian.Uint64(raw[offset : offset+8])
 		offset += 8
 		if seconds > 1<<63-1 {
-			return ClosedIntroductionPlaintext{}, errors.New("closed Introduction authority bound overflow")
+			return Plaintext{}, errors.New("closed Introduction authority bound overflow")
 		}
 		*bound = int64(seconds)
 	}
 	if !validClosedIntroductionPlaintext(value) {
-		return ClosedIntroductionPlaintext{}, errors.New("closed Introduction plaintext invalid")
+		return Plaintext{}, errors.New("closed Introduction plaintext invalid")
 	}
 	return value, nil
 }
 
-func validClosedIntroductionPlaintext(value ClosedIntroductionPlaintext) bool {
+func validClosedIntroductionPlaintext(value Plaintext) bool {
 	for _, field := range [][32]byte{value.Network, value.Target, value.PublicationDigest, value.RendezvousNode, value.JoinSecret,
 		value.HandshakeContext, value.ProfileDigest, value.ConnectionNonce, value.InitiatorBinding} {
 		if field == [32]byte{} {

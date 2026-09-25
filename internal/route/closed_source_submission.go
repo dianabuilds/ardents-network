@@ -6,6 +6,8 @@ import (
 	"context"
 	"errors"
 	"time"
+
+	introductioncapsule "github.com/dianabuilds/ardents-network/internal/route/capsule"
 )
 
 func (prefix *ClosedSourcePrefix) submissionPeer() (closedBootstrapPeer, error) {
@@ -29,7 +31,7 @@ func (prefix *ClosedSourcePrefix) SubmitIntroduction(ctx context.Context, presen
 	if ctx == nil || ctx.Err() != nil {
 		return 0, errors.New("capsule submission caller unavailable")
 	}
-	nonce, capsule, err := DecodeClosedIntroductionSubmission(operation)
+	nonce, capsule, err := introductioncapsule.DecodeSubmission(operation)
 	if err != nil {
 		return 0, err
 	}

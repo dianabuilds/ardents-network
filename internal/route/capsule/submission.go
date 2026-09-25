@@ -1,4 +1,4 @@
-package route
+package capsule
 
 import (
 	"encoding/binary"
@@ -6,15 +6,26 @@ import (
 	"time"
 )
 
-// EncodeClosedIntroductionSubmission returns one fixed 4096-byte operation.
+const submissionSize = 4 << 10
+
+func validPadding(raw []byte) bool {
+	for _, value := range raw {
+		if value != 0 {
+			return false
+		}
+	}
+	return true
+}
+
+// EncodeSubmission returns one fixed 4096-byte operation.
 // The request nonce belongs to this channel; the capsule delivery nonce is
 // separately generated and survives only inside the opaque forwarded capsule.
-func EncodeClosedIntroductionSubmission(nonce [32]byte, capsule ClosedIntroductionCapsule) ([]byte, error) {
+func EncodeSubmission(nonce [32]byte, capsule Capsule) ([]byte, error) {
 	if nonce == [32]byte{} || nonce == capsule.DeliveryNonce || !validClosedIntroductionHeader(capsule) ||
 		capsule.Encapsulation == [32]byte{} || len(capsule.Ciphertext) != closedIntroductionCiphertextSize {
 		return nil, errors.New("closed Introduction submission invalid")
 	}
-	raw := make([]byte, closedSmallTerminalOperation)
+	raw := make([]byte, submissionSize)
 	raw[0] = 4
 	copy(raw[1:33], nonce[:])
 	copy(raw[33:113], closedIntroductionHeader(capsule))
@@ -24,11 +35,11 @@ func EncodeClosedIntroductionSubmission(nonce [32]byte, capsule ClosedIntroducti
 	return raw, nil
 }
 
-func DecodeClosedIntroductionSubmission(raw []byte) ([32]byte, ClosedIntroductionCapsule, error) {
+func DecodeSubmission(raw []byte) ([32]byte, Capsule, error) {
 	var nonce [32]byte
-	var capsule ClosedIntroductionCapsule
-	if len(raw) != closedSmallTerminalOperation || raw[0] != 4 || binary.BigEndian.Uint16(raw[145:147]) != closedIntroductionCiphertextSize ||
-		!closedDescriptorPadding(raw[147+closedIntroductionCiphertextSize:]) {
+	var capsule Capsule
+	if len(raw) != submissionSize || raw[0] != 4 || binary.BigEndian.Uint16(raw[145:147]) != closedIntroductionCiphertextSize ||
+		!validPadding(raw[147+closedIntroductionCiphertextSize:]) {
 		return nonce, capsule, errors.New("closed Introduction submission framing invalid")
 	}
 	copy(nonce[:], raw[1:33])
@@ -42,13 +53,13 @@ func DecodeClosedIntroductionSubmission(raw []byte) ([32]byte, ClosedIntroductio
 	copy(capsule.DeliveryNonce[:], raw[81:113])
 	copy(capsule.Encapsulation[:], raw[113:145])
 	if !validClosedIntroductionHeader(capsule) || capsule.Encapsulation == [32]byte{} || nonce == [32]byte{} || nonce == capsule.DeliveryNonce {
-		return [32]byte{}, ClosedIntroductionCapsule{}, errors.New("closed Introduction submission binding invalid")
+		return [32]byte{}, Capsule{}, errors.New("closed Introduction submission binding invalid")
 	}
 	capsule.Ciphertext = append([]byte(nil), raw[147:147+closedIntroductionCiphertextSize]...)
 	return nonce, capsule, nil
 }
 
-func closedIntroductionHeader(capsule ClosedIntroductionCapsule) []byte {
+func closedIntroductionHeader(capsule Capsule) []byte {
 	raw := make([]byte, 0, 80)
 	raw = append(raw, capsule.Slot[:]...)
 	raw = binary.BigEndian.AppendUint64(raw, capsule.Revision)

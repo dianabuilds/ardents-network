@@ -1,6 +1,6 @@
 //go:build linux
 
-package route
+package capsule
 
 import (
 	"bytes"
@@ -32,7 +32,7 @@ func TestClosedIntroductionCapsuleCanonicalBytesAndAuthenticatedHeader(t *testin
 		}
 		return field
 	}
-	plaintext := ClosedIntroductionPlaintext{Network: repeated(1), Target: repeated(2), PublicationDigest: repeated(3), Revision: 1,
+	plaintext := Plaintext{Network: repeated(1), Target: repeated(2), PublicationDigest: repeated(3), Revision: 1,
 		RendezvousNode: repeated(4), RendezvousDutyGeneration: 2, JoinSecret: repeated(5), HandshakeContext: repeated(6), ProfileDigest: repeated(7), ConnectionNonce: repeated(8),
 		AttachmentGeneration: 1, Deadline: at.Add(time.Second), InitiatorBinding: repeated(9), WorkSafetyNotAfter: 2_100_000_000, WorkSafetyMaximum: 2_200_000_000, NoNewRecoveryAfter: 2_000_000_000}
 	raw, err := encodeClosedIntroductionPlaintext(plaintext)
@@ -64,12 +64,12 @@ func TestClosedIntroductionCapsuleCanonicalBytesAndAuthenticatedHeader(t *testin
 		t.Fatal(err)
 	}
 	recipient := closedCapsuleTestRecipient{private: private}
-	envelope := ClosedIntroductionCapsule{Slot: repeated(10), Revision: 1, Expiry: plaintext.Deadline, DeliveryNonce: repeated(11)}
-	sealed, digest, err := SealClosedIntroduction(envelope, [32]byte(key.PublicKey().Bytes()), plaintext)
+	envelope := Capsule{Slot: repeated(10), Revision: 1, Expiry: plaintext.Deadline, DeliveryNonce: repeated(11)}
+	sealed, digest, err := Seal(envelope, [32]byte(key.PublicKey().Bytes()), plaintext)
 	if err != nil {
 		t.Fatal(err)
 	}
-	operation, err := EncodeClosedIntroductionSubmission(repeated(12), sealed)
+	operation, err := EncodeSubmission(repeated(12), sealed)
 	if err != nil || len(operation) != 4096 {
 		t.Fatalf("operation: %v", err)
 	}
@@ -79,11 +79,11 @@ func TestClosedIntroductionCapsuleCanonicalBytesAndAuthenticatedHeader(t *testin
 		!bytes.Equal(operation[507:], make([]byte, 3589)) {
 		t.Fatal("outer capsule framing changed")
 	}
-	nonce, decoded, err := DecodeClosedIntroductionSubmission(operation)
+	nonce, decoded, err := DecodeSubmission(operation)
 	if err != nil || nonce != repeated(12) {
 		t.Fatalf("submission decode: %v", err)
 	}
-	opened, openedDigest, err := OpenClosedIntroduction(decoded, plaintext.ProfileDigest, recipient, at)
+	opened, openedDigest, err := Open(decoded, plaintext.ProfileDigest, recipient, at)
 	if err != nil || opened != plaintext || openedDigest != digest || digest != sha256.Sum256(raw) {
 		t.Fatalf("HPKE: %v", err)
 	}
@@ -100,28 +100,28 @@ func TestClosedIntroductionCapsuleCanonicalBytesAndAuthenticatedHeader(t *testin
 	}
 	for _, mutation := range []struct {
 		name   string
-		change func(*ClosedIntroductionCapsule)
+		change func(*Capsule)
 	}{
-		{"slot", func(v *ClosedIntroductionCapsule) { v.Slot[0] ^= 1 }},
-		{"revision", func(v *ClosedIntroductionCapsule) { v.Revision++ }},
-		{"expiry", func(v *ClosedIntroductionCapsule) { v.Expiry = v.Expiry.Add(time.Second) }},
-		{"delivery nonce", func(v *ClosedIntroductionCapsule) { v.DeliveryNonce[0] ^= 1 }},
-		{"encapsulation", func(v *ClosedIntroductionCapsule) { v.Encapsulation[0] ^= 1 }},
-		{"ciphertext", func(v *ClosedIntroductionCapsule) { v.Ciphertext[0] ^= 1 }},
+		{"slot", func(v *Capsule) { v.Slot[0] ^= 1 }},
+		{"revision", func(v *Capsule) { v.Revision++ }},
+		{"expiry", func(v *Capsule) { v.Expiry = v.Expiry.Add(time.Second) }},
+		{"delivery nonce", func(v *Capsule) { v.DeliveryNonce[0] ^= 1 }},
+		{"encapsulation", func(v *Capsule) { v.Encapsulation[0] ^= 1 }},
+		{"ciphertext", func(v *Capsule) { v.Ciphertext[0] ^= 1 }},
 	} {
 		t.Run(mutation.name, func(t *testing.T) {
 			changed := sealed
 			changed.Ciphertext = append([]byte(nil), sealed.Ciphertext...)
 			mutation.change(&changed)
-			if _, _, err := OpenClosedIntroduction(changed, plaintext.ProfileDigest, recipient, at); err == nil {
+			if _, _, err := Open(changed, plaintext.ProfileDigest, recipient, at); err == nil {
 				t.Fatal("changed authenticated envelope accepted")
 			}
 		})
 	}
-	if _, _, err := OpenClosedIntroduction(sealed, repeated(13), recipient, at); err == nil {
+	if _, _, err := Open(sealed, repeated(13), recipient, at); err == nil {
 		t.Fatal("foreign profile opened capsule")
 	}
-	if _, _, err := OpenClosedIntroduction(sealed, plaintext.ProfileDigest, recipient, sealed.Expiry); err == nil {
+	if _, _, err := Open(sealed, plaintext.ProfileDigest, recipient, sealed.Expiry); err == nil {
 		t.Fatal("expired capsule opened")
 	}
 	for _, offset := range []int{0, 1, 145, 507, 4095} {
@@ -131,11 +131,11 @@ func TestClosedIntroductionCapsuleCanonicalBytesAndAuthenticatedHeader(t *testin
 		} else {
 			changed[offset] ^= 1
 		}
-		if _, _, err := DecodeClosedIntroductionSubmission(changed); err == nil {
+		if _, _, err := DecodeSubmission(changed); err == nil {
 			t.Fatalf("invalid canonical field/padding at%d accepted", offset)
 		}
 	}
-	if _, _, err := DecodeClosedIntroductionSubmission(append(operation, operation...)); err == nil {
+	if _, _, err := DecodeSubmission(append(operation, operation...)); err == nil {
 		t.Fatal("concatenated operations accepted")
 	}
 	for _, offset := range []int{280, 320, 328, 336} {

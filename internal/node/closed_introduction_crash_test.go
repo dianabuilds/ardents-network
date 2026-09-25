@@ -18,6 +18,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/route"
+	introductioncapsule "github.com/dianabuilds/ardents-network/internal/route/capsule"
 )
 
 // Only fixture credentials enter a parent-owned private temporary directory.
@@ -180,7 +181,7 @@ func runIntroductionCrashClient(t *testing.T, path string) {
 		if frame.Kind != 10 || frame.Lane == 0 || frame.Lane%2 != 0 || pending != 0 {
 			t.Fatal("unexpected delivery frame")
 		}
-		nonce, capsule, err := route.DecodeClosedIntroductionSubmission(frame.Body)
+		nonce, capsule, err := introductioncapsule.DecodeSubmission(frame.Body)
 		if err != nil || capsule.Slot != input.Request.Slot {
 			t.Fatal("unexpected delivery capsule")
 		}
@@ -211,8 +212,8 @@ func submitIntroductionCrashFixture(t *testing.T, fixture *resolutionNetworkFixt
 		t.Fatal(err)
 	}
 	nonce := [32]byte{byte(130 + index)}
-	capsule := route.ClosedIntroductionCapsule{Slot: request.Slot, Revision: request.Revision, Expiry: end, DeliveryNonce: [32]byte{byte(140 + index)}, Encapsulation: [32]byte{131}, Ciphertext: make([]byte, 360)}
-	raw, err := route.EncodeClosedIntroductionSubmission(nonce, capsule)
+	capsule := introductioncapsule.Capsule{Slot: request.Slot, Revision: request.Revision, Expiry: end, DeliveryNonce: [32]byte{byte(140 + index)}, Encapsulation: [32]byte{131}, Ciphertext: make([]byte, 360)}
+	raw, err := introductioncapsule.EncodeSubmission(nonce, capsule)
 	if err != nil {
 		t.Fatal(err)
 	}

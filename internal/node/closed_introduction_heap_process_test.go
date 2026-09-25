@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/route"
+	introductioncapsule "github.com/dianabuilds/ardents-network/internal/route/capsule"
 )
 
 type introductionHeapProcess struct {
@@ -174,7 +175,7 @@ func TestClosedIntroductionProcessHeapObservation(t *testing.T) {
 				t.Fatal("missing actual pending capsule")
 			}
 			process.dump("pending")
-			nonce, _, err := route.DecodeClosedIntroductionSubmission(frame.Body)
+			nonce, _, err := introductioncapsule.DecodeSubmission(frame.Body)
 			if err != nil {
 				t.Fatal(err)
 			}

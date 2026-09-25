@@ -9,6 +9,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	introductioncapsule "github.com/dianabuilds/ardents-network/internal/route/capsule"
 )
 
 type introductionStalledWrite struct {
@@ -66,7 +68,7 @@ func TestClosedIntroductionDeliveryRejectsForeignReusedAndOverBudgetChildren(t *
 	}
 	operation := func(slot [32]byte, revision uint64, end time.Time) []byte {
 		t.Helper()
-		body, err := EncodeClosedIntroductionSubmission([32]byte{3}, ClosedIntroductionCapsule{Slot: slot, Revision: revision,
+		body, err := introductioncapsule.EncodeSubmission([32]byte{3}, introductioncapsule.Capsule{Slot: slot, Revision: revision,
 			Expiry: end, DeliveryNonce: [32]byte{2}, Encapsulation: [32]byte{4}, Ciphertext: make([]byte, 360)})
 		if err != nil {
 			t.Fatal(err)
@@ -124,7 +126,7 @@ func TestClosedIntroductionRegistrationBudgetAdmitsRetainedPublisherSet(t *testi
 	owner.used = ClosedIntroductionRegistrationByteLimit - 256*closedIntroductionDeliveryCost
 	end := time.Now().UTC().Add(8 * time.Second).Truncate(time.Second)
 	operation := func() []byte {
-		body, err := EncodeClosedIntroductionSubmission([32]byte{3}, ClosedIntroductionCapsule{Slot: owner.request.Slot, Revision: 1,
+		body, err := introductioncapsule.EncodeSubmission([32]byte{3}, introductioncapsule.Capsule{Slot: owner.request.Slot, Revision: 1,
 			Expiry: end, DeliveryNonce: [32]byte{2}, Encapsulation: [32]byte{4}, Ciphertext: make([]byte, 360)})
 		if err != nil {
 			t.Fatal(err)

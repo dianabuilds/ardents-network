@@ -6,6 +6,8 @@ import (
 	"context"
 	"errors"
 	"time"
+
+	introductioncapsule "github.com/dianabuilds/ardents-network/internal/route/capsule"
 )
 
 const closedIntroductionDeliveryCost = uint64(16 + 4096 + 16 + 16384 + 16 + 1)
@@ -171,7 +173,7 @@ func (owner *ClosedIntroductionRegistration) receiveDelivery(frame ClosedLaneFra
 		owner.withdraw != [32]byte{} || len(owner.pending) >= 16 || owner.used+closedIntroductionDeliveryCost > ClosedIntroductionRegistrationByteLimit {
 		return errors.New("closed Introduction delivery lane or budget invalid")
 	}
-	nonce, capsule, err := DecodeClosedIntroductionSubmission(frame.Body)
+	nonce, capsule, err := introductioncapsule.DecodeSubmission(frame.Body)
 	if err != nil {
 		return err
 	}

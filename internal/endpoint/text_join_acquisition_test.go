@@ -12,6 +12,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
 	"github.com/dianabuilds/ardents-network/internal/application/streamqualification"
 	"github.com/dianabuilds/ardents-network/internal/route"
+	introductioncapsule "github.com/dianabuilds/ardents-network/internal/route/capsule"
 )
 
 type textJoinRetiredAfterRecipient struct {
@@ -139,7 +140,7 @@ func TestTextJoinSourceReplacementBeforeStockIssuanceDoesNotReserveAllocation(t 
 	deadline := time.Now().Add(time.Minute)
 	acquisition := &textJoinRetiredAfterRecipient{node: node.NodeID, generation: node.DutyGeneration,
 		deadline: deadline.Add(time.Minute), current: true}
-	attempt := &textIntroductionAttempt{plaintext: route.ClosedIntroductionPlaintext{
+	attempt := &textIntroductionAttempt{plaintext: introductioncapsule.Plaintext{
 		RendezvousNode: node.NodeID, RendezvousDutyGeneration: node.DutyGeneration, Deadline: deadline,
 	}}
 	owner.mu.Lock()

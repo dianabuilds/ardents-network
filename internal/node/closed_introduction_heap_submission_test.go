@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/route"
+	introductioncapsule "github.com/dianabuilds/ardents-network/internal/route/capsule"
 )
 
 // The parent alone owns recipient key and plaintext canaries. Real HPKE seals
@@ -39,16 +40,16 @@ func startHeapSubmission(t *testing.T, fixture *resolutionNetworkFixture, reques
 	if err != nil {
 		t.Fatal(err)
 	}
-	plaintext := route.ClosedIntroductionPlaintext{Network: fixture.profile.NetworkID, ProfileDigest: fixture.profile.Digest,
+	plaintext := introductioncapsule.Plaintext{Network: fixture.profile.NetworkID, ProfileDigest: fixture.profile.Digest,
 		Target: private[0], JoinSecret: private[1], PublicationDigest: [32]byte{201}, Revision: request.Revision,
 		RendezvousNode: [32]byte{202}, RendezvousDutyGeneration: 1, HandshakeContext: [32]byte{203}, ConnectionNonce: [32]byte{204},
 		AttachmentGeneration: 1, Deadline: end, InitiatorBinding: [32]byte{205}, WorkSafetyNotAfter: end.Unix(), WorkSafetyMaximum: end.Unix(), NoNewRecoveryAfter: end.Unix()}
-	envelope := route.ClosedIntroductionCapsule{Slot: request.Slot, Revision: request.Revision, Expiry: end, DeliveryNonce: delivery}
-	sealed, _, err := route.SealClosedIntroduction(envelope, [32]byte(key.PublicKey().Bytes()), plaintext)
+	envelope := introductioncapsule.Capsule{Slot: request.Slot, Revision: request.Revision, Expiry: end, DeliveryNonce: delivery}
+	sealed, _, err := introductioncapsule.Seal(envelope, [32]byte(key.PublicKey().Bytes()), plaintext)
 	if err != nil {
 		t.Fatal(err)
 	}
-	operation, err := route.EncodeClosedIntroductionSubmission(nonce, sealed)
+	operation, err := introductioncapsule.EncodeSubmission(nonce, sealed)
 	if err != nil {
 		t.Fatal(err)
 	}

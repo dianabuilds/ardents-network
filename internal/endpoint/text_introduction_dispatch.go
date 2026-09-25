@@ -10,6 +10,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
 	"github.com/dianabuilds/ardents-network/internal/route"
+	introductioncapsule "github.com/dianabuilds/ardents-network/internal/route/capsule"
 )
 
 const (
@@ -377,7 +378,7 @@ func (owner *textContext) inspectTextIntroductionDelivery(ctx context.Context, j
 	delivery *route.ClosedIntroductionDelivery) (textIntroductionDeliveryKey, time.Time, error) {
 	operation := delivery.Operation()
 	defer clear(operation)
-	_, capsule, err := route.DecodeClosedIntroductionSubmission(operation)
+	_, capsule, err := introductioncapsule.DecodeSubmission(operation)
 	if err != nil {
 		return textIntroductionDeliveryKey{}, time.Time{}, &textIntroductionRefusal{cause: err}
 	}
@@ -405,7 +406,7 @@ func (owner *textContext) inspectTextIntroductionDelivery(ctx context.Context, j
 	if err := owner.reserveTextIntroductionOpeningLocked(capsule.DeliveryNonce, now); err != nil {
 		return textIntroductionDeliveryKey{}, capsule.Expiry, &textIntroductionRefusal{cause: err}
 	}
-	plaintext, _, err := route.OpenClosedIntroduction(capsule, profile.Digest, registered.recipient, now)
+	plaintext, _, err := introductioncapsule.Open(capsule, profile.Digest, registered.recipient, now)
 	if err != nil {
 		return textIntroductionDeliveryKey{}, capsule.Expiry, &textIntroductionRefusal{cause: err}
 	}

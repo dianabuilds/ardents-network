@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/route"
+	introductioncapsule "github.com/dianabuilds/ardents-network/internal/route/capsule"
 )
 
 // Only installed worker observation and accepted State are fixtures. The
@@ -55,7 +56,7 @@ func TestTextPublisherNetworkRetainsSnapshotAcrossReaders(t *testing.T) {
 				publisherOwner.mu.Lock()
 				beforeRefusal := publisherOwner.introductionOpenings
 				publisherOwner.mu.Unlock()
-				request, capsule, err := route.DecodeClosedIntroductionSubmission(refused.operation)
+				request, capsule, err := introductioncapsule.DecodeSubmission(refused.operation)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -73,19 +74,19 @@ func TestTextPublisherNetworkRetainsSnapshotAcrossReaders(t *testing.T) {
 					clear(capsule.Ciphertext)
 					capsule.Ciphertext = nil
 					capsule.Encapsulation = [32]byte{}
-					capsule, _, err = route.SealClosedIntroduction(capsule, recipient, facts)
+					capsule, _, err = introductioncapsule.Seal(capsule, recipient, facts)
 					if err != nil {
 						t.Fatal(err)
 					}
 				} else {
 					capsule.Ciphertext[len(capsule.Ciphertext)-1] ^= 1
 				}
-				refused.operation, err = route.EncodeClosedIntroductionSubmission(request, capsule)
+				refused.operation, err = introductioncapsule.EncodeSubmission(request, capsule)
 				clear(capsule.Ciphertext)
 				if err != nil {
 					t.Fatal(err)
 				}
-				if _, decoded, err := route.DecodeClosedIntroductionSubmission(refused.operation); err != nil {
+				if _, decoded, err := introductioncapsule.DecodeSubmission(refused.operation); err != nil {
 					t.Fatal(err)
 				} else {
 					clear(decoded.Ciphertext)

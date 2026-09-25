@@ -27,6 +27,9 @@
 //   - text_job_lifecycle.go owns invocation identity and joined cleanup;
 //     text_worker_lifetime_linux.go owns the installed worker process lifetime.
 //
+// The Route capsule package owns Introduction sealing and decoding; Endpoint
+// checks decoded facts against live participant and publication authority.
+//
 // Durable token attempts and Transit Grant acquisition live in the child
 // tokenjournal and transit packages. The durableroot package owns their shared
 // filesystem lease and atomic-write primitives. Tests follow their production

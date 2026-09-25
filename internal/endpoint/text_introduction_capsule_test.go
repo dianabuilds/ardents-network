@@ -18,6 +18,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/application/textdocument"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/route"
+	introductioncapsule "github.com/dianabuilds/ardents-network/internal/route/capsule"
 	"github.com/dianabuilds/ardents-network/internal/service/publication"
 	"github.com/dianabuilds/ardents-network/internal/service/targetlink"
 )
@@ -114,7 +115,7 @@ func TestTextIntroductionCapsuleBindsRealInstanceAndServiceStream(t *testing.T) 
 			if !attempt.plaintext.Deadline.After(agedDeadline) || bytes.Equal(attempt.operation, oldOperation) {
 				t.Fatal("prepared stock did not receive a fresh on-wire capsule lifetime")
 			}
-			_, sealed, err := route.DecodeClosedIntroductionSubmission(attempt.operation)
+			_, sealed, err := introductioncapsule.DecodeSubmission(attempt.operation)
 			if err != nil || len(attempt.operation) != 4096 {
 				t.Fatalf("capsule operation: %v", err)
 			}
@@ -125,23 +126,23 @@ func TestTextIntroductionCapsuleBindsRealInstanceAndServiceStream(t *testing.T) 
 			}
 			mutations := []struct {
 				name   string
-				change func(*route.ClosedIntroductionPlaintext)
+				change func(*introductioncapsule.Plaintext)
 			}{
-				{"Target", func(value *route.ClosedIntroductionPlaintext) { value.Target = fixtureID(190) }},
-				{"Rendezvous", func(value *route.ClosedIntroductionPlaintext) { value.RendezvousNode = source.view.Nodes[4].NodeID }},
-				{"authority bounds", func(value *route.ClosedIntroductionPlaintext) {
+				{"Target", func(value *introductioncapsule.Plaintext) { value.Target = fixtureID(190) }},
+				{"Rendezvous", func(value *introductioncapsule.Plaintext) { value.RendezvousNode = source.view.Nodes[4].NodeID }},
+				{"authority bounds", func(value *introductioncapsule.Plaintext) {
 					value.WorkSafetyMaximum = descriptor.Current.Credential.NotAfter + 1
 				}},
 			}
 			for index, mutation := range mutations {
 				altered := attempt.plaintext
 				mutation.change(&altered)
-				envelope := route.ClosedIntroductionCapsule{Slot: sealed.Slot, Revision: sealed.Revision, Expiry: sealed.Expiry, DeliveryNonce: fixtureID(byte(180 + index))}
-				changed, _, err := route.SealClosedIntroduction(envelope, descriptor.Descriptor.Private.RecipientKey, altered)
+				envelope := introductioncapsule.Capsule{Slot: sealed.Slot, Revision: sealed.Revision, Expiry: sealed.Expiry, DeliveryNonce: fixtureID(byte(180 + index))}
+				changed, _, err := introductioncapsule.Seal(envelope, descriptor.Descriptor.Private.RecipientKey, altered)
 				if err != nil {
 					t.Fatal(err)
 				}
-				operation, err := route.EncodeClosedIntroductionSubmission(fixtureID(byte(170+index)), changed)
+				operation, err := introductioncapsule.EncodeSubmission(fixtureID(byte(170+index)), changed)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -231,7 +232,7 @@ func TestTextIntroductionCapsuleBindsRealInstanceAndServiceStream(t *testing.T) 
 			if err := registered.recipient.Close(); err != nil {
 				t.Fatal(err)
 			}
-			if _, _, err := route.OpenClosedIntroduction(sealed, source.view.Profile.Digest, registered.recipient, time.Now()); err == nil {
+			if _, _, err := introductioncapsule.Open(sealed, source.view.Profile.Digest, registered.recipient, time.Now()); err == nil {
 				t.Fatal("retired Instance recipient decrypted capsule")
 			}
 		})

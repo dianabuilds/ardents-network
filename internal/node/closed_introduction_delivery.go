@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/route"
+	introductioncapsule "github.com/dianabuilds/ardents-network/internal/route/capsule"
 )
 
 const closedIntroductionDeliveryBytes = uint64(16 + 4096 + 16 + 16384 + 16 + 1)
@@ -62,7 +63,7 @@ func (server *closedIntroductionServer) submit(ctx context.Context, connection n
 	if err != nil || frame.Kind != 10 || frame.Lane != 0 {
 		return errors.New("closed Introduction submission required")
 	}
-	nonce, capsule, err := route.DecodeClosedIntroductionSubmission(frame.Body)
+	nonce, capsule, err := introductioncapsule.DecodeSubmission(frame.Body)
 	if err != nil {
 		return err
 	}
@@ -86,14 +87,14 @@ func (server *closedIntroductionServer) submit(ctx context.Context, connection n
 	return route.WriteClosedLaneFrame(connection, route.ClosedLaneFrame{Kind: 11, Body: body})
 }
 
-func (server *closedIntroductionServer) deliver(ctx context.Context, capsule route.ClosedIntroductionCapsule) uint8 {
+func (server *closedIntroductionServer) deliver(ctx context.Context, capsule introductioncapsule.Capsule) uint8 {
 	// A request nonce belongs to one TLS channel. Only the sealed envelope
 	// crosses this hop unchanged; the source nonce is answered on its channel.
 	var nonce [32]byte
 	if _, err := rand.Read(nonce[:]); err != nil {
 		return 1
 	}
-	operation, err := route.EncodeClosedIntroductionSubmission(nonce, capsule)
+	operation, err := introductioncapsule.EncodeSubmission(nonce, capsule)
 	if err != nil {
 		return 1
 	}

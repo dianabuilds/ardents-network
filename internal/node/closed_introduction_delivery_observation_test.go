@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/route"
+	introductioncapsule "github.com/dianabuilds/ardents-network/internal/route/capsule"
 )
 
 // Two real admitted submissions expose the receiving Introduction's remapping
@@ -62,13 +63,13 @@ func TestClosedIntroductionDeliveryObservation(t *testing.T) {
 					t.Fatal(err)
 				}
 				var nonce [32]byte
-				capsule := route.ClosedIntroductionCapsule{Slot: request.Slot, Revision: request.Revision, Expiry: end, Ciphertext: make([]byte, 360)}
+				capsule := introductioncapsule.Capsule{Slot: request.Slot, Revision: request.Revision, Expiry: end, Ciphertext: make([]byte, 360)}
 				for _, value := range [][]byte{nonce[:], capsule.DeliveryNonce[:], capsule.Encapsulation[:], capsule.Ciphertext} {
 					if _, err := rand.Read(value); err != nil {
 						t.Fatal(err)
 					}
 				}
-				operation, err := route.EncodeClosedIntroductionSubmission(nonce, capsule)
+				operation, err := introductioncapsule.EncodeSubmission(nonce, capsule)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -82,7 +83,7 @@ func TestClosedIntroductionDeliveryObservation(t *testing.T) {
 				if delivered.Kind != 10 || delivered.Lane != uint32(2*(index+1)) {
 					t.Fatal("unexpected receiving delivery lane")
 				}
-				forwarded, received, err := route.DecodeClosedIntroductionSubmission(delivered.Body)
+				forwarded, received, err := introductioncapsule.DecodeSubmission(delivered.Body)
 				if err != nil {
 					t.Fatal(err)
 				}

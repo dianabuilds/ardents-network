@@ -6,12 +6,17 @@ The accepted Route and Carrier contracts continue to govern behavior.
 
 ## Current Linux owner graph
 
-On the Linux amd64 candidate, `go list` selects 91 production files in
-`internal/route`: 68 `closed_*.go` and 23 other files. It selects 84 test files,
-70 of them `closed_*_test.go`. File prefixes show a likely cluster, but they do
-not establish an independent package boundary.
+On the Linux amd64 candidate after the capsule extraction, `go list` selects
+86 production files in `internal/route`: 63 `closed_*.go` and 23 other
+files. It selects 83 test files, 69 of them `closed_*_test.go`. The child
+`internal/route/capsule` has six production files and one behavior test. File prefixes show a likely
+cluster, but they do not establish an independent package boundary.
 
-The closed cluster still uses these declarations from files outside the cluster:
+The fixed Introduction capsule codec, HPKE transcript, and its canonical-byte
+test now belong to `internal/route/capsule`. Route, Endpoint, and Node consume
+its small API directly; literal-byte tests still pin the fixed 4-KiB
+operation and plaintext. The remaining closed cluster uses these
+declarations from files outside the cluster:
 
 | Current declaration | Owner file | Closed consumers | Boundary consequence |
 | --- | --- | --- | --- |

@@ -10,6 +10,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/route"
+	introductioncapsule "github.com/dianabuilds/ardents-network/internal/route/capsule"
 )
 
 // This wrapper pauses a synchronous authority read at the last binding
@@ -45,13 +46,13 @@ func checkTextCapsuleAdmissionBoundaries(t *testing.T, publisher, reader *textCo
 			defer func() { endpoint.clock, endpoint.closedState = clock, source }()
 			plaintext := original.plaintext
 			plaintext.Deadline = clock().Add(10 * time.Second).UTC().Truncate(time.Second)
-			capsule := route.ClosedIntroductionCapsule{Slot: publisher.registration.request.Slot, Revision: plaintext.Revision,
+			capsule := introductioncapsule.Capsule{Slot: publisher.registration.request.Slot, Revision: plaintext.Revision,
 				Expiry: plaintext.Deadline, DeliveryNonce: fixtureID(byte(140 + index))}
-			sealed, _, err := route.SealClosedIntroduction(capsule, recipient, plaintext)
+			sealed, _, err := introductioncapsule.Seal(capsule, recipient, plaintext)
 			if err != nil {
 				t.Fatal(err)
 			}
-			operation, err := route.EncodeClosedIntroductionSubmission(fixtureID(byte(150+index)), sealed)
+			operation, err := introductioncapsule.EncodeSubmission(fixtureID(byte(150+index)), sealed)
 			if err != nil {
 				t.Fatal(err)
 			}
