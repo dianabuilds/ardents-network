@@ -14,9 +14,13 @@
 // The selected participant's private owners are grouped by responsibility:
 //
 //   - text_source_lifecycle.go and text_source_prefix.go own the exact Source
-//     opening, handle, and retirement. text_source_set.go selects its peers.
+//     opening, handle, and retirement. text_source_operations.go owns the
+//     serialized operation gate; text_source_set.go selects peers.
 //   - text_introduction_prefix_lifecycle.go and
 //     text_responder_prefix_lifecycle.go own the two Publisher prefixes.
+//     text_introduction_admission.go, text_introduction_dispatch_state.go,
+//     and text_introduction_exchange_set.go own opening rate, delivery slots,
+//     and in-flight exchange membership under the Context lock.
 //   - text_permission.go and text_permission_stock.go own holder authority and
 //     issued stock; text_issuance_operation.go owns an admitted issuance attempt.
 //   - text_publication_pair_lifecycle.go and text_publication_refresh.go own

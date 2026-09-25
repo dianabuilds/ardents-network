@@ -14,8 +14,9 @@ import (
 // textSourceLifecycle is the only owner of the live Source opening and its
 // in-progress replacement. The zero value is ready for use under textContext.mu.
 type textSourceLifecycle struct {
-	live    *textSourceHandle
-	opening *textPrefixOpeningOperation
+	live       *textSourceHandle
+	opening    *textPrefixOpeningOperation
+	operations textSourceOperationGate
 }
 
 type textSourceRetirement struct {

@@ -34,7 +34,7 @@ implementation has private owners rather than one undifferentiated state bag:
 
 | Responsibility | Current owner | Key coupling to remove or retain |
 | --- | --- | --- |
-| Source prefix | `textSourceLifecycle` | Exact handle identity and opening retirement remain atomic with Context admission. |
+| Source prefix | `textSourceLifecycle` | Exact handle identity, opening retirement, and serialized operation gate remain atomic with Context admission; the gate survives prefix replacement. |
 | Publisher prefixes | `textIntroductionPrefixLifecycle`, `textResponderPrefixLifecycle` | Separate Route handles and opening lifetimes; borrowed Source is not closed by either. |
 | Publication | `textPublicationPairLifecycle`, refresh lifecycle, Context coordinators | Instance and Publication ownership spans Context and Endpoint locks. |
 | Permission and issuance | `textPermission`, `textIssuanceOperation` | `textPermission` owns holder request creation, signed approval acceptance, currentness and remaining-quota checks, exact retry matching and batch quota reservation, candidate-stock inspection, pending-batch cancellation, issued-token deposit, then burns and verifies the exact challenge under the Context admission lock. Context asks the permission owner whether approval, an exact request, or a pending batch exists instead of reading those fields. Context performs the durable token-attempt mark and surviving-owner check before presentation. Pending batch and exact Source reservation share that lock. |

@@ -31,6 +31,34 @@ func textSourcePreparationFailureStage(cause error) string {
 	return "unknown"
 }
 
+// textSourceOperationGate serializes Source opening and issuance across one
+// Context lifetime. Its zero value is ready under textContext.mu; the channel
+// survives a Source prefix replacement and is never closed on retirement.
+type textSourceOperationGate struct {
+	busy chan struct{}
+}
+
+func (gate *textSourceOperationGate) initializeLocked() {
+	if gate.busy == nil {
+		gate.busy = make(chan struct{}, 1)
+	}
+}
+
+func (gate *textSourceOperationGate) acquire(ctx, lease context.Context) (func(), error) {
+	select {
+	case gate.busy <- struct{}{}:
+		if ctx.Err() != nil || lease.Err() != nil {
+			<-gate.busy
+			return nil, errors.New("text Source operation cancelled")
+		}
+		return func() { <-gate.busy }, nil
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	case <-lease.Done():
+		return nil, lease.Err()
+	}
+}
+
 // Serialize actual Source opening/issuance, never a publication ACK or a
 // Service stream. Waiters own no tokens and remain cancellable by their caller
 // and the independently authorized context. Validation runs after acquisition.
@@ -43,23 +71,10 @@ func (owner *textContext) acquireTextSourceOperation(ctx context.Context) (func(
 		owner.mu.Unlock()
 		return nil, errors.New("text Source context unavailable")
 	}
-	if owner.sourceOperations == nil {
-		owner.sourceOperations = make(chan struct{}, 1)
-	}
-	operations, lease := owner.sourceOperations, owner.lease.Context()
+	owner.source.operations.initializeLocked()
+	gate, lease := &owner.source.operations, owner.lease.Context()
 	owner.mu.Unlock()
-	select {
-	case operations <- struct{}{}:
-		if ctx.Err() != nil || lease.Err() != nil {
-			<-operations
-			return nil, errors.New("text Source operation cancelled")
-		}
-		return func() { <-operations }, nil
-	case <-ctx.Done():
-		return nil, ctx.Err()
-	case <-lease.Done():
-		return nil, lease.Err()
-	}
+	return gate.acquire(ctx, lease)
 }
 
 // Reconcile the joined Source and reserve its next opening stock during actual

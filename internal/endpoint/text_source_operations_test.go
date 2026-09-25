@@ -177,7 +177,7 @@ func TestTextSourceWaitCancellationDoesNotStealReservation(t *testing.T) {
 				t.Fatal("cancelled waiter did not join")
 			}
 			owner.mu.Lock()
-			occupied := len(owner.sourceOperations) == 1
+			occupied := len(owner.source.operations.busy) == 1
 			owner.mu.Unlock()
 			if !occupied {
 				t.Fatal("cancelled waiter released the active owner's reservation")

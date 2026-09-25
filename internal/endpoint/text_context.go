@@ -31,7 +31,6 @@ type textContextState struct {
 	resolution            *textResolutionFlight
 	source                textSourceLifecycle
 	sourceSet             *textSourceSet
-	sourceOperations      chan struct{}
 	issuance              *textIssuanceOperation
 	mu                    sync.Mutex
 	endpoint              *endpoint
