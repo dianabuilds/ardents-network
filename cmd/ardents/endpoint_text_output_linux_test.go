@@ -33,6 +33,47 @@ func TestHeadlessTextRefreshFailureEventExposesOnlyFixedCategory(t *testing.T) {
 	}
 }
 
+func TestHeadlessTextFatalEventKeepsWrappedFailureOutOfTimeline(t *testing.T) {
+	at := time.Date(2026, time.September, 25, 9, 30, 0, 0, time.UTC)
+	private := errors.New("private worker path and peer address")
+	for _, test := range []struct {
+		name, phase string
+		ready       bool
+	}{{"startup", "startup", false}, {"running", "running", true}} {
+		t.Run(test.name, func(t *testing.T) {
+			output := &headlessTextBufferedOutput{}
+			if err := reportHeadlessTextFailure(t.Context(), output, [32]byte{1}, func() time.Time { return at }, test.ready, false, private); !errors.Is(err, private) {
+				t.Fatalf("original failure lost: %v", err)
+			}
+			if bytes.Contains(output.Bytes(), []byte(private.Error())) {
+				t.Fatalf("private failure entered event: %q", output.Bytes())
+			}
+			row, present, err := diagnosticTimelineRow(output.Bytes())
+			if err != nil || !present || !bytes.Contains([]byte(row), []byte("headless-runtime-failed\t-\t\""+test.phase+"\"")) {
+				t.Fatalf("fatal event timeline = %q, present=%v, err=%v", row, present, err)
+			}
+		})
+	}
+	for _, test := range []struct {
+		name         string
+		ctx          context.Context
+		outputFailed bool
+	}{{"event output failed", t.Context(), true}, {"canceled", canceledHeadlessTextContext(), false}} {
+		t.Run(test.name, func(t *testing.T) {
+			output := &headlessTextBufferedOutput{}
+			if err := reportHeadlessTextFailure(test.ctx, output, [32]byte{1}, func() time.Time { return at }, false, test.outputFailed, private); !errors.Is(err, private) || output.Len() != 0 {
+				t.Fatalf("unexpected failure event: output=%q err=%v", output.Bytes(), err)
+			}
+		})
+	}
+}
+
+func canceledHeadlessTextContext() context.Context {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	return ctx
+}
+
 type headlessTextBufferedOutput struct{ bytes.Buffer }
 
 func (output *headlessTextBufferedOutput) SetWriteDeadline(time.Time) error { return nil }

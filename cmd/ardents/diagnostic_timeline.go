@@ -78,7 +78,7 @@ func diagnosticTimelineRow(raw []byte) (string, bool, error) {
 		owner = "source"
 	case "ardents-headless-runtime-event-v1":
 		switch kind {
-		case "headless-runtime-ready", "headless-runtime-permission-required",
+		case "headless-runtime-ready", "headless-runtime-permission-required", "headless-runtime-failed",
 			"headless-runtime-publication-refresh-failed", "headless-runtime-publication-withdrawal-failed",
 			"headless-runtime-connection-operation-failed":
 		default:

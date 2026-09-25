@@ -373,6 +373,11 @@ identifier may bypass these owners.
 The participant serializes local lifecycle output. Each event records UTC occurrence time before output delivery; the local JSON-line adapter uses `schema`, `kind`, and `at` for correlation with Node lifecycle events while retaining the existing bounded, role-specific fields. A background failure event uses a
 bounded observer context; if delivery fails, the participant ends the generation,
 joins its owners, and returns the output failure instead of silently discarding it.
+After the event output is acquired and the participant has joined its owners,
+an uncanceled fatal return emits
+`headless-runtime-failed` with only `startup` or `running` as its failure category.
+It does not serialize the returned error; stderr retains that detail for local
+investigation. A failed event output is not retried through the same output.
 
 The coalesced authenticated stream requires its directional Terminal receipt
 and peer confirmation even when only the initial Attachment is available.

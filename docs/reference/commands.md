@@ -53,6 +53,10 @@ recognized categories fail without printing their raw content. The projection
 omits Network IDs, destinations, addresses, permission commitments, tokens,
 document bytes, and all other fields. It is a local navigation view of existing
 events, not an authority source, telemetry export, or complete Route trace.
+An Endpoint fatal return after event output is acquired adds
+`headless-runtime-failed` with a `startup` or
+`running` category. The local command error remains on stderr; the timeline
+does not include its wrapped details.
 
 `endpoint headless` refuses `ardents-headless-runtime-v1` before opening any
 plan-owned runtime resource. The exact refusal and retained-data boundary are
