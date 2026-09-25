@@ -66,19 +66,20 @@ func TestTextPublisherBuildsRetainedQualificationSetAcrossFourReaders(t *testing
 	qualificationPacer := &qualification.Measurements{}
 	for index, owner := range readers {
 		job := liveTextCapsuleJob(t, owner)
-		job.qualification = &streamQualificationRun{init: streamqualification.Init{Role: streamqualification.ReaderRole,
-			Profile: streamqualification.ClientToPublisher, Nonce: fixtureID(byte(247 + index)), Seed: fixtureID(246)}}
+		run, _ := qualification.NewRun(streamqualification.ReaderRole, streamqualification.ClientToPublisher, fixtureID(246))
+		_ = run.BindInvocation(fixtureID(byte(247 + index)))
+		_ = run.Configure(nil, qualificationPacer.AcquireIntroductionOpening, qualificationPacer.AcquireIntroductionSetup, nil, nil)
+		job.qualification = run
 		job.workload = mustTextServiceWorkloadBounds(t, 64<<20, 64<<20)
-		job.qualification.acquireIntroduction = qualificationPacer.AcquireIntroductionOpening
-		job.qualification.acquireSetup = qualificationPacer.AcquireIntroductionSetup
 		readerJobs[index] = job
 	}
 
 	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Minute)
 	defer cancel()
 	publisherJob := liveTextCapsuleJob(t, publisher)
-	publisherJob.qualification = &streamQualificationRun{init: streamqualification.Init{Role: streamqualification.PublisherRole,
-		Profile: streamqualification.ClientToPublisher, Nonce: fixtureID(245), Seed: fixtureID(246)}}
+	pubRun, _ := qualification.NewRun(streamqualification.PublisherRole, streamqualification.ClientToPublisher, fixtureID(246))
+	_ = pubRun.BindInvocation(fixtureID(245))
+	publisherJob.qualification = pubRun
 	publisherJob.workload = mustTextServiceWorkloadBounds(t, 64<<20, 64<<20)
 	publisherWorker := &qualifiedTextWorker{job: publisherJob}
 	delivered := make(chan connection.Stream)

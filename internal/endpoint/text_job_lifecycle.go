@@ -8,6 +8,7 @@ import (
 	"errors"
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
+	"github.com/dianabuilds/ardents-network/internal/qualification"
 )
 
 // textJobIdentity owns one invocation's nonce, verified worker Grant handoff,
@@ -16,7 +17,7 @@ import (
 type textJobIdentity struct {
 	// The qualification run is bound to this exact Job so late callbacks
 	// cannot attach streams, samples or cleanup to its replacement.
-	qualification *streamQualificationRun
+	qualification *qualification.Run
 	workload      textServiceWorkloadBounds
 	owner         *textContext
 	nonce         [32]byte

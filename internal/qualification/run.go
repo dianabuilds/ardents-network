@@ -1,6 +1,6 @@
 //go:build linux
 
-package endpoint
+package qualification
 
 import (
 	"context"
@@ -11,10 +11,10 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/route"
 )
 
-// streamQualificationRun owns state used only by the fixed qualification
-// caller. An ordinary text Job has no report, observer, sampling, or joined
-// stream state; a qualification Job only retains its exact run owner.
-type streamQualificationRun struct {
+// Run owns state used only by the fixed qualification caller. An ordinary
+// text Job has no report, observer, sampling, or joined stream state; a
+// qualification Job only retains its exact run owner.
+type Run struct {
 	mu                  sync.Mutex
 	init                streamqualification.Init
 	acquireIntroduction func(context.Context) (func(), error)
@@ -27,17 +27,24 @@ type streamQualificationRun struct {
 	stopErr             error
 }
 
-func newStreamQualificationRun(role streamqualification.Role, profile streamqualification.Profile, seed [32]byte) (*streamQualificationRun, error) {
+func NewRun(role streamqualification.Role, profile streamqualification.Profile, seed [32]byte) (*Run, error) {
 	if seed == [32]byte{} {
 		return nil, errors.New("qualification workload seed is absent")
 	}
 	if _, err := profile.Definition(role); err != nil {
 		return nil, err
 	}
-	return &streamQualificationRun{init: streamqualification.Init{Role: role, Profile: profile, Seed: seed}}, nil
+	return &Run{init: streamqualification.Init{Role: role, Profile: profile, Seed: seed}}, nil
 }
 
-func (run *streamQualificationRun) bindInvocation(nonce [32]byte) error {
+func (run *Run) Init() streamqualification.Init {
+	if run == nil {
+		return streamqualification.Init{}
+	}
+	return run.init
+}
+
+func (run *Run) BindInvocation(nonce [32]byte) error {
 	if run == nil || nonce == [32]byte{} {
 		return errors.New("qualification invocation is unavailable")
 	}
@@ -50,7 +57,7 @@ func (run *streamQualificationRun) bindInvocation(nonce [32]byte) error {
 	return nil
 }
 
-func (run *streamQualificationRun) configure(report *streamqualification.Report,
+func (run *Run) Configure(report *streamqualification.Report,
 	acquireIntroduction func(context.Context) (func(), error),
 	acquireSetup func(context.Context) (func(), error),
 	stopSampling func() error,
@@ -72,7 +79,7 @@ func (run *streamQualificationRun) configure(report *streamqualification.Report,
 	return nil
 }
 
-func (run *streamQualificationRun) stopSamples() error {
+func (run *Run) StopSamples() error {
 	if run == nil {
 		return nil
 	}
@@ -87,7 +94,7 @@ func (run *streamQualificationRun) stopSamples() error {
 	return run.stopErr
 }
 
-func (run *streamQualificationRun) publishReport(report streamqualification.Report) {
+func (run *Run) PublishReport(report streamqualification.Report) {
 	if run == nil {
 		return
 	}
@@ -98,7 +105,7 @@ func (run *streamQualificationRun) publishReport(report streamqualification.Repo
 	}
 }
 
-func (run *streamQualificationRun) retainJoin(joined *route.ClosedJoinedStream) {
+func (run *Run) RetainJoin(joined *route.ClosedJoinedStream) {
 	if run == nil || joined == nil {
 		return
 	}
@@ -110,7 +117,7 @@ func (run *streamQualificationRun) retainJoin(joined *route.ClosedJoinedStream) 
 	run.joins[joined] = struct{}{}
 }
 
-func (run *streamQualificationRun) releaseJoin(joined *route.ClosedJoinedStream) {
+func (run *Run) ReleaseJoin(joined *route.ClosedJoinedStream) {
 	if run == nil {
 		return
 	}
@@ -119,7 +126,7 @@ func (run *streamQualificationRun) releaseJoin(joined *route.ClosedJoinedStream)
 	run.mu.Unlock()
 }
 
-func (run *streamQualificationRun) joinedStreams() []*route.ClosedJoinedStream {
+func (run *Run) JoinedStreams() []*route.ClosedJoinedStream {
 	if run == nil {
 		return nil
 	}
@@ -132,7 +139,7 @@ func (run *streamQualificationRun) joinedStreams() []*route.ClosedJoinedStream {
 	return joins
 }
 
-func (run *streamQualificationRun) retains(joined *route.ClosedJoinedStream) bool {
+func (run *Run) Retains(joined *route.ClosedJoinedStream) bool {
 	if run == nil {
 		return false
 	}
