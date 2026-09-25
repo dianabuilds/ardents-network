@@ -45,10 +45,7 @@ func (owner *textContext) stopTextContextChildrenLocked() *textContextRetirement
 	}
 	retirement.registrationOpening = owner.registrationOpening
 	retirement.registrationOpening.stop()
-	clear(owner.introductionWaiters)
-	owner.introductionWaiters = nil
-	clear(owner.introductionRecovery)
-	owner.introductionRecovery = nil
+	owner.introductionDispatch.stopLocked()
 	owner.introductionAdmission.stopLocked()
 	owner.descriptorHistory.Clear()
 	owner.sourceSet = nil

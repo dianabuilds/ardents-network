@@ -90,10 +90,10 @@ func (owner *textContext) dispatchTextIntroductionDelivery(ctx context.Context, 
 			}
 			routed := textIntroductionRoutedDelivery{delivery: claimed, key: key, expires: expires}
 			owner.mu.Lock()
-			target := owner.selectTextIntroductionWaiterLocked(key)
+			target := owner.introductionDispatch.selectWaiterLocked(key)
 			recovery := (*textIntroductionRecoveryOwner)(nil)
 			if target == nil {
-				recovery = owner.selectTextIntroductionRecoveryLocked(key)
+				recovery = owner.introductionDispatch.selectRecoveryLocked(key)
 			}
 			if target != nil && target != waiter {
 				target.delivery <- routed
@@ -138,7 +138,7 @@ func (owner *textContext) registerTextIntroductionWaiter(ctx context.Context, jo
 	if !owner.liveTextServiceJobLocked(job, broker.Administration) || ctx.Err() != nil {
 		return nil, nil, errors.Join(ctx.Err(), errors.New("text Introduction dispatch owner retired"))
 	}
-	if len(owner.introductionWaiters) >= maximumTextIntroductionWaiters {
+	if owner.introductionDispatch.waiterCapacityReachedLocked() {
 		return nil, nil, errors.New("text Introduction dispatch capacity unavailable")
 	}
 	var recovery *textIntroductionRecoveryOwner
@@ -154,15 +154,7 @@ func (owner *textContext) registerTextIntroductionWaiter(ctx context.Context, jo
 			recovery.generation = want.generation
 		}
 	}
-	if owner.introductionDelivery == nil {
-		owner.introductionDelivery = make(chan struct{}, 1)
-		owner.introductionDelivery <- struct{}{}
-	}
-	if owner.introductionWaiters == nil {
-		owner.introductionWaiters = make(map[*textIntroductionWaiter]struct{})
-	}
-	waiter := &textIntroductionWaiter{want: want, delivery: make(chan textIntroductionRoutedDelivery, 1)}
-	owner.introductionWaiters[waiter] = struct{}{}
+	waiter, gate := owner.introductionDispatch.addWaiterLocked(want)
 	if recovery != nil {
 		select {
 		case routed := <-recovery.delivery:
@@ -179,7 +171,7 @@ func (owner *textContext) registerTextIntroductionWaiter(ctx context.Context, jo
 		default:
 		}
 	}
-	return waiter, owner.introductionDelivery, nil
+	return waiter, gate, nil
 }
 
 // releaseTextIntroductionWaiter joins ownership of a delivery assigned at the
@@ -190,7 +182,7 @@ func (owner *textContext) releaseTextIntroductionWaiter(waiter *textIntroduction
 		return nil
 	}
 	owner.mu.Lock()
-	delete(owner.introductionWaiters, waiter)
+	owner.introductionDispatch.removeWaiterLocked(waiter)
 	var routed textIntroductionRoutedDelivery
 	select {
 	case routed = <-waiter.delivery:
@@ -202,26 +194,6 @@ func (owner *textContext) releaseTextIntroductionWaiter(waiter *textIntroduction
 		return nil
 	}
 	return routed.delivery.Complete(lifetime, 1)
-}
-
-func (owner *textContext) selectTextIntroductionWaiterLocked(key textIntroductionDeliveryKey) *textIntroductionWaiter {
-	for waiter := range owner.introductionWaiters {
-		if len(waiter.delivery) == 0 && textIntroductionDeliveryMatches(key, waiter.want) {
-			return waiter
-		}
-	}
-	return nil
-}
-
-func (owner *textContext) selectTextIntroductionRecoveryLocked(key textIntroductionDeliveryKey) *textIntroductionRecoveryOwner {
-	for recovery := range owner.introductionRecovery {
-		if recovery.binding != nil && recovery.binding.recovery == recovery && len(recovery.delivery) == 0 &&
-			recovery.binding.facts.ConnectionNonce == key.connection && key.generation >= recovery.generation &&
-			key.generation <= recovery.generation+1 {
-			return recovery
-		}
-	}
-	return nil
 }
 
 func (owner *textContext) bufferTextIntroductionRecoveryLocked(recovery *textIntroductionRecoveryOwner,
@@ -291,16 +263,10 @@ func (owner *textContext) retainTextIntroductionRecovery(binding *textServiceBin
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
 	if !owner.liveTextServiceJobLocked(binding.job, broker.Administration) || binding.recovery != nil ||
-		len(owner.introductionRecovery) >= owner.streamConnectionLimitLocked() {
+		owner.introductionDispatch.recoveryCapacityReachedLocked(owner.streamConnectionLimitLocked()) {
 		return errors.New("text Introduction recovery owner capacity unavailable")
 	}
-	if owner.introductionRecovery == nil {
-		owner.introductionRecovery = make(map[*textIntroductionRecoveryOwner]struct{})
-	}
-	recovery := &textIntroductionRecoveryOwner{binding: binding, generation: 2,
-		delivery: make(chan textIntroductionRoutedDelivery, 1)}
-	binding.recovery = recovery
-	owner.introductionRecovery[recovery] = struct{}{}
+	owner.introductionDispatch.addRecoveryLocked(binding)
 	return nil
 }
 
@@ -315,7 +281,7 @@ func (binding *textServiceBinding) releaseTextIntroductionRecovery() error {
 		owner.mu.Unlock()
 		return nil
 	}
-	delete(owner.introductionRecovery, recovery)
+	owner.introductionDispatch.removeRecoveryLocked(recovery)
 	binding.recovery = nil
 	expiryStop, expiryDone := recovery.expiryStop, recovery.expiryDone
 	recovery.expiryStop, recovery.expiryDone = nil, nil

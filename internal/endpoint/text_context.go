@@ -20,9 +20,7 @@ type textContextState struct {
 	operationFailure  func(string)
 	refresh           textPublicationRefreshLifecycle
 	textPublicationPairLifecycle
-	introductionDelivery  chan struct{}
-	introductionWaiters   map[*textIntroductionWaiter]struct{}
-	introductionRecovery  map[*textIntroductionRecoveryOwner]struct{}
+	introductionDispatch  textIntroductionDispatch
 	introductionExchanges map[*textIntroductionExchange]struct{}
 	introductionAdmission textIntroductionAdmission
 	descriptorHistory     descriptorhistory.History

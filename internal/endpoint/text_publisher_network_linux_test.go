@@ -29,7 +29,7 @@ func TestTextPublisherNetworkRetainsSnapshotAcrossReaders(t *testing.T) {
 			served := make(chan struct{})
 			var serveErr error
 			publisherOwner.mu.Lock()
-			initialWaiters := len(publisherOwner.introductionWaiters)
+			initialWaiters := len(publisherOwner.introductionDispatch.waiters)
 			publisherOwner.mu.Unlock()
 			go func() { defer close(served); serveErr = publisher.serveNetwork(ctx) }()
 			t.Cleanup(func() {
@@ -180,7 +180,7 @@ func waitTextIntroductionWaiters(t *testing.T, ctx context.Context, owner *textC
 	t.Helper()
 	for {
 		owner.mu.Lock()
-		ready := len(owner.introductionWaiters) >= minimum
+		ready := len(owner.introductionDispatch.waiters) >= minimum
 		owner.mu.Unlock()
 		if ready {
 			return

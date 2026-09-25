@@ -119,7 +119,7 @@ func TestTextRecoveryDeliveryMayArriveBeforePublisherFailureDetection(t *testing
 		t.Fatal(err)
 	}
 	publisher.mu.Lock()
-	retained := len(publisher.introductionRecovery)
+	retained := len(publisher.introductionDispatch.recovery)
 	publisher.mu.Unlock()
 	if retained != 0 {
 		t.Fatalf("retired logical Connection retained %d recovery owners", retained)
