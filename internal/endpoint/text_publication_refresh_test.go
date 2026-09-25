@@ -281,7 +281,7 @@ func TestTextPublicationAutomaticallyRefreshesAndRetiresPredecessor(t *testing.T
 				owner.startTextRefreshLocked(second)
 				owner.signalTextRegistrationsLocked()
 			}
-			stopped := owner.refresh.current() == refresh && refresh.context.Err() != nil && owner.registrationOpening == nil && owner.resolution == nil &&
+			stopped := owner.refresh.current() == refresh && refresh.context.Err() != nil && !owner.textPublicationPairLifecycle.openingInProgressLocked() && owner.resolution == nil &&
 				owner.registration == nil && owner.pendingRegistration == nil
 			owner.mu.Unlock()
 			if !stopped {

@@ -25,7 +25,6 @@ type textContextState struct {
 	introductionAdmission textIntroductionAdmission
 	descriptorHistory     descriptorhistory.History
 	withdrawal            *textSourceFlight
-	registrationOpening   *textRegistrationFlight
 	introduction          textIntroductionPrefixLifecycle
 	responder             textResponderPrefixLifecycle
 	resolution            *textResolutionFlight

@@ -37,7 +37,7 @@ func (owner *textContext) stopTextContextChildrenLocked() *textContextRetirement
 	if retirement.withdrawal != nil {
 		retirement.withdrawal.cancel()
 	}
-	retirement.registrationOpening = owner.registrationOpening
+	retirement.registrationOpening = owner.textPublicationPairLifecycle.openingLocked()
 	retirement.registrationOpening.stop()
 	owner.introductionDispatch.stopLocked()
 	owner.introductionAdmission.stopLocked()

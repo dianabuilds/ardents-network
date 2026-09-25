@@ -82,13 +82,17 @@ func (owner *textContext) openTextRegistration(ctx context.Context, revision uin
 	}
 	prefix := owner.introduction.currentLocked()
 	prior, _ := owner.textPublicationPairLifecycle.previousLocked()
-	if err != nil || owner.surface != broker.Administration || prefix == nil || owner.introduction.openingInProgressLocked() || owner.registrationOpening != nil || owner.withdrawal != nil || !owner.textPublicationPairLifecycle.openingBaseLocked(previous) || previous != nil && (prior != nil || !owner.refresh.matchesContext(ctx) || previous.recipient == nil || revision <= previous.request.Revision) || owner.permission == nil || !now.Before(expiry) || expiry.After(now.Add(600*time.Second)) {
+	if err != nil || owner.surface != broker.Administration || prefix == nil || owner.introduction.openingInProgressLocked() || owner.textPublicationPairLifecycle.openingInProgressLocked() || owner.withdrawal != nil || !owner.textPublicationPairLifecycle.openingBaseLocked(previous) || previous != nil && (prior != nil || !owner.refresh.matchesContext(ctx) || previous.recipient == nil || revision <= previous.request.Revision) || owner.permission == nil || !now.Before(expiry) || expiry.After(now.Add(600*time.Second)) {
 		owner.mu.Unlock()
 		return nil, errors.New("text Publisher registration owner unavailable")
 	}
 	attempt, cancel := context.WithCancel(owner.lease.Context())
 	flight := &textRegistrationFlight{previous: previous, context: attempt, cancel: cancel, done: make(chan struct{}), prefix: prefix}
-	owner.registrationOpening = flight
+	if !owner.textPublicationPairLifecycle.reserveOpeningLocked(flight) {
+		owner.mu.Unlock()
+		cancel()
+		return nil, errors.New("text Publisher registration owner unavailable")
+	}
 	owner.mu.Unlock()
 	interrupted := make(chan struct{})
 	stop := context.AfterFunc(ctx, func() { defer close(interrupted); cancel() })
@@ -136,8 +140,8 @@ func (owner *textContext) finishTextRegistration(ctx context.Context, flight *te
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
 	defer close(flight.done)
-	owner.registrationOpening = nil
-	if outcome != nil || ctx.Err() != nil || flight.context.Err() != nil || !flight.prefix.currentLocked(&owner.introduction) ||
+	current := owner.textPublicationPairLifecycle.finishOpeningLocked(flight)
+	if outcome != nil || ctx.Err() != nil || flight.context.Err() != nil || !current || !flight.prefix.currentLocked(&owner.introduction) ||
 		!owner.textPublicationPairLifecycle.openingBaseLocked(flight.previous) || !owner.liveLocked(owner.endpoint, broker.Administration) {
 		flight.cancel()
 		cleanup := channel.Close()
@@ -168,7 +172,7 @@ func (owner *textContext) presentTextRegistrationToken(flight *textRegistrationF
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
 	profile, now, err := owner.textPermissionProfileLocked()
-	if err != nil || owner.surface != broker.Administration || owner.registrationOpening != flight || !flight.prefix.currentLocked(&owner.introduction) || flight.context.Err() != nil || owner.permission == nil ||
+	if err != nil || owner.surface != broker.Administration || !owner.textPublicationPairLifecycle.openingCurrentLocked(flight) || !flight.prefix.currentLocked(&owner.introduction) || flight.context.Err() != nil || owner.permission == nil ||
 		class != 3 || hello.Purpose != ardp.PurposeIntroduction || hello.RecipientNodeID != flight.receiver || hello.NetworkID != profile.NetworkID || hello.ProfileDigest != profile.Digest ||
 		hello.StateGeneration != profile.StateGeneration || hello.StateDigest != profile.StateDigest || hello.ChannelNonce == [32]byte{} || !now.Before(hello.Deadline) || hello.Deadline.After(profile.NotAfter) {
 		return nil, errors.New("text Publisher registration token authority unavailable")
@@ -186,7 +190,7 @@ func (owner *textContext) withdrawTextIntroduction(ctx context.Context) error {
 	}
 	owner.mu.Lock()
 	registered := owner.textPublicationPairLifecycle.publicationTargetLocked()
-	if registered == nil || owner.resolution != nil || owner.registrationOpening != nil || owner.withdrawal != nil || !owner.liveLocked(owner.endpoint, broker.Administration) {
+	if registered == nil || owner.resolution != nil || owner.textPublicationPairLifecycle.openingInProgressLocked() || owner.withdrawal != nil || !owner.liveLocked(owner.endpoint, broker.Administration) {
 		owner.mu.Unlock()
 		return errors.New("text Publisher registration absent or ending")
 	}
