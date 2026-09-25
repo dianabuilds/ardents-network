@@ -26,6 +26,9 @@
 //     text_resolution.go coordinates lookup and rechecks live authority.
 //   - text_job_lifecycle.go owns invocation identity and joined cleanup;
 //     text_worker_lifetime_linux.go owns the installed worker process lifetime.
+//   - service_tls.go owns Instance authentication and exporter handoff;
+//     text_service_tls.go selects the protected Service groups and preserves
+//     authenticated Route retirement through the TLS wrapper.
 //
 // The Route capsule package owns Introduction sealing and decoding; Endpoint
 // checks decoded facts against live participant and publication authority.

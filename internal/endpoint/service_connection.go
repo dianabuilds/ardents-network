@@ -52,7 +52,7 @@ func (endpoint *endpoint) connectAuthorized(ctx context.Context, input connectio
 			<-interruptionFinished
 		}
 	}()
-	attachment, continuity, err := secureClient(ctx, input.Route, credential, connectionContext, 1)
+	attachment, continuity, err := secureClient(ctx, input.Route, credential, connectionContext, 1, nil)
 	if err != nil {
 		return failed("service target authentication failure", "current Service Instance TLS proof failed", err)
 	}
@@ -134,7 +134,7 @@ func (endpoint *endpoint) acceptAuthorized(ctx context.Context, input connection
 			<-interruptionFinished
 		}
 	}()
-	attachment, continuity, err := securePublisher(ctx, input.Route, credential, lease, connectionContext, 1)
+	attachment, continuity, err := securePublisher(ctx, input.Route, credential, lease, connectionContext, 1, nil)
 	if err != nil {
 		return failed("service target authentication failure", "incoming Service Instance TLS proof failed", err)
 	}
@@ -188,9 +188,9 @@ func newNativeStream(ctx context.Context, input connectionInput, credential publ
 			var replacement *securedAttachment
 			var fresh [32]byte
 			if client {
-				replacement, fresh, err = secureClient(attempt, raw, credential, connectionContext, binding.Generation)
+				replacement, fresh, err = secureClient(attempt, raw, credential, connectionContext, binding.Generation, nil)
 			} else {
-				replacement, fresh, err = securePublisher(attempt, raw, credential, private, connectionContext, binding.Generation)
+				replacement, fresh, err = securePublisher(attempt, raw, credential, private, connectionContext, binding.Generation, nil)
 			}
 			erase(fresh[:])
 			if errors.Is(err, errInstanceMismatch) {

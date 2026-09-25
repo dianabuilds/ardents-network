@@ -660,7 +660,6 @@
         "internal/service/reachability.Relay.forward",
         "internal/service/reachability.Store.Lookup",
         "internal/service/reachability.Store.Publish",
-        "internal/service/reachability.Verified.Authority",
         "internal/service/reachability.decodePrivateRequest",
         "internal/service/reachability.encodeBody",
         "internal/service/reachability.encodePrivateResponse",
@@ -815,10 +814,11 @@
           "internal/route.wireReader.take",
           "internal/route.wireReader.uint16",
           "internal/route.wireReader.uint64",
-          "internal/route.wireReader.uint8"
+          "internal/route.wireReader.uint8",
+          "internal/route.writeAll"
         ],
         "classification": "Windows projection of retained Route framing closure",
-        "rationale": "Removing the old cross-platform Rendezvous listener additionally makes these exact shared framing leaves unreachable in Windows production. Linux production still reaches them through retained Route consumers, and issue #120 does not authorize deleting shared Route grammar.",
+        "rationale": "Removing the old cross-platform Rendezvous listener additionally makes these exact shared framing leaves unreachable in Windows production. The full-write helper became independently visible to deadcode after ARDP framing moved to its own package. Linux production still reaches them through retained Route consumers, and issue #120 does not authorize deleting shared Route grammar.",
         "owner": "Product Owner and Codex",
         "retirement": "Remove this Windows allowance if a maintained Windows Route consumer is selected, or when a separate bounded consumer audit retires or assigns narrower platform ownership to this shared framing closure."
       },
@@ -864,10 +864,11 @@
       },
       {
         "symbols": [
+          "internal/service/reachability.Verified.Authority",
           "internal/service/reachability.verifiedCurrent"
         ],
         "classification": "unwired reachability-service tracer",
-        "rationale": "The shared publication verifier remains reachable only from the unselected legacy Descriptor issuer on Windows. Linux text publication now consumes it through IssuePrivate, so the former common allowance applies only to Windows.",
+        "rationale": "The Linux protected text runtime makes these shared reachability methods reachable in production analysis, while Windows has no selected protected text runtime. Their prior common allowance therefore applies only to Windows.",
         "owner": "Product Owner and Codex",
         "retirement": "Retire with the unselected Windows legacy Descriptor issuer or an accepted consuming command."
       },
