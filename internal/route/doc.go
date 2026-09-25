@@ -2,6 +2,9 @@
 // channel mechanics. The child ardp package owns generation-3 lane framing,
 // HELLO and bootstrap bytes; terminal owns fixed operation bodies. The replay
 // package owns durable receiving-duty token spends and Introduction slots.
+// Closed Source lane state and deadlines live in closed_source_lane.go; its
+// read/credit, write queue, and terminal retirement paths live in the
+// corresponding closed_source_lane_read.go, _write.go, and _close.go files.
 // Node's forwarding owner calls OpenClosedNodeCarrier for one exact
 // State-selected TCP/TLS or QUIC-v2 attempt and retains peer selection and
 // session lifetime. The production-dead Interactive User Route v2 Open/Attach
