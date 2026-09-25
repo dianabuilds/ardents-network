@@ -281,6 +281,11 @@ with the real installed launcher, Introduction/Route producers, Service authenti
 and confined worker protocols for empty, 64-KiB and 4-MiB documents on both Carriers.
 Its State, Authority/Instance provisioning and registration scheduling remain explicit
 fixtures; this does not qualify the complete protected journey or hostile host.
+The four-Reader retained qualification shares one local Introduction delivery
+slot. A Reader takes it immediately before submitting its capsule; completion
+or refusal releases it, and the next submission waits at least 300 ms. This
+paces acknowledged deliveries across the cohort despite variable preparation
+and Route timing while preserving the Publisher's four-openings-per-second cap.
 
 The Endpoint's text Publisher network producer retains one qualified worker
 across independent reads and owns Introduction receipt, JOIN and authenticated

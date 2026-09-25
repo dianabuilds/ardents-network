@@ -58,7 +58,7 @@ vet:
 	go vet ./...
 
 unit:
-	go test -p 1 $(UNIT_PACKAGES) -short -shuffle=on -count=1
+	go test -p 1 $(UNIT_PACKAGES) -short -shuffle=on -count=1 -timeout=15m
 
 heapdump-capture:
 	@test -n "$(ARDENTS_HEAPDUMP_INPUT_ROOT)" || (echo "ARDENTS_HEAPDUMP_INPUT_ROOT is required"; exit 2)

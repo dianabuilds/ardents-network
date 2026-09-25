@@ -12,8 +12,8 @@ import (
 )
 
 // Publisher admits at most four new Introduction openings in a rolling second.
-// Qualification uses one opening every 300 ms so scheduling and shaped-network
-// jitter cannot compress the shared four-Reader cohort into a remote refusal.
+// Qualification waits 300 ms after each remote delivery result before admitting
+// another, so preparation and network jitter cannot bunch Publisher openings.
 const (
 	streamQualificationIntroductionSpacing = 300 * time.Millisecond
 	streamQualificationSetupLimit          = 15
@@ -28,13 +28,14 @@ const (
 // usable; overlapping windows must finish before any sibling is retired.
 type StreamQualificationMeasurements struct {
 	mu, sampleMu       sync.Mutex
-	openingMu          sync.Mutex
+	openingOnce        sync.Once
 	setupOnce          sync.Once
 	workers            map[string]bool
 	retired            bool
 	expected, finished int
 	ready              chan struct{}
 	nextOpening        time.Time
+	openingSlot        chan struct{}
 	setupSlots         chan struct{}
 	sampledAt          time.Time
 	hostSample         resource.HostingSample
@@ -58,40 +59,44 @@ func (owner *StreamQualificationMeasurements) acquireIntroductionSetup(ctx conte
 	return func() { once.Do(func() { <-owner.setupSlots }) }, nil
 }
 
-func (owner *StreamQualificationMeasurements) reserveIntroductionOpening(now time.Time) (time.Time, error) {
-	if owner == nil || now.IsZero() {
-		return time.Time{}, errors.New("qualification Introduction pacer unavailable")
+// acquireIntroductionOpening holds the shared qualification slot through the
+// remote delivery result. Spacing begins at release, so variable preparation
+// and network delay cannot bunch Publisher admissions into a rolling second.
+func (owner *StreamQualificationMeasurements) acquireIntroductionOpening(ctx context.Context) (func(), error) {
+	if owner == nil || ctx == nil {
+		return nil, errors.New("qualification Introduction pacing unavailable")
 	}
-	owner.openingMu.Lock()
-	defer owner.openingMu.Unlock()
-	scheduled := now
-	if owner.nextOpening.After(scheduled) {
-		scheduled = owner.nextOpening
+	if err := ctx.Err(); err != nil {
+		return nil, errors.Join(errors.New("qualification Introduction pacing canceled"), err)
 	}
-	owner.nextOpening = scheduled.Add(streamQualificationIntroductionSpacing)
-	return scheduled, nil
-}
-
-func (owner *StreamQualificationMeasurements) acquireIntroductionOpening(ctx context.Context) error {
-	if ctx == nil || ctx.Err() != nil {
-		return errors.New("qualification Introduction pacing canceled")
-	}
-	scheduled, err := owner.reserveIntroductionOpening(time.Now())
-	if err != nil {
-		return err
-	}
-	wait := time.Until(scheduled)
-	if wait <= 0 {
-		return nil
-	}
-	timer := time.NewTimer(wait)
-	defer timer.Stop()
+	owner.openingOnce.Do(func() { owner.openingSlot = make(chan struct{}, 1) })
 	select {
-	case <-timer.C:
-		return nil
+	case owner.openingSlot <- struct{}{}:
 	case <-ctx.Done():
-		return errors.Join(errors.New("qualification Introduction pacing canceled"), ctx.Err())
+		return nil, errors.Join(errors.New("qualification Introduction pacing canceled"), ctx.Err())
 	}
+	next := owner.nextOpening
+	if wait := time.Until(next); wait > 0 {
+		timer := time.NewTimer(wait)
+		defer timer.Stop()
+		select {
+		case <-timer.C:
+		case <-ctx.Done():
+			<-owner.openingSlot
+			return nil, errors.Join(errors.New("qualification Introduction pacing canceled"), ctx.Err())
+		}
+	}
+	if err := ctx.Err(); err != nil {
+		<-owner.openingSlot
+		return nil, errors.Join(errors.New("qualification Introduction pacing canceled"), err)
+	}
+	var once sync.Once
+	return func() {
+		once.Do(func() {
+			owner.nextOpening = time.Now().Add(streamQualificationIntroductionSpacing)
+			<-owner.openingSlot
+		})
+	}, nil
 }
 
 func (owner *StreamQualificationMeasurements) sample(ctx context.Context, host *resource.Hosting) (resource.HostingSample, resource.Sample, error) {

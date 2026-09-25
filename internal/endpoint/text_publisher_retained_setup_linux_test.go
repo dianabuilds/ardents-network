@@ -58,7 +58,7 @@ func TestTextPublisherBuildsRetainedQualificationSetAcrossFourReaders(t *testing
 		}
 	}
 	readerJobs := make([]*textJobIdentity, len(readers))
-	// The installed runner gives every Reader the same final-opening pacer.
+	// The installed runner gives every Reader the same delivery pacer.
 	// Independent preparation loops can drift together under a constrained
 	// scheduler, so their initial phase offsets alone do not enforce the
 	// Publisher's rolling four-openings-per-second admission boundary.

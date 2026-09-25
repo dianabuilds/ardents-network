@@ -19,7 +19,10 @@ substitute for independent review.
 
 ## Ordinary checks
 
-- `make unit` runs the positive deterministic package inventory.
+- `make unit` runs the positive deterministic package inventory with one
+  explicit 15-minute terminal timeout per package. The retained 256-stream
+  Linux Endpoint setup stays in that profile; exceeding the bound fails with
+  the Go runtime's goroutine dump.
 - `make e2e` runs the positive local process package inventory.
 - `make quick-check` runs formatting, architecture, vet, unit, the four named
   command builds, module tidiness, and the canonical artifact representation

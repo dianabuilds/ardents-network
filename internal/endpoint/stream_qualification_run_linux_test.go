@@ -29,7 +29,7 @@ func TestCancelledQualificationRunCannotPublishIntoReplacement(t *testing.T) {
 	var firstReport streamqualification.Report
 	stopFailure := errors.New("sampling cleanup failed")
 	stopCalls := 0
-	if err := first.configure(&firstReport, func(context.Context) error { return nil },
+	if err := first.configure(&firstReport, func(context.Context) (func(), error) { return func() {}, nil },
 		func(context.Context) (func(), error) { return func() {}, nil },
 		func() error { stopCalls++; return stopFailure },
 		func(context.Context, streamqualification.Report) error { return nil }); err != nil {
@@ -57,7 +57,7 @@ func TestCancelledQualificationRunCannotPublishIntoReplacement(t *testing.T) {
 	}
 	replacementJob.qualification = replacement
 	var replacementReport streamqualification.Report
-	if err := replacement.configure(&replacementReport, func(context.Context) error { return nil },
+	if err := replacement.configure(&replacementReport, func(context.Context) (func(), error) { return func() {}, nil },
 		func(context.Context) (func(), error) { return func() {}, nil }, func() error { return nil },
 		func(context.Context, streamqualification.Report) error { return nil }); err != nil {
 		t.Fatal(err)

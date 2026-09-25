@@ -21,11 +21,10 @@ import (
 
 // Four qualification Readers share the Publisher's four-openings-per-second
 // dispatch ceiling. A one-second per-Reader interval, phase-shifted below,
-// keeps preparation ahead of the shared 300 ms actual-opening pacer. Each
-// Reader may overlap four
-// unfinished Route setups, for at most the Publisher's sixteen admitted
-// Introduction waiters across the cohort. StreamQualificationMeasurements
-// still spaces the actual cryptographic openings by 300 ms, below that ceiling.
+// keeps preparation ahead of the shared delivery pacer. Each Reader may
+// overlap four unfinished Route setups, for at most the Publisher's sixteen
+// admitted Introduction waiters across the cohort. The shared owner waits
+// 300 ms after each delivery result before admitting the next submission.
 const (
 	qualificationIntroductionInterval   = time.Second
 	qualificationReaderSetupParallelism = 4

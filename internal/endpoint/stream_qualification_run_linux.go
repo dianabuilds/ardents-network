@@ -17,7 +17,7 @@ import (
 type textQualificationRun struct {
 	mu                  sync.Mutex
 	init                streamqualification.Init
-	acquireIntroduction func(context.Context) error
+	acquireIntroduction func(context.Context) (func(), error)
 	acquireSetup        func(context.Context) (func(), error)
 	stopSampling        func() error
 	joins               map[*route.ClosedJoinedStream]struct{}
@@ -51,7 +51,7 @@ func (run *textQualificationRun) bindInvocation(nonce [32]byte) error {
 }
 
 func (run *textQualificationRun) configure(report *streamqualification.Report,
-	acquireIntroduction func(context.Context) error,
+	acquireIntroduction func(context.Context) (func(), error),
 	acquireSetup func(context.Context) (func(), error),
 	stopSampling func() error,
 	observe func(context.Context, streamqualification.Report) error,

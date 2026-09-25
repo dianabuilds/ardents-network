@@ -175,11 +175,6 @@ func (owner *textContext) openTextJoinedTransportAfterSetup(ctx context.Context,
 		}
 	}
 	if attempt.plaintext.AttachmentGeneration == 1 && owner.surface == broker.Connection {
-		if job.qualification != nil && job.qualification.acquireIntroduction != nil {
-			if err := job.qualification.acquireIntroduction(joining); err != nil {
-				return nil, err
-			}
-		}
 		if err := owner.refreshTextIntroduction(joining, job, attempt, source); err != nil {
 			return nil, err
 		}

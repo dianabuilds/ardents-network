@@ -20,26 +20,68 @@ func TestQualificationPublisherIncompleteErrorReportsProgressAndRegistrationReas
 	}
 }
 
-func TestQualificationIntroductionPacerSpacesSharedParticipants(t *testing.T) {
+func TestQualificationIntroductionPacerSpacesCompletedDeliveries(t *testing.T) {
 	owner, err := NewStreamQualificationMeasurements(4)
 	if err != nil {
 		t.Fatal(err)
 	}
-	base := time.Unix(1000, 0)
-	for index := 0; index < 8; index++ {
-		scheduled, err := owner.reserveIntroductionOpening(base)
-		if err != nil {
-			t.Fatal(err)
-		}
-		want := base.Add(time.Duration(index) * streamQualificationIntroductionSpacing)
-		if !scheduled.Equal(want) {
-			t.Fatalf("opening %d scheduled at %v, want %v", index, scheduled, want)
-		}
+	release, err := owner.acquireIntroductionOpening(t.Context())
+	if err != nil {
+		t.Fatal(err)
 	}
-	catchUp := base.Add(time.Minute)
-	scheduled, err := owner.reserveIntroductionOpening(catchUp)
-	if err != nil || !scheduled.Equal(catchUp) {
-		t.Fatalf("idle pacer did not resume immediately: %v, %v", scheduled, err)
+	acquired := make(chan time.Time, 1)
+	failures := make(chan error, 1)
+	go func() {
+		nextRelease, err := owner.acquireIntroductionOpening(t.Context())
+		if err != nil {
+			failures <- err
+			return
+		}
+		acquired <- time.Now()
+		nextRelease()
+	}()
+	select {
+	case <-acquired:
+		t.Fatal("second Publisher delivery entered before first finished")
+	case err := <-failures:
+		t.Fatal(err)
+	case <-time.After(20 * time.Millisecond):
+	}
+	finished := time.Now()
+	release()
+	select {
+	case at := <-acquired:
+		if at.Sub(finished) < streamQualificationIntroductionSpacing-20*time.Millisecond {
+			t.Fatalf("Publisher deliveries separated by %v, want at least %v", at.Sub(finished), streamQualificationIntroductionSpacing)
+		}
+	case err := <-failures:
+		t.Fatal(err)
+	case <-time.After(2 * time.Second):
+		t.Fatal("second Publisher delivery did not enter after spacing")
+	}
+}
+
+func TestQualificationIntroductionPacerCancelsWaitingDelivery(t *testing.T) {
+	owner, err := NewStreamQualificationMeasurements(4)
+	if err != nil {
+		t.Fatal(err)
+	}
+	release, err := owner.acquireIntroductionOpening(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer release()
+	ctx, cancel := context.WithCancel(t.Context())
+	canceled := make(chan error, 1)
+	go func() { _, err := owner.acquireIntroductionOpening(ctx); canceled <- err }()
+	cancel()
+	select {
+	case err := <-canceled:
+		if !errors.Is(err, context.Canceled) {
+			t.Fatalf("waiting delivery cancellation = %v", err)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("waiting Publisher delivery did not cancel")
 	}
 }
 
