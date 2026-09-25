@@ -17,6 +17,13 @@ func collectNodeEvents(input io.Reader, process *nodeProcess) {
 		if json.Unmarshal(scanner.Bytes(), &event) != nil {
 			continue
 		}
+		if event.Schema == "ardents-node-event-v1" && event.Kind == "route-diagnostic" && event.Reason != "" {
+			process.waitMu.Lock()
+			if process.firstRouteDiagnostic == "" {
+				process.firstRouteDiagnostic = event.Reason
+			}
+			process.waitMu.Unlock()
+		}
 		// Lifecycle consumers wait between operations. Periodic resource samples
 		// must still be drained so their output cannot stall the real Node.
 		// Malformed schemas or non-periodic states remain observable events.
@@ -70,5 +77,17 @@ func TestNodeLifecycleCollectionRetainsBufferedTerminalAfterExit(t *testing.T) {
 		if !open || event.State != "WITHDRAWN" {
 			t.Fatal("process exit discarded an already emitted terminal event")
 		}
+	}
+}
+
+func TestNodeLifecycleCollectionRetainsFirstRouteDiagnostic(t *testing.T) {
+	process := &nodeProcess{events: make(chan nodeEvent, 4), done: make(chan struct{})}
+	input := strings.Join([]string{
+		`{"schema":"ardents-node-event-v1","kind":"route-diagnostic","state":"FAILED","reason":"issuer-inner-tls-eof"}`,
+		`{"schema":"ardents-node-event-v1","kind":"route-diagnostic","state":"FAILED","reason":"later-cleanup"}`,
+	}, "\n") + "\n"
+	collectNodeEvents(strings.NewReader(input), process)
+	if got := process.firstRouteDiagnosticReason(); got != "issuer-inner-tls-eof" {
+		t.Fatalf("first route diagnostic = %q", got)
 	}
 }

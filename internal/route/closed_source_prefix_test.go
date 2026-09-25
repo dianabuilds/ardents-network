@@ -10,6 +10,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/quic-go/quic-go"
+
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 )
 
@@ -32,6 +34,20 @@ func TestClosedSourceOpenFailureDetailRetainsCarrierBoundary(t *testing.T) {
 	}
 	if !errors.Is(failure, cause) {
 		t.Fatal("closed Source open detail lost its cause")
+	}
+}
+
+func TestClosedSourceOpenFailureDetailRetainsPeerVerificationBoundary(t *testing.T) {
+	failure := closedSourceOpenFailureAt("entry-carrier", closedRoleOpenFailureAt("quic-dial", errCarrierPeerMismatch))
+	if got := ClosedSourceOpenFailureDetail(failure); got != "entry-carrier-quic-dial-peer-mismatch" {
+		t.Fatalf("closed Source peer detail = %q", got)
+	}
+}
+
+func TestClosedSourceOpenFailureDetailClassifiesQUICCryptoHandshake(t *testing.T) {
+	failure := closedSourceOpenFailureAt("entry-carrier", closedRoleOpenFailureAt("quic-dial", &quic.TransportError{ErrorCode: quic.TransportErrorCode(0x100)}))
+	if got := ClosedSourceOpenFailureDetail(failure); got != "entry-carrier-quic-handshake" {
+		t.Fatalf("closed Source QUIC handshake detail = %q", got)
 	}
 }
 

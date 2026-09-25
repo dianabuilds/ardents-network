@@ -424,6 +424,16 @@ foreign evidence fails without adoption or cleanup.
   candidate, select another duty, or establish public capacity, availability,
   co-resident, permissionless, or independent-operation claims.
 
+## Owner cgroup resident observation
+
+The Linux owner cgroup resident observation inventories every bounded descendant
+`cgroup.procs` entry and reads each process `statm`. A vanished process
+(`ENOENT` or `ESRCH`) discards that partial RSS total and permits at most two
+complete re-inventories. A complete later inventory supplies the next RSS
+sample; continued churn or any other inventory, read, parse, or bound failure
+remains fail closed. This does not change `memory.current`, the whole-tree RSS
+ceiling, or the Route's authority and admission rules.
+
 ## Closed Introduction registration receiver
 
 The `closed_introduction` reservation binds one current Introduction delivery

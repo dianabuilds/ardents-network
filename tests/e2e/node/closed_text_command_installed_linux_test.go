@@ -218,6 +218,18 @@ func runInstalledClosedTextParticipant(t *testing.T, config state.Config, binary
 
 func installedCommandRouteDiagnostics(t *testing.T, sourcePlan map[string]any) string {
 	t.Helper()
+	if processes, present := sourcePlan["diagnostic_node_processes"].([]*nodeProcess); present {
+		var reasons []string
+		for _, process := range processes {
+			reason := process.firstRouteDiagnosticReason()
+			if reason != "" {
+				reasons = append(reasons, reason)
+			}
+		}
+		if len(reasons) > 0 {
+			return strings.Join(reasons, "\n")
+		}
+	}
 	rawPaths, present := sourcePlan["route_diagnostic_paths"]
 	if !present {
 		return "none configured"

@@ -36,13 +36,14 @@ type processCert struct {
 }
 
 type nodeProcess struct {
-	command  *exec.Cmd
-	events   chan nodeEvent
-	done     chan struct{}
-	stderr   *bytes.Buffer
-	finished time.Time
-	waitMu   sync.Mutex
-	waitErr  error
+	command              *exec.Cmd
+	events               chan nodeEvent
+	done                 chan struct{}
+	stderr               *bytes.Buffer
+	finished             time.Time
+	firstRouteDiagnostic string
+	waitMu               sync.Mutex
+	waitErr              error
 }
 
 type nodeEvent struct {
@@ -53,6 +54,12 @@ type nodeEvent struct {
 	Assignment       string   `json:"assignment"`
 	AssignmentDigest [32]byte `json:"assignment_digest"`
 	Reason           string   `json:"reason"`
+}
+
+func (process *nodeProcess) firstRouteDiagnosticReason() string {
+	process.waitMu.Lock()
+	defer process.waitMu.Unlock()
+	return process.firstRouteDiagnostic
 }
 
 func TestTwoNodeProcessesRefreshWithdrawRestartAndReassign(t *testing.T) {

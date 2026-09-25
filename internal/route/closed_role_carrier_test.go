@@ -65,3 +65,18 @@ func TestClosedRoleCarrierAuthenticatesDirectTCPAndQUIC(t *testing.T) {
 		})
 	}
 }
+
+func TestClosedRoleCarrierReportsQUICPeerMismatch(t *testing.T) {
+	certificate := entryBindingCertificate(t, 152)
+	listener, err := ListenClosedRoleCarrier(ClosedCarrierQUIC, closedRoleCarrierTestEndpoint(t, ClosedCarrierQUIC), certificate)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer listener.Close()
+	endpoint := listener.(*closedRoleQUICListener).listener.Addr().String()
+	wrong := identifierFromKey(entryBindingCertificate(t, 153).Leaf.PublicKey.(ed25519.PublicKey))
+	_, err = OpenClosedRoleCarrier(t.Context(), ClosedRoleCarrierRequest{CarrierProfile: ClosedCarrierQUIC, Endpoint: endpoint, ExpectedServer: wrong, Deadline: time.Now().Add(5 * time.Second)})
+	if got := closedRoleOpenFailureDetail(err); got != "quic-dial-peer-mismatch" {
+		t.Fatalf("QUIC peer mismatch detail = %q / %v", got, err)
+	}
+}

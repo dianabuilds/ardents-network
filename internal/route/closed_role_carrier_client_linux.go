@@ -44,6 +44,16 @@ func closedRoleOpenFailureDetail(cause error) string {
 		return "unknown"
 	}
 	switch {
+	case errors.Is(cause, errCarrierPeerMissing):
+		stages = append(stages, "peer-missing")
+	case errors.Is(cause, errCarrierPeerMismatch):
+		stages = append(stages, "peer-mismatch")
+	case closedRoleQUICCryptoHandshakeError(cause):
+		if len(stages) == 1 && stages[0] == "quic-dial" {
+			stages[0] = "quic-handshake"
+		} else {
+			stages = append(stages, "quic-handshake")
+		}
 	case errors.Is(cause, context.Canceled):
 		stages = append(stages, "canceled")
 	case errors.Is(cause, context.DeadlineExceeded):
@@ -77,6 +87,11 @@ func closedRoleOpenFailureDetail(cause error) string {
 		}
 	}
 	return strings.Join(stages, "-")
+}
+
+func closedRoleQUICCryptoHandshakeError(cause error) bool {
+	var transport *quic.TransportError
+	return errors.As(cause, &transport) && transport.ErrorCode.IsCryptoError()
 }
 
 // OpenClosedRoleCarrier opens exactly one State-selected TCP/TLS or QUIC role
