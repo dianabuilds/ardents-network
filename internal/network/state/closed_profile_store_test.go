@@ -57,8 +57,8 @@ func TestAcceptClosedProfilePersistsAndConflictsByArrival(t *testing.T) {
 	node := closedProfileNode{nodeID: nodeID, recordDigest: sha256.Sum256(record.raw), domain: 2, subrole: 6, generation: record.generation}
 	root := store.storage
 	parsed, parseErr := parseClosedProfile(first, generation, network, epochDigest, 9, authority.Public().(ed25519.PublicKey), now)
-	if parseErr != nil || !matchesClosedProfileCandidates(parsed, []nodeRecord{record}) {
-		t.Fatalf("closed profile parser/join = %+v, %v, join=%t", parsed, parseErr, matchesClosedProfileCandidates(parsed, []nodeRecord{record}))
+	if parseErr != nil || !matchesClosedProfileCandidates(parsed, store.currentDecision.verified.epoch, []nodeRecord{record}) {
+		t.Fatalf("closed profile parser/join = %+v, %v, join=%t", parsed, parseErr, matchesClosedProfileCandidates(parsed, store.currentDecision.verified.epoch, []nodeRecord{record}))
 	}
 	view, err := store.AcceptClosedProfile(first)
 	if err != nil || view.Digest != sha256.Sum256(first) {
@@ -104,7 +104,7 @@ func closedProfileStoreFixture(t *testing.T) (*networkState, []byte) {
 	store := &networkState{config: config{closedProfileAuthority: authority.Public().(ed25519.PublicKey), clock: func() time.Time { return now }, observe: func() time.Time { return now }}, storage: root,
 		current: &Snapshot{Generation: fmt.Sprintf("%x", generation), NetworkID: network, Epoch: 9, Digest: epochDigest,
 			EpochValidFrom: now.Truncate(time.Hour), ValidUntil: now.Truncate(time.Hour).Add(2 * time.Hour), Profile: closedRouteProfile},
-		currentDecision: &candidateDecision{verified: verifiedEpochDecision{accepted: []nodeRecord{record}}}}
+		currentDecision: &candidateDecision{verified: verifiedEpochDecision{epoch: epochEnvelope{domains: []roleDomain{{id: "rendezvous"}}}, accepted: []nodeRecord{record}}}}
 	node := closedProfileNode{nodeID: nodeID, recordDigest: sha256.Sum256(record.raw), domain: 2, subrole: 6, generation: record.generation}
 	first := testClosedProfile(t, authority, network, generation, epochDigest, now, []closedProfileNode{node})
 	return store, first

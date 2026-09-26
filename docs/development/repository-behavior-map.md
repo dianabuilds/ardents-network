@@ -288,12 +288,14 @@ technical owner defines the shared current/pending/conflict invariant.
    `Close` cancels and joins background work, releases the durable root and
    local Source role, and reports terminal errors. Its result handling has
    the cleanup-error gap recorded in the findings ledger.
-5. The Node-record join currently checks identity, record generation, digest
-   and closed Carrier, while State separately materializes the Epoch's string
-   `Assignment`. The profile's numeric Role Domain is not compared with that
-   assignment in `matchesClosedProfileCandidates` or Node's receiver
-   projection. The technical contract requires the match; F-45 records the
-   exact discrepancy and the focused refusal evidence still needed.
+5. The Node-record join checks identity, record generation, digest and closed
+   Carrier, and since ADR-0103 also the profile's numeric Role Domain:
+   `matchesClosedProfileCandidates` derives the Epoch assignment for each
+   accepted record's family and refuses a profile entry whose domain is
+   unknown or unequal (initiator=1, rendezvous=2, responder=3,
+   introduction=4). Durable acceptance and every read-back run the same
+   join; Node's receiver consumes the joined view and holds no second
+   mapping.
 6. `parseEpoch` accepts AREP v1/v2/v3, and the shared `verifyEpoch` matches
    profile without restricting its envelope version. Closed Carrier admission
    filters old Node Records, but `AcceptClosedProfile` does not constrain the

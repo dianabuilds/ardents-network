@@ -74,6 +74,7 @@ Current decisions:
 - [0082 — Bind issuer-bootstrap restriction to each Node child](0082-bind-bootstrap-restriction-to-node-child.md)
 - [0083 — Activate one data lane after an authenticated Rendezvous pair](0083-activate-joined-rendezvous-data-lane.md)
 - [0084 — Bound forwarding replenishment to the admitted parent channel](0085-bound-forwarding-replenishment.md)
+- [0103 — Join the closed-profile Role Domain to the authenticated Epoch assignment](0103-join-closed-profile-role-domain-to-epoch-assignment.md)
 
 Completed retirement decisions:
 

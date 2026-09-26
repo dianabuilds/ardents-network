@@ -182,6 +182,35 @@ func testClosedIssuerProvisioningParticipant(t *testing.T, carrier string, nodeC
 	if closeErr := owner.Close(); closeErr != nil || rejectedRouteErr == nil {
 		t.Fatalf("rejected command left an available closed route: %v / %v", rejectedRouteErr, closeErr)
 	}
+	// A correctly signed profile that names a Node with a Role Domain its
+	// authenticated Epoch assignment does not give it is refused before any Node
+	// listener starts, exactly like the substituted Record digest above. The
+	// third topology Node is an assigned initiator (Role Domain 1); naming it a
+	// responder (Role Domain 3, subrole 2) stays structurally valid, so only the
+	// State join to the Epoch assignment can catch it.
+	originalRoleDomain := nodes[2]["RoleDomain"]
+	nodes[2]["RoleDomain"] = uint8(3)
+	wrongRolePlanPath := writeJSON(t, "wrong-role-domain-plan.json", plan)
+	nodes[2]["RoleDomain"] = originalRoleDomain
+	wrongRoleProfilePath := filepath.Join(t.TempDir(), "wrong-role-domain.profile")
+	invoke(controlBinary, "sign-closed-profile", "--plan", wrongRolePlanPath, "--authority-key", writePrivateKey(t, "wrong-role-state.pem", statePrivate), "--output", wrongRoleProfilePath)
+	config.Root = t.TempDir()
+	acceptArguments[2] = config.Root
+	wrongRoleArguments := append(append([]string(nil), acceptArguments...), "--closed-profile", wrongRoleProfilePath)
+	roleCtx, roleCancel := context.WithTimeout(t.Context(), 30*time.Second)
+	defer roleCancel()
+	roleOutput, roleErr := exec.CommandContext(roleCtx, endpointBinary, wrongRoleArguments...).CombinedOutput()
+	if roleErr == nil || !bytes.Contains(roleOutput, []byte("accept closed profile:")) {
+		t.Fatalf("command did not reject a Role Domain contradicting the Epoch assignment: %v / %s", roleErr, roleOutput)
+	}
+	roleOwner, roleOpenErr := state.Open(config)
+	if roleOpenErr != nil {
+		t.Fatal(roleOpenErr)
+	}
+	_, rejectedRoleRouteErr := roleOwner.CurrentClosedRoute()
+	if closeErr := roleOwner.Close(); closeErr != nil || rejectedRoleRouteErr == nil {
+		t.Fatalf("role-mismatched command left an available closed route: %v / %v", rejectedRoleRouteErr, closeErr)
+	}
 	config.Root = t.TempDir()
 	acceptArguments[2] = config.Root
 	validArguments := append(append([]string(nil), acceptArguments...), "--closed-profile", signedPath)
@@ -254,12 +283,4 @@ func TestClosedTextTopologyProvisioningAcrossProcesses(t *testing.T) {
 	for _, carrier := range []string{"ardents-carrier-tcp-tls-v2", "ardents-carrier-quic-v2"} {
 		t.Run(carrier, func(t *testing.T) { testClosedIssuerProvisioning(t, carrier, 16) })
 	}
-}
-
-func closedTextTopologyRoles(count int) [][2]uint8 {
-	roles := [][2]uint8{{1, 1}, {2, 6}, {1, 2}}
-	if count == 16 {
-		roles = append(roles, [][2]uint8{{1, 1}, {1, 2}, {2, 5}, {4, 3}, {4, 1}, {4, 1}, {4, 2}, {4, 2}, {3, 1}, {3, 1}, {3, 2}, {3, 2}, {2, 4}}...)
-	}
-	return roles
 }

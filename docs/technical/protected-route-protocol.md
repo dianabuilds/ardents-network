@@ -113,7 +113,7 @@ data join=4, resolution=5 and issuance=6. Adjacent/interior use one of the three
 adjacent Domains Initiator (1), Responder (3) and Introduction (4); Rendezvous (2) is never adjacent. Delivery uses Introduction; data join/resolution/issuance use
 Rendezvous. The issuer entry is the sole issuance subrole. Current Node Records
 supply the exact address, Ed25519 key, family and selected Carrier; their digest,
-identity, assignment and duty must match. No address/key is duplicated in this
+identity, assignment and duty must match: the State verifier joins each entry's Role-Domain to the assignment the accepted Epoch gives that record's family, refusing an unknown or mismatched assignment before durable acceptance and on every read-back (ADR-0103). No address/key is duplicated in this
 profile. Subroles refine existing Role Domains; they do not create new ones.
 Node Record schema 2 retains its canonical byte layout, but this generation
 requires one of the two successor Carrier identifiers above. Schema 1 and the

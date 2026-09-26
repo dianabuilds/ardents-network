@@ -333,8 +333,9 @@ duty for which that listener was created.
 Each new closed Route admission must re-read the current authenticated duty
 facts and require the exact same generation, Network, Epoch, digest, Node,
 assignment, and assignment digest to remain fresh and unconflicted. The State
-owner must join the profile's numeric Role Domain to that Epoch assignment
-before providing a usable duty view. An
+owner joins the profile's numeric Role Domain to that Epoch assignment
+(initiator=1, rendezvous=2, responder=3, introduction=4; ADR-0103) before
+providing a usable duty view. An
 accepted successor, expiry, conflict, or withdrawal therefore closes the old
 admission authority without a polling grace period.
 

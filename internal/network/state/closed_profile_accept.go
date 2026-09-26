@@ -61,7 +61,7 @@ func (s *networkState) AcceptClosedProfile(raw []byte) (ClosedProfileView, error
 	}
 	now := s.config.clock().UTC()
 	profile, err := parseClosedProfile(raw, generation, s.current.NetworkID, s.current.Digest, s.current.Epoch, s.config.closedProfileAuthority, now)
-	if err != nil || profile.notBefore.Before(s.current.EpochValidFrom) || profile.notAfter.After(s.current.ValidUntil) || !matchesClosedProfileCandidates(profile, s.currentDecision.verified.accepted) {
+	if err != nil || profile.notBefore.Before(s.current.EpochValidFrom) || profile.notAfter.After(s.current.ValidUntil) || !matchesClosedProfileCandidates(profile, s.currentDecision.verified.epoch, s.currentDecision.verified.accepted) {
 		return ClosedProfileView{}, errors.New("closed profile does not match accepted State")
 	}
 	stored, storedRaw, err := s.storage.loadClosedProfile(generation)
@@ -151,7 +151,7 @@ func (s *networkState) currentClosedProfileLocked() (closedProfile, error) {
 	}
 	profile, err := parseClosedProfile(raw, generation, s.current.NetworkID, s.current.Digest, s.current.Epoch, s.config.closedProfileAuthority, now)
 	if err != nil || profile.digest != stored.accepted || profile.notBefore.Before(s.current.EpochValidFrom) || profile.notAfter.After(s.current.ValidUntil) ||
-		!matchesClosedProfileCandidates(profile, s.currentDecision.verified.accepted) {
+		!matchesClosedProfileCandidates(profile, s.currentDecision.verified.epoch, s.currentDecision.verified.accepted) {
 		return closedProfile{}, errors.New("closed profile is unavailable")
 	}
 	return profile, nil
@@ -197,7 +197,7 @@ func closedProfileGeneration(encoded string) ([32]byte, error) {
 	return generation, nil
 }
 
-func matchesClosedProfileCandidates(profile closedProfile, records []nodeRecord) bool {
+func matchesClosedProfileCandidates(profile closedProfile, epoch epochEnvelope, records []nodeRecord) bool {
 	available := make(map[[32]byte]nodeRecord, len(records))
 	for _, record := range records {
 		available[record.nodeID] = record
@@ -207,8 +207,41 @@ func matchesClosedProfileCandidates(profile closedProfile, records []nodeRecord)
 		if !exists || record.generation != node.generation || recordDigest(record) != node.recordDigest || !validCarrierForEpoch(closedRouteProfile, record.carrier) {
 			return false
 		}
+		// The signed entry's numeric Role Domain must equal the assignment the
+		// verified Epoch gives this record's family. An assignment outside the
+		// four closed Role Domains, or one that disagrees with the entry, is
+		// refused before durable acceptance and again on read-back, so the
+		// forwarding duty a Node starts is the one its Epoch authenticated.
+		assignment, err := assignedDomain(epoch, record.family)
+		if err != nil {
+			return false
+		}
+		domain, known := closedRoleDomain(assignment)
+		if !known || domain != node.domain {
+			return false
+		}
 	}
 	return true
+}
+
+// closedRoleDomain maps an authenticated Epoch role-domain assignment to the
+// contract-fixed closed-profile Role Domain number: Initiator=1, Rendezvous=2,
+// Responder=3, Introduction=4 (docs/technical/protected-route-protocol.md).
+// The former interactive transit-issuance domain has no closed Role Domain, so
+// it is unknown here and its records cannot join a closed profile.
+func closedRoleDomain(assignment string) (byte, bool) {
+	switch assignment {
+	case "initiator":
+		return 1, true
+	case "rendezvous":
+		return 2, true
+	case "responder":
+		return 3, true
+	case "introduction":
+		return 4, true
+	default:
+		return 0, false
+	}
 }
 
 func recordDigest(record nodeRecord) [32]byte { return sha256.Sum256(record.raw) }

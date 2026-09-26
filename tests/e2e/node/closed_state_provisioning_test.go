@@ -11,10 +11,12 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"testing"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/network/state"
+	"github.com/dianabuilds/ardents-network/tests/epochfixture/assignment"
 )
 
 // Canonical test inputs still pass the production Epoch, Node Record and
@@ -27,6 +29,9 @@ func closedProvisioningStateSize(t *testing.T, network, issuer [32]byte, authori
 	t.Helper()
 	records := make([]Record, count)
 	addresses := make(map[string]struct{}, count)
+	roles := closedTextTopologyRoles(count)
+	seed := sha256.Sum256([]byte("closed command provisioning"))
+	domains := closedTopologyDomains(roles)
 	for index := range records {
 		key := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{byte(6 + index)}, ed25519.SeedSize))
 		if index == 1 {
@@ -47,8 +52,9 @@ func closedProvisioningStateSize(t *testing.T, network, issuer [32]byte, authori
 			}
 			address = closedProvisioningAddress(t, carrier)
 		}
+		family := closedRoleFamily(t, network, seed, domains, closedRoleDomainName(roles[index][0]), fmt.Sprintf("closed-node-%d", index+1))
 		record, err := BuildRecord(RecordSpec{NetworkID: network, NodeID: node, Generation: uint64(index + 1),
-			ValidFrom: now, ValidUntil: now.Add(2 * time.Hour), Family: fmt.Sprintf("closed-node-%d", index+1),
+			ValidFrom: now, ValidUntil: now.Add(2 * time.Hour), Family: family,
 			Endpoint: address, Carrier: carrier,
 			Capability: 2, Capacity: 4, PrivateKey: key})
 		if err != nil {
@@ -61,8 +67,8 @@ func closedProvisioningStateSize(t *testing.T, network, issuer [32]byte, authori
 		rawInputs[index] = records[index].Raw
 	}
 	epoch, err := BuildEpoch(EpochSpec{NetworkID: network, Number: 1, ValidFrom: now, ValidUntil: now.Add(2 * time.Hour),
-		Inputs: rawInputs, Accepted: records, AssignmentSeed: sha256.Sum256([]byte("closed command provisioning")),
-		Profile: "ardents-route-v3", Version: 3, Domains: []string{"alpha", "beta"}, Authorities: []ed25519.PrivateKey{authority}})
+		Inputs: rawInputs, Accepted: records, AssignmentSeed: seed,
+		Profile: "ardents-route-v3", Version: 3, Domains: domains, Authorities: []ed25519.PrivateKey{authority}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -134,4 +140,75 @@ func closedProvisioningAddress(t *testing.T, carrier string) string {
 		t.Fatal(err)
 	}
 	return address
+}
+
+// closedTextTopologyRoles is the semantic closed Route topology: each entry is
+// a signed profile Role Domain number and its subrole. It lives in this
+// cross-platform file because closedProvisioningStateSize derives the Epoch
+// role-name domains and each record's family assignment from it on every
+// platform, while only the Linux process cells start the matching Node duties.
+func closedTextTopologyRoles(count int) [][2]uint8 {
+	roles := [][2]uint8{{1, 1}, {2, 6}, {1, 2}}
+	if count == 16 {
+		roles = append(roles, [][2]uint8{{1, 1}, {1, 2}, {2, 5}, {4, 3}, {4, 1}, {4, 1}, {4, 2}, {4, 2}, {3, 1}, {3, 1}, {3, 2}, {3, 2}, {2, 4}}...)
+	}
+	return roles
+}
+
+// closedRoleDomainName maps a closed-profile Role Domain number to the Epoch
+// assignment text the State join expects: Initiator=1, Rendezvous=2,
+// Responder=3, Introduction=4 (docs/technical/protected-route-protocol.md).
+func closedRoleDomainName(domain uint8) string {
+	switch domain {
+	case 1:
+		return "initiator"
+	case 2:
+		return "rendezvous"
+	case 3:
+		return "responder"
+	case 4:
+		return "introduction"
+	default:
+		return ""
+	}
+}
+
+// closedTopologyDomains returns the distinct role-name domains the topology
+// uses, in the strict ascending order decodeSummaries requires.
+func closedTopologyDomains(roles [][2]uint8) []string {
+	seen := make(map[string]struct{}, 4)
+	for _, role := range roles {
+		seen[closedRoleDomainName(role[0])] = struct{}{}
+	}
+	domains := make([]string, 0, len(seen))
+	for name := range seen {
+		domains = append(domains, name)
+	}
+	sort.Strings(domains)
+	return domains
+}
+
+// closedRoleFamily searches a deterministic family name whose Epoch assignment
+// under the role-name domains lands on the topology's required domain, so the
+// signed profile Role Domain equals the record's authenticated Epoch
+// assignment. Family text is free-form, so a real closed operator selects it
+// the same way; the search mirrors that selection rather than fabricating an
+// assignment.
+func closedRoleFamily(t *testing.T, network, seed [32]byte, domains []string, target, base string) string {
+	t.Helper()
+	for attempt := 0; attempt < 4096; attempt++ {
+		family := base
+		if attempt > 0 {
+			family = fmt.Sprintf("%s-%d", base, attempt)
+		}
+		selected, err := assignment.Select(network, 1, seed, family, domains)
+		if err != nil {
+			t.Fatalf("closed role family assignment: %v", err)
+		}
+		if selected == target {
+			return family
+		}
+	}
+	t.Fatalf("no closed role family reached domain %q within the search bound", target)
+	return ""
 }

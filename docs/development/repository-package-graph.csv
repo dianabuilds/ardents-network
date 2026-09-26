@@ -37,7 +37,7 @@ package,production_go,test_go,incoming_packages,linux_imports,windows_imports
 "internal/naming/namespace/recovery","4","1","2","internal/naming","internal/naming"
 "internal/network/duty","14","6","4","",""
 "internal/network/source","5","5","3","",""
-"internal/network/state","57","32","10","internal/network/duty;internal/network/source;internal/resource","internal/network/duty;internal/network/source;internal/resource"
+"internal/network/state","57","33","10","internal/network/duty;internal/network/source;internal/resource","internal/network/duty;internal/network/source;internal/resource"
 "internal/node","44","68","2","internal/network/duty;internal/network/state;internal/resource;internal/route;internal/route/ardp;internal/route/capsule;internal/route/credential;internal/route/replay;internal/route/terminal;internal/service/reachability","internal/network/duty;internal/network/state;internal/resource;internal/route;internal/route/ardp;internal/route/capsule;internal/route/credential;internal/route/replay;internal/route/terminal;internal/service/reachability"
 "internal/qualification","6","1","2","internal/application/streamqualification;internal/resource;internal/route",""
 "internal/release","29","14","4","",""

@@ -1046,6 +1046,7 @@
 "internal/network/state/closed_profile_accept.go","production-go","internal/network/state","closed-profile-acceptance","behavior-source-traced"
 "internal/network/state/closed_profile_liveness_test.go","go-test","internal/network/state","","unreviewed"
 "internal/network/state/closed_profile_prepare.go","production-go","internal/network/state","closed-profile-acceptance","package-contract-pass"
+"internal/network/state/closed_profile_role_join_test.go","go-test","internal/network/state","","unreviewed"
 "internal/network/state/closed_profile_spki_test.go","go-test","internal/network/state","","unreviewed"
 "internal/network/state/closed_profile_store.go","production-go","internal/network/state","closed-profile-acceptance","behavior-source-traced"
 "internal/network/state/closed_profile_store_test.go","go-test","internal/network/state","","unreviewed"
