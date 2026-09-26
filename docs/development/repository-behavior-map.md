@@ -389,7 +389,10 @@ current generation exists, and supplies `store.CurrentNodeDuty` through
 exposes only duty getters; `node.currentFacts` immediately copies 38 getters
 into its own `dutyFacts`, rejecting candidate count above 64, authority count
 above 16 and empty copied authority identities/keys. This leaves State's
-source, pending and persistent internals outside Node.
+source, pending and persistent internals outside Node. The reverse projection
+(`dutyFacts` satisfying `DutyView`) is test scope since ADR-0101: production
+supplies `state.NodeDutyView` through the command callback, and behavior
+tests supply the snapshot directly without a Network State runtime.
 
 Node assesses that local copy before opening a duty, reads it again after
 quarantine, and polls it while live. A changed selected generation, Network,

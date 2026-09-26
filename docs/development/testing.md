@@ -181,14 +181,17 @@ reviewed grammar group. Current closed TCP/TLS and QUIC tests prove exact peer
 rejection, cancellation before handshake, caller-owned lifetime after a
 completed handshake, and unchanged Carrier profile bounds.
 
-Removing the old cross-platform Rendezvous listener exposes the shared
-server-side Carrier and admission closure as production-dead while the current
-closed Node branches and behavior tests still own it; no selected C0 command
-starts their process. Its exact symbols therefore remain reviewed in the common
-deadcode allowlist. Additional shared framing leaves are unreachable only in
-the Windows projection and remain in its platform allowance because Linux
-production still has retained Route consumers. Neither classification permits
-removing or reconnecting shared mechanics in the one-engine retirement slice.
+Removing the old cross-platform Rendezvous listener once exposed the shared
+server-side Carrier and admission closure as production-dead. The current
+analysis reaches it through the composed `ardents-node node --config` command,
+and ADR-0101 resolved the last two Node entries that still carried the stale
+"no selected C0 command" claim: the `dutyFacts` DutyView test-seam projection
+moved into test scope and the unimplemented local admission-timeout helpers
+were retired, so `internal/node` holds no common deadcode allowance.
+Additional shared framing leaves are unreachable only in the Windows
+projection and remain in its platform allowance because Linux production
+still has retained Route consumers. That allowance does not permit removing
+or reconnecting shared mechanics in the one-engine retirement slice.
 
 The headless command inventory declares the four-command Network artifact lane;
 the text-worker inventory declares its separately owned Application lane under
