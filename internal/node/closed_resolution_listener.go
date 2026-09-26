@@ -79,7 +79,7 @@ func startClosedResolution(config runtimeConfig, snapshot state.NodeDuty) (*duty
 		store: store, spends: spends, limits: limits, capacity: make(chan struct{}, local.ConnectionLimit), cancel: cancel,
 		done: make(chan error, 1), drained: make(chan struct{})}
 	go running.run(ctx)
-	return &dutyHandle{Done: running.done, Protect: func(bool) {}, Usage: func() (uint64, uint64, uint64) {
+	return &dutyHandle{Done: running.done, Joined: running.drained, Protect: func(bool) {}, Usage: func() (uint64, uint64, uint64) {
 		active := uint64(running.active.Load())
 		return active, active, 0
 	}, Stop: func() { _ = running.stop() }, Drain: func(ctx context.Context) error {
@@ -169,7 +169,14 @@ func (server *closedResolutionServer) accept(ctx context.Context) error {
 
 func (server *closedResolutionServer) closeCarrier(connection net.Conn) {
 	err := connection.Close()
-	if err == nil || errors.Is(err, net.ErrClosed) {
+	if errors.Is(err, net.ErrClosed) {
+		return
+	}
+	server.recordCleanup(err)
+}
+
+func (server *closedResolutionServer) recordCleanup(err error) {
+	if err == nil {
 		return
 	}
 	server.cleanupMu.Lock()

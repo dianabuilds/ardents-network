@@ -84,6 +84,13 @@ The Issuer's Credential listener also retains accepted-Carrier close failures
 after joining its children. Node releases the issuer and admission roots when
 that join completed, even if the listener reports a physical close failure;
 an incomplete join keeps both roots held.
+Resolution, Introduction, and Issuer control admissions retain a shared
+Hosting reservation until their admitted child has completed. A successful
+protocol reply does not turn a later reservation-release failure into a failed
+reply; that failure is instead part of the joined duty cleanup result. If a
+bounded drain expires before the child joins, Node returns the failed cleanup
+outcome and transfers shared Hosting-handle closure to that eventual join, so a
+late release cannot run against a closed handle.
 Short local-role transactions coordinate with concurrent Source exposure
 retention. `duty.OpenOperation` waits only for an occupied exclusive lease,
 for at most one second or the caller's earlier cancellation. It then verifies

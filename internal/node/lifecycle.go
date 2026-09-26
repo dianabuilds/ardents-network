@@ -20,7 +20,8 @@ func Run(ctx context.Context, input Config) (result Result, runErr error) {
 		return Result{}, err
 	}
 	if config.host != nil {
-		defer func() { runErr = errors.Join(runErr, config.host.Close()) }()
+		config.hostLifetime = newClosedHostingLifetime(config.host)
+		defer func() { runErr = errors.Join(runErr, config.hostLifetime.close()) }()
 	}
 	machine := stateMachine{current: stateAbsent}
 	retained := false
@@ -201,6 +202,9 @@ func withdraw(config runtimeConfig, machine *stateMachine, server *dutyHandle, s
 		return fail(config, machine, server, "external evidence channel failed", err)
 	}
 	if drainErr := server.Drain(context.Background()); drainErr != nil {
+		if !dutyJoined(server.Joined) {
+			config.hostLifetime.deferCloseUntil(server.Joined)
+		}
 		return fail(config, machine, nil, "Node role cleanup failed", drainErr)
 	}
 	if err := moveAndEmit(config, machine, stateWithdrawn, snapshot, reason); err != nil {
@@ -220,9 +224,25 @@ func fail(config runtimeConfig, machine *stateMachine, server *dutyHandle, reaso
 		terminalErr = moveErr
 	}
 	if server != nil {
-		terminalErr = errors.Join(terminalErr, server.Drain(context.Background()))
+		drainErr := server.Drain(context.Background())
+		if !dutyJoined(server.Joined) {
+			config.hostLifetime.deferCloseUntil(server.Joined)
+		}
+		terminalErr = errors.Join(terminalErr, drainErr)
 	}
 	return Result{State: stateNames[stateFailed], Reason: reason}, errors.Join(cause, terminalErr)
+}
+
+func dutyJoined(joined <-chan struct{}) bool {
+	if joined == nil {
+		return true
+	}
+	select {
+	case <-joined:
+		return true
+	default:
+		return false
+	}
 }
 
 func terminalWithoutDuty(config runtimeConfig, machine *stateMachine, snapshot state.NodeDuty, cause error) (Result, error) {

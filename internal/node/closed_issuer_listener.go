@@ -55,13 +55,14 @@ func startClosedIssuer(config runtimeConfig, snapshot state.NodeDuty) (*dutyHand
 	if err != nil {
 		return nil, errors.Join(err, spends.Close(), issuer.Close())
 	}
+	releases := &terminalCleanup{}
 	listener, err := credential.StartClosedTokenListener(context.Background(), credential.ClosedTokenListenerConfig{Issuer: issuer,
-		SharedListener: shared, NodeHandler: closedIssuerNodeHandler(config, local.Certificate, issuer, spends, limits),
+		SharedListener: shared, NodeHandler: closedIssuerNodeHandler(config, local.Certificate, issuer, spends, limits, releases.record),
 		ConnectionLimit: local.ConnectionLimit, Clock: config.now})
 	if err != nil {
 		return nil, errors.Join(err, spends.Close(), issuer.Close())
 	}
-	return &dutyHandle{Done: listener.Done(), Protect: func(bool) {}, Usage: func() (uint64, uint64, uint64) {
+	return &dutyHandle{Done: listener.Done(), Joined: listener.Drained(), Protect: func(bool) {}, Usage: func() (uint64, uint64, uint64) {
 		return uint64(listener.Active()), uint64(listener.Active()), 0
 	}, Stop: func() { _ = listener.Stop() }, Drain: func(ctx context.Context) error {
 		drain, cancel := context.WithTimeout(ctx, local.DrainTimeout)
@@ -71,7 +72,7 @@ func startClosedIssuer(config runtimeConfig, snapshot state.NodeDuty) (*dutyHand
 			// An incomplete join cannot release durable owners to a successor.
 			return err
 		}
-		return errors.Join(err, spends.Close(), issuer.Close())
+		return errors.Join(err, releases.result(), spends.Close(), issuer.Close())
 	}}, nil
 }
 

@@ -11,6 +11,7 @@ type runtimeConfig struct {
 	hostingSample     *resource.HostingSample
 	hostingUsage      resource.Sample
 	host              closedForwardingHost
+	hostLifetime      *closedHostingLifetime
 	hostingNext       time.Time
 	hostingLevel      pressureLevel
 	Config

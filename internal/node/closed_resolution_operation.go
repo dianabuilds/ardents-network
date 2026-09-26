@@ -88,7 +88,7 @@ func (server *closedResolutionServer) serveAdmitted(ctx context.Context, connect
 	if err != nil {
 		return err
 	}
-	defer lease.Release()
+	defer func() { server.recordCleanup(lease.Release()) }()
 	if err := lane.Admit(&lease, connection); err != nil {
 		return err
 	}

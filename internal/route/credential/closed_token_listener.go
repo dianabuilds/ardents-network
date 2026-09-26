@@ -160,6 +160,14 @@ func (listener *ClosedTokenListener) Joined() bool {
 	}
 }
 
+// Drained closes after every accepted Carrier worker has joined.
+func (listener *ClosedTokenListener) Drained() <-chan struct{} {
+	if listener == nil {
+		return nil
+	}
+	return listener.drained
+}
+
 func (listener *ClosedTokenListener) serve(ctx context.Context) {
 	defer listener.workers.Done()
 	defer listener.Stop()
