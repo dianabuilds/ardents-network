@@ -68,7 +68,7 @@ func Replace(ctx context.Context, operation Operation) (Result, error) {
 // an authorization. It neither downloads nor infers a rollback from the
 // journal. The caller owns the exact user-unit adapter and candidate-side
 // no-network self-test, just as for Replace.
-func Rollback(ctx context.Context, operation Operation) (Result, error) {
+func Rollback(ctx context.Context, operation Operation) (outcome Result, resultErr error) {
 	if ctx == nil || ctx.Err() != nil {
 		return Result{State: "invalid"}, errors.New("endpoint rollback context is unavailable")
 	}
@@ -90,7 +90,7 @@ func Rollback(ctx context.Context, operation Operation) (Result, error) {
 	if err != nil {
 		return Result{State: "invalid"}, err
 	}
-	defer store.close()
+	defer func() { resultErr = errors.Join(resultErr, store.close()) }()
 	current, err := store.current()
 	if err != nil {
 		return Result{State: "current-unbound"}, errors.New("endpoint rollback requires a committed predecessor record")
@@ -157,7 +157,7 @@ func Rollback(ctx context.Context, operation Operation) (Result, error) {
 	return Result{State: "rollback-committed-restart-permitted", Current: predecessor, Predecessor: journalRecord.candidate}, nil
 }
 
-func replace(ctx context.Context, operation Operation, control *operationControl) (Result, error) {
+func replace(ctx context.Context, operation Operation, control *operationControl) (outcome Result, resultErr error) {
 	if ctx == nil || ctx.Err() != nil {
 		return Result{State: "invalid"}, errors.New("endpoint replacement context is unavailable")
 	}
@@ -179,7 +179,7 @@ func replace(ctx context.Context, operation Operation, control *operationControl
 	if err != nil {
 		return Result{State: "invalid"}, err
 	}
-	defer store.close()
+	defer func() { resultErr = errors.Join(resultErr, store.close()) }()
 	current, err := store.current()
 	if err != nil {
 		return Result{State: "current-unbound"}, errors.New("endpoint replacement requires a committed current program")

@@ -63,7 +63,7 @@ type Running struct {
 // candidate, and then call CommitPrepared before the ordinary unit may accept
 // the successor. It is Ubuntu-only: other platforms return an explicit
 // unsupported error and make no filesystem change.
-func Prepare(ctx context.Context, request Request) (Record, error) {
+func Prepare(ctx context.Context, request Request) (prepared Record, resultErr error) {
 	if ctx == nil || ctx.Err() != nil {
 		return Record{}, errors.New("endpoint replacement context is unavailable")
 	}
@@ -78,7 +78,7 @@ func Prepare(ctx context.Context, request Request) (Record, error) {
 	if err != nil {
 		return Record{}, err
 	}
-	defer store.close()
+	defer func() { resultErr = errors.Join(resultErr, store.close()) }()
 	if err := store.prepare(record); err != nil {
 		return Record{}, err
 	}
@@ -106,7 +106,7 @@ func preparedRecord(request Request) (Record, error) {
 // them the normal-start successor. A crash after current publication is safe:
 // current remains authoritative and later opens discard the duplicate prepared
 // record only when it is byte-identical.
-func CommitPrepared(stateRoot, programPath string) (Record, error) {
+func CommitPrepared(stateRoot, programPath string) (committed Record, resultErr error) {
 	if runtime.GOOS != "linux" {
 		return Record{}, errors.New("endpoint replacement is available only on Linux")
 	}
@@ -114,7 +114,7 @@ func CommitPrepared(stateRoot, programPath string) (Record, error) {
 	if err != nil {
 		return Record{}, err
 	}
-	defer store.close()
+	defer func() { resultErr = errors.Join(resultErr, store.close()) }()
 	record, err := store.prepared()
 	if err != nil {
 		return Record{}, err
