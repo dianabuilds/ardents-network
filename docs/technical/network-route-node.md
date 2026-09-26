@@ -78,6 +78,8 @@ successful publication or bypass verification.
 Resolution retains non-benign close failures from accepted Carriers, including
 direct refusals and capacity refusals, in the final joined drain result;
 `net.ErrClosed` from an already closed Carrier is benign.
+Introduction follows the same accepted-Carrier close accounting through its
+joined drain result, including admitted children and both refusal paths.
 Short local-role transactions coordinate with concurrent Source exposure
 retention. `duty.OpenOperation` waits only for an occupied exclusive lease,
 for at most one second or the caller's earlier cancellation. It then verifies

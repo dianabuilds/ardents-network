@@ -2068,7 +2068,7 @@ roots after that listener drains.
 | Forwarding | `closeAcceptedCarrier` retains non-benign close results on interruption, child completion and capacity refusal. | `Drain` joins accepted-connection close failures after handlers finish, along with listener, outgoing-pool, session, receiving-root and host errors. |
 | Issuer | Credential's direct and shared child handlers discard connection-close results. | Its `Drain` retains listener close; Node's adapter then closes spend and issuer roots. |
 | Resolution | `closeCarrier` retains non-benign accepted-child, direct-refusal and capacity-refusal close results. | `drainErr` joins these results with listener, Reachability Store and spend-root close. |
-| Introduction | Accepted child and refusal paths discard connection-close results. | `drainErr` joins listener and spend-root close. |
+| Introduction | `closeCarrier` retains non-benign accepted-child, direct-refusal and capacity-refusal close results. | `drainErr` joins these results with listener and spend-root close. |
 | Data JOIN | `closeCarrier` joins non-benign accepted-connection close errors under a lock, including capacity refusals. | `drainErr` joins listener, child cleanup, spend root, monitor and host close. |
 
 **Consequence.** The common `dutyHandle` contract already makes `Drain` the
@@ -2078,8 +2078,9 @@ though all five borrow the same Route listener and return a caller-owned
 connection. Forwarding's outgoing pool has separate physical-close retention.
 Its accepted connection now has injected close-error coverage for capacity
 refusal and an admitted direct child. Resolution has corresponding coverage
-for capacity and direct refusals plus an admitted Node child. Issuer and
-Introduction still need equivalent accounting. This was an observed accounting gap, not proof that an actual
+for capacity and direct refusals plus an admitted Node child. Introduction now
+has the same three injected close-error cases. Issuer still needs equivalent
+accounting. This was an observed accounting gap, not proof that an actual
 installed socket close failed or that a successful protocol exchange should
 be reversed. The interruption close path still needs its own injected-error
 case before a shared outer owner can claim uniform coverage.

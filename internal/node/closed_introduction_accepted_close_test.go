@@ -10,10 +10,9 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/replay"
-	"github.com/dianabuilds/ardents-network/internal/service/reachability"
 )
 
-func TestClosedResolutionDrainRetainsAcceptedCarrierCloseFailure(t *testing.T) {
+func TestClosedIntroductionDrainRetainsAcceptedCarrierCloseFailure(t *testing.T) {
 	for _, test := range []struct {
 		name     string
 		capacity bool
@@ -23,13 +22,13 @@ func TestClosedResolutionDrainRetainsAcceptedCarrierCloseFailure(t *testing.T) {
 		{name: "direct refusal", kind: route.ClosedSharedDirect},
 		{name: "admitted Node child", kind: route.ClosedSharedNode},
 	} {
-		t.Run(test.name, func(t *testing.T) { checkResolutionAcceptedCloseFailure(t, test.capacity, test.kind) })
+		t.Run(test.name, func(t *testing.T) { checkIntroductionAcceptedCloseFailure(t, test.capacity, test.kind) })
 	}
 }
 
-func checkResolutionAcceptedCloseFailure(t *testing.T, capacity bool, kind route.ClosedSharedCarrierKind) {
+func checkIntroductionAcceptedCloseFailure(t *testing.T, capacity bool, kind route.ClosedSharedCarrierKind) {
 	t.Helper()
-	closeErr := errors.New("accepted resolution Carrier close failed")
+	closeErr := errors.New("accepted introduction Carrier close failed")
 	local, peer := net.Pipe()
 	defer peer.Close()
 	connection := &acceptedCloseFailureConn{Conn: local, closed: make(chan struct{}), err: closeErr}
@@ -38,15 +37,10 @@ func checkResolutionAcceptedCloseFailure(t *testing.T, capacity bool, kind route
 	if err != nil {
 		t.Fatal(err)
 	}
-	store, err := reachability.OpenStore(reachability.StoreConfig{Root: t.TempDir(), NetworkID: [32]byte{1}})
-	if err != nil {
-		_ = spends.Close()
-		t.Fatal(err)
-	}
 	ctx, cancel := context.WithCancel(context.Background())
-	server := &closedResolutionServer{config: runtimeConfig{Config: Config{Current: func() (state.NodeDuty, error) {
+	server := &closedIntroductionServer{config: runtimeConfig{Config: Config{Current: func() (state.NodeDuty, error) {
 		return state.NodeDuty{}, errors.New("current State is unavailable")
-	}}}, listener: listener, spends: spends, store: store, capacity: make(chan struct{}, 1),
+	}}}, listener: listener, spends: spends, capacity: make(chan struct{}, 1),
 		cancel: cancel, done: make(chan error, 1), drained: make(chan struct{})}
 	if capacity {
 		server.capacity <- struct{}{} // Force capacity refusal after the first authenticated accept.
@@ -57,22 +51,22 @@ func checkResolutionAcceptedCloseFailure(t *testing.T, capacity bool, kind route
 		select {
 		case <-server.drained:
 		case <-time.After(time.Second):
-			t.Error("resolution server did not drain")
+			t.Error("introduction server did not drain")
 		}
 	})
 	close(listener.ready)
 	select {
 	case <-connection.closed:
 	case <-time.After(time.Second):
-		t.Fatal("resolution did not close accepted Carrier")
+		t.Fatal("introduction did not close accepted Carrier")
 	}
 	_ = server.stop()
 	select {
 	case <-server.drained:
 	case <-time.After(time.Second):
-		t.Fatal("resolution server did not drain")
+		t.Fatal("introduction server did not drain")
 	}
 	if !errors.Is(server.drainErr, closeErr) {
-		t.Fatalf("Resolution drain lost accepted Carrier close failure: %v", server.drainErr)
+		t.Fatalf("Introduction drain lost accepted Carrier close failure: %v", server.drainErr)
 	}
 }
