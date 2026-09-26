@@ -760,19 +760,17 @@ This trace follows `internal/node/closed_resolution_listener.go`,
    that result, but the goroutine retains both roots until the workers join.
    Physical connection-close errors in rejected and accepted handlers are
    currently discarded; they are not part of the joined root-close result.
-6. On restart, `OpenStore.restore` authenticates both old stored-record v1 and
-   private v2 entries into one Target map. An old entry is unavailable through
-   `LookupPrivate`, but its Target and Credential floor remain. A private v3
-   publication for the same Target reaches `compareStored` and fails the
-   format-adoption check; old entries also count toward the 128-Target bound
-   regardless of expiry. There is no Store adoption operation (F-32).
+6. On restart, `OpenStore.restore` authenticates private v2-envelope entries
+   into the Target map. ADR-0109 (F-32) deleted the old stored-record v1
+   decoder: a record in the retired envelope now refuses the whole root with
+   the typed `ErrLegacyRecord`, its bytes stay on disk unread, and there is
+   no Store adoption operation.
 
 The inspected direct network test covers publish, lookup, duplicate token,
 revision conflict, successor, invalid proof and foreign Introduction over
 both Carriers. The Store failure test proves that a failed conflict write
 terminalizes that Store instance. These tests do not by themselves prove the
-old-record-to-private same-Target restart case, the post-commit/pre-ACK
-State-change retry, or the per-connection close-error
+post-commit/pre-ACK State-change retry or the per-connection close-error
 policy; this study has not rerun them against the current worktree.
 
 The following constructor/close paths were inspected at `e48d4c3c` in the
@@ -791,8 +789,8 @@ five `closed_*_listener.go` owners and `closed_forwarding_shutdown.go`.
 The Resolution Store also has an opening failure path: after acquiring its
 exclusive lease, `reachability.OpenStore` discards the lease-release error if
 retained-record restoration fails. The normal `Store.Close` returns that
-error. F-71 identifies the missing combined startup outcome; it matters when
-an old Descriptor root is refused or migrated under the one-version policy.
+error. F-71 identifies the missing combined startup outcome; it matters when a
+root is refused under the ADR-0109 typed legacy-record refusal.
 
 All five roles use the Node lifecycle's common `probeServer` handle, although
 only the private probe is a probe. This is a naming/interface problem in the

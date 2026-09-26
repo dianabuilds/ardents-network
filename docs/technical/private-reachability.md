@@ -4,14 +4,15 @@ Status: **current generation-3 private Descriptor and receiving-Store contract
 under ADR-0081; installed qualification remains pending.** Node Resolution
 calls `Store.PublishPrivate` and `LookupPrivate` on the selected protected
 Route. ADR-0091 retired the unwired generation-2 OHTTP Relay/Gateway/Client
-adapter. The old-format Store decoder and conflict floors remain pending a
-persisted-root decision; the short generation-2 note below records that
-obligation without defining a second live lookup route. ADR-0036 and ADR-0037
+adapter. ADR-0109 (F-32) closed the persisted-root decision: the old-format
+Store decoder is deleted and a stored legacy record now refuses its whole
+root with the typed `ErrLegacyRecord`; the short generation-2 note below
+records that disposition without defining a second live lookup route. ADR-0036 and ADR-0037
 record its accepted origin.
 
 The current [protected protocol](protected-route-protocol.md#terminal-payloads-and-private-reachability)
 preserves proof/currentness and conflict floors with a generation-3 private
-Descriptor. The retained generation-2 evidence below does not define the
+Descriptor. The retired generation-2 evidence below does not define the
 current transport or exposed join fields.
 
 ## Private Descriptor recipient
@@ -117,8 +118,9 @@ retains at most 128 Targets, refuses additional Targets before writing, and
 continues to permit updates of existing Targets without evicting their floors.
 
 Private stored records use version 2 with separate publication/revision
-conflict flags; existing v1/v2 Descriptor records retain stored version 1.
-There is no implicit legacy/private format adoption. Before acknowledgement,
+conflict flags. A record in the retired version-1 envelope is never adopted
+or decoded: it refuses the whole root with the typed `ErrLegacyRecord`
+(ADR-0109). Before acknowledgement,
 the Store syncs the record and containing directory. Initialization also
 syncs directory links and creates the marker only after the records directory
 is durable. A marked root with missing records, or an unmarked root with
@@ -173,7 +175,7 @@ JOIN and the complete installed command
 remain required integration. Delivery acknowledgement is not a joined
 Attachment or Service readiness.
 
-## Retained generation-2 Store evidence
+## Retired generation-2 Store evidence
 
 [ADR-0036](../adr/0036-target-private-reachability-v1.md) and
 [ADR-0037](../adr/0037-private-reachability-entry-carrier.md) record the
@@ -182,18 +184,15 @@ retired its unwired Client/Relay/Gateway adapter and GatewayProfile codec.
 The former Endpoint-to-Initiator-to-Gateway operation is not a maintained C0
 lookup route; its detailed implementation remains in Git history.
 
-The current Store still reopens stored-record version 1 and authenticates its
-signed Descriptor v1/v2 bytes. These records retain per-Target Credential
-generation, Publication digest, expiry and conflict floors. They share the
-128-Target root with private v3 records and can prevent a same-Target v3
-publication; the current private lookup does not return them. ADR-0105
-retired the uncalled legacy `Issue`, `Store.Publish`, and `Store.Lookup`
-generation-2 writers, so no working-tree path can create a new generation-2
-record; only the retained decoder and floor comparison still read stored
-ones, and they remain until an authenticated adoption or explicit
-refusal/new-Target policy preserves the existing root authority (F-32).
-Neither historical bytes nor this temporary reader authorize a second runtime
-version. The exact restart consequence and removal gate are tracked in the
+ADR-0105 retired the uncalled legacy `Issue`, `Store.Publish`, and
+`Store.Lookup` generation-2 writers; [ADR-0109](../adr/0109-refuse-legacy-reachability-records.md)
+(F-32) then deleted the retained v1/v2 decoder and the legacy branches of the
+floor comparison. A root holding a stored-record version-1 envelope refuses
+to open as a whole with the typed `ErrLegacyRecord`; the historical bytes
+stay on disk untouched and unread, and a fresh Target requires a new root.
+Consistent with the no-backward-compatibility policy, no adoption or
+migration path exists, and neither historical bytes authorize a second
+runtime version. The historical finding text remains in the
 [architecture finding](../development/repository-reconstruction-findings.md#f-32-legacy-descriptor-issuance-and-persisted-decoding-have-different-fates).
 
 ## Non-claims

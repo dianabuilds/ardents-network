@@ -78,6 +78,7 @@ Current decisions:
 
 Completed retirement decisions:
 
+- [0109 — The Reachability Store refuses stored legacy records with a typed error; the retained v1/v2 Descriptor decode grammar is deleted](0109-refuse-legacy-reachability-records.md)
 - [0108 — The Portable Endpoint profile contracts to its consumed roots; the grants, Vault, diagnostics, and cache scaffold is no longer created](0108-contract-portable-profile-roots.md)
 - [0107 — The duty root schema becomes version 2; legacy generations convert in place and the Transit Grant spend ledger retires](0107-duty-root-version-2-spend-ledger-retirement.md)
 - [0106 — Retire the Entry Invite subsystem; the Invite-root writer stops at a before-effect refusal](0106-retire-entry-invite-subsystem.md)

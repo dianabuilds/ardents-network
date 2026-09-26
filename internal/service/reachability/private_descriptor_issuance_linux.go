@@ -37,7 +37,9 @@ func IssuePrivate(input PrivateIssueInput) ([]byte, Descriptor, error) {
 		return nil, Descriptor{}, errors.New("private reachability Instance signature failed")
 	}
 	copy(value.Signature[:], signature)
-	return append(body, signature...), cloneDescriptor(value), nil
+	// Every variable-length field of value was freshly copied at
+	// construction, so the issued Descriptor shares no slice with the caller.
+	return append(body, signature...), value, nil
 }
 
 // verifiedCurrent re-verifies the exact supplied publication record against its

@@ -9,9 +9,10 @@ The [selected architecture](common-privacy-architecture.md) under
 [ADR-0078](../adr/0078-select-common-split-circuit-privacy.md) and
 [ADR-0081](../adr/0081-select-closed-protected-service-contract.md) uses the
 [protected forwarding contract](protected-route-protocol.md) for the current
-closed v3 path. This document describes both implemented closed duties and
-retained generation-2 grammar. The latter remains migration or refusal input,
-not a second accepting privacy path.
+closed v3 path. This document describes the implemented closed duties. The retained
+generation-2 grammar it once cited is deleted: ADR-0109 (F-32) refuses a
+stored legacy record with a typed error, so no second accepting privacy path
+remains.
 
 The Node command connects an exclusive `closed_forwarding` local reservation
 to the implemented generation-3 forwarding receiver. The reservation contains

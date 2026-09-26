@@ -53,8 +53,9 @@ code can open, read, convert, materialize, or delete an old Namespace root.
 - The uncalled generation-2 reachability writers (`Issue`, `Store.Publish`,
   `Store.Lookup` and their private helpers) retired under the same decision,
   per the deadcode registry rule that removes that tracer group with its
-  superseding service decision. The retained v1/v2 decode grammar and floor
-  comparison stay governed by the separate open card F-32.
+  superseding service decision. The then-retained v1/v2 decode grammar and
+  floor comparison were subsequently deleted by ADR-0109, which closed card
+  F-32 with a typed refusal of stored legacy records.
 - `ardents name encode`, canonical Naming bytes, and the retirement refusals
   are unchanged.
 

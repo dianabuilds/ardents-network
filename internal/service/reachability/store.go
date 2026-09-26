@@ -139,7 +139,7 @@ func (store *Store) publishVerified(candidate storedDescriptor) (StoreResult, er
 }
 
 func (store *Store) lookup(target, profile [32]byte, at time.Time) ([]byte, StoreClass, error) {
-	if store == nil || target == [32]byte{} || at.IsZero() {
+	if store == nil || target == [32]byte{} || profile == [32]byte{} || at.IsZero() {
 		return nil, StoreInvalid, errors.New("reachability store lookup input is incomplete")
 	}
 	store.mu.Lock()
@@ -155,13 +155,7 @@ func (store *Store) lookup(target, profile [32]byte, at time.Time) ([]byte, Stor
 		}
 		return nil, class, errors.New("reachability descriptor is unavailable")
 	}
-	var verifyErr error
-	if profile == [32]byte{} {
-		_, verifyErr = Verify(record.raw, target, store.network, at)
-	} else {
-		_, verifyErr = VerifyPrivate(record.raw, target, store.network, profile, at)
-	}
-	if verifyErr != nil {
+	if _, verifyErr := VerifyPrivate(record.raw, target, store.network, profile, at); verifyErr != nil {
 		return nil, StoreStale, errors.New("reachability descriptor is unavailable")
 	}
 	return append([]byte(nil), record.raw...), StoreAlreadyCurrent, nil
@@ -171,13 +165,6 @@ func compareStored(prior, candidate storedDescriptor) (StoreClass, *storedDescri
 	oldCredential, newCredential := prior.verified.Current.Credential, candidate.verified.Current.Credential
 	if candidate.verified.Descriptor.Target != prior.verified.Descriptor.Target {
 		return StoreInvalid, nil, errors.New("reachability store compared different Targets")
-	}
-	private := candidate.verified.Descriptor.Version == privateDescriptorVersion
-	if private != (prior.verified.Descriptor.Version == privateDescriptorVersion) {
-		return StoreInvalid, nil, errors.New("reachability format change requires floor adoption")
-	}
-	if !private && candidate.verified.Descriptor.Introduction.Epoch == 0 {
-		return StoreInvalid, nil, errors.New("reachability descriptor lacks State epoch")
 	}
 	if newCredential.Generation < oldCredential.Generation {
 		return StoreStale, nil, errors.New("reachability descriptor generation is stale")
@@ -204,14 +191,8 @@ func compareStored(prior, candidate storedDescriptor) (StoreClass, *storedDescri
 		prior.conflicting = true
 		return StoreConflicting, &prior, errors.New("reachability publication generation conflicts")
 	}
-	if private {
-		return comparePrivateRevision(prior, candidate)
-	}
-	if candidate.digest == prior.digest {
-		return StoreAlreadyCurrent, nil, nil
-	}
-	if candidate.verified.Descriptor.Introduction.NotAfter.Unix() <= prior.verified.Descriptor.Introduction.NotAfter.Unix() {
-		return StoreStale, nil, errors.New("reachability live slot is stale")
-	}
-	return StoreAccepted, &candidate, nil
+	// Every retained record is a private v3 proof: ADR-0109 (F-32) refuses
+	// the retired generation-2 envelope at restore, and only PublishPrivate
+	// can add a record, so revision ordering is the sole same-digest rule.
+	return comparePrivateRevision(prior, candidate)
 }

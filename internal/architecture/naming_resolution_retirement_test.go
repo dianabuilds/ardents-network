@@ -59,27 +59,32 @@ func TestNamespaceRetirementRemovesUnexposedWriters(t *testing.T) {
 			t.Errorf("custody contract still declares retired Namespace member %q", forbidden)
 		}
 	}
-	descriptor := string(readProjectFile(t, root, "internal/service/reachability/descriptor.go"))
+	// ADR-0109 (F-32) deleted the retained generation-2 decode grammar file
+	// outright; the typed refusal lives in the stored-record envelope instead.
+	if _, err := os.Stat(filepath.Join(root, "internal", "service", "reachability", "descriptor.go")); !os.IsNotExist(err) {
+		t.Error("retired reachability descriptor grammar file still exists")
+	}
 	store := string(readProjectFile(t, root, "internal/service/reachability/store.go"))
 	reachabilityContract := string(readProjectFile(t, root, "internal/service/reachability/contract.go"))
 	for _, retired := range []struct{ source, name string }{
-		{descriptor, "func Issue("},
 		{store, "func (store *Store) Publish("},
 		{store, "func (store *Store) Lookup("},
 		{reachabilityContract, "IssueInput"},
+		{reachabilityContract, "SubmissionMode"},
+		{reachabilityContract, "type Introduction struct"},
 	} {
 		if strings.Contains(retired.source, retired.name) {
-			t.Errorf("reachability still declares retired generation-2 writer %q", retired.name)
+			t.Errorf("reachability still declares retired generation-2 surface %q", retired.name)
 		}
 	}
-	for _, forbidden := range []string{"func encodeBody(", "func verifyStored("} {
-		if strings.Contains(descriptor+store, forbidden) {
+	for _, forbidden := range []string{"func encodeBody(", "func verifyStored(", "func Verify(", "func decode("} {
+		if strings.Contains(store, forbidden) {
 			t.Errorf("reachability still declares retired generation-2 helper %q", forbidden)
 		}
 	}
 	if !strings.Contains(store, "func (store *Store) lookup(") ||
 		!strings.Contains(store, "func compareStored(") {
-		t.Error("reachability lost the retained floor comparison kept for F-32")
+		t.Error("reachability lost the retained private floor comparison")
 	}
 }
 
