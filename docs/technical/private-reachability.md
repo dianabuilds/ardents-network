@@ -1,10 +1,12 @@
 # Private Target reachability
 
 Status: **accepted private-reachability contract; the closed descriptor codec, Endpoint
-composition, Gateway-local durable currentness state, and fixed-size OHTTP
-Relay/Gateway exchange and ADR-0037's closed Entry-to-Initiator carrier exist;
-both in-process and bounded local-process Target Link → lookup → Endpoint-owned
-Service Connection tests pass. Live qualification remains pending.** This is the Target-keyed
+composition, Gateway-local durable currentness state, and ADR-0037's closed
+Entry-to-Initiator carrier exist; both in-process and bounded local-process
+Target Link → lookup → Endpoint-owned Service Connection tests pass.
+ADR-0091 retired the unwired generation-2 OHTTP Relay/Gateway adapter; the
+generation-2 section below is a historical contract record. Live
+qualification remains pending.** This is the Target-keyed
 companion to the Namespace-only private
 resolution contract. It implements [ADR-0036](../adr/0036-target-private-reachability-v1.md)
 and [ADR-0037](../adr/0037-private-reachability-entry-carrier.md).
@@ -174,6 +176,16 @@ remain required integration. Delivery acknowledgement is not a joined
 Attachment or Service readiness.
 
 ## Generation-2 implementation
+
+> [ADR-0091](../adr/0091-retire-uncomposed-legacy-artifacts.md) retired this
+> section's unwired OHTTP Relay/Gateway adapter source (`private_client.go`,
+> `private_gateway.go`, `private_relay.go`, `private_wire.go`,
+> `gateway_profile.go`); it survives in Git history. The legacy generation-2
+> `Store.Publish`/`Lookup` API and the old-format Descriptor decode on reopen
+> are retained until the persisted-root contract decision. The installed
+> successor path is the v3 terminal-payload exchange described above and in
+> [protected-route-protocol.md](protected-route-protocol.md#terminal-payloads-and-private-reachability).
+
 ## Purpose and boundary
 
 Given an exact, network-bound Target Link, the Endpoint obtains one

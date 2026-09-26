@@ -17,6 +17,7 @@ func TestRetiredInitiatorReceivingClosureIsAbsent(t *testing.T) {
 		"internal/route/credential/forward_redirect_test.go",
 		"internal/service/reachability/gateway_redirect_test.go",
 		"internal/service/reachability/gateway_tls_client.go",
+		"internal/service/reachability/private_relay.go",
 	} {
 		if _, err := os.Stat(filepath.Join(root, filepath.FromSlash(relative))); !os.IsNotExist(err) {
 			t.Errorf("retired Initiator Entry-admission file still exists: %s", relative)
@@ -66,10 +67,6 @@ func TestRetiredInitiatorReceivingClosureIsAbsent(t *testing.T) {
 				"func WriteCredentialRelayEnvelope(",
 				"func ReadCredentialRelayResponse(",
 			},
-		},
-		{
-			path:      "internal/service/reachability/private_relay.go",
-			forbidden: []string{"func ForwardOHTTP("},
 		},
 	} {
 		content := string(readProjectFile(t, root, check.path))
