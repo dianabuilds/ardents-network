@@ -80,28 +80,30 @@ func validateClosedForwardingProfile(local ClosedForwardingProfile, config runti
 }
 
 type closedForwardingServer struct {
-	config      runtimeConfig
-	snapshot    state.NodeDuty
-	certificate tls.Certificate
-	listener    route.ClosedSharedCarrierListener
-	receiving   *closedForwardingReceivingResources
-	pool        *route.ClosedCarrierPool
-	host        closedForwardingHost
-	sessions    *closedForwardingSessions
-	clock       func() time.Time
-	limit       chan struct{}
-	active      atomic.Uint32
-	stopOnce    sync.Once
-	stopErr     error
-	cancel      context.CancelFunc
-	drained     chan struct{}
-	done        chan error
-	stopped     chan struct{}
-	workers     sync.WaitGroup
-	outgoingErr error
-	drainErr    error
-	reapMu      sync.Mutex
-	reapErr     error
+	config           runtimeConfig
+	snapshot         state.NodeDuty
+	certificate      tls.Certificate
+	listener         route.ClosedSharedCarrierListener
+	receiving        *closedForwardingReceivingResources
+	pool             *route.ClosedCarrierPool
+	host             closedForwardingHost
+	sessions         *closedForwardingSessions
+	clock            func() time.Time
+	limit            chan struct{}
+	active           atomic.Uint32
+	stopOnce         sync.Once
+	stopErr          error
+	cancel           context.CancelFunc
+	drained          chan struct{}
+	done             chan error
+	stopped          chan struct{}
+	workers          sync.WaitGroup
+	outgoingErr      error
+	acceptedCloseMu  sync.Mutex
+	acceptedCloseErr error
+	drainErr         error
+	reapMu           sync.Mutex
+	reapErr          error
 }
 
 func newClosedForwardingServerWithHost(config runtimeConfig, snapshot state.NodeDuty, certificate tls.Certificate, listener route.ClosedSharedCarrierListener, receiving *closedForwardingReceivingResources, pool *route.ClosedCarrierPool, host closedForwardingHost, limit uint16) *closedForwardingServer {
@@ -181,7 +183,7 @@ func (server *closedForwardingServer) serve(ctx context.Context) {
 			server.workers.Add(1)
 			go server.serveAccepted(ctx, accepted)
 		default:
-			_ = accepted.Connection.Close()
+			server.closeAcceptedCarrier(accepted.Connection)
 		}
 	}
 }
@@ -232,11 +234,11 @@ func (server *closedForwardingServer) serveAccepted(ctx context.Context, accepte
 	stop := context.AfterFunc(ctx, func() {
 		defer close(interrupted)
 		_ = accepted.Connection.SetDeadline(time.Now())
-		_ = accepted.Connection.Close()
+		server.closeAcceptedCarrier(accepted.Connection)
 	})
 	defer func() {
 		_ = accepted.Connection.SetDeadline(time.Now())
-		_ = accepted.Connection.Close()
+		server.closeAcceptedCarrier(accepted.Connection)
 		if !stop() {
 			<-interrupted
 		}

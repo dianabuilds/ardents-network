@@ -2054,7 +2054,7 @@ that reconciled status; GitHub Issues still own execution state.
 
 ## F-61: Accepted Node Carrier close results differ across five duties
 
-**Source fact at `53f02e64`.** `node.runDuty` receives a selected duty's
+**Source fact, rechecked after the Forwarding fix.** `node.runDuty` receives a selected duty's
 `dutyHandle` handle. Its `Done` channel reports the accept-loop result;
 `Stop` interrupts admission; `Drain` is the final join and cleanup result.
 This timing matters: Forwarding, Resolution, Introduction and Data JOIN send
@@ -2065,7 +2065,7 @@ roots after that listener drains.
 
 | Duty | Accepted-connection close | Final joined result |
 | --- | --- | --- |
-| Forwarding | `serveAccepted` closes on interruption and again in its finalizer, discarding both results; a capacity refusal also discards its close result. | `Drain` retains listener, outgoing-pool, session, receiving-root and host errors, but no accepted-connection close error. |
+| Forwarding | `closeAcceptedCarrier` retains non-benign close results on interruption, child completion and capacity refusal. | `Drain` joins accepted-connection close failures after handlers finish, along with listener, outgoing-pool, session, receiving-root and host errors. |
 | Issuer | Credential's direct and shared child handlers discard connection-close results. | Its `Drain` retains listener close; Node's adapter then closes spend and issuer roots. |
 | Resolution | Accepted child and refusal paths discard connection-close results. | `drainErr` joins listener, Reachability Store and spend-root close. |
 | Introduction | Accepted child and refusal paths discard connection-close results. | `drainErr` joins listener and spend-root close. |
@@ -2075,14 +2075,13 @@ roots after that listener drains.
 correct place for a duty's final cleanup result; `Done` alone cannot prove
 physical retirement. The accepted-connection result differs by duty even
 though all five borrow the same Route listener and return a caller-owned
-connection. Forwarding's outgoing pool has separate, tested physical-close
-retention; those tests do not cover its accepted child. A targeted test search
-found no injected accepted-connection close-error oracle for the five duty
-adapters. This is an observed accounting gap, not proof that an actual installed
-socket close failed or that a successful protocol exchange should be reversed.
-The separate `codex/issue-285-route-opening-diagnostic` diff changes
-Forwarding's outer/inner diagnostic calls but not the inspected
-`serveAccepted` close sites; recheck this row when that branch is integrated.
+connection. Forwarding's outgoing pool has separate physical-close retention.
+Its accepted connection now has injected close-error coverage for capacity
+refusal and an admitted direct child; the other duties still need equivalent
+accounting. This was an observed accounting gap, not proof that an actual
+installed socket close failed or that a successful protocol exchange should
+be reversed. The interruption close path still needs its own injected-error
+case before a shared outer owner can claim uniform coverage.
 
 **Disposition boundary.** Before moving the listener/outer seam, specify
 which non-benign accepted-connection close failures must enter each duty's

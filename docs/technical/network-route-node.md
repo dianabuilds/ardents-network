@@ -42,6 +42,10 @@ accepted handler before the outgoing-session owner performs the final wait for
 its retained Carrier readers and returns their joined cleanup result. The server
 retains the pool interruption and spend-root lifetime, so a timed-out Drain
 cannot release the root or turn a later physical close failure into success.
+Accepted Forwarding Carrier close failures, including capacity refusals, join
+the final `Drain` result after all handlers finish. A repeated close reporting
+`net.ErrClosed` is benign; `Done` remains the accept-loop result rather than
+the joined cleanup result.
 While one child is pending downstream HELLO/ACCEPT, the parent reader still
 serves lane-zero control and independently selected children. A pending child's
 frames remain in Route's bounded accounted queues; CLOSE cancels and joins only
