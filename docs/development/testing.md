@@ -19,8 +19,9 @@ substitute for independent review.
 
 ## Ordinary checks
 
-- `make unit` runs the positive deterministic package inventory with one
-  explicit 15-minute terminal timeout per package. The retained 256-stream
+- `make unit` runs the positive deterministic package inventory, including the
+  canonical Network epoch fixture, with one explicit 15-minute terminal timeout
+  per package. The retained 256-stream
   Linux Endpoint setup stays in that profile; exceeding the bound fails with
   the Go runtime's goroutine dump.
 - `make e2e` runs the positive local process package inventory.
@@ -34,8 +35,11 @@ substitute for independent review.
   also proves that canonical command bytes are unchanged when the same owned
   source is represented as a Git repository or as a VCS-free extraction.
 - `make check` runs unit, process, race, command build, formatting,
-  Staticcheck, and vulnerability checks. It is the pre-integration gate. Pull
-  request CI uses `scripts/select-pr-checks.go` to run the changed Go owners,
+  Staticcheck, and vulnerability checks. On Linux it also runs the bounded
+  two-host qualification fixture command tests through `fixture-network-test`;
+  invoking that target elsewhere fails with an invalid environment. This is
+  the pre-integration gate. Pull request CI uses `scripts/select-pr-checks.go`
+  to run the changed Go owners,
   their imported consumers, and explicitly registered non-Go fixture owners;
   independent selected jobs all finish and report their failures. The exact
   candidate must still pass `make check` before integration, and a push to

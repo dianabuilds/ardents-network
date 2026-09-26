@@ -25,7 +25,7 @@ type testSuiteRoot struct {
 
 func TestPackageProfileMembershipIsComplete(t *testing.T) {
 	root := repositoryRoot(t)
-	actual := listedPackages(t, root, "./cmd/...", "./internal/...")
+	actual := listedPackages(t, root, "./cmd/...", "./internal/...", "./tests/epochfixture/network")
 	deterministic := listedProfilePackages(t, root, "tests/profiles/deterministic-packages.txt")
 	for packagePath := range actual {
 		_, inDeterministic := deterministic[packagePath]
@@ -56,7 +56,7 @@ func TestProcessProfileSerializesPackagesSharingLoopbackResources(t *testing.T) 
 
 func TestProfilePackageEntriesAreCurrent(t *testing.T) {
 	root := repositoryRoot(t)
-	actual := listedPackages(t, root, "./cmd/...", "./internal/...", "./tests/e2e/...")
+	actual := listedPackages(t, root, "./cmd/...", "./internal/...", "./tests/e2e/...", "./tests/epochfixture/network")
 	for _, path := range []string{
 		"tests/profiles/deterministic-packages.txt",
 		"tests/profiles/process-packages.txt",
@@ -121,6 +121,7 @@ func TestTestProfileRegistryIsFactualAndWired(t *testing.T) {
 		"endpoint-portable-ubuntu":          false,
 		"endpoint-replacement-ubuntu":       false,
 		"fuzz":                              false,
+		"fixture-network-linux":             false,
 		"headless-network":                  false,
 		"heapdump-capture":                  false,
 		"heapdump-role-map":                 false,

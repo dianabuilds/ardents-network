@@ -53,3 +53,4 @@ github.com/dianabuilds/ardents-network/internal/application/interfacev2/connecti
 github.com/dianabuilds/ardents-network/internal/application/textdocument
 github.com/dianabuilds/ardents-network/internal/application/streamqualification
 github.com/dianabuilds/ardents-network/cmd/ardents-qualification
+github.com/dianabuilds/ardents-network/tests/epochfixture/network
