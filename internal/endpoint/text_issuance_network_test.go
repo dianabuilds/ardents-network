@@ -62,7 +62,7 @@ type textRoleNetworkFixture struct {
 	// reservedWindow is set only by a child process whose parent selected
 	// the current Permission window before starting its bounded episode.
 	reservedWindow bool
-	runner         func(*testing.T, int, node.Config) func() error
+	runner         func(*testing.T, int, node.Config, state.Snapshot) func() error
 	configure      []func(int, *node.Config)
 }
 
@@ -170,7 +170,7 @@ func startTextRoleNetwork(t *testing.T, fixture textRoleNetworkFixture) (*endpoi
 		runtime := newTextNetworkNodeRuntime(history)
 		config := node.Config{HostingRoot: textNetworkHostingRoot(t), NetworkID: snapshot.NetworkID, NodeID: snapshot.NodeID,
 			IdentityKey: certificates[index].PrivateKey.(ed25519.PrivateKey),
-			Current:     func() (node.DutyView, error) { return textNetworkDutyFixture{snapshot: snapshot}, nil },
+			Current:     func() (state.NodeDuty, error) { return state.ProjectNodeDuty(snapshot), nil },
 			CurrentClosedProfile: func() (state.ClosedProfileView, bool) {
 				profile, err := source.CurrentClosedProfile()
 				return profile, err == nil
@@ -204,7 +204,7 @@ func startTextRoleNetwork(t *testing.T, fixture textRoleNetworkFixture) (*endpoi
 		// Hold every selected port until its listener is about to start, so
 		// earlier Node activity cannot allocate a later candidate's port.
 		reservations[index]()
-		runtime.start(t, index, config, fixture.runner)
+		runtime.start(t, index, config, snapshot, fixture.runner)
 	}
 	// Registered after Node cleanup callbacks: LIFO keeps the real network
 	// available until all Endpoint channels and their workers have joined.

@@ -20,7 +20,7 @@ import (
 type closedBootstrapFixture struct {
 	now      time.Time
 	config   runtimeConfig
-	snapshot dutyFacts
+	snapshot state.NodeDuty
 	receiver route.ClosedRoleReceiver
 	peer     [32]byte
 	open     route.ClosedOpen
@@ -42,11 +42,11 @@ func newClosedBootstrapFixture(t *testing.T) *closedBootstrapFixture {
 			RoleDomain: 1, Subrole: uint8(index + 1), DutyGeneration: uint64(11 + index)}
 	}
 	fixture.view.Nodes[2].RoleDomain, fixture.view.Nodes[2].Subrole = 2, 6
-	fixture.snapshot = dutyFacts{Generation: hex.EncodeToString(generation[:]), NetworkID: profile.NetworkID, Epoch: profile.Epoch, Digest: profile.StateDigest,
+	fixture.snapshot = state.NodeDuty{Generation: hex.EncodeToString(generation[:]), NetworkID: profile.NetworkID, Epoch: profile.Epoch, Digest: profile.StateDigest,
 		EpochValidFrom: fixture.now, ValidUntil: profile.NotAfter, Profile: route.ClosedRouteProfile, Fresh: true, NodeID: fixture.view.Nodes[1].NodeID,
 		RecordGeneration: 12, RecordValidUntil: profile.NotAfter, DeclaredFamily: "bootstrap-interior", CandidateCount: 2}
 	for index, role := range []state.ClosedRouteNodeView{fixture.view.Nodes[0], fixture.view.Nodes[2]} {
-		fixture.snapshot.Candidates[index] = dutyCandidate{NodeID: role.NodeID, RecordDigest: role.RecordDigest, PublicKey: [32]byte{byte(31 + index)},
+		fixture.snapshot.Candidates[index] = state.NodeDutyCandidate{NodeID: role.NodeID, RecordDigest: role.RecordDigest, PublicKey: [32]byte{byte(31 + index)},
 			FamilyID: [32]byte{byte(41 + index)}, Endpoint: "127.0.0.1:41000", CarrierProfile: string(route.ClosedCarrierTCP), ValidFrom: fixture.now,
 			ValidUntil: profile.NotAfter, AssignmentNotAfter: profile.NotAfter}
 	}
@@ -147,7 +147,7 @@ func TestClosedBootstrapEntryExportsOnlyRestrictedInteriorChild(t *testing.T) {
 	fixture.snapshot.Candidates[0].NodeID = fixture.view.Nodes[1].NodeID
 	fixture.snapshot.Candidates[0].RecordDigest = fixture.view.Nodes[1].RecordDigest
 	fixture.config.now = func() time.Time { return fixture.now }
-	fixture.config.Current = func() (DutyView, error) { return fixture.snapshot, nil }
+	fixture.config.Current = func() (state.NodeDuty, error) { return fixture.snapshot, nil }
 	receiver, ok := closedRouteReceiver(fixture.config, fixture.snapshot, ardp.PurposeForwarding, fixture.now)
 	if !ok {
 		t.Fatal("Entry fixture unavailable")

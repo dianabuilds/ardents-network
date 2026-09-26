@@ -4,11 +4,11 @@ import (
 	"context"
 	"crypto/rand"
 	"errors"
-	"sync"
-	"time"
-
+	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
+	"sync"
+	"time"
 )
 
 // closedForwardingSessions gives every retained Carrier one reader and one
@@ -392,7 +392,7 @@ func (session *closedForwardingSession) fail() {
 	session.owner.mu.Unlock()
 }
 
-func (server *closedForwardingServer) closedForwardingOuterHello(snapshot dutyFacts, open route.ClosedOpen) (ardp.Hello, error) {
+func (server *closedForwardingServer) closedForwardingOuterHello(snapshot state.NodeDuty, open route.ClosedOpen) (ardp.Hello, error) {
 	if server.config.CurrentClosedProfile == nil {
 		return ardp.Hello{}, errors.New("closed forwarding profile is unavailable")
 	}

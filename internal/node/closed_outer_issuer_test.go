@@ -45,12 +45,12 @@ func TestClosedIssuerServesBootstrapInsideStateAuthorizedNodeCarrier(t *testing.
 	}
 	endpoint := reserveAddress(t)
 	recordDigest := [32]byte{65}
-	snapshot := dutyFacts{Generation: hex.EncodeToString(generation[:]), NetworkID: network, Epoch: profile.Epoch, Digest: digest, EpochValidFrom: profile.NotBefore,
+	snapshot := state.NodeDuty{Generation: hex.EncodeToString(generation[:]), NetworkID: network, Epoch: profile.Epoch, Digest: digest, EpochValidFrom: profile.NotBefore,
 		ValidUntil: until, Profile: route.ClosedRouteProfile, Fresh: true, RecordPresent: true, NodeID: issuerID, NodePublicKey: serverKey, RecordGeneration: profile.IssuerDutyGeneration,
 		RecordValidFrom: now.Add(-time.Second), RecordValidUntil: until, DeclaredFamily: "closed-issuer-family", ProbeEndpoint: endpoint, CarrierProfile: string(route.ClosedCarrierTCP), Assignment: "rendezvous",
-		CandidateCount: 1, Candidates: [64]dutyCandidate{{NodeID: peerID, PublicKey: clientKey, RecordDigest: [32]byte{66}, Endpoint: "127.0.0.1:41001", CarrierProfile: string(route.ClosedCarrierTCP), ValidUntil: until, AssignmentNotAfter: until}}}
+		CandidateCount: 1, Candidates: [64]state.NodeDutyCandidate{{NodeID: peerID, PublicKey: clientKey, RecordDigest: [32]byte{66}, Endpoint: "127.0.0.1:41001", CarrierProfile: string(route.ClosedCarrierTCP), ValidUntil: until, AssignmentNotAfter: until}}}
 	events := make(chan Event, 16)
-	config := Config{HostingRoot: closedForwardingHostingRoot(t), NetworkID: network, NodeID: issuerID, IdentityKey: serverCertificate.PrivateKey.(ed25519.PrivateKey), Current: func() (DutyView, error) { return snapshot, nil },
+	config := Config{HostingRoot: closedForwardingHostingRoot(t), NetworkID: network, NodeID: issuerID, IdentityKey: serverCertificate.PrivateKey.(ed25519.PrivateKey), Current: func() (state.NodeDuty, error) { return snapshot, nil },
 		CurrentClosedProfile: func() (state.ClosedProfileView, bool) { return profile, true }, CurrentClosedRoute: func() (state.ClosedRouteView, error) {
 			view := state.ClosedRouteView{Profile: profile, NodeCount: 2}
 			view.Nodes[0] = state.ClosedRouteNodeView{NodeID: issuerID, RecordDigest: recordDigest, RoleDomain: 2, Subrole: 6, DutyGeneration: profile.IssuerDutyGeneration}

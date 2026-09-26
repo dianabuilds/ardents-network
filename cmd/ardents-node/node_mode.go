@@ -40,13 +40,7 @@ func runNodeRuntime(ctx context.Context, runtime nodeRuntime, output io.Writer) 
 			return errors.Join(refreshErr, store.Close(), stopClockObservation())
 		}
 	}
-	runtime.node.Current = func() (node.DutyView, error) {
-		view, currentErr := store.CurrentNodeDuty()
-		if currentErr != nil {
-			return nil, currentErr
-		}
-		return view, nil
-	}
+	runtime.node.Current = store.CurrentNodeDuty
 	runtime.node.CurrentClosedProfile = func() (state.ClosedProfileView, bool) {
 		profile, currentErr := store.CurrentClosedProfile()
 		return profile, currentErr == nil

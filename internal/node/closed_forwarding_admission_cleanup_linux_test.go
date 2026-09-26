@@ -55,7 +55,7 @@ func TestClosedForwardingServeDirectRetainsDuplicateSpendCleanupFailure(t *testi
 	fixture.snapshot.CarrierProfile = string(route.ClosedCarrierTCP)
 	fixture.snapshot.NodePublicKey = serverKey
 	fixture.config.now = func() time.Time { return fixture.now }
-	fixture.config.Current = func() (DutyView, error) { return fixture.snapshot, nil }
+	fixture.config.Current = func() (state.NodeDuty, error) { return fixture.snapshot, nil }
 	fixture.config.CurrentClosedProfile = func() (state.ClosedProfileView, bool) { return fixture.view.Profile, true }
 	host := &cleanupFailureHost{}
 	fixture.config.ClosedForwarding = ClosedForwardingProfile{Certificate: certificate, AdmissionTraffic: resource.HostingTraffic{Tx: 1}, TerminationTraffic: resource.HostingTraffic{Tx: 1}, host: host}
@@ -106,7 +106,7 @@ func TestClosedForwardingServeDirectRetainsExpiredLeaseCleanupFailure(t *testing
 	fixture.snapshot.CarrierProfile = string(route.ClosedCarrierTCP)
 	fixture.snapshot.NodePublicKey = serverKey
 	fixture.config.now = func() time.Time { return fixture.now }
-	fixture.config.Current = func() (DutyView, error) { return fixture.snapshot, nil }
+	fixture.config.Current = func() (state.NodeDuty, error) { return fixture.snapshot, nil }
 	fixture.config.CurrentClosedProfile = func() (state.ClosedProfileView, bool) { return fixture.view.Profile, true }
 	cleanup := errors.New("host release failed")
 	host := &cleanupFailureHost{release: cleanup}
@@ -168,7 +168,7 @@ func TestClosedForwardingServeDirectRetainsSpendStorageCleanupFailure(t *testing
 	fixture.snapshot.CarrierProfile = string(route.ClosedCarrierTCP)
 	fixture.snapshot.NodePublicKey = serverKey
 	fixture.config.now = func() time.Time { return fixture.now }
-	fixture.config.Current = func() (DutyView, error) { return fixture.snapshot, nil }
+	fixture.config.Current = func() (state.NodeDuty, error) { return fixture.snapshot, nil }
 	fixture.config.CurrentClosedProfile = func() (state.ClosedProfileView, bool) { return fixture.view.Profile, true }
 	cleanup := errors.New("host release failed")
 	host := &cleanupFailureHost{release: cleanup}
@@ -229,7 +229,7 @@ func TestClosedForwardingServeDirectRetainsCapacityCleanupFailure(t *testing.T) 
 	fixture.snapshot.CarrierProfile = string(route.ClosedCarrierTCP)
 	fixture.snapshot.NodePublicKey = serverKey
 	fixture.config.now = func() time.Time { return fixture.now }
-	fixture.config.Current = func() (DutyView, error) { return fixture.snapshot, nil }
+	fixture.config.Current = func() (state.NodeDuty, error) { return fixture.snapshot, nil }
 	fixture.config.CurrentClosedProfile = func() (state.ClosedProfileView, bool) { return fixture.view.Profile, true }
 	cleanup := errors.New("host release failed")
 	host := &cleanupFailureHost{release: cleanup}

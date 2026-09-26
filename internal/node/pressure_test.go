@@ -4,17 +4,17 @@ import (
 	"context"
 	"crypto/sha256"
 	"crypto/tls"
+	"github.com/dianabuilds/ardents-network/internal/network/state"
+	"github.com/dianabuilds/ardents-network/internal/resource"
 	"io"
 	"testing"
 	"time"
-
-	"github.com/dianabuilds/ardents-network/internal/resource"
 )
 
 func TestDeclaredCapacityAdmitsExistingSlotsAndRefusesExcess(t *testing.T) {
 	fixture := newLifecycleFixture(t)
 	events := make(chan Event, 16)
-	fixture.config.Current = func() (DutyView, error) { return fixture.snapshot, nil }
+	fixture.config.Current = func() (state.NodeDuty, error) { return fixture.snapshot, nil }
 	fixture.config.Emit = func(_ context.Context, event Event) error { events <- event; return nil }
 	ctx, cancel := context.WithCancel(context.Background())
 	result := make(chan Result, 1)
@@ -60,7 +60,7 @@ func TestDeclaredCapacityAdmitsExistingSlotsAndRefusesExcess(t *testing.T) {
 func TestEmergencyPressureDrainsAndExitsWithoutNewAdmission(t *testing.T) {
 	fixture := newLifecycleFixture(t)
 	events := make(chan Event, 32)
-	fixture.config.Current = func() (DutyView, error) { return fixture.snapshot, nil }
+	fixture.config.Current = func() (state.NodeDuty, error) { return fixture.snapshot, nil }
 	fixture.config.Emit = func(_ context.Context, event Event) error { events <- event; return nil }
 	fixture.config.ResourceProfile = "h3-np1-v1"
 	fixture.config.ResourceMeasure = func() (resource.Sample, error) {

@@ -4,14 +4,14 @@ import (
 	"context"
 	"crypto/tls"
 	"errors"
+	"github.com/dianabuilds/ardents-network/internal/network/state"
+	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
+	"github.com/dianabuilds/ardents-network/internal/route/replay"
 	"path/filepath"
 	"sync"
 	"sync/atomic"
 	"time"
-
-	"github.com/dianabuilds/ardents-network/internal/route"
-	"github.com/dianabuilds/ardents-network/internal/route/ardp"
-	"github.com/dianabuilds/ardents-network/internal/route/replay"
 )
 
 // ClosedIntroductionProfile reserves only the local durable spend
@@ -23,7 +23,7 @@ type ClosedIntroductionProfile struct {
 	DrainTimeout    time.Duration
 }
 
-func validateClosedIntroductionProfile(local ClosedIntroductionProfile, config runtimeConfig, snapshot dutyFacts, now time.Time) error {
+func validateClosedIntroductionProfile(local ClosedIntroductionProfile, config runtimeConfig, snapshot state.NodeDuty, now time.Time) error {
 	if local.AdmissionRoot == "" ||
 		!filepath.IsAbs(local.AdmissionRoot) || filepath.Clean(local.AdmissionRoot) != local.AdmissionRoot ||
 		local.Certificate.PrivateKey == nil || local.ConnectionLimit == 0 || local.ConnectionLimit > 16 ||
@@ -37,7 +37,7 @@ func validateClosedIntroductionProfile(local ClosedIntroductionProfile, config r
 	return nil
 }
 
-func startClosedIntroduction(config runtimeConfig, snapshot dutyFacts) (*probeServer, error) {
+func startClosedIntroduction(config runtimeConfig, snapshot state.NodeDuty) (*probeServer, error) {
 	running, err := newClosedIntroductionServer(config, snapshot)
 	if err != nil {
 		return nil, err
@@ -59,7 +59,7 @@ func startClosedIntroduction(config runtimeConfig, snapshot dutyFacts) (*probeSe
 	}}, nil
 }
 
-func newClosedIntroductionServer(config runtimeConfig, snapshot dutyFacts) (*closedIntroductionServer, error) {
+func newClosedIntroductionServer(config runtimeConfig, snapshot state.NodeDuty) (*closedIntroductionServer, error) {
 	local := config.ClosedIntroduction
 	if err := validateClosedIntroductionProfile(local, config, snapshot, config.now()); err != nil {
 		return nil, err

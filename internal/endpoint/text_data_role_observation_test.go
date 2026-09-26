@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
+	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/node"
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/service/publication"
@@ -84,8 +85,8 @@ func runTextDataJoinIsolatedRoleObservation(t *testing.T, carrier route.CarrierP
 	var processes []*textRoleProcess
 	publisherRoot := textNetworkPrivateRoot(t)
 	publisherProcess := startTextPublisherDurableCapture(t, output, publisherRoot)
-	runner := func(t *testing.T, index int, config node.Config) func() error {
-		process := startTextRoleProcess(t, index, config, output, "^TestTextDataJoinIsolatedRoleObservations$")
+	runner := func(t *testing.T, index int, config node.Config, snapshot state.Snapshot) func() error {
+		process := startTextRoleProcess(t, index, config, snapshot, output, "^TestTextDataJoinIsolatedRoleObservations$")
 		processes = append(processes, process)
 		return process.stop
 	}

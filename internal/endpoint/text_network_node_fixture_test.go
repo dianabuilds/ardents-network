@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/node"
 )
 
@@ -34,10 +35,10 @@ func (runtime *textNetworkNodeRuntime) emit(_ context.Context, event node.Event)
 }
 
 func (runtime *textNetworkNodeRuntime) start(t *testing.T, index int, config node.Config,
-	runner func(*testing.T, int, node.Config) func() error) {
+	snapshot state.Snapshot, runner func(*testing.T, int, node.Config, state.Snapshot) func() error) {
 	t.Helper()
 	if runner != nil {
-		stop := runner(t, index, config)
+		stop := runner(t, index, config, snapshot)
 		t.Cleanup(func() {
 			if err := stop(); err != nil {
 				t.Error(err)

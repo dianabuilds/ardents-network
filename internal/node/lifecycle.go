@@ -5,6 +5,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/resource"
 )
 
@@ -28,7 +29,7 @@ func Run(ctx context.Context, input Config) (result Result, runErr error) {
 			runErr = errors.Join(runErr, releaseLocalDuty(config))
 		}
 	}()
-	if err := emitState(config, machine, dutyFacts{}, "process started"); err != nil {
+	if err := emitState(config, machine, state.NodeDuty{}, "process started"); err != nil {
 		return Result{State: stateNames[stateFailed], Reason: err.Error()}, err
 	}
 	ticker := time.NewTicker(config.PollInterval)
@@ -71,7 +72,7 @@ func Run(ctx context.Context, input Config) (result Result, runErr error) {
 	}
 }
 
-func runDuty(ctx context.Context, config runtimeConfig, machine *stateMachine, snapshot dutyFacts) (Result, error) {
+func runDuty(ctx context.Context, config runtimeConfig, machine *stateMachine, snapshot state.NodeDuty) (Result, error) {
 	if err := retainLocalDuty(config, snapshot, "quarantined"); err != nil {
 		return fail(config, machine, nil, "local role state is unavailable", err)
 	}
@@ -174,7 +175,7 @@ func runDuty(ctx context.Context, config runtimeConfig, machine *stateMachine, s
 	}
 }
 
-func emitResourceDiagnostic(config runtimeConfig, snapshot dutyFacts, at time.Time, sample resource.Sample) error {
+func emitResourceDiagnostic(config runtimeConfig, snapshot state.NodeDuty, at time.Time, sample resource.Sample) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 	elapsed := time.Duration(0)
@@ -186,7 +187,7 @@ func emitResourceDiagnostic(config runtimeConfig, snapshot dutyFacts, at time.Ti
 		CarrierProfile: selectedDutyCarrier(snapshot), AssignmentDigest: snapshot.AssignmentDigest, Resource: &sample})
 }
 
-func emitResourceState(config runtimeConfig, snapshot dutyFacts, state, reason string) error {
+func emitResourceState(config runtimeConfig, snapshot state.NodeDuty, state, reason string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 	return config.Emit(ctx, Event{Schema: eventSchema, Kind: "resource", State: state, At: config.now(),
@@ -194,7 +195,7 @@ func emitResourceState(config runtimeConfig, snapshot dutyFacts, state, reason s
 		CarrierProfile: selectedDutyCarrier(snapshot), AssignmentDigest: snapshot.AssignmentDigest, Reason: reason})
 }
 
-func withdraw(config runtimeConfig, machine *stateMachine, server *probeServer, snapshot dutyFacts, reason string) (Result, error) {
+func withdraw(config runtimeConfig, machine *stateMachine, server *probeServer, snapshot state.NodeDuty, reason string) (Result, error) {
 	server.Stop()
 	if err := moveAndEmit(config, machine, stateDraining, snapshot, reason); err != nil {
 		return fail(config, machine, server, "external evidence channel failed", err)
@@ -214,7 +215,7 @@ func fail(config runtimeConfig, machine *stateMachine, server *probeServer, reas
 	}
 	var terminalErr error
 	if moveErr := machine.move(stateFailed); moveErr == nil {
-		terminalErr = emitState(config, *machine, dutyFacts{}, reason)
+		terminalErr = emitState(config, *machine, state.NodeDuty{}, reason)
 	} else {
 		terminalErr = moveErr
 	}
@@ -224,7 +225,7 @@ func fail(config runtimeConfig, machine *stateMachine, server *probeServer, reas
 	return Result{State: stateNames[stateFailed], Reason: reason}, errors.Join(cause, terminalErr)
 }
 
-func terminalWithoutDuty(config runtimeConfig, machine *stateMachine, snapshot dutyFacts, cause error) (Result, error) {
+func terminalWithoutDuty(config runtimeConfig, machine *stateMachine, snapshot state.NodeDuty, cause error) (Result, error) {
 	if machine.current != statePrepared {
 		return fail(config, machine, nil, "shutdown before assignment admission", cause)
 	}
@@ -235,66 +236,41 @@ func terminalWithoutDuty(config runtimeConfig, machine *stateMachine, snapshot d
 	return resultFor(machine, snapshot, "shutdown before assignment admission"), errors.Join(cause, eventErr)
 }
 
-func sameDuty(first, second dutyFacts) bool {
+func sameDuty(first, second state.NodeDuty) bool {
 	return first.Generation == second.Generation && first.NetworkID == second.NetworkID && first.Epoch == second.Epoch &&
 		first.Digest == second.Digest && first.NodeID == second.NodeID && first.Assignment == second.Assignment &&
 		first.AssignmentDigest == second.AssignmentDigest
 }
 
-func currentFacts(config runtimeConfig) (dutyFacts, error) {
-	view, err := config.Current()
+// currentFacts receives the State-created duty value copy for one poll and
+// revalidates its bound before Node retains it. The value type already copies
+// every fact; State keeps freshness and conflict classification ownership.
+func currentFacts(config runtimeConfig) (state.NodeDuty, error) {
+	duty, err := config.Current()
 	if err != nil {
-		return dutyFacts{}, err
+		return state.NodeDuty{}, err
 	}
-	if view == nil {
-		return dutyFacts{}, errors.New("node duty view is unavailable")
+	if duty.CandidateCount > uint8(len(duty.Candidates)) {
+		return state.NodeDuty{}, errors.New("node duty candidate count is outside its bound")
 	}
-	result := dutyFacts{Generation: view.DutyGeneration(), NetworkID: view.DutyNetworkID(), Epoch: view.DutyEpoch(),
-		Digest: view.DutyDigest(), EpochValidFrom: view.DutyEpochValidFrom(), ValidUntil: view.DutyValidUntil(),
-		Profile: view.DutyProfile(), Fresh: view.DutyFresh(), Conflicting: view.DutyConflicting(),
-		RecordPresent: view.DutyRecordPresent(), NodeID: view.DutyNodeID(), NodePublicKey: view.DutyNodePublicKey(), RecordGeneration: view.DutyRecordGeneration(),
-		RecordValidFrom: view.DutyRecordValidFrom(), RecordValidUntil: view.DutyRecordValidUntil(),
-		DeclaredFamily: view.DutyDeclaredFamily(), ProbeEndpoint: view.DutyProbeEndpoint(), CarrierProfile: view.DutyCarrierProfile(),
-		ProbeCapacity: view.DutyProbeCapacity(), Assignment: view.DutyAssignment(),
-		AssignmentDigest: view.DutyAssignmentDigest(), CandidateCount: view.DutyCandidateCount()}
-	if result.CandidateCount > uint8(len(result.Candidates)) {
-		return dutyFacts{}, errors.New("node duty view candidate count is outside its bound")
-	}
-	result.AuthorityCount = view.DutyAuthorityCount()
-	if result.AuthorityCount > uint8(len(result.Authorities)) {
-		return dutyFacts{}, errors.New("node duty view authority count is outside its bound")
-	}
-	for index := uint8(0); index < result.AuthorityCount; index++ {
-		result.Authorities[index] = dutyAuthority{ID: view.DutyAuthorityID(index), PublicKey: view.DutyAuthorityPublicKey(index)}
-		if result.Authorities[index].ID == [32]byte{} || result.Authorities[index].PublicKey == [32]byte{} {
-			return dutyFacts{}, errors.New("node duty view authority is incomplete")
-		}
-	}
-	for index := uint8(0); index < result.CandidateCount; index++ {
-		result.Candidates[index] = dutyCandidate{NodeID: view.DutyCandidateNodeID(index), PublicKey: view.DutyCandidatePublicKey(index),
-			KeyID: view.DutyCandidateKeyID(index), FamilyID: view.DutyCandidateFamilyID(index), RecordDigest: view.DutyCandidateRecordDigest(index),
-			DomainProofDigest: view.DutyCandidateDomainProofDigest(index), Endpoint: view.DutyCandidateEndpoint(index), CarrierProfile: view.DutyCandidateCarrierProfile(index),
-			Capacity: view.DutyCandidateCapacity(index), Assignment: view.DutyCandidateAssignment(index),
-			ValidFrom: view.DutyCandidateValidFrom(index), ValidUntil: view.DutyCandidateValidUntil(index), AssignmentNotAfter: view.DutyCandidateAssignmentNotAfter(index)}
-	}
-	return result, nil
+	return duty, nil
 }
 
-func newProbeDuty(snapshot dutyFacts) probeDuty {
+func newProbeDuty(snapshot state.NodeDuty) probeDuty {
 	return probeDuty{NetworkID: snapshot.NetworkID, EpochDigest: snapshot.Digest, NodeID: snapshot.NodeID,
 		AssignmentDigest: snapshot.AssignmentDigest, EpochValidFrom: snapshot.EpochValidFrom,
 		EpochValidUntil: snapshot.ValidUntil, RecordValidFrom: snapshot.RecordValidFrom,
 		RecordValidUntil: snapshot.RecordValidUntil, Capacity: snapshot.ProbeCapacity}
 }
 
-func moveAndEmit(config runtimeConfig, machine *stateMachine, next lifecycleState, snapshot dutyFacts, reason string) error {
+func moveAndEmit(config runtimeConfig, machine *stateMachine, next lifecycleState, snapshot state.NodeDuty, reason string) error {
 	if err := machine.move(next); err != nil {
 		return err
 	}
 	return emitState(config, *machine, snapshot, reason)
 }
 
-func emitState(config runtimeConfig, machine stateMachine, snapshot dutyFacts, reason string) error {
+func emitState(config runtimeConfig, machine stateMachine, snapshot state.NodeDuty, reason string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 	return config.Emit(ctx, Event{Schema: eventSchema, Kind: "lifecycle", State: machine.name(), At: config.now(),
@@ -302,12 +278,12 @@ func emitState(config runtimeConfig, machine stateMachine, snapshot dutyFacts, r
 		CarrierProfile: selectedDutyCarrier(snapshot), AssignmentDigest: snapshot.AssignmentDigest, Reason: reason})
 }
 
-func resultFor(machine *stateMachine, snapshot dutyFacts, reason string) Result {
+func resultFor(machine *stateMachine, snapshot state.NodeDuty, reason string) Result {
 	return Result{State: machine.name(), Epoch: snapshot.Epoch, Assignment: snapshot.Assignment, CarrierProfile: selectedDutyCarrier(snapshot),
 		AssignmentDigest: snapshot.AssignmentDigest, Reason: reason}
 }
 
-func selectedDutyCarrier(snapshot dutyFacts) string {
+func selectedDutyCarrier(snapshot state.NodeDuty) string {
 	if snapshot.Assignment == "rendezvous" {
 		return snapshot.CarrierProfile
 	}

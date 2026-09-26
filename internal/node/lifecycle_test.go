@@ -11,6 +11,9 @@ import (
 	"encoding/binary"
 	"encoding/pem"
 	"errors"
+	localroles "github.com/dianabuilds/ardents-network/internal/network/duty"
+	"github.com/dianabuilds/ardents-network/internal/network/state"
+	"github.com/dianabuilds/ardents-network/internal/resource"
 	"io"
 	"math/big"
 	"net"
@@ -19,9 +22,6 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
-
-	localroles "github.com/dianabuilds/ardents-network/internal/network/duty"
-	"github.com/dianabuilds/ardents-network/internal/resource"
 )
 
 func TestPreparedCancellationRetainsTerminalEventFailure(t *testing.T) {
@@ -32,7 +32,7 @@ func TestPreparedCancellationRetainsTerminalEventFailure(t *testing.T) {
 		return outputErr
 	}}, now: func() time.Time { return time.Unix(100, 0).UTC() }}
 	machine := stateMachine{current: statePrepared}
-	result, err := terminalWithoutDuty(config, &machine, dutyFacts{Assignment: "closed_issuer"}, context.Canceled)
+	result, err := terminalWithoutDuty(config, &machine, state.NodeDuty{Assignment: "closed_issuer"}, context.Canceled)
 	if result.State != stateNames[stateFailed] || observed.State != stateNames[stateFailed] ||
 		!errors.Is(err, context.Canceled) || !errors.Is(err, outputErr) {
 		t.Fatalf("prepared cancellation = %+v, event %+v, %v", result, observed, err)
@@ -48,7 +48,7 @@ func TestWithdrawDoesNotPublishSuccessWhenRoleDrainFails(t *testing.T) {
 	}}, now: func() time.Time { return time.Unix(100, 0).UTC() }}
 	machine := stateMachine{current: stateReady}
 	server := &probeServer{Stop: func() {}, Drain: func(context.Context) error { return cleanupErr }}
-	result, err := withdraw(config, &machine, server, dutyFacts{Assignment: "rendezvous"}, "test withdrawal")
+	result, err := withdraw(config, &machine, server, state.NodeDuty{Assignment: "rendezvous"}, "test withdrawal")
 	if !errors.Is(err, cleanupErr) || result.State == stateNames[stateWithdrawn] {
 		t.Fatalf("withdraw result = %+v, %v", result, err)
 	}
@@ -69,7 +69,7 @@ var testProbeProfile = sha256.Sum256([]byte("h3-role-probe-v1"))
 
 type lifecycleFixture struct {
 	config      Config
-	snapshot    dutyFacts
+	snapshot    state.NodeDuty
 	serverRoots *x509.CertPool
 	client      tls.Certificate
 	serverName  string
@@ -87,7 +87,7 @@ type issuedCertificate struct {
 func TestRunServesBoundProbeThenWithdrawsOnRecordRemoval(t *testing.T) {
 	fixture := newLifecycleFixture(t)
 	events := make(chan Event, 16)
-	fixture.config.Current = func() (DutyView, error) {
+	fixture.config.Current = func() (state.NodeDuty, error) {
 		fixture.mu.RLock()
 		defer fixture.mu.RUnlock()
 		return fixture.snapshot, nil
@@ -177,7 +177,7 @@ func TestDrainCancelsEstablishedProbeAtDeadline(t *testing.T) {
 	fixture := newLifecycleFixture(t)
 	fixture.config.Probe.DrainTimeout = 30 * time.Millisecond
 	events := make(chan Event, 16)
-	fixture.config.Current = func() (DutyView, error) {
+	fixture.config.Current = func() (state.NodeDuty, error) {
 		fixture.mu.RLock()
 		defer fixture.mu.RUnlock()
 		return fixture.snapshot, nil
@@ -211,7 +211,7 @@ func TestDrainCancelsEstablishedProbeAtDeadline(t *testing.T) {
 func TestProtectPreservesEstablishedWorkAndRejectsNewAdmission(t *testing.T) {
 	fixture := newLifecycleFixture(t)
 	events := make(chan Event, 32)
-	fixture.config.Current = func() (DutyView, error) { return fixture.snapshot, nil }
+	fixture.config.Current = func() (state.NodeDuty, error) { return fixture.snapshot, nil }
 	fixture.config.Emit = func(_ context.Context, event Event) error { events <- event; return nil }
 	fixture.config.ResourceProfile = "h3-np1-v1"
 	var protect atomic.Bool
@@ -255,7 +255,7 @@ func TestProtectPreservesEstablishedWorkAndRejectsNewAdmission(t *testing.T) {
 func TestRunFailsBeforeReadinessOnKeyMismatch(t *testing.T) {
 	fixture := newLifecycleFixture(t)
 	fixture.snapshot.NodePublicKey[0]++
-	fixture.config.Current = func() (DutyView, error) { return fixture.snapshot, nil }
+	fixture.config.Current = func() (state.NodeDuty, error) { return fixture.snapshot, nil }
 	events := make(chan Event, 4)
 	fixture.config.Emit = func(_ context.Context, event Event) error { events <- event; return nil }
 	result, err := Run(context.Background(), fixture.config)
@@ -274,7 +274,7 @@ func TestRunReportsReadinessLossDuringQuarantine(t *testing.T) {
 	fixture := newLifecycleFixture(t)
 	fixture.config.Quarantine = 10 * time.Millisecond
 	var calls atomic.Int32
-	fixture.config.Current = func() (DutyView, error) {
+	fixture.config.Current = func() (state.NodeDuty, error) {
 		snapshot := fixture.snapshot
 		if calls.Add(1) > 1 {
 			snapshot.ProbeCapacity = 0
@@ -292,7 +292,7 @@ func TestPreparedNodeFailsWhenRecordDisappears(t *testing.T) {
 	fixture := newLifecycleFixture(t)
 	fixture.snapshot.ProbeCapacity = 0
 	events := make(chan Event, 8)
-	fixture.config.Current = func() (DutyView, error) {
+	fixture.config.Current = func() (state.NodeDuty, error) {
 		fixture.mu.RLock()
 		defer fixture.mu.RUnlock()
 		return fixture.snapshot, nil
@@ -316,7 +316,7 @@ func TestPreparedNodeFailsWhenRecordDisappears(t *testing.T) {
 
 func TestResolveRejectsInvalidOrUnboundedClientTrust(t *testing.T) {
 	fixture := newLifecycleFixture(t)
-	fixture.config.Current = func() (DutyView, error) { return fixture.snapshot, nil }
+	fixture.config.Current = func() (state.NodeDuty, error) { return fixture.snapshot, nil }
 	fixture.config.Emit = func(context.Context, Event) error { return nil }
 	for _, roots := range [][]byte{[]byte("not PEM"), make([]byte, (64<<10)+1)} {
 		config := fixture.config
@@ -338,7 +338,7 @@ func newLifecycleFixture(t *testing.T) *lifecycleFixture {
 	server := createCertificate(t, &ca, "node.test", false)
 	client := createCertificate(t, &ca, "harness.test", false)
 	address := reserveAddress(t)
-	snapshot := dutyFacts{Generation: "generation-1", NetworkID: [32]byte{1}, Epoch: 1,
+	snapshot := state.NodeDuty{Generation: "generation-1", NetworkID: [32]byte{1}, Epoch: 1,
 		Digest: [32]byte{3}, EpochValidFrom: now.Add(-time.Hour), ValidUntil: now.Add(time.Hour),
 		Profile: "h3-role-probe-v1", Fresh: true, RecordPresent: true, NodeID: [32]byte{2}, DeclaredFamily: "family-a",
 		RecordValidFrom: now.Add(-time.Hour), RecordValidUntil: now.Add(time.Hour), ProbeEndpoint: address, ProbeCapacity: 4,
@@ -433,7 +433,7 @@ func probeClientTLS(fixture *lifecycleFixture) *tls.Config {
 		ServerName: fixture.serverName, Certificates: []tls.Certificate{fixture.client}, SessionTicketsDisabled: true}
 }
 
-func encodeProbeRequest(snapshot dutyFacts, nonce [32]byte, payload []byte) []byte {
+func encodeProbeRequest(snapshot state.NodeDuty, nonce [32]byte, payload []byte) []byte {
 	request := make([]byte, testProbeHeaderBytes+testProbePayloadBytes)
 	copy(request, "ARNP")
 	request[4] = 1

@@ -388,14 +388,15 @@ failure category (F-65).
 
 `cmd/ardents-node/node_mode.go` opens the State root, refreshes it when no
 current generation exists, and supplies `store.CurrentNodeDuty` through
-`node.Config.Current`. `state.NodeDutyView` holds a copied broad Snapshot but
-exposes only duty getters; `node.currentFacts` immediately copies 38 getters
-into its own `dutyFacts`, rejecting candidate count above 64, authority count
-above 16 and empty copied authority identities/keys. This leaves State's
-source, pending and persistent internals outside Node. The reverse projection
-(`dutyFacts` satisfying `DutyView`) is test scope since ADR-0101: production
-supplies `state.NodeDutyView` through the command callback, and behavior
-tests supply the snapshot directly without a Network State runtime.
+`node.Config.Current`. Since ADR-0104 the handoff is one State-created copied
+value: `CurrentNodeDuty` composes the authenticated currentness check with
+the pure `ProjectNodeDuty`, returning `state.NodeDuty` — Epoch identity and
+freshness, the local signed record with its assignment, and bounded
+candidates — with no nested Snapshot or State handle. `node.currentFacts`
+receives that value, rejects a candidate count outside its array bound, and
+Node retains its per-poll copy. Behavior tests supply the same value by
+projecting their fixture snapshot with `state.ProjectNodeDuty`, without a
+Network State runtime.
 
 Node assesses that local copy before opening a duty, reads it again after
 quarantine, and polls it while live. A changed selected generation, Network,

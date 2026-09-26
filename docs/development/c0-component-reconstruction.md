@@ -180,7 +180,7 @@ mutations into independent roots would introduce a second authority.
 | Signed Epoch and closed-profile grammar | `epoch_*`, `closed_profile*.go` verify supplied bytes and project bounded results. | Pure parsing can be made more navigable within State. A new package is warranted only if it has a small real caller interface and does not let callers bypass the accepted current/pending/conflict decision. |
 | Durable admission and conflict floors | `durable_*`, `control_state.go`, `distribution_journal.go`, `selection*.go`, `offline_accept.go` commit one root under the `networkState` lock. | Keep one State decision and recovery owner. The exact role/profile join is fixed (ADR-0103); select the closed Epoch-envelope rule with old-root treatment (F-50) before moving grammar. |
 | Source and runtime observation | `refresh.go`, `server.go`, `scheduler.go`, `resources.go`, `clock_observation.go` run children of the State owner. | Source transport and `resource.Guard` remain separate lower modules; State owns their admission, cancellation and terminal errors. `Close` currently masks root/source-release failures after a server/resource failure (F-19). |
-| Borrowed current views | `snapshot_access.go`, `node_duty_view.go`, `resolution_view.go`, `closed_profile_accept.go` return checked, immutable projections. | Keep State's currentness check at the boundary. Narrow the 38-getter Node projection only after preserving authenticated currentness and the Node caller's actual fields (F-07). |
+| Borrowed current views | `snapshot_access.go`, `node_duty.go`, `resolution_view.go`, `closed_profile_accept.go` return checked, immutable projections. | Keep State's currentness check at the boundary. The Node duty projection is now one copied `NodeDuty` value carrying only the caller's actual fields (F-07, closed by ADR-0104). |
 
 The next State work is a bounded correctness repair and internal navigation,
 not an automatic `state/epoch` extraction. This source pass covers the
@@ -467,7 +467,7 @@ owner. It should not turn a 74-file Route root into a generic transport API.
 
 | Current edge or mixed responsibility | Source-level reason | Target decision before moving files |
 | --- | --- | --- |
-| State `CurrentNodeDuty` `->` Node `DutyView` | One command callback passes State's full copied Snapshot inside an opaque view through a 38-getter Interface; Node reconstructs a second `dutyFacts` value whose own `DutyView` getter projection is test scope since ADR-0101 (production supplies `state.NodeDutyView`). The view does not expose Source/pending getters, but still carries those fields internally. Current closed duties use candidate values, while copied old authority fields are not read by Node (F-07). | Keep State's authenticated currentness and Node's private lifecycle copy. Assess `Config.Current func() (state.NodeDuty, error)` returning a copied value with Epoch status, local record/assignment and bounded candidates, not a nested Snapshot or State handle. Validate bounds and complete identities on receipt; the role join (F-45) is settled by ADR-0103, and unused authority/Transit projections retire only after their compatibility audit. This changes 21 Node test fixtures but needs no new package or reverse import. |
+| State `CurrentNodeDuty` `->` Node duty value (F-07, closed by ADR-0104) | The 38-getter `DutyView` Interface, the State-side `NodeDutyView` wrapper over a full copied Snapshot, and Node's second `dutyFacts` copy are deleted. The handoff is now `Config.Current func() (state.NodeDuty, error)`: one State-created copied value with Epoch identity/freshness, the local signed record and assignment, and bounded candidates. | State's authenticated currentness stays at the boundary (`CurrentNodeDuty` composes `Current()` with the pure `ProjectNodeDuty`); Node revalidates the candidate bound on receipt and retains its per-poll copy. The unused authority and Transit-issuance projections retired after their compatibility audit: Transit Grant verification closed with Route v2 (ADR-0093) and the persisted ledger disposition is F-53. No new package or reverse import was added. |
 | `route/terminal -> service/reachability` | Two terminal production files import Reachability solely for `MaximumPrivateDescriptorSize`; its proof and Store enforce the same bound. Terminal currently inherits Reachability's full 111-package static closure (F-29). | Keep Reachability authoritative for the signed proof. Give terminal its exact wire bound and a cross-owner test that checks equality and both 15,000/15,001-byte framing outcomes; then remove only the production import. Avoid a new package containing one constant or a wholesale Descriptor move. |
 | `route/credential -> route` | After ADR-0092, only `closed_token_listener.go`, `closed_token_bootstrap.go` and `closed_token_admitted.go` import parent Route; all serve the live Node issuer (F-30). Credential's issuer root/reservation ledger and Replay's receiving spend ledger have different owners. | Preserve the live issuer core and Node-owned listener/admission lifetime; extract a narrow Route-facing adapter only after assigning accepted-child join and late issuer-root cleanup. A broad Carrier interface does not resolve either ownership question. |
 | Offline Control/Custody `-> route/credential` | Control calls only the signed public issuer-profile decoder; Custody calls only permission/request grammar. The package also contains the live Route-facing issuer listener, so static dependency closure still includes QUIC and CIRCL in these offline commands, but no OHTTP. | Give the signed offline grammar a cohesive owner with a non-test caller and exact validation tests. Keep the live networked issuer adapter separate without changing bytes or moving admission authority into Route. |
@@ -487,12 +487,12 @@ network changes must be read before finalizing exact exported Interfaces.
 
 ### Observed Interfaces and the smallest target handoffs
 
-**Decision on the first three seams at `53f02e64`.** The checked State-to-Node
-handoff should become one State-created immutable duty value, copied and
-bounded again by Node, in the existing packages. `cmd/ardents-node` is its
-only production caller; a new interface package would add no authority. The
-role/profile join (F-45) is fixed by ADR-0103, so that value's fields can now
-be frozen. This is a
+**Decision on the first three seams at `53f02e64`; the first is realized by
+ADR-0104.** The checked State-to-Node handoff is now one State-created
+immutable duty value (`state.NodeDuty`), copied and bounded again by Node, in
+the existing packages. `cmd/ardents-node` is its only production caller; no
+new interface package was added. The role/profile join (F-45) fixed by
+ADR-0103 froze that value's fields. This is a
 navigation and change-amplification improvement, not a prerequisite for
 retiring the old Route or making the installed C0 path work.
 
@@ -601,8 +601,8 @@ allocation together; `finishShutdown` joins accepted producers and outgoing
 sessions before closing the host and spend root. The forwarding Carrier
 session and link files hold child lifetimes under that same server. Moving
 these files into a new package would first require transferring private
-`runtimeConfig`, `dutyFacts`, the spend-root close owner and `probeServer`
-return contract. There is no demonstrated boundary improvement from that
+`runtimeConfig`, the copied duty value, the spend-root close owner and
+`probeServer` return contract. There is no demonstrated boundary improvement from that
 transfer, so the inventory now assigns these files `deepen`, not a package
 move.
 
@@ -610,10 +610,10 @@ The private role probe is an active Node duty selected only after
 `assessAdmission` checks `h3-role-probe-v1`; `duty_server.go` starts it through
 the same `probeServer` lifecycle. The [current technical owner](../technical/network-route-node.md#node-and-resource-lifecycle)
 explicitly excludes a standalone probe runtime. Its four implementation
-files therefore remain Node-owned. `contract.go` contains the DutyView
-projection, public Config, Event/Result and runtimeConfig in 332 lines;
-separating those file responsibilities within `node` is the next local
-readability action, without inventing a new package. The shared
+files therefore remain Node-owned. `contract.go` now holds public Config,
+Event/Result and runtimeConfig in 136 lines after ADR-0104 removed the
+DutyView projection; separating those file responsibilities within `node`
+remains a local readability action, without inventing a new package. The shared
 `probeServer` return type also names all five current closed duties after
 one older probe mode; rename that private handle for its common lifecycle
 role (F-39) while preserving distinct duty resources.
@@ -1058,7 +1058,7 @@ permission to change admission behavior.
 | --- | --- | --- |
 | `node/closed_forwarding_admission.go` | `closedForwardingAdmissionVerifier` and `closedForwardingReplenisher` reserve the forwarding host allowance and spend class-2 tokens; `closedRoleTokenVerifier` verifies selected-profile class keys for forwarding **and** control duties. | Keep forwarding allowance/replenishment together. Give the shared role-token verifier its own responsibility file in `node`; both forwarding and control continue to call the same verifier. Preserve reserve-before-spend and release-on-spend-failure ordering. |
 | `node/closed_hosting.go` | `openClosedHosting` opens one period before duty activation; `hostingPressure` samples that period for `resource_pressure.go`; `closedControlTokenVerifier` wraps shared token verification with class-1/3 host reservation for issuer, Introduction, Resolution and JOIN callers. | Keep opening and pressure under the host-period owner; place control admission beside shared token verification or in its own control-admission file. Keep the same host handle and reservation lifetime. |
-| `node/contract.go` | `DutyView`/`dutyFacts` copy authenticated State input; `Config` and role profiles select local roots/keys; `Event`/`Result` report lifecycle; `runtimeConfig` holds mutable host, pressure and clock state. | Split by State projection, local configuration, and lifecycle observation/runtime state inside `node`. Apply the source-backed State-owned copied `NodeDuty` handoff from F-07 in its own bounded slice before removing the duplicate getter facade — ADR-0101 already moved the `dutyFacts` getter half of the facade into test scope, so the remaining production duplication is the `DutyView` Interface and State-side `NodeDutyView` getters; a file rename alone does not change the seam. |
+| `node/contract.go` | `Config.Current` receives one copied `state.NodeDuty` value (ADR-0104 retired the `DutyView`/`dutyFacts` getter facade); `Config` and role profiles select local roots/keys; `Event`/`Result` report lifecycle; `runtimeConfig` holds mutable host, pressure and clock state. | Split by local configuration and lifecycle observation/runtime state inside `node`. The F-07 State-owned copied `NodeDuty` handoff is applied; the remaining action is the local file split by responsibility, not a seam change. |
 | `route/closed_node_open.go` | `EncodeClosedNodeOpen`/`DecodeClosedNodeOpen` enforce the mandatory 50-byte Node OPEN and restriction grammar; `(*ClosedOuterBridgeLane).Restriction` reads an already-authenticated bridge child constraint. The decoder is called by the handshake and bridge; Node consumes the encoder/accessor. | Keep wire grammar together; move the accessor beside `ClosedOuterBridgeLane` implementation within `route` before considering package extraction. Preserve refusal of the retired 49-byte form and the non-ordinary nil-lane result. |
 | `endpoint/text_source_state.go` | `closedTextRoleMembers` binds current State to candidate members; `textEntrySets` opens the retained Entry root; `closeTextSourceRoots` closes Entry and token-journal roots. | Keep the State/Entry projection in an admission responsibility file and place the root open/close methods with the Endpoint root owner. Preserve the same lock and close-error path. |
 | `endpoint/text_source_prefix.go` | `openTextPrefix` reserves a Source opening and Route prefix under Context; `endpoint.textTokenJournal` lazily opens the root-owned durable journal. | Keep Source opening with its operation identity and move the token-journal root accessor beside Endpoint root lifetime. Do not transfer journal ownership to a transient prefix. |
@@ -1104,12 +1104,12 @@ only when the package is actually introduced or renamed.
 
 ## Reconstruction method and next decisions
 
-1. Carry the three selected handoffs into bounded owner changes:
-   State-to-Node's checked duty value (F-07; its F-45 role join is settled by ADR-0103), Route/Credential's live
+1. Carry the selected handoffs into bounded owner changes:
+   State-to-Node's checked duty value is realized (F-07, ADR-0104; its F-45 role join settled by ADR-0103); remaining are Route/Credential's live
    issuer adapter versus offline grammar (F-17/F-28/F-30), and the
    Service Connection attachment's physical-close result (F-23). The table
    of observed handoffs above already gives callers, input, result and close
-   owners. State's value fields can be fixed against the accepted role join (ADR-0103); Credential's
+   owners. State's duty value fields are fixed against the accepted role join (ADR-0103/0104); Credential's
    package move awaits the late issuer-root close owner. Service Connection's
    error-bearing callback and completion barrier can be corrected in its
    existing package. Refine exported signatures only in the selected slice.

@@ -42,14 +42,14 @@ func TestRunServesClosedIssuerThenDrainsOnClosedProfileSuccessor(t *testing.T) {
 		copy(profile.TokenKeys[index].SPKI[:], key.SPKI)
 	}
 	recordDigest := [32]byte{45}
-	snapshot := dutyFacts{Generation: hex.EncodeToString(generation[:]), NetworkID: network, Epoch: profile.Epoch, Digest: digest,
+	snapshot := state.NodeDuty{Generation: hex.EncodeToString(generation[:]), NetworkID: network, Epoch: profile.Epoch, Digest: digest,
 		EpochValidFrom: profile.NotBefore, ValidUntil: until, Profile: route.ClosedRouteProfile, Fresh: true, RecordPresent: true,
 		NodeID: issuerID, NodePublicKey: public, RecordGeneration: profile.IssuerDutyGeneration, RecordValidFrom: now.Add(-time.Second), RecordValidUntil: until,
 		DeclaredFamily: "closed-issuer-family", ProbeEndpoint: reserveAddress(t), CarrierProfile: string(route.ClosedCarrierTCP), Assignment: "rendezvous", AssignmentDigest: [32]byte{44}}
 	var lock sync.RWMutex
 	events := make(chan Event, 16)
 	config := Config{HostingRoot: closedForwardingHostingRoot(t), NetworkID: network, NodeID: issuerID, IdentityKey: certificate.PrivateKey.(ed25519.PrivateKey),
-		Current:              func() (DutyView, error) { lock.RLock(); defer lock.RUnlock(); return snapshot, nil },
+		Current:              func() (state.NodeDuty, error) { lock.RLock(); defer lock.RUnlock(); return snapshot, nil },
 		CurrentClosedProfile: func() (state.ClosedProfileView, bool) { return profile, true },
 		CurrentClosedRoute: func() (state.ClosedRouteView, error) {
 			view := state.ClosedRouteView{Profile: profile, NodeCount: 1}
@@ -90,7 +90,7 @@ func TestRunServesClosedIssuerThenDrainsOnClosedProfileSuccessor(t *testing.T) {
 func TestClosedRouteReceiverRefusesDutyOrDigestMismatch(t *testing.T) {
 	now := time.Unix(1_800_000_000, 0).UTC()
 	generation := [32]byte{1}
-	snapshot := dutyFacts{Generation: hex.EncodeToString(generation[:]), NetworkID: [32]byte{2}, Epoch: 3, Digest: [32]byte{4},
+	snapshot := state.NodeDuty{Generation: hex.EncodeToString(generation[:]), NetworkID: [32]byte{2}, Epoch: 3, Digest: [32]byte{4},
 		EpochValidFrom: now.Add(-time.Minute), ValidUntil: now.Add(time.Hour), Profile: route.ClosedRouteProfile, Fresh: true,
 		NodeID: [32]byte{5}, RecordGeneration: 6, RecordValidUntil: now.Add(time.Hour)}
 	profile := state.ClosedProfileView{NetworkID: snapshot.NetworkID, StateGeneration: generation, StateDigest: snapshot.Digest,

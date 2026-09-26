@@ -15,10 +15,10 @@ func TestClosedForwardRecipientRequiresExactStateRecipientAndRecord(t *testing.T
 	now := time.Unix(1_800_000_000, 0).UTC()
 	generation := [32]byte{1}
 	target, recordDigest, public := [32]byte{2}, [32]byte{3}, [32]byte{4}
-	snapshot := dutyFacts{Generation: hex.EncodeToString(generation[:]), NetworkID: [32]byte{5}, Epoch: 6, Digest: [32]byte{7},
+	snapshot := state.NodeDuty{Generation: hex.EncodeToString(generation[:]), NetworkID: [32]byte{5}, Epoch: 6, Digest: [32]byte{7},
 		EpochValidFrom: now.Add(-time.Minute), ValidUntil: now.Add(time.Hour), Profile: route.ClosedRouteProfile, Fresh: true,
 		RecordValidUntil: now.Add(time.Hour), NodeID: [32]byte{10}, RecordGeneration: 1, CandidateCount: 1,
-		Candidates: [64]dutyCandidate{{NodeID: target, RecordDigest: recordDigest, PublicKey: public, Endpoint: "127.0.0.1:41000",
+		Candidates: [64]state.NodeDutyCandidate{{NodeID: target, RecordDigest: recordDigest, PublicKey: public, Endpoint: "127.0.0.1:41000",
 			CarrierProfile: string(route.ClosedCarrierTCP), ValidUntil: now.Add(time.Hour), AssignmentNotAfter: now.Add(time.Hour)}}}
 	profile := state.ClosedProfileView{NetworkID: snapshot.NetworkID, StateGeneration: generation, StateDigest: snapshot.Digest,
 		Digest: [32]byte{8}, Epoch: snapshot.Epoch, NotBefore: now.Add(-time.Second), NotAfter: now.Add(time.Minute)}

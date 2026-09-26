@@ -4,13 +4,13 @@ package node
 
 import (
 	"context"
+	"github.com/dianabuilds/ardents-network/internal/network/state"
+	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	"net"
 	"sync"
 	"testing"
 	"time"
-
-	"github.com/dianabuilds/ardents-network/internal/route"
-	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 )
 
 func TestClosedForwardingOpenExpiresWhileExactCarrierDialWaits(t *testing.T) {
@@ -29,7 +29,7 @@ func TestClosedForwardingOpenExpiresWhileExactCarrierDialWaits(t *testing.T) {
 		fixture.snapshot.Candidates[index].AssignmentNotAfter = until
 	}
 	fixture.config.now = time.Now
-	fixture.config.Current = func() (DutyView, error) { return fixture.snapshot, nil }
+	fixture.config.Current = func() (state.NodeDuty, error) { return fixture.snapshot, nil }
 
 	candidate, err := closedForwardRecipient(fixture.config, fixture.snapshot, fixture.open, fixture.now)
 	if err != nil {

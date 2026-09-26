@@ -7,13 +7,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/resource"
 )
 
 func TestResourcePressureDeadlineHasSafeLifecycleReason(t *testing.T) {
 	fixture := newLifecycleFixture(t)
 	events := make(chan Event, 32)
-	fixture.config.Current = func() (DutyView, error) { return fixture.snapshot, nil }
+	fixture.config.Current = func() (state.NodeDuty, error) { return fixture.snapshot, nil }
 	fixture.config.Emit = func(_ context.Context, event Event) error { events <- event; return nil }
 	fixture.config.ResourceProfile = "h3-np1-v1"
 	var expired atomic.Bool

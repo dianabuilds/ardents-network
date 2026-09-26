@@ -87,12 +87,12 @@ func newPrivateRecipientNetworkFixtureWithStart(t *testing.T, carrier route.Carr
 		copy(profile.TokenKeys[index].SPKI[:], key.SPKI)
 	}
 	endpoint := reserveClosedBootstrapAddress(t, carrier)
-	snapshot := dutyFacts{Generation: hex.EncodeToString(profile.StateGeneration[:]), NetworkID: network, Epoch: profile.Epoch, Digest: profile.StateDigest,
+	snapshot := state.NodeDuty{Generation: hex.EncodeToString(profile.StateGeneration[:]), NetworkID: network, Epoch: profile.Epoch, Digest: profile.StateDigest,
 		EpochValidFrom: profile.NotBefore, ValidUntil: until, Profile: route.ClosedRouteProfile, Fresh: true, RecordPresent: true,
 		NodeID: nodeID, NodePublicKey: serverKey, RecordGeneration: 9, RecordValidFrom: now.Add(-time.Second), RecordValidUntil: until,
 		DeclaredFamily: "resolution-family", ProbeEndpoint: endpoint, CarrierProfile: string(carrier), Assignment: "rendezvous", CandidateCount: 2}
-	snapshot.Candidates[0] = dutyCandidate{NodeID: peerID, PublicKey: clientKey, RecordDigest: [32]byte{76}, Endpoint: "127.0.0.1:41001", CarrierProfile: string(carrier), ValidFrom: now.Add(-time.Second), ValidUntil: until, AssignmentNotAfter: until}
-	snapshot.Candidates[1] = dutyCandidate{NodeID: introID, PublicKey: [32]byte{77}, RecordDigest: [32]byte{78}, Endpoint: "127.0.0.1:41002", CarrierProfile: string(carrier), ValidFrom: now.Add(-time.Second), ValidUntil: until, AssignmentNotAfter: until}
+	snapshot.Candidates[0] = state.NodeDutyCandidate{NodeID: peerID, PublicKey: clientKey, RecordDigest: [32]byte{76}, Endpoint: "127.0.0.1:41001", CarrierProfile: string(carrier), ValidFrom: now.Add(-time.Second), ValidUntil: until, AssignmentNotAfter: until}
+	snapshot.Candidates[1] = state.NodeDutyCandidate{NodeID: introID, PublicKey: [32]byte{77}, RecordDigest: [32]byte{78}, Endpoint: "127.0.0.1:41002", CarrierProfile: string(carrier), ValidFrom: now.Add(-time.Second), ValidUntil: until, AssignmentNotAfter: until}
 	view := state.ClosedRouteView{Profile: profile, NodeCount: 3}
 	view.Nodes[0] = state.ClosedRouteNodeView{NodeID: nodeID, RecordDigest: [32]byte{79}, RoleDomain: 2, Subrole: 5, DutyGeneration: 9}
 	view.Nodes[1] = state.ClosedRouteNodeView{NodeID: peerID, RecordDigest: snapshot.Candidates[0].RecordDigest, RoleDomain: 1, Subrole: 1, DutyGeneration: 10}
@@ -105,7 +105,7 @@ func newPrivateRecipientNetworkFixtureWithStart(t *testing.T, carrier route.Carr
 		view.Nodes[0].RoleDomain, view.Nodes[0].Subrole = 2, 4
 	}
 	events := make(chan Event, 32)
-	config := Config{HostingRoot: closedForwardingHostingRoot(t), NetworkID: network, NodeID: nodeID, IdentityKey: serverCert.PrivateKey.(ed25519.PrivateKey), Current: func() (DutyView, error) { return snapshot, nil },
+	config := Config{HostingRoot: closedForwardingHostingRoot(t), NetworkID: network, NodeID: nodeID, IdentityKey: serverCert.PrivateKey.(ed25519.PrivateKey), Current: func() (state.NodeDuty, error) { return snapshot, nil },
 		CurrentClosedProfile: func() (state.ClosedProfileView, bool) { return profile, true }, CurrentClosedRoute: func() (state.ClosedRouteView, error) { return view, nil },
 		ClosedResolution: ClosedResolutionProfile{Root: t.TempDir(), AdmissionRoot: t.TempDir(), Certificate: serverCert, ConnectionLimit: 2, DrainTimeout: time.Second},
 		PollInterval:     10 * time.Millisecond, Quarantine: time.Millisecond, LocalRoleStateRoot: localRoleStateRoot(t), CheckPlacement: func() error { return nil },

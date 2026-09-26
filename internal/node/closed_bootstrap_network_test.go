@@ -77,7 +77,7 @@ func newClosedBootstrapNetwork(t *testing.T, carrier route.CarrierProfile) *clos
 	fixture.snapshot = state.Snapshot{Generation: hex.EncodeToString(profile.StateGeneration[:]), NetworkID: profile.NetworkID,
 		Epoch: profile.Epoch, Digest: profile.StateDigest, EpochValidFrom: profile.NotBefore, ValidUntil: profile.NotAfter,
 		Profile: route.ClosedRouteProfile, Freshness: "fresh", CandidateCount: 3}
-	snapshots := [3]dutyFacts{}
+	snapshots := [3]state.NodeDuty{}
 	reservedEndpoints := make(map[string]struct{}, len(snapshots))
 	for index := 0; index < 3; index++ {
 		id, record := [32]byte{byte(31 + index)}, [32]byte{byte(41 + index)}
@@ -99,7 +99,7 @@ func newClosedBootstrapNetwork(t *testing.T, carrier route.CarrierProfile) *clos
 		}
 		candidate.CarrierProfile, candidate.Capacity = string(carrier), 16
 		candidate.ValidFrom, candidate.ValidUntil, candidate.AssignmentNotAfter = window, profile.NotAfter, profile.NotAfter
-		snapshots[index] = dutyFacts{Generation: fixture.snapshot.Generation, NetworkID: profile.NetworkID, Epoch: profile.Epoch, Digest: profile.StateDigest,
+		snapshots[index] = state.NodeDuty{Generation: fixture.snapshot.Generation, NetworkID: profile.NetworkID, Epoch: profile.Epoch, Digest: profile.StateDigest,
 			EpochValidFrom: window, ValidUntil: profile.NotAfter, Profile: route.ClosedRouteProfile, Fresh: true, RecordPresent: true,
 			NodeID: id, NodePublicKey: keys[index], RecordGeneration: uint64(index + 1), RecordValidFrom: window, RecordValidUntil: profile.NotAfter,
 			DeclaredFamily: family, ProbeEndpoint: candidate.Endpoint, CarrierProfile: string(carrier), CandidateCount: 3}
@@ -108,12 +108,12 @@ func newClosedBootstrapNetwork(t *testing.T, carrier route.CarrierProfile) *clos
 	for index := 2; index >= 0; index-- {
 		snapshot := snapshots[index]
 		for peerIndex, candidate := range fixture.snapshot.Candidates[:3] {
-			snapshot.Candidates[peerIndex] = dutyCandidate{NodeID: candidate.NodeID, PublicKey: candidate.PublicKey, RecordDigest: candidate.RecordDigest,
+			snapshot.Candidates[peerIndex] = state.NodeDutyCandidate{NodeID: candidate.NodeID, PublicKey: candidate.PublicKey, RecordDigest: candidate.RecordDigest,
 				FamilyID: candidate.FamilyID, Endpoint: candidate.Endpoint, CarrierProfile: candidate.CarrierProfile, ValidFrom: candidate.ValidFrom,
 				ValidUntil: candidate.ValidUntil, AssignmentNotAfter: candidate.AssignmentNotAfter}
 		}
 		config := runtimeConfig{Config: Config{NetworkID: profile.NetworkID, NodeID: snapshot.NodeID,
-			Current:              func() (DutyView, error) { return snapshot, nil },
+			Current:              func() (state.NodeDuty, error) { return snapshot, nil },
 			CurrentClosedProfile: func() (state.ClosedProfileView, bool) { return fixture.view.Profile, true },
 			CurrentClosedRoute:   func() (state.ClosedRouteView, error) { return fixture.view, nil }}, now: time.Now}
 		var server *probeServer

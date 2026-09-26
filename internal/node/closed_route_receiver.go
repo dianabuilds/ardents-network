@@ -13,7 +13,7 @@ import (
 // closedRouteReceiver projects one local recipient from the exact State
 // accepted closed profile. It never accepts a plan-supplied digest, role or
 // duty, and a State successor makes the receiver unavailable before dial.
-func closedRouteReceiver(config runtimeConfig, snapshot dutyFacts, purpose ardp.Purpose, now time.Time) (route.ClosedRoleReceiver, bool) {
+func closedRouteReceiver(config runtimeConfig, snapshot state.NodeDuty, purpose ardp.Purpose, now time.Time) (route.ClosedRoleReceiver, bool) {
 	view, err := currentClosedRoute(config, snapshot, now)
 	if err != nil {
 		return route.ClosedRoleReceiver{}, false
@@ -39,7 +39,7 @@ func closedRouteReceiver(config runtimeConfig, snapshot dutyFacts, purpose ardp.
 		Subrole: recipient.Subrole, ExpectedPurpose: purpose, NotAfter: view.Profile.NotAfter}, true
 }
 
-func currentClosedRoute(config runtimeConfig, snapshot dutyFacts, now time.Time) (state.ClosedRouteView, error) {
+func currentClosedRoute(config runtimeConfig, snapshot state.NodeDuty, now time.Time) (state.ClosedRouteView, error) {
 	if config.CurrentClosedRoute == nil || snapshot.Profile != route.ClosedRouteProfile || snapshot.NodeID == [32]byte{} || snapshot.RecordGeneration == 0 {
 		return state.ClosedRouteView{}, errors.New("closed Route snapshot prerequisites are not satisfied")
 	}
@@ -56,7 +56,7 @@ func currentClosedRoute(config runtimeConfig, snapshot dutyFacts, now time.Time)
 	return view, nil
 }
 
-func closedRouteProfileMatchesSnapshot(profile state.ClosedProfileView, snapshot dutyFacts, now time.Time) bool {
+func closedRouteProfileMatchesSnapshot(profile state.ClosedProfileView, snapshot state.NodeDuty, now time.Time) bool {
 	return profile.NetworkID == snapshot.NetworkID && profile.StateDigest == snapshot.Digest && profile.Epoch == snapshot.Epoch &&
 		profile.Digest != [32]byte{} && !profile.NotBefore.After(now) && now.Before(profile.NotAfter) &&
 		!profile.NotBefore.Before(snapshot.EpochValidFrom) && !profile.NotAfter.After(snapshot.ValidUntil) &&

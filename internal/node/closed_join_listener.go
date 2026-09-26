@@ -4,16 +4,16 @@ import (
 	"context"
 	"crypto/tls"
 	"errors"
+	"github.com/dianabuilds/ardents-network/internal/network/state"
+	"github.com/dianabuilds/ardents-network/internal/resource"
+	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
+	"github.com/dianabuilds/ardents-network/internal/route/replay"
 	"net"
 	"path/filepath"
 	"sync"
 	"sync/atomic"
 	"time"
-
-	"github.com/dianabuilds/ardents-network/internal/resource"
-	"github.com/dianabuilds/ardents-network/internal/route"
-	"github.com/dianabuilds/ardents-network/internal/route/ardp"
-	"github.com/dianabuilds/ardents-network/internal/route/replay"
 )
 
 // ClosedDataJoinProfile reserves only the local durable spend
@@ -26,7 +26,7 @@ type ClosedDataJoinProfile struct {
 	DrainTimeout    time.Duration
 }
 
-func validateClosedDataJoinProfile(local ClosedDataJoinProfile, config runtimeConfig, snapshot dutyFacts, now time.Time) error {
+func validateClosedDataJoinProfile(local ClosedDataJoinProfile, config runtimeConfig, snapshot state.NodeDuty, now time.Time) error {
 	if local.HostingRoot == "" || !filepath.IsAbs(local.HostingRoot) || filepath.Clean(local.HostingRoot) != local.HostingRoot || local.AdmissionRoot == "" ||
 		!filepath.IsAbs(local.AdmissionRoot) || filepath.Clean(local.AdmissionRoot) != local.AdmissionRoot ||
 		local.Certificate.PrivateKey == nil || local.ConnectionLimit == 0 || local.ConnectionLimit > 16 ||
@@ -40,7 +40,7 @@ func validateClosedDataJoinProfile(local ClosedDataJoinProfile, config runtimeCo
 	return nil
 }
 
-func startClosedDataJoin(config runtimeConfig, snapshot dutyFacts) (*probeServer, error) {
+func startClosedDataJoin(config runtimeConfig, snapshot state.NodeDuty) (*probeServer, error) {
 	local := config.ClosedDataJoin
 	if err := validateClosedDataJoinProfile(local, config, snapshot, config.now()); err != nil {
 		return nil, err

@@ -14,7 +14,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/route/replay"
 )
 
-func startClosedIssuer(config runtimeConfig, snapshot dutyFacts) (*probeServer, error) {
+func startClosedIssuer(config runtimeConfig, snapshot state.NodeDuty) (*probeServer, error) {
 	local := config.ClosedIssuer
 	if err := validateClosedIssuerProfile(local, config, snapshot, config.now()); err != nil {
 		return nil, err
@@ -74,7 +74,7 @@ func startClosedIssuer(config runtimeConfig, snapshot dutyFacts) (*probeServer, 
 	}}, nil
 }
 
-func validateClosedIssuerProfile(local ClosedIssuerProfile, config runtimeConfig, snapshot dutyFacts, now time.Time) error {
+func validateClosedIssuerProfile(local ClosedIssuerProfile, config runtimeConfig, snapshot state.NodeDuty, now time.Time) error {
 	if local.Root == "" || !filepath.IsAbs(local.Root) || filepath.Clean(local.Root) != local.Root || local.Certificate.PrivateKey == nil ||
 		local.AdmissionRoot == "" || !filepath.IsAbs(local.AdmissionRoot) || filepath.Clean(local.AdmissionRoot) != local.AdmissionRoot || local.Root == local.AdmissionRoot ||
 		local.ConnectionLimit == 0 || local.ConnectionLimit > 16 || local.DrainTimeout <= 0 || local.DrainTimeout > time.Minute ||
@@ -87,7 +87,7 @@ func validateClosedIssuerProfile(local ClosedIssuerProfile, config runtimeConfig
 	return nil
 }
 
-func closedIssuerStateProfile(config runtimeConfig, snapshot dutyFacts, now time.Time) (state.ClosedProfileView, bool) {
+func closedIssuerStateProfile(config runtimeConfig, snapshot state.NodeDuty, now time.Time) (state.ClosedProfileView, bool) {
 	if config.CurrentClosedProfile == nil || snapshot.Profile != route.ClosedRouteProfile || !snapshot.Fresh || snapshot.Conflicting ||
 		snapshot.NodeID == [32]byte{} || !now.Before(snapshot.ValidUntil) || !now.Before(snapshot.RecordValidUntil) {
 		return state.ClosedProfileView{}, false

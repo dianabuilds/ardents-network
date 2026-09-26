@@ -4,20 +4,20 @@ import (
 	"context"
 	"crypto/tls"
 	"errors"
+	"github.com/dianabuilds/ardents-network/internal/network/state"
+	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
+	"github.com/dianabuilds/ardents-network/internal/route/replay"
 	"net"
 	"path/filepath"
 	"sync"
 	"sync/atomic"
 	"time"
-
-	"github.com/dianabuilds/ardents-network/internal/route"
-	"github.com/dianabuilds/ardents-network/internal/route/ardp"
-	"github.com/dianabuilds/ardents-network/internal/route/replay"
 )
 
 // startClosedForwarding materializes one State-selected adjacent/interior
 // receiver. It owns its spend ledger and finite pool until duty withdrawal.
-func startClosedForwarding(config runtimeConfig, snapshot dutyFacts) (*probeServer, error) {
+func startClosedForwarding(config runtimeConfig, snapshot state.NodeDuty) (*probeServer, error) {
 	local := config.ClosedForwarding
 	if err := validateClosedForwardingProfile(local, config, snapshot, config.now()); err != nil {
 		return nil, err
@@ -65,7 +65,7 @@ func startClosedForwarding(config runtimeConfig, snapshot dutyFacts) (*probeServ
 	}}, nil
 }
 
-func validateClosedForwardingProfile(local ClosedForwardingProfile, config runtimeConfig, snapshot dutyFacts, now time.Time) error {
+func validateClosedForwardingProfile(local ClosedForwardingProfile, config runtimeConfig, snapshot state.NodeDuty, now time.Time) error {
 	if local.Root == "" || !filepath.IsAbs(local.Root) || filepath.Clean(local.Root) != local.Root || local.Certificate.PrivateKey == nil ||
 		local.ConnectionLimit == 0 || local.ConnectionLimit > 16 || local.DrainTimeout <= 0 || local.DrainTimeout > time.Minute ||
 		local.host == nil && (local.HostingRoot == "" || !filepath.IsAbs(local.HostingRoot) || filepath.Clean(local.HostingRoot) != local.HostingRoot) ||
@@ -81,7 +81,7 @@ func validateClosedForwardingProfile(local ClosedForwardingProfile, config runti
 
 type closedForwardingServer struct {
 	config      runtimeConfig
-	snapshot    dutyFacts
+	snapshot    state.NodeDuty
 	certificate tls.Certificate
 	listener    route.ClosedSharedCarrierListener
 	receiving   *closedForwardingReceivingResources
@@ -104,7 +104,7 @@ type closedForwardingServer struct {
 	reapErr     error
 }
 
-func newClosedForwardingServerWithHost(config runtimeConfig, snapshot dutyFacts, certificate tls.Certificate, listener route.ClosedSharedCarrierListener, receiving *closedForwardingReceivingResources, pool *route.ClosedCarrierPool, host closedForwardingHost, limit uint16) *closedForwardingServer {
+func newClosedForwardingServerWithHost(config runtimeConfig, snapshot state.NodeDuty, certificate tls.Certificate, listener route.ClosedSharedCarrierListener, receiving *closedForwardingReceivingResources, pool *route.ClosedCarrierPool, host closedForwardingHost, limit uint16) *closedForwardingServer {
 	ctx, cancel := context.WithCancel(context.Background())
 	running := &closedForwardingServer{config: config, snapshot: snapshot, certificate: certificate, listener: listener, receiving: receiving, pool: pool,
 		host: host, cancel: cancel, drained: make(chan struct{}),

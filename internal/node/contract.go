@@ -16,95 +16,6 @@ const eventSchema = "ardents-node-event-v1"
 // resource profile and is restricted to the dedicated Rendezvous duty.
 const RendezvousDedicatedHostResourceProfile = resource.RendezvousDedicatedHostProfile
 
-// DutyView is the narrow authenticated input required to decide one Node duty.
-// It does not expose Network State persistence, source, retry, or pending
-// metadata.
-type DutyView interface {
-	DutyGeneration() string
-	DutyNetworkID() [32]byte
-	DutyEpoch() uint64
-	DutyDigest() [32]byte
-	DutyEpochValidFrom() time.Time
-	DutyValidUntil() time.Time
-	DutyProfile() string
-	DutyFresh() bool
-	DutyConflicting() bool
-	DutyRecordPresent() bool
-	DutyNodeID() [32]byte
-	DutyNodePublicKey() [32]byte
-	DutyRecordGeneration() uint64
-	DutyRecordValidFrom() time.Time
-	DutyRecordValidUntil() time.Time
-	DutyDeclaredFamily() string
-	DutyProbeEndpoint() string
-	DutyCarrierProfile() string
-	DutyProbeCapacity() uint16
-	DutyAssignment() string
-	DutyAssignmentDigest() [32]byte
-	DutyCandidateCount() uint8
-	DutyCandidateNodeID(uint8) [32]byte
-	DutyCandidatePublicKey(uint8) [32]byte
-	DutyCandidateKeyID(uint8) [32]byte
-	DutyCandidateFamilyID(uint8) [32]byte
-	DutyCandidateRecordDigest(uint8) [32]byte
-	DutyCandidateDomainProofDigest(uint8) [32]byte
-	DutyCandidateEndpoint(uint8) string
-	DutyCandidateCarrierProfile(uint8) string
-	DutyCandidateCapacity(uint8) uint16
-	DutyCandidateAssignment(uint8) string
-	DutyCandidateValidFrom(uint8) time.Time
-	DutyCandidateValidUntil(uint8) time.Time
-	DutyCandidateAssignmentNotAfter(uint8) time.Time
-	DutyAuthorityCount() uint8
-	DutyAuthorityID(uint8) [32]byte
-	DutyAuthorityPublicKey(uint8) [32]byte
-}
-
-// dutyFacts is the Node-owned immutable copy of one DutyView. Its DutyView
-// projection is test scope (duty_facts_projection_test.go): production
-// supplies state.NodeDutyView through Config.Current, while behavior tests
-// supply this snapshot directly without a Network State runtime.
-type dutyFacts struct {
-	Generation       string
-	NetworkID        [32]byte
-	Epoch            uint64
-	Digest           [32]byte
-	EpochValidFrom   time.Time
-	ValidUntil       time.Time
-	Profile          string
-	Conflicting      bool
-	RecordPresent    bool
-	NodeID           [32]byte
-	NodePublicKey    [32]byte
-	RecordGeneration uint64
-	RecordValidFrom  time.Time
-	RecordValidUntil time.Time
-	DeclaredFamily   string
-	ProbeEndpoint    string
-	CarrierProfile   string
-	ProbeCapacity    uint16
-	Assignment       string
-	AssignmentDigest [32]byte
-	Fresh            bool
-	Candidates       [64]dutyCandidate
-	CandidateCount   uint8
-	Authorities      [16]dutyAuthority
-	AuthorityCount   uint8
-}
-
-// dutyCandidate is one narrow State-authorized peer fact. It deliberately
-// contains no source, address history, target, or complete route material.
-type dutyCandidate struct {
-	NodeID, PublicKey, KeyID, FamilyID, RecordDigest, DomainProofDigest [32]byte
-	Endpoint, CarrierProfile, Assignment                                string
-	Capacity                                                            uint16
-	ValidFrom, ValidUntil, AssignmentNotAfter                           time.Time
-}
-
-// dutyAuthority is one current authenticated Network State verification key.
-// It is copied only for Node-local Transit Grant verification.
-type dutyAuthority struct{ ID, PublicKey [32]byte }
-
 // Config binds one local identity, authenticated duty facts, and private role-probe listener.
 type Config struct {
 	// HostingRoot is the single installed provider period shared by all closed duties on this host.
@@ -116,9 +27,13 @@ type Config struct {
 	NetworkID            [32]byte
 	NodeID               [32]byte
 	IdentityKey          ed25519.PrivateKey
-	Current              func() (DutyView, error)
-	Probe                ProbeConfig
-	ClosedIssuer         ClosedIssuerProfile
+	// Current supplies the one State-created copied duty value per poll.
+	// Production wires the State owner's CurrentNodeDuty; the value carries no
+	// Network State persistence, source, retry, or pending metadata. Node
+	// revalidates its bounds on receipt and retains its per-poll copy.
+	Current      func() (state.NodeDuty, error)
+	Probe        ProbeConfig
+	ClosedIssuer ClosedIssuerProfile
 	// ClosedForwarding supplies the isolated receiving spend journal and Node
 	// TLS key for an accepted generation-3 adjacent/interior forwarding duty.
 	// State still selects the endpoint, peer and recipient assignment.

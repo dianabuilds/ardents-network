@@ -7,34 +7,62 @@ import (
 	"testing"
 )
 
-// ADR-0101: the dutyFacts DutyView projection is test scope and the
-// unimplemented local admission-timeout helpers are retired, while the
-// composed production handoff stays exactly as network-route-node.md
-// documents it.
-func TestNodeDutyProjectionIsTestScope(t *testing.T) {
+// ADR-0104 (F-07): the State-to-Node duty handoff is one State-created copied
+// value. The 38-getter DutyView Interface, the Node-side dutyFacts parallel
+// projection, the test-scope getter projection from ADR-0101, and the unused
+// authority/Transit-issuance projections are all retired.
+func TestNodeDutyHandoffIsOneCopiedValue(t *testing.T) {
 	t.Parallel()
 	root := repositoryRoot(t)
 	contract := string(readProjectFile(t, root, "internal/node/contract.go"))
-	if strings.Contains(contract, "func (facts dutyFacts) Duty") {
-		t.Error("production contract still declares dutyFacts DutyView accessors")
-	}
-	for _, required := range []string{
+	for _, forbidden := range []string{
 		"type DutyView interface",
-		"DutyRecordGeneration() uint64",
 		"type dutyFacts struct",
-		"duty_facts_projection_test.go",
+		"type dutyCandidate struct",
+		"type dutyAuthority struct",
+		"DutyRecordGeneration() uint64",
 	} {
-		if !strings.Contains(contract, required) {
-			t.Errorf("contract.go lost required declaration or note %q", required)
+		if strings.Contains(contract, forbidden) {
+			t.Errorf("contract.go still declares retired seam member %q", forbidden)
 		}
 	}
-	projection := string(readProjectFile(t, root, "internal/node/duty_facts_projection_test.go"))
-	if got := strings.Count(projection, "func (facts dutyFacts) Duty"); got != 38 {
-		t.Errorf("test projection declares %d accessors, want the complete 38-getter DutyView set", got)
+	if !strings.Contains(contract, "func() (state.NodeDuty, error)") {
+		t.Error("contract.go lost the copied-value Config.Current callback")
 	}
-	lifecycle := string(readProjectFile(t, root, "internal/node/lifecycle_test.go"))
-	if strings.Contains(lifecycle, "DutyRecordGeneration") {
-		t.Error("lifecycle_test.go still declares a partial out-of-place projection getter")
+	duty := string(readProjectFile(t, root, "internal/network/state/node_duty.go"))
+	for _, required := range []string{
+		"type NodeDuty struct",
+		"type NodeDutyCandidate struct",
+		"func ProjectNodeDuty(snapshot Snapshot) NodeDuty",
+		"func (s *networkState) CurrentNodeDuty() (NodeDuty, error)",
+	} {
+		if !strings.Contains(duty, required) {
+			t.Errorf("node_duty.go lost required declaration %q", required)
+		}
+	}
+	for _, forbidden := range []string{
+		"NodeDutyView",
+		"DutyAuthority",
+		"TransitIssuance",
+		"SourceAttempts",
+		"PendingEpoch",
+		"ViewRoot",
+	} {
+		if strings.Contains(duty, forbidden) {
+			t.Errorf("node_duty.go re-exposes retired projection member %q", forbidden)
+		}
+	}
+	lifecycle := string(readProjectFile(t, root, "internal/node/lifecycle.go"))
+	if !strings.Contains(lifecycle, "node duty candidate count is outside its bound") {
+		t.Error("lifecycle lost the receipt-time candidate bound validation")
+	}
+	for _, relative := range []string{
+		"internal/network/state/node_duty_view.go",
+		"internal/node/duty_facts_projection_test.go",
+	} {
+		if _, err := os.Stat(filepath.Join(root, filepath.FromSlash(relative))); !os.IsNotExist(err) {
+			t.Errorf("retired getter-projection file still exists: %s", relative)
+		}
 	}
 }
 
@@ -62,7 +90,7 @@ func TestComposedNodeDutyHandoffIsPreserved(t *testing.T) {
 	t.Parallel()
 	root := repositoryRoot(t)
 	mode := string(readProjectFile(t, root, "cmd/ardents-node/node_mode.go"))
-	if !strings.Contains(mode, "store.CurrentNodeDuty()") || !strings.Contains(mode, "node.Run(ctx, runtime.node)") {
+	if !strings.Contains(mode, "runtime.node.Current = store.CurrentNodeDuty") || !strings.Contains(mode, "node.Run(ctx, runtime.node)") {
 		t.Error("node command lost the composed authenticated duty handoff")
 	}
 	dispatch := string(readProjectFile(t, root, "cmd/ardents-node/main.go"))
@@ -70,11 +98,7 @@ func TestComposedNodeDutyHandoffIsPreserved(t *testing.T) {
 		t.Error("node command lost its selected dispatch")
 	}
 	lifecycle := string(readProjectFile(t, root, "internal/node/lifecycle.go"))
-	if !strings.Contains(lifecycle, "view.DutyRecordGeneration()") || !strings.Contains(lifecycle, "result := dutyFacts{") {
-		t.Error("lifecycle lost the production DutyView copy projection")
-	}
-	view := string(readProjectFile(t, root, "internal/network/state/node_duty_view.go"))
-	if !strings.Contains(view, "func (s *networkState) CurrentNodeDuty() (NodeDutyView, error)") {
-		t.Error("State lost the narrow authenticated current-generation view")
+	if !strings.Contains(lifecycle, "duty, err := config.Current()") || !strings.Contains(lifecycle, "func currentFacts(config runtimeConfig) (state.NodeDuty, error)") {
+		t.Error("lifecycle lost the receipt-time duty value copy")
 	}
 }

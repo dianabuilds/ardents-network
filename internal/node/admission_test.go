@@ -3,6 +3,7 @@ package node
 import (
 	"crypto/ed25519"
 	"errors"
+	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"testing"
 	"time"
 )
@@ -17,7 +18,7 @@ func TestAdmissionRequiresEveryPrerequisite(t *testing.T) {
 	config := runtimeConfig{Config: Config{NetworkID: [32]byte{1}, NodeID: [32]byte{2}, IdentityKey: private,
 		Probe:          ProbeConfig{ListenAddress: "127.0.0.1:4101", MaximumDuty: time.Second},
 		CheckPlacement: func() error { return nil }}, now: func() time.Time { return now }}
-	snapshot := dutyFacts{NetworkID: config.NetworkID, NodeID: config.NodeID, RecordPresent: true,
+	snapshot := state.NodeDuty{NetworkID: config.NetworkID, NodeID: config.NodeID, RecordPresent: true,
 		EpochValidFrom: now.Add(-time.Hour), ValidUntil: now.Add(time.Hour), RecordValidFrom: now.Add(-time.Hour),
 		RecordValidUntil: now.Add(time.Hour), Profile: "h3-role-probe-v1", Assignment: "domain-a",
 		ProbeEndpoint: config.Probe.ListenAddress, ProbeCapacity: 1, Fresh: true}
@@ -27,22 +28,22 @@ func TestAdmissionRequiresEveryPrerequisite(t *testing.T) {
 	}
 	tests := []struct {
 		name string
-		edit func(*dutyFacts, *runtimeConfig)
+		edit func(*state.NodeDuty, *runtimeConfig)
 		want admissionKind
 	}{
-		{"record", func(s *dutyFacts, _ *runtimeConfig) { s.RecordPresent = false }, admissionAbsent},
-		{"identity", func(s *dutyFacts, _ *runtimeConfig) { s.NodeID[0]++ }, admissionAbsent},
-		{"key", func(s *dutyFacts, _ *runtimeConfig) { s.NodePublicKey[0]++ }, admissionFailed},
-		{"network", func(s *dutyFacts, _ *runtimeConfig) { s.NetworkID[0]++ }, admissionFailed},
-		{"profile", func(s *dutyFacts, _ *runtimeConfig) { s.Profile = "other" }, admissionPrepared},
-		{"assignment", func(s *dutyFacts, _ *runtimeConfig) { s.Assignment = "" }, admissionPrepared},
-		{"capacity", func(s *dutyFacts, _ *runtimeConfig) { s.ProbeCapacity = 0 }, admissionPrepared},
-		{"endpoint", func(s *dutyFacts, _ *runtimeConfig) { s.ProbeEndpoint = "127.0.0.1:9" }, admissionFailed},
-		{"conflict", func(s *dutyFacts, _ *runtimeConfig) { s.Conflicting = true }, admissionPrepared},
-		{"freshness", func(s *dutyFacts, _ *runtimeConfig) { s.Fresh = false }, admissionPrepared},
-		{"epoch boundary", func(s *dutyFacts, _ *runtimeConfig) { s.ValidUntil = now.Add(time.Second) }, admissionPrepared},
-		{"record boundary", func(s *dutyFacts, _ *runtimeConfig) { s.RecordValidUntil = now.Add(time.Second) }, admissionPrepared},
-		{"placement", func(_ *dutyFacts, c *runtimeConfig) {
+		{"record", func(s *state.NodeDuty, _ *runtimeConfig) { s.RecordPresent = false }, admissionAbsent},
+		{"identity", func(s *state.NodeDuty, _ *runtimeConfig) { s.NodeID[0]++ }, admissionAbsent},
+		{"key", func(s *state.NodeDuty, _ *runtimeConfig) { s.NodePublicKey[0]++ }, admissionFailed},
+		{"network", func(s *state.NodeDuty, _ *runtimeConfig) { s.NetworkID[0]++ }, admissionFailed},
+		{"profile", func(s *state.NodeDuty, _ *runtimeConfig) { s.Profile = "other" }, admissionPrepared},
+		{"assignment", func(s *state.NodeDuty, _ *runtimeConfig) { s.Assignment = "" }, admissionPrepared},
+		{"capacity", func(s *state.NodeDuty, _ *runtimeConfig) { s.ProbeCapacity = 0 }, admissionPrepared},
+		{"endpoint", func(s *state.NodeDuty, _ *runtimeConfig) { s.ProbeEndpoint = "127.0.0.1:9" }, admissionFailed},
+		{"conflict", func(s *state.NodeDuty, _ *runtimeConfig) { s.Conflicting = true }, admissionPrepared},
+		{"freshness", func(s *state.NodeDuty, _ *runtimeConfig) { s.Fresh = false }, admissionPrepared},
+		{"epoch boundary", func(s *state.NodeDuty, _ *runtimeConfig) { s.ValidUntil = now.Add(time.Second) }, admissionPrepared},
+		{"record boundary", func(s *state.NodeDuty, _ *runtimeConfig) { s.RecordValidUntil = now.Add(time.Second) }, admissionPrepared},
+		{"placement", func(_ *state.NodeDuty, c *runtimeConfig) {
 			c.CheckPlacement = func() error { return errors.New("pressure") }
 		}, admissionPrepared},
 	}

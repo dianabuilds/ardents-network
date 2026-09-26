@@ -16,6 +16,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/node"
 )
 
@@ -27,21 +28,13 @@ type textRoleProcess struct {
 	heap    bool
 }
 
-func startTextRoleProcess(t *testing.T, index int, config node.Config, root string, testName ...string) *textRoleProcess {
+func startTextRoleProcess(t *testing.T, index int, config node.Config, snapshot state.Snapshot, root string, testName ...string) *textRoleProcess {
 	t.Helper()
-	facts, err := config.Current()
-	if err != nil {
-		t.Fatal(err)
-	}
-	fixture, ok := facts.(textNetworkDutyFixture)
-	if !ok {
-		t.Fatal("unexpected public State seam")
-	}
 	view, err := config.CurrentClosedRoute()
 	if err != nil {
 		t.Fatalf("missing profile: %v", err)
 	}
-	input := textRoleProcessInput{HostingRoot: config.HostingRoot, Snapshot: fixture.snapshot, View: view, Key: config.IdentityKey, StateRoot: config.LocalRoleStateRoot}
+	input := textRoleProcessInput{HostingRoot: config.HostingRoot, Snapshot: snapshot, View: view, Key: config.IdentityKey, StateRoot: config.LocalRoleStateRoot}
 	switch {
 	case config.ClosedIssuer.Root != "":
 		v := config.ClosedIssuer

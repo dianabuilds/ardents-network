@@ -39,15 +39,15 @@ func TestCurrentNodeDutyProjectsSignedCarrierProfilesAndRejectsUnknown(t *testin
 	if _, err := opened.Accept(context.Background(), epoch.Raw, spec.inputs, epoch.Materials[:1]); err != nil {
 		t.Fatal(err)
 	}
-	view, err := opened.CurrentNodeDuty()
+	duty, err := opened.CurrentNodeDuty()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if view.DutyCarrierProfile() != "ardents-carrier-tcp-tls-v1" || view.DutyCandidateCount() != 2 ||
-		view.DutyCandidateCarrierProfile(0) != "ardents-carrier-tcp-tls-v1" ||
-		view.DutyCandidateCarrierProfile(1) != "ardents-carrier-quic-v1" || view.DutyCandidateCarrierProfile(2) != "" {
-		t.Fatalf("signed Carrier projection is incomplete: own=%q first=%q second=%q count=%d", view.DutyCarrierProfile(),
-			view.DutyCandidateCarrierProfile(0), view.DutyCandidateCarrierProfile(1), view.DutyCandidateCount())
+	if duty.CarrierProfile != "ardents-carrier-tcp-tls-v1" || duty.CandidateCount != 2 ||
+		duty.Candidates[0].CarrierProfile != "ardents-carrier-tcp-tls-v1" ||
+		duty.Candidates[1].CarrierProfile != "ardents-carrier-quic-v1" || duty.Candidates[2].CarrierProfile != "" {
+		t.Fatalf("signed Carrier projection is incomplete: own=%q first=%q second=%q count=%d", duty.CarrierProfile,
+			duty.Candidates[0].CarrierProfile, duty.Candidates[1].CarrierProfile, duty.CandidateCount)
 	}
 }
 
@@ -63,40 +63,33 @@ func TestCurrentNodeDutyExposesOnlyCurrentAuthenticatedDutyFacts(t *testing.T) {
 	if _, err := opened.Accept(context.Background(), value.epoch, value.inputs, value.materializations); err != nil {
 		t.Fatal(err)
 	}
-	view, err := opened.CurrentNodeDuty()
+	duty, err := opened.CurrentNodeDuty()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if view.DutyNetworkID() != value.networkID || view.DutyEpoch() != 1 || view.DutyDigest() != value.epochDigest ||
-		!view.DutyRecordPresent() || view.DutyAssignment() == "" || view.DutyProbeCapacity() == 0 {
-		t.Fatalf("Node duty view lacks authenticated duty facts")
+	if duty.NetworkID != value.networkID || duty.Epoch != 1 || duty.Digest != value.epochDigest ||
+		!duty.RecordPresent || duty.Assignment == "" || duty.ProbeCapacity == 0 {
+		t.Fatalf("Node duty value lacks authenticated duty facts")
 	}
-	if view.DutyCandidateCount() != 2 || view.DutyCandidateNodeID(0) != value.accepted[0].nodeID ||
-		view.DutyCandidatePublicKey(0) == [32]byte{} || view.DutyCandidateEndpoint(0) == "" ||
-		view.DutyCandidateAssignment(0) == "" || view.DutyCandidateValidFrom(0).IsZero() ||
-		view.DutyCandidateValidUntil(0).IsZero() {
-		t.Fatalf("Node duty view lacks authenticated candidate facts")
+	if duty.CandidateCount != 2 || duty.Candidates[0].NodeID != value.accepted[0].nodeID ||
+		duty.Candidates[0].PublicKey == [32]byte{} || duty.Candidates[0].Endpoint == "" ||
+		duty.Candidates[0].Assignment == "" || duty.Candidates[0].ValidFrom.IsZero() ||
+		duty.Candidates[0].ValidUntil.IsZero() {
+		t.Fatalf("Node duty value lacks authenticated candidate facts")
 	}
-	if view.DutyCandidateKeyID(0) == [32]byte{} || view.DutyCandidateFamilyID(0) == [32]byte{} ||
-		view.DutyCandidateRecordDigest(0) == [32]byte{} || view.DutyCandidateDomainProofDigest(0) == [32]byte{} ||
-		view.DutyCandidateCapacity(0) == 0 || view.DutyCandidateAssignmentNotAfter(0).IsZero() {
-		t.Fatal("Node duty view lacks the bounded Entry-verification candidate facts")
+	if duty.Candidates[0].KeyID == [32]byte{} || duty.Candidates[0].FamilyID == [32]byte{} ||
+		duty.Candidates[0].RecordDigest == [32]byte{} || duty.Candidates[0].DomainProofDigest == [32]byte{} ||
+		duty.Candidates[0].Capacity == 0 || duty.Candidates[0].AssignmentNotAfter.IsZero() {
+		t.Fatal("Node duty value lacks the bounded Entry-verification candidate facts")
 	}
-	if view.DutyAuthorityCount() != 1 || view.DutyAuthorityID(0) != value.authorityID ||
-		view.DutyAuthorityPublicKey(0) != [32]byte(value.authorityPublic) {
-		t.Fatal("Node duty view lacks the current State authority verification fact")
-	}
-	if view.DutyAuthorityID(1) != [32]byte{} || view.DutyAuthorityPublicKey(1) != [32]byte{} {
-		t.Fatal("Node duty view exposed an out-of-range State authority")
-	}
-	if view.DutyCandidateNodeID(2) != [32]byte{} || view.DutyCandidateEndpoint(2) != "" ||
-		!view.DutyCandidateValidUntil(2).IsZero() {
-		t.Fatal("Node duty view exposed an out-of-range candidate")
+	if duty.Candidates[2].NodeID != [32]byte{} || duty.Candidates[2].Endpoint != "" ||
+		!duty.Candidates[2].ValidUntil.IsZero() {
+		t.Fatal("Node duty value exposed an out-of-range candidate")
 	}
 	if err := opened.Close(); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := opened.CurrentNodeDuty(); err == nil {
-		t.Fatal("closed Network State exposed a Node duty view")
+		t.Fatal("closed Network State exposed a Node duty value")
 	}
 }

@@ -3,11 +3,11 @@ package node
 import (
 	"crypto/sha256"
 	"errors"
-
 	"github.com/dianabuilds/ardents-network/internal/network/duty"
+	"github.com/dianabuilds/ardents-network/internal/network/state"
 )
 
-func retainLocalDuty(config runtimeConfig, snapshot dutyFacts, state string) error {
+func retainLocalDuty(config runtimeConfig, snapshot state.NodeDuty, state string) error {
 	roles, err := duty.Open(duty.Config{Root: config.LocalRoleStateRoot, Clock: config.now, Create: true})
 	if err != nil {
 		return err

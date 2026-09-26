@@ -83,7 +83,7 @@ func TestClosedForwardingDrainJoinsActualAcceptedProducerBeforeReader(t *testing
 	fixture.snapshot.CarrierProfile = string(route.ClosedCarrierTCP)
 	fixture.snapshot.NodePublicKey = serverKey
 	fixture.config.now = func() time.Time { return now }
-	fixture.config.Current = func() (DutyView, error) { return fixture.snapshot, nil }
+	fixture.config.Current = func() (state.NodeDuty, error) { return fixture.snapshot, nil }
 	fixture.config.CurrentClosedProfile = func() (state.ClosedProfileView, bool) { return fixture.view.Profile, true }
 	host := &cleanupFailureHost{}
 	fixture.config.ClosedForwarding = ClosedForwardingProfile{Certificate: serverCertificate,

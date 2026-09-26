@@ -3,14 +3,14 @@ package node
 import (
 	"context"
 	"crypto/tls"
-	"io"
-	"net"
-	"time"
-
+	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	"github.com/dianabuilds/ardents-network/internal/route/credential"
 	"github.com/dianabuilds/ardents-network/internal/route/replay"
+	"io"
+	"net"
+	"time"
 )
 
 // closedIssuerNodeHandler owns one State-authenticated outer Carrier. It
@@ -88,7 +88,7 @@ func serveClosedIssuerInner(ctx context.Context, lane *route.ClosedOuterBridgeLa
 	}
 }
 
-func closedSharedPeerCurrent(config runtimeConfig, snapshot dutyFacts, key [32]byte, now time.Time) bool {
+func closedSharedPeerCurrent(config runtimeConfig, snapshot state.NodeDuty, key [32]byte, now time.Time) bool {
 	if key == [32]byte{} || config.CurrentClosedRoute == nil || snapshot.Profile != route.ClosedRouteProfile || !snapshot.Fresh || snapshot.Conflicting {
 		return false
 	}

@@ -27,7 +27,7 @@ func TestClosedForwardingStartRefusesAmbiguousSpendJournal(t *testing.T) {
 	fixture.snapshot.CarrierProfile = string(route.ClosedCarrierTCP)
 	fixture.snapshot.NodePublicKey = serverKey
 	fixture.config.now = func() time.Time { return fixture.now }
-	fixture.config.Current = func() (DutyView, error) { return fixture.snapshot, nil }
+	fixture.config.Current = func() (state.NodeDuty, error) { return fixture.snapshot, nil }
 	fixture.config.CurrentClosedProfile = func() (state.ClosedProfileView, bool) { return fixture.view.Profile, true }
 	root := filepath.Join(t.TempDir(), "spends")
 	fixture.config.ClosedForwarding = ClosedForwardingProfile{Root: root, Certificate: certificate, ConnectionLimit: 2, DrainTimeout: time.Second,
@@ -89,7 +89,7 @@ func TestClosedForwardingServerRefusesAfterJournalMutationFailure(t *testing.T) 
 	fixture.snapshot.NodePublicKey = serverKey
 	fixture.snapshot.Candidates[0].PublicKey = peerKey
 	fixture.config.now = func() time.Time { return fixture.now }
-	fixture.config.Current = func() (DutyView, error) { return fixture.snapshot, nil }
+	fixture.config.Current = func() (state.NodeDuty, error) { return fixture.snapshot, nil }
 	fixture.config.CurrentClosedProfile = func() (state.ClosedProfileView, bool) { return fixture.view.Profile, true }
 	root := filepath.Join(t.TempDir(), "spends")
 	fixture.config.ClosedForwarding = ClosedForwardingProfile{Root: root, Certificate: serverCertificate, ConnectionLimit: 2, DrainTimeout: time.Second,

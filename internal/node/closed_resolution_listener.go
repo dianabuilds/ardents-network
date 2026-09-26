@@ -4,15 +4,15 @@ import (
 	"context"
 	"crypto/tls"
 	"errors"
-	"path/filepath"
-	"sync"
-	"sync/atomic"
-	"time"
-
+	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	"github.com/dianabuilds/ardents-network/internal/route/replay"
 	"github.com/dianabuilds/ardents-network/internal/service/reachability"
+	"path/filepath"
+	"sync"
+	"sync/atomic"
+	"time"
 )
 
 // ClosedResolutionProfile reserves only the local durable Descriptor and spend
@@ -24,7 +24,7 @@ type ClosedResolutionProfile struct {
 	DrainTimeout        time.Duration
 }
 
-func validateClosedResolutionProfile(local ClosedResolutionProfile, config runtimeConfig, snapshot dutyFacts, now time.Time) error {
+func validateClosedResolutionProfile(local ClosedResolutionProfile, config runtimeConfig, snapshot state.NodeDuty, now time.Time) error {
 	if local.Root == "" || local.AdmissionRoot == "" || local.Root == local.AdmissionRoot ||
 		!filepath.IsAbs(local.Root) || filepath.Clean(local.Root) != local.Root ||
 		!filepath.IsAbs(local.AdmissionRoot) || filepath.Clean(local.AdmissionRoot) != local.AdmissionRoot ||
@@ -39,7 +39,7 @@ func validateClosedResolutionProfile(local ClosedResolutionProfile, config runti
 	return nil
 }
 
-func startClosedResolution(config runtimeConfig, snapshot dutyFacts) (*probeServer, error) {
+func startClosedResolution(config runtimeConfig, snapshot state.NodeDuty) (*probeServer, error) {
 	local := config.ClosedResolution
 	if err := validateClosedResolutionProfile(local, config, snapshot, config.now()); err != nil {
 		return nil, err

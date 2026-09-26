@@ -52,7 +52,7 @@ func testClosedForwardingOpenActualCarrierOutcome(t *testing.T, profile route.Ca
 	fixture.snapshot.Candidates[1].CarrierProfile = string(profile)
 	fixture.snapshot.Candidates[1].PublicKey = peerKey
 	fixture.config.now = time.Now
-	fixture.config.Current = func() (DutyView, error) { return fixture.snapshot, nil }
+	fixture.config.Current = func() (state.NodeDuty, error) { return fixture.snapshot, nil }
 	fixture.config.CurrentClosedProfile = func() (state.ClosedProfileView, bool) { return fixture.view.Profile, true }
 	listener, err := route.ListenClosedSharedCarrier(profile, endpoint, peerCertificate, func(key [32]byte) bool { return key == clientKey }, 1)
 	if err != nil {

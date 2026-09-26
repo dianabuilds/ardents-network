@@ -3,15 +3,15 @@ package node
 import (
 	"bytes"
 	"errors"
-	"net"
-	"sync/atomic"
-	"testing"
-	"time"
-
+	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	introductioncapsule "github.com/dianabuilds/ardents-network/internal/route/capsule"
 	"github.com/dianabuilds/ardents-network/internal/route/terminal"
+	"net"
+	"sync/atomic"
+	"testing"
+	"time"
 )
 
 // State acceptance and pending acknowledgements are explicit seams. This
@@ -26,8 +26,8 @@ func TestClosedIntroductionDeliverySerializesIDsAndBoundsPending(t *testing.T) {
 	slot := &closedIntroductionSlot{request: terminal.RegistrationRequest{Slot: [32]byte{1}, Revision: 1, Expiry: now.Add(30 * time.Second)},
 		connection: local, writer: make(chan struct{}, 1), done: make(chan struct{}), active: true, maximum: route.ClosedIntroductionRegistrationByteLimit,
 		pending: make(map[uint32]*closedIntroductionDelivery)}
-	server := &closedIntroductionServer{config: runtimeConfig{Config: Config{Current: func() (DutyView, error) {
-		return nil, errors.New("State intentionally unavailable at final acknowledgement")
+	server := &closedIntroductionServer{config: runtimeConfig{Config: Config{Current: func() (state.NodeDuty, error) {
+		return state.NodeDuty{}, errors.New("State intentionally unavailable at final acknowledgement")
 	}},
 		now: func() time.Time { return time.Unix(clock.Load(), 0) }}, slots: map[[32]byte]*closedIntroductionSlot{slot.request.Slot: slot}}
 	capsule := introductioncapsule.Capsule{Slot: slot.request.Slot, Revision: 1, Expiry: now.Add(10 * time.Second), DeliveryNonce: [32]byte{2}, Encapsulation: [32]byte{3}, Ciphertext: bytes.Repeat([]byte{4}, 360)}

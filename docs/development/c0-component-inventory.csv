@@ -153,7 +153,7 @@ path,proposed_component,treatment,evidence_or_reason
 "internal/node/closed_resolution_listener.go","node-duty","deepen","Node Resolution duty opens replay ledger Reachability Store and listener; run joins workers before both root closes"
 "internal/node/closed_resolution_operation.go","node-duty","deepen","Resolution server admits role TLS token then publishes or looks up private Descriptor with State recheck before terminal reply"
 "internal/node/closed_route_receiver.go","node-duty","retain","Node-only State-to-Route receiver authority projection used by admission and all five closed duties (F-33)"
-"internal/node/contract.go","node-duty","split-candidate","one 332-line file holds DutyView projection public Config and Event/Result plus runtimeConfig; split locally by responsibility before proposing package move"
+"internal/node/contract.go","node-duty","split-candidate","one 136-line file holds public Config with the copied state.NodeDuty Current callback plus Event/Result and runtimeConfig (ADR-0104 retired the DutyView projection); split locally by responsibility before proposing package move"
 "internal/node/doc.go","node-duty","retain","package documentation"
 "internal/node/duty_server.go","node-duty","retain","Dispatches exactly one selected closed duty by authenticated State receiver purpose; old Route profile refuses and retained role-probe uses its own branch"
 "internal/node/event_writer_other.go","node-duty","retain","Node event emission platform adapter with bounded interruptible write (F-33)"

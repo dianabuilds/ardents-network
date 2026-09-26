@@ -14,7 +14,7 @@ import (
 // OPEN can dial. A direct source may reach only an adjacent duty; an interior
 // must have an authenticated current adjacent Node in the same Role Domain.
 // Neither caller-supplied addresses nor issuer responses select a recipient.
-func closedBootstrapRecipient(config runtimeConfig, snapshot dutyFacts, receiver route.ClosedRoleReceiver, incomingKey [32]byte, open route.ClosedOpen, now time.Time) error {
+func closedBootstrapRecipient(config runtimeConfig, snapshot state.NodeDuty, receiver route.ClosedRoleReceiver, incomingKey [32]byte, open route.ClosedOpen, now time.Time) error {
 	if config.CurrentClosedRoute == nil || snapshot.DeclaredFamily == "" || int(snapshot.CandidateCount) > len(snapshot.Candidates) {
 		return errors.New("closed bootstrap current route is unavailable")
 	}

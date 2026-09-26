@@ -188,6 +188,9 @@ and ADR-0101 resolved the last two Node entries that still carried the stale
 "no selected C0 command" claim: the `dutyFacts` DutyView test-seam projection
 moved into test scope and the unimplemented local admission-timeout helpers
 were retired, so `internal/node` holds no common deadcode allowance.
+ADR-0104 subsequently replaced the getter seam itself with one copied
+`state.NodeDuty` value, deleting the test-scope projection along with the
+Interface it satisfied.
 Additional shared framing leaves are unreachable only in the Windows
 projection and remain in its platform allowance because Linux production
 still has retained Route consumers. That allowance does not permit removing

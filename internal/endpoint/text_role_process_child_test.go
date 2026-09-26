@@ -33,7 +33,7 @@ type textRoleProcessInput struct {
 
 func textRoleProcessConfig(input textRoleProcessInput) node.Config {
 	config := node.Config{HostingRoot: input.HostingRoot, NetworkID: input.Snapshot.NetworkID, NodeID: input.Snapshot.NodeID, IdentityKey: input.Key,
-		Current:              func() (node.DutyView, error) { return textNetworkDutyFixture{snapshot: input.Snapshot}, nil },
+		Current:              func() (state.NodeDuty, error) { return state.ProjectNodeDuty(input.Snapshot), nil },
 		CurrentClosedProfile: func() (state.ClosedProfileView, bool) { return input.View.Profile, true },
 		CurrentClosedRoute:   func() (state.ClosedRouteView, error) { return input.View, nil },
 		LocalRoleStateRoot:   input.StateRoot, PollInterval: 20 * time.Millisecond, CheckPlacement: func() error { return nil }}

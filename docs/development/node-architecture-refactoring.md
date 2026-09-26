@@ -56,7 +56,7 @@ and terminal result. The refactoring keeps this direction of dependency.
 | `internal/node` | `Run`, process `Config`/`Result`/`Event`, one selected-duty dispatch and running-duty handle. | State admission and process lifecycle, role retention, pressure response, evidence emission, and final cleanup ordering. |
 | Current authority projection (package undecided) | Exact current Node duty, profile and recipient checks consumed by duty owners. | State authenticates the view; Node applies local duty checks. An `authority` package needs an actual narrow value/caller seam and must not copy or select State. |
 | Shared outer lifetime (possible `internal/node/outer`) | Serve one accepted outer Carrier and join its inner lanes. | Its current two files use Route and standard-library types; a move still requires a production caller, owned cleanup result and tests in the same change. |
-| Forwarding lifetime (currently `internal/node`) | Start and join one State-authorized forwarding duty. | The server retains listener, spend and host reservations, admitted producers, outgoing Carrier sessions and readers. Moving this cohort now would transfer private `runtimeConfig`, `dutyFacts`, spend-close and probeServer return contracts. Deepen it in place first; a later package requires a demonstrated smaller interface. |
+| Forwarding lifetime (currently `internal/node`) | Start and join one State-authorized forwarding duty. | The server retains listener, spend and host reservations, admitted producers, outgoing Carrier sessions and readers. Moving this cohort now would transfer private `runtimeConfig`, the copied duty value, spend-close and probeServer return contracts. Deepen it in place first; a later package requires a demonstrated smaller interface. |
 | Private role probe (currently `internal/node`) | Start and join the selected probe duty under Node lifecycle. | Four implementation files use the common running-duty handle. Its name and navigation can improve in place; no independent package boundary has been shown. |
 | Direct recipient owners | Issuer, Introduction, Resolution, and Data Join each retain their own listener/admission/work/drain. | Extract an individual package when its state and lifecycle form a deep module with a small API. A thin Route adapter stays as a clearly named file in `internal/node` if a package would add only forwarding methods. |
 
@@ -138,7 +138,7 @@ caller; no package is required merely to remove a filename prefix.
   resources actually acquired; after successful start the running duty owns
   them until drain. Preserve the bounded drain result on repeated calls.
 - Reassess a `forwarding` package only after a narrow authority/outer seam
-  removes dependence on most of `runtimeConfig`, `dutyFacts` and the common
+  removes dependence on most of `runtimeConfig`, the copied duty value and the common
   running-duty handle. Acceptance for this step is a clear call and resource
   map with the existing admission, bootstrap, parent/child, relay, limit and
   shutdown behavior preserved for both Carriers.

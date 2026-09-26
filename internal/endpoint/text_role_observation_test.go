@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/node"
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/service/publication"
@@ -47,8 +48,8 @@ func TestTextPublicationIsolatedRoleObservations(t *testing.T) {
 			var processes []*textRoleProcess
 			publisherRoot := textNetworkPrivateRoot(t)
 			publisherProcess := startTextPublisherDurableCapture(t, output, publisherRoot)
-			runner := func(t *testing.T, index int, config node.Config) func() error {
-				process := startTextRoleProcess(t, index, config, output)
+			runner := func(t *testing.T, index int, config node.Config, snapshot state.Snapshot) func() error {
+				process := startTextRoleProcess(t, index, config, snapshot, output)
 				processes = append(processes, process)
 				return process.stop
 			}

@@ -78,6 +78,7 @@ Current decisions:
 
 Completed retirement decisions:
 
+- [0104 — Replace the 38-getter duty facade with one copied State value](0104-replace-duty-view-facade-with-copied-state-value.md)
 - [0102 — Stop legacy Service Introduction key emission; Credential v3](0102-stop-legacy-introduction-key-emission.md)
 - [0101 — Test-scope the dutyFacts DutyView projection; retire the unimplemented admission-deadline helpers](0101-test-scope-node-duty-projection.md)
 - [0100 — Remove the uncomposed private-resolution transport package](0100-remove-private-resolution-transport.md)
