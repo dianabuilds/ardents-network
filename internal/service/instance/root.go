@@ -10,9 +10,12 @@ import (
 
 const (
 	markerName = "instance-root.marker"
-	marker     = "ardents-service-instance-root-v1\n"
-	stateName  = "instance-root.json"
-	lockName   = ".instance-root.lock"
+	marker     = "ardents-service-instance-root-v2\n"
+	// legacyMarker identifies a pre-v3 root for the typed ErrLegacyRoot
+	// refusal; nothing reads its state (ADR-0102).
+	legacyMarker = "ardents-service-instance-root-v1\n"
+	stateName    = "instance-root.json"
+	lockName     = ".instance-root.lock"
 )
 
 // Initialize creates a new generation or reopens an exactly matching one.

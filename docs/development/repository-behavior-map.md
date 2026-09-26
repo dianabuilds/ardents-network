@@ -167,7 +167,8 @@ This trace follows `cmd/ardents/service_instance.go` and
    public request destination. The command checks cancellation before effects.
    `instance.Initialize` validates root ownership/marker, acquires its
    exclusive process lock, and either reopens an exact matching generation or
-   generates fresh Instance and Introduction keys. It atomically persists the
+   generates a fresh Instance key pair; ADR-0102 stopped Introduction key
+   emission with the Credential v3 contract. It atomically persists the
    `pending` state; a changed Network/time request is refused rather than
    replacing it.
 2. The command copies the public request, closes the root and joins the close
@@ -201,9 +202,9 @@ and successor requirement after publication. The source trace does not yet
 prove the separately operated Custody response handoff or the installed
 Publisher journey. This is a cohesive deep module: splitting its root,
 durable state, and binding by file count would divide one authority invariant.
-The current `root-v1` decoder also admits a phase-less retained JSON state by
-rederiving its public request from stored private keys; the four package test
-files do not exercise that compatibility branch (F-42). If startup fails
+The phase-less `root-v1` rederivation branch is retired with ADR-0102: the
+`root-v2` decoder refuses pre-v3 bytes with the typed `ErrLegacyRoot` before
+any field decode, and no compatibility branch remains (F-42 closed). If startup fails
 after taking the exclusive lock, `openPrepared`, `Initialize`, or `Open` can
 discard its release result (F-72). Neither fact creates a second current
 private Introduction, but both must be handled in any old-root transition.

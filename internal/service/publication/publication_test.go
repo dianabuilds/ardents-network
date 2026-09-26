@@ -413,7 +413,7 @@ func TestUnpublishRetryRepairsPointerBeforeRetiredGeneration(t *testing.T) {
 	}
 }
 
-func TestCredentialBindsSeparateIntroductionHPKEPublic(t *testing.T) {
+func TestCredentialDecodeRejectsForeignVersion(t *testing.T) {
 	t.Parallel()
 	fixture := newPublicationFixture(t)
 	credential := fixture.input(t, 1).Credential
@@ -423,33 +423,20 @@ func TestCredentialBindsSeparateIntroductionHPKEPublic(t *testing.T) {
 		t.Fatalf("Validate Credential = %v", err)
 	}
 
-	tampered := credential
-	tampered.IntroductionHPKEPublic[0] ^= 1
-	if err := Validate(tampered, authority, fixture.network, fixture.now, connectCapability); err == nil {
-		t.Fatal("Credential accepted an unsigned replacement Introduction HPKE key")
-	}
-
-	missing := credential
-	missing.IntroductionHPKEPublic = [32]byte{}
-	if _, err := missing.Issue(fixture.authPriv); err == nil {
-		t.Fatal("Issue accepted a missing Introduction HPKE key")
-	}
-
 	encoded := encodeCredential(credential)
 	encoded[1] = 1
 	if _, err := decodeCredential(encoded); err == nil {
-		t.Fatal("Decode accepted Credential v1")
+		t.Fatal("Decode accepted a foreign Credential version")
 	}
 }
 
 type publicationFixture struct {
-	now              time.Time
-	network          [32]byte
-	introductionHPKE [32]byte
-	authority        ed25519.PublicKey
-	private          ed25519.PrivateKey
-	public           ed25519.PublicKey
-	authPriv         ed25519.PrivateKey
+	now       time.Time
+	network   [32]byte
+	authority ed25519.PublicKey
+	private   ed25519.PrivateKey
+	public    ed25519.PublicKey
+	authPriv  ed25519.PrivateKey
 }
 
 type nonExportingTestSigner struct{ private ed25519.PrivateKey }
@@ -470,7 +457,7 @@ func newPublicationFixture(t *testing.T) publicationFixture {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return publicationFixture{now: time.Unix(2_000_000_000, 0), network: [32]byte{1}, introductionHPKE: [32]byte{9}, authority: authority,
+	return publicationFixture{now: time.Unix(2_000_000_000, 0), network: [32]byte{1}, authority: authority,
 		authPriv: authorityPrivate, private: private, public: public}
 }
 
@@ -482,7 +469,7 @@ func (fixture publicationFixture) input(t *testing.T, generation uint64) Publish
 	t.Helper()
 	var instance [32]byte
 	copy(instance[:], fixture.public)
-	credential, err := (Credential{InstancePublic: instance, IntroductionHPKEPublic: fixture.introductionHPKE, Generation: generation,
+	credential, err := (Credential{InstancePublic: instance, Generation: generation,
 		NotBefore: fixture.now.Add(-time.Minute).Unix(), NotAfter: fixture.now.Add(time.Minute).Unix(),
 		NetworkID: fixture.network, Capabilities: publishCapability | connectCapability}).Issue(fixture.authPriv)
 	if err != nil {

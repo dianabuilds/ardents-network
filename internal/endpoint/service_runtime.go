@@ -24,7 +24,6 @@ type setup struct {
 	NetworkID               [32]byte
 	BrokerID                [32]byte
 	AuthorityPublic         ed25519.PublicKey
-	IntroductionPublic      ed25519.PublicKey
 	ConnectionPrincipal     [32]byte
 	AdministrationPrincipal [32]byte
 	PublicationRoot         string
@@ -49,8 +48,7 @@ type endpoint struct {
 // New creates one finite Endpoint-local admission and publication boundary.
 func newEndpoint(input setup) (*endpoint, error) {
 	if input.NetworkID == [32]byte{} || input.BrokerID == [32]byte{} || input.ConnectionPrincipal == [32]byte{} ||
-		len(input.AuthorityPublic) != 0 && len(input.AuthorityPublic) != ed25519.PublicKeySize ||
-		len(input.IntroductionPublic) != 0 && len(input.IntroductionPublic) != ed25519.PublicKeySize {
+		len(input.AuthorityPublic) != 0 && len(input.AuthorityPublic) != ed25519.PublicKeySize {
 		return nil, errors.New("endpoint setup is incomplete")
 	}
 	var authority [32]byte

@@ -552,7 +552,6 @@
           "internal/service/connection.writeAll",
           "internal/service/instance.Binding.CommitPublished",
           "internal/service/instance.Binding.Credential",
-          "internal/service/instance.Binding.IntroductionPublic",
           "internal/service/instance.Binding.NewPrivateRecipient",
           "internal/service/instance.Binding.Public",
           "internal/service/instance.Binding.Sign",

@@ -55,7 +55,7 @@ func useTextParticipant(ctx context.Context, config TextParticipantConfig, withd
 	if err != nil || credential.NetworkID != config.Network.NetworkID {
 		return errors.Join(errors.New("text participant Instance unavailable"), err)
 	}
-	owner, err := newEndpoint(setup{NetworkID: config.Network.NetworkID, BrokerID: config.BrokerID, ConnectionPrincipal: config.ConnectionPrincipal, AdministrationPrincipal: config.AdministrationPrincipal, PublicationRoot: config.PublicationRoot, AuthorityPublic: ed25519.PublicKey(credential.AuthorityPublic[:]), IntroductionPublic: ed25519.PublicKey(credential.IntroductionHPKEPublic[:]), Clock: clock})
+	owner, err := newEndpoint(setup{NetworkID: config.Network.NetworkID, BrokerID: config.BrokerID, ConnectionPrincipal: config.ConnectionPrincipal, AdministrationPrincipal: config.AdministrationPrincipal, PublicationRoot: config.PublicationRoot, AuthorityPublic: ed25519.PublicKey(credential.AuthorityPublic[:]), Clock: clock})
 	if err != nil {
 		return err
 	}

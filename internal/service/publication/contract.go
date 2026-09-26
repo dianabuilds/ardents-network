@@ -12,19 +12,16 @@ import (
 type Credential struct {
 	AuthorityPublic [32]byte
 	Target          [32]byte
-	InstancePublic  [32]byte
-	// IntroductionHPKEPublic is the separate X25519 public recipient that
-	// ADR-0034 binds into Credential v2; it is not derived from InstancePublic.
-	// Its SealedIntroduction v1 opening path is retired (ADR-0094); the field
-	// remains part of the signed data contract until the separate Instance and
-	// Credential migration decision.
-	IntroductionHPKEPublic [32]byte
-	Generation             uint64
-	NotBefore              int64
-	NotAfter               int64
-	NetworkID              [32]byte
-	Capabilities           uint32
-	Signature              [64]byte
+	// ADR-0102 supersedes ADR-0034: the signed Credential v3 no longer carries
+	// the legacy X25519 introduction recipient. The private v3 capsule path
+	// issues its own volatile recipient keys.
+	InstancePublic [32]byte
+	Generation     uint64
+	NotBefore      int64
+	NotAfter       int64
+	NetworkID      [32]byte
+	Capabilities   uint32
+	Signature      [64]byte
 }
 
 // Config owns one publication root. LegacyFloor is read only during the C1

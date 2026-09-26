@@ -101,7 +101,7 @@ func newDescriptorFixture(t *testing.T) descriptorFixture {
 	}
 	var instance [32]byte
 	copy(instance[:], instancePublic)
-	credential, err := (publication.Credential{InstancePublic: instance, IntroductionHPKEPublic: [32]byte{4}, Generation: 1,
+	credential, err := (publication.Credential{InstancePublic: instance, Generation: 1,
 		NotBefore: now.Add(-time.Minute).Unix(), NotAfter: now.Add(time.Minute).Unix(), NetworkID: network, Capabilities: 3}).Issue(authorityPrivate)
 	if err != nil {
 		t.Fatal(err)

@@ -16,15 +16,14 @@ const (
 	CapabilityConnect  = uint32(2)
 	publishCapability  = CapabilityPublish
 	connectCapability  = CapabilityConnect
-	credentialVersion  = uint16(2)
-	credentialBodySize = 2 + 32 + 32 + 32 + 32 + 8 + 8 + 8 + 32 + 4
+	credentialVersion  = uint16(3)
+	credentialBodySize = 2 + 32 + 32 + 32 + 8 + 8 + 8 + 32 + 4
 	credentialSize     = credentialBodySize + ed25519.SignatureSize
 )
 
 // Issue signs a bounded public delegation for one exclusive Service Instance.
 func (value Credential) Issue(authority ed25519.PrivateKey) (Credential, error) {
-	if len(authority) != ed25519.PrivateKeySize || value.InstancePublic == [32]byte{} ||
-		value.IntroductionHPKEPublic == [32]byte{} || value.Generation == 0 ||
+	if len(authority) != ed25519.PrivateKeySize || value.InstancePublic == [32]byte{} || value.Generation == 0 ||
 		value.NotBefore >= value.NotAfter || value.NetworkID == [32]byte{} || value.Capabilities == 0 {
 		return Credential{}, errors.New("publication credential request is invalid")
 	}
@@ -44,7 +43,7 @@ func (value Credential) Issue(authority ed25519.PrivateKey) (Credential, error) 
 
 func validateCredential(value Credential, authority, network [32]byte, at time.Time, capability uint32) error {
 	if value.AuthorityPublic != authority || value.Target != targetFor(authority) || value.NetworkID != network ||
-		value.InstancePublic == [32]byte{} || value.IntroductionHPKEPublic == [32]byte{} || value.Generation == 0 ||
+		value.InstancePublic == [32]byte{} || value.Generation == 0 ||
 		value.NotBefore >= value.NotAfter ||
 		at.Unix() < value.NotBefore || at.Unix() >= value.NotAfter || value.Capabilities&capability != capability ||
 		!ed25519.Verify(ed25519.PublicKey(authority[:]), credentialBody(value), value.Signature[:]) {
@@ -70,7 +69,7 @@ func credentialBody(value Credential) []byte {
 	encoded := make([]byte, credentialBodySize)
 	binary.BigEndian.PutUint16(encoded[:2], credentialVersion)
 	offset := 2
-	for _, field := range [][32]byte{value.AuthorityPublic, value.Target, value.InstancePublic, value.IntroductionHPKEPublic} {
+	for _, field := range [][32]byte{value.AuthorityPublic, value.Target, value.InstancePublic} {
 		copy(encoded[offset:offset+32], field[:])
 		offset += 32
 	}
@@ -99,7 +98,7 @@ func decodeCredential(encoded []byte) (Credential, error) {
 	}
 	var value Credential
 	offset := 2
-	for _, field := range []*[32]byte{&value.AuthorityPublic, &value.Target, &value.InstancePublic, &value.IntroductionHPKEPublic} {
+	for _, field := range []*[32]byte{&value.AuthorityPublic, &value.Target, &value.InstancePublic} {
 		copy(field[:], encoded[offset:offset+32])
 		offset += 32
 	}

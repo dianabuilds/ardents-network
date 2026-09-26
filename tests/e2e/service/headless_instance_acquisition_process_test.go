@@ -68,7 +68,7 @@ func TestHeadlessServiceInstanceAcquisitionIsAtMostOnceAcrossProcesses(t *testin
 		RequestSHA256 string `json:"request_sha256"`
 	}
 	if err := json.Unmarshal(initialized, &initialization); err != nil ||
-		initialization.Schema != "ardents-service-instance-request-v1" || initialization.RequestSHA256 == "" {
+		initialization.Schema != "ardents-service-instance-request-v2" || initialization.RequestSHA256 == "" {
 		t.Fatalf("initialization receipt = %+v / %v", initialization, err)
 	}
 	request, err := os.ReadFile(requestPath)
@@ -191,7 +191,7 @@ func TestHeadlessCredentialResponseConflictRecoversExactlyOnce(t *testing.T) {
 			RequestSHA256 string `json:"request_sha256"`
 		}
 		if err := json.Unmarshal(initialized, &receipt); err != nil ||
-			receipt.Schema != "ardents-service-instance-request-v1" || receipt.RequestSHA256 == "" {
+			receipt.Schema != "ardents-service-instance-request-v2" || receipt.RequestSHA256 == "" {
 			t.Fatalf("Service Instance initialization receipt = %+v / %v", receipt, err)
 		}
 		return initializedInstance{rootPath: rootPath, requestPath: requestPath, requestSHA256: receipt.RequestSHA256}

@@ -115,7 +115,7 @@ func textResolutionProof(t *testing.T, source *textSourceStateFixture) ([32]byte
 	defer clear(signer)
 	var instance [32]byte
 	copy(instance[:], instancePublic)
-	credential, err := (publication.Credential{InstancePublic: instance, IntroductionHPKEPublic: fixtureID(181), Generation: 1,
+	credential, err := (publication.Credential{InstancePublic: instance, Generation: 1,
 		NotBefore: now.Add(-time.Second).Unix(), NotAfter: profile.NotAfter.Unix(), NetworkID: profile.NetworkID, Capabilities: 3}).Issue(authority)
 	if err != nil {
 		t.Fatal(err)

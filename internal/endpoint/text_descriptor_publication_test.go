@@ -60,8 +60,8 @@ func TestTextPublisherCommitsInstanceSignedDescriptor(t *testing.T) {
 			}
 			fields := published.Descriptor.Private
 			if fields.Revision != 1 || fields.Slot != first.request.Slot || fields.NodeID != first.node ||
-				fields.RecipientKey == [32]byte{} || fields.RecipientKey == binding.IntroductionPublic() || published.Current.Credential != binding.Credential() {
-				t.Fatal("private Descriptor escaped its registered Instance or reused legacy recipient")
+				fields.RecipientKey == [32]byte{} || published.Current.Credential != binding.Credential() {
+				t.Fatal("private Descriptor escaped its registered Instance")
 			}
 			retrieved := lookupTextPublishedProof(t, owner, published.Descriptor.Target)
 			if !bytes.Equal(retrieved, first.descriptor) {

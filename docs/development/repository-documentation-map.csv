@@ -32,7 +32,7 @@
 "docs/adr/0031-retire-generic-live-test-tree.md","decision-record","ADR-0031 — Retire the generic live-test tree","status: accepted","accepted ADR authority when linked by current owner"
 "docs/adr/0032-target-link-v1.md","decision-record","ADR-0032 — Use the canonical Target Link v1 grammar","status: accepted","accepted ADR authority when linked by current owner"
 "docs/adr/0033-route-relay-setup-v1.md","decision-record","ADR-0033 — Use the closed Route RelaySetup v1 exchange","status: accepted","accepted ADR authority when linked by current owner"
-"docs/adr/0034-service-introduction-hpke-credential-v2.md","decision-record","ADR-0034 — Bind a separate Service Introduction HPKE key in Credential v2","status: accepted","accepted ADR authority when linked by current owner"
+"docs/adr/0034-service-introduction-hpke-credential-v2.md","decision-record","ADR-0034 — Bind a separate Service Introduction HPKE key in Credential v2","status: superseded by ADR-0102","superseded ADR provenance; no standalone current authority"
 "docs/adr/0035-live-introduction-slots-and-transit-binding-v1.md","decision-record","ADR-0035 — Use live Introduction slots and EndpointTransitBinding v1","status: accepted","accepted ADR authority when linked by current owner"
 "docs/adr/0036-target-private-reachability-v1.md","decision-record","ADR-0036 — Resolve Target Links through private, current descriptors","status: accepted","accepted ADR authority when linked by current owner"
 "docs/adr/0037-private-reachability-entry-carrier.md","decision-record","ADR-0037 — Carry private reachability through a closed Initiator operation","status: accepted","accepted ADR authority when linked by current owner"

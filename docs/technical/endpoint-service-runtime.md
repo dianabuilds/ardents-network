@@ -419,9 +419,11 @@ private Introduction, it creates a volatile `PrivateRecipient` with a bounded
 revision and expiry; the recipient opens only the authenticated private
 capsule, without an Interface returning private bytes or an exportable HPKE
 key. The SealedIntroduction v1 grammar is retired by ADR-0094; the current
-private Introduction path is only the v3 capsule recipient. The Service Instance root still generates and persists its
-former Introduction key because accepted Credential v2 binds that public key
-under ADR-0034; the private v3 capsule uses the separate volatile recipient.
+private Introduction path is only the v3 capsule recipient. ADR-0102 supersedes ADR-0034: the Service Instance root emits
+only its ed25519 Instance key, the accepted Credential v3 no longer binds a
+legacy introduction recipient, and the private v3 capsule uses its separate
+volatile recipient. Pre-v3 Instance roots meet the typed `ErrLegacyRoot`
+refusal and require re-initialization under a new root.
 The maintained participant runtime opens the Instance
 binding only after reconciling the
 accepted public Credential with the durable publication floor. When its

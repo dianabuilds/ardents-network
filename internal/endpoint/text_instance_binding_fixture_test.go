@@ -55,8 +55,8 @@ func acceptedInstanceBinding(t *testing.T, rootPath string, network [32]byte, au
 		t.Fatal(err)
 	}
 	credential, err := (publication.Credential{
-		InstancePublic: view.InstancePublic, IntroductionHPKEPublic: view.IntroductionPublic,
-		Generation: 1, NotBefore: view.NotBefore, NotAfter: view.NotAfter, NetworkID: view.NetworkID,
+		InstancePublic: view.InstancePublic,
+		Generation:     1, NotBefore: view.NotBefore, NotAfter: view.NotAfter, NetworkID: view.NetworkID,
 		Capabilities: publication.CapabilityPublish | publication.CapabilityConnect,
 	}).Issue(authority)
 	if err != nil {

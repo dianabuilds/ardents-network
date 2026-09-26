@@ -78,7 +78,7 @@ func textServiceFixture(t *testing.T) (*textServiceBinding, *textServiceBinding,
 			t.Error(err)
 		}
 	})
-	credential := publication.Credential{NetworkID: profile.NetworkID, IntroductionHPKEPublic: fixtureID(7),
+	credential := publication.Credential{NetworkID: profile.NetworkID,
 		Generation: 1, NotBefore: now.Add(-time.Minute).Unix(), NotAfter: now.Add(time.Hour).Unix(),
 		Capabilities: publication.CapabilityPublish | publication.CapabilityConnect}
 	copy(credential.InstancePublic[:], instancePublic)

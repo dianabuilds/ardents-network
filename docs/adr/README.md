@@ -77,6 +77,7 @@ Current decisions:
 
 Completed retirement decisions:
 
+- [0102 — Stop legacy Service Introduction key emission; Credential v3](0102-stop-legacy-introduction-key-emission.md)
 - [0101 — Test-scope the dutyFacts DutyView projection; retire the unimplemented admission-deadline helpers](0101-test-scope-node-duty-projection.md)
 - [0100 — Remove the uncomposed private-resolution transport package](0100-remove-private-resolution-transport.md)
 - [0099 — Retire the superseded portable Run pump and relocate the replacement crash seam](0099-retire-bounded-process-tracers.md)

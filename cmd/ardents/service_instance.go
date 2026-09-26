@@ -77,7 +77,7 @@ func runServiceInstance(ctx context.Context, arguments []string, output io.Write
 		Schema        string `json:"schema"`
 		Request       []byte `json:"request"`
 		RequestSHA256 string `json:"request_sha256"`
-	}{Schema: "ardents-service-instance-request-v1", Request: request,
+	}{Schema: "ardents-service-instance-request-v2", Request: request,
 		RequestSHA256: hex.EncodeToString(digest[:])})
 }
 

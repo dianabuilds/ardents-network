@@ -7,7 +7,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/service/publication"
 )
 
-const responseDomain = "ardents-service-instance-response-v1\x00"
+const responseDomain = "ardents-service-instance-response-v2\x00"
 
 // ResponseView is the public Authority response for one exact pending request.
 type ResponseView struct {
@@ -60,7 +60,6 @@ func ParseResponse(raw []byte) (ResponseView, error) {
 
 func credentialMatchesRequest(credential publication.Credential, request RequestView) bool {
 	return credential.InstancePublic == request.InstancePublic &&
-		credential.IntroductionHPKEPublic == request.IntroductionPublic &&
 		credential.NetworkID == request.NetworkID && credential.NotBefore == request.NotBefore &&
 		credential.NotAfter == request.NotAfter && credential.Generation != 0 &&
 		credential.Capabilities == publication.CapabilityPublish|publication.CapabilityConnect

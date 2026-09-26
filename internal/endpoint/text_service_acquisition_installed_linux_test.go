@@ -61,7 +61,7 @@ func acquireInstalledServiceInstance(t *testing.T, network [32]byte, now, until 
 	}
 	raw, err := os.ReadFile(requestPath)
 	digest := sha256.Sum256(raw)
-	if err != nil || request.Schema != "ardents-service-instance-request-v1" || request.Digest != hex.EncodeToString(digest[:]) || !bytes.Equal(raw, request.Request) {
+	if err != nil || request.Schema != "ardents-service-instance-request-v2" || request.Digest != hex.EncodeToString(digest[:]) || !bytes.Equal(raw, request.Request) {
 		t.Fatal("Instance request command/file mismatch")
 	}
 	args := append([]string{"issue-service-credential"}, bindings...)

@@ -62,8 +62,8 @@ func TestRouteV2RetirementPreservesRefusalAndPersistedDataContracts(t *testing.T
 	if strings.Contains(lifecycle, "OpenIntroduction(") {
 		t.Error("Instance lifecycle still contains the retired sealed v1 decryptor")
 	}
-	if !strings.Contains(lifecycle, "func (binding *Binding) IntroductionPublic()") {
-		t.Error("Instance lifecycle lost the retained Credential v2 Introduction key accessor")
+	if strings.Contains(lifecycle, "func (binding *Binding) IntroductionPublic()") {
+		t.Error("Instance lifecycle still contains the retired Credential v2 Introduction key accessor (ADR-0102)")
 	}
 
 	admission := string(readProjectFile(t, root, "internal/node/admission.go"))

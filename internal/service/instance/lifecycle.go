@@ -184,25 +184,6 @@ func (binding *Binding) Credential() publication.Credential {
 	return credential
 }
 
-// IntroductionPublic returns only the accepted Introduction recipient public
-// key; it returns zero after the binding becomes unavailable. The key remains
-// part of the durable Instance request and signed Credential v2 data contract
-// (ADR-0034); its sealed v1 opening path is retired by ADR-0094, and this
-// accessor survives for the recipient-separation invariants asserted by the
-// Endpoint and Instance tests.
-func (binding *Binding) IntroductionPublic() [32]byte {
-	root, ok := binding.activeRoot()
-	if !ok {
-		return [32]byte{}
-	}
-	root.mu.Lock()
-	defer root.mu.Unlock()
-	if !binding.usableLocked(root) {
-		return [32]byte{}
-	}
-	return root.state.IntroductionPublic
-}
-
 // CommitPublished redacts durable private material only after publication has
 // committed this exact generation. The live process binding remains usable
 // until orderly withdrawal; a restart cannot revive it.
@@ -277,7 +258,6 @@ func acceptanceFor(state durableState, causes ...error) (Acceptance, error) {
 
 func cloneState(state durableState) durableState {
 	state.InstancePrivate = append(ed25519.PrivateKey(nil), state.InstancePrivate...)
-	state.IntroductionPrivate = append([]byte(nil), state.IntroductionPrivate...)
 	state.Response = append([]byte(nil), state.Response...)
 	return state
 }

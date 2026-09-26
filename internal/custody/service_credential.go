@@ -159,8 +159,8 @@ func serviceSuccessor(source AuthorityState, request instance.RequestView) (Auth
 		Watermarks: []Watermark{{Domain: serviceCredentialWatermark, Value: generation},
 			{Domain: serviceCredentialNotAfterWatermark, Value: uint64(request.NotAfter)}}}
 	credential, err := (publication.Credential{InstancePublic: request.InstancePublic,
-		IntroductionHPKEPublic: request.IntroductionPublic, Generation: generation,
-		NotBefore: request.NotBefore, NotAfter: request.NotAfter, NetworkID: request.NetworkID,
+		Generation: generation,
+		NotBefore:  request.NotBefore, NotAfter: request.NotAfter, NetworkID: request.NetworkID,
 		Capabilities: publication.CapabilityPublish | publication.CapabilityConnect}).Issue(ed25519.PrivateKey(source.RootMaterial))
 	if err != nil {
 		return AuthorityState{}, publication.Credential{}, err

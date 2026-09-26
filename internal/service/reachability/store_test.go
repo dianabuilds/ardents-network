@@ -94,7 +94,7 @@ func newStoreFixture(t *testing.T) storeFixture {
 	}
 	var fixedInstance [32]byte
 	copy(fixedInstance[:], instancePublic)
-	credential, err := (publication.Credential{InstancePublic: fixedInstance, IntroductionHPKEPublic: [32]byte{33}, Generation: 1,
+	credential, err := (publication.Credential{InstancePublic: fixedInstance, Generation: 1,
 		NotBefore: now.Add(-time.Minute).Unix(), NotAfter: now.Add(time.Minute).Unix(), NetworkID: network, Capabilities: 3}).Issue(authorityKey)
 	if err != nil {
 		t.Fatal(err)
