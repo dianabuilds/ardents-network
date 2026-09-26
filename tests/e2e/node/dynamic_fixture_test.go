@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/tests/epochfixture/assignment"
+	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 )
 
 type lifecycleStateFixture struct {
@@ -66,7 +67,7 @@ func makeLifecycleRecord(t *testing.T, network [32]byte, marker byte, family, en
 	t.Helper()
 	private := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{marker}, ed25519.SeedSize))
 	nodeID := sha256.Sum256([]byte{0x4e, marker})
-	record, err := BuildRecord(RecordSpec{NetworkID: network, NodeID: nodeID, Generation: 1,
+	record, err := networkfixture.BuildRecord(networkfixture.RecordSpec{NetworkID: network, NodeID: nodeID, Generation: 1,
 		ValidFrom: now.Add(-time.Minute), ValidUntil: now.Add(time.Hour), Family: family, Endpoint: endpoint,
 		Capability: 1, Capacity: 4, PrivateKey: private})
 	if err != nil {
@@ -78,13 +79,13 @@ func makeLifecycleRecord(t *testing.T, network [32]byte, marker byte, family, en
 func (fixture lifecycleStateFixture) makeEpoch(t *testing.T, number uint64, previous, seed [32]byte) lifecycleEpoch {
 	t.Helper()
 	inputs := make([][]byte, len(fixture.records))
-	accepted := make([]Record, len(fixture.records))
+	accepted := make([]networkfixture.Record, len(fixture.records))
 	for index, record := range fixture.records {
 		inputs[index] = record.raw
-		accepted[index] = Record{Raw: record.raw, NodeID: record.nodeID, Family: record.family, Capacity: record.capacity}
+		accepted[index] = networkfixture.Record{Raw: record.raw, NodeID: record.nodeID, Family: record.family, Capacity: record.capacity}
 	}
 	now := time.Unix(fixture.now, 0).UTC()
-	built, err := BuildEpoch(EpochSpec{NetworkID: fixture.network, Number: number, Previous: previous,
+	built, err := networkfixture.BuildEpoch(networkfixture.EpochSpec{NetworkID: fixture.network, Number: number, Previous: previous,
 		ValidFrom: now.Add(-30 * time.Second), ValidUntil: now.Add(30 * time.Minute), Inputs: inputs, Accepted: accepted,
 		AssignmentSeed: seed, Domains: []string{"alpha", "beta"}, Authorities: []ed25519.PrivateKey{fixture.authorityPrivate}})
 	if err != nil {
