@@ -91,7 +91,7 @@ func TestClosedNodeCarrierHonorsCancellationBeforeHandshake(t *testing.T) {
 
 func TestClosedNodeCarrierRejectsOldProfileBeforeDial(t *testing.T) {
 	certificate := entryBindingCertificate(t, 123)
-	carrier, err := OpenClosedNodeCarrier(t.Context(), ClosedNodeCarrierRequest{CarrierProfile: CarrierTCP, Endpoint: "127.0.0.1:9",
+	carrier, err := OpenClosedNodeCarrier(t.Context(), ClosedNodeCarrierRequest{CarrierProfile: "ardents-carrier-tcp-tls-v1", Endpoint: "127.0.0.1:9",
 		Certificate: certificate, ExpectedPeerKey: identifier(1), Deadline: time.Now().Add(time.Second)})
 	if err == nil || carrier != nil {
 		t.Fatal("generation-2 carrier reached successor transport")

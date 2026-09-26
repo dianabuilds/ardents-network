@@ -6,11 +6,6 @@ import "time"
 // implementation. It is not a retry order or a peer-advertised preference.
 type CarrierProfile string
 
-const (
-	CarrierTCP  CarrierProfile = "ardents-carrier-tcp-tls-v1"
-	CarrierQUIC CarrierProfile = "ardents-carrier-quic-v1"
-)
-
 // Carrier is the complete transport-neutral byte lane returned to Route/Node.
 // Transport addresses, QUIC state, fallback and migration stay private.
 type Carrier interface {

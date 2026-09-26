@@ -1,0 +1,70 @@
+binary,route,dispatch_source,primary_domain_owner,classification,trace_state
+ardents,accept-offline,cmd/ardents/offline.go:runAcceptOffline,internal/network/state,current,source-traced
+ardents,accept-closed-profile,cmd/ardents/offline.go:runAcceptClosedProfile,internal/network/state,current,source-traced
+ardents,refresh-sources,cmd/ardents/source_plan.go:runRefreshSources,internal/network/state,current,source-traced
+ardents,diagnostics timeline,cmd/ardents/offline.go:runWithInput,internal/diagnostics/timeline,current-read-only,source-traced
+ardents,service-instance initialize,cmd/ardents/service_instance.go:runServiceInstance,internal/service/instance,current,source-traced
+ardents,service-instance accept,cmd/ardents/service_instance.go:acceptServiceInstance,internal/service/instance,current,source-traced
+ardents,endpoint enrollment-check legacy-shape,cmd/ardents/endpoint.go:runLegacyEnrollmentCheck,internal/enrollment,retained-compatibility,source-traced
+ardents,endpoint enrollment-check pinned-shape,cmd/ardents/endpoint.go:runEnrollmentCheck,internal/enrollment,current-portable,source-traced
+ardents,endpoint enroll legacy-shape,cmd/ardents/endpoint.go:runLegacyEnrolledPortable,internal/endpoint/portable,retained-compatibility,source-traced
+ardents,endpoint enroll pinned-shape,cmd/ardents/endpoint.go:runEnrolledPortable,internal/endpoint/portable,current-portable,source-traced
+ardents,endpoint enroll-installed,cmd/ardents/endpoint.go:runEnrolledInstalled,internal/endpoint/portable,current-portable,source-traced
+ardents,endpoint headless,cmd/ardents/endpoint_headless.go:runHeadlessRuntime,internal/endpoint,current-protected,source-traced
+ardents,endpoint open,cmd/ardents/endpoint.go:runEndpoint,none,retired-refusal,source-traced
+ardents,endpoint publish,cmd/ardents/endpoint_administration_client.go:runHeadlessAdministration,internal/application/interfacev1/administration,current-protected,source-traced
+ardents,endpoint withdraw,cmd/ardents/endpoint_administration_client.go:runHeadlessAdministration,internal/application/interfacev1/administration,current-protected,source-traced
+ardents,endpoint user-unit legacy-shape,cmd/ardents/endpoint_user_unit.go:runLegacyEndpointUserUnit,cmd/ardents,retained-compatibility,source-traced
+ardents,endpoint user-unit pinned-shape,cmd/ardents/endpoint_user_unit.go:runEndpointUserUnit,cmd/ardents,current-portable,source-traced
+ardents,endpoint installed-user-unit,cmd/ardents/endpoint_user_unit.go:runEndpointInstalledUserUnit,cmd/ardents,current-portable,source-traced
+ardents,endpoint replacement-self-test,cmd/ardents/endpoint.go:runReplacementSelfTest,internal/endpoint/replacement,internal-only,source-traced
+ardents,endpoint replacement-recovery,cmd/ardents/endpoint_replace.go:runEndpointReplacementRecovery,internal/endpoint/replacement,current-portable,source-traced
+ardents,endpoint replace,cmd/ardents/endpoint_replace.go:runEndpointReplace,internal/endpoint/replacement,current-portable,source-traced
+ardents,endpoint rollback,cmd/ardents/endpoint_replace.go:runEndpointRollback,internal/endpoint/replacement,current-portable,source-traced
+ardents,entry recipient,cmd/ardents/entry_import.go:runEntryRecipient,internal/entry,retained-legacy-reader,source-traced
+ardents,entry import,cmd/ardents/entry_import.go:runEntryImport,internal/entry,retained-legacy-writer,source-traced
+ardents,name encode,cmd/ardents/name.go:runName,internal/naming,current-local-only,source-traced
+ardents,name resolve,cmd/ardents/name.go:runName,none,retired-refusal,source-traced
+ardents,name control,cmd/ardents/name.go:runName,none,retired-refusal,source-traced
+ardents-node,source,cmd/ardents-node/source_runtime.go:runOpenedSource,internal/network/state,current,source-traced
+ardents-node,node,cmd/ardents-node/node_mode.go:runNode,internal/node,current,source-traced
+ardents-node,issuer initialize,cmd/ardents-node/issuer_initialize.go:runIssuer,internal/route/credential,current,source-traced
+ardents-node,issuer serve,cmd/ardents-node/issuer_initialize.go:runIssuerNode,internal/node,current,source-traced
+ardents-node,hosting initialize,cmd/ardents-node/hosting_mode.go:runHosting,internal/resource,current,source-traced
+ardents-node,contributor apply,cmd/ardents-node/contributor_mode.go:runContributor,none,retired-refusal,source-traced
+ardents-node,contributor restart,cmd/ardents-node/contributor_mode.go:runContributor,none,retired-refusal,source-traced
+ardents-node,contributor diagnose,cmd/ardents-node/contributor_mode.go:runContributor,internal/contributor,retirement-only,source-traced
+ardents-node,contributor drain,cmd/ardents-node/contributor_mode.go:runContributor,internal/contributor,retirement-only,source-traced
+ardents-node,contributor withdraw,cmd/ardents-node/contributor_mode.go:runContributor,internal/contributor,retirement-only,source-traced
+ardents-node,contributor remove,cmd/ardents-node/contributor_mode.go:runContributor,internal/contributor,retirement-only,source-traced
+ardents-control,inspect-bundle,cmd/ardents-control/main.go:inspectBundle,internal/alphacontrol/inspection,current-read-only,source-traced
+ardents-control,inspect-transitions,cmd/ardents-control/main.go:inspectTransitions,internal/alphacontrol/inspection,current-read-only,source-traced
+ardents-control,inspect-alpha-corpus,cmd/ardents-control/main.go:inspectAlphaCorpus,internal/alphacontrol/inspection,current-read-only,source-traced
+ardents-control,accept-alpha-corpus,cmd/ardents-control/main.go:run,none,retired-refusal,source-traced
+ardents-control,prepare-closed-profile,cmd/ardents-control/closed_profile.go:prepareClosedProfile,internal/network/state,current-offline,source-traced
+ardents-control,sign-closed-profile,cmd/ardents-control/closed_profile.go:signClosedProfile,internal/network/state,current-offline,source-traced
+ardents-control,inspect-closed-profile,cmd/ardents-control/closed_profile.go:inspectClosedProfile,internal/network/state,current-read-only,source-traced
+ardents-control,inspect-closed-issuer-profile,cmd/ardents-control/closed_issuer_inspection.go:inspectClosedIssuerProfile,internal/route/credential,current-read-only,source-traced
+ardents-custody,create-service-authority,cmd/ardents-custody/service_authority.go:serviceAuthority,internal/custody,current-offline,source-traced
+ardents-custody,issue-service-credential,cmd/ardents-custody/service_authority.go:serviceAuthority,internal/custody,current-offline,source-traced
+ardents-custody,create-admission-authority,cmd/ardents-custody/admission_authority.go:admissionAuthority,internal/custody,current-offline,source-traced
+ardents-custody,issue-admission-permission,cmd/ardents-custody/admission_authority.go:admissionAuthority,internal/custody,current-offline,source-traced
+ardents-custody,inspect-envelope,cmd/ardents-custody/inspect_envelope.go:inspectEnvelope,internal/custody,current-read-only,source-traced
+ardents-custody,verify-record,cmd/ardents-custody/verify_record.go:verifyRecord,internal/custody,current-inspection-with-root-open,source-traced
+ardents-custody,export-recovery-bundle,cmd/ardents-custody/recovery_bundle.go:recoveryBundle,internal/custody,current-offline,source-traced
+ardents-custody,restore-recovery-bundle,cmd/ardents-custody/recovery_bundle.go:recoveryBundle,internal/custody,current-offline,source-traced
+ardents-custody,purge-record,cmd/ardents-custody/purge_record.go:purgeRecord,internal/custody,current-offline,source-traced
+ardents-text,link,cmd/ardents-text/published_link_linux.go:runPublishedLink,internal/application/interfacev1/administration,current-trusted-ui,source-traced
+ardents-text,publish,cmd/ardents-text/publisher.go:publishText,internal/application/textdocument,current-trusted-ui,source-traced
+ardents-text,read,cmd/ardents-text/reader.go:readText,internal/application/interfacev2/connection,current-trusted-ui,source-traced
+ardents-text,worker-reader,cmd/ardents-text/main.go:run,internal/application/textdocument,current-confined-worker,source-traced
+ardents-text,worker-publisher,cmd/ardents-text/main.go:run,internal/application/textdocument,current-confined-worker,source-traced
+ardents-qualification,run plan,cmd/ardents-qualification/main.go:run,internal/qualification,verification-tool,source-traced
+ardents-qualification,preflight,cmd/ardents-qualification/preflight_linux.go:preflight,cmd/ardents-qualification,verification-tool,source-traced
+ardents-qualification,verify-run,cmd/ardents-qualification/completed_evidence_linux.go:verifyCompletedRun,cmd/ardents-qualification,verification-tool,source-traced
+ardents-qualification,verify-pair,cmd/ardents-qualification/paired_evidence_linux.go:verifyPair,cmd/ardents-qualification,verification-tool,source-traced
+ardents-qualification,verify-network-manifest,cmd/ardents-qualification/network_manifest_linux.go:verifyNetworkManifest,cmd/ardents-qualification,verification-tool,source-traced
+ardents-qualification,verify-net14v,cmd/ardents-qualification/net14v_verdict_linux.go:verifyNET14V,cmd/ardents-qualification,verification-tool,source-traced
+ardents-qualification,verify-failed-net14v,cmd/ardents-qualification/failed_net14v_linux.go:verifyFailedNET14V,cmd/ardents-qualification,verification-tool,source-traced
+ardents-stream-qualification,worker-reader,cmd/ardents-stream-qualification/main.go:run,internal/application/streamqualification,verification-worker,source-traced
+ardents-stream-qualification,worker-publisher,cmd/ardents-stream-qualification/main.go:run,internal/application/streamqualification,verification-worker,source-traced

@@ -142,9 +142,6 @@ func TestLifecycleBypassPrimitivesAreNotExported(t *testing.T) {
 			t.Errorf("internal/node still exports lifecycle-bypass primitive %s", name)
 		}
 	}
-	if exportedStructField(t, filepath.Join(root, "internal", "route"), "Attachment", "Connection") {
-		t.Error("internal/route Attachment still exports its raw Connection")
-	}
 }
 
 func TestMaintainedTruthDoesNotClaimUnownedCompositionOrUnprovenCleanup(t *testing.T) {
@@ -155,7 +152,6 @@ func TestMaintainedTruthDoesNotClaimUnownedCompositionOrUnprovenCleanup(t *testi
 	}{
 		{"docs/technical/naming.md", []string{"production Gateway or Resolver path", "Production Resolution consumes"}},
 		{"docs/technical/network-route-node.md", []string{"listener's start snapshot identifies"}},
-		{"internal/route/native_attachment.go", []string{"Close releases the authenticated Entry attempt"}},
 		{"internal/node/lifecycle.go", []string{"returns only after terminal cleanup"}},
 	}
 	for _, check := range checks {
@@ -166,45 +162,6 @@ func TestMaintainedTruthDoesNotClaimUnownedCompositionOrUnprovenCleanup(t *testi
 			}
 		}
 	}
-}
-
-func exportedStructField(t *testing.T, directory, typeName, fieldName string) bool {
-	t.Helper()
-	set := token.NewFileSet()
-	packages, err := parser.ParseDir(set, directory, func(info os.FileInfo) bool {
-		return !strings.HasSuffix(info.Name(), "_test.go")
-	}, 0)
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, parsed := range packages {
-		for _, file := range parsed.Files {
-			for _, declaration := range file.Decls {
-				generated, ok := declaration.(*ast.GenDecl)
-				if !ok {
-					continue
-				}
-				for _, spec := range generated.Specs {
-					named, ok := spec.(*ast.TypeSpec)
-					if !ok || named.Name.Name != typeName {
-						continue
-					}
-					structure, ok := named.Type.(*ast.StructType)
-					if !ok {
-						return false
-					}
-					for _, field := range structure.Fields.List {
-						for _, name := range field.Names {
-							if name.Name == fieldName && ast.IsExported(name.Name) {
-								return true
-							}
-						}
-					}
-				}
-			}
-		}
-	}
-	return false
 }
 
 func exportedPackageDeclarations(t *testing.T, directory string) map[string]bool {

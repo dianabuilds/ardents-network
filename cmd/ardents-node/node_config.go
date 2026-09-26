@@ -193,9 +193,6 @@ func readNodePlan(path string) (nodeRuntime, error) {
 		if plan.ClosedProfileAuthority != "" {
 			return nodeRuntime{}, errors.New("closed profile authority requires a closed duty reservation")
 		}
-		if nativeDuty {
-			state.AcceptedProfile = route.Profile
-		}
 	}
 	for _, encoded := range plan.AuthorityPublic {
 		public := make([]byte, ed25519.PublicKeySize)

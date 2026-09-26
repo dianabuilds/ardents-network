@@ -498,48 +498,41 @@
     {
       "symbols": [
         "internal/node.boundedAdmissionDeadline",
-        "internal/node.validAdmissionTimeout",
-        "internal/route.DecodeLegBinding",
-        "internal/route.EncodeLegBinding",
-        "internal/route.ReadNodeLegBinding",
-        "internal/route.WriteNodeLegBinding",
-        "internal/route.decodeLegBindingOrdered",
-        "internal/route.validLegBinding",
-        "internal/route.validRouteRole"
+        "internal/node.validAdmissionTimeout"
       ],
-      "classification": "retained shared closed-Node Carrier closure",
-      "rationale": "Issue #120 removes the old Rendezvous listener that supplied the last selected production reachability for this shared server-side Carrier and admission closure. The current closed Node branches and behavior tests still own it, but no selected C0 command starts their Node process; deleting or reconnecting the shared closure is outside the one-engine retirement slice.",
+      "classification": "retained Node admission-deadline helpers",
+      "rationale": "The closed Node admission deadline bounds keep deterministic behavior evidence, but no selected C0 command yet starts a Node process. Their former shared LegBinding and reciprocal-codec companions were retired with the Route v2 execution closure (ADR-0093).",
       "owner": "Product Owner and Codex",
-      "retirement": "Connect the current closed Node branches through an accepted C0 command contract, or remove this exact closure only in a separate bounded consumer audit that also disposes of their behavior contract."
+      "retirement": "Connect them through an accepted closed-alpha Node command or remove them with the superseding Node decision."
     },
     {
       "symbols": [
-        "internal/network/duty.store.SpendTransitGrant",
-        "internal/route.AcceptEndpointTransitAttachment",
-        "internal/route.AdmitEndpointTransitBinding",
-        "internal/route.DecodeEndpointTransitBinding",
-        "internal/route.EncodeIntroductionDeliveryResult",
-        "internal/route.WriteIntroductionDeliveryResult",
-        "internal/route.WriteIntroductionSlotReady",
-        "internal/route.nativeEndpointTransitTLS",
-        "internal/route.readEndpointTransitBinding"
-      ],
-      "classification": "retained native transit and Introduction compatibility surface",
-      "rationale": "Removal of the old Introduction engine eliminates the last cross-platform production receiver. These durable-spend and Route wire/attachment primitives retain independent User-route, Endpoint, compatibility-vector, or behavior-fixture consumers, so deleting their wider closure is outside the one-engine slice.",
-      "owner": "Product Owner and Codex",
-      "retirement": "Repeat exact consumer and persisted-wire analysis in a separate bounded Route/transit compatibility audit after the retained User-route and Endpoint consumers receive their own disposition."
-    },
-    {
-      "symbols": [
-        "internal/route.AcceptNodeLegBinding",
-        "internal/route.LegBinding.VerifyReciprocal",
+        "internal/route.DecodeSealedIntroduction",
+        "internal/route.EncodeSealedIntroduction",
         "internal/route.OpenSealedIntroduction",
-        "internal/route.hpkeIntroductionRecipient.OpenIntroduction"
+        "internal/route.OpenSealedIntroductionWith",
+        "internal/route.SealIntroduction",
+        "internal/route.appendProfile",
+        "internal/route.appendUint16",
+        "internal/route.appendUint64",
+        "internal/route.hpkeIntroductionRecipient.OpenIntroduction",
+        "internal/route.introductionAAD",
+        "internal/route.introductionInfo",
+        "internal/route.introductionPrefix",
+        "internal/route.routeBody",
+        "internal/route.routeEnvelope",
+        "internal/route.validRouteProfile",
+        "internal/route.validSealedIntroduction",
+        "internal/route.wireIdentifier",
+        "internal/route.wireReader.take",
+        "internal/route.wireReader.uint16",
+        "internal/route.wireReader.uint64",
+        "internal/route.wireReader.uint8"
       ],
-      "classification": "unwired reciprocal grammar surface",
-      "rationale": "The listed reciprocal Route decoders are retained for Node protocol vectors; the current User Route uses only its required direction.",
+      "classification": "retained historical sealed Introduction v1 grammar",
+      "rationale": "ADR-0093 deleted every other Route v2 execution codec and moved the byte-exact v2 envelope framing into this one self-contained owner. The maintained Instance contract still embeds an IntroductionPublic key in fresh signed publication data (ADR-0034), and the positive command test inventory exercises this exact opening path, so the ADR-0035 grammar remains verifiable.",
       "owner": "Product Owner and Codex",
-      "retirement": "Wire each reciprocal grammar into the selected Node operation or move it to test-only vectors and delete the production surface."
+      "retirement": "Retire together with the orphaned publication v1 Introduction instruction under one superseding ADR-0035 decision (F-42), or name the maintained receiver that adopts it."
     },
     {
       "symbols": [
@@ -602,114 +595,22 @@
         "internal/entry.owner.terminalize",
         "internal/entry.owner.trackAttachment",
         "internal/entry.reusableEntryAttempt",
-        "internal/route.Attachment.Close",
-        "internal/route.Attachment.Evidence",
-        "internal/route.Attachment.LocalAddr",
-        "internal/route.Attachment.Read",
-        "internal/route.Attachment.RemoteAddr",
-        "internal/route.Attachment.SetDeadline",
-        "internal/route.Attachment.SetReadDeadline",
-        "internal/route.Attachment.SetWriteDeadline",
-        "internal/route.Attachment.Write",
-        "internal/route.Attachment.carrier",
-        "internal/route.Attachment.publish",
-        "internal/route.CredentialRelaySetup.VerifyCredentialRelayReady",
-        "internal/route.DecodeCredentialRelayReady",
-        "internal/route.DecodeIntroductionDeliveryResult",
-        "internal/route.EncodeCredentialRelaySetup",
-        "internal/route.EncodeEntryBinding",
-        "internal/route.EncodeSealedIntroduction",
-        "internal/route.OpenEntryAttachment",
-        "internal/route.ReadCredentialRelayReady",
-        "internal/route.ReadCredentialRelayResponse",
-        "internal/route.ReadIntroductionDeliveryResult",
-        "internal/route.SealIntroduction",
-        "internal/route.WriteCredentialRelayEnvelope",
-        "internal/route.closedEntryOpener",
-        "internal/route.credentialRelayRecord",
-        "internal/route.credentialRouteBody",
-        "internal/route.credentialRouteEnvelope",
-        "internal/route.decodeCredentialRelayRecord",
-        "internal/route.decodeCredentialRelayResponse",
-        "internal/route.encodeCredentialRelayEnvelope",
-        "internal/route.entryAttachmentCertificate",
-        "internal/route.entryBindingPrefix",
-        "internal/route.readCredentialRouteRecord",
-        "internal/route.validCredentialRelaySetup",
-        "internal/route.validEntryBinding",
-        "internal/service/connection.ValidateNameOrigin",
-        "internal/service/publication.EncodeIntroductionInstruction"
+        "internal/service/connection.ValidateNameOrigin"
       ],
-      "classification": "unwired shared legacy Route, Entry, credential, reachability, and Service leaves",
-      "rationale": "These shared-owner leaves were reachable only through the retired v1 participant graph. #157 preserves them because their packages and protocols have broader historical evidence and their deletion is outside the exclusive process-composition boundary.",
+      "classification": "unwired shared legacy Entry and Service Connection leaves",
+      "rationale": "These shared-owner leaves were reachable only through the retired v1 participant graph. #157 preserves them because their packages and protocols have broader historical evidence and their deletion is outside the exclusive process-composition boundary. ADR-0093 removed this group's Route v2 leaves with the execution closure; the sealed Introduction encoders moved to their own historical-grammar allowance and the publication instruction encoder joined its decoder. The remaining Entry and Service Connection leaves keep their original bounded shared-owner retirement-card requirement.",
       "owner": "Product Owner and Codex",
       "retirement": "Create a bounded shared-owner retirement card from the post-#112 caller audit, name each remaining production/test consumer, and delete or reclassify these exact leaves without treating #112 as authority to remove shared Service Connection or Route behavior."
     },
     {
       "symbols": [
-        "internal/route.appendProfile",
-        "internal/route.appendUint16",
-        "internal/route.appendUint64",
-        "internal/route.routeBody",
-        "internal/route.routeEnvelope",
-        "internal/route.validRouteProfile",
-        "internal/route.wireIdentifier",
-        "internal/route.wireReader.take",
-        "internal/route.wireReader.uint16",
-        "internal/route.wireReader.uint64",
-        "internal/route.wireReader.uint8",
-        "internal/route.writeAll"
+        "internal/service/publication.DecodeIntroductionInstruction",
+        "internal/service/publication.EncodeIntroductionInstruction"
       ],
-      "classification": "shared Route framing closure dead in both projections",
-      "rationale": "ADR-0092 retired the generic Endpoint transit acquisition and publisher administration chain, the last Linux production consumer of these shared Route framing leaves; the Windows projection was already dead before that retirement. No maintained command on either platform reaches them.",
+      "classification": "orphaned publication v1 Introduction instruction codecs",
+      "rationale": "No production caller encodes or decodes the generation-2 ServiceIntroductionInstruction plaintext after the ADR-0092 and ADR-0093 deletions. Accepted ADR-0035 still specifies it and ADR-0081 makes the private v3 capsule the current successor (F-42); the historical verification obligation has no superseding record yet.",
       "owner": "Product Owner and Codex",
-      "retirement": "Delete in the bounded Route v2 closure audit that disposes the transit and Introduction wire grammar; this allowance is not authority to add new shared framing consumers."
-    },
-    {
-      "symbols": [
-        "internal/route.transitGrantBodyLength",
-        "internal/route.validTransitGrant"
-      ],
-      "classification": "retained Transit Grant body-validation closure",
-      "rationale": "These exact body-validation helpers only serve VerifyTransitGrant and decodeTransitGrantBody, which lost their last Linux production consumer when ADR-0092 retired the Endpoint transit acquisition chain. Linux behavior tests still exercise the closed validation grammar.",
-      "owner": "Product Owner and Codex",
-      "retirement": "Remove together with the Transit Grant verification surface in the bounded Route v2 closure audit, or when a maintained receiver names a superseding accepted decision."
-    },
-    {
-      "symbols": [
-        "internal/route.ClientTLSKeyDigest",
-        "internal/route.DecodeIntroductionSlotReady",
-        "internal/route.DecodeIntroductionSlotRegistration",
-        "internal/route.DecodeSealedIntroduction",
-        "internal/route.EncodeEndpointTransitBinding",
-        "internal/route.EncodeIntroductionSlotReady",
-        "internal/route.EncodeIntroductionSlotRegistration",
-        "internal/route.NewClientCertificate",
-        "internal/route.OpenEndpointTransitAttachment",
-        "internal/route.OpenSealedIntroductionWith",
-        "internal/route.ReadIntroductionControlRecord",
-        "internal/route.ReadIntroductionSlotReady",
-        "internal/route.VerifyTransitGrant",
-        "internal/route.WriteIntroductionSlotRegistration",
-        "internal/route.closeTransitAttachment",
-        "internal/route.decodeTransitGrantBody",
-        "internal/route.dialNativeEndpointTLS",
-        "internal/route.endpointTransitBindingPrefix",
-        "internal/route.introductionAAD",
-        "internal/route.introductionInfo",
-        "internal/route.introductionPrefix",
-        "internal/route.nativeEndpointTLS",
-        "internal/route.readRouteRecord",
-        "internal/route.validEndpointTransitBinding",
-        "internal/route.validIntroductionSlotReady",
-        "internal/route.validIntroductionSlotRegistration",
-        "internal/route.validSealedIntroduction",
-        "internal/service/publication.DecodeIntroductionInstruction"
-      ],
-      "classification": "Route v2 transit and Introduction wire closure",
-      "rationale": "ADR-0092 retired the generic Endpoint transit acquisition and publisher chain that kept this exact Route v2 wire closure reachable in Linux production; it was already dead in the Windows projection. The closed grammar persists in route wire records and Linux behavior tests.",
-      "owner": "Product Owner and Codex",
-      "retirement": "Dispose of every symbol in the bounded Route v2 closure audit: retire the codecs with their persisted-wire disposition, or name the maintained consumer."
+      "retirement": "Record the superseding decision covering the ADR-0035 grammar and generation-2 evidence, then delete together with the retained sealed Introduction v1 grammar, or name the maintained verification need."
     }
   ],
   "production": {

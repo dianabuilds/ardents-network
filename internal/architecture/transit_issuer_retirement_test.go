@@ -45,13 +45,6 @@ func TestRetiredTransitIssuerReceivingEngineIsAbsent(t *testing.T) {
 	if strings.Contains(identity, "config.TransitIssuer") {
 		t.Error("command composition still constructs the retired Transit issuer engine profile")
 	}
-	grant := string(readProjectFile(t, root, "internal/route/transit_grant.go"))
-	if strings.Contains(grant, "func IssueTransitGrant(") {
-		t.Error("Route still exports the retired Transit Grant signer")
-	}
-	if strings.Contains(grant, "func DecodeTransitGrant(") {
-		t.Error("Route still exports the untrusted Transit Grant decoder")
-	}
 }
 
 func TestTransitIssuerRetirementPreservesRefusalAndClosedIssuer(t *testing.T) {

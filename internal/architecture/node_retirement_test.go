@@ -37,10 +37,6 @@ func TestRetiredInitiatorEngineIsAbsent(t *testing.T) {
 	if strings.Contains(identity, "config.Initiator") {
 		t.Error("command composition still constructs the retired Initiator engine profile")
 	}
-	entryAttachment := string(readProjectFile(t, root, "internal/route/entry_attachment.go"))
-	if strings.Contains(entryAttachment, "ReadEntryOperation") {
-		t.Error("Route still exposes the retired Initiator-only entry-operation dispatcher")
-	}
 }
 
 func TestRetiredResponderEngineIsAbsent(t *testing.T) {
@@ -119,10 +115,6 @@ func TestRetiredOpenNodeLegIsAbsent(t *testing.T) {
 		}
 	}
 
-	binding := string(readProjectFile(t, root, "internal/route/node_binding.go"))
-	if strings.Contains(binding, "ConfirmNodeLegBinding") {
-		t.Error("Route still exports the retired Node-leg confirmation entrypoint")
-	}
 	carrier := string(readProjectFile(t, root, "internal/route/node_carrier_quic.go"))
 	for _, retired := range []string{"openQUICNodeCarrier", "func (carrier *quicNodeCarrier) abort"} {
 		if strings.Contains(carrier, retired) {

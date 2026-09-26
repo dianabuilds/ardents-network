@@ -5,14 +5,13 @@ implemented closed-test-network Modules and their current Interfaces. It does
 not claim public network operation, independent operators, public discovery,
 supported Node hosting, or Route qualification.
 
-The [selected successor architecture](common-privacy-architecture.md) under
-[ADR-0078](../adr/0078-select-common-split-circuit-privacy.md) has a separate
-target contract. It does not change the maintained native protocol below.
-
-The selected generation-3 successor is defined by [ADR-0081](../adr/0081-select-closed-protected-service-contract.md)
-and the [protected forwarding contract](protected-route-protocol.md). The
-implemented behavior described here remains the migration input until its
-owning change promotes the replacement; it is not a second accepting privacy path.
+The [selected architecture](common-privacy-architecture.md) under
+[ADR-0078](../adr/0078-select-common-split-circuit-privacy.md) and
+[ADR-0081](../adr/0081-select-closed-protected-service-contract.md) uses the
+[protected forwarding contract](protected-route-protocol.md) for the current
+closed v3 path. This document describes both implemented closed duties and
+retained generation-2 grammar. The latter remains migration or refusal input,
+not a second accepting privacy path.
 
 The Node command connects an exclusive `closed_forwarding` local reservation
 to the implemented generation-3 forwarding receiver. The reservation contains
@@ -114,8 +113,9 @@ composition have been deleted after the command refusal became current. Their
 old plan stanzas remain only at that typed refusal boundary. The Initiator
 Entry-admission adapter is also absent. The old Transit-issuance
 signer/listener/root-mutation engine is absent;
-the typed command refusal, signed-profile decoder, and Endpoint-owned
-acquisition client remain without a Node receiving caller.
+the typed command refusal and signed-profile decoder remain. ADR-0092 also
+removed the uncomposed Endpoint Transit acquisition client; neither side
+provides a selected old-Transit receiving path.
 The adjacent production-dead Initiator Entry admission, receiving relay grammar,
 and direct OHTTP forwarding adapters have been deleted by their dedicated
 closure audit. The later User Route closure audit also removed the uncalled
@@ -161,12 +161,12 @@ already pinned authority retain their previous State and Source behavior.
 |---|---|---|
 | internal/network/state | Authenticate source input, verify Epoch/View material, publish one immutable current or pending View through its exclusive durable root, and supply narrow read-only views. | Source authority, public wire selection, Node lifecycle, Route selection, or private naming control. |
 | internal/network/source | Obtain one finite selected Direct-Origin source input with its credential, TLS transport, material selector, ordering, and exposure identity. | Accepting State or selecting a peer protocol. |
-| internal/network/duty | Persist the Endpoint-local Role Domain generation, watermark, expiry, conflict truth, and receiving-Node one-use Transit Grant spend ledger. | Network State publication, assignment creation, Route ownership, issuer custody, or Node process lifecycle. |
-| internal/resource | Resolve the current process's own cgroup-v2 directory, measure selected Linux process limits, and make the finite NORMAL, PROTECT, or DRAIN pressure decision. | Admission, listener shutdown, or a claim for unsupported platforms. |
-| internal/entry | Import and validate a signed State-referenced Entry Invite, maintain its bounded durable replay/replacement set, preserve decoding of retired admission history, and open an adjacent contact lifecycle. Local import verifies the signed recipient against its retained Entry-root recipient identity before consuming a slot or replacing a predecessor; no Initiator receiving admission engine remains. | Complete Route selection, receiving Entry admission, carrier choice, or User identity. |
-| internal/route | Implement the closed v3 Node Carrier/wire used by `internal/node` through `OpenClosedNodeCarrier` and retain only shared Attachment evidence, admission, listener, credential-relay, and wire mechanisms with current consumers. The production-dead Interactive User Route v2 Open/Attach owner is absent. The [package map](../development/package-map.md) records the exact consumer boundary. | Reintroducing the removed User-route composition as a maintained product path or treating its removal as successor-network readiness; candidate ranking, carrier policy/fallback, H3 compatibility, peer runtime, Node profile, or durable State/Duty/credential-journal writing. |
+| internal/network/duty | Persist the Endpoint-local Role Domain generation, watermark, expiry, and current conflict Duties. Its version-1 root still decodes and carries the historical receiving one-use Transit Grant spend ledger through `Replace`; the `SpendTransitGrant` operation was retired with the Route v2 execution closure (ADR-0093), and no current receiving-Node admission path exists. The persisted schema needs an explicit old-root migration or refusal decision before its decoder is removed. | Network State publication, assignment creation, Route ownership, issuer custody, or Node process lifecycle. |
+| internal/resource | Check selected process placement and measure process/cgroup pressure through a process-local Guard. Separately own the initialized durable shared Hosting period, interface-counter charging and work/termination reservations. | State or Node authority, admission, listener shutdown, forgiving an outstanding reservation on handle close, or a claim for unsupported platforms. |
+| internal/entry | Own the protected Endpoint's durable closed Entry sets: select exactly two State-current members per adjacent Role Domain before use, revalidate a selected member, retain the generation floor, and refuse legacy-root substitution. Separately, the retained `entry recipient/import` operator command opens the older Invite root, validates one recipient-bound signed Invite and records its replay/contact history; its Route attachment has no selected C0 caller after ADR-0092. | Complete Route selection, receiving Entry admission, carrier choice, User identity, or treating the old Invite command as a second closed-Route path. |
+| internal/route | Implement the closed v3 Node Carrier/wire used by `internal/node` through `OpenClosedNodeCarrier`. The former aggregate Interactive User Route v2 runtime and its whole v2 execution closure (Attachment, EndpointTransitBinding, EntryBinding, credential-relay, Introduction slot/outcome, LegBinding, and Transit Grant verifier files) are absent under ADR-0093. What remains is the byte-exact sealed Introduction v1 grammar pending its superseding ADR-0035 decision (F-42) and the retired v2 `Profile` identity used only for Node typed refusals; neither provides a second supported Route. The [package map](../development/package-map.md) records the current consumer boundary. | Reintroducing the removed User-route composition as a maintained product path or treating its removal as successor-network readiness; candidate ranking, carrier policy/fallback, H3 compatibility, peer runtime, Node profile, or durable State/Duty/credential-journal writing. |
 | internal/node | Run one bounded current closed Node duty from authenticated admission through listener readiness, pressure reaction, drain, withdrawal, and a bounded terminal cleanup outcome. All five old native duty engines are absent; their plan stanzas remain only at the command refusal boundary. | State-root authority, assignment creation, an old native duty listener, or a separate probe runtime. |
-| internal/contributor | Own the one pinned-bundle, fixed-path systemd lifecycle for the dedicated Rendezvous installation. | Duty selection, Network State authority, public admission, co-residence, arbitrary service control, or capacity claims. |
+| internal/contributor | Authenticate and retire an already owned dedicated-host Rendezvous installation. The only dispatchable actions are diagnose, drain, withdraw and confirmed remove; interrupted-update recovery may reconcile the exact current/predecessor generation but cannot Start, Restart or Enable either. | New installation or update, duty selection, Network State authority, public admission, co-residence, arbitrary service control, or capacity claims. |
 
 Each Module exposes one consumer-relevant Interface while retaining codec,
 storage, replay, socket, and cleanup details privately. State readers receive
@@ -197,17 +197,22 @@ wave still follows the normal availability, clock-confidence, and durable
 admission rules, and an actual terminal automatic-refresh failure remains
 visible to `Current` and `Wait`.
 
-## Native Route profile
+## Retained generation-2 Route grammar
 
-The selected Route profile is ardents-interactive-route-v2. EntryBinding binds
-one signed v2 Invite to a fresh User-to-Initiator TLS attempt key. Node-to-Node
-LegBinding and SealedIntroduction have fixed binary records; State/publication
-select supported generations, not a Node or peer value. The profile has no H3
-reader, direct fallback, generic record map, or version-negotiation path.
+`ardents-interactive-route-v2` identifies the former native Route grammar, not
+an accepting C0 Node duty. The selected closed Route uses `ardents-route-v3`;
+old Node selections are refused before Network effects under ADR-0089, and
+Node compares the exact stale `Profile` only to refuse it without side
+effects (ADR-0093). The v2 EntryBinding and the reciprocal LegBinding
+grammars are retired with the whole v2 execution closure (ADR-0093);
+LegBinding was wire-only and never persisted. Only SealedIntroduction keeps a
+fixed historical record: its bytes and vectors are compatibility evidence
+for the ADR-0034 publication keys, not a fallback or version-negotiation
+path for the closed Route.
 The production-dead Interactive User Route v2 Open/Attach owner and its
-EntryBinding, private reachability, relay-setup, sealed-Introduction sender, and
-volatile composition paths are absent. This removes no shared listener,
-Endpoint-transit admission, credential-relay grammar, closed Source prefix, or
+EntryBinding, private reachability, relay-setup, sealed-Introduction sender,
+credential-relay grammar, Endpoint-transit binding, and volatile composition
+paths are absent. This removes no shared listener, closed Source prefix, or
 current Node Carrier consumer and selects no successor wire.
 
 The retained Attachment is a small shared authenticated-connection value, not
@@ -231,7 +236,8 @@ a cleanup error is returned and cannot be represented as a clean attachment.
 used by current Node duties. The maintained closed Node path selects exactly
 `ardents-carrier-tcp-tls-v2` or `ardents-carrier-quic-v2`, TLS 1.3,
 `ardents-route-v3` ALPN, and the State-pinned Ed25519 peer. It does not
-exchange the old reciprocal `LegBinding`. QUIC uses one bidirectional
+exchange the old reciprocal `LegBinding`, whose codec is retired (ADR-0093).
+QUIC uses one bidirectional
 stream, an initial packet size of 1200, no 0-RTT or datagrams, and bounded
 keepalive inside its idle timeout. Transport sockets, QUIC connection IDs,
 migration operations, and cleanup mechanics stay private to the adapters.
@@ -259,15 +265,18 @@ TCP/QUIC adapters, v1 server TLS and QUIC configuration) and
 separately retained test. This is a source closure,
 not a change to accepted Carrier selection or wire behavior.
 
-Retain `Carrier` and the v1 profile constants in `node_carrier.go`: the
-byte-lane Interface is used by the closed path, and v1 values remain typed
-compatibility/refusal inputs. Retain `quicNodeCarrier` and its deadline and
+The #252 listener deletion retained `Carrier` and the v1 profile constants in
+`node_carrier.go`; ADR-0093 has since retired the `CarrierTCP`/`CarrierQUIC`
+constants (F-59). The byte-lane Interface remains live in the closed path.
+The closed-opener rejection test keeps the exact literal old profile value,
+and the v1 profile *values* remain signed-record interpretation and refusal
+inputs in Network State. Retain
+`quicNodeCarrier` and its deadline and
 close behavior for `OpenClosedNodeCarrier`. Retain
 `closedNodeQUICConfig`, the closed Node TLS verifier, and both closed
-listeners for current Node and direct-role callers. Retain the v1 reciprocal
-`LegBinding` codec and its canonical vectors pending a separate
-compatibility/provenance disposition; its test-only use does not justify
-deleting historical wire evidence within the listener change. Current
+listeners for current Node and direct-role callers. The v1 reciprocal
+`LegBinding` codec and its canonical vectors are retired by ADR-0093 as
+their compatibility disposition. Current
 behavior checks are the TCP/TLS and QUIC cases in
 `closed_node_carrier_test.go`, `closed_shared_carrier_test.go`, and
 `closed_role_carrier_test.go`, including peer rejection and QUIC handshake
@@ -318,9 +327,11 @@ probe runtime.
 
 The accepted duty projection captured at listener start identifies only the
 duty for which that listener was created.
-Each new Entry or Transit Grant admission re-reads the current authenticated
-duty facts and requires the exact same generation, Network, Epoch, digest,
-Node, assignment, and assignment digest to remain fresh and unconflicted. An
+Each new closed Route admission must re-read the current authenticated duty
+facts and require the exact same generation, Network, Epoch, digest, Node,
+assignment, and assignment digest to remain fresh and unconflicted. The State
+owner must join the profile's numeric Role Domain to that Epoch assignment
+before providing a usable duty view. An
 accepted successor, expiry, conflict, or withdrawal therefore closes the old
 admission authority without a polling grace period.
 
@@ -370,9 +381,9 @@ command routes.
 The Linux Contributor command exposes only diagnose, drain, withdraw and
 confirmed removal for an already owned installation. `apply` and explicit
 `restart` refuse before opening that installation or creating a supervisor.
-The Contributor Module retains its pinned-bundle/update implementation and
-behavior evidence temporarily pending a separate consumer/deletion audit; only
-internal behavior tests call those start operations, and no command route does.
+The Contributor Module has no Apply installation/update operation. It retains
+authenticated installation/update-record readers and no-start interrupted
+update recovery for the four dispatchable retirement actions.
 The operator contract is the
 [Rendezvous Contributor runbook](../reference/rendezvous-contributor.md).
 Under the selected retirement transition, pre-Control update recovery

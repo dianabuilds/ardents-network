@@ -67,35 +67,4 @@ func TestRetiredUserRouteOwnerIsAbsent(t *testing.T) {
 			}
 		}
 	}
-
-	for _, check := range []struct {
-		path         string
-		declarations []string
-	}{
-		{
-			path: "internal/route/native_attachment.go",
-			declarations: []string{
-				"type Attachment struct",
-				"type Evidence struct",
-			},
-		},
-	} {
-		content := string(readProjectFile(t, root, check.path))
-		for _, declaration := range check.declarations {
-			if !strings.Contains(content, declaration) {
-				t.Errorf("%s lost retained declaration %q", check.path, declaration)
-			}
-		}
-	}
-
-	controlIO := string(readProjectFile(t, root, "internal/route/introduction_control_io.go"))
-	if strings.Contains(controlIO, "func WriteSealedIntroduction(") {
-		t.Error("Introduction control IO still contains the retired User sealed-submission writer")
-	}
-	for _, retained := range []string{"func WriteIntroductionSlotRegistration(", "func ReadIntroductionControlRecord("} {
-		if !strings.Contains(controlIO, retained) {
-			t.Errorf("Introduction control IO lost retained declaration %q", retained)
-		}
-	}
-
 }
