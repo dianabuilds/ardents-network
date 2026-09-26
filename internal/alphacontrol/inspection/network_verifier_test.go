@@ -31,15 +31,16 @@ func TestVerifyNetworkUsesMaintainedNetworkStateAcceptance(t *testing.T) {
 	var snapshot state.Snapshot
 	accepted := false
 	stateRoot := t.TempDir()
-	if outcome := verifyNetwork(context.Background(), stateRoot, body, now, &snapshot, &accepted); outcome != alphacontrol.OutcomeAccepted || !accepted || snapshot.Epoch != 1 {
-		t.Fatalf("network inspection = %q, accepted=%v, snapshot=%+v", outcome, accepted, snapshot)
+	outcome, closeErr := verifyNetwork(context.Background(), stateRoot, body, now, &snapshot, &accepted)
+	if closeErr != nil || outcome != alphacontrol.OutcomeAccepted || !accepted || snapshot.Epoch != 1 {
+		t.Fatalf("network inspection = %q, accepted=%v, snapshot=%+v, close=%v", outcome, accepted, snapshot, closeErr)
 	}
-	if outcome := verifyNetwork(context.Background(), stateRoot, body, now, &snapshot, &accepted); outcome != alphacontrol.OutcomeAccepted || !accepted || snapshot.Epoch != 1 {
-		t.Fatalf("cached network inspection = %q, accepted=%v, snapshot=%+v", outcome, accepted, snapshot)
+	if outcome, closeErr := verifyNetwork(context.Background(), stateRoot, body, now, &snapshot, &accepted); closeErr != nil || outcome != alphacontrol.OutcomeAccepted || !accepted || snapshot.Epoch != 1 {
+		t.Fatalf("cached network inspection = %q, accepted=%v, snapshot=%+v, close=%v", outcome, accepted, snapshot, closeErr)
 	}
 	body[len(body)-1]++
-	if outcome := verifyNetwork(context.Background(), t.TempDir(), body, now, &snapshot, &accepted); outcome != alphacontrol.OutcomeInvalid {
-		t.Fatalf("altered network evidence outcome = %q", outcome)
+	if outcome, closeErr := verifyNetwork(context.Background(), t.TempDir(), body, now, &snapshot, &accepted); outcome != alphacontrol.OutcomeInvalid || closeErr != nil {
+		t.Fatalf("altered network evidence outcome = %q, close=%v", outcome, closeErr)
 	}
 }
 

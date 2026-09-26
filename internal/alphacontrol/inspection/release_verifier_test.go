@@ -47,12 +47,13 @@ func TestVerifyReleaseUsesMaintainedReleaseDecision(t *testing.T) {
 	}
 	var inspected release.Decision
 	accepted := false
-	if outcome := verifyRelease(context.Background(), filepath.Join(t.TempDir(), "inspection"), inputs, body, &inspected, &accepted); outcome != alphacontrol.OutcomeAccepted || !accepted || inspected.Outcome != release.OutcomeReleaseAccepted {
-		t.Fatalf("release inspection = %q, accepted=%v, decision=%+v", outcome, accepted, inspected)
+	outcome, closeErr := verifyRelease(context.Background(), filepath.Join(t.TempDir(), "inspection"), inputs, body, &inspected, &accepted)
+	if closeErr != nil || outcome != alphacontrol.OutcomeAccepted || !accepted || inspected.Outcome != release.OutcomeReleaseAccepted {
+		t.Fatalf("release inspection = %q, accepted=%v, decision=%+v, close=%v", outcome, accepted, inspected, closeErr)
 	}
 	body[len(body)-1]++
-	if outcome := verifyRelease(context.Background(), filepath.Join(t.TempDir(), "altered"), inputs, body, &inspected, &accepted); outcome != alphacontrol.OutcomeInvalid {
-		t.Fatalf("altered release evidence outcome = %q", outcome)
+	if outcome, closeErr := verifyRelease(context.Background(), filepath.Join(t.TempDir(), "altered"), inputs, body, &inspected, &accepted); outcome != alphacontrol.OutcomeInvalid || closeErr != nil {
+		t.Fatalf("altered release evidence outcome = %q, close=%v", outcome, closeErr)
 	}
 }
 

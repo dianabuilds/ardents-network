@@ -36,7 +36,6 @@ func inspect(ctx context.Context, config Config) (Report, error) {
 	if err != nil {
 		return Report{}, fmt.Errorf("open alpha control reader: %w", err)
 	}
-	defer reader.Close()
 	report := Report{}
 	if catalog, _, catalogErr := alphacontrol.Verify(verified.ControlCatalog, disclosure, config.At.UTC()); catalogErr == nil {
 		report.CatalogCohort, report.CatalogGeneration = catalog.Cohort, catalog.Generation
@@ -49,6 +48,7 @@ func inspect(ctx context.Context, config Config) (Report, error) {
 	var releaseDecision release.Decision
 	var networkSnapshot state.Snapshot
 	var releaseAccepted, networkAccepted bool
+	var componentErr error
 	componentVerify := func(component alphacontrol.Component, statement alphacontrol.ComponentStatement, at time.Time) alphacontrol.Outcome {
 		index := int(component.Class) - int(alphacontrol.ComponentRelease)
 		if index >= 0 && index < len(report.ComponentDetails) {
@@ -57,9 +57,13 @@ func inspect(ctx context.Context, config Config) (Report, error) {
 		}
 		switch component.Class {
 		case alphacontrol.ComponentRelease:
-			return verifyRelease(ctx, releaseRoot, verified.Inputs, statement.Body, &releaseDecision, &releaseAccepted)
+			outcome, err := verifyRelease(ctx, releaseRoot, verified.Inputs, statement.Body, &releaseDecision, &releaseAccepted)
+			componentErr = errors.Join(componentErr, err)
+			return outcome
 		case alphacontrol.ComponentNetwork:
-			return verifyNetwork(ctx, networkRoot, statement.Body, at, &networkSnapshot, &networkAccepted)
+			outcome, err := verifyNetwork(ctx, networkRoot, statement.Body, at, &networkSnapshot, &networkAccepted)
+			componentErr = errors.Join(componentErr, err)
+			return outcome
 		case alphacontrol.ComponentCompatibility:
 			return verifyCompatibility(statement.Body, releaseDecision, releaseAccepted, networkSnapshot, networkAccepted)
 		default:
@@ -67,6 +71,10 @@ func inspect(ctx context.Context, config Config) (Report, error) {
 		}
 	}
 	result, err := reader.Inspect(verified.ControlCatalog, [3][]byte{verified.ControlRelease, verified.ControlNetwork, verified.ControlCompatibility}, componentVerify)
+	readerCloseErr := reader.Close()
+	if readerCloseErr != nil {
+		readerCloseErr = fmt.Errorf("close alpha control catalog reader: %w", readerCloseErr)
+	}
 	report.Inspection = result
 	report.Release = string(releaseDecision.Outcome)
 	report.ReleaseIdentity, report.BuildIdentity, report.ProtocolPhase = releaseDecision.ReleaseIdentity, releaseDecision.BuildIdentity, releaseDecision.ProtocolPhase
@@ -82,9 +90,9 @@ func inspect(ctx context.Context, config Config) (Report, error) {
 		report.NetworkValidUntil = networkSnapshot.ValidUntil
 	}
 	if err != nil {
-		return report, fmt.Errorf("inspect alpha control catalog: %w", err)
+		err = fmt.Errorf("inspect alpha control catalog: %w", err)
 	}
-	return report, nil
+	return report, errors.Join(err, componentErr, readerCloseErr)
 }
 
 func componentRoots(verified enrollment.Verified) (ed25519.PublicKey, [3]ed25519.PublicKey, error) {
@@ -102,31 +110,37 @@ func componentRoots(verified enrollment.Verified) (ed25519.PublicKey, [3]ed25519
 	return append(ed25519.PublicKey(nil), verified.DisclosureRoot...), roots, nil
 }
 
-func verifyRelease(ctx context.Context, root string, inputs release.Inputs, raw []byte, decision *release.Decision, accepted *bool) alphacontrol.Outcome {
+func verifyRelease(ctx context.Context, root string, inputs release.Inputs, raw []byte, decision *release.Decision, accepted *bool) (outcome alphacontrol.Outcome, closeErr error) {
 	evidence, err := decodeReleaseEvidence(raw)
 	if err != nil {
-		return alphacontrol.OutcomeInvalid
+		return alphacontrol.OutcomeInvalid, nil
 	}
 	verifier, err := release.Open(root)
 	if err != nil {
-		return alphacontrol.OutcomeInvalid
+		return alphacontrol.OutcomeInvalid, nil
 	}
-	defer verifier.Close()
+	defer func() {
+		if err := verifier.Close(); err != nil {
+			outcome = alphacontrol.OutcomeUnavailable
+			*accepted = false
+			closeErr = fmt.Errorf("close alpha control release verifier: %w", err)
+		}
+	}()
 	*decision = verifier.Evaluate(ctx, inputs)
 	*accepted = decision.Outcome == release.OutcomeReleaseAccepted || decision.Outcome == release.OutcomeNoUpdate
 	if !*accepted {
-		return releaseOutcome(decision.Outcome)
+		return releaseOutcome(decision.Outcome), nil
 	}
 	if len(decision.Digest) != 32 || evidence.TargetPath != decision.Path || evidence.ReleaseIdentity != decision.ReleaseIdentity ||
 		evidence.BuildIdentity != decision.BuildIdentity || evidence.ProtocolPhase != decision.ProtocolPhase || evidence.BuildState != decision.BuildState {
-		return alphacontrol.OutcomeInvalid
+		return alphacontrol.OutcomeInvalid, nil
 	}
 	var digest [32]byte
 	copy(digest[:], decision.Digest)
 	if evidence.ArtifactDigest != digest {
-		return alphacontrol.OutcomeInvalid
+		return alphacontrol.OutcomeInvalid, nil
 	}
-	return alphacontrol.OutcomeAccepted
+	return alphacontrol.OutcomeAccepted, nil
 }
 
 func releaseOutcome(outcome release.Outcome) alphacontrol.Outcome {
@@ -142,10 +156,10 @@ func releaseOutcome(outcome release.Outcome) alphacontrol.Outcome {
 	}
 }
 
-func verifyNetwork(ctx context.Context, root string, raw []byte, at time.Time, snapshot *state.Snapshot, accepted *bool) alphacontrol.Outcome {
+func verifyNetwork(ctx context.Context, root string, raw []byte, at time.Time, snapshot *state.Snapshot, accepted *bool) (outcome alphacontrol.Outcome, closeErr error) {
 	evidence, err := decodeNetworkEvidence(raw)
 	if err != nil {
-		return alphacontrol.OutcomeInvalid
+		return alphacontrol.OutcomeInvalid, nil
 	}
 	authorities := make(map[[32]byte]ed25519.PublicKey, len(evidence.Authorities))
 	for _, authority := range evidence.Authorities {
@@ -154,25 +168,31 @@ func verifyNetwork(ctx context.Context, root string, raw []byte, at time.Time, s
 	opened, err := state.Open(state.Config{Root: root, NetworkID: evidence.NetworkID, Authorities: authorities,
 		Threshold: int(evidence.Threshold), AcceptedProfile: evidence.Profile, Now: at})
 	if err != nil {
-		return alphacontrol.OutcomeInvalid
+		return alphacontrol.OutcomeInvalid, nil
 	}
-	defer opened.Close()
+	defer func() {
+		if err := opened.Close(); err != nil {
+			outcome = alphacontrol.OutcomeUnavailable
+			*accepted = false
+			closeErr = fmt.Errorf("close alpha control network state: %w", err)
+		}
+	}()
 	if current, currentErr := opened.Current(); currentErr == nil {
 		if current.NetworkID == evidence.NetworkID && current.Digest == evidence.EpochDigest && current.Profile == evidence.Profile {
 			*snapshot, *accepted = current, true
-			return alphacontrol.OutcomeAccepted
+			return alphacontrol.OutcomeAccepted, nil
 		}
-		return alphacontrol.OutcomeConflict
+		return alphacontrol.OutcomeConflict, nil
 	}
 	value, err := opened.Accept(ctx, evidence.Epoch, evidence.Inputs, evidence.Materials)
 	if err != nil {
-		return alphacontrol.OutcomeInvalid
+		return alphacontrol.OutcomeInvalid, nil
 	}
 	if value.Digest != evidence.EpochDigest {
-		return alphacontrol.OutcomeInvalid
+		return alphacontrol.OutcomeInvalid, nil
 	}
 	*snapshot, *accepted = value, true
-	return alphacontrol.OutcomeAccepted
+	return alphacontrol.OutcomeAccepted, nil
 }
 
 func verifyCompatibility(raw []byte, releaseDecision release.Decision, releaseAccepted bool, network state.Snapshot, networkAccepted bool) alphacontrol.Outcome {
