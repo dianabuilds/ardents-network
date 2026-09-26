@@ -18,18 +18,29 @@ func TestOpenCreatesSeparatedRootsAndProvesAttachment(t *testing.T) {
 	t.Cleanup(func() { _ = runtime.Close() })
 
 	for _, path := range []string{
-		filepath.Join(config.ConfigHome, "grants"),
-		filepath.Join(config.StateHome, "vault"),
+		config.StateHome,
 		filepath.Join(config.StateHome, "floors"),
-		filepath.Join(config.StateHome, "diagnostics"),
 		filepath.Join(config.StateHome, "live"),
-		config.CacheHome,
 		config.RuntimeHome,
 	} {
 		info, statErr := os.Lstat(path)
 		if statErr != nil || !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
 			t.Fatalf("owned root %s is invalid: info=%v err=%v", path, info, statErr)
 		}
+	}
+	// ADR-0108 (F-26): the contracted profile owns exactly the state and
+	// runtime roots; the state base holds only its floor and lock parents,
+	// and the retired vault/diagnostics scaffold is never created.
+	if entries, err := os.ReadDir(filepath.Dir(config.StateHome)); err != nil || len(entries) != 2 {
+		t.Fatalf("profile base holds unexpected roots: entries=%v err=%v", entries, err)
+	}
+	for _, name := range []string{"vault", "diagnostics"} {
+		if _, err := os.Lstat(filepath.Join(config.StateHome, name)); !os.IsNotExist(err) {
+			t.Fatalf("retired scaffold root %s was created: err=%v", name, err)
+		}
+	}
+	if entries, err := os.ReadDir(config.StateHome); err != nil || len(entries) != 2 {
+		t.Fatalf("state root holds unexpected entries: entries=%v err=%v", entries, err)
 	}
 	if err := probeAttachment(runtime.Attachment()); err != nil {
 		t.Fatalf("probe attachment: %v", err)
@@ -128,9 +139,7 @@ func testConfig(t *testing.T) Config {
 	}
 	t.Cleanup(func() { _ = os.RemoveAll(root) })
 	return Config{
-		ConfigHome:  filepath.Join(root, "config"),
 		StateHome:   filepath.Join(root, "state"),
-		CacheHome:   filepath.Join(root, "cache"),
 		RuntimeHome: filepath.Join(root, "runtime"),
 	}
 }

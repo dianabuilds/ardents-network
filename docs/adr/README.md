@@ -78,6 +78,7 @@ Current decisions:
 
 Completed retirement decisions:
 
+- [0108 — The Portable Endpoint profile contracts to its consumed roots; the grants, Vault, diagnostics, and cache scaffold is no longer created](0108-contract-portable-profile-roots.md)
 - [0107 — The duty root schema becomes version 2; legacy generations convert in place and the Transit Grant spend ledger retires](0107-duty-root-version-2-spend-ledger-retirement.md)
 - [0106 — Retire the Entry Invite subsystem; the Invite-root writer stops at a before-effect refusal](0106-retire-entry-invite-subsystem.md)
 - [0105 — Retire the Namespace subsystem; absence of any reader is the incompatibility](0105-retire-namespace-subsystem.md)

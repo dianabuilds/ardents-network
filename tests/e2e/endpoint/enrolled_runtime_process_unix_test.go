@@ -35,9 +35,7 @@ func TestEnrolledPortableAcceptsPinnedBundleAndReleaseDecision(t *testing.T) {
 	defer cancel()
 	running := exec.CommandContext(ctx, enrolledCommand, "endpoint", "enroll", bundle, manifestPin)
 	running.Env = append(os.Environ(),
-		"XDG_CONFIG_HOME="+filepath.Join(root, "config"),
 		"XDG_STATE_HOME="+filepath.Join(root, "state"),
-		"XDG_CACHE_HOME="+filepath.Join(root, "cache"),
 		"XDG_RUNTIME_DIR="+filepath.Join(root, "runtime"),
 	)
 	stdout, err := running.StdoutPipe()
@@ -116,9 +114,7 @@ func TestEnrolledPortableAcceptsPinnedBundleAndReleaseDecision(t *testing.T) {
 	// recognized before any obsolete first-enrollment verification is attempted.
 	restarted := exec.CommandContext(ctx, successor, "endpoint", "enroll", legacyInput)
 	restarted.Env = append(os.Environ(),
-		"XDG_CONFIG_HOME="+filepath.Join(root, "config"),
 		"XDG_STATE_HOME="+filepath.Join(root, "state"),
-		"XDG_CACHE_HOME="+filepath.Join(root, "cache"),
 		"XDG_RUNTIME_DIR="+filepath.Join(root, "runtime"),
 	)
 	restartedOut, err := restarted.StdoutPipe()
@@ -177,9 +173,7 @@ func TestEnrolledPortableReportsInvalidPinBeforeReady(t *testing.T) {
 	root := enrolledRuntimeRoot(t)
 	running := exec.Command(enrolledCommand, "endpoint", "enroll", bundle, manifestPin)
 	running.Env = append(os.Environ(),
-		"XDG_CONFIG_HOME="+filepath.Join(root, "config"),
 		"XDG_STATE_HOME="+filepath.Join(root, "state"),
-		"XDG_CACHE_HOME="+filepath.Join(root, "cache"),
 		"XDG_RUNTIME_DIR="+filepath.Join(root, "runtime"),
 	)
 	output, err := running.CombinedOutput()
@@ -212,9 +206,7 @@ func TestEnrolledPortableRejectsInventoryWithoutHeadlessCompanions(t *testing.T)
 	root := enrolledRuntimeRoot(t)
 	running := exec.Command(enrolledCommand, "endpoint", "enroll", bundle, manifestPin)
 	running.Env = append(os.Environ(),
-		"XDG_CONFIG_HOME="+filepath.Join(root, "config"),
 		"XDG_STATE_HOME="+filepath.Join(root, "state"),
-		"XDG_CACHE_HOME="+filepath.Join(root, "cache"),
 		"XDG_RUNTIME_DIR="+filepath.Join(root, "runtime"),
 	)
 	output, err := running.CombinedOutput()

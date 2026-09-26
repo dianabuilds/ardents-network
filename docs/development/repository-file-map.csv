@@ -524,6 +524,7 @@
 "internal/architecture/initiator_receiving_retirement_test.go","go-test","internal/architecture","","unreviewed"
 "internal/architecture/node_retirement_test.go","go-test","internal/architecture","","unreviewed"
 "internal/architecture/ownership_test.go","go-test","internal/architecture","","unreviewed"
+"internal/architecture/portable_profile_contraction_test.go","go-test","internal/architecture","","unreviewed"
 "internal/architecture/pr_selection_behavior_test.go","go-test","internal/architecture","","unreviewed"
 "internal/architecture/project_go_test.go","go-test","internal/architecture","","unreviewed"
 "internal/architecture/qualification_preparation_time_test.go","go-test","internal/architecture","","unreviewed"

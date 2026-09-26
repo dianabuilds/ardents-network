@@ -109,8 +109,10 @@ systemctl --user start ardents-endpoint.service
 ```
 
 Deleting the stopped bundle directory removes only program bytes. It does not
-remove the per-user Vault, release floors, grants, diagnostics, cache, or live
-state roots. There is no supported automatic replacement, repair, or destructive
-state removal in the portable profile. Foreground replacement is separately
+remove the per-user release floors, replacement ledger, or live state roots.
+The contracted profile (ADR-0108) no longer creates the former grants, Vault,
+diagnostics, or cache directories; any such directories left by an older
+profile remain on disk untouched and unread. There is no supported automatic
+replacement, repair, or destructive state removal in the portable profile. Foreground replacement is separately
 owned by `internal/endpoint/replacement`; destructive state removal remains
 unsupported.

@@ -107,8 +107,8 @@ func TestUbuntuDebInstallsOnlyProgramAndStaticEnrollmentBytes(t *testing.T) {
 	if upgraded, readErr := os.ReadFile(installed); readErr != nil || !bytes.Equal(upgraded, v2) {
 		t.Fatalf("upgraded package program = %d bytes / %v", len(upgraded), readErr)
 	}
-	if _, err := os.Stat(filepath.Join(stateRoot, "state", "ardents", "vault")); err != nil {
-		t.Fatalf("package upgrade erased Vault root: %v", err)
+	if _, err := os.Stat(filepath.Join(stateRoot, "state", "ardents", "live")); err != nil {
+		t.Fatalf("package upgrade erased retained live root: %v", err)
 	}
 	if _, err := os.Stat(filepath.Join(stateRoot, "state", "ardents", "floors", "release-decision", "current")); err != nil {
 		t.Fatalf("package upgrade erased Release floor: %v", err)
@@ -117,15 +117,15 @@ func TestUbuntuDebInstallsOnlyProgramAndStaticEnrollmentBytes(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(imageRoot, "usr", "lib", "ardents", "ardents")); !os.IsNotExist(err) {
 		t.Fatalf("dpkg remove retained package program: %v", err)
 	}
-	if _, err := os.Stat(filepath.Join(stateRoot, "state", "ardents", "vault")); err != nil {
-		t.Fatalf("package removal erased Vault root: %v", err)
+	if _, err := os.Stat(filepath.Join(stateRoot, "state", "ardents", "live")); err != nil {
+		t.Fatalf("package removal erased retained live root: %v", err)
 	}
 	if _, err := os.Stat(filepath.Join(stateRoot, "state", "ardents", "floors", "release-decision", "current")); err != nil {
 		t.Fatalf("package removal erased Release floor: %v", err)
 	}
 	purgeUbuntuPackage(t, imageRoot)
-	if _, err := os.Stat(filepath.Join(stateRoot, "state", "ardents", "vault")); err != nil {
-		t.Fatalf("package purge erased Vault root: %v", err)
+	if _, err := os.Stat(filepath.Join(stateRoot, "state", "ardents", "live")); err != nil {
+		t.Fatalf("package purge erased retained live root: %v", err)
 	}
 	if _, err := os.Stat(filepath.Join(stateRoot, "state", "ardents", "floors", "release-decision", "current")); err != nil {
 		t.Fatalf("package purge erased Release floor: %v", err)

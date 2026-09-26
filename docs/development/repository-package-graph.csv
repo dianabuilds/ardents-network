@@ -13,7 +13,7 @@ package,production_go,test_go,incoming_packages,linux_imports,windows_imports
 "internal/application/interfacev2/connection","9","9","4","",""
 "internal/application/streamqualification","12","8","4","internal/application/interfacev2/connection",""
 "internal/application/textdocument","19","17","2","internal/application/interfacev2/connection","internal/application/interfacev2/connection"
-"internal/architecture","1","32","0","",""
+"internal/architecture","1","33","0","",""
 "internal/contributor","15","6","1","",""
 "internal/custody","19","5","1","internal/route/credential;internal/service/instance;internal/service/publication","internal/route/credential;internal/service/instance;internal/service/publication"
 "internal/diagnostics/timeline","2","1","1","",""

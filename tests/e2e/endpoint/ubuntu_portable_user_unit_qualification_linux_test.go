@@ -29,9 +29,7 @@ func TestUbuntuPortableUserUnitQualification(t *testing.T) {
 	}
 	stateHome := filepath.Join(home, ".local", "state", "ardents")
 	qualificationRoots := []string{
-		filepath.Join(home, ".config", "ardents"),
 		stateHome,
-		filepath.Join(home, ".cache", "ardents"),
 		filepath.Join(os.Getenv("XDG_RUNTIME_DIR"), "ardents"),
 	}
 	for _, root := range qualificationRoots {
@@ -115,8 +113,8 @@ func TestUbuntuPortableUserUnitQualification(t *testing.T) {
 	if err := os.RemoveAll(bundle); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := os.Stat(filepath.Join(stateHome, "vault")); err != nil {
-		t.Fatalf("deleting program bytes removed the protected Vault root: %v", err)
+	if _, err := os.Stat(filepath.Join(stateHome, "live")); err != nil {
+		t.Fatalf("deleting program bytes removed the retained live root: %v", err)
 	}
 	assertRetainedPortableState(t, stateHome)
 	if lingerAfter := userLinger(t); lingerAfter != lingerBefore {
