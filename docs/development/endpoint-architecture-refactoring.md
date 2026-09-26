@@ -31,25 +31,25 @@ records why the closed file cluster cannot be moved by filename alone.
 
 The installed qualification command owns plans and verdicts, and
 `internal/application/streamqualification` owns the fixed stream workload.
-Endpoint still owns the authorized participant, worker and protected Service
-operations being measured. The nine `stream_qualification_*` production files
-are not one self-contained package: runtime and preflight construct or inspect
-the participant; connections and replenishment use private Context, Job,
-permission, Source and worker state. Conversely, Job identity, worker launch
-and worker initialization retain the qualification run. Moving those files by
-prefix would leave a reverse dependency or expose the participant's internals.
+`internal/qualification` now owns the per-invocation `Run`, verified-worker
+`Artifact`, `Attachment` bridge, and shared `Measurements`. The exact
+`qualification.Run` remains bound to its Job because JOIN, Connection limits,
+token refill and cleanup all recheck that invocation.
 
-The small attachment wrapper is independent, but the qualification run is
-read by the worker launch and initialization paths, the artifact report is a
-method on `textWorkerLifetime`, and runner-wide measurements are called by
-Endpoint runtime and worker paths. A worker-launch interface alone does not
-cover the Connection and refill operations. Keep qualification evidence and
-verdicts outside Endpoint; extract runtime code only as a bounded, authorized
-participant operation becomes available to a non-test caller. The Context
-lock may still protect atomic cross-owner admission at that boundary; splitting
-it into separate locks is not a prerequisite for package extraction.
-The exact `streamQualificationRun` remains bound to its Job because JOIN,
-Connection limits, token refill and cleanup all recheck that invocation.
+Endpoint still owns the authorized participant, worker and protected Service
+operations being measured. Its remaining seven `stream_qualification_*`
+production files are not one self-contained package: runtime and preflight
+construct or inspect the participant; connections and replenishment use private
+Context, Job, permission, Source and worker state. Worker launch and
+initialization also use the retained run; Endpoint worker paths create the
+artifact from verified worker state and feed shared measurements. Moving the
+remaining files by prefix would leave a reverse dependency or expose the
+participant's internals. A worker-launch interface alone does not cover the
+Connection and refill operations. Extract more runtime code only when a
+bounded, authorized participant operation is available to a non-test caller.
+The Context lock may still protect atomic cross-owner admission at that
+boundary; splitting it into separate locks is not a prerequisite for package
+extraction.
 
 ## Endpoint interior
 
