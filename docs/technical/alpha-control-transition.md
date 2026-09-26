@@ -9,8 +9,8 @@ independent custody, public control, availability, or a canonical Namespace.
 `internal/release` owns Release Safety. `internal/network/state` owns accepted
 Epoch successors and duty withdrawal. The enrollment-pinned Compatibility
 component binds accepted Release and Network facts without becoming either
-authority. `internal/naming/namespace` retains local technical transitions, but
-no global Namespace close/materialization input is selected. The
+authority. ADR-0105 removed the whole Namespace subsystem, so no global
+Namespace close/materialization input exists at all. The
 `internal/alphacontrol` declaration and the `ardents-control
 inspect-transitions` report authorize no Endpoint action. The inspector owns
 separate catalog, Release, and Network roots: successful inspection can advance

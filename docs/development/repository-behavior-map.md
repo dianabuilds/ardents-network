@@ -1049,23 +1049,26 @@ split (F-49). Replacing ACA1 with ACA2 requires a decision about the current
 transition report and retained ACA1 reader roots; switching a parser alone
 would lose its anti-rollback state.
 
-## Source trace: retained Namespace without a C0 opener
+## Source trace: retired Namespace without any reader
 
-The current `docs/technical/naming.md` describes a local chain from
-Authority transition through Custody signing, Namespace pending state and
-Epoch materialization. In production source, `internal/naming/resolution`
-formerly imported Namespace interfaces; ADR-0100 removed that package with
-its tests and the OHTTP dependency closure, and Custody
-implements two Namespace-specific `Vault.Execute` cases. A non-test search
-over the command adapters finds no import of Namespace, no
-construction of those Custody operation kinds, and no call to `epoch.Open`.
-`ardents name resolve` and `name control` refuse before effects under
-ADR-0090; `name encode` uses the separate canonical encoder. Consequently,
-none of these commands opens a Namespace root, starts a Gateway/Resolver,
-commits a pending successor, or verifies a live proof for C0. The 54-file
-Namespace closure is retained technical behavior and a persisted-evidence
-obligation (F-51), not a hidden C0 Service Name path; its durable roots
-await the separate PO disposition decision.
+`docs/technical/naming.md` formerly described a local chain from Authority
+transition through Custody signing, Namespace pending state, and Epoch
+materialization. In production source, `internal/naming/resolution` once
+imported Namespace interfaces; ADR-0100 removed that package with its tests
+and the OHTTP dependency closure, and Custody kept only
+never-command-exposed Namespace-specific `Vault.Execute` cases. A non-test
+search over the command adapters found no import of Namespace, no
+construction of those Custody operation kinds, and no call to `epoch.Open`;
+that absent-opener evidence grounded the F-51 disposition. ADR-0105
+executed it after the product owner confirmed that no deployed Namespace
+root deserves data support or backward compatibility: the whole Namespace
+closure, the unexposed custody operations, and the uncalled generation-2
+reachability writers are deleted, and their deadcode allowance groups are
+retired with them. `ardents name resolve` and `name control` still refuse
+before effects under ADR-0090, and `name encode` still uses the separate
+canonical encoder. An old Namespace root stays on disk byte-for-byte with no
+working-tree read path at all; typed incompatibility is the absence of any
+reader.
 
 ## Source trace: old Transit Grant spend inside the current local-role root
 

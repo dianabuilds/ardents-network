@@ -128,9 +128,6 @@ func TestPrivateStoreRefusesWrongProfileLegacyDowngradeAndFailedCommit(t *testin
 	if _, err := store.PublishPrivate(raw, [32]byte{99}, fixture.now); err == nil {
 		t.Fatal("wrong current profile accepted")
 	}
-	if _, err := store.Publish(raw, fixture.now); err == nil {
-		t.Fatal("legacy publication accepted private Descriptor")
-	}
 	path := filepath.Join(root, "records", fmt.Sprintf("%x", fixture.current.Credential.Target))
 	if err := os.Mkdir(path, 0o700); err != nil {
 		t.Fatal(err)
@@ -155,14 +152,7 @@ func TestPrivateStoreRefusesWrongProfileLegacyDowngradeAndFailedCommit(t *testin
 	if _, err := store.PublishPrivate(raw, profile, fixture.now); err != nil {
 		t.Fatal(err)
 	}
-	if _, _, err := store.Lookup(fixture.current.Credential.Target, fixture.now); err == nil {
-		t.Fatal("legacy lookup exposed private Descriptor")
-	}
 	if _, _, err := store.LookupPrivate(fixture.current.Credential.Target, [32]byte{99}, fixture.now); err == nil {
 		t.Fatal("wrong-profile lookup accepted")
-	}
-	legacy := fixture.issue(t, fixture.current, fixture.now.Add(40*time.Second), "legacy-slot")
-	if _, err := store.Publish(legacy, fixture.now); err == nil {
-		t.Fatal("legacy format erased private revision floor")
 	}
 }

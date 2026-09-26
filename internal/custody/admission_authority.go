@@ -60,7 +60,6 @@ func (vault *Vault) createAdmissionAuthority(ctx context.Context, operation Oper
 func validAdmissionAuthorityCreation(operation Operation) bool {
 	binding := operation.Authority.Binding
 	return operation.RecordID == "" && operation.Path == "" && operation.Expected == (AuthorityBinding{}) &&
-		operation.Transition == nil && operation.Preparation == nil && operation.Reconciliation == nil &&
 		binding.Kind == AuthorityAdmission && binding.Environment != [32]byte{} && binding.Network != [32]byte{} &&
 		binding.Root != [32]byte{} && binding.IDCommitment == [32]byte{} && len(operation.Authority.RootMaterial) == 0 &&
 		operation.Authority.Generation == 0 && operation.Authority.Revision == 0 && len(operation.Authority.Watermarks) == 0
@@ -146,7 +145,7 @@ func validAdmissionIssuance(operation Operation) bool {
 	return validRecordID(operation.RecordID) && operation.Expected != (AuthorityBinding{}) && operation.Expected.Kind == AuthorityAdmission &&
 		len(operation.AdmissionRequest) != 0 && operation.AdmissionRequestCommitment == sha256.Sum256(operation.AdmissionRequest) &&
 		len(operation.ServiceRequest) == 0 && operation.ServiceRequestCommitment == ([32]byte{}) && operation.Path == "" &&
-		isZeroAuthorityState(operation.Authority) && operation.Transition == nil && operation.Preparation == nil && operation.Reconciliation == nil
+		isZeroAuthorityState(operation.Authority)
 }
 
 func openAdmissionAuthority(raw, password []byte, expected AuthorityBinding) (AuthorityState, EnvelopeInfo, error) {

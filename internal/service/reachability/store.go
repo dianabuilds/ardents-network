@@ -1,7 +1,6 @@
 package reachability
 
 import (
-	"crypto/sha256"
 	"errors"
 	"fmt"
 	"path/filepath"
@@ -105,20 +104,6 @@ func (store *Store) Close() error {
 	return store.lease.release()
 }
 
-// Publish accepts a fresh exact descriptor only when it cannot roll a Target
-// backward. A differing publication at one generation creates a persistent
-// explicit conflict; a later, non-overlapping generation is the only repair.
-func (store *Store) Publish(raw []byte, at time.Time) (StoreResult, error) {
-	if store == nil || at.IsZero() {
-		return StoreResult{Class: StoreInvalid}, errors.New("reachability store publication input is incomplete")
-	}
-	candidate, err := verifyStored(raw, store.network, at)
-	if err != nil {
-		return StoreResult{Class: StoreInvalid}, errors.New("reachability store descriptor is invalid")
-	}
-	return store.publishVerified(candidate)
-}
-
 func (store *Store) publishVerified(candidate storedDescriptor) (StoreResult, error) {
 	target := candidate.verified.Descriptor.Target
 	store.mu.Lock()
@@ -153,12 +138,6 @@ func (store *Store) publishVerified(candidate storedDescriptor) (StoreResult, er
 	return StoreResult{Class: result, Target: target}, nil
 }
 
-// Lookup returns one exact currently verifiable descriptor. Expiry, absence,
-// and conflict become classified failures; no alternate Target is considered.
-func (store *Store) Lookup(target [32]byte, at time.Time) ([]byte, StoreClass, error) {
-	return store.lookup(target, [32]byte{}, at)
-}
-
 func (store *Store) lookup(target, profile [32]byte, at time.Time) ([]byte, StoreClass, error) {
 	if store == nil || target == [32]byte{} || at.IsZero() {
 		return nil, StoreInvalid, errors.New("reachability store lookup input is incomplete")
@@ -186,18 +165,6 @@ func (store *Store) lookup(target, profile [32]byte, at time.Time) ([]byte, Stor
 		return nil, StoreStale, errors.New("reachability descriptor is unavailable")
 	}
 	return append([]byte(nil), record.raw...), StoreAlreadyCurrent, nil
-}
-
-func verifyStored(raw []byte, network [32]byte, at time.Time) (storedDescriptor, error) {
-	descriptor, _, err := decode(raw)
-	if err != nil {
-		return storedDescriptor{}, err
-	}
-	verified, err := Verify(raw, descriptor.Target, network, at)
-	if err != nil {
-		return storedDescriptor{}, err
-	}
-	return storedDescriptor{raw: append([]byte(nil), raw...), verified: verified, digest: sha256.Sum256(raw)}, nil
 }
 
 func compareStored(prior, candidate storedDescriptor) (StoreClass, *storedDescriptor, error) {

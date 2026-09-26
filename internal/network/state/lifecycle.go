@@ -53,12 +53,12 @@ func (s *networkState) Close() error {
 		<-done
 	}
 	s.mu.RLock()
-	serverErr := errors.Join(s.serverErr, s.resourceErr)
+	serverErr, resourceErr := s.serverErr, s.resourceErr
 	s.mu.RUnlock()
 	storageErr := storage.close()
 	roleErr := s.releaseSourceServer()
-	if serverErr != nil && !errors.Is(serverErr, context.Canceled) {
-		return serverErr
+	if serverErr == context.Canceled {
+		serverErr = nil
 	}
-	return errors.Join(storageErr, roleErr)
+	return errors.Join(serverErr, resourceErr, storageErr, roleErr)
 }

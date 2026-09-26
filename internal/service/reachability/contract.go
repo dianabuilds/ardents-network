@@ -1,8 +1,6 @@
 package reachability
 
 import (
-	"crypto"
-	"crypto/ed25519"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/service/publication"
@@ -59,23 +57,9 @@ type Descriptor struct {
 	Signature         [64]byte
 }
 
-// IssueInput contains a Publisher's current immutable Publication and a
-// bounded live Introduction slot. InstanceSigner must be the private key of
-// Publication.Credential.InstancePublic.
-type IssueInput struct {
-	Current        publication.Current
-	Introduction   Introduction
-	InstanceSigner crypto.Signer
-}
-
 // Verified is the exact descriptor fact a User may pass into route
 // composition. It exposes no private Instance material or Gateway state.
 type Verified struct {
 	Descriptor Descriptor
 	Current    publication.Current
-}
-
-// Authority returns a copy of the authenticated Service Authority public key.
-func (value Verified) Authority() ed25519.PublicKey {
-	return ed25519.PublicKey(append([]byte(nil), value.Descriptor.AuthorityPublic[:]...))
 }

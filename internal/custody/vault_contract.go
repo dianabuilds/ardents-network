@@ -4,9 +4,6 @@ import (
 	"context"
 	"errors"
 	"time"
-
-	"github.com/dianabuilds/ardents-network/internal/naming/namespace/authority"
-	"github.com/dianabuilds/ardents-network/internal/naming/namespace/epoch"
 )
 
 const (
@@ -30,16 +27,6 @@ const (
 	OperationExportRecoveryBundle OperationKind = "export-recovery-bundle"
 	// OperationRestoreRecoveryBundle imports a Bundle only as an authority-locked record.
 	OperationRestoreRecoveryBundle OperationKind = "restore-recovery-bundle"
-	// OperationSignNamespaceTransition signs one sealed Namespace transition with
-	// an active Name Authority record without releasing its root material.
-	OperationSignNamespaceTransition OperationKind = "sign-namespace-transition"
-	// OperationPrepareNamespaceSubmission derives and signs one complete
-	// existing-Name control submission without releasing its root material.
-	OperationPrepareNamespaceSubmission OperationKind = "prepare-namespace-submission"
-	// OperationActivateRecoveredAuthority accepts a strictly newer authenticated
-	// current Namespace witness and converts one authority-locked record into a
-	// new active Vault successor before any signing operation can run.
-	OperationActivateRecoveredAuthority OperationKind = "activate-recovered-authority"
 	// OperationPurgeVaultRecord destroys one exact encrypted active or locked
 	// record only after password verification and an explicit confirmation. It
 	// deliberately retains Authority floors.
@@ -81,9 +68,6 @@ type Operation struct {
 	RecordID       string
 	Expected       AuthorityBinding
 	Path           string
-	Transition     NamespaceTransition
-	Preparation    NamespaceSubmission
-	Reconciliation *epoch.NameAuthorityReconciliation
 	ServiceRequest []byte
 	// ServiceRequestCommitment is the exact independently transferred digest
 	// that the Custodian approved for Service Credential issuance.
@@ -91,16 +75,6 @@ type Operation struct {
 	AdmissionRequest           []byte
 	AdmissionRequestCommitment [32]byte
 }
-
-// NamespaceTransition invokes one sealed Namespace signer and returns its
-// public transition proof. It may not manufacture a signing request: Namespace
-// owns the exact request construction.
-type NamespaceTransition func(authority.TransitionSigner) ([]byte, error)
-
-// NamespaceSubmission invokes Namespace's control-preparation seam. Namespace
-// derives the exact transition and successor Record; custody only supplies the
-// paired Authority operations and returns the resulting opaque Submission.
-type NamespaceSubmission func(authority.ControlSigner) (authority.Submission, error)
 
 // SecretInput obtains one explicit password entry for the custody boundary.
 // Implementations must not source it from argv, environment, configuration, or
@@ -143,8 +117,6 @@ type Receipt struct {
 	ServiceResponse     []byte
 	TestRestored        bool
 	State               RecordState
-	Proof               []byte
-	Submission          []byte
 }
 
 // ServiceAuthorityReceipt is the public identity created by custody. It
