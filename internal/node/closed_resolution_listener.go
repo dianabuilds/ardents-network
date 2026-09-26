@@ -39,7 +39,7 @@ func validateClosedResolutionProfile(local ClosedResolutionProfile, config runti
 	return nil
 }
 
-func startClosedResolution(config runtimeConfig, snapshot state.NodeDuty) (*probeServer, error) {
+func startClosedResolution(config runtimeConfig, snapshot state.NodeDuty) (*dutyHandle, error) {
 	local := config.ClosedResolution
 	if err := validateClosedResolutionProfile(local, config, snapshot, config.now()); err != nil {
 		return nil, err
@@ -78,7 +78,7 @@ func startClosedResolution(config runtimeConfig, snapshot state.NodeDuty) (*prob
 		store: store, spends: spends, limits: limits, capacity: make(chan struct{}, local.ConnectionLimit), cancel: cancel,
 		done: make(chan error, 1), drained: make(chan struct{})}
 	go running.run(ctx)
-	return &probeServer{Done: running.done, Protect: func(bool) {}, Usage: func() (uint64, uint64, uint64) {
+	return &dutyHandle{Done: running.done, Protect: func(bool) {}, Usage: func() (uint64, uint64, uint64) {
 		active := uint64(running.active.Load())
 		return active, active, 0
 	}, Stop: func() { _ = running.stop() }, Drain: func(ctx context.Context) error {

@@ -794,7 +794,7 @@ retained-record restoration fails. The normal `Store.Close` returns that
 error. F-71 identifies the missing combined startup outcome; it matters when
 an old Descriptor root is refused or migrated under the one-version policy.
 
-All five roles use the Node lifecycle's common `probeServer` handle, although
+All five roles use the Node lifecycle's common `dutyHandle` handle, although
 only the private probe is a probe. This is a naming/interface problem in the
 composition layer; it does not make their durable resources interchangeable.
 `Done` reports accept-loop completion before the final child/root join; only

@@ -17,7 +17,7 @@ import (
 
 // startClosedForwarding materializes one State-selected adjacent/interior
 // receiver. It owns its spend ledger and finite pool until duty withdrawal.
-func startClosedForwarding(config runtimeConfig, snapshot state.NodeDuty) (*probeServer, error) {
+func startClosedForwarding(config runtimeConfig, snapshot state.NodeDuty) (*dutyHandle, error) {
 	local := config.ClosedForwarding
 	if err := validateClosedForwardingProfile(local, config, snapshot, config.now()); err != nil {
 		return nil, err
@@ -56,7 +56,7 @@ func startClosedForwarding(config runtimeConfig, snapshot state.NodeDuty) (*prob
 		return nil, errors.Join(err, pool.Close(), receiving.Close(), host.Close())
 	}
 	running := newClosedForwardingServerWithHost(config, snapshot, local.Certificate, shared, receiving, pool, host, local.ConnectionLimit)
-	return &probeServer{Done: running.Done(), Protect: func(bool) {}, Usage: func() (uint64, uint64, uint64) {
+	return &dutyHandle{Done: running.Done(), Protect: func(bool) {}, Usage: func() (uint64, uint64, uint64) {
 		return uint64(running.Active()), uint64(running.Active()), 0
 	}, Stop: func() { _ = running.Stop() }, Drain: func(ctx context.Context) error {
 		drain, cancel := context.WithTimeout(ctx, local.DrainTimeout)

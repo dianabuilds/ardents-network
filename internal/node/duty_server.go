@@ -9,7 +9,7 @@ import (
 
 const nativeRouteUnavailableReason = "native Route assignment is not implemented"
 
-func startDuty(config runtimeConfig, snapshot state.NodeDuty) (*probeServer, error) {
+func startDuty(config runtimeConfig, snapshot state.NodeDuty) (*dutyHandle, error) {
 	if snapshot.Profile == route.ClosedRouteProfile {
 		if _, available := closedRouteReceiver(config, snapshot, ardp.PurposeIssuer, config.now()); available {
 			return startClosedIssuer(config, snapshot)

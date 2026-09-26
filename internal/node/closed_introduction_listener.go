@@ -37,13 +37,13 @@ func validateClosedIntroductionProfile(local ClosedIntroductionProfile, config r
 	return nil
 }
 
-func startClosedIntroduction(config runtimeConfig, snapshot state.NodeDuty) (*probeServer, error) {
+func startClosedIntroduction(config runtimeConfig, snapshot state.NodeDuty) (*dutyHandle, error) {
 	running, err := newClosedIntroductionServer(config, snapshot)
 	if err != nil {
 		return nil, err
 	}
 	local := config.ClosedIntroduction
-	return &probeServer{Done: running.done, Protect: func(bool) {}, Usage: func() (uint64, uint64, uint64) {
+	return &dutyHandle{Done: running.done, Protect: func(bool) {}, Usage: func() (uint64, uint64, uint64) {
 		active := uint64(running.active.Load())
 		return active, active, 0
 	}, Stop: func() { _ = running.stop() }, Drain: func(ctx context.Context) error {

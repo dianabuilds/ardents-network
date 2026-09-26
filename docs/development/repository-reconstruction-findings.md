@@ -464,7 +464,7 @@ contracts differ.
 
 **Code fact.** `node.startClosedIssuer` opens the issuer key root and a
 separate replay spend ledger before starting the credential listener. Its
-`probeServer.Drain` closes both roots only after
+`dutyHandle.Drain` closes both roots only after
 `ClosedTokenListener.Drain` returns success. When the bounded drain times out,
 it returns without closing either root. The listener's worker-join goroutine
 can later close `drained`, but it does not own those roots or call their
@@ -1290,9 +1290,9 @@ the exact v2 identity wherever typed refusal, owned-installation evidence or
 retained canonical vectors require it; remove any claim that it is an
 accepting C0 Route.
 
-## F-39: Node's common duty handle is named after the private probe
+## F-39: Node's common duty handle was named after the private probe
 
-**Source fact.** `internal/node/probe_contract.go` defines `probeServer` with
+**Source fact.** `internal/node/probe_contract.go` defines `dutyHandle` with
 `Done`, `Protect`, `Usage`, `Stop` and `Drain`. `duty_server.go` returns this
 same type for all five closed duties and for the private role probe. The
 issuer, forwarding, Resolution, Introduction and Data Join starters each
@@ -1300,16 +1300,15 @@ construct it around their own distinct listener and durable-root lifetime.
 The current technical owner explicitly keeps probe implementation private to
 Node; it does not define probe as the owner of those five duties.
 
-**Consequence.** The common lifecycle handle has a misleading name. A reader
-of a closed duty sees `probeServer` at its boundary and may infer shared probe
-transport or identical cleanup. The resource matrix in
+**Resolution.** The common lifecycle handle is now `dutyHandle`. The old
+`probeServer` name could imply shared probe transport or identical cleanup;
+the resource matrix in
 `repository-behavior-map.md` shows different close owners, including the
 issuer's late-close gap after a Drain timeout.
 
-**Disposition boundary.** Name this private Node return type for its actual
-role, such as `dutyHandle`, in a local Node change. Keep the five duty-specific
-servers and resource owners separate. This is a naming correction, not a new
-package, wire identity or permission to unify their shutdown mechanics.
+**Disposition boundary.** Keep the five duty-specific servers and resource
+owners separate. The rename did not change shutdown mechanics, package
+boundaries or wire identity.
 
 ## F-40: Credential's mixed declaration file was resolved; root diagnostics still lag
 
@@ -2056,7 +2055,7 @@ that reconciled status; GitHub Issues still own execution state.
 ## F-61: Accepted Node Carrier close results differ across five duties
 
 **Source fact at `53f02e64`.** `node.runDuty` receives a selected duty's
-`probeServer` handle. Its `Done` channel reports the accept-loop result;
+`dutyHandle` handle. Its `Done` channel reports the accept-loop result;
 `Stop` interrupts admission; `Drain` is the final join and cleanup result.
 This timing matters: Forwarding, Resolution, Introduction and Data JOIN send
 `Done` before their accepted workers and owned roots have finished closing.
@@ -2072,7 +2071,7 @@ roots after that listener drains.
 | Introduction | Accepted child and refusal paths discard connection-close results. | `drainErr` joins listener and spend-root close. |
 | Data JOIN | `closeCarrier` joins non-benign accepted-connection close errors under a lock, including capacity refusals. | `drainErr` joins listener, child cleanup, spend root, monitor and host close. |
 
-**Consequence.** The common `probeServer` contract already makes `Drain` the
+**Consequence.** The common `dutyHandle` contract already makes `Drain` the
 correct place for a duty's final cleanup result; `Done` alone cannot prove
 physical retirement. The accepted-connection result differs by duty even
 though all five borrow the same Route listener and return a caller-owned

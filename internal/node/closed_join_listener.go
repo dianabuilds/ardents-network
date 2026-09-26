@@ -40,7 +40,7 @@ func validateClosedDataJoinProfile(local ClosedDataJoinProfile, config runtimeCo
 	return nil
 }
 
-func startClosedDataJoin(config runtimeConfig, snapshot state.NodeDuty) (*probeServer, error) {
+func startClosedDataJoin(config runtimeConfig, snapshot state.NodeDuty) (*dutyHandle, error) {
 	local := config.ClosedDataJoin
 	if err := validateClosedDataJoinProfile(local, config, snapshot, config.now()); err != nil {
 		return nil, err
@@ -83,7 +83,7 @@ func startClosedDataJoin(config runtimeConfig, snapshot state.NodeDuty) (*probeS
 		pairs: pairs, spends: spends, limits: limits, capacity: make(chan struct{}, local.ConnectionLimit), cancel: cancel,
 		done: make(chan error, 1), drained: make(chan struct{})}
 	go running.run(ctx)
-	return &probeServer{Done: running.done, Protect: func(bool) {}, Usage: func() (uint64, uint64, uint64) {
+	return &dutyHandle{Done: running.done, Protect: func(bool) {}, Usage: func() (uint64, uint64, uint64) {
 		active := uint64(running.active.Load())
 		return active, active, 0
 	}, Stop: func() { _ = running.stop() }, Drain: func(ctx context.Context) error {
