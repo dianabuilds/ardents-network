@@ -186,10 +186,12 @@ The current Store still reopens stored-record version 1 and authenticates its
 signed Descriptor v1/v2 bytes. These records retain per-Target Credential
 generation, Publication digest, expiry and conflict floors. They share the
 128-Target root with private v3 records and can prevent a same-Target v3
-publication; the current private lookup does not return them. The uncalled
-legacy `Issue` and `Store.Publish` writers are retirement candidates, while
-the decoder and floor comparison remain until an authenticated adoption or
-explicit refusal/new-Target policy preserves the existing root's authority.
+publication; the current private lookup does not return them. ADR-0105
+retired the uncalled legacy `Issue`, `Store.Publish`, and `Store.Lookup`
+generation-2 writers, so no working-tree path can create a new generation-2
+record; only the retained decoder and floor comparison still read stored
+ones, and they remain until an authenticated adoption or explicit
+refusal/new-Target policy preserves the existing root authority (F-32).
 Neither historical bytes nor this temporary reader authorize a second runtime
 version. The exact restart consequence and removal gate are tracked in the
 [architecture finding](../development/repository-reconstruction-findings.md#f-32-legacy-descriptor-issuance-and-persisted-decoding-have-different-fates).

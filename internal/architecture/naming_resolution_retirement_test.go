@@ -7,19 +7,79 @@ import (
 	"testing"
 )
 
+// ADR-0100 removed the uncomposed private-resolution transport. ADR-0105
+// then retired the whole Namespace control subsystem: the PO confirmed that
+// no deployed Namespace root deserves data support, so typed incompatibility
+// is the absence of any read path. Old roots stay on disk byte-for-byte;
+// nothing in the working tree can open, convert, or delete them.
 func TestPrivateResolutionTransportPackageIsAbsent(t *testing.T) {
 	t.Parallel()
 	root := repositoryRoot(t)
-	if _, err := os.Stat(filepath.Join(root, "internal", "naming", "resolution")); !os.IsNotExist(err) {
-		t.Error("removed private-resolution transport directory still exists: internal/naming/resolution")
+	for _, relative := range []string{
+		filepath.Join("internal", "naming", "resolution"),
+		filepath.Join("internal", "naming", "namespace"),
+	} {
+		if _, err := os.Stat(filepath.Join(root, relative)); !os.IsNotExist(err) {
+			t.Errorf("removed naming subsystem directory still exists: %s", relative)
+		}
 	}
 	profile := string(readProjectFile(t, root, "tests/profiles/deterministic-packages.txt"))
-	if strings.Contains(profile, "internal/naming/resolution") {
-		t.Error("deterministic package profile still lists the removed private-resolution package")
-	}
 	allowlist := string(readProjectFile(t, root, "tests/profiles/deadcode-allowlist.json"))
-	if strings.Contains(allowlist, "internal/naming/resolution.") {
-		t.Error("deadcode allowlist still carries symbols of the removed private-resolution package")
+	for _, forbidden := range []string{"internal/naming/resolution", "internal/naming/namespace"} {
+		if strings.Contains(profile, forbidden) {
+			t.Errorf("deterministic package profile still lists the removed package %q", forbidden)
+		}
+		if strings.Contains(allowlist, forbidden+".") {
+			t.Errorf("deadcode allowlist still carries symbols of the removed package %q", forbidden)
+		}
+	}
+}
+
+// ADR-0105 also retired the unexposed custody Namespace operations and the
+// uncalled generation-2 reachability writers, per the deadcode registry's own
+// superseding-decision rule for the reachability tracer group.
+func TestNamespaceRetirementRemovesUnexposedWriters(t *testing.T) {
+	t.Parallel()
+	root := repositoryRoot(t)
+	for _, relative := range []string{
+		"internal/custody/vault_namespace_preparation.go",
+		"internal/custody/vault_reconciliation.go",
+		"internal/custody/vault_namespace_signing_test.go",
+	} {
+		if _, err := os.Stat(filepath.Join(root, filepath.FromSlash(relative))); !os.IsNotExist(err) {
+			t.Errorf("retired custody Namespace file still exists: %s", relative)
+		}
+	}
+	contract := string(readProjectFile(t, root, "internal/custody/vault_contract.go"))
+	for _, forbidden := range []string{
+		"OperationSignNamespaceTransition", "OperationPrepareNamespaceSubmission",
+		"OperationActivateRecoveredAuthority", "NamespaceTransition", "NamespaceSubmission",
+	} {
+		if strings.Contains(contract, forbidden) {
+			t.Errorf("custody contract still declares retired Namespace member %q", forbidden)
+		}
+	}
+	descriptor := string(readProjectFile(t, root, "internal/service/reachability/descriptor.go"))
+	store := string(readProjectFile(t, root, "internal/service/reachability/store.go"))
+	reachabilityContract := string(readProjectFile(t, root, "internal/service/reachability/contract.go"))
+	for _, retired := range []struct{ source, name string }{
+		{descriptor, "func Issue("},
+		{store, "func (store *Store) Publish("},
+		{store, "func (store *Store) Lookup("},
+		{reachabilityContract, "IssueInput"},
+	} {
+		if strings.Contains(retired.source, retired.name) {
+			t.Errorf("reachability still declares retired generation-2 writer %q", retired.name)
+		}
+	}
+	for _, forbidden := range []string{"func encodeBody(", "func verifyStored("} {
+		if strings.Contains(descriptor+store, forbidden) {
+			t.Errorf("reachability still declares retired generation-2 helper %q", forbidden)
+		}
+	}
+	if !strings.Contains(store, "func (store *Store) lookup(") ||
+		!strings.Contains(store, "func compareStored(") {
+		t.Error("reachability lost the retained floor comparison kept for F-32")
 	}
 }
 
@@ -35,16 +95,16 @@ func TestResolutionRetirementPreservesRefusalAndBoundedFixture(t *testing.T) {
 
 	fixture := string(readProjectFile(t, root, "cmd/ardents/name_retirement_fixture_test.go"))
 	for _, forbidden := range []string{
-		"nameresolution", "naming/resolution", "httptest", "GatewayProfile",
-		"OpenResolutionGateway", "BindGatewayState",
+		"nameresolution", "naming/resolution", "naming/namespace", "httptest", "GatewayProfile",
+		"OpenResolutionGateway", "BindGatewayState", "epoch.Open(", "record.SignRecord(",
+		"CommitLegacy(", "admission.NewAdmission(",
 	} {
 		if strings.Contains(fixture, forbidden) {
-			t.Errorf("bounded retirement fixture still composes removed transport: %q", forbidden)
+			t.Errorf("bounded retirement fixture still composes removed machinery: %q", forbidden)
 		}
 	}
 	for _, retained := range []string{
-		"prepareRetiredNameState(", "record.SignRecord(", "epoch.Open(",
-		"CommitLegacy(", "admission.NewAdmission(", "retiredNameTreeUnchanged",
+		"prepareRetiredNameState(", "retiredNameSyntheticNamespaceRoot(", "retiredNameTreeUnchanged",
 	} {
 		if !strings.Contains(fixture, retained) {
 			t.Errorf("bounded retirement fixture lost durable-root evidence %q", retained)
@@ -60,15 +120,6 @@ func TestResolutionRetirementPreservesRefusalAndBoundedFixture(t *testing.T) {
 	} {
 		if !strings.Contains(oracle, retained) {
 			t.Errorf("zero-effect retirement oracle lost %q", retained)
-		}
-	}
-
-	view := string(readProjectFile(t, root, "internal/naming/namespace/resolution_view.go"))
-	for _, retained := range []string{
-		"func OpenResolutionGateway(", "func OpenResolutionVerifier(",
-	} {
-		if !strings.Contains(view, retained) {
-			t.Errorf("Namespace resolution view lost %q pending the Namespace disposition", retained)
 		}
 	}
 }

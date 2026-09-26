@@ -1,163 +1,76 @@
-# Naming and private resolution
+# Naming and the retired Namespace
 
-Status: **current maintained technical contract.** This document describes
-`internal/naming/namespace`. It is not a supported public Namespace, a public
-resolver, or a claim of independent Network Epoch operation. The former
-`internal/naming/resolution` transport package was removed by ADR-0100.
+Status: **current maintained technical contract.** This document owns the
+canonical Naming input gate (`internal/naming`), the `ardents name encode`
+command, and the retirement boundaries of the former Name network surface.
+The whole `internal/naming/namespace` control subsystem was removed by
+ADR-0105; the former `internal/naming/resolution` transport package was
+removed earlier by ADR-0100. Neither is a supported public Namespace, a
+public resolver, or a claim of independent Network Epoch operation.
 
 The [closed successor workload](../product/protected-service-workload.md)
-uses Target Link first. Canonical Names remain the next separately designed
-stage with a real authenticated producer. ADR-0081 does not authorize an alpha
-alias or simulated close to satisfy this boundary.
+uses Target Link first. Canonical Names remain a possible future stage that
+would require an entirely new scoped design; ADR-0081 does not authorize an
+alpha alias or simulated close to satisfy this boundary.
 
 ## Ownership and trust boundary
 
-`naming/namespace` owns canonical Name parsing use, Authority/lifecycle
-transitions, Recovery verification, claim evidence verification, admission-owned
-naming facts, pending successor persistence, current Namespace materialization,
-and local current-proof verification. Its persistence and commitments are
-Namespace-owned under R-060; it does not import Network State as a foundation.
+`internal/naming` owns canonical Service Name parsing, normalization, and
+deterministic encoding checks as production-owned input gates. It has no
+Namespace state, no transport, and no dependency beyond the standard
+library. `ardents name encode` is its only operator command.
 
-The former `naming/resolution` package owned one fixed private OHTTP
-exchange, its role-local selection, nonce/replay state, and observer-safe
-counters, transporting opaque Authority Submission bytes and current proofs.
-No maintained production runtime ever composed a Gateway or Resolver from
-those seams, so ADR-0100 removed the package, its tests, and its OHTTP/CIRCL
-dependency closure. The Namespace-owned Gateway/verifier views remain; a
-future confidential Name exchange requires a separately selected
-authority/wire and a fresh dependency review, not revival of the removed
-adapter.
+The former Namespace subsystem owned Authority/lifecycle transitions,
+Recovery verification, claim evidence verification, admission-owned naming
+facts, pending successor persistence, current Namespace materialization, and
+local current-proof verification across seven packages
+(`internal/naming/namespace` and its `admission`, `authority`, `claim`,
+`epoch`, `record`, and `recovery` submodules). No maintained production
+runtime ever composed that sequence into an operator path: ADR-0090 retired
+the `name resolve`/`name control` adapters, ADR-0100 removed the private
+resolution transport, and ADR-0105 deleted the subsystem itself after the
+product owner confirmed that no deployed Namespace root deserves data
+support or backward compatibility.
 
-The maintained module contracts cover the following transitions; no single
-production runtime composes this whole sequence:
+## Namespace subsystem retirement (ADR-0105)
 
-```text
-Namespace derives an exact successor/Record pair from a canonical unsigned
-existing-Name Intent
-  -> Custody signs only that sealed pair when its authenticated active
-     Authority, predecessor generation, and predecessor revision match
-  -> the Gateway-side module accepts only submitted/denied
-  -> Namespace persists the signed successor as pending
-  -> authenticated Epoch installation selects a pending prefix and/or ClaimWinner
-  -> threshold-attested Store commit publishes current state
-  -> a separately selected transport carries a proof (no maintained
-     implementation since ADR-0100)
-  -> local VerifyBinding returns an immutable Binding
-```
+The disposition is **typed incompatibility through absence**: no working-tree
+code can open, read, convert, materialize, or delete an old Namespace root.
 
-`submitted` is not current state. A current Binding exists only after the
-threshold-attested materialization verifies at the local decision time.
+- An existing Namespace root stays on disk byte-for-byte. Nothing reads it as
+  the new format, nothing converts it, and nothing deletes its data; the
+  absence of any read path is itself the incompatibility error.
+- The only operator commands that formerly touched such a root, `name
+  resolve` and `name control`, keep their exact pre-effect refusal (below).
+- Custody lost its three never-command-exposed Namespace operations
+  (`sign-namespace-transition`, `prepare-namespace-submission`,
+  `activate-recovered-authority`) together with their operation kinds,
+  receipt proof/submission fields, and preparation/reconciliation files.
+  The `AuthorityName` record kind remains recognizable to the generic
+  custody envelope grammar so existing Name Authority vault records stay
+  inspectable, verifiable, exportable, and purgeable through the ordinary
+  record commands; that recognition needs no Namespace import.
+- The uncalled generation-2 reachability writers (`Issue`, `Store.Publish`,
+  `Store.Lookup` and their private helpers) retired under the same decision,
+  per the deadcode registry rule that removes that tracer group with its
+  superseding service decision. The retained v1/v2 decode grammar and floor
+  comparison stay governed by the separate open card F-32.
+- `ardents name encode`, canonical Naming bytes, and the retirement refusals
+  are unchanged.
 
-## Claim and Epoch boundary
-
-R-042/ADR-0017 require commitment in Epoch `E`, reveal in `E+1`, and the
-lowest authenticated input ordinal for a single Name. A `ClaimWinner` is a
-process-local opaque result of one authenticated close verification. It derives
-the root or reclaim transition from the winner, verified predecessor,
-materialization time, and Namespace policy; it does not accept a later raw
-proof, arbitrary ordinal, Name, Authority, or lease deadline.
-
-`EpochInstallation` starts from the verified Store snapshot, can select only
-the next durable pending prefix, accepts a `ClaimWinner` only through a sealed
-signing request exposing the exact transcript and Authority key, and uses the existing threshold
-materialization statement for publication. `AdmitClaimCommitment` consumes one
-local R-045 `root-claim` proof and yields an opaque `EpochClaimInput`: its
-canonical 64 bytes are the commitment followed by the admitted challenge
-digest. The input leaf also binds the Epoch-assigned ordinal. Network/Epoch
-code can order and commit only those opaque bytes; it receives no Name,
-Authority, secret, or local proof state. A threshold-signed close must still
-prove that the revealed claim opens that exact input leaf before
-`EpochClaimInput.VerifyClose` can yield a materializable fact for that local
-submission. `OpenClaimWinner` remains the proof-only verifier for other
-observers. This boundary does not
-select a Network log, transport, or shared persistence foundation. An
-incomplete or forked close must not mutate a Lease.
-No global-close producer is selected in the maintained runtime. Root-claim
-current behavior is unavailable until a separately selected Network Epoch
-protocol supplies that complete close; R-074 retains the decision evidence.
-
-An installation captures its current-generation identity. It may publish a
-selected pending prefix together with verified claim materialization, but it
-fails closed if another current generation has appeared before commit; the
-legacy raw `Store.CommitLegacy` is not the typed installation authority.
+A future confidential Name exchange or protected Service Name access
+requires a separately selected authority/wire design and a fresh dependency
+review, not revival of any removed adapter or module.
 
 ## Retained technical limits
 
 | Boundary | Enforced current limit | Status / owner |
 |---|---:|---|
-| Canonical Name V1 | lowercase ASCII labels 1–63 bytes; total ≤253 bytes; depth ≤127 | retained R-041 profile |
-| Claim reveals for one Name | ≤32 | retained R-042 measured tracer rule; not total Epoch capacity |
-| Claim proof wire | ≤2,048 bytes | retained internal proof envelope |
-| Current Namespace proof | ≤4,096 bytes | retained Namespace proof envelope (Epoch materialization) |
-| Current Namespace corpus | ≤127 signed Records | R-066 one-writer technical tracer; not product scale |
-| Concurrent exact local readers | 8 in R-066 measurement | measured tracer condition, not a concurrency promise |
-| Pending journal | ≤127 entries; each submission/successor ≤64 KiB | Namespace-local restart bridge |
-| Static control input | ≤16 KiB | C0 internal control representation pending F031 cutover |
-| Signed Record | payload ≤1,846 bytes; container ≤1,920 bytes | R-073 retains 76 bytes below the measured worst-case proof fit |
-| Admission profiles | resolution `16/4096/64`; renewal-update `16/2048/32`; policy-recovery `17/1024/16`; root-claim `18/1024/8` (`work bits/spent/in-flight`) | retained R-045 local amplification guard; not Sybil resistance |
+| Canonical Name V1 | lowercase ASCII labels 1-63 bytes; total <=253 bytes; depth <=127 | retained R-041 profile, `internal/naming` |
 
-The Record/container ceiling and several C0 construction limits are deliberately
-listed together because they are not a compatible product capacity contract.
-These individual bounds do not establish that every constructible value can
-also be persisted, proved, and carried through the private exchange. A combined compatibility contract must reject a value before signing when
-it cannot persist, prove, or traverse the private exchange. Growth beyond the
-retained tracer also requires a measured scale/index decision. Delivery and remediation status belong in the issue tracker.
-
-## Invariants
-
-- A Gateway cannot manufacture a durable/current Record: ordinary control
-  carries an Authority-signed exact successor, which Namespace recomputes and
-  verifies before journaling.
-- Namespace's `TransitionSigningRequest` carries the exact predecessor
-  generation/revision, operation transcript, and expected Authority key; a
-  custody boundary may not receive a raw private key or arbitrary transcript,
-  nor sign a request derived from an older local predecessor.
-- The durable Authority's `Prepare` seam now accepts only a canonical unsigned
-  existing-Name Intent, derives the transition and successor Record without
-  mutating its chain, and obtains their signatures as one custody pair. Its
-  static intent digest remains the anonymous-admission binding; only a later
-  `Submit` appends the prepared canonical submission. The command and Gateway
-  consume that retained complete signed wire; it is not a second signing route.
-- Current materialization may advance only from the durable pending prefix
-  and/or verified `ClaimWinner` on the new installation path; restart
-  reconstructs verified current plus unapplied pending state but never promotes
-  pending on its own.
-- A `ClaimWinner` materializes only into an installation for the same Network
-  and Epoch that authenticated its close; a valid foreign close is not a local
-  Namespace authority.
-- Durable control rejects late root `claim` operations before consuming a
-  Gateway admission proof. Claim admission belongs to Epoch input ingestion.
-- Target resolution is valid only while its signed Record validity, own Lease,
-  and complete parent lineage remain valid; a V3 target Record is decode-only
-  and not resolvable until replaced by V4.
-- A V3 current-proof leaf carries an authenticated active-to-Grace lineage
-  boundary and finite `notAfter`. A verifier derives Grace from signed
-  deadlines after that boundary, while an explicit Grace revision remains
-  valid. It does not synthesize a Released Record or choose a reclaim winner;
-  those shared transitions remain alpha-control work under
-  [ADR-0043](../adr/0043-derive-grace-from-signed-deadlines.md).
-- A verified Binding is not an identity, a Person, an Endpoint location, or a
-  privacy guarantee. Private Resolution has the conditions and limitations in
-  the threat model; encrypted payloads do not imply anonymity.
-
-## Compatibility and excluded work
-
-The public `Record`, `Op`, `ApplyLegacy`/`ApplyAtLegacy`, `VerifyLegacy`,
-`ResolveBindingLegacy`, raw
-`Store.CommitLegacy`, and historical Stage 6 fixtures remain compatibility surface.
-The retained Namespace Gateway/verifier views consume sealed views rather
-than those caller-constructed values; their former Resolution transport
-consumer was removed by ADR-0100, and no production Gateway/Resolver
-composition exists. The remaining global-close owner is not
-selected: it would have to accept the opaque admitted input, commit its
-ordinal/root, and issue the complete threshold-signed close before it yields a
-`ClaimWinner`. Scale, index/cache, product capacity, and supported-platform
-claims remain outside this technical contract.
-
-The project-controlled alpha selects no substitute: under ADR-0054, alpha
-control cannot materialize, close, release, reclaim, or administratively
-recover a canonical Name. Its user-visible control outcome is `not-selected`;
-Target Links remain the complete current destination path.
+The former Namespace corpus, journal, proof, and admission-profile limits
+died with the subsystem; their historical values are evidence in the ADR
+chain and the retired research dossiers, not current bounds.
 
 ## Operator Name network command retirement
 
@@ -166,80 +79,94 @@ retirement of the old `ardents name resolve` and `ardents name control`
 HTTP/OHTTP adapters. A recognized command must refuse at command dispatch,
 before validating its remaining arguments, decoding context, reading an input
 or operation file, opening Network State, constructing or using transport,
-writing output, or changing Namespace state. The operator result explains that
-the old Name network command is retired and protected Service Name access is
-not yet selected; it supplies no Target-Link, AAI3, DNS, or other fallback.
-The command now enforces this boundary with the exact refusal `name network
-command is retired; protected Service Name access is not selected`. Its former
-plan/context, State-view, receipt, and operation adapters are absent.
+writing output, or changing any durable state. The operator result explains
+that the old Name network command is retired and protected Service Name
+access is not yet selected; it supplies no Target-Link, AAI3, DNS, or other
+fallback. The command enforces this boundary with the exact refusal `name
+network command is retired; protected Service Name access is not selected`.
+Its former plan/context, State-view, receipt, and operation adapters are
+absent.
 
-This command decision does not retire the Service Name product function.
-`ardents name encode` and canonical Naming bytes remain unchanged. Namespace
-lifecycle, proofs, pending journals, current materialization, and custody remain
-with their existing module consumers and stored evidence. Production custody
-continues to consume Namespace authority, record, and epoch contracts. ADR-0100
-subsequently removed the private-resolution transport package itself, its
-tests, and its OHTTP dependency closure; protected Service Name access
-remains not selected, and a future exact consumer requires its own scoped
-decision and dependency review.
+This command decision does not retire the Service Name grammar itself.
+`ardents name encode` and canonical Naming bytes remain unchanged. ADR-0100
+removed the private-resolution transport package, its tests, and its OHTTP
+dependency closure; ADR-0105 then removed the Namespace subsystem that the
+transport once served. Protected Service Name access remains not selected.
 
-No existing State or Namespace root, Record, journal, floor, proof, or authority
-material is converted, reset, deleted, or promoted into successor authority.
-No successor wire, Resolver/Gateway topology, authority, governance, migration,
-or AAI3 Name path is selected. Until one is separately selected and delivered,
-there is no maintained operator command for network Name resolution or control.
+No existing State root, Namespace root, Record, journal, floor, proof, or
+authority material is converted, reset, deleted, or promoted into successor
+authority. No successor wire, Resolver/Gateway topology, authority,
+governance, migration, or AAI3 Name path is selected. Until one is
+separately selected and delivered, there is no maintained operator command
+for network Name resolution or control.
+
 The command regression executes the recognized resolve and control verbs
 against a bounded fixture that materializes an authenticated State root, a
-committed Namespace root, and plan/operation files shaped like the former
-adapter inputs. It proves zero transport attempts, no output, and
-byte-for-byte unchanged contents of those same durable roots after both
-retired command invocations. Canonical
-encoding retains its exact behavior vector, while the Namespace Modules
-retain their own focused behavior suites.
+synthetic root shaped like the retired Namespace store, and plan/operation
+files shaped like the former adapter inputs. Since ADR-0105 the fixture
+composes no Namespace machinery: no working-tree code could read a real
+committed root anyway. The regression proves zero transport attempts, no
+output, and byte-for-byte unchanged contents of both durable roots after all
+retired command invocations. Canonical encoding retains its exact behavior
+vector.
 
 ## Alpha corpus compatibility
 
-The Alpha Name Corpus is a separately authenticated historical local overlay;
-it is not canonical Namespace state. Fresh corpus intake is retired before any
-floor effect; the [command reference](../reference/commands.md#ardents-control)
-owns that observable refusal and the retained read-only inspection route.
-Existing accepted floor bytes remain unchanged evidence, including their
-serial, digest, withdrawal, rollback, and conflict facts; intake retirement
-does not make them authority for new acceptance or fallback. No maintained
-Endpoint destination consumes those floors: the historical Alpha prefix is
-recognized only for its final refusal before any floor read or resolver work.
-The parser and persistent reader remain solely as the ADR-0088 compatibility
+The Alpha Name Corpus is a separately authenticated historical local
+overlay; it was never canonical Namespace state. Fresh corpus intake is
+retired before any floor effect; the
+[command reference](../reference/commands.md#ardents-control) owns that
+observable refusal and the retained read-only inspection route. Existing
+accepted floor bytes remain unchanged evidence, including their serial,
+digest, withdrawal, rollback, and conflict facts; intake retirement does not
+make them authority for new acceptance or fallback. No maintained Endpoint
+destination consumes those floors: the historical Alpha prefix is recognized
+only for its final refusal before any floor read or resolver work. The
+parser and persistent reader remain solely as the ADR-0088 compatibility
 obligation pending a separate data-retention decision.
 
 [ADR-0088](../adr/0088-retire-alpha-service-links-and-corpus-intake.md)
-retires fresh intake and live Alpha Service Links without grace or conversion.
-The [Endpoint contract](endpoint-service-runtime.md#alpha-destination-retirement)
+retires fresh intake and live Alpha Service Links without grace or
+conversion. The
+[Endpoint contract](endpoint-service-runtime.md#alpha-destination-retirement)
 owns the refusal order and retained-floor boundary.
 
-There is no current C0 participant intake procedure or promoted corpus download
-source. Fresh C0 Endpoint plans use Target Links; the complete historical alpha
-plan is retained only under the
+There is no current C0 participant intake procedure or promoted corpus
+download source. Fresh C0 Endpoint plans use Target Links; the complete
+historical alpha plan is retained only under the
 [Endpoint compatibility contract](endpoint-service-runtime.md#endpoint-process-contract).
 The deferred [intake template](https://github.com/dianabuilds/ardents-network/blob/f82a52dde912e975df0b23bdcf459f1e5b71def3/docs/product/closed-alpha-name-corpus.md)
 and [cohort notice](https://github.com/dianabuilds/ardents-network/blob/f82a52dde912e975df0b23bdcf459f1e5b71def3/docs/product/closed-alpha-name-corpus-notice-template.md)
-are archived at that revision. They must not be followed as current commands.
-Reintroduction requires an explicitly selected operator contract compatible
-with current enrollment, not reuse of an old enrollment JSON instruction.
+are archived at that revision. They must not be followed as current
+commands. Reintroduction requires an explicitly selected operator contract
+compatible with current enrollment, not reuse of an old enrollment JSON
+instruction.
 
 ## Verification
 
 The maintained local gate is `make quick-check`; `make check` is required
-before integration. Focused Namespace behavior is covered by
-`go test ./internal/naming/namespace/... -count=1`.
+before integration. The retirement boundaries are covered by the zero-effect
+refusal oracle (`go test ./cmd/ardents/ -run
+TestNameNetworkCommandsRetireBeforeEffects -count=1`), the architecture
+guards in `internal/architecture/naming_resolution_retirement_test.go`
+(subsystem and writer absence, exact refusal, bounded synthetic fixture),
+and `go test ./internal/naming/... -count=1` for the canonical gate.
 
 ## Governing decisions
 
-The maintained contract above is authoritative. Consequential choices are
-recorded by [ADR-0017](../adr/0017-authenticated-name-claim-ordering.md),
+The maintained contract above is authoritative. The removed Namespace
+subsystem historical choices are recorded by
+[ADR-0017](../adr/0017-authenticated-name-claim-ordering.md),
 [ADR-0018](../adr/0018-threshold-recovery-multisignatures.md),
 [ADR-0019](../adr/0019-bounded-anonymous-name-admission.md),
 [ADR-0020](../adr/0020-authenticate-current-namespace-materialization.md),
 [ADR-0022](../adr/0022-bind-name-record-validity.md), and
-[ADR-0023](../adr/0023-pending-signed-namespace-successors.md). Historical
-research dossiers were retired after their decisions and behavior were
-promoted here, into ADRs, and into tests.
+[ADR-0023](../adr/0023-pending-signed-namespace-successors.md). Its
+retirement chain is
+[ADR-0090](../adr/0090-retire-name-operator-network-adapters.md) (operator
+adapters),
+[ADR-0100](../adr/0100-remove-private-resolution-transport.md) (transport
+package), and ADR-0105 (the subsystem itself, the unexposed custody
+operations, and the generation-2 reachability writers). Historical research
+dossiers were retired after their decisions and behavior were promoted
+here, into ADRs, and into tests.

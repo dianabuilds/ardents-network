@@ -18,7 +18,7 @@ func TestNamingServiceLinkTracerIsAbsent(t *testing.T) {
 			t.Errorf("name.go still contains rejected Service-Link surface %q", forbidden)
 		}
 	}
-	for _, retained := range []string{"func Parse(raw string) (Name, error)", "func IsDescendant(child, parent Name) bool", "func parseName(raw string) (Name, error)"} {
+	for _, retained := range []string{"func Parse(raw string) (Name, error)", "func parseName(raw string) (Name, error)"} {
 		if !strings.Contains(names, retained) {
 			t.Errorf("name.go lost retained declaration %q", retained)
 		}

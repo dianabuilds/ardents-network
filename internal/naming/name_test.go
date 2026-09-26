@@ -46,10 +46,4 @@ func TestLabelsAndDescendant(t *testing.T) {
 	if len(labels) != 2 || labels[0] != "blog" || labels[1] != "example" {
 		t.Fatalf("labelsOf = %v", labels)
 	}
-	if !IsDescendant("blog.example", "example") {
-		t.Fatalf("expected blog.example descendant of example")
-	}
-	if IsDescendant("example", "blog.example") {
-		t.Fatalf("expected example not descendant of blog.example")
-	}
 }

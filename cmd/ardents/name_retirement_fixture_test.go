@@ -15,9 +15,6 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/naming"
-	"github.com/dianabuilds/ardents-network/internal/naming/namespace/admission"
-	"github.com/dianabuilds/ardents-network/internal/naming/namespace/epoch"
-	"github.com/dianabuilds/ardents-network/internal/naming/namespace/record"
 )
 
 type retiredNameInputs struct {
@@ -30,18 +27,18 @@ type retiredNameInputs struct {
 }
 
 type retiredNamePlan struct {
-	Schema                     string              `json:"schema"`
-	StateRoot                  string              `json:"state_root"`
-	NetworkID                  string              `json:"network_id"`
-	AuthorityPublic            []string            `json:"authority_public"`
-	AuthorityThreshold         int                 `json:"authority_threshold"`
-	AcceptedProfile            string              `json:"accepted_profile"`
-	SelectionAt                string              `json:"selection_at"`
-	Deadline                   string              `json:"deadline"`
-	RelayNodeID                string              `json:"relay_node_id"`
-	GatewayNodeID              string              `json:"gateway_node_id"`
-	ConnectionRendezvousNodeID string              `json:"connection_rendezvous_node_id"`
-	AdmissionChallenge         admission.Challenge `json:"admission_challenge"`
+	Schema                     string               `json:"schema"`
+	StateRoot                  string               `json:"state_root"`
+	NetworkID                  string               `json:"network_id"`
+	AuthorityPublic            []string             `json:"authority_public"`
+	AuthorityThreshold         int                  `json:"authority_threshold"`
+	AcceptedProfile            string               `json:"accepted_profile"`
+	SelectionAt                string               `json:"selection_at"`
+	Deadline                   string               `json:"deadline"`
+	RelayNodeID                string               `json:"relay_node_id"`
+	GatewayNodeID              string               `json:"gateway_node_id"`
+	ConnectionRendezvousNodeID string               `json:"connection_rendezvous_node_id"`
+	AdmissionChallenge         retiredNameChallenge `json:"admission_challenge"`
 }
 
 type retiredNameRecordOperation struct {
@@ -75,12 +72,15 @@ type retiredNameRecordOperation struct {
 }
 
 // prepareRetiredNameInputs materializes one authenticated State root, one
-// committed Namespace root carrying a signed Record, and plan/operation files
-// shaped like the former name resolve / name control adapter inputs
-// (ADR-0090). Since ADR-0100 removed the uncomposed private-resolution
-// transport, the fixture composes no Gateway, Relay, or Resolver and starts no
-// server; the retired commands must refuse before reading any of these files,
-// and TestNameNetworkCommandsRetireBeforeEffects proves the refusal leaves
+// synthetic root shaped like the retired Namespace store, and plan/operation
+// files shaped like the former name resolve / name control adapter inputs
+// (ADR-0090). ADR-0105 deleted the whole Namespace control subsystem: no
+// working-tree code can read, convert, or delete a real
+// Namespace root, so the fixture no longer composes one, and the synthetic
+// bytes stand in as the untouched durable data of an old root. The fixture
+// composes no Gateway, Relay, or Resolver and starts no server; the retired
+// commands must refuse before reading any of these files, and
+// TestNameNetworkCommandsRetireBeforeEffects proves the refusal leaves
 // both durable roots byte-for-byte unchanged.
 func prepareRetiredNameInputs(t *testing.T) retiredNameInputs {
 	t.Helper()
@@ -89,68 +89,10 @@ func prepareRetiredNameInputs(t *testing.T) retiredNameInputs {
 	deadline := now.Add(15 * time.Second)
 	stateFixture := prepareRetiredNameState(t, root, now,
 		[3]string{"127.0.0.1:7441", "127.0.0.1:7442", "127.0.0.1:7443"})
-
-	namePrivate := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{76}, ed25519.SeedSize))
-	namePublic := namePrivate.Public().(ed25519.PublicKey)
-	signed, err := record.SignRecord(stateFixture.network, record.Record{
-		Name: "alice", Generation: 1, Revision: 1, Lease: "active", Consistency: "current", Recovery: "stable",
-		Authority: hex.EncodeToString(namePublic), Target: [32]byte{1},
-		LeaseExpiresAt: now.Add(time.Hour).Unix(), GraceExpiresAt: now.Add(2 * time.Hour).Unix(),
-		RecordNotAfter: now.Add(30 * time.Minute).UnixMilli(),
-	}, namePrivate)
-	if err != nil {
-		t.Fatal(err)
-	}
-	public := stateFixture.authorities[0].Public().(ed25519.PublicKey)
-	secondPublic := stateFixture.authorities[1].Public().(ed25519.PublicKey)
-	firstID, secondID := sha256.Sum256(public), sha256.Sum256(secondPublic)
-	policy := epoch.MaterializationPolicy{Network: stateFixture.network,
-		Rule:        "ardents-namespace-materialization-v1",
-		Authorities: map[[32]byte]ed25519.PublicKey{firstID: public, secondID: secondPublic}, Threshold: 2}
-	namespaceRoot := filepath.Join(root, "namespace")
-	store, err := epoch.Open(namespaceRoot, policy)
-	if err != nil {
-		t.Fatal(err)
-	}
-	storeClosed := false
-	closeStore := func() error {
-		if storeClosed {
-			return nil
-		}
-		storeClosed = true
-		return store.Close()
-	}
-	t.Cleanup(func() {
-		if err := closeStore(); err != nil {
-			t.Errorf("close Name fixture Namespace Store: %v", err)
-		}
-	})
-	materialization := epoch.Epoch{Number: 1, Digest: stateFixture.digest, CutoffOffset: 1,
-		TransitionRoot: sha256.Sum256([]byte("transitions")), TransitionLength: 1,
-		RejectionRoot: sha256.Sum256([]byte("rejections"))}
-	if err := store.CommitLegacy(materialization, [][]byte{signed}, func(transcript []byte) ([][32]byte, [][]byte, error) {
-		ids := [][32]byte{firstID, secondID}
-		signatures := [][]byte{ed25519.Sign(stateFixture.authorities[0], transcript),
-			ed25519.Sign(stateFixture.authorities[1], transcript)}
-		if bytes.Compare(ids[0][:], ids[1][:]) > 0 {
-			ids[0], ids[1] = ids[1], ids[0]
-			signatures[0], signatures[1] = signatures[1], signatures[0]
-		}
-		return ids, signatures, nil
-	}); err != nil {
-		t.Fatal(err)
-	}
-	gate, err := admission.NewAdmission([32]byte{2}, stateFixture.network, 1, [32]byte{77})
-	if err != nil {
-		t.Fatal(err)
-	}
+	namespaceRoot := retiredNameSyntheticNamespaceRoot(t, root)
 	isolation := [32]byte{1}
 	resolveDigest := retiredNameResolutionDigest(t, stateFixture.network, "alice", deadline.UnixNano())
-	resolveChallenge, err := gate.Issue(now.UnixMilli(), "resolution", resolveDigest, isolation,
-		deadline.UnixMilli(), [16]byte{1})
-	if err != nil {
-		t.Fatal(err)
-	}
+	resolveChallenge := newRetiredNameChallenge(now, "resolution", resolveDigest, isolation, deadline, 1)
 	operation := retiredNameRecordOperation{Kind: "record", Name: "alice", Generation: 1,
 		ExpectedRevision: 1, Target: [32]byte{2}, RecordNotAfter: now.Add(time.Hour).Unix(),
 		AuthorityProof: []byte("proof")}
@@ -160,11 +102,9 @@ func prepareRetiredNameInputs(t *testing.T) retiredNameInputs {
 	}
 	controlDigest := sha256.Sum256(append([]byte("ardents-name-control-operation-v1\x00"), operationRaw...))
 	operation.OperationDigest = controlDigest
-	controlChallenge, err := gate.Issue(now.UnixMilli(), "renewal-update", controlDigest, isolation,
-		deadline.UnixMilli(), [16]byte{2})
-	if err != nil {
-		t.Fatal(err)
-	}
+	controlChallenge := newRetiredNameChallenge(now, "renewal-update", controlDigest, isolation, deadline, 2)
+	public := stateFixture.authorities[0].Public().(ed25519.PublicKey)
+	secondPublic := stateFixture.authorities[1].Public().(ed25519.PublicKey)
 	authorities := []string{hex.EncodeToString(public), hex.EncodeToString(secondPublic)}
 	sort.Strings(authorities)
 	base := retiredNamePlan{StateRoot: stateFixture.root, NetworkID: hex.EncodeToString(stateFixture.network[:]),
@@ -180,10 +120,6 @@ func prepareRetiredNameInputs(t *testing.T) retiredNameInputs {
 	controlInput.Schema = "ardents-private-name-control-input-v1"
 	controlInput.ConnectionRendezvousNodeID = retiredNameNodeID(0)
 	controlInput.AdmissionChallenge = controlChallenge
-
-	if err := closeStore(); err != nil {
-		t.Fatal(err)
-	}
 	return retiredNameInputs{
 		resolvePath:   retiredNameWriteJSON(t, root, "resolve.json", resolveInput),
 		controlPath:   retiredNameWriteJSON(t, root, "control.json", controlInput),
@@ -191,6 +127,57 @@ func prepareRetiredNameInputs(t *testing.T) retiredNameInputs {
 		stateRoot:     stateFixture.root, namespaceRoot: namespaceRoot,
 		isolation: hex.EncodeToString(isolation[:]),
 	}
+}
+
+// retiredNameChallenge is the synthetic stand-in for the deleted
+// admission.Challenge grammar. The retired commands refuse before parsing
+// any plan file, so only the presence of the field matters, never its
+// contents.
+type retiredNameChallenge struct {
+	Schema    string `json:"schema"`
+	IssuedAt  int64  `json:"issued_at"`
+	Purpose   string `json:"purpose"`
+	Digest    string `json:"digest"`
+	Isolation string `json:"isolation"`
+	Deadline  int64  `json:"deadline"`
+	Counter   string `json:"counter"`
+}
+
+func newRetiredNameChallenge(now time.Time, purpose string, digest, isolation [32]byte, deadline time.Time, counter byte) retiredNameChallenge {
+	return retiredNameChallenge{Schema: "ardents-namespace-admission-challenge-v1",
+		IssuedAt: now.UnixMilli(), Purpose: purpose, Digest: hex.EncodeToString(digest[:]),
+		Isolation: hex.EncodeToString(isolation[:]), Deadline: deadline.UnixMilli(),
+		Counter: hex.EncodeToString([]byte{counter})}
+}
+
+// retiredNameSyntheticNamespaceRoot writes opaque durable bytes shaped like
+// the retired Namespace store: a legacy marker, one epoch file, and one
+// signed record file. No working-tree code reads them; they exist so the
+// zero-effect oracle can prove that the refusal leaves old Namespace data
+// byte-for-byte untouched on disk.
+func retiredNameSyntheticNamespaceRoot(t *testing.T, root string) string {
+	t.Helper()
+	namespaceRoot := filepath.Join(root, "namespace")
+	epochDir := filepath.Join(namespaceRoot, "epochs", "00000001")
+	if err := os.MkdirAll(filepath.Join(epochDir, "records"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	marker := []byte("ardents-namespace-store-v1\n")
+	if err := os.WriteFile(filepath.Join(namespaceRoot, ".ardents-namespace-store-v1"), marker, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	namePrivate := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{76}, ed25519.SeedSize))
+	payload := append([]byte("ardents-name-record-v1\x00"), []byte("alice")...)
+	signed := append(payload, ed25519.Sign(namePrivate, payload)...)
+	recordDigest := sha256.Sum256(signed)
+	epochRaw := append([]byte("ardents-namespace-epoch-v1\x00"), recordDigest[:]...)
+	if err := os.WriteFile(filepath.Join(epochDir, "epoch.bin"), epochRaw, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(epochDir, "records", "alice.bin"), signed, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	return namespaceRoot
 }
 
 func retiredNameResolutionDigest(t *testing.T, network [32]byte, raw string, deadline int64) [32]byte {

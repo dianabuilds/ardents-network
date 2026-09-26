@@ -112,8 +112,7 @@ func validServiceIssuance(operation Operation) bool {
 	return validRecordID(operation.RecordID) && operation.Expected.Kind == AuthorityService &&
 		operation.Expected != (AuthorityBinding{}) && len(operation.ServiceRequest) != 0 && operation.Path == "" &&
 		operation.ServiceRequestCommitment == requestCommitment &&
-		isZeroAuthorityState(operation.Authority) && operation.Transition == nil && operation.Preparation == nil &&
-		operation.Reconciliation == nil
+		isZeroAuthorityState(operation.Authority)
 }
 
 func openServiceAuthority(raw, password []byte, expected AuthorityBinding) (AuthorityState, EnvelopeInfo, error) {

@@ -80,11 +80,12 @@ whose exact scope is owned by Testing.
 
 The old Name operator network adapters have their own selected
 [retirement boundary](../technical/naming.md#operator-name-network-command-retirement).
-Their retirement preserves local `name encode`, canonical Namespace
-lifecycle/proofs, custody, and existing evidence; it does not deliver protected
-Service Name access. The command dispatch now enforces the refusal, and the
-command-owned HTTP/OHTTP plan, State-view, receipt, and operation adapters are
-absent. The retained resolution Module is not a production operator route.
+Their retirement preserves local `name encode` and canonical Naming bytes; it
+does not deliver protected Service Name access. The command dispatch enforces
+the refusal, and the command-owned HTTP/OHTTP plan, State-view, receipt, and
+operation adapters are absent. ADR-0105 subsequently removed the whole
+Namespace subsystem and its never-command-exposed custody operations; an old
+Namespace root stays on disk untouched with no read path at all.
 
 The current State and source event schemas are coordinated C0 command outputs:
 there is no H3 reader or compatibility window. Resource observations are
@@ -239,11 +240,12 @@ are owned by [Custody](../technical/release-update-custody.md) and
 file, changing a Target, or deleting state is not a command-level recovery
 procedure.
 
-The custody command deliberately exposes no Service recovery activation,
-reconciliation without a Namespace witness, or Namespace signing route. A
-restored Service Authority remains locked and issuance-unavailable; a restored
-Name Authority remains locked until a separate fresh opaque Namespace witness
-is implemented and verified.
+The custody command deliberately exposes no Service recovery activation. A
+restored Service Authority remains locked and issuance-unavailable. ADR-0105
+retired the never-exposed Namespace signing, submission, and reconciliation
+operations along with the subsystem itself; a restored Name Authority record
+remains inspectable, verifiable, exportable, and purgeable through the
+generic record commands, and no Namespace witness or activation route exists.
 
 The completed `ardents-release-custody` and `ardents-state-custody` local
 ceremony commands have no maintained routes. ADR-0067 retires their current
@@ -254,7 +256,7 @@ historical evidence.
 
 `ardents-control` is a separate alpha-control program. It never starts an
 Endpoint, downloads bytes, changes Release/Network State roots, or turns an
-alpha name into canonical Namespace state. It has no current two-Endpoint
+alpha name into any canonical Naming state. It has no current two-Endpoint
 qualification intake; the retained routes below own their own explicit inputs
 and inspection roots.
 

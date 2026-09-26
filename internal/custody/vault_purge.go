@@ -8,8 +8,7 @@ import (
 )
 
 func (vault *Vault) purgeRecord(ctx context.Context, operation Operation, secrets SecretInput) (Receipt, error) {
-	if ctx == nil || secrets == nil || operation.Transition != nil || operation.Preparation != nil || operation.Reconciliation != nil ||
-		!isZeroAuthorityState(operation.Authority) || operation.Path != "" || !validRecordID(operation.RecordID) {
+	if ctx == nil || secrets == nil || !isZeroAuthorityState(operation.Authority) || operation.Path != "" || !validRecordID(operation.RecordID) {
 		return Receipt{}, ErrInvalid
 	}
 	raw, state, path, err := vault.exportableRecord(operation.RecordID)

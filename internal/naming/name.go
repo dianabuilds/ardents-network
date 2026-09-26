@@ -108,23 +108,6 @@ func labelsOf(name Name) ([]string, error) {
 	return parseLabels(string(parsed))
 }
 
-// IsDescendant reports whether child is strictly below parent in the canonical
-// parent-on-the-right hierarchy.
-func IsDescendant(child, parent Name) bool {
-	parsedChild, err := parseName(string(child))
-	if err != nil {
-		return false
-	}
-	parsedParent, err := parseName(string(parent))
-	if err != nil {
-		return false
-	}
-	if parsedChild == parsedParent {
-		return false
-	}
-	return strings.HasSuffix(string(parsedChild), "."+string(parsedParent))
-}
-
 func isAllDigit(label string) bool {
 	if label == "" {
 		return false
