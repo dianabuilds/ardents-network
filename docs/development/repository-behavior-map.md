@@ -34,7 +34,7 @@ it can inform a package move or deletion.
 | Project bounded diagnostics without authority or network effects | [Command surface](command-surface.md) | `cmd/ardents/offline.go` -> `internal/diagnostics/timeline` | Node/Endpoint event producers and read-only timeline projection traced below; attempt-level Route history is still absent |
 | Run installed qualification using the real Endpoint and Node paths | [Testing model](testing.md), [protected workload](../product/protected-service-workload.md) | `cmd/ardents-qualification/main.go`, `internal/qualification`, `tests/qualification` | Fixed stream runner's plan, artifact, participant join and evidence-terminal path traced below; ordinary installed text command profile is separate and remains an acceptance gate |
 | Refuse retired commands, plans, wire forms, and persisted identities without fallback | [Command surface](command-surface.md), affected current technical owner | `cmd/ardents/offline.go`, `cmd/ardents/endpoint_headless.go`, `cmd/ardents-node/node_config.go`; retained decoders in their owning packages | Old Node duty refusal traced below; other compatibility entries pending |
-| Select and retain adjacent closed Entry members | [Network/Route/Node](../technical/network-route-node.md) | `internal/endpoint/text_participant_linux.go` -> `textEntrySets` -> `entry.OpenClosedSets`, then `text_interior_set.go` -> `Members`/`CurrentMember` | Current root, refusal, restart and close path traced below; old Invite command is a separate retained writer pending retirement decision |
+| Select and retain adjacent closed Entry members | [Network/Route/Node](../technical/network-route-node.md) | `internal/endpoint/text_participant_linux.go` -> `textEntrySets` -> `entry.OpenClosedSets`, then `text_interior_set.go` -> `Members`/`CurrentMember` | Current root, refusal, restart and close path traced below; old Invite commands are retired to a before-effect refusal (ADR-0106) |
 
 For each row, the next pass records: normal and refused call path; authority and
 input validation order; mutable/durable state; accepted child resources; stop,
@@ -1196,22 +1196,19 @@ Descriptor ACK, recipient process lifetime, or the complete refusal/timeout
 matrix across Endpoint and Node. Keep the channel and Context close owners
 separate if the package boundary moves.
 
-## Source trace: current closed Entry set versus retained Invite import
+## Source trace: closed Entry set after the Invite retirement
 
-This trace follows `cmd/ardents/entry_import.go`, `internal/entry/{open,
-import,attempt,closed_set_store,closed_sets}.go`, Endpoint
-`text_source_state.go` and `text_interior_set.go` at `53f02e64`.
+This trace follows `cmd/ardents/entry_retirement.go`, `internal/entry/{
+closed_set_store,closed_sets}.go`, and Endpoint `text_source_state.go` and
+`text_interior_set.go` at ADR-0106.
 
-1. The dispatchable `ardents entry import` command reads an operator plan and
-   signed Invite, opens the older Entry root through `entry.Open`, calls
-   `owner.Import`, and closes the owner before emitting a receipt. `Open`
-   claims an exclusive root lease, recovers interrupted contacts/attempts,
-   revalidates retained Invites against current State and persists changes.
-   `Close` cancels acquisition, waits for it, joins accepted attachments and
-   their cleanup outcomes, settles the attempt, then releases the root lease.
-   `entry recipient` reads the corresponding recipient public key. This
-   command still writes an older durable format, but it does not feed the
-   selected protected participant.
+1. The dispatchable `ardents entry` route retains only its retirement
+   refusal: `entry import` and `entry recipient` return `entry Invite
+   command is retired` before interpreting remaining arguments, reading a
+   plan, or creating any root. The former plan loader, Invite decoders,
+   recipient identity, and attempt/contact journal machinery are deleted;
+   an existing Invite root stays on disk byte-for-byte with no reader,
+   converter, or deleter.
 2. The current Endpoint opens `entry.OpenClosedSets` under `textMu` using its
    separate closed Entry root and a callback to live State-selected adjacent
    members. The root marker rejects an Invite root. First creation commits
@@ -1225,23 +1222,19 @@ import,attempt,closed_set_store,closed_sets}.go`, Endpoint
    contexts, joining their close errors. Tests cover restart, no refill,
    concurrent activation, conflicting state and legacy-root refusal.
 4. The old Route `OpenEntryAttachment` was removed by ADR-0093, and ADR-0095
-   retired the then-uncalled attachment execution machinery: `owner.Acquire`,
-   `owner.Contact`, the guarded carrier, the cleanup leases, and the
-   attempt-journal writers. The durable attempt/contact journal schema stays
-   decodable; `Open` terminalizes a legacy journal as interrupted. The command
-   still uses the private `validateInvite` through `owner.Import` and reopen.
-   ADR-0096 then rejected the closed-alpha candidate surface: `entry.Issue`,
-   exported `entry.Verify`, its `Authorization` result, and the
-   reservation/`Insufficient` policy are removed; only `validateInvite`
-   remains, reading retained Invite records.
+   retired the then-uncalled attachment execution machinery. ADR-0096 rejected
+   the closed-alpha issuance/verification candidate surface while retaining
+   the private `validateInvite` classifier; ADR-0106 removed it together with
+   every remaining Invite machinery file, superseding the ADR-0095 journal
+   schema retention clause and the ADR-0096 classifier retention rule. The
+   surviving `internal/entry` package is Linux-only apart from its untagged
+   doc.go and owns only the closed Entry set root and its durable primitives.
 
-The two roots are not version negotiation in one C0 journey. The target has
-one closed Entry selection path. The uncalled v2 attachment machinery is
-retired (ADR-0095); retirement of the Invite writer still needs a decision
-for existing roots and the accepted operator contract, including the retained
-attempt/contact journal schema; preserving a bounded historical reader or
-typed refusal during that transition does not authorize old admission
-execution (F-08).
+The target has one closed Entry selection path and no second operator
+writer beside it. F-08 is closed: the Invite root's data obligation was
+resolved as typed incompatibility - a before-effect refusal under the PO
+direction that no legacy support is required. The retirement authorizes no
+old admission execution.
 
 ## Source trace: Release decision root before Endpoint enrollment/replacement
 

@@ -12,18 +12,21 @@ It is a source-navigation aid, not a second command contract or installed
 acceptance result.
 
 **One-version audit of the dispatcher.** All 69 route entries have a traced
-dispatch and first effect. Six are immediate retirement refusals and three
-are retained legacy command shapes. `entry import` is the one route still
-writing the older Invite root; `entry recipient` only reads its public key.
+dispatch and first effect. Eight are immediate retirement refusals and one
+is a retained legacy command shape. `entry import` and `entry recipient`
+joined the refusals under ADR-0106: both return `entry Invite command is
+retired` before any argument interpretation or filesystem effect, and no
+Invite root reader, converter, or deleter remains.
 Eight separately classified Portable routes remain maintained, but their
 per-user readiness does not start the protected text Service. Old writers
 inside shared packages such as Reachability and Instance are tracked in the
-component reconstruction. The first operator-surface reduction is to decide
-the Invite root's accepted data obligation, stop the import writer, then
-decide whether the read-only recipient command is still needed for recovery
-or refusal. Installed Portable retirement needs a proved
+component reconstruction. The F-08 operator-surface reduction is complete:
+the Invite root's data obligation was resolved as typed incompatibility
+(existing roots stay on disk byte-for-byte), the import writer is stopped,
+and the read-only recipient command is retired with it.
+Installed Portable retirement needs a proved
 protected system-unit successor; renaming its event to C0 readiness would
-leave the missing trust transfer unresolved (F-08/F-25/F-27).
+leave the missing trust transfer unresolved (F-25/F-27).
 
 ## Process boundaries
 
@@ -50,7 +53,8 @@ and the headless command inventory under tests/profiles.
 
 | Binary | Routes | Classification |
 |---|---|---|
-| ardents | accept-offline, accept-closed-profile, refresh-sources; service-instance initialize/accept; endpoint enrollment-check/enroll/enroll-installed/headless/publish/withdraw/user-unit/installed-user-unit/replace/replacement-recovery/rollback; entry recipient/import | keep |
+| ardents | accept-offline, accept-closed-profile, refresh-sources; service-instance initialize/accept; endpoint enrollment-check/enroll/enroll-installed/headless/publish/withdraw/user-unit/installed-user-unit/replace/replacement-recovery/rollback | keep |
+| ardents | entry recipient/import | retirement refusal at dispatch before arguments or effects; no Invite reader, converter, or deleter remains (ADR-0106) |
 | ardents | endpoint replacement-self-test | keep internal-only; invoked by the replacement controller, not an operator route |
 | ardents | name encode | keep local canonical encoding; this is not network Name availability |
 | ardents | diagnostics timeline | keep local, read-only projection of bounded runtime events from standard input; no storage, authority, or network effect |

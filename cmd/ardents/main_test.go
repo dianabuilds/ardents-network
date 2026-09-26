@@ -134,11 +134,12 @@ func TestInstalledUserUnitUsesOnlyExplicitInstalledEnrollmentAction(t *testing.T
 	}
 }
 
-func TestEntryImportRouteRejectsIncompleteCommand(t *testing.T) {
+func TestEntryImportRouteReturnsRetirementRefusal(t *testing.T) {
 	t.Parallel()
 	var output bytes.Buffer
-	if err := run(t.Context(), []string{"entry", "import"}, &output); err == nil || output.Len() != 0 {
-		t.Fatalf("incomplete entry command err=%v output=%q", err, output.String())
+	if err := run(t.Context(), []string{"entry", "import"}, &output); err == nil ||
+		err.Error() != errEntryCommandRetired.Error() || output.Len() != 0 {
+		t.Fatalf("retired entry command err=%v output=%q", err, output.String())
 	}
 }
 

@@ -78,6 +78,7 @@ Current decisions:
 
 Completed retirement decisions:
 
+- [0106 — Retire the Entry Invite subsystem; the Invite-root writer stops at a before-effect refusal](0106-retire-entry-invite-subsystem.md)
 - [0105 — Retire the Namespace subsystem; absence of any reader is the incompatibility](0105-retire-namespace-subsystem.md)
 - [0104 — Replace the 38-getter duty facade with one copied State value](0104-replace-duty-view-facade-with-copied-state-value.md)
 - [0102 — Stop legacy Service Introduction key emission; Credential v3](0102-stop-legacy-introduction-key-emission.md)

@@ -11,7 +11,6 @@ import (
 	"io"
 	"os"
 	"strings"
-	"time"
 )
 
 var errOperatorInputTooLarge = errors.New("operator input exceeds its bound")
@@ -91,15 +90,4 @@ func readOperatorKeyPair(certificatePath, keyPath string) (tls.Certificate, erro
 		return tls.Certificate{}, err
 	}
 	return tls.X509KeyPair(certificate, key)
-}
-
-func freshOperatorRegularFile(path string, clock func() time.Time, maximumAge time.Duration) func() bool {
-	return func() bool {
-		if path == "" || clock == nil || maximumAge <= 0 {
-			return false
-		}
-		info, err := os.Lstat(path)
-		return err == nil && info.Mode().IsRegular() && info.Mode()&os.ModeSymlink == 0 &&
-			clock().UTC().Sub(info.ModTime().UTC()).Abs() <= maximumAge
-	}
 }
