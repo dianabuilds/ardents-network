@@ -1,9 +1,7 @@
 package entry
 
 import (
-	"context"
 	"crypto/tls"
-	"net"
 	"sync"
 	"time"
 )
@@ -91,45 +89,22 @@ type Result struct {
 	Generation uint8    `json:"generation"`
 }
 
-// Attempt identifies one endpoint-owned use of the bounded Entry set. Entry
-// does not derive this identity from a Route, Target, or carrier protocol.
-// Deadline is an absolute caller bound that Entry can only shorten.
-type Attempt struct {
-	ID       [32]byte
-	Deadline time.Time
-}
-
-// Presentation is the exact already-validated Invite attached to one
-// selected Entry contact. Its bytes are copied for the opener and remain an
-// opaque capability; the opener must not parse, retain, or repurpose them.
-type Presentation struct {
-	InviteID [32]byte
-	Invite   []byte
-}
-
-// CandidateOpener opens one State-derived adjacent candidate. On an open
-// error, cleanupComplete states whether the opener has fully disposed of any
-// carrier state it created. A successful result must contain both a
-// connection and its cleanup function. Entry owns the order and persistence
-// of calls; the opener owns the TCP/TLS implementation.
-type CandidateOpener func(context.Context, Candidate, Presentation, time.Time) (connection net.Conn, cleanup func() error, cleanupComplete bool, err error)
-
 type owner struct {
-	mu              sync.Mutex
-	root            string
-	lease           rootLease
-	config          Config
-	state           durableState
-	current         string
-	lifecycle       context.Context
-	cancelLifecycle context.CancelFunc
-	acquisitions    sync.WaitGroup
-	attachments     map[uint64]*attachmentLease
-	nextAttachment  uint64
-	closeDone       chan struct{}
-	closing         bool
-	closed          bool
-	closeErr        error
-	failed          error
-	recipient       tls.Certificate
+	mu       sync.Mutex
+	root     string
+	lease    rootLease
+	config   Config
+	state    durableState
+	current  string
+	closing  bool
+	closed   bool
+	closeErr error
+	failed   error
+
+	// closeDone is closed once the terminal Close result is recorded.
+	closeDone chan struct{}
+	// recipient is the owner-local TLS identity retained for Invite
+	// recipient binding; the retired attachment execution machinery
+	// (ADR-0095) was its only certificate consumer.
+	recipient tls.Certificate
 }

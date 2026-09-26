@@ -542,36 +542,6 @@
       "rationale": "The e2e fixture helpers are reached from the positive test inventory rather than from a maintained production executable.",
       "owner": "Product Owner and Codex",
       "retirement": "Remove them when the owning e2e profile is retired or replace them with an invoked fixture command path."
-    },
-    {
-      "symbols": [
-        "internal/entry.boundedContactContext",
-        "internal/entry.guardedConnection.Read",
-        "internal/entry.guardedConnection.SetDeadline",
-        "internal/entry.guardedConnection.SetReadDeadline",
-        "internal/entry.guardedConnection.SetWriteDeadline",
-        "internal/entry.guardedConnection.Write",
-        "internal/entry.guardedConnection.bound",
-        "internal/entry.guardedConnection.check",
-        "internal/entry.owner.Acquire",
-        "internal/entry.owner.Contact",
-        "internal/entry.owner.RecipientCertificate",
-        "internal/entry.owner.beginAttempt",
-        "internal/entry.owner.endAttemptLocked",
-        "internal/entry.owner.firstEligibleContactLocked",
-        "internal/entry.owner.nextContact",
-        "internal/entry.owner.recordForOrdinalLocked",
-        "internal/entry.owner.retireInvalidActiveLocked",
-        "internal/entry.owner.startAcquisition",
-        "internal/entry.owner.terminalize",
-        "internal/entry.owner.trackAttachment",
-        "internal/entry.reusableEntryAttempt",
-        "internal/service/connection.ValidateNameOrigin"
-      ],
-      "classification": "unwired shared legacy Entry and Service Connection leaves",
-      "rationale": "These shared-owner leaves were reachable only through the retired v1 participant graph. #157 preserves them because their packages and protocols have broader historical evidence and their deletion is outside the exclusive process-composition boundary. ADR-0093 removed this group's Route v2 leaves with the execution closure, and ADR-0094 retired the sealed Introduction grammar and the publication instruction codecs that briefly held their own allowances. The remaining Entry and Service Connection leaves keep their original bounded shared-owner retirement-card requirement.",
-      "owner": "Product Owner and Codex",
-      "retirement": "Create a bounded shared-owner retirement card from the post-#112 caller audit, name each remaining production/test consumer, and delete or reclassify these exact leaves without treating #112 as authority to remove shared Service Connection or Route behavior."
     }
   ],
   "production": {

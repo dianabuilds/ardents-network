@@ -43,9 +43,9 @@ func TestImportRejectsForeignRecipientBeforeReplacement(t *testing.T) {
 		t.Fatalf("foreign replacement = %+v, %v", result, err)
 	}
 
-	contact, err := firstOwner.Contact()
-	if err != nil || contact.NodeID != fixture.candidates[0].NodeID {
-		t.Fatalf("foreign replacement changed contact = %+v, %v", contact, err)
+	index, found := firstOwner.state.active(0)
+	if !found || firstOwner.state.Records[index].Identity != fixture.candidates[0].NodeID {
+		t.Fatalf("foreign replacement changed the active record: %+v", firstOwner.state.Records)
 	}
 	fixture.recipient = firstRecipient
 	correct := fixture.invite(t, fixture.candidates[1], 0, 2, &first.InviteID)
@@ -94,9 +94,6 @@ func TestOpenRetiresPersistedForeignRecipientInvite(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer reopened.Close()
-	if _, err := reopened.Contact(); err == nil {
-		t.Fatal("reopened foreign Invite became a Contact")
-	}
 	result, err := reopened.Import(raw)
 	if err != nil || result.Class != WrongRecipient {
 		t.Fatalf("reopened foreign Invite = %+v, %v", result, err)
@@ -122,7 +119,15 @@ func TestOpenRestoresDrainingPredecessorAfterRetiringForeignReplacement(t *testi
 	if err != nil || first.Class != Accepted {
 		t.Fatalf("first import = %+v, %v", first, err)
 	}
-	if _, _, _, _, err := owner.beginAttempt(Attempt{ID: [32]byte{1}, Deadline: fixture.now.Add(time.Second)}); err != nil {
+	// Write one legacy non-terminal attachment journal directly; ADR-0095
+	// retired the journal writers while the durable schema remains.
+	attemptID := [32]byte{1}
+	journal := owner.state.clone()
+	journal.Attempt = &attemptRecord{ID: attemptID, Started: fixture.now.UnixNano(),
+		Deadline: fixture.now.Add(time.Second).UnixNano()}
+	journal.Contacts = append(journal.Contacts, contactRecord{AttemptID: attemptID, InviteID: first.InviteID,
+		Slot: 0, Ordinal: 0, Started: fixture.now.UnixNano()})
+	if err := owner.commit(journal, false); err != nil {
 		t.Fatal(err)
 	}
 
@@ -164,43 +169,63 @@ func TestOpenRestoresDrainingPredecessorAfterRetiringForeignReplacement(t *testi
 		t.Fatal(err)
 	}
 	defer reopened.Close()
-	contact, err := reopened.Contact()
-	if err != nil || contact.NodeID != fixture.candidates[0].NodeID {
-		t.Fatalf("recovered predecessor contact = %+v, %v", contact, err)
-	}
 	if len(reopened.state.Records) != 2 || reopened.state.Records[0].Status != memberActive || reopened.state.Records[1].Status != memberRetired {
 		t.Fatalf("recovered replacement state = %+v", reopened.state.Records)
 	}
 }
 
-func TestTerminalReplacementRetiresInvalidDrainingPredecessor(t *testing.T) {
+func TestOpenRetiresInvalidDrainingPredecessorAfterTerminalAttempt(t *testing.T) {
 	fixture := newLiveEntryFixture(t)
-	owner, err := Open(fixture.config(entryRoot(t)))
+	root := entryRoot(t)
+	owner, err := Open(fixture.config(root))
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer owner.Close()
 	first, err := owner.Import(fixture.invite(t, fixture.candidates[0], 0, 1, nil))
 	if err != nil || first.Class != Accepted {
 		t.Fatalf("first import = %+v, %v", first, err)
 	}
-	_, _, ordinal, _, err := owner.beginAttempt(Attempt{ID: [32]byte{2}, Deadline: fixture.now.Add(time.Second)})
-	if err != nil {
+	// Write one legacy terminal attachment journal and the verified
+	// replacement directly; ADR-0095 retired the journal writers while the
+	// durable schema and the Open recovery remain.
+	attemptID := [32]byte{2}
+	ended := fixture.now.UnixNano()
+	next := owner.state.clone()
+	next.Attempt = &attemptRecord{ID: attemptID, Started: ended, Deadline: ended + int64(time.Second),
+		Terminal: "entry-local-denial", Ended: ended}
+	next.Contacts = append(next.Contacts, contactRecord{AttemptID: attemptID, InviteID: first.InviteID,
+		Slot: 0, Ordinal: 0, Started: ended, Terminal: ended, Outcome: "failed", Cleanup: false})
+	active, found := next.active(0)
+	if !found {
+		t.Fatal("missing active predecessor")
+	}
+	next.Records[active].Status = memberDraining
+	second := fixture.invite(t, fixture.candidates[1], 0, 2, &first.InviteID)
+	decoded, _, class, err := validateInvite(second, fixture.verification())
+	if err != nil || class != Accepted {
+		t.Fatalf("replacement fixture = %+v, %q, %v", decoded, class, err)
+	}
+	next.Records = append(next.Records, memberRecord{InviteID: decoded.id, Identity: decoded.nodeID, Family: decoded.familyID,
+		Slot: decoded.slot, Generation: decoded.slotGeneration, Status: memberVerified, Invite: second})
+	if err := owner.commit(next, true); err != nil {
 		t.Fatal(err)
 	}
-	second, err := owner.Import(fixture.invite(t, fixture.candidates[1], 0, 2, &first.InviteID))
-	if err != nil || second.Class != Accepted {
-		t.Fatalf("replacement import = %+v, %v", second, err)
+	if err := owner.Close(); err != nil {
+		t.Fatal(err)
 	}
-	owner.config.Current = func() (View, error) {
+
+	config := fixture.config(root)
+	config.Current = func() (View, error) {
 		view := fixture.view
 		view.Candidates = nil
 		return view, nil
 	}
-	if err := owner.finishContact(ordinal, false, false); err != nil {
+	reopened, err := Open(config)
+	if err != nil {
 		t.Fatal(err)
 	}
-	if len(owner.state.Records) != 2 || owner.state.Records[0].Status != memberRetired || owner.state.Records[1].Status != memberRetired {
-		t.Fatalf("invalid terminal replacement state = %+v", owner.state.Records)
+	defer reopened.Close()
+	if len(reopened.state.Records) != 2 || reopened.state.Records[0].Status != memberRetired || reopened.state.Records[1].Status != memberRetired {
+		t.Fatalf("invalid terminal replacement state = %+v", reopened.state.Records)
 	}
 }

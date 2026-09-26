@@ -223,15 +223,15 @@ a complete Route plan or a composition owner. It delegates the existing
 `net.Conn` contract, exposes immutable evidence, and publishes one cleanup
 result to concurrent closers. No production constructor or accepting startup
 for the removed User Route is retained. Endpoint continues to own its durable
-credential journal, Entry retains replay and adjacent-contact state, and
+credential journal, Entry retains its replay and Invite-journal state, and
 Service Connection owns replacement decisions through its own attachment type.
 
-Entry owns every carrier/attachment cleanup lease returned by `Acquire`. Its
-owner rejects new acquisition as soon as close begins, cancels and joins an
-in-flight opener, closes each active attachment exactly once, and durably
-records the terminal cleanup outcome before releasing the exclusive Entry
-root. Concurrent caller cleanup and owner close share the same lease result;
-a cleanup error is returned and cannot be represented as a clean attachment.
+The Entry attachment execution machinery is retired by ADR-0095: `Acquire`,
+its guarded carrier, and the cleanup-lease tracking had no production caller
+after ADR-0093 removed the Route v2 attachment opener. The retained Invite
+root keeps only its durable data contract — a legacy attempt/contact journal
+stays decodable, `Open` terminalizes it as interrupted and settles its
+replacements, and `Close` is an idempotent exclusive-lease release.
 
 ### Adjacent-Node Carrier profiles
 

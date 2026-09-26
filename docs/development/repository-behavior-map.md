@@ -1212,19 +1212,23 @@ import,attempt,closed_set_store,closed_sets}.go`, Endpoint
    closes the Entry-set lease with the token journal after closing text
    contexts, joining their close errors. Tests cover restart, no refill,
    concurrent activation, conflicting state and legacy-root refusal.
-4. The old Route `OpenEntryAttachment` is the only non-test reference to
-   `owner.Acquire` through `EntryAcquirer`, and that opener has no selected
-   caller after ADR-0092. `entry.Issue`, exported `entry.Verify`, and
-   `owner.Contact` have no non-test caller. The command still uses the private
-   `validateInvite` through `owner.Import` and reopen, so the old issuer and
-   receiving adapters can be assessed separately from retained-root
-   authentication. `Issue` currently constructs valid Invites only in tests.
+4. The old Route `OpenEntryAttachment` was removed by ADR-0093, and ADR-0095
+   retired the then-uncalled attachment execution machinery: `owner.Acquire`,
+   `owner.Contact`, the guarded carrier, the cleanup leases, and the
+   attempt-journal writers. The durable attempt/contact journal schema stays
+   decodable; `Open` terminalizes a legacy journal as interrupted. The command
+   still uses the private `validateInvite` through `owner.Import` and reopen,
+   so the old issuer adapter can be assessed separately from retained-root
+   authentication. `entry.Issue` and exported `entry.Verify` remain unwired
+   tracers; `Issue` constructs valid Invites only in tests.
 
 The two roots are not version negotiation in one C0 journey. The target has
-one closed Entry selection path. Retirement of the Invite writer and uncalled
-v2 attachment needs a decision for existing roots and the accepted operator
-contract; preserving a bounded historical reader or typed refusal during that
-transition does not authorize old admission execution (F-08).
+one closed Entry selection path. The uncalled v2 attachment machinery is
+retired (ADR-0095); retirement of the Invite writer still needs a decision
+for existing roots and the accepted operator contract, including the retained
+attempt/contact journal schema; preserving a bounded historical reader or
+typed refusal during that transition does not authorize old admission
+execution (F-08).
 
 ## Source trace: Release decision root before Endpoint enrollment/replacement
 

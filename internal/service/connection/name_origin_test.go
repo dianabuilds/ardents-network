@@ -2,17 +2,10 @@ package connection
 
 import "testing"
 
-func TestNameOriginPinsTargetAndContinuity(t *testing.T) {
+func TestContinuesNameOriginPinsTargetAndAncestry(t *testing.T) {
 	t.Parallel()
 	binding := DestinationBinding{Name: "service", Generation: 1, Revision: 2, Authority: "authority",
 		Target: [32]byte{1}, ParentName: "parent", ParentGeneration: 3, RecordDigest: [32]byte{4}, Commitment: [32]byte{5}}
-	updates := make(chan DestinationBinding)
-	if err := ValidateNameOrigin(binding, updates, binding.Target, true, binding.Commitment); err != nil {
-		t.Fatal(err)
-	}
-	if err := ValidateNameOrigin(binding, updates, binding.Target, true, [32]byte{9}); err == nil {
-		t.Fatal("recovery accepted a different destination commitment")
-	}
 	continued := binding
 	continued.Revision++
 	continued.RecordDigest = [32]byte{8}

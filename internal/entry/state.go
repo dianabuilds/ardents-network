@@ -7,6 +7,12 @@ const (
 	memberRetired  = "retired"
 )
 
+// durableState is the retained root-v1 Invite journal schema. Attempt and
+// Contacts are legacy attachment-journal fields whose production writers are
+// retired by ADR-0095; the fields stay decodable so an existing root still
+// validates, terminalizes as interrupted at Open, and settles its
+// replacements. Their schema removal is part of the F-08 Invite-root data
+// disposition.
 type durableState struct {
 	Version    uint8             `json:"version"`
 	Generation uint64            `json:"generation"`

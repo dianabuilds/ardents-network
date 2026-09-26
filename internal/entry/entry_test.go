@@ -2,11 +2,8 @@ package entry
 
 import (
 	"bytes"
-	"context"
 	"crypto/ed25519"
 	"crypto/rand"
-	"errors"
-	"net"
 	"os"
 	"path/filepath"
 	"testing"
@@ -38,7 +35,7 @@ func testEntryRecipientSeed() []byte {
 	return bytes.Repeat([]byte{91}, ed25519.SeedSize)
 }
 
-func TestImportContactAndReopenUsesOnlyCurrentStateCandidate(t *testing.T) {
+func TestImportAndReopenRetainOnlyCurrentStateCandidate(t *testing.T) {
 	fixture := newEntryFixture(t)
 	owner, err := Open(fixture.config(entryRoot(t)))
 	if err != nil {
@@ -49,9 +46,9 @@ func TestImportContactAndReopenUsesOnlyCurrentStateCandidate(t *testing.T) {
 	if err != nil || result.Class != Accepted {
 		t.Fatalf("import = %+v, %v", result, err)
 	}
-	contact, err := owner.Contact()
-	if err != nil || contact.Endpoint != fixture.candidates[0].Endpoint || contact.PublicKey != fixture.candidates[0].PublicKey {
-		t.Fatalf("contact = %+v, %v", contact, err)
+	index, found := owner.state.active(0)
+	if !found || owner.state.Records[index].Identity != fixture.candidates[0].NodeID {
+		t.Fatalf("imported active record = %+v", owner.state.Records)
 	}
 	if err := owner.Close(); err != nil {
 		t.Fatal(err)
@@ -61,9 +58,10 @@ func TestImportContactAndReopenUsesOnlyCurrentStateCandidate(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer reopened.Close()
-	contact, err = reopened.Contact()
-	if err != nil || contact.NodeID != fixture.candidates[0].NodeID {
-		t.Fatalf("reopened contact = %+v, %v", contact, err)
+	index, found = reopened.state.active(0)
+	if !found || reopened.state.Records[index].Identity != fixture.candidates[0].NodeID ||
+		reopened.state.Records[index].Status != memberActive {
+		t.Fatalf("reopened active record = %+v", reopened.state.Records)
 	}
 }
 
@@ -85,8 +83,8 @@ func TestImportRejectsInviteWithWrongSignatureOrSurplusBytes(t *testing.T) {
 	if err != nil || result.Class != Invalid {
 		t.Fatalf("surplus import = %+v, %v", result, err)
 	}
-	if _, err := owner.Contact(); err == nil {
-		t.Fatal("rejected Invite became an Entry contact")
+	if _, found := owner.state.active(0); found {
+		t.Fatal("rejected Invite became an active Entry record")
 	}
 }
 
@@ -174,147 +172,8 @@ func TestReplacementImmediatelyRetiresInactiveGenerationOne(t *testing.T) {
 	if err != nil || secondResult.Class != Accepted {
 		t.Fatalf("replacement import = %+v, %v", secondResult, err)
 	}
-	contact, err := owner.Contact()
-	if err != nil || contact.NodeID != fixture.candidates[1].NodeID {
-		t.Fatalf("replacement contact = %+v, %v", contact, err)
-	}
 	if got := len(owner.state.Records); got != 2 || owner.state.Records[0].Status != memberRetired || owner.state.Records[1].Status != memberActive {
 		t.Fatalf("replacement durable state = %+v", owner.state.Records)
-	}
-}
-
-func TestAcquireRetriesOneCleanFailureAndRecordsTerminalCleanup(t *testing.T) {
-	fixture := newLiveEntryFixture(t)
-	owner, err := Open(fixture.config(entryRoot(t)))
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer owner.Close()
-	if result, err := owner.Import(fixture.invite(t, fixture.candidates[0], 0, 1, nil)); err != nil || result.Class != Accepted {
-		t.Fatalf("import = %+v, %v", result, err)
-	}
-	starts := 0
-	var peer net.Conn
-	connection, cleanup, err := owner.Acquire(context.Background(), Attempt{ID: [32]byte{99}, Deadline: fixture.now.Add(5 * time.Second)},
-		func(context.Context, Candidate, Presentation, time.Time) (net.Conn, func() error, bool, error) {
-			starts++
-			if starts == 1 {
-				return nil, nil, true, errors.New("injected contact failure")
-			}
-			client, server := net.Pipe()
-			peer = server
-			return client, client.Close, true, nil
-		})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if starts != 2 || connection == nil {
-		t.Fatalf("starts=%d connection=%v", starts, connection)
-	}
-	if err := cleanup(); err != nil {
-		t.Fatal(err)
-	}
-	if err := peer.Close(); err != nil {
-		t.Fatal(err)
-	}
-	if owner.state.Attempt == nil || owner.state.Attempt.Terminal != "opened" || len(owner.state.Contacts) != 2 ||
-		owner.state.Contacts[0].Outcome != "failed" || owner.state.Contacts[1].Outcome != "opened" || !owner.state.Contacts[1].Cleanup {
-		t.Fatalf("durable attempt = %+v contacts = %+v", owner.state.Attempt, owner.state.Contacts)
-	}
-}
-
-func TestAcquireStartsDistinctOperationAfterOpenedAttachmentWasCleaned(t *testing.T) {
-	fixture := newLiveEntryFixture(t)
-	owner, err := Open(fixture.config(entryRoot(t)))
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer owner.Close()
-	if _, err := owner.Import(fixture.invite(t, fixture.candidates[0], 0, 1, nil)); err != nil {
-		t.Fatal(err)
-	}
-	open := func(context.Context, Candidate, Presentation, time.Time) (net.Conn, func() error, bool, error) {
-		client, server := net.Pipe()
-		return client, func() error { return errors.Join(client.Close(), server.Close()) }, true, nil
-	}
-	first := Attempt{ID: [32]byte{81}, Deadline: fixture.now.Add(5 * time.Second)}
-	connection, cleanup, err := owner.Acquire(context.Background(), first, open)
-	if err != nil {
-		t.Fatal(err)
-	}
-	_ = connection.Close()
-	if err := cleanup(); err != nil {
-		t.Fatal(err)
-	}
-	if _, _, err := owner.Acquire(context.Background(), first, open); err == nil {
-		t.Fatal("Entry replayed the immediately retained terminal Attempt identity")
-	}
-	second := Attempt{ID: [32]byte{82}, Deadline: fixture.now.Add(5 * time.Second)}
-	connection, cleanup, err = owner.Acquire(context.Background(), second, open)
-	if err != nil {
-		t.Fatal(err)
-	}
-	_ = connection.Close()
-	if err := cleanup(); err != nil {
-		t.Fatal(err)
-	}
-	if owner.state.Attempt == nil || owner.state.Attempt.ID != second.ID || owner.state.Attempt.Terminal != "opened" ||
-		len(owner.state.Contacts) != 1 || owner.state.Contacts[0].AttemptID != second.ID || !owner.state.Contacts[0].Cleanup {
-		t.Fatalf("successive Entry attempt = %+v contacts = %+v", owner.state.Attempt, owner.state.Contacts)
-	}
-}
-
-func TestAcquireFailsClosedWhenOpenerCannotProveCleanup(t *testing.T) {
-	fixture := newLiveEntryFixture(t)
-	owner, err := Open(fixture.config(entryRoot(t)))
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer owner.Close()
-	if _, err := owner.Import(fixture.invite(t, fixture.candidates[0], 0, 1, nil)); err != nil {
-		t.Fatal(err)
-	}
-	_, _, err = owner.Acquire(context.Background(), Attempt{ID: [32]byte{98}, Deadline: fixture.now.Add(5 * time.Second)},
-		func(context.Context, Candidate, Presentation, time.Time) (net.Conn, func() error, bool, error) {
-			return nil, nil, false, errors.New("injected incomplete cleanup")
-		})
-	if err == nil || owner.state.Attempt == nil || owner.state.Attempt.Terminal != "entry-local-denial" ||
-		len(owner.state.Contacts) != 1 || owner.state.Contacts[0].Cleanup {
-		t.Fatalf("unclean failure err=%v attempt=%+v contacts=%+v", err, owner.state.Attempt, owner.state.Contacts)
-	}
-}
-
-func TestReplacementDrainsUntilLiveAttemptSettles(t *testing.T) {
-	fixture := newLiveEntryFixture(t)
-	owner, err := Open(fixture.config(entryRoot(t)))
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer owner.Close()
-	first, err := owner.Import(fixture.invite(t, fixture.candidates[0], 0, 1, nil))
-	if err != nil || first.Class != Accepted {
-		t.Fatalf("first import = %+v, %v", first, err)
-	}
-	_, _, ordinal, _, err := owner.beginAttempt(Attempt{ID: [32]byte{97}, Deadline: fixture.now.Add(5 * time.Second)})
-	if err != nil {
-		t.Fatal(err)
-	}
-	second, err := owner.Import(fixture.invite(t, fixture.candidates[1], 0, 2, &first.InviteID))
-	if err != nil || second.Class != Accepted {
-		t.Fatalf("replacement import = %+v, %v", second, err)
-	}
-	if owner.state.Records[0].Status != memberDraining || owner.state.Records[1].Status != memberVerified {
-		t.Fatalf("replacement activated early: %+v", owner.state.Records)
-	}
-	if err := owner.finishContact(ordinal, false, true); err != nil {
-		t.Fatal(err)
-	}
-	if _, _, _, _, err := owner.nextContact(); err == nil {
-		t.Fatal("settled old attempt unexpectedly found another eligible contact")
-	}
-	contact, err := owner.Contact()
-	if err != nil || contact.NodeID != fixture.candidates[1].NodeID {
-		t.Fatalf("settled replacement contact = %+v, %v", contact, err)
 	}
 }
 
@@ -329,11 +188,23 @@ func TestOpenTerminalizesInterruptedAttemptAndSettlesReplacement(t *testing.T) {
 	if err != nil || first.Class != Accepted {
 		t.Fatalf("first import = %+v, %v", first, err)
 	}
-	if _, _, _, _, err := owner.beginAttempt(Attempt{ID: [32]byte{96}, Deadline: fixture.now.Add(5 * time.Second)}); err != nil {
+	// Write one legacy non-terminal attachment journal directly: ADR-0095
+	// retired the journal writers while the durable schema, the draining
+	// replacement path, and the Open recovery all remain.
+	attemptID := [32]byte{96}
+	next := owner.state.clone()
+	next.Attempt = &attemptRecord{ID: attemptID, Started: fixture.now.UnixNano(),
+		Deadline: fixture.now.Add(5 * time.Second).UnixNano()}
+	next.Contacts = append(next.Contacts, contactRecord{AttemptID: attemptID, InviteID: first.InviteID,
+		Slot: 0, Ordinal: 0, Started: fixture.now.UnixNano()})
+	if err := owner.commit(next, false); err != nil {
 		t.Fatal(err)
 	}
 	if result, err := owner.Import(fixture.invite(t, fixture.candidates[1], 0, 2, &first.InviteID)); err != nil || result.Class != Accepted {
 		t.Fatalf("replacement import = %+v, %v", result, err)
+	}
+	if owner.state.Records[0].Status != memberDraining || owner.state.Records[1].Status != memberVerified {
+		t.Fatalf("replacement activated during the legacy attempt: %+v", owner.state.Records)
 	}
 	if err := owner.Close(); err != nil {
 		t.Fatal(err)
@@ -346,40 +217,9 @@ func TestOpenTerminalizesInterruptedAttemptAndSettlesReplacement(t *testing.T) {
 	if reopened.state.Attempt == nil || reopened.state.Attempt.Terminal != "entry-interrupted" {
 		t.Fatalf("reopened attempt = %+v", reopened.state.Attempt)
 	}
-	contact, err := reopened.Contact()
-	if err != nil || contact.NodeID != fixture.candidates[1].NodeID {
-		t.Fatalf("interrupted replacement contact = %+v, %v", contact, err)
-	}
-}
-
-func TestAcquiredCarrierStopsAfterTimeConfidenceLoss(t *testing.T) {
-	fixture := newLiveEntryFixture(t)
-	confident := true
-	config := fixture.config(entryRoot(t))
-	config.TimeConfident = func() bool { return confident }
-	owner, err := Open(config)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer owner.Close()
-	if _, err := owner.Import(fixture.invite(t, fixture.candidates[0], 0, 1, nil)); err != nil {
-		t.Fatal(err)
-	}
-	client, server := net.Pipe()
-	defer server.Close()
-	connection, cleanup, err := owner.Acquire(context.Background(), Attempt{ID: [32]byte{95}, Deadline: fixture.now.Add(5 * time.Second)},
-		func(context.Context, Candidate, Presentation, time.Time) (net.Conn, func() error, bool, error) {
-			return client, client.Close, true, nil
-		})
-	if err != nil {
-		t.Fatal(err)
-	}
-	confident = false
-	if _, err := connection.Write([]byte("forbidden")); err == nil || err.Error() != "entry carrier is no longer eligible" {
-		t.Fatalf("write after confidence loss = %v", err)
-	}
-	if err := cleanup(); err != nil {
-		t.Fatal(err)
+	if len(reopened.state.Records) != 2 || reopened.state.Records[0].Status != memberRetired ||
+		reopened.state.Records[1].Status != memberActive || reopened.state.Records[1].Identity != fixture.candidates[1].NodeID {
+		t.Fatalf("interrupted replacement settlement = %+v", reopened.state.Records)
 	}
 }
 

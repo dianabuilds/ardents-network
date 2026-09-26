@@ -1,13 +1,15 @@
 package entry
 
 import (
-	"context"
 	"errors"
 	"path/filepath"
 )
 
 // Open claims one Entry-owned root, verifies durable state, and retires an
 // Invite that no longer matches current authenticated State before returning.
+// A retained legacy attempt/contact journal (ADR-0095 keeps the durable
+// schema after retiring its writers) is terminalized as interrupted and its
+// replacements are settled before the root becomes usable.
 func Open(input Config) (*owner, error) {
 	config, err := copyConfig(input)
 	if err != nil {
@@ -53,9 +55,8 @@ func Open(input Config) (*owner, error) {
 	if err := cleanupGenerations(root, current, state.Previous); err != nil {
 		return nil, err
 	}
-	lifecycle, cancelLifecycle := context.WithCancel(context.Background())
 	owner := &owner{root: root, lease: lease, config: config, state: state, current: current, recipient: recipient,
-		lifecycle: lifecycle, cancelLifecycle: cancelLifecycle, attachments: make(map[uint64]*attachmentLease), closeDone: make(chan struct{})}
+		closeDone: make(chan struct{})}
 	next := owner.state.clone()
 	changed := false
 	interrupted := false
@@ -110,7 +111,9 @@ func Open(input Config) (*owner, error) {
 	return owner, nil
 }
 
-// Close releases the exclusive Entry root lease. It is idempotent.
+// Close releases the exclusive Entry root lease. It is idempotent. Open has
+// already terminalized every retained legacy attempt, and no live path starts
+// a new one, so no attempt settlement remains at close (ADR-0095).
 func (owner *owner) Close() error {
 	owner.mu.Lock()
 	if owner.closed {
@@ -128,23 +131,10 @@ func (owner *owner) Close() error {
 		return err
 	}
 	owner.closing = true
-	owner.cancelLifecycle()
 	done := owner.closeDone
 	owner.mu.Unlock()
 
-	owner.acquisitions.Wait()
-	owner.mu.Lock()
-	attachments := make([]*attachmentLease, 0, len(owner.attachments))
-	for _, attachment := range owner.attachments {
-		attachments = append(attachments, attachment)
-	}
-	owner.mu.Unlock()
-	var closeErr error
-	for _, attachment := range attachments {
-		closeErr = errors.Join(closeErr, attachment.Close())
-	}
-	closeErr = errors.Join(closeErr, owner.settleClosingAttempt())
-	closeErr = errors.Join(closeErr, owner.lease.release())
+	closeErr := owner.lease.release()
 
 	owner.mu.Lock()
 	owner.closed = true

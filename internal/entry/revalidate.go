@@ -1,33 +1,20 @@
 package entry
 
-// retireInvalidActiveLocked clears stale active Invites before a carrier is
-// exposed. The caller holds owner.mu.
-func (owner *owner) retireInvalidActiveLocked() (bool, error) {
-	next := owner.state.clone()
-	changed := false
-	for index := range next.Records {
-		record := &next.Records[index]
-		if record.Status != memberActive {
-			continue
-		}
-		if _, _, _, found := owner.validRecord(*record); found {
-			continue
-		}
-		retireMember(record)
-		changed = true
+import "time"
+
+// validRecord projects one retained member record against current State. The
+// Invite must still decode to an Accepted candidate whose pinned identity
+// facts exactly match the record.
+func (owner *owner) validRecord(record memberRecord) (memberRecord, Candidate, time.Time, bool) {
+	decoded, candidate, class, err := owner.validate(record.Invite)
+	if err != nil || class != Accepted || decoded.id != record.InviteID || decoded.nodeID != record.Identity || decoded.familyID != record.Family {
+		return memberRecord{}, Candidate{}, time.Time{}, false
 	}
-	if !changed {
-		return false, nil
-	}
-	if err := owner.commit(next, false); err != nil {
-		owner.failed = err
-		return false, err
-	}
-	return true, nil
+	return record, candidate, time.Unix(decoded.notAfter, 0).UTC(), true
 }
 
 // retireInvalidVerifiedLocked ensures a replacement cannot become active after
-// a live attempt if its State authority disappeared meanwhile.
+// a terminal legacy attempt if its State authority disappeared meanwhile.
 func (owner *owner) retireInvalidVerifiedLocked(next *durableState) error {
 	for index := range next.Records {
 		record := &next.Records[index]

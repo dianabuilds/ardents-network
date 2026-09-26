@@ -77,6 +77,7 @@ Current decisions:
 
 Completed retirement decisions:
 
+- [0095 — Retire the uncalled Entry attachment execution machinery and ValidateNameOrigin](0095-retire-entry-attachment-machinery.md)
 - [0094 — Retire the sealed Introduction v1 grammar and the v1 Introduction instruction codecs](0094-retire-sealed-introduction-v1-grammar.md)
 - [0093 — Retire the Route v2 execution closure](0093-retire-route-v2-execution-closure.md)
 - [0092 — Retire the generic Publisher administration and Endpoint Transit acquisition chain](0092-retire-generic-publisher-transit-chain.md)

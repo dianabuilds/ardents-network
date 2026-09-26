@@ -109,14 +109,3 @@ func recipientKey(certificate tls.Certificate) ([32]byte, error) {
 	copy(result[:], public)
 	return result, nil
 }
-
-// RecipientCertificate returns a copy of the retained private TLS identity
-// for the immediate native Entry attachment. It does not export key bytes.
-func (owner *owner) RecipientCertificate() (tls.Certificate, error) {
-	if owner == nil || owner.recipient.Leaf == nil || owner.recipient.PrivateKey == nil {
-		return tls.Certificate{}, errors.New("entry recipient identity is unavailable")
-	}
-	copy := owner.recipient
-	copy.Certificate = append([][]byte(nil), owner.recipient.Certificate...)
-	return copy, nil
-}

@@ -16,10 +16,6 @@ func TestRecipientIdentityPersistsAcrossReopen(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	certificate, err := first.RecipientCertificate()
-	if err != nil || certificate.Leaf == nil || certificate.PrivateKey == nil {
-		t.Fatalf("recipient certificate = %+v, %v", certificate, err)
-	}
 	if err := first.Close(); err != nil {
 		t.Fatal(err)
 	}

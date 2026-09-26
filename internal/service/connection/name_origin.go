@@ -2,27 +2,6 @@ package connection
 
 import "errors"
 
-// ValidateNameOrigin admits either no Name-origin fact or one complete pinned
-// binding. When recovery is enabled, the Route destination commitment must be
-// that same exact binding commitment.
-func ValidateNameOrigin(binding DestinationBinding, updates <-chan DestinationBinding, target [32]byte,
-	recoveryEnabled bool, recoveryDestination [32]byte) error {
-	if binding == (DestinationBinding{}) {
-		if updates != nil {
-			return errors.New("name updates exist without resolved provenance")
-		}
-		return nil
-	}
-	if binding.Target != target || updates == nil || binding.Name == "" || binding.Generation == 0 || binding.Revision == 0 ||
-		binding.RecordDigest == [32]byte{} || binding.Commitment == [32]byte{} {
-		return errors.New("resolved Service Name provenance is incomplete")
-	}
-	if recoveryEnabled && recoveryDestination != binding.Commitment {
-		return errors.New("recovery destination does not bind the resolved Service Name")
-	}
-	return nil
-}
-
 // ContinuesNameOrigin accepts only an update that preserves the immutable
 // Service target and ancestry while advancing the resolved revision or
 // repeating its exact record digest.
