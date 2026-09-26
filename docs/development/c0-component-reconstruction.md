@@ -611,10 +611,9 @@ The private role probe is an active Node duty selected only after
 `assessAdmission` checks `h3-role-probe-v1`; `duty_server.go` starts it through
 the same `dutyHandle` lifecycle. The [current technical owner](../technical/network-route-node.md#node-and-resource-lifecycle)
 explicitly excludes a standalone probe runtime. Its four implementation
-files therefore remain Node-owned. `contract.go` now holds public Config,
-Event/Result and runtimeConfig in 136 lines after ADR-0104 removed the
-DutyView projection; separating those file responsibilities within `node`
-remains a local readability action, without inventing a new package. The shared
+files therefore remain Node-owned. The former `contract.go` declarations now
+reside in responsibility-named Node files after ADR-0104 removed the DutyView
+projection. This improves local navigation without a new package. The shared
 `dutyHandle` return type names all five current closed duties as well as the
 private probe (F-39), while preserving distinct duty resources.
 

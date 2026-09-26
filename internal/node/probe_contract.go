@@ -1,7 +1,6 @@
 package node
 
 import (
-	"context"
 	"crypto/ed25519"
 	"crypto/tls"
 	"errors"
@@ -39,15 +38,6 @@ type probeDuty struct {
 type probePlan struct {
 	config ProbeConfig
 	now    func() time.Time
-}
-
-// dutyHandle is the bounded capability handle for one running listener.
-type dutyHandle struct {
-	Done    <-chan error
-	Protect func(bool)
-	Usage   func() (uint64, uint64, uint64)
-	Stop    func()
-	Drain   func(context.Context) error
 }
 
 // newProbePlan validates and owns the Node's private role-probe listener plan.

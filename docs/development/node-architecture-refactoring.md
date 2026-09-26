@@ -37,7 +37,7 @@ present but not visible as package boundaries:
 
 | Current location | Responsibility and coupling |
 | --- | --- |
-| `contract.go`, `admission.go`, `lifecycle.go`, `duty_server.go` | Public configuration and event contract, immutable duty facts, State admission, process lifecycle, and dispatch of five closed duties plus the private probe. `runtimeConfig` embeds the whole `Config`; duty implementations can read unrelated role settings. |
+| `process_config.go`, `closed_reservations.go`, `lifecycle_event.go`, `runtime_state.go`, `admission.go`, `lifecycle.go`, `duty_server.go` | Public configuration, local reservations, event contract, runtime state, State admission, process lifecycle, and dispatch of five closed duties plus the private probe. `runtimeConfig` embeds the whole `Config`; duty implementations can read unrelated role settings. |
 | `closed_route_receiver.go`, `closed_forwarding_admission.go`, `closed_hosting.go` | Current State/profile projection, exact recipient and token checks, and host reservation. Forwarding and direct recipients share these checks, so moving a role by filename would import the parent package or duplicate authority. |
 | `closed_outer_lifetime.go`, `closed_outer_writer.go` | Outer Carrier lane lifetime and serialized writes shared by forwarding, issuer, resolution, Introduction, and JOIN. This is a genuine shared Node operation above Route's wire/Carrier mechanics. |
 | `closed_forwarding_*`, `closed_bootstrap_forwarding.go`, `closed_forward_recipient.go`, `closed_carrier_relay.go` | Forwarding listener, receiving resources, sessions, links, queue, bootstrap, peer choice, and shutdown. `closedForwardingServer` retains the group and its terminal result. |
@@ -80,9 +80,8 @@ caller; no package is required merely to remove a filename prefix.
 
 ### 1. Make the root contract readable
 
-- Split `contract.go` by responsibility into named files for process config,
-  authenticated duty view/facts, and event/result contract. Keep the same Go
-  package and behavior during this step.
+- The former `contract.go` declarations are separated by process config,
+  local reservations, runtime state and event/result contract inside `node`.
 - The common handle is named `dutyHandle` across `startDuty` and each adapter;
   keep the private probe's own types under probe names.
 - Give `internal/node/doc.go` a concise navigation map: admission, authority,

@@ -14,7 +14,7 @@ import (
 func TestNodeDutyHandoffIsOneCopiedValue(t *testing.T) {
 	t.Parallel()
 	root := repositoryRoot(t)
-	contract := string(readProjectFile(t, root, "internal/node/contract.go"))
+	contract := string(readProjectFile(t, root, "internal/node/process_config.go"))
 	for _, forbidden := range []string{
 		"type DutyView interface",
 		"type dutyFacts struct",
@@ -23,11 +23,11 @@ func TestNodeDutyHandoffIsOneCopiedValue(t *testing.T) {
 		"DutyRecordGeneration() uint64",
 	} {
 		if strings.Contains(contract, forbidden) {
-			t.Errorf("contract.go still declares retired seam member %q", forbidden)
+			t.Errorf("process_config.go still declares retired seam member %q", forbidden)
 		}
 	}
 	if !strings.Contains(contract, "func() (state.NodeDuty, error)") {
-		t.Error("contract.go lost the copied-value Config.Current callback")
+		t.Error("process_config.go lost the copied-value Config.Current callback")
 	}
 	duty := string(readProjectFile(t, root, "internal/network/state/node_duty.go"))
 	for _, required := range []string{
