@@ -228,7 +228,11 @@ func TestSelectedApplicationSeamsMatchTheirAdapters(t *testing.T) {
 		}
 	}
 	administration := "github.com/dianabuilds/ardents-network/internal/application/interfacev1/administration"
-	for _, packagePath := range []string{"./cmd/ardents", "./internal/endpoint"} {
+	administrationAdapters := []string{"./cmd/ardents"}
+	if runtime.GOOS == "linux" {
+		administrationAdapters = append(administrationAdapters, "./internal/endpoint")
+	}
+	for _, packagePath := range administrationAdapters {
 		if !listedDependencies(t, root, packagePath)[administration] {
 			t.Errorf("%s does not use the shared Application Administration Module", packagePath)
 		}

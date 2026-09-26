@@ -38,16 +38,6 @@ func VerifyTransitGrant(raw []byte, authority ed25519.PublicKey) (TransitGrant, 
 	return input, nil
 }
 
-// DecodeTransitGrant checks the closed wire grammar without granting trust to
-// its signer. A Node uses IssuerID only to select the current State-authorized
-// Grant key, then must call VerifyTransitGrant before admission.
-func DecodeTransitGrant(raw []byte) (TransitGrant, error) {
-	if len(raw) != transitGrantBodyLength()+ed25519.SignatureSize {
-		return TransitGrant{}, errors.New("transit grant decoding input is invalid")
-	}
-	return decodeTransitGrantBody(raw[:transitGrantBodyLength()])
-}
-
 func decodeTransitGrantBody(raw []byte) (TransitGrant, error) {
 	if len(raw) != transitGrantBodyLength() || string(raw[:len(transitGrantPrefix)]) != transitGrantPrefix {
 		return TransitGrant{}, errors.New("transit grant encoding is malformed")

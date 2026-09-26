@@ -57,12 +57,12 @@ func TestRetiredInitiatorReceivingClosureIsAbsent(t *testing.T) {
 			path: "internal/route/credential_relay_io.go",
 			forbidden: []string{
 				"func ReadCredentialRelaySetup(",
+				"func WriteCredentialRelaySetup(",
 				"func WriteCredentialRelayReady(",
 				"func ReadCredentialRelayEnvelope(",
 				"func WriteCredentialRelayResponse(",
 			},
 			retained: []string{
-				"func WriteCredentialRelaySetup(",
 				"func ReadCredentialRelayReady(",
 				"func WriteCredentialRelayEnvelope(",
 				"func ReadCredentialRelayResponse(",

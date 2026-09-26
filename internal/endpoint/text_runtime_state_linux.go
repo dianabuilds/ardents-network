@@ -23,6 +23,3 @@ type endpointTextState struct {
 	closedEntryRoot     string
 	closedRoleRoot      string
 }
-
-// textPublicationOwned is called with the enclosing Endpoint's publisherMu held.
-func (owner *endpointTextState) textPublicationOwned() bool { return owner.textPublisherOwner != nil }

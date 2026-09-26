@@ -1,3 +1,5 @@
+//go:build linux
+
 package endpoint
 
 func fixtureID(value byte) [32]byte {

@@ -1,3 +1,5 @@
+//go:build linux
+
 package endpoint
 
 import (
@@ -120,4 +122,15 @@ func targetLinkBytes(start byte) [32]byte {
 		result[index] = start + byte(index)
 	}
 	return result
+}
+
+// alphaPersistentFloorRoot creates the owner-only directory required by
+// alpha.OpenPersistentFloor, independent of the test process umask.
+func alphaPersistentFloorRoot(t *testing.T) string {
+	t.Helper()
+	root := filepath.Join(t.TempDir(), "alpha-floor")
+	if err := os.Mkdir(root, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	return root
 }

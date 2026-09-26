@@ -78,6 +78,7 @@ Current decisions:
 
 Completed retirement decisions:
 
+- [0092 — Retire the generic Publisher administration and Endpoint Transit acquisition chain](0092-retire-generic-publisher-transit-chain.md)
 - [0091 — Retire uncomposed legacy artifacts from the working tree](0091-retire-uncomposed-legacy-artifacts.md)
 - [0090 — Retire Name operator network adapters without retiring Service Names](0090-retire-name-operator-network-adapters.md)
 - [0089 — Retire old Node starts while preserving owned shutdown](0089-retire-old-node-starts-preserve-owned-shutdown.md)

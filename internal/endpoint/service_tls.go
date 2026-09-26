@@ -1,3 +1,5 @@
+//go:build linux
+
 package endpoint
 
 import (
@@ -16,8 +18,6 @@ import (
 	"math/big"
 	"net"
 	"time"
-
-	nativeconnection "github.com/dianabuilds/ardents-network/internal/service/connection"
 )
 
 const exporterLabel = "EXPORTER-ardents-service-connection-v1"
@@ -92,15 +92,6 @@ func exportedAttachment(connection *tls.Conn, connectionContext [32]byte, genera
 		context: connectionContext, transport: connection.NetConn(), exporterCommitment: exporterCommitment}, continuity, nil
 }
 
-func connectionContext(credential publicationCredential, recovery routeRecovery, publicationDigest [32]byte) ([32]byte, error) {
-	return nativeconnection.Context(nativeconnection.ContextInput{Network: credential.NetworkID, Target: credential.Target,
-		InstancePublic: credential.InstancePublic, PublicationDigest: publicationDigest,
-		InstanceGeneration: credential.Generation, CandidateView: recovery.CandidateView,
-		IsolationContext: recovery.IsolationContext, DestinationBinding: recovery.DestinationBinding,
-		WorkSafetyNotAfter: recovery.WorkSafetyNotAfter, WorkSafetyMaximum: recovery.WorkSafetyMaximum,
-		NoNewRecoveryAfter: recovery.NoNewRecoveryAfter})
-}
-
 func verifyInstance(expected [32]byte) func(tls.ConnectionState) error {
 	return func(state tls.ConnectionState) error {
 		if len(state.PeerCertificates) != 1 {
@@ -133,4 +124,11 @@ func instanceCertificate(credential publicationCredential, signer crypto.Signer)
 		return tls.Certificate{}, err
 	}
 	return tls.Certificate{Certificate: [][]byte{der}, PrivateKey: signer, Leaf: parsed}, nil
+}
+
+// erase overwrites a volatile byte slice once its lifecycle owner has ended.
+func erase(value []byte) {
+	for index := range value {
+		value[index] = 0
+	}
 }

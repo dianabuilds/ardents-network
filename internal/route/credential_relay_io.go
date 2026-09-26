@@ -25,14 +25,6 @@ type CredentialRelayResponse struct {
 	Framing byte
 }
 
-func WriteCredentialRelaySetup(writer io.Writer, input CredentialRelaySetup) error {
-	raw, err := EncodeCredentialRelaySetup(input)
-	if err != nil {
-		return err
-	}
-	return writeAll(writer, raw)
-}
-
 func ReadCredentialRelayReady(reader io.Reader) (CredentialRelayReady, error) {
 	raw, err := readRouteRecord(reader)
 	if err != nil {

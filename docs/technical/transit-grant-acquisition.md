@@ -1,9 +1,13 @@
 # Transit Grant acquisition
 
-Status: **accepted contract; signer, owner-only issuer-root bootstrap,
-State-bound Node runtime, role-scoped Endpoint acquisition lifecycles, and
-Application runtime composition implemented; artifact-native qualification
-remains.**
+Status: **historical contract record.** The Node-side issuer engine was
+retired by the #205 decision, and the Endpoint-side acquisition
+(`internal/endpoint/transit`, transit credential acquisition, and transit
+client certificates) was retired by
+[ADR-0092](../adr/0092-retire-generic-publisher-transit-chain.md).
+[ADR-0062](../adr/0062-scope-online-transit-grant-signing.md) remains the
+accepted provenance of the Transit Grant v1 wire bytes and signature domain.
+No maintained command reaches this contract.
 This document owns the purpose-scoped signer, fixed encrypted outcome, durable
 issuer budget/idempotency, and Endpoint at-most-once acquisition lifecycle
 selected by [ADR-0062](../adr/0062-scope-online-transit-grant-signing.md).

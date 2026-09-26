@@ -16,6 +16,7 @@ func TestRetiredTransitIssuerReceivingEngineIsAbsent(t *testing.T) {
 		"internal/node/transit_issuer_duty.go",
 		"internal/node/transit_issuer_lifecycle_test.go",
 		"internal/node/transit_issuer_listener.go",
+		"internal/route/credential/client.go",
 		"internal/route/credential/durable_issuer_test.go",
 		"internal/route/credential/issuer.go",
 		"internal/route/credential/issuer_root.go",
@@ -23,6 +24,8 @@ func TestRetiredTransitIssuerReceivingEngineIsAbsent(t *testing.T) {
 		"internal/route/credential/issuer_root_test.go",
 		"internal/route/credential/issuer_state_duty_test.go",
 		"internal/route/credential/issuer_test.go",
+		"internal/route/credential/message.go",
+		"internal/route/credential/profile.go",
 		"internal/route/credential/root_issuer.go",
 	} {
 		if _, err := os.Stat(filepath.Join(root, filepath.FromSlash(relative))); !os.IsNotExist(err) {
@@ -46,9 +49,12 @@ func TestRetiredTransitIssuerReceivingEngineIsAbsent(t *testing.T) {
 	if strings.Contains(grant, "func IssueTransitGrant(") {
 		t.Error("Route still exports the retired Transit Grant signer")
 	}
+	if strings.Contains(grant, "func DecodeTransitGrant(") {
+		t.Error("Route still exports the untrusted Transit Grant decoder")
+	}
 }
 
-func TestTransitIssuerRetirementPreservesRefusalClientAndClosedIssuer(t *testing.T) {
+func TestTransitIssuerRetirementPreservesRefusalAndClosedIssuer(t *testing.T) {
 	t.Parallel()
 	root := repositoryRoot(t)
 	command := string(readProjectFile(t, root, "cmd/ardents-node/issuer_initialize.go"))
@@ -62,9 +68,6 @@ func TestTransitIssuerRetirementPreservesRefusalClientAndClosedIssuer(t *testing
 		path        string
 		declaration string
 	}{
-		{"internal/route/credential/client.go", "func OpenClient("},
-		{"internal/route/credential/profile.go", "func DecodeProfile("},
-		{"internal/endpoint/transit_credential_acquisition.go", "func (endpoint *endpoint) acquireTransitCredential("},
 		{"internal/route/credential/closed_token_issuer.go", "type ClosedTokenIssuer struct"},
 		{"internal/route/credential/closed_token_issuer_ledger.go", "type closedTokenIssuerLedger struct"},
 	} {

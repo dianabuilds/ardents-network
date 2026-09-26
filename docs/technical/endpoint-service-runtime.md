@@ -138,16 +138,18 @@ The selected protected text Connection Interface adds one narrower consumer
 operation over that composition. Its typed AAI3 caller supplies one explicit
 Target Link and one fixed text request; Endpoint retains the local Connection
 principal, authenticated State, Entry, Target authentication, Route inputs,
-the one-use Transit Grant/key, worker qualification, and Broker admission
-input. After Target-Link parsing and Network binding, Endpoint activates and
-consumes the Connection capability before it reads current State, touches Entry
-or private reachability, asks an issuer for a Transit Grant, opens Route, or
+the closed token and durable attempt journal, worker qualification, and Broker
+admission input. After Target-Link parsing and Network binding, Endpoint
+activates and consumes the Connection capability before it reads current State, touches Entry
+or private reachability, acquires a closed token, opens Route, or
 sends Introduction. Only the fixed text exchange and bounded terminal class
 cross the Interface. This does not preserve the generic AAI2 binary workload.
-The `Publish` and `Withdraw`
-Administration operations remain separately authorized; Publish dispatches the
-Endpoint-owned `StartPublisher` transaction, not a raw Credential/signer
-request. The Connection Interface cannot invoke either operation.
+Administration remains separately authorized. The selected text Publisher
+imports a bounded snapshot and invokes `PublishSnapshot`; its bodyless
+`Publish` refuses because the generic `StartPublisher` transaction was
+retired by
+[ADR-0092](../adr/0092-retire-generic-publisher-transit-chain.md).
+`Withdraw` cancels and joins the retained publication. The Connection Interface cannot invoke either operation.
 
 The fixed text reader has these setup outcomes:
 
@@ -163,16 +165,15 @@ extend the Interface to Name, a generic Application, or a stream-terminal
 result. The caller can inspect the bounded class for its local behavior; it
 does not present the refusal reason, Target Link, or Endpoint failure detail.
 
-For a User connection, Endpoint parses and binds the Target Link to its Network,
-activates its local capability, and passes only the authenticated Target to the
-opened `route.Route`. Route owns the volatile State/Entry/private-reachability/
-Introduction sequence and returns only a verified Attachment plus immutable
-Target/publication evidence. Endpoint supplies Route a narrow callback for its
-durable membership Transit Grant journal; the callback cannot select a carrier
-or peer. A Grant is terminalized immediately after receiving-Introduction TLS
-admission, even when subsequent delivery or Service TLS fails. Fixed Grants
-remain verified against current State inside Route. This is the boundary
-selected by [ADR-0070](../adr/0070-own-volatile-user-route-orchestration.md).
+The generic `route.Route` User composition described by
+[ADR-0070](../adr/0070-own-volatile-user-route-orchestration.md) was retired
+with its Open/Attach owner. The selected text Reader keeps the active Broker
+lease in Endpoint, verifies the current protected State and Target, and uses
+its closed Source, private Descriptor lookup, Introduction and JOIN owners.
+Endpoint owns the durable closed-token attempt journal; State selects the
+issuer and Route recipients. Service Connection receives only a verified
+Attachment and immutable publication evidence. No generic User Route or
+Transit Grant fallback is selected for C0.
 
 ## Local admission
 
@@ -412,11 +413,17 @@ EOF, or Terminal. That replay remains ordered with later Application bytes and
 is joined or interrupted by the Connection's existing terminal cleanup.
 
 Publication persists public proof and its non-decreasing generation floor but
-never persists a live Instance private key. The lower-level accepted Publisher
-composition can receive one opened host Instance binding and use it as an
-opaque Instance signer and fixed-purpose SealedIntroduction v1 recipient
-without any Interface returning private bytes or an exportable HPKE key. The
-maintained participant runtime opens that binding only after reconciling the
+never persists a live Instance private key. The maintained Publisher participant
+receives one opened host Instance binding as an opaque signer. For current
+private Introduction, it creates a volatile `PrivateRecipient` with a bounded
+revision and expiry; the recipient opens only the authenticated private
+capsule, without an Interface returning private bytes or an exportable HPKE
+key. SealedIntroduction v1 is historical and is not the current private
+Introduction path. The Service Instance root still generates and persists its
+former Introduction key because accepted Credential v2 binds that public key
+under ADR-0034; the private v3 capsule uses the separate volatile recipient.
+The maintained participant runtime opens the Instance
+binding only after reconciling the
 accepted public Credential with the durable publication floor. When its
 optional host `service_instance_root` is configured, it consumes State's
 indivisible Publisher attachment projection, obtains separate Introduction

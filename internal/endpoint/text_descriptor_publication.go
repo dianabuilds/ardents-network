@@ -58,8 +58,6 @@ func (owner *textContext) publishTextDescriptor(ctx context.Context) (verified r
 		reason = "Publisher binding is absent"
 	case endpoint.publications == nil:
 		reason = "Publication owner is absent"
-	case endpoint.publisherSession != nil:
-		reason = "Publisher session is active"
 	case endpoint.textPublisherOwner != nil && endpoint.textPublisherOwner != owner:
 		reason = "another Publisher context owns the publication"
 	}
@@ -158,7 +156,7 @@ func (owner *textContext) publishTextDescriptor(ctx context.Context) (verified r
 	defer owner.mu.Unlock()
 	live, at, err = owner.textPermissionProfileLocked()
 	if err != nil || live != profile || owner.publication.publicationTargetLocked() != registered || owner.publication.drainingLocked() || !flight.source.currentLocked(owner) ||
-		endpoint.textPublisherOwner != owner || endpoint.publisherBinding != binding || !endpoint.textPublicationLive || endpoint.publisherSession != nil ||
+		endpoint.textPublisherOwner != owner || endpoint.publisherBinding != binding || !endpoint.textPublicationLive ||
 		!owner.liveLocked(endpoint, broker.Administration) || attempt.Err() != nil || ctx.Err() != nil || registered.recipientPublicLocked(at) == [32]byte{} {
 		return reachability.Verified{}, errors.New("text Descriptor acknowledgement outlived its owner")
 	}
