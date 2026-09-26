@@ -327,11 +327,12 @@ profile. R-119 through R-121 retain the exact historical result; current test
 inventories contain no compatibility exception or hidden replacement route for
 those writers.
 
-`tests/compatibility/browser-endpoint-v4` is the sole retained non-executable
-source exception. ADR-0061 requires it to remain outside Go package discovery,
-ordinary checks, and current qualification until an explicit supersede or
-retirement decision. Completed experiments and the former `reference-c2`
-fixture are available only from Git history and accepted research records.
+[ADR-0091](../adr/0091-retire-uncomposed-legacy-artifacts.md) retired the
+`tests/compatibility/browser-endpoint-v4` non-executable source tree that
+ADR-0061 had retained pending an explicit supersede or retirement decision.
+Completed experiments, the former `reference-c2` fixture, and the retired
+compatibility tree are available only from Git history and accepted research
+records.
 
 ## Historical qualification provenance
 
@@ -363,9 +364,10 @@ belongs to exactly one process profile. A new package, file, or suite cannot
 enter through a negative filter, wildcard exception, or directory naming
 alone.
 
-`tests/compatibility/` is non-executable provenance. Compatibility evidence
-must name its former observer and deletion/reactivation condition and does not
-belong to a maintained package inventory.
+Non-executable compatibility provenance lives in Git history and accepted
+research records, not in the working tree. Compatibility evidence must name
+its former observer and deletion/reactivation condition and does not belong to
+a maintained package inventory.
 
 ## Validity and reruns
 

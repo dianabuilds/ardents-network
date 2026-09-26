@@ -633,9 +633,10 @@ HTTP status, response completeness, or semantic retry belongs to the external
 Application. Endpoint never substitutes another Target or an Internet path.
 
 The Endpoint contains no Browser presentation or Browser Entry state. The
-former Browser implementation and qualification lanes are retired; Firefox
-source remains only as non-executable compatibility evidence under
-`tests/compatibility/browser-endpoint-v4` in accordance with [ADR-0061](../adr/0061-retain-firefox-entry-as-compatibility-evidence.md)
+former Browser implementation and qualification lanes are retired, and
+[ADR-0091](../adr/0091-retire-uncomposed-legacy-artifacts.md) retired the
+in-tree Firefox compatibility source; it survives only in Git history in
+accordance with [ADR-0061](../adr/0061-retain-firefox-entry-as-compatibility-evidence.md)
 and [ADR-0069](../adr/0069-retire-active-browser-implementation.md).
 
 ## Verification and related decisions

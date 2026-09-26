@@ -60,7 +60,6 @@ Current decisions:
 - [0056 — Simulate H4-6D controlled project-control transitions](0056-simulate-h4-6d-controlled-project-control-transitions.md)
 - [0057 — Simulate H4-4B canonical Name lifecycle](0057-simulate-h4-4b-canonical-name-lifecycle.md)
 - [0058 — Simulate H4-4C deterministic root claims](0058-simulate-h4-4c-root-claims.md)
-- [0061 — Retain the Firefox entry only as compatibility evidence](0061-retain-firefox-entry-as-compatibility-evidence.md)
 - [0062 — Scope online Transit Grant signing away from State authority](0062-scope-online-transit-grant-signing.md)
 - [0063 — Bootstrap each Transit Grant issuer from an owner-only root](0063-bootstrap-transit-issuer-from-owner-root.md)
 - [0064 — Separate Service Authority custody from host Instance enrollment](0064-separate-service-authority-custody-from-instance-enrollment.md)
@@ -79,6 +78,7 @@ Current decisions:
 
 Completed retirement decisions:
 
+- [0091 — Retire uncomposed legacy artifacts from the working tree](0091-retire-uncomposed-legacy-artifacts.md)
 - [0090 — Retire Name operator network adapters without retiring Service Names](0090-retire-name-operator-network-adapters.md)
 - [0089 — Retire old Node starts while preserving owned shutdown](0089-retire-old-node-starts-preserve-owned-shutdown.md)
 - [0088 — Retire Alpha Service Links and fresh corpus intake](0088-retire-alpha-service-links-and-corpus-intake.md)
@@ -97,6 +97,7 @@ Superseded or withdrawn decisions retained for provenance:
 - [0016 — Bind and isolate launcher-born Application Principals](0016-bind-and-isolate-launcher-born-application-principals.md)
 - [0045 — Deliver the alpha Browser Entry as a signed unlisted Firefox add-on](0045-firefox-first-unlisted-browser-entry-delivery.md)
 - [0052 — Build only fixed closed-alpha static inputs from local custody](0052-build-fixed-alpha-static-inputs.md)
+- [0061 — Retain the Firefox entry only as compatibility evidence](0061-retain-firefox-entry-as-compatibility-evidence.md)
 
 ADR-0015 was accepted for the stopped Stage 7 work but remains the current
 release/update ownership decision. New ADRs use the next unreserved four-digit

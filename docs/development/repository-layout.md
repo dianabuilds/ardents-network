@@ -118,7 +118,6 @@ scripts/
 .github/workflows/
   quality.yml                  mandatory ordinary CI quality gate
 .githooks/pre-commit           local quick gate
-tests/compatibility/           non-executable historical source evidence
 docs/                          product, security, research, ADR, development, technical, and reference records
 docs/development/README.md     current contributor route through development records
 docs/reference/commands.md     current command route and limits

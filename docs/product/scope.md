@@ -240,12 +240,12 @@ current artifact set contains only the four headless commands, while the
 Application Interface remains a neutral shared seam.
 
 The former Browser implementation and qualification lanes are retired by
-[ADR-0069](../adr/0069-retire-active-browser-implementation.md). The retained
-Firefox/Endpoint source under `tests/compatibility/browser-endpoint-v4`, its
-accepted ADRs and research records, and immutable audit receipts are
-non-executable evidence only. They do not inherit a Network security claim,
-Browser isolation claim, Web PKI identity, general proxy authority, or
-supported Firefox participant journey.
+[ADR-0069](../adr/0069-retire-active-browser-implementation.md), and
+[ADR-0091](../adr/0091-retire-uncomposed-legacy-artifacts.md) retired the
+in-tree Firefox/Endpoint compatibility source. Its accepted ADRs, research
+records, and immutable audit receipts remain non-executable evidence only.
+They do not inherit a Network security claim, Browser isolation claim, Web PKI
+identity, general proxy authority, or supported Firefox participant journey.
 
 ## Excluded historical evidence
 
@@ -257,13 +257,12 @@ The following are not maintained candidate surfaces:
 - retired release-assembly and project-control simulation commands;
 - superseded planning briefs, status chronology, and split-candidate release
   ledgers; and
-- Firefox/Endpoint source retained as non-executable evidence under
-  `tests/compatibility/browser-endpoint-v4` by ADR-0061.
+- Firefox/Endpoint source formerly retained under
+  `tests/compatibility/browser-endpoint-v4`, retired by ADR-0091.
 
-Git history and accepted research/ADR records preserve the first four items'
-provenance. The ADR-0061 compatibility tree is intentionally retained but is
-excluded from builds, package inventories, current qualification, and the C0
-Network candidate.
+Git history and accepted research/ADR records preserve every item's
+provenance. None of them is part of builds, package inventories, current
+qualification, or the C0 Network candidate.
 
 ## Claims withheld from C0
 

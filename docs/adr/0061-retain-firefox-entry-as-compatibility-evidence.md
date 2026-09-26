@@ -1,9 +1,14 @@
 ---
-status: accepted
+status: superseded
 date: 2026-08-30
+superseded_by: ADR-0091 (compatibility tree retired)
 ---
 
 # ADR-0061 — Retain the Firefox entry only as compatibility evidence
+
+> Superseded by [ADR-0091](0091-retire-uncomposed-legacy-artifacts.md), which
+> retires the in-tree compatibility evidence. This record retains the original
+> Browser Entry falsification finding and its bounded retention decision.
 
 ## Context
 
