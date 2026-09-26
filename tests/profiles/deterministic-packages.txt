@@ -22,7 +22,6 @@ github.com/dianabuilds/ardents-network/internal/architecture
 github.com/dianabuilds/ardents-network/internal/entry
 github.com/dianabuilds/ardents-network/internal/network/duty
 github.com/dianabuilds/ardents-network/internal/naming/alpha
-github.com/dianabuilds/ardents-network/internal/naming/alpha/private
 github.com/dianabuilds/ardents-network/internal/naming/namespace
 github.com/dianabuilds/ardents-network/internal/naming/namespace/admission
 github.com/dianabuilds/ardents-network/internal/naming/namespace/authority

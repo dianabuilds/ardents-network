@@ -107,36 +107,6 @@
     },
     {
       "symbols": [
-        "internal/naming/alpha/private.NewGateway",
-        "internal/naming/alpha/private.NewRelay",
-        "internal/naming/alpha/private.Open",
-        "internal/naming/alpha/private.Client.Resolve",
-        "internal/naming/alpha/private.Client.begin",
-        "internal/naming/alpha/private.decodeResponse",
-        "internal/naming/alpha/private.decodeRequest",
-        "internal/naming/alpha/private.encodeRequest",
-        "internal/naming/alpha/private.encodeResponse",
-        "internal/naming/alpha/private.gateway.Handler",
-        "internal/naming/alpha/private.gateway.Profile",
-        "internal/naming/alpha/private.gateway.serve",
-        "internal/naming/alpha/private.isolatedClient",
-        "internal/naming/alpha/private.privateRelayHTTPClient",
-        "internal/naming/alpha/private.profileTranscript",
-        "internal/naming/alpha/private.pad",
-        "internal/naming/alpha/private.rejectAlphaPrivateRedirect",
-        "internal/naming/alpha/private.relay.Handler",
-        "internal/naming/alpha/private.relay.forward",
-        "internal/naming/alpha/private.signProfile",
-        "internal/naming/alpha/private.unpad",
-        "internal/naming/alpha/private.validProfile"
-      ],
-      "classification": "retained historical private Alpha resolver",
-      "rationale": "ADR-0088 retires the Alpha network path and #113 removes its sole Endpoint destination adapter. This cohesive package remains only as deterministic historical component evidence because deleting the whole Alpha library is outside the bounded adapter retirement.",
-      "owner": "Product Owner and Codex",
-      "retirement": "Remove this complete private Alpha resolver in a separate bounded package-retirement change with package-map, dependency and historical-evidence disposition; never reconnect it without a superseding accepted decision."
-    },
-    {
-      "symbols": [
         "internal/naming/namespace.OpenResolutionGateway",
         "internal/naming/namespace.ResolutionGateway.AcceptsGateway",
         "internal/naming/namespace.ResolutionGateway.AdmitResolution",
