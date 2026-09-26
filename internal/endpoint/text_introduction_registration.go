@@ -296,12 +296,6 @@ func (registered *textIntroductionRegistration) matchesRequest(slot [32]byte, re
 	return registered != nil && registered.request.Slot == slot && registered.request.Revision == revision
 }
 
-// admitsCapsule requires the exact slot and revision and a capsule expiry
-// inside the registration window.
-func (registered *textIntroductionRegistration) admitsCapsule(slot [32]byte, revision uint64, capsuleExpiry time.Time) bool {
-	return registered.matchesRequest(slot, revision) && !capsuleExpiry.After(registered.request.Expiry)
-}
-
 // acceptingNowLocked reports the verified ACK and a live private recipient.
 func (registered *textIntroductionRegistration) acceptingNowLocked() bool {
 	return registered != nil && registered.published && registered.recipient != nil
