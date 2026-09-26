@@ -38,7 +38,6 @@ Current decisions:
 - [0032 — Use the canonical Target Link v1 grammar](0032-target-link-v1.md)
 - [0033 — Use the closed Route RelaySetup v1 exchange](0033-route-relay-setup-v1.md)
 - [0034 — Bind a separate Service Introduction HPKE key in Credential v2](0034-service-introduction-hpke-credential-v2.md)
-- [0035 — Use live Introduction slots and EndpointTransitBinding v1](0035-live-introduction-slots-and-transit-binding-v1.md)
 - [0036 — Resolve Target Links through private, current descriptors](0036-target-private-reachability-v1.md)
 - [0037 — Carry private reachability through a closed Initiator operation](0037-private-reachability-entry-carrier.md)
 - [0038 — Keep alpha disclosure separate from acceptance authority](0038-alpha-control-disclosure-reader-v1.md)
@@ -78,6 +77,7 @@ Current decisions:
 
 Completed retirement decisions:
 
+- [0094 — Retire the sealed Introduction v1 grammar and the v1 Introduction instruction codecs](0094-retire-sealed-introduction-v1-grammar.md)
 - [0093 — Retire the Route v2 execution closure](0093-retire-route-v2-execution-closure.md)
 - [0092 — Retire the generic Publisher administration and Endpoint Transit acquisition chain](0092-retire-generic-publisher-transit-chain.md)
 - [0091 — Retire uncomposed legacy artifacts from the working tree](0091-retire-uncomposed-legacy-artifacts.md)
@@ -94,6 +94,7 @@ Completed retirement decisions:
 Superseded or withdrawn decisions retained for provenance:
 
 - [0028 — Use the native Service Connection v1 grammar](0028-native-service-connection-v1.md)
+- [0035 — Use live Introduction slots and EndpointTransitBinding v1](0035-live-introduction-slots-and-transit-binding-v1.md)
 - [0012 — Select standalone WebTunnel for the H3 Camouflage Adapter](0012-select-webtunnel-for-h3-camouflage.md)
 - [0013 — Withdraw the initial Stage 6 cryptographic suite](0013-stage-6-cryptographic-suite.md)
 - [0016 — Bind and isolate launcher-born Application Principals](0016-bind-and-isolate-launcher-born-application-principals.md)

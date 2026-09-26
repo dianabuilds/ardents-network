@@ -38,6 +38,10 @@ func TestRetiredRouteV2ExecutionClosureIsAbsent(t *testing.T) {
 		"internal/route/transit_grant.go",
 		"internal/route/transit_grant_test.go",
 		"internal/route/wire_encoding.go",
+		"internal/route/sealed_introduction.go",
+		"internal/route/sealed_introduction_test.go",
+		"internal/service/publication/introduction_instruction.go",
+		"internal/service/publication/introduction_instruction_test.go",
 	} {
 		if _, err := os.Stat(filepath.Join(root, filepath.FromSlash(relative))); !os.IsNotExist(err) {
 			t.Errorf("retired Route v2 execution closure file still exists: %s", relative)
@@ -45,21 +49,21 @@ func TestRetiredRouteV2ExecutionClosureIsAbsent(t *testing.T) {
 	}
 }
 
-func TestRouteV2RetirementPreservesRefusalAndHistoricalSealedGrammar(t *testing.T) {
+func TestRouteV2RetirementPreservesRefusalAndPersistedDataContracts(t *testing.T) {
 	t.Parallel()
 	root := repositoryRoot(t)
 
-	sealed := string(readProjectFile(t, root, "internal/route/sealed_introduction.go"))
-	for _, retained := range []string{
-		`Profile         = "ardents-interactive-route-v2"`,
-		"func routeEnvelope(",
-		"func routeBody(",
-		"func DecodeSealedIntroduction(",
-		"func OpenSealedIntroductionWith(",
-	} {
-		if !strings.Contains(sealed, retained) {
-			t.Errorf("sealed Introduction owner lost retained historical declaration %q", retained)
-		}
+	carrierOwner := string(readProjectFile(t, root, "internal/route/closed_node_carrier.go"))
+	if !strings.Contains(carrierOwner, `Profile = "ardents-interactive-route-v2"`) {
+		t.Error("closed Carrier owner lost the retired v2 Profile refusal identity")
+	}
+
+	lifecycle := string(readProjectFile(t, root, "internal/service/instance/lifecycle.go"))
+	if strings.Contains(lifecycle, "OpenIntroduction(") {
+		t.Error("Instance lifecycle still contains the retired sealed v1 decryptor")
+	}
+	if !strings.Contains(lifecycle, "func (binding *Binding) IntroductionPublic()") {
+		t.Error("Instance lifecycle lost the retained Credential v2 Introduction key accessor")
 	}
 
 	admission := string(readProjectFile(t, root, "internal/node/admission.go"))

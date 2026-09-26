@@ -1,7 +1,8 @@
 ---
-status: accepted
+status: superseded
 date: 2026-08-24
 supersedes: none
+superseded-by: ADR-0094
 ---
 
 # ADR-0035 — Use live Introduction slots and EndpointTransitBinding v1

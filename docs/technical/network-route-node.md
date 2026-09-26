@@ -164,7 +164,7 @@ already pinned authority retain their previous State and Source behavior.
 | internal/network/duty | Persist the Endpoint-local Role Domain generation, watermark, expiry, and current conflict Duties. Its version-1 root still decodes and carries the historical receiving one-use Transit Grant spend ledger through `Replace`; the `SpendTransitGrant` operation was retired with the Route v2 execution closure (ADR-0093), and no current receiving-Node admission path exists. The persisted schema needs an explicit old-root migration or refusal decision before its decoder is removed. | Network State publication, assignment creation, Route ownership, issuer custody, or Node process lifecycle. |
 | internal/resource | Check selected process placement and measure process/cgroup pressure through a process-local Guard. Separately own the initialized durable shared Hosting period, interface-counter charging and work/termination reservations. | State or Node authority, admission, listener shutdown, forgiving an outstanding reservation on handle close, or a claim for unsupported platforms. |
 | internal/entry | Own the protected Endpoint's durable closed Entry sets: select exactly two State-current members per adjacent Role Domain before use, revalidate a selected member, retain the generation floor, and refuse legacy-root substitution. Separately, the retained `entry recipient/import` operator command opens the older Invite root, validates one recipient-bound signed Invite and records its replay/contact history; its Route attachment has no selected C0 caller after ADR-0092. | Complete Route selection, receiving Entry admission, carrier choice, User identity, or treating the old Invite command as a second closed-Route path. |
-| internal/route | Implement the closed v3 Node Carrier/wire used by `internal/node` through `OpenClosedNodeCarrier`. The former aggregate Interactive User Route v2 runtime and its whole v2 execution closure (Attachment, EndpointTransitBinding, EntryBinding, credential-relay, Introduction slot/outcome, LegBinding, and Transit Grant verifier files) are absent under ADR-0093. What remains is the byte-exact sealed Introduction v1 grammar pending its superseding ADR-0035 decision (F-42) and the retired v2 `Profile` identity used only for Node typed refusals; neither provides a second supported Route. The [package map](../development/package-map.md) records the current consumer boundary. | Reintroducing the removed User-route composition as a maintained product path or treating its removal as successor-network readiness; candidate ranking, carrier policy/fallback, H3 compatibility, peer runtime, Node profile, or durable State/Duty/credential-journal writing. |
+| internal/route | Implement the closed v3 Node Carrier/wire used by `internal/node` through `OpenClosedNodeCarrier`. The former aggregate Interactive User Route v2 runtime and its whole v2 execution closure (Attachment, EndpointTransitBinding, EntryBinding, credential-relay, Introduction slot/outcome, LegBinding, and Transit Grant verifier files) are absent under ADR-0093. What remains is only the retired v2 `Profile` identity used for Node typed refusals; the sealed Introduction v1 grammar and the publication v1 Introduction instruction codecs are retired by ADR-0094, which supersedes ADR-0035. Nothing provides a second supported Route. The [package map](../development/package-map.md) records the current consumer boundary. | Reintroducing the removed User-route composition as a maintained product path or treating its removal as successor-network readiness; candidate ranking, carrier policy/fallback, H3 compatibility, peer runtime, Node profile, or durable State/Duty/credential-journal writing. |
 | internal/node | Run one bounded current closed Node duty from authenticated admission through listener readiness, pressure reaction, drain, withdrawal, and a bounded terminal cleanup outcome. All five old native duty engines are absent; their plan stanzas remain only at the command refusal boundary. | State-root authority, assignment creation, an old native duty listener, or a separate probe runtime. |
 | internal/contributor | Authenticate and retire an already owned dedicated-host Rendezvous installation. The only dispatchable actions are diagnose, drain, withdraw and confirmed remove; interrupted-update recovery may reconcile the exact current/predecessor generation but cannot Start, Restart or Enable either. | New installation or update, duty selection, Network State authority, public admission, co-residence, arbitrary service control, or capacity claims. |
 
@@ -197,7 +197,7 @@ wave still follows the normal availability, clock-confidence, and durable
 admission rules, and an actual terminal automatic-refresh failure remains
 visible to `Current` and `Wait`.
 
-## Retained generation-2 Route grammar
+## Retired generation-2 Route grammar
 
 `ardents-interactive-route-v2` identifies the former native Route grammar, not
 an accepting C0 Node duty. The selected closed Route uses `ardents-route-v3`;
@@ -205,10 +205,13 @@ old Node selections are refused before Network effects under ADR-0089, and
 Node compares the exact stale `Profile` only to refuse it without side
 effects (ADR-0093). The v2 EntryBinding and the reciprocal LegBinding
 grammars are retired with the whole v2 execution closure (ADR-0093);
-LegBinding was wire-only and never persisted. Only SealedIntroduction keeps a
-fixed historical record: its bytes and vectors are compatibility evidence
-for the ADR-0034 publication keys, not a fallback or version-negotiation
-path for the closed Route.
+LegBinding was wire-only and never persisted. The sealed Introduction v1
+grammar and its canonical vectors are retired by ADR-0094; ADR-0026 and
+ADR-0034 remain the historical provenance of its bytes. Only the
+`IntroductionPublic` key survives, and only as data: every new Instance
+still generates the pair, the canonical request still commits the public
+key, and acceptance still matches the signed Credential v2, until the
+separate Instance/Credential migration-or-refusal decision closes it.
 The production-dead Interactive User Route v2 Open/Attach owner and its
 EntryBinding, private reachability, relay-setup, sealed-Introduction sender,
 credential-relay grammar, Endpoint-transit binding, and volatile composition

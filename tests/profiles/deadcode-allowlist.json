@@ -507,35 +507,6 @@
     },
     {
       "symbols": [
-        "internal/route.DecodeSealedIntroduction",
-        "internal/route.EncodeSealedIntroduction",
-        "internal/route.OpenSealedIntroduction",
-        "internal/route.OpenSealedIntroductionWith",
-        "internal/route.SealIntroduction",
-        "internal/route.appendProfile",
-        "internal/route.appendUint16",
-        "internal/route.appendUint64",
-        "internal/route.hpkeIntroductionRecipient.OpenIntroduction",
-        "internal/route.introductionAAD",
-        "internal/route.introductionInfo",
-        "internal/route.introductionPrefix",
-        "internal/route.routeBody",
-        "internal/route.routeEnvelope",
-        "internal/route.validRouteProfile",
-        "internal/route.validSealedIntroduction",
-        "internal/route.wireIdentifier",
-        "internal/route.wireReader.take",
-        "internal/route.wireReader.uint16",
-        "internal/route.wireReader.uint64",
-        "internal/route.wireReader.uint8"
-      ],
-      "classification": "retained historical sealed Introduction v1 grammar",
-      "rationale": "ADR-0093 deleted every other Route v2 execution codec and moved the byte-exact v2 envelope framing into this one self-contained owner. The maintained Instance contract still embeds an IntroductionPublic key in fresh signed publication data (ADR-0034), and the positive command test inventory exercises this exact opening path, so the ADR-0035 grammar remains verifiable.",
-      "owner": "Product Owner and Codex",
-      "retirement": "Retire together with the orphaned publication v1 Introduction instruction under one superseding ADR-0035 decision (F-42), or name the maintained receiver that adopts it."
-    },
-    {
-      "symbols": [
         "internal/service/connection.Stream.Run",
         "internal/service/connection.Stream.receiveApplication",
         "internal/service/connection.Stream.sendAcknowledgements",
@@ -598,19 +569,9 @@
         "internal/service/connection.ValidateNameOrigin"
       ],
       "classification": "unwired shared legacy Entry and Service Connection leaves",
-      "rationale": "These shared-owner leaves were reachable only through the retired v1 participant graph. #157 preserves them because their packages and protocols have broader historical evidence and their deletion is outside the exclusive process-composition boundary. ADR-0093 removed this group's Route v2 leaves with the execution closure; the sealed Introduction encoders moved to their own historical-grammar allowance and the publication instruction encoder joined its decoder. The remaining Entry and Service Connection leaves keep their original bounded shared-owner retirement-card requirement.",
+      "rationale": "These shared-owner leaves were reachable only through the retired v1 participant graph. #157 preserves them because their packages and protocols have broader historical evidence and their deletion is outside the exclusive process-composition boundary. ADR-0093 removed this group's Route v2 leaves with the execution closure, and ADR-0094 retired the sealed Introduction grammar and the publication instruction codecs that briefly held their own allowances. The remaining Entry and Service Connection leaves keep their original bounded shared-owner retirement-card requirement.",
       "owner": "Product Owner and Codex",
       "retirement": "Create a bounded shared-owner retirement card from the post-#112 caller audit, name each remaining production/test consumer, and delete or reclassify these exact leaves without treating #112 as authority to remove shared Service Connection or Route behavior."
-    },
-    {
-      "symbols": [
-        "internal/service/publication.DecodeIntroductionInstruction",
-        "internal/service/publication.EncodeIntroductionInstruction"
-      ],
-      "classification": "orphaned publication v1 Introduction instruction codecs",
-      "rationale": "No production caller encodes or decodes the generation-2 ServiceIntroductionInstruction plaintext after the ADR-0092 and ADR-0093 deletions. Accepted ADR-0035 still specifies it and ADR-0081 makes the private v3 capsule the current successor (F-42); the historical verification obligation has no superseding record yet.",
-      "owner": "Product Owner and Codex",
-      "retirement": "Record the superseding decision covering the ADR-0035 grammar and generation-2 evidence, then delete together with the retained sealed Introduction v1 grammar, or name the maintained verification need."
     }
   ],
   "production": {
@@ -801,7 +762,6 @@
           "internal/service/instance.Binding.Credential",
           "internal/service/instance.Binding.IntroductionPublic",
           "internal/service/instance.Binding.NewPrivateRecipient",
-          "internal/service/instance.Binding.OpenIntroduction",
           "internal/service/instance.Binding.Public",
           "internal/service/instance.Binding.Sign",
           "internal/service/instance.Binding.Withdraw",
@@ -814,7 +774,6 @@
           "internal/service/instance.Root.Credential",
           "internal/service/instance.Root.OpenBinding",
           "internal/service/instance.Root.ownsPrivateRecipientLocked",
-          "internal/service/publication.Current.ValidateIntroductionInstruction",
           "internal/service/publication.Lease.Close",
           "internal/service/publication.Lease.Current",
           "internal/service/publication.Lease.Public",
@@ -855,7 +814,6 @@
           "internal/service/publication.replacePointer",
           "internal/service/publication.retainInstanceSigner",
           "internal/service/publication.rootLease.release",
-          "internal/service/publication.validIntroductionInstruction",
           "internal/service/publication.volatileSigner.Public",
           "internal/service/publication.volatileSigner.Sign",
           "internal/service/publication.volatileSigner.erase",

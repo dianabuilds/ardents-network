@@ -418,8 +418,8 @@ receives one opened host Instance binding as an opaque signer. For current
 private Introduction, it creates a volatile `PrivateRecipient` with a bounded
 revision and expiry; the recipient opens only the authenticated private
 capsule, without an Interface returning private bytes or an exportable HPKE
-key. SealedIntroduction v1 is historical and is not the current private
-Introduction path. The Service Instance root still generates and persists its
+key. The SealedIntroduction v1 grammar is retired by ADR-0094; the current
+private Introduction path is only the v3 capsule recipient. The Service Instance root still generates and persists its
 former Introduction key because accepted Credential v2 binds that public key
 under ADR-0034; the private v3 capsule uses the separate volatile recipient.
 The maintained participant runtime opens the Instance

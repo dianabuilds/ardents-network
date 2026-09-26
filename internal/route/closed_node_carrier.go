@@ -15,6 +15,12 @@ const (
 	ClosedCarrierTCP   CarrierProfile = "ardents-carrier-tcp-tls-v2"
 	ClosedCarrierQUIC  CarrierProfile = "ardents-carrier-quic-v2"
 	ClosedRouteProfile                = "ardents-route-v3"
+
+	// Profile is the exact retired native Interactive Route v2 wire profile.
+	// Node keeps it only to refuse exact stale State records without side
+	// effects (ADR-0093); its sealed Introduction v1 grammar is retired by
+	// ADR-0094, and no maintained composition accepts a v2 listener.
+	Profile = "ardents-interactive-route-v2"
 )
 
 // ClosedNodeCarrierRequest is one exact successor Node-to-Node Carrier

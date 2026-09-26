@@ -13,8 +13,11 @@ type Credential struct {
 	AuthorityPublic [32]byte
 	Target          [32]byte
 	InstancePublic  [32]byte
-	// IntroductionHPKEPublic is the separate X25519 public recipient for
-	// SealedIntroduction. It is not derived from InstancePublic.
+	// IntroductionHPKEPublic is the separate X25519 public recipient that
+	// ADR-0034 binds into Credential v2; it is not derived from InstancePublic.
+	// Its SealedIntroduction v1 opening path is retired (ADR-0094); the field
+	// remains part of the signed data contract until the separate Instance and
+	// Credential migration decision.
 	IntroductionHPKEPublic [32]byte
 	Generation             uint64
 	NotBefore              int64

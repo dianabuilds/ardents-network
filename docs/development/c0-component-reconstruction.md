@@ -158,12 +158,12 @@ its stated gate is satisfied.
 | Node duty (45) | Deepen Node's five duty lifetimes in place; rename the common handle for its actual role. | Accepted-child close and issuer late-root owner (F-17/F-39/F-61). |
 | Permission issuance (41) | Retain issuer authority and Endpoint attempt owners; later separate offline grammar from Route-facing listener. | No parent Route import cycle; keep exact signed bytes (F-28/F-30). |
 | Protected wire (31) | Retain ARDP/terminal/capsule owners; narrow shared Route root by operation. | Preserve frame bounds, accepted-channel and physical Carrier close ownership (F-29). |
-| Publication/discovery (48) | Retain Publication, Reachability and Target Link floors; deepen Endpoint publication coordinator. | Old Descriptor root policy and obsolete instruction retirement (F-32/F-42). |
+| Publication/discovery (48) | Retain Publication, Reachability and Target Link floors; deepen Endpoint publication coordinator. | Old Descriptor root policy (F-32); the obsolete instruction codecs were retired by ADR-0094. |
 | Qualification (6) | Retain Endpoint's stream-qualification adapter for verification; do not treat its fixture path as ordinary Publisher/Reader behavior. | Its installed verdict remains separate from `make check` and the ordinary text-command verdict (F-31). |
 | Receiving spend (13) | Retain Replay ledger and Node duty admission as distinct owners. | No spend-root close before accepted children join. |
 | Resource/diagnostics (3) | Retain Resource and event owners; route results into bounded diagnostics. | Keep observation failure and stop/join result visible to the process owner. |
 | Service Connection (31) | Retain native logical stream owner and Endpoint physical adapter. | Error-bearing replacement Attachment and completion barrier (F-23). |
-| Service identity (16) | Retain one Instance root; isolate and retire old decryptor under its contract. | Existing request/Credential and phase-less root disposition (F-42). |
+| Service identity (16) | Retain one Instance root; the old decryptor was retired by ADR-0094. | Existing request/Credential and phase-less root disposition (F-42). |
 
 ### Network State: one authority root with distinct internal work
 
@@ -277,11 +277,11 @@ reader or current issuer by treating this count as a package boundary.
 | Closure | Exact files or mixed owner | Current reachability and removal gate |
 | --- | --- | --- |
 | Generic Endpoint Publisher/Transit | Thirteen former Endpoint `retirement-review` rows, including the six-file `endpoint/transit` package | Removed by committed ADR-0092. The protected text participant and durable token journal remain. |
-| Old Route Entry/Transit attachment | `entry_attachment.go`, `entry_binding.go`, `endpoint_transit_attachment.go`, `endpoint_transit_binding.go` | Both exported attachment openers and the Transit receiver have no non-test external caller after ADR-0092. Their codecs are called only inside this uncomposed closure. Audit exact Entry/Transit wire refusal and retained Invite/Grant evidence before deleting it; do not remove `internal/entry`'s separate durable Invite owner. |
-| Old Route relay and Introduction I/O | `credential_relay_io.go`, `credential_relay_setup.go`, `introduction_control_io.go`, `introduction_outcome_io.go`, `introduction_outcome.go`, `introduction_slot_registration.go`, `sealed_introduction.go` | No exported relay or Introduction I/O entrypoint has a non-test caller outside the old closure. Its private codecs call one another, not the selected closed ARDP operations. Resolve accepted vectors and historical verification needs before retiring it together; the current private capsule lives in `route/capsule`. |
-| Old Route profile and shared v2 wire | `route/credential/profile.go` was removed; `route/wire_encoding.go` remains | The old OHTTP profile verifier and client are gone under ADR-0092. The v2 envelope has no selected execution caller, but `wire_encoding.go` also supplies `wireReader` to the historical Transit Grant v1 verifier and the uncalled LegBinding decoder, `writeAll` to uncalled Node binding, and the old profile spelling used for typed Node refusal. Split historical readers/refusal from the execution codec before deleting the latter (F-52). |
-| Old Service Introduction plaintext | `service/publication/introduction_instruction.go` | Its encoder, decoder and `Current` validator have no non-test caller after the generic Publisher deletion. Accepted ADR-0035 still specifies the generation-2 plaintext; ADR-0081 makes the private v3 capsule the current successor. Decide historical verification or explicit supersession before deleting the implementation, without restoring a live v1 Publisher path (F-42). |
-| Mixed or shared-package prerequisites | `route/transit_grant.go`, `network/duty/store.go`, and `service/instance/lifecycle.go` remain; the old `route/credential/client.go` is removed | Credential's `contract.go` now contains only live closed-issuer declarations (F-40). The retained Grant verifier has a separate historical wire obligation. The uncalled Grant spend still shares a live version-1 duty root with current conflict Duties, so code removal and persisted-schema change require separate decisions (F-53). Instance's old decryptor shares `lifecycle.go` with the current durable owner. |
+| Old Route Entry/Transit attachment | `entry_attachment.go`, `entry_binding.go`, `endpoint_transit_attachment.go`, `endpoint_transit_binding.go` | Removed by committed ADR-0093. `internal/entry`'s separate durable Invite owner is untouched. |
+| Old Route relay and Introduction I/O | `credential_relay_io.go`, `credential_relay_setup.go`, `introduction_control_io.go`, `introduction_outcome_io.go`, `introduction_outcome.go`, `introduction_slot_registration.go`, `sealed_introduction.go` | Removed by committed ADR-0093; `sealed_introduction.go` survived it byte-exact and was then retired by ADR-0094 after its superseding record. The current private capsule lives in `route/capsule`. |
+| Old Route profile and shared v2 wire | `route/credential/profile.go` was removed; `route/wire_encoding.go` remains | Done per the F-52 order: ADR-0093 moved the still-needed envelope framing into `sealed_introduction.go` and deleted `wire_encoding.go` with the Grant verifier, LegBinding decoder, and Node binding; the old-profile refusal identity moved to `closed_node_carrier.go`. ADR-0094 then retired the sealed grammar itself. |
+| Old Service Introduction plaintext | `service/publication/introduction_instruction.go` | Retired by committed ADR-0094, the superseding record for ADR-0035; ADR-0081's private v3 capsule is the sole Introduction path. |
+| Mixed or shared-package prerequisites | `route/transit_grant.go`, `network/duty/store.go`, and `service/instance/lifecycle.go` remain; the old `route/credential/client.go` is removed | Credential's `contract.go` now contains only live closed-issuer declarations (F-40). ADR-0093 retired `transit_grant.go` and `SpendTransitGrant` (F-53) while the persisted duty spend-ledger schema kept its own data disposition; ADR-0094 retired the Instance decryptor out of `lifecycle.go`, whose current Binding methods remain. The Instance Introduction key data contract remains the open migration-or-refusal card (F-42). |
 
 The current caller audit finds no selected external production caller for the
 eleven pure Route attachment/relay/Introduction files or the Service v1
@@ -307,6 +307,11 @@ one closed Route accepting path, with no v2 fallback.
    exact tests, architecture allowances and package-map/document owners.
    Check the full `cmd`/`internal` caller graph and the selected installed
    C0 path on the same integrated candidate before closing that slice.
+
+**Status (2026-09-26):** all three steps executed by committed ADR-0093 and
+ADR-0094. The remaining Route v2-era obligations are exactly two data
+dispositions: the duty spend-ledger migration-or-refusal decision (F-53) and
+the ADR-0034 Instance/Credential Introduction key migration card (F-42).
 
 ## Transition dependencies visible so far
 
@@ -997,7 +1002,7 @@ package-move instruction.
 | `boundary-review` | 40 | The file bridges components or its exact owner is unclear from the current API. Eight Node and five Route rows now have source-backed owners (F-33/F-34/F-44); Service Connection's `Done` promise and ordinary close order still disagree (F-23). |
 | `split-candidate` | 10 | One file contains distinct responsibilities; determine whether a local file split or a package boundary is justified. |
 | `compatibility-review` | 4 | A codec or Attachment appears to have no maintained production caller; confirm the accepted compatibility evidence before disposition. |
-| `retirement-review` | 13 | The remaining twelve Route v2 files and one Service plaintext instruction need an exact caller, persisted-state and accepted-contract audit before removal (F-30/F-37/F-42). The generic Endpoint chain was retired by ADR-0092. |
+| `retirement-review` | 0 | All former rows are cleared: the generic Endpoint chain was retired by ADR-0092, the twelve Route v2 files by ADR-0093, and the Service plaintext instruction by ADR-0094 (F-30/F-37/F-42). |
 
 The strongest positive boundary is already in `service/connection`,
 `service/instance`, `route/replay`, and Endpoint's small durable packages.
@@ -1058,7 +1063,7 @@ permission to change admission behavior.
 | `endpoint/text_introduction_registration.go` | `openTextRegistration` and `finishTextRegistration` own one registered Route channel and token spend; the latter half of the 401-line file projects committed Descriptor proof, refresh time, recipient and predecessor state. | Keep the registration type and its lock/ACK invariant; put registration opening/withdrawal and committed proof/refresh methods in responsibility-named files inside `endpoint`. Do not treat registration as publication readiness before the Descriptor ACK. |
 | `service/connection/stream_lifecycle.go` | `Run` implements exact-count work and has no non-test `cmd`/`internal` caller, while `establishInitialAttachment`, failure and close methods also serve current `RunBounded`. The package map still says exact workloads are supported. | Move the `Run` entrypoint into an exact-workload responsibility file inside `connection`; retain shared lifecycle methods with the bounded path. Decide whether to retire exact-workload support from the accepted owner before deleting the method. |
 | `service/connection/stream_support.go` | `acquireResource`, `erase` and `writeAll` serve timer observation, continuity-byte clearing and Application writes respectively. | Put each small helper beside the lifecycle or receive operation it supports and remove the catch-all file. Preserve timer release and full-write behavior. |
-| `service/instance/lifecycle.go` | Current durable Instance acceptance, Binding signing, publication commit and withdrawal coexist with the old `OpenIntroduction` SealedIntroduction v1 decryptor, which has no non-test caller after committed generic Publisher deletion (F-42). | Extract the old decryptor before retirement; preserve the current Binding methods. Audit persisted Introduction key fields separately from method reachability. |
+| `service/instance/lifecycle.go` | Current durable Instance acceptance, Binding signing, publication commit and withdrawal remain; the old `OpenIntroduction` SealedIntroduction v1 decryptor was retired by ADR-0094 (F-42). | Done. Persisted Introduction key fields keep their separate data disposition: stopping new key emission needs the ADR-0034-superseding Instance/Credential migration card. |
 
 Each cut can be reviewed with existing direct tests and a source diff before
 any package move. It does not shorten the required final gate, and it should

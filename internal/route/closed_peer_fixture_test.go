@@ -1,9 +1,8 @@
 package route
 
-// Shared peer-identity fixtures for the maintained closed Carrier and
-// retained sealed Introduction tests. entryBindingCertificate,
-// identifierFromKey, identifier, and equalIntroduction were relocated from
-// the retired generation-2 EntryBinding and LegBinding test files when
+// Shared peer-identity fixtures for the maintained closed Carrier tests.
+// entryBindingCertificate, identifierFromKey, and identifier were relocated
+// from the retired generation-2 EntryBinding and LegBinding test files when
 // ADR-0093 deleted those grammars; the closed Carrier tests still need exact
 // self-signed peer certificates and deterministic 32-byte identifiers.
 
@@ -44,11 +43,4 @@ func identifierFromKey(key ed25519.PublicKey) [32]byte {
 
 func identifier(value byte) [32]byte {
 	return [32]byte{value}
-}
-
-func equalIntroduction(left, right SealedIntroduction) bool {
-	return left.NetworkID == right.NetworkID && left.Digest == right.Digest && left.Epoch == right.Epoch &&
-		left.IntroductionNodeID == right.IntroductionNodeID && left.RendezvousNodeID == right.RendezvousNodeID &&
-		left.Reachability == right.Reachability && left.NotAfter.Equal(right.NotAfter) && left.JoinHandle == right.JoinHandle &&
-		left.EndpointHandshake == right.EndpointHandshake && bytes.Equal(left.Enc, right.Enc) && bytes.Equal(left.Ciphertext, right.Ciphertext)
 }
