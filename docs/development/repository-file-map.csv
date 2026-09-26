@@ -906,6 +906,7 @@
 "internal/network/duty/directory_sync_unix.go","production-go","internal/network/duty","local-role-duty-ledger","package-contract-pass"
 "internal/network/duty/directory_sync_windows.go","production-go","internal/network/duty","local-role-duty-ledger","package-contract-pass"
 "internal/network/duty/doc.go","production-go","internal/network/duty","local-role-duty-ledger","package-contract-pass"
+"internal/network/duty/legacy_conversion_test.go","go-test","internal/network/duty","","unreviewed"
 "internal/network/duty/operation_lease.go","production-go","internal/network/duty","local-role-duty-ledger","package-contract-pass"
 "internal/network/duty/operation_lease_test.go","go-test","internal/network/duty","","unreviewed"
 "internal/network/duty/persistence.go","production-go","internal/network/duty","local-role-duty-ledger","behavior-source-traced"

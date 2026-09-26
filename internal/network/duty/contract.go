@@ -35,12 +35,14 @@ type store struct {
 	failed  error
 }
 
+// durableState is the one current root format (version 2). ADR-0107 retired
+// the historical receiving one-use Transit Grant spend field; the bounded
+// version-1 conversion lives in persistence.go.
 type durableState struct {
-	Version            uint8               `json:"version"`
-	Generation         uint64              `json:"generation"`
-	Previous           string              `json:"previous,omitempty"`
-	Duties             []dutyRecord        `json:"duties"`
-	TransitGrantSpends []transitGrantSpend `json:"transit_grant_spends"`
+	Version    uint8        `json:"version"`
+	Generation uint64       `json:"generation"`
+	Previous   string       `json:"previous,omitempty"`
+	Duties     []dutyRecord `json:"duties"`
 }
 
 type dutyRecord struct {
@@ -52,16 +54,7 @@ type dutyRecord struct {
 	NotAfter int64    `json:"not_after"`
 }
 
-// transitGrantSpend is one Node-local, finite, irreversible consumption of an
-// already State-authorized transit admission capability. It has no Target,
-// Service, or client material.
-type transitGrantSpend struct {
-	NodeID   [32]byte `json:"node_id"`
-	GrantID  [32]byte `json:"grant_id"`
-	NotAfter int64    `json:"not_after"`
-}
+const maximumStateBytes = 64 << 10
 
-const (
-	maximumStateBytes         = 64 << 10
-	maximumTransitGrantSpends = 64
-)
+// durableStateVersion is the sole written schema version.
+const durableStateVersion = uint8(2)

@@ -1070,26 +1070,27 @@ canonical encoder. An old Namespace root stays on disk byte-for-byte with no
 working-tree read path at all; typed incompatibility is the absence of any
 reader.
 
-## Source trace: old Transit Grant spend inside the current local-role root
+## Source trace: retired Transit Grant spend ledger inside the local-role root
 
 At the current architecture worktree, a non-test `cmd`/`internal` call search
 finds no caller of `route.VerifyTransitGrant` or
-`network/duty.(*store).SpendTransitGrant`. The old Route verifier still reads
-its Grant v1 body through `route/wire_encoding.go:wireReader`, but it does not
-admit a current Node connection. Node `local_roles.go` and State
-`local_roles.go` still open the `network/duty` root; the Endpoint qualification
-preflight also opens it. Thus the root is a current resource owner even though
-the Grant-spend operation is uncalled.
+`network/duty.(*store).SpendTransitGrant`. The old Route verifier that once
+read the Grant v1 body retired with `route/wire_encoding.go` under ADR-0093.
+Node `local_roles.go` and State `local_roles.go` still open the `network/duty`
+root; the Endpoint qualification preflight also opens it. The root is therefore
+a current resource owner, and its persisted generations needed an explicit data
+disposition (F-53).
 
-The root's strict version-1 JSON generation includes `TransitGrantSpends`,
-and `loadGeneration` validates that field before returning an owned root.
-`Replace` carries forward only unexpired spends and commits a new hashed
-generation under a watermark; `Open` alone does not prune them. Retained
-current/predecessor generations can therefore contain historical spend
-records. This is a persisted-schema and rollback question, not evidence of a
-second supported Grant admission path (F-53). Any schema cleanup needs an
-explicit disposition for existing roots and their generation chain while
-preserving the still-current duty conflict records.
+ADR-0107 supplies that disposition as a bounded in-place conversion. The
+current root schema is version 2 and has no `transit_grant_spends` field; no
+writer emits version 1. A persisted version-1 generation is still strictly
+decoded under its original validation rules, spend-record rules included, and
+then converted in memory: the spend records are dropped while every conflict
+duty, generation number, and predecessor name survives, so watermark recovery
+can still land on a version-1 generation and the first `Replace` after such a
+load commits a version-2 successor. Invalid version-1 bytes and unknown
+versions refuse at open. No spend record influences any current decision; the
+ledger had no reader once the Grant admission path retired.
 
 ## Source trace: JOIN transport transfer into Service Connection
 

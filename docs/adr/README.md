@@ -78,6 +78,7 @@ Current decisions:
 
 Completed retirement decisions:
 
+- [0107 — The duty root schema becomes version 2; legacy generations convert in place and the Transit Grant spend ledger retires](0107-duty-root-version-2-spend-ledger-retirement.md)
 - [0106 — Retire the Entry Invite subsystem; the Invite-root writer stops at a before-effect refusal](0106-retire-entry-invite-subsystem.md)
 - [0105 — Retire the Namespace subsystem; absence of any reader is the incompatibility](0105-retire-namespace-subsystem.md)
 - [0104 — Replace the 38-getter duty facade with one copied State value](0104-replace-duty-view-facade-with-copied-state-value.md)

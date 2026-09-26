@@ -84,8 +84,7 @@ func (store *store) Replace(producer [32]byte, duties []Duty) error {
 		return ErrLocalRoleRecordLimit
 	}
 	now := store.clock().UTC()
-	next := durableState{Duties: make([]dutyRecord, 0, len(store.state.Duties)+len(duties)),
-		TransitGrantSpends: liveTransitGrantSpends(store.state.TransitGrantSpends, now)}
+	next := durableState{Duties: make([]dutyRecord, 0, len(store.state.Duties)+len(duties))}
 	for _, retained := range store.state.Duties {
 		if retained.Producer != producer && now.Unix() < retained.NotAfter {
 			next.Duties = append(next.Duties, retained)
@@ -104,20 +103,7 @@ func (store *store) Replace(producer [32]byte, duties []Duty) error {
 	if err := validateRecords(next.Duties); err != nil {
 		return err
 	}
-	if !validTransitGrantSpends(next.TransitGrantSpends) {
-		return errors.New("local role state exceeds its bound")
-	}
 	return store.commit(next)
-}
-
-func liveTransitGrantSpends(spends []transitGrantSpend, now time.Time) []transitGrantSpend {
-	result := make([]transitGrantSpend, 0, len(spends))
-	for _, spend := range spends {
-		if now.Unix() < spend.NotAfter {
-			result = append(result, spend)
-		}
-	}
-	return result
 }
 
 // Remove atomically removes every duty owned by producer.
