@@ -494,19 +494,6 @@
     },
     {
       "symbols": [
-        "internal/service/connection.Stream.Run",
-        "internal/service/connection.Stream.receiveApplication",
-        "internal/service/connection.Stream.sendAcknowledgements",
-        "internal/service/connection.Stream.sendApplication",
-        "internal/service/connection.Stream.sendTerminal"
-      ],
-      "classification": "unwired service-stream tracer",
-      "rationale": "The stream state machine has deterministic behavior evidence but no current executable C0 path starts this standalone service candidate.",
-      "owner": "Product Owner and Codex",
-      "retirement": "Connect it through an accepted service command contract or remove it with the superseding candidate decision."
-    },
-    {
-      "symbols": [
         "internal/service/reachability.Issue",
         "internal/service/reachability.Store.Lookup",
         "internal/service/reachability.Store.Publish",

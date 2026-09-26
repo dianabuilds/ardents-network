@@ -1,54 +1,9 @@
 package connection
 
 import (
-	"context"
 	"errors"
 	"time"
 )
-
-// Run copies the exact declared byte counts in both directions, recovering
-// only through the immutable AttachmentOpener contract.
-func (stream *Stream) Run(sendCount, receiveCount uint32) (Outcome, error) {
-	defer close(stream.done)
-	stream.watchNameOrigin()
-	stop := context.AfterFunc(stream.ctx, func() { stream.fail(stream.ctx.Err()) })
-	defer stop()
-	if err := stream.establishInitialAttachment(); err != nil {
-		stream.fail(err)
-		return stream.outcome(), err
-	}
-	if stream.recovery.WorkSafetyNotAfter != 0 {
-		remaining := time.Unix(stream.recovery.WorkSafetyNotAfter, 0).Sub(stream.authorizationTime())
-		releaseTimer := acquireResource(stream.resources, "timer")
-		safetyTimer := time.AfterFunc(remaining, func() { stream.fail(errWorkSafetyExpired) })
-		defer func() {
-			safetyTimer.Stop()
-			releaseTimer()
-		}()
-	}
-	defer stream.close()
-	dataResults := make(chan error, 2)
-	ackResult := make(chan error, 1)
-	go func() { dataResults <- stream.sendApplication(uint64(sendCount)) }()
-	go func() { dataResults <- stream.receiveApplication(uint64(receiveCount), uint64(sendCount)) }()
-	go func() { ackResult <- stream.sendAcknowledgements(uint64(receiveCount)) }()
-	first := <-dataResults
-	if errors.Is(first, ErrActiveViolation) || errors.Is(first, errRecoveryTerminal) {
-		stream.fail(first)
-	}
-	second := <-dataResults
-	dataErr := errors.Join(first, second)
-	if dataErr != nil {
-		stream.fail(dataErr)
-	}
-	err := errors.Join(dataErr, <-ackResult)
-	stream.mu.Lock()
-	if err == nil {
-		err = stream.terminal
-	}
-	stream.mu.Unlock()
-	return stream.outcome(), err
-}
 
 func (stream *Stream) establishInitialAttachment() error {
 	stream.mu.Lock()

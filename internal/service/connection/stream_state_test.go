@@ -256,10 +256,10 @@ func TestStreamExchangesInitialContinuityBeforeBidirectionalData(t *testing.T) {
 		t.Fatal(err)
 	}
 	results := make(chan error, 2)
-	go func() { _, err := client.Run(3, 3); results <- err }()
-	go func() { _, err := publisher.Run(3, 3); results <- err }()
-	go func() { _, _ = clientUser.Write([]byte("one")) }()
-	go func() { _, _ = publisherUser.Write([]byte("two")) }()
+	go func() { _, err := client.RunBounded(3, 3); results <- err }()
+	go func() { _, err := publisher.RunBounded(3, 3); results <- err }()
+	go func() { _, _ = clientUser.Write([]byte("one")); _ = clientUser.CloseInput() }()
+	go func() { _, _ = publisherUser.Write([]byte("two")); _ = publisherUser.CloseInput() }()
 	clientRead, publisherRead := make([]byte, 3), make([]byte, 3)
 	if _, err := io.ReadFull(clientUser, clientRead); err != nil {
 		t.Fatal(err)

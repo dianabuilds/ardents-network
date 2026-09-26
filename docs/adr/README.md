@@ -77,6 +77,7 @@ Current decisions:
 
 Completed retirement decisions:
 
+- [0097 — Retire the exact-count Stream.Run pump in favor of the live bounded successor](0097-retire-exact-count-stream-run.md)
 - [0096 — Reject the closed-alpha Entry issuance and Initiator-verification candidate surface](0096-reject-entry-issuance-candidate.md)
 - [0095 — Retire the uncalled Entry attachment execution machinery and ValidateNameOrigin](0095-retire-entry-attachment-machinery.md)
 - [0094 — Retire the sealed Introduction v1 grammar and the v1 Introduction instruction codecs](0094-retire-sealed-introduction-v1-grammar.md)
