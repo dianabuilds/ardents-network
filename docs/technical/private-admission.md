@@ -193,7 +193,9 @@ whole result before grouping tokens into the corresponding private stocks.
 Each attempt rechecks the opened State projections and local duty conflicts;
 neither imported permission bytes nor the worker can supply these facts.
 The closed Entry root has its own marker and refuses a legacy Invite root;
-that refusal is not a migration procedure.
+that refusal is not a migration procedure. ADR-0106 removed every Invite
+writer and every migration path: a legacy Invite root stays on disk
+byte-for-byte with no reader, converter, or deleter.
 
 ## Canonical signed permission
 

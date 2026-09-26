@@ -1,20 +1,20 @@
+//go:build linux
+
 package entry
 
 import (
-	"bytes"
 	"errors"
-	"fmt"
 	"os"
-	"path/filepath"
-	"strings"
 )
 
-const (
-	rootMarkerName = ".ardents-entry-state-v1"
-	rootMarker     = "ardents-entry-state-v1\n"
-	rootLockName   = ".ardents-entry-state-lock"
-)
+// rootLockName is the exclusive-lease file shared by every claimed Entry
+// root. The retired Invite root used the same lock name and its own
+// `.ardents-entry-state-v1` marker (ADR-0106 deleted both); the closed
+// Entry set root refuses any foreign population through its own marker and
+// allowed-name inspection.
+const rootLockName = ".ardents-entry-state-lock"
 
+// inspectRoot creates or validates the owned directory for one Entry root.
 func inspectRoot(root string) error {
 	info, err := os.Lstat(root)
 	if os.IsNotExist(err) {
@@ -32,6 +32,8 @@ func inspectRoot(root string) error {
 	return nil
 }
 
+// validateRootPermissions enforces the owner-only access floor for one
+// claimed Entry root through the platform owner check.
 func validateRootPermissions(root string) error {
 	info, err := os.Lstat(root)
 	if err != nil {
@@ -40,94 +42,8 @@ func validateRootPermissions(root string) error {
 	return validateOwnerOnlyRoot(root, info)
 }
 
-func verifyRootClaim(root string) error {
-	marker, err := readBounded(filepath.Join(root, rootMarkerName), int64(len(rootMarker)))
-	if err == nil && !bytes.Equal(marker, []byte(rootMarker)) || err != nil && !os.IsNotExist(err) {
-		return errors.New("entry state ownership marker is invalid")
-	}
-	entries, readErr := os.ReadDir(root)
-	if readErr != nil || len(entries) > 10 {
-		return errors.New("entry state root exceeds its entry bound")
-	}
-	if os.IsNotExist(err) && (len(entries) != 1 || entries[0].Name() != rootLockName) {
-		return errors.New("refusing to claim a non-empty entry state root")
-	}
-	for _, entry := range entries {
-		name := entry.Name()
-		allowed := name == rootMarkerName || name == rootLockName || name == recipientName || name == "current" || name == "watermark" ||
-			strings.HasPrefix(name, "state-") || strings.HasPrefix(name, ".stage-") ||
-			strings.HasPrefix(name, ".current-") || strings.HasPrefix(name, ".watermark-")
-		if entry.IsDir() || !allowed {
-			return fmt.Errorf("unknown entry state entry %q", name)
-		}
-	}
-	return nil
-}
-
-func verifyRootCandidate(root string) error {
-	marker, err := readBounded(filepath.Join(root, rootMarkerName), int64(len(rootMarker)))
-	if err == nil && !bytes.Equal(marker, []byte(rootMarker)) || err != nil && !os.IsNotExist(err) {
-		return errors.New("entry state ownership marker is invalid")
-	}
-	entries, readErr := os.ReadDir(root)
-	if readErr != nil || len(entries) > 10 {
-		return errors.New("entry state root exceeds its entry bound")
-	}
-	if os.IsNotExist(err) && len(entries) != 0 {
-		return errors.New("refusing to claim a non-empty entry state root")
-	}
-	for _, entry := range entries {
-		name := entry.Name()
-		allowed := name == rootMarkerName || name == rootLockName || name == recipientName || name == "current" || name == "watermark" ||
-			strings.HasPrefix(name, "state-") || strings.HasPrefix(name, ".stage-") ||
-			strings.HasPrefix(name, ".current-") || strings.HasPrefix(name, ".watermark-")
-		if entry.IsDir() || !allowed {
-			return fmt.Errorf("unknown entry state entry %q", name)
-		}
-	}
-	return nil
-}
-
-func prepareRoot(root string) error {
-	markerPath := filepath.Join(root, rootMarkerName)
-	marker, err := readBounded(markerPath, int64(len(rootMarker)))
-	if err == nil {
-		if !bytes.Equal(marker, []byte(rootMarker)) {
-			return errors.New("entry state ownership marker is invalid")
-		}
-	} else if !os.IsNotExist(err) {
-		return err
-	} else {
-		entries, readErr := os.ReadDir(root)
-		if readErr != nil || len(entries) != 1 || entries[0].Name() != rootLockName {
-			return errors.New("refusing to claim a non-empty Entry state root")
-		}
-		if err := writeExclusive(markerPath, []byte(rootMarker)); err != nil {
-			return err
-		}
-	}
-	entries, err := os.ReadDir(root)
-	if err != nil || len(entries) > 10 {
-		return errors.New("entry state root exceeds its entry bound")
-	}
-	for _, entry := range entries {
-		name := entry.Name()
-		if strings.HasPrefix(name, ".stage-") || strings.HasPrefix(name, ".current-") || strings.HasPrefix(name, ".watermark-") {
-			if entry.IsDir() {
-				return errors.New("entry staging entry is not a file")
-			}
-			if err := os.Remove(filepath.Join(root, name)); err != nil {
-				return err
-			}
-			continue
-		}
-		if name != rootMarkerName && name != rootLockName && name != recipientName && name != "current" && name != "watermark" && !strings.HasPrefix(name, "state-") {
-			return fmt.Errorf("unknown Entry state entry %q", name)
-		}
-	}
-	return syncDirectory(root)
-}
-
+// writeExclusive creates one new owner-only file and durably writes its
+// exact bytes, refusing any pre-existing target.
 func writeExclusive(path string, raw []byte) error {
 	file, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
 	if err != nil {

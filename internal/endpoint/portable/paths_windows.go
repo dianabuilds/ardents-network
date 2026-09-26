@@ -16,6 +16,5 @@ func DefaultConfig() (Config, error) {
 		return Config{}, err
 	}
 	endpoint := filepath.Join(base, "Ardents", "Endpoint")
-	return Config{ConfigHome: filepath.Join(endpoint, "config"), StateHome: endpoint,
-		CacheHome: filepath.Join(endpoint, "cache"), RuntimeHome: filepath.Join(endpoint, "r")}, nil
+	return Config{StateHome: endpoint, RuntimeHome: filepath.Join(endpoint, "r")}, nil
 }

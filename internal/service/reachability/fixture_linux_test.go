@@ -13,10 +13,11 @@ import (
 )
 
 // ADR-0105 retired the generation-2 Descriptor writer (Issue) and the
-// generation-2 Store writers/readers (Publish, Lookup); only the private v3
-// path composes Descriptors. These fixtures therefore exist solely for the
-// Linux private-path suites, and the retained decoder and floor comparison
-// remain governed by F-32.
+// generation-2 Store writers/readers (Publish, Lookup); ADR-0109 (F-32) then
+// deleted the retained v1/v2 decode grammar outright and refuses a stored
+// legacy record with a typed error. Only the private v3 path composes
+// Descriptors, so these fixtures exist solely for the Linux private-path
+// suites.
 
 type descriptorFixture struct {
 	now             time.Time

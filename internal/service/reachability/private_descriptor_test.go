@@ -44,9 +44,6 @@ func TestPrivateDescriptorBindsExactPublicationProfileAndRecipient(t *testing.T)
 	if !ed25519.Verify(fixture.instancePrivate.Public().(ed25519.PublicKey), transcript, issued.Signature[:]) {
 		t.Fatal("Instance signature differs from selected transcript")
 	}
-	if _, err := reachability.Verify(raw, fixture.current.Credential.Target, fixture.network, fixture.now); err == nil {
-		t.Fatal("legacy verifier admitted private Descriptor without a profile")
-	}
 	if _, err := reachability.VerifyPrivate(raw, fixture.current.Credential.Target, fixture.network, [32]byte{45}, fixture.now); err == nil {
 		t.Fatal("private Descriptor accepted a different current profile")
 	}

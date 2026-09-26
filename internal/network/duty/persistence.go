@@ -25,7 +25,7 @@ func loadState(root string) (durableState, string, error) {
 	pointer, err := readBounded(filepath.Join(root, "current"), 65)
 	if os.IsNotExist(err) {
 		if !hasWatermark {
-			return durableState{Version: 1, Duties: []dutyRecord{}, TransitGrantSpends: []transitGrantSpend{}}, "", nil
+			return durableState{Version: durableStateVersion, Duties: []dutyRecord{}}, "", nil
 		}
 		state, loadErr := loadGeneration(root, watermarkName)
 		if loadErr != nil || state.Generation != watermarkGeneration {
@@ -69,16 +69,40 @@ func loadGeneration(root, name string) (durableState, error) {
 	if err != nil || sha256Hex(raw) != name {
 		return durableState{}, errors.New("local role generation is invalid")
 	}
+	var envelope struct {
+		Version uint8 `json:"version"`
+	}
+	if err := json.Unmarshal(raw, &envelope); err != nil {
+		return durableState{}, errors.New("local role generation is invalid")
+	}
+	switch envelope.Version {
+	case durableStateVersion:
+		var state durableState
+		if err := strictDecodeGeneration(raw, &state); err != nil || !validDurableState(state) {
+			return durableState{}, errors.New("local role generation is invalid")
+		}
+		return state, nil
+	case legacyDurableStateVersion:
+		var legacy legacyDurableState
+		if err := strictDecodeGeneration(raw, &legacy); err != nil || !validLegacyDurableState(legacy) {
+			return durableState{}, errors.New("local role generation is invalid")
+		}
+		return legacy.convert(), nil
+	default:
+		return durableState{}, errors.New("local role generation is invalid")
+	}
+}
+
+func strictDecodeGeneration(raw []byte, value any) error {
 	decoder := json.NewDecoder(bytes.NewReader(raw))
 	decoder.DisallowUnknownFields()
-	var state durableState
-	if err := decoder.Decode(&state); err != nil {
-		return durableState{}, errors.New("local role generation is invalid")
+	if err := decoder.Decode(value); err != nil {
+		return err
 	}
-	if err := decoder.Decode(&struct{}{}); !errors.Is(err, io.EOF) || !validDurableState(state) {
-		return durableState{}, errors.New("local role generation is invalid")
+	if err := decoder.Decode(&struct{}{}); !errors.Is(err, io.EOF) {
+		return errors.New("local role generation has trailing data")
 	}
-	return state, nil
+	return nil
 }
 
 func loadWatermark(root string) (uint64, string, bool, error) {
@@ -102,7 +126,7 @@ func loadWatermark(root string) (uint64, string, bool, error) {
 }
 
 func (store *store) commit(next durableState) error {
-	next.Version = 1
+	next.Version = durableStateVersion
 	next.Generation = store.state.Generation + 1
 	next.Previous = store.current
 	raw, err := json.Marshal(next)
@@ -131,7 +155,45 @@ func (store *store) commit(next durableState) error {
 }
 
 func validDurableState(state durableState) bool {
-	return state.Version == 1 && state.Generation > 0 &&
+	return state.Version == durableStateVersion && state.Generation > 0 &&
+		(state.Previous == "" || stateName.MatchString(state.Previous)) && validRecords(state.Duties)
+}
+
+// legacyDurableStateVersion is the retired version-1 schema. ADR-0107 keeps
+// its strict decoder solely for the bounded in-place conversion: a legacy
+// generation stays a valid watermark/rollback target, its conflict duties and
+// generation continuity survive, and its Transit Grant spend records - which
+// no writer emits and no reader consumes since ADR-0093 retired the spend
+// operation - are dropped.
+const legacyDurableStateVersion = uint8(1)
+
+// legacyDurableState is the exact retired version-1 generation shape.
+type legacyDurableState struct {
+	Version            uint8               `json:"version"`
+	Generation         uint64              `json:"generation"`
+	Previous           string              `json:"previous,omitempty"`
+	Duties             []dutyRecord        `json:"duties"`
+	TransitGrantSpends []transitGrantSpend `json:"transit_grant_spends"`
+}
+
+// transitGrantSpend is one historical Node-local, finite, irreversible
+// consumption of an already State-authorized transit admission capability.
+// It has no Target, Service, or client material.
+type transitGrantSpend struct {
+	NodeID   [32]byte `json:"node_id"`
+	GrantID  [32]byte `json:"grant_id"`
+	NotAfter int64    `json:"not_after"`
+}
+
+const maximumTransitGrantSpends = 64
+
+func (legacy legacyDurableState) convert() durableState {
+	return durableState{Version: durableStateVersion, Generation: legacy.Generation,
+		Previous: legacy.Previous, Duties: legacy.Duties}
+}
+
+func validLegacyDurableState(state legacyDurableState) bool {
+	return state.Version == legacyDurableStateVersion && state.Generation > 0 &&
 		(state.Previous == "" || stateName.MatchString(state.Previous)) && validRecords(state.Duties) &&
 		validTransitGrantSpends(state.TransitGrantSpends)
 }

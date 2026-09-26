@@ -180,6 +180,8 @@
           "internal/endpoint/durableroot.Secure",
           "internal/endpoint/durableroot.setEndpointRootDACL",
           "internal/endpoint/durableroot.Lease.Release",
+          "internal/network/duty.ReadConflict",
+          "internal/network/duty.store.Conflict",
           "internal/service/connection.Attachment.closeCarrier",
           "internal/service/connection.ChallengeDigest",
           "internal/service/connection.Context",
@@ -318,7 +320,7 @@
           "internal/service/targetlink.empty"
         ],
         "classification": "selected Linux-only protected text runtime closure",
-        "rationale": "The v1 cross-platform composition previously made this closure appear reachable on Windows. The selected v2 text participant is qualified only on Linux; its command adapter refuses on other platforms before runtime acquisition, while Linux production reaches these symbols.",
+        "rationale": "The v1 cross-platform composition previously made this closure appear reachable on Windows. The selected v2 text participant is qualified only on Linux; its command adapter refuses on other platforms before runtime acquisition, while Linux production reaches these symbols. ADR-0106 retired the Windows-visible `entry import` caller of the duty conflict ledger, so only the Linux text runtime reaches ReadConflict and store.Conflict now.",
         "owner": "Product Owner and Codex",
         "retirement": "Remove this Windows allowance if a maintained Windows protected runtime is selected, or when the Linux-only runtime and its shared closure are retired or assigned narrower platform build ownership."
       }

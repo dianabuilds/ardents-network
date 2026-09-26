@@ -11,21 +11,19 @@ import (
 // GAP-6 regression tests for the source-exposure ledger consulted at Entry
 // admission.
 //
-// The contract placed these tests in `internal/entry/entry_test.go` with a
-// real `duty.Store` and a real `entry.Verify` call. The package-map rule
-// (enforced by `internal/architecture`) forbids `internal/entry` from
-// importing `internal/network/duty`, and `internal/network/duty` from
-// importing `internal/entry`. We therefore place the tests here, where a
-// real `duty.Store` is constructible, and demonstrate the duty side of the
-// production chain: a `direct-source` duty retained by `Replace` is
-// detected by `store.Conflict` and by `ReadConflict`, the function
-// production wires as `entry.Verification.Conflict`.
+// The original contract placed these tests beside a real `entry.Verify`
+// call; the package-map rule (enforced by `internal/architecture`) forbids
+// `internal/entry` and `internal/network/duty` from importing each other, so
+// the tests live here, where a real `duty.Store` is constructible, and cover
+// the duty side of the production chain: a `direct-source` duty retained by
+// `Replace` is detected by `store.Conflict` and by `ReadConflict`.
 //
-// The contract's four behaviours are exercised end-to-end on the store
-// side. The entry-side wiring (`validateInvite` calling `Conflict` and
-// returning `ConflictingRole`) is unchanged production code and is covered
-// by the existing `internal/entry/entry_test.go` test
-// `TestValidateInviteReturnsOnlyCurrentInitiatorCandidate`.
+// ADR-0106 retired the Invite subsystem, deleting the former `entry import`
+// consumer that wired `validateInvite` into this ledger (and with it the
+// `internal/entry/entry_test.go` coverage the earlier revision of this
+// comment cited). The ledger itself stays live production code: its current
+// consumer is the endpoint's closed Entry set selection, and these tests
+// keep the four GAP-6 store-side behaviours covered.
 
 func openStoreWithClock(t *testing.T) (localDutyStore, string, func() time.Time) {
 	t.Helper()

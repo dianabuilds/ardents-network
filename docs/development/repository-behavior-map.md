@@ -34,7 +34,7 @@ it can inform a package move or deletion.
 | Project bounded diagnostics without authority or network effects | [Command surface](command-surface.md) | `cmd/ardents/offline.go` -> `internal/diagnostics/timeline` | Node/Endpoint event producers and read-only timeline projection traced below; attempt-level Route history is still absent |
 | Run installed qualification using the real Endpoint and Node paths | [Testing model](testing.md), [protected workload](../product/protected-service-workload.md) | `cmd/ardents-qualification/main.go`, `internal/qualification`, `tests/qualification` | Fixed stream runner's plan, artifact, participant join and evidence-terminal path traced below; ordinary installed text command profile is separate and remains an acceptance gate |
 | Refuse retired commands, plans, wire forms, and persisted identities without fallback | [Command surface](command-surface.md), affected current technical owner | `cmd/ardents/offline.go`, `cmd/ardents/endpoint_headless.go`, `cmd/ardents-node/node_config.go`; retained decoders in their owning packages | Old Node duty refusal traced below; other compatibility entries pending |
-| Select and retain adjacent closed Entry members | [Network/Route/Node](../technical/network-route-node.md) | `internal/endpoint/text_participant_linux.go` -> `textEntrySets` -> `entry.OpenClosedSets`, then `text_interior_set.go` -> `Members`/`CurrentMember` | Current root, refusal, restart and close path traced below; old Invite command is a separate retained writer pending retirement decision |
+| Select and retain adjacent closed Entry members | [Network/Route/Node](../technical/network-route-node.md) | `internal/endpoint/text_participant_linux.go` -> `textEntrySets` -> `entry.OpenClosedSets`, then `text_interior_set.go` -> `Members`/`CurrentMember` | Current root, refusal, restart and close path traced below; old Invite commands are retired to a before-effect refusal (ADR-0106) |
 
 For each row, the next pass records: normal and refused call path; authority and
 input validation order; mutable/durable state; accepted child resources; stop,
@@ -760,19 +760,17 @@ This trace follows `internal/node/closed_resolution_listener.go`,
    that result, but the goroutine retains both roots until the workers join.
    Physical connection-close errors in rejected and accepted handlers are
    currently discarded; they are not part of the joined root-close result.
-6. On restart, `OpenStore.restore` authenticates both old stored-record v1 and
-   private v2 entries into one Target map. An old entry is unavailable through
-   `LookupPrivate`, but its Target and Credential floor remain. A private v3
-   publication for the same Target reaches `compareStored` and fails the
-   format-adoption check; old entries also count toward the 128-Target bound
-   regardless of expiry. There is no Store adoption operation (F-32).
+6. On restart, `OpenStore.restore` authenticates private v2-envelope entries
+   into the Target map. ADR-0109 (F-32) deleted the old stored-record v1
+   decoder: a record in the retired envelope now refuses the whole root with
+   the typed `ErrLegacyRecord`, its bytes stay on disk unread, and there is
+   no Store adoption operation.
 
 The inspected direct network test covers publish, lookup, duplicate token,
 revision conflict, successor, invalid proof and foreign Introduction over
 both Carriers. The Store failure test proves that a failed conflict write
 terminalizes that Store instance. These tests do not by themselves prove the
-old-record-to-private same-Target restart case, the post-commit/pre-ACK
-State-change retry, or the per-connection close-error
+post-commit/pre-ACK State-change retry or the per-connection close-error
 policy; this study has not rerun them against the current worktree.
 
 The following constructor/close paths were inspected at `e48d4c3c` in the
@@ -791,8 +789,8 @@ five `closed_*_listener.go` owners and `closed_forwarding_shutdown.go`.
 The Resolution Store also has an opening failure path: after acquiring its
 exclusive lease, `reachability.OpenStore` discards the lease-release error if
 retained-record restoration fails. The normal `Store.Close` returns that
-error. F-71 identifies the missing combined startup outcome; it matters when
-an old Descriptor root is refused or migrated under the one-version policy.
+error. F-71 identifies the missing combined startup outcome; it matters when a
+root is refused under the ADR-0109 typed legacy-record refusal.
 
 All five roles use the Node lifecycle's common `dutyHandle` handle, although
 only the private probe is a probe. This is a naming/interface problem in the
@@ -1070,26 +1068,27 @@ canonical encoder. An old Namespace root stays on disk byte-for-byte with no
 working-tree read path at all; typed incompatibility is the absence of any
 reader.
 
-## Source trace: old Transit Grant spend inside the current local-role root
+## Source trace: retired Transit Grant spend ledger inside the local-role root
 
 At the current architecture worktree, a non-test `cmd`/`internal` call search
 finds no caller of `route.VerifyTransitGrant` or
-`network/duty.(*store).SpendTransitGrant`. The old Route verifier still reads
-its Grant v1 body through `route/wire_encoding.go:wireReader`, but it does not
-admit a current Node connection. Node `local_roles.go` and State
-`local_roles.go` still open the `network/duty` root; the Endpoint qualification
-preflight also opens it. Thus the root is a current resource owner even though
-the Grant-spend operation is uncalled.
+`network/duty.(*store).SpendTransitGrant`. The old Route verifier that once
+read the Grant v1 body retired with `route/wire_encoding.go` under ADR-0093.
+Node `local_roles.go` and State `local_roles.go` still open the `network/duty`
+root; the Endpoint qualification preflight also opens it. The root is therefore
+a current resource owner, and its persisted generations needed an explicit data
+disposition (F-53).
 
-The root's strict version-1 JSON generation includes `TransitGrantSpends`,
-and `loadGeneration` validates that field before returning an owned root.
-`Replace` carries forward only unexpired spends and commits a new hashed
-generation under a watermark; `Open` alone does not prune them. Retained
-current/predecessor generations can therefore contain historical spend
-records. This is a persisted-schema and rollback question, not evidence of a
-second supported Grant admission path (F-53). Any schema cleanup needs an
-explicit disposition for existing roots and their generation chain while
-preserving the still-current duty conflict records.
+ADR-0107 supplies that disposition as a bounded in-place conversion. The
+current root schema is version 2 and has no `transit_grant_spends` field; no
+writer emits version 1. A persisted version-1 generation is still strictly
+decoded under its original validation rules, spend-record rules included, and
+then converted in memory: the spend records are dropped while every conflict
+duty, generation number, and predecessor name survives, so watermark recovery
+can still land on a version-1 generation and the first `Replace` after such a
+load commits a version-2 successor. Invalid version-1 bytes and unknown
+versions refuse at open. No spend record influences any current decision; the
+ledger had no reader once the Grant admission path retired.
 
 ## Source trace: JOIN transport transfer into Service Connection
 
@@ -1196,22 +1195,19 @@ Descriptor ACK, recipient process lifetime, or the complete refusal/timeout
 matrix across Endpoint and Node. Keep the channel and Context close owners
 separate if the package boundary moves.
 
-## Source trace: current closed Entry set versus retained Invite import
+## Source trace: closed Entry set after the Invite retirement
 
-This trace follows `cmd/ardents/entry_import.go`, `internal/entry/{open,
-import,attempt,closed_set_store,closed_sets}.go`, Endpoint
-`text_source_state.go` and `text_interior_set.go` at `53f02e64`.
+This trace follows `cmd/ardents/entry_retirement.go`, `internal/entry/{
+closed_set_store,closed_sets}.go`, and Endpoint `text_source_state.go` and
+`text_interior_set.go` at ADR-0106.
 
-1. The dispatchable `ardents entry import` command reads an operator plan and
-   signed Invite, opens the older Entry root through `entry.Open`, calls
-   `owner.Import`, and closes the owner before emitting a receipt. `Open`
-   claims an exclusive root lease, recovers interrupted contacts/attempts,
-   revalidates retained Invites against current State and persists changes.
-   `Close` cancels acquisition, waits for it, joins accepted attachments and
-   their cleanup outcomes, settles the attempt, then releases the root lease.
-   `entry recipient` reads the corresponding recipient public key. This
-   command still writes an older durable format, but it does not feed the
-   selected protected participant.
+1. The dispatchable `ardents entry` route retains only its retirement
+   refusal: `entry import` and `entry recipient` return `entry Invite
+   command is retired` before interpreting remaining arguments, reading a
+   plan, or creating any root. The former plan loader, Invite decoders,
+   recipient identity, and attempt/contact journal machinery are deleted;
+   an existing Invite root stays on disk byte-for-byte with no reader,
+   converter, or deleter.
 2. The current Endpoint opens `entry.OpenClosedSets` under `textMu` using its
    separate closed Entry root and a callback to live State-selected adjacent
    members. The root marker rejects an Invite root. First creation commits
@@ -1225,23 +1221,19 @@ import,attempt,closed_set_store,closed_sets}.go`, Endpoint
    contexts, joining their close errors. Tests cover restart, no refill,
    concurrent activation, conflicting state and legacy-root refusal.
 4. The old Route `OpenEntryAttachment` was removed by ADR-0093, and ADR-0095
-   retired the then-uncalled attachment execution machinery: `owner.Acquire`,
-   `owner.Contact`, the guarded carrier, the cleanup leases, and the
-   attempt-journal writers. The durable attempt/contact journal schema stays
-   decodable; `Open` terminalizes a legacy journal as interrupted. The command
-   still uses the private `validateInvite` through `owner.Import` and reopen.
-   ADR-0096 then rejected the closed-alpha candidate surface: `entry.Issue`,
-   exported `entry.Verify`, its `Authorization` result, and the
-   reservation/`Insufficient` policy are removed; only `validateInvite`
-   remains, reading retained Invite records.
+   retired the then-uncalled attachment execution machinery. ADR-0096 rejected
+   the closed-alpha issuance/verification candidate surface while retaining
+   the private `validateInvite` classifier; ADR-0106 removed it together with
+   every remaining Invite machinery file, superseding the ADR-0095 journal
+   schema retention clause and the ADR-0096 classifier retention rule. The
+   surviving `internal/entry` package is Linux-only apart from its untagged
+   doc.go and owns only the closed Entry set root and its durable primitives.
 
-The two roots are not version negotiation in one C0 journey. The target has
-one closed Entry selection path. The uncalled v2 attachment machinery is
-retired (ADR-0095); retirement of the Invite writer still needs a decision
-for existing roots and the accepted operator contract, including the retained
-attempt/contact journal schema; preserving a bounded historical reader or
-typed refusal during that transition does not authorize old admission
-execution (F-08).
+The target has one closed Entry selection path and no second operator
+writer beside it. F-08 is closed: the Invite root's data obligation was
+resolved as typed incompatibility - a before-effect refusal under the PO
+direction that no legacy support is required. The retirement authorizes no
+old admission execution.
 
 ## Source trace: Release decision root before Endpoint enrollment/replacement
 

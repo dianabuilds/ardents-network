@@ -30,9 +30,7 @@ func TestUbuntuPortableReplacementQualification(t *testing.T) {
 	}
 	stateHome := filepath.Join(home, ".local", "state", "ardents")
 	qualificationRoots := []string{
-		filepath.Join(home, ".config", "ardents"),
 		stateHome,
-		filepath.Join(home, ".cache", "ardents"),
 		filepath.Join(os.Getenv("XDG_RUNTIME_DIR"), "ardents"),
 	}
 	for _, root := range qualificationRoots {
@@ -117,8 +115,8 @@ func TestUbuntuPortableReplacementQualification(t *testing.T) {
 	if lingerAfter := userLinger(t); lingerAfter != lingerBefore {
 		t.Fatalf("participant replacement changed linger: before=%q after=%q", lingerBefore, lingerAfter)
 	}
-	if _, err := os.Stat(filepath.Join(stateHome, "vault")); err != nil {
-		t.Fatalf("native replacement removed the protected Vault root: %v", err)
+	if _, err := os.Stat(filepath.Join(stateHome, "live")); err != nil {
+		t.Fatalf("native replacement removed the retained live root: %v", err)
 	}
 	assertRetainedPortableState(t, stateHome)
 	if output, err := userSystemctl(t, "stop", unitName); err != nil {
@@ -145,8 +143,7 @@ func TestUbuntuPortableReplacementRollbackQualification(t *testing.T) {
 	}
 	stateHome := filepath.Join(home, ".local", "state", "ardents")
 	qualificationRoots := []string{
-		filepath.Join(home, ".config", "ardents"), stateHome,
-		filepath.Join(home, ".cache", "ardents"), filepath.Join(os.Getenv("XDG_RUNTIME_DIR"), "ardents"),
+		stateHome, filepath.Join(os.Getenv("XDG_RUNTIME_DIR"), "ardents"),
 	}
 	for _, root := range qualificationRoots {
 		requireAbsentQualificationRoot(t, root)
@@ -244,8 +241,8 @@ func TestUbuntuPortableReplacementRollbackQualification(t *testing.T) {
 	if lingerAfter := userLinger(t); lingerAfter != lingerBefore {
 		t.Fatalf("participant rollback changed linger: before=%q after=%q", lingerBefore, lingerAfter)
 	}
-	if _, err := os.Stat(filepath.Join(stateHome, "vault")); err != nil {
-		t.Fatalf("native rollback removed the protected Vault root: %v", err)
+	if _, err := os.Stat(filepath.Join(stateHome, "live")); err != nil {
+		t.Fatalf("native rollback removed the retained live root: %v", err)
 	}
 	assertRetainedPortableState(t, stateHome)
 	if output, err := userSystemctl(t, "stop", unitName); err != nil {

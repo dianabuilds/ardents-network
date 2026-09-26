@@ -88,7 +88,11 @@ func TestRouteV2RetirementPreservesRefusalAndPersistedDataContracts(t *testing.T
 	if strings.Contains(store, "SpendTransitGrant") {
 		t.Error("local-role store still exports the uncalled Transit Grant spend")
 	}
-	if !strings.Contains(contract, "TransitGrantSpends []transitGrantSpend") {
-		t.Error("local-role durable v1 schema lost its persisted Transit Grant spend field")
+	if strings.Contains(contract, "TransitGrantSpends") || strings.Contains(contract, "transitGrantSpend") {
+		t.Error("local-role durable schema regained the Transit Grant spend field retired by ADR-0107")
+	}
+	persistence := string(readProjectFile(t, root, "internal/network/duty/persistence.go"))
+	if !strings.Contains(persistence, "legacyDurableStateVersion") || !strings.Contains(persistence, "func (legacy legacyDurableState) convert()") {
+		t.Error("local-role persistence lost the bounded version-1 conversion required by ADR-0107")
 	}
 }
