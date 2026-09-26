@@ -1,0 +1,64 @@
+package state
+
+import (
+	"context"
+	"errors"
+	"path/filepath"
+	"strings"
+	"testing"
+	"time"
+)
+
+func TestCloseRetainsTerminalAndSourceReleaseFailures(t *testing.T) {
+	for _, test := range []struct {
+		name        string
+		serverErr   error
+		resourceErr error
+	}{
+		{name: "server failure", serverErr: errors.New("source server failed")},
+		{name: "resource failure after source cancellation", serverErr: context.Canceled, resourceErr: errors.New("resource accounting failed")},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			root := t.TempDir()
+			storage, err := openDurableRoot(root)
+			if err != nil {
+				t.Fatal(err)
+			}
+			state := &networkState{storage: storage, serverErr: test.serverErr, resourceErr: test.resourceErr}
+			state.config.sourceInfo.Serving = true
+			state.config.localRoles = filepath.Join(t.TempDir(), "absent-local-role-root")
+			state.config.clock = time.Now
+			releaseErr := state.releaseSourceServer()
+			if releaseErr == nil {
+				t.Fatal("missing local-role root did not fail")
+			}
+			got := state.Close()
+			if got == nil || !strings.Contains(got.Error(), releaseErr.Error()) {
+				t.Fatalf("Close() = %v, missing source-role release failure %v", got, releaseErr)
+			}
+			primary := test.serverErr
+			if test.resourceErr != nil {
+				primary = test.resourceErr
+			}
+			if !errors.Is(got, primary) {
+				t.Fatalf("Close() = %v, missing terminal failure %v", got, primary)
+			}
+			if reopened, err := openDurableRoot(root); err != nil {
+				t.Fatalf("State root remained locked after Close: %v", err)
+			} else if err := reopened.close(); err != nil {
+				t.Fatal(err)
+			}
+		})
+	}
+}
+
+func TestCloseTreatsSourceCancellationAsExpected(t *testing.T) {
+	storage, err := openDurableRoot(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	state := &networkState{storage: storage, serverErr: context.Canceled}
+	if err := state.Close(); err != nil {
+		t.Fatalf("Close() = %v, want nil for expected Source cancellation", err)
+	}
+}

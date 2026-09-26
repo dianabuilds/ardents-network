@@ -24,7 +24,7 @@ func resourcePressureFailureReason(err error) string {
 	return "resource pressure evidence is unavailable"
 }
 
-func (config *runtimeConfig) resourcePressure(server *probeServer) (pressureLevel, resource.Sample, error) {
+func (config *runtimeConfig) resourcePressure(server *dutyHandle) (pressureLevel, resource.Sample, error) {
 	hosting, hostingErr := config.hostingPressure()
 	if hostingErr != nil || hosting == pressureDrain {
 		return pressureDrain, resource.Sample{}, hostingErr

@@ -74,6 +74,14 @@
       "invalid_environment": "not applicable"
     },
     {
+      "id": "fixture-network-linux",
+      "state": "active",
+      "make_target": "fixture-network-test",
+      "surface": "bounded two-host qualification fixture command and Route selection",
+      "prerequisites": ["Linux host"],
+      "invalid_environment": "the selected Linux fixture-command environment is unavailable"
+    },
+    {
       "id": "heapdump-capture",
       "state": "active",
       "make_target": "heapdump-capture",

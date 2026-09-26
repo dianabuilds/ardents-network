@@ -64,6 +64,10 @@ type storedDescriptor struct {
 // OpenStore reconstructs one Gateway's accepted generation/conflict state and
 // holds an exclusive root lease until Close.
 func OpenStore(config StoreConfig) (*Store, error) {
+	return openStore(config, func(lease *storeLease) error { return lease.release() })
+}
+
+func openStore(config StoreConfig, releaseOnRestoreFailure func(*storeLease) error) (*Store, error) {
 	if config.Root == "" || config.NetworkID == [32]byte{} {
 		return nil, errors.New("reachability store configuration is incomplete")
 	}
@@ -83,8 +87,7 @@ func OpenStore(config StoreConfig) (*Store, error) {
 	}
 	store := &Store{path: path, network: config.NetworkID, lease: lease, records: make(map[[32]byte]storedDescriptor)}
 	if err := store.restore(); err != nil {
-		_ = store.lease.release()
-		return nil, err
+		return nil, errors.Join(err, releaseOnRestoreFailure(&store.lease))
 	}
 	return store, nil
 }

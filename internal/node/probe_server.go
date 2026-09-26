@@ -32,7 +32,7 @@ type probeListener struct {
 }
 
 // startProbe binds the plan to one authenticated duty.
-func (p *probePlan) startProbe(duty probeDuty) (*probeServer, error) {
+func (p *probePlan) startProbe(duty probeDuty) (*dutyHandle, error) {
 	if duty.Capacity == 0 {
 		return nil, errors.New("role-probe duty has no capacity")
 	}
@@ -45,7 +45,7 @@ func (p *probePlan) startProbe(duty probeDuty) (*probeServer, error) {
 		stop: make(chan struct{}), terminal: make(chan error, 1)}
 	running.work.Add(1)
 	go running.accept()
-	return &probeServer{Done: running.terminal, Protect: running.protect, Usage: running.usage,
+	return &dutyHandle{Done: running.terminal, Protect: running.protect, Usage: running.usage,
 		Stop: running.stopAdmission, Drain: running.drain}, nil
 }
 

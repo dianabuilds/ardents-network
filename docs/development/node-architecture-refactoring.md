@@ -37,12 +37,12 @@ present but not visible as package boundaries:
 
 | Current location | Responsibility and coupling |
 | --- | --- |
-| `contract.go`, `admission.go`, `lifecycle.go`, `duty_server.go` | Public configuration and event contract, immutable duty facts, State admission, process lifecycle, and dispatch of five closed duties plus the private probe. `runtimeConfig` embeds the whole `Config`; duty implementations can read unrelated role settings. |
+| `process_config.go`, `closed_reservations.go`, `lifecycle_event.go`, `runtime_state.go`, `admission.go`, `lifecycle.go`, `duty_server.go` | Public configuration, local reservations, event contract, runtime state, State admission, process lifecycle, and dispatch of five closed duties plus the private probe. `runtimeConfig` embeds the whole `Config`; duty implementations can read unrelated role settings. |
 | `closed_route_receiver.go`, `closed_forwarding_admission.go`, `closed_hosting.go` | Current State/profile projection, exact recipient and token checks, and host reservation. Forwarding and direct recipients share these checks, so moving a role by filename would import the parent package or duplicate authority. |
 | `closed_outer_lifetime.go`, `closed_outer_writer.go` | Outer Carrier lane lifetime and serialized writes shared by forwarding, issuer, resolution, Introduction, and JOIN. This is a genuine shared Node operation above Route's wire/Carrier mechanics. |
 | `closed_forwarding_*`, `closed_bootstrap_forwarding.go`, `closed_forward_recipient.go`, `closed_carrier_relay.go` | Forwarding listener, receiving resources, sessions, links, queue, bootstrap, peer choice, and shutdown. `closedForwardingServer` retains the group and its terminal result. |
 | `closed_issuer_*`, `closed_introduction_*`, `closed_resolution_*`, `closed_join_*` | Four distinct direct recipient duties and their own admission, work, and drain. |
-| `probe_*`, `resource_pressure.go`, `event_writer*`, `local_roles.go`, `terminal_cleanup.go` | Private probe, process-wide pressure/evidence, local role retention, and terminal outcome. The shared running-duty handle is currently named `probeServer`. |
+| `probe_*`, `resource_pressure.go`, `event_writer*`, `local_roles.go`, `terminal_cleanup.go` | Private probe, process-wide pressure/evidence, local role retention, and terminal outcome. The shared running-duty handle is named `dutyHandle`. |
 
 `internal/route` owns physical TCP/TLS and QUIC Carrier mechanics, protected
 Route admission/wire, and shared outer-bridge primitives. Node owns the selected
@@ -56,7 +56,7 @@ and terminal result. The refactoring keeps this direction of dependency.
 | `internal/node` | `Run`, process `Config`/`Result`/`Event`, one selected-duty dispatch and running-duty handle. | State admission and process lifecycle, role retention, pressure response, evidence emission, and final cleanup ordering. |
 | Current authority projection (package undecided) | Exact current Node duty, profile and recipient checks consumed by duty owners. | State authenticates the view; Node applies local duty checks. An `authority` package needs an actual narrow value/caller seam and must not copy or select State. |
 | Shared outer lifetime (possible `internal/node/outer`) | Serve one accepted outer Carrier and join its inner lanes. | Its current two files use Route and standard-library types; a move still requires a production caller, owned cleanup result and tests in the same change. |
-| Forwarding lifetime (currently `internal/node`) | Start and join one State-authorized forwarding duty. | The server retains listener, spend and host reservations, admitted producers, outgoing Carrier sessions and readers. Moving this cohort now would transfer private `runtimeConfig`, the copied duty value, spend-close and probeServer return contracts. Deepen it in place first; a later package requires a demonstrated smaller interface. |
+| Forwarding lifetime (currently `internal/node`) | Start and join one State-authorized forwarding duty. | The server retains listener, spend and host reservations, admitted producers, outgoing Carrier sessions and readers. Moving this cohort now would transfer private `runtimeConfig`, the copied duty value, spend-close and dutyHandle return contracts. Deepen it in place first; a later package requires a demonstrated smaller interface. |
 | Private role probe (currently `internal/node`) | Start and join the selected probe duty under Node lifecycle. | Four implementation files use the common running-duty handle. Its name and navigation can improve in place; no independent package boundary has been shown. |
 | Direct recipient owners | Issuer, Introduction, Resolution, and Data Join each retain their own listener/admission/work/drain. | Extract an individual package when its state and lifecycle form a deep module with a small API. A thin Route adapter stays as a clearly named file in `internal/node` if a package would add only forwarding methods. |
 
@@ -80,12 +80,10 @@ caller; no package is required merely to remove a filename prefix.
 
 ### 1. Make the root contract readable
 
-- Split `contract.go` by responsibility into named files for process config,
-  authenticated duty view/facts, and event/result contract. Keep the same Go
-  package and behavior during this step.
-- Rename the common `probeServer` handle to describe a running duty. Align
-  `startDuty`, `Run`, and each adapter with that name. Keep the private probe's
-  own types under probe names.
+- The former `contract.go` declarations are separated by process config,
+  local reservations, runtime state and event/result contract inside `node`.
+- The common handle is named `dutyHandle` across `startDuty` and each adapter;
+  keep the private probe's own types under probe names.
 - Give `internal/node/doc.go` a concise navigation map: admission, authority,
   outer lifetime, each duty, pressure, and terminal cleanup. Avoid duplicating
   the technical contract.
@@ -96,9 +94,8 @@ caller; no package is required merely to remove a filename prefix.
 ### 2. Prove the shared outer boundary
 
 - Map `serveClosedOuter`, its writer, all five production callers and the
-  accepted-connection close result. F-61 shows that only Data JOIN currently
-  retains non-benign accepted-connection close errors; the other four duties
-  discard them. Keep `Done` as the accept-loop result and `Drain` as the final
+  accepted-connection close result. F-61 now retains non-benign accepted-close
+  results in all five duties. Keep `Done` as the accept-loop result and `Drain` as the final
   joined cleanup result. Preserve the issuer root's late-close question after
   a timed-out `Drain`. Keep the close/interruption/children-join order and
   deadline behavior together.

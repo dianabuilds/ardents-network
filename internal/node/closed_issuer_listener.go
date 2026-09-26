@@ -14,7 +14,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/route/replay"
 )
 
-func startClosedIssuer(config runtimeConfig, snapshot state.NodeDuty) (*probeServer, error) {
+func startClosedIssuer(config runtimeConfig, snapshot state.NodeDuty) (*dutyHandle, error) {
 	local := config.ClosedIssuer
 	if err := validateClosedIssuerProfile(local, config, snapshot, config.now()); err != nil {
 		return nil, err
@@ -61,16 +61,17 @@ func startClosedIssuer(config runtimeConfig, snapshot state.NodeDuty) (*probeSer
 	if err != nil {
 		return nil, errors.Join(err, spends.Close(), issuer.Close())
 	}
-	return &probeServer{Done: listener.Done(), Protect: func(bool) {}, Usage: func() (uint64, uint64, uint64) {
+	return &dutyHandle{Done: listener.Done(), Protect: func(bool) {}, Usage: func() (uint64, uint64, uint64) {
 		return uint64(listener.Active()), uint64(listener.Active()), 0
 	}, Stop: func() { _ = listener.Stop() }, Drain: func(ctx context.Context) error {
 		drain, cancel := context.WithTimeout(ctx, local.DrainTimeout)
 		defer cancel()
-		if err := listener.Drain(drain); err != nil {
+		err := listener.Drain(drain)
+		if !listener.Joined() {
 			// An incomplete join cannot release durable owners to a successor.
 			return err
 		}
-		return errors.Join(spends.Close(), issuer.Close())
+		return errors.Join(err, spends.Close(), issuer.Close())
 	}}, nil
 }
 

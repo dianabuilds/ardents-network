@@ -43,6 +43,10 @@ accepted handler before the outgoing-session owner performs the final wait for
 its retained Carrier readers and returns their joined cleanup result. The server
 retains the pool interruption and spend-root lifetime, so a timed-out Drain
 cannot release the root or turn a later physical close failure into success.
+Accepted Forwarding Carrier close failures, including capacity refusals, join
+the final `Drain` result after all handlers finish. A repeated close reporting
+`net.ErrClosed` is benign; `Done` remains the accept-loop result rather than
+the joined cleanup result.
 While one child is pending downstream HELLO/ACCEPT, the parent reader still
 serves lane-zero control and independently selected children. A pending child's
 frames remain in Route's bounded accounted queues; CLOSE cancels and joins only
@@ -72,6 +76,15 @@ Introduction assignment are checked before accepting or returning a proof.
 Shutdown cancels children and joins handlers before releasing either root;
 a timed-out Drain leaves the roots held. No plan callback can supply a
 successful publication or bypass verification.
+Resolution retains non-benign close failures from accepted Carriers, including
+direct refusals and capacity refusals, in the final joined drain result;
+`net.ErrClosed` from an already closed Carrier is benign.
+Introduction follows the same accepted-Carrier close accounting through its
+joined drain result, including admitted children and both refusal paths.
+The Issuer's Credential listener also retains accepted-Carrier close failures
+after joining its children. Node releases the issuer and admission roots when
+that join completed, even if the listener reports a physical close failure;
+an incomplete join keeps both roots held.
 Short local-role transactions coordinate with concurrent Source exposure
 retention. `duty.OpenOperation` waits only for an occupied exclusive lease,
 for at most one second or the caller's earlier cancellation. It then verifies

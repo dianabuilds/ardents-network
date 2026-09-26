@@ -17,7 +17,7 @@ import (
 
 // startClosedForwarding materializes one State-selected adjacent/interior
 // receiver. It owns its spend ledger and finite pool until duty withdrawal.
-func startClosedForwarding(config runtimeConfig, snapshot state.NodeDuty) (*probeServer, error) {
+func startClosedForwarding(config runtimeConfig, snapshot state.NodeDuty) (*dutyHandle, error) {
 	local := config.ClosedForwarding
 	if err := validateClosedForwardingProfile(local, config, snapshot, config.now()); err != nil {
 		return nil, err
@@ -56,7 +56,7 @@ func startClosedForwarding(config runtimeConfig, snapshot state.NodeDuty) (*prob
 		return nil, errors.Join(err, pool.Close(), receiving.Close(), host.Close())
 	}
 	running := newClosedForwardingServerWithHost(config, snapshot, local.Certificate, shared, receiving, pool, host, local.ConnectionLimit)
-	return &probeServer{Done: running.Done(), Protect: func(bool) {}, Usage: func() (uint64, uint64, uint64) {
+	return &dutyHandle{Done: running.Done(), Protect: func(bool) {}, Usage: func() (uint64, uint64, uint64) {
 		return uint64(running.Active()), uint64(running.Active()), 0
 	}, Stop: func() { _ = running.Stop() }, Drain: func(ctx context.Context) error {
 		drain, cancel := context.WithTimeout(ctx, local.DrainTimeout)
@@ -80,28 +80,30 @@ func validateClosedForwardingProfile(local ClosedForwardingProfile, config runti
 }
 
 type closedForwardingServer struct {
-	config      runtimeConfig
-	snapshot    state.NodeDuty
-	certificate tls.Certificate
-	listener    route.ClosedSharedCarrierListener
-	receiving   *closedForwardingReceivingResources
-	pool        *route.ClosedCarrierPool
-	host        closedForwardingHost
-	sessions    *closedForwardingSessions
-	clock       func() time.Time
-	limit       chan struct{}
-	active      atomic.Uint32
-	stopOnce    sync.Once
-	stopErr     error
-	cancel      context.CancelFunc
-	drained     chan struct{}
-	done        chan error
-	stopped     chan struct{}
-	workers     sync.WaitGroup
-	outgoingErr error
-	drainErr    error
-	reapMu      sync.Mutex
-	reapErr     error
+	config           runtimeConfig
+	snapshot         state.NodeDuty
+	certificate      tls.Certificate
+	listener         route.ClosedSharedCarrierListener
+	receiving        *closedForwardingReceivingResources
+	pool             *route.ClosedCarrierPool
+	host             closedForwardingHost
+	sessions         *closedForwardingSessions
+	clock            func() time.Time
+	limit            chan struct{}
+	active           atomic.Uint32
+	stopOnce         sync.Once
+	stopErr          error
+	cancel           context.CancelFunc
+	drained          chan struct{}
+	done             chan error
+	stopped          chan struct{}
+	workers          sync.WaitGroup
+	outgoingErr      error
+	acceptedCloseMu  sync.Mutex
+	acceptedCloseErr error
+	drainErr         error
+	reapMu           sync.Mutex
+	reapErr          error
 }
 
 func newClosedForwardingServerWithHost(config runtimeConfig, snapshot state.NodeDuty, certificate tls.Certificate, listener route.ClosedSharedCarrierListener, receiving *closedForwardingReceivingResources, pool *route.ClosedCarrierPool, host closedForwardingHost, limit uint16) *closedForwardingServer {
@@ -181,7 +183,7 @@ func (server *closedForwardingServer) serve(ctx context.Context) {
 			server.workers.Add(1)
 			go server.serveAccepted(ctx, accepted)
 		default:
-			_ = accepted.Connection.Close()
+			server.closeAcceptedCarrier(accepted.Connection)
 		}
 	}
 }
@@ -232,11 +234,11 @@ func (server *closedForwardingServer) serveAccepted(ctx context.Context, accepte
 	stop := context.AfterFunc(ctx, func() {
 		defer close(interrupted)
 		_ = accepted.Connection.SetDeadline(time.Now())
-		_ = accepted.Connection.Close()
+		server.closeAcceptedCarrier(accepted.Connection)
 	})
 	defer func() {
 		_ = accepted.Connection.SetDeadline(time.Now())
-		_ = accepted.Connection.Close()
+		server.closeAcceptedCarrier(accepted.Connection)
 		if !stop() {
 			<-interrupted
 		}

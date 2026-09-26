@@ -47,7 +47,7 @@ func TestWithdrawDoesNotPublishSuccessWhenRoleDrainFails(t *testing.T) {
 		return nil
 	}}, now: func() time.Time { return time.Unix(100, 0).UTC() }}
 	machine := stateMachine{current: stateReady}
-	server := &probeServer{Stop: func() {}, Drain: func(context.Context) error { return cleanupErr }}
+	server := &dutyHandle{Stop: func() {}, Drain: func(context.Context) error { return cleanupErr }}
 	result, err := withdraw(config, &machine, server, state.NodeDuty{Assignment: "rendezvous"}, "test withdrawal")
 	if !errors.Is(err, cleanupErr) || result.State == stateNames[stateWithdrawn] {
 		t.Fatalf("withdraw result = %+v, %v", result, err)

@@ -30,7 +30,7 @@ func TestRetiredRendezvousReceivingEngineIsAbsent(t *testing.T) {
 		}
 	}
 
-	contracts := string(readProjectFile(t, root, "internal/node/contract.go"))
+	contracts := string(readProjectFile(t, root, "internal/node/process_config.go"))
 	if strings.Contains(contracts, "type RendezvousProfile ") || strings.Contains(contracts, "Rendezvous           RendezvousProfile") {
 		t.Error("Node contract still exports the retired Rendezvous engine profile")
 	}

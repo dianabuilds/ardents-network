@@ -464,7 +464,7 @@ contracts differ.
 
 **Code fact.** `node.startClosedIssuer` opens the issuer key root and a
 separate replay spend ledger before starting the credential listener. Its
-`probeServer.Drain` closes both roots only after
+`dutyHandle.Drain` closes both roots only after
 `ClosedTokenListener.Drain` returns success. When the bounded drain times out,
 it returns without closing either root. The listener's worker-join goroutine
 can later close `drained`, but it does not own those roots or call their
@@ -1290,9 +1290,9 @@ the exact v2 identity wherever typed refusal, owned-installation evidence or
 retained canonical vectors require it; remove any claim that it is an
 accepting C0 Route.
 
-## F-39: Node's common duty handle is named after the private probe
+## F-39: Node's common duty handle was named after the private probe
 
-**Source fact.** `internal/node/probe_contract.go` defines `probeServer` with
+**Source fact.** `internal/node/probe_contract.go` defines `dutyHandle` with
 `Done`, `Protect`, `Usage`, `Stop` and `Drain`. `duty_server.go` returns this
 same type for all five closed duties and for the private role probe. The
 issuer, forwarding, Resolution, Introduction and Data Join starters each
@@ -1300,16 +1300,15 @@ construct it around their own distinct listener and durable-root lifetime.
 The current technical owner explicitly keeps probe implementation private to
 Node; it does not define probe as the owner of those five duties.
 
-**Consequence.** The common lifecycle handle has a misleading name. A reader
-of a closed duty sees `probeServer` at its boundary and may infer shared probe
-transport or identical cleanup. The resource matrix in
+**Resolution.** The common lifecycle handle is now `dutyHandle`. The old
+`probeServer` name could imply shared probe transport or identical cleanup;
+the resource matrix in
 `repository-behavior-map.md` shows different close owners, including the
 issuer's late-close gap after a Drain timeout.
 
-**Disposition boundary.** Name this private Node return type for its actual
-role, such as `dutyHandle`, in a local Node change. Keep the five duty-specific
-servers and resource owners separate. This is a naming correction, not a new
-package, wire identity or permission to unify their shutdown mechanics.
+**Disposition boundary.** Keep the five duty-specific servers and resource
+owners separate. The rename did not change shutdown mechanics, package
+boundaries or wire identity.
 
 ## F-40: Credential's mixed declaration file was resolved; root diagnostics still lag
 
@@ -1537,7 +1536,7 @@ unchanged. Whether a closed Epoch may contain an unused additional domain is
 a separate contract question; the per-entry join does not require resolving
 that broader restriction first.
 
-## F-46: Node's old Route duty parsing leaves an unreachable v2 selection branch
+## F-46: Node's old Route duty parsing left dominated validation
 
 **Source fact.** `cmd/ardents-node/node_config.go:readNodePlan` decodes five
 former duty fields (`rendezvous`, `initiator`, `introduction`, `responder`,
@@ -1545,28 +1544,24 @@ former duty fields (`rendezvous`, `initiator`, `introduction`, `responder`,
 keys or constructing the State and Node roots. Any non-nil former field returns
 `errOldNodeDutyRetired`. `node_duty_retirement_test.go` checks that rejection
 precedes changes to the State and local-role roots, including a plan that
-combines a former and a closed duty. Later in the same parser, `nativeDuty`
-still includes those five fields, and its non-closed branch assigns
-`state.AcceptedProfile = route.Profile` (interactive Route v2). That branch
-cannot be reached through `readNodePlan`: the old fields were already
-rejected. A source search found no other production assignment of the v2
-profile in this Node command. The live closed duty branch chooses
-`route.ClosedRouteProfile`.
+combines a former and a closed duty. The v2 `AcceptedProfile` assignment was
+already removed. Later validation still included the five rejected fields in
+`nativeDuty`, resource-profile and closed-duty checks. The live closed duty
+branch chooses `route.ClosedRouteProfile`.
 
 **Consequence.** The command does not currently support two Node duty
-versions, but its parser still reads like a version selector and carries
-former duty payload types through later validation. This inflates the
-apparent supported surface and obscures the single closed C0 path. The
+versions, but its parser carried former duty payload types through later
+validation. This inflated the apparent supported surface. The
 `internal/node` checks for `route.Profile` likewise refuse rather than start
 an old receiver; they are a separate API-level refusal, not proof of a live
 v2 Node command.
 
 **Disposition boundary.** Keep one effect-free, typed refusal for each old
 top-level duty key while those input keys remain a declared compatibility
-obligation. Remove the dominated v2 `AcceptedProfile` assignment and simplify
-post-refusal `nativeDuty`/validation to the five closed reservations. After
-checking exact decoder behavior and tests, reduce former payload structs to
-the smallest representation needed to detect and refuse the old keys. Audit
+obligation. Post-refusal duty and validation checks now cover only the five
+closed reservations. The former payload structs remain for strict decoding
+of retained operator input; replacing them needs an explicit decoder-behavior
+decision. Audit
 the separate `internal/node` v2 refusal against accepted State-input
 compatibility before removing it; no v2 listener, fallback, or conversion is
 needed for the selected C0 configuration.
@@ -2059,8 +2054,8 @@ that reconciled status; GitHub Issues still own execution state.
 
 ## F-61: Accepted Node Carrier close results differ across five duties
 
-**Source fact at `53f02e64`.** `node.runDuty` receives a selected duty's
-`probeServer` handle. Its `Done` channel reports the accept-loop result;
+**Source fact, rechecked after the Forwarding fix.** `node.runDuty` receives a selected duty's
+`dutyHandle` handle. Its `Done` channel reports the accept-loop result;
 `Stop` interrupts admission; `Drain` is the final join and cleanup result.
 This timing matters: Forwarding, Resolution, Introduction and Data JOIN send
 `Done` before their accepted workers and owned roots have finished closing.
@@ -2070,24 +2065,25 @@ roots after that listener drains.
 
 | Duty | Accepted-connection close | Final joined result |
 | --- | --- | --- |
-| Forwarding | `serveAccepted` closes on interruption and again in its finalizer, discarding both results; a capacity refusal also discards its close result. | `Drain` retains listener, outgoing-pool, session, receiving-root and host errors, but no accepted-connection close error. |
-| Issuer | Credential's direct and shared child handlers discard connection-close results. | Its `Drain` retains listener close; Node's adapter then closes spend and issuer roots. |
-| Resolution | Accepted child and refusal paths discard connection-close results. | `drainErr` joins listener, Reachability Store and spend-root close. |
-| Introduction | Accepted child and refusal paths discard connection-close results. | `drainErr` joins listener and spend-root close. |
+| Forwarding | `closeAcceptedCarrier` retains non-benign close results on interruption, child completion and capacity refusal. | `Drain` joins accepted-connection close failures after handlers finish, along with listener, outgoing-pool, session, receiving-root and host errors. |
+| Issuer | Credential's direct and shared child handlers retain non-benign accepted-connection close results. | The listener's `Drain` joins those results with listener close. Node uses `Joined` to release spend and issuer roots after a completed join even when physical close failed; an incomplete join retains them. |
+| Resolution | `closeCarrier` retains non-benign accepted-child, direct-refusal and capacity-refusal close results. | `drainErr` joins these results with listener, Reachability Store and spend-root close. |
+| Introduction | `closeCarrier` retains non-benign accepted-child, direct-refusal and capacity-refusal close results. | `drainErr` joins these results with listener and spend-root close. |
 | Data JOIN | `closeCarrier` joins non-benign accepted-connection close errors under a lock, including capacity refusals. | `drainErr` joins listener, child cleanup, spend root, monitor and host close. |
 
-**Consequence.** The common `probeServer` contract already makes `Drain` the
+**Consequence.** The common `dutyHandle` contract already makes `Drain` the
 correct place for a duty's final cleanup result; `Done` alone cannot prove
 physical retirement. The accepted-connection result differs by duty even
 though all five borrow the same Route listener and return a caller-owned
-connection. Forwarding's outgoing pool has separate, tested physical-close
-retention; those tests do not cover its accepted child. A targeted test search
-found no injected accepted-connection close-error oracle for the five duty
-adapters. This is an observed accounting gap, not proof that an actual installed
-socket close failed or that a successful protocol exchange should be reversed.
-The separate `codex/issue-285-route-opening-diagnostic` diff changes
-Forwarding's outer/inner diagnostic calls but not the inspected
-`serveAccepted` close sites; recheck this row when that branch is integrated.
+connection. Forwarding's outgoing pool has separate physical-close retention.
+Its accepted connection now has injected close-error coverage for capacity
+refusal and an admitted direct child. Resolution has corresponding coverage
+for capacity and direct refusals plus an admitted Node child. Introduction now
+has the same three injected close-error cases. Issuer now has injected failures
+for Node and direct capacity refusals and an admitted Node child. This was an observed accounting gap, not proof that an actual
+installed socket close failed or that a successful protocol exchange should
+be reversed. The interruption close path still needs its own injected-error
+case before a shared outer owner can claim uniform coverage.
 
 **Disposition boundary.** Before moving the listener/outer seam, specify
 which non-benign accepted-connection close failures must enter each duty's

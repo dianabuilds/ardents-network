@@ -25,7 +25,7 @@ func TestRetiredInitiatorEngineIsAbsent(t *testing.T) {
 		}
 	}
 
-	contracts := string(readProjectFile(t, root, "internal/node/contract.go"))
+	contracts := string(readProjectFile(t, root, "internal/node/process_config.go"))
 	if strings.Contains(contracts, "InitiatorProfile") {
 		t.Error("Node contract still exports the retired Initiator profile")
 	}
@@ -53,7 +53,7 @@ func TestRetiredResponderEngineIsAbsent(t *testing.T) {
 		}
 	}
 
-	contracts := string(readProjectFile(t, root, "internal/node/contract.go"))
+	contracts := string(readProjectFile(t, root, "internal/node/process_config.go"))
 	if strings.Contains(contracts, "ResponderProfile") {
 		t.Error("Node contract still exports the retired Responder profile")
 	}
@@ -83,7 +83,7 @@ func TestRetiredIntroductionEngineIsAbsent(t *testing.T) {
 		}
 	}
 
-	contracts := string(readProjectFile(t, root, "internal/node/contract.go"))
+	contracts := string(readProjectFile(t, root, "internal/node/process_config.go"))
 	if strings.Contains(contracts, "type IntroductionProfile ") || strings.Contains(contracts, "Introduction         IntroductionProfile") {
 		t.Error("Node contract still exports the retired Introduction profile")
 	}

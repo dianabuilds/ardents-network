@@ -195,7 +195,7 @@ func emitResourceState(config runtimeConfig, snapshot state.NodeDuty, state, rea
 		CarrierProfile: selectedDutyCarrier(snapshot), AssignmentDigest: snapshot.AssignmentDigest, Reason: reason})
 }
 
-func withdraw(config runtimeConfig, machine *stateMachine, server *probeServer, snapshot state.NodeDuty, reason string) (Result, error) {
+func withdraw(config runtimeConfig, machine *stateMachine, server *dutyHandle, snapshot state.NodeDuty, reason string) (Result, error) {
 	server.Stop()
 	if err := moveAndEmit(config, machine, stateDraining, snapshot, reason); err != nil {
 		return fail(config, machine, server, "external evidence channel failed", err)
@@ -209,7 +209,7 @@ func withdraw(config runtimeConfig, machine *stateMachine, server *probeServer, 
 	return resultFor(machine, snapshot, reason), nil
 }
 
-func fail(config runtimeConfig, machine *stateMachine, server *probeServer, reason string, cause error) (Result, error) {
+func fail(config runtimeConfig, machine *stateMachine, server *dutyHandle, reason string, cause error) (Result, error) {
 	if server != nil {
 		server.Stop()
 	}

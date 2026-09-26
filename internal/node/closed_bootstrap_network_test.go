@@ -116,7 +116,7 @@ func newClosedBootstrapNetwork(t *testing.T, carrier route.CarrierProfile) *clos
 			Current:              func() (state.NodeDuty, error) { return snapshot, nil },
 			CurrentClosedProfile: func() (state.ClosedProfileView, bool) { return fixture.view.Profile, true },
 			CurrentClosedRoute:   func() (state.ClosedRouteView, error) { return fixture.view, nil }}, now: time.Now}
-		var server *probeServer
+		var server *dutyHandle
 		if index == 2 {
 			config.HostingRoot = closedForwardingHostingRoot(t)
 			config.ClosedIssuer = ClosedIssuerProfile{Root: issuerRoot, AdmissionRoot: t.TempDir(), Certificate: certificates[index], ConnectionLimit: 4, DrainTimeout: 2 * time.Second}

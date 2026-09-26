@@ -9,6 +9,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	"github.com/dianabuilds/ardents-network/internal/route/replay"
 	"github.com/dianabuilds/ardents-network/internal/service/reachability"
+	"net"
 	"path/filepath"
 	"sync"
 	"sync/atomic"
@@ -39,7 +40,7 @@ func validateClosedResolutionProfile(local ClosedResolutionProfile, config runti
 	return nil
 }
 
-func startClosedResolution(config runtimeConfig, snapshot state.NodeDuty) (*probeServer, error) {
+func startClosedResolution(config runtimeConfig, snapshot state.NodeDuty) (*dutyHandle, error) {
 	local := config.ClosedResolution
 	if err := validateClosedResolutionProfile(local, config, snapshot, config.now()); err != nil {
 		return nil, err
@@ -78,7 +79,7 @@ func startClosedResolution(config runtimeConfig, snapshot state.NodeDuty) (*prob
 		store: store, spends: spends, limits: limits, capacity: make(chan struct{}, local.ConnectionLimit), cancel: cancel,
 		done: make(chan error, 1), drained: make(chan struct{})}
 	go running.run(ctx)
-	return &probeServer{Done: running.done, Protect: func(bool) {}, Usage: func() (uint64, uint64, uint64) {
+	return &dutyHandle{Done: running.done, Protect: func(bool) {}, Usage: func() (uint64, uint64, uint64) {
 		active := uint64(running.active.Load())
 		return active, active, 0
 	}, Stop: func() { _ = running.stop() }, Drain: func(ctx context.Context) error {
@@ -111,6 +112,8 @@ type closedResolutionServer struct {
 	done        chan error
 	drained     chan struct{}
 	drainErr    error
+	cleanupMu   sync.Mutex
+	cleanupErr  error
 }
 
 func (server *closedResolutionServer) stop() error {
@@ -127,7 +130,7 @@ func (server *closedResolutionServer) run(ctx context.Context) {
 	server.done <- err
 	server.workers.Wait()
 	// No timeout releases roots while a child still owns a commit or reply.
-	server.drainErr = errors.Join(stopErr, server.store.Close(), server.spends.Close())
+	server.drainErr = errors.Join(stopErr, server.store.Close(), server.spends.Close(), server.cleanupErr)
 	close(server.drained)
 }
 
@@ -144,7 +147,7 @@ func (server *closedResolutionServer) accept(ctx context.Context) error {
 			return err
 		}
 		if ctx.Err() != nil || carrier.Kind != route.ClosedSharedNode {
-			_ = carrier.Connection.Close()
+			server.closeCarrier(carrier.Connection)
 			if ctx.Err() != nil {
 				return nil
 			}
@@ -155,11 +158,21 @@ func (server *closedResolutionServer) accept(ctx context.Context) error {
 			server.active.Add(1)
 			server.workers.Go(func() {
 				defer func() { <-server.capacity; server.active.Add(^uint32(0)) }()
-				defer carrier.Connection.Close()
+				defer server.closeCarrier(carrier.Connection)
 				server.serveOuter(ctx, carrier)
 			})
 		default:
-			_ = carrier.Connection.Close()
+			server.closeCarrier(carrier.Connection)
 		}
 	}
+}
+
+func (server *closedResolutionServer) closeCarrier(connection net.Conn) {
+	err := connection.Close()
+	if err == nil || errors.Is(err, net.ErrClosed) {
+		return
+	}
+	server.cleanupMu.Lock()
+	server.cleanupErr = errors.Join(server.cleanupErr, err)
+	server.cleanupMu.Unlock()
 }

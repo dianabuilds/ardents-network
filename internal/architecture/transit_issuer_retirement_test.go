@@ -33,7 +33,7 @@ func TestRetiredTransitIssuerReceivingEngineIsAbsent(t *testing.T) {
 		}
 	}
 
-	contracts := string(readProjectFile(t, root, "internal/node/contract.go"))
+	contracts := string(readProjectFile(t, root, "internal/node/process_config.go"))
 	if strings.Contains(contracts, "TransitIssuerProfile") || strings.Contains(contracts, "TransitGrantSigner") {
 		t.Error("Node contract still exports the retired Transit issuer engine")
 	}

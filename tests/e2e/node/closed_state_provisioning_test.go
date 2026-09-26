@@ -17,17 +17,18 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/tests/epochfixture/assignment"
+	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 )
 
 // Canonical test inputs still pass the production Epoch, Node Record and
 // durable State validators. No accepted projection is fabricated here.
-func closedProvisioningState(t *testing.T, network, issuer [32]byte, authority, issuerKey ed25519.PrivateKey, now time.Time, carrier string) (state.Config, state.Snapshot, []Record, string, []string) {
+func closedProvisioningState(t *testing.T, network, issuer [32]byte, authority, issuerKey ed25519.PrivateKey, now time.Time, carrier string) (state.Config, state.Snapshot, []networkfixture.Record, string, []string) {
 	t.Helper()
 	return closedProvisioningStateSize(t, network, issuer, authority, issuerKey, now, carrier, 3)
 }
-func closedProvisioningStateSize(t *testing.T, network, issuer [32]byte, authority, issuerKey ed25519.PrivateKey, now time.Time, carrier string, count int) (state.Config, state.Snapshot, []Record, string, []string) {
+func closedProvisioningStateSize(t *testing.T, network, issuer [32]byte, authority, issuerKey ed25519.PrivateKey, now time.Time, carrier string, count int) (state.Config, state.Snapshot, []networkfixture.Record, string, []string) {
 	t.Helper()
-	records := make([]Record, count)
+	records := make([]networkfixture.Record, count)
 	addresses := make(map[string]struct{}, count)
 	roles := closedTextTopologyRoles(count)
 	seed := sha256.Sum256([]byte("closed command provisioning"))
@@ -53,7 +54,7 @@ func closedProvisioningStateSize(t *testing.T, network, issuer [32]byte, authori
 			address = closedProvisioningAddress(t, carrier)
 		}
 		family := closedRoleFamily(t, network, seed, domains, closedRoleDomainName(roles[index][0]), fmt.Sprintf("closed-node-%d", index+1))
-		record, err := BuildRecord(RecordSpec{NetworkID: network, NodeID: node, Generation: uint64(index + 1),
+		record, err := networkfixture.BuildRecord(networkfixture.RecordSpec{NetworkID: network, NodeID: node, Generation: uint64(index + 1),
 			ValidFrom: now, ValidUntil: now.Add(2 * time.Hour), Family: family,
 			Endpoint: address, Carrier: carrier,
 			Capability: 2, Capacity: 4, PrivateKey: key})
@@ -66,7 +67,7 @@ func closedProvisioningStateSize(t *testing.T, network, issuer [32]byte, authori
 	for index := range records {
 		rawInputs[index] = records[index].Raw
 	}
-	epoch, err := BuildEpoch(EpochSpec{NetworkID: network, Number: 1, ValidFrom: now, ValidUntil: now.Add(2 * time.Hour),
+	epoch, err := networkfixture.BuildEpoch(networkfixture.EpochSpec{NetworkID: network, Number: 1, ValidFrom: now, ValidUntil: now.Add(2 * time.Hour),
 		Inputs: rawInputs, Accepted: records, AssignmentSeed: seed,
 		Profile: "ardents-route-v3", Version: 3, Domains: domains, Authorities: []ed25519.PrivateKey{authority}})
 	if err != nil {

@@ -17,6 +17,7 @@ import (
 // boundary. It isolates ownership/joining, not peer authentication.
 type closedIssuerPausedAccept struct {
 	connection net.Conn
+	kind       route.ClosedSharedCarrierKind
 	entered    chan struct{}
 	release    chan struct{}
 	once       sync.Once
@@ -29,7 +30,11 @@ func (listener *closedIssuerPausedAccept) Accept(ctx context.Context, _ time.Dur
 	listener.once.Do(func() { first = true; close(listener.entered) })
 	if first {
 		<-listener.release
-		return route.ClosedSharedCarrier{Kind: route.ClosedSharedNode, Connection: listener.connection, NodeKey: [32]byte{1}}, nil
+		kind := listener.kind
+		if kind == 0 {
+			kind = route.ClosedSharedNode
+		}
+		return route.ClosedSharedCarrier{Kind: kind, Connection: listener.connection, NodeKey: [32]byte{1}}, nil
 	}
 	select {
 	case <-ctx.Done():
@@ -66,11 +71,17 @@ func TestClosedTokenListenerDrainJoinsAcceptedSocketHandoff(t *testing.T) {
 	if err == nil {
 		t.Error("Drain completed while an accepted socket was still being handed off")
 	}
+	if listener.Joined() {
+		t.Error("listener reported a joined handoff before the accepted socket returned")
+	}
 	close(shared.release)
 	joined, finish := context.WithTimeout(t.Context(), time.Second)
 	defer finish()
 	if err := listener.Drain(joined); err != nil {
 		t.Fatal(err)
+	}
+	if !listener.Joined() {
+		t.Fatal("listener did not report a completed join")
 	}
 	if handled.Load() != 0 {
 		t.Fatal("stopped listener launched the delayed Node handler")

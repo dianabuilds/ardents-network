@@ -792,7 +792,7 @@ retained-record restoration fails. The normal `Store.Close` returns that
 error. F-71 identifies the missing combined startup outcome; it matters when a
 root is refused under the ADR-0109 typed legacy-record refusal.
 
-All five roles use the Node lifecycle's common `probeServer` handle, although
+All five roles use the Node lifecycle's common `dutyHandle` handle, although
 only the private probe is a probe. This is a naming/interface problem in the
 composition layer; it does not make their durable resources interchangeable.
 `Done` reports accept-loop completion before the final child/root join; only
@@ -980,9 +980,9 @@ Each former `rendezvous`, `initiator`, `introduction`, `responder`, or
 `transit_issuer` reservation returns `errOldNodeDutyRetired` before key-file
 reads, State-root opening, or Node startup. The direct
 `node_duty_retirement_test.go` covers all five and a mixed former/closed plan,
-asserting the State and local-role roots were not created. A later branch in
-the parser still names interactive Route v2 but is dominated by this refusal
-(F-46). The current closed reservations choose `route.ClosedRouteProfile`.
+asserting the State and local-role roots were not created. Post-refusal duty
+checks cover only the five closed reservations (F-46), which choose
+`route.ClosedRouteProfile`.
 This trace covers command input refusal, not every lower-level State/Node
 compatibility reader or every old wire form.
 

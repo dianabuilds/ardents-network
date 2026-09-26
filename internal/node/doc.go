@@ -8,4 +8,11 @@
 // Transit-issuance engines are absent; their plan stanzas remain only at the
 // command refusal boundary. Current closed receivers and their shared Carrier
 // mechanics remain distinct duties.
+//
+// process_config.go and closed_reservations.go declare local configuration;
+// admission.go validates State-selected duties; lifecycle.go owns process
+// transitions; duty_server.go dispatches listeners. The closed_* listener
+// files retain each duty's resources, while closed_outer_* owns shared Carrier
+// lifetime. duty_handle.go names the common stop/drain boundary;
+// lifecycle_event.go and event_writer.go define and emit observations.
 package node

@@ -8,6 +8,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	"github.com/dianabuilds/ardents-network/internal/route/replay"
+	"net"
 	"path/filepath"
 	"sync"
 	"sync/atomic"
@@ -37,13 +38,13 @@ func validateClosedIntroductionProfile(local ClosedIntroductionProfile, config r
 	return nil
 }
 
-func startClosedIntroduction(config runtimeConfig, snapshot state.NodeDuty) (*probeServer, error) {
+func startClosedIntroduction(config runtimeConfig, snapshot state.NodeDuty) (*dutyHandle, error) {
 	running, err := newClosedIntroductionServer(config, snapshot)
 	if err != nil {
 		return nil, err
 	}
 	local := config.ClosedIntroduction
-	return &probeServer{Done: running.done, Protect: func(bool) {}, Usage: func() (uint64, uint64, uint64) {
+	return &dutyHandle{Done: running.done, Protect: func(bool) {}, Usage: func() (uint64, uint64, uint64) {
 		active := uint64(running.active.Load())
 		return active, active, 0
 	}, Stop: func() { _ = running.stop() }, Drain: func(ctx context.Context) error {
@@ -120,6 +121,8 @@ type closedIntroductionServer struct {
 	done        chan error
 	drained     chan struct{}
 	drainErr    error
+	cleanupMu   sync.Mutex
+	cleanupErr  error
 }
 
 func (server *closedIntroductionServer) stop() error {
@@ -136,7 +139,7 @@ func (server *closedIntroductionServer) run(ctx context.Context) {
 	server.done <- err
 	server.workers.Wait()
 	// No timeout releases roots while a child still owns a commit or reply.
-	server.drainErr = errors.Join(stopErr, server.spends.Close())
+	server.drainErr = errors.Join(stopErr, server.spends.Close(), server.cleanupErr)
 	close(server.drained)
 }
 
@@ -153,7 +156,7 @@ func (server *closedIntroductionServer) accept(ctx context.Context) error {
 			return err
 		}
 		if ctx.Err() != nil || carrier.Kind != route.ClosedSharedNode {
-			_ = carrier.Connection.Close()
+			server.closeCarrier(carrier.Connection)
 			if ctx.Err() != nil {
 				return nil
 			}
@@ -164,11 +167,21 @@ func (server *closedIntroductionServer) accept(ctx context.Context) error {
 			server.active.Add(1)
 			server.workers.Go(func() {
 				defer func() { <-server.capacity; server.active.Add(^uint32(0)) }()
-				defer carrier.Connection.Close()
+				defer server.closeCarrier(carrier.Connection)
 				server.serveOuter(ctx, carrier)
 			})
 		default:
-			_ = carrier.Connection.Close()
+			server.closeCarrier(carrier.Connection)
 		}
 	}
+}
+
+func (server *closedIntroductionServer) closeCarrier(connection net.Conn) {
+	err := connection.Close()
+	if err == nil || errors.Is(err, net.ErrClosed) {
+		return
+	}
+	server.cleanupMu.Lock()
+	server.cleanupErr = errors.Join(server.cleanupErr, err)
+	server.cleanupMu.Unlock()
 }

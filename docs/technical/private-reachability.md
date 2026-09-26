@@ -128,6 +128,9 @@ retained records, refuses reopening. Any failed record persistence makes the
 current owner unavailable until closed and reopened; it retains its exclusive
 lease in the meantime. This does not claim that a storage device survives
 failures beyond its filesystem's sync guarantees.
+If restoring retained records fails during `OpenStore`, the returned error
+includes both the restore failure and any failure to release the exclusive
+lease. No Store handle is returned on that path.
 
 ## Recipient-only capsule composition
 
