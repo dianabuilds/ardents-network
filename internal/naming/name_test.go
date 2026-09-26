@@ -36,36 +36,6 @@ func TestParseValidAndInvalid(t *testing.T) {
 	}
 }
 
-func TestParseAndFormatServiceLink(t *testing.T) {
-	t.Parallel()
-
-	name, err := ParseServiceLink("ardents://blog.example")
-	if err != nil {
-		t.Fatalf("ParseServiceLink: %v", err)
-	}
-	if name != "blog.example" {
-		t.Fatalf("ParseServiceLink = %q, want %q", name, "blog.example")
-	}
-	link, err := FormatServiceLink(name)
-	if err != nil {
-		t.Fatalf("FormatServiceLink: %v", err)
-	}
-	if link != "ardents://blog.example" {
-		t.Fatalf("FormatServiceLink = %q", link)
-	}
-
-	for _, raw := range []string{
-		"ARDENTS://blog.example",
-		"ardents://Blog.Example",
-		" ardents://blog.example",
-		"ardents://blog.example ",
-	} {
-		if _, err := ParseServiceLink(raw); err == nil {
-			t.Errorf("ParseServiceLink(%q) accepted a non-canonical link", raw)
-		}
-	}
-}
-
 func TestLabelsAndDescendant(t *testing.T) {
 	t.Parallel()
 

@@ -30,16 +30,6 @@
     },
     {
       "symbols": [
-        "internal/naming.FormatServiceLink",
-        "internal/naming.ParseServiceLink"
-      ],
-      "classification": "unwired closed-alpha tracer",
-      "rationale": "The Service-Link parser and formatter are exercised by deterministic behavior tests but no executable C0 path starts from this package.",
-      "owner": "Product Owner and Codex",
-      "retirement": "Keep only the selected command-facing boundary, or remove this tracer with its rejected candidate."
-    },
-    {
-      "symbols": [
         "internal/naming/alpha.IssueCorpus",
         "internal/naming/alpha.NewSessionFloor",
         "internal/naming/alpha.ParseServiceLink",
