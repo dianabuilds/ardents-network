@@ -75,6 +75,9 @@ Introduction assignment are checked before accepting or returning a proof.
 Shutdown cancels children and joins handlers before releasing either root;
 a timed-out Drain leaves the roots held. No plan callback can supply a
 successful publication or bypass verification.
+Resolution retains non-benign close failures from accepted Carriers, including
+direct refusals and capacity refusals, in the final joined drain result;
+`net.ErrClosed` from an already closed Carrier is benign.
 Short local-role transactions coordinate with concurrent Source exposure
 retention. `duty.OpenOperation` waits only for an occupied exclusive lease,
 for at most one second or the caller's earlier cancellation. It then verifies
