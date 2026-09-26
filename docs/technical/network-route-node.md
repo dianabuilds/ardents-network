@@ -80,6 +80,10 @@ direct refusals and capacity refusals, in the final joined drain result;
 `net.ErrClosed` from an already closed Carrier is benign.
 Introduction follows the same accepted-Carrier close accounting through its
 joined drain result, including admitted children and both refusal paths.
+The Issuer's Credential listener also retains accepted-Carrier close failures
+after joining its children. Node releases the issuer and admission roots when
+that join completed, even if the listener reports a physical close failure;
+an incomplete join keeps both roots held.
 Short local-role transactions coordinate with concurrent Source exposure
 retention. `duty.OpenOperation` waits only for an occupied exclusive lease,
 for at most one second or the caller's earlier cancellation. It then verifies

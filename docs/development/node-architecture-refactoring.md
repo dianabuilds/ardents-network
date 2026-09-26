@@ -94,9 +94,8 @@ caller; no package is required merely to remove a filename prefix.
 ### 2. Prove the shared outer boundary
 
 - Map `serveClosedOuter`, its writer, all five production callers and the
-  accepted-connection close result. F-61 shows that only Data JOIN currently
-  retains non-benign accepted-connection close errors; the other four duties
-  discard them. Keep `Done` as the accept-loop result and `Drain` as the final
+  accepted-connection close result. F-61 now retains non-benign accepted-close
+  results in all five duties. Keep `Done` as the accept-loop result and `Drain` as the final
   joined cleanup result. Preserve the issuer root's late-close question after
   a timed-out `Drain`. Keep the close/interruption/children-join order and
   deadline behavior together.

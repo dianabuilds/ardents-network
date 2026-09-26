@@ -66,11 +66,12 @@ func startClosedIssuer(config runtimeConfig, snapshot state.NodeDuty) (*dutyHand
 	}, Stop: func() { _ = listener.Stop() }, Drain: func(ctx context.Context) error {
 		drain, cancel := context.WithTimeout(ctx, local.DrainTimeout)
 		defer cancel()
-		if err := listener.Drain(drain); err != nil {
+		err := listener.Drain(drain)
+		if !listener.Joined() {
 			// An incomplete join cannot release durable owners to a successor.
 			return err
 		}
-		return errors.Join(spends.Close(), issuer.Close())
+		return errors.Join(err, spends.Close(), issuer.Close())
 	}}, nil
 }
 
