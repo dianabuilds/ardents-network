@@ -239,6 +239,52 @@ them.
 
 ### `cmd/ardents` Linux dependency projection
 
+**Current import-graph check, 2026-09-26.** At architecture-worktree revision
+`53f02e64`, Linux/amd64 with cgo disabled, `go list -mod=readonly -deps`
+completed for all four participant/control commands. The package counts
+below include standard-library packages. None of these four closures now
+contains `openpcc/ohttp` or `openpcc/twoway`; all four still contain CIRCL
+and quic-go through their current imports. OHTTP remains in the repository
+for the retained, currently uncomposed `internal/naming/resolution` package.
+This is static reachability, not executed network behavior or a linked-binary
+measurement.
+
+| Command | Current packages | OHTTP package imports | QUIC package import |
+| --- | ---: | ---: | ---: |
+| `cmd/ardents` | 312 | 0 | yes |
+| `cmd/ardents-node` | 220 | 0 | yes |
+| `cmd/ardents-control` | 296 | 0 | yes |
+| `cmd/ardents-custody` | 229 | 0 | yes |
+
+**Prior projection at `e48d4c3c`.** The following package/module counts and
+representative import paths were captured before ADR-0092 using
+`go list -mod=readonly -deps -e`. They are provenance, not current command
+closures. That check inspected empty `Error` and `DepsErrors` fields.
+
+| Command | Packages | External packages | External modules |
+| --- | ---: | ---: | ---: |
+| `cmd/ardents` | 357 | 120 | 22 |
+| `cmd/ardents-node` | 283 | 71 | 12 |
+| `cmd/ardents-control` | 340 | 120 | 22 |
+| `cmd/ardents-custody` | 292 | 74 | 13 |
+
+At that prior revision, `cmd/ardents` paths included
+`endpoint -> service/reachability -> circl/hpke`,
+`endpoint -> route/credential -> openpcc/ohttp`, and
+`route -> quic-go`. Control reaches the same network libraries through its
+public issuer-profile decoder in `route/credential`; Custody reaches them
+through that package's offline permission grammar. Those were
+package-boundary overhead; ADR-0092 removed their OHTTP Transit source.
+Current Control/Custody still inherit QUIC through the live Route-facing
+issuer adapter in `route/credential` (F-28). This is not a reason to remove
+network dependencies from Endpoint or Node.
+
+To repeat the check, use the PowerShell environment assignments in the dated
+projection below, set `GOCACHE` to a writable directory outside the repository,
+and run the same `go list` format for each of the four `./cmd/...` paths above.
+Inspect `Error` and `DepsErrors` rather than relying only on the exit code of
+`go list -e`. No dependency disposition is changed by this observation.
+
 Status: **dated import-closure evidence, not whole-repository or runtime-call
 reachability.** On 2026-09-22 the exact `dev` source revision
 `ebe30149d03e3b149ed0fed5b9d6ef1877185fc4` was projected for
@@ -348,8 +394,9 @@ automatic consequence of selecting the architecture.
 
 The maintained product-shaped Modules use the Go standard library, the
 Windows-only `golang.org/x/sys/windows` surfaces described below, and the exact
-OHTTP closure owned by `internal/naming/resolution` and
-`internal/service/reachability`. ADR-0014 selects the
+OHTTP closure retained by `internal/naming/resolution`; ADR-0091 retired the
+unwired OHTTP adapter from `internal/service/reachability`, which still uses
+CIRCL HPKE for the private v3 Descriptor path. ADR-0014 selects the
 maintained private-resolution profile; the set must enter
 `go.mod` as this reviewed set rather than as the vulnerable versions declared
 by `openpcc/ohttp v0.0.80`.
@@ -370,9 +417,10 @@ by `openpcc/ohttp v0.0.80`.
 | `golang.org/x/text` | `v0.41.0` | BSD-3-Clause | BHTTP normalization |
 
 **Need and owner:** RFC 9458 is the accepted external-first Private Resolution
-shape. `internal/naming/resolution` owns the Namespace OHTTP/CIRCL Adapter and
-`internal/service/reachability` owns the separately authenticated Target
-descriptor adapter; neither is a general HTTP proxy. A change repeats the
+shape. `internal/naming/resolution` owns the retained Namespace OHTTP/CIRCL
+Adapter. Reachability's uncomposed Target OHTTP adapter was retired under
+ADR-0091; its current private Descriptor proof and stored-record reader are
+separate owners. Neither is a general HTTP proxy. A change repeats the
 affected current-owner conformance, dependency and observer checks. R-047/R-026
 retain the selection evidence; they are not instructions to reopen the original
 research or a second current specification.

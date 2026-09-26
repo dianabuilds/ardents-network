@@ -575,7 +575,7 @@ proof. The older native-work worksheet remains one separate example.
 **Sourced facts — current owners, accessed 2026-09-06:** publication already
 uses owner-scoped credentials, non-overlapping validity intervals, exact Target
 and Instance verification, per-Target durable floors, and conflict refusal.
-The [private reachability owner](../../technical/private-reachability.md#descriptor-authority-and-currentness)
+The [private reachability owner](../../technical/private-reachability.md#private-descriptor-recipient)
 specifies those checks. Node duties and Route still require current State;
 preserving local verification does not authorize bypassing that dependency.
 The [Namespace owner](../../technical/naming.md) separately requires an

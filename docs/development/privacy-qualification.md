@@ -220,7 +220,7 @@ assigned work or authorization to start multiple C0 slices.
 
 ## Consolidation verification
 
-[ADR-0086](../adr/0086-consolidate-protected-network-and-retire-predecessor-runtimes.md)
+[ADR-0086 in the accepted design revision](https://github.com/dianabuilds/ardents-network/blob/e6168f167332f5a77f02613cc7f30a35a0c49787/docs/adr/0086-consolidate-protected-network-and-retire-predecessor-runtimes.md)
 preserves this entire acceptance contract for the changed consolidated candidate.
 Each bounded refactor/retirement includes its affected behavior checks and owner
 documents. Do not defer them into the final system campaign. The AAI2 removal

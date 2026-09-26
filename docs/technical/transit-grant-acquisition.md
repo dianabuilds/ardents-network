@@ -8,9 +8,14 @@ client certificates) was retired by
 [ADR-0062](../adr/0062-scope-online-transit-grant-signing.md) remains the
 accepted provenance of the Transit Grant v1 wire bytes and signature domain.
 No maintained command reaches this contract.
-This document owns the purpose-scoped signer, fixed encrypted outcome, durable
-issuer budget/idempotency, and Endpoint at-most-once acquisition lifecycle
-selected by [ADR-0062](../adr/0062-scope-online-transit-grant-signing.md).
+The sections below record the former purpose-scoped signer, fixed encrypted
+outcome, durable issuer budget/idempotency, and Endpoint at-most-once
+acquisition design selected by ADR-0062. Their present-tense protocol wording
+describes that historical design, not a currently composed C0 operation or
+an implementation instruction. Current closed admission belongs to
+[private admission](private-admission.md); the remaining Grant v1 byte reader
+and local-role spend-field disposition are tracked separately in the
+[reconstruction findings](../development/repository-reconstruction-findings.md#f-52-route-v2-execution-has-no-caller-but-shares-readers-with-retained-state).
 
 ## Authority boundary
 
@@ -177,7 +182,7 @@ withdrawal, saturation, expiry, corruption, and State conflict fail visibly
 with no DNS, clearnet, stale-State, alternate-Node, operator-plan, or Browser
 fallback.
 
-## Implementation and evidence order
+## Historical implementation and evidence order
 
 1. Version and test the exact role-scoped request/outcome codecs while keeping
    Transit Grant v1 unchanged.

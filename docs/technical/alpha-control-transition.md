@@ -11,8 +11,12 @@ Epoch successors and duty withdrawal. The enrollment-pinned Compatibility
 component binds accepted Release and Network facts without becoming either
 authority. `internal/naming/namespace` retains local technical transitions, but
 no global Namespace close/materialization input is selected. The
-`internal/alphacontrol` declaration and `ardents-control inspect-transitions`
-are read-only diagnostic projections; neither changes an owner root.
+`internal/alphacontrol` declaration and the `ardents-control
+inspect-transitions` report authorize no Endpoint action. The inspector owns
+separate catalog, Release, and Network roots: successful inspection can advance
+their authenticated floors without changing a live Endpoint root. Current
+inspection code discards their Close results, so a reported component outcome
+does not yet prove complete lease cleanup.
 
 | Domain | Authority / predecessor / freshness | Rotation, revocation, and floor | Emergency, participant failure, and evidence |
 |---|---|---|---|

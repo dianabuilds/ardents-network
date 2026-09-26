@@ -1164,18 +1164,20 @@ or privacy claim.
   version-compatible Network Epoch state. Authorization is independent of
   distribution: package, cache, mirror, peer, or imported file may carry the same
   authenticated bytes but cannot make different bytes authoritative.
-- A dynamic Transit Grant signer is a distinct State-authenticated purpose key,
-  never an Epoch authority or holder of a State private key. Its exclusive
-  durable duty root fixes one finite global budget and a bounded Request-ID
-  idempotency ledger; rollback, corruption, scope substitution, withdrawal, or
-  exhaustion fails closed. Compromise can spend only the remaining current-duty
-  budget and cannot authorize State, Route selection, Target, Namespace,
-  Release, or enrollment.
-- Endpoint Transit Grant acquisition persists one exact target-free request and
-  one-use TLS key before exchange. Reconciliation may repeat only that Request
-  ID and byte-identical tuple. Once Node presentation begins, every success or
-  ambiguity burns the attempt and erases the key; it cannot replay an
-  Application operation or create an implicit replacement request.
+- Historical ADR-0062 Transit Grant signer obligations remain provenance after
+  ADR-0092; no current C0 Transit Grant Node issuer or Endpoint acquisition
+  runs this path. The separate closed-token issuer remains current.
+  The former signer was a distinct State-authenticated purpose key, never an
+  Epoch authority or State private-key holder. Its exclusive root bounded
+  budget and Request-ID idempotency; rollback, corruption, scope substitution,
+  withdrawal, or exhaustion failed closed. It could not authorize State,
+  Route selection, Target, Namespace, Release, or enrollment.
+- Historical Endpoint Transit Grant acquisition retained one exact target-free
+  request and one-use TLS key. Its reconciliation repeated only the same
+  Request ID and tuple; success or ambiguity after Node presentation burned
+  the attempt and erased the key. It could not replay an Application operation
+  or create an implicit replacement request. These are not a current C0
+  acquisition or fallback contract.
 - A directly contacted bootstrap, Candidate Materialization, authenticated-time,
   or Release Safety distributor may observe requester origin, public artifact,
   timing, and probable Ardents use. For every mandatory pre-Route artifact class,

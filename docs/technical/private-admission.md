@@ -504,7 +504,7 @@ Evidence and limitations are in the
 
 ## Spend journal failure containment
 
-The accepted [consolidation decision](../adr/0086-consolidate-protected-network-and-retire-predecessor-runtimes.md)
+The accepted [consolidation decision in the design revision](https://github.com/dianabuilds/ardents-network/blob/e6168f167332f5a77f02613cc7f30a35a0c49787/docs/adr/0086-consolidate-protected-network-and-retire-predecessor-runtimes.md)
 clarifies the required failure boundary: any error from a mutating spend-ledger
 operation terminalizes that open owner's admission until close and verified
 reopen. Preserve the first storage failure; subsequent Spend calls must not

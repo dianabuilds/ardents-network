@@ -329,9 +329,9 @@ The new command must not imply a new network Node role or a standing service.
 All sources below were accessed on 2026-09-05. These are design inputs, not an
 Ardents security proof or a selection of another protocol.
 
-- **Sourced fact:** [Entry admission](../../../internal/entry/admission.go)
+- **Sourced fact:** [Entry admission at the reviewed revision](https://github.com/dianabuilds/ardents-network/blob/83cf491a5b7aa799f85547b1c8010b37ed91b3ae/internal/entry/admission.go)
   indexes replay by attachment ID. The existing
-  [reopen test](../../../internal/entry/admission_test.go) accepts the same
+  [reopen test at that revision](https://github.com/dianabuilds/ardents-network/blob/83cf491a5b7aa799f85547b1c8010b37ed91b3ae/internal/entry/admission_test.go) accepts the same
   Invite under a distinct attachment ID. Neither the Invite grammar nor its
   signature contains a recipient key. This proposal reviewed those sources;
   it did not rerun or modify the test.

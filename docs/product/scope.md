@@ -105,14 +105,15 @@ the tracker is the one live task ledger.
 
 The four commands have non-interchangeable C0 roles: `ardents-control` verifies
 the enrollment-pinned control evidence; `ardents-node` runs only the
-project-controlled Source, Transit issuance, and selected Node duties;
+project-controlled Source and selected closed Node duties, including the
+closed-token issuer;
 `ardents-custody` creates the Service Authority and issues the one public
 Service Credential without exporting Authority material; and `ardents` owns
 Endpoint enrollment/runtime, Service Instance initialization/acceptance,
 publication, and local Application byte exchange. Their durable inputs remain
 separate: immutable artifact and enrollment inputs, project Node/issuer roots,
 Authority Vault, Service Instance root and public request/response, Endpoint
-State/Entry/Transit/Publication roots, and local Application/Administration
+State/Entry/text-token/Publication roots, and local Application/Administration
 sockets. No role may borrow another role's root or private material.
 
 The C0 operator route must expose stable, actionable failures for a rejected

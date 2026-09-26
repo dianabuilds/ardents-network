@@ -8,10 +8,11 @@ govern behavior.
 
 ## Current Linux owner graph
 
-On the Linux amd64 candidate after the replay extraction and completed #252
-v1 Node Carrier listener retirement, `go list` selects 74 production and 76
+On the Linux amd64 candidate after the replay extraction, completed #252
+v1 Node Carrier listener retirement, and ADR-0092 Endpoint/credential cleanup,
+the reconciled package graph at `53f02e64` records 74 production and 76
 test files in `internal/route`. Its capsule, ardp,
-terminal, and replay children have respectively 6/1, 3/1, 9/4, and 5/3
+terminal, and replay children have respectively 6/1, 3/1, 9/4, and 7/3
 production/test files. File prefixes show a likely cluster, but they do not
 establish an independent package boundary.
 
@@ -27,7 +28,7 @@ declarations from files outside the cluster:
 | `quicNodeCarrier` | `node_carrier_quic.go` | Closed Node Carrier | The QUIC lane is a shared implementation, not a file-local name. |
 | `exactPeer` | `tls_adapter.go` | Closed Node and role TLS | Peer verification is shared security logic. |
 | `literalEndpoint` | `endpoint_literal.go` | Bootstrap, terminal selection, Node/role/shared Carrier | Literal-address validation must retain the same refusal rule. |
-| `writeAll` | `wire_encoding.go` | Closed lane | The full-write rule must remain exact. |
+| `writeAll` | `wire_encoding.go` | Retained v2 Route binding/relay I/O; no direct closed-v3 caller in the current source | Keep its full-write rule with the audited v2 closure. `route/ardp` has its own `writeAll` for v3 frames. |
 
 The selected non-closed production files contain no reference to a `Closed*`
 identifier; the existing `closedEntryOpener` in `entry_attachment.go` is a
@@ -36,13 +37,62 @@ mass move compiles. The type-use audit confirmed the shared declarations above
 but could not fully type-check external imports in isolation, so a package move
 must still be checked by Linux and Windows builds and behavior tests.
 
-`internal/route/credential` still imports `internal/route` in five Linux
-production files. `closed_token_listener.go`, `closed_token_bootstrap.go`, and
-`closed_token_admitted.go` use Closed Route lifecycle and Carrier types;
-`client.go` and `message.go` use the shared Transit Grant and role contract.
-Any split must migrate the Closed consumer together with Endpoint and Node
-imports. A temporary `route` wrapper that imports a new closed package while
-that package imports `route` would create a cycle.
+### Exact Carrier extraction blockers at `53f02e64`
+
+The proposed Carrier owner is a **physical transport and authentication**
+boundary. It needs `ClosedNodeCarrierRequest`, direct-role and shared
+listeners, TCP/QUIC connection close, `literalEndpoint`, `exactPeer`, the
+role TLS helpers, and the physical pool/lease. These functions use one
+`CarrierProfile` and the current `ClosedRouteProfile` ALPN. The candidate is
+not an atomic prefix move:
+
+| Mixed declaration | Current use | Required import direction |
+| --- | --- | --- |
+| `node_carrier.go` declares `CarrierProfile` and `Carrier` beside the retired v1 `CarrierTCP`/`CarrierQUIC` constants. | Current Node/Route/Credential code uses the byte-lane type. At this HEAD, neither v1 constant has a non-test Go caller; only `CarrierTCP` appears in one old-profile rejection test. The separate State parser still reads literal v1 identities. | Put the current physical lane/profile with Carrier. Preserve the negative test using an explicit old profile value, and retire the unused symbolic v1 constants with the move; this does not delete State's historical signed-record reader. Do not make Carrier expose a v1 dial merely to move this file intact. |
+| `closed_role_carrier.go:ClosedRoleTLSExporter` returns `ClosedTLSExporter`, currently declared in `closed_admission_channel.go`. | The exporter is obtained from authenticated TLS/QUIC and then borrowed by receiving admission. | The exporter function signature belongs with the authenticated Carrier; receiving admission may depend inward on that function type. Carrier must not import the admission/spend owner. A local function signature is also possible if it keeps one exact byte contract. |
+| `closed_role_tls*.go` uses `ClosedRouteProfile` and `exactPeer`; `closed_role_carrier_client_linux.go` uses the same role TLS config for both TCP and QUIC. | Both direct role and shared listeners enforce the same TLS identity/refusal rule. | Move TLS identity, ALPN and physical transport together or first expose one narrow lower-level owner. Leaving role TLS in `route` while Carrier imports it reverses the desired dependency. |
+| `endpoint_literal.go` validates both current physical dial/listen endpoints and client selection inputs. | It prevents DNS resolution and malformed port fallback before network effects. | One lower-level literal-address rule may be called by Route's client selection; copying it into both owners would create divergent refusal behavior. |
+
+This is an analysis of the required source closure, not an authorized new
+package. The next implementation slice must check the transitive helper
+closure, all Node/Endpoint/Credential callers, and its test ownership before
+updating `package-map.md`. The old Route v2 execution closure still needs its
+separate historical reader and refusal disposition.
+
+`internal/route/credential` imports parent `internal/route` in three current
+production files: `closed_token_listener.go`, `closed_token_bootstrap.go`, and
+`closed_token_admitted.go`. They serve the live closed issuer's listener,
+bootstrap and admitted exchange. ADR-0092 removed the old client and message
+imports. Any split must move these live consumers or provide a lower-level
+acyclic Carrier/channel contract. A temporary `route` wrapper importing a
+child that imports `route` would create a cycle (F-30).
+
+## Retained v2 source closure versus the selected v3 path
+
+The protected Route owner selects `ardents-route-v3` for C0. The older
+`ardents-interactive-route-v2` constant is still assigned when parsing an old
+Node reservation, but `node/admission.go` and `duty_server.go` refuse it before
+starting a duty. ADR-0089 requires this no-new-old-start boundary and retains
+historical identity only for exact retirement evidence. It does not authorize
+another accepting C0 Route.
+
+| Older source group | Current non-test caller root | Exact disposition boundary |
+| --- | --- | --- |
+| `entry_attachment.go`, `entry_binding.go`, `endpoint_transit_attachment.go`, `endpoint_transit_binding.go` | No non-test external opener remains after ADR-0092 removed the generic Endpoint Transit/Publisher path. Helpers call within the old attachment closure. | Retire old execution after resolving exact Entry/Transit wire refusal and accepted Invite/Grant evidence; keep the separate durable `internal/entry` owner. |
+| `credential_relay_io.go`, `credential_relay_setup.go`, `introduction_control_io.go`, `introduction_outcome*.go`, `introduction_slot_registration.go`, `sealed_introduction.go` | No selected production caller remains outside the old relay/Introduction closure. The protected text Publisher uses closed ARDP registration and private capsule operations. | Resolve historical verifier/vector obligations, then retire these seven files with the four attachment files as one bounded closure (F-52). |
+| `transit_grant.go`, `node_binding.go`, `route_binding_v1.go` | `VerifyTransitGrant` and the old LegBinding codecs have no non-test caller, but accepted Grant/LegBinding bytes and typed old-profile refusal remain separate compatibility questions. | Decide historical verification and retained local-role spend-root treatment before removing readers. An old reader cannot authorize a v2 Route. |
+| `wire_encoding.go` | Its v2 envelope has no selected execution caller; `wireReader` is shared with the historical Grant verifier and LegBinding, while `writeAll` serves the uncalled Node binding. | Separate only decided historical readers/refusal from the old execution codec before deletion. `route/ardp/frame.go` owns the distinct v3 full-write operation (F-52). |
+| `native_attachment.go` | No non-test constructor found; the current technical owner retains its evidence and close contract. | Decide the independent evidence consumer before removing this value; it does not prove an old Route startup survives. |
+
+The formerly ambiguous `Native Route profile` section of
+`docs/technical/network-route-node.md` now labels v2 as retained grammar and
+points C0 readers to closed v3. Its old-start section, the protected Route
+contract, ADR-0089 and actual Node dispatch all refuse the old duty. The file
+inventory records the v2 groups as retirement or compatibility review, not
+proposed new packages; their source disposition remains open. The
+[current closure inventory](c0-component-reconstruction.md#former-v2-execution-closure-after-adr-0092)
+supersedes the pre-ADR-0092 Endpoint caller narrative in earlier revisions
+of this document.
 
 ## Terminal-operation owner
 

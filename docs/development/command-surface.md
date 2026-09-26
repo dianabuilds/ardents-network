@@ -6,6 +6,25 @@ inventory answers a different question: why each process exists, which
 artifact owns it, and whether its routes are retained, internal, pending a
 separate decision, or retired.
 
+The working [command route map](repository-command-route-map.csv) enumerates
+each current dispatcher entry and its primary domain owner at `53f02e64`.
+It is a source-navigation aid, not a second command contract or installed
+acceptance result.
+
+**One-version audit of the dispatcher.** All 69 route entries have a traced
+dispatch and first effect. Six are immediate retirement refusals and three
+are retained legacy command shapes. `entry import` is the one route still
+writing the older Invite root; `entry recipient` only reads its public key.
+Eight separately classified Portable routes remain maintained, but their
+per-user readiness does not start the protected text Service. Old writers
+inside shared packages such as Reachability and Instance are tracked in the
+component reconstruction. The first operator-surface reduction is to decide
+the Invite root's accepted data obligation, stop the import writer, then
+decide whether the read-only recipient command is still needed for recovery
+or refusal. Installed Portable retirement needs a proved
+protected system-unit successor; renaming its event to C0 readiness would
+leave the missing trust transfer unresolved (F-08/F-25/F-27).
+
 ## Process boundaries
 
 The alpha bundle contains four headless participant and control binaries.

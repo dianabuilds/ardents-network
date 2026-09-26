@@ -3,7 +3,11 @@
 Status: **closed successor design contract**; authenticated generation 3,
 profile name `ardents-route-v3`. It is the one construction for the
 [selected workload](../product/protected-service-workload.md).
-It does not change the current generation-2 implementation until migration.
+The maintained tree already contains closed v3 Node duties, Carrier/ARDP
+owners, and the protected Endpoint's v3 composition. This contract does not
+claim that their combined installed C0 journey has been qualified. Retained
+generation-2 records and readers have separate retirement or migration
+obligations; they do not define a fallback Route.
 
 ## Carrier, cryptography and information flow
 
@@ -769,9 +773,11 @@ The Publisher also enables Application work only after its receiving checks;
 no early Application Data is introduced. Retain every existing signature, MAC,
 role, offset, exporter and nonce check. The Connection owner returns an opaque
 verified initial-state result to its stream lifecycle, never a caller-provided
-established flag. Current generation 2 retains its old sequential composition
-until migration; this generation-3 schedule changes no record encoding or
-cryptographic primitive. The model's one Service-authentication RTT includes
+established flag. The protected Endpoint calls the coalesced
+`NewAuthenticatedStream`; the older sequential `NewStream` remains a shared
+initializer but has no independent non-test production caller in this tree.
+This generation-3 schedule changes no record encoding or cryptographic
+primitive. The model's one Service-authentication RTT includes
 this initial Continuity exchange. Later recovery keeps its retained continuity
 authentication and original authority.
 

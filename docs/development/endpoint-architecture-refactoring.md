@@ -37,7 +37,7 @@ The installed qualification command owns plans and verdicts, and
 token refill and cleanup all recheck that invocation.
 
 Endpoint still owns the authorized participant, worker and protected Service
-operations being measured. Its remaining seven `stream_qualification_*`
+operations being measured. Its remaining six `stream_qualification_*`
 production files are not one self-contained package: runtime and preflight
 construct or inspect the participant; connections and replenishment use private
 Context, Job, permission, Source and worker state. Worker launch and
