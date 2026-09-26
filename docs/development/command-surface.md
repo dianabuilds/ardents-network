@@ -8,15 +8,19 @@ separate decision, or retired.
 
 ## Process boundaries
 
-Four binaries remain. Each owns a maintained headless participant or control
-process seam.
+The alpha bundle contains four headless participant and control binaries.
+The installed text Application and qualification workers are separate process
+boundaries; they are not alpha-bundle artifacts.
 
 | Artifact lane | Binary | Disposition | Boundary |
 |---|---|---|---|
 | Network participant | ardents | keep and deepen | Headless Endpoint, Network State, Service Instance, Entry, and current naming adapters. |
-| Network participant | ardents-node | keep | Source, Node duty, Transit Grant issuer, and dedicated-host Contributor process lifecycle. |
+| Network participant | ardents-node | keep | Source, Node duty, closed issuer, and dedicated-host Contributor process lifecycle. |
 | Network participant | ardents-control | keep after contraction | Enrollment-pinned alpha-control/corpus reader and bounded closed-profile operator adapter; it has no corpus-floor mutation authority. |
 | Network participant | ardents-custody | keep and deepen | Separate interactive Authority trust zone. It is intentionally not merged into Endpoint or Node. |
+| Installed Application | ardents-text | keep | Trusted local text UI and fixed confined Reader/Publisher worker entrypoints. |
+| Installed qualification | ardents-qualification | keep as verification tooling | Drives the selected installed network qualification run and records evidence. |
+| Installed qualification | ardents-stream-qualification | keep as verification tooling | Fixed NET-14 stream-test Application worker entrypoints. |
 
 The root cmd directory is Go's conventional collection of thin executable
 adapters; it is not a product ownership boundary. Source and artifact ownership
@@ -27,14 +31,24 @@ and the headless command inventory under tests/profiles.
 
 | Binary | Routes | Classification |
 |---|---|---|
-| ardents | accept-offline, refresh-sources; service-instance initialize/accept; endpoint enrollment-check/enroll/enroll-installed/headless/publish/withdraw/user-unit/installed-user-unit/replace/replacement-recovery/rollback; entry recipient/import | keep |
+| ardents | accept-offline, accept-closed-profile, refresh-sources; service-instance initialize/accept; endpoint enrollment-check/enroll/enroll-installed/headless/publish/withdraw/user-unit/installed-user-unit/replace/replacement-recovery/rollback; entry recipient/import | keep |
 | ardents | endpoint replacement-self-test | keep internal-only; invoked by the replacement controller, not an operator route |
 | ardents | name encode | keep local canonical encoding; this is not network Name availability |
 | ardents | diagnostics timeline | keep local, read-only projection of bounded runtime events from standard input; no storage, authority, or network effect |
 | ardents | name resolve/control | retired at command dispatch before arguments or effects; no successor or fallback is implied |
-| ardents-node | source (including the explicit current closed profile), node with closed reservations, issuer initialize/serve, contributor diagnose/drain/withdraw/remove | keep; old Source selector, Node duty reservations and Contributor start inputs retired |
-| ardents-control | inspect-bundle, inspect-transitions, inspect-alpha-corpus | keep |
-| ardents-custody | create-service-authority, issue-service-credential, inspect-envelope, verify-record, export-recovery-bundle, restore-recovery-bundle, purge-record | keep |
+| ardents-node | source (including the explicit current closed profile), node with closed reservations, issuer initialize/serve, hosting initialize, contributor diagnose/drain/withdraw/remove | keep; old Source selector, Node duty reservations and Contributor start inputs retired |
+| ardents-control | inspect-bundle, inspect-transitions, inspect-alpha-corpus; prepare-closed-profile, sign-closed-profile, inspect-closed-profile, inspect-closed-issuer-profile | keep |
+| ardents-custody | create-service-authority, issue-service-credential, create-admission-authority, issue-admission-permission, inspect-envelope, verify-record, export-recovery-bundle, restore-recovery-bundle, purge-record | keep |
+| ardents-text | read, publish, link; worker-reader/worker-publisher | keep; trusted local UI routes and fixed installed worker entrypoints |
+| ardents-qualification | run from a local plan; preflight, verify-run, verify-pair, verify-network-manifest, verify-net14v, verify-failed-net14v | keep as installed verification tooling; never a participant route |
+| ardents-stream-qualification | worker-reader, worker-publisher | keep as fixed installed verification workers; never an operator route |
+
+The `endpoint enroll` and `enroll-installed` routes own artifact/Release
+acceptance and the Portable per-user profile. Their `ready` event describes
+the generic local probe attachment. The separate `endpoint headless` route
+owns the protected text participant and its Network/Service lifetime. The
+current command dispatcher does not transfer enrollment state between these
+routes; the joined installed C0 launch remains a distinct composition task.
 
 ## Retired surface
 

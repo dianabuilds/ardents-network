@@ -13,22 +13,27 @@ configuration format or an authority source.
 
 `ardents` is the Endpoint and Network State command adapter.
 
+For the Portable `endpoint user-unit` and `endpoint enroll` first execution,
+follow the [independently pinned Ubuntu procedure](portable-enrollment.md)
+before running the downloaded program. That procedure starts the generic
+per-user profile; the protected text Service has a separate installed
+system-manager launch boundary.
+
 | Route | Purpose |
 |---|---|
-| `accept-offline --state-root PATH --network-id HEX --authorities HEX,... --threshold N --at RFC3339 --epoch PATH --inputs PATH --materialization PATH --profile NAME` | Accept one complete authenticated offline Network State generation under the exact selected State profile. It emits one `ardents-state-event-v1` `generation-accepted` JSON event. |
+| `accept-offline --state-root PATH --network-id HEX --authorities HEX,... --threshold N --at RFC3339 --epoch PATH --inputs PATH --materialization PATH --profile NAME [--closed-profile-authority HEX] [--closed-profile PATH]` | Accept one complete authenticated offline Network State generation under the exact selected State profile. The closed Route profile requires its pinned authority even when submitted later. When `--closed-profile` is supplied, the command accepts that signed profile **after** committing the Epoch; a profile refusal does not undo the accepted generation. Success emits one `ardents-state-event-v1` `generation-accepted` JSON event, with `closed_profile_sha256` when the profile was also accepted. |
 | `accept-closed-profile --state-root PATH --network-id HEX --authorities HEX,... --threshold N --at RFC3339 --profile ardents-route-v3 --closed-profile-authority HEX --closed-profile PATH` | Submit one signed `ARDCPR03` only to an already accepted State root under its explicit pinned closed-profile signer. It neither accepts an Epoch nor contacts Source. An exact retry is harmless; a different valid digest records durable conflict and makes the closed profile unavailable. It emits one `ardents-state-event-v1` `closed-profile-accepted` JSON event containing only the State generation, Epoch and profile digest. |
-| `refresh-sources --state-root PATH --source-plan PATH [--once|--resume]` | Run one selected Direct-Origin Source wave, resume from current State, or wait for the plan-owned `ardents-source-plan-v1` refresh interval. `--once` and `--resume` are mutually exclusive. It emits an `ardents-source-event-v1` `source-wave-accepted` event only after actual acceptance. |
+| `refresh-sources --state-root PATH --source-plan PATH [--once|--resume]` | Run one selected Direct-Origin Source wave, resume from current State, or wait for the plan-owned `ardents-source-plan-v1` refresh interval. `--once` and `--resume` are mutually exclusive. The command currently emits an `ardents-source-event-v1` `source-wave-accepted` event after reading the current snapshot in `--resume` mode, even when no new wave was accepted; do not treat that event alone as proof of a fresh acceptance. |
 | `diagnostics timeline` | Read app JSON lines or journalctl JSON from standard input and stream a local timeline of Node, Source, and Endpoint events. It reads no authority root, contacts no peer, and saves no history. |
 | `service-instance initialize --config PATH` | Create or reopen one host-owned Service Instance generation from an `ardents-service-instance-initialize-v1` plan whose `request_file` names one new public output, and emit its stable public request plus `request_sha256` for the independently transferred custody ceremony. The command exposes neither private key, Service Authority, Credential, Target, Route, nor Browser state. |
 | `service-instance accept --root PATH --response PATH` | Atomically accept only the exact canonical public Authority response for that pending root. An exact repeat is harmless; malformed or different input terminally rejects/conflicts rather than replacing the generation. |
-| `ardents-text link <administration-socket>` | Explicitly present the canonical Target Link of the currently committed text publication through the private Administration socket. Refuse unavailable, uncommitted or withdrawn publication; this operation does not publish or retry. Output is owned interruptible terminal/pipe presentation and is absent from ordinary diagnostics. |
 | `endpoint headless <headless-runtime.json>` | Only an explicit `ardents-headless-runtime-v2` plan selects the protected text participant with the closed Route profile, an explicit `closed_profile_authority` Ed25519 public key already present in `network_authorities`, existing `service_instance_root`, distinct absolute State/Entry/local-role/publication/token roots, two sockets, and `reader_permission`/`publisher_permission` objects containing `request_path`, `response_path`, and three-class `maxima`. Both actual offline permissions must be accepted before command exposure. Legacy acquisition and corpus fields are rejected in v2. Event output must be a pollable pipe or stream socket (including the systemd journal); each JSON line carries `schema: ardents-headless-runtime-event-v1`, `kind`, and UTC `at` for local timeline inspection. Cancellation and bounded writes retain descriptor ownership. Full installed command qualification remains required. |
 | `endpoint open <application-socket> <target-link> <input-file> <output-file>` | Return `endpoint open is retired` before opening either file, dialing the local socket, or causing Endpoint/Network work. The AAI2 codec/server/client and exclusive Endpoint adapter are absent; no generic AAI3 translation or fallback is selected. |
 | `endpoint publish <administration-socket>` | Request publication through the exact local one-use Service Administration capability and render its bounded receipt. |
 | `endpoint withdraw <administration-socket>` | Request withdrawal through the exact local one-use Service Administration capability and render its bounded receipt. A publisher plan must explicitly retain its administration listener after publication for this route. |
 | `endpoint enrollment-check <bundle-root> <manifest-sha256>` | Diagnose one already-running artifact against an independently pinned closed-alpha inventory. It does not authenticate first execution. |
-| `endpoint enroll <bundle-root> <manifest-sha256>` | Run the explicit Ubuntu Portable enrollment/start path after pin and Release Decision verification. |
-| `endpoint enroll-installed <package-enrollment.json>` | Run the explicit Ubuntu Installed enrollment/start path for one root-owned package artifact and versioned static enrollment root. |
+| `endpoint enroll <bundle-root> <manifest-sha256>` | Run the explicit Ubuntu Portable enrollment and per-user profile start. On first acceptance it verifies the pin and Release Decision before reporting `ready`; that event proves the generic local probe attachment, not protected text Service readiness. An exact current-program restart uses its retained replacement record. |
+| `endpoint enroll-installed <package-enrollment.json>` | Run the Installed enrollment and per-user profile start for one root-owned package artifact and versioned static enrollment root. Its `ready` event has the same generic attachment scope; protected text runs through the separate `endpoint headless` route. |
 | `endpoint user-unit <bundle-root> <manifest-sha256>` / `endpoint installed-user-unit <package-enrollment.json>` | Render, but never write, enable, or start, the matching `systemd --user` unit. |
 | `endpoint replace <replacement-bundle>` | Perform one explicit Ubuntu local Release-authorized replacement against the fixed user unit; it neither downloads nor schedules updates. After a preactivation staging or temporary stop refusal, rerun this same command with a still-valid bundle for the exact candidate bytes. It rechecks Release and the retained transaction; do not edit or delete replacement state manually. |
 | `endpoint replacement-recovery` | Report durable replacement recovery classification only; it never starts, replaces, or rolls back a program. An owned interrupted temporary write does not invalidate a matching committed executable; this read-only route leaves the residue untouched. Unexpected state must not be manually edited or deleted. |
@@ -93,6 +98,11 @@ bundle and manifest digest but are not a new C0 enrollment route; new units use
 the independently delivered manifest pin argument.
 
 ## `ardents-node`
+
+`ardents-node hosting initialize --config PATH` accepts a canonical
+`ardents-hosting-initialization-v1` plan and initializes the host-owned Resource
+policy root for one provider period. Later Node plans reopen that root; they
+cannot replace its policy.
 
 The accepted
 [old-start retirement contract](../technical/network-route-node.md#old-start-retirement)
@@ -214,8 +224,10 @@ Application data stream.
 |---|---|---|
 | `create-service-authority` | `--vault-root PATH` plus exact environment, Network, and Authority-root public commitments | Reads a new password and confirmation only from the terminal, generates the Service Authority inside custody, and emits its opaque record ID, public Authority, derived Target, and identity commitment. |
 | `issue-service-credential` | `--vault-root PATH --record ID --request PATH --response PATH` plus the exact public Service Authority binding | Before opening the Vault or asking for its password, requires the Custodian to type the lowercase `request_sha256` transferred independently from the requesting host. A mismatch fails without password entry, response, record, or floor mutation. The supported issuer additionally limits one Credential to 24 hours and its terminal horizon to 48 hours. It then writes the monotonic public response to the explicit new file and emits its deterministic encrypted successor record ID. An exact retry returns the same response; a different request cannot advance the stale record. |
+| `create-admission-authority` | `--vault-root PATH --environment-commitment HEX --network-commitment HEX --root-commitment HEX` | Creates a separate interactive admission Authority in Custody and emits its record ID, identity commitment, and public key as `ardents-admission-authority-v1`. |
+| `issue-admission-permission` | `--vault-root PATH --record ID --request PATH --permission-output PATH --environment-commitment HEX --network-commitment HEX --root-commitment HEX --kind admission --id-commitment HEX` | Requires the Custodian to enter the independently transferred request SHA-256 before opening the Vault or asking for its password. After verifying the exact admission Authority binding, writes the private permission to the explicit owner-only destination without replacing different bytes and emits a public receipt with only the permission digest. |
 | `inspect-envelope` | `--envelope PATH` | Validates and prints only canonical public envelope facts as `ardents-custody-inspection-v1`. It owns no Vault root and cannot create custody state. |
-| `verify-record` | `--vault-root PATH --record ID --environment-commitment HEX --network-commitment HEX --root-commitment HEX --kind service|name --id-commitment HEX` | Reads one password from an interactive no-echo terminal, verifies one active encrypted record against exact public commitments, and prints bounded non-secret facts as `ardents-custody-verification-v1`. |
+| `verify-record` | `--vault-root PATH --record ID --environment-commitment HEX --network-commitment HEX --root-commitment HEX --kind service|name|admission --id-commitment HEX` | Reads one password from an interactive no-echo terminal, verifies one active encrypted record against exact public commitments, and prints bounded non-secret facts as `ardents-custody-verification-v1`. |
 | `export-recovery-bundle` | Exact vault record, public Authority commitments, and output Bundle path | Reads the record secret only from the terminal, writes a separately passworded Bundle, and test-restores it before success. |
 | `restore-recovery-bundle` | Empty destination Vault, public commitments, Bundle path | Reads the Bundle password from the terminal and writes only an `authority-locked` quarantine record. |
 | `purge-record` | Exact vault record, public commitments, and terminal confirmation | Deletes only the exact verified encrypted record after explicit confirmation while retaining the Authority floor. |
@@ -285,6 +297,13 @@ is retired` before a retained corpus-floor read, resolver/network work, or any
 Target-Link fallback.
 
 ## Trusted text UI and workers
+
+`ardents-text link /absolute/path/to/administration.sock` explicitly presents
+the canonical Target Link of the currently committed text publication through
+the private Administration socket. It refuses an unavailable, uncommitted, or
+withdrawn publication; it neither publishes nor retries. The output is an
+interruptible terminal or pipe presentation and is absent from ordinary
+diagnostics.
 
 The local client command is `ardents-text read /absolute/path/to/connection.sock`.
 Use Linux terminal or pipe input/output; non-interruptible descriptors are refused.
