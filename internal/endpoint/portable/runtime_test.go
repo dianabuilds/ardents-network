@@ -1,14 +1,12 @@
 package portable
 
 import (
-	"context"
 	"errors"
 	"net"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
-	"time"
 )
 
 func TestOpenCreatesSeparatedRootsAndProvesAttachment(t *testing.T) {
@@ -119,36 +117,6 @@ func TestOpenRefusesAttachmentPathBeyondDeclaredBudgetBeforeBind(t *testing.T) {
 	var lifecycle *Error
 	if !errors.As(err, &lifecycle) || lifecycle.Reason != ReasonLocalProfileInvalid {
 		t.Fatalf("long attachment path error = %v", err)
-	}
-}
-
-func TestRunReportsStartingReadyAndStopped(t *testing.T) {
-	ctx, cancel := context.WithCancel(t.Context())
-	defer cancel()
-	config := testConfig(t)
-	states := make(chan Event, 3)
-	done := make(chan error, 1)
-	go func() {
-		done <- Run(ctx, config, func(event Event) { states <- event })
-	}()
-
-	first := <-states
-	second := <-states
-	if first.State != StateStarting || second.State != StateReady {
-		t.Fatalf("startup events = %#v, %#v", first, second)
-	}
-	cancel()
-	select {
-	case err := <-done:
-		if err != nil {
-			t.Fatalf("Run returned %v after requested stop", err)
-		}
-	case <-time.After(time.Second):
-		t.Fatal("Run did not stop")
-	}
-	stopped := <-states
-	if stopped.State != StateStopped {
-		t.Fatalf("terminal event = %#v, want stopped", stopped)
 	}
 }
 

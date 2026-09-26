@@ -77,6 +77,7 @@ Current decisions:
 
 Completed retirement decisions:
 
+- [0099 — Retire the superseded portable Run pump and relocate the replacement crash seam](0099-retire-bounded-process-tracers.md)
 - [0098 — Remove the unwired `internal/naming` Service-Link formatter and parser](0098-remove-naming-service-link-tracer.md)
 - [0097 — Retire the exact-count Stream.Run pump in favor of the live bounded successor](0097-retire-exact-count-stream-run.md)
 - [0096 — Reject the closed-alpha Entry issuance and Initiator-verification candidate surface](0096-reject-entry-issuance-candidate.md)

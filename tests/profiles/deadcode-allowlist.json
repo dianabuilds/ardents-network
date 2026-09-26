@@ -11,25 +11,6 @@
     },
     {
       "symbols": [
-        "internal/endpoint/portable.Run",
-        "internal/endpoint/portable.emit"
-      ],
-      "classification": "unwired bounded process tracer",
-      "rationale": "The portable endpoint process path remains deterministic evidence but is not selected by a current C0 command.",
-      "owner": "Product Owner and Codex",
-      "retirement": "Wire it into an accepted command contract or remove it with the superseding process-candidate decision."
-    },
-    {
-      "symbols": [
-        "internal/endpoint/replacement.replaceWithInterruption"
-      ],
-      "classification": "unwired bounded process tracer",
-      "rationale": "The interruption replacement path remains deterministic evidence but is not selected by a current C0 command.",
-      "owner": "Product Owner and Codex",
-      "retirement": "Wire it into an accepted command contract or remove it with the superseding process-candidate decision."
-    },
-    {
-      "symbols": [
         "internal/naming/alpha.IssueCorpus",
         "internal/naming/alpha.NewSessionFloor",
         "internal/naming/alpha.ParseServiceLink",

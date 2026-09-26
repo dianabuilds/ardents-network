@@ -157,13 +157,6 @@ func Rollback(ctx context.Context, operation Operation) (Result, error) {
 	return Result{State: "rollback-committed-restart-permitted", Current: predecessor, Predecessor: journalRecord.candidate}, nil
 }
 
-// replaceWithInterruption is a package-private crash-boundary seam. It keeps
-// all real file, journal, unit, and candidate-test operations but returns just
-// after one durable checkpoint, leaving recovery-owned evidence intact.
-func replaceWithInterruption(ctx context.Context, operation Operation, control operationControl) (Result, error) {
-	return replace(ctx, operation, &control)
-}
-
 func replace(ctx context.Context, operation Operation, control *operationControl) (Result, error) {
 	if ctx == nil || ctx.Err() != nil {
 		return Result{State: "invalid"}, errors.New("endpoint replacement context is unavailable")
