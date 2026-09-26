@@ -1,9 +1,9 @@
 # Naming and private resolution
 
 Status: **current maintained technical contract.** This document describes
-`internal/naming/namespace` and `internal/naming/resolution`. It is not a
-supported public Namespace, a public resolver, or a claim of independent
-Network Epoch operation.
+`internal/naming/namespace`. It is not a supported public Namespace, a public
+resolver, or a claim of independent Network Epoch operation. The former
+`internal/naming/resolution` transport package was removed by ADR-0100.
 
 The [closed successor workload](../product/protected-service-workload.md)
 uses Target Link first. Canonical Names remain the next separately designed
@@ -18,12 +18,15 @@ naming facts, pending successor persistence, current Namespace materialization,
 and local current-proof verification. Its persistence and commitments are
 Namespace-owned under R-060; it does not import Network State as a foundation.
 
-`naming/resolution` owns one fixed private OHTTP exchange, its role-local
-selection, nonce/replay state, and observer-safe counters. It transports opaque
-Authority Submission bytes and current proofs. Resolution receives a verified
-immutable Binding; it does not receive or assemble a lifecycle Record. The
-package has maintained module behavior, but no maintained production runtime
-currently composes a Gateway or Resolver from these seams.
+The former `naming/resolution` package owned one fixed private OHTTP
+exchange, its role-local selection, nonce/replay state, and observer-safe
+counters, transporting opaque Authority Submission bytes and current proofs.
+No maintained production runtime ever composed a Gateway or Resolver from
+those seams, so ADR-0100 removed the package, its tests, and its OHTTP/CIRCL
+dependency closure. The Namespace-owned Gateway/verifier views remain; a
+future confidential Name exchange requires a separately selected
+authority/wire and a fresh dependency review, not revival of the removed
+adapter.
 
 The maintained module contracts cover the following transitions; no single
 production runtime composes this whole sequence:
@@ -37,7 +40,8 @@ existing-Name Intent
   -> Namespace persists the signed successor as pending
   -> authenticated Epoch installation selects a pending prefix and/or ClaimWinner
   -> threshold-attested Store commit publishes current state
-  -> private Resolution transports a proof
+  -> a separately selected transport carries a proof (no maintained
+     implementation since ADR-0100)
   -> local VerifyBinding returns an immutable Binding
 ```
 
@@ -84,14 +88,12 @@ legacy raw `Store.CommitLegacy` is not the typed installation authority.
 | Canonical Name V1 | lowercase ASCII labels 1–63 bytes; total ≤253 bytes; depth ≤127 | retained R-041 profile |
 | Claim reveals for one Name | ≤32 | retained R-042 measured tracer rule; not total Epoch capacity |
 | Claim proof wire | ≤2,048 bytes | retained internal proof envelope |
-| Current Namespace proof | ≤4,096 bytes | retained Resolution envelope |
+| Current Namespace proof | ≤4,096 bytes | retained Namespace proof envelope (Epoch materialization) |
 | Current Namespace corpus | ≤127 signed Records | R-066 one-writer technical tracer; not product scale |
 | Concurrent exact local readers | 8 in R-066 measurement | measured tracer condition, not a concurrency promise |
 | Pending journal | ≤127 entries; each submission/successor ≤64 KiB | Namespace-local restart bridge |
 | Static control input | ≤16 KiB | C0 internal control representation pending F031 cutover |
 | Signed Record | payload ≤1,846 bytes; container ≤1,920 bytes | R-073 retains 76 bytes below the measured worst-case proof fit |
-| Private Resolution request/response | exactly 4,096 bytes | retained R-067 OHTTP envelope |
-| Relay OHTTP envelope | ≤8 KiB | role-local transport bound |
 | Admission profiles | resolution `16/4096/64`; renewal-update `16/2048/32`; policy-recovery `17/1024/16`; root-claim `18/1024/8` (`work bits/spent/in-flight`) | retained R-045 local amplification guard; not Sybil resistance |
 
 The Record/container ceiling and several C0 construction limits are deliberately
@@ -143,9 +145,10 @@ retained tracer also requires a measured scale/index decision. Delivery and reme
 The public `Record`, `Op`, `ApplyLegacy`/`ApplyAtLegacy`, `VerifyLegacy`,
 `ResolveBindingLegacy`, raw
 `Store.CommitLegacy`, and historical Stage 6 fixtures remain compatibility surface.
-Maintained Resolution behavior consumes sealed Gateway/verifier views rather
-than those caller-constructed values, but that behavior is not a production
-Gateway/Resolver composition. The remaining global-close owner is not
+The retained Namespace Gateway/verifier views consume sealed views rather
+than those caller-constructed values; their former Resolution transport
+consumer was removed by ADR-0100, and no production Gateway/Resolver
+composition exists. The remaining global-close owner is not
 selected: it would have to accept the opaque admitted input, commit its
 ordinal/root, and issue the complete threshold-signed close before it yields a
 `ClaimWinner`. Scale, index/cache, product capacity, and supported-platform
@@ -174,23 +177,25 @@ This command decision does not retire the Service Name product function.
 `ardents name encode` and canonical Naming bytes remain unchanged. Namespace
 lifecycle, proofs, pending journals, current materialization, and custody remain
 with their existing module consumers and stored evidence. Production custody
-continues to consume Namespace authority, record, and epoch contracts. The
-private-resolution package has maintained module behavior but, once the two
-commands refuse, no maintained production Gateway/Resolver composition; it is
-retained pending a separately scoped exact-consumer and compatibility decision.
+continues to consume Namespace authority, record, and epoch contracts. ADR-0100
+subsequently removed the private-resolution transport package itself, its
+tests, and its OHTTP dependency closure; protected Service Name access
+remains not selected, and a future exact consumer requires its own scoped
+decision and dependency review.
 
 No existing State or Namespace root, Record, journal, floor, proof, or authority
 material is converted, reset, deleted, or promoted into successor authority.
 No successor wire, Resolver/Gateway topology, authority, governance, migration,
 or AAI3 Name path is selected. Until one is separately selected and delivered,
 there is no maintained operator command for network Name resolution or control.
-The command regression first executes the former resolve and control shapes
-against an authenticated State root, a committed Namespace root, and live
-Relay/Gateway handlers. It then proves zero transport attempts, no output,
-and byte-for-byte unchanged contents of those same durable roots after both
+The command regression executes the recognized resolve and control verbs
+against a bounded fixture that materializes an authenticated State root, a
+committed Namespace root, and plan/operation files shaped like the former
+adapter inputs. It proves zero transport attempts, no output, and
+byte-for-byte unchanged contents of those same durable roots after both
 retired command invocations. Canonical
-encoding retains its exact behavior vector, while the Namespace and resolution
-Modules retain their own focused behavior suites.
+encoding retains its exact behavior vector, while the Namespace Modules
+retain their own focused behavior suites.
 
 ## Alpha corpus compatibility
 
@@ -224,8 +229,8 @@ with current enrollment, not reuse of an old enrollment JSON instruction.
 ## Verification
 
 The maintained local gate is `make quick-check`; `make check` is required
-before integration. Focused Namespace/Resolution behavior is covered by
-`go test ./internal/naming/namespace ./internal/naming/resolution -count=1`.
+before integration. Focused Namespace behavior is covered by
+`go test ./internal/naming/namespace/... -count=1`.
 
 ## Governing decisions
 

@@ -151,8 +151,9 @@ Go TLS/HPKE and a publicly verifiable blind-token family. The TLS component
 experiment is byte-cost evidence, not full protocol or security acceptance.
 [ADR-0081](../adr/0081-select-closed-protected-service-contract.md) selects
 CIRCL v1.6.5 ordinary blindrsa SHA384PSSDeterministic for the exact
-[admission construction](../technical/private-admission.md), beyond its retained
-HPKE use. The [R-152 assessment](../research/records/r-152-closed-scheme-contract.md)
+[admission construction](../technical/private-admission.md), beyond its then-retained HPKE
+use; ADR-0100 removed the last HPKE importer together with the uncomposed
+private-resolution package. The [R-152 assessment](../research/records/r-152-closed-scheme-contract.md)
 records dated source/support/license/advisory review, exact three-package plus
 standard-library closure, checksum verification, upstream tests and the composed
 probe. Its owner is internal/route/credential. Do not import other CIRCL schemes
@@ -244,8 +245,12 @@ them.
 completed for all four participant/control commands. The package counts
 below include standard-library packages. None of these four closures now
 contains `openpcc/ohttp` or `openpcc/twoway`; all four still contain CIRCL
-and quic-go through their current imports. OHTTP remains in the repository
-for the retained, currently uncomposed `internal/naming/resolution` package.
+and quic-go through their current imports. OHTTP remained at that revision only
+for the retained, then-uncomposed `internal/naming/resolution` package;
+ADR-0100 has since removed that package, and `go mod tidy` dropped
+`openpcc/ohttp`, `openpcc/twoway`, `openpcc/bhttp`, `cespare/xxhash/v2`,
+`go.opentelemetry.io/otel`, `go.opentelemetry.io/otel/trace`, and
+`golang.org/x/text` from `go.mod` and `go.sum`.
 This is static reachability, not executed network behavior or a linked-binary
 measurement.
 
@@ -385,45 +390,45 @@ vulnerability/support status. Any such claim requires its own projection or
 candidate evidence.
 
 The successor confidential control channels can replace OHTTP transport only
-with the explicit new grammar and migration. Existing OHTTP imports and their
-full closure remain subject to review for as long as any maintained use exists.
-Removal is an owner change with dependency/compatibility evidence, not an
-automatic consequence of selecting the architecture.
+with the explicit new grammar and migration. ADR-0100 removed the last maintained
+OHTTP importer, so the full OHTTP closure has left `go.mod`; a successor
+channel would reintroduce dependencies only through a fresh review with
+dependency/compatibility evidence.
 
 ## Current runtime dependencies
 
 The maintained product-shaped Modules use the Go standard library, the
-Windows-only `golang.org/x/sys/windows` surfaces described below, and the exact
-OHTTP closure retained by `internal/naming/resolution`; ADR-0091 retired the
-unwired OHTTP adapter from `internal/service/reachability`, which still uses
-CIRCL HPKE for the private v3 Descriptor path. ADR-0014 selects the
-maintained private-resolution profile; the set must enter
-`go.mod` as this reviewed set rather than as the vulnerable versions declared
-by `openpcc/ohttp v0.0.80`.
+Windows-only `golang.org/x/sys/windows` surfaces described below, CIRCL
+Blind RSA for the closed-token Route credential, and `golang.org/x/crypto`
+for the Custody canonical envelope. ADR-0091 retired the unwired OHTTP
+adapter from `internal/service/reachability`; ADR-0100 then removed
+`internal/naming/resolution`, the last maintained OHTTP importer, and
+`go mod tidy` dropped the whole reviewed OHTTP closure (`openpcc/ohttp`,
+`openpcc/twoway`, `openpcc/bhttp`, `cespare/xxhash/v2`,
+`go.opentelemetry.io/otel`, `go.opentelemetry.io/otel/trace`, and
+`golang.org/x/text`) from `go.mod`. `golang.org/x/net` remains only as an
+indirect module-graph entry with no maintained package import. ADR-0014's
+reviewed-set decision and R-047/R-026 remain the historical selection
+evidence for a future confidential Name exchange; that exchange would
+require a fresh dependency review rather than reuse of the retired set.
 
 | Module | Reviewed version | License | Purpose |
 |---|---:|---|---|
-| `github.com/openpcc/ohttp` | `v0.0.80`, commit `79bec89d804248df1a71a0f56c882b116579035d` | Apache-2.0 | RFC 9458 client and Gateway encapsulation |
-| `github.com/openpcc/twoway` | `v0.0.80` | Apache-2.0 | request/response HPKE context used by OHTTP |
-| `github.com/openpcc/bhttp` | `v0.0.80` | Apache-2.0 | RFC 9292 known-length HTTP encoding |
-| `github.com/cloudflare/circl` | `v1.6.5` | BSD-3-Clause | reviewed HPKE implementation |
-| `github.com/quic-go/quic-go` | `v0.62.0` | MIT | maintained QUIC v1 Carrier Adapter and QUIC varint closure required by BHTTP |
-| `github.com/cespare/xxhash/v2` | `v2.3.0` | MIT | tracing dependency closure |
-| `go.opentelemetry.io/otel` | `v1.45.0` | Apache-2.0 | OHTTP tracing types |
-| `go.opentelemetry.io/otel/trace` | `v1.45.0` | Apache-2.0 | OHTTP tracing Interface |
+| `github.com/cloudflare/circl` | `v1.6.5` | BSD-3-Clause | reviewed Blind RSA implementation for the closed-token Route credential |
+| `github.com/quic-go/quic-go` | `v0.62.0` | MIT | maintained QUIC v1 Carrier Adapter |
+| `github.com/go-logr/logr` | `v1.4.4` | Apache-2.0 | indirect logging interface inside the go-tuf/sigstore release-verifier chain |
 | `golang.org/x/crypto` | `v0.56.0` | BSD-3-Clause | selected cryptographic support closure |
-| `golang.org/x/net` | `v0.58.0` | BSD-3-Clause | BHTTP HTTP support |
 | `golang.org/x/sys` | `v0.47.0` | BSD-3-Clause | Windows owner-only DACL/locking and registry enforcement plus platform atomic replacement support; Linux-only Endpoint durable-state behavior tests use descriptor-relative no-follow capture |
-| `golang.org/x/text` | `v0.41.0` | BSD-3-Clause | BHTTP normalization |
 
-**Need and owner:** RFC 9458 is the accepted external-first Private Resolution
-shape. `internal/naming/resolution` owns the retained Namespace OHTTP/CIRCL
-Adapter. Reachability's uncomposed Target OHTTP adapter was retired under
-ADR-0091; its current private Descriptor proof and stored-record reader are
-separate owners. Neither is a general HTTP proxy. A change repeats the
-affected current-owner conformance, dependency and observer checks. R-047/R-026
-retain the selection evidence; they are not instructions to reopen the original
-research or a second current specification.
+**Need and owner:** `internal/route/credential` owns the CIRCL Blind RSA
+closed-token issuer; `internal/custody` owns the `golang.org/x/crypto`
+canonical envelope; `internal/route` owns the QUIC Carrier Adapter.
+Reachability's private Descriptor proof and stored-record reader are
+separate owners. None is a general HTTP proxy. A change repeats the
+affected current-owner conformance, dependency and observer checks.
+R-047/R-026 retain the historical OHTTP selection evidence; they are not
+instructions to reopen the original research or a second current
+specification.
 
 **Windows platform use:** current platform-specific owners use
 `golang.org/x/sys/windows` on Windows to apply a protected DACL granting the
@@ -436,20 +441,20 @@ the selected version has the existing checksum/license review, passes the
 repository's offline build/tests and reachable vulnerability scan, and the
 remaining callers use no cgo or first-party `unsafe`.
 
-**Maintenance and security review:** `openpcc/ohttp` has versioned releases, an
-Apache-2.0 license, tests including RFC vectors and malformed inputs, and a
-published security contact. Its selected tag predates three now-known reachable
-dependency advisories, so the raised versions above are mandatory. On Go
-1.26.6 the exact set passes checksums, upstream and independent role-view tests,
-offline build/test with cgo disabled, and reachable `govulncheck`. The reachable
-Go packages have no cgo files or `unsafe` imports. CIRCL contains optimized
+**Maintenance and security review:** the OHTTP-closure maintenance history
+(versioned releases, the three raised dependency advisories, and the Go 1.26.6
+checksum, upstream role-view, offline build/test and reachable `govulncheck`
+evidence) is preserved in ADR-0014, the Go 1.26.8 admission evidence above,
+and earlier revisions of this register; since ADR-0100 it describes no
+maintained dependency. The retained modules pass checksums, offline
+build/test with cgo disabled, and reachable `govulncheck`; their reachable Go
+packages have no cgo files or `unsafe` imports. CIRCL contains optimized
 assembly behind portable Go APIs; Ardents selects no custom cryptographic suite.
 
-**Alternatives:** `chris-wood/ohttp-go` at commit `776f22a178b8` has a smaller
-MIT/BSD closure and passes with CIRCL `v1.6.5`, but has no release
-and declares its implementation/API experimental. First-party OHTTP/PIR, local
-lookup, direct/DNS/HTTP resolution, alternate Namespace, and cached-success
-fallback are rejected.
+**Alternatives:** the OHTTP implementation comparison (`chris-wood/ohttp-go`,
+first-party OHTTP/PIR, local lookup, direct/DNS/HTTP resolution, alternate
+Namespace, cached-success fallback) is historical ADR-0014 selection evidence;
+since ADR-0100 no maintained OHTTP use remains to re-select.
 
 For Windows ACL enforcement, an external PowerShell/`icacls` subprocess breaks
 the no-process import contract, while raw first-party system calls require the

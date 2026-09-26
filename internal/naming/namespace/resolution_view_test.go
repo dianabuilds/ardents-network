@@ -34,6 +34,28 @@ func TestResolutionViewsBindGatewayAdmissionAndHideLifecycleRecord(t *testing.T)
 		t.Fatalf("Gateway view=%v accepted configured Node=%v foreign Node=%v", err,
 			gateway != nil && gateway.AcceptsGateway([32]byte{2}), gateway != nil && gateway.AcceptsGateway([32]byte{4}))
 	}
+	if gateway.Network() != network || store.Network() != network {
+		t.Fatalf("Gateway view Network=%v Store Network=%v want %v",
+			gateway.Network(), store.Network(), network)
+	}
+	operation := [32]byte{9}
+	challenge, err := gate.Issue(900_000, "resolution", operation, [32]byte{1}, 915_000, [16]byte{1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	admissionProof, _ := challenge.Solve()
+	if gateway.AdmitResolution(900_000, [32]byte{4}, operation, admissionProof) {
+		t.Fatal("Gateway view admitted a proof bound to another Node")
+	}
+	if gateway.AdmitResolution(900_000, [32]byte{2}, [32]byte{10}, admissionProof) {
+		t.Fatal("Gateway view admitted a proof bound to another operation")
+	}
+	if !gateway.AdmitResolution(900_000, [32]byte{2}, operation, admissionProof) {
+		t.Fatal("Gateway view refused the exact bound resolution proof")
+	}
+	if gateway.AdmitResolution(900_000, [32]byte{2}, operation, admissionProof) {
+		t.Fatal("Gateway view admitted a replayed resolution proof")
+	}
 	proof, binding, found := gateway.LookupBinding("alice", 900_000)
 	if !found || binding.Name != "alice" || binding.Target == [32]byte{} {
 		t.Fatalf("Gateway lookup found=%v binding=%+v", found, binding)

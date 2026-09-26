@@ -1046,17 +1046,19 @@ would lose its anti-rollback state.
 
 The current `docs/technical/naming.md` describes a local chain from
 Authority transition through Custody signing, Namespace pending state and
-Epoch materialization to a private Resolution proof. In production source,
-`internal/naming/resolution` imports Namespace interfaces, and Custody
+Epoch materialization. In production source, `internal/naming/resolution`
+formerly imported Namespace interfaces; ADR-0100 removed that package with
+its tests and the OHTTP dependency closure, and Custody
 implements two Namespace-specific `Vault.Execute` cases. A non-test search
-over the command adapters finds no import of Namespace or Resolution, no
+over the command adapters finds no import of Namespace, no
 construction of those Custody operation kinds, and no call to `epoch.Open`.
 `ardents name resolve` and `name control` refuse before effects under
 ADR-0090; `name encode` uses the separate canonical encoder. Consequently,
 none of these commands opens a Namespace root, starts a Gateway/Resolver,
 commits a pending successor, or verifies a live proof for C0. The 54-file
-Namespace and 15-file Resolution closures are retained technical behavior
-and persisted-evidence obligations (F-51), not a hidden C0 Service Name path.
+Namespace closure is retained technical behavior and a persisted-evidence
+obligation (F-51), not a hidden C0 Service Name path; its durable roots
+await the separate PO disposition decision.
 
 ## Source trace: old Transit Grant spend inside the current local-role root
 

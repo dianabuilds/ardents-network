@@ -35,7 +35,6 @@
 "internal/naming/namespace/epoch","retained-uncomposed","decide-root-migration-or-refusal","Epoch Store has no command opener but owns leased generations and pending journal F-51"
 "internal/naming/namespace/record","retained-uncomposed","decide-old-record-reader","Name v3 record reader has migration obligation F-48"
 "internal/naming/namespace/recovery","retained-uncomposed","decision-under-adr-0090","Namespace recovery proofs have no selected C0 journey"
-"internal/naming/resolution","retained-uncomposed","retire-after-adr-0090-supersession","No production importer or durable root; command retirement fixture is its remaining composition F-51"
 "internal/network/duty","mixed-runtime","retain-root-decide-old-field","Current local conflict duty shares v1 root with unused Grant spends F-53"
 "internal/network/source","runtime","retain","Finite authenticated Source wave and serving transport"
 "internal/network/state","runtime","retain-one-authority-root","Current/pending/conflict decision and closed profile; AREP intake F-50"

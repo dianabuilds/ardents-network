@@ -28,7 +28,6 @@ github.com/dianabuilds/ardents-network/internal/naming/namespace/claim
 github.com/dianabuilds/ardents-network/internal/naming/namespace/epoch
 github.com/dianabuilds/ardents-network/internal/naming/namespace/record
 github.com/dianabuilds/ardents-network/internal/naming/namespace/recovery
-github.com/dianabuilds/ardents-network/internal/naming/resolution
 github.com/dianabuilds/ardents-network/internal/naming
 github.com/dianabuilds/ardents-network/internal/network/source
 github.com/dianabuilds/ardents-network/internal/network/state

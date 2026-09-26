@@ -7,9 +7,6 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
-	"net/http"
-	"net/http/httptest"
-	"net/url"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -18,12 +15,9 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/naming"
-	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
 	"github.com/dianabuilds/ardents-network/internal/naming/namespace/admission"
-	"github.com/dianabuilds/ardents-network/internal/naming/namespace/authority"
 	"github.com/dianabuilds/ardents-network/internal/naming/namespace/epoch"
 	"github.com/dianabuilds/ardents-network/internal/naming/namespace/record"
-	nameresolution "github.com/dianabuilds/ardents-network/internal/naming/resolution"
 )
 
 type retiredNameInputs struct {
@@ -36,19 +30,18 @@ type retiredNameInputs struct {
 }
 
 type retiredNamePlan struct {
-	Schema                     string                        `json:"schema"`
-	StateRoot                  string                        `json:"state_root"`
-	NetworkID                  string                        `json:"network_id"`
-	AuthorityPublic            []string                      `json:"authority_public"`
-	AuthorityThreshold         int                           `json:"authority_threshold"`
-	AcceptedProfile            string                        `json:"accepted_profile"`
-	SelectionAt                string                        `json:"selection_at"`
-	Deadline                   string                        `json:"deadline"`
-	RelayNodeID                string                        `json:"relay_node_id"`
-	GatewayNodeID              string                        `json:"gateway_node_id"`
-	ConnectionRendezvousNodeID string                        `json:"connection_rendezvous_node_id"`
-	GatewayProfile             nameresolution.GatewayProfile `json:"gateway_profile"`
-	AdmissionChallenge         admission.Challenge           `json:"admission_challenge"`
+	Schema                     string              `json:"schema"`
+	StateRoot                  string              `json:"state_root"`
+	NetworkID                  string              `json:"network_id"`
+	AuthorityPublic            []string            `json:"authority_public"`
+	AuthorityThreshold         int                 `json:"authority_threshold"`
+	AcceptedProfile            string              `json:"accepted_profile"`
+	SelectionAt                string              `json:"selection_at"`
+	Deadline                   string              `json:"deadline"`
+	RelayNodeID                string              `json:"relay_node_id"`
+	GatewayNodeID              string              `json:"gateway_node_id"`
+	ConnectionRendezvousNodeID string              `json:"connection_rendezvous_node_id"`
+	AdmissionChallenge         admission.Challenge `json:"admission_challenge"`
 }
 
 type retiredNameRecordOperation struct {
@@ -81,26 +74,21 @@ type retiredNameRecordOperation struct {
 	SuccessorRecord    []byte   `json:"successor_record,omitempty"`
 }
 
-type retiredNameAuthority struct{}
-
-func (retiredNameAuthority) Submit(authority.Submission, admission.Proof) string { return "submitted" }
-
+// prepareRetiredNameInputs materializes one authenticated State root, one
+// committed Namespace root carrying a signed Record, and plan/operation files
+// shaped like the former name resolve / name control adapter inputs
+// (ADR-0090). Since ADR-0100 removed the uncomposed private-resolution
+// transport, the fixture composes no Gateway, Relay, or Resolver and starts no
+// server; the retired commands must refuse before reading any of these files,
+// and TestNameNetworkCommandsRetireBeforeEffects proves the refusal leaves
+// both durable roots byte-for-byte unchanged.
 func prepareRetiredNameInputs(t *testing.T) retiredNameInputs {
 	t.Helper()
 	root := t.TempDir()
 	now := time.Unix(1_800_000_000, 0).UTC()
 	deadline := now.Add(15 * time.Second)
-	var gatewayHandler, relayHandler http.Handler
-	gatewayServer := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		gatewayHandler.ServeHTTP(w, r)
-	}))
-	t.Cleanup(gatewayServer.Close)
-	relayServer := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		relayHandler.ServeHTTP(w, r)
-	}))
-	t.Cleanup(relayServer.Close)
 	stateFixture := prepareRetiredNameState(t, root, now,
-		[3]string{retiredNameEndpoint(t, relayServer.URL), retiredNameEndpoint(t, gatewayServer.URL), "127.0.0.1:7443"})
+		[3]string{"127.0.0.1:7441", "127.0.0.1:7442", "127.0.0.1:7443"})
 
 	namePrivate := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{76}, ed25519.SeedSize))
 	namePublic := namePrivate.Public().(ed25519.PublicKey)
@@ -156,29 +144,6 @@ func prepareRetiredNameInputs(t *testing.T) retiredNameInputs {
 	if err != nil {
 		t.Fatal(err)
 	}
-	namespaceView, err := namespace.OpenResolutionGateway(store, 1, stateFixture.digest, gate)
-	if err != nil {
-		t.Fatal(err)
-	}
-	gatewayState, err := nameresolution.BindGatewayState(namespaceView, retiredNameAuthority{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	gateway, err := nameresolution.NewGateway(nameresolution.GatewayConfig{
-		NodeID: [32]byte{2}, Family: "name-1-0", Domain: "rendezvous",
-		AssignmentNotAfter: now.Add(time.Hour), MaximumPending: 8,
-		IdentityKey: stateFixture.gateway, Clock: func() time.Time { return now }, State: gatewayState,
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	gatewayHandler = gateway.Handler()
-	relay, err := nameresolution.NewRelay(gatewayServer.URL, gatewayServer.Client())
-	if err != nil {
-		t.Fatal(err)
-	}
-	relayHandler = relay.Handler()
-
 	isolation := [32]byte{1}
 	resolveDigest := retiredNameResolutionDigest(t, stateFixture.network, "alice", deadline.UnixNano())
 	resolveChallenge, err := gate.Issue(now.UnixMilli(), "resolution", resolveDigest, isolation,
@@ -206,7 +171,7 @@ func prepareRetiredNameInputs(t *testing.T) retiredNameInputs {
 		AuthorityPublic: authorities, AuthorityThreshold: 2,
 		AcceptedProfile: "h3-role-probe-v1", SelectionAt: now.Format(time.RFC3339Nano),
 		Deadline: deadline.Format(time.RFC3339Nano), RelayNodeID: retiredNameNodeID(1),
-		GatewayNodeID: retiredNameNodeID(2), GatewayProfile: gateway.Profile()}
+		GatewayNodeID: retiredNameNodeID(2)}
 	resolveInput := base
 	resolveInput.Schema = "ardents-private-resolution-input-v1"
 	resolveInput.ConnectionRendezvousNodeID = retiredNameNodeID(3)
@@ -216,32 +181,6 @@ func prepareRetiredNameInputs(t *testing.T) retiredNameInputs {
 	controlInput.ConnectionRendezvousNodeID = retiredNameNodeID(0)
 	controlInput.AdmissionChallenge = controlChallenge
 
-	// Exercise the retained clients against the same accepted State and Namespace
-	// before capturing their durable roots. These are the paths the old adapter used.
-	selection := nameresolution.Selection{At: now, Deadline: deadline, RelayNodeID: [32]byte{1},
-		GatewayNodeID: [32]byte{2}, ConnectionRendezvousNodeID: [32]byte{3},
-		AdmissionChallenge: resolveChallenge}
-	transport := relayServer.Client().Transport.(*http.Transport)
-	resolver, err := nameresolution.Open(stateFixture.view, selection, gateway.Profile(), isolation, transport)
-	if err != nil {
-		t.Fatalf("former resolve input cannot open: %v", err)
-	}
-	if result, err := resolver.Resolve(t.Context(), "alice", now); err != nil || result.Class != "resolved" {
-		t.Fatalf("former resolve input cannot resolve: result=%+v err=%v", result, err)
-	}
-	selection.ConnectionRendezvousNodeID = [32]byte{}
-	selection.AdmissionChallenge = controlChallenge
-	client, err := nameresolution.OpenControl(stateFixture.view, selection, gateway.Profile(), isolation, transport)
-	if err != nil {
-		t.Fatalf("former control input cannot open: %v", err)
-	}
-	operationRaw, err = json.Marshal(operation)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if result, err := client.Execute(t.Context(), operationRaw, now); err != nil || result.Class != "submitted" {
-		t.Fatalf("former control input cannot submit: result=%+v err=%v", result, err)
-	}
 	if err := closeStore(); err != nil {
 		t.Fatal(err)
 	}
@@ -269,15 +208,6 @@ func retiredNameResolutionDigest(t *testing.T, network [32]byte, raw string, dea
 	transcript = binary.BigEndian.AppendUint64(transcript, uint64(deadline))
 	transcript = binary.BigEndian.AppendUint16(transcript, uint16(len(wire)))
 	return sha256.Sum256(append(transcript, wire...))
-}
-
-func retiredNameEndpoint(t *testing.T, raw string) string {
-	t.Helper()
-	parsed, err := url.Parse(raw)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return parsed.Host
 }
 
 func retiredNameNodeID(marker byte) string {

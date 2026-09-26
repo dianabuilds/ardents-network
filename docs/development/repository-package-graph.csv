@@ -35,7 +35,6 @@ package,production_go,test_go,incoming_packages,linux_imports,windows_imports
 "internal/naming/namespace/epoch","16","2","4","internal/naming;internal/naming/namespace/claim;internal/naming/namespace/record","internal/naming;internal/naming/namespace/claim;internal/naming/namespace/record"
 "internal/naming/namespace/record","14","5","6","internal/naming;internal/naming/namespace/recovery","internal/naming;internal/naming/namespace/recovery"
 "internal/naming/namespace/recovery","4","1","2","internal/naming","internal/naming"
-"internal/naming/resolution","15","10","0","internal/naming;internal/naming/namespace;internal/naming/namespace/admission;internal/naming/namespace/authority;internal/naming/namespace/epoch;internal/naming/namespace/record;internal/network/state","internal/naming;internal/naming/namespace;internal/naming/namespace/admission;internal/naming/namespace/authority;internal/naming/namespace/epoch;internal/naming/namespace/record;internal/network/state"
 "internal/network/duty","14","6","4","",""
 "internal/network/source","5","5","3","",""
 "internal/network/state","57","32","10","internal/network/duty;internal/network/source;internal/resource","internal/network/duty;internal/network/source;internal/resource"

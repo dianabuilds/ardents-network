@@ -19,8 +19,6 @@ type retiredNameState struct {
 	network     [32]byte
 	digest      [32]byte
 	authorities [2]ed25519.PrivateKey
-	gateway     ed25519.PrivateKey
-	view        state.ResolutionView
 }
 
 func prepareRetiredNameState(t *testing.T, root string, now time.Time, endpoints [3]string) retiredNameState {
@@ -130,7 +128,7 @@ func prepareRetiredNameState(t *testing.T, root string, now time.Time, endpoints
 		}
 	}
 	return retiredNameState{root: stateRoot, network: network, digest: digest,
-		authorities: authorities, gateway: keys[1], view: view}
+		authorities: authorities}
 }
 
 func retiredNameRecord(network, node [32]byte, private ed25519.PrivateKey,

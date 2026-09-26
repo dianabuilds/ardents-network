@@ -270,6 +270,9 @@ func TestDurableControlRejectsLateRootClaim(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if submission.Digest() != digest {
+		t.Fatalf("submission digest does not bind the admitted operation digest")
+	}
 	challenge, err := gate.Issue(now.UnixMilli(), "root-claim", digest, [32]byte{1},
 		now.Add(15*time.Second).UnixMilli(), [16]byte{1})
 	if err != nil {
