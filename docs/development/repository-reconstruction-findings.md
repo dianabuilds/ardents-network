@@ -1666,13 +1666,22 @@ by merely switching a version constant. Keeping both indefinitely also
 conflicts with the desired single-version simplification if both diagnostics
 remain in the maintained operator surface.
 
-**Disposition boundary.** Converge on one maintained disclosure-inspection
-format. Decide whether the current transition report still needs ACA1 and
-whether ACA2 inspection belongs to the C0 operator surface or retained
-evidence. Choose the catalog-floor owner and treatment of existing ACA1 reader
-roots, then supersede ADR-0041's explicit dual-format retention before
-removing the old command, reader, and parser. Keep inspection separate from
-Endpoint authorization throughout.
+**Disposition boundary at the source baseline.** One maintained inspection
+format requires an explicit choice of catalog-floor ownership and retained
+root treatment. The stateless ACA2 parser cannot replace the ACA1 reader by
+switching a version constant. Inspection remains separate from Endpoint
+authorization.
+
+**Decision (ADR-0110).** ACA1 is the one maintained disclosure-inspection
+format. The transition report needs its current Release, Network, and
+Compatibility results and its separate catalog/Release/Network inspection
+floors; those roots reopen unchanged. ACA2 exists only for the retired Alpha
+Corpus diagnostic and owns no floor, so no ACA2 inspection migration exists.
+The accepting `inspect-alpha-corpus` command and its production verifier are
+to be retired together with a before-effect refusal. The separate retained
+Alpha Corpus floor reader and enrollment v2/v3 grammar are different owners;
+this decision does not delete or reinterpret their bytes. The source still
+contains the ACA2 command until its bounded implementation slice lands.
 
 ## F-50: Closed Route profile does not pin its Epoch envelope schema
 

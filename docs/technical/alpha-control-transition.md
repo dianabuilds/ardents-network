@@ -45,6 +45,13 @@ exact alpha-control report identity, and a result for all four domains. The acce
 outcomes are `accepted` and `not-selected`; failure outcomes are
 `forged`, `stale`, `replayed`, `revoked`, `conflicting`, and `unavailable`.
 
+ADR-0110 selects ACA1 as the sole maintained control-inspection format. The
+ACA1 catalog and independent Release and Network inspection floors continue
+to back `inspect-bundle` and this transition report. The separate ACA2
+Alpha Corpus diagnostic is selected for retirement; its command remains in
+the source until that bounded removal lands and never owns an inspection
+floor or Endpoint authority.
+
 ## Verification
 
 The maintained report classifier exercises the complete matrix. The Linux
@@ -58,5 +65,6 @@ Beta promotion.
 
 ## Governing decisions
 
-ADR-0004, ADR-0006, ADR-0038, ADR-0043, ADR-0053, and ADR-0054 govern this
-contract. R-123 records its decision evidence.
+ADR-0004, ADR-0006, ADR-0038, ADR-0043, ADR-0053, ADR-0054, and ADR-0110 govern this
+contract. R-123 records its transition evidence; F-49 records the one-format
+inspection disposition.
