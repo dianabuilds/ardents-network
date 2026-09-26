@@ -111,33 +111,34 @@ func TestImportRejectsInviteV1IdentityAndBody(t *testing.T) {
 	}
 }
 
-func TestVerifyReturnsOnlyCurrentInitiatorAuthorization(t *testing.T) {
+func TestValidateInviteReturnsOnlyCurrentInitiatorCandidate(t *testing.T) {
 	fixture := newEntryFixture(t)
 	raw := fixture.invite(t, fixture.candidates[0], 0, 1, nil)
-	authorization, candidate, class, err := Verify(raw, fixture.verification())
+	decoded, candidate, class, err := validateInvite(raw, fixture.verification())
 	if err != nil || class != Accepted {
-		t.Fatalf("Verify = %+v, %+v, %q, %v", authorization, candidate, class, err)
+		t.Fatalf("validateInvite = %+v, %+v, %q, %v", decoded, candidate, class, err)
 	}
-	if authorization.InviteID == [32]byte{} || authorization.NetworkID != fixture.view.NetworkID ||
-		authorization.Digest != fixture.view.Digest || authorization.Epoch != fixture.view.Epoch ||
-		authorization.InitiatorNodeID != fixture.candidates[0].NodeID || authorization.RecipientPublicKey != fixture.recipient || !authorization.NotAfter.After(fixture.now) ||
-		candidate != fixture.candidates[0] {
-		t.Fatalf("unexpected authorization = %+v, candidate = %+v", authorization, candidate)
+	if decoded.id == [32]byte{} || decoded.networkID != fixture.view.NetworkID ||
+		decoded.epochDigest != fixture.view.Digest || decoded.epoch != fixture.view.Epoch ||
+		decoded.nodeID != fixture.candidates[0].NodeID || decoded.recipientPublicKey != fixture.recipient ||
+		!time.Unix(decoded.notAfter, 0).UTC().After(fixture.now) || candidate != fixture.candidates[0] {
+		t.Fatalf("unexpected decoded = %+v, candidate = %+v", decoded, candidate)
 	}
 	mutated := append([]byte(nil), raw...)
 	mutated[len(mutated)-1] ^= 1
-	if authorization, _, class, err := Verify(mutated, fixture.verification()); err != nil || class != Invalid || authorization != (Authorization{}) {
-		t.Fatalf("mutated Verify = %+v, %q, %v", authorization, class, err)
+	if _, candidate, class, err := validateInvite(mutated, fixture.verification()); err != nil || class != Invalid || candidate != (Candidate{}) {
+		t.Fatalf("mutated validateInvite = %+v, %q, %v", candidate, class, err)
 	}
 }
 
-// TestVerifyReturnsConflictingRoleWhenConflictCallbackReturnsTrue exercises
-// the entry.Verify → Verification.Conflict → ConflictingRole path end-to-end.
+// TestValidateInviteReturnsConflictingRoleWhenConflictCallbackReturnsTrue
+// exercises the validateInvite → Verification.Conflict → ConflictingRole path
+// end-to-end.
 // The Conflict callback is a stub that returns (true, nil) to simulate a
 // state-level conflict (e.g., a direct-source exposure). The real conflict
 // detection logic is tested separately in
 // internal/network/duty/source_collision_chain_test.go.
-func TestVerifyReturnsConflictingRoleWhenConflictCallbackReturnsTrue(t *testing.T) {
+func TestValidateInviteReturnsConflictingRoleWhenConflictCallbackReturnsTrue(t *testing.T) {
 	fixture := newEntryFixture(t)
 	raw := fixture.invite(t, fixture.candidates[0], 0, 1, nil)
 	verification := Verification{
@@ -146,7 +147,7 @@ func TestVerifyReturnsConflictingRoleWhenConflictCallbackReturnsTrue(t *testing.
 		Clock:         func() time.Time { return fixture.now },
 		TimeConfident: func() bool { return true },
 	}
-	_, _, class, err := Verify(raw, verification)
+	_, _, class, err := validateInvite(raw, verification)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -308,21 +309,6 @@ func (fixture entryFixture) invite(t *testing.T, candidate Candidate, slot, gene
 	invite = append(invite, byte(len(body)>>8), byte(len(body)))
 	invite = append(invite, body...)
 	return append(invite, signature...)
-}
-
-func TestIssueProducesAStateReferencedInvite(t *testing.T) {
-	fixture := newEntryFixture(t)
-	candidate := fixture.candidates[0]
-	raw, err := Issue(IssueInput{NetworkID: fixture.view.NetworkID, Digest: fixture.view.Digest, RecipientPublicKey: fixture.recipient, Epoch: fixture.view.Epoch,
-		Candidate: candidate, NotBefore: fixture.now.Add(-time.Second), NotAfter: fixture.now.Add(time.Second), Slot: 0, Generation: 1},
-		fixture.private[candidate.KeyID])
-	if err != nil {
-		t.Fatal(err)
-	}
-	authorization, selected, class, err := Verify(raw, fixture.verification())
-	if err != nil || class != Accepted || authorization.InitiatorNodeID != candidate.NodeID || selected.KeyID != candidate.KeyID {
-		t.Fatalf("issued Invite verification = %+v %+v %s %v", authorization, selected, class, err)
-	}
 }
 
 func appendUint16(destination []byte, value uint16) []byte {

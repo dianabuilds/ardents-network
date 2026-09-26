@@ -6,18 +6,11 @@ import (
 	"time"
 )
 
-// Verify validates one R-077 Invite against current Initiator State and duty
-// facts. It is the Initiator-side Entry port: callers receive only a bounded
-// authorization and adjacent candidate, never a User identity or Entry root.
-func Verify(raw []byte, input Verification) (Authorization, Candidate, Class, error) {
-	decoded, candidate, class, err := validateInvite(raw, input)
-	if err != nil || class != Accepted {
-		return Authorization{}, Candidate{}, class, err
-	}
-	return Authorization{InviteID: decoded.id, NetworkID: decoded.networkID, Digest: decoded.epochDigest, RecipientPublicKey: decoded.recipientPublicKey,
-		Epoch: decoded.epoch, InitiatorNodeID: decoded.nodeID, NotAfter: time.Unix(decoded.notAfter, 0).UTC()}, candidate, Accepted, nil
-}
-
+// validateInvite classifies one R-077 Invite against current State and duty
+// facts. It is the retained internal verifier that Import and the reopen
+// revalidation path need to read stored Invite records (ADR-0096); the
+// exported Initiator-side Verify wrapper was rejected with the closed-alpha
+// issuance surface.
 func validateInvite(raw []byte, input Verification) (invite, Candidate, Class, error) {
 	decoded, class := decodeInvite(raw)
 	if class != Accepted {
@@ -64,12 +57,6 @@ func validateInvite(raw []byte, input Verification) (invite, Candidate, Class, e
 	if !notBefore.Before(notAfter) || !now.Before(notAfter) || notBefore.Before(candidate.ValidFrom) ||
 		notAfter.After(candidate.ValidUntil) || notAfter.After(candidate.AssignmentNotAfter) {
 		return decoded, Candidate{}, Expired, nil
-	}
-	if input.MinimumReservation > 0 {
-		required := now.Add(input.MinimumReservation)
-		if !required.Before(candidate.AssignmentNotAfter) {
-			return decoded, Candidate{}, Insufficient, nil
-		}
 	}
 	return decoded, candidate, Accepted, nil
 }

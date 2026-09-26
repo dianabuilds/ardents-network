@@ -22,10 +22,10 @@ import (
 // production wires as `entry.Verification.Conflict`.
 //
 // The contract's four behaviours are exercised end-to-end on the store
-// side. The entry-side wiring (`Verify` calling `Conflict` and returning
-// `ConflictingRole`) is unchanged production code and is covered by the
-// existing `internal/entry/entry_test.go` test
-// `TestVerifyReturnsOnlyCurrentInitiatorAuthorization`.
+// side. The entry-side wiring (`validateInvite` calling `Conflict` and
+// returning `ConflictingRole`) is unchanged production code and is covered
+// by the existing `internal/entry/entry_test.go` test
+// `TestValidateInviteReturnsOnlyCurrentInitiatorCandidate`.
 
 func openStoreWithClock(t *testing.T) (localDutyStore, string, func() time.Time) {
 	t.Helper()

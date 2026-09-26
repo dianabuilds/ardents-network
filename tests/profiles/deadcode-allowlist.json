@@ -30,19 +30,6 @@
     },
     {
       "symbols": [
-        "internal/entry.Issue",
-        "internal/entry.Verify",
-        "internal/entry.appendIssueUint16",
-        "internal/entry.appendIssueUint64",
-        "internal/entry.validIssueInput"
-      ],
-      "classification": "unwired closed-alpha tracer",
-      "rationale": "The Entry issuance and verification primitives have deterministic behavior evidence but no selected C0 command reaches this candidate surface.",
-      "owner": "Product Owner and Codex",
-      "retirement": "Connect it through an accepted C0 command contract or remove it in the ADR that rejects the candidate."
-    },
-    {
-      "symbols": [
         "internal/naming.FormatServiceLink",
         "internal/naming.ParseServiceLink"
       ],

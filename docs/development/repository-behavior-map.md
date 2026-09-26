@@ -1217,10 +1217,11 @@ import,attempt,closed_set_store,closed_sets}.go`, Endpoint
    `owner.Contact`, the guarded carrier, the cleanup leases, and the
    attempt-journal writers. The durable attempt/contact journal schema stays
    decodable; `Open` terminalizes a legacy journal as interrupted. The command
-   still uses the private `validateInvite` through `owner.Import` and reopen,
-   so the old issuer adapter can be assessed separately from retained-root
-   authentication. `entry.Issue` and exported `entry.Verify` remain unwired
-   tracers; `Issue` constructs valid Invites only in tests.
+   still uses the private `validateInvite` through `owner.Import` and reopen.
+   ADR-0096 then rejected the closed-alpha candidate surface: `entry.Issue`,
+   exported `entry.Verify`, its `Authorization` result, and the
+   reservation/`Insufficient` policy are removed; only `validateInvite`
+   remains, reading retained Invite records.
 
 The two roots are not version negotiation in one C0 journey. The target has
 one closed Entry selection path. The uncalled v2 attachment machinery is
