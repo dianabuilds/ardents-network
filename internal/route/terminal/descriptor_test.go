@@ -10,13 +10,25 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/service/reachability"
 )
 
+// TestTerminalDescriptorProofBoundMatchesReachability is the cross-owner
+// equality check for F-29: the terminal-local wire bound is the exact
+// Reachability proof bound, so removing the production import cannot drift
+// silently. The framing outcomes at 15,000 and 15,001 bytes are asserted by
+// the two tests below.
+func TestTerminalDescriptorProofBoundMatchesReachability(t *testing.T) {
+	if MaximumDescriptorProofSize != reachability.MaximumPrivateDescriptorSize {
+		t.Fatalf("terminal bound %d differs from reachability bound %d",
+			MaximumDescriptorProofSize, reachability.MaximumPrivateDescriptorSize)
+	}
+}
+
 func TestClosedDescriptorOperationsHaveExactTerminalFraming(t *testing.T) {
 	nonce, target := [32]byte{1}, [32]byte{2}
 	lookup, err := EncodeDescriptorLookup(nonce, target)
 	if err != nil {
 		t.Fatal(err)
 	}
-	proof := bytes.Repeat([]byte{3}, reachability.MaximumPrivateDescriptorSize)
+	proof := bytes.Repeat([]byte{3}, MaximumDescriptorProofSize)
 	publish, err := EncodeDescriptorPublication(nonce, proof)
 	if err != nil {
 		t.Fatal(err)

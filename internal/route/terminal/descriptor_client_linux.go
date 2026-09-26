@@ -5,8 +5,6 @@ package terminal
 import (
 	"encoding/binary"
 	"errors"
-
-	"github.com/dianabuilds/ardents-network/internal/service/reachability"
 )
 
 // EncodeDescriptorLookup creates the exact 4096-byte operation body.
@@ -24,7 +22,7 @@ func EncodeDescriptorLookup(nonce, target [32]byte) ([]byte, error) {
 // EncodeDescriptorPublication keeps the complete signed proof inside
 // the exact 16384-byte operation body; it never substitutes a URL or prefix.
 func EncodeDescriptorPublication(nonce [32]byte, descriptor []byte) ([]byte, error) {
-	if nonce == [32]byte{} || len(descriptor) == 0 || len(descriptor) > reachability.MaximumPrivateDescriptorSize {
+	if nonce == [32]byte{} || len(descriptor) == 0 || len(descriptor) > MaximumDescriptorProofSize {
 		return nil, errors.New("closed Descriptor publication is invalid")
 	}
 	body := make([]byte, BodySize)

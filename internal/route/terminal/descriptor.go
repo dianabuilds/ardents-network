@@ -3,8 +3,6 @@ package terminal
 import (
 	"encoding/binary"
 	"errors"
-
-	"github.com/dianabuilds/ardents-network/internal/service/reachability"
 )
 
 // DescriptorRequest contains exactly one admitted private lookup or
@@ -36,7 +34,7 @@ func DecodeDescriptorRequest(body []byte) (DescriptorRequest, error) {
 		}
 	case 6:
 		length := int(binary.BigEndian.Uint16(body[33:35]))
-		if len(body) != BodySize || length == 0 || length > reachability.MaximumPrivateDescriptorSize || !zeroPadding(body[35+length:]) {
+		if len(body) != BodySize || length == 0 || length > MaximumDescriptorProofSize || !zeroPadding(body[35+length:]) {
 			return request, errors.New("closed Descriptor publication length or padding is invalid")
 		}
 		request.Descriptor = append([]byte(nil), body[35:35+length]...)
@@ -49,7 +47,7 @@ func DecodeDescriptorRequest(body []byte) (DescriptorRequest, error) {
 // EncodeDescriptorResult pads all outcomes to the same 16384 bytes.
 // Only an accepted lookup may carry a proof; publication success is empty.
 func EncodeDescriptorResult(nonce [32]byte, status uint8, descriptor []byte) ([]byte, error) {
-	if nonce == [32]byte{} || status > 4 || len(descriptor) > reachability.MaximumPrivateDescriptorSize || status != 0 && len(descriptor) != 0 {
+	if nonce == [32]byte{} || status > 4 || len(descriptor) > MaximumDescriptorProofSize || status != 0 && len(descriptor) != 0 {
 		return nil, errors.New("closed Descriptor result is invalid")
 	}
 	body := make([]byte, BodySize)
@@ -69,7 +67,7 @@ func DecodeDescriptorResult(body []byte, nonce [32]byte) (uint8, []byte, error) 
 	var received [32]byte
 	copy(received[:], body[:32])
 	length := uint64(binary.BigEndian.Uint32(body[33:37]))
-	if received != nonce || length > reachability.MaximumPrivateDescriptorSize || body[32] != 0 && length != 0 || !zeroPadding(body[37+length:]) {
+	if received != nonce || length > MaximumDescriptorProofSize || body[32] != 0 && length != 0 || !zeroPadding(body[37+length:]) {
 		return 0, nil, errors.New("closed Descriptor result binding or padding is invalid")
 	}
 	return body[32], append([]byte(nil), body[37:37+length]...), nil

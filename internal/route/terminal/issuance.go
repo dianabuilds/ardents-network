@@ -6,12 +6,20 @@ import (
 )
 
 const (
-	issuanceOperation     = uint8(1)
-	SmallBodySize         = 4 << 10
-	BodySize              = 16 << 10
-	issuancePayloadSize   = BodySize - 1 - 32
-	issuanceResultHeader  = 32 + 1 + 4
-	issuanceResultPayload = BodySize - issuanceResultHeader
+	issuanceOperation = uint8(1)
+	SmallBodySize     = 4 << 10
+	BodySize          = 16 << 10
+
+	// MaximumDescriptorProofSize is the exact terminal wire bound for one
+	// complete generation-3 private Descriptor proof inside a 16-KiB body.
+	// Reachability remains the authority for the signed proof and the Store;
+	// descriptor_test pins this bound to the Reachability constant and to the
+	// exact 15,000/15,001-byte framing outcomes, so the terminal codec no
+	// longer inherits the Reachability production dependency closure (F-29).
+	MaximumDescriptorProofSize = 15000
+	issuancePayloadSize        = BodySize - 1 - 32
+	issuanceResultHeader       = 32 + 1 + 4
+	issuanceResultPayload      = BodySize - issuanceResultHeader
 )
 
 // IssuanceRequest is the target-free terminal operation that carries
