@@ -1537,7 +1537,7 @@ unchanged. Whether a closed Epoch may contain an unused additional domain is
 a separate contract question; the per-entry join does not require resolving
 that broader restriction first.
 
-## F-46: Node's old Route duty parsing leaves an unreachable v2 selection branch
+## F-46: Node's old Route duty parsing left dominated validation
 
 **Source fact.** `cmd/ardents-node/node_config.go:readNodePlan` decodes five
 former duty fields (`rendezvous`, `initiator`, `introduction`, `responder`,
@@ -1545,28 +1545,24 @@ former duty fields (`rendezvous`, `initiator`, `introduction`, `responder`,
 keys or constructing the State and Node roots. Any non-nil former field returns
 `errOldNodeDutyRetired`. `node_duty_retirement_test.go` checks that rejection
 precedes changes to the State and local-role roots, including a plan that
-combines a former and a closed duty. Later in the same parser, `nativeDuty`
-still includes those five fields, and its non-closed branch assigns
-`state.AcceptedProfile = route.Profile` (interactive Route v2). That branch
-cannot be reached through `readNodePlan`: the old fields were already
-rejected. A source search found no other production assignment of the v2
-profile in this Node command. The live closed duty branch chooses
-`route.ClosedRouteProfile`.
+combines a former and a closed duty. The v2 `AcceptedProfile` assignment was
+already removed. Later validation still included the five rejected fields in
+`nativeDuty`, resource-profile and closed-duty checks. The live closed duty
+branch chooses `route.ClosedRouteProfile`.
 
 **Consequence.** The command does not currently support two Node duty
-versions, but its parser still reads like a version selector and carries
-former duty payload types through later validation. This inflates the
-apparent supported surface and obscures the single closed C0 path. The
+versions, but its parser carried former duty payload types through later
+validation. This inflated the apparent supported surface. The
 `internal/node` checks for `route.Profile` likewise refuse rather than start
 an old receiver; they are a separate API-level refusal, not proof of a live
 v2 Node command.
 
 **Disposition boundary.** Keep one effect-free, typed refusal for each old
 top-level duty key while those input keys remain a declared compatibility
-obligation. Remove the dominated v2 `AcceptedProfile` assignment and simplify
-post-refusal `nativeDuty`/validation to the five closed reservations. After
-checking exact decoder behavior and tests, reduce former payload structs to
-the smallest representation needed to detect and refuse the old keys. Audit
+obligation. Post-refusal duty and validation checks now cover only the five
+closed reservations. The former payload structs remain for strict decoding
+of retained operator input; replacing them needs an explicit decoder-behavior
+decision. Audit
 the separate `internal/node` v2 refusal against accepted State-input
 compatibility before removing it; no v2 listener, fallback, or conversion is
 needed for the selected C0 configuration.

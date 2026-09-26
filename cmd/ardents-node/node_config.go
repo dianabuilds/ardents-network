@@ -154,19 +154,12 @@ func readNodePlan(path string) (nodeRuntime, error) {
 	if duty := oldNodeDutyReservation(plan); duty != "" {
 		return nodeRuntime{}, fmt.Errorf("%w: %s", errOldNodeDutyRetired, duty)
 	}
-	nativeDuty := plan.Rendezvous != nil || plan.Initiator != nil || plan.Introduction != nil || plan.Responder != nil || plan.TransitIssuer != nil || plan.ClosedIssuer != nil || plan.ClosedForwarding != nil || plan.ClosedResolution != nil || plan.ClosedIntroduction != nil || plan.ClosedDataJoin != nil
-	if plan.NativeRendezvousProfile && !nativeDuty {
+	closedDuty := plan.ClosedIssuer != nil || plan.ClosedForwarding != nil || plan.ClosedResolution != nil || plan.ClosedIntroduction != nil || plan.ClosedDataJoin != nil
+	if plan.NativeRendezvousProfile && !closedDuty {
 		return nodeRuntime{}, errors.New("native Route State profile requires one local native duty")
 	}
-	// H3 resource profiles were calibrated for retired role-probe duties. The
-	// sole selected native profile is purpose-bound to one Rendezvous process.
-	if nativeDuty && plan.NodeResourceProfile != "" {
-		if plan.NodeResourceProfile != node.RendezvousDedicatedHostResourceProfile {
-			return nodeRuntime{}, errors.New("native Route Node resource profile is unselected")
-		}
-		if plan.Rendezvous == nil || plan.Initiator != nil || plan.Introduction != nil || plan.Responder != nil || plan.TransitIssuer != nil || plan.ClosedIssuer != nil || plan.ClosedForwarding != nil || plan.ClosedResolution != nil || plan.ClosedIntroduction != nil || plan.ClosedDataJoin != nil {
-			return nodeRuntime{}, errors.New("functional-alpha resource profile requires only one Rendezvous duty")
-		}
+	if closedDuty && plan.NodeResourceProfile != "" {
+		return nodeRuntime{}, errors.New("native Route Node resource profile is unselected")
 	}
 	if plan.DiagnosticDirectory != "" && (!filepath.IsAbs(plan.DiagnosticDirectory) || filepath.Clean(plan.DiagnosticDirectory) != plan.DiagnosticDirectory) {
 		return nodeRuntime{}, errors.New("node diagnostic directory must be one clean absolute path")
@@ -178,14 +171,14 @@ func readNodePlan(path string) (nodeRuntime, error) {
 	if err := decodeOperatorFixedHex(plan.NetworkID, state.NetworkID[:]); err != nil {
 		return nodeRuntime{}, err
 	}
-	if plan.ClosedIssuer != nil || plan.ClosedForwarding != nil || plan.ClosedResolution != nil || plan.ClosedIntroduction != nil || plan.ClosedDataJoin != nil {
+	if closedDuty {
 		count := 0
 		for _, selected := range []bool{plan.ClosedIssuer != nil, plan.ClosedForwarding != nil, plan.ClosedResolution != nil, plan.ClosedIntroduction != nil, plan.ClosedDataJoin != nil} {
 			if selected {
 				count++
 			}
 		}
-		if plan.Rendezvous != nil || plan.Initiator != nil || plan.Introduction != nil || plan.Responder != nil || plan.TransitIssuer != nil || count != 1 || plan.ClosedProfileAuthority == "" {
+		if count != 1 || plan.ClosedProfileAuthority == "" {
 			return nodeRuntime{}, errors.New("closed duty requires exactly one reservation and its pinned profile authority")
 		}
 		state.AcceptedProfile = route.ClosedRouteProfile
@@ -201,7 +194,7 @@ func readNodePlan(path string) (nodeRuntime, error) {
 		}
 		state.Authorities[sha256.Sum256(public)] = ed25519.PublicKey(public)
 	}
-	if plan.ClosedIssuer != nil || plan.ClosedForwarding != nil || plan.ClosedResolution != nil || plan.ClosedIntroduction != nil || plan.ClosedDataJoin != nil {
+	if closedDuty {
 		public := make([]byte, ed25519.PublicKeySize)
 		if err := decodeOperatorFixedHex(plan.ClosedProfileAuthority, public); err != nil {
 			return nodeRuntime{}, err

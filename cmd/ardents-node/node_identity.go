@@ -47,7 +47,7 @@ func loadNodeIdentity(plan nodePlan, networkID [32]byte) (node.Config, error) {
 		config.ClosedDataJoin = node.ClosedDataJoinProfile{HostingRoot: plan.ClosedDataJoin.HostingRoot, AdmissionRoot: plan.ClosedDataJoin.AdmissionRoot,
 			Certificate: certificate, ConnectionLimit: plan.ClosedDataJoin.ConnectionLimit, DrainTimeout: time.Duration(plan.ClosedDataJoin.DrainTimeoutMS) * time.Millisecond}
 	}
-	if plan.Rendezvous != nil || plan.Initiator != nil || plan.Introduction != nil || plan.Responder != nil || plan.TransitIssuer != nil || plan.ClosedIssuer != nil || plan.ClosedForwarding != nil || plan.ClosedResolution != nil || plan.ClosedIntroduction != nil || plan.ClosedDataJoin != nil {
+	if plan.ClosedIssuer != nil || plan.ClosedForwarding != nil || plan.ClosedResolution != nil || plan.ClosedIntroduction != nil || plan.ClosedDataJoin != nil {
 		return config, nil
 	}
 	root, err := readOperatorInput(plan.ClientRoot, 64<<10)
