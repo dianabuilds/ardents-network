@@ -19,7 +19,7 @@ func validateClosedIntroductionProfile(local ClosedIntroductionProfile, source a
 	return introduction.Validate(local, source, snapshot, now, literalNodeEndpoint(snapshot.ProbeEndpoint))
 }
 
-func newClosedIntroductionServer(local ClosedIntroductionProfile, inputs roleInputs, snapshot state.NodeDuty) (*introduction.Server, error) {
+func newClosedIntroductionServer(local ClosedIntroductionProfile, inputs roleInputs, host closedHostingHandle, snapshot state.NodeDuty) (*introduction.Server, error) {
 	if err := validateClosedIntroductionProfile(local, inputs.authority, snapshot, inputs.now()); err != nil {
 		return nil, err
 	}
@@ -30,13 +30,13 @@ func newClosedIntroductionServer(local ClosedIntroductionProfile, inputs roleInp
 	return introduction.Start(introduction.Config{Profile: local, Snapshot: snapshot,
 		Authority: inputs.authority, CurrentDuty: inputs.currentDuty,
 		VerifyAdmission: func(receiver route.ClosedRoleReceiver) route.ClosedAdmissionVerifier {
-			return hosting.ControlAdmissionVerifier(inputs.authority, inputs.now, receiver, inputs.host)
+			return hosting.ControlAdmissionVerifier(inputs.authority, inputs.now, receiver, host)
 		},
 		Now: inputs.now, ListenAddress: listen})
 }
 
-func startClosedIntroduction(local ClosedIntroductionProfile, inputs roleInputs, snapshot state.NodeDuty) (*dutyHandle, error) {
-	server, err := newClosedIntroductionServer(local, inputs, snapshot)
+func startClosedIntroduction(local ClosedIntroductionProfile, inputs roleInputs, host closedHostingHandle, snapshot state.NodeDuty) (*dutyHandle, error) {
+	server, err := newClosedIntroductionServer(local, inputs, host, snapshot)
 	if err != nil {
 		return nil, err
 	}

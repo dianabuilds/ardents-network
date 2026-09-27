@@ -35,7 +35,7 @@ func TestClosedResolutionRetainsHostingReleaseFailureAfterReply(t *testing.T) {
 			if err != nil {
 				return nil, err
 			}
-			handle, err = startClosedResolution(resolved.ClosedResolution, projectRoleInputs(resolved), snapshot)
+			handle, err = startClosedResolution(resolved.ClosedResolution, projectRoleInputs(resolved), resolved.host, snapshot)
 			if err != nil {
 				return nil, err
 			}

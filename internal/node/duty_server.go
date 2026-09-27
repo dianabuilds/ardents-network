@@ -30,7 +30,6 @@ type roleInputs struct {
 	currentDuty    func() (state.NodeDuty, error)
 	now            func() time.Time
 	listenOverride string
-	host           closedHostingHandle
 }
 
 func projectRoleInputs(config runtimeConfig) roleInputs {
@@ -38,7 +37,7 @@ func projectRoleInputs(config runtimeConfig) roleInputs {
 	return roleInputs{
 		authority:   nodeAuthority(config),
 		currentDuty: func() (state.NodeDuty, error) { return currentFacts(current) },
-		now:         config.now, listenOverride: config.ClosedListenOverride, host: config.host,
+		now:         config.now, listenOverride: config.ClosedListenOverride,
 	}
 }
 
@@ -71,13 +70,13 @@ func startDuty(config runtimeConfig, snapshot state.NodeDuty) (*dutyHandle, erro
 		}
 		switch purpose {
 		case ardp.PurposeIssuer:
-			return startClosedIssuer(config.ClosedIssuer, inputs, snapshot)
+			return startClosedIssuer(config.ClosedIssuer, inputs, config.host, snapshot)
 		case ardp.PurposeForwarding:
 			return startClosedForwarding(config.ClosedForwarding, inputs, snapshot)
 		case ardp.PurposeReachability:
-			return startClosedResolution(config.ClosedResolution, inputs, snapshot)
+			return startClosedResolution(config.ClosedResolution, inputs, config.host, snapshot)
 		case ardp.PurposeIntroduction:
-			return startClosedIntroduction(config.ClosedIntroduction, inputs, snapshot)
+			return startClosedIntroduction(config.ClosedIntroduction, inputs, config.host, snapshot)
 		case ardp.PurposeDataJoin:
 			return startClosedDataJoin(config.ClosedDataJoin, inputs, snapshot)
 		}

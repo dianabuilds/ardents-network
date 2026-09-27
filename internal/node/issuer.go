@@ -18,7 +18,7 @@ func validateClosedIssuerProfile(local ClosedIssuerProfile, source authority.Sou
 	return issuer.Validate(local, source, snapshot, now, literalNodeEndpoint(snapshot.ProbeEndpoint))
 }
 
-func startClosedIssuer(local ClosedIssuerProfile, inputs roleInputs, snapshot state.NodeDuty) (*dutyHandle, error) {
+func startClosedIssuer(local ClosedIssuerProfile, inputs roleInputs, host closedHostingHandle, snapshot state.NodeDuty) (*dutyHandle, error) {
 	if err := validateClosedIssuerProfile(local, inputs.authority, snapshot, inputs.now()); err != nil {
 		return nil, err
 	}
@@ -29,7 +29,7 @@ func startClosedIssuer(local ClosedIssuerProfile, inputs roleInputs, snapshot st
 	role, err := issuer.Start(issuer.Config{Profile: local, Snapshot: snapshot,
 		Authority: inputs.authority, CurrentDuty: inputs.currentDuty,
 		VerifyAdmission: func(receiver route.ClosedRoleReceiver) route.ClosedAdmissionVerifier {
-			return hosting.ControlAdmissionVerifier(inputs.authority, inputs.now, receiver, inputs.host)
+			return hosting.ControlAdmissionVerifier(inputs.authority, inputs.now, receiver, host)
 		},
 		Now: inputs.now, ListenAddress: listen})
 	if err != nil {

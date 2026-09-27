@@ -17,7 +17,7 @@ func validateClosedResolutionProfile(local ClosedResolutionProfile, source autho
 	return resolution.Validate(local, source, snapshot, now, literalNodeEndpoint(snapshot.ProbeEndpoint))
 }
 
-func startClosedResolution(local ClosedResolutionProfile, inputs roleInputs, snapshot state.NodeDuty) (*dutyHandle, error) {
+func startClosedResolution(local ClosedResolutionProfile, inputs roleInputs, host closedHostingHandle, snapshot state.NodeDuty) (*dutyHandle, error) {
 	if err := validateClosedResolutionProfile(local, inputs.authority, snapshot, inputs.now()); err != nil {
 		return nil, err
 	}
@@ -28,7 +28,7 @@ func startClosedResolution(local ClosedResolutionProfile, inputs roleInputs, sna
 	role, err := resolution.Start(resolution.Config{Profile: local, Snapshot: snapshot,
 		Authority: inputs.authority, CurrentDuty: inputs.currentDuty,
 		VerifyAdmission: func(receiver route.ClosedRoleReceiver) route.ClosedAdmissionVerifier {
-			return hosting.ControlAdmissionVerifier(inputs.authority, inputs.now, receiver, inputs.host)
+			return hosting.ControlAdmissionVerifier(inputs.authority, inputs.now, receiver, host)
 		},
 		Now: inputs.now, ListenAddress: listen})
 	if err != nil {

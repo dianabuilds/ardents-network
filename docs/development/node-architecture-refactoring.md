@@ -101,7 +101,10 @@ that prefix as a substitute for an owner.
 The process composer retains `runtimeConfig`, including its copied public
 `Config`. Each role adapter receives only the selected local profile, copied
 State duty, and a private `roleInputs` projection of current State authority,
-bounded duty refresh, clock, listener override and shared Hosting handle.
+bounded duty refresh, clock and listener override. The issuer, resolution and
+introduction adapters receive the shared Hosting handle separately for their
+control admission; forwarding and JOIN do not receive that handle through the
+common projection.
 The refresh callback retains only the public `Current` function. Admission
 validation receives an authority projection with its one-poll State view
 rather than the full process configuration; no child role receives process

@@ -125,7 +125,7 @@ func newClosedBootstrapNetwork(t *testing.T, carrier routecarrier.CarrierProfile
 			if err := config.openClosedHosting(); err != nil {
 				t.Fatal(err)
 			}
-			server, err = startClosedIssuer(config.ClosedIssuer, projectRoleInputs(config), snapshot)
+			server, err = startClosedIssuer(config.ClosedIssuer, projectRoleInputs(config), config.host, snapshot)
 		} else {
 			root := filepath.Join(t.TempDir(), "spends")
 			if err := os.MkdirAll(root, 0o700); err != nil {
