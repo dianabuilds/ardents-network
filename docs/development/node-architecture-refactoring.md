@@ -4,12 +4,9 @@ Status: **current ownership plan**. The product scope, threat model, accepted
 ADRs, [Network/Node technical owner](../technical/network-route-node.md), and
 GitHub issues govern behavior and delivery. This document records code
 boundaries, not a second task ledger. The initial source graph was checked
-against `dev` at `51b38337` on 2026-09-27. The result below describes the
-initial extracted Node packages integrated into `dev` at `a2db90bb`. The
-follow-up Node ownership and Endpoint qualification slices were integrated at
-`5a757e49` after the combined `make check` and Linux Docker build/tests.
-The subsequent root-file audit and ready Endpoint publication slice were
-integrated at `59026c64` after the same combined gates.
+against `dev` at `51b38337` on 2026-09-27. The current boundaries and file
+inventory below were checked against `dev` at `c2126de2` on 2026-09-28;
+individual integration receipts remain in Git history.
 Installed systemd/cgroup evidence remains a later shared qualification
 milestone.
 The [C0 component reconstruction](c0-component-reconstruction.md) and
