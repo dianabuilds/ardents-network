@@ -15,26 +15,6 @@ func privateRecipientFixtureWindow(now time.Time) (time.Time, time.Time) {
 	return start, start.Truncate(time.Hour).Add(time.Hour)
 }
 
-func privateRecipientFixtureStart(t *testing.T) (time.Time, time.Time) {
-	t.Helper()
-	for {
-		now := time.Now().UTC()
-		start, end := privateRecipientFixtureWindow(now)
-		if !start.After(now) {
-			return now.Truncate(time.Second), end
-		}
-		// Wait for a valid test issuance window; do not change product clocks,
-		// redeem a future token early, or drop the test as an unavailable skip.
-		timer := time.NewTimer(time.Until(start))
-		select {
-		case <-t.Context().Done():
-			timer.Stop()
-			t.Fatal("recipient fixture window canceled")
-		case <-timer.C:
-		}
-	}
-}
-
 func TestPrivateRecipientFixturePreservesItsCompleteTestWindow(t *testing.T) {
 	for _, minute := range []int{0, 58, 59} {
 		for _, second := range []int{0, 15, 59} {

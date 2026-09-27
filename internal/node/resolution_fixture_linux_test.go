@@ -27,6 +27,26 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/service/reachability"
 )
 
+func privateRecipientFixtureStart(t *testing.T) (time.Time, time.Time) {
+	t.Helper()
+	for {
+		now := time.Now().UTC()
+		start, end := privateRecipientFixtureWindow(now)
+		if !start.After(now) {
+			return now.Truncate(time.Second), end
+		}
+		// Wait for a valid test issuance window; do not change product clocks,
+		// redeem a future token early, or drop the test as an unavailable skip.
+		timer := time.NewTimer(time.Until(start))
+		select {
+		case <-t.Context().Done():
+			timer.Stop()
+			t.Fatal("recipient fixture window canceled")
+		case <-timer.C:
+		}
+	}
+}
+
 // State, offline Permission authority and existing Publication acknowledgement
 // are fixtures. The recipient Run lifecycle, Carrier, nested TLS, issuer crypto,
 // admission spend and Descriptor Store are real. This does not qualify private
