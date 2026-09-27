@@ -106,6 +106,10 @@ The refresh callback retains only the public `Current` function. Admission
 validation receives an authority projection with its one-poll State view
 rather than the full process configuration; no child role receives process
 pressure or event state.
+Admission and startup use one private ordered role selector. Admission checks
+the captured State view at its single poll time; startup rechecks the current
+State view with its live clock before transferring resources to the selected
+role. Profile validation and process failure decisions remain in the root.
 Within the forwarding package, the listener owns accepted producers; the
 session set owns each retained outgoing Carrier reader and its child frame
 queues; a link joins one child lane to that session. They share one shutdown

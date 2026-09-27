@@ -43,26 +43,45 @@ func projectRoleInputs(config runtimeConfig) roleInputs {
 }
 
 const nativeRouteUnavailableReason = "native Route assignment is not implemented"
+const closedRouteUnavailableReason = "closed Route assignment is not locally implemented"
+
+// selectClosedRole preserves the process dispatch order. Admission supplies one
+// captured poll time; startup supplies its live clock for each authority check.
+func selectClosedRole(source authority.Source, snapshot state.NodeDuty, now func() time.Time) (ardp.Purpose, bool) {
+	for _, purpose := range [...]ardp.Purpose{
+		ardp.PurposeIssuer,
+		ardp.PurposeForwarding,
+		ardp.PurposeReachability,
+		ardp.PurposeIntroduction,
+		ardp.PurposeDataJoin,
+	} {
+		if _, available := source.Receiver(snapshot, purpose, now()); available {
+			return purpose, true
+		}
+	}
+	return 0, false
+}
 
 func startDuty(config runtimeConfig, snapshot state.NodeDuty) (*dutyHandle, error) {
 	if snapshot.Profile == carrier.ClosedRouteProfile {
 		inputs := projectRoleInputs(config)
-		if _, available := inputs.authority.Receiver(snapshot, ardp.PurposeIssuer, inputs.now()); available {
+		purpose, available := selectClosedRole(inputs.authority, snapshot, inputs.now)
+		if !available {
+			return nil, errors.New(closedRouteUnavailableReason)
+		}
+		switch purpose {
+		case ardp.PurposeIssuer:
 			return startClosedIssuer(config.ClosedIssuer, inputs, snapshot)
-		}
-		if _, available := inputs.authority.Receiver(snapshot, ardp.PurposeForwarding, inputs.now()); available {
+		case ardp.PurposeForwarding:
 			return startClosedForwarding(config.ClosedForwarding, inputs, snapshot)
-		}
-		if _, available := inputs.authority.Receiver(snapshot, ardp.PurposeReachability, inputs.now()); available {
+		case ardp.PurposeReachability:
 			return startClosedResolution(config.ClosedResolution, inputs, snapshot)
-		}
-		if _, available := inputs.authority.Receiver(snapshot, ardp.PurposeIntroduction, inputs.now()); available {
+		case ardp.PurposeIntroduction:
 			return startClosedIntroduction(config.ClosedIntroduction, inputs, snapshot)
-		}
-		if _, available := inputs.authority.Receiver(snapshot, ardp.PurposeDataJoin, inputs.now()); available {
+		case ardp.PurposeDataJoin:
 			return startClosedDataJoin(config.ClosedDataJoin, inputs, snapshot)
 		}
-		return nil, errors.New("closed Route assignment is not locally implemented")
+		return nil, errors.New(closedRouteUnavailableReason)
 	}
 	if snapshot.Profile == route.Profile {
 		return nil, errors.New(nativeRouteUnavailableReason)

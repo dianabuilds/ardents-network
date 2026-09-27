@@ -108,28 +108,25 @@ func assessAdmission(config runtimeConfig, snapshot state.NodeDuty) admission {
 		stableConfig.CurrentClosedRoute = func() (state.ClosedRouteView, error) { return closedRoute, nil }
 		stableConfig.CurrentClosedProfile = func() (state.ClosedProfileView, bool) { return closedRoute.Profile, true }
 		stableAuthority := nodeAuthority(stableConfig)
-		if _, available := stableAuthority.Receiver(snapshot, ardp.PurposeIssuer, now); available {
-			if err := validateClosedIssuerProfile(config.ClosedIssuer, stableAuthority, snapshot, now); err != nil {
-				return admission{kind: admissionPrepared, reason: err.Error()}
-			}
-		} else if _, available := stableAuthority.Receiver(snapshot, ardp.PurposeForwarding, now); available {
-			if err := validateClosedForwardingProfile(config.ClosedForwarding, stableAuthority, snapshot, now); err != nil {
-				return admission{kind: admissionPrepared, reason: err.Error()}
-			}
-		} else if _, available := stableAuthority.Receiver(snapshot, ardp.PurposeReachability, now); available {
-			if err := validateClosedResolutionProfile(config.ClosedResolution, stableAuthority, snapshot, now); err != nil {
-				return admission{kind: admissionPrepared, reason: err.Error()}
-			}
-		} else if _, available := stableAuthority.Receiver(snapshot, ardp.PurposeIntroduction, now); available {
-			if err := validateClosedIntroductionProfile(config.ClosedIntroduction, stableAuthority, snapshot, now); err != nil {
-				return admission{kind: admissionPrepared, reason: err.Error()}
-			}
-		} else if _, available := stableAuthority.Receiver(snapshot, ardp.PurposeDataJoin, now); available {
-			if err := validateClosedDataJoinProfile(config.ClosedDataJoin, stableAuthority, snapshot, now); err != nil {
-				return admission{kind: admissionPrepared, reason: err.Error()}
-			}
-		} else {
-			return admission{kind: admissionPrepared, reason: "closed Route assignment is not locally implemented"}
+		purpose, available := selectClosedRole(stableAuthority, snapshot, func() time.Time { return now })
+		if !available {
+			return admission{kind: admissionPrepared, reason: closedRouteUnavailableReason}
+		}
+		var profileErr error
+		switch purpose {
+		case ardp.PurposeIssuer:
+			profileErr = validateClosedIssuerProfile(config.ClosedIssuer, stableAuthority, snapshot, now)
+		case ardp.PurposeForwarding:
+			profileErr = validateClosedForwardingProfile(config.ClosedForwarding, stableAuthority, snapshot, now)
+		case ardp.PurposeReachability:
+			profileErr = validateClosedResolutionProfile(config.ClosedResolution, stableAuthority, snapshot, now)
+		case ardp.PurposeIntroduction:
+			profileErr = validateClosedIntroductionProfile(config.ClosedIntroduction, stableAuthority, snapshot, now)
+		case ardp.PurposeDataJoin:
+			profileErr = validateClosedDataJoinProfile(config.ClosedDataJoin, stableAuthority, snapshot, now)
+		}
+		if profileErr != nil {
+			return admission{kind: admissionPrepared, reason: profileErr.Error()}
 		}
 		if snapshot.Conflicting || !snapshot.Fresh || now.Before(snapshot.EpochValidFrom) || now.Before(snapshot.RecordValidFrom) ||
 			!now.Before(snapshot.ValidUntil) || !now.Before(snapshot.RecordValidUntil) {
