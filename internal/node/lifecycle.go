@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/network/state"
+	"github.com/dianabuilds/ardents-network/internal/node/probe"
 	"github.com/dianabuilds/ardents-network/internal/resource"
 )
 
@@ -276,8 +277,8 @@ func currentFacts(config runtimeConfig) (state.NodeDuty, error) {
 	return duty, nil
 }
 
-func newProbeDuty(snapshot state.NodeDuty) probeDuty {
-	return probeDuty{NetworkID: snapshot.NetworkID, EpochDigest: snapshot.Digest, NodeID: snapshot.NodeID,
+func newProbeDuty(snapshot state.NodeDuty) probe.Duty {
+	return probe.Duty{NetworkID: snapshot.NetworkID, EpochDigest: snapshot.Digest, NodeID: snapshot.NodeID,
 		AssignmentDigest: snapshot.AssignmentDigest, EpochValidFrom: snapshot.EpochValidFrom,
 		EpochValidUntil: snapshot.ValidUntil, RecordValidFrom: snapshot.RecordValidFrom,
 		RecordValidUntil: snapshot.RecordValidUntil, Capacity: snapshot.ProbeCapacity}

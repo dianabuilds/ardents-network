@@ -11,16 +11,17 @@ remains a later shared qualification milestone.
 The [C0 component reconstruction](c0-component-reconstruction.md) and
 [Route boundary record](route-refactoring-boundary.md) retain older snapshots.
 
-## Result and dependency direction
+## Current boundary and remaining work
 
 `internal/node` composes one process: validate public `Config`, admit one
 State-selected duty, start that role, react to process pressure, emit events,
 and report the joined terminal result. It does not retain a network role's
 listener, connection handlers, spend ledger, or role-specific state. The
-private probe remains under the process owner.
+private probe has its own owner because it also owns a listener, replay
+memory, accepted connections and joined drain.
 
 The children are `internal/node/outer`, `authority`, `hosting`, `resolution`,
-`forwarding`, `issuer`, `introduction`, and `join`. `hosting` bounds shared
+`forwarding`, `issuer`, `introduction`, `join`, and `probe`. `hosting` bounds shared
 reservations and class-2 reserve-before-spend order without owning process
 pressure or the concrete provider-period ledger.
 Each new package must have `doc.go`, behavior tests,
@@ -66,6 +67,7 @@ accept loop.
 | `resolution` | Selected class-1 receiver, spend root, Descriptor store, listener and workers. | Close listener, join workers, then close store and spend root; retain connection and root errors. Root Node supplies current State callbacks and maps its small handle to process lifecycle. |
 | `introduction` | Selected class-3 receiver, spend/slot floors, registrations/deliveries, listener and workers. | Close listener, join workers before replay roots; retain close errors. Qualification evidence observes the actual registration and delivery protocol without a test-only state inspection method in production. |
 | `join` | Selected data-join receiver, spend root, pair owner, leased host handle, listener and workers. | Stop listener and host monitor, join workers, close pairs and spend root, then host; retain terminal causes. Root Node supplies current State and class-2 Hosting policy. |
+| `probe` | Validated TLS material, fixed private probe request/response, replay memory, listener and accepted connections. | Stop admission, join accepted connections within the drain bound, force close lingering connections, and retain physical close failure. Node selects its authenticated duty and supervises the handle. |
 
 The forwarding child now owns its listener, session set, receiving resources,
 pool, accepted handlers and joined shutdown. Node retains profile validation,
@@ -79,7 +81,7 @@ existing admission point and cannot accept a plan-supplied peer or key.
 Process pressure remains in the root; per-duty local limits and JOIN host
 monitoring remain with their duty.
 
-## Completed extraction sequence
+## Extraction sequence and open audit
 
 1. **Accepted outer connection.** The service and writer moved together while
    queue fairness, deadlines, cancellation, child join and the role-owned
@@ -97,6 +99,15 @@ monitoring remain with their duty.
 5. **Process cleanup.** Confirmed dead declarations and stale comments were
    removed; the root retains composition, admission, pressure, evidence and
    terminal lifecycle. File boundaries follow responsibility, not length.
+
+The earlier integration completed those five slices, but did not satisfy the
+whole target. The private probe now has its own listener owner. Remaining work
+is to move the concrete shared Hosting handle and sampler to their resource owner, audit
+the root class-1/3 control admission and listener adapters, and review the
+forwarding package's internal responsibilities and Linux-tagged test layout.
+The `closed_*` file family includes both process adapters and role integration
+tests; organize it by actual owner and test purpose rather than preserving a
+file for each isolated assertion. Re-run combined checks before integration.
 
 For each slice, update the technical owner and package map with code, run
 focused behavior tests and `make quick-check`, and commit a coherent result.

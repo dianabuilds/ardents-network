@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/network/state"
+	"github.com/dianabuilds/ardents-network/internal/node/probe"
 	"github.com/dianabuilds/ardents-network/internal/resource"
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
@@ -42,11 +43,11 @@ func resolveConfig(input Config) (runtimeConfig, error) {
 		now = time.Now
 	}
 	var (
-		probePlan *probePlan
+		probePlan *probe.Plan
 		err       error
 	)
 	if input.Probe.ListenAddress != "" {
-		probePlan, err = newProbePlan(input.Probe, input.IdentityKey.Public().(ed25519.PublicKey), now)
+		probePlan, err = probe.NewPlan(input.Probe, input.IdentityKey.Public().(ed25519.PublicKey), now)
 		if err != nil {
 			return runtimeConfig{}, err
 		}

@@ -1,4 +1,4 @@
-package node
+package probe
 
 import (
 	"context"
@@ -13,8 +13,8 @@ import (
 )
 
 type probeListener struct {
-	plan        *probePlan
-	duty        probeDuty
+	plan        *Plan
+	duty        Duty
 	listener    net.Listener
 	active      chan struct{}
 	open        chan struct{}
@@ -25,14 +25,23 @@ type probeListener struct {
 	nonceNext   int
 	stop        chan struct{}
 	stopOnce    sync.Once
-	cleanup     terminalCleanup
+	cleanup     cleanupResult
 	protected   atomic.Bool
 	terminal    chan error
 	work        sync.WaitGroup
 }
 
-// startProbe binds the plan to one authenticated duty.
-func (p *probePlan) startProbe(duty probeDuty) (*dutyHandle, error) {
+// Handle gives process supervision the bounded lifetime of one listener.
+type Handle struct {
+	Done    <-chan error
+	Protect func(bool)
+	Usage   func() (uint64, uint64, uint64)
+	Stop    func()
+	Drain   func(context.Context) error
+}
+
+// Start binds the plan to one authenticated duty.
+func (p *Plan) Start(duty Duty) (*Handle, error) {
 	if duty.Capacity == 0 {
 		return nil, errors.New("role-probe duty has no capacity")
 	}
@@ -45,11 +54,11 @@ func (p *probePlan) startProbe(duty probeDuty) (*dutyHandle, error) {
 		stop: make(chan struct{}), terminal: make(chan error, 1)}
 	running.work.Add(1)
 	go running.accept()
-	return &dutyHandle{Done: running.terminal, Protect: running.protect, Usage: running.usage,
+	return &Handle{Done: running.terminal, Protect: running.protect, Usage: running.usage,
 		Stop: running.stopAdmission, Drain: running.drain}, nil
 }
 
-func probeTLSConfig(config ProbeConfig) *tls.Config {
+func probeTLSConfig(config Config) *tls.Config {
 	roots := x509.NewCertPool()
 	roots.AppendCertsFromPEM(config.ClientRootPEM)
 	pins := make(map[[32]byte]bool, len(config.ClientKeyPins))

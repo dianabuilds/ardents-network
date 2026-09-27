@@ -3,6 +3,7 @@ package node
 import (
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/node/probe"
 	"github.com/dianabuilds/ardents-network/internal/resource"
 )
 
@@ -16,6 +17,6 @@ type runtimeConfig struct {
 	hostingLevel      pressureLevel
 	Config
 	now      func() time.Time
-	probe    *probePlan
+	probe    *probe.Plan
 	pressure *resource.Guard
 }

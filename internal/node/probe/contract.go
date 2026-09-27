@@ -1,4 +1,4 @@
-package node
+package probe
 
 import (
 	"crypto/ed25519"
@@ -9,10 +9,8 @@ import (
 	"time"
 )
 
-// ProbeConfig declares the private role-probe listener and its trust material.
-// It is part of the Node's single duty lifecycle, not a separately callable
-// transport module.
-type ProbeConfig struct {
+// Config declares the private role-probe listener and its trust material.
+type Config struct {
 	ListenAddress string
 	Certificate   tls.Certificate
 	ClientRootPEM []byte
@@ -21,8 +19,8 @@ type ProbeConfig struct {
 	DrainTimeout  time.Duration
 }
 
-// probeDuty is the authenticated assignment served by one listener lifetime.
-type probeDuty struct {
+// Duty is the authenticated assignment served by one listener lifetime.
+type Duty struct {
 	NetworkID        [32]byte
 	EpochDigest      [32]byte
 	NodeID           [32]byte
@@ -34,14 +32,14 @@ type probeDuty struct {
 	Capacity         uint16
 }
 
-// probePlan is validated, owned role-probe configuration.
-type probePlan struct {
-	config ProbeConfig
+// Plan is validated, owned role-probe configuration.
+type Plan struct {
+	config Config
 	now    func() time.Time
 }
 
-// newProbePlan validates and owns the Node's private role-probe listener plan.
-func newProbePlan(input ProbeConfig, identity ed25519.PublicKey, now func() time.Time) (*probePlan, error) {
+// NewPlan validates and owns the private role-probe listener plan.
+func NewPlan(input Config, identity ed25519.PublicKey, now func() time.Time) (*Plan, error) {
 	if len(identity) != ed25519.PublicKeySize || input.ListenAddress == "" {
 		return nil, errors.New("role-probe identity and listener are required")
 	}
@@ -71,5 +69,5 @@ func newProbePlan(input ProbeConfig, identity ed25519.PublicKey, now func() time
 	if err := cloneProbeTLSMaterial(&input, identity, now().UTC()); err != nil {
 		return nil, err
 	}
-	return &probePlan{config: input, now: func() time.Time { return now().UTC() }}, nil
+	return &Plan{config: input, now: func() time.Time { return now().UTC() }}, nil
 }

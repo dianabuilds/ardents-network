@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/network/state"
+	"github.com/dianabuilds/ardents-network/internal/node/probe"
 	"github.com/dianabuilds/ardents-network/internal/resource"
 )
 
@@ -14,6 +15,8 @@ import (
 const RendezvousDedicatedHostResourceProfile = resource.RendezvousDedicatedHostProfile
 
 // Config binds one local identity, authenticated duty facts, and private role-probe listener.
+type ProbeConfig = probe.Config
+
 type Config struct {
 	// HostingRoot is the single installed provider period shared by all closed duties on this host.
 	HostingRoot string

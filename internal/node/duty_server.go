@@ -32,5 +32,10 @@ func startDuty(config runtimeConfig, snapshot state.NodeDuty) (*dutyHandle, erro
 	if snapshot.Profile == route.Profile {
 		return nil, errors.New(nativeRouteUnavailableReason)
 	}
-	return config.probe.startProbe(newProbeDuty(snapshot))
+	selected, err := config.probe.Start(newProbeDuty(snapshot))
+	if err != nil {
+		return nil, err
+	}
+	return &dutyHandle{Done: selected.Done, Protect: selected.Protect, Usage: selected.Usage,
+		Stop: selected.Stop, Drain: selected.Drain}, nil
 }
