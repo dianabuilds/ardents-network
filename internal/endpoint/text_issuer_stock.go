@@ -51,7 +51,7 @@ func (owner *textContext) prepareTextIssuerStock(ctx context.Context, requested 
 	}
 	ready := permission.stockCountForDuty(profile.Digest, profile.IssuerNodeID, profile.IssuerDutyGeneration, 1)
 	remaining := permission.remaining(1)
-	if ready >= 2 || remaining == 0 || owner.currentTextSourceLocked() != nil && (ready == 0 || remaining < 2) {
+	if ready >= 2 || remaining == 0 || owner.source.currentLocked() != nil && (ready == 0 || remaining < 2) {
 		owner.mu.Unlock()
 		return nil
 	}
@@ -70,7 +70,7 @@ func (operation *textIssuanceOperation) presentTextIssuerToken(selection client.
 	defer owner.mu.Unlock()
 	profile, now, err := owner.textPermissionProfileLocked()
 	if err != nil || owner.issuance != operation || operation.context == nil || operation.context.Err() != nil ||
-		operation.prefix == nil || !operation.prefix.currentLocked(owner) || !owner.permission.pendingFor(operation.prefix) ||
+		operation.prefix == nil || !operation.prefix.currentLocked(&owner.source) || !owner.permission.pendingFor(operation.prefix) ||
 		hello.Purpose != ardp.PurposeIssuer || class != 1 ||
 		hello.NetworkID != profile.NetworkID || hello.StateGeneration != profile.StateGeneration || hello.StateDigest != profile.StateDigest ||
 		hello.ProfileDigest != profile.Digest || hello.RecipientNodeID != profile.IssuerNodeID || hello.RecipientDutyGeneration != profile.IssuerDutyGeneration ||

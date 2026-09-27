@@ -11,7 +11,7 @@ import (
 // Inspect an idle Publisher's retained selection without dialing from a capsule.
 // A live Source continues to impose its original transport authority horizon.
 func (owner *textContext) textIntroductionRecipientLocked() ([32]byte, uint64, time.Time, error) {
-	if prefix := owner.currentTextSourceLocked(); prefix != nil {
+	if prefix := owner.source.currentLocked(); prefix != nil {
 		return prefix.dataJoinRecipient()
 	}
 	source, ok := owner.endpoint.closedState.(client.ClosedBootstrapState)

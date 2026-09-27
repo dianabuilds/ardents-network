@@ -71,7 +71,7 @@ func TestTextPublisherCommitsInstanceSignedDescriptor(t *testing.T) {
 			// selected Instance into another independently admitted local context.
 			foreign := textPermissionContextFixture(t, endpoint, fixtureID(211), broker.Administration)
 			foreign.mu.Lock()
-			foreign.source.live, foreign.publication.pair.registration, foreign.permission = owner.currentTextSourceLocked(), first, owner.permission
+			foreign.source.live, foreign.publication.pair.registration, foreign.permission = owner.source.currentLocked(), first, owner.permission
 			foreign.mu.Unlock()
 			_, foreignErr := foreign.publishTextDescriptor(t.Context())
 			foreign.mu.Lock()
@@ -131,7 +131,7 @@ func TestTextPublisherCommitsInstanceSignedDescriptor(t *testing.T) {
 
 func lookupTextPublishedProof(t *testing.T, owner *textContext, target [32]byte) []byte {
 	t.Helper()
-	prefix := owner.currentTextSourceLocked()
+	prefix := owner.source.currentLocked()
 	receiver, err := prefix.ResolutionRecipient()
 	if err != nil {
 		t.Fatal(err)

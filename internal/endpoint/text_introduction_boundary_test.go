@@ -91,7 +91,7 @@ func checkTextCapsuleAdmissionBoundaries(t *testing.T, publisher, reader *textCo
 				source.mu.Unlock()
 				defer func() { source.mu.Lock(); source.snapshot.Candidates[rendezvous].FamilyID = prior; source.mu.Unlock() }()
 				for _, owner := range []*textContext{reader, publisher} {
-					if _, _, _, err := owner.currentTextSourceLocked().DataJoinRecipient(); err == nil {
+					if _, _, _, err := owner.source.currentLocked().DataJoinRecipient(); err == nil {
 						t.Error("data Rendezvous accepted a control-role family")
 					}
 				}

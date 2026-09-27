@@ -119,13 +119,13 @@ func TestTextPublisherBuildsRetainedQualificationSetAcrossFourReaders(t *testing
 					if err != nil {
 						owner.mu.Lock()
 						state := fmt.Sprintf("prefix=%t resolution=%t opening=%t issuance=%t permission=%t closed=%t",
-							owner.currentTextSourceLocked() != nil, owner.resolution != nil, owner.source.opening != nil, owner.issuance != nil,
+							owner.source.currentLocked() != nil, owner.resolution != nil, owner.source.opening != nil, owner.issuance != nil,
 							owner.permission != nil, owner.closed)
 						owner.mu.Unlock()
 						return bound, fmt.Errorf("Reader %d Introduction %d (%s): %w", index, streamIndex, state, err)
 					}
 					owner.mu.Lock()
-					prefix := owner.currentTextSourceLocked()
+					prefix := owner.source.currentLocked()
 					owner.mu.Unlock()
 					if prefix == nil {
 						return bound, fmt.Errorf("Reader %d JOIN reserve prefix unavailable", index)
@@ -210,9 +210,9 @@ func TestTextPublisherBuildsRetainedQualificationSetAcrossFourReaders(t *testing
 			if err := qualification.ReplenishStreams(ctx, publisherWorker, 0); err != nil {
 				publisher.mu.Lock()
 				state := fmt.Sprintf("prefix=%t resolution=%t opening=%t issuance=%t permission=%t closed=%t",
-					publisher.currentTextSourceLocked() != nil, publisher.resolution != nil, publisher.source.opening != nil, publisher.issuance != nil,
+					publisher.source.currentLocked() != nil, publisher.resolution != nil, publisher.source.opening != nil, publisher.issuance != nil,
 					publisher.permission != nil, publisher.closed)
-				prefix := publisher.currentTextSourceLocked()
+				prefix := publisher.source.currentLocked()
 				publisher.mu.Unlock()
 				prefixDone := prefix == nil
 				if !prefixDone {

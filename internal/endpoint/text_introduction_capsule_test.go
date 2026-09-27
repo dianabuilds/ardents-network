@@ -107,7 +107,7 @@ func TestTextIntroductionCapsuleBindsRealInstanceAndServiceStream(t *testing.T) 
 			attempt.plaintext.Deadline = agedDeadline
 			oldOperation := append([]byte(nil), attempt.operation...)
 			reader.mu.Lock()
-			sourcePrefix := reader.currentTextSourceLocked()
+			sourcePrefix := reader.source.currentLocked()
 			reader.mu.Unlock()
 			if err := reader.refreshTextIntroduction(t.Context(), readerJob, attempt, sourcePrefix); err != nil {
 				t.Fatal(err)
@@ -179,7 +179,7 @@ func TestTextIntroductionCapsuleBindsRealInstanceAndServiceStream(t *testing.T) 
 			publisher.mu.Lock()
 			responder := publisher.responder.currentLocked()
 			introduction := publisher.introduction.currentLocked()
-			distinct := responder != nil && introduction != nil && (publisher.currentTextSourceLocked() == nil || responder.prefix.Load() != publisher.currentTextSourceLocked().prefix.Load()) && responder.prefix.Load() != introduction.prefix.Load() &&
+			distinct := responder != nil && introduction != nil && (publisher.source.currentLocked() == nil || responder.prefix.Load() != publisher.source.currentLocked().prefix.Load()) && responder.prefix.Load() != introduction.prefix.Load() &&
 				publisher.responder.set != nil && publisher.responder.set != publisher.source.set && publisher.responder.set != publisher.introduction.set &&
 				publisher.responder.set.interior[0].Domain == 3 && publisher.permission.reserved[1] > beforeForward && publisher.responder.opening == nil
 			publisher.mu.Unlock()

@@ -60,7 +60,7 @@ func TestQualificationReopensRetiredSourcePrefixForIssuerReserve(t *testing.T) {
 		t.Fatalf("retired Source prefix failed the issuer reserve: %v", err)
 	}
 	owner.mu.Lock()
-	reopened := owner.currentTextSourceLocked()
+	reopened := owner.source.currentLocked()
 	owner.mu.Unlock()
 	if reopened == nil || reopened == prefix {
 		t.Fatalf("issuer reserve did not reopen the retired Source prefix: %p", reopened)

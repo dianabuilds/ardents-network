@@ -18,7 +18,7 @@ func (owner *textContext) submitTextIntroduction(ctx context.Context, job *textJ
 		return errors.New("text Introduction submission unavailable")
 	}
 	owner.mu.Lock()
-	prefix := owner.currentTextSourceLocked()
+	prefix := owner.source.currentLocked()
 	live := owner.liveTextServiceJobLocked(job, broker.Connection) && prefix != nil && !prepared.submitted
 	if live {
 		prepared.submitted = true
@@ -49,7 +49,7 @@ func (owner *textContext) submitTextIntroduction(ctx context.Context, job *textJ
 		owner.mu.Lock()
 		defer owner.mu.Unlock()
 		current, now, err := owner.textPermissionProfileLocked()
-		if err != nil || !owner.liveTextServiceJobLocked(job, broker.Connection) || bounded.Err() != nil || !prefix.currentLocked(owner) ||
+		if err != nil || !owner.liveTextServiceJobLocked(job, broker.Connection) || bounded.Err() != nil || !prefix.currentLocked(&owner.source) ||
 			current != profile || class != 1 || hello.Purpose != ardp.PurposeSubmission || hello.RecipientNodeID != receiver ||
 			hello.NetworkID != current.NetworkID || hello.StateGeneration != current.StateGeneration || hello.StateDigest != current.StateDigest ||
 			hello.ProfileDigest != current.Digest || hello.ChannelNonce == [32]byte{} || !now.Before(hello.Deadline) ||

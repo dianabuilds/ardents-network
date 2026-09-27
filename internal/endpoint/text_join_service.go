@@ -143,7 +143,7 @@ func (owner *textContext) openTextJoinedTransportAfterSetup(ctx context.Context,
 		}
 	}()
 	owner.mu.Lock()
-	source := owner.currentTextSourceLocked()
+	source := owner.source.currentLocked()
 	if owner.surface == broker.Connection {
 		acquisition = owner.source.acquireJoinLocked()
 	}

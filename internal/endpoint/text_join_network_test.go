@@ -67,7 +67,7 @@ func exchangeTextRouteData(t *testing.T, reader, publisher *textContext, receive
 	}
 	results := make(chan opened, 2)
 	reader.mu.Lock()
-	readerPrefix := reader.currentTextSourceLocked()
+	readerPrefix := reader.source.currentLocked()
 	reader.mu.Unlock()
 	prefixes := []textJoinPrefix{readerPrefix, responder}
 	for index, owner := range []*textContext{reader, publisher} {

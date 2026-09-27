@@ -156,7 +156,7 @@ func TestTextResolutionNetworkCannotRollBackLocalDescriptorFloor(t *testing.T) {
 			}
 			owner.mu.Lock()
 			retained := owner.descriptorHistory.Matches(current.Credential.Target, current.Digest, 2)
-			healthy := owner.currentTextSourceLocked() == prefix && owner.resolution == nil && !owner.closed
+			healthy := owner.source.currentLocked() == prefix && owner.resolution == nil && !owner.closed
 			owner.mu.Unlock()
 			if !retained || !healthy {
 				t.Fatal("ordinary stale response erased floor or damaged context")

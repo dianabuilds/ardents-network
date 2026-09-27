@@ -63,7 +63,7 @@ func (owner *textContext) issueTextJoinTokens(ctx context.Context, receivers [][
 	err = owner.issueTextTokensForOpeningWithCancellation(ctx, receivers, class, nil, false, discardCanceled, acquisition, expected)
 	owner.mu.Lock()
 	_, current = acquisition.issuancePrefixLocked(owner)
-	current = current && owner.currentTextSourceLocked() == expected
+	current = current && owner.source.currentLocked() == expected
 	owner.mu.Unlock()
 	if err == nil && !current {
 		return errors.New("text JOIN issuance Source acquisition changed")
@@ -88,7 +88,7 @@ func (owner *textContext) issueTextTokensForOpeningWithCancellation(ctx context.
 		owner.mu.Unlock()
 		return errors.New("text issuance prefix reservation unavailable")
 	}
-	hasPrefix := owner.currentTextSourceLocked() != nil
+	hasPrefix := owner.source.currentLocked() != nil
 	owner.mu.Unlock()
 	if hasPrefix && !refill {
 		if err := owner.prepareTextIssuerStock(ctx, receivers, class, opening, acquisition, expected); err != nil {
@@ -137,7 +137,7 @@ func (owner *textContext) issueTextTokensForOpeningWithCancellation(ctx context.
 		}
 		challenges[index] = challenge
 	}
-	batch, err := permission.reserveBatchLocked(profile, now, challenges, selection, refill, owner.currentTextSourceLocked(), acquisition != nil, expected)
+	batch, err := permission.reserveBatchLocked(profile, now, challenges, selection, refill, owner.source.currentLocked(), acquisition != nil, expected)
 	if err != nil {
 		owner.mu.Unlock()
 		return err
@@ -153,5 +153,5 @@ func textJoinIssuanceCurrentLocked(owner *textContext, acquisition textJoinAcqui
 		return true
 	}
 	prefix, current := acquisition.issuancePrefixLocked(owner)
-	return current && prefix == expected && owner.currentTextSourceLocked() == expected
+	return current && prefix == expected && owner.source.currentLocked() == expected
 }

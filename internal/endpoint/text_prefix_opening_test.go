@@ -79,7 +79,7 @@ func TestTextPrefixReservesOpeningBeforeIssuanceAndJoinsCancellation(t *testing.
 	}
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
-	if owner.source.opening != nil || owner.issuance != nil || owner.currentTextSourceLocked() != nil || owner.permission.batches != 1 {
+	if owner.source.opening != nil || owner.issuance != nil || owner.source.currentLocked() != nil || owner.permission.batches != 1 {
 		t.Fatal("cancellation leaked ownership or another batch debit")
 	}
 }
@@ -172,7 +172,7 @@ func TestTextPrefixOpeningRejectsObsoleteCompletionWithoutTouchingReplacement(t 
 	}
 
 	owner.mu.Lock()
-	retained := owner.source.opening == replacement && owner.currentTextSourceLocked() == nil && owner.permission == permission &&
+	retained := owner.source.opening == replacement && owner.source.currentLocked() == nil && owner.permission == permission &&
 		permission.pending == pending && permission.batches == batches && permission.reserved == reserved && len(permission.stock) == stock
 	if owner.source.opening == replacement {
 		owner.source.opening = nil

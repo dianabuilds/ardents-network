@@ -52,7 +52,7 @@ func (owner *textContext) publishTextDescriptor(ctx context.Context) (verified r
 		reason = "Permission is absent"
 	case owner.resolution != nil:
 		reason = "resolution flight is active"
-	case owner.currentTextSourceLocked() == nil:
+	case owner.source.currentLocked() == nil:
 		reason = "Source is absent"
 	case endpoint.publisherBinding == nil:
 		reason = "Publisher binding is absent"
@@ -70,7 +70,7 @@ func (owner *textContext) publishTextDescriptor(ctx context.Context) (verified r
 		return verified, errors.New("text registration ended")
 	}
 	attempt, cancel := context.WithCancel(owner.lease.Context())
-	flight := &textResolutionFlight{context: attempt, cancel: cancel, done: make(chan struct{}), source: owner.currentTextSourceLocked()}
+	flight := &textResolutionFlight{context: attempt, cancel: cancel, done: make(chan struct{}), source: owner.source.currentLocked()}
 	owner.resolution = flight
 	owner.mu.Unlock()
 	interrupted := make(chan struct{})
@@ -155,7 +155,7 @@ func (owner *textContext) publishTextDescriptor(ctx context.Context) (verified r
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
 	live, at, err = owner.textPermissionProfileLocked()
-	if err != nil || live != profile || owner.publication.pair.publicationTargetLocked() != registered || owner.publication.pair.drainingLocked() || !flight.source.currentLocked(owner) ||
+	if err != nil || live != profile || owner.publication.pair.publicationTargetLocked() != registered || owner.publication.pair.drainingLocked() || !flight.source.currentLocked(&owner.source) ||
 		endpoint.textPublisherOwner != owner || endpoint.publisherBinding != binding || !endpoint.textPublicationLive ||
 		!owner.liveLocked(endpoint, broker.Administration) || attempt.Err() != nil || ctx.Err() != nil || registered.recipientPublicLocked(at) == [32]byte{} {
 		return reachability.Verified{}, errors.New("text Descriptor acknowledgement outlived its owner")

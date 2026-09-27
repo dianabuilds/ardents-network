@@ -85,7 +85,7 @@ func (acquisition *textSourceJoinAcquisition) currentLocked(owner *textContext) 
 		return false
 	}
 	handle := acquisition.handle.Load()
-	return handle != nil && handle.currentLocked(owner)
+	return handle != nil && handle.currentLocked(&owner.source)
 }
 
 func (acquisition *textSourceJoinAcquisition) issuancePrefixLocked(owner *textContext) (*textSourceHandle, bool) {
@@ -93,7 +93,7 @@ func (acquisition *textSourceJoinAcquisition) issuancePrefixLocked(owner *textCo
 		return nil, false
 	}
 	handle := acquisition.handle.Load()
-	return handle, handle != nil && handle.currentLocked(owner)
+	return handle, handle != nil && handle.currentLocked(&owner.source)
 }
 
 func (acquisition *textSourceJoinAcquisition) dataJoinRecipient() ([32]byte, uint64, time.Time, error) {
@@ -125,12 +125,12 @@ func (acquisition *textSourceResolutionAcquisition) release() {
 	}
 }
 
-func (acquisition *textSourceResolutionAcquisition) currentLocked(owner *textContext) bool {
+func (acquisition *textSourceResolutionAcquisition) currentLocked(lifecycle *textSourceLifecycle) bool {
 	if acquisition == nil {
 		return false
 	}
 	handle := acquisition.handle.Load()
-	return handle != nil && handle.currentLocked(owner)
+	return handle != nil && handle.currentLocked(lifecycle)
 }
 
 func (acquisition *textSourceResolutionAcquisition) resolutionRecipient() ([32]byte, error) {
@@ -156,11 +156,14 @@ func (acquisition *textSourceResolutionAcquisition) exchangeDescriptor(ctx conte
 	return handle.exchangeDescriptor(ctx, present, target, descriptor)
 }
 
-func (owner *textContext) currentTextSourceLocked() *textSourceHandle {
-	if owner == nil {
+// currentLocked returns the live Source handle. Like the Introduction and
+// Responder owners, the Source lifecycle is read through its own owner; the
+// Context keeps no pass-through for it.
+func (lifecycle *textSourceLifecycle) currentLocked() *textSourceHandle {
+	if lifecycle == nil {
 		return nil
 	}
-	return owner.source.live
+	return lifecycle.live
 }
 
 func (lifecycle *textSourceLifecycle) openingInProgressLocked() bool {
@@ -200,8 +203,10 @@ func (lifecycle *textSourceLifecycle) finishOpeningLocked(operation *textPrefixO
 	return handle, true
 }
 
-func (handle *textSourceHandle) currentLocked(owner *textContext) bool {
-	return handle != nil && owner != nil && handle.prefix.Load() != nil && handle.owner == &owner.source && owner.source.live == handle
+// currentLocked verifies handle identity against the owning lifecycle alone;
+// the handle never reaches back into the Context.
+func (handle *textSourceHandle) currentLocked(lifecycle *textSourceLifecycle) bool {
+	return handle != nil && lifecycle != nil && handle.prefix.Load() != nil && handle.owner == lifecycle && lifecycle.live == handle
 }
 
 func (handle *textSourceHandle) routePrefix() (*client.ClosedSourcePrefix, error) {

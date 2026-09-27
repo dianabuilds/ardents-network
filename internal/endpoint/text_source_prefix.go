@@ -64,7 +64,7 @@ func (owner *textContext) openTextPrefix(ctx context.Context) (*textSourceHandle
 	}
 	owner.mu.Lock()
 	_, _, err := owner.textPermissionProfileLocked()
-	if err != nil || !owner.permission.hasAccepted() || owner.currentTextSourceLocked() != nil || owner.source.openingInProgressLocked() || owner.issuance != nil {
+	if err != nil || !owner.permission.hasAccepted() || owner.source.currentLocked() != nil || owner.source.openingInProgressLocked() || owner.issuance != nil {
 		owner.mu.Unlock()
 		return nil, textPrefixPreparationFailureAt("authority", errors.Join(err, errors.New("text prefix owner unavailable")))
 	}
@@ -146,7 +146,7 @@ func (owner *textContext) ensureTextPrefixStock(ctx context.Context, opening *te
 	owner.mu.Lock()
 	_, _, err := owner.textPermissionProfileLocked()
 	if err != nil || ctx.Err() != nil || !owner.permission.hasAccepted() ||
-		owner.currentTextSourceLocked() != nil || !opening.admittedLocked(owner) || owner.issuance != nil {
+		owner.source.currentLocked() != nil || !opening.admittedLocked(owner) || owner.issuance != nil {
 		owner.mu.Unlock()
 		return client.ClosedBootstrapSelection{}, textPrefixPreparationFailureAt("stock-authority", errors.Join(err, ctx.Err(), errors.New("text prefix stock owner unavailable")))
 	}

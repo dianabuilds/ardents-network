@@ -220,7 +220,7 @@ func (acquisition *textResponderJoinAcquisition) currentLocked(owner *textContex
 		return false
 	}
 	handle := acquisition.handle.Load()
-	return handle != nil && handle.currentLocked(&owner.responder) && acquisition.issuer != nil && acquisition.issuer.currentLocked(owner)
+	return handle != nil && handle.currentLocked(&owner.responder) && acquisition.issuer != nil && acquisition.issuer.currentLocked(&owner.source)
 }
 
 func (acquisition *textResponderJoinAcquisition) issuancePrefixLocked(owner *textContext) (*textSourceHandle, bool) {

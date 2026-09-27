@@ -68,7 +68,7 @@ func (worker *qualifiedTextWorker) PresentRefill(ctx context.Context, hello ardp
 func (worker *qualifiedTextWorker) ReplenishPrefixes(ctx context.Context, present client.ClosedTokenPresenter) error {
 	owner := worker.job.owner
 	owner.mu.Lock()
-	source := owner.currentTextSourceLocked()
+	source := owner.source.currentLocked()
 	introduction := owner.introduction.currentLocked()
 	responder := owner.responder.currentLocked()
 	owner.mu.Unlock()
@@ -136,7 +136,7 @@ func (session *qualificationSession) OpenJoinedService(ctx context.Context, prep
 func (session *qualificationSession) ReserveRecipients() (qualification.ReserveRecipients, error) {
 	owner := session.owner
 	owner.mu.Lock()
-	prefix := owner.currentTextSourceLocked()
+	prefix := owner.source.currentLocked()
 	owner.mu.Unlock()
 	if prefix == nil {
 		return qualification.ReserveRecipients{}, errors.New("qualification Source prefix unavailable")
@@ -219,7 +219,7 @@ func (owner *textContext) ensureQualificationIssuerReserve(ctx context.Context, 
 	}
 	ready := owner.permission.stockCountForDuty(profile.Digest, profile.IssuerNodeID, profile.IssuerDutyGeneration, 1)
 	remaining := owner.permission.remaining(1)
-	prefixLive := owner.currentTextSourceLocked() != nil
+	prefixLive := owner.source.currentLocked() != nil
 	owner.mu.Unlock()
 	if ready >= minimum || remaining == 0 {
 		// No new admission is due here, so a Source prefix retired on its
@@ -233,7 +233,7 @@ func (owner *textContext) ensureQualificationIssuerReserve(ctx context.Context, 
 		// refill; the next completed-stream boundary observes its result.
 		if _, openErr := owner.openTextPrefix(ctx); openErr != nil {
 			owner.mu.Lock()
-			inProgress := owner.currentTextSourceLocked() != nil || owner.source.openingInProgressLocked() || owner.issuance != nil
+			inProgress := owner.source.currentLocked() != nil || owner.source.openingInProgressLocked() || owner.issuance != nil
 			owner.mu.Unlock()
 			if !inProgress {
 				return errors.Join(openErr, errors.New("qualification issuer prefix rebirth failed"))

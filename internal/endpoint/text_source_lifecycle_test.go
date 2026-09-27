@@ -79,7 +79,7 @@ func TestTextSourceHandleRejectsUseAfterIdleRetirement(t *testing.T) {
 	}
 	owner.mu.Lock()
 	err = owner.retireTextPrefixLocked()
-	retired := owner.currentTextSourceLocked() == nil
+	retired := owner.source.currentLocked() == nil
 	owner.mu.Unlock()
 	if err != nil || !retired {
 		t.Fatalf("idle Source retirement failed: retired=%v err=%v", retired, err)

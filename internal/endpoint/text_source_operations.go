@@ -87,7 +87,7 @@ func (owner *textContext) prepareTextSourceReady(ctx context.Context) error {
 	defer release()
 	owner.mu.Lock()
 	_, _, err = owner.textPermissionProfileLocked()
-	missing := owner.currentTextSourceLocked() == nil
+	missing := owner.source.currentLocked() == nil
 	owner.mu.Unlock()
 	if err != nil {
 		return textSourcePreparationFailureAt("permission", err)
