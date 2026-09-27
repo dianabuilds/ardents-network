@@ -1618,6 +1618,25 @@ has a superseding decision and exact tests for affected callers. This is
 separate from the historical three-argument portable input bridge, which is
 an operator-input schema rather than a Network enrollment descriptor version.
 
+**Realization (ADR-0112).** Version acceptance is now decided once, at the
+parser every command boundary shares: `ardents-closed-alpha-enrollment-v3` is
+the sole accepted Network enrollment descriptor grammar, and a recognized
+v1/v2 schema is refused with the typed `ErrLegacyEnrollmentDescriptor` after
+the pin and descriptor-digest checks and before any companion inventory,
+executable identity, or Release input construction. The v1/v2 parsing grammar
+is deleted; `Verify` and `VerifyHeadless` differ only by companion inventory
+scope. Unknown schemas, including Browser enrollment-v4, keep their generic
+invalid refusal. ADR-0112 supersedes ADR-0042's clause preserving v1/v2
+verification for non-acceptance uses, so the "superseding decision and exact
+tests" condition is met: the unit fixtures verify the canonical v3 bundle and
+the typed refusal over consistent pins, the cross-platform enrollment-check
+e2e and the linux installed-package e2e now drive v3 bundles, and the former
+v1 upgrade vector is refusal evidence. Existing legacy bundles stay on disk
+byte-for-byte with no converter or compatibility reader. The retained
+`enroll-installed` command and its per-user unit keep their separate
+retirement outcome, still bound to the supported protected system-unit launch
+(step 6).
+
 ## F-48: Name Record v3 survives as signed state, not an accepting Target
 
 **Source and contract fact.** Accepted ADR-0022 selects Record v4 and calls v3

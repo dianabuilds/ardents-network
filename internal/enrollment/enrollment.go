@@ -58,8 +58,8 @@ type Verified struct {
 	ControlReleaseRoot             []byte
 	ControlNetworkRoot             []byte
 	ControlCompatibilityRoot       []byte
-	// CorpusAuthority is the optional independently pinned Alpha Name Corpus
-	// authority from an enrollment-v2-or-later bundle. It is not Release metadata.
+	// CorpusAuthority is the independently pinned Alpha Name Corpus authority
+	// from the enrollment-v3 bundle. It is not Release metadata.
 	CorpusAuthority []byte
 	// ControlArtifact is the exact separately executable alpha-control command
 	// from an enrollment-v3 bundle. It is intentionally not Release metadata.
@@ -71,14 +71,18 @@ type Verified struct {
 	CustodyArtifact     []byte
 }
 
-// Verify authenticates only the Network enrollment v1-v3 inventory.
+// Verify authenticates only the Network enrollment v3 inventory
+// (ADR-0112). A recognized v1 or v2 descriptor is refused with the typed
+// ErrLegacyEnrollmentDescriptor; an unknown schema keeps its generic invalid
+// refusal.
 func Verify(request Request) (Verified, error) {
 	return verify(request)
 }
 
 // VerifyHeadless authenticates the Network enrollment-v3 candidate inventory
 // and requires its exact manifest-pinned Node and Authority Custody companions.
-// Verify remains available for the narrower historical v1-v3 procedures.
+// The distinction from Verify is companion inventory scope, not version: both
+// entry points accept the same sole v3 grammar (ADR-0112).
 func VerifyHeadless(request Request) (Verified, error) {
 	verified, err := verify(request)
 	if err != nil {
@@ -202,34 +206,25 @@ func verify(request Request) (Verified, error) {
 	if !found {
 		return Verified{}, errors.New("alpha descriptor compatibility control root is absent from the manifest")
 	}
-	var corpusAuthority []byte
-	if descriptor.corpusAuthority != "" {
-		corpusAuthority, found = files[descriptor.corpusAuthority]
-		if !found {
-			return Verified{}, errors.New("alpha descriptor corpus authority is absent from the manifest")
-		}
+	corpusAuthority, found := files[descriptor.corpusAuthority]
+	if !found {
+		return Verified{}, errors.New("alpha descriptor corpus authority is absent from the manifest")
 	}
-	var controlArtifact []byte
-	if descriptor.controlArtifact != "" {
-		controlArtifact, found = files[descriptor.controlArtifact]
-		if !found {
-			return Verified{}, errors.New("alpha descriptor control artifact is absent from the manifest")
-		}
+	controlArtifact, found := files[descriptor.controlArtifact]
+	if !found {
+		return Verified{}, errors.New("alpha descriptor control artifact is absent from the manifest")
 	}
 	var nodeArtifactName, custodyArtifactName string
 	var nodeArtifact, custodyArtifact []byte
-	if descriptor.schema == "ardents-closed-alpha-enrollment-v3" {
-		nodeName := ExecutableArtifactName("ardents-node", descriptor.platform)
-		custodyName := ExecutableArtifactName("ardents-custody", descriptor.platform)
-		var nodeFound, custodyFound bool
-		nodeArtifact, nodeFound = files[nodeName]
-		custodyArtifact, custodyFound = files[custodyName]
-		if nodeFound != custodyFound {
-			return Verified{}, errors.New("alpha enrollment has a partial headless companion inventory")
-		}
-		if nodeFound {
-			nodeArtifactName, custodyArtifactName = nodeName, custodyName
-		}
+	nodeName := ExecutableArtifactName("ardents-node", descriptor.platform)
+	custodyName := ExecutableArtifactName("ardents-custody", descriptor.platform)
+	nodeArtifact, nodeFound := files[nodeName]
+	custodyArtifact, custodyFound := files[custodyName]
+	if nodeFound != custodyFound {
+		return Verified{}, errors.New("alpha enrollment has a partial headless companion inventory")
+	}
+	if nodeFound {
+		nodeArtifactName, custodyArtifactName = nodeName, custodyName
 	}
 	metadata := make(map[string][]byte, len(files))
 	for name, contents := range files {

@@ -25,7 +25,7 @@
 "internal/endpoint/portable","mixed-operator","integrate-or-retire-old-start","Portable first execution does not launch protected system unit F-27"
 "internal/endpoint/replacement","operator","integrate-with-supported-unit","Release-authorized executable replacement currently controls user unit"
 "internal/endpoint/tokenjournal","runtime","retain","Participant token attempt and retry state not Node receiving spend"
-"internal/enrollment","provisioning","select-command-version","General verifier reads v1-v3; protected first-run requires v3 F-47"
+"internal/enrollment","provisioning","retain-sole-v3-grammar","The sole accepted Network enrollment descriptor grammar is v3; recognized v1/v2 descriptors are refused with the typed ErrLegacyEnrollmentDescriptor (ADR-0112/F-47); protected first-run additionally requires the Node/Custody companions"
 "internal/entry","mixed-runtime","retain-closed-set-review-invite","Closed Entry set is selected; older Invite root/writer has separate disposition F-08"
 "internal/naming","retained-local-command","keep-outside-c0-runtime","Name encode has a command caller but protected text uses explicit Target Link"
 "internal/naming/alpha","retained-evidence","decide-reader-floor","Alpha corpus reader and floor survive retired exchange ADR-0091"

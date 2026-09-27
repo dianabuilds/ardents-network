@@ -111,7 +111,7 @@ internal/
     interfacev1/administration/ separate local Publish/Withdraw Interface and transport
     interfacev2/connection/     protected text Connection Interface and transport
     broker/                     Network-owned local Connection implementation
-  enrollment/                  Network-v1-v3 artifact verification
+  enrollment/                  Network-v3 artifact verification
 scripts/
   check-tools.go               build-ignored developer tool-version check
   install-git-hooks.sh         local hook bootstrap

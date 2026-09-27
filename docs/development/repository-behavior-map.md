@@ -116,10 +116,11 @@ before first execution and a real installed Publisher/Reader journey.
    first bundle and verifies this restart; routine startup cannot be described
    as re-running the original enrollment check.
    The Installed first-run/rebind branch calls general `enrollment.Verify` and
-   therefore accepts descriptor v1/v2/v3; the selected Portable first-run
-   branch calls `VerifyHeadless`, whose Node/Custody inventory requires v3.
-   The package process test actually upgrades through a v1 descriptor under
-   `endpoint enroll-installed` (F-47). This older Installed lane still reports
+   the selected Portable first-run branch calls `VerifyHeadless`; since
+   ADR-0112 both accept only the sole v3 descriptor grammar, and a recognized
+   v1/v2 schema is refused with the typed `ErrLegacyEnrollmentDescriptor`
+   (F-47 realized). The package process test upgrades through a v3 descriptor
+   under `endpoint enroll-installed`. This older Installed lane still reports
    only Portable readiness.
 4. Portable `ready` proves the local profile and probe attachment. The
    `portable` package owns no State, Route, text worker, or Service Connection.

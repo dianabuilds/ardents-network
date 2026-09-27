@@ -268,6 +268,7 @@
 "docs/adr/0109-refuse-legacy-reachability-records.md","decision-record","docs/adr","","accepted-current-decision"
 "docs/adr/0110-retire-aca2-corpus-inspection.md","decision-record","docs/adr","","accepted-current-decision"
 "docs/adr/0111-pin-arep-v3-sole-closed-epoch-intake.md","decision-record","docs/adr","","accepted-current-decision"
+"docs/adr/0112-pin-network-enrollment-v3-sole-descriptor.md","decision-record","docs/adr","","accepted-current-decision"
 "docs/adr/README.md","decision-index","docs/adr","","unreviewed"
 "docs/development/README.md","current-document","docs/development","","document-owner-pass"
 "docs/development/agent-execution.md","current-document","docs/development","","document-owner-pass"

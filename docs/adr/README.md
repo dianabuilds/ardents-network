@@ -78,6 +78,7 @@ Current decisions:
 
 Completed retirement decisions:
 
+- [0112 — Network enrollment v3 is the sole accepted descriptor grammar; recognized v1/v2 descriptors are refused with a typed error](0112-pin-network-enrollment-v3-sole-descriptor.md)
 - [0111 — AREP v3 becomes the sole closed-Epoch intake schema](0111-pin-arep-v3-sole-closed-epoch-intake.md)
 - [0110 — Keep ACA1 as the sole maintained control inspection format](0110-retire-aca2-corpus-inspection.md)
 - [0109 — The Reachability Store refuses stored legacy records with a typed error; the retained v1/v2 Descriptor decode grammar is deleted](0109-refuse-legacy-reachability-records.md)

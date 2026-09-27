@@ -1,14 +1,20 @@
 ---
 status: accepted
 date: 2026-08-26
-partially-superseded-by: ADR-0088 (maintained accepting-command consequence only)
+partially-superseded-by: ADR-0088 (maintained accepting-command consequence only),
+ ADR-0112 (retained v1/v2 verification clause only)
 ---
 
 # ADR-0042 — Bind the accepting alpha-control command to enrollment v3
 
 **Supersession note:** ADR-0088 retires the maintained accepting command. The
 enrollment-v3 grammar remains an accepted compatibility contract, but it is not
-authority to keep fresh corpus intake available.
+authority to keep fresh corpus intake available. ADR-0112 supersedes this ADR's
+clause preserving enrollment v1 and v2 verification for non-acceptance uses: v3
+is now the sole accepted Network enrollment descriptor grammar at every
+maintained command boundary, and recognized v1/v2 descriptors are refused with
+the typed `ErrLegacyEnrollmentDescriptor`. This ADR's `ExecutableArtifactName`
+identity contract and v3 grammar definition stand.
 
 ## Context
 

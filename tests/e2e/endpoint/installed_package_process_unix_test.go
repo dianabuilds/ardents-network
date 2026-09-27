@@ -143,22 +143,23 @@ func upgradedPackageEnrollmentBundle(t *testing.T, artifact, rootBytes []byte, k
 	metadataFiles := replacementMetadataVersion(t, artifact, targetPath, platform, time.Now().UTC().Truncate(time.Second), keys, 2, 2)
 	metadataFiles["2.root.json"] = replacementRootVersion(t, rootBytes, keys, 2)
 	artifactName := "ardents-" + platform
+	controlName := "ardents-control-" + platform
 	descriptor := strings.Join([]string{
-		"schema=ardents-closed-alpha-enrollment-v1", "cohort=closed-cohort-1", "release=alpha-2", "platform=" + platform,
-		"environment=alpha", "network=alpha-network-1", "target_path=" + targetPath, "artifact=" + artifactName, "trusted_root=1.root.json", "control_catalog=catalog.ac1", "disclosure_root=catalog.pub", "control_release=release.ac1", "control_network=network.ac1", "control_compatibility=compatibility.ac1", "control_release_root=release.pub", "control_network_root=network.pub", "control_compatibility_root=compatibility.pub",
+		"schema=ardents-closed-alpha-enrollment-v3", "cohort=closed-cohort-1", "release=alpha-2", "platform=" + platform,
+		"environment=alpha", "network=alpha-network-1", "target_path=" + targetPath, "artifact=" + artifactName, "trusted_root=1.root.json", "control_catalog=catalog.ac1", "disclosure_root=catalog.pub", "control_release=release.ac1", "control_network=network.ac1", "control_compatibility=compatibility.ac1", "control_release_root=release.pub", "control_network_root=network.pub", "control_compatibility_root=compatibility.pub", "corpus_authority=corpus.pub", "control_artifact=" + controlName,
 	}, "\n") + "\n"
-	files := map[string][]byte{"1.root.json": rootBytes, "RELEASE": []byte(descriptor), artifactName: artifact, "catalog.ac1": []byte("catalog"), "catalog.pub": []byte("key"), "release.ac1": []byte("release control"), "network.ac1": []byte("network control"), "compatibility.ac1": []byte("compatibility control"), "release.pub": []byte("release key"), "network.pub": []byte("network key"), "compatibility.pub": []byte("compatibility key")}
+	files := map[string][]byte{"1.root.json": rootBytes, "RELEASE": []byte(descriptor), artifactName: artifact, controlName: []byte("separately manifested alpha control command"), "catalog.ac1": []byte("catalog"), "catalog.pub": []byte("key"), "release.ac1": []byte("release control"), "network.ac1": []byte("network control"), "compatibility.ac1": []byte("compatibility control"), "release.pub": []byte("release key"), "network.pub": []byte("network key"), "compatibility.pub": []byte("compatibility key"), "corpus.pub": []byte("corpus authority")}
 	for name, contents := range metadataFiles {
 		files[name] = contents
 	}
-	names := []string{"1.root.json", "2.root.json", "2.snapshot.json", "2.targets.json", "RELEASE", artifactName, "catalog.ac1", "catalog.pub", "compatibility.ac1", "compatibility.pub", "network.ac1", "network.pub", "release.ac1", "release.pub", "timestamp.json"}
+	names := []string{"1.root.json", "2.root.json", "2.snapshot.json", "2.targets.json", "RELEASE", controlName, artifactName, "catalog.ac1", "catalog.pub", "compatibility.ac1", "compatibility.pub", "corpus.pub", "network.ac1", "network.pub", "release.ac1", "release.pub", "timestamp.json"}
 	bundle := filepath.Join(t.TempDir(), "bundle-v2")
 	if err := os.Mkdir(bundle, 0o700); err != nil {
 		t.Fatal(err)
 	}
 	for _, name := range names {
 		mode := os.FileMode(0o600)
-		if name == artifactName {
+		if name == artifactName || name == controlName {
 			mode = 0o700
 		}
 		writeEnrollmentFile(t, filepath.Join(bundle, name), files[name], mode)
