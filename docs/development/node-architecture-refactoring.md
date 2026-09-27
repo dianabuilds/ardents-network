@@ -112,7 +112,7 @@ readable end-to-end scenarios, even when each has one top-level test.
 Process pressure remains in the root; per-duty local limits and JOIN host
 monitoring remain with their duty.
 
-## Extraction sequence and open audit
+## Extraction sequence and verification
 
 1. **Accepted outer connection.** The service and writer moved together while
    queue fairness, deadlines, cancellation, child join and the role-owned
@@ -131,15 +131,22 @@ monitoring remain with their duty.
    removed; the root retains composition, admission, pressure, evidence and
    terminal lifecycle. File boundaries follow responsibility, not length.
 
-The earlier integration completed those five slices, but did not satisfy the
-whole target. The private probe now has its own listener owner. The issuer role
-now retains its own child release errors; root no longer passes release-state
-callbacks into the role. Remaining work is to audit the root listener adapters
-and review the forwarding package's internal responsibilities and Linux-tagged
-test layout.
-The `closed_*` file family includes both process adapters and role integration
-tests; organize it by actual owner and test purpose rather than preserving a
-file for each isolated assertion. Re-run combined checks before integration.
+The earlier integration completed the five original slices. The follow-up audit
+extracted the private probe, moved the concrete Hosting ledger and class-1/3
+reservation policy to `hosting`, and placed the issuer child release errors in
+`issuer`. The root's process adapters now use role names rather than the
+`closed_*` filename prefix. Forwarding's listener, session, bootstrap and
+recipient files follow their resource owners. Small related tests were grouped,
+one direct recipient test moved to the forwarding owner, and Linux-only
+integration scenarios now carry explicit platform suffixes. The root has no
+`closed_*` source files; retained `Closed*` identifiers are protocol or public
+configuration names, not file grouping.
+
+The completed Node and Endpoint qualification slices are combined on the Node
+integration branch. Windows `make check` and a read-only Linux Docker build,
+vet, Node/qualification tests and targeted Endpoint tests passed before the
+latest `dev` merge. Recheck the merged tree before advancing `dev`. Installed
+systemd/cgroup evidence remains a later shared qualification gate.
 
 For each slice, update the technical owner and package map with code, run
 focused behavior tests and `make quick-check`, and commit a coherent result.
