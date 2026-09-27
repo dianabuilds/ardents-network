@@ -4,9 +4,12 @@ import (
 	"crypto/tls"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/node/hosting"
 	"github.com/dianabuilds/ardents-network/internal/node/issuer"
 	"github.com/dianabuilds/ardents-network/internal/resource"
 )
+
+type closedHostingHandle = hosting.Handle
 
 // ClosedIssuerProfile retains the public Node configuration name while the
 // issuer role owns its local reservation and lifecycle.

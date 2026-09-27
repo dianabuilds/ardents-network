@@ -21,9 +21,9 @@ private probe has its own owner because it also owns a listener, replay
 memory, accepted connections and joined drain.
 
 The children are `internal/node/outer`, `authority`, `hosting`, `resolution`,
-`forwarding`, `issuer`, `introduction`, `join`, and `probe`. `hosting` bounds shared
-reservations and class-2 reserve-before-spend order without owning process
-pressure or the concrete provider-period ledger.
+`forwarding`, `issuer`, `introduction`, `join`, and `probe`. `hosting` owns the
+concrete provider-period handle, shared sampler, late close and class-2
+reserve-before-spend order. Node selects its period and decides process pressure.
 Each new package must have `doc.go`, behavior tests,
 a non-test caller, and registered imports. A role never imports its parent or
 receives `runtimeConfig`; the root adapts the role's small
@@ -60,7 +60,8 @@ accept loop.
 
 | Owner | Inputs and state | Stop and final result |
 | --- | --- | --- |
-| Node root | Public process config, copied current duty, local role retention, event writer, process resource guard, hosting-period handle. | Stop selected duty, emit draining, await bounded joined Drain, then withdraw/release local role and close hosting period. Failed or unknown join is FAILED, never WITHDRAWN. |
+| Node root | Public process config, copied current duty, local role retention, event writer and process resource guard. | Stop selected duty, emit draining, await bounded joined Drain, then withdraw/release local role and ask Hosting to close its period. Failed or unknown join is FAILED, never WITHDRAWN. |
+| `hosting` | Opened provider-period handle, shared sample cache, class-2 reservation policy and retained late-close lifetime. | Release reservations at their callers; close the concrete ledger only when joined borrowers can no longer use it. Node chooses when protection or drain is required. |
 | `outer` | Authenticated outer handshake, accepted connection, callback for inner lanes; private writer queues and child set. | Cancel children, interrupt physical I/O, close bridge, join children and interruption callback, then close handshake. Caller observes final accepted-connection close error. No admission or durable root moves here. |
 | Forwarding | Selected receiver/peer facts, certificate, spend ledger, duty limits, host reservations, pool, producers and retained Carrier readers. | Stop listener and producers; join producers before outgoing readers; retire pool and reservations, then close spend root. Retain terminal result across repeated Drain and timeout. |
 | `issuer` | Selected issuer profile/receiver, certificate, issuer key root, spend root, token listener and accepted children. | Publish listener terminal cause, join children without releasing roots on caller timeout, close both roots once and retain close errors. Root Node supplies current State and Hosting reservation callbacks. |
@@ -71,7 +72,7 @@ accept loop.
 
 The forwarding child now owns its listener, session set, receiving resources,
 pool, accepted handlers and joined shutdown. Node retains profile validation,
-address choice, the concrete shared Hosting sampler, process admission and
+address choice, process admission and
 role selection. It opens the Host handle and transfers its late close to the
 child. `internal/node/hosting` owns the common class-2 reserve-before-spend
 policy used by forwarding and JOIN; class-1/3 control policy remains distinct.
@@ -102,7 +103,7 @@ monitoring remain with their duty.
 
 The earlier integration completed those five slices, but did not satisfy the
 whole target. The private probe now has its own listener owner. Remaining work
-is to move the concrete shared Hosting handle and sampler to their resource owner, audit
+is to audit
 the root class-1/3 control admission and listener adapters, and review the
 forwarding package's internal responsibilities and Linux-tagged test layout.
 The `closed_*` file family includes both process adapters and role integration

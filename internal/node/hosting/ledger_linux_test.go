@@ -1,6 +1,6 @@
 //go:build linux
 
-package node
+package hosting
 
 import (
 	"path/filepath"
@@ -10,7 +10,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/resource"
 )
 
-func closedHostingHandleingRoot(t *testing.T) string {
+func hostingFixtureRoot(t *testing.T) string {
 	t.Helper()
 	root := filepath.Join(t.TempDir(), "hosting")
 	policy := resource.HostingPolicy{Provider: "test fixture", Start: time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC), End: time.Date(2030, 1, 1, 0, 0, 0, 0, time.UTC), Unit: "GiB", Quantity: 1,
@@ -22,17 +22,17 @@ func closedHostingHandleingRoot(t *testing.T) string {
 }
 
 func TestInstalledClosedHostingHandlesShareOneLocalSampler(t *testing.T) {
-	root := closedHostingHandleingRoot(t)
-	firstHost, err := openClosedHostingHandle(root)
+	root := hostingFixtureRoot(t)
+	firstHost, err := Open(root)
 	if err != nil {
 		t.Fatal(err)
 	}
-	first := firstHost.(*installedClosedHostingHandle)
-	secondHost, err := openClosedHostingHandle(root)
+	first := firstHost
+	secondHost, err := Open(root)
 	if err != nil {
 		t.Fatal(err)
 	}
-	second := secondHost.(*installedClosedHostingHandle)
+	second := secondHost
 	if first.owner == second.owner || first.sampler != second.sampler {
 		t.Fatal("same hosting period did not retain independent owners and one sampler")
 	}
@@ -48,11 +48,11 @@ func TestInstalledClosedHostingHandlesShareOneLocalSampler(t *testing.T) {
 	if err := second.Close(); err != nil {
 		t.Fatal(err)
 	}
-	reopenedHost, err := openClosedHostingHandle(root)
+	reopenedHost, err := Open(root)
 	if err != nil {
 		t.Fatal(err)
 	}
-	reopened := reopenedHost.(*installedClosedHostingHandle)
+	reopened := reopenedHost
 	t.Cleanup(func() { _ = reopened.Close() })
 	if reopened.sampler == first.sampler {
 		t.Fatal("last close retained the shared hosting sampler")
@@ -67,8 +67,8 @@ func TestInstalledClosedHostingHandlesShareOneLocalSampler(t *testing.T) {
 // reader of the shared cache, and per-stream Releases would clear the cache
 // faster than concurrent observations can coalesce on it.
 func TestInstalledClosedHostingSampleCachesAndInvalidatesOnReserve(t *testing.T) {
-	root := closedHostingHandleingRoot(t)
-	host, err := openClosedHostingHandle(root)
+	root := hostingFixtureRoot(t)
+	host, err := Open(root)
 	if err != nil {
 		t.Fatal(err)
 	}

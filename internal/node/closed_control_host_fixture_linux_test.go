@@ -7,6 +7,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/node/hosting"
 	"github.com/dianabuilds/ardents-network/internal/resource"
 )
 
@@ -22,7 +23,7 @@ func (*releaseFailureHost) Sample(context.Context, time.Duration) (resource.Host
 
 func (*releaseFailureHost) Close() error { return nil }
 
-func (host *releaseFailureHost) Reserve(context.Context, resource.HostingTraffic, resource.HostingTraffic, time.Time) (closedHostingReservation, error) {
+func (host *releaseFailureHost) Reserve(context.Context, resource.HostingTraffic, resource.HostingTraffic, time.Time) (hosting.Reservation, error) {
 	host.reserved.Add(1)
 	return releaseFailureReservation{host: host}, nil
 }

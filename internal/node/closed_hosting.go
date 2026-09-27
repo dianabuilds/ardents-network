@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/node/hosting"
 	"github.com/dianabuilds/ardents-network/internal/resource"
 )
 
@@ -33,7 +34,7 @@ func (config *runtimeConfig) openClosedHosting() error {
 	}
 	config.measurementOrigin = time.Now()
 	var err error
-	config.host, err = openClosedHostingHandle(root)
+	config.host, err = hosting.Open(root)
 	return err
 }
 
@@ -50,7 +51,7 @@ func (config *runtimeConfig) hostingPressure() (pressureLevel, error) {
 	defer stop()
 	var observation resource.HostingObservation
 	var err error
-	if installed, ok := config.host.(*installedClosedHostingHandle); ok {
+	if installed, ok := config.host.(*hosting.Ledger); ok {
 		sample, sampleErr := installed.Sample(ctx, time.Second)
 		config.hostingSample = &sample
 		config.hostingUsage, err = resource.MeasureOwnerCgroups(nil)

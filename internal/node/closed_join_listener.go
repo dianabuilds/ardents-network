@@ -32,7 +32,7 @@ func startClosedDataJoin(config runtimeConfig, snapshot state.NodeDuty) (*dutyHa
 	role, err := join.Start(join.Config{Profile: config.ClosedDataJoin, Snapshot: snapshot,
 		Authority: nodeAuthority(config), CurrentDuty: func() (state.NodeDuty, error) { return currentFacts(config) },
 		Now: config.now, ListenAddress: listen, OpenHost: func(root string) (join.Host, error) {
-			host, err := openClosedHostingHandle(root)
+			host, err := nodehosting.Open(root)
 			if err != nil {
 				return nil, err
 			}

@@ -3,6 +3,7 @@ package node
 import (
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/node/hosting"
 	"github.com/dianabuilds/ardents-network/internal/node/probe"
 	"github.com/dianabuilds/ardents-network/internal/resource"
 )
@@ -12,7 +13,7 @@ type runtimeConfig struct {
 	hostingSample     *resource.HostingSample
 	hostingUsage      resource.Sample
 	host              closedHostingHandle
-	hostLifetime      *closedHostingLifetime
+	hostLifetime      *hosting.Lifetime
 	hostingNext       time.Time
 	hostingLevel      pressureLevel
 	Config

@@ -3,7 +3,8 @@
 // process pressure, and joins terminal results. Closed forwarding, issuer,
 // resolution, introduction and JOIN duties own their listeners, admitted
 // children and durable roots in role packages. Node opens shared Hosting
-// handles and transfers each handle's close to its selected duty.
+// handles through the Hosting owner and transfers each handle's close to its
+// selected duty.
 //
 // process_config.go and closed_reservations.go declare local configuration;
 // admission.go validates State-selected duties; lifecycle.go owns process

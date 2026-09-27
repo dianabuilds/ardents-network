@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/network/state"
+	"github.com/dianabuilds/ardents-network/internal/node/hosting"
 	"github.com/dianabuilds/ardents-network/internal/node/probe"
 	"github.com/dianabuilds/ardents-network/internal/resource"
 )
@@ -21,8 +22,8 @@ func Run(ctx context.Context, input Config) (result Result, runErr error) {
 		return Result{}, err
 	}
 	if config.host != nil {
-		config.hostLifetime = newClosedHostingLifetime(config.host)
-		defer func() { runErr = errors.Join(runErr, config.hostLifetime.close()) }()
+		config.hostLifetime = hosting.NewLifetime(config.host)
+		defer func() { runErr = errors.Join(runErr, config.hostLifetime.Close()) }()
 	}
 	machine := stateMachine{current: stateAbsent}
 	retained := false
@@ -204,7 +205,7 @@ func withdraw(config runtimeConfig, machine *stateMachine, server *dutyHandle, s
 	}
 	if drainErr := server.Drain(context.Background()); drainErr != nil {
 		if !dutyJoined(server.Joined) {
-			config.hostLifetime.deferCloseUntil(server.Joined)
+			config.hostLifetime.DeferCloseUntil(server.Joined)
 		}
 		return fail(config, machine, nil, "Node role cleanup failed", drainErr)
 	}
@@ -227,7 +228,7 @@ func fail(config runtimeConfig, machine *stateMachine, server *dutyHandle, reaso
 	if server != nil {
 		drainErr := server.Drain(context.Background())
 		if !dutyJoined(server.Joined) {
-			config.hostLifetime.deferCloseUntil(server.Joined)
+			config.hostLifetime.DeferCloseUntil(server.Joined)
 		}
 		terminalErr = errors.Join(terminalErr, drainErr)
 	}

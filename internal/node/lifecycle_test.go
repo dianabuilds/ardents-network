@@ -13,6 +13,7 @@ import (
 	"errors"
 	localroles "github.com/dianabuilds/ardents-network/internal/network/duty"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
+	"github.com/dianabuilds/ardents-network/internal/node/hosting"
 	"github.com/dianabuilds/ardents-network/internal/resource"
 	"io"
 	"math/big"
@@ -476,6 +477,54 @@ func drainStates(events <-chan Event) []string {
 			states = append(states, event.State)
 		default:
 			return states
+		}
+	}
+}
+
+type hostingLifetimeTestHost struct{ closed atomic.Int32 }
+
+func (host *hostingLifetimeTestHost) Sample(context.Context, time.Duration) (resource.HostingSample, error) {
+	return resource.HostingSample{}, nil
+}
+
+func (host *hostingLifetimeTestHost) Reserve(context.Context, resource.HostingTraffic, resource.HostingTraffic, time.Time) (hosting.Reservation, error) {
+	return nil, nil
+}
+
+func (host *hostingLifetimeTestHost) Close() error {
+	host.closed.Add(1)
+	return nil
+}
+
+func TestWithdrawTransfersHostingCloseToUnjoinedLateChild(t *testing.T) {
+	host := &hostingLifetimeTestHost{}
+	config := runtimeConfig{Config: Config{Emit: func(context.Context, Event) error { return nil }},
+		now:          func() time.Time { return time.Unix(100, 0).UTC() },
+		hostLifetime: hosting.NewLifetime(host)}
+	machine := stateMachine{current: stateReady}
+	joined := make(chan struct{})
+	server := &dutyHandle{Stop: func() {}, Joined: joined,
+		Drain: func(context.Context) error { return context.DeadlineExceeded }}
+	result, err := withdraw(config, &machine, server, state.NodeDuty{Assignment: "rendezvous"}, "test withdrawal")
+	if !errors.Is(err, context.DeadlineExceeded) || result.State == stateNames[stateWithdrawn] {
+		t.Fatalf("withdraw result = %+v, %v", result, err)
+	}
+	// The deferred Run-level close must transfer, not close: a late child can
+	// still release its Hosting reservation against the shared handle (F-62).
+	if err := config.hostLifetime.Close(); err != nil {
+		t.Fatalf("transferred Hosting close failed: %v", err)
+	}
+	if host.closed.Load() != 0 {
+		t.Fatal("shared Hosting closed before the late child joined")
+	}
+	close(joined)
+	deadline := time.After(time.Second)
+	for host.closed.Load() == 0 {
+		select {
+		case <-deadline:
+			t.Fatal("shared Hosting did not close after the late child joined")
+		default:
+			time.Sleep(time.Millisecond)
 		}
 	}
 }

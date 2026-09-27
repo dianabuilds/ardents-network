@@ -32,7 +32,7 @@ func startClosedForwarding(config runtimeConfig, snapshot state.NodeDuty) (*duty
 	host := local.host
 	if host == nil {
 		var err error
-		host, err = openClosedHostingHandle(local.HostingRoot)
+		host, err = hosting.Open(local.HostingRoot)
 		if err != nil {
 			return nil, err
 		}

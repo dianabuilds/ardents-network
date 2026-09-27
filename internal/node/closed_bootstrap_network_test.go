@@ -120,7 +120,7 @@ func newClosedBootstrapNetwork(t *testing.T, carrier routecarrier.CarrierProfile
 			CurrentClosedRoute:   func() (state.ClosedRouteView, error) { return fixture.view, nil }}, now: time.Now}
 		var server *dutyHandle
 		if index == 2 {
-			config.HostingRoot = closedHostingHandleingRoot(t)
+			config.HostingRoot = hostingFixtureRoot(t)
 			config.ClosedIssuer = ClosedIssuerProfile{Root: issuerRoot, AdmissionRoot: t.TempDir(), Certificate: certificates[index], ConnectionLimit: 4, DrainTimeout: 2 * time.Second}
 			if err := config.openClosedHosting(); err != nil {
 				t.Fatal(err)
@@ -131,7 +131,7 @@ func newClosedBootstrapNetwork(t *testing.T, carrier routecarrier.CarrierProfile
 			if err := os.MkdirAll(root, 0o700); err != nil {
 				t.Fatal(err)
 			}
-			config.ClosedForwarding = ClosedForwardingProfile{Root: root, Certificate: certificates[index], ConnectionLimit: 4, DrainTimeout: 2 * time.Second, AdmissionTraffic: resource.HostingTraffic{Tx: 1}, TerminationTraffic: resource.HostingTraffic{Tx: 1}, HostingRoot: closedHostingHandleingRoot(t)}
+			config.ClosedForwarding = ClosedForwardingProfile{Root: root, Certificate: certificates[index], ConnectionLimit: 4, DrainTimeout: 2 * time.Second, AdmissionTraffic: resource.HostingTraffic{Tx: 1}, TerminationTraffic: resource.HostingTraffic{Tx: 1}, HostingRoot: hostingFixtureRoot(t)}
 			server, err = startClosedForwarding(config, snapshot)
 		}
 		if err != nil {

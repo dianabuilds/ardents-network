@@ -1,11 +1,11 @@
-package node
+package hosting
 
 import "sync"
 
-// closedHostingLifetime keeps the shared Hosting handle available until an
+// Lifetime keeps the shared Hosting handle available until an
 // unfinished duty has joined every child that can still release a reservation.
-type closedHostingLifetime struct {
-	host     closedHostingHandle
+type Lifetime struct {
+	host     Handle
 	mu       sync.Mutex
 	closed   bool
 	handed   bool
@@ -13,14 +13,14 @@ type closedHostingLifetime struct {
 	closeErr error
 }
 
-func newClosedHostingLifetime(host closedHostingHandle) *closedHostingLifetime {
+func NewLifetime(host Handle) *Lifetime {
 	if host == nil {
 		return nil
 	}
-	return &closedHostingLifetime{host: host, done: make(chan struct{})}
+	return &Lifetime{host: host, done: make(chan struct{})}
 }
 
-func (lifetime *closedHostingLifetime) close() error {
+func (lifetime *Lifetime) Close() error {
 	if lifetime == nil {
 		return nil
 	}
@@ -32,7 +32,7 @@ func (lifetime *closedHostingLifetime) close() error {
 	return lifetime.closeLocked()
 }
 
-func (lifetime *closedHostingLifetime) deferCloseUntil(joined <-chan struct{}) bool {
+func (lifetime *Lifetime) DeferCloseUntil(joined <-chan struct{}) bool {
 	if lifetime == nil || joined == nil {
 		return false
 	}
@@ -51,7 +51,7 @@ func (lifetime *closedHostingLifetime) deferCloseUntil(joined <-chan struct{}) b
 	return true
 }
 
-func (lifetime *closedHostingLifetime) closeLocked() error {
+func (lifetime *Lifetime) closeLocked() error {
 	if lifetime.closed {
 		done := lifetime.done
 		lifetime.mu.Unlock()

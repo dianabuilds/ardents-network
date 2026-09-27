@@ -107,7 +107,7 @@ func newPrivateRecipientNetworkFixtureWithStart(t *testing.T, carrier routecarri
 		view.Nodes[0].RoleDomain, view.Nodes[0].Subrole = 2, 4
 	}
 	events := make(chan Event, 32)
-	config := Config{HostingRoot: closedHostingHandleingRoot(t), NetworkID: network, NodeID: nodeID, IdentityKey: serverCert.PrivateKey.(ed25519.PrivateKey), Current: func() (state.NodeDuty, error) { return snapshot, nil },
+	config := Config{HostingRoot: hostingFixtureRoot(t), NetworkID: network, NodeID: nodeID, IdentityKey: serverCert.PrivateKey.(ed25519.PrivateKey), Current: func() (state.NodeDuty, error) { return snapshot, nil },
 		CurrentClosedProfile: func() (state.ClosedProfileView, bool) { return profile, true }, CurrentClosedRoute: func() (state.ClosedRouteView, error) { return view, nil },
 		ClosedResolution: ClosedResolutionProfile{Root: t.TempDir(), AdmissionRoot: t.TempDir(), Certificate: serverCert, ConnectionLimit: 2, DrainTimeout: time.Second},
 		PollInterval:     10 * time.Millisecond, Quarantine: time.Millisecond, LocalRoleStateRoot: localRoleStateRoot(t), CheckPlacement: func() error { return nil },

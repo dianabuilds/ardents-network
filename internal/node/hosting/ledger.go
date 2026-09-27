@@ -1,24 +1,20 @@
-package node
+package hosting
 
 import (
 	"context"
 	"sync"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/node/hosting"
 	"github.com/dianabuilds/ardents-network/internal/resource"
 )
 
-// closedHostingHandle keeps the provider-period ledger outside Route. The
-// concrete production adapter opens only the already initialized local root;
-// tests may provide a bounded owner without selecting provider facts.
-type closedHostingHandle interface {
+// Handle keeps the provider-period ledger outside Route. A receiving duty
+// borrows it until its accepted work has joined.
+type Handle interface {
 	Sample(context.Context, time.Duration) (resource.HostingSample, error)
-	Reserve(context.Context, resource.HostingTraffic, resource.HostingTraffic, time.Time) (closedHostingReservation, error)
+	Reserve(context.Context, resource.HostingTraffic, resource.HostingTraffic, time.Time) (Reservation, error)
 	Close() error
 }
-
-type closedHostingReservation = hosting.Reservation
 
 // sharedHostingCacheMaxTTL caps the lifetime of a cached successful
 // Sample for concurrent retained duties on the same root. A successful Reserve
@@ -29,7 +25,7 @@ type closedHostingReservation = hosting.Reservation
 // observations can coalesce on it. The TTL keeps an idle period cheap.
 const sharedHostingCacheMaxTTL = 1 * time.Second
 
-type installedClosedHostingHandle struct {
+type Ledger struct {
 	owner     *resource.Hosting
 	sampler   *sharedClosedHostingSampler
 	closeOnce sync.Once
@@ -58,7 +54,8 @@ var closedHostingHandles = struct {
 	samplers map[string]*sharedClosedHostingSampler
 }{samplers: make(map[string]*sharedClosedHostingSampler)}
 
-func openClosedHostingHandle(root string) (closedHostingHandle, error) {
+// Open acquires one handle of an already initialized local Hosting period.
+func Open(root string) (*Ledger, error) {
 	owner, err := resource.OpenHosting(root)
 	if err != nil {
 		return nil, err
@@ -71,10 +68,10 @@ func openClosedHostingHandle(root string) (closedHostingHandle, error) {
 	}
 	sampler.refs++
 	closedHostingHandles.Unlock()
-	return &installedClosedHostingHandle{owner: owner, sampler: sampler}, nil
+	return &Ledger{owner: owner, sampler: sampler}, nil
 }
 
-func (host *installedClosedHostingHandle) Reserve(ctx context.Context, work, termination resource.HostingTraffic, end time.Time) (closedHostingReservation, error) {
+func (host *Ledger) Reserve(ctx context.Context, work, termination resource.HostingTraffic, end time.Time) (Reservation, error) {
 	inner, err := host.owner.Reserve(ctx, work, termination, end)
 	if err != nil {
 		return nil, err
@@ -85,7 +82,7 @@ func (host *installedClosedHostingHandle) Reserve(ctx context.Context, work, ter
 	return &sharedSamplerReservation{inner: inner, sampler: host.sampler}, nil
 }
 
-func (host *installedClosedHostingHandle) Close() error {
+func (host *Ledger) Close() error {
 	host.closeOnce.Do(func() {
 		host.closeErr = host.owner.Close()
 		closedHostingHandles.Lock()
@@ -101,7 +98,7 @@ func (host *installedClosedHostingHandle) Close() error {
 	return host.closeErr
 }
 
-func (host *installedClosedHostingHandle) Sample(ctx context.Context, maximumAge time.Duration) (resource.HostingSample, error) {
+func (host *Ledger) Sample(ctx context.Context, maximumAge time.Duration) (resource.HostingSample, error) {
 	if maximumAge <= 0 {
 		return host.owner.Sample(ctx, maximumAge)
 	}
