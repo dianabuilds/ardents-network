@@ -3,8 +3,10 @@
 Status: **current ownership plan**. The product scope, threat model, accepted
 ADRs, [Network/Node technical owner](../technical/network-route-node.md), and
 GitHub issues govern behavior and delivery. This document records code
-boundaries, not a second task ledger. The source graph below was checked
-against `dev` at `51b38337` on 2026-09-27; recheck it before each move.
+boundaries, not a second task ledger. The initial source graph was checked
+against `dev` at `51b38337` on 2026-09-27. The result below describes the
+extracted Node packages on `codex/node-decomposition`; integration into `dev`
+still requires the combined gate.
 The [C0 component reconstruction](c0-component-reconstruction.md) and
 [Route boundary record](route-refactoring-boundary.md) retain older snapshots.
 
@@ -76,28 +78,24 @@ existing admission point and cannot accept a plan-supplied peer or key.
 Process pressure remains in the root; per-duty local limits and JOIN host
 monitoring remain with their duty.
 
-## Bounded extraction order
+## Completed extraction sequence
 
-1. **Accepted outer connection.** Extract service and writer together.
-   Preserve queue fairness, deadlines, cancellation, child join and the
-   role-owned accepted-close result. Move owner tests with the implementation;
-   keep role-level close and forwarding tests at their callers.
-2. **Shared authority and hosting seams.** Replace role consumption of
-   embedded `runtimeConfig` with explicit duty facts, callbacks for current
-   State rechecks, and only that role's roots and certificate. Decide shared
-   packages from actual callers; do not copy authority checks.
-3. **Forwarding.** Move listener, receiving-resource group, admission,
-   sessions, links, queue, bootstrap and shutdown as one duty. Keep startup
-   rollback separate from transferred server resources. Verify both Carriers.
-4. **Direct roles.** Resolution, issuer, introduction and join children own their listeners,
-   admitted work, durable roots and joined drain; the root keeps configuration
-   admission and address selection. Keep their listener, admitted work and
-   drain boundaries together.
-   Keep root adapters only for process dispatch. Credential's engine and
-   Route's receiving operations stay in their existing packages.
-5. **Process cleanup and review.** Delete confirmed dead declarations, repair
-   comments and names, and leave root composition, admission, pressure,
-   evidence and terminal lifecycle. File splits follow cohesion, not length.
+1. **Accepted outer connection.** The service and writer moved together while
+   queue fairness, deadlines, cancellation, child join and the role-owned
+   accepted-close result remained covered at their callers.
+2. **Shared authority and hosting seams.** Roles now borrow explicit duty
+   facts and current-State callbacks. Authority owns current-role projection;
+   Hosting owns the shared class-2 reserve-before-spend rule.
+3. **Forwarding.** Its listener, receiving resources, admission, sessions,
+   links, queue, bootstrap and joined shutdown moved as one duty. Startup
+   rollback remains separate from transferred server resources.
+4. **Direct roles.** Resolution, issuer, introduction and join own their
+   listeners, admitted work, durable roots and joined drain. Root adapters
+   retain only process dispatch, admission and address selection. Credential's
+   engine and Route's receiving operations remain with their owners.
+5. **Process cleanup.** Confirmed dead declarations and stale comments were
+   removed; the root retains composition, admission, pressure, evidence and
+   terminal lifecycle. File boundaries follow responsibility, not length.
 
 For each slice, update the technical owner and package map with code, run
 focused behavior tests and `make quick-check`, and commit a coherent result.
