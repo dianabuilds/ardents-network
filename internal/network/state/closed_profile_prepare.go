@@ -1,7 +1,6 @@
 package state
 
 import (
-	"bytes"
 	"crypto/ed25519"
 	"encoding/binary"
 	"errors"
@@ -78,9 +77,7 @@ func PrepareClosedProfile(input ClosedProfileInput) ([]byte, error) {
 	if len(body)+ed25519.SignatureSize > maximumClosedProfileSize {
 		return nil, errors.New("closed profile exceeds its public bound")
 	}
-	probe := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{1}, ed25519.SeedSize))
-	raw := append(append([]byte(nil), body...), ed25519.Sign(probe, append([]byte("ardents-closed-profile-v3\x00"), body...))...)
-	if _, err := parseClosedProfile(raw, input.StateGeneration, input.NetworkID, input.EpochDigest, input.Epoch, probe.Public().(ed25519.PublicKey), input.NotBefore); err != nil {
+	if _, err := parseClosedProfileBody(body, input.StateGeneration, input.NetworkID, input.EpochDigest, input.Epoch, input.NotBefore); err != nil {
 		return nil, errors.New("closed profile preparation is invalid")
 	}
 	return body, nil

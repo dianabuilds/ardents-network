@@ -78,6 +78,15 @@ func parseClosedProfile(raw []byte, stateGeneration, networkID, epochDigest [32]
 	if !ed25519.Verify(authority, append([]byte("ardents-closed-profile-v3\x00"), body...), signature) {
 		return closedProfile{}, errors.New("closed profile signature is invalid")
 	}
+	profile, err := parseClosedProfileBody(body, stateGeneration, networkID, epochDigest, epoch, now)
+	if err != nil {
+		return closedProfile{}, err
+	}
+	profile.digest = sha256.Sum256(raw)
+	return profile, nil
+}
+
+func parseClosedProfileBody(body []byte, stateGeneration, networkID, epochDigest [32]byte, epoch uint64, now time.Time) (closedProfile, error) {
 	d := newDecoder(body)
 	magic, err := d.bytes(len(closedProfileMagic))
 	if err != nil || string(magic) != closedProfileMagic {
@@ -129,7 +138,6 @@ func parseClosedProfile(raw []byte, stateGeneration, networkID, epochDigest [32]
 	if err := decodeClosedProfileKeys(&d, &profile); err != nil || !d.done() {
 		return closedProfile{}, errors.New("closed profile keys are invalid")
 	}
-	profile.digest = sha256.Sum256(raw)
 	return profile, nil
 }
 
