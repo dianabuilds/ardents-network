@@ -8,6 +8,8 @@ against `dev` at `51b38337` on 2026-09-27. The result below describes the
 initial extracted Node packages integrated into `dev` at `a2db90bb`. The
 follow-up Node ownership and Endpoint qualification slices were integrated at
 `5a757e49` after the combined `make check` and Linux Docker build/tests.
+The subsequent root-file audit and ready Endpoint publication slice were
+integrated at `59026c64` after the same combined gates.
 Installed systemd/cgroup evidence remains a later shared qualification
 milestone.
 The [C0 component reconstruction](c0-component-reconstruction.md) and
@@ -157,12 +159,14 @@ fixture and grouped complete process-network scenarios by role and failure
 mode. The production root keeps process composition and observations; role
 packages still own listeners, admitted work and durable resources.
 
-The completed Node and Endpoint qualification slices are in `dev` at
-`5a757e49`. Windows `make check` passed after merging the concurrent State and
-Contributor commits. A read-only Linux Docker build plus Node, qualification,
-worker, replacement and targeted Endpoint tests also passed on that merged
-revision. Installed systemd/cgroup evidence remains a later shared
-qualification gate.
+The completed Node ownership and Endpoint qualification slices entered `dev`
+at `5a757e49`. The root-file audit and Endpoint publication consolidation
+entered `dev` at `59026c64`. Windows `make check` passed on the latter combined
+revision, including E2E and race tests. A read-only Linux Docker build plus
+Node, qualification, worker, replacement and targeted Endpoint tests also
+passed. The full Endpoint Linux battery for the publication slice was run by
+its owner before integration; the combined run used targeted Endpoint tests.
+Installed systemd/cgroup evidence remains a later shared qualification gate.
 
 For each slice, update the technical owner and package map with code, run
 focused behavior tests and `make quick-check`, and commit a coherent result.
