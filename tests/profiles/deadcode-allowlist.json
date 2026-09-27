@@ -131,6 +131,10 @@
       },
       {
         "symbols": [
+          "internal/service/connection.Attachment.retireCarrier",
+          "internal/service/connection.Stream.recordRetirementLocked",
+          "internal/service/connection.Stream.retireAttachment",
+          "internal/service/connection.Stream.RetirementResult",
           "internal/service/connection.Stream.RetireTerminalTail"
         ],
         "classification": "platform-specific terminal-tail lifecycle",
@@ -182,7 +186,6 @@
           "internal/endpoint/durableroot.Lease.Release",
           "internal/network/duty.ReadConflict",
           "internal/network/duty.store.Conflict",
-          "internal/service/connection.Attachment.closeCarrier",
           "internal/service/connection.ChallengeDigest",
           "internal/service/connection.Context",
           "internal/service/connection.ContinuesNameOrigin",

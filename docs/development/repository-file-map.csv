@@ -1455,6 +1455,7 @@
 "internal/service/connection/stream_receive.go","production-go","internal/service/connection","service-connection","first-source-pass"
 "internal/service/connection/stream_recovery.go","production-go","internal/service/connection","service-connection","behavior-source-traced"
 "internal/service/connection/stream_recovery_cancellation_test.go","go-test","internal/service/connection","service-connection","test-behavior-traced"
+"internal/service/connection/stream_retirement_result_test.go","go-test","internal/service/connection","service-connection","test-behavior-traced"
 "internal/service/connection/stream_send.go","production-go","internal/service/connection","service-connection","first-source-pass"
 "internal/service/connection/stream_state_test.go","go-test","internal/service/connection","","unreviewed"
 "internal/service/connection/stream_support.go","production-go","internal/service/connection","service-connection","caller-source-traced"

@@ -131,16 +131,14 @@ func (binding *textServiceBinding) openProtectedServiceRecoveryAttachment(attemp
 	}
 	ownedRaw = false
 	if err := errors.Join(attempt.Err(), binding.current()); err != nil || !client && !binding.matchesPublication(lease.Current()) {
-		replacement.close()
-		return nil, errors.Join(err, errors.New("text Service authority changed during recovery"))
+		return nil, errors.Join(err, errors.New("text Service authority changed during recovery"), replacement.close())
 	}
 	// The exporter was derived from the fresh Attachment context; native
 	// Continuity continues to authenticate the immutable logical context.
 	replacement.context = binding.logical
 	attached, err := newProtectedServiceAttachment(replacement)
 	if err != nil {
-		replacement.close()
-		return nil, err
+		return nil, errors.Join(err, replacement.close())
 	}
 	return attached, nil
 }

@@ -956,19 +956,23 @@ stream_contract,stream_lifecycle,stream_recovery}.go`, and
    successful UI presentation.
 4. `textServiceStream.Close` half-closes local input, allows a bounded native
    terminal exchange, retires a recovery tail when present, and joins the run
-   goroutine. It returns cleanup results retained by Endpoint, but the
-   ordinary native `Done()` closes before `stream.close()` completes; that
-   signal alone does not prove physical retirement has finished. The tail
-   path closes `Done()` after retirement. Initial Attachment cleanup has an
+   goroutine. It returns cleanup results retained by Endpoint joined with the
+   native Stream's retained retirement result; `Done()` closes only after
+   physical retirement on both the ordinary and tail paths, so observing it
+   proves the current Attachment's retirement finished (F-23, realized).
+   Initial Attachment cleanup has an
    Endpoint wrapper that caches its
-   Route close error. Replacement Attachment cleanup currently crosses a
-   `func()` native callback and drops the Route close result; see
+   Route close error. Replacement Attachment cleanup crosses the exactly-once
+   `func() error` native callback, whose result the Stream retains and
+   Endpoint joins into the final close; see
    [F-23](repository-reconstruction-findings.md#f-23-replacement-service-attachment-loses-its-route-close-result).
 
 Source-inspected tests cover Instance proof, lost terminal receipt, offset
 rollback, bounded recovery, real TLS/document exchange, and recovery over
-both Carriers. They do not cover a distinct replacement Route close failure
-propagating to the final Endpoint outcome. This trace is not a fresh passing
+both Carriers. Native retention, exactly-once retirement and `Done()` ordering are pinned by
+`stream_retirement_result_test.go` (F-23); an Endpoint-level test still does
+not assert a distinct replacement Route close failure propagating to the
+final Endpoint outcome. This trace is not a fresh passing
 installed qualification result, and the Endpoint agent's unfinished change
 must be reconciled before treating these file boundaries as settled.
 
@@ -1143,11 +1147,12 @@ and native `service/connection/stream_contract.go` at `53f02e64`.
    cleanup joins the owned Application half, physical transport, recovery
    reservation and Publisher lease before `textServiceStream.finished` closes.
 4. The initial wrapper retains the physical close result. A replacement
-   transport bypasses that wrapper and crosses native Attachment's `func()`
-   close callback; the callback discards its close result (F-23). Also,
-   ordinary native `Done()` currently closes before physical `stream.close`,
-   whereas the terminal tail closes it afterwards. These are exact result and
-   completion-barrier gaps at the otherwise explicit ownership transfer.
+   transport bypasses that wrapper and crosses native Attachment's exactly-once
+   `func() error` close callback; the callback's result is retained by the
+   native Stream and joined into the final `textServiceStream.Close` (F-23,
+   realized). Ordinary native `Done()` and the terminal tail both close only
+   after physical `stream.close`. The former result and completion-barrier
+   gaps at the ownership transfer are closed.
 
 The source proves the normal and opening-failure transfer order, not every
 recipient timeout or installed shutdown outcome. Preserve the distinct

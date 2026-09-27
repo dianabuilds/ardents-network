@@ -83,6 +83,11 @@ func (binding *textServiceBinding) openTextServiceStreamWithRecovery(ctx context
 		_ = transport.Close()
 		_ = owned.Close()
 	})
+	// nativeOwned records that a native Stream took the initial Attachment and
+	// with it the exactly-once physical transport retirement. Its retained
+	// result then reaches Close through Stream.RetirementResult, so cleanup
+	// must not join the same cached transport result a second time (F-23).
+	nativeOwned := false
 	cleanup := func() error {
 		cancel()
 		if !stopCaller() {
@@ -91,7 +96,13 @@ func (binding *textServiceBinding) openTextServiceStreamWithRecovery(ctx context
 		if !stopLifetime() {
 			<-interrupted
 		}
-		cleanupErr := errors.Join(owned.Close(), transport.Close(), binding.releaseTextIntroductionRecovery())
+		var cleanupErr error
+		if nativeOwned {
+			_ = transport.Close()
+			cleanupErr = errors.Join(owned.Close(), binding.releaseTextIntroductionRecovery())
+		} else {
+			cleanupErr = errors.Join(owned.Close(), transport.Close(), binding.releaseTextIntroductionRecovery())
+		}
 		if lease != nil {
 			cleanupErr = errors.Join(cleanupErr, lease.Close())
 		}
@@ -137,6 +148,7 @@ func (binding *textServiceBinding) openTextServiceStreamWithRecovery(ctx context
 	if err != nil {
 		return nil, err
 	}
+	nativeOwned = true
 	// Only recovery-capable streams retain terminal-control ownership after
 	// RunBounded. A one-Attachment stream completes and closes immediately, so
 	// presenting its RetireTerminalTail method would turn an ordinary local
@@ -175,7 +187,7 @@ func (connection *textServiceStream) runNative(ctx, lifetime context.Context, st
 	default:
 	}
 	if nativeFinished {
-		connection.finishErr = cleanup()
+		connection.finishErr = errors.Join(cleanup(), stream.RetirementResult())
 		if connection.finishErr != nil {
 			connection.finishErr = errors.Join(errors.New("text Service cleanup failed"), connection.finishErr)
 		}
@@ -197,7 +209,9 @@ func (connection *textServiceStream) runNative(ctx, lifetime context.Context, st
 	close(connection.retired)
 	if !nativeFinished {
 		<-stream.Done()
-		connection.finishErr = cleanup()
+		// Done closes only after the native Stream retired its current
+		// Attachment, so the joined retirement result is complete here (F-23).
+		connection.finishErr = errors.Join(cleanup(), stream.RetirementResult())
 		if connection.finishErr != nil {
 			connection.finishErr = errors.Join(errors.New("text Service cleanup failed"), connection.finishErr)
 		}

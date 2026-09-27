@@ -162,7 +162,7 @@ its stated gate is satisfied.
 | Qualification (6) | Retain Endpoint's stream-qualification adapter for verification; do not treat its fixture path as ordinary Publisher/Reader behavior. | Its installed verdict remains separate from `make check` and the ordinary text-command verdict (F-31). |
 | Receiving spend (13) | Retain Replay ledger and Node duty admission as distinct owners. | No spend-root close before accepted children join. |
 | Resource/diagnostics (3) | Retain Resource and event owners; route results into bounded diagnostics. | Keep observation failure and stop/join result visible to the process owner. |
-| Service Connection (31) | Retain native logical stream owner and Endpoint physical adapter. | Error-bearing replacement Attachment and completion barrier (F-23). |
+| Service Connection (31) | Retain native logical stream owner and Endpoint physical adapter. | Error-bearing replacement Attachment and completion barrier are realized in the existing package (F-23 done). |
 | Service identity (16) | Retain one Instance root; the old decryptor was retired by ADR-0094. | F-42 closed by ADR-0102: Credential v3 request/response grammars; pre-v3 and phase-less roots meet the typed `ErrLegacyRoot` refusal. Instance startup failures now retain both the primary error and exclusive-lock release failure (F-72). |
 
 ### Network State: one authority root with distinct internal work
@@ -481,7 +481,7 @@ owner. It should not turn a 74-file Route root into a generic transport API.
 | Endpoint Descriptor publication `->` Route Control lane `->` Node Reachability Store | Endpoint owns the signed bytes and exact retry; Route sends one nonce-bound operation; Node checks current Introduction and calls `PublishPrivate`. Status 0 follows `StoreAccepted` or `StoreAlreadyCurrent`, after the Store's file and directory sync for a new record. | Keep durable revision/conflict floors with Reachability, State/duty admission with Node, and caller lifetime with Endpoint. The result Interface must distinguish a committed or already-current ACK from refusal and uncertain transport loss; it must not turn a lost reply into a second publication identity. |
 | `endpoint -> route` and `node -> route` | Both processes borrow transport/channel operations, while Endpoint also coordinates publication and Node owns receiving duties. | Keep process admission, lifecycle, and terminal error ownership at Endpoint/Node. The shared Route boundary should expose only the operations and leases each caller actually consumes. |
 | `service/connection` has no first-party imports | It owns authenticated logical byte ordering and attachment lifetime without importing Endpoint or Route. | Preserve this deep boundary; adapt physical attachment at its caller, not inside Service Connection. |
-| Replacement Service Attachment close | Native `Attachment` accepts a `func()` close callback; Endpoint's replacement callback discards the joined Route close result, while its initial transport separately caches that result. `NewAttachment` has one non-test caller: Endpoint's protected Service adapter. | Keep Service Connection independent of Route. Make the callback return `error`, retain retirement results in native Stream, and close its `Done()` only after physical retirement on both ordinary and tail paths. Endpoint joins the post-`Done()` result in final `textServiceStream.Close()`. Preserve exactly-once retirement, the already-published Application outcome, and authenticated terminal ordering (F-23). |
+| Replacement Service Attachment close (F-23, realized) | Native `Attachment` takes an exactly-once `func() error` retirement callback; the initial transport still caches its close result behind the Endpoint wrapper, and replacement Route transports now cross the error-bearing callback. `NewAttachment` has one non-test caller: Endpoint's protected Service adapter. | Realized: native Stream joins every physical retirement failure under its lock and publishes it through `RetirementResult` after `Done` closes; `Done` closes only after the current Attachment's physical retirement on both the ordinary and tail paths. Endpoint joins the replacement-path close failure at the recovery boundary and joins the post-`Done` retirement result into the final `textServiceStream.Close()` error. Exactly-once retirement, the already-published Application outcome, and authenticated terminal ordering are preserved. |
 
 The target import rule is therefore directional: command adapters compose
 Endpoint, Node, State, Service, and trust owners; Endpoint/Node borrow the
@@ -512,15 +512,15 @@ offline issuer contract. Control and Custody can then depend on that grammar
 without importing the live network listener. This is a dependency cleanup
 slice, not an additional accepting credential version (F-28/F-30).
 
-Repair Service Connection's Attachment seam before a package move:
-`NewAttachment` currently takes `close func()` and loses the replacement
-Route close result. The selected result is an exactly-once `func() error`
-owned by the Attachment; native Stream retains that result and completes
+Service Connection's Attachment seam is repaired (F-23, realized):
+`NewAttachment` takes an exactly-once `close func() error` owned by the
+Attachment; native Stream retains the joined retirement result and completes
 `Done()` only after ordinary and terminal-tail physical retirement. Endpoint
-may publish its Application outcome earlier but must return the late cleanup
-error from final `Close()` (F-23). No new package or broader transport
-interface is needed. These three decisions set the target direction while
-keeping implementation ownership and tests in separate bounded slices.
+may publish its Application outcome earlier but returns the late cleanup
+error from final `Close()`. No new package or broader transport
+interface was needed. The terminal and Service Connection decisions are
+realized (F-29/F-23); the Credential decision keeps implementation ownership
+and tests in separate bounded slices.
 
 These are source-observed call boundaries at `9835e225`, not proposed exported
 Go declarations. A caller-local interface can stay private even when its
@@ -533,7 +533,7 @@ slice and the selected package direction.
 | Endpoint retains a Source/Introduction/Responder path | `route.OpenClosed*Prefix` returns a `ClosedSourcePrefix`; its `Close` stops channels, joins children and returns physical retirement failure. Endpoint owns its source acquisition and release around that value. | Keep prefix lifetime with the exact Endpoint owner and channel mechanics with Route. The result must remain closeable with an error; do not export Endpoint's `textContext` or its handle locks to make a new package. |
 | Endpoint publishes or looks up a Descriptor | The private `textResolutionSource` supplies currentness, recipient and `exchangeDescriptor`; Route's `ClosedSourcePrefix.ExchangeDescriptor` opens one Control lane and returns status/proof after nonce checking. Endpoint validates the signed proof or commits its publication only after ACK. | Keep `textResolutionSource` as a caller-local coordination seam: its `currentLocked(*textContext)` cannot be an independent Route API. A cross-package operation should use only current-State-bound recipient selection, a token presenter and exact operation bytes, return a bounded result or transport uncertainty, and leave proof/history and publication authority with Endpoint/Reachability. |
 | Endpoint pairs a Data JOIN | The private `textJoinAcquisition` chooses a recipient and calls `ClosedSourcePrefix.Join`; the returned `ClosedJoinedStream.Close` joins channel and peer-close results. Endpoint's `textJoinedTransport.Close` additionally releases Job qualification and its acquisition lease. | Route owns channel/JOIN mechanics; Endpoint owns pairing intent, simultaneous capsule submission, Job, token attempt and lease transfer to Service Connection. Preserve a returned close error and one owner for the joined stream. Private methods taking `*textContext` or returning `*textSourceHandle` remain local coordination, not a package contract. |
-| Service Connection replaces an Attachment | Native `connection.AttachmentOpener` returns an authenticated Attachment under an immutable Recovery context. Endpoint's opener obtains and authenticates the new Route transport. Native `Attachment` currently takes a `func()` cleanup callback. | Service Connection keeps logical identity, offsets, terminal and recovery rules; Endpoint retains Route selection and physical close outcome. Resolve the callback's lost replacement-close error before calling the boundary complete (F-23). |
+| Service Connection replaces an Attachment (F-23, realized) | Native `connection.AttachmentOpener` returns an authenticated Attachment under an immutable Recovery context. Endpoint's opener obtains and authenticates the new Route transport. Native `Attachment` takes an exactly-once `func() error` retirement callback. | Service Connection keeps logical identity, offsets, terminal and recovery rules; Endpoint retains Route selection and physical close outcome. Realized: the callback returns the replacement-close error, native Stream retains it until `Done`, and Endpoint joins it into the final `Close()`; the boundary is complete. |
 
 This inventory already rules out one tempting split: moving the Endpoint-local
 `textResolutionSource` or `textJoinAcquisition` declarations into Route would
@@ -880,12 +880,12 @@ buildable split.
 
 The existing `service/connection` package is already below Endpoint and
 Route: it has no first-party imports and receives authenticated Attachment
-bytes through an opener. Preserve that direction while fixing the lost
-replacement-close result. The ordinary native `Done()` currently closes before
-physical `stream.close()`, while the terminal tail closes it afterward; align
-that completion barrier and keep the Endpoint-owned close result observable at
-final `Close()` without changing a previously published Application outcome
-(F-23). Revalidate the graph against the active Endpoint
+bytes through an opener. That direction is preserved and the lost
+replacement-close result is fixed (F-23, realized): the ordinary native
+`Done()` and the terminal tail both close only after physical
+`stream.close()`, and the Endpoint-owned close result stays observable at
+final `Close()` without changing a previously published Application outcome.
+Revalidate the graph against the active Endpoint
 agent's completed revision before assigning exact package paths.
 
 ## State and close ownership
@@ -961,8 +961,8 @@ lifetimes, physical connection-close error policy and combined installed
 evidence still require targeted review before moving package boundaries. The
 [JOIN-to-Service handoff trace](repository-behavior-map.md#source-trace-join-transport-transfer-into-service-connection)
 now resolves the initial Route stream's opening-failure and successful-transfer
-close owner; replacement-close result and native completion barrier remain
-open under F-23.
+close owner; the replacement-close result and the native completion barrier
+are realized (F-23).
 
 ### Issuer's late close owner
 
@@ -1010,7 +1010,7 @@ package-move instruction.
 | `retain` | 165 | The existing package or primitive appears to have a coherent owner; preserve its contract while composing the new shape. |
 | `deepen` | 96 | Local ownership is visible but buried in a broad package; make the owner and lifetime explicit before deciding on a new package. |
 | `move-candidate` | 32 | The file's current package mixes different component responsibilities; decide the destination with the caller and close graph first. |
-| `boundary-review` | 40 | The file bridges components or its exact owner is unclear from the current API. Eight Node and five Route rows now have source-backed owners (F-33/F-34/F-44); Service Connection's `Done` promise and ordinary close order still disagree (F-23). |
+| `boundary-review` | 40 | The file bridges components or its exact owner is unclear from the current API. Eight Node and five Route rows now have source-backed owners (F-33/F-34/F-44); Service Connection's `Done` promise and ordinary close order now agree (F-23 realized). |
 | `split-candidate` | 10 | One file contains distinct responsibilities; determine whether a local file split or a package boundary is justified. |
 | `compatibility-review` | 4 | A codec or Attachment appears to have no maintained production caller; confirm the accepted compatibility evidence before disposition. |
 | `retirement-review` | 0 | All former rows are cleared: the generic Endpoint chain was retired by ADR-0092, the twelve Route v2 files by ADR-0093, and the Service plaintext instruction by ADR-0094 (F-30/F-37/F-42). |
@@ -1114,14 +1114,12 @@ only when the package is actually introduced or renamed.
 ## Reconstruction method and next decisions
 
 1. Carry the selected handoffs into bounded owner changes:
-   State-to-Node's checked duty value is realized (F-07, ADR-0104; its F-45 role join settled by ADR-0103); remaining are Route/Credential's live
-   issuer adapter versus offline grammar (F-17/F-28/F-30), and the
-   Service Connection attachment's physical-close result (F-23). The table
+   State-to-Node's checked duty value is realized (F-07, ADR-0104; its F-45 role join settled by ADR-0103) and the
+   Service Connection attachment's physical-close result is realized in its existing package (F-23 done); remaining is Route/Credential's live
+   issuer adapter versus offline grammar (F-17/F-28/F-30). The table
    of observed handoffs above already gives callers, input, result and close
    owners. State's duty value fields are fixed against the accepted role join (ADR-0103/0104); Credential's
-   package move awaits the late issuer-root close owner. Service Connection's
-   error-bearing callback and completion barrier can be corrected in its
-   existing package. Refine exported signatures only in the selected slice.
+   package move awaits the late issuer-root close owner. Refine exported signatures only in the selected slice.
 2. Decide one-version retirement in accepted contract order: old Route v2
    execution, Invite Entry writer, Reachability old writer/root, Instance old
    key/root and AREP intake. For each, record last caller, persisted floor,

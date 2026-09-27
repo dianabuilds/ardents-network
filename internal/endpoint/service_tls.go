@@ -32,11 +32,13 @@ type securedAttachment struct {
 	exporterCommitment [32]byte
 }
 
-func (attachment *securedAttachment) close() {
+// close retires the physical transport and returns its result so the native
+// Stream retains it through the Attachment close callback (F-23).
+func (attachment *securedAttachment) close() error {
 	if attachment == nil || attachment.transport == nil {
-		return
+		return nil
 	}
-	_ = attachment.transport.Close()
+	return attachment.transport.Close()
 }
 
 func secureClient(ctx context.Context, raw net.Conn, credential publicationCredential, connectionContext [32]byte,

@@ -23,11 +23,12 @@ func TestRecoveryCancellationClosesAndJoinsProposedContinuity(t *testing.T) {
 	defer proposedPeer.Close()
 	closed := make(chan struct{})
 	var closeOnce sync.Once
-	proposed, err := NewAttachment(proposedCarrier, 2, [32]byte{3}, [32]byte{4}, func() {
+	proposed, err := NewAttachment(proposedCarrier, 2, [32]byte{3}, [32]byte{4}, func() error {
 		closeOnce.Do(func() {
 			_ = proposedCarrier.Close()
 			close(closed)
 		})
+		return nil
 	})
 	if err != nil {
 		t.Fatal(err)

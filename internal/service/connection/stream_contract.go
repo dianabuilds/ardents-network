@@ -37,32 +37,42 @@ type Attachment struct {
 	carrier                     io.ReadWriteCloser
 	generation                  uint64
 	context, exporterCommitment [32]byte
-	close                       func()
+	close                       func() error
 	closeOnce                   sync.Once
+	closeErr                    error
 }
 
 // NewAttachment admits one authenticated carrier for a fixed attachment
-// generation. close may additionally release Route-local resources.
+// generation. close may additionally release Route-local resources; its
+// result becomes the Attachment's retained exactly-once retirement result
+// and is published through the owning Stream (F-23).
 func NewAttachment(carrier io.ReadWriteCloser, generation uint64, connectionContext,
-	exporterCommitment [32]byte, close func()) (*Attachment, error) {
+	exporterCommitment [32]byte, close func() error) (*Attachment, error) {
 	if carrier == nil || generation == 0 || connectionContext == [32]byte{} || exporterCommitment == [32]byte{} {
 		return nil, errors.New("authenticated connection attachment is incomplete")
 	}
 	if close == nil {
-		close = func() { _ = carrier.Close() }
+		close = func() error { return carrier.Close() }
 	}
 	return &Attachment{carrier: carrier, generation: generation, context: connectionContext,
 		exporterCommitment: exporterCommitment, close: close}, nil
 }
 
-func (attachment *Attachment) closeCarrier() {
-	if attachment != nil {
-		attachment.closeOnce.Do(func() {
-			if attachment.close != nil {
-				attachment.close()
-			}
-		})
+// retireCarrier performs the exactly-once physical retirement. performed
+// reports whether this caller ran the close callback, so a Stream records
+// each Attachment's retained result exactly once even when a serialized
+// reader and the recovery worker release the same failed carrier (F-23).
+func (attachment *Attachment) retireCarrier() (result error, performed bool) {
+	if attachment == nil {
+		return nil, false
 	}
+	attachment.closeOnce.Do(func() {
+		performed = true
+		if attachment.close != nil {
+			attachment.closeErr = attachment.close()
+		}
+	})
+	return attachment.closeErr, performed
 }
 
 // AttachmentOpener supplies another already-authenticated, exact-context
@@ -167,6 +177,11 @@ type Stream struct {
 	terminalAcknowledgedGeneration                                                    uint64
 	postClose, tailRetiring                                                           bool
 	applicationWriting                                                                bool
+
+	// retirementErr joins every physical Attachment retirement failure this
+	// Stream observed. It is written under mu and published after done closes
+	// through RetirementResult (F-23).
+	retirementErr error
 }
 
 type receivedRange struct {

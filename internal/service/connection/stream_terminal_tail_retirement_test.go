@@ -185,9 +185,9 @@ func TestSuccessfulTerminalTailRetiresWithoutContextFailure(t *testing.T) {
 	carrier, peer := net.Pipe()
 	defer peer.Close()
 	var closed atomic.Int32
-	attachment, err := NewAttachment(carrier, 1, [32]byte{1}, [32]byte{2}, func() {
+	attachment, err := NewAttachment(carrier, 1, [32]byte{1}, [32]byte{2}, func() error {
 		closed.Add(1)
-		_ = carrier.Close()
+		return carrier.Close()
 	})
 	if err != nil {
 		t.Fatal(err)

@@ -116,9 +116,7 @@ func (stream *Stream) failLocked(err error) (*Attachment, Application) {
 }
 
 func (stream *Stream) releaseFailure(attachment *Attachment, application Application) {
-	if attachment != nil {
-		attachment.closeCarrier()
-	}
+	stream.retireAttachment(attachment)
 	if application != nil {
 		if deadline, ok := application.(interface{ SetDeadline(time.Time) error }); ok {
 			_ = deadline.SetDeadline(time.Now())
@@ -135,10 +133,49 @@ func (stream *Stream) releaseFailure(attachment *Attachment, application Applica
 func (stream *Stream) close() {
 	stream.mu.Lock()
 	if stream.current != nil {
-		stream.current.closeCarrier()
+		stream.recordRetirementLocked(stream.current.retireCarrier())
 	}
 	stream.mu.Unlock()
 	erase(stream.continuity[:])
+}
+
+// retireAttachment performs one Attachment's exactly-once physical retirement
+// and retains its failure for the post-Done result. Callers hold no lock; the
+// performing caller alone records, so a serialized reader and the recovery
+// worker cannot duplicate one retained result (F-23).
+func (stream *Stream) retireAttachment(attachment *Attachment) {
+	if attachment == nil {
+		return
+	}
+	result, performed := attachment.retireCarrier()
+	if !performed || result == nil {
+		return
+	}
+	stream.mu.Lock()
+	stream.retirementErr = errors.Join(stream.retirementErr, result)
+	stream.mu.Unlock()
+}
+
+// recordRetirementLocked joins the result of a physical retirement this
+// caller actually performed. Callers hold stream.mu.
+func (stream *Stream) recordRetirementLocked(result error, performed bool) {
+	if !performed || result == nil {
+		return
+	}
+	stream.retirementErr = errors.Join(stream.retirementErr, result)
+}
+
+// RetirementResult returns the joined physical Attachment retirement
+// failures this Stream retained. It is meaningful once done has closed:
+// both the ordinary RunBounded path and the terminal-control tail retire
+// the current Attachment before they close done (F-23).
+func (stream *Stream) RetirementResult() error {
+	if stream == nil {
+		return nil
+	}
+	stream.mu.Lock()
+	defer stream.mu.Unlock()
+	return stream.retirementErr
 }
 
 func (stream *Stream) currentGenerationLocked() uint64 {

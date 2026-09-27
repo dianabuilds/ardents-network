@@ -26,8 +26,10 @@ func (stream *Stream) RunBounded(sendLimit, receiveLimit uint32) (Outcome, error
 		if releaseSafety != nil {
 			releaseSafety()
 		}
-		close(stream.done)
+		// Done closes only after the current Attachment's physical retirement
+		// so a waiter joining Done observes the complete retirement result (F-23).
 		stream.close()
+		close(stream.done)
 	}()
 	if err := stream.establishInitialAttachment(); err != nil {
 		stream.fail(err)
@@ -250,8 +252,9 @@ func (stream *Stream) receiveApplicationBounded(limit uint64) error {
 			if writingTerminal && stream.opener != nil {
 				// Recovery owns the failed carrier. Closing it here releases a
 				// serialized write so its worker can perform the one coordinated
-				// replacement instead of leaving both workers blocked.
-				attachment.closeCarrier()
+				// replacement instead of leaving both workers blocked. The
+				// performing caller alone retains the result (F-23).
+				stream.retireAttachment(attachment)
 			}
 			stream.mu.Lock()
 			for writingTerminal && (stream.terminalReplaying || stream.terminalWriting) && stream.terminal == nil {

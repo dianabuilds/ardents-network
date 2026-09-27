@@ -183,7 +183,7 @@ func TestStreamRecoveryCancelsProposalAfterTerminalConfirmation(t *testing.T) {
 		opener: func(context.Context, Recovery) (*Attachment, error) {
 			close(opened)
 			<-release
-			return &Attachment{generation: 2, close: func() { close(closed) }}, nil
+			return &Attachment{generation: 2, close: func() error { close(closed); return nil }}, nil
 		}}
 	stream.cond = sync.NewCond(&stream.mu)
 	result := make(chan error, 1)
