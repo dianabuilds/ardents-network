@@ -1,6 +1,7 @@
 ---
 status: accepted
 date: 2026-09-26
+partially-superseded-by: ADR-0110 (retained inspect-alpha-corpus command)
 ---
 
 # ADR-0091 — Retire uncomposed legacy artifacts from the working tree

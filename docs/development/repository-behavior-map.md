@@ -1038,7 +1038,8 @@ HEAD `8cd1575f`.
    accepted catalog commits the floor before inspection returns. The command
    closes that reader, while Release and Network checks use their own
    inspection roots. The callback may durably advance Release and Network
-   floors; all three close results are currently discarded (F-64).
+   floors. The source at the mapped HEAD discarded three close results;
+   the current inspection owner joins them into its returned error (F-64).
 2. `inspect-alpha-corpus` accepts explicit ACA2 catalog and corpus bytes plus
    supplied keys and decision time. It verifies the four-component catalog
    and corpus without opening the ACA1 root or committing a corpus floor.
@@ -1046,10 +1047,11 @@ HEAD `8cd1575f`.
    operation. `accept-alpha-corpus` is a fixed retired-command refusal in
    `cmd/ardents-control/main.go`.
 
-The two input grammars and different floor lifetimes are a real maintenance
-split (F-49). Replacing ACA1 with ACA2 requires a decision about the current
-transition report and retained ACA1 reader roots; switching a parser alone
-would lose its anti-rollback state.
+The two input grammars and different floor lifetimes were a real maintenance
+split (F-49). ADR-0110 keeps ACA1 and its reader roots for the current
+transition report and selects the ACA2 corpus diagnostic for retirement.
+The source trace above still describes the command present at its mapped HEAD;
+the decision does not claim the removal has landed.
 
 ## Source trace: retired Namespace without any reader
 

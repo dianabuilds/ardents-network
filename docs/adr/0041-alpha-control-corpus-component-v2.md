@@ -1,14 +1,14 @@
 ---
 status: accepted
 date: 2026-08-25
-partially-superseded-by: ADR-0088 (maintained corpus-floor acceptance consequence only)
+partially-superseded-by: ADR-0088 (maintained corpus-floor acceptance consequence); ADR-0110 (maintained ACA2 inspection)
 ---
 
 # ADR-0041 — Add a separate signed corpus component through alpha-control v2
 
 **Supersession note:** ADR-0088 supersedes the maintained accepting-floor
-consequence. The ACA2 component and supplied-bytes inspection separation remain
-accepted compatibility contracts.
+consequence. ADR-0110 retires maintained ACA2 inspection. The ACA2 component
+and supplied-bytes inspection separation remain historical design evidence.
 
 ## Context
 
