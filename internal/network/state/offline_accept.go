@@ -21,7 +21,10 @@ func (s *networkState) Accept(ctx context.Context, epoch []byte, inputs [][]byte
 	if s.distribution.conflicting {
 		return Snapshot{}, errPersistentStateConflict
 	}
-	decision, err := verifyDecision(s.config, s.current, epoch, inputs, encodedMaterials, true)
+	// One acceptance must verify and publish against the same clock sample.
+	verification := s.config
+	verification.now = verification.clock().UTC()
+	decision, err := verifyDecision(verification, s.current, epoch, inputs, encodedMaterials, true)
 	if err != nil {
 		return Snapshot{}, err
 	}
@@ -36,7 +39,7 @@ func (s *networkState) Accept(ctx context.Context, epoch []byte, inputs [][]byte
 		if errors.Is(err, errPendingEpochConflict) {
 			state := s.distribution
 			state.sequence++
-			state.trustedTimeFloor = max(state.trustedTimeFloor, s.config.clock().UTC().Unix())
+			state.trustedTimeFloor = max(state.trustedTimeFloor, verification.now.Unix())
 			state.conflicting = true
 			if commitErr := s.commitDistribution(state); commitErr != nil {
 				return Snapshot{}, commitErr
@@ -46,9 +49,9 @@ func (s *networkState) Accept(ctx context.Context, epoch []byte, inputs [][]byte
 	}
 	state := s.distribution
 	state.sequence++
-	state.trustedTimeFloor = max(state.trustedTimeFloor, s.config.clock().UTC().Unix())
+	state.trustedTimeFloor = max(state.trustedTimeFloor, verification.now.Unix())
 	if err := s.commitActiveDecision(decision, state); err != nil {
 		return Snapshot{}, err
 	}
-	return s.snapshotWithDistribution(s.config.clock().UTC()), nil
+	return s.snapshotWithDistribution(verification.now), nil
 }
