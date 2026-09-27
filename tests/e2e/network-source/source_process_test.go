@@ -110,6 +110,31 @@ func TestFiniteSourceCommandsAsBlackBoxProcesses(t *testing.T) {
 		event.LatestCompleteness != "latest completeness unproven" {
 		t.Fatalf("unexpected source refresh event: event=%+v err=%v raw=%s", event, err, output)
 	}
+
+	// F-21: --resume confirms the accepted State is readable and enters the
+	// plan-owned scheduler; with no plan interval it must exit successfully
+	// without inventing an accepted-wave event or any other output.
+	resumePlan := make(map[string]any, len(plan))
+	for key, value := range plan {
+		resumePlan[key] = value
+	}
+	resumePlan["refresh_interval_ms"] = 0
+	resumePath := writeProcessJSON(t, "endpoint-resume-plan.json", resumePlan)
+	resumeOutput, err := exec.Command(ardents, "refresh-sources", "--resume", "--state-root", endpointRoot,
+		"--source-plan", resumePath).CombinedOutput()
+	if err != nil {
+		t.Fatalf("resume source processes: %v\n%s", err, resumeOutput)
+	}
+	if trimmed := bytes.TrimSpace(resumeOutput); len(trimmed) != 0 {
+		t.Fatalf("resume invented output: %s", trimmed)
+	}
+	// Resume against a root that never accepted a generation must refuse
+	// instead of reporting success.
+	if output, err := exec.Command(ardents, "refresh-sources", "--resume", "--state-root", t.TempDir(),
+		"--source-plan", resumePath).CombinedOutput(); err == nil {
+		t.Fatalf("resume accepted an uninitialized state root: %s", output)
+	}
+
 	authorityID := sha256.Sum256(fixture.authorityPublic)
 	opened, err := state.Open(state.Config{Root: endpointRoot, NetworkID: fixture.networkID,
 		Authorities: map[[32]byte]ed25519.PublicKey{authorityID: fixture.authorityPublic},

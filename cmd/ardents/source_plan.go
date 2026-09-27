@@ -63,26 +63,36 @@ func runRefreshSources(ctx context.Context, arguments []string, output io.Writer
 		return fmt.Errorf("open network state: %w", err)
 	}
 	defer func() { resultErr = errors.Join(resultErr, store.Close()) }()
-	snapshot, err := store.Current()
-	if !resume {
-		snapshot, err = store.Refresh(ctx)
+	if resume {
+		// Resume only confirms the accepted State is readable and then
+		// enters the plan-owned scheduler; it runs no network wave and
+		// invents no acceptance event (F-21).
+		if _, err := store.Current(); err != nil {
+			return fmt.Errorf("read current network state: %w", err)
+		}
+	} else {
+		snapshot, err := store.Refresh(ctx)
+		if err != nil {
+			return fmt.Errorf("refresh network state: %w", err)
+		}
+		// The accepted-wave event belongs solely to the branch that
+		// actually ran one selected Direct-Origin Source wave.
+		if err := events.encode(struct {
+			Schema             string    `json:"schema"`
+			Kind               string    `json:"kind"`
+			At                 time.Time `json:"at"`
+			Generation         string    `json:"generation"`
+			Epoch              uint64    `json:"epoch"`
+			SourceAttempts     uint16    `json:"source_attempts"`
+			SourceOutcomes     [4]string `json:"source_outcomes"`
+			LatestCompleteness string    `json:"latest_completeness"`
+		}{"ardents-source-event-v1", "source-wave-accepted", time.Now().UTC(), snapshot.Generation, snapshot.Epoch,
+			snapshot.SourceAttempts, snapshot.SourceOutcomes, snapshot.LatestCompleteness}); err != nil {
+			return err
+		}
 	}
-	if err != nil {
-		return fmt.Errorf("refresh network state: %w", err)
-	}
-	err = events.encode(struct {
-		Schema             string    `json:"schema"`
-		Kind               string    `json:"kind"`
-		At                 time.Time `json:"at"`
-		Generation         string    `json:"generation"`
-		Epoch              uint64    `json:"epoch"`
-		SourceAttempts     uint16    `json:"source_attempts"`
-		SourceOutcomes     [4]string `json:"source_outcomes"`
-		LatestCompleteness string    `json:"latest_completeness"`
-	}{"ardents-source-event-v1", "source-wave-accepted", time.Now().UTC(), snapshot.Generation, snapshot.Epoch,
-		snapshot.SourceAttempts, snapshot.SourceOutcomes, snapshot.LatestCompleteness})
-	if err != nil || once || config.AutomaticRefreshInterval == 0 {
-		return err
+	if once || config.AutomaticRefreshInterval == 0 {
+		return nil
 	}
 	return store.Wait(ctx)
 }

@@ -328,8 +328,9 @@ scheduler}.go`, and `internal/network/source` at `e48d4c3c`.
 
 1. `refresh-sources` reads one bounded two-Source plan and opens the existing
    State root. Normal mode calls `Refresh`; `--once` stops after that wave;
-   `--resume` calls `Current` and enters `Wait` if automatic refresh is
-   configured. The two flags cannot be combined. State's root, source plan,
+   `--resume` calls `Current` as a readability check and enters `Wait` if
+   automatic refresh is configured, emitting no acceptance event. The two
+   flags cannot be combined. State's root, source plan,
    current decision and local Source role remain owned by State, not by the
    transport helper.
 2. `Refresh` first checks resource and trusted-time evidence, durable backoff,
@@ -350,8 +351,9 @@ scheduler}.go`, and `internal/network/source` at `e48d4c3c`.
    unavailability and clock uncertainty as non-terminal conditions. Other
    terminal refresh errors remain visible through `Current` and `Wait`.
    `State.Close` cancels and joins the scheduler/Source server before releasing
-   root and local-role ownership. The `--resume` command's event mismatch is
-   recorded separately in the findings ledger.
+   root and local-role ownership. The `source-wave-accepted` event belongs
+   solely to the branch that actually ran one Refresh wave; `--resume`
+   invents no acceptance (F-21 realized).
 
 Tests inspected here cover two authenticated Sources, collision/conflict,
 durable backoff, one-valid partial evidence, uncertain clock before contact,
