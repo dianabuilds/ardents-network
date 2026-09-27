@@ -1,4 +1,4 @@
-package node
+package outer
 
 import (
 	"context"
@@ -44,7 +44,7 @@ func TestClosedOuterLifetimeInterruptsAndJoinsAllChildren(t *testing.T) {
 			var sequence, finished atomic.Uint32
 			done := make(chan uint32, 1)
 			go func() {
-				serveClosedOuter(ctx, observed, outer, func(child context.Context, lane *route.ClosedOuterBridgeLane) {
+				Serve(ctx, observed, outer, func(child context.Context, lane *route.ClosedOuterBridgeLane) {
 					index := sequence.Add(1)
 					started <- struct{}{}
 					<-begin

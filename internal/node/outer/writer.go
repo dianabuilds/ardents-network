@@ -1,4 +1,4 @@
-package node
+package outer
 
 import (
 	"net"
@@ -13,20 +13,20 @@ import (
 // next writer reads its live deadline after acquiring serialization, so a
 // queued frame cannot restore a deadline invalidated by local cancellation.
 // Partial-frame failure poisons the physical framing boundary and closes it.
-type closedOuterWriter struct {
+type writer struct {
 	connection     net.Conn
 	writer         sync.Mutex
 	state          sync.Mutex
-	active         *closedOuterWriteRequest
-	terminals      []*closedOuterWriteRequest
-	controls       []*closedOuterWriteRequest
-	data           []*closedOuterWriteRequest
+	active         *writeRequest
+	terminals      []*writeRequest
+	controls       []*writeRequest
+	data           []*writeRequest
 	dataDue        bool
 	terminalServed bool
 	running        bool
 }
 
-type closedOuterWriteRequest struct {
+type writeRequest struct {
 	frame             ardp.Frame
 	deadline          func() time.Time
 	end               time.Time
@@ -35,8 +35,8 @@ type closedOuterWriteRequest struct {
 	err               error
 }
 
-func (owner *closedOuterWriter) write(frame ardp.Frame, deadline func() time.Time, control, terminal bool) error {
-	request := &closedOuterWriteRequest{frame: frame, deadline: deadline, control: control, terminal: terminal, done: make(chan struct{})}
+func (owner *writer) write(frame ardp.Frame, deadline func() time.Time, control, terminal bool) error {
+	request := &writeRequest{frame: frame, deadline: deadline, control: control, terminal: terminal, done: make(chan struct{})}
 	owner.state.Lock()
 	switch {
 	case terminal:
@@ -61,7 +61,7 @@ func (owner *closedOuterWriter) write(frame ardp.Frame, deadline func() time.Tim
 	return request.err
 }
 
-func (owner *closedOuterWriter) nextLocked() *closedOuterWriteRequest {
+func (owner *writer) nextLocked() *writeRequest {
 	if len(owner.terminals) != 0 && (len(owner.data) == 0 || !owner.terminalServed) {
 		request := owner.terminals[0]
 		owner.terminals = owner.terminals[1:]
@@ -85,7 +85,7 @@ func (owner *closedOuterWriter) nextLocked() *closedOuterWriteRequest {
 	return nil
 }
 
-func (owner *closedOuterWriter) drain() {
+func (owner *writer) drain() {
 	for {
 		owner.writer.Lock()
 		owner.state.Lock()
@@ -127,7 +127,7 @@ func (owner *closedOuterWriter) drain() {
 	}
 }
 
-func (owner *closedOuterWriter) update(lane uint32, deadline time.Time) error {
+func (owner *writer) update(lane uint32, deadline time.Time) error {
 	owner.state.Lock()
 	defer owner.state.Unlock()
 	if owner.active != nil && owner.active.frame.Kind != 9 && owner.active.frame.Lane == lane {

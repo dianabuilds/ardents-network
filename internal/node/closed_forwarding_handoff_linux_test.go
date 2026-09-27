@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/network/state"
+	nodeouter "github.com/dianabuilds/ardents-network/internal/node/outer"
 	"github.com/dianabuilds/ardents-network/internal/resource"
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
@@ -70,7 +71,7 @@ func testClosedForwardingServeDirectOuterAdmission(t *testing.T, cleanup error) 
 	parent := make(chan struct{})
 	go func() {
 		defer close(parent)
-		serveClosedOuter(t.Context(), local, outer, func(ctx context.Context, lane *route.ClosedOuterBridgeLane) {
+		nodeouter.Serve(t.Context(), local, outer, func(ctx context.Context, lane *route.ClosedOuterBridgeLane) {
 			secured, err := carrier.AcceptClosedRoleTLS(ctx, lane, certificate, fixture.now.Add(time.Hour))
 			if err == nil {
 				err = lane.BeginInnerHello()

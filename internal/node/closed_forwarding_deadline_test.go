@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	nodeouter "github.com/dianabuilds/ardents-network/internal/node/outer"
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	"github.com/dianabuilds/ardents-network/internal/route/carrier"
@@ -35,7 +36,7 @@ func TestClosedOuterWriterDeadlineInterruptsRetainedCarrier(t *testing.T) {
 	written := make(chan error, 1)
 	go func() {
 		defer close(done)
-		serveClosedOuter(t.Context(), local, outer, func(_ context.Context, lane *route.ClosedOuterBridgeLane) {
+		nodeouter.Serve(t.Context(), local, outer, func(_ context.Context, lane *route.ClosedOuterBridgeLane) {
 			_, err := lane.Write([]byte{1})
 			written <- err
 		})

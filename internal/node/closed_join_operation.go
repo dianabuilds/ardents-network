@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net"
 
+	nodeouter "github.com/dianabuilds/ardents-network/internal/node/outer"
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	routecarrier "github.com/dianabuilds/ardents-network/internal/route/carrier"
@@ -31,7 +32,7 @@ func (server *closedDataJoinServer) serveOuter(ctx context.Context, carrier rout
 	if err != nil {
 		return
 	}
-	serveClosedOuter(ctx, carrier.Connection, outer, server.serveInner)
+	nodeouter.Serve(ctx, carrier.Connection, outer, server.serveInner)
 }
 
 func (server *closedDataJoinServer) serveInner(ctx context.Context, lane *route.ClosedOuterBridgeLane) {

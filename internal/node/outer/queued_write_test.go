@@ -1,4 +1,4 @@
-package node
+package outer
 
 import (
 	"encoding/binary"
@@ -31,7 +31,7 @@ func TestClosedOuterExpiredQueuedWritePreservesSibling(t *testing.T) {
 		t.Run(map[byte]string{6: "bytes", 7: "credit"}[kind], func(t *testing.T) {
 			local, peer := net.Pipe()
 			observed := &closedOuterCountedWrites{Conn: local}
-			writer := &closedOuterWriter{connection: observed}
+			writer := &writer{connection: observed}
 			writer.writer.Lock()
 			var unlock sync.Once
 			release := func() { unlock.Do(writer.writer.Unlock) }
@@ -82,7 +82,7 @@ func TestClosedOuterExpiredQueuedWritePreservesSibling(t *testing.T) {
 // the Carrier. A later lane cannot treat that truncated frame as its own.
 func TestClosedOuterPartialCreditStillClosesCarrier(t *testing.T) {
 	local, peer := net.Pipe()
-	writer := &closedOuterWriter{connection: local}
+	writer := &writer{connection: local}
 	var helpers sync.WaitGroup
 	t.Cleanup(func() { local.Close(); peer.Close(); helpers.Wait() })
 	completed := make(chan error, 1)

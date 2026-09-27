@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
+	nodeouter "github.com/dianabuilds/ardents-network/internal/node/outer"
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	routecarrier "github.com/dianabuilds/ardents-network/internal/route/carrier"
@@ -34,7 +35,7 @@ func closedIssuerNodeHandler(config runtimeConfig, certificate tls.Certificate, 
 		if err != nil {
 			return
 		}
-		serveClosedOuter(ctx, carrier.Connection, outer, func(childContext context.Context, lane *route.ClosedOuterBridgeLane) {
+		nodeouter.Serve(ctx, carrier.Connection, outer, func(childContext context.Context, lane *route.ClosedOuterBridgeLane) {
 			admitted := func(connection net.Conn, hello ardp.Frame) error {
 				exporter, err := routecarrier.ClosedRoleTLSExporter(connection)
 				if err != nil {

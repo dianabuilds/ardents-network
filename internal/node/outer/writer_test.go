@@ -1,4 +1,4 @@
-package node
+package outer
 
 import (
 	"net"
@@ -26,7 +26,7 @@ func TestClosedOuterWriterUpdatesOnlyActiveChildDeadline(t *testing.T) {
 	defer local.Close()
 	defer peer.Close()
 	observed := &closedOuterDeadlineObserved{Conn: local, started: make(chan struct{})}
-	writer := &closedOuterWriter{connection: observed}
+	writer := &writer{connection: observed}
 	done := make(chan error, 1)
 	go func() {
 		done <- writer.write(ardp.Frame{Kind: 6, Lane: 1, Body: []byte{1}}, func() time.Time { return time.Now().Add(time.Hour) }, false, false)
@@ -57,7 +57,7 @@ func TestClosedOuterWriterReadsQueuedDeadlineAfterSerialization(t *testing.T) {
 	local, peer := net.Pipe()
 	defer local.Close()
 	defer peer.Close()
-	writer := &closedOuterWriter{connection: local}
+	writer := &writer{connection: local}
 	writer.writer.Lock()
 	var mu sync.Mutex
 	end := time.Now().Add(time.Hour)
@@ -86,7 +86,7 @@ func TestClosedOuterWriterBoundsActiveCreditForTerminalCleanup(t *testing.T) {
 	defer local.Close()
 	defer peer.Close()
 	observed := &closedOuterDeadlineObserved{Conn: local, started: make(chan struct{})}
-	writer := &closedOuterWriter{connection: observed}
+	writer := &writer{connection: observed}
 	done := make(chan error, 1)
 	go func() {
 		done <- writer.write(ardp.Frame{Kind: 7, Lane: 1, Body: []byte{0, 0, 0, 1}},
@@ -115,7 +115,7 @@ func TestClosedOuterWriterTerminalCleanupDoesNotExtendActiveCreditDeadline(t *te
 	defer local.Close()
 	defer peer.Close()
 	observed := &closedOuterDeadlineObserved{Conn: local, started: make(chan struct{})}
-	writer := &closedOuterWriter{connection: observed}
+	writer := &writer{connection: observed}
 	originalEnd := time.Now().Add(100 * time.Millisecond)
 	done := make(chan error, 1)
 	go func() {
@@ -137,15 +137,15 @@ func TestClosedOuterWriterTerminalCleanupDoesNotExtendActiveCreditDeadline(t *te
 }
 
 func TestClosedOuterWriterTerminalPriorityYieldsToQueuedData(t *testing.T) {
-	writer := &closedOuterWriter{dataDue: true}
-	terminalOne := &closedOuterWriteRequest{terminal: true}
-	terminalTwo := &closedOuterWriteRequest{terminal: true}
-	dataOne := &closedOuterWriteRequest{}
-	dataTwo := &closedOuterWriteRequest{}
-	writer.terminals = []*closedOuterWriteRequest{terminalOne, terminalTwo}
-	writer.data = []*closedOuterWriteRequest{dataOne, dataTwo}
+	writer := &writer{dataDue: true}
+	terminalOne := &writeRequest{terminal: true}
+	terminalTwo := &writeRequest{terminal: true}
+	dataOne := &writeRequest{}
+	dataTwo := &writeRequest{}
+	writer.terminals = []*writeRequest{terminalOne, terminalTwo}
+	writer.data = []*writeRequest{dataOne, dataTwo}
 
-	for index, want := range []*closedOuterWriteRequest{terminalOne, dataOne, terminalTwo, dataTwo} {
+	for index, want := range []*writeRequest{terminalOne, dataOne, terminalTwo, dataTwo} {
 		if got := writer.nextLocked(); got != want {
 			t.Fatalf("schedule %d = %p, want %p", index, got, want)
 		}
@@ -171,7 +171,7 @@ func TestClosedOuterChildCloseInterruptsItsPhysicalWriter(t *testing.T) {
 			defer local.Close()
 			defer peer.Close()
 			observed := &closedOuterDeadlineObserved{Conn: local, started: make(chan struct{})}
-			writer := &closedOuterWriter{connection: observed}
+			writer := &writer{connection: observed}
 			bridge, err := route.NewClosedOuterBridge(outer, writer.update, writer.write)
 			if err != nil {
 				t.Fatal(err)

@@ -1,4 +1,4 @@
-package node
+package outer
 
 import (
 	"context"
@@ -10,12 +10,13 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 )
 
-// serveClosedOuter owns the transport, every allocated inner handler, and
-// their receiving-duty reservations until cancellation and cleanup have joined.
-func serveClosedOuter(ctx context.Context, connection net.Conn, outer *route.ClosedOuterHandshake, serve func(context.Context, *route.ClosedOuterBridgeLane)) {
-	defer outer.Close()
-	writer := &closedOuterWriter{connection: connection}
-	bridge, err := route.NewClosedOuterBridge(outer, writer.update, writer.write)
+// Serve owns an accepted outer channel and its inner handlers until their
+// cancellation and cleanup have joined. The caller retains responsibility for
+// observing the accepted connection's final physical close result.
+func Serve(ctx context.Context, connection net.Conn, handshake *route.ClosedOuterHandshake, serve func(context.Context, *route.ClosedOuterBridgeLane)) {
+	defer handshake.Close()
+	writer := &writer{connection: connection}
+	bridge, err := route.NewClosedOuterBridge(handshake, writer.update, writer.write)
 	if err != nil {
 		return
 	}

@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"errors"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
+	nodeouter "github.com/dianabuilds/ardents-network/internal/node/outer"
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	routecarrier "github.com/dianabuilds/ardents-network/internal/route/carrier"
@@ -271,7 +272,7 @@ func (server *closedForwardingServer) serveOuter(ctx context.Context, carrier ro
 	if err != nil {
 		return
 	}
-	serveClosedOuter(ctx, carrier.Connection, outer, func(childContext context.Context, lane *route.ClosedOuterBridgeLane) {
+	nodeouter.Serve(ctx, carrier.Connection, outer, func(childContext context.Context, lane *route.ClosedOuterBridgeLane) {
 		server.serveInner(childContext, lane, deadline, carrier.NodeKey)
 	})
 }

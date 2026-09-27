@@ -1,196 +1,112 @@
 # Node architecture refactoring plan
 
-Status: **agreed refactoring direction; package candidates under source review**. The
-[C0 component reconstruction](c0-component-reconstruction.md) defines the
-cross-system ownership questions to settle before extracting Node packages.
-This plan organizes maintained code. The product contract, technical Node
-owner and GitHub issues remain authoritative for behavior and delivery status.
-Initial baseline inspected: `codex/architecture-refactor` at `e1deba3e`
-(2026-09-25). The cross-system [reconstruction](c0-component-reconstruction.md)
-and [historical behavior map](https://github.com/dianabuilds/ardents-network/blob/4764ae1c567e93180f3aa643b2544abfdb2a67dc/docs/development/repository-behavior-map.md)
-record that analysis baseline. Recheck candidate boundaries against current code
-and the package map before implementation; the snapshot is not a current tree.
+Status: **current ownership plan**. The product scope, threat model, accepted
+ADRs, [Network/Node technical owner](../technical/network-route-node.md), and
+GitHub issues govern behavior and delivery. This document records code
+boundaries, not a second task ledger. The source graph below was checked
+against `dev` at `51b38337` on 2026-09-27; recheck it before each move.
+The [C0 component reconstruction](c0-component-reconstruction.md) and
+[Route boundary record](route-refactoring-boundary.md) retain older snapshots.
 
-## Goal and completion condition
+## Result and dependency direction
 
-A reader should be able to locate Node admission, the selected duty, its
-listener and admitted work, resource pressure, and terminal cleanup from the
-package and file names. `internal/node` composes process lifecycle and duty
-owners; a duty may continue to retain its transport sessions, recipient state
-and durable spend lifetime inside that package until a smaller acyclic
-boundary is proved. The maintained TCP/TLS and QUIC behavior,
-State authority, wire and persisted identities, finite limits, and joined
-cleanup remain the acceptance contract.
+`internal/node` composes one process: validate public `Config`, admit one
+State-selected duty, start that role, react to process pressure, emit events,
+and report the joined terminal result. It does not retain a network role's
+listener, connection handlers, spend ledger, or role-specific state. The
+private probe remains under the process owner.
 
-The work is complete when the selected duty has a clear owner and call path,
-every extracted package has a small caller-facing API and non-test caller,
-tests cover the moved behavior at its owner, the package map matches imports,
-and the integrated installed Ubuntu journey works with both selected Carriers.
+The intended children are `internal/node/outer`, `forwarding`, `issuer`,
+`resolution`, `introduction`, and `join`. A narrow shared authority
+projection and hosting reservation owner may be extracted when their exact
+caller values are known. Each new package must have `doc.go`, behavior tests,
+a non-test caller, and registered imports. A role never imports its parent or
+receives `runtimeConfig`; the root adapts the role's small
+`Done`/`Stop`/`Drain`/usage surface to process lifecycle.
 
-## Current shape and sources of friction
+```text
+State accepted views             Resource ledger and measurements
+        |                                      |
+        v                                      v
+Node process composer  -------->  selected role owner
+        |                                      |
+        |                                      +--> Node outer --> Route bridge/ARDP
+        |                                      +--> Route receiving operation
+        |                                      +--> Carrier (TCP/TLS or QUIC)
+        |                                      +--> Replay / role-owned durable root
+        +--> process event and terminal result
+```
 
-`internal/node` has 45 production and 68 test Go files in one package. The
-forwarding-specific work spans more than ten production files, in addition to
-shared outer-lane code. Its listener and link
-files have 490 and 454 lines respectively. The following responsibilities are
-present but not visible as package boundaries:
+Route owns wire, authenticated Carrier, bridge state, and receiving operations;
+it neither selects a Node duty nor closes a role's durable root. Credential
+owns issuer key and token operations; the Node issuer role owns their listener
+and late root close after workers join. State alone authenticates current
+duty/profile/recipient views. Resource owns measurement and the shared Hosting
+ledger; Node decides whether to protect or drain. No child imports the root.
 
-| Current location | Responsibility and coupling |
-| --- | --- |
-| `process_config.go`, `closed_reservations.go`, `lifecycle_event.go`, `runtime_state.go`, `admission.go`, `lifecycle.go`, `duty_server.go` | Public configuration, local reservations, event contract, runtime state, State admission, process lifecycle, and dispatch of five closed duties plus the private probe. `runtimeConfig` embeds the whole `Config`; duty implementations can read unrelated role settings. |
-| `closed_route_receiver.go`, `closed_forwarding_admission.go`, `closed_hosting.go` | Current State/profile projection, exact recipient and token checks, and host reservation. Forwarding and direct recipients share these checks, so moving a role by filename would import the parent package or duplicate authority. |
-| `closed_outer_lifetime.go`, `closed_outer_writer.go` | Outer Carrier lane lifetime and serialized writes shared by forwarding, issuer, resolution, Introduction, and JOIN. This is a genuine shared Node operation above Route's wire/Carrier mechanics. |
-| `closed_forwarding_*`, `closed_bootstrap_forwarding.go`, `closed_forward_recipient.go`, `closed_carrier_relay.go` | Forwarding listener, receiving resources, sessions, links, queue, bootstrap, peer choice, and shutdown. `closedForwardingServer` retains the group and its terminal result. |
-| `closed_issuer_*`, `closed_introduction_*`, `closed_resolution_*`, `closed_join_*` | Four distinct direct recipient duties and their own admission, work, and drain. |
-| `probe_*`, `resource_pressure.go`, `event_writer*`, `local_roles.go`, `terminal_cleanup.go` | Private probe, process-wide pressure/evidence, local role retention, and terminal outcome. The shared running-duty handle is named `dutyHandle`. |
+## Source and resource map
 
-`internal/route` owns physical TCP/TLS and QUIC Carrier mechanics, protected
-Route admission/wire, and shared outer-bridge primitives. Node owns the selected
-listener, authenticated duty, admitted work, local session lifetime, pressure,
-and terminal result. The refactoring keeps this direction of dependency.
+At the checked base the Node root had 52 production files. `runtimeConfig`
+embedded all of `Config`; every role could read unrelated local settings.
+Five production callers used `serveClosedOuter` and its serialized writer.
+The first boundary places that operation in `internal/node/outer`; the
+accepted connection's final physical close result stays with each role's
+accept loop.
 
-## Target ownership
-
-| Package | Owned interface | Internal work |
+| Owner | Inputs and state | Stop and final result |
 | --- | --- | --- |
-| `internal/node` | `Run`, process `Config`/`Result`/`Event`, one selected-duty dispatch and running-duty handle. | State admission and process lifecycle, role retention, pressure response, evidence emission, and final cleanup ordering. |
-| Current authority projection (package undecided) | Exact current Node duty, profile and recipient checks consumed by duty owners. | State authenticates the view; Node applies local duty checks. An `authority` package needs an actual narrow value/caller seam and must not copy or select State. |
-| Shared outer lifetime (possible `internal/node/outer`) | Serve one accepted outer Carrier and join its inner lanes. | Its current two files use Route and standard-library types; a move still requires a production caller, owned cleanup result and tests in the same change. |
-| Forwarding lifetime (currently `internal/node`) | Start and join one State-authorized forwarding duty. | The server retains listener, spend and host reservations, admitted producers, outgoing Carrier sessions and readers. Moving this cohort now would transfer private `runtimeConfig`, the copied duty value, spend-close and dutyHandle return contracts. Deepen it in place first; a later package requires a demonstrated smaller interface. |
-| Private role probe (currently `internal/node`) | Start and join the selected probe duty under Node lifecycle. | Four implementation files use the common running-duty handle. Its name and navigation can improve in place; no independent package boundary has been shown. |
-| Direct recipient owners | Issuer, Introduction, Resolution, and Data Join each retain their own listener/admission/work/drain. | Extract an individual package when its state and lifecycle form a deep module with a small API. A thin Route adapter stays as a clearly named file in `internal/node` if a package would add only forwarding methods. |
+| Node root | Public process config, copied current duty, local role retention, event writer, process resource guard, hosting-period handle. | Stop selected duty, emit draining, await bounded joined Drain, then withdraw/release local role and close hosting period. Failed or unknown join is FAILED, never WITHDRAWN. |
+| `outer` | Authenticated outer handshake, accepted connection, callback for inner lanes; private writer queues and child set. | Cancel children, interrupt physical I/O, close bridge, join children and interruption callback, then close handshake. Caller observes final accepted-connection close error. No admission or durable root moves here. |
+| Forwarding | Selected receiver/peer facts, certificate, spend ledger, duty limits, host reservations, pool, producers and retained Carrier readers. | Stop listener and producers; join producers before outgoing readers; retire pool and reservations, then close spend root. Retain terminal result across repeated Drain and timeout. |
+| Issuer | Selected issuer profile/receiver, certificate, issuer key root, spend root, token listener and accepted children. | Publish listener terminal cause, join children without releasing roots on caller timeout, close both roots once and retain close errors. |
+| Resolution | Selected class-1 receiver, spend root, Descriptor store, listener and workers. | Close listener, join workers, then close store and spend root; retain connection and root errors. |
+| Introduction | Selected class-3 receiver, spend/slot floors, registrations/deliveries, listener and workers. | Close listener, join workers before replay roots; retain close errors. |
+| Join | Selected data-join receiver, spend root, pair owner, host reservation, listener and workers. | Stop listener and host monitor, join workers, close pairs and spend root, then host; retain terminal causes. |
 
-These are ownership responsibilities, not a directory plan. Create any
-subpackage only with its implementation, `doc.go`, behavior tests, non-test
-caller, and package-map entry. Exact exported names follow the first real
-caller; no package is required merely to remove a filename prefix.
+One Node authority boundary should project the current duty/profile and verify
+class-1/2/3 tokens for roles. It rechecks State at each existing admission
+point and never accepts a plan-supplied digest, role, peer, or key. Forwarding's
+class-2 host charge and control's class-1/3 lifetime charge remain distinct
+policy callers. Hosting reservations use Resource's ledger with one Node owner
+for allocation and release. Process pressure stays in the root; per-duty local
+limits and JOIN host monitoring stay with the duty.
 
-## Execution order
+## Bounded extraction order
 
-### 0. Preserve the baseline and coordinate intake
+1. **Accepted outer connection.** Extract service and writer together.
+   Preserve queue fairness, deadlines, cancellation, child join and the
+   role-owned accepted-close result. Move owner tests with the implementation;
+   keep role-level close and forwarding tests at their callers.
+2. **Shared authority and hosting seams.** Replace role consumption of
+   embedded `runtimeConfig` with explicit duty facts, callbacks for current
+   State rechecks, and only that role's roots and certificate. Decide shared
+   packages from actual callers; do not copy authority checks.
+3. **Forwarding.** Move listener, receiving-resource group, admission,
+   sessions, links, queue, bootstrap and shutdown as one duty. Keep startup
+   rollback separate from transferred server resources. Verify both Carriers.
+4. **Direct roles.** Extract issuer, resolution, introduction and join at
+   listener/admitted-work/drain boundaries, one finished role at a time.
+   Keep root adapters only for process dispatch. Credential's engine and
+   Route's receiving operations stay in their existing packages.
+5. **Process cleanup and review.** Delete confirmed dead declarations, repair
+   comments and names, and leave root composition, admission, pressure,
+   evidence and terminal lifecycle. File splits follow cohesion, not length.
 
-- Work in the architecture worktree. Record HEAD and existing unstaged/staged
-  Endpoint changes before each Node slice; preserve them.
-- Compare the active network task's completed commits and touched Node files
-  before starting a slice. Incorporate completed network fixes into the
-  architecture branch at a coherent checkpoint, then resolve overlap once.
-- Capture the current package list, caller graph, selected Node tests, and any
-  known failing checks. A known failing unrelated C0 scenario is tracked as
-  such; it is not repeatedly rerun to validate a local file move.
+For each slice, update the technical owner and package map with code, run
+focused behavior tests and `make quick-check`, and commit a coherent result.
+Before integration run `make check`, Linux build and available tests in Docker
+on the combined tree. Installed systemd/cgroup operation and both Carriers
+remain a later shared qualification gate; container tests cannot establish
+that installed evidence.
 
-### 1. Make the root contract readable
+## Coordination and integration
 
-- The former `contract.go` declarations are separated by process config,
-  local reservations, runtime state and event/result contract inside `node`.
-- The common handle is named `dutyHandle` across `startDuty` and each adapter;
-  keep the private probe's own types under probe names.
-- Give `internal/node/doc.go` a concise navigation map: admission, authority,
-  outer lifetime, each duty, pressure, and terminal cleanup. Avoid duplicating
-  the technical contract.
-- Acceptance: the five duty dispatch paths and probe still compile; focused
-  lifecycle and dispatch tests pass; a reader can find the common API without
-  opening duty implementations.
-
-### 2. Prove the shared outer boundary
-
-- Map `serveClosedOuter`, its writer, all five production callers and the
-  accepted-connection close result. F-61 now retains non-benign accepted-close
-  results in all five duties. Keep `Done` as the accept-loop result and `Drain` as the final
-  joined cleanup result. Preserve the issuer root's late-close question after
-  a timed-out `Drain`. Keep the close/interruption/children-join order and
-  deadline behavior together.
-- If that gives one small acyclic caller-facing operation, move the owner and
-  its behavior tests to `internal/node/outer` in one slice. Otherwise keep
-  the two responsibilities named in Node without duplicating Route's bridge.
-- Acceptance: no parent-package import or copied writer/bridge logic, and
-  tested cancellation, queued write, deadline, accepted-child close failure,
-  and joined cleanup without releasing a still-owned root.
-
-### 3. Narrow current-authority access
-
-- Trace Node-local current duty facts, accepted closed-profile/recipient
-  projection, and shared token verification at their actual callers. State
-  still authenticates its read-only views; process admission and duty choice
-  remain in `internal/node`.
-- Define the exact data that each duty needs. A forwarding caller receives
-  current receiver/peer/token decisions, not the whole process `Config` or
-  mutable State runtime. Issuer and control recipients consume the same exact
-  verification rules without copying them.
-- Extract an `authority` package only if this yields a narrow real caller
-  contract without exporting `runtimeConfig`, moving State authority, or
-  duplicating its checks. Acceptance: successor State or profile loss makes
-  every affected duty unavailable at its existing recheck points, and no
-  role can substitute a plan value for State authority.
-
-### 4. Deepen forwarding under its existing owner
-
-- Keep the forwarding listener, receiving-resource group, admission, sessions,
-  links, queue, bootstrap/peer logic, Carrier relay choice and shutdown under
-  the existing Node duty owner. Name each file for its exact responsibility;
-  the `closed_forwarding_` prefix still distinguishes this duty inside Node.
-- Make the local start/stop/join map readable before exporting it. The
-  forwarding server already owns spend root, pool, host reservations,
-  accepted producers, outgoing readers, their join order and terminal result.
-- Keep one explicit startup resource owner: failed construction closes only
-  resources actually acquired; after successful start the running duty owns
-  them until drain. Preserve the bounded drain result on repeated calls.
-- Reassess a `forwarding` package only after a narrow authority/outer seam
-  removes dependence on most of `runtimeConfig`, the copied duty value and the common
-  running-duty handle. Acceptance for this step is a clear call and resource
-  map with the existing admission, bootstrap, parent/child, relay, limit and
-  shutdown behavior preserved for both Carriers.
-
-### 5. Place the remaining duties and probe
-
-- Keep the private probe in `internal/node` under the common duty lifecycle;
-  rename only its private files or handle where that improves navigation.
-  Extract it only if a later source audit shows a cohesive independent API.
-- Review each direct recipient—Introduction, Resolution, Data Join, and
-  Issuer—by its independent state transitions and cleanup. Extract a role
-  package only when it owns meaningful behavior and can take current
-  authority without a parent import. Otherwise retain a short, purpose-named
-  Node adapter around Route's deep module. Record the decision in the Node
-  navigation map rather than introducing a shallow package.
-- Before the Issuer move, give the accepted token listener one owner for its
-  issuer key root and replay ledger through worker join, including a `Drain`
-  timeout. The current Node adapter closes those roots only when its bounded
-  listener drain succeeds, whereas the other receiver servers continue their
-  own close attempts after a caller timeout. Preserve Node's failed terminal
-  outcome when cleanup is unproven and cover eventual release and close error
-  propagation in the focused owner tests.
-- After each move, remove only prefixes made redundant by the new package or
-  role owner. Preserve names that encode a real protocol or compatibility
-  distinction.
-- Acceptance: every role's start, admitted work, and drain can be found from
-  the root dispatch and its owner; no shared State/outer/hosting logic is
-  copied into a role.
-
-### 6. Integrate and verify the result
-
-- Update `docs/development/package-map.md` with exact permitted imports in
-  the same changes that create packages. Update the Node section of the
-  technical owner when the real ownership changes; keep this plan separate
-  from the issue ledger.
-- For each coherent slice, run focused owner tests and the required
-  `make quick-check` once at the commit boundary. Use targeted Linux and
-  Windows compilation when platform-specific code moves. Preserve failures
-  and fix the affected owner before advancing.
-- After intake of completed network changes, run `make check` and the
-  installed Ubuntu C0 scenario with TCP/TLS and QUIC on the combined tree.
-  Distinguish a locally verified refactor from final integration and C0
-  acceptance. Integrate only the reviewed, passing combined result.
-
-## Review points and stopping rules
-
-The first reviewable result is the root contract/navigation cleanup. The next
-is the shared outer ownership decision and exact final-result trace. The
-first major structural result is a readable forwarding duty with its existing
-admission and cleanup behavior; a new package is conditional on a real seam.
-Each result must be coherent and usable before another package move starts.
-
-If a proposed package needs most of `runtimeConfig`, imports its parent, or
-duplicates current State checks, repair the authority seam first. If a direct
-role only delegates to Route, keep its adapter in Node. If a behavior check
-fails, fix that specific owner before broadening the refactor. Changes to
-wire/persisted identities, authority, protection policy, or product behavior
-require their own accepted contract rather than being folded into this plan.
+The Node owner works in the main checkout on `codex/node-decomposition`; the
+Endpoint owner works in the existing architecture worktree. Both read the
+same coordination directory outside their worktrees before a new slice, a
+shared interface edit, or integration. Assign exactly one implementer to
+each bounded Route, Credential, common-command, or shared-interface change.
+Independent work does not wait for a reply. Integrate only named, locally
+verified commits into `dev`; preserve unfinished work in its original tree
+and resolve combined failures at their actual owner. A passing component
+test does not establish full issue acceptance or installed readiness.
