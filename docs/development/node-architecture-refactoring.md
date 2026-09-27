@@ -119,7 +119,11 @@ state than the current private types. Source files follow these owners:
 queue, `bootstrap.go` includes bootstrap admission, and `recipient.go` includes
 the relay dial rule. Tests of session ordering, queue and terminal outcomes
 share one `session_test.go`; Linux-specific tests retain their tags when they
-need the installed resource/Carrier fixture.
+need the installed resource/Carrier fixture. Outgoing Carrier opening outcomes,
+deadline and same-key reuse share `open_linux_test.go`. The parent connection's
+progress during a blocked child open or write is covered together in
+`parent_progress_linux_test.go`. Separate admission, shutdown and host-monitor
+tests retain their own owners.
 At the process boundary, `forwarding/recipient_test.go` checks the recipient
 owner directly. Root network tests call `Run` or a private process adapter and
 exercise combinations of roles; moving them to a role package would transfer
