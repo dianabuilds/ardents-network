@@ -6,9 +6,12 @@ import (
 	"context"
 	"errors"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/node/hosting"
+	"github.com/dianabuilds/ardents-network/internal/resource"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	"github.com/dianabuilds/ardents-network/internal/route/carrier"
 	"github.com/dianabuilds/ardents-network/internal/route/terminal"
@@ -80,4 +83,28 @@ func TestClosedResolutionRetainsHostingReleaseFailureAfterReply(t *testing.T) {
 	if host.reserved.Load() != 2 || host.released.Load() != 2 {
 		t.Fatalf("Hosting reservation = %d release = %d", host.reserved.Load(), host.released.Load())
 	}
+}
+
+type releaseFailureHost struct {
+	release  error
+	reserved atomic.Int32
+	released atomic.Int32
+}
+
+func (*releaseFailureHost) Sample(context.Context, time.Duration) (resource.HostingSample, error) {
+	return resource.HostingSample{}, nil
+}
+
+func (*releaseFailureHost) Close() error { return nil }
+
+func (host *releaseFailureHost) Reserve(context.Context, resource.HostingTraffic, resource.HostingTraffic, time.Time) (hosting.Reservation, error) {
+	host.reserved.Add(1)
+	return releaseFailureReservation{host: host}, nil
+}
+
+type releaseFailureReservation struct{ host *releaseFailureHost }
+
+func (reservation releaseFailureReservation) Release(context.Context) error {
+	reservation.host.released.Add(1)
+	return reservation.host.release
 }

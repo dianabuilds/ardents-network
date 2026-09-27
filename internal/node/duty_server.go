@@ -1,12 +1,24 @@
 package node
 
 import (
+	"context"
 	"errors"
+
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	"github.com/dianabuilds/ardents-network/internal/route/carrier"
 )
+
+// dutyHandle is the bounded supervision surface of one selected role.
+type dutyHandle struct {
+	Done    <-chan error
+	Joined  <-chan struct{}
+	Protect func(bool)
+	Usage   func() (uint64, uint64, uint64)
+	Stop    func()
+	Drain   func(context.Context) error
+}
 
 const nativeRouteUnavailableReason = "native Route assignment is not implemented"
 

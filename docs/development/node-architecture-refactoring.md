@@ -60,6 +60,11 @@ Five production callers used `serveClosedOuter` and its serialized writer.
 The first boundary places that operation in `internal/node/outer`; the
 accepted connection's final physical close result stays with each role's
 accept loop.
+After the process-test audit, the root contains 21 production files and 29
+test files. `duty_server.go` holds both role dispatch and its narrow supervision
+handle; `process_config.go` keeps public inputs beside the process's retained
+runtime state; `lifecycle_event.go` keeps event/result values beside their
+bounded emitter. Platform-specific event writers remain separate files.
 
 | Owner | Inputs and state | Stop and final result |
 | --- | --- | --- |
@@ -102,15 +107,18 @@ the relay dial rule. Tests of session ordering, queue and terminal outcomes
 share one `session_test.go`; Linux-specific tests retain their tags when they
 need the installed resource/Carrier fixture.
 At the process boundary, `forwarding/recipient_test.go` checks the recipient
-owner directly. The bootstrap client and genuine forwarding-token flows share
-`bootstrap_network_linux_test.go` and its network fixture. The fixture-window
-invariant runs on both platforms beside its fixture. Other Linux-only root
-tests exercise a real accepted Carrier, role root, process shutdown or
-permission-sensitive network fixture; each name identifies the role/scenario
-and carries the `_linux_test.go` suffix. These remain process integration tests
-because they call `Run` or the root adapter, while component behavior tests
-live in the role packages. Separate files still represent independently
-readable end-to-end scenarios, even when each has one top-level test.
+owner directly. Root network tests call `Run` or a private process adapter and
+exercise combinations of roles; moving them to a role package would transfer
+process authority or require a new exported test seam. Related scenarios and
+their single-purpose fixtures now share files: bootstrap exchange/forwarding,
+forwarding lifetime/restriction, issuer lifecycle, Introduction observation,
+recovery and heap-process delivery, and Resolution's admitted-network and Host
+release behavior. The cross-role recipient fixture stays in one file, while
+its pure window calculation runs on both platforms. Linux-only tests use the
+`_linux_test.go` suffix for real Carrier, role-root or permission-sensitive
+network work. Process lifecycle, admission, identity, pressure and event tests
+remain beside their production owners; component behavior tests live in the
+role packages.
 Process pressure remains in the root; per-duty local limits and JOIN host
 monitoring remain with their duty.
 
@@ -143,6 +151,11 @@ one direct recipient test moved to the forwarding owner, and Linux-only
 integration scenarios now carry explicit platform suffixes. The root has no
 `closed_*` source files; retained `Closed*` identifiers are protocol or public
 configuration names, not file grouping.
+
+The subsequent test-layout audit removed isolated files for one scenario's
+fixture and grouped complete process-network scenarios by role and failure
+mode. The production root keeps process composition and observations; role
+packages still own listeners, admitted work and durable resources.
 
 The completed Node and Endpoint qualification slices are in `dev` at
 `5a757e49`. Windows `make check` passed after merging the concurrent State and

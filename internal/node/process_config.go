@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/network/state"
+	"github.com/dianabuilds/ardents-network/internal/node/hosting"
 	"github.com/dianabuilds/ardents-network/internal/node/probe"
 	"github.com/dianabuilds/ardents-network/internal/resource"
 )
@@ -61,4 +62,20 @@ type Config struct {
 	CheckPlacement  func() error
 	// Emit must honor ctx cancellation and return before its deadline.
 	Emit func(context.Context, Event) error
+}
+
+// runtimeConfig retains the copied process inputs and the resources acquired
+// for its current lifetime; role packages receive narrower Config values.
+type runtimeConfig struct {
+	measurementOrigin time.Time
+	hostingSample     *resource.HostingSample
+	hostingUsage      resource.Sample
+	host              closedHostingHandle
+	hostLifetime      *hosting.Lifetime
+	hostingNext       time.Time
+	hostingLevel      pressureLevel
+	Config
+	now      func() time.Time
+	probe    *probe.Plan
+	pressure *resource.Guard
 }
