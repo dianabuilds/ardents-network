@@ -35,8 +35,6 @@ type Config struct {
 	VerifyAdmission func(route.ClosedRoleReceiver) route.ClosedAdmissionVerifier
 	Now             func() time.Time
 	ListenAddress   string
-	RecordRelease   func(error)
-	ReleaseResult   func() error
 }
 
 // Handle exposes only supervision and joined shutdown to the Node process.
@@ -50,6 +48,7 @@ type Handle struct {
 
 func Start(config Config) (*Handle, error) {
 	local, snapshot := config.Profile, config.Snapshot
+	releases := &releaseErrors{}
 	current := func() (state.ClosedProfileView, bool) {
 		updated, err := config.CurrentDuty()
 		if err != nil {
@@ -83,12 +82,12 @@ func Start(config Config) (*Handle, error) {
 		return nil, errors.Join(err, spends.Close(), issuer.Close())
 	}
 	listener, err := credential.StartClosedTokenListener(context.Background(), credential.ClosedTokenListenerConfig{Issuer: issuer,
-		SharedListener: shared, NodeHandler: nodeHandler(config, local.Certificate, issuer, spends, limits, config.RecordRelease),
+		SharedListener: shared, NodeHandler: nodeHandler(config, local.Certificate, issuer, spends, limits, releases.record),
 		ConnectionLimit: local.ConnectionLimit, Clock: config.Now})
 	if err != nil {
 		return nil, errors.Join(err, spends.Close(), issuer.Close())
 	}
-	server := &closedIssuerServer{listener: listener, spends: spends, issuer: issuer, releaseResult: config.ReleaseResult,
+	server := &closedIssuerServer{listener: listener, spends: spends, issuer: issuer, releases: releases,
 		done: make(chan error, 1), drained: make(chan struct{})}
 	go server.run()
 	return &Handle{Done: server.done, Joined: server.drained, Usage: func() (uint64, uint64, uint64) {
@@ -103,13 +102,13 @@ func Start(config Config) (*Handle, error) {
 // supervision, then joins every accepted child without the caller's short
 // drain deadline and closes both roots only after the last borrower finished.
 type closedIssuerServer struct {
-	listener      *credential.ClosedTokenListener
-	spends        *replay.Ledger
-	issuer        *credential.ClosedTokenIssuer
-	releaseResult func() error
-	done          chan error
-	drained       chan struct{}
-	drainErr      error
+	listener *credential.ClosedTokenListener
+	spends   *replay.Ledger
+	issuer   *credential.ClosedTokenIssuer
+	releases *releaseErrors
+	done     chan error
+	drained  chan struct{}
+	drainErr error
 }
 
 func (server *closedIssuerServer) run() {
@@ -118,7 +117,7 @@ func (server *closedIssuerServer) run() {
 	server.done <- cause
 	// No timeout releases roots while an accepted child still borrows them.
 	joined := server.listener.Drain(context.Background())
-	server.drainErr = errors.Join(joined, server.releaseResult(), server.spends.Close(), server.issuer.Close())
+	server.drainErr = errors.Join(joined, server.releases.result(), server.spends.Close(), server.issuer.Close())
 	close(server.drained)
 }
 

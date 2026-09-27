@@ -65,7 +65,7 @@ accept loop.
 | `hosting` | Opened provider-period handle, shared sample cache, class-1/2/3 reservation policy and retained late-close lifetime. | Release reservations at their callers; close the concrete ledger only when joined borrowers can no longer use it. Node chooses when protection or drain is required. |
 | `outer` | Authenticated outer handshake, accepted connection, callback for inner lanes; private writer queues and child set. | Cancel children, interrupt physical I/O, close bridge, join children and interruption callback, then close handshake. Caller observes final accepted-connection close error. No admission or durable root moves here. |
 | Forwarding | Selected receiver/peer facts, certificate, spend ledger, duty limits, host reservations, pool, producers and retained Carrier readers. | Stop listener and producers; join producers before outgoing readers; retire pool and reservations, then close spend root. Retain terminal result across repeated Drain and timeout. |
-| `issuer` | Selected issuer profile/receiver, certificate, issuer key root, spend root, token listener and accepted children. | Publish listener terminal cause, join children without releasing roots on caller timeout, close both roots once and retain close errors. Root Node supplies current State and Hosting reservation callbacks. |
+| `issuer` | Selected issuer profile/receiver, certificate, issuer key root, spend root, token listener, accepted children and their release-error accumulator. | Publish listener terminal cause, join children without releasing roots on caller timeout, record unexpected child release errors, close both roots once and retain close errors. Root Node supplies current State and Hosting reservation callbacks. |
 | `resolution` | Selected class-1 receiver, spend root, Descriptor store, listener and workers. | Close listener, join workers, then close store and spend root; retain connection and root errors. Root Node supplies current State callbacks and maps its small handle to process lifecycle. |
 | `introduction` | Selected class-3 receiver, spend/slot floors, registrations/deliveries, listener and workers. | Close listener, join workers before replay roots; retain close errors. Qualification evidence observes the actual registration and delivery protocol without a test-only state inspection method in production. |
 | `join` | Selected data-join receiver, spend root, pair owner, leased host handle, listener and workers. | Stop listener and host monitor, join workers, close pairs and spend root, then host; retain terminal causes. Root Node supplies current State and class-2 Hosting policy. |
@@ -114,10 +114,11 @@ monitoring remain with their duty.
    terminal lifecycle. File boundaries follow responsibility, not length.
 
 The earlier integration completed those five slices, but did not satisfy the
-whole target. The private probe now has its own listener owner. Remaining work
-is to audit
-the root listener adapters and review the
-forwarding package's internal responsibilities and Linux-tagged test layout.
+whole target. The private probe now has its own listener owner. The issuer role
+now retains its own child release errors; root no longer passes release-state
+callbacks into the role. Remaining work is to audit the root listener adapters
+and review the forwarding package's internal responsibilities and Linux-tagged
+test layout.
 The `closed_*` file family includes both process adapters and role integration
 tests; organize it by actual owner and test purpose rather than preserving a
 file for each isolated assertion. Re-run combined checks before integration.

@@ -21,13 +21,12 @@ func startClosedIssuer(config runtimeConfig, snapshot state.NodeDuty) (*dutyHand
 	if err != nil {
 		return nil, err
 	}
-	releases := &terminalCleanup{}
 	role, err := issuer.Start(issuer.Config{Profile: config.ClosedIssuer, Snapshot: snapshot,
 		Authority: nodeAuthority(config), CurrentDuty: func() (state.NodeDuty, error) { return currentFacts(config) },
 		VerifyAdmission: func(receiver route.ClosedRoleReceiver) route.ClosedAdmissionVerifier {
 			return hosting.ControlAdmissionVerifier(nodeAuthority(config), config.now, receiver, config.host)
 		},
-		Now: config.now, ListenAddress: listen, RecordRelease: releases.record, ReleaseResult: releases.result})
+		Now: config.now, ListenAddress: listen})
 	if err != nil {
 		return nil, err
 	}
