@@ -54,5 +54,5 @@
 "internal/service/connection","runtime","retain-fix-close-result","Logical authenticated stream; replacement close result gap F-23"
 "internal/service/instance","mixed-runtime","retain-root-decide-old-key","Active Instance root still writes old Introduction key F-42"
 "internal/service/publication","mixed-runtime","retain-retire-old-instruction","Current publication plus uncalled SealedIntroduction v1 instruction F-42"
-"internal/service/reachability","mixed-runtime","retain-store-decide-old-floor","v3 private Store restores old records and retains unused old writer F-22/F-32"
+"internal/service/reachability","mixed-runtime","retain-store","v3 private Store refuses retired-envelope records with the typed ErrLegacyRecord (ADR-0109/F-32); the OHTTP facade is retired (F-22); a restore refusal joins the lease-release result (F-71)"
 "internal/service/targetlink","runtime","retain","Explicit Target Link interpretation for Reader"

@@ -776,23 +776,25 @@ post-commit/pre-ACK State-change retry or the per-connection close-error
 policy; this study has not rerun them against the current worktree.
 
 The following constructor/close paths were inspected at `e48d4c3c` in the
-five `closed_*_listener.go` owners and `closed_forwarding_shutdown.go`.
+five `closed_*_listener.go` owners and `closed_forwarding_shutdown.go`; the
+Issuer row records the later F-17 realization instead of that snapshot.
 "Later close" means a server goroutine continues the close attempt after
 `Drain` times out; it does not mean the caller receives its eventual result.
 
 | Duty | Distinct durable or retained resources | Who closes them after accepted workers join | Accepted-connection close result | Later close after caller timeout |
 | --- | --- | --- | --- | --- |
 | Forwarding | Replay receiving ledger, Hosting period, outgoing Carrier pool and session readers | `closedForwardingServer.finishShutdown` after producers, readers and pool join | Discarded for accepted and refused children; outgoing-pool close is retained separately | Yes, from its own completion goroutine |
-| Issuer | Credential issuer key root and replay spend ledger | `node.startClosedIssuer` adapter after `ClosedTokenListener.Drain` succeeds | Discarded by Credential's direct and shared child handlers | No observed owner; listener joins later but holds neither root-close callback |
+| Issuer | Credential issuer key root and replay spend ledger | Node's `closedIssuerServer.run` after the unbounded accepted-child join (F-17) | Discarded by Credential's direct and shared child handlers; the listener's own physical close results stay in its joined Drain outcome | Yes, from its own run goroutine |
 | Introduction | Replay spend ledger and its Introduction slot floor | `closedIntroductionServer.run` after accepted workers join | Discarded for accepted and refused children | Yes, from its own run goroutine |
 | Resolution | Replay spend ledger and Reachability store | `closedResolutionServer.run` after accepted workers join | Discarded for accepted and refused children | Yes, from its own run goroutine |
 | Data JOIN | Replay spend ledger, Hosting period, JOIN pairing owner and monitor | `closedDataJoinServer.run` after accepted workers join | Non-benign errors joined into `drainErr` | Yes, from its own run goroutine |
 
 The Resolution Store also has an opening failure path: after acquiring its
-exclusive lease, `reachability.OpenStore` discards the lease-release error if
-retained-record restoration fails. The normal `Store.Close` returns that
-error. F-71 identifies the missing combined startup outcome; it matters when a
-root is refused under the ADR-0109 typed legacy-record refusal.
+exclusive lease, `reachability.OpenStore` joins the lease-release result with
+the retained-record restoration refusal, so a failing cleanup can no longer
+hide behind the restore error (F-71 realized; the normal `Store.Close` returns
+the same release result). This matters when a root is refused under the
+ADR-0109 typed legacy-record refusal: the operator sees both outcomes.
 
 All five roles use the Node lifecycle's common `dutyHandle` handle, although
 only the private probe is a probe. This is a naming/interface problem in the
