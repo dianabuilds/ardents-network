@@ -16,7 +16,7 @@ func assertQualityWiring(t *testing.T, root string) {
 		"package-e2e:",
 		"-tags packagee2e ./tests/e2e/endpoint",
 		"$(MAKE) --output-sync=target package-e2e",
-		"QUICK_CHECK_TARGETS := format-check vet unit build mod-check",
+		"QUICK_CHECK_TARGETS := vet unit build mod-check",
 		"$(MAKE) --output-sync=target -j 4 $(QUICK_CHECK_TARGETS)",
 		"$(MAKE) --output-sync=target -j 4 $(QUICK_CHECK_TARGETS) staticcheck vuln",
 		"$(MAKE) --output-sync=target e2e",

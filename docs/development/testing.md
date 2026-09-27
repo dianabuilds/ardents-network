@@ -25,9 +25,10 @@ substitute for independent review.
   Linux Endpoint setup stays in that profile; exceeding the bound fails with
   the Go runtime's goroutine dump.
 - `make e2e` runs the positive local process package inventory.
-- `make quick-check` runs formatting, architecture, vet, unit, the four named
-  command builds, module tidiness, and the canonical artifact representation
-  proof.
+- `make quick-check` runs the unit inventory, including architecture and
+  formatting checks, plus vet, the four named command builds, module tidiness,
+  and the canonical artifact representation proof. `make format-check` remains
+  available as a focused architecture and formatting check.
 - On Linux x86-64, `make headless-check` builds the exact Network command
   inventory, checks the enrollment-v3 artifact, runs bounded Endpoint, Source, Node, and Service
   process evidence, then rebuilds and tests the headless command candidate in
@@ -481,15 +482,11 @@ The complete command package retains independent positive and refusal coverage
 for `closed_issuer`, `closed_forwarding`, `closed_resolution`,
 `closed_introduction`, and `closed_data_join`. The old Initiator, Responder,
 Introduction, Transit-issuance, and Rendezvous engines and their direct server
-tests are absent. The Rendezvous retirement architecture oracle also forbids
-its old profile, dispatch, listener, and composition files while retaining the
-shared literal-endpoint validator and all five current closed dispatch branches.
-The Transit retirement oracle keeps the typed command refusal, Endpoint acquisition client,
-signed-profile decoder, and closed issuer/ledger while forbidding the old Node
-listener, signer, State-duty projection, Handler, and mutable root ledger. The
-Introduction retirement oracle also keeps the current
-`startClosedIntroduction` dispatch present rather than treating the shared
-domain term as a retired symbol.
+tests are absent. The architecture suite checks the State-to-Node value
+Interface, while State and Node behavior tests cover its projection and
+receipt-time bound. Historical file inventories do not guard these
+boundaries: command behavior proves the old starts refuse before effects, and
+the current closed-duty tests prove their accepting paths.
 
 The `ardents-node source --config` retirement oracle submits old-only and
 mixed old/closed `native_rendezvous_profile` plans through the real command

@@ -37,7 +37,7 @@ HEADLESS_NODE_ARTIFACT := $(HEADLESS_ARTIFACT_ROOT)/ardents-node-$(HEADLESS_PLAT
 HEADLESS_CONTROL_ARTIFACT := $(HEADLESS_ARTIFACT_ROOT)/ardents-control-$(HEADLESS_PLATFORM)$(HEADLESS_SUFFIX)
 HEADLESS_CUSTODY_ARTIFACT := $(HEADLESS_ARTIFACT_ROOT)/ardents-custody-$(HEADLESS_PLATFORM)$(HEADLESS_SUFFIX)
 override CANONICAL_GO_BUILD_FLAGS := -trimpath -buildvcs=false
-QUICK_CHECK_TARGETS := format-check vet unit build mod-check artifact-representation-check
+QUICK_CHECK_TARGETS := vet unit build mod-check artifact-representation-check
 
 ifeq ($(OS),Windows_NT)
 HEADLESS_ARTIFACT_SHELL ?= C:/Program Files/Git/bin/bash.exe
