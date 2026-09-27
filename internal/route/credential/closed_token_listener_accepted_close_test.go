@@ -72,7 +72,7 @@ func TestClosedTokenListenerDrainRetainsAcceptedCarrierCloseFailure(t *testing.T
 			if err := listener.Drain(ctx); !errors.Is(err, closeErr) {
 				t.Fatalf("Issuer Drain lost accepted Carrier close failure: %v", err)
 			}
-			if !listener.Joined() {
+			if !tokenListenerJoined(listener) {
 				t.Fatal("failed accepted Carrier close was mistaken for an incomplete join")
 			}
 		})

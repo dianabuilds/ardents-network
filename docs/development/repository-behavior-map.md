@@ -1532,8 +1532,10 @@ closed_forwarding_shutdown,closed_forwarding_listener}.go` at `53f02e64`.
    server cancels and closes its outgoing pool, joins accepted producers and
    session readers, then closes receiving resources and Hosting in its own
    `finishShutdown` goroutine. Its bounded `Drain` may time out while that
-   owner continues cleanup. The current Issuer adapter differs: on a drain
-   timeout its key and spend roots lack a later close owner (F-17).
+   owner continues cleanup. The Issuer now has the same shape: Node's
+   `closedIssuerServer` forwards the listener terminal cause, joins accepted
+   children without the caller deadline, and closes the spend ledger and key
+   root only after the last borrower finished (F-17 realized).
 
 The non-test caller check covers all ten Carrier move candidates: Node
 forwarding calls `OpenClosedNodeCarrier` and owns `ClosedCarrierPool`; the five

@@ -1096,6 +1096,7 @@
 "internal/node/closed_introduction_receiver_observation_test.go","go-test","internal/node","","unreviewed"
 "internal/node/closed_introduction_registration.go","production-go","internal/node","node-duty","behavior-source-traced"
 "internal/node/closed_introduction_restart_test.go","go-test","internal/node","","unreviewed"
+"internal/node/closed_issuer_late_close_test.go","go-test","internal/node","","unreviewed"
 "internal/node/closed_issuer_listener.go","production-go","internal/node","node-duty","behavior-source-traced"
 "internal/node/closed_issuer_listener_test.go","go-test","internal/node","","unreviewed"
 "internal/node/closed_join_listener.go","production-go","internal/node","node-duty","behavior-source-traced"

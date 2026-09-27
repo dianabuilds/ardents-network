@@ -63,18 +63,53 @@ func startClosedIssuer(config runtimeConfig, snapshot state.NodeDuty) (*dutyHand
 	if err != nil {
 		return nil, errors.Join(err, spends.Close(), issuer.Close())
 	}
-	return &dutyHandle{Done: listener.Done(), Joined: listener.Drained(), Protect: func(bool) {}, Usage: func() (uint64, uint64, uint64) {
+	server := &closedIssuerServer{listener: listener, spends: spends, issuer: issuer, releases: releases,
+		done: make(chan error, 1), drained: make(chan struct{})}
+	go server.run()
+	return &dutyHandle{Done: server.done, Joined: server.drained, Protect: func(bool) {}, Usage: func() (uint64, uint64, uint64) {
 		return uint64(listener.Active()), uint64(listener.Active()), 0
-	}, Stop: func() { _ = listener.Stop() }, Drain: func(ctx context.Context) error {
-		drain, cancel := context.WithTimeout(ctx, local.DrainTimeout)
-		defer cancel()
-		err := listener.Drain(drain)
-		if !listener.Joined() {
-			// An incomplete join cannot release durable owners to a successor.
-			return err
-		}
-		return errors.Join(err, releases.result(), spends.Close(), issuer.Close())
+	}, Stop: func() { _ = server.listener.Stop() }, Drain: func(ctx context.Context) error {
+		return server.drain(ctx, local.DrainTimeout)
 	}}, nil
+}
+
+// closedIssuerServer is the sole late owner of the opened issuer key root and
+// the admission spend root. It forwards the listener terminal cause to Node
+// supervision, then joins every accepted child without the caller's short
+// drain deadline and closes both roots only after the last borrower finished.
+type closedIssuerServer struct {
+	listener *credential.ClosedTokenListener
+	spends   *replay.Ledger
+	issuer   *credential.ClosedTokenIssuer
+	releases *terminalCleanup
+	done     chan error
+	drained  chan struct{}
+	drainErr error
+}
+
+func (server *closedIssuerServer) run() {
+	cause := <-server.listener.Done()
+	_ = server.listener.Stop()
+	server.done <- cause
+	// No timeout releases roots while an accepted child still borrows them.
+	joined := server.listener.Drain(context.Background())
+	server.drainErr = errors.Join(joined, server.releases.result(), server.spends.Close(), server.issuer.Close())
+	close(server.drained)
+}
+
+// drain reports the recorded finalization result once every worker joined. On
+// a bounded timeout it reports the unproven cleanup without closing anything;
+// later waits return the same recorded result and never close a root twice.
+func (server *closedIssuerServer) drain(ctx context.Context, timeout time.Duration) error {
+	_ = server.listener.Stop()
+	bounded, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+	select {
+	case <-server.drained:
+		return server.drainErr
+	case <-bounded.Done():
+		return bounded.Err()
+	}
 }
 
 func validateClosedIssuerProfile(local ClosedIssuerProfile, config runtimeConfig, snapshot state.NodeDuty, now time.Time) error {

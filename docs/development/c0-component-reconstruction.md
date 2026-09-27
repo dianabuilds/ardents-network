@@ -155,8 +155,8 @@ its stated gate is satisfied.
 | Durable storage (7) | Retain existing narrow filesystem owners. | No generic filesystem package without a real shared authority boundary. |
 | Endpoint admission (15) | Keep Endpoint as local capability and context lifetime owner; split mixed files by responsibility. | Reconcile the adjacent Endpoint slice before choosing any child package. |
 | Legacy Route v2 (12) | Retire uncalled execution after extracting shared historical readers/refusals. | Closed: the old wire obligations were decided by ADR-0093/ADR-0094 (F-52) and the Grant ledger by the ADR-0107 version-2 conversion (F-53). |
-| Node duty (45) | Deepen Node's five duty lifetimes in place; rename the common handle for its actual role. | Accepted-child close and issuer late-root owner (F-17/F-39/F-61). |
-| Permission issuance (41) | Retain issuer authority and Endpoint attempt owners; the offline grammar is separated from the Route-facing listener in `internal/admission` (F-28/F-30 done). | No parent Route import cycle; keep exact signed bytes; the late issuer-root close owner (F-17) stays open. |
+| Node duty (45) | Deepen Node's five duty lifetimes in place; rename the common handle for its actual role. | Accepted-child close and the issuer late-root owner are realized in place (F-17/F-39/F-61 done). |
+| Permission issuance (41) | Retain issuer authority and Endpoint attempt owners; the offline grammar is separated from the Route-facing listener in `internal/admission` (F-28/F-30 done). | No parent Route import cycle; keep exact signed bytes; the late issuer-root close owner is realized in Node (F-17 done). |
 | Protected wire (31) | Retain ARDP/terminal/capsule owners; narrow shared Route root by operation. | Preserve frame bounds, accepted-channel and physical Carrier close ownership. The terminal Descriptor proof bound is realized terminal-local (F-29 done). |
 | Publication/discovery (48) | Retain Publication, Reachability and Target Link floors; deepen Endpoint publication coordinator. | The old Descriptor root policy is closed by the ADR-0109 typed refusal (F-32); the obsolete instruction codecs were retired by ADR-0094. |
 | Qualification (6) | Retain Endpoint's stream-qualification adapter for verification; do not treat its fixture path as ordinary Publisher/Reader behavior. | Its installed verdict remains separate from `make check` and the ordinary text-command verdict (F-31). |
@@ -509,9 +509,10 @@ issuer key-inventory codec, and Control and Custody depend on that grammar
 without importing the live network listener (F-28/F-30 realized). The live
 `route/credential` issuer and its three Route-facing adapter files stay
 together during the current C0 correctness work: their listener and admitted
-child lifetime need the F-17 close owner first, and relocating their
-remaining methods now would either export issuer internals or create a
-parent import cycle. After that owner is settled, put Route
+child lifetime needed the F-17 close owner first (now realized as Node's
+`closedIssuerServer` late finalizer), and relocating their remaining methods
+would still either export issuer internals or create a parent import cycle.
+With that owner settled, the next step puts Route
 accept/bootstrap/ARDP exchange in the Node-facing adapter. That was a
 dependency cleanup slice, not an additional accepting credential version.
 
@@ -839,8 +840,9 @@ Five observed edges determine the next Go import-graph changes:
    permission/profile grammar moved below the live network listener into
    `internal/admission` (F-28/F-30 realized); issuer reservation stays in
    Credential. Put Route-facing bootstrap, admission channel and Carrier calls
-   behind a Node-owned operation adapter only after assigning accepted-child
-   join and issuer-root late-close ownership (F-17). Moving the current
+   behind a Node-owned operation adapter now that accepted-child join and
+   issuer-root late-close ownership are assigned (F-17 realized as Node's
+   `closedIssuerServer`). Moving the current
    Credential package inward as one unit creates a parent import cycle.
 2. `route/terminal -> service/reachability` existed only for the 15,000-byte
    Descriptor bound in `descriptor.go` and `descriptor_client_linux.go`.
@@ -938,7 +940,7 @@ receiver duty; the role-specific rows below are alternatives across Nodes.
 | `local_role_state_root` and `entry_state_root` | `network/duty` owns local role/conflict records; `entry.OpenClosedSets` owns the Endpoint's closed Entry set. | Keep the role and Entry roots distinct from each other and from State. The old Invite command is retired by the ADR-0106 before-effect refusal; its former root is never read again and cannot supply the selected closed set (F-53). |
 | `service_instance_root` and `publication_root` | `service/instance.Open` supplies the binding; `service/publication.Open` is constructed by Endpoint's `newEndpoint`. | Keep signing key/generation separate from Descriptor publication/revision. Endpoint joins publication and Instance close after local work; pre-v3 Instance roots are refused with the typed `ErrLegacyRoot` (ADR-0102, F-42). |
 | `text_token_root` | `endpoint/tokenjournal.Open` on Source-prefix admission; Endpoint holds the opened journal until its source roots close. | Retain retry/presentation state across restart; it is not Node's receiving spend ledger. Its close result joins the Endpoint terminal outcome. |
-| Closed Issuer `root` and `admission_root` | `route/credential.OpenClosedTokenIssuer` and `route/replay.Open`, composed by `node/startClosedIssuer`. | Issuer key/issuance and receiving spend have separate roots. On a bounded Drain timeout the current adapter lacks a later root-close owner (F-17); the target finalizer must join workers before closing both. |
+| Closed Issuer `root` and `admission_root` | `route/credential.OpenClosedTokenIssuer` and `route/replay.Open`, composed by `node/startClosedIssuer`. | Issuer key/issuance and receiving spend have separate roots. Realized (F-17): after a bounded Drain timeout Node's `closedIssuerServer` stays the later root-close owner; it joins every accepted child without the caller deadline, then closes the spend ledger and the key root in that order and records one finalization result. |
 | Closed forwarding `root` and `hosting_root` | `route/replay.Open` via Node receiving resources; `resource.OpenHosting` via Node's shared host adapter. | Spend once and host-period accounting are different authorities. A shared host sampler can serve concurrent duties, but its lease and terminal result remain with Node. |
 | Closed Resolution `root` and `admission_root` | `service/reachability.OpenStore` and `route/replay.Open` in `node/startClosedResolution`. | Descriptor revision/conflict and receiving token spends must retain distinct floors; a publication ACK follows durable Store acceptance, and shutdown joins both roots. |
 | Closed Introduction and Data JOIN `admission_root` | Each Node listener opens its own `route/replay` receiving ledger. | No timeout may release a spend root while an accepted child still owns a commit or reply. The duty owns the final join, not the Carrier package. |
@@ -973,7 +975,8 @@ These relationships are checked against the current
 [first per-file ownership pass](c0-component-inventory.csv) is recorded.
 The [Node receiver resource matrix](repository-behavior-map.md#node-receiver-resource-matrix)
 now distinguishes all five duty roots and late cleanup after a caller timeout;
-the Issuer alone lacks that later root-close owner (F-17). The installed text
+the Issuer's later root-close owner is realized as Node's
+`closedIssuerServer` (F-17). The installed text
 Endpoint's local socket servers and adapters have a source-backed handler
 join before Endpoint, Instance and State close. Nested worker and Route
 lifetimes, physical connection-close error policy and combined installed
@@ -985,32 +988,35 @@ are realized (F-23).
 
 ### Issuer's late close owner
 
-`startClosedIssuer` transfers an opened key root and receiving spend ledger
-to a Node-local listener adapter. `ClosedTokenListener.Done()` reports its
-accept-loop result; `ClosedTokenListener.Drain(ctx)` stops acceptance and
-waits for its workers, but deliberately does not close either root. Today the
-adapter closes both roots only when that bounded Drain succeeds. If it times
-out, the listener may finish later without a caller that releases the roots.
-
-The target Node duty owner needs one retained finalization result, distinct
-from the caller's bounded wait. Its first Stop starts exactly one finishing
-path: stop the listener, wait for its workers without the caller's short
-deadline, then close the spend ledger and issuer root in that order, retaining
-the listener terminal cause, Stop, spend-close and issuer-close results.
-`Done()` is a one-send accept-loop signal that `node.Run` may already consume;
-the finalizer must share the recorded cause instead of receiving that channel
-a second time. The Node adapter can be its sole consumer, forward a buffered
-failure signal to `node.Run`, and retain the cause for finalization.
-`Drain(ctx)` waits for the final result up to the configured
-deadline and reports unproven cleanup on timeout; it does not claim success or
-close roots while a worker still borrows them. A later wait on the same owner
-must return the same recorded result without closing twice. This requires no
-new Route/Credential package and does not make the issuer key or spend ledger
-one authority. If the process exits after a timeout, a late in-process close
-cannot be promised; the terminal result remains failed/unproven and restart
-must prove durable-root recovery separately. A delayed accepted-child test
-must check lock exclusion before join, eventual close while the process stays
-alive, repeated wait results, and a distinct root-close error (F-17).
+Realized (F-17). `startClosedIssuer` composes the opened key root and the
+receiving spend ledger into Node's `closedIssuerServer`, the sole late owner
+of both roots. The server is the only consumer of `ClosedTokenListener.Done()`
+and forwards the buffered accept-loop cause to `node.Run` before any wait, so
+supervision keeps the terminal signal even while an accepted child still
+borrows the roots. Its unbounded run goroutine then stops the listener and
+waits for every accepted child without the caller's short deadline through
+`listener.Drain(context.Background())`, which also retains the physical
+child-close result; only after the last borrower joined does it close the
+spend ledger and the issuer root in that order, recording one joined
+finalization result: the listener join result, retained admitted-child
+release errors, spend-close and issuer-close errors. The forwarded cause
+stays out of that join, so `fail()` does not report it twice. The handle's
+`Drain` waits for the recorded result up to the configured deadline and
+reports unproven cleanup on timeout without claiming success or closing
+anything; later waits return the same recorded result and never close a root
+twice, and `Joined` exposes the wrapper's drained channel so
+`hostLifetime.deferCloseUntil` waits for the real root release. No new
+Route/Credential package was added and the issuer key and spend ledger stay
+separate authorities; the exported `ClosedTokenListener.Joined`/`Drained`
+projections were retired with the old adapter path. If the process exits
+after a timeout, the terminal result remains failed/unproven and restart
+proves durable-root recovery separately. The delayed accepted-child test
+(`closed_issuer_late_close_test.go`) checks lock exclusion before join (both
+root leases refuse a second open), the cause forwarded while a child still
+borrows, eventual close while the process stays alive (both roots reopen
+after the join), repeated identical wait results, and a distinct root-close
+error: a removed spend journal is retained as the spend-root close failure
+and is never confused with the forwarded accept cause.
 
 ## First source inventory
 
@@ -1135,11 +1141,11 @@ only when the package is actually introduced or renamed.
 1. Carry the selected handoffs into bounded owner changes:
    State-to-Node's checked duty value is realized (F-07, ADR-0104; its F-45 role join settled by ADR-0103) and the
    Service Connection attachment's physical-close result is realized in its existing package (F-23 done) and the offline
-   admission grammar lives in `internal/admission` (F-28/F-30 done); remaining is Route/Credential's live issuer adapter late-close
-   owner (F-17). The table
+   admission grammar lives in `internal/admission` (F-28/F-30 done) and the live issuer adapter's late-close owner is realized in Node as
+   `closedIssuerServer` (F-17 done). The table
    of observed handoffs above already gives callers, input, result and close
    owners. State's duty value fields are fixed against the accepted role join (ADR-0103/0104); Credential's
-   package move awaits the late issuer-root close owner. Refine exported signatures only in the selected slice.
+   package move no longer awaits the late issuer-root close owner and stands on its own merits. Refine exported signatures only in the selected slice.
 2. Decide one-version retirement in accepted contract order: old Route v2
    execution, Invite Entry writer, Reachability old writer/root, Instance old
    key/root and AREP intake. For each, record last caller, persisted floor,

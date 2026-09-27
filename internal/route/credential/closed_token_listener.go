@@ -146,29 +146,6 @@ func (listener *ClosedTokenListener) Drain(ctx context.Context) error {
 	}
 }
 
-// Joined reports whether all listener workers have finished. A completed
-// Drain may still return a physical close error; its caller can then release
-// separately owned roots without treating that error as an incomplete join.
-func (listener *ClosedTokenListener) Joined() bool {
-	if listener == nil {
-		return false
-	}
-	select {
-	case <-listener.drained:
-		return true
-	default:
-		return false
-	}
-}
-
-// Drained closes after every accepted Carrier worker has joined.
-func (listener *ClosedTokenListener) Drained() <-chan struct{} {
-	if listener == nil {
-		return nil
-	}
-	return listener.drained
-}
-
 func (listener *ClosedTokenListener) serve(ctx context.Context) {
 	defer listener.workers.Done()
 	defer listener.Stop()

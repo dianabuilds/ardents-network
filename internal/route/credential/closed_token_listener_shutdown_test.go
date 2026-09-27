@@ -71,7 +71,7 @@ func TestClosedTokenListenerDrainJoinsAcceptedSocketHandoff(t *testing.T) {
 	if err == nil {
 		t.Error("Drain completed while an accepted socket was still being handed off")
 	}
-	if listener.Joined() {
+	if tokenListenerJoined(listener) {
 		t.Error("listener reported a joined handoff before the accepted socket returned")
 	}
 	close(shared.release)
@@ -80,7 +80,7 @@ func TestClosedTokenListenerDrainJoinsAcceptedSocketHandoff(t *testing.T) {
 	if err := listener.Drain(joined); err != nil {
 		t.Fatal(err)
 	}
-	if !listener.Joined() {
+	if !tokenListenerJoined(listener) {
 		t.Fatal("listener did not report a completed join")
 	}
 	if handled.Load() != 0 {
@@ -145,5 +145,17 @@ func TestClosedTokenListenerParentCancellationClosesIdleTCPAccept(t *testing.T) 
 	defer finish()
 	if err := listener.Drain(drain); err != nil {
 		t.Fatal(err)
+	}
+}
+
+// tokenListenerJoined reports worker join through the package-internal
+// drained channel after the exported Joined projection was retired (F-17):
+// Node owns the late root close and reads the final Drain result instead.
+func tokenListenerJoined(listener *ClosedTokenListener) bool {
+	select {
+	case <-listener.drained:
+		return true
+	default:
+		return false
 	}
 }
