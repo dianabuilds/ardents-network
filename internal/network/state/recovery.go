@@ -3,6 +3,8 @@ package state
 import (
 	"errors"
 	"fmt"
+
+	"github.com/dianabuilds/ardents-network/internal/network/state/durable"
 )
 
 // RecoveryRequiredError reports durable State that cannot safely become active
@@ -15,7 +17,7 @@ func (err *RecoveryRequiredError) Error() string {
 	return "network state recovery required: " + err.Reason
 }
 
-func loadGenerationChain(config config, generations map[string]durableGeneration, name string, seen map[string]bool) (candidateDecision, map[string]bool, error) {
+func loadGenerationChain(config config, generations map[string]durable.Generation, name string, seen map[string]bool) (candidateDecision, map[string]bool, error) {
 	value, exists := generations[name]
 	if !exists || seen[name] || len(seen) >= maximumEpochChain {
 		return candidateDecision{}, seen, errors.New("generation chain identity, cycle, or length is invalid")
@@ -45,7 +47,7 @@ func loadGenerationChain(config config, generations map[string]durableGeneration
 	return decision, seen, nil
 }
 
-func missingCurrentRecovery(generations map[string]durableGeneration) error {
+func missingCurrentRecovery(generations map[string]durable.Generation) error {
 	if len(generations) == 0 {
 		return nil
 	}

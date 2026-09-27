@@ -10,7 +10,7 @@ import (
 
 func TestInterruptedCycleResumesOnlyUnstartedLatestAttempt(t *testing.T) {
 	root := t.TempDir()
-	storage, err := openDurableRoot(root)
+	storage, err := openTestDurableRoot(root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -37,15 +37,15 @@ func TestInterruptedCycleResumesOnlyUnstartedLatestAttempt(t *testing.T) {
 	if err := initial.commitDistribution(cycle); err != nil {
 		t.Fatalf("record first LATEST: %v", err)
 	}
-	if err := storage.close(); err != nil {
+	if err := storage.Close(); err != nil {
 		t.Fatal(err)
 	}
 
-	storage, err = openDurableRoot(root)
+	storage, err = openTestDurableRoot(root)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer storage.close()
+	defer storage.Close()
 	restarted := &networkState{config: config, storage: storage}
 	if err := restarted.loadDistributionState(); err != nil {
 		t.Fatal(err)

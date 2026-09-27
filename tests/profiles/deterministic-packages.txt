@@ -23,6 +23,7 @@ github.com/dianabuilds/ardents-network/internal/entry
 github.com/dianabuilds/ardents-network/internal/network/duty
 github.com/dianabuilds/ardents-network/internal/network/source
 github.com/dianabuilds/ardents-network/internal/network/state
+github.com/dianabuilds/ardents-network/internal/network/state/durable
 github.com/dianabuilds/ardents-network/internal/node
 github.com/dianabuilds/ardents-network/internal/node/authority
 github.com/dianabuilds/ardents-network/internal/node/forwarding

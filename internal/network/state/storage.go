@@ -3,14 +3,16 @@ package state
 import (
 	"errors"
 	"fmt"
+
+	"github.com/dianabuilds/ardents-network/internal/network/state/durable"
 )
 
-func loadCurrent(config config, storage *durableRoot) (*Snapshot, *candidateDecision, error) {
-	current, values, err := storage.loadState()
+func loadCurrent(config config, storage *durable.Root) (*Snapshot, *candidateDecision, error) {
+	current, values, err := storage.LoadState()
 	if err != nil {
 		return nil, nil, err
 	}
-	generations := make(map[string]durableGeneration, len(values))
+	generations := make(map[string]durable.Generation, len(values))
 	for _, value := range values {
 		generations[value.Name] = value
 	}
@@ -36,7 +38,7 @@ func loadCurrent(config config, storage *durableRoot) (*Snapshot, *candidateDeci
 	return &snapshot, &decision, nil
 }
 
-func loadGeneration(config config, generation durableGeneration, previous *Snapshot) (candidateDecision, error) {
+func loadGeneration(config config, generation durable.Generation, previous *Snapshot) (candidateDecision, error) {
 	parsed, err := parseEpoch(generation.Epoch)
 	if err != nil {
 		return candidateDecision{}, fmt.Errorf("parse persisted Epoch: %w", err)
@@ -49,8 +51,8 @@ func loadGeneration(config config, generation durableGeneration, previous *Snaps
 	return verifyDecision(verification, previous, generation.Epoch, generation.Inputs, nil, false)
 }
 
-func loadNamedGeneration(config config, storage *durableRoot, name string, previous *Snapshot) (candidateDecision, error) {
-	_, values, err := storage.loadState()
+func loadNamedGeneration(config config, storage *durable.Root, name string, previous *Snapshot) (candidateDecision, error) {
+	_, values, err := storage.LoadState()
 	if err != nil {
 		return candidateDecision{}, err
 	}
@@ -62,12 +64,12 @@ func loadNamedGeneration(config config, storage *durableRoot, name string, previ
 	return candidateDecision{}, errors.New("persisted generation is missing")
 }
 
-func loadStoredChain(config config, storage *durableRoot, name string) (candidateDecision, error) {
-	_, values, err := storage.loadState()
+func loadStoredChain(config config, storage *durable.Root, name string) (candidateDecision, error) {
+	_, values, err := storage.LoadState()
 	if err != nil {
 		return candidateDecision{}, err
 	}
-	generations := make(map[string]durableGeneration, len(values))
+	generations := make(map[string]durable.Generation, len(values))
 	for _, value := range values {
 		generations[value.Name] = value
 	}
@@ -75,13 +77,18 @@ func loadStoredChain(config config, storage *durableRoot, name string) (candidat
 	return decision, err
 }
 
-func persistDecision(storage *durableRoot, decision candidateDecision, activate bool) error {
-	return storage.commitState(durableGeneration{
+func persistDecision(storage *durable.Root, decision candidateDecision, activate bool) error {
+	return storage.CommitState(durable.Generation{
 		Name: decision.snapshot.Generation, Epoch: decision.epochBytes,
 		Inputs: decision.inputs, Activate: activate,
 	})
 }
 
-func stageGeneration(storage *durableRoot, decision candidateDecision) error {
+func stageGeneration(storage *durable.Root, decision candidateDecision) error {
 	return persistDecision(storage, decision, false)
+}
+
+// storageLimits keeps physical framing aligned with authenticated intake.
+func storageLimits() durable.Limits {
+	return durable.Limits{EpochBytes: maximumEpochBytes, RecordBytes: maximumRecordBytes, ClosedProfileBytes: maximumClosedProfileSize}
 }

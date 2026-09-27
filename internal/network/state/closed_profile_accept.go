@@ -5,6 +5,8 @@ import (
 	"encoding/hex"
 	"errors"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/network/state/durable"
 )
 
 // ClosedProfileView is the narrow immutable State projection consumed by the
@@ -64,21 +66,21 @@ func (s *networkState) AcceptClosedProfile(raw []byte) (ClosedProfileView, error
 	if err != nil || profile.notBefore.Before(s.current.EpochValidFrom) || profile.notAfter.After(s.current.ValidUntil) || !matchesClosedProfileCandidates(profile, s.currentDecision.verified.epoch, s.currentDecision.verified.accepted) {
 		return ClosedProfileView{}, errors.New("closed profile does not match accepted State")
 	}
-	stored, storedRaw, err := s.storage.loadClosedProfile(generation)
+	stored, storedRaw, err := s.storage.LoadClosedProfile(generation)
 	if err != nil {
 		return ClosedProfileView{}, err
 	}
-	if stored != (closedProfileState{}) {
-		if stored.epoch != profile.epoch || stored.accepted != profile.digest || stored.conflict != [32]byte{} {
-			if stored.conflict == [32]byte{} && stored.epoch == profile.epoch && stored.accepted != profile.digest {
-				stored.conflict = profile.digest
-				if err := s.storage.commitClosedProfile(stored, storedRaw); err != nil {
+	if stored != (durable.ClosedProfileState{}) {
+		if stored.Epoch != profile.epoch || stored.Accepted != profile.digest || stored.Conflict != [32]byte{} {
+			if stored.Conflict == [32]byte{} && stored.Epoch == profile.epoch && stored.Accepted != profile.digest {
+				stored.Conflict = profile.digest
+				if err := s.storage.CommitClosedProfile(stored, storedRaw); err != nil {
 					return ClosedProfileView{}, err
 				}
 			}
 			return ClosedProfileView{}, errors.New("closed profile has a durable conflict")
 		}
-	} else if err := s.storage.commitClosedProfile(closedProfileState{generation: generation, epoch: profile.epoch, accepted: profile.digest}, raw); err != nil {
+	} else if err := s.storage.CommitClosedProfile(durable.ClosedProfileState{Generation: generation, Epoch: profile.epoch, Accepted: profile.digest}, raw); err != nil {
 		return ClosedProfileView{}, err
 	}
 	return closedProfileView(profile), nil
@@ -145,12 +147,12 @@ func (s *networkState) currentClosedProfileLocked() (closedProfile, error) {
 	if err != nil {
 		return closedProfile{}, err
 	}
-	stored, raw, err := s.storage.loadClosedProfile(generation)
-	if err != nil || stored == (closedProfileState{}) || stored.conflict != [32]byte{} || stored.epoch != s.current.Epoch {
+	stored, raw, err := s.storage.LoadClosedProfile(generation)
+	if err != nil || stored == (durable.ClosedProfileState{}) || stored.Conflict != [32]byte{} || stored.Epoch != s.current.Epoch {
 		return closedProfile{}, errors.New("closed profile is unavailable")
 	}
 	profile, err := parseClosedProfile(raw, generation, s.current.NetworkID, s.current.Digest, s.current.Epoch, s.config.closedProfileAuthority, now)
-	if err != nil || profile.digest != stored.accepted || profile.notBefore.Before(s.current.EpochValidFrom) || profile.notAfter.After(s.current.ValidUntil) ||
+	if err != nil || profile.digest != stored.Accepted || profile.notBefore.Before(s.current.EpochValidFrom) || profile.notAfter.After(s.current.ValidUntil) ||
 		!matchesClosedProfileCandidates(profile, s.currentDecision.verified.epoch, s.currentDecision.verified.accepted) {
 		return closedProfile{}, errors.New("closed profile is unavailable")
 	}

@@ -7,11 +7,12 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/network/source"
+	"github.com/dianabuilds/ardents-network/internal/network/state/durable"
 	"github.com/dianabuilds/ardents-network/internal/resource"
 )
 
-// networkState owns verification, finite source work, immutable generations,
-// and the durable pointers that publish them.
+// networkState owns verification, finite Source work, and publication order.
+// The durable package holds its exclusive physical root and persisted bytes.
 type networkState struct {
 	mu              sync.RWMutex
 	config          config
@@ -19,7 +20,7 @@ type networkState struct {
 	currentDecision *candidateDecision
 	pendingDecision *candidateDecision
 	distribution    distributionState
-	storage         *durableRoot
+	storage         *durable.Root
 	serverDone      chan struct{}
 	automaticDone   chan struct{}
 	serverErr       error

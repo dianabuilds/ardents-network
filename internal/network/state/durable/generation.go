@@ -1,4 +1,4 @@
-package state
+package durable
 
 import (
 	"bytes"
@@ -13,16 +13,16 @@ const (
 	maximumStateGenerations = 64
 )
 
-// durableGeneration is one opaque immutable State generation. Its meaning is
+// Generation is one opaque immutable State generation. Its meaning is
 // verified by the State acceptance path before it becomes current.
-type durableGeneration struct {
+type Generation struct {
 	Name     string
 	Epoch    []byte
 	Inputs   [][]byte
 	Activate bool
 }
 
-func (root *durableRoot) loadState() (string, []durableGeneration, error) {
+func (root *Root) LoadState() (string, []Generation, error) {
 	root.mu.Lock()
 	defer root.mu.Unlock()
 	if err := root.available(); err != nil {
@@ -33,13 +33,13 @@ func (root *durableRoot) loadState() (string, []durableGeneration, error) {
 	if err != nil {
 		return "", nil, fmt.Errorf("scan state generations: %w", err)
 	}
-	generations := make([]durableGeneration, 0, len(entries))
+	generations := make([]Generation, 0, len(entries))
 	known := make(map[string]bool, len(entries))
 	for _, entry := range entries {
 		if !entry.IsDir() || !generationName.MatchString(entry.Name()) {
 			return "", nil, errors.New("state generation directory is invalid")
 		}
-		generation, loadErr := loadStateGeneration(generationsRoot, entry.Name())
+		generation, loadErr := loadStateGeneration(generationsRoot, entry.Name(), root.limits)
 		if loadErr != nil {
 			return "", nil, loadErr
 		}
@@ -60,18 +60,18 @@ func (root *durableRoot) loadState() (string, []durableGeneration, error) {
 	return current, generations, nil
 }
 
-func (root *durableRoot) commitState(generation durableGeneration) error {
+func (root *Root) CommitState(generation Generation) error {
 	root.mu.Lock()
 	defer root.mu.Unlock()
 	if err := root.available(); err != nil {
 		return err
 	}
 	if !generationName.MatchString(generation.Name) || len(generation.Epoch) == 0 ||
-		len(generation.Epoch) > maximumEpochBytes || len(generation.Inputs) > 64 {
+		int64(len(generation.Epoch)) > root.limits.EpochBytes || len(generation.Inputs) > 64 {
 		return errors.New("state generation exceeds its bounds")
 	}
 	for _, input := range generation.Inputs {
-		if len(input) == 0 || len(input) > maximumRecordBytes {
+		if len(input) == 0 || int64(len(input)) > root.limits.RecordBytes {
 			return errors.New("state generation input exceeds its bound")
 		}
 	}
@@ -91,7 +91,7 @@ func (root *durableRoot) commitState(generation durableGeneration) error {
 	}
 	final := filepath.Join(generationsRoot, generation.Name)
 	if info, statErr := os.Stat(final); statErr == nil {
-		if !info.IsDir() || !stateGenerationMatches(final, generation) {
+		if !info.IsDir() || !stateGenerationMatches(final, generation, root.limits) {
 			return errors.New("existing immutable state generation disagrees with supplied bytes")
 		}
 		if err := os.RemoveAll(staging); err != nil {
@@ -112,31 +112,31 @@ func (root *durableRoot) commitState(generation durableGeneration) error {
 	return nil
 }
 
-func loadStateGeneration(root, name string) (durableGeneration, error) {
+func loadStateGeneration(root, name string, limits Limits) (Generation, error) {
 	directory := filepath.Join(root, name)
-	epoch, err := readBoundedFile(filepath.Join(directory, "epoch.bin"), maximumEpochBytes)
+	epoch, err := readBoundedFile(filepath.Join(directory, "epoch.bin"), limits.EpochBytes)
 	if err != nil {
-		return durableGeneration{}, fmt.Errorf("read state generation Epoch: %w", err)
+		return Generation{}, fmt.Errorf("read state generation Epoch: %w", err)
 	}
 	inputsRoot := filepath.Join(directory, "inputs")
 	entries, err := readBoundedDirectory(inputsRoot, 64)
 	if err != nil {
-		return durableGeneration{}, fmt.Errorf("scan state generation inputs: %w", err)
+		return Generation{}, fmt.Errorf("scan state generation inputs: %w", err)
 	}
 	inputs := make([][]byte, len(entries))
 	for index, entry := range entries {
 		if entry.IsDir() || entry.Name() != fmt.Sprintf("%04d.bin", index) {
-			return durableGeneration{}, errors.New("state generation input name is not canonical")
+			return Generation{}, errors.New("state generation input name is not canonical")
 		}
-		inputs[index], err = readBoundedFile(filepath.Join(inputsRoot, entry.Name()), maximumRecordBytes)
+		inputs[index], err = readBoundedFile(filepath.Join(inputsRoot, entry.Name()), limits.RecordBytes)
 		if err != nil {
-			return durableGeneration{}, fmt.Errorf("read state generation input: %w", err)
+			return Generation{}, fmt.Errorf("read state generation input: %w", err)
 		}
 	}
-	return durableGeneration{Name: name, Epoch: epoch, Inputs: inputs}, nil
+	return Generation{Name: name, Epoch: epoch, Inputs: inputs}, nil
 }
 
-func writeStateGeneration(directory string, generation durableGeneration) error {
+func writeStateGeneration(directory string, generation Generation) error {
 	inputsRoot := filepath.Join(directory, "inputs")
 	if err := os.Mkdir(inputsRoot, 0o700); err != nil {
 		return err
@@ -155,8 +155,8 @@ func writeStateGeneration(directory string, generation durableGeneration) error 
 	return syncDirectory(directory)
 }
 
-func stateGenerationMatches(directory string, generation durableGeneration) bool {
-	actual, err := loadStateGeneration(filepath.Dir(directory), filepath.Base(directory))
+func stateGenerationMatches(directory string, generation Generation, limits Limits) bool {
+	actual, err := loadStateGeneration(filepath.Dir(directory), filepath.Base(directory), limits)
 	if err != nil || !bytes.Equal(actual.Epoch, generation.Epoch) || len(actual.Inputs) != len(generation.Inputs) {
 		return false
 	}

@@ -1,30 +1,32 @@
 package state
 
+import "github.com/dianabuilds/ardents-network/internal/network/state/durable"
+
 // CommitRetainedGenerationForTest writes one durable generation exactly as a
 // historical build would have committed it, so the F-50 evidence tests can
 // reconstruct a retained old-schema population that no current intake path
 // would accept.
 func CommitRetainedGenerationForTest(root, name string, epoch []byte, inputs [][]byte, activate bool) error {
-	storage, err := openDurableRoot(root)
+	storage, err := openTestDurableRoot(root)
 	if err != nil {
 		return err
 	}
-	defer storage.close()
-	return storage.commitState(durableGeneration{Name: name, Epoch: epoch, Inputs: inputs, Activate: activate})
+	defer storage.Close()
+	return storage.CommitState(durable.Generation{Name: name, Epoch: epoch, Inputs: inputs, Activate: activate})
 }
 
 // CommitRetainedControlForTest writes a distribution control floor with its
 // active Epoch floor and an optional retained pending marker.
 func CommitRetainedControlForTest(root string, epochFloor uint64, epochDigest, pendingDigest [32]byte, pendingValidFrom int64) error {
-	storage, err := openDurableRoot(root)
+	storage, err := openTestDurableRoot(root)
 	if err != nil {
 		return err
 	}
-	defer storage.close()
+	defer storage.Close()
 	state := distributionState{sequence: 1, epochFloor: epochFloor, epochDigest: epochDigest,
 		trustedTimeFloor: pendingValidFrom, pendingDigest: pendingDigest, pendingValidFrom: pendingValidFrom}
 	raw := encodeDistributionState(state)
-	return storage.commitControl(distributionDigest(raw), raw)
+	return storage.CommitControl(distributionDigest(raw), raw)
 }
 
 // VerifySourceCandidateForTest drives one Source bundle through the exact

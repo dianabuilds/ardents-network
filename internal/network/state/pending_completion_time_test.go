@@ -8,11 +8,11 @@ import (
 
 func TestCompleteSourceWaveRechecksTrustedTimeBeforeActivatingPending(t *testing.T) {
 	root := t.TempDir()
-	storage, err := openDurableRoot(root)
+	storage, err := openTestDurableRoot(root)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer storage.close()
+	defer storage.Close()
 	beforeExpiry := time.Unix(1_800_000_001, 0).UTC()
 	pending := candidateDecision{epoch: epochEnvelope{number: 2, digest: [32]byte{2}, validFrom: beforeExpiry.Add(-time.Second), validUntil: beforeExpiry.Add(time.Second)}}
 	current := &Snapshot{Epoch: 1, Digest: [32]byte{1}}
@@ -36,11 +36,11 @@ func TestCompleteSourceWaveRechecksTrustedTimeBeforeActivatingPending(t *testing
 
 func TestCompleteSourceWaveRecordsConflictBeforeCompletionClockFailure(t *testing.T) {
 	root := t.TempDir()
-	storage, err := openDurableRoot(root)
+	storage, err := openTestDurableRoot(root)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer storage.close()
+	defer storage.Close()
 	started := time.Unix(1_800_000_000, 0).UTC()
 	opened := &networkState{config: config{root: root, clock: func() time.Time { return started }, observe: func() time.Time { return time.Time{} }},
 		storage: storage, current: &Snapshot{Epoch: 1, Digest: [32]byte{1}}}
@@ -63,11 +63,11 @@ func TestCompleteSourceWaveRecordsConflictBeforeCompletionClockFailure(t *testin
 
 func TestCompleteSourceWaveRecordsPendingConflictBeforeCompletionClockFailure(t *testing.T) {
 	root := t.TempDir()
-	storage, err := openDurableRoot(root)
+	storage, err := openTestDurableRoot(root)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer storage.close()
+	defer storage.Close()
 	started := time.Unix(1_800_000_000, 0).UTC()
 	pending := candidateDecision{epoch: epochEnvelope{number: 2, digest: [32]byte{2}}}
 	competing := candidateDecision{epoch: epochEnvelope{number: 2, digest: [32]byte{3}}}
