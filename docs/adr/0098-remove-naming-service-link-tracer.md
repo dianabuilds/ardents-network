@@ -1,6 +1,7 @@
 ---
 status: accepted
 date: 2026-09-26
+partially-superseded-by: ADR-0113 (retained alpha-only Service Link grammar consequence only)
 ---
 
 # ADR-0098 — Remove the unwired `internal/naming` Service-Link formatter and parser

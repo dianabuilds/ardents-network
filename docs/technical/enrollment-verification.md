@@ -62,9 +62,9 @@ facts.
 command identities. It appends the declared platform to the command and also
 appends the native executable suffix: accepted Windows `ardents-control`, Node,
 Custody, and Endpoint command artifacts end in `.exe`; non-Windows names do
-not. The sole accepted Network enrollment-v3 descriptor parsing, bundle
-construction/testing, and running-companion verification use that same
-identity rather than reconstructing it locally.
+not. The sole accepted Network enrollment-v3 descriptor parsing and bundle
+construction/testing use that same identity rather than reconstructing it
+locally.
 
 The verifier permits at most 32 inventory entries, each no larger than 64 MiB.
 Names are direct file names only. Manifest and descriptor require canonical
@@ -82,10 +82,10 @@ comparison; a recognized retired v1/v2 descriptor returns the typed
 before any companion inventory or executable identity work; and an undeclared
 or malformed companion never crosses into Release metadata.
 
-`VerifyRunningCompanion` is narrower: after `Verify` has already returned the
-manifest bytes, it proves that the current process is exactly one named
-companion from that inventory. It neither re-verifies the bundle nor executes
-the companion.
+The former `VerifyRunningCompanion` companion proof was retired by ADR-0113;
+`Verify`'s own running-artifact gate (`exactExecutable`) remains the single
+exact-file identity check, and the Windows v3 re-execution contract proves it
+against the enrolled endpoint artifact.
 
 `VerifyHeadless` preserves the accepted enrollment-v3 `RELEASE` grammar but
 requires the exact manifest to contain the canonical platform-named
@@ -102,8 +102,8 @@ on both entry points.
 inventory rejection, executable substitution, the typed refusal of retired
 v1/v2 descriptors and the generic refusal of unknown schemas, v3 companion
 separation including the partial-pair failure, package-owned artifact binding,
-Windows v3 control-manifest acceptance through the running-companion contract,
-and a current companion process. Callers in
+Windows v3 manifest acceptance through the running-artifact identity gate in
+a re-executed enrolled child process. Callers in
 `cmd/ardents` and `cmd/ardents-control` exercise this narrow Network enrollment
 interface. Repository gates provide integration evidence;
 historical RC2 enrollment evidence does not qualify a future baseline.

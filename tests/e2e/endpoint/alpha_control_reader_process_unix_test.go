@@ -21,7 +21,6 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/alphacontrol"
 	"github.com/dianabuilds/ardents-network/internal/alphacontrol/inspection"
-	"github.com/dianabuilds/ardents-network/internal/naming/alpha"
 	"github.com/dianabuilds/ardents-network/internal/release"
 )
 
@@ -63,51 +62,22 @@ func TestAlphaCorpusIntakeRetirementPreservesExistingFloor(t *testing.T) {
 	endpoint := buildArdents(t)
 	control := buildControl(t)
 	fixture := alphaControlBundle(t, endpoint, control)
-	link, err := alpha.ParseServiceLink("ardents-alpha://reference")
-	if err != nil {
-		t.Fatal(err)
-	}
-	corpus, err := alpha.IssueCorpus(alpha.CorpusInput{Cohort: "closed-cohort-1", Network: fixture.network, Serial: 4,
-		Bindings: []alpha.BindingInput{{Link: link, Target: [32]byte{7}}}, NotBefore: fixture.now.Add(-time.Minute), NotAfter: fixture.now.Add(10 * time.Minute)}, fixture.corpusPrivate)
-	if err != nil {
-		t.Fatal(err)
-	}
 	directory := t.TempDir()
 	controlRoot, corpusRoot := filepath.Join(directory, "control"), filepath.Join(directory, "corpus-floor")
-	initialFloor, err := alpha.OpenPersistentFloor(alpha.PersistentFloorConfig{Root: corpusRoot, Authority: fixture.corpusPublic,
-		Cohort: "closed-cohort-1", Network: fixture.network})
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() {
-		if err := initialFloor.Close(); err != nil {
-			t.Errorf("close initial alpha corpus floor: %v", err)
-		}
-	})
-	parsed, err := alpha.OpenCorpus(fixture.corpusPublic, corpus)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := initialFloor.Observe(parsed); err != nil {
-		t.Fatal(err)
-	}
-	if err := initialFloor.Close(); err != nil {
+	// ADR-0113 deleted the retained corpus parser and floor reader, so the
+	// retired-floor evidence is a test-local historic builder plus synthetic
+	// floor-shaped bytes: the retired intake refuses before parsing any of it.
+	if err := os.Mkdir(corpusRoot, 0o700); err != nil {
 		t.Fatal(err)
 	}
 	markerPath, floorPath := filepath.Join(corpusRoot, ".ardents-alpha-corpus-floor-v1"), filepath.Join(corpusRoot, "corpus-floor.bin")
-	markerBefore, err := os.ReadFile(markerPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	floorBefore, err := os.ReadFile(floorPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	successor, err := alpha.IssueCorpus(alpha.CorpusInput{Cohort: "closed-cohort-1", Network: fixture.network, Serial: 5,
-		Bindings: []alpha.BindingInput{{Link: link, Target: [32]byte{8}}}, NotBefore: fixture.now.Add(-time.Minute), NotAfter: fixture.now.Add(10 * time.Minute)}, fixture.corpusPrivate)
-	if err != nil {
-		t.Fatal(err)
-	}
+	seed := historicAlphaCorpus(t, fixture, 4, [32]byte{7})
+	markerBefore := append([]byte("ardents-alpha-corpus-floor-v1"), 0)
+	markerBefore = append(markerBefore, []byte("closed-cohort-1")...)
+	floorBefore := seed
+	writeEnrollmentFile(t, markerPath, markerBefore, 0o600)
+	writeEnrollmentFile(t, floorPath, floorBefore, 0o600)
+	successor := historicAlphaCorpus(t, fixture, 5, [32]byte{8})
 	catalogPath, corpusPath := filepath.Join(directory, "catalog.ac2"), filepath.Join(directory, "corpus.anc")
 	writeEnrollmentFile(t, catalogPath, alphaCorpusCatalog(t, fixture, 5, successor), 0o600)
 	writeEnrollmentFile(t, corpusPath, successor, 0o600)
@@ -137,25 +107,32 @@ func TestAlphaCorpusIntakeRetirementPreservesExistingFloor(t *testing.T) {
 		t.Fatal(err)
 	}
 	if !bytes.Equal(markerAfter, markerBefore) || !bytes.Equal(floorAfter, floorBefore) {
-		t.Fatal("retired alpha corpus intake changed retained floor bytes")
+		t.Fatal("retired alpha corpus intake changed retired floor bytes")
 	}
-	retainedFloor, err := alpha.OpenPersistentFloor(alpha.PersistentFloorConfig{Root: corpusRoot, Authority: fixture.corpusPublic, Cohort: "closed-cohort-1", Network: fixture.network})
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() {
-		if err := retainedFloor.Close(); err != nil {
-			t.Errorf("close retained alpha corpus floor: %v", err)
-		}
-	})
-	current, err := retainedFloor.Current()
-	if err != nil || current.Serial() != 4 {
-		t.Fatalf("alpha corpus floor after retired intake = %+v / %v", current, err)
-	}
-	binding, err := current.Resolve(link, fixture.now)
-	if err != nil || binding.Target() != [32]byte{7} {
-		t.Fatalf("retained alpha corpus binding = %+v / %v", binding, err)
-	}
+}
+
+// historicAlphaCorpus rebuilds one signed corpus in the retired
+// "ardents-alpha-corpus-v1" wire layout (ADR-0113 deleted the production
+// grammar; the retired intake refuses before parsing it, so the bytes only
+// carry historic shape): domain, version 1, length-prefixed cohort, serial,
+// network, canonical millisecond validity window, active status, and one
+// binding whose name is the frozen Stage 6 wire encoding of the single
+// canonical label "reference".
+func historicAlphaCorpus(t *testing.T, fixture alphaControlBundleFixture, serial uint64, target [32]byte) []byte {
+	t.Helper()
+	body := append([]byte("ardents-alpha-corpus-v1"), 0)
+	body = append(body, 1, byte(len("closed-cohort-1")))
+	body = append(body, []byte("closed-cohort-1")...)
+	body = binary.BigEndian.AppendUint64(body, serial)
+	body = append(body, fixture.network[:]...)
+	body = binary.BigEndian.AppendUint64(body, uint64(fixture.now.Add(-time.Minute).UnixMilli()))
+	body = binary.BigEndian.AppendUint64(body, uint64(fixture.now.Add(10*time.Minute).UnixMilli()))
+	body = append(body, 0, 1)
+	body = binary.BigEndian.AppendUint16(body, 12)
+	body = append(body, 0x00, 0x01, 0x09)
+	body = append(body, []byte("reference")...)
+	body = append(body, target[:]...)
+	return append(body, ed25519.Sign(fixture.corpusPrivate, body)...)
 }
 
 func alphaCorpusCatalog(t *testing.T, fixture alphaControlBundleFixture, serial uint64, corpus []byte) []byte {

@@ -111,17 +111,21 @@ func TestExecutableArtifactNameIsCanonicalForEveryEnrollmentPlatform(t *testing.
 
 const windowsV3VerifierChild = "ARDENTS_WINDOWS_V3_VERIFIER_CHILD"
 
-func TestWindowsV3ManifestAndRunningCompanionShareArtifactIdentity(t *testing.T) {
+func TestWindowsV3ManifestVerifyPinsTheRunningArtifactIdentity(t *testing.T) {
 	if os.Getenv(windowsV3VerifierChild) == "1" {
 		var request Request
 		if err := json.Unmarshal([]byte(os.Getenv("ARDENTS_WINDOWS_V3_REQUEST")), &request); err != nil {
 			t.Fatal(err)
 		}
-		verified, err := Verify(request)
+		running, err := os.Executable()
 		if err != nil {
 			t.Fatal(err)
 		}
-		if err := VerifyRunningCompanion(request, verified.ControlArtifactName, verified.ControlArtifact); err != nil {
+		request.ExecutablePath = running
+		// Verify's own running-artifact gate (exactExecutable) must accept
+		// this process as the exact enrolled endpoint artifact; the retired
+		// companion verifier (ADR-0113) added no separate authority.
+		if _, err := Verify(request); err != nil {
 			t.Fatal(err)
 		}
 		return
@@ -174,7 +178,7 @@ func TestWindowsV3ManifestAndRunningCompanionShareArtifactIdentity(t *testing.T)
 	if err != nil {
 		t.Fatal(err)
 	}
-	command := exec.Command(filepath.Join(root, controlName), "-test.run=^TestWindowsV3ManifestAndRunningCompanionShareArtifactIdentity$")
+	command := exec.Command(filepath.Join(root, endpointName), "-test.run=^TestWindowsV3ManifestVerifyPinsTheRunningArtifactIdentity$")
 	command.Env = append(os.Environ(), windowsV3VerifierChild+"=1", "ARDENTS_WINDOWS_V3_REQUEST="+string(encoded))
 	if output, err := command.CombinedOutput(); err != nil {
 		t.Fatalf("Windows enrollment-v3 verifier contract: %v\n%s", err, output)

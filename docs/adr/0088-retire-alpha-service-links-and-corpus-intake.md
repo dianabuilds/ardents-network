@@ -2,7 +2,7 @@
 status: accepted
 date: 2026-09-22
 supersedes: ADR-0040 (live Alpha Service Link and corpus-replacement selection); ADR-0041 (maintained corpus-floor acceptance consequence only); ADR-0042 (maintained accepting-command consequence only)
-partially-superseded-by: ADR-0110 (retained ACA2 supplied-bytes diagnostic)
+partially-superseded-by: ADR-0110 (retained ACA2 supplied-bytes diagnostic); ADR-0113 (retained corpus parser and read-only floor reader compatibility obligation only)
 ---
 
 # Retire Alpha Service Links and fresh corpus intake

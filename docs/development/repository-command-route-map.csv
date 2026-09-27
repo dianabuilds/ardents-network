@@ -23,7 +23,7 @@ ardents,endpoint replace,cmd/ardents/endpoint_replace.go:runEndpointReplace,inte
 ardents,endpoint rollback,cmd/ardents/endpoint_replace.go:runEndpointRollback,internal/endpoint/replacement,current-portable,source-traced
 ardents,entry recipient,cmd/ardents/entry_import.go:runEntryRecipient,internal/entry,retained-legacy-reader,source-traced
 ardents,entry import,cmd/ardents/entry_import.go:runEntryImport,internal/entry,retained-legacy-writer,source-traced
-ardents,name encode,cmd/ardents/name.go:runName,internal/naming,current-local-only,source-traced
+ardents,name encode,cmd/ardents/name.go:runName,none,retired-refusal,source-traced
 ardents,name resolve,cmd/ardents/name.go:runName,none,retired-refusal,source-traced
 ardents,name control,cmd/ardents/name.go:runName,none,retired-refusal,source-traced
 ardents-node,source,cmd/ardents-node/source_runtime.go:runOpenedSource,internal/network/state,current,source-traced

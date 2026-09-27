@@ -395,6 +395,13 @@ refusal/inspection remain. Git history holds the former source. OHTTP and
 CIRCL have other consumers, so this deletion alone did not remove those
 dependencies.
 
+**Realization (ADR-0113).** The retained `internal/naming/alpha` parser and
+floor surface named by this finding is now deleted outright: existing corpus
+and floor bytes stay byte-for-byte as inert evidence with no read path, the
+refusal evidence was rebuilt with test-local historic builders and synthetic
+floor-shaped bytes, and the retained-compatibility deadcode groups were
+retired with the packages.
+
 ## F-14: Runtime diagnostics now have one local navigation path
 
 **Code fact.** Node, Source, and the installed headless Endpoint emit bounded
@@ -1867,6 +1874,12 @@ and Admission operations. Canonical `name encode` and the command refusal
 remain regardless of these two decisions. This sequence reduces the
 maintained tree toward one selected Name surface without erasing historical
 authority or creating a second Name runtime.
+
+**Realization (ADR-0113).** The canonical `name encode` encoder and the whole
+`internal/naming` tree this finding left standing are now retired: all three
+name verbs refuse before effects, the frozen Stage 6 wire grammar died with
+its final consumer, and the zero-effect oracle survives with the historic
+bytes inlined in its fixture.
 
 ## F-52: Route v2 execution has no caller, but shares readers with retained state
 

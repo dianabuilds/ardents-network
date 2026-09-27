@@ -175,16 +175,17 @@ profile identity remain evidence, not migration or execution authority. The
 [Network/Node owner](../technical/network-route-node.md#old-start-retirement)
 defines the exact selectors and effect boundary.
 
-[ADR-0090](../adr/0090-retire-name-operator-network-adapters.md) selects
-retirement of the old operator `name resolve` and `name control` HTTP/OHTTP
-adapters before any file, State, transport, output, or Namespace effect. Local
-canonical `name encode`, Namespace lifecycle/proofs, custody, and existing
-persisted evidence remain unchanged. This preserves human-facing Service Names
-as a product function without claiming a current operator network route: the
-successor protected wire, Resolver/Gateway topology, authority, governance,
-migration, and AAI3 integration remain unselected. The
-[Naming owner](../technical/naming.md#operator-name-network-command-retirement)
-defines the retained module and state boundary. The refusal is integrated and
+[ADR-0090](../adr/0090-retire-name-operator-network-adapters.md) retired the
+old operator `name resolve` and `name control` HTTP/OHTTP
+adapters before any file, State, transport, output, or Namespace effect;
+[ADR-0113](../adr/0113-retire-retained-alpha-compatibility-surface.md) then
+retired `name encode` and deleted the whole canonical Naming grammar, so no
+maintained surface presents or consumes Service Names. The successor
+protected wire, Resolver/Gateway topology, authority, governance, migration,
+and AAI3 integration remain unselected; future protected Service Name access
+requires an entirely new scoped design. The
+[Naming owner](../technical/naming.md#name-command-family-retirement)
+defines the retired surface and state boundary. The refusal is integrated and
 the command-owned HTTP/OHTTP adapters are absent; this does not make protected
 Service Name access available.
 

@@ -92,17 +92,20 @@ func TestResolutionRetirementPreservesRefusalAndBoundedFixture(t *testing.T) {
 	t.Parallel()
 	root := repositoryRoot(t)
 	command := string(readProjectFile(t, root, "cmd/ardents/name.go"))
-	if !strings.Contains(command, `case "resolve", "control":`) ||
+	if !strings.Contains(command, `case "encode", "resolve", "control":`) ||
 		!strings.Contains(command, "errNameNetworkCommandRetired") ||
 		!strings.Contains(command, "name network command is retired; protected Service Name access is not selected") {
-		t.Error("name command lost the exact retired resolve/control refusal")
+		t.Error("name command lost the exact whole-family retired refusal (ADR-0113)")
+	}
+	if strings.Contains(command, "internal/naming") {
+		t.Error("name command still references the deleted naming package")
 	}
 
 	fixture := string(readProjectFile(t, root, "cmd/ardents/name_retirement_fixture_test.go"))
 	for _, forbidden := range []string{
 		"nameresolution", "naming/resolution", "naming/namespace", "httptest", "GatewayProfile",
 		"OpenResolutionGateway", "BindGatewayState", "epoch.Open(", "record.SignRecord(",
-		"CommitLegacy(", "admission.NewAdmission(",
+		"CommitLegacy(", "admission.NewAdmission(", "internal/naming",
 	} {
 		if strings.Contains(fixture, forbidden) {
 			t.Errorf("bounded retirement fixture still composes removed machinery: %q", forbidden)
@@ -119,6 +122,7 @@ func TestResolutionRetirementPreservesRefusalAndBoundedFixture(t *testing.T) {
 	oracle := string(readProjectFile(t, root, "cmd/ardents/name_retirement_test.go"))
 	for _, retained := range []string{
 		"TestNameNetworkCommandsRetireBeforeEffects",
+		"{\"encode\", \"alice\"}",
 		"name network command is retired; protected Service Name access is not selected",
 		"retiredNameTreeUnchanged(t, fixture.stateRoot, stateBefore)",
 		"retiredNameTreeUnchanged(t, fixture.namespaceRoot, namespaceBefore)",

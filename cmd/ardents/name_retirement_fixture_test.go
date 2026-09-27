@@ -13,8 +13,6 @@ import (
 	"sort"
 	"testing"
 	"time"
-
-	"github.com/dianabuilds/ardents-network/internal/naming"
 )
 
 type retiredNameInputs struct {
@@ -182,14 +180,15 @@ func retiredNameSyntheticNamespaceRoot(t *testing.T, root string) string {
 
 func retiredNameResolutionDigest(t *testing.T, network [32]byte, raw string, deadline int64) [32]byte {
 	t.Helper()
-	name, err := naming.Parse(raw)
-	if err != nil {
-		t.Fatal(err)
+	// The frozen Stage 6 wire bytes are inlined after ADR-0113 deleted
+	// the naming package: uint16 schema version 1 (big-endian) followed by
+	// one uint8-length-prefixed label. The fixture only ever encodes the
+	// single canonical label "alice" ("000105616c696365").
+	if raw != "alice" {
+		t.Fatalf("retired name fixture encodes only \"alice\", got %q", raw)
 	}
-	wire, err := naming.EncodeWire(name)
-	if err != nil {
-		t.Fatal(err)
-	}
+	wire := []byte{0x00, 0x01, byte(len(raw))}
+	wire = append(wire, raw...)
 	transcript := []byte("ardents-name-resolution-operation-v1\x00")
 	transcript = append(transcript, network[:]...)
 	transcript = binary.BigEndian.AppendUint64(transcript, uint64(deadline))

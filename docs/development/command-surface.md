@@ -12,7 +12,7 @@ It is a source-navigation aid, not a second command contract or installed
 acceptance result.
 
 **One-version audit of the dispatcher.** All 69 route entries have a traced
-dispatch and first effect. Nine are immediate retirement refusals and one
+dispatch and first effect. Ten are immediate retirement refusals and one
 is a retained legacy command shape. `entry import` and `entry recipient`
 joined the refusals under ADR-0106: both return `entry Invite command is
 retired` before any argument interpretation or filesystem effect, and no
@@ -59,9 +59,8 @@ and the headless command inventory under tests/profiles.
 | ardents | accept-offline, accept-closed-profile, refresh-sources; service-instance initialize/accept; endpoint enrollment-check/enroll/enroll-installed/headless/publish/withdraw/user-unit/installed-user-unit/replace/replacement-recovery/rollback | keep |
 | ardents | entry recipient/import | retirement refusal at dispatch before arguments or effects; no Invite reader, converter, or deleter remains (ADR-0106) |
 | ardents | endpoint replacement-self-test | keep internal-only; invoked by the replacement controller, not an operator route |
-| ardents | name encode | keep local canonical encoding; this is not network Name availability |
 | ardents | diagnostics timeline | keep local, read-only projection of bounded runtime events from standard input; no storage, authority, or network effect |
-| ardents | name resolve/control | retired at command dispatch before arguments or effects; no successor or fallback is implied |
+| ardents | name encode/resolve/control | retired at command dispatch before arguments or effects; no successor or fallback is implied (ADR-0113) |
 | ardents-node | source (including the explicit current closed profile), node with closed reservations, issuer initialize/serve, hosting initialize, contributor diagnose/drain/withdraw/remove | keep; old Source selector, Node duty reservations and Contributor start inputs retired |
 | ardents-control | inspect-bundle, inspect-transitions; prepare-closed-profile, sign-closed-profile, inspect-closed-profile, inspect-closed-issuer-profile | keep |
 | ardents-custody | create-service-authority, issue-service-credential, create-admission-authority, issue-admission-permission, inspect-envelope, verify-record, export-recovery-bundle, restore-recovery-bundle, purge-record | keep |

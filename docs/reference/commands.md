@@ -40,7 +40,7 @@ system-manager launch boundary.
 | `<journal-bound-recovery-program> endpoint rollback <replacement-bundle>` | Perform the only permitted explicit rollback: the retained predecessor, with a fresh Release authorization for its exact bytes. |
 | `entry recipient <entry-import-plan.json>` | Return `entry Invite command is retired; the closed Entry set has no operator import surface` at command dispatch before interpreting the remaining arguments, reading the plan file, or creating any root. It never prints a recipient key; no Invite root reader, converter, or deleter remains (ADR-0106). |
 | `entry import <entry-import-plan.json>` | Return the same retirement refusal at command dispatch before any argument interpretation or filesystem effect. Existing Invite roots stay on disk byte-for-byte; the closed Entry set root refuses them by marker and allowed-name inspection (ADR-0106). |
-| `name encode <name>` | Print one canonical Service Name wire encoding as lowercase hexadecimal. |
+| `name encode <name>` | Return `name network command is retired; protected Service Name access is not selected` at command dispatch before interpreting the argument; ADR-0113 retired the local canonical encoder with its package. |
 | `name resolve <input-file> <name> <context-hex>` | Return `name network command is retired; protected Service Name access is not selected` at command dispatch before validating the remaining arguments, reading input, opening State, constructing or using HTTP/OHTTP transport, writing output, or changing Namespace state. |
 | `name control <input-file> <operation-file> <context-hex>` | Return the same retirement refusal at command dispatch before validating the remaining arguments or reading the operation; no control operation, Namespace mutation, migration, or fallback is selected. |
 
@@ -79,11 +79,12 @@ the [bounded closure receipt](../development/testing.md#reachability-audit),
 whose exact scope is owned by Testing.
 
 The old Name operator network adapters have their own selected
-[retirement boundary](../technical/naming.md#operator-name-network-command-retirement).
-Their retirement preserves local `name encode` and canonical Naming bytes; it
-does not deliver protected Service Name access. The command dispatch enforces
-the refusal, and the command-owned HTTP/OHTTP plan, State-view, receipt, and
-operation adapters are absent. ADR-0105 subsequently removed the whole
+[retirement boundary](../technical/naming.md#name-command-family-retirement).
+ADR-0113 subsequently retired `name encode` itself and deleted the canonical
+Naming wire grammar with its package; the whole `name` verb family now
+refuses, and protected Service Name access is still not delivered. The
+command dispatch enforces the refusal, and the command-owned HTTP/OHTTP
+plan, State-view, receipt, operation, and encoder adapters are absent. ADR-0105 subsequently removed the whole
 Namespace subsystem and its never-command-exposed custody operations; an old
 Namespace root stays on disk untouched with no read path at all.
 

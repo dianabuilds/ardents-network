@@ -512,20 +512,20 @@ confirmed remove recognized. The exact now-unreachable Apply closure and its
 consumer-audit deletion condition are listed in the production deadcode
 registry; its behavior tests do not make either command route accepting.
 
-The `ardents name resolve/control` retirement oracle submits both recognized
-command shapes, including absent inputs and incomplete remaining arguments,
-through the real command dispatch. The complete inputs first exercise the
-former Resolution and control clients against a recovered authenticated State
-root, a committed Namespace root, and live Relay/Gateway handlers. Every
-retired command case returns the exact refusal with no output; a recording
-default transport observes zero attempts, and all files in those same State
-and Namespace roots remain byte-for-byte unchanged. Local canonical
-`name encode` retains its exact byte vector. Removing the command-only
-HTTP/OHTTP adapters makes the exact private Resolution and adjacent Namespace
-verification closure production-dead; ADR-0090 retains it as uncomposed module
-and compatibility evidence pending a separate package/data-consumer audit, so
-every newly unreachable symbol and its deletion condition are recorded in the
-common deadcode registry rather than reconnected to a command.
+The `ardents name encode/resolve/control` retirement oracle submits all three
+recognized command shapes, including absent inputs and incomplete remaining
+arguments, through the real command dispatch. The complete inputs are shaped
+like the former adapter inputs against one authenticated State root and one
+synthetic root shaped like the retired Namespace store. Every retired command
+case returns the exact refusal with no output; a recording default transport
+observes zero attempts, and all files in those same durable roots remain
+byte-for-byte unchanged. The retired `name encode` verb refuses like the
+others; its former exact byte vector survives only as inlined fixture bytes
+that never execute an encoder (ADR-0113). Removing the command-only
+HTTP/OHTTP adapters made the exact private Resolution and adjacent Namespace
+verification closure production-dead; ADR-0105 and ADR-0113 then deleted that
+closure with its packages, and their deadcode allowance groups were retired
+with them.
 
 The Contributor no-start recovery oracle drives authentic active-current,
 inactive-current, and interrupted-predecessor fixtures through public

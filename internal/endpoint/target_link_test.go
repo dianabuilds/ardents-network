@@ -4,14 +4,11 @@ package endpoint
 
 import (
 	"bytes"
-	"crypto/ed25519"
 	"errors"
 	"os"
 	"path/filepath"
 	"testing"
-	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/naming/alpha"
 	"github.com/dianabuilds/ardents-network/internal/service/targetlink"
 )
 
@@ -43,76 +40,34 @@ func TestEndpointTargetFromLinkRejectsAnotherNetwork(t *testing.T) {
 }
 
 func TestEndpointTargetFromLinkRetiresAlphaWithoutChangingPersistentFloor(t *testing.T) {
-	now := time.Unix(2_000_500_000, 0).UTC()
+	// ADR-0113 deleted the retained alpha corpus/floor readers, so the
+	// retired-floor evidence is synthetic: opaque bytes shaped like the
+	// historical marker + corpus-floor pair. No maintained code can read,
+	// convert, or delete them; the surviving proof is refusal-before-effects
+	// plus byte-for-byte preservation.
 	network := targetLinkBytes(1)
-	authority := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{7}, ed25519.SeedSize))
-	link, err := alpha.ParseServiceLink("ardents-alpha://retained.example")
-	if err != nil {
-		t.Fatal(err)
-	}
-	raw, err := alpha.IssueCorpus(alpha.CorpusInput{Cohort: "closed-alpha-1", Network: network, Serial: 4,
-		Bindings: []alpha.BindingInput{{Link: link, Target: targetLinkBytes(33)}}, NotBefore: now.Add(-time.Minute), NotAfter: now.Add(time.Hour)}, authority)
-	if err != nil {
-		t.Fatal(err)
-	}
-	corpus, err := alpha.OpenCorpus(authority.Public().(ed25519.PublicKey), raw)
-	if err != nil {
-		t.Fatal(err)
-	}
 	root := alphaPersistentFloorRoot(t)
-	initialFloor, err := alpha.OpenPersistentFloor(alpha.PersistentFloorConfig{Root: root, Authority: authority.Public().(ed25519.PublicKey),
-		Cohort: "closed-alpha-1", Network: network})
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() {
-		if err := initialFloor.Close(); err != nil {
-			t.Errorf("close initial alpha floor: %v", err)
-		}
-	})
-	if err := initialFloor.Observe(corpus); err != nil {
-		t.Fatal(err)
-	}
-	if err := initialFloor.Close(); err != nil {
-		t.Fatal(err)
-	}
 	markerPath, floorPath := filepath.Join(root, ".ardents-alpha-corpus-floor-v1"), filepath.Join(root, "corpus-floor.bin")
-	markerBefore, err := os.ReadFile(markerPath)
-	if err != nil {
+	markerBefore := append([]byte("ardents-alpha-corpus-floor-v1"), 0)
+	markerBefore = append(markerBefore, []byte("closed-alpha-1")...)
+	floorBefore := bytes.Repeat([]byte{4}, 96)
+	if err := os.WriteFile(markerPath, markerBefore, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	floorBefore, err := os.ReadFile(floorPath)
-	if err != nil {
+	if err := os.WriteFile(floorPath, floorBefore, 0o600); err != nil {
 		t.Fatal(err)
 	}
+	const retiredLink = "ardents-alpha://retired.example"
 	for attempt := 0; attempt < 2; attempt++ {
-		target, refusal := (&endpoint{network: network}).TargetFromLink(link.String())
+		target, refusal := (&endpoint{network: network}).TargetFromLink(retiredLink)
 		if target != ([32]byte{}) || !errors.Is(refusal, ErrAlphaDestinationRetired) {
 			t.Fatalf("retired alpha destination attempt %d = (%x, %v)", attempt, target, refusal)
 		}
 		markerAfter, markerErr := os.ReadFile(markerPath)
 		floorAfter, floorErr := os.ReadFile(floorPath)
 		if markerErr != nil || floorErr != nil || !bytes.Equal(markerAfter, markerBefore) || !bytes.Equal(floorAfter, floorBefore) {
-			t.Fatalf("retired alpha destination attempt %d changed retained floor: marker=%v floor=%v", attempt, markerErr, floorErr)
+			t.Fatalf("retired alpha destination attempt %d changed retired floor: marker=%v floor=%v", attempt, markerErr, floorErr)
 		}
-	}
-	retainedFloor, err := alpha.OpenPersistentFloor(alpha.PersistentFloorConfig{Root: root, Authority: authority.Public().(ed25519.PublicKey),
-		Cohort: "closed-alpha-1", Network: network})
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() {
-		if err := retainedFloor.Close(); err != nil {
-			t.Errorf("close retained alpha floor: %v", err)
-		}
-	})
-	retained, err := retainedFloor.Current()
-	if err != nil || retained.Serial() != 4 {
-		t.Fatalf("retained alpha corpus = (%v, %v)", retained, err)
-	}
-	binding, err := retained.Resolve(link, now)
-	if err != nil || binding.Target() != targetLinkBytes(33) {
-		t.Fatalf("retained alpha binding = (%+v, %v)", binding, err)
 	}
 }
 
@@ -124,8 +79,8 @@ func targetLinkBytes(start byte) [32]byte {
 	return result
 }
 
-// alphaPersistentFloorRoot creates the owner-only directory required by
-// alpha.OpenPersistentFloor, independent of the test process umask.
+// alphaPersistentFloorRoot creates the owner-only directory that hosts the
+// synthetic retired floor bytes, independent of the test process umask.
 func alphaPersistentFloorRoot(t *testing.T) string {
 	t.Helper()
 	root := filepath.Join(t.TempDir(), "alpha-floor")

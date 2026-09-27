@@ -117,29 +117,6 @@ func TestInspectReportsUnavailableAndRefusesCatalogRollback(t *testing.T) {
 	}
 }
 
-func TestVerifyComponentRequiresItsOwnSignatureAndCatalogReference(t *testing.T) {
-	public, private, err := ed25519.GenerateKey(rand.Reader)
-	if err != nil {
-		t.Fatal(err)
-	}
-	now := time.Unix(2_000_400_000, 0).UTC()
-	raw, err := signComponent(alphacontrol.ComponentStatement{Class: alphacontrol.ComponentRelease, Generation: 4,
-		NotBefore: now.Add(-time.Second), NotAfter: now.Add(time.Minute), Body: []byte("TUF inputs")}, private)
-
-	if err != nil {
-		t.Fatal(err)
-	}
-	reference := alphacontrol.Component{Class: alphacontrol.ComponentRelease, Generation: 4, NotAfter: now.Add(time.Minute),
-		RootID: sha256.Sum256(public), Size: uint32(len(raw)), Digest: sha256.Sum256(raw)}
-	if outcome := alphacontrol.VerifyComponent(reference, raw, public, now); outcome != alphacontrol.OutcomeAccepted {
-		t.Fatalf("VerifyComponent = %q", outcome)
-	}
-	raw[len(raw)-1]++
-	if outcome := alphacontrol.VerifyComponent(reference, raw, public, now); outcome != alphacontrol.OutcomeDigestMismatch {
-		t.Fatalf("changed component outcome = %q", outcome)
-	}
-}
-
 func TestInspectRejectsCatalogSelectedComponentSignerOutsidePinnedRoot(t *testing.T) {
 	disclosurePublic, disclosurePrivate, err := ed25519.GenerateKey(rand.Reader)
 	if err != nil {

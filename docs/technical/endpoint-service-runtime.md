@@ -568,14 +568,15 @@ does so before Target-Link decoding, a corpus-floor read, resolver call,
 Network or Route work, dial, fallback, or conversion.
 
 The transition neither converts an Alpha Link or old Target nor resets or
-deletes existing corpus floor files. Those bytes retain their serial, digest,
-signed withdrawal, rollback, and conflict evidence, but do not authorize
-continued Alpha resolution. No maintained non-test destination consumes the
-read-only corpus parser or persistent-floor reader after this transition. They
-remain a compatibility obligation, not live authority. Removing them still
-requires a separate bounded change that records a Product Owner migration or
-data-retention decision; this transition neither supplies that decision nor
-treats consumer absence as permission to delete retained bytes.
+deletes existing corpus floor files.
+[ADR-0113](../adr/0113-retire-retained-alpha-compatibility-surface.md) then
+deleted the retained read-only corpus parser and persistent-floor reader
+outright: those floor bytes are byte-for-byte inert evidence — their serial,
+digest, signed withdrawal, rollback, and conflict facts remain on disk, but
+no maintained code can read, convert, or delete them, and the absence of any
+read path is itself the incompatibility. They do not authorize continued
+Alpha resolution, and no successor reader, migration, or grace contract
+exists.
 
 Endpoint is a composition Module, not a second durable domain owner. It owns
 no Namespace, Network State, Release, Update, Custody, or Route-selection

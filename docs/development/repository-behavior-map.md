@@ -1078,8 +1078,8 @@ root deserves data support or backward compatibility: the whole Namespace
 closure, the unexposed custody operations, and the uncalled generation-2
 reachability writers are deleted, and their deadcode allowance groups are
 retired with them. `ardents name resolve` and `name control` still refuse
-before effects under ADR-0090, and `name encode` still uses the separate
-canonical encoder. An old Namespace root stays on disk byte-for-byte with no
+before effects under ADR-0090; ADR-0113 retired `name encode` with the
+separate canonical encoder, so the whole verb family refuses before effects. An old Namespace root stays on disk byte-for-byte with no
 working-tree read path at all; typed incompatibility is the absence of any
 reader.
 

@@ -29,6 +29,8 @@ func TestNameNetworkCommandsRetireBeforeEffects(t *testing.T) {
 	})
 
 	requests := [][]string{
+		{"encode", "alice"},
+		{"encode"},
 		{"resolve", fixture.resolvePath, "alice", fixture.isolation},
 		{"control", fixture.controlPath, fixture.operationPath, fixture.isolation},
 		{"resolve", filepath.Join(t.TempDir(), "missing-input.json"), "alice", fixture.isolation},

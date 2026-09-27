@@ -51,9 +51,10 @@ to back `inspect-bundle` and this transition report. The separate ACA2
 Alpha Corpus diagnostic is retired and removed: the exact
 `inspect-alpha-corpus` route refuses before parsing arguments or opening any
 file, root, or floor, and no ACA2 verifier remains in the tree. Retained
-Alpha Corpus floor bytes keep their serial/digest evidence under the separate
-ADR-0088 compatibility reader; the removed diagnostic never owned an
-inspection floor or Endpoint authority.
+Alpha Corpus floor bytes were the ADR-0088 compatibility obligation; ADR-0113
+deleted that reader, so existing floor bytes are byte-for-byte inert evidence
+that no maintained code can read, convert, or delete. The removed diagnostic
+never owned an inspection floor or Endpoint authority.
 
 ## Verification
 
