@@ -1683,6 +1683,16 @@ Alpha Corpus floor reader and enrollment v2/v3 grammar are different owners;
 this decision does not delete or reinterpret their bytes. The source still
 contains the ACA2 command until its bounded implementation slice lands.
 
+**Realization (ADR-0110 slice).** The bounded removal has landed:
+`inspect-alpha-corpus` is a fixed retired-command refusal before parsing
+arguments or opening any file, root, or floor;
+`inspection.VerifyACA2Corpus`/`VerifyCorpusComponent`,
+`alphacontrol.VerifyV2`/`catalog_v2.go`, the `CatalogV2` type and the
+`ComponentCorpus` class are deleted with their exclusive test fixtures; the
+architecture guard now asserts both corpus-command refusals and the absence
+of the three ACA2 files. ACA1 inspection, its tests, and the retained Alpha
+Corpus floor reader (ADR-0088 compatibility) are unchanged.
+
 ## F-50: Closed Route profile does not pin its Epoch envelope schema
 
 **Source fact.** `state.parseEpoch` decodes AREP schema 1, 2, or 3.

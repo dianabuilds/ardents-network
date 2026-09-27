@@ -252,8 +252,10 @@ Network authority/lifecycle repairs:
 - Entry close cancels acquisition, joins and terminalizes active attachment
   cleanup before releasing its root, including concurrent and failure cases.
 
-The architecture suite additionally prevents floor authority from returning to
-`inspect-alpha-corpus`. These are ongoing regression checks for the repaired
+The architecture suite additionally prevents the retired
+`accept-alpha-corpus`/`inspect-alpha-corpus` routes, the removed
+`inspectAlphaCorpus` adapter, or any ACA2 verifier file from returning
+(ADR-0110). These are ongoing regression checks for the repaired
 candidate, not completion of the formal deep audit or authorization to begin
 its later security, concurrency, or wire tracks.
 

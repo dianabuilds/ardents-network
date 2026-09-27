@@ -48,9 +48,12 @@ outcomes are `accepted` and `not-selected`; failure outcomes are
 ADR-0110 selects ACA1 as the sole maintained control-inspection format. The
 ACA1 catalog and independent Release and Network inspection floors continue
 to back `inspect-bundle` and this transition report. The separate ACA2
-Alpha Corpus diagnostic is selected for retirement; its command remains in
-the source until that bounded removal lands and never owns an inspection
-floor or Endpoint authority.
+Alpha Corpus diagnostic is retired and removed: the exact
+`inspect-alpha-corpus` route refuses before parsing arguments or opening any
+file, root, or floor, and no ACA2 verifier remains in the tree. Retained
+Alpha Corpus floor bytes keep their serial/digest evidence under the separate
+ADR-0088 compatibility reader; the removed diagnostic never owned an
+inspection floor or Endpoint authority.
 
 ## Verification
 

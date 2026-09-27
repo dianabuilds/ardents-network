@@ -1050,9 +1050,16 @@ HEAD `8cd1575f`.
 
 The two input grammars and different floor lifetimes were a real maintenance
 split (F-49). ADR-0110 keeps ACA1 and its reader roots for the current
-transition report and selects the ACA2 corpus diagnostic for retirement.
-The source trace above still describes the command present at its mapped HEAD;
-the decision does not claim the removal has landed.
+transition report and retired the ACA2 corpus diagnostic.
+
+**Realization.** The bounded removal has landed: `inspect-alpha-corpus` is a
+fixed retired-command refusal next to `accept-alpha-corpus`, the ACA2
+production verifier (`inspection.VerifyACA2Corpus`/`VerifyCorpusComponent`,
+`alphacontrol.VerifyV2`, the `CatalogV2` type and the `ComponentCorpus`
+class) and its exclusive fixtures are deleted, and the architecture guard
+asserts both refusals plus the absence of the three ACA2 files. Trace items
+1 and 3 still describe maintained behavior; item 2 describes the command as
+present at the mapped HEAD `8cd1575f`.
 
 ## Source trace: retired Namespace without any reader
 

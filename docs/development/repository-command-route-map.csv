@@ -39,7 +39,7 @@ ardents-node,contributor withdraw,cmd/ardents-node/contributor_mode.go:runContri
 ardents-node,contributor remove,cmd/ardents-node/contributor_mode.go:runContributor,internal/contributor,retirement-only,source-traced
 ardents-control,inspect-bundle,cmd/ardents-control/main.go:inspectBundle,internal/alphacontrol/inspection,current-read-only,source-traced
 ardents-control,inspect-transitions,cmd/ardents-control/main.go:inspectTransitions,internal/alphacontrol/inspection,current-read-only,source-traced
-ardents-control,inspect-alpha-corpus,cmd/ardents-control/main.go:inspectAlphaCorpus,internal/alphacontrol/inspection,current-read-only,source-traced
+ardents-control,inspect-alpha-corpus,cmd/ardents-control/main.go:run,none,retired-refusal,source-traced
 ardents-control,accept-alpha-corpus,cmd/ardents-control/main.go:run,none,retired-refusal,source-traced
 ardents-control,prepare-closed-profile,cmd/ardents-control/closed_profile.go:prepareClosedProfile,internal/network/state,current-offline,source-traced
 ardents-control,sign-closed-profile,cmd/ardents-control/closed_profile.go:signClosedProfile,internal/network/state,current-offline,source-traced

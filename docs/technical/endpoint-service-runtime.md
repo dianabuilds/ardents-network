@@ -557,9 +557,11 @@ the Alpha Service Link transition is an explicit final refusal, not a grace
 period. Fresh `accept-alpha-corpus` intake now returns its stable retirement
 refusal before parsing arguments or opening, creating, or changing either named
 floor. The former accepting adapter and its floor-mutation authority are
-absent. The independent
-`inspect-alpha-corpus` command remains a read-only supplied-bytes diagnostic and
-does not confer Endpoint authority. Every accepting Alpha destination adapter
+absent. Under
+[ADR-0110](../adr/0110-retire-aca2-corpus-inspection.md), the independent
+`inspect-alpha-corpus` diagnostic is retired the same way: the exact route
+refuses before parsing arguments or opening any file, root, or floor, and its
+ACA2 production verifier is removed; it never conferred Endpoint authority. Every accepting Alpha destination adapter
 is absent. The maintained Target-Link seam recognizes the exact historical
 `ardents-alpha://` prefix only to return `alpha service link is retired`; it
 does so before Target-Link decoding, a corpus-floor read, resolver call,

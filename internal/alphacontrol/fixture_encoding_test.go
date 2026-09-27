@@ -18,16 +18,6 @@ func signCatalog(input alphacontrol.Catalog, signer ed25519.PrivateKey) ([]byte,
 	return append(payload, signature...), nil
 }
 
-func signCatalogV2(input alphacontrol.CatalogV2, signer ed25519.PrivateKey) ([]byte, error) {
-	if len(signer) != ed25519.PrivateKeySize {
-		return nil, errors.New("ACA2 fixture signer is invalid")
-	}
-	payload := catalogFixturePayload("ACA2", input.Cohort, input.Generation, input.NotBefore.Unix(), input.NotAfter.Unix(),
-		input.PreviousDigest, input.Components[:])
-	signature := ed25519.Sign(signer, append([]byte("ardents-alpha-control-catalog-v2\x00"), payload...))
-	return append(payload, signature...), nil
-}
-
 func catalogFixturePayload(magic, cohort string, generation uint64, notBefore, notAfter int64, previous [32]byte,
 	components []alphacontrol.Component,
 ) []byte {

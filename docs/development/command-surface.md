@@ -12,11 +12,14 @@ It is a source-navigation aid, not a second command contract or installed
 acceptance result.
 
 **One-version audit of the dispatcher.** All 69 route entries have a traced
-dispatch and first effect. Eight are immediate retirement refusals and one
+dispatch and first effect. Nine are immediate retirement refusals and one
 is a retained legacy command shape. `entry import` and `entry recipient`
 joined the refusals under ADR-0106: both return `entry Invite command is
 retired` before any argument interpretation or filesystem effect, and no
-Invite root reader, converter, or deleter remains.
+Invite root reader, converter, or deleter remains. `inspect-alpha-corpus`
+joined them under ADR-0110: the exact route returns `inspect-alpha-corpus is
+retired` before parsing arguments or opening any file, root, or floor, and no
+ACA2 verifier remains in the tree.
 Eight separately classified Portable routes remain maintained, but their
 per-user readiness does not start the protected text Service. Old writers
 inside shared packages such as Reachability and Instance are tracked in the
@@ -60,7 +63,7 @@ and the headless command inventory under tests/profiles.
 | ardents | diagnostics timeline | keep local, read-only projection of bounded runtime events from standard input; no storage, authority, or network effect |
 | ardents | name resolve/control | retired at command dispatch before arguments or effects; no successor or fallback is implied |
 | ardents-node | source (including the explicit current closed profile), node with closed reservations, issuer initialize/serve, hosting initialize, contributor diagnose/drain/withdraw/remove | keep; old Source selector, Node duty reservations and Contributor start inputs retired |
-| ardents-control | inspect-bundle, inspect-transitions, inspect-alpha-corpus; prepare-closed-profile, sign-closed-profile, inspect-closed-profile, inspect-closed-issuer-profile | keep |
+| ardents-control | inspect-bundle, inspect-transitions; prepare-closed-profile, sign-closed-profile, inspect-closed-profile, inspect-closed-issuer-profile | keep |
 | ardents-custody | create-service-authority, issue-service-credential, create-admission-authority, issue-admission-permission, inspect-envelope, verify-record, export-recovery-bundle, restore-recovery-bundle, purge-record | keep |
 | ardents-text | read, publish, link; worker-reader/worker-publisher | keep; trusted local UI routes and fixed installed worker entrypoints |
 | ardents-qualification | run from a local plan; preflight, verify-run, verify-pair, verify-network-manifest, verify-net14v, verify-failed-net14v | keep as installed verification tooling; never a participant route |
@@ -84,7 +87,8 @@ qualification owner and are rejected:
 | ardents-control inspect | caller-keyed low-level ACA1 reader with its own mutable floor duplicated the enrollment-pinned participant inspection |
 | ardents-control inspect-public-control | rendered a future public-control declaration that was definitionally never qualified and had only a unit-test caller |
 | completed ardents-control simulate-* routes | historical planning-campaign generators retired by ADR-0060 |
-| ardents-control accept-alpha-corpus | retired fresh corpus intake; the exact route returns `accept-alpha-corpus is retired` before parsing arguments or opening any file or floor, while read-only corpus inspection remains |
+| ardents-control accept-alpha-corpus | retired fresh corpus intake; the exact route returns `accept-alpha-corpus is retired` before parsing arguments or opening any file or floor |
+| ardents-control inspect-alpha-corpus | retired ACA2/corpus diagnostic; the exact route returns `inspect-alpha-corpus is retired` before parsing arguments or opening any file, root, or floor, and the ACA2 production verifier is removed (ADR-0110) |
 | ardents-release-custody initialize/inspect | completed RC1/RC2 release-seed ceremony; retired by ADR-0067 |
 | ardents-state-custody initialize-alpha-genesis | completed fixed functional-alpha genesis ceremony; retired by ADR-0067 |
 | ardents endpoint headless with `ardents-headless-runtime-v1` | retired startup schema; refused before plan-owned runtime effects without converting retained roots or floors |

@@ -13,22 +13,24 @@ import (
 func TestAlphaCorpusCommandsHaveNoPersistentFloorAuthority(t *testing.T) {
 	root := repositoryRoot(t)
 	command := string(readProjectFile(t, root, "cmd/ardents-control/main.go"))
-	start := strings.Index(command, "func inspectAlphaCorpus(")
-	if start < 0 {
-		t.Fatal("cannot isolate inspect-alpha-corpus implementation")
+	if strings.Contains(command, "func inspectAlphaCorpus(") {
+		t.Error("inspect-alpha-corpus retains an implementation after its ADR-0110 retirement")
 	}
-	end := strings.Index(command[start:], "\nfunc ")
-	if end < 0 {
-		t.Fatal("cannot isolate inspect-alpha-corpus implementation")
-	}
-	diagnostic := command[start : start+end]
-	for _, forbidden := range []string{"state-root", "OpenPersistentFloor", ".Observe("} {
-		if strings.Contains(diagnostic, forbidden) {
-			t.Errorf("inspect-alpha-corpus retains floor authority %q", forbidden)
+	for _, retired := range []string{"accept-alpha-corpus", "inspect-alpha-corpus"} {
+		if !strings.Contains(command, "case "+`"`+retired+`":`) ||
+			!strings.Contains(command, `errors.New("`+retired+` is retired")`) {
+			t.Errorf("%s lacks its stable retirement refusal", retired)
 		}
 	}
-	if !strings.Contains(command, `case "accept-alpha-corpus":`) || !strings.Contains(command, `errors.New("accept-alpha-corpus is retired")`) {
-		t.Error("accept-alpha-corpus lacks its stable retirement refusal")
+	// The production ACA2 verification surface is gone with the command (ADR-0110).
+	for _, absent := range []string{
+		"internal/alphacontrol/catalog_v2.go",
+		"internal/alphacontrol/inspection/aca2_corpus.go",
+		"internal/alphacontrol/inspection/corpus_component.go",
+	} {
+		if _, err := os.Stat(filepath.Join(root, filepath.FromSlash(absent))); err == nil {
+			t.Errorf("%s survived the ACA2 retirement", absent)
+		}
 	}
 	commandRoot := filepath.Join(root, "cmd", "ardents-control")
 	entries, err := os.ReadDir(commandRoot)

@@ -264,17 +264,17 @@ and inspection roots.
 |---|---|---|
 | `inspect-bundle` | `--enrollment PATH --artifact PATH --state-root PATH --at RFC3339` | Participant closed-alpha route. It first verifies the exact enrolled bundle and artifact, then runs the maintained Release Decision, Network State, ACA1 catalog, and Release/Network/Compatibility component verifiers. The named standalone inspection root owns separate `catalog`, `release`, and `network` floor children and is physically distinct from Endpoint state. Repeating the same accepted input against the same inspection root reports the cached/no-update outcome; a second absent inspection root supplies an independent fresh observation. |
 | `inspect-transitions` | `--enrollment PATH --artifact PATH --state-root PATH --at RFC3339` | Participant transition diagnostic. It runs the same enrollment-pinned inspection and emits `ardents-alpha-transition-report-v1`: nested exact closed-alpha control evidence plus independent Release Safety, Network Epoch, Compatibility, and Namespace-materialization outcomes. It advances only the explicitly named standalone inspection floors; it never mutates Endpoint state. `not-selected` for Namespace never creates a close, release, reclaim, or current Namespace state. |
-| `inspect-alpha-corpus` | `--catalog PATH --corpus PATH --disclosure-key HEX --corpus-key HEX --network HEX --at RFC3339` | Read-only diagnostic for one explicit ACA2 catalog and separately signed Alpha Name Corpus under independent keys. It accepts no Endpoint state root, never opens or observes a persistent floor, and reports `ardents-alpha-corpus-report-v1`; invalid, expired, or wrong-network input fails without state mutation. |
 | `inspect-closed-issuer-profile` | `--profile PATH --node-key HEX --network HEX --node HEX` | Read-only offline inspection of the JSON public export from closed `ardents-node issuer initialize`. Verifies its schema, digest, Node signature and independently supplied Network/Node bindings. Reports `ardents-closed-issuer-inspection-v1`, including `NetworkID`, `IssuerNodeID`, `NotBefore`, `NotAfter` and `TokenKeys` in closed-profile-plan form. It does not accept State or decide current validity; future hourly keys may be provisioned before activation. |
 | `prepare-closed-profile` | `--plan PATH --output PATH` | Render the canonical unsigned `ARDCPR03` body from a bounded public plan into a new file. |
 | `sign-closed-profile` | `--plan PATH --authority-key PATH --output PATH` | Reread the exact public plan and sign only `ARDCPR03` with the owner-only PKCS#8 Ed25519 State-authority file; write a new file and report its digest without printing key or profile bytes. |
 | `inspect-closed-profile` | `--plan PATH --profile PATH --authority HEX --at RFC3339` | Read-only verification of the signed profile against the independently pinned State authority and exact Network/Epoch/time context. Durable State acceptance is separate. |
 
-The historical exact `accept-alpha-corpus` route is omitted from usage and
-returns `accept-alpha-corpus is retired` before parsing arguments or opening an
-enrollment input, artifact, catalog, corpus, control root, or corpus floor. It
-does not create a new root or change retained floor bytes. The independent
-`inspect-alpha-corpus` route remains read-only. The
+The historical exact `accept-alpha-corpus` and `inspect-alpha-corpus` routes
+are omitted from usage and each returns `<route> is retired` before parsing
+arguments or opening an enrollment input, artifact, catalog, corpus, control
+root, inspection root, or corpus floor. Neither creates a new root nor changes
+retained floor bytes, and no ACA2 verifier remains in the tree
+([ADR-0110](../adr/0110-retire-aca2-corpus-inspection.md)). The
 [Endpoint Alpha destination retirement contract](../technical/endpoint-service-runtime.md#alpha-destination-retirement)
 owns the wider existing-link and retained-data boundary.
 

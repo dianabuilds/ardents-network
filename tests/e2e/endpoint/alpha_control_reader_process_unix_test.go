@@ -160,13 +160,14 @@ func TestAlphaCorpusIntakeRetirementPreservesExistingFloor(t *testing.T) {
 
 func alphaCorpusCatalog(t *testing.T, fixture alphaControlBundleFixture, serial uint64, corpus []byte) []byte {
 	t.Helper()
-	catalog := alphacontrol.CatalogV2{Cohort: "closed-cohort-1", Generation: 1, NotBefore: fixture.now.Add(-time.Minute), NotAfter: fixture.now.Add(20 * time.Minute)}
+	catalog := historicAlphaCatalogV2{cohort: "closed-cohort-1", generation: 1,
+		notBefore: fixture.now.Add(-time.Minute), notAfter: fixture.now.Add(20 * time.Minute)}
 	for index := 0; index < 3; index++ {
 		body := []byte{byte(index + 1)}
-		catalog.Components[index] = alphacontrol.Component{Class: alphacontrol.ComponentClass(index + 1), RootID: [32]byte{byte(index + 1)},
-			Generation: 1, NotAfter: catalog.NotAfter, Size: uint32(len(body)), Digest: sha256.Sum256(body)}
+		catalog.components[index] = alphacontrol.Component{Class: alphacontrol.ComponentClass(index + 1), RootID: [32]byte{byte(index + 1)},
+			Generation: 1, NotAfter: catalog.notAfter, Size: uint32(len(body)), Digest: sha256.Sum256(body)}
 	}
-	catalog.Components[3] = alphacontrol.Component{Class: alphacontrol.ComponentCorpus, RootID: sha256.Sum256(fixture.corpusPublic),
+	catalog.components[3] = alphacontrol.Component{Class: historicComponentCorpus, RootID: sha256.Sum256(fixture.corpusPublic),
 		Generation: serial, NotAfter: fixture.now.Add(10 * time.Minute), Size: uint32(len(corpus)), Digest: sha256.Sum256(corpus)}
 	raw, err := signAlphaCatalogV2Fixture(catalog, fixture.disclosurePrivate)
 	if err != nil {
