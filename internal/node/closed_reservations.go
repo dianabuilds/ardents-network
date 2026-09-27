@@ -29,5 +29,5 @@ type ClosedForwardingProfile struct {
 	CarrierRelayEndpoint string
 	AdmissionTraffic     resource.HostingTraffic
 	TerminationTraffic   resource.HostingTraffic
-	host                 closedForwardingHost
+	host                 closedHostingHandle
 }

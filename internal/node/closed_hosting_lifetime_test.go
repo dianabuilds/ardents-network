@@ -45,7 +45,7 @@ func (host *hostingLifetimeTestHost) Sample(context.Context, time.Duration) (res
 	return resource.HostingSample{}, nil
 }
 
-func (host *hostingLifetimeTestHost) Reserve(context.Context, resource.HostingTraffic, resource.HostingTraffic, time.Time) (closedForwardingHostReservation, error) {
+func (host *hostingLifetimeTestHost) Reserve(context.Context, resource.HostingTraffic, resource.HostingTraffic, time.Time) (closedHostingReservation, error) {
 	return nil, nil
 }
 

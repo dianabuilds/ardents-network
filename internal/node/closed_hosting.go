@@ -33,7 +33,7 @@ func (config *runtimeConfig) openClosedHosting() error {
 	}
 	config.measurementOrigin = time.Now()
 	var err error
-	config.host, err = openClosedForwardingHost(root)
+	config.host, err = openClosedHostingHandle(root)
 	return err
 }
 
@@ -50,7 +50,7 @@ func (config *runtimeConfig) hostingPressure() (pressureLevel, error) {
 	defer stop()
 	var observation resource.HostingObservation
 	var err error
-	if installed, ok := config.host.(*installedClosedForwardingHost); ok {
+	if installed, ok := config.host.(*installedClosedHostingHandle); ok {
 		sample, sampleErr := installed.Sample(ctx, time.Second)
 		config.hostingSample = &sample
 		config.hostingUsage, err = resource.MeasureOwnerCgroups(nil)

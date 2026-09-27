@@ -10,7 +10,7 @@ type runtimeConfig struct {
 	measurementOrigin time.Time
 	hostingSample     *resource.HostingSample
 	hostingUsage      resource.Sample
-	host              closedForwardingHost
+	host              closedHostingHandle
 	hostLifetime      *closedHostingLifetime
 	hostingNext       time.Time
 	hostingLevel      pressureLevel

@@ -3,6 +3,7 @@ package node
 import (
 	"errors"
 
+	"github.com/dianabuilds/ardents-network/internal/node/hosting"
 	"github.com/dianabuilds/ardents-network/internal/resource"
 	"github.com/dianabuilds/ardents-network/internal/route"
 )
@@ -27,10 +28,8 @@ func closedControlTokenVerifier(config runtimeConfig, receiver route.ClosedRoleR
 		default:
 			return route.ClosedAdmissionApproval{}, errors.New("control duty cannot admit forwarding class")
 		}
-		release, err := reserveClosedForwarding(config.host, ClosedForwardingProfile{
-			AdmissionTraffic:   resource.HostingTraffic{Tx: 2 * admitted, Rx: 2 * admitted},
-			TerminationTraffic: resource.HostingTraffic{Tx: 16 << 10, Rx: 16 << 10},
-		}, input.Deadline)
+		release, err := hosting.Reserve(config.host, resource.HostingTraffic{Tx: 2 * admitted, Rx: 2 * admitted},
+			resource.HostingTraffic{Tx: 16 << 10, Rx: 16 << 10}, input.Deadline)
 		if err != nil {
 			return route.ClosedAdmissionApproval{}, err
 		}

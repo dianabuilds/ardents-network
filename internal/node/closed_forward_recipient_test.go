@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/network/state"
+	"github.com/dianabuilds/ardents-network/internal/node/forwarding"
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	"github.com/dianabuilds/ardents-network/internal/route/carrier"
@@ -27,17 +28,17 @@ func TestClosedForwardRecipientRequiresExactStateRecipientAndRecord(t *testing.T
 	view.Nodes[0] = state.ClosedRouteNodeView{NodeID: target, RecordDigest: recordDigest, RoleDomain: 1, Subrole: 1, DutyGeneration: 9}
 	config := runtimeConfig{Config: Config{CurrentClosedRoute: func() (state.ClosedRouteView, error) { return view, nil }}}
 	open := route.ClosedOpen{NextNodeID: target, NextDutyGeneration: 9, Purpose: ardp.PurposeForwarding, Deadline: now.Add(time.Second)}
-	candidate, err := closedForwardRecipient(config, snapshot, open, now)
+	candidate, err := forwarding.Recipient(nodeAuthority(config), snapshot, open, now, literalNodeEndpoint)
 	if err != nil || candidate != snapshot.Candidates[0] {
 		t.Fatalf("closed forward recipient = %+v / %v", candidate, err)
 	}
 	open.NextDutyGeneration++
-	if _, err := closedForwardRecipient(config, snapshot, open, now); err == nil {
+	if _, err := forwarding.Recipient(nodeAuthority(config), snapshot, open, now, literalNodeEndpoint); err == nil {
 		t.Fatal("accepted a forwarding OPEN with mismatched duty")
 	}
 	open.NextDutyGeneration--
 	view.Nodes[0].RecordDigest[0]++
-	if _, err := closedForwardRecipient(config, snapshot, open, now); err == nil {
+	if _, err := forwarding.Recipient(nodeAuthority(config), snapshot, open, now, literalNodeEndpoint); err == nil {
 		t.Fatal("accepted a forwarding OPEN with mismatched record digest")
 	}
 	stateErr := errors.New("injected closed Route State failure")

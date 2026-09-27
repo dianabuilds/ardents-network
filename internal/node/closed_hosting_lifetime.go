@@ -5,7 +5,7 @@ import "sync"
 // closedHostingLifetime keeps the shared Hosting handle available until an
 // unfinished duty has joined every child that can still release a reservation.
 type closedHostingLifetime struct {
-	host     closedForwardingHost
+	host     closedHostingHandle
 	mu       sync.Mutex
 	closed   bool
 	handed   bool
@@ -13,7 +13,7 @@ type closedHostingLifetime struct {
 	closeErr error
 }
 
-func newClosedHostingLifetime(host closedForwardingHost) *closedHostingLifetime {
+func newClosedHostingLifetime(host closedHostingHandle) *closedHostingLifetime {
 	if host == nil {
 		return nil
 	}

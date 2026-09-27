@@ -485,7 +485,7 @@ owner. It should not turn a 74-file Route root into a generic transport API.
 | `route/terminal -> service/reachability` (F-29, realized) | Two terminal production files imported Reachability solely for `MaximumPrivateDescriptorSize`; its proof and Store enforce the same bound. Terminal no longer inherits Reachability's 111-package static closure in production. | Realized: terminal carries its own exact wire bound `MaximumDescriptorProofSize = 15000`, a Linux-only cross-owner test pins it to the Reachability constant, and the existing framing tests keep the exact 15,000/15,001-byte outcomes. Only the production import was removed; Reachability stays authoritative for the signed proof and the Store, and no one-constant package was added. The test-only equality import remains, so the package map still permits Reachability for terminal behavior tests. |
 | `route/credential -> route` | After ADR-0092, only `closed_token_listener.go`, `closed_token_bootstrap.go` and `closed_token_admitted.go` import parent Route; all serve the live Node issuer (F-30). Credential's issuer root/reservation ledger and Replay's receiving spend ledger have different owners. | Preserve the live issuer core and Node-owned listener/admission lifetime; extract a narrow Route-facing adapter only after assigning accepted-child join and late issuer-root cleanup. A broad Carrier interface does not resolve either ownership question. |
 | Offline Control/Custody `-> route/credential` | Control calls only the signed public issuer-profile decoder; Custody calls only permission/request grammar. The package also contains the live Route-facing issuer listener, so static dependency closure still includes QUIC and CIRCL in these offline commands, but no OHTTP. | Give the signed offline grammar a cohesive owner with a non-test caller and exact validation tests. Keep the live networked issuer adapter separate without changing bytes or moving admission authority into Route. |
-| Node forwarding `->` shared Carrier listener | Route already supplies `ClosedSharedCarrierListener.Accept/Close` and a direct-role or authenticated outer-Node result with caller-owned `net.Conn`. Node owns the accept loop, work limit, accepted children and drain. Listener `Close` reaches `Drain`; admitted connection `Close` errors are currently discarded by the Node handler. | Keep the narrow listener seam and explicit ownership transfer. Place TCP/TLS/QUIC mechanics behind it, retain Node's admission and stop/join authority, and decide the required per-connection close-error outcome before a package move. No speculative broad Carrier interface is needed. |
+| Node forwarding `->` shared Carrier listener | Route supplies `ClosedSharedCarrierListener.Accept/Close` and a direct-role or authenticated outer-Node result with caller-owned `net.Conn`. The extracted forwarding duty owns the accept loop, work limit, children and joined drain. Listener `Close` reaches `Drain`; accepted connection close failures, including capacity refusal, join its final result. | Keep Carrier mechanics behind the narrow listener seam. Node retains process admission and supervision, while the forwarding child retains its listener, spend root and late close after workers join. No broad Carrier interface is needed. |
 | Endpoint Descriptor publication `->` Route Control lane `->` Node Reachability Store | Endpoint owns the signed bytes and exact retry; Route sends one nonce-bound operation; Node checks current Introduction and calls `PublishPrivate`. Status 0 follows `StoreAccepted` or `StoreAlreadyCurrent`, after the Store's file and directory sync for a new record. | Keep durable revision/conflict floors with Reachability, State/duty admission with Node, and caller lifetime with Endpoint. The result Interface must distinguish a committed or already-current ACK from refusal and uncertain transport loss; it must not turn a lost reply into a second publication identity. |
 | `endpoint -> route` and `node -> route` | Both processes borrow transport/channel operations, while Endpoint also coordinates publication and Node owns receiving duties. | Keep process admission, lifecycle, and terminal error ownership at Endpoint/Node. The shared Route boundary should expose only the operations and leases each caller actually consumes. |
 | `service/connection` has no first-party imports | It owns authenticated logical byte ordering and attachment lifetime without importing Endpoint or Route. | Preserve this deep boundary; adapt physical attachment at its caller, not inside Service Connection. |
@@ -626,19 +626,17 @@ not an immediate package move. Preserve separate Source, Introduction and
 Responder shutdown: `text_context_retirement.go` cancels their openings,
 joins them, then closes each retained prefix and joins exchange flights.
 
-### Node forwarding and role probe stay under the Node lifecycle
+### Node forwarding has its own duty owner; role probe stays under Node
 
-`internal/node` already owns the current forwarding duty from
-`startClosedForwarding` through admission, accepted handlers and drain. Its
-receiving resource group opens replay spend, duty limits and bootstrap
-allocation together; `finishShutdown` joins accepted producers and outgoing
-sessions before closing the host and spend root. The forwarding Carrier
-session and link files hold child lifetimes under that same server. Moving
-these files into a new package would first require transferring private
-`runtimeConfig`, the copied duty value, the spend-root close owner and
-`dutyHandle` return contract. There is no demonstrated boundary improvement from that
-transfer, so the inventory now assigns these files `deepen`, not a package
-move.
+`internal/node/forwarding` owns the selected duty's listener, admitted
+handlers, receiving spend root, limits, bootstrap allocation, Carrier pool,
+sessions and joined drain. The receiving group opens before the listener;
+`finishShutdown` joins accepted producers and outgoing readers before closing
+the transferred Host handle and spend root. Node validates the profile and
+address, opens the shared Host handle, and adapts the child's small handle to
+process supervision. The child receives explicit current-State and admission
+dependencies instead of `runtimeConfig`; class-2 reservations share the
+`internal/node/hosting` owner with JOIN.
 
 The private role probe is an active Node duty selected only after
 `assessAdmission` checks `h3-role-probe-v1`; `duty_server.go` starts it through
@@ -949,7 +947,7 @@ receiver duty; the role-specific rows below are alternatives across Nodes.
 | `service_instance_root` and `publication_root` | `service/instance.Open` supplies the binding; `service/publication.Open` is constructed by Endpoint's `newEndpoint`. | Keep signing key/generation separate from Descriptor publication/revision. Endpoint joins publication and Instance close after local work; pre-v3 Instance roots are refused with the typed `ErrLegacyRoot` (ADR-0102, F-42). |
 | `text_token_root` | `endpoint/tokenjournal.Open` on Source-prefix admission; Endpoint holds the opened journal until its source roots close. | Retain retry/presentation state across restart; it is not Node's receiving spend ledger. Its close result joins the Endpoint terminal outcome. |
 | Closed Issuer `root` and `admission_root` | `route/credential.OpenClosedTokenIssuer` and `route/replay.Open`, composed by `node/startClosedIssuer`. | Issuer key/issuance and receiving spend have separate roots. Realized (F-17): after a bounded Drain timeout Node's `closedIssuerServer` stays the later root-close owner; it joins every accepted child without the caller deadline, then closes the spend ledger and the key root in that order and records one finalization result. |
-| Closed forwarding `root` and `hosting_root` | `route/replay.Open` via Node receiving resources; `resource.OpenHosting` via Node's shared host adapter. | Spend once and host-period accounting are different authorities. A shared host sampler can serve concurrent duties, but its lease and terminal result remain with Node. |
+| Closed forwarding `root` and `hosting_root` | `route/replay.Open` in `node/forwarding`; `resource.OpenHosting` via Node's shared host adapter. | Spend once and host-period accounting are different authorities. Node owns the shared sampler and opens the Host handle; forwarding owns that handle's late close and its joined terminal result. |
 | Closed Resolution `root` and `admission_root` | `service/reachability.OpenStore` and `route/replay.Open` in `node/startClosedResolution`. | Descriptor revision/conflict and receiving token spends must retain distinct floors; a publication ACK follows durable Store acceptance, and shutdown joins both roots. |
 | Closed Introduction and Data JOIN `admission_root` | Each Node listener opens its own `route/replay` receiving ledger. | No timeout may release a spend root while an accepted child still owns a commit or reply. The duty owns the final join, not the Carrier package. |
 

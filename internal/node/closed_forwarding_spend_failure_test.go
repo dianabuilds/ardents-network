@@ -32,7 +32,7 @@ func TestClosedForwardingStartRefusesAmbiguousSpendJournal(t *testing.T) {
 	fixture.config.CurrentClosedProfile = func() (state.ClosedProfileView, bool) { return fixture.view.Profile, true }
 	root := filepath.Join(t.TempDir(), "spends")
 	fixture.config.ClosedForwarding = ClosedForwardingProfile{Root: root, Certificate: certificate, ConnectionLimit: 2, DrainTimeout: time.Second,
-		AdmissionTraffic: resource.HostingTraffic{Tx: 1}, TerminationTraffic: resource.HostingTraffic{Tx: 1}, HostingRoot: closedForwardingHostingRoot(t)}
+		AdmissionTraffic: resource.HostingTraffic{Tx: 1}, TerminationTraffic: resource.HostingTraffic{Tx: 1}, HostingRoot: closedHostingHandleingRoot(t)}
 	if err := os.MkdirAll(root, 0o700); err != nil {
 		t.Fatal(err)
 	}
@@ -94,7 +94,7 @@ func TestClosedForwardingServerRefusesAfterJournalMutationFailure(t *testing.T) 
 	fixture.config.CurrentClosedProfile = func() (state.ClosedProfileView, bool) { return fixture.view.Profile, true }
 	root := filepath.Join(t.TempDir(), "spends")
 	fixture.config.ClosedForwarding = ClosedForwardingProfile{Root: root, Certificate: serverCertificate, ConnectionLimit: 2, DrainTimeout: time.Second,
-		AdmissionTraffic: resource.HostingTraffic{Tx: 1}, TerminationTraffic: resource.HostingTraffic{Tx: 1}, HostingRoot: closedForwardingHostingRoot(t)}
+		AdmissionTraffic: resource.HostingTraffic{Tx: 1}, TerminationTraffic: resource.HostingTraffic{Tx: 1}, HostingRoot: closedHostingHandleingRoot(t)}
 	if err := os.MkdirAll(root, 0o700); err != nil {
 		t.Fatal(err)
 	}

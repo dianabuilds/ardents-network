@@ -16,9 +16,10 @@ and report the joined terminal result. It does not retain a network role's
 listener, connection handlers, spend ledger, or role-specific state. The
 private probe remains under the process owner.
 
-The intended children are `internal/node/outer`, `authority`, `resolution`,
-`forwarding`, `issuer`, `introduction`, and `join`. A narrow shared hosting
-reservation owner may be extracted when its exact caller values are known.
+The children are `internal/node/outer`, `authority`, `hosting`, `resolution`,
+`forwarding`, `issuer`, `introduction`, and `join`. `hosting` bounds shared
+reservations and class-2 reserve-before-spend order without owning process
+pressure or the concrete provider-period ledger.
 Each new package must have `doc.go`, behavior tests,
 a non-test caller, and registered imports. A role never imports its parent or
 receives `runtimeConfig`; the root adapts the role's small
@@ -63,21 +64,17 @@ accept loop.
 | `introduction` | Selected class-3 receiver, spend/slot floors, registrations/deliveries, listener and workers. | Close listener, join workers before replay roots; retain close errors. A read-only slot observation supports existing qualification evidence without exposing mutable slot ownership. |
 | `join` | Selected data-join receiver, spend root, pair owner, leased host handle, listener and workers. | Stop listener and host monitor, join workers, close pairs and spend root, then host; retain terminal causes. Root Node supplies current State and class-2 Hosting policy. |
 
-The forwarding child already owns next-hop, bootstrap-adjacency and relay
-policy; the forwarding listener, session set and receiving resource owner are
-still in the root pending their transfer as one bounded role. Their current
-server now receives a narrow dependency value for current State, authority,
-class-2 admission and replenishment, endpoint validation, and relay address;
-the process adapter constructs it without passing `runtimeConfig` into the
-server. The Node authority child borrows current profile/Route views, projects the
-receiver and shared peer, and verifies class-1/2/3 tokens. The root still
-supplies the copied duty and keeps process admission and role selection.
-The child rechecks State at each existing admission
-point and never accepts a plan-supplied digest, role, peer, or key. Forwarding's
-class-2 host charge and control's class-1/3 lifetime charge remain distinct
-policy callers. Hosting reservations use Resource's ledger with one Node owner
-for allocation and release. Process pressure stays in the root; per-duty local
-limits and JOIN host monitoring stay with the duty.
+The forwarding child now owns its listener, session set, receiving resources,
+pool, accepted handlers and joined shutdown. Node retains profile validation,
+address choice, the concrete shared Hosting sampler, process admission and
+role selection. It opens the Host handle and transfers its late close to the
+child. `internal/node/hosting` owns the common class-2 reserve-before-spend
+policy used by forwarding and JOIN; class-1/3 control policy remains distinct.
+The child borrows current State, authority, token policy and endpoint validation
+through explicit dependencies, never `runtimeConfig`. It rechecks State at each
+existing admission point and cannot accept a plan-supplied peer or key.
+Process pressure remains in the root; per-duty local limits and JOIN host
+monitoring remain with their duty.
 
 ## Bounded extraction order
 

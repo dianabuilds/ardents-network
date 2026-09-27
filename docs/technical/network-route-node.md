@@ -23,13 +23,15 @@ Carrier, adjacent/interior assignment and next peers. A legacy duty, issuer
 reservation or unrelated profile signer cannot be combined with that plan.
 This command binding does not implement the remaining Endpoint composition or
 establish whole-route qualification.
-Forwarding startup constructs the spend ledger, duty limits and bootstrap
-controller as one private concrete Node owner before it creates or transfers a
-server. Until that group is complete, its builder owns rollback and closes the
-exact spend-root lease once; an initialization failure retains both its initial
-cause and any cleanup cause. The listener, outgoing pool and borrowed-or-local
-host remain separate composition owners, so this grouping neither relocates
-their policy nor adds a hidden host close.
+The forwarding role constructs the spend ledger, duty limits and bootstrap
+controller as one private receiving group before it opens the outgoing pool
+and listener. Until that group is complete, its builder owns rollback and
+closes the exact spend-root lease once; an initialization failure retains both
+its initial cause and any cleanup cause. Node validates the local profile and
+address, then opens and transfers a shared Hosting handle. The role owns that
+handle's late close after its accepted producers and Carrier readers join.
+The Node Hosting adapter supplies class-2 reservation policy without giving
+the role process pressure or the provider-period ledger's global ownership.
 For a generation-3 TCP Node Carrier, terminal retirement closes the owned
 physical socket once and retains its actual close result. It interrupts the
 multiplexed transport instead of initiating another TLS notification after a
@@ -188,7 +190,8 @@ already pinned authority retain their previous State and Source behavior.
 | internal/route | Implement the closed v3 Node Carrier/wire used by `internal/node` through `OpenClosedNodeCarrier`. The former aggregate Interactive User Route v2 runtime and its whole v2 execution closure (Attachment, EndpointTransitBinding, EntryBinding, credential-relay, Introduction slot/outcome, LegBinding, and Transit Grant verifier files) are absent under ADR-0093. What remains is only the retired v2 `Profile` identity used for Node typed refusals; the sealed Introduction v1 grammar and the publication v1 Introduction instruction codecs are retired by ADR-0094, which supersedes ADR-0035. Nothing provides a second supported Route. The [package map](../development/package-map.md) records the current consumer boundary. | Reintroducing the removed User-route composition as a maintained product path or treating its removal as successor-network readiness; candidate ranking, carrier policy/fallback, H3 compatibility, peer runtime, Node profile, or durable State/Duty/credential-journal writing. |
 | internal/node | Run one bounded current closed Node duty from authenticated admission through listener readiness, pressure reaction, drain, withdrawal, and a bounded terminal cleanup outcome. All five old native duty engines are absent; their plan stanzas remain only at the command refusal boundary. | State-root authority, assignment creation, an old native duty listener, or a separate probe runtime. |
 | internal/node/authority | Borrow current authenticated closed State views and project one exact receiver or shared peer; verify selected-profile role tokens for the Node duties. The caller retains its duty admission and host/spend reservation. | State-root custody, role selection, process pressure, a receiving spend ledger, or an issuer key. |
-| internal/node/forwarding | Check the exact State-selected next-hop and bootstrap adjacency before dial, and validate the local transparent Carrier relay address. | State-root custody, unselected fallback, Route wire or Carrier TLS implementation. |
+| internal/node/forwarding | Own the closed forwarding listener, receiving spend root, pool, sessions, child links and joined drain; check exact State-selected next hops and bootstrap adjacency before dial. | State-root custody, process pressure, unselected fallback, Route wire or Carrier TLS implementation. |
+| internal/node/hosting | Bound reservations and release on the shared Hosting ledger; verify the class-2 envelope before spend for forwarding and JOIN. | Provider-period custody, class-1/3 envelope choice, process pressure or receiving-role lifecycle. |
 | internal/node/issuer | Own the closed issuer listener and both durable roots; forward terminal cause to Node supervision and join every accepted child before late root close. | Process admission and pressure, current State custody, or Credential token grammar. |
 | internal/node/introduction | Own the closed Introduction listener, registration slots, capsule deliveries, spend ledger and joined drain. Provide a read-only slot observation for qualification. | Process admission, State custody, Hosting pressure, or Route capsule grammar. |
 | internal/node/join | Own the closed data JOIN listener, pair set, spend ledger and leased Hosting handle through joined shutdown. Node supplies the shared provider-period policy. | Process admission, State custody, global Hosting pressure, or Route pair grammar. |

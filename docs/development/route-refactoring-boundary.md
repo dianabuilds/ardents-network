@@ -160,6 +160,22 @@ without retained `route.ClosedSpend*` wrappers. The fixed persisted file names,
 headers, crash-tail recovery, and slot time floor remain unchanged. Its owner
 tests move with the files; Route and Node retain admission and listener tests.
 
+## Node–Route–Credential owner boundary
+
+The Node root admits and supervises one selected process duty, opens shared
+Hosting handles, and reacts to process pressure. `node/forwarding` owns its
+listener, spend-root lease, Carrier pool, sessions, accepted children and joined
+drain. `node/hosting` bounds provider-period reservations and the class-2
+reserve-before-spend policy shared with JOIN. A role receives current State and
+admission callbacks, not the process `runtimeConfig`.
+
+Route owns the authenticated Carrier, outer bridge, ARDP grammar and receiving
+channel operations. `route/replay` owns the durable journal primitive, while a
+Node role chooses its binding and closes its lease after children join.
+Credential owns token verification/issuance grammar and the issuer key engine;
+`node/issuer` owns the selected listener and the late close of its issuer and
+spend roots. This extraction changes no shared wire or Credential interface.
+
 ## Intended seam
 
 `internal/route` remains the owner of the currently shared Carrier and native

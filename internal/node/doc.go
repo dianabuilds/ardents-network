@@ -1,24 +1,17 @@
-// Package node owns one authenticated Node duty from admission through terminal
-// cleanup. Closed forwarding startup transfers its spend ledger, duty limits,
-// and bootstrap controller only as one fully initialized receiving-resource
-// owner. The server owns accepted producers, pool interruption, that resource
-// owner, and the host; its session set separately owns outgoing Carrier readers,
-// joins them after all producers, and retains their terminal cleanup result.
-// The retired native Rendezvous, Initiator, Responder, Introduction, and
-// Transit-issuance engines are absent; their plan stanzas remain only at the
-// command refusal boundary. Current closed receivers and their shared Carrier
-// mechanics remain distinct duties.
+// Package node composes one authenticated Node process: it validates local
+// reservations, selects a State duty, supervises the selected role, reacts to
+// process pressure, and joins terminal results. Closed forwarding, issuer,
+// resolution, introduction and JOIN duties own their listeners, admitted
+// children and durable roots in role packages. Node opens shared Hosting
+// handles and transfers each handle's close to its selected duty.
 //
 // process_config.go and closed_reservations.go declare local configuration;
 // admission.go validates State-selected duties; lifecycle.go owns process
-// transitions; duty_server.go dispatches listeners. The closed_* listener
-// files retain forwarding's resources while its child owns next-hop and relay
-// policy; issuer, resolution, introduction and
-// join own their listeners, admitted operations and roots. The outer child
-// owns one accepted Carrier's inner lanes, serialized writer and joined cleanup.
-// The authority child package checks current State projections and the same
-// selected-profile token for forwarding and control admission; closed_control_admission.go
-// owns the control host reservation, while forwarding owns its own reservation
-// and spend. duty_handle.go names the common stop/drain boundary;
-// lifecycle_event.go and event_writer.go define and emit observations.
+// transitions; duty_server.go dispatches roles. The authority child borrows
+// current State and verifies selected-profile tokens; hosting bounds shared
+// reservations and class-2 reserve-before-spend policy. The outer child owns
+// one accepted Carrier's inner lanes, writer and joined cleanup. Node retains
+// the private probe and class-1/3 control envelope. duty_handle.go names the
+// process stop/drain boundary; lifecycle_event.go and event_writer.go publish
+// observations. Retired native duties remain unavailable.
 package node

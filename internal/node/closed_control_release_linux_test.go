@@ -17,7 +17,7 @@ import (
 
 func TestClosedResolutionRetainsHostingReleaseFailureAfterReply(t *testing.T) {
 	releaseErr := errors.New("hosting release failed")
-	host := &cleanupFailureHost{release: releaseErr}
+	host := &releaseFailureHost{release: releaseErr}
 	var handle *dutyHandle
 	var stopOnce sync.Once
 	var drainErr error

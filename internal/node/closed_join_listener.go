@@ -6,6 +6,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/node/authority"
+	nodehosting "github.com/dianabuilds/ardents-network/internal/node/hosting"
 	"github.com/dianabuilds/ardents-network/internal/node/join"
 	"github.com/dianabuilds/ardents-network/internal/resource"
 	"github.com/dianabuilds/ardents-network/internal/route"
@@ -31,7 +32,7 @@ func startClosedDataJoin(config runtimeConfig, snapshot state.NodeDuty) (*dutyHa
 	role, err := join.Start(join.Config{Profile: config.ClosedDataJoin, Snapshot: snapshot,
 		Authority: nodeAuthority(config), CurrentDuty: func() (state.NodeDuty, error) { return currentFacts(config) },
 		Now: config.now, ListenAddress: listen, OpenHost: func(root string) (join.Host, error) {
-			host, err := openClosedForwardingHost(root)
+			host, err := openClosedHostingHandle(root)
 			if err != nil {
 				return nil, err
 			}
@@ -46,7 +47,7 @@ func startClosedDataJoin(config runtimeConfig, snapshot state.NodeDuty) (*dutyHa
 // joinHosting keeps the shared provider policy in Node while the JOIN role
 // owns this particular handle and its close after child work has joined.
 type joinHosting struct {
-	host   closedForwardingHost
+	host   closedHostingHandle
 	source authority.Source
 	now    func() time.Time
 }
@@ -56,17 +57,19 @@ func (hosting joinHosting) Sample(ctx context.Context, age time.Duration) (resou
 }
 
 func (hosting joinHosting) AdmissionVerifier(receiver route.ClosedRoleReceiver) route.ClosedAdmissionVerifier {
-	return closedForwardingAdmissionVerifier(hosting.source, hosting.now, receiver, hosting.host, closedJoinHostingEnvelope())
+	work, termination := closedJoinHostingEnvelope()
+	return nodehosting.AdmissionVerifier(hosting.source, hosting.now, receiver, hosting.host, work, termination)
 }
 
 func (hosting joinHosting) Replenisher(receiver route.ClosedRoleReceiver, spends *replay.Ledger) route.ClosedForwardingReplenisher {
-	return closedForwardingReplenisher(hosting.source, hosting.now, receiver, hosting.host, spends, closedJoinHostingEnvelope())
+	work, termination := closedJoinHostingEnvelope()
+	return nodehosting.Replenisher(hosting.source, hosting.now, receiver, hosting.host, spends, work, termination)
 }
 
 func (hosting joinHosting) Close() error { return hosting.host.Close() }
 
 // The envelope includes both directions and transport/control overhead; the
 // installed policy chooses which directions the actual provider charges.
-func closedJoinHostingEnvelope() ClosedForwardingProfile {
-	return ClosedForwardingProfile{AdmissionTraffic: resource.HostingTraffic{Tx: 64 << 20, Rx: 64 << 20}, TerminationTraffic: resource.HostingTraffic{Tx: 1 << 20, Rx: 1 << 20}}
+func closedJoinHostingEnvelope() (resource.HostingTraffic, resource.HostingTraffic) {
+	return resource.HostingTraffic{Tx: 64 << 20, Rx: 64 << 20}, resource.HostingTraffic{Tx: 1 << 20, Rx: 1 << 20}
 }
