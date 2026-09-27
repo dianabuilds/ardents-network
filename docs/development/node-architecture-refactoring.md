@@ -99,6 +99,16 @@ queue, `bootstrap.go` includes bootstrap admission, and `recipient.go` includes
 the relay dial rule. Tests of session ordering, queue and terminal outcomes
 share one `session_test.go`; Linux-specific tests retain their tags when they
 need the installed resource/Carrier fixture.
+At the process boundary, `forwarding/recipient_test.go` checks the recipient
+owner directly. The bootstrap client and genuine forwarding-token flows share
+`bootstrap_network_linux_test.go` and its network fixture. The fixture-window
+invariant runs on both platforms beside its fixture. Other Linux-only root
+tests exercise a real accepted Carrier, role root, process shutdown or
+permission-sensitive network fixture; each name identifies the role/scenario
+and carries the `_linux_test.go` suffix. These remain process integration tests
+because they call `Run` or the root adapter, while component behavior tests
+live in the role packages. Separate files still represent independently
+readable end-to-end scenarios, even when each has one top-level test.
 Process pressure remains in the root; per-duty local limits and JOIN host
 monitoring remain with their duty.
 

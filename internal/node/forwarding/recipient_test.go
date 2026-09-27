@@ -1,4 +1,4 @@
-package node
+package forwarding
 
 import (
 	"encoding/hex"
@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/network/state"
-	"github.com/dianabuilds/ardents-network/internal/node/forwarding"
+	"github.com/dianabuilds/ardents-network/internal/node/authority"
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	"github.com/dianabuilds/ardents-network/internal/route/carrier"
@@ -26,24 +26,24 @@ func TestClosedForwardRecipientRequiresExactStateRecipientAndRecord(t *testing.T
 		Digest: [32]byte{8}, Epoch: snapshot.Epoch, NotBefore: now.Add(-time.Second), NotAfter: now.Add(time.Minute)}
 	view := state.ClosedRouteView{Profile: profile, NodeCount: 1}
 	view.Nodes[0] = state.ClosedRouteNodeView{NodeID: target, RecordDigest: recordDigest, RoleDomain: 1, Subrole: 1, DutyGeneration: 9}
-	config := runtimeConfig{Config: Config{CurrentClosedRoute: func() (state.ClosedRouteView, error) { return view, nil }}}
+	source := authority.Source{CurrentRoute: func() (state.ClosedRouteView, error) { return view, nil }}
 	open := route.ClosedOpen{NextNodeID: target, NextDutyGeneration: 9, Purpose: ardp.PurposeForwarding, Deadline: now.Add(time.Second)}
-	candidate, err := forwarding.Recipient(nodeAuthority(config), snapshot, open, now, literalNodeEndpoint)
+	candidate, err := Recipient(source, snapshot, open, now, ValidCarrierEndpoint)
 	if err != nil || candidate != snapshot.Candidates[0] {
 		t.Fatalf("closed forward recipient = %+v / %v", candidate, err)
 	}
 	open.NextDutyGeneration++
-	if _, err := forwarding.Recipient(nodeAuthority(config), snapshot, open, now, literalNodeEndpoint); err == nil {
+	if _, err := Recipient(source, snapshot, open, now, ValidCarrierEndpoint); err == nil {
 		t.Fatal("accepted a forwarding OPEN with mismatched duty")
 	}
 	open.NextDutyGeneration--
 	view.Nodes[0].RecordDigest[0]++
-	if _, err := forwarding.Recipient(nodeAuthority(config), snapshot, open, now, literalNodeEndpoint); err == nil {
+	if _, err := Recipient(source, snapshot, open, now, ValidCarrierEndpoint); err == nil {
 		t.Fatal("accepted a forwarding OPEN with mismatched record digest")
 	}
 	stateErr := errors.New("injected closed Route State failure")
-	config.CurrentClosedRoute = func() (state.ClosedRouteView, error) { return state.ClosedRouteView{}, stateErr }
-	if _, err := currentClosedRoute(config, snapshot, now); !errors.Is(err, stateErr) {
-		t.Fatalf("current closed Route error = %v", err)
+	source.CurrentRoute = func() (state.ClosedRouteView, error) { return state.ClosedRouteView{}, stateErr }
+	if _, err := Recipient(source, snapshot, open, now, ValidCarrierEndpoint); err == nil {
+		t.Fatal("accepted a forwarding OPEN without a current closed Route")
 	}
 }
