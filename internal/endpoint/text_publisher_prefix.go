@@ -40,12 +40,12 @@ func (owner *textContext) openTextIntroductionPrefix(ctx context.Context) (*text
 	if owner == nil {
 		return nil, errors.New("text Publisher owner unavailable")
 	}
-	opened, err := owner.openTextPublisherPrefix(ctx, &owner.introduction, 4)
+	opened, err := owner.openTextPublisherPrefix(ctx, &owner.introduction.prefix, 4)
 	if err != nil {
 		return nil, err
 	}
 	owner.mu.Lock()
-	handle := owner.introduction.acquireOpenedLocked(opened)
+	handle := owner.introduction.prefix.acquireOpenedLocked(opened)
 	owner.mu.Unlock()
 	if handle == nil {
 		return nil, errors.New("text Introduction prefix unavailable after opening")
@@ -56,7 +56,7 @@ func (owner *textContext) openTextIntroductionPrefix(ctx context.Context) (*text
 // Both Publisher domains share admission/lifetime rules but retain distinct
 // allocations, transports and stock. This private selector grants no authority.
 func (owner *textContext) openTextPublisherPrefix(ctx context.Context, role textPublisherPrefixOpening, domain uint8) (*client.ClosedSourcePrefix, error) {
-	if owner == nil || ctx == nil || ctx.Err() != nil || !(domain == 4 && role == &owner.introduction || domain == 3 && role == &owner.responder) {
+	if owner == nil || ctx == nil || ctx.Err() != nil || !(domain == 4 && role == &owner.introduction.prefix || domain == 3 && role == &owner.responder) {
 		return nil, errors.New("text Publisher role context unavailable")
 	}
 	owner.mu.Lock()

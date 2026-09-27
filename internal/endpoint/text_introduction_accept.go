@@ -13,22 +13,6 @@ import (
 	nativeconnection "github.com/dianabuilds/ardents-network/internal/service/connection"
 )
 
-func (owner *textContext) acceptDispatchedTextIntroduction(ctx context.Context, job *textJobIdentity,
-	operation []byte) (*textIntroductionAttempt, error) {
-	return owner.acceptTextIntroductionGeneration(ctx, job, operation, nil, 1, time.Time{}, true)
-}
-
-func (owner *textContext) acceptDispatchedTextRecovery(ctx context.Context, job *textJobIdentity, operation []byte,
-	original *textServiceBinding, request nativeconnection.Recovery) (*textIntroductionAttempt, error) {
-	if !original.servesJob(owner, job) {
-		return nil, errors.New("text recovery binding unavailable")
-	}
-	if err := original.validateTextServiceRecovery(request); err != nil {
-		return nil, err
-	}
-	return owner.acceptTextIntroductionGeneration(ctx, job, operation, original, request.Generation, request.Deadline, true)
-}
-
 func (owner *textContext) acceptTextIntroductionGeneration(ctx context.Context, job *textJobIdentity, operation []byte,
 	original *textServiceBinding, expectedGeneration uint64, recoveryDeadline time.Time,
 	openingReserved bool) (attempt *textIntroductionAttempt, outcome error) {
@@ -62,7 +46,7 @@ func (owner *textContext) acceptTextIntroductionGeneration(ctx context.Context, 
 		return nil, fmt.Errorf("text Introduction registration ended: %s", registered.endReason())
 	}
 	if !openingReserved {
-		if err := owner.introductionAdmission.reserveOpeningLocked(capsule.DeliveryNonce, now); err != nil {
+		if err := owner.introduction.admission.reserveOpeningLocked(capsule.DeliveryNonce, now); err != nil {
 			return nil, &textIntroductionRefusal{cause: err}
 		}
 	}
@@ -118,6 +102,6 @@ func (owner *textContext) acceptTextIntroductionGeneration(ctx context.Context, 
 	if ctx.Err() != nil || !owner.liveTextServiceJobLocked(job, broker.Administration) || !at.Before(capsule.Expiry) || !retained || registered.recipientPublicLocked(at) == [32]byte{} {
 		return nil, errors.Join(ctx.Err(), errors.New("text Introduction authority ended during binding"))
 	}
-	owner.introductionAdmission.retainAcceptedLocked(capsule.DeliveryNonce, registered.expiry())
+	owner.introduction.admission.retainAcceptedLocked(capsule.DeliveryNonce, registered.expiry())
 	return &textIntroductionAttempt{binding: binding, plaintext: plaintext, digest: digest}, nil
 }

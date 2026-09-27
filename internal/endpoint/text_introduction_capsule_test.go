@@ -178,9 +178,9 @@ func TestTextIntroductionCapsuleBindsRealInstanceAndServiceStream(t *testing.T) 
 			}
 			publisher.mu.Lock()
 			responder := publisher.responder.currentLocked()
-			introduction := publisher.introduction.currentLocked()
+			introduction := publisher.introduction.prefix.currentLocked()
 			distinct := responder != nil && introduction != nil && (publisher.source.currentLocked() == nil || responder.prefix.Load() != publisher.source.currentLocked().prefix.Load()) && responder.prefix.Load() != introduction.prefix.Load() &&
-				publisher.responder.set != nil && publisher.responder.set != publisher.source.set && publisher.responder.set != publisher.introduction.set &&
+				publisher.responder.set != nil && publisher.responder.set != publisher.source.set && publisher.responder.set != publisher.introduction.prefix.set &&
 				publisher.responder.set.interior[0].Domain == 3 && publisher.permission.reserved[1] > beforeForward && publisher.responder.opening == nil
 			publisher.mu.Unlock()
 			if !distinct {
@@ -203,7 +203,7 @@ func TestTextIntroductionCapsuleBindsRealInstanceAndServiceStream(t *testing.T) 
 			if _, err := publisher.acceptTextIntroduction(t.Context(), publisherJob, attempt.operation); err == nil || !strings.Contains(err.Error(), "replay") {
 				t.Fatalf("replayed capsule accepted: %v", err)
 			}
-			if publisher.introductionAdmission.replays[sealed.DeliveryNonce] != registered.request.Expiry.Add(60*time.Second) {
+			if publisher.introduction.admission.replays[sealed.DeliveryNonce] != registered.request.Expiry.Add(60*time.Second) {
 				t.Fatal("replay retention does not cover original signed slot expiry")
 			}
 			exchangeTextCapsuleService(t, attempt, accepted)
@@ -286,24 +286,24 @@ func TestTextIntroductionReplayAndOpeningRateAreContextBounded(t *testing.T) {
 	owner := &textContext{}
 	now := time.Now().UTC()
 	for index := 0; index < 4; index++ {
-		if err := owner.introductionAdmission.reserveOpeningLocked(fixtureID(byte(index+1)), now); err != nil {
+		if err := owner.introduction.admission.reserveOpeningLocked(fixtureID(byte(index+1)), now); err != nil {
 			t.Fatal(err)
 		}
 	}
-	if err := owner.introductionAdmission.reserveOpeningLocked(fixtureID(8), now.Add(time.Second-time.Nanosecond)); err == nil {
+	if err := owner.introduction.admission.reserveOpeningLocked(fixtureID(8), now.Add(time.Second-time.Nanosecond)); err == nil {
 		t.Fatal("more than four openings in one second")
 	}
-	if err := owner.introductionAdmission.reserveOpeningLocked(fixtureID(8), now.Add(time.Second)); err != nil {
+	if err := owner.introduction.admission.reserveOpeningLocked(fixtureID(8), now.Add(time.Second)); err != nil {
 		t.Fatal(err)
 	}
-	if err := owner.introductionAdmission.reserveOpeningLocked(fixtureID(9), now); err == nil {
+	if err := owner.introduction.admission.reserveOpeningLocked(fixtureID(9), now); err == nil {
 		t.Fatal("clock rollback reopened rate allowance")
 	}
-	owner.introductionAdmission.replays = map[[32]byte]time.Time{fixtureID(10): now.Add(2 * time.Second)}
-	if err := owner.introductionAdmission.reserveOpeningLocked(fixtureID(10), now.Add(time.Second)); err == nil {
+	owner.introduction.admission.replays = map[[32]byte]time.Time{fixtureID(10): now.Add(2 * time.Second)}
+	if err := owner.introduction.admission.reserveOpeningLocked(fixtureID(10), now.Add(time.Second)); err == nil {
 		t.Fatal("replay allowed before expiry")
 	}
-	if err := owner.introductionAdmission.reserveOpeningLocked(fixtureID(10), now.Add(2*time.Second)); err != nil {
+	if err := owner.introduction.admission.reserveOpeningLocked(fixtureID(10), now.Add(2*time.Second)); err != nil {
 		t.Fatal(err)
 	}
 }

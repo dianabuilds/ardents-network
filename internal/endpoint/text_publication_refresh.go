@@ -278,7 +278,7 @@ func (owner *textContext) rotateTextPublication(flight *textPublicationRefresh, 
 		owner.mu.Unlock()
 		return textRefreshFailureAt("rotation-authority", errors.New("text publication refresh owner unavailable"))
 	}
-	prefix := owner.introduction.currentLocked()
+	prefix := owner.introduction.prefix.currentLocked()
 	owner.mu.Unlock()
 	if prefix == nil {
 		return textRefreshFailureAt("rotation-prefix", errors.New("text publication refresh prefix unavailable"))

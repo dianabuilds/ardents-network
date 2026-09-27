@@ -15,29 +15,26 @@ import (
 // It is never a wire identity or evidence of installed confinement. Only the
 // verified launch boundary may give a worker a Principal and Grant.
 type textContextState struct {
-	operationFailure      func(string)
-	publication           textPublication
-	introductionDispatch  textIntroductionDispatch
-	introductionExchanges textIntroductionExchangeSet
-	introductionAdmission textIntroductionAdmission
-	descriptorHistory     descriptorhistory.History
-	introduction          textIntroductionPrefixLifecycle
-	responder             textResponderPrefixLifecycle
-	resolution            *textResolutionFlight
-	source                textSourceLifecycle
-	issuance              *textIssuanceOperation
-	mu                    sync.Mutex
-	endpoint              *endpoint
-	lease                 *broker.ActiveSession
-	principal             [32]byte
-	surface               broker.Surface
-	job                   *textJobIdentity
-	lastJob               *textJobIdentity
-	verifiedJob           *textJobIdentity
-	permission            *textPermission
-	closed                bool
-	done                  chan struct{}
-	closeErr              error
+	operationFailure  func(string)
+	publication       textPublication
+	introduction      textIntroduction
+	descriptorHistory descriptorhistory.History
+	responder         textResponderPrefixLifecycle
+	resolution        *textResolutionFlight
+	source            textSourceLifecycle
+	issuance          *textIssuanceOperation
+	mu                sync.Mutex
+	endpoint          *endpoint
+	lease             *broker.ActiveSession
+	principal         [32]byte
+	surface           broker.Surface
+	job               *textJobIdentity
+	lastJob           *textJobIdentity
+	verifiedJob       *textJobIdentity
+	permission        *textPermission
+	closed            bool
+	done              chan struct{}
+	closeErr          error
 }
 
 func (owner *textContext) reportTextOperationFailure(failure string) {

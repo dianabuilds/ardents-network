@@ -21,12 +21,12 @@ type textIntroductionExchange struct {
 // joins these exchanges even when the worker's own cleanup has already ended.
 func (owner *textContext) beginTextIntroductionExchange(caller context.Context, job *textJobIdentity, surface broker.Surface) (context.Context, func(error) error, error) {
 	owner.mu.Lock()
-	if caller == nil || caller.Err() != nil || !owner.liveTextServiceJobLocked(job, surface) || owner.introductionExchanges.fullLocked(owner.streamExchangeLimitLocked()) {
+	if caller == nil || caller.Err() != nil || !owner.liveTextServiceJobLocked(job, surface) || owner.introduction.exchanges.fullLocked(owner.streamExchangeLimitLocked()) {
 		owner.mu.Unlock()
 		return nil, nil, errors.New("text Introduction exchange owner unavailable")
 	}
 	lifetime, cancel := context.WithCancel(job.context)
-	flight := owner.introductionExchanges.addLocked(cancel)
+	flight := owner.introduction.exchanges.addLocked(cancel)
 	owner.mu.Unlock()
 	interrupted := make(chan struct{})
 	stop := context.AfterFunc(caller, func() { defer close(interrupted); cancel() })
@@ -51,12 +51,12 @@ func (owner *textContext) beginTextIntroductionExchange(caller context.Context, 
 // alive only long enough for its owner to send terminal control and join it.
 func (owner *textContext) beginTextServiceTransportExchange(caller context.Context, job *textJobIdentity, surface broker.Surface) (context.Context, *textIntroductionExchange, func() bool, func(error) error, error) {
 	owner.mu.Lock()
-	if caller == nil || caller.Err() != nil || !owner.liveTextServiceJobLocked(job, surface) || owner.introductionExchanges.fullLocked(owner.streamExchangeLimitLocked()) {
+	if caller == nil || caller.Err() != nil || !owner.liveTextServiceJobLocked(job, surface) || owner.introduction.exchanges.fullLocked(owner.streamExchangeLimitLocked()) {
 		owner.mu.Unlock()
 		return nil, nil, nil, nil, errors.New("text Introduction exchange owner unavailable")
 	}
 	lifetime, cancel := context.WithCancel(context.WithoutCancel(job.context))
-	flight := owner.introductionExchanges.addLocked(cancel)
+	flight := owner.introduction.exchanges.addLocked(cancel)
 	owner.mu.Unlock()
 	interrupted := make(chan struct{})
 	stop := context.AfterFunc(caller, func() { defer close(interrupted); cancel() })
@@ -88,7 +88,7 @@ func (owner *textContext) retainTextServiceTransportExchangeLocked(job *textJobI
 	if flight == nil || owner.closed || !owner.liveTextServiceJobLocked(job, owner.surface) {
 		return false
 	}
-	return owner.introductionExchanges.retainLocked(flight)
+	return owner.introduction.exchanges.retainLocked(flight)
 }
 
 // finishTextIntroductionExchangeLocked publishes a failed Route cleanup before
@@ -99,6 +99,6 @@ func (owner *textContext) finishTextIntroductionExchangeLocked(flight *textIntro
 		owner.closed = true
 		owner.endpoint.failTextContexts(outcome)
 	}
-	owner.introductionExchanges.removeLocked(flight)
+	owner.introduction.exchanges.removeLocked(flight)
 	return outcome
 }

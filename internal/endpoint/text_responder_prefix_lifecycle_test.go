@@ -29,9 +29,9 @@ func (handle *textResponderPrefixHandle) Done() <-chan struct{} {
 
 func TestTextResponderCancelledOpeningDoesNotRetireIntroductionOrPublishPrefix(t *testing.T) {
 	owner := &textContext{}
-	introduction := &textIntroductionPrefixHandle{owner: &owner.introduction, cancel: func() {}}
+	introduction := &textIntroductionPrefixHandle{owner: &owner.introduction.prefix, cancel: func() {}}
 	introduction.prefix.Store(&client.ClosedSourcePrefix{})
-	owner.introduction.live = introduction
+	owner.introduction.prefix.live = introduction
 	attempt, cancel := context.WithCancel(t.Context())
 	flight := &textOperationFlight{context: attempt, cancel: cancel, done: make(chan struct{})}
 	if !owner.responder.reserveOpeningLocked(flight) {
@@ -50,7 +50,7 @@ func TestTextResponderCancelledOpeningDoesNotRetireIntroductionOrPublishPrefix(t
 	if err := retirement.closePrefix(); err != nil {
 		t.Fatal(err)
 	}
-	if owner.introduction.live != introduction || introduction.prefix.Load() == nil {
+	if owner.introduction.prefix.live != introduction || introduction.prefix.Load() == nil {
 		t.Fatal("Responder cancellation retired its sibling Introduction")
 	}
 	if owner.responder.currentLocked() != nil || owner.responder.opening != nil {

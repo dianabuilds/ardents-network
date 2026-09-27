@@ -5,6 +5,7 @@ package endpoint
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
@@ -71,12 +72,10 @@ func (owner *textContext) submitTextIntroduction(ctx context.Context, job *textJ
 // receiveTextIntroduction consumes one delivery from the actual channel owned
 // by this Publisher, then acknowledges only after independent local acceptance.
 func (owner *textContext) receiveTextIntroduction(ctx context.Context, job *textJobIdentity) (prepared *textIntroductionAttempt, outcome error) {
-	return owner.receiveTextIntroductionAfterDelivery(ctx, job, nil)
-}
-
-func (owner *textContext) receiveTextIntroductionAfterDelivery(ctx context.Context, job *textJobIdentity, deliveryReceived func()) (prepared *textIntroductionAttempt, outcome error) {
 	return owner.receiveTextIntroductionWith(ctx, job, textIntroductionDeliveryKey{generation: 1}, nil,
-		owner.acceptDispatchedTextIntroduction, deliveryReceived)
+		func(ctx context.Context, job *textJobIdentity, operation []byte) (*textIntroductionAttempt, error) {
+			return owner.acceptTextIntroductionGeneration(ctx, job, operation, nil, 1, time.Time{}, true)
+		}, nil)
 }
 
 func (owner *textContext) receiveTextRecovery(ctx context.Context, job *textJobIdentity, binding *textServiceBinding,
@@ -95,7 +94,13 @@ func (owner *textContext) receiveTextRecovery(ctx context.Context, job *textJobI
 	}
 	want := textIntroductionDeliveryKey{connection: binding.connectionNonce(), generation: request.Generation}
 	return owner.receiveTextIntroductionWith(ctx, job, want, binding, func(ctx context.Context, job *textJobIdentity, operation []byte) (*textIntroductionAttempt, error) {
-		return owner.acceptDispatchedTextRecovery(ctx, job, operation, binding, request)
+		if !binding.servesJob(owner, job) {
+			return nil, errors.New("text recovery binding unavailable")
+		}
+		if err := binding.validateTextServiceRecovery(request); err != nil {
+			return nil, err
+		}
+		return owner.acceptTextIntroductionGeneration(ctx, job, operation, binding, request.Generation, request.Deadline, true)
 	}, nil)
 }
 
@@ -137,7 +142,7 @@ func (owner *textContext) receiveTextIntroductionWith(ctx context.Context, job *
 			prepared = nil
 		}
 	}()
-	delivery, err := owner.introductionDispatch.receive(owner, lifetime, job, want, binding)
+	delivery, err := owner.introduction.dispatch.receive(owner, lifetime, job, want, binding)
 	if err != nil {
 		return nil, err
 	}

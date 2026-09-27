@@ -46,7 +46,7 @@ func holdTextInitialIntroductionReceiver(t *testing.T, ctx context.Context, owne
 	}()
 	for {
 		owner.mu.Lock()
-		gate := owner.introductionDispatch.delivery
+		gate := owner.introduction.dispatch.delivery
 		owner.mu.Unlock()
 		if gate != nil && len(gate) == 0 {
 			break

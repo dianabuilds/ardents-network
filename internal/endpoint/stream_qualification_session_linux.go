@@ -69,7 +69,7 @@ func (worker *qualifiedTextWorker) ReplenishPrefixes(ctx context.Context, presen
 	owner := worker.job.owner
 	owner.mu.Lock()
 	source := owner.source.currentLocked()
-	introduction := owner.introduction.currentLocked()
+	introduction := owner.introduction.prefix.currentLocked()
 	responder := owner.responder.currentLocked()
 	owner.mu.Unlock()
 	if source != nil {

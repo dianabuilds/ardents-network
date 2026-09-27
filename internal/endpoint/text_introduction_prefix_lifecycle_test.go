@@ -26,15 +26,15 @@ func TestTextIntroductionCancelledOpeningDoesNotRetireSourceOrPublishPrefix(t *t
 	owner.source.live = source
 	attempt, cancel := context.WithCancel(t.Context())
 	flight := &textOperationFlight{context: attempt, cancel: cancel, done: make(chan struct{})}
-	if !owner.introduction.reserveOpeningLocked(flight) {
+	if !owner.introduction.prefix.reserveOpeningLocked(flight) {
 		t.Fatal("Introduction lifecycle refused its first opening")
 	}
-	retirement := owner.introduction.stopLocked()
+	retirement := owner.introduction.prefix.stopLocked()
 	if attempt.Err() == nil {
 		t.Fatal("Introduction stop did not cancel its opening")
 	}
 	late := &client.ClosedSourcePrefix{}
-	if owner.introduction.finishOpeningLocked(flight, late, func() {}, true) {
+	if owner.introduction.prefix.finishOpeningLocked(flight, late, func() {}, true) {
 		t.Fatal("cancelled Introduction opening published a usable prefix")
 	}
 	close(flight.done)
@@ -45,7 +45,7 @@ func TestTextIntroductionCancelledOpeningDoesNotRetireSourceOrPublishPrefix(t *t
 	if owner.source.live != source || source.prefix.Load() == nil {
 		t.Fatal("Introduction cancellation retired its borrowed Source")
 	}
-	if owner.introduction.currentLocked() != nil || owner.introduction.openingInProgressLocked() {
+	if owner.introduction.prefix.currentLocked() != nil || owner.introduction.prefix.openingInProgressLocked() {
 		t.Fatal("cancelled Introduction opening remained usable")
 	}
 }

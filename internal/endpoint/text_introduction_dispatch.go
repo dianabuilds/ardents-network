@@ -176,10 +176,10 @@ func (owner *textContext) retainTextIntroductionRecovery(binding *textServiceBin
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
 	if !owner.liveTextServiceJobLocked(binding.jobIdentity(), broker.Administration) || binding.hasRecoveryLocked() ||
-		owner.introductionDispatch.recoveryCapacityReachedLocked(owner.streamConnectionLimitLocked()) {
+		owner.introduction.dispatch.recoveryCapacityReachedLocked(owner.streamConnectionLimitLocked()) {
 		return errors.New("text Introduction recovery owner capacity unavailable")
 	}
-	owner.introductionDispatch.addRecoveryLocked(binding)
+	owner.introduction.dispatch.addRecoveryLocked(binding)
 	return nil
 }
 
@@ -194,7 +194,7 @@ func (binding *textServiceBinding) releaseTextIntroductionRecovery() error {
 		owner.mu.Unlock()
 		return nil
 	}
-	owner.introductionDispatch.removeRecoveryLocked(recovery)
+	owner.introduction.dispatch.removeRecoveryLocked(recovery)
 	binding.recovery = nil
 	expiryDone, routed := recovery.retireLocked()
 	lifetime := owner.lease.Context()
@@ -270,7 +270,7 @@ func (owner *textContext) inspectTextIntroductionDelivery(ctx context.Context, j
 	if registered.ended() {
 		return textIntroductionDeliveryKey{}, capsule.Expiry, fmt.Errorf("text Introduction registration ended: %s", registered.endReason())
 	}
-	if err := owner.introductionAdmission.reserveOpeningLocked(capsule.DeliveryNonce, now); err != nil {
+	if err := owner.introduction.admission.reserveOpeningLocked(capsule.DeliveryNonce, now); err != nil {
 		return textIntroductionDeliveryKey{}, capsule.Expiry, &textIntroductionRefusal{cause: err}
 	}
 	plaintext, _, err := registered.openCapsuleLocked(capsule, profile.Digest, now)
