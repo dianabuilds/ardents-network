@@ -165,7 +165,9 @@ func runInstalledTextCommand(t *testing.T, ctx context.Context, input []byte, ar
 	}
 	bounded, cancel := context.WithTimeout(ctx, 35*time.Second)
 	defer cancel()
-	command := exec.CommandContext(bounded, worker.Text.Root()+"/ardents-text", arguments...)
+	// The canonical artifact path is spelled independently of the worker
+	// package; LoadArtifact above already pins and verifies the installed root.
+	command := exec.CommandContext(bounded, "/usr/lib/ardents/text-worker-root/ardents-text", arguments...)
 	command.WaitDelay = 5 * time.Second
 	command.Stdin = bytes.NewReader(input)
 	limit := map[string]int{"publish": 0, "link": 514, "read": 4 << 20}[arguments[0]]

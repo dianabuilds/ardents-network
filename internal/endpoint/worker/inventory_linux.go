@@ -27,12 +27,6 @@ func (inventory Inventory) root() string {
 	return textRoot
 }
 
-// Root returns the immutable private root path of the selected installed
-// artifact. It grants nothing; every use still goes through the root checks.
-func (inventory Inventory) Root() string {
-	return inventory.root()
-}
-
 func (inventory Inventory) manifest() string {
 	if inventory == Stream {
 		return "/etc/ardents/network-stream-worker-artifact.json"
