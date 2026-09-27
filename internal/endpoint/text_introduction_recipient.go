@@ -4,7 +4,7 @@ package endpoint
 
 import (
 	"errors"
-	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/client"
 	"time"
 )
 
@@ -14,7 +14,7 @@ func (owner *textContext) textIntroductionRecipientLocked() ([32]byte, uint64, t
 	if prefix := owner.currentTextSourceLocked(); prefix != nil {
 		return prefix.dataJoinRecipient()
 	}
-	source, ok := owner.endpoint.closedState.(route.ClosedBootstrapState)
+	source, ok := owner.endpoint.closedState.(client.ClosedBootstrapState)
 	if !ok || !owner.source.hasMembersLocked() {
 		return [32]byte{}, 0, time.Time{}, errors.New("text Introduction retained Source unavailable")
 	}
@@ -22,5 +22,5 @@ func (owner *textContext) textIntroductionRecipientLocked() ([32]byte, uint64, t
 	if err != nil {
 		return [32]byte{}, 0, time.Time{}, err
 	}
-	return route.InspectClosedDataJoinRecipient(source, selection)
+	return client.InspectClosedDataJoinRecipient(source, selection)
 }

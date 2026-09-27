@@ -14,8 +14,8 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/entry"
 	"github.com/dianabuilds/ardents-network/internal/network/duty"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
-	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/carrier"
+	"github.com/dianabuilds/ardents-network/internal/route/client"
 )
 
 // Explicit State/qualified-launch fixtures isolate set ownership. The tests
@@ -103,7 +103,7 @@ func textSourceContextFixture(t *testing.T) (*endpoint, *textContext, *textSourc
 	return endpoint, owner, source
 }
 
-func selectTextSource(t *testing.T, owner *textContext) route.ClosedBootstrapSelection {
+func selectTextSource(t *testing.T, owner *textContext) client.ClosedBootstrapSelection {
 	t.Helper()
 	owner.mu.Lock()
 	defer owner.mu.Unlock()

@@ -6,7 +6,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/client"
 )
 
 func (handle *textResponderPrefixHandle) Close() error {
@@ -30,7 +30,7 @@ func (handle *textResponderPrefixHandle) Done() <-chan struct{} {
 func TestTextResponderCancelledOpeningDoesNotRetireIntroductionOrPublishPrefix(t *testing.T) {
 	owner := &textContext{}
 	introduction := &textIntroductionPrefixHandle{owner: &owner.introduction, cancel: func() {}}
-	introduction.prefix.Store(&route.ClosedSourcePrefix{})
+	introduction.prefix.Store(&client.ClosedSourcePrefix{})
 	owner.introduction.live = introduction
 	attempt, cancel := context.WithCancel(t.Context())
 	flight := &textOperationFlight{context: attempt, cancel: cancel, done: make(chan struct{})}
@@ -41,7 +41,7 @@ func TestTextResponderCancelledOpeningDoesNotRetireIntroductionOrPublishPrefix(t
 	if attempt.Err() == nil {
 		t.Fatal("Responder stop did not cancel its opening")
 	}
-	late := &route.ClosedSourcePrefix{}
+	late := &client.ClosedSourcePrefix{}
 	if owner.responder.finishOpeningLocked(flight, late, func() {}, true) {
 		t.Fatal("cancelled Responder opening published a usable prefix")
 	}
@@ -64,7 +64,7 @@ func TestTextResponderOldOpeningCannotAcquireReplacementHandle(t *testing.T) {
 	if !lifecycle.reserveOpeningLocked(firstFlight) {
 		t.Fatal("Responder lifecycle refused first opening")
 	}
-	first := &route.ClosedSourcePrefix{}
+	first := &client.ClosedSourcePrefix{}
 	if !lifecycle.finishOpeningLocked(firstFlight, first, func() {}, true) {
 		t.Fatal("Responder lifecycle refused first completion")
 	}
@@ -73,7 +73,7 @@ func TestTextResponderOldOpeningCannotAcquireReplacementHandle(t *testing.T) {
 	if !lifecycle.reserveOpeningLocked(secondFlight) {
 		t.Fatal("Responder lifecycle refused replacement opening")
 	}
-	second := &route.ClosedSourcePrefix{}
+	second := &client.ClosedSourcePrefix{}
 	if !lifecycle.finishOpeningLocked(secondFlight, second, func() {}, true) {
 		t.Fatal("Responder lifecycle refused replacement completion")
 	}

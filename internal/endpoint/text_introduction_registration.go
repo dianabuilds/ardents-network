@@ -9,9 +9,9 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
-	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	introductioncapsule "github.com/dianabuilds/ardents-network/internal/route/capsule"
+	"github.com/dianabuilds/ardents-network/internal/route/client"
 	"github.com/dianabuilds/ardents-network/internal/route/terminal"
 	"github.com/dianabuilds/ardents-network/internal/service/instance"
 	"github.com/dianabuilds/ardents-network/internal/service/reachability"
@@ -48,7 +48,7 @@ type textIntroductionRegistration struct {
 	recipient     *instance.PrivateRecipient
 	recipientDone <-chan struct{}
 	descriptor    []byte
-	channel       *route.ClosedIntroductionRegistration
+	channel       *client.ClosedIntroductionRegistration
 	node          [32]byte
 	request       terminal.RegistrationRequest
 	cancel        context.CancelFunc
@@ -96,7 +96,7 @@ func (owner *textContext) openTextRegistration(ctx context.Context, revision uin
 	owner.mu.Unlock()
 	interrupted := make(chan struct{})
 	stop := context.AfterFunc(ctx, func() { defer close(interrupted); cancel() })
-	var channel *route.ClosedIntroductionRegistration
+	var channel *client.ClosedIntroductionRegistration
 	defer func() {
 		if !stop() {
 			<-interrupted
@@ -136,7 +136,7 @@ func (owner *textContext) openTextRegistration(ctx context.Context, revision uin
 	return &textIntroductionRegistration{createdAt: createdAt, channel: channel, node: receiver, request: request, cancel: cancel}, nil
 }
 
-func (owner *textContext) finishTextRegistration(ctx context.Context, flight *textRegistrationFlight, registered *textIntroductionRegistration, channel *route.ClosedIntroductionRegistration, outcome error) (*textIntroductionRegistration, error) {
+func (owner *textContext) finishTextRegistration(ctx context.Context, flight *textRegistrationFlight, registered *textIntroductionRegistration, channel *client.ClosedIntroductionRegistration, outcome error) (*textIntroductionRegistration, error) {
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
 	defer close(flight.done)
@@ -145,7 +145,7 @@ func (owner *textContext) finishTextRegistration(ctx context.Context, flight *te
 		!owner.publication.openingBaseLocked(flight.previous) || !owner.liveLocked(owner.endpoint, broker.Administration) {
 		flight.cancel()
 		cleanup := channel.Close()
-		if errors.Is(outcome, route.ErrClosedSourceCleanup) || cleanup != nil {
+		if errors.Is(outcome, client.ErrClosedSourceCleanup) || cleanup != nil {
 			owner.closeErr = errors.Join(owner.closeErr, outcome, cleanup)
 			owner.closed = true
 			owner.endpoint.failTextContexts(owner.closeErr)
@@ -251,7 +251,7 @@ func (registered *textIntroductionRegistration) ended() bool {
 }
 
 // endReason returns the fixed local terminal category of the channel.
-func (registered *textIntroductionRegistration) endReason() route.ClosedIntroductionEndReason {
+func (registered *textIntroductionRegistration) endReason() client.ClosedIntroductionEndReason {
 	return registered.channel.EndReason()
 }
 
@@ -267,7 +267,7 @@ func (registered *textIntroductionRegistration) doneSignal() <-chan struct{} {
 }
 
 // takeDelivery consumes the next buffered capsule delivery.
-func (registered *textIntroductionRegistration) takeDelivery(ctx context.Context) (*route.ClosedIntroductionDelivery, error) {
+func (registered *textIntroductionRegistration) takeDelivery(ctx context.Context) (*client.ClosedIntroductionDelivery, error) {
 	return registered.channel.TakeDelivery(ctx)
 }
 

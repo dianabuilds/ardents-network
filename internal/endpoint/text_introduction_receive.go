@@ -7,13 +7,13 @@ import (
 	"errors"
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
-	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/client"
 )
 
 // Select across at most the current and bounded predecessor registrations.
 // Refresh wakes an already waiting receiver without consuming/losing a capsule
 // in a canceled speculative goroutine. Acceptance still rechecks its owner.
-func (owner *textContext) nextTextIntroductionDelivery(ctx context.Context) (*route.ClosedIntroductionDelivery, error) {
+func (owner *textContext) nextTextIntroductionDelivery(ctx context.Context) (*client.ClosedIntroductionDelivery, error) {
 	for {
 		owner.mu.Lock()
 		if !owner.liveLocked(owner.endpoint, broker.Administration) || ctx.Err() != nil {

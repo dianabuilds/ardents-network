@@ -8,7 +8,7 @@ import (
 	"sync"
 
 	"github.com/dianabuilds/ardents-network/internal/application/streamqualification"
-	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/client"
 )
 
 // Run owns state used only by the fixed qualification caller. An ordinary
@@ -20,7 +20,7 @@ type Run struct {
 	acquireIntroduction func(context.Context) (func(), error)
 	acquireSetup        func(context.Context) (func(), error)
 	stopSampling        func() error
-	joins               map[*route.ClosedJoinedStream]struct{}
+	joins               map[*client.ClosedJoinedStream]struct{}
 	observe             func(context.Context, streamqualification.Report) error
 	report              *streamqualification.Report
 	stopOnce            sync.Once
@@ -126,19 +126,19 @@ func (run *Run) PublishReport(report streamqualification.Report) {
 	}
 }
 
-func (run *Run) RetainJoin(joined *route.ClosedJoinedStream) {
+func (run *Run) RetainJoin(joined *client.ClosedJoinedStream) {
 	if run == nil || joined == nil {
 		return
 	}
 	run.mu.Lock()
 	defer run.mu.Unlock()
 	if run.joins == nil {
-		run.joins = make(map[*route.ClosedJoinedStream]struct{})
+		run.joins = make(map[*client.ClosedJoinedStream]struct{})
 	}
 	run.joins[joined] = struct{}{}
 }
 
-func (run *Run) ReleaseJoin(joined *route.ClosedJoinedStream) {
+func (run *Run) ReleaseJoin(joined *client.ClosedJoinedStream) {
 	if run == nil {
 		return
 	}
@@ -147,20 +147,20 @@ func (run *Run) ReleaseJoin(joined *route.ClosedJoinedStream) {
 	run.mu.Unlock()
 }
 
-func (run *Run) JoinedStreams() []*route.ClosedJoinedStream {
+func (run *Run) JoinedStreams() []*client.ClosedJoinedStream {
 	if run == nil {
 		return nil
 	}
 	run.mu.Lock()
 	defer run.mu.Unlock()
-	joins := make([]*route.ClosedJoinedStream, 0, len(run.joins))
+	joins := make([]*client.ClosedJoinedStream, 0, len(run.joins))
 	for joined := range run.joins {
 		joins = append(joins, joined)
 	}
 	return joins
 }
 
-func (run *Run) Retains(joined *route.ClosedJoinedStream) bool {
+func (run *Run) Retains(joined *client.ClosedJoinedStream) bool {
 	if run == nil {
 		return false
 	}

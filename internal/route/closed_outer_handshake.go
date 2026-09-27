@@ -9,10 +9,12 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 )
 
-const (
-	closedOuterHandshakeBytes = 4 << 10
-	closedOuterLaneCredit     = 64 << 10
-)
+const closedOuterHandshakeBytes = 4 << 10
+
+// ClosedOuterLaneCredit is the exact initial credit window one outer bridge
+// lane grants its child. Client-side nested-terminal coverage installs peer
+// lanes with this same single window.
+const ClosedOuterLaneCredit = 64 << 10
 
 // ClosedOuterReceiver is the complete public State binding accepted by one
 // successor Node Carrier before it allocates an inner TLS handshake lane.
@@ -179,7 +181,7 @@ func (handshake *ClosedOuterHandshake) open(frame ardp.Frame) error {
 	if open.Deadline.Before(pending) {
 		pending = open.Deadline
 	}
-	handshake.children[frame.Lane] = closedOuterChild{deadline: open.Deadline, pendingDeadline: pending, restriction: restriction, purpose: open.Purpose, credit: closedOuterLaneCredit}
+	handshake.children[frame.Lane] = closedOuterChild{deadline: open.Deadline, pendingDeadline: pending, restriction: restriction, purpose: open.Purpose, credit: ClosedOuterLaneCredit}
 	handshake.lastOdd = frame.Lane
 	return nil
 }
@@ -236,7 +238,7 @@ func (handshake *ClosedOuterHandshake) bytes(frame ardp.Frame) ([]byte, error) {
 			return nil, errors.New("closed outer handshake bytes are unavailable")
 		}
 		child.bytes += bytes
-	} else if bytes > child.credit || child.queued+bytes > closedOuterLaneCredit || handshake.duty.limits.queue(uint64(bytes)) != nil {
+	} else if bytes > child.credit || child.queued+bytes > ClosedOuterLaneCredit || handshake.duty.limits.queue(uint64(bytes)) != nil {
 		return nil, errors.New("closed outer lane bytes are unavailable")
 	} else {
 		child.credit -= bytes
@@ -281,7 +283,7 @@ func (handshake *ClosedOuterHandshake) ConsumeInnerBytes(lane uint32, bytes uint
 		return ardp.Frame{}, errors.New("closed outer lane credit is unavailable")
 	}
 	child, exists := handshake.children[lane]
-	if !exists || !child.innerHello || child.eof || bytes > child.queued || bytes > closedOuterLaneCredit-child.credit {
+	if !exists || !child.innerHello || child.eof || bytes > child.queued || bytes > ClosedOuterLaneCredit-child.credit {
 		return ardp.Frame{}, errors.New("closed outer lane credit is unavailable")
 	}
 	child.queued -= bytes

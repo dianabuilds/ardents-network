@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/entry"
-	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/client"
 )
 
 // Each Source, Introduction, and Responder lifecycle retains its own Interior
@@ -43,33 +43,33 @@ func textInteriorSelectionFailureStage(cause error) string {
 	return "unknown"
 }
 
-func (owner *textContext) selectTextBootstrapLocked() (route.ClosedBootstrapSelection, error) {
+func (owner *textContext) selectTextBootstrapLocked() (client.ClosedBootstrapSelection, error) {
 	return owner.selectTextAdjacentLocked(1, owner.source.membersSlotLocked())
 }
 
-func (owner *textContext) selectTextAdjacentLocked(domain uint8, retained **textInteriorSet) (route.ClosedBootstrapSelection, error) {
+func (owner *textContext) selectTextAdjacentLocked(domain uint8, retained **textInteriorSet) (client.ClosedBootstrapSelection, error) {
 	profile, members, now, err := owner.endpoint.closedTextRoleMembers()
 	if err != nil {
-		return route.ClosedBootstrapSelection{}, textInteriorSelectionFailureAt("role-members-"+textRoleMemberFailureStage(err), err)
+		return client.ClosedBootstrapSelection{}, textInteriorSelectionFailureAt("role-members-"+textRoleMemberFailureStage(err), err)
 	}
 	entries, err := owner.endpoint.textEntrySets()
 	if err != nil {
-		return route.ClosedBootstrapSelection{}, textInteriorSelectionFailureAt("entries", err)
+		return client.ClosedBootstrapSelection{}, textInteriorSelectionFailureAt("entries", err)
 	}
 	pair, err := entries.Members(domain)
 	if err != nil {
-		return route.ClosedBootstrapSelection{}, textInteriorSelectionFailureAt("entry-pair", err)
+		return client.ClosedBootstrapSelection{}, textInteriorSelectionFailureAt("entry-pair", err)
 	}
 	if (*retained) != nil && now.Before((*retained).chosen) {
-		return route.ClosedBootstrapSelection{}, textInteriorSelectionFailureAt("time", errors.New("text source time regressed"))
+		return client.ClosedBootstrapSelection{}, textInteriorSelectionFailureAt("time", errors.New("text source time regressed"))
 	}
 	if (*retained) == nil || !now.Before((*retained).notAfter) {
 		if owner.permission.hasPending() {
-			return route.ClosedBootstrapSelection{}, errors.New("pending issuance cannot replace source set")
+			return client.ClosedBootstrapSelection{}, errors.New("pending issuance cannot replace source set")
 		}
 		selected, err := chooseTextInteriorSet(members, pair, now, domain)
 		if err != nil {
-			return route.ClosedBootstrapSelection{}, textInteriorSelectionFailureAt("choose", err)
+			return client.ClosedBootstrapSelection{}, textInteriorSelectionFailureAt("choose", err)
 		}
 		(*retained) = &selected
 	}
@@ -77,7 +77,7 @@ func (owner *textContext) selectTextAdjacentLocked(domain uint8, retained **text
 	// is a refusal here; this operation performs no automatic alternate attempt.
 	first, err := entries.CurrentMember(domain, 0)
 	if err != nil {
-		return route.ClosedBootstrapSelection{}, textInteriorSelectionFailureAt("entry-current", err)
+		return client.ClosedBootstrapSelection{}, textInteriorSelectionFailureAt("entry-current", err)
 	}
 	interior := (*retained).interior[0]
 	current := false
@@ -87,9 +87,9 @@ func (owner *textContext) selectTextAdjacentLocked(domain uint8, retained **text
 		}
 	}
 	if !current || interiorMemberConflict(first, interior) {
-		return route.ClosedBootstrapSelection{}, textInteriorSelectionFailureAt("membership", errors.New("text source member unavailable"))
+		return client.ClosedBootstrapSelection{}, textInteriorSelectionFailureAt("membership", errors.New("text source member unavailable"))
 	}
-	return route.ClosedBootstrapSelection{ProfileDigest: profile.Digest, EntryNodeID: first.NodeID, InteriorNodeID: interior.NodeID}, nil
+	return client.ClosedBootstrapSelection{ProfileDigest: profile.Digest, EntryNodeID: first.NodeID, InteriorNodeID: interior.NodeID}, nil
 }
 
 func chooseTextInteriorSet(members []textRoleMember, entries [2]entry.ClosedSetMember, now time.Time, domain uint8) (textInteriorSet, error) {

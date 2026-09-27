@@ -7,7 +7,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/client"
 )
 
 func TestTextIntroductionRefusalCannotHideTerminalFailure(t *testing.T) {
@@ -18,7 +18,7 @@ func TestTextIntroductionRefusalCannotHideTerminalFailure(t *testing.T) {
 		}
 	}
 	for _, err := range []error{nil, context.Canceled, errors.Join(refusal, context.Canceled),
-		errors.Join(errors.Join(refusal), route.ErrClosedSourceCleanup), errors.Join(refusal, errors.New("acknowledgement failed"))} {
+		errors.Join(errors.Join(refusal), client.ErrClosedSourceCleanup), errors.Join(refusal, errors.New("acknowledgement failed"))} {
 		if onlyTextIntroductionRefusal(err) {
 			t.Fatalf("terminal failure treated as input refusal: %v", err)
 		}

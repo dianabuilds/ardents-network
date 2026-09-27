@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
-	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/client"
 )
 
 func (owner *textContext) retainTextServiceTransportExchange(job *textJobIdentity, flight *textIntroductionExchange) bool {
@@ -50,7 +50,7 @@ func TestTextIntroductionExchangeCloseJoinsAndRetainsCleanupFailure(t *testing.T
 	case <-time.After(25 * time.Millisecond):
 	}
 	original := errors.New("delivery child cleanup failed")
-	outcome := finish(errors.Join(route.ErrClosedSourceCleanup, original))
+	outcome := finish(errors.Join(client.ErrClosedSourceCleanup, original))
 	finished = true
 	if !errors.Is(outcome, original) || !errors.Is(outcome, context.Canceled) {
 		t.Fatal("exchange lost original cleanup/cancellation")

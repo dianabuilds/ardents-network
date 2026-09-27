@@ -2,13 +2,16 @@ package route
 
 import "github.com/dianabuilds/ardents-network/internal/route/ardp"
 
+// The generation-3 role-domain and duty-subrole byte facts. Exported members
+// are composed and validated by the outgoing client path; the complete
+// assignment predicate remains ClosedPurposePermitsDuty.
 const (
-	closedRoleDomainInitiator    = uint8(1)
+	ClosedRoleDomainInitiator    = uint8(1)
 	closedRoleDomainRendezvous   = uint8(2)
 	closedRoleDomainResponder    = uint8(3)
-	closedRoleDomainIntroduction = uint8(4)
+	ClosedRoleDomainIntroduction = uint8(4)
 
-	closedDutyAdjacent     = uint8(1)
+	ClosedDutyAdjacent     = uint8(1)
 	closedDutyInterior     = uint8(2)
 	closedDutyIntroduction = uint8(3)
 	closedDutyDataJoin     = uint8(4)
@@ -27,12 +30,12 @@ func ClosedPurposePermitsDuty(purpose ardp.Purpose, domain, subrole uint8) bool 
 	case ardp.PurposeName, ardp.PurposeReachability:
 		return domain == closedRoleDomainRendezvous && subrole == closedDutyResolution
 	case ardp.PurposeIntroduction, ardp.PurposeSubmission:
-		return domain == closedRoleDomainIntroduction && subrole == closedDutyIntroduction
+		return domain == ClosedRoleDomainIntroduction && subrole == closedDutyIntroduction
 	case ardp.PurposeDataJoin:
 		return domain == closedRoleDomainRendezvous && subrole == closedDutyDataJoin
 	case ardp.PurposeForwarding:
-		return (domain == closedRoleDomainInitiator || domain == closedRoleDomainResponder || domain == closedRoleDomainIntroduction) &&
-			(subrole == closedDutyAdjacent || subrole == closedDutyInterior)
+		return (domain == ClosedRoleDomainInitiator || domain == closedRoleDomainResponder || domain == ClosedRoleDomainIntroduction) &&
+			(subrole == ClosedDutyAdjacent || subrole == closedDutyInterior)
 	default:
 		return false
 	}

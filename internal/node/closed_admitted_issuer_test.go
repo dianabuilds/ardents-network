@@ -14,8 +14,8 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	"github.com/dianabuilds/ardents-network/internal/route/terminal"
 
-	"github.com/dianabuilds/ardents-network/internal/route"
 	routecarrier "github.com/dianabuilds/ardents-network/internal/route/carrier"
+	"github.com/dianabuilds/ardents-network/internal/route/client"
 	"github.com/dianabuilds/ardents-network/internal/route/credential"
 )
 
@@ -60,7 +60,7 @@ func TestClosedIssuerAdmittedOperationAfterTwoBootstrapBatches(t *testing.T) {
 			}
 			bootstrap := func(pending *credential.PendingClosedTokenBatch) [][]byte {
 				t.Helper()
-				result, err := route.ExchangeClosedBootstrap(t.Context(), fixture, fixture.selection, pending.Request())
+				result, err := client.ExchangeClosedBootstrap(t.Context(), fixture, fixture.selection, pending.Request())
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -73,7 +73,7 @@ func TestClosedIssuerAdmittedOperationAfterTwoBootstrapBatches(t *testing.T) {
 			forward := bootstrap(prepare(challenge(0, 2), challenge(1, 2)))
 			control := bootstrap(prepare(challenge(2, 1), challenge(2, 1), challenge(2, 1)))
 			pending := prepare(challenge(0, 2))
-			third, err := route.ExchangeClosedBootstrap(t.Context(), fixture, fixture.selection, pending.Request())
+			third, err := client.ExchangeClosedBootstrap(t.Context(), fixture, fixture.selection, pending.Request())
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -81,7 +81,7 @@ func TestClosedIssuerAdmittedOperationAfterTwoBootstrapBatches(t *testing.T) {
 			if err != nil || exhausted.Status != 2 {
 				t.Fatalf("third bootstrap was not exhausted: %d / %v", exhausted.Status, err)
 			}
-			prefix, err := route.OpenClosedSourcePrefix(t.Context(), fixture, fixture.selection,
+			prefix, err := client.OpenClosedSourcePrefix(t.Context(), fixture, fixture.selection,
 				func(hello ardp.Hello, class uint8) ([]byte, error) {
 					for index := 0; index < 2; index++ {
 						if hello.RecipientNodeID == fixture.view.Nodes[index].NodeID && class == 2 && forward[index] != nil {
@@ -96,7 +96,7 @@ func TestClosedIssuerAdmittedOperationAfterTwoBootstrapBatches(t *testing.T) {
 				t.Fatal(err)
 			}
 			defer prefix.Close()
-			exchange := func(token []byte) (route.ClosedIssuanceExchangeResult, error) {
+			exchange := func(token []byte) (client.ClosedIssuanceExchangeResult, error) {
 				return prefix.ExchangeIssuer(t.Context(), func(hello ardp.Hello, class uint8) ([]byte, error) {
 					if hello.RecipientNodeID != profile.IssuerNodeID || hello.Purpose != ardp.PurposeIssuer || class != 1 {
 						return nil, errors.New("wrong receiving token challenge")

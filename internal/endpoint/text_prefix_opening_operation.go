@@ -6,7 +6,7 @@ import (
 	"context"
 	"errors"
 
-	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/client"
 )
 
 // textPrefixOpeningOperation owns the exact stock-to-Source-opening
@@ -45,7 +45,7 @@ func (operation *textPrefixOpeningOperation) cancel() {
 	}
 }
 
-func (operation *textPrefixOpeningOperation) complete(caller context.Context, prefix *route.ClosedSourcePrefix,
+func (operation *textPrefixOpeningOperation) complete(caller context.Context, prefix *client.ClosedSourcePrefix,
 	openErr error) (*textSourceHandle, error) {
 	owner := operation.owner
 	owner.mu.Lock()
@@ -61,7 +61,7 @@ func (operation *textPrefixOpeningOperation) complete(caller context.Context, pr
 		owner.source.finishOpeningLocked(operation, nil, nil, false)
 		operation.cancel()
 		cleanup := prefix.Close()
-		if errors.Is(openErr, route.ErrClosedSourceCleanup) || cleanup != nil {
+		if errors.Is(openErr, client.ErrClosedSourceCleanup) || cleanup != nil {
 			owner.closeErr = errors.Join(owner.closeErr, openErr, cleanup)
 			owner.closed = true
 			owner.endpoint.failTextContexts(owner.closeErr)

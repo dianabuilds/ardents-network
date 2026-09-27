@@ -10,15 +10,15 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
-	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
+	"github.com/dianabuilds/ardents-network/internal/route/client"
 )
 
 // textJoinedTransport retains the bounded Endpoint exchange until the Service
 // owner has joined its physical transport. Finishing setup must not cancel it.
 type textJoinedTransport struct {
 	job         *textJobIdentity
-	joined      *route.ClosedJoinedStream
+	joined      *client.ClosedJoinedStream
 	acquisition textJoinAcquisition
 	net.Conn
 	once    sync.Once
@@ -30,7 +30,7 @@ type textJoinedTransport struct {
 
 type textJoinPrefix interface {
 	dataJoinRecipient() ([32]byte, uint64, time.Time, error)
-	join(context.Context, route.ClosedTokenPresenter, route.ClosedJoinIntent) (*route.ClosedJoinedStream, error)
+	join(context.Context, client.ClosedTokenPresenter, client.ClosedJoinIntent) (*client.ClosedJoinedStream, error)
 }
 
 type textJoinAcquisition interface {
@@ -65,7 +65,7 @@ func (transport *textJoinedTransport) Close() error {
 }
 
 func textRouteStopOnly(err error) bool {
-	if err == nil || err == route.ErrClosedSourceStopped {
+	if err == nil || err == client.ErrClosedSourceStopped {
 		return true
 	}
 	if joined, ok := err.(interface{ Unwrap() []error }); ok {
@@ -125,7 +125,7 @@ func (owner *textContext) openTextJoinedTransportAfterSetup(ctx context.Context,
 	}
 	joining, stop := context.WithCancel(lifetime)
 	transferred := false
-	var raw *route.ClosedJoinedStream
+	var raw *client.ClosedJoinedStream
 	var acquisition textJoinAcquisition
 	defer func() {
 		if !transferred {
@@ -184,7 +184,7 @@ func (owner *textContext) openTextJoinedTransportAfterSetup(ctx context.Context,
 		setupComplete()
 	}
 	type joinedResult struct {
-		stream *route.ClosedJoinedStream
+		stream *client.ClosedJoinedStream
 		err    error
 	}
 	joined := make(chan joinedResult, 1)
@@ -258,7 +258,7 @@ func (owner *textContext) prepareTextJoinStock(ctx context.Context, attempt *tex
 	return nil
 }
 
-func (owner *textContext) joinTextIntroduction(ctx context.Context, job *textJobIdentity, attempt *textIntroductionAttempt, prefix textJoinAcquisition) (*route.ClosedJoinedStream, error) {
+func (owner *textContext) joinTextIntroduction(ctx context.Context, job *textJobIdentity, attempt *textIntroductionAttempt, prefix textJoinAcquisition) (*client.ClosedJoinedStream, error) {
 	facts := attempt.plaintext
 	node, generation, _, err := prefix.dataJoinRecipient()
 	if err != nil || node != facts.RendezvousNode || generation != facts.RendezvousDutyGeneration {
@@ -281,11 +281,11 @@ func (owner *textContext) joinTextIntroduction(ctx context.Context, job *textJob
 			return nil, errors.New("text JOIN token authority changed")
 		}
 		return owner.takeTextTokenLocked(current, now, hello, class, ctx)
-	}, route.ClosedJoinIntent{Secret: facts.JoinSecret, Context: facts.HandshakeContext, SetupDeadline: facts.Deadline, WorkDeadline: time.Unix(facts.WorkSafetyNotAfter, 0).UTC()})
+	}, client.ClosedJoinIntent{Secret: facts.JoinSecret, Context: facts.HandshakeContext, SetupDeadline: facts.Deadline, WorkDeadline: time.Unix(facts.WorkSafetyNotAfter, 0).UTC()})
 }
 
 func (owner *textContext) retainTextJoinedTransport(job *textJobIdentity, attempt *textIntroductionAttempt,
-	flight *textIntroductionExchange, acquisition textJoinAcquisition, joined *route.ClosedJoinedStream) bool {
+	flight *textIntroductionExchange, acquisition textJoinAcquisition, joined *client.ClosedJoinedStream) bool {
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
 	if attempt == nil || !attempt.binding.servesJob(owner, job) ||

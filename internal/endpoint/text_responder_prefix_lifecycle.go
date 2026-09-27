@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
-	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/client"
 )
 
 // textResponderPrefixLifecycle is the sole owner of the Publisher's live
@@ -24,12 +24,12 @@ type textResponderPrefixLifecycle struct {
 // live Responder prefix. Retirement invalidates every retained handle.
 type textResponderPrefixHandle struct {
 	owner  *textResponderPrefixLifecycle
-	prefix atomic.Pointer[route.ClosedSourcePrefix]
+	prefix atomic.Pointer[client.ClosedSourcePrefix]
 	cancel context.CancelFunc
 }
 
 type textResponderPrefixRetirement struct {
-	prefix  *route.ClosedSourcePrefix
+	prefix  *client.ClosedSourcePrefix
 	opening *textOperationFlight
 }
 
@@ -47,7 +47,7 @@ func (lifecycle *textResponderPrefixLifecycle) currentLocked() *textResponderPre
 	return lifecycle.live
 }
 
-func (lifecycle *textResponderPrefixLifecycle) acquireOpenedLocked(prefix *route.ClosedSourcePrefix) *textResponderPrefixHandle {
+func (lifecycle *textResponderPrefixLifecycle) acquireOpenedLocked(prefix *client.ClosedSourcePrefix) *textResponderPrefixHandle {
 	handle := lifecycle.currentLocked()
 	if handle == nil || prefix == nil || handle.prefix.Load() != prefix {
 		return nil
@@ -85,7 +85,7 @@ func (lifecycle *textResponderPrefixLifecycle) openingCurrentLocked(flight *text
 }
 
 func (lifecycle *textResponderPrefixLifecycle) finishOpeningLocked(flight *textOperationFlight,
-	prefix *route.ClosedSourcePrefix, cancel context.CancelFunc, publish bool) bool {
+	prefix *client.ClosedSourcePrefix, cancel context.CancelFunc, publish bool) bool {
 	if lifecycle == nil || lifecycle.opening != flight {
 		return false
 	}
@@ -159,7 +159,7 @@ func (handle *textResponderPrefixHandle) currentLocked(lifecycle *textResponderP
 	return handle != nil && lifecycle != nil && lifecycle.live == handle && handle.owner == lifecycle && handle.prefix.Load() != nil
 }
 
-func (handle *textResponderPrefixHandle) routePrefix() (*route.ClosedSourcePrefix, error) {
+func (handle *textResponderPrefixHandle) routePrefix() (*client.ClosedSourcePrefix, error) {
 	if handle == nil {
 		return nil, errors.New("text Responder prefix unavailable")
 	}
@@ -178,8 +178,8 @@ func (handle *textResponderPrefixHandle) dataJoinRecipient() ([32]byte, uint64, 
 	return prefix.DataJoinRecipient()
 }
 
-func (handle *textResponderPrefixHandle) join(ctx context.Context, present route.ClosedTokenPresenter,
-	intent route.ClosedJoinIntent) (*route.ClosedJoinedStream, error) {
+func (handle *textResponderPrefixHandle) join(ctx context.Context, present client.ClosedTokenPresenter,
+	intent client.ClosedJoinIntent) (*client.ClosedJoinedStream, error) {
 	prefix, err := handle.routePrefix()
 	if err != nil {
 		return nil, err
@@ -187,7 +187,7 @@ func (handle *textResponderPrefixHandle) join(ctx context.Context, present route
 	return prefix.Join(ctx, present, intent)
 }
 
-func (handle *textResponderPrefixHandle) replenish(ctx context.Context, present route.ClosedTokenPresenter) error {
+func (handle *textResponderPrefixHandle) replenish(ctx context.Context, present client.ClosedTokenPresenter) error {
 	prefix, err := handle.routePrefix()
 	if err != nil {
 		return err
@@ -242,8 +242,8 @@ func (acquisition *textResponderJoinAcquisition) dataJoinRecipient() ([32]byte, 
 	return handle.dataJoinRecipient()
 }
 
-func (acquisition *textResponderJoinAcquisition) join(ctx context.Context, present route.ClosedTokenPresenter,
-	intent route.ClosedJoinIntent) (*route.ClosedJoinedStream, error) {
+func (acquisition *textResponderJoinAcquisition) join(ctx context.Context, present client.ClosedTokenPresenter,
+	intent client.ClosedJoinIntent) (*client.ClosedJoinedStream, error) {
 	if acquisition == nil {
 		return nil, errors.New("text Responder JOIN acquisition unavailable")
 	}

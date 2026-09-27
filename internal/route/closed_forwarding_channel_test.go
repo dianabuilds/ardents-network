@@ -320,7 +320,7 @@ func TestClosedForwardingChannelRetains256ReadyLanesInRoundRobin(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for lane := uint32(1); lane <= 2*closedForwardChildren-1; lane += 2 {
+	for lane := uint32(1); lane <= 2*ClosedForwardChildren-1; lane += 2 {
 		if _, err := channel.Accept(ardp.Frame{Kind: ardp.KindOpen, Lane: lane, Body: open}); err != nil {
 			t.Fatalf("open lane %d: %v", lane, err)
 		}
@@ -329,15 +329,15 @@ func TestClosedForwardingChannelRetains256ReadyLanesInRoundRobin(t *testing.T) {
 			t.Fatalf("open schedule for lane %d = %+v / %t", lane, event, available)
 		}
 	}
-	if _, err := channel.Accept(ardp.Frame{Kind: ardp.KindOpen, Lane: 2*closedForwardChildren + 1, Body: open}); err == nil {
+	if _, err := channel.Accept(ardp.Frame{Kind: ardp.KindOpen, Lane: 2*ClosedForwardChildren + 1, Body: open}); err == nil {
 		t.Fatal("accepted a 257th forwarding lane")
 	}
-	for lane := uint32(1); lane <= 2*closedForwardChildren-1; lane += 2 {
+	for lane := uint32(1); lane <= 2*ClosedForwardChildren-1; lane += 2 {
 		if _, err := channel.Accept(ardp.Frame{Kind: ardp.KindBytes, Lane: lane, Body: []byte{byte(lane)}}); err != nil {
 			t.Fatalf("queue lane %d: %v", lane, err)
 		}
 	}
-	for lane := uint32(1); lane <= 2*closedForwardChildren-1; lane += 2 {
+	for lane := uint32(1); lane <= 2*ClosedForwardChildren-1; lane += 2 {
 		event, available := channel.NextAvailable(nil)
 		if !available || event.Kind != ardp.KindBytes || event.Lane != lane || len(event.Bytes) != 1 || event.Bytes[0] != byte(lane) {
 			t.Fatalf("data schedule for lane %d = %+v / %t", lane, event, available)

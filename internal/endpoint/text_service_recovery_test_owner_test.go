@@ -10,7 +10,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/client"
 )
 
 // textServiceRecoveryTestOwner gives every recovery-test worker and transport
@@ -102,7 +102,7 @@ func (owner *textServiceRecoveryTestOwner) Close() {
 // retirement failure carried beside it.
 func textRecoveryTestCleanupOnly(err error) bool {
 	if err == nil || err == context.Canceled || err == context.DeadlineExceeded || err == net.ErrClosed ||
-		err == io.ErrClosedPipe || err == route.ErrClosedSourceStopped {
+		err == io.ErrClosedPipe || err == client.ErrClosedSourceStopped {
 		return true
 	}
 	if joined, ok := err.(interface{ Unwrap() []error }); ok {

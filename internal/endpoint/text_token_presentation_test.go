@@ -16,7 +16,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/endpoint/tokenjournal"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
-	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/client"
 	"github.com/dianabuilds/ardents-network/internal/route/credential"
 )
 
@@ -119,7 +119,7 @@ func TestTextTokenCancellationAfterDurableMarkRetainsBurn(t *testing.T) {
 	}
 }
 
-func textTokenPresentationFixture(t *testing.T) (*endpoint, *textContext, route.ClosedBootstrapSelection,
+func textTokenPresentationFixture(t *testing.T) (*endpoint, *textContext, client.ClosedBootstrapSelection,
 	state.ClosedProfileView, ardp.Hello, []byte) {
 	t.Helper()
 	endpoint, owner, source := textSourceContextFixture(t)

@@ -20,8 +20,11 @@ const ClosedIntroductionRegistrationByteLimit = uint64(8 << 20)
 
 const closedChannelExporterLabel = "EXPORTER-ardents-channel-v3"
 
+// ClosedAdmissionFrameBytes is one transferred admission's own frame cost:
 // HELLO and ADMIT have already arrived when their admission is transferred.
-const closedAdmissionFrameBytes = 2*ardp.HeaderSize + 209 + 355
+// The outgoing client prefix reserves this exact allowance from the same
+// single definition.
+const ClosedAdmissionFrameBytes = 2*ardp.HeaderSize + 209 + 355
 
 // ClosedRoleReceiver is the exact current public State projection for one
 // role TLS receiver. It authorizes no peer-selected destination or profile.
@@ -220,7 +223,7 @@ func (channel *ClosedAdmissionChannel) acceptInitialAdmit(body []byte) (ClosedAd
 	}
 	defer releaseVerification()
 	now := channel.clock().UTC()
-	deadline := now.Add(closedClassLifetime(class))
+	deadline := now.Add(ClosedClassLifetime(class))
 	if channel.hello.Deadline.Before(deadline) {
 		deadline = channel.hello.Deadline
 	}
@@ -287,7 +290,10 @@ func closedClassBytes(class uint8) uint64 {
 	return 0
 }
 
-func closedClassLifetime(class uint8) time.Duration {
+// ClosedClassLifetime maps one admitted scheduling class to its exact
+// lifetime. The client prefix derives its lane end from this single
+// definition.
+func ClosedClassLifetime(class uint8) time.Duration {
 	switch class {
 	case 1:
 		return 30 * time.Second

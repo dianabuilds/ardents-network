@@ -8,7 +8,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/client"
 	"github.com/dianabuilds/ardents-network/internal/route/terminal"
 )
 
@@ -24,12 +24,12 @@ type textIntroductionPrefixLifecycle struct {
 // live Introduction prefix. Retirement invalidates every retained handle.
 type textIntroductionPrefixHandle struct {
 	owner  *textIntroductionPrefixLifecycle
-	prefix atomic.Pointer[route.ClosedSourcePrefix]
+	prefix atomic.Pointer[client.ClosedSourcePrefix]
 	cancel context.CancelFunc
 }
 
 type textIntroductionPrefixRetirement struct {
-	prefix  *route.ClosedSourcePrefix
+	prefix  *client.ClosedSourcePrefix
 	opening *textOperationFlight
 }
 
@@ -40,7 +40,7 @@ func (lifecycle *textIntroductionPrefixLifecycle) currentLocked() *textIntroduct
 	return lifecycle.live
 }
 
-func (lifecycle *textIntroductionPrefixLifecycle) acquireOpenedLocked(prefix *route.ClosedSourcePrefix) *textIntroductionPrefixHandle {
+func (lifecycle *textIntroductionPrefixLifecycle) acquireOpenedLocked(prefix *client.ClosedSourcePrefix) *textIntroductionPrefixHandle {
 	handle := lifecycle.currentLocked()
 	if handle == nil || prefix == nil || handle.prefix.Load() != prefix {
 		return nil
@@ -73,7 +73,7 @@ func (lifecycle *textIntroductionPrefixLifecycle) openingCurrentLocked(flight *t
 }
 
 func (lifecycle *textIntroductionPrefixLifecycle) finishOpeningLocked(flight *textOperationFlight,
-	prefix *route.ClosedSourcePrefix, cancel context.CancelFunc, publish bool) bool {
+	prefix *client.ClosedSourcePrefix, cancel context.CancelFunc, publish bool) bool {
 	if lifecycle == nil || lifecycle.opening != flight {
 		return false
 	}
@@ -153,7 +153,7 @@ func (handle *textIntroductionPrefixHandle) currentLocked(lifecycle *textIntrodu
 	return handle != nil && lifecycle != nil && lifecycle.live == handle && handle.owner == lifecycle && handle.prefix.Load() != nil
 }
 
-func (handle *textIntroductionPrefixHandle) routePrefix() (*route.ClosedSourcePrefix, error) {
+func (handle *textIntroductionPrefixHandle) routePrefix() (*client.ClosedSourcePrefix, error) {
 	if handle == nil {
 		return nil, errors.New("text Introduction prefix unavailable")
 	}
@@ -172,8 +172,8 @@ func (handle *textIntroductionPrefixHandle) introductionRecipient() ([32]byte, t
 	return prefix.IntroductionRecipient()
 }
 
-func (handle *textIntroductionPrefixHandle) register(ctx context.Context, present route.ClosedTokenPresenter,
-	request terminal.RegistrationRequest) (*route.ClosedIntroductionRegistration, error) {
+func (handle *textIntroductionPrefixHandle) register(ctx context.Context, present client.ClosedTokenPresenter,
+	request terminal.RegistrationRequest) (*client.ClosedIntroductionRegistration, error) {
 	prefix, err := handle.routePrefix()
 	if err != nil {
 		return nil, err
@@ -181,7 +181,7 @@ func (handle *textIntroductionPrefixHandle) register(ctx context.Context, presen
 	return prefix.RegisterIntroduction(ctx, present, request)
 }
 
-func (handle *textIntroductionPrefixHandle) replenish(ctx context.Context, present route.ClosedTokenPresenter) error {
+func (handle *textIntroductionPrefixHandle) replenish(ctx context.Context, present client.ClosedTokenPresenter) error {
 	prefix, err := handle.routePrefix()
 	if err != nil {
 		return err

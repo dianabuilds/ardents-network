@@ -14,7 +14,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
 	"github.com/dianabuilds/ardents-network/internal/application/interfacev2/connection"
 	"github.com/dianabuilds/ardents-network/internal/application/textdocument"
-	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/client"
 	nativeconnection "github.com/dianabuilds/ardents-network/internal/service/connection"
 	"github.com/dianabuilds/ardents-network/internal/service/targetlink"
 )
@@ -252,7 +252,7 @@ func textCanceledBeforeRequestCleanupOnly(err error) bool {
 	if err == nil || err == context.Canceled || err == os.ErrDeadlineExceeded || err == nativeconnection.ErrActiveViolation {
 		return true
 	}
-	if err == route.ErrClosedJoinPeerCleanupDeadline {
+	if err == client.ErrClosedJoinPeerCleanupDeadline {
 		return true
 	}
 	if timeout, ok := err.(interface{ Timeout() bool }); ok && timeout.Timeout() {

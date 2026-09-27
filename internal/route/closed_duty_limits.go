@@ -94,7 +94,7 @@ func (channel *closedDutyChannel) reserveChildCapacity(control bool) (bool, erro
 	limits := channel.limits
 	limits.mu.Lock()
 	defer limits.mu.Unlock()
-	reserved := channel.children-channel.reservedControlChildren >= closedForwardChildren
+	reserved := channel.children-channel.reservedControlChildren >= ClosedForwardChildren
 	if channel.released || limits.children >= closedDutyChildren || reserved && (!control || channel.reservedControlChildren >= 2) {
 		return false, errors.New("closed duty children exhausted")
 	}

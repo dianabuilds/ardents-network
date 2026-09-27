@@ -11,9 +11,13 @@ import (
 
 const (
 	closedLaneCredit       = uint64(64 << 10)
-	closedForwardChildren  = 256
 	closedPrefixQueueBytes = uint64(4 << 20)
 )
+
+// ClosedForwardChildren bounds one forwarding channel's simultaneous child
+// lanes. The outgoing child-capacity owner reserves against this single
+// bound.
+const ClosedForwardChildren = 256
 
 // ClosedForwardingAuthorizer checks one exact next public recipient before a
 // lane exists. It may not dial: the caller receives a later Open event only
@@ -92,7 +96,7 @@ func newClosedForwardingChannel(lease *ClosedAdmission, authorize ClosedForwardi
 	if !transferred {
 		return nil, errors.New("closed forwarding channel is unavailable")
 	}
-	channel := &ClosedForwardingChannel{duty: duty, deadline: lease.Deadline, byteLimit: lease.Bytes, usedBytes: closedAdmissionFrameBytes,
+	channel := &ClosedForwardingChannel{duty: duty, deadline: lease.Deadline, byteLimit: lease.Bytes, usedBytes: ClosedAdmissionFrameBytes,
 		authorize: authorize, replenish: replenish, hello: lease.hello, exporter: lease.exporter, clock: clock, children: make(map[uint32]closedForwardChild)}
 	if release != nil {
 		channel.releases = append(channel.releases, release)
@@ -169,7 +173,7 @@ func (channel *ClosedForwardingChannel) admit(frame ardp.Frame) (ClosedForwardin
 }
 
 func (channel *ClosedForwardingChannel) open(frame ardp.Frame) (ClosedForwardingEvent, error) {
-	if frame.Lane%2 == 0 || frame.Lane <= channel.lastOdd || len(channel.children) >= closedForwardChildren {
+	if frame.Lane%2 == 0 || frame.Lane <= channel.lastOdd || len(channel.children) >= ClosedForwardChildren {
 		return ClosedForwardingEvent{}, errors.New("closed forwarding child lane is invalid")
 	}
 	open, err := DecodeClosedOpen(frame.Body)
@@ -184,7 +188,7 @@ func (channel *ClosedForwardingChannel) open(frame ardp.Frame) (ClosedForwarding
 			return ClosedForwardingEvent{}, err
 		}
 	}
-	reservedControl, err := channel.duty.reserveChildCapacity(closedControlPurpose(open.Purpose))
+	reservedControl, err := channel.duty.reserveChildCapacity(ClosedControlPurpose(open.Purpose))
 	if err != nil {
 		return ClosedForwardingEvent{}, errors.New("closed forwarding child capacity is unavailable")
 	}

@@ -15,7 +15,7 @@ import (
 // It exposes each accepted child as an opaque inner net.Conn; it never parses
 // TLS or role bytes itself.
 type ClosedOuterBridge struct {
-	retired             [closedForwardChildren]uint32
+	retired             [ClosedForwardChildren]uint32
 	retiredNext         uint32
 	mu                  sync.Mutex
 	handshake           *ClosedOuterHandshake
@@ -86,7 +86,7 @@ func (bridge *ClosedOuterBridge) Accept(frame ardp.Frame) (*ClosedOuterBridgeLan
 	}
 	switch frame.Kind {
 	case ardp.KindHello:
-		accepted, err := ardp.AcceptFrame(0, closedOuterLaneCredit)
+		accepted, err := ardp.AcceptFrame(0, ClosedOuterLaneCredit)
 		if err != nil {
 			return nil, err
 		}
@@ -103,7 +103,7 @@ func (bridge *ClosedOuterBridge) Accept(frame ardp.Frame) (*ClosedOuterBridgeLan
 		if open.Deadline.Before(pending) {
 			pending = open.Deadline
 		}
-		lane := &closedOuterBridgeLane{bridge: bridge, id: frame.Lane, restriction: ClosedChildRestriction(frame.Body[49]), notify: make(chan struct{}, 1), outboundCredit: closedOuterLaneCredit, outboundChanged: make(chan struct{}), hardDeadline: open.Deadline, readDeadline: pending, writeDeadline: pending, authorizedUntil: pending}
+		lane := &closedOuterBridgeLane{bridge: bridge, id: frame.Lane, restriction: ClosedChildRestriction(frame.Body[49]), notify: make(chan struct{}, 1), outboundCredit: ClosedOuterLaneCredit, outboundChanged: make(chan struct{}), hardDeadline: open.Deadline, readDeadline: pending, writeDeadline: pending, authorizedUntil: pending}
 		bridge.lanes[frame.Lane] = lane
 		return &ClosedOuterBridgeLane{lane: lane}, nil
 	case ardp.KindBytes:
@@ -314,7 +314,7 @@ func (bridge *ClosedOuterBridge) credit(frame ardp.Frame) error {
 	bytes := binary.BigEndian.Uint32(frame.Body)
 	lane.mu.Lock()
 	defer lane.mu.Unlock()
-	if !lane.active || lane.dead || bytes == 0 || bytes > closedOuterLaneCredit-lane.outboundCredit {
+	if !lane.active || lane.dead || bytes == 0 || bytes > ClosedOuterLaneCredit-lane.outboundCredit {
 		return errors.New("closed outer bridge credit is unavailable")
 	}
 	lane.outboundCredit += bytes
@@ -358,7 +358,7 @@ func (lane *closedOuterBridgeLane) feed(value []byte) error {
 	defer lane.mu.Unlock()
 	limit := closedOuterHandshakeBytes
 	if lane.innerHello {
-		limit = closedOuterLaneCredit
+		limit = ClosedOuterLaneCredit
 	}
 	if lane.dead || lane.inputEOF || len(lane.buffer)+len(value) > limit {
 		return errors.New("closed outer bridge input is unavailable")

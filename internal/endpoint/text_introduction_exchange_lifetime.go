@@ -8,7 +8,7 @@ import (
 	"sync"
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
-	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/client"
 )
 
 type textIntroductionExchange struct {
@@ -94,7 +94,7 @@ func (owner *textContext) retainTextServiceTransportExchangeLocked(job *textJobI
 // finishTextIntroductionExchangeLocked publishes a failed Route cleanup before
 // releasing the reservation, so both exchange paths terminalize Context alike.
 func (owner *textContext) finishTextIntroductionExchangeLocked(flight *textIntroductionExchange, outcome error) error {
-	if errors.Is(outcome, route.ErrClosedSourceCleanup) {
+	if errors.Is(outcome, client.ErrClosedSourceCleanup) {
 		owner.closeErr = errors.Join(owner.closeErr, outcome)
 		owner.closed = true
 		owner.endpoint.failTextContexts(outcome)

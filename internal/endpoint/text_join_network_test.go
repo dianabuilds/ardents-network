@@ -12,9 +12,9 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
-	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	routecarrier "github.com/dianabuilds/ardents-network/internal/route/carrier"
+	"github.com/dianabuilds/ardents-network/internal/route/client"
 )
 
 func addTextDataJoinState(source *textSourceStateFixture) {
@@ -60,9 +60,9 @@ func exchangeTextRouteData(t *testing.T, reader, publisher *textContext, receive
 	}
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
-	intent := route.ClosedJoinIntent{Secret: fixtureID(232), Context: fixtureID(233), SetupDeadline: time.Now().UTC().Add(10 * time.Second).Truncate(time.Second), WorkDeadline: time.Now().UTC().Add(time.Minute).Truncate(time.Second)}
+	intent := client.ClosedJoinIntent{Secret: fixtureID(232), Context: fixtureID(233), SetupDeadline: time.Now().UTC().Add(10 * time.Second).Truncate(time.Second), WorkDeadline: time.Now().UTC().Add(time.Minute).Truncate(time.Second)}
 	type opened struct {
-		stream *route.ClosedJoinedStream
+		stream *client.ClosedJoinedStream
 		err    error
 	}
 	results := make(chan opened, 2)
@@ -87,7 +87,7 @@ func exchangeTextRouteData(t *testing.T, reader, publisher *textContext, receive
 			results <- opened{stream, err}
 		}()
 	}
-	var streams []*route.ClosedJoinedStream
+	var streams []*client.ClosedJoinedStream
 	for range 2 {
 		result := <-results
 		if result.err != nil {

@@ -6,8 +6,8 @@ import (
 	"context"
 	"errors"
 
-	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
+	"github.com/dianabuilds/ardents-network/internal/route/client"
 )
 
 // prepareTextIssuerStock funds issuer admission only for current requested
@@ -64,7 +64,7 @@ func (owner *textContext) prepareTextIssuerStock(ctx context.Context, requested 
 	return owner.issueTextTokensForOpeningWithCancellation(ctx, receivers, 1, opening, true, false, acquisition, expected)
 }
 
-func (operation *textIssuanceOperation) presentTextIssuerToken(selection route.ClosedBootstrapSelection, hello ardp.Hello, class uint8) ([]byte, error) {
+func (operation *textIssuanceOperation) presentTextIssuerToken(selection client.ClosedBootstrapSelection, hello ardp.Hello, class uint8) ([]byte, error) {
 	owner := operation.owner
 	owner.mu.Lock()
 	defer owner.mu.Unlock()

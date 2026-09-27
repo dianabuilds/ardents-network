@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/network/state"
-	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
+	"github.com/dianabuilds/ardents-network/internal/route/client"
 	"github.com/dianabuilds/ardents-network/internal/route/credential"
 )
 
@@ -58,7 +58,7 @@ func (permission *textPermission) remaining(class uint8) uint32 {
 // Context holds its admission lock while selecting the live Route prefix and
 // State challenges; the permission alone changes its batch and quota state.
 func (permission *textPermission) reserveBatchLocked(profile state.ClosedProfileView, now time.Time,
-	challenges []credential.ClosedTokenContext, selection route.ClosedBootstrapSelection, refill bool,
+	challenges []credential.ClosedTokenContext, selection client.ClosedBootstrapSelection, refill bool,
 	current *textSourceHandle, joined bool, expected *textSourceHandle) (*textTokenBatch, error) {
 	if batch := permission.pending; batch != nil {
 		if batch.refill != refill || !slices.Equal(batch.challenges, challenges) || batch.selection != selection ||

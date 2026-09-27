@@ -12,8 +12,8 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
-	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/carrier"
+	"github.com/dianabuilds/ardents-network/internal/route/client"
 )
 
 // Pause only the public State read before recipient selection. The test proves
@@ -115,7 +115,7 @@ func TestTextResolutionCompletionRetainsFailedCleanup(t *testing.T) {
 	owner.resolution = flight
 	owner.mu.Unlock()
 	original := errors.New("terminal CLOSE could not be emitted")
-	failure := errors.Join(route.ErrClosedSourceCleanup, original)
+	failure := errors.Join(client.ErrClosedSourceCleanup, original)
 	owner.finishTextResolution(flight, failure)
 	if endpoint.textAvailable() {
 		t.Fatal("cleanup failure left Endpoint accepting jobs")
@@ -123,7 +123,7 @@ func TestTextResolutionCompletionRetainsFailedCleanup(t *testing.T) {
 	if err := owner.Close(); !errors.Is(err, original) {
 		t.Fatalf("context lost original cleanup error: %v", err)
 	}
-	if err := owner.Close(); !errors.Is(err, route.ErrClosedSourceCleanup) {
+	if err := owner.Close(); !errors.Is(err, client.ErrClosedSourceCleanup) {
 		t.Fatalf("repeated close lost cleanup class: %v", err)
 	}
 	if err := endpoint.Close(); !errors.Is(err, original) {

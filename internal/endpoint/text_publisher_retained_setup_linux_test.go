@@ -16,8 +16,8 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/application/streamqualification"
 	"github.com/dianabuilds/ardents-network/internal/node"
 	"github.com/dianabuilds/ardents-network/internal/qualification"
-	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/carrier"
+	"github.com/dianabuilds/ardents-network/internal/route/client"
 )
 
 // The qualification setup is one retained 256-Connection Publisher set fed by
@@ -229,7 +229,7 @@ func TestTextPublisherBuildsRetainedQualificationSetAcrossFourReaders(t *testing
 			publisher.mu.Lock()
 			registration := publisher.publication.registration
 			publisher.mu.Unlock()
-			reason := route.ClosedIntroductionEndUnknown
+			reason := client.ClosedIntroductionEndUnknown
 			if registration != nil {
 				reason = registration.channel.EndReason()
 			}

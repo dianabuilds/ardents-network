@@ -13,8 +13,8 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
 	"github.com/dianabuilds/ardents-network/internal/application/textdocument"
-	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/carrier"
+	"github.com/dianabuilds/ardents-network/internal/route/client"
 	nativeconnection "github.com/dianabuilds/ardents-network/internal/service/connection"
 	"github.com/dianabuilds/ardents-network/internal/service/targetlink"
 )
@@ -147,7 +147,7 @@ func TestTextReadResultJoinsContextLossBeforeLocalRequest(t *testing.T) {
 // they are accepted only when every underlying cause is cancellation.
 func textReadCancellationOnly(err error) bool {
 	if err == context.Canceled || err == os.ErrDeadlineExceeded || err == nativeconnection.ErrActiveViolation ||
-		err == route.ErrClosedJoinPeerCleanupDeadline {
+		err == client.ErrClosedJoinPeerCleanupDeadline {
 		return true
 	}
 	if err == nil {
@@ -195,14 +195,14 @@ func TestTextReadCancellationRejectsAdditionalCleanupFailure(t *testing.T) {
 		t.Fatal("cancellation timeout wrapper refused")
 	}
 	if !textReadCancellationOnly(errors.Join(errors.New("text Service cleanup failed"), context.Canceled,
-		nativeconnection.ErrActiveViolation, route.ErrClosedJoinPeerCleanupDeadline)) {
+		nativeconnection.ErrActiveViolation, client.ErrClosedJoinPeerCleanupDeadline)) {
 		t.Fatal("known cancellation-induced native abort refused")
 	}
 	localAbort := errors.Join(
 		errors.New("text Service cleanup failed"),
 		nativeconnection.ErrActiveViolation,
 		errors.Join(errors.New("text Service transport retirement failed"), context.Canceled,
-			route.ErrClosedJoinPeerCleanupDeadline, &net.OpError{Op: "write", Err: os.ErrDeadlineExceeded}),
+			client.ErrClosedJoinPeerCleanupDeadline, &net.OpError{Op: "write", Err: os.ErrDeadlineExceeded}),
 	)
 	if !textCanceledBeforeRequestCleanupOnly(localAbort) {
 		t.Fatal("known cancellation-induced native abort refused")
@@ -214,12 +214,12 @@ func TestTextReadCancellationRejectsAdditionalCleanupFailure(t *testing.T) {
 
 func TestTextRouteStopOnlyRejectsJoinedPhysicalFailure(t *testing.T) {
 	fault := errors.New("physical retirement failed")
-	for _, err := range []error{nil, route.ErrClosedSourceStopped, errors.Join(route.ErrClosedSourceStopped, net.ErrClosed)} {
+	for _, err := range []error{nil, client.ErrClosedSourceStopped, errors.Join(client.ErrClosedSourceStopped, net.ErrClosed)} {
 		if !textRouteStopOnly(err) {
 			t.Fatalf("intentional Source stop refused: %v", err)
 		}
 	}
-	for _, err := range []error{fault, errors.Join(route.ErrClosedSourceStopped, fault)} {
+	for _, err := range []error{fault, errors.Join(client.ErrClosedSourceStopped, fault)} {
 		if textRouteStopOnly(err) {
 			t.Fatalf("physical failure hidden as Source stop: %v", err)
 		}
@@ -229,7 +229,7 @@ func TestTextRouteStopOnlyRejectsJoinedPhysicalFailure(t *testing.T) {
 func TestTextRecoveryTestCleanupOnlyRejectsJoinedPhysicalFailure(t *testing.T) {
 	fault := errors.New("physical cleanup failed")
 	for _, err := range []error{nil, context.Canceled, context.DeadlineExceeded, net.ErrClosed,
-		io.ErrClosedPipe, route.ErrClosedSourceStopped, errors.Join(context.Canceled, net.ErrClosed)} {
+		io.ErrClosedPipe, client.ErrClosedSourceStopped, errors.Join(context.Canceled, net.ErrClosed)} {
 		if !textRecoveryTestCleanupOnly(err) {
 			t.Fatalf("intentional cleanup refused: %v", err)
 		}

@@ -17,14 +17,14 @@ func TestClosedPurposeAssignmentTablePermitsOnlyNormativeDuties(t *testing.T) {
 		{ardp.PurposeIssuer, closedRoleDomainRendezvous, closedDutyIssuance, true},
 		{ardp.PurposeName, closedRoleDomainRendezvous, closedDutyResolution, true},
 		{ardp.PurposeReachability, closedRoleDomainRendezvous, closedDutyResolution, true},
-		{ardp.PurposeIntroduction, closedRoleDomainIntroduction, closedDutyIntroduction, true},
-		{ardp.PurposeSubmission, closedRoleDomainIntroduction, closedDutyIntroduction, true},
+		{ardp.PurposeIntroduction, ClosedRoleDomainIntroduction, closedDutyIntroduction, true},
+		{ardp.PurposeSubmission, ClosedRoleDomainIntroduction, closedDutyIntroduction, true},
 		{ardp.PurposeDataJoin, closedRoleDomainRendezvous, closedDutyDataJoin, true},
-		{ardp.PurposeForwarding, closedRoleDomainInitiator, closedDutyAdjacent, true},
+		{ardp.PurposeForwarding, ClosedRoleDomainInitiator, ClosedDutyAdjacent, true},
 		{ardp.PurposeForwarding, closedRoleDomainResponder, closedDutyInterior, true},
 		{ardp.PurposeIssuer, closedRoleDomainRendezvous, closedDutyResolution, false},
-		{ardp.PurposeDataJoin, closedRoleDomainIntroduction, closedDutyIntroduction, false},
-		{ardp.PurposeForwarding, closedRoleDomainIntroduction, closedDutyIntroduction, false},
+		{ardp.PurposeDataJoin, ClosedRoleDomainIntroduction, closedDutyIntroduction, false},
+		{ardp.PurposeForwarding, ClosedRoleDomainIntroduction, closedDutyIntroduction, false},
 	}
 	for _, test := range cases {
 		if got := ClosedPurposePermitsDuty(test.purpose, test.domain, test.subrole); got != test.allowed {

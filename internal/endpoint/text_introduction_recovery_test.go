@@ -7,13 +7,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/client"
 )
 
 func TestTextIntroductionRecoveryHandoffOwnsBufferedDelivery(t *testing.T) {
 	key := textIntroductionDeliveryKey{generation: 2}
 	key.connection[0] = 1
-	routed := textIntroductionRoutedDelivery{delivery: &route.ClosedIntroductionDelivery{}, key: key}
+	routed := textIntroductionRoutedDelivery{delivery: &client.ClosedIntroductionDelivery{}, key: key}
 	recovery := &textIntroductionRecoveryOwner{delivery: make(chan textIntroductionRoutedDelivery, 1)}
 	recovery.delivery <- routed
 	_, stop := context.WithCancel(t.Context())
@@ -45,7 +45,7 @@ func TestTextIntroductionRecoveryHandoffOwnsBufferedDelivery(t *testing.T) {
 }
 
 func TestTextIntroductionRecoveryRetirementOwnsBufferedDelivery(t *testing.T) {
-	routed := textIntroductionRoutedDelivery{delivery: &route.ClosedIntroductionDelivery{}}
+	routed := textIntroductionRoutedDelivery{delivery: &client.ClosedIntroductionDelivery{}}
 	recovery := &textIntroductionRecoveryOwner{delivery: make(chan textIntroductionRoutedDelivery, 1)}
 	recovery.delivery <- routed
 	ctx, stop := context.WithCancel(t.Context())

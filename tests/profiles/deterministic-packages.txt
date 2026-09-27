@@ -33,6 +33,7 @@ github.com/dianabuilds/ardents-network/internal/route
 github.com/dianabuilds/ardents-network/internal/route/ardp
 github.com/dianabuilds/ardents-network/internal/route/carrier
 github.com/dianabuilds/ardents-network/internal/route/capsule
+github.com/dianabuilds/ardents-network/internal/route/client
 github.com/dianabuilds/ardents-network/internal/route/credential
 github.com/dianabuilds/ardents-network/internal/route/replay
 github.com/dianabuilds/ardents-network/internal/route/terminal

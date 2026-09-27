@@ -6,7 +6,7 @@ import (
 	"context"
 	"errors"
 
-	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/client"
 	"github.com/dianabuilds/ardents-network/internal/route/credential"
 )
 
@@ -17,7 +17,7 @@ type textTokenBatch struct {
 	refill     bool // Retained internal stock work; never receiver admission authority.
 	prefix     *textSourceHandle
 	challenges []credential.ClosedTokenContext
-	selection  route.ClosedBootstrapSelection
+	selection  client.ClosedBootstrapSelection
 	pending    *credential.PendingClosedTokenBatch
 }
 
@@ -102,7 +102,7 @@ func (owner *textContext) issueTextTokensForOpeningWithCancellation(ctx context.
 		return err
 	}
 	permission := owner.permission
-	source, ok := owner.endpoint.closedState.(route.ClosedBootstrapState)
+	source, ok := owner.endpoint.closedState.(client.ClosedBootstrapState)
 	if !ok || !permission.currentFor(profile, now) ||
 		owner.issuance != nil || !opening.admittedLocked(owner) || !textJoinIssuanceCurrentLocked(owner, acquisition, expected) {
 		owner.mu.Unlock()

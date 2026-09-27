@@ -7,8 +7,8 @@ import (
 	"errors"
 
 	"github.com/dianabuilds/ardents-network/internal/endpoint/tokenjournal"
-	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
+	"github.com/dianabuilds/ardents-network/internal/route/client"
 )
 
 // textPrefixPreparationFailure distinguishes the local stages which can stop
@@ -68,7 +68,7 @@ func (owner *textContext) openTextPrefix(ctx context.Context) (*textSourceHandle
 		owner.mu.Unlock()
 		return nil, textPrefixPreparationFailureAt("authority", errors.Join(err, errors.New("text prefix owner unavailable")))
 	}
-	source, ok := owner.endpoint.closedState.(route.ClosedBootstrapState)
+	source, ok := owner.endpoint.closedState.(client.ClosedBootstrapState)
 	if !ok {
 		owner.mu.Unlock()
 		return nil, textPrefixPreparationFailureAt("state", errors.New("text prefix State unavailable"))
@@ -86,13 +86,13 @@ func (owner *textContext) openTextPrefix(ctx context.Context) (*textSourceHandle
 	interrupted := make(chan struct{})
 	stop := context.AfterFunc(ctx, func() { defer close(interrupted); operation.cancel() })
 	selection, openErr := owner.ensureTextPrefixStock(operation.context, operation)
-	var prefix *route.ClosedSourcePrefix
+	var prefix *client.ClosedSourcePrefix
 	if openErr == nil {
-		prefix, openErr = route.OpenClosedSourcePrefix(operation.context, source, selection, func(hello ardp.Hello, class uint8) ([]byte, error) {
+		prefix, openErr = client.OpenClosedSourcePrefix(operation.context, source, selection, func(hello ardp.Hello, class uint8) ([]byte, error) {
 			return operation.presentTextToken(selection, hello, class)
 		})
 		if openErr != nil {
-			stage := route.ClosedSourceOpenFailureStage(openErr)
+			stage := client.ClosedSourceOpenFailureStage(openErr)
 			if presentation := textTokenPresentationFailureStage(openErr); presentation != "unknown" {
 				stage += "-" + presentation
 			}
@@ -104,7 +104,7 @@ func (owner *textContext) openTextPrefix(ctx context.Context) (*textSourceHandle
 	}
 	return operation.complete(ctx, prefix, openErr)
 }
-func (operation *textPrefixOpeningOperation) presentTextToken(selection route.ClosedBootstrapSelection, hello ardp.Hello, class uint8) ([]byte, error) {
+func (operation *textPrefixOpeningOperation) presentTextToken(selection client.ClosedBootstrapSelection, hello ardp.Hello, class uint8) ([]byte, error) {
 	owner := operation.owner
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
@@ -142,18 +142,18 @@ func (endpoint *endpoint) textTokenJournal() (*tokenjournal.Journal, error) {
 	return endpoint.closedTokenJournal, nil
 }
 
-func (owner *textContext) ensureTextPrefixStock(ctx context.Context, opening *textPrefixOpeningOperation) (route.ClosedBootstrapSelection, error) {
+func (owner *textContext) ensureTextPrefixStock(ctx context.Context, opening *textPrefixOpeningOperation) (client.ClosedBootstrapSelection, error) {
 	owner.mu.Lock()
 	_, _, err := owner.textPermissionProfileLocked()
 	if err != nil || ctx.Err() != nil || !owner.permission.hasAccepted() ||
 		owner.currentTextSourceLocked() != nil || !opening.admittedLocked(owner) || owner.issuance != nil {
 		owner.mu.Unlock()
-		return route.ClosedBootstrapSelection{}, textPrefixPreparationFailureAt("stock-authority", errors.Join(err, ctx.Err(), errors.New("text prefix stock owner unavailable")))
+		return client.ClosedBootstrapSelection{}, textPrefixPreparationFailureAt("stock-authority", errors.Join(err, ctx.Err(), errors.New("text prefix stock owner unavailable")))
 	}
 	selection, err := owner.selectTextBootstrapLocked()
 	if err != nil {
 		owner.mu.Unlock()
-		return route.ClosedBootstrapSelection{}, textPrefixPreparationFailureAt("stock-selection-"+textInteriorSelectionFailureStage(err), err)
+		return client.ClosedBootstrapSelection{}, textPrefixPreparationFailureAt("stock-selection-"+textInteriorSelectionFailureStage(err), err)
 	}
 	var missing [][32]byte
 	for _, receiver := range [][32]byte{selection.EntryNodeID, selection.InteriorNodeID} {
@@ -165,17 +165,17 @@ func (owner *textContext) ensureTextPrefixStock(ctx context.Context, opening *te
 	if len(missing) != 0 {
 		// Independent receiver inputs share one common class/window key.
 		if err := owner.issueTextTokensForOpening(ctx, missing, 2, opening, false); err != nil {
-			return route.ClosedBootstrapSelection{}, textPrefixPreparationFailureAt("stock-issuance", err)
+			return client.ClosedBootstrapSelection{}, textPrefixPreparationFailureAt("stock-issuance", err)
 		}
 	}
 	if err := owner.prepareTextIssuerStock(ctx, nil, 0, opening, nil, nil); err != nil {
-		return route.ClosedBootstrapSelection{}, textPrefixPreparationFailureAt("stock-issuer", err)
+		return client.ClosedBootstrapSelection{}, textPrefixPreparationFailureAt("stock-issuer", err)
 	}
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
 	current, err := owner.selectTextBootstrapLocked()
 	if err != nil || current != selection || ctx.Err() != nil || !opening.admittedLocked(owner) {
-		return route.ClosedBootstrapSelection{}, textPrefixPreparationFailureAt("stock-stability", errors.Join(err, ctx.Err(), errors.New("text prefix selection changed during issuance")))
+		return client.ClosedBootstrapSelection{}, textPrefixPreparationFailureAt("stock-stability", errors.Join(err, ctx.Err(), errors.New("text prefix selection changed during issuance")))
 	}
 	return selection, nil
 }

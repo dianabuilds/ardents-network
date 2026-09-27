@@ -6,7 +6,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/client"
 )
 
 func (handle *textIntroductionPrefixHandle) Done() <-chan struct{} {
@@ -22,7 +22,7 @@ func (handle *textIntroductionPrefixHandle) Done() <-chan struct{} {
 func TestTextIntroductionCancelledOpeningDoesNotRetireSourceOrPublishPrefix(t *testing.T) {
 	owner := &textContext{}
 	source := &textSourceHandle{owner: &owner.source, cancel: func() {}}
-	source.prefix.Store(&route.ClosedSourcePrefix{})
+	source.prefix.Store(&client.ClosedSourcePrefix{})
 	owner.source.live = source
 	attempt, cancel := context.WithCancel(t.Context())
 	flight := &textOperationFlight{context: attempt, cancel: cancel, done: make(chan struct{})}
@@ -33,7 +33,7 @@ func TestTextIntroductionCancelledOpeningDoesNotRetireSourceOrPublishPrefix(t *t
 	if attempt.Err() == nil {
 		t.Fatal("Introduction stop did not cancel its opening")
 	}
-	late := &route.ClosedSourcePrefix{}
+	late := &client.ClosedSourcePrefix{}
 	if owner.introduction.finishOpeningLocked(flight, late, func() {}, true) {
 		t.Fatal("cancelled Introduction opening published a usable prefix")
 	}
@@ -56,7 +56,7 @@ func TestTextIntroductionOldOpeningCannotAcquireReplacementHandle(t *testing.T) 
 	if !lifecycle.reserveOpeningLocked(firstFlight) {
 		t.Fatal("Introduction lifecycle refused first opening")
 	}
-	first := &route.ClosedSourcePrefix{}
+	first := &client.ClosedSourcePrefix{}
 	if !lifecycle.finishOpeningLocked(firstFlight, first, func() {}, true) {
 		t.Fatal("Introduction lifecycle refused first completion")
 	}
@@ -65,7 +65,7 @@ func TestTextIntroductionOldOpeningCannotAcquireReplacementHandle(t *testing.T) 
 	if !lifecycle.reserveOpeningLocked(secondFlight) {
 		t.Fatal("Introduction lifecycle refused replacement opening")
 	}
-	second := &route.ClosedSourcePrefix{}
+	second := &client.ClosedSourcePrefix{}
 	if !lifecycle.finishOpeningLocked(secondFlight, second, func() {}, true) {
 		t.Fatal("Introduction lifecycle refused replacement completion")
 	}

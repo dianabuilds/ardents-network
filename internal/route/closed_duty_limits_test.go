@@ -40,7 +40,7 @@ func TestClosedDutyLimitsBoundVerificationAndChildren(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for range closedForwardChildren {
+	for range ClosedForwardChildren {
 		if err := channel.reserveChild(); err != nil {
 			t.Fatal(err)
 		}

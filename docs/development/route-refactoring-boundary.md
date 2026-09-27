@@ -1,10 +1,11 @@
 # Route package refactoring boundary
 
 Status: working architecture analysis for the isolated refactoring branch. The
-capsule, terminal body, ARDP framing, replay, and Carrier extractions below are
-implemented and registered in the package map; the remaining Route split is
-still analysis, not a new Route contract or C0 execution ledger. The accepted Route and Carrier contracts
-govern behavior.
+capsule, terminal body, ARDP framing, replay, Carrier, and client-path
+extractions below are implemented and registered in the package map; the
+remaining v2 execution closure is still analysis, not a new Route contract or
+C0 execution ledger. The accepted Route, Carrier and client contracts govern
+behavior.
 
 ## Current Linux owner graph
 
@@ -163,6 +164,26 @@ wire grammar and tests with a small API and one import direction. The split
 must preserve exact persisted and wire identities, both selected Carriers,
 cleanup order, and the existing `route/credential` consumer. No bulk file move
 or `Closed*` rename is accepted from the prefix count alone.
+
+Realized for the client path: the outgoing cohort — the retained Source prefix
+with its multiplexed lanes, credit accounting and child lifetimes, the
+one-attempt issuer-bootstrap exchange and its plan validation, the read-only
+recipient inspection, and the client-side Introduction/JOIN/resolution/
+submission operations — now forms `internal/route/client` (package `client`),
+a leaf importing Route, live State, and the ardp, capsule, carrier and
+terminal leaves; Route never imports it. The seam kept one import direction by
+exporting the eight shared Route facts (`ClosedAdmissionFrameBytes`,
+`ClosedClassLifetime`, `ClosedControlPurpose`, `ClosedDutyAdjacent`,
+`ClosedForwardChildren`, `ClosedRoleDomainInitiator`,
+`ClosedRoleDomainIntroduction`, `ClosedOuterLaneCredit`), each keeping its
+single definition in Route, and by moving the terminal-priority switch to the
+client side with a new `ClosedOuterBridgeLane.BeginTerminalWrite` method for
+the outer-bridge case. The receiver-side `ClosedBootstrapController`
+(`closed_bootstrap.go`) stayed in Route as a node duty, exactly as the
+ownership-scale table required. Endpoint, Qualification and Node behavior
+tests import the leaf directly without delegating wrappers, and the 25
+behavior test files moved with their owner. What remains of the Route split
+is the v2 execution-closure retirement, which stays analysis.
 
 Before a split, resolve each shared declaration above and map every public
 `route.Closed*` caller to its prospective owner. Move behavior tests with the

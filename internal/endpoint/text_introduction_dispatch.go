@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
-	"github.com/dianabuilds/ardents-network/internal/route"
 	introductioncapsule "github.com/dianabuilds/ardents-network/internal/route/capsule"
+	"github.com/dianabuilds/ardents-network/internal/route/client"
 )
 
 const (
@@ -24,7 +24,7 @@ type textIntroductionDeliveryKey struct {
 }
 
 type textIntroductionRoutedDelivery struct {
-	delivery *route.ClosedIntroductionDelivery
+	delivery *client.ClosedIntroductionDelivery
 	key      textIntroductionDeliveryKey
 	expires  time.Time
 }
@@ -209,7 +209,7 @@ func (binding *textServiceBinding) releaseTextIntroductionRecovery() error {
 }
 
 func (owner *textContext) claimTextIntroductionDelivery(ctx context.Context,
-	job *textJobIdentity) (*route.ClosedIntroductionDelivery, textIntroductionDeliveryKey, time.Time, error) {
+	job *textJobIdentity) (*client.ClosedIntroductionDelivery, textIntroductionDeliveryKey, time.Time, error) {
 	delivery, err := owner.nextTextIntroductionDelivery(ctx)
 	if err != nil {
 		return nil, textIntroductionDeliveryKey{}, time.Time{}, err
@@ -222,11 +222,11 @@ func (owner *textContext) claimTextIntroductionDelivery(ctx context.Context,
 	return delivery, key, expires, nil
 }
 
-func (owner *textContext) refuseTextIntroductionDelivery(delivery *route.ClosedIntroductionDelivery, expires time.Time) error {
+func (owner *textContext) refuseTextIntroductionDelivery(delivery *client.ClosedIntroductionDelivery, expires time.Time) error {
 	return owner.completeTextIntroductionDelivery(delivery, expires, 1)
 }
 
-func (owner *textContext) completeTextIntroductionDelivery(delivery *route.ClosedIntroductionDelivery,
+func (owner *textContext) completeTextIntroductionDelivery(delivery *client.ClosedIntroductionDelivery,
 	expires time.Time, status uint8) error {
 	if owner == nil || delivery == nil {
 		return errors.New("text Introduction completion owner unavailable")
@@ -245,7 +245,7 @@ func (owner *textContext) completeTextIntroductionDelivery(delivery *route.Close
 // before decryption; acceptance repeats every other authority, publication,
 // replay and bound check before acknowledging success.
 func (owner *textContext) inspectTextIntroductionDelivery(ctx context.Context, job *textJobIdentity,
-	delivery *route.ClosedIntroductionDelivery) (textIntroductionDeliveryKey, time.Time, error) {
+	delivery *client.ClosedIntroductionDelivery) (textIntroductionDeliveryKey, time.Time, error) {
 	operation := delivery.Operation()
 	defer clear(operation)
 	_, capsule, err := introductioncapsule.DecodeSubmission(operation)

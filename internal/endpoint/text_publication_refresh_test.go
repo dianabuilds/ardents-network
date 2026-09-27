@@ -11,8 +11,8 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
 	"github.com/dianabuilds/ardents-network/internal/network/duty"
-	"github.com/dianabuilds/ardents-network/internal/route"
 	routecarrier "github.com/dianabuilds/ardents-network/internal/route/carrier"
+	"github.com/dianabuilds/ardents-network/internal/route/client"
 	"github.com/dianabuilds/ardents-network/internal/service/reachability"
 	"github.com/dianabuilds/ardents-network/internal/service/targetlink"
 )
@@ -403,7 +403,7 @@ func TestTextRefreshRetainsOriginalCleanupFailure(t *testing.T) {
 	owner.refreshFailure = func(failure string) { reported <- failure }
 	owner.mu.Unlock()
 	failed := errors.New("predecessor cleanup did not join")
-	owner.failTextRefresh(flight, "predecessor-retirement", errors.Join(route.ErrClosedSourceCleanup, failed))
+	owner.failTextRefresh(flight, "predecessor-retirement", errors.Join(client.ErrClosedSourceCleanup, failed))
 	select {
 	case failure := <-reported:
 		if failure != "predecessor-retirement" {

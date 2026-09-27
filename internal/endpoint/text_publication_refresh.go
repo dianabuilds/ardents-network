@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
-	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/client"
 )
 
 const textRefreshContentionRetryDelay = 100 * time.Millisecond
@@ -215,7 +215,7 @@ func (owner *textContext) runTextRefresh(flight *textPublicationRefresh) {
 			}
 			owner.mu.Unlock()
 			if err != nil {
-				owner.failTextRefresh(flight, "predecessor-retirement", errors.Join(route.ErrClosedSourceCleanup, err))
+				owner.failTextRefresh(flight, "predecessor-retirement", errors.Join(client.ErrClosedSourceCleanup, err))
 				return
 			}
 			continue
@@ -330,7 +330,7 @@ func (owner *textContext) failTextRefresh(flight *textPublicationRefresh, failur
 		report(failure)
 	}
 	var cleanup error
-	if errors.Is(cause, route.ErrClosedSourceCleanup) {
+	if errors.Is(cause, client.ErrClosedSourceCleanup) {
 		cleanup = cause
 	}
 	for _, registered := range []*textIntroductionRegistration{current, pending, previous} {

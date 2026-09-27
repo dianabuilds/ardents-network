@@ -49,7 +49,7 @@ func TestForwardingControlReservationSurvivesFullWorkSet(t *testing.T) {
 
 func TestForwardingDataCannotClaimReservedControl(t *testing.T) {
 	for _, purpose := range []ardp.Purpose{ardp.PurposeForwarding, ardp.PurposeDataJoin, ardp.PurposeName, 0, 255} {
-		if closedControlPurpose(purpose) {
+		if ClosedControlPurpose(purpose) {
 			t.Fatalf("purpose %d obtained control capacity", purpose)
 		}
 	}

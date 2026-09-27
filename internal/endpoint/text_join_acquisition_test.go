@@ -12,8 +12,8 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
 	"github.com/dianabuilds/ardents-network/internal/application/streamqualification"
 	"github.com/dianabuilds/ardents-network/internal/qualification"
-	"github.com/dianabuilds/ardents-network/internal/route"
 	introductioncapsule "github.com/dianabuilds/ardents-network/internal/route/capsule"
+	"github.com/dianabuilds/ardents-network/internal/route/client"
 )
 
 type textJoinRetiredAfterRecipient struct {
@@ -28,8 +28,8 @@ func (acquisition *textJoinRetiredAfterRecipient) dataJoinRecipient() ([32]byte,
 	return acquisition.node, acquisition.generation, acquisition.deadline, nil
 }
 
-func (*textJoinRetiredAfterRecipient) join(context.Context, route.ClosedTokenPresenter,
-	route.ClosedJoinIntent) (*route.ClosedJoinedStream, error) {
+func (*textJoinRetiredAfterRecipient) join(context.Context, client.ClosedTokenPresenter,
+	client.ClosedJoinIntent) (*client.ClosedJoinedStream, error) {
 	return nil, errors.New("retired JOIN acquisition used")
 }
 
@@ -46,7 +46,7 @@ func (*textJoinRetiredAfterRecipient) release() {}
 func TestTextJoinedTransportCloseReleasesSourceAcquisition(t *testing.T) {
 	lifecycle := &textSourceLifecycle{}
 	handle := &textSourceHandle{owner: lifecycle, cancel: func() {}}
-	handle.prefix.Store(&route.ClosedSourcePrefix{})
+	handle.prefix.Store(&client.ClosedSourcePrefix{})
 	lifecycle.live = handle
 	acquisition := lifecycle.acquireJoinLocked()
 	local, remote := net.Pipe()
@@ -73,7 +73,7 @@ func TestTextJoinOldAcquisitionCannotAttachAfterSourceReplacement(t *testing.T) 
 
 	owner.mu.Lock()
 	old := &textSourceHandle{owner: &owner.source, cancel: func() {}}
-	old.prefix.Store(&route.ClosedSourcePrefix{})
+	old.prefix.Store(&client.ClosedSourcePrefix{})
 	owner.source.live = old
 	acquisition := owner.source.acquireJoinLocked()
 	owner.mu.Unlock()
@@ -105,13 +105,13 @@ func TestTextJoinOldAcquisitionCannotAttachAfterSourceReplacement(t *testing.T) 
 	}
 
 	replacement := &textSourceHandle{owner: &owner.source, cancel: func() {}}
-	replacement.prefix.Store(&route.ClosedSourcePrefix{})
+	replacement.prefix.Store(&client.ClosedSourcePrefix{})
 	owner.mu.Lock()
 	old.prefix.Store(nil)
 	owner.source.live = replacement
 	owner.mu.Unlock()
 
-	joined := &route.ClosedJoinedStream{}
+	joined := &client.ClosedJoinedStream{}
 	if owner.retainTextJoinedTransport(job, attempt, flight, acquisition, joined) {
 		t.Fatal("late old JOIN acquisition attached after Source replacement")
 	}
@@ -161,9 +161,9 @@ func TestTextJoinSourceReplacementBeforeStockIssuanceDoesNotReserveAllocation(t 
 func TestTextPublisherJoinIssuanceRetainsExactLiveSource(t *testing.T) {
 	owner := &textContext{textContextState: textContextState{surface: broker.Administration}}
 	responder := &textResponderPrefixHandle{owner: &owner.responder, cancel: func() {}}
-	responder.prefix.Store(&route.ClosedSourcePrefix{})
+	responder.prefix.Store(&client.ClosedSourcePrefix{})
 	issuer := &textSourceHandle{owner: &owner.source, cancel: func() {}}
-	issuer.prefix.Store(&route.ClosedSourcePrefix{})
+	issuer.prefix.Store(&client.ClosedSourcePrefix{})
 	owner.responder.live = responder
 	owner.source.live = issuer
 	acquisition := owner.responder.acquireJoinLocked(issuer)
@@ -172,7 +172,7 @@ func TestTextPublisherJoinIssuanceRetainsExactLiveSource(t *testing.T) {
 		t.Fatal("Publisher JOIN issuance rejected its retained live Source")
 	}
 	replacement := &textSourceHandle{owner: &owner.source, cancel: func() {}}
-	replacement.prefix.Store(&route.ClosedSourcePrefix{})
+	replacement.prefix.Store(&client.ClosedSourcePrefix{})
 	owner.source.live = replacement
 	issuer.prefix.Store(nil)
 	if acquisition.currentLocked(owner) {

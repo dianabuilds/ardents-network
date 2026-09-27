@@ -16,7 +16,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/admission"
 	"github.com/dianabuilds/ardents-network/internal/custody"
-	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/client"
 	"github.com/dianabuilds/ardents-network/internal/route/credential"
 )
 
@@ -164,7 +164,7 @@ func TestTextPermissionRevocationDefersActiveBatchDiscardUntilOperationCompletio
 		operation.cancel()
 		canceled, stop := context.WithCancel(context.Background())
 		stop()
-		_ = operation.complete(canceled, route.ClosedIssuanceExchangeResult{}, context.Canceled)
+		_ = operation.complete(canceled, client.ClosedIssuanceExchangeResult{}, context.Canceled)
 	})
 	owner.clearTextPermissionLocked()
 	if owner.permission != nil || !operation.discardPermission || len(batch.pending.Request()) == 0 {
@@ -175,7 +175,7 @@ func TestTextPermissionRevocationDefersActiveBatchDiscardUntilOperationCompletio
 
 	canceled, stop := context.WithCancel(t.Context())
 	stop()
-	if err := operation.complete(canceled, route.ClosedIssuanceExchangeResult{}, context.Canceled); err == nil {
+	if err := operation.complete(canceled, client.ClosedIssuanceExchangeResult{}, context.Canceled); err == nil {
 		t.Fatal("revoked operation completed")
 	}
 	if len(batch.pending.Request()) != 0 {

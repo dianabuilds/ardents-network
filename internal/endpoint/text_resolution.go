@@ -8,8 +8,8 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
-	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
+	"github.com/dianabuilds/ardents-network/internal/route/client"
 	"github.com/dianabuilds/ardents-network/internal/service/reachability"
 )
 
@@ -25,7 +25,7 @@ type textResolutionFlight struct {
 type textResolutionSource interface {
 	currentLocked(*textContext) bool
 	resolutionRecipient() ([32]byte, error)
-	exchangeDescriptor(context.Context, route.ClosedTokenPresenter, [32]byte, []byte) (uint8, []byte, error)
+	exchangeDescriptor(context.Context, client.ClosedTokenPresenter, [32]byte, []byte) (uint8, []byte, error)
 }
 
 // lookupTextDescriptor consumes the context's actual issuer stock and journal,
@@ -137,7 +137,7 @@ func (owner *textContext) finishTextResolution(flight *textResolutionFlight, out
 		flight.releaseSource()
 		flight.releaseSource = nil
 	}
-	if errors.Is(outcome, route.ErrClosedSourceCleanup) {
+	if errors.Is(outcome, client.ErrClosedSourceCleanup) {
 		owner.closeErr = errors.Join(owner.closeErr, outcome)
 		owner.closed = true
 		owner.endpoint.failTextContexts(outcome)

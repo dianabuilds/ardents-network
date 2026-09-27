@@ -8,7 +8,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/admission"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
-	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/client"
 	"github.com/dianabuilds/ardents-network/internal/route/credential"
 )
 
@@ -43,7 +43,7 @@ func TestTextPermissionRejectsEmptyOrInvalidClassBeforeBatchPreparation(t *testi
 		{{Class: 4}},
 	} {
 		if batch, err := permission.reserveBatchLocked(state.ClosedProfileView{}, time.Now(), challenges,
-			route.ClosedBootstrapSelection{}, false, nil, false, nil); err == nil || batch != nil {
+			client.ClosedBootstrapSelection{}, false, nil, false, nil); err == nil || batch != nil {
 			t.Fatalf("invalid batch admitted: batch=%v err=%v", batch, err)
 		}
 	}

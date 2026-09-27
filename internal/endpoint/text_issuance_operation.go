@@ -7,8 +7,8 @@ import (
 	"errors"
 
 	"github.com/dianabuilds/ardents-network/internal/network/state"
-	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
+	"github.com/dianabuilds/ardents-network/internal/route/client"
 )
 
 // textIssuanceOperation owns one admitted issuance attempt through transport
@@ -60,17 +60,17 @@ func (operation *textIssuanceOperation) retirePermissionLocked(permission *textP
 	return true
 }
 
-func (operation *textIssuanceOperation) run(caller context.Context, source route.ClosedBootstrapState,
-	selection route.ClosedBootstrapSelection) error {
+func (operation *textIssuanceOperation) run(caller context.Context, source client.ClosedBootstrapState,
+	selection client.ClosedBootstrapSelection) error {
 	interrupted := make(chan struct{})
 	stop := context.AfterFunc(caller, func() {
 		defer close(interrupted)
 		operation.cancel()
 	})
-	var result route.ClosedIssuanceExchangeResult
+	var result client.ClosedIssuanceExchangeResult
 	var exchangeErr error
 	if operation.prefix == nil {
-		result, exchangeErr = route.ExchangeClosedBootstrap(operation.context, source, selection, operation.request)
+		result, exchangeErr = client.ExchangeClosedBootstrap(operation.context, source, selection, operation.request)
 	} else {
 		result, exchangeErr = operation.prefix.exchangeIssuer(operation.context, func(hello ardp.Hello, tokenClass uint8) ([]byte, error) {
 			return operation.presentTextIssuerToken(selection, hello, tokenClass)
@@ -83,7 +83,7 @@ func (operation *textIssuanceOperation) run(caller context.Context, source route
 	return operation.complete(caller, result, exchangeErr)
 }
 
-func (operation *textIssuanceOperation) complete(caller context.Context, result route.ClosedIssuanceExchangeResult, exchangeErr error) error {
+func (operation *textIssuanceOperation) complete(caller context.Context, result client.ClosedIssuanceExchangeResult, exchangeErr error) error {
 	owner := operation.owner
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
@@ -93,7 +93,7 @@ func (operation *textIssuanceOperation) complete(caller context.Context, result 
 		return errors.New("text issuance completion owner changed")
 	}
 	owner.issuance = nil
-	if errors.Is(exchangeErr, route.ErrClosedBootstrapCleanup) || errors.Is(exchangeErr, route.ErrClosedSourceCleanup) {
+	if errors.Is(exchangeErr, client.ErrClosedBootstrapCleanup) || errors.Is(exchangeErr, client.ErrClosedSourceCleanup) {
 		owner.closeErr = errors.Join(owner.closeErr, exchangeErr)
 		owner.closed = true
 		owner.endpoint.failTextContexts(exchangeErr)

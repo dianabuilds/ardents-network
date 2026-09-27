@@ -13,6 +13,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	"github.com/dianabuilds/ardents-network/internal/route/carrier"
+	"github.com/dianabuilds/ardents-network/internal/route/client"
 )
 
 type textRoleMember struct {
@@ -44,7 +45,7 @@ func textRoleMemberFailureStage(cause error) string {
 // closedTextRoleMembers joins two live projections from the opened State
 // owner. The worker and permission response cannot provide these bindings.
 func (endpoint *endpoint) closedTextRoleMembers() (state.ClosedProfileView, []textRoleMember, time.Time, error) {
-	source, ok := endpoint.closedState.(route.ClosedBootstrapState)
+	source, ok := endpoint.closedState.(client.ClosedBootstrapState)
 	if !ok || endpoint.clock == nil || endpoint.closedRoleRoot == "" {
 		return state.ClosedProfileView{}, nil, time.Time{}, textRoleMemberFailureAt("owner", errors.New("text State owner unavailable"))
 	}

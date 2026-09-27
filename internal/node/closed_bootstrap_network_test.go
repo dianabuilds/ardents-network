@@ -19,8 +19,8 @@ import (
 	admissiongrammar "github.com/dianabuilds/ardents-network/internal/admission"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/resource"
-	"github.com/dianabuilds/ardents-network/internal/route"
 	routecarrier "github.com/dianabuilds/ardents-network/internal/route/carrier"
+	"github.com/dianabuilds/ardents-network/internal/route/client"
 	"github.com/dianabuilds/ardents-network/internal/route/credential"
 )
 
@@ -32,7 +32,7 @@ type closedBootstrapNetwork struct {
 	view      state.ClosedRouteView
 	snapshot  state.Snapshot
 	authority ed25519.PrivateKey
-	selection route.ClosedBootstrapSelection
+	selection client.ClosedBootstrapSelection
 }
 
 func (fixture *closedBootstrapNetwork) Current() (state.Snapshot, error) {
@@ -106,7 +106,7 @@ func newClosedBootstrapNetwork(t *testing.T, carrier routecarrier.CarrierProfile
 			NodeID: id, NodePublicKey: keys[index], RecordGeneration: uint64(index + 1), RecordValidFrom: window, RecordValidUntil: profile.NotAfter,
 			DeclaredFamily: family, ProbeEndpoint: candidate.Endpoint, CarrierProfile: string(carrier), CandidateCount: 3}
 	}
-	fixture.selection = route.ClosedBootstrapSelection{ProfileDigest: profile.Digest, EntryNodeID: fixture.view.Nodes[0].NodeID, InteriorNodeID: fixture.view.Nodes[1].NodeID}
+	fixture.selection = client.ClosedBootstrapSelection{ProfileDigest: profile.Digest, EntryNodeID: fixture.view.Nodes[0].NodeID, InteriorNodeID: fixture.view.Nodes[1].NodeID}
 	for index := 2; index >= 0; index-- {
 		snapshot := snapshots[index]
 		for peerIndex, candidate := range fixture.snapshot.Candidates[:3] {

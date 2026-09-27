@@ -7,8 +7,8 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/route/terminal"
 
-	"github.com/dianabuilds/ardents-network/internal/route"
 	routecarrier "github.com/dianabuilds/ardents-network/internal/route/carrier"
+	"github.com/dianabuilds/ardents-network/internal/route/client"
 	"github.com/dianabuilds/ardents-network/internal/route/credential"
 )
 
@@ -21,7 +21,7 @@ func TestClosedBootstrapClientIssuesThroughEntryInteriorAndIssuer(t *testing.T) 
 			for attempt := 0; attempt < 2; attempt++ {
 				// The same request exercises durable exact retry. Permission has budget
 				// for only one batch, so a second debit cannot also return 32 signatures.
-				result, err := route.ExchangeClosedBootstrap(t.Context(), fixture, fixture.selection, pending.Request())
+				result, err := client.ExchangeClosedBootstrap(t.Context(), fixture, fixture.selection, pending.Request())
 				if err != nil {
 					t.Fatalf("network exchange %d: %v", attempt, err)
 				}

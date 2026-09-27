@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/carrier"
+	"github.com/dianabuilds/ardents-network/internal/route/client"
 )
 
 // These helpers let package tests force the Route's finite lifetime. They are
@@ -35,7 +35,7 @@ func (handle *textSourceHandle) ResolutionRecipient() ([32]byte, error) {
 	return handle.resolutionRecipient()
 }
 
-func (handle *textSourceHandle) ExchangeDescriptor(ctx context.Context, present route.ClosedTokenPresenter,
+func (handle *textSourceHandle) ExchangeDescriptor(ctx context.Context, present client.ClosedTokenPresenter,
 	target [32]byte, descriptor []byte) (uint8, []byte, error) {
 	return handle.exchangeDescriptor(ctx, present, target, descriptor)
 }
@@ -44,7 +44,7 @@ func (handle *textSourceHandle) SubmissionRecipient() ([32]byte, error) {
 	return handle.submissionRecipient()
 }
 
-func (handle *textSourceHandle) SubmitIntroduction(ctx context.Context, present route.ClosedTokenPresenter,
+func (handle *textSourceHandle) SubmitIntroduction(ctx context.Context, present client.ClosedTokenPresenter,
 	operation []byte) (uint8, error) {
 	return handle.submitIntroduction(ctx, present, operation)
 }
@@ -53,17 +53,17 @@ func (handle *textSourceHandle) DataJoinRecipient() ([32]byte, uint64, time.Time
 	return handle.dataJoinRecipient()
 }
 
-func (handle *textSourceHandle) Join(ctx context.Context, present route.ClosedTokenPresenter,
-	intent route.ClosedJoinIntent) (*route.ClosedJoinedStream, error) {
+func (handle *textSourceHandle) Join(ctx context.Context, present client.ClosedTokenPresenter,
+	intent client.ClosedJoinIntent) (*client.ClosedJoinedStream, error) {
 	return handle.join(ctx, present, intent)
 }
 
-func (handle *textSourceHandle) ExchangeIssuer(ctx context.Context, present route.ClosedTokenPresenter,
-	batch []byte) (route.ClosedIssuanceExchangeResult, error) {
+func (handle *textSourceHandle) ExchangeIssuer(ctx context.Context, present client.ClosedTokenPresenter,
+	batch []byte) (client.ClosedIssuanceExchangeResult, error) {
 	return handle.exchangeIssuer(ctx, present, batch)
 }
 
-func (handle *textSourceHandle) Replenish(ctx context.Context, present route.ClosedTokenPresenter) error {
+func (handle *textSourceHandle) Replenish(ctx context.Context, present client.ClosedTokenPresenter) error {
 	return handle.replenish(ctx, present)
 }
 

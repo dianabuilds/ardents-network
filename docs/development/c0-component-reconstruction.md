@@ -582,10 +582,21 @@ resource lifetime. Their source-specific dispositions are in the
 | `closed_source_control.go`, `closed_source_issuance.go`, `closed_source_resolution.go`, `closed_source_submission.go`, `closed_source_replenishment.go`, `closed_introduction_client.go`, `closed_join_client.go`, `closed_join_client_stream.go` | These operations borrow a retained prefix, but registration and joined stream each acquire their own child lifetime. Endpoint owns publication, token attempt, pairing and Service Connection transfer; Route owns operation framing and the child transport cleanup. |
 | `closed_introduction_delivery.go`, `closed_terminal_recipient.go` | Delivery state is owned by one retained Introduction registration and claimed by Endpoint; completion joins its result and terminal close. Terminal-recipient selection opens no channel and rechecks the current State and unique role before Endpoint uses the result. Both belong to the client path, with different lifetimes. |
 
-The next package decision must preserve the shared bootstrap plan and Route's
-parent/child ownership while giving Endpoint closeable results. Moving all 22
-files into one package by their `closed_` prefix would conceal these different
-lifetimes and move the receiver-side admission controller with client code.
+That package decision is now realized as `internal/route/client`: every
+client-path file in the table except the receiver-side `closed_bootstrap.go`,
+which stayed in Route as a node duty, forms one acyclic leaf owner whose
+production files are all Linux-tagged, with Endpoint, Qualification and Node
+behavior tests as direct callers and no delegating wrappers. The shared
+bootstrap plan moved with the exchange that validates it, and Route's
+parent/child ownership is preserved through exported single-definition facts
+(admission frame cost, class lifetime, control purpose, role-domain and duty
+bytes, forwarding child bound, outer lane credit) plus
+`ClosedOuterBridgeLane.BeginTerminalWrite`, called by the moved
+terminal-priority switch. Endpoint receives closeable results and keeps its
+own lock and root lifetime. The realized move grouped the files by these
+ownership scales rather than moving every `closed_`-prefixed file into one
+package, which would have concealed the different lifetimes and moved the
+receiver-side admission controller with client code.
 
 ### Endpoint client path: separate reservations and close owners
 
