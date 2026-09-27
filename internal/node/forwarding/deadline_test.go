@@ -102,7 +102,7 @@ func TestClosedForwardingInitialAcceptKeepsOperationDeadline(t *testing.T) {
 	}
 	result := make(chan error, 1)
 	go func() {
-		_, err := newClosedForwardingSessions().acquire(context.Background(), key, lease, time.Now().Add(100*time.Millisecond), hello)
+		_, err := newSessionSet().acquire(context.Background(), key, lease, time.Now().Add(100*time.Millisecond), hello)
 		result <- err
 	}()
 	if err := <-read; err != nil {
@@ -122,10 +122,10 @@ func TestClosedForwardingBlockedWriteRetiresPhysicalCarrier(t *testing.T) {
 	local, peer := net.Pipe()
 	defer local.Close()
 	defer peer.Close()
-	session := &closedForwardingSession{carrier: local}
+	session := &session{carrier: local}
 	returned := make(chan error, 1)
 	go func() {
-		_, err := session.writeChildFrame(ardp.Frame{Kind: 6, Lane: 1, Body: []byte{1}}, time.Now().Add(100*time.Millisecond), newClosedForwardingQueue(64))
+		_, err := session.writeChildFrame(ardp.Frame{Kind: 6, Lane: 1, Body: []byte{1}}, time.Now().Add(100*time.Millisecond), newFrameQueue(64))
 		returned <- err
 	}()
 	select {

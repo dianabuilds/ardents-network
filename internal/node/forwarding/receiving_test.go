@@ -12,17 +12,17 @@ import (
 func TestClosedForwardingReceivingRollbackRetainsInitializationAndCleanupFailures(t *testing.T) {
 	for _, test := range []struct {
 		name string
-		fail func(*closedForwardingReceivingOpeners, error)
+		fail func(*receivingOpeners, error)
 	}{
 		{
 			name: "limits",
-			fail: func(openers *closedForwardingReceivingOpeners, initial error) {
+			fail: func(openers *receivingOpeners, initial error) {
 				openers.newLimits = func(func() time.Time) (*route.ClosedDutyLimits, error) { return nil, initial }
 			},
 		},
 		{
 			name: "bootstrap",
-			fail: func(openers *closedForwardingReceivingOpeners, initial error) {
+			fail: func(openers *receivingOpeners, initial error) {
 				openers.newBootstrap = func(func() time.Time) (*route.ClosedBootstrapController, error) { return nil, initial }
 			},
 		},
@@ -34,14 +34,14 @@ func TestClosedForwardingReceivingRollbackRetainsInitializationAndCleanupFailure
 			initial := errors.New("fixture initialization failed")
 			cleanup := errors.New("fixture spend cleanup failed")
 			closes := 0
-			openers := defaultClosedForwardingReceivingOpeners()
+			openers := defaultReceivingOpeners()
 			openers.closeSpends = func(spends *replay.Ledger) error {
 				closes++
 				return errors.Join(spends.Close(), cleanup)
 			}
 			test.fail(&openers, initial)
 
-			resources, err := openClosedForwardingReceivingResourcesWith(root, binding, time.Now, openers)
+			resources, err := openReceivingResourcesWith(root, binding, time.Now, openers)
 			if resources != nil {
 				t.Cleanup(func() { _ = resources.Close() })
 			}
@@ -66,7 +66,7 @@ func TestClosedForwardingReceivingTransfersOnlyCompleteResources(t *testing.T) {
 	root := t.TempDir()
 	binding := replay.Binding{NetworkID: [32]byte{1}, ProfileDigest: [32]byte{2},
 		ReceiverNodeID: [32]byte{3}, ReceiverDutyGeneration: 4}
-	resources, err := openClosedForwardingReceivingResources(root, binding, time.Now)
+	resources, err := openReceivingResources(root, binding, time.Now)
 	if resources != nil {
 		t.Cleanup(func() { _ = resources.Close() })
 	}

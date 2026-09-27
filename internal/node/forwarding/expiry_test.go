@@ -52,11 +52,11 @@ func TestClosedForwardingExpiredParentCannotRetireSharedCarrier(t *testing.T) {
 					t.Fatal("opening was not scheduled")
 				}
 			}
-			first, second := newClosedForwardingQueue(80), newClosedForwardingQueue(80)
+			first, second := newFrameQueue(80), newFrameQueue(80)
 			local, peer := net.Pipe()
-			session := &closedForwardingSession{owner: newClosedForwardingSessions(), carrier: local,
+			session := &session{owner: newSessionSet(), carrier: local,
 				invalidate: func() error { return nil }, retired: make(map[uint32]struct{}),
-				children: map[uint32]*closedForwardingQueue{1: first, 3: second},
+				children: map[uint32]*frameQueue{1: first, 3: second},
 				queues: map[uint32]func(ardp.Frame) error{
 					1: func(frame ardp.Frame) error { return channels[0].QueueReverse(frame) },
 					3: func(frame ardp.Frame) error { frame.Lane = 1; return channels[1].QueueReverse(frame) },

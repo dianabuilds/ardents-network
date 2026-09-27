@@ -42,9 +42,9 @@ func (config forwardingFixtureConfig) source() authority.Source {
 	return authority.Source{CurrentRoute: config.CurrentClosedRoute, CurrentProfile: config.CurrentClosedProfile}
 }
 
-func forwardingDependencies(config forwardingFixtureConfig, host hosting.Host) closedForwardingDependencies {
+func forwardingDependencies(config forwardingFixtureConfig, host hosting.Host) dependencies {
 	source := config.source()
-	return closedForwardingDependencies{current: config.Current, authority: source, relayEndpoint: config.CarrierRelayEndpoint,
+	return dependencies{current: config.Current, authority: source, relayEndpoint: config.CarrierRelayEndpoint,
 		literalEndpoint: literalForwardingFixtureEndpoint,
 		verify: func(receiver route.ClosedRoleReceiver) route.ClosedAdmissionVerifier {
 			return hosting.AdmissionVerifier(source, config.now, receiver, host, config.ClosedForwarding.AdmissionTraffic, config.ClosedForwarding.TerminationTraffic)

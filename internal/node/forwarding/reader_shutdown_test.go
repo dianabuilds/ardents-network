@@ -68,8 +68,8 @@ func checkForwardingReaderShutdown(t *testing.T, closeErr error) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	server := newClosedForwardingServerWithHost(closedForwardingDependencies{}, tls.Certificate{},
-		idleForwardingListener{}, &closedForwardingReceivingResources{spends: spends}, pool, nil, 1, time.Now)
+	server := newServerWithHost(dependencies{}, tls.Certificate{},
+		idleForwardingListener{}, &receivingResources{spends: spends}, pool, nil, 1, time.Now)
 	local, peer := net.Pipe()
 	blocked := &delayedForwardingRead{Conn: local, gate: make(chan struct{}), interrupted: make(chan struct{}), closeErr: closeErr}
 	allowAccept := make(chan struct{})

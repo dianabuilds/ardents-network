@@ -65,7 +65,7 @@ func testClosedForwardingOpenActualCarrierOutcome(t *testing.T, profile routecar
 		t.Fatal(err)
 	}
 	var workers sync.WaitGroup
-	server := &closedForwardingServer{dependencies: forwardingDependencies(fixture.config, nil), certificate: clientCertificate, pool: pool, sessions: newClosedForwardingSessions(), clock: time.Now}
+	server := &forwardServer{dependencies: forwardingDependencies(fixture.config, nil), certificate: clientCertificate, pool: pool, sessions: newSessionSet(), clock: time.Now}
 	open := fixture.open
 	open.Deadline = deadline
 	releasePeer := make(chan struct{})
@@ -173,7 +173,7 @@ func testClosedForwardingOpenActualCarrierOutcome(t *testing.T, profile routecar
 	})
 	outputs := make(chan ardp.Frame, 1)
 	type openResult struct {
-		link *closedForwardingLink
+		link *forwardLink
 		err  error
 	}
 	result := make(chan openResult, 1)

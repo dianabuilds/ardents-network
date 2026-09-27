@@ -79,11 +79,11 @@ func TestClosedForwardingSessionCanceledLateAcceptWaitsForCloseAndReturnsNoSessi
 		<-allowAccept
 		acceptWritten <- ardp.WriteFrame(peer, accept)
 	}()
-	sessions := newClosedForwardingSessions()
+	sessions := newSessionSet()
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	type outcome struct {
-		session *closedForwardingSession
+		session *session
 		err     error
 	}
 	creator := make(chan outcome, 1)

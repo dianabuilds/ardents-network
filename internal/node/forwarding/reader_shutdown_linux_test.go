@@ -120,7 +120,7 @@ func TestClosedForwardingDrainJoinsActualAcceptedProducerBeforeReader(t *testing
 	serverRaw, clientRaw := net.Pipe()
 	tlsDone := make(chan error, 1)
 	peerDone := make(chan error, 1)
-	var server *closedForwardingServer
+	var server *forwardServer
 	var seed *carrier.ClosedCarrierLease
 	var client net.Conn
 	var releaseChild, releaseReader sync.Once
@@ -167,8 +167,8 @@ func TestClosedForwardingDrainJoinsActualAcceptedProducerBeforeReader(t *testing
 	if err != nil {
 		t.Fatal(err)
 	}
-	server = newClosedForwardingServerWithHost(forwardingDependencies(fixture.config, host), serverCertificate, listener,
-		&closedForwardingReceivingResources{spends: spends, limits: limits}, pool, host, 1, fixture.config.now)
+	server = newServerWithHost(forwardingDependencies(fixture.config, host), serverCertificate, listener,
+		&receivingResources{spends: spends, limits: limits}, pool, host, 1, fixture.config.now)
 	seed, err = pool.AcquireContext(t.Context(), key, func() error { return nil }, func() (carrier.Carrier, error) { return blockedChild, nil })
 	if err != nil {
 		t.Fatal(err)

@@ -85,8 +85,8 @@ func TestClosedForwardingParentReaderServesControlWhileOpenBlocks(t *testing.T) 
 		t.Fatal(err)
 	}
 	var workers sync.WaitGroup
-	server := &closedForwardingServer{dependencies: forwardingDependencies(fixture.config, host), certificate: serverCertificate, receiving: &closedForwardingReceivingResources{spends: spends, limits: limits},
-		host: host, pool: pool, sessions: newClosedForwardingSessions(), clock: func() time.Time { return now }}
+	server := &forwardServer{dependencies: forwardingDependencies(fixture.config, host), certificate: serverCertificate, receiving: &receivingResources{spends: spends, limits: limits},
+		host: host, pool: pool, sessions: newSessionSet(), clock: func() time.Time { return now }}
 	peerRelease := make(chan struct{})
 	defer func() {
 		close(peerRelease)
@@ -220,7 +220,7 @@ func TestClosedForwardingParentReaderServesControlWhileOpenBlocks(t *testing.T) 
 	}
 }
 
-func closedForwardingParentReaderAccepted(t *testing.T, server *closedForwardingServer, key [32]byte, receiver route.ClosedRoleReceiver, token []byte) (net.Conn, <-chan error) {
+func closedForwardingParentReaderAccepted(t *testing.T, server *forwardServer, key [32]byte, receiver route.ClosedRoleReceiver, token []byte) (net.Conn, <-chan error) {
 	t.Helper()
 	serverRaw, clientRaw := net.Pipe()
 	deadline := time.Now().Add(5 * time.Second)

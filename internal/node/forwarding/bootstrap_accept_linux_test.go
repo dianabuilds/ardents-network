@@ -11,7 +11,7 @@ import (
 )
 
 func TestClosedBootstrapRefusesUnsupportedReceiverBeforeReservation(t *testing.T) {
-	server := &closedForwardingServer{}
+	server := &forwardServer{}
 	channel, _, err := server.admitBootstrap(route.ClosedRoleReceiver{Subrole: 3}, [32]byte{}, ardp.Hello{}, 0,
 		ardp.Frame{Kind: 3, Body: ardp.EncodeBootstrap(true)})
 	if err == nil || channel != nil {
@@ -40,7 +40,7 @@ func TestClosedBootstrapEntryExportsOnlyRestrictedInteriorChild(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	server := &closedForwardingServer{dependencies: forwardingDependencies(fixture.config, nil), receiving: &closedForwardingReceivingResources{limits: limits, bootstrap: governor}, clock: fixture.config.now}
+	server := &forwardServer{dependencies: forwardingDependencies(fixture.config, nil), receiving: &receivingResources{limits: limits, bootstrap: governor}, clock: fixture.config.now}
 	hello := ardp.Hello{NetworkID: receiver.NetworkID, StateGeneration: receiver.StateGeneration, StateDigest: receiver.StateDigest, ProfileDigest: receiver.ProfileDigest,
 		RecipientNodeID: receiver.NodeID, RecipientDutyGeneration: receiver.DutyGeneration, Purpose: ardp.PurposeForwarding, ChannelNonce: [32]byte{80}, Deadline: fixture.now.Add(8 * time.Second)}
 	channel, _, err := server.admitBootstrap(receiver, [32]byte{}, hello, 225, ardp.Frame{Kind: 3, Body: ardp.EncodeBootstrap(true)})

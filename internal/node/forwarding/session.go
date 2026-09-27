@@ -13,34 +13,34 @@ import (
 	"time"
 )
 
-// closedForwardingSessions gives every retained Carrier one reader and one
+// sessionSet gives every retained Carrier one reader and one
 // serialized writer. Its child IDs are local to that Carrier, so source lane
 // IDs from different admitted channels can never collide on a reused leg.
-type closedForwardingSessions struct {
+type sessionSet struct {
 	mu         sync.Mutex
-	sessions   map[routecarrier.ClosedCarrierKey]*closedForwardingSession
-	pending    map[routecarrier.ClosedCarrierKey]*closedForwardingSessionPending
+	sessions   map[routecarrier.ClosedCarrierKey]*session
+	pending    map[routecarrier.ClosedCarrierKey]*pendingSession
 	readers    sync.WaitGroup
 	cleanupErr error
 }
 
-// closedForwardingSessionPending gives one caller ownership of a new outer
+// pendingSession gives one caller ownership of a new outer
 // handshake. It publishes its terminal result before waking same-key waiters.
-type closedForwardingSessionPending struct {
+type pendingSession struct {
 	done    chan struct{}
-	session *closedForwardingSession
+	session *session
 	err     error
 }
 
-type closedForwardingSession struct {
-	owner       *closedForwardingSessions
+type session struct {
+	owner       *sessionSet
 	key         routecarrier.ClosedCarrierKey
 	carrier     routecarrier.Carrier
 	binding     *routecarrier.ClosedCarrierLease
 	invalidate  func() error
 	mu          sync.Mutex
 	writer      sync.Mutex
-	children    map[uint32]*closedForwardingQueue
+	children    map[uint32]*frameQueue
 	queues      map[uint32]func(ardp.Frame) error
 	retirements map[uint32]func() bool
 	retired     map[uint32]struct{}
@@ -48,11 +48,11 @@ type closedForwardingSession struct {
 	closed      bool
 }
 
-func newClosedForwardingSessions() *closedForwardingSessions {
-	return &closedForwardingSessions{sessions: make(map[routecarrier.ClosedCarrierKey]*closedForwardingSession), pending: make(map[routecarrier.ClosedCarrierKey]*closedForwardingSessionPending)}
+func newSessionSet() *sessionSet {
+	return &sessionSet{sessions: make(map[routecarrier.ClosedCarrierKey]*session), pending: make(map[routecarrier.ClosedCarrierKey]*pendingSession)}
 }
 
-func (sessions *closedForwardingSessions) acquire(ctx context.Context, key routecarrier.ClosedCarrierKey, binding *routecarrier.ClosedCarrierLease, deadline time.Time, hello func() (ardp.Hello, error)) (*closedForwardingSession, error) {
+func (sessions *sessionSet) acquire(ctx context.Context, key routecarrier.ClosedCarrierKey, binding *routecarrier.ClosedCarrierLease, deadline time.Time, hello func() (ardp.Hello, error)) (*session, error) {
 	if sessions == nil || ctx == nil || binding == nil || hello == nil {
 		return nil, errors.New("closed forwarding Carrier session is unavailable")
 	}
@@ -84,7 +84,7 @@ func (sessions *closedForwardingSessions) acquire(ctx context.Context, key route
 				}
 				continue
 			}
-			pending := &closedForwardingSessionPending{done: make(chan struct{})}
+			pending := &pendingSession{done: make(chan struct{})}
 			sessions.pending[key] = pending
 			sessions.mu.Unlock()
 			return sessions.open(ctx, key, binding, carrier, deadline, hello, pending)
@@ -105,8 +105,8 @@ func (sessions *closedForwardingSessions) acquire(ctx context.Context, key route
 	// Only exact-key waiters join its published terminal result.
 }
 
-func (sessions *closedForwardingSessions) open(ctx context.Context, key routecarrier.ClosedCarrierKey, binding *routecarrier.ClosedCarrierLease, carrier routecarrier.Carrier, deadline time.Time, hello func() (ardp.Hello, error), pending *closedForwardingSessionPending) (returned *closedForwardingSession, returnedErr error) {
-	var result *closedForwardingSession
+func (sessions *sessionSet) open(ctx context.Context, key routecarrier.ClosedCarrierKey, binding *routecarrier.ClosedCarrierLease, carrier routecarrier.Carrier, deadline time.Time, hello func() (ardp.Hello, error), pending *pendingSession) (returned *session, returnedErr error) {
+	var result *session
 	var resultErr error
 	var cancelErr error
 	cancelDone := make(chan struct{})
@@ -196,7 +196,7 @@ func (sessions *closedForwardingSessions) open(ctx context.Context, key routecar
 		resultErr = err
 		return nil, resultErr
 	}
-	session := &closedForwardingSession{owner: sessions, key: key, carrier: carrier, binding: binding, invalidate: binding.Invalidate, children: make(map[uint32]*closedForwardingQueue), retired: make(map[uint32]struct{})}
+	session := &session{owner: sessions, key: key, carrier: carrier, binding: binding, invalidate: binding.Invalidate, children: make(map[uint32]*frameQueue), retired: make(map[uint32]struct{})}
 	result = session
 	return result, nil
 }
@@ -204,7 +204,7 @@ func (sessions *closedForwardingSessions) open(ctx context.Context, key routecar
 // joinedResult waits for every reader owned by this session set and returns
 // their retained physical cleanup result. The caller must first join every
 // producer that can publish a session, so no reader can be added after Wait.
-func (sessions *closedForwardingSessions) joinedResult() error {
+func (sessions *sessionSet) joinedResult() error {
 	if sessions == nil {
 		return nil
 	}
@@ -214,7 +214,7 @@ func (sessions *closedForwardingSessions) joinedResult() error {
 	return sessions.cleanupErr
 }
 
-func (session *closedForwardingSession) attach(open route.ClosedOpen, restriction route.ClosedChildRestriction, queue func(ardp.Frame) error, retired func() bool) (uint32, *closedForwardingQueue, error) {
+func (session *session) attach(open route.ClosedOpen, restriction route.ClosedChildRestriction, queue func(ardp.Frame) error, retired func() bool) (uint32, *frameQueue, error) {
 	if session == nil {
 		return 0, nil, errors.New("closed forwarding Carrier session is unavailable")
 	}
@@ -238,7 +238,7 @@ func (session *closedForwardingSession) attach(open route.ClosedOpen, restrictio
 	}
 	lane := session.lastOdd
 	// The prefix byte reservation bounds frames, including control overhead.
-	reverse := newClosedForwardingQueue(4 << 20)
+	reverse := newFrameQueue(4 << 20)
 	session.children[lane] = reverse
 	if session.queues == nil {
 		session.queues = make(map[uint32]func(ardp.Frame) error)
@@ -266,7 +266,7 @@ func (session *closedForwardingSession) attach(open route.ClosedOpen, restrictio
 // it may receive CLOSE while this writer is waiting. Generic Carrier EOF never
 // supplies this evidence. Once physical emission starts, every error remains
 // an error and retires the Carrier: a partial frame cannot be reused by siblings.
-func (session *closedForwardingSession) writeChildFrame(frame ardp.Frame, deadline time.Time, reverse *closedForwardingQueue) (bool, error) {
+func (session *session) writeChildFrame(frame ardp.Frame, deadline time.Time, reverse *frameQueue) (bool, error) {
 	if reverse.peerClosed() {
 		return false, nil
 	}
@@ -297,7 +297,7 @@ func (session *closedForwardingSession) writeChildFrame(frame ardp.Frame, deadli
 	return err == nil, err
 }
 
-func (session *closedForwardingSession) retire(lane uint32) {
+func (session *session) retire(lane uint32) {
 	if session == nil {
 		return
 	}
@@ -319,7 +319,7 @@ func (session *closedForwardingSession) retire(lane uint32) {
 	session.mu.Unlock()
 }
 
-func (session *closedForwardingSession) copyReverse() {
+func (session *session) copyReverse() {
 	for {
 		frame, err := ardp.ReadFrame(session.carrier)
 		if err != nil || frame.Lane == 0 || (frame.Kind != 5 && frame.Kind != 6 && frame.Kind != 7 && frame.Kind != 8 && frame.Kind != 9) {
@@ -336,7 +336,7 @@ func (session *closedForwardingSession) copyReverse() {
 // Delivery and retirement hold the same lock through the channel operation.
 // A full bounded queue refuses the Carrier; its reader never waits behind one
 // slow child while other children need control or cancellation frames.
-func (session *closedForwardingSession) deliverReverse(frame ardp.Frame) bool {
+func (session *session) deliverReverse(frame ardp.Frame) bool {
 	session.mu.Lock()
 	defer session.mu.Unlock()
 	if session.closed {
@@ -366,7 +366,7 @@ func (session *closedForwardingSession) deliverReverse(frame ardp.Frame) bool {
 	return err == nil || errors.Is(err, route.ErrClosedForwardingChildRetired)
 }
 
-func (session *closedForwardingSession) fail() {
+func (session *session) fail() {
 	if session == nil {
 		return
 	}
@@ -377,7 +377,7 @@ func (session *closedForwardingSession) fail() {
 	}
 	session.closed = true
 	children := session.children
-	session.children = make(map[uint32]*closedForwardingQueue)
+	session.children = make(map[uint32]*frameQueue)
 	clear(session.retired)
 	clear(session.queues)
 	clear(session.retirements)
@@ -394,7 +394,7 @@ func (session *closedForwardingSession) fail() {
 	session.owner.mu.Unlock()
 }
 
-func (server *closedForwardingServer) closedForwardingOuterHello(snapshot state.NodeDuty, open route.ClosedOpen) (ardp.Hello, error) {
+func (server *forwardServer) outerHello(snapshot state.NodeDuty, open route.ClosedOpen) (ardp.Hello, error) {
 	if server.dependencies.authority.CurrentProfile == nil {
 		return ardp.Hello{}, errors.New("closed forwarding profile is unavailable")
 	}
@@ -430,4 +430,83 @@ func closedForwardingHandshakeDeadline(end, now time.Time) time.Time {
 		return end
 	}
 	return pending
+}
+
+// The shared reader never waits for a child writer. Queued complete frames
+// consume the same finite byte budget regardless of TLS record fragmentation.
+// Allocation grows only with queued work, rather than reserving thousands of
+// frame slots for every idle child. Route separately charges the prefix/duty.
+var errClosedForwardingQueueFull = errors.New("closed forwarding reverse queue is full")
+
+type frameQueue struct {
+	mu             sync.Mutex
+	changed        *sync.Cond
+	frames         []ardp.Frame
+	bytes, maximum int
+	closed         bool
+	terminal       bool // Complete, reserved peer CLOSE; transport EOF alone is not terminal.
+}
+
+func newFrameQueue(maximum int) *frameQueue {
+	queue := &frameQueue{maximum: maximum}
+	queue.changed = sync.NewCond(&queue.mu)
+	return queue
+}
+
+func (queue *frameQueue) push(frame ardp.Frame, reserve func(ardp.Frame) error) error {
+	queue.mu.Lock()
+	defer queue.mu.Unlock()
+	size := 16 + len(frame.Body)
+	if queue.closed || size > queue.maximum-queue.bytes {
+		return errClosedForwardingQueueFull
+	}
+	if reserve != nil {
+		if err := reserve(frame); err != nil {
+			return err
+		}
+	}
+	queue.frames = append(queue.frames, frame)
+	queue.bytes += size
+	if frame.Kind == 9 {
+		queue.terminal = true
+	}
+	queue.changed.Signal()
+	return nil
+}
+
+func (queue *frameQueue) next() (ardp.Frame, bool) {
+	queue.mu.Lock()
+	defer queue.mu.Unlock()
+	for len(queue.frames) == 0 && !queue.closed {
+		queue.changed.Wait()
+	}
+	if len(queue.frames) == 0 {
+		return ardp.Frame{}, false
+	}
+	frame := queue.frames[0]
+	queue.frames[0] = ardp.Frame{}
+	queue.frames = queue.frames[1:]
+	queue.bytes -= 16 + len(frame.Body)
+	if len(queue.frames) == 0 {
+		queue.frames = nil
+	}
+	return frame, true
+}
+
+func (queue *frameQueue) close() {
+	queue.mu.Lock()
+	queue.closed = true
+	queue.changed.Broadcast()
+	queue.mu.Unlock()
+}
+
+// peerClosed remains true after draining or retiring the queue. It records the
+// peer's complete terminal frame independently of the child copier's schedule.
+func (queue *frameQueue) peerClosed() bool {
+	if queue == nil {
+		return false
+	}
+	queue.mu.Lock()
+	defer queue.mu.Unlock()
+	return queue.terminal
 }

@@ -12,14 +12,14 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/route/carrier"
 )
 
-// closedForwardingLink owns exactly one admitted child and its selected next
+// link owns exactly one admitted child and its selected next
 // Carrier. It is deliberately not a route cache: every link begins with a
 // fresh outer HELLO/OPEN and closes with its child.
-type closedForwardingLink struct {
-	session     *closedForwardingSession
+type forwardLink struct {
+	session     *session
 	remoteLane  uint32
 	localLane   uint32
-	reverse     *closedForwardingQueue
+	reverse     *frameQueue
 	lease       *carrier.ClosedCarrierLease
 	write       func(ardp.Frame) error
 	forward     sync.Mutex
@@ -36,13 +36,13 @@ type closedForwardingLink struct {
 	forwardErr  error
 }
 
-type closedForwardingOpenResult struct {
+type openResult struct {
 	lane uint32
-	link *closedForwardingLink
+	link *forwardLink
 	err  error
 }
 
-func closedForwardingNonCancellationError(err error) error {
+func nonCancellationError(err error) error {
 	if err == nil || errors.Is(err, context.Canceled) && !errors.Is(err, context.DeadlineExceeded) {
 		joined, ok := err.(interface{ Unwrap() []error })
 		if !ok {
@@ -50,7 +50,7 @@ func closedForwardingNonCancellationError(err error) error {
 		}
 		var result error
 		for _, item := range joined.Unwrap() {
-			if retained := closedForwardingNonCancellationError(item); retained != nil {
+			if retained := nonCancellationError(item); retained != nil {
 				result = errors.Join(result, retained)
 			}
 		}
@@ -59,27 +59,27 @@ func closedForwardingNonCancellationError(err error) error {
 	return err
 }
 
-// closedForwardingOpenings owns bounded child OPEN work while the parent keeps
+// openings owns bounded child OPEN work while the parent keeps
 // reading its accounted control queue. Its caller collects results before it
 // uses a child and cancels then joins every unfinished opener at teardown.
-type closedForwardingOpenings struct {
+type openings struct {
 	ctx     context.Context
 	cancel  context.CancelFunc
-	results chan closedForwardingOpenResult
+	results chan openResult
 	pending map[uint32]context.CancelFunc
 	wake    func()
 }
 
-func newClosedForwardingOpenings(parent context.Context, wake ...func()) *closedForwardingOpenings {
+func newOpenings(parent context.Context, wake ...func()) *openings {
 	ctx, cancel := context.WithCancel(parent)
 	var notify func()
 	if len(wake) != 0 {
 		notify = wake[0]
 	}
-	return &closedForwardingOpenings{ctx: ctx, cancel: cancel, results: make(chan closedForwardingOpenResult, 256), pending: make(map[uint32]context.CancelFunc), wake: notify}
+	return &openings{ctx: ctx, cancel: cancel, results: make(chan openResult, 256), pending: make(map[uint32]context.CancelFunc), wake: notify}
 }
 
-func (openings *closedForwardingOpenings) start(server *closedForwardingServer, event route.ClosedForwardingEvent, channel *route.ClosedForwardingChannel, write func(ardp.Frame) error, abort func()) {
+func (openings *openings) start(server *forwardServer, event route.ClosedForwardingEvent, channel *route.ClosedForwardingChannel, write func(ardp.Frame) error, abort func()) {
 	child, cancel := context.WithCancel(openings.ctx)
 	openings.pending[event.Lane] = cancel
 	go func() {
@@ -87,14 +87,14 @@ func (openings *closedForwardingOpenings) start(server *closedForwardingServer, 
 		if err != nil && child.Err() == nil {
 			abort()
 		}
-		openings.results <- closedForwardingOpenResult{lane: event.Lane, link: link, err: err}
+		openings.results <- openResult{lane: event.Lane, link: link, err: err}
 		if openings.wake != nil {
 			openings.wake()
 		}
 	}()
 }
 
-func (openings *closedForwardingOpenings) collect(links map[uint32]*closedForwardingLink) error {
+func (openings *openings) collect(links map[uint32]*forwardLink) error {
 	if openings == nil {
 		return nil
 	}
@@ -116,7 +116,7 @@ func (openings *closedForwardingOpenings) collect(links map[uint32]*closedForwar
 	}
 }
 
-func (openings *closedForwardingOpenings) close(links map[uint32]*closedForwardingLink) error {
+func (openings *openings) close(links map[uint32]*forwardLink) error {
 	if openings == nil {
 		return nil
 	}
@@ -131,7 +131,7 @@ func (openings *closedForwardingOpenings) close(links map[uint32]*closedForwardi
 		if opened.link != nil {
 			result = errors.Join(result, opened.link.close())
 		}
-		if retained := closedForwardingNonCancellationError(opened.err); retained != nil {
+		if retained := nonCancellationError(opened.err); retained != nil {
 			result = errors.Join(result, retained)
 		}
 	}
@@ -139,7 +139,7 @@ func (openings *closedForwardingOpenings) close(links map[uint32]*closedForwardi
 	return result
 }
 
-func (openings *closedForwardingOpenings) cancelLane(lane uint32, links map[uint32]*closedForwardingLink) error {
+func (openings *openings) cancelLane(lane uint32, links map[uint32]*forwardLink) error {
 	if openings == nil {
 		return nil
 	}
@@ -156,7 +156,7 @@ func (openings *closedForwardingOpenings) cancelLane(lane uint32, links map[uint
 			if opened.link != nil {
 				result = errors.Join(result, opened.link.close())
 			}
-			if retained := closedForwardingNonCancellationError(opened.err); retained != nil {
+			if retained := nonCancellationError(opened.err); retained != nil {
 				result = errors.Join(result, retained)
 			}
 			return result
@@ -168,19 +168,19 @@ func (openings *closedForwardingOpenings) cancelLane(lane uint32, links map[uint
 	}
 }
 
-func (link *closedForwardingLink) availableForForwarding() bool {
+func (link *forwardLink) availableForForwarding() bool {
 	link.forward.Lock()
 	defer link.forward.Unlock()
 	return !link.forwarding && !link.stopping
 }
 
-func (link *closedForwardingLink) availableForClose() bool {
+func (link *forwardLink) availableForClose() bool {
 	link.forward.Lock()
 	defer link.forward.Unlock()
 	return link.stopping || !link.forwarding
 }
 
-func (link *closedForwardingLink) startForwarding(event route.ClosedForwardingEvent, wake func(), abort func()) bool {
+func (link *forwardLink) startForwarding(event route.ClosedForwardingEvent, wake func(), abort func()) bool {
 	link.forward.Lock()
 	if link.forwarding || link.stopping {
 		link.forward.Unlock()
@@ -213,7 +213,7 @@ func (link *closedForwardingLink) startForwarding(event route.ClosedForwardingEv
 	return true
 }
 
-func (link *closedForwardingLink) forwardingError() error {
+func (link *forwardLink) forwardingError() error {
 	link.forward.Lock()
 	defer link.forward.Unlock()
 	err := link.forwardErr
@@ -221,11 +221,11 @@ func (link *closedForwardingLink) forwardingError() error {
 	return err
 }
 
-// closedForwardingEventAvailable keeps a queued child event accounted until
+// eventAvailable keeps a queued child event accounted until
 // that child's one physical writer is free. In particular, a CLOSE must not
 // enter the synchronous retirement path while an earlier BYTES write for the
 // same child is blocked: that would stall unrelated children behind it.
-func closedForwardingEventAvailable(event route.ClosedForwardingEvent, links map[uint32]*closedForwardingLink) bool {
+func eventAvailable(event route.ClosedForwardingEvent, links map[uint32]*forwardLink) bool {
 	if event.Kind == 4 { // OPEN has no link yet.
 		return true
 	}
@@ -236,7 +236,7 @@ func closedForwardingEventAvailable(event route.ClosedForwardingEvent, links map
 	return link != nil && link.availableForForwarding()
 }
 
-func (server *closedForwardingServer) drainForwarding(ctx context.Context, channel *route.ClosedForwardingChannel, links map[uint32]*closedForwardingLink, openings *closedForwardingOpenings, write func(ardp.Frame) error, abort func()) error {
+func (server *forwardServer) drainForwarding(ctx context.Context, channel *route.ClosedForwardingChannel, links map[uint32]*forwardLink, openings *openings, write func(ardp.Frame) error, abort func()) error {
 	for {
 		if err := openings.collect(links); err != nil {
 			return err
@@ -252,7 +252,7 @@ func (server *closedForwardingServer) drainForwarding(ctx context.Context, chann
 					return true
 				}
 			}
-			return closedForwardingEventAvailable(event, links)
+			return eventAvailable(event, links)
 		})
 		if !available {
 			return nil
@@ -321,7 +321,7 @@ func (server *closedForwardingServer) drainForwarding(ctx context.Context, chann
 	}
 }
 
-func (server *closedForwardingServer) openForwardingLink(ctx context.Context, open route.ClosedOpen, restriction route.ClosedChildRestriction, lane uint32, channel *route.ClosedForwardingChannel, write func(ardp.Frame) error, abort func()) (*closedForwardingLink, error) {
+func (server *forwardServer) openForwardingLink(ctx context.Context, open route.ClosedOpen, restriction route.ClosedChildRestriction, lane uint32, channel *route.ClosedForwardingChannel, write func(ardp.Frame) error, abort func()) (*forwardLink, error) {
 	handshakeDeadline := closedForwardingHandshakeDeadline(open.Deadline, server.clock().UTC())
 	handshakeCtx, cancelHandshake, err := closedForwardingHandshakeContext(ctx, handshakeDeadline)
 	if err != nil {
@@ -365,7 +365,7 @@ func (server *closedForwardingServer) openForwardingLink(ctx context.Context, op
 		return nil, err
 	}
 	session, err := server.sessions.acquire(handshakeCtx, key, lease, handshakeDeadline, func() (ardp.Hello, error) {
-		return server.closedForwardingOuterHello(updated, open)
+		return server.outerHello(updated, open)
 	})
 	if err != nil {
 		_ = lease.Release()
@@ -376,7 +376,7 @@ func (server *closedForwardingServer) openForwardingLink(ctx context.Context, op
 		_ = lease.Release()
 		return nil, err
 	}
-	link := &closedForwardingLink{session: session, remoteLane: remoteLane, localLane: lane, deadline: open.Deadline, reverse: reverse, lease: lease, write: write, channel: channel, done: make(chan struct{}), stopped: make(chan struct{}), abort: abort}
+	link := &forwardLink{session: session, remoteLane: remoteLane, localLane: lane, deadline: open.Deadline, reverse: reverse, lease: lease, write: write, channel: channel, done: make(chan struct{}), stopped: make(chan struct{}), abort: abort}
 	go link.copyReverse()
 	return link, nil
 }
@@ -393,7 +393,7 @@ func closedForwardingHandshakeContext(parent context.Context, deadline time.Time
 	return ctx, cancel, nil
 }
 
-func (link *closedForwardingLink) copyReverse() {
+func (link *forwardLink) copyReverse() {
 	defer close(link.done)
 	defer link.stop()
 	for {
@@ -433,7 +433,7 @@ func (link *closedForwardingLink) copyReverse() {
 	}
 }
 
-func (link *closedForwardingLink) stop() {
+func (link *forwardLink) stop() {
 	link.once.Do(func() {
 		close(link.stopped)
 		link.forward.Lock()
@@ -448,7 +448,7 @@ func (link *closedForwardingLink) stop() {
 	})
 }
 
-func (link *closedForwardingLink) close() error {
+func (link *forwardLink) close() error {
 	link.stop()
 	<-link.done
 	return link.stopErr

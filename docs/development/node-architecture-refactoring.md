@@ -81,6 +81,16 @@ also belong to Hosting.
 The child borrows current State, authority, token policy and endpoint validation
 through explicit dependencies, never `runtimeConfig`. It rechecks State at each
 existing admission point and cannot accept a plan-supplied peer or key.
+Within the forwarding package, the listener owns accepted producers; the
+session set owns each retained outgoing Carrier reader and its child frame
+queues; a link joins one child lane to that session. They share one shutdown
+order, so a separate nested package would expose more mutable session and link
+state than the current private types. Source files follow these owners:
+`listener.go` includes accepted close and shutdown, `session.go` includes the
+queue, `bootstrap.go` includes bootstrap admission, and `recipient.go` includes
+the relay dial rule. Tests of session ordering, queue and terminal outcomes
+share one `session_test.go`; Linux-specific tests retain their tags when they
+need the installed resource/Carrier fixture.
 Process pressure remains in the root; per-duty local limits and JOIN host
 monitoring remain with their duty.
 

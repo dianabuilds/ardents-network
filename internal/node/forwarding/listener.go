@@ -14,14 +14,14 @@ import (
 	"time"
 )
 
-type closedForwardingServer struct {
-	dependencies     closedForwardingDependencies
+type forwardServer struct {
+	dependencies     dependencies
 	certificate      tls.Certificate
 	listener         routecarrier.ClosedSharedCarrierListener
-	receiving        *closedForwardingReceivingResources
+	receiving        *receivingResources
 	pool             *routecarrier.ClosedCarrierPool
 	host             Host
-	sessions         *closedForwardingSessions
+	sessions         *sessionSet
 	clock            func() time.Time
 	limit            chan struct{}
 	active           atomic.Uint32
@@ -40,12 +40,12 @@ type closedForwardingServer struct {
 	reapErr          error
 }
 
-func newClosedForwardingServerWithHost(dependencies closedForwardingDependencies, certificate tls.Certificate, listener routecarrier.ClosedSharedCarrierListener, receiving *closedForwardingReceivingResources, pool *routecarrier.ClosedCarrierPool, host Host, limit uint16, clock func() time.Time) *closedForwardingServer {
+func newServerWithHost(dependencies dependencies, certificate tls.Certificate, listener routecarrier.ClosedSharedCarrierListener, receiving *receivingResources, pool *routecarrier.ClosedCarrierPool, host Host, limit uint16, clock func() time.Time) *forwardServer {
 	ctx, cancel := context.WithCancel(context.Background())
-	running := &closedForwardingServer{dependencies: dependencies, certificate: certificate, listener: listener, receiving: receiving, pool: pool,
+	running := &forwardServer{dependencies: dependencies, certificate: certificate, listener: listener, receiving: receiving, pool: pool,
 		host: host, cancel: cancel, drained: make(chan struct{}),
 		clock: clock, limit: make(chan struct{}, limit), done: make(chan error, 1), stopped: make(chan struct{})}
-	running.sessions = newClosedForwardingSessions()
+	running.sessions = newSessionSet()
 	running.workers.Add(3)
 	go running.reap()
 	go running.serve(ctx)
@@ -54,10 +54,10 @@ func newClosedForwardingServerWithHost(dependencies closedForwardingDependencies
 	return running
 }
 
-func (server *closedForwardingServer) Done() <-chan error { return server.done }
-func (server *closedForwardingServer) Active() uint32     { return server.active.Load() }
+func (server *forwardServer) Done() <-chan error { return server.done }
+func (server *forwardServer) Active() uint32     { return server.active.Load() }
 
-func (server *closedForwardingServer) Stop() error {
+func (server *forwardServer) Stop() error {
 	if server == nil {
 		return nil
 	}
@@ -69,7 +69,7 @@ func (server *closedForwardingServer) Stop() error {
 	return server.stopErr
 }
 
-func (server *closedForwardingServer) Drain(ctx context.Context) error {
+func (server *forwardServer) Drain(ctx context.Context) error {
 	if server == nil || ctx == nil {
 		return errors.New("closed forwarding drain is invalid")
 	}
@@ -82,7 +82,7 @@ func (server *closedForwardingServer) Drain(ctx context.Context) error {
 	}
 }
 
-func (server *closedForwardingServer) serve(ctx context.Context) {
+func (server *forwardServer) serve(ctx context.Context) {
 	defer server.workers.Done()
 	defer server.Stop()
 	var terminal error
@@ -122,7 +122,7 @@ func (server *closedForwardingServer) serve(ctx context.Context) {
 	}
 }
 
-func (server *closedForwardingServer) reap() {
+func (server *forwardServer) reap() {
 	defer server.workers.Done()
 	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
@@ -157,7 +157,7 @@ func (server *closedForwardingServer) reap() {
 	}
 }
 
-func (server *closedForwardingServer) serveAccepted(ctx context.Context, accepted routecarrier.ClosedSharedCarrier) {
+func (server *forwardServer) serveAccepted(ctx context.Context, accepted routecarrier.ClosedSharedCarrier) {
 	defer server.workers.Done()
 	if accepted.Connection == nil {
 		<-server.limit
@@ -188,7 +188,7 @@ func (server *closedForwardingServer) serveAccepted(ctx context.Context, accepte
 	}
 }
 
-func (server *closedForwardingServer) serveOuter(ctx context.Context, carrier routecarrier.ClosedSharedCarrier) {
+func (server *forwardServer) serveOuter(ctx context.Context, carrier routecarrier.ClosedSharedCarrier) {
 	updated, err := server.dependencies.current()
 	if err != nil {
 		return
@@ -209,7 +209,7 @@ func (server *closedForwardingServer) serveOuter(ctx context.Context, carrier ro
 	})
 }
 
-func (server *closedForwardingServer) serveInner(ctx context.Context, lane *route.ClosedOuterBridgeLane, deadline time.Time, incomingKey [32]byte) {
+func (server *forwardServer) serveInner(ctx context.Context, lane *route.ClosedOuterBridgeLane, deadline time.Time, incomingKey [32]byte) {
 	status := byte(1)
 	defer func() { _ = lane.CloseWithStatus(status) }()
 	secured, err := routecarrier.AcceptClosedRoleTLS(ctx, lane, server.certificate, deadline)
@@ -240,7 +240,7 @@ func (server *closedForwardingServer) serveInner(ctx context.Context, lane *rout
 	}
 }
 
-func (server *closedForwardingServer) serveDirect(ctx context.Context, connection net.Conn, first *ardp.Frame, incomingKey [32]byte, restriction route.ClosedChildRestriction, outerLane *route.ClosedOuterBridgeLane) (result error) {
+func (server *forwardServer) serveDirect(ctx context.Context, connection net.Conn, first *ardp.Frame, incomingKey [32]byte, restriction route.ClosedChildRestriction, outerLane *route.ClosedOuterBridgeLane) (result error) {
 
 	initialDeadline := server.clock().UTC().Add(10 * time.Second)
 	if err := connection.SetDeadline(initialDeadline); err != nil {
@@ -275,7 +275,7 @@ func (server *closedForwardingServer) serveDirect(ctx context.Context, connectio
 		}
 		return ardp.WriteFrame(connection, frame)
 	}
-	links := make(map[uint32]*closedForwardingLink)
+	links := make(map[uint32]*forwardLink)
 	completed := make(chan struct{}, 1)
 	wakeParent := func() {
 		select {
@@ -283,7 +283,7 @@ func (server *closedForwardingServer) serveDirect(ctx context.Context, connectio
 		default:
 		}
 	}
-	openings := newClosedForwardingOpenings(ctx, wakeParent)
+	openings := newOpenings(ctx, wakeParent)
 	type parentRead struct {
 		frame ardp.Frame
 		err   error
@@ -423,4 +423,40 @@ func (server *closedForwardingServer) serveDirect(ctx context.Context, connectio
 			return ctx.Err()
 		}
 	}
+}
+
+// closeAcceptedCarrier records cleanup failures for the joined duty result.
+func (server *forwardServer) closeAcceptedCarrier(connection net.Conn) {
+	err := connection.Close()
+	if err == nil || errors.Is(err, net.ErrClosed) {
+		return
+	}
+	server.acceptedCloseMu.Lock()
+	server.acceptedCloseErr = errors.Join(server.acceptedCloseErr, err)
+	server.acceptedCloseMu.Unlock()
+}
+
+// Register this worker before starting the shared Wait. It interrupts outgoing
+// reads, writes and HELLOs without taking session locks. Joining inside Carrier
+// Close would deadlock: a reader's exact-lease invalidation needs the pool lock
+// held while the pool closes its physical transports.
+func (server *forwardServer) closeOutgoing(ctx context.Context) {
+	defer server.workers.Done()
+	<-ctx.Done()
+	server.outgoingErr = server.pool.Close()
+}
+
+// Join every accepted producer before the session owner waits for its readers.
+// A producer can publish a late successful handshake, but no reader can be
+// added after joinedResult starts its final Wait. A timeout waiting for drained
+// does not release roots: this sole owner retains them until both layers join.
+func (server *forwardServer) finishShutdown() {
+	server.workers.Wait()
+	sessionErr := server.sessions.joinedResult()
+	var hostErr error
+	if server.host != nil {
+		hostErr = server.host.Close()
+	}
+	server.drainErr = errors.Join(server.outgoingErr, sessionErr, server.receiving.Close(), hostErr, server.acceptedCloseErr)
+	close(server.drained)
 }

@@ -81,8 +81,8 @@ func checkForwardingAcceptedCloseFailure(t *testing.T, capacity bool) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	server := newClosedForwardingServerWithHost(closedForwardingDependencies{}, tls.Certificate{}, listener,
-		&closedForwardingReceivingResources{spends: spends}, pool, nil, 1, time.Now)
+	server := newServerWithHost(dependencies{}, tls.Certificate{}, listener,
+		&receivingResources{spends: spends}, pool, nil, 1, time.Now)
 	defer func() {
 		server.Stop()
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)

@@ -59,7 +59,7 @@ func Start(config Config) (*Handle, error) {
 	if host == nil {
 		return nil, errors.New("closed forwarding host allowance is unavailable")
 	}
-	receiving, err := openClosedForwardingReceivingResources(local.Root, replay.Binding{NetworkID: receiver.NetworkID, ProfileDigest: receiver.ProfileDigest,
+	receiving, err := openReceivingResources(local.Root, replay.Binding{NetworkID: receiver.NetworkID, ProfileDigest: receiver.ProfileDigest,
 		ReceiverNodeID: receiver.NodeID, ReceiverDutyGeneration: receiver.DutyGeneration}, config.Now)
 	if err != nil {
 		return nil, errors.Join(err, host.Close())
@@ -76,9 +76,9 @@ func Start(config Config) (*Handle, error) {
 	if err != nil {
 		return nil, errors.Join(err, pool.Close(), receiving.Close(), host.Close())
 	}
-	dependencies := closedForwardingDependencies{current: config.CurrentDuty, authority: config.Authority, verify: config.VerifyAdmission,
+	dependencies := dependencies{current: config.CurrentDuty, authority: config.Authority, verify: config.VerifyAdmission,
 		replenish: config.Replenish, relayEndpoint: local.CarrierRelayEndpoint, literalEndpoint: config.LiteralEndpoint}
-	running := newClosedForwardingServerWithHost(dependencies, local.Certificate, shared, receiving, pool, host, local.ConnectionLimit, config.Now)
+	running := newServerWithHost(dependencies, local.Certificate, shared, receiving, pool, host, local.ConnectionLimit, config.Now)
 	return &Handle{Done: running.Done(), Usage: func() (uint64, uint64, uint64) {
 		active := uint64(running.Active())
 		return active, active, 0
@@ -89,7 +89,7 @@ func Start(config Config) (*Handle, error) {
 	}}, nil
 }
 
-type closedForwardingDependencies struct {
+type dependencies struct {
 	current         func() (state.NodeDuty, error)
 	authority       authority.Source
 	verify          func(route.ClosedRoleReceiver) route.ClosedAdmissionVerifier
