@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/network/state"
+	"github.com/dianabuilds/ardents-network/internal/node/hosting"
 	"github.com/dianabuilds/ardents-network/internal/node/introduction"
 	"github.com/dianabuilds/ardents-network/internal/route"
 )
@@ -28,7 +29,7 @@ func newClosedIntroductionServer(config runtimeConfig, snapshot state.NodeDuty) 
 	return introduction.Start(introduction.Config{Profile: config.ClosedIntroduction, Snapshot: snapshot,
 		Authority: nodeAuthority(config), CurrentDuty: func() (state.NodeDuty, error) { return currentFacts(config) },
 		VerifyAdmission: func(receiver route.ClosedRoleReceiver) route.ClosedAdmissionVerifier {
-			return closedControlTokenVerifier(config, receiver)
+			return hosting.ControlAdmissionVerifier(nodeAuthority(config), config.now, receiver, config.host)
 		},
 		Now: config.now, ListenAddress: listen})
 }

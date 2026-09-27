@@ -12,8 +12,8 @@
 // current State and verifies selected-profile tokens; hosting bounds shared
 // reservations and class-2 reserve-before-spend policy. The outer child owns
 // one accepted Carrier's inner lanes, writer and joined cleanup. The probe
-// child owns its private TLS listener, work and joined drain; Node retains
-// class-1/3 control admission. duty_handle.go names the
+// child owns its private TLS listener, work and joined drain. Hosting owns
+// reservation policy for all admitted classes; duty_handle.go names the
 // process stop/drain boundary; lifecycle_event.go and event_writer.go publish
 // observations. Retired native duties remain unavailable.
 package node

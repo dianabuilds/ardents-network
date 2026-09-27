@@ -1,17 +1,18 @@
-package node
+package hosting
 
 import (
 	"errors"
+	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/node/hosting"
+	"github.com/dianabuilds/ardents-network/internal/node/authority"
 	"github.com/dianabuilds/ardents-network/internal/resource"
 	"github.com/dianabuilds/ardents-network/internal/route"
 )
 
-// closedControlTokenVerifier authenticates a class-1 or class-3 token and
+// ControlAdmissionVerifier authenticates a class-1 or class-3 token and
 // reserves the host envelope for the entire admitted control lifetime.
-func closedControlTokenVerifier(config runtimeConfig, receiver route.ClosedRoleReceiver) route.ClosedAdmissionVerifier {
-	verify := nodeAuthority(config).TokenVerifier(receiver, config.now)
+func ControlAdmissionVerifier(source authority.Source, now func() time.Time, receiver route.ClosedRoleReceiver, host Host) route.ClosedAdmissionVerifier {
+	verify := source.TokenVerifier(receiver, now)
 	return func(input route.ClosedAdmissionVerification) (route.ClosedAdmissionApproval, error) {
 		approval, err := verify(input)
 		if err != nil {
@@ -28,7 +29,7 @@ func closedControlTokenVerifier(config runtimeConfig, receiver route.ClosedRoleR
 		default:
 			return route.ClosedAdmissionApproval{}, errors.New("control duty cannot admit forwarding class")
 		}
-		release, err := hosting.Reserve(config.host, resource.HostingTraffic{Tx: 2 * admitted, Rx: 2 * admitted},
+		release, err := Reserve(host, resource.HostingTraffic{Tx: 2 * admitted, Rx: 2 * admitted},
 			resource.HostingTraffic{Tx: 16 << 10, Rx: 16 << 10}, input.Deadline)
 		if err != nil {
 			return route.ClosedAdmissionApproval{}, err

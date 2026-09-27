@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/network/state"
+	"github.com/dianabuilds/ardents-network/internal/node/hosting"
 	"github.com/dianabuilds/ardents-network/internal/node/resolution"
 	"github.com/dianabuilds/ardents-network/internal/route"
 )
@@ -26,7 +27,7 @@ func startClosedResolution(config runtimeConfig, snapshot state.NodeDuty) (*duty
 	role, err := resolution.Start(resolution.Config{Profile: config.ClosedResolution, Snapshot: snapshot,
 		Authority: nodeAuthority(config), CurrentDuty: func() (state.NodeDuty, error) { return currentFacts(config) },
 		VerifyAdmission: func(receiver route.ClosedRoleReceiver) route.ClosedAdmissionVerifier {
-			return closedControlTokenVerifier(config, receiver)
+			return hosting.ControlAdmissionVerifier(nodeAuthority(config), config.now, receiver, config.host)
 		},
 		Now: config.now, ListenAddress: listen})
 	if err != nil {
