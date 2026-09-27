@@ -186,9 +186,9 @@ func TestTextResolutionNetworkCannotRollBackLocalDescriptorFloor(t *testing.T) {
 				}
 			}
 			_, err = owner.descriptorHistory.Accept(second, current.Credential.Target, profile.NetworkID, profile.Digest, now)
-			reserved, batches := owner.permission.reserved, owner.permission.batches
+			reserved, batches := owner.tokens.permission.reserved, owner.tokens.permission.batches
 			tokensBefore := 0
-			for _, stock := range owner.permission.stock {
+			for _, stock := range owner.tokens.permission.stock {
 				tokensBefore += len(stock.tokens)
 			}
 			owner.mu.Unlock()
@@ -200,12 +200,12 @@ func TestTextResolutionNetworkCannotRollBackLocalDescriptorFloor(t *testing.T) {
 			}
 			owner.mu.Lock()
 			tokensAfter := 0
-			for _, stock := range owner.permission.stock {
+			for _, stock := range owner.tokens.permission.stock {
 				tokensAfter += len(stock.tokens)
 			}
 			unchanged := !owner.descriptorHistory.CanAdmit(fixtureID(199)) &&
-				owner.descriptorHistory.Matches(current.Credential.Target, current.Digest, 2) && owner.permission.reserved == reserved &&
-				owner.permission.batches == batches && tokensBefore == tokensAfter && owner.resolution == nil && owner.issuance == nil
+				owner.descriptorHistory.Matches(current.Credential.Target, current.Digest, 2) && owner.tokens.permission.reserved == reserved &&
+				owner.tokens.permission.batches == batches && tokensBefore == tokensAfter && owner.resolution == nil && owner.tokens.issuance == nil
 			owner.mu.Unlock()
 			if !unchanged {
 				t.Fatal("capacity refusal evicted floors or consumed network issuance/admission")

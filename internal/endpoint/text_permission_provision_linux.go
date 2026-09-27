@@ -47,7 +47,7 @@ func (owner *textContext) provisionTextPermission(ctx context.Context, requestPa
 		return err
 	}
 	owner.mu.Lock()
-	pending := owner.permission
+	pending := owner.tokens.permission
 	if pending == nil || pending.digest != digest {
 		owner.mu.Unlock()
 		return errors.New("text permission request owner changed")

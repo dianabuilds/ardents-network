@@ -46,7 +46,7 @@ func TestTextPrefixReservesOpeningBeforeIssuanceAndJoinsCancellation(t *testing.
 	defer accepted.Close()
 	owner.mu.Lock()
 	flight := owner.source.opening
-	reserved := flight != nil && owner.issuance != nil && owner.permission.batches == 1
+	reserved := flight != nil && owner.tokens.issuance != nil && owner.tokens.permission.batches == 1
 	owner.mu.Unlock()
 	if !reserved {
 		cancel()
@@ -79,7 +79,7 @@ func TestTextPrefixReservesOpeningBeforeIssuanceAndJoinsCancellation(t *testing.
 	}
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
-	if owner.source.opening != nil || owner.issuance != nil || owner.source.currentLocked() != nil || owner.permission.batches != 1 {
+	if owner.source.opening != nil || owner.tokens.issuance != nil || owner.source.currentLocked() != nil || owner.tokens.permission.batches != 1 {
 		t.Fatal("cancellation leaked ownership or another batch debit")
 	}
 }
@@ -102,7 +102,7 @@ func TestTextPrefixOpeningExcludesUnrelatedIssuanceBetweenBatches(t *testing.T) 
 	}
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
-	if owner.permission.pending != nil || owner.permission.batches != 0 || owner.permission.reserved != [3]uint32{} {
+	if owner.tokens.permission.pending != nil || owner.tokens.permission.batches != 0 || owner.tokens.permission.reserved != [3]uint32{} {
 		t.Fatal("unrelated issuance consumed a batch during reserved prefix opening")
 	}
 }
@@ -155,7 +155,7 @@ func TestTextPrefixOpeningRejectsObsoleteCompletionWithoutTouchingReplacement(t 
 		t.Fatal("opening transport started without a retained reservation")
 	}
 	owner.source.opening = replacement
-	permission := owner.permission
+	permission := owner.tokens.permission
 	pending := permission.pending
 	batches, reserved, stock := permission.batches, permission.reserved, len(permission.stock)
 	owner.mu.Unlock()
@@ -172,7 +172,7 @@ func TestTextPrefixOpeningRejectsObsoleteCompletionWithoutTouchingReplacement(t 
 	}
 
 	owner.mu.Lock()
-	retained := owner.source.opening == replacement && owner.source.currentLocked() == nil && owner.permission == permission &&
+	retained := owner.source.opening == replacement && owner.source.currentLocked() == nil && owner.tokens.permission == permission &&
 		permission.pending == pending && permission.batches == batches && permission.reserved == reserved && len(permission.stock) == stock
 	if owner.source.opening == replacement {
 		owner.source.opening = nil

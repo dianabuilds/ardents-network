@@ -22,7 +22,7 @@ type textContextState struct {
 	responder         textResponderPrefixLifecycle
 	resolution        *textResolutionFlight
 	source            textSourceLifecycle
-	issuance          *textIssuanceOperation
+	tokens            textTokens
 	mu                sync.Mutex
 	endpoint          *endpoint
 	lease             *broker.ActiveSession
@@ -31,7 +31,6 @@ type textContextState struct {
 	job               *textJobIdentity
 	lastJob           *textJobIdentity
 	verifiedJob       *textJobIdentity
-	permission        *textPermission
 	closed            bool
 	done              chan struct{}
 	closeErr          error

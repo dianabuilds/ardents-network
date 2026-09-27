@@ -24,7 +24,7 @@ func (owner *textContext) prepareTextSourceReopen(ctx context.Context, flight *t
 func (owner *textContext) prepareTextSourceReopenOwned(ctx context.Context, flight *textResolutionFlight) error {
 	owner.mu.Lock()
 	profile, _, err := owner.textPermissionProfileLocked()
-	if err != nil || ctx.Err() != nil || owner.source.currentLocked() == nil || flight != nil && (owner.resolution != flight || flight.source == nil || !flight.source.currentLocked(&owner.source)) || owner.permission == nil {
+	if err != nil || ctx.Err() != nil || owner.source.currentLocked() == nil || flight != nil && (owner.resolution != flight || flight.source == nil || !flight.source.currentLocked(&owner.source)) || owner.tokens.permission == nil {
 		owner.mu.Unlock()
 		return textSourcePreparationFailureAt("stock", errors.New("text Source reopen stock unavailable"))
 	}
@@ -35,7 +35,7 @@ func (owner *textContext) prepareTextSourceReopenOwned(ctx context.Context, flig
 	}
 	var missing [][32]byte
 	for _, receiver := range [][32]byte{selection.EntryNodeID, selection.InteriorNodeID} {
-		if owner.permission.stockCountFor(profile.Digest, receiver, 2) == 0 {
+		if owner.tokens.permission.stockCountFor(profile.Digest, receiver, 2) == 0 {
 			missing = append(missing, receiver)
 		}
 	}

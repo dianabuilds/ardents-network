@@ -88,11 +88,11 @@ func (operation *textIssuanceOperation) complete(caller context.Context, result 
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
 	defer operation.finishLocked()
-	if owner.issuance != operation {
+	if owner.tokens.issuance != operation {
 		clear(result.Body)
 		return errors.New("text issuance completion owner changed")
 	}
-	owner.issuance = nil
+	owner.tokens.issuance = nil
 	if errors.Is(exchangeErr, client.ErrClosedBootstrapCleanup) || errors.Is(exchangeErr, client.ErrClosedSourceCleanup) {
 		owner.closeErr = errors.Join(owner.closeErr, exchangeErr)
 		owner.closed = true
@@ -100,7 +100,7 @@ func (operation *textIssuanceOperation) complete(caller context.Context, result 
 		return exchangeErr
 	}
 	current, currentTime, currentErr := owner.textPermissionProfileLocked()
-	if currentErr != nil || owner.permission != operation.permission || current != operation.profile ||
+	if currentErr != nil || owner.tokens.permission != operation.permission || current != operation.profile ||
 		!currentTime.Before(operation.permission.accepted.NotAfter) {
 		clear(result.Body)
 		return errors.New("text issuance owner changed before completion")

@@ -101,10 +101,10 @@ func (owner *textContext) issueTextTokensForOpeningWithCancellation(ctx context.
 		owner.mu.Unlock()
 		return err
 	}
-	permission := owner.permission
+	permission := owner.tokens.permission
 	source, ok := owner.endpoint.closedState.(client.ClosedBootstrapState)
 	if !ok || !permission.currentFor(profile, now) ||
-		owner.issuance != nil || !opening.admittedLocked(owner) || !textJoinIssuanceCurrentLocked(owner, acquisition, expected) {
+		owner.tokens.issuance != nil || !opening.admittedLocked(owner) || !textJoinIssuanceCurrentLocked(owner, acquisition, expected) {
 		owner.mu.Unlock()
 		return errors.New("text issuance owner is unavailable")
 	}
@@ -143,7 +143,7 @@ func (owner *textContext) issueTextTokensForOpeningWithCancellation(ctx context.
 		return err
 	}
 	operation := newTextIssuanceOperation(owner, permission, profile, batch, discardCanceled)
-	owner.issuance = operation
+	owner.tokens.issuance = operation
 	owner.mu.Unlock()
 	return operation.run(ctx, source, selection)
 }

@@ -48,7 +48,7 @@ func (owner *textContext) publishTextDescriptor(ctx context.Context) (verified r
 		reason = "Introduction registration withdrawal is in progress"
 	case owner.publication.pair.openingInProgressLocked():
 		reason = "Introduction registration opening is in progress"
-	case owner.permission == nil:
+	case owner.tokens.permission == nil:
 		reason = "Permission is absent"
 	case owner.resolution != nil:
 		reason = "resolution flight is active"

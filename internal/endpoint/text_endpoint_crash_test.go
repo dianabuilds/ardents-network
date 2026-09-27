@@ -88,7 +88,7 @@ func TestTextEndpointCrashDropsVolatileAuthorityAndRetainsSpend(t *testing.T) {
 	}
 	defer owner.Close()
 	owner.mu.Lock()
-	fresh := owner.permission == nil && owner.job == nil && owner.verifiedJob == nil && owner.source.set == nil &&
+	fresh := owner.tokens.permission == nil && owner.job == nil && owner.verifiedJob == nil && owner.source.set == nil &&
 		owner.source.currentLocked() == nil && owner.publication.pair.registration == nil && owner.publication.pair.previousRegistration == nil &&
 		owner.introduction.exchanges.active == nil && owner.introduction.admission.replays == nil && owner.descriptorHistory.Cleared()
 	owner.mu.Unlock()
@@ -123,7 +123,7 @@ func TestTextEndpointCrashDropsVolatileAuthorityAndRetainsSpend(t *testing.T) {
 		t.Fatal("restart rebound the old response to the fresh holder")
 	}
 	owner.mu.Lock()
-	stock := len(owner.permission.stock)
+	stock := len(owner.tokens.permission.stock)
 	owner.mu.Unlock()
 	if stock != 0 {
 		t.Fatal("restart resurrected token stock")
@@ -263,8 +263,8 @@ func runTextEndpointCrashChild(t *testing.T, root string) {
 		t.Fatal(err)
 	}
 	owner.mu.Lock()
-	owner.permission.stock = []textTokenStock{{tokens: [][]byte{bytes.Repeat([]byte{0x5a}, 354)}}}
-	stockCount := len(owner.permission.stock)
+	owner.tokens.permission.stock = []textTokenStock{{tokens: [][]byte{bytes.Repeat([]byte{0x5a}, 354)}}}
+	stockCount := len(owner.tokens.permission.stock)
 	owner.mu.Unlock()
 	oldCapability, err := endpoint.Admit(principal, broker.Connection)
 	if err != nil {

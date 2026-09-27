@@ -193,7 +193,7 @@ func (owner *textContext) prepareTextSubmissionStockWithCancellation(ctx context
 	}
 	owner.mu.Lock()
 	profile, _, err := owner.textPermissionProfileLocked()
-	stocked := err == nil && owner.permission.stockCountFor(profile.Digest, receiver, 1) != 0
+	stocked := err == nil && owner.tokens.permission.stockCountFor(profile.Digest, receiver, 1) != 0
 	owner.mu.Unlock()
 	if err != nil {
 		return [32]byte{}, state.ClosedProfileView{}, err

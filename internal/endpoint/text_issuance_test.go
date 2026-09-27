@@ -112,7 +112,7 @@ func TestTextIssuanceRetainsExactPendingBatchAcrossFailedAttempts(t *testing.T) 
 		t.Fatal("unavailable network issued tokens")
 	}
 	owner.mu.Lock()
-	pending := owner.permission.pending
+	pending := owner.tokens.permission.pending
 	if pending == nil {
 		owner.mu.Unlock()
 		t.Fatal("failed exchange lost prepared batch")
@@ -124,7 +124,7 @@ func TestTextIssuanceRetainsExactPendingBatchAcrossFailedAttempts(t *testing.T) 
 		t.Fatal("unavailable retry issued tokens")
 	}
 	owner.mu.Lock()
-	if owner.permission.pending != pending || !bytes.Equal(original, pending.pending.Request()) || pending.selection != selection || owner.permission.batches != 1 || len(owner.permission.stock) != 0 || owner.issuance != nil {
+	if owner.tokens.permission.pending != pending || !bytes.Equal(original, pending.pending.Request()) || pending.selection != selection || owner.tokens.permission.batches != 1 || len(owner.tokens.permission.stock) != 0 || owner.tokens.issuance != nil {
 		owner.mu.Unlock()
 		t.Fatal("retry rotated blinding state, source, allowance, or left live flight")
 	}
@@ -135,7 +135,7 @@ func TestTextIssuanceRetainsExactPendingBatchAcrossFailedAttempts(t *testing.T) 
 	if err := owner.Close(); err != nil {
 		t.Fatal(err)
 	}
-	if owner.permission != nil || len(pending.pending.Request()) != 0 {
+	if owner.tokens.permission != nil || len(pending.pending.Request()) != 0 {
 		t.Fatal("context loss retained secret batch")
 	}
 }
@@ -151,10 +151,10 @@ func TestTextPermissionRevocationDefersActiveBatchDiscardUntilOperationCompletio
 	}
 
 	owner.mu.Lock()
-	permission := owner.permission
+	permission := owner.tokens.permission
 	batch := permission.pending
 	operation := newTextIssuanceOperation(owner, permission, permission.profile, batch, false)
-	owner.issuance = operation
+	owner.tokens.issuance = operation
 	t.Cleanup(func() {
 		select {
 		case <-operation.done:
@@ -167,7 +167,7 @@ func TestTextPermissionRevocationDefersActiveBatchDiscardUntilOperationCompletio
 		_ = operation.complete(canceled, client.ClosedIssuanceExchangeResult{}, context.Canceled)
 	})
 	owner.clearTextPermissionLocked()
-	if owner.permission != nil || !operation.discardPermission || len(batch.pending.Request()) == 0 {
+	if owner.tokens.permission != nil || !operation.discardPermission || len(batch.pending.Request()) == 0 {
 		owner.mu.Unlock()
 		t.Fatal("revocation did not detach permission while retaining the active operation batch")
 	}
@@ -232,10 +232,10 @@ func TestTextRecoveryIssuanceCancellationDiscardsBatchWithoutRefund(t *testing.T
 	}
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
-	if owner.issuance != nil || owner.permission.pending != nil || owner.permission.batches != 1 ||
-		owner.permission.reserved != [3]uint32{0, 1, 0} || len(owner.permission.stock) != 0 {
+	if owner.tokens.issuance != nil || owner.tokens.permission.pending != nil || owner.tokens.permission.batches != 1 ||
+		owner.tokens.permission.reserved != [3]uint32{0, 1, 0} || len(owner.tokens.permission.stock) != 0 {
 		t.Fatalf("recovery cancellation state: issuance=%v pending=%v batches=%d reserved=%v stock=%d",
-			owner.issuance != nil, owner.permission.pending != nil, owner.permission.batches, owner.permission.reserved, len(owner.permission.stock))
+			owner.tokens.issuance != nil, owner.tokens.permission.pending != nil, owner.tokens.permission.batches, owner.tokens.permission.reserved, len(owner.tokens.permission.stock))
 	}
 }
 
@@ -300,7 +300,7 @@ func TestTextIssuanceRevocationBeforeDelayedCompletionJoinsTransport(t *testing.
 	}
 	defer accepted.Close()
 	owner.mu.Lock()
-	started := owner.issuance != nil && owner.permission != nil && owner.permission.pending != nil
+	started := owner.tokens.issuance != nil && owner.tokens.permission != nil && owner.tokens.permission.pending != nil
 	owner.mu.Unlock()
 	if !started {
 		t.Fatal("issuance transport opened before its operation was retained")
@@ -335,7 +335,7 @@ func TestTextIssuanceRevocationBeforeDelayedCompletionJoinsTransport(t *testing.
 	}
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
-	if owner.issuance != nil || owner.permission != nil {
+	if owner.tokens.issuance != nil || owner.tokens.permission != nil {
 		t.Fatal("revoked issuance retained operation or usable token material")
 	}
 }
@@ -357,8 +357,8 @@ func TestTextPrefixPreparesBothReceiversInOneRetryableBatch(t *testing.T) {
 	}
 	attempt()
 	owner.mu.Lock()
-	pending := owner.permission.pending
-	if pending == nil || len(pending.challenges) != 2 || owner.permission.batches != 1 {
+	pending := owner.tokens.permission.pending
+	if pending == nil || len(pending.challenges) != 2 || owner.tokens.permission.batches != 1 {
 		owner.mu.Unlock()
 		t.Fatal("cold prefix did not retain one two-receiver batch")
 	}
@@ -377,8 +377,8 @@ func TestTextPrefixPreparesBothReceiversInOneRetryableBatch(t *testing.T) {
 	attempt()
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
-	if owner.permission.pending != pending || owner.permission.batches != 1 || !bytes.Equal(original, pending.pending.Request()) ||
-		owner.issuance != nil || owner.source.opening != nil || len(owner.permission.stock) != 0 {
+	if owner.tokens.permission.pending != pending || owner.tokens.permission.batches != 1 || !bytes.Equal(original, pending.pending.Request()) ||
+		owner.tokens.issuance != nil || owner.source.opening != nil || len(owner.tokens.permission.stock) != 0 {
 		t.Fatal("retry changed receiver ordering, blinding, batch debit or lifecycle")
 	}
 }
@@ -398,7 +398,7 @@ func TestTextIssuerStockRetryRetainsOriginalInternalBatch(t *testing.T) {
 		t.Fatal("unavailable issuer unexpectedly funded stock")
 	}
 	owner.mu.Lock()
-	batch := owner.permission.pending
+	batch := owner.tokens.permission.pending
 	if batch == nil {
 		owner.mu.Unlock()
 		t.Fatal("internal batch lost on failure")
@@ -411,8 +411,8 @@ func TestTextIssuerStockRetryRetainsOriginalInternalBatch(t *testing.T) {
 	}
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
-	if owner.permission.pending != batch || !bytes.Equal(original, batch.pending.Request()) ||
-		owner.permission.batches != 1 || owner.permission.reserved != [3]uint32{4, 0, 0} {
+	if owner.tokens.permission.pending != batch || !bytes.Equal(original, batch.pending.Request()) ||
+		owner.tokens.permission.batches != 1 || owner.tokens.permission.reserved != [3]uint32{4, 0, 0} {
 		t.Fatal("internal stock retry changed request or repeated allocation")
 	}
 }

@@ -17,12 +17,12 @@ func (owner *textContext) prepareTextIssuerStock(ctx context.Context, requested 
 	opening *textPrefixOpeningOperation, acquisition textJoinAcquisition, expected *textSourceHandle) error {
 	owner.mu.Lock()
 	profile, _, err := owner.textPermissionProfileLocked()
-	if err != nil || ctx.Err() != nil || owner.permission == nil || !opening.admittedLocked(owner) ||
+	if err != nil || ctx.Err() != nil || owner.tokens.permission == nil || !opening.admittedLocked(owner) ||
 		!textJoinIssuanceCurrentLocked(owner, acquisition, expected) {
 		owner.mu.Unlock()
 		return errors.New("text issuer stock owner unavailable")
 	}
-	permission := owner.permission
+	permission := owner.tokens.permission
 	if batch := permission.pending; batch != nil {
 		if !batch.refill {
 			owner.mu.Unlock()
@@ -69,8 +69,8 @@ func (operation *textIssuanceOperation) presentTextIssuerToken(selection client.
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
 	profile, now, err := owner.textPermissionProfileLocked()
-	if err != nil || owner.issuance != operation || operation.context == nil || operation.context.Err() != nil ||
-		operation.prefix == nil || !operation.prefix.currentLocked(&owner.source) || !owner.permission.pendingFor(operation.prefix) ||
+	if err != nil || owner.tokens.issuance != operation || operation.context == nil || operation.context.Err() != nil ||
+		operation.prefix == nil || !operation.prefix.currentLocked(&owner.source) || !owner.tokens.permission.pendingFor(operation.prefix) ||
 		hello.Purpose != ardp.PurposeIssuer || class != 1 ||
 		hello.NetworkID != profile.NetworkID || hello.StateGeneration != profile.StateGeneration || hello.StateDigest != profile.StateDigest ||
 		hello.ProfileDigest != profile.Digest || hello.RecipientNodeID != profile.IssuerNodeID || hello.RecipientDutyGeneration != profile.IssuerDutyGeneration ||

@@ -64,7 +64,7 @@ func (owner *textContext) openTextPrefix(ctx context.Context) (*textSourceHandle
 	}
 	owner.mu.Lock()
 	_, _, err := owner.textPermissionProfileLocked()
-	if err != nil || !owner.permission.hasAccepted() || owner.source.currentLocked() != nil || owner.source.openingInProgressLocked() || owner.issuance != nil {
+	if err != nil || !owner.tokens.permission.hasAccepted() || owner.source.currentLocked() != nil || owner.source.openingInProgressLocked() || owner.tokens.issuance != nil {
 		owner.mu.Unlock()
 		return nil, textPrefixPreparationFailureAt("authority", errors.Join(err, errors.New("text prefix owner unavailable")))
 	}
@@ -109,7 +109,7 @@ func (operation *textPrefixOpeningOperation) presentTextToken(selection client.C
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
 	profile, now, err := owner.textPermissionProfileLocked()
-	if err != nil || !owner.permission.hasAccepted() || !operation.admittedLocked(owner) ||
+	if err != nil || !owner.tokens.permission.hasAccepted() || !operation.admittedLocked(owner) ||
 		hello.NetworkID != profile.NetworkID || hello.StateGeneration != profile.StateGeneration || hello.StateDigest != profile.StateDigest ||
 		hello.ProfileDigest != profile.Digest || hello.Purpose != ardp.PurposeForwarding || class != 2 ||
 		hello.ChannelNonce == [32]byte{} || !now.Before(hello.Deadline) || hello.Deadline.After(profile.NotAfter) {
@@ -145,8 +145,8 @@ func (endpoint *endpoint) textTokenJournal() (*tokenjournal.Journal, error) {
 func (owner *textContext) ensureTextPrefixStock(ctx context.Context, opening *textPrefixOpeningOperation) (client.ClosedBootstrapSelection, error) {
 	owner.mu.Lock()
 	_, _, err := owner.textPermissionProfileLocked()
-	if err != nil || ctx.Err() != nil || !owner.permission.hasAccepted() ||
-		owner.source.currentLocked() != nil || !opening.admittedLocked(owner) || owner.issuance != nil {
+	if err != nil || ctx.Err() != nil || !owner.tokens.permission.hasAccepted() ||
+		owner.source.currentLocked() != nil || !opening.admittedLocked(owner) || owner.tokens.issuance != nil {
 		owner.mu.Unlock()
 		return client.ClosedBootstrapSelection{}, textPrefixPreparationFailureAt("stock-authority", errors.Join(err, ctx.Err(), errors.New("text prefix stock owner unavailable")))
 	}
@@ -157,7 +157,7 @@ func (owner *textContext) ensureTextPrefixStock(ctx context.Context, opening *te
 	}
 	var missing [][32]byte
 	for _, receiver := range [][32]byte{selection.EntryNodeID, selection.InteriorNodeID} {
-		if owner.permission.stockCountFor(selection.ProfileDigest, receiver, 2) == 0 {
+		if owner.tokens.permission.stockCountFor(selection.ProfileDigest, receiver, 2) == 0 {
 			missing = append(missing, receiver)
 		}
 	}

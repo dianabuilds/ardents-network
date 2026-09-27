@@ -154,7 +154,7 @@ func (owner *textContext) requestTextPermission(maxima [3]uint32) ([]byte, [32]b
 	if err != nil {
 		return nil, [32]byte{}, err
 	}
-	if previous := owner.permission; previous != nil {
+	if previous := owner.tokens.permission; previous != nil {
 		public, digest, active, err := previous.retainedRequest(scope)
 		if active {
 			return public, digest, err
@@ -165,7 +165,7 @@ func (owner *textContext) requestTextPermission(maxima [3]uint32) ([]byte, [32]b
 	if err != nil {
 		return nil, [32]byte{}, err
 	}
-	owner.permission = prepared
+	owner.tokens.permission = prepared
 	return public, digest, nil
 }
 
@@ -187,7 +187,7 @@ func (owner *textContext) importTextPermission(digest [32]byte, raw []byte) erro
 	if err != nil {
 		return err
 	}
-	return owner.permission.acceptResponse(profile, now, digest, permission)
+	return owner.tokens.permission.acceptResponse(profile, now, digest, permission)
 }
 
 func (owner *textContext) textPermissionProfileLocked() (state.ClosedProfileView, time.Time, error) {
@@ -210,12 +210,12 @@ func (owner *textContext) textPermissionProfileLocked() (state.ClosedProfileView
 }
 
 func (owner *textContext) clearTextPermissionLocked() {
-	permission := owner.permission
+	permission := owner.tokens.permission
 	if permission == nil {
 		return
 	}
-	owner.permission = nil
-	if owner.issuance != nil && owner.issuance.retirePermissionLocked(permission) {
+	owner.tokens.permission = nil
+	if owner.tokens.issuance != nil && owner.tokens.issuance.retirePermissionLocked(permission) {
 		return
 	}
 	clearTextPermission(permission)

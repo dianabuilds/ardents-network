@@ -41,7 +41,7 @@ func TestTextPublisherIntroductionPrefixUsesSeparateDomainAndRealIssuance(t *tes
 				t.Fatal(err)
 			}
 			owner.mu.Lock()
-			separate := owner.source.currentLocked() == source && owner.introduction.prefix.currentLocked() == introduction && source.prefix.Load() != introduction.prefix.Load() && owner.source.set != owner.introduction.prefix.set && owner.source.set.interior[0].Domain == 1 && owner.introduction.prefix.set.interior[0].Domain == 4 && owner.permission.batches == 2 && owner.issuance == nil
+			separate := owner.source.currentLocked() == source && owner.introduction.prefix.currentLocked() == introduction && source.prefix.Load() != introduction.prefix.Load() && owner.source.set != owner.introduction.prefix.set && owner.source.set.interior[0].Domain == 1 && owner.introduction.prefix.set.interior[0].Domain == 4 && owner.tokens.permission.batches == 2 && owner.tokens.issuance == nil
 			owner.mu.Unlock()
 			if !separate {
 				t.Fatal("Publisher Introduction reused Source ownership or bootstrap admission")

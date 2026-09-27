@@ -79,7 +79,7 @@ func TestTextPermissionPreparationJoinsUnqualifiedLaunch(t *testing.T) {
 				}
 				helpers.Wait()
 				owner.mu.Lock()
-				retained, qualified, permission := owner.job, owner.verifiedJob, owner.permission
+				retained, qualified, permission := owner.job, owner.verifiedJob, owner.tokens.permission
 				finished, cleanupErr := job.finished, job.cleanupErr
 				owner.mu.Unlock()
 				if retained != nil || qualified != nil || permission != nil || !finished || cleanupErr != nil {

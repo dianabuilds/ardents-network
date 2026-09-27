@@ -219,7 +219,7 @@ func textReaderLookupObservation(t *testing.T, owner *textContext, input textRea
 	}
 	responseDigest := sha256.Sum256(input.Expected)
 	owner.mu.Lock()
-	permission := owner.permission
+	permission := owner.tokens.permission
 	if permission == nil || permission.accepted == (admission.Permission{}) || permission.batches == 0 {
 		owner.mu.Unlock()
 		t.Fatal("reader lookup lost its actual permission allocation")

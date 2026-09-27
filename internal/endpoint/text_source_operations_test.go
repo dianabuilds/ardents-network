@@ -66,7 +66,7 @@ func TestTextTokenPresentationClassifiesConcurrentRoleCommit(t *testing.T) {
 	flight := &textPrefixOpeningOperation{owner: owner, context: attempt, cancelOperation: cancel, done: make(chan struct{})}
 	owner.mu.Lock()
 	owner.source.opening = flight
-	profile := owner.permission.profile
+	profile := owner.tokens.permission.profile
 	owner.mu.Unlock()
 	defer func() {
 		owner.mu.Lock()
@@ -124,7 +124,7 @@ func TestTextRefreshWaitsForActualSourceUse(t *testing.T) {
 				return owner.publication.pair.registration != nil && owner.publication.pair.registration != first && !owner.publication.pair.registration.refreshAt.IsZero()
 			})
 			owner.mu.Lock()
-			valid := owner.publication.pair.previousRegistration == first && owner.publication.refresh.outcome(refresh) == nil && owner.permission.batches == 2
+			valid := owner.publication.pair.previousRegistration == first && owner.publication.refresh.outcome(refresh) == nil && owner.tokens.permission.batches == 2
 			owner.mu.Unlock()
 			if !valid {
 				t.Fatal("refresh lost original registration or repeated bootstrap")

@@ -199,7 +199,7 @@ func TestTextPermissionCustodyRoundTripAndContextOwnership(t *testing.T) {
 	}
 	projection.err = nil
 
-	oldHolder, oldPublic := reader.permission.holder, reader.permission.public
+	oldHolder, oldPublic := reader.tokens.permission.holder, reader.tokens.permission.public
 	now = now.Add(time.Hour)
 	if err := reader.importTextPermission(digest, approved.AdmissionPermission); err == nil {
 		t.Fatal("expired permission accepted")
@@ -215,7 +215,7 @@ func TestTextPermissionCustodyRoundTripAndContextOwnership(t *testing.T) {
 	if !bytes.Equal(oldHolder, make([]byte, len(oldHolder))) || !bytes.Equal(oldPublic, make([]byte, len(oldPublic))) {
 		t.Fatal("old allocation was not erased")
 	}
-	retainedHolder := reader.permission.holder
+	retainedHolder := reader.tokens.permission.holder
 	if err := endpoint.admission.Revoke(principal, broker.Connection); err != nil {
 		t.Fatal(err)
 	}
@@ -225,7 +225,7 @@ func TestTextPermissionCustodyRoundTripAndContextOwnership(t *testing.T) {
 	if err := reader.Close(); err != nil {
 		t.Fatal(err)
 	}
-	if reader.permission != nil || !bytes.Equal(retainedHolder, make([]byte, len(retainedHolder))) {
+	if reader.tokens.permission != nil || !bytes.Equal(retainedHolder, make([]byte, len(retainedHolder))) {
 		t.Fatal("revoked context retained private holder")
 	}
 	if _, _, err := publisher.requestTextPermission([3]uint32{0, 64, 0}); err != nil {
@@ -234,7 +234,7 @@ func TestTextPermissionCustodyRoundTripAndContextOwnership(t *testing.T) {
 	if err := endpoint.closeTextContexts(); err != nil {
 		t.Fatal(err)
 	}
-	if publisher.permission != nil {
+	if publisher.tokens.permission != nil {
 		t.Fatal("Endpoint loss retained Publisher allocation")
 	}
 }
@@ -245,7 +245,7 @@ func TestTextPermissionRequiresVerifiedContext(t *testing.T) {
 	if _, _, err := owner.requestTextPermission([3]uint32{1, 0, 0}); err == nil {
 		t.Fatal("unqualified context created holder")
 	}
-	if owner.permission != nil {
+	if owner.tokens.permission != nil {
 		t.Fatal("failed request retained key")
 	}
 }

@@ -37,7 +37,7 @@ func textTokenTransferFailureStage(cause error) string {
 // flight has independently authorized its role. It durably marks consumed stock
 // and rechecks the surviving context before releasing bytes to Route.
 func (owner *textContext) takeTextTokenLocked(profile state.ClosedProfileView, now time.Time, hello ardp.Hello, class uint8, attempt context.Context) ([]byte, error) {
-	permission := owner.permission
+	permission := owner.tokens.permission
 	token, err := permission.consumeTextToken(profile, now, hello, class)
 	if err != nil {
 		return nil, err

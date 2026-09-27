@@ -309,7 +309,7 @@ func TestTextPublicationRefreshExpiresPermissionWithoutResurrection(t *testing.T
 			}
 			owner.mu.Lock()
 			refresh := owner.publication.refresh.current()
-			expires := owner.permission.accepted.NotAfter
+			expires := owner.tokens.permission.accepted.NotAfter
 			first.refreshAt = time.Now().Add(-time.Second)
 			if refresh == nil || expires.IsZero() {
 				owner.mu.Unlock()

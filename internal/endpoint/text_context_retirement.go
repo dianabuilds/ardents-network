@@ -46,7 +46,7 @@ func (owner *textContext) stopTextContextChildrenLocked() *textContextRetirement
 	retirement.responder = owner.responder.stopLocked()
 	retirement.source = owner.source.stopLocked()
 	owner.clearTextPermissionLocked()
-	retirement.issuance = owner.issuance
+	retirement.issuance = owner.tokens.issuance
 	retirement.issuance.cancel()
 	retirement.resolution = owner.resolution
 	if retirement.resolution != nil {

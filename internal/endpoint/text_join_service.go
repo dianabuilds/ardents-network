@@ -239,7 +239,7 @@ func (owner *textContext) prepareTextJoinStock(ctx context.Context, attempt *tex
 	owner.mu.Lock()
 	profile, _, err := owner.textPermissionProfileLocked()
 	stocked := err == nil && prefix.currentLocked(owner) &&
-		owner.permission.stockCountFor(profile.Digest, node, 2) != 0
+		owner.tokens.permission.stockCountFor(profile.Digest, node, 2) != 0
 	owner.mu.Unlock()
 	if err == nil && !stocked {
 		err = owner.issueTextJoinTokens(bounded, [][32]byte{node}, 2, prefix,
