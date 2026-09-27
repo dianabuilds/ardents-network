@@ -5,8 +5,9 @@ ADRs, [Network/Node technical owner](../technical/network-route-node.md), and
 GitHub issues govern behavior and delivery. This document records code
 boundaries, not a second task ledger. The initial source graph was checked
 against `dev` at `51b38337` on 2026-09-27. The result below describes the
-extracted Node packages on `codex/node-decomposition`; integration into `dev`
-still requires the combined gate.
+extracted Node packages integrated into `dev` at `a2db90bb` after the combined
+`make check` and Linux Docker build/tests. Installed systemd/cgroup evidence
+remains a later shared qualification milestone.
 The [C0 component reconstruction](c0-component-reconstruction.md) and
 [Route boundary record](route-refactoring-boundary.md) retain older snapshots.
 
