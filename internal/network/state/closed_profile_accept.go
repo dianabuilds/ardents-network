@@ -5,6 +5,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/network/closedprofile"
 	"github.com/dianabuilds/ardents-network/internal/network/epoch"
 	"github.com/dianabuilds/ardents-network/internal/network/state/durable"
 )
@@ -19,7 +20,7 @@ type ClosedProfileView struct {
 	Epoch                                   uint64
 	NotBefore, NotAfter                     time.Time
 	TokenKeyCount                           uint8
-	TokenKeys                               [maximumClosedProfileKeys]ClosedProfileTokenKey
+	TokenKeys                               [closedprofile.MaxKeys]ClosedProfileTokenKey
 }
 
 // ClosedRouteNodeView is one public recipient fact already joined by State to
@@ -37,7 +38,7 @@ type ClosedRouteNodeView struct {
 type ClosedRouteView struct {
 	Profile   ClosedProfileView
 	NodeCount uint8
-	Nodes     [maximumClosedProfileNodes]ClosedRouteNodeView
+	Nodes     [closedprofile.MaxNodes]ClosedRouteNodeView
 }
 
 // ClosedProfileTokenKey is one immutable public RSA-PSS key/window fact from
@@ -62,8 +63,8 @@ func (s *networkState) AcceptClosedProfile(raw []byte) (ClosedProfileView, error
 		return ClosedProfileView{}, err
 	}
 	now := s.config.clock().UTC()
-	profile, err := parseClosedProfile(raw, generation, s.current.NetworkID, s.current.Digest, s.current.Epoch, s.config.closedProfileAuthority, now)
-	if err != nil || profile.notBefore.Before(s.current.EpochValidFrom) || profile.notAfter.After(s.current.ValidUntil) || !matchesClosedProfileCandidates(profile, s.currentDecision.Candidates) {
+	profile, err := s.verifyClosedProfileLocked(raw, generation, now)
+	if err != nil || profile.NotBefore.Before(s.current.EpochValidFrom) || profile.NotAfter.After(s.current.ValidUntil) || !matchesClosedProfileCandidates(profile, s.currentDecision.Candidates) {
 		return ClosedProfileView{}, errors.New("closed profile does not match accepted State")
 	}
 	stored, storedRaw, err := s.storage.LoadClosedProfile(generation)
@@ -71,16 +72,16 @@ func (s *networkState) AcceptClosedProfile(raw []byte) (ClosedProfileView, error
 		return ClosedProfileView{}, err
 	}
 	if stored != (durable.ClosedProfileState{}) {
-		if stored.Epoch != profile.epoch || stored.Accepted != profile.digest || stored.Conflict != [32]byte{} {
-			if stored.Conflict == [32]byte{} && stored.Epoch == profile.epoch && stored.Accepted != profile.digest {
-				stored.Conflict = profile.digest
+		if stored.Epoch != profile.Epoch || stored.Accepted != profile.Digest || stored.Conflict != [32]byte{} {
+			if stored.Conflict == [32]byte{} && stored.Epoch == profile.Epoch && stored.Accepted != profile.Digest {
+				stored.Conflict = profile.Digest
 				if err := s.storage.CommitClosedProfile(stored, storedRaw); err != nil {
 					return ClosedProfileView{}, err
 				}
 			}
 			return ClosedProfileView{}, errors.New("closed profile has a durable conflict")
 		}
-	} else if err := s.storage.CommitClosedProfile(durable.ClosedProfileState{Generation: generation, Epoch: profile.epoch, Accepted: profile.digest}, raw); err != nil {
+	} else if err := s.storage.CommitClosedProfile(durable.ClosedProfileState{Generation: generation, Epoch: profile.Epoch, Accepted: profile.Digest}, raw); err != nil {
 		return ClosedProfileView{}, err
 	}
 	return closedProfileView(profile), nil
@@ -126,64 +127,74 @@ func (s *networkState) CurrentClosedRoute() (ClosedRouteView, error) {
 // Both runtime projections use one guard while holding State's read lock.
 // Offline profile acceptance is separate: possession of persisted signed
 // bytes does not permit runtime use after time confidence or its owner fails.
-func (s *networkState) currentClosedProfileLocked() (closedProfile, error) {
+func (s *networkState) currentClosedProfileLocked() (closedprofile.Profile, error) {
 	if s.closed || s.current == nil || s.currentDecision == nil || s.current.Profile != closedRouteProfile || s.distribution.conflicting {
-		return closedProfile{}, errors.New("closed profile is unavailable")
+		return closedprofile.Profile{}, errors.New("closed profile is unavailable")
 	}
 	if err := errors.Join(s.automaticErr, s.resourceErr); err != nil {
-		return closedProfile{}, err
+		return closedprofile.Profile{}, err
 	}
 	if s.config.observe == nil {
-		return closedProfile{}, errClockUncertain
+		return closedprofile.Profile{}, errClockUncertain
 	}
 	now, err := trustedNow(s.config, s.distribution)
 	if err != nil {
-		return closedProfile{}, err
+		return closedprofile.Profile{}, err
 	}
 	if now.Before(s.current.EpochValidFrom) || !now.Before(s.current.ValidUntil) {
-		return closedProfile{}, errors.New("closed profile State is not current")
+		return closedprofile.Profile{}, errors.New("closed profile State is not current")
 	}
 	generation, err := closedProfileGeneration(s.current.Generation)
 	if err != nil {
-		return closedProfile{}, err
+		return closedprofile.Profile{}, err
 	}
 	stored, raw, err := s.storage.LoadClosedProfile(generation)
 	if err != nil || stored == (durable.ClosedProfileState{}) || stored.Conflict != [32]byte{} || stored.Epoch != s.current.Epoch {
-		return closedProfile{}, errors.New("closed profile is unavailable")
+		return closedprofile.Profile{}, errors.New("closed profile is unavailable")
 	}
-	profile, err := parseClosedProfile(raw, generation, s.current.NetworkID, s.current.Digest, s.current.Epoch, s.config.closedProfileAuthority, now)
-	if err != nil || profile.digest != stored.Accepted || profile.notBefore.Before(s.current.EpochValidFrom) || profile.notAfter.After(s.current.ValidUntil) ||
+	profile, err := s.verifyClosedProfileLocked(raw, generation, now)
+	if err != nil || profile.Digest != stored.Accepted || profile.NotBefore.Before(s.current.EpochValidFrom) || profile.NotAfter.After(s.current.ValidUntil) ||
 		!matchesClosedProfileCandidates(profile, s.currentDecision.Candidates) {
-		return closedProfile{}, errors.New("closed profile is unavailable")
+		return closedprofile.Profile{}, errors.New("closed profile is unavailable")
 	}
 	return profile, nil
 }
 
-func closedProfileView(profile closedProfile) ClosedProfileView {
-	view := ClosedProfileView{NetworkID: profile.networkID, StateGeneration: profile.stateGeneration, StateDigest: profile.epochDigest,
-		Digest: profile.digest, IssuanceAuthorityKey: profile.authorityKey, IssuerNodeID: profile.issuerNodeID,
-		Epoch: profile.epoch, NotBefore: profile.notBefore, NotAfter: profile.notAfter, TokenKeyCount: uint8(len(profile.keys))}
-	for _, node := range profile.nodes {
-		if node.nodeID == profile.issuerNodeID {
-			view.IssuerDutyGeneration = node.generation
+func closedProfileView(profile closedprofile.Profile) ClosedProfileView {
+	view := ClosedProfileView{NetworkID: profile.NetworkID, StateGeneration: profile.StateGeneration, StateDigest: profile.EpochDigest,
+		Digest: profile.Digest, IssuanceAuthorityKey: profile.AuthorityKey, IssuerNodeID: profile.IssuerNodeID,
+		Epoch: profile.Epoch, NotBefore: profile.NotBefore, NotAfter: profile.NotAfter, TokenKeyCount: uint8(len(profile.Keys))}
+	for _, node := range profile.Nodes {
+		if node.NodeID == profile.IssuerNodeID {
+			view.IssuerDutyGeneration = node.DutyGeneration
 			break
 		}
 	}
-	for index, key := range profile.keys {
-		view.TokenKeys[index].WindowStart = time.Unix(int64(key.windowStart), 0).UTC()
-		view.TokenKeys[index].Class = key.class
-		copy(view.TokenKeys[index].SPKI[:], key.spki)
+	for index, key := range profile.Keys {
+		view.TokenKeys[index].WindowStart = time.Unix(int64(key.WindowStart), 0).UTC()
+		view.TokenKeys[index].Class = key.Class
+		copy(view.TokenKeys[index].SPKI[:], key.SPKI)
 	}
 	return view
 }
 
-func closedRouteView(profile closedProfile) ClosedRouteView {
-	view := ClosedRouteView{Profile: closedProfileView(profile), NodeCount: uint8(len(profile.nodes))}
-	for index, node := range profile.nodes {
-		view.Nodes[index] = ClosedRouteNodeView{NodeID: node.nodeID, RecordDigest: node.recordDigest,
-			RoleDomain: node.domain, Subrole: node.subrole, DutyGeneration: node.generation}
+func closedRouteView(profile closedprofile.Profile) ClosedRouteView {
+	view := ClosedRouteView{Profile: closedProfileView(profile), NodeCount: uint8(len(profile.Nodes))}
+	for index, node := range profile.Nodes {
+		view.Nodes[index] = ClosedRouteNodeView{NodeID: node.NodeID, RecordDigest: node.RecordDigest,
+			RoleDomain: node.RoleDomain, Subrole: node.Subrole, DutyGeneration: node.DutyGeneration}
 	}
 	return view
+}
+
+// verifyClosedProfileLocked supplies the exact current authenticated Epoch
+// context; the grammar verifier itself has no State acceptance authority.
+func (s *networkState) verifyClosedProfileLocked(raw []byte, generation [32]byte, now time.Time) (closedprofile.Profile, error) {
+	return closedprofile.Verify(raw, closedprofile.Context{
+		StateGeneration: generation, NetworkID: s.current.NetworkID,
+		EpochDigest: s.current.Digest, Epoch: s.current.Epoch,
+		Authority: s.config.closedProfileAuthority, Now: now,
+	})
 }
 
 func closedProfileGeneration(encoded string) ([32]byte, error) {
@@ -199,22 +210,22 @@ func closedProfileGeneration(encoded string) ([32]byte, error) {
 	return generation, nil
 }
 
-func matchesClosedProfileCandidates(profile closedProfile, candidates []epoch.Candidate) bool {
+func matchesClosedProfileCandidates(profile closedprofile.Profile, candidates []epoch.Candidate) bool {
 	available := make(map[[32]byte]epoch.Candidate, len(candidates))
 	for _, candidate := range candidates {
 		available[candidate.NodeID] = candidate
 	}
-	for _, node := range profile.nodes {
-		candidate, exists := available[node.nodeID]
-		if !exists || candidate.RecordGeneration != node.generation ||
-			candidate.RecordDigest != node.recordDigest ||
+	for _, node := range profile.Nodes {
+		candidate, exists := available[node.NodeID]
+		if !exists || candidate.RecordGeneration != node.DutyGeneration ||
+			candidate.RecordDigest != node.RecordDigest ||
 			!epoch.CarrierEligible(closedRouteProfile, candidate.CarrierProfile) {
 			return false
 		}
 		// Each candidate's domain was assigned by the verified Epoch from its
 		// authenticated family before this signed profile is admitted.
 		domain, known := closedRoleDomain(candidate.Domain)
-		if !known || domain != node.domain {
+		if !known || domain != node.RoleDomain {
 			return false
 		}
 	}

@@ -16,7 +16,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/network/state"
+	"github.com/dianabuilds/ardents-network/internal/network/closedprofile"
 )
 
 const maximumClosedProfilePlanBytes = 64 << 10
@@ -54,7 +54,7 @@ func prepareClosedProfile(arguments []string, output io.Writer) error {
 	if err != nil {
 		return err
 	}
-	body, err := state.PrepareClosedProfile(input)
+	body, err := closedprofile.Prepare(input)
 	if err != nil {
 		return err
 	}
@@ -83,7 +83,7 @@ func signClosedProfile(arguments []string, output io.Writer) error {
 		return err
 	}
 	defer zeroPrivateKey(signer)
-	raw, err := state.SignClosedProfile(input, signer)
+	raw, err := closedprofile.Sign(input, signer)
 	if err != nil {
 		return err
 	}
@@ -120,30 +120,30 @@ func inspectClosedProfile(arguments []string, output io.Writer) error {
 	if err != nil {
 		return err
 	}
-	view, err := state.InspectClosedProfile(raw, input.StateGeneration, input.NetworkID, input.EpochDigest, input.Epoch, authority, at.UTC())
+	view, err := closedprofile.Verify(raw, closedprofile.Context{StateGeneration: input.StateGeneration, NetworkID: input.NetworkID, EpochDigest: input.EpochDigest, Epoch: input.Epoch, Authority: authority, Now: at.UTC()})
 	if err != nil {
-		return errors.New("closed profile was not accepted")
+		return errors.New("closed profile verification failed")
 	}
 	return json.NewEncoder(output).Encode(struct {
 		Schema, Digest, Authority string
 		Epoch                     uint64
 		NotBefore, NotAfter       string
-	}{"ardents-closed-profile-inspection-v1", hex.EncodeToString(view.Digest[:]), hex.EncodeToString(view.IssuanceAuthorityKey[:]),
+	}{"ardents-closed-profile-inspection-v1", hex.EncodeToString(view.Digest[:]), hex.EncodeToString(view.AuthorityKey[:]),
 		view.Epoch, view.NotBefore.Format(time.RFC3339), view.NotAfter.Format(time.RFC3339)})
 }
 
-func readClosedProfilePlan(path string) (state.ClosedProfileInput, error) {
+func readClosedProfilePlan(path string) (closedprofile.Input, error) {
 	raw, err := readControlFile(path, maximumClosedProfilePlanBytes)
 	if err != nil {
-		return state.ClosedProfileInput{}, err
+		return closedprofile.Input{}, err
 	}
 	decoder := json.NewDecoder(bytes.NewReader(raw))
 	decoder.DisallowUnknownFields()
 	var plan closedProfilePlan
 	if err := decoder.Decode(&plan); err != nil || decoder.Decode(&struct{}{}) != io.EOF {
-		return state.ClosedProfileInput{}, errors.New("closed profile plan is invalid")
+		return closedprofile.Input{}, errors.New("closed profile plan is invalid")
 	}
-	input := state.ClosedProfileInput{Epoch: plan.Epoch}
+	input := closedprofile.Input{Epoch: plan.Epoch}
 	for _, field := range []struct {
 		text        string
 		destination *[32]byte
@@ -153,7 +153,7 @@ func readClosedProfilePlan(path string) (state.ClosedProfileInput, error) {
 	} {
 		value, decodeErr := decodeIdentifier(field.text)
 		if decodeErr != nil {
-			return state.ClosedProfileInput{}, errors.New("closed profile plan identity is invalid")
+			return closedprofile.Input{}, errors.New("closed profile plan identity is invalid")
 		}
 		*field.destination = value
 	}
@@ -162,23 +162,23 @@ func readClosedProfilePlan(path string) (state.ClosedProfileInput, error) {
 		input.NotAfter, err = time.Parse(time.RFC3339, plan.NotAfter)
 	}
 	if err != nil {
-		return state.ClosedProfileInput{}, errors.New("closed profile plan validity is invalid")
+		return closedprofile.Input{}, errors.New("closed profile plan validity is invalid")
 	}
 	for _, node := range plan.Nodes {
 		id, idErr := decodeIdentifier(node.NodeID)
 		digest, digestErr := decodeIdentifier(node.RecordDigest)
 		if idErr != nil || digestErr != nil {
-			return state.ClosedProfileInput{}, errors.New("closed profile plan Node is invalid")
+			return closedprofile.Input{}, errors.New("closed profile plan Node is invalid")
 		}
-		input.Nodes = append(input.Nodes, state.ClosedProfileNodeInput{NodeID: id, RecordDigest: digest, RoleDomain: node.RoleDomain, Subrole: node.Subrole, DutyGeneration: node.DutyGeneration})
+		input.Nodes = append(input.Nodes, closedprofile.NodeInput{NodeID: id, RecordDigest: digest, RoleDomain: node.RoleDomain, Subrole: node.Subrole, DutyGeneration: node.DutyGeneration})
 	}
 	for _, key := range plan.TokenKeys {
 		window, windowErr := time.Parse(time.RFC3339, key.WindowStart)
 		spki, spkiErr := base64.RawStdEncoding.DecodeString(key.SPKI)
 		if windowErr != nil || spkiErr != nil || base64.RawStdEncoding.EncodeToString(spki) != key.SPKI {
-			return state.ClosedProfileInput{}, errors.New("closed profile plan token key is invalid")
+			return closedprofile.Input{}, errors.New("closed profile plan token key is invalid")
 		}
-		input.TokenKeys = append(input.TokenKeys, state.ClosedProfileTokenKeyInput{WindowStart: window.UTC(), Class: key.Class, SPKI: spki})
+		input.TokenKeys = append(input.TokenKeys, closedprofile.TokenKeyInput{WindowStart: window.UTC(), Class: key.Class, SPKI: spki})
 	}
 	return input, nil
 }

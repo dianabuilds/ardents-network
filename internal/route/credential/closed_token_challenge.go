@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/network/state"
+	"github.com/dianabuilds/ardents-network/internal/network/closedprofile"
 )
 
 const (
@@ -33,7 +33,7 @@ func ClosedTokenChallenge(context ClosedTokenContext, spki []byte, nonce [32]byt
 	if context.NetworkID == [32]byte{} || context.ProfileDigest == [32]byte{} || context.ReceiverNodeID == [32]byte{} ||
 		context.IssuerNodeID == [32]byte{} || context.ReceiverDutyGeneration == 0 || context.Class < 1 || context.Class > 3 ||
 		context.WindowStart.IsZero() || context.WindowStart != context.WindowStart.UTC() || context.WindowStart.Truncate(time.Hour) != context.WindowStart ||
-		nonce == [32]byte{} || !state.ValidateClosedTokenSPKI(spki) {
+		nonce == [32]byte{} || !closedprofile.ValidateTokenSPKI(spki) {
 		return nil, nil, [32]byte{}, errors.New("closed token context is invalid")
 	}
 	issuerName := closedTokenServerName('i', context.IssuerNodeID)

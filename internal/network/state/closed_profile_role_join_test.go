@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/ed25519"
 	"crypto/sha256"
+	"github.com/dianabuilds/ardents-network/internal/network/closedprofile"
 	"testing"
 	"time"
 
@@ -70,8 +71,7 @@ func TestClosedProfileRoleDomainMustMatchEpochAssignment(t *testing.T) {
 		domain: 3, subrole: 1, generation: 2}
 	mismatch := testClosedProfileAt(t, authority, networkID, epoch.Digest, epoch.Digest, 1, now,
 		[]closedProfileNode{issuerEntry, otherEntry})
-	if _, err := parseClosedProfile(mismatch, epoch.Digest, networkID, epoch.Digest, 1,
-		authority.Public().(ed25519.PublicKey), now); err != nil {
+	if _, err := closedprofile.Verify(mismatch, closedprofile.Context{StateGeneration: epoch.Digest, NetworkID: networkID, EpochDigest: epoch.Digest, Epoch: 1, Authority: authority.Public().(ed25519.PublicKey), Now: now}); err != nil {
 		t.Fatalf("mismatched signed profile is not structurally valid: %v", err)
 	}
 	if _, err := store.AcceptClosedProfile(mismatch); err == nil {

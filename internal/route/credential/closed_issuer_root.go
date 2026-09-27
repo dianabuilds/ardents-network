@@ -15,7 +15,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/admission"
-	"github.com/dianabuilds/ardents-network/internal/network/state"
+	"github.com/dianabuilds/ardents-network/internal/network/closedprofile"
 )
 
 const (
@@ -223,7 +223,7 @@ func closedIssuerPublicKeys(material closedIssuerMaterial) ([]admission.ClosedIs
 			return nil, errors.New("closed issuer private key is invalid")
 		}
 		spki, err := encodeClosedIssuerSPKI(&private.PublicKey)
-		if err != nil || !state.ValidateClosedTokenSPKI(spki) {
+		if err != nil || !closedprofile.ValidateTokenSPKI(spki) {
 			return nil, errors.New("closed issuer public key is invalid")
 		}
 		keys = append(keys, admission.ClosedIssuerKey{WindowStart: item.window, Class: item.class, SPKI: spki, KeyID: sha256.Sum256(spki)})

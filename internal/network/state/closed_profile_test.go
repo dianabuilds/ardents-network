@@ -12,86 +12,35 @@ import (
 	"time"
 )
 
-func TestParseClosedProfileRejectsChangedStateAndNoncanonicalEntries(t *testing.T) {
-	now := time.Unix(1_800_000_000, 0).UTC()
-	seed := bytes.Repeat([]byte{7}, ed25519.SeedSize)
-	authority := ed25519.NewKeyFromSeed(seed)
-	network := sha256.Sum256([]byte("network"))
-	generation := sha256.Sum256([]byte("generation"))
-	epochDigest := sha256.Sum256([]byte("epoch"))
-	first := sha256.Sum256([]byte("first"))
-	second := sha256.Sum256([]byte("second"))
-	nodes := []closedProfileNode{
-		{nodeID: first, recordDigest: sha256.Sum256([]byte("record-first")), domain: 1, subrole: 1, generation: 1},
-		{nodeID: second, recordDigest: sha256.Sum256([]byte("record-second")), domain: 2, subrole: 6, generation: 2},
-	}
-	if bytes.Compare(nodes[0].nodeID[:], nodes[1].nodeID[:]) > 0 {
-		nodes[0], nodes[1] = nodes[1], nodes[0]
-	}
-	raw := testClosedProfile(t, authority, network, generation, epochDigest, now, nodes)
-	profile, err := parseClosedProfile(raw, generation, network, epochDigest, 9, authority.Public().(ed25519.PublicKey), now)
-	if err != nil || profile.digest != sha256.Sum256(raw) || len(profile.nodes) != 2 || len(profile.keys) != 1 {
-		t.Fatalf("parse closed profile = %+v, %v", profile, err)
-	}
-	if _, err := parseClosedProfile(raw, sha256.Sum256([]byte("other")), network, epochDigest, 9, authority.Public().(ed25519.PublicKey), now); err == nil {
-		t.Fatal("accepted profile for different State generation")
-	}
-	changed := append([]byte(nil), raw...)
-	changed[len(changed)-1] ^= 1
-	if _, err := parseClosedProfile(changed, generation, network, epochDigest, 9, authority.Public().(ed25519.PublicKey), now); err == nil {
-		t.Fatal("accepted changed profile signature")
-	}
-	unorderedNodes := append([]closedProfileNode(nil), nodes...)
-	unorderedNodes[0], unorderedNodes[1] = unorderedNodes[1], unorderedNodes[0]
-	unordered := testClosedProfile(t, authority, network, generation, epochDigest, now, unorderedNodes)
-	if _, err := parseClosedProfile(unordered, generation, network, epochDigest, 9, authority.Public().(ed25519.PublicKey), now); err == nil {
-		t.Fatal("accepted unordered nodes")
-	}
-}
+const (
+	closedProfileMagic   = "ARDCPR03"
+	closedProfileVersion = uint16(3)
+)
 
-func TestPrepareSignAndInspectClosedProfileUsesOnePurposeBoundSigner(t *testing.T) {
-	now := time.Unix(1_800_003_600, 0).UTC()
-	signer := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{9}, ed25519.SeedSize))
-	network := sha256.Sum256([]byte("closed profile network"))
-	generation := sha256.Sum256([]byte("closed profile generation"))
-	epochDigest := sha256.Sum256([]byte("closed profile epoch"))
-	issuer := sha256.Sum256([]byte("closed profile issuer"))
-	other := sha256.Sum256([]byte("closed profile other"))
-	nodes := []ClosedProfileNodeInput{
-		{NodeID: other, RecordDigest: sha256.Sum256([]byte("other record")), RoleDomain: 1, Subrole: 1, DutyGeneration: 2},
-		{NodeID: issuer, RecordDigest: sha256.Sum256([]byte("issuer record")), RoleDomain: 2, Subrole: 6, DutyGeneration: 3},
-	}
-	if bytes.Compare(nodes[0].NodeID[:], nodes[1].NodeID[:]) > 0 {
-		nodes[0], nodes[1] = nodes[1], nodes[0]
-	}
-	input := ClosedProfileInput{NetworkID: network, StateGeneration: generation, EpochDigest: epochDigest, Epoch: 7,
-		IssuerNodeID: issuer, IssuanceAuthorityKey: sha256.Sum256([]byte("admission authority")), NotBefore: now, NotAfter: now.Add(time.Hour),
-		Nodes: nodes, TokenKeys: []ClosedProfileTokenKeyInput{{WindowStart: now, Class: 1, SPKI: testClosedProfileSPKI(t)}}}
-	body, err := PrepareClosedProfile(input)
-	if err != nil || !bytes.HasPrefix(body, []byte(closedProfileMagic)) {
-		t.Fatalf("prepare closed profile = %x / %v", body, err)
-	}
-	raw, err := SignClosedProfile(input, signer)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(raw) != len(body)+ed25519.SignatureSize || !bytes.Equal(raw[:len(body)], body) {
-		t.Fatal("signed profile changed the prepared canonical body")
-	}
-	view, err := InspectClosedProfile(raw, generation, network, epochDigest, 7, signer.Public().(ed25519.PublicKey), now)
-	if err != nil || view.NetworkID != network || view.StateGeneration != generation || view.StateDigest != epochDigest || view.Epoch != 7 || view.Digest != sha256.Sum256(raw) || view.IssuerNodeID != issuer || view.IssuerDutyGeneration != 3 || view.TokenKeyCount != 1 ||
-		view.TokenKeys[0].WindowStart != now || view.TokenKeys[0].Class != 1 || !bytes.Equal(view.TokenKeys[0].SPKI[:], input.TokenKeys[0].SPKI) {
-		t.Fatalf("inspect closed profile = %+v / %v", view, err)
-	}
-	if _, err := SignClosedProfile(input, nil); err == nil {
-		t.Fatal("signed closed profile without an authority")
-	}
-	unordered := input
-	unordered.Nodes = append([]ClosedProfileNodeInput(nil), input.Nodes...)
-	unordered.Nodes[0], unordered.Nodes[1] = unordered.Nodes[1], unordered.Nodes[0]
-	if _, err := PrepareClosedProfile(unordered); err == nil {
-		t.Fatal("prepared a profile with noncanonical Node order")
-	}
+var (
+	closedProfileMGF1   = asn1.ObjectIdentifier{1, 2, 840, 113549, 1, 1, 8}
+	closedProfileRSAPSS = asn1.ObjectIdentifier{1, 2, 840, 113549, 1, 1, 10}
+	closedProfileSHA384 = asn1.ObjectIdentifier{2, 16, 840, 1, 101, 3, 4, 2, 2}
+	closedProfileNull   = []byte{0x05, 0x00}
+)
+
+type closedProfileNode struct {
+	nodeID, recordDigest [32]byte
+	domain, subrole      byte
+	generation           uint64
+}
+type closedProfileAlgorithmIdentifier struct {
+	Algorithm  asn1.ObjectIdentifier
+	Parameters asn1.RawValue
+}
+type closedProfilePSSParameters struct {
+	HashAlgorithm    closedProfileAlgorithmIdentifier `asn1:"explicit,tag:0"`
+	MaskGenAlgorithm closedProfileAlgorithmIdentifier `asn1:"explicit,tag:1"`
+	SaltLength       int                              `asn1:"explicit,tag:2"`
+}
+type closedProfileSubjectPublicKeyInfo struct {
+	Algorithm        closedProfileAlgorithmIdentifier
+	SubjectPublicKey asn1.BitString
 }
 
 func testClosedProfile(t *testing.T, authority ed25519.PrivateKey, network, generation, epochDigest [32]byte, now time.Time, nodes []closedProfileNode) []byte {

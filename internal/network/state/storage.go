@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/dianabuilds/ardents-network/internal/network/closedprofile"
 	"github.com/dianabuilds/ardents-network/internal/network/epoch"
 	"github.com/dianabuilds/ardents-network/internal/network/state/durable"
 )
@@ -91,5 +92,5 @@ func stageGeneration(storage *durable.Root, decision epoch.Decision) error {
 
 // storageLimits keeps physical framing aligned with authenticated intake.
 func storageLimits() durable.Limits {
-	return durable.Limits{EpochBytes: maximumEpochBytes, RecordBytes: maximumRecordBytes, ClosedProfileBytes: maximumClosedProfileSize}
+	return durable.Limits{EpochBytes: maximumEpochBytes, RecordBytes: maximumRecordBytes, ClosedProfileBytes: closedprofile.MaxSize}
 }

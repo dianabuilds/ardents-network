@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/admission"
-	"github.com/dianabuilds/ardents-network/internal/network/state"
+	"github.com/dianabuilds/ardents-network/internal/network/closedprofile"
 )
 
 // closedIssuerFixtureRoot makes the private-root precondition explicit rather
@@ -52,7 +52,7 @@ func TestInitializeClosedIssuerRootPublishesExactSPKIInventory(t *testing.T) {
 	}
 	seen := map[[32]byte]bool{}
 	for index, key := range profile.Keys {
-		if key.WindowStart != now || key.Class != byte(index+1) || len(key.SPKI) != 346 || !state.ValidateClosedTokenSPKI(key.SPKI) ||
+		if key.WindowStart != now || key.Class != byte(index+1) || len(key.SPKI) != 346 || !closedprofile.ValidateTokenSPKI(key.SPKI) ||
 			key.KeyID != credentialID(0) && seen[key.KeyID] {
 			t.Fatalf("closed issuer key %d = %+v", index, key)
 		}

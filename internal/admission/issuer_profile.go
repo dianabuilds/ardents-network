@@ -7,7 +7,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/network/state"
+	"github.com/dianabuilds/ardents-network/internal/network/closedprofile"
 )
 
 const (
@@ -66,7 +66,7 @@ func EncodeClosedIssuerProfile(profile ClosedIssuerProfile, signer ed25519.Priva
 	raw = binary.BigEndian.AppendUint16(raw, uint16(len(profile.Keys)))
 	for index, key := range profile.Keys {
 		if key.WindowStart.Truncate(time.Hour) != key.WindowStart || key.WindowStart.Before(profile.NotBefore) || !key.WindowStart.Before(profile.NotAfter) ||
-			key.Class < 1 || key.Class > 3 || len(key.SPKI) != 346 || !state.ValidateClosedTokenSPKI(key.SPKI) || key.KeyID != sha256.Sum256(key.SPKI) ||
+			key.Class < 1 || key.Class > 3 || len(key.SPKI) != 346 || !closedprofile.ValidateTokenSPKI(key.SPKI) || key.KeyID != sha256.Sum256(key.SPKI) ||
 			index > 0 && (profile.Keys[index-1].WindowStart.After(key.WindowStart) ||
 				profile.Keys[index-1].WindowStart.Equal(key.WindowStart) && profile.Keys[index-1].Class >= key.Class) {
 			return nil, errors.New("closed issuer public profile keys are invalid")
@@ -127,7 +127,7 @@ func DecodeClosedIssuerProfile(raw []byte, nodePublic ed25519.PublicKey) (Closed
 		offset += length
 		key.KeyID = sha256.Sum256(key.SPKI)
 		if key.WindowStart.Truncate(time.Hour) != key.WindowStart || key.WindowStart.Before(profile.NotBefore) || !key.WindowStart.Before(profile.NotAfter) ||
-			key.Class < 1 || key.Class > 3 || !state.ValidateClosedTokenSPKI(key.SPKI) ||
+			key.Class < 1 || key.Class > 3 || !closedprofile.ValidateTokenSPKI(key.SPKI) ||
 			len(profile.Keys) > 0 && (profile.Keys[len(profile.Keys)-1].WindowStart.After(key.WindowStart) ||
 				profile.Keys[len(profile.Keys)-1].WindowStart.Equal(key.WindowStart) && profile.Keys[len(profile.Keys)-1].Class >= key.Class) {
 			return ClosedIssuerProfile{}, errors.New("closed issuer public profile keys are not canonical")

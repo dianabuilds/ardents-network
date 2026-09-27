@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/network/closedprofile"
 	"github.com/dianabuilds/ardents-network/internal/network/epoch"
 )
 
@@ -22,7 +23,7 @@ func TestAcceptClosedProfilePersistsAndConflictsByArrival(t *testing.T) {
 	node := closedProfileNode{nodeID: nodeID, recordDigest: candidate.RecordDigest,
 		domain: 2, subrole: 6, generation: candidate.RecordGeneration}
 	root := store.storage
-	parsed, parseErr := parseClosedProfile(first, generation, network, epochDigest, 9, authority.Public().(ed25519.PublicKey), now)
+	parsed, parseErr := closedprofile.Verify(first, closedprofile.Context{StateGeneration: generation, NetworkID: network, EpochDigest: epochDigest, Epoch: 9, Authority: authority.Public().(ed25519.PublicKey), Now: now})
 	if parseErr != nil || !matchesClosedProfileCandidates(parsed, store.currentDecision.Candidates) {
 		t.Fatalf("closed profile parser/join = %+v, %v, join=%t", parsed, parseErr, matchesClosedProfileCandidates(parsed, store.currentDecision.Candidates))
 	}

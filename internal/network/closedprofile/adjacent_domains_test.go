@@ -1,4 +1,4 @@
-package state
+package closedprofile
 
 import (
 	"crypto/ed25519"
@@ -17,12 +17,12 @@ func TestClosedProfileAdjacentDomainsPreserveIntroductionAndRejectRendezvous(t *
 	network, generation, digest := [32]byte{1}, [32]byte{2}, [32]byte{3}
 	for _, domain := range []byte{1, 2, 3, 4} {
 		for _, subrole := range []byte{1, 2} {
-			nodes := []closedProfileNode{
-				{nodeID: [32]byte{4}, recordDigest: [32]byte{5}, domain: domain, subrole: subrole, generation: 1},
-				{nodeID: [32]byte{6}, recordDigest: [32]byte{7}, domain: 2, subrole: 6, generation: 2},
+			nodes := []Node{
+				{NodeID: [32]byte{4}, RecordDigest: [32]byte{5}, RoleDomain: domain, Subrole: subrole, DutyGeneration: 1},
+				{NodeID: [32]byte{6}, RecordDigest: [32]byte{7}, RoleDomain: 2, Subrole: 6, DutyGeneration: 2},
 			}
 			raw := testClosedProfile(t, signer, network, generation, digest, now, nodes)
-			_, err := parseClosedProfile(raw, generation, network, digest, 9, public, now)
+			_, err := Verify(raw, Context{StateGeneration: generation, NetworkID: network, EpochDigest: digest, Epoch: 9, Authority: public, Now: now})
 			if (err == nil) != (domain != 2) {
 				t.Errorf("signed profile domain %d/%d: %v", domain, subrole, err)
 			}

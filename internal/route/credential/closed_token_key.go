@@ -8,7 +8,7 @@ import (
 	"encoding/asn1"
 	"errors"
 
-	"github.com/dianabuilds/ardents-network/internal/network/state"
+	"github.com/dianabuilds/ardents-network/internal/network/closedprofile"
 )
 
 var (
@@ -35,8 +35,8 @@ type closedTokenSPKI struct {
 }
 
 func parseClosedTokenPublicKey(spki []byte) (*rsa.PublicKey, error) {
-	if !state.ValidateClosedTokenSPKI(spki) {
-		return nil, errors.New("closed token SPKI is not State-admitted")
+	if !closedprofile.ValidateTokenSPKI(spki) {
+		return nil, errors.New("closed token SPKI is not canonical")
 	}
 	var subject closedTokenSPKI
 	rest, err := asn1.Unmarshal(spki, &subject)
