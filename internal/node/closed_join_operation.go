@@ -7,6 +7,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
+	routecarrier "github.com/dianabuilds/ardents-network/internal/route/carrier"
 )
 
 func (server *closedDataJoinServer) current() bool {
@@ -18,7 +19,7 @@ func (server *closedDataJoinServer) current() bool {
 	return ok && receiver == server.receiver
 }
 
-func (server *closedDataJoinServer) serveOuter(ctx context.Context, carrier route.ClosedSharedCarrier) {
+func (server *closedDataJoinServer) serveOuter(ctx context.Context, carrier routecarrier.ClosedSharedCarrier) {
 	if !server.current() {
 		return
 	}
@@ -39,7 +40,7 @@ func (server *closedDataJoinServer) serveInner(ctx context.Context, lane *route.
 	if lane.Restriction() != route.ClosedChildOrdinary || !server.current() {
 		return
 	}
-	secured, err := route.AcceptClosedRoleTLS(ctx, lane, server.certificate, server.receiver.NotAfter)
+	secured, err := routecarrier.AcceptClosedRoleTLS(ctx, lane, server.certificate, server.receiver.NotAfter)
 	if err != nil {
 		return
 	}
@@ -65,7 +66,7 @@ func (server *closedDataJoinServer) serveInner(ctx context.Context, lane *route.
 }
 
 func (server *closedDataJoinServer) serveAdmitted(ctx context.Context, connection net.Conn, lane *route.ClosedOuterBridgeLane, hello ardp.Frame) error {
-	exporter, err := route.ClosedRoleTLSExporter(connection)
+	exporter, err := routecarrier.ClosedRoleTLSExporter(connection)
 	if err != nil {
 		return err
 	}

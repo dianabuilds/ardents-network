@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/network/state"
-	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/carrier"
 )
 
 // headlessRuntimePlan contains the non-route local inputs required to retain
@@ -145,7 +145,7 @@ func loadHeadlessRuntimePlan(path string) (decodedHeadlessRuntimePlan, error) {
 	if raw.Schema != "ardents-headless-runtime-v2" || raw.NetworkStateRoot == "" || raw.EntryStateRoot == "" ||
 		raw.ApplicationSocket == "" || !filepath.IsAbs(raw.ApplicationSocket) || raw.AdministrationSocket == "" || !filepath.IsAbs(raw.AdministrationSocket) ||
 		raw.ApplicationSocket == raw.AdministrationSocket || raw.PublicationRoot == "" ||
-		raw.LocalRoleStateRoot == "" || raw.TimeConfidenceFile == "" || raw.NetworkProfile != route.ClosedRouteProfile || raw.BrokerID == "" ||
+		raw.LocalRoleStateRoot == "" || raw.TimeConfidenceFile == "" || raw.NetworkProfile != carrier.ClosedRouteProfile || raw.BrokerID == "" ||
 		raw.ConnectionPrincipal == "" || raw.AdministrationPrincipal == "" {
 		return decodedHeadlessRuntimePlan{}, errors.New("headless runtime plan is incomplete")
 	}

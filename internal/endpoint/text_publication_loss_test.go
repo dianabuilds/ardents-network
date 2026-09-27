@@ -10,13 +10,13 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/node"
-	"github.com/dianabuilds/ardents-network/internal/route"
+	routecarrier "github.com/dianabuilds/ardents-network/internal/route/carrier"
 	"github.com/dianabuilds/ardents-network/internal/service/publication"
 )
 
 // The same real registered Publisher setup feeds successful and interrupted
 // Descriptor handovers. Only accepted State and worker qualification are fixtures.
-func startTextRegisteredPublisherNetwork(t *testing.T, carrier route.CarrierProfile, gate *textDescriptorACKGate) (*endpoint, *textContext, *textSourceStateFixture, *textIntroductionRegistration) {
+func startTextRegisteredPublisherNetwork(t *testing.T, carrier routecarrier.CarrierProfile, gate *textDescriptorACKGate) (*endpoint, *textContext, *textSourceStateFixture, *textIntroductionRegistration) {
 	t.Helper()
 	endpoint, owner, source := startTextRoleNetwork(t, textRoleNetworkFixture{carrier: carrier, resolution: true, publisher: true, configure: []func(int, *node.Config){gate.configure(t)}})
 	source.mu.Lock()
@@ -62,7 +62,7 @@ func startTextRegisteredPublisherNetwork(t *testing.T, carrier route.CarrierProf
 // Every failure occurs after the real Store commits the replacement, before
 // its network acknowledgement. None may revive accepting readiness or keys.
 func TestTextPublicationLossBeforeAcknowledgementRetiresRecipients(t *testing.T) {
-	for _, carrier := range []route.CarrierProfile{route.ClosedCarrierTCP, route.ClosedCarrierQUIC} {
+	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP, routecarrier.ClosedCarrierQUIC} {
 		t.Run(string(carrier), func(t *testing.T) {
 			for _, failure := range []string{"replacement channel", "predecessor channel", "context revoke"} {
 				t.Run(failure, func(t *testing.T) {

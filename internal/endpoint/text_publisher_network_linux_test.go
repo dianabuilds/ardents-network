@@ -10,15 +10,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/route"
 	introductioncapsule "github.com/dianabuilds/ardents-network/internal/route/capsule"
+	routecarrier "github.com/dianabuilds/ardents-network/internal/route/carrier"
 )
 
 // Only installed worker observation and accepted State are fixtures. The
 // Publisher's production producer owns delivery, JOIN and authenticated stream
 // handover; the test does not construct or feed Publisher Service streams.
 func TestTextPublisherNetworkRetainsSnapshotAcrossReaders(t *testing.T) {
-	for _, carrier := range []route.CarrierProfile{route.ClosedCarrierTCP, route.ClosedCarrierQUIC} {
+	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP, routecarrier.ClosedCarrierQUIC} {
 		t.Run(string(carrier), func(t *testing.T) {
 			readerOwner, publisherOwner, destination := textJoinedNetworkFixture(t, carrier)
 			body := bytes.Repeat([]byte("retained snapshot\n"), 4096)

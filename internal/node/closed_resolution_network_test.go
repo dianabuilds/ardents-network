@@ -13,12 +13,12 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	"github.com/dianabuilds/ardents-network/internal/route/terminal"
 
-	"github.com/dianabuilds/ardents-network/internal/route"
+	routecarrier "github.com/dianabuilds/ardents-network/internal/route/carrier"
 	"github.com/dianabuilds/ardents-network/internal/service/reachability"
 )
 
 func TestClosedResolutionPublishesAndLooksUpThroughAdmittedNodeCarrier(t *testing.T) {
-	for _, carrier := range []route.CarrierProfile{route.ClosedCarrierTCP, route.ClosedCarrierQUIC} {
+	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP, routecarrier.ClosedCarrierQUIC} {
 		t.Run(string(carrier), func(t *testing.T) {
 			fixture := newResolutionNetworkFixture(t, carrier)
 			issue := func(introduction reachability.PrivateIntroduction) []byte {

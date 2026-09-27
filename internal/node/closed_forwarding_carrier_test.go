@@ -10,6 +10,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
+	"github.com/dianabuilds/ardents-network/internal/route/carrier"
 )
 
 type closedForwardingObservedContext struct {
@@ -27,7 +28,7 @@ func TestClosedForwardingSessionSharesOneOuterHelloAndDemultiplexesChildren(t *t
 	local, peer := net.Pipe()
 	defer local.Close()
 	defer peer.Close()
-	key := route.ClosedCarrierKey{NetworkID: [32]byte{1}, ProfileDigest: [32]byte{2}, LocalNodeID: [32]byte{3}, PeerNodeID: [32]byte{4}, PeerKey: [32]byte{5}, CarrierProfile: route.ClosedCarrierTCP}
+	key := carrier.ClosedCarrierKey{NetworkID: [32]byte{1}, ProfileDigest: [32]byte{2}, LocalNodeID: [32]byte{3}, PeerNodeID: [32]byte{4}, PeerKey: [32]byte{5}, CarrierProfile: carrier.ClosedCarrierTCP}
 	deadline := time.Now().UTC().Truncate(time.Second).Add(time.Minute)
 	server := make(chan struct{})
 	go func() {
@@ -54,12 +55,12 @@ func TestClosedForwardingSessionSharesOneOuterHelloAndDemultiplexesChildren(t *t
 		return ardp.Hello{NetworkID: [32]byte{1}, StateGeneration: [32]byte{2}, StateDigest: [32]byte{3}, ProfileDigest: [32]byte{4},
 			RecipientNodeID: [32]byte{5}, RecipientDutyGeneration: 6, Purpose: ardp.PurposeForwarding, ChannelNonce: [32]byte{7}, Deadline: deadline}, nil
 	}
-	pool, err := route.NewClosedCarrierPool(time.Now)
+	pool, err := carrier.NewClosedCarrierPool(time.Now)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer pool.Close()
-	binding, err := pool.AcquireContext(context.Background(), key, func() error { return nil }, func() (route.Carrier, error) { return local, nil })
+	binding, err := pool.AcquireContext(context.Background(), key, func() error { return nil }, func() (carrier.Carrier, error) { return local, nil })
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -117,20 +118,20 @@ func TestClosedForwardingSessionsReadyCarrierProgressesWhileOtherHelloBlocks(t *
 	})
 	deadline := time.Now().Add(5 * time.Second)
 	helloDeadline := time.Now().UTC().Truncate(time.Second).Add(time.Minute)
-	firstKey := route.ClosedCarrierKey{NetworkID: [32]byte{1}, ProfileDigest: [32]byte{2}, LocalNodeID: [32]byte{3}, PeerNodeID: [32]byte{4}, PeerKey: [32]byte{5}, CarrierProfile: route.ClosedCarrierTCP}
+	firstKey := carrier.ClosedCarrierKey{NetworkID: [32]byte{1}, ProfileDigest: [32]byte{2}, LocalNodeID: [32]byte{3}, PeerNodeID: [32]byte{4}, PeerKey: [32]byte{5}, CarrierProfile: carrier.ClosedCarrierTCP}
 	secondKey := firstKey
 	secondKey.PeerNodeID[0] = 6
-	pool, err := route.NewClosedCarrierPool(time.Now)
+	pool, err := carrier.NewClosedCarrierPool(time.Now)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer pool.Close()
-	firstLease, err := pool.AcquireContext(t.Context(), firstKey, func() error { return nil }, func() (route.Carrier, error) { return firstLocal, nil })
+	firstLease, err := pool.AcquireContext(t.Context(), firstKey, func() error { return nil }, func() (carrier.Carrier, error) { return firstLocal, nil })
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer firstLease.Release()
-	secondLease, err := pool.AcquireContext(t.Context(), secondKey, func() error { return nil }, func() (route.Carrier, error) { return secondLocal, nil })
+	secondLease, err := pool.AcquireContext(t.Context(), secondKey, func() error { return nil }, func() (carrier.Carrier, error) { return secondLocal, nil })
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -247,20 +248,20 @@ func TestClosedForwardingSessionsReuseReadyCarrierWhileOtherHelloBlocks(t *testi
 	})
 	deadline := time.Now().Add(5 * time.Second)
 	helloDeadline := time.Now().UTC().Truncate(time.Second).Add(time.Minute)
-	firstKey := route.ClosedCarrierKey{NetworkID: [32]byte{11}, ProfileDigest: [32]byte{12}, LocalNodeID: [32]byte{13}, PeerNodeID: [32]byte{14}, PeerKey: [32]byte{15}, CarrierProfile: route.ClosedCarrierTCP}
+	firstKey := carrier.ClosedCarrierKey{NetworkID: [32]byte{11}, ProfileDigest: [32]byte{12}, LocalNodeID: [32]byte{13}, PeerNodeID: [32]byte{14}, PeerKey: [32]byte{15}, CarrierProfile: carrier.ClosedCarrierTCP}
 	secondKey := firstKey
 	secondKey.PeerNodeID[0] = 16
-	pool, err := route.NewClosedCarrierPool(time.Now)
+	pool, err := carrier.NewClosedCarrierPool(time.Now)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer pool.Close()
-	firstLease, err := pool.AcquireContext(t.Context(), firstKey, func() error { return nil }, func() (route.Carrier, error) { return firstLocal, nil })
+	firstLease, err := pool.AcquireContext(t.Context(), firstKey, func() error { return nil }, func() (carrier.Carrier, error) { return firstLocal, nil })
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer firstLease.Release()
-	secondLease, err := pool.AcquireContext(t.Context(), secondKey, func() error { return nil }, func() (route.Carrier, error) { return secondLocal, nil })
+	secondLease, err := pool.AcquireContext(t.Context(), secondKey, func() error { return nil }, func() (carrier.Carrier, error) { return secondLocal, nil })
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -340,13 +341,13 @@ func TestClosedForwardingSessionCreatorCancellationInterruptsBlockedHello(t *tes
 	local, peer := net.Pipe()
 	defer local.Close()
 	defer peer.Close()
-	key := route.ClosedCarrierKey{NetworkID: [32]byte{21}, ProfileDigest: [32]byte{22}, LocalNodeID: [32]byte{23}, PeerNodeID: [32]byte{24}, PeerKey: [32]byte{25}, CarrierProfile: route.ClosedCarrierTCP}
-	pool, err := route.NewClosedCarrierPool(time.Now)
+	key := carrier.ClosedCarrierKey{NetworkID: [32]byte{21}, ProfileDigest: [32]byte{22}, LocalNodeID: [32]byte{23}, PeerNodeID: [32]byte{24}, PeerKey: [32]byte{25}, CarrierProfile: carrier.ClosedCarrierTCP}
+	pool, err := carrier.NewClosedCarrierPool(time.Now)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer pool.Close()
-	lease, err := pool.AcquireContext(t.Context(), key, func() error { return nil }, func() (route.Carrier, error) { return local, nil })
+	lease, err := pool.AcquireContext(t.Context(), key, func() error { return nil }, func() (carrier.Carrier, error) { return local, nil })
 	if err != nil {
 		t.Fatal(err)
 	}

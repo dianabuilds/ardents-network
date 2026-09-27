@@ -6,6 +6,7 @@ import (
 	"context"
 	"crypto/rand"
 	"errors"
+	"github.com/dianabuilds/ardents-network/internal/route/carrier"
 	"io"
 	"strconv"
 	"time"
@@ -60,7 +61,7 @@ func (prefix *ClosedSourcePrefix) exchangeControl(ctx context.Context, purpose a
 			result = nil
 		}
 	}()
-	secured, err := OpenClosedRoleTLS(ctx, lane, peer.key, pending)
+	secured, err := carrier.OpenClosedRoleTLS(ctx, lane, peer.key, pending)
 	if err != nil {
 		return nil, errors.Join(errors.New("closed source Control TLS unavailable"), err)
 	}

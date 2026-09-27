@@ -7,6 +7,7 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"errors"
+	"github.com/dianabuilds/ardents-network/internal/route/carrier"
 	"io"
 	"net"
 	"os"
@@ -111,7 +112,7 @@ func (prefix *ClosedSourcePrefix) RegisterIntroduction(ctx context.Context, pres
 			outcome = errors.Join(outcome, owner.closeTransport())
 		}
 	}()
-	secured, err := OpenClosedRoleTLS(ctx, lane, peer.key, pending)
+	secured, err := carrier.OpenClosedRoleTLS(ctx, lane, peer.key, pending)
 	if err != nil {
 		return nil, err
 	}

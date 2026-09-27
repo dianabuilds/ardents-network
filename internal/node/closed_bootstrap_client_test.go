@@ -8,11 +8,12 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/route/terminal"
 
 	"github.com/dianabuilds/ardents-network/internal/route"
+	routecarrier "github.com/dianabuilds/ardents-network/internal/route/carrier"
 	"github.com/dianabuilds/ardents-network/internal/route/credential"
 )
 
 func TestClosedBootstrapClientIssuesThroughEntryInteriorAndIssuer(t *testing.T) {
-	for _, carrier := range []route.CarrierProfile{route.ClosedCarrierTCP, route.ClosedCarrierQUIC} {
+	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP, routecarrier.ClosedCarrierQUIC} {
 		t.Run(string(carrier), func(t *testing.T) {
 			fixture := newClosedBootstrapNetwork(t, carrier)
 			pending, challenge, spki := fixture.batch(t, 32)

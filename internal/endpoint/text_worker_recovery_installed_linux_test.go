@@ -15,6 +15,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
 	"github.com/dianabuilds/ardents-network/internal/application/interfacev2/connection"
 	"github.com/dianabuilds/ardents-network/internal/route"
+	routecarrier "github.com/dianabuilds/ardents-network/internal/route/carrier"
 	"github.com/dianabuilds/ardents-network/internal/service/instance"
 	"github.com/dianabuilds/ardents-network/internal/service/targetlink"
 )
@@ -29,14 +30,14 @@ func TestInstalledTextWorkersRecoverAcceptedRequestAcrossJoinedNetwork(t *testin
 	if err := verifyTextEndpointService(ctx); err != nil {
 		t.Fatalf("invalid installed environment: %v", err)
 	}
-	for _, carrier := range []route.CarrierProfile{route.ClosedCarrierTCP, route.ClosedCarrierQUIC} {
+	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP, routecarrier.ClosedCarrierQUIC} {
 		t.Run(string(carrier), func(t *testing.T) {
 			exerciseInstalledTextWorkerRecovery(t, ctx, carrier)
 		})
 	}
 }
 
-func exerciseInstalledTextWorkerRecovery(t *testing.T, ctx context.Context, carrier route.CarrierProfile) {
+func exerciseInstalledTextWorkerRecovery(t *testing.T, ctx context.Context, carrier routecarrier.CarrierProfile) {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(ctx, 45*time.Second)
 	defer cancel()
@@ -232,7 +233,7 @@ func assertInstalledTextWorkerRetired(t *testing.T, ctx context.Context, worker 
 	requireInstalledTextWorkerCollected(t, ctx, instance.name, instance.role)
 }
 
-func installedTextRecoveryNetwork(t *testing.T, carrier route.CarrierProfile) (*textContext, *textContext, targetlink.Link) {
+func installedTextRecoveryNetwork(t *testing.T, carrier routecarrier.CarrierProfile) (*textContext, *textContext, targetlink.Link) {
 	t.Helper()
 	reader, publisher := textUnpublishedNetworkWithInstance(t, carrier,
 		func(network [32]byte, now, until time.Time) (*instance.Root, *instance.Binding) {

@@ -8,6 +8,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
+	"github.com/dianabuilds/ardents-network/internal/route/carrier"
 )
 
 // closedRouteReceiver projects one local recipient from the exact State
@@ -40,7 +41,7 @@ func closedRouteReceiver(config runtimeConfig, snapshot state.NodeDuty, purpose 
 }
 
 func currentClosedRoute(config runtimeConfig, snapshot state.NodeDuty, now time.Time) (state.ClosedRouteView, error) {
-	if config.CurrentClosedRoute == nil || snapshot.Profile != route.ClosedRouteProfile || snapshot.NodeID == [32]byte{} || snapshot.RecordGeneration == 0 {
+	if config.CurrentClosedRoute == nil || snapshot.Profile != carrier.ClosedRouteProfile || snapshot.NodeID == [32]byte{} || snapshot.RecordGeneration == 0 {
 		return state.ClosedRouteView{}, errors.New("closed Route snapshot prerequisites are not satisfied")
 	}
 	view, err := config.CurrentClosedRoute()

@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/network/state"
-	"github.com/dianabuilds/ardents-network/internal/route"
+	routecarrier "github.com/dianabuilds/ardents-network/internal/route/carrier"
 )
 
 func addTextIntroductionPrefixState(source *textSourceStateFixture) {
@@ -29,7 +29,7 @@ func addTextIntroductionPrefixState(source *textSourceStateFixture) {
 // actual Node runtimes, Custody issuance, journal and both separate prefixes
 // are production paths; this does not claim command publication readiness.
 func TestTextPublisherIntroductionPrefixUsesSeparateDomainAndRealIssuance(t *testing.T) {
-	for _, carrier := range []route.CarrierProfile{route.ClosedCarrierTCP, route.ClosedCarrierQUIC} {
+	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP, routecarrier.ClosedCarrierQUIC} {
 		t.Run(string(carrier), func(t *testing.T) {
 			_, owner, _ := startTextRoleNetwork(t, textRoleNetworkFixture{carrier: carrier, resolution: true, publisher: true})
 			source, err := owner.openTextPrefix(t.Context())

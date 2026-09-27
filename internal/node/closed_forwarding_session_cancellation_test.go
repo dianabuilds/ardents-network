@@ -8,15 +8,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
+	routecarrier "github.com/dianabuilds/ardents-network/internal/route/carrier"
 )
 
 // closedForwardingBlockedCloseCarrier makes cancellation observable before it
 // interrupts an in-flight Carrier read. It keeps the callback alive until the
 // test permits physical closure.
 type closedForwardingBlockedCloseCarrier struct {
-	route.Carrier
+	routecarrier.Carrier
 	closeEntered chan struct{}
 	allowClose   <-chan struct{}
 	done         chan struct{}
@@ -44,12 +44,12 @@ func TestClosedForwardingSessionCanceledLateAcceptWaitsForCloseAndReturnsNoSessi
 	var workers sync.WaitGroup
 	var allowOnce sync.Once
 	releaseClose := func() { allowOnce.Do(func() { close(allowClose) }) }
-	key := route.ClosedCarrierKey{NetworkID: [32]byte{31}, ProfileDigest: [32]byte{32}, LocalNodeID: [32]byte{33}, PeerNodeID: [32]byte{34}, PeerKey: [32]byte{35}, CarrierProfile: route.ClosedCarrierTCP}
-	pool, err := route.NewClosedCarrierPool(time.Now)
+	key := routecarrier.ClosedCarrierKey{NetworkID: [32]byte{31}, ProfileDigest: [32]byte{32}, LocalNodeID: [32]byte{33}, PeerNodeID: [32]byte{34}, PeerKey: [32]byte{35}, CarrierProfile: routecarrier.ClosedCarrierTCP}
+	pool, err := routecarrier.NewClosedCarrierPool(time.Now)
 	if err != nil {
 		t.Fatal(err)
 	}
-	lease, err := pool.AcquireContext(t.Context(), key, func() error { return nil }, func() (route.Carrier, error) { return carrier, nil })
+	lease, err := pool.AcquireContext(t.Context(), key, func() error { return nil }, func() (routecarrier.Carrier, error) { return carrier, nil })
 	if err != nil {
 		t.Fatal(err)
 	}

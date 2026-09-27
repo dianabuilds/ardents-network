@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/resource"
-	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/carrier"
 )
 
 func TestNodePlanConnectsClosedForwardingToStateOwnedRuntime(t *testing.T) {
@@ -20,7 +20,7 @@ func TestNodePlanConnectsClosedForwardingToStateOwnedRuntime(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if runtime.state.AcceptedProfile != route.ClosedRouteProfile ||
+	if runtime.state.AcceptedProfile != carrier.ClosedRouteProfile ||
 		!bytes.Equal(runtime.state.ClosedProfileAuthority, bytes.Repeat([]byte{0x12}, 32)) {
 		t.Fatal("forwarding did not retain exact pinned closed State")
 	}

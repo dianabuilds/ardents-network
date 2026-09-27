@@ -14,7 +14,7 @@ import (
 
 	applicationconnection "github.com/dianabuilds/ardents-network/internal/application/interfacev2/connection"
 	"github.com/dianabuilds/ardents-network/internal/application/textdocument"
-	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/carrier"
 	nativeconnection "github.com/dianabuilds/ardents-network/internal/service/connection"
 )
 
@@ -201,7 +201,7 @@ func TestTextServiceRecoveryOpenersPreserveCancellationBeforeSideEffects(t *test
 }
 
 func TestTextRecoveryPublisherRejectsCapsuleBeyondLocalAttemptDeadline(t *testing.T) {
-	reader, publisher, destination := textJoinedNetworkFixture(t, route.ClosedCarrierTCP)
+	reader, publisher, destination := textJoinedNetworkFixture(t, carrier.ClosedCarrierTCP)
 	readerJob, publisherJob := liveTextCapsuleJob(t, reader), liveTextCapsuleJob(t, publisher)
 	ctx, cancel := context.WithTimeout(t.Context(), 15*time.Second)
 	defer cancel()

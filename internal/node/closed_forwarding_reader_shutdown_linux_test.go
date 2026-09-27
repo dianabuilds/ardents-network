@@ -14,23 +14,24 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/resource"
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
+	"github.com/dianabuilds/ardents-network/internal/route/carrier"
 	"github.com/dianabuilds/ardents-network/internal/route/replay"
 )
 
 type queuedForwardingListener struct {
-	accepted chan route.ClosedSharedCarrier
+	accepted chan carrier.ClosedSharedCarrier
 	closed   chan struct{}
 	once     sync.Once
 }
 
-func (listener *queuedForwardingListener) Accept(ctx context.Context, _ time.Duration) (route.ClosedSharedCarrier, error) {
+func (listener *queuedForwardingListener) Accept(ctx context.Context, _ time.Duration) (carrier.ClosedSharedCarrier, error) {
 	select {
 	case accepted := <-listener.accepted:
 		return accepted, nil
 	case <-listener.closed:
-		return route.ClosedSharedCarrier{}, context.Canceled
+		return carrier.ClosedSharedCarrier{}, context.Canceled
 	case <-ctx.Done():
-		return route.ClosedSharedCarrier{}, ctx.Err()
+		return carrier.ClosedSharedCarrier{}, ctx.Err()
 	}
 }
 
@@ -80,7 +81,7 @@ func TestClosedForwardingDrainJoinsActualAcceptedProducerBeforeReader(t *testing
 		fixture.snapshot.Candidates[index].AssignmentNotAfter = fixture.view.Profile.NotAfter
 	}
 	serverCertificate, serverKey := nodeCertificate(t, 291, "reader-shutdown-server")
-	fixture.snapshot.CarrierProfile = string(route.ClosedCarrierTCP)
+	fixture.snapshot.CarrierProfile = string(carrier.ClosedCarrierTCP)
 	fixture.snapshot.NodePublicKey = serverKey
 	fixture.config.now = func() time.Time { return now }
 	fixture.config.Current = func() (state.NodeDuty, error) { return fixture.snapshot, nil }
@@ -98,9 +99,9 @@ func TestClosedForwardingDrainJoinsActualAcceptedProducerBeforeReader(t *testing
 	if !available {
 		t.Fatal("forwarding receiver unavailable")
 	}
-	key := route.ClosedCarrierKey{NetworkID: receiver.NetworkID, ProfileDigest: receiver.ProfileDigest, LocalNodeID: receiver.NodeID,
-		PeerNodeID: candidate.NodeID, PeerKey: candidate.PublicKey, CarrierProfile: route.CarrierProfile(candidate.CarrierProfile)}
-	pool, err := route.NewClosedCarrierPool(fixture.config.now)
+	key := carrier.ClosedCarrierKey{NetworkID: receiver.NetworkID, ProfileDigest: receiver.ProfileDigest, LocalNodeID: receiver.NodeID,
+		PeerNodeID: candidate.NodeID, PeerKey: candidate.PublicKey, CarrierProfile: carrier.CarrierProfile(candidate.CarrierProfile)}
+	pool, err := carrier.NewClosedCarrierPool(fixture.config.now)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -111,7 +112,7 @@ func TestClosedForwardingDrainJoinsActualAcceptedProducerBeforeReader(t *testing
 	if err != nil {
 		t.Fatal(err)
 	}
-	listener := &queuedForwardingListener{accepted: make(chan route.ClosedSharedCarrier), closed: make(chan struct{})}
+	listener := &queuedForwardingListener{accepted: make(chan carrier.ClosedSharedCarrier), closed: make(chan struct{})}
 	local, peer := net.Pipe()
 	closeErr := errors.New("fixture physical close failed")
 	blockedRead := &delayedForwardingRead{Conn: local, gate: make(chan struct{}), interrupted: make(chan struct{}), closeErr: closeErr}
@@ -120,7 +121,7 @@ func TestClosedForwardingDrainJoinsActualAcceptedProducerBeforeReader(t *testing
 	tlsDone := make(chan error, 1)
 	peerDone := make(chan error, 1)
 	var server *closedForwardingServer
-	var seed *route.ClosedCarrierLease
+	var seed *carrier.ClosedCarrierLease
 	var client net.Conn
 	var releaseChild, releaseReader sync.Once
 	tlsStarted, tlsJoined := false, false
@@ -168,24 +169,24 @@ func TestClosedForwardingDrainJoinsActualAcceptedProducerBeforeReader(t *testing
 	}
 	server = newClosedForwardingServerWithHost(fixture.config, fixture.snapshot, serverCertificate, listener,
 		&closedForwardingReceivingResources{spends: spends, limits: limits}, pool, host, 1)
-	seed, err = pool.AcquireContext(t.Context(), key, func() error { return nil }, func() (route.Carrier, error) { return blockedChild, nil })
+	seed, err = pool.AcquireContext(t.Context(), key, func() error { return nil }, func() (carrier.Carrier, error) { return blockedChild, nil })
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	tlsStarted = true
 	go func() {
-		secured, acceptErr := route.AcceptClosedRoleTLS(context.Background(), serverRaw, serverCertificate, time.Now().Add(5*time.Second))
+		secured, acceptErr := carrier.AcceptClosedRoleTLS(context.Background(), serverRaw, serverCertificate, time.Now().Add(5*time.Second))
 		if acceptErr == nil {
 			select {
-			case listener.accepted <- route.ClosedSharedCarrier{Kind: route.ClosedSharedDirect, Connection: secured}:
+			case listener.accepted <- carrier.ClosedSharedCarrier{Kind: carrier.ClosedSharedDirect, Connection: secured}:
 			case <-listener.closed:
 				acceptErr = context.Canceled
 			}
 		}
 		tlsDone <- acceptErr
 	}()
-	client, err = route.OpenClosedRoleTLS(t.Context(), clientRaw, serverKey, time.Now().Add(5*time.Second))
+	client, err = carrier.OpenClosedRoleTLS(t.Context(), clientRaw, serverKey, time.Now().Add(5*time.Second))
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -7,6 +7,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
+	routecarrier "github.com/dianabuilds/ardents-network/internal/route/carrier"
 	"github.com/dianabuilds/ardents-network/internal/route/replay"
 	"net"
 	"path/filepath"
@@ -43,11 +44,11 @@ func startClosedForwarding(config runtimeConfig, snapshot state.NodeDuty) (*duty
 	if err != nil {
 		return nil, errors.Join(err, host.Close())
 	}
-	pool, err := route.NewClosedCarrierPool(config.now)
+	pool, err := routecarrier.NewClosedCarrierPool(config.now)
 	if err != nil {
 		return nil, errors.Join(err, receiving.Close(), host.Close())
 	}
-	shared, err := route.ListenClosedSharedCarrier(route.CarrierProfile(snapshot.CarrierProfile), listen, local.Certificate,
+	shared, err := routecarrier.ListenClosedSharedCarrier(routecarrier.CarrierProfile(snapshot.CarrierProfile), listen, local.Certificate,
 		func(key [32]byte) bool {
 			updated, readErr := currentFacts(config)
 			return readErr == nil && closedSharedPeerCurrent(config, updated, key, config.now())
@@ -70,7 +71,7 @@ func validateClosedForwardingProfile(local ClosedForwardingProfile, config runti
 		local.ConnectionLimit == 0 || local.ConnectionLimit > 16 || local.DrainTimeout <= 0 || local.DrainTimeout > time.Minute ||
 		local.host == nil && (local.HostingRoot == "" || !filepath.IsAbs(local.HostingRoot) || filepath.Clean(local.HostingRoot) != local.HostingRoot) ||
 		local.AdmissionTraffic.Tx == 0 && local.AdmissionTraffic.Rx == 0 || local.TerminationTraffic.Tx == 0 && local.TerminationTraffic.Rx == 0 ||
-		!literalNodeEndpoint(snapshot.ProbeEndpoint) || (route.CarrierProfile(snapshot.CarrierProfile) != route.ClosedCarrierTCP && route.CarrierProfile(snapshot.CarrierProfile) != route.ClosedCarrierQUIC) {
+		!literalNodeEndpoint(snapshot.ProbeEndpoint) || (routecarrier.CarrierProfile(snapshot.CarrierProfile) != routecarrier.ClosedCarrierTCP && routecarrier.CarrierProfile(snapshot.CarrierProfile) != routecarrier.ClosedCarrierQUIC) {
 		return errors.New("closed forwarding local profile is incomplete")
 	}
 	if _, available := closedRouteReceiver(config, snapshot, ardp.PurposeForwarding, now); !available {
@@ -83,9 +84,9 @@ type closedForwardingServer struct {
 	config           runtimeConfig
 	snapshot         state.NodeDuty
 	certificate      tls.Certificate
-	listener         route.ClosedSharedCarrierListener
+	listener         routecarrier.ClosedSharedCarrierListener
 	receiving        *closedForwardingReceivingResources
-	pool             *route.ClosedCarrierPool
+	pool             *routecarrier.ClosedCarrierPool
 	host             closedForwardingHost
 	sessions         *closedForwardingSessions
 	clock            func() time.Time
@@ -106,7 +107,7 @@ type closedForwardingServer struct {
 	reapErr          error
 }
 
-func newClosedForwardingServerWithHost(config runtimeConfig, snapshot state.NodeDuty, certificate tls.Certificate, listener route.ClosedSharedCarrierListener, receiving *closedForwardingReceivingResources, pool *route.ClosedCarrierPool, host closedForwardingHost, limit uint16) *closedForwardingServer {
+func newClosedForwardingServerWithHost(config runtimeConfig, snapshot state.NodeDuty, certificate tls.Certificate, listener routecarrier.ClosedSharedCarrierListener, receiving *closedForwardingReceivingResources, pool *routecarrier.ClosedCarrierPool, host closedForwardingHost, limit uint16) *closedForwardingServer {
 	ctx, cancel := context.WithCancel(context.Background())
 	running := &closedForwardingServer{config: config, snapshot: snapshot, certificate: certificate, listener: listener, receiving: receiving, pool: pool,
 		host: host, cancel: cancel, drained: make(chan struct{}),
@@ -170,7 +171,7 @@ func (server *closedForwardingServer) serve(ctx context.Context) {
 				}
 				return
 			default:
-				if route.IsClosedSharedPeerFailure(err) {
+				if routecarrier.IsClosedSharedPeerFailure(err) {
 					continue
 				}
 				terminal = err
@@ -223,7 +224,7 @@ func (server *closedForwardingServer) reap() {
 	}
 }
 
-func (server *closedForwardingServer) serveAccepted(ctx context.Context, accepted route.ClosedSharedCarrier) {
+func (server *closedForwardingServer) serveAccepted(ctx context.Context, accepted routecarrier.ClosedSharedCarrier) {
 	defer server.workers.Done()
 	if accepted.Connection == nil {
 		<-server.limit
@@ -245,16 +246,16 @@ func (server *closedForwardingServer) serveAccepted(ctx context.Context, accepte
 		<-server.limit
 		server.active.Add(^uint32(0))
 	}()
-	if accepted.Kind == route.ClosedSharedDirect {
+	if accepted.Kind == routecarrier.ClosedSharedDirect {
 		server.serveDirect(ctx, accepted.Connection, nil, [32]byte{}, route.ClosedChildOrdinary, nil)
 		return
 	}
-	if accepted.Kind == route.ClosedSharedNode {
+	if accepted.Kind == routecarrier.ClosedSharedNode {
 		server.serveOuter(ctx, accepted)
 	}
 }
 
-func (server *closedForwardingServer) serveOuter(ctx context.Context, carrier route.ClosedSharedCarrier) {
+func (server *closedForwardingServer) serveOuter(ctx context.Context, carrier routecarrier.ClosedSharedCarrier) {
 	updated, err := currentFacts(server.config)
 	if err != nil {
 		return
@@ -278,7 +279,7 @@ func (server *closedForwardingServer) serveOuter(ctx context.Context, carrier ro
 func (server *closedForwardingServer) serveInner(ctx context.Context, lane *route.ClosedOuterBridgeLane, deadline time.Time, incomingKey [32]byte) {
 	status := byte(1)
 	defer func() { _ = lane.CloseWithStatus(status) }()
-	secured, err := route.AcceptClosedRoleTLS(ctx, lane, server.certificate, deadline)
+	secured, err := routecarrier.AcceptClosedRoleTLS(ctx, lane, server.certificate, deadline)
 	if err != nil {
 		return
 	}
@@ -312,7 +313,7 @@ func (server *closedForwardingServer) serveDirect(ctx context.Context, connectio
 	if err := connection.SetDeadline(initialDeadline); err != nil {
 		return err
 	}
-	exporter, err := route.ClosedRoleTLSExporter(connection)
+	exporter, err := routecarrier.ClosedRoleTLSExporter(connection)
 	if err != nil {
 		return err
 	}

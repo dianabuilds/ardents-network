@@ -1,12 +1,12 @@
-//go:build linux
+package carrier
 
-package route
-
-// Shared peer-identity fixtures for the retained Linux-only client-path
-// tests. entryBindingCertificate and identifierFromKey were relocated from
-// the retired generation-2 EntryBinding and LegBinding test files when
-// ADR-0093 deleted those grammars; the Carrier-side copy of this fixture
-// lives in internal/route/carrier beside the moved Carrier tests.
+// Shared peer-identity fixtures for the maintained closed Carrier tests.
+// entryBindingCertificate, identifierFromKey, and identifier were relocated
+// from the retired generation-2 EntryBinding and LegBinding test files when
+// ADR-0093 deleted those grammars; the closed Carrier tests still need exact
+// self-signed peer certificates and deterministic 32-byte identifiers. The
+// Route-side copy of this fixture serves the two client-path tests that
+// stayed beside the Route composition.
 
 import (
 	"bytes"
@@ -23,7 +23,7 @@ import (
 func entryBindingCertificate(t *testing.T, serial int64) tls.Certificate {
 	t.Helper()
 	private := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{byte(serial)}, ed25519.SeedSize))
-	template := &x509.Certificate{SerialNumber: big.NewInt(serial), Subject: pkix.Name{CommonName: "route.test"},
+	template := &x509.Certificate{SerialNumber: big.NewInt(serial), Subject: pkix.Name{CommonName: "carrier.test"},
 		NotBefore: time.Now().Add(-time.Minute), NotAfter: time.Now().Add(time.Minute), KeyUsage: x509.KeyUsageDigitalSignature,
 		ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth, x509.ExtKeyUsageServerAuth}}
 	raw, err := x509.CreateCertificate(rand.Reader, template, template, private.Public(), private)
@@ -41,4 +41,8 @@ func identifierFromKey(key ed25519.PublicKey) [32]byte {
 	var result [32]byte
 	copy(result[:], key)
 	return result
+}
+
+func identifier(value byte) [32]byte {
+	return [32]byte{value}
 }

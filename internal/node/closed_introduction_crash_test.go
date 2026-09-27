@@ -20,6 +20,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	introductioncapsule "github.com/dianabuilds/ardents-network/internal/route/capsule"
+	routecarrier "github.com/dianabuilds/ardents-network/internal/route/carrier"
 	"github.com/dianabuilds/ardents-network/internal/route/terminal"
 )
 
@@ -30,7 +31,7 @@ import (
 // or installed Endpoint worker containment.
 type introductionCrashClient struct {
 	Profile      state.ClosedProfileView
-	Carrier      route.CarrierProfile
+	Carrier      routecarrier.CarrierProfile
 	Endpoint     string
 	Certificates [][]byte
 	PrivateKey   ed25519.PrivateKey
@@ -49,7 +50,7 @@ func TestClosedIntroductionClientCrashStopsDelivery(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, carrier := range []route.CarrierProfile{route.ClosedCarrierTCP, route.ClosedCarrierQUIC} {
+	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP, routecarrier.ClosedCarrierQUIC} {
 		t.Run(string(carrier), func(t *testing.T) {
 			fixture := newPrivateRecipientNetworkFixture(t, carrier, ardp.PurposeIntroduction, 3, 1)
 			request := terminal.RegistrationRequest{Nonce: [32]byte{121}, Slot: [32]byte{122}, Revision: 1, Expiry: time.Now().UTC().Add(60 * time.Second).Truncate(time.Second)}

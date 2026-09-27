@@ -7,6 +7,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
+	routecarrier "github.com/dianabuilds/ardents-network/internal/route/carrier"
 	"sync"
 	"time"
 )
@@ -16,8 +17,8 @@ import (
 // IDs from different admitted channels can never collide on a reused leg.
 type closedForwardingSessions struct {
 	mu         sync.Mutex
-	sessions   map[route.ClosedCarrierKey]*closedForwardingSession
-	pending    map[route.ClosedCarrierKey]*closedForwardingSessionPending
+	sessions   map[routecarrier.ClosedCarrierKey]*closedForwardingSession
+	pending    map[routecarrier.ClosedCarrierKey]*closedForwardingSessionPending
 	readers    sync.WaitGroup
 	cleanupErr error
 }
@@ -32,9 +33,9 @@ type closedForwardingSessionPending struct {
 
 type closedForwardingSession struct {
 	owner       *closedForwardingSessions
-	key         route.ClosedCarrierKey
-	carrier     route.Carrier
-	binding     *route.ClosedCarrierLease
+	key         routecarrier.ClosedCarrierKey
+	carrier     routecarrier.Carrier
+	binding     *routecarrier.ClosedCarrierLease
 	invalidate  func() error
 	mu          sync.Mutex
 	writer      sync.Mutex
@@ -47,10 +48,10 @@ type closedForwardingSession struct {
 }
 
 func newClosedForwardingSessions() *closedForwardingSessions {
-	return &closedForwardingSessions{sessions: make(map[route.ClosedCarrierKey]*closedForwardingSession), pending: make(map[route.ClosedCarrierKey]*closedForwardingSessionPending)}
+	return &closedForwardingSessions{sessions: make(map[routecarrier.ClosedCarrierKey]*closedForwardingSession), pending: make(map[routecarrier.ClosedCarrierKey]*closedForwardingSessionPending)}
 }
 
-func (sessions *closedForwardingSessions) acquire(ctx context.Context, key route.ClosedCarrierKey, binding *route.ClosedCarrierLease, deadline time.Time, hello func() (ardp.Hello, error)) (*closedForwardingSession, error) {
+func (sessions *closedForwardingSessions) acquire(ctx context.Context, key routecarrier.ClosedCarrierKey, binding *routecarrier.ClosedCarrierLease, deadline time.Time, hello func() (ardp.Hello, error)) (*closedForwardingSession, error) {
 	if sessions == nil || ctx == nil || binding == nil || hello == nil {
 		return nil, errors.New("closed forwarding Carrier session is unavailable")
 	}
@@ -103,7 +104,7 @@ func (sessions *closedForwardingSessions) acquire(ctx context.Context, key route
 	// Only exact-key waiters join its published terminal result.
 }
 
-func (sessions *closedForwardingSessions) open(ctx context.Context, key route.ClosedCarrierKey, binding *route.ClosedCarrierLease, carrier route.Carrier, deadline time.Time, hello func() (ardp.Hello, error), pending *closedForwardingSessionPending) (returned *closedForwardingSession, returnedErr error) {
+func (sessions *closedForwardingSessions) open(ctx context.Context, key routecarrier.ClosedCarrierKey, binding *routecarrier.ClosedCarrierLease, carrier routecarrier.Carrier, deadline time.Time, hello func() (ardp.Hello, error), pending *closedForwardingSessionPending) (returned *closedForwardingSession, returnedErr error) {
 	var result *closedForwardingSession
 	var resultErr error
 	var cancelErr error
@@ -412,7 +413,7 @@ func (server *closedForwardingServer) closedForwardingOuterHello(snapshot state.
 // Every maintained selected Carrier supports independent write deadlines.
 // Refuse an incompatible transport instead of resetting the shared reader's
 // lifetime whenever one child writes.
-func closedForwardingWriteDeadline(carrier route.Carrier, deadline time.Time) error {
+func closedForwardingWriteDeadline(carrier routecarrier.Carrier, deadline time.Time) error {
 	writer, ok := carrier.(interface{ SetWriteDeadline(time.Time) error })
 	if !ok {
 		return errors.New("closed forwarding write deadline is unsupported")

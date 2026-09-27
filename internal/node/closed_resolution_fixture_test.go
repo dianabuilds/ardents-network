@@ -21,6 +21,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/route"
+	routecarrier "github.com/dianabuilds/ardents-network/internal/route/carrier"
 	"github.com/dianabuilds/ardents-network/internal/route/credential"
 	"github.com/dianabuilds/ardents-network/internal/service/publication"
 	"github.com/dianabuilds/ardents-network/internal/service/reachability"
@@ -34,7 +35,7 @@ type resolutionNetworkFixture struct {
 	observe       func(net.Conn) net.Conn
 	admissionRoot string
 	profile       state.ClosedProfileView
-	carrier       route.CarrierProfile
+	carrier       routecarrier.CarrierProfile
 	endpoint      string
 	certificate   tls.Certificate
 	receiver      route.ClosedRoleReceiver
@@ -48,17 +49,17 @@ type resolutionNetworkFixture struct {
 	restart       func()
 }
 
-func newResolutionNetworkFixture(t *testing.T, carrier route.CarrierProfile) *resolutionNetworkFixture {
+func newResolutionNetworkFixture(t *testing.T, carrier routecarrier.CarrierProfile) *resolutionNetworkFixture {
 	t.Helper()
 	return newPrivateRecipientNetworkFixture(t, carrier, ardp.PurposeReachability, 1)
 }
 
-func newPrivateRecipientNetworkFixture(t *testing.T, carrier route.CarrierProfile, purpose ardp.Purpose, class uint8, extraClasses ...uint8) *resolutionNetworkFixture {
+func newPrivateRecipientNetworkFixture(t *testing.T, carrier routecarrier.CarrierProfile, purpose ardp.Purpose, class uint8, extraClasses ...uint8) *resolutionNetworkFixture {
 	t.Helper()
 	return newPrivateRecipientNetworkFixtureWithStart(t, carrier, purpose, class, nil, extraClasses...)
 }
 
-func newPrivateRecipientNetworkFixtureWithStart(t *testing.T, carrier route.CarrierProfile, purpose ardp.Purpose, class uint8, startReceiver func(Config) (func() error, error), extraClasses ...uint8) *resolutionNetworkFixture {
+func newPrivateRecipientNetworkFixtureWithStart(t *testing.T, carrier routecarrier.CarrierProfile, purpose ardp.Purpose, class uint8, startReceiver func(Config) (func() error, error), extraClasses ...uint8) *resolutionNetworkFixture {
 	t.Helper()
 	now, until := privateRecipientFixtureStart(t)
 	serverCert, serverKey := nodeCertificate(t, 251, "resolution")
@@ -89,7 +90,7 @@ func newPrivateRecipientNetworkFixtureWithStart(t *testing.T, carrier route.Carr
 	}
 	endpoint := reserveClosedBootstrapAddress(t, carrier)
 	snapshot := state.NodeDuty{Generation: hex.EncodeToString(profile.StateGeneration[:]), NetworkID: network, Epoch: profile.Epoch, Digest: profile.StateDigest,
-		EpochValidFrom: profile.NotBefore, ValidUntil: until, Profile: route.ClosedRouteProfile, Fresh: true, RecordPresent: true,
+		EpochValidFrom: profile.NotBefore, ValidUntil: until, Profile: routecarrier.ClosedRouteProfile, Fresh: true, RecordPresent: true,
 		NodeID: nodeID, NodePublicKey: serverKey, RecordGeneration: 9, RecordValidFrom: now.Add(-time.Second), RecordValidUntil: until,
 		DeclaredFamily: "resolution-family", ProbeEndpoint: endpoint, CarrierProfile: string(carrier), Assignment: "rendezvous", CandidateCount: 2}
 	snapshot.Candidates[0] = state.NodeDutyCandidate{NodeID: peerID, PublicKey: clientKey, RecordDigest: [32]byte{76}, Endpoint: "127.0.0.1:41001", CarrierProfile: string(carrier), ValidFrom: now.Add(-time.Second), ValidUntil: until, AssignmentNotAfter: until}

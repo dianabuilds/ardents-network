@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/network/state"
-	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/carrier"
 )
 
 // TextPermissionFiles is a trusted local offline handover, never Application
@@ -47,7 +47,7 @@ type TextParticipantEvent struct {
 }
 
 func (config TextParticipantConfig) validate() error {
-	if config.Network.AcceptedProfile != route.ClosedRouteProfile || config.Network.NetworkID == [32]byte{} || config.BrokerID == [32]byte{} || config.ConnectionPrincipal == [32]byte{} || config.AdministrationPrincipal == [32]byte{} || config.Observe == nil {
+	if config.Network.AcceptedProfile != carrier.ClosedRouteProfile || config.Network.NetworkID == [32]byte{} || config.BrokerID == [32]byte{} || config.ConnectionPrincipal == [32]byte{} || config.AdministrationPrincipal == [32]byte{} || config.Observe == nil {
 		return errors.New("text participant configuration incomplete")
 	}
 	seen := make(map[string]bool)

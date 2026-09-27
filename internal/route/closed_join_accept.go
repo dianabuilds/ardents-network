@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
+	"github.com/dianabuilds/ardents-network/internal/route/carrier"
 	"github.com/dianabuilds/ardents-network/internal/route/terminal"
 )
 
@@ -24,7 +25,7 @@ func (owner *ClosedJoinPairs) AcceptStream(ctx context.Context, lease *ClosedAdm
 	if err != nil {
 		return err
 	}
-	exporter, err := ClosedRoleTLSExporter(connection)
+	exporter, err := carrier.ClosedRoleTLSExporter(connection)
 	if err != nil {
 		return err
 	}

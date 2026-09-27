@@ -11,6 +11,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
+	"github.com/dianabuilds/ardents-network/internal/route/carrier"
 )
 
 func TestClosedForwardingLinkPreservesHalfCloseCreditsOnceAndJoinsReverse(t *testing.T) {
@@ -47,11 +48,11 @@ func testClosedForwardingLinkCompletion(t *testing.T, timing string) {
 	if err := peer.SetDeadline(deadline); err != nil {
 		t.Fatal(err)
 	}
-	pool, _ := route.NewClosedCarrierPool(clock)
+	pool, _ := carrier.NewClosedCarrierPool(clock)
 	defer pool.Close()
-	key := route.ClosedCarrierKey{NetworkID: [32]byte{1}, ProfileDigest: [32]byte{2}, LocalNodeID: [32]byte{3},
-		PeerNodeID: [32]byte{4}, PeerKey: [32]byte{5}, CarrierProfile: route.ClosedCarrierTCP}
-	lease, err := pool.AcquireContext(context.Background(), key, func() error { return nil }, func() (route.Carrier, error) { return local, nil })
+	key := carrier.ClosedCarrierKey{NetworkID: [32]byte{1}, ProfileDigest: [32]byte{2}, LocalNodeID: [32]byte{3},
+		PeerNodeID: [32]byte{4}, PeerKey: [32]byte{5}, CarrierProfile: carrier.ClosedCarrierTCP}
+	lease, err := pool.AcquireContext(context.Background(), key, func() error { return nil }, func() (carrier.Carrier, error) { return local, nil })
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -270,14 +271,14 @@ func TestClosedForwardingRetiredReverseCannotAbortSiblingOrSharedCarrier(t *test
 	local, peer := net.Pipe()
 	defer local.Close()
 	defer peer.Close()
-	pool, _ := route.NewClosedCarrierPool(clock)
+	pool, _ := carrier.NewClosedCarrierPool(clock)
 	defer pool.Close()
-	key := route.ClosedCarrierKey{NetworkID: [32]byte{1}, ProfileDigest: [32]byte{2}, LocalNodeID: [32]byte{3}, PeerNodeID: [32]byte{4}, PeerKey: [32]byte{5}, CarrierProfile: route.ClosedCarrierTCP}
-	lease, err := pool.AcquireContext(context.Background(), key, func() error { return nil }, func() (route.Carrier, error) { return local, nil })
+	key := carrier.ClosedCarrierKey{NetworkID: [32]byte{1}, ProfileDigest: [32]byte{2}, LocalNodeID: [32]byte{3}, PeerNodeID: [32]byte{4}, PeerKey: [32]byte{5}, CarrierProfile: carrier.ClosedCarrierTCP}
+	lease, err := pool.AcquireContext(context.Background(), key, func() error { return nil }, func() (carrier.Carrier, error) { return local, nil })
 	if err != nil {
 		t.Fatal(err)
 	}
-	sibling, err := pool.AcquireContext(context.Background(), key, func() error { return nil }, func() (route.Carrier, error) { t.Fatal("redialed live pair"); return nil, nil })
+	sibling, err := pool.AcquireContext(context.Background(), key, func() error { return nil }, func() (carrier.Carrier, error) { t.Fatal("redialed live pair"); return nil, nil })
 	if err != nil {
 		t.Fatal(err)
 	}

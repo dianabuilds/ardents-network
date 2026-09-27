@@ -1,4 +1,4 @@
-package route
+package carrier
 
 import "time"
 
@@ -14,3 +14,8 @@ type Carrier interface {
 	SetDeadline(time.Time) error
 	Close() error
 }
+
+// ClosedTLSExporter derives secret channel binding bytes after role TLS has
+// already authenticated its exact server key. Route retains the result but
+// never serializes or forwards it.
+type ClosedTLSExporter func(string, []byte, int) ([]byte, error)

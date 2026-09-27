@@ -16,8 +16,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
+	routecarrier "github.com/dianabuilds/ardents-network/internal/route/carrier"
 	"github.com/dianabuilds/ardents-network/internal/route/terminal"
 )
 
@@ -56,7 +56,7 @@ func (connection *introductionTranscriptConn) Read(p []byte) (int, error) {
 }
 
 func TestClosedIntroductionRegistrationObservation(t *testing.T) {
-	for _, carrier := range []route.CarrierProfile{route.ClosedCarrierTCP, route.ClosedCarrierQUIC} {
+	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP, routecarrier.ClosedCarrierQUIC} {
 		t.Run(string(carrier), func(t *testing.T) {
 			fixture := newPrivateRecipientNetworkFixture(t, carrier, ardp.PurposeIntroduction, 3)
 			capture := new(introductionTranscript)
@@ -125,7 +125,7 @@ func TestClosedIntroductionRegistrationObservation(t *testing.T) {
 				t.Fatal("capture missed positive hashed-slot floor control")
 			}
 			evidence := struct {
-				Carrier        route.CarrierProfile
+				Carrier        routecarrier.CarrierProfile
 				Sent, Received []byte
 				Before, After  map[string][]byte
 				Limit          string

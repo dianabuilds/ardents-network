@@ -15,6 +15,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/route/terminal"
 
 	"github.com/dianabuilds/ardents-network/internal/route"
+	routecarrier "github.com/dianabuilds/ardents-network/internal/route/carrier"
 	"github.com/dianabuilds/ardents-network/internal/route/credential"
 )
 
@@ -22,7 +23,7 @@ import (
 // production listeners, forwarding admission, nested TLS and receiver spends
 // are real, including the retained Route terminal-channel consumer.
 func TestClosedIssuerAdmittedOperationAfterTwoBootstrapBatches(t *testing.T) {
-	for _, carrier := range []route.CarrierProfile{route.ClosedCarrierTCP, route.ClosedCarrierQUIC} {
+	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP, routecarrier.ClosedCarrierQUIC} {
 		t.Run(string(carrier), func(t *testing.T) {
 			fixture := newClosedBootstrapNetwork(t, carrier)
 			profile := fixture.view.Profile

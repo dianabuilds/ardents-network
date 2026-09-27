@@ -13,10 +13,11 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/resource"
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
+	"github.com/dianabuilds/ardents-network/internal/route/carrier"
 )
 
 func TestClosedNodeRestrictionRefusesValidPrivateTokenWithoutSpendingIt(t *testing.T) {
-	for _, transport := range []route.CarrierProfile{route.ClosedCarrierTCP, route.ClosedCarrierQUIC} {
+	for _, transport := range []carrier.CarrierProfile{carrier.ClosedCarrierTCP, carrier.ClosedCarrierQUIC} {
 		t.Run(string(transport), func(t *testing.T) {
 			fixture := newClosedBootstrapFixture(t)
 			token := closedRestrictionToken(t, fixture)
@@ -45,7 +46,7 @@ func TestClosedNodeRestrictionRefusesValidPrivateTokenWithoutSpendingIt(t *testi
 				}
 			}()
 			deadline := time.Now().Add(8 * time.Second)
-			outer, err := route.OpenClosedNodeCarrier(t.Context(), route.ClosedNodeCarrierRequest{CarrierProfile: transport, Endpoint: fixture.snapshot.ProbeEndpoint,
+			outer, err := carrier.OpenClosedNodeCarrier(t.Context(), carrier.ClosedNodeCarrierRequest{CarrierProfile: transport, Endpoint: fixture.snapshot.ProbeEndpoint,
 				Certificate: peerCertificate, ExpectedPeerKey: key, Deadline: deadline})
 			if err != nil {
 				t.Fatal(err)
@@ -77,7 +78,7 @@ func TestClosedNodeRestrictionRefusesValidPrivateTokenWithoutSpendingIt(t *testi
 				if err := ardp.WriteFrame(outer, ardp.Frame{Kind: 4, Lane: lane, Body: body}); err != nil {
 					t.Fatal(err)
 				}
-				inner, err := route.OpenClosedRoleTLS(t.Context(), &outerTestInnerConn{outer: outer, lane: lane}, key, deadline)
+				inner, err := carrier.OpenClosedRoleTLS(t.Context(), &outerTestInnerConn{outer: outer, lane: lane}, key, deadline)
 				if err != nil {
 					t.Fatal(err)
 				}

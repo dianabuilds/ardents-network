@@ -11,11 +11,12 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
+	"github.com/dianabuilds/ardents-network/internal/route/carrier"
 )
 
 func (fixture *resolutionNetworkFixture) openTerminal(ctx context.Context, token []byte, class uint8) (net.Conn, func(), error) {
 	end := minResolutionTime(time.Now().UTC().Add(90*time.Second).Truncate(time.Second), fixture.profile.NotAfter)
-	outer, err := route.OpenClosedNodeCarrier(ctx, route.ClosedNodeCarrierRequest{CarrierProfile: fixture.carrier, Endpoint: fixture.endpoint, Certificate: fixture.certificate, ExpectedPeerKey: fixture.serverKey, Deadline: end})
+	outer, err := carrier.OpenClosedNodeCarrier(ctx, carrier.ClosedNodeCarrierRequest{CarrierProfile: fixture.carrier, Endpoint: fixture.endpoint, Certificate: fixture.certificate, ExpectedPeerKey: fixture.serverKey, Deadline: end})
 	if err != nil {
 		return nil, nil, fmt.Errorf("outer dial: %w", err)
 	}
@@ -48,7 +49,7 @@ func (fixture *resolutionNetworkFixture) openTerminal(ctx context.Context, token
 	if err := ardp.WriteFrame(outer, ardp.Frame{Kind: 4, Lane: 1, Body: open}); err != nil {
 		return nil, nil, err
 	}
-	secured, err := route.OpenClosedRoleTLS(ctx, &outerTestInnerConn{outer: outer, lane: 1}, fixture.serverKey, end)
+	secured, err := carrier.OpenClosedRoleTLS(ctx, &outerTestInnerConn{outer: outer, lane: 1}, fixture.serverKey, end)
 	if err != nil {
 		return nil, nil, fmt.Errorf("inner TLS: %w", err)
 	}

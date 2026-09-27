@@ -9,15 +9,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
+	routecarrier "github.com/dianabuilds/ardents-network/internal/route/carrier"
 )
 
 // This controlled listener pauses an already accepted socket at the handoff
 // boundary. It isolates ownership/joining, not peer authentication.
 type closedIssuerPausedAccept struct {
 	connection net.Conn
-	kind       route.ClosedSharedCarrierKind
+	kind       routecarrier.ClosedSharedCarrierKind
 	entered    chan struct{}
 	release    chan struct{}
 	once       sync.Once
@@ -25,22 +25,22 @@ type closedIssuerPausedAccept struct {
 	closeOnce  sync.Once
 }
 
-func (listener *closedIssuerPausedAccept) Accept(ctx context.Context, _ time.Duration) (route.ClosedSharedCarrier, error) {
+func (listener *closedIssuerPausedAccept) Accept(ctx context.Context, _ time.Duration) (routecarrier.ClosedSharedCarrier, error) {
 	first := false
 	listener.once.Do(func() { first = true; close(listener.entered) })
 	if first {
 		<-listener.release
 		kind := listener.kind
 		if kind == 0 {
-			kind = route.ClosedSharedNode
+			kind = routecarrier.ClosedSharedNode
 		}
-		return route.ClosedSharedCarrier{Kind: kind, Connection: listener.connection, NodeKey: [32]byte{1}}, nil
+		return routecarrier.ClosedSharedCarrier{Kind: kind, Connection: listener.connection, NodeKey: [32]byte{1}}, nil
 	}
 	select {
 	case <-ctx.Done():
-		return route.ClosedSharedCarrier{}, ctx.Err()
+		return routecarrier.ClosedSharedCarrier{}, ctx.Err()
 	case <-listener.closed:
-		return route.ClosedSharedCarrier{}, net.ErrClosed
+		return routecarrier.ClosedSharedCarrier{}, net.ErrClosed
 	}
 }
 func (listener *closedIssuerPausedAccept) Close() error {
@@ -56,7 +56,7 @@ func TestClosedTokenListenerDrainJoinsAcceptedSocketHandoff(t *testing.T) {
 		release: make(chan struct{}), closed: make(chan struct{})}
 	var handled atomic.Uint32
 	listener, err := StartClosedTokenListener(t.Context(), ClosedTokenListenerConfig{Issuer: &ClosedTokenIssuer{}, SharedListener: shared,
-		ConnectionLimit: 1, Clock: time.Now, NodeHandler: func(ctx context.Context, carrier route.ClosedSharedCarrier,
+		ConnectionLimit: 1, Clock: time.Now, NodeHandler: func(ctx context.Context, carrier routecarrier.ClosedSharedCarrier,
 			_ func(context.Context, io.ReadWriter, [32]byte, ardp.Hello) error) {
 			handled.Add(1)
 			_ = carrier.Connection.Close()
@@ -99,7 +99,7 @@ func TestClosedTokenListenerStopCancelsIdleNode(t *testing.T) {
 	parent, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	listener, err := StartClosedTokenListener(parent, ClosedTokenListenerConfig{Issuer: &ClosedTokenIssuer{}, SharedListener: shared,
-		ConnectionLimit: 1, Clock: time.Now, NodeHandler: func(ctx context.Context, carrier route.ClosedSharedCarrier,
+		ConnectionLimit: 1, Clock: time.Now, NodeHandler: func(ctx context.Context, carrier routecarrier.ClosedSharedCarrier,
 			_ func(context.Context, io.ReadWriter, [32]byte, ardp.Hello) error) {
 			defer close(stopped)
 			defer carrier.Connection.Close()
@@ -126,7 +126,7 @@ func TestClosedTokenListenerParentCancellationClosesIdleTCPAccept(t *testing.T) 
 	parent, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	listener, err := StartClosedTokenListener(parent, ClosedTokenListenerConfig{Issuer: &ClosedTokenIssuer{},
-		CarrierProfile: route.ClosedCarrierTCP, Endpoint: closedTokenListenerEndpoint(t, route.ClosedCarrierTCP),
+		CarrierProfile: routecarrier.ClosedCarrierTCP, Endpoint: closedTokenListenerEndpoint(t, routecarrier.ClosedCarrierTCP),
 		Certificate: certificate, ConnectionLimit: 1, Clock: time.Now})
 	if err != nil {
 		t.Fatal(err)

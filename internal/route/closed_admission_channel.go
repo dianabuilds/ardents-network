@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
+	"github.com/dianabuilds/ardents-network/internal/route/carrier"
 	"github.com/dianabuilds/ardents-network/internal/route/replay"
 )
 
@@ -31,11 +32,6 @@ type ClosedRoleReceiver struct {
 	ExpectedPurpose                                                              ardp.Purpose
 	NotAfter                                                                     time.Time
 }
-
-// ClosedTLSExporter derives secret channel binding bytes after role TLS has
-// already authenticated its exact server key. Route retains the result but
-// never serializes or forwards it.
-type ClosedTLSExporter func(string, []byte, int) ([]byte, error)
 
 // ClosedAdmissionVerification is the narrow credential-owner callback. Route
 // supplies only public receiver facts, token bytes and local exporter binding;
@@ -153,7 +149,7 @@ type ClosedAdmissionChannel struct {
 	receiver ClosedRoleReceiver
 	spends   *replay.Ledger
 	limits   *ClosedDutyLimits
-	exporter ClosedTLSExporter
+	exporter carrier.ClosedTLSExporter
 	verify   ClosedAdmissionVerifier
 	clock    func() time.Time
 	hello    ardp.Hello
@@ -164,7 +160,7 @@ type ClosedAdmissionChannel struct {
 // NewClosedAdmissionChannel creates one unauthenticated receiver state. The
 // caller must bind it to the just-handshaken TLS exporter; a zero or missing
 // exporter cannot fall back to an unauthenticated lane.
-func NewClosedAdmissionChannel(receiver ClosedRoleReceiver, spends *replay.Ledger, limits *ClosedDutyLimits, exporter ClosedTLSExporter, verify ClosedAdmissionVerifier, clock func() time.Time) (*ClosedAdmissionChannel, error) {
+func NewClosedAdmissionChannel(receiver ClosedRoleReceiver, spends *replay.Ledger, limits *ClosedDutyLimits, exporter carrier.ClosedTLSExporter, verify ClosedAdmissionVerifier, clock func() time.Time) (*ClosedAdmissionChannel, error) {
 	if !validClosedRoleReceiver(receiver) || spends == nil || limits == nil || exporter == nil || verify == nil || clock == nil || clock().IsZero() {
 		return nil, errors.New("closed admission channel is invalid")
 	}

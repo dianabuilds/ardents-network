@@ -9,7 +9,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/network/source"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
-	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/carrier"
 )
 
 type sourceServerPlan struct {
@@ -59,7 +59,7 @@ func openSource(path string, emit func([]byte) error) (sourceStore, error) {
 		Source:         source.Config{ServeAddress: plan.Listen, MaterialIndex: plan.MaterializationIndex},
 		RuntimeProfile: plan.RuntimeProfile}
 	if plan.StateProfile != "" {
-		if plan.StateProfile != route.ClosedRouteProfile {
+		if plan.StateProfile != carrier.ClosedRouteProfile {
 			return nil, errors.New("source State profile is unsupported or ambiguous")
 		}
 		config.ClosedProfileAuthority = make(ed25519.PublicKey, ed25519.PublicKeySize)

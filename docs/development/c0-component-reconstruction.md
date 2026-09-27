@@ -557,11 +557,16 @@ files:
 | Retained outgoing Carrier: `closed_carrier_pool.go`, `closed_carrier_retirement.go` | Node forwarding supplies exact State validation and an open callback. The pool retains only a used Carrier, gives each borrower a lease, invalidates one incarnation, and shares one physical close result. | Pool policy is Route's bounded physical reuse; Node keeps peer selection, session reader and shutdown order. A package seam must return the lease's real close result to Node. |
 
 `literalEndpoint`, `exactPeer`, `ClosedRouteProfile` and role TLS validation are
-shared security rules, not convenience imports. The next package decision is
-whether these concrete files and their TLS dependencies can form one acyclic
-owner with Node and Credential as non-test callers. The existing listener and
-lease Interfaces already provide its small external seam; adding a broader
-transport abstraction would obscure the transfer of accepted connections.
+shared security rules, not convenience imports. That package decision is now
+realized: the cohort and its TLS dependencies form `internal/route/carrier`,
+one acyclic leaf owner whose only non-standard-library dependency is
+`github.com/quic-go/quic-go`, with Route, Node, Credential, Endpoint and both
+node commands as direct non-test callers and no delegating wrappers. The
+`ClosedTLSExporter` type moved to the Carrier side of the seam,
+`literalEndpoint` was exported as `carrier.LiteralEndpoint` for the one
+literal-address rule, and the retired v2 `Profile` refusal identity stayed in
+Route (`closed_route_profile.go`). The existing listener and lease Interfaces
+remain the small external seam; no broader transport abstraction was added.
 
 ### Client-path source cluster: four ownership scales
 

@@ -1,4 +1,4 @@
-package route
+package carrier
 
 import (
 	"context"
@@ -67,7 +67,7 @@ func markClosedSharedPeerFailure(err error) error {
 // and Node Carrier TLS. The verifier must read current authenticated State at
 // classification time; a rejected certificate is closed before ARDP work.
 func ListenClosedSharedCarrier(profile CarrierProfile, endpoint string, certificate tls.Certificate, verify ClosedSharedPeerVerifier, handshakeLimit uint16) (ClosedSharedCarrierListener, error) {
-	if !literalEndpoint(endpoint) || certificate.PrivateKey == nil || verify == nil || handshakeLimit == 0 || handshakeLimit > 16 {
+	if !LiteralEndpoint(endpoint) || certificate.PrivateKey == nil || verify == nil || handshakeLimit == 0 || handshakeLimit > 16 {
 		return nil, errors.New("closed shared carrier listener is invalid")
 	}
 	switch profile {

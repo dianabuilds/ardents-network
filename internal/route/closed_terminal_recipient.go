@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
+	"github.com/dianabuilds/ardents-network/internal/route/carrier"
 )
 
 func (prefix *ClosedSourcePrefix) terminalPeer(purpose ardp.Purpose) (closedBootstrapPeer, error) {
@@ -30,7 +31,7 @@ func closedTerminalPeer(source ClosedBootstrapState, selection ClosedBootstrapSe
 		return closedBootstrapPeer{}, errors.New("closed resolution profile changed")
 	}
 	snapshot, err := source.Current()
-	if err != nil || snapshot.NetworkID != view.Profile.NetworkID || snapshot.Generation != hex.EncodeToString(view.Profile.StateGeneration[:]) || snapshot.Epoch != view.Profile.Epoch || snapshot.Profile != ClosedRouteProfile || snapshot.Digest != view.Profile.StateDigest || snapshot.Freshness != "fresh" || snapshot.Conflicting || int(snapshot.CandidateCount) > len(snapshot.Candidates) {
+	if err != nil || snapshot.NetworkID != view.Profile.NetworkID || snapshot.Generation != hex.EncodeToString(view.Profile.StateGeneration[:]) || snapshot.Epoch != view.Profile.Epoch || snapshot.Profile != carrier.ClosedRouteProfile || snapshot.Digest != view.Profile.StateDigest || snapshot.Freshness != "fresh" || snapshot.Conflicting || int(snapshot.CandidateCount) > len(snapshot.Candidates) {
 		return closedBootstrapPeer{}, errors.New("closed resolution State unavailable")
 	}
 	now := time.Now().UTC()
@@ -53,11 +54,11 @@ func closedTerminalPeer(source ClosedBootstrapState, selection ClosedBootstrapSe
 			}
 			if selected.node != [32]byte{} || candidate.RecordDigest != role.RecordDigest || candidate.PublicKey == [32]byte{} || candidate.FamilyID == [32]byte{} ||
 				candidate.Capacity == 0 || now.Before(candidate.ValidFrom) || !now.Before(candidate.ValidUntil) || !now.Before(candidate.AssignmentNotAfter) ||
-				!literalEndpoint(candidate.Endpoint) || CarrierProfile(candidate.CarrierProfile) != ClosedCarrierTCP && CarrierProfile(candidate.CarrierProfile) != ClosedCarrierQUIC {
+				!carrier.LiteralEndpoint(candidate.Endpoint) || carrier.CarrierProfile(candidate.CarrierProfile) != carrier.ClosedCarrierTCP && carrier.CarrierProfile(candidate.CarrierProfile) != carrier.ClosedCarrierQUIC {
 				return closedBootstrapPeer{}, errors.New("closed resolution Node Record unavailable")
 			}
 			selected = closedBootstrapPeer{node: role.NodeID, key: candidate.PublicKey, family: candidate.FamilyID, record: candidate.RecordDigest,
-				generation: role.DutyGeneration, endpoint: candidate.Endpoint, carrier: CarrierProfile(candidate.CarrierProfile), notAfter: candidate.ValidUntil}
+				generation: role.DutyGeneration, endpoint: candidate.Endpoint, carrier: carrier.CarrierProfile(candidate.CarrierProfile), notAfter: candidate.ValidUntil}
 			if candidate.AssignmentNotAfter.Before(selected.notAfter) {
 				selected.notAfter = candidate.AssignmentNotAfter
 			}

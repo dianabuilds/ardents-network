@@ -115,7 +115,7 @@ func TestRetiredOpenNodeLegIsAbsent(t *testing.T) {
 		}
 	}
 
-	carrier := string(readProjectFile(t, root, "internal/route/node_carrier_quic.go"))
+	carrier := string(readProjectFile(t, root, "internal/route/carrier/node_carrier_quic.go"))
 	for _, retired := range []string{"openQUICNodeCarrier", "func (carrier *quicNodeCarrier) abort"} {
 		if strings.Contains(carrier, retired) {
 			t.Errorf("shared QUIC Carrier file still contains retired dial helper %q", retired)

@@ -6,11 +6,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/carrier"
 )
 
 func TestQualificationReopensRetiredSourcePrefixForIssuerReserve(t *testing.T) {
-	endpoint, owner, source := startTextRoleNetwork(t, textRoleNetworkFixture{carrier: route.ClosedCarrierTCP})
+	endpoint, owner, source := startTextRoleNetwork(t, textRoleNetworkFixture{carrier: carrier.ClosedCarrierTCP})
 	defer func() {
 		if err := endpoint.Close(); err != nil {
 			t.Error(err)
@@ -80,7 +80,7 @@ func TestQualificationReaderOpeningDelayStaggersFourReaders(t *testing.T) {
 }
 
 func TestQualificationRefillsPublisherIssuerReserveBetweenStreams(t *testing.T) {
-	endpoint, owner, source := startTextRoleNetwork(t, textRoleNetworkFixture{carrier: route.ClosedCarrierTCP})
+	endpoint, owner, source := startTextRoleNetwork(t, textRoleNetworkFixture{carrier: carrier.ClosedCarrierTCP})
 	defer func() {
 		if err := endpoint.Close(); err != nil {
 			t.Error(err)

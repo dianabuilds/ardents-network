@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/carrier"
 )
 
 // These helpers let package tests force the Route's finite lifetime. They are
@@ -67,7 +68,7 @@ func (handle *textSourceHandle) Replenish(ctx context.Context, present route.Clo
 }
 
 func TestTextSourceHandleRejectsUseAfterIdleRetirement(t *testing.T) {
-	endpoint, owner, _ := startTextRoleNetwork(t, textRoleNetworkFixture{carrier: route.ClosedCarrierTCP})
+	endpoint, owner, _ := startTextRoleNetwork(t, textRoleNetworkFixture{carrier: carrier.ClosedCarrierTCP})
 	defer func() { _ = endpoint.Close() }()
 	handle, err := owner.openTextPrefix(t.Context())
 	if err != nil {

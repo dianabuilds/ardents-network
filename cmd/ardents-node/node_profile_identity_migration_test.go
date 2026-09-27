@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/carrier"
 )
 
 func TestNodePlanReaderRefusesDedicatedHostProfilesForOldDuty(t *testing.T) {
@@ -67,7 +67,7 @@ func TestNodePlanSelectsClosedProfileOnlyForPinnedClosedIssuer(t *testing.T) {
 		return path
 	}
 	runtime, err := readNodePlan(write())
-	if err != nil || runtime.state.AcceptedProfile != route.ClosedRouteProfile || len(runtime.state.ClosedProfileAuthority) == 0 ||
+	if err != nil || runtime.state.AcceptedProfile != carrier.ClosedRouteProfile || len(runtime.state.ClosedProfileAuthority) == 0 ||
 		runtime.node.ClosedIssuer.Root != plan.ClosedIssuer.Root || runtime.node.ClosedIssuer.AdmissionRoot != plan.ClosedIssuer.AdmissionRoot || runtime.node.ClosedIssuer.ConnectionLimit != plan.ClosedIssuer.ConnectionLimit {
 		t.Fatalf("closed issuer State configuration = %+v / %v", runtime.state, err)
 	}

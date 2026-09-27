@@ -9,14 +9,14 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/application/interfacev1/administration"
-	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/carrier"
 	"github.com/dianabuilds/ardents-network/internal/service/targetlink"
 )
 
 // State/Instance and installed-worker observation remain explicit fixtures.
 // Registration, Descriptor ACK and the public local Link query are real.
 func TestTextPublicationLinkRequiresCommittedLiveRun(t *testing.T) {
-	_, publisher := textUnpublishedNetworkFixture(t, route.ClosedCarrierTCP)
+	_, publisher := textUnpublishedNetworkFixture(t, carrier.ClosedCarrierTCP)
 	owner, err := publisher.openTextAdministration()
 	if err != nil {
 		t.Fatal(err)

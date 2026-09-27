@@ -31,6 +31,7 @@ github.com/dianabuilds/ardents-network/internal/qualification
 github.com/dianabuilds/ardents-network/internal/resource
 github.com/dianabuilds/ardents-network/internal/route
 github.com/dianabuilds/ardents-network/internal/route/ardp
+github.com/dianabuilds/ardents-network/internal/route/carrier
 github.com/dianabuilds/ardents-network/internal/route/capsule
 github.com/dianabuilds/ardents-network/internal/route/credential
 github.com/dianabuilds/ardents-network/internal/route/replay

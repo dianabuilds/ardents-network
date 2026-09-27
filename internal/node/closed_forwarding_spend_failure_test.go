@@ -17,6 +17,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/resource"
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
+	"github.com/dianabuilds/ardents-network/internal/route/carrier"
 	"github.com/dianabuilds/ardents-network/internal/route/replay"
 )
 
@@ -24,7 +25,7 @@ func TestClosedForwardingStartRefusesAmbiguousSpendJournal(t *testing.T) {
 	fixture := newClosedBootstrapFixture(t)
 	certificate, serverKey := nodeCertificate(t, 253, "forwarding-recovery-server")
 	fixture.snapshot.ProbeEndpoint = reserveAddress(t)
-	fixture.snapshot.CarrierProfile = string(route.ClosedCarrierTCP)
+	fixture.snapshot.CarrierProfile = string(carrier.ClosedCarrierTCP)
 	fixture.snapshot.NodePublicKey = serverKey
 	fixture.config.now = func() time.Time { return fixture.now }
 	fixture.config.Current = func() (state.NodeDuty, error) { return fixture.snapshot, nil }
@@ -85,7 +86,7 @@ func TestClosedForwardingServerRefusesAfterJournalMutationFailure(t *testing.T) 
 	serverCertificate, serverKey := nodeCertificate(t, 251, "forwarding-spend-server")
 	peerCertificate, peerKey := nodeCertificate(t, 252, "forwarding-spend-peer")
 	fixture.snapshot.ProbeEndpoint = reserveAddress(t)
-	fixture.snapshot.CarrierProfile = string(route.ClosedCarrierTCP)
+	fixture.snapshot.CarrierProfile = string(carrier.ClosedCarrierTCP)
 	fixture.snapshot.NodePublicKey = serverKey
 	fixture.snapshot.Candidates[0].PublicKey = peerKey
 	fixture.config.now = func() time.Time { return fixture.now }
@@ -143,8 +144,8 @@ func TestClosedForwardingServerRefusesAfterJournalMutationFailure(t *testing.T) 
 }
 
 type closedForwardingAdmissionClient struct {
-	outer route.Carrier
-	inner route.Carrier
+	outer carrier.Carrier
+	inner carrier.Carrier
 	hello ardp.Hello
 	token []byte
 }
@@ -152,7 +153,7 @@ type closedForwardingAdmissionClient struct {
 func openClosedForwardingAdmission(t *testing.T, fixture *closedBootstrapFixture, certificate tls.Certificate, serverKey [32]byte, token []byte, nonce byte) *closedForwardingAdmissionClient {
 	t.Helper()
 	deadline := time.Now().Add(5 * time.Second)
-	outer, err := route.OpenClosedNodeCarrier(t.Context(), route.ClosedNodeCarrierRequest{CarrierProfile: route.ClosedCarrierTCP, Endpoint: fixture.snapshot.ProbeEndpoint, Certificate: certificate, ExpectedPeerKey: serverKey, Deadline: deadline})
+	outer, err := carrier.OpenClosedNodeCarrier(t.Context(), carrier.ClosedNodeCarrierRequest{CarrierProfile: carrier.ClosedCarrierTCP, Endpoint: fixture.snapshot.ProbeEndpoint, Certificate: certificate, ExpectedPeerKey: serverKey, Deadline: deadline})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -175,7 +176,7 @@ func openClosedForwardingAdmission(t *testing.T, fixture *closedBootstrapFixture
 	if err := ardp.WriteFrame(outer, ardp.Frame{Kind: 4, Lane: 1, Body: open}); err != nil {
 		t.Fatal(err)
 	}
-	inner, err := route.OpenClosedRoleTLS(t.Context(), &outerTestInnerConn{outer: outer, lane: 1}, serverKey, deadline)
+	inner, err := carrier.OpenClosedRoleTLS(t.Context(), &outerTestInnerConn{outer: outer, lane: 1}, serverKey, deadline)
 	if err != nil {
 		t.Fatal(err)
 	}

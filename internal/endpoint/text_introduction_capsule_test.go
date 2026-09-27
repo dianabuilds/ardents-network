@@ -17,8 +17,8 @@ import (
 	applicationconnection "github.com/dianabuilds/ardents-network/internal/application/interfacev2/connection"
 	"github.com/dianabuilds/ardents-network/internal/application/textdocument"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
-	"github.com/dianabuilds/ardents-network/internal/route"
 	introductioncapsule "github.com/dianabuilds/ardents-network/internal/route/capsule"
+	routecarrier "github.com/dianabuilds/ardents-network/internal/route/carrier"
 	"github.com/dianabuilds/ardents-network/internal/service/publication"
 	"github.com/dianabuilds/ardents-network/internal/service/targetlink"
 )
@@ -47,7 +47,7 @@ func liveTextCapsuleJob(t *testing.T, owner *textContext) *textJobIdentity {
 // and both Service owners. Accepted State/worker qualification and the data
 // joining transport are explicit fixtures: no network JOIN claim.
 func TestTextIntroductionCapsuleBindsRealInstanceAndServiceStream(t *testing.T) {
-	for _, carrier := range []route.CarrierProfile{route.ClosedCarrierTCP, route.ClosedCarrierQUIC} {
+	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP, routecarrier.ClosedCarrierQUIC} {
 		t.Run(string(carrier), func(t *testing.T) {
 			endpoint, publisher, source := startTextRoleNetwork(t, textRoleNetworkFixture{carrier: carrier, resolution: true, publisher: true})
 			// Rendezvous eligibility is a public-State fixture. It is never dialed

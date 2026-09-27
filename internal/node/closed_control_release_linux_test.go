@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
+	"github.com/dianabuilds/ardents-network/internal/route/carrier"
 	"github.com/dianabuilds/ardents-network/internal/route/terminal"
 )
 
@@ -20,7 +20,7 @@ func TestClosedResolutionRetainsHostingReleaseFailureAfterReply(t *testing.T) {
 	var handle *dutyHandle
 	var stopOnce sync.Once
 	var drainErr error
-	fixture := newPrivateRecipientNetworkFixtureWithStart(t, route.ClosedCarrierTCP, ardp.PurposeReachability, 1,
+	fixture := newPrivateRecipientNetworkFixtureWithStart(t, carrier.ClosedCarrierTCP, ardp.PurposeReachability, 1,
 		func(config Config) (func() error, error) {
 			resolved, err := resolveConfig(config)
 			if err != nil {

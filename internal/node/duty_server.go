@@ -5,12 +5,13 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
+	"github.com/dianabuilds/ardents-network/internal/route/carrier"
 )
 
 const nativeRouteUnavailableReason = "native Route assignment is not implemented"
 
 func startDuty(config runtimeConfig, snapshot state.NodeDuty) (*dutyHandle, error) {
-	if snapshot.Profile == route.ClosedRouteProfile {
+	if snapshot.Profile == carrier.ClosedRouteProfile {
 		if _, available := closedRouteReceiver(config, snapshot, ardp.PurposeIssuer, config.now()); available {
 			return startClosedIssuer(config, snapshot)
 		}

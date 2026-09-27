@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
+	"github.com/dianabuilds/ardents-network/internal/route/carrier"
 	"net"
 	"sync"
 	"time"
@@ -47,7 +48,7 @@ func ExchangeClosedBootstrap(ctx context.Context, source ClosedBootstrapState, s
 	attempt, cancel := context.WithDeadline(ctx, plan.deadline)
 	defer cancel()
 	entry := plan.peers[0]
-	connection, err := OpenClosedRoleCarrier(attempt, ClosedRoleCarrierRequest{CarrierProfile: entry.carrier, Endpoint: entry.endpoint, ExpectedServer: entry.key, Deadline: plan.deadline})
+	connection, err := carrier.OpenClosedRoleCarrier(attempt, carrier.ClosedRoleCarrierRequest{CarrierProfile: entry.carrier, Endpoint: entry.endpoint, ExpectedServer: entry.key, Deadline: plan.deadline})
 	if err != nil {
 		return ClosedIssuanceExchangeResult{}, err
 	}
@@ -114,7 +115,7 @@ func ExchangeClosedBootstrap(ctx context.Context, source ClosedBootstrapState, s
 		}
 		child := newClosedRoleChildStream(current, plan.deadline, retirement.close, nil)
 		owned = append(owned, child)
-		inner, err := OpenClosedRoleTLS(attempt, child, peer.key, plan.deadline)
+		inner, err := carrier.OpenClosedRoleTLS(attempt, child, peer.key, plan.deadline)
 		if err != nil {
 			return result, fmt.Errorf("closed bootstrap TLS %d: %w", index+1, err)
 		}

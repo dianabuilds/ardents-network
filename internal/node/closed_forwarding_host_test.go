@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/resource"
-	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/carrier"
 )
 
 type sharedHostingSampleFixture struct {
@@ -38,12 +38,12 @@ type sharedHostingSampleListener struct {
 	once   sync.Once
 }
 
-func (listener *sharedHostingSampleListener) Accept(ctx context.Context, _ time.Duration) (route.ClosedSharedCarrier, error) {
+func (listener *sharedHostingSampleListener) Accept(ctx context.Context, _ time.Duration) (carrier.ClosedSharedCarrier, error) {
 	select {
 	case <-ctx.Done():
-		return route.ClosedSharedCarrier{}, ctx.Err()
+		return carrier.ClosedSharedCarrier{}, ctx.Err()
 	case <-listener.closed:
-		return route.ClosedSharedCarrier{}, context.Canceled
+		return carrier.ClosedSharedCarrier{}, context.Canceled
 	}
 }
 
@@ -175,7 +175,7 @@ func sampleEqual(a, b resource.HostingSample) bool {
 func TestClosedForwardingReaperSharesRecentHostingSample(t *testing.T) {
 	host := &sharedHostingSampleFixture{sampled: make(chan struct{})}
 	listener := &sharedHostingSampleListener{closed: make(chan struct{})}
-	pool, err := route.NewClosedCarrierPool(time.Now)
+	pool, err := carrier.NewClosedCarrierPool(time.Now)
 	if err != nil {
 		t.Fatal(err)
 	}

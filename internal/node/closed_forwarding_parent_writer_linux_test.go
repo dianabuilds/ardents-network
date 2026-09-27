@@ -13,6 +13,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/resource"
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
+	"github.com/dianabuilds/ardents-network/internal/route/carrier"
 	"github.com/dianabuilds/ardents-network/internal/route/replay"
 )
 
@@ -38,13 +39,13 @@ func TestClosedForwardingParentReaderServesIndependentChildWhileWriteBlocks(t *t
 	serverCertificate, serverKey := nodeCertificate(t, 284, "parent-writer-server")
 	aCertificate, aKey := nodeCertificate(t, 285, "parent-writer-a")
 	bCertificate, bKey := nodeCertificate(t, 286, "parent-writer-b")
-	aEndpoint := closedForwardingActualCarrierEndpoint(t, route.ClosedCarrierTCP)
-	bEndpoint := closedForwardingActualCarrierEndpoint(t, route.ClosedCarrierTCP)
+	aEndpoint := closedForwardingActualCarrierEndpoint(t, carrier.ClosedCarrierTCP)
+	bEndpoint := closedForwardingActualCarrierEndpoint(t, carrier.ClosedCarrierTCP)
 	fixture.snapshot.Candidates[0].Endpoint, fixture.snapshot.Candidates[0].PublicKey = bEndpoint, bKey
 	fixture.snapshot.Candidates[1].Endpoint, fixture.snapshot.Candidates[1].PublicKey = aEndpoint, aKey
-	fixture.snapshot.Candidates[0].CarrierProfile = string(route.ClosedCarrierTCP)
-	fixture.snapshot.Candidates[1].CarrierProfile = string(route.ClosedCarrierTCP)
-	fixture.snapshot.CarrierProfile = string(route.ClosedCarrierTCP)
+	fixture.snapshot.Candidates[0].CarrierProfile = string(carrier.ClosedCarrierTCP)
+	fixture.snapshot.Candidates[1].CarrierProfile = string(carrier.ClosedCarrierTCP)
+	fixture.snapshot.CarrierProfile = string(carrier.ClosedCarrierTCP)
 	fixture.snapshot.NodePublicKey = serverKey
 	fixture.config.now = func() time.Time { return now }
 	fixture.config.Current = func() (state.NodeDuty, error) { return fixture.snapshot, nil }
@@ -55,16 +56,16 @@ func TestClosedForwardingParentReaderServesIndependentChildWhileWriteBlocks(t *t
 	if !ok {
 		t.Fatal("receiver unavailable")
 	}
-	aListener, err := route.ListenClosedSharedCarrier(route.ClosedCarrierTCP, aEndpoint, aCertificate, func(key [32]byte) bool { return key == serverKey }, 1)
+	aListener, err := carrier.ListenClosedSharedCarrier(carrier.ClosedCarrierTCP, aEndpoint, aCertificate, func(key [32]byte) bool { return key == serverKey }, 1)
 	if err != nil {
 		t.Fatal(err)
 	}
-	bListener, err := route.ListenClosedSharedCarrier(route.ClosedCarrierTCP, bEndpoint, bCertificate, func(key [32]byte) bool { return key == serverKey }, 1)
+	bListener, err := carrier.ListenClosedSharedCarrier(carrier.ClosedCarrierTCP, bEndpoint, bCertificate, func(key [32]byte) bool { return key == serverKey }, 1)
 	if err != nil {
 		_ = aListener.Close()
 		t.Fatal(err)
 	}
-	pool, err := route.NewClosedCarrierPool(func() time.Time { return now })
+	pool, err := carrier.NewClosedCarrierPool(func() time.Time { return now })
 	if err != nil {
 		_ = aListener.Close()
 		_ = bListener.Close()

@@ -1,6 +1,6 @@
 //go:build linux
 
-package route
+package carrier
 
 import (
 	"context"
@@ -14,7 +14,7 @@ import (
 // channel. QUIC's TLS handshake is the role TLS; it is not wrapped in a
 // second TLS stream.
 func OpenClosedRoleCarrier(ctx context.Context, input ClosedRoleCarrierRequest) (net.Conn, error) {
-	if ctx == nil || !literalEndpoint(input.Endpoint) || input.ExpectedServer == [32]byte{} || input.Deadline.IsZero() || !time.Now().Before(input.Deadline) {
+	if ctx == nil || !LiteralEndpoint(input.Endpoint) || input.ExpectedServer == [32]byte{} || input.Deadline.IsZero() || !time.Now().Before(input.Deadline) {
 		return nil, errors.New("closed role carrier request is invalid")
 	}
 	attempt, cancel := context.WithDeadline(ctx, input.Deadline)

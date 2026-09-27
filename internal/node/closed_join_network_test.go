@@ -13,7 +13,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	"github.com/dianabuilds/ardents-network/internal/route/terminal"
 
-	"github.com/dianabuilds/ardents-network/internal/route"
+	routecarrier "github.com/dianabuilds/ardents-network/internal/route/carrier"
 )
 
 func sendJoinFixture(t *testing.T, fixture *resolutionNetworkFixture, token int, side uint8) (net.Conn, [32]byte) {
@@ -35,7 +35,7 @@ func sendJoinFixture(t *testing.T, fixture *resolutionNetworkFixture, token int,
 }
 
 func TestClosedJoinNodePairsThroughBothCarriers(t *testing.T) {
-	for _, carrier := range []route.CarrierProfile{route.ClosedCarrierTCP, route.ClosedCarrierQUIC} {
+	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP, routecarrier.ClosedCarrierQUIC} {
 		t.Run(string(carrier), func(t *testing.T) {
 			fixture := newPrivateRecipientNetworkFixture(t, carrier, ardp.PurposeDataJoin, 2)
 			first, firstNonce := sendJoinFixture(t, fixture, 0, 1)

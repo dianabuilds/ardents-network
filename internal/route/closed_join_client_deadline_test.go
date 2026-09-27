@@ -11,6 +11,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
+	"github.com/dianabuilds/ardents-network/internal/route/carrier"
 	"github.com/dianabuilds/ardents-network/internal/route/terminal"
 )
 
@@ -55,7 +56,7 @@ func TestClosedJoinClientRejectsResultAfterSetupDeadline(t *testing.T) {
 			channels.last, channels.lanes[1] = 1, lane
 			channels.start()
 			defer channels.Close()
-			secured, err := AcceptClosedRoleTLS(t.Context(), lane, certificate, setup)
+			secured, err := carrier.AcceptClosedRoleTLS(t.Context(), lane, certificate, setup)
 			if err != nil {
 				return err
 			}

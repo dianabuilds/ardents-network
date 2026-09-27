@@ -9,6 +9,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
+	"github.com/dianabuilds/ardents-network/internal/route/carrier"
 )
 
 func TestClosedOuterWriterDeadlineInterruptsRetainedCarrier(t *testing.T) {
@@ -80,13 +81,13 @@ func TestClosedForwardingInitialAcceptKeepsOperationDeadline(t *testing.T) {
 	local, peer := net.Pipe()
 	defer local.Close()
 	defer peer.Close()
-	key := route.ClosedCarrierKey{NetworkID: [32]byte{1}, ProfileDigest: [32]byte{2}, LocalNodeID: [32]byte{3}, PeerNodeID: [32]byte{4}, PeerKey: [32]byte{5}, CarrierProfile: route.ClosedCarrierTCP}
-	pool, err := route.NewClosedCarrierPool(time.Now)
+	key := carrier.ClosedCarrierKey{NetworkID: [32]byte{1}, ProfileDigest: [32]byte{2}, LocalNodeID: [32]byte{3}, PeerNodeID: [32]byte{4}, PeerKey: [32]byte{5}, CarrierProfile: carrier.ClosedCarrierTCP}
+	pool, err := carrier.NewClosedCarrierPool(time.Now)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer pool.Close()
-	lease, err := pool.AcquireContext(context.Background(), key, func() error { return nil }, func() (route.Carrier, error) { return local, nil })
+	lease, err := pool.AcquireContext(context.Background(), key, func() error { return nil }, func() (carrier.Carrier, error) { return local, nil })
 	if err != nil {
 		t.Fatal(err)
 	}

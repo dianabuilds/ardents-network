@@ -9,6 +9,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
+	"github.com/dianabuilds/ardents-network/internal/route/carrier"
 )
 
 type resolutionSelectionState struct {
@@ -30,7 +31,7 @@ func sourceResolutionSelectionFixture(t *testing.T) (*ClosedSourcePrefix, *resol
 		IssuerNodeID: [32]byte{12}, IssuerDutyGeneration: 3, Epoch: 1, NotBefore: now.Add(-time.Minute), NotAfter: now.Add(time.Hour)}
 	source := &resolutionSelectionState{view: state.ClosedRouteView{Profile: profile, NodeCount: 4},
 		snapshot: state.Snapshot{NetworkID: profile.NetworkID, Generation: hex.EncodeToString(profile.StateGeneration[:]), Digest: profile.StateDigest,
-			Epoch: profile.Epoch, Profile: ClosedRouteProfile, Freshness: "fresh", EpochValidFrom: profile.NotBefore, ValidUntil: profile.NotAfter, CandidateCount: 4}}
+			Epoch: profile.Epoch, Profile: carrier.ClosedRouteProfile, Freshness: "fresh", EpochValidFrom: profile.NotBefore, ValidUntil: profile.NotAfter, CandidateCount: 4}}
 	for index := 0; index < 4; index++ {
 		domain, subrole := uint8(1), uint8(index+1)
 		if index >= 2 {
@@ -41,7 +42,7 @@ func sourceResolutionSelectionFixture(t *testing.T) (*ClosedSourcePrefix, *resol
 		peer := &source.snapshot.Candidates[index]
 		peer.NodeID, peer.RecordDigest, peer.PublicKey, peer.FamilyID = node, record, [32]byte{byte(30 + index)}, [32]byte{byte(40 + index)}
 		peer.ValidFrom, peer.ValidUntil, peer.AssignmentNotAfter = profile.NotBefore, profile.NotAfter, profile.NotAfter
-		peer.CarrierProfile, peer.Endpoint, peer.Capacity = string(ClosedCarrierTCP), "127.0.0.1:1", 1
+		peer.CarrierProfile, peer.Endpoint, peer.Capacity = string(carrier.ClosedCarrierTCP), "127.0.0.1:1", 1
 	}
 	selection := ClosedBootstrapSelection{ProfileDigest: profile.Digest, EntryNodeID: source.view.Nodes[0].NodeID, InteriorNodeID: source.view.Nodes[1].NodeID}
 	plan, err := prepareClosedBootstrap(source, selection, now)

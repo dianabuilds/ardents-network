@@ -1,9 +1,9 @@
 # Route package refactoring boundary
 
 Status: working architecture analysis for the isolated refactoring branch. The
-capsule, terminal body, ARDP framing, and replay extractions below are implemented and registered
-in the package map; the remaining Route split is still analysis, not a new
-Route contract or C0 execution ledger. The accepted Route and Carrier contracts
+capsule, terminal body, ARDP framing, replay, and Carrier extractions below are
+implemented and registered in the package map; the remaining Route split is
+still analysis, not a new Route contract or C0 execution ledger. The accepted Route and Carrier contracts
 govern behavior.
 
 ## Current Linux owner graph
@@ -53,11 +53,19 @@ not an atomic prefix move:
 | `closed_role_tls*.go` uses `ClosedRouteProfile` and `exactPeer`; `closed_role_carrier_client_linux.go` uses the same role TLS config for both TCP and QUIC. | Both direct role and shared listeners enforce the same TLS identity/refusal rule. | Move TLS identity, ALPN and physical transport together or first expose one narrow lower-level owner. Leaving role TLS in `route` while Carrier imports it reverses the desired dependency. |
 | `endpoint_literal.go` validates both current physical dial/listen endpoints and client selection inputs. | It prevents DNS resolution and malformed port fallback before network effects. | One lower-level literal-address rule may be called by Route's client selection; copying it into both owners would create divergent refusal behavior. |
 
-This is an analysis of the required source closure, not an authorized new
-package. The next implementation slice must check the transitive helper
-closure, all Node/Endpoint/Credential callers, and its test ownership before
-updating `package-map.md`. The old Route v2 execution closure still needs its
-separate historical reader and refusal disposition.
+Realized: the thirteen production files of this cohort now form
+`internal/route/carrier` (package `carrier`), a leaf whose only non-standard
+dependency is `github.com/quic-go/quic-go`. Every blocker above was resolved
+as proposed: `ClosedTLSExporter` moved to the Carrier side and Route qualifies
+it inward; role TLS, the `ClosedRouteProfile` ALPN, and `exactPeer` moved with
+the physical transport; `literalEndpoint` was exported as
+`carrier.LiteralEndpoint` so Route's client selection calls the one
+literal-address rule; the retired v2 `Profile` refusal identity stayed in
+Route (`closed_route_profile.go`) beside its Node typed refusal. Route, Node,
+Endpoint, Credential, and both node commands import the leaf directly without
+delegating wrappers, and the pure Carrier behavior tests moved with their
+owner. The old Route v2 execution closure still needs its separate historical
+reader and refusal disposition.
 
 `internal/route/credential` imports parent `internal/route` in three current
 production files: `closed_token_listener.go`, `closed_token_bootstrap.go`, and

@@ -10,6 +10,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/resource"
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
+	"github.com/dianabuilds/ardents-network/internal/route/carrier"
 )
 
 type admissionKind byte
@@ -96,7 +97,7 @@ func assessAdmission(config runtimeConfig, snapshot state.NodeDuty) admission {
 		return admission{kind: admissionFailed, reason: "local Node identity or key does not match verified state"}
 	}
 	now := config.now()
-	if snapshot.Profile == route.ClosedRouteProfile {
+	if snapshot.Profile == carrier.ClosedRouteProfile {
 		closedRoute, err := currentClosedRoute(config, snapshot, now)
 		if err != nil {
 			return admission{kind: admissionPrepared, reason: "closed Route State is unavailable: " + boundedReason(err)}

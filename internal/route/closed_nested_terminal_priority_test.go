@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
+	"github.com/dianabuilds/ardents-network/internal/route/carrier"
 )
 
 // nestedTerminalPhysicalBoundary stops one selected physical frame after its
@@ -155,13 +156,13 @@ func TestClosedNestedTLSTerminalPrecedesQueuedSiblingAfterActiveCredit(t *testin
 		err        error
 	}, 1)
 	go func() {
-		connection, err := AcceptClosedRoleTLS(t.Context(), remotePrimary, certificate, end)
+		connection, err := carrier.AcceptClosedRoleTLS(t.Context(), remotePrimary, certificate, end)
 		serverResult <- struct {
 			connection net.Conn
 			err        error
 		}{connection: connection, err: err}
 	}()
-	clientTLS, err := OpenClosedRoleTLS(t.Context(), primary, serverKey, end)
+	clientTLS, err := carrier.OpenClosedRoleTLS(t.Context(), primary, serverKey, end)
 	if err != nil {
 		t.Fatal(err)
 	}

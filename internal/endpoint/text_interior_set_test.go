@@ -15,6 +15,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/network/duty"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/carrier"
 )
 
 // Explicit State/qualified-launch fixtures isolate set ownership. The tests
@@ -54,7 +55,7 @@ func textSourceContextFixture(t *testing.T) (*endpoint, *textContext, *textSourc
 		IssuerNodeID: fixtureID(14), IssuerDutyGeneration: 5, IssuanceAuthorityKey: fixtureID(226), Epoch: 1, NotBefore: window, NotAfter: window.Add(2 * time.Hour)}
 	source.view = state.ClosedRouteView{Profile: profile, NodeCount: 5}
 	source.snapshot = state.Snapshot{Generation: hex.EncodeToString(profile.StateGeneration[:]), NetworkID: profile.NetworkID, Epoch: profile.Epoch, Digest: profile.StateDigest,
-		EpochValidFrom: profile.NotBefore, ValidUntil: profile.NotAfter, Profile: route.ClosedRouteProfile, Freshness: "fresh", CandidateCount: 5}
+		EpochValidFrom: profile.NotBefore, ValidUntil: profile.NotAfter, Profile: carrier.ClosedRouteProfile, Freshness: "fresh", CandidateCount: 5}
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
@@ -75,7 +76,7 @@ func textSourceContextFixture(t *testing.T) (*endpoint, *textContext, *textSourc
 		source.view.Nodes[index] = state.ClosedRouteNodeView{NodeID: id, RecordDigest: record, RoleDomain: domain, Subrole: subrole, DutyGeneration: uint64(index + 1)}
 		candidate := &source.snapshot.Candidates[index]
 		candidate.NodeID, candidate.PublicKey, candidate.FamilyID, candidate.RecordDigest = id, fixtureID(byte(50+index)), fixtureID(byte(70+index)), record
-		candidate.Endpoint, candidate.CarrierProfile, candidate.Capacity = unused, string(route.ClosedCarrierTCP), 16
+		candidate.Endpoint, candidate.CarrierProfile, candidate.Capacity = unused, string(carrier.ClosedCarrierTCP), 16
 		candidate.ValidFrom, candidate.ValidUntil, candidate.AssignmentNotAfter = window, profile.NotAfter, profile.NotAfter
 	}
 	endpoint, principal := textContextEndpoint(t)

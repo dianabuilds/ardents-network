@@ -14,6 +14,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
 	"github.com/dianabuilds/ardents-network/internal/application/textdocument"
 	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/carrier"
 	nativeconnection "github.com/dianabuilds/ardents-network/internal/service/connection"
 	"github.com/dianabuilds/ardents-network/internal/service/targetlink"
 )
@@ -97,7 +98,7 @@ func openTextWorkerResultFixture(t *testing.T, ctx context.Context, worker *qual
 }
 
 func TestTextReadResultJoinsContextLossBeforeLocalRequest(t *testing.T) {
-	readerOwner, publisherOwner := textUnpublishedNetworkFixture(t, route.ClosedCarrierTCP)
+	readerOwner, publisherOwner := textUnpublishedNetworkFixture(t, carrier.ClosedCarrierTCP)
 	reader := textServiceWorkerFixture(t, &textServiceBinding{owner: readerOwner, job: liveTextCapsuleJob(t, readerOwner)}, nil)
 	publisher := textServiceWorkerFixture(t, &textServiceBinding{owner: publisherOwner, job: liveTextCapsuleJob(t, publisherOwner)}, []byte("document"))
 	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)

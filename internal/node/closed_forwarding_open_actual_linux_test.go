@@ -13,13 +13,14 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
+	routecarrier "github.com/dianabuilds/ardents-network/internal/route/carrier"
 )
 
 // This is the caller boundary: TCP/TLS and QUIC both cross the real shared
 // listener, outer HELLO/ACCEPT exchange, and child OPEN grammar. The State
 // projection only supplies the selected peer; it does not replace transport.
 func TestClosedForwardingOpenActualCarrierOutcomes(t *testing.T) {
-	for _, profile := range []route.CarrierProfile{route.ClosedCarrierTCP, route.ClosedCarrierQUIC} {
+	for _, profile := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP, routecarrier.ClosedCarrierQUIC} {
 		for _, outcome := range []string{"success", "refusal", "cancellation"} {
 			t.Run(string(profile)+"/"+outcome, func(t *testing.T) {
 				testClosedForwardingOpenActualCarrierOutcome(t, profile, outcome)
@@ -28,7 +29,7 @@ func TestClosedForwardingOpenActualCarrierOutcomes(t *testing.T) {
 	}
 }
 
-func testClosedForwardingOpenActualCarrierOutcome(t *testing.T, profile route.CarrierProfile, outcome string) {
+func testClosedForwardingOpenActualCarrierOutcome(t *testing.T, profile routecarrier.CarrierProfile, outcome string) {
 	t.Helper()
 	now := time.Now().UTC().Truncate(time.Second)
 	deadline := now.Add(5 * time.Second)
@@ -54,11 +55,11 @@ func testClosedForwardingOpenActualCarrierOutcome(t *testing.T, profile route.Ca
 	fixture.config.now = time.Now
 	fixture.config.Current = func() (state.NodeDuty, error) { return fixture.snapshot, nil }
 	fixture.config.CurrentClosedProfile = func() (state.ClosedProfileView, bool) { return fixture.view.Profile, true }
-	listener, err := route.ListenClosedSharedCarrier(profile, endpoint, peerCertificate, func(key [32]byte) bool { return key == clientKey }, 1)
+	listener, err := routecarrier.ListenClosedSharedCarrier(profile, endpoint, peerCertificate, func(key [32]byte) bool { return key == clientKey }, 1)
 	if err != nil {
 		t.Fatal(err)
 	}
-	pool, err := route.NewClosedCarrierPool(time.Now)
+	pool, err := routecarrier.NewClosedCarrierPool(time.Now)
 	if err != nil {
 		_ = listener.Close()
 		t.Fatal(err)
@@ -82,7 +83,7 @@ func testClosedForwardingOpenActualCarrierOutcome(t *testing.T, profile route.Ca
 		}
 		connection := accepted.Connection
 		defer connection.Close()
-		if accepted.Kind != route.ClosedSharedNode || accepted.NodeKey != clientKey {
+		if accepted.Kind != routecarrier.ClosedSharedNode || accepted.NodeKey != clientKey {
 			peerDone <- errors.New("actual carrier lost Node authentication")
 			return
 		}
@@ -247,9 +248,9 @@ func testClosedForwardingOpenActualCarrierOutcome(t *testing.T, profile route.Ca
 	}
 }
 
-func closedForwardingActualCarrierEndpoint(t *testing.T, profile route.CarrierProfile) string {
+func closedForwardingActualCarrierEndpoint(t *testing.T, profile routecarrier.CarrierProfile) string {
 	t.Helper()
-	if profile == route.ClosedCarrierTCP {
+	if profile == routecarrier.ClosedCarrierTCP {
 		return reserveAddress(t)
 	}
 	packet, err := net.ListenPacket("udp", "127.0.0.1:0")

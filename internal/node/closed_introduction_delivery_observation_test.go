@@ -12,9 +12,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	introductioncapsule "github.com/dianabuilds/ardents-network/internal/route/capsule"
+	routecarrier "github.com/dianabuilds/ardents-network/internal/route/carrier"
 	"github.com/dianabuilds/ardents-network/internal/route/terminal"
 )
 
@@ -22,7 +22,7 @@ import (
 // of channel nonces while preserving the opaque capsule. This is a protocol
 // boundary observation, not recipient decryption or a complete P3 verdict.
 func TestClosedIntroductionDeliveryObservation(t *testing.T) {
-	for _, carrier := range []route.CarrierProfile{route.ClosedCarrierTCP, route.ClosedCarrierQUIC} {
+	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP, routecarrier.ClosedCarrierQUIC} {
 		t.Run(string(carrier), func(t *testing.T) {
 			var receiver *closedIntroductionServer
 			fixture := newPrivateRecipientNetworkFixtureWithStart(t, carrier, ardp.PurposeIntroduction, 3, observedIntroductionStart(&receiver), 1)
@@ -156,7 +156,7 @@ func TestClosedIntroductionDeliveryObservation(t *testing.T) {
 				t.Fatal("registration transcript missed a delivery or cleanup")
 			}
 			evidence := struct {
-				Carrier        route.CarrierProfile
+				Carrier        routecarrier.CarrierProfile
 				Registration   observedChannel
 				Submissions    []observedChannel
 				Durable        map[string][]byte

@@ -4,7 +4,7 @@ package endpoint
 
 import (
 	"github.com/dianabuilds/ardents-network/internal/network/state"
-	"github.com/dianabuilds/ardents-network/internal/route"
+	routecarrier "github.com/dianabuilds/ardents-network/internal/route/carrier"
 	"testing"
 )
 
@@ -26,7 +26,7 @@ func addTextResponderPrefixState(source *textSourceStateFixture) {
 }
 
 func TestTextResponderRejectsKnownIntroductionFamiliesBeforeIssuance(t *testing.T) {
-	for _, carrier := range []route.CarrierProfile{route.ClosedCarrierTCP, route.ClosedCarrierQUIC} {
+	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP, routecarrier.ClosedCarrierQUIC} {
 		t.Run(string(carrier), func(t *testing.T) {
 			_, owner, source := startTextRoleNetwork(t, textRoleNetworkFixture{carrier: carrier, resolution: true, publisher: true})
 			if _, err := owner.openTextPrefix(t.Context()); err != nil {

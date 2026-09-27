@@ -6,6 +6,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/carrier"
 )
 
 // closedForwardRecipient intersects an OPEN with current State's signed
@@ -13,7 +14,7 @@ import (
 // a pre-dial check: the returned record is not a Carrier and cannot select a
 // fallback peer.
 func closedForwardRecipient(config runtimeConfig, snapshot state.NodeDuty, open route.ClosedOpen, now time.Time) (state.NodeDutyCandidate, error) {
-	if config.CurrentClosedRoute == nil || !now.Before(open.Deadline) || snapshot.Profile != route.ClosedRouteProfile || !snapshot.Fresh || snapshot.Conflicting {
+	if config.CurrentClosedRoute == nil || !now.Before(open.Deadline) || snapshot.Profile != carrier.ClosedRouteProfile || !snapshot.Fresh || snapshot.Conflicting {
 		return state.NodeDutyCandidate{}, errors.New("closed forwarding recipient is unavailable")
 	}
 	view, err := config.CurrentClosedRoute()
@@ -43,7 +44,7 @@ func closedForwardRecipient(config runtimeConfig, snapshot state.NodeDuty, open 
 			continue
 		}
 		if matchedCandidate || value.RecordDigest != recipient.RecordDigest || value.PublicKey == [32]byte{} || !literalNodeEndpoint(value.Endpoint) ||
-			(route.CarrierProfile(value.CarrierProfile) != route.ClosedCarrierTCP && route.CarrierProfile(value.CarrierProfile) != route.ClosedCarrierQUIC) ||
+			(carrier.CarrierProfile(value.CarrierProfile) != carrier.ClosedCarrierTCP && carrier.CarrierProfile(value.CarrierProfile) != carrier.ClosedCarrierQUIC) ||
 			!now.Before(value.ValidUntil) || !now.Before(value.AssignmentNotAfter) {
 			return state.NodeDutyCandidate{}, errors.New("closed forwarding recipient is unavailable")
 		}

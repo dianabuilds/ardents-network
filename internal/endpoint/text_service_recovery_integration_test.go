@@ -15,7 +15,7 @@ import (
 
 	applicationconnection "github.com/dianabuilds/ardents-network/internal/application/interfacev2/connection"
 	"github.com/dianabuilds/ardents-network/internal/application/textdocument"
-	"github.com/dianabuilds/ardents-network/internal/route"
+	routecarrier "github.com/dianabuilds/ardents-network/internal/route/carrier"
 	nativeconnection "github.com/dianabuilds/ardents-network/internal/service/connection"
 )
 
@@ -127,7 +127,7 @@ func TestTextServiceRecoveryDoesNotReplayAcceptedDocumentRequest(t *testing.T) {
 }
 
 func TestTextJoinedServiceRecoversAcceptedRequestAcrossFreshProtectedRoute(t *testing.T) {
-	for _, carrier := range []route.CarrierProfile{route.ClosedCarrierTCP, route.ClosedCarrierQUIC} {
+	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP, routecarrier.ClosedCarrierQUIC} {
 		t.Run(string(carrier), func(t *testing.T) {
 			reader, publisher, destination := textJoinedNetworkFixture(t, carrier)
 			readerJob, publisherJob := liveTextCapsuleJob(t, reader), liveTextCapsuleJob(t, publisher)
@@ -271,7 +271,7 @@ func TestTextJoinedServiceRecoversAcceptedRequestAcrossFreshProtectedRoute(t *te
 }
 
 func TestTextRecoveryPreparesFreshAttachmentUnderRetainedAuthority(t *testing.T) {
-	reader, _, destination := textJoinedNetworkFixture(t, route.ClosedCarrierTCP)
+	reader, _, destination := textJoinedNetworkFixture(t, routecarrier.ClosedCarrierTCP)
 	job := liveTextCapsuleJob(t, reader)
 	ctx, cancel := context.WithTimeout(t.Context(), 15*time.Second)
 	defer cancel()

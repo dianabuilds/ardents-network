@@ -9,6 +9,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
+	"github.com/dianabuilds/ardents-network/internal/route/carrier"
 )
 
 // ClosedBootstrapState is the opened State owner's live public projection.
@@ -30,7 +31,7 @@ type closedBootstrapPeer struct {
 	node, key, family, record [32]byte
 	generation                uint64
 	endpoint                  string
-	carrier                   CarrierProfile
+	carrier                   carrier.CarrierProfile
 	notAfter                  time.Time
 }
 
@@ -61,7 +62,7 @@ func prepareClosedPrefix(source ClosedBootstrapState, selection ClosedBootstrapS
 		return closedBootstrapPlan{}, err
 	}
 	profile := view.Profile
-	if snapshot.Profile != ClosedRouteProfile || snapshot.Freshness != "fresh" || snapshot.Conflicting ||
+	if snapshot.Profile != carrier.ClosedRouteProfile || snapshot.Freshness != "fresh" || snapshot.Conflicting ||
 		snapshot.NetworkID != profile.NetworkID || snapshot.Digest != profile.StateDigest || snapshot.Epoch != profile.Epoch ||
 		snapshot.Generation != hex.EncodeToString(profile.StateGeneration[:]) || profile.Digest != selection.ProfileDigest ||
 		now.Before(profile.NotBefore) || !now.Before(profile.NotAfter) || now.Before(snapshot.EpochValidFrom) || !now.Before(snapshot.ValidUntil) ||
@@ -101,12 +102,12 @@ func prepareClosedPrefix(source ClosedBootstrapState, selection ClosedBootstrapS
 			}
 			if found || candidate.RecordDigest != role.RecordDigest || candidate.PublicKey == [32]byte{} || candidate.FamilyID == [32]byte{} ||
 				candidate.Capacity == 0 || now.Before(candidate.ValidFrom) || !now.Before(candidate.ValidUntil) || !now.Before(candidate.AssignmentNotAfter) ||
-				!literalEndpoint(candidate.Endpoint) || (CarrierProfile(candidate.CarrierProfile) != ClosedCarrierTCP && CarrierProfile(candidate.CarrierProfile) != ClosedCarrierQUIC) {
+				!carrier.LiteralEndpoint(candidate.Endpoint) || (carrier.CarrierProfile(candidate.CarrierProfile) != carrier.ClosedCarrierTCP && carrier.CarrierProfile(candidate.CarrierProfile) != carrier.ClosedCarrierQUIC) {
 				return closedBootstrapPlan{}, errors.New("closed bootstrap Node Record is unavailable")
 			}
 			found = true
 			peer := closedBootstrapPeer{node: id, key: candidate.PublicKey, family: candidate.FamilyID, record: candidate.RecordDigest,
-				generation: role.DutyGeneration, endpoint: candidate.Endpoint, carrier: CarrierProfile(candidate.CarrierProfile), notAfter: candidate.ValidUntil}
+				generation: role.DutyGeneration, endpoint: candidate.Endpoint, carrier: carrier.CarrierProfile(candidate.CarrierProfile), notAfter: candidate.ValidUntil}
 			if candidate.AssignmentNotAfter.Before(peer.notAfter) {
 				peer.notAfter = candidate.AssignmentNotAfter
 			}

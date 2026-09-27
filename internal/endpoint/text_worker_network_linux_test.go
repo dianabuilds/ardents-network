@@ -8,10 +8,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/route"
+	routecarrier "github.com/dianabuilds/ardents-network/internal/route/carrier"
 )
 
-func exchangeTextWorkersThroughNetwork(t *testing.T, carrier route.CarrierProfile, body []byte, launch func(*testing.T, *textContext, []byte) *qualifiedTextWorker) {
+func exchangeTextWorkersThroughNetwork(t *testing.T, carrier routecarrier.CarrierProfile, body []byte, launch func(*testing.T, *textContext, []byte) *qualifiedTextWorker) {
 	t.Helper()
 	readerOwner, publisherOwner := textUnpublishedNetworkFixture(t, carrier)
 	reader := launch(t, readerOwner, nil)
@@ -52,7 +52,7 @@ func exchangeTextWorkersThroughNetwork(t *testing.T, carrier route.CarrierProfil
 // Only installed launch/cgroup observation is replaced by the explicit worker
 // fixture. Both worker protocols, Grants, network legs and Service auth are real.
 func TestTextWorkersReadTargetThroughJoinedNetwork(t *testing.T) {
-	for _, carrier := range []route.CarrierProfile{route.ClosedCarrierTCP, route.ClosedCarrierQUIC} {
+	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP, routecarrier.ClosedCarrierQUIC} {
 		t.Run(string(carrier), func(t *testing.T) {
 			exchangeTextWorkersThroughNetwork(t, carrier, bytes.Repeat([]byte("x"), 64<<10), func(t *testing.T, owner *textContext, snapshot []byte) *qualifiedTextWorker {
 				job := liveTextCapsuleJob(t, owner)

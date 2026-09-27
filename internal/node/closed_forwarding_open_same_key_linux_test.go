@@ -13,6 +13,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
+	"github.com/dianabuilds/ardents-network/internal/route/carrier"
 )
 
 // TestClosedForwardingOpenSameKeySharesOneActualOuterHello holds the first
@@ -20,14 +21,14 @@ import (
 // pool lease, wait for that one creator, then receive the same session without
 // opening another Carrier or writing another outer HELLO.
 func TestClosedForwardingOpenSameKeySharesOneActualOuterHello(t *testing.T) {
-	for _, profile := range []route.CarrierProfile{route.ClosedCarrierTCP, route.ClosedCarrierQUIC} {
+	for _, profile := range []carrier.CarrierProfile{carrier.ClosedCarrierTCP, carrier.ClosedCarrierQUIC} {
 		t.Run(string(profile), func(t *testing.T) {
 			testClosedForwardingOpenSameKeyActualCarrier(t, profile)
 		})
 	}
 }
 
-func testClosedForwardingOpenSameKeyActualCarrier(t *testing.T, profile route.CarrierProfile) {
+func testClosedForwardingOpenSameKeyActualCarrier(t *testing.T, profile carrier.CarrierProfile) {
 	t.Helper()
 	now := time.Now().UTC().Truncate(time.Second)
 	deadline := now.Add(5 * time.Second)
@@ -54,11 +55,11 @@ func testClosedForwardingOpenSameKeyActualCarrier(t *testing.T, profile route.Ca
 	fixture.config.Current = func() (state.NodeDuty, error) { return fixture.snapshot, nil }
 	fixture.config.CurrentClosedProfile = func() (state.ClosedProfileView, bool) { return fixture.view.Profile, true }
 
-	listener, err := route.ListenClosedSharedCarrier(profile, endpoint, peerCertificate, func(key [32]byte) bool { return key == clientKey }, 1)
+	listener, err := carrier.ListenClosedSharedCarrier(profile, endpoint, peerCertificate, func(key [32]byte) bool { return key == clientKey }, 1)
 	if err != nil {
 		t.Fatal(err)
 	}
-	pool, err := route.NewClosedCarrierPool(time.Now)
+	pool, err := carrier.NewClosedCarrierPool(time.Now)
 	if err != nil {
 		_ = listener.Close()
 		t.Fatal(err)
@@ -84,7 +85,7 @@ func testClosedForwardingOpenSameKeyActualCarrier(t *testing.T, profile route.Ca
 		}
 		connection := accepted.Connection
 		defer connection.Close()
-		if accepted.Kind != route.ClosedSharedNode || accepted.NodeKey != clientKey {
+		if accepted.Kind != carrier.ClosedSharedNode || accepted.NodeKey != clientKey {
 			peerDone <- errors.New("same-key actual Carrier lost Node authentication")
 			return
 		}

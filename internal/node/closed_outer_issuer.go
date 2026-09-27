@@ -6,6 +6,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
+	routecarrier "github.com/dianabuilds/ardents-network/internal/route/carrier"
 	"github.com/dianabuilds/ardents-network/internal/route/credential"
 	"github.com/dianabuilds/ardents-network/internal/route/replay"
 	"io"
@@ -16,7 +17,7 @@ import (
 // closedIssuerNodeHandler owns one State-authenticated outer Carrier. It
 // creates no peer, route or fallback: every child terminates at this issuer.
 func closedIssuerNodeHandler(config runtimeConfig, certificate tls.Certificate, issuer *credential.ClosedTokenIssuer, spends *replay.Ledger, limits *route.ClosedDutyLimits, recordRelease func(error)) credential.ClosedNodeBootstrapHandler {
-	return func(ctx context.Context, carrier route.ClosedSharedCarrier, serve func(context.Context, io.ReadWriter, [32]byte, ardp.Hello) error) {
+	return func(ctx context.Context, carrier routecarrier.ClosedSharedCarrier, serve func(context.Context, io.ReadWriter, [32]byte, ardp.Hello) error) {
 		defer carrier.Connection.Close()
 		updated, err := currentFacts(config)
 		if err != nil {
@@ -35,7 +36,7 @@ func closedIssuerNodeHandler(config runtimeConfig, certificate tls.Certificate, 
 		}
 		serveClosedOuter(ctx, carrier.Connection, outer, func(childContext context.Context, lane *route.ClosedOuterBridgeLane) {
 			admitted := func(connection net.Conn, hello ardp.Frame) error {
-				exporter, err := route.ClosedRoleTLSExporter(connection)
+				exporter, err := routecarrier.ClosedRoleTLSExporter(connection)
 				if err != nil {
 					return err
 				}
@@ -55,7 +56,7 @@ func closedIssuerNodeHandler(config runtimeConfig, certificate tls.Certificate, 
 func serveClosedIssuerInner(ctx context.Context, lane *route.ClosedOuterBridgeLane, certificate tls.Certificate, deadline time.Time, adjacency [32]byte, serve func(context.Context, io.ReadWriter, [32]byte, ardp.Hello) error, admitted func(net.Conn, ardp.Frame) error) {
 	status := byte(1)
 	defer func() { _ = lane.CloseWithStatus(status) }()
-	secured, err := route.AcceptClosedRoleTLS(ctx, lane, certificate, deadline)
+	secured, err := routecarrier.AcceptClosedRoleTLS(ctx, lane, certificate, deadline)
 	if err != nil {
 		return
 	}
@@ -91,7 +92,7 @@ func serveClosedIssuerInner(ctx context.Context, lane *route.ClosedOuterBridgeLa
 }
 
 func closedSharedPeerCurrent(config runtimeConfig, snapshot state.NodeDuty, key [32]byte, now time.Time) bool {
-	if key == [32]byte{} || config.CurrentClosedRoute == nil || snapshot.Profile != route.ClosedRouteProfile || !snapshot.Fresh || snapshot.Conflicting {
+	if key == [32]byte{} || config.CurrentClosedRoute == nil || snapshot.Profile != routecarrier.ClosedRouteProfile || !snapshot.Fresh || snapshot.Conflicting {
 		return false
 	}
 	view, err := config.CurrentClosedRoute()

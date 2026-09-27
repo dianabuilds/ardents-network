@@ -5,7 +5,7 @@ import (
 	"net"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/carrier"
 )
 
 type acceptedCloseFailureConn struct {
@@ -27,22 +27,22 @@ func (connection *acceptedCloseFailureConn) Close() error {
 type oneAcceptedCarrierListener struct {
 	ready      chan struct{}
 	connection net.Conn
-	kind       route.ClosedSharedCarrierKind
+	kind       carrier.ClosedSharedCarrierKind
 	served     bool
 }
 
-func (listener *oneAcceptedCarrierListener) Accept(ctx context.Context, _ time.Duration) (route.ClosedSharedCarrier, error) {
+func (listener *oneAcceptedCarrierListener) Accept(ctx context.Context, _ time.Duration) (carrier.ClosedSharedCarrier, error) {
 	if !listener.served {
 		select {
 		case <-listener.ready:
 		case <-ctx.Done():
-			return route.ClosedSharedCarrier{}, ctx.Err()
+			return carrier.ClosedSharedCarrier{}, ctx.Err()
 		}
 		listener.served = true
-		return route.ClosedSharedCarrier{Kind: listener.kind, Connection: listener.connection}, nil
+		return carrier.ClosedSharedCarrier{Kind: listener.kind, Connection: listener.connection}, nil
 	}
 	<-ctx.Done()
-	return route.ClosedSharedCarrier{}, ctx.Err()
+	return carrier.ClosedSharedCarrier{}, ctx.Err()
 }
 
 func (*oneAcceptedCarrierListener) Close() error { return nil }

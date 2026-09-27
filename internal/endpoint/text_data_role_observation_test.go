@@ -16,7 +16,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/node"
-	"github.com/dianabuilds/ardents-network/internal/route"
+	routecarrier "github.com/dianabuilds/ardents-network/internal/route/carrier"
 	"github.com/dianabuilds/ardents-network/internal/service/publication"
 )
 
@@ -30,21 +30,21 @@ func TestTextDataJoinIsolatedRoleObservations(t *testing.T) {
 		return
 	}
 	if selected := os.Getenv("ARDENTS_TEXT_DATA_ROLE_CARRIER"); selected != "" {
-		carrier := route.CarrierProfile(selected)
-		if carrier != route.ClosedCarrierTCP && carrier != route.ClosedCarrierQUIC {
+		carrier := routecarrier.CarrierProfile(selected)
+		if carrier != routecarrier.ClosedCarrierTCP && carrier != routecarrier.ClosedCarrierQUIC {
 			t.Fatal("unknown data role-observation Carrier")
 		}
 		runTextDataJoinIsolatedRoleObservation(t, carrier)
 		return
 	}
-	for _, carrier := range []route.CarrierProfile{route.ClosedCarrierTCP, route.ClosedCarrierQUIC} {
+	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP, routecarrier.ClosedCarrierQUIC} {
 		t.Run(string(carrier), func(t *testing.T) {
 			runTextDataJoinIsolatedRoleObservationProcess(t, carrier)
 		})
 	}
 }
 
-func runTextDataJoinIsolatedRoleObservationProcess(t *testing.T, carrier route.CarrierProfile) {
+func runTextDataJoinIsolatedRoleObservationProcess(t *testing.T, carrier routecarrier.CarrierProfile) {
 	t.Helper()
 	// The child has a 110-second test timeout. Select the two-minute Permission
 	// window before starting it so its bounded carrier episode cannot spend its
@@ -67,7 +67,7 @@ func runTextDataJoinIsolatedRoleObservationProcess(t *testing.T, carrier route.C
 	}
 }
 
-func runTextDataJoinIsolatedRoleObservation(t *testing.T, carrier route.CarrierProfile) {
+func runTextDataJoinIsolatedRoleObservation(t *testing.T, carrier routecarrier.CarrierProfile) {
 	output := t.TempDir()
 	if root := os.Getenv("ARDENTS_TEXT_DATA_ROLE_OBSERVATIONS"); root != "" {
 		var err error

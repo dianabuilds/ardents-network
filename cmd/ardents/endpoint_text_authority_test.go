@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/carrier"
 )
 
 func TestHeadlessTextSourceConfigurationRetainsExplicitSigner(t *testing.T) {
@@ -60,7 +61,7 @@ func TestHeadlessTextSourceConfigurationRetainsExplicitSigner(t *testing.T) {
 		t.Fatal(err)
 	}
 	config, refresh, err := headlessNetworkConfig(decoded, time.Now)
-	if err != nil || !refresh || config.AcceptedProfile != route.ClosedRouteProfile || hex.EncodeToString(config.ClosedProfileAuthority) != plan.ClosedProfileAuthority {
+	if err != nil || !refresh || config.AcceptedProfile != carrier.ClosedRouteProfile || hex.EncodeToString(config.ClosedProfileAuthority) != plan.ClosedProfileAuthority {
 		t.Fatalf("Source-backed runtime lost selected State signer: refresh=%v, %v", refresh, err)
 	}
 }

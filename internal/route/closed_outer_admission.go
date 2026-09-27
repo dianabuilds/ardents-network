@@ -8,6 +8,7 @@ import (
 	"net"
 
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
+	"github.com/dianabuilds/ardents-network/internal/route/carrier"
 )
 
 // Admit consumes no new authority. It binds the actual receiving admission
@@ -26,7 +27,7 @@ func (lane *ClosedOuterBridgeLane) Admit(lease *ClosedAdmission, connection net.
 		return err
 	}
 	context := sha256.Sum256(body)
-	exporter, err := ClosedRoleTLSExporter(secured)
+	exporter, err := carrier.ClosedRoleTLSExporter(secured)
 	if err != nil {
 		return err
 	}

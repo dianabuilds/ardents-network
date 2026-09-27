@@ -19,7 +19,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/node"
 	"github.com/dianabuilds/ardents-network/internal/resource"
-	"github.com/dianabuilds/ardents-network/internal/route"
+	routecarrier "github.com/dianabuilds/ardents-network/internal/route/carrier"
 )
 
 // A complete carrier episode may create sixteen Nodes (each with a five-second
@@ -55,7 +55,7 @@ func waitTextNetworkFixtureStart(t *testing.T) {
 }
 
 type textRoleNetworkFixture struct {
-	carrier    route.CarrierProfile
+	carrier    routecarrier.CarrierProfile
 	resolution bool
 	publisher  bool
 	join       bool
@@ -240,11 +240,11 @@ func textNetworkPrivateRoot(t *testing.T) string {
 	return root
 }
 
-func reserveTextNetworkAddress(t *testing.T, carrier route.CarrierProfile) (string, func()) {
+func reserveTextNetworkAddress(t *testing.T, carrier routecarrier.CarrierProfile) (string, func()) {
 	t.Helper()
 	var address string
 	var closeSocket func() error
-	if carrier == route.ClosedCarrierTCP {
+	if carrier == routecarrier.ClosedCarrierTCP {
 		listener, err := net.Listen("tcp", "127.0.0.1:0")
 		if err != nil {
 			t.Fatal(err)

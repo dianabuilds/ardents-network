@@ -12,7 +12,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/node"
 	"github.com/dianabuilds/ardents-network/internal/resource"
-	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/carrier"
 )
 
 var errOldNodeDutyRetired = errors.New("old Node duty reservation is retired")
@@ -181,7 +181,7 @@ func readNodePlan(path string) (nodeRuntime, error) {
 		if count != 1 || plan.ClosedProfileAuthority == "" {
 			return nodeRuntime{}, errors.New("closed duty requires exactly one reservation and its pinned profile authority")
 		}
-		state.AcceptedProfile = route.ClosedRouteProfile
+		state.AcceptedProfile = carrier.ClosedRouteProfile
 	} else {
 		if plan.ClosedProfileAuthority != "" {
 			return nodeRuntime{}, errors.New("closed profile authority requires a closed duty reservation")

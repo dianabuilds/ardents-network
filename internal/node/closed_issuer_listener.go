@@ -10,6 +10,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
+	"github.com/dianabuilds/ardents-network/internal/route/carrier"
 	"github.com/dianabuilds/ardents-network/internal/route/credential"
 	"github.com/dianabuilds/ardents-network/internal/route/replay"
 )
@@ -48,7 +49,7 @@ func startClosedIssuer(config runtimeConfig, snapshot state.NodeDuty) (*dutyHand
 	if err != nil {
 		return nil, errors.Join(err, spends.Close(), issuer.Close())
 	}
-	shared, err := route.ListenClosedSharedCarrier(route.CarrierProfile(snapshot.CarrierProfile), listen, local.Certificate, func(key [32]byte) bool {
+	shared, err := carrier.ListenClosedSharedCarrier(carrier.CarrierProfile(snapshot.CarrierProfile), listen, local.Certificate, func(key [32]byte) bool {
 		updated, currentErr := currentFacts(config)
 		return currentErr == nil && closedSharedPeerCurrent(config, updated, key, config.now())
 	}, local.ConnectionLimit)
@@ -80,7 +81,7 @@ func validateClosedIssuerProfile(local ClosedIssuerProfile, config runtimeConfig
 	if local.Root == "" || !filepath.IsAbs(local.Root) || filepath.Clean(local.Root) != local.Root || local.Certificate.PrivateKey == nil ||
 		local.AdmissionRoot == "" || !filepath.IsAbs(local.AdmissionRoot) || filepath.Clean(local.AdmissionRoot) != local.AdmissionRoot || local.Root == local.AdmissionRoot ||
 		local.ConnectionLimit == 0 || local.ConnectionLimit > 16 || local.DrainTimeout <= 0 || local.DrainTimeout > time.Minute ||
-		!literalNodeEndpoint(snapshot.ProbeEndpoint) || route.CarrierProfile(snapshot.CarrierProfile) != route.ClosedCarrierTCP && route.CarrierProfile(snapshot.CarrierProfile) != route.ClosedCarrierQUIC {
+		!literalNodeEndpoint(snapshot.ProbeEndpoint) || carrier.CarrierProfile(snapshot.CarrierProfile) != carrier.ClosedCarrierTCP && carrier.CarrierProfile(snapshot.CarrierProfile) != carrier.ClosedCarrierQUIC {
 		return errors.New("closed issuer local profile is incomplete")
 	}
 	if _, available := closedIssuerStateProfile(config, snapshot, now); !available {
@@ -90,7 +91,7 @@ func validateClosedIssuerProfile(local ClosedIssuerProfile, config runtimeConfig
 }
 
 func closedIssuerStateProfile(config runtimeConfig, snapshot state.NodeDuty, now time.Time) (state.ClosedProfileView, bool) {
-	if config.CurrentClosedProfile == nil || snapshot.Profile != route.ClosedRouteProfile || !snapshot.Fresh || snapshot.Conflicting ||
+	if config.CurrentClosedProfile == nil || snapshot.Profile != carrier.ClosedRouteProfile || !snapshot.Fresh || snapshot.Conflicting ||
 		snapshot.NodeID == [32]byte{} || !now.Before(snapshot.ValidUntil) || !now.Before(snapshot.RecordValidUntil) {
 		return state.ClosedProfileView{}, false
 	}

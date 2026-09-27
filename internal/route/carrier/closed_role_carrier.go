@@ -1,4 +1,4 @@
-package route
+package carrier
 
 import (
 	"context"
@@ -52,7 +52,7 @@ func ClosedRoleTLSExporter(connection net.Conn) (ClosedTLSExporter, error) {
 
 // ListenClosedRoleCarrier binds one literal State-selected direct role endpoint.
 func ListenClosedRoleCarrier(profile CarrierProfile, endpoint string, certificate tls.Certificate) (ClosedRoleCarrierListener, error) {
-	if !literalEndpoint(endpoint) || certificate.PrivateKey == nil {
+	if !LiteralEndpoint(endpoint) || certificate.PrivateKey == nil {
 		return nil, errors.New("closed role carrier listener is invalid")
 	}
 	switch profile {

@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/carrier"
 )
 
 func dataJoinNodePlan(t *testing.T) nodePlan {
@@ -27,7 +27,7 @@ func TestNodePlanConnectsClosedDataJoinToStateOwnedRuntime(t *testing.T) {
 		t.Fatal(err)
 	}
 	local := runtime.node.ClosedDataJoin
-	if runtime.state.AcceptedProfile != route.ClosedRouteProfile || !bytes.Equal(runtime.state.ClosedProfileAuthority, bytes.Repeat([]byte{0x12}, 32)) ||
+	if runtime.state.AcceptedProfile != carrier.ClosedRouteProfile || !bytes.Equal(runtime.state.ClosedProfileAuthority, bytes.Repeat([]byte{0x12}, 32)) ||
 		local.AdmissionRoot != plan.ClosedDataJoin.AdmissionRoot || local.ConnectionLimit != 2 ||
 		local.DrainTimeout != 2*time.Second || local.Certificate.PrivateKey == nil || runtime.node.Probe.ListenAddress != "" || runtime.node.ClosedIssuer.Root != "" || runtime.node.ClosedForwarding.Root != "" {
 		t.Fatal("JOIN reservation changed or bypassed current State")

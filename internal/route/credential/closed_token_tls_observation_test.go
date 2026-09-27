@@ -14,7 +14,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	"github.com/dianabuilds/ardents-network/internal/route/terminal"
 
-	"github.com/dianabuilds/ardents-network/internal/route"
+	routecarrier "github.com/dianabuilds/ardents-network/internal/route/carrier"
 )
 
 // The synchronous client owns these buffers; the listener uses its actual TLS
@@ -54,7 +54,7 @@ func issuerObservedFrames(t *testing.T, raw []byte) []ardp.Frame {
 	}
 	return frames
 }
-func checkIssuerTLSObservation(t *testing.T, issuer *ClosedTokenIssuer, listener *ClosedTokenListener, carrier route.CarrierProfile,
+func checkIssuerTLSObservation(t *testing.T, issuer *ClosedTokenIssuer, listener *ClosedTokenListener, carrier routecarrier.CarrierProfile,
 	expectedServer [32]byte, connection *issuerTLSObservationConn, operation, result []byte, before issuerStateObservation) {
 	t.Helper()
 	requests, responses := issuerObservedFrames(t, connection.sent), issuerObservedFrames(t, connection.received)
@@ -74,7 +74,7 @@ func checkIssuerTLSObservation(t *testing.T, issuer *ClosedTokenIssuer, listener
 		t.Fatal("TLS issuer did not retain exactly one debit and join its connection")
 	}
 	evidence := struct {
-		Carrier                     route.CarrierProfile
+		Carrier                     routecarrier.CarrierProfile
 		ExpectedServer              [32]byte
 		LocalAddress, RemoteAddress string
 		Sent, Received              []byte

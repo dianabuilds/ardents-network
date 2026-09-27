@@ -20,6 +20,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/resource"
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
+	"github.com/dianabuilds/ardents-network/internal/route/carrier"
 	"github.com/dianabuilds/ardents-network/internal/route/replay"
 )
 
@@ -52,7 +53,7 @@ func (reservation cleanupFailureReservation) Release(context.Context) error {
 func TestClosedForwardingServeDirectRetainsDuplicateSpendCleanupFailure(t *testing.T) {
 	fixture := newClosedBootstrapFixture(t)
 	certificate, serverKey := nodeCertificate(t, 241, "forwarding-cleanup-server")
-	fixture.snapshot.CarrierProfile = string(route.ClosedCarrierTCP)
+	fixture.snapshot.CarrierProfile = string(carrier.ClosedCarrierTCP)
 	fixture.snapshot.NodePublicKey = serverKey
 	fixture.config.now = func() time.Time { return fixture.now }
 	fixture.config.Current = func() (state.NodeDuty, error) { return fixture.snapshot, nil }
@@ -103,7 +104,7 @@ func TestClosedForwardingServeDirectRetainsDuplicateSpendCleanupFailure(t *testi
 func TestClosedForwardingServeDirectRetainsExpiredLeaseCleanupFailure(t *testing.T) {
 	fixture := newClosedBootstrapFixture(t)
 	certificate, serverKey := nodeCertificate(t, 242, "forwarding-expiry-cleanup-server")
-	fixture.snapshot.CarrierProfile = string(route.ClosedCarrierTCP)
+	fixture.snapshot.CarrierProfile = string(carrier.ClosedCarrierTCP)
 	fixture.snapshot.NodePublicKey = serverKey
 	fixture.config.now = func() time.Time { return fixture.now }
 	fixture.config.Current = func() (state.NodeDuty, error) { return fixture.snapshot, nil }
@@ -165,7 +166,7 @@ func TestClosedForwardingServeDirectRetainsExpiredLeaseCleanupFailure(t *testing
 func TestClosedForwardingServeDirectRetainsSpendStorageCleanupFailure(t *testing.T) {
 	fixture := newClosedBootstrapFixture(t)
 	certificate, serverKey := nodeCertificate(t, 243, "forwarding-storage-cleanup-server")
-	fixture.snapshot.CarrierProfile = string(route.ClosedCarrierTCP)
+	fixture.snapshot.CarrierProfile = string(carrier.ClosedCarrierTCP)
 	fixture.snapshot.NodePublicKey = serverKey
 	fixture.config.now = func() time.Time { return fixture.now }
 	fixture.config.Current = func() (state.NodeDuty, error) { return fixture.snapshot, nil }
@@ -226,7 +227,7 @@ func TestClosedForwardingServeDirectRetainsSpendStorageCleanupFailure(t *testing
 func TestClosedForwardingServeDirectRetainsCapacityCleanupFailure(t *testing.T) {
 	fixture := newClosedBootstrapFixture(t)
 	certificate, serverKey := nodeCertificate(t, 244, "forwarding-capacity-cleanup-server")
-	fixture.snapshot.CarrierProfile = string(route.ClosedCarrierTCP)
+	fixture.snapshot.CarrierProfile = string(carrier.ClosedCarrierTCP)
 	fixture.snapshot.NodePublicKey = serverKey
 	fixture.config.now = func() time.Time { return fixture.now }
 	fixture.config.Current = func() (state.NodeDuty, error) { return fixture.snapshot, nil }
@@ -317,7 +318,7 @@ func closedForwardingServeDirectAccepted(t *testing.T, server *closedForwardingS
 	deadline := time.Now().Add(5 * time.Second)
 	result := make(chan error, 1)
 	go func() {
-		secured, err := route.AcceptClosedRoleTLS(t.Context(), serverRaw, server.certificate, deadline)
+		secured, err := carrier.AcceptClosedRoleTLS(t.Context(), serverRaw, server.certificate, deadline)
 		if err == nil {
 			err = server.serveDirect(t.Context(), secured, nil, [32]byte{}, route.ClosedChildOrdinary, nil)
 		}
@@ -332,7 +333,7 @@ func closedForwardingServeDirectAccepted(t *testing.T, server *closedForwardingS
 		_ = serverRaw.Close()
 		<-result
 	}()
-	client, err := route.OpenClosedRoleTLS(t.Context(), clientRaw, key, deadline)
+	client, err := carrier.OpenClosedRoleTLS(t.Context(), clientRaw, key, deadline)
 	if err != nil {
 		t.Fatalf("inner client TLS = %v", err)
 	}
@@ -363,13 +364,13 @@ func closedForwardingServeDirectAdmissionUntil(t *testing.T, server *closedForwa
 	deadline := time.Now().Add(5 * time.Second)
 	result := make(chan error, 1)
 	go func() {
-		secured, err := route.AcceptClosedRoleTLS(t.Context(), serverRaw, server.certificate, deadline)
+		secured, err := carrier.AcceptClosedRoleTLS(t.Context(), serverRaw, server.certificate, deadline)
 		if err == nil {
 			err = server.serveDirect(t.Context(), secured, nil, [32]byte{}, route.ClosedChildOrdinary, nil)
 		}
 		result <- err
 	}()
-	client, err := route.OpenClosedRoleTLS(t.Context(), clientRaw, key, deadline)
+	client, err := carrier.OpenClosedRoleTLS(t.Context(), clientRaw, key, deadline)
 	if err != nil {
 		_ = clientRaw.Close()
 		_ = serverRaw.Close()

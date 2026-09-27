@@ -12,6 +12,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
 	"github.com/dianabuilds/ardents-network/internal/network/duty"
 	"github.com/dianabuilds/ardents-network/internal/route"
+	routecarrier "github.com/dianabuilds/ardents-network/internal/route/carrier"
 	"github.com/dianabuilds/ardents-network/internal/service/reachability"
 	"github.com/dianabuilds/ardents-network/internal/service/targetlink"
 )
@@ -19,7 +20,7 @@ import (
 func TestTextPublicationRefreshRetriesConcurrentRoleCommit(t *testing.T) {
 	gate := newTextDescriptorACKGate()
 	gate.open()
-	endpoint, owner, _, first := startTextRegisteredPublisherNetwork(t, route.ClosedCarrierQUIC, gate)
+	endpoint, owner, _, first := startTextRegisteredPublisherNetwork(t, routecarrier.ClosedCarrierQUIC, gate)
 	if _, err := owner.publishTextDescriptor(t.Context()); err != nil {
 		t.Fatal(err)
 	}
@@ -79,7 +80,7 @@ func TestTextPublicationRefreshRetriesOnlyConflictReadTimeout(t *testing.T) {
 // Both key generations, issuance, registration, publication and capsule delivery
 // use their real owners over each Carrier. No elapsed-300s or JOIN claim.
 func TestTextPublicationAutomaticallyRefreshesAndRetiresPredecessor(t *testing.T) {
-	for _, carrier := range []route.CarrierProfile{route.ClosedCarrierTCP, route.ClosedCarrierQUIC} {
+	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP, routecarrier.ClosedCarrierQUIC} {
 		t.Run(string(carrier), func(t *testing.T) {
 			gate := newTextDescriptorACKGate()
 			defer gate.open()
@@ -298,7 +299,7 @@ func TestTextPublicationAutomaticallyRefreshesAndRetiresPredecessor(t *testing.T
 // renewal route. A scheduled refresh that reaches that boundary must fail
 // closed: it cannot retain an accepting registration or revive it on retry.
 func TestTextPublicationRefreshExpiresPermissionWithoutResurrection(t *testing.T) {
-	for _, carrier := range []route.CarrierProfile{route.ClosedCarrierTCP, route.ClosedCarrierQUIC} {
+	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP, routecarrier.ClosedCarrierQUIC} {
 		t.Run(string(carrier), func(t *testing.T) {
 			gate := newTextDescriptorACKGate()
 			defer gate.open()

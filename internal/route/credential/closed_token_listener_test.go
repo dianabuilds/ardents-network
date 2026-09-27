@@ -17,11 +17,11 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/route/terminal"
 
 	"github.com/dianabuilds/ardents-network/internal/network/state"
-	"github.com/dianabuilds/ardents-network/internal/route"
+	routecarrier "github.com/dianabuilds/ardents-network/internal/route/carrier"
 )
 
 func TestClosedTokenListenerServesOnlyDirectRoleBootstrap(t *testing.T) {
-	for _, carrier := range []route.CarrierProfile{route.ClosedCarrierTCP, route.ClosedCarrierQUIC} {
+	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP, routecarrier.ClosedCarrierQUIC} {
 		t.Run(string(carrier), func(t *testing.T) {
 			issuer, profile, operation, now, verifyResult := closedTokenListenerIssuer(t)
 			defer func() {
@@ -40,13 +40,13 @@ func TestClosedTokenListenerServesOnlyDirectRoleBootstrap(t *testing.T) {
 				t.Fatal(err)
 			}
 			t.Cleanup(func() { _ = listener.Stop() })
-			connection, err := route.OpenClosedRoleCarrier(t.Context(), route.ClosedRoleCarrierRequest{
+			connection, err := routecarrier.OpenClosedRoleCarrier(t.Context(), routecarrier.ClosedRoleCarrierRequest{
 				CarrierProfile: carrier, Endpoint: endpoint, ExpectedServer: server, Deadline: time.Now().Add(10 * time.Second),
 			})
 			if err != nil {
 				t.Fatal(err)
 			}
-			if _, err := route.ClosedRoleTLSExporter(connection); err != nil {
+			if _, err := routecarrier.ClosedRoleTLSExporter(connection); err != nil {
 				t.Fatal(err)
 			}
 			observed := &issuerTLSObservationConn{Conn: connection}

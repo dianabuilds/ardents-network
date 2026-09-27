@@ -15,13 +15,13 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
 	"github.com/dianabuilds/ardents-network/internal/network/duty"
 	"github.com/dianabuilds/ardents-network/internal/node"
-	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/carrier"
 	"github.com/dianabuilds/ardents-network/internal/service/instance"
 	"github.com/dianabuilds/ardents-network/internal/service/targetlink"
 )
 
 func TestTextIntroductionDeliversFourConcurrentReaders(t *testing.T) {
-	endpoint, publisher, source := textPublisherNetworkWithInstance(t, route.ClosedCarrierTCP, func(network [32]byte, now, until time.Time) (*instance.Root, *instance.Binding) {
+	endpoint, publisher, source := textPublisherNetworkWithInstance(t, carrier.ClosedCarrierTCP, func(network [32]byte, now, until time.Time) (*instance.Root, *instance.Binding) {
 		_, authority, err := ed25519.GenerateKey(rand.Reader)
 		if err != nil {
 			t.Fatal(err)

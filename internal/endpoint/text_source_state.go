@@ -12,6 +12,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
+	"github.com/dianabuilds/ardents-network/internal/route/carrier"
 )
 
 type textRoleMember struct {
@@ -54,7 +55,7 @@ func (endpoint *endpoint) closedTextRoleMembers() (state.ClosedProfileView, []te
 	}
 	snapshot, err := source.Current()
 	profile := view.Profile
-	if err != nil || profile.NetworkID != endpoint.network || snapshot.NetworkID != endpoint.network || snapshot.Profile != route.ClosedRouteProfile ||
+	if err != nil || profile.NetworkID != endpoint.network || snapshot.NetworkID != endpoint.network || snapshot.Profile != carrier.ClosedRouteProfile ||
 		snapshot.Freshness != "fresh" || snapshot.Conflicting || snapshot.Digest != profile.StateDigest || snapshot.Epoch != profile.Epoch ||
 		snapshot.Generation != hex.EncodeToString(profile.StateGeneration[:]) || now.Before(profile.NotBefore) || !now.Before(profile.NotAfter) ||
 		now.Before(snapshot.EpochValidFrom) || !now.Before(snapshot.ValidUntil) || view.NodeCount == 0 || int(view.NodeCount) > len(view.Nodes) || int(snapshot.CandidateCount) > len(snapshot.Candidates) {
@@ -97,7 +98,7 @@ func (endpoint *endpoint) closedTextRoleMembers() (state.ClosedProfileView, []te
 			found = true
 			if candidate.RecordDigest != role.RecordDigest || role.DutyGeneration == 0 || candidate.PublicKey == [32]byte{} || candidate.FamilyID == [32]byte{} ||
 				candidate.Capacity == 0 || now.Before(candidate.ValidFrom) || !now.Before(candidate.ValidUntil) || !now.Before(candidate.AssignmentNotAfter) ||
-				candidate.CarrierProfile != string(route.ClosedCarrierTCP) && candidate.CarrierProfile != string(route.ClosedCarrierQUIC) {
+				candidate.CarrierProfile != string(carrier.ClosedCarrierTCP) && candidate.CarrierProfile != string(carrier.ClosedCarrierQUIC) {
 				continue
 			}
 			if candidate.NodeID == issuer.NodeID || candidate.PublicKey == issuer.PublicKey || candidate.FamilyID == issuer.FamilyID {

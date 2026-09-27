@@ -20,6 +20,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/resource"
 	"github.com/dianabuilds/ardents-network/internal/route"
+	routecarrier "github.com/dianabuilds/ardents-network/internal/route/carrier"
 	"github.com/dianabuilds/ardents-network/internal/route/credential"
 )
 
@@ -41,7 +42,7 @@ func (fixture *closedBootstrapNetwork) CurrentClosedRoute() (state.ClosedRouteVi
 	return fixture.view, nil
 }
 
-func newClosedBootstrapNetwork(t *testing.T, carrier route.CarrierProfile) *closedBootstrapNetwork {
+func newClosedBootstrapNetwork(t *testing.T, carrier routecarrier.CarrierProfile) *closedBootstrapNetwork {
 	t.Helper()
 	now := time.Now().UTC()
 	window := now.Truncate(time.Hour)
@@ -77,7 +78,7 @@ func newClosedBootstrapNetwork(t *testing.T, carrier route.CarrierProfile) *clos
 	fixture.view = state.ClosedRouteView{Profile: profile, NodeCount: 3}
 	fixture.snapshot = state.Snapshot{Generation: hex.EncodeToString(profile.StateGeneration[:]), NetworkID: profile.NetworkID,
 		Epoch: profile.Epoch, Digest: profile.StateDigest, EpochValidFrom: profile.NotBefore, ValidUntil: profile.NotAfter,
-		Profile: route.ClosedRouteProfile, Freshness: "fresh", CandidateCount: 3}
+		Profile: routecarrier.ClosedRouteProfile, Freshness: "fresh", CandidateCount: 3}
 	snapshots := [3]state.NodeDuty{}
 	reservedEndpoints := make(map[string]struct{}, len(snapshots))
 	for index := 0; index < 3; index++ {
@@ -101,7 +102,7 @@ func newClosedBootstrapNetwork(t *testing.T, carrier route.CarrierProfile) *clos
 		candidate.CarrierProfile, candidate.Capacity = string(carrier), 16
 		candidate.ValidFrom, candidate.ValidUntil, candidate.AssignmentNotAfter = window, profile.NotAfter, profile.NotAfter
 		snapshots[index] = state.NodeDuty{Generation: fixture.snapshot.Generation, NetworkID: profile.NetworkID, Epoch: profile.Epoch, Digest: profile.StateDigest,
-			EpochValidFrom: window, ValidUntil: profile.NotAfter, Profile: route.ClosedRouteProfile, Fresh: true, RecordPresent: true,
+			EpochValidFrom: window, ValidUntil: profile.NotAfter, Profile: routecarrier.ClosedRouteProfile, Fresh: true, RecordPresent: true,
 			NodeID: id, NodePublicKey: keys[index], RecordGeneration: uint64(index + 1), RecordValidFrom: window, RecordValidUntil: profile.NotAfter,
 			DeclaredFamily: family, ProbeEndpoint: candidate.Endpoint, CarrierProfile: string(carrier), CandidateCount: 3}
 	}

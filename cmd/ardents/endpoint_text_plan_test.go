@@ -11,6 +11,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/carrier"
 )
 
 func TestHeadlessTextPlanPreservesProtectedProfile(t *testing.T) {
@@ -21,7 +22,7 @@ func TestHeadlessTextPlanPreservesProtectedProfile(t *testing.T) {
 		t.Fatal(err)
 	}
 	config, refresh, err := headlessNetworkConfig(decoded, time.Now)
-	if err != nil || refresh || config.AcceptedProfile != route.ClosedRouteProfile {
+	if err != nil || refresh || config.AcceptedProfile != carrier.ClosedRouteProfile {
 		t.Fatalf("protected Network profile changed: %q, refresh=%v, %v", config.AcceptedProfile, refresh, err)
 	}
 	if hex.EncodeToString(config.ClosedProfileAuthority) != plan.ClosedProfileAuthority {
@@ -87,7 +88,7 @@ func headlessTextPlanFixture(t *testing.T) headlessRuntimePlan {
 	root := t.TempDir()
 	path := func(name string) string { return filepath.Join(root, name) }
 	return headlessRuntimePlan{
-		Schema: "ardents-headless-runtime-v2", NetworkProfile: route.ClosedRouteProfile, ClosedProfileAuthority: strings.Repeat("02", 32),
+		Schema: "ardents-headless-runtime-v2", NetworkProfile: carrier.ClosedRouteProfile, ClosedProfileAuthority: strings.Repeat("02", 32),
 		NetworkStateRoot: path("network"), EntryStateRoot: path("entry"), LocalRoleStateRoot: path("roles"), TextTokenRoot: path("tokens"),
 		PublicationRoot: path("publication"), ServiceInstanceRoot: path("instance"),
 		ApplicationSocket: path("application.sock"), AdministrationSocket: path("administration.sock"), TimeConfidenceFile: path("clock"),

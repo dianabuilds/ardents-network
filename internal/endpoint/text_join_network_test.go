@@ -14,6 +14,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
+	routecarrier "github.com/dianabuilds/ardents-network/internal/route/carrier"
 )
 
 func addTextDataJoinState(source *textSourceStateFixture) {
@@ -28,7 +29,7 @@ func addTextDataJoinState(source *textSourceStateFixture) {
 // issuance and token journal plus Source and Responder prefixes, JOIN client,
 // sixteen Node runtimes and both selected Carriers. No Service TLS claim here.
 func TestTextRouteJoinConnectsSourceAndResponder(t *testing.T) {
-	for _, carrier := range []route.CarrierProfile{route.ClosedCarrierTCP, route.ClosedCarrierQUIC} {
+	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP, routecarrier.ClosedCarrierQUIC} {
 		t.Run(string(carrier), func(t *testing.T) {
 			endpoint, publisher, source := startTextRoleNetwork(t, textRoleNetworkFixture{carrier: carrier, resolution: true, publisher: true, join: true})
 			reader := textPermissionContextFixture(t, endpoint, fixtureID(211), broker.Connection)

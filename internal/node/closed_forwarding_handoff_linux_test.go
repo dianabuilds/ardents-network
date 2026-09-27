@@ -15,6 +15,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/resource"
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
+	"github.com/dianabuilds/ardents-network/internal/route/carrier"
 	"github.com/dianabuilds/ardents-network/internal/route/replay"
 )
 
@@ -30,7 +31,7 @@ func testClosedForwardingServeDirectOuterAdmission(t *testing.T, cleanup error) 
 	t.Helper()
 	fixture := newClosedBootstrapFixture(t)
 	certificate, serverKey := nodeCertificate(t, 247, "forwarding-outer-cleanup-server")
-	fixture.snapshot.CarrierProfile = string(route.ClosedCarrierTCP)
+	fixture.snapshot.CarrierProfile = string(carrier.ClosedCarrierTCP)
 	fixture.snapshot.NodePublicKey = serverKey
 	fixture.config.now = func() time.Time { return fixture.now }
 	fixture.config.Current = func() (state.NodeDuty, error) { return fixture.snapshot, nil }
@@ -70,7 +71,7 @@ func testClosedForwardingServeDirectOuterAdmission(t *testing.T, cleanup error) 
 	go func() {
 		defer close(parent)
 		serveClosedOuter(t.Context(), local, outer, func(ctx context.Context, lane *route.ClosedOuterBridgeLane) {
-			secured, err := route.AcceptClosedRoleTLS(ctx, lane, certificate, fixture.now.Add(time.Hour))
+			secured, err := carrier.AcceptClosedRoleTLS(ctx, lane, certificate, fixture.now.Add(time.Hour))
 			if err == nil {
 				err = lane.BeginInnerHello()
 			}
@@ -104,7 +105,7 @@ func testClosedForwardingServeDirectOuterAdmission(t *testing.T, cleanup error) 
 		t.Fatal(err)
 	}
 	innerRaw := &outerTestInnerConn{outer: peer, lane: 1}
-	inner, err := route.OpenClosedRoleTLS(t.Context(), innerRaw, serverKey, time.Now().Add(5*time.Second))
+	inner, err := carrier.OpenClosedRoleTLS(t.Context(), innerRaw, serverKey, time.Now().Add(5*time.Second))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -142,7 +143,7 @@ func testClosedForwardingServeDirectOuterAdmission(t *testing.T, cleanup error) 
 func TestClosedForwardingServeDirectRetainsConstructorCleanupFailure(t *testing.T) {
 	fixture := newClosedBootstrapFixture(t)
 	certificate, serverKey := nodeCertificate(t, 245, "forwarding-constructor-cleanup-server")
-	fixture.snapshot.CarrierProfile = string(route.ClosedCarrierTCP)
+	fixture.snapshot.CarrierProfile = string(carrier.ClosedCarrierTCP)
 	fixture.snapshot.NodePublicKey = serverKey
 	fixture.config.now = func() time.Time { return fixture.now }
 	fixture.config.Current = func() (state.NodeDuty, error) { return fixture.snapshot, nil }
@@ -194,7 +195,7 @@ func TestClosedForwardingServeDirectRetainsConstructorCleanupFailure(t *testing.
 func TestClosedForwardingServeDirectSuccessfulHandoffLeavesCleanupToForwarding(t *testing.T) {
 	fixture := newClosedBootstrapFixture(t)
 	certificate, serverKey := nodeCertificate(t, 246, "forwarding-handoff-cleanup-server")
-	fixture.snapshot.CarrierProfile = string(route.ClosedCarrierTCP)
+	fixture.snapshot.CarrierProfile = string(carrier.ClosedCarrierTCP)
 	fixture.snapshot.NodePublicKey = serverKey
 	fixture.config.now = func() time.Time { return fixture.now }
 	fixture.config.Current = func() (state.NodeDuty, error) { return fixture.snapshot, nil }

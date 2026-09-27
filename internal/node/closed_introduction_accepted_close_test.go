@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/network/state"
-	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/carrier"
 	"github.com/dianabuilds/ardents-network/internal/route/replay"
 )
 
@@ -16,17 +16,17 @@ func TestClosedIntroductionDrainRetainsAcceptedCarrierCloseFailure(t *testing.T)
 	for _, test := range []struct {
 		name     string
 		capacity bool
-		kind     route.ClosedSharedCarrierKind
+		kind     carrier.ClosedSharedCarrierKind
 	}{
-		{name: "capacity refusal", capacity: true, kind: route.ClosedSharedNode},
-		{name: "direct refusal", kind: route.ClosedSharedDirect},
-		{name: "admitted Node child", kind: route.ClosedSharedNode},
+		{name: "capacity refusal", capacity: true, kind: carrier.ClosedSharedNode},
+		{name: "direct refusal", kind: carrier.ClosedSharedDirect},
+		{name: "admitted Node child", kind: carrier.ClosedSharedNode},
 	} {
 		t.Run(test.name, func(t *testing.T) { checkIntroductionAcceptedCloseFailure(t, test.capacity, test.kind) })
 	}
 }
 
-func checkIntroductionAcceptedCloseFailure(t *testing.T, capacity bool, kind route.ClosedSharedCarrierKind) {
+func checkIntroductionAcceptedCloseFailure(t *testing.T, capacity bool, kind carrier.ClosedSharedCarrierKind) {
 	t.Helper()
 	closeErr := errors.New("accepted introduction Carrier close failed")
 	local, peer := net.Pipe()

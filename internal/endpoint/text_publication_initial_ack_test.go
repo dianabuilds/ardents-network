@@ -6,14 +6,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/route"
+	routecarrier "github.com/dianabuilds/ardents-network/internal/route/carrier"
 )
 
 // The actual Store commits revision 1 before the barrier releases its RESULT.
 // State and worker qualification are fixtures, as in the refresh counterpart.
 // These are channel/revocation failures, not whole-Endpoint crash qualification.
 func TestTextInitialPublicationLossBeforeAcknowledgement(t *testing.T) {
-	for _, carrier := range []route.CarrierProfile{route.ClosedCarrierTCP, route.ClosedCarrierQUIC} {
+	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP, routecarrier.ClosedCarrierQUIC} {
 		t.Run(string(carrier), func(t *testing.T) {
 			for _, failure := range []string{"none", "registration channel", "context revoke"} {
 				t.Run(failure, func(t *testing.T) {

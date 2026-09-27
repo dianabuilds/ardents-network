@@ -6,14 +6,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/route"
+	routecarrier "github.com/dianabuilds/ardents-network/internal/route/carrier"
 )
 
 // A listening duty may be idle longer than one incoming TLS handshake. Its
 // next legitimate Endpoint must still complete both bootstrap and ordinary
 // issuance through the real Entry/Interior and issuer consumers.
 func TestTextIssuanceStartsAfterIdleListeners(t *testing.T) {
-	for _, carrier := range []route.CarrierProfile{route.ClosedCarrierTCP, route.ClosedCarrierQUIC} {
+	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP, routecarrier.ClosedCarrierQUIC} {
 		t.Run(string(carrier), func(t *testing.T) {
 			t.Parallel()
 			endpoint, owner, _ := startTextRoleNetwork(t, textRoleNetworkFixture{carrier: carrier})

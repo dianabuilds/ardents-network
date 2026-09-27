@@ -13,6 +13,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/carrier"
 )
 
 // Pause only the public State read before recipient selection. The test proves
@@ -33,7 +34,7 @@ func (source *textPausedResolutionState) CurrentClosedRoute() (state.ClosedRoute
 }
 
 func TestTextResolutionCloseJoinsInFlightStateSelection(t *testing.T) {
-	endpoint, owner, source := startTextRoleNetwork(t, textRoleNetworkFixture{carrier: route.ClosedCarrierTCP, resolution: true})
+	endpoint, owner, source := startTextRoleNetwork(t, textRoleNetworkFixture{carrier: carrier.ClosedCarrierTCP, resolution: true})
 	paused := &textPausedResolutionState{textSourceStateFixture: source, entered: make(chan struct{}), release: make(chan struct{})}
 	endpoint.closedState = paused
 	prefix, err := owner.openTextPrefix(t.Context())
@@ -131,7 +132,7 @@ func TestTextResolutionCompletionRetainsFailedCleanup(t *testing.T) {
 }
 
 func TestTextResolutionOldAcquisitionCannotCommitAfterSourceReplacement(t *testing.T) {
-	endpoint, owner, source := startTextRoleNetwork(t, textRoleNetworkFixture{carrier: route.ClosedCarrierTCP, resolution: true})
+	endpoint, owner, source := startTextRoleNetwork(t, textRoleNetworkFixture{carrier: carrier.ClosedCarrierTCP, resolution: true})
 	defer func() { _ = endpoint.Close() }()
 	old, err := owner.openTextPrefix(t.Context())
 	if err != nil {

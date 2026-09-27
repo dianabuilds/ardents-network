@@ -17,10 +17,11 @@ import (
 	applicationconnection "github.com/dianabuilds/ardents-network/internal/application/interfacev2/connection"
 	"github.com/dianabuilds/ardents-network/internal/node"
 	"github.com/dianabuilds/ardents-network/internal/route"
+	routecarrier "github.com/dianabuilds/ardents-network/internal/route/carrier"
 	"github.com/dianabuilds/ardents-network/internal/service/instance"
 )
 
-func textUnpublishedNetworkWithInstance(t *testing.T, carrier route.CarrierProfile, acquire func([32]byte, time.Time, time.Time) (*instance.Root, *instance.Binding), configure ...func(int, *node.Config)) (*textContext, *textContext) {
+func textUnpublishedNetworkWithInstance(t *testing.T, carrier routecarrier.CarrierProfile, acquire func([32]byte, time.Time, time.Time) (*instance.Root, *instance.Binding), configure ...func(int, *node.Config)) (*textContext, *textContext) {
 	t.Helper()
 	endpoint, publisher, source := textPublisherNetworkWithInstance(t, carrier, acquire, configure...)
 	reader := textPermissionContextFixture(t, endpoint, fixtureID(211), broker.Connection)
@@ -34,7 +35,7 @@ func TestInstalledTextWorkersReadTargetThroughJoinedNetwork(t *testing.T) {
 	if err := verifyTextEndpointService(t.Context()); err != nil {
 		t.Fatalf("invalid installed environment: %v", err)
 	}
-	for _, carrier := range []route.CarrierProfile{route.ClosedCarrierTCP, route.ClosedCarrierQUIC} {
+	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP, routecarrier.ClosedCarrierQUIC} {
 		t.Run(string(carrier), func(t *testing.T) {
 			for _, size := range []struct {
 				name  string
@@ -48,7 +49,7 @@ func TestInstalledTextWorkersReadTargetThroughJoinedNetwork(t *testing.T) {
 	}
 }
 
-func exchangeInstalledTextAdministration(t *testing.T, carrier route.CarrierProfile, body []byte, refresh bool) {
+func exchangeInstalledTextAdministration(t *testing.T, carrier routecarrier.CarrierProfile, body []byte, refresh bool) {
 	t.Helper()
 	readerOwner, publisherOwner := textUnpublishedNetworkWithInstance(t, carrier, func(network [32]byte, now, until time.Time) (*instance.Root, *instance.Binding) {
 		return acquireInstalledServiceInstance(t, network, now, until)

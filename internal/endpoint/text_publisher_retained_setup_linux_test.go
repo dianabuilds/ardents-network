@@ -17,6 +17,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/node"
 	"github.com/dianabuilds/ardents-network/internal/qualification"
 	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/carrier"
 )
 
 // The qualification setup is one retained 256-Connection Publisher set fed by
@@ -29,7 +30,7 @@ func TestTextPublisherBuildsRetainedQualificationSetAcrossFourReaders(t *testing
 	// sides and their termination reservations; the ordinary one-GiB journey
 	// fixture remains intentionally too small for this maximum workload.
 	qualificationHosting := textNetworkHostingRootWithQuantity(t, 1024)
-	reader, publisher, destination := textJoinedNetworkFixtureWithReaderMaximaAndRegistration(t, route.ClosedCarrierTCP, [3]uint32{512, 512, 0}, 9*time.Minute, func(index int, config *node.Config) {
+	reader, publisher, destination := textJoinedNetworkFixtureWithReaderMaximaAndRegistration(t, carrier.ClosedCarrierTCP, [3]uint32{512, 512, 0}, 9*time.Minute, func(index int, config *node.Config) {
 		// All sixteen Nodes share one provider period for the same physical host.
 		// Separate one-GiB fixture ledgers would each charge the host-wide loopback
 		// counters and make parallel package tests interfere with qualification.

@@ -303,8 +303,9 @@ listeners for current Node and direct-role callers. The v1 reciprocal
 `LegBinding` codec and its canonical vectors are retired by ADR-0093 as
 their compatibility disposition. Current
 behavior checks are the TCP/TLS and QUIC cases in
-`closed_node_carrier_test.go`, `closed_shared_carrier_test.go`, and
-`closed_role_carrier_test.go`, including peer rejection and QUIC handshake
+`internal/route/carrier/closed_node_carrier_test.go`,
+`closed_shared_carrier_test.go`, and `closed_role_carrier_test.go`, including
+peer rejection and QUIC handshake
 reservation. The old listener test does not substitute for these checks.
 
 One qualification-only operational seam admits a literal loopback or private

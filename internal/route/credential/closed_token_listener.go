@@ -12,6 +12,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
+	routecarrier "github.com/dianabuilds/ardents-network/internal/route/carrier"
 )
 
 const closedIssuerDirectAdjacency = byte(1)
@@ -21,9 +22,9 @@ const closedIssuerDirectAdjacency = byte(1)
 // derive all of them; no Target, holder, permission or authority enters here.
 type ClosedTokenListenerConfig struct {
 	Issuer          *ClosedTokenIssuer
-	SharedListener  route.ClosedSharedCarrierListener
+	SharedListener  routecarrier.ClosedSharedCarrierListener
 	NodeHandler     ClosedNodeBootstrapHandler
-	CarrierProfile  route.CarrierProfile
+	CarrierProfile  routecarrier.CarrierProfile
 	Endpoint        string
 	Certificate     tls.Certificate
 	ConnectionLimit uint16
@@ -32,14 +33,14 @@ type ClosedTokenListenerConfig struct {
 
 // ClosedNodeBootstrapHandler owns the Node-authenticated outer state and may
 // invoke serve only after it has completed inner TLS and verified inner HELLO.
-type ClosedNodeBootstrapHandler func(context.Context, route.ClosedSharedCarrier, func(context.Context, io.ReadWriter, [32]byte, ardp.Hello) error)
+type ClosedNodeBootstrapHandler func(context.Context, routecarrier.ClosedSharedCarrier, func(context.Context, io.ReadWriter, [32]byte, ardp.Hello) error)
 
 // ClosedTokenListener owns bounded direct role bootstrap serving. Its caller
 // separately owns State refresh and issuer-root lifetime.
 type ClosedTokenListener struct {
 	issuer     *ClosedTokenIssuer
-	listener   route.ClosedRoleCarrierListener
-	shared     route.ClosedSharedCarrierListener
+	listener   routecarrier.ClosedRoleCarrierListener
+	shared     routecarrier.ClosedSharedCarrierListener
 	node       ClosedNodeBootstrapHandler
 	controller *route.ClosedBootstrapController
 	clock      func() time.Time
@@ -64,10 +65,10 @@ func StartClosedTokenListener(ctx context.Context, config ClosedTokenListenerCon
 		(config.SharedListener == nil && config.NodeHandler != nil) || (config.SharedListener != nil && config.NodeHandler == nil) {
 		return nil, errors.New("closed token listener configuration is invalid")
 	}
-	var listener route.ClosedRoleCarrierListener
+	var listener routecarrier.ClosedRoleCarrierListener
 	if config.SharedListener == nil {
 		var err error
-		listener, err = route.ListenClosedRoleCarrier(config.CarrierProfile, config.Endpoint, config.Certificate)
+		listener, err = routecarrier.ListenClosedRoleCarrier(config.CarrierProfile, config.Endpoint, config.Certificate)
 		if err != nil {
 			return nil, err
 		}
@@ -184,7 +185,7 @@ func (listener *ClosedTokenListener) serve(ctx context.Context) {
 				case <-ctx.Done():
 					return
 				default:
-					if route.IsClosedSharedPeerFailure(err) {
+					if routecarrier.IsClosedSharedPeerFailure(err) {
 						continue
 					}
 					terminal = err
@@ -197,7 +198,7 @@ func (listener *ClosedTokenListener) serve(ctx context.Context) {
 				}
 				return
 			}
-			if accepted.Kind == route.ClosedSharedNode && accepted.Connection != nil {
+			if accepted.Kind == routecarrier.ClosedSharedNode && accepted.Connection != nil {
 				select {
 				case listener.limit <- struct{}{}:
 					listener.active.Add(1)
@@ -208,7 +209,7 @@ func (listener *ClosedTokenListener) serve(ctx context.Context) {
 				}
 				continue
 			}
-			if accepted.Kind != route.ClosedSharedDirect || accepted.Connection == nil {
+			if accepted.Kind != routecarrier.ClosedSharedDirect || accepted.Connection == nil {
 				if accepted.Connection != nil {
 					listener.closeCarrier(accepted.Connection)
 				}
@@ -279,7 +280,7 @@ func (listener *ClosedTokenListener) serveVerified(ctx context.Context, carrier 
 	return listener.issuer.ServeBootstrapAfterHello(ctx, carrier, listener.controller, adjacency, hello)
 }
 
-func (listener *ClosedTokenListener) serveNode(ctx context.Context, carrier route.ClosedSharedCarrier) {
+func (listener *ClosedTokenListener) serveNode(ctx context.Context, carrier routecarrier.ClosedSharedCarrier) {
 	defer listener.workers.Done()
 	interrupted := make(chan struct{})
 	stop := context.AfterFunc(ctx, func() {

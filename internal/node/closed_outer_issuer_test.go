@@ -18,6 +18,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
+	"github.com/dianabuilds/ardents-network/internal/route/carrier"
 	"github.com/dianabuilds/ardents-network/internal/route/credential"
 )
 
@@ -47,9 +48,9 @@ func TestClosedIssuerServesBootstrapInsideStateAuthorizedNodeCarrier(t *testing.
 	endpoint := reserveAddress(t)
 	recordDigest := [32]byte{65}
 	snapshot := state.NodeDuty{Generation: hex.EncodeToString(generation[:]), NetworkID: network, Epoch: profile.Epoch, Digest: digest, EpochValidFrom: profile.NotBefore,
-		ValidUntil: until, Profile: route.ClosedRouteProfile, Fresh: true, RecordPresent: true, NodeID: issuerID, NodePublicKey: serverKey, RecordGeneration: profile.IssuerDutyGeneration,
-		RecordValidFrom: now.Add(-time.Second), RecordValidUntil: until, DeclaredFamily: "closed-issuer-family", ProbeEndpoint: endpoint, CarrierProfile: string(route.ClosedCarrierTCP), Assignment: "rendezvous",
-		CandidateCount: 1, Candidates: [64]state.NodeDutyCandidate{{NodeID: peerID, PublicKey: clientKey, RecordDigest: [32]byte{66}, Endpoint: "127.0.0.1:41001", CarrierProfile: string(route.ClosedCarrierTCP), ValidUntil: until, AssignmentNotAfter: until}}}
+		ValidUntil: until, Profile: carrier.ClosedRouteProfile, Fresh: true, RecordPresent: true, NodeID: issuerID, NodePublicKey: serverKey, RecordGeneration: profile.IssuerDutyGeneration,
+		RecordValidFrom: now.Add(-time.Second), RecordValidUntil: until, DeclaredFamily: "closed-issuer-family", ProbeEndpoint: endpoint, CarrierProfile: string(carrier.ClosedCarrierTCP), Assignment: "rendezvous",
+		CandidateCount: 1, Candidates: [64]state.NodeDutyCandidate{{NodeID: peerID, PublicKey: clientKey, RecordDigest: [32]byte{66}, Endpoint: "127.0.0.1:41001", CarrierProfile: string(carrier.ClosedCarrierTCP), ValidUntil: until, AssignmentNotAfter: until}}}
 	events := make(chan Event, 16)
 	config := Config{HostingRoot: closedForwardingHostingRoot(t), NetworkID: network, NodeID: issuerID, IdentityKey: serverCertificate.PrivateKey.(ed25519.PrivateKey), Current: func() (state.NodeDuty, error) { return snapshot, nil },
 		CurrentClosedProfile: func() (state.ClosedProfileView, bool) { return profile, true }, CurrentClosedRoute: func() (state.ClosedRouteView, error) {
@@ -75,7 +76,7 @@ func TestClosedIssuerServesBootstrapInsideStateAuthorizedNodeCarrier(t *testing.
 	go func() { _, runErr := Run(runContext, config); runDone <- runErr }()
 	waitForStateEvent(t, events, "READY")
 	deadline := time.Now().Add(10 * time.Second)
-	outer, err := route.OpenClosedNodeCarrier(t.Context(), route.ClosedNodeCarrierRequest{CarrierProfile: route.ClosedCarrierTCP, Endpoint: endpoint, Certificate: clientCertificate, ExpectedPeerKey: serverKey, Deadline: deadline})
+	outer, err := carrier.OpenClosedNodeCarrier(t.Context(), carrier.ClosedNodeCarrierRequest{CarrierProfile: carrier.ClosedCarrierTCP, Endpoint: endpoint, Certificate: clientCertificate, ExpectedPeerKey: serverKey, Deadline: deadline})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -99,7 +100,7 @@ func TestClosedIssuerServesBootstrapInsideStateAuthorizedNodeCarrier(t *testing.
 		t.Fatal(err)
 	}
 	innerRaw := &outerTestInnerConn{outer: outer, lane: 1}
-	inner, err := route.OpenClosedRoleTLS(t.Context(), innerRaw, serverKey, deadline)
+	inner, err := carrier.OpenClosedRoleTLS(t.Context(), innerRaw, serverKey, deadline)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -128,7 +129,7 @@ func TestClosedIssuerServesBootstrapInsideStateAuthorizedNodeCarrier(t *testing.
 }
 
 type outerTestInnerConn struct {
-	outer   route.Carrier
+	outer   carrier.Carrier
 	lane    uint32
 	mu      sync.Mutex
 	inbound []byte

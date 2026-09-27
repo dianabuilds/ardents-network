@@ -8,6 +8,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/resource"
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
+	routecarrier "github.com/dianabuilds/ardents-network/internal/route/carrier"
 	"os"
 	"path/filepath"
 	"testing"
@@ -21,7 +22,7 @@ func TestClosedForwardingStopDrainsIdleAuthenticatedCarrier(t *testing.T) {
 	certificate, key := nodeCertificate(t, 231, "forwarding-stop-server")
 	peerCertificate, peerKey := nodeCertificate(t, 232, "forwarding-stop-peer")
 	fixture.snapshot.ProbeEndpoint = reserveAddress(t)
-	fixture.snapshot.CarrierProfile = string(route.ClosedCarrierTCP)
+	fixture.snapshot.CarrierProfile = string(routecarrier.ClosedCarrierTCP)
 	fixture.snapshot.NodePublicKey = key
 	fixture.snapshot.Candidates[0].PublicKey = peerKey
 	fixture.config.now = func() time.Time { return fixture.now }
@@ -36,7 +37,7 @@ func TestClosedForwardingStopDrainsIdleAuthenticatedCarrier(t *testing.T) {
 	}
 	defer server.Stop()
 	deadline := time.Now().Add(5 * time.Second)
-	carrier, err := route.OpenClosedNodeCarrier(t.Context(), route.ClosedNodeCarrierRequest{CarrierProfile: route.ClosedCarrierTCP,
+	carrier, err := routecarrier.OpenClosedNodeCarrier(t.Context(), routecarrier.ClosedNodeCarrierRequest{CarrierProfile: routecarrier.ClosedCarrierTCP,
 		Endpoint: fixture.snapshot.ProbeEndpoint, Certificate: peerCertificate, ExpectedPeerKey: key, Deadline: deadline})
 	if err != nil {
 		t.Fatal(err)
@@ -69,7 +70,7 @@ func TestClosedForwardingStopDrainsIdleAuthenticatedCarrier(t *testing.T) {
 	}
 	// A completed inner TLS handshake proves the production child handler has
 	// started. The peer then leaves both outer and inner HELLO reads idle.
-	inner, err := route.OpenClosedRoleTLS(t.Context(), &outerTestInnerConn{outer: carrier, lane: 1}, key, deadline)
+	inner, err := routecarrier.OpenClosedRoleTLS(t.Context(), &outerTestInnerConn{outer: carrier, lane: 1}, key, deadline)
 	if err != nil {
 		t.Fatal(err)
 	}

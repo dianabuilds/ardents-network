@@ -7,6 +7,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
+	"github.com/dianabuilds/ardents-network/internal/route/carrier"
 	"net"
 	"sync"
 	"testing"
@@ -39,12 +40,12 @@ func TestClosedForwardingOpenExpiresWhileExactCarrierDialWaits(t *testing.T) {
 	if !available {
 		t.Fatal("forwarding receiver unavailable")
 	}
-	key := route.ClosedCarrierKey{NetworkID: receiver.NetworkID, ProfileDigest: receiver.ProfileDigest, LocalNodeID: receiver.NodeID,
-		PeerNodeID: candidate.NodeID, PeerKey: candidate.PublicKey, CarrierProfile: route.CarrierProfile(candidate.CarrierProfile)}
+	key := carrier.ClosedCarrierKey{NetworkID: receiver.NetworkID, ProfileDigest: receiver.ProfileDigest, LocalNodeID: receiver.NodeID,
+		PeerNodeID: candidate.NodeID, PeerKey: candidate.PublicKey, CarrierProfile: carrier.CarrierProfile(candidate.CarrierProfile)}
 	local, peer := net.Pipe()
 	defer local.Close()
 	defer peer.Close()
-	pool, err := route.NewClosedCarrierPool(time.Now)
+	pool, err := carrier.NewClosedCarrierPool(time.Now)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -52,7 +53,7 @@ func TestClosedForwardingOpenExpiresWhileExactCarrierDialWaits(t *testing.T) {
 	var releaseOnce sync.Once
 	ownerDone := make(chan error, 1)
 	go func() {
-		lease, acquireErr := pool.AcquireContext(context.Background(), key, func() error { return nil }, func() (route.Carrier, error) {
+		lease, acquireErr := pool.AcquireContext(context.Background(), key, func() error { return nil }, func() (carrier.Carrier, error) {
 			close(opened)
 			<-release
 			return local, nil

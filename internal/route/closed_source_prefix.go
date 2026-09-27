@@ -7,6 +7,7 @@ import (
 	"crypto/rand"
 	"crypto/tls"
 	"errors"
+	"github.com/dianabuilds/ardents-network/internal/route/carrier"
 	"net"
 	"sync"
 	"time"
@@ -99,7 +100,7 @@ func openClosedPrefix(ctx context.Context, source ClosedBootstrapState, selectio
 	end := closedSourcePrefixEnd(plan, snapshot, now)
 	plan.deadline = end
 	entry := plan.peers[0]
-	connection, err := OpenClosedRoleCarrier(ctx, ClosedRoleCarrierRequest{CarrierProfile: entry.carrier, Endpoint: entry.endpoint, ExpectedServer: entry.key, Deadline: handshakeEnd})
+	connection, err := carrier.OpenClosedRoleCarrier(ctx, carrier.ClosedRoleCarrierRequest{CarrierProfile: entry.carrier, Endpoint: entry.endpoint, ExpectedServer: entry.key, Deadline: handshakeEnd})
 	if err != nil {
 		return nil, closedSourceOpenFailureAt("entry-carrier", err)
 	}
@@ -266,7 +267,7 @@ func (prefix *ClosedSourcePrefix) openChild(ctx context.Context, peer closedBoot
 		return closedSourceOpenFailureAt("interior-open-write", err)
 	}
 	prefix.child = prefix.newChild(prefix.connection, end)
-	inner, err := OpenClosedRoleTLS(ctx, prefix.child, peer.key, pending)
+	inner, err := carrier.OpenClosedRoleTLS(ctx, prefix.child, peer.key, pending)
 	if err != nil {
 		return closedSourceOpenFailureAt("interior-tls", err)
 	}

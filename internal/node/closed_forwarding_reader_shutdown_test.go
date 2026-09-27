@@ -5,8 +5,8 @@ import (
 	"crypto/tls"
 	"errors"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
-	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
+	"github.com/dianabuilds/ardents-network/internal/route/carrier"
 	"github.com/dianabuilds/ardents-network/internal/route/replay"
 	"net"
 	"sync"
@@ -39,9 +39,9 @@ func (reader *delayedForwardingRead) Close() error {
 
 type idleForwardingListener struct{}
 
-func (idleForwardingListener) Accept(ctx context.Context, _ time.Duration) (route.ClosedSharedCarrier, error) {
+func (idleForwardingListener) Accept(ctx context.Context, _ time.Duration) (carrier.ClosedSharedCarrier, error) {
 	<-ctx.Done()
-	return route.ClosedSharedCarrier{}, ctx.Err()
+	return carrier.ClosedSharedCarrier{}, ctx.Err()
 }
 func (idleForwardingListener) Close() error { return nil }
 
@@ -58,7 +58,7 @@ func TestClosedForwardingDrainJoinsLateSessionProducerBeforeReader(t *testing.T)
 
 func checkForwardingReaderShutdown(t *testing.T, closeErr error) {
 	t.Helper()
-	pool, err := route.NewClosedCarrierPool(time.Now)
+	pool, err := carrier.NewClosedCarrierPool(time.Now)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -88,9 +88,9 @@ func checkForwardingReaderShutdown(t *testing.T, closeErr error) {
 		_ = server.Drain(ctx)
 		_ = spends.Close()
 	})
-	key := route.ClosedCarrierKey{NetworkID: [32]byte{1}, ProfileDigest: [32]byte{2}, LocalNodeID: [32]byte{3},
-		PeerNodeID: [32]byte{4}, PeerKey: [32]byte{5}, CarrierProfile: route.ClosedCarrierTCP}
-	lease, err := pool.AcquireContext(context.Background(), key, func() error { return nil }, func() (route.Carrier, error) { return blocked, nil })
+	key := carrier.ClosedCarrierKey{NetworkID: [32]byte{1}, ProfileDigest: [32]byte{2}, LocalNodeID: [32]byte{3},
+		PeerNodeID: [32]byte{4}, PeerKey: [32]byte{5}, CarrierProfile: carrier.ClosedCarrierTCP}
+	lease, err := pool.AcquireContext(context.Background(), key, func() error { return nil }, func() (carrier.Carrier, error) { return blocked, nil })
 	if err != nil {
 		t.Fatal(err)
 	}

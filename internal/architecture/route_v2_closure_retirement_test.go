@@ -53,9 +53,9 @@ func TestRouteV2RetirementPreservesRefusalAndPersistedDataContracts(t *testing.T
 	t.Parallel()
 	root := repositoryRoot(t)
 
-	carrierOwner := string(readProjectFile(t, root, "internal/route/closed_node_carrier.go"))
-	if !strings.Contains(carrierOwner, `Profile = "ardents-interactive-route-v2"`) {
-		t.Error("closed Carrier owner lost the retired v2 Profile refusal identity")
+	profileOwner := string(readProjectFile(t, root, "internal/route/closed_route_profile.go"))
+	if !strings.Contains(profileOwner, `Profile = "ardents-interactive-route-v2"`) {
+		t.Error("Route lost the retired v2 Profile refusal identity")
 	}
 
 	lifecycle := string(readProjectFile(t, root, "internal/service/instance/lifecycle.go"))
@@ -78,7 +78,7 @@ func TestRouteV2RetirementPreservesRefusalAndPersistedDataContracts(t *testing.T
 		t.Error("Node plan composition still selects the retired v2 Route profile")
 	}
 
-	carrier := string(readProjectFile(t, root, "internal/route/node_carrier.go"))
+	carrier := string(readProjectFile(t, root, "internal/route/carrier/node_carrier.go"))
 	if strings.Contains(carrier, "CarrierTCP") || strings.Contains(carrier, "CarrierQUIC") {
 		t.Error("shared Carrier vocabulary still exports the retired v1 carrier constants")
 	}

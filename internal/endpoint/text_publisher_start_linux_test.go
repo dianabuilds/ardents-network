@@ -8,14 +8,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/route"
+	routecarrier "github.com/dianabuilds/ardents-network/internal/route/carrier"
 )
 
 // Only State/Instance acceptance and installed-worker observation are fixtures.
 // The startup owner performs registration and publication before returning its
 // Link; the caller supplies no publication or registration success callback.
 func TestTextPublisherStartupOwnsPublicationBeyondCaller(t *testing.T) {
-	for _, carrier := range []route.CarrierProfile{route.ClosedCarrierTCP, route.ClosedCarrierQUIC} {
+	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP, routecarrier.ClosedCarrierQUIC} {
 		t.Run(string(carrier), func(t *testing.T) {
 			readerOwner, publisherOwner := textUnpublishedNetworkFixture(t, carrier)
 			body := []byte("publication started by its qualified worker")

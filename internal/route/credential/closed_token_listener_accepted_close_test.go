@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
+	"github.com/dianabuilds/ardents-network/internal/route/carrier"
 )
 
 type issuerCloseFailureConn struct {
@@ -31,12 +31,12 @@ func (connection *issuerCloseFailureConn) Close() error {
 func TestClosedTokenListenerDrainRetainsAcceptedCarrierCloseFailure(t *testing.T) {
 	for _, test := range []struct {
 		name     string
-		kind     route.ClosedSharedCarrierKind
+		kind     carrier.ClosedSharedCarrierKind
 		capacity bool
 	}{
-		{name: "Node capacity refusal", kind: route.ClosedSharedNode, capacity: true},
-		{name: "direct capacity refusal", kind: route.ClosedSharedDirect, capacity: true},
-		{name: "admitted Node child", kind: route.ClosedSharedNode},
+		{name: "Node capacity refusal", kind: carrier.ClosedSharedNode, capacity: true},
+		{name: "direct capacity refusal", kind: carrier.ClosedSharedDirect, capacity: true},
+		{name: "admitted Node child", kind: carrier.ClosedSharedNode},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			closeErr := errors.New("issuer accepted Carrier close failed")
@@ -46,7 +46,7 @@ func TestClosedTokenListenerDrainRetainsAcceptedCarrierCloseFailure(t *testing.T
 			shared := &closedIssuerPausedAccept{connection: connection, kind: test.kind, entered: make(chan struct{}),
 				release: make(chan struct{}), closed: make(chan struct{})}
 			listener, err := StartClosedTokenListener(t.Context(), ClosedTokenListenerConfig{Issuer: &ClosedTokenIssuer{}, SharedListener: shared,
-				ConnectionLimit: 1, Clock: time.Now, NodeHandler: func(context.Context, route.ClosedSharedCarrier,
+				ConnectionLimit: 1, Clock: time.Now, NodeHandler: func(context.Context, carrier.ClosedSharedCarrier,
 					func(context.Context, io.ReadWriter, [32]byte, ardp.Hello) error) {
 				}})
 			if err != nil {

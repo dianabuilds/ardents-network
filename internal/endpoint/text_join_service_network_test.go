@@ -14,7 +14,7 @@ import (
 	applicationconnection "github.com/dianabuilds/ardents-network/internal/application/interfacev2/connection"
 	"github.com/dianabuilds/ardents-network/internal/application/textdocument"
 	"github.com/dianabuilds/ardents-network/internal/node"
-	"github.com/dianabuilds/ardents-network/internal/route"
+	routecarrier "github.com/dianabuilds/ardents-network/internal/route/carrier"
 	"github.com/dianabuilds/ardents-network/internal/service/instance"
 	"github.com/dianabuilds/ardents-network/internal/service/publication"
 	"github.com/dianabuilds/ardents-network/internal/service/targetlink"
@@ -24,7 +24,7 @@ import (
 // from publication through recipient-only capsule delivery, JOIN, Service TLS,
 // native authentication and document exchange uses the maintained real owners.
 func TestTextJoinedServiceTransfersDocumentThroughNetwork(t *testing.T) {
-	for _, carrier := range []route.CarrierProfile{route.ClosedCarrierTCP, route.ClosedCarrierQUIC} {
+	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP, routecarrier.ClosedCarrierQUIC} {
 		t.Run(string(carrier), func(t *testing.T) {
 			reader, publisher, destination := textJoinedNetworkFixture(t, carrier)
 			readerJob, publisherJob := liveTextCapsuleJob(t, reader), liveTextCapsuleJob(t, publisher)
@@ -91,17 +91,17 @@ func TestTextJoinedServiceTransfersDocumentThroughNetwork(t *testing.T) {
 	}
 }
 
-func textJoinedNetworkFixture(t *testing.T, carrier route.CarrierProfile, configure ...func(int, *node.Config)) (*textContext, *textContext, targetlink.Link) {
+func textJoinedNetworkFixture(t *testing.T, carrier routecarrier.CarrierProfile, configure ...func(int, *node.Config)) (*textContext, *textContext, targetlink.Link) {
 	return textJoinedNetworkFixtureWithReaderMaxima(t, carrier, [3]uint32{64, 64, 0}, configure...)
 }
 
-func textJoinedNetworkFixtureWithReaderMaxima(t *testing.T, carrier route.CarrierProfile, maxima [3]uint32,
+func textJoinedNetworkFixtureWithReaderMaxima(t *testing.T, carrier routecarrier.CarrierProfile, maxima [3]uint32,
 	configure ...func(int, *node.Config),
 ) (*textContext, *textContext, targetlink.Link) {
 	return textJoinedNetworkFixtureWithReaderMaximaAndRegistration(t, carrier, maxima, 120*time.Second, configure...)
 }
 
-func textJoinedNetworkFixtureWithReaderMaximaAndRegistration(t *testing.T, carrier route.CarrierProfile, maxima [3]uint32,
+func textJoinedNetworkFixtureWithReaderMaximaAndRegistration(t *testing.T, carrier routecarrier.CarrierProfile, maxima [3]uint32,
 	registration time.Duration, configure ...func(int, *node.Config),
 ) (*textContext, *textContext, targetlink.Link) {
 	t.Helper()
@@ -124,11 +124,11 @@ func textJoinedNetworkFixtureWithReaderMaximaAndRegistration(t *testing.T, carri
 	return reader, publisher, targetlink.Link{Network: endpoint.network, Target: descriptor.Descriptor.Target}
 }
 
-func textUnpublishedNetworkFixture(t *testing.T, carrier route.CarrierProfile, configure ...func(int, *node.Config)) (*textContext, *textContext) {
+func textUnpublishedNetworkFixture(t *testing.T, carrier routecarrier.CarrierProfile, configure ...func(int, *node.Config)) (*textContext, *textContext) {
 	return textUnpublishedNetworkFixtureWithReaderMaxima(t, carrier, [3]uint32{64, 64, 0}, configure...)
 }
 
-func textUnpublishedNetworkFixtureWithReaderMaxima(t *testing.T, carrier route.CarrierProfile, maxima [3]uint32,
+func textUnpublishedNetworkFixtureWithReaderMaxima(t *testing.T, carrier routecarrier.CarrierProfile, maxima [3]uint32,
 	configure ...func(int, *node.Config),
 ) (*textContext, *textContext) {
 	t.Helper()
@@ -145,7 +145,7 @@ func textUnpublishedNetworkFixtureWithReaderMaxima(t *testing.T, carrier route.C
 	return reader, publisher
 }
 
-func textPublisherNetworkWithInstance(t *testing.T, carrier route.CarrierProfile, acquire func([32]byte, time.Time, time.Time) (*instance.Root, *instance.Binding), configure ...func(int, *node.Config)) (*endpoint, *textContext, *textSourceStateFixture) {
+func textPublisherNetworkWithInstance(t *testing.T, carrier routecarrier.CarrierProfile, acquire func([32]byte, time.Time, time.Time) (*instance.Root, *instance.Binding), configure ...func(int, *node.Config)) (*endpoint, *textContext, *textSourceStateFixture) {
 	t.Helper()
 	endpoint, publisher, source := startTextRoleNetwork(t, textRoleNetworkFixture{carrier: carrier, resolution: true, publisher: true, join: true, configure: configure})
 	now := time.Now().UTC().Truncate(time.Second)

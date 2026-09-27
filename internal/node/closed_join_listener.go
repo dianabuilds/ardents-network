@@ -8,6 +8,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/resource"
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
+	routecarrier "github.com/dianabuilds/ardents-network/internal/route/carrier"
 	"github.com/dianabuilds/ardents-network/internal/route/replay"
 	"net"
 	"path/filepath"
@@ -31,7 +32,7 @@ func validateClosedDataJoinProfile(local ClosedDataJoinProfile, config runtimeCo
 		!filepath.IsAbs(local.AdmissionRoot) || filepath.Clean(local.AdmissionRoot) != local.AdmissionRoot ||
 		local.Certificate.PrivateKey == nil || local.ConnectionLimit == 0 || local.ConnectionLimit > 16 ||
 		local.DrainTimeout <= 0 || local.DrainTimeout > time.Minute || !literalNodeEndpoint(snapshot.ProbeEndpoint) ||
-		route.CarrierProfile(snapshot.CarrierProfile) != route.ClosedCarrierTCP && route.CarrierProfile(snapshot.CarrierProfile) != route.ClosedCarrierQUIC {
+		routecarrier.CarrierProfile(snapshot.CarrierProfile) != routecarrier.ClosedCarrierTCP && routecarrier.CarrierProfile(snapshot.CarrierProfile) != routecarrier.ClosedCarrierQUIC {
 		return errors.New("closed JOIN local reservation is incomplete")
 	}
 	if _, ok := closedRouteReceiver(config, snapshot, ardp.PurposeDataJoin, now); !ok {
@@ -70,7 +71,7 @@ func startClosedDataJoin(config runtimeConfig, snapshot state.NodeDuty) (*dutyHa
 	if err != nil {
 		return nil, errors.Join(err, spends.Close(), host.Close())
 	}
-	shared, err := route.ListenClosedSharedCarrier(route.CarrierProfile(snapshot.CarrierProfile), listen, local.Certificate,
+	shared, err := routecarrier.ListenClosedSharedCarrier(routecarrier.CarrierProfile(snapshot.CarrierProfile), listen, local.Certificate,
 		func(key [32]byte) bool {
 			updated, err := currentFacts(config)
 			return err == nil && closedSharedPeerCurrent(config, updated, key, config.now())
@@ -105,7 +106,7 @@ type closedDataJoinServer struct {
 	config      runtimeConfig
 	receiver    route.ClosedRoleReceiver
 	certificate tls.Certificate
-	listener    route.ClosedSharedCarrierListener
+	listener    routecarrier.ClosedSharedCarrierListener
 	spends      *replay.Ledger
 	limits      *route.ClosedDutyLimits
 	capacity    chan struct{}
@@ -166,12 +167,12 @@ func (server *closedDataJoinServer) accept(ctx context.Context) error {
 			if ctx.Err() != nil {
 				return nil
 			}
-			if route.IsClosedSharedPeerFailure(err) {
+			if routecarrier.IsClosedSharedPeerFailure(err) {
 				continue
 			}
 			return err
 		}
-		if ctx.Err() != nil || carrier.Kind != route.ClosedSharedNode {
+		if ctx.Err() != nil || carrier.Kind != routecarrier.ClosedSharedNode {
 			server.closeCarrier(carrier.Connection)
 			if ctx.Err() != nil {
 				return nil

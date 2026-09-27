@@ -6,14 +6,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/route"
+	routecarrier "github.com/dianabuilds/ardents-network/internal/route/carrier"
 )
 
 // Explicit Close supplies a fully joined expired Source without a 120-second
 // unit-test sleep. Issuance, resolution and Introduction preparation stay real;
 // this does not qualify installed workers or the idle timer itself.
 func TestTextIntroductionReopensJoinedSource(t *testing.T) {
-	for _, carrier := range []route.CarrierProfile{route.ClosedCarrierTCP, route.ClosedCarrierQUIC} {
+	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP, routecarrier.ClosedCarrierQUIC} {
 		t.Run(string(carrier), func(t *testing.T) {
 			reader, _, destination := textJoinedNetworkFixture(t, carrier)
 			job := liveTextCapsuleJob(t, reader)

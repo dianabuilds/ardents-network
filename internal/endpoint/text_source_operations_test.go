@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/network/duty"
-	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
+	routecarrier "github.com/dianabuilds/ardents-network/internal/route/carrier"
 )
 
 func TestTextSourcePreparationFailureRetainsStageAndCause(t *testing.T) {
@@ -89,7 +89,7 @@ func TestTextTokenPresentationClassifiesConcurrentRoleCommit(t *testing.T) {
 }
 
 func TestTextRefreshWaitsForActualSourceUse(t *testing.T) {
-	for _, carrier := range []route.CarrierProfile{route.ClosedCarrierTCP, route.ClosedCarrierQUIC} {
+	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP, routecarrier.ClosedCarrierQUIC} {
 		t.Run(string(carrier), func(t *testing.T) {
 			_, owner, _ := textJoinedNetworkFixture(t, carrier)
 			release, err := owner.acquireTextSourceOperation(t.Context())

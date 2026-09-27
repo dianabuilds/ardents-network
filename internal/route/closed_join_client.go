@@ -6,6 +6,7 @@ import (
 	"context"
 	"crypto/rand"
 	"errors"
+	"github.com/dianabuilds/ardents-network/internal/route/carrier"
 	"sync"
 	"time"
 
@@ -94,7 +95,7 @@ func (prefix *ClosedSourcePrefix) Join(ctx context.Context, present ClosedTokenP
 			outcome = errors.Join(outcome, prefix.Close())
 		}
 	}()
-	secured, err := OpenClosedRoleTLS(ctx, lane, peer.key, pending)
+	secured, err := carrier.OpenClosedRoleTLS(ctx, lane, peer.key, pending)
 	if err != nil {
 		return nil, err
 	}

@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"github.com/dianabuilds/ardents-network/internal/network/state"
-	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/carrier"
 )
 
 // Only the retained Route prefix sees this outage; Endpoint can still prepare
@@ -34,7 +34,7 @@ func TestTextIntroductionRetryResumesExactIssuance(t *testing.T) {
 			name = "foreign"
 		}
 		t.Run(name, func(t *testing.T) {
-			endpoint, owner, source := startTextRoleNetwork(t, textRoleNetworkFixture{carrier: route.ClosedCarrierTCP, resolution: true, publisher: true})
+			endpoint, owner, source := startTextRoleNetwork(t, textRoleNetworkFixture{carrier: carrier.ClosedCarrierTCP, resolution: true, publisher: true})
 			outage := &textIssuerOutageState{textSourceStateFixture: source}
 			endpoint.closedState = outage
 			if _, err := owner.openTextPrefix(t.Context()); err != nil {

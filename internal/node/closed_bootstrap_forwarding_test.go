@@ -15,6 +15,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/resource"
 	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/carrier"
 )
 
 type closedBootstrapFixture struct {
@@ -43,11 +44,11 @@ func newClosedBootstrapFixture(t *testing.T) *closedBootstrapFixture {
 	}
 	fixture.view.Nodes[2].RoleDomain, fixture.view.Nodes[2].Subrole = 2, 6
 	fixture.snapshot = state.NodeDuty{Generation: hex.EncodeToString(generation[:]), NetworkID: profile.NetworkID, Epoch: profile.Epoch, Digest: profile.StateDigest,
-		EpochValidFrom: fixture.now, ValidUntil: profile.NotAfter, Profile: route.ClosedRouteProfile, Fresh: true, NodeID: fixture.view.Nodes[1].NodeID,
+		EpochValidFrom: fixture.now, ValidUntil: profile.NotAfter, Profile: carrier.ClosedRouteProfile, Fresh: true, NodeID: fixture.view.Nodes[1].NodeID,
 		RecordGeneration: 12, RecordValidUntil: profile.NotAfter, DeclaredFamily: "bootstrap-interior", CandidateCount: 2}
 	for index, role := range []state.ClosedRouteNodeView{fixture.view.Nodes[0], fixture.view.Nodes[2]} {
 		fixture.snapshot.Candidates[index] = state.NodeDutyCandidate{NodeID: role.NodeID, RecordDigest: role.RecordDigest, PublicKey: [32]byte{byte(31 + index)},
-			FamilyID: [32]byte{byte(41 + index)}, Endpoint: "127.0.0.1:41000", CarrierProfile: string(route.ClosedCarrierTCP), ValidFrom: fixture.now,
+			FamilyID: [32]byte{byte(41 + index)}, Endpoint: "127.0.0.1:41000", CarrierProfile: string(carrier.ClosedCarrierTCP), ValidFrom: fixture.now,
 			ValidUntil: profile.NotAfter, AssignmentNotAfter: profile.NotAfter}
 	}
 	fixture.config = runtimeConfig{Config: Config{CurrentClosedRoute: func() (state.ClosedRouteView, error) { return fixture.view, nil }}}
@@ -69,7 +70,7 @@ func TestClosedAdmissionUsesOneConsistentRouteProjection(t *testing.T) {
 	fixture.snapshot.RecordPresent = true
 	fixture.snapshot.RecordValidFrom = fixture.now
 	fixture.snapshot.ProbeEndpoint = "127.0.0.1:41000"
-	fixture.snapshot.CarrierProfile = string(route.ClosedCarrierTCP)
+	fixture.snapshot.CarrierProfile = string(carrier.ClosedCarrierTCP)
 	fixture.config.NetworkID = fixture.snapshot.NetworkID
 	fixture.config.NodeID = fixture.snapshot.NodeID
 	fixture.config.IdentityKey = identity

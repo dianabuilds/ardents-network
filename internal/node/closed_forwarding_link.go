@@ -9,6 +9,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
+	"github.com/dianabuilds/ardents-network/internal/route/carrier"
 )
 
 // closedForwardingLink owns exactly one admitted child and its selected next
@@ -19,7 +20,7 @@ type closedForwardingLink struct {
 	remoteLane  uint32
 	localLane   uint32
 	reverse     *closedForwardingQueue
-	lease       *route.ClosedCarrierLease
+	lease       *carrier.ClosedCarrierLease
 	write       func(ardp.Frame) error
 	forward     sync.Mutex
 	forwardDone chan struct{}
@@ -343,8 +344,8 @@ func (server *closedForwardingServer) openForwardingLink(ctx context.Context, op
 	if err != nil {
 		return nil, err
 	}
-	key := route.ClosedCarrierKey{NetworkID: receiver.NetworkID, ProfileDigest: receiver.ProfileDigest, LocalNodeID: receiver.NodeID,
-		PeerNodeID: candidate.NodeID, PeerKey: candidate.PublicKey, CarrierProfile: route.CarrierProfile(candidate.CarrierProfile)}
+	key := carrier.ClosedCarrierKey{NetworkID: receiver.NetworkID, ProfileDigest: receiver.ProfileDigest, LocalNodeID: receiver.NodeID,
+		PeerNodeID: candidate.NodeID, PeerKey: candidate.PublicKey, CarrierProfile: carrier.CarrierProfile(candidate.CarrierProfile)}
 	lease, err := server.pool.AcquireContext(handshakeCtx, key, func() error {
 		fresh, readErr := currentFacts(server.config)
 		if readErr != nil {
@@ -356,8 +357,8 @@ func (server *closedForwardingServer) openForwardingLink(ctx context.Context, op
 			return errors.New("closed forwarding recipient changed")
 		}
 		return nil
-	}, func() (route.Carrier, error) {
-		return route.OpenClosedNodeCarrier(handshakeCtx, route.ClosedNodeCarrierRequest{CarrierProfile: route.CarrierProfile(candidate.CarrierProfile), Endpoint: dialEndpoint,
+	}, func() (carrier.Carrier, error) {
+		return carrier.OpenClosedNodeCarrier(handshakeCtx, carrier.ClosedNodeCarrierRequest{CarrierProfile: carrier.CarrierProfile(candidate.CarrierProfile), Endpoint: dialEndpoint,
 			Certificate: server.certificate, ExpectedPeerKey: candidate.PublicKey, Deadline: handshakeDeadline})
 	})
 	if err != nil {

@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/network/state"
-	"github.com/dianabuilds/ardents-network/internal/route"
+	routecarrier "github.com/dianabuilds/ardents-network/internal/route/carrier"
 	"github.com/dianabuilds/ardents-network/internal/route/replay"
 )
 
@@ -33,23 +33,23 @@ type oneForwardingCarrierListener struct {
 	ready      chan struct{}
 	accepted   chan struct{}
 	connection net.Conn
-	kind       route.ClosedSharedCarrierKind
+	kind       routecarrier.ClosedSharedCarrierKind
 	served     bool
 }
 
-func (listener *oneForwardingCarrierListener) Accept(ctx context.Context, _ time.Duration) (route.ClosedSharedCarrier, error) {
+func (listener *oneForwardingCarrierListener) Accept(ctx context.Context, _ time.Duration) (routecarrier.ClosedSharedCarrier, error) {
 	if !listener.served {
 		select {
 		case <-listener.ready:
 		case <-ctx.Done():
-			return route.ClosedSharedCarrier{}, ctx.Err()
+			return routecarrier.ClosedSharedCarrier{}, ctx.Err()
 		}
 		listener.served = true
 		close(listener.accepted)
-		return route.ClosedSharedCarrier{Kind: listener.kind, Connection: listener.connection}, nil
+		return routecarrier.ClosedSharedCarrier{Kind: listener.kind, Connection: listener.connection}, nil
 	}
 	<-ctx.Done()
-	return route.ClosedSharedCarrier{}, ctx.Err()
+	return routecarrier.ClosedSharedCarrier{}, ctx.Err()
 }
 
 func (*oneForwardingCarrierListener) Close() error { return nil }
@@ -73,8 +73,8 @@ func checkForwardingAcceptedCloseFailure(t *testing.T, capacity bool) {
 	defer peer.Close()
 	carrier := &refusedForwardingCarrier{Conn: local, closed: make(chan struct{}), closeErr: closeErr}
 	listener := &oneForwardingCarrierListener{ready: make(chan struct{}), accepted: make(chan struct{}), connection: carrier,
-		kind: route.ClosedSharedDirect}
-	pool, err := route.NewClosedCarrierPool(time.Now)
+		kind: routecarrier.ClosedSharedDirect}
+	pool, err := routecarrier.NewClosedCarrierPool(time.Now)
 	if err != nil {
 		t.Fatal(err)
 	}
