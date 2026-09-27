@@ -1,6 +1,6 @@
 //go:build linux
 
-package endpoint
+package worker
 
 import (
 	"bytes"
@@ -14,21 +14,21 @@ import (
 	"syscall"
 )
 
-const textWorkerArtifactPath = "/etc/ardents/text-worker-artifact.json"
-const textWorkerStopRulePath = "/usr/share/polkit-1/rules.d/50-ardents-text.rules"
+const textArtifactPath = "/etc/ardents/text-worker-artifact.json"
+const textStopRulePath = "/usr/share/polkit-1/rules.d/50-ardents-text.rules"
 
-type textWorkerArtifact struct {
+type Artifact struct {
 	manifestDigest [32]byte
-	inventory      workerInventory
+	inventory      Inventory
 	files          map[string][32]byte
 	rootDevice     uint64
 	rootInode      uint64
 }
 
-// loadInstalledWorkerArtifact reads only the root-installed local artifact
+// LoadArtifact reads only the root-installed local artifact
 // reference. Application input can neither select an inventory nor supply a digest.
-func loadInstalledWorkerArtifact(inventory workerInventory) (*textWorkerArtifact, error) {
-	body, err := readTextInstalledFile(inventory.manifest(), 16<<10)
+func LoadArtifact(inventory Inventory) (*Artifact, error) {
+	body, err := ReadInstalledFile(inventory.manifest(), 16<<10)
 	if err != nil {
 		return nil, err
 	}
@@ -49,7 +49,7 @@ func loadInstalledWorkerArtifact(inventory workerInventory) (*textWorkerArtifact
 	if decoder.Decode(&extra) != io.EOF {
 		return nil, errors.New("text worker artifact reference has trailing data")
 	}
-	artifact := &textWorkerArtifact{manifestDigest: sha256.Sum256(body), inventory: inventory, files: make(map[string][32]byte, 6)}
+	artifact := &Artifact{manifestDigest: sha256.Sum256(body), inventory: inventory, files: make(map[string][32]byte, 6)}
 	paths := []string{inventory.root() + "/" + inventory.prefix(), inventory.rule()}
 	for _, role := range []string{"reader", "publisher"} {
 		paths = append(paths, "/etc/systemd/system/"+inventory.prefix()+"-"+role+"@.service", "/etc/systemd/system/"+inventory.prefix()+"-"+role+".socket")
@@ -67,17 +67,20 @@ func loadInstalledWorkerArtifact(inventory workerInventory) (*textWorkerArtifact
 		}
 		artifact.files[path] = digest
 	}
-	if err := artifact.verify(); err != nil {
+	if err := artifact.Verify(); err != nil {
 		return nil, err
 	}
 	return artifact, nil
 }
 
-func (artifact *textWorkerArtifact) verify() error {
+// Verify rechecks the installed artifact bytes and the immutable private root
+// against the pinned digests. The first successful call pins the root device
+// and inode; a later substituted root is refused.
+func (artifact *Artifact) Verify() error {
 	if artifact == nil || len(artifact.files) != 6 {
 		return errors.New("text worker artifact is unavailable")
 	}
-	root, err := textInstalledPath(artifact.inventory.root(), true)
+	root, err := installedPath(artifact.inventory.root(), true)
 	if err != nil || root.Mode().Perm() != 0555 {
 		return errors.New("text worker immutable root is unavailable")
 	}
@@ -88,7 +91,7 @@ func (artifact *textWorkerArtifact) verify() error {
 	if artifact.rootInode != 0 && (artifact.rootDevice != uint64(identity.Dev) || artifact.rootInode != identity.Ino) {
 		return errors.New("text worker private root was substituted")
 	}
-	if err := verifyInstalledWorkerRootInventory(artifact.inventory); err != nil {
+	if err := verifyRootInventory(artifact.inventory); err != nil {
 		return err
 	}
 	for path, digest := range artifact.files {
@@ -96,7 +99,7 @@ func (artifact *textWorkerArtifact) verify() error {
 		if path == artifact.inventory.root()+"/"+artifact.inventory.prefix() {
 			limit = 64 << 20
 		}
-		body, err := readTextInstalledFile(path, limit)
+		body, err := ReadInstalledFile(path, limit)
 		if err != nil || sha256.Sum256(body) != digest {
 			return errors.New("text worker installed artifact was substituted")
 		}
@@ -109,7 +112,7 @@ func (artifact *textWorkerArtifact) verify() error {
 
 // Every ancestor is root-controlled and has no symlink or writable untrusted
 // component. The final open additionally refuses symlinks and checks identity.
-func textInstalledPath(path string, directory bool) (os.FileInfo, error) {
+func installedPath(path string, directory bool) (os.FileInfo, error) {
 	if !filepath.IsAbs(path) || filepath.Clean(path) != path {
 		return nil, errors.New("text worker installed path is invalid")
 	}
@@ -130,8 +133,8 @@ func textInstalledPath(path string, directory bool) (os.FileInfo, error) {
 	return os.Lstat(path)
 }
 
-func readTextInstalledFile(path string, maximum int64) ([]byte, error) {
-	before, err := textInstalledPath(path, false)
+func ReadInstalledFile(path string, maximum int64) ([]byte, error) {
+	before, err := installedPath(path, false)
 	if err != nil || !before.Mode().IsRegular() || before.Size() < 0 || before.Size() > maximum {
 		return nil, errors.New("text worker installed file is invalid")
 	}
@@ -157,7 +160,7 @@ func readTextInstalledFile(path string, maximum int64) ([]byte, error) {
 
 // These are empty base mount points required by the selected systemd
 // confinement. No host data or arbitrary subtree is admitted into the image.
-func verifyInstalledWorkerRootInventory(inventory workerInventory) error {
+func verifyRootInventory(inventory Inventory) error {
 	directories := map[string]bool{"dev": true, "proc": true, "sys": true, "run": true, "tmp": true,
 		"etc": true, "root": true, "usr": true, "var": true, "var/tmp": true}
 	seen := 0
@@ -176,7 +179,7 @@ func verifyInstalledWorkerRootInventory(inventory workerInventory) error {
 		if !directory && relative != inventory.prefix() {
 			return errors.New("text worker root contains an extra resource")
 		}
-		info, err := textInstalledPath(path, directory)
+		info, err := installedPath(path, directory)
 		if err != nil || info.Mode().Perm() != 0555 || (!directory && !info.Mode().IsRegular()) {
 			return errors.New("text worker root resource is mutable or invalid")
 		}
@@ -187,4 +190,32 @@ func verifyInstalledWorkerRootInventory(inventory workerInventory) error {
 		return errors.New("text worker root inventory is invalid")
 	}
 	return nil
+}
+
+// Inventory reports which root-installed artifact this reference loaded.
+func (artifact *Artifact) Inventory() Inventory {
+	if artifact == nil {
+		return Text
+	}
+	return artifact.inventory
+}
+
+// ManifestDigest returns the digest of the canonical manifest bytes.
+func (artifact *Artifact) ManifestDigest() [32]byte {
+	if artifact == nil {
+		return [32]byte{}
+	}
+	return artifact.manifestDigest
+}
+
+// FileDigests returns a copy of the pinned per-path digests.
+func (artifact *Artifact) FileDigests() map[string][32]byte {
+	if artifact == nil {
+		return nil
+	}
+	files := make(map[string][32]byte, len(artifact.files))
+	for path, digest := range artifact.files {
+		files[path] = digest
+	}
+	return files
 }

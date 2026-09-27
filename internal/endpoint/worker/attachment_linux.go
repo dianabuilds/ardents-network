@@ -1,6 +1,6 @@
 //go:build linux
 
-package endpoint
+package worker
 
 import (
 	"errors"
@@ -8,13 +8,14 @@ import (
 	"net"
 	"sync"
 	"syscall"
+	"time"
 )
 
-// textWorkerAttachment admits bytes only from the selected worker process on
+// Attachment admits bytes only from the selected worker process on
 // the exact accepted AF_UNIX stream. This is one launch check, not a Grant.
 // Every later frame also goes through Read, so SCM_RIGHTS cannot be smuggled
 // after a successful readiness exchange.
-type textWorkerAttachment struct {
+type Attachment struct {
 	connection *net.UnixConn
 	pid        uint32
 	uid        uint32
@@ -22,7 +23,42 @@ type textWorkerAttachment struct {
 	closeErr   error
 }
 
-func prepareTextWorkerSocket(connection *net.UnixConn) error {
+// NewAttachment binds an accepted local socket to the exact worker process
+// identity whose credentials every read must present.
+func NewAttachment(connection *net.UnixConn, pid, uid uint32) *Attachment {
+	return &Attachment{connection: connection, pid: pid, uid: uid}
+}
+
+// PID returns the bound worker process identity.
+func (attachment *Attachment) PID() uint32 {
+	if attachment == nil {
+		return 0
+	}
+	return attachment.pid
+}
+
+// UID returns the bound worker user identity.
+func (attachment *Attachment) UID() uint32 {
+	if attachment == nil {
+		return 0
+	}
+	return attachment.uid
+}
+
+// Connected reports whether a socket is bound.
+func (attachment *Attachment) Connected() bool {
+	return attachment != nil && attachment.connection != nil
+}
+
+// SetDeadline moves the bound socket's I/O deadline; the zero time releases it.
+func (attachment *Attachment) SetDeadline(deadline time.Time) error {
+	if attachment == nil || attachment.connection == nil {
+		return errors.New("text worker attachment is unavailable")
+	}
+	return attachment.connection.SetDeadline(deadline)
+}
+
+func prepareSocket(connection *net.UnixConn) error {
 	if connection == nil {
 		return errors.New("text worker socket is unavailable")
 	}
@@ -48,7 +84,7 @@ func prepareTextWorkerSocket(connection *net.UnixConn) error {
 	return nil
 }
 
-func (attachment *textWorkerAttachment) Read(body []byte) (int, error) {
+func (attachment *Attachment) Read(body []byte) (int, error) {
 	if attachment == nil || attachment.connection == nil || attachment.pid == 0 {
 		return 0, errors.New("text worker attachment is unavailable")
 	}
@@ -60,7 +96,7 @@ func (attachment *textWorkerAttachment) Read(body []byte) (int, error) {
 	// Go's Linux ReadMsgUnix uses MSG_CMSG_CLOEXEC before publishing any fd.
 	control := make([]byte, syscall.CmsgSpace(253*4)+syscall.CmsgSpace(syscall.SizeofUcred))
 	n, controlN, flags, _, err := attachment.connection.ReadMsgUnix(body, control)
-	controlErr := checkTextWorkerControl(control[:controlN], flags, attachment.pid, attachment.uid, n > 0)
+	controlErr := checkControl(control[:controlN], flags, attachment.pid, attachment.uid, n > 0)
 	if controlErr != nil {
 		return 0, controlErr
 	}
@@ -73,7 +109,7 @@ func (attachment *textWorkerAttachment) Read(body []byte) (int, error) {
 	return n, nil
 }
 
-func checkTextWorkerControl(control []byte, flags int, pid, uid uint32, hasBytes bool) error {
+func checkControl(control []byte, flags int, pid, uid uint32, hasBytes bool) error {
 	messages, err := syscall.ParseSocketControlMessage(control)
 	invalid := err != nil || flags&(syscall.MSG_TRUNC|syscall.MSG_CTRUNC) != 0
 	credentials := 0
@@ -103,14 +139,14 @@ func checkTextWorkerControl(control []byte, flags int, pid, uid uint32, hasBytes
 	return nil
 }
 
-func (attachment *textWorkerAttachment) Write(body []byte) (int, error) {
+func (attachment *Attachment) Write(body []byte) (int, error) {
 	if attachment == nil || attachment.connection == nil {
 		return 0, errors.New("text worker attachment is unavailable")
 	}
 	return attachment.connection.Write(body)
 }
 
-func (attachment *textWorkerAttachment) Close() error {
+func (attachment *Attachment) Close() error {
 	if attachment == nil || attachment.connection == nil {
 		return nil
 	}

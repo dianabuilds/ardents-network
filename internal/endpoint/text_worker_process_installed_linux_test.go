@@ -12,6 +12,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/endpoint/worker"
 )
 
 type installedHostileProcess struct {
@@ -21,9 +23,9 @@ type installedHostileProcess struct {
 	ignoresTERM, restricted bool
 }
 
-func pinInstalledHostileTree(t *testing.T, instance textWorkerInstance) (*os.File, []installedHostileProcess) {
+func pinInstalledHostileTree(t *testing.T, instance worker.Instance) (*os.File, []installedHostileProcess) {
 	t.Helper()
-	events, err := pinTextWorkerCgroup(instance)
+	events, err := worker.PinCgroup(instance)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -32,7 +34,7 @@ func pinInstalledHostileTree(t *testing.T, instance textWorkerInstance) (*os.Fil
 			t.Error(err)
 		}
 	})
-	body, err := readInstalledProcFile("/sys/fs/cgroup" + instance.cgroup + "/cgroup.procs")
+	body, err := readInstalledProcFile("/sys/fs/cgroup" + instance.Cgroup + "/cgroup.procs")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -46,7 +48,7 @@ func pinInstalledHostileTree(t *testing.T, instance textWorkerInstance) (*os.Fil
 		if err != nil {
 			t.Fatal(err)
 		}
-		if process.uid != uint64(instance.uid) || !process.restricted {
+		if process.uid != uint64(instance.UID) || !process.restricted {
 			t.Fatal("descendant escaped worker UID or inherited hardening")
 		}
 		processes = append(processes, process)
@@ -57,14 +59,14 @@ func pinInstalledHostileTree(t *testing.T, instance textWorkerInstance) (*os.Fil
 	var parentFound bool
 	var child int
 	for _, process := range processes {
-		if process.pid == int(instance.pid) {
+		if process.pid == int(instance.PID) {
 			parentFound = true
 			continue
 		}
 		if !process.ignoresTERM {
 			t.Fatal("hostile descendant does not ignore SIGTERM")
 		}
-		if process.parent == int(instance.pid) {
+		if process.parent == int(instance.PID) {
 			child = process.pid
 		}
 	}
@@ -80,7 +82,7 @@ func pinInstalledHostileTree(t *testing.T, instance textWorkerInstance) (*os.Fil
 	if !grandchild {
 		t.Fatal("hostile grandchild lineage missing")
 	}
-	if gone, populated, err := readTextWorkerCgroup(events); err != nil || gone || !populated {
+	if gone, populated, err := worker.ReadCgroup(events); err != nil || gone || !populated {
 		t.Fatal("hostile cgroup positive control is not populated")
 	}
 	return events, processes
@@ -173,7 +175,7 @@ func waitInstalledParentExit(t *testing.T, ctx context.Context, events *os.File,
 		if err != nil && !os.IsNotExist(err) {
 			t.Fatal(err)
 		}
-		gone, populated, err := readTextWorkerCgroup(events)
+		gone, populated, err := worker.ReadCgroup(events)
 		if err != nil {
 			t.Fatal(err)
 		}

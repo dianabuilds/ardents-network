@@ -16,24 +16,3 @@ func TestQualificationPublisherIncompleteErrorReportsProgressAndRegistrationReas
 		}
 	}
 }
-
-func TestQualificationUbuntu249KeepsParentExitInvariant(t *testing.T) {
-	service := textManagerProperties{"RemainAfterExit": {Type: "b", Data: []byte("false")}}
-	if !textEndpointStopsWithMainVersion(service, 249) {
-		t.Fatal("v249 cannot represent its normal parent lifetime")
-	}
-	for _, version := range []uint16{0, 248, 250, 255} {
-		if textEndpointStopsWithMainVersion(service, version) {
-			t.Fatalf("accepted missing properties on %d", version)
-		}
-	}
-	service["ExitType"] = textManagerValue{Type: "s", Data: []byte("\"cgroup\"")}
-	if textEndpointStopsWithMainVersion(service, 249) {
-		t.Fatal("unexpected cgroup lifetime accepted")
-	}
-	delete(service, "ExitType")
-	service["RemainAfterExit"] = textManagerValue{Type: "b", Data: []byte("true")}
-	if textEndpointStopsWithMainVersion(service, 249) {
-		t.Fatal("retained parent accepted")
-	}
-}

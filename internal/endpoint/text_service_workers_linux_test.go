@@ -54,7 +54,7 @@ func textServiceWorkerFixture(t *testing.T, binding *textServiceBinding, snapsho
 	if err := textdocument.InitializeWorker(t.Context(), attachment, mode, binding.job.nonce, snapshot); err != nil {
 		t.Fatal(err)
 	}
-	if err := attachment.connection.SetDeadline(time.Time{}); err != nil {
+	if err := attachment.SetDeadline(time.Time{}); err != nil {
 		t.Fatal(err)
 	}
 	if err := peer.SetDeadline(time.Time{}); err != nil {

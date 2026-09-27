@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
+	"github.com/dianabuilds/ardents-network/internal/endpoint/worker"
 )
 
 const (
@@ -31,7 +32,7 @@ const (
 func TestInstalledTextWorkerEscapeMatrix(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), 50*time.Second)
 	defer cancel()
-	if err := verifyTextEndpointService(ctx); err != nil {
+	if err := worker.VerifyEndpointService(ctx); err != nil {
 		t.Fatalf("invalid installed environment: %v", err)
 	}
 	probes := startInstalledEscapeProbes(t)
@@ -55,7 +56,7 @@ func TestInstalledTextWorkerEscapeMatrix(t *testing.T) {
 				t.Fatal("escape artifact did not receive the bounded verified Grant")
 			}
 			instance := installedTextWorkerInstance(t, ctx, worker, role.name)
-			events, err := pinTextWorkerCgroup(instance)
+			events, err := worker.PinCgroup(instance)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -63,7 +64,7 @@ func TestInstalledTextWorkerEscapeMatrix(t *testing.T) {
 				_ = events.Close()
 				t.Fatal(err)
 			}
-			gone, populated, err := readTextWorkerCgroup(events)
+			gone, populated, err := worker.ReadCgroup(events)
 			closeErr := events.Close()
 			if err != nil || closeErr != nil || !gone && populated {
 				t.Fatalf("escape worker cleanup: populated=%v err=%v close=%v", populated, err, closeErr)
@@ -71,7 +72,7 @@ func TestInstalledTextWorkerEscapeMatrix(t *testing.T) {
 			if worker.grant.Active() != 0 || worker.lease.Context().Err() == nil {
 				t.Fatal("escape worker retained Grant after cleanup")
 			}
-			requireInstalledTextWorkerCollected(t, ctx, instance.name, role.name)
+			requireInstalledTextWorkerCollected(t, ctx, instance.Name, role.name)
 			probes.requireNoContact(t)
 		})
 	}

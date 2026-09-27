@@ -1,6 +1,6 @@
 //go:build linux
 
-package endpoint
+package worker
 
 import (
 	"encoding/json"
@@ -11,16 +11,16 @@ import (
 func TestTextWorkerCgroupObservationNeverInfersEmptyFromMissingData(t *testing.T) {
 	for _, body := range []string{"", "populated 0\n", "frozen 0\n", "populated 0\npopulated 0\n", "populated 0\nfrozen 0\nextra 0\n",
 		"populated 2\nfrozen 0\n", "populated 0\nfrozen null\n", strings.Repeat(" ", 1025) + "populated 0 frozen 0"} {
-		if _, err := decodeTextWorkerCgroup([]byte(body)); err == nil {
+		if _, err := decodeCgroupEvents([]byte(body)); err == nil {
 			t.Fatalf("unknown cgroup observation accepted: %q", body[:min(len(body), 80)])
 		}
 	}
 	for _, body := range []string{"populated 0\nfrozen 0\n", "frozen 1\npopulated 0\n"} {
-		if populated, err := decodeTextWorkerCgroup([]byte(body)); err != nil || populated {
+		if populated, err := decodeCgroupEvents([]byte(body)); err != nil || populated {
 			t.Fatalf("known empty cgroup: populated=%v err=%v", populated, err)
 		}
 	}
-	if populated, err := decodeTextWorkerCgroup([]byte("populated 1\nfrozen 0\n")); err != nil || !populated {
+	if populated, err := decodeCgroupEvents([]byte("populated 1\nfrozen 0\n")); err != nil || !populated {
 		t.Fatal("live descendants were classified as empty")
 	}
 }
@@ -29,22 +29,22 @@ func TestTextWorkerCgroupPathRejectsTraversalAndForeignUnits(t *testing.T) {
 	name := "ardents-text-reader@0-12-997.service"
 	for _, group := range []string{"", "/" + name, "/system.slice/../" + name, "/system.slice//" + name,
 		"/system.slice/" + name + "/child", "/system.slice/other.service", "/system.slice/\n" + name} {
-		if textWorkerCgroupPath(group, name, "reader") {
+		if cgroupPath(group, name, "reader") {
 			t.Fatalf("foreign cgroup path accepted: %q", group)
 		}
 	}
-	if !textWorkerCgroupPath("/system.slice/"+name, name, "reader") {
+	if !cgroupPath("/system.slice/"+name, name, "reader") {
 		t.Fatal("installed worker cgroup path refused")
 	}
-	if textWorkerCgroupPath("/system.slice/foreign.scope/"+name, name, "reader") {
+	if cgroupPath("/system.slice/foreign.scope/"+name, name, "reader") {
 		t.Fatal("nested foreign text worker cgroup accepted")
 	}
 	streamName := "ardents-stream-qualification-reader@0-12-997.service"
-	if !textWorkerCgroupPath(streamWorkerCgroupRoot+streamName, streamName, "reader") {
+	if !cgroupPath(streamCgroupRoot+streamName, streamName, "reader") {
 		t.Fatal("qualification owner slice path refused")
 	}
-	for _, group := range []string{"/system.slice/" + streamName, "/foreign" + streamWorkerCgroupRoot + streamName, streamWorkerCgroupRoot + "nested/" + streamName} {
-		if textWorkerCgroupPath(group, streamName, "reader") {
+	for _, group := range []string{"/system.slice/" + streamName, "/foreign" + streamCgroupRoot + streamName, streamCgroupRoot + "nested/" + streamName} {
+		if cgroupPath(group, streamName, "reader") {
 			t.Fatalf("foreign qualification cgroup path accepted: %q", group)
 		}
 	}
@@ -52,7 +52,7 @@ func TestTextWorkerCgroupPathRejectsTraversalAndForeignUnits(t *testing.T) {
 
 func TestTextWorkerCleanupRejectsChangedOrUnknownInvocation(t *testing.T) {
 	instance, unit, service := textCleanupObservation(t)
-	if !sameTextWorkerCleanupInstance(instance, unit, service) {
+	if !sameCleanupInstance(instance, unit, service) {
 		t.Fatal("exact live cleanup invocation refused")
 	}
 	for _, test := range []struct {
@@ -73,39 +73,39 @@ func TestTextWorkerCleanupRejectsChangedOrUnknownInvocation(t *testing.T) {
 		if test.unit {
 			properties = unit
 		}
-		properties[test.key] = textManagerValue{Type: test.signature, Data: json.RawMessage(test.raw)}
-		if sameTextWorkerCleanupInstance(instance, unit, service) {
+		properties[test.key] = Value{Type: test.signature, Data: json.RawMessage(test.raw)}
+		if sameCleanupInstance(instance, unit, service) {
 			t.Fatalf("cleanup accepted altered %s", test.key)
 		}
 	}
-	service["MainPID"] = textManagerValue{Type: "u", Data: json.RawMessage(`0`)}
-	service["ControlGroup"] = textManagerValue{Type: "s", Data: json.RawMessage(`""`)}
-	if !sameTextWorkerCleanupInstance(instance, unit, service) {
+	service["MainPID"] = Value{Type: "u", Data: json.RawMessage(`0`)}
+	service["ControlGroup"] = Value{Type: "s", Data: json.RawMessage(`""`)}
+	if !sameCleanupInstance(instance, unit, service) {
 		t.Fatal("same invocation after initial PID exit was lost")
 	}
 }
 
-func textCleanupObservation(t *testing.T) (textWorkerInstance, textManagerProperties, textManagerProperties) {
+func textCleanupObservation(t *testing.T) (Instance, Properties, Properties) {
 	t.Helper()
-	instance := textWorkerInstance{name: "ardents-text-reader@0-12-997.service", role: "reader", pid: 42, uid: 61234, invocation: [16]byte{1}}
-	instance.cgroup = "/system.slice/" + instance.name
-	value := func(signature string, data any) textManagerValue {
+	instance := Instance{Name: "ardents-text-reader@0-12-997.service", Role: "reader", PID: 42, UID: 61234, Invocation: [16]byte{1}}
+	instance.Cgroup = "/system.slice/" + instance.Name
+	value := func(signature string, data any) Value {
 		body, err := json.Marshal(data)
 		if err != nil {
 			t.Fatal(err)
 		}
-		return textManagerValue{Type: signature, Data: body}
+		return Value{Type: signature, Data: body}
 	}
-	unit := textManagerProperties{"Id": value("s", instance.name), "LoadState": value("s", "loaded"),
+	unit := Properties{"Id": value("s", instance.Name), "LoadState": value("s", "loaded"),
 		"InvocationID": value("ay", []int{1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0})}
-	service := textManagerProperties{"MainPID": value("u", instance.pid), "ControlGroup": value("s", instance.cgroup),
+	service := Properties{"MainPID": value("u", instance.PID), "ControlGroup": value("s", instance.Cgroup),
 		"Restart": value("s", "no"), "KillMode": value("s", "control-group"), "Delegate": value("b", false),
 		"TimeoutStopUSec": value("t", uint64(2_000_000)), "ExecStop": value("a(sasbttttuii)", []any{}), "ExecStopPost": value("a(sasbttttuii)", []any{})}
 	return instance, unit, service
 }
 
 func TestTextWorkerCleanupFailureCannotBecomeSuccessOnRepeat(t *testing.T) {
-	owner := &textWorkerCleanup{}
+	owner := &Cleanup{}
 	first := owner.Close()
 	if first == nil || owner.Close() != first {
 		t.Fatal("missing cleanup identity became reusable after failure")

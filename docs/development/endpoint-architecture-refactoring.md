@@ -161,10 +161,16 @@ files. The shutdown dependency order is defined by
 The decomposition proceeds in completed, locally verified slices; each slice
 is one coherent commit series on the Endpoint work branch:
 
-1. **Worker extraction** (current slice): move the installed mechanism into
-   `internal/endpoint/worker` per the boundary contract above. Endpoint keeps
-   the launch permission and the lifetime binding.
-2. **Qualification separation**: move the qualification scenario
+1. **Worker extraction** (completed in this branch): the installed mechanism
+   lives in `internal/endpoint/worker` per the boundary contract above.
+   Endpoint kept the launch permission, the activation gate, the readiness
+   exchange, and the lifetime/Grant binding; `worker.Activate` performs the
+   mechanism sequence in the original check and failure order and reports a
+   dialed-but-failed activation through its result so Endpoint cleanup keeps
+   its exact position. Mechanism unit tests moved with their production owner;
+   the installed Ubuntu-host batteries still drive the exported surface from
+   `internal/endpoint`.
+2. **Qualification separation** (current slice): move the qualification scenario
    orchestration — private context construction, job identity usage, token
    refill and qualification connection management — to the owner in
    `internal/qualification`. Endpoint retains the authorized participant

@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
+	"github.com/dianabuilds/ardents-network/internal/endpoint/worker"
 )
 
 func TestTextWorkerLifetimeRefusesUnpinnedInvocationBeforeINIT(t *testing.T) {
@@ -20,7 +21,7 @@ func TestTextWorkerLifetimeRefusesUnpinnedInvocationBeforeINIT(t *testing.T) {
 	attachment, peer := textAttachmentPair(t)
 	// Matching local socket credentials cannot substitute for an observed and
 	// pinned installed invocation. No real cgroup is created by this fixture.
-	instance := textWorkerInstance{name: "ardents-text-reader@0-12-997.service", role: "reader", pid: attachment.pid, uid: attachment.uid}
+	instance := worker.Instance{Name: "ardents-text-reader@0-12-997.service", Role: "reader", PID: attachment.PID(), UID: attachment.UID()}
 	lifetime, err := initializeOwnedTextWorker(context.Background(), context.Background(), attachment, instance, job, nil, nil)
 	if err == nil || lifetime != nil {
 		t.Fatal("unverified invocation initialized a worker")
@@ -45,11 +46,11 @@ func TestTextWorkerLifetimeRepeatedInitializationCannotConsumeAnotherAttachment(
 		t.Fatal(err)
 	}
 	first, _ := textAttachmentPair(t)
-	if _, err := initializeOwnedTextWorker(context.Background(), context.Background(), first, textWorkerInstance{}, job, nil, nil); err == nil {
+	if _, err := initializeOwnedTextWorker(context.Background(), context.Background(), first, worker.Instance{}, job, nil, nil); err == nil {
 		t.Fatal("empty invocation accepted")
 	}
 	other, peer := textAttachmentPair(t)
-	if _, err := initializeOwnedTextWorker(context.Background(), context.Background(), other, textWorkerInstance{}, job, nil, nil); err == nil {
+	if _, err := initializeOwnedTextWorker(context.Background(), context.Background(), other, worker.Instance{}, job, nil, nil); err == nil {
 		t.Fatal("job consumed twice")
 	}
 	if _, err := peer.Write([]byte{7}); err != nil {

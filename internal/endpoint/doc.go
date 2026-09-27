@@ -33,6 +33,9 @@
 //     text_resolution.go coordinates lookup and rechecks live authority.
 //   - text_job_lifecycle.go owns invocation identity and joined cleanup;
 //     text_worker_lifetime_linux.go owns the installed worker process lifetime.
+//     The child worker package owns the installed worker mechanism only —
+//     artifact pinning, activation, process identity, credentialed attachment,
+//     and verified stop — and grants nothing.
 //   - service_tls.go owns Instance authentication and exporter handoff;
 //     protected_service_tls.go selects the protected Service groups and preserves
 //     authenticated Route retirement through the TLS wrapper.
@@ -40,10 +43,10 @@
 // The Route capsule package owns Introduction sealing and decoding; Endpoint
 // checks decoded facts against live participant and publication authority.
 //
-// Durable token attempts and Transit Grant acquisition live in the child
-// tokenjournal and transit packages. The durableroot package owns their shared
-// filesystem lease and atomic-write primitives. The permissionfile package
-// owns the separate owner-private offline permission file handover. Tests follow their production
+// Durable token attempts live in the child tokenjournal package. The
+// durableroot package owns its shared filesystem lease and atomic-write
+// primitives. The permissionfile package owns the separate owner-private
+// offline permission file handover. Tests follow their production
 // owner; the role-network fixture in text_issuance_network_test.go selects
 // the Carrier, text_network_node_fixture_test.go owns each fixture Node's
 // readiness and joined cleanup, and text_join_service_network_test.go exercises

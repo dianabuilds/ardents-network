@@ -14,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/endpoint/worker"
 	"github.com/dianabuilds/ardents-network/internal/service/instance"
 )
 
@@ -100,7 +101,7 @@ func installedServiceCommandArtifact(t *testing.T, name, pinName string) string 
 	t.Helper()
 	path := "/usr/lib/ardents/qualification/" + name
 	expected := os.Getenv(pinName)
-	raw, err := readTextInstalledFile(path, 128<<20)
+	raw, err := worker.ReadInstalledFile(path, 128<<20)
 	if err != nil {
 		t.Fatalf("installed %s unavailable: %v", name, err)
 	}

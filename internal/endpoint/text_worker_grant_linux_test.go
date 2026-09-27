@@ -4,7 +4,6 @@ package endpoint
 
 import (
 	"context"
-	"encoding/json"
 	"testing"
 	"time"
 
@@ -146,34 +145,6 @@ func TestAlreadyCancelledTextLaunchHasNoEffects(t *testing.T) {
 	}
 }
 
-func TestEndpointMainExitCannotLeaveItsUnitLogicallyActive(t *testing.T) {
-	valid := textManagerProperties{
-		"RemainAfterExit": {Type: "b", Data: json.RawMessage("false")},
-		"ExitType":        {Type: "s", Data: json.RawMessage(`"main"`)},
-		"RestartMode":     {Type: "s", Data: json.RawMessage(`"normal"`)},
-	}
-	if !textEndpointStopsWithMainVersion(valid, 255) {
-		t.Fatal("selected Endpoint lifetime refused")
-	}
-	for _, test := range []struct {
-		name  string
-		value textManagerValue
-	}{
-		{"RemainAfterExit", textManagerValue{Type: "b", Data: json.RawMessage("true")}},
-		{"RemainAfterExit", textManagerValue{Type: "b", Data: json.RawMessage("null")}},
-		{"ExitType", textManagerValue{Type: "s", Data: json.RawMessage(`"cgroup"`)}},
-		{"RestartMode", textManagerValue{Type: "s", Data: json.RawMessage(`"direct"`)}},
-		{"RestartMode", textManagerValue{}},
-	} {
-		previous := valid[test.name]
-		valid[test.name] = test.value
-		if textEndpointStopsWithMainVersion(valid, 255) {
-			t.Errorf("accepted parent lifetime %s=%s", test.name, test.value.Data)
-		}
-		valid[test.name] = previous
-	}
-}
-
 func TestTextLaunchCancellationReleasesWaitingReservation(t *testing.T) {
 	endpoint, principal := textContextEndpoint(t)
 	owner := admittedTextContext(t, endpoint, principal, broker.Connection)
@@ -217,30 +188,5 @@ func TestTextLaunchCancellationReleasesWaitingReservation(t *testing.T) {
 	owner.mu.Unlock()
 	if pending || !endpoint.textAvailable() {
 		t.Fatal("no-effect waiting cancellation retained pressure or terminalized Endpoint")
-	}
-}
-
-func TestTextLaunchRejectsOtherOrUnknownPlatform(t *testing.T) {
-	if !textUbuntuRelease([]byte("ID=ubuntu\nVERSION_ID=\"24.04\"\n")) {
-		t.Fatal("selected OS identity refused")
-	}
-	for _, body := range []string{"ID=debian\nVERSION_ID=24.04\n", "ID=ubuntu\nVERSION_ID=26.04\n", "ID=ubuntu\n", "ID=ubuntu\nID=debian\nVERSION_ID=24.04\n"} {
-		if textUbuntuRelease([]byte(body)) {
-			t.Fatal("unsupported or ambiguous OS admitted")
-		}
-	}
-	for _, test := range []struct {
-		value textManagerValue
-		want  bool
-	}{
-		{textManagerValue{Type: "v", Data: json.RawMessage(`[{"type":"s","data":"255.4-1ubuntu8.17"}]`)}, true},
-		{textManagerValue{Type: "v", Data: json.RawMessage(`[{"type":"s","data":"256.4"}]`)}, false},
-		{textManagerValue{Type: "v", Data: json.RawMessage(`[{"type":"s","data":"2550.4"}]`)}, false},
-		{textManagerValue{Type: "v", Data: json.RawMessage(`[{"type":"u","data":255}]`)}, false},
-		{textManagerValue{Type: "v", Data: json.RawMessage(`null`)}, false},
-	} {
-		if textSystemdVersion(test.value) != test.want {
-			t.Fatal("unknown system manager version admitted or selected version refused")
-		}
 	}
 }

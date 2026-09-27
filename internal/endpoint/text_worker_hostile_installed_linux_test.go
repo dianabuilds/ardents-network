@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
+	"github.com/dianabuilds/ardents-network/internal/endpoint/worker"
 )
 
 // The selected hostile artifact uses actual INIT/readiness and Grant, while
@@ -17,7 +18,7 @@ import (
 func TestInstalledTextWorkerHostileTree(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), 45*time.Second)
 	defer cancel()
-	if err := verifyTextEndpointService(ctx); err != nil {
+	if err := worker.VerifyEndpointService(ctx); err != nil {
 		t.Fatalf("invalid installed environment: %v", err)
 	}
 	for _, role := range []struct {
@@ -37,33 +38,33 @@ func TestInstalledTextWorkerHostileTree(t *testing.T) {
 			siblingEvents, siblingPIDs := pinInstalledHostileTree(t, siblingUnit)
 
 			owner := admittedTextContext(t, endpoint, principal, role.surface)
-			worker := launchInstalledHostileWorker(t, ctx, owner, role.snapshot)
-			unit := installedTextWorkerInstance(t, ctx, worker, role.name)
+			bound := launchInstalledHostileWorker(t, ctx, owner, role.snapshot)
+			unit := installedTextWorkerInstance(t, ctx, bound, role.name)
 			events, processes := pinInstalledHostileTree(t, unit)
 			if unit.uid == siblingUnit.uid || unit.cgroup == siblingUnit.cgroup {
 				t.Fatal("sibling workers share an isolation identity")
 			}
 			owner.mu.Lock()
-			originalNonce := worker.job.nonce
+			originalNonce := bound.job.nonce
 			owner.mu.Unlock()
 			if originalNonce == [32]byte{} {
 				t.Fatal("live victim nonce is absent")
 			}
-			if err := worker.Close(); err != nil {
+			if err := bound.Close(); err != nil {
 				t.Fatal(err)
 			}
 			requireInstalledTreeGone(t, events, processes)
-			if worker.grant.Active() != 0 || worker.lease.Context().Err() == nil || !worker.completedCurrent() {
+			if bound.grant.Active() != 0 || bound.lease.Context().Err() == nil || !bound.completedCurrent() {
 				t.Fatal("cleanup failed to revoke only the victim job")
 			}
 			requireInstalledTextWorkerCollected(t, ctx, unit.name, role.name)
-			if current, err := observeTextWorkerInstance(ctx, siblingUnit.name, "publisher"); err != nil || current != siblingUnit {
+			if current, err := worker.ObserveInstance(ctx, siblingUnit.Name, "publisher"); err != nil || current != siblingUnit {
 				t.Fatalf("victim cleanup changed sibling invocation: %v", err)
 			}
 			if sibling.grant.Active() != 1 || sibling.lease.Context().Err() != nil {
 				t.Fatal("victim cleanup revoked sibling authority")
 			}
-			if gone, populated, err := readTextWorkerCgroup(siblingEvents); err != nil || gone || !populated {
+			if gone, populated, err := worker.ReadCgroup(siblingEvents); err != nil || gone || !populated {
 				t.Fatal("victim cleanup terminated sibling tree")
 			}
 			requireInstalledPublisherProgress(t, ctx, sibling, document)
@@ -71,7 +72,7 @@ func TestInstalledTextWorkerHostileTree(t *testing.T) {
 				t.Fatal(err)
 			}
 			requireInstalledTreeGone(t, siblingEvents, siblingPIDs)
-			requireInstalledTextWorkerCollected(t, ctx, siblingUnit.name, "publisher")
+			requireInstalledTextWorkerCollected(t, ctx, siblingUnit.Name, "publisher")
 			if sibling.completedCurrent() || sibling.grant.Active() != 0 {
 				t.Fatal("sibling owner revoke retained authority")
 			}
@@ -82,7 +83,7 @@ func TestInstalledTextWorkerHostileTree(t *testing.T) {
 			owner.mu.Lock()
 			replacementNonce := replacement.job.nonce
 			owner.mu.Unlock()
-			if replacement.job == worker.job || replacementNonce == originalNonce || replacementNonce == [32]byte{} || worker.completedCurrent() {
+			if replacement.job == bound.job || replacementNonce == originalNonce || replacementNonce == [32]byte{} || bound.completedCurrent() {
 				t.Fatal("replacement inherited the retired job")
 			}
 			replacementUnit := installedTextWorkerInstance(t, ctx, replacement, role.name)
@@ -106,24 +107,24 @@ func TestInstalledTextWorkerHostileTree(t *testing.T) {
 
 func launchInstalledHostileWorker(t *testing.T, ctx context.Context, owner *textContext, snapshot []byte) *qualifiedTextWorker {
 	t.Helper()
-	worker, err := owner.launchTextWorker(ctx, snapshot)
+	bound, err := owner.launchTextWorker(ctx, snapshot)
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() {
-		if err := worker.Close(); err != nil {
+		if err := bound.Close(); err != nil {
 			t.Error(err)
 		}
 	})
-	if worker.grant.Active() != 1 || worker.lease.Context().Err() != nil {
+	if bound.grant.Active() != 1 || bound.lease.Context().Err() != nil {
 		t.Fatal("hostile artifact did not pass actual readiness and Grant")
 	}
-	return worker
+	return bound
 }
 
 func requireInstalledTreeGone(t *testing.T, events *os.File, processes []installedHostileProcess) {
 	t.Helper()
-	gone, populated, err := readTextWorkerCgroup(events)
+	gone, populated, err := worker.ReadCgroup(events)
 	if err != nil || !gone && populated {
 		t.Fatalf("original hostile cgroup still populated: %v", err)
 	}

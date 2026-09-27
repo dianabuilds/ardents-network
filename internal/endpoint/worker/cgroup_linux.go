@@ -1,6 +1,6 @@
 //go:build linux
 
-package endpoint
+package worker
 
 import (
 	"errors"
@@ -12,19 +12,19 @@ import (
 )
 
 const (
-	textCgroup2Magic       = 0x63677270
-	streamWorkerCgroupRoot = "/ardents.slice/ardents-qualification.slice/ardents-qualification-owner.slice/"
+	cgroup2Magic     = 0x63677270
+	streamCgroupRoot = "/ardents.slice/ardents-qualification.slice/ardents-qualification-owner.slice/"
 )
 
-// pinTextWorkerCgroup retains the kernel events object of the observed unit.
+// PinCgroup retains the kernel events object of the observed unit.
 // A later pathname lookup cannot substitute another invocation's cgroup.
 // This is cleanup ownership, not evidence authorizing a Principal or Grant.
-func pinTextWorkerCgroup(instance textWorkerInstance) (*os.File, error) {
-	if !textWorkerCgroupPath(instance.cgroup, instance.name, instance.role) {
+func PinCgroup(instance Instance) (*os.File, error) {
+	if !cgroupPath(instance.Cgroup, instance.Name, instance.Role) {
 		return nil, errors.New("text worker cgroup identity is invalid")
 	}
-	path := "/sys/fs/cgroup" + instance.cgroup
-	before, err := textInstalledPath(path, true)
+	path := "/sys/fs/cgroup" + instance.Cgroup
+	before, err := installedPath(path, true)
 	if err != nil {
 		return nil, errors.New("text worker cgroup ownership is unavailable")
 	}
@@ -36,7 +36,7 @@ func pinTextWorkerCgroup(instance textWorkerInstance) (*os.File, error) {
 	defer directory.Close()
 	after, err := directory.Stat()
 	var filesystem syscall.Statfs_t
-	if err != nil || !os.SameFile(before, after) || syscall.Fstatfs(fd, &filesystem) != nil || filesystem.Type != textCgroup2Magic {
+	if err != nil || !os.SameFile(before, after) || syscall.Fstatfs(fd, &filesystem) != nil || filesystem.Type != cgroup2Magic {
 		return nil, errors.New("text worker cgroup filesystem is unverified")
 	}
 	eventFD, err := syscall.Openat(fd, "cgroup.events", syscall.O_RDONLY|syscall.O_NOFOLLOW|syscall.O_CLOEXEC, 0)
@@ -49,7 +49,7 @@ func pinTextWorkerCgroup(instance textWorkerInstance) (*os.File, error) {
 		_ = events.Close()
 		return nil, errors.New("text worker cgroup events ownership is unverified")
 	}
-	removed, _, err := readTextWorkerCgroup(events)
+	removed, _, err := ReadCgroup(events)
 	if err != nil || removed {
 		_ = events.Close()
 		return nil, errors.New("text worker cgroup disappeared before pinning")
@@ -57,24 +57,24 @@ func pinTextWorkerCgroup(instance textWorkerInstance) (*os.File, error) {
 	return events, nil
 }
 
-func textWorkerCgroupPath(group, name, role string) bool {
-	if !textWorkerUnit(name, role) || len(group) > 4096 || !strings.HasSuffix(group, "/"+name) ||
+func cgroupPath(group, name, role string) bool {
+	if !ValidUnit(name, role) || len(group) > 4096 || !strings.HasSuffix(group, "/"+name) ||
 		filepath.Clean(group) != group || strings.ContainsAny(group, "\x00\r\n") {
 		return false
 	}
-	if inventoryOfUnit(name) == streamInventory {
-		return strings.HasPrefix(group, streamWorkerCgroupRoot) && !strings.Contains(strings.TrimPrefix(group, streamWorkerCgroupRoot), "/")
+	if OfUnit(name) == Stream {
+		return strings.HasPrefix(group, streamCgroupRoot) && !strings.Contains(strings.TrimPrefix(group, streamCgroupRoot), "/")
 	}
 	return strings.HasPrefix(group, "/system.slice/") && !strings.Contains(strings.TrimPrefix(group, "/system.slice/"), "/")
 }
 
-// readTextWorkerCgroup accepts ENODEV only on the already-pinned cgroup v2
+// ReadCgroup accepts ENODEV only on the already-pinned cgroup v2
 // events object. kernfs deactivates this core file when its group is removed;
 // unlike inode link counts, this survives path reuse without observing a new
 // group. Seek also takes a kernfs active reference and can report ENODEV.
 // Removal requires no live processes or child cgroups. Other seek/read errors
 // and missing/unknown populated observations never mean successful cleanup.
-func readTextWorkerCgroup(events *os.File) (removed, populated bool, resultErr error) {
+func ReadCgroup(events *os.File) (removed, populated bool, resultErr error) {
 	if events == nil {
 		return false, false, errors.New("text worker cgroup pin is absent")
 	}
@@ -91,11 +91,11 @@ func readTextWorkerCgroup(events *os.File) (removed, populated bool, resultErr e
 	if err != nil || len(body) > 1024 {
 		return false, false, errors.New("text worker cgroup observation is unavailable")
 	}
-	populated, err = decodeTextWorkerCgroup(body)
+	populated, err = decodeCgroupEvents(body)
 	return false, populated, err
 }
 
-func decodeTextWorkerCgroup(body []byte) (bool, error) {
+func decodeCgroupEvents(body []byte) (bool, error) {
 	fields := strings.Fields(string(body))
 	if len(body) > 1024 || len(fields) != 4 {
 		return false, errors.New("text worker cgroup observation is invalid")

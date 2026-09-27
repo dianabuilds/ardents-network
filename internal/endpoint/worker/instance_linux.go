@@ -1,6 +1,6 @@
 //go:build linux
 
-package endpoint
+package worker
 
 import (
 	"context"
@@ -11,48 +11,48 @@ import (
 	"strings"
 )
 
-// textWorkerListing is a system-manager observation, not a launch receipt.
+// Listing is a system-manager observation, not a launch receipt.
 // Keep failed and activating units too: filtering to active units would let a
 // delayed previous activation masquerade as the next job's new worker.
-type textWorkerListing map[string]textWorkerUnitState
+type Listing map[string]UnitState
 
-type textWorkerUnitState struct {
-	active string
+type UnitState struct {
+	Active string
 	// pendingStart is proven by the same manager tuple as inactive/dead.
 	// It permits waiting for this unit, never readiness or a Grant.
 	pendingStart bool
 }
 
-func listInstalledWorkerInstances(ctx context.Context, role string, inventory workerInventory) (textWorkerListing, error) {
+func ListInstances(ctx context.Context, role string, inventory Inventory) (Listing, error) {
 	if role != "reader" && role != "publisher" || os.Getpid() <= 0 || os.Geteuid() <= 0 {
 		return nil, errors.New("text worker activation owner is unavailable")
 	}
 	suffix := "-" + strconv.Itoa(os.Getpid()) + "-" + strconv.Itoa(os.Geteuid()) + ".service"
-	answer, err := textManagerCall(ctx, "/org/freedesktop/systemd1", "org.freedesktop.systemd1.Manager",
+	answer, err := managerCall(ctx, "/org/freedesktop/systemd1", "org.freedesktop.systemd1.Manager",
 		"ListUnitsByPatterns", "asas", "0", "1", inventory.prefix()+"-"+role+"@*"+suffix)
 	if err != nil {
 		return nil, err
 	}
-	listing, err := decodeTextWorkerInstances(answer, role, suffix)
+	listing, err := decodeInstances(answer, role, suffix)
 	for name := range listing {
-		if inventoryOfUnit(name) != inventory {
+		if OfUnit(name) != inventory {
 			return nil, errors.New("worker inventory differs")
 		}
 	}
 	return listing, err
 }
 
-func decodeTextWorkerInstances(answer textManagerValue, role, suffix string) (textWorkerListing, error) {
+func decodeInstances(answer Value, role, suffix string) (Listing, error) {
 	var payload [][][]json.RawMessage
 	if answer.Type != "a(ssssssouso)" || json.Unmarshal(answer.Data, &payload) != nil || len(payload) != 1 || payload[0] == nil || len(payload[0]) > 128 {
 		return nil, errors.New("text worker activation inventory is unavailable")
 	}
-	found := make(textWorkerListing, len(payload[0]))
+	found := make(Listing, len(payload[0]))
 	for _, entry := range payload[0] {
 		var name, state, loaded, substate, jobType, jobPath string
 		var jobID uint32
 		if len(entry) != 10 || json.Unmarshal(entry[0], &name) != nil || json.Unmarshal(entry[3], &state) != nil ||
-			!textWorkerUnit(name, role) || !strings.HasSuffix(name, suffix) || state == "" {
+			!ValidUnit(name, role) || !strings.HasSuffix(name, suffix) || state == "" {
 			return nil, errors.New("text worker activation inventory is invalid")
 		}
 		if json.Unmarshal(entry[2], &loaded) != nil || loaded == "" ||
@@ -67,16 +67,16 @@ func decodeTextWorkerInstances(answer textManagerValue, role, suffix string) (te
 		if _, duplicate := found[name]; duplicate {
 			return nil, errors.New("text worker activation inventory is ambiguous")
 		}
-		found[name] = textWorkerUnitState{active: state, pendingStart: loaded == "loaded" &&
+		found[name] = UnitState{Active: state, pendingStart: loaded == "loaded" &&
 			state == "inactive" && substate == "dead" && jobID != 0 && jobType == "start"}
 	}
 	return found, nil
 }
 
-// newTextWorkerInstance only selects a newly observed unit. Its caller owns a
+// selectNewInstance only selects a newly observed unit. Its caller owns a
 // serial activation gate from the baseline through joined cleanup on failure;
 // a timed-out activation must never release that gate for a replacement job.
-func newTextWorkerInstance(before, after textWorkerListing, candidate string) (string, error) {
+func selectNewInstance(before, after Listing, candidate string) (string, error) {
 	if before == nil || after == nil {
 		return "", errors.New("text worker activation inventory is absent")
 	}
@@ -88,7 +88,7 @@ func newTextWorkerInstance(before, after textWorkerListing, candidate string) (s
 		if selected != "" {
 			return "", errors.New("text worker activation inventory contains multiple new units")
 		}
-		if state.active != "active" && state.active != "activating" && !state.pendingStart {
+		if state.Active != "active" && state.Active != "activating" && !state.pendingStart {
 			return "", errors.New("text worker activation has no active or pending start")
 		}
 		selected = name
@@ -99,59 +99,59 @@ func newTextWorkerInstance(before, after textWorkerListing, candidate string) (s
 	return selected, nil
 }
 
-// textWorkerInstance binds manager-owned identity to one live activation.
+// Instance binds manager-owned identity to one live activation.
 // It still grants nothing: exact socket credentials, readiness, current job,
 // artifact and a cleanup owner must all be verified before a Principal exists.
-type textWorkerInstance struct {
-	name       string
-	role       string
-	cgroup     string
-	pid        uint32
-	uid        uint32
-	invocation [16]byte
+type Instance struct {
+	Name       string
+	Role       string
+	Cgroup     string
+	PID        uint32
+	UID        uint32
+	Invocation [16]byte
 }
 
-func observeTextWorkerInstance(ctx context.Context, name, role string) (textWorkerInstance, error) {
-	unit, service, err := readTextWorkerProperties(ctx, name, role)
+func ObserveInstance(ctx context.Context, name, role string) (Instance, error) {
+	unit, service, err := ReadProperties(ctx, name, role)
 	if err != nil {
-		return textWorkerInstance{}, err
+		return Instance{}, err
 	}
-	observed := textWorkerInstance{name: name, role: role}
+	observed := Instance{Name: name, Role: role}
 	pid, pidOK := service["MainPID"]
 	group, groupOK := service["ControlGroup"]
 	id, idOK := unit["InvocationID"]
-	if !pidOK || pid.Type != "u" || json.Unmarshal(pid.Data, &observed.pid) != nil ||
-		!groupOK || group.Type != "s" || json.Unmarshal(group.Data, &observed.cgroup) != nil ||
-		!idOK || !decodeTextWorkerInvocation(id, &observed.invocation) {
-		return textWorkerInstance{}, errors.New("text worker invocation is unavailable")
+	if !pidOK || pid.Type != "u" || json.Unmarshal(pid.Data, &observed.PID) != nil ||
+		!groupOK || group.Type != "s" || json.Unmarshal(group.Data, &observed.Cgroup) != nil ||
+		!idOK || !decodeInvocation(id, &observed.Invocation) {
+		return Instance{}, errors.New("text worker invocation is unavailable")
 	}
-	if observed.invocation == [16]byte{} || !unit.exact("TriggeredBy", "as", []string{inventoryOfUnit(name).prefix() + "-" + role + ".socket"}) {
-		return textWorkerInstance{}, errors.New("text worker socket activation is unavailable")
+	if observed.Invocation == [16]byte{} || !unit.exact("TriggeredBy", "as", []string{OfUnit(name).prefix() + "-" + role + ".socket"}) {
+		return Instance{}, errors.New("text worker socket activation is unavailable")
 	}
-	version, err := installedTextManagerVersion(ctx)
+	version, err := ManagerVersion(ctx)
 	if err != nil {
-		return textWorkerInstance{}, err
+		return Instance{}, err
 	}
-	if err := verifyTextWorkerPropertiesVersion(unit, service, name, role, observed.cgroup, observed.pid, version); err != nil {
-		return textWorkerInstance{}, err
+	if err := VerifyPropertiesVersion(unit, service, name, role, observed.Cgroup, observed.PID, version); err != nil {
+		return Instance{}, err
 	}
-	userPrefix := inventoryOfUnit(name).user("reader")
+	userPrefix := OfUnit(name).user("reader")
 	if role == "publisher" {
-		userPrefix = inventoryOfUnit(name).user("publisher")
+		userPrefix = OfUnit(name).user("publisher")
 	}
-	user := userPrefix + strings.TrimSuffix(strings.TrimPrefix(name, inventoryOfUnit(name).prefix()+"-"+role+"@"), ".service")
-	answer, err := textManagerCall(ctx, "/org/freedesktop/systemd1", "org.freedesktop.systemd1.Manager", "LookupDynamicUserByName", "s", user)
+	user := userPrefix + strings.TrimSuffix(strings.TrimPrefix(name, OfUnit(name).prefix()+"-"+role+"@"), ".service")
+	answer, err := managerCall(ctx, "/org/freedesktop/systemd1", "org.freedesktop.systemd1.Manager", "LookupDynamicUserByName", "s", user)
 	var users []uint32
 	if err != nil || answer.Type != "u" || json.Unmarshal(answer.Data, &users) != nil || len(users) != 1 || users[0] < 61184 || users[0] > 65519 || users[0] == uint32(os.Geteuid()) {
-		return textWorkerInstance{}, errors.New("text worker DynamicUser is unavailable")
+		return Instance{}, errors.New("text worker DynamicUser is unavailable")
 	}
-	observed.uid = users[0]
+	observed.UID = users[0]
 	return observed, nil
 }
 
 // Unlike []byte decoding, this accepts only a complete numeric D-Bus ay
 // observation. Base64 strings and null elements are not known identity bytes.
-func decodeTextWorkerInvocation(value textManagerValue, destination *[16]byte) bool {
+func decodeInvocation(value Value, destination *[16]byte) bool {
 	if value.Type != "ay" || destination == nil {
 		return false
 	}

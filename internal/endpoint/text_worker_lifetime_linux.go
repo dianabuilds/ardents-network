@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
+	"github.com/dianabuilds/ardents-network/internal/endpoint/worker"
 )
 
 // textWorkerLifetime joins an observed worker to its existing local job.
@@ -15,13 +16,13 @@ import (
 // installed stop authority remain separate prerequisites for Grant delivery.
 // No Principal or Grant is created by initialization or possession of this owner.
 type textWorkerLifetime struct {
-	artifact      *textWorkerArtifact
+	artifact      *worker.Artifact
 	cgroup        string
 	useMu         sync.Mutex
 	closing       bool
 	operationDone chan struct{}
 	context       context.Context
-	attachment    *textWorkerAttachment
+	attachment    *worker.Attachment
 	cancel        context.CancelFunc
 	done          chan struct{}
 	err           error
@@ -31,12 +32,12 @@ type textWorkerLifetime struct {
 // and its attachment. Repeated calls leave their input owned by the caller.
 // The installed launch owner supplies its exact observed
 // instance; this function pins cleanup before sending any INIT bytes.
-func initializeOwnedTextWorker(ctx, startup context.Context, attachment *textWorkerAttachment, instance textWorkerInstance, job *textJobIdentity, snapshot []byte, artifact *textWorkerArtifact) (*textWorkerLifetime, error) {
+func initializeOwnedTextWorker(ctx, startup context.Context, attachment *worker.Attachment, instance worker.Instance, job *textJobIdentity, snapshot []byte, artifact *worker.Artifact) (*textWorkerLifetime, error) {
 	if job == nil || job.owner == nil {
 		return nil, errors.Join(errors.New("text worker has no job owner"), attachment.Close())
 	}
 	surface := broker.Connection
-	if instance.role == "publisher" {
+	if instance.Role == "publisher" {
 		surface = broker.Administration
 	}
 	owner := job.owner
@@ -46,17 +47,17 @@ func initializeOwnedTextWorker(ctx, startup context.Context, attachment *textWor
 		return nil, errors.New("text worker job was already consumed")
 	}
 	current := ctx != nil && startup != nil && owner.liveLocked(owner.endpoint, surface) && owner.job == job && !job.retired &&
-		attachment != nil && attachment.connection != nil && attachment.pid == instance.pid && attachment.uid == instance.uid
+		attachment.Connected() && attachment.PID() == instance.PID && attachment.UID() == instance.UID
 	owner.mu.Unlock()
 	if !current {
 		return nil, failTextWorkerInitialization(job, attachment, errors.New("text worker lifetime is unavailable"))
 	}
-	cleanup, err := newTextWorkerCleanup(instance)
+	cleanup, err := worker.NewCleanup(instance)
 	if err != nil {
 		return nil, failTextWorkerInitialization(job, attachment, err)
 	}
 	bounded, cancel := context.WithCancel(job.context)
-	lifetime := &textWorkerLifetime{artifact: artifact, cgroup: instance.cgroup, attachment: attachment, cancel: cancel, done: make(chan struct{}), context: bounded}
+	lifetime := &textWorkerLifetime{artifact: artifact, cgroup: instance.Cgroup, attachment: attachment, cancel: cancel, done: make(chan struct{}), context: bounded}
 	// Join the parent's cancellation callback as well as worker cleanup. The
 	// callback only interrupts; it never waits for the lifetime it interrupted.
 	callbackDone := make(chan struct{})
@@ -81,7 +82,7 @@ func initializeOwnedTextWorker(ctx, startup context.Context, attachment *textWor
 		lifetime.err = owner.finishJobCleanup(job, lifetime.err)
 		close(lifetime.done)
 	}()
-	initializationErr := artifact.verify()
+	initializationErr := artifact.Verify()
 	if initializationErr == nil {
 		initializationErr = initializeTextWorker(startup, attachment, instance, job, snapshot)
 	}
@@ -95,7 +96,7 @@ func initializeOwnedTextWorker(ctx, startup context.Context, attachment *textWor
 	return lifetime, nil
 }
 
-func failTextWorkerInitialization(job *textJobIdentity, attachment *textWorkerAttachment, cause error) error {
+func failTextWorkerInitialization(job *textJobIdentity, attachment *worker.Attachment, cause error) error {
 	// Without the pinned original cgroup, closing a socket cannot prove cleanup.
 	// Keep the failure and terminalize the context, even if the peer later exits.
 	job.owner.retireJob(job)

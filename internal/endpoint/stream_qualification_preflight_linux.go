@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/application/streamqualification"
+	"github.com/dianabuilds/ardents-network/internal/endpoint/worker"
 	"github.com/dianabuilds/ardents-network/internal/network/duty"
 	"github.com/dianabuilds/ardents-network/internal/resource"
 )
@@ -55,11 +56,11 @@ func PreflightStreamQualification(ctx context.Context, config StreamQualificatio
 	if err := config.Participant.validate(); err != nil {
 		return result, err
 	}
-	artifact, err := loadInstalledWorkerArtifact(streamInventory)
+	artifact, err := worker.LoadArtifact(worker.Stream)
 	if err != nil {
 		return result, err
 	}
-	if err := artifact.verify(); err != nil {
+	if err := artifact.Verify(); err != nil {
 		return result, err
 	}
 	hosting, err := resource.OpenHosting(config.HostingRoot)

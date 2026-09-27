@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
+	"github.com/dianabuilds/ardents-network/internal/endpoint/worker"
 )
 
 func TestTextWorkerInitializationRevokeCancelsBeforeReadiness(t *testing.T) {
@@ -19,7 +20,7 @@ func TestTextWorkerInitializationRevokeCancelsBeforeReadiness(t *testing.T) {
 		t.Fatal(err)
 	}
 	attachment, peer := textAttachmentPair(t)
-	instance := textWorkerInstance{name: "ardents-text-reader@0-12-997.service", role: "reader", pid: attachment.pid, uid: attachment.uid}
+	instance := worker.Instance{Name: "ardents-text-reader@0-12-997.service", Role: "reader", PID: attachment.PID(), UID: attachment.UID()}
 	finished := make(chan error, 1)
 	joined := make(chan struct{})
 	go func() {

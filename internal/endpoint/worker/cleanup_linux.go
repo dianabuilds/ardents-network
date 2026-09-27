@@ -1,6 +1,6 @@
 //go:build linux
 
-package endpoint
+package worker
 
 import (
 	"context"
@@ -15,32 +15,32 @@ import (
 	"time"
 )
 
-// textWorkerCleanup owns only one observed invocation and its pinned cgroup.
+// Cleanup owns only one observed invocation and its pinned cgroup.
 // Possession does not establish stop permission or qualify a launch. The launch
 // owner must establish installed cleanup authority before exposing any Grant.
 // Close retains its first failure; a retry cannot make a failed cleanup green.
 // Its caller must retire the job and close the worker attachment before Close.
 // Private roots are shared immutable artifacts, never writable job state.
 // No system permission is installed or elevated by this owner.
-type textWorkerCleanup struct {
-	instance textWorkerInstance
+type Cleanup struct {
+	instance Instance
 	events   *os.File
 	once     sync.Once
 	err      error
 }
 
-func newTextWorkerCleanup(instance textWorkerInstance) (*textWorkerCleanup, error) {
-	if instance.pid == 0 || instance.uid == 0 || instance.invocation == [16]byte{} {
+func NewCleanup(instance Instance) (*Cleanup, error) {
+	if instance.PID == 0 || instance.UID == 0 || instance.Invocation == [16]byte{} {
 		return nil, errors.New("text worker cleanup identity is unavailable")
 	}
-	events, err := pinTextWorkerCgroup(instance)
+	events, err := PinCgroup(instance)
 	if err != nil {
 		return nil, err
 	}
-	return &textWorkerCleanup{instance: instance, events: events}, nil
+	return &Cleanup{instance: instance, events: events}, nil
 }
 
-func (owner *textWorkerCleanup) Close() error {
+func (owner *Cleanup) Close() error {
 	if owner == nil {
 		return errors.New("text worker cleanup owner is absent")
 	}
@@ -53,34 +53,34 @@ func (owner *textWorkerCleanup) Close() error {
 	return owner.err
 }
 
-func (owner *textWorkerCleanup) join() error {
+func (owner *Cleanup) join() error {
 	// Cleanup must survive cancellation of the job's context. The manager's
 	// selected two-second stop is inside this independent finite join bound.
 	ctx, cancel := context.WithTimeout(context.Background(), 8*time.Second)
 	defer cancel()
-	removed, _, initialErr := readTextWorkerCgroup(owner.events)
+	removed, _, initialErr := ReadCgroup(owner.events)
 	if removed && initialErr == nil {
 		return nil
 	}
-	unit, service, err := readTextWorkerProperties(ctx, owner.instance.name, owner.instance.role)
+	unit, service, err := ReadProperties(ctx, owner.instance.Name, owner.instance.Role)
 	if err != nil {
 		// A crashing unit can disappear between the first observation and the
 		// manager query. Only the original kernel object's removal resolves it.
-		if gone, _, observedErr := readTextWorkerCgroup(owner.events); gone && observedErr == nil && initialErr == nil {
+		if gone, _, observedErr := ReadCgroup(owner.events); gone && observedErr == nil && initialErr == nil {
 			return nil
 		}
 		return errors.New("text worker cleanup invocation is unavailable")
 	}
-	if !sameTextWorkerCleanupInstance(owner.instance, unit, service) {
+	if !sameCleanupInstance(owner.instance, unit, service) {
 		return errors.New("text worker cleanup invocation changed")
 	}
-	if err := stopTextWorkerInstance(ctx, owner.instance.name, owner.instance.role); err != nil {
+	if err := stopInstance(ctx, owner.instance.Name, owner.instance.Role); err != nil {
 		return errors.Join(initialErr, err)
 	}
 	ticker := time.NewTicker(20 * time.Millisecond)
 	defer ticker.Stop()
 	for {
-		gone, populated, err := readTextWorkerCgroup(owner.events)
+		gone, populated, err := ReadCgroup(owner.events)
 		if err != nil {
 			return errors.Join(initialErr, err)
 		}
@@ -95,11 +95,11 @@ func (owner *textWorkerCleanup) join() error {
 	}
 }
 
-func sameTextWorkerCleanupInstance(instance textWorkerInstance, unit, service textManagerProperties) bool {
+func sameCleanupInstance(instance Instance, unit, service Properties) bool {
 	var invocation [16]byte
-	if !textWorkerCgroupPath(instance.cgroup, instance.name, instance.role) || instance.pid == 0 ||
-		!unit.exact("Id", "s", instance.name) || !unit.exact("LoadState", "s", "loaded") ||
-		!decodeTextWorkerInvocation(unit["InvocationID"], &invocation) || invocation != instance.invocation {
+	if !cgroupPath(instance.Cgroup, instance.Name, instance.Role) || instance.PID == 0 ||
+		!unit.exact("Id", "s", instance.Name) || !unit.exact("LoadState", "s", "loaded") ||
+		!decodeInvocation(unit["InvocationID"], &invocation) || invocation != instance.Invocation {
 		return false
 	}
 	pid, group := service["MainPID"], service["ControlGroup"]
@@ -107,7 +107,7 @@ func sameTextWorkerCleanupInstance(instance textWorkerInstance, unit, service te
 	var currentGroup string
 	if pid.Type != "u" || group.Type != "s" || pidErr != nil || strings.TrimSpace(string(group.Data)) == "null" ||
 		json.Unmarshal(group.Data, &currentGroup) != nil ||
-		(currentPID != 0 && currentPID != uint64(instance.pid)) || (currentGroup != "" && currentGroup != instance.cgroup) {
+		(currentPID != 0 && currentPID != uint64(instance.PID)) || (currentGroup != "" && currentGroup != instance.Cgroup) {
 		return false
 	}
 	return service.exact("Restart", "s", "no") && service.exact("KillMode", "s", "control-group") &&
@@ -115,8 +115,8 @@ func sameTextWorkerCleanupInstance(instance textWorkerInstance, unit, service te
 		service.exact("ExecStop", "a(sasbttttuii)", []any{}) && service.exact("ExecStopPost", "a(sasbttttuii)", []any{})
 }
 
-func stopTextWorkerInstance(ctx context.Context, name, role string) error {
-	if ctx == nil || ctx.Err() != nil || !textWorkerUnit(name, role) {
+func stopInstance(ctx context.Context, name, role string) error {
+	if ctx == nil || ctx.Err() != nil || !ValidUnit(name, role) {
 		return errors.New("text worker stop identity is invalid")
 	}
 	// systemctl waits for the manager's stop job by default. The fixed command

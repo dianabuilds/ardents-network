@@ -1,6 +1,6 @@
 //go:build linux
 
-package endpoint
+package worker
 
 import (
 	"encoding/json"
@@ -9,20 +9,20 @@ import (
 	"strings"
 )
 
-const textWorkerRoot = "/usr/lib/ardents/text-worker-root"
+const textRoot = "/usr/lib/ardents/text-worker-root"
 
 // verifyTextWorkerProperties is only one input to a qualified launch receipt.
 // The caller must separately establish the pinned artifact, accepted socket's
 // kernel credentials, live process/cgroup identity and joined cleanup owner.
-func verifyTextWorkerPropertiesVersion(unit, service textManagerProperties, name, role, cgroup string, pid uint32, version uint16) error {
+func VerifyPropertiesVersion(unit, service Properties, name, role, cgroup string, pid uint32, version uint16) error {
 	if version != 249 && version != 255 {
 		return errors.New("worker manager version unavailable")
 	}
-	if !textWorkerCgroupPath(cgroup, name, role) || pid == 0 {
+	if !cgroupPath(cgroup, name, role) || pid == 0 {
 		return errors.New("text worker process binding is invalid")
 	}
 	for key, want := range map[string]string{"Id": name, "LoadState": "loaded", "ActiveState": "active", "SubState": "running",
-		"FragmentPath": "/etc/systemd/system/" + inventoryOfUnit(name).prefix() + "-" + role + "@.service", "ControlGroup": cgroup, "CollectMode": "inactive-or-failed"} {
+		"FragmentPath": "/etc/systemd/system/" + OfUnit(name).prefix() + "-" + role + "@.service", "ControlGroup": cgroup, "CollectMode": "inactive-or-failed"} {
 		// ControlGroup is a Service property; Unit owns the remaining identity.
 		properties := unit
 		if key == "ControlGroup" {
@@ -32,7 +32,7 @@ func verifyTextWorkerPropertiesVersion(unit, service textManagerProperties, name
 			return errors.New("text worker unit binding is unavailable")
 		}
 	}
-	if !unit.exact("BindsTo", "as", []string{"ardents-endpoint.service"}) || !textUnitAfterEndpoint(unit) {
+	if !unit.exact("BindsTo", "as", []string{"ardents-endpoint.service"}) || !unitAfterEndpoint(unit) {
 		return errors.New("text worker Endpoint lifetime binding is unavailable")
 	}
 	if !service.exact("Delegate", "b", false) || !unit.exact("DropInPaths", "as", []string{}) || !unit.exact("JoinsNamespaceOf", "as", []string{}) || !service.exact("MainPID", "u", pid) {
@@ -44,12 +44,12 @@ func verifyTextWorkerPropertiesVersion(unit, service textManagerProperties, name
 			return errors.New("text worker required hardening is unavailable")
 		}
 	}
-	userPrefix := inventoryOfUnit(name).user("reader")
+	userPrefix := OfUnit(name).user("reader")
 	if role == "publisher" {
-		userPrefix = inventoryOfUnit(name).user("publisher")
+		userPrefix = OfUnit(name).user("publisher")
 	}
-	user := userPrefix + strings.TrimSuffix(strings.TrimPrefix(name, inventoryOfUnit(name).prefix()+"-"+role+"@"), ".service")
-	for key, want := range map[string]string{"User": user, "Group": user, "RootDirectory": inventoryOfUnit(name).root(), "WorkingDirectory": "/",
+	user := userPrefix + strings.TrimSuffix(strings.TrimPrefix(name, OfUnit(name).prefix()+"-"+role+"@"), ".service")
+	for key, want := range map[string]string{"User": user, "Group": user, "RootDirectory": OfUnit(name).root(), "WorkingDirectory": "/",
 		"ProtectSystem": "strict", "ProtectHome": "yes", "Restart": "no", "KillMode": "control-group",
 		"StandardInput": "socket", "StandardOutput": "socket", "StandardError": "null", "NotifyAccess": "none",
 		"RootImage": "", "NetworkNamespacePath": "", "IPCNamespacePath": "", "PAMName": ""} {
@@ -76,7 +76,7 @@ func verifyTextWorkerPropertiesVersion(unit, service textManagerProperties, name
 			return errors.New("text worker inherited resources are unavailable")
 		}
 	}
-	if !textWorkerSliceVerified(service, inventoryOfUnit(name)) {
+	if !sliceVerified(service, OfUnit(name)) {
 		return errors.New("text worker owner slice is unavailable")
 	}
 	if !service.exact("Environment", "as", []string{"GOMAXPROCS=2", "GOMEMLIMIT=96MiB"}) ||
@@ -84,24 +84,24 @@ func verifyTextWorkerPropertiesVersion(unit, service textManagerProperties, name
 		!service.exact("RestrictAddressFamilies", "(bas)", []any{true, []string{"AF_UNIX"}}) {
 		return errors.New("text worker execution policy is unavailable")
 	}
-	if err := verifyInstalledWorkerExec(service, role, pid, inventoryOfUnit(name)); err != nil {
+	if err := verifyExec(service, role, pid, OfUnit(name)); err != nil {
 		return err
 	}
-	return verifyTextWorkerSyscalls(service)
+	return verifySyscalls(service)
 }
 
-func textWorkerSlice(inventory workerInventory) string {
-	if inventory == streamInventory {
+func sliceName(inventory Inventory) string {
+	if inventory == Stream {
 		return "ardents-qualification-owner.slice"
 	}
 	return "system.slice"
 }
 
-func textWorkerSliceVerified(service textManagerProperties, inventory workerInventory) bool {
-	return service.exact("Slice", "s", textWorkerSlice(inventory))
+func sliceVerified(service Properties, inventory Inventory) bool {
+	return service.exact("Slice", "s", sliceName(inventory))
 }
 
-func verifyInstalledWorkerExec(service textManagerProperties, role string, pid uint32, inventory workerInventory) error {
+func verifyExec(service Properties, role string, pid uint32, inventory Inventory) error {
 	value, ok := service["ExecStartEx"]
 	var entries [][]json.RawMessage
 	if !ok || value.Type != "a(sasasttttuii)" || json.Unmarshal(value.Data, &entries) != nil || len(entries) != 1 || len(entries[0]) != 10 {
@@ -124,7 +124,7 @@ func verifyInstalledWorkerExec(service textManagerProperties, role string, pid u
 	return nil
 }
 
-func verifyTextWorkerSyscalls(service textManagerProperties) error {
+func verifySyscalls(service Properties) error {
 	value, ok := service["SystemCallFilter"]
 	var parts []json.RawMessage
 	var names []string

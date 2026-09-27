@@ -14,6 +14,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
 	"github.com/dianabuilds/ardents-network/internal/application/interfacev2/connection"
+	"github.com/dianabuilds/ardents-network/internal/endpoint/worker"
 	"github.com/dianabuilds/ardents-network/internal/route"
 	routecarrier "github.com/dianabuilds/ardents-network/internal/route/carrier"
 	"github.com/dianabuilds/ardents-network/internal/service/instance"
@@ -27,7 +28,7 @@ import (
 func TestInstalledTextWorkersRecoverAcceptedRequestAcrossJoinedNetwork(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), 4*time.Minute)
 	defer cancel()
-	if err := verifyTextEndpointService(ctx); err != nil {
+	if err := worker.VerifyEndpointService(ctx); err != nil {
 		t.Fatalf("invalid installed environment: %v", err)
 	}
 	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP, routecarrier.ClosedCarrierQUIC} {
@@ -59,11 +60,11 @@ func exerciseInstalledTextWorkerRecovery(t *testing.T, ctx context.Context, carr
 	})
 	readerInstance := installedTextWorkerInstance(t, ctx, readerWorker, "reader")
 	publisherInstance := installedTextWorkerInstance(t, ctx, publisherWorker, "publisher")
-	readerEvents, err := pinTextWorkerCgroup(readerInstance)
+	readerEvents, err := worker.PinCgroup(readerInstance)
 	if err != nil {
 		t.Fatal(err)
 	}
-	publisherEvents, err := pinTextWorkerCgroup(publisherInstance)
+	publisherEvents, err := worker.PinCgroup(publisherInstance)
 	if err != nil {
 		_ = readerEvents.Close()
 		t.Fatal(err)
@@ -220,17 +221,17 @@ func assertInstalledRecoveryRoute(t *testing.T, initialClient, initialPublisher 
 	}
 }
 
-func assertInstalledTextWorkerRetired(t *testing.T, ctx context.Context, worker *qualifiedTextWorker,
-	instance textWorkerInstance, events *os.File) {
+func assertInstalledTextWorkerRetired(t *testing.T, ctx context.Context, bound *qualifiedTextWorker,
+	instance worker.Instance, events *os.File) {
 	t.Helper()
-	removed, populated, err := readTextWorkerCgroup(events)
+	removed, populated, err := worker.ReadCgroup(events)
 	if err != nil || !removed && populated {
-		t.Fatalf("installed %s worker cleanup returned before cgroup retirement: removed=%t populated=%t error=%v", instance.role, removed, populated, err)
+		t.Fatalf("installed %s worker cleanup returned before cgroup retirement: removed=%t populated=%t error=%v", instance.Role, removed, populated, err)
 	}
-	if worker.grant.Active() != 0 || worker.lease.Context().Err() == nil {
-		t.Fatalf("installed %s worker authority survived recovery completion", instance.role)
+	if bound.grant.Active() != 0 || bound.lease.Context().Err() == nil {
+		t.Fatalf("installed %s worker authority survived recovery completion", instance.Role)
 	}
-	requireInstalledTextWorkerCollected(t, ctx, instance.name, instance.role)
+	requireInstalledTextWorkerCollected(t, ctx, instance.Name, instance.Role)
 }
 
 func installedTextRecoveryNetwork(t *testing.T, carrier routecarrier.CarrierProfile) (*textContext, *textContext, targetlink.Link) {

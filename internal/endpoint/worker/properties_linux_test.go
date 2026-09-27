@@ -1,6 +1,6 @@
 //go:build linux
 
-package endpoint
+package worker
 
 import (
 	"encoding/json"
@@ -13,8 +13,8 @@ func TestTextWorkerSyscallObservationAcceptsNativeAMD64Expansion(t *testing.T) {
 	// 22.04/systemd 249 on amd64 therefore omits the s390-only PCI syscalls
 	// even though @raw-io names them on architectures where they exist.
 	names := strings.Fields("add_key bpf chroot delete_module finit_module fsconfig fsmount fsopen fspick init_module io_uring_enter io_uring_register io_uring_setup ioperm iopl kexec_file_load kexec_load keyctl mount mount_setattr move_mount open_tree pciconfig_iobase pciconfig_read pciconfig_write perf_event_open pivot_root process_vm_readv process_vm_writev ptrace reboot request_key swapoff swapon umount umount2 userfaultfd")
-	service := textManagerProperties{"SystemCallFilter": {Type: "(bas)", Data: syscallFilterObservation(t, names)}}
-	if err := verifyTextWorkerSyscalls(service); err != nil {
+	service := Properties{"SystemCallFilter": {Type: "(bas)", Data: syscallFilterObservation(t, names)}}
+	if err := verifySyscalls(service); err != nil {
 		t.Fatalf("native amd64 deny expansion refused: %v", err)
 	}
 
@@ -25,38 +25,38 @@ func TestTextWorkerSyscallObservationAcceptsNativeAMD64Expansion(t *testing.T) {
 			break
 		}
 	}
-	service["SystemCallFilter"] = textManagerValue{Type: "(bas)", Data: syscallFilterObservation(t, withoutMount)}
-	if err := verifyTextWorkerSyscalls(service); err == nil {
+	service["SystemCallFilter"] = Value{Type: "(bas)", Data: syscallFilterObservation(t, withoutMount)}
+	if err := verifySyscalls(service); err == nil {
 		t.Fatal("missing native mount denial accepted")
 	}
 }
 
 func TestTextWorkerSliceKeepsInventoriesInTheirVerifiedCgroupRoots(t *testing.T) {
-	if got := textWorkerSlice(textInventory); got != "system.slice" {
+	if got := sliceName(Text); got != "system.slice" {
 		t.Fatalf("text worker slice = %q, want system.slice", got)
 	}
-	if got := textWorkerSlice(streamInventory); got != "ardents-qualification-owner.slice" {
+	if got := sliceName(Stream); got != "ardents-qualification-owner.slice" {
 		t.Fatalf("qualification worker slice = %q, want qualification owner slice", got)
 	}
 	for _, test := range []struct {
 		name      string
-		inventory workerInventory
-		value     *textManagerValue
+		inventory Inventory
+		value     *Value
 		want      bool
 	}{
-		{name: "normal exact", inventory: textInventory, value: &textManagerValue{Type: "s", Data: json.RawMessage(`"system.slice"`)}, want: true},
-		{name: "normal template subslice", inventory: textInventory, value: &textManagerValue{Type: "s", Data: json.RawMessage(`"system-ardents\\x2dtext\\x2dreader.slice"`)}},
-		{name: "normal missing", inventory: textInventory},
-		{name: "normal wrong type", inventory: textInventory, value: &textManagerValue{Type: "as", Data: json.RawMessage(`["system.slice"]`)}},
-		{name: "qualification exact", inventory: streamInventory, value: &textManagerValue{Type: "s", Data: json.RawMessage(`"ardents-qualification-owner.slice"`)}, want: true},
-		{name: "qualification system", inventory: streamInventory, value: &textManagerValue{Type: "s", Data: json.RawMessage(`"system.slice"`)}},
+		{name: "normal exact", inventory: Text, value: &Value{Type: "s", Data: json.RawMessage(`"system.slice"`)}, want: true},
+		{name: "normal template subslice", inventory: Text, value: &Value{Type: "s", Data: json.RawMessage(`"system-ardents\\x2dtext\\x2dreader.slice"`)}},
+		{name: "normal missing", inventory: Text},
+		{name: "normal wrong type", inventory: Text, value: &Value{Type: "as", Data: json.RawMessage(`["system.slice"]`)}},
+		{name: "qualification exact", inventory: Stream, value: &Value{Type: "s", Data: json.RawMessage(`"ardents-qualification-owner.slice"`)}, want: true},
+		{name: "qualification system", inventory: Stream, value: &Value{Type: "s", Data: json.RawMessage(`"system.slice"`)}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			service := textManagerProperties{}
+			service := Properties{}
 			if test.value != nil {
 				service["Slice"] = *test.value
 			}
-			if got := textWorkerSliceVerified(service, test.inventory); got != test.want {
+			if got := sliceVerified(service, test.inventory); got != test.want {
 				t.Fatalf("slice verification = %t, want %t", got, test.want)
 			}
 		})

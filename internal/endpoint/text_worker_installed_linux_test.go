@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
+	"github.com/dianabuilds/ardents-network/internal/endpoint/worker"
 )
 
 // This selected installed profile supplies only local caller authorization as
@@ -18,7 +19,7 @@ import (
 func TestInstalledTextWorkerLifecycle(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), 110*time.Second)
 	defer cancel()
-	if err := verifyTextEndpointService(ctx); err != nil {
+	if err := worker.VerifyEndpointService(ctx); err != nil {
 		t.Fatalf("invalid installed environment: %v", err)
 	}
 	endpoint, principal := textContextEndpoint(t)
@@ -35,37 +36,37 @@ func TestInstalledTextWorkerLifecycle(t *testing.T) {
 			var previous *qualifiedTextWorker
 			var previousNonce [32]byte
 			for attempt := 0; attempt < 12; attempt++ {
-				worker, err := owner.launchTextWorker(ctx, role.snapshot)
+				bound, err := owner.launchTextWorker(ctx, role.snapshot)
 				if err != nil {
 					t.Fatalf("attempt %d launch: %v", attempt, err)
 				}
 				t.Cleanup(func() {
-					if err := worker.Close(); err != nil {
+					if err := bound.Close(); err != nil {
 						t.Error(err)
 					}
 				})
-				if worker.grant.Active() != 1 || worker.lease.Context().Err() != nil {
+				if bound.grant.Active() != 1 || bound.lease.Context().Err() != nil {
 					t.Fatal("verified readiness did not acquire a live scoped Grant")
 				}
 				owner.mu.Lock()
-				currentNonce := worker.job.nonce
+				currentNonce := bound.job.nonce
 				owner.mu.Unlock()
 				if currentNonce == [32]byte{} {
 					t.Fatal("live job nonce is absent")
 				}
-				if previous != nil && (previous.job == worker.job ||
+				if previous != nil && (previous.job == bound.job ||
 					previousNonce == currentNonce || previous.completedCurrent()) {
 					t.Fatal("replacement inherited a prior job or completion")
 				}
-				instance := installedTextWorkerInstance(t, ctx, worker, role.name)
+				instance := installedTextWorkerInstance(t, ctx, bound, role.name)
 				if attempt == 0 {
 					requireInstalledTextWorkerCollectionPolicy(t, ctx, instance)
 				}
-				events, err := pinTextWorkerCgroup(instance)
+				events, err := worker.PinCgroup(instance)
 				if err != nil {
 					t.Fatal(err)
 				}
-				gone, populated, err := readTextWorkerCgroup(events)
+				gone, populated, err := worker.ReadCgroup(events)
 				if err != nil || gone || !populated {
 					_ = events.Close()
 					t.Fatalf("missing live cgroup positive control: %v", err)
@@ -73,33 +74,33 @@ func TestInstalledTextWorkerLifecycle(t *testing.T) {
 				if attempt == 11 {
 					err = owner.Close()
 				} else {
-					err = worker.Close()
+					err = bound.Close()
 				}
 				if err != nil {
 					_ = events.Close()
 					t.Fatal(err)
 				}
-				gone, populated, err = readTextWorkerCgroup(events)
+				gone, populated, err = worker.ReadCgroup(events)
 				closeErr := events.Close()
 				if err != nil || closeErr != nil || !gone && populated {
 					t.Fatalf("cleanup returned before cgroup became empty: %v; %v", err, closeErr)
 				}
-				if worker.grant.Active() != 0 || worker.lease.Context().Err() == nil {
+				if bound.grant.Active() != 0 || bound.lease.Context().Err() == nil {
 					t.Fatal("worker authority survived joined cleanup")
 				}
-				if attempt != 11 && !worker.completedCurrent() {
+				if attempt != 11 && !bound.completedCurrent() {
 					t.Fatal("worker cleanup lost the surviving context")
 				}
-				if err := worker.Close(); err != nil {
+				if err := bound.Close(); err != nil {
 					t.Fatal(err)
 				}
-				requireInstalledTextWorkerCollected(t, ctx, instance.name, role.name)
-				previous, previousNonce = worker, currentNonce
+				requireInstalledTextWorkerCollected(t, ctx, instance.Name, role.name)
+				previous, previousNonce = bound, currentNonce
 			}
 			if previous.completedCurrent() {
 				t.Fatal("completion survived Endpoint context revocation")
 			}
-			if worker, err := owner.launchTextWorker(ctx, role.snapshot); err == nil || worker != nil {
+			if bound, err := owner.launchTextWorker(ctx, role.snapshot); err == nil || bound != nil {
 				t.Fatal("revoked context launched another worker")
 			}
 			t.Log("12 installed activations: real readiness and Grant; fresh jobs; pinned cgroups empty; context revoke refused late launch")
@@ -107,23 +108,23 @@ func TestInstalledTextWorkerLifecycle(t *testing.T) {
 	}
 }
 
-func installedTextWorkerInstance(t *testing.T, ctx context.Context, worker *qualifiedTextWorker, role string) textWorkerInstance {
+func installedTextWorkerInstance(t *testing.T, ctx context.Context, bound *qualifiedTextWorker, role string) worker.Instance {
 	t.Helper()
-	listing, err := listInstalledWorkerInstances(ctx, role, textInventory)
+	listing, err := worker.ListInstances(ctx, role, worker.Text)
 	if err != nil {
 		t.Fatal(err)
 	}
 	for name, state := range listing {
-		if state.active != "active" {
+		if state.Active != "active" {
 			continue
 		}
-		instance, err := observeTextWorkerInstance(ctx, name, role)
-		if err == nil && instance.pid == worker.lifetime.attachment.pid && instance.uid == worker.lifetime.attachment.uid {
+		instance, err := worker.ObserveInstance(ctx, name, role)
+		if err == nil && instance.PID == bound.lifetime.attachment.PID() && instance.UID == bound.lifetime.attachment.UID() {
 			return instance
 		}
 	}
 	t.Fatal("exact verified worker invocation unavailable")
-	return textWorkerInstance{}
+	return worker.Instance{}
 }
 
 // Collection is a resource assertion after pinned cgroup cleanup has succeeded.
@@ -135,7 +136,7 @@ func requireInstalledTextWorkerCollected(t *testing.T, parent context.Context, n
 	tick := time.NewTicker(25 * time.Millisecond)
 	defer tick.Stop()
 	for {
-		listing, err := listInstalledWorkerInstances(ctx, role, textInventory)
+		listing, err := worker.ListInstances(ctx, role, worker.Text)
 		if err != nil {
 			t.Fatalf("retired worker inventory: %v", err)
 		}
@@ -145,24 +146,24 @@ func requireInstalledTextWorkerCollected(t *testing.T, parent context.Context, n
 		}
 		select {
 		case <-ctx.Done():
-			t.Fatalf("cleaned worker unit retained in state %s: %s", state.active, name)
+			t.Fatalf("cleaned worker unit retained in state %s: %s", state.Active, name)
 		case <-tick.C:
 		}
 	}
 }
 
-func requireInstalledTextWorkerCollectionPolicy(t *testing.T, ctx context.Context, instance textWorkerInstance) {
+func requireInstalledTextWorkerCollectionPolicy(t *testing.T, ctx context.Context, instance worker.Instance) {
 	t.Helper()
-	version, err := installedTextManagerVersion(ctx)
+	version, err := worker.ManagerVersion(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
-	unit, service, err := readTextWorkerProperties(ctx, instance.name, instance.role)
+	unit, service, err := worker.ReadProperties(ctx, instance.Name, instance.Role)
 	if err != nil {
 		t.Fatal(err)
 	}
 	verify := func() error {
-		return verifyTextWorkerPropertiesVersion(unit, service, instance.name, instance.role, instance.cgroup, instance.pid, version)
+		return worker.VerifyPropertiesVersion(unit, service, instance.Name, instance.Role, instance.Cgroup, instance.PID, version)
 	}
 	if err := verify(); err != nil {
 		t.Fatalf("installed property positive control: %v", err)
@@ -171,8 +172,8 @@ func requireInstalledTextWorkerCollectionPolicy(t *testing.T, ctx context.Contex
 	if json.Unmarshal(service["Slice"].Data, &slice) != nil {
 		t.Fatal("verified worker Slice could not be decoded")
 	}
-	t.Logf("verified installed %s worker Slice=%q ControlGroup=%q", instance.role, slice, instance.cgroup)
-	for _, invalid := range []textManagerValue{
+	t.Logf("verified installed %s worker Slice=%q ControlGroup=%q", instance.Role, slice, instance.Cgroup)
+	for _, invalid := range []worker.Value{
 		{Type: "s", Data: json.RawMessage(`"inactive"`)},
 		{Type: "s", Data: json.RawMessage(`"unknown"`)},
 		{Type: "s", Data: json.RawMessage(`null`)},

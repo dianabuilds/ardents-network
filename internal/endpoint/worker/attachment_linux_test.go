@@ -1,6 +1,6 @@
 //go:build linux
 
-package endpoint
+package worker
 
 import (
 	"bytes"
@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-func textAttachmentPair(t *testing.T) (*textWorkerAttachment, *net.UnixConn) {
+func textAttachmentPair(t *testing.T) (*Attachment, *net.UnixConn) {
 	t.Helper()
 	pair, err := syscall.Socketpair(syscall.AF_UNIX, syscall.SOCK_STREAM|syscall.SOCK_CLOEXEC, 0)
 	if err != nil {
@@ -42,7 +42,7 @@ func textAttachmentPair(t *testing.T) (*textWorkerAttachment, *net.UnixConn) {
 	}); err != nil || optionErr != nil {
 		t.Fatalf("credentials option: %v %v", err, optionErr)
 	}
-	return &textWorkerAttachment{connection: connections[0], pid: uint32(os.Getpid()), uid: uint32(os.Getuid())}, connections[1]
+	return &Attachment{connection: connections[0], pid: uint32(os.Getpid()), uid: uint32(os.Getuid())}, connections[1]
 }
 
 func TestTextWorkerAttachmentChecksEveryReadAndRejectsForeignPID(t *testing.T) {
@@ -105,7 +105,7 @@ func TestTextWorkerControlClosesEveryUnwantedDescriptor(t *testing.T) {
 	}
 	credential := syscall.UnixCredentials(&syscall.Ucred{Pid: int32(os.Getpid()), Uid: uint32(os.Getuid()), Gid: uint32(os.Getgid())})
 	control := bytes.Join([][]byte{credential, syscall.UnixRights(first, second)}, nil)
-	if checkTextWorkerControl(control, syscall.MSG_CTRUNC, uint32(os.Getpid()), uint32(os.Getuid()), true) == nil {
+	if checkControl(control, syscall.MSG_CTRUNC, uint32(os.Getpid()), uint32(os.Getuid()), true) == nil {
 		t.Fatal("descriptor passing accepted")
 	}
 	for _, descriptor := range []int{first, second} {
@@ -116,7 +116,7 @@ func TestTextWorkerControlClosesEveryUnwantedDescriptor(t *testing.T) {
 		}
 	}
 	for _, invalid := range [][]byte{nil, append(append([]byte{}, credential...), credential...)} {
-		if checkTextWorkerControl(invalid, 0, uint32(os.Getpid()), uint32(os.Getuid()), true) == nil {
+		if checkControl(invalid, 0, uint32(os.Getpid()), uint32(os.Getuid()), true) == nil {
 			t.Fatal("missing or duplicate credentials accepted")
 		}
 	}

@@ -15,6 +15,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
 	"github.com/dianabuilds/ardents-network/internal/application/interfacev1/administration"
 	applicationconnection "github.com/dianabuilds/ardents-network/internal/application/interfacev2/connection"
+	"github.com/dianabuilds/ardents-network/internal/endpoint/worker"
 	"github.com/dianabuilds/ardents-network/internal/node"
 	"github.com/dianabuilds/ardents-network/internal/route"
 	routecarrier "github.com/dianabuilds/ardents-network/internal/route/carrier"
@@ -32,7 +33,7 @@ func textUnpublishedNetworkWithInstance(t *testing.T, carrier routecarrier.Carri
 // Uses the installed launch verifier and actual confined worker processes.
 // State/authority provisioning is the network fixture, not a command ceremony.
 func TestInstalledTextWorkersReadTargetThroughJoinedNetwork(t *testing.T) {
-	if err := verifyTextEndpointService(t.Context()); err != nil {
+	if err := worker.VerifyEndpointService(t.Context()); err != nil {
 		t.Fatalf("invalid installed environment: %v", err)
 	}
 	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP, routecarrier.ClosedCarrierQUIC} {
@@ -159,12 +160,12 @@ func exchangeInstalledTextAdministration(t *testing.T, carrier routecarrier.Carr
 // trusted UI mode. CommandContext and WaitDelay bound and join child/pipes.
 func runInstalledTextCommand(t *testing.T, ctx context.Context, input []byte, arguments ...string) []byte {
 	t.Helper()
-	if _, err := loadInstalledWorkerArtifact(textInventory); err != nil {
+	if _, err := worker.LoadArtifact(worker.Text); err != nil {
 		t.Fatalf("installed command artifact: %v", err)
 	}
 	bounded, cancel := context.WithTimeout(ctx, 35*time.Second)
 	defer cancel()
-	command := exec.CommandContext(bounded, textWorkerRoot+"/ardents-text", arguments...)
+	command := exec.CommandContext(bounded, worker.Text.Root()+"/ardents-text", arguments...)
 	command.WaitDelay = 5 * time.Second
 	command.Stdin = bytes.NewReader(input)
 	limit := map[string]int{"publish": 0, "link": 514, "read": 4 << 20}[arguments[0]]
