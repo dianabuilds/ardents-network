@@ -9,7 +9,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/network/state"
 	routecarrier "github.com/dianabuilds/ardents-network/internal/route/carrier"
 	"github.com/dianabuilds/ardents-network/internal/route/replay"
 )
@@ -82,8 +81,8 @@ func checkForwardingAcceptedCloseFailure(t *testing.T, capacity bool) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	server := newClosedForwardingServerWithHost(runtimeConfig{now: time.Now}, state.NodeDuty{}, tls.Certificate{}, listener,
-		&closedForwardingReceivingResources{spends: spends}, pool, nil, 1)
+	server := newClosedForwardingServerWithHost(forwardingDependencies(runtimeConfig{now: time.Now}, nil), tls.Certificate{}, listener,
+		&closedForwardingReceivingResources{spends: spends}, pool, nil, 1, time.Now)
 	defer func() {
 		server.Stop()
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)

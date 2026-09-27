@@ -161,7 +161,7 @@ func TestClosedBootstrapEntryExportsOnlyRestrictedInteriorChild(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	server := &closedForwardingServer{config: fixture.config, receiving: &closedForwardingReceivingResources{limits: limits, bootstrap: governor}, clock: fixture.config.now}
+	server := &closedForwardingServer{dependencies: forwardingDependencies(fixture.config, nil), receiving: &closedForwardingReceivingResources{limits: limits, bootstrap: governor}, clock: fixture.config.now}
 	hello := ardp.Hello{NetworkID: receiver.NetworkID, StateGeneration: receiver.StateGeneration, StateDigest: receiver.StateDigest, ProfileDigest: receiver.ProfileDigest,
 		RecipientNodeID: receiver.NodeID, RecipientDutyGeneration: receiver.DutyGeneration, Purpose: ardp.PurposeForwarding, ChannelNonce: [32]byte{80}, Deadline: fixture.now.Add(8 * time.Second)}
 	channel, _, err := server.admitBootstrap(receiver, [32]byte{}, hello, 225, ardp.Frame{Kind: 3, Body: ardp.EncodeBootstrap(true)})

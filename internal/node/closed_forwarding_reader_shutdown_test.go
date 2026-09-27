@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/tls"
 	"errors"
-	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	"github.com/dianabuilds/ardents-network/internal/route/carrier"
 	"github.com/dianabuilds/ardents-network/internal/route/replay"
@@ -69,8 +68,8 @@ func checkForwardingReaderShutdown(t *testing.T, closeErr error) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	server := newClosedForwardingServerWithHost(runtimeConfig{now: time.Now}, state.NodeDuty{}, tls.Certificate{},
-		idleForwardingListener{}, &closedForwardingReceivingResources{spends: spends}, pool, nil, 1)
+	server := newClosedForwardingServerWithHost(forwardingDependencies(runtimeConfig{now: time.Now}, nil), tls.Certificate{},
+		idleForwardingListener{}, &closedForwardingReceivingResources{spends: spends}, pool, nil, 1, time.Now)
 	local, peer := net.Pipe()
 	blocked := &delayedForwardingRead{Conn: local, gate: make(chan struct{}), interrupted: make(chan struct{}), closeErr: closeErr}
 	allowAccept := make(chan struct{})

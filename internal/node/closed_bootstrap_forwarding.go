@@ -39,11 +39,11 @@ func (server *closedForwardingServer) admitBootstrap(receiver route.ClosedRoleRe
 		return nil, time.Time{}, err
 	}
 	channel, err := route.NewClosedBootstrapForwardingChannel(lease, server.receiving.limits, func(open route.ClosedOpen) error {
-		current, err := currentFacts(server.config)
+		current, err := server.dependencies.current()
 		if err != nil {
 			return err
 		}
-		return closedBootstrapRecipient(server.config, current, receiver, incomingKey, open, server.clock().UTC())
+		return forwarding.BootstrapRecipient(server.dependencies.authority, current, receiver, incomingKey, open, server.clock().UTC(), server.dependencies.literalEndpoint)
 	}, server.clock)
 	return channel, deadline, err
 }

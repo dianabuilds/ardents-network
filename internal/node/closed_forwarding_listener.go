@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"errors"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
+	nodeforwarding "github.com/dianabuilds/ardents-network/internal/node/forwarding"
 	nodeouter "github.com/dianabuilds/ardents-network/internal/node/outer"
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
@@ -57,7 +58,7 @@ func startClosedForwarding(config runtimeConfig, snapshot state.NodeDuty) (*duty
 	if err != nil {
 		return nil, errors.Join(err, pool.Close(), receiving.Close(), host.Close())
 	}
-	running := newClosedForwardingServerWithHost(config, snapshot, local.Certificate, shared, receiving, pool, host, local.ConnectionLimit)
+	running := newClosedForwardingServerWithHost(forwardingDependencies(config, host), local.Certificate, shared, receiving, pool, host, local.ConnectionLimit, config.now)
 	return &dutyHandle{Done: running.Done(), Protect: func(bool) {}, Usage: func() (uint64, uint64, uint64) {
 		return uint64(running.Active()), uint64(running.Active()), 0
 	}, Stop: func() { _ = running.Stop() }, Drain: func(ctx context.Context) error {
@@ -82,8 +83,7 @@ func validateClosedForwardingProfile(local ClosedForwardingProfile, config runti
 }
 
 type closedForwardingServer struct {
-	config           runtimeConfig
-	snapshot         state.NodeDuty
+	dependencies     closedForwardingDependencies
 	certificate      tls.Certificate
 	listener         routecarrier.ClosedSharedCarrierListener
 	receiving        *closedForwardingReceivingResources
@@ -108,11 +108,11 @@ type closedForwardingServer struct {
 	reapErr          error
 }
 
-func newClosedForwardingServerWithHost(config runtimeConfig, snapshot state.NodeDuty, certificate tls.Certificate, listener routecarrier.ClosedSharedCarrierListener, receiving *closedForwardingReceivingResources, pool *routecarrier.ClosedCarrierPool, host closedForwardingHost, limit uint16) *closedForwardingServer {
+func newClosedForwardingServerWithHost(dependencies closedForwardingDependencies, certificate tls.Certificate, listener routecarrier.ClosedSharedCarrierListener, receiving *closedForwardingReceivingResources, pool *routecarrier.ClosedCarrierPool, host closedForwardingHost, limit uint16, clock func() time.Time) *closedForwardingServer {
 	ctx, cancel := context.WithCancel(context.Background())
-	running := &closedForwardingServer{config: config, snapshot: snapshot, certificate: certificate, listener: listener, receiving: receiving, pool: pool,
+	running := &closedForwardingServer{dependencies: dependencies, certificate: certificate, listener: listener, receiving: receiving, pool: pool,
 		host: host, cancel: cancel, drained: make(chan struct{}),
-		clock: config.now, limit: make(chan struct{}, limit), done: make(chan error, 1), stopped: make(chan struct{})}
+		clock: clock, limit: make(chan struct{}, limit), done: make(chan error, 1), stopped: make(chan struct{})}
 	running.sessions = newClosedForwardingSessions()
 	running.workers.Add(3)
 	go running.reap()
@@ -257,11 +257,11 @@ func (server *closedForwardingServer) serveAccepted(ctx context.Context, accepte
 }
 
 func (server *closedForwardingServer) serveOuter(ctx context.Context, carrier routecarrier.ClosedSharedCarrier) {
-	updated, err := currentFacts(server.config)
+	updated, err := server.dependencies.current()
 	if err != nil {
 		return
 	}
-	receiver, available := closedRouteReceiver(server.config, updated, ardp.PurposeForwarding, server.clock())
+	receiver, available := server.dependencies.authority.Receiver(updated, ardp.PurposeForwarding, server.clock())
 	if !available {
 		return
 	}
@@ -318,16 +318,16 @@ func (server *closedForwardingServer) serveDirect(ctx context.Context, connectio
 	if err != nil {
 		return err
 	}
-	updated, err := currentFacts(server.config)
+	updated, err := server.dependencies.current()
 	if err != nil {
 		return err
 	}
-	receiver, available := closedRouteReceiver(server.config, updated, ardp.PurposeForwarding, server.clock())
+	receiver, available := server.dependencies.authority.Receiver(updated, ardp.PurposeForwarding, server.clock())
 	if !available {
 		return errors.New("closed forwarding receiver is unavailable")
 	}
 	admission, err := route.NewClosedAdmissionChannel(receiver, server.receiving.spends, server.receiving.limits, exporter,
-		closedForwardingAdmissionVerifier(nodeAuthority(server.config), server.config.now, receiver, server.host, server.config.ClosedForwarding), server.clock)
+		server.dependencies.verify(receiver), server.clock)
 	if err != nil {
 		return err
 	}
@@ -427,13 +427,13 @@ func (server *closedForwardingServer) serveDirect(ctx context.Context, connectio
 				}
 			}
 			forwarding, admitErr = route.NewReplenishableClosedForwardingChannel(&lease, func(open route.ClosedOpen) error {
-				updated, readErr := currentFacts(server.config)
+				updated, readErr := server.dependencies.current()
 				if readErr != nil {
 					return readErr
 				}
-				_, readErr = closedForwardRecipient(server.config, updated, open, server.clock())
+				_, readErr = nodeforwarding.Recipient(server.dependencies.authority, updated, open, server.clock(), server.dependencies.literalEndpoint)
 				return readErr
-			}, closedForwardingReplenisher(nodeAuthority(server.config), server.config.now, receiver, server.host, server.receiving.spends, server.config.ClosedForwarding), server.clock)
+			}, server.dependencies.replenish(receiver, server.receiving.spends), server.clock)
 			if admitErr != nil {
 				return errors.Join(admitErr, lease.Release())
 			}

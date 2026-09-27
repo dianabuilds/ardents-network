@@ -74,7 +74,7 @@ func TestClosedForwardingServeDirectRetainsDuplicateSpendCleanupFailure(t *testi
 	if err != nil {
 		t.Fatal(err)
 	}
-	server := &closedForwardingServer{config: fixture.config, certificate: certificate, receiving: &closedForwardingReceivingResources{spends: spends, limits: limits}, host: host, clock: fixture.config.now}
+	server := &closedForwardingServer{dependencies: forwardingDependencies(fixture.config, host), certificate: certificate, receiving: &closedForwardingReceivingResources{spends: spends, limits: limits}, host: host, clock: fixture.config.now}
 	token := closedRestrictionToken(t, fixture)
 	if err := closedForwardingServeDirectAdmission(t, server, serverKey, receiver, token); err != nil {
 		t.Fatalf("first admission = %v", err)
@@ -133,7 +133,7 @@ func TestClosedForwardingServeDirectRetainsExpiredLeaseCleanupFailure(t *testing
 		}
 		return fixture.now
 	}
-	server := &closedForwardingServer{config: fixture.config, certificate: certificate, receiving: &closedForwardingReceivingResources{spends: spends, limits: limits}, host: host, clock: clock}
+	server := &closedForwardingServer{dependencies: forwardingDependencies(fixture.config, host), certificate: certificate, receiving: &closedForwardingReceivingResources{spends: spends, limits: limits}, host: host, clock: clock}
 	err = closedForwardingServeDirectAdmissionUntil(t, server, serverKey, receiver, closedRestrictionToken(t, fixture), leaseDeadline)
 	if !errors.Is(err, host.release) || !strings.Contains(err.Error(), "lease") {
 		t.Fatalf("expired refusal lost cleanup or primary: %v", err)
@@ -153,7 +153,7 @@ func TestClosedForwardingServeDirectRetainsExpiredLeaseCleanupFailure(t *testing
 	if openErr != nil {
 		t.Fatal(openErr)
 	}
-	server = &closedForwardingServer{config: fixture.config, certificate: certificate, receiving: &closedForwardingReceivingResources{spends: freshSpends, limits: freshLimits}, host: host, clock: clock}
+	server = &closedForwardingServer{dependencies: forwardingDependencies(fixture.config, host), certificate: certificate, receiving: &closedForwardingReceivingResources{spends: freshSpends, limits: freshLimits}, host: host, clock: clock}
 	err = closedForwardingServeDirectAdmissionUntil(t, server, serverKey, receiver, closedRestrictionToken(t, fixture), leaseDeadline)
 	if err == nil || errors.Is(err, cleanup) || !strings.Contains(err.Error(), "lease") {
 		t.Fatalf("healthy expired refusal = %v", err)
@@ -188,7 +188,7 @@ func TestClosedForwardingServeDirectRetainsSpendStorageCleanupFailure(t *testing
 	if err != nil {
 		t.Fatal(err)
 	}
-	server := &closedForwardingServer{config: fixture.config, certificate: certificate, receiving: &closedForwardingReceivingResources{spends: spends, limits: limits}, host: host, clock: fixture.config.now}
+	server := &closedForwardingServer{dependencies: forwardingDependencies(fixture.config, host), certificate: certificate, receiving: &closedForwardingReceivingResources{spends: spends, limits: limits}, host: host, clock: fixture.config.now}
 	journal := filepath.Join(root, "closed-token-spends")
 	saved := journal + ".saved"
 	if err = os.Rename(journal, saved); err != nil {
@@ -255,7 +255,7 @@ func TestClosedForwardingServeDirectRetainsCapacityCleanupFailure(t *testing.T) 
 			_ = lease.Release()
 		}
 	})
-	server := &closedForwardingServer{config: fixture.config, certificate: certificate, receiving: &closedForwardingReceivingResources{spends: spends, limits: limits}, host: host, clock: fixture.config.now}
+	server := &closedForwardingServer{dependencies: forwardingDependencies(fixture.config, host), certificate: certificate, receiving: &closedForwardingReceivingResources{spends: spends, limits: limits}, host: host, clock: fixture.config.now}
 	token := closedRestrictionToken(t, fixture)
 	err = closedForwardingServeDirectAdmission(t, server, serverKey, receiver, token)
 	if !errors.Is(err, cleanup) || !strings.Contains(err.Error(), "capacity") {

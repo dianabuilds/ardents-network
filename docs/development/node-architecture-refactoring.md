@@ -65,8 +65,11 @@ accept loop.
 
 The forwarding child already owns next-hop, bootstrap-adjacency and relay
 policy; the forwarding listener, session set and receiving resource owner are
-still in the root pending their transfer as one bounded role. The Node
-authority child borrows current profile/Route views, projects the
+still in the root pending their transfer as one bounded role. Their current
+server now receives a narrow dependency value for current State, authority,
+class-2 admission and replenishment, endpoint validation, and relay address;
+the process adapter constructs it without passing `runtimeConfig` into the
+server. The Node authority child borrows current profile/Route views, projects the
 receiver and shared peer, and verifies class-1/2/3 tokens. The root still
 supplies the copied duty and keeps process admission and role selection.
 The child rechecks State at each existing admission

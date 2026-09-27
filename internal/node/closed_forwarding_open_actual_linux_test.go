@@ -65,7 +65,7 @@ func testClosedForwardingOpenActualCarrierOutcome(t *testing.T, profile routecar
 		t.Fatal(err)
 	}
 	var workers sync.WaitGroup
-	server := &closedForwardingServer{config: fixture.config, certificate: clientCertificate, pool: pool, sessions: newClosedForwardingSessions(), clock: time.Now}
+	server := &closedForwardingServer{dependencies: forwardingDependencies(fixture.config, nil), certificate: clientCertificate, pool: pool, sessions: newClosedForwardingSessions(), clock: time.Now}
 	open := fixture.open
 	open.Deadline = deadline
 	releasePeer := make(chan struct{})

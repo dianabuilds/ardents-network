@@ -85,7 +85,7 @@ func TestClosedForwardingParentReaderServesControlWhileOpenBlocks(t *testing.T) 
 		t.Fatal(err)
 	}
 	var workers sync.WaitGroup
-	server := &closedForwardingServer{config: fixture.config, certificate: serverCertificate, receiving: &closedForwardingReceivingResources{spends: spends, limits: limits},
+	server := &closedForwardingServer{dependencies: forwardingDependencies(fixture.config, host), certificate: serverCertificate, receiving: &closedForwardingReceivingResources{spends: spends, limits: limits},
 		host: host, pool: pool, sessions: newClosedForwardingSessions(), clock: func() time.Time { return now }}
 	peerRelease := make(chan struct{})
 	defer func() {

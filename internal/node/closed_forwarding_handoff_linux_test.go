@@ -53,7 +53,7 @@ func testClosedForwardingServeDirectOuterAdmission(t *testing.T, cleanup error) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	server := &closedForwardingServer{config: fixture.config, certificate: certificate, receiving: &closedForwardingReceivingResources{spends: spends, limits: limits}, host: host, clock: fixture.config.now}
+	server := &closedForwardingServer{dependencies: forwardingDependencies(fixture.config, host), certificate: certificate, receiving: &closedForwardingReceivingResources{spends: spends, limits: limits}, host: host, clock: fixture.config.now}
 	var expired atomic.Bool
 	host.afterReserve = func() { expired.Store(true) }
 	outerClock := func() time.Time {
@@ -174,7 +174,7 @@ func TestClosedForwardingServeDirectRetainsConstructorCleanupFailure(t *testing.
 		}
 		return fixture.now
 	}
-	server := &closedForwardingServer{config: fixture.config, certificate: certificate, receiving: &closedForwardingReceivingResources{spends: spends, limits: limits}, host: host, clock: clock}
+	server := &closedForwardingServer{dependencies: forwardingDependencies(fixture.config, host), certificate: certificate, receiving: &closedForwardingReceivingResources{spends: spends, limits: limits}, host: host, clock: clock}
 	err = closedForwardingServeDirectAdmission(t, server, serverKey, receiver, closedRestrictionToken(t, fixture))
 	if !errors.Is(err, cleanup) || !strings.Contains(err.Error(), "channel is invalid") {
 		t.Fatalf("constructor refusal lost cleanup or primary: %v", err)
@@ -217,7 +217,7 @@ func TestClosedForwardingServeDirectSuccessfulHandoffLeavesCleanupToForwarding(t
 	if err != nil {
 		t.Fatal(err)
 	}
-	server := &closedForwardingServer{config: fixture.config, certificate: certificate, receiving: &closedForwardingReceivingResources{spends: spends, limits: limits}, host: host, clock: fixture.config.now}
+	server := &closedForwardingServer{dependencies: forwardingDependencies(fixture.config, host), certificate: certificate, receiving: &closedForwardingReceivingResources{spends: spends, limits: limits}, host: host, clock: fixture.config.now}
 	client, result := closedForwardingServeDirectAccepted(t, server, serverKey, receiver, closedRestrictionToken(t, fixture))
 	joined := false
 	t.Cleanup(func() {

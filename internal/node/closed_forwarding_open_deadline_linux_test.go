@@ -82,7 +82,7 @@ func TestClosedForwardingOpenExpiresWhileExactCarrierDialWaits(t *testing.T) {
 		}
 	})
 	certificate, _ := nodeCertificate(t, 237, "forwarding-deadline")
-	server := &closedForwardingServer{config: fixture.config, certificate: certificate, pool: pool, sessions: newClosedForwardingSessions(), clock: time.Now}
+	server := &closedForwardingServer{dependencies: forwardingDependencies(fixture.config, nil), certificate: certificate, pool: pool, sessions: newClosedForwardingSessions(), clock: time.Now}
 	open := fixture.open
 	open.Deadline = time.Now().Add(40 * time.Millisecond)
 	started := time.Now()

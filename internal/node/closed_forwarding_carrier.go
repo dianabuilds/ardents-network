@@ -395,10 +395,10 @@ func (session *closedForwardingSession) fail() {
 }
 
 func (server *closedForwardingServer) closedForwardingOuterHello(snapshot state.NodeDuty, open route.ClosedOpen) (ardp.Hello, error) {
-	if server.config.CurrentClosedProfile == nil {
+	if server.dependencies.authority.CurrentProfile == nil {
 		return ardp.Hello{}, errors.New("closed forwarding profile is unavailable")
 	}
-	profile, available := server.config.CurrentClosedProfile()
+	profile, available := server.dependencies.authority.CurrentProfile()
 	if !available || !authority.ProfileMatchesSnapshot(profile, snapshot, server.clock()) {
 		return ardp.Hello{}, errors.New("closed forwarding profile is unavailable")
 	}

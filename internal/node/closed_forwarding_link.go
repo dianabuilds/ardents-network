@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/node/forwarding"
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	"github.com/dianabuilds/ardents-network/internal/route/carrier"
@@ -328,30 +329,30 @@ func (server *closedForwardingServer) openForwardingLink(ctx context.Context, op
 		return nil, err
 	}
 	defer cancelHandshake()
-	updated, err := currentFacts(server.config)
+	updated, err := server.dependencies.current()
 	if err != nil {
 		return nil, err
 	}
-	candidate, err := closedForwardRecipient(server.config, updated, open, server.clock())
+	candidate, err := forwarding.Recipient(server.dependencies.authority, updated, open, server.clock(), server.dependencies.literalEndpoint)
 	if err != nil {
 		return nil, err
 	}
-	receiver, available := closedRouteReceiver(server.config, updated, ardp.PurposeForwarding, server.clock())
+	receiver, available := server.dependencies.authority.Receiver(updated, ardp.PurposeForwarding, server.clock())
 	if !available {
 		return nil, errors.New("closed forwarding receiver is unavailable")
 	}
-	dialEndpoint, err := closedCarrierDialAddress(candidate.Endpoint, server.config.ClosedForwarding.CarrierRelayEndpoint)
+	dialEndpoint, err := forwarding.DialAddress(candidate.Endpoint, server.dependencies.relayEndpoint)
 	if err != nil {
 		return nil, err
 	}
 	key := carrier.ClosedCarrierKey{NetworkID: receiver.NetworkID, ProfileDigest: receiver.ProfileDigest, LocalNodeID: receiver.NodeID,
 		PeerNodeID: candidate.NodeID, PeerKey: candidate.PublicKey, CarrierProfile: carrier.CarrierProfile(candidate.CarrierProfile)}
 	lease, err := server.pool.AcquireContext(handshakeCtx, key, func() error {
-		fresh, readErr := currentFacts(server.config)
+		fresh, readErr := server.dependencies.current()
 		if readErr != nil {
 			return readErr
 		}
-		selected, selectErr := closedForwardRecipient(server.config, fresh, open, server.clock())
+		selected, selectErr := forwarding.Recipient(server.dependencies.authority, fresh, open, server.clock(), server.dependencies.literalEndpoint)
 		if selectErr != nil || selected.NodeID != candidate.NodeID || selected.PublicKey != candidate.PublicKey || selected.RecordDigest != candidate.RecordDigest ||
 			selected.Endpoint != candidate.Endpoint || selected.CarrierProfile != candidate.CarrierProfile {
 			return errors.New("closed forwarding recipient changed")
