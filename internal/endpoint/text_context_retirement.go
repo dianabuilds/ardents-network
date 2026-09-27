@@ -29,15 +29,15 @@ type textContextRetirement struct {
 // textContext-owned; extracted owners clear their own state through stop.
 func (owner *textContext) stopTextContextChildrenLocked() *textContextRetirement {
 	retirement := &textContextRetirement{}
-	retirement.refresh = owner.refresh.stopAsync()
-	retirement.publication = owner.publication.stopLocked()
-	owner.signalTextRegistrationsLocked()
+	retirement.refresh = owner.publication.refresh.stopAsync()
+	retirement.publication = owner.publication.pair.stopLocked()
+	owner.publication.signalRegistrationsLocked()
 	retirement.exchanges = owner.introductionExchanges.stopLocked()
-	retirement.withdrawal = owner.publication.withdrawalLocked()
+	retirement.withdrawal = owner.publication.pair.withdrawalLocked()
 	if retirement.withdrawal != nil {
 		retirement.withdrawal.cancel()
 	}
-	retirement.registrationOpening = owner.publication.openingLocked()
+	retirement.registrationOpening = owner.publication.pair.openingLocked()
 	retirement.registrationOpening.stop()
 	owner.introductionDispatch.stopLocked()
 	owner.introductionAdmission.stopLocked()

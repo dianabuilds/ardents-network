@@ -13,7 +13,7 @@ import (
 func observeInstalledTextRefresh(t *testing.T, ctx context.Context, owner *textContext, run *textPublisherRun) {
 	t.Helper()
 	owner.mu.Lock()
-	first := owner.publication.registration
+	first := owner.publication.pair.registration
 	if first == nil || !first.published {
 		owner.mu.Unlock()
 		t.Fatal("no initial published registration")
@@ -28,14 +28,14 @@ func observeInstalledTextRefresh(t *testing.T, ctx context.Context, owner *textC
 	var cutoff time.Time
 	for {
 		owner.mu.Lock()
-		second = owner.publication.registration
-		changed := owner.publication.registrationChanged
+		second = owner.publication.pair.registration
+		changed := owner.publication.pair.registrationChanged
 		switched := second != nil && second != first && second.published && !second.refreshAt.IsZero()
 		if switched {
 			// Read the timestamp recorded by the verified ACK transition itself.
-			cutoff = owner.publication.previousUntil
+			cutoff = owner.publication.pair.previousUntil
 			switchedAt := second.publishedAt
-			valid := owner.publication.previousRegistration == first && second.request.Slot != initialSlot && second.request.Revision > initialRevision && second.recipient.Public(time.Now().UTC()) != initialKey
+			valid := owner.publication.pair.previousRegistration == first && second.request.Slot != initialSlot && second.request.Revision > initialRevision && second.recipient.Public(time.Now().UTC()) != initialKey
 			owner.mu.Unlock()
 			if !valid || second.createdAt.Before(scheduled) || time.Now().Before(scheduled) || switchedAt.IsZero() || switchedAt.Before(scheduled) || cutoff.After(switchedAt.Add(60*time.Second)) || cutoff.After(expiry) {
 				t.Fatal("actual refresh violated slot, revision or predecessor bound")
@@ -57,10 +57,10 @@ func observeInstalledTextRefresh(t *testing.T, ctx context.Context, owner *textC
 	defer cancel()
 	for {
 		owner.mu.Lock()
-		retired := owner.publication.previousRegistration == nil
-		changed := owner.publication.registrationChanged
-		current := owner.publication.registration == second && second.published
-		unchanged := retired || owner.publication.previousRegistration == first && owner.publication.previousUntil == cutoff
+		retired := owner.publication.pair.previousRegistration == nil
+		changed := owner.publication.pair.registrationChanged
+		current := owner.publication.pair.registration == second && second.published
+		unchanged := retired || owner.publication.pair.previousRegistration == first && owner.publication.pair.previousUntil == cutoff
 		owner.mu.Unlock()
 		if !unchanged {
 			t.Fatal("predecessor deadline or identity changed after publication")

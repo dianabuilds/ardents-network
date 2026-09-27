@@ -15,11 +15,8 @@ import (
 // It is never a wire identity or evidence of installed confinement. Only the
 // verified launch boundary may give a worker a Principal and Grant.
 type textContextState struct {
-	refreshFailure        func(string)
-	withdrawalFailure     func(string)
 	operationFailure      func(string)
-	refresh               textPublicationRefreshLifecycle
-	publication           textPublicationPairLifecycle
+	publication           textPublication
 	introductionDispatch  textIntroductionDispatch
 	introductionExchanges textIntroductionExchangeSet
 	introductionAdmission textIntroductionAdmission
@@ -56,7 +53,7 @@ func (owner *textContext) reportTextOperationFailure(failure string) {
 // It never serializes a wrapped error, peer, route, document, or authority.
 func (owner *textContext) reportTextWithdrawalFailure(failure string) {
 	owner.mu.Lock()
-	report := owner.withdrawalFailure
+	report := owner.publication.withdrawalFailure
 	owner.mu.Unlock()
 	if report != nil {
 		report(failure)

@@ -74,23 +74,23 @@ func TestTextPublicationLossBeforeAcknowledgementRetiresRecipients(t *testing.T)
 					}
 					gate.arm(t)
 					owner.mu.Lock()
-					refresh := owner.refresh.current()
+					refresh := owner.publication.refresh.current()
 					first.refreshAt = time.Now().Add(-time.Second)
-					owner.signalTextRegistrationsLocked()
+					owner.publication.signalRegistrationsLocked()
 					owner.mu.Unlock()
 					select {
 					case <-gate.held:
 					case <-refresh.done:
-						cause := owner.refresh.outcome(refresh)
+						cause := owner.publication.refresh.outcome(refresh)
 						t.Fatalf("refresh ended before replacement Store commit: %v", cause)
 					case <-time.After(10 * time.Second):
 						owner.mu.Lock()
-						cause, registered := owner.refresh.outcome(refresh), owner.publication.pendingRegistration != nil && owner.publication.pendingRegistration != first
+						cause, registered := owner.publication.refresh.outcome(refresh), owner.publication.pair.pendingRegistration != nil && owner.publication.pair.pendingRegistration != first
 						owner.mu.Unlock()
 						t.Fatalf("replacement did not reach Store commit before ACK: registered=%t refresh=%v", registered, cause)
 					}
 					owner.mu.Lock()
-					second := owner.publication.pendingRegistration
+					second := owner.publication.pair.pendingRegistration
 					ready := first.published && second != nil && second != first && !second.published && second.recipient != nil
 					owner.mu.Unlock()
 					if !ready || first.recipient.Public(time.Now()) == [32]byte{} || second.recipient.Public(time.Now()) == [32]byte{} {
@@ -122,8 +122,8 @@ func TestTextPublicationLossBeforeAcknowledgementRetiresRecipients(t *testing.T)
 						}
 					}
 					owner.mu.Lock()
-					retired := owner.publication.registration == nil && owner.publication.pendingRegistration == nil && owner.publication.previousRegistration == nil && !second.published
-					cause := owner.refresh.outcome(refresh)
+					retired := owner.publication.pair.registration == nil && owner.publication.pair.pendingRegistration == nil && owner.publication.pair.previousRegistration == nil && !second.published
+					cause := owner.publication.refresh.outcome(refresh)
 					owner.mu.Unlock()
 					if !retired || failure != "context revoke" && cause == nil {
 						t.Fatalf("late ACK retained readiness or lost failure: retired=%t cause=%v", retired, cause)

@@ -31,7 +31,7 @@ func TestTextAdministrationRequiresCurrentSeparateAuthority(t *testing.T) {
 	}
 	withdrawalFailures := make(chan string, 1)
 	publisher.mu.Lock()
-	publisher.withdrawalFailure = func(failure string) { withdrawalFailures <- failure }
+	publisher.publication.withdrawalFailure = func(failure string) { withdrawalFailures <- failure }
 	publisher.mu.Unlock()
 	if err := endpoint.admission.Revoke(principal, broker.Administration); err != nil {
 		t.Fatal(err)

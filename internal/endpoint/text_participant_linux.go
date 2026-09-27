@@ -119,12 +119,12 @@ func (endpoint *endpoint) runTextInterfaces(ctx context.Context, config TextPart
 		}
 		if role.surface == broker.Administration {
 			owner.mu.Lock()
-			owner.refreshFailure = func(failure string) {
+			owner.publication.refreshFailure = func(failure string) {
 				// A failed refresh is local operational state. Its fixed category
 				// exposes neither a wrapped transport error nor private route data.
 				output.background(TextParticipantEvent{Kind: "publication-refresh-failed", NetworkID: endpoint.network, Failure: failure})
 			}
-			owner.withdrawalFailure = func(failure string) {
+			owner.publication.withdrawalFailure = func(failure string) {
 				// The category identifies the trusted local boundary that rejected an
 				// administrative withdrawal without exposing a wrapped error or data.
 				output.background(TextParticipantEvent{Kind: "publication-withdrawal-failed", NetworkID: endpoint.network, Surface: string(role.surface), Failure: failure})

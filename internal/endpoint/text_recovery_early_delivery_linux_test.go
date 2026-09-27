@@ -108,7 +108,7 @@ func TestTextRecoveryDeliveryMayArriveBeforePublisherFailureDetection(t *testing
 		t.Fatalf("expired recovery owner retained %d deliveries", buffered)
 	}
 	publisher.mu.Lock()
-	registrationDone := publisher.publication.registration.channel.Done()
+	registrationDone := publisher.publication.pair.registration.channel.Done()
 	publisher.mu.Unlock()
 	select {
 	case <-registrationDone:
@@ -187,7 +187,7 @@ func TestTextRecoveryRefusalOutlivesCanceledAttempt(t *testing.T) {
 		t.Fatal("matched recovery refusal was accepted")
 	}
 	publisher.mu.Lock()
-	registrationDone := publisher.publication.registration.channel.Done()
+	registrationDone := publisher.publication.pair.registration.channel.Done()
 	publisher.mu.Unlock()
 	select {
 	case <-registrationDone:
@@ -216,7 +216,7 @@ func TestTextIntroductionOrphanRefusalOutlivesCanceledWaiter(t *testing.T) {
 		t.Fatal(err)
 	}
 	publisher.mu.Lock()
-	recipient := publisher.publication.registration.recipient.Public(time.Now().UTC())
+	recipient := publisher.publication.pair.registration.recipient.Public(time.Now().UTC())
 	publisher.mu.Unlock()
 	facts := attempt.plaintext
 	facts.AttachmentGeneration = 9
@@ -260,7 +260,7 @@ func TestTextIntroductionOrphanRefusalOutlivesCanceledWaiter(t *testing.T) {
 		t.Fatal("orphan delivery was accepted")
 	}
 	publisher.mu.Lock()
-	registrationDone := publisher.publication.registration.channel.Done()
+	registrationDone := publisher.publication.pair.registration.channel.Done()
 	publisher.mu.Unlock()
 	select {
 	case <-registrationDone:

@@ -227,7 +227,7 @@ func TestTextPublisherBuildsRetainedQualificationSetAcrossFourReaders(t *testing
 		case err := <-producerDone:
 			producerFinished = true
 			publisher.mu.Lock()
-			registration := publisher.publication.registration
+			registration := publisher.publication.pair.registration
 			publisher.mu.Unlock()
 			reason := client.ClosedIntroductionEndUnknown
 			if registration != nil {

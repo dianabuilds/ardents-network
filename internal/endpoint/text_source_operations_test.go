@@ -103,9 +103,9 @@ func TestTextRefreshWaitsForActualSourceUse(t *testing.T) {
 				}
 			}()
 			owner.mu.Lock()
-			first, refresh := owner.publication.registration, owner.refresh.current()
+			first, refresh := owner.publication.pair.registration, owner.publication.refresh.current()
 			first.refreshAt = time.Now().Add(-time.Second)
-			owner.signalTextRegistrationsLocked()
+			owner.publication.signalRegistrationsLocked()
 			owner.mu.Unlock()
 			// The scheduler may begin, but cannot treat legitimate Source ownership
 			// as lost publication authority. Issue real tokens under that reservation.
@@ -121,10 +121,10 @@ func TestTextRefreshWaitsForActualSourceUse(t *testing.T) {
 			release()
 			held = false
 			waitTextRefreshCondition(t, owner, func() bool {
-				return owner.publication.registration != nil && owner.publication.registration != first && !owner.publication.registration.refreshAt.IsZero()
+				return owner.publication.pair.registration != nil && owner.publication.pair.registration != first && !owner.publication.pair.registration.refreshAt.IsZero()
 			})
 			owner.mu.Lock()
-			valid := owner.publication.previousRegistration == first && owner.refresh.outcome(refresh) == nil && owner.permission.batches == 2
+			valid := owner.publication.pair.previousRegistration == first && owner.publication.refresh.outcome(refresh) == nil && owner.permission.batches == 2
 			owner.mu.Unlock()
 			if !valid {
 				t.Fatal("refresh lost original registration or repeated bootstrap")

@@ -47,7 +47,7 @@ func TestTextPublisherWithdrawalDrainsAdmittedRead(t *testing.T) {
 			withdrawn := make(chan error, 1)
 			go func() { withdrawn <- run.Withdraw(t.Context()) }()
 			select {
-			case <-publisherOwner.publicationDrain:
+			case <-publisherOwner.publication.drain:
 			case <-time.After(3 * time.Second):
 				finish()
 				_ = stream.Close()
@@ -99,7 +99,7 @@ func TestTextPublisherWithdrawalBoundsStalledRead(t *testing.T) {
 			withdrawn := make(chan error, 1)
 			go func() { withdrawn <- run.Withdraw(t.Context()) }()
 			select {
-			case <-publisherOwner.publicationDrain:
+			case <-publisherOwner.publication.drain:
 			case <-time.After(3 * time.Second):
 				finish()
 				_ = stream.Close()

@@ -32,7 +32,7 @@ func (worker *qualifiedTextWorker) produceNetworkSequential(lifetime context.Con
 	network, cancel := context.WithCancel(lifetime)
 	var retired sync.WaitGroup
 	owner.mu.Lock()
-	drain := owner.publicationDrain
+	drain := owner.publication.drain
 	slots := make(chan struct{}, owner.streamConnectionLimitLocked())
 	owner.mu.Unlock()
 	draining := false
@@ -113,7 +113,7 @@ func (worker *qualifiedTextWorker) produceQualificationNetwork(lifetime context.
 	}
 	var retired sync.WaitGroup
 	owner.mu.Lock()
-	drain := owner.publicationDrain
+	drain := owner.publication.drain
 	connectionLimit := owner.streamConnectionLimitLocked()
 	owner.mu.Unlock()
 	draining := false

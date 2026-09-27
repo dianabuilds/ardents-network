@@ -2,12 +2,12 @@
 
 package endpoint
 
-// textContext adds installed Publisher startup and drain state to local authority.
-// Like the surrounding context state, both fields are protected by owner.mu.
+// textContext is the local authority holder. Every local subsystem, including
+// the publication owner with its startup and drain barriers, lives inside
+// textContextState and is protected by owner.mu unless an owner documents its
+// own mutex.
 type textContext struct {
 	textContextState
-	publicationStarting bool
-	publicationDrain    chan struct{}
 }
 
 // Only the explicit admission stop permits a normal producer drain. A joined

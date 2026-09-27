@@ -36,9 +36,9 @@ func (owner *textAdministration) PublishedLink(ctx context.Context) (link string
 	current.mu.Lock()
 	defer current.mu.Unlock()
 	_, now, err := current.textPermissionProfileLocked()
-	registration := current.publication.currentLocked()
+	registration := current.publication.pair.currentLocked()
 	if err != nil || endpoint.textPublisherOwner != current || !current.liveTextServiceJobLocked(current.job, broker.Administration) ||
-		current.publicationStarting || current.publication.drainingLocked() || registration == nil || !registration.linkVisibleAtLocked(now) ||
+		current.publication.starting || current.publication.pair.drainingLocked() || registration == nil || !registration.linkVisibleAtLocked(now) ||
 		endpoint.publications == nil || run.link.Network != endpoint.network || run.link.Target == [32]byte{} || ctx.Err() != nil {
 		return "", errors.New("text publication Link unavailable")
 	}

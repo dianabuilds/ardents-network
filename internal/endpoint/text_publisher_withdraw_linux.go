@@ -28,9 +28,9 @@ func (run *textPublisherRun) Withdraw(ctx context.Context) error {
 	owner := run.owner
 	owner.mu.Lock()
 	failure := ""
-	if owner.publication.drainingLocked() {
+	if owner.publication.pair.drainingLocked() {
 		failure = "publication-draining"
-	} else if owner.publication.currentLocked() == nil {
+	} else if owner.publication.pair.currentLocked() == nil {
 		failure = "registration-absent"
 	} else if !owner.liveLocked(owner.endpoint, owner.surface) {
 		failure = "publisher-not-live"
@@ -47,13 +47,11 @@ func (run *textPublisherRun) Withdraw(ctx context.Context) error {
 	run.withdrawDone = make(chan struct{})
 	withdrawn := run.withdrawDone
 	owner.publication.beginDrainLocked()
-	close(owner.publicationDrain)
-	owner.signalTextRegistrationsLocked()
 	owner.mu.Unlock()
 	run.mu.Unlock()
 	// Join an in-flight refresh before withdrawing its final selected registration.
 	// The admission stop is already visible throughout this network operation.
-	owner.stopTextRefresh()
+	owner.publication.stopRefresh()
 	withdrawalErr := owner.withdrawTextIntroduction(bounded)
 	if withdrawalErr != nil {
 		run.cancel()
