@@ -1325,14 +1325,17 @@ hosting_sample}.go`, `internal/network/state/resources.go` and
    command owns event output destinations. The diagnostic timeline projects
    those events after emission; it does not control pressure or own the root.
 4. For class-1/3 control admissions, Node's verifier reserves from the shared
-   Hosting handle. Resolution, Introduction and admitted Issuer handlers defer
-   the Route admission's `Release` but discard its durable release result.
-   Their server drain results therefore do not prove a successful Hosting
-   refund. On a bounded drain timeout, `node.Run` closes that shared handle
-   although a child may finish later and try to release through it. The
-   ledger retains the reservation in that case; F-62 records the missing
-   outcome owner and late-close ordering. Data JOIN's transferred claim and
-   cleanup accumulator are a different path.
+   Hosting handle. Resolution and Introduction handlers join the Route
+   admission's `Release` result into the server drain outcome, and the
+   admitted Issuer handler records it into the terminal cleanup join through
+   the release ledger, so a failed Hosting refund can no longer hide behind a
+   successful reply (F-17/F-62 realized, after the `53f02e64` snapshot). On a
+   bounded drain timeout, `withdraw`/`fail` hand the shared handle's close to
+   a goroutine waiting on the child's join (`closedHostingLifetime.
+   deferCloseUntil`), so a late child still releases its reservation before
+   the handle closes and the deferred Run-level close no-ops after the
+   transfer (F-62 realized). Data JOIN's transferred claim and cleanup
+   accumulator are a different path.
 
 ## Source trace: Portable Endpoint compatibility forms and replacement recovery
 
