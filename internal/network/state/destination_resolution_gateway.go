@@ -26,19 +26,19 @@ func attachDestinationResolutionGateway(decision *verifiedEpochDecision) error {
 		return errors.New("interactive Route Epoch lacks a Destination Resolution Gateway profile")
 	}
 	selected := -1
-	for index, domain := range decision.Domains {
-		if domain != destinationResolutionDomain {
+	for index, candidate := range decision.Candidates {
+		if candidate.Domain != destinationResolutionDomain {
 			continue
 		}
-		if selected >= 0 || decision.NodeIDs[index] == [32]byte{} || decision.FamilyIDs[index] == [32]byte{} {
+		if selected >= 0 || candidate.NodeID == [32]byte{} || candidate.FamilyID == [32]byte{} {
 			return errors.New("destination resolution gateway state assignment is ambiguous")
 		}
 		selected = index
 	}
-	if selected < 0 || decision.NodeIDs[selected] != decision.epoch.destinationResolutionNodeID {
+	if selected < 0 || decision.Candidates[selected].NodeID != decision.epoch.destinationResolutionNodeID {
 		return errors.New("destination resolution gateway profile does not match its state assignment")
 	}
-	decision.Snapshot.DestinationResolutionNodeID = decision.NodeIDs[selected]
+	decision.Snapshot.DestinationResolutionNodeID = decision.Candidates[selected].NodeID
 	copy(decision.Snapshot.DestinationResolutionProfile[:], decision.epoch.destinationResolutionProfile)
 	decision.Snapshot.DestinationResolutionProfileSize = uint16(len(decision.epoch.destinationResolutionProfile))
 	return nil

@@ -42,23 +42,9 @@ func sourceCollides(info source.Details, decision candidateDecision) bool {
 }
 
 func epochDecisionCollides(decision verifiedEpochDecision, identity [32]byte, family, endpoint string) bool {
-	for _, candidate := range decision.NodeIDs {
-		if candidate == identity {
-			return true
-		}
-	}
-	for _, candidate := range decision.KeyIDs {
-		if candidate == identity {
-			return true
-		}
-	}
-	for _, candidate := range decision.Families {
-		if candidate == family {
-			return true
-		}
-	}
-	for _, candidate := range decision.Endpoints {
-		if candidate == endpoint {
+	for _, candidate := range decision.Candidates {
+		if candidate.NodeID == identity || candidate.KeyID == identity ||
+			candidate.Family == family || candidate.Endpoint == endpoint {
 			return true
 		}
 	}
