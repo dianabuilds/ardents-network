@@ -272,6 +272,7 @@
 "docs/adr/README.md","decision-index","docs/adr","","unreviewed"
 "docs/development/README.md","current-document","docs/development","","document-owner-pass"
 "docs/development/agent-execution.md","current-document","docs/development","","document-owner-pass"
+"docs/development/audit-receipts/architecture-reconstruction-dev-merge-qualification.md","audit-receipt","docs/development/audit-receipts","","unreviewed"
 "docs/development/audit-receipts/c0-run-2-gate-a-remediation.md","audit-receipt","docs/development/audit-receipts","","unreviewed"
 "docs/development/audit-receipts/c0-run-2-track-a.md","audit-receipt","docs/development/audit-receipts","","unreviewed"
 "docs/development/command-surface.md","current-document","docs/development","","document-owner-pass"
