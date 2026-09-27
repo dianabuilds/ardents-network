@@ -25,19 +25,19 @@ func attachTransitIssuanceDuty(decision *verifiedEpochDecision) error {
 		return errors.New("interactive Route Epoch lacks a transit issuance profile")
 	}
 	selected := -1
-	for index, domain := range decision.Domains {
-		if domain != transitIssuanceDomain {
+	for index, candidate := range decision.Candidates {
+		if candidate.Domain != transitIssuanceDomain {
 			continue
 		}
-		if selected >= 0 || decision.NodeIDs[index] == [32]byte{} || decision.FamilyIDs[index] == [32]byte{} {
+		if selected >= 0 || candidate.NodeID == [32]byte{} || candidate.FamilyID == [32]byte{} {
 			return errors.New("transit issuance State assignment is ambiguous")
 		}
 		selected = index
 	}
-	if selected < 0 || decision.NodeIDs[selected] != decision.epoch.transitIssuanceNodeID {
+	if selected < 0 || decision.Candidates[selected].NodeID != decision.epoch.transitIssuanceNodeID {
 		return errors.New("transit issuance profile does not match its State assignment")
 	}
-	decision.Snapshot.TransitIssuanceNodeID = decision.NodeIDs[selected]
+	decision.Snapshot.TransitIssuanceNodeID = decision.Candidates[selected].NodeID
 	copy(decision.Snapshot.TransitIssuanceProfile[:], decision.epoch.transitIssuanceProfile)
 	decision.Snapshot.TransitIssuanceProfileSize = uint16(len(decision.epoch.transitIssuanceProfile))
 	return nil

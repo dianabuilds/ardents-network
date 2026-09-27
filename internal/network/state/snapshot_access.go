@@ -117,12 +117,12 @@ func routeCandidates(decision *candidateDecision) ([64]routeCandidate, uint8) {
 		return result, 0
 	}
 	verified := decision.verified
-	for index := range verified.NodeIDs {
-		result[index] = routeCandidate{NodeID: verified.NodeIDs[index], PublicKey: verified.PublicKeys[index], KeyID: verified.KeyIDs[index],
-			FamilyID: verified.FamilyIDs[index], RecordDigest: verified.RecordDigests[index], DomainProofDigest: sha256.Sum256(verified.DomainProofs[index]),
-			Family: verified.Families[index], Endpoint: verified.Endpoints[index], CarrierProfile: verified.CarrierProfiles[index], Capacity: verified.Capacities[index],
-			Domain: verified.Domains[index], ValidFrom: verified.ValidFrom[index], ValidUntil: verified.ValidUntil[index],
-			AssignmentNotAfter: verified.AssignmentNotAfter[index]}
+	for index, candidate := range verified.Candidates {
+		result[index] = routeCandidate{NodeID: candidate.NodeID, PublicKey: candidate.PublicKey, KeyID: candidate.KeyID,
+			FamilyID: candidate.FamilyID, RecordDigest: candidate.RecordDigest, DomainProofDigest: sha256.Sum256(candidate.DomainProof),
+			Family: candidate.Family, Endpoint: candidate.Endpoint, CarrierProfile: candidate.CarrierProfile, Capacity: candidate.Capacity,
+			Domain: candidate.Domain, ValidFrom: candidate.ValidFrom, ValidUntil: candidate.ValidUntil,
+			AssignmentNotAfter: candidate.AssignmentNotAfter}
 	}
-	return result, uint8(len(verified.NodeIDs))
+	return result, uint8(len(verified.Candidates))
 }

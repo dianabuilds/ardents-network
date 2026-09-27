@@ -59,27 +59,24 @@ type epochVerificationSnapshot struct {
 // verified result. Its slices are owned immutable copies and preserve canonical
 // input order. A zero Decision has not been verified.
 type verifiedEpochDecision struct {
-	EpochBytes         []byte
-	Inputs             [][]byte
-	Snapshot           epochVerificationSnapshot
-	NodeIDs            [][32]byte
-	KeyIDs             [][32]byte
-	PublicKeys         [][32]byte
-	FamilyIDs          [][32]byte
-	Families           []string
-	RecordDigests      [][32]byte
-	DomainProofs       [][]byte
-	Endpoints          []string
-	CarrierProfiles    []string
-	Capacities         []uint16
-	Domains            []string
-	ValidFrom          []time.Time
-	ValidUntil         []time.Time
-	AssignmentNotAfter []time.Time
+	EpochBytes []byte
+	Inputs     [][]byte
+	Snapshot   epochVerificationSnapshot
+	Candidates []verifiedCandidate
 
 	epoch      epochEnvelope
 	accepted   []nodeRecord
 	rejections []rejection
+}
+
+// verifiedCandidate keeps every authenticated fact for one accepted Node
+// Record together; its fields cannot drift across parallel indexes.
+type verifiedCandidate struct {
+	NodeID, KeyID, PublicKey, FamilyID, RecordDigest [32]byte
+	DomainProof                                      []byte
+	Family, Endpoint, CarrierProfile, Domain         string
+	Capacity                                         uint16
+	ValidFrom, ValidUntil, AssignmentNotAfter        time.Time
 }
 
 // Verify authenticates one exact Epoch/View decision and its encoded
