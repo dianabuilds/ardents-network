@@ -6,6 +6,7 @@ import (
 	"net"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/node/authority"
 	nodeouter "github.com/dianabuilds/ardents-network/internal/node/outer"
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
@@ -164,7 +165,7 @@ func (server *closedResolutionServer) currentIntroduction(introduction reachabil
 		return false
 	}
 	view, err := server.config.CurrentClosedRoute()
-	if err != nil || !closedRouteProfileMatchesSnapshot(view.Profile, snapshot, now) {
+	if err != nil || !authority.ProfileMatchesSnapshot(view.Profile, snapshot, now) {
 		return false
 	}
 	matches := 0

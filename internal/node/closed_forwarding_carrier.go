@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"errors"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
+	"github.com/dianabuilds/ardents-network/internal/node/authority"
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	routecarrier "github.com/dianabuilds/ardents-network/internal/route/carrier"
@@ -398,7 +399,7 @@ func (server *closedForwardingServer) closedForwardingOuterHello(snapshot state.
 		return ardp.Hello{}, errors.New("closed forwarding profile is unavailable")
 	}
 	profile, available := server.config.CurrentClosedProfile()
-	if !available || !closedRouteProfileMatchesSnapshot(profile, snapshot, server.clock()) {
+	if !available || !authority.ProfileMatchesSnapshot(profile, snapshot, server.clock()) {
 		return ardp.Hello{}, errors.New("closed forwarding profile is unavailable")
 	}
 	var nonce [32]byte

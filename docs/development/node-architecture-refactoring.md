@@ -16,10 +16,10 @@ and report the joined terminal result. It does not retain a network role's
 listener, connection handlers, spend ledger, or role-specific state. The
 private probe remains under the process owner.
 
-The intended children are `internal/node/outer`, `forwarding`, `issuer`,
-`resolution`, `introduction`, and `join`. A narrow shared authority
-projection and hosting reservation owner may be extracted when their exact
-caller values are known. Each new package must have `doc.go`, behavior tests,
+The intended children are `internal/node/outer`, `authority`, `forwarding`,
+`issuer`, `resolution`, `introduction`, and `join`. A narrow shared hosting
+reservation owner may be extracted when its exact caller values are known.
+Each new package must have `doc.go`, behavior tests,
 a non-test caller, and registered imports. A role never imports its parent or
 receives `runtimeConfig`; the root adapts the role's small
 `Done`/`Stop`/`Drain`/usage surface to process lifecycle.
@@ -63,8 +63,10 @@ accept loop.
 | Introduction | Selected class-3 receiver, spend/slot floors, registrations/deliveries, listener and workers. | Close listener, join workers before replay roots; retain close errors. |
 | Join | Selected data-join receiver, spend root, pair owner, host reservation, listener and workers. | Stop listener and host monitor, join workers, close pairs and spend root, then host; retain terminal causes. |
 
-One Node authority boundary should project the current duty/profile and verify
-class-1/2/3 tokens for roles. It rechecks State at each existing admission
+The Node authority child borrows current profile/Route views, projects the
+receiver and shared peer, and verifies class-1/2/3 tokens. The root still
+supplies the copied duty and keeps process admission and role selection.
+The child rechecks State at each existing admission
 point and never accepts a plan-supplied digest, role, peer, or key. Forwarding's
 class-2 host charge and control's class-1/3 lifetime charge remain distinct
 policy callers. Hosting reservations use Resource's ledger with one Node owner

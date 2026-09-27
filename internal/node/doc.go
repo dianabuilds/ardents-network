@@ -14,8 +14,8 @@
 // transitions; duty_server.go dispatches listeners. The closed_* listener
 // files retain each duty's resources, while the outer child package owns one
 // accepted Carrier's inner lanes, serialized writer and joined cleanup.
-// closed_role_token_verification.go authenticates the same selected
-// profile token for forwarding and control admission; closed_control_admission.go
+// The authority child package checks current State projections and the same
+// selected-profile token for forwarding and control admission; closed_control_admission.go
 // owns the control host reservation, while forwarding owns its own reservation
 // and spend. duty_handle.go names the common stop/drain boundary;
 // lifecycle_event.go and event_writer.go define and emit observations.

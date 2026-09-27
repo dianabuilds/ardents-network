@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/network/state"
+	"github.com/dianabuilds/ardents-network/internal/node/authority"
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 )
@@ -19,7 +20,7 @@ func closedBootstrapRecipient(config runtimeConfig, snapshot state.NodeDuty, rec
 		return errors.New("closed bootstrap current route is unavailable")
 	}
 	view, err := config.CurrentClosedRoute()
-	if err != nil || int(view.NodeCount) > len(view.Nodes) || !closedRouteProfileMatchesSnapshot(view.Profile, snapshot, now) || view.Profile.Digest != receiver.ProfileDigest ||
+	if err != nil || int(view.NodeCount) > len(view.Nodes) || !authority.ProfileMatchesSnapshot(view.Profile, snapshot, now) || view.Profile.Digest != receiver.ProfileDigest ||
 		view.Profile.StateGeneration != receiver.StateGeneration || receiver.NodeID != snapshot.NodeID || receiver.DutyGeneration != snapshot.RecordGeneration {
 		return errors.New("closed bootstrap receiver changed")
 	}

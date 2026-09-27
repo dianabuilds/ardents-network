@@ -3,7 +3,6 @@ package node
 import (
 	"context"
 	"crypto/tls"
-	"github.com/dianabuilds/ardents-network/internal/network/state"
 	nodeouter "github.com/dianabuilds/ardents-network/internal/node/outer"
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
@@ -90,32 +89,4 @@ func serveClosedIssuerInner(ctx context.Context, lane *route.ClosedOuterBridgeLa
 			status = 0
 		}
 	}
-}
-
-func closedSharedPeerCurrent(config runtimeConfig, snapshot state.NodeDuty, key [32]byte, now time.Time) bool {
-	if key == [32]byte{} || config.CurrentClosedRoute == nil || snapshot.Profile != routecarrier.ClosedRouteProfile || !snapshot.Fresh || snapshot.Conflicting {
-		return false
-	}
-	view, err := config.CurrentClosedRoute()
-	if err != nil || !closedRouteProfileMatchesSnapshot(view.Profile, snapshot, now) {
-		return false
-	}
-	matched := false
-	for index := uint8(0); index < view.NodeCount; index++ {
-		recipient := view.Nodes[index]
-		if recipient.NodeID == [32]byte{} || recipient.NodeID == snapshot.NodeID || recipient.DutyGeneration == 0 || !route.ClosedPurposePermitsDuty(ardp.PurposeForwarding, recipient.RoleDomain, recipient.Subrole) {
-			continue
-		}
-		for peerIndex := uint8(0); peerIndex < snapshot.CandidateCount; peerIndex++ {
-			peer := snapshot.Candidates[peerIndex]
-			if peer.NodeID != recipient.NodeID || peer.PublicKey != key || peer.PublicKey == [32]byte{} || peer.RecordDigest != recipient.RecordDigest || !now.Before(peer.ValidUntil) || !now.Before(peer.AssignmentNotAfter) {
-				continue
-			}
-			if matched {
-				return false
-			}
-			matched = true
-		}
-	}
-	return matched
 }

@@ -12,7 +12,7 @@ import (
 // closedForwardingAdmissionVerifier reserves the installed host's declared
 // interface envelope after token verification but before Route burns the token.
 func closedForwardingAdmissionVerifier(config runtimeConfig, receiver route.ClosedRoleReceiver, host closedForwardingHost, local ClosedForwardingProfile) route.ClosedAdmissionVerifier {
-	verify := closedRoleTokenVerifier(config, receiver)
+	verify := nodeAuthority(config).TokenVerifier(receiver, config.now)
 	return func(input route.ClosedAdmissionVerification) (route.ClosedAdmissionApproval, error) {
 		approval, err := verify(input)
 		if err != nil || input.Class != 2 {
@@ -30,7 +30,7 @@ func closedForwardingAdmissionVerifier(config runtimeConfig, receiver route.Clos
 // closedForwardingReplenisher commits the same host envelope before it burns
 // a fresh token. The parent supplies its original immutable deadline.
 func closedForwardingReplenisher(config runtimeConfig, receiver route.ClosedRoleReceiver, host closedForwardingHost, spends *replay.Ledger, local ClosedForwardingProfile) route.ClosedForwardingReplenisher {
-	verify := closedRoleTokenVerifier(config, receiver)
+	verify := nodeAuthority(config).TokenVerifier(receiver, config.now)
 	return func(input route.ClosedAdmissionVerification) (func() error, error) {
 		approval, err := verify(input)
 		if err != nil || input.Class != 2 {

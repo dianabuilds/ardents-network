@@ -2,12 +2,12 @@ package node
 
 import (
 	"context"
-	"encoding/hex"
 	"errors"
 	"path/filepath"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/network/state"
+	"github.com/dianabuilds/ardents-network/internal/node/authority"
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	"github.com/dianabuilds/ardents-network/internal/route/carrier"
@@ -134,7 +134,7 @@ func closedIssuerStateProfile(config runtimeConfig, snapshot state.NodeDuty, now
 	if !available || profile.NetworkID != snapshot.NetworkID || profile.StateDigest != snapshot.Digest || profile.Epoch != snapshot.Epoch ||
 		profile.IssuerNodeID != snapshot.NodeID || profile.IssuerDutyGeneration == 0 || profile.NotBefore.After(now) || !now.Before(profile.NotAfter) ||
 		profile.NotBefore.Before(snapshot.EpochValidFrom) || profile.NotAfter.After(snapshot.ValidUntil) || profile.NotAfter.After(snapshot.RecordValidUntil) ||
-		!closedStateGenerationMatches(profile.StateGeneration, snapshot.Generation) {
+		!authority.StateGenerationMatches(profile.StateGeneration, snapshot.Generation) {
 		return state.ClosedProfileView{}, false
 	}
 	receiver, available := closedRouteReceiver(config, snapshot, ardp.PurposeIssuer, now)
@@ -144,20 +144,4 @@ func closedIssuerStateProfile(config runtimeConfig, snapshot state.NodeDuty, now
 		return state.ClosedProfileView{}, false
 	}
 	return profile, true
-}
-
-func closedStateGenerationMatches(generation [32]byte, encoded string) bool {
-	if len(encoded) != 64 {
-		return false
-	}
-	decoded, err := hex.DecodeString(encoded)
-	if err != nil || len(decoded) != len(generation) || hex.EncodeToString(decoded) != encoded {
-		return false
-	}
-	for index := range generation {
-		if decoded[index] != generation[index] {
-			return false
-		}
-	}
-	return true
 }

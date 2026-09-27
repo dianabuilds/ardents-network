@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/network/state"
+	"github.com/dianabuilds/ardents-network/internal/node/authority"
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/carrier"
 )
@@ -18,7 +19,7 @@ func closedForwardRecipient(config runtimeConfig, snapshot state.NodeDuty, open 
 		return state.NodeDutyCandidate{}, errors.New("closed forwarding recipient is unavailable")
 	}
 	view, err := config.CurrentClosedRoute()
-	if err != nil || !closedRouteProfileMatchesSnapshot(view.Profile, snapshot, now) {
+	if err != nil || !authority.ProfileMatchesSnapshot(view.Profile, snapshot, now) {
 		return state.NodeDutyCandidate{}, errors.New("closed forwarding recipient is unavailable")
 	}
 	var recipient state.ClosedRouteNodeView

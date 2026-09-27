@@ -10,7 +10,7 @@ import (
 // closedControlTokenVerifier authenticates a class-1 or class-3 token and
 // reserves the host envelope for the entire admitted control lifetime.
 func closedControlTokenVerifier(config runtimeConfig, receiver route.ClosedRoleReceiver) route.ClosedAdmissionVerifier {
-	verify := closedRoleTokenVerifier(config, receiver)
+	verify := nodeAuthority(config).TokenVerifier(receiver, config.now)
 	return func(input route.ClosedAdmissionVerification) (route.ClosedAdmissionApproval, error) {
 		approval, err := verify(input)
 		if err != nil {
