@@ -1,7 +1,6 @@
 package state
 
 import (
-	"crypto/sha256"
 	"encoding/hex"
 	"errors"
 	"time"
@@ -63,7 +62,7 @@ func (s *networkState) AcceptClosedProfile(raw []byte) (ClosedProfileView, error
 	}
 	now := s.config.clock().UTC()
 	profile, err := parseClosedProfile(raw, generation, s.current.NetworkID, s.current.Digest, s.current.Epoch, s.config.closedProfileAuthority, now)
-	if err != nil || profile.notBefore.Before(s.current.EpochValidFrom) || profile.notAfter.After(s.current.ValidUntil) || !matchesClosedProfileCandidates(profile, s.currentDecision.verified.epoch, s.currentDecision.verified.accepted) {
+	if err != nil || profile.notBefore.Before(s.current.EpochValidFrom) || profile.notAfter.After(s.current.ValidUntil) || !matchesClosedProfileCandidates(profile, s.currentDecision.verified.Candidates) {
 		return ClosedProfileView{}, errors.New("closed profile does not match accepted State")
 	}
 	stored, storedRaw, err := s.storage.LoadClosedProfile(generation)
@@ -153,7 +152,7 @@ func (s *networkState) currentClosedProfileLocked() (closedProfile, error) {
 	}
 	profile, err := parseClosedProfile(raw, generation, s.current.NetworkID, s.current.Digest, s.current.Epoch, s.config.closedProfileAuthority, now)
 	if err != nil || profile.digest != stored.Accepted || profile.notBefore.Before(s.current.EpochValidFrom) || profile.notAfter.After(s.current.ValidUntil) ||
-		!matchesClosedProfileCandidates(profile, s.currentDecision.verified.epoch, s.currentDecision.verified.accepted) {
+		!matchesClosedProfileCandidates(profile, s.currentDecision.verified.Candidates) {
 		return closedProfile{}, errors.New("closed profile is unavailable")
 	}
 	return profile, nil
@@ -199,26 +198,21 @@ func closedProfileGeneration(encoded string) ([32]byte, error) {
 	return generation, nil
 }
 
-func matchesClosedProfileCandidates(profile closedProfile, epoch epochEnvelope, records []nodeRecord) bool {
-	available := make(map[[32]byte]nodeRecord, len(records))
-	for _, record := range records {
-		available[record.nodeID] = record
+func matchesClosedProfileCandidates(profile closedProfile, candidates []verifiedCandidate) bool {
+	available := make(map[[32]byte]verifiedCandidate, len(candidates))
+	for _, candidate := range candidates {
+		available[candidate.NodeID] = candidate
 	}
 	for _, node := range profile.nodes {
-		record, exists := available[node.nodeID]
-		if !exists || record.generation != node.generation || recordDigest(record) != node.recordDigest || !validCarrierForEpoch(closedRouteProfile, record.carrier) {
+		candidate, exists := available[node.nodeID]
+		if !exists || candidate.RecordGeneration != node.generation ||
+			candidate.RecordDigest != node.recordDigest ||
+			!validCarrierForEpoch(closedRouteProfile, candidate.CarrierProfile) {
 			return false
 		}
-		// The signed entry's numeric Role Domain must equal the assignment the
-		// verified Epoch gives this record's family. An assignment outside the
-		// four closed Role Domains, or one that disagrees with the entry, is
-		// refused before durable acceptance and again on read-back, so the
-		// forwarding duty a Node starts is the one its Epoch authenticated.
-		assignment, err := assignedDomain(epoch, record.family)
-		if err != nil {
-			return false
-		}
-		domain, known := closedRoleDomain(assignment)
+		// Each candidate's domain was assigned by the verified Epoch from its
+		// authenticated family before this signed profile is admitted.
+		domain, known := closedRoleDomain(candidate.Domain)
 		if !known || domain != node.domain {
 			return false
 		}
@@ -245,5 +239,3 @@ func closedRoleDomain(assignment string) (byte, bool) {
 		return 0, false
 	}
 }
-
-func recordDigest(record nodeRecord) [32]byte { return sha256.Sum256(record.raw) }

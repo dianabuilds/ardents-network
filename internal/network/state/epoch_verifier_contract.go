@@ -76,6 +76,7 @@ type verifiedCandidate struct {
 	DomainProof                                      []byte
 	Family, Endpoint, CarrierProfile, Domain         string
 	Capacity                                         uint16
+	RecordGeneration                                 uint64
 	ValidFrom, ValidUntil, AssignmentNotAfter        time.Time
 }
 

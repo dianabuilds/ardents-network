@@ -19,7 +19,8 @@ func attachCandidates(decision *verifiedEpochDecision, accepted []nodeRecord, ep
 			FamilyID: sha256.Sum256([]byte(record.family)), RecordDigest: sha256.Sum256(record.raw),
 			DomainProof: proof, Family: record.family, Endpoint: record.endpoint,
 			CarrierProfile: record.carrier, Domain: domain, Capacity: record.capacity,
-			ValidFrom: record.notBefore, ValidUntil: record.notAfter,
+			RecordGeneration: record.generation,
+			ValidFrom:        record.notBefore, ValidUntil: record.notAfter,
 			AssignmentNotAfter: epoch.validUntil,
 		})
 	}

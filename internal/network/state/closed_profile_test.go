@@ -95,6 +95,10 @@ func TestPrepareSignAndInspectClosedProfileUsesOnePurposeBoundSigner(t *testing.
 }
 
 func testClosedProfile(t *testing.T, authority ed25519.PrivateKey, network, generation, epochDigest [32]byte, now time.Time, nodes []closedProfileNode) []byte {
+	return testClosedProfileAt(t, authority, network, generation, epochDigest, 9, now, nodes)
+}
+
+func testClosedProfileAt(t *testing.T, authority ed25519.PrivateKey, network, generation, epochDigest [32]byte, epoch uint64, now time.Time, nodes []closedProfileNode) []byte {
 	t.Helper()
 	var body bytes.Buffer
 	body.WriteString(closedProfileMagic)
@@ -104,7 +108,7 @@ func testClosedProfile(t *testing.T, authority ed25519.PrivateKey, network, gene
 	body.Write(network[:])
 	body.Write(generation[:])
 	var u64 [8]byte
-	binary.BigEndian.PutUint64(u64[:], 9)
+	binary.BigEndian.PutUint64(u64[:], epoch)
 	body.Write(u64[:])
 	body.Write(epochDigest[:])
 	binary.BigEndian.PutUint64(u64[:], uint64(now.Truncate(time.Hour).Unix()))
