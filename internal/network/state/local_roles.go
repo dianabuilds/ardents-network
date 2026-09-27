@@ -4,10 +4,66 @@ import (
 	"context"
 	"crypto/sha256"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/network/duty"
+	"github.com/dianabuilds/ardents-network/internal/network/source"
 )
+
+var errSourceRoleCollision = errors.New("source role collides with a Candidate View member")
+
+func (s *networkState) rejectSourceCollisions() error {
+	for _, decision := range []*candidateDecision{s.currentDecision, s.pendingDecision} {
+		if decision != nil && sourceCollides(s.config.sourceInfo, *decision) {
+			return fmt.Errorf("%w: identity, family, or endpoint", errSourceRoleCollision)
+		}
+	}
+	return nil
+}
+
+func (s *networkState) rejectDecisionSourceCollisions(decision candidateDecision) error {
+	if sourceCollides(s.config.sourceInfo, decision) {
+		return fmt.Errorf("%w: identity, family, or endpoint", errSourceRoleCollision)
+	}
+	return nil
+}
+
+func sourceCollides(info source.Details, decision candidateDecision) bool {
+	if !info.Configured {
+		return false
+	}
+	for index := range info.Identities {
+		if epochDecisionCollides(decision.verified, info.Identities[index], info.Families[index], info.EndpointHandles[index]) {
+			return true
+		}
+	}
+	return false
+}
+
+func epochDecisionCollides(decision verifiedEpochDecision, identity [32]byte, family, endpoint string) bool {
+	for _, candidate := range decision.NodeIDs {
+		if candidate == identity {
+			return true
+		}
+	}
+	for _, candidate := range decision.KeyIDs {
+		if candidate == identity {
+			return true
+		}
+	}
+	for _, candidate := range decision.Families {
+		if candidate == family {
+			return true
+		}
+	}
+	for _, candidate := range decision.Endpoints {
+		if candidate == endpoint {
+			return true
+		}
+	}
+	return false
+}
 
 func (s *networkState) retainSourceExposures(notAfter time.Time) error {
 	roles, err := duty.OpenOperation(context.Background(), duty.Config{Root: s.config.localRoles, Clock: s.config.clock, Create: true})
