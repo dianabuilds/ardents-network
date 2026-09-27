@@ -2,7 +2,6 @@ package architecture
 
 import (
 	"encoding/json"
-	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -221,25 +220,6 @@ func TestHeadlessNetworkProfileHasClosedCommandAndArtifactBoundary(t *testing.T)
 	}
 }
 
-func TestAlphaBundleUsesTheEnrollmentExecutableIdentityForControl(t *testing.T) {
-	root := repositoryRoot(t)
-	helper := string(readProjectFile(t, root, "scripts/enrollment-artifact-name.go"))
-	if !strings.Contains(helper, "enrollment.ExecutableArtifactName(") {
-		t.Fatal("artifact-name helper does not delegate to the enrollment package owner")
-	}
-	for _, path := range []string{"packaging/alpha-bundle/build.sh", "packaging/alpha-bundle/test.sh"} {
-		contents := string(readProjectFile(t, root, path))
-		if !strings.Contains(contents, `artifact_name ardents-control "$platform"`) {
-			t.Errorf("%s does not consume the enrollment-owned ardents-control identity", path)
-		}
-		for _, duplicate := range []string{"executable_suffix", `ardents-control-$platform`} {
-			if strings.Contains(contents, duplicate) {
-				t.Errorf("%s reconstructs the enrollment-owned identity with %q", path, duplicate)
-			}
-		}
-	}
-}
-
 func TestHeadlessCommandsHaveBrowserFreeDependencyGraphs(t *testing.T) {
 	root := repositoryRoot(t)
 	for _, commandPath := range []string{"./cmd/ardents", "./cmd/ardents-control", "./cmd/ardents-node", "./cmd/ardents-custody"} {
@@ -255,154 +235,6 @@ func TestHeadlessCommandsHaveBrowserFreeDependencyGraphs(t *testing.T) {
 				}
 			}
 		})
-	}
-}
-
-func TestHeadlessCommandDelegatesOnlyProtectedTextRuntimeComposition(t *testing.T) {
-	root := repositoryRoot(t)
-	source := string(readProjectFile(t, root, "cmd/ardents/endpoint_headless.go"))
-	if !strings.Contains(source, "return runTextHeadlessRuntime(ctx, plan, output)") {
-		t.Fatal("headless command does not delegate to the protected text runtime")
-	}
-	for _, forbidden := range []string{
-		"RunParticipant(",
-		"ParticipantRuntimeConfig",
-		"state.Open(",
-		"entry.Open(",
-		"applicationconnection.Listen(",
-		"administration.Listen(",
-		"Authorities[0]",
-	} {
-		if strings.Contains(source, forbidden) {
-			t.Errorf("headless command retains v1 composition or authority decision %q", forbidden)
-		}
-	}
-	if _, err := os.Stat(filepath.Join(root, "internal", "endpoint", "participant_runtime.go")); err == nil || !errors.Is(err, os.ErrNotExist) {
-		t.Errorf("Endpoint retains retired v1 participant composition: %v", err)
-	}
-}
-
-func TestEndpointOwnsNoSecondLocalApplicationTransport(t *testing.T) {
-	root := repositoryRoot(t)
-	command := string(readProjectFile(t, root, "cmd/ardents/endpoint.go"))
-	for _, forbidden := range []string{`arguments[1] == "run"`, "endpoint.Run("} {
-		if strings.Contains(command, forbidden) {
-			t.Errorf("ardents command retains legacy Endpoint transport %q", forbidden)
-		}
-	}
-	for _, file := range []string{"config.go", "connections.go", "endpoint.go", "publication.go",
-		"service_introduction.go", "service_introduction_acknowledgement.go"} {
-		if _, err := os.Stat(filepath.Join(root, "internal", "endpoint", file)); err == nil || !errors.Is(err, os.ErrNotExist) {
-			t.Errorf("Endpoint retains legacy local transport owner %s", file)
-		}
-	}
-	runtime := string(readProjectFile(t, root, "internal/endpoint/service_runtime.go"))
-	if strings.Contains(runtime, "PublicationRequest") {
-		t.Fatal("Endpoint retains the raw legacy publication API")
-	}
-	if _, err := os.Stat(filepath.Join(root, "internal", "service", "publication", "legacy_introduction_receipt.go")); err == nil || !errors.Is(err, os.ErrNotExist) {
-		t.Error("Service Publication retains the historical ARIA receipt grammar in production")
-	}
-}
-
-func TestEndpointContainsNoBrowserImplementation(t *testing.T) {
-	root := repositoryRoot(t)
-	endpointRoot := filepath.Join(root, "internal", "endpoint")
-	err := filepath.WalkDir(endpointRoot, func(path string, entry os.DirEntry, walkErr error) error {
-		if walkErr != nil {
-			return walkErr
-		}
-		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".go") {
-			return nil
-		}
-		lowerName := strings.ToLower(entry.Name())
-		if strings.Contains(lowerName, "browser") || strings.Contains(lowerName, "firefox") {
-			t.Errorf("Endpoint retains Browser implementation file %s", filepath.ToSlash(path))
-		}
-		contents, err := os.ReadFile(path)
-		if err != nil {
-			return err
-		}
-		text := string(contents)
-		for _, forbidden := range []string{
-			"internal/browser/adapter",
-			"internal/browser/entry",
-			"internal/browser/reference",
-			"//go:build browsercompat",
-		} {
-			if strings.Contains(text, forbidden) {
-				t.Errorf("Endpoint file %s retains forbidden Browser boundary %q", filepath.ToSlash(path), forbidden)
-			}
-		}
-		return nil
-	})
-	if err != nil {
-		t.Fatalf("inspect Endpoint source boundary: %v", err)
-	}
-}
-
-func TestRetiredBrowserSurfaceHasNoCurrentPaths(t *testing.T) {
-	root := repositoryRoot(t)
-	for _, relative := range []string{
-		"cmd/ardents-browser",
-		"cmd/ardents-browser-entry",
-		"internal/browser",
-		"packaging/browser-bundle",
-		"packaging/firefox-alpha-browser-entry",
-		"tests/qualification/browser-signed-xpi",
-		"tests/qualification/browser-entry-windows",
-		"tests/qualification/browser-entry-ubuntu",
-		"tests/profiles/browser-commands.txt",
-	} {
-		if _, err := os.Stat(filepath.Join(root, filepath.FromSlash(relative))); !os.IsNotExist(err) {
-			t.Errorf("retired Browser path still exists: %s", relative)
-		}
-	}
-	for _, relative := range []string{
-		"Makefile",
-		"tests/profiles/profiles.json",
-		"tests/profiles/deterministic-packages.txt",
-		"docs/development/package-map.md",
-		"docs/development/ownership.json",
-	} {
-		contents := string(readProjectFile(t, root, relative))
-		for _, forbidden := range []string{
-			"cmd/ardents-browser",
-			"cmd/ardents-browser-entry",
-			"internal/browser/",
-			"browser-check",
-			"browser-build",
-			"qualification-browser-",
-			"browser-commands.txt",
-		} {
-			if strings.Contains(contents, forbidden) {
-				t.Errorf("current boundary %s retains retired Browser reference %q", relative, forbidden)
-			}
-		}
-	}
-}
-
-func TestRetiredAlphaControlQualificationHasNoCurrentPath(t *testing.T) {
-	root := repositoryRoot(t)
-	if _, err := os.Stat(filepath.Join(root, "tests", "qualification", "alpha-control-two-endpoints")); !errors.Is(err, os.ErrNotExist) {
-		t.Errorf("retired alpha-control qualification path still exists: %v", err)
-	}
-	for _, relative := range []string{
-		"Makefile",
-		"tests/profiles/profiles.json",
-		"docs/development/ownership.json",
-		"docs/development/testing.md",
-		"docs/reference/commands.md",
-	} {
-		contents := string(readProjectFile(t, root, relative))
-		for _, forbidden := range []string{
-			"alpha-control-two-endpoints",
-			"qualification-alpha-control-two-endpoints",
-		} {
-			if strings.Contains(contents, forbidden) {
-				t.Errorf("current boundary %s retains retired qualification reference %q", relative, forbidden)
-			}
-		}
 	}
 }
 

@@ -95,13 +95,11 @@ module.
 ## Verification
 
 The maintained local gate is `make quick-check`; `make check` is required
-before integration. The retirement boundaries are covered by the zero-effect
+before integration. The retirement boundary is covered by the zero-effect
 refusal oracle (`go test ./cmd/ardents/ -run
-TestNameNetworkCommandsRetireBeforeEffects -count=1`), the architecture
-guards in `internal/architecture/naming_resolution_retirement_test.go` and
-`naming_service_link_retirement_test.go` (whole-tree package absence, exact
-whole-family refusal, bounded synthetic fixture, profile and allowlist
-absence), and the Linux e2e retired-intake refusal test.
+TestNameNetworkCommandsRetireBeforeEffects -count=1`) and the Linux e2e
+retired-intake refusal test. The package map and test-profile registry check
+current packages and selected test execution.
 
 ## Governing decisions
 

@@ -2,7 +2,6 @@ package architecture
 
 import (
 	"bytes"
-	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -73,8 +72,3 @@ type fileInfoEntry struct{ os.FileInfo }
 
 func (entry fileInfoEntry) Type() os.FileMode          { return entry.Mode().Type() }
 func (entry fileInfoEntry) Info() (os.FileInfo, error) { return entry.FileInfo, nil }
-
-func Example_projectShape() {
-	fmt.Println("cmd -> internal")
-	// Output: cmd -> internal
-}

@@ -3,8 +3,7 @@
 Status: working architecture analysis for the isolated refactoring branch. The
 capsule, terminal body, ARDP framing, replay, Carrier, and client-path
 extractions below are implemented and registered in the package map; the
-former v2 execution closure is retired by the ADR-0093/ADR-0094 chain and
-pinned absent by the architecture suite, so this document is a realized
+former v2 execution closure is retired by the ADR-0093/ADR-0094 chain, so this document is a realized
 boundary record, not a new Route contract or C0 execution ledger. The
 accepted Route, Carrier and client contracts govern behavior.
 
@@ -66,9 +65,8 @@ literal-address rule; the retired v2 `Profile` refusal identity stayed in
 Route (`closed_route_profile.go`) beside its Node typed refusal. Route, Node,
 Endpoint, Credential, and both node commands import the leaf directly without
 delegating wrappers, and the pure Carrier behavior tests moved with their
-owner. The old Route v2 execution closure is retired; only its typed refusal
-identity survives, pinned by
-`internal/architecture/route_v2_closure_retirement_test.go`.
+owner. The old Route v2 execution closure is retired; its typed refusal
+identity remains under the Route and Node owners.
 
 `internal/route/credential` imports parent `internal/route` in three current
 production files: `closed_token_listener.go`, `closed_token_bootstrap.go`, and
@@ -98,9 +96,8 @@ plaintext after their superseding record. The historical wire/vector
 obligations were decided in those ADRs (F-52), the persisted Grant-spend
 treatment by ADR-0107's bounded version-2 duty-root conversion (F-53), and
 the Invite subsystem by ADR-0106 (F-08).
-`internal/architecture/route_v2_closure_retirement_test.go` pins the exact
-absence of every closure file and the survival of the refusal identity and
-the persisted-data contracts. The current
+The current Route, Node and persistence tests exercise the surviving refusal
+identity and persisted-data contracts. The current
 `docs/technical/network-route-node.md` contract records
 `ardents-interactive-route-v2` as the former native Route grammar behind
 effect-free typed refusals and points C0 readers to closed v3. The

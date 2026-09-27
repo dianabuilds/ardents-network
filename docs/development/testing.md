@@ -252,12 +252,10 @@ Network authority/lifecycle repairs:
 - Entry close cancels acquisition, joins and terminalizes active attachment
   cleanup before releasing its root, including concurrent and failure cases.
 
-The architecture suite additionally prevents the retired
-`accept-alpha-corpus`/`inspect-alpha-corpus` routes, the removed
-`inspectAlphaCorpus` adapter, or any ACA2 verifier file from returning
-(ADR-0110). These are ongoing regression checks for the repaired
-candidate, not completion of the formal deep audit or authorization to begin
-its later security, concurrency, or wire tracks.
+The command tests exercise the retired `accept-alpha-corpus` and
+`inspect-alpha-corpus` refusals before effects. These are regression checks
+for the repaired candidate, not completion of the formal deep audit or
+authorization to begin its later security, concurrency, or wire tracks.
 
 ## Current profiles
 
@@ -460,9 +458,8 @@ The headless command decoder rejects both a previously valid
 `ardents-headless-runtime-v1` plan and mixed v1/v2 fields before creating any
 named root or socket or emitting runtime output. A separate dispatch oracle
 shows valid and broken v2 plans reach the selected v2 runtime or decoder refusal
-without returning the retired-v1 outcome. An architecture oracle requires the
-command to delegate only to the protected text runtime and requires the retired
-v1 participant composition file to remain absent.
+without returning the retired-v1 outcome. The command dispatch and plan-decoder
+tests exercise the selected runtime and the retired-v1 refusal.
 
 The exact legacy `endpoint open` syntax returns its stable retirement error at
 the command adapter. Its regression supplies missing and existing file paths
@@ -481,9 +478,9 @@ The complete command package retains independent positive and refusal coverage
 for `closed_issuer`, `closed_forwarding`, `closed_resolution`,
 `closed_introduction`, and `closed_data_join`. The old Initiator, Responder,
 Introduction, Transit-issuance, and Rendezvous engines and their direct server
-tests are absent. The architecture suite checks the State-to-Node value
-Interface, while State and Node behavior tests cover its projection and
-receipt-time bound. Historical file inventories do not guard these
+tests are absent. State and Node tests exercise the State-to-Node value
+interface, its projection, and the receipt-time bound. Historical file
+inventories do not guard these
 boundaries: command behavior proves the old starts refuse before effects, and
 the current closed-duty tests prove their accepting paths.
 
@@ -515,4 +512,3 @@ HTTP/OHTTP adapters made the exact private Resolution and adjacent Namespace
 verification closure production-dead; ADR-0105 and ADR-0113 then deleted that
 closure with its packages, and their deadcode allowance groups were retired
 with them.
-

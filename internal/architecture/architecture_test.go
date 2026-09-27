@@ -49,6 +49,41 @@ func TestRepositoryArchitecture(t *testing.T) {
 	assertRepositoryContainsNoArtifacts(t, root)
 }
 
+// Alpha-control readers are maintained command-facing packages. Fixture
+// encoding and signing must stay outside their exported API.
+func TestAlphaControlReadersDoNotExportFixtureWriters(t *testing.T) {
+	root := repositoryRoot(t)
+	for _, reader := range []struct {
+		path      string
+		forbidden []string
+	}{
+		{"internal/alphacontrol", []string{"Sign", "SignV2", "SignComponent"}},
+		{"internal/alphacontrol/inspection", []string{"EncodeReleaseEvidence", "EncodeNetworkEvidence", "EncodeCompatibilityEvidence"}},
+	} {
+		packages, err := parser.ParseDir(token.NewFileSet(), filepath.Join(root, filepath.FromSlash(reader.path)), func(info os.FileInfo) bool {
+			return !strings.HasSuffix(info.Name(), "_test.go")
+		}, 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, pkg := range packages {
+			for _, file := range pkg.Files {
+				for _, decl := range file.Decls {
+					function, ok := decl.(*ast.FuncDecl)
+					if !ok {
+						continue
+					}
+					for _, forbidden := range reader.forbidden {
+						if function.Name.Name == forbidden {
+							t.Errorf("%s exports fixture-only writer %s", reader.path, forbidden)
+						}
+					}
+				}
+			}
+		}
+	}
+}
+
 func assertDependenciesRegistered(t *testing.T, root string) {
 	t.Helper()
 	moduleFile, err := os.Open(filepath.Join(root, "go.mod"))
