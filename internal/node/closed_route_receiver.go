@@ -20,7 +20,3 @@ func closedRouteReceiver(config runtimeConfig, snapshot state.NodeDuty, purpose 
 func currentClosedRoute(config runtimeConfig, snapshot state.NodeDuty, now time.Time) (state.ClosedRouteView, error) {
 	return nodeAuthority(config).Route(snapshot, now)
 }
-
-func closedSharedPeerCurrent(config runtimeConfig, snapshot state.NodeDuty, key [32]byte, now time.Time) bool {
-	return nodeAuthority(config).PeerCurrent(snapshot, key, now)
-}

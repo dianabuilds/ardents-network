@@ -64,7 +64,7 @@ func TestClosedIssuerServesBootstrapInsideStateAuthorizedNodeCarrier(t *testing.
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !closedSharedPeerCurrent(resolved, snapshot, clientKey, time.Now()) {
+	if !nodeAuthority(resolved).PeerCurrent(snapshot, clientKey, time.Now()) {
 		t.Fatal("fixture does not authorize outer Node certificate")
 	}
 	if _, available := closedRouteReceiver(resolved, snapshot, ardp.PurposeIssuer, time.Now()); !available {

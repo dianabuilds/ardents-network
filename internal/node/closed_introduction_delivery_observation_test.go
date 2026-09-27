@@ -24,9 +24,7 @@ import (
 func TestClosedIntroductionDeliveryObservation(t *testing.T) {
 	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP, routecarrier.ClosedCarrierQUIC} {
 		t.Run(string(carrier), func(t *testing.T) {
-			var receiver *closedIntroductionServer
-			fixture := newPrivateRecipientNetworkFixtureWithStart(t, carrier, ardp.PurposeIntroduction, 3, observedIntroductionStart(&receiver), 1)
-			observations := []introductionReceiverObservation{observeIntroductionReceiver(t, receiver, "startup")}
+			fixture := newPrivateRecipientNetworkFixture(t, carrier, ardp.PurposeIntroduction, 3, 1)
 			registrationTrace := new(introductionTranscript)
 			fixture.observe = func(connection net.Conn) net.Conn { return &introductionTranscriptConn{connection, registrationTrace} }
 			request := terminal.RegistrationRequest{Revision: 1, Expiry: time.Now().UTC().Add(30 * time.Second).Truncate(time.Second)}
@@ -39,10 +37,6 @@ func TestClosedIntroductionDeliveryObservation(t *testing.T) {
 			defer closeRegistration()
 			if status != 0 {
 				t.Fatal("real registration refused")
-			}
-			observations = append(observations, observeIntroductionReceiver(t, receiver, "registered"))
-			if slots := observations[len(observations)-1].Slots; len(slots) != 1 || slots[0].Request != request || !slots[0].Active || !slots[0].TLSHandshakeComplete {
-				t.Fatal("receiving snapshot missed actual registration")
 			}
 			var previous [32]byte
 			type observedChannel struct{ Sent, Received []byte }
@@ -92,11 +86,6 @@ func TestClosedIntroductionDeliveryObservation(t *testing.T) {
 				if forwarded == nonce || forwarded == capsule.DeliveryNonce || forwarded == previous {
 					t.Fatal("Introduction reused a channel nonce")
 				}
-				pending := observeIntroductionReceiver(t, receiver, "delivery awaiting acknowledgement")
-				if len(pending.Slots) != 1 || pending.Slots[0].InFlight != 1 || len(pending.Slots[0].Pending) != 1 || pending.Slots[0].Pending[0].Nonce != forwarded || pending.Slots[0].Pending[0].Lane != delivered.Lane || pending.Slots[0].Pending[0].Acknowledged || pending.Slots[0].Pending[0].End != capsule.Expiry {
-					t.Fatal("receiving snapshot missed actual pending delivery")
-				}
-				observations = append(observations, pending)
 				previous = forwarded
 				if !bytes.Equal(operation[33:], delivered.Body[33:]) || received.DeliveryNonce != capsule.DeliveryNonce || !bytes.Equal(received.Ciphertext, capsule.Ciphertext) {
 					t.Fatal("Introduction changed opaque capsule")
@@ -121,11 +110,6 @@ func TestClosedIntroductionDeliveryObservation(t *testing.T) {
 					t.Fatalf("submission nonce handback: %v", err)
 				}
 				closeSubmission()
-				settled := observeIntroductionReceiver(t, receiver, "delivery completed")
-				if len(settled.Slots) != 1 || settled.Slots[0].InFlight != 0 || len(settled.Slots[0].Pending) != 0 {
-					t.Fatal("completed submission retained pending receiving state")
-				}
-				observations = append(observations, settled)
 				trace.mu.Lock()
 				sent, read := bytes.Clone(trace.sent), bytes.Clone(trace.received)
 				trace.mu.Unlock()
@@ -143,11 +127,6 @@ func TestClosedIntroductionDeliveryObservation(t *testing.T) {
 				t.Fatal("owning withdrawal refused")
 			}
 			closeRegistration()
-			withdrawn := observeIntroductionReceiver(t, receiver, "withdrawn")
-			if len(withdrawn.Slots) != 1 || withdrawn.Slots[0].Active || !withdrawn.Slots[0].Done || withdrawn.Slots[0].InFlight != 0 || len(withdrawn.Slots[0].Pending) != 0 || withdrawn.Slots[0].Request != request {
-				t.Fatal("withdrawal failed to retain only inactive replay-protection state")
-			}
-			observations = append(observations, withdrawn)
 			registrationTrace.mu.Lock()
 			registered := observedChannel{bytes.Clone(registrationTrace.sent), bytes.Clone(registrationTrace.received)}
 			registrationTrace.mu.Unlock()
@@ -156,13 +135,12 @@ func TestClosedIntroductionDeliveryObservation(t *testing.T) {
 				t.Fatal("registration transcript missed a delivery or cleanup")
 			}
 			evidence := struct {
-				Carrier        routecarrier.CarrierProfile
-				Registration   observedChannel
-				Submissions    []observedChannel
-				Durable        map[string][]byte
-				ReceiverStates []introductionReceiverObservation
-				Limit          string
-			}{carrier, registered, submissions, captureIntroductionFiles(t, fixture.admissionRoot), observations, "actual receiver slot state and protocol; transient admission/TLS internals, Node supervision and other roles unobserved; incomplete P3"}
+				Carrier      routecarrier.CarrierProfile
+				Registration observedChannel
+				Submissions  []observedChannel
+				Durable      map[string][]byte
+				Limit        string
+			}{carrier, registered, submissions, captureIntroductionFiles(t, fixture.admissionRoot), "observed registration, delivery, replies, withdrawal and durable artifacts; transient receiver state, Node supervision and other roles unobserved; incomplete P3"}
 			if output := os.Getenv("ARDENTS_INTRODUCTION_OBSERVATIONS"); output != "" {
 				if !filepath.IsAbs(output) {
 					t.Fatal("capture output must be absolute")

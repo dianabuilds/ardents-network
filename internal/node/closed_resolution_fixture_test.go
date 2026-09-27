@@ -125,7 +125,7 @@ func newPrivateRecipientNetworkFixtureWithStart(t *testing.T, carrier routecarri
 		t.Fatal(err)
 	}
 	receiver, ok := closedRouteReceiver(resolved, snapshot, purpose, time.Now())
-	if !ok || !closedSharedPeerCurrent(resolved, snapshot, clientKey, time.Now()) {
+	if !ok || !nodeAuthority(resolved).PeerCurrent(snapshot, clientKey, time.Now()) {
 		t.Fatal("invalid resolution State fixture")
 	}
 	fixture := &resolutionNetworkFixture{profile: profile, carrier: carrier, endpoint: endpoint, certificate: clientCert, receiver: receiver, serverKey: serverKey, root: config.ClosedResolution.Root}
