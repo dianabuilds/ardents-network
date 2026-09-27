@@ -15,8 +15,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/admission"
 	"github.com/dianabuilds/ardents-network/internal/node"
-	"github.com/dianabuilds/ardents-network/internal/route/credential"
 )
 
 func TestTransitIssuerInitializeRefusesBeforeRootOrIdentity(t *testing.T) {
@@ -148,7 +148,7 @@ func TestClosedIssuerInitializeCommandPublishesOnlySPKIProfile(t *testing.T) {
 	if err := json.Unmarshal(output.Bytes(), &receipt); err != nil {
 		t.Fatal(err)
 	}
-	profile, err := credential.DecodeClosedIssuerProfile(receipt.Profile, nodePublic)
+	profile, err := admission.DecodeClosedIssuerProfile(receipt.Profile, nodePublic)
 	if err != nil || receipt.Schema != "ardents-closed-issuer-profile-v1" || profile.NetworkID != network || profile.NodeID != nodeID || len(profile.Keys) != 3 ||
 		bytes.Contains(output.Bytes(), privateDER) {
 		t.Fatalf("closed issuer initialization receipt/profile = %+v, %+v, %v", receipt, profile, err)

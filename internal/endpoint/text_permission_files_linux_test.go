@@ -13,10 +13,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/admission"
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
 	"github.com/dianabuilds/ardents-network/internal/custody"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
-	"github.com/dianabuilds/ardents-network/internal/route/credential"
 )
 
 // Actual Custody and files; authenticated State and worker qualification remain
@@ -76,8 +76,8 @@ func TestTextPermissionFilesConsumeActualCustodyApproval(t *testing.T) {
 	if err != nil || sha256.Sum256(request) != digest {
 		t.Fatalf("public export differs: %v", err)
 	}
-	decoded, err := credential.DecodePermissionRequest(request)
-	if err != nil || decoded.Role != credential.AllocationPublisher {
+	decoded, err := admission.DecodePermissionRequest(request)
+	if err != nil || decoded.Role != admission.AllocationPublisher {
 		t.Fatalf("publisher request: %v", err)
 	}
 	if repeated, err := owner.exportTextPermissionFile(t.Context(), requestPath, maxima); err != nil || repeated != digest {

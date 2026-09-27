@@ -20,8 +20,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/admission"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
-	"github.com/dianabuilds/ardents-network/internal/route/credential"
 	"github.com/dianabuilds/ardents-network/internal/service/reachability"
 )
 
@@ -220,7 +220,7 @@ func textReaderLookupObservation(t *testing.T, owner *textContext, input textRea
 	responseDigest := sha256.Sum256(input.Expected)
 	owner.mu.Lock()
 	permission := owner.permission
-	if permission == nil || permission.accepted == (credential.Permission{}) || permission.batches == 0 {
+	if permission == nil || permission.accepted == (admission.Permission{}) || permission.batches == 0 {
 		owner.mu.Unlock()
 		t.Fatal("reader lookup lost its actual permission allocation")
 	}

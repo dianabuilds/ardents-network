@@ -7,6 +7,7 @@ import (
 	"crypto/ed25519"
 	"crypto/rand"
 	"crypto/sha256"
+	"github.com/dianabuilds/ardents-network/internal/admission"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	"net"
 	"os"
@@ -86,7 +87,7 @@ func closedTokenListenerIssuer(t *testing.T) (*ClosedTokenIssuer, state.ClosedPr
 	if err != nil {
 		t.Fatal(err)
 	}
-	issuerProfile, err := DecodeClosedIssuerProfile(receipt.Profile, nodePublic)
+	issuerProfile, err := admission.DecodeClosedIssuerProfile(receipt.Profile, nodePublic)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -100,10 +101,10 @@ func closedTokenListenerIssuer(t *testing.T) (*ClosedTokenIssuer, state.ClosedPr
 		copy(profile.TokenKeys[index].SPKI[:], key.SPKI)
 	}
 	holder := ed25519.NewKeyFromSeed(bytesForClosedTokenBatch(73))
-	permission := Permission{NetworkID: network, IssuerNodeID: issuerNode, DutyGeneration: profile.IssuerDutyGeneration,
+	permission := admission.Permission{NetworkID: network, IssuerNodeID: issuerNode, DutyGeneration: profile.IssuerDutyGeneration,
 		PermissionID: sha256.Sum256([]byte("listener permission")), NotBefore: window, NotAfter: window.Add(time.Hour), Maxima: [3]uint32{2, 0, 0}}
 	copy(permission.HolderKey[:], holder.Public().(ed25519.PublicKey))
-	copy(permission.Signature[:], ed25519.Sign(authority, permissionTranscript(permission)))
+	copy(permission.Signature[:], ed25519.Sign(authority, admission.PermissionTranscript(permission)))
 	context := ClosedTokenContext{NetworkID: network, ProfileDigest: profile.Digest, ReceiverNodeID: sha256.Sum256([]byte("listener receiver")),
 		IssuerNodeID: issuerNode, ReceiverDutyGeneration: 6, Class: 1, WindowStart: window}
 	pending, err := PrepareClosedTokenBatch(ClosedTokenBatchConfig{Profile: profile, Contexts: []ClosedTokenContext{context}, Permission: permission, HolderKey: holder, Now: now})

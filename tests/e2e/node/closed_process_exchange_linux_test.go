@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/admission"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/credential"
@@ -92,17 +93,17 @@ func prepareClosedProcessExchange(t *testing.T, network, issuer [32]byte, _ time
 func closedProcessBatch(t *testing.T, authority closedCommandAuthority, profile state.ClosedProfileView,
 	challenge credential.ClosedTokenContext, now time.Time) *credential.PendingClosedTokenBatch {
 	t.Helper()
-	request, holder, err := credential.PreparePermissionRequest(authority.Public, challenge.NetworkID, challenge.IssuerNodeID,
-		profile.IssuerDutyGeneration, credential.AllocationUser, challenge.WindowStart, [3]uint32{1, 0, 0})
+	request, holder, err := admission.PreparePermissionRequest(authority.Public, challenge.NetworkID, challenge.IssuerNodeID,
+		profile.IssuerDutyGeneration, admission.AllocationUser, challenge.WindowStart, [3]uint32{1, 0, 0})
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer clear(holder)
-	raw, err := credential.EncodePermissionRequest(request)
+	raw, err := admission.EncodePermissionRequest(request)
 	if err != nil {
 		t.Fatal(err)
 	}
-	permission, err := credential.DecodePermission(authority.issue(t, raw))
+	permission, err := admission.DecodePermission(authority.issue(t, raw))
 	if err != nil {
 		t.Fatal(err)
 	}

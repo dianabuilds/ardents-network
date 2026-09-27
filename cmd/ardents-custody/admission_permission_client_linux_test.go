@@ -7,7 +7,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
-	"github.com/dianabuilds/ardents-network/internal/route/credential"
+	"github.com/dianabuilds/ardents-network/internal/admission"
 	"os"
 	"path/filepath"
 	"testing"
@@ -42,7 +42,7 @@ func TestAdmissionAuthorityCommandsKeepPermissionOutOfPublicReceipt(t *testing.T
 	}
 	copy(authority[:], decoded)
 	now := time.Now().UTC().Truncate(time.Hour)
-	request, holder, err := credential.PreparePermissionRequest(authority, network, [32]byte{24}, 25, credential.AllocationUser,
+	request, holder, err := admission.PreparePermissionRequest(authority, network, [32]byte{24}, 25, admission.AllocationUser,
 		now, [3]uint32{16, 0, 0})
 	if err != nil {
 		t.Fatal(err)
@@ -52,7 +52,7 @@ func TestAdmissionAuthorityCommandsKeepPermissionOutOfPublicReceipt(t *testing.T
 			holder[index] = 0
 		}
 	}()
-	requestRaw, err := credential.EncodePermissionRequest(request)
+	requestRaw, err := admission.EncodePermissionRequest(request)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -72,7 +72,7 @@ func TestAdmissionAuthorityCommandsKeepPermissionOutOfPublicReceipt(t *testing.T
 	if err != nil || len(permission) != 228 || bytes.Contains(issuedOutput.Bytes(), permission) || bytes.Contains(issuedOutput.Bytes(), requestRaw) {
 		t.Fatalf("private permission output = %d bytes, public receipt %q, %v", len(permission), issuedOutput.String(), err)
 	}
-	if _, err := credential.DecodePermission(permission); err != nil {
+	if _, err := admission.DecodePermission(permission); err != nil {
 		t.Fatalf("decode private permission: %v", err)
 	}
 }

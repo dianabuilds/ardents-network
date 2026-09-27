@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	admissiongrammar "github.com/dianabuilds/ardents-network/internal/admission"
 	"github.com/dianabuilds/ardents-network/internal/route/terminal"
 
 	"github.com/dianabuilds/ardents-network/internal/network/state"
@@ -33,7 +34,7 @@ func closedRestrictionToken(t *testing.T, fixture *closedBootstrapFixture) []byt
 	if err != nil {
 		t.Fatal(err)
 	}
-	inventory, err := credential.DecodeClosedIssuerProfile(receipt.Profile, public)
+	inventory, err := admissiongrammar.DecodeClosedIssuerProfile(receipt.Profile, public)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -51,18 +52,18 @@ func closedRestrictionToken(t *testing.T, fixture *closedBootstrapFixture) []byt
 		profile.TokenKeys[index].WindowStart, profile.TokenKeys[index].Class = key.WindowStart, uint8(key.Class)
 		copy(profile.TokenKeys[index].SPKI[:], key.SPKI)
 	}
-	permission := credential.Permission{NetworkID: profile.NetworkID, IssuerNodeID: profile.IssuerNodeID, DutyGeneration: profile.IssuerDutyGeneration,
+	permission := admissiongrammar.Permission{NetworkID: profile.NetworkID, IssuerNodeID: profile.IssuerNodeID, DutyGeneration: profile.IssuerDutyGeneration,
 		PermissionID: [32]byte{101}, NotBefore: window, NotAfter: profile.NotAfter, Maxima: [3]uint32{0, 1, 0}, Signature: [64]byte{1}}
 	copy(permission.HolderKey[:], holderPublic)
 	// Public canonical encoding supplies the unsigned fields; replace the
 	// nonzero placeholder with the actual fixture authority signature.
-	raw, err := credential.EncodePermission(permission)
+	raw, err := admissiongrammar.EncodePermission(permission)
 	if err != nil {
 		t.Fatal(err)
 	}
 	transcript := append([]byte("ardents-issuance-permission-v1\x00"), raw[:len(raw)-ed25519.SignatureSize]...)
 	copy(permission.Signature[:], ed25519.Sign(authority, transcript))
-	if err := credential.VerifyPermission(permission, authorityPublic, profile.NetworkID, profile.IssuerNodeID, profile.IssuerDutyGeneration, fixture.now); err != nil {
+	if err := admissiongrammar.VerifyPermission(permission, authorityPublic, profile.NetworkID, profile.IssuerNodeID, profile.IssuerDutyGeneration, fixture.now); err != nil {
 		t.Fatal(err)
 	}
 	tokenContext := credential.ClosedTokenContext{NetworkID: profile.NetworkID, ProfileDigest: profile.Digest, ReceiverNodeID: fixture.receiver.NodeID,

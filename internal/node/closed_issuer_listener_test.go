@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	admissiongrammar "github.com/dianabuilds/ardents-network/internal/admission"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
@@ -30,7 +31,7 @@ func TestRunServesClosedIssuerThenDrainsOnClosedProfileSuccessor(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	issuerProfile, err := credential.DecodeClosedIssuerProfile(receipt.Profile, ed25519.PublicKey(public[:]))
+	issuerProfile, err := admissiongrammar.DecodeClosedIssuerProfile(receipt.Profile, ed25519.PublicKey(public[:]))
 	if err != nil {
 		t.Fatal(err)
 	}

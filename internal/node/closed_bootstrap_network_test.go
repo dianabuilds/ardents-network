@@ -16,6 +16,7 @@ import (
 	"testing"
 	"time"
 
+	admissiongrammar "github.com/dianabuilds/ardents-network/internal/admission"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/resource"
 	"github.com/dianabuilds/ardents-network/internal/route"
@@ -64,7 +65,7 @@ func newClosedBootstrapNetwork(t *testing.T, carrier route.CarrierProfile) *clos
 	if err != nil {
 		t.Fatal(err)
 	}
-	inventory, err := credential.DecodeClosedIssuerProfile(receipt.Profile, ed25519.PublicKey(keys[2][:]))
+	inventory, err := admissiongrammar.DecodeClosedIssuerProfile(receipt.Profile, ed25519.PublicKey(keys[2][:]))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -178,10 +179,10 @@ func (fixture *closedBootstrapNetwork) batchForChallenges(t *testing.T, contexts
 	if err != nil {
 		t.Fatal(err)
 	}
-	permission := credential.Permission{NetworkID: profile.NetworkID, IssuerNodeID: profile.IssuerNodeID, DutyGeneration: profile.IssuerDutyGeneration,
+	permission := admissiongrammar.Permission{NetworkID: profile.NetworkID, IssuerNodeID: profile.IssuerNodeID, DutyGeneration: profile.IssuerDutyGeneration,
 		PermissionID: [32]byte{permissionID}, NotBefore: profile.NotBefore, NotAfter: profile.NotAfter, Maxima: [3]uint32{0, uint32(len(contexts)), 0}, Signature: [64]byte{1}}
 	copy(permission.HolderKey[:], public)
-	raw, err := credential.EncodePermission(permission)
+	raw, err := admissiongrammar.EncodePermission(permission)
 	if err != nil {
 		t.Fatal(err)
 	}

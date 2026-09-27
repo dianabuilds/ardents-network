@@ -14,12 +14,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/admission"
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
 	"github.com/dianabuilds/ardents-network/internal/custody"
 	"github.com/dianabuilds/ardents-network/internal/endpoint/durableroot"
 	"github.com/dianabuilds/ardents-network/internal/endpoint/tokenjournal"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
-	"github.com/dianabuilds/ardents-network/internal/route/credential"
 )
 
 type textEndpointCrashBoundary struct {
@@ -104,11 +104,11 @@ func TestTextEndpointCrashDropsVolatileAuthorityAndRetainsSpend(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	request, err := credential.DecodePermissionRequest(requestRaw)
+	request, err := admission.DecodePermissionRequest(requestRaw)
 	if err != nil {
 		t.Fatal(err)
 	}
-	oldRequest, err := credential.DecodePermissionRequest(boundary.PermissionRequest)
+	oldRequest, err := admission.DecodePermissionRequest(boundary.PermissionRequest)
 	if err != nil {
 		t.Fatal(err)
 	}

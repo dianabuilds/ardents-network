@@ -1,6 +1,6 @@
 //go:build linux
 
-package credential
+package admission
 
 import (
 	"crypto/ed25519"

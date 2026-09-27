@@ -7,6 +7,7 @@ import (
 	"crypto/ed25519"
 	"crypto/rand"
 	"crypto/sha256"
+	"github.com/dianabuilds/ardents-network/internal/admission"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	"net"
 	"os"
@@ -36,7 +37,7 @@ func TestClosedTokenIssuerReconcilesCommittedBatchAfterRestart(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	issuerProfile, err := DecodeClosedIssuerProfile(receipt.Profile, nodePublic)
+	issuerProfile, err := admission.DecodeClosedIssuerProfile(receipt.Profile, nodePublic)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -50,10 +51,10 @@ func TestClosedTokenIssuerReconcilesCommittedBatchAfterRestart(t *testing.T) {
 		copy(profile.TokenKeys[index].SPKI[:], key.SPKI)
 	}
 	holder := ed25519.NewKeyFromSeed(bytesForClosedTokenBatch(3))
-	permission := Permission{NetworkID: network, IssuerNodeID: issuerNode, DutyGeneration: profile.IssuerDutyGeneration,
+	permission := admission.Permission{NetworkID: network, IssuerNodeID: issuerNode, DutyGeneration: profile.IssuerDutyGeneration,
 		PermissionID: sha256.Sum256([]byte("issuer permission")), NotBefore: window, NotAfter: window.Add(time.Hour), Maxima: [3]uint32{2, 0, 0}}
 	copy(permission.HolderKey[:], holder.Public().(ed25519.PublicKey))
-	copy(permission.Signature[:], ed25519.Sign(authority, permissionTranscript(permission)))
+	copy(permission.Signature[:], ed25519.Sign(authority, admission.PermissionTranscript(permission)))
 	context := ClosedTokenContext{NetworkID: network, ProfileDigest: profile.Digest, ReceiverNodeID: sha256.Sum256([]byte("receiver")),
 		IssuerNodeID: issuerNode, ReceiverDutyGeneration: 6, Class: 1, WindowStart: window}
 	pending, err := PrepareClosedTokenBatch(ClosedTokenBatchConfig{Profile: profile, Contexts: []ClosedTokenContext{context, context}, Permission: permission, HolderKey: holder, Now: now})
@@ -83,7 +84,7 @@ func TestClosedTokenIssuerReconcilesCommittedBatchAfterRestart(t *testing.T) {
 	if !issuer.profileCurrent() {
 		t.Fatal("opened issuer rejected its current State profile")
 	}
-	if err := VerifyPermission(decoded.Permission, ed25519.PublicKey(profile.IssuanceAuthorityKey[:]), network, issuerNode, profile.IssuerDutyGeneration, now); err != nil {
+	if err := admission.VerifyPermission(decoded.Permission, ed25519.PublicKey(profile.IssuanceAuthorityKey[:]), network, issuerNode, profile.IssuerDutyGeneration, now); err != nil {
 		t.Fatalf("issuer permission precondition: %v", err)
 	}
 	if _, err := issuer.privateKey(decoded); err != nil {

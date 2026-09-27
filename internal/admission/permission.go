@@ -1,4 +1,4 @@
-package credential
+package admission
 
 import (
 	"crypto/ed25519"
@@ -8,7 +8,8 @@ import (
 	"time"
 )
 
-const permissionSize = 228
+// PermissionSize is the exact canonical signed permission length in bytes.
+const PermissionSize = 228
 
 var permissionDomain = []byte("ardents-issuance-permission-v1\x00")
 
@@ -34,7 +35,7 @@ func EncodePermission(permission Permission) ([]byte, error) {
 // DecodePermission parses one canonical fixed-size permission without
 // accepting a caller-provided validity result.
 func DecodePermission(raw []byte) (Permission, error) {
-	if len(raw) != permissionSize {
+	if len(raw) != PermissionSize {
 		return Permission{}, errors.New("permission framing is invalid")
 	}
 	permission := Permission{}
@@ -69,20 +70,24 @@ func DecodePermission(raw []byte) (Permission, error) {
 func VerifyPermission(permission Permission, authority ed25519.PublicKey, network, issuer [32]byte, duty uint64, now time.Time) error {
 	if len(authority) != ed25519.PublicKeySize || validatePermission(permission) != nil || permission.NetworkID != network ||
 		permission.IssuerNodeID != issuer || permission.DutyGeneration != duty || now.Before(permission.NotBefore) || !now.Before(permission.NotAfter) ||
-		!ed25519.Verify(authority, permissionTranscript(permission), permission.Signature[:]) {
+		!ed25519.Verify(authority, PermissionTranscript(permission), permission.Signature[:]) {
 		return errors.New("permission does not match closed admission authority")
 	}
 	return nil
 }
 
-func permissionTranscript(permission Permission) []byte {
-	transcript := make([]byte, 0, len(permissionDomain)+permissionSize-ed25519.SignatureSize)
+// PermissionTranscript returns the exact domain-separated bytes the closed
+// admission authority signs for one permission. Exporting it keeps the
+// signature grammar single-sourced: Custody signs through it instead of
+// duplicating the canonical layout.
+func PermissionTranscript(permission Permission) []byte {
+	transcript := make([]byte, 0, len(permissionDomain)+PermissionSize-ed25519.SignatureSize)
 	transcript = append(transcript, permissionDomain...)
 	return append(transcript, permissionUnsigned(permission)...)
 }
 
 func permissionUnsigned(permission Permission) []byte {
-	raw := make([]byte, 0, permissionSize-ed25519.SignatureSize)
+	raw := make([]byte, 0, PermissionSize-ed25519.SignatureSize)
 	for _, field := range [][32]byte{permission.NetworkID, permission.IssuerNodeID} {
 		raw = append(raw, field[:]...)
 	}

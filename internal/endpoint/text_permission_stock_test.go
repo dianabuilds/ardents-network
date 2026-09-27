@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/admission"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/credential"
@@ -14,7 +15,7 @@ import (
 func TestTextPermissionOwnsCurrentAuthorityAndRemainingAllocation(t *testing.T) {
 	window := time.Date(2026, time.September, 25, 10, 0, 0, 0, time.UTC)
 	profile := state.ClosedProfileView{NetworkID: fixtureID(1)}
-	permission := &textPermission{profile: profile, accepted: credential.Permission{
+	permission := &textPermission{profile: profile, accepted: admission.Permission{
 		NotBefore: window, NotAfter: window.Add(time.Hour), Signature: [64]byte{1}, Maxima: [3]uint32{4, 2, 1},
 	}, reserved: [3]uint32{3, 2, 2}}
 	if !permission.currentFor(profile, window) || !permission.currentFor(profile, window.Add(time.Hour-time.Nanosecond)) ||
@@ -35,7 +36,7 @@ func TestTextPermissionOwnsCurrentAuthorityAndRemainingAllocation(t *testing.T) 
 }
 
 func TestTextPermissionRejectsEmptyOrInvalidClassBeforeBatchPreparation(t *testing.T) {
-	permission := &textPermission{accepted: credential.Permission{Maxima: [3]uint32{1, 1, 1}}}
+	permission := &textPermission{accepted: admission.Permission{Maxima: [3]uint32{1, 1, 1}}}
 	for _, challenges := range [][]credential.ClosedTokenContext{
 		nil,
 		{{Class: 0}},
@@ -61,7 +62,7 @@ func TestTextPermissionStockPreflightSeparatesWindowClassAndKnownDuty(t *testing
 		}
 	}
 	permission := &textPermission{
-		accepted: credential.Permission{NotBefore: window},
+		accepted: admission.Permission{NotBefore: window},
 		stock: []textTokenStock{
 			stock(profile, receiver, 7, 2, window, 2),
 			stock(profile, receiver, 8, 2, window, 1),

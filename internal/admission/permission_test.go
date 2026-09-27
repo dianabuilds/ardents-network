@@ -1,4 +1,4 @@
-package credential
+package admission
 
 import (
 	"bytes"
@@ -16,9 +16,9 @@ func TestPermissionCanonicalVerification(t *testing.T) {
 	permission := Permission{NetworkID: permissionIdentifier(1), IssuerNodeID: permissionIdentifier(2), DutyGeneration: 3,
 		PermissionID: permissionIdentifier(4), HolderKey: permissionIdentifier(5), NotBefore: now.Truncate(time.Hour),
 		NotAfter: now.Truncate(time.Hour).Add(time.Hour), Maxima: [3]uint32{32, 0, 16}}
-	copy(permission.Signature[:], ed25519.Sign(private, permissionTranscript(permission)))
+	copy(permission.Signature[:], ed25519.Sign(private, PermissionTranscript(permission)))
 	raw, err := EncodePermission(permission)
-	if err != nil || len(raw) != permissionSize {
+	if err != nil || len(raw) != PermissionSize {
 		t.Fatalf("encode permission = %d bytes, %v", len(raw), err)
 	}
 	decoded, err := DecodePermission(raw)

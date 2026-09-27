@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/admission"
 )
 
 func TestClosedTokenIssuerLedgerKindsShareQuotaAndRetainRetryKind(t *testing.T) {
@@ -15,7 +17,7 @@ func TestClosedTokenIssuerLedgerKindsShareQuotaAndRetainRetryKind(t *testing.T) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	request := ClosedTokenBatchRequest{Permission: Permission{PermissionID: [32]byte{4}, Maxima: [3]uint32{4, 0, 0}},
+	request := ClosedTokenBatchRequest{Permission: admission.Permission{PermissionID: [32]byte{4}, Maxima: [3]uint32{4, 0, 0}},
 		Class: 1, WindowStart: time.Unix(1_800_000_000, 0).UTC().Truncate(time.Hour), BlindedRequests: [][]byte{{1}}}
 	for index, kind := range []closedIssuanceKind{closedIssuanceBootstrap, closedIssuanceAdmitted, closedIssuanceBootstrap} {
 		request.RequestID = [32]byte{byte(index + 1)}
@@ -92,7 +94,7 @@ func TestClosedTokenIssuerLedgerPromotesLegacyWithoutRefund(t *testing.T) {
 					t.Fatalf("legacy debit %d = %+v / %t / %v", index, record, found, err)
 				}
 			}
-			request := ClosedTokenBatchRequest{Permission: Permission{PermissionID: [32]byte{4}, Maxima: [3]uint32{3, 0, 0}},
+			request := ClosedTokenBatchRequest{Permission: admission.Permission{PermissionID: [32]byte{4}, Maxima: [3]uint32{3, 0, 0}},
 				RequestID: [32]byte{3}, Class: 1, WindowStart: window, BlindedRequests: [][]byte{{1}}}
 			if reserved, err := ledger.reserve(request, request.RequestID, closedIssuanceBootstrap); err != nil || reserved {
 				t.Fatalf("legacy bootstrap allowance refunded = %t / %v", reserved, err)
@@ -178,7 +180,7 @@ func TestClosedTokenIssuerLedgerAppendFailureStopsOwner(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	request := ClosedTokenBatchRequest{Permission: Permission{PermissionID: [32]byte{4}, Maxima: [3]uint32{4, 0, 0}},
+	request := ClosedTokenBatchRequest{Permission: admission.Permission{PermissionID: [32]byte{4}, Maxima: [3]uint32{4, 0, 0}},
 		RequestID: [32]byte{1}, Class: 1, WindowStart: time.Unix(1_800_000_000, 0).UTC().Truncate(time.Hour),
 		BlindedRequests: [][]byte{{1}}}
 	if reserved, err := ledger.reserve(request, request.RequestID, closedIssuanceBootstrap); err != nil || !reserved {

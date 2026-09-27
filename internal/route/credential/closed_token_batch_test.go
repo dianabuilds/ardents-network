@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/admission"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 )
 
@@ -31,10 +32,10 @@ func TestPrepareClosedTokenBatchBindsStatePermissionAndVolatileBlindState(t *tes
 	copy(profile.IssuanceAuthorityKey[:], authority.Public().(ed25519.PublicKey))
 	profile.TokenKeys[0] = state.ClosedProfileTokenKey{WindowStart: window, Class: 2}
 	copy(profile.TokenKeys[0].SPKI[:], spki)
-	permission := Permission{NetworkID: sha256.Sum256([]byte("network")), IssuerNodeID: profile.IssuerNodeID, DutyGeneration: profile.IssuerDutyGeneration,
+	permission := admission.Permission{NetworkID: sha256.Sum256([]byte("network")), IssuerNodeID: profile.IssuerNodeID, DutyGeneration: profile.IssuerDutyGeneration,
 		PermissionID: sha256.Sum256([]byte("permission")), NotBefore: window, NotAfter: window.Add(time.Hour), Maxima: [3]uint32{0, 3, 0}}
 	copy(permission.HolderKey[:], holder.Public().(ed25519.PublicKey))
-	copy(permission.Signature[:], ed25519.Sign(authority, permissionTranscript(permission)))
+	copy(permission.Signature[:], ed25519.Sign(authority, admission.PermissionTranscript(permission)))
 	context := ClosedTokenContext{NetworkID: permission.NetworkID, ProfileDigest: profile.Digest, ReceiverNodeID: sha256.Sum256([]byte("receiver")),
 		IssuerNodeID: profile.IssuerNodeID, ReceiverDutyGeneration: 8, Class: 2, WindowStart: window}
 	pending, err := PrepareClosedTokenBatch(ClosedTokenBatchConfig{Profile: profile, Contexts: []ClosedTokenContext{context, context, context}, Permission: permission, HolderKey: holder, Now: window.Add(time.Minute)})

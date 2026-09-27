@@ -156,7 +156,7 @@ its stated gate is satisfied.
 | Endpoint admission (15) | Keep Endpoint as local capability and context lifetime owner; split mixed files by responsibility. | Reconcile the adjacent Endpoint slice before choosing any child package. |
 | Legacy Route v2 (12) | Retire uncalled execution after extracting shared historical readers/refusals. | Closed: the old wire obligations were decided by ADR-0093/ADR-0094 (F-52) and the Grant ledger by the ADR-0107 version-2 conversion (F-53). |
 | Node duty (45) | Deepen Node's five duty lifetimes in place; rename the common handle for its actual role. | Accepted-child close and issuer late-root owner (F-17/F-39/F-61). |
-| Permission issuance (41) | Retain issuer authority and Endpoint attempt owners; later separate offline grammar from Route-facing listener. | No parent Route import cycle; keep exact signed bytes (F-28/F-30). |
+| Permission issuance (41) | Retain issuer authority and Endpoint attempt owners; the offline grammar is separated from the Route-facing listener in `internal/admission` (F-28/F-30 done). | No parent Route import cycle; keep exact signed bytes; the late issuer-root close owner (F-17) stays open. |
 | Protected wire (31) | Retain ARDP/terminal/capsule owners; narrow shared Route root by operation. | Preserve frame bounds, accepted-channel and physical Carrier close ownership. The terminal Descriptor proof bound is realized terminal-local (F-29 done). |
 | Publication/discovery (48) | Retain Publication, Reachability and Target Link floors; deepen Endpoint publication coordinator. | The old Descriptor root policy is closed by the ADR-0109 typed refusal (F-32); the obsolete instruction codecs were retired by ADR-0094. |
 | Qualification (6) | Retain Endpoint's stream-qualification adapter for verification; do not treat its fixture path as ordinary Publisher/Reader behavior. | Its installed verdict remains separate from `make check` and the ordinary text-command verdict (F-31). |
@@ -258,7 +258,7 @@ graph merely because it exists in the same repository.
 | Sixteen production files in `internal/service/instance` | Retain as one deep host-key/root Module. Initialization, exact response acceptance, durable phase, non-exporting binding and restart refusal share one authority invariant; the traced command has a real non-test call path. |
 | Uncomposed OHTTP facade in `internal/service/reachability` | Retired under ADR-0091 with its exact allowances and tests. The shared Store and private v3 publication/lookup remain; ADR-0109 (F-32) deleted the legacy Descriptor reader and refuses a stored legacy record with the typed ErrLegacyRecord, closing the persisted-root migration decision. |
 | Portable profile scaffold (`ConfigHome/grants`, `StateHome/vault`, `StateHome/diagnostics`, `CacheHome`) | Closed by ADR-0108 (F-26) after ADR-0099 removed the test-only `Run` facade: `Config` now carries only `StateHome` and `RuntimeHome`, `prepareRoots` creates only the state base with its `floors` and `live` parents and the runtime attachment base, and the XDG config/cache derivations are gone. Existing on-disk bytes of former profiles are preserved and unread; the operator procedure and the Ubuntu qualification oracles now cite the retained live/floor roots. |
-| Offline Control/Custody imports of `route/credential` | Preserve the public issuer-profile verification and signed permission grammar, but separate their offline contract from the live Route-facing issuer listener when a real cohesive seam is ready. At `53f02e64` both offline command closures still include CIRCL and QUIC, but no OHTTP; the Transit client was retired under ADR-0092 (F-28/F-30). Recheck the closures after a real package boundary change; keep Node/Endpoint network dependencies. |
+| Offline Control/Custody imports of `route/credential` | Realized by the `internal/admission` extraction (F-28/F-30): the sealed 228-byte permission grant, the 269-byte holder-signed request with its Linux-only holder-request construction, and the ARDCIP01 issuer key-inventory codec live in one leaf grammar package that depends only on `internal/network/state`; the live networked issuer engine stays in `route/credential`. Custody signs through the exported `admission.PermissionTranscript` instead of duplicating the canonical layout. Both offline command closures and `internal/custody` contain no QUIC or CIRCL package on either platform (Linux closures fell from 296/229 to 259/182 packages). Node/Endpoint network dependencies are kept. |
 | Legacy Endpoint Transit acquisition and generic Publisher setup | Removed under ADR-0092 with their exact deadcode allowances. The protected text participant retains its permission and token-attempt journals. ADR-0062's historical Grant bytes retired with the Route v2 closure (F-52, ADR-0093) and the separate durable local-role spend field with the ADR-0107 duty-root conversion (F-53); do not conflate those with the live closed-token issuer or receiving spend. |
 | Proposed `network-core-transition.md` and wire appendix | Keep as unaccepted design while decisions are open; promote selected facts to current owners and retire superseded execution chronology after reconciling issue state and links. Do not implement candidate wire grammar by document proximity. |
 
@@ -502,15 +502,18 @@ ADR-0103 froze that value's fields. This is a
 navigation and change-amplification improvement, not a prerequisite for
 retiring the old Route or making the installed C0 path work.
 
-Keep the live `route/credential` issuer and its three Route-facing adapter
-files together during the current C0 correctness work. Their listener and
-admitted child lifetime need the F-17 close owner first; relocating their
-methods now would either export issuer internals or create a parent import
-cycle. After that owner is settled, put Route accept/bootstrap/ARDP exchange
-in the Node-facing adapter and leave permission/profile grammar with the
-offline issuer contract. Control and Custody can then depend on that grammar
-without importing the live network listener. This is a dependency cleanup
-slice, not an additional accepting credential version (F-28/F-30).
+The offline permission/profile grammar now lives outside `route/credential`:
+`internal/admission` owns the sealed permission grant, the holder-signed
+request with its Linux-only holder-request construction, and the ARDCIP01
+issuer key-inventory codec, and Control and Custody depend on that grammar
+without importing the live network listener (F-28/F-30 realized). The live
+`route/credential` issuer and its three Route-facing adapter files stay
+together during the current C0 correctness work: their listener and admitted
+child lifetime need the F-17 close owner first, and relocating their
+remaining methods now would either export issuer internals or create a
+parent import cycle. After that owner is settled, put Route
+accept/bootstrap/ARDP exchange in the Node-facing adapter. That was a
+dependency cleanup slice, not an additional accepting credential version.
 
 Service Connection's Attachment seam is repaired (F-23, realized):
 `NewAttachment` takes an exactly-once `close func() error` owned by the
@@ -816,9 +819,10 @@ and Endpoint compose those decisions and own their process terminal results.
 Five observed edges determine the next Go import-graph changes:
 
 1. `route/credential -> route` now comes only from three live issuer adapters
-   (F-30); ADR-0092 removed the uncomposed OHTTP Transit client. Keep issuer
-   reservation and offline permission/profile grammar below the live network
-   listener. Put Route-facing bootstrap, admission channel and Carrier calls
+   (F-30); ADR-0092 removed the uncomposed OHTTP Transit client. The offline
+   permission/profile grammar moved below the live network listener into
+   `internal/admission` (F-28/F-30 realized); issuer reservation stays in
+   Credential. Put Route-facing bootstrap, admission channel and Carrier calls
    behind a Node-owned operation adapter only after assigning accepted-child
    join and issuer-root late-close ownership (F-17). Moving the current
    Credential package inward as one unit creates a parent import cycle.
@@ -829,13 +833,12 @@ Five observed edges determine the next Go import-graph changes:
    Reachability constant, and the production import is gone with no change to
    refusal behavior and no one-constant package. Reachability remains the
    proof/Store authority.
-3. Offline Control and Custody import all of `route/credential` for the
-   profile decoder and permission grammar. They should reach the same verified
-   bytes through a cohesive offline owner, not through the live Route/QUIC
-   issuer adapter. Compare their `go list` closures after the real split;
-   their current 296- and 229-package Linux closures include QUIC and CIRCL
-   but no OHTTP. This is import coupling, not proof of runtime network use
-   (F-28).
+3. Offline Control and Custody formerly imported all of `route/credential`
+   for the profile decoder and permission grammar. Realized (F-28): both reach
+   the same verified bytes through the leaf `internal/admission` owner, which
+   depends only on `internal/network/state`; their post-split Linux closures
+   are 259 and 182 packages and contain no QUIC or CIRCL at all. The former
+   coupling was import coupling, not proof of runtime network use.
 4. `route -> network/state` is a live Linux edge in
    `closed_bootstrap_plan.go` and `closed_source_prefix.go`: the client path
    builds a bounded plan from the current view and rechecks it while opening
@@ -870,13 +873,13 @@ records the Carrier type-use blockers, and the [focused inventory](c0-component-
 records the exact candidate files. This placement preserves an acyclic
 direction without requiring every component to become a package at once.
 
-The first-party graph counterfactual in F-28 shows that these two edge cuts
-primarily simplify offline Control/Custody. They do not shrink the Linux
-Endpoint or Node first-party closure because those commands reach the same
-owners through other live imports. Keep the offline split after the State
-role-join, resource-transfer and installed-path boundaries that affect C0
-correctness; measure real Go dependency and artifact changes only after a
-buildable split.
+The first-party graph counterfactual in F-28 predicted that these edge cuts
+primarily simplify offline Control/Custody, and the realized
+`internal/admission` split confirms it: the two offline command closures fell
+from 296 to 259 and from 229 to 182 Linux packages, while the Linux Endpoint
+and Node closures are unchanged because those commands reach the same owners
+through other live imports. Measure real Go dependency and artifact changes
+after each buildable split.
 
 The existing `service/connection` package is already below Endpoint and
 Route: it has no first-party imports and receives authenticated Attachment
@@ -1115,8 +1118,9 @@ only when the package is actually introduced or renamed.
 
 1. Carry the selected handoffs into bounded owner changes:
    State-to-Node's checked duty value is realized (F-07, ADR-0104; its F-45 role join settled by ADR-0103) and the
-   Service Connection attachment's physical-close result is realized in its existing package (F-23 done); remaining is Route/Credential's live
-   issuer adapter versus offline grammar (F-17/F-28/F-30). The table
+   Service Connection attachment's physical-close result is realized in its existing package (F-23 done) and the offline
+   admission grammar lives in `internal/admission` (F-28/F-30 done); remaining is Route/Credential's live issuer adapter late-close
+   owner (F-17). The table
    of observed handoffs above already gives callers, input, result and close
    owners. State's duty value fields are fixed against the accepted role join (ADR-0103/0104); Credential's
    package move awaits the late issuer-root close owner. Refine exported signatures only in the selected slice.

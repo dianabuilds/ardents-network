@@ -7,6 +7,7 @@ import (
 	"encoding/binary"
 	"errors"
 
+	"github.com/dianabuilds/ardents-network/internal/admission"
 	"math/big"
 	"time"
 )
@@ -25,7 +26,7 @@ var closedTokenRequestDomain = []byte("ardents-issuance-request-v1\x00")
 // the State-selected issuer. It contains no Target, Endpoint identity, or
 // application bytes.
 type ClosedTokenBatchRequest struct {
-	Permission      Permission
+	Permission      admission.Permission
 	RequestID       [32]byte
 	Class           uint8
 	WindowStart     time.Time
@@ -59,11 +60,11 @@ func DecodeClosedTokenBatch(raw []byte) (ClosedTokenBatchRequest, error) {
 		return ClosedTokenBatchRequest{}, errors.New("closed token batch framing is invalid")
 	}
 	offset := 8
-	permission, err := DecodePermission(raw[offset : offset+permissionSize])
+	permission, err := admission.DecodePermission(raw[offset : offset+admission.PermissionSize])
 	if err != nil {
 		return ClosedTokenBatchRequest{}, err
 	}
-	offset += permissionSize
+	offset += admission.PermissionSize
 	request := ClosedTokenBatchRequest{Permission: permission}
 	copy(request.RequestID[:], raw[offset:offset+32])
 	offset += 32
@@ -140,5 +141,5 @@ func validClosedTokenElement(encoded []byte, public *rsa.PublicKey) bool {
 }
 
 func closedTokenBatchBaseSize() int {
-	return len(closedTokenBatchMagic) + permissionSize + 32 + 1 + 8 + 346 + 2 + ed25519.SignatureSize
+	return len(closedTokenBatchMagic) + admission.PermissionSize + 32 + 1 + 8 + 346 + 2 + ed25519.SignatureSize
 }

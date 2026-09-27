@@ -3,7 +3,7 @@ package custody
 import (
 	"crypto/ed25519"
 	"crypto/sha256"
-	"github.com/dianabuilds/ardents-network/internal/route/credential"
+	"github.com/dianabuilds/ardents-network/internal/admission"
 	"testing"
 )
 
@@ -34,9 +34,9 @@ func TestCreateAdmissionAuthorityKeepsSigningKeyEncrypted(t *testing.T) {
 func TestAdmissionJournalAcceptsCompleteHourlyReservationSet(t *testing.T) {
 	allocations := make([]admissionAllocation, 0, maximumUserAllocation+maximumPublisherAllocation)
 	for index := uint64(0); index < maximumUserAllocation+maximumPublisherAllocation; index++ {
-		role := credential.AllocationUser
+		role := admission.AllocationUser
 		if index >= maximumUserAllocation {
-			role = credential.AllocationPublisher
+			role = admission.AllocationPublisher
 		}
 		allocation := admissionAllocation{window: 1, role: role, tokens: 1}
 		value := index + 1
@@ -63,11 +63,11 @@ func TestAdmissionJournalAcceptsCompleteHourlyReservationSet(t *testing.T) {
 
 func TestAdmissionAllocationsForWindowExpiresPreviousReservations(t *testing.T) {
 	allocations := []admissionAllocation{
-		{window: 100, role: credential.AllocationUser, tokens: 1, id: [32]byte{1}, digest: [32]byte{1}},
-		{window: 101, role: credential.AllocationPublisher, tokens: 1, id: [32]byte{2}, digest: [32]byte{2}},
+		{window: 100, role: admission.AllocationUser, tokens: 1, id: [32]byte{1}, digest: [32]byte{1}},
+		{window: 101, role: admission.AllocationPublisher, tokens: 1, id: [32]byte{2}, digest: [32]byte{2}},
 	}
 	current := admissionAllocationsForWindow(allocations, 101)
-	if len(current) != 1 || current[0].window != 101 || current[0].role != credential.AllocationPublisher {
+	if len(current) != 1 || current[0].window != 101 || current[0].role != admission.AllocationPublisher {
 		t.Fatalf("current hourly allocations = %#v", current)
 	}
 }

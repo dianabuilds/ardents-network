@@ -2,6 +2,7 @@ github.com/dianabuilds/ardents-network/cmd/ardents
 github.com/dianabuilds/ardents-network/cmd/ardents-control
 github.com/dianabuilds/ardents-network/cmd/ardents-custody
 github.com/dianabuilds/ardents-network/cmd/ardents-node
+github.com/dianabuilds/ardents-network/internal/admission
 github.com/dianabuilds/ardents-network/internal/application/broker
 github.com/dianabuilds/ardents-network/internal/application/interfacev1/administration
 github.com/dianabuilds/ardents-network/internal/contributor

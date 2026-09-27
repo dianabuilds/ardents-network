@@ -14,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	admissiongrammar "github.com/dianabuilds/ardents-network/internal/admission"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
@@ -33,7 +34,7 @@ func TestClosedIssuerServesBootstrapInsideStateAuthorizedNodeCarrier(t *testing.
 	if err != nil {
 		t.Fatal(err)
 	}
-	issuerProfile, err := credential.DecodeClosedIssuerProfile(receipt.Profile, ed25519.PublicKey(serverKey[:]))
+	issuerProfile, err := admissiongrammar.DecodeClosedIssuerProfile(receipt.Profile, ed25519.PublicKey(serverKey[:]))
 	if err != nil {
 		t.Fatal(err)
 	}

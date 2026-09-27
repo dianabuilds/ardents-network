@@ -14,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	admissiongrammar "github.com/dianabuilds/ardents-network/internal/admission"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	"github.com/dianabuilds/ardents-network/internal/route/replay"
 	"github.com/dianabuilds/ardents-network/internal/route/terminal"
@@ -74,7 +75,7 @@ func newPrivateRecipientNetworkFixtureWithStart(t *testing.T, carrier route.Carr
 	if err != nil {
 		t.Fatal(err)
 	}
-	inventory, err := credential.DecodeClosedIssuerProfile(receipt.Profile, ed25519.PublicKey(serverKey[:]))
+	inventory, err := admissiongrammar.DecodeClosedIssuerProfile(receipt.Profile, ed25519.PublicKey(serverKey[:]))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -234,11 +235,11 @@ func privateRecipientTokens(t *testing.T, root string, profile state.ClosedProfi
 		t.Fatal(err)
 	}
 	defer clear(holder)
-	permission := credential.Permission{NetworkID: profile.NetworkID, IssuerNodeID: profile.IssuerNodeID, DutyGeneration: profile.IssuerDutyGeneration,
+	permission := admissiongrammar.Permission{NetworkID: profile.NetworkID, IssuerNodeID: profile.IssuerNodeID, DutyGeneration: profile.IssuerDutyGeneration,
 		PermissionID: [32]byte{83, class}, NotBefore: profile.NotBefore, NotAfter: profile.NotAfter, Maxima: [3]uint32{}, Signature: [64]byte{1}}
 	permission.Maxima[class-1] = 12
 	copy(permission.HolderKey[:], public)
-	raw, err := credential.EncodePermission(permission)
+	raw, err := admissiongrammar.EncodePermission(permission)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -9,9 +9,9 @@ import (
 	"errors"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/admission"
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
-	"github.com/dianabuilds/ardents-network/internal/route/credential"
 )
 
 // textPermission keeps exactly one holder/hour in its authorized context.
@@ -23,17 +23,17 @@ type textPermission struct {
 	pending  *textTokenBatch
 	stock    []textTokenStock
 	profile  state.ClosedProfileView
-	request  credential.PermissionRequest
+	request  admission.PermissionRequest
 	public   []byte
 	digest   [32]byte
 	holder   ed25519.PrivateKey
-	accepted credential.Permission
+	accepted admission.Permission
 }
 
 // These predicates keep Context coordinators from interpreting retained
 // permission state. Callers still hold the Context admission lock.
 func (permission *textPermission) hasAccepted() bool {
-	return permission != nil && permission.accepted != (credential.Permission{})
+	return permission != nil && permission.accepted != (admission.Permission{})
 }
 
 func (permission *textPermission) hasPending() bool {
@@ -61,18 +61,18 @@ func (permission *textPermission) currentFor(profile state.ClosedProfileView, no
 type textPermissionRequestScope struct {
 	profile state.ClosedProfileView
 	window  time.Time
-	role    credential.AllocationRole
+	role    admission.AllocationRole
 	maxima  [3]uint32
 }
 
 func newTextPermissionRequestScope(profile state.ClosedProfileView, now time.Time,
-	role credential.AllocationRole, maxima [3]uint32) (textPermissionRequestScope, error) {
+	role admission.AllocationRole, maxima [3]uint32) (textPermissionRequestScope, error) {
 	window := now.Truncate(time.Hour)
 	if window.Before(profile.NotBefore) || window.Add(time.Hour).After(profile.NotAfter) {
 		return textPermissionRequestScope{}, errors.New("text permission hour is outside current authority")
 	}
 	limit := uint64(4096)
-	if role == credential.AllocationPublisher {
+	if role == admission.AllocationPublisher {
 		limit = 16384
 	}
 	total := uint64(maxima[0]) + uint64(maxima[1]) + uint64(maxima[2])
@@ -97,13 +97,13 @@ func (permission *textPermission) retainedRequest(scope textPermissionRequestSco
 }
 
 func prepareTextPermission(scope textPermissionRequestScope) (*textPermission, []byte, [32]byte, error) {
-	request, holder, err := credential.PreparePermissionRequest(scope.profile.IssuanceAuthorityKey,
+	request, holder, err := admission.PreparePermissionRequest(scope.profile.IssuanceAuthorityKey,
 		scope.profile.NetworkID, scope.profile.IssuerNodeID, scope.profile.IssuerDutyGeneration,
 		scope.role, scope.window, scope.maxima)
 	if err != nil {
 		return nil, nil, [32]byte{}, err
 	}
-	public, err := credential.EncodePermissionRequest(request)
+	public, err := admission.EncodePermissionRequest(request)
 	if err != nil {
 		clear(holder)
 		return nil, nil, [32]byte{}, err
@@ -116,17 +116,17 @@ func prepareTextPermission(scope textPermissionRequestScope) (*textPermission, [
 // acceptResponse verifies the signed response against this owner's exact
 // retained request and only then changes its accepted permission.
 func (pending *textPermission) acceptResponse(profile state.ClosedProfileView, now time.Time,
-	digest [32]byte, permission credential.Permission) error {
+	digest [32]byte, permission admission.Permission) error {
 	if pending == nil || digest == [32]byte{} || pending.digest != digest || pending.profile != profile {
 		return errors.New("text permission response has no matching live request")
 	}
 	expected := pending.request.Permission
 	expected.Signature = permission.Signature
-	if permission != expected || credential.VerifyPermission(permission, ed25519.PublicKey(profile.IssuanceAuthorityKey[:]),
+	if permission != expected || admission.VerifyPermission(permission, ed25519.PublicKey(profile.IssuanceAuthorityKey[:]),
 		profile.NetworkID, profile.IssuerNodeID, profile.IssuerDutyGeneration, now) != nil {
 		return errors.New("text permission response does not match its approved request")
 	}
-	if pending.accepted != (credential.Permission{}) && pending.accepted != permission {
+	if pending.accepted != (admission.Permission{}) && pending.accepted != permission {
 		return errors.New("text permission response conflicts")
 	}
 	pending.accepted = permission
@@ -146,9 +146,9 @@ func (owner *textContext) requestTextPermission(maxima [3]uint32) ([]byte, [32]b
 	if err != nil {
 		return nil, [32]byte{}, err
 	}
-	role := credential.AllocationUser
+	role := admission.AllocationUser
 	if owner.surface == broker.Administration {
-		role = credential.AllocationPublisher
+		role = admission.AllocationPublisher
 	}
 	scope, err := newTextPermissionRequestScope(profile, now, role, maxima)
 	if err != nil {
@@ -177,7 +177,7 @@ func (owner *textContext) importTextPermission(digest [32]byte, raw []byte) erro
 	if owner == nil {
 		return errors.New("text permission context is unavailable")
 	}
-	permission, err := credential.DecodePermission(raw)
+	permission, err := admission.DecodePermission(raw)
 	if err != nil {
 		return err
 	}

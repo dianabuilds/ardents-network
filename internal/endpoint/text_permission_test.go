@@ -10,10 +10,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/admission"
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
 	"github.com/dianabuilds/ardents-network/internal/custody"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
-	"github.com/dianabuilds/ardents-network/internal/route/credential"
 )
 
 // These tests exercise the local permission owner and actual Custody ledger.
@@ -85,8 +85,8 @@ func TestTextPermissionCustodyRoundTripAndContextOwnership(t *testing.T) {
 	if err != nil || sha256.Sum256(public) != digest {
 		t.Fatalf("prepare: %v", err)
 	}
-	request, err := credential.DecodePermissionRequest(public)
-	if err != nil || request.Role != credential.AllocationUser {
+	request, err := admission.DecodePermissionRequest(public)
+	if err != nil || request.Role != admission.AllocationUser {
 		t.Fatalf("reader role: %v", err)
 	}
 	public[0] ^= 1
@@ -132,7 +132,7 @@ func TestTextPermissionCustodyRoundTripAndContextOwnership(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	otherRequest, err := credential.DecodePermissionRequest(otherRaw)
+	otherRequest, err := admission.DecodePermissionRequest(otherRaw)
 	if err != nil || otherRequest.Role != request.Role || otherRequest.Permission.HolderKey == request.Permission.HolderKey ||
 		otherRequest.Permission.PermissionID == request.Permission.PermissionID || otherDigest == digest {
 		t.Fatalf("same-role contexts shared issuer identity: %v", err)
@@ -164,8 +164,8 @@ func TestTextPermissionCustodyRoundTripAndContextOwnership(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	publisherRequest, err := credential.DecodePermissionRequest(publisherRaw)
-	if err != nil || publisherRequest.Role != credential.AllocationPublisher || publisherRequest.Permission.HolderKey == request.Permission.HolderKey {
+	publisherRequest, err := admission.DecodePermissionRequest(publisherRaw)
+	if err != nil || publisherRequest.Role != admission.AllocationPublisher || publisherRequest.Permission.HolderKey == request.Permission.HolderKey {
 		t.Fatal("Publisher inherited reader role or holder")
 	}
 	if err := publisher.importTextPermission(publisherDigest, approved.AdmissionPermission); err == nil {
@@ -208,7 +208,7 @@ func TestTextPermissionCustodyRoundTripAndContextOwnership(t *testing.T) {
 	if err != nil || newDigest == digest {
 		t.Fatalf("next-hour holder: %v", err)
 	}
-	newRequest, err := credential.DecodePermissionRequest(newRaw)
+	newRequest, err := admission.DecodePermissionRequest(newRaw)
 	if err != nil || newRequest.Permission.HolderKey == request.Permission.HolderKey {
 		t.Fatal("holder reused across hours")
 	}

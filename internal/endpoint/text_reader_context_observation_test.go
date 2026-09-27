@@ -18,7 +18,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/route/credential"
+	"github.com/dianabuilds/ardents-network/internal/admission"
 )
 
 type textReaderContextEvidence struct {
@@ -139,7 +139,7 @@ func startTextReaderContextProcess(t *testing.T, source *textSourceStateFixture,
 		process.stopAfterFailure()
 		t.Fatalf("reader %s permission request: %v", id, err)
 	}
-	if _, err := credential.DecodePermissionRequest(process.request); err != nil {
+	if _, err := admission.DecodePermissionRequest(process.request); err != nil {
 		process.stopAfterFailure()
 		t.Fatalf("reader %s permission request framing: %v", id, err)
 	}
@@ -213,7 +213,7 @@ func (process *textReaderContextProcess) lookup(repeat bool) {
 	if err := process.decoder.Decode(&proof); err != nil || !bytes.Equal(proof, process.input.Expected) {
 		process.t.Fatalf("reader %s lookup proof: %v", process.id, err)
 	}
-	request, err := credential.DecodePermissionRequest(process.request)
+	request, err := admission.DecodePermissionRequest(process.request)
 	if err != nil {
 		process.t.Fatalf("decode reader permission request after lookup: %v", err)
 	}
@@ -301,7 +301,7 @@ func (process *textReaderContextProcess) writeEvidence() textReaderContextEviden
 	if err != nil {
 		process.t.Fatal(err)
 	}
-	request, err := credential.DecodePermissionRequest(process.request)
+	request, err := admission.DecodePermissionRequest(process.request)
 	if err != nil {
 		process.t.Fatal(err)
 	}
@@ -326,12 +326,12 @@ func observeTextIndependentReaderContexts(t *testing.T, source *textSourceStateF
 	second.issueAndImport()
 	second.lookup(false)
 	second.stop()
-	firstRequest, err := credential.DecodePermissionRequest(first.request)
+	firstRequest, err := admission.DecodePermissionRequest(first.request)
 	if err != nil {
 		t.Fatal(err)
 	}
-	secondRequest, err := credential.DecodePermissionRequest(second.request)
-	if err != nil || firstRequest.Role != credential.AllocationUser || secondRequest.Role != credential.AllocationUser || firstRequest.Permission.NotBefore != secondRequest.Permission.NotBefore || firstRequest.Permission.NotAfter != secondRequest.Permission.NotAfter || firstRequest.Permission.Maxima != [3]uint32{64, 64, 0} || secondRequest.Permission.Maxima != [3]uint32{64, 64, 0} {
+	secondRequest, err := admission.DecodePermissionRequest(second.request)
+	if err != nil || firstRequest.Role != admission.AllocationUser || secondRequest.Role != admission.AllocationUser || firstRequest.Permission.NotBefore != secondRequest.Permission.NotBefore || firstRequest.Permission.NotAfter != secondRequest.Permission.NotAfter || firstRequest.Permission.Maxima != [3]uint32{64, 64, 0} || secondRequest.Permission.Maxima != [3]uint32{64, 64, 0} {
 		t.Fatalf("reader contexts did not retain the selected permission/hour scope: %#v / %#v / %v", firstRequest.Permission, secondRequest.Permission, err)
 	}
 	firstEvidence, secondEvidence := first.writeEvidence(), second.writeEvidence()

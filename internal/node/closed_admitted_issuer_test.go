@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	admissiongrammar "github.com/dianabuilds/ardents-network/internal/admission"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	"github.com/dianabuilds/ardents-network/internal/route/terminal"
 
@@ -30,11 +31,11 @@ func TestClosedIssuerAdmittedOperationAfterTwoBootstrapBatches(t *testing.T) {
 				t.Fatal(err)
 			}
 			defer clear(holder)
-			permission := credential.Permission{NetworkID: profile.NetworkID, IssuerNodeID: profile.IssuerNodeID,
+			permission := admissiongrammar.Permission{NetworkID: profile.NetworkID, IssuerNodeID: profile.IssuerNodeID,
 				DutyGeneration: profile.IssuerDutyGeneration, PermissionID: [32]byte{91}, NotBefore: profile.NotBefore,
 				NotAfter: profile.NotAfter, Maxima: [3]uint32{4, 3, 0}, Signature: [64]byte{1}}
 			copy(permission.HolderKey[:], holderPublic)
-			raw, err := credential.EncodePermission(permission)
+			raw, err := admissiongrammar.EncodePermission(permission)
 			if err != nil {
 				t.Fatal(err)
 			}

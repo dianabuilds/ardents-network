@@ -4,10 +4,11 @@ import (
 	"encoding/binary"
 	"errors"
 
+	"github.com/dianabuilds/ardents-network/internal/admission"
 	"github.com/dianabuilds/ardents-network/internal/route/terminal"
 )
 
-const closedTokenBatchCountOffset = len(closedTokenBatchMagic) + permissionSize + 32 + 1 + 8 + 346
+const closedTokenBatchCountOffset = len(closedTokenBatchMagic) + admission.PermissionSize + 32 + 1 + 8 + 346
 
 // IssueTerminalOperation processes only the fixed target-free issuer terminal
 // operation. It neither receives a destination nor opens another lane.

@@ -14,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/admission"
 	"github.com/dianabuilds/ardents-network/internal/custody"
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/credential"
@@ -60,7 +61,7 @@ func prepareTextIssuancePermissionWithIdentity(t *testing.T, owner *textContext,
 	if err != nil {
 		t.Fatal(err)
 	}
-	inventory, err := credential.DecodeClosedIssuerProfile(receipt.Profile, public)
+	inventory, err := admission.DecodeClosedIssuerProfile(receipt.Profile, public)
 	if err != nil {
 		t.Fatal(err)
 	}
