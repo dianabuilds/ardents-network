@@ -1,4 +1,4 @@
-package node
+package introduction
 
 import (
 	"bytes"
@@ -26,10 +26,9 @@ func TestClosedIntroductionDeliverySerializesIDsAndBoundsPending(t *testing.T) {
 	slot := &closedIntroductionSlot{request: terminal.RegistrationRequest{Slot: [32]byte{1}, Revision: 1, Expiry: now.Add(30 * time.Second)},
 		connection: local, writer: make(chan struct{}, 1), done: make(chan struct{}), active: true, maximum: route.ClosedIntroductionRegistrationByteLimit,
 		pending: make(map[uint32]*closedIntroductionDelivery)}
-	server := &closedIntroductionServer{config: runtimeConfig{Config: Config{Current: func() (state.NodeDuty, error) {
+	server := &Server{config: Config{CurrentDuty: func() (state.NodeDuty, error) {
 		return state.NodeDuty{}, errors.New("State intentionally unavailable at final acknowledgement")
-	}},
-		now: func() time.Time { return time.Unix(clock.Load(), 0) }}, slots: map[[32]byte]*closedIntroductionSlot{slot.request.Slot: slot}}
+	}, Now: func() time.Time { return time.Unix(clock.Load(), 0) }}, slots: map[[32]byte]*closedIntroductionSlot{slot.request.Slot: slot}}
 	capsule := introductioncapsule.Capsule{Slot: slot.request.Slot, Revision: 1, Expiry: now.Add(10 * time.Second), DeliveryNonce: [32]byte{2}, Encapsulation: [32]byte{3}, Ciphertext: bytes.Repeat([]byte{4}, 360)}
 	slot.writer <- struct{}{}
 	released := false

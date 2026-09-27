@@ -1,4 +1,4 @@
-package node
+package introduction
 
 import (
 	"context"
@@ -13,16 +13,16 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/route/terminal"
 )
 
-func (server *closedIntroductionServer) current() bool {
-	snapshot, err := currentFacts(server.config)
+func (server *Server) current() bool {
+	snapshot, err := server.config.CurrentDuty()
 	if err != nil {
 		return false
 	}
-	receiver, ok := closedRouteReceiver(server.config, snapshot, ardp.PurposeIntroduction, server.config.now())
+	receiver, ok := server.config.Authority.Receiver(snapshot, ardp.PurposeIntroduction, server.config.Now())
 	return ok && receiver == server.receiver
 }
 
-func (server *closedIntroductionServer) serveOuter(ctx context.Context, carrier routecarrier.ClosedSharedCarrier) {
+func (server *Server) serveOuter(ctx context.Context, carrier routecarrier.ClosedSharedCarrier) {
 	if !server.current() {
 		return
 	}
@@ -30,14 +30,14 @@ func (server *closedIntroductionServer) serveOuter(ctx context.Context, carrier 
 	outer, err := route.NewClosedOuterHandshake(route.ClosedOuterReceiver{NetworkID: receiver.NetworkID,
 		StateGeneration: receiver.StateGeneration, StateDigest: receiver.StateDigest, ProfileDigest: receiver.ProfileDigest,
 		NodeID: receiver.NodeID, RecordDigest: receiver.RecordDigest, DutyGeneration: receiver.DutyGeneration,
-		RoleDomain: receiver.RoleDomain, Subrole: receiver.Subrole, Deadline: receiver.NotAfter}, server.limits, server.config.now)
+		RoleDomain: receiver.RoleDomain, Subrole: receiver.Subrole, Deadline: receiver.NotAfter}, server.limits, server.config.Now)
 	if err != nil {
 		return
 	}
 	nodeouter.Serve(ctx, carrier.Connection, outer, server.serveInner)
 }
 
-func (server *closedIntroductionServer) serveInner(ctx context.Context, lane *route.ClosedOuterBridgeLane) {
+func (server *Server) serveInner(ctx context.Context, lane *route.ClosedOuterBridgeLane) {
 	status := byte(1)
 	defer func() { _ = lane.CloseWithStatus(status) }()
 	if lane.Restriction() != route.ClosedChildOrdinary || !server.current() {
@@ -68,7 +68,7 @@ func (server *closedIntroductionServer) serveInner(ctx context.Context, lane *ro
 	}
 }
 
-func (server *closedIntroductionServer) serveAdmitted(ctx context.Context, connection net.Conn, lane *route.ClosedOuterBridgeLane, hello ardp.Frame) error {
+func (server *Server) serveAdmitted(ctx context.Context, connection net.Conn, lane *route.ClosedOuterBridgeLane, hello ardp.Frame) error {
 	exporter, err := routecarrier.ClosedRoleTLSExporter(connection)
 	if err != nil {
 		return err
@@ -86,7 +86,7 @@ func (server *closedIntroductionServer) serveAdmitted(ctx context.Context, conne
 		return errors.New("closed Introduction purpose unavailable")
 	}
 	channel, err := route.NewClosedAdmissionChannel(receiver, server.spends, server.limits, exporter,
-		closedControlTokenVerifier(server.config, receiver), server.config.now)
+		server.config.VerifyAdmission(receiver), server.config.Now)
 	if err != nil {
 		return err
 	}
@@ -122,13 +122,13 @@ func (server *closedIntroductionServer) serveAdmitted(ctx context.Context, conne
 	return server.register(ctx, connection, lease, used)
 }
 
-func (server *closedIntroductionServer) register(ctx context.Context, connection net.Conn, lease route.ClosedAdmission, used uint64) error {
+func (server *Server) register(ctx context.Context, connection net.Conn, lease route.ClosedAdmission, used uint64) error {
 	operation, err := ardp.ReadFrame(connection)
 	if err != nil || operation.Kind != 10 || operation.Lane != 0 {
 		return errors.New("closed Introduction registration required")
 	}
 	request, err := terminal.DecodeRegistrationRequest(operation.Body)
-	now := server.config.now()
+	now := server.config.Now()
 	if err != nil || request.Withdraw || !now.Before(request.Expiry) || request.Expiry.After(lease.Deadline) || request.Expiry.After(now.Add(600*time.Second)) ||
 		ctx.Err() != nil || !server.current() {
 		return errors.New("closed Introduction registration invalid")
@@ -150,7 +150,7 @@ func (server *closedIntroductionServer) register(ctx context.Context, connection
 	if err := connection.SetDeadline(request.Expiry); err != nil {
 		return err
 	}
-	if ctx.Err() != nil || !server.current() || !server.config.now().Before(request.Expiry) {
+	if ctx.Err() != nil || !server.current() || !server.config.Now().Before(request.Expiry) {
 		return errors.New("closed Introduction ended before registration acknowledgement")
 	}
 	result, err := terminal.EncodeDescriptorResult(request.Nonce, 0, nil)
@@ -170,10 +170,10 @@ func (server *closedIntroductionServer) register(ctx context.Context, connection
 	return server.serveRegistration(ctx, slot)
 }
 
-func (server *closedIntroductionServer) reserveSlot(slot *closedIntroductionSlot) bool {
+func (server *Server) reserveSlot(slot *closedIntroductionSlot) bool {
 	server.slotsMu.Lock()
 	defer server.slotsMu.Unlock()
-	now := server.config.now()
+	now := server.config.Now()
 	for id, retained := range server.slots {
 		if !now.Before(retained.request.Expiry) {
 			delete(server.slots, id)
@@ -191,7 +191,7 @@ func (server *closedIntroductionServer) reserveSlot(slot *closedIntroductionSlot
 	return true
 }
 
-func (server *closedIntroductionServer) retireSlot(slot *closedIntroductionSlot) {
+func (server *Server) retireSlot(slot *closedIntroductionSlot) {
 	server.slotsMu.Lock()
 	defer server.slotsMu.Unlock()
 	if server.slots[slot.request.Slot] == slot {

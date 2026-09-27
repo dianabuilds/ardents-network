@@ -1,4 +1,4 @@
-package node
+package introduction
 
 import (
 	"context"
@@ -60,7 +60,7 @@ func (slot *closedIntroductionSlot) write(ctx context.Context, frame ardp.Frame,
 	return slot.writeReserved(bounded, frame, end)
 }
 
-func (server *closedIntroductionServer) submit(ctx context.Context, connection net.Conn, lease route.ClosedAdmission, used uint64) error {
+func (server *Server) submit(ctx context.Context, connection net.Conn, lease route.ClosedAdmission, used uint64) error {
 	frame, err := ardp.ReadFrame(connection)
 	if err != nil || frame.Kind != 10 || frame.Lane != 0 {
 		return errors.New("closed Introduction submission required")
@@ -70,7 +70,7 @@ func (server *closedIntroductionServer) submit(ctx context.Context, connection n
 		return err
 	}
 	defer clear(capsule.Ciphertext)
-	now := server.config.now()
+	now := server.config.Now()
 	if !now.Before(capsule.Expiry) || capsule.Expiry.After(lease.Deadline) ||
 		capsule.Expiry.After(now.Add(10*time.Second)) || !server.current() || ctx.Err() != nil {
 		return errors.New("closed Introduction submission expired or unavailable")
@@ -79,7 +79,7 @@ func (server *closedIntroductionServer) submit(ctx context.Context, connection n
 		return errors.New("closed Introduction Control budget exhausted")
 	}
 	status := server.deliver(ctx, capsule)
-	if !server.current() || ctx.Err() != nil || !server.config.now().Before(capsule.Expiry) {
+	if !server.current() || ctx.Err() != nil || !server.config.Now().Before(capsule.Expiry) {
 		return errors.New("closed Introduction submission ended before acknowledgement")
 	}
 	body, err := terminal.EncodeDescriptorResult(nonce, status, nil)
@@ -89,7 +89,7 @@ func (server *closedIntroductionServer) submit(ctx context.Context, connection n
 	return ardp.WriteFrame(connection, ardp.Frame{Kind: 11, Body: body})
 }
 
-func (server *closedIntroductionServer) deliver(ctx context.Context, capsule introductioncapsule.Capsule) uint8 {
+func (server *Server) deliver(ctx context.Context, capsule introductioncapsule.Capsule) uint8 {
 	// A request nonce belongs to one TLS channel. Only the sealed envelope
 	// crosses this hop unchanged; the source nonce is answered on its channel.
 	var nonce [32]byte
@@ -103,7 +103,7 @@ func (server *closedIntroductionServer) deliver(ctx context.Context, capsule int
 	defer clear(operation)
 	server.slotsMu.Lock()
 	slot := server.slots[capsule.Slot]
-	now := server.config.now()
+	now := server.config.Now()
 	if slot == nil || !slot.active || slot.request.Revision != capsule.Revision || capsule.Expiry.After(slot.request.Expiry) ||
 		!now.Before(capsule.Expiry) || slot.inFlight >= 16 || slot.used+closedIntroductionDeliveryBytes > slot.maximum ||
 		now.Before(slot.openings[3]) || now.Before(slot.openings[0].Add(time.Second)) {
@@ -134,7 +134,7 @@ func (server *closedIntroductionServer) deliver(ctx context.Context, capsule int
 		return 1
 	}
 	server.slotsMu.Lock()
-	now = server.config.now()
+	now = server.config.Now()
 	if !slot.active || bounded.Err() != nil || now.Before(slot.dispatched[3]) || now.Before(slot.dispatched[0].Add(time.Second)) {
 		server.slotsMu.Unlock()
 		<-slot.writer
@@ -162,7 +162,7 @@ func (server *closedIntroductionServer) deliver(ctx context.Context, capsule int
 		server.interruptSlot(slot)
 		return 1
 	}
-	if !server.current() || !server.config.now().Before(capsule.Expiry) {
+	if !server.current() || !server.config.Now().Before(capsule.Expiry) {
 		status = 1
 	}
 	if err := slot.write(bounded, ardp.Frame{Kind: 9, Lane: lane, Body: []byte{status}}, capsule.Expiry); err != nil {
@@ -171,24 +171,24 @@ func (server *closedIntroductionServer) deliver(ctx context.Context, capsule int
 	}
 	return status
 }
-func (server *closedIntroductionServer) interruptSlot(slot *closedIntroductionSlot) {
+func (server *Server) interruptSlot(slot *closedIntroductionSlot) {
 	server.retireSlot(slot)
-	_ = slot.connection.SetDeadline(server.config.now())
+	_ = slot.connection.SetDeadline(server.config.Now())
 }
 
-func (server *closedIntroductionServer) serveRegistration(ctx context.Context, slot *closedIntroductionSlot) error {
+func (server *Server) serveRegistration(ctx context.Context, slot *closedIntroductionSlot) error {
 	for {
 		operation, err := ardp.ReadFrame(slot.connection)
 		if err != nil {
 			return err
 		}
-		if ctx.Err() != nil || !server.current() || !server.config.now().Before(slot.request.Expiry) {
+		if ctx.Err() != nil || !server.current() || !server.config.Now().Before(slot.request.Expiry) {
 			return errors.New("closed Introduction registration expired")
 		}
 		if operation.Kind == 11 && operation.Lane != 0 && operation.Lane%2 == 0 {
 			server.slotsMu.Lock()
 			pending := slot.pending[operation.Lane]
-			if pending == nil || pending.acknowledged || !server.config.now().Before(pending.end) {
+			if pending == nil || pending.acknowledged || !server.config.Now().Before(pending.end) {
 				server.slotsMu.Unlock()
 				return errors.New("closed Introduction delivery acknowledgement unavailable")
 			}
