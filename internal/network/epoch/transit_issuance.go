@@ -1,6 +1,10 @@
-package state
+package epoch
 
 import "errors"
+
+const MaxTransitIssuanceProfileBytes = maximumTransitIssuanceProfileBytes
+
+const DomainTransitIssuance = transitIssuanceDomain
 
 const (
 	transitIssuanceDomain              = "transit-issuance"
@@ -10,7 +14,7 @@ const (
 // attachTransitIssuanceDuty binds the v3 Epoch's one selected membership
 // Transit Grant issuer profile to its assigned candidate. State does not parse
 // the OHTTP/profile grammar; the credential package owns that verification.
-func attachTransitIssuanceDuty(decision *verifiedEpochDecision) error {
+func attachTransitIssuanceDuty(decision *Decision) error {
 	if decision == nil || decision.epoch.version < 3 {
 		return nil
 	}

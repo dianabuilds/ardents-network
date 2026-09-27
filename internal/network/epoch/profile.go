@@ -1,4 +1,4 @@
-package state
+package epoch
 
 import "errors"
 
@@ -8,7 +8,13 @@ const (
 	closedRouteProfile      = "ardents-route-v3"
 )
 
-func knownProfile(profile string) bool {
+const (
+	ProfileRoleProbe        = roleProbeProfile
+	ProfileInteractiveRoute = interactiveRouteProfile
+	ProfileClosedRoute      = closedRouteProfile
+)
+
+func KnownProfile(profile string) bool {
 	return profile == roleProbeProfile || profile == interactiveRouteProfile || profile == closedRouteProfile
 }
 

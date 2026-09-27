@@ -1,6 +1,6 @@
-package state
+package epoch
 
-func attachMaterializedRecord(index uint32, decision *verifiedEpochDecision) {
+func attachMaterializedRecord(index uint32, decision *Decision) {
 	if index >= uint32(len(decision.accepted)) {
 		return
 	}

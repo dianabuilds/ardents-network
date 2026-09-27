@@ -1,4 +1,4 @@
-package state
+package epoch
 
 import "testing"
 
@@ -14,8 +14,8 @@ func TestClosedRouteProfileRequiresGenerationThreeCarrier(t *testing.T) {
 		{interactiveRouteProfile, legacyTCPCarrierProfile, true},
 		{interactiveRouteProfile, quicCarrierProfile, true},
 	} {
-		if got := validCarrierForEpoch(test.profile, test.carrier); got != test.want {
-			t.Fatalf("validCarrierForEpoch(%q, %q) = %t, want %t", test.profile, test.carrier, got, test.want)
+		if got := CarrierEligible(test.profile, test.carrier); got != test.want {
+			t.Fatalf("CarrierEligible(%q, %q) = %t, want %t", test.profile, test.carrier, got, test.want)
 		}
 	}
 }

@@ -1,4 +1,4 @@
-package state
+package epoch
 
 import (
 	"bytes"

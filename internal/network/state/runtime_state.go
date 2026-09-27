@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/network/epoch"
 	"github.com/dianabuilds/ardents-network/internal/network/source"
 	"github.com/dianabuilds/ardents-network/internal/network/state/durable"
 	"github.com/dianabuilds/ardents-network/internal/resource"
@@ -17,8 +18,8 @@ type networkState struct {
 	mu              sync.RWMutex
 	config          config
 	current         *Snapshot
-	currentDecision *verifiedEpochDecision
-	pendingDecision *verifiedEpochDecision
+	currentDecision *epoch.Decision
+	pendingDecision *epoch.Decision
 	distribution    distributionState
 	storage         *durable.Root
 	serverDone      chan struct{}

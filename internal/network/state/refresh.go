@@ -5,13 +5,14 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/dianabuilds/ardents-network/internal/network/epoch"
 	"github.com/dianabuilds/ardents-network/internal/network/source"
 )
 
 type sourceResult struct {
 	index        int
 	slot         int
-	decision     verifiedEpochDecision
+	decision     epoch.Decision
 	observations [4]byte
 	err          error
 }
@@ -94,7 +95,7 @@ func (s *networkState) Refresh(ctx context.Context) (Snapshot, error) {
 	return s.completeSourceWave(now, current, observed)
 }
 
-func (s *networkState) fetchAndVerify(ctx context.Context, index int, current *Snapshot, currentDecision *verifiedEpochDecision) sourceResult {
+func (s *networkState) fetchAndVerify(ctx context.Context, index int, current *Snapshot, currentDecision *epoch.Decision) sourceResult {
 	observations := [4]byte{}
 	resultIndex, outcomeIndex := index, index
 	response, err := s.fetchSource(ctx, index, source.Message{
@@ -134,7 +135,7 @@ func (s *networkState) fetchAndVerify(ctx context.Context, index int, current *S
 	if err := s.rejectDecisionSourceCollisions(decision); err != nil {
 		return failedSourceResult(resultIndex, outcomeIndex, observations, err)
 	}
-	if response.ObjectDigest != decision.epoch.digest {
+	if response.ObjectDigest != decision.Header.Digest {
 		return failedSourceResult(resultIndex, outcomeIndex, observations, errors.New("source header digest disagrees with its authenticated Epoch"))
 	}
 	observations[outcomeIndex] = sourceOutcomeValid

@@ -1,4 +1,4 @@
-package state
+package epoch
 
 import (
 	"crypto/ed25519"
@@ -8,6 +8,8 @@ import (
 )
 
 const maximumRecordBytes = 32 << 10
+
+const MaxRecordBytes = maximumRecordBytes
 
 const (
 	legacyTCPCarrierProfile  = "ardents-carrier-tcp-tls-v1"
@@ -104,11 +106,18 @@ func parseRecord(raw []byte) (nodeRecord, error) {
 	return record, nil
 }
 
+const (
+	CarrierLegacyTCP  = legacyTCPCarrierProfile
+	CarrierQUIC       = quicCarrierProfile
+	CarrierClosedTCP  = closedTCPCarrierProfile
+	CarrierClosedQUIC = closedQUICCarrierProfile
+)
+
 func validCarrierProfile(profile string) bool {
 	return profile == legacyTCPCarrierProfile || profile == quicCarrierProfile || profile == closedTCPCarrierProfile || profile == closedQUICCarrierProfile
 }
 
-func validCarrierForEpoch(profile, carrier string) bool {
+func CarrierEligible(profile, carrier string) bool {
 	if profile == closedRouteProfile {
 		return carrier == closedTCPCarrierProfile || carrier == closedQUICCarrierProfile
 	}

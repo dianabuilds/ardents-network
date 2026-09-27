@@ -1,6 +1,10 @@
-package state
+package epoch
 
 import "errors"
+
+const MaxDestinationResolutionProfileBytes = maximumDestinationResolutionProfileBytes
+
+const DomainDestinationResolution = destinationResolutionDomain
 
 const (
 	destinationResolutionDomain              = "destination-resolution"
@@ -11,7 +15,7 @@ const (
 // selected Gateway profile to the candidate State assigned to that duty. The
 // profile bytes remain opaque here: Reachability owns their self-signature and
 // OHTTP grammar.
-func attachDestinationResolutionGateway(decision *verifiedEpochDecision) error {
+func attachDestinationResolutionGateway(decision *Decision) error {
 	if decision == nil || decision.epoch.version < 2 {
 		return nil
 	}

@@ -24,12 +24,12 @@ func (s *networkState) recoverPendingState() error {
 	if err != nil {
 		return fmt.Errorf("load pending Epoch: %w", err)
 	}
-	if decision.epoch.validFrom.Unix() != state.pendingValidFrom {
+	if decision.Header.ValidFrom.Unix() != state.pendingValidFrom {
 		return errors.New("pending Epoch activation time disagrees with durable state")
 	}
 	// A retained old-schema pending generation must never become promotable
 	// by a later Source wave (F-50).
-	if err := classifyRetainedClosedSchema(s.config, decision.epoch, "pending"); err != nil {
+	if err := classifyRetainedClosedSchema(s.config, decision.Header, "pending"); err != nil {
 		return err
 	}
 	s.pendingDecision = &decision

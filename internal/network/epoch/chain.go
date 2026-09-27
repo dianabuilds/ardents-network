@@ -1,8 +1,8 @@
-package state
+package epoch
 
 import "errors"
 
-func verifyEpochChain(current *epochVerificationSnapshot, epoch epochEnvelope) error {
+func verifyEpochChain(current *Snapshot, epoch epochEnvelope) error {
 	if epoch.number > maximumEpochChain {
 		return errors.New("epoch exceeds the retained chain bound")
 	}

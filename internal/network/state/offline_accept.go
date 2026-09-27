@@ -29,7 +29,7 @@ func (s *networkState) Accept(ctx context.Context, epoch []byte, inputs [][]byte
 		return Snapshot{}, err
 	}
 	// The retired-schema refusal precedes every commit and durable effect (F-50).
-	if err := requireClosedIntakeSchema(s.config, decision.epoch); err != nil {
+	if err := requireClosedIntakeSchema(s.config, decision.Header); err != nil {
 		return Snapshot{}, err
 	}
 	if err := ctx.Err(); err != nil {

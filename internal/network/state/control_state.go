@@ -3,6 +3,8 @@ package state
 import (
 	"errors"
 	"fmt"
+
+	"github.com/dianabuilds/ardents-network/internal/network/epoch"
 )
 
 type distributionState struct {
@@ -66,11 +68,11 @@ func (s *networkState) recoverDistributionActive(state distributionState) error 
 	if err != nil {
 		return fmt.Errorf("recover distribution active generation: %w", err)
 	}
-	if decision.epoch.number != state.epochFloor || decision.epoch.digest != state.epochDigest {
+	if decision.Header.Number != state.epochFloor || decision.Header.Digest != state.epochDigest {
 		return errors.New("distribution active identity disagrees with its generation")
 	}
 	// The floor repair must not activate a retired-schema generation (F-50).
-	if err := classifyRetainedClosedSchema(s.config, decision.epoch, "recovered active"); err != nil {
+	if err := classifyRetainedClosedSchema(s.config, decision.Header, "recovered active"); err != nil {
 		return err
 	}
 	if err := persistDecision(s.storage, decision, true); err != nil {
@@ -91,12 +93,12 @@ func (s *networkState) commitDistribution(state distributionState) error {
 	return nil
 }
 
-func (s *networkState) commitActiveDecision(decision verifiedEpochDecision, state distributionState) error {
+func (s *networkState) commitActiveDecision(decision epoch.Decision, state distributionState) error {
 	if err := persistDecision(s.storage, decision, false); err != nil {
 		return err
 	}
-	state.epochFloor, state.epochDigest = decision.epoch.number, decision.epoch.digest
-	if state.pendingDigest == decision.epoch.digest {
+	state.epochFloor, state.epochDigest = decision.Header.Number, decision.Header.Digest
+	if state.pendingDigest == decision.Header.Digest {
 		state.pendingDigest, state.pendingValidFrom = [32]byte{}, 0
 	}
 	if err := s.commitDistribution(state); err != nil {
@@ -104,7 +106,7 @@ func (s *networkState) commitActiveDecision(decision verifiedEpochDecision, stat
 	}
 	snapshot := snapshotFromEpoch(decision.Snapshot)
 	s.current, s.currentDecision = &snapshot, &decision
-	if s.pendingDecision != nil && s.pendingDecision.epoch.digest == decision.epoch.digest {
+	if s.pendingDecision != nil && s.pendingDecision.Header.Digest == decision.Header.Digest {
 		s.pendingDecision = nil
 	}
 	return persistDecision(s.storage, decision, true)

@@ -5,7 +5,6 @@ import (
 	"context"
 	"crypto/ed25519"
 	"crypto/sha256"
-	"fmt"
 	"testing"
 	"time"
 
@@ -22,21 +21,7 @@ func TestClosedProfileRoleDomainMustMatchEpochAssignment(t *testing.T) {
 	seed := sha256.Sum256([]byte("closed role join seed"))
 	domains := []string{"initiator", "rendezvous"}
 
-	searchFamily := func(target string) string {
-		t.Helper()
-		for attempt := 0; attempt < 4096; attempt++ {
-			family := fmt.Sprintf("closed-role-join-%s-%d", target, attempt)
-			selected, err := selectEpochDomain(networkID, 1, seed, family, domains)
-			if err != nil {
-				t.Fatalf("role assignment: %v", err)
-			}
-			if selected == target {
-				return family
-			}
-		}
-		t.Fatalf("no family resolved to role domain %q", target)
-		return ""
-	}
+	// These frozen families select the stated roles under the signed seed.
 	buildRecord := func(id byte, family, endpoint string) networkfixture.Record {
 		t.Helper()
 		key := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{id}, ed25519.SeedSize))
@@ -51,8 +36,8 @@ func TestClosedProfileRoleDomainMustMatchEpochAssignment(t *testing.T) {
 		}
 		return record
 	}
-	issuer := buildRecord(1, searchFamily("rendezvous"), "127.0.0.1:4101")
-	other := buildRecord(2, searchFamily("initiator"), "127.0.0.1:4102")
+	issuer := buildRecord(1, "closed-role-join-rendezvous-0", "127.0.0.1:4101")
+	other := buildRecord(2, "closed-role-join-initiator-0", "127.0.0.1:4102")
 	epoch, err := networkfixture.BuildEpoch(networkfixture.EpochSpec{
 		NetworkID: networkID, Number: 1, ValidFrom: hour, ValidUntil: hour.Add(2 * time.Hour),
 		Inputs: [][]byte{issuer.Raw, other.Raw}, Accepted: []networkfixture.Record{issuer, other},

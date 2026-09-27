@@ -8,13 +8,14 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/network/duty"
+	"github.com/dianabuilds/ardents-network/internal/network/epoch"
 	"github.com/dianabuilds/ardents-network/internal/network/source"
 )
 
 var errSourceRoleCollision = errors.New("source role collides with a Candidate View member")
 
 func (s *networkState) rejectSourceCollisions() error {
-	for _, decision := range []*verifiedEpochDecision{s.currentDecision, s.pendingDecision} {
+	for _, decision := range []*epoch.Decision{s.currentDecision, s.pendingDecision} {
 		if decision != nil && sourceCollides(s.config.sourceInfo, *decision) {
 			return fmt.Errorf("%w: identity, family, or endpoint", errSourceRoleCollision)
 		}
@@ -22,14 +23,14 @@ func (s *networkState) rejectSourceCollisions() error {
 	return nil
 }
 
-func (s *networkState) rejectDecisionSourceCollisions(decision verifiedEpochDecision) error {
+func (s *networkState) rejectDecisionSourceCollisions(decision epoch.Decision) error {
 	if sourceCollides(s.config.sourceInfo, decision) {
 		return fmt.Errorf("%w: identity, family, or endpoint", errSourceRoleCollision)
 	}
 	return nil
 }
 
-func sourceCollides(info source.Details, decision verifiedEpochDecision) bool {
+func sourceCollides(info source.Details, decision epoch.Decision) bool {
 	if !info.Configured {
 		return false
 	}
@@ -41,7 +42,7 @@ func sourceCollides(info source.Details, decision verifiedEpochDecision) bool {
 	return false
 }
 
-func epochDecisionCollides(decision verifiedEpochDecision, identity [32]byte, family, endpoint string) bool {
+func epochDecisionCollides(decision epoch.Decision, identity [32]byte, family, endpoint string) bool {
 	for _, candidate := range decision.Candidates {
 		if candidate.NodeID == identity || candidate.KeyID == identity ||
 			candidate.Family == family || candidate.Endpoint == endpoint {

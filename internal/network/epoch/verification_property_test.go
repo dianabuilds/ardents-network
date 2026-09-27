@@ -1,4 +1,4 @@
-package state
+package epoch
 
 import (
 	"crypto/sha256"
@@ -93,7 +93,7 @@ func TestEpochChainBoundMatchesRestartRetention(t *testing.T) {
 	t.Parallel()
 	var digest [32]byte
 	digest[0] = 1
-	current := epochVerificationSnapshot{Epoch: maximumEpochChain, Digest: digest}
+	current := Snapshot{Epoch: maximumEpochChain, Digest: digest}
 	if err := verifyEpochChain(&current, epochEnvelope{number: maximumEpochChain + 1, previous: digest}); err == nil {
 		t.Fatal("write path accepted an epoch that restart retention cannot load")
 	}

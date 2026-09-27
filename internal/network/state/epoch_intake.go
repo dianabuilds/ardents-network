@@ -3,6 +3,8 @@ package state
 import (
 	"errors"
 	"fmt"
+
+	"github.com/dianabuilds/ardents-network/internal/network/epoch"
 )
 
 // acceptedClosedEpochSchema is the sole AREP envelope schema for new closed
@@ -22,10 +24,10 @@ var ErrLegacyEpochIntake = errors.New("closed Epoch uses a retired AREP schema")
 // forms pass this single choke point before a wave can count a decision
 // valid; the exact current/pending reuse branches return retained decisions
 // that Open classified and whose digest binds the schema byte.
-func requireClosedIntakeSchema(config config, epoch epochEnvelope) error {
-	if config.acceptedProfile == closedRouteProfile && epoch.version != acceptedClosedEpochSchema {
+func requireClosedIntakeSchema(config config, header epoch.Header) error {
+	if config.acceptedProfile == closedRouteProfile && header.Version != acceptedClosedEpochSchema {
 		return fmt.Errorf("%w: closed intake accepts only AREP v%d, got v%d",
-			ErrLegacyEpochIntake, acceptedClosedEpochSchema, epoch.version)
+			ErrLegacyEpochIntake, acceptedClosedEpochSchema, header.Version)
 	}
 	return nil
 }
@@ -34,11 +36,11 @@ func requireClosedIntakeSchema(config config, epoch epochEnvelope) error {
 // or pending generation in a retired schema with the typed recovery outcome.
 // The chain and control floors are preserved: no pointer is cleared and no
 // lower generation is selected here.
-func classifyRetainedClosedSchema(config config, epoch epochEnvelope, role string) error {
-	if config.acceptedProfile == closedRouteProfile && epoch.version != acceptedClosedEpochSchema {
+func classifyRetainedClosedSchema(config config, header epoch.Header, role string) error {
+	if config.acceptedProfile == closedRouteProfile && header.Version != acceptedClosedEpochSchema {
 		return &RecoveryRequiredError{Reason: fmt.Sprintf(
 			"%s generation uses retired AREP schema v%d; closed intake accepts only v%d",
-			role, epoch.version, acceptedClosedEpochSchema)}
+			role, header.Version, acceptedClosedEpochSchema)}
 	}
 	return nil
 }

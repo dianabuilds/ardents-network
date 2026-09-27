@@ -3,7 +3,6 @@ package state
 import (
 	"encoding/binary"
 	"errors"
-	"unicode/utf8"
 )
 
 type decoder struct {
@@ -26,12 +25,7 @@ func (d *decoder) byte() (byte, error) {
 func (d *decoder) uint16() (uint16, error) { return d.Uint16() }
 func (d *decoder) uint32() (uint32, error) { return d.Uint32() }
 func (d *decoder) uint64() (uint64, error) { return d.Uint64() }
-func (d *decoder) int64() (int64, error) {
-	value, err := d.Uint64()
-	return int64(value), err
-}
-func (d *decoder) text(maximum int) (string, error) { return d.Text(maximum) }
-func (d *decoder) done() bool                       { return d.Consumed() == d.length }
+func (d *decoder) done() bool              { return d.Consumed() == d.length }
 
 // stateReader owns State's bounded cursor over its authenticated bytes.
 type stateReader struct {
@@ -73,27 +67,3 @@ func (reader *stateReader) Uint64() (uint64, error) {
 }
 
 func (reader *stateReader) Consumed() int { return reader.offset }
-
-func (reader *stateReader) Text(maximum int) (string, error) {
-	rawLength, err := reader.Bytes(1)
-	if err != nil {
-		return "", err
-	}
-	length := rawLength[0]
-	if length == 0 || int(length) > maximum {
-		return "", errors.New("canonical text length is invalid")
-	}
-	value, err := reader.Bytes(int(length))
-	if err != nil {
-		return "", err
-	}
-	if !utf8.Valid(value) {
-		return "", errors.New("canonical text is not UTF-8")
-	}
-	for _, current := range value {
-		if current < 0x21 || current > 0x7e {
-			return "", errors.New("canonical text contains a non-printing byte")
-		}
-	}
-	return string(value), nil
-}

@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"sort"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/network/epoch"
 )
 
 // ErrNoCurrentGeneration identifies an owned State root which has not yet
@@ -78,14 +80,14 @@ func (s *networkState) snapshotWithDistribution(now time.Time) Snapshot {
 		snapshot.NextAutomatic = time.Unix(s.distribution.nextAutomatic, 0).UTC()
 	}
 	if s.pendingDecision != nil {
-		snapshot.PendingEpoch = s.pendingDecision.epoch.number
-		snapshot.PendingDigest = s.pendingDecision.epoch.digest
-		snapshot.PendingAt = s.pendingDecision.epoch.validFrom
+		snapshot.PendingEpoch = s.pendingDecision.Header.Number
+		snapshot.PendingDigest = s.pendingDecision.Header.Digest
+		snapshot.PendingAt = s.pendingDecision.Header.ValidFrom
 	}
 	switch {
 	case snapshot.Conflicting:
 		snapshot.Freshness = "conflicting"
-	case s.currentDecision != nil && now.Before(s.currentDecision.epoch.validFrom):
+	case s.currentDecision != nil && now.Before(s.currentDecision.Header.ValidFrom):
 		snapshot.Freshness = "staged"
 	case !now.Before(snapshot.ValidUntil):
 		snapshot.Freshness = "expired"
@@ -111,7 +113,7 @@ func (snapshot Snapshot) BridgeCandidateByKey(keyID [32]byte) (BridgeCandidate, 
 	return BridgeCandidate{}, false
 }
 
-func routeCandidates(decision *verifiedEpochDecision) ([64]routeCandidate, uint8) {
+func routeCandidates(decision *epoch.Decision) ([64]routeCandidate, uint8) {
 	var result [64]routeCandidate
 	if decision == nil {
 		return result, 0

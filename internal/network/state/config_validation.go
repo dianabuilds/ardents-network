@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/network/epoch"
 	"github.com/dianabuilds/ardents-network/internal/network/source"
 )
 
@@ -75,9 +76,9 @@ func validateConfig(input Config) (config, error) {
 	}
 	acceptedProfile := input.AcceptedProfile
 	if acceptedProfile == "" {
-		acceptedProfile = "h3-role-probe-v1"
+		acceptedProfile = epoch.ProfileRoleProbe
 	}
-	if !knownProfile(acceptedProfile) {
+	if !epoch.KnownProfile(acceptedProfile) {
 		return config{}, errors.New("accepted Network State profile is unsupported")
 	}
 	closedProfileAuthority := append(ed25519.PublicKey(nil), input.ClosedProfileAuthority...)

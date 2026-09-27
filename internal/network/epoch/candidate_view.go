@@ -1,4 +1,4 @@
-package state
+package epoch
 
 import (
 	"bytes"
@@ -34,35 +34,36 @@ type evaluatedRecord struct {
 	code   uint16
 }
 
-func verifyEpochCandidate(config epochPolicy, current *epochVerificationSnapshot, epochBytes []byte, inputs [][]byte, materials []materialization, requireMaterials bool) (verifiedEpochDecision, error) {
+func verifyEpochCandidate(config Policy, current *Snapshot, epochBytes []byte, inputs [][]byte, materials []materialization, requireMaterials bool) (Decision, error) {
 	if err := preflightDecision(epochBytes, inputs, materials); err != nil {
-		return verifiedEpochDecision{}, err
+		return Decision{}, err
 	}
 	epoch, err := verifyEpoch(config, current, epochBytes)
 	if err != nil {
-		return verifiedEpochDecision{}, err
+		return Decision{}, err
 	}
 	if len(inputs) != int(epoch.cutoff) || len(inputs) > 64 {
-		return verifiedEpochDecision{}, errors.New("input log does not match the committed cutoff")
+		return Decision{}, errors.New("input log does not match the committed cutoff")
 	}
 	if epochCommitmentRoot(inputs, emptyInputTag) != epoch.inputRoot {
-		return verifiedEpochDecision{}, errors.New("input log root does not match the epoch")
+		return Decision{}, errors.New("input log root does not match the epoch")
 	}
 	accepted, rejected := evaluateInputs(config, epoch, inputs)
 	if err := verifyViewCommitment(epoch, accepted, rejected); err != nil {
-		return verifiedEpochDecision{}, err
+		return Decision{}, err
 	}
 	if err := verifyMaterializations(epoch, accepted, materials, requireMaterials); err != nil {
-		return verifiedEpochDecision{}, err
+		return Decision{}, err
 	}
 	generation := fmt.Sprintf("%x", epoch.digest)
-	decision := verifiedEpochDecision{
+	decision := Decision{
 		epoch:      epoch,
+		Header:     headerFromEnvelope(epoch),
 		EpochBytes: append([]byte(nil), epochBytes...),
 		Inputs:     cloneInputs(inputs),
 		accepted:   accepted,
 		rejections: rejected,
-		Snapshot: epochVerificationSnapshot{
+		Snapshot: Snapshot{
 			Generation:     generation,
 			NetworkID:      epoch.networkID,
 			Epoch:          epoch.number,
@@ -78,13 +79,13 @@ func verifyEpochCandidate(config epochPolicy, current *epochVerificationSnapshot
 		},
 	}
 	if err := attachCandidates(&decision, accepted, epoch); err != nil {
-		return verifiedEpochDecision{}, err
+		return Decision{}, err
 	}
 	if err := attachDestinationResolutionGateway(&decision); err != nil {
-		return verifiedEpochDecision{}, err
+		return Decision{}, err
 	}
 	if err := attachTransitIssuanceDuty(&decision); err != nil {
-		return verifiedEpochDecision{}, err
+		return Decision{}, err
 	}
 	attachMaterializedRecord(config.MaterializationIndex, &decision)
 	return decision, nil
@@ -107,7 +108,7 @@ func preflightDecision(epoch []byte, inputs [][]byte, materials []materializatio
 	return nil
 }
 
-func evaluateInputs(config epochPolicy, epoch epochEnvelope, inputs [][]byte) ([]nodeRecord, []rejection) {
+func evaluateInputs(config Policy, epoch epochEnvelope, inputs [][]byte) ([]nodeRecord, []rejection) {
 	evaluated := make([]evaluatedRecord, len(inputs))
 	for index, raw := range inputs {
 		record, err := parseRecord(raw)
@@ -125,7 +126,7 @@ func evaluateInputs(config epochPolicy, epoch epochEnvelope, inputs [][]byte) ([
 			evaluated[index].code = rejectProfile
 		case record.capacity == 0 || record.capacity > 1024:
 			evaluated[index].code = rejectCapacity
-		case !validCarrierForEpoch(epoch.profile, record.carrier):
+		case !CarrierEligible(epoch.profile, record.carrier):
 			evaluated[index].code = rejectCarrier
 		case authorityOwnsKey(config, record.keyID):
 			evaluated[index].code = rejectSourceCollision
@@ -147,7 +148,7 @@ func evaluateInputs(config epochPolicy, epoch epochEnvelope, inputs [][]byte) ([
 	return accepted, rejected
 }
 
-func authorityOwnsKey(config epochPolicy, keyID [32]byte) bool {
+func authorityOwnsKey(config Policy, keyID [32]byte) bool {
 	_, exists := config.Authorities[keyID]
 	return exists
 }

@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/network/epoch"
 )
 
 var (
@@ -12,12 +14,12 @@ var (
 	errPendingEpochConflict    = errors.New("candidate Epoch conflicts with the durable pending Epoch")
 )
 
-func (s *networkState) allowCandidateTransition(candidate verifiedEpochDecision) error {
+func (s *networkState) allowCandidateTransition(candidate epoch.Decision) error {
 	if s.distribution.conflicting {
 		return errPersistentStateConflict
 	}
-	if s.pendingDecision != nil && candidate.epoch.number == s.pendingDecision.epoch.number &&
-		candidate.epoch.digest != s.pendingDecision.epoch.digest {
+	if s.pendingDecision != nil && candidate.Header.Number == s.pendingDecision.Header.Number &&
+		candidate.Header.Digest != s.pendingDecision.Header.Digest {
 		return errPendingEpochConflict
 	}
 	return nil
@@ -146,10 +148,10 @@ func (s *networkState) completeSourceWave(started time.Time, base *Snapshot, res
 		return Snapshot{}, errors.Join(failures...)
 	}
 	selected := newestSourceDecision(summary.valid)
-	if now.Before(selected.epoch.validFrom) {
+	if now.Before(selected.Header.ValidFrom) {
 		return s.commitPendingSourceWave(now, selected, summary)
 	}
-	if !now.Before(selected.epoch.validUntil) {
+	if !now.Before(selected.Header.ValidUntil) {
 		if err := s.commitSourceFailure(now, summary.outcomes, summary.observedEpochs, summary.observedDigests); err != nil {
 			return Snapshot{}, err
 		}
@@ -184,10 +186,10 @@ func (s *networkState) commitSourceFailure(now time.Time, outcomes [4]byte, epoc
 	return s.commitDistribution(state)
 }
 
-func sourceConflict(valid []verifiedEpochDecision) bool {
+func sourceConflict(valid []epoch.Decision) bool {
 	for first := range valid {
 		for second := first + 1; second < len(valid); second++ {
-			if valid[first].epoch.number == valid[second].epoch.number && valid[first].epoch.digest != valid[second].epoch.digest {
+			if valid[first].Header.Number == valid[second].Header.Number && valid[first].Header.Digest != valid[second].Header.Digest {
 				return true
 			}
 		}

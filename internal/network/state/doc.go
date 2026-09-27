@@ -7,8 +7,8 @@
 // functional-alpha Epoch authority and verifier-accepted empty genesis.
 //
 // The implementation follows the accepted decision from intake to readers:
-// epoch_* verifies Epoch and Candidate View bytes; refresh, selection, and
-// offline_accept choose a current or pending decision; storage and control_*
+// the epoch package verifies Epoch and Candidate View bytes; refresh, selection,
+// and offline_accept choose a current or pending decision; storage and control_*
 // coordinate durable publication through the physical durable package. The snapshot_access,
 // node_duty, resolution_view, and closed_profile_accept files project copied
 // current facts.

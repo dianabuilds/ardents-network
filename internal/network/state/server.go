@@ -35,7 +35,7 @@ func (s *networkState) resolveDistributionRequest(_ context.Context, request sou
 		return source.Message{Status: "busy"}
 	}
 	decision := *s.currentDecision
-	digest := decision.epoch.digest
+	digest := decision.Header.Digest
 	s.mu.RUnlock()
 	if request.Operation == "by-digest" && request.ObjectDigest != digest {
 		return source.Message{Status: "not-found"}

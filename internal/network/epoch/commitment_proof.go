@@ -1,4 +1,4 @@
-package state
+package epoch
 
 // Proof returns the canonical inclusion path for values[index].
 func epochCommitmentProof(values [][]byte, index int, emptyTag byte) [][32]byte {

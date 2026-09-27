@@ -5,6 +5,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/network/epoch"
 	"github.com/dianabuilds/ardents-network/internal/network/state/durable"
 )
 
@@ -198,8 +199,8 @@ func closedProfileGeneration(encoded string) ([32]byte, error) {
 	return generation, nil
 }
 
-func matchesClosedProfileCandidates(profile closedProfile, candidates []verifiedCandidate) bool {
-	available := make(map[[32]byte]verifiedCandidate, len(candidates))
+func matchesClosedProfileCandidates(profile closedProfile, candidates []epoch.Candidate) bool {
+	available := make(map[[32]byte]epoch.Candidate, len(candidates))
 	for _, candidate := range candidates {
 		available[candidate.NodeID] = candidate
 	}
@@ -207,7 +208,7 @@ func matchesClosedProfileCandidates(profile closedProfile, candidates []verified
 		candidate, exists := available[node.nodeID]
 		if !exists || candidate.RecordGeneration != node.generation ||
 			candidate.RecordDigest != node.recordDigest ||
-			!validCarrierForEpoch(closedRouteProfile, candidate.CarrierProfile) {
+			!epoch.CarrierEligible(closedRouteProfile, candidate.CarrierProfile) {
 			return false
 		}
 		// Each candidate's domain was assigned by the verified Epoch from its

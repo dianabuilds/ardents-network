@@ -1,4 +1,4 @@
-package state
+package epoch
 
 import (
 	"bytes"
@@ -15,6 +15,11 @@ const (
 	emptyInputTag                        = byte(0x10)
 	emptyViewTag                         = byte(0x11)
 	emptyRejectionTag                    = byte(0x12)
+)
+
+const (
+	MaxEpochBytes = maximumEpochBytes
+	MaxEpochChain = maximumEpochChain
 )
 
 type epochEnvelope struct {
@@ -182,7 +187,7 @@ func decodeEpochCommitment(d *decoder, epoch *epochEnvelope) error {
 		return errors.New("epoch input cutoff is invalid")
 	}
 	profile, err := d.text(64)
-	if err != nil || !knownProfile(profile) {
+	if err != nil || !KnownProfile(profile) {
 		return errors.New("epoch profile is unsupported")
 	}
 	epoch.profile = profile
@@ -263,7 +268,7 @@ func decodeSummaries(d *decoder, epoch *epochEnvelope) error {
 	return nil
 }
 
-func verifyEpoch(config epochPolicy, current *epochVerificationSnapshot, raw []byte) (epochEnvelope, error) {
+func verifyEpoch(config Policy, current *Snapshot, raw []byte) (epochEnvelope, error) {
 	epoch, err := parseEpoch(raw)
 	if err != nil {
 		return epochEnvelope{}, err
@@ -283,7 +288,7 @@ func verifyEpoch(config epochPolicy, current *epochVerificationSnapshot, raw []b
 	return epoch, nil
 }
 
-func authenticateEnvelope(config epochPolicy, epoch epochEnvelope, now time.Time) error {
+func authenticateEnvelope(config Policy, epoch epochEnvelope, now time.Time) error {
 	if epoch.networkID != config.NetworkID {
 		return errors.New("epoch network identity is wrong")
 	}

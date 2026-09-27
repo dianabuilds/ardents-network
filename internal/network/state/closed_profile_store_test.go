@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"testing"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/network/epoch"
 )
 
 func TestAcceptClosedProfilePersistsAndConflictsByArrival(t *testing.T) {
@@ -59,7 +61,8 @@ func closedProfileStoreFixture(t *testing.T) (*networkState, []byte) {
 	network := sha256.Sum256([]byte("closed profile network"))
 	epochDigest := sha256.Sum256([]byte("closed profile epoch"))
 	nodeID := sha256.Sum256([]byte("issuer node"))
-	record := nodeRecord{raw: []byte("authenticated schema-2 record"), nodeID: nodeID, generation: 5, carrier: closedTCPCarrierProfile}
+	recordRaw := []byte("authenticated schema-2 record")
+	recordGeneration := uint64(5)
 	root, err := openTestDurableRoot(t.TempDir())
 	if err != nil {
 		t.Fatal(err)
@@ -68,11 +71,11 @@ func closedProfileStoreFixture(t *testing.T) (*networkState, []byte) {
 	store := &networkState{config: config{closedProfileAuthority: authority.Public().(ed25519.PublicKey), clock: func() time.Time { return now }, observe: func() time.Time { return now }}, storage: root,
 		current: &Snapshot{Generation: fmt.Sprintf("%x", generation), NetworkID: network, Epoch: 9, Digest: epochDigest,
 			EpochValidFrom: now.Truncate(time.Hour), ValidUntil: now.Truncate(time.Hour).Add(2 * time.Hour), Profile: closedRouteProfile},
-		currentDecision: &verifiedEpochDecision{Candidates: []verifiedCandidate{{
-			NodeID: record.nodeID, RecordDigest: sha256.Sum256(record.raw), RecordGeneration: record.generation,
-			CarrierProfile: record.carrier, Domain: "rendezvous",
+		currentDecision: &epoch.Decision{Candidates: []epoch.Candidate{{
+			NodeID: nodeID, RecordDigest: sha256.Sum256(recordRaw), RecordGeneration: recordGeneration,
+			CarrierProfile: closedTCPCarrierProfile, Domain: "rendezvous",
 		}}}}
-	node := closedProfileNode{nodeID: nodeID, recordDigest: sha256.Sum256(record.raw), domain: 2, subrole: 6, generation: record.generation}
+	node := closedProfileNode{nodeID: nodeID, recordDigest: sha256.Sum256(recordRaw), domain: 2, subrole: 6, generation: recordGeneration}
 	first := testClosedProfile(t, authority, network, generation, epochDigest, now, []closedProfileNode{node})
 	return store, first
 }

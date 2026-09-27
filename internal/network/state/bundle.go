@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
+
+	"github.com/dianabuilds/ardents-network/internal/network/epoch"
 )
 
 const maximumSourceBundleBytes = 1 << 20
@@ -14,7 +16,7 @@ type sourceBundle struct {
 	materials [][]byte
 }
 
-func encodeSourceBundle(decision verifiedEpochDecision, materialIndex uint32) ([]byte, error) {
+func encodeSourceBundle(decision epoch.Decision, materialIndex uint32) ([]byte, error) {
 	material, err := decision.Materialization(materialIndex)
 	if err != nil {
 		return nil, err

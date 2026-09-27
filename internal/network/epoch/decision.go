@@ -1,4 +1,4 @@
-package state
+package epoch
 
 import (
 	"crypto/ed25519"
@@ -7,22 +7,22 @@ import (
 )
 
 // Policy contains the installed authority and predecessor state used for one
-// deterministic Network Epoch decision. Verify copies authority keys and all
-// returned byte slices; a zero Policy is invalid.
-type epochPolicy struct {
+// deterministic Network Epoch decision. Verify reads it synchronously and
+// returns owned copies of canonical byte slices; a zero Policy is invalid.
+type Policy struct {
 	NetworkID            [32]byte
 	Authorities          map[[32]byte]ed25519.PublicKey
 	Threshold            int
 	Profile              string
 	Now                  time.Time
 	MaterializationIndex uint32
-	Previous             *epochVerificationSnapshot
+	Previous             *Snapshot
 }
 
 // Snapshot is the immutable, complete Epoch/View result consumed atomically by
 // Network State. The broad value keeps the authenticated identity, validity,
 // commitments, record, and assignment from being observed out of generation.
-type epochVerificationSnapshot struct {
+type Snapshot struct {
 	Generation                       string
 	NetworkID                        [32]byte
 	Epoch                            uint64
@@ -58,20 +58,21 @@ type epochVerificationSnapshot struct {
 // Decision retains the canonical bytes needed to persist and redistribute one
 // verified result. Its slices are owned immutable copies and preserve canonical
 // input order. A zero Decision has not been verified.
-type verifiedEpochDecision struct {
+type Decision struct {
 	EpochBytes []byte
 	Inputs     [][]byte
-	Snapshot   epochVerificationSnapshot
-	Candidates []verifiedCandidate
+	Header     Header
+	Snapshot   Snapshot
+	Candidates []Candidate
 
 	epoch      epochEnvelope
 	accepted   []nodeRecord
 	rejections []rejection
 }
 
-// verifiedCandidate keeps every authenticated fact for one accepted Node
+// Candidate keeps every authenticated fact for one accepted Node
 // Record together; its fields cannot drift across parallel indexes.
-type verifiedCandidate struct {
+type Candidate struct {
 	NodeID, KeyID, PublicKey, FamilyID, RecordDigest [32]byte
 	DomainProof                                      []byte
 	Family, Endpoint, CarrierProfile, Domain         string
@@ -82,16 +83,16 @@ type verifiedCandidate struct {
 
 // Verify authenticates one exact Epoch/View decision and its encoded
 // materializations.
-func verifyEpochDecision(policy epochPolicy, epochBytes []byte, inputs, encodedMaterials [][]byte, requireMaterials bool) (verifiedEpochDecision, error) {
+func Verify(policy Policy, epochBytes []byte, inputs, encodedMaterials [][]byte, requireMaterials bool) (Decision, error) {
 	materials, err := decodeMaterializations(encodedMaterials)
 	if err != nil {
-		return verifiedEpochDecision{}, err
+		return Decision{}, err
 	}
 	return verifyEpochCandidate(policy, policy.Previous, epochBytes, inputs, materials, requireMaterials)
 }
 
 // Materialization returns one canonical inclusion proof for resource.
-func (decision verifiedEpochDecision) Materialization(index uint32) ([]byte, error) {
+func (decision Decision) Materialization(index uint32) ([]byte, error) {
 	if index >= uint32(len(decision.accepted)) {
 		return nil, errors.New("requested materialization index is unavailable")
 	}
@@ -110,7 +111,7 @@ func (decision verifiedEpochDecision) Materialization(index uint32) ([]byte, err
 
 // VerifyMaterials checks proofs for an already verified decision without
 // accepting a second or successor Epoch.
-func (decision verifiedEpochDecision) VerifyMaterials(encoded [][]byte) error {
+func (decision Decision) VerifyMaterials(encoded [][]byte) error {
 	materials, err := decodeMaterializations(encoded)
 	if err != nil {
 		return err
