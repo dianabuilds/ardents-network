@@ -129,14 +129,17 @@ its pure window calculation runs on both platforms. Linux-only tests use the
 network work. Process lifecycle, admission, identity, pressure and event tests
 remain beside their production owners; component behavior tests live in the
 role packages.
-The root has 18 Linux-tagged test files, including fixtures. Its journal writer
-test uses Linux Unix-socket behavior; live TCP/TLS and QUIC process scenarios
-depend on the Linux-selected role-root and Hosting fixture. Some fixture code
-is portable in isolation but is tagged with its only Linux callers, so
-cross-platform unit rules such as the recipient-window calculation live in
-untagged tests. Windows `make check` does not exercise those Linux process
-scenarios; the read-only Linux Docker Node run does. Neither run qualifies the
-installed systemd/cgroup startup profile.
+The root has 18 Linux-tagged test files and its child packages have 17,
+including fixtures. Its journal writer test uses Linux Unix-socket behavior;
+live TCP/TLS and QUIC process scenarios depend on the Linux-selected role-root
+and Hosting fixtures. Forwarding's Linux tests use those network and ledger
+fixtures; Hosting checks its Linux ledger; Issuer tests late root close with
+the Linux fixture. Some fixture code is portable in isolation but is tagged
+with its only Linux callers, so cross-platform unit rules such as the
+recipient-window calculation live in untagged tests. The source filename
+matches the Linux build tag. Windows `make check` does not exercise those
+Linux process scenarios; the read-only Linux Docker Node run does. Neither
+run qualifies the installed systemd/cgroup startup profile.
 Process pressure remains in the root; per-duty local limits and JOIN host
 monitoring remain with their duty.
 
