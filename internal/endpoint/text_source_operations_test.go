@@ -63,7 +63,7 @@ func TestTextTokenPresentationClassifiesConcurrentRoleCommit(t *testing.T) {
 	defer writer.Close()
 
 	attempt, cancel := context.WithCancel(t.Context())
-	flight := &textPrefixOpeningOperation{owner: owner, context: attempt, cancelOperation: cancel, done: make(chan struct{})}
+	flight := &textOperationFlight{owner: owner, context: attempt, cancelOperation: cancel, done: make(chan struct{})}
 	owner.mu.Lock()
 	owner.source.opening = flight
 	profile := owner.tokens.permission.profile

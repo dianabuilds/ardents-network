@@ -33,7 +33,7 @@ func TestTextResponderCancelledOpeningDoesNotRetireIntroductionOrPublishPrefix(t
 	introduction.prefix.Store(&client.ClosedSourcePrefix{})
 	owner.introduction.prefix.live = introduction
 	attempt, cancel := context.WithCancel(t.Context())
-	flight := &textOperationFlight{context: attempt, cancel: cancel, done: make(chan struct{})}
+	flight := &textOperationFlight{context: attempt, cancelOperation: cancel, done: make(chan struct{})}
 	if !owner.responder.reserveOpeningLocked(flight) {
 		t.Fatal("Responder lifecycle refused its first opening")
 	}

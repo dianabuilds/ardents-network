@@ -76,7 +76,7 @@ func (owner *textContext) openTextPublisherPrefix(ctx context.Context, role text
 		return nil, err
 	}
 	attempt, cancel := context.WithCancel(owner.lease.Context())
-	flight := &textOperationFlight{context: attempt, cancel: cancel, done: make(chan struct{})}
+	flight := &textOperationFlight{owner: owner, context: attempt, cancelOperation: cancel, done: make(chan struct{})}
 	if !role.reserveOpeningLocked(flight) {
 		owner.mu.Unlock()
 		cancel()

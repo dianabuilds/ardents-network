@@ -93,7 +93,7 @@ func TestTextPrefixOpeningExcludesUnrelatedIssuanceBetweenBatches(t *testing.T) 
 	close(done)
 	// The reserved transition can be between its two network flights. The
 	// absence of a current issuance must not permit an unrelated batch.
-	flight := &textPrefixOpeningOperation{owner: owner, context: ctx, cancelOperation: cancel, done: done}
+	flight := &textOperationFlight{owner: owner, context: ctx, cancelOperation: cancel, done: done}
 	owner.source.opening = flight
 	attempt, stop := context.WithTimeout(t.Context(), 100*time.Millisecond)
 	defer stop()
@@ -145,7 +145,7 @@ func TestTextPrefixOpeningRejectsObsoleteCompletionWithoutTouchingReplacement(t 
 	replacementContext, replacementCancel := context.WithCancel(t.Context())
 	replacementDone := make(chan struct{})
 	close(replacementDone)
-	replacement := &textPrefixOpeningOperation{owner: owner, context: replacementContext, cancelOperation: replacementCancel, done: replacementDone}
+	replacement := &textOperationFlight{owner: owner, context: replacementContext, cancelOperation: replacementCancel, done: replacementDone}
 	owner.mu.Lock()
 	original := owner.source.opening
 	if original == nil {

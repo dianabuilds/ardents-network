@@ -14,7 +14,7 @@ import (
 // work. Before the first admitted prefix this uses the second bootstrap batch;
 // thereafter the last Control token can replenish stock within its allocation.
 func (owner *textContext) prepareTextIssuerStock(ctx context.Context, requested [][32]byte, class uint8,
-	opening *textPrefixOpeningOperation, acquisition textJoinAcquisition, expected *textSourceHandle) error {
+	opening *textOperationFlight, acquisition textJoinAcquisition, expected *textSourceHandle) error {
 	owner.mu.Lock()
 	profile, _, err := owner.textPermissionProfileLocked()
 	if err != nil || ctx.Err() != nil || owner.tokens.permission == nil || !opening.admittedLocked(owner) ||

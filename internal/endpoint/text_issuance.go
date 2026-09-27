@@ -73,12 +73,12 @@ func (owner *textContext) issueTextJoinTokens(ctx context.Context, receivers [][
 
 // A non-nil opening must be the exact retained prefix transition. Keeping it
 // across both bootstrap flights prevents unrelated issuance stealing its slot.
-func (owner *textContext) issueTextTokensForOpening(ctx context.Context, receivers [][32]byte, class uint8, opening *textPrefixOpeningOperation, refill bool) error {
+func (owner *textContext) issueTextTokensForOpening(ctx context.Context, receivers [][32]byte, class uint8, opening *textOperationFlight, refill bool) error {
 	return owner.issueTextTokensForOpeningWithCancellation(ctx, receivers, class, opening, refill, false, nil, nil)
 }
 
 func (owner *textContext) issueTextTokensForOpeningWithCancellation(ctx context.Context, receivers [][32]byte, class uint8,
-	opening *textPrefixOpeningOperation, refill bool, discardCanceled bool, acquisition textJoinAcquisition,
+	opening *textOperationFlight, refill bool, discardCanceled bool, acquisition textJoinAcquisition,
 	expected *textSourceHandle) error {
 	if owner == nil || ctx == nil || ctx.Err() != nil || class < 1 || class > 3 || len(receivers) == 0 || len(receivers) > 32 {
 		return errors.New("text issuance context is unavailable")

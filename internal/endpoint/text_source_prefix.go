@@ -73,7 +73,7 @@ func (owner *textContext) openTextPrefix(ctx context.Context) (*textSourceHandle
 		owner.mu.Unlock()
 		return nil, textPrefixPreparationFailureAt("state", errors.New("text prefix State unavailable"))
 	}
-	operation := newTextPrefixOpeningOperation(owner)
+	operation := newTextOperationFlight(owner)
 	// Reserve the whole stock -> opening transition. Concurrent opens cannot
 	// spend a second bootstrap batch from an obsolete missing-stock snapshot.
 	if !owner.source.reserveOpeningLocked(operation) {
@@ -104,7 +104,7 @@ func (owner *textContext) openTextPrefix(ctx context.Context) (*textSourceHandle
 	}
 	return operation.complete(ctx, prefix, openErr)
 }
-func (operation *textPrefixOpeningOperation) presentTextToken(selection client.ClosedBootstrapSelection, hello ardp.Hello, class uint8) ([]byte, error) {
+func (operation *textOperationFlight) presentTextToken(selection client.ClosedBootstrapSelection, hello ardp.Hello, class uint8) ([]byte, error) {
 	owner := operation.owner
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
@@ -142,7 +142,7 @@ func (endpoint *endpoint) textTokenJournal() (*tokenjournal.Journal, error) {
 	return endpoint.closedTokenJournal, nil
 }
 
-func (owner *textContext) ensureTextPrefixStock(ctx context.Context, opening *textPrefixOpeningOperation) (client.ClosedBootstrapSelection, error) {
+func (owner *textContext) ensureTextPrefixStock(ctx context.Context, opening *textOperationFlight) (client.ClosedBootstrapSelection, error) {
 	owner.mu.Lock()
 	_, _, err := owner.textPermissionProfileLocked()
 	if err != nil || ctx.Err() != nil || !owner.tokens.permission.hasAccepted() ||

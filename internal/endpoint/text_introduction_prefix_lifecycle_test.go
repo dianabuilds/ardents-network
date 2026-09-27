@@ -25,7 +25,7 @@ func TestTextIntroductionCancelledOpeningDoesNotRetireSourceOrPublishPrefix(t *t
 	source.prefix.Store(&client.ClosedSourcePrefix{})
 	owner.source.live = source
 	attempt, cancel := context.WithCancel(t.Context())
-	flight := &textOperationFlight{context: attempt, cancel: cancel, done: make(chan struct{})}
+	flight := &textOperationFlight{context: attempt, cancelOperation: cancel, done: make(chan struct{})}
 	if !owner.introduction.prefix.reserveOpeningLocked(flight) {
 		t.Fatal("Introduction lifecycle refused its first opening")
 	}
