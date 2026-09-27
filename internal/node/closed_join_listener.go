@@ -2,206 +2,68 @@ package node
 
 import (
 	"context"
-	"crypto/tls"
-	"errors"
+	"time"
+
 	"github.com/dianabuilds/ardents-network/internal/network/state"
+	"github.com/dianabuilds/ardents-network/internal/node/authority"
+	"github.com/dianabuilds/ardents-network/internal/node/join"
 	"github.com/dianabuilds/ardents-network/internal/resource"
 	"github.com/dianabuilds/ardents-network/internal/route"
-	"github.com/dianabuilds/ardents-network/internal/route/ardp"
-	routecarrier "github.com/dianabuilds/ardents-network/internal/route/carrier"
 	"github.com/dianabuilds/ardents-network/internal/route/replay"
-	"net"
-	"path/filepath"
-	"sync"
-	"sync/atomic"
-	"time"
 )
 
-// ClosedDataJoinProfile reserves only the local durable spend
-// root. Current State supplies the receiving identity, role and Carrier.
-type ClosedDataJoinProfile struct {
-	HostingRoot     string
-	AdmissionRoot   string
-	Certificate     tls.Certificate
-	ConnectionLimit uint16
-	DrainTimeout    time.Duration
-}
+// ClosedDataJoinProfile retains the Node configuration name while JOIN owns
+// its listener, spend ledger, pair set and Hosting handle.
+type ClosedDataJoinProfile = join.Profile
 
 func validateClosedDataJoinProfile(local ClosedDataJoinProfile, config runtimeConfig, snapshot state.NodeDuty, now time.Time) error {
-	if local.HostingRoot == "" || !filepath.IsAbs(local.HostingRoot) || filepath.Clean(local.HostingRoot) != local.HostingRoot || local.AdmissionRoot == "" ||
-		!filepath.IsAbs(local.AdmissionRoot) || filepath.Clean(local.AdmissionRoot) != local.AdmissionRoot ||
-		local.Certificate.PrivateKey == nil || local.ConnectionLimit == 0 || local.ConnectionLimit > 16 ||
-		local.DrainTimeout <= 0 || local.DrainTimeout > time.Minute || !literalNodeEndpoint(snapshot.ProbeEndpoint) ||
-		routecarrier.CarrierProfile(snapshot.CarrierProfile) != routecarrier.ClosedCarrierTCP && routecarrier.CarrierProfile(snapshot.CarrierProfile) != routecarrier.ClosedCarrierQUIC {
-		return errors.New("closed JOIN local reservation is incomplete")
-	}
-	if _, ok := closedRouteReceiver(config, snapshot, ardp.PurposeDataJoin, now); !ok {
-		return errors.New("closed JOIN State projection is unavailable")
-	}
-	return nil
+	return join.Validate(local, nodeAuthority(config), snapshot, now, literalNodeEndpoint(snapshot.ProbeEndpoint))
 }
 
 func startClosedDataJoin(config runtimeConfig, snapshot state.NodeDuty) (*dutyHandle, error) {
-	local := config.ClosedDataJoin
-	if err := validateClosedDataJoinProfile(local, config, snapshot, config.now()); err != nil {
+	if err := validateClosedDataJoinProfile(config.ClosedDataJoin, config, snapshot, config.now()); err != nil {
 		return nil, err
 	}
 	listen, err := closedListenAddress(snapshot.ProbeEndpoint, config.ClosedListenOverride)
 	if err != nil {
 		return nil, err
 	}
-	receiver, available := closedRouteReceiver(config, snapshot, ardp.PurposeDataJoin, config.now())
-	if !available {
-		return nil, errors.New("closed JOIN State changed before reservation")
-	}
-	spends, err := replay.Open(local.AdmissionRoot, replay.Binding{NetworkID: receiver.NetworkID,
-		ProfileDigest: receiver.ProfileDigest, ReceiverNodeID: receiver.NodeID, ReceiverDutyGeneration: receiver.DutyGeneration})
+	role, err := join.Start(join.Config{Profile: config.ClosedDataJoin, Snapshot: snapshot,
+		Authority: nodeAuthority(config), CurrentDuty: func() (state.NodeDuty, error) { return currentFacts(config) },
+		Now: config.now, ListenAddress: listen, OpenHost: func(root string) (join.Host, error) {
+			host, err := openClosedForwardingHost(root)
+			if err != nil {
+				return nil, err
+			}
+			return joinHosting{host: host, source: nodeAuthority(config), now: config.now}, nil
+		}})
 	if err != nil {
 		return nil, err
 	}
-	limits, err := route.NewClosedDutyLimits(config.now)
-	if err != nil {
-		return nil, errors.Join(err, spends.Close())
-	}
-	host, err := openClosedForwardingHost(local.HostingRoot)
-	if err != nil {
-		return nil, errors.Join(err, spends.Close())
-	}
-	pairs, err := route.NewReplenishableClosedJoinPairs(receiver, limits, closedForwardingReplenisher(config, receiver, host, spends, closedJoinHostingEnvelope()))
-	if err != nil {
-		return nil, errors.Join(err, spends.Close(), host.Close())
-	}
-	shared, err := routecarrier.ListenClosedSharedCarrier(routecarrier.CarrierProfile(snapshot.CarrierProfile), listen, local.Certificate,
-		func(key [32]byte) bool {
-			updated, err := currentFacts(config)
-			return err == nil && closedSharedPeerCurrent(config, updated, key, config.now())
-		}, local.ConnectionLimit)
-	if err != nil {
-		return nil, errors.Join(err, spends.Close(), host.Close())
-	}
-	ctx, cancel := context.WithCancel(context.Background())
-	running := &closedDataJoinServer{host: host, config: config, receiver: receiver, certificate: local.Certificate, listener: shared,
-		pairs: pairs, spends: spends, limits: limits, capacity: make(chan struct{}, local.ConnectionLimit), cancel: cancel,
-		done: make(chan error, 1), drained: make(chan struct{})}
-	go running.run(ctx)
-	return &dutyHandle{Done: running.done, Protect: func(bool) {}, Usage: func() (uint64, uint64, uint64) {
-		active := uint64(running.active.Load())
-		return active, active, 0
-	}, Stop: func() { _ = running.stop() }, Drain: func(ctx context.Context) error {
-		_ = running.stop()
-		bounded, cancel := context.WithTimeout(ctx, local.DrainTimeout)
-		defer cancel()
-		select {
-		case <-running.drained:
-			return running.drainErr
-		case <-bounded.Done():
-			return bounded.Err()
-		}
-	}}, nil
+	return &dutyHandle{Done: role.Done, Protect: func(bool) {}, Usage: role.Usage, Stop: role.Stop, Drain: role.Drain}, nil
 }
 
-type closedDataJoinServer struct {
-	host        closedForwardingHost
-	pairs       *route.ClosedJoinPairs
-	config      runtimeConfig
-	receiver    route.ClosedRoleReceiver
-	certificate tls.Certificate
-	listener    routecarrier.ClosedSharedCarrierListener
-	spends      *replay.Ledger
-	limits      *route.ClosedDutyLimits
-	capacity    chan struct{}
-	active      atomic.Uint32
-	cancel      context.CancelFunc
-	stopOnce    sync.Once
-	stopErr     error
-	workers     sync.WaitGroup
-	done        chan error
-	drained     chan struct{}
-	drainErr    error
-	cleanupMu   sync.Mutex
-	cleanupErr  error
+// joinHosting keeps the shared provider policy in Node while the JOIN role
+// owns this particular handle and its close after child work has joined.
+type joinHosting struct {
+	host   closedForwardingHost
+	source authority.Source
+	now    func() time.Time
 }
 
-func (server *closedDataJoinServer) stop() error {
-	server.stopOnce.Do(func() {
-		server.cancel()
-		server.stopErr = server.listener.Close()
-	})
-	return server.stopErr
+func (hosting joinHosting) Sample(ctx context.Context, age time.Duration) (resource.HostingSample, error) {
+	return hosting.host.Sample(ctx, age)
 }
 
-func (server *closedDataJoinServer) run(ctx context.Context) {
-	monitor := make(chan error, 1)
-	go func() {
-		ticker := time.NewTicker(time.Second)
-		defer ticker.Stop()
-		for {
-			select {
-			case <-ctx.Done():
-				monitor <- nil
-				return
-			case <-ticker.C:
-				sample, err := server.host.Sample(ctx, time.Second)
-				if err != nil || sample.Observation.Drain {
-					monitor <- errors.Join(err, errors.New("JOIN host allowance requires drain"))
-					_ = server.stop()
-					return
-				}
-			}
-		}
-	}()
-	err := server.accept(ctx)
-	stopErr := server.stop()
-	server.done <- err
-	server.workers.Wait()
-	server.pairs.Close()
-	// No timeout releases roots while a child still owns a commit or reply.
-	server.drainErr = errors.Join(stopErr, server.cleanupErr, server.spends.Close(), <-monitor, server.host.Close())
-	close(server.drained)
+func (hosting joinHosting) AdmissionVerifier(receiver route.ClosedRoleReceiver) route.ClosedAdmissionVerifier {
+	return closedForwardingAdmissionVerifier(hosting.source, hosting.now, receiver, hosting.host, closedJoinHostingEnvelope())
 }
 
-func (server *closedDataJoinServer) accept(ctx context.Context) error {
-	for {
-		carrier, err := server.listener.Accept(ctx, 10*time.Second)
-		if err != nil {
-			if ctx.Err() != nil {
-				return nil
-			}
-			if routecarrier.IsClosedSharedPeerFailure(err) {
-				continue
-			}
-			return err
-		}
-		if ctx.Err() != nil || carrier.Kind != routecarrier.ClosedSharedNode {
-			server.closeCarrier(carrier.Connection)
-			if ctx.Err() != nil {
-				return nil
-			}
-			continue
-		}
-		select {
-		case server.capacity <- struct{}{}:
-			server.active.Add(1)
-			server.workers.Go(func() {
-				defer func() { <-server.capacity; server.active.Add(^uint32(0)) }()
-				defer server.closeCarrier(carrier.Connection)
-				server.serveOuter(ctx, carrier)
-			})
-		default:
-			server.closeCarrier(carrier.Connection)
-		}
-	}
+func (hosting joinHosting) Replenisher(receiver route.ClosedRoleReceiver, spends *replay.Ledger) route.ClosedForwardingReplenisher {
+	return closedForwardingReplenisher(hosting.source, hosting.now, receiver, hosting.host, spends, closedJoinHostingEnvelope())
 }
 
-func (server *closedDataJoinServer) closeCarrier(connection net.Conn) {
-	err := connection.Close()
-	if err == nil || errors.Is(err, net.ErrClosed) {
-		return
-	}
-	server.cleanupMu.Lock()
-	server.cleanupErr = errors.Join(server.cleanupErr, err)
-	server.cleanupMu.Unlock()
-}
+func (hosting joinHosting) Close() error { return hosting.host.Close() }
 
 // The envelope includes both directions and transport/control overhead; the
 // installed policy chooses which directions the actual provider charges.

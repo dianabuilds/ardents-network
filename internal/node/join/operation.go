@@ -1,4 +1,4 @@
-package node
+package join
 
 import (
 	"context"
@@ -12,11 +12,11 @@ import (
 )
 
 func (server *closedDataJoinServer) current() bool {
-	snapshot, err := currentFacts(server.config)
+	snapshot, err := server.config.CurrentDuty()
 	if err != nil {
 		return false
 	}
-	receiver, ok := closedRouteReceiver(server.config, snapshot, ardp.PurposeDataJoin, server.config.now())
+	receiver, ok := server.config.Authority.Receiver(snapshot, ardp.PurposeDataJoin, server.config.Now())
 	return ok && receiver == server.receiver
 }
 
@@ -28,7 +28,7 @@ func (server *closedDataJoinServer) serveOuter(ctx context.Context, carrier rout
 	outer, err := route.NewClosedOuterHandshake(route.ClosedOuterReceiver{NetworkID: receiver.NetworkID,
 		StateGeneration: receiver.StateGeneration, StateDigest: receiver.StateDigest, ProfileDigest: receiver.ProfileDigest,
 		NodeID: receiver.NodeID, RecordDigest: receiver.RecordDigest, DutyGeneration: receiver.DutyGeneration,
-		RoleDomain: receiver.RoleDomain, Subrole: receiver.Subrole, Deadline: receiver.NotAfter}, server.limits, server.config.now)
+		RoleDomain: receiver.RoleDomain, Subrole: receiver.Subrole, Deadline: receiver.NotAfter}, server.limits, server.config.Now)
 	if err != nil {
 		return
 	}
@@ -72,7 +72,7 @@ func (server *closedDataJoinServer) serveAdmitted(ctx context.Context, connectio
 		return err
 	}
 	channel, err := route.NewClosedAdmissionChannel(server.receiver, server.spends, server.limits, exporter,
-		closedForwardingAdmissionVerifier(server.config, server.receiver, server.host, closedJoinHostingEnvelope()), server.config.now)
+		server.host.AdmissionVerifier(server.receiver), server.config.Now)
 	if err != nil {
 		return err
 	}

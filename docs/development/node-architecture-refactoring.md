@@ -61,7 +61,7 @@ accept loop.
 | `issuer` | Selected issuer profile/receiver, certificate, issuer key root, spend root, token listener and accepted children. | Publish listener terminal cause, join children without releasing roots on caller timeout, close both roots once and retain close errors. Root Node supplies current State and Hosting reservation callbacks. |
 | `resolution` | Selected class-1 receiver, spend root, Descriptor store, listener and workers. | Close listener, join workers, then close store and spend root; retain connection and root errors. Root Node supplies current State callbacks and maps its small handle to process lifecycle. |
 | Introduction | Selected class-3 receiver, spend/slot floors, registrations/deliveries, listener and workers. | Close listener, join workers before replay roots; retain close errors. |
-| Join | Selected data-join receiver, spend root, pair owner, host reservation, listener and workers. | Stop listener and host monitor, join workers, close pairs and spend root, then host; retain terminal causes. |
+| `join` | Selected data-join receiver, spend root, pair owner, leased host handle, listener and workers. | Stop listener and host monitor, join workers, close pairs and spend root, then host; retain terminal causes. Root Node supplies current State and class-2 Hosting policy. |
 
 The Node authority child borrows current profile/Route views, projects the
 receiver and shared peer, and verifies class-1/2/3 tokens. The root still
@@ -86,9 +86,9 @@ limits and JOIN host monitoring stay with the duty.
 3. **Forwarding.** Move listener, receiving-resource group, admission,
    sessions, links, queue, bootstrap and shutdown as one duty. Keep startup
    rollback separate from transferred server resources. Verify both Carriers.
-4. **Direct roles.** Resolution and issuer children own their listeners,
+4. **Direct roles.** Resolution, issuer and join children own their listeners,
    admitted work, durable roots and joined drain; the root keeps configuration
-   admission and address selection. Extract introduction and join at
+   admission and address selection. Extract introduction at
    listener/admitted-work/drain boundaries, one finished role at a time.
    Keep root adapters only for process dispatch. Credential's engine and
    Route's receiving operations stay in their existing packages.

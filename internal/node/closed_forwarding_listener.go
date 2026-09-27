@@ -327,7 +327,7 @@ func (server *closedForwardingServer) serveDirect(ctx context.Context, connectio
 		return errors.New("closed forwarding receiver is unavailable")
 	}
 	admission, err := route.NewClosedAdmissionChannel(receiver, server.receiving.spends, server.receiving.limits, exporter,
-		closedForwardingAdmissionVerifier(server.config, receiver, server.host, server.config.ClosedForwarding), server.clock)
+		closedForwardingAdmissionVerifier(nodeAuthority(server.config), server.config.now, receiver, server.host, server.config.ClosedForwarding), server.clock)
 	if err != nil {
 		return err
 	}
@@ -433,7 +433,7 @@ func (server *closedForwardingServer) serveDirect(ctx context.Context, connectio
 				}
 				_, readErr = closedForwardRecipient(server.config, updated, open, server.clock())
 				return readErr
-			}, closedForwardingReplenisher(server.config, receiver, server.host, server.receiving.spends, server.config.ClosedForwarding), server.clock)
+			}, closedForwardingReplenisher(nodeAuthority(server.config), server.config.now, receiver, server.host, server.receiving.spends, server.config.ClosedForwarding), server.clock)
 			if admitErr != nil {
 				return errors.Join(admitErr, lease.Release())
 			}

@@ -5,14 +5,15 @@ import (
 	"errors"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/node/authority"
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/replay"
 )
 
 // closedForwardingAdmissionVerifier reserves the installed host's declared
 // interface envelope after token verification but before Route burns the token.
-func closedForwardingAdmissionVerifier(config runtimeConfig, receiver route.ClosedRoleReceiver, host closedForwardingHost, local ClosedForwardingProfile) route.ClosedAdmissionVerifier {
-	verify := nodeAuthority(config).TokenVerifier(receiver, config.now)
+func closedForwardingAdmissionVerifier(source authority.Source, now func() time.Time, receiver route.ClosedRoleReceiver, host closedForwardingHost, local ClosedForwardingProfile) route.ClosedAdmissionVerifier {
+	verify := source.TokenVerifier(receiver, now)
 	return func(input route.ClosedAdmissionVerification) (route.ClosedAdmissionApproval, error) {
 		approval, err := verify(input)
 		if err != nil || input.Class != 2 {
@@ -29,8 +30,8 @@ func closedForwardingAdmissionVerifier(config runtimeConfig, receiver route.Clos
 
 // closedForwardingReplenisher commits the same host envelope before it burns
 // a fresh token. The parent supplies its original immutable deadline.
-func closedForwardingReplenisher(config runtimeConfig, receiver route.ClosedRoleReceiver, host closedForwardingHost, spends *replay.Ledger, local ClosedForwardingProfile) route.ClosedForwardingReplenisher {
-	verify := nodeAuthority(config).TokenVerifier(receiver, config.now)
+func closedForwardingReplenisher(source authority.Source, now func() time.Time, receiver route.ClosedRoleReceiver, host closedForwardingHost, spends *replay.Ledger, local ClosedForwardingProfile) route.ClosedForwardingReplenisher {
+	verify := source.TokenVerifier(receiver, now)
 	return func(input route.ClosedAdmissionVerification) (func() error, error) {
 		approval, err := verify(input)
 		if err != nil || input.Class != 2 {
@@ -40,7 +41,7 @@ func closedForwardingReplenisher(config runtimeConfig, receiver route.ClosedRole
 		if err != nil {
 			return nil, err
 		}
-		if err := spends.Spend(input.Token, approval.Window, config.now().UTC()); err != nil {
+		if err := spends.Spend(input.Token, approval.Window, now().UTC()); err != nil {
 			return nil, errors.Join(err, release())
 		}
 		return release, nil
