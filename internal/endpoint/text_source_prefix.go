@@ -155,12 +155,7 @@ func (owner *textContext) ensureTextPrefixStock(ctx context.Context, opening *te
 		owner.mu.Unlock()
 		return client.ClosedBootstrapSelection{}, textPrefixPreparationFailureAt("stock-selection-"+textInteriorSelectionFailureStage(err), err)
 	}
-	var missing [][32]byte
-	for _, receiver := range [][32]byte{selection.EntryNodeID, selection.InteriorNodeID} {
-		if owner.tokens.permission.stockCountFor(selection.ProfileDigest, receiver, 2) == 0 {
-			missing = append(missing, receiver)
-		}
-	}
+	missing := owner.tokens.permission.missingStockFor(selection.ProfileDigest, [][32]byte{selection.EntryNodeID, selection.InteriorNodeID}, 2)
 	owner.mu.Unlock()
 	if len(missing) != 0 {
 		// Independent receiver inputs share one common class/window key.

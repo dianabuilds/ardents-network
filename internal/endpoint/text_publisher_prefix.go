@@ -125,12 +125,7 @@ func (owner *textContext) ensureTextPublisherStock(role textPublisherPrefixOpeni
 		return errors.New("text Publisher role stock unavailable")
 	}
 	pending := owner.tokens.permission.hasPending()
-	var missing [][32]byte
-	for _, receiver := range [][32]byte{selection.EntryNodeID, selection.InteriorNodeID} {
-		if owner.tokens.permission.stockCountFor(profile.Digest, receiver, 2) == 0 {
-			missing = append(missing, receiver)
-		}
-	}
+	missing := owner.tokens.permission.missingStockFor(profile.Digest, [][32]byte{selection.EntryNodeID, selection.InteriorNodeID}, 2)
 	owner.mu.Unlock()
 	if len(missing) != 0 {
 		// The issuance owner resumes only an exact retained batch (including

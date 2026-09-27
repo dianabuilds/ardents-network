@@ -30,6 +30,20 @@ func (permission *textPermission) stockCountForDuty(profileDigest, receiver [32]
 	return permission.countStock(profileDigest, receiver, duty, class, true)
 }
 
+// missingStockFor lists, in receiver order, the receivers that hold no stock
+// of the given class for the profile digest. It runs under textContext.mu and
+// only inspects; the caller decides whether and how to issue the missing
+// stock, and must unlock before any issuance.
+func (permission *textPermission) missingStockFor(profileDigest [32]byte, receivers [][32]byte, class uint8) [][32]byte {
+	var missing [][32]byte
+	for _, receiver := range receivers {
+		if permission.stockCountFor(profileDigest, receiver, class) == 0 {
+			missing = append(missing, receiver)
+		}
+	}
+	return missing
+}
+
 func (permission *textPermission) countStock(profileDigest, receiver [32]byte, duty uint64, class uint8, exactDuty bool) int {
 	if permission == nil {
 		return 0

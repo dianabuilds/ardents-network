@@ -33,12 +33,7 @@ func (owner *textContext) prepareTextSourceReopenOwned(ctx context.Context, flig
 		owner.mu.Unlock()
 		return textSourcePreparationFailureAt("selection", err)
 	}
-	var missing [][32]byte
-	for _, receiver := range [][32]byte{selection.EntryNodeID, selection.InteriorNodeID} {
-		if owner.tokens.permission.stockCountFor(profile.Digest, receiver, 2) == 0 {
-			missing = append(missing, receiver)
-		}
-	}
+	missing := owner.tokens.permission.missingStockFor(profile.Digest, [][32]byte{selection.EntryNodeID, selection.InteriorNodeID}, 2)
 	owner.mu.Unlock()
 	if len(missing) != 0 {
 		if err := owner.issueTextTokensForOpening(ctx, missing, 2, nil, false); err != nil {
