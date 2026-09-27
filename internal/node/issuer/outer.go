@@ -1,36 +1,37 @@
-package node
+package issuer
 
 import (
 	"context"
 	"crypto/tls"
+	"io"
+	"net"
+	"time"
+
 	nodeouter "github.com/dianabuilds/ardents-network/internal/node/outer"
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	routecarrier "github.com/dianabuilds/ardents-network/internal/route/carrier"
 	"github.com/dianabuilds/ardents-network/internal/route/credential"
 	"github.com/dianabuilds/ardents-network/internal/route/replay"
-	"io"
-	"net"
-	"time"
 )
 
-// closedIssuerNodeHandler owns one State-authenticated outer Carrier. It
+// nodeHandler owns one State-authenticated outer Carrier. It
 // creates no peer, route or fallback: every child terminates at this issuer.
-func closedIssuerNodeHandler(config runtimeConfig, certificate tls.Certificate, issuer *credential.ClosedTokenIssuer, spends *replay.Ledger, limits *route.ClosedDutyLimits, recordRelease func(error)) credential.ClosedNodeBootstrapHandler {
+func nodeHandler(config Config, certificate tls.Certificate, issuer *credential.ClosedTokenIssuer, spends *replay.Ledger, limits *route.ClosedDutyLimits, recordRelease func(error)) credential.ClosedNodeBootstrapHandler {
 	return func(ctx context.Context, carrier routecarrier.ClosedSharedCarrier, serve func(context.Context, io.ReadWriter, [32]byte, ardp.Hello) error) {
 		defer carrier.Connection.Close()
-		updated, err := currentFacts(config)
+		updated, err := config.CurrentDuty()
 		if err != nil {
 			return
 		}
-		receiver, available := closedRouteReceiver(config, updated, ardp.PurposeIssuer, config.now())
+		receiver, available := config.Authority.Receiver(updated, ardp.PurposeIssuer, config.Now())
 		if !available {
 			return
 		}
 		deadline := receiver.NotAfter
 		outer, err := route.NewClosedOuterHandshake(route.ClosedOuterReceiver{NetworkID: receiver.NetworkID, StateGeneration: receiver.StateGeneration,
 			StateDigest: receiver.StateDigest, ProfileDigest: receiver.ProfileDigest, NodeID: receiver.NodeID, RecordDigest: receiver.RecordDigest,
-			DutyGeneration: receiver.DutyGeneration, RoleDomain: receiver.RoleDomain, Subrole: receiver.Subrole, Deadline: deadline}, limits, config.now)
+			DutyGeneration: receiver.DutyGeneration, RoleDomain: receiver.RoleDomain, Subrole: receiver.Subrole, Deadline: deadline}, limits, config.Now)
 		if err != nil {
 			return
 		}
@@ -40,7 +41,7 @@ func closedIssuerNodeHandler(config runtimeConfig, certificate tls.Certificate, 
 				if err != nil {
 					return err
 				}
-				channel, err := route.NewClosedAdmissionChannel(receiver, spends, limits, exporter, closedControlTokenVerifier(config, receiver), config.now)
+				channel, err := route.NewClosedAdmissionChannel(receiver, spends, limits, exporter, config.VerifyAdmission(receiver), config.Now)
 				if err != nil {
 					return err
 				}

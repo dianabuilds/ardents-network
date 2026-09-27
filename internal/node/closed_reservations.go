@@ -4,19 +4,13 @@ import (
 	"crypto/tls"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/node/issuer"
 	"github.com/dianabuilds/ardents-network/internal/resource"
 )
 
-// ClosedIssuerProfile contains the isolated RSA-PSS issuer root and bounded
-// direct role listener reservation. State selects its endpoint, carrier and
-// current issuer profile; this local profile cannot select a recipient.
-type ClosedIssuerProfile struct {
-	Root            string
-	AdmissionRoot   string
-	Certificate     tls.Certificate
-	ConnectionLimit uint16
-	DrainTimeout    time.Duration
-}
+// ClosedIssuerProfile retains the public Node configuration name while the
+// issuer role owns its local reservation and lifecycle.
+type ClosedIssuerProfile = issuer.Profile
 
 // ClosedForwardingProfile contains the local material for one closed Route
 // forwarding duty. Root is exclusively owned by its current receiving duty;

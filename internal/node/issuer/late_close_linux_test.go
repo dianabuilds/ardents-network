@@ -1,6 +1,6 @@
 //go:build linux
 
-package node
+package issuer
 
 import (
 	"bytes"
@@ -100,7 +100,7 @@ func TestClosedIssuerLateCloseRetainsRootsUntilDelayedChildJoins(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	server := &closedIssuerServer{listener: listener, spends: spends, issuer: issuer, releases: &terminalCleanup{},
+	server := &closedIssuerServer{listener: listener, spends: spends, issuer: issuer, releaseResult: func() error { return nil },
 		done: make(chan error, 1), drained: make(chan struct{})}
 	t.Cleanup(func() {
 		_ = server.listener.Stop()
