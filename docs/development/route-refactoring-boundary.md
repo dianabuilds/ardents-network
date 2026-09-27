@@ -3,9 +3,10 @@
 Status: working architecture analysis for the isolated refactoring branch. The
 capsule, terminal body, ARDP framing, replay, Carrier, and client-path
 extractions below are implemented and registered in the package map; the
-remaining v2 execution closure is still analysis, not a new Route contract or
-C0 execution ledger. The accepted Route, Carrier and client contracts govern
-behavior.
+former v2 execution closure is retired by the ADR-0093/ADR-0094 chain and
+pinned absent by the architecture suite, so this document is a realized
+boundary record, not a new Route contract or C0 execution ledger. The
+accepted Route, Carrier and client contracts govern behavior.
 
 ## Current Linux owner graph
 
@@ -65,8 +66,9 @@ literal-address rule; the retired v2 `Profile` refusal identity stayed in
 Route (`closed_route_profile.go`) beside its Node typed refusal. Route, Node,
 Endpoint, Credential, and both node commands import the leaf directly without
 delegating wrappers, and the pure Carrier behavior tests moved with their
-owner. The old Route v2 execution closure still needs its separate historical
-reader and refusal disposition.
+owner. The old Route v2 execution closure is retired; only its typed refusal
+identity survives, pinned by
+`internal/architecture/route_v2_closure_retirement_test.go`.
 
 `internal/route/credential` imports parent `internal/route` in three current
 production files: `closed_token_listener.go`, `closed_token_bootstrap.go`, and
@@ -76,32 +78,35 @@ imports. Any split must move these live consumers or provide a lower-level
 acyclic Carrier/channel contract. A temporary `route` wrapper importing a
 child that imports `route` would create a cycle (F-30).
 
-## Retained v2 source closure versus the selected v3 path
+## Retired v2 source closure versus the selected v3 path
 
-The protected Route owner selects `ardents-route-v3` for C0. The older
-`ardents-interactive-route-v2` constant is still assigned when parsing an old
-Node reservation, but `node/admission.go` and `duty_server.go` refuse it before
-starting a duty. ADR-0089 requires this no-new-old-start boundary and retains
-historical identity only for exact retirement evidence. It does not authorize
-another accepting C0 Route.
+The protected Route owner selects `ardents-interactive-route-v3` for C0. The
+old `ardents-interactive-route-v2` identity survives only as the typed
+retired `route.Profile` constant in `closed_route_profile.go`:
+`node/admission.go` and `node/duty_server.go` refuse it before starting a
+duty, and State keeps its own signed-record projection separate. ADR-0089's
+no-new-old-start boundary is intact; nothing authorizes another accepting C0
+Route.
 
-| Older source group | Current non-test caller root | Exact disposition boundary |
-| --- | --- | --- |
-| `entry_attachment.go`, `entry_binding.go`, `endpoint_transit_attachment.go`, `endpoint_transit_binding.go` | No non-test external opener remains after ADR-0092 removed the generic Endpoint Transit/Publisher path. Helpers call within the old attachment closure. | Retire old execution after resolving exact Entry/Transit wire refusal and accepted Invite/Grant evidence; keep the separate durable `internal/entry` owner. |
-| `credential_relay_io.go`, `credential_relay_setup.go`, `introduction_control_io.go`, `introduction_outcome*.go`, `introduction_slot_registration.go`, `sealed_introduction.go` | No selected production caller remains outside the old relay/Introduction closure. The protected text Publisher uses closed ARDP registration and private capsule operations. | Resolve historical verifier/vector obligations, then retire these seven files with the four attachment files as one bounded closure (F-52). |
-| `transit_grant.go`, `node_binding.go`, `route_binding_v1.go` | `VerifyTransitGrant` and the old LegBinding codecs have no non-test caller, but accepted Grant/LegBinding bytes and typed old-profile refusal remain separate compatibility questions. | Decide historical verification and retained local-role spend-root treatment before removing readers. An old reader cannot authorize a v2 Route. |
-| `wire_encoding.go` | Its v2 envelope has no selected execution caller; `wireReader` is shared with the historical Grant verifier and LegBinding, while `writeAll` serves the uncalled Node binding. | Separate only decided historical readers/refusal from the old execution codec before deletion. `route/ardp/frame.go` owns the distinct v3 full-write operation (F-52). |
-| `native_attachment.go` | No non-test constructor found; the current technical owner retains its evidence and close contract. | Decide the independent evidence consumer before removing this value; it does not prove an old Route startup survives. |
-
-The formerly ambiguous `Native Route profile` section of
-`docs/technical/network-route-node.md` now labels v2 as retained grammar and
-points C0 readers to closed v3. Its old-start section, the protected Route
-contract, ADR-0089 and actual Node dispatch all refuse the old duty. The file
-inventory records the v2 groups as retirement or compatibility review, not
-proposed new packages; their source disposition remains open. The
+The former v2 source closure is retired, not retained. ADR-0093 deleted the
+four old Entry/Transit attachment files, the relay/Introduction I/O closure,
+`transit_grant.go`, `node_binding.go`, `route_binding_v1.go`,
+`native_attachment.go`, and `wire_encoding.go` together with the historical
+Grant verifier and LegBinding decoder; `sealed_introduction.go` survived it
+byte-exact and was retired by ADR-0094 with the old Service Introduction
+plaintext after their superseding record. The historical wire/vector
+obligations were decided in those ADRs (F-52), the persisted Grant-spend
+treatment by ADR-0107's bounded version-2 duty-root conversion (F-53), and
+the Invite subsystem by ADR-0106 (F-08).
+`internal/architecture/route_v2_closure_retirement_test.go` pins the exact
+absence of every closure file and the survival of the refusal identity and
+the persisted-data contracts. The current
+`docs/technical/network-route-node.md` contract records
+`ardents-interactive-route-v2` as the former native Route grammar behind
+effect-free typed refusals and points C0 readers to closed v3. The
 [current closure inventory](c0-component-reconstruction.md#former-v2-execution-closure-after-adr-0092)
-supersedes the pre-ADR-0092 Endpoint caller narrative in earlier revisions
-of this document.
+records the row-by-row disposition and supersedes the pre-ADR-0092 Endpoint
+caller narrative in earlier revisions of this document.
 
 ## Terminal-operation owner
 
