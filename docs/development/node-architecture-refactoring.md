@@ -5,9 +5,11 @@ ADRs, [Network/Node technical owner](../technical/network-route-node.md), and
 GitHub issues govern behavior and delivery. This document records code
 boundaries, not a second task ledger. The initial source graph was checked
 against `dev` at `51b38337` on 2026-09-27. The result below describes the
-extracted Node packages integrated into `dev` at `a2db90bb` after the combined
-`make check` and Linux Docker build/tests. Installed systemd/cgroup evidence
-remains a later shared qualification milestone.
+initial extracted Node packages integrated into `dev` at `a2db90bb`. The
+follow-up Node ownership and Endpoint qualification slices were integrated at
+`5a757e49` after the combined `make check` and Linux Docker build/tests.
+Installed systemd/cgroup evidence remains a later shared qualification
+milestone.
 The [C0 component reconstruction](c0-component-reconstruction.md) and
 [Route boundary record](route-refactoring-boundary.md) retain older snapshots.
 
@@ -142,11 +144,12 @@ integration scenarios now carry explicit platform suffixes. The root has no
 `closed_*` source files; retained `Closed*` identifiers are protocol or public
 configuration names, not file grouping.
 
-The completed Node and Endpoint qualification slices are combined on the Node
-integration branch. Windows `make check` and a read-only Linux Docker build,
-vet, Node/qualification tests and targeted Endpoint tests passed before the
-latest `dev` merge. Recheck the merged tree before advancing `dev`. Installed
-systemd/cgroup evidence remains a later shared qualification gate.
+The completed Node and Endpoint qualification slices are in `dev` at
+`5a757e49`. Windows `make check` passed after merging the concurrent State and
+Contributor commits. A read-only Linux Docker build plus Node, qualification,
+worker, replacement and targeted Endpoint tests also passed on that merged
+revision. Installed systemd/cgroup evidence remains a later shared
+qualification gate.
 
 For each slice, update the technical owner and package map with code, run
 focused behavior tests and `make quick-check`, and commit a coherent result.
