@@ -75,6 +75,9 @@ func TestPrepareSignAndInspectClosedProfileUsesOnePurposeBoundSigner(t *testing.
 	if err != nil {
 		t.Fatal(err)
 	}
+	if len(raw) != len(body)+ed25519.SignatureSize || !bytes.Equal(raw[:len(body)], body) {
+		t.Fatal("signed profile changed the prepared canonical body")
+	}
 	view, err := InspectClosedProfile(raw, generation, network, epochDigest, 7, signer.Public().(ed25519.PublicKey), now)
 	if err != nil || view.NetworkID != network || view.StateGeneration != generation || view.StateDigest != epochDigest || view.Epoch != 7 || view.Digest != sha256.Sum256(raw) || view.IssuerNodeID != issuer || view.IssuerDutyGeneration != 3 || view.TokenKeyCount != 1 ||
 		view.TokenKeys[0].WindowStart != now || view.TokenKeys[0].Class != 1 || !bytes.Equal(view.TokenKeys[0].SPKI[:], input.TokenKeys[0].SPKI) {
@@ -82,6 +85,12 @@ func TestPrepareSignAndInspectClosedProfileUsesOnePurposeBoundSigner(t *testing.
 	}
 	if _, err := SignClosedProfile(input, nil); err == nil {
 		t.Fatal("signed closed profile without an authority")
+	}
+	unordered := input
+	unordered.Nodes = append([]ClosedProfileNodeInput(nil), input.Nodes...)
+	unordered.Nodes[0], unordered.Nodes[1] = unordered.Nodes[1], unordered.Nodes[0]
+	if _, err := PrepareClosedProfile(unordered); err == nil {
+		t.Fatal("prepared a profile with noncanonical Node order")
 	}
 }
 
