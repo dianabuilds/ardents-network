@@ -31,11 +31,11 @@ func TestClosedResolutionRetainsHostingReleaseFailureAfterReply(t *testing.T) {
 				return nil, err
 			}
 			resolved.host = host
-			snapshot, err := currentFacts(resolved)
+			snapshot, err := currentFacts(resolved.Current)
 			if err != nil {
 				return nil, err
 			}
-			handle, err = startClosedResolution(resolved, snapshot)
+			handle, err = startClosedResolution(resolved.ClosedResolution, projectRoleInputs(resolved), snapshot)
 			if err != nil {
 				return nil, err
 			}

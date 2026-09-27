@@ -41,7 +41,7 @@ func startIntroductionHeapProcess(t *testing.T, config Config, output string) (*
 	if err != nil {
 		return nil, err
 	}
-	snapshot, err := currentFacts(resolved)
+	snapshot, err := currentFacts(resolved.Current)
 	if err != nil {
 		return nil, err
 	}

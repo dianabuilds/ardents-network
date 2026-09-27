@@ -38,7 +38,7 @@ func Run(ctx context.Context, input Config) (result Result, runErr error) {
 	ticker := time.NewTicker(config.PollInterval)
 	defer ticker.Stop()
 	for {
-		snapshot, currentErr := currentFacts(config)
+		snapshot, currentErr := currentFacts(config.Current)
 		if currentErr != nil {
 			return fail(config, &machine, nil, "persistent Network State is unavailable", currentErr)
 		}
@@ -93,7 +93,7 @@ func runDuty(ctx context.Context, config runtimeConfig, machine *stateMachine, s
 		case <-timer.C:
 		}
 	}
-	current, err := currentFacts(config)
+	current, err := currentFacts(config.Current)
 	if err != nil {
 		return fail(config, machine, nil, "persistent Network State is unavailable", err)
 	}
@@ -163,7 +163,7 @@ func runDuty(ctx context.Context, config runtimeConfig, machine *stateMachine, s
 					return fail(config, machine, server, "external evidence channel failed", err)
 				}
 			}
-			updated, readErr := currentFacts(config)
+			updated, readErr := currentFacts(config.Current)
 			if readErr != nil {
 				return fail(config, machine, server, "persistent Network State is unavailable", readErr)
 			}
@@ -267,8 +267,8 @@ func sameDuty(first, second state.NodeDuty) bool {
 // currentFacts receives the State-created duty value copy for one poll and
 // revalidates its bound before Node retains it. The value type already copies
 // every fact; State keeps freshness and conflict classification ownership.
-func currentFacts(config runtimeConfig) (state.NodeDuty, error) {
-	duty, err := config.Current()
+func currentFacts(current func() (state.NodeDuty, error)) (state.NodeDuty, error) {
+	duty, err := current()
 	if err != nil {
 		return state.NodeDuty{}, err
 	}

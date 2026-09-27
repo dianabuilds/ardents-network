@@ -149,7 +149,7 @@ func newClosedBootstrapFixture(t *testing.T) *closedBootstrapFixture {
 	}
 	fixture.config = runtimeConfig{Config: Config{CurrentClosedRoute: func() (state.ClosedRouteView, error) { return fixture.view, nil }}}
 	var available bool
-	fixture.receiver, available = closedRouteReceiver(fixture.config, fixture.snapshot, ardp.PurposeForwarding, fixture.now)
+	fixture.receiver, available = nodeAuthority(fixture.config).Receiver(fixture.snapshot, ardp.PurposeForwarding, fixture.now)
 	if !available {
 		t.Fatal("fixture receiver unavailable")
 	}

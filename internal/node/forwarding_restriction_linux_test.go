@@ -38,7 +38,7 @@ func TestClosedNodeRestrictionRefusesValidPrivateTokenWithoutSpendingIt(t *testi
 			if err := os.MkdirAll(fixture.config.ClosedForwarding.Root, 0o700); err != nil {
 				t.Fatal(err)
 			}
-			server, err := startClosedForwarding(fixture.config, fixture.snapshot)
+			server, err := startClosedForwarding(fixture.config.ClosedForwarding, projectRoleInputs(fixture.config), fixture.snapshot)
 			if err != nil {
 				t.Fatal(err)
 			}

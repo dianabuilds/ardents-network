@@ -98,6 +98,14 @@ supervision. `hosting.go` selects the shared period and interprets pressure;
 private bind override. The private `closed_*` protocol identifiers remain where
 they are part of the accepted contract, but the root file names no longer use
 that prefix as a substitute for an owner.
+The process composer retains `runtimeConfig`, including its copied public
+`Config`. Each role adapter receives only the selected local profile, copied
+State duty, and a private `roleInputs` projection of current State authority,
+bounded duty refresh, clock, listener override and shared Hosting handle.
+The refresh callback retains only the public `Current` function. Admission
+validation receives an authority projection with its one-poll State view
+rather than the full process configuration; no child role receives process
+pressure or event state.
 Within the forwarding package, the listener owns accepted producers; the
 session set owns each retained outgoing Carrier reader and its child frame
 queues; a link joins one child lane to that session. They share one shutdown
@@ -121,6 +129,14 @@ its pure window calculation runs on both platforms. Linux-only tests use the
 network work. Process lifecycle, admission, identity, pressure and event tests
 remain beside their production owners; component behavior tests live in the
 role packages.
+The root has 18 Linux-tagged test files, including fixtures. Its journal writer
+test uses Linux Unix-socket behavior; live TCP/TLS and QUIC process scenarios
+depend on the Linux-selected role-root and Hosting fixture. Some fixture code
+is portable in isolation but is tagged with its only Linux callers, so
+cross-platform unit rules such as the recipient-window calculation live in
+untagged tests. Windows `make check` does not exercise those Linux process
+scenarios; the read-only Linux Docker Node run does. Neither run qualifies the
+installed systemd/cgroup startup profile.
 Process pressure remains in the root; per-duty local limits and JOIN host
 monitoring remain with their duty.
 

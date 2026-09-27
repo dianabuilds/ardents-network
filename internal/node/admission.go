@@ -107,24 +107,25 @@ func assessAdmission(config runtimeConfig, snapshot state.NodeDuty) admission {
 		stableConfig := config
 		stableConfig.CurrentClosedRoute = func() (state.ClosedRouteView, error) { return closedRoute, nil }
 		stableConfig.CurrentClosedProfile = func() (state.ClosedProfileView, bool) { return closedRoute.Profile, true }
-		if _, available := closedRouteReceiver(stableConfig, snapshot, ardp.PurposeIssuer, now); available {
-			if err := validateClosedIssuerProfile(config.ClosedIssuer, stableConfig, snapshot, now); err != nil {
+		stableAuthority := nodeAuthority(stableConfig)
+		if _, available := stableAuthority.Receiver(snapshot, ardp.PurposeIssuer, now); available {
+			if err := validateClosedIssuerProfile(config.ClosedIssuer, stableAuthority, snapshot, now); err != nil {
 				return admission{kind: admissionPrepared, reason: err.Error()}
 			}
-		} else if _, available := closedRouteReceiver(stableConfig, snapshot, ardp.PurposeForwarding, now); available {
-			if err := validateClosedForwardingProfile(config.ClosedForwarding, stableConfig, snapshot, now); err != nil {
+		} else if _, available := stableAuthority.Receiver(snapshot, ardp.PurposeForwarding, now); available {
+			if err := validateClosedForwardingProfile(config.ClosedForwarding, stableAuthority, snapshot, now); err != nil {
 				return admission{kind: admissionPrepared, reason: err.Error()}
 			}
-		} else if _, available := closedRouteReceiver(stableConfig, snapshot, ardp.PurposeReachability, now); available {
-			if err := validateClosedResolutionProfile(config.ClosedResolution, stableConfig, snapshot, now); err != nil {
+		} else if _, available := stableAuthority.Receiver(snapshot, ardp.PurposeReachability, now); available {
+			if err := validateClosedResolutionProfile(config.ClosedResolution, stableAuthority, snapshot, now); err != nil {
 				return admission{kind: admissionPrepared, reason: err.Error()}
 			}
-		} else if _, available := closedRouteReceiver(stableConfig, snapshot, ardp.PurposeIntroduction, now); available {
-			if err := validateClosedIntroductionProfile(config.ClosedIntroduction, stableConfig, snapshot, now); err != nil {
+		} else if _, available := stableAuthority.Receiver(snapshot, ardp.PurposeIntroduction, now); available {
+			if err := validateClosedIntroductionProfile(config.ClosedIntroduction, stableAuthority, snapshot, now); err != nil {
 				return admission{kind: admissionPrepared, reason: err.Error()}
 			}
-		} else if _, available := closedRouteReceiver(stableConfig, snapshot, ardp.PurposeDataJoin, now); available {
-			if err := validateClosedDataJoinProfile(config.ClosedDataJoin, stableConfig, snapshot, now); err != nil {
+		} else if _, available := stableAuthority.Receiver(snapshot, ardp.PurposeDataJoin, now); available {
+			if err := validateClosedDataJoinProfile(config.ClosedDataJoin, stableAuthority, snapshot, now); err != nil {
 				return admission{kind: admissionPrepared, reason: err.Error()}
 			}
 		} else {

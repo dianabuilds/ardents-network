@@ -37,7 +37,7 @@ func TestClosedForwardingStopDrainsIdleAuthenticatedCarrier(t *testing.T) {
 	if err := os.MkdirAll(fixture.config.ClosedForwarding.Root, 0o700); err != nil {
 		t.Fatal(err)
 	}
-	server, err := startClosedForwarding(fixture.config, fixture.snapshot)
+	server, err := startClosedForwarding(fixture.config.ClosedForwarding, projectRoleInputs(fixture.config), fixture.snapshot)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -123,7 +123,7 @@ func TestClosedForwardingStartRefusesAmbiguousSpendJournal(t *testing.T) {
 	if err := spends.Close(); err != nil {
 		t.Fatal(err)
 	}
-	clean, err := startClosedForwarding(fixture.config, fixture.snapshot)
+	clean, err := startClosedForwarding(fixture.config.ClosedForwarding, projectRoleInputs(fixture.config), fixture.snapshot)
 	if err != nil {
 		t.Fatalf("clean receiver startup = %v", err)
 	}
@@ -142,7 +142,7 @@ func TestClosedForwardingStartRefusesAmbiguousSpendJournal(t *testing.T) {
 	if err := os.WriteFile(journal, append(before, tail...), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if server, err := startClosedForwarding(fixture.config, fixture.snapshot); err == nil {
+	if server, err := startClosedForwarding(fixture.config.ClosedForwarding, projectRoleInputs(fixture.config), fixture.snapshot); err == nil {
 		server.Stop()
 		t.Fatal("receiver started with ambiguous spend journal")
 	}
@@ -178,7 +178,7 @@ func TestClosedForwardingServerRefusesAfterJournalMutationFailure(t *testing.T) 
 		t.Fatal(err)
 	}
 	token := closedRestrictionToken(t, fixture)
-	server, err := startClosedForwarding(fixture.config, fixture.snapshot)
+	server, err := startClosedForwarding(fixture.config.ClosedForwarding, projectRoleInputs(fixture.config), fixture.snapshot)
 	if err != nil {
 		t.Fatal(err)
 	}

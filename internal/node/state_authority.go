@@ -5,16 +5,10 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/node/authority"
-	"github.com/dianabuilds/ardents-network/internal/route"
-	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 )
 
 func nodeAuthority(config runtimeConfig) authority.Source {
 	return authority.Source{CurrentRoute: config.CurrentClosedRoute, CurrentProfile: config.CurrentClosedProfile}
-}
-
-func closedRouteReceiver(config runtimeConfig, snapshot state.NodeDuty, purpose ardp.Purpose, now time.Time) (route.ClosedRoleReceiver, bool) {
-	return nodeAuthority(config).Receiver(snapshot, purpose, now)
 }
 
 func currentClosedRoute(config runtimeConfig, snapshot state.NodeDuty, now time.Time) (state.ClosedRouteView, error) {

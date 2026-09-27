@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/network/state"
+	"github.com/dianabuilds/ardents-network/internal/node/authority"
 	nodeforwarding "github.com/dianabuilds/ardents-network/internal/node/forwarding"
 	"github.com/dianabuilds/ardents-network/internal/node/hosting"
 	"github.com/dianabuilds/ardents-network/internal/resource"
@@ -37,16 +38,15 @@ type ClosedForwardingProfile struct {
 
 // startClosedForwarding composes the selected role and transfers the Host lease
 // to the forwarding owner after validating the local process reservation.
-func startClosedForwarding(config runtimeConfig, snapshot state.NodeDuty) (*dutyHandle, error) {
-	local := config.ClosedForwarding
-	if err := validateClosedForwardingProfile(local, config, snapshot, config.now()); err != nil {
+func startClosedForwarding(local ClosedForwardingProfile, inputs roleInputs, snapshot state.NodeDuty) (*dutyHandle, error) {
+	if err := validateClosedForwardingProfile(local, inputs.authority, snapshot, inputs.now()); err != nil {
 		return nil, err
 	}
-	listen, err := closedListenAddress(snapshot.ProbeEndpoint, config.ClosedListenOverride)
+	listen, err := closedListenAddress(snapshot.ProbeEndpoint, inputs.listenOverride)
 	if err != nil {
 		return nil, err
 	}
-	receiver, available := closedRouteReceiver(config, snapshot, ardp.PurposeForwarding, config.now())
+	receiver, available := inputs.authority.Receiver(snapshot, ardp.PurposeForwarding, inputs.now())
 	if !available {
 		return nil, errors.New("closed forwarding receiver is unavailable")
 	}
@@ -58,19 +58,19 @@ func startClosedForwarding(config runtimeConfig, snapshot state.NodeDuty) (*duty
 			return nil, err
 		}
 	}
-	source := nodeAuthority(config)
+	source := inputs.authority
 	running, err := nodeforwarding.Start(nodeforwarding.Config{
 		Profile: nodeforwarding.Profile{Root: local.Root, Certificate: local.Certificate, ConnectionLimit: local.ConnectionLimit,
 			DrainTimeout: local.DrainTimeout, CarrierRelayEndpoint: local.CarrierRelayEndpoint},
 		Snapshot: snapshot, Receiver: receiver, ListenAddress: listen, Authority: source,
-		CurrentDuty: func() (state.NodeDuty, error) { return currentFacts(config) },
+		CurrentDuty: inputs.currentDuty,
 		VerifyAdmission: func(receiver route.ClosedRoleReceiver) route.ClosedAdmissionVerifier {
-			return hosting.AdmissionVerifier(source, config.now, receiver, host, local.AdmissionTraffic, local.TerminationTraffic)
+			return hosting.AdmissionVerifier(source, inputs.now, receiver, host, local.AdmissionTraffic, local.TerminationTraffic)
 		},
 		Replenish: func(receiver route.ClosedRoleReceiver, spends *replay.Ledger) route.ClosedForwardingReplenisher {
-			return hosting.Replenisher(source, config.now, receiver, host, spends, local.AdmissionTraffic, local.TerminationTraffic)
+			return hosting.Replenisher(source, inputs.now, receiver, host, spends, local.AdmissionTraffic, local.TerminationTraffic)
 		},
-		LiteralEndpoint: literalNodeEndpoint, Host: host, Now: config.now,
+		LiteralEndpoint: literalNodeEndpoint, Host: host, Now: inputs.now,
 	})
 	if err != nil {
 		return nil, err
@@ -78,7 +78,7 @@ func startClosedForwarding(config runtimeConfig, snapshot state.NodeDuty) (*duty
 	return &dutyHandle{Done: running.Done, Protect: func(bool) {}, Usage: running.Usage, Stop: running.Stop, Drain: running.Drain}, nil
 }
 
-func validateClosedForwardingProfile(local ClosedForwardingProfile, config runtimeConfig, snapshot state.NodeDuty, now time.Time) error {
+func validateClosedForwardingProfile(local ClosedForwardingProfile, source authority.Source, snapshot state.NodeDuty, now time.Time) error {
 	if local.Root == "" || !filepath.IsAbs(local.Root) || filepath.Clean(local.Root) != local.Root || local.Certificate.PrivateKey == nil ||
 		local.ConnectionLimit == 0 || local.ConnectionLimit > 16 || local.DrainTimeout <= 0 || local.DrainTimeout > time.Minute ||
 		local.host == nil && (local.HostingRoot == "" || !filepath.IsAbs(local.HostingRoot) || filepath.Clean(local.HostingRoot) != local.HostingRoot) ||
@@ -86,7 +86,7 @@ func validateClosedForwardingProfile(local ClosedForwardingProfile, config runti
 		!literalNodeEndpoint(snapshot.ProbeEndpoint) || (routecarrier.CarrierProfile(snapshot.CarrierProfile) != routecarrier.ClosedCarrierTCP && routecarrier.CarrierProfile(snapshot.CarrierProfile) != routecarrier.ClosedCarrierQUIC) {
 		return errors.New("closed forwarding local profile is incomplete")
 	}
-	if _, available := closedRouteReceiver(config, snapshot, ardp.PurposeForwarding, now); !available {
+	if _, available := source.Receiver(snapshot, ardp.PurposeForwarding, now); !available {
 		return errors.New("closed forwarding State profile is unavailable")
 	}
 	return nil

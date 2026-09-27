@@ -17,26 +17,26 @@ import (
 // its listener, spend ledger, pair set and Hosting handle.
 type ClosedDataJoinProfile = join.Profile
 
-func validateClosedDataJoinProfile(local ClosedDataJoinProfile, config runtimeConfig, snapshot state.NodeDuty, now time.Time) error {
-	return join.Validate(local, nodeAuthority(config), snapshot, now, literalNodeEndpoint(snapshot.ProbeEndpoint))
+func validateClosedDataJoinProfile(local ClosedDataJoinProfile, source authority.Source, snapshot state.NodeDuty, now time.Time) error {
+	return join.Validate(local, source, snapshot, now, literalNodeEndpoint(snapshot.ProbeEndpoint))
 }
 
-func startClosedDataJoin(config runtimeConfig, snapshot state.NodeDuty) (*dutyHandle, error) {
-	if err := validateClosedDataJoinProfile(config.ClosedDataJoin, config, snapshot, config.now()); err != nil {
+func startClosedDataJoin(local ClosedDataJoinProfile, inputs roleInputs, snapshot state.NodeDuty) (*dutyHandle, error) {
+	if err := validateClosedDataJoinProfile(local, inputs.authority, snapshot, inputs.now()); err != nil {
 		return nil, err
 	}
-	listen, err := closedListenAddress(snapshot.ProbeEndpoint, config.ClosedListenOverride)
+	listen, err := closedListenAddress(snapshot.ProbeEndpoint, inputs.listenOverride)
 	if err != nil {
 		return nil, err
 	}
-	role, err := join.Start(join.Config{Profile: config.ClosedDataJoin, Snapshot: snapshot,
-		Authority: nodeAuthority(config), CurrentDuty: func() (state.NodeDuty, error) { return currentFacts(config) },
-		Now: config.now, ListenAddress: listen, OpenHost: func(root string) (join.Host, error) {
+	role, err := join.Start(join.Config{Profile: local, Snapshot: snapshot,
+		Authority: inputs.authority, CurrentDuty: inputs.currentDuty,
+		Now: inputs.now, ListenAddress: listen, OpenHost: func(root string) (join.Host, error) {
 			host, err := nodehosting.Open(root)
 			if err != nil {
 				return nil, err
 			}
-			return joinHosting{host: host, source: nodeAuthority(config), now: config.now}, nil
+			return joinHosting{host: host, source: inputs.authority, now: inputs.now}, nil
 		}})
 	if err != nil {
 		return nil, err

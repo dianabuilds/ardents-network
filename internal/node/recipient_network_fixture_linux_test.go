@@ -144,7 +144,7 @@ func newPrivateRecipientNetworkFixtureWithStart(t *testing.T, carrier routecarri
 	if err != nil {
 		t.Fatal(err)
 	}
-	receiver, ok := closedRouteReceiver(resolved, snapshot, purpose, time.Now())
+	receiver, ok := nodeAuthority(resolved).Receiver(snapshot, purpose, time.Now())
 	if !ok || !nodeAuthority(resolved).PeerCurrent(snapshot, clientKey, time.Now()) {
 		t.Fatal("invalid resolution State fixture")
 	}

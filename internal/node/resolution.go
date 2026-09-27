@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/network/state"
+	"github.com/dianabuilds/ardents-network/internal/node/authority"
 	"github.com/dianabuilds/ardents-network/internal/node/hosting"
 	"github.com/dianabuilds/ardents-network/internal/node/resolution"
 	"github.com/dianabuilds/ardents-network/internal/route"
@@ -12,24 +13,24 @@ import (
 // ClosedResolutionProfile keeps the process configuration surface stable.
 type ClosedResolutionProfile = resolution.ClosedResolutionProfile
 
-func validateClosedResolutionProfile(local ClosedResolutionProfile, config runtimeConfig, snapshot state.NodeDuty, now time.Time) error {
-	return resolution.Validate(local, nodeAuthority(config), snapshot, now, literalNodeEndpoint(snapshot.ProbeEndpoint))
+func validateClosedResolutionProfile(local ClosedResolutionProfile, source authority.Source, snapshot state.NodeDuty, now time.Time) error {
+	return resolution.Validate(local, source, snapshot, now, literalNodeEndpoint(snapshot.ProbeEndpoint))
 }
 
-func startClosedResolution(config runtimeConfig, snapshot state.NodeDuty) (*dutyHandle, error) {
-	if err := validateClosedResolutionProfile(config.ClosedResolution, config, snapshot, config.now()); err != nil {
+func startClosedResolution(local ClosedResolutionProfile, inputs roleInputs, snapshot state.NodeDuty) (*dutyHandle, error) {
+	if err := validateClosedResolutionProfile(local, inputs.authority, snapshot, inputs.now()); err != nil {
 		return nil, err
 	}
-	listen, err := closedListenAddress(snapshot.ProbeEndpoint, config.ClosedListenOverride)
+	listen, err := closedListenAddress(snapshot.ProbeEndpoint, inputs.listenOverride)
 	if err != nil {
 		return nil, err
 	}
-	role, err := resolution.Start(resolution.Config{Profile: config.ClosedResolution, Snapshot: snapshot,
-		Authority: nodeAuthority(config), CurrentDuty: func() (state.NodeDuty, error) { return currentFacts(config) },
+	role, err := resolution.Start(resolution.Config{Profile: local, Snapshot: snapshot,
+		Authority: inputs.authority, CurrentDuty: inputs.currentDuty,
 		VerifyAdmission: func(receiver route.ClosedRoleReceiver) route.ClosedAdmissionVerifier {
-			return hosting.ControlAdmissionVerifier(nodeAuthority(config), config.now, receiver, config.host)
+			return hosting.ControlAdmissionVerifier(inputs.authority, inputs.now, receiver, inputs.host)
 		},
-		Now: config.now, ListenAddress: listen})
+		Now: inputs.now, ListenAddress: listen})
 	if err != nil {
 		return nil, err
 	}
