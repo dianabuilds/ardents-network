@@ -26,6 +26,7 @@ github.com/dianabuilds/ardents-network/internal/network/state
 github.com/dianabuilds/ardents-network/internal/node
 github.com/dianabuilds/ardents-network/internal/node/authority
 github.com/dianabuilds/ardents-network/internal/node/outer
+github.com/dianabuilds/ardents-network/internal/node/resolution
 github.com/dianabuilds/ardents-network/internal/release
 github.com/dianabuilds/ardents-network/internal/qualification
 github.com/dianabuilds/ardents-network/internal/resource

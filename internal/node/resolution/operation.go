@@ -1,4 +1,4 @@
-package node
+package resolution
 
 import (
 	"context"
@@ -16,11 +16,11 @@ import (
 )
 
 func (server *closedResolutionServer) current() bool {
-	snapshot, err := currentFacts(server.config)
+	snapshot, err := server.config.CurrentDuty()
 	if err != nil {
 		return false
 	}
-	receiver, ok := closedRouteReceiver(server.config, snapshot, ardp.PurposeReachability, server.config.now())
+	receiver, ok := server.config.Authority.Receiver(snapshot, ardp.PurposeReachability, server.config.Now())
 	return ok && receiver == server.receiver
 }
 
@@ -32,7 +32,7 @@ func (server *closedResolutionServer) serveOuter(ctx context.Context, carrier ro
 	outer, err := route.NewClosedOuterHandshake(route.ClosedOuterReceiver{NetworkID: receiver.NetworkID,
 		StateGeneration: receiver.StateGeneration, StateDigest: receiver.StateDigest, ProfileDigest: receiver.ProfileDigest,
 		NodeID: receiver.NodeID, RecordDigest: receiver.RecordDigest, DutyGeneration: receiver.DutyGeneration,
-		RoleDomain: receiver.RoleDomain, Subrole: receiver.Subrole, Deadline: receiver.NotAfter}, server.limits, server.config.now)
+		RoleDomain: receiver.RoleDomain, Subrole: receiver.Subrole, Deadline: receiver.NotAfter}, server.limits, server.config.Now)
 	if err != nil {
 		return
 	}
@@ -76,7 +76,7 @@ func (server *closedResolutionServer) serveAdmitted(ctx context.Context, connect
 		return err
 	}
 	channel, err := route.NewClosedAdmissionChannel(server.receiver, server.spends, server.limits, exporter,
-		closedControlTokenVerifier(server.config, server.receiver), server.config.now)
+		server.config.VerifyAdmission(server.receiver), server.config.Now)
 	if err != nil {
 		return err
 	}
@@ -111,18 +111,18 @@ func (server *closedResolutionServer) serveAdmitted(ctx context.Context, connect
 		return errors.New("closed resolution operation is invalid")
 	}
 	used += uint64(16 + len(operation.Body) + 16 + (16 << 10))
-	if used > lease.Bytes || ctx.Err() != nil || !server.config.now().Before(lease.Deadline) || !server.current() {
+	if used > lease.Bytes || ctx.Err() != nil || !server.config.Now().Before(lease.Deadline) || !server.current() {
 		return errors.New("closed resolution admission ended")
 	}
 	request, err := terminal.DecodeDescriptorRequest(operation.Body)
 	if err != nil {
 		return err
 	}
-	result, err := server.resolve(request, server.config.now())
+	result, err := server.resolve(request, server.config.Now())
 	if err != nil {
 		return err
 	}
-	if ctx.Err() != nil || !server.current() || !server.config.now().Before(lease.Deadline) {
+	if ctx.Err() != nil || !server.current() || !server.config.Now().Before(lease.Deadline) {
 		return errors.New("closed resolution ended before acknowledgement")
 	}
 	return ardp.WriteFrame(connection, ardp.Frame{Kind: 11, Body: result})
@@ -160,11 +160,11 @@ func (server *closedResolutionServer) currentIntroduction(introduction reachabil
 	if !server.current() || introduction.NotAfter.After(server.receiver.NotAfter) {
 		return false
 	}
-	snapshot, err := currentFacts(server.config)
+	snapshot, err := server.config.CurrentDuty()
 	if err != nil {
 		return false
 	}
-	view, err := server.config.CurrentClosedRoute()
+	view, err := server.config.Authority.CurrentRoute()
 	if err != nil || !authority.ProfileMatchesSnapshot(view.Profile, snapshot, now) {
 		return false
 	}

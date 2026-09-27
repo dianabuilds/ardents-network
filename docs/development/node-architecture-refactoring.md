@@ -16,8 +16,8 @@ and report the joined terminal result. It does not retain a network role's
 listener, connection handlers, spend ledger, or role-specific state. The
 private probe remains under the process owner.
 
-The intended children are `internal/node/outer`, `authority`, `forwarding`,
-`issuer`, `resolution`, `introduction`, and `join`. A narrow shared hosting
+The intended children are `internal/node/outer`, `authority`, `resolution`,
+`forwarding`, `issuer`, `introduction`, and `join`. A narrow shared hosting
 reservation owner may be extracted when its exact caller values are known.
 Each new package must have `doc.go`, behavior tests,
 a non-test caller, and registered imports. A role never imports its parent or
@@ -59,7 +59,7 @@ accept loop.
 | `outer` | Authenticated outer handshake, accepted connection, callback for inner lanes; private writer queues and child set. | Cancel children, interrupt physical I/O, close bridge, join children and interruption callback, then close handshake. Caller observes final accepted-connection close error. No admission or durable root moves here. |
 | Forwarding | Selected receiver/peer facts, certificate, spend ledger, duty limits, host reservations, pool, producers and retained Carrier readers. | Stop listener and producers; join producers before outgoing readers; retire pool and reservations, then close spend root. Retain terminal result across repeated Drain and timeout. |
 | Issuer | Selected issuer profile/receiver, certificate, issuer key root, spend root, token listener and accepted children. | Publish listener terminal cause, join children without releasing roots on caller timeout, close both roots once and retain close errors. |
-| Resolution | Selected class-1 receiver, spend root, Descriptor store, listener and workers. | Close listener, join workers, then close store and spend root; retain connection and root errors. |
+| `resolution` | Selected class-1 receiver, spend root, Descriptor store, listener and workers. | Close listener, join workers, then close store and spend root; retain connection and root errors. Root Node supplies current State callbacks and maps its small handle to process lifecycle. |
 | Introduction | Selected class-3 receiver, spend/slot floors, registrations/deliveries, listener and workers. | Close listener, join workers before replay roots; retain close errors. |
 | Join | Selected data-join receiver, spend root, pair owner, host reservation, listener and workers. | Stop listener and host monitor, join workers, close pairs and spend root, then host; retain terminal causes. |
 
@@ -86,7 +86,9 @@ limits and JOIN host monitoring stay with the duty.
 3. **Forwarding.** Move listener, receiving-resource group, admission,
    sessions, links, queue, bootstrap and shutdown as one duty. Keep startup
    rollback separate from transferred server resources. Verify both Carriers.
-4. **Direct roles.** Extract issuer, resolution, introduction and join at
+4. **Direct roles.** The resolution child owns its listener, admitted work,
+   store and joined drain; the root keeps configuration admission and address
+   selection. Extract issuer, introduction and join at
    listener/admitted-work/drain boundaries, one finished role at a time.
    Keep root adapters only for process dispatch. Credential's engine and
    Route's receiving operations stay in their existing packages.

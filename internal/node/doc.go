@@ -12,8 +12,9 @@
 // process_config.go and closed_reservations.go declare local configuration;
 // admission.go validates State-selected duties; lifecycle.go owns process
 // transitions; duty_server.go dispatches listeners. The closed_* listener
-// files retain each duty's resources, while the outer child package owns one
-// accepted Carrier's inner lanes, serialized writer and joined cleanup.
+// files retain the other duties' resources; resolution owns its listener,
+// admitted operations and roots. The outer child package owns one accepted
+// Carrier's inner lanes, serialized writer and joined cleanup.
 // The authority child package checks current State projections and the same
 // selected-profile token for forwarding and control admission; closed_control_admission.go
 // owns the control host reservation, while forwarding owns its own reservation
