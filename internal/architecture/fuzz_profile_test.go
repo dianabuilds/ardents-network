@@ -22,7 +22,6 @@ func TestFuzzProfileRunsEverySelectedMutationTarget(t *testing.T) {
 	}
 	want := []string{
 		"./internal/network/state", "FuzzCanonicalParsers", "30s",
-		"./internal/contributor", "FuzzContributorJSONDecoders", "30s",
 	}
 	if got := strings.Fields(string(output)); !reflect.DeepEqual(got, want) {
 		t.Errorf("selected fuzz targets = %v, want %v", got, want)
@@ -42,7 +41,6 @@ func TestFuzzProfileRunsEverySelectedMutationTarget(t *testing.T) {
 	}
 	wantCommands := []string{
 		"go\ttest\t./internal/network/state\t-run\t^$\t-fuzz\t^FuzzCanonicalParsers$\t-fuzztime=30s",
-		"go\ttest\t./internal/contributor\t-run\t^$\t-fuzz\t^FuzzContributorJSONDecoders$\t-fuzztime=30s",
 	}
 	if got := strings.Split(strings.TrimSpace(string(output)), "\n"); !reflect.DeepEqual(got, wantCommands) {
 		t.Errorf("selected mutation-fuzz commands = %v, want %v", got, wantCommands)

@@ -164,13 +164,14 @@ a separate data decision. The
 owns the exact effect and compatibility boundary.
 
 [ADR-0089](../adr/0089-retire-old-node-starts-preserve-owned-shutdown.md)
-retires every new old Node-role, Source-profile, Transit-issuer, and Contributor
-apply/restart start rather than keeping a second accepting network path. The
-selected closed Node duties, closed Source profile, and closed issuer remain
-unchanged. An exactly authenticated existing Contributor installation retains
-only bounded no-start diagnose, drain, withdraw, and confirmed removal: neither
-an operator action nor interrupted-update recovery may revive old executable
-bytes. Existing roots, keys, floors, installation records, and historical
+retires every new old Node-role, Source-profile, and Transit-issuer start
+rather than keeping a second accepting network path. The selected closed Node
+duties, closed Source profile, and closed issuer remain unchanged.
+[ADR-0114](../adr/0114-remove-dedicated-host-contributor-retirement.md)
+completed the dedicated-host Contributor retirement: no live installation
+remains, so the de-installation mechanism and the ADR-0089 retained bounded
+no-start actions are removed entirely and the subcommand is no longer
+recognized. Existing roots, keys, floors, installation records, and historical
 profile identity remain evidence, not migration or execution authority. The
 [Network/Node owner](../technical/network-route-node.md#old-start-retirement)
 defines the exact selectors and effect boundary.
@@ -196,7 +197,7 @@ The Network audit candidate is the headless maintained product surface:
 - `ardents`, `ardents-node`, `ardents-control`, and `ardents-custody`;
 - Network State and Source, Entry, Route and Carrier, Node duties, Endpoint,
   Service publication/connection/instance/reachability, naming, enrollment,
-  Release, Custody, contributor, control-inspection, and resource Modules;
+  Release, Custody, control-inspection, and resource Modules;
 - the `internal/application/broker` used by the Network Endpoint for local
   Grant admission and session lifecycle;
 - the Network-owned server implementations of the selected typed local

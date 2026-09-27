@@ -67,12 +67,11 @@ substitute for independent review.
   prints the file path before the long-running test and keeps failures and
   timeouts for diagnosis; the caller retains candidate and host inventories
   separately.
-- `make fuzz` mutation-fuzzes the selected State and Contributor targets for a
-  bounded 30 seconds each. State owns canonical Epoch/Node Record framing and
-  checks successful parser digest/key/raw invariants; Contributor owns strict
-  JSON decoding and checks its successful round trip. The command fails if
-  either named target is absent or fails, and does not claim coverage of every
-  untrusted grammar. The deterministic architecture profile independently
+- `make fuzz` mutation-fuzzes the selected State target for a bounded
+  30 seconds. State owns canonical Epoch/Node Record framing and checks
+  successful parser digest/key/raw invariants. The command fails if the named
+  target is absent or fails, and does not claim coverage of every untrusted
+  grammar. The deterministic architecture profile independently
   checks the selected inventory, its declarations, the Make entry point, and
   the exact mutation commands. It does not mutation-fuzz under an ordinary
   deterministic profile.
@@ -500,17 +499,10 @@ creation. The closed Source process test independently starts the explicit
 `ardents-route-v3` profile with its previously pinned signer and verifies the
 same signed State bytes through the real Source transport.
 
-The `ardents-node contributor` start-retirement oracle submits recognized
-`apply` and `restart` command shapes through the real command adapter. Both
-must return `old Contributor start is retired` with no output before platform
-selection, bundle or installation access, root creation, or supervisor work;
-canonical and historical authentic bundle fixtures plus a foreign deployment
-identity all receive that outcome, the host-environment/supervisor trace stays
-empty, and an existing installation marker remains byte-for-byte unchanged.
-The existing grammar test independently keeps diagnose, drain, withdraw, and
-confirmed remove recognized. The exact now-unreachable Apply closure and its
-consumer-audit deletion condition are listed in the production deadcode
-registry; its behavior tests do not make either command route accepting.
+The retired `ardents-node contributor` start-retirement oracle and the
+Contributor no-start recovery oracle were removed together with the whole
+retirement mechanism and its package (ADR-0114). The standard command-usage
+test keeps the unrecognized `contributor` shape failing before any effect.
 
 The `ardents name encode/resolve/control` retirement oracle submits all three
 recognized command shapes, including absent inputs and incomplete remaining
@@ -527,15 +519,3 @@ verification closure production-dead; ADR-0105 and ADR-0113 then deleted that
 closure with its packages, and their deadcode allowance groups were retired
 with them.
 
-The Contributor no-start recovery oracle drives authentic active-current,
-inactive-current, and interrupted-predecessor fixtures through public
-`Profile.Control`, plus incomplete residue and a foreign persisted profile.
-Its retained-installation fixture checks the bundle pin and each file digest,
-then writes the installation record and managed files with the fixed retained
-systemd unit bytes, without invoking the retired Apply/start path.
-The supervisor trace must gain no Start/Restart call. Authenticated predecessor
-reconciliation may Stop the owned unit and leaves it inactive and `WITHDRAWN`;
-inactive recovery remains inactive, while ambiguous or foreign evidence
-refuses. The retained Withdraw/Remove path additionally proves that a foreign
-confirmation cannot mutate the installation and that the exact deployment
-confirmation removes it without resetting ownership floors or reviving bytes.

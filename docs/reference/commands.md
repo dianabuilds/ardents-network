@@ -109,16 +109,13 @@ cannot replace its policy.
 The accepted
 [old-start retirement contract](../technical/network-route-node.md#old-start-retirement)
 selects refusal of the old Node reservations, Source
-`native_rendezvous_profile`, Transit issuer initialize/serve, and Contributor
-`apply`/`restart` before their first root, key, listener, supervisor, or Network
-effect. It preserves the separately named closed duties, closed Source profile,
-and closed issuer. Existing owned Contributor installations retain only the
-[no-start retirement actions](rendezvous-contributor.md#selected-retirement-transition).
-The Node-reservation, Source-profile, Transit issuer, and Contributor start
-command gates are integrated. Contributor pre-Control recovery is also no-start: it may
-authenticate and reconcile only owned interrupted-update evidence, Stop an
-active predecessor, and clean exact residue, but cannot Start, Restart, or
-Enable either generation.
+`native_rendezvous_profile`, and Transit issuer initialize/serve before their
+first root, key, listener, supervisor, or Network effect. It preserves the
+separately named closed duties, closed Source profile, and closed issuer.
+The Node-reservation, Source-profile, and Transit issuer start command gates
+are integrated. The retired dedicated-host Contributor subcommand is removed
+entirely (ADR-0114): `contributor` is no longer a recognized command shape and
+fails with the standard usage error before any effect.
 
 `ardents-node issuer initialize --config PATH` recognizes the bounded legacy
 `ardents-transit-issuer-initialize-v1` schema only to return
@@ -202,19 +199,14 @@ listener opens. The stanza accepts no endpoint, peer, role, profile digest or
 verification/storage callback. Descriptor lookup and publication use actual
 Control admission and the durable Store; this configuration alone does not
 establish Publisher readiness or private Introduction registration.
-`ardents-node contributor apply --bundle PATH --manifest-pin SHA256` and
-`ardents-node contributor restart` return `old Contributor start is retired`
-after bounded command-shape recognition and before platform selection, bundle
-or installation access, supervisor creation, output, or Network effects. No
-profile or deployment identity can make either route accepting. On Linux, an
-already owned installation retains only `diagnose`, `drain`, `withdraw`, and
-confirmed `remove` for the bounded retirement contract. The internal legacy
-Apply/Restart implementations remain temporarily pending a separate
-consumer/deletion audit; only internal behavior tests call them, and no command
-route does.
 
-The exact ownership and residue contract is in the
-[Rendezvous Contributor runbook](rendezvous-contributor.md).
+The retired dedicated-host Contributor subcommand (`apply`, `restart`,
+`diagnose`, `drain`, `withdraw`, `remove`) is removed entirely by ADR-0114: no
+live `ardents-rendezvous-contributor` installation remains, the owned-shutdown
+obligation of ADR-0089 has no object, and `internal/contributor` with its
+runbook is deleted. A `contributor` argument is no longer a recognized command
+shape and fails with the standard usage error before any platform, filesystem,
+supervisor, or Network effect.
 
 ## `ardents-custody`
 

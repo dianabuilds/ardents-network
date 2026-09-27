@@ -114,9 +114,12 @@ selects an effect-free refusal for every new old execution selection:
   and `transit_issuer`, including their old runtime assignments;
 - Source `native_rendezvous_profile`;
 - `ardents-transit-issuer-initialize-v1` and issuer serve selected by the old
-  Transit issuer reservation; and
-- Contributor `apply` and `restart`, for canonical and historical profile
-  inputs.
+  Transit issuer reservation.
+
+The old dedicated-host Contributor `apply` and `restart` selectors were
+subsequently removed entirely together with the whole retirement mechanism
+(ADR-0114); an unrecognized `contributor` command shape fails with the
+standard usage error before any effect.
 
 Each adapter must identify and refuse its old selection before opening or
 creating a state root or key, binding a listener, invoking a supervisor, or
@@ -128,9 +131,10 @@ closed Source profile, and closed issuer initialize/serve retain their exact
 existing authority checks.
 
 Existing old roots, keys, floors, plans, and installation records remain
-unchanged evidence. Historical profile recognition may authenticate an already
-pinned owned installation for retirement only; it cannot authorize execution
-of an old duty or rewrite persisted identity. The old Rendezvous, Initiator,
+unchanged evidence. No maintained reader authenticates an old installation
+record: the owned-installation retirement surface was removed together with
+its mechanism (ADR-0114). Historical profile recognition cannot authorize
+execution of an old duty or rewrite persisted identity. The old Rendezvous, Initiator,
 Responder, Introduction, and Transit-issuance engines and their command
 composition have been deleted after the command refusal became current. Their
 old plan stanzas remain only at that typed refusal boundary. The Initiator
@@ -164,14 +168,11 @@ The Node-plan gate is integrated: all five old reservations return the stable
 decoding and schema/completeness recognition, before key, certificate, Source
 root, State root, listener, resource, or duty construction. A mixed old and
 closed plan receives that same refusal and cannot use the closed reservation as
-a fallback. The Contributor start gate is also integrated: recognized `apply`
-and `restart` command shapes return `old Contributor start is retired` before
-platform, bundle, installation, root, supervisor, output, or Network effects.
-Contributor pre-Control recovery now authenticates and reconciles only owned
-interrupted-update evidence: it may Stop an active predecessor and clean exact
-residue, but never Starts, Restarts, or Enables either generation. An inactive
-installation remains inactive, while ambiguous or foreign evidence fails and
-is retained. The Source gate is also integrated: a recognized
+a fallback. The Contributor start gate was superseded by complete removal:
+ADR-0114 deleted the subcommand, its module, and its runbook because no live
+installation remains, so every `contributor` command shape now fails with the
+standard usage error before any platform, bundle, installation, root,
+supervisor, output, or Network effect. The Source gate is also integrated: a recognized
 `native_rendezvous_profile` returns `old Source profile is retired` after
 bounded Source-plan recognition and before trust-map, root, key, listener or
 Network work. Mixing that selector with the closed profile receives the same
@@ -197,7 +198,6 @@ already pinned authority retain their previous State and Source behavior.
 | internal/node/join | Own the closed data JOIN listener, pair set, spend ledger and leased Hosting handle through joined shutdown. Node supplies the shared provider-period policy. | Process admission, State custody, global Hosting pressure, or Route pair grammar. |
 | internal/node/outer | Serve one accepted authenticated outer Carrier, serialize inner-lane writes, interrupt and join inner handlers on cancellation. The receiving Node duty retains admission, durable roots and the accepted connection's final close result. | Node duty selection, token admission, physical Carrier authentication, or durable-root close. |
 | internal/node/resolution | Own the closed resolution listener, accepted children, Descriptor store and spend ledger; retain terminal and cleanup outcomes after joined drain. | State-root custody, process admission, other Node duties, or Route wire grammar. |
-| internal/contributor | Authenticate and retire an already owned dedicated-host Rendezvous installation. The only dispatchable actions are diagnose, drain, withdraw and confirmed remove; interrupted-update recovery may reconcile the exact current/predecessor generation but cannot Start, Restart or Enable either. | New installation or update, duty selection, Network State authority, public admission, co-residence, arbitrary service control, or capacity claims. |
 
 Each Module exposes one consumer-relevant Interface while retaining codec,
 storage, replay, socket, and cleanup details privately. State readers receive
@@ -414,29 +414,19 @@ own decision, compatibility rule, and Qualification evidence.
 
 The retained native resource profile identity is
 `ardents-rendezvous-dedicated-host-v1`. Its 1-CPU, 192/256-MiB, 128-MiB Go,
-64-task, and 256-FD bounds remain evidence for an already owned dedicated-host
-Contributor installation; they do not authorize a new Rendezvous Node start.
+64-task, and 256-FD bounds remain the selected dedicated-host resource
+placement evidence; they do not authorize a new Rendezvous Node start.
 The Node command refuses an old reservation before resource-profile validation
 and no longer normalizes the historical `h4-5-rendezvous-alpha-v1` identity
-into a runnable plan. Contributor ownership readers may recognize either
-identity only to authenticate pinned evidence and perform the separately
-bounded retirement operations. Retained engine tests and `h3-*` guard profiles
+into a runnable plan. Retained engine tests and `h3-*` guard profiles
 are compatibility evidence pending their own deletion slices, not accepting
 command routes.
 
-The Linux Contributor command exposes only diagnose, drain, withdraw and
-confirmed removal for an already owned installation. `apply` and explicit
-`restart` refuse before opening that installation or creating a supervisor.
-The Contributor Module has no Apply installation/update operation. It retains
-authenticated installation/update-record readers and no-start interrupted
-update recovery for the four dispatchable retirement actions.
-The operator contract is the
-[Rendezvous Contributor runbook](../reference/rendezvous-contributor.md).
-Under the selected retirement transition, pre-Control update recovery
-authenticates and reconciles only the current or predecessor generation. It
-may inspect, Stop, Disable, and remove owned state but does not Start, Restart,
-Enable, or finish an update by executing either generation. Ambiguous or
-foreign evidence fails without adoption or cleanup.
+The dedicated-host Contributor command, its module, and its runbook were
+removed entirely by ADR-0114 after the Product Owner confirmed that no live
+`ardents-rendezvous-contributor` installation remains; the ADR-0089
+owned-shutdown obligation has no object. Any residual installation bytes, if
+ever surfaced, stay on disk with no reader.
 
 ## Verification and decisions
 

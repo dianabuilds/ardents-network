@@ -33,7 +33,7 @@ boundaries; they are not alpha-bundle artifacts.
 | Artifact lane | Binary | Disposition | Boundary |
 |---|---|---|---|
 | Network participant | ardents | keep and deepen | Headless Endpoint, Network State, Service Instance, Entry, and current naming adapters. |
-| Network participant | ardents-node | keep | Source, Node duty, closed issuer, and dedicated-host Contributor process lifecycle. |
+| Network participant | ardents-node | keep | Source, Node duty, and closed issuer process lifecycle. |
 | Network participant | ardents-control | keep after contraction | Enrollment-pinned alpha-control/corpus reader and bounded closed-profile operator adapter; it has no corpus-floor mutation authority. |
 | Network participant | ardents-custody | keep and deepen | Separate interactive Authority trust zone. It is intentionally not merged into Endpoint or Node. |
 | Installed Application | ardents-text | keep | Trusted local text UI and fixed confined Reader/Publisher worker entrypoints. |
@@ -54,7 +54,7 @@ and the headless command inventory under tests/profiles.
 | ardents | endpoint replacement-self-test | keep internal-only; invoked by the replacement controller, not an operator route |
 | ardents | diagnostics timeline | keep local, read-only projection of bounded runtime events from standard input; no storage, authority, or network effect |
 | ardents | name encode/resolve/control | retired at command dispatch before arguments or effects; no successor or fallback is implied (ADR-0113) |
-| ardents-node | source (including the explicit current closed profile), node with closed reservations, issuer initialize/serve, hosting initialize, contributor diagnose/drain/withdraw/remove | keep; old Source selector, Node duty reservations and Contributor start inputs retired |
+| ardents-node | source (including the explicit current closed profile), node with closed reservations, issuer initialize/serve, hosting initialize | keep; old Source selector and Node duty reservations retired |
 | ardents-control | inspect-bundle, inspect-transitions; prepare-closed-profile, sign-closed-profile, inspect-closed-profile, inspect-closed-issuer-profile | keep |
 | ardents-custody | create-service-authority, issue-service-credential, create-admission-authority, issue-admission-permission, inspect-envelope, verify-record, export-recovery-bundle, restore-recovery-bundle, purge-record | keep |
 | ardents-text | read, publish, link; worker-reader/worker-publisher | keep; trusted local UI routes and fixed installed worker entrypoints |
@@ -87,7 +87,7 @@ qualification owner and are rejected:
 | ardents endpoint open | retired generic AAI2 route; the exact legacy syntax returns `endpoint open is retired` before effects, and its codec/server/client plus exclusive Endpoint adapter are absent |
 | ardents-node source with `native_rendezvous_profile` | retired old Source profile selector; the retained field returns `old Source profile is retired` before trust-map, root, key, listener, output, or Network effects, including mixed old/current input |
 | ardents-node node with `rendezvous`, `initiator`, `introduction`, `responder`, or `transit_issuer` reservation | retired old duty starts; the v1 plan schema and separately named closed reservations remain, while each old selector returns a stable typed refusal before plan-owned runtime effects |
-| ardents-node contributor `apply` or `restart` | retired old Contributor starts; their recognized command shapes return a stable refusal before platform, bundle, installation, supervisor, output, or Network effects; retirement-only diagnose/drain/withdraw/remove remain |
+| ardents-node contributor (every action) | retired dedicated-host Contributor retirement mechanism removed entirely (ADR-0114): no live `ardents-rendezvous-contributor` installation remains, the subcommand is no longer recognized and fails with the standard usage error before any platform, bundle, installation, supervisor, output, or Network effect |
 
 Removal of a command route does not remove the owning verification Module when
 that Module still has maintained callers. Wire and persisted identities are
