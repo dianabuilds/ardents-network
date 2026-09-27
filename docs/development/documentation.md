@@ -41,6 +41,12 @@ experiment instructions to Git history after promoting unique current facts
 and repairing links. A historical path quoted in a completed record identifies
 that record's source revision; it does not promise a current procedure.
 
+Completed experiment source and one-off file, dependency or behavior inventories
+belong to their recorded Git revision once no selected ongoing work consumes
+them. Preserve reproducible source links and results rather than keeping stale
+working copies current by hand. An open research question alone is not a reason
+to retain all earlier experiment implementations.
+
 Each exact requirement has one current owner. The functional map owns product
 requirement IDs and performance budgets; the operating model owns lifecycle
 and public control thresholds; the threat model owns adversaries and claim
@@ -72,10 +78,11 @@ stays a stable contract rather than a second backlog.
 
 ## Research-to-implementation handoff
 
-The [repository collaboration policy](../../AGENTS.md#agreement-system-design-and-implementation-responsibilities)
-assigns R-149 product/architecture work to the design assistant and intended
-implementation to Terra. Preserve one Product Owner's decisions and the actual
-one-human capacity. No model handoff substitutes for independent qualification.
+The [repository collaboration policy](../../AGENTS.md#execution-design-and-review)
+separates unresolved design from authorized implementation. The active task
+assigns responsibility without binding it to a model name. Preserve one Product
+Owner's decisions and the actual one-human capacity. An agent handoff does not
+substitute for independent qualification.
 
 For the R-149 participant-selection and voting core, a precise individual brief
 is insufficient until the whole core has a coherent selected architecture.
@@ -141,7 +148,7 @@ and recovery tasks verify the complete supported core. State required execution
 environments and acceptance evidence. Keep unresolved design work separate from
 implementation-ready tasks and live status in the selected issue tracker.
 
-Terra's implementation handoff returns the changed behavior, relevant diff and
+The implementation handoff returns the changed behavior, relevant diff and
 owner-document updates, validation results and limitations. The design assistant
 reviews conformance to the requirements/ADRs and addresses consequential design
 gaps through their owning documents. Do not silently expand the contract,

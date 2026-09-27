@@ -2,7 +2,7 @@
 
 ## Repository state
 
-- `main` is a greenfield product and protocol research workspace.
+- The repository contains maintained product code and protocol research.
 - The previous Go/Waku implementation is preserved in the remote `old` branch.
 - Do not copy architecture, terminology, dependencies, or generated artifacts
   from `old` unless a current research record explicitly justifies doing so.
@@ -37,17 +37,15 @@
 - External users and independent reviewers may be recorded as future release
   gates, but must not be scheduled as if they are currently available.
 
-### Closed text-Service execution and review
+### Execution, design and review
 
-- For the already authorized closed text-Service work under issue #50, Terra
-  (`gpt-5.6-terra`) is the sole implementation executor. Astra handles bounded
-  read-only review of completed changes and consequential unresolved design
-  questions. This does not reassign or authorize implementation of the separate
-  R-149 agreement-system research.
-- Terra independently reads current owners and code, diagnoses failures, makes
-  routine implementation choices within the accepted contract, runs checks, and
-  manages authorized Git and PR work. Do not request Astra's approval for each
-  step, test failure, or choice Terra can resolve from available evidence.
+- Keep these instructions independent of model names, issue numbers and current
+  task assignments. The active task and selected tracker own scope and execution
+  status; a fresh session must verify them rather than infer an assignment here.
+- The assigned implementer reads current owners and code, diagnoses failures,
+  makes routine choices within the accepted contract, runs checks, and manages
+  authorized Git and PR work. Routine choices and individual test failures do
+  not require a separate reviewer's approval.
 - Escalate a consequential contract gap only after checking its current owners;
   provide the exact contradiction, evidence and a concrete proposal. Complexity
   alone is not an escalation reason. Review completed bounded changes rather
@@ -61,24 +59,14 @@
   progress in the active conversation. Distinguish component readiness, full
   issue acceptance and integration; no test-only reachability or gate waiver.
 - Do not start implementation agents or parallel branches merely to accelerate
-  this work. A skill-required review may use read-only reviewers of one bounded
+  work. A skill-required review may use read-only reviewers of one bounded
   delta; it is not independent security validation or another implementation.
-### Agreement-system design and implementation responsibilities
-
-- For the agreement-system work under R-149, the Product Owner assigns product
-  research, requirements, threat analysis, architecture and ADR preparation to
-  the design assistant in the current research task. Implementation is intended
-  for Terra (`gpt-5.6-terra`) after a bounded slice is ready. This is a division
-  of Codex work, not additional human staff or independent security review.
-- The current phase is design and requirements in this repository. Do not turn
-  the committee discussion, an open research question or a candidate brief into
-  maintained subsystem implementation. This preference does not itself start
-  another task or authorize parallel implementation work.
+- Do not turn an open research question or candidate brief into maintained
+  subsystem implementation without an accepted contract and authorized scope.
 - Follow the [research-to-implementation handoff](docs/development/documentation.md#research-to-implementation-handoff).
-  Terra may make routine implementation choices within the selected contract;
-  consequential product, authority, privacy or protocol gaps return to design
-  instead of being silently resolved in code. Existing authority, ownership,
-  dependency and C0 work-in-progress rules remain binding.
+  Consequential product, authority, privacy or protocol gaps return to design
+  with evidence and a concrete proposal. Preserve the current authority,
+  ownership, dependency and work-in-progress rules.
 
 ## Order of authority
 
@@ -142,11 +130,18 @@ historical evidence remains in the repository.
   adding a package is an explicit architecture change.
 - Keep module interfaces small and implementation details unexported. A new
   package requires a real cohesive boundary, not merely another source file.
-- Name each Go file after one implementation responsibility. Every Go file,
-  including tests, has an interim hard maximum of 500 lines. Split by
-  responsibility, not merely by line count, before creating a package. Record
-  the cohesive responsibility, local invariants, rejected split, and behavior
-  evidence when a file's size or complexity makes that judgment non-obvious.
+- Make subsystem boundaries readable in the directory tree. Use cohesive
+  subpackages where responsibilities warrant them; flatness is not a goal.
+  Long filename prefixes and scattered owner methods are signals to review
+  boundaries. Keep composition separate from component implementation.
+- Name each Go file after one implementation responsibility. File length has
+  no fixed maximum, including for tests. Decide whether to keep or split a file
+  from cohesion, state/lifecycle ownership, independent reasons to change, and
+  the navigation needed to understand an operation. A cohesive long file may
+  be clearer than fragments; a short file can still mix responsibilities.
+  When the choice is non-obvious, briefly explain the responsibility, invariants
+  and trade-off in the change description or existing owner document. Do not
+  introduce size waivers, a replacement numeric limit, or per-file paperwork.
   Catch-all filenames such as
   `model.go`, `support.go`, `types.go`,
   `helpers.go`, `common.go`, `misc.go`, and `util.go` are forbidden.

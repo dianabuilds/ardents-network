@@ -151,7 +151,7 @@ Node ingress/egress. Attribute setup, control, padding, retransmission, failed
 attempts and background independently and reconcile their sum. A forwarded
 byte is received and sent. A quiet direction cannot offset a failed direction.
 
-The causal [contract model](../../../experiments/r-152-contract-probes/cost_model.go)
+The causal [contract model](https://github.com/dianabuilds/ardents-network/blob/4764ae1c567e93180f3aa643b2544abfdb2a67dc/experiments/r-152-contract-probes/cost_model.go)
 retains every mandatory exchange in the selected sequence. It uses explicit
 CPU/transfer/queue assumptions and is not a percentile measurement.
 The complete cost and limits are reported in the contract assessment.

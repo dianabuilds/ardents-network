@@ -10,6 +10,12 @@ Publisher/Transit retirement. Selected behavior traces retain their inspected
 revision labels. The remaining Route v2 and Service plaintext retirement
 questions below are separate from that completed Endpoint change.
 
+The completed inventory and behavior snapshots were retired to Git history on
+2026-09-27. Their revision-pinned links below preserve the analysis behind this
+proposal; counts and paths describe those snapshots. Current membership belongs
+to the working tree and package map, and unresolved design must be rechecked
+against them. Do not recreate the retired CSVs to accompany routine edits.
+
 ## Architecture decision checkpoint
 
 The repository-wide inventory is sufficient to choose a direction without
@@ -115,10 +121,10 @@ boundaries, not second accepting runtime implementations.
 
 ### Where the component boundaries meet today's packages
 
-The [focused file inventory](c0-component-inventory.csv) assigns 360 production
+The [focused file inventory](https://github.com/dianabuilds/ardents-network/blob/4764ae1c567e93180f3aa643b2544abfdb2a67dc/docs/development/c0-component-inventory.csv) assigns 360 production
 files to 17 responsibility tags. These tags describe ownership for the audit;
 they are **not** a proposal for 17 new Go packages. The
-[package disposition map](repository-package-disposition.csv) separately
+[package disposition map](https://github.com/dianabuilds/ardents-network/blob/4764ae1c567e93180f3aa643b2544abfdb2a67dc/docs/development/repository-package-disposition.csv) separately
 classifies all 55 physical packages, including provisioning, verification and
 retained uncomposed code outside this focused set. The large root packages
 combine several tags, while some existing child packages already have a useful
@@ -549,7 +555,7 @@ remain with the Endpoint owner.
 
 ### Carrier source cluster: one responsibility, three lifetimes
 
-The ten Carrier rows in the [file inventory](c0-component-inventory.csv) now
+The ten Carrier rows in the [file inventory](https://github.com/dianabuilds/ardents-network/blob/4764ae1c567e93180f3aa643b2544abfdb2a67dc/docs/development/c0-component-inventory.csv) now
 have concrete callers and resource owners. They do not move as ten independent
 files:
 
@@ -575,7 +581,7 @@ remain the small external seam; no broader transport abstraction was added.
 
 The 25 Route-root rows grouped under `client-path` do not have one
 resource lifetime. Their source-specific dispositions are in the
-[file inventory](c0-component-inventory.csv):
+[file inventory](https://github.com/dianabuilds/ardents-network/blob/4764ae1c567e93180f3aa643b2544abfdb2a67dc/docs/development/c0-component-inventory.csv):
 
 | Source group | Actual owner and boundary implication |
 | --- | --- |
@@ -604,7 +610,7 @@ receiver-side admission controller with client code.
 ### Endpoint client path: separate reservations and close owners
 
 The 20 Endpoint Source/Introduction/Responder/JOIN rows now have source-specific
-reasons in the [file inventory](c0-component-inventory.csv). They do not form
+reasons in the [file inventory](https://github.com/dianabuilds/ardents-network/blob/4764ae1c567e93180f3aa643b2544abfdb2a67dc/docs/development/c0-component-inventory.csv). They do not form
 one `text_` lifecycle:
 
 | Endpoint owner | Observed reservation and terminal boundary |
@@ -810,7 +816,7 @@ was insufficient evidence for a single protected-wire package.
 ### Target dependency order to validate
 
 This is a component import direction, not a registry of new Go package names.
-It is derived from the observed Linux/Windows [package graph](repository-package-graph.csv)
+It is derived from the observed Linux/Windows [package graph](https://github.com/dianabuilds/ardents-network/blob/4764ae1c567e93180f3aa643b2544abfdb2a67dc/docs/development/repository-package-graph.csv)
 and the exact operation seams above. A package extraction must implement one
 row with a real caller and tests; the whole graph cannot be created as empty
 scaffolding.
@@ -889,7 +895,7 @@ The remaining receiving Route cluster stays in its current package until its
 Node accepted-child and spend transfer is expressed as one error-bearing
 operation. An inventory responsibility tag is not, by itself, a suitable
 package name or Interface. The [Route boundary analysis](route-refactoring-boundary.md)
-records the Carrier type-use blockers, and the [focused inventory](c0-component-inventory.csv)
+records the Carrier type-use blockers, and the [focused inventory](https://github.com/dianabuilds/ardents-network/blob/4764ae1c567e93180f3aa643b2544abfdb2a67dc/docs/development/c0-component-inventory.csv)
 records the exact candidate files. This placement preserves an acyclic
 direction without requiring every component to become a package at once.
 
@@ -966,7 +972,7 @@ openers, not by a package name:
 | Retained Contributor installation root | The Contributor command can diagnose, drain, withdraw and remove an already owned installation; its recovery handles current/predecessor generations but does not start new installation. Keep its exclusive root and cleanup outcomes until the accepted retirement transition ends. |
 | Namespace composition (retired) | ADR-0105 deleted the Namespace subsystem and the never-exposed custody operations (F-01/F-51 closed); the maintained command graph never opened a Namespace runtime root or Gateway/Resolver. Old roots stay on disk with no read path; nothing merged into State or Reachability, and the retirement-test fixture now uses a synthetic Namespace-shaped root. |
 
-The [behavior traces](repository-behavior-map.md#source-trace-separate-service-authority-issuance)
+The [behavior traces](https://github.com/dianabuilds/ardents-network/blob/4764ae1c567e93180f3aa643b2544abfdb2a67dc/docs/development/repository-behavior-map.md#source-trace-separate-service-authority-issuance)
 and [one-version disposition](#one-supported-c0-configuration) supply the
 caller and migration/refusal questions for these rows. This table records
 ownership; it does not decide to erase a retained root.
@@ -974,8 +980,8 @@ ownership; it does not decide to erase a retained root.
 These relationships are checked against the current
 [Node/Route contract](../technical/network-route-node.md) and
 [Endpoint/Service contract](../technical/endpoint-service-runtime.md). The
-[first per-file ownership pass](c0-component-inventory.csv) is recorded.
-The [Node receiver resource matrix](repository-behavior-map.md#node-receiver-resource-matrix)
+[first per-file ownership pass](https://github.com/dianabuilds/ardents-network/blob/4764ae1c567e93180f3aa643b2544abfdb2a67dc/docs/development/c0-component-inventory.csv) is recorded.
+The [Node receiver resource matrix](https://github.com/dianabuilds/ardents-network/blob/4764ae1c567e93180f3aa643b2544abfdb2a67dc/docs/development/repository-behavior-map.md#node-receiver-resource-matrix)
 now distinguishes all five duty roots and late cleanup after a caller timeout;
 the Issuer's later root-close owner is realized as Node's
 `closedIssuerServer` (F-17). The installed text
@@ -983,7 +989,7 @@ Endpoint's local socket servers and adapters have a source-backed handler
 join before Endpoint, Instance and State close. Nested worker and Route
 lifetimes, physical connection-close error policy and combined installed
 evidence still require targeted review before moving package boundaries. The
-[JOIN-to-Service handoff trace](repository-behavior-map.md#source-trace-join-transport-transfer-into-service-connection)
+[JOIN-to-Service handoff trace](https://github.com/dianabuilds/ardents-network/blob/4764ae1c567e93180f3aa643b2544abfdb2a67dc/docs/development/repository-behavior-map.md#source-trace-join-transport-transfer-into-service-connection)
 now resolves the initial Route stream's opening-failure and successful-transfer
 close owner; the replacement-close result and the native completion barrier
 are realized (F-23).
@@ -1092,8 +1098,8 @@ permission to change admission behavior.
 
 | Current file | Distinct responsibilities and callers | First cut |
 | --- | --- | --- |
-| `node/closed_forwarding_admission.go` | `closedForwardingAdmissionVerifier` and `closedForwardingReplenisher` reserve the forwarding host allowance and spend class-2 tokens; `closedRoleTokenVerifier` verifies selected-profile class keys for forwarding **and** control duties. | Keep forwarding allowance/replenishment together. Give the shared role-token verifier its own responsibility file in `node`; both forwarding and control continue to call the same verifier. Preserve reserve-before-spend and release-on-spend-failure ordering. |
-| `node/closed_hosting.go` | `openClosedHosting` opens one period before duty activation; `hostingPressure` samples that period for `resource_pressure.go`; `closedControlTokenVerifier` wraps shared token verification with class-1/3 host reservation for issuer, Introduction, Resolution and JOIN callers. | Keep opening and pressure under the host-period owner; place control admission beside shared token verification or in its own control-admission file. Keep the same host handle and reservation lifetime. |
+| `node/closed_forwarding_admission.go` | `closedForwardingAdmissionVerifier` and `closedForwardingReplenisher` reserve the forwarding host allowance and spend class-2 tokens; `closedRoleTokenVerifier` verifies selected-profile class keys for forwarding **and** control duties. | Realized: `closed_role_token_verification.go` owns the shared verifier inside `node`. Forwarding and control retain the same caller, reservation order, spend path and errors. No package seam or wire change was needed. |
+| `node/closed_hosting.go` | `openClosedHosting` opens one period before duty activation; `hostingPressure` samples that period for `resource_pressure.go`; `closedControlTokenVerifier` wraps shared token verification with class-1/3 host reservation for issuer, Introduction, Resolution and JOIN callers. | Realized: `closed_control_admission.go` owns the control admission wrapper; `closed_hosting.go` retains period opening and pressure. All control duties still call the same verifier and keep the same host reservation lifetime. |
 | `node/contract.go` | `Config.Current` receives one copied `state.NodeDuty` value (ADR-0104 retired the `DutyView`/`dutyFacts` getter facade); `Config` and role profiles select local roots/keys; `Event`/`Result` report lifecycle; `runtimeConfig` holds mutable host, pressure and clock state. | Split by local configuration and lifecycle observation/runtime state inside `node`. The F-07 State-owned copied `NodeDuty` handoff is applied; the remaining action is the local file split by responsibility, not a seam change. |
 | `route/closed_node_open.go` | `EncodeClosedNodeOpen`/`DecodeClosedNodeOpen` enforce the mandatory 50-byte Node OPEN and restriction grammar; `(*ClosedOuterBridgeLane).Restriction` reads an already-authenticated bridge child constraint. The decoder is called by the handshake and bridge; Node consumes the encoder/accessor. | Keep wire grammar together; move the accessor beside `ClosedOuterBridgeLane` implementation within `route` before considering package extraction. Preserve refusal of the retired 49-byte form and the non-ordinary nil-lane result. |
 | `endpoint/text_source_state.go` | `closedTextRoleMembers` binds current State to candidate members; `textEntrySets` opens the retained Entry root; `closeTextSourceRoots` closes Entry and token-journal roots. | Keep the State/Entry projection in an admission responsibility file and place the root open/close methods with the Endpoint root owner. Preserve the same lock and close-error path. |

@@ -19,12 +19,13 @@ GitHub Issues in the C0 milestone own delivery state; this file is not a ledger.
 
 ## One active implementation slice
 
-Terra owns implementation, diagnosis, verification and authorized Git/PR work.
-It resolves routine questions independently from current owners and code. Astra
-reviews completed bounded changes and consequential unresolved design gaps;
-it is not an approval checkpoint for routine steps or individual test failures.
-Before escalating, Terra checks the authoritative sources and supplies the
-specific unresolved contradiction, evidence and a reviewable proposal.
+The assigned implementer owns implementation, diagnosis, verification and
+authorized Git/PR work, and resolves routine questions from current owners and
+code. Review covers completed bounded changes and consequential unresolved
+design gaps; it is not an approval checkpoint for routine steps or individual
+test failures. Before escalating, the implementer checks authoritative sources
+and supplies the specific contradiction, evidence and a reviewable proposal.
+Assignments belong to the active task, not to model names in repository policy.
 
 A component needed by another issue can be implemented earlier within the
 accepted contract. Record that dependency in the owning issue and dependency

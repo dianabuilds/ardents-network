@@ -46,7 +46,7 @@ sandbox.
 
 Primary inputs, accessed 2026-09-07: distribution systemd 255 execution/socket
 configuration and the actual Ubuntu 24.04.4 package/kernel runtime inspected
-by the [contract probe](../../../experiments/r-152-contract-probes/README.md).
+by the [contract probe](https://github.com/dianabuilds/ardents-network/blob/4764ae1c567e93180f3aa643b2544abfdb2a67dc/experiments/r-152-contract-probes/README.md).
 The [R-152 assessment](r-152-closed-scheme-contract.md) records exact sources,
 commands, hashes, failures and limitations.
 

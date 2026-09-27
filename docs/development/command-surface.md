@@ -6,14 +6,7 @@ inventory answers a different question: why each process exists, which
 artifact owns it, and whether its routes are retained, internal, pending a
 separate decision, or retired.
 
-The working [command route map](repository-command-route-map.csv) enumerates
-each current dispatcher entry and its primary domain owner at `53f02e64`.
-It is a source-navigation aid, not a second command contract or installed
-acceptance result.
-
-**One-version audit of the dispatcher.** All 69 route entries have a traced
-dispatch and first effect. Ten are immediate retirement refusals and one
-is a retained legacy command shape. `entry import` and `entry recipient`
+**Retired dispatch paths.** `entry import` and `entry recipient`
 joined the refusals under ADR-0106: both return `entry Invite command is
 retired` before any argument interpretation or filesystem effect, and no
 Invite root reader, converter, or deleter remains. `inspect-alpha-corpus`

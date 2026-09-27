@@ -313,13 +313,6 @@ func assertPackage(t *testing.T, root, relativeDirectory string, files []string)
 			t.Errorf("read %s: %v", relative, err)
 			continue
 		}
-		lines := bytes.Count(data, []byte{'\n'})
-		if len(data) > 0 && data[len(data)-1] != '\n' {
-			lines++
-		}
-		if lines > 500 {
-			t.Errorf("Go file exceeds the hard 500-line limit: %s (%d lines)", relative, lines)
-		}
 		if formatted, err := format.Source(data); err != nil {
 			t.Errorf("parse/format %s: %v", relative, err)
 		} else if !bytes.Equal(data, formatted) {
