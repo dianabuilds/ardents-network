@@ -48,8 +48,9 @@ internal/endpoint/worker/      installed worker mechanism: inventory, systemd
                                parent-service checks (stdlib-only leaf)
 internal/endpoint/tokenjournal/ durable token-attempt journal (extracted)
 internal/qualification/        per-invocation Run, Artifact, Attachment,
-                               Measurements; later also the qualification
-                               scenario orchestration (see slice order)
+                               Measurements, and the retained-run qualification
+                               scenario orchestration driven through Endpoint's
+                               authorized Session boundary
 ```
 
 Worker boundary contract for the current slice: Endpoint issues the launch
@@ -82,25 +83,36 @@ records why the closed file cluster cannot be moved by filename alone.
 
 The installed qualification command owns plans and verdicts, and
 `internal/application/streamqualification` owns the fixed stream workload.
-`internal/qualification` now owns the per-invocation `Run`, verified-worker
-`Artifact`, `Attachment` bridge, and shared `Measurements`. The exact
-`qualification.Run` remains bound to its Job because JOIN, Connection limits,
-token refill and cleanup all recheck that invocation.
+`internal/qualification` owns the per-invocation `Run`, verified-worker
+`Artifact`, `Attachment` bridge, shared `Measurements`, and — since the
+qualification separation slice — the retained-run scenario orchestration:
+hosting reservation and sampling cadence, Reader setup pacing with its
+token-reserve ordering, Publisher set serving with workload binding, and the
+replenishment boundary sequence. The exact `qualification.Run` remains bound
+to its Job because JOIN, Connection limits, token refill and cleanup all
+recheck that invocation.
 
-Endpoint still owns the authorized participant, worker and protected Service
-operations being measured. Its remaining six `stream_qualification_*`
-production files are not one self-contained package: runtime and preflight
-construct or inspect the participant; connections and replenishment use private
-Context, Job, permission, Source and worker state. Worker launch and
-initialization also use the retained run; Endpoint worker paths create the
-artifact from verified worker state and feed shared measurements. Moving the
-remaining files by prefix would leave a reverse dependency or expose the
-participant's internals. A worker-launch interface alone does not cover the
-Connection and refill operations. Extract more runtime code only when a
-bounded, authorized participant operation is available to a non-test caller.
-The Context lock may still protect atomic cross-owner admission at that
-boundary; splitting it into separate locks is not a prerequisite for package
-extraction.
+The boundary is dependency inversion: qualification cannot import Endpoint, so
+it defines the consumer-side `Session` (and its `PublisherWorker` subset),
+which Endpoint implements in `stream_qualification_session_linux.go` as
+bounded, authorized participant operations behind permission checks. Every
+operation rechecks its own authority under the Context lock internally;
+private Context, Job, permission, Source, and worker state never crosses —
+only plain values, the retained `Run`, and the opaque `Preparation` and
+`Publication` handles. The Context lock still protects atomic cross-owner
+admission inside those operations; it was never split for the extraction.
+
+Endpoint retains the participant composition: the thin
+`RunStreamQualification` entry validates and composes the participant, binds
+launch authority, and hands one `Session` to `qualification.RunScenario`;
+preflight constructs or inspects the participant; the idle scenario observes
+an ordinary User; the three retained token operations
+(`ensureQualificationTokenReserve`, `ensureQualificationIssuerReserve`,
+`presentQualifiedRefill`) and the stream-limit inspections stay as Context
+methods because they consume private permission and prefix state. Moving the
+remaining files by prefix would expose the participant's internals; further
+runtime code crosses only when another bounded, authorized participant
+operation is available to a non-test caller.
 
 ## Endpoint interior
 
@@ -170,15 +182,22 @@ is one coherent commit series on the Endpoint work branch:
    its exact position. Mechanism unit tests moved with their production owner;
    the installed Ubuntu-host batteries still drive the exported surface from
    `internal/endpoint`.
-2. **Qualification separation** (current slice): move the qualification scenario
-   orchestration — private context construction, job identity usage, token
-   refill and qualification connection management — to the owner in
-   `internal/qualification`. Endpoint retains the authorized participant
-   operations behind permission checks. This runs **before** the Context
-   decomposition so the private `textContext` surface shrinks first; no new
-   `qualificationrun` package.
-3. **Context decomposition**: move state together with its operations and its
-   stop responsibility out of `textContext` into the corresponding owners, in
+2. **Qualification separation** (completed in this branch): the qualification
+   scenario orchestration — hosting reservation and sampling cadence, Reader
+   setup pacing and connection management, Publisher set serving, and the
+   replenishment boundary — lives in `internal/qualification` per the boundary
+   contract above. Endpoint kept participant composition and validation,
+   launch authority binding, the permission handover, and the three retained
+   token operations as Context methods; the scenario consumes them through
+   the `Session` interface that Endpoint implements, with the exact original
+   check and failure order preserved. Behavior tests moved with their
+   production owner; the installed Ubuntu-host batteries still drive the
+   exported qualification surface from `internal/endpoint`. This ran
+   **before** the Context decomposition so the private `textContext` surface
+   shrank first; no `qualificationrun` package was created.
+3. **Context decomposition** (current slice): move state together with its
+   operations and its stop responsibility out of `textContext` into the
+   corresponding owners, in
    sub-slices that are each separately committed: publication, Source and
    network prefixes, Introduction acceptance and exchanges, permission and
    token acquisition, current operation and completion. The Context remains

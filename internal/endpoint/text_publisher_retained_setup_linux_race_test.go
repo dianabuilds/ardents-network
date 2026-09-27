@@ -13,6 +13,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/application/interfacev2/connection"
 	"github.com/dianabuilds/ardents-network/internal/application/streamqualification"
+	"github.com/dianabuilds/ardents-network/internal/qualification"
 )
 
 type retainedQualificationMemoryStream struct {
@@ -229,11 +230,11 @@ func TestTextPublisherBuildsRetainedQualificationSetAcrossFourReaders(t *testing
 		readerWork.Add(1)
 		go func() {
 			defer readerWork.Done()
-			streams, err := openQualificationReaderStreams(ctx, streamsPerReader, qualificationReaderSetupParallelism,
+			streams, err := qualification.OpenReaderStreams(ctx, streamsPerReader, qualification.ReaderSetupParallelism,
 				time.Time{}, 0, func(ctx context.Context, index int) (streamqualification.BoundStream, error) {
 					readerStream, publisherStream := streamOwner.pair()
-					id := qualificationStreamID(reader, index)
-					if _, err := readerStream.Write(qualificationHello(streamqualification.ClientToPublisher, fixtureID(246), id)); err != nil {
+					id := qualification.StreamID(reader, index)
+					if _, err := readerStream.Write(qualification.Hello(streamqualification.ClientToPublisher, fixtureID(246), id)); err != nil {
 						return streamqualification.BoundStream{}, err
 					}
 					select {
@@ -269,7 +270,7 @@ func TestTextPublisherBuildsRetainedQualificationSetAcrossFourReaders(t *testing
 			t.Fatal(err)
 		}
 		id := binary.BigEndian.Uint32(hello[9:13])
-		expected := qualificationHello(streamqualification.ClientToPublisher, fixtureID(246), id)
+		expected := qualification.Hello(streamqualification.ClientToPublisher, fixtureID(246), id)
 		if id == 0 || publisherByID[id] != nil || string(hello[:]) != string(expected) {
 			t.Fatalf("invalid retained Publisher stream %d", id)
 		}

@@ -8,13 +8,14 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/application/interfacev2/connection"
 	"github.com/dianabuilds/ardents-network/internal/application/textdocument"
+	"github.com/dianabuilds/ardents-network/internal/qualification"
 )
 
 // serveOperation consumes the already reserved worker operation. Startup may
 // reserve it before publication so readiness never races another worker use.
 func (worker *qualifiedTextWorker) serveOperation(ctx, bounded context.Context, finish func(), produce func(context.Context, chan<- connection.Stream) error) error {
 	if worker.job.qualification != nil {
-		return worker.serveQualification(ctx, bounded, finish, produce)
+		return qualification.ServePublisher(ctx, bounded, worker, finish, produce)
 	}
 	forwarding, cancel := context.WithCancel(bounded)
 	delivered := make(chan connection.Stream)

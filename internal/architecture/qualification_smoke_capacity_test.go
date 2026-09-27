@@ -13,10 +13,10 @@ func TestQualificationSmokeAllowsCompleteRetainedSetup(t *testing.T) {
 		t.Fatal(err)
 	}
 	requiredByFile := map[string][]string{
-		filepath.Join("internal", "endpoint", "stream_qualification_connections_linux.go"): {
-			"qualificationIntroductionInterval   = time.Second",
-			"openQualificationReaderStreams(bounded, 64, qualificationReaderSetupParallelism",
-			"verified, err := owner.resolveTextIntroduction(bounded, worker.job, destination)",
+		filepath.Join("internal", "qualification", "streams_linux.go"): {
+			"IntroductionInterval   = time.Second",
+			"OpenReaderStreams(bounded, 64, ReaderSetupParallelism",
+			"verified, err := session.ResolveIntroduction(bounded, destination)",
 		},
 		filepath.Join("internal", "qualification", "measurements_linux.go"): {
 			"IntroductionSpacing = 300 * time.Millisecond",
@@ -45,9 +45,9 @@ func TestQualificationSmokeAllowsCompleteRetainedSetup(t *testing.T) {
 		if strings.HasSuffix(path, "text_publisher_network_linux.go") && strings.Contains(string(body), "var setup sync.Mutex") {
 			t.Fatal("qualification Publisher must not serialize already delivered ten-second Introduction capsules")
 		}
-		if strings.HasSuffix(path, "stream_qualification_connections_linux.go") {
-			reserve := strings.Index(string(body), "ensureQualificationTokenReserve(setup, joinReceiver")
-			prepare := strings.Index(string(body), "prepareResolvedTextIntroduction(setup, worker.job")
+		if strings.HasSuffix(path, "streams_linux.go") {
+			reserve := strings.Index(string(body), "EnsureTokenReserve(setup, recipients.Join")
+			prepare := strings.Index(string(body), "PrepareIntroduction(setup, destination")
 			if reserve < 0 || prepare < 0 || reserve > prepare {
 				t.Fatalf("qualification Reader must reserve slow token work before its ten-second Introduction lifetime")
 			}

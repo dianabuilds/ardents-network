@@ -15,11 +15,10 @@ import (
 // identities. Its only delegated use is the already-admitted byte stream;
 // Publisher administration and all network selection stay with its context.
 type qualifiedTextWorker struct {
-	job                 *textJobIdentity
-	lifetime            *textWorkerLifetime
-	grant               *broker.Broker
-	lease               *broker.ActiveSession
-	qualificationReader int
+	job      *textJobIdentity
+	lifetime *textWorkerLifetime
+	grant    *broker.Broker
+	lease    *broker.ActiveSession
 }
 
 // bindTextWorker is called only at the end of launchTextWorker's artifact,

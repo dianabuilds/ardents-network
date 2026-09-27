@@ -129,3 +129,16 @@ func (run *textPublisherRun) Close() error {
 	<-run.done
 	return run.err
 }
+
+// Link, Done, and Err present the immutable joined outcome to the
+// qualification scenario owner, which observes the publication through the
+// qualification.Publication boundary instead of these private fields.
+
+// Link returns the registered publication Target Link.
+func (run *textPublisherRun) Link() targetlink.Link { return run.link }
+
+// Done is closed when the publication flight ends.
+func (run *textPublisherRun) Done() <-chan struct{} { return run.done }
+
+// Err returns the flight failure; valid after Done closes.
+func (run *textPublisherRun) Err() error { return run.err }

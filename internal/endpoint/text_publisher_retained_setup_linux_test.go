@@ -99,7 +99,7 @@ func TestTextPublisherBuildsRetainedQualificationSetAcrossFourReaders(t *testing
 	for index, owner := range readers {
 		go func(index int, owner *textContext, job *textJobIdentity) {
 			result := readerResult{index: index}
-			worker := &qualifiedTextWorker{job: job, qualificationReader: index}
+			worker := &qualifiedTextWorker{job: job}
 			until := time.Now().UTC().Add(15 * time.Minute).Unix()
 			verified, err := owner.resolveTextIntroduction(ctx, job, destination)
 			if err != nil {
@@ -108,8 +108,8 @@ func TestTextPublisherBuildsRetainedQualificationSetAcrossFourReaders(t *testing
 				return
 			}
 			var ownerWork sync.Mutex
-			result.streams, result.err = openQualificationReaderStreams(ctx, streamsPerReader, qualificationReaderSetupParallelism,
-				time.Now().Add(qualificationReaderOpeningDelay(index)), qualificationIntroductionInterval,
+			result.streams, result.err = qualification.OpenReaderStreams(ctx, streamsPerReader, qualification.ReaderSetupParallelism,
+				time.Now().Add(qualification.ReaderOpeningDelay(index)), qualification.IntroductionInterval,
 				func(setup context.Context, streamIndex int) (bound streamqualification.BoundStream, outcome error) {
 					ownerWork.Lock()
 					var release sync.Once
@@ -132,14 +132,14 @@ func TestTextPublisherBuildsRetainedQualificationSetAcrossFourReaders(t *testing
 					}
 					joinReceiver, _, _, err := prefix.DataJoinRecipient()
 					if err == nil {
-						err = owner.ensureQualificationTokenReserve(setup, joinReceiver, 2, qualificationReaderSetupParallelism)
+						err = owner.ensureQualificationTokenReserve(setup, joinReceiver, 2, qualification.ReaderSetupParallelism)
 					}
 					if err != nil {
 						return bound, fmt.Errorf("Reader %d JOIN reserve %d: %w", index, streamIndex, err)
 					}
 					submissionReceiver, err := prefix.SubmissionRecipient()
 					if err == nil {
-						err = owner.ensureQualificationTokenReserve(setup, submissionReceiver, 1, qualificationReaderSetupParallelism)
+						err = owner.ensureQualificationTokenReserve(setup, submissionReceiver, 1, qualification.ReaderSetupParallelism)
 					}
 					if err != nil {
 						return bound, fmt.Errorf("Reader %d submission reserve %d: %w", index, streamIndex, err)
@@ -154,14 +154,14 @@ func TestTextPublisherBuildsRetainedQualificationSetAcrossFourReaders(t *testing
 						return bound, fmt.Errorf("Reader %d JOIN %d: %w", index, streamIndex, err)
 					}
 					releaseSetup()
-					id := qualificationStreamID(index, streamIndex)
+					id := qualification.StreamID(index, streamIndex)
 					bound = streamqualification.BoundStream{ID: id, Stream: stream}
-					if _, err := stream.Write(qualificationHello(streamqualification.ClientToPublisher, fixtureID(246), id)); err != nil {
+					if _, err := stream.Write(qualification.Hello(streamqualification.ClientToPublisher, fixtureID(246), id)); err != nil {
 						return bound, fmt.Errorf("Reader %d hello %d: %w", index, streamIndex, err)
 					}
 					ownerWork.Lock()
 					defer ownerWork.Unlock()
-					if err := worker.replenishStreams(setup); err != nil {
+					if err := qualification.ReplenishStreams(setup, worker, index); err != nil {
 						return bound, fmt.Errorf("Reader %d setup refill %d: %w", index, streamIndex, err)
 					}
 					return bound, nil
@@ -207,7 +207,7 @@ func TestTextPublisherBuildsRetainedQualificationSetAcrossFourReaders(t *testing
 				}
 			}
 			publisherStreams = append(publisherStreams, stream)
-			if err := publisherWorker.replenishStreams(ctx); err != nil {
+			if err := qualification.ReplenishStreams(ctx, publisherWorker, 0); err != nil {
 				publisher.mu.Lock()
 				state := fmt.Sprintf("prefix=%t resolution=%t opening=%t issuance=%t permission=%t closed=%t",
 					publisher.currentTextSourceLocked() != nil, publisher.resolution != nil, publisher.source.opening != nil, publisher.issuance != nil,
@@ -266,7 +266,7 @@ func TestTextPublisherBuildsRetainedQualificationSetAcrossFourReaders(t *testing
 	if setupErr == nil && len(publisherStreamsByID) == wanted && len(readerStreamsByID) == wanted {
 		for readerIndex := 0; readerIndex < readerCount; readerIndex++ {
 			for streamIndex := 0; streamIndex < streamsPerReader; streamIndex++ {
-				id := qualificationStreamID(readerIndex, streamIndex)
+				id := qualification.StreamID(readerIndex, streamIndex)
 				_, publisherOK := publisherStreamsByID[id]
 				_, readerOK := readerStreamsByID[id]
 				if !publisherOK || !readerOK {

@@ -4,8 +4,8 @@ package endpoint
 
 import (
 	"testing"
-	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/qualification"
 	"github.com/dianabuilds/ardents-network/internal/route/carrier"
 )
 
@@ -37,7 +37,7 @@ func TestQualificationReopensRetiredSourcePrefixForIssuerReserve(t *testing.T) {
 		}
 		return count
 	}
-	if err := owner.ensureQualificationIssuerReserve(t.Context(), qualificationIssuerReserve); err != nil {
+	if err := owner.ensureQualificationIssuerReserve(t.Context(), qualification.IssuerReserveMinimum); err != nil {
 		t.Fatal(err)
 	}
 	for ready() > 4 {
@@ -56,7 +56,7 @@ func TestQualificationReopensRetiredSourcePrefixForIssuerReserve(t *testing.T) {
 		t.Fatal(err)
 	}
 	before := ready()
-	if err := owner.ensureQualificationIssuerReserve(t.Context(), qualificationIssuerReserve); err != nil {
+	if err := owner.ensureQualificationIssuerReserve(t.Context(), qualification.IssuerReserveMinimum); err != nil {
 		t.Fatalf("retired Source prefix failed the issuer reserve: %v", err)
 	}
 	owner.mu.Lock()
@@ -67,15 +67,6 @@ func TestQualificationReopensRetiredSourcePrefixForIssuerReserve(t *testing.T) {
 	}
 	if after := ready(); after <= before {
 		t.Fatalf("qualification issuer reserve = %d after %d", after, before)
-	}
-}
-
-func TestQualificationReaderOpeningDelayStaggersFourReaders(t *testing.T) {
-	want := []time.Duration{0, 250 * time.Millisecond, 500 * time.Millisecond, 750 * time.Millisecond}
-	for reader, expected := range want {
-		if got := qualificationReaderOpeningDelay(reader); got != expected {
-			t.Fatalf("Reader %d opening delay = %s, want %s", reader, got, expected)
-		}
 	}
 }
 
@@ -101,19 +92,19 @@ func TestQualificationRefillsPublisherIssuerReserveBetweenStreams(t *testing.T) 
 		}
 		return count
 	}
-	for attempts := 0; ready() >= qualificationIssuerReserve && attempts < 64; attempts++ {
+	for attempts := 0; ready() >= qualification.IssuerReserveMinimum && attempts < 64; attempts++ {
 		if err := owner.issueTextTokens(t.Context(), [][32]byte{selection.EntryNodeID}, 2); err != nil {
 			t.Fatal(err)
 		}
 	}
 	before := ready()
-	if before >= qualificationIssuerReserve {
+	if before >= qualification.IssuerReserveMinimum {
 		t.Fatalf("could not reach qualification issuer refill boundary: %d", before)
 	}
-	if err := owner.ensureQualificationIssuerReserve(t.Context(), qualificationIssuerReserve); err != nil {
+	if err := owner.ensureQualificationIssuerReserve(t.Context(), qualification.IssuerReserveMinimum); err != nil {
 		t.Fatal(err)
 	}
-	if after := ready(); after < qualificationIssuerReserve || after <= before {
+	if after := ready(); after < qualification.IssuerReserveMinimum || after <= before {
 		t.Fatalf("qualification issuer reserve = %d after %d", after, before)
 	}
 }

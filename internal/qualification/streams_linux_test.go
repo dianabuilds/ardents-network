@@ -1,9 +1,10 @@
 //go:build linux
 
-package endpoint
+package qualification
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
 
@@ -15,7 +16,7 @@ func TestOpenQualificationReaderStreamsOverlapsBoundedSetup(t *testing.T) {
 	releaseFirst := make(chan struct{})
 	done := make(chan error, 1)
 	go func() {
-		_, err := openQualificationReaderStreams(t.Context(), 2, 2, time.Time{}, 0,
+		_, err := OpenReaderStreams(t.Context(), 2, 2, time.Time{}, 0,
 			func(ctx context.Context, index int) (streamqualification.BoundStream, error) {
 				started <- index
 				if index == 0 {
@@ -42,5 +43,24 @@ func TestOpenQualificationReaderStreamsOverlapsBoundedSetup(t *testing.T) {
 	close(releaseFirst)
 	if err := <-done; err != nil {
 		t.Fatalf("overlapped setup failed: %v", err)
+	}
+}
+
+func TestQualificationPublisherIncompleteErrorReportsProgressAndRegistrationReason(t *testing.T) {
+	err := publisherIncompleteError(193)
+	message := err.Error()
+	for _, want := range []string{"193/256", "producer ended"} {
+		if !strings.Contains(message, want) {
+			t.Fatalf("error %q does not contain %q", message, want)
+		}
+	}
+}
+
+func TestQualificationReaderOpeningDelayStaggersFourReaders(t *testing.T) {
+	want := []time.Duration{0, 250 * time.Millisecond, 500 * time.Millisecond, 750 * time.Millisecond}
+	for reader, expected := range want {
+		if got := ReaderOpeningDelay(reader); got != expected {
+			t.Fatalf("Reader %d opening delay = %s, want %s", reader, got, expected)
+		}
 	}
 }

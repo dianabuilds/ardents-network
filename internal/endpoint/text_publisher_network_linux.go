@@ -199,7 +199,7 @@ func (worker *qualifiedTextWorker) produceQualificationNetwork(lifetime context.
 				if onlyTextIntroductionRefusal(result.err) {
 					continue
 				}
-				if !stopping || !qualificationCancellationOnly(result.err) {
+				if !stopping || !qualification.CancellationOnly(result.err) {
 					failure = errors.Join(failure, result.err)
 				}
 				if !stopping {
