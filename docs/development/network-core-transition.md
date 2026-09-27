@@ -1101,7 +1101,7 @@ Link-first closed workload остаётся честно ограниченны�
 | Generic endpoint open → AAI2 | #142/#156/#112/#122 | `endpoint_headless_client.go`, `connection_interface.go`, `interfacev1/connection` удалены; `endpoint_administration_client.go` сохраняет отдельную Administration |
 | Alpha links/corpus intake | #143/#154/#113 | Принимающие entrypoints сняты, `alpha_resolution.go` и command corpus adapter удалены; нужные history readers не объявлены новым intake |
 | Старые Node duties и Source selector | #144/#100/#114–118 | Старые Initiator/Responder/Introduction/Rendezvous engines удалены; closed duties и их authority checks сохранены |
-| Старый issuer и Contributor starts | #155/#120/#158/#119 | Старый issuer engine удалён; Contributor не запускает поколения из recovery. Owned retirement и persisted evidence остаются |
+| Старый issuer и Contributor starts | #155/#120/#158/#119 | Старый issuer engine удалён; dedicated-host Contributor удалён целиком по ADR-0114 (живых установок не осталось, owned-shutdown обязательство ADR-0089 закрыто): `internal/contributor`, runbook и подкоманда отсутствуют, нераспознанный `contributor` получает usage-отказ до эффектов |
 | Uncalled User Route и старый Node leg | #121/#159, дополнительная #197 | Exclusive Open/Attach, direct dial, receiving relay/Entry adapters удалены; shared Carrier/listeners/credential mechanisms сохраняются |
 | Name operator network commands | #145/#99 | `name_resolution.go`/`name_control.go` удалены; `name.go` отказывает для resolve/control. Local encode и Namespace/custody остаются; uncomposed resolution module удалён по ADR-0100 |
 

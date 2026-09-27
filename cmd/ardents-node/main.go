@@ -19,9 +19,6 @@ func main() {
 }
 
 func run(ctx context.Context, arguments []string, output io.Writer) error {
-	if len(arguments) > 0 && arguments[0] == "contributor" {
-		return runContributor(ctx, arguments[1:], output)
-	}
 	if len(arguments) > 0 && arguments[0] == "issuer" {
 		return runIssuer(ctx, arguments[1:], output)
 	}
@@ -29,13 +26,13 @@ func run(ctx context.Context, arguments []string, output io.Writer) error {
 		return runHosting(arguments[1:])
 	}
 	if len(arguments) != 3 || arguments[1] != "--config" {
-		return errors.New("usage: ardents-node (source|node) --config PATH | issuer (initialize|serve) --config PATH | hosting initialize --config PATH | contributor ACTION")
+		return errors.New("usage: ardents-node (source|node) --config PATH | issuer (initialize|serve) --config PATH | hosting initialize --config PATH")
 	}
 	if arguments[0] == "node" {
 		return runNode(ctx, arguments[2], output)
 	}
 	if arguments[0] != "source" {
-		return errors.New("usage: ardents-node (source|node) --config PATH | issuer (initialize|serve) --config PATH | hosting initialize --config PATH | contributor ACTION")
+		return errors.New("usage: ardents-node (source|node) --config PATH | issuer (initialize|serve) --config PATH | hosting initialize --config PATH")
 	}
 	events := newEventOutput(output)
 	store, err := openSource(arguments[2], events.append)

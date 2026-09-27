@@ -5,4 +5,12 @@
 // current bounded private encoding is not a public wire format. Its one
 // ADR-0053 initialization operation creates only the separate encrypted
 // functional-alpha Epoch authority and verifier-accepted empty genesis.
+//
+// The implementation follows the accepted decision from intake to readers:
+// epoch_* verifies Epoch and Candidate View bytes; refresh, selection, and
+// offline_accept choose a current or pending decision; storage, durable_*,
+// control_*, and distribution_journal preserve it. The snapshot_access,
+// node_duty, resolution_view, and closed_profile_accept files project copied
+// current facts.
+// Local Source role retention and collision checks stay with local_roles.
 package state
