@@ -17,32 +17,32 @@ func (err *RecoveryRequiredError) Error() string {
 	return "network state recovery required: " + err.Reason
 }
 
-func loadGenerationChain(config config, generations map[string]durable.Generation, name string, seen map[string]bool) (candidateDecision, map[string]bool, error) {
+func loadGenerationChain(config config, generations map[string]durable.Generation, name string, seen map[string]bool) (verifiedEpochDecision, map[string]bool, error) {
 	value, exists := generations[name]
 	if !exists || seen[name] || len(seen) >= maximumEpochChain {
-		return candidateDecision{}, seen, errors.New("generation chain identity, cycle, or length is invalid")
+		return verifiedEpochDecision{}, seen, errors.New("generation chain identity, cycle, or length is invalid")
 	}
 	seen[name] = true
 	parsed, err := parseEpoch(value.Epoch)
 	if err != nil {
-		return candidateDecision{}, seen, fmt.Errorf("parse generation chain Epoch: %w", err)
+		return verifiedEpochDecision{}, seen, fmt.Errorf("parse generation chain Epoch: %w", err)
 	}
-	var previous *Snapshot
+	var previous *epochVerificationSnapshot
 	if parsed.number > 1 {
 		previousName := fmt.Sprintf("%x", parsed.previous)
 		prior, updated, priorErr := loadGenerationChain(config, generations, previousName, seen)
 		seen = updated
 		if priorErr != nil {
-			return candidateDecision{}, seen, priorErr
+			return verifiedEpochDecision{}, seen, priorErr
 		}
-		previous = &prior.snapshot
+		previous = &prior.Snapshot
 	}
 	decision, err := loadGeneration(config, value, previous)
 	if err != nil {
-		return candidateDecision{}, seen, err
+		return verifiedEpochDecision{}, seen, err
 	}
-	if decision.snapshot.Generation != name {
-		return candidateDecision{}, seen, errors.New("generation identity does not match its verified digest")
+	if decision.Snapshot.Generation != name {
+		return verifiedEpochDecision{}, seen, errors.New("generation identity does not match its verified digest")
 	}
 	return decision, seen, nil
 }

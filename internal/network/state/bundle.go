@@ -14,16 +14,16 @@ type sourceBundle struct {
 	materials [][]byte
 }
 
-func encodeSourceBundle(decision candidateDecision, materialIndex uint32) ([]byte, error) {
-	material, err := decision.verified.Materialization(materialIndex)
+func encodeSourceBundle(decision verifiedEpochDecision, materialIndex uint32) ([]byte, error) {
+	material, err := decision.Materialization(materialIndex)
 	if err != nil {
 		return nil, err
 	}
 	buffer := new(bytes.Buffer)
 	buffer.WriteString("ARDH3B1\x00")
-	writeLengthBytes(buffer, decision.epochBytes)
-	writeBundleUint16(buffer, uint16(len(decision.inputs)))
-	for _, input := range decision.inputs {
+	writeLengthBytes(buffer, decision.EpochBytes)
+	writeBundleUint16(buffer, uint16(len(decision.Inputs)))
+	for _, input := range decision.Inputs {
 		writeLengthBytes(buffer, input)
 	}
 	writeBundleUint16(buffer, 1)

@@ -20,7 +20,7 @@ func (s *networkState) recoverPendingState() error {
 		return s.commitDistribution(state)
 	}
 	name := fmt.Sprintf("%x", state.pendingDigest)
-	decision, err := loadNamedGeneration(s.config, s.storage, name, s.current)
+	decision, err := loadNamedGeneration(s.config, s.storage, name, epochPredecessor(s.current))
 	if err != nil {
 		return fmt.Errorf("load pending Epoch: %w", err)
 	}

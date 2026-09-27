@@ -17,8 +17,8 @@ type networkState struct {
 	mu              sync.RWMutex
 	config          config
 	current         *Snapshot
-	currentDecision *candidateDecision
-	pendingDecision *candidateDecision
+	currentDecision *verifiedEpochDecision
+	pendingDecision *verifiedEpochDecision
 	distribution    distributionState
 	storage         *durable.Root
 	serverDone      chan struct{}

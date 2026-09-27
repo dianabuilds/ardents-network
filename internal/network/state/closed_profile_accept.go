@@ -62,7 +62,7 @@ func (s *networkState) AcceptClosedProfile(raw []byte) (ClosedProfileView, error
 	}
 	now := s.config.clock().UTC()
 	profile, err := parseClosedProfile(raw, generation, s.current.NetworkID, s.current.Digest, s.current.Epoch, s.config.closedProfileAuthority, now)
-	if err != nil || profile.notBefore.Before(s.current.EpochValidFrom) || profile.notAfter.After(s.current.ValidUntil) || !matchesClosedProfileCandidates(profile, s.currentDecision.verified.Candidates) {
+	if err != nil || profile.notBefore.Before(s.current.EpochValidFrom) || profile.notAfter.After(s.current.ValidUntil) || !matchesClosedProfileCandidates(profile, s.currentDecision.Candidates) {
 		return ClosedProfileView{}, errors.New("closed profile does not match accepted State")
 	}
 	stored, storedRaw, err := s.storage.LoadClosedProfile(generation)
@@ -152,7 +152,7 @@ func (s *networkState) currentClosedProfileLocked() (closedProfile, error) {
 	}
 	profile, err := parseClosedProfile(raw, generation, s.current.NetworkID, s.current.Digest, s.current.Epoch, s.config.closedProfileAuthority, now)
 	if err != nil || profile.digest != stored.Accepted || profile.notBefore.Before(s.current.EpochValidFrom) || profile.notAfter.After(s.current.ValidUntil) ||
-		!matchesClosedProfileCandidates(profile, s.currentDecision.verified.Candidates) {
+		!matchesClosedProfileCandidates(profile, s.currentDecision.Candidates) {
 		return closedProfile{}, errors.New("closed profile is unavailable")
 	}
 	return profile, nil

@@ -7,7 +7,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/network/state/durable"
 )
 
-func loadCurrent(config config, storage *durable.Root) (*Snapshot, *candidateDecision, error) {
+func loadCurrent(config config, storage *durable.Root) (*Snapshot, *verifiedEpochDecision, error) {
 	current, values, err := storage.LoadState()
 	if err != nil {
 		return nil, nil, err
@@ -26,7 +26,7 @@ func loadCurrent(config config, storage *durable.Root) (*Snapshot, *candidateDec
 	if err != nil {
 		return nil, nil, err
 	}
-	if decision.snapshot.Generation != current {
+	if decision.Snapshot.Generation != current {
 		return nil, nil, errors.New("current pointer does not match the verified generation")
 	}
 	// A retained old-schema current root refuses with the typed recovery
@@ -34,40 +34,40 @@ func loadCurrent(config config, storage *durable.Root) (*Snapshot, *candidateDec
 	if err := classifyRetainedClosedSchema(config, decision.epoch, "current"); err != nil {
 		return nil, nil, err
 	}
-	snapshot := decision.snapshot
+	snapshot := snapshotFromEpoch(decision.Snapshot)
 	return &snapshot, &decision, nil
 }
 
-func loadGeneration(config config, generation durable.Generation, previous *Snapshot) (candidateDecision, error) {
+func loadGeneration(config config, generation durable.Generation, previous *epochVerificationSnapshot) (verifiedEpochDecision, error) {
 	parsed, err := parseEpoch(generation.Epoch)
 	if err != nil {
-		return candidateDecision{}, fmt.Errorf("parse persisted Epoch: %w", err)
+		return verifiedEpochDecision{}, fmt.Errorf("parse persisted Epoch: %w", err)
 	}
 	if int(parsed.cutoff) != len(generation.Inputs) {
-		return candidateDecision{}, errors.New("persisted input count does not match its Epoch")
+		return verifiedEpochDecision{}, errors.New("persisted input count does not match its Epoch")
 	}
 	verification := config
 	verification.now = parsed.validFrom
 	return verifyDecision(verification, previous, generation.Epoch, generation.Inputs, nil, false)
 }
 
-func loadNamedGeneration(config config, storage *durable.Root, name string, previous *Snapshot) (candidateDecision, error) {
+func loadNamedGeneration(config config, storage *durable.Root, name string, previous *epochVerificationSnapshot) (verifiedEpochDecision, error) {
 	_, values, err := storage.LoadState()
 	if err != nil {
-		return candidateDecision{}, err
+		return verifiedEpochDecision{}, err
 	}
 	for _, value := range values {
 		if value.Name == name {
 			return loadGeneration(config, value, previous)
 		}
 	}
-	return candidateDecision{}, errors.New("persisted generation is missing")
+	return verifiedEpochDecision{}, errors.New("persisted generation is missing")
 }
 
-func loadStoredChain(config config, storage *durable.Root, name string) (candidateDecision, error) {
+func loadStoredChain(config config, storage *durable.Root, name string) (verifiedEpochDecision, error) {
 	_, values, err := storage.LoadState()
 	if err != nil {
-		return candidateDecision{}, err
+		return verifiedEpochDecision{}, err
 	}
 	generations := make(map[string]durable.Generation, len(values))
 	for _, value := range values {
@@ -77,14 +77,14 @@ func loadStoredChain(config config, storage *durable.Root, name string) (candida
 	return decision, err
 }
 
-func persistDecision(storage *durable.Root, decision candidateDecision, activate bool) error {
+func persistDecision(storage *durable.Root, decision verifiedEpochDecision, activate bool) error {
 	return storage.CommitState(durable.Generation{
-		Name: decision.snapshot.Generation, Epoch: decision.epochBytes,
-		Inputs: decision.inputs, Activate: activate,
+		Name: decision.Snapshot.Generation, Epoch: decision.EpochBytes,
+		Inputs: decision.Inputs, Activate: activate,
 	})
 }
 
-func stageGeneration(storage *durable.Root, decision candidateDecision) error {
+func stageGeneration(storage *durable.Root, decision verifiedEpochDecision) error {
 	return persistDecision(storage, decision, false)
 }
 

@@ -14,7 +14,7 @@ func TestCompleteSourceWaveRechecksTrustedTimeBeforeActivatingPending(t *testing
 	}
 	defer storage.Close()
 	beforeExpiry := time.Unix(1_800_000_001, 0).UTC()
-	pending := candidateDecision{epoch: epochEnvelope{number: 2, digest: [32]byte{2}, validFrom: beforeExpiry.Add(-time.Second), validUntil: beforeExpiry.Add(time.Second)}}
+	pending := verifiedEpochDecision{epoch: epochEnvelope{number: 2, digest: [32]byte{2}, validFrom: beforeExpiry.Add(-time.Second), validUntil: beforeExpiry.Add(time.Second)}}
 	current := &Snapshot{Epoch: 1, Digest: [32]byte{1}}
 	opened := &networkState{config: config{root: root, localRoles: root + "-roles",
 		clock: func() time.Time { return beforeExpiry }, observe: func() time.Time { return beforeExpiry },
@@ -47,8 +47,8 @@ func TestCompleteSourceWaveRecordsConflictBeforeCompletionClockFailure(t *testin
 	if err := opened.loadDistributionState(); err != nil {
 		t.Fatal(err)
 	}
-	first := candidateDecision{epoch: epochEnvelope{number: 2, digest: [32]byte{2}}}
-	second := candidateDecision{epoch: epochEnvelope{number: 2, digest: [32]byte{3}}}
+	first := verifiedEpochDecision{epoch: epochEnvelope{number: 2, digest: [32]byte{2}}}
+	second := verifiedEpochDecision{epoch: epochEnvelope{number: 2, digest: [32]byte{3}}}
 	if _, err := opened.completeSourceWave(started, opened.current, []sourceResult{
 		{slot: 0, decision: first, observations: [4]byte{sourceOutcomeValid}},
 		{slot: 1, decision: second, observations: [4]byte{0, sourceOutcomeValid}},
@@ -69,8 +69,8 @@ func TestCompleteSourceWaveRecordsPendingConflictBeforeCompletionClockFailure(t 
 	}
 	defer storage.Close()
 	started := time.Unix(1_800_000_000, 0).UTC()
-	pending := candidateDecision{epoch: epochEnvelope{number: 2, digest: [32]byte{2}}}
-	competing := candidateDecision{epoch: epochEnvelope{number: 2, digest: [32]byte{3}}}
+	pending := verifiedEpochDecision{epoch: epochEnvelope{number: 2, digest: [32]byte{2}}}
+	competing := verifiedEpochDecision{epoch: epochEnvelope{number: 2, digest: [32]byte{3}}}
 	opened := &networkState{config: config{root: root, clock: func() time.Time { return started }, observe: func() time.Time { return time.Time{} }},
 		storage: storage, current: &Snapshot{Epoch: 1, Digest: [32]byte{1}}, pendingDecision: &pending}
 	if err := opened.loadDistributionState(); err != nil {

@@ -12,7 +12,7 @@ var (
 	errPendingEpochConflict    = errors.New("candidate Epoch conflicts with the durable pending Epoch")
 )
 
-func (s *networkState) allowCandidateTransition(candidate candidateDecision) error {
+func (s *networkState) allowCandidateTransition(candidate verifiedEpochDecision) error {
 	if s.distribution.conflicting {
 		return errPersistentStateConflict
 	}
@@ -184,7 +184,7 @@ func (s *networkState) commitSourceFailure(now time.Time, outcomes [4]byte, epoc
 	return s.commitDistribution(state)
 }
 
-func sourceConflict(valid []candidateDecision) bool {
+func sourceConflict(valid []verifiedEpochDecision) bool {
 	for first := range valid {
 		for second := first + 1; second < len(valid); second++ {
 			if valid[first].epoch.number == valid[second].epoch.number && valid[first].epoch.digest != valid[second].epoch.digest {

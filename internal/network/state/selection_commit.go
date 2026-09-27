@@ -6,7 +6,7 @@ import (
 )
 
 type sourceWaveSummary struct {
-	valid           []candidateDecision
+	valid           []verifiedEpochDecision
 	outcomes        [4]byte
 	observedEpochs  [4]uint64
 	observedDigests [4][32]byte
@@ -14,7 +14,7 @@ type sourceWaveSummary struct {
 }
 
 func summarizeSourceWave(results []sourceResult) sourceWaveSummary {
-	summary := sourceWaveSummary{valid: make([]candidateDecision, 0, 2)}
+	summary := sourceWaveSummary{valid: make([]verifiedEpochDecision, 0, 2)}
 	for _, result := range results {
 		for index, outcome := range result.observations {
 			if outcome != 0 {
@@ -33,7 +33,7 @@ func summarizeSourceWave(results []sourceResult) sourceWaveSummary {
 	return summary
 }
 
-func newestSourceDecision(valid []candidateDecision) candidateDecision {
+func newestSourceDecision(valid []verifiedEpochDecision) verifiedEpochDecision {
 	selected := valid[0]
 	for _, candidate := range valid[1:] {
 		if candidate.epoch.number > selected.epoch.number {
@@ -43,7 +43,7 @@ func newestSourceDecision(valid []candidateDecision) candidateDecision {
 	return selected
 }
 
-func (s *networkState) commitPendingSourceWave(now time.Time, selected candidateDecision, summary sourceWaveSummary) (Snapshot, error) {
+func (s *networkState) commitPendingSourceWave(now time.Time, selected verifiedEpochDecision, summary sourceWaveSummary) (Snapshot, error) {
 	if err := s.retainSourceExposures(selected.epoch.validUntil); err != nil {
 		return Snapshot{}, err
 	}
@@ -68,7 +68,7 @@ func (s *networkState) commitPendingSourceWave(now time.Time, selected candidate
 	return s.snapshotWithDistribution(now), nil
 }
 
-func (s *networkState) commitActiveSourceWave(now time.Time, selected candidateDecision, summary sourceWaveSummary) (Snapshot, error) {
+func (s *networkState) commitActiveSourceWave(now time.Time, selected verifiedEpochDecision, summary sourceWaveSummary) (Snapshot, error) {
 	if err := s.retainSourceExposures(selected.epoch.validUntil); err != nil {
 		return Snapshot{}, err
 	}

@@ -111,18 +111,17 @@ func (snapshot Snapshot) BridgeCandidateByKey(keyID [32]byte) (BridgeCandidate, 
 	return BridgeCandidate{}, false
 }
 
-func routeCandidates(decision *candidateDecision) ([64]routeCandidate, uint8) {
+func routeCandidates(decision *verifiedEpochDecision) ([64]routeCandidate, uint8) {
 	var result [64]routeCandidate
 	if decision == nil {
 		return result, 0
 	}
-	verified := decision.verified
-	for index, candidate := range verified.Candidates {
+	for index, candidate := range decision.Candidates {
 		result[index] = routeCandidate{NodeID: candidate.NodeID, PublicKey: candidate.PublicKey, KeyID: candidate.KeyID,
 			FamilyID: candidate.FamilyID, RecordDigest: candidate.RecordDigest, DomainProofDigest: sha256.Sum256(candidate.DomainProof),
 			Family: candidate.Family, Endpoint: candidate.Endpoint, CarrierProfile: candidate.CarrierProfile, Capacity: candidate.Capacity,
 			Domain: candidate.Domain, ValidFrom: candidate.ValidFrom, ValidUntil: candidate.ValidUntil,
 			AssignmentNotAfter: candidate.AssignmentNotAfter}
 	}
-	return result, uint8(len(verified.Candidates))
+	return result, uint8(len(decision.Candidates))
 }

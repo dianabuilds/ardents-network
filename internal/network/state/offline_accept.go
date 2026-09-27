@@ -24,7 +24,7 @@ func (s *networkState) Accept(ctx context.Context, epoch []byte, inputs [][]byte
 	// One acceptance must verify and publish against the same clock sample.
 	verification := s.config
 	verification.now = verification.clock().UTC()
-	decision, err := verifyDecision(verification, s.current, epoch, inputs, encodedMaterials, true)
+	decision, err := verifyDecision(verification, epochPredecessor(s.current), epoch, inputs, encodedMaterials, true)
 	if err != nil {
 		return Snapshot{}, err
 	}

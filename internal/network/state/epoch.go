@@ -4,35 +4,20 @@ import (
 	"fmt"
 )
 
-type candidateDecision struct {
-	epoch      epochEnvelope
-	epochBytes []byte
-	inputs     [][]byte
-	snapshot   Snapshot
-	verified   verifiedEpochDecision
-}
-
-func verifyDecision(config config, current *Snapshot, epochBytes []byte, inputs, materials [][]byte, requireMaterials bool) (candidateDecision, error) {
+func verifyDecision(config config, previous *epochVerificationSnapshot, epochBytes []byte, inputs, materials [][]byte, requireMaterials bool) (verifiedEpochDecision, error) {
 	policy := epochPolicy{
 		NetworkID: config.networkID, Authorities: config.authorities,
 		Threshold: config.threshold, Profile: config.acceptedProfile, Now: config.now,
-		MaterializationIndex: config.sourceInfo.MaterialIndex,
+		MaterializationIndex: config.sourceInfo.MaterialIndex, Previous: previous,
 	}
-	if current != nil {
-		policy.Previous = &epochVerificationSnapshot{Epoch: current.Epoch, Digest: current.Digest}
+	return verifyEpochDecision(policy, epochBytes, inputs, materials, requireMaterials)
+}
+
+func epochPredecessor(current *Snapshot) *epochVerificationSnapshot {
+	if current == nil {
+		return nil
 	}
-	verified, err := verifyEpochDecision(policy, epochBytes, inputs, materials, requireMaterials)
-	if err != nil {
-		return candidateDecision{}, err
-	}
-	snapshot := snapshotFromEpoch(verified.Snapshot)
-	return candidateDecision{
-		epoch:      verified.epoch,
-		epochBytes: verified.EpochBytes,
-		inputs:     verified.Inputs,
-		snapshot:   snapshot,
-		verified:   verified,
-	}, nil
+	return &epochVerificationSnapshot{Epoch: current.Epoch, Digest: current.Digest}
 }
 
 func snapshotFromEpoch(value epochVerificationSnapshot) Snapshot {
@@ -58,8 +43,8 @@ func snapshotFromEpoch(value epochVerificationSnapshot) Snapshot {
 	}
 }
 
-func verifyDecisionMaterials(decision candidateDecision, materials [][]byte) error {
-	if err := decision.verified.VerifyMaterials(materials); err != nil {
+func verifyDecisionMaterials(decision verifiedEpochDecision, materials [][]byte) error {
+	if err := decision.VerifyMaterials(materials); err != nil {
 		return fmt.Errorf("verify Candidate Materialization: %w", err)
 	}
 	return nil

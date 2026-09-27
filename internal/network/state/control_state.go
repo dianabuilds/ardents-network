@@ -76,7 +76,7 @@ func (s *networkState) recoverDistributionActive(state distributionState) error 
 	if err := persistDecision(s.storage, decision, true); err != nil {
 		return fmt.Errorf("repair active generation pointer: %w", err)
 	}
-	snapshot := decision.snapshot
+	snapshot := snapshotFromEpoch(decision.Snapshot)
 	s.current, s.currentDecision = &snapshot, &decision
 	return nil
 }
@@ -91,7 +91,7 @@ func (s *networkState) commitDistribution(state distributionState) error {
 	return nil
 }
 
-func (s *networkState) commitActiveDecision(decision candidateDecision, state distributionState) error {
+func (s *networkState) commitActiveDecision(decision verifiedEpochDecision, state distributionState) error {
 	if err := persistDecision(s.storage, decision, false); err != nil {
 		return err
 	}
@@ -102,7 +102,7 @@ func (s *networkState) commitActiveDecision(decision candidateDecision, state di
 	if err := s.commitDistribution(state); err != nil {
 		return err
 	}
-	snapshot := decision.snapshot
+	snapshot := snapshotFromEpoch(decision.Snapshot)
 	s.current, s.currentDecision = &snapshot, &decision
 	if s.pendingDecision != nil && s.pendingDecision.epoch.digest == decision.epoch.digest {
 		s.pendingDecision = nil

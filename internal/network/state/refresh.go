@@ -11,7 +11,7 @@ import (
 type sourceResult struct {
 	index        int
 	slot         int
-	decision     candidateDecision
+	decision     verifiedEpochDecision
 	observations [4]byte
 	err          error
 }
@@ -94,7 +94,7 @@ func (s *networkState) Refresh(ctx context.Context) (Snapshot, error) {
 	return s.completeSourceWave(now, current, observed)
 }
 
-func (s *networkState) fetchAndVerify(ctx context.Context, index int, current *Snapshot, currentDecision *candidateDecision) sourceResult {
+func (s *networkState) fetchAndVerify(ctx context.Context, index int, current *Snapshot, currentDecision *verifiedEpochDecision) sourceResult {
 	observations := [4]byte{}
 	resultIndex, outcomeIndex := index, index
 	response, err := s.fetchSource(ctx, index, source.Message{
