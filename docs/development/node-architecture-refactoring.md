@@ -137,7 +137,7 @@ its pure window calculation runs on both platforms. Linux-only tests use the
 network work. Process lifecycle, admission, identity, pressure and event tests
 remain beside their production owners; component behavior tests live in the
 role packages.
-The root has 18 Linux-tagged test files and its child packages have 17,
+The root has 18 Linux-tagged test files and its child packages have 14,
 including fixtures. Its journal writer test uses Linux Unix-socket behavior;
 live TCP/TLS and QUIC process scenarios depend on the Linux-selected role-root
 and Hosting fixtures. Forwarding's Linux tests use those network and ledger
@@ -148,6 +148,13 @@ recipient-window calculation live in untagged tests. The source filename
 matches the Linux build tag. Windows `make check` does not exercise those
 Linux process scenarios; the read-only Linux Docker Node run does. Neither
 run qualifies the installed systemd/cgroup startup profile.
+The isolated four-reader Endpoint scenario passed with the existing two-second
+Introduction drain bound under Docker quotas of 2, 1 and 0.25 CPUs. CPU quota
+alone did not reproduce the earlier host-load Node 6 cleanup deadline. The
+remaining diagnostic need is a goroutine dump and joined/active observation at
+the deadline if that exact failure recurs; a later Source CLOSE/CREDIT EOF
+under host load is a separate failure shape. No timeout or protocol contract
+was changed on the basis of these runs.
 Process pressure remains in the root; per-duty local limits and JOIN host
 monitoring remain with their duty.
 
