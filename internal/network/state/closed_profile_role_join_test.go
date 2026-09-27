@@ -53,11 +53,11 @@ func TestClosedProfileRoleDomainMustMatchEpochAssignment(t *testing.T) {
 
 	newStore := func() *networkState {
 		t.Helper()
-		root, err := openDurableRoot(t.TempDir())
+		root, err := openTestDurableRoot(t.TempDir())
 		if err != nil {
 			t.Fatal(err)
 		}
-		t.Cleanup(func() { _ = root.close() })
+		t.Cleanup(func() { _ = root.Close() })
 		return &networkState{config: config{closedProfileAuthority: authority.Public().(ed25519.PublicKey),
 			clock: func() time.Time { return now }, observe: func() time.Time { return now }}, storage: root,
 			current: &Snapshot{Generation: fmt.Sprintf("%x", generation), NetworkID: network, Epoch: 9, Digest: epochDigest,

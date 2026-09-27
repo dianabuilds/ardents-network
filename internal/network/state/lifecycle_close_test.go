@@ -20,7 +20,7 @@ func TestCloseRetainsTerminalAndSourceReleaseFailures(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			root := t.TempDir()
-			storage, err := openDurableRoot(root)
+			storage, err := openTestDurableRoot(root)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -43,9 +43,9 @@ func TestCloseRetainsTerminalAndSourceReleaseFailures(t *testing.T) {
 			if !errors.Is(got, primary) {
 				t.Fatalf("Close() = %v, missing terminal failure %v", got, primary)
 			}
-			if reopened, err := openDurableRoot(root); err != nil {
+			if reopened, err := openTestDurableRoot(root); err != nil {
 				t.Fatalf("State root remained locked after Close: %v", err)
-			} else if err := reopened.close(); err != nil {
+			} else if err := reopened.Close(); err != nil {
 				t.Fatal(err)
 			}
 		})
@@ -53,7 +53,7 @@ func TestCloseRetainsTerminalAndSourceReleaseFailures(t *testing.T) {
 }
 
 func TestCloseTreatsSourceCancellationAsExpected(t *testing.T) {
-	storage, err := openDurableRoot(t.TempDir())
+	storage, err := openTestDurableRoot(t.TempDir())
 	if err != nil {
 		t.Fatal(err)
 	}

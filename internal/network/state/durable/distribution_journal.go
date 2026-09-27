@@ -1,4 +1,4 @@
-package state
+package durable
 
 import (
 	"bytes"
@@ -11,7 +11,7 @@ import (
 
 const maximumControlGenerations = 4096
 
-func (root *durableRoot) prepareControl() error {
+func (root *Root) prepareControl() error {
 	directory := filepath.Join(root.path, "distribution")
 	generations := filepath.Join(directory, "generations")
 	if err := os.MkdirAll(generations, 0o700); err != nil {
@@ -29,7 +29,7 @@ func (root *durableRoot) prepareControl() error {
 	return syncDirectory(root.path)
 }
 
-func (root *durableRoot) loadControl() (string, []byte, error) {
+func (root *Root) LoadControl() (string, []byte, error) {
 	root.mu.Lock()
 	defer root.mu.Unlock()
 	if err := root.available(); err != nil {
@@ -59,7 +59,7 @@ func (root *durableRoot) loadControl() (string, []byte, error) {
 	return name, raw, nil
 }
 
-func (root *durableRoot) commitControl(name string, raw []byte) error {
+func (root *Root) CommitControl(name string, raw []byte) error {
 	root.mu.Lock()
 	defer root.mu.Unlock()
 	if err := root.available(); err != nil {

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/network/state/durable"
 	"github.com/dianabuilds/ardents-network/internal/resource"
 )
 
@@ -22,14 +23,14 @@ func open(input Config, automaticTicks <-chan time.Time, automaticResults chan<-
 	if err != nil {
 		return nil, err
 	}
-	storage, err := openDurableRoot(resolved.root)
+	storage, err := durable.Open(resolved.root, storageLimits())
 	if err != nil {
 		return nil, err
 	}
 	opened := false
 	defer func() {
 		if !opened {
-			_ = storage.close()
+			_ = storage.Close()
 		}
 	}()
 	workContext, workCancel := context.WithCancel(context.Background())

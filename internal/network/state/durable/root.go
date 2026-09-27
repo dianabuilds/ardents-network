@@ -1,4 +1,4 @@
-package state
+package durable
 
 import (
 	"bytes"
@@ -21,15 +21,19 @@ const (
 
 var generationName = regexp.MustCompile(`^[0-9a-f]{64}$`)
 
-// durableRoot owns the only writer lease and physical State-root transaction.
-type durableRoot struct {
+// Root owns the only writer lease and physical State-root transaction.
+type Root struct {
+	limits Limits
 	mu     sync.Mutex
 	path   string
 	lease  rootLease
 	closed bool
 }
 
-func openDurableRoot(path string) (*durableRoot, error) {
+func Open(path string, limits Limits) (*Root, error) {
+	if limits.EpochBytes <= 0 || limits.RecordBytes <= 0 || limits.ClosedProfileBytes <= 0 {
+		return nil, errors.New("state storage bounds are invalid")
+	}
 	absolute, err := filepath.Abs(path)
 	if err != nil {
 		return nil, err
@@ -53,7 +57,7 @@ func openDurableRoot(path string) (*durableRoot, error) {
 	if err := verifyRootWritable(absolute); err != nil {
 		return nil, err
 	}
-	root := &durableRoot{path: absolute, lease: lease}
+	root := &Root{path: absolute, lease: lease, limits: limits}
 	if err := root.prepareControl(); err != nil {
 		return nil, err
 	}
@@ -61,7 +65,7 @@ func openDurableRoot(path string) (*durableRoot, error) {
 	return root, nil
 }
 
-func (root *durableRoot) close() error {
+func (root *Root) Close() error {
 	root.mu.Lock()
 	defer root.mu.Unlock()
 	if root.closed {
@@ -71,7 +75,7 @@ func (root *durableRoot) close() error {
 	return root.lease.release()
 }
 
-func (root *durableRoot) available() error {
+func (root *Root) available() error {
 	if root.closed {
 		return errors.New("network state store is closed")
 	}

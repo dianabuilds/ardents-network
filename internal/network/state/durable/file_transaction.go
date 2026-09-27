@@ -1,4 +1,4 @@
-package state
+package durable
 
 import (
 	"fmt"
