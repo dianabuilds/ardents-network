@@ -2,40 +2,31 @@ package state
 
 import (
 	"bytes"
+	"context"
 	"crypto/ed25519"
 	"crypto/sha256"
 	"fmt"
 	"testing"
 	"time"
+
+	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 )
 
-// TestClosedProfileRoleDomainMustMatchEpochAssignment proves the F-45 join: a
-// correctly signed closed profile whose numeric Role Domain contradicts the
-// record family's authenticated Epoch assignment is refused before durable
-// acceptance and never exposes a route, while the identical topology that
-// agrees with the assignment is accepted. The Epoch here carries the four
-// contract role-name domains, so assignedDomain resolves each record to a role
-// the profile must mirror; a structurally valid duty that names the wrong role
-// is the exact gap the join closes.
+// A signed profile must join the domain assigned by a genuinely accepted
+// Epoch. Refusal leaves no accepted profile; matching input survives reopen.
 func TestClosedProfileRoleDomainMustMatchEpochAssignment(t *testing.T) {
-	now := time.Unix(1_800_000_000, 0).UTC()
+	now := time.Now().UTC()
+	hour := now.Truncate(time.Hour)
 	authority := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{9}, ed25519.SeedSize))
-	generation := sha256.Sum256([]byte("closed profile generation"))
-	network := sha256.Sum256([]byte("closed role join network"))
-	epochDigest := sha256.Sum256([]byte("closed role join epoch"))
+	networkID := sha256.Sum256([]byte("closed role join network"))
 	seed := sha256.Sum256([]byte("closed role join seed"))
 	domains := []string{"initiator", "rendezvous"}
-	epoch := epochEnvelope{networkID: network, number: 1, assignmentSeed: seed,
-		domains: []roleDomain{{id: "initiator"}, {id: "rendezvous"}}}
 
-	// The issuer record must land on rendezvous (Role Domain 2, subrole 6); the
-	// second record must land on initiator (Role Domain 1). Family text is
-	// free-form, so search names that the Epoch assignment resolves as required.
 	searchFamily := func(target string) string {
 		t.Helper()
 		for attempt := 0; attempt < 4096; attempt++ {
 			family := fmt.Sprintf("closed-role-join-%s-%d", target, attempt)
-			selected, err := selectEpochDomain(network, 1, seed, family, domains)
+			selected, err := selectEpochDomain(networkID, 1, seed, family, domains)
 			if err != nil {
 				t.Fatalf("role assignment: %v", err)
 			}
@@ -46,57 +37,88 @@ func TestClosedProfileRoleDomainMustMatchEpochAssignment(t *testing.T) {
 		t.Fatalf("no family resolved to role domain %q", target)
 		return ""
 	}
-	issuer := nodeRecord{raw: []byte("authenticated issuer record"), nodeID: [32]byte{1}, generation: 5,
-		family: searchFamily("rendezvous"), carrier: closedTCPCarrierProfile}
-	other := nodeRecord{raw: []byte("authenticated other record"), nodeID: [32]byte{2}, generation: 6,
-		family: searchFamily("initiator"), carrier: closedTCPCarrierProfile}
-
-	newStore := func() *networkState {
+	buildRecord := func(id byte, family, endpoint string) networkfixture.Record {
 		t.Helper()
-		root, err := openTestDurableRoot(t.TempDir())
+		key := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{id}, ed25519.SeedSize))
+		record, err := networkfixture.BuildRecord(networkfixture.RecordSpec{
+			NetworkID: networkID, NodeID: [32]byte{id}, Generation: uint64(id),
+			ValidFrom: hour.Add(-time.Minute), ValidUntil: hour.Add(2 * time.Hour),
+			Family: family, Endpoint: endpoint, Carrier: closedTCPCarrierProfile,
+			Capability: 2, Capacity: 3, PrivateKey: key,
+		})
 		if err != nil {
 			t.Fatal(err)
 		}
-		t.Cleanup(func() { _ = root.Close() })
-		return &networkState{config: config{closedProfileAuthority: authority.Public().(ed25519.PublicKey),
-			clock: func() time.Time { return now }, observe: func() time.Time { return now }}, storage: root,
-			current: &Snapshot{Generation: fmt.Sprintf("%x", generation), NetworkID: network, Epoch: 9, Digest: epochDigest,
-				EpochValidFrom: now.Truncate(time.Hour), ValidUntil: now.Truncate(time.Hour).Add(2 * time.Hour), Profile: closedRouteProfile},
-			currentDecision: &candidateDecision{verified: verifiedEpochDecision{epoch: epoch, accepted: []nodeRecord{issuer, other}}}}
+		return record
 	}
-	issuerEntry := closedProfileNode{nodeID: issuer.nodeID, recordDigest: sha256.Sum256(issuer.raw), domain: 2, subrole: 6, generation: issuer.generation}
+	issuer := buildRecord(1, searchFamily("rendezvous"), "127.0.0.1:4101")
+	other := buildRecord(2, searchFamily("initiator"), "127.0.0.1:4102")
+	epoch, err := networkfixture.BuildEpoch(networkfixture.EpochSpec{
+		NetworkID: networkID, Number: 1, ValidFrom: hour, ValidUntil: hour.Add(2 * time.Hour),
+		Inputs: [][]byte{issuer.Raw, other.Raw}, Accepted: []networkfixture.Record{issuer, other},
+		AssignmentSeed: seed, Domains: domains, Authorities: []ed25519.PrivateKey{authority},
+		Profile: closedRouteProfile, Version: 3,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	config := Config{
+		Root: t.TempDir(), NetworkID: networkID,
+		Authorities: map[[32]byte]ed25519.PublicKey{
+			sha256.Sum256(authority.Public().(ed25519.PublicKey)): authority.Public().(ed25519.PublicKey),
+		},
+		Threshold: 1, Clock: time.Now, ObserveClock: time.Now,
+		AcceptedProfile:        closedRouteProfile,
+		ClosedProfileAuthority: authority.Public().(ed25519.PublicKey),
+	}
+	store, err := Open(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = store.Close() })
+	if _, err := store.Accept(context.Background(), epoch.Raw, epoch.Inputs, epoch.Materials[:1]); err != nil {
+		t.Fatalf("accept signed Epoch: %v", err)
+	}
+	issuerEntry := closedProfileNode{nodeID: issuer.NodeID, recordDigest: sha256.Sum256(issuer.Raw),
+		domain: 2, subrole: 6, generation: 1}
+	otherEntry := closedProfileNode{nodeID: other.NodeID, recordDigest: sha256.Sum256(other.Raw),
+		domain: 3, subrole: 1, generation: 2}
+	mismatch := testClosedProfileAt(t, authority, networkID, epoch.Digest, epoch.Digest, 1, now,
+		[]closedProfileNode{issuerEntry, otherEntry})
+	if _, err := parseClosedProfile(mismatch, epoch.Digest, networkID, epoch.Digest, 1,
+		authority.Public().(ed25519.PublicKey), now); err != nil {
+		t.Fatalf("mismatched signed profile is not structurally valid: %v", err)
+	}
+	if _, err := store.AcceptClosedProfile(mismatch); err == nil {
+		t.Fatal("accepted signed Role Domain contradicting the Epoch assignment")
+	}
+	if _, err := store.CurrentClosedRoute(); err == nil {
+		t.Fatal("mismatched profile exposed a closed route")
+	}
 
-	// A structurally valid, correctly signed profile that names the second Node
-	// as a responder (Role Domain 3) contradicts its initiator assignment.
-	mismatch := testClosedProfile(t, authority, network, generation, epochDigest, now, []closedProfileNode{issuerEntry,
-		{nodeID: other.nodeID, recordDigest: sha256.Sum256(other.raw), domain: 3, subrole: 1, generation: other.generation}})
-	if _, err := parseClosedProfile(mismatch, generation, network, epochDigest, 9, authority.Public().(ed25519.PublicKey), now); err != nil {
-		t.Fatalf("mismatched profile is not structurally valid: %v", err)
-	}
-	refused := newStore()
-	if _, err := refused.AcceptClosedProfile(mismatch); err == nil {
-		t.Fatal("accepted a signed profile whose Role Domain contradicts the Epoch assignment")
-	}
-	if _, err := refused.CurrentClosedRoute(); err == nil {
-		t.Fatal("mismatched Role Domain still exposed a closed route")
-	}
-
-	// The identical topology naming the assigned initiator domain is accepted.
-	joined := testClosedProfile(t, authority, network, generation, epochDigest, now, []closedProfileNode{issuerEntry,
-		{nodeID: other.nodeID, recordDigest: sha256.Sum256(other.raw), domain: 1, subrole: 1, generation: other.generation}})
-	store := newStore()
-	view, err := store.AcceptClosedProfile(joined)
-	if err != nil || view.Digest != sha256.Sum256(joined) {
-		t.Fatalf("refused a profile whose Role Domain matches the Epoch assignment: %+v, %v", view, err)
+	otherEntry.domain = 1
+	matching := testClosedProfileAt(t, authority, networkID, epoch.Digest, epoch.Digest, 1, now,
+		[]closedProfileNode{issuerEntry, otherEntry})
+	view, err := store.AcceptClosedProfile(matching)
+	if err != nil || view.Digest != sha256.Sum256(matching) {
+		t.Fatalf("accept matching profile: %+v / %v", view, err)
 	}
 	route, err := store.CurrentClosedRoute()
-	if err != nil || route.NodeCount != 2 {
-		t.Fatalf("current closed route = %+v, %v", route, err)
+	if err != nil || route.NodeCount != 2 || route.Nodes[0].RoleDomain != 2 ||
+		route.Nodes[1].RoleDomain != 1 {
+		t.Fatalf("current joined route: %+v / %v", route, err)
 	}
-	for _, node := range route.Nodes[:route.NodeCount] {
-		want := map[[32]byte]uint8{issuer.nodeID: 2, other.nodeID: 1}[node.NodeID]
-		if node.RoleDomain != want {
-			t.Fatalf("joined route node %x has Role Domain %d, want %d", node.NodeID, node.RoleDomain, want)
-		}
+	if err := store.Close(); err != nil {
+		t.Fatal(err)
+	}
+	reopened, err := Open(config)
+	if err != nil {
+		t.Fatalf("reopen accepted State/profile: %v", err)
+	}
+	defer reopened.Close()
+	route, err = reopened.CurrentClosedRoute()
+	if err != nil || route.NodeCount != 2 || route.Nodes[0].RoleDomain != 2 ||
+		route.Nodes[1].RoleDomain != 1 {
+		t.Fatalf("reopened joined route: %+v / %v", route, err)
 	}
 }

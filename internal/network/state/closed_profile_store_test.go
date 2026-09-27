@@ -15,13 +15,14 @@ func TestAcceptClosedProfilePersistsAndConflictsByArrival(t *testing.T) {
 	authority := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{9}, ed25519.SeedSize))
 	generation := sha256.Sum256([]byte("closed profile generation"))
 	network, epochDigest := store.current.NetworkID, store.current.Digest
-	record := store.currentDecision.verified.accepted[0]
-	nodeID := record.nodeID
-	node := closedProfileNode{nodeID: nodeID, recordDigest: sha256.Sum256(record.raw), domain: 2, subrole: 6, generation: record.generation}
+	candidate := store.currentDecision.verified.Candidates[0]
+	nodeID := candidate.NodeID
+	node := closedProfileNode{nodeID: nodeID, recordDigest: candidate.RecordDigest,
+		domain: 2, subrole: 6, generation: candidate.RecordGeneration}
 	root := store.storage
 	parsed, parseErr := parseClosedProfile(first, generation, network, epochDigest, 9, authority.Public().(ed25519.PublicKey), now)
-	if parseErr != nil || !matchesClosedProfileCandidates(parsed, store.currentDecision.verified.epoch, []nodeRecord{record}) {
-		t.Fatalf("closed profile parser/join = %+v, %v, join=%t", parsed, parseErr, matchesClosedProfileCandidates(parsed, store.currentDecision.verified.epoch, []nodeRecord{record}))
+	if parseErr != nil || !matchesClosedProfileCandidates(parsed, store.currentDecision.verified.Candidates) {
+		t.Fatalf("closed profile parser/join = %+v, %v, join=%t", parsed, parseErr, matchesClosedProfileCandidates(parsed, store.currentDecision.verified.Candidates))
 	}
 	view, err := store.AcceptClosedProfile(first)
 	if err != nil || view.Digest != sha256.Sum256(first) {
@@ -67,7 +68,10 @@ func closedProfileStoreFixture(t *testing.T) (*networkState, []byte) {
 	store := &networkState{config: config{closedProfileAuthority: authority.Public().(ed25519.PublicKey), clock: func() time.Time { return now }, observe: func() time.Time { return now }}, storage: root,
 		current: &Snapshot{Generation: fmt.Sprintf("%x", generation), NetworkID: network, Epoch: 9, Digest: epochDigest,
 			EpochValidFrom: now.Truncate(time.Hour), ValidUntil: now.Truncate(time.Hour).Add(2 * time.Hour), Profile: closedRouteProfile},
-		currentDecision: &candidateDecision{verified: verifiedEpochDecision{epoch: epochEnvelope{domains: []roleDomain{{id: "rendezvous"}}}, accepted: []nodeRecord{record}}}}
+		currentDecision: &candidateDecision{verified: verifiedEpochDecision{Candidates: []verifiedCandidate{{
+			NodeID: record.nodeID, RecordDigest: sha256.Sum256(record.raw), RecordGeneration: record.generation,
+			CarrierProfile: record.carrier, Domain: "rendezvous",
+		}}}}}
 	node := closedProfileNode{nodeID: nodeID, recordDigest: sha256.Sum256(record.raw), domain: 2, subrole: 6, generation: record.generation}
 	first := testClosedProfile(t, authority, network, generation, epochDigest, now, []closedProfileNode{node})
 	return store, first
