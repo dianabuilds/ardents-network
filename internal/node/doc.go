@@ -6,9 +6,9 @@
 // handles through the Hosting owner and transfers each handle's close to its
 // selected duty.
 //
-// process_config.go and closed_reservations.go declare local configuration;
-// admission.go validates State-selected duties; lifecycle.go owns process
-// transitions; duty_server.go dispatches roles. The authority child borrows
+// process_config.go declares shared process configuration; each role adapter
+// declares its own local profile. admission.go validates State-selected duties;
+// lifecycle.go owns process transitions; duty_server.go dispatches roles. The authority child borrows
 // current State and verifies selected-profile tokens; hosting bounds shared
 // reservations and class-2 reserve-before-spend policy. The outer child owns
 // one accepted Carrier's inner lanes, writer and joined cleanup. The probe

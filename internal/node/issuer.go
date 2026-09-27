@@ -9,6 +9,10 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/route"
 )
 
+// ClosedIssuerProfile retains the public Node configuration name while the
+// issuer role owns its local reservation and lifecycle.
+type ClosedIssuerProfile = issuer.Profile
+
 func validateClosedIssuerProfile(local ClosedIssuerProfile, config runtimeConfig, snapshot state.NodeDuty, now time.Time) error {
 	return issuer.Validate(local, nodeAuthority(config), snapshot, now, literalNodeEndpoint(snapshot.ProbeEndpoint))
 }

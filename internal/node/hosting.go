@@ -10,6 +10,8 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/resource"
 )
 
+type closedHostingHandle = hosting.Handle
+
 // The shared period is opened once for the complete Node lifecycle, before
 // listener activation, and retained until every admitted child has joined.
 func (config *runtimeConfig) openClosedHosting() error {

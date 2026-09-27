@@ -1,6 +1,7 @@
 package node
 
 import (
+	"crypto/tls"
 	"errors"
 	"path/filepath"
 	"time"
@@ -8,11 +9,31 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	nodeforwarding "github.com/dianabuilds/ardents-network/internal/node/forwarding"
 	"github.com/dianabuilds/ardents-network/internal/node/hosting"
+	"github.com/dianabuilds/ardents-network/internal/resource"
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	routecarrier "github.com/dianabuilds/ardents-network/internal/route/carrier"
 	"github.com/dianabuilds/ardents-network/internal/route/replay"
 )
+
+// ClosedForwardingProfile contains the local material for one closed Route
+// forwarding duty. Its receiving root is exclusive to that duty generation.
+type ClosedForwardingProfile struct {
+	Root            string
+	Certificate     tls.Certificate
+	ConnectionLimit uint16
+	DrainTimeout    time.Duration
+	// HostingRoot names the installed shared provider-period ledger. It is
+	// local operator configuration, never State or token material.
+	HostingRoot string
+	// CarrierRelayEndpoint is an optional operator-owned transparent relay
+	// address for this forwarding Node's State-selected next Carrier. It cannot
+	// change the selected Node identity, key, duty, profile, or TLS verification.
+	CarrierRelayEndpoint string
+	AdmissionTraffic     resource.HostingTraffic
+	TerminationTraffic   resource.HostingTraffic
+	host                 closedHostingHandle
+}
 
 // startClosedForwarding composes the selected role and transfers the Host lease
 // to the forwarding owner after validating the local process reservation.

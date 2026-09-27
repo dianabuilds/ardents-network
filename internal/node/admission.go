@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/network/state"
+	"github.com/dianabuilds/ardents-network/internal/node/forwarding"
 	"github.com/dianabuilds/ardents-network/internal/node/probe"
 	"github.com/dianabuilds/ardents-network/internal/resource"
 	"github.com/dianabuilds/ardents-network/internal/route"
@@ -57,7 +58,7 @@ func resolveConfig(input Config) (runtimeConfig, error) {
 		return runtimeConfig{}, errors.New("node needs one local listener profile")
 	}
 	if input.ClosedForwarding.CarrierRelayEndpoint != "" &&
-		(input.ClosedForwarding.Certificate.PrivateKey == nil || !validClosedCarrierEndpoint(input.ClosedForwarding.CarrierRelayEndpoint)) {
+		(input.ClosedForwarding.Certificate.PrivateKey == nil || !forwarding.ValidCarrierEndpoint(input.ClosedForwarding.CarrierRelayEndpoint)) {
 		return runtimeConfig{}, errors.New("closed forwarding Carrier relay endpoint is invalid")
 	}
 	enforcePressure := input.ResourceProfile != ""

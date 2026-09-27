@@ -81,6 +81,14 @@ also belong to Hosting.
 The child borrows current State, authority, token policy and endpoint validation
 through explicit dependencies, never `runtimeConfig`. It rechecks State at each
 existing admission point and cannot accept a plan-supplied peer or key.
+The root files named `forwarding.go`, `issuer.go`, `resolution.go`,
+`introduction.go`, and `join.go` are process adapters: they validate the selected
+local profile, choose its listen address and map each child handle to lifecycle
+supervision. `hosting.go` selects the shared period and interprets pressure;
+`state_authority.go` projects current State; `listen_address.go` validates the
+private bind override. The private `closed_*` protocol identifiers remain where
+they are part of the accepted contract, but the root file names no longer use
+that prefix as a substitute for an owner.
 Within the forwarding package, the listener owns accepted producers; the
 session set owns each retained outgoing Carrier reader and its child frame
 queues; a link joins one child lane to that session. They share one shutdown
