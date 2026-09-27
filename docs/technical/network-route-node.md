@@ -210,6 +210,15 @@ evidence, and refuses later admission or automatic winner selection. Reopen
 recovers the same current/pending/conflict relation before State-dependent work
 can proceed.
 
+The closed Route profile pins its Epoch envelope: new closed candidates are
+accepted only as AREP v3 (ADR-0111). Offline acceptance and the Source-wave
+verifier share one schema gate and refuse a retired envelope with the typed
+`ErrLegacyEpochIntake` before any commit, staging, or activation. A retained
+current, recovered-active, or pending generation written under AREP v1/v2 is
+classified at Open as a `RecoveryRequiredError` with its generations, pointer,
+and control floors preserved byte-intact; historical predecessors keep their
+existing chain authentication until the retained population is closed.
+
 State also owns the one active Source wave across bootstrap, caller-requested,
 and automatic refresh. An automatic tick that arrives while that wave is active
 is non-terminal and leaves the existing wave and scheduler live; it neither

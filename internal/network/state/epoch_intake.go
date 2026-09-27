@@ -1,0 +1,44 @@
+package state
+
+import (
+	"errors"
+	"fmt"
+)
+
+// acceptedClosedEpochSchema is the sole AREP envelope schema for new closed
+// Route Epoch candidates (F-50, ADR-0111). The installed provisioning and
+// canonical qualification fixtures already build AREP v3.
+const acceptedClosedEpochSchema = byte(3)
+
+// ErrLegacyEpochIntake reports a new closed Route candidate encoded in a
+// retired AREP schema. The refusal happens before any commit, staging or
+// activation. Retained predecessor chain members stay authenticated by the
+// historical verifier, and a retained old current or pending generation is
+// classified at Open as a *RecoveryRequiredError instead.
+var ErrLegacyEpochIntake = errors.New("closed Epoch uses a retired AREP schema")
+
+// requireClosedIntakeSchema gates every new-candidate closed intake:
+// offline Accept and the Source-wave candidate branch. Both Source result
+// forms pass this single choke point before a wave can count a decision
+// valid; the exact current/pending reuse branches return retained decisions
+// that Open classified and whose digest binds the schema byte.
+func requireClosedIntakeSchema(config config, epoch epochEnvelope) error {
+	if config.acceptedProfile == closedRouteProfile && epoch.version != acceptedClosedEpochSchema {
+		return fmt.Errorf("%w: closed intake accepts only AREP v%d, got v%d",
+			ErrLegacyEpochIntake, acceptedClosedEpochSchema, epoch.version)
+	}
+	return nil
+}
+
+// classifyRetainedClosedSchema refuses a recovered current, repaired active
+// or pending generation in a retired schema with the typed recovery outcome.
+// The chain and control floors are preserved: no pointer is cleared and no
+// lower generation is selected here.
+func classifyRetainedClosedSchema(config config, epoch epochEnvelope, role string) error {
+	if config.acceptedProfile == closedRouteProfile && epoch.version != acceptedClosedEpochSchema {
+		return &RecoveryRequiredError{Reason: fmt.Sprintf(
+			"%s generation uses retired AREP schema v%d; closed intake accepts only v%d",
+			role, epoch.version, acceptedClosedEpochSchema)}
+	}
+	return nil
+}

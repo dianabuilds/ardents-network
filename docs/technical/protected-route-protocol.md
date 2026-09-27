@@ -97,6 +97,10 @@ of the complete signed record. The closed State verifier owns acceptance and
 returns an immutable verified profile; credential code consumes its narrow
 issuer/key/permission projection, never an unchecked raw-profile callback.
 
+The pinned closed State itself has one accepted envelope: new closed Epochs
+are admitted only as AREP v3, and a retired v1/v2 envelope is refused with a
+typed error before any durable effect (ADR-0111).
+
 `ardents-control prepare-closed-profile` renders only this canonical unsigned
 body from a bounded public plan. `sign-closed-profile` rereads that plan, uses
 one owner-only PKCS#8 Ed25519 State-authority file, and writes a new profile

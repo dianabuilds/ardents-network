@@ -69,6 +69,10 @@ func (s *networkState) recoverDistributionActive(state distributionState) error 
 	if decision.epoch.number != state.epochFloor || decision.epoch.digest != state.epochDigest {
 		return errors.New("distribution active identity disagrees with its generation")
 	}
+	// The floor repair must not activate a retired-schema generation (F-50).
+	if err := classifyRetainedClosedSchema(s.config, decision.epoch, "recovered active"); err != nil {
+		return err
+	}
 	if err := persistDecision(s.storage, decision, true); err != nil {
 		return fmt.Errorf("repair active generation pointer: %w", err)
 	}

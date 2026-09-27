@@ -43,7 +43,17 @@ func (s *networkState) verifySourceBundle(bundle sourceBundle, current *Snapshot
 		}
 		return *s.pendingDecision, nil
 	}
-	return verifyDecision(verification, current, bundle.epoch, bundle.inputs, bundle.materials, true)
+	decision, err := verifyDecision(verification, current, bundle.epoch, bundle.inputs, bundle.materials, true)
+	if err != nil {
+		return candidateDecision{}, err
+	}
+	// A Source wave can only stage or activate a candidate that passed the
+	// sole closed intake schema; the reuse branches above return retained
+	// decisions that Open already classified (F-50).
+	if err := requireClosedIntakeSchema(s.config, decision.epoch); err != nil {
+		return candidateDecision{}, err
+	}
+	return decision, nil
 }
 
 func equalInputs(first, second [][]byte) bool {

@@ -1760,6 +1760,22 @@ offline v1/v2 refusal without a commit, both Source result forms, old current
 reopen, old pending reopen/activation, and a v3 current with authenticated old
 predecessors. This is an analysis boundary, not a selected migration policy.
 
+**Realization (ADR-0111).** ADR-0111 selected AREP v3 as the sole new closed-Epoch
+intake schema and the retained-root disposition. `internal/network/state/epoch_intake.go`
+adds the closed-scoped gate: `requireClosedIntakeSchema` runs after decision
+verification in offline `Accept` and at the `verifySourceBundle` tail (both Source
+result forms, including the exact current/pending reuse branches), refusing v1/v2 with
+the typed `ErrLegacyEpochIntake` before any commit, staging, or activation;
+`classifyRetainedClosedSchema` returns a `RecoveryRequiredError` for retained v1/v2
+current (`loadCurrent`), recovered active (`recoverDistributionActive`, before the
+floor-repair persist), and pending (`recoverPendingState`) generations at Open, with
+generations, pointers, and control floors preserved byte-intact. `loadGeneration`
+keeps authenticating historical predecessors until the retained population is closed.
+Both technical owners now record the sole schema. Evidence: `epoch_intake_test.go`
+(refusal-before-commit, retained current, retained pending, authenticated v1→v2→v3
+predecessor chain with a working v3 successor, and the Source choke point covering
+both result forms) over the `epoch_intake_export_test.go` durable-root seams.
+
 ## F-51: The retained Namespace closure has no current command composition
 
 **Source and contract fact.** `internal/naming/namespace` has 54 production

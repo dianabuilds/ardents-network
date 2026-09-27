@@ -27,6 +27,11 @@ func loadCurrent(config config, storage *durableRoot) (*Snapshot, *candidateDeci
 	if decision.snapshot.Generation != current {
 		return nil, nil, errors.New("current pointer does not match the verified generation")
 	}
+	// A retained old-schema current root refuses with the typed recovery
+	// outcome before it can be exposed or serve as a wave base (F-50).
+	if err := classifyRetainedClosedSchema(config, decision.epoch, "current"); err != nil {
+		return nil, nil, err
+	}
 	snapshot := decision.snapshot
 	return &snapshot, &decision, nil
 }

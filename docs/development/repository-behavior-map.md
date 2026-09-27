@@ -296,24 +296,21 @@ technical owner defines the shared current/pending/conflict invariant.
    introduction=4). Durable acceptance and every read-back run the same
    join; Node's receiver consumes the joined view and holds no second
    mapping.
-6. `parseEpoch` accepts AREP v1/v2/v3, and the shared `verifyEpoch` matches
-   profile without restricting its envelope version. Closed Carrier admission
-   filters old Node Records, but `AcceptClosedProfile` does not constrain the
-   Epoch schema. The installed closed-State fixture uses v3; this does not
-   prove that v1/v2 are refused. On restart, `loadGenerationChain` uses the
-   same decision verifier for persisted predecessors and current State.
-   `Open` assigns that decision before starting its Source owner; control-floor
-   recovery can restore it as current, and pending recovery can later feed
-   Source-wave activation (F-50). The one-version rule therefore needs gates
-   for offline and Source-wave intake **and** a defined current/pending restart
-   outcome; retaining a historical parser alone does not make old State inert.
-   `candidate.go:verifySourceBundle` additionally reuses an exact-byte current
-   or pending decision after checking the requested materialization, before
-   reaching the general candidate verifier. An intake gate only in
-   `verifyDecision` would miss those recovered-decision branches. In contrast,
-   `storage.go:loadGeneration` must still authenticate historical predecessors
-   while deciding whether the recovered current/pending generation may be
-   exposed. F-50 records the separate gates and evidence matrix.
+6. `parseEpoch` still decodes AREP v1/v2/v3, but since ADR-0111 the closed
+   Route profile pins its intake: new closed candidates pass one schema gate
+   (`epoch_intake.go:requireClosedIntakeSchema`) wired after decision
+   verification in offline `Accept` and at the tail of
+   `candidate.go:verifySourceBundle`, the single choke point both Source
+   result forms pass through, so a retired envelope fails with the typed
+   `ErrLegacyEpochIntake` before any commit, staging, or activation (F-50
+   realized). The exact-byte current/pending reuse branches need no separate
+   gate: retained decisions are classified at Open and the epoch digest binds
+   the version byte. On restart, `loadCurrent`, `recoverDistributionActive`
+   (before its floor-repair persist), and `recoverPendingState` classify a
+   retained v1/v2 generation as a `RecoveryRequiredError` with generations,
+   pointer, and control floors preserved; `storage.go:loadGeneration` still
+   authenticates historical predecessors with the same decision verifier
+   until the retained population is closed.
 
 This path supports a real State owner and a separate profile acceptance
 operation; file-count reduction must preserve its immutable projections and
