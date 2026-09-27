@@ -28,7 +28,9 @@ implementation-linked; their maintained contracts are owned respectively by
 [C0 product scope](../product/scope.md), and
 [ADR-0067](../adr/0067-retire-completed-local-alpha-ceremonies.md).
 R-135 is decided and promoted to [ADR-0068](../adr/0068-bind-transit-issuer-roots-to-state-generation.md);
-its maintained contract belongs to [Transit Grant acquisition](../technical/transit-grant-acquisition.md).
+its Transit implementation has since been retired under
+[ADR-0092](../adr/0092-retire-generic-publisher-transit-chain.md) and
+[ADR-0093](../adr/0093-retire-route-v2-execution-closure.md).
 
 R-155 is decided and promoted to
 [ADR-0089](../adr/0089-retire-old-node-starts-preserve-owned-shutdown.md).

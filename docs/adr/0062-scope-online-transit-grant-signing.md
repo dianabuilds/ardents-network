@@ -92,7 +92,7 @@ key and records the bounded terminal result.
 
 [R-128](../research/records/r-128-headless-participant-acquisition.md) records
 the Product Owner decision and rejected alternatives. The complete operational
-contract is [Transit Grant acquisition](../technical/transit-grant-acquisition.md).
+contract is [Transit Grant acquisition](https://github.com/dianabuilds/ardents-network/blob/4764ae1c567e93180f3aa643b2544abfdb2a67dc/docs/technical/transit-grant-acquisition.md).
 ADR-0053 remains the State root-custody owner; ADR-0047 remains the dynamic
 membership-level Introduction decision outside the signer and lifecycle parts
 superseded here.

@@ -95,7 +95,7 @@ candidate still needs current source/test/binary/package review before admission
 
 ### Experiment and retained receipts
 
-[Probe sources and run instructions](../../../experiments/r-152-contract-probes/README.md).
+[Probe sources and run instructions](https://github.com/dianabuilds/ardents-network/blob/4764ae1c567e93180f3aa643b2544abfdb2a67dc/experiments/r-152-contract-probes/README.md).
 The original token/confinement evidence directory is:
 
 C:/Users/vitek/AppData/Local/Temp/ardents-privacy-contract-e52a233bffad4cada157256707f4e4fa/

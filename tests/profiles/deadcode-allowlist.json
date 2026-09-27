@@ -88,17 +88,7 @@
     }
   ],
   "production": {
-    "linux-amd64": [
-      {
-        "symbols": [
-          "internal/endpoint.acquireResource"
-        ],
-        "classification": "Linux-only endpoint resource acquisition",
-        "rationale": "ADR-0092 retired the generic publisher service composition whose runtime called acquireResource; the Linux-tagged helper now survives only through its behavior test, while newResourceObserver stays wired into the Linux endpoint runtime.",
-        "owner": "Product Owner and Codex",
-        "retirement": "Remove in the bounded Endpoint runtime audit that disposes the legacy service resource surface, or rewire it through an accepted C0 composition."
-      }
-    ],
+    "linux-amd64": [],
     "windows-amd64": [
       {
         "symbols": [

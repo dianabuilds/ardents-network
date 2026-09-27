@@ -21,9 +21,3 @@ func newResourceObserver() func(string, int) uint32 {
 		return highWater[kind]
 	}
 }
-
-func acquireResource(observe func(string, int) uint32, kind string) func() {
-	observe(kind, 1)
-	var once sync.Once
-	return func() { once.Do(func() { observe(kind, -1) }) }
-}

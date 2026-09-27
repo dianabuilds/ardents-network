@@ -13,6 +13,9 @@
 // admission.go validates State-selected duties; lifecycle.go owns process
 // transitions; duty_server.go dispatches listeners. The closed_* listener
 // files retain each duty's resources, while closed_outer_* owns shared Carrier
-// lifetime. duty_handle.go names the common stop/drain boundary;
+// lifetime. closed_role_token_verification.go authenticates the same selected
+// profile token for forwarding and control admission; closed_control_admission.go
+// owns the control host reservation, while forwarding owns its own reservation
+// and spend. duty_handle.go names the common stop/drain boundary;
 // lifecycle_event.go and event_writer.go define and emit observations.
 package node

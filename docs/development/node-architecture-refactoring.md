@@ -7,9 +7,9 @@ This plan organizes maintained code. The product contract, technical Node
 owner and GitHub issues remain authoritative for behavior and delivery status.
 Initial baseline inspected: `codex/architecture-refactor` at `e1deba3e`
 (2026-09-25). The cross-system [reconstruction](c0-component-reconstruction.md)
-and [behavior map](repository-behavior-map.md) reconcile the maintained tree
-to `53f02e64`; their later source findings control the candidate package
-sequence below.
+and [historical behavior map](https://github.com/dianabuilds/ardents-network/blob/4764ae1c567e93180f3aa643b2544abfdb2a67dc/docs/development/repository-behavior-map.md)
+record that analysis baseline. Recheck candidate boundaries against current code
+and the package map before implementation; the snapshot is not a current tree.
 
 ## Goal and completion condition
 

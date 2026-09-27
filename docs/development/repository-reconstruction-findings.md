@@ -1,6 +1,7 @@
 # Reconstruction findings
 
-Status: **working evidence ledger** for the [repository reconstruction](repository-reconstruction.md).
+Status: **finding evidence and unresolved dispositions** from the
+[completed repository reconstruction](https://github.com/dianabuilds/ardents-network/blob/4764ae1c567e93180f3aa643b2544abfdb2a67dc/docs/development/repository-reconstruction.md).
 These are source facts and bounded inferences, not an instruction to delete or
 move code. A finding is updated when the active Endpoint/network task changes
 its evidence.
@@ -343,19 +344,15 @@ unchanged. The reference explicitly distinguishes Portable readiness from
 the installed protected-text system-unit boundary (F-25/F-27); this move does
 not claim a joined C0 launch.
 
-## F-12: The remaining experiment tree is small and linked to active research
+## F-12: Completed experiment sources retired to Git history
 
-**Repository fact.** The tracked `experiments/` tree now has 13 files in five
-question-scoped directories: four R-149 analytical experiments and one R-152
-contract-probe directory. The R-149 and R-152 research records link directly to
-these remaining sources. Earlier historical experiment trees are referenced
-through pinned Git revisions, not present as current working-tree code.
-
-**Disposition.** The old suggestion to delete nine large experiment trees no
-longer describes this worktree. These 13 files are research evidence, not C0
-runtime or test-suite dependencies. Review their retention when their exact
-research questions are closed or superseded; deleting them now would break
-named evidence links without materially simplifying the production code.
+**Disposition, 2026-09-27.** At the Product Owner's request, all five remaining
+experiment directories (13 files) are removed from the working tree. Four held
+executed R-149 analytical models; one held R-152 contract probes. None was a
+product or selected test-profile dependency. Research records retain their
+results and link to exact source revision `4764ae1c567e93180f3aa643b2544abfdb2a67dc`
+for reproduction. An open research question does not require keeping every
+completed experiment executable in the current checkout.
 
 ## F-13: Historical Alpha resolver was retired under ADR-0091
 

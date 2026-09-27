@@ -12,7 +12,7 @@ specification.
 - [Contributing](../../CONTRIBUTING.md) defines change prerequisites, research
   entry, local setup, and the integration workflow.
 - [Repository layout and growth rules](repository-layout.md) define Go code
-  rules, architecture review, the factual tree, and permitted growth.
+  rules, architecture review, subsystem hierarchy, and permitted growth.
 - [Testing model](testing.md) defines the selected execution profiles.
 - [Deep audit campaign](deep-audit.md) defines the whole-codebase review,
   proof, remediation, and requalification method for an exact frozen C0
@@ -40,17 +40,17 @@ specification.
 - [Alpha control transition](../technical/alpha-control-transition.md)
 - [Current command reference](../reference/commands.md)
 
-Read the affected owner for the task at hand. The retained
-[Transit Grant acquisition design](../technical/transit-grant-acquisition.md)
-is historical provenance under ADR-0092, outside this current route.
+Read the affected owner for the task at hand. Completed experiments, obsolete
+inventory snapshots and retired Transit design instructions are preserved in
+Git history. Research and decision records link to their exact source revision.
 
 ## Working network-core proposal
 
 The [transition proposal](network-core-transition.md) and
 [wire candidate](network-core-wire-proposal.md) are read for a named design
 question. Neither defines current runtime behavior or an accepted protocol.
-The technical references above own current facts; GitHub issue #50 and its
-child issues own execution order and delivery state. Retire obsolete proposal
+The technical references above own current facts; the selected GitHub milestone
+and its issues own execution order and delivery state. Retire obsolete proposal
 chronology after its unique decisions have current owners and links are
 repaired under the [documentation policy](documentation.md#promotion-and-retirement).
 
