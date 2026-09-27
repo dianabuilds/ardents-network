@@ -160,7 +160,7 @@ func TestTextJoinSourceReplacementBeforeStockIssuanceDoesNotReserveAllocation(t 
 
 func TestTextPublisherJoinIssuanceRetainsExactLiveSource(t *testing.T) {
 	owner := &textContext{textContextState: textContextState{surface: broker.Administration}}
-	responder := &textResponderPrefixHandle{owner: &owner.responder, cancel: func() {}}
+	responder := &textResponderPrefixHandle{textRolePrefixHandleCore: textRolePrefixHandleCore{owner: &owner.responder.textRolePrefixCore, cancel: func() {}}}
 	responder.prefix.Store(&client.ClosedSourcePrefix{})
 	issuer := &textSourceHandle{owner: &owner.source, cancel: func() {}}
 	issuer.prefix.Store(&client.ClosedSourcePrefix{})

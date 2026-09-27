@@ -13,24 +13,18 @@ import (
 )
 
 // textResponderPrefixLifecycle is the sole owner of the Publisher's live
-// Responder prefix and an opening that may replace its absence.
+// Responder prefix and an opening that may replace its absence. The shared
+// role machinery (opening slot, member set, idle retirement, stop) lives in
+// textRolePrefixCore; this owner adds only the Responder handle type, its
+// Route operations and the JOIN acquisition.
 type textResponderPrefixLifecycle struct {
-	live    *textResponderPrefixHandle
-	opening *textOperationFlight
-	set     *textInteriorSet
+	textRolePrefixCore
 }
 
 // textResponderPrefixHandle exposes only operations belonging to one exact
 // live Responder prefix. Retirement invalidates every retained handle.
 type textResponderPrefixHandle struct {
-	owner  *textResponderPrefixLifecycle
-	prefix atomic.Pointer[client.ClosedSourcePrefix]
-	cancel context.CancelFunc
-}
-
-type textResponderPrefixRetirement struct {
-	prefix  *client.ClosedSourcePrefix
-	opening *textOperationFlight
+	textRolePrefixHandleCore
 }
 
 // textResponderJoinAcquisition binds one JOIN exchange to the exact Responder
@@ -44,44 +38,26 @@ func (lifecycle *textResponderPrefixLifecycle) currentLocked() *textResponderPre
 	if lifecycle == nil {
 		return nil
 	}
-	return lifecycle.live
+	handle, _ := lifecycle.currentLiveLocked().(*textResponderPrefixHandle)
+	return handle
 }
 
 func (lifecycle *textResponderPrefixLifecycle) acquireOpenedLocked(prefix *client.ClosedSourcePrefix) *textResponderPrefixHandle {
-	handle := lifecycle.currentLocked()
-	if handle == nil || prefix == nil || handle.prefix.Load() != prefix {
+	if lifecycle == nil {
 		return nil
 	}
+	handle, _ := lifecycle.acquireOpenedCoreLocked(prefix).(*textResponderPrefixHandle)
 	return handle
 }
 
 func (lifecycle *textResponderPrefixLifecycle) acquireJoinLocked(issuer *textSourceHandle) *textResponderJoinAcquisition {
-	if lifecycle == nil || lifecycle.live == nil || lifecycle.live.prefix.Load() == nil {
+	live := lifecycle.currentLocked()
+	if live == nil || live.prefix.Load() == nil {
 		return nil
 	}
 	acquisition := &textResponderJoinAcquisition{issuer: issuer}
-	acquisition.handle.Store(lifecycle.live)
+	acquisition.handle.Store(live)
 	return acquisition
-}
-
-func (lifecycle *textResponderPrefixLifecycle) openingAvailableLocked() bool {
-	return lifecycle != nil && lifecycle.live == nil && lifecycle.opening == nil
-}
-
-func (lifecycle *textResponderPrefixLifecycle) membersSlotLocked() **textInteriorSet {
-	return &lifecycle.set
-}
-
-func (lifecycle *textResponderPrefixLifecycle) reserveOpeningLocked(flight *textOperationFlight) bool {
-	if lifecycle == nil || flight == nil || lifecycle.live != nil || lifecycle.opening != nil {
-		return false
-	}
-	lifecycle.opening = flight
-	return true
-}
-
-func (lifecycle *textResponderPrefixLifecycle) openingCurrentLocked(flight *textOperationFlight) bool {
-	return lifecycle != nil && lifecycle.opening == flight
 }
 
 func (lifecycle *textResponderPrefixLifecycle) finishOpeningLocked(flight *textOperationFlight,
@@ -93,81 +69,18 @@ func (lifecycle *textResponderPrefixLifecycle) finishOpeningLocked(flight *textO
 	if !publish || prefix == nil {
 		return true
 	}
-	handle := &textResponderPrefixHandle{owner: lifecycle, cancel: cancel}
+	handle := &textResponderPrefixHandle{textRolePrefixHandleCore: textRolePrefixHandleCore{owner: &lifecycle.textRolePrefixCore, cancel: cancel}}
 	handle.prefix.Store(prefix)
 	lifecycle.live = handle
 	return true
 }
 
-func (lifecycle *textResponderPrefixLifecycle) retireIdleLocked() error {
-	if lifecycle == nil || lifecycle.live == nil {
-		return nil
-	}
-	handle := lifecycle.live
-	prefix := handle.prefix.Load()
-	if prefix == nil {
-		lifecycle.live = nil
-		return nil
-	}
-	select {
-	case <-prefix.Done():
-	default:
-		return nil
-	}
-	lifecycle.live = nil
-	handle.cancel()
-	handle.prefix.Store(nil)
-	return prefix.Close()
-}
-
-func (lifecycle *textResponderPrefixLifecycle) stopLocked() *textResponderPrefixRetirement {
-	retirement := &textResponderPrefixRetirement{}
-	if lifecycle == nil {
-		return retirement
-	}
-	if lifecycle.live != nil {
-		lifecycle.live.cancel()
-		retirement.prefix = lifecycle.live.prefix.Swap(nil)
-		lifecycle.live = nil
-	}
-	retirement.opening = lifecycle.opening
-	lifecycle.opening = nil
-	if retirement.opening != nil {
-		retirement.opening.cancel()
-	}
-	lifecycle.set = nil
-	return retirement
-}
-
-func (retirement *textResponderPrefixRetirement) joinOpening() {
-	if retirement != nil && retirement.opening != nil {
-		<-retirement.opening.done
-		retirement.opening = nil
-	}
-}
-
-func (retirement *textResponderPrefixRetirement) closePrefix() error {
-	if retirement == nil || retirement.prefix == nil {
-		return nil
-	}
-	prefix := retirement.prefix
-	retirement.prefix = nil
-	return prefix.Close()
-}
-
 func (handle *textResponderPrefixHandle) currentLocked(lifecycle *textResponderPrefixLifecycle) bool {
-	return handle != nil && lifecycle != nil && lifecycle.live == handle && handle.owner == lifecycle && handle.prefix.Load() != nil
+	return handle != nil && lifecycle != nil && handle.textRolePrefixHandleCore.currentCoreLocked(&lifecycle.textRolePrefixCore)
 }
 
 func (handle *textResponderPrefixHandle) routePrefix() (*client.ClosedSourcePrefix, error) {
-	if handle == nil {
-		return nil, errors.New("text Responder prefix unavailable")
-	}
-	prefix := handle.prefix.Load()
-	if prefix == nil {
-		return nil, errors.New("text Responder prefix unavailable")
-	}
-	return prefix, nil
+	return handle.routeCorePrefix("text Responder prefix unavailable")
 }
 
 func (handle *textResponderPrefixHandle) dataJoinRecipient() ([32]byte, uint64, time.Time, error) {
@@ -188,11 +101,7 @@ func (handle *textResponderPrefixHandle) join(ctx context.Context, present clien
 }
 
 func (handle *textResponderPrefixHandle) replenish(ctx context.Context, present client.ClosedTokenPresenter) error {
-	prefix, err := handle.routePrefix()
-	if err != nil {
-		return err
-	}
-	return prefix.Replenish(ctx, present)
+	return handle.replenishCore(ctx, present, "text Responder prefix unavailable")
 }
 
 func (handle *textResponderPrefixHandle) retired() bool {

@@ -14,8 +14,8 @@ type textContextRetirement struct {
 	refresh             *textPublicationRefreshRetirement
 	publication         *textPublicationPairRetirement
 	registrationOpening *textRegistrationFlight
-	introduction        *textIntroductionPrefixRetirement
-	responder           *textResponderPrefixRetirement
+	introduction        *textRolePrefixRetirement
+	responder           *textRolePrefixRetirement
 	source              *textSourceRetirement
 	issuance            *textIssuanceOperation
 	resolution          *textResolutionFlight

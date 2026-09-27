@@ -4,8 +4,6 @@ package endpoint
 
 import (
 	"context"
-	"errors"
-	"sync/atomic"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/route/client"
@@ -13,63 +11,34 @@ import (
 )
 
 // textIntroductionPrefixLifecycle is the sole owner of the Publisher's live
-// Introduction prefix and an opening that may replace its absence.
+// Introduction prefix and an opening that may replace its absence. The shared
+// role machinery (opening slot, member set, idle retirement, stop) lives in
+// textRolePrefixCore; this owner adds only the Introduction handle type and
+// its Route operations.
 type textIntroductionPrefixLifecycle struct {
-	live    *textIntroductionPrefixHandle
-	opening *textOperationFlight
-	set     *textInteriorSet
+	textRolePrefixCore
 }
 
 // textIntroductionPrefixHandle exposes only operations belonging to the exact
 // live Introduction prefix. Retirement invalidates every retained handle.
 type textIntroductionPrefixHandle struct {
-	owner  *textIntroductionPrefixLifecycle
-	prefix atomic.Pointer[client.ClosedSourcePrefix]
-	cancel context.CancelFunc
-}
-
-type textIntroductionPrefixRetirement struct {
-	prefix  *client.ClosedSourcePrefix
-	opening *textOperationFlight
+	textRolePrefixHandleCore
 }
 
 func (lifecycle *textIntroductionPrefixLifecycle) currentLocked() *textIntroductionPrefixHandle {
 	if lifecycle == nil {
 		return nil
 	}
-	return lifecycle.live
-}
-
-func (lifecycle *textIntroductionPrefixLifecycle) acquireOpenedLocked(prefix *client.ClosedSourcePrefix) *textIntroductionPrefixHandle {
-	handle := lifecycle.currentLocked()
-	if handle == nil || prefix == nil || handle.prefix.Load() != prefix {
-		return nil
-	}
+	handle, _ := lifecycle.currentLiveLocked().(*textIntroductionPrefixHandle)
 	return handle
 }
 
-func (lifecycle *textIntroductionPrefixLifecycle) openingInProgressLocked() bool {
-	return lifecycle != nil && lifecycle.opening != nil
-}
-
-func (lifecycle *textIntroductionPrefixLifecycle) openingAvailableLocked() bool {
-	return lifecycle != nil && lifecycle.live == nil && lifecycle.opening == nil
-}
-
-func (lifecycle *textIntroductionPrefixLifecycle) membersSlotLocked() **textInteriorSet {
-	return &lifecycle.set
-}
-
-func (lifecycle *textIntroductionPrefixLifecycle) reserveOpeningLocked(flight *textOperationFlight) bool {
-	if lifecycle == nil || flight == nil || lifecycle.live != nil || lifecycle.opening != nil {
-		return false
+func (lifecycle *textIntroductionPrefixLifecycle) acquireOpenedLocked(prefix *client.ClosedSourcePrefix) *textIntroductionPrefixHandle {
+	if lifecycle == nil {
+		return nil
 	}
-	lifecycle.opening = flight
-	return true
-}
-
-func (lifecycle *textIntroductionPrefixLifecycle) openingCurrentLocked(flight *textOperationFlight) bool {
-	return lifecycle != nil && lifecycle.opening == flight
+	handle, _ := lifecycle.acquireOpenedCoreLocked(prefix).(*textIntroductionPrefixHandle)
+	return handle
 }
 
 func (lifecycle *textIntroductionPrefixLifecycle) finishOpeningLocked(flight *textOperationFlight,
@@ -81,87 +50,18 @@ func (lifecycle *textIntroductionPrefixLifecycle) finishOpeningLocked(flight *te
 	if !publish || prefix == nil {
 		return true
 	}
-	handle := &textIntroductionPrefixHandle{owner: lifecycle, cancel: cancel}
+	handle := &textIntroductionPrefixHandle{textRolePrefixHandleCore: textRolePrefixHandleCore{owner: &lifecycle.textRolePrefixCore, cancel: cancel}}
 	handle.prefix.Store(prefix)
 	lifecycle.live = handle
 	return true
 }
 
-func (lifecycle *textIntroductionPrefixLifecycle) retireIdleLocked() error {
-	if lifecycle == nil || lifecycle.live == nil {
-		return nil
-	}
-	handle := lifecycle.live
-	prefix := handle.prefix.Load()
-	if prefix == nil {
-		lifecycle.live = nil
-		return nil
-	}
-	select {
-	case <-prefix.Done():
-	default:
-		return nil
-	}
-	lifecycle.live = nil
-	handle.cancel()
-	handle.prefix.Store(nil)
-	return prefix.Close()
-}
-
-func (lifecycle *textIntroductionPrefixLifecycle) stopLocked() *textIntroductionPrefixRetirement {
-	retirement := &textIntroductionPrefixRetirement{}
-	if lifecycle == nil {
-		return retirement
-	}
-	if lifecycle.live != nil {
-		lifecycle.live.cancel()
-		retirement.prefix = lifecycle.live.prefix.Swap(nil)
-		lifecycle.live = nil
-	}
-	retirement.opening = lifecycle.opening
-	lifecycle.opening = nil
-	if retirement.opening != nil {
-		retirement.opening.cancel()
-	}
-	lifecycle.set = nil
-	return retirement
-}
-
-func (retirement *textIntroductionPrefixRetirement) joinOpening() {
-	if retirement == nil {
-		return
-	}
-	if retirement.opening != nil {
-		<-retirement.opening.done
-	}
-	retirement.opening = nil
-}
-
-func (retirement *textIntroductionPrefixRetirement) closePrefix() error {
-	if retirement == nil {
-		return nil
-	}
-	if retirement.prefix != nil {
-		prefix := retirement.prefix
-		retirement.prefix = nil
-		return prefix.Close()
-	}
-	return nil
-}
-
 func (handle *textIntroductionPrefixHandle) currentLocked(lifecycle *textIntroductionPrefixLifecycle) bool {
-	return handle != nil && lifecycle != nil && lifecycle.live == handle && handle.owner == lifecycle && handle.prefix.Load() != nil
+	return handle != nil && lifecycle != nil && handle.textRolePrefixHandleCore.currentCoreLocked(&lifecycle.textRolePrefixCore)
 }
 
 func (handle *textIntroductionPrefixHandle) routePrefix() (*client.ClosedSourcePrefix, error) {
-	if handle == nil {
-		return nil, errors.New("text Introduction prefix unavailable")
-	}
-	prefix := handle.prefix.Load()
-	if prefix == nil {
-		return nil, errors.New("text Introduction prefix unavailable")
-	}
-	return prefix, nil
+	return handle.routeCorePrefix("text Introduction prefix unavailable")
 }
 
 func (handle *textIntroductionPrefixHandle) introductionRecipient() ([32]byte, time.Time, error) {
@@ -182,9 +82,5 @@ func (handle *textIntroductionPrefixHandle) register(ctx context.Context, presen
 }
 
 func (handle *textIntroductionPrefixHandle) replenish(ctx context.Context, present client.ClosedTokenPresenter) error {
-	prefix, err := handle.routePrefix()
-	if err != nil {
-		return err
-	}
-	return prefix.Replenish(ctx, present)
+	return handle.replenishCore(ctx, present, "text Introduction prefix unavailable")
 }
