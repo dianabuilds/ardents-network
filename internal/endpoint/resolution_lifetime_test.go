@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
+	sourceowner "github.com/dianabuilds/ardents-network/internal/endpoint/source"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/route/carrier"
 	"github.com/dianabuilds/ardents-network/internal/route/client"
@@ -57,7 +58,11 @@ func TestTextResolutionCloseJoinsInFlightStateSelection(t *testing.T) {
 		t.Fatal("resolution did not reach State selection")
 	}
 	owner.mu.Lock()
-	acquisition := owner.resolution.source
+	flight := owner.resolution.current
+	var acquisition *sourceowner.ResolutionAcquisition
+	if flight != nil {
+		acquisition = flight.source
+	}
 	owner.mu.Unlock()
 	if acquisition == nil {
 		t.Fatal("lookup did not own an exact Source acquisition")
@@ -108,15 +113,15 @@ func TestTextResolutionCloseJoinsInFlightStateSelection(t *testing.T) {
 func TestTextResolutionCompletionRetainsFailedCleanup(t *testing.T) {
 	endpoint, principal := dutyContextEndpoint(t)
 	owner := admittedDutyContext(t, endpoint, principal, broker.Connection)
-	attempt, cancel := context.WithCancel(owner.lease.Context())
-	defer cancel()
-	flight := &resolutionFlight{context: attempt, cancel: cancel, done: make(chan struct{})}
 	owner.mu.Lock()
-	owner.resolution = flight
+	flight := owner.resolution.BeginLocked(owner.lease.Context(), t.Context(), &sourceowner.ResolutionAcquisition{})
 	owner.mu.Unlock()
+	if flight == nil {
+		t.Fatal("resolution owner did not admit cleanup fixture")
+	}
 	original := errors.New("terminal CLOSE could not be emitted")
 	failure := errors.Join(client.ErrClosedSourceCleanup, original)
-	owner.finishResolution(flight, failure)
+	owner.finishResolution(flight, failure, nil)
 	if endpoint.dutyAvailable() {
 		t.Fatal("cleanup failure left Endpoint accepting jobs")
 	}
@@ -132,66 +137,69 @@ func TestTextResolutionCompletionRetainsFailedCleanup(t *testing.T) {
 }
 
 func TestTextResolutionOldAcquisitionCannotCommitAfterSourceReplacement(t *testing.T) {
-	endpoint, owner, source := startRoleNetwork(t, roleNetworkFixture{carrier: carrier.ClosedCarrierTCP, resolution: true})
-	defer func() { _ = endpoint.Close() }()
-	old, err := owner.openPrefix(t.Context())
-	if err != nil {
-		t.Fatal(err)
-	}
-	target, raw := resolutionProof(t, source)
-	defer clear(raw)
+	for _, profile := range []carrier.CarrierProfile{carrier.ClosedCarrierTCP, carrier.ClosedCarrierQUIC} {
+		t.Run(string(profile), func(t *testing.T) {
+			endpoint, owner, source := startRoleNetwork(t, roleNetworkFixture{carrier: profile, resolution: true})
+			defer func() { _ = endpoint.Close() }()
+			old, err := owner.openPrefix(t.Context())
+			if err != nil {
+				t.Fatal(err)
+			}
+			target, raw := resolutionProof(t, source)
+			defer clear(raw)
 
-	owner.mu.Lock()
-	profile, _, err := owner.permissionProfileLocked()
-	if err != nil {
-		owner.mu.Unlock()
-		t.Fatal(err)
-	}
-	acquisition := owner.source.AcquireResolutionLocked()
-	if acquisition == nil {
-		owner.mu.Unlock()
-		t.Fatal("resolution acquisition unavailable")
-	}
-	attempt, cancel := context.WithCancel(owner.lease.Context())
-	flight := &resolutionFlight{context: attempt, cancel: cancel, done: make(chan struct{}), source: acquisition, releaseSource: acquisition.Release}
-	owner.resolution = flight
-	owner.mu.Unlock()
-	finished := false
-	defer func() {
-		if !finished {
-			cancel()
-			owner.finishResolution(flight, context.Canceled)
-		}
-	}()
-	if err := owner.prepareSourceReopen(t.Context(), flight); err != nil {
-		t.Fatal(err)
-	}
-	if err := closeSourceHandle(old); err != nil {
-		t.Fatal(err)
-	}
-	owner.mu.Lock()
-	err = owner.retirePrefixLocked()
-	owner.mu.Unlock()
-	if err != nil {
-		t.Fatal(err)
-	}
-	replacement, err := owner.openPrefix(t.Context())
-	if err != nil {
-		t.Fatal(err)
-	}
+			owner.mu.Lock()
+			profile, _, err := owner.permissionProfileLocked()
+			if err != nil {
+				owner.mu.Unlock()
+				t.Fatal(err)
+			}
+			acquisition := owner.source.AcquireResolutionLocked()
+			if acquisition == nil {
+				owner.mu.Unlock()
+				t.Fatal("resolution acquisition unavailable")
+			}
+			flight := owner.resolution.BeginLocked(owner.lease.Context(), t.Context(), acquisition)
+			owner.mu.Unlock()
+			if flight == nil {
+				t.Fatal("resolution owner did not admit exact Source acquisition")
+			}
+			finished := false
+			defer func() {
+				if !finished {
+					owner.finishResolution(flight, context.Canceled, nil)
+				}
+			}()
+			if err := owner.prepareSourceReopen(t.Context(), flight); err != nil {
+				t.Fatal(err)
+			}
+			if err := closeSourceHandle(old); err != nil {
+				t.Fatal(err)
+			}
+			owner.mu.Lock()
+			err = owner.retirePrefixLocked()
+			owner.mu.Unlock()
+			if err != nil {
+				t.Fatal(err)
+			}
+			replacement, err := owner.openPrefix(t.Context())
+			if err != nil {
+				t.Fatal(err)
+			}
 
-	verified, commitErr := owner.acceptResolutionResult(t.Context(), flight, profile, target, raw)
-	owner.mu.Lock()
-	committed := owner.descriptorHistory.Has(target)
-	retained := owner.source.CurrentLocked() == replacement && owner.resolution == flight
-	owner.mu.Unlock()
-	if commitErr == nil || verified.Descriptor.Target != [32]byte{} || committed || !retained {
-		t.Fatalf("old acquisition committed after replacement: err=%v committed=%v retained=%v", commitErr, committed, retained)
-	}
-	cancel()
-	owner.finishResolution(flight, commitErr)
-	finished = true
-	if _, err := acquisition.ResolutionRecipient(); err == nil {
-		t.Fatal("resolution completion retained its acquisition")
+			verified, commitErr := owner.acceptResolutionResult(t.Context(), flight, profile, target, raw)
+			owner.mu.Lock()
+			committed := owner.descriptorHistory.Has(target)
+			retained := owner.source.CurrentLocked() == replacement && owner.resolution.CurrentLocked(flight)
+			owner.mu.Unlock()
+			if commitErr == nil || verified.Descriptor.Target != [32]byte{} || committed || !retained {
+				t.Fatalf("old acquisition committed after replacement: err=%v committed=%v retained=%v", commitErr, committed, retained)
+			}
+			owner.finishResolution(flight, commitErr, nil)
+			finished = true
+			if _, err := acquisition.ResolutionRecipient(); err == nil {
+				t.Fatal("resolution completion retained its acquisition")
+			}
+		})
 	}
 }

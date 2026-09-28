@@ -97,7 +97,7 @@ func TestTextResolutionUsesIssuedControlThroughRetainedPrefix(t *testing.T) {
 				t.Fatal("absent Target was accepted")
 			}
 			owner.mu.Lock()
-			retained := owner.source.CurrentLocked() == prefix && owner.resolution == nil && owner.tokens.Issuance == nil && owner.tokens.Permission.Batches == 2
+			retained := owner.source.CurrentLocked() == prefix && !owner.resolution.BusyLocked() && owner.tokens.Issuance == nil && owner.tokens.Permission.Batches == 2
 			owner.mu.Unlock()
 			if !retained {
 				t.Fatal("ordinary resolution replaced its prefix or minted more bootstrap allowance")

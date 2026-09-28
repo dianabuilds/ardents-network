@@ -100,13 +100,16 @@ Introduction and Responder lifecycles keep separate exact handles, openings and
 stop/join cleanup. Context shutdown and their callers no longer mutate either
 prefix's fields.
 
-Each Descriptor lookup acquires one operation-local view of the exact current
-Source handle. Recipient selection, stock preparation, token presentation and
-the returned proof all remain bound to that acquisition. Every lookup outcome
-releases only that view; publication continues to use the read-only compatibility
-handle. Cancellation, Source retirement or replacement makes the acquisition
-non-current, so a late response cannot commit a Descriptor floor or attach to
-later Source work.
+Descriptor lookup and publication share one private resolution-flight owner
+under the Context lock. Admission retains one operation-local acquisition of
+the exact current Source handle; a second flight cannot replace it. The owner
+joins caller cancellation, releases that acquisition once and closes its exact
+completion barrier. Recipient selection, stock preparation, token presentation
+and a returned proof remain bound to the acquired Source. Cancellation, Source
+retirement or replacement makes it non-current, so a late response cannot
+commit a Descriptor floor or publication acknowledgement or attach to later
+Source work. Context shutdown cancels the flight before its ordered join;
+Permission, Publisher/Instance and Descriptor authority remain root checks.
 
 A clean JOIN peer CLOSE may precede consumption of the final authenticated
 Service record. The client retains those bounded received bytes and their original

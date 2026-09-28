@@ -42,7 +42,7 @@ func TestTextIntroductionReopensJoinedSource(t *testing.T) {
 			clear(second.operation)
 			reader.mu.Lock()
 			valid := reader.source.CurrentLocked() != nil && reader.source.CurrentLocked() != prefix && reader.tokens.Permission == permission && permission.Batches == 2 &&
-				permission.Pending == nil && reader.tokens.Issuance == nil && reader.resolution == nil && !reader.source.OpeningInProgressLocked()
+				permission.Pending == nil && reader.tokens.Issuance == nil && !reader.resolution.BusyLocked() && !reader.source.OpeningInProgressLocked()
 			reserved := permission.Reserved
 			maxima := permission.Accepted.Maxima
 			reader.mu.Unlock()

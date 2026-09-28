@@ -26,7 +26,7 @@ func (owner *dutyContext) prepareSourceReopen(ctx context.Context, flight *resol
 func (owner *dutyContext) prepareSourceReopenOwned(ctx context.Context, flight *resolutionFlight) error {
 	owner.mu.Lock()
 	profile, _, err := owner.permissionProfileLocked()
-	if err != nil || ctx.Err() != nil || owner.source.CurrentLocked() == nil || flight != nil && (owner.resolution != flight || flight.source == nil || !flight.source.CurrentLocked(&owner.source)) || owner.tokens.Permission == nil {
+	if err != nil || ctx.Err() != nil || owner.source.CurrentLocked() == nil || flight != nil && !owner.resolution.CurrentSourceLocked(flight, &owner.source) || owner.tokens.Permission == nil {
 		owner.mu.Unlock()
 		return source.PreparationFailureAt("stock", errors.New("text Source reopen stock unavailable"))
 	}

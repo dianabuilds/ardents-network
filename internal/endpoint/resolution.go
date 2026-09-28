@@ -7,24 +7,11 @@ import (
 	"errors"
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
-	"github.com/dianabuilds/ardents-network/internal/endpoint/source"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	"github.com/dianabuilds/ardents-network/internal/route/client"
 	"github.com/dianabuilds/ardents-network/internal/service/reachability"
 )
-
-// resolutionFlight binds one Descriptor lookup to the exact Source
-// acquisition retained at admission. The acquisition's own methods are
-// nil-safe, so a cleared flight source fails closed instead of panicking.
-type resolutionFlight struct {
-	context       context.Context
-	cancel        context.CancelFunc
-	done          chan struct{}
-	source        *source.ResolutionAcquisition
-	releaseSource func()
-	receiver      [32]byte
-}
 
 // lookupDescriptor consumes the context's actual issuer stock and journal,
 // then verifies the full proof for the independently selected Target. It does
@@ -35,7 +22,7 @@ func (owner *dutyContext) lookupDescriptor(ctx context.Context, target [32]byte)
 	}
 	owner.mu.Lock()
 	profile, _, err := owner.permissionProfileLocked()
-	if err != nil || owner.surface != broker.Connection || owner.tokens.Permission == nil || owner.source.CurrentLocked() == nil || owner.resolution != nil || owner.source.OpeningInProgressLocked() || owner.tokens.Issuance != nil {
+	if err != nil || owner.surface != broker.Connection || owner.tokens.Permission == nil || owner.source.CurrentLocked() == nil || owner.resolution.BusyLocked() || owner.source.OpeningInProgressLocked() || owner.tokens.Issuance != nil {
 		owner.mu.Unlock()
 		return reachability.Verified{}, errors.New("text resolution owner unavailable")
 	}
@@ -48,19 +35,14 @@ func (owner *dutyContext) lookupDescriptor(ctx context.Context, target [32]byte)
 		owner.mu.Unlock()
 		return reachability.Verified{}, errors.New("text resolution Source unavailable")
 	}
-	attempt, cancel := context.WithCancel(owner.lease.Context())
-	flight := &resolutionFlight{context: attempt, cancel: cancel, done: make(chan struct{}), source: acquisition, releaseSource: acquisition.Release}
-	owner.resolution = flight
+	flight := owner.resolution.BeginLocked(owner.lease.Context(), ctx, acquisition)
+	if flight == nil {
+		owner.mu.Unlock()
+		return reachability.Verified{}, errors.New("text resolution owner unavailable")
+	}
+	attempt := flight.context
 	owner.mu.Unlock()
-	interrupted := make(chan struct{})
-	stop := context.AfterFunc(ctx, func() { defer close(interrupted); cancel() })
-	defer func() {
-		cancel()
-		if !stop() {
-			<-interrupted
-		}
-		owner.finishResolution(flight, outcome)
-	}()
+	defer func() { owner.finishResolution(flight, outcome, nil) }()
 	receiver, err := flight.source.ResolutionRecipient()
 	if err != nil {
 		return reachability.Verified{}, err
@@ -87,8 +69,8 @@ func (owner *dutyContext) acceptResolutionResult(caller context.Context, flight 
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
 	current, now, err := owner.permissionProfileLocked()
-	if caller == nil || err != nil || flight == nil || owner.resolution != flight || flight.source == nil ||
-		current != profile || !flight.source.CurrentLocked(&owner.source) || flight.context.Err() != nil || caller.Err() != nil {
+	if caller == nil || err != nil || flight == nil || !owner.resolution.CurrentSourceLocked(flight, &owner.source) ||
+		current != profile || flight.context.Err() != nil || caller.Err() != nil {
 		return reachability.Verified{}, errors.New("text resolution authority changed")
 	}
 	return owner.descriptorHistory.Accept(raw, target, profile.NetworkID, profile.Digest, now)
@@ -98,7 +80,7 @@ func (owner *dutyContext) presentResolutionToken(flight *resolutionFlight, hello
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
 	profile, now, err := owner.permissionProfileLocked()
-	if err != nil || flight == nil || owner.resolution != flight || flight.source == nil || !flight.source.CurrentLocked(&owner.source) || flight.context.Err() != nil ||
+	if err != nil || flight == nil || !owner.resolution.CurrentSourceLocked(flight, &owner.source) || flight.context.Err() != nil ||
 		owner.tokens.Permission == nil || hello.Purpose != ardp.PurposeReachability || class != 1 || hello.RecipientNodeID != flight.receiver ||
 		hello.NetworkID != profile.NetworkID || hello.StateGeneration != profile.StateGeneration || hello.StateDigest != profile.StateDigest ||
 		hello.ProfileDigest != profile.Digest || hello.ChannelNonce == [32]byte{} || !now.Before(hello.Deadline) || hello.Deadline.After(profile.NotAfter) {
@@ -116,7 +98,7 @@ func (owner *dutyContext) presentResolutionToken(flight *resolutionFlight, hello
 func (owner *dutyContext) ensureResolutionStock(flight *resolutionFlight) error {
 	owner.mu.Lock()
 	profile, _, err := owner.permissionProfileLocked()
-	if err != nil || owner.resolution != flight || flight.source == nil || !flight.source.CurrentLocked(&owner.source) || flight.context.Err() != nil || owner.tokens.Permission == nil {
+	if err != nil || !owner.resolution.CurrentSourceLocked(flight, &owner.source) || flight.context.Err() != nil || owner.tokens.Permission == nil {
 		owner.mu.Unlock()
 		return errors.New("text resolution stock owner changed")
 	}
@@ -128,20 +110,19 @@ func (owner *dutyContext) ensureResolutionStock(flight *resolutionFlight) error 
 	return owner.issueTokens(flight.context, [][32]byte{flight.receiver}, 1)
 }
 
-func (owner *dutyContext) finishResolution(flight *resolutionFlight, outcome error) {
+func (owner *dutyContext) finishResolution(flight *resolutionFlight, outcome error, caller context.Context) error {
+	owner.resolution.JoinCaller(flight)
+	if caller != nil {
+		outcome = errors.Join(outcome, caller.Err())
+	}
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
-	if flight.releaseSource != nil {
-		flight.releaseSource()
-		flight.releaseSource = nil
-	}
-	if errors.Is(outcome, client.ErrClosedSourceCleanup) {
-		owner.closeErr = errors.Join(owner.closeErr, outcome)
-		owner.closed = true
-		owner.endpoint.failDutyContexts(outcome)
-	}
-	if owner.resolution == flight {
-		owner.resolution = nil
-	}
-	close(flight.done)
+	owner.resolution.FinishLocked(flight, func() {
+		if errors.Is(outcome, client.ErrClosedSourceCleanup) {
+			owner.closeErr = errors.Join(owner.closeErr, outcome)
+			owner.closed = true
+			owner.endpoint.failDutyContexts(outcome)
+		}
+	})
+	return outcome
 }

@@ -129,7 +129,7 @@ func TestTextPublisherBuildsRetainedQualificationSetAcrossFourReaders(t *testing
 					if err != nil {
 						owner.mu.Lock()
 						state := fmt.Sprintf("prefix=%t resolution=%t opening=%t issuance=%t permission=%t closed=%t",
-							owner.source.CurrentLocked() != nil, owner.resolution != nil, owner.source.OpeningInProgressLocked(), owner.tokens.Issuance != nil,
+							owner.source.CurrentLocked() != nil, owner.resolution.BusyLocked(), owner.source.OpeningInProgressLocked(), owner.tokens.Issuance != nil,
 							owner.tokens.Permission != nil, owner.closed)
 						owner.mu.Unlock()
 						return bound, fmt.Errorf("Reader %d Introduction %d (%s): %w", index, streamIndex, state, err)
@@ -220,7 +220,7 @@ func TestTextPublisherBuildsRetainedQualificationSetAcrossFourReaders(t *testing
 			if err := qualification.ReplenishStreams(ctx, publisherWorker, 0); err != nil {
 				publisher.mu.Lock()
 				state := fmt.Sprintf("prefix=%t resolution=%t opening=%t issuance=%t permission=%t closed=%t",
-					publisher.source.CurrentLocked() != nil, publisher.resolution != nil, publisher.source.OpeningInProgressLocked(), publisher.tokens.Issuance != nil,
+					publisher.source.CurrentLocked() != nil, publisher.resolution.BusyLocked(), publisher.source.OpeningInProgressLocked(), publisher.tokens.Issuance != nil,
 					publisher.tokens.Permission != nil, publisher.closed)
 				prefix := publisher.source.CurrentLocked()
 				publisher.mu.Unlock()

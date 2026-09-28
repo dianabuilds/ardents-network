@@ -33,6 +33,8 @@
 //     owns scheduler identity. publication_refresh.go coordinates rotation,
 //     and descriptor_publication.go coordinates the signed Descriptor effect.
 //   - descriptorhistory owns per-Context verified Descriptor floors;
+//     resolution_lifecycle.go owns the single lookup-or-publication flight,
+//     its exact Source acquisition, cancellation join, and completion.
 //     resolution.go coordinates lookup and rechecks live authority.
 //   - job_lifecycle.go owns invocation identity and joined cleanup;
 //     worker_lifetime_linux.go owns the installed worker process lifetime.

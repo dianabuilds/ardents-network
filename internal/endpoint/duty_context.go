@@ -22,7 +22,7 @@ type dutyContextState struct {
 	introduction      introductionOwner
 	descriptorHistory descriptorhistory.History
 	responder         responderPrefixLifecycle
-	resolution        *resolutionFlight
+	resolution        resolutionLifecycle
 	// Source owns opening state and operation reservation. The retained
 	// Interior Set stays here because root admission and role selection use it.
 	source      source.Lifecycle

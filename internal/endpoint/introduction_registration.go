@@ -175,7 +175,7 @@ func (owner *dutyContext) withdrawIntroduction(ctx context.Context) error {
 	}
 	owner.mu.Lock()
 	registered := owner.publication.pair.PublicationTargetLocked()
-	if registered == nil || owner.resolution != nil || owner.publication.pair.OpeningInProgressLocked() || owner.publication.pair.WithdrawalInProgressLocked() || !owner.liveLocked(owner.endpoint, broker.Administration) {
+	if registered == nil || owner.resolution.BusyLocked() || owner.publication.pair.OpeningInProgressLocked() || owner.publication.pair.WithdrawalInProgressLocked() || !owner.liveLocked(owner.endpoint, broker.Administration) {
 		owner.mu.Unlock()
 		return errors.New("text Publisher registration absent or ending")
 	}

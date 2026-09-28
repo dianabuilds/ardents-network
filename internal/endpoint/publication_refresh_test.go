@@ -134,11 +134,14 @@ func TestTextPublicationAutomaticallyRefreshesAndRetiresPredecessor(t *testing.T
 			}
 			// A refused withdrawal cannot cancel the publication's scheduler.
 			owner.mu.Lock()
-			owner.resolution = &resolutionFlight{}
+			blocked := owner.resolution.BeginLocked(owner.lease.Context(), t.Context(), owner.source.AcquireResolutionLocked())
 			owner.mu.Unlock()
+			if blocked == nil {
+				t.Fatal("resolution owner did not admit publication exclusion fixture")
+			}
 			withdrawErr := owner.withdrawIntroduction(t.Context())
+			owner.finishResolution(blocked, nil, nil)
 			owner.mu.Lock()
-			owner.resolution = nil
 			stillScheduled := owner.publication.refresh.Current() == refresh && refresh.Context.Err() == nil
 			owner.mu.Unlock()
 			if withdrawErr == nil || !stillScheduled {
@@ -298,7 +301,7 @@ func TestTextPublicationAutomaticallyRefreshesAndRetiresPredecessor(t *testing.T
 				owner.startRefreshLocked(second)
 				owner.publication.signalRegistrationsLocked()
 			}
-			stopped := owner.publication.refresh.Current() == refresh && refresh.Context.Err() != nil && !owner.publication.pair.OpeningInProgressLocked() && owner.resolution == nil &&
+			stopped := owner.publication.refresh.Current() == refresh && refresh.Context.Err() != nil && !owner.publication.pair.OpeningInProgressLocked() && !owner.resolution.BusyLocked() &&
 				owner.publication.pair.CurrentLocked() == nil && introduction.PairPending(&owner.publication.pair) == nil
 			owner.mu.Unlock()
 			if !stopped {

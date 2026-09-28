@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
+	"github.com/dianabuilds/ardents-network/internal/endpoint/source"
 )
 
 func TestTextContextCloseRevokesEveryChildBeforeOrderedJoin(t *testing.T) {
@@ -19,17 +20,22 @@ func TestTextContextCloseRevokesEveryChildBeforeOrderedJoin(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	resolutionContext, cancelResolution := context.WithCancel(owner.lease.Context())
-	resolution := &resolutionFlight{context: resolutionContext, cancel: cancelResolution, done: make(chan struct{})}
 	initialFailure := errors.New("initial context failure")
 	cleanupFailure := errors.New("job cleanup failure")
 	owner.mu.Lock()
-	owner.resolution = resolution
+	resolution := owner.resolution.BeginLocked(owner.lease.Context(), t.Context(), &source.ResolutionAcquisition{})
 	owner.closeErr = initialFailure
 	owner.mu.Unlock()
+	if resolution == nil {
+		t.Fatal("resolution owner did not admit shutdown fixture")
+	}
 
 	var finishOnce sync.Once
-	finishResolutionFlight := func() { finishOnce.Do(func() { close(resolution.done) }) }
+	finishResolutionFlight := func() {
+		finishOnce.Do(func() {
+			owner.finishResolution(resolution, nil, nil)
+		})
+	}
 	closed := make(chan error, 1)
 	closeGoroutineDone := make(chan struct{})
 	go func() {

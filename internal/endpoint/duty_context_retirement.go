@@ -56,10 +56,7 @@ func (owner *dutyContext) stopDutyContextChildrenLocked() *dutyContextRetirement
 	owner.tokens.ClearPermissionLocked()
 	retirement.issuance = owner.tokens.Issuance
 	retirement.issuance.Cancel()
-	retirement.resolution = owner.resolution
-	if retirement.resolution != nil {
-		retirement.resolution.cancel()
-	}
+	retirement.resolution = owner.resolution.StopLocked()
 	retirement.job = owner.job.stopLocked(owner)
 	return retirement
 }
@@ -91,9 +88,7 @@ func (retirement *dutyContextRetirement) join() error {
 	outcome = errors.Join(outcome, retirement.responder.closePrefix())
 	outcome = errors.Join(outcome, retirement.source.ClosePrefix())
 	retirement.issuance.Join()
-	if retirement.resolution != nil {
-		<-retirement.resolution.done
-	}
+	retirement.resolution.Join()
 	if retirement.withdrawal != nil {
 		retirement.withdrawal.JoinFlight()
 	}

@@ -163,7 +163,7 @@ func TestTextResolutionNetworkCannotRollBackLocalDescriptorFloor(t *testing.T) {
 			}
 			owner.mu.Lock()
 			retained := owner.descriptorHistory.Matches(current.Credential.Target, current.Digest, 2)
-			healthy := owner.source.CurrentLocked() == prefix && owner.resolution == nil && !owner.closed
+			healthy := owner.source.CurrentLocked() == prefix && !owner.resolution.BusyLocked() && !owner.closed
 			owner.mu.Unlock()
 			if !retained || !healthy {
 				t.Fatal("ordinary stale response erased floor or damaged context")
@@ -212,7 +212,7 @@ func TestTextResolutionNetworkCannotRollBackLocalDescriptorFloor(t *testing.T) {
 			}
 			unchanged := !owner.descriptorHistory.CanAdmit(fixtureID(199)) &&
 				owner.descriptorHistory.Matches(current.Credential.Target, current.Digest, 2) && owner.tokens.Permission.Reserved == reserved &&
-				owner.tokens.Permission.Batches == batches && tokensBefore == tokensAfter && owner.resolution == nil && owner.tokens.Issuance == nil
+				owner.tokens.Permission.Batches == batches && tokensBefore == tokensAfter && !owner.resolution.BusyLocked() && owner.tokens.Issuance == nil
 			owner.mu.Unlock()
 			if !unchanged {
 				t.Fatal("capacity refusal evicted floors or consumed network issuance/admission")

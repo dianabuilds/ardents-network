@@ -167,7 +167,7 @@ local Reader/Publisher duty per instance. The implementation has private
 owners rather than one undifferentiated state bag; after the extraction
 series, `dutyContextState` composes: `publication publicationOwner`,
 `introduction introductionOwner`, `descriptorHistory`, `responder
-responderPrefixLifecycle`, `resolution *resolutionFlight`, `source
+responderPrefixLifecycle`, `resolution resolutionLifecycle`, `source
 source.Lifecycle`, `sourceSet *interiorSet`, `tokens tokens.Owner`,
 plus job identity
 (`job`/`lastJob`/`verifiedJob *jobIdentity`), lease/principal/surface
@@ -183,7 +183,7 @@ binding, and the shared `mu`:
 | Permission file handover | `permissionfile` | Own canonical owner-private request/response paths, exact retry, and request durability; Context retains currentness and offline approval authority. |
 | Transit Grant acquisition | retired per [ADR-0092](../adr/0092-retire-generic-publisher-transit-chain.md) | The acquisition journals, transit credential acquisition, and transit client certificates were removed; no maintained composition selects a transit acquisition root. |
 | Descriptor history | `descriptorhistory.History` | Own per-Target verified publication/revision floors, conflict memory, capacity and context-retirement erasure; Context checks live authority before acceptance and before using a retained proof. |
-| Resolution and JOIN | Context flights (`resolutionFlight`) and narrow acquisitions | Exact current prefix must be checked again after network effects. |
+| Resolution and JOIN | Private `resolutionLifecycle` for the one Descriptor lookup/publication flight; Source and role owners retain their exact acquisitions | The flight owns cancellation, caller join, admitted Source release, and completion under the Context lock. Root rechecks Permission, Source, Publisher/Instance and Descriptor authority after network effects; retirement revokes before the ordered join. |
 | Introduction opening admission | `introduction.Admission` (extracted) | Own context-local four-per-second opening reservations and accepted delivery replay retention under the Context lock through `introduction.Host`; shutdown clears both together. |
 | Introduction delivery dispatch | `introduction.Dispatch`, `introduction.RecoveryOwner` (extracted) | Dispatch owns context-local waiter registration, one consumer gate, routing and waiter cleanup; recovery owns its exact generation, buffered capsule, deadline refusal and waiter/retirement handoff through `RecoveryBinding`. Slot transitions use the Context lock; Context checks live job and publication authority and joins claimed Route deliveries. |
 | Introduction exchange reservations | `introduction.ExchangeSet` (extracted) | Own active exchange membership, retention and shutdown cancellation under the Context lock; Context checks job authority and joins terminal completion. |
@@ -294,14 +294,14 @@ systemd/cgroup qualification.
   helpers (`worker_composition_linux_test.go`), and every family consuming
   `liveCapsuleJob` (~20 files); behavior tests stay beside their production
   owner as they move.
-- **Next seam to evaluate (not selected)**: the one resolution-flight slot
-  shared by Descriptor lookup and publication. A private owner under the
-  existing Context lock could own exact flight identity, its Source acquisition,
-  cancellation and joined completion. Root callers must retain Permission,
-  registration, Publisher/Instance and current Source checks, and Context must
-  retain terminal cleanup failure. The candidate is accepted only if a bounded
-  change preserves lookup/publication exclusion, old-Source refusal and the
-  shutdown order above; it is not a new package or a generic flight scheduler.
+- **Selected bounded seam**: the private `resolutionLifecycle` under the
+  existing Context lock owns exact flight identity, admitted Source acquisition,
+  caller cancellation join, stop snapshot and once-only completion for Descriptor
+  lookup and publication. Root retains Permission, registration,
+  Publisher/Instance, token and current-Source authority checks and Context
+  terminal cleanup failure. The owner preserves lookup/publication exclusion,
+  old-Source refusal and the shutdown order above; it is neither a new package
+  nor a generic flight scheduler.
 - **Integration gate**: per slice — commit-hook quick-check (includes the
   installed-tag compile gate), targeted Linux Docker battery in a claimed
   host-wide serialized window, then the integration owner's combined full
