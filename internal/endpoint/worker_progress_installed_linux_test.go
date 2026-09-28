@@ -24,11 +24,11 @@ func requireInstalledPublisherProgress(t *testing.T, ctx context.Context, worker
 	}
 	defer finish()
 	attachment := worker.lifetime.attachment
-	if err := attachment.connection.SetDeadline(time.Now().Add(5 * time.Second)); err != nil {
+	if err := attachment.SetDeadline(time.Now().Add(5 * time.Second)); err != nil {
 		t.Fatal(err)
 	}
 	defer func() {
-		if err := attachment.connection.SetDeadline(time.Time{}); err != nil {
+		if err := attachment.SetDeadline(time.Time{}); err != nil {
 			t.Error(err)
 		}
 	}()

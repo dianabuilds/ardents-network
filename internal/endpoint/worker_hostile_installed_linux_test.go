@@ -41,7 +41,7 @@ func TestInstalledTextWorkerHostileTree(t *testing.T) {
 			bound := launchInstalledHostileWorker(t, ctx, owner, role.snapshot)
 			unit := installedWorkerInstance(t, ctx, bound, role.name)
 			events, processes := pinInstalledHostileTree(t, unit)
-			if unit.uid == siblingUnit.uid || unit.cgroup == siblingUnit.cgroup {
+			if unit.UID == siblingUnit.UID || unit.Cgroup == siblingUnit.Cgroup {
 				t.Fatal("sibling workers share an isolation identity")
 			}
 			owner.mu.Lock()
@@ -57,7 +57,7 @@ func TestInstalledTextWorkerHostileTree(t *testing.T) {
 			if bound.grant.Active() != 0 || bound.lease.Context().Err() == nil || !bound.completedCurrent() {
 				t.Fatal("cleanup failed to revoke only the victim job")
 			}
-			requireInstalledWorkerCollected(t, ctx, unit.name, role.name)
+			requireInstalledWorkerCollected(t, ctx, unit.Name, role.name)
 			if current, err := worker.ObserveInstance(ctx, siblingUnit.Name, "publisher"); err != nil || current != siblingUnit {
 				t.Fatalf("victim cleanup changed sibling invocation: %v", err)
 			}
@@ -91,7 +91,7 @@ func TestInstalledTextWorkerHostileTree(t *testing.T) {
 			if err := replacement.lifetime.attachment.Close(); err != nil {
 				t.Fatal(err)
 			}
-			waitInstalledParentExit(t, ctx, replacementEvents, replacementPIDs, replacementUnit.pid)
+			waitInstalledParentExit(t, ctx, replacementEvents, replacementPIDs, replacementUnit.PID)
 			if err := replacement.Close(); err != nil {
 				t.Fatal(err)
 			}
@@ -99,7 +99,7 @@ func TestInstalledTextWorkerHostileTree(t *testing.T) {
 			if replacement.grant.Active() != 0 || !replacement.completedCurrent() {
 				t.Fatal("parent-exit cleanup retained the old job or lost its context")
 			}
-			requireInstalledWorkerCollected(t, ctx, replacementUnit.name, role.name)
+			requireInstalledWorkerCollected(t, ctx, replacementUnit.Name, role.name)
 			t.Log("hostile descendants removed; sibling served snapshot; owner revoke joined sibling; parent exit triggered manager cleanup before Endpoint Close")
 		})
 	}

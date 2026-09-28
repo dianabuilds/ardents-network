@@ -48,19 +48,19 @@ func TestInstalledTextWorkerEscapeMatrix(t *testing.T) {
 		t.Run(role.name, func(t *testing.T) {
 			endpoint, principal := dutyContextEndpoint(t)
 			owner := admittedDutyContext(t, endpoint, principal, role.surface)
-			worker, err := owner.launchWorker(ctx, role.snapshot)
+			launched, err := owner.launchWorker(ctx, role.snapshot)
 			if err != nil {
 				t.Fatalf("escape artifact did not reach verified readiness: %v", err)
 			}
-			if worker.grant.Active() != 1 || worker.lease.Context().Err() != nil {
+			if launched.grant.Active() != 1 || launched.lease.Context().Err() != nil {
 				t.Fatal("escape artifact did not receive the bounded verified Grant")
 			}
-			instance := installedWorkerInstance(t, ctx, worker, role.name)
+			instance := installedWorkerInstance(t, ctx, launched, role.name)
 			events, err := worker.PinCgroup(instance)
 			if err != nil {
 				t.Fatal(err)
 			}
-			if err := worker.Close(); err != nil {
+			if err := launched.Close(); err != nil {
 				_ = events.Close()
 				t.Fatal(err)
 			}
@@ -69,7 +69,7 @@ func TestInstalledTextWorkerEscapeMatrix(t *testing.T) {
 			if err != nil || closeErr != nil || !gone && populated {
 				t.Fatalf("escape worker cleanup: populated=%v err=%v close=%v", populated, err, closeErr)
 			}
-			if worker.grant.Active() != 0 || worker.lease.Context().Err() == nil {
+			if launched.grant.Active() != 0 || launched.lease.Context().Err() == nil {
 				t.Fatal("escape worker retained Grant after cleanup")
 			}
 			requireInstalledWorkerCollected(t, ctx, instance.Name, role.name)
