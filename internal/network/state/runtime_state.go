@@ -12,7 +12,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/resource"
 )
 
-// networkState owns verification, finite Source work, and publication order.
+// networkState owns verified-decision admission, finite Source work, and publication order.
 // The durable package holds its exclusive physical root and persisted bytes.
 type networkState struct {
 	mu              sync.RWMutex

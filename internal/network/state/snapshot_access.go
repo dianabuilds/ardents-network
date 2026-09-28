@@ -97,22 +97,6 @@ func (s *networkState) snapshotWithDistribution(now time.Time) Snapshot {
 	return snapshot
 }
 
-// BridgeCandidateByKey returns one immutable authenticated Invite-issuer
-// projection. Key lookup lets callers authenticate bytes before classifying
-// the asserted identity or role.
-func (snapshot Snapshot) BridgeCandidateByKey(keyID [32]byte) (BridgeCandidate, bool) {
-	for _, candidate := range snapshot.Candidates[:snapshot.CandidateCount] {
-		if candidate.KeyID == keyID {
-			return BridgeCandidate{NodeID: candidate.NodeID, PublicKey: candidate.PublicKey,
-				KeyID: candidate.KeyID, FamilyID: candidate.FamilyID, RecordDigest: candidate.RecordDigest,
-				DomainProofDigest: candidate.DomainProofDigest, Domain: candidate.Domain,
-				ValidFrom: candidate.ValidFrom, ValidUntil: candidate.ValidUntil,
-				AssignmentNotAfter: candidate.AssignmentNotAfter}, true
-		}
-	}
-	return BridgeCandidate{}, false
-}
-
 func routeCandidates(decision *epoch.Decision) ([64]routeCandidate, uint8) {
 	var result [64]routeCandidate
 	if decision == nil {
