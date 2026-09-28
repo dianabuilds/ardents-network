@@ -245,7 +245,7 @@ func TestTextIssuanceRequiresPermissionBeforeSelectingAnyPeers(t *testing.T) {
 	if err := owner.issueTokens(t.Context(), [][32]byte{source.view.Nodes[0].NodeID}, 2); err == nil {
 		t.Fatal("missing permission admitted")
 	}
-	if endpoint.closedEntries != nil || owner.source.set != nil {
+	if endpoint.closedEntries != nil || owner.sourceSet != nil {
 		t.Fatal("unallocated owner selected peers")
 	}
 	canceled, cancel := context.WithCancel(t.Context())
@@ -351,7 +351,7 @@ func TestTextPrefixPreparesBothReceiversInOneRetryableBatch(t *testing.T) {
 		prefix, err := owner.openPrefix(ctx)
 		if prefix != nil || err == nil {
 			if prefix != nil {
-				_ = prefix.Close()
+				_ = closeSourceHandle(prefix)
 			}
 			t.Fatal("unavailable issuer created a prefix")
 		}
@@ -379,7 +379,7 @@ func TestTextPrefixPreparesBothReceiversInOneRetryableBatch(t *testing.T) {
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
 	if owner.tokens.Permission.Pending != pending || owner.tokens.Permission.Batches != 1 || !bytes.Equal(original, pending.Pending.Request()) ||
-		owner.tokens.Issuance != nil || owner.source.opening != nil || len(owner.tokens.Permission.Stock) != 0 {
+		owner.tokens.Issuance != nil || owner.source.OpeningInProgressLocked() || len(owner.tokens.Permission.Stock) != 0 {
 		t.Fatal("retry changed receiver ordering, blinding, batch debit or lifecycle")
 	}
 }

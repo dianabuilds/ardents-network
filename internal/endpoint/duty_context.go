@@ -9,6 +9,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
 	"github.com/dianabuilds/ardents-network/internal/endpoint/descriptorhistory"
+	"github.com/dianabuilds/ardents-network/internal/endpoint/source"
 	"github.com/dianabuilds/ardents-network/internal/endpoint/tokens"
 )
 
@@ -22,19 +23,24 @@ type dutyContextState struct {
 	descriptorHistory descriptorhistory.History
 	responder         responderPrefixLifecycle
 	resolution        *resolutionFlight
-	source            sourceLifecycle
-	tokens            tokens.Owner
-	mu                sync.Mutex
-	endpoint          *endpoint
-	lease             *broker.ActiveSession
-	principal         [32]byte
-	surface           broker.Surface
-	job               *jobIdentity
-	lastJob           *jobIdentity
-	verifiedJob       *jobIdentity
-	closed            bool
-	done              chan struct{}
-	closeErr          error
+	// source is the pure two-slot opening state machine; its retained
+	// Interior Set and operation gate belong to the context because both
+	// survive prefix replacement and are read by root-only methods.
+	source           source.Lifecycle
+	sourceSet        *interiorSet
+	sourceOperations sourceOperationGate
+	tokens           tokens.Owner
+	mu               sync.Mutex
+	endpoint         *endpoint
+	lease            *broker.ActiveSession
+	principal        [32]byte
+	surface          broker.Surface
+	job              *jobIdentity
+	lastJob          *jobIdentity
+	verifiedJob      *jobIdentity
+	closed           bool
+	done             chan struct{}
+	closeErr         error
 }
 
 func (owner *dutyContext) reportOperationFailure(failure string) {

@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 
+	"github.com/dianabuilds/ardents-network/internal/endpoint/source"
 	"github.com/dianabuilds/ardents-network/internal/endpoint/tokens"
 	"github.com/dianabuilds/ardents-network/internal/route/client"
 	"github.com/dianabuilds/ardents-network/internal/route/credential"
@@ -45,15 +46,15 @@ func (owner *dutyContext) issueJoinTokens(ctx context.Context, receivers [][32]b
 	}
 	defer release()
 	owner.mu.Lock()
-	expected, current := acquisition.issuancePrefixLocked(owner)
+	expected, current := acquisition.IssuancePrefixLocked(owner)
 	owner.mu.Unlock()
 	if !current {
 		return errors.New("text JOIN issuance Source acquisition unavailable")
 	}
 	err = owner.issueTokensForOpeningWithCancellation(ctx, receivers, class, nil, false, discardCanceled, acquisition, expected)
 	owner.mu.Lock()
-	_, current = acquisition.issuancePrefixLocked(owner)
-	current = current && owner.source.currentLocked() == expected
+	_, current = acquisition.IssuancePrefixLocked(owner)
+	current = current && owner.source.CurrentLocked() == expected
 	owner.mu.Unlock()
 	if err == nil && !current {
 		return errors.New("text JOIN issuance Source acquisition changed")
@@ -69,7 +70,7 @@ func (owner *dutyContext) issueTokensForOpening(ctx context.Context, receivers [
 
 func (owner *dutyContext) issueTokensForOpeningWithCancellation(ctx context.Context, receivers [][32]byte, class uint8,
 	opening *operationFlight, refill bool, discardCanceled bool, acquisition joinAcquisition,
-	expected *sourceHandle) error {
+	expected *source.Handle) error {
 	if owner == nil || ctx == nil || ctx.Err() != nil || class < 1 || class > 3 || len(receivers) == 0 || len(receivers) > 32 {
 		return errors.New("text issuance context is unavailable")
 	}
@@ -78,7 +79,7 @@ func (owner *dutyContext) issueTokensForOpeningWithCancellation(ctx context.Cont
 		owner.mu.Unlock()
 		return errors.New("text issuance prefix reservation unavailable")
 	}
-	hasPrefix := owner.source.currentLocked() != nil
+	hasPrefix := owner.source.CurrentLocked() != nil
 	owner.mu.Unlock()
 	if hasPrefix && !refill {
 		if err := owner.prepareIssuerStock(ctx, receivers, class, opening, acquisition, expected); err != nil {
@@ -92,7 +93,7 @@ func (owner *dutyContext) issueTokensForOpeningWithCancellation(ctx context.Cont
 		return err
 	}
 	permission := owner.tokens.Permission
-	source, ok := owner.endpoint.closedState.(client.ClosedBootstrapState)
+	bootstrapState, ok := owner.endpoint.closedState.(client.ClosedBootstrapState)
 	if !ok || !permission.CurrentFor(profile, now) ||
 		owner.tokens.Issuance != nil || !opening.admittedLocked(owner) || !joinIssuanceCurrentLocked(owner, acquisition, expected) {
 		owner.mu.Unlock()
@@ -103,7 +104,7 @@ func (owner *dutyContext) issueTokensForOpeningWithCancellation(ctx context.Cont
 		owner.mu.Unlock()
 		return errors.New("text issuance source selection unavailable")
 	}
-	view, err := source.CurrentClosedRoute()
+	view, err := bootstrapState.CurrentClosedRoute()
 	if err != nil || view.Profile != profile || int(view.NodeCount) > len(view.Nodes) {
 		owner.mu.Unlock()
 		return errors.New("text issuance recipients are unavailable")
@@ -127,7 +128,7 @@ func (owner *dutyContext) issueTokensForOpeningWithCancellation(ctx context.Cont
 		}
 		challenges[index] = challenge
 	}
-	batch, err := permission.ReserveBatch(profile, now, challenges, selection, refill, prefixRef(owner.source.currentLocked()), acquisition != nil, prefixRef(expected))
+	batch, err := permission.ReserveBatch(profile, now, challenges, selection, refill, prefixRef(owner.source.CurrentLocked()), acquisition != nil, prefixRef(expected))
 	if err != nil {
 		owner.mu.Unlock()
 		return err
@@ -135,13 +136,13 @@ func (owner *dutyContext) issueTokensForOpeningWithCancellation(ctx context.Cont
 	operation := tokens.NewOperation(&owner.tokens, permission, profile, batch, discardCanceled)
 	owner.tokens.Issuance = operation
 	owner.mu.Unlock()
-	return operation.Run(ctx, source, selection)
+	return operation.Run(ctx, bootstrapState, selection)
 }
 
-func joinIssuanceCurrentLocked(owner *dutyContext, acquisition joinAcquisition, expected *sourceHandle) bool {
+func joinIssuanceCurrentLocked(owner *dutyContext, acquisition joinAcquisition, expected *source.Handle) bool {
 	if acquisition == nil {
 		return true
 	}
-	prefix, current := acquisition.issuancePrefixLocked(owner)
-	return current && prefix == expected && owner.source.currentLocked() == expected
+	prefix, current := acquisition.IssuancePrefixLocked(owner)
+	return current && prefix == expected && owner.source.CurrentLocked() == expected
 }

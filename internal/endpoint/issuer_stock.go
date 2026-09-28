@@ -5,13 +5,15 @@ package endpoint
 import (
 	"context"
 	"errors"
+
+	"github.com/dianabuilds/ardents-network/internal/endpoint/source"
 )
 
 // prepareIssuerStock funds issuer admission only for current requested
 // work. Before the first admitted prefix this uses the second bootstrap batch;
 // thereafter the last Control token can replenish stock within its allocation.
 func (owner *dutyContext) prepareIssuerStock(ctx context.Context, requested [][32]byte, class uint8,
-	opening *operationFlight, acquisition joinAcquisition, expected *sourceHandle) error {
+	opening *operationFlight, acquisition joinAcquisition, expected *source.Handle) error {
 	owner.mu.Lock()
 	profile, _, err := owner.permissionProfileLocked()
 	if err != nil || ctx.Err() != nil || owner.tokens.Permission == nil || !opening.admittedLocked(owner) ||
@@ -48,7 +50,7 @@ func (owner *dutyContext) prepareIssuerStock(ctx context.Context, requested [][3
 	}
 	ready := permission.StockCountForDuty(profile.Digest, profile.IssuerNodeID, profile.IssuerDutyGeneration, 1)
 	remaining := permission.Remaining(1)
-	if ready >= 2 || remaining == 0 || owner.source.currentLocked() != nil && (ready == 0 || remaining < 2) {
+	if ready >= 2 || remaining == 0 || owner.source.CurrentLocked() != nil && (ready == 0 || remaining < 2) {
 		owner.mu.Unlock()
 		return nil
 	}

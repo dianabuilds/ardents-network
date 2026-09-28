@@ -33,7 +33,7 @@ func TestTextIssuanceUsesRetainedPrefixAfterTwoBootstrapBatches(t *testing.T) {
 			}
 			owner.mu.Lock()
 			permission := owner.tokens.Permission
-			valid := owner.source.currentLocked() == prefix && owner.tokens.Issuance == nil && owner.source.opening == nil &&
+			valid := owner.source.CurrentLocked() == prefix && owner.tokens.Issuance == nil && !owner.source.OpeningInProgressLocked() &&
 				permission.Pending == nil && permission.Batches == 2 && permission.Reserved == [3]uint32{34, 34, 0}
 			verified := 0
 			profile := source.view.Profile
@@ -73,11 +73,11 @@ func TestTextIssuanceUsesRetainedPrefixAfterTwoBootstrapBatches(t *testing.T) {
 			if len(issuerAttempts) != 33 {
 				t.Fatal("issuer tokens bypassed Endpoint journal")
 			}
-			if err := prefix.Close(); err != nil {
+			if err := closeSourceHandle(prefix); err != nil {
 				t.Fatal(err)
 			}
 			select {
-			case <-prefix.Done():
+			case <-sourceRouteDone(prefix):
 			default:
 				t.Fatal("source Close returned before joined lifecycle notification")
 			}
@@ -87,7 +87,7 @@ func TestTextIssuanceUsesRetainedPrefixAfterTwoBootstrapBatches(t *testing.T) {
 				t.Fatal("retired prefix created unallocated work")
 			}
 			owner.mu.Lock()
-			retired := owner.source.currentLocked() == nil && owner.tokens.Permission == permission &&
+			retired := owner.source.CurrentLocked() == nil && owner.tokens.Permission == permission &&
 				permission.Pending == nil && permission.Batches == 2 && permission.Reserved == [3]uint32{34, 34, 0}
 			owner.mu.Unlock()
 			if !retired {
@@ -97,7 +97,7 @@ func TestTextIssuanceUsesRetainedPrefixAfterTwoBootstrapBatches(t *testing.T) {
 				t.Fatal(err)
 			}
 			owner.mu.Lock()
-			joined := owner.source.currentLocked() == nil && owner.tokens.Issuance == nil && owner.tokens.Permission == nil
+			joined := owner.source.CurrentLocked() == nil && owner.tokens.Issuance == nil && owner.tokens.Permission == nil
 			owner.mu.Unlock()
 			if !joined {
 				t.Fatal("context close retained prefix or private stock")

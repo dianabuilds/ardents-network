@@ -32,7 +32,9 @@ func TestTextTokenPresentationBurnsStockBeforeReturningBytes(t *testing.T) {
 	done := make(chan struct{})
 	close(done)
 	opening := &operationFlight{owner: owner, context: flightContext, cancelOperation: cancel, done: done}
-	owner.source.opening = opening
+	if !owner.source.ReserveOpeningLocked(opening) {
+		t.Fatal("Source lifecycle refused the planted opening")
+	}
 	returned, err := opening.presentToken(selection, hello, 2)
 	if err != nil {
 		t.Fatal(err)

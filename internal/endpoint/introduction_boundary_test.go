@@ -91,7 +91,7 @@ func checkCapsuleAdmissionBoundaries(t *testing.T, publisher, reader *dutyContex
 				source.mu.Unlock()
 				defer func() { source.mu.Lock(); source.snapshot.Candidates[rendezvous].FamilyID = prior; source.mu.Unlock() }()
 				for _, owner := range []*dutyContext{reader, publisher} {
-					if _, _, _, err := owner.source.currentLocked().DataJoinRecipient(); err == nil {
+					if _, _, _, err := owner.source.CurrentLocked().DataJoinRecipient(); err == nil {
 						t.Error("data Rendezvous accepted a control-role family")
 					}
 				}

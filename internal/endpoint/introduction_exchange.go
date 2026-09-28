@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
+	"github.com/dianabuilds/ardents-network/internal/endpoint/source"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	nativeconnection "github.com/dianabuilds/ardents-network/internal/service/connection"
@@ -19,7 +20,7 @@ func (owner *dutyContext) submitIntroduction(ctx context.Context, job *jobIdenti
 		return errors.New("text Introduction submission unavailable")
 	}
 	owner.mu.Lock()
-	prefix := owner.source.currentLocked()
+	prefix := owner.source.CurrentLocked()
 	live := owner.liveServiceJobLocked(job, broker.Connection) && prefix != nil && !prepared.submitted
 	if live {
 		prepared.submitted = true
@@ -46,18 +47,18 @@ func (owner *dutyContext) submitIntroduction(ctx context.Context, job *jobIdenti
 		}
 		defer release()
 	}
-	status, err := prefix.submitIntroduction(bounded, func(hello ardp.Hello, class uint8) ([]byte, error) {
+	status, err := prefix.SubmitIntroduction(bounded, func(hello ardp.Hello, class uint8) ([]byte, error) {
 		owner.mu.Lock()
 		defer owner.mu.Unlock()
 		current, now, err := owner.permissionProfileLocked()
-		if err != nil || !owner.liveServiceJobLocked(job, broker.Connection) || bounded.Err() != nil || !prefix.currentLocked(&owner.source) ||
+		if err != nil || !owner.liveServiceJobLocked(job, broker.Connection) || bounded.Err() != nil || !prefix.CurrentLocked(&owner.source) ||
 			current != profile || class != 1 || hello.Purpose != ardp.PurposeSubmission || hello.RecipientNodeID != receiver ||
 			hello.NetworkID != current.NetworkID || hello.StateGeneration != current.StateGeneration || hello.StateDigest != current.StateDigest ||
 			hello.ProfileDigest != current.Digest || hello.ChannelNonce == [32]byte{} || !now.Before(hello.Deadline) ||
 			hello.Deadline.After(prepared.plaintext.Deadline) {
 			return nil, errors.New("text Introduction token authority changed")
 		}
-		selected, err := prefix.submissionRecipient()
+		selected, err := prefix.SubmissionRecipient()
 		if err != nil || selected != receiver {
 			return nil, errors.New("text Introduction recipient changed")
 		}
@@ -176,18 +177,18 @@ func (owner *dutyContext) receiveIntroductionWith(ctx context.Context, job *jobI
 	return prepared, outcome
 }
 
-func (owner *dutyContext) prepareSubmissionStock(ctx context.Context, prefix *sourceHandle) ([32]byte, state.ClosedProfileView, error) {
+func (owner *dutyContext) prepareSubmissionStock(ctx context.Context, prefix *source.Handle) ([32]byte, state.ClosedProfileView, error) {
 	return owner.prepareSubmissionStockWithCancellation(ctx, prefix, false)
 }
 
 func (owner *dutyContext) prepareRecoverySubmissionStock(ctx context.Context,
-	prefix *sourceHandle) ([32]byte, state.ClosedProfileView, error) {
+	prefix *source.Handle) ([32]byte, state.ClosedProfileView, error) {
 	return owner.prepareSubmissionStockWithCancellation(ctx, prefix, true)
 }
 
-func (owner *dutyContext) prepareSubmissionStockWithCancellation(ctx context.Context, prefix *sourceHandle,
+func (owner *dutyContext) prepareSubmissionStockWithCancellation(ctx context.Context, prefix *source.Handle,
 	discardCanceled bool) ([32]byte, state.ClosedProfileView, error) {
-	receiver, err := prefix.submissionRecipient()
+	receiver, err := prefix.SubmissionRecipient()
 	if err != nil {
 		return [32]byte{}, state.ClosedProfileView{}, err
 	}

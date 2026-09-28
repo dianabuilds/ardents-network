@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 
+	"github.com/dianabuilds/ardents-network/internal/endpoint/source"
 	"github.com/dianabuilds/ardents-network/internal/route/client"
 )
 
@@ -32,9 +33,9 @@ func newOperationFlight(owner *dutyContext) *operationFlight {
 // non-nil operation must be the exact live reservation retained by its owner.
 func (flight *operationFlight) admittedLocked(owner *dutyContext) bool {
 	if flight == nil {
-		return owner.source.openingAdmittedLocked(nil)
+		return owner.source.OpeningAdmittedLocked(nil)
 	}
-	return flight.owner == owner && owner.source.openingAdmittedLocked(flight) && flight.context.Err() == nil
+	return flight.owner == owner && owner.source.OpeningAdmittedLocked(flight) && flight.context.Err() == nil
 }
 
 func (flight *operationFlight) join() {
@@ -49,23 +50,30 @@ func (flight *operationFlight) cancel() {
 	}
 }
 
+// CancelFlight and JoinFlight are the source.FlightRef seam: the extracted
+// Source lifecycle cancels and joins a retained opening through them without
+// depending on the duty context that owns the flight.
+func (flight *operationFlight) CancelFlight() { flight.cancel() }
+
+func (flight *operationFlight) JoinFlight() { flight.join() }
+
 // complete terminates the Source opening reservation under owner.mu. Each
 // runner completes its flight exactly once; the unconditional done close
 // relies on that single-completion discipline.
 func (flight *operationFlight) complete(caller context.Context, prefix *client.ClosedSourcePrefix,
-	openErr error) (*sourceHandle, error) {
+	openErr error) (*source.Handle, error) {
 	owner := flight.owner
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
 	defer close(flight.done)
-	if !owner.source.openingAdmittedLocked(flight) {
+	if !owner.source.OpeningAdmittedLocked(flight) {
 		flight.cancel()
 		cleanup := prefix.Close()
-		return nil, prefixPreparationFailureAt("completion-owner",
+		return nil, source.PrefixFailureAt("completion-owner",
 			errors.Join(openErr, caller.Err(), cleanup, errors.New("text prefix completion owner changed")))
 	}
 	if openErr != nil || prefix == nil || caller.Err() != nil || !owner.liveLocked(owner.endpoint, owner.surface) {
-		owner.source.finishOpeningLocked(flight, nil, nil, false)
+		owner.source.FinishOpeningLocked(flight, nil, nil, false)
 		flight.cancel()
 		cleanup := prefix.Close()
 		if errors.Is(openErr, client.ErrClosedSourceCleanup) || cleanup != nil {
@@ -74,16 +82,16 @@ func (flight *operationFlight) complete(caller context.Context, prefix *client.C
 			owner.endpoint.failDutyContexts(owner.closeErr)
 		}
 		cause := errors.Join(openErr, caller.Err(), cleanup, errors.New("text prefix unavailable"))
-		if prefixPreparationFailureStage(cause) == "unknown" {
-			cause = prefixPreparationFailureAt("completion", cause)
+		if source.PrefixFailureStage(cause) == "unknown" {
+			cause = source.PrefixFailureAt("completion", cause)
 		}
 		return nil, cause
 	}
-	handle, current := owner.source.finishOpeningLocked(flight, prefix, flight.cancel, true)
+	handle, current := owner.source.FinishOpeningLocked(flight, prefix, flight.cancel, true)
 	if !current {
 		flight.cancel()
 		cleanup := prefix.Close()
-		return nil, prefixPreparationFailureAt("completion-owner",
+		return nil, source.PrefixFailureAt("completion-owner",
 			errors.Join(cleanup, errors.New("text prefix completion owner changed")))
 	}
 	return handle, nil

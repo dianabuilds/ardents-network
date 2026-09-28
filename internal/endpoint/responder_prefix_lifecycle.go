@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
+	"github.com/dianabuilds/ardents-network/internal/endpoint/source"
 	"github.com/dianabuilds/ardents-network/internal/route/client"
 )
 
@@ -31,7 +32,7 @@ type responderPrefixHandle struct {
 // handle and Source issuer current at admission.
 type responderJoinAcquisition struct {
 	handle atomic.Pointer[responderPrefixHandle]
-	issuer *sourceHandle
+	issuer *source.Handle
 }
 
 func (lifecycle *responderPrefixLifecycle) currentLocked() *responderPrefixHandle {
@@ -50,7 +51,7 @@ func (lifecycle *responderPrefixLifecycle) acquireOpenedLocked(prefix *client.Cl
 	return handle
 }
 
-func (lifecycle *responderPrefixLifecycle) acquireJoinLocked(issuer *sourceHandle) *responderJoinAcquisition {
+func (lifecycle *responderPrefixLifecycle) acquireJoinLocked(issuer *source.Handle) *responderJoinAcquisition {
 	live := lifecycle.currentLocked()
 	if live == nil || live.prefix.Load() == nil {
 		return nil
@@ -117,30 +118,30 @@ func (handle *responderPrefixHandle) retired() bool {
 	}
 }
 
-func (acquisition *responderJoinAcquisition) release() {
+func (acquisition *responderJoinAcquisition) Release() {
 	if acquisition != nil {
 		acquisition.handle.Store(nil)
 		acquisition.issuer = nil
 	}
 }
 
-func (acquisition *responderJoinAcquisition) currentLocked(owner *dutyContext) bool {
+func (acquisition *responderJoinAcquisition) CurrentLocked(owner *dutyContext) bool {
 	if acquisition == nil || owner == nil || owner.surface != broker.Administration {
 		return false
 	}
 	handle := acquisition.handle.Load()
-	return handle != nil && handle.currentLocked(&owner.responder) && acquisition.issuer != nil && acquisition.issuer.currentLocked(&owner.source)
+	return handle != nil && handle.currentLocked(&owner.responder) && acquisition.issuer.CurrentLocked(&owner.source)
 }
 
-func (acquisition *responderJoinAcquisition) issuancePrefixLocked(owner *dutyContext) (*sourceHandle, bool) {
-	current := acquisition.currentLocked(owner)
+func (acquisition *responderJoinAcquisition) IssuancePrefixLocked(owner *dutyContext) (*source.Handle, bool) {
+	current := acquisition.CurrentLocked(owner)
 	if acquisition == nil {
 		return nil, false
 	}
 	return acquisition.issuer, current
 }
 
-func (acquisition *responderJoinAcquisition) dataJoinRecipient() ([32]byte, uint64, time.Time, error) {
+func (acquisition *responderJoinAcquisition) DataJoinRecipient() ([32]byte, uint64, time.Time, error) {
 	if acquisition == nil {
 		return [32]byte{}, 0, time.Time{}, errors.New("text Responder JOIN acquisition unavailable")
 	}
@@ -151,7 +152,7 @@ func (acquisition *responderJoinAcquisition) dataJoinRecipient() ([32]byte, uint
 	return handle.dataJoinRecipient()
 }
 
-func (acquisition *responderJoinAcquisition) join(ctx context.Context, present client.ClosedTokenPresenter,
+func (acquisition *responderJoinAcquisition) Join(ctx context.Context, present client.ClosedTokenPresenter,
 	intent client.ClosedJoinIntent) (*client.ClosedJoinedStream, error) {
 	if acquisition == nil {
 		return nil, errors.New("text Responder JOIN acquisition unavailable")

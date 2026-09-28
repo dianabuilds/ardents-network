@@ -57,15 +57,15 @@ func TestTextResolutionCloseJoinsInFlightStateSelection(t *testing.T) {
 		t.Fatal("resolution did not reach State selection")
 	}
 	owner.mu.Lock()
-	acquisition, acquired := owner.resolution.source.(*sourceResolutionAcquisition)
+	acquisition := owner.resolution.source
 	owner.mu.Unlock()
-	if !acquired || acquisition == nil {
+	if acquisition == nil {
 		t.Fatal("lookup did not own an exact Source acquisition")
 	}
 	closed := make(chan error, 1)
 	go func() { closed <- owner.Close() }()
 	select {
-	case <-prefix.Done():
+	case <-sourceRouteDone(prefix):
 	case <-time.After(3 * time.Second):
 		t.Fatal("Close did not retire prefix")
 	}
@@ -92,11 +92,11 @@ func TestTextResolutionCloseJoinsInFlightStateSelection(t *testing.T) {
 	case <-time.After(3 * time.Second):
 		t.Fatal("context retained resolution")
 	}
-	if acquisition.handle.Load() != nil {
+	if _, err := acquisition.ResolutionRecipient(); err == nil {
 		t.Fatal("cancelled lookup retained its Source acquisition")
 	}
 	select {
-	case <-prefix.Done():
+	case <-sourceRouteDone(prefix):
 	default:
 		t.Fatal("revocation left prefix alive")
 	}
@@ -147,13 +147,13 @@ func TestTextResolutionOldAcquisitionCannotCommitAfterSourceReplacement(t *testi
 		owner.mu.Unlock()
 		t.Fatal(err)
 	}
-	acquisition := owner.source.acquireResolutionLocked()
+	acquisition := owner.source.AcquireResolutionLocked()
 	if acquisition == nil {
 		owner.mu.Unlock()
 		t.Fatal("resolution acquisition unavailable")
 	}
 	attempt, cancel := context.WithCancel(owner.lease.Context())
-	flight := &resolutionFlight{context: attempt, cancel: cancel, done: make(chan struct{}), source: acquisition, releaseSource: acquisition.release}
+	flight := &resolutionFlight{context: attempt, cancel: cancel, done: make(chan struct{}), source: acquisition, releaseSource: acquisition.Release}
 	owner.resolution = flight
 	owner.mu.Unlock()
 	finished := false
@@ -166,7 +166,7 @@ func TestTextResolutionOldAcquisitionCannotCommitAfterSourceReplacement(t *testi
 	if err := owner.prepareSourceReopen(t.Context(), flight); err != nil {
 		t.Fatal(err)
 	}
-	if err := old.Close(); err != nil {
+	if err := closeSourceHandle(old); err != nil {
 		t.Fatal(err)
 	}
 	owner.mu.Lock()
@@ -183,7 +183,7 @@ func TestTextResolutionOldAcquisitionCannotCommitAfterSourceReplacement(t *testi
 	verified, commitErr := owner.acceptResolutionResult(t.Context(), flight, profile, target, raw)
 	owner.mu.Lock()
 	committed := owner.descriptorHistory.Has(target)
-	retained := owner.source.currentLocked() == replacement && owner.resolution == flight
+	retained := owner.source.CurrentLocked() == replacement && owner.resolution == flight
 	owner.mu.Unlock()
 	if commitErr == nil || verified.Descriptor.Target != [32]byte{} || committed || !retained {
 		t.Fatalf("old acquisition committed after replacement: err=%v committed=%v retained=%v", commitErr, committed, retained)
@@ -191,7 +191,7 @@ func TestTextResolutionOldAcquisitionCannotCommitAfterSourceReplacement(t *testi
 	cancel()
 	owner.finishResolution(flight, commitErr)
 	finished = true
-	if acquisition.handle.Load() != nil {
+	if _, err := acquisition.ResolutionRecipient(); err == nil {
 		t.Fatal("resolution completion retained its acquisition")
 	}
 }

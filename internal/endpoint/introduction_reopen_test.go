@@ -25,13 +25,13 @@ func TestTextIntroductionReopensJoinedSource(t *testing.T) {
 			}
 			clear(first.operation)
 			reader.mu.Lock()
-			prefix, permission := reader.source.currentLocked(), reader.tokens.Permission
+			prefix, permission := reader.source.CurrentLocked(), reader.tokens.Permission
 			reader.mu.Unlock()
-			if err := prefix.Close(); err != nil {
+			if err := closeSourceHandle(prefix); err != nil {
 				t.Fatal(err)
 			}
 			select {
-			case <-prefix.Done():
+			case <-sourceRouteDone(prefix):
 			default:
 				t.Fatal("Source Close did not join")
 			}
@@ -41,8 +41,8 @@ func TestTextIntroductionReopensJoinedSource(t *testing.T) {
 			}
 			clear(second.operation)
 			reader.mu.Lock()
-			valid := reader.source.currentLocked() != nil && reader.source.currentLocked() != prefix && reader.tokens.Permission == permission && permission.Batches == 2 &&
-				permission.Pending == nil && reader.tokens.Issuance == nil && reader.resolution == nil && reader.source.opening == nil
+			valid := reader.source.CurrentLocked() != nil && reader.source.CurrentLocked() != prefix && reader.tokens.Permission == permission && permission.Batches == 2 &&
+				permission.Pending == nil && reader.tokens.Issuance == nil && reader.resolution == nil && !reader.source.OpeningInProgressLocked()
 			reserved := permission.Reserved
 			maxima := permission.Accepted.Maxima
 			reader.mu.Unlock()

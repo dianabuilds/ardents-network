@@ -6,6 +6,7 @@ import (
 	"errors"
 
 	"github.com/dianabuilds/ardents-network/internal/endpoint/publication"
+	"github.com/dianabuilds/ardents-network/internal/endpoint/source"
 	"github.com/dianabuilds/ardents-network/internal/endpoint/tokens"
 )
 
@@ -19,7 +20,7 @@ type dutyContextRetirement struct {
 	registrationOpening *registrationFlight
 	introduction        *rolePrefixRetirement
 	responder           *rolePrefixRetirement
-	source              *sourceRetirement
+	source              *source.Retirement
 	issuance            *tokens.Operation
 	resolution          *resolutionFlight
 	withdrawal          *operationFlight
@@ -47,7 +48,8 @@ func (owner *dutyContext) stopDutyContextChildrenLocked() *dutyContextRetirement
 	owner.descriptorHistory.Clear()
 	retirement.introduction = owner.introduction.prefix.stopLocked()
 	retirement.responder = owner.responder.stopLocked()
-	retirement.source = owner.source.stopLocked()
+	retirement.source = owner.source.StopLocked()
+	owner.sourceSet = nil
 	owner.tokens.ClearPermissionLocked()
 	retirement.issuance = owner.tokens.Issuance
 	retirement.issuance.Cancel()
@@ -70,7 +72,7 @@ func (retirement *dutyContextRetirement) join() error {
 	if retirement == nil {
 		return nil
 	}
-	retirement.source.joinOpening()
+	retirement.source.JoinOpening()
 	retirement.introduction.joinOpening()
 	retirement.responder.joinOpening()
 	retirement.registrationOpening.join()
@@ -82,7 +84,7 @@ func (retirement *dutyContextRetirement) join() error {
 	outcome = errors.Join(outcome, retirement.publication.join())
 	outcome = errors.Join(outcome, retirement.introduction.closePrefix())
 	outcome = errors.Join(outcome, retirement.responder.closePrefix())
-	outcome = errors.Join(outcome, retirement.source.closePrefix())
+	outcome = errors.Join(outcome, retirement.source.ClosePrefix())
 	retirement.issuance.Join()
 	if retirement.resolution != nil {
 		<-retirement.resolution.done

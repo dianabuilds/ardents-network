@@ -68,12 +68,12 @@ func (worker *qualifiedWorker) PresentRefill(ctx context.Context, hello ardp.Hel
 func (worker *qualifiedWorker) ReplenishPrefixes(ctx context.Context, present client.ClosedTokenPresenter) error {
 	owner := worker.job.owner
 	owner.mu.Lock()
-	source := owner.source.currentLocked()
+	source := owner.source.CurrentLocked()
 	introduction := owner.introduction.prefix.currentLocked()
 	responder := owner.responder.currentLocked()
 	owner.mu.Unlock()
 	if source != nil {
-		if err := source.replenish(ctx, present); err != nil {
+		if err := source.Replenish(ctx, present); err != nil {
 			return err
 		}
 	}
@@ -136,14 +136,14 @@ func (session *qualificationSession) OpenJoinedService(ctx context.Context, prep
 func (session *qualificationSession) ReserveRecipients() (qualification.ReserveRecipients, error) {
 	owner := session.owner
 	owner.mu.Lock()
-	prefix := owner.source.currentLocked()
+	prefix := owner.source.CurrentLocked()
 	owner.mu.Unlock()
 	if prefix == nil {
 		return qualification.ReserveRecipients{}, errors.New("qualification Source prefix unavailable")
 	}
 	var recipients qualification.ReserveRecipients
-	recipients.Join, _, _, recipients.JoinErr = prefix.dataJoinRecipient()
-	recipients.Submission, recipients.SubmissionErr = prefix.submissionRecipient()
+	recipients.Join, _, _, recipients.JoinErr = prefix.DataJoinRecipient()
+	recipients.Submission, recipients.SubmissionErr = prefix.SubmissionRecipient()
 	return recipients, nil
 }
 
@@ -219,7 +219,7 @@ func (owner *dutyContext) ensureQualificationIssuerReserve(ctx context.Context, 
 	}
 	ready := owner.tokens.Permission.StockCountForDuty(profile.Digest, profile.IssuerNodeID, profile.IssuerDutyGeneration, 1)
 	remaining := owner.tokens.Permission.Remaining(1)
-	prefixLive := owner.source.currentLocked() != nil
+	prefixLive := owner.source.CurrentLocked() != nil
 	owner.mu.Unlock()
 	if ready >= minimum || remaining == 0 {
 		// No new admission is due here, so a Source prefix retired on its
@@ -233,7 +233,7 @@ func (owner *dutyContext) ensureQualificationIssuerReserve(ctx context.Context, 
 		// refill; the next completed-stream boundary observes its result.
 		if _, openErr := owner.openPrefix(ctx); openErr != nil {
 			owner.mu.Lock()
-			inProgress := owner.source.currentLocked() != nil || owner.source.openingInProgressLocked() || owner.tokens.Issuance != nil
+			inProgress := owner.source.CurrentLocked() != nil || owner.source.OpeningInProgressLocked() || owner.tokens.Issuance != nil
 			owner.mu.Unlock()
 			if !inProgress {
 				return errors.Join(openErr, errors.New("qualification issuer prefix rebirth failed"))

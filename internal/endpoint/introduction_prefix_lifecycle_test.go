@@ -21,9 +21,7 @@ func (handle *introductionPrefixHandle) Done() <-chan struct{} {
 
 func TestTextIntroductionCancelledOpeningDoesNotRetireSourceOrPublishPrefix(t *testing.T) {
 	owner := &dutyContext{}
-	source := &sourceHandle{owner: &owner.source, cancel: func() {}}
-	source.prefix.Store(&client.ClosedSourcePrefix{})
-	owner.source.live = source
+	planted := plantSourceHandle(&owner.source)
 	attempt, cancel := context.WithCancel(t.Context())
 	flight := &operationFlight{context: attempt, cancelOperation: cancel, done: make(chan struct{})}
 	if !owner.introduction.prefix.reserveOpeningLocked(flight) {
@@ -42,7 +40,7 @@ func TestTextIntroductionCancelledOpeningDoesNotRetireSourceOrPublishPrefix(t *t
 	if err := retirement.closePrefix(); err != nil {
 		t.Fatal(err)
 	}
-	if owner.source.live != source || source.prefix.Load() == nil {
+	if owner.source.CurrentLocked() != planted || !planted.Loaded() {
 		t.Fatal("Introduction cancellation retired its borrowed Source")
 	}
 	if owner.introduction.prefix.currentLocked() != nil || owner.introduction.prefix.openingInProgressLocked() {

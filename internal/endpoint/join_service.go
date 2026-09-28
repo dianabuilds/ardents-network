@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
+	"github.com/dianabuilds/ardents-network/internal/endpoint/source"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	"github.com/dianabuilds/ardents-network/internal/route/client"
 )
@@ -29,15 +30,31 @@ type joinedTransport struct {
 }
 
 type joinPrefix interface {
-	dataJoinRecipient() ([32]byte, uint64, time.Time, error)
-	join(context.Context, client.ClosedTokenPresenter, client.ClosedJoinIntent) (*client.ClosedJoinedStream, error)
+	DataJoinRecipient() ([32]byte, uint64, time.Time, error)
+	Join(context.Context, client.ClosedTokenPresenter, client.ClosedJoinIntent) (*client.ClosedJoinedStream, error)
 }
 
 type joinAcquisition interface {
 	joinPrefix
-	currentLocked(*dutyContext) bool
-	issuancePrefixLocked(*dutyContext) (*sourceHandle, bool)
-	release()
+	CurrentLocked(*dutyContext) bool
+	IssuancePrefixLocked(*dutyContext) (*source.Handle, bool)
+	Release()
+}
+
+// sourceJoinAcquisition adapts the extracted Source acquisition to the root
+// JOIN interface shared with the Responder family. The Context argument stays
+// at the root: an extracted acquisition knows its own lifecycle but never the
+// duty context.
+type sourceJoinAcquisition struct {
+	*source.JoinAcquisition
+}
+
+func (acquisition sourceJoinAcquisition) CurrentLocked(owner *dutyContext) bool {
+	return acquisition.JoinAcquisition.CurrentLocked(&owner.source)
+}
+
+func (acquisition sourceJoinAcquisition) IssuancePrefixLocked(owner *dutyContext) (*source.Handle, bool) {
+	return acquisition.JoinAcquisition.IssuancePrefixLocked(&owner.source)
 }
 
 func (transport *joinedTransport) AuthenticatedPeerRetired() bool {
@@ -57,7 +74,7 @@ func (transport *joinedTransport) Close() error {
 		transport.stop()
 		transport.err = transport.finish(retirement)
 		if transport.acquisition != nil {
-			transport.acquisition.release()
+			transport.acquisition.Release()
 			transport.acquisition = nil
 		}
 	})
@@ -138,17 +155,19 @@ func (owner *dutyContext) openJoinedTransportAfterSetup(ctx context.Context, job
 				outcome = errors.Join(outcome, attempt.binding.releaseIntroductionRecovery())
 			}
 			if acquisition != nil {
-				acquisition.release()
+				acquisition.Release()
 			}
 		}
 	}()
 	owner.mu.Lock()
-	source := owner.source.currentLocked()
+	prefix := owner.source.CurrentLocked()
 	if owner.surface == broker.Connection {
-		acquisition = owner.source.acquireJoinLocked()
+		if join := owner.source.AcquireJoinLocked(); join != nil {
+			acquisition = sourceJoinAcquisition{join}
+		}
 	}
 	if owner.surface == broker.Administration {
-		acquisition = owner.responder.acquireJoinLocked(source)
+		acquisition = owner.responder.acquireJoinLocked(prefix)
 	}
 	live := !attempt.joined && acquisition != nil && owner.liveServiceJobLocked(job, owner.surface)
 	if live {
@@ -169,14 +188,14 @@ func (owner *dutyContext) openJoinedTransportAfterSetup(ctx context.Context, job
 		if attempt.plaintext.AttachmentGeneration > 1 {
 			prepare = owner.prepareRecoverySubmissionStock
 		}
-		_, _, err := prepare(bounded, source)
+		_, _, err := prepare(bounded, prefix)
 		cancel()
 		if err != nil {
 			return nil, err
 		}
 	}
 	if attempt.plaintext.AttachmentGeneration == 1 && owner.surface == broker.Connection {
-		if err := owner.refreshIntroduction(joining, job, attempt, source); err != nil {
+		if err := owner.refreshIntroduction(joining, job, attempt, prefix); err != nil {
 			return nil, err
 		}
 	}
@@ -230,7 +249,7 @@ func (owner *dutyContext) openJoinedTransportAfterSetup(ctx context.Context, job
 }
 
 func (owner *dutyContext) prepareJoinStock(ctx context.Context, attempt *introductionAttempt, prefix joinAcquisition) error {
-	node, generation, until, err := prefix.dataJoinRecipient()
+	node, generation, until, err := prefix.DataJoinRecipient()
 	facts := attempt.plaintext
 	if err != nil || node != facts.RendezvousNode || generation != facts.RendezvousDutyGeneration || facts.Deadline.After(until) {
 		return errors.Join(err, errors.New("text JOIN capsule recipient changed"))
@@ -238,7 +257,7 @@ func (owner *dutyContext) prepareJoinStock(ctx context.Context, attempt *introdu
 	bounded, cancel := context.WithDeadline(ctx, facts.Deadline)
 	owner.mu.Lock()
 	profile, _, err := owner.permissionProfileLocked()
-	stocked := err == nil && prefix.currentLocked(owner) &&
+	stocked := err == nil && prefix.CurrentLocked(owner) &&
 		owner.tokens.Permission.StockCountFor(profile.Digest, node, 2) != 0
 	owner.mu.Unlock()
 	if err == nil && !stocked {
@@ -250,7 +269,7 @@ func (owner *dutyContext) prepareJoinStock(ctx context.Context, attempt *introdu
 		return err
 	}
 	owner.mu.Lock()
-	current := prefix.currentLocked(owner)
+	current := prefix.CurrentLocked(owner)
 	owner.mu.Unlock()
 	if !current {
 		return errors.New("text JOIN Source acquisition changed during stock preparation")
@@ -260,7 +279,7 @@ func (owner *dutyContext) prepareJoinStock(ctx context.Context, attempt *introdu
 
 func (owner *dutyContext) joinIntroduction(ctx context.Context, job *jobIdentity, attempt *introductionAttempt, prefix joinAcquisition) (*client.ClosedJoinedStream, error) {
 	facts := attempt.plaintext
-	node, generation, _, err := prefix.dataJoinRecipient()
+	node, generation, _, err := prefix.DataJoinRecipient()
 	if err != nil || node != facts.RendezvousNode || generation != facts.RendezvousDutyGeneration {
 		return nil, errors.Join(err, errors.New("text JOIN recipient changed before opening"))
 	}
@@ -273,11 +292,11 @@ func (owner *dutyContext) joinIntroduction(ctx context.Context, job *jobIdentity
 	if err := attempt.binding.current(); err != nil {
 		return nil, err
 	}
-	return prefix.join(ctx, func(hello ardp.Hello, class uint8) ([]byte, error) {
+	return prefix.Join(ctx, func(hello ardp.Hello, class uint8) ([]byte, error) {
 		owner.mu.Lock()
 		defer owner.mu.Unlock()
 		current, now, err := owner.permissionProfileLocked()
-		if err != nil || current != profile || current.Digest != facts.ProfileDigest || !prefix.currentLocked(owner) || !owner.liveServiceJobLocked(job, owner.surface) || ctx.Err() != nil || !now.Before(facts.Deadline) || class != 2 || hello.Purpose != ardp.PurposeDataJoin || hello.RecipientNodeID != node || hello.RecipientDutyGeneration != generation || hello.NetworkID != current.NetworkID || hello.StateGeneration != current.StateGeneration || hello.StateDigest != current.StateDigest || hello.ProfileDigest != current.Digest || hello.ChannelNonce == [32]byte{} || !now.Before(hello.Deadline) || hello.Deadline.Unix() > facts.WorkSafetyNotAfter {
+		if err != nil || current != profile || current.Digest != facts.ProfileDigest || !prefix.CurrentLocked(owner) || !owner.liveServiceJobLocked(job, owner.surface) || ctx.Err() != nil || !now.Before(facts.Deadline) || class != 2 || hello.Purpose != ardp.PurposeDataJoin || hello.RecipientNodeID != node || hello.RecipientDutyGeneration != generation || hello.NetworkID != current.NetworkID || hello.StateGeneration != current.StateGeneration || hello.StateDigest != current.StateDigest || hello.ProfileDigest != current.Digest || hello.ChannelNonce == [32]byte{} || !now.Before(hello.Deadline) || hello.Deadline.Unix() > facts.WorkSafetyNotAfter {
 			return nil, errors.New("text JOIN token authority changed")
 		}
 		return owner.tokens.TakeTokenLocked(current, now, hello, class, ctx)
@@ -289,7 +308,7 @@ func (owner *dutyContext) retainJoinedTransport(job *jobIdentity, attempt *intro
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
 	if attempt == nil || !attempt.binding.servesJob(owner, job) ||
-		acquisition == nil || !acquisition.currentLocked(owner) || joined == nil ||
+		acquisition == nil || !acquisition.CurrentLocked(owner) || joined == nil ||
 		!owner.retainServiceTransportExchangeLocked(job, flight) {
 		return false
 	}

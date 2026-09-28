@@ -26,12 +26,12 @@ func TestTextPublicationRefreshRetriesConcurrentRoleCommit(t *testing.T) {
 		t.Fatal(err)
 	}
 	owner.mu.Lock()
-	oldSource, refresh := owner.source.currentLocked(), owner.publication.refresh.Current()
+	oldSource, refresh := owner.source.CurrentLocked(), owner.publication.refresh.Current()
 	owner.mu.Unlock()
 	if oldSource == nil || refresh == nil {
 		t.Fatal("published registration has no Source or refresh owner")
 	}
-	if err := oldSource.Close(); err != nil {
+	if err := closeSourceHandle(oldSource); err != nil {
 		t.Fatal(err)
 	}
 	writer, err := duty.Open(duty.Config{Root: endpoint.closedRoleRoot, Clock: time.Now})
@@ -149,9 +149,9 @@ func TestTextPublicationAutomaticallyRefreshesAndRetiresPredecessor(t *testing.T
 			}
 			// A real retired Source must be reopened from retained selection/stock.
 			owner.mu.Lock()
-			oldSource, retainedSet := owner.source.currentLocked(), owner.source.set
+			oldSource, retainedSet := owner.source.CurrentLocked(), owner.sourceSet
 			owner.mu.Unlock()
-			if err := oldSource.Close(); err != nil {
+			if err := closeSourceHandle(oldSource); err != nil {
 				t.Fatal(err)
 			}
 			gate.arm(t)
@@ -188,7 +188,7 @@ func TestTextPublicationAutomaticallyRefreshesAndRetiresPredecessor(t *testing.T
 			owner.mu.Lock()
 			valid := owner.publication.pair.previousRegistration == first && owner.publication.pair.previousUntil.After(time.Now()) &&
 				!owner.publication.pair.previousUntil.After(time.Now().Add(60*time.Second)) &&
-				owner.source.currentLocked() != nil && owner.source.currentLocked() != oldSource && owner.source.set == retainedSet
+				owner.source.CurrentLocked() != nil && owner.source.CurrentLocked() != oldSource && owner.sourceSet == retainedSet
 			owner.mu.Unlock()
 			if !valid || first.recipient.Public(time.Now()) == [32]byte{} || second.recipient.Public(time.Now()) == [32]byte{} {
 				t.Fatal("refresh lost bounded predecessor, source selection, or independent keys")

@@ -111,6 +111,13 @@ func TestTextResolutionNetworkCannotRollBackLocalDescriptorFloor(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
+			owner.mu.Lock()
+			acquisition := owner.source.AcquireResolutionLocked()
+			owner.mu.Unlock()
+			if acquisition == nil {
+				t.Fatal("text Source resolution acquisition unavailable")
+			}
+			defer acquisition.Release()
 			now := time.Now().UTC().Truncate(time.Second)
 			profile := source.view.Profile
 			_, authority, err := ed25519.GenerateKey(rand.Reader)
@@ -121,14 +128,14 @@ func TestTextResolutionNetworkCannotRollBackLocalDescriptorFloor(t *testing.T) {
 			current, signer := floorPublication(t, authority, profile.NetworkID, 1, now, now.Add(10*time.Minute))
 			first := floorDescriptor(t, current, signer, profile.Digest, source.view.Nodes[6].NodeID, 1, 10, now, now.Add(120*time.Second))
 			second := floorDescriptor(t, current, signer, profile.Digest, source.view.Nodes[6].NodeID, 2, 20, now, now.Add(100*time.Second))
-			receiver, err := prefix.ResolutionRecipient()
+			receiver, err := acquisition.ResolutionRecipient()
 			if err != nil {
 				t.Fatal(err)
 			}
 			if err := owner.issueTokens(t.Context(), [][32]byte{receiver}, 1); err != nil {
 				t.Fatal(err)
 			}
-			status, _, err := prefix.ExchangeDescriptor(t.Context(), func(hello ardp.Hello, class uint8) ([]byte, error) {
+			status, _, err := acquisition.ExchangeDescriptor(t.Context(), func(hello ardp.Hello, class uint8) ([]byte, error) {
 				owner.mu.Lock()
 				defer owner.mu.Unlock()
 				profile, at, err := owner.permissionProfileLocked()
@@ -156,7 +163,7 @@ func TestTextResolutionNetworkCannotRollBackLocalDescriptorFloor(t *testing.T) {
 			}
 			owner.mu.Lock()
 			retained := owner.descriptorHistory.Matches(current.Credential.Target, current.Digest, 2)
-			healthy := owner.source.currentLocked() == prefix && owner.resolution == nil && !owner.closed
+			healthy := owner.source.CurrentLocked() == prefix && owner.resolution == nil && !owner.closed
 			owner.mu.Unlock()
 			if !retained || !healthy {
 				t.Fatal("ordinary stale response erased floor or damaged context")

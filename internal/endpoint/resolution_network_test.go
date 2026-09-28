@@ -42,8 +42,15 @@ func TestTextResolutionUsesIssuedControlThroughRetainedPrefix(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
+			owner.mu.Lock()
+			acquisition := owner.source.AcquireResolutionLocked()
+			owner.mu.Unlock()
+			if acquisition == nil {
+				t.Fatal("text Source resolution acquisition unavailable")
+			}
+			defer acquisition.Release()
 			target, raw := resolutionProof(t, source)
-			receiver, err := prefix.ResolutionRecipient()
+			receiver, err := acquisition.ResolutionRecipient()
 			if err != nil || receiver != source.view.Nodes[5].NodeID {
 				t.Fatalf("State resolution: %x %v", receiver, err)
 			}
@@ -52,7 +59,7 @@ func TestTextResolutionUsesIssuedControlThroughRetainedPrefix(t *testing.T) {
 			}
 			// The explicit Publisher fixture sends a genuine signed proof using
 			// actual issued stock; no success callback pre-populates the Store.
-			status, _, err := prefix.ExchangeDescriptor(t.Context(), func(hello ardp.Hello, class uint8) ([]byte, error) {
+			status, _, err := acquisition.ExchangeDescriptor(t.Context(), func(hello ardp.Hello, class uint8) ([]byte, error) {
 				owner.mu.Lock()
 				defer owner.mu.Unlock()
 				profile, now, err := owner.permissionProfileLocked()
@@ -90,7 +97,7 @@ func TestTextResolutionUsesIssuedControlThroughRetainedPrefix(t *testing.T) {
 				t.Fatal("absent Target was accepted")
 			}
 			owner.mu.Lock()
-			retained := owner.source.currentLocked() == prefix && owner.resolution == nil && owner.tokens.Issuance == nil && owner.tokens.Permission.Batches == 2
+			retained := owner.source.CurrentLocked() == prefix && owner.resolution == nil && owner.tokens.Issuance == nil && owner.tokens.Permission.Batches == 2
 			owner.mu.Unlock()
 			if !retained {
 				t.Fatal("ordinary resolution replaced its prefix or minted more bootstrap allowance")

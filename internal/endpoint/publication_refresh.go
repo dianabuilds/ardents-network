@@ -9,6 +9,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
 	"github.com/dianabuilds/ardents-network/internal/endpoint/publication"
+	"github.com/dianabuilds/ardents-network/internal/endpoint/source"
 	"github.com/dianabuilds/ardents-network/internal/route/client"
 )
 
@@ -123,7 +124,7 @@ func (owner *dutyContext) rotatePublication(flight *publication.Refresh, previou
 		return publication.RefreshFailureAt("rotation-prefix", errors.New("text publication refresh prefix unavailable"))
 	}
 	if err := owner.prepareSourceReady(flight.Context); err != nil {
-		return publication.RefreshFailureAt("rotation-source-"+sourcePreparationFailureStage(err), err)
+		return publication.RefreshFailureAt("rotation-source-"+source.PreparationFailureStage(err), err)
 	}
 	_, until, err := prefix.introductionRecipient()
 	if err != nil {

@@ -49,8 +49,7 @@ func TestTextRouteJoinConnectsSourceAndResponder(t *testing.T) {
 // ready callback observes both joined streams before either direction writes.
 func exchangeRouteData(t *testing.T, reader, publisher *dutyContext, receiver [32]byte, ready func()) {
 	t.Helper()
-	responder, err := publisher.openResponderPrefix(t.Context())
-	if err != nil {
+	if _, err := publisher.openResponderPrefix(t.Context()); err != nil {
 		t.Fatal(err)
 	}
 	for _, owner := range []*dutyContext{reader, publisher} {
@@ -67,12 +66,23 @@ func exchangeRouteData(t *testing.T, reader, publisher *dutyContext, receiver [3
 	}
 	results := make(chan opened, 2)
 	reader.mu.Lock()
-	readerPrefix := reader.source.currentLocked()
+	readerJoin := reader.source.AcquireJoinLocked()
 	reader.mu.Unlock()
-	prefixes := []joinPrefix{readerPrefix, responder}
+	if readerJoin == nil {
+		t.Fatal("text Source JOIN acquisition unavailable")
+	}
+	defer readerJoin.Release()
+	publisher.mu.Lock()
+	responderJoin := publisher.responder.acquireJoinLocked(publisher.source.CurrentLocked())
+	publisher.mu.Unlock()
+	if responderJoin == nil {
+		t.Fatal("text Responder JOIN acquisition unavailable")
+	}
+	defer responderJoin.Release()
+	prefixes := []joinPrefix{sourceJoinAcquisition{readerJoin}, responderJoin}
 	for index, owner := range []*dutyContext{reader, publisher} {
 		go func() {
-			stream, err := prefixes[index].join(ctx, func(hello ardp.Hello, class uint8) ([]byte, error) {
+			stream, err := prefixes[index].Join(ctx, func(hello ardp.Hello, class uint8) ([]byte, error) {
 				owner.mu.Lock()
 				defer owner.mu.Unlock()
 				profile, now, err := owner.permissionProfileLocked()

@@ -61,7 +61,7 @@ func (owner *dutyContext) openPublisherPrefix(ctx context.Context, role publishe
 	}
 	owner.mu.Lock()
 	_, _, err := owner.permissionProfileLocked()
-	if err != nil || owner.surface != broker.Administration || owner.source.currentLocked() == nil || owner.tokens.Permission == nil || owner.source.openingInProgressLocked() || !role.openingAvailableLocked() {
+	if err != nil || owner.surface != broker.Administration || owner.source.CurrentLocked() == nil || owner.tokens.Permission == nil || owner.source.OpeningInProgressLocked() || !role.openingAvailableLocked() {
 		owner.mu.Unlock()
 		return nil, errors.New("text Publisher role owner unavailable")
 	}

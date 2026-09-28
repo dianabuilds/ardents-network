@@ -77,7 +77,7 @@ func (owner *dutyContext) prepareRecovery(ctx context.Context, job *jobIdentity,
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
 	profile, now, err := owner.permissionProfileLocked()
-	prefix := owner.source.currentLocked()
+	prefix := owner.source.CurrentLocked()
 	recipient := verified.Descriptor.Private
 	if attemptErr := ctx.Err(); attemptErr != nil {
 		return nil, attemptErr
@@ -91,7 +91,7 @@ func (owner *dutyContext) prepareRecovery(ctx context.Context, job *jobIdentity,
 		return nil, errors.Join(err, errors.New("text recovery recipient or authority unavailable"))
 	}
 	binding.bindIntroductionLocked(recipient)
-	node, generation, until, err := prefix.dataJoinRecipient()
+	node, generation, until, err := prefix.DataJoinRecipient()
 	if err != nil {
 		return nil, err
 	}
@@ -130,7 +130,7 @@ func (owner *dutyContext) prepareRecovery(ctx context.Context, job *jobIdentity,
 		clear(operation)
 		return nil, attemptErr
 	}
-	if !prefix.currentLocked(&owner.source) || !owner.liveServiceJobLocked(job, broker.Connection) ||
+	if !prefix.CurrentLocked(&owner.source) || !owner.liveServiceJobLocked(job, broker.Connection) ||
 		!owner.endpoint.clock().UTC().Before(deadline) {
 		clear(operation)
 		return nil, errors.New("text recovery authority ended during sealing")

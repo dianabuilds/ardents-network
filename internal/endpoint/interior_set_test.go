@@ -117,7 +117,7 @@ func selectSource(t *testing.T, owner *dutyContext) client.ClosedBootstrapSelect
 func TestTextSourceSetsSurviveWorkerLossAndKeepContextOwnership(t *testing.T) {
 	endpoint, owner, _ := sourceContextFixture(t)
 	selected := selectSource(t, owner)
-	original := *owner.source.set
+	original := *owner.sourceSet
 	job, err := beginTestJob(t, owner, endpoint, broker.Connection)
 	if err != nil {
 		t.Fatal(err)
@@ -126,18 +126,18 @@ func TestTextSourceSetsSurviveWorkerLossAndKeepContextOwnership(t *testing.T) {
 	if err := owner.finishJobCleanup(job, nil); err != nil {
 		t.Fatal(err)
 	}
-	if repeated := selectSource(t, owner); repeated != selected || *owner.source.set != original {
+	if repeated := selectSource(t, owner); repeated != selected || *owner.sourceSet != original {
 		t.Fatal("worker loss rotated source sets")
 	}
 	publisher := permissionContextFixture(t, endpoint, fixtureID(211), broker.Administration)
 	publisherSelection := selectSource(t, publisher)
-	if publisher.source.set == owner.source.set || publisherSelection.EntryNodeID != selected.EntryNodeID {
+	if publisher.sourceSet == owner.sourceSet || publisherSelection.EntryNodeID != selected.EntryNodeID {
 		t.Fatal("context scope or installation Entry retention lost")
 	}
 	if err := owner.Close(); err != nil {
 		t.Fatal(err)
 	}
-	if owner.source.set != nil {
+	if owner.sourceSet != nil {
 		t.Fatal("closed context retained Interior selection")
 	}
 	if repeated := selectSource(t, publisher); repeated != publisherSelection {
@@ -148,7 +148,7 @@ func TestTextSourceSetsSurviveWorkerLossAndKeepContextOwnership(t *testing.T) {
 func TestTextSourceWithdrawalCannotResampleInterior(t *testing.T) {
 	_, owner, source := sourceContextFixture(t)
 	selected := selectSource(t, owner)
-	retained := *owner.source.set
+	retained := *owner.sourceSet
 	source.mu.Lock()
 	for index := range source.snapshot.Candidates[:source.snapshot.CandidateCount] {
 		if source.snapshot.Candidates[index].NodeID == selected.InteriorNodeID {
@@ -159,7 +159,7 @@ func TestTextSourceWithdrawalCannotResampleInterior(t *testing.T) {
 	owner.mu.Lock()
 	_, err := owner.selectBootstrapLocked()
 	owner.mu.Unlock()
-	if err == nil || *owner.source.set != retained {
+	if err == nil || *owner.sourceSet != retained {
 		t.Fatal("withdrawn Interior replaced before set expiry")
 	}
 }
@@ -170,7 +170,7 @@ func TestTextSourceRejectsCrossProjectionStateBeforeSelection(t *testing.T) {
 	owner.mu.Lock()
 	_, err := owner.selectBootstrapLocked()
 	owner.mu.Unlock()
-	if err == nil || owner.source.set != nil || endpoint.closedEntries != nil {
+	if err == nil || owner.sourceSet != nil || endpoint.closedEntries != nil {
 		t.Fatal("mixed State projections created selection owner")
 	}
 }

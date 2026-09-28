@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/endpoint/source"
 	"github.com/dianabuilds/ardents-network/internal/endpoint/tokens"
 	"github.com/dianabuilds/ardents-network/internal/network/duty"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
@@ -16,8 +17,8 @@ import (
 
 func TestTextSourcePreparationFailureRetainsStageAndCause(t *testing.T) {
 	cause := errors.New("opening issuance refused")
-	failure := sourcePreparationFailureAt("issuance", cause)
-	if got := sourcePreparationFailureStage(failure); got != "issuance" {
+	failure := source.PreparationFailureAt("issuance", cause)
+	if got := source.PreparationFailureStage(failure); got != "issuance" {
 		t.Fatalf("source preparation stage = %q", got)
 	}
 	if !errors.Is(failure, cause) {
@@ -27,8 +28,8 @@ func TestTextSourcePreparationFailureRetainsStageAndCause(t *testing.T) {
 
 func TestTextPrefixPreparationFailureRetainsStageAndCause(t *testing.T) {
 	cause := errors.New("source carrier refused")
-	failure := prefixPreparationFailureAt("opening", cause)
-	if got := prefixPreparationFailureStage(failure); got != "opening" {
+	failure := source.PrefixFailureAt("opening", cause)
+	if got := source.PrefixFailureStage(failure); got != "opening" {
 		t.Fatalf("prefix preparation stage = %q", got)
 	}
 	if !errors.Is(failure, cause) {
@@ -40,8 +41,8 @@ func TestTextTokenPresentationFailureRetainsNestedStageAndCause(t *testing.T) {
 	cause := errors.New("local role conflict read unavailable")
 	role := roleMemberFailureAt("conflict-read", cause)
 	selection := interiorSelectionFailureAt("role-members-"+roleMemberFailureStage(role), role)
-	failure := tokenPresentationFailureAt("selection-"+interiorSelectionFailureStage(selection), selection)
-	if got := tokenPresentationFailureStage(failure); got != "selection-role-members-conflict-read" {
+	failure := source.TokenPresentationFailureAt("selection-"+interiorSelectionFailureStage(selection), selection)
+	if got := source.TokenPresentationFailureStage(failure); got != "selection-role-members-conflict-read" {
 		t.Fatalf("token presentation stage = %q", got)
 	}
 	if !errors.Is(failure, cause) {
@@ -54,8 +55,8 @@ func TestTextTokenPresentationFailureRetainsNestedStageAndCause(t *testing.T) {
 }
 
 func TestTextTokenPresentationClassifiesConcurrentRoleCommit(t *testing.T) {
-	endpoint, owner, source := sourceContextFixture(t)
-	prepareIssuancePermission(t, owner, source)
+	endpoint, owner, sourceState := sourceContextFixture(t)
+	prepareIssuancePermission(t, owner, sourceState)
 	selection := selectSource(t, owner)
 	writer, err := duty.Open(duty.Config{Root: endpoint.closedRoleRoot, Clock: time.Now})
 	if err != nil {
@@ -66,22 +67,25 @@ func TestTextTokenPresentationClassifiesConcurrentRoleCommit(t *testing.T) {
 	attempt, cancel := context.WithCancel(t.Context())
 	flight := &operationFlight{owner: owner, context: attempt, cancelOperation: cancel, done: make(chan struct{})}
 	owner.mu.Lock()
-	owner.source.opening = flight
+	if !owner.source.ReserveOpeningLocked(flight) {
+		owner.mu.Unlock()
+		t.Fatal("Source lifecycle refused the planted opening")
+	}
 	profile := owner.tokens.Permission.Profile
 	owner.mu.Unlock()
 	defer func() {
 		owner.mu.Lock()
-		owner.source.opening = nil
+		owner.source.FinishOpeningLocked(flight, nil, nil, false)
 		owner.mu.Unlock()
 		cancel()
 		close(flight.done)
 	}()
 	hello := ardp.Hello{NetworkID: profile.NetworkID, StateGeneration: profile.StateGeneration, StateDigest: profile.StateDigest,
-		ProfileDigest: profile.Digest, RecipientNodeID: selection.EntryNodeID, RecipientDutyGeneration: source.view.Nodes[0].DutyGeneration,
+		ProfileDigest: profile.Digest, RecipientNodeID: selection.EntryNodeID, RecipientDutyGeneration: sourceState.view.Nodes[0].DutyGeneration,
 		Purpose: ardp.PurposeForwarding, Deadline: time.Now().Add(10 * time.Second), ChannelNonce: fixtureID(199)}
 	started := time.Now()
 	_, err = flight.presentToken(selection, hello, 2)
-	if got := tokenPresentationFailureStage(err); got != "selection-role-members-conflict-read" {
+	if got := source.TokenPresentationFailureStage(err); got != "selection-role-members-conflict-read" {
 		t.Fatalf("concurrent role commit stage = %q: %v", got, err)
 	}
 	if elapsed := time.Since(started); elapsed < 900*time.Millisecond || elapsed > 2*time.Second {
@@ -178,7 +182,7 @@ func TestTextSourceWaitCancellationDoesNotStealReservation(t *testing.T) {
 				t.Fatal("cancelled waiter did not join")
 			}
 			owner.mu.Lock()
-			occupied := len(owner.source.operations.busy) == 1
+			occupied := len(owner.sourceOperations.busy) == 1
 			owner.mu.Unlock()
 			if !occupied {
 				t.Fatal("cancelled waiter released the active owner's reservation")

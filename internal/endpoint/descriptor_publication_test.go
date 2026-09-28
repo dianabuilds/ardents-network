@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
+	"github.com/dianabuilds/ardents-network/internal/endpoint/source"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	routecarrier "github.com/dianabuilds/ardents-network/internal/route/carrier"
 	servicepublication "github.com/dianabuilds/ardents-network/internal/service/publication"
@@ -22,14 +23,14 @@ import (
 func TestTextPublisherCommitsInstanceSignedDescriptor(t *testing.T) {
 	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP, routecarrier.ClosedCarrierQUIC} {
 		t.Run(string(carrier), func(t *testing.T) {
-			endpoint, owner, source := startRoleNetwork(t, roleNetworkFixture{carrier: carrier, resolution: true, publisher: true})
+			endpoint, owner, sourceState := startRoleNetwork(t, roleNetworkFixture{carrier: carrier, resolution: true, publisher: true})
 			public, authority, err := ed25519.GenerateKey(rand.Reader)
 			if err != nil {
 				t.Fatal(err)
 			}
 			defer clear(authority)
 			now := time.Now().UTC().Truncate(time.Second)
-			root, binding := acceptedInstanceBinding(t, serviceInstanceFixtureRoot(t), endpoint.network, authority, now.Add(-time.Second), source.view.Profile.NotAfter)
+			root, binding := acceptedInstanceBinding(t, serviceInstanceFixtureRoot(t), endpoint.network, authority, now.Add(-time.Second), sourceState.view.Profile.NotAfter)
 			t.Cleanup(func() {
 				if err := endpoint.Close(); err != nil {
 					t.Error(err)
@@ -71,11 +72,13 @@ func TestTextPublisherCommitsInstanceSignedDescriptor(t *testing.T) {
 			// selected Instance into another independently admitted local context.
 			foreign := permissionContextFixture(t, endpoint, fixtureID(211), broker.Administration)
 			foreign.mu.Lock()
-			foreign.source.live, foreign.publication.pair.registration, foreign.tokens.Permission = owner.source.currentLocked(), first, owner.tokens.Permission
+			source.TransplantLive(&foreign.source, owner.source.CurrentLocked())
+			foreign.publication.pair.registration, foreign.tokens.Permission = first, owner.tokens.Permission
 			foreign.mu.Unlock()
 			_, foreignErr := foreign.publishDescriptor(t.Context())
 			foreign.mu.Lock()
-			foreign.source.live, foreign.publication.pair.registration, foreign.tokens.Permission = nil, nil, nil
+			source.TransplantLive(&foreign.source, nil)
+			foreign.publication.pair.registration, foreign.tokens.Permission = nil, nil
 			foreign.mu.Unlock()
 			if foreignErr == nil || endpoint.publisherOwner != owner {
 				t.Fatal("another context stole the Instance publication")
@@ -109,7 +112,7 @@ func TestTextPublisherCommitsInstanceSignedDescriptor(t *testing.T) {
 				t.Fatal("refresh changed publication generation or reused slot/key")
 			}
 			retrieved = lookupPublishedProof(t, owner, refreshed.Descriptor.Target)
-			decoded, err := reachability.VerifyPrivate(retrieved, refreshed.Descriptor.Target, endpoint.network, source.view.Profile.Digest, time.Now().UTC())
+			decoded, err := reachability.VerifyPrivate(retrieved, refreshed.Descriptor.Target, endpoint.network, sourceState.view.Profile.Digest, time.Now().UTC())
 			if err != nil || decoded.Descriptor.Private.Revision != 2 {
 				t.Fatalf("refreshed Node proof: %v", err)
 			}
@@ -131,15 +134,21 @@ func TestTextPublisherCommitsInstanceSignedDescriptor(t *testing.T) {
 
 func lookupPublishedProof(t *testing.T, owner *dutyContext, target [32]byte) []byte {
 	t.Helper()
-	prefix := owner.source.currentLocked()
-	receiver, err := prefix.ResolutionRecipient()
+	owner.mu.Lock()
+	acquisition := owner.source.AcquireResolutionLocked()
+	owner.mu.Unlock()
+	if acquisition == nil {
+		t.Fatal("text Source resolution acquisition unavailable")
+	}
+	defer acquisition.Release()
+	receiver, err := acquisition.ResolutionRecipient()
 	if err != nil {
 		t.Fatal(err)
 	}
 	if err := owner.issueTokens(t.Context(), [][32]byte{receiver}, 1); err != nil {
 		t.Fatal(err)
 	}
-	status, raw, err := prefix.ExchangeDescriptor(t.Context(), func(hello ardp.Hello, class uint8) ([]byte, error) {
+	status, raw, err := acquisition.ExchangeDescriptor(t.Context(), func(hello ardp.Hello, class uint8) ([]byte, error) {
 		owner.mu.Lock()
 		defer owner.mu.Unlock()
 		profile, now, err := owner.permissionProfileLocked()

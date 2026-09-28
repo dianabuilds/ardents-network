@@ -44,7 +44,7 @@ func interiorSelectionFailureStage(cause error) string {
 }
 
 func (owner *dutyContext) selectBootstrapLocked() (client.ClosedBootstrapSelection, error) {
-	return owner.selectAdjacentLocked(1, owner.source.membersSlotLocked())
+	return owner.selectAdjacentLocked(1, &owner.sourceSet)
 }
 
 func (owner *dutyContext) selectAdjacentLocked(domain uint8, retained **interiorSet) (client.ClosedBootstrapSelection, error) {

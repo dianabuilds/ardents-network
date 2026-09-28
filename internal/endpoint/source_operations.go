@@ -5,31 +5,9 @@ package endpoint
 import (
 	"context"
 	"errors"
+
+	"github.com/dianabuilds/ardents-network/internal/endpoint/source"
 )
-
-// sourcePreparationFailure marks the local preparation boundary that
-// prevented a scheduled publication from obtaining its next Source opening.
-// It retains the original cause for ownership and cleanup decisions.
-type sourcePreparationFailure struct {
-	stage string
-	cause error
-}
-
-func (failure *sourcePreparationFailure) Error() string { return failure.cause.Error() }
-
-func (failure *sourcePreparationFailure) Unwrap() error { return failure.cause }
-
-func sourcePreparationFailureAt(stage string, cause error) error {
-	return &sourcePreparationFailure{stage: stage, cause: cause}
-}
-
-func sourcePreparationFailureStage(cause error) string {
-	var failure *sourcePreparationFailure
-	if errors.As(cause, &failure) && failure.stage != "" {
-		return failure.stage
-	}
-	return "unknown"
-}
 
 // sourceOperationGate serializes Source opening and issuance across one
 // Context lifetime. Its zero value is ready under dutyContext.mu; the channel
@@ -71,8 +49,8 @@ func (owner *dutyContext) acquireSourceOperation(ctx context.Context) (func(), e
 		owner.mu.Unlock()
 		return nil, errors.New("text Source context unavailable")
 	}
-	owner.source.operations.initializeLocked()
-	gate, lease := &owner.source.operations, owner.lease.Context()
+	owner.sourceOperations.initializeLocked()
+	gate, lease := &owner.sourceOperations, owner.lease.Context()
 	owner.mu.Unlock()
 	return gate.acquire(ctx, lease)
 }
@@ -82,19 +60,19 @@ func (owner *dutyContext) acquireSourceOperation(ctx context.Context) (func(), e
 func (owner *dutyContext) prepareSourceReady(ctx context.Context) error {
 	release, err := owner.acquireSourceOperation(ctx)
 	if err != nil {
-		return sourcePreparationFailureAt("operation", err)
+		return source.PreparationFailureAt("operation", err)
 	}
 	defer release()
 	owner.mu.Lock()
 	_, _, err = owner.permissionProfileLocked()
-	missing := owner.source.currentLocked() == nil
+	missing := owner.source.CurrentLocked() == nil
 	owner.mu.Unlock()
 	if err != nil {
-		return sourcePreparationFailureAt("permission", err)
+		return source.PreparationFailureAt("permission", err)
 	}
 	if missing {
 		if _, err := owner.openPrefix(ctx); err != nil {
-			return sourcePreparationFailureAt("prefix-"+prefixPreparationFailureStage(err), err)
+			return source.PreparationFailureAt("prefix-"+source.PrefixFailureStage(err), err)
 		}
 	}
 	return owner.prepareSourceReopenOwned(ctx, nil)

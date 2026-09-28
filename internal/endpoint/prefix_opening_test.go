@@ -31,7 +31,7 @@ func TestTextPrefixReservesOpeningBeforeIssuanceAndJoinsCancellation(t *testing.
 	go func() {
 		prefix, err := owner.openPrefix(ctx)
 		if prefix != nil {
-			_ = prefix.Close()
+			_ = closeSourceHandle(prefix)
 		}
 		done <- err
 	}()
@@ -45,8 +45,7 @@ func TestTextPrefixReservesOpeningBeforeIssuanceAndJoinsCancellation(t *testing.
 	}
 	defer accepted.Close()
 	owner.mu.Lock()
-	flight := owner.source.opening
-	reserved := flight != nil && owner.tokens.Issuance != nil && owner.tokens.Permission.Batches == 1
+	reserved := owner.source.OpeningInProgressLocked() && owner.tokens.Issuance != nil && owner.tokens.Permission.Batches == 1
 	owner.mu.Unlock()
 	if !reserved {
 		cancel()
@@ -55,7 +54,7 @@ func TestTextPrefixReservesOpeningBeforeIssuanceAndJoinsCancellation(t *testing.
 	}
 	if prefix, err := owner.openPrefix(t.Context()); prefix != nil || err == nil {
 		if prefix != nil {
-			_ = prefix.Close()
+			_ = closeSourceHandle(prefix)
 		}
 		cancel()
 		<-done
@@ -72,14 +71,11 @@ func TestTextPrefixReservesOpeningBeforeIssuanceAndJoinsCancellation(t *testing.
 		<-done
 		t.Fatal("cancelled prefix did not join bootstrap")
 	}
-	select {
-	case <-flight.done:
-	default:
-		t.Fatal("prefix returned before its opening completed")
-	}
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
-	if owner.source.opening != nil || owner.tokens.Issuance != nil || owner.source.currentLocked() != nil || owner.tokens.Permission.Batches != 1 {
+	// The prefix returned only after its completion cleared the reservation:
+	// FinishOpeningLocked runs before openPrefix hands the caller its outcome.
+	if owner.source.OpeningInProgressLocked() || owner.tokens.Issuance != nil || owner.source.CurrentLocked() != nil || owner.tokens.Permission.Batches != 1 {
 		t.Fatal("cancellation leaked ownership or another batch debit")
 	}
 }
@@ -94,7 +90,9 @@ func TestTextPrefixOpeningExcludesUnrelatedIssuanceBetweenBatches(t *testing.T) 
 	// The reserved transition can be between its two network flights. The
 	// absence of a current issuance must not permit an unrelated batch.
 	flight := &operationFlight{owner: owner, context: ctx, cancelOperation: cancel, done: done}
-	owner.source.opening = flight
+	if !owner.source.ReserveOpeningLocked(flight) {
+		t.Fatal("Source lifecycle refused the planted prefix transition")
+	}
 	attempt, stop := context.WithTimeout(t.Context(), 100*time.Millisecond)
 	defer stop()
 	if err := owner.issueTokens(attempt, [][32]byte{source.view.Nodes[0].NodeID}, 2); err == nil {
@@ -130,7 +128,7 @@ func TestTextPrefixOpeningRejectsObsoleteCompletionWithoutTouchingReplacement(t 
 	go func() {
 		prefix, openErr := owner.openPrefix(ctx)
 		if prefix != nil {
-			_ = prefix.Close()
+			_ = closeSourceHandle(prefix)
 		}
 		result <- openErr
 	}()
@@ -147,14 +145,23 @@ func TestTextPrefixOpeningRejectsObsoleteCompletionWithoutTouchingReplacement(t 
 	close(replacementDone)
 	replacement := &operationFlight{owner: owner, context: replacementContext, cancelOperation: replacementCancel, done: replacementDone}
 	owner.mu.Lock()
-	original := owner.source.opening
-	if original == nil {
+	if !owner.source.OpeningInProgressLocked() {
 		owner.mu.Unlock()
 		cancel()
 		<-result
 		t.Fatal("opening transport started without a retained reservation")
 	}
-	owner.source.opening = replacement
+	// Displace the reservation the same way context stop revokes it: the
+	// detached original keeps running, and its completion must find the
+	// replacement slot and refuse to publish or clear it.
+	retirement := owner.source.StopLocked()
+	if !owner.source.ReserveOpeningLocked(replacement) {
+		owner.mu.Unlock()
+		retirement.JoinOpening()
+		cancel()
+		<-result
+		t.Fatal("Source lifecycle refused the replacement reservation")
+	}
 	permission := owner.tokens.Permission
 	pending := permission.Pending
 	batches, reserved, stock := permission.Batches, permission.Reserved, len(permission.Stock)
@@ -170,12 +177,13 @@ func TestTextPrefixOpeningRejectsObsoleteCompletionWithoutTouchingReplacement(t 
 		<-result
 		t.Fatal("obsolete opening did not join")
 	}
+	retirement.JoinOpening()
 
 	owner.mu.Lock()
-	retained := owner.source.opening == replacement && owner.source.currentLocked() == nil && owner.tokens.Permission == permission &&
+	retained := owner.source.OpeningAdmittedLocked(replacement) && owner.source.CurrentLocked() == nil && owner.tokens.Permission == permission &&
 		permission.Pending == pending && permission.Batches == batches && permission.Reserved == reserved && len(permission.Stock) == stock
-	if owner.source.opening == replacement {
-		owner.source.opening = nil
+	if owner.source.OpeningAdmittedLocked(replacement) {
+		owner.source.FinishOpeningLocked(replacement, nil, nil, false)
 	}
 	owner.mu.Unlock()
 	replacementCancel()

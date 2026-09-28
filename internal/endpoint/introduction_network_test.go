@@ -41,7 +41,7 @@ func TestTextPublisherIntroductionPrefixUsesSeparateDomainAndRealIssuance(t *tes
 				t.Fatal(err)
 			}
 			owner.mu.Lock()
-			separate := owner.source.currentLocked() == source && owner.introduction.prefix.currentLocked() == introduction && source.prefix.Load() != introduction.prefix.Load() && owner.source.set != owner.introduction.prefix.set && owner.source.set.interior[0].Domain == 1 && owner.introduction.prefix.set.interior[0].Domain == 4 && owner.tokens.Permission.Batches == 2 && owner.tokens.Issuance == nil
+			separate := owner.source.CurrentLocked() == source && owner.introduction.prefix.currentLocked() == introduction && owner.sourceSet != owner.introduction.prefix.set && owner.sourceSet.interior[0].Domain == 1 && owner.introduction.prefix.set.interior[0].Domain == 4 && owner.tokens.Permission.Batches == 2 && owner.tokens.Issuance == nil
 			owner.mu.Unlock()
 			if !separate {
 				t.Fatal("Publisher Introduction reused Source ownership or bootstrap admission")
@@ -80,7 +80,7 @@ func TestTextPublisherIntroductionPrefixUsesSeparateDomainAndRealIssuance(t *tes
 				t.Fatal("context released a live registration")
 			}
 			select {
-			case <-source.Done():
+			case <-sourceRouteDone(source):
 			default:
 				t.Fatal("context released a live Source prefix")
 			}
