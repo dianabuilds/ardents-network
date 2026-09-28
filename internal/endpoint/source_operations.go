@@ -9,34 +9,6 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/endpoint/source"
 )
 
-// sourceOperationGate serializes Source opening and issuance across one
-// Context lifetime. Its zero value is ready under dutyContext.mu; the channel
-// survives a Source prefix replacement and is never closed on retirement.
-type sourceOperationGate struct {
-	busy chan struct{}
-}
-
-func (gate *sourceOperationGate) initializeLocked() {
-	if gate.busy == nil {
-		gate.busy = make(chan struct{}, 1)
-	}
-}
-
-func (gate *sourceOperationGate) acquire(ctx, lease context.Context) (func(), error) {
-	select {
-	case gate.busy <- struct{}{}:
-		if ctx.Err() != nil || lease.Err() != nil {
-			<-gate.busy
-			return nil, errors.New("text Source operation cancelled")
-		}
-		return func() { <-gate.busy }, nil
-	case <-ctx.Done():
-		return nil, ctx.Err()
-	case <-lease.Done():
-		return nil, lease.Err()
-	}
-}
-
 // Serialize actual Source opening/issuance, never a publication ACK or a
 // Service stream. Waiters own no tokens and remain cancellable by their caller
 // and the independently authorized context. Validation runs after acquisition.
@@ -49,10 +21,9 @@ func (owner *dutyContext) acquireSourceOperation(ctx context.Context) (func(), e
 		owner.mu.Unlock()
 		return nil, errors.New("text Source context unavailable")
 	}
-	owner.sourceOperations.initializeLocked()
-	gate, lease := &owner.sourceOperations, owner.lease.Context()
+	lifecycle, lease := &owner.source, owner.lease.Context()
 	owner.mu.Unlock()
-	return gate.acquire(ctx, lease)
+	return lifecycle.AcquireOperation(ctx, lease)
 }
 
 // Reconcile the joined Source and reserve its next opening stock during actual

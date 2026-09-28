@@ -13,10 +13,10 @@
 //
 // The selected participant's private owners are grouped by responsibility:
 //
-//   - source_lifecycle.go and source_prefix.go own the exact Source
-//     opening, handle, and retirement. source_operations.go owns the
-//     serialized operation gate and retained Interior Set;
-//     interior_set.go selects peers for Source and Publisher prefixes.
+//   - source.Lifecycle owns the exact Source opening, handle, retirement,
+//     and serialized operation reservation. source_operations.go coordinates
+//     Context admission and Source use; the root retains the Interior Set,
+//     and interior_set.go selects peers for Source and Publisher prefixes.
 //   - introduction_prefix_lifecycle.go and
 //     responder_prefix_lifecycle.go own the two Publisher prefixes.
 //     introduction_admission.go, introduction_dispatch.go,

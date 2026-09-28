@@ -166,11 +166,17 @@ func TestTextSourceWaitCancellationDoesNotStealReservation(t *testing.T) {
 			case <-time.After(time.Second):
 				t.Fatal("cancelled waiter did not join")
 			}
-			owner.mu.Lock()
-			occupied := len(owner.sourceOperations.busy) == 1
-			owner.mu.Unlock()
-			if !occupied {
-				t.Fatal("cancelled waiter released the active owner's reservation")
+			if !revoke {
+				waitCtx, stopWaiting := context.WithTimeout(t.Context(), 20*time.Millisecond)
+				defer stopWaiting()
+				unlock, err := owner.acquireSourceOperation(waitCtx)
+				if unlock != nil {
+					unlock()
+					t.Fatal("cancelled waiter released the active owner's reservation")
+				}
+				if !errors.Is(err, context.DeadlineExceeded) {
+					t.Fatalf("active reservation wait = %v, want deadline", err)
+				}
 			}
 		})
 	}

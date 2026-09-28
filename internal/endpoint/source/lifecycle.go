@@ -3,9 +3,10 @@
 // Package source owns the live Source route opening of one duty context: the
 // published read-only Handle, its in-progress replacement slot, and the exact
 // acquisitions that bind one JOIN or resolution exchange to the handle current
-// at admission. Lifecycle is a pure two-slot state machine valid only under
-// the owning dutyContext mutex; the operation gate, the retained Interior Set
-// and role selection stay with the endpoint owner.
+// at admission. Lifecycle owns its operation reservation across prefix
+// replacement. Its opening state is valid only under the owning dutyContext
+// mutex; the retained Interior Set and role selection stay with the endpoint
+// owner.
 package source
 
 import (
@@ -27,11 +28,12 @@ type FlightRef interface {
 	JoinFlight()
 }
 
-// Lifecycle is the only owner of the live Source opening and its in-progress
-// replacement. The zero value is ready for use under dutyContext.mu.
+// Lifecycle owns the live Source opening, its in-progress replacement, and
+// the operation reservation across replacements. The zero value is ready.
 type Lifecycle struct {
-	live    *Handle
-	opening FlightRef
+	live      *Handle
+	opening   FlightRef
+	operation operationGate
 }
 
 // Retirement is one concrete snapshot of what the Lifecycle held at stop

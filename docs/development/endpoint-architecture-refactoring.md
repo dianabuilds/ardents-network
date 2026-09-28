@@ -165,14 +165,14 @@ owners rather than one undifferentiated state bag; after the extraction
 series, `dutyContextState` composes: `publication publicationOwner`,
 `introduction introductionOwner`, `descriptorHistory`, `responder
 responderPrefixLifecycle`, `resolution *resolutionFlight`, `source
-source.Lifecycle`, `sourceSet *interiorSet`, `sourceOperations
-sourceOperationGate`, `tokens tokens.Owner`, plus job identity
+source.Lifecycle`, `sourceSet *interiorSet`, `tokens tokens.Owner`,
+plus job identity
 (`job`/`lastJob`/`verifiedJob *jobIdentity`), lease/principal/surface
 binding, and the shared `mu`:
 
 | Responsibility | Current owner | Key coupling to remove or retain |
 | --- | --- | --- |
-| Source prefix | `source.Lifecycle` (extracted) + root `sourceSet`, `sourceOperations` | Exact handle identity, opening retirement, serialized operation gate, and retained Interior Set remain atomic with Context admission; the gate and set survive prefix replacement and are read by root-only methods, so they stayed in the root. |
+| Source prefix | `source.Lifecycle` (extracted) + root `sourceSet` | Source owns exact handle identity, opening retirement, and the serialized operation reservation across prefix replacement. Root Context admission validates live authority and captures the revocable lease before Source reserves opening or issuance; the retained Interior Set remains at root for role selection. |
 | Publisher prefixes | `introductionPrefixLifecycle`, `responderPrefixLifecycle` over shared `rolePrefixCore` (root) | Separate Route handles and opening lifetimes; borrowed Source is not closed by either. |
 | Publication | `publicationOwner` (root) + `publication.RefreshLifecycle` (extracted scheduler) + `introduction.PairLifecycle`/`Registration` (extracted pair mechanism) | The pair owner retains the active registration opening and withdrawal flight through install or cancellation. Context still coordinates their stop/join order; Instance and Publication ownership spans Context and Endpoint locks. |
 | Permission and issuance | `tokens.Permission`, `tokens.Operation`, `tokens.Owner` (extracted; fields exported, error strings byte-identical) | The permission owner holds holder request creation, signed approval acceptance, currentness and remaining-quota checks, exact retry matching and batch quota reservation, candidate-stock inspection, pending-batch cancellation, issued-token deposit, then burns and verifies the exact challenge under the Context admission lock via `tokens.Owner` over the shared duty `mu`. Orchestration (`issueTokens*`, `prepareIssuerStock`, `provisionPermission`) stays at root. Context performs the durable token-attempt mark and surviving-owner check before presentation. |
