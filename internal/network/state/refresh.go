@@ -168,3 +168,5 @@ func (s *networkState) fetchSource(ctx context.Context, index int, request sourc
 	}
 	return response, nil
 }
+
+func (s *networkState) finishRefresh() { s.mu.Lock(); s.refreshing = false; s.mu.Unlock() }

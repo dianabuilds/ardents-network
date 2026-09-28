@@ -82,3 +82,12 @@ func (s *networkState) finishDigestAttempt(source int, succeeded bool) error {
 	}
 	return s.commitDistribution(state)
 }
+
+func containsIdentity(history [][32]byte, identity [32]byte) bool {
+	for _, current := range history {
+		if current == identity {
+			return true
+		}
+	}
+	return false
+}

@@ -9,22 +9,6 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/network/epoch"
 )
 
-var (
-	errPersistentStateConflict = errors.New("network state has a persistent conflict")
-	errPendingEpochConflict    = errors.New("candidate Epoch conflicts with the durable pending Epoch")
-)
-
-func (s *networkState) allowCandidateTransition(candidate epoch.Decision) error {
-	if s.distribution.conflicting {
-		return errPersistentStateConflict
-	}
-	if s.pendingDecision != nil && candidate.Header.Number == s.pendingDecision.Header.Number &&
-		candidate.Header.Digest != s.pendingDecision.Header.Digest {
-		return errPendingEpochConflict
-	}
-	return nil
-}
-
 func (s *networkState) startSourceWave(now time.Time) ([2]int, time.Time, error) {
 	state := s.distribution
 	if state.cycleActive {
@@ -197,13 +181,106 @@ func sourceConflict(valid []epoch.Decision) bool {
 	return false
 }
 
-func (s *networkState) finishRefresh() { s.mu.Lock(); s.refreshing = false; s.mu.Unlock() }
+type sourceWaveSummary struct {
+	valid           []epoch.Decision
+	outcomes        [4]byte
+	observedEpochs  [4]uint64
+	observedDigests [4][32]byte
+	collisionErr    error
+}
 
-func containsIdentity(history [][32]byte, identity [32]byte) bool {
-	for _, current := range history {
-		if current == identity {
-			return true
+func summarizeSourceWave(results []sourceResult) sourceWaveSummary {
+	summary := sourceWaveSummary{valid: make([]epoch.Decision, 0, 2)}
+	for _, result := range results {
+		for index, outcome := range result.observations {
+			if outcome != 0 {
+				summary.outcomes[index] = outcome
+			}
+		}
+		if errors.Is(result.err, errSourceRoleCollision) && summary.collisionErr == nil {
+			summary.collisionErr = result.err
+		}
+		if result.err == nil {
+			summary.valid = append(summary.valid, result.decision)
+			summary.observedEpochs[result.slot] = result.decision.Header.Number
+			summary.observedDigests[result.slot] = result.decision.Header.Digest
 		}
 	}
-	return false
+	return summary
+}
+
+func newestSourceDecision(valid []epoch.Decision) epoch.Decision {
+	selected := valid[0]
+	for _, candidate := range valid[1:] {
+		if candidate.Header.Number > selected.Header.Number {
+			selected = candidate
+		}
+	}
+	return selected
+}
+
+func (s *networkState) commitPendingSourceWave(now time.Time, selected epoch.Decision, summary sourceWaveSummary) (Snapshot, error) {
+	if s.current == nil {
+		// A pending generation requires an active predecessor on reopen. Keep
+		// authenticated Source observations, but do not stage a future genesis.
+		state := s.distribution
+		state.observedEpochs, state.observedDigests = summary.observedEpochs, summary.observedDigests
+		if err := finishWaveState(&state, now, summary.outcomes); err != nil {
+			return Snapshot{}, err
+		}
+		state.nextAutomatic = max(state.nextAutomatic, selected.Header.ValidFrom.Unix())
+		if err := s.commitDistribution(state); err != nil {
+			return Snapshot{}, err
+		}
+		return Snapshot{}, errors.Join(errRefreshUnavailable, errors.New("genesis Epoch is not yet current"))
+	}
+	if err := s.retainSourceExposures(selected.Header.ValidUntil); err != nil {
+		return Snapshot{}, err
+	}
+	newPending := s.pendingDecision == nil
+	if newPending {
+		if err := stageGeneration(s.storage, selected); err != nil {
+			return Snapshot{}, err
+		}
+	}
+	state := s.distribution
+	state.observedEpochs, state.observedDigests = summary.observedEpochs, summary.observedDigests
+	if err := finishWaveState(&state, now, summary.outcomes); err != nil {
+		return Snapshot{}, err
+	}
+	state.pendingDigest, state.pendingValidFrom = selected.Header.Digest, selected.Header.ValidFrom.Unix()
+	if err := s.commitDistribution(state); err != nil {
+		return Snapshot{}, err
+	}
+	if newPending {
+		s.pendingDecision = &selected
+	}
+	return s.snapshotWithDistribution(now), nil
+}
+
+func (s *networkState) commitActiveSourceWave(now time.Time, selected epoch.Decision, summary sourceWaveSummary) (Snapshot, error) {
+	if err := s.retainSourceExposures(selected.Header.ValidUntil); err != nil {
+		return Snapshot{}, err
+	}
+	state := s.distribution
+	state.observedEpochs, state.observedDigests = summary.observedEpochs, summary.observedDigests
+	if err := finishWaveState(&state, now, summary.outcomes); err != nil {
+		return Snapshot{}, err
+	}
+	state.epochFloor, state.epochDigest = selected.Header.Number, selected.Header.Digest
+	state.trustedTimeFloor = max(state.trustedTimeFloor, now.Unix())
+	if state.pendingDigest == selected.Header.Digest {
+		state.pendingDigest, state.pendingValidFrom = [32]byte{}, 0
+	}
+	if s.current == nil || selected.Header.Digest != s.current.Snapshot.Digest {
+		if err := s.commitActiveDecision(selected, state); err != nil {
+			return Snapshot{}, err
+		}
+	} else if err := s.commitDistribution(state); err != nil {
+		return Snapshot{}, err
+	}
+	if s.pendingDecision != nil && s.pendingDecision.Header.Digest == selected.Header.Digest {
+		s.pendingDecision = nil
+	}
+	return s.snapshotWithDistribution(now), nil
 }
