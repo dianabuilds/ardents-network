@@ -5,65 +5,53 @@ import (
 	"errors"
 )
 
+// decoder owns State's bounded cursor over canonical Source and control bytes.
 type decoder struct {
-	*stateReader
-	length int
+	raw    []byte
+	offset int
 }
 
-func newDecoder(raw []byte) decoder {
-	return decoder{stateReader: &stateReader{raw: raw}, length: len(raw)}
+func newDecoder(raw []byte) decoder { return decoder{raw: raw} }
+
+func (d *decoder) bytes(length int) ([]byte, error) {
+	if length < 0 || length > len(d.raw)-d.offset {
+		return nil, errors.New("truncated canonical bytes")
+	}
+	value := d.raw[d.offset : d.offset+length]
+	d.offset += length
+	return value, nil
 }
 
-func (d *decoder) bytes(length int) ([]byte, error) { return d.Bytes(length) }
 func (d *decoder) byte() (byte, error) {
-	value, err := d.Bytes(1)
+	value, err := d.bytes(1)
 	if err != nil {
 		return 0, err
 	}
 	return value[0], nil
 }
-func (d *decoder) uint16() (uint16, error) { return d.Uint16() }
-func (d *decoder) uint32() (uint32, error) { return d.Uint32() }
-func (d *decoder) uint64() (uint64, error) { return d.Uint64() }
-func (d *decoder) done() bool              { return d.Consumed() == d.length }
 
-// stateReader owns State's bounded cursor over its authenticated bytes.
-type stateReader struct {
-	raw    []byte
-	offset int
-}
-
-func (reader *stateReader) Bytes(length int) ([]byte, error) {
-	if length < 0 || length > len(reader.raw)-reader.offset {
-		return nil, errors.New("truncated canonical bytes")
-	}
-	value := reader.raw[reader.offset : reader.offset+length]
-	reader.offset += length
-	return value, nil
-}
-
-func (reader *stateReader) Uint16() (uint16, error) {
-	value, err := reader.Bytes(2)
+func (d *decoder) uint16() (uint16, error) {
+	value, err := d.bytes(2)
 	if err != nil {
 		return 0, err
 	}
-	return binary.BigEndian.Uint16(value), err
+	return binary.BigEndian.Uint16(value), nil
 }
 
-func (reader *stateReader) Uint32() (uint32, error) {
-	value, err := reader.Bytes(4)
+func (d *decoder) uint32() (uint32, error) {
+	value, err := d.bytes(4)
 	if err != nil {
 		return 0, err
 	}
-	return binary.BigEndian.Uint32(value), err
+	return binary.BigEndian.Uint32(value), nil
 }
 
-func (reader *stateReader) Uint64() (uint64, error) {
-	value, err := reader.Bytes(8)
+func (d *decoder) uint64() (uint64, error) {
+	value, err := d.bytes(8)
 	if err != nil {
 		return 0, err
 	}
-	return binary.BigEndian.Uint64(value), err
+	return binary.BigEndian.Uint64(value), nil
 }
 
-func (reader *stateReader) Consumed() int { return reader.offset }
+func (d *decoder) done() bool { return d.offset == len(d.raw) }
