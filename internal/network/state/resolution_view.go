@@ -28,17 +28,6 @@ type ResolutionAuthority struct {
 	PublicKey [32]byte
 }
 
-// ResolutionCandidate is one authenticated candidate that remains valid for
-// the requested complete Resolution window.
-type ResolutionCandidate struct {
-	NodeID             [32]byte
-	PublicKey          [32]byte
-	Family             string
-	Endpoint           string
-	Domain             string
-	AssignmentNotAfter time.Time
-}
-
 // DestinationResolutionGateway is the one State-selected Gateway fact for a
 // private Target lookup. Its Profile bytes are authenticated by the Epoch but
 // remain Reachability-owned until the Endpoint verifies their self-signature.
@@ -110,24 +99,6 @@ func (view ResolutionView) Epoch(at, deadline time.Time) (ResolutionEpoch, bool)
 	}
 	return ResolutionEpoch{Generation: snapshot.Generation, NetworkID: snapshot.NetworkID, Number: snapshot.Epoch,
 		Digest: snapshot.Digest, ViewRoot: snapshot.ViewRoot, Authorities: authorities, Threshold: snapshot.EpochThreshold}, true
-}
-
-// Candidate returns the exact authenticated candidate valid throughout the
-// requested Resolution window.
-func (view ResolutionView) Candidate(nodeID [32]byte, at, deadline time.Time) (ResolutionCandidate, bool) {
-	if nodeID == [32]byte{} {
-		return ResolutionCandidate{}, false
-	}
-	for _, candidate := range view.snapshot.Candidates[:view.snapshot.CandidateCount] {
-		if candidate.NodeID != nodeID {
-			continue
-		}
-		valid := candidate.Capacity > 0 && candidate.Family != "" && candidate.Endpoint != "" && candidate.Domain != "" &&
-			!at.Before(candidate.ValidFrom) && deadline.Before(candidate.ValidUntil) && !candidate.AssignmentNotAfter.Before(deadline)
-		return ResolutionCandidate{NodeID: candidate.NodeID, PublicKey: candidate.PublicKey, Family: candidate.Family,
-			Endpoint: candidate.Endpoint, Domain: candidate.Domain, AssignmentNotAfter: candidate.AssignmentNotAfter}, valid
-	}
-	return ResolutionCandidate{}, false
 }
 
 // Gateway returns the exact Destination Resolution Gateway only when State is
