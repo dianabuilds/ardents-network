@@ -19,8 +19,8 @@ func TestTextPublisherStartupOwnsPublicationBeyondCaller(t *testing.T) {
 		t.Run(string(carrier), func(t *testing.T) {
 			readerOwner, publisherOwner := textUnpublishedNetworkFixture(t, carrier)
 			body := []byte("publication started by its qualified worker")
-			job := liveTextCapsuleJob(t, publisherOwner)
-			worker := textServiceWorkerFixture(t, &textServiceBinding{owner: publisherOwner, job: job}, body)
+			job := liveCapsuleJob(t, publisherOwner)
+			worker := serviceWorkerFixture(t, &serviceBinding{owner: publisherOwner, job: job}, body)
 			startup, endStartup := context.WithTimeout(t.Context(), 30*time.Second)
 			defer endStartup()
 			run, err := worker.startPublication(startup)
@@ -35,8 +35,8 @@ func TestTextPublisherStartupOwnsPublicationBeyondCaller(t *testing.T) {
 			if !published {
 				t.Fatal("startup returned before Descriptor acknowledgement and Responder readiness")
 			}
-			readerJob := liveTextCapsuleJob(t, readerOwner)
-			reader := textServiceWorkerFixture(t, &textServiceBinding{owner: readerOwner, job: readerJob}, nil)
+			readerJob := liveCapsuleJob(t, readerOwner)
+			reader := serviceWorkerFixture(t, &serviceBinding{owner: readerOwner, job: readerJob}, nil)
 			now := time.Now().UTC()
 			deadline := now.Add(time.Minute).Unix()
 			result, err := reader.readTarget(t.Context(), run.link, [3]int64{deadline, deadline, deadline})

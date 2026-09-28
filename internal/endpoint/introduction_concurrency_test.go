@@ -82,7 +82,7 @@ func TestTextIntroductionDeliversFourConcurrentReaders(t *testing.T) {
 		}
 	}
 
-	publisherJob := liveTextCapsuleJob(t, publisher)
+	publisherJob := liveCapsuleJob(t, publisher)
 	ctx, cancel := context.WithTimeout(t.Context(), 75*time.Second)
 	defer cancel()
 	type readerWork struct {
@@ -98,7 +98,7 @@ func TestTextIntroductionDeliversFourConcurrentReaders(t *testing.T) {
 	}
 	work := make([]readerWork, len(readers))
 	for index, reader := range readers {
-		work[index] = readerWork{owner: reader, job: liveTextCapsuleJob(t, reader)}
+		work[index] = readerWork{owner: reader, job: liveCapsuleJob(t, reader)}
 	}
 	start := make(chan struct{})
 	trigger := time.Now()

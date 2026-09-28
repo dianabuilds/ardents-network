@@ -15,12 +15,12 @@ import (
 	servicepublication "github.com/dianabuilds/ardents-network/internal/service/publication"
 )
 
-// textServiceStream is the Endpoint's actual authenticated byte stream for a
+// serviceStream is the Endpoint's actual authenticated byte stream for a
 // text worker. The Route/capsule producer supplies its owned transport only
 // after its separate admission checks; this layer cannot establish reachability.
-type textServiceStream struct {
+type serviceStream struct {
 	*applicationHalfClose
-	binding    *textServiceBinding
+	binding    *serviceBinding
 	cancel     context.CancelFunc
 	done       chan applicationconnection.Outcome
 	retired    chan struct{}
@@ -33,12 +33,12 @@ type textServiceStream struct {
 	runErr     error // Internal terminal cause, read only after finished closes.
 }
 
-// openTextServiceStream binds the initial joined Route transport to a real TLS
+// openServiceStream binds the initial joined Route transport to a real TLS
 // and generation-3 native Service Connection. It owns raw on every return.
 // Recovery Attachments require the separate retained continuity owner; this
 // initial attachment never retries, changes a Target or repeats a document.
-func (binding *textServiceBinding) openTextServiceStreamWithRecovery(ctx context.Context, raw net.Conn, capsuleDigest [32]byte,
-	open textServiceAttachmentOpener) (_ *textServiceStream, resultErr error) {
+func (binding *serviceBinding) openServiceStreamWithRecovery(ctx context.Context, raw net.Conn, capsuleDigest [32]byte,
+	open serviceAttachmentOpener) (_ *serviceStream, resultErr error) {
 	recoveryTransferred := false
 	defer func() {
 		if !recoveryTransferred {
@@ -73,9 +73,9 @@ func (binding *textServiceBinding) openTextServiceStreamWithRecovery(ctx context
 	callerDone := make(chan struct{})
 	stopCaller := context.AfterFunc(ctx, func() { defer close(callerDone); cancel() })
 	owned, application := newApplicationHalfClosePair()
-	connection := &textServiceStream{applicationHalfClose: application, binding: binding, cancel: cancel,
+	connection := &serviceStream{applicationHalfClose: application, binding: binding, cancel: cancel,
 		done: make(chan applicationconnection.Outcome, 1), retired: make(chan struct{}),
-		finished: make(chan struct{}), waitClose: waitTextServiceClose}
+		finished: make(chan struct{}), waitClose: waitServiceClose}
 	var lease *servicepublication.Lease
 	interrupted := make(chan struct{})
 	stopLifetime := context.AfterFunc(lifetime, func() {
@@ -129,7 +129,7 @@ func (binding *textServiceBinding) openTextServiceStreamWithRecovery(ctx context
 	recovery := nativeconnection.Recovery{WorkSafetyNotAfter: binding.facts.WorkSafetyNotAfter,
 		WorkSafetyMaximum: binding.facts.WorkSafetyMaximum, NoNewRecoveryAfter: binding.facts.NoNewRecoveryAfter}
 	if open != nil {
-		recovery = binding.textServiceRecovery()
+		recovery = binding.serviceRecovery()
 		if err := nativeconnection.ValidateRecovery(true, recovery, binding.owner.endpoint.clock().UTC().Unix(), binding.credential.NotAfter); err != nil {
 			return nil, err
 		}
@@ -174,7 +174,7 @@ func (binding *textServiceBinding) openTextServiceStreamWithRecovery(ctx context
 // runNative owns the stream's terminal outcome and joins physical cleanup
 // before signaling finished. A recovery-capable native tail may outlive the
 // Application outcome, so retired and finished remain distinct barriers.
-func (connection *textServiceStream) runNative(ctx, lifetime context.Context, stream *nativeconnection.Stream,
+func (connection *serviceStream) runNative(ctx, lifetime context.Context, stream *nativeconnection.Stream,
 	send, receive uint32, cleanup func() error,
 ) {
 	_, runErr := stream.RunBounded(send, receive)
@@ -219,11 +219,11 @@ func (connection *textServiceStream) runNative(ctx, lifetime context.Context, st
 	close(connection.finished)
 }
 
-func (connection *textServiceStream) Done() <-chan applicationconnection.Outcome {
+func (connection *serviceStream) Done() <-chan applicationconnection.Outcome {
 	return connection.done
 }
 
-func (connection *textServiceStream) Close() error {
+func (connection *serviceStream) Close() error {
 	if connection == nil {
 		return nil
 	}
@@ -234,7 +234,7 @@ func (connection *textServiceStream) Close() error {
 		// remains bounded and is interrupted by the same lifetime.
 		wait := connection.waitClose
 		if wait == nil {
-			wait = waitTextServiceClose
+			wait = waitServiceClose
 		}
 		retired := wait(connection.retired)
 		if !retired {
@@ -260,7 +260,7 @@ func (connection *textServiceStream) Close() error {
 	return connection.closeErr
 }
 
-func waitTextServiceClose(finished <-chan struct{}) bool {
+func waitServiceClose(finished <-chan struct{}) bool {
 	timer := time.NewTimer(time.Second)
 	defer timer.Stop()
 	select {

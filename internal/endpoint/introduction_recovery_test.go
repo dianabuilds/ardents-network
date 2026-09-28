@@ -62,7 +62,7 @@ func TestTextIntroductionRecoveryRetirementOwnsBufferedDelivery(t *testing.T) {
 }
 
 func TestTextIntroductionRecoveryKeepsExactBindingAndGeneration(t *testing.T) {
-	binding := &textServiceBinding{}
+	binding := &serviceBinding{}
 	binding.facts.ConnectionNonce[0] = 1
 	recovery := &introductionRecoveryOwner{binding: binding, generation: 2,
 		delivery: make(chan introductionRoutedDelivery, 1)}
@@ -74,7 +74,7 @@ func TestTextIntroductionRecoveryKeepsExactBindingAndGeneration(t *testing.T) {
 	if recovery.generation != 3 {
 		t.Fatal("next generation was not retained")
 	}
-	if recovery.admitGenerationLocked(&textServiceBinding{}, 4) || recovery.admitGenerationLocked(binding, 5) ||
+	if recovery.admitGenerationLocked(&serviceBinding{}, 4) || recovery.admitGenerationLocked(binding, 5) ||
 		recovery.admitGenerationLocked(binding, 2) || recovery.generation != 3 {
 		t.Fatal("foreign, skipped, or stale waiter changed the recovery generation")
 	}

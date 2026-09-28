@@ -84,7 +84,7 @@ func openTextWorkerResultFixture(t *testing.T, ctx context.Context, worker *qual
 	if err != nil {
 		return nil, err
 	}
-	service, err := contextOwner.openTextJoinedService(bounded, worker.job, attempt)
+	service, err := contextOwner.openJoinedService(bounded, worker.job, attempt)
 	if err != nil {
 		return nil, err
 	}
@@ -99,8 +99,8 @@ func openTextWorkerResultFixture(t *testing.T, ctx context.Context, worker *qual
 
 func TestTextReadResultJoinsContextLossBeforeLocalRequest(t *testing.T) {
 	readerOwner, publisherOwner := textUnpublishedNetworkFixture(t, carrier.ClosedCarrierTCP)
-	reader := textServiceWorkerFixture(t, &textServiceBinding{owner: readerOwner, job: liveTextCapsuleJob(t, readerOwner)}, nil)
-	publisher := textServiceWorkerFixture(t, &textServiceBinding{owner: publisherOwner, job: liveTextCapsuleJob(t, publisherOwner)}, []byte("document"))
+	reader := serviceWorkerFixture(t, &serviceBinding{owner: readerOwner, job: liveCapsuleJob(t, readerOwner)}, nil)
+	publisher := serviceWorkerFixture(t, &serviceBinding{owner: publisherOwner, job: liveCapsuleJob(t, publisherOwner)}, []byte("document"))
 	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
 	run, err := publisher.startPublication(ctx)

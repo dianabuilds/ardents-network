@@ -47,7 +47,7 @@ func (worker *qualifiedTextWorker) startPublication(ctx context.Context) (_ *pub
 	}
 	owner := worker.job.owner
 	owner.mu.Lock()
-	current := owner.liveTextServiceJobLocked(worker.job, broker.Administration) && owner.publication.beginStartLocked()
+	current := owner.liveServiceJobLocked(worker.job, broker.Administration) && owner.publication.beginStartLocked()
 	owner.mu.Unlock()
 	if !current {
 		return nil, errors.New("text Publisher startup already owned or unavailable")

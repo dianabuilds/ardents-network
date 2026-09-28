@@ -26,7 +26,7 @@ import (
 // Accepted State, installed launch and Introduction readiness are explicit
 // fixtures. Publication roots/signatures, both Endpoint Service owners, TLS,
 // exporter binding, native authentication and the document exchange are real.
-func textServiceFixture(t *testing.T) (*textServiceBinding, *textServiceBinding, servicepublication.Current) {
+func serviceFixture(t *testing.T) (*serviceBinding, *serviceBinding, servicepublication.Current) {
 	t.Helper()
 	now := time.Now().UTC()
 	profile := state.ClosedProfileView{NetworkID: fixtureID(1), StateGeneration: fixtureID(2), StateDigest: fixtureID(3),
@@ -46,7 +46,7 @@ func textServiceFixture(t *testing.T) (*textServiceBinding, *textServiceBinding,
 		if err != nil {
 			t.Fatal(err)
 		}
-		job.workload, err = textDocumentServiceWorkloadBounds()
+		job.workload, err = documentServiceWorkloadBounds()
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -92,11 +92,11 @@ func textServiceFixture(t *testing.T) (*textServiceBinding, *textServiceBinding,
 		t.Fatal(err)
 	}
 	bounds := [3]int64{now.Add(30 * time.Second).Unix(), now.Add(30 * time.Second).Unix(), now.Add(30 * time.Second).Unix()}
-	clientBinding, err := reader.newTextServiceBinding(readerJob, targetlink.Link{Network: profile.NetworkID, Target: current.Credential.Target}, current, bounds)
+	clientBinding, err := reader.newServiceBinding(readerJob, targetlink.Link{Network: profile.NetworkID, Target: current.Credential.Target}, current, bounds)
 	if err != nil {
 		t.Fatal(err)
 	}
-	publisherBinding, err := publisher.acceptTextServiceBinding(publisherJob, current, clientBinding.facts)
+	publisherBinding, err := publisher.acceptServiceBinding(publisherJob, current, clientBinding.facts)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -109,7 +109,7 @@ func textServiceFixture(t *testing.T) (*textServiceBinding, *textServiceBinding,
 func TestTextServiceRealTLSAndDocumentExchange(t *testing.T) {
 	for _, size := range []int{0, 64 << 10, textdocument.MaximumBytes} {
 		t.Run(strconv.Itoa(size), func(t *testing.T) {
-			clientBinding, publisherBinding, _ := textServiceFixture(t)
+			clientBinding, publisherBinding, _ := serviceFixture(t)
 			clientRoute, publisherRoute := net.Pipe()
 			ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 			defer cancel()
@@ -120,7 +120,7 @@ func TestTextServiceRealTLSAndDocumentExchange(t *testing.T) {
 			}
 			publisherDone := make(chan error, 1)
 			go func() {
-				stream, err := publisherBinding.openTextServiceStreamWithRecovery(ctx, publisherRoute, fixtureID(51), nil)
+				stream, err := publisherBinding.openServiceStreamWithRecovery(ctx, publisherRoute, fixtureID(51), nil)
 				if err != nil {
 					publisherDone <- err
 					return
@@ -137,7 +137,7 @@ func TestTextServiceRealTLSAndDocumentExchange(t *testing.T) {
 				}
 				publisherDone <- errors.Join(err, stream.Close())
 			}()
-			stream, err := clientBinding.openTextServiceStreamWithRecovery(ctx, clientRoute, fixtureID(51), nil)
+			stream, err := clientBinding.openServiceStreamWithRecovery(ctx, clientRoute, fixtureID(51), nil)
 			if err != nil {
 				cancel()
 				t.Fatalf("client setup: %v; Publisher: %v", err, <-publisherDone)
@@ -154,10 +154,10 @@ func TestTextServiceRealTLSAndDocumentExchange(t *testing.T) {
 func TestTextServiceWorkloadBoundsPreserveCurrentDirectionalContracts(t *testing.T) {
 	for _, test := range []struct {
 		name                   string
-		open                   func() (textServiceWorkloadBounds, error)
+		open                   func() (serviceWorkloadBounds, error)
 		readerSend, readerRead uint32
 	}{
-		{name: "document", open: textDocumentServiceWorkloadBounds,
+		{name: "document", open: documentServiceWorkloadBounds,
 			readerSend: 512, readerRead: textdocument.MaximumBytes + 13},
 		{name: "qualification", open: streamQualificationServiceWorkloadBounds,
 			readerSend: 64 << 20, readerRead: 64 << 20},
@@ -197,23 +197,23 @@ func TestTextServiceWorkloadBoundsRejectUncheckedValues(t *testing.T) {
 		{name: "receive-too-large", send: 1, receive: maximumStreamBytes + 1},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			if _, err := newTextServiceWorkloadBounds(test.send, test.receive); err == nil {
+			if _, err := newServiceWorkloadBounds(test.send, test.receive); err == nil {
 				t.Fatal("unchecked text Service workload bounds accepted")
 			}
 		})
 	}
-	if _, _, err := (textServiceWorkloadBounds{}).direction(broker.Connection); err == nil {
+	if _, _, err := (serviceWorkloadBounds{}).direction(broker.Connection); err == nil {
 		t.Fatal("missing text Service workload contract accepted")
 	}
-	valid := mustTextServiceWorkloadBounds(t, 1, 1)
+	valid := mustServiceWorkloadBounds(t, 1, 1)
 	if _, _, err := valid.direction(broker.Surface("unknown")); err == nil {
 		t.Fatal("unknown text Service workload direction accepted")
 	}
 }
 
-func mustTextServiceWorkloadBounds(t *testing.T, send, receive uint32) textServiceWorkloadBounds {
+func mustServiceWorkloadBounds(t *testing.T, send, receive uint32) serviceWorkloadBounds {
 	t.Helper()
-	bounds, err := newTextServiceWorkloadBounds(send, receive)
+	bounds, err := newServiceWorkloadBounds(send, receive)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -221,7 +221,7 @@ func mustTextServiceWorkloadBounds(t *testing.T, send, receive uint32) textServi
 }
 
 func TestTextServiceRejectsForeignTupleAndExpiredLocalJob(t *testing.T) {
-	client, publisher, current := textServiceFixture(t)
+	client, publisher, current := serviceFixture(t)
 	for _, changed := range []string{"network", "target", "instance", "publication", "profile", "generation", "zero-nonce", "zero-binding", "expired", "extended"} {
 		t.Run(changed, func(t *testing.T) {
 			facts := client.facts
@@ -247,7 +247,7 @@ func TestTextServiceRejectsForeignTupleAndExpiredLocalJob(t *testing.T) {
 			case "extended":
 				facts.WorkSafetyMaximum = current.Credential.NotAfter + 1
 			}
-			if accepted, err := publisher.owner.acceptTextServiceBinding(publisher.job, current, facts); err == nil || accepted != nil {
+			if accepted, err := publisher.owner.acceptServiceBinding(publisher.job, current, facts); err == nil || accepted != nil {
 				t.Fatal("foreign or incompatible capsule tuple accepted")
 			}
 		})
@@ -256,7 +256,7 @@ func TestTextServiceRejectsForeignTupleAndExpiredLocalJob(t *testing.T) {
 	if err := client.current(); err == nil {
 		t.Fatal("retired reader context accepted")
 	}
-	if _, err := client.owner.newTextServiceBinding(client.job, targetlink.Link{Network: current.Credential.NetworkID, Target: current.Credential.Target},
+	if _, err := client.owner.newServiceBinding(client.job, targetlink.Link{Network: current.Credential.NetworkID, Target: current.Credential.Target},
 		current, [3]int64{client.facts.WorkSafetyNotAfter, client.facts.WorkSafetyMaximum, client.facts.NoNewRecoveryAfter}); err == nil {
 		t.Fatal("retired worker created another Service binding")
 	}
@@ -267,16 +267,16 @@ func TestTextServiceRejectsForeignTupleAndExpiredLocalJob(t *testing.T) {
 // byte is weaker: the foreign tuple below has its own valid Instance, Target,
 // publication record and matching protected context.
 func TestTextServicePublisherRefusesIndependentValidPublicationTuple(t *testing.T) {
-	_, publisher, _ := textServiceFixture(t)
-	foreignReader, _, foreignCurrent := textServiceFixture(t)
-	if binding, err := publisher.owner.acceptTextServiceBinding(publisher.job, foreignCurrent, foreignReader.facts); err == nil || binding != nil {
+	_, publisher, _ := serviceFixture(t)
+	foreignReader, _, foreignCurrent := serviceFixture(t)
+	if binding, err := publisher.owner.acceptServiceBinding(publisher.job, foreignCurrent, foreignReader.facts); err == nil || binding != nil {
 		t.Fatal("Publisher accepted another Endpoint's valid Instance and Target")
 	}
 }
 
 func TestTextServiceFreshCommitmentDoesNotExposeLocalJob(t *testing.T) {
-	client, _, current := textServiceFixture(t)
-	other, err := client.owner.newTextServiceBinding(client.job,
+	client, _, current := serviceFixture(t)
+	other, err := client.owner.newServiceBinding(client.job,
 		targetlink.Link{Network: current.Credential.NetworkID, Target: current.Credential.Target}, current,
 		[3]int64{client.facts.WorkSafetyNotAfter, client.facts.WorkSafetyMaximum, client.facts.NoNewRecoveryAfter})
 	if err != nil {
@@ -289,7 +289,7 @@ func TestTextServiceFreshCommitmentDoesNotExposeLocalJob(t *testing.T) {
 	corrupt := current
 	corrupt.Record = bytes.Clone(current.Record)
 	corrupt.Record[len(corrupt.Record)-1]++
-	if _, err := client.owner.newTextServiceBinding(client.job,
+	if _, err := client.owner.newServiceBinding(client.job,
 		targetlink.Link{Network: current.Credential.NetworkID, Target: current.Credential.Target}, corrupt,
 		[3]int64{client.facts.WorkSafetyNotAfter, client.facts.WorkSafetyMaximum, client.facts.NoNewRecoveryAfter}); err == nil {
 		t.Fatal("corrupt publication accepted")
@@ -297,20 +297,20 @@ func TestTextServiceFreshCommitmentDoesNotExposeLocalJob(t *testing.T) {
 }
 
 func TestTextServiceDifferentCapsuleCannotAuthenticateSameTLS(t *testing.T) {
-	client, publisher, _ := textServiceFixture(t)
+	client, publisher, _ := serviceFixture(t)
 	left, right := net.Pipe()
 	ctx, cancel := context.WithTimeout(t.Context(), 2*time.Second)
 	defer cancel()
 	finished := make(chan error, 1)
 	go func() {
-		stream, err := publisher.openTextServiceStreamWithRecovery(ctx, right, fixtureID(61), nil)
+		stream, err := publisher.openServiceStreamWithRecovery(ctx, right, fixtureID(61), nil)
 		if stream != nil {
 			_ = stream.Close()
 			err = errors.New("foreign Attachment exposed Publisher stream")
 		}
 		finished <- err
 	}()
-	stream, err := client.openTextServiceStreamWithRecovery(ctx, left, fixtureID(62), nil)
+	stream, err := client.openServiceStreamWithRecovery(ctx, left, fixtureID(62), nil)
 	if err == nil || stream != nil {
 		t.Fatal("different capsule yielded an authenticated stream")
 	}
@@ -320,7 +320,7 @@ func TestTextServiceDifferentCapsuleCannotAuthenticateSameTLS(t *testing.T) {
 }
 
 func TestTextServiceProtectedContextSeparatesAttachmentFromLogicalIdentity(t *testing.T) {
-	client, _, _ := textServiceFixture(t)
+	client, _, _ := serviceFixture(t)
 	first, err := nativeconnection.ProtectedAttachmentContext(client.logical, fixtureID(70), 1)
 	if err != nil {
 		t.Fatal(err)
@@ -337,25 +337,25 @@ func TestTextServiceProtectedContextSeparatesAttachmentFromLogicalIdentity(t *te
 	if err != nil {
 		t.Fatal(err)
 	}
-	recovery := client.textServiceRecovery()
+	recovery := client.serviceRecovery()
 	if expected := sha256.Sum256([]byte(spelling)); recovery.DestinationBinding != expected || recovery.DestinationBinding == client.facts.Target {
 		t.Fatal("recovery did not retain the original Target-Link destination commitment")
 	}
 }
 
 // Component-only binding fixture; actual Publisher admission verifies its capsule.
-// acceptTextServiceBinding verifies the shared capsule tuple against the
+// acceptServiceBinding verifies the shared capsule tuple against the
 // Publisher's own publication and authorization. It does not silently clamp
 // incompatible bounds or treat a requester's nonce as authority.
-func (owner *textContext) acceptTextServiceBinding(job *textJobIdentity, current servicepublication.Current,
-	facts nativeconnection.ProtectedContextInput) (*textServiceBinding, error) {
+func (owner *textContext) acceptServiceBinding(job *textJobIdentity, current servicepublication.Current,
+	facts nativeconnection.ProtectedContextInput) (*serviceBinding, error) {
 	if owner == nil {
 		return nil, errors.New("text Service context unavailable")
 	}
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
-	if !owner.liveTextServiceJobLocked(job, broker.Administration) {
+	if !owner.liveServiceJobLocked(job, broker.Administration) {
 		return nil, errors.New("text Service Publisher job unavailable")
 	}
-	return owner.bindTextServiceLocked(job, current, facts)
+	return owner.bindServiceLocked(job, current, facts)
 }

@@ -27,7 +27,7 @@ func TestTextJoinedServiceTransfersDocumentThroughNetwork(t *testing.T) {
 	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP, routecarrier.ClosedCarrierQUIC} {
 		t.Run(string(carrier), func(t *testing.T) {
 			reader, publisher, destination := textJoinedNetworkFixture(t, carrier)
-			readerJob, publisherJob := liveTextCapsuleJob(t, reader), liveTextCapsuleJob(t, publisher)
+			readerJob, publisherJob := liveCapsuleJob(t, reader), liveCapsuleJob(t, publisher)
 			ctx, cancel := context.WithTimeout(t.Context(), 20*time.Second)
 			defer cancel()
 			now := time.Now().UTC()
@@ -47,7 +47,7 @@ func TestTextJoinedServiceTransfersDocumentThroughNetwork(t *testing.T) {
 					completed <- err
 					return
 				}
-				stream, err := publisher.openTextJoinedService(ctx, publisherJob, accepted)
+				stream, err := publisher.openJoinedService(ctx, publisherJob, accepted)
 				if err != nil {
 					completed <- err
 					return
@@ -65,7 +65,7 @@ func TestTextJoinedServiceTransfersDocumentThroughNetwork(t *testing.T) {
 				}
 				completed <- errors.Join(err, stream.Close())
 			}()
-			stream, err := reader.openTextJoinedService(ctx, readerJob, attempt)
+			stream, err := reader.openJoinedService(ctx, readerJob, attempt)
 			if err != nil {
 				cancel()
 				t.Fatal(errors.Join(err, <-completed))

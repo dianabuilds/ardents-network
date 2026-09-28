@@ -46,7 +46,7 @@ func (dispatch *introductionDispatch) recoveryCapacityReachedLocked(limit int) b
 	return len(dispatch.recovery) >= limit
 }
 
-func (dispatch *introductionDispatch) addRecoveryLocked(binding *textServiceBinding) *introductionRecoveryOwner {
+func (dispatch *introductionDispatch) addRecoveryLocked(binding *serviceBinding) *introductionRecoveryOwner {
 	recovery := binding.claimRecoveryLocked()
 	if recovery == nil {
 		return nil

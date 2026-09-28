@@ -16,7 +16,7 @@ func TestTextIntroductionReopensJoinedSource(t *testing.T) {
 	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP, routecarrier.ClosedCarrierQUIC} {
 		t.Run(string(carrier), func(t *testing.T) {
 			reader, _, destination := textJoinedNetworkFixture(t, carrier)
-			job := liveTextCapsuleJob(t, reader)
+			job := liveCapsuleJob(t, reader)
 			until := time.Now().Add(time.Minute).Unix()
 			bounds := [3]int64{until, until, until}
 			first, err := reader.prepareIntroduction(t.Context(), job, destination, bounds)

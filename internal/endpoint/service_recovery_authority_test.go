@@ -19,16 +19,16 @@ import (
 )
 
 func TestTextServiceRecoveryRejectsLateAttachmentAfterJobRetirement(t *testing.T) {
-	runTextServiceRecoveryRejectsLateAuthority(t, false)
+	runServiceRecoveryRejectsLateAuthority(t, false)
 }
 
 func TestTextServiceRecoveryJoinsConcurrentCloseAndRevoke(t *testing.T) {
-	runTextServiceRecoveryRejectsLateAuthority(t, true)
+	runServiceRecoveryRejectsLateAuthority(t, true)
 }
 
-func runTextServiceRecoveryRejectsLateAuthority(t *testing.T, closeAndRevoke bool) {
+func runServiceRecoveryRejectsLateAuthority(t *testing.T, closeAndRevoke bool) {
 	t.Helper()
-	client, publisher, _ := textServiceFixture(t)
+	client, publisher, _ := serviceFixture(t)
 	initialClient, initialPublisher := net.Pipe()
 	replacementClient, replacementPublisher := net.Pipe()
 	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
@@ -38,14 +38,14 @@ func runTextServiceRecoveryRejectsLateAuthority(t *testing.T, closeAndRevoke boo
 	release := make(chan struct{})
 	var releaseOnce sync.Once
 	t.Cleanup(func() { releaseOnce.Do(func() { close(release) }) })
-	testOwner := newTextServiceRecoveryTestOwner(t, cancel, initialClient, initialPublisher, replacementClient, replacementPublisher)
+	testOwner := newServiceRecoveryTestOwner(t, cancel, initialClient, initialPublisher, replacementClient, replacementPublisher)
 	testOwner.retainContext(client.owner)
 	testOwner.retainContext(publisher.owner)
 	t.Cleanup(func() {
 		releaseOnce.Do(func() { close(release) })
 		testOwner.Close()
 	})
-	opener := func(role string, connection net.Conn) textServiceAttachmentOpener {
+	opener := func(role string, connection net.Conn) serviceAttachmentOpener {
 		return func(context.Context, nativeconnection.Recovery) (net.Conn, [32]byte, error) {
 			arrived <- role
 			<-release // Model a transport result that ignores cancellation and arrives late.
@@ -53,14 +53,14 @@ func runTextServiceRecoveryRejectsLateAuthority(t *testing.T, closeAndRevoke boo
 		}
 	}
 
-	publisherOpened := make(chan openedTextService, 1)
+	publisherOpened := make(chan openedService, 1)
 	testOwner.Go(func() {
-		stream, err := publisher.openTextServiceStreamWithRecovery(ctx, initialPublisher, fixtureID(95),
+		stream, err := publisher.openServiceStreamWithRecovery(ctx, initialPublisher, fixtureID(95),
 			opener("publisher", replacementPublisher))
 		testOwner.retainStream(stream)
-		publisherOpened <- openedTextService{stream: stream, err: err}
+		publisherOpened <- openedService{stream: stream, err: err}
 	})
-	clientStream, err := client.openTextServiceStreamWithRecovery(ctx, initialClient, fixtureID(95),
+	clientStream, err := client.openServiceStreamWithRecovery(ctx, initialClient, fixtureID(95),
 		opener("client", replacementClient))
 	testOwner.retainStream(clientStream)
 	if err != nil {
@@ -112,7 +112,7 @@ func runTextServiceRecoveryRejectsLateAuthority(t *testing.T, closeAndRevoke boo
 			t.Fatalf("both recovery openers did not start: %v", roles)
 		}
 	}
-	bindings := []*textServiceBinding{client, publisher}
+	bindings := []*serviceBinding{client, publisher}
 	var closeResults chan error
 	var finishOnce sync.Once
 	finishJobs := func() {
@@ -182,14 +182,14 @@ func runTextServiceRecoveryRejectsLateAuthority(t *testing.T, closeAndRevoke boo
 }
 
 func TestTextServiceRecoveryOpenersPreserveCancellationBeforeSideEffects(t *testing.T) {
-	client, publisher, _ := textServiceFixture(t)
-	for name, binding := range map[string]*textServiceBinding{"client": client, "publisher": publisher} {
+	client, publisher, _ := serviceFixture(t)
+	for name, binding := range map[string]*serviceBinding{"client": client, "publisher": publisher} {
 		t.Run(name, func(t *testing.T) {
-			request := binding.textServiceRecovery()
+			request := binding.serviceRecovery()
 			request.Generation = 2
 			request.Role = name
 			request.Deadline = time.Now().Add(time.Second).UTC()
-			opener := binding.owner.textServiceRouteRecoveryOpener(binding.job, binding)
+			opener := binding.owner.serviceRouteRecoveryOpener(binding.job, binding)
 			ctx, cancel := context.WithCancel(t.Context())
 			cancel()
 			connection, digest, err := opener(ctx, request)
@@ -202,7 +202,7 @@ func TestTextServiceRecoveryOpenersPreserveCancellationBeforeSideEffects(t *test
 
 func TestTextRecoveryPublisherRejectsCapsuleBeyondLocalAttemptDeadline(t *testing.T) {
 	reader, publisher, destination := textJoinedNetworkFixture(t, carrier.ClosedCarrierTCP)
-	readerJob, publisherJob := liveTextCapsuleJob(t, reader), liveTextCapsuleJob(t, publisher)
+	readerJob, publisherJob := liveCapsuleJob(t, reader), liveCapsuleJob(t, publisher)
 	ctx, cancel := context.WithTimeout(t.Context(), 15*time.Second)
 	defer cancel()
 	now := time.Now().UTC()
@@ -220,19 +220,19 @@ func TestTextRecoveryPublisherRejectsCapsuleBeyondLocalAttemptDeadline(t *testin
 	if err := lease.Close(); err != nil {
 		t.Fatal(err)
 	}
-	publisherBinding, err := publisher.acceptTextServiceBinding(publisherJob, current, initial.binding.facts)
+	publisherBinding, err := publisher.acceptServiceBinding(publisherJob, current, initial.binding.facts)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	clientRequest := initial.binding.textServiceRecovery()
+	clientRequest := initial.binding.serviceRecovery()
 	clientRequest.Generation, clientRequest.Role, clientRequest.Deadline = 2, "client", now.Add(8*time.Second).UTC().Truncate(time.Second)
 	recovery, err := reader.prepareTextRecovery(ctx, readerJob, initial.binding, clientRequest)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer clear(recovery.operation)
-	publisherRequest := publisherBinding.textServiceRecovery()
+	publisherRequest := publisherBinding.serviceRecovery()
 	publisherRequest.Generation, publisherRequest.Role, publisherRequest.Deadline = 2, "publisher", now.Add(2*time.Second).UTC().Truncate(time.Second)
 	if !recovery.plaintext.Deadline.After(publisherRequest.Deadline) {
 		t.Fatal("fixture did not exceed the Publisher recovery deadline")

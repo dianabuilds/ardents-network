@@ -20,7 +20,7 @@ func (owner *textContext) submitIntroduction(ctx context.Context, job *textJobId
 	}
 	owner.mu.Lock()
 	prefix := owner.source.currentLocked()
-	live := owner.liveTextServiceJobLocked(job, broker.Connection) && prefix != nil && !prepared.submitted
+	live := owner.liveServiceJobLocked(job, broker.Connection) && prefix != nil && !prepared.submitted
 	if live {
 		prepared.submitted = true
 	}
@@ -50,7 +50,7 @@ func (owner *textContext) submitIntroduction(ctx context.Context, job *textJobId
 		owner.mu.Lock()
 		defer owner.mu.Unlock()
 		current, now, err := owner.permissionProfileLocked()
-		if err != nil || !owner.liveTextServiceJobLocked(job, broker.Connection) || bounded.Err() != nil || !prefix.currentLocked(&owner.source) ||
+		if err != nil || !owner.liveServiceJobLocked(job, broker.Connection) || bounded.Err() != nil || !prefix.currentLocked(&owner.source) ||
 			current != profile || class != 1 || hello.Purpose != ardp.PurposeSubmission || hello.RecipientNodeID != receiver ||
 			hello.NetworkID != current.NetworkID || hello.StateGeneration != current.StateGeneration || hello.StateDigest != current.StateDigest ||
 			hello.ProfileDigest != current.Digest || hello.ChannelNonce == [32]byte{} || !now.Before(hello.Deadline) ||
@@ -78,7 +78,7 @@ func (owner *textContext) receiveIntroduction(ctx context.Context, job *textJobI
 		}, nil)
 }
 
-func (owner *textContext) receiveTextRecovery(ctx context.Context, job *textJobIdentity, binding *textServiceBinding,
+func (owner *textContext) receiveTextRecovery(ctx context.Context, job *textJobIdentity, binding *serviceBinding,
 	request nativeconnection.Recovery) (*introductionAttempt, error) {
 	if ctx == nil {
 		return nil, errors.New("text recovery receiver context unavailable")
@@ -89,7 +89,7 @@ func (owner *textContext) receiveTextRecovery(ctx context.Context, job *textJobI
 	if !binding.servesJob(owner, job) {
 		return nil, errors.New("text recovery receiver unavailable")
 	}
-	if err := binding.validateTextServiceRecovery(request); err != nil {
+	if err := binding.validateServiceRecovery(request); err != nil {
 		return nil, err
 	}
 	want := introductionDeliveryKey{connection: binding.connectionNonce(), generation: request.Generation}
@@ -97,7 +97,7 @@ func (owner *textContext) receiveTextRecovery(ctx context.Context, job *textJobI
 		if !binding.servesJob(owner, job) {
 			return nil, errors.New("text recovery binding unavailable")
 		}
-		if err := binding.validateTextServiceRecovery(request); err != nil {
+		if err := binding.validateServiceRecovery(request); err != nil {
 			return nil, err
 		}
 		return owner.acceptIntroductionGeneration(ctx, job, operation, binding, request.Generation, request.Deadline, true)
@@ -107,7 +107,7 @@ func (owner *textContext) receiveTextRecovery(ctx context.Context, job *textJobI
 type introductionAcceptor func(context.Context, *textJobIdentity, []byte) (*introductionAttempt, error)
 
 func (owner *textContext) receiveIntroductionWith(ctx context.Context, job *textJobIdentity,
-	want introductionDeliveryKey, binding *textServiceBinding,
+	want introductionDeliveryKey, binding *serviceBinding,
 	accept introductionAcceptor, deliveryReceived func()) (prepared *introductionAttempt, outcome error) {
 	if owner == nil || ctx == nil {
 		return nil, errors.New("text Introduction receiver unavailable")
@@ -123,7 +123,7 @@ func (owner *textContext) receiveIntroductionWith(ctx context.Context, job *text
 		owner.mu.Unlock()
 		return nil, errPublicationDraining
 	}
-	live := owner.liveTextServiceJobLocked(job, broker.Administration) && owner.publication.pair.currentLocked() != nil
+	live := owner.liveServiceJobLocked(job, broker.Administration) && owner.publication.pair.currentLocked() != nil
 	owner.mu.Unlock()
 	if !live {
 		return nil, errors.New("text Introduction Publisher job unavailable")
@@ -132,7 +132,7 @@ func (owner *textContext) receiveIntroductionWith(ctx context.Context, job *text
 	if err != nil {
 		return nil, err
 	}
-	var retainedBinding *textServiceBinding
+	var retainedBinding *serviceBinding
 	defer func() {
 		outcome = finish(outcome)
 		if outcome != nil && retainedBinding != nil {

@@ -122,7 +122,7 @@ func (owner *textConnection) Open(ctx context.Context, request connection.Reques
 		owner.context.reportTextOperationFailure("introduction-preparation")
 		return nil, err
 	}
-	service, err := owner.context.openTextJoinedService(bounded, worker.job, attempt)
+	service, err := owner.context.openJoinedService(bounded, worker.job, attempt)
 	if err != nil {
 		owner.context.reportTextOperationFailure("service-join")
 		return nil, err
@@ -180,7 +180,7 @@ type textReadResult struct {
 	err    error
 }
 
-func newTextReadResult(owner *textConnection, pending chan struct{}, lease *broker.ActiveSession, cancel context.CancelFunc, worker *qualifiedTextWorker, bounded context.Context, finish func(), service *textServiceStream, joinCaller func(), report func(string)) *textReadResult {
+func newTextReadResult(owner *textConnection, pending chan struct{}, lease *broker.ActiveSession, cancel context.CancelFunc, worker *qualifiedTextWorker, bounded context.Context, finish func(), service *serviceStream, joinCaller func(), report func(string)) *textReadResult {
 	request, input := io.Pipe()
 	output, response := io.Pipe()
 	result := &textReadResult{input: input, output: output, cancel: cancel, joined: make(chan struct{}), done: make(chan connection.Outcome, 1)}

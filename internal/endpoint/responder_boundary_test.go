@@ -11,7 +11,7 @@ func checkResponderRetirementBoundary(t *testing.T, owner *textContext, job *tex
 	prefix := owner.responder.currentLocked()
 	// Measure the already-ready path so Source preparation may add authority
 	// reads without moving the interruption away from the final handover.
-	probe := &textCapsuleBoundaryState{sourceStateFixture: source}
+	probe := &capsuleBoundaryState{sourceStateFixture: source}
 	owner.endpoint.closedState = probe
 	probeErr := owner.prepareResponder(t.Context(), job, accepted)
 	owner.endpoint.closedState = source
@@ -19,7 +19,7 @@ func checkResponderRetirementBoundary(t *testing.T, owner *textContext, job *tex
 		t.Fatalf("cannot establish stable Responder handover boundary: %v", probeErr)
 	}
 	var closeErr error
-	boundary := &textCapsuleBoundaryState{sourceStateFixture: source, atRead: probe.reads, atBinding: func() { closeErr = prefix.Close() }}
+	boundary := &capsuleBoundaryState{sourceStateFixture: source, atRead: probe.reads, atBinding: func() { closeErr = prefix.Close() }}
 	owner.endpoint.closedState = boundary
 	err := owner.prepareResponder(t.Context(), job, accepted)
 	owner.endpoint.closedState = source

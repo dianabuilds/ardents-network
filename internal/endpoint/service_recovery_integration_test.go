@@ -24,7 +24,7 @@ import (
 // authorized Route replacement is supplied as an opaque Attachment transport.
 // The full protected Route opener is integrated at the next boundary.
 func TestTextServiceRecoveryDoesNotReplayAcceptedDocumentRequest(t *testing.T) {
-	client, publisher, _ := textServiceFixture(t)
+	client, publisher, _ := serviceFixture(t)
 	initialClient, initialPublisher := net.Pipe()
 	replacementClient, replacementPublisher := net.Pipe()
 	// Recovery performs a fresh protected Route attachment under the race
@@ -32,14 +32,14 @@ func TestTextServiceRecoveryDoesNotReplayAcceptedDocumentRequest(t *testing.T) {
 	// own bounded stages so a loaded runner does not cancel valid recovery.
 	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
-	testOwner := newTextServiceRecoveryTestOwner(t, cancel, initialClient, initialPublisher, replacementClient, replacementPublisher)
+	testOwner := newServiceRecoveryTestOwner(t, cancel, initialClient, initialPublisher, replacementClient, replacementPublisher)
 	testOwner.retainContext(client.owner)
 	testOwner.retainContext(publisher.owner)
 	t.Cleanup(testOwner.Close)
 
 	digest := fixtureID(91)
 	requests := make(chan nativeconnection.Recovery, 2)
-	clientOpener := textServiceAttachmentOpener(func(ctx context.Context, request nativeconnection.Recovery) (net.Conn, [32]byte, error) {
+	clientOpener := serviceAttachmentOpener(func(ctx context.Context, request nativeconnection.Recovery) (net.Conn, [32]byte, error) {
 		select {
 		case requests <- request:
 		case <-ctx.Done():
@@ -47,7 +47,7 @@ func TestTextServiceRecoveryDoesNotReplayAcceptedDocumentRequest(t *testing.T) {
 		}
 		return replacementClient, digest, nil
 	})
-	publisherOpener := textServiceAttachmentOpener(func(ctx context.Context, request nativeconnection.Recovery) (net.Conn, [32]byte, error) {
+	publisherOpener := serviceAttachmentOpener(func(ctx context.Context, request nativeconnection.Recovery) (net.Conn, [32]byte, error) {
 		select {
 		case requests <- request:
 		case <-ctx.Done():
@@ -57,16 +57,16 @@ func TestTextServiceRecoveryDoesNotReplayAcceptedDocumentRequest(t *testing.T) {
 	})
 
 	type opened struct {
-		stream *textServiceStream
+		stream *serviceStream
 		err    error
 	}
 	publisherOpened := make(chan opened, 1)
 	testOwner.Go(func() {
-		stream, err := publisher.openTextServiceStreamWithRecovery(ctx, initialPublisher, fixtureID(90), publisherOpener)
+		stream, err := publisher.openServiceStreamWithRecovery(ctx, initialPublisher, fixtureID(90), publisherOpener)
 		testOwner.retainStream(stream)
 		publisherOpened <- opened{stream: stream, err: err}
 	})
-	clientStream, err := client.openTextServiceStreamWithRecovery(ctx, initialClient, fixtureID(90), clientOpener)
+	clientStream, err := client.openServiceStreamWithRecovery(ctx, initialClient, fixtureID(90), clientOpener)
 	testOwner.retainStream(clientStream)
 	if err != nil {
 		cancel()
@@ -130,10 +130,10 @@ func TestTextJoinedServiceRecoversAcceptedRequestAcrossFreshProtectedRoute(t *te
 	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP, routecarrier.ClosedCarrierQUIC} {
 		t.Run(string(carrier), func(t *testing.T) {
 			reader, publisher, destination := textJoinedNetworkFixture(t, carrier)
-			readerJob, publisherJob := liveTextCapsuleJob(t, reader), liveTextCapsuleJob(t, publisher)
+			readerJob, publisherJob := liveCapsuleJob(t, reader), liveCapsuleJob(t, publisher)
 			ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 			defer cancel()
-			testOwner := newTextServiceRecoveryTestOwner(t, cancel)
+			testOwner := newServiceRecoveryTestOwner(t, cancel)
 			testOwner.retainContext(reader)
 			testOwner.retainContext(publisher)
 			t.Cleanup(testOwner.Close)
@@ -146,7 +146,7 @@ func TestTextJoinedServiceRecoversAcceptedRequestAcrossFreshProtectedRoute(t *te
 
 			type joined struct {
 				attempt *introductionAttempt
-				raw     *textJoinedTransport
+				raw     *joinedTransport
 				err     error
 			}
 			publisherJoined := make(chan joined, 1)
@@ -156,10 +156,10 @@ func TestTextJoinedServiceRecoversAcceptedRequestAcrossFreshProtectedRoute(t *te
 					publisherJoined <- joined{err: err}
 					return
 				}
-				raw, err := publisher.openTextJoinedTransport(ctx, publisherJob, accepted)
+				raw, err := publisher.openJoinedTransport(ctx, publisherJob, accepted)
 				publisherJoined <- joined{attempt: accepted, raw: raw, err: err}
 			})
-			readerRaw, err := reader.openTextJoinedTransport(ctx, readerJob, prepared)
+			readerRaw, err := reader.openJoinedTransport(ctx, readerJob, prepared)
 			testOwner.retainConnection(readerRaw)
 			remoteJoined := <-publisherJoined
 			testOwner.retainConnection(remoteJoined.raw)
@@ -172,16 +172,16 @@ func TestTextJoinedServiceRecoversAcceptedRequestAcrossFreshProtectedRoute(t *te
 				t.Fatal(remoteJoined.err)
 			}
 
-			clientRecovery := &observedTextServiceOpener{open: reader.textServiceRouteRecoveryOpener(readerJob, prepared.binding)}
-			publisherRecovery := &observedTextServiceOpener{open: publisher.textServiceRouteRecoveryOpener(publisherJob, remoteJoined.attempt.binding)}
-			publisherOpened := make(chan openedTextService, 1)
+			clientRecovery := &observedServiceOpener{open: reader.serviceRouteRecoveryOpener(readerJob, prepared.binding)}
+			publisherRecovery := &observedServiceOpener{open: publisher.serviceRouteRecoveryOpener(publisherJob, remoteJoined.attempt.binding)}
+			publisherOpened := make(chan openedService, 1)
 			testOwner.Go(func() {
-				stream, err := remoteJoined.attempt.binding.openTextServiceStreamWithRecovery(ctx, remoteJoined.raw,
+				stream, err := remoteJoined.attempt.binding.openServiceStreamWithRecovery(ctx, remoteJoined.raw,
 					remoteJoined.attempt.digest, publisherRecovery.openObserved)
 				testOwner.retainStream(stream)
-				publisherOpened <- openedTextService{stream: stream, err: err}
+				publisherOpened <- openedService{stream: stream, err: err}
 			})
-			clientStream, err := prepared.binding.openTextServiceStreamWithRecovery(ctx, readerRaw, prepared.digest,
+			clientStream, err := prepared.binding.openServiceStreamWithRecovery(ctx, readerRaw, prepared.digest,
 				clientRecovery.openObserved)
 			testOwner.retainStream(clientStream)
 			if err != nil {
@@ -272,7 +272,7 @@ func TestTextJoinedServiceRecoversAcceptedRequestAcrossFreshProtectedRoute(t *te
 
 func TestTextRecoveryPreparesFreshAttachmentUnderRetainedAuthority(t *testing.T) {
 	reader, _, destination := textJoinedNetworkFixture(t, routecarrier.ClosedCarrierTCP)
-	job := liveTextCapsuleJob(t, reader)
+	job := liveCapsuleJob(t, reader)
 	ctx, cancel := context.WithTimeout(t.Context(), 15*time.Second)
 	defer cancel()
 	now := time.Now().UTC()
@@ -282,7 +282,7 @@ func TestTextRecoveryPreparesFreshAttachmentUnderRetainedAuthority(t *testing.T)
 		t.Fatal(err)
 	}
 	defer clear(initial.operation)
-	request := initial.binding.textServiceRecovery()
+	request := initial.binding.serviceRecovery()
 	request.Generation, request.Role, request.Deadline = 2, "client", now.Add(10*time.Second).UTC().Truncate(time.Second)
 	first, err := reader.prepareTextRecovery(ctx, job, initial.binding, request)
 	if err != nil {
@@ -319,15 +319,15 @@ func TestTextRecoveryPreparesFreshAttachmentUnderRetainedAuthority(t *testing.T)
 }
 
 func TestTextServiceRecoveryRefusesChangedImmutableRequest(t *testing.T) {
-	client, publisher, _ := textServiceFixture(t)
-	valid := client.textServiceRecovery()
+	client, publisher, _ := serviceFixture(t)
+	valid := client.serviceRecovery()
 	valid.Generation, valid.Role, valid.Deadline = 2, "client", time.Now().Add(5*time.Second)
-	if err := client.validateTextServiceRecovery(valid); err != nil {
+	if err := client.validateServiceRecovery(valid); err != nil {
 		t.Fatal(err)
 	}
-	publisherValid := publisher.textServiceRecovery()
+	publisherValid := publisher.serviceRecovery()
 	publisherValid.Generation, publisherValid.Role, publisherValid.Deadline = 2, "publisher", valid.Deadline
-	if err := publisher.validateTextServiceRecovery(publisherValid); err != nil {
+	if err := publisher.validateServiceRecovery(publisherValid); err != nil {
 		t.Fatal(err)
 	}
 
@@ -348,7 +348,7 @@ func TestTextServiceRecoveryRefusesChangedImmutableRequest(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			changed := valid
 			mutate(&changed)
-			if err := client.validateTextServiceRecovery(changed); err == nil {
+			if err := client.validateServiceRecovery(changed); err == nil {
 				t.Fatal("changed recovery request was accepted")
 			}
 		})
@@ -357,13 +357,13 @@ func TestTextServiceRecoveryRefusesChangedImmutableRequest(t *testing.T) {
 	originalProfile := state.profile
 	defer func() { state.profile = originalProfile }()
 	state.profile.StateDigest[0]++
-	if err := client.validateTextServiceRecovery(valid); err == nil {
+	if err := client.validateServiceRecovery(valid); err == nil {
 		t.Fatal("changed Candidate View retained an old recovery binding")
 	}
 }
 
-type openedTextService struct {
-	stream *textServiceStream
+type openedService struct {
+	stream *serviceStream
 	err    error
 }
 
@@ -412,15 +412,15 @@ func sameTokenAttemptSnapshot(left, right map[[32]byte]tokenReceipt) bool {
 	return true
 }
 
-type observedTextServiceOpener struct {
-	open    textServiceAttachmentOpener
+type observedServiceOpener struct {
+	open    serviceAttachmentOpener
 	mu      sync.Mutex
 	count   int
 	digests [][32]byte
 	err     error
 }
 
-func (opener *observedTextServiceOpener) openObserved(ctx context.Context, request nativeconnection.Recovery) (net.Conn, [32]byte, error) {
+func (opener *observedServiceOpener) openObserved(ctx context.Context, request nativeconnection.Recovery) (net.Conn, [32]byte, error) {
 	connection, digest, err := opener.open(ctx, request)
 	opener.mu.Lock()
 	opener.count++
@@ -432,12 +432,12 @@ func (opener *observedTextServiceOpener) openObserved(ctx context.Context, reque
 	return connection, digest, err
 }
 
-func (opener *observedTextServiceOpener) outcome() error {
+func (opener *observedServiceOpener) outcome() error {
 	count, digests, err := opener.observation()
 	return fmt.Errorf("attempts=%d successful-digests=%x error=%v", count, digests, err)
 }
 
-func (opener *observedTextServiceOpener) observation() (int, [][32]byte, error) {
+func (opener *observedServiceOpener) observation() (int, [][32]byte, error) {
 	opener.mu.Lock()
 	defer opener.mu.Unlock()
 	return opener.count, append([][32]byte(nil), opener.digests...), opener.err

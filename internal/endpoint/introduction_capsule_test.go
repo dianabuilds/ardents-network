@@ -23,13 +23,13 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/service/targetlink"
 )
 
-func liveTextCapsuleJob(t *testing.T, owner *textContext) *textJobIdentity {
+func liveCapsuleJob(t *testing.T, owner *textContext) *textJobIdentity {
 	t.Helper()
 	job, err := beginTextTestJob(t, owner, owner.endpoint, owner.surface)
 	if err != nil {
 		t.Fatal(err)
 	}
-	job.workload, err = textDocumentServiceWorkloadBounds()
+	job.workload, err = documentServiceWorkloadBounds()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -96,7 +96,7 @@ func TestTextIntroductionCapsuleBindsRealInstanceAndServiceStream(t *testing.T) 
 			}
 			reader := permissionContextFixture(t, endpoint, fixtureID(211), broker.Connection)
 			source.issuePermission(t, reader, [3]uint32{64, 64, 0})
-			readerJob, publisherJob := liveTextCapsuleJob(t, reader), liveTextCapsuleJob(t, publisher)
+			readerJob, publisherJob := liveCapsuleJob(t, reader), liveCapsuleJob(t, publisher)
 			now = time.Now().UTC()
 			bounds := [3]int64{now.Add(time.Minute).Unix(), now.Add(time.Minute).Unix(), now.Add(time.Minute).Unix()}
 			attempt, err := reader.prepareIntroduction(t.Context(), readerJob, targetlink.Link{Network: endpoint.network, Target: descriptor.Descriptor.Target}, bounds)
@@ -206,8 +206,8 @@ func TestTextIntroductionCapsuleBindsRealInstanceAndServiceStream(t *testing.T) 
 			if publisher.introduction.admission.replays[sealed.DeliveryNonce] != registered.request.Expiry.Add(60*time.Second) {
 				t.Fatal("replay retention does not cover original signed slot expiry")
 			}
-			exchangeTextCapsuleService(t, attempt, accepted)
-			checkTextCapsuleAdmissionBoundaries(t, publisher, reader, source, publisherJob, attempt, descriptor.Descriptor.Private.RecipientKey)
+			exchangeCapsuleService(t, attempt, accepted)
+			checkCapsuleAdmissionBoundaries(t, publisher, reader, source, publisherJob, attempt, descriptor.Descriptor.Private.RecipientKey)
 			checkTextPreparationCallerHandover(t, reader, readerJob, source, targetlink.Link{Network: endpoint.network, Target: descriptor.Descriptor.Target}, bounds)
 			publisher.retireJob(publisherJob)
 			if err := publisher.finishJobCleanup(publisherJob, nil); err != nil {
@@ -239,7 +239,7 @@ func TestTextIntroductionCapsuleBindsRealInstanceAndServiceStream(t *testing.T) 
 	}
 }
 
-func exchangeTextCapsuleService(t *testing.T, reader, publisher *introductionAttempt) {
+func exchangeCapsuleService(t *testing.T, reader, publisher *introductionAttempt) {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 	defer cancel()
@@ -250,7 +250,7 @@ func exchangeTextCapsuleService(t *testing.T, reader, publisher *introductionAtt
 	}
 	done := make(chan error, 1)
 	go func() {
-		stream, err := publisher.binding.openTextServiceStreamWithRecovery(ctx, server, publisher.digest, nil)
+		stream, err := publisher.binding.openServiceStreamWithRecovery(ctx, server, publisher.digest, nil)
 		if err != nil {
 			done <- err
 			return
@@ -267,7 +267,7 @@ func exchangeTextCapsuleService(t *testing.T, reader, publisher *introductionAtt
 		}
 		done <- errors.Join(err, stream.Close())
 	}()
-	stream, err := reader.binding.openTextServiceStreamWithRecovery(ctx, client, reader.digest, nil)
+	stream, err := reader.binding.openServiceStreamWithRecovery(ctx, client, reader.digest, nil)
 	if err != nil {
 		cancel()
 		_ = client.Close()

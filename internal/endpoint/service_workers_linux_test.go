@@ -18,7 +18,7 @@ import (
 // same-process Unix attachment and joined goroutine. It grants no host verdict.
 // Both fixed worker protocols, private worker Grant leases and Service owners
 // below execute production code.
-func textServiceWorkerFixture(t *testing.T, binding *textServiceBinding, snapshot []byte) *qualifiedTextWorker {
+func serviceWorkerFixture(t *testing.T, binding *serviceBinding, snapshot []byte) *qualifiedTextWorker {
 	t.Helper()
 	attachment, peer := textAttachmentPair(t)
 	ctx, cancel := context.WithCancel(binding.job.context)
@@ -70,19 +70,19 @@ func textServiceWorkerFixture(t *testing.T, binding *textServiceBinding, snapsho
 }
 
 func TestTextServiceQualifiedWorkersUseActualEndpointStreams(t *testing.T) {
-	client, publisher, _ := textServiceFixture(t)
+	client, publisher, _ := serviceFixture(t)
 	body := bytes.Repeat([]byte("text through both worker protocols\n"), 2048)
-	reader := textServiceWorkerFixture(t, client, nil)
-	host := textServiceWorkerFixture(t, publisher, body)
+	reader := serviceWorkerFixture(t, client, nil)
+	host := serviceWorkerFixture(t, publisher, body)
 	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 	defer cancel()
-	incoming := make(chan *textServiceStream)
+	incoming := make(chan *serviceStream)
 	hostDone := make(chan error, 1)
 	go func() { hostDone <- host.serve(ctx, incoming) }()
 	local, remote := net.Pipe()
 	opened := make(chan error, 1)
 	go func() {
-		stream, err := publisher.openTextServiceStreamWithRecovery(ctx, remote, fixtureID(93), nil)
+		stream, err := publisher.openServiceStreamWithRecovery(ctx, remote, fixtureID(93), nil)
 		if err == nil {
 			select {
 			case incoming <- stream:
@@ -110,18 +110,18 @@ func TestTextServiceQualifiedWorkersUseActualEndpointStreams(t *testing.T) {
 }
 
 func TestTextServicePublisherRefusesAnotherJobsStream(t *testing.T) {
-	client, publicationOwner, _ := textServiceFixture(t)
-	_, otherPublisher, _ := textServiceFixture(t)
-	host := textServiceWorkerFixture(t, otherPublisher, []byte("document of another Publisher context"))
+	client, publicationOwner, _ := serviceFixture(t)
+	_, otherPublisher, _ := serviceFixture(t)
+	host := serviceWorkerFixture(t, otherPublisher, []byte("document of another Publisher context"))
 	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 	defer cancel()
-	incoming := make(chan *textServiceStream)
+	incoming := make(chan *serviceStream)
 	hostDone := make(chan error, 1)
 	go func() { hostDone <- host.serve(ctx, incoming) }()
 	left, right := net.Pipe()
 	opened := make(chan error, 1)
 	go func() {
-		stream, err := publicationOwner.openTextServiceStreamWithRecovery(ctx, right, fixtureID(95), nil)
+		stream, err := publicationOwner.openServiceStreamWithRecovery(ctx, right, fixtureID(95), nil)
 		if err == nil {
 			select {
 			case incoming <- stream:
@@ -132,7 +132,7 @@ func TestTextServicePublisherRefusesAnotherJobsStream(t *testing.T) {
 		close(incoming)
 		opened <- err
 	}()
-	stream, err := client.openTextServiceStreamWithRecovery(ctx, left, fixtureID(95), nil)
+	stream, err := client.openServiceStreamWithRecovery(ctx, left, fixtureID(95), nil)
 	if err != nil {
 		cancel()
 		t.Fatalf("client setup: %v; Publisher setup: %v; worker: %v", err, <-opened, <-hostDone)

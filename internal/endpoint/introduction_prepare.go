@@ -19,7 +19,7 @@ import (
 type introductionAttempt struct {
 	submitted bool
 	joined    bool
-	binding   *textServiceBinding
+	binding   *serviceBinding
 	plaintext introductioncapsule.Plaintext
 	operation []byte
 	digest    [32]byte
@@ -48,7 +48,7 @@ func (owner *textContext) resolveIntroduction(ctx context.Context, job *textJobI
 		owner.mu.Unlock()
 		return reachability.Verified{}, err
 	}
-	live := owner.liveTextServiceJobLocked(job, broker.Connection)
+	live := owner.liveServiceJobLocked(job, broker.Connection)
 	needPrefix := owner.source.currentLocked() == nil
 	owner.mu.Unlock()
 	if !live {
@@ -114,7 +114,7 @@ func (owner *textContext) prepareResolvedIntroduction(ctx context.Context, job *
 		cancel()
 	}
 	ctx = attempt
-	binding, err := owner.newTextServiceBinding(job, destination, verified.Current, bounds)
+	binding, err := owner.newServiceBinding(job, destination, verified.Current, bounds)
 	if err != nil {
 		return nil, err
 	}
@@ -123,7 +123,7 @@ func (owner *textContext) prepareResolvedIntroduction(ctx context.Context, job *
 	binding.bindIntroductionLocked(verified.Descriptor.Private)
 	profile, now, err := owner.permissionProfileLocked()
 	prefix := owner.source.currentLocked()
-	if err != nil || !owner.liveTextServiceJobLocked(job, broker.Connection) || ctx.Err() != nil || prefix == nil ||
+	if err != nil || !owner.liveServiceJobLocked(job, broker.Connection) || ctx.Err() != nil || prefix == nil ||
 		profile.Digest != verified.Descriptor.ProfileDigest || !owner.descriptorHistory.Matches(destination.Target, verified.Current.Digest, verified.Descriptor.Private.Revision) {
 		return nil, errors.New("text Introduction resolution or local authority changed")
 	}
@@ -160,7 +160,7 @@ func (owner *textContext) prepareResolvedIntroduction(ctx context.Context, job *
 	if err != nil {
 		return nil, err
 	}
-	if ctx.Err() != nil || !owner.liveTextServiceJobLocked(job, broker.Connection) || !owner.endpoint.clock().UTC().Before(deadline) {
+	if ctx.Err() != nil || !owner.liveServiceJobLocked(job, broker.Connection) || !owner.endpoint.clock().UTC().Before(deadline) {
 		clear(operation)
 		return nil, errors.New("text Introduction job ended during sealing")
 	}
@@ -186,7 +186,7 @@ func (owner *textContext) refreshIntroduction(ctx context.Context, job *textJobI
 	defer owner.mu.Unlock()
 	profile, now, err := owner.permissionProfileLocked()
 	introduction := attempt.binding.introductionLocked()
-	if err != nil || !owner.liveTextServiceJobLocked(job, broker.Connection) || !prefix.currentLocked(&owner.source) ||
+	if err != nil || !owner.liveServiceJobLocked(job, broker.Connection) || !prefix.currentLocked(&owner.source) ||
 		ctx.Err() != nil || profile.Digest != attempt.plaintext.ProfileDigest ||
 		node != attempt.plaintext.RendezvousNode || generation != attempt.plaintext.RendezvousDutyGeneration ||
 		introduction.Slot == [32]byte{} || introduction.RecipientKey == [32]byte{} ||

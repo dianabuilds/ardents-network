@@ -22,8 +22,8 @@ func TestTextPublisherNetworkRetainsSnapshotAcrossReaders(t *testing.T) {
 		t.Run(string(carrier), func(t *testing.T) {
 			readerOwner, publisherOwner, destination := textJoinedNetworkFixture(t, carrier)
 			body := bytes.Repeat([]byte("retained snapshot\n"), 4096)
-			publisherJob := liveTextCapsuleJob(t, publisherOwner)
-			publisher := textServiceWorkerFixture(t, &textServiceBinding{owner: publisherOwner, job: publisherJob}, body)
+			publisherJob := liveCapsuleJob(t, publisherOwner)
+			publisher := serviceWorkerFixture(t, &serviceBinding{owner: publisherOwner, job: publisherJob}, body)
 			ctx, cancel := context.WithTimeout(t.Context(), 60*time.Second)
 			defer cancel()
 			served := make(chan struct{})
@@ -46,8 +46,8 @@ func TestTextPublisherNetworkRetainsSnapshotAcrossReaders(t *testing.T) {
 			for _, fault := range []struct {
 				wrongTarget, unknownGeneration bool
 			}{{}, {wrongTarget: true}, {unknownGeneration: true}} {
-				refusedJob := liveTextCapsuleJob(t, readerOwner)
-				refusedWorker := textServiceWorkerFixture(t, &textServiceBinding{owner: readerOwner, job: refusedJob}, nil)
+				refusedJob := liveCapsuleJob(t, readerOwner)
+				refusedWorker := serviceWorkerFixture(t, &serviceBinding{owner: readerOwner, job: refusedJob}, nil)
 				refusalUntil := time.Now().UTC().Add(2 * time.Minute).Unix()
 				refused, err := readerOwner.prepareIntroduction(ctx, refusedJob, destination, [3]int64{refusalUntil, refusalUntil, refusalUntil})
 				if err != nil {
@@ -126,8 +126,8 @@ func TestTextPublisherNetworkRetainsSnapshotAcrossReaders(t *testing.T) {
 				}
 			}
 			for range 2 {
-				readerJob := liveTextCapsuleJob(t, readerOwner)
-				reader := textServiceWorkerFixture(t, &textServiceBinding{owner: readerOwner, job: readerJob}, nil)
+				readerJob := liveCapsuleJob(t, readerOwner)
+				reader := serviceWorkerFixture(t, &serviceBinding{owner: readerOwner, job: readerJob}, nil)
 				until := time.Now().UTC().Add(2 * time.Minute).Unix()
 				actual, err := reader.readTarget(ctx, destination, [3]int64{until, until, until})
 				if err != nil || !bytes.Equal(actual, body) {

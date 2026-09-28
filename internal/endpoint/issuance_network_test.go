@@ -93,7 +93,7 @@ func startTextRoleNetwork(t *testing.T, fixture textRoleNetworkFixture) (*endpoi
 		count = 15
 	}
 	if fixture.join {
-		addTextDataJoinState(source)
+		addDataJoinState(source)
 		count = 16
 	}
 	events := make([]*textNetworkNodeEvents, count)

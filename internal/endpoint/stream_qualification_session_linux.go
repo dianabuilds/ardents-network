@@ -45,7 +45,7 @@ func (worker *qualifiedTextWorker) RefillSnapshot() qualification.Refill {
 	owner := worker.job.owner
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
-	snapshot := qualification.Refill{Live: owner.liveTextServiceJobLocked(worker.job, owner.surface)}
+	snapshot := qualification.Refill{Live: owner.liveServiceJobLocked(worker.job, owner.surface)}
 	if !snapshot.Live {
 		return snapshot
 	}
@@ -126,7 +126,7 @@ func (session *qualificationSession) OpenJoinedService(ctx context.Context, prep
 	if !ok || prepared.attempt == nil {
 		return nil, errors.New("qualification introduction preparation unavailable")
 	}
-	service, err := session.owner.openTextJoinedServiceAfterSetup(ctx, session.job, prepared.attempt, setupComplete)
+	service, err := session.owner.openJoinedServiceAfterSetup(ctx, session.job, prepared.attempt, setupComplete)
 	if err != nil {
 		return nil, err
 	}
@@ -257,7 +257,7 @@ func (owner *textContext) presentQualifiedRefill(ctx context.Context, job *textJ
 	defer release()
 	owner.mu.Lock()
 	profile, now, err := owner.permissionProfileLocked()
-	if err != nil || class != 2 || !owner.liveTextServiceJobLocked(job, owner.surface) || owner.tokens.permission == nil ||
+	if err != nil || class != 2 || !owner.liveServiceJobLocked(job, owner.surface) || owner.tokens.permission == nil ||
 		hello.NetworkID != profile.NetworkID || hello.StateDigest != profile.StateDigest || hello.StateGeneration != profile.StateGeneration ||
 		hello.ProfileDigest != profile.Digest || hello.ChannelNonce == [32]byte{} || !now.Before(hello.Deadline) || hello.Deadline.After(profile.NotAfter) {
 		owner.mu.Unlock()
@@ -273,7 +273,7 @@ func (owner *textContext) presentQualifiedRefill(ctx context.Context, job *textJ
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
 	current, now, err := owner.permissionProfileLocked()
-	if err != nil || current != profile || !owner.liveTextServiceJobLocked(job, owner.surface) {
+	if err != nil || current != profile || !owner.liveServiceJobLocked(job, owner.surface) {
 		return nil, errors.New("qualification refill authority changed")
 	}
 	return owner.takeTokenLocked(current, now, hello, class, ctx)

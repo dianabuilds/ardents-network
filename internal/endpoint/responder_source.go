@@ -12,7 +12,7 @@ import (
 // Source use neither owns nor waits for the publication's Descriptor ACK.
 func (owner *textContext) prepareResponderSource(ctx context.Context, job *textJobIdentity) error {
 	owner.mu.Lock()
-	live := owner.liveTextServiceJobLocked(job, broker.Administration)
+	live := owner.liveServiceJobLocked(job, broker.Administration)
 	owner.mu.Unlock()
 	if !live {
 		return errors.New("text Responder Source authority unavailable")
@@ -22,7 +22,7 @@ func (owner *textContext) prepareResponderSource(ctx context.Context, job *textJ
 	}
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
-	if ctx.Err() != nil || !owner.liveTextServiceJobLocked(job, broker.Administration) {
+	if ctx.Err() != nil || !owner.liveServiceJobLocked(job, broker.Administration) {
 		return errors.New("text Responder Source job retired")
 	}
 	return nil

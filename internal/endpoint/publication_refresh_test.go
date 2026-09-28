@@ -139,7 +139,7 @@ func TestTextPublicationAutomaticallyRefreshesAndRetiresPredecessor(t *testing.T
 			}
 			reader := permissionContextFixture(t, endpoint, fixtureID(211), broker.Connection)
 			source.issuePermission(t, reader, [3]uint32{64, 64, 0})
-			readerJob, publisherJob := liveTextCapsuleJob(t, reader), liveTextCapsuleJob(t, owner)
+			readerJob, publisherJob := liveCapsuleJob(t, reader), liveCapsuleJob(t, owner)
 			bounds := [3]int64{now.Add(time.Minute).Unix(), now.Add(time.Minute).Unix(), now.Add(time.Minute).Unix()}
 			link := targetlink.Link{Network: endpoint.network, Target: published.Descriptor.Target}
 			oldAttempt, err := reader.prepareIntroduction(t.Context(), readerJob, link, bounds)
@@ -240,10 +240,10 @@ func TestTextPublicationAutomaticallyRefreshesAndRetiresPredecessor(t *testing.T
 			// An established Connection can outlive the 60-second predecessor
 			// overlap. Recovery must resolve and seal to the acknowledged current
 			// recipient without changing its immutable logical authority.
-			clientRecovery := oldAttempt.binding.textServiceRecovery()
+			clientRecovery := oldAttempt.binding.serviceRecovery()
 			clientRecovery.Generation, clientRecovery.Role = 2, "client"
 			clientRecovery.Deadline = time.Now().UTC().Add(8 * time.Second).Truncate(time.Second)
-			publisherRecovery := oldAccepted.binding.textServiceRecovery()
+			publisherRecovery := oldAccepted.binding.serviceRecovery()
 			publisherRecovery.Generation, publisherRecovery.Role = 2, "publisher"
 			publisherRecovery.Deadline = clientRecovery.Deadline
 			recovery, err := reader.prepareTextRecovery(t.Context(), readerJob, oldAttempt.binding, clientRecovery)

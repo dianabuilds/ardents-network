@@ -55,8 +55,8 @@ func TestTextWorkersReadTargetThroughJoinedNetwork(t *testing.T) {
 	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP, routecarrier.ClosedCarrierQUIC} {
 		t.Run(string(carrier), func(t *testing.T) {
 			exchangeTextWorkersThroughNetwork(t, carrier, bytes.Repeat([]byte("x"), 64<<10), func(t *testing.T, owner *textContext, snapshot []byte) *qualifiedTextWorker {
-				job := liveTextCapsuleJob(t, owner)
-				return textServiceWorkerFixture(t, &textServiceBinding{owner: owner, job: job}, snapshot)
+				job := liveCapsuleJob(t, owner)
+				return serviceWorkerFixture(t, &serviceBinding{owner: owner, job: job}, snapshot)
 			})
 		})
 	}

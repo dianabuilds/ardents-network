@@ -39,8 +39,8 @@ func TestTextPublicationLinkRequiresCommittedLiveRun(t *testing.T) {
 	if _, err := administration.RequestPublishedLink(t.Context(), socket); err == nil {
 		t.Fatal("unpublished context supplied a Link")
 	}
-	job := liveTextCapsuleJob(t, publisher)
-	worker := textServiceWorkerFixture(t, &textServiceBinding{owner: publisher, job: job}, []byte("published Link"))
+	job := liveCapsuleJob(t, publisher)
+	worker := serviceWorkerFixture(t, &serviceBinding{owner: publisher, job: job}, []byte("published Link"))
 	startup, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
 	run, err := worker.startPublication(startup)

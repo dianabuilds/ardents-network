@@ -39,7 +39,7 @@ type introductionWaiter struct {
 // directly to an already registered waiter; unmatched inputs are refused while
 // completion is still possible and never occupy registration capacity.
 func (dispatch *introductionDispatch) receive(owner *textContext, ctx context.Context, job *textJobIdentity,
-	want introductionDeliveryKey, binding *textServiceBinding) (delivery introductionRoutedDelivery, outcome error) {
+	want introductionDeliveryKey, binding *serviceBinding) (delivery introductionRoutedDelivery, outcome error) {
 	waiter, gate, err := dispatch.registerWaiter(owner, ctx, job, want, binding)
 	if err != nil {
 		return introductionRoutedDelivery{}, err
@@ -112,7 +112,7 @@ func (dispatch *introductionDispatch) receive(owner *textContext, ctx context.Co
 }
 
 func (dispatch *introductionDispatch) registerWaiter(owner *textContext, ctx context.Context, job *textJobIdentity,
-	want introductionDeliveryKey, binding *textServiceBinding) (*introductionWaiter, chan struct{}, error) {
+	want introductionDeliveryKey, binding *serviceBinding) (*introductionWaiter, chan struct{}, error) {
 	if owner == nil || ctx == nil || want.generation == 0 {
 		return nil, nil, errors.New("text Introduction dispatch unavailable")
 	}
@@ -124,7 +124,7 @@ func (dispatch *introductionDispatch) registerWaiter(owner *textContext, ctx con
 			<-expiryDone
 		}
 	}()
-	if !owner.liveTextServiceJobLocked(job, broker.Administration) || ctx.Err() != nil {
+	if !owner.liveServiceJobLocked(job, broker.Administration) || ctx.Err() != nil {
 		return nil, nil, errors.Join(ctx.Err(), errors.New("text Introduction dispatch owner retired"))
 	}
 	if dispatch.waiterCapacityReachedLocked() {
@@ -169,13 +169,13 @@ func (dispatch *introductionDispatch) releaseWaiter(owner *textContext, waiter *
 	return routed.delivery.Complete(lifetime, 1)
 }
 
-func (owner *textContext) retainIntroductionRecovery(binding *textServiceBinding) error {
+func (owner *textContext) retainIntroductionRecovery(binding *serviceBinding) error {
 	if owner == nil || !binding.servesOwnerJob(owner) {
 		return errors.New("text Introduction recovery owner unavailable")
 	}
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
-	if !owner.liveTextServiceJobLocked(binding.jobIdentity(), broker.Administration) || binding.hasRecoveryLocked() ||
+	if !owner.liveServiceJobLocked(binding.jobIdentity(), broker.Administration) || binding.hasRecoveryLocked() ||
 		owner.introduction.dispatch.recoveryCapacityReachedLocked(owner.streamConnectionLimitLocked()) {
 		return errors.New("text Introduction recovery owner capacity unavailable")
 	}
@@ -183,7 +183,7 @@ func (owner *textContext) retainIntroductionRecovery(binding *textServiceBinding
 	return nil
 }
 
-func (binding *textServiceBinding) releaseIntroductionRecovery() error {
+func (binding *serviceBinding) releaseIntroductionRecovery() error {
 	if binding == nil || binding.owner == nil {
 		return nil
 	}
@@ -260,7 +260,7 @@ func (owner *textContext) inspectIntroductionDelivery(ctx context.Context, job *
 	defer owner.mu.Unlock()
 	profile, now, err := owner.permissionProfileLocked()
 	registered := owner.publication.pair.selectLocked(now, capsule.Slot, capsule.Revision)
-	if err != nil || ctx.Err() != nil || !owner.liveTextServiceJobLocked(job, broker.Administration) ||
+	if err != nil || ctx.Err() != nil || !owner.liveServiceJobLocked(job, broker.Administration) ||
 		registered == nil || owner.publication.pair.withdrawalInProgressLocked() || endpoint.publisherOwner != owner ||
 		!endpoint.publicationLive || endpoint.publisherBinding == nil || endpoint.publications == nil ||
 		!registered.acceptingNowLocked() || !registered.matchesRequest(capsule.Slot, capsule.Revision) ||

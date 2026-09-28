@@ -27,7 +27,7 @@ func (owner *textContext) prepareResponder(ctx context.Context, job *textJobIden
 	}
 	owner.mu.Lock()
 	_, _, err := owner.permissionProfileLocked()
-	live := err == nil && owner.liveTextServiceJobLocked(job, broker.Administration)
+	live := err == nil && owner.liveServiceJobLocked(job, broker.Administration)
 	prefix := owner.responder.currentLocked()
 	owner.mu.Unlock()
 	if !live {
@@ -49,7 +49,7 @@ func (owner *textContext) prepareResponder(ctx context.Context, job *textJobIden
 	}
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
-	if !prefix.currentLocked(&owner.responder) || !owner.liveTextServiceJobLocked(job, broker.Administration) ||
+	if !prefix.currentLocked(&owner.responder) || !owner.liveServiceJobLocked(job, broker.Administration) ||
 		bounded.Err() != nil || !owner.endpoint.clock().Before(accepted.plaintext.Deadline) {
 		return errors.New("text Responder owner retired before handover")
 	}

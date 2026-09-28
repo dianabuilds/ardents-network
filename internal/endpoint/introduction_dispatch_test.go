@@ -19,11 +19,11 @@ func (owner *textContext) acceptIntroduction(ctx context.Context, job *textJobId
 }
 
 func (owner *textContext) acceptTextRecovery(ctx context.Context, job *textJobIdentity, operation []byte,
-	original *textServiceBinding, request nativeconnection.Recovery) (*introductionAttempt, error) {
+	original *serviceBinding, request nativeconnection.Recovery) (*introductionAttempt, error) {
 	if original == nil || original.owner != owner || original.job != job {
 		return nil, errors.New("text recovery binding unavailable")
 	}
-	if err := original.validateTextServiceRecovery(request); err != nil {
+	if err := original.validateServiceRecovery(request); err != nil {
 		return nil, err
 	}
 	return owner.acceptIntroductionGeneration(ctx, job, operation, original, request.Generation, request.Deadline, false)

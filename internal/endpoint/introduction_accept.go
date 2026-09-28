@@ -14,7 +14,7 @@ import (
 )
 
 func (owner *textContext) acceptIntroductionGeneration(ctx context.Context, job *textJobIdentity, operation []byte,
-	original *textServiceBinding, expectedGeneration uint64, recoveryDeadline time.Time,
+	original *serviceBinding, expectedGeneration uint64, recoveryDeadline time.Time,
 	openingReserved bool) (attempt *introductionAttempt, outcome error) {
 	if owner == nil || ctx == nil || ctx.Err() != nil {
 		return nil, errors.New("text Introduction caller unavailable")
@@ -34,7 +34,7 @@ func (owner *textContext) acceptIntroductionGeneration(ctx context.Context, job 
 	}
 	profile, now, err := owner.permissionProfileLocked()
 	registered := owner.publication.pair.selectLocked(now, capsule.Slot, capsule.Revision)
-	if err != nil || !owner.liveTextServiceJobLocked(job, broker.Administration) || registered == nil || owner.publication.pair.withdrawalInProgressLocked() ||
+	if err != nil || !owner.liveServiceJobLocked(job, broker.Administration) || registered == nil || owner.publication.pair.withdrawalInProgressLocked() ||
 		endpoint.publisherOwner != owner || !endpoint.publicationLive || endpoint.publisherBinding == nil || endpoint.publications == nil ||
 		!registered.acceptingNowLocked() {
 		return nil, errors.New("text Introduction registration authority unavailable")
@@ -72,7 +72,7 @@ func (owner *textContext) acceptIntroductionGeneration(ctx context.Context, job 
 		return nil, &introductionRefusal{cause: err}
 	}
 	node, generation, until, err := owner.introductionRecipientLocked()
-	if err != nil || ctx.Err() != nil || !owner.liveTextServiceJobLocked(job, broker.Administration) {
+	if err != nil || ctx.Err() != nil || !owner.liveServiceJobLocked(job, broker.Administration) {
 		return nil, errors.Join(err, ctx.Err(), errors.New("text Introduction recipient authority unavailable"))
 	}
 	if node != plaintext.RendezvousNode || generation != plaintext.RendezvousDutyGeneration || plaintext.Deadline.After(until) ||
@@ -84,7 +84,7 @@ func (owner *textContext) acceptIntroductionGeneration(ctx context.Context, job 
 		InstancePublic: current.Credential.InstancePublic, InstanceGeneration: current.Credential.Generation, ProfileDigest: plaintext.ProfileDigest,
 		ConnectionNonce: plaintext.ConnectionNonce, InitiatorBinding: plaintext.InitiatorBinding, WorkSafetyNotAfter: plaintext.WorkSafetyNotAfter,
 		WorkSafetyMaximum: plaintext.WorkSafetyMaximum, NoNewRecoveryAfter: plaintext.NoNewRecoveryAfter}
-	binding, err := owner.bindTextServiceLocked(job, current, facts)
+	binding, err := owner.bindServiceLocked(job, current, facts)
 	if err != nil {
 		return nil, err
 	}
@@ -99,7 +99,7 @@ func (owner *textContext) acceptIntroductionGeneration(ctx context.Context, job 
 	}
 	at := endpoint.clock().UTC()
 	retained := owner.publication.pair.retainedLocked(registered, at)
-	if ctx.Err() != nil || !owner.liveTextServiceJobLocked(job, broker.Administration) || !at.Before(capsule.Expiry) || !retained || registered.recipientPublicLocked(at) == [32]byte{} {
+	if ctx.Err() != nil || !owner.liveServiceJobLocked(job, broker.Administration) || !at.Before(capsule.Expiry) || !retained || registered.recipientPublicLocked(at) == [32]byte{} {
 		return nil, errors.Join(ctx.Err(), errors.New("text Introduction authority ended during binding"))
 	}
 	owner.introduction.admission.retainAcceptedLocked(capsule.DeliveryNonce, registered.expiry())

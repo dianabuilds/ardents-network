@@ -14,12 +14,12 @@ import (
 	nativeconnection "github.com/dianabuilds/ardents-network/internal/service/connection"
 )
 
-// textServiceRouteRecoveryOpener keeps Route replacement behind the native
+// serviceRouteRecoveryOpener keeps Route replacement behind the native
 // Connection's immutable recovery request. The client creates one fresh
 // capsule/JOIN; the Publisher accepts only that generation for the retained
 // logical binding. Neither side can open another Application operation.
-func (owner *textContext) textServiceRouteRecoveryOpener(job *textJobIdentity,
-	binding *textServiceBinding) textServiceAttachmentOpener {
+func (owner *textContext) serviceRouteRecoveryOpener(job *textJobIdentity,
+	binding *serviceBinding) serviceAttachmentOpener {
 	if owner == nil || !binding.servesJob(owner, job) {
 		return nil
 	}
@@ -30,7 +30,7 @@ func (owner *textContext) textServiceRouteRecoveryOpener(job *textJobIdentity,
 		if err := ctx.Err(); err != nil {
 			return nil, [32]byte{}, err
 		}
-		if err := binding.validateTextServiceRecovery(request); err != nil {
+		if err := binding.validateServiceRecovery(request); err != nil {
 			return nil, [32]byte{}, err
 		}
 		var prepared *introductionAttempt
@@ -47,7 +47,7 @@ func (owner *textContext) textServiceRouteRecoveryOpener(job *textJobIdentity,
 			return nil, [32]byte{}, err
 		}
 		defer clear(prepared.operation)
-		raw, err := owner.openTextJoinedTransport(ctx, job, prepared)
+		raw, err := owner.openJoinedTransport(ctx, job, prepared)
 		if err != nil {
 			return nil, [32]byte{}, err
 		}
@@ -58,7 +58,7 @@ func (owner *textContext) textServiceRouteRecoveryOpener(job *textJobIdentity,
 // prepareTextRecovery resolves the current recipient for the original Target
 // and accepts it only under the Connection's immutable Publication authority.
 // It creates fresh per-Attachment secrets without resetting any work deadline.
-func (owner *textContext) prepareTextRecovery(ctx context.Context, job *textJobIdentity, binding *textServiceBinding,
+func (owner *textContext) prepareTextRecovery(ctx context.Context, job *textJobIdentity, binding *serviceBinding,
 	request nativeconnection.Recovery) (*introductionAttempt, error) {
 	if owner == nil || ctx == nil || !binding.servesJob(owner, job) ||
 		owner.surface != broker.Connection {
@@ -67,7 +67,7 @@ func (owner *textContext) prepareTextRecovery(ctx context.Context, job *textJobI
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
-	if err := binding.validateTextServiceRecovery(request); err != nil {
+	if err := binding.validateServiceRecovery(request); err != nil {
 		return nil, err
 	}
 	verified, err := owner.lookupDescriptor(ctx, binding.target())
@@ -82,7 +82,7 @@ func (owner *textContext) prepareTextRecovery(ctx context.Context, job *textJobI
 	if attemptErr := ctx.Err(); attemptErr != nil {
 		return nil, attemptErr
 	}
-	if err != nil || prefix == nil || !owner.liveTextServiceJobLocked(job, broker.Connection) ||
+	if err != nil || prefix == nil || !owner.liveServiceJobLocked(job, broker.Connection) ||
 		!binding.matchesPublication(verified.Current) || verified.Descriptor.ProfileDigest != binding.profileDigest() ||
 		profile.Digest != binding.profileDigest() || !owner.descriptorHistory.Matches(binding.target(), binding.publicationDigest(), recipient.Revision) ||
 		recipient.Revision < binding.introductionLocked().Revision ||
@@ -130,7 +130,7 @@ func (owner *textContext) prepareTextRecovery(ctx context.Context, job *textJobI
 		clear(operation)
 		return nil, attemptErr
 	}
-	if !prefix.currentLocked(&owner.source) || !owner.liveTextServiceJobLocked(job, broker.Connection) ||
+	if !prefix.currentLocked(&owner.source) || !owner.liveServiceJobLocked(job, broker.Connection) ||
 		!owner.endpoint.clock().UTC().Before(deadline) {
 		clear(operation)
 		return nil, errors.New("text recovery authority ended during sealing")

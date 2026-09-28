@@ -16,14 +16,14 @@ import (
 
 // This wrapper pauses a synchronous authority read at the last binding
 // boundary. Node runtimes and the already opened prefixes retain real State.
-type textCapsuleBoundaryState struct {
+type capsuleBoundaryState struct {
 	*sourceStateFixture
 	reads     int
 	atRead    int
 	atBinding func()
 }
 
-func (source *textCapsuleBoundaryState) CurrentClosedProfile() (state.ClosedProfileView, error) {
+func (source *capsuleBoundaryState) CurrentClosedProfile() (state.ClosedProfileView, error) {
 	source.reads++
 	atRead := source.atRead
 	if atRead == 0 {
@@ -35,7 +35,7 @@ func (source *textCapsuleBoundaryState) CurrentClosedProfile() (state.ClosedProf
 	return source.sourceStateFixture.CurrentClosedProfile()
 }
 
-func checkTextCapsuleAdmissionBoundaries(t *testing.T, publisher, reader *textContext, source *sourceStateFixture,
+func checkCapsuleAdmissionBoundaries(t *testing.T, publisher, reader *textContext, source *sourceStateFixture,
 	job *textJobIdentity, original *introductionAttempt, recipient [32]byte) {
 	t.Helper()
 	endpoint := publisher.endpoint
@@ -96,7 +96,7 @@ func checkTextCapsuleAdmissionBoundaries(t *testing.T, publisher, reader *textCo
 					}
 				}
 			} else {
-				endpoint.closedState = &textCapsuleBoundaryState{sourceStateFixture: source, atBinding: func() {
+				endpoint.closedState = &capsuleBoundaryState{sourceStateFixture: source, atBinding: func() {
 					if index == 3 {
 						cancel()
 					} else {

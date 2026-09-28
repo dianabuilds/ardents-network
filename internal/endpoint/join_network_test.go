@@ -17,7 +17,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/route/client"
 )
 
-func addTextDataJoinState(source *sourceStateFixture) {
+func addDataJoinState(source *sourceStateFixture) {
 	source.view.NodeCount, source.snapshot.CandidateCount = 16, 16
 	source.view.Nodes[15] = state.ClosedRouteNodeView{NodeID: fixtureID(202), RecordDigest: fixtureID(203), DutyGeneration: 16, RoleDomain: 2, Subrole: 4}
 	candidate := source.snapshot.Candidates[4]
@@ -69,7 +69,7 @@ func exchangeTextRouteData(t *testing.T, reader, publisher *textContext, receive
 	reader.mu.Lock()
 	readerPrefix := reader.source.currentLocked()
 	reader.mu.Unlock()
-	prefixes := []textJoinPrefix{readerPrefix, responder}
+	prefixes := []joinPrefix{readerPrefix, responder}
 	for index, owner := range []*textContext{reader, publisher} {
 		go func() {
 			stream, err := prefixes[index].join(ctx, func(hello ardp.Hello, class uint8) ([]byte, error) {

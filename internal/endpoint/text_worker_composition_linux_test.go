@@ -25,7 +25,7 @@ func (worker *qualifiedTextWorker) serveNetwork(ctx context.Context) error {
 // serve accepts only this Publisher job's opaque authenticated streams.
 // Closing incoming requests a finite drain. Cancellation joins the bridge and
 // any stream received but not yet transferred before installed worker cleanup.
-func (worker *qualifiedTextWorker) serve(ctx context.Context, incoming <-chan *textServiceStream) error {
+func (worker *qualifiedTextWorker) serve(ctx context.Context, incoming <-chan *serviceStream) error {
 	if incoming == nil {
 		return errors.New("text Publisher Connections unavailable")
 	}
@@ -46,7 +46,7 @@ func (worker *qualifiedTextWorker) serveFrom(ctx context.Context, produce func(c
 
 // There is no buffered admission queue. A received stream remains owned here
 // until the worker bridge receives it; all other inputs remain producer-owned.
-func (worker *qualifiedTextWorker) forwardServiceStreams(ctx context.Context, incoming <-chan *textServiceStream,
+func (worker *qualifiedTextWorker) forwardServiceStreams(ctx context.Context, incoming <-chan *serviceStream,
 	delivered chan<- connection.Stream) error {
 	for {
 		if err := ctx.Err(); err != nil {
@@ -78,19 +78,19 @@ func (worker *qualifiedTextWorker) forwardServiceStreams(ctx context.Context, in
 // readService holds the qualified worker's operation from Service setup
 // through joined stream I/O, then joins the worker before exposing a result.
 // The Route/capsule producer must use this exact binding and authorized job.
-func (worker *qualifiedTextWorker) readService(ctx context.Context, binding *textServiceBinding, raw net.Conn, capsuleDigest [32]byte) ([]byte, error) {
+func (worker *qualifiedTextWorker) readService(ctx context.Context, binding *serviceBinding, raw net.Conn, capsuleDigest [32]byte) ([]byte, error) {
 	if worker == nil || binding == nil || worker.job == nil || worker.job != binding.job || worker.job.owner != binding.owner {
-		return nil, errors.Join(errors.New("text Service stream belongs to a different worker"), closeTextServiceInput(raw))
+		return nil, errors.Join(errors.New("text Service stream belongs to a different worker"), closeServiceInput(raw))
 	}
 	bounded, finish, err := worker.beginOperation(ctx, broker.Connection)
 	if err != nil {
-		return nil, errors.Join(err, closeTextServiceInput(raw))
+		return nil, errors.Join(err, closeServiceInput(raw))
 	}
-	stream, err := binding.openTextServiceStreamWithRecovery(bounded, raw, capsuleDigest, nil)
+	stream, err := binding.openServiceStreamWithRecovery(bounded, raw, capsuleDigest, nil)
 	return worker.completeServiceRead(ctx, bounded, finish, stream, err)
 }
 
-func closeTextServiceInput(raw net.Conn) error {
+func closeServiceInput(raw net.Conn) error {
 	if raw == nil {
 		return nil
 	}
@@ -107,9 +107,9 @@ func (worker *qualifiedTextWorker) readTarget(ctx context.Context, destination t
 	}
 	owner := worker.job.owner
 	attempt, err := owner.prepareIntroduction(bounded, worker.job, destination, bounds)
-	var stream *textServiceStream
+	var stream *serviceStream
 	if err == nil {
-		stream, err = owner.openTextJoinedService(bounded, worker.job, attempt)
+		stream, err = owner.openJoinedService(bounded, worker.job, attempt)
 	}
 	return worker.completeServiceRead(ctx, bounded, finish, stream, err)
 }

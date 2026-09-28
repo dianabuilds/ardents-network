@@ -18,7 +18,7 @@ type textJobIdentity struct {
 	// The qualification run is bound to this exact Job so late callbacks
 	// cannot attach streams, samples or cleanup to its replacement.
 	qualification *qualification.Run
-	workload      textServiceWorkloadBounds
+	workload      serviceWorkloadBounds
 	owner         *textContext
 	nonce         [32]byte
 	context       context.Context

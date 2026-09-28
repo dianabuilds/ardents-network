@@ -16,10 +16,10 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/service/targetlink"
 )
 
-// textServiceBinding retains the exact job and independently verified
+// serviceBinding retains the exact job and independently verified
 // publication. It cannot be reconstructed by a local Application from a
 // supplied "established" flag or copied wire nonce.
-type textServiceBinding struct {
+type serviceBinding struct {
 	owner              *textContext
 	job                *textJobIdentity
 	credential         servicepublication.Credential
@@ -33,17 +33,17 @@ type textServiceBinding struct {
 	recovery     *introductionRecoveryOwner
 }
 
-// newTextServiceBinding is the Initiator's local owner operation after
+// newServiceBinding is the Initiator's local owner operation after
 // destination authorization and verified reachability. The local Connection
 // context and its salt never leave this Endpoint.
-func (owner *textContext) newTextServiceBinding(job *textJobIdentity, destination targetlink.Link, current servicepublication.Current,
-	bounds [3]int64) (*textServiceBinding, error) {
+func (owner *textContext) newServiceBinding(job *textJobIdentity, destination targetlink.Link, current servicepublication.Current,
+	bounds [3]int64) (*serviceBinding, error) {
 	if owner == nil {
 		return nil, errors.New("text Service context unavailable")
 	}
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
-	if !owner.liveTextServiceJobLocked(job, broker.Connection) {
+	if !owner.liveServiceJobLocked(job, broker.Connection) {
 		return nil, errors.New("text Service reader job unavailable")
 	}
 	profile, _, err := owner.permissionProfileLocked()
@@ -82,11 +82,11 @@ func (owner *textContext) newTextServiceBinding(job *textJobIdentity, destinatio
 		InstancePublic: current.Credential.InstancePublic, InstanceGeneration: current.Credential.Generation,
 		PublicationDigest: current.Digest, ProfileDigest: profile.Digest, ConnectionNonce: nonce,
 		InitiatorBinding: sha256.Sum256(encoded), WorkSafetyNotAfter: bounds[0], WorkSafetyMaximum: bounds[1], NoNewRecoveryAfter: bounds[2]}
-	return owner.bindTextServiceLocked(job, current, facts)
+	return owner.bindServiceLocked(job, current, facts)
 }
 
-func (owner *textContext) bindTextServiceLocked(job *textJobIdentity, current servicepublication.Current,
-	facts nativeconnection.ProtectedContextInput) (*textServiceBinding, error) {
+func (owner *textContext) bindServiceLocked(job *textJobIdentity, current servicepublication.Current,
+	facts nativeconnection.ProtectedContextInput) (*serviceBinding, error) {
 	profile, now, err := owner.permissionProfileLocked()
 	if err != nil {
 		return nil, err
@@ -130,23 +130,23 @@ func (owner *textContext) bindTextServiceLocked(job *textJobIdentity, current se
 	if err != nil {
 		return nil, &introductionRefusal{cause: errors.New("text Service destination binding unavailable")}
 	}
-	return &textServiceBinding{owner: owner, job: job, credential: verified.Credential, facts: facts, logical: logical,
+	return &serviceBinding{owner: owner, job: job, credential: verified.Credential, facts: facts, logical: logical,
 		candidateView: profile.StateDigest, destinationBinding: sha256.Sum256([]byte(spelling))}, nil
 }
 
-func (owner *textContext) liveTextServiceJobLocked(job *textJobIdentity, surface broker.Surface) bool {
+func (owner *textContext) liveServiceJobLocked(job *textJobIdentity, surface broker.Surface) bool {
 	return owner.liveLocked(owner.endpoint, surface) && job != nil && job.owner == owner && owner.job == job &&
 		owner.verifiedJob == job && !job.retired && job.bound && job.workerGrant != nil && job.context.Err() == nil
 }
 
-func (binding *textServiceBinding) current() error {
+func (binding *serviceBinding) current() error {
 	if binding == nil || binding.owner == nil {
 		return errors.New("text Service binding unavailable")
 	}
 	owner := binding.owner
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
-	if !owner.liveTextServiceJobLocked(binding.job, owner.surface) {
+	if !owner.liveServiceJobLocked(binding.job, owner.surface) {
 		return errors.New("text Service job retired")
 	}
 	profile, now, err := owner.permissionProfileLocked()
@@ -158,59 +158,59 @@ func (binding *textServiceBinding) current() error {
 	return nil
 }
 
-func (binding *textServiceBinding) matchesPublication(current servicepublication.Current) bool {
+func (binding *serviceBinding) matchesPublication(current servicepublication.Current) bool {
 	return binding != nil && current.Credential == binding.credential && current.Digest == binding.facts.PublicationDigest &&
 		len(current.Record) != 0 && sha256.Sum256(current.Record) == current.Digest
 }
 
 // servesJob reports the exact immutable Context and job ownership.
-func (binding *textServiceBinding) servesJob(owner *textContext, job *textJobIdentity) bool {
+func (binding *serviceBinding) servesJob(owner *textContext, job *textJobIdentity) bool {
 	return binding != nil && binding.owner == owner && binding.job == job
 }
 
 // servesOwnerJob reports the Context ownership of a present job identity.
-func (binding *textServiceBinding) servesOwnerJob(owner *textContext) bool {
+func (binding *serviceBinding) servesOwnerJob(owner *textContext) bool {
 	return binding != nil && binding.owner == owner && binding.job != nil
 }
 
 // jobIdentity returns the immutable job bound at construction.
-func (binding *textServiceBinding) jobIdentity() *textJobIdentity {
+func (binding *serviceBinding) jobIdentity() *textJobIdentity {
 	return binding.job
 }
 
 // connectionNonce returns the immutable per-Connection nonce commitment.
-func (binding *textServiceBinding) connectionNonce() [32]byte {
+func (binding *serviceBinding) connectionNonce() [32]byte {
 	return binding.facts.ConnectionNonce
 }
 
 // target returns the immutable publication Target.
-func (binding *textServiceBinding) target() [32]byte {
+func (binding *serviceBinding) target() [32]byte {
 	return binding.facts.Target
 }
 
 // profileDigest returns the immutable permission profile digest.
-func (binding *textServiceBinding) profileDigest() [32]byte {
+func (binding *serviceBinding) profileDigest() [32]byte {
 	return binding.facts.ProfileDigest
 }
 
 // publicationDigest returns the immutable publication digest.
-func (binding *textServiceBinding) publicationDigest() [32]byte {
+func (binding *serviceBinding) publicationDigest() [32]byte {
 	return binding.facts.PublicationDigest
 }
 
 // workSafetyNotAfter returns the immutable work-safety deadline in Unix
 // seconds.
-func (binding *textServiceBinding) workSafetyNotAfter() int64 {
+func (binding *serviceBinding) workSafetyNotAfter() int64 {
 	return binding.facts.WorkSafetyNotAfter
 }
 
 // protectedFacts copies the full immutable shared authority tuple.
-func (binding *textServiceBinding) protectedFacts() nativeconnection.ProtectedContextInput {
+func (binding *serviceBinding) protectedFacts() nativeconnection.ProtectedContextInput {
 	return binding.facts
 }
 
 // sameAuthorityAs compares every immutable authority fact of two bindings.
-func (binding *textServiceBinding) sameAuthorityAs(other *textServiceBinding) bool {
+func (binding *serviceBinding) sameAuthorityAs(other *serviceBinding) bool {
 	return binding != nil && other != nil && binding.logical == other.logical &&
 		binding.facts == other.facts && binding.credential == other.credential &&
 		binding.candidateView == other.candidateView
@@ -218,7 +218,7 @@ func (binding *textServiceBinding) sameAuthorityAs(other *textServiceBinding) bo
 
 // dispatchRecoveryLocked returns the recovery slot only for the binding that
 // serves the exact Context and job.
-func (binding *textServiceBinding) dispatchRecoveryLocked(owner *textContext, job *textJobIdentity) *introductionRecoveryOwner {
+func (binding *serviceBinding) dispatchRecoveryLocked(owner *textContext, job *textJobIdentity) *introductionRecoveryOwner {
 	if !binding.servesJob(owner, job) {
 		return nil
 	}
@@ -227,19 +227,19 @@ func (binding *textServiceBinding) dispatchRecoveryLocked(owner *textContext, jo
 
 // ownsRecoveryLocked reports whether this binding retains exactly that
 // recovery owner.
-func (binding *textServiceBinding) ownsRecoveryLocked(recovery *introductionRecoveryOwner) bool {
+func (binding *serviceBinding) ownsRecoveryLocked(recovery *introductionRecoveryOwner) bool {
 	return binding != nil && recovery != nil && binding.recovery == recovery
 }
 
 // hasRecoveryLocked reports an occupied recovery slot.
-func (binding *textServiceBinding) hasRecoveryLocked() bool {
+func (binding *serviceBinding) hasRecoveryLocked() bool {
 	return binding != nil && binding.recovery != nil
 }
 
 // claimRecoveryLocked creates the one recovery owner slot of this binding.
 // The shared Context lock makes creation and dispatcher registration one
 // transition.
-func (binding *textServiceBinding) claimRecoveryLocked() *introductionRecoveryOwner {
+func (binding *serviceBinding) claimRecoveryLocked() *introductionRecoveryOwner {
 	if binding == nil || binding.recovery != nil {
 		return nil
 	}
@@ -251,16 +251,16 @@ func (binding *textServiceBinding) claimRecoveryLocked() *introductionRecoveryOw
 
 // bindIntroductionLocked records the verified Descriptor recipient for later
 // capsule issuance.
-func (binding *textServiceBinding) bindIntroductionLocked(recipient reachability.PrivateIntroduction) {
+func (binding *serviceBinding) bindIntroductionLocked(recipient reachability.PrivateIntroduction) {
 	binding.introduction = recipient
 }
 
 // introductionLocked returns the current Descriptor recipient facts.
-func (binding *textServiceBinding) introductionLocked() reachability.PrivateIntroduction {
+func (binding *serviceBinding) introductionLocked() reachability.PrivateIntroduction {
 	return binding.introduction
 }
 
-func (binding *textServiceBinding) textServiceRecovery() nativeconnection.Recovery {
+func (binding *serviceBinding) serviceRecovery() nativeconnection.Recovery {
 	if binding == nil || binding.owner == nil || binding.job == nil {
 		return nativeconnection.Recovery{}
 	}
@@ -270,8 +270,8 @@ func (binding *textServiceBinding) textServiceRecovery() nativeconnection.Recove
 		NoNewRecoveryAfter: binding.facts.NoNewRecoveryAfter}
 }
 
-func (binding *textServiceBinding) validateTextServiceRecovery(request nativeconnection.Recovery) error {
-	expected := binding.textServiceRecovery()
+func (binding *serviceBinding) validateServiceRecovery(request nativeconnection.Recovery) error {
+	expected := binding.serviceRecovery()
 	role := "client"
 	if binding != nil && binding.owner != nil && binding.owner.surface == broker.Administration {
 		role = "publisher"

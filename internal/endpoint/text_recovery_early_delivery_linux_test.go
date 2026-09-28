@@ -19,7 +19,7 @@ import (
 // rather than refusing it before the Publisher starts its recovery opener.
 func TestTextRecoveryDeliveryMayArriveBeforePublisherFailureDetection(t *testing.T) {
 	reader, publisher, destination := textJoinedNetworkFixture(t, carrier.ClosedCarrierTCP)
-	readerJob, publisherJob := liveTextCapsuleJob(t, reader), liveTextCapsuleJob(t, publisher)
+	readerJob, publisherJob := liveCapsuleJob(t, reader), liveCapsuleJob(t, publisher)
 	ctx, cancel := context.WithTimeout(t.Context(), 8*time.Second)
 	defer cancel()
 	now := time.Now().UTC()
@@ -46,9 +46,9 @@ func TestTextRecoveryDeliveryMayArriveBeforePublisherFailureDetection(t *testing
 		t.Fatal(remote.err)
 	}
 
-	clientRequest := initial.binding.textServiceRecovery()
+	clientRequest := initial.binding.serviceRecovery()
 	clientRequest.Generation, clientRequest.Deadline, clientRequest.Role = 2, now.Add(6*time.Second), "client"
-	publisherRequest := remote.attempt.binding.textServiceRecovery()
+	publisherRequest := remote.attempt.binding.serviceRecovery()
 	publisherRequest.Generation, publisherRequest.Deadline, publisherRequest.Role = 2, clientRequest.Deadline, "publisher"
 	early, err := reader.prepareTextRecovery(ctx, readerJob, initial.binding, clientRequest)
 	if err != nil {
@@ -85,7 +85,7 @@ func TestTextRecoveryDeliveryMayArriveBeforePublisherFailureDetection(t *testing
 	// A speculative later capsule is still owned: its deadline must refuse it
 	// while the registration can answer, rather than leaving one of the sixteen
 	// claimed deliveries stranded when no local recovery waiter appears.
-	nextRequest := initial.binding.textServiceRecovery()
+	nextRequest := initial.binding.serviceRecovery()
 	nextRequest.Generation, nextRequest.Deadline, nextRequest.Role = 3, time.Now().UTC().Add(2*time.Second), "client"
 	next, err := reader.prepareTextRecovery(ctx, readerJob, initial.binding, nextRequest)
 	if err != nil {
@@ -132,7 +132,7 @@ func TestTextRecoveryDeliveryMayArriveBeforePublisherFailureDetection(t *testing
 // terminal RESULT or kill every other Connection using that registration.
 func TestTextRecoveryRefusalOutlivesCanceledAttempt(t *testing.T) {
 	reader, publisher, destination := textJoinedNetworkFixture(t, carrier.ClosedCarrierTCP)
-	readerJob, publisherJob := liveTextCapsuleJob(t, reader), liveTextCapsuleJob(t, publisher)
+	readerJob, publisherJob := liveCapsuleJob(t, reader), liveCapsuleJob(t, publisher)
 	ctx, cancel := context.WithTimeout(t.Context(), 8*time.Second)
 	defer cancel()
 	now := time.Now().UTC()
@@ -159,7 +159,7 @@ func TestTextRecoveryRefusalOutlivesCanceledAttempt(t *testing.T) {
 		t.Fatal(remote.err)
 	}
 
-	request := initial.binding.textServiceRecovery()
+	request := initial.binding.serviceRecovery()
 	request.Generation, request.Role, request.Deadline = 2, "client", now.Add(6*time.Second)
 	recovery, err := reader.prepareTextRecovery(ctx, readerJob, initial.binding, request)
 	if err != nil {
@@ -201,7 +201,7 @@ func TestTextRecoveryRefusalOutlivesCanceledAttempt(t *testing.T) {
 // have raced with inspection.
 func TestTextIntroductionOrphanRefusalOutlivesCanceledWaiter(t *testing.T) {
 	reader, publisher, destination := textJoinedNetworkFixture(t, carrier.ClosedCarrierTCP)
-	readerJob, publisherJob := liveTextCapsuleJob(t, reader), liveTextCapsuleJob(t, publisher)
+	readerJob, publisherJob := liveCapsuleJob(t, reader), liveCapsuleJob(t, publisher)
 	ctx, cancel := context.WithTimeout(t.Context(), 8*time.Second)
 	defer cancel()
 	now := time.Now().UTC()

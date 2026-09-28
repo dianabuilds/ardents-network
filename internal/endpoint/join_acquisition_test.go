@@ -16,32 +16,32 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/route/client"
 )
 
-type textJoinRetiredAfterRecipient struct {
+type joinRetiredAfterRecipient struct {
 	node       [32]byte
 	generation uint64
 	deadline   time.Time
 	current    bool
 }
 
-func (acquisition *textJoinRetiredAfterRecipient) dataJoinRecipient() ([32]byte, uint64, time.Time, error) {
+func (acquisition *joinRetiredAfterRecipient) dataJoinRecipient() ([32]byte, uint64, time.Time, error) {
 	acquisition.current = false
 	return acquisition.node, acquisition.generation, acquisition.deadline, nil
 }
 
-func (*textJoinRetiredAfterRecipient) join(context.Context, client.ClosedTokenPresenter,
+func (*joinRetiredAfterRecipient) join(context.Context, client.ClosedTokenPresenter,
 	client.ClosedJoinIntent) (*client.ClosedJoinedStream, error) {
 	return nil, errors.New("retired JOIN acquisition used")
 }
 
-func (acquisition *textJoinRetiredAfterRecipient) currentLocked(*textContext) bool {
+func (acquisition *joinRetiredAfterRecipient) currentLocked(*textContext) bool {
 	return acquisition.current
 }
 
-func (acquisition *textJoinRetiredAfterRecipient) issuancePrefixLocked(*textContext) (*sourceHandle, bool) {
+func (acquisition *joinRetiredAfterRecipient) issuancePrefixLocked(*textContext) (*sourceHandle, bool) {
 	return nil, acquisition.current
 }
 
-func (*textJoinRetiredAfterRecipient) release() {}
+func (*joinRetiredAfterRecipient) release() {}
 
 func TestTextJoinedTransportCloseReleasesSourceAcquisition(t *testing.T) {
 	lifecycle := &sourceLifecycle{}
@@ -51,7 +51,7 @@ func TestTextJoinedTransportCloseReleasesSourceAcquisition(t *testing.T) {
 	acquisition := lifecycle.acquireJoinLocked()
 	local, remote := net.Pipe()
 	t.Cleanup(func() { _ = remote.Close() })
-	transport := &textJoinedTransport{acquisition: acquisition, Conn: local, stop: func() {}, finish: func(err error) error { return err }}
+	transport := &joinedTransport{acquisition: acquisition, Conn: local, stop: func() {}, finish: func(err error) error { return err }}
 	if err := transport.Close(); err != nil {
 		t.Fatal(err)
 	}
@@ -66,10 +66,10 @@ func TestTextJoinedTransportCloseReleasesSourceAcquisition(t *testing.T) {
 func TestTextJoinOldAcquisitionCannotAttachAfterSourceReplacement(t *testing.T) {
 	endpoint, principal := textContextEndpoint(t)
 	owner := admittedTextContext(t, endpoint, principal, broker.Connection)
-	job := liveTextCapsuleJob(t, owner)
+	job := liveCapsuleJob(t, owner)
 	run, _ := qualification.NewRun(streamqualification.ReaderRole, streamqualification.ClientToPublisher, fixtureID(210))
 	job.qualification = run
-	attempt := &introductionAttempt{binding: &textServiceBinding{owner: owner, job: job}}
+	attempt := &introductionAttempt{binding: &serviceBinding{owner: owner, job: job}}
 
 	owner.mu.Lock()
 	old := &sourceHandle{owner: &owner.source, cancel: func() {}}
@@ -88,7 +88,7 @@ func TestTextJoinOldAcquisitionCannotAttachAfterSourceReplacement(t *testing.T) 
 	})
 
 	caller, cancel := context.WithCancel(t.Context())
-	_, flight, detach, finish, err := owner.beginTextServiceTransportExchange(caller, job, broker.Connection)
+	_, flight, detach, finish, err := owner.beginServiceTransportExchange(caller, job, broker.Connection)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -112,7 +112,7 @@ func TestTextJoinOldAcquisitionCannotAttachAfterSourceReplacement(t *testing.T) 
 	owner.mu.Unlock()
 
 	joined := &client.ClosedJoinedStream{}
-	if owner.retainTextJoinedTransport(job, attempt, flight, acquisition, joined) {
+	if owner.retainJoinedTransport(job, attempt, flight, acquisition, joined) {
 		t.Fatal("late old JOIN acquisition attached after Source replacement")
 	}
 	attached := job.qualification.Retains(joined)
@@ -140,7 +140,7 @@ func TestTextJoinSourceReplacementBeforeStockIssuanceDoesNotReserveAllocation(t 
 	prepareIssuancePermission(t, owner, source)
 	node := source.view.Nodes[4]
 	deadline := time.Now().Add(time.Minute)
-	acquisition := &textJoinRetiredAfterRecipient{node: node.NodeID, generation: node.DutyGeneration,
+	acquisition := &joinRetiredAfterRecipient{node: node.NodeID, generation: node.DutyGeneration,
 		deadline: deadline.Add(time.Minute), current: true}
 	attempt := &introductionAttempt{plaintext: introductioncapsule.Plaintext{
 		RendezvousNode: node.NodeID, RendezvousDutyGeneration: node.DutyGeneration, Deadline: deadline,
@@ -148,7 +148,7 @@ func TestTextJoinSourceReplacementBeforeStockIssuanceDoesNotReserveAllocation(t 
 	owner.mu.Lock()
 	reserved := owner.tokens.permission.reserved
 	owner.mu.Unlock()
-	if err := owner.prepareTextJoinStock(t.Context(), attempt, acquisition); err == nil {
+	if err := owner.prepareJoinStock(t.Context(), attempt, acquisition); err == nil {
 		t.Fatal("retired JOIN acquisition prepared stock")
 	}
 	owner.mu.Lock()

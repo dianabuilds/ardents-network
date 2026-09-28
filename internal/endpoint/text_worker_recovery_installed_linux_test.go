@@ -94,7 +94,7 @@ func exerciseInstalledTextWorkerRecovery(t *testing.T, ctx context.Context, carr
 	defer clear(prepared.operation)
 
 	type publisherOpening struct {
-		recovery *observedTextServiceOpener
+		recovery *observedServiceOpener
 		digest   [32]byte
 		err      error
 	}
@@ -114,13 +114,13 @@ func exerciseInstalledTextWorkerRecovery(t *testing.T, ctx context.Context, carr
 				opened <- publisherOpening{err: err}
 				return err
 			}
-			raw, err := publisher.openTextJoinedTransport(lifetime, publisherWorker.job, accepted)
+			raw, err := publisher.openJoinedTransport(lifetime, publisherWorker.job, accepted)
 			if err != nil {
 				opened <- publisherOpening{err: err}
 				return err
 			}
-			recovery := &observedTextServiceOpener{open: publisher.textServiceRouteRecoveryOpener(publisherWorker.job, accepted.binding)}
-			stream, err := accepted.binding.openTextServiceStreamWithRecovery(lifetime, raw, accepted.digest, recovery.openObserved)
+			recovery := &observedServiceOpener{open: publisher.serviceRouteRecoveryOpener(publisherWorker.job, accepted.binding)}
+			stream, err := accepted.binding.openServiceStreamWithRecovery(lifetime, raw, accepted.digest, recovery.openObserved)
 			if err != nil {
 				opened <- publisherOpening{err: err}
 				return err
@@ -145,14 +145,14 @@ func exerciseInstalledTextWorkerRecovery(t *testing.T, ctx context.Context, carr
 		})
 	}()
 
-	readerRaw, err := reader.openTextJoinedTransport(readerLifetime, readerWorker.job, prepared)
+	readerRaw, err := reader.openJoinedTransport(readerLifetime, readerWorker.job, prepared)
 	if err != nil {
 		release()
 		cancel()
 		t.Fatalf("initial reader Route: %v; Publisher: %v", err, <-publisherDone)
 	}
-	clientRecovery := &observedTextServiceOpener{open: reader.textServiceRouteRecoveryOpener(readerWorker.job, prepared.binding)}
-	clientStream, err := prepared.binding.openTextServiceStreamWithRecovery(readerLifetime, readerRaw, prepared.digest, clientRecovery.openObserved)
+	clientRecovery := &observedServiceOpener{open: reader.serviceRouteRecoveryOpener(readerWorker.job, prepared.binding)}
+	clientStream, err := prepared.binding.openServiceStreamWithRecovery(readerLifetime, readerRaw, prepared.digest, clientRecovery.openObserved)
 	remote := <-opened
 	if err != nil || remote.err != nil {
 		release()
@@ -207,7 +207,7 @@ func (stream *installedRecoveryStream) Read(body []byte) (int, error) {
 }
 
 func assertInstalledRecoveryRoute(t *testing.T, initialClient, initialPublisher [32]byte,
-	client, publisher *observedTextServiceOpener) {
+	client, publisher *observedServiceOpener) {
 	t.Helper()
 	clientAttempts, clientDigests, clientErr := client.observation()
 	publisherAttempts, publisherDigests, publisherErr := publisher.observation()

@@ -24,7 +24,7 @@ var textWorkerLaunchGate = make(chan struct{}, 1)
 // No caller supplies a worker identity, artifact digest, isolation flag, socket,
 // executable, Principal or Grant. All of those observations are obtained here.
 func (owner *textContext) launchTextWorker(ctx context.Context, snapshot []byte) (*qualifiedTextWorker, error) {
-	workload, err := textDocumentServiceWorkloadBounds()
+	workload, err := documentServiceWorkloadBounds()
 	if err != nil {
 		return nil, err
 	}
@@ -47,7 +47,7 @@ func (owner *textContext) launchStreamQualificationWorker(ctx context.Context, r
 }
 
 func (owner *textContext) launchInstalledWorker(ctx context.Context, snapshot []byte, run *qualification.Run,
-	workload textServiceWorkloadBounds) (*qualifiedTextWorker, error) {
+	workload serviceWorkloadBounds) (*qualifiedTextWorker, error) {
 	if owner == nil || ctx == nil || ctx.Err() != nil {
 		return nil, errors.New("text worker launch is unavailable")
 	}

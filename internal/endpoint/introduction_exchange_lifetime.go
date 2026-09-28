@@ -21,7 +21,7 @@ type introductionExchange struct {
 // joins these exchanges even when the worker's own cleanup has already ended.
 func (owner *textContext) beginIntroductionExchange(caller context.Context, job *textJobIdentity, surface broker.Surface) (context.Context, func(error) error, error) {
 	owner.mu.Lock()
-	if caller == nil || caller.Err() != nil || !owner.liveTextServiceJobLocked(job, surface) || owner.introduction.exchanges.fullLocked(owner.streamExchangeLimitLocked()) {
+	if caller == nil || caller.Err() != nil || !owner.liveServiceJobLocked(job, surface) || owner.introduction.exchanges.fullLocked(owner.streamExchangeLimitLocked()) {
 		owner.mu.Unlock()
 		return nil, nil, errors.New("text Introduction exchange owner unavailable")
 	}
@@ -45,13 +45,13 @@ func (owner *textContext) beginIntroductionExchange(caller context.Context, job 
 	}, nil
 }
 
-// beginTextServiceTransportExchange gives an accepted JOIN a cleanup lifetime
+// beginServiceTransportExchange gives an accepted JOIN a cleanup lifetime
 // distinct from job authorization. The caller still cancels setup; after
 // detach and retain, job loss stops Service work while the transport remains
 // alive only long enough for its owner to send terminal control and join it.
-func (owner *textContext) beginTextServiceTransportExchange(caller context.Context, job *textJobIdentity, surface broker.Surface) (context.Context, *introductionExchange, func() bool, func(error) error, error) {
+func (owner *textContext) beginServiceTransportExchange(caller context.Context, job *textJobIdentity, surface broker.Surface) (context.Context, *introductionExchange, func() bool, func(error) error, error) {
 	owner.mu.Lock()
-	if caller == nil || caller.Err() != nil || !owner.liveTextServiceJobLocked(job, surface) || owner.introduction.exchanges.fullLocked(owner.streamExchangeLimitLocked()) {
+	if caller == nil || caller.Err() != nil || !owner.liveServiceJobLocked(job, surface) || owner.introduction.exchanges.fullLocked(owner.streamExchangeLimitLocked()) {
 		owner.mu.Unlock()
 		return nil, nil, nil, nil, errors.New("text Introduction exchange owner unavailable")
 	}
@@ -84,8 +84,8 @@ func (owner *textContext) beginTextServiceTransportExchange(caller context.Conte
 	return lifetime, flight, detach, finish, nil
 }
 
-func (owner *textContext) retainTextServiceTransportExchangeLocked(job *textJobIdentity, flight *introductionExchange) bool {
-	if flight == nil || owner.closed || !owner.liveTextServiceJobLocked(job, owner.surface) {
+func (owner *textContext) retainServiceTransportExchangeLocked(job *textJobIdentity, flight *introductionExchange) bool {
+	if flight == nil || owner.closed || !owner.liveServiceJobLocked(job, owner.surface) {
 		return false
 	}
 	return owner.introduction.exchanges.retainLocked(flight)

@@ -12,16 +12,16 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/route/client"
 )
 
-func (owner *textContext) retainTextServiceTransportExchange(job *textJobIdentity, flight *introductionExchange) bool {
+func (owner *textContext) retainServiceTransportExchange(job *textJobIdentity, flight *introductionExchange) bool {
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
-	return owner.retainTextServiceTransportExchangeLocked(job, flight)
+	return owner.retainServiceTransportExchangeLocked(job, flight)
 }
 
 func TestTextIntroductionExchangeCloseJoinsAndRetainsCleanupFailure(t *testing.T) {
 	endpoint, principal := textContextEndpoint(t)
 	owner := admittedTextContext(t, endpoint, principal, broker.Connection)
-	job := liveTextCapsuleJob(t, owner)
+	job := liveCapsuleJob(t, owner)
 	lifetime, finish, err := owner.beginIntroductionExchange(t.Context(), job, broker.Connection)
 	if err != nil {
 		t.Fatal(err)
@@ -77,8 +77,8 @@ func TestTextIntroductionExchangeCloseJoinsAndRetainsCleanupFailure(t *testing.T
 func TestTextServiceTransportExchangeRetainsCleanupAfterJobLoss(t *testing.T) {
 	endpoint, principal := textContextEndpoint(t)
 	owner := admittedTextContext(t, endpoint, principal, broker.Connection)
-	job := liveTextCapsuleJob(t, owner)
-	lifetime, flight, detach, finish, err := owner.beginTextServiceTransportExchange(t.Context(), job, broker.Connection)
+	job := liveCapsuleJob(t, owner)
+	lifetime, flight, detach, finish, err := owner.beginServiceTransportExchange(t.Context(), job, broker.Connection)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -88,7 +88,7 @@ func TestTextServiceTransportExchangeRetainsCleanupAfterJobLoss(t *testing.T) {
 			finish(nil)
 		}
 	}()
-	if !detach() || !owner.retainTextServiceTransportExchange(job, flight) {
+	if !detach() || !owner.retainServiceTransportExchange(job, flight) {
 		t.Fatal("accepted transport did not transfer its cleanup lifetime")
 	}
 	closed := make(chan error, 1)
@@ -136,13 +136,13 @@ func TestTextServiceTransportExchangeRetainsCleanupAfterJobLoss(t *testing.T) {
 func TestTextServiceTransportExchangeIgnoresDetachedCallerCancellation(t *testing.T) {
 	endpoint, principal := textContextEndpoint(t)
 	owner := admittedTextContext(t, endpoint, principal, broker.Connection)
-	job := liveTextCapsuleJob(t, owner)
+	job := liveCapsuleJob(t, owner)
 	caller, cancel := context.WithCancel(t.Context())
-	lifetime, flight, detach, finish, err := owner.beginTextServiceTransportExchange(caller, job, broker.Connection)
+	lifetime, flight, detach, finish, err := owner.beginServiceTransportExchange(caller, job, broker.Connection)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !detach() || !owner.retainTextServiceTransportExchange(job, flight) {
+	if !detach() || !owner.retainServiceTransportExchange(job, flight) {
 		t.Fatal("accepted transport did not transfer its cleanup lifetime")
 	}
 	cancel()

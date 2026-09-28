@@ -29,7 +29,7 @@ func TestTextIntroductionPreparationRetirementInterruptsBootstrap(t *testing.T) 
 		source.snapshot.Candidates[index].Endpoint = listener.Addr().String()
 	}
 	source.mu.Unlock()
-	job := liveTextCapsuleJob(t, owner)
+	job := liveCapsuleJob(t, owner)
 	caller, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	result := make(chan error, 1)

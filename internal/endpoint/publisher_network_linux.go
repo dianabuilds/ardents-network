@@ -64,7 +64,7 @@ func (worker *qualifiedTextWorker) produceNetworkSequential(lifetime context.Con
 		if err != nil {
 			return err
 		}
-		stream, err := owner.openTextJoinedService(network, worker.job, attempt)
+		stream, err := owner.openJoinedService(network, worker.job, attempt)
 		if err != nil {
 			return err
 		}
@@ -123,7 +123,7 @@ func (worker *qualifiedTextWorker) produceQualificationNetwork(lifetime context.
 	// sequential producer registers its matching owner and be refused.
 	slots := make(chan struct{}, connectionLimit)
 	type openingResult struct {
-		stream *textServiceStream
+		stream *serviceStream
 		err    error
 	}
 	opened := make(chan openingResult, qualificationPublisherOpeningParallelism)
@@ -149,7 +149,7 @@ func (worker *qualifiedTextWorker) produceQualificationNetwork(lifetime context.
 				opened <- openingResult{err: err}
 				return
 			}
-			stream, err := owner.openTextJoinedService(network, worker.job, attempt)
+			stream, err := owner.openJoinedService(network, worker.job, attempt)
 			opened <- openingResult{stream: stream, err: err}
 		}()
 		return true
@@ -225,7 +225,7 @@ func (worker *qualifiedTextWorker) produceQualificationNetwork(lifetime context.
 			select {
 			case delivered <- result.stream:
 				retired.Add(1)
-				go func(stream *textServiceStream) {
+				go func(stream *serviceStream) {
 					defer retired.Done()
 					<-stream.finished
 					<-slots

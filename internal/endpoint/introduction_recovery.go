@@ -12,7 +12,7 @@ import (
 // before the native Connection detects the failed Carrier. All slot transitions
 // run under textContext.mu; completion and timer joins run after unlocking.
 type introductionRecoveryOwner struct {
-	binding    *textServiceBinding
+	binding    *serviceBinding
 	generation uint64
 	delivery   chan introductionRoutedDelivery
 	expiryStop context.CancelFunc
@@ -22,7 +22,7 @@ type introductionRecoveryOwner struct {
 // admitGenerationLocked advances only the next generation of this exact
 // binding. A stale or speculative later waiter cannot change which capsule
 // the recovery slot may retain.
-func (recovery *introductionRecoveryOwner) admitGenerationLocked(binding *textServiceBinding,
+func (recovery *introductionRecoveryOwner) admitGenerationLocked(binding *serviceBinding,
 	generation uint64) bool {
 	if recovery == nil || recovery.binding != binding || generation < recovery.generation ||
 		generation > recovery.generation+1 {

@@ -34,17 +34,17 @@ func TestTextDataJoinIsolatedRoleObservations(t *testing.T) {
 		if carrier != routecarrier.ClosedCarrierTCP && carrier != routecarrier.ClosedCarrierQUIC {
 			t.Fatal("unknown data role-observation Carrier")
 		}
-		runTextDataJoinIsolatedRoleObservation(t, carrier)
+		runDataJoinIsolatedRoleObservation(t, carrier)
 		return
 	}
 	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP, routecarrier.ClosedCarrierQUIC} {
 		t.Run(string(carrier), func(t *testing.T) {
-			runTextDataJoinIsolatedRoleObservationProcess(t, carrier)
+			runDataJoinIsolatedRoleObservationProcess(t, carrier)
 		})
 	}
 }
 
-func runTextDataJoinIsolatedRoleObservationProcess(t *testing.T, carrier routecarrier.CarrierProfile) {
+func runDataJoinIsolatedRoleObservationProcess(t *testing.T, carrier routecarrier.CarrierProfile) {
 	t.Helper()
 	// The child has a 110-second test timeout. Select the two-minute Permission
 	// window before starting it so its bounded carrier episode cannot spend its
@@ -67,7 +67,7 @@ func runTextDataJoinIsolatedRoleObservationProcess(t *testing.T, carrier routeca
 	}
 }
 
-func runTextDataJoinIsolatedRoleObservation(t *testing.T, carrier routecarrier.CarrierProfile) {
+func runDataJoinIsolatedRoleObservation(t *testing.T, carrier routecarrier.CarrierProfile) {
 	output := t.TempDir()
 	if root := os.Getenv("ARDENTS_TEXT_DATA_ROLE_OBSERVATIONS"); root != "" {
 		var err error

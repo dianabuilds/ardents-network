@@ -48,7 +48,7 @@ func (owner *textContext) issueTokensWithCancellation(ctx context.Context, recei
 // issueJoinTokens retains issuance authority on the exact Source acquired
 // by the JOIN. A replacement may cancel this work but cannot become its issuer.
 func (owner *textContext) issueJoinTokens(ctx context.Context, receivers [][32]byte, class uint8,
-	acquisition textJoinAcquisition, discardCanceled bool) error {
+	acquisition joinAcquisition, discardCanceled bool) error {
 	release, err := owner.acquireSourceOperation(ctx)
 	if err != nil {
 		return err
@@ -78,7 +78,7 @@ func (owner *textContext) issueTokensForOpening(ctx context.Context, receivers [
 }
 
 func (owner *textContext) issueTokensForOpeningWithCancellation(ctx context.Context, receivers [][32]byte, class uint8,
-	opening *textOperationFlight, refill bool, discardCanceled bool, acquisition textJoinAcquisition,
+	opening *textOperationFlight, refill bool, discardCanceled bool, acquisition joinAcquisition,
 	expected *sourceHandle) error {
 	if owner == nil || ctx == nil || ctx.Err() != nil || class < 1 || class > 3 || len(receivers) == 0 || len(receivers) > 32 {
 		return errors.New("text issuance context is unavailable")
@@ -148,7 +148,7 @@ func (owner *textContext) issueTokensForOpeningWithCancellation(ctx context.Cont
 	return operation.run(ctx, source, selection)
 }
 
-func joinIssuanceCurrentLocked(owner *textContext, acquisition textJoinAcquisition, expected *sourceHandle) bool {
+func joinIssuanceCurrentLocked(owner *textContext, acquisition joinAcquisition, expected *sourceHandle) bool {
 	if acquisition == nil {
 		return true
 	}

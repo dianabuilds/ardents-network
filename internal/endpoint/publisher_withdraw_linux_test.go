@@ -20,15 +20,15 @@ func TestTextPublisherWithdrawalDrainsAdmittedRead(t *testing.T) {
 		t.Run(string(carrier), func(t *testing.T) {
 			readerOwner, publisherOwner := textUnpublishedNetworkFixture(t, carrier)
 			body := []byte("an admitted read survives publication withdrawal")
-			publisherJob := liveTextCapsuleJob(t, publisherOwner)
-			publisher := textServiceWorkerFixture(t, &textServiceBinding{owner: publisherOwner, job: publisherJob}, body)
+			publisherJob := liveCapsuleJob(t, publisherOwner)
+			publisher := serviceWorkerFixture(t, &serviceBinding{owner: publisherOwner, job: publisherJob}, body)
 			run, err := publisher.startPublication(t.Context())
 			if err != nil {
 				t.Fatal(err)
 			}
 			t.Cleanup(func() { _ = run.Close() })
-			readerJob := liveTextCapsuleJob(t, readerOwner)
-			reader := textServiceWorkerFixture(t, &textServiceBinding{owner: readerOwner, job: readerJob}, nil)
+			readerJob := liveCapsuleJob(t, readerOwner)
+			reader := serviceWorkerFixture(t, &serviceBinding{owner: readerOwner, job: readerJob}, nil)
 			bounded, finish, err := reader.beginOperation(t.Context(), broker.Connection)
 			if err != nil {
 				t.Fatal(err)
@@ -39,7 +39,7 @@ func TestTextPublisherWithdrawalDrainsAdmittedRead(t *testing.T) {
 				finish()
 				t.Fatal(err)
 			}
-			stream, err := readerOwner.openTextJoinedService(bounded, readerJob, attempt)
+			stream, err := readerOwner.openJoinedService(bounded, readerJob, attempt)
 			if err != nil {
 				finish()
 				t.Fatal(err)
@@ -72,15 +72,15 @@ func TestTextPublisherWithdrawalBoundsStalledRead(t *testing.T) {
 		t.Run(string(carrier), func(t *testing.T) {
 			readerOwner, publisherOwner := textUnpublishedNetworkFixture(t, carrier)
 			body := []byte("an admitted read survives publication withdrawal")
-			publisherJob := liveTextCapsuleJob(t, publisherOwner)
-			publisher := textServiceWorkerFixture(t, &textServiceBinding{owner: publisherOwner, job: publisherJob}, body)
+			publisherJob := liveCapsuleJob(t, publisherOwner)
+			publisher := serviceWorkerFixture(t, &serviceBinding{owner: publisherOwner, job: publisherJob}, body)
 			run, err := publisher.startPublication(t.Context())
 			if err != nil {
 				t.Fatal(err)
 			}
 			t.Cleanup(func() { _ = run.Close() })
-			readerJob := liveTextCapsuleJob(t, readerOwner)
-			reader := textServiceWorkerFixture(t, &textServiceBinding{owner: readerOwner, job: readerJob}, nil)
+			readerJob := liveCapsuleJob(t, readerOwner)
+			reader := serviceWorkerFixture(t, &serviceBinding{owner: readerOwner, job: readerJob}, nil)
 			bounded, finish, err := reader.beginOperation(t.Context(), broker.Connection)
 			if err != nil {
 				t.Fatal(err)
@@ -91,7 +91,7 @@ func TestTextPublisherWithdrawalBoundsStalledRead(t *testing.T) {
 				finish()
 				t.Fatal(err)
 			}
-			stream, err := readerOwner.openTextJoinedService(bounded, readerJob, attempt)
+			stream, err := readerOwner.openJoinedService(bounded, readerJob, attempt)
 			if err != nil {
 				finish()
 				t.Fatal(err)

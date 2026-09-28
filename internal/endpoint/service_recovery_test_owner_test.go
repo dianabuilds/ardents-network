@@ -13,24 +13,24 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/route/client"
 )
 
-// textServiceRecoveryTestOwner gives every recovery-test worker and transport
+// serviceRecoveryTestOwner gives every recovery-test worker and transport
 // one cancellation, close, join and residue-check owner, including t.Fatal
 // paths that leave the main test before the normal protocol shutdown.
-type textServiceRecoveryTestOwner struct {
+type serviceRecoveryTestOwner struct {
 	t           *testing.T
 	cancel      context.CancelFunc
 	mu          sync.Mutex
 	connections []net.Conn
-	streams     []*textServiceStream
+	streams     []*serviceStream
 	contexts    []*textContext
 	workers     sync.WaitGroup
 }
 
-func newTextServiceRecoveryTestOwner(t *testing.T, cancel context.CancelFunc, connections ...net.Conn) *textServiceRecoveryTestOwner {
-	return &textServiceRecoveryTestOwner{t: t, cancel: cancel, connections: append([]net.Conn(nil), connections...)}
+func newServiceRecoveryTestOwner(t *testing.T, cancel context.CancelFunc, connections ...net.Conn) *serviceRecoveryTestOwner {
+	return &serviceRecoveryTestOwner{t: t, cancel: cancel, connections: append([]net.Conn(nil), connections...)}
 }
 
-func (owner *textServiceRecoveryTestOwner) retainConnection(connection net.Conn) {
+func (owner *serviceRecoveryTestOwner) retainConnection(connection net.Conn) {
 	if connection == nil {
 		return
 	}
@@ -39,7 +39,7 @@ func (owner *textServiceRecoveryTestOwner) retainConnection(connection net.Conn)
 	owner.mu.Unlock()
 }
 
-func (owner *textServiceRecoveryTestOwner) retainStream(stream *textServiceStream) {
+func (owner *serviceRecoveryTestOwner) retainStream(stream *serviceStream) {
 	if stream == nil {
 		return
 	}
@@ -48,7 +48,7 @@ func (owner *textServiceRecoveryTestOwner) retainStream(stream *textServiceStrea
 	owner.mu.Unlock()
 }
 
-func (owner *textServiceRecoveryTestOwner) retainContext(text *textContext) {
+func (owner *serviceRecoveryTestOwner) retainContext(text *textContext) {
 	if text == nil {
 		return
 	}
@@ -57,15 +57,15 @@ func (owner *textServiceRecoveryTestOwner) retainContext(text *textContext) {
 	owner.mu.Unlock()
 }
 
-func (owner *textServiceRecoveryTestOwner) Go(run func()) {
+func (owner *serviceRecoveryTestOwner) Go(run func()) {
 	owner.workers.Go(run)
 }
 
-func (owner *textServiceRecoveryTestOwner) Close() {
+func (owner *serviceRecoveryTestOwner) Close() {
 	owner.cancel()
 	owner.mu.Lock()
 	connections := append([]net.Conn(nil), owner.connections...)
-	streams := append([]*textServiceStream(nil), owner.streams...)
+	streams := append([]*serviceStream(nil), owner.streams...)
 	contexts := append([]*textContext(nil), owner.contexts...)
 	owner.mu.Unlock()
 	for _, connection := range connections {
@@ -80,7 +80,7 @@ func (owner *textServiceRecoveryTestOwner) Close() {
 	}
 	owner.workers.Wait()
 	owner.mu.Lock()
-	lateStreams := append([]*textServiceStream(nil), owner.streams[len(streams):]...)
+	lateStreams := append([]*serviceStream(nil), owner.streams[len(streams):]...)
 	owner.mu.Unlock()
 	for _, stream := range lateStreams {
 		if err := stream.Close(); err != nil && !textReadCancellationOnly(err) {
