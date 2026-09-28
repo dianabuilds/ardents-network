@@ -36,13 +36,13 @@ func (owner *administration) PublishedLink(ctx context.Context) (link string, ou
 	current.mu.Lock()
 	defer current.mu.Unlock()
 	_, now, err := current.permissionProfileLocked()
-	registration := current.publication.pair.currentLocked()
+	registration := current.publication.pair.CurrentLocked()
 	if err != nil || endpoint.publisherOwner != current || !current.liveServiceJobLocked(current.job, broker.Administration) ||
-		current.publication.starting || current.publication.pair.drainingLocked() || registration == nil || !registration.linkVisibleAtLocked(now) ||
+		current.publication.starting || current.publication.pair.DrainingLocked() || registration == nil || !registration.LinkVisibleAtLocked(now) ||
 		endpoint.publications == nil || run.link.Network != endpoint.network || run.link.Target == [32]byte{} || ctx.Err() != nil {
 		return "", errors.New("text publication Link unavailable")
 	}
-	if registration.ended() {
+	if registration.Ended() {
 		return "", errors.New("text publication Link unavailable")
 	}
 	lease, err := endpoint.publications.AcquireAt(ctx, now)

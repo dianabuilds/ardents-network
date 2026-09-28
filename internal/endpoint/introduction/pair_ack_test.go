@@ -1,6 +1,6 @@
 //go:build linux
 
-package endpoint
+package introduction
 
 import (
 	"context"
@@ -10,32 +10,25 @@ import (
 )
 
 func TestTextPublicationPairCancelledAcknowledgementKeepsCleanupOwnerWithoutCurrentCommit(t *testing.T) {
-	registered := &introductionRegistration{}
-	pair := publicationPairLifecycle{pendingRegistration: registered}
-	endpoint := &endpoint{}
-	owner := &dutyContext{}
-	endpoint.publisherOwner = owner
-	endpoint.publicationLive = true
+	registered := &Registration{}
+	pair := PairLifecycle{pendingRegistration: registered}
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
-	if err := pair.commitAcknowledgedLocked(ctx, registered, time.Now().UTC()); !errors.Is(err, context.Canceled) {
+	if err := pair.CommitAcknowledgedLocked(ctx, registered, time.Now().UTC()); !errors.Is(err, context.Canceled) {
 		t.Fatalf("cancelled local commit = %v", err)
 	}
 	if registered.published || pair.pendingRegistration != registered || pair.registration != nil || pair.previousRegistration != nil {
 		t.Fatal("cancelled acknowledgement exposed a partial current pair")
 	}
-	if endpoint.publisherOwner != owner || !endpoint.publicationLive {
-		t.Fatal("cancelled acknowledgement lost durable publication cleanup owner")
-	}
 }
 
 func TestTextPublicationPairDrainRejectsLateAcknowledgement(t *testing.T) {
-	registered := &introductionRegistration{}
-	pair := publicationPairLifecycle{pendingRegistration: registered}
-	if !pair.beginDrainLocked() {
+	registered := &Registration{}
+	pair := PairLifecycle{pendingRegistration: registered}
+	if !pair.BeginDrainLocked() {
 		t.Fatal("pair refused its first drain transition")
 	}
-	if err := pair.commitAcknowledgedLocked(t.Context(), registered, time.Now().UTC()); err == nil {
+	if err := pair.CommitAcknowledgedLocked(t.Context(), registered, time.Now().UTC()); err == nil {
 		t.Fatal("late acknowledgement revived draining publication")
 	}
 	if registered.published || pair.pendingRegistration != registered || pair.registration != nil {

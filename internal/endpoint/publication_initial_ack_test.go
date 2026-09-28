@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/endpoint/introduction"
 	routecarrier "github.com/dianabuilds/ardents-network/internal/route/carrier"
 )
 
@@ -36,15 +37,15 @@ func TestTextInitialPublicationLossBeforeAcknowledgement(t *testing.T) {
 						t.Fatal("initial Descriptor did not reach pre-ACK barrier")
 					}
 					owner.mu.Lock()
-					recipient := registered.recipient
-					premature := registered.published || !registered.publishedAt.IsZero() || owner.publication.refresh.Current() != nil
+					recipient := introduction.Recipient(registered)
+					premature := registered.PublishedLocked() || !introduction.PublishedAt(registered).IsZero() || owner.publication.refresh.Current() != nil
 					owner.mu.Unlock()
 					if premature || recipient == nil || recipient.Public(time.Now()) == [32]byte{} {
 						t.Fatal("expected live initial recipient without acknowledged readiness or refresh")
 					}
 					switch failure {
 					case "registration channel":
-						if err := registered.close(); err != nil {
+						if err := registered.Close(); err != nil {
 							t.Fatal(err)
 						}
 					case "context revoke":
@@ -59,7 +60,7 @@ func TestTextInitialPublicationLossBeforeAcknowledgement(t *testing.T) {
 					}
 					if failure == "none" {
 						owner.mu.Lock()
-						ready := registered.published && !registered.publishedAt.IsZero() && owner.publication.refresh.Current() != nil
+						ready := registered.PublishedLocked() && !introduction.PublishedAt(registered).IsZero() && owner.publication.refresh.Current() != nil
 						owner.mu.Unlock()
 						if outcome != nil || !ready {
 							t.Fatalf("positive control did not become ready: %v", outcome)
@@ -69,7 +70,7 @@ func TestTextInitialPublicationLossBeforeAcknowledgement(t *testing.T) {
 							t.Fatal("lost initial registration accepted delayed ACK")
 						}
 						owner.mu.Lock()
-						revived := registered.published || !registered.publishedAt.IsZero() || owner.publication.refresh.Current() != nil
+						revived := registered.PublishedLocked() || !introduction.PublishedAt(registered).IsZero() || owner.publication.refresh.Current() != nil
 						owner.mu.Unlock()
 						if revived {
 							t.Fatal("delayed initial ACK revived accepting readiness")

@@ -10,6 +10,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/dianabuilds/ardents-network/internal/endpoint/introduction"
 	"github.com/dianabuilds/ardents-network/internal/route/client"
 )
 
@@ -89,7 +90,7 @@ func (owner *serviceRecoveryTestOwner) Close() {
 	}
 	for _, text := range contexts {
 		text.mu.Lock()
-		pending := len(text.introduction.exchanges.active)
+		pending := introduction.ActiveExchangeCount(&text.introduction.exchanges)
 		text.mu.Unlock()
 		if pending != 0 {
 			owner.t.Errorf("recovery test retained %d Introduction exchanges", pending)

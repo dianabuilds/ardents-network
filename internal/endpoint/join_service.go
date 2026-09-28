@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
+	"github.com/dianabuilds/ardents-network/internal/endpoint/introduction"
 	"github.com/dianabuilds/ardents-network/internal/endpoint/source"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	"github.com/dianabuilds/ardents-network/internal/route/client"
@@ -304,7 +305,7 @@ func (owner *dutyContext) joinIntroduction(ctx context.Context, job *jobIdentity
 }
 
 func (owner *dutyContext) retainJoinedTransport(job *jobIdentity, attempt *introductionAttempt,
-	flight *introductionExchange, acquisition joinAcquisition, joined *client.ClosedJoinedStream) bool {
+	flight *introduction.Exchange, acquisition joinAcquisition, joined *client.ClosedJoinedStream) bool {
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
 	if attempt == nil || !attempt.binding.servesJob(owner, job) ||

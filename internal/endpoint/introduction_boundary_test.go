@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/endpoint/introduction"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
@@ -47,7 +48,7 @@ func checkCapsuleAdmissionBoundaries(t *testing.T, publisher, reader *dutyContex
 			defer func() { endpoint.clock, endpoint.closedState = clock, source }()
 			plaintext := original.plaintext
 			plaintext.Deadline = clock().Add(10 * time.Second).UTC().Truncate(time.Second)
-			capsule := introductioncapsule.Capsule{Slot: publisher.publication.pair.registration.request.Slot, Revision: plaintext.Revision,
+			capsule := introductioncapsule.Capsule{Slot: introduction.Slot(publisher.publication.pair.CurrentLocked()), Revision: plaintext.Revision,
 				Expiry: plaintext.Deadline, DeliveryNonce: fixtureID(byte(140 + index))}
 			sealed, _, err := introductioncapsule.Seal(capsule, recipient, plaintext)
 			if err != nil {
@@ -58,7 +59,7 @@ func checkCapsuleAdmissionBoundaries(t *testing.T, publisher, reader *dutyContex
 				t.Fatal(err)
 			}
 			// Each case isolates admission from the separately tested rate limiter.
-			publisher.introduction.admission.openings = [4]time.Time{}
+			introduction.ClearOpeningWindow(&publisher.introduction.admission)
 			if index < 3 {
 				source.mu.Lock()
 				rendezvous := -1
@@ -108,7 +109,7 @@ func checkCapsuleAdmissionBoundaries(t *testing.T, publisher, reader *dutyContex
 			if err == nil || accepted != nil || strings.Contains(err.Error(), "rate unavailable") {
 				t.Errorf("invalid final admission accepted: %v", err)
 			}
-			if _, retained := publisher.introduction.admission.replays[capsule.DeliveryNonce]; retained {
+			if _, retained := introduction.RetainedReplay(&publisher.introduction.admission, capsule.DeliveryNonce); retained {
 				t.Error("failed admission retained a successful delivery")
 			}
 		})

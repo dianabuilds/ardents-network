@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
+	"github.com/dianabuilds/ardents-network/internal/endpoint/introduction"
 	"github.com/dianabuilds/ardents-network/internal/endpoint/publication"
 	"github.com/dianabuilds/ardents-network/internal/network/duty"
 	routecarrier "github.com/dianabuilds/ardents-network/internal/route/carrier"
@@ -39,7 +40,7 @@ func TestTextPublicationRefreshRetriesConcurrentRoleCommit(t *testing.T) {
 		t.Fatal(err)
 	}
 	owner.mu.Lock()
-	first.refreshAt = time.Now().Add(-time.Second)
+	introduction.ForceRefreshAt(first, time.Now().Add(-time.Second))
 	owner.publication.signalRegistrationsLocked()
 	owner.mu.Unlock()
 	timer := time.NewTimer(1200 * time.Millisecond)
@@ -54,7 +55,9 @@ func TestTextPublicationRefreshRetriesConcurrentRoleCommit(t *testing.T) {
 		t.Fatal(err)
 	}
 	waitRefreshCondition(t, owner, func() bool {
-		return owner.publication.pair.registration != nil && owner.publication.pair.registration != first && owner.publication.pair.previousRegistration == first
+		current := owner.publication.pair.CurrentLocked()
+		previous, _ := owner.publication.pair.PreviousLocked()
+		return current != nil && current != first && previous == first
 	})
 }
 
@@ -89,7 +92,7 @@ func TestTextPublicationAutomaticallyRefreshesAndRetiresPredecessor(t *testing.T
 			now := time.Now().UTC().Truncate(time.Second)
 			// Age the actual slot before publication. A late first ACK must not
 			// restart the original 300-second age from the acknowledgement.
-			timer := time.NewTimer(time.Until(first.createdAt.Add(2 * time.Second)))
+			timer := time.NewTimer(time.Until(introduction.CreatedAt(first).Add(2 * time.Second)))
 			select {
 			case <-timer.C:
 			case <-t.Context().Done():
@@ -101,9 +104,10 @@ func TestTextPublicationAutomaticallyRefreshesAndRetiresPredecessor(t *testing.T
 				t.Fatal(err)
 			}
 			owner.mu.Lock()
-			refresh, originalAt, originalExpiry := owner.publication.refresh.Current(), first.refreshAt, first.request.Expiry
+			originalAt, originalExpiry := first.RefreshScheduleLocked()
+			refresh := owner.publication.refresh.Current()
 			owner.mu.Unlock()
-			if refresh == nil || originalAt != first.createdAt.Add(300*time.Second) || time.Until(originalAt) > 298*time.Second {
+			if refresh == nil || originalAt != introduction.CreatedAt(first).Add(300*time.Second) || time.Until(originalAt) > 298*time.Second {
 				t.Fatal("verified publication did not schedule its bounded refresh")
 			}
 			owner.mu.Lock()
@@ -112,7 +116,8 @@ func TestTextPublicationAutomaticallyRefreshesAndRetiresPredecessor(t *testing.T
 				owner.publication.signalRegistrationsLocked()
 			}
 			sameScheduler := owner.publication.refresh.Current() == refresh
-			unchangedBounds := first.refreshAt == originalAt && first.request.Expiry == originalExpiry
+			boundsAt, boundsExpiry := first.RefreshScheduleLocked()
+			unchangedBounds := boundsAt == originalAt && boundsExpiry == originalExpiry
 			owner.mu.Unlock()
 			if !sameScheduler || !unchangedBounds {
 				t.Fatal("repeated ACK wake replaced scheduler or moved refresh bounds")
@@ -121,7 +126,8 @@ func TestTextPublicationAutomaticallyRefreshesAndRetiresPredecessor(t *testing.T
 				t.Fatal(err)
 			}
 			owner.mu.Lock()
-			unchanged := first.refreshAt == originalAt
+			retryAt, _ := first.RefreshScheduleLocked()
+			unchanged := retryAt == originalAt
 			owner.mu.Unlock()
 			if !unchanged {
 				t.Fatal("exact retry extended refresh deadline")
@@ -156,7 +162,7 @@ func TestTextPublicationAutomaticallyRefreshesAndRetiresPredecessor(t *testing.T
 			}
 			gate.arm(t)
 			owner.mu.Lock()
-			first.refreshAt = time.Now().Add(-time.Second)
+			introduction.ForceRefreshAt(first, time.Now().Add(-time.Second))
 			owner.publication.signalRegistrationsLocked()
 			owner.mu.Unlock()
 			select {
@@ -177,38 +183,44 @@ func TestTextPublicationAutomaticallyRefreshesAndRetiresPredecessor(t *testing.T
 			pendingOperation := refuseBeforeDescriptorACK(t, gate, owner, publisherJob, oldAttempt)
 			switchEarliest := time.Now().UTC().Truncate(time.Second)
 			gate.open()
-			var second *introductionRegistration
+			var second *introduction.Registration
 			waitRefreshCondition(t, owner, func() bool {
-				second = owner.publication.pair.registration
-				return second != nil && second != first && !second.refreshAt.IsZero()
+				second = owner.publication.pair.CurrentLocked()
+				if second == nil || second == first {
+					return false
+				}
+				scheduled, _ := second.RefreshScheduleLocked()
+				return !scheduled.IsZero()
 			})
 			if _, err := owner.acceptIntroduction(t.Context(), publisherJob, pendingOperation); err != nil {
 				t.Fatalf("same new capsule was not accepted after Descriptor ACK: %v", err)
 			}
 			owner.mu.Lock()
-			valid := owner.publication.pair.previousRegistration == first && owner.publication.pair.previousUntil.After(time.Now()) &&
-				!owner.publication.pair.previousUntil.After(time.Now().Add(60*time.Second)) &&
+			validPrevious, validUntil := owner.publication.pair.PreviousLocked()
+			valid := validPrevious == first && validUntil.After(time.Now()) &&
+				!validUntil.After(time.Now().Add(60*time.Second)) &&
 				owner.source.CurrentLocked() != nil && owner.source.CurrentLocked() != oldSource && owner.sourceSet == retainedSet
 			owner.mu.Unlock()
-			if !valid || first.recipient.Public(time.Now()) == [32]byte{} || second.recipient.Public(time.Now()) == [32]byte{} {
+			if !valid || first.RecipientPublicLocked(time.Now()) == [32]byte{} || second.RecipientPublicLocked(time.Now()) == [32]byte{} {
 				t.Fatal("refresh lost bounded predecessor, source selection, or independent keys")
 			}
 			owner.mu.Lock()
-			cutoff := owner.publication.pair.previousUntil
-			acknowledgedAt := second.publishedAt
+			_, cutoff := owner.publication.pair.PreviousLocked()
+			acknowledgedAt := introduction.PublishedAt(second)
 			if acknowledgedAt.Before(switchEarliest) || acknowledgedAt.After(time.Now()) || cutoff.After(acknowledgedAt.Add(60*time.Second)) {
 				owner.mu.Unlock()
 				t.Fatal("publication ACK timestamp or predecessor bound is invalid")
 			}
 			owner.mu.Unlock()
-			if first.request.Expiry.After(switchEarliest.Add(60*time.Second)) && cutoff.Before(switchEarliest.Add(60*time.Second)) {
+			if first.Expiry().After(switchEarliest.Add(60*time.Second)) && cutoff.Before(switchEarliest.Add(60*time.Second)) {
 				t.Fatal("predecessor overlap started before Descriptor ACK")
 			}
 			if _, err := owner.publishDescriptor(t.Context()); err != nil {
 				t.Fatal(err)
 			}
 			owner.mu.Lock()
-			sameCutoff := owner.publication.pair.previousUntil == cutoff && second.publishedAt == acknowledgedAt
+			_, retryUntil := owner.publication.pair.PreviousLocked()
+			sameCutoff := retryUntil == cutoff && introduction.PublishedAt(second) == acknowledgedAt
 			owner.mu.Unlock()
 			if !sameCutoff {
 				t.Fatal("exact Descriptor retry extended predecessor cutoff")
@@ -226,16 +238,19 @@ func TestTextPublicationAutomaticallyRefreshesAndRetiresPredecessor(t *testing.T
 			deliverRefreshAttempt(t, reader, owner, readerJob, publisherJob, newAttempt)
 			// Advance only retirement scheduling, not any signature or authority clock.
 			owner.mu.Lock()
-			owner.publication.pair.previousUntil = time.Now().Add(-time.Second)
+			introduction.ForcePreviousUntil(&owner.publication.pair, time.Now().Add(-time.Second))
 			owner.publication.signalRegistrationsLocked()
 			owner.mu.Unlock()
-			waitRefreshCondition(t, owner, func() bool { return owner.publication.pair.previousRegistration == nil })
+			waitRefreshCondition(t, owner, func() bool {
+				previous, _ := owner.publication.pair.PreviousLocked()
+				return previous == nil
+			})
 			select {
-			case <-first.channel.Done():
+			case <-first.DoneSignal():
 			default:
 				t.Fatal("retired predecessor channel remained live")
 			}
-			if first.recipient.Public(time.Now()) != [32]byte{} || second.recipient.Public(time.Now()) == [32]byte{} {
+			if first.RecipientPublicLocked(time.Now()) != [32]byte{} || second.RecipientPublicLocked(time.Now()) == [32]byte{} {
 				t.Fatal("retirement did not independently erase the predecessor")
 			}
 			// An established Connection can outlive the 60-second predecessor
@@ -265,8 +280,8 @@ func TestTextPublicationAutomaticallyRefreshesAndRetiresPredecessor(t *testing.T
 				t.Fatal(err)
 			}
 			acceptedRecovery := <-receivedRecovery
-			if acceptedRecovery.err != nil || recovery.plaintext.Revision != second.request.Revision ||
-				acceptedRecovery.attempt == nil || acceptedRecovery.attempt.plaintext.Revision != second.request.Revision {
+			if acceptedRecovery.err != nil || recovery.plaintext.Revision != second.Revision() ||
+				acceptedRecovery.attempt == nil || acceptedRecovery.attempt.plaintext.Revision != second.Revision() {
 				t.Fatalf("recovery did not advance to current Introduction recipient: client revision=%d Publisher=%v: %v",
 					recovery.plaintext.Revision, acceptedRecovery.attempt, acceptedRecovery.err)
 			}
@@ -283,13 +298,13 @@ func TestTextPublicationAutomaticallyRefreshesAndRetiresPredecessor(t *testing.T
 				owner.startRefreshLocked(second)
 				owner.publication.signalRegistrationsLocked()
 			}
-			stopped := owner.publication.refresh.Current() == refresh && refresh.Context.Err() != nil && !owner.publication.pair.openingInProgressLocked() && owner.resolution == nil &&
-				owner.publication.pair.registration == nil && owner.publication.pair.pendingRegistration == nil
+			stopped := owner.publication.refresh.Current() == refresh && refresh.Context.Err() != nil && !owner.publication.pair.OpeningInProgressLocked() && owner.resolution == nil &&
+				owner.publication.pair.CurrentLocked() == nil && introduction.PairPending(&owner.publication.pair) == nil
 			owner.mu.Unlock()
 			if !stopped {
 				t.Fatal("wake after Stop attempted another publication refresh")
 			}
-			if second.recipient.Public(time.Now()) != [32]byte{} {
+			if second.RecipientPublicLocked(time.Now()) != [32]byte{} {
 				t.Fatal("withdrawal retained current key")
 			}
 		})
@@ -311,7 +326,7 @@ func TestTextPublicationRefreshExpiresPermissionWithoutResurrection(t *testing.T
 			owner.mu.Lock()
 			refresh := owner.publication.refresh.Current()
 			expires := owner.tokens.Permission.Accepted.NotAfter
-			first.refreshAt = time.Now().Add(-time.Second)
+			introduction.ForceRefreshAt(first, time.Now().Add(-time.Second))
 			if refresh == nil || expires.IsZero() {
 				owner.mu.Unlock()
 				t.Fatal("published registration did not retain its refresh and permission expiry")
@@ -325,12 +340,13 @@ func TestTextPublicationRefreshExpiresPermissionWithoutResurrection(t *testing.T
 				t.Fatal("expired permission did not finish scheduled refresh")
 			}
 			owner.mu.Lock()
-			retired := owner.publication.pair.registration == nil && owner.publication.pair.previousRegistration == nil && owner.publication.refresh.Outcome(refresh) != nil
+			expiredPrevious, _ := owner.publication.pair.PreviousLocked()
+			retired := owner.publication.pair.CurrentLocked() == nil && expiredPrevious == nil && owner.publication.refresh.Outcome(refresh) != nil
 			owner.mu.Unlock()
 			if !retired {
 				t.Fatal("expired permission retained accepting refresh readiness")
 			}
-			if first.recipient.Public(time.Now()) != [32]byte{} {
+			if first.RecipientPublicLocked(time.Now()) != [32]byte{} {
 				t.Fatal("expired permission retained the current recipient key")
 			}
 			if _, err := owner.publishDescriptor(t.Context()); err == nil {

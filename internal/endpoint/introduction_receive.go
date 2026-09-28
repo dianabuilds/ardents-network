@@ -7,6 +7,7 @@ import (
 	"errors"
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
+	"github.com/dianabuilds/ardents-network/internal/endpoint/introduction"
 	"github.com/dianabuilds/ardents-network/internal/route/client"
 )
 
@@ -20,24 +21,24 @@ func (owner *dutyContext) nextIntroductionDelivery(ctx context.Context) (*client
 			owner.mu.Unlock()
 			return nil, errors.Join(ctx.Err(), errors.New("text Introduction receiver retired"))
 		}
-		if owner.publication.pair.drainingLocked() {
+		if owner.publication.pair.DrainingLocked() {
 			owner.mu.Unlock()
 			return nil, errPublicationDraining
 		}
-		current := owner.publication.pair.currentLocked()
-		previous, previousUntil := owner.publication.pair.previousLocked()
+		current := owner.publication.pair.CurrentLocked()
+		previous, previousUntil := owner.publication.pair.PreviousLocked()
 		if !owner.endpoint.clock().Before(previousUntil) {
 			previous = nil
 		}
-		changed := owner.publication.pair.changedLocked()
+		changed := owner.publication.pair.ChangedLocked()
 		owner.mu.Unlock()
 		var ready, priorReady, done, priorDone <-chan struct{}
 		live := 0
-		for i, registered := range []*introductionRegistration{current, previous} {
-			if registered == nil || registered.ended() {
+		for i, registered := range []*introduction.Registration{current, previous} {
+			if registered == nil || registered.Ended() {
 				continue
 			}
-			delivery, err := registered.takeDelivery(ctx)
+			delivery, err := registered.TakeDelivery(ctx)
 			if err != nil {
 				continue
 			}
@@ -46,9 +47,9 @@ func (owner *dutyContext) nextIntroductionDelivery(ctx context.Context) (*client
 			}
 			live++
 			if i == 0 {
-				ready, done = registered.deliverySignals()
+				ready, done = registered.DeliverySignals()
 			} else {
-				priorReady, priorDone = registered.deliverySignals()
+				priorReady, priorDone = registered.DeliverySignals()
 			}
 		}
 		if live == 0 {

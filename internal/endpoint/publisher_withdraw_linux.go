@@ -28,9 +28,9 @@ func (run *publisherRun) Withdraw(ctx context.Context) error {
 	owner := run.owner
 	owner.mu.Lock()
 	failure := ""
-	if owner.publication.pair.drainingLocked() {
+	if owner.publication.pair.DrainingLocked() {
 		failure = "publication-draining"
-	} else if owner.publication.pair.currentLocked() == nil {
+	} else if owner.publication.pair.CurrentLocked() == nil {
 		failure = "registration-absent"
 	} else if !owner.liveLocked(owner.endpoint, owner.surface) {
 		failure = "publisher-not-live"

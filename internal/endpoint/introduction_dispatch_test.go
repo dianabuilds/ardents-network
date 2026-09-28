@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/endpoint/introduction"
 	nativeconnection "github.com/dianabuilds/ardents-network/internal/service/connection"
 )
 
@@ -46,7 +47,7 @@ func holdInitialIntroductionReceiver(t *testing.T, ctx context.Context, owner *d
 	}()
 	for {
 		owner.mu.Lock()
-		gate := owner.introduction.dispatch.delivery
+		gate := introduction.ConsumerGate(&owner.introduction.dispatch)
 		owner.mu.Unlock()
 		if gate != nil && len(gate) == 0 {
 			break

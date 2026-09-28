@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/endpoint/introduction"
 	introductioncapsule "github.com/dianabuilds/ardents-network/internal/route/capsule"
 	"github.com/dianabuilds/ardents-network/internal/route/carrier"
 )
@@ -58,7 +59,7 @@ func TestTextRecoveryDeliveryMayArriveBeforePublisherFailureDetection(t *testing
 	stopInitial := holdInitialIntroductionReceiver(t, ctx, publisher, publisherJob)
 
 	publisher.mu.Lock()
-	before := publisher.introduction.admission.openings[3]
+	before := introduction.OpeningWindow(&publisher.introduction.admission)[3]
 	publisher.mu.Unlock()
 	submitted := make(chan error, 1)
 	go func() { submitted <- reader.submitIntroduction(ctx, readerJob, early) }()
@@ -93,7 +94,7 @@ func TestTextRecoveryDeliveryMayArriveBeforePublisherFailureDetection(t *testing
 	}
 	defer clear(next.operation)
 	publisher.mu.Lock()
-	before = publisher.introduction.admission.openings[3]
+	before = introduction.OpeningWindow(&publisher.introduction.admission)[3]
 	publisher.mu.Unlock()
 	nextSubmitted := make(chan error, 1)
 	go func() { nextSubmitted <- reader.submitIntroduction(ctx, readerJob, next) }()
@@ -102,13 +103,13 @@ func TestTextRecoveryDeliveryMayArriveBeforePublisherFailureDetection(t *testing
 		t.Fatal("expired buffered recovery delivery was accepted")
 	}
 	publisher.mu.Lock()
-	buffered := len(remote.attempt.binding.recovery.delivery)
+	buffered := introduction.BufferedRecovery(remote.attempt.binding.recovery)
 	publisher.mu.Unlock()
 	if buffered != 0 {
 		t.Fatalf("expired recovery owner retained %d deliveries", buffered)
 	}
 	publisher.mu.Lock()
-	registrationDone := publisher.publication.pair.registration.channel.Done()
+	registrationDone := publisher.publication.pair.CurrentLocked().DoneSignal()
 	publisher.mu.Unlock()
 	select {
 	case <-registrationDone:
@@ -119,7 +120,7 @@ func TestTextRecoveryDeliveryMayArriveBeforePublisherFailureDetection(t *testing
 		t.Fatal(err)
 	}
 	publisher.mu.Lock()
-	retained := len(publisher.introduction.dispatch.recovery)
+	retained := introduction.RecoveryCount(&publisher.introduction.dispatch)
 	publisher.mu.Unlock()
 	if retained != 0 {
 		t.Fatalf("retired logical Connection retained %d recovery owners", retained)
@@ -166,7 +167,7 @@ func TestTextRecoveryRefusalOutlivesCanceledAttempt(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer clear(recovery.operation)
-	want := introductionDeliveryKey{connection: remote.attempt.binding.facts.ConnectionNonce, generation: 2}
+	want := introduction.DeliveryKey{Connection: remote.attempt.binding.facts.ConnectionNonce, Generation: 2}
 	attemptContext, cancelAttempt := context.WithCancel(ctx)
 	refused := errors.New("forced matched recovery refusal")
 	received := make(chan error, 1)
@@ -187,7 +188,7 @@ func TestTextRecoveryRefusalOutlivesCanceledAttempt(t *testing.T) {
 		t.Fatal("matched recovery refusal was accepted")
 	}
 	publisher.mu.Lock()
-	registrationDone := publisher.publication.pair.registration.channel.Done()
+	registrationDone := publisher.publication.pair.CurrentLocked().DoneSignal()
 	publisher.mu.Unlock()
 	select {
 	case <-registrationDone:
@@ -216,7 +217,7 @@ func TestTextIntroductionOrphanRefusalOutlivesCanceledWaiter(t *testing.T) {
 		t.Fatal(err)
 	}
 	publisher.mu.Lock()
-	recipient := publisher.publication.pair.registration.recipient.Public(time.Now().UTC())
+	recipient := publisher.publication.pair.CurrentLocked().RecipientPublicLocked(time.Now().UTC())
 	publisher.mu.Unlock()
 	facts := attempt.plaintext
 	facts.AttachmentGeneration = 9
@@ -242,8 +243,8 @@ func TestTextIntroductionOrphanRefusalOutlivesCanceledWaiter(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if key.generation != 9 {
-		t.Fatalf("orphan generation = %d", key.generation)
+	if key.Generation != 9 {
+		t.Fatalf("orphan generation = %d", key.Generation)
 	}
 	waiter, stopWaiter := context.WithCancel(ctx)
 	stopWaiter()
@@ -260,7 +261,7 @@ func TestTextIntroductionOrphanRefusalOutlivesCanceledWaiter(t *testing.T) {
 		t.Fatal("orphan delivery was accepted")
 	}
 	publisher.mu.Lock()
-	registrationDone := publisher.publication.pair.registration.channel.Done()
+	registrationDone := publisher.publication.pair.CurrentLocked().DoneSignal()
 	publisher.mu.Unlock()
 	select {
 	case <-registrationDone:
@@ -275,7 +276,7 @@ func waitIntroductionOpening(t *testing.T, ctx context.Context, owner *dutyConte
 	t.Helper()
 	for {
 		owner.mu.Lock()
-		opened := owner.introduction.admission.openings[3]
+		opened := introduction.OpeningWindow(&owner.introduction.admission)[3]
 		owner.mu.Unlock()
 		if opened.After(before) {
 			return

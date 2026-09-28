@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
+	"github.com/dianabuilds/ardents-network/internal/endpoint/introduction"
 	"github.com/dianabuilds/ardents-network/internal/endpoint/source"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	routecarrier "github.com/dianabuilds/ardents-network/internal/route/carrier"
@@ -60,12 +61,12 @@ func TestTextPublisherCommitsInstanceSignedDescriptor(t *testing.T) {
 				t.Fatalf("publish registered Instance: %v", err)
 			}
 			fields := published.Descriptor.Private
-			if fields.Revision != 1 || fields.Slot != first.request.Slot || fields.NodeID != first.node ||
+			if fields.Revision != 1 || fields.Slot != introduction.Slot(first) || fields.NodeID != introduction.Node(first) ||
 				fields.RecipientKey == [32]byte{} || published.Current.Credential != binding.Credential() {
 				t.Fatal("private Descriptor escaped its registered Instance")
 			}
 			retrieved := lookupPublishedProof(t, owner, published.Descriptor.Target)
-			if !bytes.Equal(retrieved, first.descriptor) {
+			if !bytes.Equal(retrieved, first.CopyDescriptorLocked()) {
 				t.Fatal("resolution Node did not retain exact signed Descriptor")
 			}
 			// Even accidental reuse of trusted internal handles cannot transfer the
@@ -73,12 +74,14 @@ func TestTextPublisherCommitsInstanceSignedDescriptor(t *testing.T) {
 			foreign := permissionContextFixture(t, endpoint, fixtureID(211), broker.Administration)
 			foreign.mu.Lock()
 			source.TransplantLive(&foreign.source, owner.source.CurrentLocked())
-			foreign.publication.pair.registration, foreign.tokens.Permission = first, owner.tokens.Permission
+			introduction.TransplantCurrent(&foreign.publication.pair, first)
+			foreign.tokens.Permission = owner.tokens.Permission
 			foreign.mu.Unlock()
 			_, foreignErr := foreign.publishDescriptor(t.Context())
 			foreign.mu.Lock()
 			source.TransplantLive(&foreign.source, nil)
-			foreign.publication.pair.registration, foreign.tokens.Permission = nil, nil
+			introduction.TransplantCurrent(&foreign.publication.pair, nil)
+			foreign.tokens.Permission = nil
 			foreign.mu.Unlock()
 			if foreignErr == nil || endpoint.publisherOwner != owner {
 				t.Fatal("another context stole the Instance publication")
@@ -86,17 +89,17 @@ func TestTextPublisherCommitsInstanceSignedDescriptor(t *testing.T) {
 			if err := foreign.Close(); err != nil {
 				t.Fatal(err)
 			}
-			original := append([]byte(nil), first.descriptor...)
+			original := append([]byte(nil), first.CopyDescriptorLocked()...)
 			if _, err := owner.publishDescriptor(t.Context()); err != nil {
 				t.Fatalf("exact publication retry: %v", err)
 			}
-			if !bytes.Equal(first.descriptor, original) {
+			if !bytes.Equal(first.CopyDescriptorLocked(), original) {
 				t.Fatal("publication retry rotated signed bytes or key")
 			}
 			if err := owner.withdrawIntroduction(t.Context()); err != nil {
 				t.Fatal(err)
 			}
-			if first.recipient.Public(time.Now()) != [32]byte{} {
+			if first.RecipientPublicLocked(time.Now()) != [32]byte{} {
 				t.Fatal("withdrawal retained recipient key")
 			}
 			second, err := owner.registerIntroduction(t.Context(), 2, time.Now().UTC().Add(time.Minute).Truncate(time.Second))
@@ -125,7 +128,7 @@ func TestTextPublisherCommitsInstanceSignedDescriptor(t *testing.T) {
 			if binding.Public() != nil {
 				t.Fatal("context shutdown retained Instance signer")
 			}
-			if second.recipient.Public(time.Now()) != [32]byte{} {
+			if second.RecipientPublicLocked(time.Now()) != [32]byte{} {
 				t.Fatal("context shutdown retained recipient key")
 			}
 		})

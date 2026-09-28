@@ -25,6 +25,34 @@
         "rationale": "The Linux endpoint integration tests force finite Route lifetimes and exercise handle identity guards without the production Handle exposing Close, Done, or its live slot; Linux production retires route prefixes only through the Lifecycle retirement paths.",
         "owner": "Product Owner and Codex",
         "retirement": "Remove them when the endpoint test audit slice reworks route-death and transplant simulation onto production seams."
+      },
+      {
+        "symbols": [
+          "internal/endpoint/introduction.ActiveExchangeCount",
+          "internal/endpoint/introduction.BufferedRecovery",
+          "internal/endpoint/introduction.ClearOpeningWindow",
+          "internal/endpoint/introduction.ConsumerGate",
+          "internal/endpoint/introduction.CreatedAt",
+          "internal/endpoint/introduction.ExchangeRetained",
+          "internal/endpoint/introduction.ForcePreviousUntil",
+          "internal/endpoint/introduction.ForceRefreshAt",
+          "internal/endpoint/introduction.Node",
+          "internal/endpoint/introduction.OpeningWindow",
+          "internal/endpoint/introduction.PairPending",
+          "internal/endpoint/introduction.PublishedAt",
+          "internal/endpoint/introduction.Recipient",
+          "internal/endpoint/introduction.RecoveryCount",
+          "internal/endpoint/introduction.ReplayCount",
+          "internal/endpoint/introduction.RetainedReplay",
+          "internal/endpoint/introduction.SeedReplay",
+          "internal/endpoint/introduction.Slot",
+          "internal/endpoint/introduction.TransplantCurrent",
+          "internal/endpoint/introduction.WaiterCount"
+        ],
+        "classification": "test fixture support",
+        "rationale": "The Linux endpoint integration tests observe registration facts, force refresh and predecessor deadlines, inspect admission, dispatch, recovery, and exchange capacity, and transplant pair slots across contexts; production drives every transition only through the ...Locked methods and never calls these helpers.",
+        "owner": "Product Owner and Codex",
+        "retirement": "Remove them when the endpoint test audit slice reworks the whitebox refresh, admission, dispatch, and pair-identity fixtures onto production seams."
       }
     ],
     "windows-amd64": [

@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/endpoint/introduction"
 	introductioncapsule "github.com/dianabuilds/ardents-network/internal/route/capsule"
 	routecarrier "github.com/dianabuilds/ardents-network/internal/route/carrier"
 )
@@ -29,7 +30,7 @@ func TestTextPublisherNetworkRetainsSnapshotAcrossReaders(t *testing.T) {
 			served := make(chan struct{})
 			var serveErr error
 			publisherOwner.mu.Lock()
-			initialWaiters := len(publisherOwner.introduction.dispatch.waiters)
+			initialWaiters := introduction.WaiterCount(&publisherOwner.introduction.dispatch)
 			publisherOwner.mu.Unlock()
 			go func() { defer close(served); serveErr = publisher.serveNetwork(ctx) }()
 			t.Cleanup(func() {
@@ -54,7 +55,7 @@ func TestTextPublisherNetworkRetainsSnapshotAcrossReaders(t *testing.T) {
 					t.Fatal(err)
 				}
 				publisherOwner.mu.Lock()
-				beforeRefusal := publisherOwner.introduction.admission.openings
+				beforeRefusal := introduction.OpeningWindow(&publisherOwner.introduction.admission)
 				publisherOwner.mu.Unlock()
 				request, capsule, err := introductioncapsule.DecodeSubmission(refused.operation)
 				if err != nil {
@@ -62,7 +63,7 @@ func TestTextPublisherNetworkRetainsSnapshotAcrossReaders(t *testing.T) {
 				}
 				if fault.wrongTarget || fault.unknownGeneration {
 					publisherOwner.mu.Lock()
-					recipient := publisherOwner.publication.pair.registration.recipient.Public(time.Now().UTC())
+					recipient := publisherOwner.publication.pair.CurrentLocked().RecipientPublicLocked(time.Now().UTC())
 					publisherOwner.mu.Unlock()
 					facts := refused.plaintext
 					if fault.wrongTarget {
@@ -95,7 +96,7 @@ func TestTextPublisherNetworkRetainsSnapshotAcrossReaders(t *testing.T) {
 					t.Fatal("corrupt capsule was accepted")
 				}
 				publisherOwner.mu.Lock()
-				receivedRefusal := publisherOwner.introduction.admission.openings != beforeRefusal
+				receivedRefusal := introduction.OpeningWindow(&publisherOwner.introduction.admission) != beforeRefusal
 				publisherOwner.mu.Unlock()
 				if !receivedRefusal {
 					t.Fatal("corrupt capsule did not reach Publisher opening boundary")
@@ -109,7 +110,7 @@ func TestTextPublisherNetworkRetainsSnapshotAcrossReaders(t *testing.T) {
 			// Start the two independent valid reads in the next rate window so a
 			// faster CI runner cannot turn the fifth opening into the test oracle.
 			publisherOwner.mu.Lock()
-			resumeAt := publisherOwner.introduction.admission.openings[3].Add(time.Second + 10*time.Millisecond)
+			resumeAt := introduction.OpeningWindow(&publisherOwner.introduction.admission)[3].Add(time.Second + 10*time.Millisecond)
 			publisherOwner.mu.Unlock()
 			if wait := time.Until(resumeAt); wait > 0 {
 				timer := time.NewTimer(wait)
@@ -167,7 +168,7 @@ func TestTextPublisherNetworkRetainsSnapshotAcrossReaders(t *testing.T) {
 				t.Fatal("Publisher returned before joined worker retirement")
 			}
 			publisherOwner.mu.Lock()
-			pending := len(publisherOwner.introduction.exchanges.active)
+			pending := introduction.ActiveExchangeCount(&publisherOwner.introduction.exchanges)
 			publisherOwner.mu.Unlock()
 			if pending != 0 {
 				t.Fatalf("Publisher retained %d exchanges after cancellation", pending)
@@ -180,7 +181,7 @@ func waitIntroductionWaiters(t *testing.T, ctx context.Context, owner *dutyConte
 	t.Helper()
 	for {
 		owner.mu.Lock()
-		ready := len(owner.introduction.dispatch.waiters) >= minimum
+		ready := introduction.WaiterCount(&owner.introduction.dispatch) >= minimum
 		owner.mu.Unlock()
 		if ready {
 			return

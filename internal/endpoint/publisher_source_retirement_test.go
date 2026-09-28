@@ -22,14 +22,14 @@ func TestTextPublisherAcceptsIntroductionAfterSourceRetirement(t *testing.T) {
 			}
 			defer clear(prepared.operation)
 			publisher.mu.Lock()
-			prefix, registration, permission := publisher.source.CurrentLocked(), publisher.publication.pair.registration, publisher.tokens.Permission
+			prefix, registration, permission := publisher.source.CurrentLocked(), publisher.publication.pair.CurrentLocked(), publisher.tokens.Permission
 			reserved := permission.Reserved
 			publisher.mu.Unlock()
 			if err := closeSourceHandle(prefix); err != nil {
 				t.Fatal(err)
 			}
 			select {
-			case <-registration.channel.Done():
+			case <-registration.DoneSignal():
 				t.Fatal("Source retirement closed independent Introduction registration")
 			default:
 			}
@@ -47,7 +47,7 @@ func TestTextPublisherAcceptsIntroductionAfterSourceRetirement(t *testing.T) {
 					wrong.Target = fixtureID(232)
 				}
 				envelope := introductioncapsule.Capsule{Slot: capsule.Slot, Revision: capsule.Revision, Expiry: capsule.Expiry, DeliveryNonce: fixtureID(byte(233 + index))}
-				sealed, _, err := introductioncapsule.Seal(envelope, registration.recipient.Public(time.Now()), wrong)
+				sealed, _, err := introductioncapsule.Seal(envelope, registration.RecipientPublicLocked(time.Now()), wrong)
 				if err != nil {
 					t.Fatal(err)
 				}

@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/endpoint/introduction"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/node"
 	introductioncapsule "github.com/dianabuilds/ardents-network/internal/route/capsule"
@@ -142,8 +143,8 @@ func deliverBeforeDescriptorACK(t *testing.T, gate *descriptorACKGate, reader, p
 func refuseBeforeDescriptorACK(t *testing.T, gate *descriptorACKGate, owner *dutyContext, job *jobIdentity, prior *introductionAttempt) []byte {
 	t.Helper()
 	owner.mu.Lock()
-	registered := owner.publication.pair.pendingRegistration
-	raw := append([]byte(nil), registered.descriptor...)
+	registered := introduction.PairPending(&owner.publication.pair)
+	raw := append([]byte(nil), registered.CopyDescriptorLocked()...)
 	owner.mu.Unlock()
 	proof, err := reachability.VerifyPrivatePublication(raw, prior.plaintext.Network, prior.plaintext.ProfileDigest, time.Now().UTC())
 	if err != nil {

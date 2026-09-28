@@ -16,6 +16,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
 	applicationconnection "github.com/dianabuilds/ardents-network/internal/application/interfacev2/connection"
 	"github.com/dianabuilds/ardents-network/internal/application/textdocument"
+	"github.com/dianabuilds/ardents-network/internal/endpoint/introduction"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	introductioncapsule "github.com/dianabuilds/ardents-network/internal/route/capsule"
 	routecarrier "github.com/dianabuilds/ardents-network/internal/route/carrier"
@@ -167,7 +168,7 @@ func TestTextIntroductionCapsuleBindsRealInstanceAndServiceStream(t *testing.T) 
 				received <- deliveryOutcome{accepted, err}
 			}()
 			if err := reader.submitIntroduction(t.Context(), readerJob, attempt); err != nil {
-				_ = registered.channel.Close()
+				_ = registered.Close()
 				<-received
 				t.Fatal(err)
 			}
@@ -178,8 +179,8 @@ func TestTextIntroductionCapsuleBindsRealInstanceAndServiceStream(t *testing.T) 
 			}
 			publisher.mu.Lock()
 			responder := publisher.responder.currentLocked()
-			introduction := publisher.introduction.prefix.currentLocked()
-			distinct := responder != nil && introduction != nil && responder.prefix.Load() != introduction.prefix.Load() &&
+			introductionPrefix := publisher.introduction.prefix.currentLocked()
+			distinct := responder != nil && introductionPrefix != nil && responder.prefix.Load() != introductionPrefix.prefix.Load() &&
 				publisher.responder.set != nil && publisher.responder.set != publisher.sourceSet && publisher.responder.set != publisher.introduction.prefix.set &&
 				publisher.responder.set.interior[0].Domain == 3 && publisher.tokens.Permission.Reserved[1] > beforeForward && publisher.responder.opening == nil
 			publisher.mu.Unlock()
@@ -203,7 +204,7 @@ func TestTextIntroductionCapsuleBindsRealInstanceAndServiceStream(t *testing.T) 
 			if _, err := publisher.acceptIntroduction(t.Context(), publisherJob, attempt.operation); err == nil || !strings.Contains(err.Error(), "replay") {
 				t.Fatalf("replayed capsule accepted: %v", err)
 			}
-			if publisher.introduction.admission.replays[sealed.DeliveryNonce] != registered.request.Expiry.Add(60*time.Second) {
+			if until, retained := introduction.RetainedReplay(&publisher.introduction.admission, sealed.DeliveryNonce); !retained || until != registered.Expiry().Add(60*time.Second) {
 				t.Fatal("replay retention does not cover original signed slot expiry")
 			}
 			exchangeCapsuleService(t, attempt, accepted)
@@ -229,10 +230,10 @@ func TestTextIntroductionCapsuleBindsRealInstanceAndServiceStream(t *testing.T) 
 			default:
 				t.Fatal("context Close did not join Responder prefix")
 			}
-			if err := registered.recipient.Close(); err != nil {
+			if err := introduction.Recipient(registered).Close(); err != nil {
 				t.Fatal(err)
 			}
-			if _, _, err := introductioncapsule.Open(sealed, source.view.Profile.Digest, registered.recipient, time.Now()); err == nil {
+			if _, _, err := introductioncapsule.Open(sealed, source.view.Profile.Digest, introduction.Recipient(registered), time.Now()); err == nil {
 				t.Fatal("retired Instance recipient decrypted capsule")
 			}
 		})
@@ -286,24 +287,24 @@ func TestTextIntroductionReplayAndOpeningRateAreContextBounded(t *testing.T) {
 	owner := &dutyContext{}
 	now := time.Now().UTC()
 	for index := 0; index < 4; index++ {
-		if err := owner.introduction.admission.reserveOpeningLocked(fixtureID(byte(index+1)), now); err != nil {
+		if err := owner.introduction.admission.ReserveOpeningLocked(fixtureID(byte(index+1)), now); err != nil {
 			t.Fatal(err)
 		}
 	}
-	if err := owner.introduction.admission.reserveOpeningLocked(fixtureID(8), now.Add(time.Second-time.Nanosecond)); err == nil {
+	if err := owner.introduction.admission.ReserveOpeningLocked(fixtureID(8), now.Add(time.Second-time.Nanosecond)); err == nil {
 		t.Fatal("more than four openings in one second")
 	}
-	if err := owner.introduction.admission.reserveOpeningLocked(fixtureID(8), now.Add(time.Second)); err != nil {
+	if err := owner.introduction.admission.ReserveOpeningLocked(fixtureID(8), now.Add(time.Second)); err != nil {
 		t.Fatal(err)
 	}
-	if err := owner.introduction.admission.reserveOpeningLocked(fixtureID(9), now); err == nil {
+	if err := owner.introduction.admission.ReserveOpeningLocked(fixtureID(9), now); err == nil {
 		t.Fatal("clock rollback reopened rate allowance")
 	}
-	owner.introduction.admission.replays = map[[32]byte]time.Time{fixtureID(10): now.Add(2 * time.Second)}
-	if err := owner.introduction.admission.reserveOpeningLocked(fixtureID(10), now.Add(time.Second)); err == nil {
+	introduction.SeedReplay(&owner.introduction.admission, fixtureID(10), now.Add(2*time.Second))
+	if err := owner.introduction.admission.ReserveOpeningLocked(fixtureID(10), now.Add(time.Second)); err == nil {
 		t.Fatal("replay allowed before expiry")
 	}
-	if err := owner.introduction.admission.reserveOpeningLocked(fixtureID(10), now.Add(2*time.Second)); err != nil {
+	if err := owner.introduction.admission.ReserveOpeningLocked(fixtureID(10), now.Add(2*time.Second)); err != nil {
 		t.Fatal(err)
 	}
 }

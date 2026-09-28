@@ -227,11 +227,11 @@ func TestTextPublisherBuildsRetainedQualificationSetAcrossFourReaders(t *testing
 		case err := <-producerDone:
 			producerFinished = true
 			publisher.mu.Lock()
-			registration := publisher.publication.pair.registration
+			registration := publisher.publication.pair.CurrentLocked()
 			publisher.mu.Unlock()
 			reason := client.ClosedIntroductionEndUnknown
 			if registration != nil {
-				reason = registration.channel.EndReason()
+				reason = registration.EndReason()
 			}
 			setupErr = errors.Join(setupErr, fmt.Errorf("Publisher producer ended before retained set: registration=%s", reason), err)
 		case <-ctx.Done():

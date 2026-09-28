@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/endpoint/introduction"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/node"
 	routecarrier "github.com/dianabuilds/ardents-network/internal/route/carrier"
@@ -16,7 +17,7 @@ import (
 
 // The same real registered Publisher setup feeds successful and interrupted
 // Descriptor handovers. Only accepted State and worker qualification are fixtures.
-func startRegisteredPublisherNetwork(t *testing.T, carrier routecarrier.CarrierProfile, gate *descriptorACKGate) (*endpoint, *dutyContext, *sourceStateFixture, *introductionRegistration) {
+func startRegisteredPublisherNetwork(t *testing.T, carrier routecarrier.CarrierProfile, gate *descriptorACKGate) (*endpoint, *dutyContext, *sourceStateFixture, *introduction.Registration) {
 	t.Helper()
 	endpoint, owner, source := startRoleNetwork(t, roleNetworkFixture{carrier: carrier, resolution: true, publisher: true, configure: []func(int, *node.Config){gate.configure(t)}})
 	source.mu.Lock()
@@ -75,7 +76,7 @@ func TestTextPublicationLossBeforeAcknowledgementRetiresRecipients(t *testing.T)
 					gate.arm(t)
 					owner.mu.Lock()
 					refresh := owner.publication.refresh.Current()
-					first.refreshAt = time.Now().Add(-time.Second)
+					introduction.ForceRefreshAt(first, time.Now().Add(-time.Second))
 					owner.publication.signalRegistrationsLocked()
 					owner.mu.Unlock()
 					select {
@@ -85,24 +86,24 @@ func TestTextPublicationLossBeforeAcknowledgementRetiresRecipients(t *testing.T)
 						t.Fatalf("refresh ended before replacement Store commit: %v", cause)
 					case <-time.After(10 * time.Second):
 						owner.mu.Lock()
-						cause, registered := owner.publication.refresh.Outcome(refresh), owner.publication.pair.pendingRegistration != nil && owner.publication.pair.pendingRegistration != first
+						cause, registered := owner.publication.refresh.Outcome(refresh), introduction.PairPending(&owner.publication.pair) != nil && introduction.PairPending(&owner.publication.pair) != first
 						owner.mu.Unlock()
 						t.Fatalf("replacement did not reach Store commit before ACK: registered=%t refresh=%v", registered, cause)
 					}
 					owner.mu.Lock()
-					second := owner.publication.pair.pendingRegistration
-					ready := first.published && second != nil && second != first && !second.published && second.recipient != nil
+					second := introduction.PairPending(&owner.publication.pair)
+					ready := first.PublishedLocked() && second != nil && second != first && !second.PublishedLocked() && second.HasRecipientLocked()
 					owner.mu.Unlock()
-					if !ready || first.recipient.Public(time.Now()) == [32]byte{} || second.recipient.Public(time.Now()) == [32]byte{} {
+					if !ready || first.RecipientPublicLocked(time.Now()) == [32]byte{} || second.RecipientPublicLocked(time.Now()) == [32]byte{} {
 						t.Fatal("failure was not injected between live registration and acknowledged replacement")
 					}
 					switch failure {
 					case "replacement channel":
-						if err := second.close(); err != nil {
+						if err := second.Close(); err != nil {
 							t.Fatal(err)
 						}
 					case "predecessor channel":
-						if err := first.close(); err != nil {
+						if err := first.Close(); err != nil {
 							t.Fatal(err)
 						}
 					case "context revoke":
@@ -122,13 +123,14 @@ func TestTextPublicationLossBeforeAcknowledgementRetiresRecipients(t *testing.T)
 						}
 					}
 					owner.mu.Lock()
-					retired := owner.publication.pair.registration == nil && owner.publication.pair.pendingRegistration == nil && owner.publication.pair.previousRegistration == nil && !second.published
+					lossPrevious, _ := owner.publication.pair.PreviousLocked()
+					retired := owner.publication.pair.CurrentLocked() == nil && introduction.PairPending(&owner.publication.pair) == nil && lossPrevious == nil && !second.PublishedLocked()
 					cause := owner.publication.refresh.Outcome(refresh)
 					owner.mu.Unlock()
 					if !retired || failure != "context revoke" && cause == nil {
 						t.Fatalf("late ACK retained readiness or lost failure: retired=%t cause=%v", retired, cause)
 					}
-					if first.recipient.Public(time.Now()) != [32]byte{} || second.recipient.Public(time.Now()) != [32]byte{} {
+					if first.RecipientPublicLocked(time.Now()) != [32]byte{} || second.RecipientPublicLocked(time.Now()) != [32]byte{} {
 						t.Fatal("failed replacement retained recipient key material")
 					}
 					if _, err := owner.publishDescriptor(t.Context()); err == nil {

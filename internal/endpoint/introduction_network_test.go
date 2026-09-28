@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/endpoint/introduction"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	routecarrier "github.com/dianabuilds/ardents-network/internal/route/carrier"
 )
@@ -36,12 +37,12 @@ func TestTextPublisherIntroductionPrefixUsesSeparateDomainAndRealIssuance(t *tes
 			if err != nil {
 				t.Fatal(err)
 			}
-			introduction, err := owner.openIntroductionPrefix(t.Context())
+			introductionPrefix, err := owner.openIntroductionPrefix(t.Context())
 			if err != nil {
 				t.Fatal(err)
 			}
 			owner.mu.Lock()
-			separate := owner.source.CurrentLocked() == source && owner.introduction.prefix.currentLocked() == introduction && owner.sourceSet != owner.introduction.prefix.set && owner.sourceSet.interior[0].Domain == 1 && owner.introduction.prefix.set.interior[0].Domain == 4 && owner.tokens.Permission.Batches == 2 && owner.tokens.Issuance == nil
+			separate := owner.source.CurrentLocked() == source && owner.introduction.prefix.currentLocked() == introductionPrefix && owner.sourceSet != owner.introduction.prefix.set && owner.sourceSet.interior[0].Domain == 1 && owner.introduction.prefix.set.interior[0].Domain == 4 && owner.tokens.Permission.Batches == 2 && owner.tokens.Issuance == nil
 			owner.mu.Unlock()
 			if !separate {
 				t.Fatal("Publisher Introduction reused Source ownership or bootstrap admission")
@@ -53,14 +54,14 @@ func TestTextPublisherIntroductionPrefixUsesSeparateDomainAndRealIssuance(t *tes
 			if err != nil {
 				t.Fatal(err)
 			}
-			if registered.node == [32]byte{} || registered.request.Slot == [32]byte{} {
+			if introduction.Node(registered) == [32]byte{} || introduction.Slot(registered) == [32]byte{} {
 				t.Fatal("registration lost its State recipient or random slot")
 			}
 			if err := owner.withdrawIntroduction(t.Context()); err != nil {
 				t.Fatal(err)
 			}
 			select {
-			case <-registered.channel.Done():
+			case <-registered.DoneSignal():
 			default:
 				t.Fatal("withdrawal did not join registration")
 			}
@@ -68,14 +69,14 @@ func TestTextPublisherIntroductionPrefixUsesSeparateDomainAndRealIssuance(t *tes
 			if err != nil {
 				t.Fatal(err)
 			}
-			if second.request.Slot == registered.request.Slot {
+			if introduction.Slot(second) == introduction.Slot(registered) {
 				t.Fatal("registration reused withdrawn slot")
 			}
 			if err := owner.Close(); err != nil {
 				t.Fatal(err)
 			}
 			select {
-			case <-second.channel.Done():
+			case <-second.DoneSignal():
 			default:
 				t.Fatal("context released a live registration")
 			}
@@ -85,7 +86,7 @@ func TestTextPublisherIntroductionPrefixUsesSeparateDomainAndRealIssuance(t *tes
 				t.Fatal("context released a live Source prefix")
 			}
 			select {
-			case <-introduction.Done():
+			case <-introductionPrefix.Done():
 			default:
 				t.Fatal("context released a live Introduction prefix")
 			}

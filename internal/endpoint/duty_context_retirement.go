@@ -5,6 +5,7 @@ package endpoint
 import (
 	"errors"
 
+	"github.com/dianabuilds/ardents-network/internal/endpoint/introduction"
 	"github.com/dianabuilds/ardents-network/internal/endpoint/publication"
 	"github.com/dianabuilds/ardents-network/internal/endpoint/source"
 	"github.com/dianabuilds/ardents-network/internal/endpoint/tokens"
@@ -16,15 +17,15 @@ import (
 // captured child has already received cancellation.
 type dutyContextRetirement struct {
 	refresh             *publication.RefreshRetirement
-	publication         *publicationPairRetirement
-	registrationOpening *registrationFlight
+	publication         *introduction.PairRetirement
+	registrationOpening introduction.FlightRef
 	introduction        *rolePrefixRetirement
 	responder           *rolePrefixRetirement
 	source              *source.Retirement
 	issuance            *tokens.Operation
 	resolution          *resolutionFlight
-	withdrawal          *operationFlight
-	exchanges           []*introductionExchange
+	withdrawal          introduction.FlightRef
+	exchanges           []*introduction.Exchange
 	job                 *jobRetirement
 }
 
@@ -34,17 +35,19 @@ type dutyContextRetirement struct {
 func (owner *dutyContext) stopDutyContextChildrenLocked() *dutyContextRetirement {
 	retirement := &dutyContextRetirement{}
 	retirement.refresh = owner.publication.refresh.StopAsync()
-	retirement.publication = owner.publication.pair.stopLocked()
+	retirement.publication = owner.publication.pair.StopLocked()
 	owner.publication.signalRegistrationsLocked()
-	retirement.exchanges = owner.introduction.exchanges.stopLocked()
-	retirement.withdrawal = owner.publication.pair.withdrawalLocked()
+	retirement.exchanges = owner.introduction.exchanges.StopLocked()
+	retirement.withdrawal = owner.publication.pair.WithdrawalLocked()
 	if retirement.withdrawal != nil {
-		retirement.withdrawal.cancel()
+		retirement.withdrawal.CancelFlight()
 	}
-	retirement.registrationOpening = owner.publication.pair.openingLocked()
-	retirement.registrationOpening.stop()
-	owner.introduction.dispatch.stopLocked()
-	owner.introduction.admission.stopLocked()
+	retirement.registrationOpening = owner.publication.pair.OpeningLocked()
+	if retirement.registrationOpening != nil {
+		retirement.registrationOpening.CancelFlight()
+	}
+	owner.introduction.dispatch.StopLocked()
+	owner.introduction.admission.StopLocked()
 	owner.descriptorHistory.Clear()
 	retirement.introduction = owner.introduction.prefix.stopLocked()
 	retirement.responder = owner.responder.stopLocked()
@@ -75,13 +78,15 @@ func (retirement *dutyContextRetirement) join() error {
 	retirement.source.JoinOpening()
 	retirement.introduction.joinOpening()
 	retirement.responder.joinOpening()
-	retirement.registrationOpening.join()
+	if retirement.registrationOpening != nil {
+		retirement.registrationOpening.JoinFlight()
+	}
 	// Refresh terminal causes are published by their own owner. Context
 	// shutdown must join that owner, but only resource cleanup failures belong
 	// in the Context Close result.
 	_ = retirement.refresh.Join()
 	var outcome error
-	outcome = errors.Join(outcome, retirement.publication.join())
+	outcome = errors.Join(outcome, retirement.publication.Join())
 	outcome = errors.Join(outcome, retirement.introduction.closePrefix())
 	outcome = errors.Join(outcome, retirement.responder.closePrefix())
 	outcome = errors.Join(outcome, retirement.source.ClosePrefix())
@@ -90,10 +95,10 @@ func (retirement *dutyContextRetirement) join() error {
 		<-retirement.resolution.done
 	}
 	if retirement.withdrawal != nil {
-		<-retirement.withdrawal.done
+		retirement.withdrawal.JoinFlight()
 	}
 	for _, exchange := range retirement.exchanges {
-		<-exchange.done
+		<-exchange.Done()
 	}
 	outcome = errors.Join(outcome, retirement.job.join())
 	return outcome

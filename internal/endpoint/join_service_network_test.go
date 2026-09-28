@@ -13,6 +13,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
 	applicationconnection "github.com/dianabuilds/ardents-network/internal/application/interfacev2/connection"
 	"github.com/dianabuilds/ardents-network/internal/application/textdocument"
+	"github.com/dianabuilds/ardents-network/internal/endpoint/introduction"
 	"github.com/dianabuilds/ardents-network/internal/node"
 	routecarrier "github.com/dianabuilds/ardents-network/internal/route/carrier"
 	"github.com/dianabuilds/ardents-network/internal/service/instance"
@@ -81,7 +82,7 @@ func TestTextJoinedServiceTransfersDocumentThroughNetwork(t *testing.T) {
 			}
 			for _, owner := range []*dutyContext{reader, publisher} {
 				owner.mu.Lock()
-				pending := len(owner.introduction.exchanges.active)
+				pending := introduction.ActiveExchangeCount(&owner.introduction.exchanges)
 				owner.mu.Unlock()
 				if pending != 0 {
 					t.Errorf("completed Service retained %d exchanges", pending)

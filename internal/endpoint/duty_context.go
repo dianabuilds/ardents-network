@@ -19,7 +19,7 @@ import (
 type dutyContextState struct {
 	operationFailure  func(string)
 	publication       publicationOwner
-	introduction      introduction
+	introduction      introductionOwner
 	descriptorHistory descriptorhistory.History
 	responder         responderPrefixLifecycle
 	resolution        *resolutionFlight

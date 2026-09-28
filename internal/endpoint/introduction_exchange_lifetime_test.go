@@ -9,10 +9,11 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
+	"github.com/dianabuilds/ardents-network/internal/endpoint/introduction"
 	"github.com/dianabuilds/ardents-network/internal/route/client"
 )
 
-func (owner *dutyContext) retainServiceTransportExchange(job *jobIdentity, flight *introductionExchange) bool {
+func (owner *dutyContext) retainServiceTransportExchange(job *jobIdentity, flight *introduction.Exchange) bool {
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
 	return owner.retainServiceTransportExchangeLocked(job, flight)

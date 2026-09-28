@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
+	"github.com/dianabuilds/ardents-network/internal/endpoint/introduction"
 	"github.com/dianabuilds/ardents-network/internal/endpoint/publication"
 	"github.com/dianabuilds/ardents-network/internal/endpoint/source"
 	"github.com/dianabuilds/ardents-network/internal/route/client"
@@ -15,19 +16,19 @@ import (
 
 // Start once after a verified publication acknowledgement. Exact retries never
 // move the original refresh time or renew the signed registration lifetime.
-func (owner *dutyContext) startRefreshLocked(registered *introductionRegistration) {
-	registered.scheduleRefreshLocked()
+func (owner *dutyContext) startRefreshLocked(registered *introduction.Registration) {
+	registered.ScheduleRefreshLocked()
 	owner.publication.refresh.Start(owner.lease.Context(), owner.runRefresh)
 }
 
 func (owner *dutyContext) runRefresh(flight *publication.Refresh) {
 	for {
 		owner.mu.Lock()
-		registered := owner.publication.pair.currentLocked()
-		previous, until := owner.publication.pair.previousLocked()
+		registered := owner.publication.pair.CurrentLocked()
+		previous, until := owner.publication.pair.PreviousLocked()
 		var refreshAt, expiry time.Time
 		if registered != nil {
-			refreshAt, expiry = registered.refreshScheduleLocked()
+			refreshAt, expiry = registered.RefreshScheduleLocked()
 		}
 		now := owner.endpoint.clock().UTC()
 		live := owner.liveLocked(owner.endpoint, broker.Administration) && owner.publication.refresh.Current() == flight && registered != nil
@@ -40,10 +41,10 @@ func (owner *dutyContext) runRefresh(flight *publication.Refresh) {
 			return
 		}
 		if previous != nil && !now.Before(until) {
-			previous.cancel()
-			err := previous.close()
+			previous.Cancel()
+			err := previous.Close()
 			owner.mu.Lock()
-			if owner.publication.pair.removePreviousLocked(previous) {
+			if owner.publication.pair.RemovePreviousLocked(previous) {
 				owner.publication.signalRegistrationsLocked()
 			}
 			owner.mu.Unlock()
@@ -61,10 +62,10 @@ func (owner *dutyContext) runRefresh(flight *publication.Refresh) {
 					case <-flight.Context.Done():
 						timer.Stop()
 						return
-					case <-registered.doneSignal():
+					case <-registered.DoneSignal():
 						timer.Stop()
 						if flight.Context.Err() == nil {
-							owner.failRefresh(flight, registered.endedStage(), errors.New("text publication registration ended"))
+							owner.failRefresh(flight, registered.EndedStage(), errors.New("text publication registration ended"))
 						}
 						return
 					case <-flight.Wake:
@@ -92,10 +93,10 @@ func (owner *dutyContext) runRefresh(flight *publication.Refresh) {
 		case <-flight.Context.Done():
 			timer.Stop()
 			return
-		case <-registered.doneSignal():
+		case <-registered.DoneSignal():
 			timer.Stop()
 			if flight.Context.Err() == nil {
-				owner.failRefresh(flight, registered.endedStage(), errors.New("text publication registration ended"))
+				owner.failRefresh(flight, registered.EndedStage(), errors.New("text publication registration ended"))
 			}
 			return
 		case <-flight.Wake:
@@ -109,12 +110,12 @@ func refreshSourceContention(cause error) bool {
 	return errors.Is(cause, context.DeadlineExceeded) && roleMemberFailureStage(cause) == "conflict-read"
 }
 
-func (owner *dutyContext) rotatePublication(flight *publication.Refresh, previous *introductionRegistration) error {
+func (owner *dutyContext) rotatePublication(flight *publication.Refresh, previous *introduction.Registration) error {
 	owner.mu.Lock()
 	_, now, err := owner.permissionProfileLocked()
-	retained, _ := owner.publication.pair.previousLocked()
-	if err != nil || owner.publication.refresh.Current() != flight || owner.publication.pair.currentLocked() != previous || retained != nil ||
-		previous.revisionExhausted() || !owner.liveLocked(owner.endpoint, broker.Administration) {
+	retained, _ := owner.publication.pair.PreviousLocked()
+	if err != nil || owner.publication.refresh.Current() != flight || owner.publication.pair.CurrentLocked() != previous || retained != nil ||
+		previous.RevisionExhausted() || !owner.liveLocked(owner.endpoint, broker.Administration) {
 		owner.mu.Unlock()
 		return publication.RefreshFailureAt("rotation-authority", errors.New("text publication refresh owner unavailable"))
 	}
@@ -137,7 +138,7 @@ func (owner *dutyContext) rotatePublication(flight *publication.Refresh, previou
 	if !now.Before(expiry) {
 		return publication.RefreshFailureAt("rotation-expired", errors.New("text publication refresh expired"))
 	}
-	if _, err := owner.openRegistration(flight.Context, previous.nextRevision(), expiry, previous); err != nil {
+	if _, err := owner.openRegistration(flight.Context, previous.NextRevision(), expiry, previous); err != nil {
 		return publication.RefreshFailureAt("rotation-registration", err)
 	}
 	_, err = owner.publishDescriptor(flight.Context)
@@ -155,7 +156,7 @@ func (owner *dutyContext) failRefresh(flight *publication.Refresh, failure strin
 		owner.mu.Unlock()
 		return
 	}
-	current, pending, previous := owner.publication.pair.detachLocked()
+	current, pending, previous := owner.publication.pair.DetachLocked()
 	report := owner.publication.refreshFailure
 	owner.publication.signalRegistrationsLocked()
 	owner.mu.Unlock()
@@ -166,10 +167,10 @@ func (owner *dutyContext) failRefresh(flight *publication.Refresh, failure strin
 	if errors.Is(cause, client.ErrClosedSourceCleanup) {
 		cleanup = cause
 	}
-	for _, registered := range []*introductionRegistration{current, pending, previous} {
+	for _, registered := range []*introduction.Registration{current, pending, previous} {
 		if registered != nil {
-			registered.cancel()
-			cleanup = errors.Join(cleanup, registered.close())
+			registered.Cancel()
+			cleanup = errors.Join(cleanup, registered.Close())
 		}
 	}
 	owner.mu.Lock()

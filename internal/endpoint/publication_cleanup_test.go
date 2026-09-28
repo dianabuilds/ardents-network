@@ -13,6 +13,8 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
+	"github.com/dianabuilds/ardents-network/internal/endpoint/introduction"
+	"github.com/dianabuilds/ardents-network/internal/route/terminal"
 	"github.com/dianabuilds/ardents-network/internal/service/instance"
 	servicepublication "github.com/dianabuilds/ardents-network/internal/service/publication"
 )
@@ -106,7 +108,7 @@ func TestTextPublicationFailedWithdrawalRetainsBindingAndError(t *testing.T) {
 	}
 	defer restore()
 	endpoint.publisherMu.Lock()
-	_, err := owner.acquirePublication(t.Context(), &introductionRegistration{cancel: func() {}}, binding, now)
+	_, err := owner.acquirePublication(t.Context(), introduction.NewRegistration(now, nil, [32]byte{}, terminal.RegistrationRequest{}, func() {}), binding, now)
 	retained := endpoint.publisherBinding == binding && endpoint.publisherOwner == owner
 	endpoint.publisherMu.Unlock()
 	if err == nil || !retained || endpoint.dutyAvailable() {

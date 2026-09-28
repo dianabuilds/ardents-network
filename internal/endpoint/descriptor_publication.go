@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
+	"github.com/dianabuilds/ardents-network/internal/endpoint/introduction"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	"github.com/dianabuilds/ardents-network/internal/service/instance"
 	servicepublication "github.com/dianabuilds/ardents-network/internal/service/publication"
@@ -33,7 +34,7 @@ func (owner *dutyContext) publishDescriptor(ctx context.Context) (verified reach
 	}()
 	owner.mu.Lock()
 	profile, now, err := owner.permissionProfileLocked()
-	registered := owner.publication.pair.publicationTargetLocked()
+	registered := owner.publication.pair.PublicationTargetLocked()
 	acquisition := owner.source.AcquireResolutionLocked()
 	reason := ""
 	switch {
@@ -43,11 +44,11 @@ func (owner *dutyContext) publishDescriptor(ctx context.Context) (verified reach
 		reason = "context is not Administration"
 	case registered == nil:
 		reason = "Introduction registration is absent"
-	case owner.publication.pair.drainingLocked():
+	case owner.publication.pair.DrainingLocked():
 		reason = "Introduction registration is draining"
-	case owner.publication.pair.withdrawalInProgressLocked():
+	case owner.publication.pair.WithdrawalInProgressLocked():
 		reason = "Introduction registration withdrawal is in progress"
-	case owner.publication.pair.openingInProgressLocked():
+	case owner.publication.pair.OpeningInProgressLocked():
 		reason = "Introduction registration opening is in progress"
 	case owner.tokens.Permission == nil:
 		reason = "Permission is absent"
@@ -66,7 +67,7 @@ func (owner *dutyContext) publishDescriptor(ctx context.Context) (verified reach
 		owner.mu.Unlock()
 		return verified, fmt.Errorf("text publication owner unavailable: %s", reason)
 	}
-	if registered.ended() {
+	if registered.Ended() {
 		owner.mu.Unlock()
 		return verified, errors.New("text registration ended")
 	}
@@ -94,33 +95,33 @@ func (owner *dutyContext) publishDescriptor(ctx context.Context) (verified reach
 	current := lease.Current()
 	owner.mu.Lock()
 	live, at, err := owner.permissionProfileLocked()
-	if err != nil || live != profile || owner.publication.pair.publicationTargetLocked() != registered || owner.publication.pair.drainingLocked() || !owner.liveLocked(endpoint, broker.Administration) || attempt.Err() != nil {
+	if err != nil || live != profile || owner.publication.pair.PublicationTargetLocked() != registered || owner.publication.pair.DrainingLocked() || !owner.liveLocked(endpoint, broker.Administration) || attempt.Err() != nil {
 		owner.mu.Unlock()
 		return verified, errors.New("text publication authority changed")
 	}
-	if registered.ended() {
+	if registered.Ended() {
 		owner.mu.Unlock()
 		return verified, errors.New("text registration ended")
 	}
-	if !registered.hasPrivateProofLocked() {
+	if !registered.HasPrivateProofLocked() {
 		at = at.UTC().Truncate(time.Second)
-		revision, expiry := registered.registrationWindow()
+		revision, expiry := registered.RegistrationWindow()
 		recipient, err := binding.NewPrivateRecipient(revision, at, expiry)
 		if err != nil {
 			owner.mu.Unlock()
 			return verified, err
 		}
 		raw, _, err := reachability.IssuePrivate(reachability.PrivateIssueInput{Current: current, ProfileDigest: profile.Digest, InstanceSigner: binding,
-			Introduction: registered.privateIntroduction(recipient.Public(at), at)})
+			Introduction: registered.PrivateIntroduction(recipient.Public(at), at)})
 		if err != nil {
 			owner.mu.Unlock()
 			return verified, errors.Join(err, recipient.Close())
 		}
 		joined := make(chan struct{})
-		registered.attachPrivateProofLocked(recipient, raw, joined)
-		go func() { defer close(joined); <-registered.doneSignal(); _ = recipient.Close() }()
+		registered.AttachPrivateProofLocked(recipient, raw, joined)
+		go func() { defer close(joined); <-registered.DoneSignal(); _ = recipient.Close() }()
 	}
-	raw := registered.copyDescriptorLocked()
+	raw := registered.CopyDescriptorLocked()
 	owner.mu.Unlock()
 	// The exact context retains exclusive Instance ownership while the flight
 	// waits on the network. Legacy start/withdraw cannot acquire this owner;
@@ -156,18 +157,18 @@ func (owner *dutyContext) publishDescriptor(ctx context.Context) (verified reach
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
 	live, at, err = owner.permissionProfileLocked()
-	if err != nil || live != profile || owner.publication.pair.publicationTargetLocked() != registered || owner.publication.pair.drainingLocked() || !flight.source.CurrentLocked(&owner.source) ||
+	if err != nil || live != profile || owner.publication.pair.PublicationTargetLocked() != registered || owner.publication.pair.DrainingLocked() || !flight.source.CurrentLocked(&owner.source) ||
 		endpoint.publisherOwner != owner || endpoint.publisherBinding != binding || !endpoint.publicationLive ||
-		!owner.liveLocked(endpoint, broker.Administration) || attempt.Err() != nil || ctx.Err() != nil || registered.recipientPublicLocked(at) == [32]byte{} {
+		!owner.liveLocked(endpoint, broker.Administration) || attempt.Err() != nil || ctx.Err() != nil || registered.RecipientPublicLocked(at) == [32]byte{} {
 		return reachability.Verified{}, errors.New("text Descriptor acknowledgement outlived its owner")
 	}
-	if registered.ended() {
+	if registered.Ended() {
 		return reachability.Verified{}, errors.New("text registration ended before acknowledgement")
 	}
 	verified, err = reachability.VerifyPrivate(raw, current.Credential.Target, profile.NetworkID, profile.Digest, at)
 	if err == nil {
-		wasPublished := registered.publishedLocked()
-		if err := owner.publication.pair.commitAcknowledgedLocked(ctx, registered, at); err != nil {
+		wasPublished := registered.PublishedLocked()
+		if err := owner.publication.pair.CommitAcknowledgedLocked(ctx, registered, at); err != nil {
 			return reachability.Verified{}, err
 		}
 		if !wasPublished {
@@ -181,7 +182,7 @@ func (owner *dutyContext) publishDescriptor(ctx context.Context) (verified reach
 // publisherMu serializes this existing publication/Instance ownership with
 // legacy start and withdrawal. Local publication proof is distinct from the
 // later resolution acknowledgement and eventual protected Service readiness.
-func (owner *dutyContext) acquirePublication(ctx context.Context, registered *introductionRegistration, binding *instance.Binding, now time.Time) (*servicepublication.Lease, error) {
+func (owner *dutyContext) acquirePublication(ctx context.Context, registered *introduction.Registration, binding *instance.Binding, now time.Time) (*servicepublication.Lease, error) {
 	endpoint := owner.endpoint
 	credential := binding.Credential()
 	if err := validateCredential(credential, endpoint.authority, endpoint.network, now, publishCapability|connectCapability); err != nil {
@@ -206,13 +207,13 @@ func (owner *dutyContext) acquirePublication(ctx context.Context, registered *in
 	_, err = endpoint.publications.PublishAfterReadiness(ctx, servicepublication.PublishInput{Credential: credential, InstanceSigner: binding, At: now}, func(ctx context.Context) ([]byte, error) {
 		owner.mu.Lock()
 		defer owner.mu.Unlock()
-		if ctx.Err() != nil || owner.publication.pair.publicationTargetLocked() != registered || owner.publication.pair.drainingLocked() || !owner.liveLocked(endpoint, broker.Administration) {
+		if ctx.Err() != nil || owner.publication.pair.PublicationTargetLocked() != registered || owner.publication.pair.DrainingLocked() || !owner.liveLocked(endpoint, broker.Administration) {
 			return nil, errors.New("text registration owner changed")
 		}
-		if registered.ended() {
+		if registered.Ended() {
 			return nil, errors.New("text registration ended")
 		}
-		receipt := registered.ackReceipt()
+		receipt := registered.AckReceipt()
 		if receipt == [32]byte{} {
 			return nil, errors.New("text registration has no acknowledgement")
 		}
@@ -225,12 +226,12 @@ func (owner *dutyContext) acquirePublication(ctx context.Context, registered *in
 }
 
 // Every commit outcome retains cleanup ownership before a cancellable handover.
-func (owner *dutyContext) finishPublicationCommit(ctx context.Context, registered *introductionRegistration, binding *instance.Binding, now time.Time, commitErr error) (*servicepublication.Lease, error) {
+func (owner *dutyContext) finishPublicationCommit(ctx context.Context, registered *introduction.Registration, binding *instance.Binding, now time.Time, commitErr error) (*servicepublication.Lease, error) {
 	endpoint := owner.endpoint
 	endpoint.publisherOwner = owner
 	if commitErr != nil {
-		registered.cancel()
-		channelErr := registered.close()
+		registered.Cancel()
+		channelErr := registered.Close()
 		withdrawErr := binding.Withdraw()
 		if withdrawErr == nil {
 			endpoint.publisherBinding = nil

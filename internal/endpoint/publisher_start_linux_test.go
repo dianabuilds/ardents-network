@@ -30,7 +30,7 @@ func TestTextPublisherStartupOwnsPublicationBeyondCaller(t *testing.T) {
 			t.Cleanup(func() { _ = run.Close() })
 			endStartup()
 			publisherOwner.mu.Lock()
-			published := publisherOwner.publication.pair.registration != nil && publisherOwner.publication.pair.registration.published && publisherOwner.responder.currentLocked() != nil
+			published := publisherOwner.publication.pair.CurrentLocked() != nil && publisherOwner.publication.pair.CurrentLocked().PublishedLocked() && publisherOwner.responder.currentLocked() != nil
 			publisherOwner.mu.Unlock()
 			if !published {
 				t.Fatal("startup returned before Descriptor acknowledgement and Responder readiness")

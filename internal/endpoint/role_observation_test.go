@@ -97,12 +97,12 @@ func TestTextPublicationIsolatedRoleObservations(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if !bytes.Equal(lookupPublishedProof(t, owner, published.Descriptor.Target), registration.descriptor) {
+			if !bytes.Equal(lookupPublishedProof(t, owner, published.Descriptor.Target), registration.CopyDescriptorLocked()) {
 				t.Fatal("receiving Store proof differs")
 			}
-			observeIndependentReader(t, source, published.Descriptor.Target, registration.descriptor, output, string(carrier))
+			observeIndependentReader(t, source, published.Descriptor.Target, registration.CopyDescriptorLocked(), output, string(carrier))
 			awaitReaderBootstrapRetirement(t)
-			contextEvidence, foreignPermission := observeIndependentReaderContexts(t, source, published.Descriptor.Target, registration.descriptor, output)
+			contextEvidence, foreignPermission := observeIndependentReaderContexts(t, source, published.Descriptor.Target, registration.CopyDescriptorLocked(), output)
 			observe("published")
 			if err := owner.withdrawIntroduction(t.Context()); err != nil {
 				t.Fatal(err)

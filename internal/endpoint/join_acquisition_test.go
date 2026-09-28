@@ -11,6 +11,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
 	"github.com/dianabuilds/ardents-network/internal/application/streamqualification"
+	"github.com/dianabuilds/ardents-network/internal/endpoint/introduction"
 	"github.com/dianabuilds/ardents-network/internal/endpoint/source"
 	"github.com/dianabuilds/ardents-network/internal/qualification"
 	introductioncapsule "github.com/dianabuilds/ardents-network/internal/route/capsule"
@@ -112,7 +113,7 @@ func TestTextJoinOldAcquisitionCannotAttachAfterSourceReplacement(t *testing.T) 
 	}
 	attached := job.qualification.Retains(joined)
 	owner.mu.Lock()
-	retained := flight.retained
+	retained := introduction.ExchangeRetained(flight)
 	owner.mu.Unlock()
 	if attached || retained {
 		t.Fatalf("late old JOIN retained transport: attached=%v retained=%v", attached, retained)

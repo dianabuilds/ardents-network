@@ -2,7 +2,10 @@
 
 package endpoint
 
-import "github.com/dianabuilds/ardents-network/internal/endpoint/publication"
+import (
+	"github.com/dianabuilds/ardents-network/internal/endpoint/introduction"
+	"github.com/dianabuilds/ardents-network/internal/endpoint/publication"
+)
 
 // publicationOwner is the single local owner of one context's publication
 // state: the Registration pair lifecycle, the refresh scheduler identity, the
@@ -17,7 +20,7 @@ import "github.com/dianabuilds/ardents-network/internal/endpoint/publication"
 // without a package-name collision; the dutyContextState field stays
 // `publication`, so every owner.publication selector is unchanged.
 type publicationOwner struct {
-	pair              publicationPairLifecycle
+	pair              introduction.PairLifecycle
 	refresh           publication.RefreshLifecycle
 	starting          bool
 	drain             chan struct{}
@@ -30,7 +33,7 @@ type publicationOwner struct {
 // registration is already current; on success it opens the drain channel the
 // run's producers will watch. The caller holds dutyContext.mu.
 func (publication *publicationOwner) beginStartLocked() bool {
-	if publication.starting || publication.pair.drainingLocked() || publication.pair.currentLocked() != nil {
+	if publication.starting || publication.pair.DrainingLocked() || publication.pair.CurrentLocked() != nil {
 		return false
 	}
 	publication.starting = true
@@ -49,7 +52,7 @@ func (publication *publicationOwner) endStartLocked() {
 // waiters plus the refresh scheduler are signalled last. The caller holds
 // dutyContext.mu and has already verified that no drain is in progress.
 func (publication *publicationOwner) beginDrainLocked() {
-	publication.pair.beginDrainLocked()
+	publication.pair.BeginDrainLocked()
 	close(publication.drain)
 	publication.signalRegistrationsLocked()
 }
@@ -57,7 +60,7 @@ func (publication *publicationOwner) beginDrainLocked() {
 // signalRegistrationsLocked wakes registration change waiters and the refresh
 // scheduler in one transition. The caller holds dutyContext.mu.
 func (publication *publicationOwner) signalRegistrationsLocked() {
-	publication.pair.signalLocked()
+	publication.pair.SignalLocked()
 	publication.refresh.Wake()
 }
 

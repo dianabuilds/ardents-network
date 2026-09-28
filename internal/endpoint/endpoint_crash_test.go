@@ -18,6 +18,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
 	"github.com/dianabuilds/ardents-network/internal/custody"
 	"github.com/dianabuilds/ardents-network/internal/endpoint/durableroot"
+	"github.com/dianabuilds/ardents-network/internal/endpoint/introduction"
 	"github.com/dianabuilds/ardents-network/internal/endpoint/tokenjournal"
 	"github.com/dianabuilds/ardents-network/internal/endpoint/tokens"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
@@ -89,9 +90,10 @@ func TestTextEndpointCrashDropsVolatileAuthorityAndRetainsSpend(t *testing.T) {
 	}
 	defer owner.Close()
 	owner.mu.Lock()
+	crashPrevious, _ := owner.publication.pair.PreviousLocked()
 	fresh := owner.tokens.Permission == nil && owner.job == nil && owner.verifiedJob == nil && owner.sourceSet == nil &&
-		owner.source.CurrentLocked() == nil && owner.publication.pair.registration == nil && owner.publication.pair.previousRegistration == nil &&
-		owner.introduction.exchanges.active == nil && owner.introduction.admission.replays == nil && owner.descriptorHistory.Cleared()
+		owner.source.CurrentLocked() == nil && owner.publication.pair.CurrentLocked() == nil && crashPrevious == nil &&
+		introduction.ActiveExchangeCount(&owner.introduction.exchanges) == 0 && introduction.ReplayCount(&owner.introduction.admission) == 0 && owner.descriptorHistory.Cleared()
 	owner.mu.Unlock()
 	if !fresh {
 		t.Fatal("restart populated volatile permission, job, join, or Route state")

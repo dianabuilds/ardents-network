@@ -6,6 +6,8 @@ import (
 	"context"
 	"testing"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/endpoint/introduction"
 )
 
 // Observe the installed Publisher's actual scheduler. No authority clock,
@@ -13,31 +15,38 @@ import (
 func observeInstalledRefresh(t *testing.T, ctx context.Context, owner *dutyContext, run *publisherRun) {
 	t.Helper()
 	owner.mu.Lock()
-	first := owner.publication.pair.registration
-	if first == nil || !first.published {
+	first := owner.publication.pair.CurrentLocked()
+	if first == nil || !first.PublishedLocked() {
 		owner.mu.Unlock()
 		t.Fatal("no initial published registration")
 	}
-	created, scheduled, expiry := first.createdAt, first.refreshAt, first.request.Expiry
-	initialSlot, initialKey, initialRevision := first.request.Slot, first.recipient.Public(time.Now().UTC()), first.request.Revision
+	created := introduction.CreatedAt(first)
+	scheduled, expiry := first.RefreshScheduleLocked()
+	initialSlot, initialKey, initialRevision := introduction.Slot(first), first.RecipientPublicLocked(time.Now().UTC()), first.Revision()
 	owner.mu.Unlock()
 	if scheduled != created.Add(300*time.Second) || initialKey == [32]byte{} {
 		t.Fatal("initial refresh schedule or recipient invalid")
 	}
-	var second *introductionRegistration
+	var second *introduction.Registration
 	var cutoff time.Time
 	for {
 		owner.mu.Lock()
-		second = owner.publication.pair.registration
-		changed := owner.publication.pair.registrationChanged
-		switched := second != nil && second != first && second.published && !second.refreshAt.IsZero()
+		second = owner.publication.pair.CurrentLocked()
+		changed := owner.publication.pair.ChangedLocked()
+		switched := false
+		if second != nil && second != first && second.PublishedLocked() {
+			refreshAt, _ := second.RefreshScheduleLocked()
+			switched = !refreshAt.IsZero()
+		}
 		if switched {
 			// Read the timestamp recorded by the verified ACK transition itself.
-			cutoff = owner.publication.pair.previousUntil
-			switchedAt := second.publishedAt
-			valid := owner.publication.pair.previousRegistration == first && second.request.Slot != initialSlot && second.request.Revision > initialRevision && second.recipient.Public(time.Now().UTC()) != initialKey
+			previous, until := owner.publication.pair.PreviousLocked()
+			cutoff = until
+			switchedAt := introduction.PublishedAt(second)
+			secondCreated := introduction.CreatedAt(second)
+			valid := previous == first && introduction.Slot(second) != initialSlot && second.Revision() > initialRevision && second.RecipientPublicLocked(time.Now().UTC()) != initialKey
 			owner.mu.Unlock()
-			if !valid || second.createdAt.Before(scheduled) || time.Now().Before(scheduled) || switchedAt.IsZero() || switchedAt.Before(scheduled) || cutoff.After(switchedAt.Add(60*time.Second)) || cutoff.After(expiry) {
+			if !valid || secondCreated.Before(scheduled) || time.Now().Before(scheduled) || switchedAt.IsZero() || switchedAt.Before(scheduled) || cutoff.After(switchedAt.Add(60*time.Second)) || cutoff.After(expiry) {
 				t.Fatal("actual refresh violated slot, revision or predecessor bound")
 			}
 			break
@@ -57,20 +66,21 @@ func observeInstalledRefresh(t *testing.T, ctx context.Context, owner *dutyConte
 	defer cancel()
 	for {
 		owner.mu.Lock()
-		retired := owner.publication.pair.previousRegistration == nil
-		changed := owner.publication.pair.registrationChanged
-		current := owner.publication.pair.registration == second && second.published
-		unchanged := retired || owner.publication.pair.previousRegistration == first && owner.publication.pair.previousUntil == cutoff
+		previous, previousUntil := owner.publication.pair.PreviousLocked()
+		retired := previous == nil
+		changed := owner.publication.pair.ChangedLocked()
+		current := owner.publication.pair.CurrentLocked() == second && second.PublishedLocked()
+		unchanged := retired || previous == first && previousUntil == cutoff
 		owner.mu.Unlock()
 		if !unchanged {
 			t.Fatal("predecessor deadline or identity changed after publication")
 		}
 		if retired {
-			if time.Now().Before(cutoff) || !current || first.recipient.Public(time.Now().UTC()) != [32]byte{} || second.recipient.Public(time.Now().UTC()) == [32]byte{} {
+			if time.Now().Before(cutoff) || !current || first.RecipientPublicLocked(time.Now().UTC()) != [32]byte{} || second.RecipientPublicLocked(time.Now().UTC()) == [32]byte{} {
 				t.Fatal("predecessor retirement lost current publication or retained its key")
 			}
 			select {
-			case <-first.channel.Done():
+			case <-first.DoneSignal():
 			default:
 				t.Fatal("predecessor channel remained live")
 			}

@@ -134,7 +134,7 @@ func runDataJoinIsolatedRoleObservation(t *testing.T, carrier routecarrier.Carri
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !bytes.Equal(lookupPublishedProof(t, owner, published.Descriptor.Target), registration.descriptor) {
+	if !bytes.Equal(lookupPublishedProof(t, owner, published.Descriptor.Target), registration.CopyDescriptorLocked()) {
 		t.Fatal("receiving Store proof differs")
 	}
 	observe("published")

@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	interfacev2connection "github.com/dianabuilds/ardents-network/internal/application/interfacev2/connection"
+	"github.com/dianabuilds/ardents-network/internal/endpoint/introduction"
 	"github.com/dianabuilds/ardents-network/internal/qualification"
 )
 
@@ -57,7 +58,7 @@ func (worker *qualifiedWorker) produceNetworkSequential(lifetime context.Context
 			draining = true
 			return nil
 		}
-		if onlyIntroductionRefusal(err) {
+		if introduction.OnlyRefusal(err) {
 			<-slots
 			continue
 		}
@@ -196,7 +197,7 @@ func (worker *qualifiedWorker) produceQualificationNetwork(lifetime context.Cont
 					drain = nil
 					continue
 				}
-				if onlyIntroductionRefusal(result.err) {
+				if introduction.OnlyRefusal(result.err) {
 					continue
 				}
 				if !stopping || !qualification.CancellationOnly(result.err) {

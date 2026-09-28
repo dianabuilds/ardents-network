@@ -15,6 +15,7 @@ import (
 
 	applicationconnection "github.com/dianabuilds/ardents-network/internal/application/interfacev2/connection"
 	"github.com/dianabuilds/ardents-network/internal/application/textdocument"
+	"github.com/dianabuilds/ardents-network/internal/endpoint/introduction"
 	routecarrier "github.com/dianabuilds/ardents-network/internal/route/carrier"
 	nativeconnection "github.com/dianabuilds/ardents-network/internal/service/connection"
 )
@@ -260,7 +261,7 @@ func TestTextJoinedServiceRecoversAcceptedRequestAcrossFreshProtectedRoute(t *te
 			}
 			for _, owner := range []*dutyContext{reader, publisher} {
 				owner.mu.Lock()
-				pending := len(owner.introduction.exchanges.active)
+				pending := introduction.ActiveExchangeCount(&owner.introduction.exchanges)
 				owner.mu.Unlock()
 				if pending != 0 {
 					t.Errorf("recovery retained %d Introduction exchanges", pending)

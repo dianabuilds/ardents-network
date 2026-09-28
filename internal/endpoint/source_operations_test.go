@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/endpoint/introduction"
 	"github.com/dianabuilds/ardents-network/internal/endpoint/source"
 	"github.com/dianabuilds/ardents-network/internal/endpoint/tokens"
 	"github.com/dianabuilds/ardents-network/internal/network/duty"
@@ -108,8 +109,8 @@ func TestTextRefreshWaitsForActualSourceUse(t *testing.T) {
 				}
 			}()
 			owner.mu.Lock()
-			first, refresh := owner.publication.pair.registration, owner.publication.refresh.Current()
-			first.refreshAt = time.Now().Add(-time.Second)
+			first, refresh := owner.publication.pair.CurrentLocked(), owner.publication.refresh.Current()
+			introduction.ForceRefreshAt(first, time.Now().Add(-time.Second))
 			owner.publication.signalRegistrationsLocked()
 			owner.mu.Unlock()
 			// The scheduler may begin, but cannot treat legitimate Source ownership
@@ -126,10 +127,16 @@ func TestTextRefreshWaitsForActualSourceUse(t *testing.T) {
 			release()
 			held = false
 			waitRefreshCondition(t, owner, func() bool {
-				return owner.publication.pair.registration != nil && owner.publication.pair.registration != first && !owner.publication.pair.registration.refreshAt.IsZero()
+				current := owner.publication.pair.CurrentLocked()
+				if current == nil || current == first {
+					return false
+				}
+				scheduled, _ := current.RefreshScheduleLocked()
+				return !scheduled.IsZero()
 			})
 			owner.mu.Lock()
-			valid := owner.publication.pair.previousRegistration == first && owner.publication.refresh.Outcome(refresh) == nil && owner.tokens.Permission.Batches == 2
+			sourceOpsPrevious, _ := owner.publication.pair.PreviousLocked()
+			valid := sourceOpsPrevious == first && owner.publication.refresh.Outcome(refresh) == nil && owner.tokens.Permission.Batches == 2
 			owner.mu.Unlock()
 			if !valid {
 				t.Fatal("refresh lost original registration or repeated bootstrap")
