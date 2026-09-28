@@ -74,10 +74,81 @@ type closedForwardChild struct {
 	reverseControlQueued uint64
 	queued               uint64
 	delivered            uint64
-	frames               [][]byte
+	frames               closedForwardFrames
 	ready                bool
 	eof                  bool
 	eofSent              bool
+}
+
+// closedForwardFrames keeps exact frame boundaries without retaining a slice
+// header and a separate allocation for every tiny body. A returned body may
+// outlive the queue, so consumed slab storage is never overwritten or reused.
+type closedForwardFrames struct {
+	firstSize uint32
+	rest      []uint32
+	count     int
+	slabs     [][]byte
+	offset    uint32
+}
+
+func (frames *closedForwardFrames) append(body []byte) {
+	if frames.count == 0 {
+		frames.firstSize = uint32(len(body))
+	} else {
+		frames.rest = append(frames.rest, uint32(len(body)))
+	}
+	frames.count++
+	if len(body) == 0 {
+		return
+	}
+	if frames.count == 1 {
+		frames.slabs = append(frames.slabs, append([]byte(nil), body...))
+		return
+	}
+	if len(frames.slabs) == 0 || cap(frames.slabs[len(frames.slabs)-1])-len(frames.slabs[len(frames.slabs)-1]) < len(body) {
+		capacity := len(body)
+		if capacity < 4096 {
+			capacity = 4096
+		}
+		frames.slabs = append(frames.slabs, make([]byte, 0, capacity))
+	}
+	last := len(frames.slabs) - 1
+	frames.slabs[last] = append(frames.slabs[last], body...)
+}
+
+func (frames *closedForwardFrames) first() []byte {
+	if frames.firstSize == 0 {
+		return nil
+	}
+	start := int(frames.offset)
+	end := start + int(frames.firstSize)
+	return frames.slabs[0][start:end:end]
+}
+
+func (frames *closedForwardFrames) removeFirst() {
+	size := frames.firstSize
+	frames.count--
+	if frames.count > 0 {
+		frames.firstSize = frames.rest[0]
+		frames.rest = frames.rest[1:]
+		if frames.count == 1 {
+			frames.rest = nil
+		}
+	}
+	if size != 0 {
+		frames.offset += size
+		if frames.offset == uint32(len(frames.slabs[0])) {
+			frames.slabs[0] = nil
+			frames.slabs = frames.slabs[1:]
+			frames.offset = 0
+		}
+	}
+	if frames.count == 0 {
+		frames.firstSize = 0
+		frames.rest = nil
+		frames.slabs = nil
+		frames.offset = 0
+	}
 }
 
 // NewReplenishableClosedForwardingChannel creates the one forwarding parent
@@ -214,7 +285,7 @@ func (channel *ClosedForwardingChannel) bytes(frame ardp.Frame) (ClosedForwardin
 	}
 	child.credit -= bytes
 	child.queued += bytes
-	child.frames = append(child.frames, append([]byte(nil), frame.Body...))
+	child.frames.append(frame.Body)
 	if !child.ready {
 		child.ready = true
 		channel.ready = append(channel.ready, frame.Lane)
@@ -308,23 +379,19 @@ func (channel *ClosedForwardingChannel) NextAvailable(available func(ClosedForwa
 		lane := channel.ready[0]
 		channel.ready = channel.ready[1:]
 		child, found := channel.children[lane]
-		if !found || len(child.frames) == 0 {
+		if !found || child.frames.count == 0 {
 			continue
 		}
-		event := ClosedForwardingEvent{Kind: ardp.KindBytes, Lane: lane, Bytes: child.frames[0]}
+		event := ClosedForwardingEvent{Kind: ardp.KindBytes, Lane: lane, Bytes: child.frames.first()}
 		if available != nil && !available(event) {
 			channel.ready = append(channel.ready, lane)
 			continue
 		}
 		// The returned event now owns these bytes. A live child must not keep
 		// consumed frame bodies through the old queue backing array.
-		child.frames[0] = nil
-		child.frames = child.frames[1:]
-		if len(child.frames) == 0 {
-			child.frames = nil
-		}
+		child.frames.removeFirst()
 		child.delivered += uint64(len(event.Bytes))
-		if len(child.frames) > 0 {
+		if child.frames.count > 0 {
 			channel.ready = append(channel.ready, lane)
 		} else {
 			child.ready = false

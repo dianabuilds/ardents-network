@@ -2,7 +2,10 @@ package route
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"runtime"
+	"runtime/pprof"
 	"testing"
 	"time"
 
@@ -33,7 +36,7 @@ func BenchmarkClosedForwardingQueuedFrames(b *testing.B) {
 				b.SetBytes(int64(frames * (ardp.HeaderSize + bodySize)))
 				b.ReportAllocs()
 				b.ResetTimer()
-				for range b.N {
+				for iteration := range b.N {
 					b.StopTimer()
 					runtime.GC()
 					var before runtime.MemStats
@@ -54,6 +57,9 @@ func BenchmarkClosedForwardingQueuedFrames(b *testing.B) {
 					var after runtime.MemStats
 					runtime.ReadMemStats(&after)
 					liveMiB += float64(int64(after.HeapAlloc)-int64(before.HeapAlloc)) / (1 << 20)
+					if iteration == 0 && bodySize == 1 && lanes > 1 {
+						writeQueuedHeapProfile(b, lanes)
+					}
 					if err := channel.Cancel(); err != nil {
 						b.Fatal(err)
 					}
@@ -63,6 +69,33 @@ func BenchmarkClosedForwardingQueuedFrames(b *testing.B) {
 				b.ReportMetric(liveMiB/float64(b.N), "liveMiB/parent")
 			})
 		}
+	}
+}
+
+// writeQueuedHeapProfile captures the retained queue while it is still live.
+// The opt-in destination is an absolute directory outside the repository.
+func writeQueuedHeapProfile(b *testing.B, lanes int) {
+	b.Helper()
+	directory := os.Getenv("ROUTE_QUEUE_HEAP_DIR")
+	if directory == "" {
+		return
+	}
+	if !filepath.IsAbs(directory) {
+		b.Fatal("ROUTE_QUEUE_HEAP_DIR must be absolute")
+	}
+	if err := os.MkdirAll(directory, 0o700); err != nil {
+		b.Fatal(err)
+	}
+	file, err := os.Create(filepath.Join(directory, fmt.Sprintf("queue-lanes%d-body1.pprof", lanes)))
+	if err != nil {
+		b.Fatal(err)
+	}
+	if err := pprof.WriteHeapProfile(file); err != nil {
+		_ = file.Close()
+		b.Fatal(err)
+	}
+	if err := file.Close(); err != nil {
+		b.Fatal(err)
 	}
 }
 
