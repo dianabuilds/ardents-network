@@ -201,7 +201,7 @@ func TestTextServiceRecoveryOpenersPreserveCancellationBeforeSideEffects(t *test
 }
 
 func TestTextRecoveryPublisherRejectsCapsuleBeyondLocalAttemptDeadline(t *testing.T) {
-	reader, publisher, destination := textJoinedNetworkFixture(t, carrier.ClosedCarrierTCP)
+	reader, publisher, destination := joinedNetworkFixture(t, carrier.ClosedCarrierTCP)
 	readerJob, publisherJob := liveCapsuleJob(t, reader), liveCapsuleJob(t, publisher)
 	ctx, cancel := context.WithTimeout(t.Context(), 15*time.Second)
 	defer cancel()

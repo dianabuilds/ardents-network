@@ -11,15 +11,15 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/node"
 )
 
-// textNetworkNodeEvents retains only the bounded, public lifecycle categories
+// networkNodeEvents retains only the bounded, public lifecycle categories
 // needed to explain a failed multi-Node fixture. It never keeps resource
 // samples, assignment digests, or raw network material.
-type textNetworkNodeEvents struct {
+type networkNodeEvents struct {
 	mu     sync.Mutex
-	recent []textNetworkNodeEvent
+	recent []networkNodeEvent
 }
 
-type textNetworkNodeEvent struct {
+type networkNodeEvent struct {
 	at      time.Time
 	kind    string
 	state   string
@@ -27,9 +27,9 @@ type textNetworkNodeEvent struct {
 	reason  string
 }
 
-const textNetworkNodeEventLimit = 16
+const networkNodeEventLimit = 16
 
-func (events *textNetworkNodeEvents) record(event node.Event) {
+func (events *networkNodeEvents) record(event node.Event) {
 	// The once-per-second sample would otherwise displace the READY and
 	// terminal transitions while the other fixture Nodes are starting.
 	if event.Kind == "resource-sample" {
@@ -37,24 +37,24 @@ func (events *textNetworkNodeEvents) record(event node.Event) {
 	}
 	events.mu.Lock()
 	defer events.mu.Unlock()
-	if len(events.recent) == textNetworkNodeEventLimit {
+	if len(events.recent) == networkNodeEventLimit {
 		copy(events.recent, events.recent[1:])
-		events.recent = events.recent[:textNetworkNodeEventLimit-1]
+		events.recent = events.recent[:networkNodeEventLimit-1]
 	}
-	events.recent = append(events.recent, textNetworkNodeEvent{
+	events.recent = append(events.recent, networkNodeEvent{
 		at: event.At.UTC(), kind: event.Kind, state: event.State,
 		carrier: event.CarrierProfile, reason: event.Reason,
 	})
 }
 
-func (events *textNetworkNodeEvents) snapshot() []textNetworkNodeEvent {
+func (events *networkNodeEvents) snapshot() []networkNodeEvent {
 	events.mu.Lock()
 	defer events.mu.Unlock()
-	return append([]textNetworkNodeEvent(nil), events.recent...)
+	return append([]networkNodeEvent(nil), events.recent...)
 }
 
 func TestTextNetworkNodeEventsKeepBoundedTransitionsAcrossSampling(t *testing.T) {
-	var events textNetworkNodeEvents
+	var events networkNodeEvents
 	for index := range 20 {
 		events.record(node.Event{Kind: "lifecycle", State: strconv.Itoa(index)})
 		for range 20 {
@@ -62,7 +62,7 @@ func TestTextNetworkNodeEventsKeepBoundedTransitionsAcrossSampling(t *testing.T)
 		}
 	}
 	tail := events.snapshot()
-	if len(tail) != textNetworkNodeEventLimit || tail[0].state != "4" || tail[15].state != "19" {
+	if len(tail) != networkNodeEventLimit || tail[0].state != "4" || tail[15].state != "19" {
 		t.Fatalf("bounded lifecycle tail = %+v", tail)
 	}
 	tail[0].state = "changed"

@@ -29,8 +29,8 @@ func TestTextPublisherBuildsRetainedQualificationSetAcrossFourReaders(t *testing
 	// actual tx+rx for all sixteen local Nodes in addition to both retained JOIN
 	// sides and their termination reservations; the ordinary one-GiB journey
 	// fixture remains intentionally too small for this maximum workload.
-	qualificationHosting := textNetworkHostingRootWithQuantity(t, 1024)
-	reader, publisher, destination := textJoinedNetworkFixtureWithReaderMaximaAndRegistration(t, carrier.ClosedCarrierTCP, [3]uint32{512, 512, 0}, 9*time.Minute, func(index int, config *node.Config) {
+	qualificationHosting := networkHostingRootWithQuantity(t, 1024)
+	reader, publisher, destination := joinedNetworkFixtureWithReaderMaximaAndRegistration(t, carrier.ClosedCarrierTCP, [3]uint32{512, 512, 0}, 9*time.Minute, func(index int, config *node.Config) {
 		// All sixteen Nodes share one provider period for the same physical host.
 		// Separate one-GiB fixture ledgers would each charge the host-wide loopback
 		// counters and make parallel package tests interfere with qualification.

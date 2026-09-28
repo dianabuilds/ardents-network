@@ -25,14 +25,14 @@ func TestTextNetworkFixtureWindowAvoidsExpiredPermissionImport(t *testing.T) {
 		t.Fatal("expired fixture permission imported across its hour boundary")
 	}
 
-	start, end := textNetworkFixtureWindow(boundary)
+	start, end := networkFixtureWindow(boundary)
 	if !start.Equal(boundary.Truncate(time.Hour).Add(time.Hour)) || end.Sub(start) != time.Hour {
 		t.Fatalf("fixture window = %v to %v", start, end)
 	}
 	current = start
 	owner, response, closeOwner = networkFixturePermission(t, &current)
 	defer closeOwner()
-	current = start.Add(textNetworkFixtureMinimumWindow - time.Second)
+	current = start.Add(networkFixtureMinimumWindow - time.Second)
 	if err := owner.importPermission(response.digest, response.raw); err != nil {
 		t.Fatalf("fixture permission did not cover its bounded carrier episode: %v", err)
 	}

@@ -20,7 +20,7 @@ import (
 func TestTextPublisherNetworkRetainsSnapshotAcrossReaders(t *testing.T) {
 	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP, routecarrier.ClosedCarrierQUIC} {
 		t.Run(string(carrier), func(t *testing.T) {
-			readerOwner, publisherOwner, destination := textJoinedNetworkFixture(t, carrier)
+			readerOwner, publisherOwner, destination := joinedNetworkFixture(t, carrier)
 			body := bytes.Repeat([]byte("retained snapshot\n"), 4096)
 			publisherJob := liveCapsuleJob(t, publisherOwner)
 			publisher := serviceWorkerFixture(t, &serviceBinding{owner: publisherOwner, job: publisherJob}, body)

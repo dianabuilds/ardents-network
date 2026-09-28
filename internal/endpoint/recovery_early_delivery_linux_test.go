@@ -18,7 +18,7 @@ import (
 // authenticated next-generation capsule for the live logical Connection,
 // rather than refusing it before the Publisher starts its recovery opener.
 func TestTextRecoveryDeliveryMayArriveBeforePublisherFailureDetection(t *testing.T) {
-	reader, publisher, destination := textJoinedNetworkFixture(t, carrier.ClosedCarrierTCP)
+	reader, publisher, destination := joinedNetworkFixture(t, carrier.ClosedCarrierTCP)
 	readerJob, publisherJob := liveCapsuleJob(t, reader), liveCapsuleJob(t, publisher)
 	ctx, cancel := context.WithTimeout(t.Context(), 8*time.Second)
 	defer cancel()
@@ -131,7 +131,7 @@ func TestTextRecoveryDeliveryMayArriveBeforePublisherFailureDetection(t *testing
 // Canceling the individual attempt during local refusal must not prevent its
 // terminal RESULT or kill every other Connection using that registration.
 func TestTextRecoveryRefusalOutlivesCanceledAttempt(t *testing.T) {
-	reader, publisher, destination := textJoinedNetworkFixture(t, carrier.ClosedCarrierTCP)
+	reader, publisher, destination := joinedNetworkFixture(t, carrier.ClosedCarrierTCP)
 	readerJob, publisherJob := liveCapsuleJob(t, reader), liveCapsuleJob(t, publisher)
 	ctx, cancel := context.WithTimeout(t.Context(), 8*time.Second)
 	defer cancel()
@@ -200,7 +200,7 @@ func TestTextRecoveryRefusalOutlivesCanceledAttempt(t *testing.T) {
 // registration rather than to the individual waiter whose cancellation may
 // have raced with inspection.
 func TestTextIntroductionOrphanRefusalOutlivesCanceledWaiter(t *testing.T) {
-	reader, publisher, destination := textJoinedNetworkFixture(t, carrier.ClosedCarrierTCP)
+	reader, publisher, destination := joinedNetworkFixture(t, carrier.ClosedCarrierTCP)
 	readerJob, publisherJob := liveCapsuleJob(t, reader), liveCapsuleJob(t, publisher)
 	ctx, cancel := context.WithTimeout(t.Context(), 8*time.Second)
 	defer cancel()

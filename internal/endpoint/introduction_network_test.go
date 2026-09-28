@@ -31,7 +31,7 @@ func addIntroductionPrefixState(source *sourceStateFixture) {
 func TestTextPublisherIntroductionPrefixUsesSeparateDomainAndRealIssuance(t *testing.T) {
 	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP, routecarrier.ClosedCarrierQUIC} {
 		t.Run(string(carrier), func(t *testing.T) {
-			_, owner, _ := startTextRoleNetwork(t, textRoleNetworkFixture{carrier: carrier, resolution: true, publisher: true})
+			_, owner, _ := startRoleNetwork(t, roleNetworkFixture{carrier: carrier, resolution: true, publisher: true})
 			source, err := owner.openPrefix(t.Context())
 			if err != nil {
 				t.Fatal(err)

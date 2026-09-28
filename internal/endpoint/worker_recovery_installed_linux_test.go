@@ -42,7 +42,7 @@ func exerciseInstalledWorkerRecovery(t *testing.T, ctx context.Context, carrier 
 	t.Helper()
 	ctx, cancel := context.WithTimeout(ctx, 45*time.Second)
 	defer cancel()
-	reader, publisher, destination := installedTextRecoveryNetwork(t, carrier)
+	reader, publisher, destination := installedRecoveryNetwork(t, carrier)
 	body := bytes.Repeat([]byte("r"), (64<<10)-13)
 	readerWorker, err := reader.launchWorker(ctx, nil)
 	if err != nil {
@@ -234,9 +234,9 @@ func assertInstalledWorkerRetired(t *testing.T, ctx context.Context, bound *qual
 	requireInstalledWorkerCollected(t, ctx, instance.Name, instance.Role)
 }
 
-func installedTextRecoveryNetwork(t *testing.T, carrier routecarrier.CarrierProfile) (*textContext, *textContext, targetlink.Link) {
+func installedRecoveryNetwork(t *testing.T, carrier routecarrier.CarrierProfile) (*textContext, *textContext, targetlink.Link) {
 	t.Helper()
-	reader, publisher := textUnpublishedNetworkWithInstance(t, carrier,
+	reader, publisher := unpublishedNetworkWithInstance(t, carrier,
 		func(network [32]byte, now, until time.Time) (*instance.Root, *instance.Binding) {
 			return acquireInstalledServiceInstance(t, network, now, until)
 		})

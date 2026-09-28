@@ -31,7 +31,7 @@ func floorPublication(t *testing.T, authority ed25519.PrivateKey, network [32]by
 	if err != nil {
 		t.Fatal(err)
 	}
-	root, err := servicepublication.Open(servicepublication.Config{Root: textNetworkPrivateRoot(t), NetworkID: network, Authority: authority.Public().(ed25519.PublicKey)})
+	root, err := servicepublication.Open(servicepublication.Config{Root: networkPrivateRoot(t), NetworkID: network, Authority: authority.Public().(ed25519.PublicKey)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -106,7 +106,7 @@ func TestTextDescriptorFloorBelongsToContextAcrossWorkerLoss(t *testing.T) {
 func TestTextResolutionNetworkCannotRollBackLocalDescriptorFloor(t *testing.T) {
 	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP, routecarrier.ClosedCarrierQUIC} {
 		t.Run(string(carrier), func(t *testing.T) {
-			_, owner, source := startTextRoleNetwork(t, textRoleNetworkFixture{carrier: carrier, resolution: true})
+			_, owner, source := startRoleNetwork(t, roleNetworkFixture{carrier: carrier, resolution: true})
 			prefix, err := owner.openPrefix(t.Context())
 			if err != nil {
 				t.Fatal(err)

@@ -22,7 +22,7 @@ func acquireInstalledServiceInstance(t *testing.T, network [32]byte, now, until 
 	t.Helper()
 	endpointBinary := installedServiceCommandArtifact(t, "ardents", "ARDENTS_TEXT_ENDPOINT_COMMAND_SHA256")
 	custodyBinary := installedServiceCommandArtifact(t, "ardents-custody", "ARDENTS_TEXT_CUSTODY_COMMAND_SHA256")
-	directory := textNetworkPrivateRoot(t)
+	directory := networkPrivateRoot(t)
 	rootPath := serviceInstanceFixtureRoot(t)
 	encode := func(value [32]byte) string { return hex.EncodeToString(value[:]) }
 	bindings := []string{"--vault-root", filepath.Join(directory, "vault"), "--environment-commitment", encode(fixtureID(231)), "--network-commitment", encode(network), "--root-commitment", encode(fixtureID(232))}

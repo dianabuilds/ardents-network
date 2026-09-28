@@ -22,9 +22,9 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/service/instance"
 )
 
-func textUnpublishedNetworkWithInstance(t *testing.T, carrier routecarrier.CarrierProfile, acquire func([32]byte, time.Time, time.Time) (*instance.Root, *instance.Binding), configure ...func(int, *node.Config)) (*textContext, *textContext) {
+func unpublishedNetworkWithInstance(t *testing.T, carrier routecarrier.CarrierProfile, acquire func([32]byte, time.Time, time.Time) (*instance.Root, *instance.Binding), configure ...func(int, *node.Config)) (*textContext, *textContext) {
 	t.Helper()
-	endpoint, publisher, source := textPublisherNetworkWithInstance(t, carrier, acquire, configure...)
+	endpoint, publisher, source := publisherNetworkWithInstance(t, carrier, acquire, configure...)
 	reader := permissionContextFixture(t, endpoint, fixtureID(211), broker.Connection)
 	source.issuePermission(t, reader, [3]uint32{64, 64, 0})
 	return reader, publisher
@@ -52,7 +52,7 @@ func TestInstalledTextWorkersReadTargetThroughJoinedNetwork(t *testing.T) {
 
 func exchangeInstalledAdministration(t *testing.T, carrier routecarrier.CarrierProfile, body []byte, refresh bool) {
 	t.Helper()
-	readerOwner, publisherOwner := textUnpublishedNetworkWithInstance(t, carrier, func(network [32]byte, now, until time.Time) (*instance.Root, *instance.Binding) {
+	readerOwner, publisherOwner := unpublishedNetworkWithInstance(t, carrier, func(network [32]byte, now, until time.Time) (*instance.Root, *instance.Binding) {
 		return acquireInstalledServiceInstance(t, network, now, until)
 	})
 	owner, err := publisherOwner.openAdministration()

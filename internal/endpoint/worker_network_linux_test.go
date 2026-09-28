@@ -13,7 +13,7 @@ import (
 
 func exchangeWorkersThroughNetwork(t *testing.T, carrier routecarrier.CarrierProfile, body []byte, launch func(*testing.T, *textContext, []byte) *qualifiedWorker) {
 	t.Helper()
-	readerOwner, publisherOwner := textUnpublishedNetworkFixture(t, carrier)
+	readerOwner, publisherOwner := unpublishedNetworkFixture(t, carrier)
 	reader := launch(t, readerOwner, nil)
 	publisher := launch(t, publisherOwner, body)
 	ctx, cancel := context.WithTimeout(t.Context(), 60*time.Second)

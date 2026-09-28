@@ -37,7 +37,7 @@ func addResolutionState(source *sourceStateFixture) {
 func TestTextResolutionUsesIssuedControlThroughRetainedPrefix(t *testing.T) {
 	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP, routecarrier.ClosedCarrierQUIC} {
 		t.Run(string(carrier), func(t *testing.T) {
-			_, owner, source := startTextRoleNetwork(t, textRoleNetworkFixture{carrier: carrier, resolution: true})
+			_, owner, source := startRoleNetwork(t, roleNetworkFixture{carrier: carrier, resolution: true})
 			prefix, err := owner.openPrefix(t.Context())
 			if err != nil {
 				t.Fatal(err)
@@ -120,7 +120,7 @@ func resolutionProof(t *testing.T, source *sourceStateFixture) ([32]byte, []byte
 	if err != nil {
 		t.Fatal(err)
 	}
-	publisher, err := servicepublication.Open(servicepublication.Config{Root: textNetworkPrivateRoot(t), NetworkID: profile.NetworkID, Authority: public, Clock: time.Now})
+	publisher, err := servicepublication.Open(servicepublication.Config{Root: networkPrivateRoot(t), NetworkID: profile.NetworkID, Authority: public, Clock: time.Now})
 	if err != nil {
 		t.Fatal(err)
 	}

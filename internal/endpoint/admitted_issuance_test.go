@@ -13,7 +13,7 @@ import (
 func TestTextIssuanceUsesRetainedPrefixAfterTwoBootstrapBatches(t *testing.T) {
 	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP, routecarrier.ClosedCarrierQUIC} {
 		t.Run(string(carrier), func(t *testing.T) {
-			endpoint, owner, source := startTextRoleNetwork(t, textRoleNetworkFixture{carrier: carrier})
+			endpoint, owner, source := startRoleNetwork(t, roleNetworkFixture{carrier: carrier})
 			defer func() {
 				if err := endpoint.Close(); err != nil {
 					t.Error(err)

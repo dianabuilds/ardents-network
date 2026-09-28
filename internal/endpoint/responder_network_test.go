@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-// Distinct real listeners/keys are populated by startTextRoleNetwork before
+// Distinct real listeners/keys are populated by startRoleNetwork before
 // any Node starts. Accepted State itself remains the explicit test seam.
 func addResponderPrefixState(source *sourceStateFixture) {
 	source.view.NodeCount, source.snapshot.CandidateCount = 15, 15
@@ -28,7 +28,7 @@ func addResponderPrefixState(source *sourceStateFixture) {
 func TestTextResponderRejectsKnownIntroductionFamiliesBeforeIssuance(t *testing.T) {
 	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP, routecarrier.ClosedCarrierQUIC} {
 		t.Run(string(carrier), func(t *testing.T) {
-			_, owner, source := startTextRoleNetwork(t, textRoleNetworkFixture{carrier: carrier, resolution: true, publisher: true})
+			_, owner, source := startRoleNetwork(t, roleNetworkFixture{carrier: carrier, resolution: true, publisher: true})
 			if _, err := owner.openPrefix(t.Context()); err != nil {
 				t.Fatal(err)
 			}

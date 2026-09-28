@@ -12,18 +12,18 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/node"
 )
 
-// textNetworkNodeRuntime owns one fixture Node's readiness and joined cleanup.
+// networkNodeRuntime owns one fixture Node's readiness and joined cleanup.
 // The role-network builder owns the selected config and port lease.
-type textNetworkNodeRuntime struct {
+type networkNodeRuntime struct {
 	ready   chan struct{}
-	history *textNetworkNodeEvents
+	history *networkNodeEvents
 }
 
-func newTextNetworkNodeRuntime(history *textNetworkNodeEvents) *textNetworkNodeRuntime {
-	return &textNetworkNodeRuntime{ready: make(chan struct{}, 1), history: history}
+func newTextNetworkNodeRuntime(history *networkNodeEvents) *networkNodeRuntime {
+	return &networkNodeRuntime{ready: make(chan struct{}, 1), history: history}
 }
 
-func (runtime *textNetworkNodeRuntime) emit(_ context.Context, event node.Event) error {
+func (runtime *networkNodeRuntime) emit(_ context.Context, event node.Event) error {
 	runtime.history.record(event)
 	if event.State == "READY" {
 		select {
@@ -34,7 +34,7 @@ func (runtime *textNetworkNodeRuntime) emit(_ context.Context, event node.Event)
 	return nil
 }
 
-func (runtime *textNetworkNodeRuntime) start(t *testing.T, index int, config node.Config,
+func (runtime *networkNodeRuntime) start(t *testing.T, index int, config node.Config,
 	snapshot state.Snapshot, runner func(*testing.T, int, node.Config, state.Snapshot) func() error) {
 	t.Helper()
 	if runner != nil {

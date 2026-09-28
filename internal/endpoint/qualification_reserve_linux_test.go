@@ -10,7 +10,7 @@ import (
 )
 
 func TestQualificationReopensRetiredSourcePrefixForIssuerReserve(t *testing.T) {
-	endpoint, owner, source := startTextRoleNetwork(t, textRoleNetworkFixture{carrier: carrier.ClosedCarrierTCP})
+	endpoint, owner, source := startRoleNetwork(t, roleNetworkFixture{carrier: carrier.ClosedCarrierTCP})
 	defer func() {
 		if err := endpoint.Close(); err != nil {
 			t.Error(err)
@@ -71,7 +71,7 @@ func TestQualificationReopensRetiredSourcePrefixForIssuerReserve(t *testing.T) {
 }
 
 func TestQualificationRefillsPublisherIssuerReserveBetweenStreams(t *testing.T) {
-	endpoint, owner, source := startTextRoleNetwork(t, textRoleNetworkFixture{carrier: carrier.ClosedCarrierTCP})
+	endpoint, owner, source := startRoleNetwork(t, roleNetworkFixture{carrier: carrier.ClosedCarrierTCP})
 	defer func() {
 		if err := endpoint.Close(); err != nil {
 			t.Error(err)

@@ -129,7 +129,7 @@ func TestTextServiceRecoveryDoesNotReplayAcceptedDocumentRequest(t *testing.T) {
 func TestTextJoinedServiceRecoversAcceptedRequestAcrossFreshProtectedRoute(t *testing.T) {
 	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP, routecarrier.ClosedCarrierQUIC} {
 		t.Run(string(carrier), func(t *testing.T) {
-			reader, publisher, destination := textJoinedNetworkFixture(t, carrier)
+			reader, publisher, destination := joinedNetworkFixture(t, carrier)
 			readerJob, publisherJob := liveCapsuleJob(t, reader), liveCapsuleJob(t, publisher)
 			ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 			defer cancel()
@@ -271,7 +271,7 @@ func TestTextJoinedServiceRecoversAcceptedRequestAcrossFreshProtectedRoute(t *te
 }
 
 func TestTextRecoveryPreparesFreshAttachmentUnderRetainedAuthority(t *testing.T) {
-	reader, _, destination := textJoinedNetworkFixture(t, routecarrier.ClosedCarrierTCP)
+	reader, _, destination := joinedNetworkFixture(t, routecarrier.ClosedCarrierTCP)
 	job := liveCapsuleJob(t, reader)
 	ctx, cancel := context.WithTimeout(t.Context(), 15*time.Second)
 	defer cancel()

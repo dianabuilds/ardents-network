@@ -91,7 +91,7 @@ func TestTextTokenPresentationClassifiesConcurrentRoleCommit(t *testing.T) {
 func TestTextRefreshWaitsForActualSourceUse(t *testing.T) {
 	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP, routecarrier.ClosedCarrierQUIC} {
 		t.Run(string(carrier), func(t *testing.T) {
-			_, owner, _ := textJoinedNetworkFixture(t, carrier)
+			_, owner, _ := joinedNetworkFixture(t, carrier)
 			release, err := owner.acquireSourceOperation(t.Context())
 			if err != nil {
 				t.Fatal(err)

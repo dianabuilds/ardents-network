@@ -16,7 +16,7 @@ import (
 // State/Instance and installed-worker observation remain explicit fixtures.
 // Registration, Descriptor ACK and the public local Link query are real.
 func TestTextPublicationLinkRequiresCommittedLiveRun(t *testing.T) {
-	_, publisher := textUnpublishedNetworkFixture(t, carrier.ClosedCarrierTCP)
+	_, publisher := unpublishedNetworkFixture(t, carrier.ClosedCarrierTCP)
 	owner, err := publisher.openAdministration()
 	if err != nil {
 		t.Fatal(err)

@@ -17,7 +17,7 @@ import (
 func TestTextPublisherStartupOwnsPublicationBeyondCaller(t *testing.T) {
 	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP, routecarrier.ClosedCarrierQUIC} {
 		t.Run(string(carrier), func(t *testing.T) {
-			readerOwner, publisherOwner := textUnpublishedNetworkFixture(t, carrier)
+			readerOwner, publisherOwner := unpublishedNetworkFixture(t, carrier)
 			body := []byte("publication started by its qualified worker")
 			job := liveCapsuleJob(t, publisherOwner)
 			worker := serviceWorkerFixture(t, &serviceBinding{owner: publisherOwner, job: job}, body)

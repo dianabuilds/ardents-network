@@ -21,7 +21,7 @@ import (
 )
 
 func TestTextIntroductionDeliversFourConcurrentReaders(t *testing.T) {
-	endpoint, publisher, source := textPublisherNetworkWithInstance(t, carrier.ClosedCarrierTCP, func(network [32]byte, now, until time.Time) (*instance.Root, *instance.Binding) {
+	endpoint, publisher, source := publisherNetworkWithInstance(t, carrier.ClosedCarrierTCP, func(network [32]byte, now, until time.Time) (*instance.Root, *instance.Binding) {
 		_, authority, err := ed25519.GenerateKey(rand.Reader)
 		if err != nil {
 			t.Fatal(err)
@@ -183,7 +183,7 @@ func independentReaderFixture(t *testing.T, network [32]byte, source *sourceStat
 	}
 	endpoint, principal := textContextEndpoint(t)
 	endpoint.clock, endpoint.network, endpoint.closedState = time.Now, network, source
-	endpoint.closedEntryRoot, endpoint.closedRoleRoot, endpoint.closedTokenRoot = t.TempDir(), t.TempDir(), textNetworkPrivateRoot(t)
+	endpoint.closedEntryRoot, endpoint.closedRoleRoot, endpoint.closedTokenRoot = t.TempDir(), t.TempDir(), networkPrivateRoot(t)
 	for _, root := range []string{endpoint.closedEntryRoot, endpoint.closedRoleRoot} {
 		if err := os.Chmod(root, 0o700); err != nil {
 			t.Fatal(err)

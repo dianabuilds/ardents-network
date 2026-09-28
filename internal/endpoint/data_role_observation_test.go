@@ -49,7 +49,7 @@ func runDataJoinIsolatedRoleObservationProcess(t *testing.T, carrier routecarrie
 	// The child has a 110-second test timeout. Select the two-minute Permission
 	// window before starting it so its bounded carrier episode cannot spend its
 	// own timeout waiting for the next hour.
-	waitTextNetworkFixtureStart(t)
+	waitNetworkFixtureStart(t)
 	binary, err := os.Executable()
 	if err != nil {
 		t.Fatal(err)
@@ -83,14 +83,14 @@ func runDataJoinIsolatedRoleObservation(t *testing.T, carrier routecarrier.Carri
 		}
 	}
 	var processes []*roleProcess
-	publisherRoot := textNetworkPrivateRoot(t)
+	publisherRoot := networkPrivateRoot(t)
 	publisherProcess := startPublisherDurableCapture(t, output, publisherRoot)
 	runner := func(t *testing.T, index int, config node.Config, snapshot state.Snapshot) func() error {
 		process := startRoleProcess(t, index, config, snapshot, output, "^TestTextDataJoinIsolatedRoleObservations$")
 		processes = append(processes, process)
 		return process.stop
 	}
-	endpoint, owner, source := startTextRoleNetwork(t, textRoleNetworkFixture{carrier: carrier, resolution: true, publisher: true, join: true, runner: runner, reservedWindow: true})
+	endpoint, owner, source := startRoleNetwork(t, roleNetworkFixture{carrier: carrier, resolution: true, publisher: true, join: true, runner: runner, reservedWindow: true})
 	observe := func(phase string) {
 		t.Helper()
 		publisherProcess.capture(phase)

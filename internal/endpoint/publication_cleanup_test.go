@@ -31,7 +31,7 @@ func publicationCommitFixture(t *testing.T) (*endpoint, *textContext, *instance.
 	instancePath := serviceInstanceFixtureRoot(t)
 	root, binding := acceptedInstanceBinding(t, instancePath, endpoint.network, authority, now.Add(-time.Second), now.Add(time.Hour))
 	t.Cleanup(func() { _ = endpoint.Close(); _ = root.Close() })
-	publicationPath := textNetworkPrivateRoot(t)
+	publicationPath := networkPrivateRoot(t)
 	publisher, err := servicepublication.Open(servicepublication.Config{Root: publicationPath, NetworkID: endpoint.network, Authority: public, Clock: time.Now})
 	if err != nil {
 		t.Fatal(err)

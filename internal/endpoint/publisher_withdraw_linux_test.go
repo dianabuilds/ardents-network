@@ -18,7 +18,7 @@ import (
 func TestTextPublisherWithdrawalDrainsAdmittedRead(t *testing.T) {
 	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP, routecarrier.ClosedCarrierQUIC} {
 		t.Run(string(carrier), func(t *testing.T) {
-			readerOwner, publisherOwner := textUnpublishedNetworkFixture(t, carrier)
+			readerOwner, publisherOwner := unpublishedNetworkFixture(t, carrier)
 			body := []byte("an admitted read survives publication withdrawal")
 			publisherJob := liveCapsuleJob(t, publisherOwner)
 			publisher := serviceWorkerFixture(t, &serviceBinding{owner: publisherOwner, job: publisherJob}, body)
@@ -70,7 +70,7 @@ func TestTextPublisherWithdrawalDrainsAdmittedRead(t *testing.T) {
 func TestTextPublisherWithdrawalBoundsStalledRead(t *testing.T) {
 	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP} {
 		t.Run(string(carrier), func(t *testing.T) {
-			readerOwner, publisherOwner := textUnpublishedNetworkFixture(t, carrier)
+			readerOwner, publisherOwner := unpublishedNetworkFixture(t, carrier)
 			body := []byte("an admitted read survives publication withdrawal")
 			publisherJob := liveCapsuleJob(t, publisherOwner)
 			publisher := serviceWorkerFixture(t, &serviceBinding{owner: publisherOwner, job: publisherJob}, body)

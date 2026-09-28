@@ -80,7 +80,7 @@ func runReaderObservationChild(t *testing.T, path string) {
 	source.snapshot, source.view = input.Snapshot, input.View
 	source.mu.Unlock()
 	endpoint.network = input.View.Profile.NetworkID
-	endpoint.closedTokenRoot = textNetworkPrivateRoot(t)
+	endpoint.closedTokenRoot = networkPrivateRoot(t)
 	closed := false
 	defer func() {
 		if !closed {

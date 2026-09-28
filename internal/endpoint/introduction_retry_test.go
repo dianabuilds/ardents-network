@@ -34,7 +34,7 @@ func TestTextIntroductionRetryResumesExactIssuance(t *testing.T) {
 			name = "foreign"
 		}
 		t.Run(name, func(t *testing.T) {
-			endpoint, owner, source := startTextRoleNetwork(t, textRoleNetworkFixture{carrier: carrier.ClosedCarrierTCP, resolution: true, publisher: true})
+			endpoint, owner, source := startRoleNetwork(t, roleNetworkFixture{carrier: carrier.ClosedCarrierTCP, resolution: true, publisher: true})
 			outage := &issuerOutageState{sourceStateFixture: source}
 			endpoint.closedState = outage
 			if _, err := owner.openPrefix(t.Context()); err != nil {

@@ -46,14 +46,14 @@ func TestTextPublicationIsolatedRoleObservations(t *testing.T) {
 				}
 			}
 			var processes []*roleProcess
-			publisherRoot := textNetworkPrivateRoot(t)
+			publisherRoot := networkPrivateRoot(t)
 			publisherProcess := startPublisherDurableCapture(t, output, publisherRoot)
 			runner := func(t *testing.T, index int, config node.Config, snapshot state.Snapshot) func() error {
 				process := startRoleProcess(t, index, config, snapshot, output)
 				processes = append(processes, process)
 				return process.stop
 			}
-			endpoint, owner, source := startTextRoleNetwork(t, textRoleNetworkFixture{carrier: carrier, resolution: true, publisher: true, runner: runner})
+			endpoint, owner, source := startRoleNetwork(t, roleNetworkFixture{carrier: carrier, resolution: true, publisher: true, runner: runner})
 			observe := func(phase string) {
 				t.Helper()
 				publisherProcess.capture(phase)
