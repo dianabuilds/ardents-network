@@ -238,6 +238,17 @@ when the old accepted record remains on disk. A failed pre-rename conflict
 cannot be inferred from that old record after restart; recovery uses only
 verified persisted evidence.
 
+The immutable ClosedProfile bytes are staged in an owned temporary file,
+synced and closed before the final filename is published without replacing an
+existing file. Its staging name is removed, then the root directory is synced
+before the accepted state record can be written. An exact retry of
+already visible matching final bytes syncs that file and its parent directory
+before writing the record; byte equality alone is insufficient. A failed
+write, file sync, or close leaves no new final file. A partial pre-existing
+final file remains unavailable and is not overwritten. Reopen and Current
+continue to use only an authenticated accepted state record, never byte-only
+evidence.
+
 The durable State root can retain 64 immutable Epoch generations and two
 ClosedProfile files per accepted generation. Its root scan therefore admits
 five fixed entries plus those 128 profile entries, with a separate finite

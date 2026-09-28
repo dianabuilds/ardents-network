@@ -6,6 +6,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 )
@@ -88,6 +89,27 @@ func (root *Root) LoadClosedProfile(generation [32]byte) (ClosedProfileState, []
 }
 
 func (root *Root) CommitClosedProfile(state ClosedProfileState, profile []byte) error {
+	return root.commitClosedProfileWithOps(state, profile, standardClosedProfileByteOps())
+}
+
+func standardClosedProfileByteOps() closedProfileByteOps {
+	return closedProfileByteOps{
+		write: (*os.File).Write, syncFile: (*os.File).Sync, closeFile: (*os.File).Close,
+		syncExisting: syncClosedProfileFile, syncDirectory: syncDirectory,
+	}
+}
+
+// The byte-phase operations are supplied together so each failure boundary can
+// be exercised without modifying the leased root or global filesystem state.
+type closedProfileByteOps struct {
+	write         func(*os.File, []byte) (int, error)
+	syncFile      func(*os.File) error
+	closeFile     func(*os.File) error
+	syncExisting  func(string) error
+	syncDirectory func(string) error
+}
+
+func (root *Root) commitClosedProfileWithOps(state ClosedProfileState, profile []byte, ops closedProfileByteOps) error {
 	root.mu.Lock()
 	defer root.mu.Unlock()
 	if err := root.available(); err != nil || !state.valid() || len(profile) == 0 || int64(len(profile)) > root.limits.ClosedProfileBytes || sha256.Sum256(profile) != state.Accepted {
@@ -98,17 +120,69 @@ func (root *Root) CommitClosedProfile(state ClosedProfileState, profile []byte) 
 		if !bytes.Equal(existing, profile) {
 			return errors.New("closed profile bytes are immutable")
 		}
-	} else if os.IsNotExist(err) {
-		if err := writeSynced(profilePath, profile); err != nil {
-			return err
+		if err := ops.syncExisting(profilePath); err != nil {
+			return fmt.Errorf("sync existing closed profile bytes: %w", err)
 		}
-		if err := syncDirectory(root.path); err != nil {
+		if err := ops.syncDirectory(root.path); err != nil {
+			return fmt.Errorf("sync existing closed profile directory: %w", err)
+		}
+	} else if os.IsNotExist(err) {
+		if err := publishClosedProfileBytes(root.path, profilePath, profile, ops); err != nil {
 			return err
 		}
 	} else {
 		return err
 	}
 	return replaceClosedProfileState(root.path, closedProfileStateName(state.Generation), encodeClosedProfileState(state))
+}
+
+func publishClosedProfileBytes(rootPath, profilePath string, profile []byte, ops closedProfileByteOps) error {
+	temporary, err := os.CreateTemp(rootPath, ".closed-profile-")
+	if err != nil {
+		return fmt.Errorf("create closed profile staging: %w", err)
+	}
+	temporaryPath := temporary.Name()
+	defer func() { _ = os.Remove(temporaryPath) }()
+	if err = temporary.Chmod(0o600); err == nil {
+		var written int
+		written, err = ops.write(temporary, profile)
+		if err == nil && written != len(profile) {
+			err = io.ErrShortWrite
+		}
+	}
+	if err == nil {
+		err = ops.syncFile(temporary)
+	}
+	closeErr := ops.closeFile(temporary)
+	if err != nil {
+		return fmt.Errorf("write closed profile staging: %w", errors.Join(err, closeErr))
+	}
+	if closeErr != nil {
+		return fmt.Errorf("close closed profile staging: %w", closeErr)
+	}
+	// A hard link publishes the synced inode without replacing a final path
+	// that appeared after the earlier absence check.
+	if err := os.Link(temporaryPath, profilePath); err != nil {
+		return fmt.Errorf("publish closed profile bytes: %w", err)
+	}
+	if err := os.Remove(temporaryPath); err != nil {
+		// The final bytes may be visible, but no state record has been written.
+		// An exact retry must re-sync them before acceptance.
+		return fmt.Errorf("remove closed profile staging: %w", err)
+	}
+	if err := ops.syncDirectory(rootPath); err != nil {
+		return fmt.Errorf("sync closed profile bytes directory: %w", err)
+	}
+	return nil
+}
+
+func syncClosedProfileFile(path string) error {
+	file, err := os.OpenFile(path, os.O_RDWR, 0)
+	if err != nil {
+		return err
+	}
+	err = file.Sync()
+	return errors.Join(err, file.Close())
 }
 
 // ErrClosedProfileStateSyncUncertain means the state record rename succeeded
