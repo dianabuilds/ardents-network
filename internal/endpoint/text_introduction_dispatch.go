@@ -261,8 +261,8 @@ func (owner *textContext) inspectTextIntroductionDelivery(ctx context.Context, j
 	profile, now, err := owner.permissionProfileLocked()
 	registered := owner.publication.pair.selectLocked(now, capsule.Slot, capsule.Revision)
 	if err != nil || ctx.Err() != nil || !owner.liveTextServiceJobLocked(job, broker.Administration) ||
-		registered == nil || owner.publication.pair.withdrawalInProgressLocked() || endpoint.textPublisherOwner != owner ||
-		!endpoint.textPublicationLive || endpoint.publisherBinding == nil || endpoint.publications == nil ||
+		registered == nil || owner.publication.pair.withdrawalInProgressLocked() || endpoint.publisherOwner != owner ||
+		!endpoint.publicationLive || endpoint.publisherBinding == nil || endpoint.publications == nil ||
 		!registered.acceptingNowLocked() || !registered.matchesRequest(capsule.Slot, capsule.Revision) ||
 		!now.Add(textIntroductionExpiryReserve).Before(capsule.Expiry) || capsule.Expiry.After(registered.expiry()) {
 		return textIntroductionDeliveryKey{}, capsule.Expiry, &textIntroductionRefusal{cause: errors.New("text Introduction dispatch input unavailable")}

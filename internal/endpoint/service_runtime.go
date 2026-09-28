@@ -10,7 +10,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
 	"github.com/dianabuilds/ardents-network/internal/service/instance"
-	"github.com/dianabuilds/ardents-network/internal/service/publication"
+	servicepublication "github.com/dianabuilds/ardents-network/internal/service/publication"
 )
 
 const (
@@ -39,7 +39,7 @@ type endpoint struct {
 	network          [32]byte
 	authority        [32]byte
 	admission        *broker.Broker
-	publications     *publication.Publication
+	publications     *servicepublication.Publication
 	resources        func(string, int) uint32
 	publisherMu      sync.Mutex
 	publisherBinding *instance.Binding
@@ -79,7 +79,7 @@ func newEndpoint(input setup) (*endpoint, error) {
 		if input.PublicationRoot == "" {
 			return nil, errors.New("publisher setup lacks a publication root")
 		}
-		opened, err := publication.Open(publication.Config{Root: input.PublicationRoot,
+		opened, err := servicepublication.Open(servicepublication.Config{Root: input.PublicationRoot,
 			NetworkID: input.NetworkID,
 			Authority: ed25519.PublicKey(authority[:]), Clock: clock})
 		if err != nil {

@@ -18,10 +18,10 @@ import (
 )
 
 func TestTextPublicationRefreshRetriesConcurrentRoleCommit(t *testing.T) {
-	gate := newTextDescriptorACKGate()
+	gate := newDescriptorACKGate()
 	gate.open()
-	endpoint, owner, _, first := startTextRegisteredPublisherNetwork(t, routecarrier.ClosedCarrierQUIC, gate)
-	if _, err := owner.publishTextDescriptor(t.Context()); err != nil {
+	endpoint, owner, _, first := startRegisteredPublisherNetwork(t, routecarrier.ClosedCarrierQUIC, gate)
+	if _, err := owner.publishDescriptor(t.Context()); err != nil {
 		t.Fatal(err)
 	}
 	owner.mu.Lock()
@@ -52,7 +52,7 @@ func TestTextPublicationRefreshRetriesConcurrentRoleCommit(t *testing.T) {
 	if err := writer.Close(); err != nil {
 		t.Fatal(err)
 	}
-	waitTextRefreshCondition(t, owner, func() bool {
+	waitRefreshCondition(t, owner, func() bool {
 		return owner.publication.pair.registration != nil && owner.publication.pair.registration != first && owner.publication.pair.previousRegistration == first
 	})
 }
@@ -69,7 +69,7 @@ func TestTextPublicationRefreshRetriesOnlyConflictReadTimeout(t *testing.T) {
 		"bare timeout":     {context.DeadlineExceeded, false},
 	} {
 		t.Run(name, func(t *testing.T) {
-			if got := textRefreshSourceContention(test.cause); got != test.want {
+			if got := refreshSourceContention(test.cause); got != test.want {
 				t.Fatalf("retry classification = %t", got)
 			}
 		})
@@ -82,9 +82,9 @@ func TestTextPublicationRefreshRetriesOnlyConflictReadTimeout(t *testing.T) {
 func TestTextPublicationAutomaticallyRefreshesAndRetiresPredecessor(t *testing.T) {
 	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP, routecarrier.ClosedCarrierQUIC} {
 		t.Run(string(carrier), func(t *testing.T) {
-			gate := newTextDescriptorACKGate()
+			gate := newDescriptorACKGate()
 			defer gate.open()
-			endpoint, owner, source, first := startTextRegisteredPublisherNetwork(t, carrier, gate)
+			endpoint, owner, source, first := startRegisteredPublisherNetwork(t, carrier, gate)
 			now := time.Now().UTC().Truncate(time.Second)
 			// Age the actual slot before publication. A late first ACK must not
 			// restart the original 300-second age from the acknowledgement.
@@ -95,7 +95,7 @@ func TestTextPublicationAutomaticallyRefreshesAndRetiresPredecessor(t *testing.T
 				timer.Stop()
 				t.Fatal(t.Context().Err())
 			}
-			published, err := owner.publishTextDescriptor(t.Context())
+			published, err := owner.publishDescriptor(t.Context())
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -107,7 +107,7 @@ func TestTextPublicationAutomaticallyRefreshesAndRetiresPredecessor(t *testing.T
 			}
 			owner.mu.Lock()
 			for range 16 {
-				owner.startTextRefreshLocked(first)
+				owner.startRefreshLocked(first)
 				owner.publication.signalRegistrationsLocked()
 			}
 			sameScheduler := owner.publication.refresh.current() == refresh
@@ -116,7 +116,7 @@ func TestTextPublicationAutomaticallyRefreshesAndRetiresPredecessor(t *testing.T
 			if !sameScheduler || !unchangedBounds {
 				t.Fatal("repeated ACK wake replaced scheduler or moved refresh bounds")
 			}
-			if _, err := owner.publishTextDescriptor(t.Context()); err != nil {
+			if _, err := owner.publishDescriptor(t.Context()); err != nil {
 				t.Fatal(err)
 			}
 			owner.mu.Lock()
@@ -172,12 +172,12 @@ func TestTextPublicationAutomaticallyRefreshesAndRetiresPredecessor(t *testing.T
 				ackTimer.Stop()
 				t.Fatal(t.Context().Err())
 			}
-			oldAccepted := deliverTextBeforeDescriptorACK(t, gate, reader, owner, readerJob, publisherJob, oldAttempt)
-			pendingOperation := refuseTextBeforeDescriptorACK(t, gate, owner, publisherJob, oldAttempt)
+			oldAccepted := deliverBeforeDescriptorACK(t, gate, reader, owner, readerJob, publisherJob, oldAttempt)
+			pendingOperation := refuseBeforeDescriptorACK(t, gate, owner, publisherJob, oldAttempt)
 			switchEarliest := time.Now().UTC().Truncate(time.Second)
 			gate.open()
 			var second *textIntroductionRegistration
-			waitTextRefreshCondition(t, owner, func() bool {
+			waitRefreshCondition(t, owner, func() bool {
 				second = owner.publication.pair.registration
 				return second != nil && second != first && !second.refreshAt.IsZero()
 			})
@@ -203,7 +203,7 @@ func TestTextPublicationAutomaticallyRefreshesAndRetiresPredecessor(t *testing.T
 			if first.request.Expiry.After(switchEarliest.Add(60*time.Second)) && cutoff.Before(switchEarliest.Add(60*time.Second)) {
 				t.Fatal("predecessor overlap started before Descriptor ACK")
 			}
-			if _, err := owner.publishTextDescriptor(t.Context()); err != nil {
+			if _, err := owner.publishDescriptor(t.Context()); err != nil {
 				t.Fatal(err)
 			}
 			owner.mu.Lock()
@@ -222,13 +222,13 @@ func TestTextPublicationAutomaticallyRefreshesAndRetiresPredecessor(t *testing.T
 			if err != nil {
 				t.Fatal(err)
 			}
-			deliverTextRefreshAttempt(t, reader, owner, readerJob, publisherJob, newAttempt)
+			deliverRefreshAttempt(t, reader, owner, readerJob, publisherJob, newAttempt)
 			// Advance only retirement scheduling, not any signature or authority clock.
 			owner.mu.Lock()
 			owner.publication.pair.previousUntil = time.Now().Add(-time.Second)
 			owner.publication.signalRegistrationsLocked()
 			owner.mu.Unlock()
-			waitTextRefreshCondition(t, owner, func() bool { return owner.publication.pair.previousRegistration == nil })
+			waitRefreshCondition(t, owner, func() bool { return owner.publication.pair.previousRegistration == nil })
 			select {
 			case <-first.channel.Done():
 			default:
@@ -279,7 +279,7 @@ func TestTextPublicationAutomaticallyRefreshesAndRetiresPredecessor(t *testing.T
 			}
 			owner.mu.Lock()
 			for range 16 {
-				owner.startTextRefreshLocked(second)
+				owner.startRefreshLocked(second)
 				owner.publication.signalRegistrationsLocked()
 			}
 			stopped := owner.publication.refresh.current() == refresh && refresh.context.Err() != nil && !owner.publication.pair.openingInProgressLocked() && owner.resolution == nil &&
@@ -301,10 +301,10 @@ func TestTextPublicationAutomaticallyRefreshesAndRetiresPredecessor(t *testing.T
 func TestTextPublicationRefreshExpiresPermissionWithoutResurrection(t *testing.T) {
 	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP, routecarrier.ClosedCarrierQUIC} {
 		t.Run(string(carrier), func(t *testing.T) {
-			gate := newTextDescriptorACKGate()
+			gate := newDescriptorACKGate()
 			defer gate.open()
-			endpoint, owner, _, first := startTextRegisteredPublisherNetwork(t, carrier, gate)
-			if _, err := owner.publishTextDescriptor(t.Context()); err != nil {
+			endpoint, owner, _, first := startRegisteredPublisherNetwork(t, carrier, gate)
+			if _, err := owner.publishDescriptor(t.Context()); err != nil {
 				t.Fatal(err)
 			}
 			owner.mu.Lock()
@@ -332,14 +332,14 @@ func TestTextPublicationRefreshExpiresPermissionWithoutResurrection(t *testing.T
 			if first.recipient.Public(time.Now()) != [32]byte{} {
 				t.Fatal("expired permission retained the current recipient key")
 			}
-			if _, err := owner.publishTextDescriptor(t.Context()); err == nil {
+			if _, err := owner.publishDescriptor(t.Context()); err == nil {
 				t.Fatal("expired permission revived publication through exact retry")
 			}
 		})
 	}
 }
 
-func waitTextRefreshCondition(t *testing.T, owner *textContext, condition func() bool) {
+func waitRefreshCondition(t *testing.T, owner *textContext, condition func() bool) {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	defer cancel()
@@ -366,7 +366,7 @@ func waitTextRefreshCondition(t *testing.T, owner *textContext, condition func()
 	}
 }
 
-func deliverTextRefreshAttempt(t *testing.T, reader, publisher *textContext, readerJob, publisherJob *textJobIdentity, prepared *textIntroductionAttempt) {
+func deliverRefreshAttempt(t *testing.T, reader, publisher *textContext, readerJob, publisherJob *textJobIdentity, prepared *textIntroductionAttempt) {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(t.Context(), 8*time.Second)
 	defer cancel()
@@ -397,13 +397,13 @@ func TestTextRefreshRetainsOriginalCleanupFailure(t *testing.T) {
 	var releaseOnce sync.Once
 	releaseRefresh := func() { releaseOnce.Do(func() { close(release) }) }
 	t.Cleanup(releaseRefresh)
-	flight := owner.publication.refresh.start(ctx, func(*textPublicationRefresh) { <-release })
+	flight := owner.publication.refresh.start(ctx, func(*publicationRefresh) { <-release })
 	owner.mu.Lock()
 	reported := make(chan string, 1)
 	owner.publication.refreshFailure = func(failure string) { reported <- failure }
 	owner.mu.Unlock()
 	failed := errors.New("predecessor cleanup did not join")
-	owner.failTextRefresh(flight, "predecessor-retirement", errors.Join(client.ErrClosedSourceCleanup, failed))
+	owner.failRefresh(flight, "predecessor-retirement", errors.Join(client.ErrClosedSourceCleanup, failed))
 	select {
 	case failure := <-reported:
 		if failure != "predecessor-retirement" {
@@ -431,11 +431,11 @@ func TestTextRefreshRetainsOriginalCleanupFailure(t *testing.T) {
 
 func TestTextRefreshFailureStagePreservesUnderlyingCause(t *testing.T) {
 	cause := errors.New("source preparation failed")
-	failure := textRefreshFailureAt("rotation-source", cause)
-	if textRefreshFailureStage(failure) != "rotation-source" || !errors.Is(failure, cause) {
+	failure := refreshFailureAt("rotation-source", cause)
+	if refreshFailureStage(failure) != "rotation-source" || !errors.Is(failure, cause) {
 		t.Fatalf("refresh stage did not retain classification and cause: %v", failure)
 	}
-	if textRefreshFailureStage(cause) != "rotation" {
+	if refreshFailureStage(cause) != "rotation" {
 		t.Fatal("uncategorized refresh failure received a fabricated stage")
 	}
 }

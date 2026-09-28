@@ -14,10 +14,10 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
 	"github.com/dianabuilds/ardents-network/internal/service/instance"
-	"github.com/dianabuilds/ardents-network/internal/service/publication"
+	servicepublication "github.com/dianabuilds/ardents-network/internal/service/publication"
 )
 
-func textPublicationCommitFixture(t *testing.T) (*endpoint, *textContext, *instance.Binding, string, string, time.Time) {
+func publicationCommitFixture(t *testing.T) (*endpoint, *textContext, *instance.Binding, string, string, time.Time) {
 	t.Helper()
 	endpoint, principal := textContextEndpoint(t)
 	endpoint.network = fixtureID(201)
@@ -32,7 +32,7 @@ func textPublicationCommitFixture(t *testing.T) (*endpoint, *textContext, *insta
 	root, binding := acceptedInstanceBinding(t, instancePath, endpoint.network, authority, now.Add(-time.Second), now.Add(time.Hour))
 	t.Cleanup(func() { _ = endpoint.Close(); _ = root.Close() })
 	publicationPath := textNetworkPrivateRoot(t)
-	publisher, err := publication.Open(publication.Config{Root: publicationPath, NetworkID: endpoint.network, Authority: public, Clock: time.Now})
+	publisher, err := servicepublication.Open(servicepublication.Config{Root: publicationPath, NetworkID: endpoint.network, Authority: public, Clock: time.Now})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -41,10 +41,10 @@ func textPublicationCommitFixture(t *testing.T) (*endpoint, *textContext, *insta
 }
 
 func TestTextPublicationCancelledCommitRetainsCleanupOwner(t *testing.T) {
-	endpoint, owner, binding, _, _, now := textPublicationCommitFixture(t)
+	endpoint, owner, binding, _, _, now := publicationCommitFixture(t)
 	// Enter the exact post-commit/pre-Acquire boundary with a real persisted
 	// Publication and consumed Instance; the commit transcript is a seam fixture.
-	if _, err := endpoint.publications.Publish(t.Context(), publication.PublishInput{Credential: binding.Credential(), InstanceSigner: binding,
+	if _, err := endpoint.publications.Publish(t.Context(), servicepublication.PublishInput{Credential: binding.Credential(), InstanceSigner: binding,
 		Acknowledgement: []byte("completed publication commit boundary"), At: now}); err != nil {
 		t.Fatal(err)
 	}
@@ -54,7 +54,7 @@ func TestTextPublicationCancelledCommitRetainsCleanupOwner(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
 	endpoint.publisherMu.Lock()
-	lease, err := owner.finishTextPublicationCommit(ctx, nil, binding, now, nil)
+	lease, err := owner.finishPublicationCommit(ctx, nil, binding, now, nil)
 	endpoint.publisherMu.Unlock()
 	if lease != nil || !errors.Is(err, context.Canceled) {
 		t.Fatalf("cancelled handover: %v", err)
@@ -72,7 +72,7 @@ func TestTextPublicationCancelledCommitRetainsCleanupOwner(t *testing.T) {
 }
 
 func TestTextPublicationFailedWithdrawalRetainsBindingAndError(t *testing.T) {
-	endpoint, owner, binding, instancePath, publicationPath, now := textPublicationCommitFixture(t)
+	endpoint, owner, binding, instancePath, publicationPath, now := publicationCommitFixture(t)
 	// Obstruct actual atomic replacement at both owners without deleting their
 	// original bytes. The exact files are restored before retrying retained cleanup.
 	instanceFile := filepath.Join(instancePath, "instance-root.json")
@@ -106,14 +106,14 @@ func TestTextPublicationFailedWithdrawalRetainsBindingAndError(t *testing.T) {
 	}
 	defer restore()
 	endpoint.publisherMu.Lock()
-	_, err := owner.acquireTextPublication(t.Context(), &textIntroductionRegistration{cancel: func() {}}, binding, now)
-	retained := endpoint.publisherBinding == binding && endpoint.textPublisherOwner == owner
+	_, err := owner.acquirePublication(t.Context(), &textIntroductionRegistration{cancel: func() {}}, binding, now)
+	retained := endpoint.publisherBinding == binding && endpoint.publisherOwner == owner
 	endpoint.publisherMu.Unlock()
 	if err == nil || !retained || endpoint.textAvailable() {
 		t.Fatalf("failed cleanup lost owner or admission remained live: retained=%t err=%v", retained, err)
 	}
 	restore()
-	if err := owner.retireTextPublication(); err != nil {
+	if err := owner.retirePublication(); err != nil {
 		t.Fatalf("retained cleanup could not complete: %v", err)
 	}
 	if err := owner.Close(); err == nil {

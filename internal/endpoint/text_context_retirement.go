@@ -11,9 +11,9 @@ import (
 // stopTextContextChildrenLocked returns, the context is closed and every
 // captured child has already received cancellation.
 type textContextRetirement struct {
-	refresh             *textPublicationRefreshRetirement
-	publication         *textPublicationPairRetirement
-	registrationOpening *textRegistrationFlight
+	refresh             *publicationRefreshRetirement
+	publication         *publicationPairRetirement
+	registrationOpening *registrationFlight
 	introduction        *textRolePrefixRetirement
 	responder           *textRolePrefixRetirement
 	source              *textSourceRetirement

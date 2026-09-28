@@ -8,13 +8,13 @@ import (
 	"time"
 )
 
-// textPublicationPairLifecycle owns local visibility of the current
+// publicationPairLifecycle owns local visibility of the current
 // Publication/Registration pair, its in-flight opening, bounded predecessor,
 // and drain barrier. Durable Publication and Instance storage remain with
 // their existing owners; this lifecycle decides when the acknowledged pair
 // is usable.
-type textPublicationPairLifecycle struct {
-	opening              *textRegistrationFlight
+type publicationPairLifecycle struct {
+	opening              *registrationFlight
 	withdrawal           *textOperationFlight
 	registration         *textIntroductionRegistration
 	pendingRegistration  *textIntroductionRegistration
@@ -24,18 +24,18 @@ type textPublicationPairLifecycle struct {
 	publicationDraining  bool
 }
 
-func (lifecycle *textPublicationPairLifecycle) withdrawalInProgressLocked() bool {
+func (lifecycle *publicationPairLifecycle) withdrawalInProgressLocked() bool {
 	return lifecycle != nil && lifecycle.withdrawal != nil
 }
 
-func (lifecycle *textPublicationPairLifecycle) withdrawalLocked() *textOperationFlight {
+func (lifecycle *publicationPairLifecycle) withdrawalLocked() *textOperationFlight {
 	if lifecycle == nil {
 		return nil
 	}
 	return lifecycle.withdrawal
 }
 
-func (lifecycle *textPublicationPairLifecycle) reserveWithdrawalLocked(flight *textOperationFlight) bool {
+func (lifecycle *publicationPairLifecycle) reserveWithdrawalLocked(flight *textOperationFlight) bool {
 	if lifecycle == nil || flight == nil || lifecycle.withdrawal != nil {
 		return false
 	}
@@ -43,18 +43,18 @@ func (lifecycle *textPublicationPairLifecycle) reserveWithdrawalLocked(flight *t
 	return true
 }
 
-func (lifecycle *textPublicationPairLifecycle) finishWithdrawalLocked(flight *textOperationFlight) {
+func (lifecycle *publicationPairLifecycle) finishWithdrawalLocked(flight *textOperationFlight) {
 	if lifecycle == nil || flight == nil || lifecycle.withdrawal != flight {
 		return
 	}
 	lifecycle.withdrawal = nil
 }
 
-func (lifecycle *textPublicationPairLifecycle) openingInProgressLocked() bool {
+func (lifecycle *publicationPairLifecycle) openingInProgressLocked() bool {
 	return lifecycle != nil && lifecycle.opening != nil
 }
 
-func (lifecycle *textPublicationPairLifecycle) openingLocked() *textRegistrationFlight {
+func (lifecycle *publicationPairLifecycle) openingLocked() *registrationFlight {
 	if lifecycle == nil {
 		return nil
 	}
@@ -65,7 +65,7 @@ func (lifecycle *textPublicationPairLifecycle) openingLocked() *textRegistration
 // predecessor. Another opening, an in-progress withdrawal, or a pair no longer
 // based on previous refuses admission; on success the flight becomes the
 // retained opening.
-func (lifecycle *textPublicationPairLifecycle) beginOpeningLocked(flight *textRegistrationFlight, previous *textIntroductionRegistration) bool {
+func (lifecycle *publicationPairLifecycle) beginOpeningLocked(flight *registrationFlight, previous *textIntroductionRegistration) bool {
 	if lifecycle == nil || flight == nil || lifecycle.opening != nil || lifecycle.withdrawal != nil ||
 		!lifecycle.openingBaseLocked(previous) {
 		return false
@@ -78,7 +78,7 @@ func (lifecycle *textPublicationPairLifecycle) beginOpeningLocked(flight *textRe
 // registration channel has already ended and returns it for caller-owned
 // close and cancel. A withdrawal in progress retains the target for its own
 // completion.
-func (lifecycle *textPublicationPairLifecycle) evictEndedTargetLocked() *textIntroductionRegistration {
+func (lifecycle *publicationPairLifecycle) evictEndedTargetLocked() *textIntroductionRegistration {
 	if lifecycle == nil || lifecycle.withdrawal != nil {
 		return nil
 	}
@@ -93,7 +93,7 @@ func (lifecycle *textPublicationPairLifecycle) evictEndedTargetLocked() *textInt
 // completeWithdrawalLocked retires the withdrawn target and its bounded
 // predecessor in one transition, clears the withdrawal flight, and returns the
 // predecessor for caller-owned close. Signaling waiters stays with the Context.
-func (lifecycle *textPublicationPairLifecycle) completeWithdrawalLocked(flight *textOperationFlight, registered *textIntroductionRegistration) *textIntroductionRegistration {
+func (lifecycle *publicationPairLifecycle) completeWithdrawalLocked(flight *textOperationFlight, registered *textIntroductionRegistration) *textIntroductionRegistration {
 	if lifecycle == nil {
 		return nil
 	}
@@ -104,11 +104,11 @@ func (lifecycle *textPublicationPairLifecycle) completeWithdrawalLocked(flight *
 	return previous
 }
 
-func (lifecycle *textPublicationPairLifecycle) openingCurrentLocked(flight *textRegistrationFlight) bool {
+func (lifecycle *publicationPairLifecycle) openingCurrentLocked(flight *registrationFlight) bool {
 	return lifecycle != nil && flight != nil && lifecycle.opening == flight
 }
 
-func (lifecycle *textPublicationPairLifecycle) finishOpeningLocked(flight *textRegistrationFlight) bool {
+func (lifecycle *publicationPairLifecycle) finishOpeningLocked(flight *registrationFlight) bool {
 	if !lifecycle.openingCurrentLocked(flight) {
 		return false
 	}
@@ -116,20 +116,20 @@ func (lifecycle *textPublicationPairLifecycle) finishOpeningLocked(flight *textR
 	return true
 }
 
-type textPublicationPairRetirement struct {
+type publicationPairRetirement struct {
 	current  *textIntroductionRegistration
 	pending  *textIntroductionRegistration
 	previous *textIntroductionRegistration
 }
 
-func (lifecycle *textPublicationPairLifecycle) currentLocked() *textIntroductionRegistration {
+func (lifecycle *publicationPairLifecycle) currentLocked() *textIntroductionRegistration {
 	if lifecycle == nil {
 		return nil
 	}
 	return lifecycle.registration
 }
 
-func (lifecycle *textPublicationPairLifecycle) publicationTargetLocked() *textIntroductionRegistration {
+func (lifecycle *publicationPairLifecycle) publicationTargetLocked() *textIntroductionRegistration {
 	if lifecycle == nil {
 		return nil
 	}
@@ -139,18 +139,18 @@ func (lifecycle *textPublicationPairLifecycle) publicationTargetLocked() *textIn
 	return lifecycle.registration
 }
 
-func (lifecycle *textPublicationPairLifecycle) openingBaseLocked(previous *textIntroductionRegistration) bool {
+func (lifecycle *publicationPairLifecycle) openingBaseLocked(previous *textIntroductionRegistration) bool {
 	return lifecycle != nil && lifecycle.registration == previous && lifecycle.pendingRegistration == nil
 }
 
-func (lifecycle *textPublicationPairLifecycle) previousLocked() (*textIntroductionRegistration, time.Time) {
+func (lifecycle *publicationPairLifecycle) previousLocked() (*textIntroductionRegistration, time.Time) {
 	if lifecycle == nil {
 		return nil, time.Time{}
 	}
 	return lifecycle.previousRegistration, lifecycle.previousUntil
 }
 
-func (lifecycle *textPublicationPairLifecycle) selectLocked(now time.Time, slot [32]byte, revision uint64) *textIntroductionRegistration {
+func (lifecycle *publicationPairLifecycle) selectLocked(now time.Time, slot [32]byte, revision uint64) *textIntroductionRegistration {
 	if lifecycle == nil {
 		return nil
 	}
@@ -160,15 +160,15 @@ func (lifecycle *textPublicationPairLifecycle) selectLocked(now time.Time, slot 
 	return lifecycle.registration
 }
 
-func (lifecycle *textPublicationPairLifecycle) retainedLocked(registered *textIntroductionRegistration, now time.Time) bool {
+func (lifecycle *publicationPairLifecycle) retainedLocked(registered *textIntroductionRegistration, now time.Time) bool {
 	return lifecycle != nil && registered != nil && (registered == lifecycle.registration || registered == lifecycle.previousRegistration && now.Before(lifecycle.previousUntil))
 }
 
-func (lifecycle *textPublicationPairLifecycle) drainingLocked() bool {
+func (lifecycle *publicationPairLifecycle) drainingLocked() bool {
 	return lifecycle != nil && lifecycle.publicationDraining
 }
 
-func (lifecycle *textPublicationPairLifecycle) beginDrainLocked() bool {
+func (lifecycle *publicationPairLifecycle) beginDrainLocked() bool {
 	if lifecycle == nil || lifecycle.publicationDraining {
 		return false
 	}
@@ -176,7 +176,7 @@ func (lifecycle *textPublicationPairLifecycle) beginDrainLocked() bool {
 	return true
 }
 
-func (lifecycle *textPublicationPairLifecycle) installLocked(previous, registered *textIntroductionRegistration) bool {
+func (lifecycle *publicationPairLifecycle) installLocked(previous, registered *textIntroductionRegistration) bool {
 	if lifecycle == nil || registered == nil || lifecycle.publicationDraining || !lifecycle.openingBaseLocked(previous) {
 		return false
 	}
@@ -184,7 +184,7 @@ func (lifecycle *textPublicationPairLifecycle) installLocked(previous, registere
 	return true
 }
 
-func (lifecycle *textPublicationPairLifecycle) commitAcknowledgedLocked(ctx context.Context,
+func (lifecycle *publicationPairLifecycle) commitAcknowledgedLocked(ctx context.Context,
 	registered *textIntroductionRegistration, at time.Time) error {
 	if lifecycle == nil || ctx == nil {
 		return errors.New("text publication pair unavailable")
@@ -224,7 +224,7 @@ func (lifecycle *textPublicationPairLifecycle) commitAcknowledgedLocked(ctx cont
 	return nil
 }
 
-func (lifecycle *textPublicationPairLifecycle) removeCurrentLocked(registered *textIntroductionRegistration) bool {
+func (lifecycle *publicationPairLifecycle) removeCurrentLocked(registered *textIntroductionRegistration) bool {
 	if lifecycle == nil || lifecycle.registration != registered {
 		return false
 	}
@@ -232,7 +232,7 @@ func (lifecycle *textPublicationPairLifecycle) removeCurrentLocked(registered *t
 	return true
 }
 
-func (lifecycle *textPublicationPairLifecycle) removeTargetLocked(registered *textIntroductionRegistration) bool {
+func (lifecycle *publicationPairLifecycle) removeTargetLocked(registered *textIntroductionRegistration) bool {
 	if lifecycle == nil || registered == nil {
 		return false
 	}
@@ -243,7 +243,7 @@ func (lifecycle *textPublicationPairLifecycle) removeTargetLocked(registered *te
 	return lifecycle.removeCurrentLocked(registered)
 }
 
-func (lifecycle *textPublicationPairLifecycle) removePreviousLocked(previous *textIntroductionRegistration) bool {
+func (lifecycle *publicationPairLifecycle) removePreviousLocked(previous *textIntroductionRegistration) bool {
 	if lifecycle == nil || lifecycle.previousRegistration != previous {
 		return false
 	}
@@ -252,7 +252,7 @@ func (lifecycle *textPublicationPairLifecycle) removePreviousLocked(previous *te
 	return true
 }
 
-func (lifecycle *textPublicationPairLifecycle) detachLocked() (current, pending, previous *textIntroductionRegistration) {
+func (lifecycle *publicationPairLifecycle) detachLocked() (current, pending, previous *textIntroductionRegistration) {
 	if lifecycle == nil {
 		return nil, nil, nil
 	}
@@ -262,17 +262,17 @@ func (lifecycle *textPublicationPairLifecycle) detachLocked() (current, pending,
 	return current, pending, previous
 }
 
-func (lifecycle *textPublicationPairLifecycle) stopLocked() *textPublicationPairRetirement {
+func (lifecycle *publicationPairLifecycle) stopLocked() *publicationPairRetirement {
 	current, pending, previous := lifecycle.detachLocked()
 	for _, registration := range []*textIntroductionRegistration{previous, current, pending} {
 		if registration != nil {
 			registration.cancel()
 		}
 	}
-	return &textPublicationPairRetirement{current: current, pending: pending, previous: previous}
+	return &publicationPairRetirement{current: current, pending: pending, previous: previous}
 }
 
-func (retirement *textPublicationPairRetirement) join() error {
+func (retirement *publicationPairRetirement) join() error {
 	if retirement == nil {
 		return nil
 	}
@@ -286,14 +286,14 @@ func (retirement *textPublicationPairRetirement) join() error {
 	return outcome
 }
 
-func (lifecycle *textPublicationPairLifecycle) changedLocked() <-chan struct{} {
+func (lifecycle *publicationPairLifecycle) changedLocked() <-chan struct{} {
 	if lifecycle.registrationChanged == nil {
 		lifecycle.registrationChanged = make(chan struct{})
 	}
 	return lifecycle.registrationChanged
 }
 
-func (lifecycle *textPublicationPairLifecycle) signalLocked() {
+func (lifecycle *publicationPairLifecycle) signalLocked() {
 	if lifecycle.registrationChanged != nil {
 		close(lifecycle.registrationChanged)
 	}

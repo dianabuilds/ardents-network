@@ -12,7 +12,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	routecarrier "github.com/dianabuilds/ardents-network/internal/route/carrier"
-	"github.com/dianabuilds/ardents-network/internal/service/publication"
+	servicepublication "github.com/dianabuilds/ardents-network/internal/service/publication"
 	"github.com/dianabuilds/ardents-network/internal/service/reachability"
 )
 
@@ -64,7 +64,7 @@ func TestTextResolutionUsesIssuedControlThroughRetainedPrefix(t *testing.T) {
 			if err != nil || status != 0 {
 				t.Fatalf("real publication: %d %v", status, err)
 			}
-			verified, err := owner.lookupTextDescriptor(t.Context(), target)
+			verified, err := owner.lookupDescriptor(t.Context(), target)
 			if err != nil || verified.Descriptor.Target != target {
 				t.Fatalf("actual Endpoint resolution: %v", err)
 			}
@@ -77,7 +77,7 @@ func TestTextResolutionUsesIssuedControlThroughRetainedPrefix(t *testing.T) {
 			owner.mu.Lock()
 			reserved := owner.tokens.permission.reserved
 			owner.mu.Unlock()
-			if _, err := owner.lookupTextDescriptor(t.Context(), target); err != nil {
+			if _, err := owner.lookupDescriptor(t.Context(), target); err != nil {
 				t.Fatalf("existing resolution token stock: %v", err)
 			}
 			owner.mu.Lock()
@@ -86,7 +86,7 @@ func TestTextResolutionUsesIssuedControlThroughRetainedPrefix(t *testing.T) {
 			if !sameReservation {
 				t.Fatal("resolution ignored existing token and consumed more allocation")
 			}
-			if _, err := owner.lookupTextDescriptor(t.Context(), fixtureID(199)); err == nil {
+			if _, err := owner.lookupDescriptor(t.Context(), fixtureID(199)); err == nil {
 				t.Fatal("absent Target was accepted")
 			}
 			owner.mu.Lock()
@@ -115,12 +115,12 @@ func textResolutionProof(t *testing.T, source *textSourceStateFixture) ([32]byte
 	defer clear(signer)
 	var instance [32]byte
 	copy(instance[:], instancePublic)
-	credential, err := (publication.Credential{InstancePublic: instance, Generation: 1,
+	credential, err := (servicepublication.Credential{InstancePublic: instance, Generation: 1,
 		NotBefore: now.Add(-time.Second).Unix(), NotAfter: profile.NotAfter.Unix(), NetworkID: profile.NetworkID, Capabilities: 3}).Issue(authority)
 	if err != nil {
 		t.Fatal(err)
 	}
-	publisher, err := publication.Open(publication.Config{Root: textNetworkPrivateRoot(t), NetworkID: profile.NetworkID, Authority: public, Clock: time.Now})
+	publisher, err := servicepublication.Open(servicepublication.Config{Root: textNetworkPrivateRoot(t), NetworkID: profile.NetworkID, Authority: public, Clock: time.Now})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -129,7 +129,7 @@ func textResolutionProof(t *testing.T, source *textSourceStateFixture) ([32]byte
 			t.Error(err)
 		}
 	}()
-	current, err := publisher.Publish(t.Context(), publication.PublishInput{Credential: credential, InstanceSigner: signer, Acknowledgement: []byte("explicit Publication fixture"), At: now})
+	current, err := publisher.Publish(t.Context(), servicepublication.PublishInput{Credential: credential, InstanceSigner: signer, Acknowledgement: []byte("explicit Publication fixture"), At: now})
 	if err != nil {
 		t.Fatal(err)
 	}

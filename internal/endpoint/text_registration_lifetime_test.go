@@ -16,13 +16,13 @@ func TestTextRegistrationCompletionRetainsFailedCleanup(t *testing.T) {
 	owner := admittedTextContext(t, endpoint, principal, broker.Administration)
 	attempt, cancel := context.WithCancel(owner.lease.Context())
 	defer cancel()
-	flight := &textRegistrationFlight{context: attempt, cancel: cancel, done: make(chan struct{})}
+	flight := &registrationFlight{context: attempt, cancel: cancel, done: make(chan struct{})}
 	if !owner.publication.pair.beginOpeningLocked(flight, nil) {
 		t.Fatal("registration opening reservation unavailable")
 	}
 	original := errors.New("registration terminal CLOSE could not be emitted")
 	failure := errors.Join(client.ErrClosedSourceCleanup, original)
-	registered, err := owner.finishTextRegistration(context.Background(), flight, nil, nil, failure)
+	registered, err := owner.finishRegistration(context.Background(), flight, nil, nil, failure)
 	if registered != nil || !errors.Is(err, original) {
 		t.Fatalf("failed setup handed over or lost cause: %v", err)
 	}

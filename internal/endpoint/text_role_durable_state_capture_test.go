@@ -144,7 +144,7 @@ func textRoleDurableRoots(input textRoleProcessInput) []textRoleDurableRoot {
 	return roots
 }
 
-func startTextPublisherDurableCapture(t *testing.T, root, publisherRoot string) *textRoleProcess {
+func startPublisherDurableCapture(t *testing.T, root, publisherRoot string) *textRoleProcess {
 	t.Helper()
 	input := textRoleProcessInput{Role: "publisher", Root: publisherRoot, Output: filepath.Join(root, "publisher")}
 	if err := os.Mkdir(input.Output, 0o700); err != nil {

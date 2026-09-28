@@ -13,11 +13,11 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/endpoint/descriptorhistory"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	routecarrier "github.com/dianabuilds/ardents-network/internal/route/carrier"
-	"github.com/dianabuilds/ardents-network/internal/service/publication"
+	servicepublication "github.com/dianabuilds/ardents-network/internal/service/publication"
 	"github.com/dianabuilds/ardents-network/internal/service/reachability"
 )
 
-func textFloorPublication(t *testing.T, authority ed25519.PrivateKey, network [32]byte, generation uint64, from, until time.Time) (publication.Current, ed25519.PrivateKey) {
+func floorPublication(t *testing.T, authority ed25519.PrivateKey, network [32]byte, generation uint64, from, until time.Time) (servicepublication.Current, ed25519.PrivateKey) {
 	t.Helper()
 	public, signer, err := ed25519.GenerateKey(rand.Reader)
 	if err != nil {
@@ -26,12 +26,12 @@ func textFloorPublication(t *testing.T, authority ed25519.PrivateKey, network [3
 	t.Cleanup(func() { clear(signer) })
 	var instance [32]byte
 	copy(instance[:], public)
-	credential, err := (publication.Credential{InstancePublic: instance,
+	credential, err := (servicepublication.Credential{InstancePublic: instance,
 		Generation: generation, NotBefore: from.Unix(), NotAfter: until.Unix(), NetworkID: network, Capabilities: 3}).Issue(authority)
 	if err != nil {
 		t.Fatal(err)
 	}
-	root, err := publication.Open(publication.Config{Root: textNetworkPrivateRoot(t), NetworkID: network, Authority: authority.Public().(ed25519.PublicKey)})
+	root, err := servicepublication.Open(servicepublication.Config{Root: textNetworkPrivateRoot(t), NetworkID: network, Authority: authority.Public().(ed25519.PublicKey)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -40,14 +40,14 @@ func textFloorPublication(t *testing.T, authority ed25519.PrivateKey, network [3
 			t.Error(err)
 		}
 	})
-	current, err := root.Publish(t.Context(), publication.PublishInput{Credential: credential, InstanceSigner: signer, Acknowledgement: []byte("explicit floor test publication"), At: from})
+	current, err := root.Publish(t.Context(), servicepublication.PublishInput{Credential: credential, InstanceSigner: signer, Acknowledgement: []byte("explicit floor test publication"), At: from})
 	if err != nil {
 		t.Fatal(err)
 	}
 	return current, signer
 }
 
-func textFloorDescriptor(t *testing.T, current publication.Current, signer ed25519.PrivateKey, profile, node [32]byte, revision uint64, slot byte, from, until time.Time) []byte {
+func floorDescriptor(t *testing.T, current servicepublication.Current, signer ed25519.PrivateKey, profile, node [32]byte, revision uint64, slot byte, from, until time.Time) []byte {
 	t.Helper()
 	raw, _, err := reachability.IssuePrivate(reachability.PrivateIssueInput{Current: current, InstanceSigner: signer, ProfileDigest: profile,
 		Introduction: reachability.PrivateIntroduction{Revision: revision, NodeID: node, Slot: fixtureID(slot), RecipientKey: fixtureID(slot + 1), NotBefore: from, NotAfter: until}})
@@ -72,13 +72,13 @@ func TestTextDescriptorFloorBelongsToContextAcrossWorkerLoss(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer clear(authority)
-	current, signer := textFloorPublication(t, authority, network, 1, now, now.Add(10*time.Minute))
+	current, signer := floorPublication(t, authority, network, 1, now, now.Add(10*time.Minute))
 	target := current.Credential.Target
-	raw := textFloorDescriptor(t, current, signer, profile, node, 2, 20, now, now.Add(100*time.Second))
+	raw := floorDescriptor(t, current, signer, profile, node, 2, 20, now, now.Add(100*time.Second))
 	if _, err := owner.descriptorHistory.Accept(raw, target, network, profile, now); err != nil {
 		t.Fatal(err)
 	}
-	conflicting := textFloorDescriptor(t, current, signer, profile, node, 2, 30, now, now.Add(100*time.Second))
+	conflicting := floorDescriptor(t, current, signer, profile, node, 2, 30, now, now.Add(100*time.Second))
 	if _, err := owner.descriptorHistory.Accept(conflicting, target, network, profile, now); err == nil {
 		t.Fatal("same revision conflict accepted")
 	}
@@ -118,9 +118,9 @@ func TestTextResolutionNetworkCannotRollBackLocalDescriptorFloor(t *testing.T) {
 				t.Fatal(err)
 			}
 			defer clear(authority)
-			current, signer := textFloorPublication(t, authority, profile.NetworkID, 1, now, now.Add(10*time.Minute))
-			first := textFloorDescriptor(t, current, signer, profile.Digest, source.view.Nodes[6].NodeID, 1, 10, now, now.Add(120*time.Second))
-			second := textFloorDescriptor(t, current, signer, profile.Digest, source.view.Nodes[6].NodeID, 2, 20, now, now.Add(100*time.Second))
+			current, signer := floorPublication(t, authority, profile.NetworkID, 1, now, now.Add(10*time.Minute))
+			first := floorDescriptor(t, current, signer, profile.Digest, source.view.Nodes[6].NodeID, 1, 10, now, now.Add(120*time.Second))
+			second := floorDescriptor(t, current, signer, profile.Digest, source.view.Nodes[6].NodeID, 2, 20, now, now.Add(100*time.Second))
 			receiver, err := prefix.ResolutionRecipient()
 			if err != nil {
 				t.Fatal(err)
@@ -140,7 +140,7 @@ func TestTextResolutionNetworkCannotRollBackLocalDescriptorFloor(t *testing.T) {
 			if err != nil || status != 0 {
 				t.Fatalf("actual fixture publication: %d %v", status, err)
 			}
-			got, err := owner.lookupTextDescriptor(t.Context(), current.Credential.Target)
+			got, err := owner.lookupDescriptor(t.Context(), current.Credential.Target)
 			if err != nil || !bytes.Equal(got.Current.Record, current.Record) {
 				t.Fatalf("actual first lookup: %v", err)
 			}
@@ -151,7 +151,7 @@ func TestTextResolutionNetworkCannotRollBackLocalDescriptorFloor(t *testing.T) {
 			if !floorRetained || err != nil {
 				t.Fatalf("lookup failed to retain floor or prior observation invalid: %v", err)
 			}
-			if _, err := owner.lookupTextDescriptor(t.Context(), current.Credential.Target); err == nil {
+			if _, err := owner.lookupDescriptor(t.Context(), current.Credential.Target); err == nil {
 				t.Fatal("actual resolver response rolled back locally retained revision")
 			}
 			owner.mu.Lock()
@@ -173,9 +173,9 @@ func TestTextResolutionNetworkCannotRollBackLocalDescriptorFloor(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				next, nextSigner := textFloorPublication(t, nextAuthority, profile.NetworkID, 1, now, now.Add(10*time.Minute))
+				next, nextSigner := floorPublication(t, nextAuthority, profile.NetworkID, 1, now, now.Add(10*time.Minute))
 				clear(nextAuthority)
-				nextRaw := textFloorDescriptor(t, next, nextSigner, profile.Digest, source.view.Nodes[6].NodeID, 1, byte(index), now, now.Add(100*time.Second))
+				nextRaw := floorDescriptor(t, next, nextSigner, profile.Digest, source.view.Nodes[6].NodeID, 1, byte(index), now, now.Add(100*time.Second))
 				observed = append(observed, observedDescriptor{target: next.Credential.Target, raw: nextRaw})
 			}
 			owner.mu.Lock()
@@ -195,7 +195,7 @@ func TestTextResolutionNetworkCannotRollBackLocalDescriptorFloor(t *testing.T) {
 			if err != nil {
 				t.Fatalf("full cache rejected existing Target: %v", err)
 			}
-			if _, err := owner.lookupTextDescriptor(t.Context(), fixtureID(199)); err == nil {
+			if _, err := owner.lookupDescriptor(t.Context(), fixtureID(199)); err == nil {
 				t.Fatal("full context accepted another Target")
 			}
 			owner.mu.Lock()

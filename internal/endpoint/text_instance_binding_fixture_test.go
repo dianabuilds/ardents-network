@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/service/instance"
-	"github.com/dianabuilds/ardents-network/internal/service/publication"
+	servicepublication "github.com/dianabuilds/ardents-network/internal/service/publication"
 )
 
 // serviceInstanceFixtureRoot creates the owner-only directory required by a
@@ -54,10 +54,10 @@ func acceptedInstanceBinding(t *testing.T, rootPath string, network [32]byte, au
 	if err != nil {
 		t.Fatal(err)
 	}
-	credential, err := (publication.Credential{
+	credential, err := (servicepublication.Credential{
 		InstancePublic: view.InstancePublic,
 		Generation:     1, NotBefore: view.NotBefore, NotAfter: view.NotAfter, NetworkID: view.NetworkID,
-		Capabilities: publication.CapabilityPublish | publication.CapabilityConnect,
+		Capabilities: servicepublication.CapabilityPublish | servicepublication.CapabilityConnect,
 	}).Issue(authority)
 	if err != nil {
 		t.Fatal(err)

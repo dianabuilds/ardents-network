@@ -70,7 +70,7 @@ func (owner *textContext) prepareTextRecovery(ctx context.Context, job *textJobI
 	if err := binding.validateTextServiceRecovery(request); err != nil {
 		return nil, err
 	}
-	verified, err := owner.lookupTextDescriptor(ctx, binding.target())
+	verified, err := owner.lookupDescriptor(ctx, binding.target())
 	if err != nil {
 		return nil, err
 	}

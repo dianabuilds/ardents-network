@@ -17,7 +17,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/service/instance"
-	"github.com/dianabuilds/ardents-network/internal/service/publication"
+	servicepublication "github.com/dianabuilds/ardents-network/internal/service/publication"
 )
 
 // SIGKILL bypasses every deferred cleanup. The real durable Publication and
@@ -26,7 +26,7 @@ import (
 // qualify installed worker cleanup or remote registration loss.
 func TestTextPublicationCrashRetainsCrossOwnerFloors(t *testing.T) {
 	if stage := os.Getenv("ARDENTS_PUBLICATION_CRASH_STAGE"); stage != "" {
-		runTextPublicationCrashChild(t, stage, os.Getenv("ARDENTS_PUBLICATION_CRASH_ROOT"))
+		runPublicationCrashChild(t, stage, os.Getenv("ARDENTS_PUBLICATION_CRASH_ROOT"))
 		return
 	}
 	binary, err := os.Executable()
@@ -94,8 +94,8 @@ func TestTextPublicationCrashRetainsCrossOwnerFloors(t *testing.T) {
 			if !ok || !status.Signaled() || status.Signal() != syscall.SIGKILL {
 				t.Fatalf("not SIGKILL: %v", killed)
 			}
-			config := publication.Config{Root: filepath.Join(root, "publication"), NetworkID: fixtureID(201), Authority: public, Clock: time.Now}
-			publisher, err := publication.Open(config)
+			config := servicepublication.Config{Root: filepath.Join(root, "publication"), NetworkID: fixtureID(201), Authority: public, Clock: time.Now}
+			publisher, err := servicepublication.Open(config)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -132,7 +132,7 @@ func TestTextPublicationCrashRetainsCrossOwnerFloors(t *testing.T) {
 	}
 }
 
-func runTextPublicationCrashChild(t *testing.T, stage, root string) {
+func runPublicationCrashChild(t *testing.T, stage, root string) {
 	t.Helper()
 	for _, name := range []string{"instance", "publication"} {
 		if err := os.Mkdir(filepath.Join(root, name), 0700); err != nil {
@@ -147,7 +147,7 @@ func runTextPublicationCrashChild(t *testing.T, stage, root string) {
 	signer, binding := acceptedInstanceBinding(t, filepath.Join(root, "instance"), fixtureID(201), authority, now.Add(-time.Second), now.Add(time.Hour))
 	defer signer.Close()
 	clear(authority)
-	publisher, err := publication.Open(publication.Config{Root: filepath.Join(root, "publication"), NetworkID: fixtureID(201), Authority: public, Clock: time.Now})
+	publisher, err := servicepublication.Open(servicepublication.Config{Root: filepath.Join(root, "publication"), NetworkID: fixtureID(201), Authority: public, Clock: time.Now})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -167,7 +167,7 @@ func runTextPublicationCrashChild(t *testing.T, stage, root string) {
 		<-time.After(time.Minute)
 		t.Fatal("parent did not terminate child")
 	}
-	_, err = publisher.PublishAfterReadiness(t.Context(), publication.PublishInput{Credential: binding.Credential(), InstanceSigner: binding, At: now}, func(context.Context) ([]byte, error) {
+	_, err = publisher.PublishAfterReadiness(t.Context(), servicepublication.PublishInput{Credential: binding.Credential(), InstanceSigner: binding, At: now}, func(context.Context) ([]byte, error) {
 		if stage == "publication floor" {
 			boundary()
 		}

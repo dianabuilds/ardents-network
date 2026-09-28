@@ -17,7 +17,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/node"
 	routecarrier "github.com/dianabuilds/ardents-network/internal/route/carrier"
-	"github.com/dianabuilds/ardents-network/internal/service/publication"
+	servicepublication "github.com/dianabuilds/ardents-network/internal/service/publication"
 )
 
 // TestTextDataJoinIsolatedRoleObservations captures the fresh DataJoin case
@@ -84,7 +84,7 @@ func runTextDataJoinIsolatedRoleObservation(t *testing.T, carrier routecarrier.C
 	}
 	var processes []*textRoleProcess
 	publisherRoot := textNetworkPrivateRoot(t)
-	publisherProcess := startTextPublisherDurableCapture(t, output, publisherRoot)
+	publisherProcess := startPublisherDurableCapture(t, output, publisherRoot)
 	runner := func(t *testing.T, index int, config node.Config, snapshot state.Snapshot) func() error {
 		process := startTextRoleProcess(t, index, config, snapshot, output, "^TestTextDataJoinIsolatedRoleObservations$")
 		processes = append(processes, process)
@@ -115,7 +115,7 @@ func runTextDataJoinIsolatedRoleObservation(t *testing.T, carrier routecarrier.C
 			t.Error(err)
 		}
 	})
-	publisher, err := publication.Open(publication.Config{Root: publisherRoot, NetworkID: endpoint.network, Authority: public, Clock: time.Now})
+	publisher, err := servicepublication.Open(servicepublication.Config{Root: publisherRoot, NetworkID: endpoint.network, Authority: public, Clock: time.Now})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -130,7 +130,7 @@ func runTextDataJoinIsolatedRoleObservation(t *testing.T, carrier routecarrier.C
 	if err != nil {
 		t.Fatal(err)
 	}
-	published, err := owner.publishTextDescriptor(t.Context())
+	published, err := owner.publishDescriptor(t.Context())
 	if err != nil {
 		t.Fatal(err)
 	}

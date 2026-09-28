@@ -11,12 +11,12 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/node"
 	routecarrier "github.com/dianabuilds/ardents-network/internal/route/carrier"
-	"github.com/dianabuilds/ardents-network/internal/service/publication"
+	servicepublication "github.com/dianabuilds/ardents-network/internal/service/publication"
 )
 
 // The same real registered Publisher setup feeds successful and interrupted
 // Descriptor handovers. Only accepted State and worker qualification are fixtures.
-func startTextRegisteredPublisherNetwork(t *testing.T, carrier routecarrier.CarrierProfile, gate *textDescriptorACKGate) (*endpoint, *textContext, *textSourceStateFixture, *textIntroductionRegistration) {
+func startRegisteredPublisherNetwork(t *testing.T, carrier routecarrier.CarrierProfile, gate *descriptorACKGate) (*endpoint, *textContext, *textSourceStateFixture, *textIntroductionRegistration) {
 	t.Helper()
 	endpoint, owner, source := startTextRoleNetwork(t, textRoleNetworkFixture{carrier: carrier, resolution: true, publisher: true, configure: []func(int, *node.Config){gate.configure(t)}})
 	source.mu.Lock()
@@ -41,7 +41,7 @@ func startTextRegisteredPublisherNetwork(t *testing.T, carrier routecarrier.Carr
 			t.Error(err)
 		}
 	})
-	publications, err := publication.Open(publication.Config{Root: textNetworkPrivateRoot(t), NetworkID: endpoint.network, Authority: public, Clock: time.Now})
+	publications, err := servicepublication.Open(servicepublication.Config{Root: textNetworkPrivateRoot(t), NetworkID: endpoint.network, Authority: public, Clock: time.Now})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -66,10 +66,10 @@ func TestTextPublicationLossBeforeAcknowledgementRetiresRecipients(t *testing.T)
 		t.Run(string(carrier), func(t *testing.T) {
 			for _, failure := range []string{"replacement channel", "predecessor channel", "context revoke"} {
 				t.Run(failure, func(t *testing.T) {
-					gate := newTextDescriptorACKGate()
+					gate := newDescriptorACKGate()
 					defer gate.open()
-					endpoint, owner, _, first := startTextRegisteredPublisherNetwork(t, carrier, gate)
-					if _, err := owner.publishTextDescriptor(t.Context()); err != nil {
+					endpoint, owner, _, first := startRegisteredPublisherNetwork(t, carrier, gate)
+					if _, err := owner.publishDescriptor(t.Context()); err != nil {
 						t.Fatal(err)
 					}
 					gate.arm(t)
@@ -131,12 +131,12 @@ func TestTextPublicationLossBeforeAcknowledgementRetiresRecipients(t *testing.T)
 					if first.recipient.Public(time.Now()) != [32]byte{} || second.recipient.Public(time.Now()) != [32]byte{} {
 						t.Fatal("failed replacement retained recipient key material")
 					}
-					if _, err := owner.publishTextDescriptor(t.Context()); err == nil {
+					if _, err := owner.publishDescriptor(t.Context()); err == nil {
 						t.Fatal("failed replacement resurrected through exact publication retry")
 					}
 					if failure == "context revoke" {
 						endpoint.publisherMu.Lock()
-						released := endpoint.publisherBinding == nil && !endpoint.textPublicationLive
+						released := endpoint.publisherBinding == nil && !endpoint.publicationLive
 						endpoint.publisherMu.Unlock()
 						if !released {
 							t.Fatal("revocation retained Instance publication authority")

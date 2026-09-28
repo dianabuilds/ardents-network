@@ -11,15 +11,15 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	"github.com/dianabuilds/ardents-network/internal/service/instance"
-	"github.com/dianabuilds/ardents-network/internal/service/publication"
+	servicepublication "github.com/dianabuilds/ardents-network/internal/service/publication"
 	"github.com/dianabuilds/ardents-network/internal/service/reachability"
 )
 
-// publishTextDescriptor consumes only the Endpoint's accepted Instance and
+// publishDescriptor consumes only the Endpoint's accepted Instance and
 // registered slot. It commits the real private proof at the resolution Node;
 // no worker supplies a signer, recipient key, Target, or publication bytes.
 // Descriptor acknowledgement alone does not imply working capsule delivery.
-func (owner *textContext) publishTextDescriptor(ctx context.Context) (verified reachability.Verified, outcome error) {
+func (owner *textContext) publishDescriptor(ctx context.Context) (verified reachability.Verified, outcome error) {
 	if owner == nil || ctx == nil || ctx.Err() != nil {
 		return verified, errors.New("text publication unavailable")
 	}
@@ -58,7 +58,7 @@ func (owner *textContext) publishTextDescriptor(ctx context.Context) (verified r
 		reason = "Publisher binding is absent"
 	case endpoint.publications == nil:
 		reason = "Publication owner is absent"
-	case endpoint.textPublisherOwner != nil && endpoint.textPublisherOwner != owner:
+	case endpoint.publisherOwner != nil && endpoint.publisherOwner != owner:
 		reason = "another Publisher context owns the publication"
 	}
 	if reason != "" {
@@ -84,11 +84,11 @@ func (owner *textContext) publishTextDescriptor(ctx context.Context) (verified r
 		owner.finishTextResolution(flight, outcome)
 	}()
 	binding := endpoint.publisherBinding
-	lease, err := owner.acquireTextPublication(attempt, registered, binding, now)
+	lease, err := owner.acquirePublication(attempt, registered, binding, now)
 	if err != nil {
 		return verified, err
 	}
-	endpoint.textPublisherOwner = owner
+	endpoint.publisherOwner = owner
 	defer func() { outcome = errors.Join(outcome, lease.Close()) }()
 	current := lease.Current()
 	owner.mu.Lock()
@@ -156,7 +156,7 @@ func (owner *textContext) publishTextDescriptor(ctx context.Context) (verified r
 	defer owner.mu.Unlock()
 	live, at, err = owner.permissionProfileLocked()
 	if err != nil || live != profile || owner.publication.pair.publicationTargetLocked() != registered || owner.publication.pair.drainingLocked() || !flight.source.currentLocked(&owner.source) ||
-		endpoint.textPublisherOwner != owner || endpoint.publisherBinding != binding || !endpoint.textPublicationLive ||
+		endpoint.publisherOwner != owner || endpoint.publisherBinding != binding || !endpoint.publicationLive ||
 		!owner.liveLocked(endpoint, broker.Administration) || attempt.Err() != nil || ctx.Err() != nil || registered.recipientPublicLocked(at) == [32]byte{} {
 		return reachability.Verified{}, errors.New("text Descriptor acknowledgement outlived its owner")
 	}
@@ -172,7 +172,7 @@ func (owner *textContext) publishTextDescriptor(ctx context.Context) (verified r
 		if !wasPublished {
 			owner.publication.signalRegistrationsLocked()
 		}
-		owner.startTextRefreshLocked(registered)
+		owner.startRefreshLocked(registered)
 	}
 	return verified, err
 }
@@ -180,7 +180,7 @@ func (owner *textContext) publishTextDescriptor(ctx context.Context) (verified r
 // publisherMu serializes this existing publication/Instance ownership with
 // legacy start and withdrawal. Local publication proof is distinct from the
 // later resolution acknowledgement and eventual protected Service readiness.
-func (owner *textContext) acquireTextPublication(ctx context.Context, registered *textIntroductionRegistration, binding *instance.Binding, now time.Time) (*publication.Lease, error) {
+func (owner *textContext) acquirePublication(ctx context.Context, registered *textIntroductionRegistration, binding *instance.Binding, now time.Time) (*servicepublication.Lease, error) {
 	endpoint := owner.endpoint
 	credential := binding.Credential()
 	if err := validateCredential(credential, endpoint.authority, endpoint.network, now, publishCapability|connectCapability); err != nil {
@@ -190,7 +190,7 @@ func (owner *textContext) acquireTextPublication(ctx context.Context, registered
 		if lease.Current().Credential != credential {
 			return nil, errors.Join(errors.New("text Instance differs from live publication"), lease.Close())
 		}
-		endpoint.textPublisherOwner, endpoint.textPublicationLive = owner, true
+		endpoint.publisherOwner, endpoint.publicationLive = owner, true
 		if err := binding.CommitPublished(credential.Generation); err != nil {
 			return nil, errors.Join(err, lease.Close())
 		}
@@ -201,8 +201,8 @@ func (owner *textContext) acquireTextPublication(ctx context.Context, registered
 		return nil, errors.Join(errors.New("text publication successor required"), err)
 	}
 	// Claim cleanup before a durable commit can outlive caller cancellation.
-	endpoint.textPublisherOwner = owner
-	_, err = endpoint.publications.PublishAfterReadiness(ctx, publication.PublishInput{Credential: credential, InstanceSigner: binding, At: now}, func(ctx context.Context) ([]byte, error) {
+	endpoint.publisherOwner = owner
+	_, err = endpoint.publications.PublishAfterReadiness(ctx, servicepublication.PublishInput{Credential: credential, InstanceSigner: binding, At: now}, func(ctx context.Context) ([]byte, error) {
 		owner.mu.Lock()
 		defer owner.mu.Unlock()
 		if ctx.Err() != nil || owner.publication.pair.publicationTargetLocked() != registered || owner.publication.pair.drainingLocked() || !owner.liveLocked(endpoint, broker.Administration) {
@@ -220,13 +220,13 @@ func (owner *textContext) acquireTextPublication(ctx context.Context, registered
 		}
 		return receipt[:], nil
 	})
-	return owner.finishTextPublicationCommit(ctx, registered, binding, now, err)
+	return owner.finishPublicationCommit(ctx, registered, binding, now, err)
 }
 
 // Every commit outcome retains cleanup ownership before a cancellable handover.
-func (owner *textContext) finishTextPublicationCommit(ctx context.Context, registered *textIntroductionRegistration, binding *instance.Binding, now time.Time, commitErr error) (*publication.Lease, error) {
+func (owner *textContext) finishPublicationCommit(ctx context.Context, registered *textIntroductionRegistration, binding *instance.Binding, now time.Time, commitErr error) (*servicepublication.Lease, error) {
 	endpoint := owner.endpoint
-	endpoint.textPublisherOwner = owner
+	endpoint.publisherOwner = owner
 	if commitErr != nil {
 		registered.cancel()
 		channelErr := registered.close()
@@ -244,25 +244,25 @@ func (owner *textContext) finishTextPublicationCommit(ctx context.Context, regis
 		}
 		return nil, errors.Join(commitErr, cleanup)
 	}
-	endpoint.textPublicationLive = true
+	endpoint.publicationLive = true
 	return endpoint.publications.AcquireAt(ctx, now)
 }
 
 // Context shutdown calls this only after its flights and worker have joined.
 // The accepted Instance cannot transfer to a different local context after
 // first publication; a new owner requires an explicit successor binding.
-func (owner *textContext) retireTextPublication() error {
+func (owner *textContext) retirePublication() error {
 	endpoint := owner.endpoint
 	endpoint.publisherMu.Lock()
 	defer endpoint.publisherMu.Unlock()
-	if endpoint.textPublisherOwner != owner || endpoint.publisherBinding == nil {
+	if endpoint.publisherOwner != owner || endpoint.publisherBinding == nil {
 		return nil
 	}
-	if endpoint.textPublicationLive {
+	if endpoint.publicationLive {
 		if err := endpoint.publications.Unpublish(context.Background()); err != nil {
 			return err
 		}
-		endpoint.textPublicationLive = false
+		endpoint.publicationLive = false
 	}
 	if err := endpoint.publisherBinding.Withdraw(); err != nil {
 		return err

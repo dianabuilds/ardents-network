@@ -121,7 +121,7 @@ func (owner *textContext) receiveTextIntroductionWith(ctx context.Context, job *
 	owner.mu.Lock()
 	if owner.publication.pair.drainingLocked() {
 		owner.mu.Unlock()
-		return nil, errTextPublicationDraining
+		return nil, errPublicationDraining
 	}
 	live := owner.liveTextServiceJobLocked(job, broker.Administration) && owner.publication.pair.currentLocked() != nil
 	owner.mu.Unlock()

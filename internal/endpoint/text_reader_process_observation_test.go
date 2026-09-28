@@ -185,7 +185,7 @@ func textReaderLookupObservation(t *testing.T, owner *textContext, input textRea
 			}
 		}()
 		go func() {
-			outcome, err := owner.lookupTextDescriptor(t.Context(), input.Target)
+			outcome, err := owner.lookupDescriptor(t.Context(), input.Target)
 			result <- lookupResult{verified: outcome, err: err}
 		}()
 		select {
@@ -207,7 +207,7 @@ func textReaderLookupObservation(t *testing.T, owner *textContext, input textRea
 		}
 		verified, joined = outcome.verified, true
 	} else {
-		outcome, err := owner.lookupTextDescriptor(t.Context(), input.Target)
+		outcome, err := owner.lookupDescriptor(t.Context(), input.Target)
 		if err != nil {
 			t.Fatal(err)
 		}

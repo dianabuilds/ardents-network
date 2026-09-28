@@ -12,14 +12,14 @@ import (
 
 func TestTextPublicationRefreshLifecycleStartsOnceAndRepeatedStopJoins(t *testing.T) {
 	const callers = 16
-	var lifecycle textPublicationRefreshLifecycle
+	var lifecycle publicationRefreshLifecycle
 	var starts atomic.Int32
 	started := make(chan struct{}, callers)
 	stopping := make(chan struct{}, 1)
 	cleanup := make(chan struct{})
 	var cleanupOnce sync.Once
 	releaseCleanup := func() { cleanupOnce.Do(func() { close(cleanup) }) }
-	run := func(flight *textPublicationRefresh) {
+	run := func(flight *publicationRefresh) {
 		starts.Add(1)
 		started <- struct{}{}
 		<-flight.context.Done()
@@ -32,7 +32,7 @@ func TestTextPublicationRefreshLifecycleStartsOnceAndRepeatedStopJoins(t *testin
 		releaseCleanup()
 		_ = lifecycle.stop()
 	})
-	flights := make([]*textPublicationRefresh, callers)
+	flights := make([]*publicationRefresh, callers)
 	var group sync.WaitGroup
 	for index := range callers {
 		group.Add(1)

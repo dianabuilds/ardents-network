@@ -53,7 +53,7 @@ func (worker *qualifiedTextWorker) produceNetworkSequential(lifetime context.Con
 			return network.Err()
 		}
 		attempt, err := owner.receiveTextIntroduction(network, worker.job)
-		if onlyTextPublicationDraining(err) {
+		if onlyPublicationDraining(err) {
 			draining = true
 			return nil
 		}
@@ -190,7 +190,7 @@ func (worker *qualifiedTextWorker) produceQualificationNetwork(lifetime context.
 			inFlight--
 			if result.err != nil {
 				<-slots
-				if onlyTextPublicationDraining(result.err) {
+				if onlyPublicationDraining(result.err) {
 					draining = true
 					stopping = true
 					drain = nil

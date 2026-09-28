@@ -17,15 +17,15 @@ func TestTextInitialPublicationLossBeforeAcknowledgement(t *testing.T) {
 		t.Run(string(carrier), func(t *testing.T) {
 			for _, failure := range []string{"none", "registration channel", "context revoke"} {
 				t.Run(failure, func(t *testing.T) {
-					gate := newTextDescriptorACKGate()
+					gate := newDescriptorACKGate()
 					gate.revision = 1
-					endpoint, owner, _, registered := startTextRegisteredPublisherNetwork(t, carrier, gate)
+					endpoint, owner, _, registered := startRegisteredPublisherNetwork(t, carrier, gate)
 					t.Cleanup(gate.open)
 					binding := endpoint.publisherBinding
 					gate.arm(t)
 					result := make(chan error, 1)
 					go func() {
-						_, err := owner.publishTextDescriptor(t.Context())
+						_, err := owner.publishDescriptor(t.Context())
 						result <- err
 					}()
 					select {
@@ -74,7 +74,7 @@ func TestTextInitialPublicationLossBeforeAcknowledgement(t *testing.T) {
 						if revived {
 							t.Fatal("delayed initial ACK revived accepting readiness")
 						}
-						if _, err := owner.publishTextDescriptor(t.Context()); err == nil {
+						if _, err := owner.publishDescriptor(t.Context()); err == nil {
 							t.Fatal("failed initial publication revived through exact retry")
 						}
 					}

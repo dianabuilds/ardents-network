@@ -106,7 +106,7 @@ func exchangeInstalledTextAdministration(t *testing.T, carrier routecarrier.Carr
 		t.Fatal("published receipt without retained publication")
 	}
 	if refresh {
-		observeInstalledTextRefresh(t, ctx, publisherOwner, run)
+		observeInstalledRefresh(t, ctx, publisherOwner, run)
 	}
 	// Obtain the destination through the real separately authorized local owner.
 	// No test-side projection of the run's private fields supplies the Link.

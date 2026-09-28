@@ -30,12 +30,12 @@ func (owner *textContext) acceptTextIntroductionGeneration(ctx context.Context, 
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
 	if owner.publication.pair.drainingLocked() {
-		return nil, errTextPublicationDraining
+		return nil, errPublicationDraining
 	}
 	profile, now, err := owner.permissionProfileLocked()
 	registered := owner.publication.pair.selectLocked(now, capsule.Slot, capsule.Revision)
 	if err != nil || !owner.liveTextServiceJobLocked(job, broker.Administration) || registered == nil || owner.publication.pair.withdrawalInProgressLocked() ||
-		endpoint.textPublisherOwner != owner || !endpoint.textPublicationLive || endpoint.publisherBinding == nil || endpoint.publications == nil ||
+		endpoint.publisherOwner != owner || !endpoint.publicationLive || endpoint.publisherBinding == nil || endpoint.publications == nil ||
 		!registered.acceptingNowLocked() {
 		return nil, errors.New("text Introduction registration authority unavailable")
 	}

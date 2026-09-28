@@ -19,14 +19,14 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/application/textdocument"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	nativeconnection "github.com/dianabuilds/ardents-network/internal/service/connection"
-	"github.com/dianabuilds/ardents-network/internal/service/publication"
+	servicepublication "github.com/dianabuilds/ardents-network/internal/service/publication"
 	"github.com/dianabuilds/ardents-network/internal/service/targetlink"
 )
 
 // Accepted State, installed launch and Introduction readiness are explicit
 // fixtures. Publication roots/signatures, both Endpoint Service owners, TLS,
 // exporter binding, native authentication and the document exchange are real.
-func textServiceFixture(t *testing.T) (*textServiceBinding, *textServiceBinding, publication.Current) {
+func textServiceFixture(t *testing.T) (*textServiceBinding, *textServiceBinding, servicepublication.Current) {
 	t.Helper()
 	now := time.Now().UTC()
 	profile := state.ClosedProfileView{NetworkID: fixtureID(1), StateGeneration: fixtureID(2), StateDigest: fixtureID(3),
@@ -68,7 +68,7 @@ func textServiceFixture(t *testing.T) (*textServiceBinding, *textServiceBinding,
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { clear(authority); clear(signer) })
-	root, err := publication.Open(publication.Config{Root: publicationStoreRoot(t), NetworkID: profile.NetworkID, Authority: authorityPublic})
+	root, err := servicepublication.Open(servicepublication.Config{Root: publicationStoreRoot(t), NetworkID: profile.NetworkID, Authority: authorityPublic})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -78,15 +78,15 @@ func textServiceFixture(t *testing.T) (*textServiceBinding, *textServiceBinding,
 			t.Error(err)
 		}
 	})
-	credential := publication.Credential{NetworkID: profile.NetworkID,
+	credential := servicepublication.Credential{NetworkID: profile.NetworkID,
 		Generation: 1, NotBefore: now.Add(-time.Minute).Unix(), NotAfter: now.Add(time.Hour).Unix(),
-		Capabilities: publication.CapabilityPublish | publication.CapabilityConnect}
+		Capabilities: servicepublication.CapabilityPublish | servicepublication.CapabilityConnect}
 	copy(credential.InstancePublic[:], instancePublic)
 	credential, err = credential.Issue(authority)
 	if err != nil {
 		t.Fatal(err)
 	}
-	current, err := root.Publish(t.Context(), publication.PublishInput{Credential: credential, InstanceSigner: signer,
+	current, err := root.Publish(t.Context(), servicepublication.PublishInput{Credential: credential, InstanceSigner: signer,
 		Acknowledgement: []byte("explicit isolated Introduction readiness fixture"), At: now})
 	if err != nil {
 		t.Fatal(err)
@@ -347,7 +347,7 @@ func TestTextServiceProtectedContextSeparatesAttachmentFromLogicalIdentity(t *te
 // acceptTextServiceBinding verifies the shared capsule tuple against the
 // Publisher's own publication and authorization. It does not silently clamp
 // incompatible bounds or treat a requester's nonce as authority.
-func (owner *textContext) acceptTextServiceBinding(job *textJobIdentity, current publication.Current,
+func (owner *textContext) acceptTextServiceBinding(job *textJobIdentity, current servicepublication.Current,
 	facts nativeconnection.ProtectedContextInput) (*textServiceBinding, error) {
 	if owner == nil {
 		return nil, errors.New("text Service context unavailable")

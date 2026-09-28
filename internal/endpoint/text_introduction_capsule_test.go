@@ -19,7 +19,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	introductioncapsule "github.com/dianabuilds/ardents-network/internal/route/capsule"
 	routecarrier "github.com/dianabuilds/ardents-network/internal/route/carrier"
-	"github.com/dianabuilds/ardents-network/internal/service/publication"
+	servicepublication "github.com/dianabuilds/ardents-network/internal/service/publication"
 	"github.com/dianabuilds/ardents-network/internal/service/targetlink"
 )
 
@@ -75,7 +75,7 @@ func TestTextIntroductionCapsuleBindsRealInstanceAndServiceStream(t *testing.T) 
 					t.Error(err)
 				}
 			})
-			publications, err := publication.Open(publication.Config{Root: textNetworkPrivateRoot(t), NetworkID: endpoint.network, Authority: public, Clock: time.Now})
+			publications, err := servicepublication.Open(servicepublication.Config{Root: textNetworkPrivateRoot(t), NetworkID: endpoint.network, Authority: public, Clock: time.Now})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -90,7 +90,7 @@ func TestTextIntroductionCapsuleBindsRealInstanceAndServiceStream(t *testing.T) 
 			if err != nil {
 				t.Fatal(err)
 			}
-			descriptor, err := publisher.publishTextDescriptor(t.Context())
+			descriptor, err := publisher.publishDescriptor(t.Context())
 			if err != nil {
 				t.Fatal(err)
 			}

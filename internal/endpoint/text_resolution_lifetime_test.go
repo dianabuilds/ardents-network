@@ -48,7 +48,7 @@ func TestTextResolutionCloseJoinsInFlightStateSelection(t *testing.T) {
 	release := func() { releaseOnce.Do(func() { close(paused.release) }) }
 	defer release()
 	result := make(chan error, 1)
-	go func() { _, err := owner.lookupTextDescriptor(t.Context(), fixtureID(199)); result <- err }()
+	go func() { _, err := owner.lookupDescriptor(t.Context(), fixtureID(199)); result <- err }()
 	select {
 	case <-paused.entered:
 	case err := <-result:
@@ -100,7 +100,7 @@ func TestTextResolutionCloseJoinsInFlightStateSelection(t *testing.T) {
 	default:
 		t.Fatal("revocation left prefix alive")
 	}
-	if _, err := owner.lookupTextDescriptor(context.Background(), fixtureID(199)); err == nil {
+	if _, err := owner.lookupDescriptor(context.Background(), fixtureID(199)); err == nil {
 		t.Fatal("closed context admitted another lookup")
 	}
 }

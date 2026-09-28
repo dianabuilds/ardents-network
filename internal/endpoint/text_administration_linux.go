@@ -22,7 +22,7 @@ type textAdministration struct {
 	ending    bool
 	pending   chan struct{}
 	cancel    context.CancelFunc
-	run       *textPublisherRun
+	run       *publisherRun
 	closeOnce sync.Once
 	closeErr  error
 }
@@ -83,7 +83,7 @@ func (owner *textAdministration) PublishSnapshot(ctx context.Context, snapshot [
 		close(pending)
 		owner.mu.Unlock()
 	}()
-	run, err := owner.context.startTextPublisher(startup, snapshot)
+	run, err := owner.context.startPublisher(startup, snapshot)
 	if err != nil {
 		return err
 	}
@@ -104,13 +104,13 @@ func (owner *textAdministration) PublishSnapshot(ctx context.Context, snapshot [
 // existing five-second drain; repeated calls cannot start another drain.
 func (owner *textAdministration) Withdraw(ctx context.Context) error {
 	if err := owner.authorize(ctx); err != nil {
-		owner.context.reportTextWithdrawalFailure("authorization")
+		owner.context.reportWithdrawalFailure("authorization")
 		return err
 	}
 	owner.mu.Lock()
 	if owner.closed || owner.ending || owner.pending == nil && owner.run == nil {
 		owner.mu.Unlock()
-		owner.context.reportTextWithdrawalFailure("publication-state")
+		owner.context.reportWithdrawalFailure("publication-state")
 		return errors.New("text publication already ending")
 	}
 	owner.ending = true
@@ -123,7 +123,7 @@ func (owner *textAdministration) Withdraw(ctx context.Context) error {
 		<-pending
 	}
 	if run == nil {
-		owner.context.reportTextWithdrawalFailure("publication-handover")
+		owner.context.reportWithdrawalFailure("publication-handover")
 		return errors.New("text publication was not committed")
 	}
 	return run.Withdraw(ctx)

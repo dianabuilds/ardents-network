@@ -16,7 +16,7 @@ import (
 // verified launch boundary may give a worker a Principal and Grant.
 type textContextState struct {
 	operationFailure  func(string)
-	publication       textPublication
+	publication       publication
 	introduction      textIntroduction
 	descriptorHistory descriptorhistory.History
 	responder         textResponderPrefixLifecycle
@@ -45,9 +45,9 @@ func (owner *textContext) reportTextOperationFailure(failure string) {
 	}
 }
 
-// reportTextWithdrawalFailure exposes one fixed local operational category.
+// reportWithdrawalFailure exposes one fixed local operational category.
 // It never serializes a wrapped error, peer, route, document, or authority.
-func (owner *textContext) reportTextWithdrawalFailure(failure string) {
+func (owner *textContext) reportWithdrawalFailure(failure string) {
 	owner.mu.Lock()
 	report := owner.publication.withdrawalFailure
 	owner.mu.Unlock()
@@ -141,7 +141,7 @@ func (owner *textContext) closeAfterAuthorization() {
 	retirement := owner.stopTextContextChildrenLocked()
 	owner.mu.Unlock()
 	owner.closeErr = errors.Join(owner.closeErr, retirement.join())
-	owner.closeErr = errors.Join(owner.closeErr, owner.retireTextPublication())
+	owner.closeErr = errors.Join(owner.closeErr, owner.retirePublication())
 	owner.endpoint.releaseTextContext(owner, owner.closeErr)
 	close(owner.done)
 }

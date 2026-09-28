@@ -45,7 +45,7 @@ func TestTextResponderRejectsKnownIntroductionFamiliesBeforeIssuance(t *testing.
 			owner.mu.Lock()
 			before := owner.tokens.permission.reserved
 			owner.mu.Unlock()
-			opened, err := owner.openTextPublisherPrefix(t.Context(), &owner.responder, 3)
+			opened, err := owner.openPublisherPrefix(t.Context(), &owner.responder, 3)
 			if err == nil || opened != nil {
 				t.Error("Responder admitted a known Introduction family")
 			}

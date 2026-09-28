@@ -22,7 +22,7 @@ func (owner *textContext) nextTextIntroductionDelivery(ctx context.Context) (*cl
 		}
 		if owner.publication.pair.drainingLocked() {
 			owner.mu.Unlock()
-			return nil, errTextPublicationDraining
+			return nil, errPublicationDraining
 		}
 		current := owner.publication.pair.currentLocked()
 		previous, previousUntil := owner.publication.pair.previousLocked()

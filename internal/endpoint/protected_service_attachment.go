@@ -9,7 +9,7 @@ import (
 	"sync"
 
 	nativeconnection "github.com/dianabuilds/ardents-network/internal/service/connection"
-	"github.com/dianabuilds/ardents-network/internal/service/publication"
+	servicepublication "github.com/dianabuilds/ardents-network/internal/service/publication"
 )
 
 // protectedServiceTransport gives TLS, cancellation and final cleanup one
@@ -54,9 +54,9 @@ type textServiceAttachmentOpener func(context.Context, nativeconnection.Recovery
 // cleanup, including when Attachment construction fails.
 func (binding *textServiceBinding) openProtectedServiceInitialAttachment(lifetime context.Context,
 	raw net.Conn, exporterContext [32]byte, client bool, continuity *[32]byte,
-) (*nativeconnection.Attachment, *publication.Lease, error) {
+) (*nativeconnection.Attachment, *servicepublication.Lease, error) {
 	var secured *securedAttachment
-	var lease *publication.Lease
+	var lease *servicepublication.Lease
 	var err error
 	if client {
 		secured, *continuity, err = secureProtectedServiceClient(lifetime, raw, binding.credential, exporterContext, 1)
@@ -86,7 +86,7 @@ func (binding *textServiceBinding) openProtectedServiceInitialAttachment(lifetim
 // openProtectedServiceRecoveryAttachment owns one replacement Route transport
 // until TLS authenticates it and a native Attachment is constructed.
 func (binding *textServiceBinding) openProtectedServiceRecoveryAttachment(attempt context.Context,
-	request nativeconnection.Recovery, open textServiceAttachmentOpener, lease *publication.Lease, client bool,
+	request nativeconnection.Recovery, open textServiceAttachmentOpener, lease *servicepublication.Lease, client bool,
 ) (_ *nativeconnection.Attachment, outcome error) {
 	if err := binding.validateTextServiceRecovery(request); err != nil {
 		return nil, err

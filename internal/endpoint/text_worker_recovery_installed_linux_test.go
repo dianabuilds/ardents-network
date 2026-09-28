@@ -250,7 +250,7 @@ func installedTextRecoveryNetwork(t *testing.T, carrier routecarrier.CarrierProf
 	if _, err := publisher.registerTextIntroduction(t.Context(), 1, now.Add(120*time.Second)); err != nil {
 		t.Fatal(err)
 	}
-	descriptor, err := publisher.publishTextDescriptor(t.Context())
+	descriptor, err := publisher.publishDescriptor(t.Context())
 	if err != nil {
 		t.Fatal(err)
 	}

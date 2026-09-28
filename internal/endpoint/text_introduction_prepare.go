@@ -80,7 +80,7 @@ func (owner *textContext) resolveTextIntroduction(ctx context.Context, job *text
 			return reachability.Verified{}, err
 		}
 	}
-	return owner.lookupTextDescriptor(ctx, destination.Target)
+	return owner.lookupDescriptor(ctx, destination.Target)
 }
 
 func (owner *textContext) prepareResolvedTextIntroduction(ctx context.Context, job *textJobIdentity, destination targetlink.Link, bounds [3]int64,

@@ -12,10 +12,10 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/service/targetlink"
 )
 
-// textPublisherRun retains publication and worker ownership after the startup
+// publisherRun retains publication and worker ownership after the startup
 // caller returns. Its done channel publishes the immutable joined outcome.
 // Cancellation is an abort; orderly withdrawal has a separate drain contract.
-type textPublisherRun struct {
+type publisherRun struct {
 	owner        *textContext
 	mu           sync.Mutex
 	ending       bool
@@ -26,10 +26,10 @@ type textPublisherRun struct {
 	err          error
 }
 
-// startTextPublisher performs installed qualification before any registration
+// startPublisher performs installed qualification before any registration
 // or Descriptor effect. The separately authorized context must already hold
 // its genuine offline permission; a snapshot cannot supply that authority.
-func (owner *textContext) startTextPublisher(ctx context.Context, snapshot []byte) (*textPublisherRun, error) {
+func (owner *textContext) startPublisher(ctx context.Context, snapshot []byte) (*publisherRun, error) {
 	worker, err := owner.launchTextWorker(ctx, snapshot)
 	if err != nil {
 		return nil, err
@@ -41,7 +41,7 @@ func (owner *textContext) startTextPublisher(ctx context.Context, snapshot []byt
 	return run, nil
 }
 
-func (worker *qualifiedTextWorker) startPublication(ctx context.Context) (_ *textPublisherRun, resultErr error) {
+func (worker *qualifiedTextWorker) startPublication(ctx context.Context) (_ *publisherRun, resultErr error) {
 	if worker == nil || worker.job == nil || ctx == nil || ctx.Err() != nil {
 		return nil, errors.New("text Publisher startup unavailable")
 	}
@@ -91,14 +91,14 @@ func (worker *qualifiedTextWorker) startPublication(ctx context.Context) (_ *tex
 	if _, err := owner.registerTextIntroduction(ctx, 1, expiry); err != nil {
 		return nil, err
 	}
-	descriptor, err := owner.publishTextDescriptor(ctx)
+	descriptor, err := owner.publishDescriptor(ctx)
 	if err != nil {
 		return nil, err
 	}
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
-	run := &textPublisherRun{owner: owner, link: targetlink.Link{Network: owner.endpoint.network, Target: descriptor.Descriptor.Target}, cancel: cancel, done: make(chan struct{})}
+	run := &publisherRun{owner: owner, link: targetlink.Link{Network: owner.endpoint.network, Target: descriptor.Descriptor.Target}, cancel: cancel, done: make(chan struct{})}
 	transferred = true
 	go func() {
 		defer close(run.done)
@@ -117,7 +117,7 @@ func (worker *qualifiedTextWorker) startPublication(ctx context.Context) (_ *tex
 }
 
 // Close aborts new and retained work and joins publication/worker cleanup.
-func (run *textPublisherRun) Close() error {
+func (run *publisherRun) Close() error {
 	if run == nil {
 		return nil
 	}
@@ -131,10 +131,10 @@ func (run *textPublisherRun) Close() error {
 // qualification.Publication boundary instead of these private fields.
 
 // Link returns the registered publication Target Link.
-func (run *textPublisherRun) Link() targetlink.Link { return run.link }
+func (run *publisherRun) Link() targetlink.Link { return run.link }
 
 // Done is closed when the publication flight ends.
-func (run *textPublisherRun) Done() <-chan struct{} { return run.done }
+func (run *publisherRun) Done() <-chan struct{} { return run.done }
 
 // Err returns the flight failure; valid after Done closes.
-func (run *textPublisherRun) Err() error { return run.err }
+func (run *publisherRun) Err() error { return run.err }

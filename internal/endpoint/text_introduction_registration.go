@@ -17,9 +17,9 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/service/reachability"
 )
 
-const textRegistrationRefreshDelay = 300 * time.Second
+const registrationRefreshDelay = 300 * time.Second
 
-type textRegistrationFlight struct {
+type registrationFlight struct {
 	previous *textIntroductionRegistration
 	context  context.Context
 	cancel   context.CancelFunc
@@ -28,13 +28,13 @@ type textRegistrationFlight struct {
 	receiver [32]byte
 }
 
-func (flight *textRegistrationFlight) stop() {
+func (flight *registrationFlight) stop() {
 	if flight != nil {
 		flight.cancel()
 	}
 }
 
-func (flight *textRegistrationFlight) join() {
+func (flight *registrationFlight) join() {
 	if flight != nil {
 		<-flight.done
 	}
@@ -58,10 +58,10 @@ type textIntroductionRegistration struct {
 // Publication token on the separate admitted Introduction tree. Registration
 // supplies no Service authority and is not Descriptor publication readiness.
 func (owner *textContext) registerTextIntroduction(ctx context.Context, revision uint64, expiry time.Time) (*textIntroductionRegistration, error) {
-	return owner.openTextRegistration(ctx, revision, expiry, nil)
+	return owner.openRegistration(ctx, revision, expiry, nil)
 }
 
-func (owner *textContext) openTextRegistration(ctx context.Context, revision uint64, expiry time.Time, previous *textIntroductionRegistration) (registered *textIntroductionRegistration, outcome error) {
+func (owner *textContext) openRegistration(ctx context.Context, revision uint64, expiry time.Time, previous *textIntroductionRegistration) (registered *textIntroductionRegistration, outcome error) {
 	if owner == nil || ctx == nil || ctx.Err() != nil || revision == 0 {
 		return nil, errors.New("text Publisher registration unavailable")
 	}
@@ -87,7 +87,7 @@ func (owner *textContext) openTextRegistration(ctx context.Context, revision uin
 		return nil, errors.New("text Publisher registration owner unavailable")
 	}
 	attempt, cancel := context.WithCancel(owner.lease.Context())
-	flight := &textRegistrationFlight{previous: previous, context: attempt, cancel: cancel, done: make(chan struct{}), prefix: prefix}
+	flight := &registrationFlight{previous: previous, context: attempt, cancel: cancel, done: make(chan struct{}), prefix: prefix}
 	if !owner.publication.pair.beginOpeningLocked(flight, previous) {
 		owner.mu.Unlock()
 		cancel()
@@ -101,7 +101,7 @@ func (owner *textContext) openTextRegistration(ctx context.Context, revision uin
 		if !stop() {
 			<-interrupted
 		}
-		registered, outcome = owner.finishTextRegistration(ctx, flight, registered, channel, outcome)
+		registered, outcome = owner.finishRegistration(ctx, flight, registered, channel, outcome)
 	}()
 	receiver, until, err := flight.prefix.introductionRecipient()
 	if err != nil || expiry.After(until) {
@@ -136,7 +136,7 @@ func (owner *textContext) openTextRegistration(ctx context.Context, revision uin
 	return &textIntroductionRegistration{createdAt: createdAt, channel: channel, node: receiver, request: request, cancel: cancel}, nil
 }
 
-func (owner *textContext) finishTextRegistration(ctx context.Context, flight *textRegistrationFlight, registered *textIntroductionRegistration, channel *client.ClosedIntroductionRegistration, outcome error) (*textIntroductionRegistration, error) {
+func (owner *textContext) finishRegistration(ctx context.Context, flight *registrationFlight, registered *textIntroductionRegistration, channel *client.ClosedIntroductionRegistration, outcome error) (*textIntroductionRegistration, error) {
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
 	defer close(flight.done)
@@ -168,7 +168,7 @@ func (owner *textContext) finishTextRegistration(ctx context.Context, flight *te
 	return registered, nil
 }
 
-func (owner *textContext) presentRegistrationToken(flight *textRegistrationFlight, hello ardp.Hello, class uint8) ([]byte, error) {
+func (owner *textContext) presentRegistrationToken(flight *registrationFlight, hello ardp.Hello, class uint8) ([]byte, error) {
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
 	profile, now, err := owner.permissionProfileLocked()
@@ -366,7 +366,7 @@ func (registered *textIntroductionRegistration) copyDescriptorLocked() []byte {
 // exact retry never moves it.
 func (registered *textIntroductionRegistration) scheduleRefreshLocked() {
 	if registered.refreshAt.IsZero() {
-		registered.refreshAt = registered.createdAt.Add(textRegistrationRefreshDelay)
+		registered.refreshAt = registered.createdAt.Add(registrationRefreshDelay)
 	}
 }
 

@@ -2,15 +2,15 @@
 
 package endpoint
 
-// textPublication is the single local owner of one context's publication
+// publication is the single local owner of one context's publication
 // state: the Registration pair lifecycle, the refresh scheduler identity, the
 // installed Publisher startup/drain barriers, and the two fixed failure
 // reporting callbacks. Like every Context owner, the pair state carries no
 // mutex of its own: its ...Locked methods run under textContext.mu. Only the
 // refresh lifecycle keeps a private mutex for scheduler identity.
-type textPublication struct {
-	pair              textPublicationPairLifecycle
-	refresh           textPublicationRefreshLifecycle
+type publication struct {
+	pair              publicationPairLifecycle
+	refresh           publicationRefreshLifecycle
 	starting          bool
 	drain             chan struct{}
 	refreshFailure    func(string)
@@ -21,7 +21,7 @@ type textPublication struct {
 // It refuses while a start is already in flight, the pair is draining, or a
 // registration is already current; on success it opens the drain channel the
 // run's producers will watch. The caller holds textContext.mu.
-func (publication *textPublication) beginStartLocked() bool {
+func (publication *publication) beginStartLocked() bool {
 	if publication.starting || publication.pair.drainingLocked() || publication.pair.currentLocked() != nil {
 		return false
 	}
@@ -32,7 +32,7 @@ func (publication *textPublication) beginStartLocked() bool {
 
 // endStartLocked releases the startup barrier. The drain channel stays open
 // for the retained run's producers until withdrawal or retirement closes it.
-func (publication *textPublication) endStartLocked() {
+func (publication *publication) endStartLocked() {
 	publication.starting = false
 }
 
@@ -40,7 +40,7 @@ func (publication *textPublication) endStartLocked() {
 // draining first, the drain barrier closes next, and registration change
 // waiters plus the refresh scheduler are signalled last. The caller holds
 // textContext.mu and has already verified that no drain is in progress.
-func (publication *textPublication) beginDrainLocked() {
+func (publication *publication) beginDrainLocked() {
 	publication.pair.beginDrainLocked()
 	close(publication.drain)
 	publication.signalRegistrationsLocked()
@@ -48,7 +48,7 @@ func (publication *textPublication) beginDrainLocked() {
 
 // signalRegistrationsLocked wakes registration change waiters and the refresh
 // scheduler in one transition. The caller holds textContext.mu.
-func (publication *textPublication) signalRegistrationsLocked() {
+func (publication *publication) signalRegistrationsLocked() {
 	publication.pair.signalLocked()
 	publication.refresh.wake()
 }
@@ -56,6 +56,6 @@ func (publication *textPublication) signalRegistrationsLocked() {
 // stopRefresh terminates the refresh scheduler identity and discards its
 // terminal cause; refresh failures are published by the refresh owner itself,
 // and Context shutdown only joins resource cleanup.
-func (publication *textPublication) stopRefresh() {
+func (publication *publication) stopRefresh() {
 	_ = publication.refresh.stop()
 }

@@ -14,7 +14,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/node"
 	routecarrier "github.com/dianabuilds/ardents-network/internal/route/carrier"
-	"github.com/dianabuilds/ardents-network/internal/service/publication"
+	servicepublication "github.com/dianabuilds/ardents-network/internal/service/publication"
 )
 
 // Same-run role memory, with a real Publisher/issuer/Store exchange. This is
@@ -47,7 +47,7 @@ func TestTextPublicationIsolatedRoleObservations(t *testing.T) {
 			}
 			var processes []*textRoleProcess
 			publisherRoot := textNetworkPrivateRoot(t)
-			publisherProcess := startTextPublisherDurableCapture(t, output, publisherRoot)
+			publisherProcess := startPublisherDurableCapture(t, output, publisherRoot)
 			runner := func(t *testing.T, index int, config node.Config, snapshot state.Snapshot) func() error {
 				process := startTextRoleProcess(t, index, config, snapshot, output)
 				processes = append(processes, process)
@@ -78,7 +78,7 @@ func TestTextPublicationIsolatedRoleObservations(t *testing.T) {
 					t.Error(err)
 				}
 			})
-			publisher, err := publication.Open(publication.Config{Root: publisherRoot, NetworkID: endpoint.network, Authority: public, Clock: time.Now})
+			publisher, err := servicepublication.Open(servicepublication.Config{Root: publisherRoot, NetworkID: endpoint.network, Authority: public, Clock: time.Now})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -93,7 +93,7 @@ func TestTextPublicationIsolatedRoleObservations(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			published, err := owner.publishTextDescriptor(t.Context())
+			published, err := owner.publishDescriptor(t.Context())
 			if err != nil {
 				t.Fatal(err)
 			}

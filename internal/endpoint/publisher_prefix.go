@@ -11,7 +11,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/route/client"
 )
 
-type textPublisherPrefixOpening interface {
+type publisherPrefixOpening interface {
 	openingAvailableLocked() bool
 	membersSlotLocked() **textInteriorSet
 	reserveOpeningLocked(*textOperationFlight) bool
@@ -23,7 +23,7 @@ func (owner *textContext) openTextResponderPrefix(ctx context.Context) (*textRes
 	if owner == nil {
 		return nil, errors.New("text Publisher owner unavailable")
 	}
-	opened, err := owner.openTextPublisherPrefix(ctx, &owner.responder, 3)
+	opened, err := owner.openPublisherPrefix(ctx, &owner.responder, 3)
 	if err != nil {
 		return nil, err
 	}
@@ -40,7 +40,7 @@ func (owner *textContext) openTextIntroductionPrefix(ctx context.Context) (*text
 	if owner == nil {
 		return nil, errors.New("text Publisher owner unavailable")
 	}
-	opened, err := owner.openTextPublisherPrefix(ctx, &owner.introduction.prefix, 4)
+	opened, err := owner.openPublisherPrefix(ctx, &owner.introduction.prefix, 4)
 	if err != nil {
 		return nil, err
 	}
@@ -55,7 +55,7 @@ func (owner *textContext) openTextIntroductionPrefix(ctx context.Context) (*text
 
 // Both Publisher domains share admission/lifetime rules but retain distinct
 // allocations, transports and stock. This private selector grants no authority.
-func (owner *textContext) openTextPublisherPrefix(ctx context.Context, role textPublisherPrefixOpening, domain uint8) (*client.ClosedSourcePrefix, error) {
+func (owner *textContext) openPublisherPrefix(ctx context.Context, role publisherPrefixOpening, domain uint8) (*client.ClosedSourcePrefix, error) {
 	if owner == nil || ctx == nil || ctx.Err() != nil || !(domain == 4 && role == &owner.introduction.prefix || domain == 3 && role == &owner.responder) {
 		return nil, errors.New("text Publisher role context unavailable")
 	}
@@ -86,7 +86,7 @@ func (owner *textContext) openTextPublisherPrefix(ctx context.Context, role text
 	interrupted := make(chan struct{})
 	stop := context.AfterFunc(ctx, func() { defer close(interrupted); cancel() })
 	var prefix *client.ClosedSourcePrefix
-	openErr := owner.ensureTextPublisherStock(role, flight, selection)
+	openErr := owner.ensurePublisherStock(role, flight, selection)
 	if openErr == nil {
 		open := client.OpenClosedIntroductionPrefix
 		if domain == 3 {
@@ -117,7 +117,7 @@ func (owner *textContext) openTextPublisherPrefix(ctx context.Context, role text
 	return prefix, nil
 }
 
-func (owner *textContext) ensureTextPublisherStock(role textPublisherPrefixOpening, flight *textOperationFlight, selection client.ClosedBootstrapSelection) error {
+func (owner *textContext) ensurePublisherStock(role publisherPrefixOpening, flight *textOperationFlight, selection client.ClosedBootstrapSelection) error {
 	owner.mu.Lock()
 	profile, _, err := owner.permissionProfileLocked()
 	if err != nil || !role.openingCurrentLocked(flight) || flight.context.Err() != nil || owner.tokens.permission == nil {
@@ -138,7 +138,7 @@ func (owner *textContext) ensureTextPublisherStock(role textPublisherPrefixOpeni
 	return nil
 }
 
-func (owner *textContext) presentPublisherForwardingToken(role textPublisherPrefixOpening, domain uint8, flight *textOperationFlight, selection client.ClosedBootstrapSelection, hello ardp.Hello, class uint8) ([]byte, error) {
+func (owner *textContext) presentPublisherForwardingToken(role publisherPrefixOpening, domain uint8, flight *textOperationFlight, selection client.ClosedBootstrapSelection, hello ardp.Hello, class uint8) ([]byte, error) {
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
 	profile, now, err := owner.permissionProfileLocked()

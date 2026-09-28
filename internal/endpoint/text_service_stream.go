@@ -12,7 +12,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
 	applicationconnection "github.com/dianabuilds/ardents-network/internal/application/interfacev2/connection"
 	nativeconnection "github.com/dianabuilds/ardents-network/internal/service/connection"
-	"github.com/dianabuilds/ardents-network/internal/service/publication"
+	servicepublication "github.com/dianabuilds/ardents-network/internal/service/publication"
 )
 
 // textServiceStream is the Endpoint's actual authenticated byte stream for a
@@ -76,7 +76,7 @@ func (binding *textServiceBinding) openTextServiceStreamWithRecovery(ctx context
 	connection := &textServiceStream{applicationHalfClose: application, binding: binding, cancel: cancel,
 		done: make(chan applicationconnection.Outcome, 1), retired: make(chan struct{}),
 		finished: make(chan struct{}), waitClose: waitTextServiceClose}
-	var lease *publication.Lease
+	var lease *servicepublication.Lease
 	interrupted := make(chan struct{})
 	stopLifetime := context.AfterFunc(lifetime, func() {
 		defer close(interrupted)

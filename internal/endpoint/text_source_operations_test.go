@@ -120,7 +120,7 @@ func TestTextRefreshWaitsForActualSourceUse(t *testing.T) {
 			}
 			release()
 			held = false
-			waitTextRefreshCondition(t, owner, func() bool {
+			waitRefreshCondition(t, owner, func() bool {
 				return owner.publication.pair.registration != nil && owner.publication.pair.registration != first && !owner.publication.pair.registration.refreshAt.IsZero()
 			})
 			owner.mu.Lock()

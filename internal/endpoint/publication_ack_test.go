@@ -21,7 +21,7 @@ import (
 // Store has written the selected revision and before it emits Descriptor RESULT.
 // Concurrent resolution State polls may also wait. State facts, Store writes,
 // token admission, registration and all network replies remain real owners.
-type textDescriptorACKGate struct {
+type descriptorACKGate struct {
 	mu       sync.Mutex
 	root     string
 	revision uint64
@@ -32,13 +32,13 @@ type textDescriptorACKGate struct {
 	released sync.Once
 }
 
-func newTextDescriptorACKGate() *textDescriptorACKGate {
-	return &textDescriptorACKGate{revision: 2, held: make(chan struct{}), release: make(chan struct{})}
+func newDescriptorACKGate() *descriptorACKGate {
+	return &descriptorACKGate{revision: 2, held: make(chan struct{}), release: make(chan struct{})}
 }
 
-func (gate *textDescriptorACKGate) open() { gate.released.Do(func() { close(gate.release) }) }
+func (gate *descriptorACKGate) open() { gate.released.Do(func() { close(gate.release) }) }
 
-func (gate *textDescriptorACKGate) configure(t *testing.T) func(int, *node.Config) {
+func (gate *descriptorACKGate) configure(t *testing.T) func(int, *node.Config) {
 	return func(index int, config *node.Config) {
 		if index != 5 {
 			return
@@ -60,7 +60,7 @@ func (gate *textDescriptorACKGate) configure(t *testing.T) func(int, *node.Confi
 	}
 }
 
-func (gate *textDescriptorACKGate) committed(root string, profile state.ClosedProfileView) bool {
+func (gate *descriptorACKGate) committed(root string, profile state.ClosedProfileView) bool {
 	gate.mu.Lock()
 	defer gate.mu.Unlock()
 	if gate.baseline == nil {
@@ -97,7 +97,7 @@ func (gate *textDescriptorACKGate) committed(root string, profile state.ClosedPr
 	return false
 }
 
-func deliverTextBeforeDescriptorACK(t *testing.T, gate *textDescriptorACKGate, reader, publisher *textContext, readerJob, publisherJob *textJobIdentity, prepared *textIntroductionAttempt) *textIntroductionAttempt {
+func deliverBeforeDescriptorACK(t *testing.T, gate *descriptorACKGate, reader, publisher *textContext, readerJob, publisherJob *textJobIdentity, prepared *textIntroductionAttempt) *textIntroductionAttempt {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(t.Context(), 3*time.Second)
 	defer cancel()
@@ -139,7 +139,7 @@ func deliverTextBeforeDescriptorACK(t *testing.T, gate *textDescriptorACKGate, r
 // A hostile submitter can see the committed public Descriptor before its
 // Publisher receives the ACK. Build that candidate with actual Instance bytes;
 // it must not gain local admission merely because its signature is valid.
-func refuseTextBeforeDescriptorACK(t *testing.T, gate *textDescriptorACKGate, owner *textContext, job *textJobIdentity, prior *textIntroductionAttempt) []byte {
+func refuseBeforeDescriptorACK(t *testing.T, gate *descriptorACKGate, owner *textContext, job *textJobIdentity, prior *textIntroductionAttempt) []byte {
 	t.Helper()
 	owner.mu.Lock()
 	registered := owner.publication.pair.pendingRegistration
@@ -183,7 +183,7 @@ func refuseTextBeforeDescriptorACK(t *testing.T, gate *textDescriptorACKGate, ow
 
 // Arm before the selected publication; revision 1 requires an empty Store.
 // Polling the old record's contents races atomic replacement on Windows.
-func (gate *textDescriptorACKGate) arm(t *testing.T) {
+func (gate *descriptorACKGate) arm(t *testing.T) {
 	t.Helper()
 	gate.mu.Lock()
 	defer gate.mu.Unlock()

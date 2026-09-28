@@ -16,7 +16,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/node"
 	routecarrier "github.com/dianabuilds/ardents-network/internal/route/carrier"
 	"github.com/dianabuilds/ardents-network/internal/service/instance"
-	"github.com/dianabuilds/ardents-network/internal/service/publication"
+	servicepublication "github.com/dianabuilds/ardents-network/internal/service/publication"
 	"github.com/dianabuilds/ardents-network/internal/service/targetlink"
 )
 
@@ -117,7 +117,7 @@ func textJoinedNetworkFixtureWithReaderMaximaAndRegistration(t *testing.T, carri
 	if _, err := publisher.registerTextIntroduction(t.Context(), 1, now.Add(registration)); err != nil {
 		t.Fatal(err)
 	}
-	descriptor, err := publisher.publishTextDescriptor(t.Context())
+	descriptor, err := publisher.publishDescriptor(t.Context())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -160,7 +160,7 @@ func textPublisherNetworkWithInstance(t *testing.T, carrier routecarrier.Carrier
 			t.Error(err)
 		}
 	})
-	publications, err := publication.Open(publication.Config{Root: textNetworkPrivateRoot(t), NetworkID: endpoint.network, Authority: public, Clock: time.Now})
+	publications, err := servicepublication.Open(servicepublication.Config{Root: textNetworkPrivateRoot(t), NetworkID: endpoint.network, Authority: public, Clock: time.Now})
 	if err != nil {
 		t.Fatal(err)
 	}

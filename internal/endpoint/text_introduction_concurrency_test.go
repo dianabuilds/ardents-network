@@ -52,13 +52,13 @@ func TestTextIntroductionDeliversFourConcurrentReaders(t *testing.T) {
 	if _, err := publisher.openTextIntroductionPrefix(t.Context()); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := publisher.openTextPublisherPrefix(t.Context(), &publisher.responder, 3); err != nil {
+	if _, err := publisher.openPublisherPrefix(t.Context(), &publisher.responder, 3); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := publisher.registerTextIntroduction(t.Context(), 1, now.Add(120*time.Second)); err != nil {
 		t.Fatal(err)
 	}
-	descriptor, err := publisher.publishTextDescriptor(t.Context())
+	descriptor, err := publisher.publishDescriptor(t.Context())
 	if err != nil {
 		t.Fatal(err)
 	}

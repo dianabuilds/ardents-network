@@ -28,10 +28,10 @@ type textResolutionSource interface {
 	exchangeDescriptor(context.Context, client.ClosedTokenPresenter, [32]byte, []byte) (uint8, []byte, error)
 }
 
-// lookupTextDescriptor consumes the context's actual issuer stock and journal,
+// lookupDescriptor consumes the context's actual issuer stock and journal,
 // then verifies the full proof for the independently selected Target. It does
 // not establish a Connection or accept a Descriptor as Introduction readiness.
-func (owner *textContext) lookupTextDescriptor(ctx context.Context, target [32]byte) (verified reachability.Verified, outcome error) {
+func (owner *textContext) lookupDescriptor(ctx context.Context, target [32]byte) (verified reachability.Verified, outcome error) {
 	if owner == nil || ctx == nil || ctx.Err() != nil || target == [32]byte{} {
 		return reachability.Verified{}, errors.New("text resolution input unavailable")
 	}

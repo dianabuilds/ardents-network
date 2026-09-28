@@ -11,11 +11,11 @@ import (
 
 func TestTextPublicationPairCancelledAcknowledgementKeepsCleanupOwnerWithoutCurrentCommit(t *testing.T) {
 	registered := &textIntroductionRegistration{}
-	pair := textPublicationPairLifecycle{pendingRegistration: registered}
+	pair := publicationPairLifecycle{pendingRegistration: registered}
 	endpoint := &endpoint{}
 	owner := &textContext{}
-	endpoint.textPublisherOwner = owner
-	endpoint.textPublicationLive = true
+	endpoint.publisherOwner = owner
+	endpoint.publicationLive = true
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
 	if err := pair.commitAcknowledgedLocked(ctx, registered, time.Now().UTC()); !errors.Is(err, context.Canceled) {
@@ -24,14 +24,14 @@ func TestTextPublicationPairCancelledAcknowledgementKeepsCleanupOwnerWithoutCurr
 	if registered.published || pair.pendingRegistration != registered || pair.registration != nil || pair.previousRegistration != nil {
 		t.Fatal("cancelled acknowledgement exposed a partial current pair")
 	}
-	if endpoint.textPublisherOwner != owner || !endpoint.textPublicationLive {
+	if endpoint.publisherOwner != owner || !endpoint.publicationLive {
 		t.Fatal("cancelled acknowledgement lost durable publication cleanup owner")
 	}
 }
 
 func TestTextPublicationPairDrainRejectsLateAcknowledgement(t *testing.T) {
 	registered := &textIntroductionRegistration{}
-	pair := textPublicationPairLifecycle{pendingRegistration: registered}
+	pair := publicationPairLifecycle{pendingRegistration: registered}
 	if !pair.beginDrainLocked() {
 		t.Fatal("pair refused its first drain transition")
 	}

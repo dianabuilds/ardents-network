@@ -11,7 +11,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
 	nativeconnection "github.com/dianabuilds/ardents-network/internal/service/connection"
-	"github.com/dianabuilds/ardents-network/internal/service/publication"
+	servicepublication "github.com/dianabuilds/ardents-network/internal/service/publication"
 	"github.com/dianabuilds/ardents-network/internal/service/reachability"
 	"github.com/dianabuilds/ardents-network/internal/service/targetlink"
 )
@@ -22,7 +22,7 @@ import (
 type textServiceBinding struct {
 	owner              *textContext
 	job                *textJobIdentity
-	credential         publication.Credential
+	credential         servicepublication.Credential
 	facts              nativeconnection.ProtectedContextInput
 	logical            [32]byte
 	candidateView      [32]byte
@@ -36,7 +36,7 @@ type textServiceBinding struct {
 // newTextServiceBinding is the Initiator's local owner operation after
 // destination authorization and verified reachability. The local Connection
 // context and its salt never leave this Endpoint.
-func (owner *textContext) newTextServiceBinding(job *textJobIdentity, destination targetlink.Link, current publication.Current,
+func (owner *textContext) newTextServiceBinding(job *textJobIdentity, destination targetlink.Link, current servicepublication.Current,
 	bounds [3]int64) (*textServiceBinding, error) {
 	if owner == nil {
 		return nil, errors.New("text Service context unavailable")
@@ -85,13 +85,13 @@ func (owner *textContext) newTextServiceBinding(job *textJobIdentity, destinatio
 	return owner.bindTextServiceLocked(job, current, facts)
 }
 
-func (owner *textContext) bindTextServiceLocked(job *textJobIdentity, current publication.Current,
+func (owner *textContext) bindTextServiceLocked(job *textJobIdentity, current servicepublication.Current,
 	facts nativeconnection.ProtectedContextInput) (*textServiceBinding, error) {
 	profile, now, err := owner.permissionProfileLocked()
 	if err != nil {
 		return nil, err
 	}
-	verified, err := publication.Decode(current.Record, ed25519.PublicKey(current.Credential.AuthorityPublic[:]), owner.endpoint.network, now)
+	verified, err := servicepublication.Decode(current.Record, ed25519.PublicKey(current.Credential.AuthorityPublic[:]), owner.endpoint.network, now)
 	if err != nil || verified.Credential != current.Credential || verified.Digest != current.Digest {
 		return nil, errors.New("text Service publication unavailable")
 	}
@@ -158,7 +158,7 @@ func (binding *textServiceBinding) current() error {
 	return nil
 }
 
-func (binding *textServiceBinding) matchesPublication(current publication.Current) bool {
+func (binding *textServiceBinding) matchesPublication(current servicepublication.Current) bool {
 	return binding != nil && current.Credential == binding.credential && current.Digest == binding.facts.PublicationDigest &&
 		len(current.Record) != 0 && sha256.Sum256(current.Record) == current.Digest
 }

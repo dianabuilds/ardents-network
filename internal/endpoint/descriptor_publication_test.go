@@ -12,7 +12,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	routecarrier "github.com/dianabuilds/ardents-network/internal/route/carrier"
-	"github.com/dianabuilds/ardents-network/internal/service/publication"
+	servicepublication "github.com/dianabuilds/ardents-network/internal/service/publication"
 	"github.com/dianabuilds/ardents-network/internal/service/reachability"
 )
 
@@ -38,7 +38,7 @@ func TestTextPublisherCommitsInstanceSignedDescriptor(t *testing.T) {
 					t.Error(err)
 				}
 			})
-			publisher, err := publication.Open(publication.Config{Root: textNetworkPrivateRoot(t), NetworkID: endpoint.network, Authority: public, Clock: time.Now})
+			publisher, err := servicepublication.Open(servicepublication.Config{Root: textNetworkPrivateRoot(t), NetworkID: endpoint.network, Authority: public, Clock: time.Now})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -54,7 +54,7 @@ func TestTextPublisherCommitsInstanceSignedDescriptor(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			published, err := owner.publishTextDescriptor(t.Context())
+			published, err := owner.publishDescriptor(t.Context())
 			if err != nil {
 				t.Fatalf("publish registered Instance: %v", err)
 			}
@@ -73,18 +73,18 @@ func TestTextPublisherCommitsInstanceSignedDescriptor(t *testing.T) {
 			foreign.mu.Lock()
 			foreign.source.live, foreign.publication.pair.registration, foreign.tokens.permission = owner.source.currentLocked(), first, owner.tokens.permission
 			foreign.mu.Unlock()
-			_, foreignErr := foreign.publishTextDescriptor(t.Context())
+			_, foreignErr := foreign.publishDescriptor(t.Context())
 			foreign.mu.Lock()
 			foreign.source.live, foreign.publication.pair.registration, foreign.tokens.permission = nil, nil, nil
 			foreign.mu.Unlock()
-			if foreignErr == nil || endpoint.textPublisherOwner != owner {
+			if foreignErr == nil || endpoint.publisherOwner != owner {
 				t.Fatal("another context stole the Instance publication")
 			}
 			if err := foreign.Close(); err != nil {
 				t.Fatal(err)
 			}
 			original := append([]byte(nil), first.descriptor...)
-			if _, err := owner.publishTextDescriptor(t.Context()); err != nil {
+			if _, err := owner.publishDescriptor(t.Context()); err != nil {
 				t.Fatalf("exact publication retry: %v", err)
 			}
 			if !bytes.Equal(first.descriptor, original) {
@@ -100,7 +100,7 @@ func TestTextPublisherCommitsInstanceSignedDescriptor(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			refreshed, err := owner.publishTextDescriptor(t.Context())
+			refreshed, err := owner.publishDescriptor(t.Context())
 			if err != nil {
 				t.Fatalf("refresh registered Instance: %v", err)
 			}

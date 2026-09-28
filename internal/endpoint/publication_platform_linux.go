@@ -12,8 +12,8 @@ type textContext struct {
 
 // Only the explicit admission stop permits a normal producer drain. A joined
 // cancellation, delivery failure or cleanup error still aborts the publication.
-func onlyTextPublicationDraining(err error) bool {
-	if err == errTextPublicationDraining {
+func onlyPublicationDraining(err error) bool {
+	if err == errPublicationDraining {
 		return true
 	}
 	joined, ok := err.(interface{ Unwrap() []error })
@@ -21,7 +21,7 @@ func onlyTextPublicationDraining(err error) bool {
 		return false
 	}
 	for _, cause := range joined.Unwrap() {
-		if !onlyTextPublicationDraining(cause) {
+		if !onlyPublicationDraining(cause) {
 			return false
 		}
 	}
