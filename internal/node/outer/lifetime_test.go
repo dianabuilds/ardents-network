@@ -147,6 +147,61 @@ func TestClosedOuterLifetimeInterruptsAndJoinsAllChildren(t *testing.T) {
 	}
 }
 
+// A later role-level Close commonly reports net.ErrClosed. The first physical
+// close result therefore has to cross Serve's interface before it disappears.
+func TestClosedOuterReturnsFirstPhysicalCloseFailure(t *testing.T) {
+	now := time.Now().UTC().Truncate(time.Second)
+	receiver := route.ClosedOuterReceiver{NetworkID: [32]byte{1}, StateGeneration: [32]byte{2}, StateDigest: [32]byte{3}, ProfileDigest: [32]byte{4},
+		NodeID: [32]byte{5}, RecordDigest: [32]byte{6}, DutyGeneration: 7, RoleDomain: 2, Subrole: 6, Deadline: now.Add(10 * time.Second)}
+	limits, err := route.NewClosedDutyLimits(time.Now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	handshake, err := route.NewClosedOuterHandshake(receiver, limits, time.Now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	local, peer := net.Pipe()
+	defer peer.Close()
+	closeErr := errors.New("first physical close failed")
+	connection := &firstCloseFailureConn{Conn: local, failure: closeErr}
+	ctx, cancel := context.WithCancel(t.Context())
+	done := make(chan error, 1)
+	go func() {
+		done <- Serve(ctx, connection, handshake, func(context.Context, *route.ClosedOuterBridgeLane) {})
+	}()
+	cancel()
+	select {
+	case err := <-done:
+		if !errors.Is(err, closeErr) {
+			t.Fatalf("outer close result = %v", err)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("outer did not join after cancellation")
+	}
+	if err := connection.Close(); !errors.Is(err, net.ErrClosed) {
+		t.Fatalf("later role close = %v, want already closed", err)
+	}
+}
+
+type firstCloseFailureConn struct {
+	net.Conn
+	once    sync.Once
+	failure error
+}
+
+func (connection *firstCloseFailureConn) Close() error {
+	first := false
+	connection.once.Do(func() {
+		first = true
+		_ = connection.Conn.Close()
+	})
+	if first {
+		return connection.failure
+	}
+	return net.ErrClosed
+}
+
 type closedOuterObservedWriter struct {
 	net.Conn
 	writing chan struct{}

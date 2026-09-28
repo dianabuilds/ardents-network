@@ -19,7 +19,7 @@ import (
 // creates no peer, route or fallback: every child terminates at this issuer.
 func nodeHandler(config Config, certificate tls.Certificate, issuer *credential.ClosedTokenIssuer, spends *replay.Ledger, limits *route.ClosedDutyLimits, recordRelease func(error)) credential.ClosedNodeBootstrapHandler {
 	return func(ctx context.Context, carrier routecarrier.ClosedSharedCarrier, serve func(context.Context, io.ReadWriter, [32]byte, ardp.Hello) error) {
-		defer carrier.Connection.Close()
+		defer func() { recordRelease(carrier.Connection.Close()) }()
 		updated, err := config.CurrentDuty()
 		if err != nil {
 			return
@@ -35,7 +35,7 @@ func nodeHandler(config Config, certificate tls.Certificate, issuer *credential.
 		if err != nil {
 			return
 		}
-		nodeouter.Serve(ctx, carrier.Connection, outer, func(childContext context.Context, lane *route.ClosedOuterBridgeLane) {
+		recordRelease(nodeouter.Serve(ctx, carrier.Connection, outer, func(childContext context.Context, lane *route.ClosedOuterBridgeLane) {
 			admitted := func(connection net.Conn, hello ardp.Frame) error {
 				exporter, err := routecarrier.ClosedRoleTLSExporter(connection)
 				if err != nil {
@@ -50,7 +50,7 @@ func nodeHandler(config Config, certificate tls.Certificate, issuer *credential.
 				return operationErr
 			}
 			serveClosedIssuerInner(childContext, lane, certificate, deadline, carrier.NodeKey, serve, admitted)
-		})
+		}))
 	}
 }
 

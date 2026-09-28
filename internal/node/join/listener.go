@@ -217,7 +217,10 @@ func (server *closedDataJoinServer) accept(ctx context.Context) error {
 }
 
 func (server *closedDataJoinServer) closeCarrier(connection net.Conn) {
-	err := connection.Close()
+	server.recordAcceptedClose(connection.Close())
+}
+
+func (server *closedDataJoinServer) recordAcceptedClose(err error) {
 	if err == nil || errors.Is(err, net.ErrClosed) {
 		return
 	}

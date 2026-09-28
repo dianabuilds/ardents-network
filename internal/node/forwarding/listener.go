@@ -204,9 +204,9 @@ func (server *forwardServer) serveOuter(ctx context.Context, carrier routecarrie
 	if err != nil {
 		return
 	}
-	nodeouter.Serve(ctx, carrier.Connection, outer, func(childContext context.Context, lane *route.ClosedOuterBridgeLane) {
+	server.recordAcceptedClose(nodeouter.Serve(ctx, carrier.Connection, outer, func(childContext context.Context, lane *route.ClosedOuterBridgeLane) {
 		server.serveInner(childContext, lane, deadline, carrier.NodeKey)
-	})
+	}))
 }
 
 func (server *forwardServer) serveInner(ctx context.Context, lane *route.ClosedOuterBridgeLane, deadline time.Time, incomingKey [32]byte) {
@@ -427,7 +427,10 @@ func (server *forwardServer) serveDirect(ctx context.Context, connection net.Con
 
 // closeAcceptedCarrier records cleanup failures for the joined duty result.
 func (server *forwardServer) closeAcceptedCarrier(connection net.Conn) {
-	err := connection.Close()
+	server.recordAcceptedClose(connection.Close())
+}
+
+func (server *forwardServer) recordAcceptedClose(err error) {
 	if err == nil || errors.Is(err, net.ErrClosed) {
 		return
 	}

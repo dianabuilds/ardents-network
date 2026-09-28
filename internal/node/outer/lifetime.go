@@ -11,11 +11,17 @@ import (
 )
 
 // Serve owns an accepted outer channel and its inner handlers until their
-// cancellation and cleanup have joined. The caller retains responsibility for
-// observing the accepted connection's final physical close result.
-func Serve(ctx context.Context, connection net.Conn, handshake *route.ClosedOuterHandshake, serve func(context.Context, *route.ClosedOuterBridgeLane)) {
+// cancellation and cleanup have joined. It returns its physical close result
+// to the receiving role, which retains the accepted connection's final result.
+func Serve(ctx context.Context, connection net.Conn, handshake *route.ClosedOuterHandshake, serve func(context.Context, *route.ClosedOuterBridgeLane)) (closeErr error) {
 	defer handshake.Close()
-	writer := &writer{connection: connection}
+	var closeOnce sync.Once
+	var physicalCloseErr error
+	closePhysical := func() error {
+		closeOnce.Do(func() { physicalCloseErr = connection.Close() })
+		return physicalCloseErr
+	}
+	writer := &writer{connection: connection, closeConnection: closePhysical}
 	bridge, err := route.NewClosedOuterBridge(handshake, writer.update, writer.write)
 	if err != nil {
 		return
@@ -23,7 +29,7 @@ func Serve(ctx context.Context, connection net.Conn, handshake *route.ClosedOute
 	childContext, cancel := context.WithCancel(ctx)
 	interrupt := func() {
 		_ = connection.SetDeadline(time.Now())
-		_ = connection.Close()
+		_ = closePhysical()
 	}
 	interrupted := make(chan struct{})
 	stop := context.AfterFunc(childContext, func() { defer close(interrupted); interrupt() })
@@ -36,6 +42,7 @@ func Serve(ctx context.Context, connection net.Conn, handshake *route.ClosedOute
 		if !stop() {
 			<-interrupted
 		}
+		closeErr = physicalCloseErr
 	}()
 	if connection.SetReadDeadline(time.Now().Add(10*time.Second)) != nil {
 		return

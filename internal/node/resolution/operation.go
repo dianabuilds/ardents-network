@@ -36,7 +36,9 @@ func (server *closedResolutionServer) serveOuter(ctx context.Context, carrier ro
 	if err != nil {
 		return
 	}
-	nodeouter.Serve(ctx, carrier.Connection, outer, server.serveInner)
+	if err := nodeouter.Serve(ctx, carrier.Connection, outer, server.serveInner); err != nil && !errors.Is(err, net.ErrClosed) {
+		server.recordCleanup(err)
+	}
 }
 
 func (server *closedResolutionServer) serveInner(ctx context.Context, lane *route.ClosedOuterBridgeLane) {

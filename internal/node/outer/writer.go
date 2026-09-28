@@ -14,16 +14,17 @@ import (
 // queued frame cannot restore a deadline invalidated by local cancellation.
 // Partial-frame failure poisons the physical framing boundary and closes it.
 type writer struct {
-	connection     net.Conn
-	writer         sync.Mutex
-	state          sync.Mutex
-	active         *writeRequest
-	terminals      []*writeRequest
-	controls       []*writeRequest
-	data           []*writeRequest
-	dataDue        bool
-	terminalServed bool
-	running        bool
+	connection      net.Conn
+	closeConnection func() error
+	writer          sync.Mutex
+	state           sync.Mutex
+	active          *writeRequest
+	terminals       []*writeRequest
+	controls        []*writeRequest
+	data            []*writeRequest
+	dataDue         bool
+	terminalServed  bool
+	running         bool
 }
 
 type writeRequest struct {
@@ -122,7 +123,11 @@ func (owner *writer) drain() {
 		owner.state.Unlock()
 		owner.writer.Unlock()
 		if err != nil {
-			_ = owner.connection.Close()
+			if owner.closeConnection != nil {
+				_ = owner.closeConnection()
+			} else {
+				_ = owner.connection.Close()
+			}
 		}
 	}
 }

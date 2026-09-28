@@ -82,7 +82,18 @@ func TestClosedOuterExpiredQueuedWritePreservesSibling(t *testing.T) {
 // the Carrier. A later lane cannot treat that truncated frame as its own.
 func TestClosedOuterPartialCreditStillClosesCarrier(t *testing.T) {
 	local, peer := net.Pipe()
-	writer := &writer{connection: local}
+	closeErr := errors.New("first physical close failed")
+	connection := &firstCloseFailureConn{Conn: local, failure: closeErr}
+	var closeOnce sync.Once
+	var physicalCloseErr error
+	closed := make(chan struct{})
+	writer := &writer{connection: connection, closeConnection: func() error {
+		closeOnce.Do(func() {
+			physicalCloseErr = connection.Close()
+			close(closed)
+		})
+		return physicalCloseErr
+	}}
 	var helpers sync.WaitGroup
 	t.Cleanup(func() { local.Close(); peer.Close(); helpers.Wait() })
 	completed := make(chan error, 1)
@@ -101,6 +112,14 @@ func TestClosedOuterPartialCreditStillClosesCarrier(t *testing.T) {
 	}
 	if err := <-completed; err == nil {
 		t.Fatal("partially emitted CREDIT reported success")
+	}
+	select {
+	case <-closed:
+	case <-time.After(time.Second):
+		t.Fatal("partial write did not close its physical Carrier")
+	}
+	if !errors.Is(physicalCloseErr, closeErr) {
+		t.Fatalf("partial write lost first physical close failure: %v", physicalCloseErr)
 	}
 	if err := writer.write(ardp.Frame{Kind: 6, Lane: 3, Body: []byte{42}}, func() time.Time { return time.Now().Add(time.Second) }, false, false); err == nil {
 		t.Fatal("sibling reused a truncated physical frame")

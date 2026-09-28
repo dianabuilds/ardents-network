@@ -32,7 +32,7 @@ func (server *closedDataJoinServer) serveOuter(ctx context.Context, carrier rout
 	if err != nil {
 		return
 	}
-	nodeouter.Serve(ctx, carrier.Connection, outer, server.serveInner)
+	server.recordAcceptedClose(nodeouter.Serve(ctx, carrier.Connection, outer, server.serveInner))
 }
 
 func (server *closedDataJoinServer) serveInner(ctx context.Context, lane *route.ClosedOuterBridgeLane) {
