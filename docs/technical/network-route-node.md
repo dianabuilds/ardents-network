@@ -221,7 +221,9 @@ time. A second digest for the pending
 Epoch number records a persistent conflict, preserves the current and pending
 evidence, and refuses later admission or automatic winner selection. Reopen
 recovers the same current/pending/conflict relation before State-dependent work
-can proceed.
+can proceed. A Source bootstrap with no active predecessor never stages a future
+genesis: it records the complete wave and defers retry until that Epoch becomes
+current, leaving the root reopenable without a current generation.
 
 The closed Route profile pins its Epoch envelope: new closed candidates are
 accepted only as AREP v3 (ADR-0111). Offline acceptance and the Source-wave

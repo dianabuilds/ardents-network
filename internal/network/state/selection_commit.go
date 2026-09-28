@@ -46,6 +46,20 @@ func newestSourceDecision(valid []epoch.Decision) epoch.Decision {
 }
 
 func (s *networkState) commitPendingSourceWave(now time.Time, selected epoch.Decision, summary sourceWaveSummary) (Snapshot, error) {
+	if s.current == nil {
+		// A pending generation requires an active predecessor on reopen. Keep
+		// authenticated Source observations, but do not stage a future genesis.
+		state := s.distribution
+		state.observedEpochs, state.observedDigests = summary.observedEpochs, summary.observedDigests
+		if err := finishWaveState(&state, now, summary.outcomes); err != nil {
+			return Snapshot{}, err
+		}
+		state.nextAutomatic = max(state.nextAutomatic, selected.Header.ValidFrom.Unix())
+		if err := s.commitDistribution(state); err != nil {
+			return Snapshot{}, err
+		}
+		return Snapshot{}, errors.Join(errRefreshUnavailable, errors.New("genesis Epoch is not yet current"))
+	}
 	if err := s.retainSourceExposures(selected.Header.ValidUntil); err != nil {
 		return Snapshot{}, err
 	}
