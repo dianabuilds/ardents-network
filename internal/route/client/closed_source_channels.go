@@ -261,27 +261,36 @@ func (owner *closedSourceChannels) receive(frame ardp.Frame) error {
 	return nil
 }
 
+// popClosedSourceWrite transfers one queued request without retaining it in
+// the queue's backing array while the physical writer owns it.
+func popClosedSourceWrite(queue *[]*closedSourceWrite) *closedSourceWrite {
+	request := (*queue)[0]
+	(*queue)[0] = nil
+	*queue = (*queue)[1:]
+	if len(*queue) == 0 {
+		*queue = nil
+	}
+	return request
+}
+
 // nextWriteLocked gives a newly available control frame first service, then
 // requires one already queued data frame before another control frame. This
 // keeps admission and retirement responsive without allowing a sustained,
 // admitted control stream to starve an issuer or other bounded child payload.
 func (owner *closedSourceChannels) nextWriteLocked() (*closedSourceWrite, bool) {
 	if len(owner.terminals) > 0 && (len(owner.data) == 0 || !owner.terminalServed) {
-		request := owner.terminals[0]
-		owner.terminals = owner.terminals[1:]
+		request := popClosedSourceWrite(&owner.terminals)
 		owner.terminalServed = true
 		owner.dataDue = true
 		return request, request.control
 	}
 	if len(owner.controls) > 0 && (len(owner.data) == 0 || !owner.dataDue) {
-		request := owner.controls[0]
-		owner.controls = owner.controls[1:]
+		request := popClosedSourceWrite(&owner.controls)
 		owner.dataDue = true
 		return request, true
 	}
 	if len(owner.data) > 0 {
-		request := owner.data[0]
-		owner.data = owner.data[1:]
+		request := popClosedSourceWrite(&owner.data)
 		owner.dataDue = false
 		owner.terminalServed = false
 		return request, false

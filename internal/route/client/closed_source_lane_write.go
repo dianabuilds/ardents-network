@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net"
 	"os"
+	"slices"
 	"sync"
 	"time"
 
@@ -110,7 +111,10 @@ func (owner *closedSourceChannels) removeQueuedWriteLocked(request *closedSource
 			if candidate != request {
 				continue
 			}
-			*queue = append((*queue)[:index], (*queue)[index+1:]...)
+			*queue = slices.Delete(*queue, index, index+1)
+			if len(*queue) == 0 {
+				*queue = nil
+			}
 			size := uint64(16 + len(request.frame.Body))
 			owner.releaseQueuedLocked(size)
 			if request.control {

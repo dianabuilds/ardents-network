@@ -89,6 +89,7 @@ func TestClosedSourceChannelsBoundControlPriorityBeforeQueuedData(t *testing.T) 
 	dataTwo := &closedSourceWrite{}
 	owner.controls = []*closedSourceWrite{controlOne, controlTwo}
 	owner.data = []*closedSourceWrite{dataOne, dataTwo}
+	controlStorage, dataStorage := owner.controls, owner.data
 
 	for index, want := range []struct {
 		request *closedSourceWrite
@@ -97,6 +98,16 @@ func TestClosedSourceChannelsBoundControlPriorityBeforeQueuedData(t *testing.T) 
 		got, control := owner.nextWriteLocked()
 		if got != want.request || control != want.control {
 			t.Fatalf("schedule %d = %p/%t, want %p/%t", index, got, control, want.request, want.control)
+		}
+	}
+	if owner.controls != nil || owner.data != nil {
+		t.Fatal("empty writer queues retained their storage")
+	}
+	for _, storage := range [][]*closedSourceWrite{controlStorage, dataStorage} {
+		for index, request := range storage {
+			if request != nil {
+				t.Fatalf("consumed writer slot %d retained its request", index)
+			}
 		}
 	}
 }
@@ -109,6 +120,7 @@ func TestClosedSourceChannelsTerminalPriorityYieldsToQueuedData(t *testing.T) {
 	dataTwo := &closedSourceWrite{}
 	owner.terminals = []*closedSourceWrite{terminalOne, terminalTwo}
 	owner.data = []*closedSourceWrite{dataOne, dataTwo}
+	terminalStorage, dataStorage := owner.terminals, owner.data
 
 	for index, want := range []struct {
 		request *closedSourceWrite
@@ -118,6 +130,85 @@ func TestClosedSourceChannelsTerminalPriorityYieldsToQueuedData(t *testing.T) {
 		if got != want.request || control != want.control {
 			t.Fatalf("schedule %d = %p/%t, want %p/%t", index, got, control, want.request, want.control)
 		}
+	}
+	if owner.terminals != nil || owner.data != nil {
+		t.Fatal("empty writer queues retained their storage")
+	}
+	for _, storage := range [][]*closedSourceWrite{terminalStorage, dataStorage} {
+		for index, request := range storage {
+			if request != nil {
+				t.Fatalf("consumed writer slot %d retained its request", index)
+			}
+		}
+	}
+}
+
+func TestClosedSourceChannelsCancelReleasesQueueStorage(t *testing.T) {
+	for _, test := range []struct {
+		name            string
+		kind            uint8
+		body            []byte
+		terminalWriters uint32
+		queue           string
+		control         bool
+	}{
+		{"data", ardp.KindBytes, []byte{1}, 0, "data", false},
+		{"control", ardp.KindCredit, []byte{0, 0, 0, 1}, 0, "controls", true},
+		{"terminal control", ardp.KindClose, []byte{0}, 0, "terminals", true},
+		{"terminal data", ardp.KindBytes, []byte{1}, 1, "terminals", false},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			owner := &closedSourceChannels{changed: make(chan struct{})}
+			lane := &closedSourceLane{owner: owner, terminalWriters: test.terminalWriters}
+			var requests [3]*closedSourceWrite
+			for index := range requests {
+				request, err := lane.enqueueLocked(ardp.Frame{Kind: test.kind, Lane: 1, Body: test.body}, time.Time{})
+				if err != nil {
+					t.Fatal(err)
+				}
+				requests[index] = request
+			}
+			var queue *[]*closedSourceWrite
+			switch test.queue {
+			case "terminals":
+				queue = &owner.terminals
+			case "controls":
+				queue = &owner.controls
+			default:
+				queue = &owner.data
+			}
+			storage := *queue
+			owner.removeQueuedWriteLocked(requests[1], context.Canceled)
+			if len(*queue) != 2 || (*queue)[0] != requests[0] || (*queue)[1] != requests[2] || storage[2] != nil {
+				t.Fatal("cancellation retained its request or disturbed sibling order")
+			}
+			select {
+			case <-requests[1].done:
+			default:
+				t.Fatal("canceled request did not complete")
+			}
+			if !errors.Is(requests[1].err, context.Canceled) {
+				t.Fatalf("canceled request error = %v", requests[1].err)
+			}
+			size := uint64(16 + len(test.body))
+			wantControl := uint64(0)
+			if test.control {
+				wantControl = 2 * size
+			}
+			if owner.queued != 2*size || owner.controlsSize != wantControl {
+				t.Fatalf("remaining reservations = %d/%d, want %d/%d", owner.queued, owner.controlsSize, 2*size, wantControl)
+			}
+			owner.removeQueuedWriteLocked(requests[0], context.Canceled)
+			owner.removeQueuedWriteLocked(requests[2], context.Canceled)
+			if *queue != nil || owner.queued != 0 || owner.controlsSize != 0 {
+				t.Fatal("drained queue retained storage or reservations")
+			}
+			for index, request := range storage {
+				if request != nil {
+					t.Fatalf("drained queue slot %d retained its request", index)
+				}
+			}
+		})
 	}
 }
 
