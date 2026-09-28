@@ -7,6 +7,8 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/network/epoch"
 )
 
+const maximumSourceExposureHistory = 2
+
 type distributionState struct {
 	sequence            uint64
 	epochFloor          uint64

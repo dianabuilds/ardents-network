@@ -240,7 +240,10 @@ is non-terminal and leaves the existing wave and scheduler live; it neither
 publishes a second result nor records a State failure. A completed or rejected
 wave still follows the normal availability, clock-confidence, and durable
 admission rules, and an actual terminal automatic-refresh failure remains
-visible to `Current` and `Wait`.
+visible to `Current` and `Wait`. This tracer retains at most two Direct Source
+exposure tuples in its durable history. A changed Source plan that would exceed
+that bound is refused before the wave or contact; State neither truncates the
+history nor writes an undecodable control generation.
 
 ## Retired generation-2 Route grammar
 

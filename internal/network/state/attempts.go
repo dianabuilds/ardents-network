@@ -2,6 +2,22 @@ package state
 
 import "errors"
 
+// checkSourceExposureCapacity refuses a changed plan before its first contact
+// could grow the durable history beyond the decoder's fixed bound. A validated
+// Source plan contains two distinct exposure identities.
+func (s *networkState) checkSourceExposureCapacity() error {
+	count := len(s.distribution.history)
+	for _, exposure := range s.config.sourceInfo.Exposures {
+		if !containsIdentity(s.distribution.history, exposure) {
+			count++
+		}
+	}
+	if count > maximumSourceExposureHistory {
+		return errors.New("direct Source exposure history is full")
+	}
+	return nil
+}
+
 func (s *networkState) beginLatestAttempt(index int) (bool, byte, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()

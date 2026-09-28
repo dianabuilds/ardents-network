@@ -54,6 +54,10 @@ func (s *networkState) Refresh(ctx context.Context) (Snapshot, error) {
 		s.mu.Unlock()
 		return Snapshot{}, err
 	}
+	if err := s.checkSourceExposureCapacity(); err != nil {
+		s.mu.Unlock()
+		return Snapshot{}, err
+	}
 	s.refreshing = true
 	s.work.Add(1)
 	defer s.work.Done()

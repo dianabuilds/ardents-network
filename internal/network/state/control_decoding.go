@@ -59,7 +59,7 @@ func decodeDistributionHeader(d *decoder, state *distributionState) error {
 	}
 	state.nextAutomatic = int64(next)
 	count, err := d.byte()
-	if err != nil || count > 2 {
+	if err != nil || count > maximumSourceExposureHistory {
 		return errors.New("distribution history count is invalid")
 	}
 	for range int(count) {
