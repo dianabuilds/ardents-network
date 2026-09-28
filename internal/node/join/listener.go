@@ -162,20 +162,7 @@ func (server *closedDataJoinServer) run(ctx context.Context) {
 	go func() {
 		ticker := time.NewTicker(time.Second)
 		defer ticker.Stop()
-		for {
-			select {
-			case <-ctx.Done():
-				monitor <- nil
-				return
-			case <-ticker.C:
-				sample, err := server.host.Sample(ctx, time.Second)
-				if err != nil || sample.Observation.Drain {
-					monitor <- errors.Join(err, errors.New("JOIN host allowance requires drain"))
-					_ = server.stop()
-					return
-				}
-			}
-		}
+		monitor <- server.monitorHost(ctx, ticker.C)
 	}()
 	err := server.accept(ctx)
 	stopErr := server.stop()
@@ -185,6 +172,26 @@ func (server *closedDataJoinServer) run(ctx context.Context) {
 	// No timeout releases roots while a child still owns a commit or reply.
 	server.drainErr = errors.Join(stopErr, server.cleanupErr, server.spends.Close(), <-monitor, server.host.Close())
 	close(server.drained)
+}
+
+func (server *closedDataJoinServer) monitorHost(ctx context.Context, ticks <-chan time.Time) error {
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		case <-ticks:
+			sample, err := server.host.Sample(ctx, time.Second)
+			// Stop cancels the sampling context before joining this monitor.
+			// An interrupted observation is not a new Hosting drain cause.
+			if ctx.Err() != nil {
+				return nil
+			}
+			if err != nil || sample.Observation.Drain {
+				_ = server.stop()
+				return errors.Join(err, errors.New("JOIN host allowance requires drain"))
+			}
+		}
+	}
 }
 
 func (server *closedDataJoinServer) accept(ctx context.Context) error {
