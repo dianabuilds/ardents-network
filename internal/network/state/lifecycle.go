@@ -8,12 +8,12 @@ import (
 // Wait reports terminal background-work failure or returns after ctx cancellation.
 func (s *networkState) Wait(ctx context.Context) error {
 	s.mu.RLock()
-	serverDone, automaticDone, automatic := s.serverDone, s.automaticDone, s.config.automatic
+	serverDone, automaticDone, resourceDone := s.serverDone, s.automaticDone, s.resourceDone
 	s.mu.RUnlock()
-	if serverDone == nil && automatic == 0 {
+	if serverDone == nil && automaticDone == nil && resourceDone == nil {
 		return errors.New("network state has no background work")
 	}
-	for serverDone != nil || automaticDone != nil {
+	for serverDone != nil || automaticDone != nil || resourceDone != nil {
 		select {
 		case <-ctx.Done():
 			return nil
@@ -21,14 +21,18 @@ func (s *networkState) Wait(ctx context.Context) error {
 			serverDone = nil
 		case <-automaticDone:
 			automaticDone = nil
+		case <-resourceDone:
+			resourceDone = nil
 		}
 		s.mu.RLock()
-		err := errors.Join(s.serverErr, s.automaticErr, s.resourceErr)
+		serverErr, automaticErr, resourceErr := s.serverErr, s.automaticErr, s.resourceErr
 		s.mu.RUnlock()
-		if errors.Is(err, context.Canceled) {
-			return nil
+		// A canceled Source listener is the expected result of State shutdown,
+		// but it must not hide a terminal failure of another background owner.
+		if serverErr == context.Canceled {
+			serverErr = nil
 		}
-		if err != nil {
+		if err := errors.Join(serverErr, automaticErr, resourceErr); err != nil {
 			return err
 		}
 	}
