@@ -212,7 +212,7 @@ func withdraw(config runtimeConfig, machine *stateMachine, server *dutyHandle, s
 	}
 	if !dutyJoined(server.Joined) {
 		config.cleanup.deferUntil(server.Joined)
-		return fail(config, machine, nil, "Node role cleanup failed", errors.New("Node role drain returned before joining its workers"))
+		return fail(config, machine, nil, "Node role cleanup failed", errors.New("node role drain returned before joining its workers"))
 	}
 	if cleanupErr := config.cleanup.Close(); cleanupErr != nil {
 		return fail(config, machine, nil, "Node process cleanup failed", cleanupErr)
