@@ -279,13 +279,14 @@ systemd/cgroup qualification.
 - **State owner**: `dutyContextState` still holds publication, introduction
   (root aggregate over the extracted mechanisms), responder, resolution,
   Source lifecycle and retained Interior Set, tokens owner, and job identity
-  under the shared `mu`;
-  108 `*dutyContext` method declarations span 37 root files. Each proposed
-  seam is evaluated by state, invariant, callers, and close owner — not by
-  method/file counts.
-- **Interface**: candidate seams follow the established pattern (consumer-side
-  interface implemented by the root: `tokens.Host`, `introduction.Host`,
-  `service.Binding` precedents). No extraction without a non-test caller.
+  under the shared `mu`. Root `*dutyContext` methods span several operation
+  families; each proposed seam is evaluated by state, invariant, callers, and
+  close owner, not by method or file counts.
+- **Interface**: an extracted subpackage uses a consumer-side interface
+  implemented by the root (`tokens.Host`, `introduction.Host`,
+  `service.Binding` precedents). A private in-package owner uses direct
+  methods and needs no interface. Either seam must have a non-test caller
+  and hide an invariant or lifecycle, not merely reduce root method count.
 - **Shutdown order**: pinned by `duty_context_retirement.go` `join()` (exact
   order quoted above); any dissolution preserves it step-for-step.
 - **Affected tests**: root fixture family (`duty_context_test.go`
@@ -293,6 +294,14 @@ systemd/cgroup qualification.
   helpers (`worker_composition_linux_test.go`), and every family consuming
   `liveCapsuleJob` (~20 files); behavior tests stay beside their production
   owner as they move.
+- **Next seam to evaluate (not selected)**: the one resolution-flight slot
+  shared by Descriptor lookup and publication. A private owner under the
+  existing Context lock could own exact flight identity, its Source acquisition,
+  cancellation and joined completion. Root callers must retain Permission,
+  registration, Publisher/Instance and current Source checks, and Context must
+  retain terminal cleanup failure. The candidate is accepted only if a bounded
+  change preserves lookup/publication exclusion, old-Source refusal and the
+  shutdown order above; it is not a new package or a generic flight scheduler.
 - **Integration gate**: per slice — commit-hook quick-check (includes the
   installed-tag compile gate), targeted Linux Docker battery in a claimed
   host-wide serialized window, then the integration owner's combined full
