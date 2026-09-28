@@ -1,6 +1,6 @@
 //go:build linux
 
-package endpoint
+package service
 
 import (
 	"context"
@@ -14,7 +14,7 @@ import (
 func TestTextServiceCloseDrainsOppositeDirectionBeforeFullClose(t *testing.T) {
 	application, native := newApplicationHalfClosePair()
 	finished := make(chan struct{})
-	stream := &serviceStream{applicationHalfClose: application, cancel: func() {}, retired: finished, finished: finished,
+	stream := &Stream{applicationHalfClose: application, cancel: func() {}, retired: finished, finished: finished,
 		waitClose: func(done <-chan struct{}) bool { <-done; return true }}
 	read := make(chan struct {
 		body []byte
@@ -62,7 +62,7 @@ func TestTextServiceCloseCancelsAndJoinsAfterGraceExpires(t *testing.T) {
 	retired := make(chan struct{})
 	finished := make(chan struct{})
 	var canceled atomic.Bool
-	stream := &serviceStream{applicationHalfClose: application, retired: retired, finished: finished,
+	stream := &Stream{applicationHalfClose: application, retired: retired, finished: finished,
 		waitClose: func(<-chan struct{}) bool { return false }, cancel: func() {
 			if canceled.CompareAndSwap(false, true) {
 				close(finished)
@@ -86,7 +86,7 @@ func TestTextServiceCloseReleasesTailAfterBoundedRetirement(t *testing.T) {
 	retired := make(chan struct{})
 	finished := make(chan struct{})
 	var premature atomic.Bool
-	stream := &serviceStream{applicationHalfClose: application, retired: retired, finished: finished,
+	stream := &Stream{applicationHalfClose: application, retired: retired, finished: finished,
 		waitClose: func(done <-chan struct{}) bool { <-done; return true }, cancel: func() {
 			select {
 			case <-retired:
@@ -118,7 +118,7 @@ func TestTextServiceCloseDoesNotRepeatCanceledTailOutcome(t *testing.T) {
 	finished := make(chan struct{})
 	close(retired)
 	close(finished)
-	stream := &serviceStream{applicationHalfClose: application, retired: retired, finished: finished,
+	stream := &Stream{applicationHalfClose: application, retired: retired, finished: finished,
 		waitClose: func(done <-chan struct{}) bool { <-done; return true }, cancel: func() {},
 		retireTail: func() error { return context.Canceled }}
 	if err := stream.Close(); err != nil {
@@ -139,7 +139,7 @@ func TestTextServiceCloseInterruptsAbandonedUnreadResponse(t *testing.T) {
 			close(finished)
 		})
 	}
-	stream := &serviceStream{applicationHalfClose: application, retired: retired, finished: finished, cancel: cancel}
+	stream := &Stream{applicationHalfClose: application, retired: retired, finished: finished, cancel: cancel}
 	written := make(chan error, 1)
 	go func() { _, err := native.Write([]byte("unread response")); written <- err }()
 	closed := make(chan error, 1)

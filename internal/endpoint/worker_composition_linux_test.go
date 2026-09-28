@@ -7,6 +7,7 @@ import (
 	"errors"
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
 	interfacev2connection "github.com/dianabuilds/ardents-network/internal/application/interfacev2/connection"
+	"github.com/dianabuilds/ardents-network/internal/endpoint/service"
 	"github.com/dianabuilds/ardents-network/internal/service/targetlink"
 	"net"
 )
@@ -25,7 +26,7 @@ func (worker *qualifiedWorker) serveNetwork(ctx context.Context) error {
 // serve accepts only this Publisher job's opaque authenticated streams.
 // Closing incoming requests a finite drain. Cancellation joins the bridge and
 // any stream received but not yet transferred before installed worker cleanup.
-func (worker *qualifiedWorker) serve(ctx context.Context, incoming <-chan *serviceStream) error {
+func (worker *qualifiedWorker) serve(ctx context.Context, incoming <-chan *service.Stream) error {
 	if incoming == nil {
 		return errors.New("text Publisher Connections unavailable")
 	}
@@ -46,7 +47,7 @@ func (worker *qualifiedWorker) serveFrom(ctx context.Context, produce func(conte
 
 // There is no buffered admission queue. A received stream remains owned here
 // until the worker bridge receives it; all other inputs remain producer-owned.
-func (worker *qualifiedWorker) forwardServiceStreams(ctx context.Context, incoming <-chan *serviceStream,
+func (worker *qualifiedWorker) forwardServiceStreams(ctx context.Context, incoming <-chan *service.Stream,
 	delivered chan<- interfacev2connection.Stream) error {
 	for {
 		if err := ctx.Err(); err != nil {
@@ -59,11 +60,12 @@ func (worker *qualifiedWorker) forwardServiceStreams(ctx context.Context, incomi
 			if !ok {
 				return nil
 			}
-			if stream == nil || stream.binding == nil || stream.binding.job != worker.job ||
-				stream.binding.owner != worker.job.owner {
+			binding, _ := stream.Binding().(*serviceBinding)
+			if stream == nil || binding == nil || binding.job != worker.job ||
+				binding.owner != worker.job.owner {
 				return errors.Join(errors.New("text Publisher Connection belongs to another job"), stream.Close())
 			}
-			if err := errors.Join(ctx.Err(), stream.binding.current()); err != nil {
+			if err := errors.Join(ctx.Err(), binding.current()); err != nil {
 				return errors.Join(err, stream.Close())
 			}
 			select {
@@ -107,7 +109,7 @@ func (worker *qualifiedWorker) readTarget(ctx context.Context, destination targe
 	}
 	owner := worker.job.owner
 	attempt, err := owner.prepareIntroduction(bounded, worker.job, destination, bounds)
-	var stream *serviceStream
+	var stream *service.Stream
 	if err == nil {
 		stream, err = owner.openJoinedService(bounded, worker.job, attempt)
 	}

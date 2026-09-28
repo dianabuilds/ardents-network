@@ -1,6 +1,6 @@
 //go:build linux
 
-package endpoint
+package service
 
 import (
 	"context"
@@ -15,12 +15,12 @@ import (
 	servicepublication "github.com/dianabuilds/ardents-network/internal/service/publication"
 )
 
-// serviceStream is the Endpoint's actual authenticated byte stream for a
+// Stream is the Endpoint's actual authenticated byte stream for a
 // text worker. The Route/capsule producer supplies its owned transport only
 // after its separate admission checks; this layer cannot establish reachability.
-type serviceStream struct {
+type Stream struct {
 	*applicationHalfClose
-	binding    *serviceBinding
+	binding    Binding
 	cancel     context.CancelFunc
 	done       chan applicationconnection.Outcome
 	retired    chan struct{}
@@ -33,16 +33,16 @@ type serviceStream struct {
 	runErr     error // Internal terminal cause, read only after finished closes.
 }
 
-// openServiceStream binds the initial joined Route transport to a real TLS
+// OpenStream binds the initial joined Route transport to a real TLS
 // and generation-3 native Service Connection. It owns raw on every return.
 // Recovery Attachments require the separate retained continuity owner; this
 // initial attachment never retries, changes a Target or repeats a document.
-func (binding *serviceBinding) openServiceStreamWithRecovery(ctx context.Context, raw net.Conn, capsuleDigest [32]byte,
-	open serviceAttachmentOpener) (_ *serviceStream, resultErr error) {
+func OpenStream(binding Binding, ctx context.Context, raw net.Conn, capsuleDigest [32]byte,
+	open AttachmentOpener) (_ *Stream, resultErr error) {
 	recoveryTransferred := false
 	defer func() {
 		if !recoveryTransferred {
-			resultErr = errors.Join(resultErr, binding.releaseIntroductionRecovery())
+			resultErr = errors.Join(resultErr, binding.ReleaseIntroductionRecovery())
 		}
 	}()
 	if raw == nil {
@@ -58,22 +58,23 @@ func (binding *serviceBinding) openServiceStreamWithRecovery(ctx context.Context
 	if ctx == nil || ctx.Err() != nil {
 		return nil, errors.New("text Service caller unavailable")
 	}
-	if err := binding.current(); err != nil {
+	if err := binding.Current(); err != nil {
 		return nil, err
 	}
-	send, receive, err := binding.job.workload.direction(binding.owner.surface)
+	send, receive, err := binding.WorkloadDirection()
 	if err != nil {
 		return nil, err
 	}
-	exporterContext, err := nativeconnection.ProtectedAttachmentContext(binding.logical, capsuleDigest, 1)
+	facts := binding.Facts()
+	exporterContext, err := nativeconnection.ProtectedAttachmentContext(binding.Logical(), capsuleDigest, 1)
 	if err != nil {
 		return nil, err
 	}
-	lifetime, cancel := context.WithDeadline(binding.job.context, time.Unix(binding.facts.WorkSafetyNotAfter, 0))
+	lifetime, cancel := context.WithDeadline(binding.JobContext(), time.Unix(facts.WorkSafetyNotAfter, 0))
 	callerDone := make(chan struct{})
 	stopCaller := context.AfterFunc(ctx, func() { defer close(callerDone); cancel() })
 	owned, application := newApplicationHalfClosePair()
-	connection := &serviceStream{applicationHalfClose: application, binding: binding, cancel: cancel,
+	connection := &Stream{applicationHalfClose: application, binding: binding, cancel: cancel,
 		done: make(chan applicationconnection.Outcome, 1), retired: make(chan struct{}),
 		finished: make(chan struct{}), waitClose: waitServiceClose}
 	var lease *servicepublication.Lease
@@ -99,9 +100,9 @@ func (binding *serviceBinding) openServiceStreamWithRecovery(ctx context.Context
 		var cleanupErr error
 		if nativeOwned {
 			_ = transport.Close()
-			cleanupErr = errors.Join(owned.Close(), binding.releaseIntroductionRecovery())
+			cleanupErr = errors.Join(owned.Close(), binding.ReleaseIntroductionRecovery())
 		} else {
-			cleanupErr = errors.Join(owned.Close(), transport.Close(), binding.releaseIntroductionRecovery())
+			cleanupErr = errors.Join(owned.Close(), transport.Close(), binding.ReleaseIntroductionRecovery())
 		}
 		if lease != nil {
 			cleanupErr = errors.Join(cleanupErr, lease.Close())
@@ -113,38 +114,39 @@ func (binding *serviceBinding) openServiceStreamWithRecovery(ctx context.Context
 			resultErr = errors.Join(resultErr, cleanup(), application.Close())
 		}
 	}()
-	client := binding.owner.surface == broker.Connection
+	credential := binding.Credential()
+	client := binding.Surface() == broker.Connection
 	var continuity [32]byte
 	defer clear(continuity[:])
-	first, acquired, err := binding.openProtectedServiceInitialAttachment(lifetime, transport, exporterContext, client, &continuity)
+	first, acquired, err := openInitialAttachment(binding, lifetime, transport, exporterContext, client, &continuity)
 	lease = acquired
 	if err != nil {
 		return nil, err
 	}
-	identity := nativeconnection.InstanceAuthentication{Network: binding.credential.NetworkID, Target: binding.credential.Target,
-		Public: binding.credential.InstancePublic, Generation: binding.credential.Generation}
+	identity := nativeconnection.InstanceAuthentication{Network: credential.NetworkID, Target: credential.Target,
+		Public: credential.InstancePublic, Generation: credential.Generation}
 	if lease != nil {
 		identity.Signer = lease
 	}
-	recovery := nativeconnection.Recovery{WorkSafetyNotAfter: binding.facts.WorkSafetyNotAfter,
-		WorkSafetyMaximum: binding.facts.WorkSafetyMaximum, NoNewRecoveryAfter: binding.facts.NoNewRecoveryAfter}
+	recovery := nativeconnection.Recovery{WorkSafetyNotAfter: facts.WorkSafetyNotAfter,
+		WorkSafetyMaximum: facts.WorkSafetyMaximum, NoNewRecoveryAfter: facts.NoNewRecoveryAfter}
 	if open != nil {
-		recovery = binding.serviceRecovery()
-		if err := nativeconnection.ValidateRecovery(true, recovery, binding.owner.endpoint.clock().UTC().Unix(), binding.credential.NotAfter); err != nil {
+		recovery = binding.Recovery()
+		if err := nativeconnection.ValidateRecovery(true, recovery, binding.Clock().UTC().Unix(), credential.NotAfter); err != nil {
 			return nil, err
 		}
 	}
 	var opener nativeconnection.AttachmentOpener
 	if open != nil {
 		opener = func(attempt context.Context, request nativeconnection.Recovery) (*nativeconnection.Attachment, error) {
-			return binding.openProtectedServiceRecoveryAttachment(attempt, request, open, lease, client)
+			return openRecoveryAttachment(binding, attempt, request, open, lease, client)
 		}
 	}
 	stream, err := nativeconnection.NewAuthenticatedStream(nativeconnection.StreamConfig{
-		Context: lifetime, Application: owned, NetworkID: binding.facts.Network, Initial: first,
-		ContinuityKey: continuity, Authorized: binding.owner.endpoint.clock().UTC(), Client: client,
+		Context: lifetime, Application: owned, NetworkID: facts.Network, Initial: first,
+		ContinuityKey: continuity, Authorized: binding.Clock().UTC(), Client: client,
 		Recovery: recovery, OpenAttachment: opener,
-		Resources: binding.owner.endpoint.resources}, identity)
+		Resources: binding.Resources()}, identity)
 	if err != nil {
 		return nil, err
 	}
@@ -156,7 +158,7 @@ func (binding *serviceBinding) openServiceStreamWithRecovery(ctx context.Context
 	if open != nil {
 		connection.retireTail = stream.RetireTerminalTail
 	}
-	admissionErr := errors.Join(ctx.Err(), lifetime.Err(), binding.current())
+	admissionErr := errors.Join(ctx.Err(), lifetime.Err(), binding.Current())
 	if admissionErr != nil {
 		// The native lifecycle still owns its initial secret/receipt. Run it
 		// under cancellation and join it instead of abandoning the owner.
@@ -174,11 +176,11 @@ func (binding *serviceBinding) openServiceStreamWithRecovery(ctx context.Context
 // runNative owns the stream's terminal outcome and joins physical cleanup
 // before signaling finished. A recovery-capable native tail may outlive the
 // Application outcome, so retired and finished remain distinct barriers.
-func (connection *serviceStream) runNative(ctx, lifetime context.Context, stream *nativeconnection.Stream,
+func (connection *Stream) runNative(ctx, lifetime context.Context, stream *nativeconnection.Stream,
 	send, receive uint32, cleanup func() error,
 ) {
 	_, runErr := stream.RunBounded(send, receive)
-	runErr = errors.Join(runErr, ctx.Err(), lifetime.Err(), connection.binding.current())
+	runErr = errors.Join(runErr, ctx.Err(), lifetime.Err(), connection.binding.Current())
 	connection.runErr = runErr
 	nativeFinished := false
 	select {
@@ -219,11 +221,18 @@ func (connection *serviceStream) runNative(ctx, lifetime context.Context, stream
 	close(connection.finished)
 }
 
-func (connection *serviceStream) Done() <-chan applicationconnection.Outcome {
+func (connection *Stream) Done() <-chan applicationconnection.Outcome {
 	return connection.done
 }
 
-func (connection *serviceStream) Close() error {
+// Finished closes only after the native lifecycle joined physical cleanup.
+// A recovery-capable terminal tail may keep the native stream open after the
+// Application outcome, so slot owners wait on this barrier, not on Done.
+func (connection *Stream) Finished() <-chan struct{} {
+	return connection.finished
+}
+
+func (connection *Stream) Close() error {
 	if connection == nil {
 		return nil
 	}

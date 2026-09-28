@@ -3,14 +3,17 @@
 package endpoint
 
 import (
+	"context"
 	"crypto/ed25519"
 	"crypto/rand"
 	"crypto/sha256"
 	"errors"
+	"net"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
 	"github.com/dianabuilds/ardents-network/internal/endpoint/introduction"
+	"github.com/dianabuilds/ardents-network/internal/endpoint/service"
 	nativeconnection "github.com/dianabuilds/ardents-network/internal/service/connection"
 	servicepublication "github.com/dianabuilds/ardents-network/internal/service/publication"
 	"github.com/dianabuilds/ardents-network/internal/service/reachability"
@@ -37,6 +40,11 @@ type serviceBinding struct {
 // serviceBinding implements the introduction package's RecoveryBinding seam:
 // recovery-slot identity and the immutable per-Connection nonce commitment.
 var _ introduction.RecoveryBinding = (*serviceBinding)(nil)
+
+// serviceBinding is the service package's retained authority seam. Every
+// method answers from the exact immutable job, publication, and duty-context
+// facts recorded at construction.
+var _ service.Binding = (*serviceBinding)(nil)
 
 // newServiceBinding is the Initiator's local owner operation after
 // destination authorization and verified reachability. The local Connection
@@ -163,7 +171,8 @@ func (binding *serviceBinding) current() error {
 	return nil
 }
 
-func (binding *serviceBinding) matchesPublication(current servicepublication.Current) bool {
+// MatchesPublication reports the exact retained Credential and digest.
+func (binding *serviceBinding) MatchesPublication(current servicepublication.Current) bool {
 	return binding != nil && current.Credential == binding.credential && current.Digest == binding.facts.PublicationDigest &&
 		len(current.Record) != 0 && sha256.Sum256(current.Record) == current.Digest
 }
@@ -209,8 +218,11 @@ func (binding *serviceBinding) workSafetyNotAfter() int64 {
 	return binding.facts.WorkSafetyNotAfter
 }
 
-// protectedFacts copies the full immutable shared authority tuple.
-func (binding *serviceBinding) protectedFacts() nativeconnection.ProtectedContextInput {
+// Facts copies the full immutable shared authority tuple.
+func (binding *serviceBinding) Facts() nativeconnection.ProtectedContextInput {
+	if binding == nil {
+		return nativeconnection.ProtectedContextInput{}
+	}
 	return binding.facts
 }
 
@@ -289,4 +301,99 @@ func (binding *serviceBinding) validateServiceRecovery(request nativeconnection.
 		return errors.New("text Service recovery changed immutable authority")
 	}
 	return binding.current()
+}
+
+// The remaining methods are the service.Binding seam. Each answers from the
+// exact immutable facts retained at construction and stays nil-safe so a
+// typed-nil binding keeps producing the established refusals.
+
+// Current revalidates the live job and unchanged permission authority.
+func (binding *serviceBinding) Current() error { return binding.current() }
+
+// Logical returns the immutable per-Connection logical context.
+func (binding *serviceBinding) Logical() [32]byte {
+	if binding == nil {
+		return [32]byte{}
+	}
+	return binding.logical
+}
+
+// Credential returns the independently verified publication Credential.
+func (binding *serviceBinding) Credential() servicepublication.Credential {
+	if binding == nil {
+		return servicepublication.Credential{}
+	}
+	return binding.credential
+}
+
+// Surface returns the local Application Interface role.
+func (binding *serviceBinding) Surface() broker.Surface {
+	if binding == nil || binding.owner == nil {
+		return broker.Surface("")
+	}
+	return binding.owner.surface
+}
+
+// JobContext returns the bounded context of the exact bound job.
+func (binding *serviceBinding) JobContext() context.Context {
+	if binding == nil || binding.job == nil {
+		return nil
+	}
+	return binding.job.context
+}
+
+// WorkloadDirection returns the checked send/receive byte contract for the
+// local surface.
+func (binding *serviceBinding) WorkloadDirection() (uint32, uint32, error) {
+	if binding == nil || binding.job == nil || binding.owner == nil {
+		return 0, 0, errors.New("text Service workload direction is unavailable")
+	}
+	return binding.job.workload.Direction(binding.owner.surface)
+}
+
+// Clock reads the Endpoint generation clock.
+func (binding *serviceBinding) Clock() time.Time {
+	if binding == nil || binding.owner == nil || binding.owner.endpoint == nil {
+		return time.Time{}
+	}
+	return binding.owner.endpoint.clock()
+}
+
+// Resources returns the Endpoint resource ledger.
+func (binding *serviceBinding) Resources() func(string, int) uint32 {
+	if binding == nil || binding.owner == nil || binding.owner.endpoint == nil {
+		return nil
+	}
+	return binding.owner.endpoint.resources
+}
+
+// AcquirePublication leases the Publisher's current publication; a client-only
+// Endpoint has no publication owner and is refused.
+func (binding *serviceBinding) AcquirePublication(ctx context.Context) (*servicepublication.Lease, error) {
+	if binding == nil || binding.owner == nil || binding.owner.endpoint == nil ||
+		binding.owner.endpoint.publications == nil {
+		return nil, errors.New("text Publisher publication owner unavailable")
+	}
+	return binding.owner.endpoint.publications.AcquireAt(ctx, binding.owner.endpoint.clock().UTC())
+}
+
+// Recovery computes the immutable recovery authority request.
+func (binding *serviceBinding) Recovery() nativeconnection.Recovery { return binding.serviceRecovery() }
+
+// ValidateRecovery refuses any request that changed immutable authority.
+func (binding *serviceBinding) ValidateRecovery(request nativeconnection.Recovery) error {
+	return binding.validateServiceRecovery(request)
+}
+
+// ReleaseIntroductionRecovery retires the binding's recovery slot.
+func (binding *serviceBinding) ReleaseIntroductionRecovery() error {
+	return binding.releaseIntroductionRecovery()
+}
+
+// openServiceStreamWithRecovery binds one joined Route transport through the
+// service package. The root keeps this thin seam so every role orchestrator
+// and test continues to call the binding directly.
+func (binding *serviceBinding) openServiceStreamWithRecovery(ctx context.Context, raw net.Conn,
+	capsuleDigest [32]byte, open service.AttachmentOpener) (*service.Stream, error) {
+	return service.OpenStream(binding, ctx, raw, capsuleDigest, open)
 }

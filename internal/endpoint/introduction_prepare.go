@@ -141,7 +141,7 @@ func (owner *dutyContext) prepareResolvedIntroduction(ctx context.Context, job *
 	if !now.Before(deadline) {
 		return nil, errors.New("text Introduction deadline unavailable")
 	}
-	facts := binding.protectedFacts()
+	facts := binding.Facts()
 	plaintext := introductioncapsule.Plaintext{Network: facts.Network, Target: facts.Target, PublicationDigest: facts.PublicationDigest,
 		Revision: verified.Descriptor.Private.Revision, RendezvousNode: node, RendezvousDutyGeneration: generation, ProfileDigest: facts.ProfileDigest,
 		ConnectionNonce: facts.ConnectionNonce, AttachmentGeneration: 1, Deadline: deadline, InitiatorBinding: facts.InitiatorBinding,

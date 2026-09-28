@@ -11,6 +11,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
 	"github.com/dianabuilds/ardents-network/internal/application/streamqualification"
 	"github.com/dianabuilds/ardents-network/internal/application/textdocument"
+	"github.com/dianabuilds/ardents-network/internal/endpoint/service"
 	"github.com/dianabuilds/ardents-network/internal/endpoint/worker"
 	"github.com/dianabuilds/ardents-network/internal/qualification"
 )
@@ -24,7 +25,7 @@ var workerLaunchGate = make(chan struct{}, 1)
 // No caller supplies a worker identity, artifact digest, isolation flag, socket,
 // executable, Principal or Grant. All of those observations are obtained here.
 func (owner *dutyContext) launchWorker(ctx context.Context, snapshot []byte) (*qualifiedWorker, error) {
-	workload, err := documentServiceWorkloadBounds()
+	workload, err := service.DocumentWorkloadBounds()
 	if err != nil {
 		return nil, err
 	}
@@ -39,7 +40,7 @@ func (owner *dutyContext) launchStreamQualificationWorker(ctx context.Context, r
 	if run == nil || run.Init().Role != role {
 		return nil, errors.New("qualification workload role is unavailable")
 	}
-	workload, err := streamQualificationServiceWorkloadBounds()
+	workload, err := service.StreamQualificationWorkloadBounds()
 	if err != nil {
 		return nil, err
 	}
@@ -47,11 +48,11 @@ func (owner *dutyContext) launchStreamQualificationWorker(ctx context.Context, r
 }
 
 func (owner *dutyContext) launchInstalledWorker(ctx context.Context, snapshot []byte, run *qualification.Run,
-	workload serviceWorkloadBounds) (*qualifiedWorker, error) {
+	workload service.WorkloadBounds) (*qualifiedWorker, error) {
 	if owner == nil || ctx == nil || ctx.Err() != nil {
 		return nil, errors.New("text worker launch is unavailable")
 	}
-	if _, _, err := workload.direction(owner.surface); err != nil {
+	if _, _, err := workload.Direction(owner.surface); err != nil {
 		return nil, err
 	}
 	role := "reader"

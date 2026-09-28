@@ -14,6 +14,7 @@ import (
 
 	applicationconnection "github.com/dianabuilds/ardents-network/internal/application/interfacev2/connection"
 	"github.com/dianabuilds/ardents-network/internal/application/textdocument"
+	"github.com/dianabuilds/ardents-network/internal/endpoint/service"
 	"github.com/dianabuilds/ardents-network/internal/route/carrier"
 	nativeconnection "github.com/dianabuilds/ardents-network/internal/service/connection"
 )
@@ -45,7 +46,7 @@ func runServiceRecoveryRejectsLateAuthority(t *testing.T, closeAndRevoke bool) {
 		releaseOnce.Do(func() { close(release) })
 		testOwner.Close()
 	})
-	opener := func(role string, connection net.Conn) serviceAttachmentOpener {
+	opener := func(role string, connection net.Conn) service.AttachmentOpener {
 		return func(context.Context, nativeconnection.Recovery) (net.Conn, [32]byte, error) {
 			arrived <- role
 			<-release // Model a transport result that ignores cancellation and arrives late.

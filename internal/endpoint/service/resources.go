@@ -1,10 +1,12 @@
 //go:build linux
 
-package endpoint
+package service
 
 import "sync"
 
-func newResourceObserver() func(string, int) uint32 {
+// NewResourceObserver returns the high-water resource ledger supplied to the
+// native Service Connection when the Endpoint setup does not inject one.
+func NewResourceObserver() func(string, int) uint32 {
 	var mu sync.Mutex
 	current, highWater := map[string]uint32{}, map[string]uint32{}
 	return func(kind string, delta int) uint32 {

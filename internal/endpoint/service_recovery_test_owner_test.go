@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/dianabuilds/ardents-network/internal/endpoint/introduction"
+	"github.com/dianabuilds/ardents-network/internal/endpoint/service"
 	"github.com/dianabuilds/ardents-network/internal/route/client"
 )
 
@@ -22,7 +23,7 @@ type serviceRecoveryTestOwner struct {
 	cancel      context.CancelFunc
 	mu          sync.Mutex
 	connections []net.Conn
-	streams     []*serviceStream
+	streams     []*service.Stream
 	contexts    []*dutyContext
 	workers     sync.WaitGroup
 }
@@ -40,7 +41,7 @@ func (owner *serviceRecoveryTestOwner) retainConnection(connection net.Conn) {
 	owner.mu.Unlock()
 }
 
-func (owner *serviceRecoveryTestOwner) retainStream(stream *serviceStream) {
+func (owner *serviceRecoveryTestOwner) retainStream(stream *service.Stream) {
 	if stream == nil {
 		return
 	}
@@ -66,7 +67,7 @@ func (owner *serviceRecoveryTestOwner) Close() {
 	owner.cancel()
 	owner.mu.Lock()
 	connections := append([]net.Conn(nil), owner.connections...)
-	streams := append([]*serviceStream(nil), owner.streams...)
+	streams := append([]*service.Stream(nil), owner.streams...)
 	contexts := append([]*dutyContext(nil), owner.contexts...)
 	owner.mu.Unlock()
 	for _, connection := range connections {
@@ -81,7 +82,7 @@ func (owner *serviceRecoveryTestOwner) Close() {
 	}
 	owner.workers.Wait()
 	owner.mu.Lock()
-	lateStreams := append([]*serviceStream(nil), owner.streams[len(streams):]...)
+	lateStreams := append([]*service.Stream(nil), owner.streams[len(streams):]...)
 	owner.mu.Unlock()
 	for _, stream := range lateStreams {
 		if err := stream.Close(); err != nil && !readCancellationOnly(err) {

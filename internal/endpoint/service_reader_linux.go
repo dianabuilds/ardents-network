@@ -7,9 +7,10 @@ import (
 	"errors"
 
 	"github.com/dianabuilds/ardents-network/internal/application/textdocument"
+	"github.com/dianabuilds/ardents-network/internal/endpoint/service"
 )
 
-func (worker *qualifiedWorker) completeServiceRead(ctx, bounded context.Context, finish func(), stream *serviceStream, err error) ([]byte, error) {
+func (worker *qualifiedWorker) completeServiceRead(ctx, bounded context.Context, finish func(), stream *service.Stream, err error) ([]byte, error) {
 	var body []byte
 	if err == nil {
 		body, err = textdocument.ReadWorkerConnection(bounded, worker.lifetime.attachment, stream)

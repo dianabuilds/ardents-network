@@ -1,6 +1,6 @@
 //go:build linux
 
-package endpoint
+package service
 
 import "testing"
 

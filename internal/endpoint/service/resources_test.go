@@ -1,11 +1,11 @@
 //go:build linux
 
-package endpoint
+package service
 
 import "testing"
 
 func TestResourceObserverRetainsOwnedHighWater(t *testing.T) {
-	ledger := newResourceObserver()
+	ledger := NewResourceObserver()
 	ledger("accepted-ipc", 1)
 	ledger("accepted-ipc", 1)
 	ledger("timer", 1)

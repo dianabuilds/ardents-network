@@ -1,6 +1,6 @@
 //go:build linux
 
-package endpoint
+package service
 
 import (
 	"context"
@@ -11,6 +11,7 @@ import (
 	"net"
 
 	nativeconnection "github.com/dianabuilds/ardents-network/internal/service/connection"
+	servicepublication "github.com/dianabuilds/ardents-network/internal/service/publication"
 )
 
 // authenticatedRetirementCarrier preserves an exact admitted Route child's
@@ -29,21 +30,21 @@ func (carrier *authenticatedRetirementCarrier) Read(value []byte) (int, error) {
 	return read, err
 }
 
-func newProtectedServiceAttachment(attachment *securedAttachment) (*nativeconnection.Attachment, error) {
+func newProtectedServiceAttachment(attachment *SecuredAttachment) (*nativeconnection.Attachment, error) {
 	return nativeconnection.NewAttachment(&authenticatedRetirementCarrier{Conn: attachment.connection},
-		attachment.generation, attachment.context, attachment.exporterCommitment, attachment.close)
+		attachment.generation, attachment.context, attachment.exporterCommitment, attachment.Close)
 }
 
 // The protected Service profile fixes both supported key-exchange groups.
 // The preceding runtime keeps its own compatibility TLS configuration.
-func secureProtectedServiceClient(ctx context.Context, raw net.Conn, credential publicationCredential, exporterContext [32]byte,
-	generation uint64) (*securedAttachment, [32]byte, error) {
+func secureProtectedServiceClient(ctx context.Context, raw net.Conn, credential servicepublication.Credential, exporterContext [32]byte,
+	generation uint64) (*SecuredAttachment, [32]byte, error) {
 	return secureClient(ctx, raw, credential, exporterContext, generation,
 		[]tls.CurveID{tls.X25519MLKEM768, tls.X25519})
 }
 
-func secureProtectedServicePublisher(ctx context.Context, raw net.Conn, credential publicationCredential, signer crypto.Signer,
-	exporterContext [32]byte, generation uint64) (*securedAttachment, [32]byte, error) {
+func secureProtectedServicePublisher(ctx context.Context, raw net.Conn, credential servicepublication.Credential, signer crypto.Signer,
+	exporterContext [32]byte, generation uint64) (*SecuredAttachment, [32]byte, error) {
 	return securePublisher(ctx, raw, credential, signer, exporterContext, generation,
 		[]tls.CurveID{tls.X25519MLKEM768, tls.X25519})
 }

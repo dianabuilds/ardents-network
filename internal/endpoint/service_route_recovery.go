@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
+	"github.com/dianabuilds/ardents-network/internal/endpoint/service"
 	introductioncapsule "github.com/dianabuilds/ardents-network/internal/route/capsule"
 	nativeconnection "github.com/dianabuilds/ardents-network/internal/service/connection"
 )
@@ -19,7 +20,7 @@ import (
 // capsule/JOIN; the Publisher accepts only that generation for the retained
 // logical binding. Neither side can open another Application operation.
 func (owner *dutyContext) serviceRouteRecoveryOpener(job *jobIdentity,
-	binding *serviceBinding) serviceAttachmentOpener {
+	binding *serviceBinding) service.AttachmentOpener {
 	if owner == nil || !binding.servesJob(owner, job) {
 		return nil
 	}
@@ -83,7 +84,7 @@ func (owner *dutyContext) prepareRecovery(ctx context.Context, job *jobIdentity,
 		return nil, attemptErr
 	}
 	if err != nil || prefix == nil || !owner.liveServiceJobLocked(job, broker.Connection) ||
-		!binding.matchesPublication(verified.Current) || verified.Descriptor.ProfileDigest != binding.profileDigest() ||
+		!binding.MatchesPublication(verified.Current) || verified.Descriptor.ProfileDigest != binding.profileDigest() ||
 		profile.Digest != binding.profileDigest() || !owner.descriptorHistory.Matches(binding.target(), binding.publicationDigest(), recipient.Revision) ||
 		recipient.Revision < binding.introductionLocked().Revision ||
 		recipient.Revision == 0 || recipient.Slot == [32]byte{} || recipient.RecipientKey == [32]byte{} ||
@@ -104,7 +105,7 @@ func (owner *dutyContext) prepareRecovery(ctx context.Context, job *jobIdentity,
 	if !now.Before(deadline) {
 		return nil, errors.New("text recovery deadline unavailable")
 	}
-	facts := binding.protectedFacts()
+	facts := binding.Facts()
 	plaintext := introductioncapsule.Plaintext{Network: facts.Network, Target: facts.Target,
 		PublicationDigest: facts.PublicationDigest, Revision: recipient.Revision, RendezvousNode: node,
 		RendezvousDutyGeneration: generation, ProfileDigest: facts.ProfileDigest, ConnectionNonce: facts.ConnectionNonce,

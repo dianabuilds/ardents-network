@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/endpoint/service"
 	nativeconnection "github.com/dianabuilds/ardents-network/internal/service/connection"
 )
 
@@ -42,15 +43,15 @@ func TestProtectedServiceTLSRouteRetirementWitnessSurvivesWrapperChain(t *testin
 	local := &authenticatedRetirementTestConn{Conn: localRaw, retired: &localRetired, peerRetired: &remoteRetired}
 	remote := &authenticatedRetirementTestConn{Conn: remoteRaw, retired: &remoteRetired, peerRetired: &localRetired}
 	joined := &joinedTransport{Conn: remote, stop: func() {}, finish: func(err error) error { return err }}
-	service := &protectedServiceTransport{Conn: joined}
-	clientResult := make(chan *securedAttachment, 1)
+	transport := service.NewProtectedTransport(joined)
+	clientResult := make(chan *service.SecuredAttachment, 1)
 	clientError := make(chan error, 1)
 	go func() {
-		secured, _, secureErr := secureProtectedServiceClient(ctx, local, reader.credential, fixtureID(80), 1)
+		secured, _, secureErr := service.SecureClient(ctx, local, reader.credential, fixtureID(80), 1)
 		clientResult <- secured
 		clientError <- secureErr
 	}()
-	publisherSecured, _, err := secureProtectedServicePublisher(ctx, service, publisher.credential, lease, fixtureID(80), 1)
+	publisherSecured, _, err := service.SecurePublisher(ctx, transport, publisher.credential, lease, fixtureID(80), 1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -58,14 +59,14 @@ func TestProtectedServiceTLSRouteRetirementWitnessSurvivesWrapperChain(t *testin
 	if err := <-clientError; err != nil {
 		t.Fatal(err)
 	}
-	defer publisherSecured.close()
+	defer publisherSecured.Close()
 	closed := make(chan struct{})
 	go func() {
-		clientSecured.close()
+		clientSecured.Close()
 		close(closed)
 	}()
 	var one [1]byte
-	_, err = (&authenticatedRetirementCarrier{Conn: publisherSecured.connection}).Read(one[:])
+	_, err = service.NewRetirementCarrier(publisherSecured.Connection()).Read(one[:])
 	if !errors.Is(err, nativeconnection.ErrAttachmentRetired) {
 		t.Fatalf("Route retirement through Endpoint wrappers = %v", err)
 	}
@@ -92,7 +93,7 @@ func TestProtectedServiceTLSOnlySelectedGroups(t *testing.T) {
 					t.Fatal(err)
 				}
 				defer lease.Close()
-				certificate, err := instanceCertificate(publisher.credential, lease)
+				certificate, err := service.InstanceCertificate(publisher.credential, lease)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -107,7 +108,7 @@ func TestProtectedServiceTLSOnlySelectedGroups(t *testing.T) {
 				} else {
 					binding = publisher
 					peerConfig.InsecureSkipVerify = true
-					peerConfig.VerifyConnection = verifyInstance(publisher.credential.InstancePublic)
+					peerConfig.VerifyConnection = service.VerifyInstance(publisher.credential.InstancePublic)
 					peer = tls.Client(remote, peerConfig)
 				}
 				done := make(chan error, 1)

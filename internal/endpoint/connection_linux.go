@@ -14,6 +14,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
 	interfacev2connection "github.com/dianabuilds/ardents-network/internal/application/interfacev2/connection"
 	"github.com/dianabuilds/ardents-network/internal/application/textdocument"
+	"github.com/dianabuilds/ardents-network/internal/endpoint/service"
 	"github.com/dianabuilds/ardents-network/internal/route/client"
 	nativeconnection "github.com/dianabuilds/ardents-network/internal/service/connection"
 	"github.com/dianabuilds/ardents-network/internal/service/targetlink"
@@ -180,7 +181,7 @@ type readResult struct {
 	err    error
 }
 
-func newReadResult(owner *connection, pending chan struct{}, lease *broker.ActiveSession, cancel context.CancelFunc, worker *qualifiedWorker, bounded context.Context, finish func(), service *serviceStream, joinCaller func(), report func(string)) *readResult {
+func newReadResult(owner *connection, pending chan struct{}, lease *broker.ActiveSession, cancel context.CancelFunc, worker *qualifiedWorker, bounded context.Context, finish func(), serviceStream *service.Stream, joinCaller func(), report func(string)) *readResult {
 	request, input := io.Pipe()
 	output, response := io.Pipe()
 	result := &readResult{input: input, output: output, cancel: cancel, joined: make(chan struct{}), done: make(chan interfacev2connection.Outcome, 1)}
@@ -208,10 +209,10 @@ func newReadResult(owner *connection, pending chan struct{}, lease *broker.Activ
 		}
 		var body []byte
 		if err == nil {
-			body, err = worker.completeServiceRead(lease.Context(), bounded, finish, service, nil)
+			body, err = worker.completeServiceRead(lease.Context(), bounded, finish, serviceStream, nil)
 		} else {
 			lifetimeErr := lease.Context().Err()
-			serviceErr := service.Close()
+			serviceErr := serviceStream.Close()
 			finish()
 			cleanupErr := errors.Join(serviceErr, worker.Close())
 			if lifetimeErr != nil && canceledBeforeRequestCleanupOnly(cleanupErr) {

@@ -14,11 +14,21 @@ import (
 
 	interfacev2connection "github.com/dianabuilds/ardents-network/internal/application/interfacev2/connection"
 	"github.com/dianabuilds/ardents-network/internal/application/streamqualification"
+	"github.com/dianabuilds/ardents-network/internal/endpoint/service"
 	"github.com/dianabuilds/ardents-network/internal/node"
 	"github.com/dianabuilds/ardents-network/internal/qualification"
 	"github.com/dianabuilds/ardents-network/internal/route/carrier"
 	"github.com/dianabuilds/ardents-network/internal/route/client"
 )
+
+func mustServiceWorkloadBounds(t *testing.T, send, receive uint32) service.WorkloadBounds {
+	t.Helper()
+	bounds, err := service.NewWorkloadBounds(send, receive)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return bounds
+}
 
 // The qualification setup is one retained 256-Connection Publisher set fed by
 // four independent 64-Connection Readers. Exercise that exact ownership shape

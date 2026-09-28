@@ -1,3 +1,4 @@
-// Package endpoint owns the role-local process and the direct composition of
-// publication, authenticated carrier, and native Connection lifecycle.
+// Package endpoint owns the role-local process: admission, job identity,
+// binding authority, Route/Introduction orchestration, and the composition of
+// the service subpackage's protected stream mechanism behind its Binding seam.
 package endpoint

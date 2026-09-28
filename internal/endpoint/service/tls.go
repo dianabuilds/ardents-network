@@ -1,6 +1,6 @@
 //go:build linux
 
-package endpoint
+package service
 
 import (
 	"bytes"
@@ -18,13 +18,17 @@ import (
 	"math/big"
 	"net"
 	"time"
+
+	servicepublication "github.com/dianabuilds/ardents-network/internal/service/publication"
 )
 
 const exporterLabel = "EXPORTER-ardents-service-connection-v1"
 
 var errInstanceMismatch = errors.New("service Instance certificate does not match the current Credential")
 
-type securedAttachment struct {
+// SecuredAttachment is one TLS-authenticated physical transport plus its
+// exported continuity commitment.
+type SecuredAttachment struct {
 	connection         *tls.Conn
 	transport          net.Conn
 	generation         uint64
@@ -32,17 +36,17 @@ type securedAttachment struct {
 	exporterCommitment [32]byte
 }
 
-// close retires the physical transport and returns its result so the native
+// Close retires the physical transport and returns its result so the native
 // Stream retains it through the Attachment close callback (F-23).
-func (attachment *securedAttachment) close() error {
+func (attachment *SecuredAttachment) Close() error {
 	if attachment == nil || attachment.transport == nil {
 		return nil
 	}
 	return attachment.transport.Close()
 }
 
-func secureClient(ctx context.Context, raw net.Conn, credential publicationCredential, connectionContext [32]byte,
-	generation uint64, groups []tls.CurveID) (*securedAttachment, [32]byte, error) {
+func secureClient(ctx context.Context, raw net.Conn, credential servicepublication.Credential, connectionContext [32]byte,
+	generation uint64, groups []tls.CurveID) (*SecuredAttachment, [32]byte, error) {
 	config := &tls.Config{MinVersion: tls.VersionTLS13, MaxVersion: tls.VersionTLS13,
 		CurvePreferences: groups, InsecureSkipVerify: true, SessionTicketsDisabled: true,
 		VerifyConnection: verifyInstance(credential.InstancePublic)}
@@ -54,8 +58,8 @@ func secureClient(ctx context.Context, raw net.Conn, credential publicationCrede
 	return exportedAttachment(connection, connectionContext, generation)
 }
 
-func securePublisher(ctx context.Context, raw net.Conn, credential publicationCredential, signer crypto.Signer,
-	connectionContext [32]byte, generation uint64, groups []tls.CurveID) (*securedAttachment, [32]byte, error) {
+func securePublisher(ctx context.Context, raw net.Conn, credential servicepublication.Credential, signer crypto.Signer,
+	connectionContext [32]byte, generation uint64, groups []tls.CurveID) (*SecuredAttachment, [32]byte, error) {
 	certificate, err := instanceCertificate(credential, signer)
 	if err != nil {
 		raw.Close()
@@ -71,7 +75,7 @@ func securePublisher(ctx context.Context, raw net.Conn, credential publicationCr
 	return exportedAttachment(connection, connectionContext, generation)
 }
 
-func exportedAttachment(connection *tls.Conn, connectionContext [32]byte, generation uint64) (*securedAttachment, [32]byte, error) {
+func exportedAttachment(connection *tls.Conn, connectionContext [32]byte, generation uint64) (*SecuredAttachment, [32]byte, error) {
 	if connectionContext == [32]byte{} {
 		_ = connection.Close()
 		return nil, [32]byte{}, errors.New("native ConnectionContext is absent")
@@ -90,7 +94,7 @@ func exportedAttachment(connection *tls.Conn, connectionContext [32]byte, genera
 	erase(material)
 	erase(continuityBytes)
 	exporterCommitment := sha256.Sum256(append([]byte("ardents-service-connection-exporter-v1\x00"), continuity[:]...))
-	return &securedAttachment{connection: connection, generation: generation,
+	return &SecuredAttachment{connection: connection, generation: generation,
 		context: connectionContext, transport: connection.NetConn(), exporterCommitment: exporterCommitment}, continuity, nil
 }
 
@@ -107,7 +111,7 @@ func verifyInstance(expected [32]byte) func(tls.ConnectionState) error {
 	}
 }
 
-func instanceCertificate(credential publicationCredential, signer crypto.Signer) (tls.Certificate, error) {
+func instanceCertificate(credential servicepublication.Credential, signer crypto.Signer) (tls.Certificate, error) {
 	public, ok := signer.Public().(ed25519.PublicKey)
 	if !ok || len(public) != ed25519.PublicKeySize || !bytes.Equal(public, credential.InstancePublic[:]) {
 		return tls.Certificate{}, errors.New("service Instance key does not match the current Credential")

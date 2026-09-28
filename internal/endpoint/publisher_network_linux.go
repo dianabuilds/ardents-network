@@ -9,6 +9,7 @@ import (
 
 	interfacev2connection "github.com/dianabuilds/ardents-network/internal/application/interfacev2/connection"
 	"github.com/dianabuilds/ardents-network/internal/endpoint/introduction"
+	"github.com/dianabuilds/ardents-network/internal/endpoint/service"
 	"github.com/dianabuilds/ardents-network/internal/qualification"
 )
 
@@ -77,7 +78,7 @@ func (worker *qualifiedWorker) produceNetworkSequential(lifetime context.Context
 			retired.Add(1)
 			go func() {
 				defer retired.Done()
-				<-stream.finished
+				<-stream.Finished()
 				<-slots
 			}()
 		case <-network.Done():
@@ -124,7 +125,7 @@ func (worker *qualifiedWorker) produceQualificationNetwork(lifetime context.Cont
 	// sequential producer registers its matching owner and be refused.
 	slots := make(chan struct{}, connectionLimit)
 	type openingResult struct {
-		stream *serviceStream
+		stream *service.Stream
 		err    error
 	}
 	opened := make(chan openingResult, qualificationPublisherOpeningParallelism)
@@ -226,9 +227,9 @@ func (worker *qualifiedWorker) produceQualificationNetwork(lifetime context.Cont
 			select {
 			case delivered <- result.stream:
 				retired.Add(1)
-				go func(stream *serviceStream) {
+				go func(stream *service.Stream) {
 					defer retired.Done()
-					<-stream.finished
+					<-stream.Finished()
 					<-slots
 				}(result.stream)
 			case <-network.Done():

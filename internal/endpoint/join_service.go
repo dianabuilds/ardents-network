@@ -11,6 +11,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
 	"github.com/dianabuilds/ardents-network/internal/endpoint/introduction"
+	"github.com/dianabuilds/ardents-network/internal/endpoint/service"
 	"github.com/dianabuilds/ardents-network/internal/endpoint/source"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	"github.com/dianabuilds/ardents-network/internal/route/client"
@@ -106,11 +107,11 @@ func routeStopOnly(err error) bool {
 
 // openJoinedService consumes the initial protected Route and installs its
 // bounded replacement owner before Application bytes become reachable.
-func (owner *dutyContext) openJoinedService(ctx context.Context, job *jobIdentity, attempt *introductionAttempt) (_ *serviceStream, outcome error) {
+func (owner *dutyContext) openJoinedService(ctx context.Context, job *jobIdentity, attempt *introductionAttempt) (_ *service.Stream, outcome error) {
 	return owner.openJoinedServiceAfterSetup(ctx, job, attempt, nil)
 }
 
-func (owner *dutyContext) openJoinedServiceAfterSetup(ctx context.Context, job *jobIdentity, attempt *introductionAttempt, setupComplete func()) (_ *serviceStream, outcome error) {
+func (owner *dutyContext) openJoinedServiceAfterSetup(ctx context.Context, job *jobIdentity, attempt *introductionAttempt, setupComplete func()) (_ *service.Stream, outcome error) {
 	transport, err := owner.openJoinedTransportAfterSetup(ctx, job, attempt, setupComplete)
 	if err != nil {
 		return nil, err

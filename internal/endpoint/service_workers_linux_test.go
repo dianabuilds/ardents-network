@@ -12,6 +12,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
 	"github.com/dianabuilds/ardents-network/internal/application/textdocument"
+	"github.com/dianabuilds/ardents-network/internal/endpoint/service"
 )
 
 // This fixture replaces only installed launch/cgroup observation with a
@@ -76,7 +77,7 @@ func TestTextServiceQualifiedWorkersUseActualEndpointStreams(t *testing.T) {
 	host := serviceWorkerFixture(t, publisher, body)
 	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 	defer cancel()
-	incoming := make(chan *serviceStream)
+	incoming := make(chan *service.Stream)
 	hostDone := make(chan error, 1)
 	go func() { hostDone <- host.serve(ctx, incoming) }()
 	local, remote := net.Pipe()
@@ -115,7 +116,7 @@ func TestTextServicePublisherRefusesAnotherJobsStream(t *testing.T) {
 	host := serviceWorkerFixture(t, otherPublisher, []byte("document of another Publisher context"))
 	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 	defer cancel()
-	incoming := make(chan *serviceStream)
+	incoming := make(chan *service.Stream)
 	hostDone := make(chan error, 1)
 	go func() { hostDone <- host.serve(ctx, incoming) }()
 	left, right := net.Pipe()

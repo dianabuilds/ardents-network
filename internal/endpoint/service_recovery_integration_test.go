@@ -16,6 +16,7 @@ import (
 	applicationconnection "github.com/dianabuilds/ardents-network/internal/application/interfacev2/connection"
 	"github.com/dianabuilds/ardents-network/internal/application/textdocument"
 	"github.com/dianabuilds/ardents-network/internal/endpoint/introduction"
+	"github.com/dianabuilds/ardents-network/internal/endpoint/service"
 	routecarrier "github.com/dianabuilds/ardents-network/internal/route/carrier"
 	nativeconnection "github.com/dianabuilds/ardents-network/internal/service/connection"
 )
@@ -40,7 +41,7 @@ func TestTextServiceRecoveryDoesNotReplayAcceptedDocumentRequest(t *testing.T) {
 
 	digest := fixtureID(91)
 	requests := make(chan nativeconnection.Recovery, 2)
-	clientOpener := serviceAttachmentOpener(func(ctx context.Context, request nativeconnection.Recovery) (net.Conn, [32]byte, error) {
+	clientOpener := service.AttachmentOpener(func(ctx context.Context, request nativeconnection.Recovery) (net.Conn, [32]byte, error) {
 		select {
 		case requests <- request:
 		case <-ctx.Done():
@@ -48,7 +49,7 @@ func TestTextServiceRecoveryDoesNotReplayAcceptedDocumentRequest(t *testing.T) {
 		}
 		return replacementClient, digest, nil
 	})
-	publisherOpener := serviceAttachmentOpener(func(ctx context.Context, request nativeconnection.Recovery) (net.Conn, [32]byte, error) {
+	publisherOpener := service.AttachmentOpener(func(ctx context.Context, request nativeconnection.Recovery) (net.Conn, [32]byte, error) {
 		select {
 		case requests <- request:
 		case <-ctx.Done():
@@ -58,7 +59,7 @@ func TestTextServiceRecoveryDoesNotReplayAcceptedDocumentRequest(t *testing.T) {
 	})
 
 	type opened struct {
-		stream *serviceStream
+		stream *service.Stream
 		err    error
 	}
 	publisherOpened := make(chan opened, 1)
@@ -364,7 +365,7 @@ func TestTextServiceRecoveryRefusesChangedImmutableRequest(t *testing.T) {
 }
 
 type openedService struct {
-	stream *serviceStream
+	stream *service.Stream
 	err    error
 }
 
@@ -414,7 +415,7 @@ func sameTokenAttemptSnapshot(left, right map[[32]byte]tokenReceipt) bool {
 }
 
 type observedServiceOpener struct {
-	open    serviceAttachmentOpener
+	open    service.AttachmentOpener
 	mu      sync.Mutex
 	count   int
 	digests [][32]byte

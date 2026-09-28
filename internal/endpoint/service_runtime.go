@@ -9,14 +9,14 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
+	"github.com/dianabuilds/ardents-network/internal/endpoint/service"
 	"github.com/dianabuilds/ardents-network/internal/service/instance"
 	servicepublication "github.com/dianabuilds/ardents-network/internal/service/publication"
 )
 
 const (
-	publishCapability  = uint32(1)
-	connectCapability  = uint32(2)
-	maximumStreamBytes = uint32(768 << 20)
+	publishCapability = uint32(1)
+	connectCapability = uint32(2)
 )
 
 // Setup fixes one Endpoint broker generation and its two local principals.
@@ -59,7 +59,7 @@ func newEndpoint(input setup) (*endpoint, error) {
 	}
 	resources := input.Resources
 	if resources == nil {
-		resources = newResourceObserver()
+		resources = service.NewResourceObserver()
 	}
 	admission := input.Admission
 	if admission == nil {

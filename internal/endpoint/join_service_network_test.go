@@ -60,8 +60,8 @@ func TestTextJoinedServiceTransfersDocumentThroughNetwork(t *testing.T) {
 				if err == nil {
 					result := <-stream.Done()
 					if result.Class != applicationconnection.CleanClose {
-						<-stream.finished
-						err = errors.Join(errors.New("joined Publisher Service ended without clean close"), stream.runErr, stream.finishErr)
+						<-stream.Finished()
+						err = errors.Join(errors.New("joined Publisher Service ended without clean close"), stream.RunErr(), stream.FinishErr())
 					}
 				}
 				completed <- errors.Join(err, stream.Close())
@@ -78,7 +78,7 @@ func TestTextJoinedServiceTransfersDocumentThroughNetwork(t *testing.T) {
 			}
 			publisherErr := <-completed
 			if err := errors.Join(readErr, closeErr, publisherErr); err != nil || string(body) != "authenticated document through the joined network" {
-				t.Fatalf("joined document %q: %v; reader native: %v; reader cleanup: %v", body, err, stream.runErr, stream.finishErr)
+				t.Fatalf("joined document %q: %v; reader native: %v; reader cleanup: %v", body, err, stream.RunErr(), stream.FinishErr())
 			}
 			for _, owner := range []*dutyContext{reader, publisher} {
 				owner.mu.Lock()

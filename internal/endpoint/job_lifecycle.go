@@ -8,6 +8,7 @@ import (
 	"errors"
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
+	"github.com/dianabuilds/ardents-network/internal/endpoint/service"
 	"github.com/dianabuilds/ardents-network/internal/qualification"
 )
 
@@ -18,7 +19,7 @@ type jobIdentity struct {
 	// The qualification run is bound to this exact Job so late callbacks
 	// cannot attach streams, samples or cleanup to its replacement.
 	qualification *qualification.Run
-	workload      serviceWorkloadBounds
+	workload      service.WorkloadBounds
 	owner         *dutyContext
 	nonce         [32]byte
 	context       context.Context

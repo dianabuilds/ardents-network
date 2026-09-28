@@ -17,6 +17,7 @@ import (
 	applicationconnection "github.com/dianabuilds/ardents-network/internal/application/interfacev2/connection"
 	"github.com/dianabuilds/ardents-network/internal/application/textdocument"
 	"github.com/dianabuilds/ardents-network/internal/endpoint/introduction"
+	"github.com/dianabuilds/ardents-network/internal/endpoint/service"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	introductioncapsule "github.com/dianabuilds/ardents-network/internal/route/capsule"
 	routecarrier "github.com/dianabuilds/ardents-network/internal/route/carrier"
@@ -30,7 +31,7 @@ func liveCapsuleJob(t *testing.T, owner *dutyContext) *jobIdentity {
 	if err != nil {
 		t.Fatal(err)
 	}
-	job.workload, err = documentServiceWorkloadBounds()
+	job.workload, err = service.DocumentWorkloadBounds()
 	if err != nil {
 		t.Fatal(err)
 	}
