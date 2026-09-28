@@ -2,11 +2,13 @@
 
 Status: **accepted working plan for the ongoing decomposition**. This is a
 target ownership map, not an accepted runtime contract or a second delivery
-ledger.
-Baseline: `dev` at `51b38337` (2026-09-27). Coordination with the parallel
-Node decomposition lives in `C:\Users\vitek\code\ardents-coordination`
-(`assignments.md` plus one status file per implementer); `dev` is the single
-integration point and the Node implementer performs merges into it.
+ledger; per-slice evidence lives in the coordination journals
+(`ardents-coordination/endpoint.md` §-entries) and commit history.
+Baseline: `dev` at `c849226f` (2026-09-28). Coordination with the parallel
+Node decomposition, the Route owner, and the Network owner lives in
+`C:\Users\vitek\code\ardents-coordination` (`assignments.md` plus one status
+file per implementer); `dev` is the single integration point and the Node
+implementer performs merges into it.
 
 ## Objective
 
@@ -22,46 +24,87 @@ who owns its state, who closes it, and what the caller may do with it:
 
 | Owner | Responsibility | Created by | State owner | Closed by | Caller-visible operations |
 | --- | --- | --- | --- | --- | --- |
-| Endpoint | Local admission, component assembly, shared lifecycle | The composed local authority (`endpoint` value) | `textContext` and its private owners (jobs, publication, Source, permissions) | Context retirement in `text_context_retirement.go` order | Participant runtime operations only; no Source, token-stock, worker, or publication internals |
+| Endpoint | Local admission, component assembly, shared lifecycle | The composed local authority (`endpoint` value) | `dutyContext` and its private owners (jobs, publication, Source, permissions) | Context retirement in `duty_context_retirement.go` order | Participant runtime operations only; no Source, token-stock, worker, or publication internals |
 | Node | Running the selected network role, process resources, shutdown | The process entry through the dispatcher | Per-role runtime state, not the whole `Config` | Role shutdown with joined child completion | Start one selected role; stop; observe completion |
 | Route | Protected channels, network operations, transport mechanics | Endpoint and Service composition | Carrier, ARDP, capsule, terminal, replay, forwarding state | Channel retirement witnessed by its owner | Dial, accept, forward, and retire operations over protected channels |
 | Service | Identity, publication, logical service connection | Endpoint assembly | Instance, durable Publication, Connection, reachability | Publication withdrawal and Instance retirement | Publish, connect, and verify identity operations |
 | Application | Application protocol and local application interfaces | Endpoint through the selected Interface | Workload state of the selected surface | The Service stream lifecycle that admitted it | Surface operations of the local versioned interface |
 
 Dependency direction: Endpoint consumes Service, Route, Application, and
-qualification; Route must not import Endpoint; the worker mechanism package
-must not import Endpoint, broker, or qualification (see below). Node composes
-roles and their resources without exposing one role's configuration to
-another.
+qualification; Route must not import Endpoint; the extracted Endpoint
+subpackages (`worker`, `tokens`, `publication`, `source`, `introduction`,
+`service`) must not import the Endpoint root — each defines a consumer-side
+seam that the root implements. Node composes roles and their resources
+without exposing one role's configuration to another.
 
-Endpoint target package tree:
+Endpoint package tree (current; all Linux-only subpackages carry
+`//go:build linux` on every file including `doc.go`, and stay out of
+`tests/profiles/deterministic-packages.txt` because Windows `go list`
+cannot see them):
 
 ```
-internal/endpoint/             composition root: admission, Context coordination,
-                               job identity, launch permission, Grant binding,
-                               Service and Application assembly
-internal/endpoint/worker/      installed worker mechanism: inventory, systemd
-                               manager queries, unit property verification,
-                               artifact verification, instance observation,
-                               activation, cgroup pinning and verified stop,
-                               socket attachment credentials, platform and
-                               parent-service checks (stdlib-only leaf)
-internal/endpoint/tokenjournal/ durable token-attempt journal (extracted)
-internal/qualification/        per-invocation Run, Artifact, Attachment,
-                               Measurements, and the retained-run qualification
-                               scenario orchestration driven through Endpoint's
-                               authorized Session boundary
+internal/endpoint/               composition root: admission, dutyContext
+                                 coordination, job identity, launch permission,
+                                 Grant binding, Route recovery orchestration,
+                                 Service and Application assembly
+internal/endpoint/worker/        installed worker mechanism ("mechanism, not
+                                 authority"): inventory, systemd manager
+                                 queries, unit property verification, artifact
+                                 verification, instance observation,
+                                 activation, cgroup pinning and verified stop,
+                                 socket attachment credentials (stdlib-only
+                                 leaf)
+internal/endpoint/tokens/        pure token authority: Permission (holder
+                                 request creation, approval acceptance,
+                                 currentness/quota checks, exact retry
+                                 matching, batch reservation), Batch, Stock,
+                                 Operation (issuance slot), Owner over the
+                                 shared duty mutex; seam tokens.Host
+                                 implemented by root dutyTokenHost
+internal/endpoint/publication/   pure refresh-scheduler mechanism:
+                                 RefreshLifecycle/Refresh/RefreshRetirement,
+                                 failure classifiers; root injects the
+                                 rotation callback (no Host seam)
+internal/endpoint/source/        Source prefix two-slot opening state machine:
+                                 Lifecycle/Handle/Retirement, acquisition
+                                 joins, failure classifiers; testsupport seams
+                                 TerminateRoute/RouteDone/TransplantLive
+internal/endpoint/introduction/  Introduction ...Locked mechanism: Admission,
+                                 Dispatch/DeliveryKey, ExchangeSet,
+                                 PairLifecycle+Registration, RecoveryOwner,
+                                 Refusal; seams introduction.Host and
+                                 RecoveryBinding implemented by root
+internal/endpoint/service/       protected Service stream mechanism: checked
+                                 directional workload contract, TLS
+                                 attachment establishment with the exported
+                                 continuity commitment, in-process Application
+                                 half-close pair, resource ledger, bounded
+                                 native Connection lifecycle; seam
+                                 service.Binding (14 methods) implemented by
+                                 root *serviceBinding
+internal/endpoint/tokenjournal/  durable token-attempt journal
+internal/endpoint/descriptorhistory/ per-Target verified publication floors
+internal/endpoint/permissionfile/    canonical permission handover files
+internal/endpoint/durableroot/       shared durable-root access/lease/sync
+internal/endpoint/portable/, replacement/  portable-run and replacement leaves
+internal/qualification/          per-invocation Run, Artifact, Attachment,
+                                 Measurements, and the retained-run
+                                 qualification scenario orchestration driven
+                                 through Endpoint's authorized Session
+                                 boundary
 ```
 
-Worker boundary contract for the current slice: Endpoint issues the launch
-permission — job reservation, the process-wide activation gate, and Grant
-binding — and binds it to the current operation. The worker package owns the
-observed process and its verified termination: it receives plain values
-(inventory, role, accepted socket) and returns handles (Artifact, Instance,
-Attachment, Cleanup); it never receives `textContext`, a job identity, or a
-broker surface. The lifetime that joins job retirement, attachment close, and
-cleanup stays in Endpoint because it consumes Context authority callbacks.
-The existing check and refusal order is preserved exactly.
+Worker boundary contract: Endpoint issues the launch permission — job
+reservation, the process-wide activation gate, and Grant binding — and binds
+it to the current operation. The worker package owns the observed process and
+its verified termination: it receives plain values (inventory, role, accepted
+socket) and returns handles (Artifact, Instance, Attachment, Cleanup); it
+never receives `dutyContext`, a job identity, or a broker surface. The
+lifetime that joins job retirement, attachment close, and cleanup stays in
+Endpoint because it consumes Context authority callbacks. The existing check
+and refusal order is preserved exactly. The `text_worker_installed` tag
+surface (dedicated Ubuntu hosts) compiles in every quick-check through the
+`installed-tag-compile-check` gate.
 
 ## Ownership that must remain distinct
 
@@ -73,8 +116,9 @@ The existing check and refusal order is preserved exactly.
 | `internal/application/...` | Local versioned Application Interfaces and selected text-document workload. | Remains internal implementation of an externally usable local protocol. |
 | `internal/route` | Carrier and protected Route mechanics. | Endpoint consumes Route; Route must not import Endpoint. |
 
-The current `textResolutionSource` is implemented by Endpoint's exact Route
-prefix acquisition in `text_source_lifecycle.go`. It is not implemented by
+The Endpoint resolution Source is implemented by Endpoint's exact Route
+prefix acquisition in the root `source_*` files through
+`internal/endpoint/source.Lifecycle`. It is not implemented by
 `internal/network/source`. Names and package moves must preserve this
 distinction. The separate [Route boundary map](route-refactoring-boundary.md)
 records why the closed file cluster cannot be moved by filename alone.
@@ -84,13 +128,12 @@ records why the closed file cluster cannot be moved by filename alone.
 The installed qualification command owns plans and verdicts, and
 `internal/application/streamqualification` owns the fixed stream workload.
 `internal/qualification` owns the per-invocation `Run`, verified-worker
-`Artifact`, `Attachment` bridge, shared `Measurements`, and — since the
-qualification separation slice — the retained-run scenario orchestration:
-hosting reservation and sampling cadence, Reader setup pacing with its
-token-reserve ordering, Publisher set serving with workload binding, and the
-replenishment boundary sequence. The exact `qualification.Run` remains bound
-to its Job because JOIN, Connection limits, token refill and cleanup all
-recheck that invocation.
+`Artifact`, `Attachment` bridge, shared `Measurements`, and the retained-run
+scenario orchestration: hosting reservation and sampling cadence, Reader
+setup pacing with its token-reserve ordering, Publisher set serving with
+workload binding, and the replenishment boundary sequence. The exact
+`qualification.Run` remains bound to its Job because JOIN, Connection limits,
+token refill and cleanup all recheck that invocation.
 
 The boundary is dependency inversion: qualification cannot import Endpoint, so
 it defines the consumer-side `Session` (and its `PublisherWorker` subset),
@@ -116,33 +159,47 @@ operation is available to a non-test caller.
 
 ## Endpoint interior
 
-`textContext` is the local admission, revocation, and join root. The current
-implementation has private owners rather than one undifferentiated state bag:
+`dutyContext` is the local admission, revocation, and join root: one admitted
+local Reader/Publisher duty per instance. The implementation has private
+owners rather than one undifferentiated state bag; after the extraction
+series, `dutyContextState` composes: `publication publicationOwner`,
+`introduction introductionOwner`, `descriptorHistory`, `responder
+responderPrefixLifecycle`, `resolution *resolutionFlight`, `source
+source.Lifecycle`, `sourceSet *interiorSet`, `sourceOperations
+sourceOperationGate`, `tokens tokens.Owner`, plus job identity
+(`job`/`lastJob`/`verifiedJob *jobIdentity`), lease/principal/surface
+binding, and the shared `mu`:
 
 | Responsibility | Current owner | Key coupling to remove or retain |
 | --- | --- | --- |
-| Source prefix | `textSourceLifecycle` | Exact handle identity, opening retirement, serialized operation gate, and retained Interior Set remain atomic with Context admission; the gate and set survive prefix replacement. |
-| Publisher prefixes | `textIntroductionPrefixLifecycle`, `textResponderPrefixLifecycle` | Separate Route handles and opening lifetimes; borrowed Source is not closed by either. |
-| Publication | `textPublicationPairLifecycle`, refresh lifecycle, Context coordinators | The Pair owner retains the active registration opening and withdrawal flight through install or cancellation. Context still coordinates their stop/join order; Instance and Publication ownership spans Context and Endpoint locks. |
-| Permission and issuance | `textPermission`, `textIssuanceOperation` | `textPermission` owns holder request creation, signed approval acceptance, currentness and remaining-quota checks, exact retry matching and batch quota reservation, candidate-stock inspection, pending-batch cancellation, issued-token deposit, then burns and verifies the exact challenge under the Context admission lock. Context asks the permission owner whether approval, an exact request, or a pending batch exists instead of reading those fields. Context performs the durable token-attempt mark and surviving-owner check before presentation. Pending batch and exact Source reservation share that lock. |
+| Source prefix | `source.Lifecycle` (extracted) + root `sourceSet`, `sourceOperations` | Exact handle identity, opening retirement, serialized operation gate, and retained Interior Set remain atomic with Context admission; the gate and set survive prefix replacement and are read by root-only methods, so they stayed in the root. |
+| Publisher prefixes | `introductionPrefixLifecycle`, `responderPrefixLifecycle` over shared `rolePrefixCore` (root) | Separate Route handles and opening lifetimes; borrowed Source is not closed by either. |
+| Publication | `publicationOwner` (root) + `publication.RefreshLifecycle` (extracted scheduler) + `introduction.PairLifecycle`/`Registration` (extracted pair mechanism) | The pair owner retains the active registration opening and withdrawal flight through install or cancellation. Context still coordinates their stop/join order; Instance and Publication ownership spans Context and Endpoint locks. |
+| Permission and issuance | `tokens.Permission`, `tokens.Operation`, `tokens.Owner` (extracted; fields exported, error strings byte-identical) | The permission owner holds holder request creation, signed approval acceptance, currentness and remaining-quota checks, exact retry matching and batch quota reservation, candidate-stock inspection, pending-batch cancellation, issued-token deposit, then burns and verifies the exact challenge under the Context admission lock via `tokens.Owner` over the shared duty `mu`. Orchestration (`issueTokens*`, `prepareIssuerStock`, `provisionPermission`) stays at root. Context performs the durable token-attempt mark and surviving-owner check before presentation. |
 | Token attempt storage | `tokenjournal.Journal` | Own mutex, replay/time floors, and durable attempts; consumes the shared `durableroot` access, lease, and sync API. |
 | Permission file handover | `permissionfile` | Own canonical owner-private request/response paths, exact retry, and request durability; Context retains currentness and offline approval authority. |
 | Transit Grant acquisition | retired per [ADR-0092](../adr/0092-retire-generic-publisher-transit-chain.md) | The acquisition journals, transit credential acquisition, and transit client certificates were removed; no maintained composition selects a transit acquisition root. |
 | Descriptor history | `descriptorhistory.History` | Own per-Target verified publication/revision floors, conflict memory, capacity and context-retirement erasure; Context checks live authority before acceptance and before using a retained proof. |
-| Resolution and JOIN | Context flights and narrow acquisitions | Exact current prefix must be checked again after network effects. |
-| Introduction opening admission | `textIntroductionAdmission` | Own context-local four-per-second opening reservations and accepted delivery replay retention under the Context lock; shutdown clears both together. |
-| Introduction delivery dispatch | `textIntroductionDispatch`, `textIntroductionRecoveryOwner` | Dispatch owns context-local waiter registration, one consumer gate, routing and waiter cleanup; recovery owns its exact generation, buffered capsule, deadline refusal and waiter/retirement handoff. Slot transitions use the Context lock; Context checks live job and publication authority and joins claimed Route deliveries. |
-| Introduction exchange reservations | `textIntroductionExchangeSet` | Own active exchange membership, retention and shutdown cancellation under the Context lock; Context checks job authority and joins terminal completion. |
-| Job and worker | `textJobIdentity`, `textWorkerLifetime`, `internal/endpoint/worker` | Context retains the job reservation and the launch permission; the worker package owns the installed mechanism — manager queries, properties, instance observation, artifact, activation socket, cgroup pinning and verified stop — serving both text and stream-qualification inventories. The lifetime stays in Endpoint because it consumes Context authority callbacks for retirement and joined cleanup. |
-| Service TLS | `service_tls.go`, `protected_service_tls.go` | Shared Instance authentication, handshake, and exporter handoff have one Linux-only implementation. The selected protected path fixes X25519MLKEM768/X25519 groups and the authenticated Route retirement witness; the earlier generic Service path was retired per ADR-0092. |
-| Protected Service Connection | `textServiceBinding`, `textServiceStream`, `protected_service_attachment.go` | Context admits the exact Job and publication; the binding rechecks immutable authority. The Attachment owner authenticates the first transport and each replacement, owns physical transport retirement, returns the Publisher lease to stream cleanup, and closes replacement transport on failure. The stream owns the logical Connection, Application half-close, and terminal join. These lifetimes still use Context and Publisher publication ownership, so a package split would expose those internals. |
+| Resolution and JOIN | Context flights (`resolutionFlight`) and narrow acquisitions | Exact current prefix must be checked again after network effects. |
+| Introduction opening admission | `introduction.Admission` (extracted) | Own context-local four-per-second opening reservations and accepted delivery replay retention under the Context lock through `introduction.Host`; shutdown clears both together. |
+| Introduction delivery dispatch | `introduction.Dispatch`, `introduction.RecoveryOwner` (extracted) | Dispatch owns context-local waiter registration, one consumer gate, routing and waiter cleanup; recovery owns its exact generation, buffered capsule, deadline refusal and waiter/retirement handoff through `RecoveryBinding`. Slot transitions use the Context lock; Context checks live job and publication authority and joins claimed Route deliveries. |
+| Introduction exchange reservations | `introduction.ExchangeSet` (extracted) | Own active exchange membership, retention and shutdown cancellation under the Context lock; Context checks job authority and joins terminal completion. |
+| Job and worker | `jobIdentity`, `workerLifetime` (root), `internal/endpoint/worker` | Context retains the job reservation and the launch permission; the worker package owns the installed mechanism — manager queries, properties, instance observation, artifact, activation socket, cgroup pinning and verified stop — serving both text and stream-qualification inventories. The lifetime stays in Endpoint because it consumes Context authority callbacks for retirement and joined cleanup. |
+| Service TLS | `internal/endpoint/service` (`tls.go`, `attachment_tls.go`) | Shared Instance authentication, handshake, and exporter handoff have one Linux-only implementation. The selected protected path fixes X25519MLKEM768/X25519 groups and the authenticated Route retirement witness; the earlier generic Service path was retired per ADR-0092. |
+| Protected Service Connection | root `serviceBinding` (implements `service.Binding`, 14 methods) + `service.Stream` (extracted mechanism) | Context admits the exact Job and publication; the binding rechecks immutable authority and owns Route recovery orchestration (`service_route_recovery.go`). The Attachment owner authenticates the first transport and each replacement, owns physical transport retirement, returns the Publisher lease to stream cleanup, and closes replacement transport on failure. The stream owns the logical Connection, Application half-close, and terminal join. Binding authority, role orchestration, and job identity remain in the root by design; the subpackage cannot establish reachability or reinterpret a workload on its own. |
 
 The Context coordinates cancellation and join of Publication's opening and
 withdrawal flights, refresh, resolution, and Introduction exchanges. These
 lifetimes do not become separate modules merely because they have distinct
 files. The shutdown dependency order is defined by
-`text_context_retirement.go` and the maintained technical contract in
-`docs/technical/endpoint-service-runtime.md`.
+`duty_context_retirement.go` — `stopDutyContextChildrenLocked` revokes every
+child under `dutyContext.mu`, then `join()` runs outside the lock in the
+fixed order: Source opening → Introduction opening → Responder opening →
+registration opening → refresh → publication → Introduction prefix close →
+Responder prefix close → Source prefix close → issuance → resolution →
+withdrawal → exchanges → Job last (so its root reservation and first cleanup
+error survive until every child is terminal). The maintained technical
+contract stays in `docs/technical/endpoint-service-runtime.md`.
 
 ## Target code shape
 
@@ -155,58 +212,141 @@ files. The shutdown dependency order is defined by
    package imports or speculative interfaces.
 3. Extract a package only when it has one cohesive resource or lifecycle, a
    small caller-facing contract, a non-test caller, and an import graph with no
-   cycle. A new package gets `doc.go`, behavior tests, and a package-map entry
-   in the same change.
+   cycle. A new package gets `doc.go` (with `//go:build linux` when the whole
+   package is Linux-only — an untagged `doc.go` makes the package
+   Windows-visible and breaks the profile-membership architecture gate),
+   behavior tests, and a package-map entry in the same change.
 4. Keep the extracted `internal/endpoint/tokenjournal` as the durable
    attempt owner. Endpoint supplies only the selected token and its binding;
    the journal owns replay/time floors and persisted receipts through
    `durableroot`. Its integration tests read durable bytes independently.
 5. Keep the text workload name on code that really depends on the selected
-   text Application. Use responsibility names for mechanisms only after their
-   ownership is clear. A bulk `text_` to `participant_` rename is not the
-   architecture change. The protected Service TLS policy and Route-retirement
-   adapter use `protected_service_tls.go`; the workload-bound stream composition
-   remains in `text_service_stream.go`.
+   text Application. Production identifiers in the Endpoint root carry
+   domain names after the in-package rename series; the remaining legitimate
+   `text` surface is the workload-bound Application protocol
+   (`internal/application/textdocument`), error-message strings, the
+   `text_worker_installed` build tag, the `text` CLI surface, and
+   `plan.TextTokenRoot` — each a product decision, not a rename target.
+   The workload-bound stream composition now lives in
+   `internal/endpoint/service/stream.go`; the protected Service TLS policy
+   and Route-retirement adapter live beside it in the same package.
 
-## Slice order
+## Completed slices
 
-The decomposition proceeds in completed, locally verified slices; each slice
-is one coherent commit series on the Endpoint work branch:
+Each slice was one coherent commit series, locally verified and integrated
+into `dev` through the single integrator; evidence is recorded in
+`ardents-coordination/endpoint.md` (§-entries) — this plan does not duplicate
+hashes:
 
-1. **Worker extraction** (completed in this branch): the installed mechanism
-   lives in `internal/endpoint/worker` per the boundary contract above.
-   Endpoint kept the launch permission, the activation gate, the readiness
-   exchange, and the lifetime/Grant binding; `worker.Activate` performs the
-   mechanism sequence in the original check and failure order and reports a
-   dialed-but-failed activation through its result so Endpoint cleanup keeps
-   its exact position. Mechanism unit tests moved with their production owner;
-   the installed Ubuntu-host batteries still drive the exported surface from
-   `internal/endpoint`.
-2. **Qualification separation** (completed in this branch): the qualification
-   scenario orchestration — hosting reservation and sampling cadence, Reader
-   setup pacing and connection management, Publisher set serving, and the
-   replenishment boundary — lives in `internal/qualification` per the boundary
-   contract above. Endpoint kept participant composition and validation,
-   launch authority binding, the permission handover, and the three retained
-   token operations as Context methods; the scenario consumes them through
-   the `Session` interface that Endpoint implements, with the exact original
-   check and failure order preserved. Behavior tests moved with their
-   production owner; the installed Ubuntu-host batteries still drive the
-   exported qualification surface from `internal/endpoint`. This ran
-   **before** the Context decomposition so the private `textContext` surface
-   shrank first; no `qualificationrun` package was created.
-3. **Context decomposition** (current slice): move state together with its
-   operations and its stop responsibility out of `textContext` into the
-   corresponding owners, in
-   sub-slices that are each separately committed: publication, Source and
+1. **Worker extraction**: installed mechanism in `internal/endpoint/worker`
+   per the boundary contract above; Endpoint kept launch permission, the
+   activation gate, the readiness exchange, and the lifetime/Grant binding.
+2. **Qualification separation**: scenario orchestration in
+   `internal/qualification` behind the consumer-side `Session` seam.
+3. **dutyContext decomposition (sub-slices 3a–3e)**: publication, Source and
    network prefixes, Introduction acceptance and exchanges, permission and
-   token acquisition, current operation and completion. The Context remains
-   the admission and shared-retirement coordinator. Mixed responsibilities
-   are fixed inside their sub-slice — `text_source_state.go` currently
-   computes eligible participants, opens the Entry, and closes the Entry with
-   the token journal; participant computation and Entry lifecycle separate in
-   the Source sub-slice. The `text_` prefix retires as substantive packages
-   appear, not by bulk rename.
+   token acquisition, and operation/completion state each moved together with
+   their operations into named private owners (`publicationOwner`,
+   `introductionOwner`, `tokens.Owner`, unified `operationFlight`,
+   `rolePrefixCore`).
+4. **In-package rename series (A1–A11)**: production `text_*` identifiers
+   renamed to domain names; `textContext` → `dutyContext`; files git-mv'd.
+5. **Subpackage extraction series**: `tokens/` → `publication/` → `source/`
+   → `introduction/` → `service/`, each behind a consumer-side seam
+   (`tokens.Host`, injected rotation callback, `source` acquisition joins,
+   `introduction.Host`+`RecoveryBinding`, `service.Binding`), error strings
+   byte-identical, package-map rows added in the same commits.
+6. **Installed-tag cure + compile gate**: the `text_worker_installed` test
+   surface repaired after the worker extraction and cross-compiled in every
+   quick-check/check via `installed-tag-compile-check` (target-specific
+   `export GOOS/GOARCH` — inline recipe env prefixes are not portable across
+   Windows make shells).
+
+## Remaining-slice ledger (bounded)
+
+Per Node's 2026-09-28 status review, each remaining slice is recorded by
+state owner, interface, shutdown order, affected tests, and integration gate
+— not by file counts or unmeasured percentages. Structural acceptance of #45
+is distinct from the #309/#311 bug fixes, protocol choices, and installed
+systemd/cgroup qualification.
+
+### L1 — dutyContext dissolution (phase 2; the remaining structural core)
+
+- **State owner**: `dutyContextState` still holds publication, introduction
+  (root aggregate over the extracted mechanisms), responder, resolution,
+  source set/gate, tokens owner, and job identity under the shared `mu`;
+  108 `*dutyContext` method declarations span 37 root files. Each proposed
+  seam is evaluated by state, invariant, callers, and close owner — not by
+  method/file counts.
+- **Interface**: candidate seams follow the established pattern (consumer-side
+  interface implemented by the root: `tokens.Host`, `introduction.Host`,
+  `service.Binding` precedents). No extraction without a non-test caller.
+- **Shutdown order**: pinned by `duty_context_retirement.go` `join()` (exact
+  order quoted above); any dissolution preserves it step-for-step.
+- **Affected tests**: root fixture family (`duty_context_test.go`
+  `beginTestJob`/`admittedDutyContext`/`dutyContextEndpoint`), the composition
+  helpers (`worker_composition_linux_test.go`), and every family consuming
+  `liveCapsuleJob` (~20 files); behavior tests stay beside their production
+  owner as they move.
+- **Integration gate**: per slice — commit-hook quick-check (includes the
+  installed-tag compile gate), targeted Linux Docker battery in a claimed
+  host-wide serialized window, then the integration owner's combined full
+  `make check` before `dev` fast-forward.
+
+### L2 — test-audit consolidation (mechanical)
+
+- **State owner**: none (test-tree only). Proposal list with per-file
+  verdicts delivered to PO (0 deletions proposed); Node confirmed mechanical
+  consolidation within the accepted contract needs no PO checkpoint —
+  behavior/coverage decisions (e.g. tagging `heapdump_parser_test.go`) are
+  escalated to PO explicitly.
+- **Interface**: n/a. **Shutdown order**: n/a.
+- **Affected tests**: 6 merges (worker installed helper files into their sole
+  consumers; service recovery 3→1; introduction handover+boundary→capsule;
+  publication initial_ack→loss; optional publisher start+withdraw), 2 single-
+  test moves (Admission rate test → `introduction/`, retiring
+  `testsupport.SeedReplay`; RefreshFailureStage test → `publication/`), and
+  fixture-file renames. Constraints: the retained-setup `!race`/`race` pair
+  changes together; package-visible helpers with external consumers survive
+  every rename.
+- **Integration gate**: same as L1 (commits wait for the shared window to be
+  free so commit-hook quick-check does not contend with other owners'
+  timing-sensitive gates).
+
+### L3 — seam-surface review (Binding depth, fixture retirement)
+
+- **State owner**: n/a (design review). Scope: `service.Binding` (14 methods)
+  depth/locality — a one-implementation interface is not forbidden by itself,
+  but each method must justify crossing the seam; and the fixture-only
+  exports (`service/testsupport.go` 7 allowlist symbols,
+  `introduction/testsupport.go` 20, `source/testsupport.go` 3) with their
+  recorded retirement condition: the test-audit slice reworks whitebox
+  fixtures onto production seams, then the allowlist entries are removed.
+- **Integration gate**: review notes published in `endpoint.md`; code changes
+  (if any) ride L1/L2 slices.
+
+### L4 — #309/#311 (separate bug fixes, not structural acceptance)
+
+- **#309**: terminal-receipt recovery TOCTOU in `RunBounded` success
+  aggregation — fix territory is shared `internal/service/connection`;
+  requires an ownership agreement before fix edits. Phase-2 RED reproduction
+  first, in a claimed quiet window.
+- **#311**: administration-socket timeout — Windows AF_UNIX server readiness
+  stall; busy-snapshot refusal closes with unread bytes (documented RST
+  hazard). Reproduction is Windows-light but timing-sensitive: runs only when
+  no other owner holds the heavy window.
+- Rules: no retry/skip/quarantine; fix only the confirmed owner with a
+  deterministic regression; do not suppress EOF/integrity; do not change
+  deadlines before reproduction.
+
+### L5 — protocol cure (awaits PO decision)
+
+- Structural phase (no wire-semantic change) can proceed inside Endpoint
+  call-site territory; semantic phase touches shared packages
+  (`internal/route` — 75 consumer files across Node and Network;
+  `internal/service/connection`; `internal/application/*`) and needs a
+  PO-assigned executor. Protected surface (PO product decisions): CLI,
+  `plan.TextTokenRoot`, error strings, `text_worker_installed` tag.
 
 ## Tests and diagnostics
 
@@ -227,9 +367,9 @@ a private observation owner serializes output and retains the first such failure
 
 ## Integration rule for this worktree
 
-The Endpoint branch and the parallel Node branch (`codex/node-decomposition`
-in the main checkout) both start from `dev` and integrate back into `dev`
-through the Node implementer as single integrator. Rules:
+The Endpoint branch (`refactor/endpoint-decomposition`) starts from `dev`
+and integrates back into `dev` through the Node implementer as single
+integrator. Rules:
 
 - Integrate only completed, locally verified slices; never integrate half of
   a slice. Keep unfinished work in its own tree as temporary WIP commits —
@@ -239,10 +379,11 @@ through the Node implementer as single integrator. Rules:
   repository-wide rules — have one assigned owner per bounded change; the
   other implementer states the required contract and proceeds with
   independent work.
-- Both implementers read `ardents-coordination/assignments.md` and both
+- All implementers read `ardents-coordination/assignments.md` and the owner
   status files before starting a slice, editing a shared interface, or
   integrating; each writes only its own status file.
-- Per slice run the targeted checks for the touched packages; the combined
-  gate (Windows suite plus the docker linux battery, the exact Ubuntu
-  candidate, and both selected Carriers where affected) runs before merging
-  into `dev`, not twice in parallel per implementer.
+- One heavy host/Docker window at a time, host-wide; claims and releases are
+  recorded in the owner files. Per slice run the targeted checks for the
+  touched packages; the combined gate (Windows suite plus the docker linux
+  battery, the exact candidate, and both selected Carriers where affected)
+  runs before merging into `dev`, not twice in parallel per implementer.
