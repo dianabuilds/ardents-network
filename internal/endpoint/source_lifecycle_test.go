@@ -13,7 +13,7 @@ import (
 
 // These helpers let package tests force the Route's finite lifetime. They are
 // deliberately absent from the production read-only Source handle.
-func (handle *textSourceHandle) Close() error {
+func (handle *sourceHandle) Close() error {
 	prefix, err := handle.routePrefix()
 	if err != nil {
 		return err
@@ -21,7 +21,7 @@ func (handle *textSourceHandle) Close() error {
 	return prefix.Close()
 }
 
-func (handle *textSourceHandle) Done() <-chan struct{} {
+func (handle *sourceHandle) Done() <-chan struct{} {
 	prefix, err := handle.routePrefix()
 	if err != nil {
 		done := make(chan struct{})
@@ -31,46 +31,46 @@ func (handle *textSourceHandle) Done() <-chan struct{} {
 	return prefix.Done()
 }
 
-func (handle *textSourceHandle) ResolutionRecipient() ([32]byte, error) {
+func (handle *sourceHandle) ResolutionRecipient() ([32]byte, error) {
 	return handle.resolutionRecipient()
 }
 
-func (handle *textSourceHandle) ExchangeDescriptor(ctx context.Context, present client.ClosedTokenPresenter,
+func (handle *sourceHandle) ExchangeDescriptor(ctx context.Context, present client.ClosedTokenPresenter,
 	target [32]byte, descriptor []byte) (uint8, []byte, error) {
 	return handle.exchangeDescriptor(ctx, present, target, descriptor)
 }
 
-func (handle *textSourceHandle) SubmissionRecipient() ([32]byte, error) {
+func (handle *sourceHandle) SubmissionRecipient() ([32]byte, error) {
 	return handle.submissionRecipient()
 }
 
-func (handle *textSourceHandle) SubmitIntroduction(ctx context.Context, present client.ClosedTokenPresenter,
+func (handle *sourceHandle) SubmitIntroduction(ctx context.Context, present client.ClosedTokenPresenter,
 	operation []byte) (uint8, error) {
 	return handle.submitIntroduction(ctx, present, operation)
 }
 
-func (handle *textSourceHandle) DataJoinRecipient() ([32]byte, uint64, time.Time, error) {
+func (handle *sourceHandle) DataJoinRecipient() ([32]byte, uint64, time.Time, error) {
 	return handle.dataJoinRecipient()
 }
 
-func (handle *textSourceHandle) Join(ctx context.Context, present client.ClosedTokenPresenter,
+func (handle *sourceHandle) Join(ctx context.Context, present client.ClosedTokenPresenter,
 	intent client.ClosedJoinIntent) (*client.ClosedJoinedStream, error) {
 	return handle.join(ctx, present, intent)
 }
 
-func (handle *textSourceHandle) ExchangeIssuer(ctx context.Context, present client.ClosedTokenPresenter,
+func (handle *sourceHandle) ExchangeIssuer(ctx context.Context, present client.ClosedTokenPresenter,
 	batch []byte) (client.ClosedIssuanceExchangeResult, error) {
 	return handle.exchangeIssuer(ctx, present, batch)
 }
 
-func (handle *textSourceHandle) Replenish(ctx context.Context, present client.ClosedTokenPresenter) error {
+func (handle *sourceHandle) Replenish(ctx context.Context, present client.ClosedTokenPresenter) error {
 	return handle.replenish(ctx, present)
 }
 
 func TestTextSourceHandleRejectsUseAfterIdleRetirement(t *testing.T) {
 	endpoint, owner, _ := startTextRoleNetwork(t, textRoleNetworkFixture{carrier: carrier.ClosedCarrierTCP})
 	defer func() { _ = endpoint.Close() }()
-	handle, err := owner.openTextPrefix(t.Context())
+	handle, err := owner.openPrefix(t.Context())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -78,7 +78,7 @@ func TestTextSourceHandleRejectsUseAfterIdleRetirement(t *testing.T) {
 		t.Fatal(err)
 	}
 	owner.mu.Lock()
-	err = owner.retireTextPrefixLocked()
+	err = owner.retirePrefixLocked()
 	retired := owner.source.currentLocked() == nil
 	owner.mu.Unlock()
 	if err != nil || !retired {

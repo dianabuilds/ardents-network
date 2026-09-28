@@ -20,7 +20,7 @@ import (
 
 // Explicit State/qualified-launch fixtures isolate set ownership. The tests
 // use the actual Entry and local-duty roots, not enrollment/host qualification.
-type textSourceStateFixture struct {
+type sourceStateFixture struct {
 	issuePermission    func(*testing.T, *textContext, [3]uint32)
 	issueRawPermission func(*testing.T, []byte, [32]byte) []byte
 	mu                 sync.Mutex
@@ -28,27 +28,27 @@ type textSourceStateFixture struct {
 	snapshot           state.Snapshot
 }
 
-func (source *textSourceStateFixture) CurrentClosedProfile() (state.ClosedProfileView, error) {
+func (source *sourceStateFixture) CurrentClosedProfile() (state.ClosedProfileView, error) {
 	source.mu.Lock()
 	defer source.mu.Unlock()
 	return source.view.Profile, nil
 }
-func (source *textSourceStateFixture) CurrentClosedRoute() (state.ClosedRouteView, error) {
+func (source *sourceStateFixture) CurrentClosedRoute() (state.ClosedRouteView, error) {
 	source.mu.Lock()
 	defer source.mu.Unlock()
 	return source.view, nil
 }
-func (source *textSourceStateFixture) Current() (state.Snapshot, error) {
+func (source *sourceStateFixture) Current() (state.Snapshot, error) {
 	source.mu.Lock()
 	defer source.mu.Unlock()
 	return source.snapshot, nil
 }
 
-func textSourceContextFixture(t *testing.T) (*endpoint, *textContext, *textSourceStateFixture) {
+func sourceContextFixture(t *testing.T) (*endpoint, *textContext, *sourceStateFixture) {
 	t.Helper()
 	now := time.Now().UTC()
 	window := now.Truncate(time.Hour)
-	source := &textSourceStateFixture{}
+	source := &sourceStateFixture{}
 	// The selected State outlives bounded registrations even near the hour
 	// boundary; holder permissions still keep their exact one-hour window.
 	profile := state.ClosedProfileView{NetworkID: fixtureID(222), StateGeneration: fixtureID(223), StateDigest: fixtureID(224), Digest: fixtureID(225),
@@ -103,7 +103,7 @@ func textSourceContextFixture(t *testing.T) (*endpoint, *textContext, *textSourc
 	return endpoint, owner, source
 }
 
-func selectTextSource(t *testing.T, owner *textContext) client.ClosedBootstrapSelection {
+func selectSource(t *testing.T, owner *textContext) client.ClosedBootstrapSelection {
 	t.Helper()
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
@@ -115,8 +115,8 @@ func selectTextSource(t *testing.T, owner *textContext) client.ClosedBootstrapSe
 }
 
 func TestTextSourceSetsSurviveWorkerLossAndKeepContextOwnership(t *testing.T) {
-	endpoint, owner, _ := textSourceContextFixture(t)
-	selected := selectTextSource(t, owner)
+	endpoint, owner, _ := sourceContextFixture(t)
+	selected := selectSource(t, owner)
 	original := *owner.source.set
 	job, err := beginTextTestJob(t, owner, endpoint, broker.Connection)
 	if err != nil {
@@ -126,11 +126,11 @@ func TestTextSourceSetsSurviveWorkerLossAndKeepContextOwnership(t *testing.T) {
 	if err := owner.finishJobCleanup(job, nil); err != nil {
 		t.Fatal(err)
 	}
-	if repeated := selectTextSource(t, owner); repeated != selected || *owner.source.set != original {
+	if repeated := selectSource(t, owner); repeated != selected || *owner.source.set != original {
 		t.Fatal("worker loss rotated source sets")
 	}
 	publisher := permissionContextFixture(t, endpoint, fixtureID(211), broker.Administration)
-	publisherSelection := selectTextSource(t, publisher)
+	publisherSelection := selectSource(t, publisher)
 	if publisher.source.set == owner.source.set || publisherSelection.EntryNodeID != selected.EntryNodeID {
 		t.Fatal("context scope or installation Entry retention lost")
 	}
@@ -140,14 +140,14 @@ func TestTextSourceSetsSurviveWorkerLossAndKeepContextOwnership(t *testing.T) {
 	if owner.source.set != nil {
 		t.Fatal("closed context retained Interior selection")
 	}
-	if repeated := selectTextSource(t, publisher); repeated != publisherSelection {
+	if repeated := selectSource(t, publisher); repeated != publisherSelection {
 		t.Fatal("reader close changed Publisher source set")
 	}
 }
 
 func TestTextSourceWithdrawalCannotResampleInterior(t *testing.T) {
-	_, owner, source := textSourceContextFixture(t)
-	selected := selectTextSource(t, owner)
+	_, owner, source := sourceContextFixture(t)
+	selected := selectSource(t, owner)
 	retained := *owner.source.set
 	source.mu.Lock()
 	for index := range source.snapshot.Candidates[:source.snapshot.CandidateCount] {
@@ -165,7 +165,7 @@ func TestTextSourceWithdrawalCannotResampleInterior(t *testing.T) {
 }
 
 func TestTextSourceRejectsCrossProjectionStateBeforeSelection(t *testing.T) {
-	endpoint, owner, source := textSourceContextFixture(t)
+	endpoint, owner, source := sourceContextFixture(t)
 	source.snapshot.Digest[0] ^= 1
 	owner.mu.Lock()
 	_, err := owner.selectTextBootstrapLocked()

@@ -98,7 +98,7 @@ func (endpoint *endpoint) Close() error {
 		return nil
 	}
 	endpoint.admission.Close()
-	textErr := errors.Join(endpoint.closeTextContexts(), endpoint.closeTextSourceRoots())
+	textErr := errors.Join(endpoint.closeTextContexts(), endpoint.closeSourceRoots())
 	if endpoint.publications == nil {
 		return textErr
 	}

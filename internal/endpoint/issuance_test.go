@@ -20,7 +20,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/route/credential"
 )
 
-func prepareIssuancePermission(t *testing.T, owner *textContext, source *textSourceStateFixture) string {
+func prepareIssuancePermission(t *testing.T, owner *textContext, source *sourceStateFixture) string {
 	t.Helper()
 	_, private, err := ed25519.GenerateKey(rand.Reader)
 	if err != nil {
@@ -30,7 +30,7 @@ func prepareIssuancePermission(t *testing.T, owner *textContext, source *textSou
 	return prepareIssuancePermissionWithIdentity(t, owner, source, private, [3]uint32{0, 32, 0})
 }
 
-func prepareIssuancePermissionWithIdentity(t *testing.T, owner *textContext, source *textSourceStateFixture, private ed25519.PrivateKey, maxima [3]uint32) string {
+func prepareIssuancePermissionWithIdentity(t *testing.T, owner *textContext, source *sourceStateFixture, private ed25519.PrivateKey, maxima [3]uint32) string {
 	t.Helper()
 	public := private.Public().(ed25519.PublicKey)
 	vault, err := custody.Open(custody.VaultConfig{Root: t.TempDir(), Now: time.Now})
@@ -100,7 +100,7 @@ func prepareIssuancePermissionWithIdentity(t *testing.T, owner *textContext, sou
 // network opener. No server is listening in this failure fixture: it verifies
 // ownership of failed/retried requests, not successful network qualification.
 func TestTextIssuanceRetainsExactPendingBatchAcrossFailedAttempts(t *testing.T) {
-	_, owner, source := textSourceContextFixture(t)
+	_, owner, source := sourceContextFixture(t)
 	prepareIssuancePermission(t, owner, source)
 	receiver := source.view.Nodes[0].NodeID
 	attempt := func() error {
@@ -141,7 +141,7 @@ func TestTextIssuanceRetainsExactPendingBatchAcrossFailedAttempts(t *testing.T) 
 }
 
 func TestTextPermissionRevocationDefersActiveBatchDiscardUntilOperationCompletion(t *testing.T) {
-	_, owner, source := textSourceContextFixture(t)
+	_, owner, source := sourceContextFixture(t)
 	prepareIssuancePermission(t, owner, source)
 	receiver := source.view.Nodes[0].NodeID
 	ctx, cancel := context.WithTimeout(t.Context(), 2*time.Second)
@@ -184,7 +184,7 @@ func TestTextPermissionRevocationDefersActiveBatchDiscardUntilOperationCompletio
 }
 
 func TestTextRecoveryIssuanceCancellationDiscardsBatchWithoutRefund(t *testing.T) {
-	_, owner, source := textSourceContextFixture(t)
+	_, owner, source := sourceContextFixture(t)
 	prepareIssuancePermission(t, owner, source)
 	listener, err := net.ListenTCP("tcp", &net.TCPAddr{IP: net.IPv4(127, 0, 0, 1)})
 	if err != nil {
@@ -240,7 +240,7 @@ func TestTextRecoveryIssuanceCancellationDiscardsBatchWithoutRefund(t *testing.T
 }
 
 func TestTextIssuanceRequiresPermissionBeforeSelectingAnyPeers(t *testing.T) {
-	endpoint, owner, source := textSourceContextFixture(t)
+	endpoint, owner, source := sourceContextFixture(t)
 	if err := owner.issueTokens(t.Context(), [][32]byte{source.view.Nodes[0].NodeID}, 2); err == nil {
 		t.Fatal("missing permission admitted")
 	}
@@ -258,7 +258,7 @@ func TestTextIssuanceRequiresPermissionBeforeSelectingAnyPeers(t *testing.T) {
 }
 
 func TestTextIssuanceRevocationBeforeDelayedCompletionJoinsTransport(t *testing.T) {
-	_, owner, source := textSourceContextFixture(t)
+	_, owner, source := sourceContextFixture(t)
 	prepareIssuancePermission(t, owner, source)
 	listener, err := net.ListenTCP("tcp", &net.TCPAddr{IP: net.IPv4(127, 0, 0, 1)})
 	if err != nil {
@@ -341,13 +341,13 @@ func TestTextIssuanceRevocationBeforeDelayedCompletionJoinsTransport(t *testing.
 }
 
 func TestTextPrefixPreparesBothReceiversInOneRetryableBatch(t *testing.T) {
-	_, owner, source := textSourceContextFixture(t)
+	_, owner, source := sourceContextFixture(t)
 	prepareIssuancePermission(t, owner, source)
 	attempt := func() {
 		t.Helper()
 		ctx, cancel := context.WithTimeout(t.Context(), 2*time.Second)
 		defer cancel()
-		prefix, err := owner.openTextPrefix(ctx)
+		prefix, err := owner.openPrefix(ctx)
 		if prefix != nil || err == nil {
 			if prefix != nil {
 				_ = prefix.Close()
@@ -384,7 +384,7 @@ func TestTextPrefixPreparesBothReceiversInOneRetryableBatch(t *testing.T) {
 }
 
 func TestTextIssuerStockRetryRetainsOriginalInternalBatch(t *testing.T) {
-	_, owner, source := textSourceContextFixture(t)
+	_, owner, source := sourceContextFixture(t)
 	certificate, _ := testCertificate(t, 391, "issuer-stock-retry")
 	private := certificate.PrivateKey.(ed25519.PrivateKey)
 	defer clear(private)

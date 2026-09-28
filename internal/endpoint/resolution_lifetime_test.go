@@ -18,26 +18,26 @@ import (
 
 // Pause only the public State read before recipient selection. The test proves
 // the real lookup flight is cancelled and joined, not an installed-host claim.
-type textPausedResolutionState struct {
+type pausedResolutionState struct {
 	active atomic.Bool
-	*textSourceStateFixture
+	*sourceStateFixture
 	entered chan struct{}
 	release chan struct{}
 	once    sync.Once
 }
 
-func (source *textPausedResolutionState) CurrentClosedRoute() (state.ClosedRouteView, error) {
+func (source *pausedResolutionState) CurrentClosedRoute() (state.ClosedRouteView, error) {
 	if source.active.Load() {
 		source.once.Do(func() { close(source.entered); <-source.release })
 	}
-	return source.textSourceStateFixture.CurrentClosedRoute()
+	return source.sourceStateFixture.CurrentClosedRoute()
 }
 
 func TestTextResolutionCloseJoinsInFlightStateSelection(t *testing.T) {
 	endpoint, owner, source := startTextRoleNetwork(t, textRoleNetworkFixture{carrier: carrier.ClosedCarrierTCP, resolution: true})
-	paused := &textPausedResolutionState{textSourceStateFixture: source, entered: make(chan struct{}), release: make(chan struct{})}
+	paused := &pausedResolutionState{sourceStateFixture: source, entered: make(chan struct{}), release: make(chan struct{})}
 	endpoint.closedState = paused
-	prefix, err := owner.openTextPrefix(t.Context())
+	prefix, err := owner.openPrefix(t.Context())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -57,7 +57,7 @@ func TestTextResolutionCloseJoinsInFlightStateSelection(t *testing.T) {
 		t.Fatal("resolution did not reach State selection")
 	}
 	owner.mu.Lock()
-	acquisition, acquired := owner.resolution.source.(*textSourceResolutionAcquisition)
+	acquisition, acquired := owner.resolution.source.(*sourceResolutionAcquisition)
 	owner.mu.Unlock()
 	if !acquired || acquisition == nil {
 		t.Fatal("lookup did not own an exact Source acquisition")
@@ -110,13 +110,13 @@ func TestTextResolutionCompletionRetainsFailedCleanup(t *testing.T) {
 	owner := admittedTextContext(t, endpoint, principal, broker.Connection)
 	attempt, cancel := context.WithCancel(owner.lease.Context())
 	defer cancel()
-	flight := &textResolutionFlight{context: attempt, cancel: cancel, done: make(chan struct{})}
+	flight := &resolutionFlight{context: attempt, cancel: cancel, done: make(chan struct{})}
 	owner.mu.Lock()
 	owner.resolution = flight
 	owner.mu.Unlock()
 	original := errors.New("terminal CLOSE could not be emitted")
 	failure := errors.Join(client.ErrClosedSourceCleanup, original)
-	owner.finishTextResolution(flight, failure)
+	owner.finishResolution(flight, failure)
 	if endpoint.textAvailable() {
 		t.Fatal("cleanup failure left Endpoint accepting jobs")
 	}
@@ -134,11 +134,11 @@ func TestTextResolutionCompletionRetainsFailedCleanup(t *testing.T) {
 func TestTextResolutionOldAcquisitionCannotCommitAfterSourceReplacement(t *testing.T) {
 	endpoint, owner, source := startTextRoleNetwork(t, textRoleNetworkFixture{carrier: carrier.ClosedCarrierTCP, resolution: true})
 	defer func() { _ = endpoint.Close() }()
-	old, err := owner.openTextPrefix(t.Context())
+	old, err := owner.openPrefix(t.Context())
 	if err != nil {
 		t.Fatal(err)
 	}
-	target, raw := textResolutionProof(t, source)
+	target, raw := resolutionProof(t, source)
 	defer clear(raw)
 
 	owner.mu.Lock()
@@ -153,34 +153,34 @@ func TestTextResolutionOldAcquisitionCannotCommitAfterSourceReplacement(t *testi
 		t.Fatal("resolution acquisition unavailable")
 	}
 	attempt, cancel := context.WithCancel(owner.lease.Context())
-	flight := &textResolutionFlight{context: attempt, cancel: cancel, done: make(chan struct{}), source: acquisition, releaseSource: acquisition.release}
+	flight := &resolutionFlight{context: attempt, cancel: cancel, done: make(chan struct{}), source: acquisition, releaseSource: acquisition.release}
 	owner.resolution = flight
 	owner.mu.Unlock()
 	finished := false
 	defer func() {
 		if !finished {
 			cancel()
-			owner.finishTextResolution(flight, context.Canceled)
+			owner.finishResolution(flight, context.Canceled)
 		}
 	}()
-	if err := owner.prepareTextSourceReopen(t.Context(), flight); err != nil {
+	if err := owner.prepareSourceReopen(t.Context(), flight); err != nil {
 		t.Fatal(err)
 	}
 	if err := old.Close(); err != nil {
 		t.Fatal(err)
 	}
 	owner.mu.Lock()
-	err = owner.retireTextPrefixLocked()
+	err = owner.retirePrefixLocked()
 	owner.mu.Unlock()
 	if err != nil {
 		t.Fatal(err)
 	}
-	replacement, err := owner.openTextPrefix(t.Context())
+	replacement, err := owner.openPrefix(t.Context())
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	verified, commitErr := owner.acceptTextResolutionResult(t.Context(), flight, profile, target, raw)
+	verified, commitErr := owner.acceptResolutionResult(t.Context(), flight, profile, target, raw)
 	owner.mu.Lock()
 	committed := owner.descriptorHistory.Has(target)
 	retained := owner.source.currentLocked() == replacement && owner.resolution == flight
@@ -189,7 +189,7 @@ func TestTextResolutionOldAcquisitionCannotCommitAfterSourceReplacement(t *testi
 		t.Fatalf("old acquisition committed after replacement: err=%v committed=%v retained=%v", commitErr, committed, retained)
 	}
 	cancel()
-	owner.finishTextResolution(flight, commitErr)
+	owner.finishResolution(flight, commitErr)
 	finished = true
 	if acquisition.handle.Load() != nil {
 		t.Fatal("resolution completion retained its acquisition")

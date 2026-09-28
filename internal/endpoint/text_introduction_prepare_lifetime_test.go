@@ -14,7 +14,7 @@ import (
 // A real bootstrap TLS flight is held by a silent peer. Only job retirement
 // cancels the operation; the caller and independently authorized context live.
 func TestTextIntroductionPreparationRetirementInterruptsBootstrap(t *testing.T) {
-	endpoint, owner, source := textSourceContextFixture(t)
+	endpoint, owner, source := sourceContextFixture(t)
 	prepareIssuancePermission(t, owner, source)
 	listener, err := net.ListenTCP("tcp", &net.TCPAddr{IP: net.IPv4(127, 0, 0, 1)})
 	if err != nil {

@@ -231,7 +231,7 @@ func (owner *textContext) ensureQualificationIssuerReserve(ctx context.Context, 
 		// through the same retained-member bootstrap that opened it at job
 		// start. A concurrent opening or issuance flight already owns the
 		// refill; the next completed-stream boundary observes its result.
-		if _, openErr := owner.openTextPrefix(ctx); openErr != nil {
+		if _, openErr := owner.openPrefix(ctx); openErr != nil {
 			owner.mu.Lock()
 			inProgress := owner.source.currentLocked() != nil || owner.source.openingInProgressLocked() || owner.tokens.issuance != nil
 			owner.mu.Unlock()
@@ -250,7 +250,7 @@ func (owner *textContext) ensureQualificationIssuerReserve(ctx context.Context, 
 }
 
 func (owner *textContext) presentQualifiedRefill(ctx context.Context, job *textJobIdentity, hello ardp.Hello, class uint8) ([]byte, error) {
-	release, err := owner.acquireTextSourceOperation(ctx)
+	release, err := owner.acquireSourceOperation(ctx)
 	if err != nil {
 		return nil, err
 	}

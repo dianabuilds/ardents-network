@@ -13,17 +13,17 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/service/reachability"
 )
 
-type textResolutionFlight struct {
+type resolutionFlight struct {
 	context       context.Context
 	cancel        context.CancelFunc
 	done          chan struct{}
-	source        textResolutionSource
+	source        resolutionSource
 	releaseSource func()
 	receiver      [32]byte
 }
 
-type textResolutionSource interface {
-	currentLocked(*textSourceLifecycle) bool
+type resolutionSource interface {
+	currentLocked(*sourceLifecycle) bool
 	resolutionRecipient() ([32]byte, error)
 	exchangeDescriptor(context.Context, client.ClosedTokenPresenter, [32]byte, []byte) (uint8, []byte, error)
 }
@@ -51,7 +51,7 @@ func (owner *textContext) lookupDescriptor(ctx context.Context, target [32]byte)
 		return reachability.Verified{}, errors.New("text resolution Source unavailable")
 	}
 	attempt, cancel := context.WithCancel(owner.lease.Context())
-	flight := &textResolutionFlight{context: attempt, cancel: cancel, done: make(chan struct{}), source: source, releaseSource: source.release}
+	flight := &resolutionFlight{context: attempt, cancel: cancel, done: make(chan struct{}), source: source, releaseSource: source.release}
 	owner.resolution = flight
 	owner.mu.Unlock()
 	interrupted := make(chan struct{})
@@ -61,17 +61,17 @@ func (owner *textContext) lookupDescriptor(ctx context.Context, target [32]byte)
 		if !stop() {
 			<-interrupted
 		}
-		owner.finishTextResolution(flight, outcome)
+		owner.finishResolution(flight, outcome)
 	}()
 	receiver, err := flight.source.resolutionRecipient()
 	if err != nil {
 		return reachability.Verified{}, err
 	}
 	flight.receiver = receiver // Fixed before the synchronous presenter is reachable.
-	if err := owner.prepareTextSourceReopen(attempt, flight); err != nil {
+	if err := owner.prepareSourceReopen(attempt, flight); err != nil {
 		return reachability.Verified{}, err
 	}
-	if err := owner.ensureTextResolutionStock(flight); err != nil {
+	if err := owner.ensureResolutionStock(flight); err != nil {
 		return reachability.Verified{}, err
 	}
 	status, raw, err := flight.source.exchangeDescriptor(attempt, func(hello ardp.Hello, class uint8) ([]byte, error) {
@@ -81,10 +81,10 @@ func (owner *textContext) lookupDescriptor(ctx context.Context, target [32]byte)
 	if err != nil || status != 0 {
 		return reachability.Verified{}, errors.Join(errors.New("text private resolution unavailable"), err)
 	}
-	return owner.acceptTextResolutionResult(ctx, flight, profile, target, raw)
+	return owner.acceptResolutionResult(ctx, flight, profile, target, raw)
 }
 
-func (owner *textContext) acceptTextResolutionResult(caller context.Context, flight *textResolutionFlight,
+func (owner *textContext) acceptResolutionResult(caller context.Context, flight *resolutionFlight,
 	profile state.ClosedProfileView, target [32]byte, raw []byte) (reachability.Verified, error) {
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
@@ -96,7 +96,7 @@ func (owner *textContext) acceptTextResolutionResult(caller context.Context, fli
 	return owner.descriptorHistory.Accept(raw, target, profile.NetworkID, profile.Digest, now)
 }
 
-func (owner *textContext) presentResolutionToken(flight *textResolutionFlight, hello ardp.Hello, class uint8) ([]byte, error) {
+func (owner *textContext) presentResolutionToken(flight *resolutionFlight, hello ardp.Hello, class uint8) ([]byte, error) {
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
 	profile, now, err := owner.permissionProfileLocked()
@@ -115,7 +115,7 @@ func (owner *textContext) presentResolutionToken(flight *textResolutionFlight, h
 
 // Reuse only unspent stock for this exact current recipient/window. A retained
 // unfinished issuance batch must complete before another operation can use it.
-func (owner *textContext) ensureTextResolutionStock(flight *textResolutionFlight) error {
+func (owner *textContext) ensureResolutionStock(flight *resolutionFlight) error {
 	owner.mu.Lock()
 	profile, _, err := owner.permissionProfileLocked()
 	if err != nil || owner.resolution != flight || flight.source == nil || !flight.source.currentLocked(&owner.source) || flight.context.Err() != nil || owner.tokens.permission == nil {
@@ -130,7 +130,7 @@ func (owner *textContext) ensureTextResolutionStock(flight *textResolutionFlight
 	return owner.issueTokens(flight.context, [][32]byte{flight.receiver}, 1)
 }
 
-func (owner *textContext) finishTextResolution(flight *textResolutionFlight, outcome error) {
+func (owner *textContext) finishResolution(flight *resolutionFlight, outcome error) {
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
 	if flight.releaseSource != nil {

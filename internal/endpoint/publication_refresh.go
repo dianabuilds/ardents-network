@@ -283,8 +283,8 @@ func (owner *textContext) rotatePublication(flight *publicationRefresh, previous
 	if prefix == nil {
 		return refreshFailureAt("rotation-prefix", errors.New("text publication refresh prefix unavailable"))
 	}
-	if err := owner.prepareTextSourceReady(flight.context); err != nil {
-		return refreshFailureAt("rotation-source-"+textSourcePreparationFailureStage(err), err)
+	if err := owner.prepareSourceReady(flight.context); err != nil {
+		return refreshFailureAt("rotation-source-"+sourcePreparationFailureStage(err), err)
 	}
 	_, until, err := prefix.introductionRecipient()
 	if err != nil {

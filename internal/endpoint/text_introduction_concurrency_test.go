@@ -46,7 +46,7 @@ func TestTextIntroductionDeliversFourConcurrentReaders(t *testing.T) {
 		}
 	})
 	now := time.Now().UTC().Truncate(time.Second)
-	if _, err := publisher.openTextPrefix(t.Context()); err != nil {
+	if _, err := publisher.openPrefix(t.Context()); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := publisher.openTextIntroductionPrefix(t.Context()); err != nil {
@@ -74,7 +74,7 @@ func TestTextIntroductionDeliversFourConcurrentReaders(t *testing.T) {
 	// Keep bootstrap issuance outside the concurrent delivery trigger. This
 	// test isolates the Introduction failure observed after worker readiness.
 	for index, reader := range readers {
-		if _, err := reader.openTextPrefix(t.Context()); err != nil {
+		if _, err := reader.openPrefix(t.Context()); err != nil {
 			t.Fatalf("reader %d prefix: %v", index, err)
 		}
 		if index+1 < len(readers) {
@@ -173,7 +173,7 @@ func TestTextIntroductionDeliversFourConcurrentReaders(t *testing.T) {
 	}
 }
 
-func independentTextReaderFixture(t *testing.T, network [32]byte, source *textSourceStateFixture, requested ...[3]uint32) *textContext {
+func independentTextReaderFixture(t *testing.T, network [32]byte, source *sourceStateFixture, requested ...[3]uint32) *textContext {
 	t.Helper()
 	maxima := [3]uint32{64, 64, 0}
 	if len(requested) == 1 {

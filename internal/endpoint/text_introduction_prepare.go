@@ -44,7 +44,7 @@ func (owner *textContext) resolveTextIntroduction(ctx context.Context, job *text
 		return reachability.Verified{}, errors.New("text Introduction destination unavailable")
 	}
 	owner.mu.Lock()
-	if err := owner.retireTextPrefixLocked(); err != nil {
+	if err := owner.retirePrefixLocked(); err != nil {
 		owner.mu.Unlock()
 		return reachability.Verified{}, err
 	}
@@ -76,7 +76,7 @@ func (owner *textContext) resolveTextIntroduction(ctx context.Context, job *text
 	}
 	ctx = attempt
 	if needPrefix {
-		if _, err := owner.openTextPrefix(ctx); err != nil {
+		if _, err := owner.openPrefix(ctx); err != nil {
 			return reachability.Verified{}, err
 		}
 	}
@@ -172,7 +172,7 @@ func (owner *textContext) prepareResolvedTextIntroduction(ctx context.Context, j
 // work has exposed the earlier sealed bytes, so replacing them cannot create a
 // second wire attempt or weaken replay ownership.
 func (owner *textContext) refreshTextIntroduction(ctx context.Context, job *textJobIdentity,
-	attempt *textIntroductionAttempt, prefix *textSourceHandle) error {
+	attempt *textIntroductionAttempt, prefix *sourceHandle) error {
 	if owner == nil || ctx == nil || ctx.Err() != nil || attempt == nil ||
 		!attempt.binding.servesJob(owner, job) || prefix == nil ||
 		attempt.plaintext.AttachmentGeneration != 1 || attempt.submitted {

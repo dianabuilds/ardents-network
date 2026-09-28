@@ -57,7 +57,7 @@ type textReaderRoleObservation struct {
 
 type textReaderContextProcess struct {
 	t                           *testing.T
-	source                      *textSourceStateFixture
+	source                      *sourceStateFixture
 	input                       textReaderProcessInput
 	id, inputPath, exchangePath string
 	command                     *exec.Cmd
@@ -86,7 +86,7 @@ func awaitTextReaderBootstrapRetirement(t *testing.T) {
 	}
 }
 
-func startTextReaderContextProcess(t *testing.T, source *textSourceStateFixture, target [32]byte, expected []byte, output, id string) *textReaderContextProcess {
+func startTextReaderContextProcess(t *testing.T, source *sourceStateFixture, target [32]byte, expected []byte, output, id string) *textReaderContextProcess {
 	t.Helper()
 	source.mu.Lock()
 	input := textReaderProcessInput{Snapshot: source.snapshot, View: source.view, Target: target, Expected: append([]byte(nil), expected...)}
@@ -312,7 +312,7 @@ func (process *textReaderContextProcess) writeEvidence() textReaderContextEviden
 		RequestSHA256: hex.EncodeToString(requestHash[:]), PermissionSHA256: hex.EncodeToString(permissionHash[:]), HolderSHA256: hex.EncodeToString(holderHash[:]), PermissionIDHash: hex.EncodeToString(permissionIDHash[:]), Lookups: append([]textReaderLookupEvidence(nil), process.lookups...)}
 }
 
-func observeTextIndependentReaderContexts(t *testing.T, source *textSourceStateFixture, target [32]byte, expected []byte, output string) ([]textReaderContextEvidence, [32]byte) {
+func observeTextIndependentReaderContexts(t *testing.T, source *sourceStateFixture, target [32]byte, expected []byte, output string) ([]textReaderContextEvidence, [32]byte) {
 	t.Helper()
 	first := startTextReaderContextProcess(t, source, target, expected, output, "first")
 	defer first.stopAfterFailure()

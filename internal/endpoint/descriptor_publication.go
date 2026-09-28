@@ -70,7 +70,7 @@ func (owner *textContext) publishDescriptor(ctx context.Context) (verified reach
 		return verified, errors.New("text registration ended")
 	}
 	attempt, cancel := context.WithCancel(owner.lease.Context())
-	flight := &textResolutionFlight{context: attempt, cancel: cancel, done: make(chan struct{}), source: owner.source.currentLocked()}
+	flight := &resolutionFlight{context: attempt, cancel: cancel, done: make(chan struct{}), source: owner.source.currentLocked()}
 	owner.resolution = flight
 	owner.mu.Unlock()
 	interrupted := make(chan struct{})
@@ -81,7 +81,7 @@ func (owner *textContext) publishDescriptor(ctx context.Context) (verified reach
 			<-interrupted
 		}
 		outcome = errors.Join(outcome, ctx.Err())
-		owner.finishTextResolution(flight, outcome)
+		owner.finishResolution(flight, outcome)
 	}()
 	binding := endpoint.publisherBinding
 	lease, err := owner.acquirePublication(attempt, registered, binding, now)
@@ -138,10 +138,10 @@ func (owner *textContext) publishDescriptor(ctx context.Context) (verified reach
 		return reachability.Verified{}, err
 	}
 	flight.receiver = receiver
-	if err := owner.prepareTextSourceReopen(attempt, flight); err != nil {
+	if err := owner.prepareSourceReopen(attempt, flight); err != nil {
 		return reachability.Verified{}, errors.Join(errors.New("text publication Source token preparation failed"), err)
 	}
-	if err := owner.ensureTextResolutionStock(flight); err != nil {
+	if err := owner.ensureResolutionStock(flight); err != nil {
 		return reachability.Verified{}, errors.Join(errors.New("text publication resolution token preparation failed"), err)
 	}
 	status, _, err := flight.source.exchangeDescriptor(attempt, func(hello ardp.Hello, class uint8) ([]byte, error) {

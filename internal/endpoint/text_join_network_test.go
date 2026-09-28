@@ -17,7 +17,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/route/client"
 )
 
-func addTextDataJoinState(source *textSourceStateFixture) {
+func addTextDataJoinState(source *sourceStateFixture) {
 	source.view.NodeCount, source.snapshot.CandidateCount = 16, 16
 	source.view.Nodes[15] = state.ClosedRouteNodeView{NodeID: fixtureID(202), RecordDigest: fixtureID(203), DutyGeneration: 16, RoleDomain: 2, Subrole: 4}
 	candidate := source.snapshot.Candidates[4]
@@ -34,10 +34,10 @@ func TestTextRouteJoinConnectsSourceAndResponder(t *testing.T) {
 			endpoint, publisher, source := startTextRoleNetwork(t, textRoleNetworkFixture{carrier: carrier, resolution: true, publisher: true, join: true})
 			reader := permissionContextFixture(t, endpoint, fixtureID(211), broker.Connection)
 			source.issuePermission(t, reader, [3]uint32{64, 64, 0})
-			if _, err := reader.openTextPrefix(t.Context()); err != nil {
+			if _, err := reader.openPrefix(t.Context()); err != nil {
 				t.Fatal(err)
 			}
-			if _, err := publisher.openTextPrefix(t.Context()); err != nil {
+			if _, err := publisher.openPrefix(t.Context()); err != nil {
 				t.Fatal(err)
 			}
 			exchangeTextRouteData(t, reader, publisher, source.view.Nodes[15].NodeID, nil)

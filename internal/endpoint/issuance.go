@@ -15,7 +15,7 @@ import (
 // under owner.mu while cancellation interrupts and joins the transport tree.
 type tokenBatch struct {
 	refill     bool // Retained internal stock work; never receiver admission authority.
-	prefix     *textSourceHandle
+	prefix     *sourceHandle
 	challenges []credential.ClosedTokenContext
 	selection  client.ClosedBootstrapSelection
 	pending    *credential.PendingClosedTokenBatch
@@ -37,7 +37,7 @@ func (owner *textContext) issueRecoveryTokens(ctx context.Context, receivers [][
 
 func (owner *textContext) issueTokensWithCancellation(ctx context.Context, receivers [][32]byte, class uint8,
 	discardCanceled bool) error {
-	release, err := owner.acquireTextSourceOperation(ctx)
+	release, err := owner.acquireSourceOperation(ctx)
 	if err != nil {
 		return err
 	}
@@ -49,7 +49,7 @@ func (owner *textContext) issueTokensWithCancellation(ctx context.Context, recei
 // by the JOIN. A replacement may cancel this work but cannot become its issuer.
 func (owner *textContext) issueJoinTokens(ctx context.Context, receivers [][32]byte, class uint8,
 	acquisition textJoinAcquisition, discardCanceled bool) error {
-	release, err := owner.acquireTextSourceOperation(ctx)
+	release, err := owner.acquireSourceOperation(ctx)
 	if err != nil {
 		return err
 	}
@@ -79,7 +79,7 @@ func (owner *textContext) issueTokensForOpening(ctx context.Context, receivers [
 
 func (owner *textContext) issueTokensForOpeningWithCancellation(ctx context.Context, receivers [][32]byte, class uint8,
 	opening *textOperationFlight, refill bool, discardCanceled bool, acquisition textJoinAcquisition,
-	expected *textSourceHandle) error {
+	expected *sourceHandle) error {
 	if owner == nil || ctx == nil || ctx.Err() != nil || class < 1 || class > 3 || len(receivers) == 0 || len(receivers) > 32 {
 		return errors.New("text issuance context is unavailable")
 	}
@@ -148,7 +148,7 @@ func (owner *textContext) issueTokensForOpeningWithCancellation(ctx context.Cont
 	return operation.run(ctx, source, selection)
 }
 
-func joinIssuanceCurrentLocked(owner *textContext, acquisition textJoinAcquisition, expected *textSourceHandle) bool {
+func joinIssuanceCurrentLocked(owner *textContext, acquisition textJoinAcquisition, expected *sourceHandle) bool {
 	if acquisition == nil {
 		return true
 	}

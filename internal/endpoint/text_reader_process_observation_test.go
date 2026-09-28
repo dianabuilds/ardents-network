@@ -75,7 +75,7 @@ func runTextReaderObservationChild(t *testing.T, path string) {
 	if err := json.Unmarshal(raw, &input); err != nil {
 		t.Fatal(err)
 	}
-	endpoint, owner, source := textSourceContextFixture(t)
+	endpoint, owner, source := sourceContextFixture(t)
 	source.mu.Lock()
 	source.snapshot, source.view = input.Snapshot, input.View
 	source.mu.Unlock()
@@ -116,9 +116,9 @@ func runTextReaderObservationChild(t *testing.T, path string) {
 	}
 	// The opened prefix retains this wrapper. Keep it inactive while opening,
 	// then pause the actual resolution flight's State reread before selection.
-	paused := &textPausedResolutionState{textSourceStateFixture: source, entered: make(chan struct{}), release: make(chan struct{})}
+	paused := &pausedResolutionState{sourceStateFixture: source, entered: make(chan struct{}), release: make(chan struct{})}
 	endpoint.closedState = paused
-	if _, err := owner.openTextPrefix(t.Context()); err != nil {
+	if _, err := owner.openPrefix(t.Context()); err != nil {
 		t.Fatal(err)
 	}
 	for {
@@ -158,7 +158,7 @@ func textReaderProtocol(t *testing.T) *os.File {
 	return protocol
 }
 
-func textReaderLookupObservation(t *testing.T, owner *textContext, input textReaderProcessInput, encoder *json.Encoder, decoder *json.Decoder, paused *textPausedResolutionState, first bool) {
+func textReaderLookupObservation(t *testing.T, owner *textContext, input textReaderProcessInput, encoder *json.Encoder, decoder *json.Decoder, paused *pausedResolutionState, first bool) {
 	t.Helper()
 	var verified reachability.Verified
 	if first {
@@ -243,7 +243,7 @@ func textReaderLookupObservation(t *testing.T, owner *textContext, input textRea
 	}
 }
 
-func observeTextIndependentReader(t *testing.T, source *textSourceStateFixture, target [32]byte, expected []byte, output, carrier string) {
+func observeTextIndependentReader(t *testing.T, source *sourceStateFixture, target [32]byte, expected []byte, output, carrier string) {
 	t.Helper()
 	source.mu.Lock()
 	input := textReaderProcessInput{Snapshot: source.snapshot, View: source.view, Target: target, Expected: append([]byte(nil), expected...)}
@@ -349,8 +349,8 @@ func observeTextIndependentReader(t *testing.T, source *textSourceStateFixture, 
 	inputDigest, exchangeDigest := sha256.Sum256(inputBytes), sha256.Sum256(exchangeBytes)
 	boundaries := []textReaderLiveBoundary{
 		{Phase: "permission-imported", ObservedOwners: []string{"reader permission-import owner"}, UnobservedReceivingOwners: []string{"Resolution receiving owner"}, UnobservedAdmissionTLSOwners: []string{"Resolution admission owner", "Resolution role TLS owner"}},
-		{Phase: "protected-lookup-active", ObservedOwners: []string{"reader textResolutionFlight with retained Source prefix before Resolution recipient selection"}, UnobservedReceivingOwners: []string{"Resolution receiving owner"}, UnobservedAdmissionTLSOwners: []string{"Resolution admission owner", "Resolution role TLS owner"}},
-		{Phase: "response-received-before-close", ObservedOwners: []string{"reader textResolutionFlight verified response owner"}, UnobservedReceivingOwners: []string{"Resolution receiving owner"}, UnobservedAdmissionTLSOwners: []string{"Resolution admission owner", "Resolution role TLS owner"}},
+		{Phase: "protected-lookup-active", ObservedOwners: []string{"reader resolutionFlight with retained Source prefix before Resolution recipient selection"}, UnobservedReceivingOwners: []string{"Resolution receiving owner"}, UnobservedAdmissionTLSOwners: []string{"Resolution admission owner", "Resolution role TLS owner"}},
+		{Phase: "response-received-before-close", ObservedOwners: []string{"reader resolutionFlight verified response owner"}, UnobservedReceivingOwners: []string{"Resolution receiving owner"}, UnobservedAdmissionTLSOwners: []string{"Resolution admission owner", "Resolution role TLS owner"}},
 	}
 	receiptBytes, err := json.Marshal(textReaderLiveBoundaryReceipt{
 		Carrier:                  carrier,

@@ -38,7 +38,7 @@ func TestTextPublisherBuildsRetainedQualificationSetAcrossFourReaders(t *testing
 		config.ClosedForwarding.HostingRoot = qualificationHosting
 		config.ClosedDataJoin.HostingRoot = qualificationHosting
 	})
-	source, ok := reader.endpoint.closedState.(*textSourceStateFixture)
+	source, ok := reader.endpoint.closedState.(*sourceStateFixture)
 	if !ok {
 		t.Fatal("text qualification State fixture unavailable")
 	}
@@ -52,7 +52,7 @@ func TestTextPublisherBuildsRetainedQualificationSetAcrossFourReaders(t *testing
 	// the retained Introduction/JOIN set rather than the bootstrap refill gate.
 	time.Sleep(10 * time.Second)
 	for index, owner := range readers {
-		if _, err := owner.openTextPrefix(t.Context()); err != nil {
+		if _, err := owner.openPrefix(t.Context()); err != nil {
 			t.Fatalf("Reader %d prefix: %v", index, err)
 		}
 		if index+1 < len(readers) {

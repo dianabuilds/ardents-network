@@ -44,7 +44,7 @@ func TestTextPublisherCommitsInstanceSignedDescriptor(t *testing.T) {
 			}
 			endpoint.publisherBinding, endpoint.publications = binding, publisher
 			endpoint.authority = [32]byte(public)
-			if _, err := owner.openTextPrefix(t.Context()); err != nil {
+			if _, err := owner.openPrefix(t.Context()); err != nil {
 				t.Fatal(err)
 			}
 			if _, err := owner.openTextIntroductionPrefix(t.Context()); err != nil {

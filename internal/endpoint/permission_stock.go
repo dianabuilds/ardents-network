@@ -73,7 +73,7 @@ func (permission *permission) remaining(class uint8) uint32 {
 // State challenges; the permission alone changes its batch and quota state.
 func (permission *permission) reserveBatchLocked(profile state.ClosedProfileView, now time.Time,
 	challenges []credential.ClosedTokenContext, selection client.ClosedBootstrapSelection, refill bool,
-	current *textSourceHandle, joined bool, expected *textSourceHandle) (*tokenBatch, error) {
+	current *sourceHandle, joined bool, expected *sourceHandle) (*tokenBatch, error) {
 	if batch := permission.pending; batch != nil {
 		if batch.refill != refill || !slices.Equal(batch.challenges, challenges) || batch.selection != selection ||
 			joined && batch.prefix != expected ||

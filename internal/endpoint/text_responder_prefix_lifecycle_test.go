@@ -29,7 +29,7 @@ func (handle *textResponderPrefixHandle) Done() <-chan struct{} {
 
 func TestTextResponderCancelledOpeningDoesNotRetireIntroductionOrPublishPrefix(t *testing.T) {
 	owner := &textContext{}
-	introduction := &textIntroductionPrefixHandle{textRolePrefixHandleCore: textRolePrefixHandleCore{owner: &owner.introduction.prefix.textRolePrefixCore, cancel: func() {}}}
+	introduction := &textIntroductionPrefixHandle{rolePrefixHandleCore: rolePrefixHandleCore{owner: &owner.introduction.prefix.rolePrefixCore, cancel: func() {}}}
 	introduction.prefix.Store(&client.ClosedSourcePrefix{})
 	owner.introduction.prefix.live = introduction
 	attempt, cancel := context.WithCancel(t.Context())

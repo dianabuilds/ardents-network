@@ -107,7 +107,7 @@ func TestTextResolutionNetworkCannotRollBackLocalDescriptorFloor(t *testing.T) {
 	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP, routecarrier.ClosedCarrierQUIC} {
 		t.Run(string(carrier), func(t *testing.T) {
 			_, owner, source := startTextRoleNetwork(t, textRoleNetworkFixture{carrier: carrier, resolution: true})
-			prefix, err := owner.openTextPrefix(t.Context())
+			prefix, err := owner.openPrefix(t.Context())
 			if err != nil {
 				t.Fatal(err)
 			}

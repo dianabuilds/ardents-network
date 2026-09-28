@@ -241,7 +241,7 @@ func installedTextRecoveryNetwork(t *testing.T, carrier routecarrier.CarrierProf
 			return acquireInstalledServiceInstance(t, network, now, until)
 		})
 	now := time.Now().UTC().Truncate(time.Second)
-	if _, err := publisher.openTextPrefix(t.Context()); err != nil {
+	if _, err := publisher.openPrefix(t.Context()); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := publisher.openTextIntroductionPrefix(t.Context()); err != nil {

@@ -36,7 +36,7 @@ type textJoinPrefix interface {
 type textJoinAcquisition interface {
 	textJoinPrefix
 	currentLocked(*textContext) bool
-	issuancePrefixLocked(*textContext) (*textSourceHandle, bool)
+	issuancePrefixLocked(*textContext) (*sourceHandle, bool)
 	release()
 }
 

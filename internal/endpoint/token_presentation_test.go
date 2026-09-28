@@ -122,10 +122,10 @@ func TestTextTokenCancellationAfterDurableMarkRetainsBurn(t *testing.T) {
 func tokenPresentationFixture(t *testing.T) (*endpoint, *textContext, client.ClosedBootstrapSelection,
 	state.ClosedProfileView, ardp.Hello, []byte) {
 	t.Helper()
-	endpoint, owner, source := textSourceContextFixture(t)
+	endpoint, owner, source := sourceContextFixture(t)
 	root := prepareIssuancePermission(t, owner, source)
 	endpoint.closedTokenRoot = t.TempDir()
-	selection := selectTextSource(t, owner)
+	selection := selectSource(t, owner)
 	profile := source.view.Profile
 	duty := uint64(0)
 	for _, node := range source.view.Nodes[:source.view.NodeCount] {

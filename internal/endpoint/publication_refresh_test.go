@@ -127,7 +127,7 @@ func TestTextPublicationAutomaticallyRefreshesAndRetiresPredecessor(t *testing.T
 			}
 			// A refused withdrawal cannot cancel the publication's scheduler.
 			owner.mu.Lock()
-			owner.resolution = &textResolutionFlight{}
+			owner.resolution = &resolutionFlight{}
 			owner.mu.Unlock()
 			withdrawErr := owner.withdrawTextIntroduction(t.Context())
 			owner.mu.Lock()

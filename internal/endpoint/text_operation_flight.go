@@ -53,7 +53,7 @@ func (flight *textOperationFlight) cancel() {
 // runner completes its flight exactly once; the unconditional done close
 // relies on that single-completion discipline.
 func (flight *textOperationFlight) complete(caller context.Context, prefix *client.ClosedSourcePrefix,
-	openErr error) (*textSourceHandle, error) {
+	openErr error) (*sourceHandle, error) {
 	owner := flight.owner
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
@@ -61,7 +61,7 @@ func (flight *textOperationFlight) complete(caller context.Context, prefix *clie
 	if !owner.source.openingAdmittedLocked(flight) {
 		flight.cancel()
 		cleanup := prefix.Close()
-		return nil, textPrefixPreparationFailureAt("completion-owner",
+		return nil, prefixPreparationFailureAt("completion-owner",
 			errors.Join(openErr, caller.Err(), cleanup, errors.New("text prefix completion owner changed")))
 	}
 	if openErr != nil || prefix == nil || caller.Err() != nil || !owner.liveLocked(owner.endpoint, owner.surface) {
@@ -74,8 +74,8 @@ func (flight *textOperationFlight) complete(caller context.Context, prefix *clie
 			owner.endpoint.failTextContexts(owner.closeErr)
 		}
 		cause := errors.Join(openErr, caller.Err(), cleanup, errors.New("text prefix unavailable"))
-		if textPrefixPreparationFailureStage(cause) == "unknown" {
-			cause = textPrefixPreparationFailureAt("completion", cause)
+		if prefixPreparationFailureStage(cause) == "unknown" {
+			cause = prefixPreparationFailureAt("completion", cause)
 		}
 		return nil, cause
 	}
@@ -83,7 +83,7 @@ func (flight *textOperationFlight) complete(caller context.Context, prefix *clie
 	if !current {
 		flight.cancel()
 		cleanup := prefix.Close()
-		return nil, textPrefixPreparationFailureAt("completion-owner",
+		return nil, prefixPreparationFailureAt("completion-owner",
 			errors.Join(cleanup, errors.New("text prefix completion owner changed")))
 	}
 	return handle, nil

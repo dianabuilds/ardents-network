@@ -15,8 +15,8 @@ import (
 
 func TestTextSourcePreparationFailureRetainsStageAndCause(t *testing.T) {
 	cause := errors.New("opening issuance refused")
-	failure := textSourcePreparationFailureAt("issuance", cause)
-	if got := textSourcePreparationFailureStage(failure); got != "issuance" {
+	failure := sourcePreparationFailureAt("issuance", cause)
+	if got := sourcePreparationFailureStage(failure); got != "issuance" {
 		t.Fatalf("source preparation stage = %q", got)
 	}
 	if !errors.Is(failure, cause) {
@@ -26,8 +26,8 @@ func TestTextSourcePreparationFailureRetainsStageAndCause(t *testing.T) {
 
 func TestTextPrefixPreparationFailureRetainsStageAndCause(t *testing.T) {
 	cause := errors.New("source carrier refused")
-	failure := textPrefixPreparationFailureAt("opening", cause)
-	if got := textPrefixPreparationFailureStage(failure); got != "opening" {
+	failure := prefixPreparationFailureAt("opening", cause)
+	if got := prefixPreparationFailureStage(failure); got != "opening" {
 		t.Fatalf("prefix preparation stage = %q", got)
 	}
 	if !errors.Is(failure, cause) {
@@ -53,9 +53,9 @@ func TestTextTokenPresentationFailureRetainsNestedStageAndCause(t *testing.T) {
 }
 
 func TestTextTokenPresentationClassifiesConcurrentRoleCommit(t *testing.T) {
-	endpoint, owner, source := textSourceContextFixture(t)
+	endpoint, owner, source := sourceContextFixture(t)
 	prepareIssuancePermission(t, owner, source)
-	selection := selectTextSource(t, owner)
+	selection := selectSource(t, owner)
 	writer, err := duty.Open(duty.Config{Root: endpoint.closedRoleRoot, Clock: time.Now})
 	if err != nil {
 		t.Fatal(err)
@@ -92,7 +92,7 @@ func TestTextRefreshWaitsForActualSourceUse(t *testing.T) {
 	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP, routecarrier.ClosedCarrierQUIC} {
 		t.Run(string(carrier), func(t *testing.T) {
 			_, owner, _ := textJoinedNetworkFixture(t, carrier)
-			release, err := owner.acquireTextSourceOperation(t.Context())
+			release, err := owner.acquireSourceOperation(t.Context())
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -114,7 +114,7 @@ func TestTextRefreshWaitsForActualSourceUse(t *testing.T) {
 				t.Fatal("refresh ended while Source was in use")
 			case <-time.After(40 * time.Millisecond):
 			}
-			selection := selectTextSource(t, owner)
+			selection := selectSource(t, owner)
 			if err := owner.issueTokensForOpening(t.Context(), [][32]byte{selection.EntryNodeID}, 2, nil, false); err != nil {
 				t.Fatal(err)
 			}
@@ -140,8 +140,8 @@ func TestTextSourceWaitCancellationDoesNotStealReservation(t *testing.T) {
 			name = "context"
 		}
 		t.Run(name, func(t *testing.T) {
-			_, owner, _ := textSourceContextFixture(t)
-			release, err := owner.acquireTextSourceOperation(t.Context())
+			_, owner, _ := sourceContextFixture(t)
+			release, err := owner.acquireSourceOperation(t.Context())
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -150,7 +150,7 @@ func TestTextSourceWaitCancellationDoesNotStealReservation(t *testing.T) {
 			defer cancel()
 			result := make(chan error, 1)
 			go func() {
-				unlock, err := owner.acquireTextSourceOperation(ctx)
+				unlock, err := owner.acquireSourceOperation(ctx)
 				if unlock != nil {
 					unlock()
 				}

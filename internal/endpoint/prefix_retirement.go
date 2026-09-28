@@ -9,7 +9,7 @@ import (
 // Observe fully joined role prefixes only. Retiring an idle prefix does not
 // rotate its retained members or issue tokens; a later explicit operation owns
 // any new open. Source and Publisher Introduction have separate lifetimes.
-func (owner *textContext) retireTextPrefixLocked() error {
+func (owner *textContext) retirePrefixLocked() error {
 	result := errors.Join(owner.source.retireIdleLocked(), owner.introduction.prefix.retireIdleLocked(), owner.responder.retireIdleLocked())
 	if result != nil {
 		owner.closeErr = errors.Join(owner.closeErr, result)

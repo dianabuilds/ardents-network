@@ -80,7 +80,7 @@ func TestTextIntroductionCapsuleBindsRealInstanceAndServiceStream(t *testing.T) 
 				t.Fatal(err)
 			}
 			endpoint.publisherBinding, endpoint.publications, endpoint.authority = binding, publications, [32]byte(public)
-			if _, err := publisher.openTextPrefix(t.Context()); err != nil {
+			if _, err := publisher.openPrefix(t.Context()); err != nil {
 				t.Fatal(err)
 			}
 			if _, err := publisher.openTextIntroductionPrefix(t.Context()); err != nil {

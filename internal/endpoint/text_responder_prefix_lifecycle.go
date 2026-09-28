@@ -15,23 +15,23 @@ import (
 // textResponderPrefixLifecycle is the sole owner of the Publisher's live
 // Responder prefix and an opening that may replace its absence. The shared
 // role machinery (opening slot, member set, idle retirement, stop) lives in
-// textRolePrefixCore; this owner adds only the Responder handle type, its
+// rolePrefixCore; this owner adds only the Responder handle type, its
 // Route operations and the JOIN acquisition.
 type textResponderPrefixLifecycle struct {
-	textRolePrefixCore
+	rolePrefixCore
 }
 
 // textResponderPrefixHandle exposes only operations belonging to one exact
 // live Responder prefix. Retirement invalidates every retained handle.
 type textResponderPrefixHandle struct {
-	textRolePrefixHandleCore
+	rolePrefixHandleCore
 }
 
 // textResponderJoinAcquisition binds one JOIN exchange to the exact Responder
 // handle and Source issuer current at admission.
 type textResponderJoinAcquisition struct {
 	handle atomic.Pointer[textResponderPrefixHandle]
-	issuer *textSourceHandle
+	issuer *sourceHandle
 }
 
 func (lifecycle *textResponderPrefixLifecycle) currentLocked() *textResponderPrefixHandle {
@@ -50,7 +50,7 @@ func (lifecycle *textResponderPrefixLifecycle) acquireOpenedLocked(prefix *clien
 	return handle
 }
 
-func (lifecycle *textResponderPrefixLifecycle) acquireJoinLocked(issuer *textSourceHandle) *textResponderJoinAcquisition {
+func (lifecycle *textResponderPrefixLifecycle) acquireJoinLocked(issuer *sourceHandle) *textResponderJoinAcquisition {
 	live := lifecycle.currentLocked()
 	if live == nil || live.prefix.Load() == nil {
 		return nil
@@ -69,14 +69,14 @@ func (lifecycle *textResponderPrefixLifecycle) finishOpeningLocked(flight *textO
 	if !publish || prefix == nil {
 		return true
 	}
-	handle := &textResponderPrefixHandle{textRolePrefixHandleCore: textRolePrefixHandleCore{owner: &lifecycle.textRolePrefixCore, cancel: cancel}}
+	handle := &textResponderPrefixHandle{rolePrefixHandleCore: rolePrefixHandleCore{owner: &lifecycle.rolePrefixCore, cancel: cancel}}
 	handle.prefix.Store(prefix)
 	lifecycle.live = handle
 	return true
 }
 
 func (handle *textResponderPrefixHandle) currentLocked(lifecycle *textResponderPrefixLifecycle) bool {
-	return handle != nil && lifecycle != nil && handle.textRolePrefixHandleCore.currentCoreLocked(&lifecycle.textRolePrefixCore)
+	return handle != nil && lifecycle != nil && handle.rolePrefixHandleCore.currentCoreLocked(&lifecycle.rolePrefixCore)
 }
 
 func (handle *textResponderPrefixHandle) routePrefix() (*client.ClosedSourcePrefix, error) {
@@ -132,7 +132,7 @@ func (acquisition *textResponderJoinAcquisition) currentLocked(owner *textContex
 	return handle != nil && handle.currentLocked(&owner.responder) && acquisition.issuer != nil && acquisition.issuer.currentLocked(&owner.source)
 }
 
-func (acquisition *textResponderJoinAcquisition) issuancePrefixLocked(owner *textContext) (*textSourceHandle, bool) {
+func (acquisition *textResponderJoinAcquisition) issuancePrefixLocked(owner *textContext) (*sourceHandle, bool) {
 	current := acquisition.currentLocked(owner)
 	if acquisition == nil {
 		return nil, false

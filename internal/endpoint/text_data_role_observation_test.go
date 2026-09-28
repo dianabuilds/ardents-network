@@ -120,7 +120,7 @@ func runTextDataJoinIsolatedRoleObservation(t *testing.T, carrier routecarrier.C
 		t.Fatal(err)
 	}
 	endpoint.publisherBinding, endpoint.publications, endpoint.authority = binding, publisher, [32]byte(public)
-	if _, err := owner.openTextPrefix(t.Context()); err != nil {
+	if _, err := owner.openPrefix(t.Context()); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := owner.openTextIntroductionPrefix(t.Context()); err != nil {
@@ -140,7 +140,7 @@ func runTextDataJoinIsolatedRoleObservation(t *testing.T, carrier routecarrier.C
 	observe("published")
 	reader := permissionContextFixture(t, endpoint, fixtureID(211), broker.Connection)
 	source.issuePermission(t, reader, [3]uint32{64, 64, 0})
-	if _, err := reader.openTextPrefix(t.Context()); err != nil {
+	if _, err := reader.openPrefix(t.Context()); err != nil {
 		t.Fatal(err)
 	}
 	exchangeTextRouteData(t, reader, owner, source.view.Nodes[15].NodeID, func() { observe("data") })

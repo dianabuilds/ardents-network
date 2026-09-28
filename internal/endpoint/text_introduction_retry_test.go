@@ -16,7 +16,7 @@ import (
 // its real blinded request from the independently available accepted State.
 // Node runtimes retain the original State and keep their real network duties.
 type issuerOutageState struct {
-	*textSourceStateFixture
+	*sourceStateFixture
 	unavailable atomic.Bool
 }
 
@@ -24,7 +24,7 @@ func (source *issuerOutageState) CurrentClosedRoute() (state.ClosedRouteView, er
 	if source.unavailable.Load() {
 		return state.ClosedRouteView{}, errors.New("issuer attempt State temporarily unavailable")
 	}
-	return source.textSourceStateFixture.CurrentClosedRoute()
+	return source.sourceStateFixture.CurrentClosedRoute()
 }
 
 func TestTextIntroductionRetryResumesExactIssuance(t *testing.T) {
@@ -35,9 +35,9 @@ func TestTextIntroductionRetryResumesExactIssuance(t *testing.T) {
 		}
 		t.Run(name, func(t *testing.T) {
 			endpoint, owner, source := startTextRoleNetwork(t, textRoleNetworkFixture{carrier: carrier.ClosedCarrierTCP, resolution: true, publisher: true})
-			outage := &issuerOutageState{textSourceStateFixture: source}
+			outage := &issuerOutageState{sourceStateFixture: source}
 			endpoint.closedState = outage
-			if _, err := owner.openTextPrefix(t.Context()); err != nil {
+			if _, err := owner.openPrefix(t.Context()); err != nil {
 				t.Fatal(err)
 			}
 			endpoint.closedState = source

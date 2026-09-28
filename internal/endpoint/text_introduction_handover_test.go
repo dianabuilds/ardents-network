@@ -52,7 +52,7 @@ func (ctx *textDelayedCancellation) cancelBeforeCallback() {
 }
 
 type textPreparationBoundaryState struct {
-	*textSourceStateFixture
+	*sourceStateFixture
 	reads    int
 	cancelAt int
 	caller   *textDelayedCancellation
@@ -63,14 +63,14 @@ func (source *textPreparationBoundaryState) CurrentClosedProfile() (state.Closed
 	if source.reads == source.cancelAt {
 		source.caller.cancelBeforeCallback()
 	}
-	return source.textSourceStateFixture.CurrentClosedProfile()
+	return source.sourceStateFixture.CurrentClosedProfile()
 }
 
-func checkTextPreparationCallerHandover(t *testing.T, owner *textContext, job *textJobIdentity, source *textSourceStateFixture,
+func checkTextPreparationCallerHandover(t *testing.T, owner *textContext, job *textJobIdentity, source *sourceStateFixture,
 	destination targetlink.Link, bounds [3]int64) {
 	t.Helper()
 	endpoint := owner.endpoint
-	counting := &textPreparationBoundaryState{textSourceStateFixture: source}
+	counting := &textPreparationBoundaryState{sourceStateFixture: source}
 	endpoint.closedState = counting
 	defer func() { endpoint.closedState = source }()
 	// Measure the last current-profile read in an otherwise identical warm
@@ -84,7 +84,7 @@ func checkTextPreparationCallerHandover(t *testing.T, owner *textContext, job *t
 		t.Fatal("preparation did not verify State")
 	}
 	caller := &textDelayedCancellation{Context: context.Background(), done: make(chan struct{})}
-	paused := &textPreparationBoundaryState{textSourceStateFixture: source, cancelAt: counting.reads, caller: caller}
+	paused := &textPreparationBoundaryState{sourceStateFixture: source, cancelAt: counting.reads, caller: caller}
 	endpoint.closedState = paused
 	prepared, err = owner.prepareTextIntroduction(caller, job, destination, bounds)
 	if paused.reads != paused.cancelAt || caller.Err() == nil {

@@ -17,7 +17,7 @@ func (owner *textContext) prepareTextResponderSource(ctx context.Context, job *t
 	if !live {
 		return errors.New("text Responder Source authority unavailable")
 	}
-	if err := owner.prepareTextSourceReady(ctx); err != nil {
+	if err := owner.prepareSourceReady(ctx); err != nil {
 		return err
 	}
 	owner.mu.Lock()

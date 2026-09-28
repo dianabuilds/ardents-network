@@ -108,7 +108,7 @@ func textJoinedNetworkFixtureWithReaderMaximaAndRegistration(t *testing.T, carri
 	reader, publisher := textUnpublishedNetworkFixtureWithReaderMaxima(t, carrier, maxima, configure...)
 	endpoint := publisher.endpoint
 	now := time.Now().UTC().Truncate(time.Second)
-	if _, err := publisher.openTextPrefix(t.Context()); err != nil {
+	if _, err := publisher.openPrefix(t.Context()); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := publisher.openTextIntroductionPrefix(t.Context()); err != nil {
@@ -145,7 +145,7 @@ func textUnpublishedNetworkFixtureWithReaderMaxima(t *testing.T, carrier routeca
 	return reader, publisher
 }
 
-func textPublisherNetworkWithInstance(t *testing.T, carrier routecarrier.CarrierProfile, acquire func([32]byte, time.Time, time.Time) (*instance.Root, *instance.Binding), configure ...func(int, *node.Config)) (*endpoint, *textContext, *textSourceStateFixture) {
+func textPublisherNetworkWithInstance(t *testing.T, carrier routecarrier.CarrierProfile, acquire func([32]byte, time.Time, time.Time) (*instance.Root, *instance.Binding), configure ...func(int, *node.Config)) (*endpoint, *textContext, *sourceStateFixture) {
 	t.Helper()
 	endpoint, publisher, source := startTextRoleNetwork(t, textRoleNetworkFixture{carrier: carrier, resolution: true, publisher: true, join: true, configure: configure})
 	now := time.Now().UTC().Truncate(time.Second)

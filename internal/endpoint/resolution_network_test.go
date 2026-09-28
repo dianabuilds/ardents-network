@@ -16,7 +16,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/service/reachability"
 )
 
-func addTextResolutionState(source *textSourceStateFixture) {
+func addResolutionState(source *sourceStateFixture) {
 	source.view.NodeCount, source.snapshot.CandidateCount = 7, 7
 	for index := 5; index < 7; index++ {
 		domain, subrole := uint8(2), uint8(5)
@@ -38,11 +38,11 @@ func TestTextResolutionUsesIssuedControlThroughRetainedPrefix(t *testing.T) {
 	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP, routecarrier.ClosedCarrierQUIC} {
 		t.Run(string(carrier), func(t *testing.T) {
 			_, owner, source := startTextRoleNetwork(t, textRoleNetworkFixture{carrier: carrier, resolution: true})
-			prefix, err := owner.openTextPrefix(t.Context())
+			prefix, err := owner.openPrefix(t.Context())
 			if err != nil {
 				t.Fatal(err)
 			}
-			target, raw := textResolutionProof(t, source)
+			target, raw := resolutionProof(t, source)
 			receiver, err := prefix.ResolutionRecipient()
 			if err != nil || receiver != source.view.Nodes[5].NodeID {
 				t.Fatalf("State resolution: %x %v", receiver, err)
@@ -99,7 +99,7 @@ func TestTextResolutionUsesIssuedControlThroughRetainedPrefix(t *testing.T) {
 	}
 }
 
-func textResolutionProof(t *testing.T, source *textSourceStateFixture) ([32]byte, []byte) {
+func resolutionProof(t *testing.T, source *sourceStateFixture) ([32]byte, []byte) {
 	t.Helper()
 	now := time.Now().UTC().Truncate(time.Second)
 	profile := source.view.Profile

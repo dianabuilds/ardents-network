@@ -37,15 +37,15 @@ func (acquisition *textJoinRetiredAfterRecipient) currentLocked(*textContext) bo
 	return acquisition.current
 }
 
-func (acquisition *textJoinRetiredAfterRecipient) issuancePrefixLocked(*textContext) (*textSourceHandle, bool) {
+func (acquisition *textJoinRetiredAfterRecipient) issuancePrefixLocked(*textContext) (*sourceHandle, bool) {
 	return nil, acquisition.current
 }
 
 func (*textJoinRetiredAfterRecipient) release() {}
 
 func TestTextJoinedTransportCloseReleasesSourceAcquisition(t *testing.T) {
-	lifecycle := &textSourceLifecycle{}
-	handle := &textSourceHandle{owner: lifecycle, cancel: func() {}}
+	lifecycle := &sourceLifecycle{}
+	handle := &sourceHandle{owner: lifecycle, cancel: func() {}}
 	handle.prefix.Store(&client.ClosedSourcePrefix{})
 	lifecycle.live = handle
 	acquisition := lifecycle.acquireJoinLocked()
@@ -72,7 +72,7 @@ func TestTextJoinOldAcquisitionCannotAttachAfterSourceReplacement(t *testing.T) 
 	attempt := &textIntroductionAttempt{binding: &textServiceBinding{owner: owner, job: job}}
 
 	owner.mu.Lock()
-	old := &textSourceHandle{owner: &owner.source, cancel: func() {}}
+	old := &sourceHandle{owner: &owner.source, cancel: func() {}}
 	old.prefix.Store(&client.ClosedSourcePrefix{})
 	owner.source.live = old
 	acquisition := owner.source.acquireJoinLocked()
@@ -104,7 +104,7 @@ func TestTextJoinOldAcquisitionCannotAttachAfterSourceReplacement(t *testing.T) 
 		t.Fatal("JOIN caller did not transfer its cleanup lifetime")
 	}
 
-	replacement := &textSourceHandle{owner: &owner.source, cancel: func() {}}
+	replacement := &sourceHandle{owner: &owner.source, cancel: func() {}}
 	replacement.prefix.Store(&client.ClosedSourcePrefix{})
 	owner.mu.Lock()
 	old.prefix.Store(nil)
@@ -136,7 +136,7 @@ func TestTextJoinOldAcquisitionCannotAttachAfterSourceReplacement(t *testing.T) 
 }
 
 func TestTextJoinSourceReplacementBeforeStockIssuanceDoesNotReserveAllocation(t *testing.T) {
-	_, owner, source := textSourceContextFixture(t)
+	_, owner, source := sourceContextFixture(t)
 	prepareIssuancePermission(t, owner, source)
 	node := source.view.Nodes[4]
 	deadline := time.Now().Add(time.Minute)
@@ -160,9 +160,9 @@ func TestTextJoinSourceReplacementBeforeStockIssuanceDoesNotReserveAllocation(t 
 
 func TestTextPublisherJoinIssuanceRetainsExactLiveSource(t *testing.T) {
 	owner := &textContext{textContextState: textContextState{surface: broker.Administration}}
-	responder := &textResponderPrefixHandle{textRolePrefixHandleCore: textRolePrefixHandleCore{owner: &owner.responder.textRolePrefixCore, cancel: func() {}}}
+	responder := &textResponderPrefixHandle{rolePrefixHandleCore: rolePrefixHandleCore{owner: &owner.responder.rolePrefixCore, cancel: func() {}}}
 	responder.prefix.Store(&client.ClosedSourcePrefix{})
-	issuer := &textSourceHandle{owner: &owner.source, cancel: func() {}}
+	issuer := &sourceHandle{owner: &owner.source, cancel: func() {}}
 	issuer.prefix.Store(&client.ClosedSourcePrefix{})
 	owner.responder.live = responder
 	owner.source.live = issuer
@@ -171,7 +171,7 @@ func TestTextPublisherJoinIssuanceRetainsExactLiveSource(t *testing.T) {
 		!joinIssuanceCurrentLocked(owner, acquisition, expected) {
 		t.Fatal("Publisher JOIN issuance rejected its retained live Source")
 	}
-	replacement := &textSourceHandle{owner: &owner.source, cancel: func() {}}
+	replacement := &sourceHandle{owner: &owner.source, cancel: func() {}}
 	replacement.prefix.Store(&client.ClosedSourcePrefix{})
 	owner.source.live = replacement
 	issuer.prefix.Store(nil)

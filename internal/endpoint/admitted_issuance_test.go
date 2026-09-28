@@ -19,11 +19,11 @@ func TestTextIssuanceUsesRetainedPrefixAfterTwoBootstrapBatches(t *testing.T) {
 					t.Error(err)
 				}
 			}()
-			prefix, err := owner.openTextPrefix(t.Context())
+			prefix, err := owner.openPrefix(t.Context())
 			if err != nil {
 				t.Fatal(err)
 			}
-			selection := selectTextSource(t, owner)
+			selection := selectSource(t, owner)
 			// The last initial Control token must fund a real two-token refill
 			// before the final requested receiver batch can be issued.
 			for batch := range 32 {

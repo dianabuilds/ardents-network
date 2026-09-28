@@ -16,11 +16,11 @@ func TestQualificationReopensRetiredSourcePrefixForIssuerReserve(t *testing.T) {
 			t.Error(err)
 		}
 	}()
-	prefix, err := owner.openTextPrefix(t.Context())
+	prefix, err := owner.openPrefix(t.Context())
 	if err != nil {
 		t.Fatal(err)
 	}
-	selection := selectTextSource(t, owner)
+	selection := selectSource(t, owner)
 	for _, receiver := range [][32]byte{selection.EntryNodeID, selection.InteriorNodeID} {
 		if err := owner.issueTokens(t.Context(), [][32]byte{receiver}, 2); err != nil {
 			t.Fatal(err)
@@ -77,10 +77,10 @@ func TestQualificationRefillsPublisherIssuerReserveBetweenStreams(t *testing.T) 
 			t.Error(err)
 		}
 	}()
-	if _, err := owner.openTextPrefix(t.Context()); err != nil {
+	if _, err := owner.openPrefix(t.Context()); err != nil {
 		t.Fatal(err)
 	}
-	selection := selectTextSource(t, owner)
+	selection := selectSource(t, owner)
 	ready := func() int {
 		owner.mu.Lock()
 		defer owner.mu.Unlock()

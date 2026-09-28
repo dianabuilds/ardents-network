@@ -14,11 +14,11 @@ type textContextRetirement struct {
 	refresh             *publicationRefreshRetirement
 	publication         *publicationPairRetirement
 	registrationOpening *registrationFlight
-	introduction        *textRolePrefixRetirement
-	responder           *textRolePrefixRetirement
-	source              *textSourceRetirement
+	introduction        *rolePrefixRetirement
+	responder           *rolePrefixRetirement
+	source              *sourceRetirement
 	issuance            *issuanceOperation
-	resolution          *textResolutionFlight
+	resolution          *resolutionFlight
 	withdrawal          *textOperationFlight
 	exchanges           []*textIntroductionExchange
 	job                 *textJobRetirement

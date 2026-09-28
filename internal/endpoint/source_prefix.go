@@ -11,10 +11,10 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/route/client"
 )
 
-// textPrefixPreparationFailure distinguishes the local stages which can stop
+// prefixPreparationFailure distinguishes the local stages which can stop
 // an expired Source prefix from being replaced. It deliberately retains the
 // original cause without exposing that cause through the headless event.
-type textPrefixPreparationFailure struct {
+type prefixPreparationFailure struct {
 	stage string
 	cause error
 }
@@ -40,38 +40,38 @@ func tokenPresentationFailureStage(cause error) string {
 	return "unknown"
 }
 
-func (failure *textPrefixPreparationFailure) Error() string { return failure.cause.Error() }
+func (failure *prefixPreparationFailure) Error() string { return failure.cause.Error() }
 
-func (failure *textPrefixPreparationFailure) Unwrap() error { return failure.cause }
+func (failure *prefixPreparationFailure) Unwrap() error { return failure.cause }
 
-func textPrefixPreparationFailureAt(stage string, cause error) error {
-	return &textPrefixPreparationFailure{stage: stage, cause: cause}
+func prefixPreparationFailureAt(stage string, cause error) error {
+	return &prefixPreparationFailure{stage: stage, cause: cause}
 }
 
-func textPrefixPreparationFailureStage(cause error) string {
-	var failure *textPrefixPreparationFailure
+func prefixPreparationFailureStage(cause error) string {
+	var failure *prefixPreparationFailure
 	if errors.As(cause, &failure) && failure.stage != "" {
 		return failure.stage
 	}
 	return "unknown"
 }
 
-// openTextPrefix uses only the context's retained members and finalized stock.
+// openPrefix uses only the context's retained members and finalized stock.
 // It never upgrades an issuance-bootstrap lane or accepts a worker peer list.
-func (owner *textContext) openTextPrefix(ctx context.Context) (*textSourceHandle, error) {
+func (owner *textContext) openPrefix(ctx context.Context) (*sourceHandle, error) {
 	if owner == nil || ctx == nil || ctx.Err() != nil {
-		return nil, textPrefixPreparationFailureAt("context", errors.New("text prefix context unavailable"))
+		return nil, prefixPreparationFailureAt("context", errors.New("text prefix context unavailable"))
 	}
 	owner.mu.Lock()
 	_, _, err := owner.permissionProfileLocked()
 	if err != nil || !owner.tokens.permission.hasAccepted() || owner.source.currentLocked() != nil || owner.source.openingInProgressLocked() || owner.tokens.issuance != nil {
 		owner.mu.Unlock()
-		return nil, textPrefixPreparationFailureAt("authority", errors.Join(err, errors.New("text prefix owner unavailable")))
+		return nil, prefixPreparationFailureAt("authority", errors.Join(err, errors.New("text prefix owner unavailable")))
 	}
 	source, ok := owner.endpoint.closedState.(client.ClosedBootstrapState)
 	if !ok {
 		owner.mu.Unlock()
-		return nil, textPrefixPreparationFailureAt("state", errors.New("text prefix State unavailable"))
+		return nil, prefixPreparationFailureAt("state", errors.New("text prefix State unavailable"))
 	}
 	operation := newTextOperationFlight(owner)
 	// Reserve the whole stock -> opening transition. Concurrent opens cannot
@@ -80,12 +80,12 @@ func (owner *textContext) openTextPrefix(ctx context.Context) (*textSourceHandle
 		owner.mu.Unlock()
 		operation.cancel()
 		close(operation.done)
-		return nil, textPrefixPreparationFailureAt("authority", errors.New("text prefix reservation unavailable"))
+		return nil, prefixPreparationFailureAt("authority", errors.New("text prefix reservation unavailable"))
 	}
 	owner.mu.Unlock()
 	interrupted := make(chan struct{})
 	stop := context.AfterFunc(ctx, func() { defer close(interrupted); operation.cancel() })
-	selection, openErr := owner.ensureTextPrefixStock(operation.context, operation)
+	selection, openErr := owner.ensurePrefixStock(operation.context, operation)
 	var prefix *client.ClosedSourcePrefix
 	if openErr == nil {
 		prefix, openErr = client.OpenClosedSourcePrefix(operation.context, source, selection, func(hello ardp.Hello, class uint8) ([]byte, error) {
@@ -96,7 +96,7 @@ func (owner *textContext) openTextPrefix(ctx context.Context) (*textSourceHandle
 			if presentation := tokenPresentationFailureStage(openErr); presentation != "unknown" {
 				stage += "-" + presentation
 			}
-			openErr = textPrefixPreparationFailureAt("opening-"+stage, openErr)
+			openErr = prefixPreparationFailureAt("opening-"+stage, openErr)
 		}
 	}
 	if !stop() {
@@ -142,35 +142,35 @@ func (endpoint *endpoint) tokenJournal() (*tokenjournal.Journal, error) {
 	return endpoint.closedTokenJournal, nil
 }
 
-func (owner *textContext) ensureTextPrefixStock(ctx context.Context, opening *textOperationFlight) (client.ClosedBootstrapSelection, error) {
+func (owner *textContext) ensurePrefixStock(ctx context.Context, opening *textOperationFlight) (client.ClosedBootstrapSelection, error) {
 	owner.mu.Lock()
 	_, _, err := owner.permissionProfileLocked()
 	if err != nil || ctx.Err() != nil || !owner.tokens.permission.hasAccepted() ||
 		owner.source.currentLocked() != nil || !opening.admittedLocked(owner) || owner.tokens.issuance != nil {
 		owner.mu.Unlock()
-		return client.ClosedBootstrapSelection{}, textPrefixPreparationFailureAt("stock-authority", errors.Join(err, ctx.Err(), errors.New("text prefix stock owner unavailable")))
+		return client.ClosedBootstrapSelection{}, prefixPreparationFailureAt("stock-authority", errors.Join(err, ctx.Err(), errors.New("text prefix stock owner unavailable")))
 	}
 	selection, err := owner.selectTextBootstrapLocked()
 	if err != nil {
 		owner.mu.Unlock()
-		return client.ClosedBootstrapSelection{}, textPrefixPreparationFailureAt("stock-selection-"+textInteriorSelectionFailureStage(err), err)
+		return client.ClosedBootstrapSelection{}, prefixPreparationFailureAt("stock-selection-"+textInteriorSelectionFailureStage(err), err)
 	}
 	missing := owner.tokens.permission.missingStockFor(selection.ProfileDigest, [][32]byte{selection.EntryNodeID, selection.InteriorNodeID}, 2)
 	owner.mu.Unlock()
 	if len(missing) != 0 {
 		// Independent receiver inputs share one common class/window key.
 		if err := owner.issueTokensForOpening(ctx, missing, 2, opening, false); err != nil {
-			return client.ClosedBootstrapSelection{}, textPrefixPreparationFailureAt("stock-issuance", err)
+			return client.ClosedBootstrapSelection{}, prefixPreparationFailureAt("stock-issuance", err)
 		}
 	}
 	if err := owner.prepareIssuerStock(ctx, nil, 0, opening, nil, nil); err != nil {
-		return client.ClosedBootstrapSelection{}, textPrefixPreparationFailureAt("stock-issuer", err)
+		return client.ClosedBootstrapSelection{}, prefixPreparationFailureAt("stock-issuer", err)
 	}
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
 	current, err := owner.selectTextBootstrapLocked()
 	if err != nil || current != selection || ctx.Err() != nil || !opening.admittedLocked(owner) {
-		return client.ClosedBootstrapSelection{}, textPrefixPreparationFailureAt("stock-stability", errors.Join(err, ctx.Err(), errors.New("text prefix selection changed during issuance")))
+		return client.ClosedBootstrapSelection{}, prefixPreparationFailureAt("stock-stability", errors.Join(err, ctx.Err(), errors.New("text prefix selection changed during issuance")))
 	}
 	return selection, nil
 }

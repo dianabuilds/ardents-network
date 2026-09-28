@@ -10,36 +10,36 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/route/client"
 )
 
-// textRolePrefixLive is the installed handle of one Publisher role prefix.
-// The Introduction and Responder handles each embed textRolePrefixHandleCore
+// rolePrefixLive is the installed handle of one Publisher role prefix.
+// The Introduction and Responder handles each embed rolePrefixHandleCore
 // and add only their role-specific Route operations. The shared machinery
 // never mixes the roles: a core's live slot is written only by the owning
 // role's finishOpeningLocked.
-type textRolePrefixLive interface {
-	rolePrefixCore() *textRolePrefixHandleCore
+type rolePrefixLive interface {
+	rolePrefixCore() *rolePrefixHandleCore
 }
 
-// textRolePrefixHandleCore is the identity and cancellation core shared by
+// rolePrefixHandleCore is the identity and cancellation core shared by
 // both Publisher role prefix handles. owner binds the handle to the exact
 // role lifecycle core that installed it; retirement and replacement
 // invalidate every retained handle by clearing prefix and live.
-type textRolePrefixHandleCore struct {
-	owner  *textRolePrefixCore
+type rolePrefixHandleCore struct {
+	owner  *rolePrefixCore
 	prefix atomic.Pointer[client.ClosedSourcePrefix]
 	cancel context.CancelFunc
 }
 
-func (handle *textRolePrefixHandleCore) rolePrefixCore() *textRolePrefixHandleCore {
+func (handle *rolePrefixHandleCore) rolePrefixCore() *rolePrefixHandleCore {
 	return handle
 }
 
 // currentCoreLocked reports whether the handle is the exact live handle of
 // the role lifecycle core and still holds its Route prefix.
-func (handle *textRolePrefixHandleCore) currentCoreLocked(core *textRolePrefixCore) bool {
+func (handle *rolePrefixHandleCore) currentCoreLocked(core *rolePrefixCore) bool {
 	return handle != nil && core != nil && handle.owner == core && core.liveCoreLocked() == handle && handle.prefix.Load() != nil
 }
 
-func (handle *textRolePrefixHandleCore) routeCorePrefix(unavailable string) (*client.ClosedSourcePrefix, error) {
+func (handle *rolePrefixHandleCore) routeCorePrefix(unavailable string) (*client.ClosedSourcePrefix, error) {
 	if handle == nil {
 		return nil, errors.New(unavailable)
 	}
@@ -50,7 +50,7 @@ func (handle *textRolePrefixHandleCore) routeCorePrefix(unavailable string) (*cl
 	return prefix, nil
 }
 
-func (handle *textRolePrefixHandleCore) replenishCore(ctx context.Context, present client.ClosedTokenPresenter, unavailable string) error {
+func (handle *rolePrefixHandleCore) replenishCore(ctx context.Context, present client.ClosedTokenPresenter, unavailable string) error {
 	prefix, err := handle.routeCorePrefix(unavailable)
 	if err != nil {
 		return err
@@ -58,32 +58,32 @@ func (handle *textRolePrefixHandleCore) replenishCore(ctx context.Context, prese
 	return prefix.Replenish(ctx, present)
 }
 
-// textRolePrefixCore is the single opening/members machinery shared by the
+// rolePrefixCore is the single opening/members machinery shared by the
 // Publisher Introduction and Responder prefix lifecycles: one live handle
 // slot, one opening flight slot, one interior member set, and the identical
 // idle-retirement and stop transitions. The Source keeps its own lifecycle:
 // its opening admission, operations gate and acquisitions diverge.
-type textRolePrefixCore struct {
-	live    textRolePrefixLive
+type rolePrefixCore struct {
+	live    rolePrefixLive
 	opening *textOperationFlight
 	set     *textInteriorSet
 }
 
-func (core *textRolePrefixCore) liveCoreLocked() *textRolePrefixHandleCore {
+func (core *rolePrefixCore) liveCoreLocked() *rolePrefixHandleCore {
 	if core == nil || core.live == nil {
 		return nil
 	}
 	return core.live.rolePrefixCore()
 }
 
-func (core *textRolePrefixCore) currentLiveLocked() textRolePrefixLive {
+func (core *rolePrefixCore) currentLiveLocked() rolePrefixLive {
 	if core == nil {
 		return nil
 	}
 	return core.live
 }
 
-func (core *textRolePrefixCore) acquireOpenedCoreLocked(prefix *client.ClosedSourcePrefix) textRolePrefixLive {
+func (core *rolePrefixCore) acquireOpenedCoreLocked(prefix *client.ClosedSourcePrefix) rolePrefixLive {
 	live := core.currentLiveLocked()
 	if live == nil || prefix == nil || live.rolePrefixCore().prefix.Load() != prefix {
 		return nil
@@ -91,19 +91,19 @@ func (core *textRolePrefixCore) acquireOpenedCoreLocked(prefix *client.ClosedSou
 	return live
 }
 
-func (core *textRolePrefixCore) openingInProgressLocked() bool {
+func (core *rolePrefixCore) openingInProgressLocked() bool {
 	return core != nil && core.opening != nil
 }
 
-func (core *textRolePrefixCore) openingAvailableLocked() bool {
+func (core *rolePrefixCore) openingAvailableLocked() bool {
 	return core != nil && core.live == nil && core.opening == nil
 }
 
-func (core *textRolePrefixCore) membersSlotLocked() **textInteriorSet {
+func (core *rolePrefixCore) membersSlotLocked() **textInteriorSet {
 	return &core.set
 }
 
-func (core *textRolePrefixCore) reserveOpeningLocked(flight *textOperationFlight) bool {
+func (core *rolePrefixCore) reserveOpeningLocked(flight *textOperationFlight) bool {
 	if core == nil || flight == nil || core.live != nil || core.opening != nil {
 		return false
 	}
@@ -111,13 +111,13 @@ func (core *textRolePrefixCore) reserveOpeningLocked(flight *textOperationFlight
 	return true
 }
 
-func (core *textRolePrefixCore) openingCurrentLocked(flight *textOperationFlight) bool {
+func (core *rolePrefixCore) openingCurrentLocked(flight *textOperationFlight) bool {
 	return core != nil && core.opening == flight
 }
 
 // retireIdleLocked closes the live prefix only after Route has ended it.
 // The close runs under textContext.mu like every idle retirement.
-func (core *textRolePrefixCore) retireIdleLocked() error {
+func (core *rolePrefixCore) retireIdleLocked() error {
 	if core == nil || core.live == nil {
 		return nil
 	}
@@ -140,8 +140,8 @@ func (core *textRolePrefixCore) retireIdleLocked() error {
 
 // stopLocked revokes the live handle and the opening flight under
 // textContext.mu and hands their terminal cleanup to the retirement carrier.
-func (core *textRolePrefixCore) stopLocked() *textRolePrefixRetirement {
-	retirement := &textRolePrefixRetirement{}
+func (core *rolePrefixCore) stopLocked() *rolePrefixRetirement {
+	retirement := &rolePrefixRetirement{}
 	if core == nil {
 		return retirement
 	}
@@ -158,15 +158,15 @@ func (core *textRolePrefixCore) stopLocked() *textRolePrefixRetirement {
 	return retirement
 }
 
-// textRolePrefixRetirement carries the stopped prefix and opening of one
+// rolePrefixRetirement carries the stopped prefix and opening of one
 // Publisher role out of the locked stop phase; joining the opening and
 // closing the prefix run without textContext.mu.
-type textRolePrefixRetirement struct {
+type rolePrefixRetirement struct {
 	prefix  *client.ClosedSourcePrefix
 	opening *textOperationFlight
 }
 
-func (retirement *textRolePrefixRetirement) joinOpening() {
+func (retirement *rolePrefixRetirement) joinOpening() {
 	if retirement == nil {
 		return
 	}
@@ -174,7 +174,7 @@ func (retirement *textRolePrefixRetirement) joinOpening() {
 	retirement.opening = nil
 }
 
-func (retirement *textRolePrefixRetirement) closePrefix() error {
+func (retirement *rolePrefixRetirement) closePrefix() error {
 	if retirement == nil || retirement.prefix == nil {
 		return nil
 	}

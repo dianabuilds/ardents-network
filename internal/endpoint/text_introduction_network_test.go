@@ -10,7 +10,7 @@ import (
 	routecarrier "github.com/dianabuilds/ardents-network/internal/route/carrier"
 )
 
-func addTextIntroductionPrefixState(source *textSourceStateFixture) {
+func addTextIntroductionPrefixState(source *sourceStateFixture) {
 	source.view.NodeCount, source.snapshot.CandidateCount = 11, 11
 	for index := 7; index < 11; index++ {
 		subrole := uint8(1)
@@ -32,7 +32,7 @@ func TestTextPublisherIntroductionPrefixUsesSeparateDomainAndRealIssuance(t *tes
 	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP, routecarrier.ClosedCarrierQUIC} {
 		t.Run(string(carrier), func(t *testing.T) {
 			_, owner, _ := startTextRoleNetwork(t, textRoleNetworkFixture{carrier: carrier, resolution: true, publisher: true})
-			source, err := owner.openTextPrefix(t.Context())
+			source, err := owner.openPrefix(t.Context())
 			if err != nil {
 				t.Fatal(err)
 			}

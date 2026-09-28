@@ -155,7 +155,7 @@ func (endpoint *endpoint) textEntrySets() (*entry.ClosedSets, error) {
 	return owner, nil
 }
 
-func (endpoint *endpoint) closeTextSourceRoots() error {
+func (endpoint *endpoint) closeSourceRoots() error {
 	endpoint.textMu.Lock()
 	defer endpoint.textMu.Unlock()
 	return errors.Join(endpoint.closedEntries.Close(), endpoint.closedTokenJournal.Close())

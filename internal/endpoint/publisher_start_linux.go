@@ -70,7 +70,7 @@ func (worker *qualifiedTextWorker) startPublication(ctx context.Context) (_ *pub
 	if operationErr != nil {
 		return nil, operationErr
 	}
-	if _, err := owner.openTextPrefix(ctx); err != nil {
+	if _, err := owner.openPrefix(ctx); err != nil {
 		return nil, err
 	}
 	prefix, err := owner.openTextIntroductionPrefix(ctx)

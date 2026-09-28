@@ -20,8 +20,8 @@ type textContextState struct {
 	introduction      textIntroduction
 	descriptorHistory descriptorhistory.History
 	responder         textResponderPrefixLifecycle
-	resolution        *textResolutionFlight
-	source            textSourceLifecycle
+	resolution        *resolutionFlight
+	source            sourceLifecycle
 	tokens            tokens
 	mu                sync.Mutex
 	endpoint          *endpoint

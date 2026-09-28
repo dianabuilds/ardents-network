@@ -176,16 +176,16 @@ func (owner *textContext) receiveTextIntroductionWith(ctx context.Context, job *
 	return prepared, outcome
 }
 
-func (owner *textContext) prepareTextSubmissionStock(ctx context.Context, prefix *textSourceHandle) ([32]byte, state.ClosedProfileView, error) {
+func (owner *textContext) prepareTextSubmissionStock(ctx context.Context, prefix *sourceHandle) ([32]byte, state.ClosedProfileView, error) {
 	return owner.prepareTextSubmissionStockWithCancellation(ctx, prefix, false)
 }
 
 func (owner *textContext) prepareTextRecoverySubmissionStock(ctx context.Context,
-	prefix *textSourceHandle) ([32]byte, state.ClosedProfileView, error) {
+	prefix *sourceHandle) ([32]byte, state.ClosedProfileView, error) {
 	return owner.prepareTextSubmissionStockWithCancellation(ctx, prefix, true)
 }
 
-func (owner *textContext) prepareTextSubmissionStockWithCancellation(ctx context.Context, prefix *textSourceHandle,
+func (owner *textContext) prepareTextSubmissionStockWithCancellation(ctx context.Context, prefix *sourceHandle,
 	discardCanceled bool) ([32]byte, state.ClosedProfileView, error) {
 	receiver, err := prefix.submissionRecipient()
 	if err != nil {

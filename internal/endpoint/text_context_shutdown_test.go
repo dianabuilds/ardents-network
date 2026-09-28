@@ -20,7 +20,7 @@ func TestTextContextCloseRevokesEveryChildBeforeOrderedJoin(t *testing.T) {
 		t.Fatal(err)
 	}
 	resolutionContext, cancelResolution := context.WithCancel(owner.lease.Context())
-	resolution := &textResolutionFlight{context: resolutionContext, cancel: cancelResolution, done: make(chan struct{})}
+	resolution := &resolutionFlight{context: resolutionContext, cancel: cancelResolution, done: make(chan struct{})}
 	initialFailure := errors.New("initial context failure")
 	cleanupFailure := errors.New("job cleanup failure")
 	owner.mu.Lock()
@@ -28,8 +28,8 @@ func TestTextContextCloseRevokesEveryChildBeforeOrderedJoin(t *testing.T) {
 	owner.closeErr = initialFailure
 	owner.mu.Unlock()
 
-	var finishResolution sync.Once
-	finishResolutionFlight := func() { finishResolution.Do(func() { close(resolution.done) }) }
+	var finishOnce sync.Once
+	finishResolutionFlight := func() { finishOnce.Do(func() { close(resolution.done) }) }
 	closed := make(chan error, 1)
 	closeGoroutineDone := make(chan struct{})
 	go func() {

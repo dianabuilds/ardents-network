@@ -10,7 +10,7 @@ import (
 )
 
 func TestTextPrefixReservesOpeningBeforeIssuanceAndJoinsCancellation(t *testing.T) {
-	_, owner, source := textSourceContextFixture(t)
+	_, owner, source := sourceContextFixture(t)
 	prepareIssuancePermission(t, owner, source)
 	listener, err := net.ListenTCP("tcp", &net.TCPAddr{IP: net.IPv4(127, 0, 0, 1)})
 	if err != nil {
@@ -29,7 +29,7 @@ func TestTextPrefixReservesOpeningBeforeIssuanceAndJoinsCancellation(t *testing.
 	defer cancel()
 	done := make(chan error, 1)
 	go func() {
-		prefix, err := owner.openTextPrefix(ctx)
+		prefix, err := owner.openPrefix(ctx)
 		if prefix != nil {
 			_ = prefix.Close()
 		}
@@ -53,7 +53,7 @@ func TestTextPrefixReservesOpeningBeforeIssuanceAndJoinsCancellation(t *testing.
 		<-done
 		t.Fatal("issuance started without reserving the prefix transition")
 	}
-	if prefix, err := owner.openTextPrefix(t.Context()); prefix != nil || err == nil {
+	if prefix, err := owner.openPrefix(t.Context()); prefix != nil || err == nil {
 		if prefix != nil {
 			_ = prefix.Close()
 		}
@@ -85,7 +85,7 @@ func TestTextPrefixReservesOpeningBeforeIssuanceAndJoinsCancellation(t *testing.
 }
 
 func TestTextPrefixOpeningExcludesUnrelatedIssuanceBetweenBatches(t *testing.T) {
-	_, owner, source := textSourceContextFixture(t)
+	_, owner, source := sourceContextFixture(t)
 	prepareIssuancePermission(t, owner, source)
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
@@ -108,7 +108,7 @@ func TestTextPrefixOpeningExcludesUnrelatedIssuanceBetweenBatches(t *testing.T) 
 }
 
 func TestTextPrefixOpeningRejectsObsoleteCompletionWithoutTouchingReplacement(t *testing.T) {
-	_, owner, source := textSourceContextFixture(t)
+	_, owner, source := sourceContextFixture(t)
 	prepareIssuancePermission(t, owner, source)
 	listener, err := net.ListenTCP("tcp", &net.TCPAddr{IP: net.IPv4(127, 0, 0, 1)})
 	if err != nil {
@@ -128,7 +128,7 @@ func TestTextPrefixOpeningRejectsObsoleteCompletionWithoutTouchingReplacement(t 
 	defer cancel()
 	result := make(chan error, 1)
 	go func() {
-		prefix, openErr := owner.openTextPrefix(ctx)
+		prefix, openErr := owner.openPrefix(ctx)
 		if prefix != nil {
 			_ = prefix.Close()
 		}

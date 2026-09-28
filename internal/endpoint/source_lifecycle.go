@@ -11,76 +11,76 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/route/client"
 )
 
-// textSourceLifecycle is the only owner of the live Source opening and its
+// sourceLifecycle is the only owner of the live Source opening and its
 // in-progress replacement. The zero value is ready for use under textContext.mu.
-type textSourceLifecycle struct {
-	live       *textSourceHandle
+type sourceLifecycle struct {
+	live       *sourceHandle
 	opening    *textOperationFlight
-	operations textSourceOperationGate
+	operations sourceOperationGate
 	set        *textInteriorSet
 }
 
 // The retained Interior Set survives prefix replacement and belongs to this
 // context's Source lifecycle, not to an individual Route opening.
-func (lifecycle *textSourceLifecycle) membersSlotLocked() **textInteriorSet {
+func (lifecycle *sourceLifecycle) membersSlotLocked() **textInteriorSet {
 	return &lifecycle.set
 }
 
-func (lifecycle *textSourceLifecycle) hasMembersLocked() bool {
+func (lifecycle *sourceLifecycle) hasMembersLocked() bool {
 	return lifecycle != nil && lifecycle.set != nil
 }
 
-type textSourceRetirement struct {
+type sourceRetirement struct {
 	prefix  *client.ClosedSourcePrefix
 	opening *textOperationFlight
 }
 
-// textSourceHandle is a read-only capability for one exact published Source
+// sourceHandle is a read-only capability for one exact published Source
 // opening. It deliberately exposes neither Close nor the underlying prefix.
-type textSourceHandle struct {
-	owner  *textSourceLifecycle
+type sourceHandle struct {
+	owner  *sourceLifecycle
 	prefix atomic.Pointer[client.ClosedSourcePrefix]
 	cancel context.CancelFunc
 }
 
-// textSourceJoinAcquisition binds one JOIN exchange to the exact Source handle
+// sourceJoinAcquisition binds one JOIN exchange to the exact Source handle
 // current at admission. Releasing it cannot expose a replacement handle.
-type textSourceJoinAcquisition struct {
-	handle atomic.Pointer[textSourceHandle]
+type sourceJoinAcquisition struct {
+	handle atomic.Pointer[sourceHandle]
 }
 
-func (lifecycle *textSourceLifecycle) acquireJoinLocked() *textSourceJoinAcquisition {
+func (lifecycle *sourceLifecycle) acquireJoinLocked() *sourceJoinAcquisition {
 	if lifecycle == nil || lifecycle.live == nil || lifecycle.live.prefix.Load() == nil {
 		return nil
 	}
-	acquisition := &textSourceJoinAcquisition{}
+	acquisition := &sourceJoinAcquisition{}
 	acquisition.handle.Store(lifecycle.live)
 	return acquisition
 }
 
-// textSourceResolutionAcquisition binds one Descriptor lookup to the exact
+// sourceResolutionAcquisition binds one Descriptor lookup to the exact
 // Source handle current at admission. Release is local to this lookup and can
 // never expose a replacement handle.
-type textSourceResolutionAcquisition struct {
-	handle atomic.Pointer[textSourceHandle]
+type sourceResolutionAcquisition struct {
+	handle atomic.Pointer[sourceHandle]
 }
 
-func (lifecycle *textSourceLifecycle) acquireResolutionLocked() *textSourceResolutionAcquisition {
+func (lifecycle *sourceLifecycle) acquireResolutionLocked() *sourceResolutionAcquisition {
 	if lifecycle == nil || lifecycle.live == nil || lifecycle.live.prefix.Load() == nil {
 		return nil
 	}
-	acquisition := &textSourceResolutionAcquisition{}
+	acquisition := &sourceResolutionAcquisition{}
 	acquisition.handle.Store(lifecycle.live)
 	return acquisition
 }
 
-func (acquisition *textSourceJoinAcquisition) release() {
+func (acquisition *sourceJoinAcquisition) release() {
 	if acquisition != nil {
 		acquisition.handle.Store(nil)
 	}
 }
 
-func (acquisition *textSourceJoinAcquisition) currentLocked(owner *textContext) bool {
+func (acquisition *sourceJoinAcquisition) currentLocked(owner *textContext) bool {
 	if acquisition == nil {
 		return false
 	}
@@ -88,7 +88,7 @@ func (acquisition *textSourceJoinAcquisition) currentLocked(owner *textContext) 
 	return handle != nil && handle.currentLocked(&owner.source)
 }
 
-func (acquisition *textSourceJoinAcquisition) issuancePrefixLocked(owner *textContext) (*textSourceHandle, bool) {
+func (acquisition *sourceJoinAcquisition) issuancePrefixLocked(owner *textContext) (*sourceHandle, bool) {
 	if acquisition == nil {
 		return nil, false
 	}
@@ -96,7 +96,7 @@ func (acquisition *textSourceJoinAcquisition) issuancePrefixLocked(owner *textCo
 	return handle, handle != nil && handle.currentLocked(&owner.source)
 }
 
-func (acquisition *textSourceJoinAcquisition) dataJoinRecipient() ([32]byte, uint64, time.Time, error) {
+func (acquisition *sourceJoinAcquisition) dataJoinRecipient() ([32]byte, uint64, time.Time, error) {
 	if acquisition == nil {
 		return [32]byte{}, 0, time.Time{}, errors.New("text Source JOIN acquisition unavailable")
 	}
@@ -107,7 +107,7 @@ func (acquisition *textSourceJoinAcquisition) dataJoinRecipient() ([32]byte, uin
 	return handle.dataJoinRecipient()
 }
 
-func (acquisition *textSourceJoinAcquisition) join(ctx context.Context, present client.ClosedTokenPresenter,
+func (acquisition *sourceJoinAcquisition) join(ctx context.Context, present client.ClosedTokenPresenter,
 	intent client.ClosedJoinIntent) (*client.ClosedJoinedStream, error) {
 	if acquisition == nil {
 		return nil, errors.New("text Source JOIN acquisition unavailable")
@@ -119,13 +119,13 @@ func (acquisition *textSourceJoinAcquisition) join(ctx context.Context, present 
 	return handle.join(ctx, present, intent)
 }
 
-func (acquisition *textSourceResolutionAcquisition) release() {
+func (acquisition *sourceResolutionAcquisition) release() {
 	if acquisition != nil {
 		acquisition.handle.Store(nil)
 	}
 }
 
-func (acquisition *textSourceResolutionAcquisition) currentLocked(lifecycle *textSourceLifecycle) bool {
+func (acquisition *sourceResolutionAcquisition) currentLocked(lifecycle *sourceLifecycle) bool {
 	if acquisition == nil {
 		return false
 	}
@@ -133,7 +133,7 @@ func (acquisition *textSourceResolutionAcquisition) currentLocked(lifecycle *tex
 	return handle != nil && handle.currentLocked(lifecycle)
 }
 
-func (acquisition *textSourceResolutionAcquisition) resolutionRecipient() ([32]byte, error) {
+func (acquisition *sourceResolutionAcquisition) resolutionRecipient() ([32]byte, error) {
 	if acquisition == nil {
 		return [32]byte{}, errors.New("text Source resolution acquisition unavailable")
 	}
@@ -144,7 +144,7 @@ func (acquisition *textSourceResolutionAcquisition) resolutionRecipient() ([32]b
 	return handle.resolutionRecipient()
 }
 
-func (acquisition *textSourceResolutionAcquisition) exchangeDescriptor(ctx context.Context,
+func (acquisition *sourceResolutionAcquisition) exchangeDescriptor(ctx context.Context,
 	present client.ClosedTokenPresenter, target [32]byte, descriptor []byte) (uint8, []byte, error) {
 	if acquisition == nil {
 		return 0, nil, errors.New("text Source resolution acquisition unavailable")
@@ -159,18 +159,18 @@ func (acquisition *textSourceResolutionAcquisition) exchangeDescriptor(ctx conte
 // currentLocked returns the live Source handle. Like the Introduction and
 // Responder owners, the Source lifecycle is read through its own owner; the
 // Context keeps no pass-through for it.
-func (lifecycle *textSourceLifecycle) currentLocked() *textSourceHandle {
+func (lifecycle *sourceLifecycle) currentLocked() *sourceHandle {
 	if lifecycle == nil {
 		return nil
 	}
 	return lifecycle.live
 }
 
-func (lifecycle *textSourceLifecycle) openingInProgressLocked() bool {
+func (lifecycle *sourceLifecycle) openingInProgressLocked() bool {
 	return lifecycle != nil && lifecycle.opening != nil
 }
 
-func (lifecycle *textSourceLifecycle) reserveOpeningLocked(operation *textOperationFlight) bool {
+func (lifecycle *sourceLifecycle) reserveOpeningLocked(operation *textOperationFlight) bool {
 	if lifecycle == nil || operation == nil || lifecycle.live != nil || lifecycle.opening != nil {
 		return false
 	}
@@ -178,7 +178,7 @@ func (lifecycle *textSourceLifecycle) reserveOpeningLocked(operation *textOperat
 	return true
 }
 
-func (lifecycle *textSourceLifecycle) openingAdmittedLocked(operation *textOperationFlight) bool {
+func (lifecycle *sourceLifecycle) openingAdmittedLocked(operation *textOperationFlight) bool {
 	if lifecycle == nil {
 		return false
 	}
@@ -188,8 +188,8 @@ func (lifecycle *textSourceLifecycle) openingAdmittedLocked(operation *textOpera
 	return lifecycle.opening == operation
 }
 
-func (lifecycle *textSourceLifecycle) finishOpeningLocked(operation *textOperationFlight,
-	prefix *client.ClosedSourcePrefix, cancel context.CancelFunc, publish bool) (*textSourceHandle, bool) {
+func (lifecycle *sourceLifecycle) finishOpeningLocked(operation *textOperationFlight,
+	prefix *client.ClosedSourcePrefix, cancel context.CancelFunc, publish bool) (*sourceHandle, bool) {
 	if lifecycle == nil || lifecycle.opening != operation {
 		return nil, false
 	}
@@ -197,7 +197,7 @@ func (lifecycle *textSourceLifecycle) finishOpeningLocked(operation *textOperati
 	if !publish {
 		return nil, true
 	}
-	handle := &textSourceHandle{owner: lifecycle, cancel: cancel}
+	handle := &sourceHandle{owner: lifecycle, cancel: cancel}
 	handle.prefix.Store(prefix)
 	lifecycle.live = handle
 	return handle, true
@@ -205,11 +205,11 @@ func (lifecycle *textSourceLifecycle) finishOpeningLocked(operation *textOperati
 
 // currentLocked verifies handle identity against the owning lifecycle alone;
 // the handle never reaches back into the Context.
-func (handle *textSourceHandle) currentLocked(lifecycle *textSourceLifecycle) bool {
+func (handle *sourceHandle) currentLocked(lifecycle *sourceLifecycle) bool {
 	return handle != nil && lifecycle != nil && handle.prefix.Load() != nil && handle.owner == lifecycle && lifecycle.live == handle
 }
 
-func (handle *textSourceHandle) routePrefix() (*client.ClosedSourcePrefix, error) {
+func (handle *sourceHandle) routePrefix() (*client.ClosedSourcePrefix, error) {
 	if handle == nil {
 		return nil, errors.New("text Source handle unavailable")
 	}
@@ -220,7 +220,7 @@ func (handle *textSourceHandle) routePrefix() (*client.ClosedSourcePrefix, error
 	return prefix, nil
 }
 
-func (handle *textSourceHandle) resolutionRecipient() ([32]byte, error) {
+func (handle *sourceHandle) resolutionRecipient() ([32]byte, error) {
 	prefix, err := handle.routePrefix()
 	if err != nil {
 		return [32]byte{}, err
@@ -228,7 +228,7 @@ func (handle *textSourceHandle) resolutionRecipient() ([32]byte, error) {
 	return prefix.ResolutionRecipient()
 }
 
-func (handle *textSourceHandle) exchangeDescriptor(ctx context.Context, present client.ClosedTokenPresenter, target [32]byte, descriptor []byte) (uint8, []byte, error) {
+func (handle *sourceHandle) exchangeDescriptor(ctx context.Context, present client.ClosedTokenPresenter, target [32]byte, descriptor []byte) (uint8, []byte, error) {
 	prefix, err := handle.routePrefix()
 	if err != nil {
 		return 0, nil, err
@@ -236,7 +236,7 @@ func (handle *textSourceHandle) exchangeDescriptor(ctx context.Context, present 
 	return prefix.ExchangeDescriptor(ctx, present, target, descriptor)
 }
 
-func (handle *textSourceHandle) submissionRecipient() ([32]byte, error) {
+func (handle *sourceHandle) submissionRecipient() ([32]byte, error) {
 	prefix, err := handle.routePrefix()
 	if err != nil {
 		return [32]byte{}, err
@@ -244,7 +244,7 @@ func (handle *textSourceHandle) submissionRecipient() ([32]byte, error) {
 	return prefix.SubmissionRecipient()
 }
 
-func (handle *textSourceHandle) submitIntroduction(ctx context.Context, present client.ClosedTokenPresenter, operation []byte) (uint8, error) {
+func (handle *sourceHandle) submitIntroduction(ctx context.Context, present client.ClosedTokenPresenter, operation []byte) (uint8, error) {
 	prefix, err := handle.routePrefix()
 	if err != nil {
 		return 0, err
@@ -252,7 +252,7 @@ func (handle *textSourceHandle) submitIntroduction(ctx context.Context, present 
 	return prefix.SubmitIntroduction(ctx, present, operation)
 }
 
-func (handle *textSourceHandle) dataJoinRecipient() ([32]byte, uint64, time.Time, error) {
+func (handle *sourceHandle) dataJoinRecipient() ([32]byte, uint64, time.Time, error) {
 	prefix, err := handle.routePrefix()
 	if err != nil {
 		return [32]byte{}, 0, time.Time{}, err
@@ -260,7 +260,7 @@ func (handle *textSourceHandle) dataJoinRecipient() ([32]byte, uint64, time.Time
 	return prefix.DataJoinRecipient()
 }
 
-func (handle *textSourceHandle) join(ctx context.Context, present client.ClosedTokenPresenter, intent client.ClosedJoinIntent) (*client.ClosedJoinedStream, error) {
+func (handle *sourceHandle) join(ctx context.Context, present client.ClosedTokenPresenter, intent client.ClosedJoinIntent) (*client.ClosedJoinedStream, error) {
 	prefix, err := handle.routePrefix()
 	if err != nil {
 		return nil, err
@@ -268,7 +268,7 @@ func (handle *textSourceHandle) join(ctx context.Context, present client.ClosedT
 	return prefix.Join(ctx, present, intent)
 }
 
-func (handle *textSourceHandle) exchangeIssuer(ctx context.Context, present client.ClosedTokenPresenter, batch []byte) (client.ClosedIssuanceExchangeResult, error) {
+func (handle *sourceHandle) exchangeIssuer(ctx context.Context, present client.ClosedTokenPresenter, batch []byte) (client.ClosedIssuanceExchangeResult, error) {
 	prefix, err := handle.routePrefix()
 	if err != nil {
 		return client.ClosedIssuanceExchangeResult{}, err
@@ -276,7 +276,7 @@ func (handle *textSourceHandle) exchangeIssuer(ctx context.Context, present clie
 	return prefix.ExchangeIssuer(ctx, present, batch)
 }
 
-func (handle *textSourceHandle) replenish(ctx context.Context, present client.ClosedTokenPresenter) error {
+func (handle *sourceHandle) replenish(ctx context.Context, present client.ClosedTokenPresenter) error {
 	prefix, err := handle.routePrefix()
 	if err != nil {
 		return err
@@ -284,7 +284,7 @@ func (handle *textSourceHandle) replenish(ctx context.Context, present client.Cl
 	return prefix.Replenish(ctx, present)
 }
 
-func (lifecycle *textSourceLifecycle) retireIdleLocked() error {
+func (lifecycle *sourceLifecycle) retireIdleLocked() error {
 	handle := lifecycle.live
 	if handle == nil {
 		return nil
@@ -305,7 +305,7 @@ func (lifecycle *textSourceLifecycle) retireIdleLocked() error {
 	return prefix.Close()
 }
 
-func (lifecycle *textSourceLifecycle) detachLocked() (*client.ClosedSourcePrefix, *textOperationFlight) {
+func (lifecycle *sourceLifecycle) detachLocked() (*client.ClosedSourcePrefix, *textOperationFlight) {
 	handle, opening := lifecycle.live, lifecycle.opening
 	lifecycle.live, lifecycle.opening = nil, nil
 	var prefix *client.ClosedSourcePrefix
@@ -319,13 +319,13 @@ func (lifecycle *textSourceLifecycle) detachLocked() (*client.ClosedSourcePrefix
 	return prefix, opening
 }
 
-func (lifecycle *textSourceLifecycle) stopLocked() *textSourceRetirement {
+func (lifecycle *sourceLifecycle) stopLocked() *sourceRetirement {
 	prefix, opening := lifecycle.detachLocked()
 	lifecycle.set = nil
-	return &textSourceRetirement{prefix: prefix, opening: opening}
+	return &sourceRetirement{prefix: prefix, opening: opening}
 }
 
-func (retirement *textSourceRetirement) joinOpening() {
+func (retirement *sourceRetirement) joinOpening() {
 	if retirement == nil {
 		return
 	}
@@ -335,7 +335,7 @@ func (retirement *textSourceRetirement) joinOpening() {
 	}
 }
 
-func (retirement *textSourceRetirement) closePrefix() error {
+func (retirement *sourceRetirement) closePrefix() error {
 	if retirement == nil {
 		return nil
 	}

@@ -83,7 +83,7 @@ func TestTextPublicationIsolatedRoleObservations(t *testing.T) {
 				t.Fatal(err)
 			}
 			endpoint.publisherBinding, endpoint.publications, endpoint.authority = binding, publisher, [32]byte(public)
-			if _, err := owner.openTextPrefix(t.Context()); err != nil {
+			if _, err := owner.openPrefix(t.Context()); err != nil {
 				t.Fatal(err)
 			}
 			if _, err := owner.openTextIntroductionPrefix(t.Context()); err != nil {

@@ -19,7 +19,7 @@ type issuanceOperation struct {
 	context           context.Context
 	cancelOperation   context.CancelFunc
 	done              chan struct{}
-	prefix            *textSourceHandle
+	prefix            *sourceHandle
 	permission        *permission
 	profile           state.ClosedProfileView
 	batch             *tokenBatch

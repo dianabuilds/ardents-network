@@ -29,10 +29,10 @@ func TestTextIssuanceStartsAfterIdleListeners(t *testing.T) {
 			case <-t.Context().Done():
 				t.Fatal(t.Context().Err())
 			}
-			if _, err := owner.openTextPrefix(t.Context()); err != nil {
+			if _, err := owner.openPrefix(t.Context()); err != nil {
 				t.Fatalf("bootstrap after idle listeners: %v", err)
 			}
-			selection := selectTextSource(t, owner)
+			selection := selectSource(t, owner)
 			if err := owner.issueTokens(t.Context(), [][32]byte{selection.EntryNodeID}, 2); err != nil {
 				t.Fatalf("ordinary issuance after idle listeners: %v", err)
 			}

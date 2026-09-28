@@ -40,7 +40,7 @@ func (permission *permission) hasPending() bool {
 	return permission != nil && permission.pending != nil
 }
 
-func (permission *permission) pendingFor(prefix *textSourceHandle) bool {
+func (permission *permission) pendingFor(prefix *sourceHandle) bool {
 	return permission.hasPending() && permission.pending.prefix == prefix
 }
 
@@ -191,7 +191,7 @@ func (owner *textContext) importPermission(digest [32]byte, raw []byte) error {
 }
 
 func (owner *textContext) permissionProfileLocked() (state.ClosedProfileView, time.Time, error) {
-	if err := owner.retireTextPrefixLocked(); err != nil {
+	if err := owner.retirePrefixLocked(); err != nil {
 		return state.ClosedProfileView{}, time.Time{}, err
 	}
 	endpoint := owner.endpoint
