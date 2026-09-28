@@ -275,7 +275,8 @@ systemd/cgroup qualification.
 
 - **State owner**: `dutyContextState` still holds publication, introduction
   (root aggregate over the extracted mechanisms), responder, resolution,
-  source set/gate, tokens owner, and job identity under the shared `mu`;
+  Source lifecycle and retained Interior Set, tokens owner, and job identity
+  under the shared `mu`;
   108 `*dutyContext` method declarations span 37 root files. Each proposed
   seam is evaluated by state, invariant, callers, and close owner — not by
   method/file counts.
@@ -330,26 +331,31 @@ systemd/cgroup qualification.
 
 ### L4 — #309/#311 (separate bug fixes, not structural acceptance)
 
-- **#309**: terminal-receipt recovery TOCTOU in `RunBounded` success
-  aggregation — fix territory is shared `internal/service/connection`;
-  requires an ownership agreement before fix edits. Phase-2 RED reproduction
-  first, in a claimed quiet window.
-- **#311**: administration-socket timeout — Windows AF_UNIX server readiness
-  stall; busy-snapshot refusal closes with unread bytes (documented RST
-  hazard). Reproduction is Windows-light but timing-sensitive: runs only when
-  no other owner holds the heavy window.
+- **#309**: an intermittent terminal-receipt recovery failure remains open.
+  A late generation-2 receipt after the acknowledgement worker exits is one
+  unproven race candidate in shared `internal/service/connection`. First obtain
+  a deterministic RED at that boundary in a claimed quiet window; assign one
+  shared-package implementer before any fix edit.
+- **#311**: the exact Windows snapshot/withdrawal test intermittently times
+  out reading an Administration response. A temporary diagnostic captured the
+  server waiting for request EOF after the client completed CloseWrite; other
+  minimized request sequences also failed intermittently. The transport cause
+  is unproven. Trace the request/EOF boundary before choosing a fix, in a
+  timing-sensitive window free of other heavy work.
 - Rules: no retry/skip/quarantine; fix only the confirmed owner with a
   deterministic regression; do not suppress EOF/integrity; do not change
   deadlines before reproduction.
 
 ### L5 — protocol cure (awaits PO decision)
 
-- Structural phase (no wire-semantic change) can proceed inside Endpoint
-  call-site territory; semantic phase touches shared packages
-  (`internal/route` — 75 consumer files across Node and Network;
-  `internal/service/connection`; `internal/application/*`) and needs a
-  PO-assigned executor. Protected surface (PO product decisions): CLI,
-  `plan.TextTokenRoot`, error strings, `text_worker_installed` tag.
+- Any structural cleanup with unchanged wire needs one bounded owner and a
+  concrete caller/acceptance seam. Semantic or compatibility changes in shared
+  Route, Service Connection, or Application protocol packages require a
+  decision against their current contracts and one assigned implementer;
+  the closed v3 grammar is already selected, while public wire remains
+  unselected. Existing C0 defect issues retain their own acceptance gates.
+  Protected surface (PO product decisions): CLI, `plan.TextTokenRoot`, error
+  strings, `text_worker_installed` tag.
 
 ## Tests and diagnostics
 
