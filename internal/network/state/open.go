@@ -14,7 +14,7 @@ func Open(input Config) (*networkState, error) {
 	return open(input, nil, nil)
 }
 
-func open(input Config, automaticTicks <-chan time.Time, automaticResults chan<- error) (*networkState, error) {
+func open(input Config, automaticTicks <-chan time.Time, automaticResults chan<- error) (openedState *networkState, resultErr error) {
 	resolved, err := validateConfig(input)
 	if err != nil {
 		return nil, err
@@ -30,7 +30,9 @@ func open(input Config, automaticTicks <-chan time.Time, automaticResults chan<-
 	opened := false
 	defer func() {
 		if !opened {
-			_ = storage.Close()
+			if closeErr := storage.Close(); closeErr != nil {
+				resultErr = errors.Join(resultErr, closeErr)
+			}
 		}
 	}()
 	workContext, workCancel := context.WithCancel(context.Background())

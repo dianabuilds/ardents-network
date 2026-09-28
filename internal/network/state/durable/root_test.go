@@ -43,3 +43,14 @@ func TestRootLeaseAndGenerationSurviveReopen(t *testing.T) {
 		t.Fatal("overwrote an immutable State generation")
 	}
 }
+
+func TestRootCloseRetainsLeaseReleaseFailure(t *testing.T) {
+	root := &Root{lease: invalidReleaseLease(t)}
+	first := root.Close()
+	if first == nil {
+		t.Fatal("Close hid the lease release failure")
+	}
+	if second := root.Close(); second == nil || second.Error() != first.Error() {
+		t.Fatalf("repeated Close = %v, want retained %v", second, first)
+	}
+}
