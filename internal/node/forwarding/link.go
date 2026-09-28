@@ -236,6 +236,19 @@ func eventAvailable(event route.ClosedForwardingEvent, links map[uint32]*forward
 	return link != nil && link.availableForForwarding()
 }
 
+// nextAvailableForwarding applies the live Node consumer's child availability
+// rules while selecting the Route owner's next accounted event.
+func nextAvailableForwarding(channel *route.ClosedForwardingChannel, links map[uint32]*forwardLink, openings *openings) (route.ClosedForwardingEvent, bool) {
+	return channel.NextAvailable(func(event route.ClosedForwardingEvent) bool {
+		if event.Kind == 9 && openings != nil {
+			if _, pending := openings.pending[event.Lane]; pending {
+				return true
+			}
+		}
+		return eventAvailable(event, links)
+	})
+}
+
 func (server *forwardServer) drainForwarding(ctx context.Context, channel *route.ClosedForwardingChannel, links map[uint32]*forwardLink, openings *openings, write func(ardp.Frame) error, abort func()) error {
 	for {
 		if err := openings.collect(links); err != nil {
@@ -246,14 +259,7 @@ func (server *forwardServer) drainForwarding(ctx context.Context, channel *route
 				return err
 			}
 		}
-		event, available := channel.NextAvailable(func(event route.ClosedForwardingEvent) bool {
-			if event.Kind == 9 && openings != nil {
-				if _, pending := openings.pending[event.Lane]; pending {
-					return true
-				}
-			}
-			return eventAvailable(event, links)
-		})
+		event, available := nextAvailableForwarding(channel, links, openings)
 		if !available {
 			return nil
 		}

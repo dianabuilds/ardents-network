@@ -59,6 +59,8 @@ type ClosedForwardingChannel struct {
 	children     map[uint32]closedForwardChild
 	ready        []uint32
 	controls     []ClosedForwardingEvent
+	dataDue      bool // An emitted control owes one available data frame a turn.
+	pendingEOF   int  // EOFs without queued BYTES, avoiding a hot-path child scan.
 	controlBytes uint32
 	usedBytes    uint64
 	queued       uint64
@@ -301,6 +303,9 @@ func (channel *ClosedForwardingChannel) eof(frame ardp.Frame) (ClosedForwardingE
 		return ClosedForwardingEvent{}, errors.New("closed forwarding EOF is unavailable")
 	}
 	child.eof = true
+	if child.frames.count == 0 {
+		channel.pendingEOF++
+	}
 	channel.children[frame.Lane] = child
 	return ClosedForwardingEvent{}, nil
 }
@@ -313,6 +318,9 @@ func (channel *ClosedForwardingChannel) close(frame ardp.Frame) (ClosedForwardin
 	event := ClosedForwardingEvent{Kind: ardp.KindClose, Lane: frame.Lane, Bytes: append([]byte(nil), frame.Body...)}
 	if !channel.queueControl(event) {
 		return ClosedForwardingEvent{}, errors.New("closed forwarding control queue is unavailable")
+	}
+	if child.eof && !child.eofSent && child.frames.count == 0 {
+		channel.pendingEOF--
 	}
 	channel.releaseQueue(child.queued + child.reverseQueued)
 	channel.releaseControlQueue(child.reverseControlQueued)
@@ -355,7 +363,9 @@ func (channel *ClosedForwardingChannel) Credit(lane uint32, bytes uint32) (ardp.
 }
 
 // NextAvailable returns bounded work whose consumer is currently available.
-// Rejected work remains in this channel's accounted control or prefix queue.
+// Control gets the first turn, then one already queued available data frame
+// precedes another control. An active physical write is not observable here.
+// Rejected control/data work stays accounted; a rejected EOF remains on its child.
 func (channel *ClosedForwardingChannel) NextAvailable(available func(ClosedForwardingEvent) bool) (ClosedForwardingEvent, bool) {
 	if channel == nil {
 		return ClosedForwardingEvent{}, false
@@ -365,15 +375,70 @@ func (channel *ClosedForwardingChannel) NextAvailable(available func(ClosedForwa
 	if channel.terminated || !channel.clock().UTC().Before(channel.deadline) {
 		return ClosedForwardingEvent{}, false
 	}
-	for index, event := range channel.controls {
-		if available != nil && !available(event) {
-			continue
+	if !channel.dataDue {
+		if index := channel.firstAvailableControlLocked(available); index >= 0 {
+			return channel.dequeueControlLocked(index), true
 		}
-		channel.controls = slices.Delete(channel.controls, index, index+1)
-		channel.controlBytes -= closedForwardControlSize(event)
-		channel.releaseControlQueue(uint64(closedForwardControlSize(event)))
+		if event, ok := channel.nextPendingEOFLocked(available); ok {
+			return event, true
+		}
+	}
+	if event, ok := channel.nextReadyDataLocked(available); ok {
+		channel.dataDue = false
 		return event, true
 	}
+	if channel.terminated {
+		return ClosedForwardingEvent{}, false
+	}
+	if channel.dataDue {
+		// No data consumer is available. Control may still make progress.
+		if index := channel.firstAvailableControlLocked(available); index >= 0 {
+			return channel.dequeueControlLocked(index), true
+		}
+		return channel.nextPendingEOFLocked(available)
+	}
+	return ClosedForwardingEvent{}, false
+}
+
+func (channel *ClosedForwardingChannel) nextPendingEOFLocked(available func(ClosedForwardingEvent) bool) (ClosedForwardingEvent, bool) {
+	if channel.pendingEOF == 0 {
+		return ClosedForwardingEvent{}, false
+	}
+	for lane, child := range channel.children {
+		if child.eof && !child.eofSent && child.frames.count == 0 {
+			event := ClosedForwardingEvent{Kind: ardp.KindEOF, Lane: lane}
+			if available != nil && !available(event) {
+				continue
+			}
+			child.eofSent = true
+			channel.children[lane] = child
+			channel.pendingEOF--
+			channel.dataDue = true
+			return event, true
+		}
+	}
+	return ClosedForwardingEvent{}, false
+}
+
+func (channel *ClosedForwardingChannel) firstAvailableControlLocked(available func(ClosedForwardingEvent) bool) int {
+	for index, event := range channel.controls {
+		if available == nil || available(event) {
+			return index
+		}
+	}
+	return -1
+}
+
+func (channel *ClosedForwardingChannel) dequeueControlLocked(index int) ClosedForwardingEvent {
+	event := channel.controls[index]
+	channel.controls = slices.Delete(channel.controls, index, index+1)
+	channel.controlBytes -= closedForwardControlSize(event)
+	channel.releaseControlQueue(uint64(closedForwardControlSize(event)))
+	channel.dataDue = true
+	return event
+}
+
+func (channel *ClosedForwardingChannel) nextReadyDataLocked(available func(ClosedForwardingEvent) bool) (ClosedForwardingEvent, bool) {
 	ready := len(channel.ready)
 	for range ready {
 		lane := channel.ready[0]
@@ -406,17 +471,6 @@ func (channel *ClosedForwardingChannel) NextAvailable(available func(ClosedForwa
 		}
 		channel.children[lane] = child
 		return event, true
-	}
-	for lane, child := range channel.children {
-		if child.eof && !child.eofSent {
-			event := ClosedForwardingEvent{Kind: ardp.KindEOF, Lane: lane}
-			if available != nil && !available(event) {
-				continue
-			}
-			child.eofSent = true
-			channel.children[lane] = child
-			return event, true
-		}
 	}
 	return ClosedForwardingEvent{}, false
 }
@@ -462,6 +516,7 @@ func (channel *ClosedForwardingChannel) Cancel() error {
 	channel.controls = nil
 	channel.ready = nil
 	channel.controlBytes = 0
+	channel.pendingEOF = 0
 	channel.duty.release()
 	var result error
 	for _, release := range channel.releases {

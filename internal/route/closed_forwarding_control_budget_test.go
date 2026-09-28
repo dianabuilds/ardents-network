@@ -70,8 +70,14 @@ func TestClosedForwardingDataPressurePreservesEveryChannelControl(t *testing.T) 
 			if _, err := channel.Accept(ardp.Frame{Kind: ardp.KindOpen, Lane: lane, Body: body}); err != nil {
 				t.Fatalf("admit control during data pressure: %v", err)
 			}
-			if event, ok := channel.NextAvailable(nil); !ok || event.Kind != ardp.KindOpen || event.Lane != lane {
-				t.Fatal("data pressure prevented control progress")
+			// A preceding control may owe one already queued data frame a turn.
+			// The new OPEN must still make progress immediately after that turn.
+			event, ok := channel.NextAvailable(nil)
+			if ok && event.Kind == ardp.KindBytes {
+				event, ok = channel.NextAvailable(nil)
+			}
+			if !ok || event.Kind != ardp.KindOpen || event.Lane != lane {
+				t.Fatalf("data pressure delayed control beyond one data frame: %+v / %t", event, ok)
 			}
 			for range 4 {
 				// Filling is allowed to stop at the ancestor's data limit.
@@ -92,8 +98,14 @@ func TestClosedForwardingDataPressurePreservesEveryChannelControl(t *testing.T) 
 		if _, err := channel.Accept(ardp.Frame{Kind: ardp.KindClose, Lane: 1, Body: []byte{0}}); err != nil {
 			t.Fatalf("data consumed an admitted channel's termination reserve: %v", err)
 		}
-		if event, ok := channel.NextAvailable(nil); !ok || event.Kind != ardp.KindClose || event.Lane != 1 {
-			t.Fatal("termination did not precede queued data")
+		// No active physical control write is known at this Route boundary;
+		// a queued data frame may take its owed turn before CLOSE.
+		event, ok := channel.NextAvailable(nil)
+		if ok && event.Kind == ardp.KindBytes {
+			event, ok = channel.NextAvailable(nil)
+		}
+		if !ok || event.Kind != ardp.KindClose || event.Lane != 1 {
+			t.Fatalf("termination did not progress after one data frame: %+v / %t", event, ok)
 		}
 	}
 	reservation, err := limits.reserveChannel()

@@ -14,6 +14,94 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/route/carrier"
 )
 
+func TestClosedForwardingNodeConsumerSelectsControlDataControl(t *testing.T) {
+	newFixture := func(t *testing.T) (*route.ClosedForwardingChannel, map[uint32]*forwardLink, *openings) {
+		t.Helper()
+		now := time.Unix(1_800_000_000, 0).UTC()
+		clock := func() time.Time { return now }
+		deadline := now.Add(8 * time.Second)
+		governor, err := route.NewClosedBootstrapController(clock)
+		if err != nil {
+			t.Fatal(err)
+		}
+		limits, err := route.NewClosedDutyLimits(clock)
+		if err != nil {
+			t.Fatal(err)
+		}
+		lease, err := governor.Admit([32]byte{1}, deadline)
+		if err != nil {
+			t.Fatal(err)
+		}
+		channel, err := route.NewClosedBootstrapForwardingChannel(lease, limits, func(route.ClosedOpen) error { return nil }, clock)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { _ = channel.Cancel() })
+		body, err := route.EncodeClosedOpen(route.ClosedOpen{NextNodeID: [32]byte{3}, NextDutyGeneration: 4, Purpose: ardp.PurposeIssuer, Deadline: deadline})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := channel.Accept(ardp.Frame{Kind: ardp.KindOpen, Lane: 1, Body: body}); err != nil {
+			t.Fatalf("initial OPEN: %v", err)
+		}
+		links := map[uint32]*forwardLink{1: {}}
+		opening := &openings{pending: make(map[uint32]context.CancelFunc)}
+		if event, ok := nextAvailableForwarding(channel, links, opening); !ok || event.Kind != ardp.KindOpen || event.Lane != 1 {
+			t.Fatalf("initial OPEN = %+v / %t", event, ok)
+		}
+		if _, err := channel.Accept(ardp.Frame{Kind: ardp.KindBytes, Lane: 1, Body: []byte{6}}); err != nil {
+			t.Fatal(err)
+		}
+		if event, ok := nextAvailableForwarding(channel, links, opening); !ok || event.Kind != ardp.KindBytes || event.Lane != 1 {
+			t.Fatalf("initial BYTES = %+v / %t", event, ok)
+		}
+		if _, err := channel.Credit(1, 1); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := channel.Accept(ardp.Frame{Kind: ardp.KindBytes, Lane: 1, Body: []byte{7}}); err != nil {
+			t.Fatal(err)
+		}
+		for _, lane := range []uint32{3, 5} {
+			if _, err := channel.Accept(ardp.Frame{Kind: ardp.KindOpen, Lane: lane, Body: body}); err != nil {
+				t.Fatalf("OPEN lane %d: %v", lane, err)
+			}
+		}
+		return channel, links, opening
+	}
+	check := func(t *testing.T, channel *route.ClosedForwardingChannel, links map[uint32]*forwardLink, opening *openings, kind uint8, lane uint32) {
+		t.Helper()
+		event, ok := nextAvailableForwarding(channel, links, opening)
+		if !ok || event.Kind != kind || event.Lane != lane {
+			t.Fatalf("Node selected %+v / %t, want kind %d lane %d", event, ok, kind, lane)
+		}
+	}
+	t.Run("ready data", func(t *testing.T) {
+		channel, links, opening := newFixture(t)
+		check(t, channel, links, opening, ardp.KindOpen, 3)
+		check(t, channel, links, opening, ardp.KindBytes, 1)
+		check(t, channel, links, opening, ardp.KindOpen, 5)
+	})
+	t.Run("busy child", func(t *testing.T) {
+		channel, links, opening := newFixture(t)
+		links[1].forwarding = true
+		check(t, channel, links, opening, ardp.KindOpen, 3)
+		check(t, channel, links, opening, ardp.KindOpen, 5)
+		links[1].forwarding = false
+		check(t, channel, links, opening, ardp.KindBytes, 1)
+	})
+	t.Run("pending opening can close", func(t *testing.T) {
+		channel, links, opening := newFixture(t)
+		check(t, channel, links, opening, ardp.KindOpen, 3)
+		opening.pending[3] = func() {}
+		if _, err := channel.Accept(ardp.Frame{Kind: ardp.KindClose, Lane: 3, Body: []byte{0}}); err != nil {
+			t.Fatal(err)
+		}
+		check(t, channel, links, opening, ardp.KindBytes, 1)
+		check(t, channel, links, opening, ardp.KindOpen, 5)
+		check(t, channel, links, opening, ardp.KindClose, 3)
+	})
+}
+
 func TestClosedForwardingLinkPreservesHalfCloseCreditsOnceAndJoinsReverse(t *testing.T) {
 	for _, timing := range []string{"delivered-terminal", "queued-terminal", "blocked-terminal"} {
 		t.Run(timing, func(t *testing.T) { testClosedForwardingLinkCompletion(t, timing) })
