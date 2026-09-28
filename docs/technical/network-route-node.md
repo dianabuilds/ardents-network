@@ -208,6 +208,18 @@ immutable snapshots only after durable publication. A source, clock, or
 resource uncertainty prevents fresh State publication rather than creating a
 fallback truth.
 
+### State execution paths
+
+| Entry | State-owned sequence | Adjacent owner |
+| --- | --- | --- |
+| [`Open`](../../internal/network/state/open.go) | Validate the one configuration and clock, claim the durable root, verify the retained current chain and distribution journal, recover pending or interrupted publication, then start the optional Source server, automatic refresh, and resource governor. | `epoch` authenticates restored bytes; `durable` leases and reads opaque generations; `source` validates its TLS plan. |
+| [`Accept`](../../internal/network/state/offline_accept.go) | Verify one offline genesis or exact successor and its materialization under one clock sample, apply the closed-schema gate and pending-conflict rule, then publish the active decision and any serving Source duty. | `epoch` verifies the candidate; `durable` commits its generation, control floor, and current pointer; `duty` guards the serving role. |
+| [`Refresh`](../../internal/network/state/refresh.go) | Admit one finite Source wave, journal attempts and exposure duties, fetch both configured Sources, verify their bundles, and select conflict, pending, active, or bounded failure before a reader can see a new current decision. | `source` owns TLS and private request/bundle framing; `epoch` authenticates the returned decision; `durable` and `duty` retain the resulting floors and exposures. |
+| [Source serving](../../internal/network/state/server.go) | Answer one bounded request from the same verified current decision, or refuse while closed or unavailable; joined shutdown releases the server role. | `source` owns listener, TLS and request/response framing; State owns which authenticated bytes may be served. |
+| [`AcceptClosedProfile`](../../internal/network/state/closed_profile_accept.go) | Verify and durably accept one signed profile only for the current closed Epoch; a second valid digest records a durable conflict instead of selecting a winner. | `closedprofile` verifies signed grammar; `durable` stores its accepted bytes and conflict floor. |
+| [Current readers](../../internal/network/state/snapshot_access.go) | Derive a copied Snapshot and Node-duty view; expose the accepted closed profile's exact issuer/key and recipient constraints only while State and clock remain live. | Node and Endpoint consume State projections without gaining State-root custody. |
+| [`Wait` and `Close`](../../internal/network/state/lifecycle.go) | Report terminal background failure; cancel and join accepted work, close the durable root, release the serving Source duty, and retain one cleanup result for all Close callers. | `resource` supplies pressure observations; State retains supervision and cleanup ownership. |
+
 ### State transition admissibility
 
 State alone decides whether a verified Epoch can become current or pending.
