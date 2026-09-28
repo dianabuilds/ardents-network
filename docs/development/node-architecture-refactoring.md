@@ -150,11 +150,15 @@ Linux process scenarios; the read-only Linux Docker Node run does. Neither
 run qualifies the installed systemd/cgroup startup profile.
 The isolated four-reader Endpoint scenario passed with the existing two-second
 Introduction drain bound under Docker quotas of 2, 1 and 0.25 CPUs. CPU quota
-alone did not reproduce the earlier host-load Node 6 cleanup deadline. The
-remaining diagnostic need is a goroutine dump and joined/active observation at
-the deadline if that exact failure recurs; a later Source CLOSE/CREDIT EOF
-under host load is a separate failure shape. No timeout or protocol contract
-was changed on the basis of these runs.
+alone did not reproduce the earlier host-load Node 6 cleanup deadline. A
+deterministic Introduction lifetime test holds one accepted worker after Stop:
+Drain times out, the spend root stays open while that worker owns it, and the
+role joins and closes the root after the worker returns. This proves the late
+resource-release boundary, but does not identify which worker or operation
+exceeded the bound in the four-reader run. The remaining diagnostic need is a
+goroutine dump and joined/active observation at that exact deadline if it
+recurs; a later Source CLOSE/CREDIT EOF under host load is a separate failure
+shape. No timeout or protocol contract was changed on the basis of these runs.
 Process pressure remains in the root; per-duty local limits and JOIN host
 monitoring remain with their duty.
 
