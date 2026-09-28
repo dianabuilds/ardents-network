@@ -119,7 +119,7 @@ func TestTextTokenCancellationAfterDurableMarkRetainsBurn(t *testing.T) {
 	}
 }
 
-func tokenPresentationFixture(t *testing.T) (*endpoint, *textContext, client.ClosedBootstrapSelection,
+func tokenPresentationFixture(t *testing.T) (*endpoint, *dutyContext, client.ClosedBootstrapSelection,
 	state.ClosedProfileView, ardp.Hello, []byte) {
 	t.Helper()
 	endpoint, owner, source := sourceContextFixture(t)

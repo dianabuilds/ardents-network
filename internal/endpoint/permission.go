@@ -136,7 +136,7 @@ func (pending *permission) acceptResponse(profile state.ClosedProfileView, now t
 // requestPermission returns only the public holder-signed request and its
 // exact approval digest. A repeat in the same hour returns the existing request;
 // changing the allocation/profile cannot silently create a replacement holder.
-func (owner *textContext) requestPermission(maxima [3]uint32) ([]byte, [32]byte, error) {
+func (owner *dutyContext) requestPermission(maxima [3]uint32) ([]byte, [32]byte, error) {
 	if owner == nil {
 		return nil, [32]byte{}, errors.New("text permission context is unavailable")
 	}
@@ -173,7 +173,7 @@ func (owner *textContext) requestPermission(maxima [3]uint32) ([]byte, [32]byte,
 // request. The digest selects an outstanding request; it supplies no authority.
 // A foreign holder, changed allocation, old profile/hour or revoked context
 // cannot acquire a usable permission even with a valid authority signature.
-func (owner *textContext) importPermission(digest [32]byte, raw []byte) error {
+func (owner *dutyContext) importPermission(digest [32]byte, raw []byte) error {
 	if owner == nil {
 		return errors.New("text permission context is unavailable")
 	}
@@ -190,7 +190,7 @@ func (owner *textContext) importPermission(digest [32]byte, raw []byte) error {
 	return owner.tokens.permission.acceptResponse(profile, now, digest, permission)
 }
 
-func (owner *textContext) permissionProfileLocked() (state.ClosedProfileView, time.Time, error) {
+func (owner *dutyContext) permissionProfileLocked() (state.ClosedProfileView, time.Time, error) {
 	if err := owner.retirePrefixLocked(); err != nil {
 		return state.ClosedProfileView{}, time.Time{}, err
 	}
@@ -209,7 +209,7 @@ func (owner *textContext) permissionProfileLocked() (state.ClosedProfileView, ti
 	return profile, now, nil
 }
 
-func (owner *textContext) clearPermissionLocked() {
+func (owner *dutyContext) clearPermissionLocked() {
 	permission := owner.tokens.permission
 	if permission == nil {
 		return

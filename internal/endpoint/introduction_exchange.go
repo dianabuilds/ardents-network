@@ -13,7 +13,7 @@ import (
 	nativeconnection "github.com/dianabuilds/ardents-network/internal/service/connection"
 )
 
-func (owner *textContext) submitIntroduction(ctx context.Context, job *jobIdentity, prepared *introductionAttempt) (outcome error) {
+func (owner *dutyContext) submitIntroduction(ctx context.Context, job *jobIdentity, prepared *introductionAttempt) (outcome error) {
 	if owner == nil || ctx == nil || ctx.Err() != nil || prepared == nil ||
 		!prepared.binding.servesJob(owner, job) {
 		return errors.New("text Introduction submission unavailable")
@@ -71,14 +71,14 @@ func (owner *textContext) submitIntroduction(ctx context.Context, job *jobIdenti
 
 // receiveIntroduction consumes one delivery from the actual channel owned
 // by this Publisher, then acknowledges only after independent local acceptance.
-func (owner *textContext) receiveIntroduction(ctx context.Context, job *jobIdentity) (prepared *introductionAttempt, outcome error) {
+func (owner *dutyContext) receiveIntroduction(ctx context.Context, job *jobIdentity) (prepared *introductionAttempt, outcome error) {
 	return owner.receiveIntroductionWith(ctx, job, introductionDeliveryKey{generation: 1}, nil,
 		func(ctx context.Context, job *jobIdentity, operation []byte) (*introductionAttempt, error) {
 			return owner.acceptIntroductionGeneration(ctx, job, operation, nil, 1, time.Time{}, true)
 		}, nil)
 }
 
-func (owner *textContext) receiveRecovery(ctx context.Context, job *jobIdentity, binding *serviceBinding,
+func (owner *dutyContext) receiveRecovery(ctx context.Context, job *jobIdentity, binding *serviceBinding,
 	request nativeconnection.Recovery) (*introductionAttempt, error) {
 	if ctx == nil {
 		return nil, errors.New("text recovery receiver context unavailable")
@@ -106,7 +106,7 @@ func (owner *textContext) receiveRecovery(ctx context.Context, job *jobIdentity,
 
 type introductionAcceptor func(context.Context, *jobIdentity, []byte) (*introductionAttempt, error)
 
-func (owner *textContext) receiveIntroductionWith(ctx context.Context, job *jobIdentity,
+func (owner *dutyContext) receiveIntroductionWith(ctx context.Context, job *jobIdentity,
 	want introductionDeliveryKey, binding *serviceBinding,
 	accept introductionAcceptor, deliveryReceived func()) (prepared *introductionAttempt, outcome error) {
 	if owner == nil || ctx == nil {
@@ -176,16 +176,16 @@ func (owner *textContext) receiveIntroductionWith(ctx context.Context, job *jobI
 	return prepared, outcome
 }
 
-func (owner *textContext) prepareSubmissionStock(ctx context.Context, prefix *sourceHandle) ([32]byte, state.ClosedProfileView, error) {
+func (owner *dutyContext) prepareSubmissionStock(ctx context.Context, prefix *sourceHandle) ([32]byte, state.ClosedProfileView, error) {
 	return owner.prepareSubmissionStockWithCancellation(ctx, prefix, false)
 }
 
-func (owner *textContext) prepareRecoverySubmissionStock(ctx context.Context,
+func (owner *dutyContext) prepareRecoverySubmissionStock(ctx context.Context,
 	prefix *sourceHandle) ([32]byte, state.ClosedProfileView, error) {
 	return owner.prepareSubmissionStockWithCancellation(ctx, prefix, true)
 }
 
-func (owner *textContext) prepareSubmissionStockWithCancellation(ctx context.Context, prefix *sourceHandle,
+func (owner *dutyContext) prepareSubmissionStockWithCancellation(ctx context.Context, prefix *sourceHandle,
 	discardCanceled bool) ([32]byte, state.ClosedProfileView, error) {
 	receiver, err := prefix.submissionRecipient()
 	if err != nil {

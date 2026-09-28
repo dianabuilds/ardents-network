@@ -32,8 +32,8 @@ func serviceFixture(t *testing.T) (*serviceBinding, *serviceBinding, servicepubl
 	profile := state.ClosedProfileView{NetworkID: fixtureID(1), StateGeneration: fixtureID(2), StateDigest: fixtureID(3),
 		Digest: fixtureID(4), IssuanceAuthorityKey: fixtureID(5), IssuerNodeID: fixtureID(6), IssuerDutyGeneration: 1,
 		NotBefore: now.Truncate(time.Hour), NotAfter: now.Truncate(time.Hour).Add(2 * time.Hour)}
-	newPeer := func(surface broker.Surface) (*textContext, *jobIdentity) {
-		peer, principal := textContextEndpoint(t)
+	newPeer := func(surface broker.Surface) (*dutyContext, *jobIdentity) {
+		peer, principal := dutyContextEndpoint(t)
 		peer.network, peer.clock = profile.NetworkID, time.Now
 		peer.closedState = &permissionStateFixture{profile: profile}
 		t.Cleanup(func() {
@@ -41,7 +41,7 @@ func serviceFixture(t *testing.T) (*serviceBinding, *serviceBinding, servicepubl
 				t.Error(err)
 			}
 		})
-		owner := admittedTextContext(t, peer, principal, surface)
+		owner := admittedDutyContext(t, peer, principal, surface)
 		job, err := beginTestJob(t, owner, peer, surface)
 		if err != nil {
 			t.Fatal(err)
@@ -347,7 +347,7 @@ func TestTextServiceProtectedContextSeparatesAttachmentFromLogicalIdentity(t *te
 // acceptServiceBinding verifies the shared capsule tuple against the
 // Publisher's own publication and authorization. It does not silently clamp
 // incompatible bounds or treat a requester's nonce as authority.
-func (owner *textContext) acceptServiceBinding(job *jobIdentity, current servicepublication.Current,
+func (owner *dutyContext) acceptServiceBinding(job *jobIdentity, current servicepublication.Current,
 	facts nativeconnection.ProtectedContextInput) (*serviceBinding, error) {
 	if owner == nil {
 		return nil, errors.New("text Service context unavailable")

@@ -83,7 +83,7 @@ func PreflightStreamQualification(ctx context.Context, config StreamQualificatio
 		if config.Role == streamqualification.PublisherRole {
 			domain = 3
 		}
-		owner := &textContext{textContextState: textContextState{endpoint: endpoint}}
+		owner := &dutyContext{dutyContextState: dutyContextState{endpoint: endpoint}}
 		owner.mu.Lock()
 		selection, err := owner.selectAdjacentLocked(domain, owner.source.membersSlotLocked())
 		owner.mu.Unlock()

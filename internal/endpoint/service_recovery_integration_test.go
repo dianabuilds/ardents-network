@@ -258,7 +258,7 @@ func TestTextJoinedServiceRecoversAcceptedRequestAcrossFreshProtectedRoute(t *te
 			if afterCleanup := tokenAttemptSnapshot(t, reader.endpoint); !sameTokenAttemptSnapshot(recoveredTokens, afterCleanup) {
 				t.Fatal("recovery cleanup spent another receiver token")
 			}
-			for _, owner := range []*textContext{reader, publisher} {
+			for _, owner := range []*dutyContext{reader, publisher} {
 				owner.mu.Lock()
 				pending := len(owner.introduction.exchanges.active)
 				owner.mu.Unlock()

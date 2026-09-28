@@ -24,18 +24,18 @@ type tokenBatch struct {
 // issueTokens is the trusted context owner's issuance operation. The
 // retained Route members and intended receiver originate in Endpoint, never
 // on a worker attachment. There is at most one live exchange per context.
-func (owner *textContext) issueTokens(ctx context.Context, receivers [][32]byte, class uint8) error {
+func (owner *dutyContext) issueTokens(ctx context.Context, receivers [][32]byte, class uint8) error {
 	return owner.issueTokensWithCancellation(ctx, receivers, class, false)
 }
 
 // A canceled recovery proposal cannot be retried by its completed logical
 // stream. Burn its already-reserved allocation and erase only the batch that
 // this proposal created, so it cannot block a later independent Service job.
-func (owner *textContext) issueRecoveryTokens(ctx context.Context, receivers [][32]byte, class uint8) error {
+func (owner *dutyContext) issueRecoveryTokens(ctx context.Context, receivers [][32]byte, class uint8) error {
 	return owner.issueTokensWithCancellation(ctx, receivers, class, true)
 }
 
-func (owner *textContext) issueTokensWithCancellation(ctx context.Context, receivers [][32]byte, class uint8,
+func (owner *dutyContext) issueTokensWithCancellation(ctx context.Context, receivers [][32]byte, class uint8,
 	discardCanceled bool) error {
 	release, err := owner.acquireSourceOperation(ctx)
 	if err != nil {
@@ -47,7 +47,7 @@ func (owner *textContext) issueTokensWithCancellation(ctx context.Context, recei
 
 // issueJoinTokens retains issuance authority on the exact Source acquired
 // by the JOIN. A replacement may cancel this work but cannot become its issuer.
-func (owner *textContext) issueJoinTokens(ctx context.Context, receivers [][32]byte, class uint8,
+func (owner *dutyContext) issueJoinTokens(ctx context.Context, receivers [][32]byte, class uint8,
 	acquisition joinAcquisition, discardCanceled bool) error {
 	release, err := owner.acquireSourceOperation(ctx)
 	if err != nil {
@@ -73,11 +73,11 @@ func (owner *textContext) issueJoinTokens(ctx context.Context, receivers [][32]b
 
 // A non-nil opening must be the exact retained prefix transition. Keeping it
 // across both bootstrap flights prevents unrelated issuance stealing its slot.
-func (owner *textContext) issueTokensForOpening(ctx context.Context, receivers [][32]byte, class uint8, opening *operationFlight, refill bool) error {
+func (owner *dutyContext) issueTokensForOpening(ctx context.Context, receivers [][32]byte, class uint8, opening *operationFlight, refill bool) error {
 	return owner.issueTokensForOpeningWithCancellation(ctx, receivers, class, opening, refill, false, nil, nil)
 }
 
-func (owner *textContext) issueTokensForOpeningWithCancellation(ctx context.Context, receivers [][32]byte, class uint8,
+func (owner *dutyContext) issueTokensForOpeningWithCancellation(ctx context.Context, receivers [][32]byte, class uint8,
 	opening *operationFlight, refill bool, discardCanceled bool, acquisition joinAcquisition,
 	expected *sourceHandle) error {
 	if owner == nil || ctx == nil || ctx.Err() != nil || class < 1 || class > 3 || len(receivers) == 0 || len(receivers) > 32 {
@@ -148,7 +148,7 @@ func (owner *textContext) issueTokensForOpeningWithCancellation(ctx context.Cont
 	return operation.run(ctx, source, selection)
 }
 
-func joinIssuanceCurrentLocked(owner *textContext, acquisition joinAcquisition, expected *sourceHandle) bool {
+func joinIssuanceCurrentLocked(owner *dutyContext, acquisition joinAcquisition, expected *sourceHandle) bool {
 	if acquisition == nil {
 		return true
 	}

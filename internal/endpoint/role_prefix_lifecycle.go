@@ -116,7 +116,7 @@ func (core *rolePrefixCore) openingCurrentLocked(flight *operationFlight) bool {
 }
 
 // retireIdleLocked closes the live prefix only after Route has ended it.
-// The close runs under textContext.mu like every idle retirement.
+// The close runs under dutyContext.mu like every idle retirement.
 func (core *rolePrefixCore) retireIdleLocked() error {
 	if core == nil || core.live == nil {
 		return nil
@@ -139,7 +139,7 @@ func (core *rolePrefixCore) retireIdleLocked() error {
 }
 
 // stopLocked revokes the live handle and the opening flight under
-// textContext.mu and hands their terminal cleanup to the retirement carrier.
+// dutyContext.mu and hands their terminal cleanup to the retirement carrier.
 func (core *rolePrefixCore) stopLocked() *rolePrefixRetirement {
 	retirement := &rolePrefixRetirement{}
 	if core == nil {
@@ -160,7 +160,7 @@ func (core *rolePrefixCore) stopLocked() *rolePrefixRetirement {
 
 // rolePrefixRetirement carries the stopped prefix and opening of one
 // Publisher role out of the locked stop phase; joining the opening and
-// closing the prefix run without textContext.mu.
+// closing the prefix run without dutyContext.mu.
 type rolePrefixRetirement struct {
 	prefix  *client.ClosedSourcePrefix
 	opening *operationFlight

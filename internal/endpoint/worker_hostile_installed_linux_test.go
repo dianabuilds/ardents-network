@@ -30,14 +30,14 @@ func TestInstalledTextWorkerHostileTree(t *testing.T) {
 		{"publisher", broker.Administration, []byte("victim snapshot")},
 	} {
 		t.Run(role.name, func(t *testing.T) {
-			endpoint, principal := textContextEndpoint(t)
-			siblingOwner := admittedTextContext(t, endpoint, principal, broker.Administration)
+			endpoint, principal := dutyContextEndpoint(t)
+			siblingOwner := admittedDutyContext(t, endpoint, principal, broker.Administration)
 			document := []byte("sibling publication survives hostile tree cleanup\n")
 			sibling := launchInstalledHostileWorker(t, ctx, siblingOwner, document)
 			siblingUnit := installedWorkerInstance(t, ctx, sibling, "publisher")
 			siblingEvents, siblingPIDs := pinInstalledHostileTree(t, siblingUnit)
 
-			owner := admittedTextContext(t, endpoint, principal, role.surface)
+			owner := admittedDutyContext(t, endpoint, principal, role.surface)
 			bound := launchInstalledHostileWorker(t, ctx, owner, role.snapshot)
 			unit := installedWorkerInstance(t, ctx, bound, role.name)
 			events, processes := pinInstalledHostileTree(t, unit)
@@ -105,7 +105,7 @@ func TestInstalledTextWorkerHostileTree(t *testing.T) {
 	}
 }
 
-func launchInstalledHostileWorker(t *testing.T, ctx context.Context, owner *textContext, snapshot []byte) *qualifiedWorker {
+func launchInstalledHostileWorker(t *testing.T, ctx context.Context, owner *dutyContext, snapshot []byte) *qualifiedWorker {
 	t.Helper()
 	bound, err := owner.launchWorker(ctx, snapshot)
 	if err != nil {

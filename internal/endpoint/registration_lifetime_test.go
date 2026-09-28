@@ -12,8 +12,8 @@ import (
 )
 
 func TestTextRegistrationCompletionRetainsFailedCleanup(t *testing.T) {
-	endpoint, principal := textContextEndpoint(t)
-	owner := admittedTextContext(t, endpoint, principal, broker.Administration)
+	endpoint, principal := dutyContextEndpoint(t)
+	owner := admittedDutyContext(t, endpoint, principal, broker.Administration)
 	attempt, cancel := context.WithCancel(owner.lease.Context())
 	defer cancel()
 	flight := &registrationFlight{context: attempt, cancel: cancel, done: make(chan struct{})}
@@ -26,7 +26,7 @@ func TestTextRegistrationCompletionRetainsFailedCleanup(t *testing.T) {
 	if registered != nil || !errors.Is(err, original) {
 		t.Fatalf("failed setup handed over or lost cause: %v", err)
 	}
-	if endpoint.textAvailable() {
+	if endpoint.dutyAvailable() {
 		t.Fatal("cleanup failure left Endpoint accepting jobs")
 	}
 	select {

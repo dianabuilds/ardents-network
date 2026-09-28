@@ -35,7 +35,7 @@ func (source *capsuleBoundaryState) CurrentClosedProfile() (state.ClosedProfileV
 	return source.sourceStateFixture.CurrentClosedProfile()
 }
 
-func checkCapsuleAdmissionBoundaries(t *testing.T, publisher, reader *textContext, source *sourceStateFixture,
+func checkCapsuleAdmissionBoundaries(t *testing.T, publisher, reader *dutyContext, source *sourceStateFixture,
 	job *jobIdentity, original *introductionAttempt, recipient [32]byte) {
 	t.Helper()
 	endpoint := publisher.endpoint
@@ -90,7 +90,7 @@ func checkCapsuleAdmissionBoundaries(t *testing.T, publisher, reader *textContex
 				source.snapshot.Candidates[rendezvous].FamilyID = conflict
 				source.mu.Unlock()
 				defer func() { source.mu.Lock(); source.snapshot.Candidates[rendezvous].FamilyID = prior; source.mu.Unlock() }()
-				for _, owner := range []*textContext{reader, publisher} {
+				for _, owner := range []*dutyContext{reader, publisher} {
 					if _, _, _, err := owner.source.currentLocked().DataJoinRecipient(); err == nil {
 						t.Error("data Rendezvous accepted a control-role family")
 					}

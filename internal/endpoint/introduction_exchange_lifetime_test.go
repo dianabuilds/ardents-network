@@ -12,15 +12,15 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/route/client"
 )
 
-func (owner *textContext) retainServiceTransportExchange(job *jobIdentity, flight *introductionExchange) bool {
+func (owner *dutyContext) retainServiceTransportExchange(job *jobIdentity, flight *introductionExchange) bool {
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
 	return owner.retainServiceTransportExchangeLocked(job, flight)
 }
 
 func TestTextIntroductionExchangeCloseJoinsAndRetainsCleanupFailure(t *testing.T) {
-	endpoint, principal := textContextEndpoint(t)
-	owner := admittedTextContext(t, endpoint, principal, broker.Connection)
+	endpoint, principal := dutyContextEndpoint(t)
+	owner := admittedDutyContext(t, endpoint, principal, broker.Connection)
 	job := liveCapsuleJob(t, owner)
 	lifetime, finish, err := owner.beginIntroductionExchange(t.Context(), job, broker.Connection)
 	if err != nil {
@@ -63,7 +63,7 @@ func TestTextIntroductionExchangeCloseJoinsAndRetainsCleanupFailure(t *testing.T
 	case <-time.After(time.Second):
 		t.Fatal("Close did not join completed exchange")
 	}
-	if endpoint.textAvailable() {
+	if endpoint.dutyAvailable() {
 		t.Fatal("failed cleanup left new jobs enabled")
 	}
 	if err := owner.Close(); !errors.Is(err, original) {
@@ -75,8 +75,8 @@ func TestTextIntroductionExchangeCloseJoinsAndRetainsCleanupFailure(t *testing.T
 }
 
 func TestTextServiceTransportExchangeRetainsCleanupAfterJobLoss(t *testing.T) {
-	endpoint, principal := textContextEndpoint(t)
-	owner := admittedTextContext(t, endpoint, principal, broker.Connection)
+	endpoint, principal := dutyContextEndpoint(t)
+	owner := admittedDutyContext(t, endpoint, principal, broker.Connection)
 	job := liveCapsuleJob(t, owner)
 	lifetime, flight, detach, finish, err := owner.beginServiceTransportExchange(t.Context(), job, broker.Connection)
 	if err != nil {
@@ -134,8 +134,8 @@ func TestTextServiceTransportExchangeRetainsCleanupAfterJobLoss(t *testing.T) {
 }
 
 func TestTextServiceTransportExchangeIgnoresDetachedCallerCancellation(t *testing.T) {
-	endpoint, principal := textContextEndpoint(t)
-	owner := admittedTextContext(t, endpoint, principal, broker.Connection)
+	endpoint, principal := dutyContextEndpoint(t)
+	owner := admittedDutyContext(t, endpoint, principal, broker.Connection)
 	job := liveCapsuleJob(t, owner)
 	caller, cancel := context.WithCancel(t.Context())
 	lifetime, flight, detach, finish, err := owner.beginServiceTransportExchange(caller, job, broker.Connection)

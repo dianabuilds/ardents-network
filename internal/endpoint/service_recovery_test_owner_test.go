@@ -22,7 +22,7 @@ type serviceRecoveryTestOwner struct {
 	mu          sync.Mutex
 	connections []net.Conn
 	streams     []*serviceStream
-	contexts    []*textContext
+	contexts    []*dutyContext
 	workers     sync.WaitGroup
 }
 
@@ -48,7 +48,7 @@ func (owner *serviceRecoveryTestOwner) retainStream(stream *serviceStream) {
 	owner.mu.Unlock()
 }
 
-func (owner *serviceRecoveryTestOwner) retainContext(text *textContext) {
+func (owner *serviceRecoveryTestOwner) retainContext(text *dutyContext) {
 	if text == nil {
 		return
 	}
@@ -66,7 +66,7 @@ func (owner *serviceRecoveryTestOwner) Close() {
 	owner.mu.Lock()
 	connections := append([]net.Conn(nil), owner.connections...)
 	streams := append([]*serviceStream(nil), owner.streams...)
-	contexts := append([]*textContext(nil), owner.contexts...)
+	contexts := append([]*dutyContext(nil), owner.contexts...)
 	owner.mu.Unlock()
 	for _, connection := range connections {
 		if err := connection.Close(); !recoveryTestCleanupOnly(err) {

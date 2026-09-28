@@ -19,7 +19,7 @@ type jobIdentity struct {
 	// cannot attach streams, samples or cleanup to its replacement.
 	qualification *qualification.Run
 	workload      serviceWorkloadBounds
-	owner         *textContext
+	owner         *dutyContext
 	nonce         [32]byte
 	context       context.Context
 	cancel        context.CancelFunc
@@ -35,7 +35,7 @@ type jobRetirement struct {
 	job *jobIdentity
 }
 
-func newJobIdentity(owner *textContext) (*jobIdentity, error) {
+func newJobIdentity(owner *dutyContext) (*jobIdentity, error) {
 	if owner == nil || owner.lease == nil {
 		return nil, errors.New("text worker identity is unavailable")
 	}
@@ -47,14 +47,14 @@ func newJobIdentity(owner *textContext) (*jobIdentity, error) {
 	return job, nil
 }
 
-func (job *jobIdentity) currentLocked(owner *textContext, endpoint *endpoint, surface broker.Surface, nonce [32]byte) bool {
+func (job *jobIdentity) currentLocked(owner *dutyContext, endpoint *endpoint, surface broker.Surface, nonce [32]byte) bool {
 	return job != nil && owner != nil && job.owner == owner && owner.job == job && !job.retired &&
 		nonce != [32]byte{} && job.nonce == nonce && owner.liveLocked(endpoint, surface)
 }
 
 // claimWorkerLocked consumes the one worker-lifetime handoff before INIT. It
 // does not assert verified readiness or create a Grant.
-func (job *jobIdentity) claimWorkerLocked(owner *textContext) bool {
+func (job *jobIdentity) claimWorkerLocked(owner *dutyContext) bool {
 	if job == nil || owner == nil || job.owner != owner || job.bound || job.finished {
 		return false
 	}
@@ -64,7 +64,7 @@ func (job *jobIdentity) claimWorkerLocked(owner *textContext) bool {
 
 // handoffGrantLocked publishes a Grant only to this exact live, claimed job.
 // Rejected late handoffs are closed here and cannot attach to a replacement.
-func (job *jobIdentity) handoffGrantLocked(owner *textContext, grant *broker.Broker, lease *broker.ActiveSession) bool {
+func (job *jobIdentity) handoffGrantLocked(owner *dutyContext, grant *broker.Broker, lease *broker.ActiveSession) bool {
 	if grant == nil || lease == nil {
 		if grant != nil {
 			grant.Close()
@@ -91,7 +91,7 @@ func (job *jobIdentity) retire() {
 	job.retireLocked(job.owner)
 }
 
-func (job *jobIdentity) retireLocked(owner *textContext) bool {
+func (job *jobIdentity) retireLocked(owner *dutyContext) bool {
 	if job == nil || owner == nil || job.owner != owner || owner.job != job {
 		return false
 	}
@@ -104,7 +104,7 @@ func (job *jobIdentity) retireLocked(owner *textContext) bool {
 	return true
 }
 
-func (job *jobIdentity) stopLocked(owner *textContext) *jobRetirement {
+func (job *jobIdentity) stopLocked(owner *dutyContext) *jobRetirement {
 	if !job.retireLocked(owner) {
 		return nil
 	}
@@ -140,7 +140,7 @@ func (job *jobIdentity) finishCleanup(cleanupErr error) error {
 	job.finished, job.cleanupErr = true, cleanupErr
 	if cleanupErr != nil {
 		owner.closed = true
-		owner.endpoint.failTextContexts(cleanupErr)
+		owner.endpoint.failDutyContexts(cleanupErr)
 	} else {
 		owner.job = nil
 	}

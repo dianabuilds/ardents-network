@@ -43,7 +43,7 @@ type networkFixturePermissionResponse struct {
 	raw    []byte
 }
 
-func networkFixturePermission(t *testing.T, current *time.Time) (*textContext, networkFixturePermissionResponse, func()) {
+func networkFixturePermission(t *testing.T, current *time.Time) (*dutyContext, networkFixturePermissionResponse, func()) {
 	t.Helper()
 	vault, err := custody.Open(custody.VaultConfig{Root: t.TempDir(), Now: func() time.Time { return *current }})
 	if err != nil {
@@ -55,7 +55,7 @@ func networkFixturePermission(t *testing.T, current *time.Time) (*textContext, n
 		_ = vault.Close()
 		t.Fatal(err)
 	}
-	endpoint, principal := textContextEndpoint(t)
+	endpoint, principal := dutyContextEndpoint(t)
 	endpoint.network, endpoint.clock = fixtureID(242), func() time.Time { return *current }
 	endpoint.closedState = &permissionStateFixture{profile: state.ClosedProfileView{NetworkID: endpoint.network,
 		StateGeneration: fixtureID(244), StateDigest: fixtureID(245), Digest: fixtureID(246), IssuanceAuthorityKey: created.AdmissionAuthority.Public,

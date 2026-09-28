@@ -40,7 +40,7 @@ func TestTextPermissionFilesConsumeActualCustodyApproval(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	endpoint, principal := textContextEndpoint(t)
+	endpoint, principal := dutyContextEndpoint(t)
 	endpoint.network, endpoint.clock = fixtureID(222), currentTime
 	endpoint.closedState = &permissionStateFixture{profile: state.ClosedProfileView{NetworkID: endpoint.network,
 		StateGeneration: fixtureID(224), StateDigest: fixtureID(225), Digest: fixtureID(226), IssuanceAuthorityKey: created.AdmissionAuthority.Public,

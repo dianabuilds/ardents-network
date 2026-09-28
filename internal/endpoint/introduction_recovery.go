@@ -10,7 +10,7 @@ import (
 // introductionRecoveryOwner exists from initial acceptance until the
 // Publisher Service stream retires. It can own the next valid recovery capsule
 // before the native Connection detects the failed Carrier. All slot transitions
-// run under textContext.mu; completion and timer joins run after unlocking.
+// run under dutyContext.mu; completion and timer joins run after unlocking.
 type introductionRecoveryOwner struct {
 	binding    *serviceBinding
 	generation uint64
@@ -66,7 +66,7 @@ func (recovery *introductionRecoveryOwner) handoffLocked(want introductionDelive
 // bufferLocked retains only one capsule for a live recovery owner and starts
 // its deadline refusal. The shared Context lock makes routing and retention
 // one transition with waiter selection.
-func (recovery *introductionRecoveryOwner) bufferLocked(owner *textContext,
+func (recovery *introductionRecoveryOwner) bufferLocked(owner *dutyContext,
 	routed introductionRoutedDelivery) bool {
 	if recovery == nil || !recovery.binding.ownsRecoveryLocked(recovery) ||
 		len(recovery.delivery) != 0 || recovery.expiryDone != nil || routed.delivery == nil ||
@@ -81,7 +81,7 @@ func (recovery *introductionRecoveryOwner) bufferLocked(owner *textContext,
 	return true
 }
 
-func (recovery *introductionRecoveryOwner) expire(owner *textContext, ctx context.Context,
+func (recovery *introductionRecoveryOwner) expire(owner *dutyContext, ctx context.Context,
 	stop context.CancelFunc, routed introductionRoutedDelivery, done chan struct{}) {
 	defer stop()
 	defer func() {
@@ -122,7 +122,7 @@ func (recovery *introductionRecoveryOwner) expire(owner *textContext, ctx contex
 	err := expired.delivery.Complete(bounded, 1)
 	cancel()
 	if err != nil && lifetime.Err() == nil {
-		owner.endpoint.failTextContexts(err)
+		owner.endpoint.failDutyContexts(err)
 	}
 }
 

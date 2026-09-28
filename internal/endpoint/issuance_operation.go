@@ -15,7 +15,7 @@ import (
 // cancellation and terminal completion. The context retains only the single-
 // operation admission slot and joins this owner during revocation.
 type issuanceOperation struct {
-	owner             *textContext
+	owner             *dutyContext
 	context           context.Context
 	cancelOperation   context.CancelFunc
 	done              chan struct{}
@@ -28,7 +28,7 @@ type issuanceOperation struct {
 	discardPermission bool
 }
 
-func newIssuanceOperation(owner *textContext, permission *permission, profile state.ClosedProfileView,
+func newIssuanceOperation(owner *dutyContext, permission *permission, profile state.ClosedProfileView,
 	batch *tokenBatch, discardCanceled bool) *issuanceOperation {
 	attempt, cancel := context.WithDeadline(owner.lease.Context(), permission.accepted.NotAfter)
 	return &issuanceOperation{owner: owner, context: attempt, cancelOperation: cancel, done: make(chan struct{}),
@@ -96,7 +96,7 @@ func (operation *issuanceOperation) complete(caller context.Context, result clie
 	if errors.Is(exchangeErr, client.ErrClosedBootstrapCleanup) || errors.Is(exchangeErr, client.ErrClosedSourceCleanup) {
 		owner.closeErr = errors.Join(owner.closeErr, exchangeErr)
 		owner.closed = true
-		owner.endpoint.failTextContexts(exchangeErr)
+		owner.endpoint.failDutyContexts(exchangeErr)
 		return exchangeErr
 	}
 	current, currentTime, currentErr := owner.permissionProfileLocked()

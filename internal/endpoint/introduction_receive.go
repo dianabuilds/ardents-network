@@ -13,7 +13,7 @@ import (
 // Select across at most the current and bounded predecessor registrations.
 // Refresh wakes an already waiting receiver without consuming/losing a capsule
 // in a canceled speculative goroutine. Acceptance still rechecks its owner.
-func (owner *textContext) nextIntroductionDelivery(ctx context.Context) (*client.ClosedIntroductionDelivery, error) {
+func (owner *dutyContext) nextIntroductionDelivery(ctx context.Context) (*client.ClosedIntroductionDelivery, error) {
 	for {
 		owner.mu.Lock()
 		if !owner.liveLocked(owner.endpoint, broker.Administration) || ctx.Err() != nil {

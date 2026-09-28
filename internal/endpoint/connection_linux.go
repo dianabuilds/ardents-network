@@ -23,7 +23,7 @@ import (
 // context. A local request supplies only a Target Link, never worker identity,
 // qualification, permission material, or network selection.
 type connection struct {
-	context  *textContext
+	context  *dutyContext
 	mu       sync.Mutex
 	closed   bool
 	pending  chan struct{}
@@ -32,7 +32,7 @@ type connection struct {
 	closeErr error
 }
 
-func (owner *textContext) openConnection() (*connection, error) {
+func (owner *dutyContext) openConnection() (*connection, error) {
 	if owner == nil {
 		return nil, errors.New("text Connection unavailable")
 	}

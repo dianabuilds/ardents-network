@@ -35,8 +35,8 @@ type joinPrefix interface {
 
 type joinAcquisition interface {
 	joinPrefix
-	currentLocked(*textContext) bool
-	issuancePrefixLocked(*textContext) (*sourceHandle, bool)
+	currentLocked(*dutyContext) bool
+	issuancePrefixLocked(*dutyContext) (*sourceHandle, bool)
 	release()
 }
 
@@ -88,11 +88,11 @@ func routeStopOnly(err error) bool {
 
 // openJoinedService consumes the initial protected Route and installs its
 // bounded replacement owner before Application bytes become reachable.
-func (owner *textContext) openJoinedService(ctx context.Context, job *jobIdentity, attempt *introductionAttempt) (_ *serviceStream, outcome error) {
+func (owner *dutyContext) openJoinedService(ctx context.Context, job *jobIdentity, attempt *introductionAttempt) (_ *serviceStream, outcome error) {
 	return owner.openJoinedServiceAfterSetup(ctx, job, attempt, nil)
 }
 
-func (owner *textContext) openJoinedServiceAfterSetup(ctx context.Context, job *jobIdentity, attempt *introductionAttempt, setupComplete func()) (_ *serviceStream, outcome error) {
+func (owner *dutyContext) openJoinedServiceAfterSetup(ctx context.Context, job *jobIdentity, attempt *introductionAttempt, setupComplete func()) (_ *serviceStream, outcome error) {
 	transport, err := owner.openJoinedTransportAfterSetup(ctx, job, attempt, setupComplete)
 	if err != nil {
 		return nil, err
@@ -105,11 +105,11 @@ func (owner *textContext) openJoinedServiceAfterSetup(ctx context.Context, job *
 // accepted capsule. Source submission and JOIN run concurrently; neither
 // grants Service authority. Its returned transport joins the complete Route
 // exchange when the Service Attachment releases it.
-func (owner *textContext) openJoinedTransport(ctx context.Context, job *jobIdentity, attempt *introductionAttempt) (_ *joinedTransport, outcome error) {
+func (owner *dutyContext) openJoinedTransport(ctx context.Context, job *jobIdentity, attempt *introductionAttempt) (_ *joinedTransport, outcome error) {
 	return owner.openJoinedTransportAfterSetup(ctx, job, attempt, nil)
 }
 
-func (owner *textContext) openJoinedTransportAfterSetup(ctx context.Context, job *jobIdentity, attempt *introductionAttempt, setupComplete func()) (_ *joinedTransport, outcome error) {
+func (owner *dutyContext) openJoinedTransportAfterSetup(ctx context.Context, job *jobIdentity, attempt *introductionAttempt, setupComplete func()) (_ *joinedTransport, outcome error) {
 	if owner == nil || ctx == nil || ctx.Err() != nil || attempt == nil || !attempt.binding.servesJob(owner, job) {
 		return nil, errors.New("text JOIN owner unavailable")
 	}
@@ -229,7 +229,7 @@ func (owner *textContext) openJoinedTransportAfterSetup(ctx context.Context, job
 	return transport, nil
 }
 
-func (owner *textContext) prepareJoinStock(ctx context.Context, attempt *introductionAttempt, prefix joinAcquisition) error {
+func (owner *dutyContext) prepareJoinStock(ctx context.Context, attempt *introductionAttempt, prefix joinAcquisition) error {
 	node, generation, until, err := prefix.dataJoinRecipient()
 	facts := attempt.plaintext
 	if err != nil || node != facts.RendezvousNode || generation != facts.RendezvousDutyGeneration || facts.Deadline.After(until) {
@@ -258,7 +258,7 @@ func (owner *textContext) prepareJoinStock(ctx context.Context, attempt *introdu
 	return nil
 }
 
-func (owner *textContext) joinIntroduction(ctx context.Context, job *jobIdentity, attempt *introductionAttempt, prefix joinAcquisition) (*client.ClosedJoinedStream, error) {
+func (owner *dutyContext) joinIntroduction(ctx context.Context, job *jobIdentity, attempt *introductionAttempt, prefix joinAcquisition) (*client.ClosedJoinedStream, error) {
 	facts := attempt.plaintext
 	node, generation, _, err := prefix.dataJoinRecipient()
 	if err != nil || node != facts.RendezvousNode || generation != facts.RendezvousDutyGeneration {
@@ -284,7 +284,7 @@ func (owner *textContext) joinIntroduction(ctx context.Context, job *jobIdentity
 	}, client.ClosedJoinIntent{Secret: facts.JoinSecret, Context: facts.HandshakeContext, SetupDeadline: facts.Deadline, WorkDeadline: time.Unix(facts.WorkSafetyNotAfter, 0).UTC()})
 }
 
-func (owner *textContext) retainJoinedTransport(job *jobIdentity, attempt *introductionAttempt,
+func (owner *dutyContext) retainJoinedTransport(job *jobIdentity, attempt *introductionAttempt,
 	flight *introductionExchange, acquisition joinAcquisition, joined *client.ClosedJoinedStream) bool {
 	owner.mu.Lock()
 	defer owner.mu.Unlock()

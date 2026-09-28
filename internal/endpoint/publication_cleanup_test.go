@@ -17,11 +17,11 @@ import (
 	servicepublication "github.com/dianabuilds/ardents-network/internal/service/publication"
 )
 
-func publicationCommitFixture(t *testing.T) (*endpoint, *textContext, *instance.Binding, string, string, time.Time) {
+func publicationCommitFixture(t *testing.T) (*endpoint, *dutyContext, *instance.Binding, string, string, time.Time) {
 	t.Helper()
-	endpoint, principal := textContextEndpoint(t)
+	endpoint, principal := dutyContextEndpoint(t)
 	endpoint.network = fixtureID(201)
-	owner := admittedTextContext(t, endpoint, principal, broker.Administration)
+	owner := admittedDutyContext(t, endpoint, principal, broker.Administration)
 	now := time.Now().UTC().Truncate(time.Second)
 	public, authority, err := ed25519.GenerateKey(rand.Reader)
 	if err != nil {
@@ -109,7 +109,7 @@ func TestTextPublicationFailedWithdrawalRetainsBindingAndError(t *testing.T) {
 	_, err := owner.acquirePublication(t.Context(), &introductionRegistration{cancel: func() {}}, binding, now)
 	retained := endpoint.publisherBinding == binding && endpoint.publisherOwner == owner
 	endpoint.publisherMu.Unlock()
-	if err == nil || !retained || endpoint.textAvailable() {
+	if err == nil || !retained || endpoint.dutyAvailable() {
 		t.Fatalf("failed cleanup lost owner or admission remained live: retained=%t err=%v", retained, err)
 	}
 	restore()

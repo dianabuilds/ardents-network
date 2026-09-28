@@ -69,7 +69,7 @@ type roleNetworkFixture struct {
 // The qualified-worker and accepted-State seams are explicit fixtures. The
 // selected Node runtimes, Custody allocation, issuer keys, Endpoint stock and
 // journal, Source selection, forwarding, and nested role TLS remain real.
-func startRoleNetwork(t *testing.T, fixture roleNetworkFixture) (*endpoint, *textContext, *sourceStateFixture) {
+func startRoleNetwork(t *testing.T, fixture roleNetworkFixture) (*endpoint, *dutyContext, *sourceStateFixture) {
 	t.Helper()
 	if fixture.publisher && !fixture.resolution || fixture.join && !fixture.publisher {
 		t.Fatal("text role network fixture requires resolution before publisher and publisher before JOIN")

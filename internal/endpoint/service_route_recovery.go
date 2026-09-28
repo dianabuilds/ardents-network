@@ -18,7 +18,7 @@ import (
 // Connection's immutable recovery request. The client creates one fresh
 // capsule/JOIN; the Publisher accepts only that generation for the retained
 // logical binding. Neither side can open another Application operation.
-func (owner *textContext) serviceRouteRecoveryOpener(job *jobIdentity,
+func (owner *dutyContext) serviceRouteRecoveryOpener(job *jobIdentity,
 	binding *serviceBinding) serviceAttachmentOpener {
 	if owner == nil || !binding.servesJob(owner, job) {
 		return nil
@@ -58,7 +58,7 @@ func (owner *textContext) serviceRouteRecoveryOpener(job *jobIdentity,
 // prepareRecovery resolves the current recipient for the original Target
 // and accepts it only under the Connection's immutable Publication authority.
 // It creates fresh per-Attachment secrets without resetting any work deadline.
-func (owner *textContext) prepareRecovery(ctx context.Context, job *jobIdentity, binding *serviceBinding,
+func (owner *dutyContext) prepareRecovery(ctx context.Context, job *jobIdentity, binding *serviceBinding,
 	request nativeconnection.Recovery) (*introductionAttempt, error) {
 	if owner == nil || ctx == nil || !binding.servesJob(owner, job) ||
 		owner.surface != broker.Connection {

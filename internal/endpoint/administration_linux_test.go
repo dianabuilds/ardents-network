@@ -11,12 +11,12 @@ import (
 )
 
 func TestTextAdministrationRequiresCurrentSeparateAuthority(t *testing.T) {
-	endpoint, principal := textContextEndpoint(t)
-	reader := admittedTextContext(t, endpoint, principal, broker.Connection)
+	endpoint, principal := dutyContextEndpoint(t)
+	reader := admittedDutyContext(t, endpoint, principal, broker.Connection)
 	if _, err := reader.openAdministration(); err == nil {
 		t.Fatal("Connection context acquired Service Administration")
 	}
-	publisher := admittedTextContext(t, endpoint, principal, broker.Administration)
+	publisher := admittedDutyContext(t, endpoint, principal, broker.Administration)
 	administration, err := publisher.openAdministration()
 	if err != nil {
 		t.Fatal(err)
@@ -56,8 +56,8 @@ func TestTextAdministrationRequiresCurrentSeparateAuthority(t *testing.T) {
 }
 
 func TestTextAdministrationRefusesCancelledAndInvalidSnapshots(t *testing.T) {
-	endpoint, principal := textContextEndpoint(t)
-	publisher := admittedTextContext(t, endpoint, principal, broker.Administration)
+	endpoint, principal := dutyContextEndpoint(t)
+	publisher := admittedDutyContext(t, endpoint, principal, broker.Administration)
 	administration, err := publisher.openAdministration()
 	if err != nil {
 		t.Fatal(err)
@@ -91,8 +91,8 @@ func TestTextAdministrationRefusesCancelledAndInvalidSnapshots(t *testing.T) {
 func TestTextAdministrationJoinsStartupBeforeWithdrawalOrClose(t *testing.T) {
 	for _, action := range []string{"withdraw", "close"} {
 		t.Run(action, func(t *testing.T) {
-			endpoint, principal := textContextEndpoint(t)
-			publisher := admittedTextContext(t, endpoint, principal, broker.Administration)
+			endpoint, principal := dutyContextEndpoint(t)
+			publisher := admittedDutyContext(t, endpoint, principal, broker.Administration)
 			owner, err := publisher.openAdministration()
 			if err != nil {
 				t.Fatal(err)

@@ -67,7 +67,7 @@ func TestTextIntroductionDeliversFourConcurrentReaders(t *testing.T) {
 	// Publisher readiness and Reader startup. Preserve that duty-wide bootstrap
 	// output refill interval without pacing the concurrent Reader trigger.
 	time.Sleep(10 * time.Second)
-	readers := make([]*textContext, 0, 4)
+	readers := make([]*dutyContext, 0, 4)
 	for range 4 {
 		readers = append(readers, independentReaderFixture(t, publisher.endpoint.network, source))
 	}
@@ -86,7 +86,7 @@ func TestTextIntroductionDeliversFourConcurrentReaders(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), 75*time.Second)
 	defer cancel()
 	type readerWork struct {
-		owner *textContext
+		owner *dutyContext
 		job   *jobIdentity
 	}
 	type deliveryResult struct {
@@ -173,7 +173,7 @@ func TestTextIntroductionDeliversFourConcurrentReaders(t *testing.T) {
 	}
 }
 
-func independentReaderFixture(t *testing.T, network [32]byte, source *sourceStateFixture, requested ...[3]uint32) *textContext {
+func independentReaderFixture(t *testing.T, network [32]byte, source *sourceStateFixture, requested ...[3]uint32) *dutyContext {
 	t.Helper()
 	maxima := [3]uint32{64, 64, 0}
 	if len(requested) == 1 {
@@ -181,7 +181,7 @@ func independentReaderFixture(t *testing.T, network [32]byte, source *sourceStat
 	} else if len(requested) != 0 {
 		t.Fatal("independent Reader fixture maxima are ambiguous")
 	}
-	endpoint, principal := textContextEndpoint(t)
+	endpoint, principal := dutyContextEndpoint(t)
 	endpoint.clock, endpoint.network, endpoint.closedState = time.Now, network, source
 	endpoint.closedEntryRoot, endpoint.closedRoleRoot, endpoint.closedTokenRoot = t.TempDir(), t.TempDir(), networkPrivateRoot(t)
 	for _, root := range []string{endpoint.closedEntryRoot, endpoint.closedRoleRoot} {

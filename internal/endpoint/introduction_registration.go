@@ -57,11 +57,11 @@ type introductionRegistration struct {
 // registerIntroduction owns the fresh random slot and spends a real
 // Publication token on the separate admitted Introduction tree. Registration
 // supplies no Service authority and is not Descriptor publication readiness.
-func (owner *textContext) registerIntroduction(ctx context.Context, revision uint64, expiry time.Time) (*introductionRegistration, error) {
+func (owner *dutyContext) registerIntroduction(ctx context.Context, revision uint64, expiry time.Time) (*introductionRegistration, error) {
 	return owner.openRegistration(ctx, revision, expiry, nil)
 }
 
-func (owner *textContext) openRegistration(ctx context.Context, revision uint64, expiry time.Time, previous *introductionRegistration) (registered *introductionRegistration, outcome error) {
+func (owner *dutyContext) openRegistration(ctx context.Context, revision uint64, expiry time.Time, previous *introductionRegistration) (registered *introductionRegistration, outcome error) {
 	if owner == nil || ctx == nil || ctx.Err() != nil || revision == 0 {
 		return nil, errors.New("text Publisher registration unavailable")
 	}
@@ -75,7 +75,7 @@ func (owner *textContext) openRegistration(ctx context.Context, revision uint64,
 			if cleanup != nil {
 				owner.closeErr = errors.Join(owner.closeErr, cleanup)
 				owner.closed = true
-				owner.endpoint.failTextContexts(cleanup)
+				owner.endpoint.failDutyContexts(cleanup)
 				err = errors.Join(err, cleanup)
 			}
 		}
@@ -136,7 +136,7 @@ func (owner *textContext) openRegistration(ctx context.Context, revision uint64,
 	return &introductionRegistration{createdAt: createdAt, channel: channel, node: receiver, request: request, cancel: cancel}, nil
 }
 
-func (owner *textContext) finishRegistration(ctx context.Context, flight *registrationFlight, registered *introductionRegistration, channel *client.ClosedIntroductionRegistration, outcome error) (*introductionRegistration, error) {
+func (owner *dutyContext) finishRegistration(ctx context.Context, flight *registrationFlight, registered *introductionRegistration, channel *client.ClosedIntroductionRegistration, outcome error) (*introductionRegistration, error) {
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
 	defer close(flight.done)
@@ -148,7 +148,7 @@ func (owner *textContext) finishRegistration(ctx context.Context, flight *regist
 		if errors.Is(outcome, client.ErrClosedSourceCleanup) || cleanup != nil {
 			owner.closeErr = errors.Join(owner.closeErr, outcome, cleanup)
 			owner.closed = true
-			owner.endpoint.failTextContexts(owner.closeErr)
+			owner.endpoint.failDutyContexts(owner.closeErr)
 		}
 		return nil, errors.Join(outcome, ctx.Err(), cleanup, errors.New("text Publisher registration did not complete"))
 	}
@@ -160,7 +160,7 @@ func (owner *textContext) finishRegistration(ctx context.Context, flight *regist
 		if cleanup != nil {
 			owner.closeErr = errors.Join(owner.closeErr, cleanup)
 			owner.closed = true
-			owner.endpoint.failTextContexts(cleanup)
+			owner.endpoint.failDutyContexts(cleanup)
 		}
 		return nil, errors.Join(cleanup, errors.New("text Publisher registration owner changed before install"))
 	}
@@ -168,7 +168,7 @@ func (owner *textContext) finishRegistration(ctx context.Context, flight *regist
 	return registered, nil
 }
 
-func (owner *textContext) presentRegistrationToken(flight *registrationFlight, hello ardp.Hello, class uint8) ([]byte, error) {
+func (owner *dutyContext) presentRegistrationToken(flight *registrationFlight, hello ardp.Hello, class uint8) ([]byte, error) {
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
 	profile, now, err := owner.permissionProfileLocked()
@@ -184,7 +184,7 @@ func (owner *textContext) presentRegistrationToken(flight *registrationFlight, h
 	return owner.takeTokenLocked(profile, now, hello, class, flight.context)
 }
 
-func (owner *textContext) withdrawIntroduction(ctx context.Context) error {
+func (owner *dutyContext) withdrawIntroduction(ctx context.Context) error {
 	if owner == nil || ctx == nil || ctx.Err() != nil {
 		return errors.New("text Publisher registration unavailable")
 	}
@@ -223,7 +223,7 @@ func (owner *textContext) withdrawIntroduction(ctx context.Context) error {
 	if cleanup != nil {
 		owner.closeErr = errors.Join(owner.closeErr, cleanup)
 		owner.closed = true
-		owner.endpoint.failTextContexts(cleanup)
+		owner.endpoint.failDutyContexts(cleanup)
 	}
 	close(flight.done)
 	return errors.Join(err, cleanup)

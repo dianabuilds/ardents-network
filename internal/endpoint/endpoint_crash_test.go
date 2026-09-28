@@ -73,7 +73,7 @@ func TestTextEndpointCrashDropsVolatileAuthorityAndRetainsSpend(t *testing.T) {
 	if active := reopened.admission.Active(); active != 0 {
 		t.Fatalf("restart resurrected local admission: %d", active)
 	}
-	if owner, err := reopened.beginTextContext(t.Context(), boundary.Capability, boundary.Principal, broker.Connection); err == nil {
+	if owner, err := reopened.beginDutyContext(t.Context(), boundary.Capability, boundary.Principal, broker.Connection); err == nil {
 		_ = owner.Close()
 		t.Fatal("restart accepted a capability from the lost Broker generation")
 	}
@@ -82,7 +82,7 @@ func TestTextEndpointCrashDropsVolatileAuthorityAndRetainsSpend(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	owner, err := reopened.beginTextContext(t.Context(), capability, boundary.Principal, broker.Connection)
+	owner, err := reopened.beginDutyContext(t.Context(), capability, boundary.Principal, broker.Connection)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -241,7 +241,7 @@ func runEndpointCrashChild(t *testing.T, root string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	owner, err := endpoint.beginTextContext(t.Context(), ownerCapability, principal, broker.Connection)
+	owner, err := endpoint.beginDutyContext(t.Context(), ownerCapability, principal, broker.Connection)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -303,7 +303,7 @@ func runEndpointCrashChild(t *testing.T, root string) {
 	t.Fatal("parent did not terminate child")
 }
 
-func attachPermissionJob(t *testing.T, owner *textContext, endpoint *endpoint) (*jobIdentity, *broker.Broker) {
+func attachPermissionJob(t *testing.T, owner *dutyContext, endpoint *endpoint) (*jobIdentity, *broker.Broker) {
 	t.Helper()
 	job, err := owner.beginJob(endpoint, broker.Connection)
 	if err != nil {

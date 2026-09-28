@@ -20,8 +20,8 @@ func TestTextPermissionPreparationJoinsUnqualifiedLaunch(t *testing.T) {
 	for _, surface := range []broker.Surface{broker.Connection, broker.Administration} {
 		for _, retire := range []bool{false, true} {
 			t.Run(string(surface)+map[bool]string{false: "/cancel", true: "/retire"}[retire], func(t *testing.T) {
-				endpoint, principal := textContextEndpoint(t)
-				owner := admittedTextContext(t, endpoint, principal, surface)
+				endpoint, principal := dutyContextEndpoint(t)
+				owner := admittedDutyContext(t, endpoint, principal, surface)
 				release, err := endpoint.acquireLaunch(t.Context())
 				if err != nil {
 					t.Fatal(err)

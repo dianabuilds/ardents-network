@@ -16,7 +16,7 @@ import (
 // caller returns. Its done channel publishes the immutable joined outcome.
 // Cancellation is an abort; orderly withdrawal has a separate drain contract.
 type publisherRun struct {
-	owner        *textContext
+	owner        *dutyContext
 	mu           sync.Mutex
 	ending       bool
 	withdrawDone chan struct{}
@@ -29,7 +29,7 @@ type publisherRun struct {
 // startPublisher performs installed qualification before any registration
 // or Descriptor effect. The separately authorized context must already hold
 // its genuine offline permission; a snapshot cannot supply that authority.
-func (owner *textContext) startPublisher(ctx context.Context, snapshot []byte) (*publisherRun, error) {
+func (owner *dutyContext) startPublisher(ctx context.Context, snapshot []byte) (*publisherRun, error) {
 	worker, err := owner.launchWorker(ctx, snapshot)
 	if err != nil {
 		return nil, err

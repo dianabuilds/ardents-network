@@ -13,7 +13,7 @@ import (
 )
 
 func TestTextParticipantCancellationBeforeQualificationExposesNoCommands(t *testing.T) {
-	endpoint, principal := textContextEndpoint(t)
+	endpoint, principal := dutyContextEndpoint(t)
 	release, err := endpoint.acquireLaunch(t.Context())
 	if err != nil {
 		t.Fatal(err)
@@ -39,7 +39,7 @@ func TestTextParticipantCancellationBeforeQualificationExposesNoCommands(t *test
 	var tasks sync.WaitGroup
 	t.Cleanup(func() {
 		cancel()
-		if err := endpoint.closeTextContexts(); err != nil {
+		if err := endpoint.closeDutyContexts(); err != nil {
 			t.Error(err)
 		}
 		tasks.Wait()
@@ -49,15 +49,15 @@ func TestTextParticipantCancellationBeforeQualificationExposesNoCommands(t *test
 	defer deadline.Stop()
 	tick := time.NewTicker(time.Millisecond)
 	defer tick.Stop()
-	var owner *textContext
+	var owner *dutyContext
 	var job *jobIdentity
 	for job == nil {
-		endpoint.textMu.Lock()
-		for candidate := range endpoint.textContexts {
+		endpoint.dutyMu.Lock()
+		for candidate := range endpoint.dutyContexts {
 			owner = candidate
 			break
 		}
-		endpoint.textMu.Unlock()
+		endpoint.dutyMu.Unlock()
 		if owner != nil {
 			owner.mu.Lock()
 			job = owner.job
@@ -84,9 +84,9 @@ func TestTextParticipantCancellationBeforeQualificationExposesNoCommands(t *test
 		t.Fatal("runtime did not join cancellation")
 	}
 	tasks.Wait()
-	endpoint.textMu.Lock()
-	retained := len(endpoint.textContexts)
-	endpoint.textMu.Unlock()
+	endpoint.dutyMu.Lock()
+	retained := len(endpoint.dutyContexts)
+	endpoint.dutyMu.Unlock()
 	owner.mu.Lock()
 	clean := owner.closed && owner.job == nil && owner.verifiedJob == nil && owner.tokens.permission == nil && job.finished && job.cleanupErr == nil
 	owner.mu.Unlock()

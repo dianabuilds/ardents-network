@@ -21,7 +21,7 @@ import (
 // Explicit State/qualified-launch fixtures isolate set ownership. The tests
 // use the actual Entry and local-duty roots, not enrollment/host qualification.
 type sourceStateFixture struct {
-	issuePermission    func(*testing.T, *textContext, [3]uint32)
+	issuePermission    func(*testing.T, *dutyContext, [3]uint32)
 	issueRawPermission func(*testing.T, []byte, [32]byte) []byte
 	mu                 sync.Mutex
 	view               state.ClosedRouteView
@@ -44,7 +44,7 @@ func (source *sourceStateFixture) Current() (state.Snapshot, error) {
 	return source.snapshot, nil
 }
 
-func sourceContextFixture(t *testing.T) (*endpoint, *textContext, *sourceStateFixture) {
+func sourceContextFixture(t *testing.T) (*endpoint, *dutyContext, *sourceStateFixture) {
 	t.Helper()
 	now := time.Now().UTC()
 	window := now.Truncate(time.Hour)
@@ -79,7 +79,7 @@ func sourceContextFixture(t *testing.T) (*endpoint, *textContext, *sourceStateFi
 		candidate.Endpoint, candidate.CarrierProfile, candidate.Capacity = unused, string(carrier.ClosedCarrierTCP), 16
 		candidate.ValidFrom, candidate.ValidUntil, candidate.AssignmentNotAfter = window, profile.NotAfter, profile.NotAfter
 	}
-	endpoint, principal := textContextEndpoint(t)
+	endpoint, principal := dutyContextEndpoint(t)
 	endpoint.clock, endpoint.network, endpoint.closedState = time.Now, profile.NetworkID, source
 	endpoint.closedEntryRoot, endpoint.closedRoleRoot = t.TempDir(), t.TempDir()
 	for _, root := range []string{endpoint.closedEntryRoot, endpoint.closedRoleRoot} {
@@ -103,7 +103,7 @@ func sourceContextFixture(t *testing.T) (*endpoint, *textContext, *sourceStateFi
 	return endpoint, owner, source
 }
 
-func selectSource(t *testing.T, owner *textContext) client.ClosedBootstrapSelection {
+func selectSource(t *testing.T, owner *dutyContext) client.ClosedBootstrapSelection {
 	t.Helper()
 	owner.mu.Lock()
 	defer owner.mu.Unlock()

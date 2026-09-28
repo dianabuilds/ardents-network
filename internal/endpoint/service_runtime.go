@@ -34,7 +34,7 @@ type setup struct {
 
 // endpoint owns one broker generation's sessions and current publication.
 type endpoint struct {
-	endpointTextState
+	endpointDutyState
 	clock            func() time.Time
 	network          [32]byte
 	authority        [32]byte
@@ -98,9 +98,9 @@ func (endpoint *endpoint) Close() error {
 		return nil
 	}
 	endpoint.admission.Close()
-	textErr := errors.Join(endpoint.closeTextContexts(), endpoint.closeSourceRoots())
+	dutyErr := errors.Join(endpoint.closeDutyContexts(), endpoint.closeSourceRoots())
 	if endpoint.publications == nil {
-		return textErr
+		return dutyErr
 	}
-	return errors.Join(textErr, endpoint.publications.Close())
+	return errors.Join(dutyErr, endpoint.publications.Close())
 }

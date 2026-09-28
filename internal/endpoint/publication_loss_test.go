@@ -16,7 +16,7 @@ import (
 
 // The same real registered Publisher setup feeds successful and interrupted
 // Descriptor handovers. Only accepted State and worker qualification are fixtures.
-func startRegisteredPublisherNetwork(t *testing.T, carrier routecarrier.CarrierProfile, gate *descriptorACKGate) (*endpoint, *textContext, *sourceStateFixture, *introductionRegistration) {
+func startRegisteredPublisherNetwork(t *testing.T, carrier routecarrier.CarrierProfile, gate *descriptorACKGate) (*endpoint, *dutyContext, *sourceStateFixture, *introductionRegistration) {
 	t.Helper()
 	endpoint, owner, source := startRoleNetwork(t, roleNetworkFixture{carrier: carrier, resolution: true, publisher: true, configure: []func(int, *node.Config){gate.configure(t)}})
 	source.mu.Lock()

@@ -13,8 +13,8 @@ import (
 )
 
 func TestTextWorkerInitializationRevokeCancelsBeforeReadiness(t *testing.T) {
-	endpoint, principal := textContextEndpoint(t)
-	owner := admittedTextContext(t, endpoint, principal, broker.Connection)
+	endpoint, principal := dutyContextEndpoint(t)
+	owner := admittedDutyContext(t, endpoint, principal, broker.Connection)
 	job, err := beginTestJob(t, owner, endpoint, broker.Connection)
 	if err != nil {
 		t.Fatal(err)

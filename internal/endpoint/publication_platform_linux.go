@@ -2,12 +2,12 @@
 
 package endpoint
 
-// textContext is the local authority holder. Every local subsystem, including
+// dutyContext is the local authority holder. Every local subsystem, including
 // the publication owner with its startup and drain barriers, lives inside
-// textContextState and is protected by owner.mu unless an owner documents its
+// dutyContextState and is protected by owner.mu unless an owner documents its
 // own mutex.
-type textContext struct {
-	textContextState
+type dutyContext struct {
+	dutyContextState
 }
 
 // Only the explicit admission stop permits a normal producer drain. A joined

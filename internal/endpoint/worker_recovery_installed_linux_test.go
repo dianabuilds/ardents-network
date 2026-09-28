@@ -183,7 +183,7 @@ func exerciseInstalledWorkerRecovery(t *testing.T, ctx context.Context, carrier 
 	}
 	assertInstalledRecoveryRoute(t, prepared.digest, remote.digest, clientRecovery, remote.recovery)
 	assertFreshRecoveryTokenAttempts(t, initialTokens, tokenAttemptSnapshot(t, reader.endpoint))
-	for _, owner := range []*textContext{reader, publisher} {
+	for _, owner := range []*dutyContext{reader, publisher} {
 		owner.mu.Lock()
 		pending := len(owner.introduction.exchanges.active)
 		owner.mu.Unlock()
@@ -234,7 +234,7 @@ func assertInstalledWorkerRetired(t *testing.T, ctx context.Context, bound *qual
 	requireInstalledWorkerCollected(t, ctx, instance.Name, instance.Role)
 }
 
-func installedRecoveryNetwork(t *testing.T, carrier routecarrier.CarrierProfile) (*textContext, *textContext, targetlink.Link) {
+func installedRecoveryNetwork(t *testing.T, carrier routecarrier.CarrierProfile) (*dutyContext, *dutyContext, targetlink.Link) {
 	t.Helper()
 	reader, publisher := unpublishedNetworkWithInstance(t, carrier,
 		func(network [32]byte, now, until time.Time) (*instance.Root, *instance.Binding) {

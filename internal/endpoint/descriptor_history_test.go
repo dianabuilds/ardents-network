@@ -58,9 +58,9 @@ func floorDescriptor(t *testing.T, current servicepublication.Current, signer ed
 }
 
 func TestTextDescriptorFloorBelongsToContextAcrossWorkerLoss(t *testing.T) {
-	endpoint, principal := textContextEndpoint(t)
-	owner := admittedTextContext(t, endpoint, principal, broker.Connection)
-	other := admittedTextContext(t, endpoint, principal, broker.Connection)
+	endpoint, principal := dutyContextEndpoint(t)
+	owner := admittedDutyContext(t, endpoint, principal, broker.Connection)
+	other := admittedDutyContext(t, endpoint, principal, broker.Connection)
 	job, err := owner.beginJob(endpoint, broker.Connection)
 	if err != nil {
 		t.Fatal(err)

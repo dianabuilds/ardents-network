@@ -43,16 +43,16 @@ func interiorSelectionFailureStage(cause error) string {
 	return "unknown"
 }
 
-func (owner *textContext) selectBootstrapLocked() (client.ClosedBootstrapSelection, error) {
+func (owner *dutyContext) selectBootstrapLocked() (client.ClosedBootstrapSelection, error) {
 	return owner.selectAdjacentLocked(1, owner.source.membersSlotLocked())
 }
 
-func (owner *textContext) selectAdjacentLocked(domain uint8, retained **interiorSet) (client.ClosedBootstrapSelection, error) {
+func (owner *dutyContext) selectAdjacentLocked(domain uint8, retained **interiorSet) (client.ClosedBootstrapSelection, error) {
 	profile, members, now, err := owner.endpoint.closedRoleMembers()
 	if err != nil {
 		return client.ClosedBootstrapSelection{}, interiorSelectionFailureAt("role-members-"+roleMemberFailureStage(err), err)
 	}
-	entries, err := owner.endpoint.textEntrySets()
+	entries, err := owner.endpoint.dutyEntrySets()
 	if err != nil {
 		return client.ClosedBootstrapSelection{}, interiorSelectionFailureAt("entries", err)
 	}

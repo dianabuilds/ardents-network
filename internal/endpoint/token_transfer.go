@@ -36,7 +36,7 @@ func tokenTransferFailureStage(cause error) string {
 // takeTokenLocked is shared only after the exact opening or issuance
 // flight has independently authorized its role. It durably marks consumed stock
 // and rechecks the surviving context before releasing bytes to Route.
-func (owner *textContext) takeTokenLocked(profile state.ClosedProfileView, now time.Time, hello ardp.Hello, class uint8, attempt context.Context) ([]byte, error) {
+func (owner *dutyContext) takeTokenLocked(profile state.ClosedProfileView, now time.Time, hello ardp.Hello, class uint8, attempt context.Context) ([]byte, error) {
 	permission := owner.tokens.permission
 	token, err := permission.consumeToken(profile, now, hello, class)
 	if err != nil {
@@ -51,7 +51,7 @@ func (owner *textContext) takeTokenLocked(profile state.ClosedProfileView, now t
 		clear(token)
 		owner.closeErr = errors.Join(owner.closeErr, err)
 		owner.closed = true
-		owner.endpoint.failTextContexts(err)
+		owner.endpoint.failDutyContexts(err)
 		return nil, tokenTransferFailureAt("journal", err)
 	}
 	currentProfile, currentTime, currentErr := owner.permissionProfileLocked()

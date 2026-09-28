@@ -38,7 +38,7 @@ type introductionWaiter struct {
 // competes for the one consumer gate. The consumer routes each claimed capsule
 // directly to an already registered waiter; unmatched inputs are refused while
 // completion is still possible and never occupy registration capacity.
-func (dispatch *introductionDispatch) receive(owner *textContext, ctx context.Context, job *jobIdentity,
+func (dispatch *introductionDispatch) receive(owner *dutyContext, ctx context.Context, job *jobIdentity,
 	want introductionDeliveryKey, binding *serviceBinding) (delivery introductionRoutedDelivery, outcome error) {
 	waiter, gate, err := dispatch.registerWaiter(owner, ctx, job, want, binding)
 	if err != nil {
@@ -111,7 +111,7 @@ func (dispatch *introductionDispatch) receive(owner *textContext, ctx context.Co
 	}
 }
 
-func (dispatch *introductionDispatch) registerWaiter(owner *textContext, ctx context.Context, job *jobIdentity,
+func (dispatch *introductionDispatch) registerWaiter(owner *dutyContext, ctx context.Context, job *jobIdentity,
 	want introductionDeliveryKey, binding *serviceBinding) (*introductionWaiter, chan struct{}, error) {
 	if owner == nil || ctx == nil || want.generation == 0 {
 		return nil, nil, errors.New("text Introduction dispatch unavailable")
@@ -150,7 +150,7 @@ func (dispatch *introductionDispatch) registerWaiter(owner *textContext, ctx con
 // releaseWaiter joins ownership of a delivery assigned at the
 // same instant its waiter was canceled. A live context refuses that capsule;
 // terminal context cleanup instead closes the whole registration owner.
-func (dispatch *introductionDispatch) releaseWaiter(owner *textContext, waiter *introductionWaiter) error {
+func (dispatch *introductionDispatch) releaseWaiter(owner *dutyContext, waiter *introductionWaiter) error {
 	if owner == nil || waiter == nil {
 		return nil
 	}
@@ -169,7 +169,7 @@ func (dispatch *introductionDispatch) releaseWaiter(owner *textContext, waiter *
 	return routed.delivery.Complete(lifetime, 1)
 }
 
-func (owner *textContext) retainIntroductionRecovery(binding *serviceBinding) error {
+func (owner *dutyContext) retainIntroductionRecovery(binding *serviceBinding) error {
 	if owner == nil || !binding.servesOwnerJob(owner) {
 		return errors.New("text Introduction recovery owner unavailable")
 	}
@@ -208,7 +208,7 @@ func (binding *serviceBinding) releaseIntroductionRecovery() error {
 	return routed.delivery.Complete(lifetime, 1)
 }
 
-func (owner *textContext) claimIntroductionDelivery(ctx context.Context,
+func (owner *dutyContext) claimIntroductionDelivery(ctx context.Context,
 	job *jobIdentity) (*client.ClosedIntroductionDelivery, introductionDeliveryKey, time.Time, error) {
 	delivery, err := owner.nextIntroductionDelivery(ctx)
 	if err != nil {
@@ -222,11 +222,11 @@ func (owner *textContext) claimIntroductionDelivery(ctx context.Context,
 	return delivery, key, expires, nil
 }
 
-func (owner *textContext) refuseIntroductionDelivery(delivery *client.ClosedIntroductionDelivery, expires time.Time) error {
+func (owner *dutyContext) refuseIntroductionDelivery(delivery *client.ClosedIntroductionDelivery, expires time.Time) error {
 	return owner.completeIntroductionDelivery(delivery, expires, 1)
 }
 
-func (owner *textContext) completeIntroductionDelivery(delivery *client.ClosedIntroductionDelivery,
+func (owner *dutyContext) completeIntroductionDelivery(delivery *client.ClosedIntroductionDelivery,
 	expires time.Time, status uint8) error {
 	if owner == nil || delivery == nil {
 		return errors.New("text Introduction completion owner unavailable")
@@ -244,7 +244,7 @@ func (owner *textContext) completeIntroductionDelivery(delivery *client.ClosedIn
 // ownership. It consumes the existing cryptographic-opening rate reservation
 // before decryption; acceptance repeats every other authority, publication,
 // replay and bound check before acknowledging success.
-func (owner *textContext) inspectIntroductionDelivery(ctx context.Context, job *jobIdentity,
+func (owner *dutyContext) inspectIntroductionDelivery(ctx context.Context, job *jobIdentity,
 	delivery *client.ClosedIntroductionDelivery) (introductionDeliveryKey, time.Time, error) {
 	operation := delivery.Operation()
 	defer clear(operation)

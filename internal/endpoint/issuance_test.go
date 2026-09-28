@@ -20,7 +20,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/route/credential"
 )
 
-func prepareIssuancePermission(t *testing.T, owner *textContext, source *sourceStateFixture) string {
+func prepareIssuancePermission(t *testing.T, owner *dutyContext, source *sourceStateFixture) string {
 	t.Helper()
 	_, private, err := ed25519.GenerateKey(rand.Reader)
 	if err != nil {
@@ -30,7 +30,7 @@ func prepareIssuancePermission(t *testing.T, owner *textContext, source *sourceS
 	return prepareIssuancePermissionWithIdentity(t, owner, source, private, [3]uint32{0, 32, 0})
 }
 
-func prepareIssuancePermissionWithIdentity(t *testing.T, owner *textContext, source *sourceStateFixture, private ed25519.PrivateKey, maxima [3]uint32) string {
+func prepareIssuancePermissionWithIdentity(t *testing.T, owner *dutyContext, source *sourceStateFixture, private ed25519.PrivateKey, maxima [3]uint32) string {
 	t.Helper()
 	public := private.Public().(ed25519.PublicKey)
 	vault, err := custody.Open(custody.VaultConfig{Root: t.TempDir(), Now: time.Now})
@@ -82,7 +82,7 @@ func prepareIssuancePermissionWithIdentity(t *testing.T, owner *textContext, sou
 		}
 		return issued.AdmissionPermission
 	}
-	source.issuePermission = func(t *testing.T, owner *textContext, maxima [3]uint32) {
+	source.issuePermission = func(t *testing.T, owner *dutyContext, maxima [3]uint32) {
 		t.Helper()
 		raw, digest, err := owner.requestPermission(maxima)
 		if err != nil {

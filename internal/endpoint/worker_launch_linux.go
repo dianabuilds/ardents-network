@@ -23,7 +23,7 @@ var workerLaunchGate = make(chan struct{}, 1)
 // launchWorker owns a local job from reservation through verified readiness.
 // No caller supplies a worker identity, artifact digest, isolation flag, socket,
 // executable, Principal or Grant. All of those observations are obtained here.
-func (owner *textContext) launchWorker(ctx context.Context, snapshot []byte) (*qualifiedWorker, error) {
+func (owner *dutyContext) launchWorker(ctx context.Context, snapshot []byte) (*qualifiedWorker, error) {
 	workload, err := documentServiceWorkloadBounds()
 	if err != nil {
 		return nil, err
@@ -31,7 +31,7 @@ func (owner *textContext) launchWorker(ctx context.Context, snapshot []byte) (*q
 	return owner.launchInstalledWorker(ctx, snapshot, nil, workload)
 }
 
-func (owner *textContext) launchStreamQualificationWorker(ctx context.Context, run *qualification.Run) (*qualifiedWorker, error) {
+func (owner *dutyContext) launchStreamQualificationWorker(ctx context.Context, run *qualification.Run) (*qualifiedWorker, error) {
 	role := streamqualification.ReaderRole
 	if owner != nil && owner.surface == broker.Administration {
 		role = streamqualification.PublisherRole
@@ -46,7 +46,7 @@ func (owner *textContext) launchStreamQualificationWorker(ctx context.Context, r
 	return owner.launchInstalledWorker(ctx, nil, run, workload)
 }
 
-func (owner *textContext) launchInstalledWorker(ctx context.Context, snapshot []byte, run *qualification.Run,
+func (owner *dutyContext) launchInstalledWorker(ctx context.Context, snapshot []byte, run *qualification.Run,
 	workload serviceWorkloadBounds) (*qualifiedWorker, error) {
 	if owner == nil || ctx == nil || ctx.Err() != nil {
 		return nil, errors.New("text worker launch is unavailable")
@@ -140,7 +140,7 @@ func (owner *textContext) launchInstalledWorker(ctx context.Context, snapshot []
 func (endpoint *endpoint) acquireLaunch(ctx context.Context) (func(), error) {
 	select {
 	case workerLaunchGate <- struct{}{}:
-		if ctx.Err() != nil || !endpoint.textAvailable() {
+		if ctx.Err() != nil || !endpoint.dutyAvailable() {
 			<-workerLaunchGate
 			return nil, errors.New("text worker activation is unavailable")
 		}

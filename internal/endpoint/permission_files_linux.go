@@ -12,7 +12,7 @@ import (
 // The trusted Endpoint composition supplies these owner-only paths. Neither
 // Application transport accepts a path, permission, holder key or context ID.
 // Export returns the public commitment separately for explicit Custody approval.
-func (owner *textContext) exportPermissionFile(ctx context.Context, path string, maxima [3]uint32) (commitment [32]byte, outcome error) {
+func (owner *dutyContext) exportPermissionFile(ctx context.Context, path string, maxima [3]uint32) (commitment [32]byte, outcome error) {
 	if ctx == nil || ctx.Err() != nil {
 		return [32]byte{}, errors.New("text permission export canceled")
 	}
@@ -49,7 +49,7 @@ func (owner *textContext) exportPermissionFile(ctx context.Context, path string,
 // Import consumes the existing Custody permission format and the separately
 // retained request digest. Files are transport, never authority or context
 // restoration: the in-memory owner performs all currentness checks again.
-func (owner *textContext) importPermissionFile(ctx context.Context, path string, digest [32]byte) (outcome error) {
+func (owner *dutyContext) importPermissionFile(ctx context.Context, path string, digest [32]byte) (outcome error) {
 	if owner == nil || ctx == nil || ctx.Err() != nil {
 		return errors.New("text permission import canceled")
 	}

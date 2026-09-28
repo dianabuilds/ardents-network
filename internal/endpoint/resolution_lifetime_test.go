@@ -106,8 +106,8 @@ func TestTextResolutionCloseJoinsInFlightStateSelection(t *testing.T) {
 }
 
 func TestTextResolutionCompletionRetainsFailedCleanup(t *testing.T) {
-	endpoint, principal := textContextEndpoint(t)
-	owner := admittedTextContext(t, endpoint, principal, broker.Connection)
+	endpoint, principal := dutyContextEndpoint(t)
+	owner := admittedDutyContext(t, endpoint, principal, broker.Connection)
 	attempt, cancel := context.WithCancel(owner.lease.Context())
 	defer cancel()
 	flight := &resolutionFlight{context: attempt, cancel: cancel, done: make(chan struct{})}
@@ -117,7 +117,7 @@ func TestTextResolutionCompletionRetainsFailedCleanup(t *testing.T) {
 	original := errors.New("terminal CLOSE could not be emitted")
 	failure := errors.Join(client.ErrClosedSourceCleanup, original)
 	owner.finishResolution(flight, failure)
-	if endpoint.textAvailable() {
+	if endpoint.dutyAvailable() {
 		t.Fatal("cleanup failure left Endpoint accepting jobs")
 	}
 	if err := owner.Close(); !errors.Is(err, original) {

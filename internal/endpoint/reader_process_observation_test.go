@@ -158,7 +158,7 @@ func readerProtocol(t *testing.T) *os.File {
 	return protocol
 }
 
-func readerLookupObservation(t *testing.T, owner *textContext, input readerProcessInput, encoder *json.Encoder, decoder *json.Decoder, paused *pausedResolutionState, first bool) {
+func readerLookupObservation(t *testing.T, owner *dutyContext, input readerProcessInput, encoder *json.Encoder, decoder *json.Decoder, paused *pausedResolutionState, first bool) {
 	t.Helper()
 	var verified reachability.Verified
 	if first {

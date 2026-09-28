@@ -13,12 +13,12 @@ import (
 	nativeconnection "github.com/dianabuilds/ardents-network/internal/service/connection"
 )
 
-func (owner *textContext) acceptIntroduction(ctx context.Context, job *jobIdentity,
+func (owner *dutyContext) acceptIntroduction(ctx context.Context, job *jobIdentity,
 	operation []byte) (*introductionAttempt, error) {
 	return owner.acceptIntroductionGeneration(ctx, job, operation, nil, 1, time.Time{}, false)
 }
 
-func (owner *textContext) acceptRecovery(ctx context.Context, job *jobIdentity, operation []byte,
+func (owner *dutyContext) acceptRecovery(ctx context.Context, job *jobIdentity, operation []byte,
 	original *serviceBinding, request nativeconnection.Recovery) (*introductionAttempt, error) {
 	if original == nil || original.owner != owner || original.job != job {
 		return nil, errors.New("text recovery binding unavailable")
@@ -32,7 +32,7 @@ func (owner *textContext) acceptRecovery(ctx context.Context, job *jobIdentity, 
 // holdInitialIntroductionReceiver reproduces the production Publisher
 // loop waiting for another initial Connection while an established Connection
 // needs a recovery capsule. The returned cleanup is registered before return.
-func holdInitialIntroductionReceiver(t *testing.T, ctx context.Context, owner *textContext,
+func holdInitialIntroductionReceiver(t *testing.T, ctx context.Context, owner *dutyContext,
 	job *jobIdentity) func() {
 	t.Helper()
 	waiting, cancel := context.WithCancel(ctx)

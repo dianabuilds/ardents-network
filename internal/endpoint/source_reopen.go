@@ -10,7 +10,7 @@ import (
 // Before the Source may become idle, obtain the two tokens that its next
 // explicit read or scheduled publication will consume. This uses the current admitted Source,
 // existing allocation and retained receivers, never another bootstrap allowance.
-func (owner *textContext) prepareSourceReopen(ctx context.Context, flight *resolutionFlight) error {
+func (owner *dutyContext) prepareSourceReopen(ctx context.Context, flight *resolutionFlight) error {
 	release, err := owner.acquireSourceOperation(ctx)
 	if err != nil {
 		return err
@@ -21,7 +21,7 @@ func (owner *textContext) prepareSourceReopen(ctx context.Context, flight *resol
 
 // The caller owns the Source operation; a nil flight belongs to readiness,
 // which must not reserve or wait for a publication's resolution flight.
-func (owner *textContext) prepareSourceReopenOwned(ctx context.Context, flight *resolutionFlight) error {
+func (owner *dutyContext) prepareSourceReopenOwned(ctx context.Context, flight *resolutionFlight) error {
 	owner.mu.Lock()
 	profile, _, err := owner.permissionProfileLocked()
 	if err != nil || ctx.Err() != nil || owner.source.currentLocked() == nil || flight != nil && (owner.resolution != flight || flight.source == nil || !flight.source.currentLocked(&owner.source)) || owner.tokens.permission == nil {

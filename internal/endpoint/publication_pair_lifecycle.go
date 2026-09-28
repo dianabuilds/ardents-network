@@ -213,7 +213,7 @@ func (lifecycle *publicationPairLifecycle) commitAcknowledgedLocked(ctx context.
 		}
 	}
 	// From the first predecessor mutation onward this owner completes the local
-	// switch under textContext.mu. Cancellation and drain are admitted only
+	// switch under dutyContext.mu. Cancellation and drain are admitted only
 	// before that point, so they cannot strand a shortened predecessor beside
 	// an uncommitted current registration.
 	lifecycle.previousRegistration = predecessor

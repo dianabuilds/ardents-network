@@ -19,7 +19,7 @@ import (
 // registered slot. It commits the real private proof at the resolution Node;
 // no worker supplies a signer, recipient key, Target, or publication bytes.
 // Descriptor acknowledgement alone does not imply working capsule delivery.
-func (owner *textContext) publishDescriptor(ctx context.Context) (verified reachability.Verified, outcome error) {
+func (owner *dutyContext) publishDescriptor(ctx context.Context) (verified reachability.Verified, outcome error) {
 	if owner == nil || ctx == nil || ctx.Err() != nil {
 		return verified, errors.New("text publication unavailable")
 	}
@@ -180,7 +180,7 @@ func (owner *textContext) publishDescriptor(ctx context.Context) (verified reach
 // publisherMu serializes this existing publication/Instance ownership with
 // legacy start and withdrawal. Local publication proof is distinct from the
 // later resolution acknowledgement and eventual protected Service readiness.
-func (owner *textContext) acquirePublication(ctx context.Context, registered *introductionRegistration, binding *instance.Binding, now time.Time) (*servicepublication.Lease, error) {
+func (owner *dutyContext) acquirePublication(ctx context.Context, registered *introductionRegistration, binding *instance.Binding, now time.Time) (*servicepublication.Lease, error) {
 	endpoint := owner.endpoint
 	credential := binding.Credential()
 	if err := validateCredential(credential, endpoint.authority, endpoint.network, now, publishCapability|connectCapability); err != nil {
@@ -224,7 +224,7 @@ func (owner *textContext) acquirePublication(ctx context.Context, registered *in
 }
 
 // Every commit outcome retains cleanup ownership before a cancellable handover.
-func (owner *textContext) finishPublicationCommit(ctx context.Context, registered *introductionRegistration, binding *instance.Binding, now time.Time, commitErr error) (*servicepublication.Lease, error) {
+func (owner *dutyContext) finishPublicationCommit(ctx context.Context, registered *introductionRegistration, binding *instance.Binding, now time.Time, commitErr error) (*servicepublication.Lease, error) {
 	endpoint := owner.endpoint
 	endpoint.publisherOwner = owner
 	if commitErr != nil {
@@ -239,7 +239,7 @@ func (owner *textContext) finishPublicationCommit(ctx context.Context, registere
 			owner.mu.Lock()
 			owner.closeErr = errors.Join(owner.closeErr, cleanup)
 			owner.closed = true
-			endpoint.failTextContexts(cleanup)
+			endpoint.failDutyContexts(cleanup)
 			owner.mu.Unlock()
 		}
 		return nil, errors.Join(commitErr, cleanup)
@@ -251,7 +251,7 @@ func (owner *textContext) finishPublicationCommit(ctx context.Context, registere
 // Context shutdown calls this only after its flights and worker have joined.
 // The accepted Instance cannot transfer to a different local context after
 // first publication; a new owner requires an explicit successor binding.
-func (owner *textContext) retirePublication() error {
+func (owner *dutyContext) retirePublication() error {
 	endpoint := owner.endpoint
 	endpoint.publisherMu.Lock()
 	defer endpoint.publisherMu.Unlock()

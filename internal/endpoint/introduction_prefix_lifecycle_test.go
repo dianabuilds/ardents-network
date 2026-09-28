@@ -20,7 +20,7 @@ func (handle *introductionPrefixHandle) Done() <-chan struct{} {
 }
 
 func TestTextIntroductionCancelledOpeningDoesNotRetireSourceOrPublishPrefix(t *testing.T) {
-	owner := &textContext{}
+	owner := &dutyContext{}
 	source := &sourceHandle{owner: &owner.source, cancel: func() {}}
 	source.prefix.Store(&client.ClosedSourcePrefix{})
 	owner.source.live = source

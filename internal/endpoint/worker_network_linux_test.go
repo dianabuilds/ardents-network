@@ -11,7 +11,7 @@ import (
 	routecarrier "github.com/dianabuilds/ardents-network/internal/route/carrier"
 )
 
-func exchangeWorkersThroughNetwork(t *testing.T, carrier routecarrier.CarrierProfile, body []byte, launch func(*testing.T, *textContext, []byte) *qualifiedWorker) {
+func exchangeWorkersThroughNetwork(t *testing.T, carrier routecarrier.CarrierProfile, body []byte, launch func(*testing.T, *dutyContext, []byte) *qualifiedWorker) {
 	t.Helper()
 	readerOwner, publisherOwner := unpublishedNetworkFixture(t, carrier)
 	reader := launch(t, readerOwner, nil)
@@ -54,7 +54,7 @@ func exchangeWorkersThroughNetwork(t *testing.T, carrier routecarrier.CarrierPro
 func TestTextWorkersReadTargetThroughJoinedNetwork(t *testing.T) {
 	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP, routecarrier.ClosedCarrierQUIC} {
 		t.Run(string(carrier), func(t *testing.T) {
-			exchangeWorkersThroughNetwork(t, carrier, bytes.Repeat([]byte("x"), 64<<10), func(t *testing.T, owner *textContext, snapshot []byte) *qualifiedWorker {
+			exchangeWorkersThroughNetwork(t, carrier, bytes.Repeat([]byte("x"), 64<<10), func(t *testing.T, owner *dutyContext, snapshot []byte) *qualifiedWorker {
 				job := liveCapsuleJob(t, owner)
 				return serviceWorkerFixture(t, &serviceBinding{owner: owner, job: job}, snapshot)
 			})

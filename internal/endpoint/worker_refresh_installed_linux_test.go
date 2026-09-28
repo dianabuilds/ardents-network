@@ -10,7 +10,7 @@ import (
 
 // Observe the installed Publisher's actual scheduler. No authority clock,
 // registration creation time, refresh time or predecessor deadline is changed.
-func observeInstalledRefresh(t *testing.T, ctx context.Context, owner *textContext, run *publisherRun) {
+func observeInstalledRefresh(t *testing.T, ctx context.Context, owner *dutyContext, run *publisherRun) {
 	t.Helper()
 	owner.mu.Lock()
 	first := owner.publication.pair.registration

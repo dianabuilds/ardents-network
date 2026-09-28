@@ -31,7 +31,7 @@ func (permission *permission) stockCountForDuty(profileDigest, receiver [32]byte
 }
 
 // missingStockFor lists, in receiver order, the receivers that hold no stock
-// of the given class for the profile digest. It runs under textContext.mu and
+// of the given class for the profile digest. It runs under dutyContext.mu and
 // only inspects; the caller decides whether and how to issue the missing
 // stock, and must unlock before any issuance.
 func (permission *permission) missingStockFor(profileDigest [32]byte, receivers [][32]byte, class uint8) [][32]byte {
@@ -145,7 +145,7 @@ func (permission *permission) acceptIssuedBatch(batch *tokenBatch, nonce [32]byt
 	return nil
 }
 
-// consumeToken burns one exact stock entry under textContext.mu before
+// consumeToken burns one exact stock entry under dutyContext.mu before
 // verifying its signature. An invalid token is never returned or restored.
 func (permission *permission) consumeToken(profile state.ClosedProfileView, now time.Time, hello ardp.Hello, class uint8) ([]byte, error) {
 	if !permission.currentFor(profile, now) {

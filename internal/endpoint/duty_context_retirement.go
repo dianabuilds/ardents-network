@@ -6,11 +6,11 @@ import (
 	"errors"
 )
 
-// textContextRetirement is one concrete snapshot of every child that was
-// revoked while textContext.mu was held. It contains no admission path: after
-// stopTextContextChildrenLocked returns, the context is closed and every
+// dutyContextRetirement is one concrete snapshot of every child that was
+// revoked while dutyContext.mu was held. It contains no admission path: after
+// stopDutyContextChildrenLocked returns, the context is closed and every
 // captured child has already received cancellation.
-type textContextRetirement struct {
+type dutyContextRetirement struct {
 	refresh             *publicationRefreshRetirement
 	publication         *publicationPairRetirement
 	registrationOpening *registrationFlight
@@ -24,11 +24,11 @@ type textContextRetirement struct {
 	job                 *jobRetirement
 }
 
-// stopTextContextChildrenLocked revokes every child before any join. The
-// caller holds textContext.mu. Maps and flights cleared directly here remain
-// textContext-owned; extracted owners clear their own state through stop.
-func (owner *textContext) stopTextContextChildrenLocked() *textContextRetirement {
-	retirement := &textContextRetirement{}
+// stopDutyContextChildrenLocked revokes every child before any join. The
+// caller holds dutyContext.mu. Maps and flights cleared directly here remain
+// dutyContext-owned; extracted owners clear their own state through stop.
+func (owner *dutyContext) stopDutyContextChildrenLocked() *dutyContextRetirement {
+	retirement := &dutyContextRetirement{}
 	retirement.refresh = owner.publication.refresh.stopAsync()
 	retirement.publication = owner.publication.pair.stopLocked()
 	owner.publication.signalRegistrationsLocked()
@@ -62,8 +62,8 @@ func (owner *textContext) stopTextContextChildrenLocked() *textContextRetirement
 // context-owned exchanges; the Job joins last so its root reservation and
 // first cleanup error survive until every child is terminal.
 //
-// No step runs under textContext.mu.
-func (retirement *textContextRetirement) join() error {
+// No step runs under dutyContext.mu.
+func (retirement *dutyContextRetirement) join() error {
 	if retirement == nil {
 		return nil
 	}

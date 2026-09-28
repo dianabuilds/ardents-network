@@ -6,7 +6,7 @@ package endpoint
 // granted permission with its holder key, approved request, per-class
 // reservations and stocked closed tokens, plus the single in-flight
 // issuance operation slot bound to that permission. The zero value is
-// ready for use under textContext.mu.
+// ready for use under dutyContext.mu.
 type tokens struct {
 	permission *permission
 	issuance   *issuanceOperation

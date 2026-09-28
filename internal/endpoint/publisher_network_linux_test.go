@@ -176,7 +176,7 @@ func TestTextPublisherNetworkRetainsSnapshotAcrossReaders(t *testing.T) {
 	}
 }
 
-func waitIntroductionWaiters(t *testing.T, ctx context.Context, owner *textContext, minimum int) {
+func waitIntroductionWaiters(t *testing.T, ctx context.Context, owner *dutyContext, minimum int) {
 	t.Helper()
 	for {
 		owner.mu.Lock()

@@ -124,7 +124,7 @@ func (acquisition *responderJoinAcquisition) release() {
 	}
 }
 
-func (acquisition *responderJoinAcquisition) currentLocked(owner *textContext) bool {
+func (acquisition *responderJoinAcquisition) currentLocked(owner *dutyContext) bool {
 	if acquisition == nil || owner == nil || owner.surface != broker.Administration {
 		return false
 	}
@@ -132,7 +132,7 @@ func (acquisition *responderJoinAcquisition) currentLocked(owner *textContext) b
 	return handle != nil && handle.currentLocked(&owner.responder) && acquisition.issuer != nil && acquisition.issuer.currentLocked(&owner.source)
 }
 
-func (acquisition *responderJoinAcquisition) issuancePrefixLocked(owner *textContext) (*sourceHandle, bool) {
+func (acquisition *responderJoinAcquisition) issuancePrefixLocked(owner *dutyContext) (*sourceHandle, bool) {
 	current := acquisition.currentLocked(owner)
 	if acquisition == nil {
 		return nil, false

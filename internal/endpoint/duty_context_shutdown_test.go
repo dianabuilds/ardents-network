@@ -13,8 +13,8 @@ import (
 )
 
 func TestTextContextCloseRevokesEveryChildBeforeOrderedJoin(t *testing.T) {
-	endpoint, principal := textContextEndpoint(t)
-	owner := admittedTextContext(t, endpoint, principal, broker.Connection)
+	endpoint, principal := dutyContextEndpoint(t)
+	owner := admittedDutyContext(t, endpoint, principal, broker.Connection)
 	job, err := beginTestJob(t, owner, endpoint, broker.Connection)
 	if err != nil {
 		t.Fatal(err)
@@ -76,9 +76,9 @@ func TestTextContextCloseRevokesEveryChildBeforeOrderedJoin(t *testing.T) {
 		t.Fatal("Close returned before stalled resolution joined")
 	default:
 	}
-	endpoint.textMu.Lock()
-	_, retained := endpoint.textContexts[owner]
-	endpoint.textMu.Unlock()
+	endpoint.dutyMu.Lock()
+	_, retained := endpoint.dutyContexts[owner]
+	endpoint.dutyMu.Unlock()
 	if !retained {
 		t.Fatal("context root was released before stalled resolution joined")
 	}
@@ -89,9 +89,9 @@ func TestTextContextCloseRevokesEveryChildBeforeOrderedJoin(t *testing.T) {
 		t.Fatal("Close returned before final job cleanup joined")
 	default:
 	}
-	endpoint.textMu.Lock()
-	_, retained = endpoint.textContexts[owner]
-	endpoint.textMu.Unlock()
+	endpoint.dutyMu.Lock()
+	_, retained = endpoint.dutyContexts[owner]
+	endpoint.dutyMu.Unlock()
 	if !retained {
 		t.Fatal("context root was released before final job cleanup joined")
 	}
@@ -110,17 +110,17 @@ func TestTextContextCloseRevokesEveryChildBeforeOrderedJoin(t *testing.T) {
 	if repeated := owner.Close(); repeated != first {
 		t.Fatalf("repeated Close returned a different joined result: %v", repeated)
 	}
-	endpoint.textMu.Lock()
-	_, retained = endpoint.textContexts[owner]
-	endpoint.textMu.Unlock()
+	endpoint.dutyMu.Lock()
+	_, retained = endpoint.dutyContexts[owner]
+	endpoint.dutyMu.Unlock()
 	if retained {
 		t.Fatal("context root remained after final child joined")
 	}
 }
 
 func TestTextContextCloseJoinsPendingLaunchAndRetainsFailure(t *testing.T) {
-	endpoint, principal := textContextEndpoint(t)
-	owner := admittedTextContext(t, endpoint, principal, broker.Connection)
+	endpoint, principal := dutyContextEndpoint(t)
+	owner := admittedDutyContext(t, endpoint, principal, broker.Connection)
 	job, err := beginTestJob(t, owner, endpoint, broker.Connection)
 	if err != nil {
 		t.Fatal(err)
@@ -163,9 +163,9 @@ func TestTextContextCloseJoinsPendingLaunchAndRetainsFailure(t *testing.T) {
 }
 
 func TestTextEndpointCloseCancelsAllBeforeJoiningAnyWorker(t *testing.T) {
-	endpoint, principal := textContextEndpoint(t)
-	first := admittedTextContext(t, endpoint, principal, broker.Connection)
-	second := admittedTextContext(t, endpoint, principal, broker.Administration)
+	endpoint, principal := dutyContextEndpoint(t)
+	first := admittedDutyContext(t, endpoint, principal, broker.Connection)
+	second := admittedDutyContext(t, endpoint, principal, broker.Administration)
 	firstJob, err := beginTestJob(t, first, endpoint, broker.Connection)
 	if err != nil {
 		t.Fatal(err)
@@ -207,14 +207,14 @@ func TestTextEndpointCloseCancelsAllBeforeJoiningAnyWorker(t *testing.T) {
 }
 
 func TestTextContextPendingCleanupKeepsFiniteAdmissionPressure(t *testing.T) {
-	endpoint, principal := textContextEndpoint(t)
+	endpoint, principal := dutyContextEndpoint(t)
 	for index := 0; index < 6; index++ {
 		parent, cancel := context.WithCancel(context.Background())
 		capability, err := endpoint.Admit(principal, broker.Administration)
 		if err != nil {
 			t.Fatal(err)
 		}
-		owner, err := endpoint.beginTextContext(parent, capability, principal, broker.Administration)
+		owner, err := endpoint.beginDutyContext(parent, capability, principal, broker.Administration)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -231,7 +231,7 @@ func TestTextContextPendingCleanupKeepsFiniteAdmissionPressure(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	owner, err := endpoint.beginTextContext(context.Background(), capability, principal, broker.Administration)
+	owner, err := endpoint.beginDutyContext(context.Background(), capability, principal, broker.Administration)
 	if err == nil {
 		_ = owner.Close()
 		t.Fatal("cancelled Broker leases bypassed pending cleanup capacity")
@@ -242,9 +242,9 @@ func TestTextContextPendingCleanupKeepsFiniteAdmissionPressure(t *testing.T) {
 }
 
 func TestTextContextCleanupFailureClosesExistingAndFutureJobAdmission(t *testing.T) {
-	endpoint, principal := textContextEndpoint(t)
-	failed := admittedTextContext(t, endpoint, principal, broker.Administration)
-	idle := admittedTextContext(t, endpoint, principal, broker.Connection)
+	endpoint, principal := dutyContextEndpoint(t)
+	failed := admittedDutyContext(t, endpoint, principal, broker.Administration)
+	idle := admittedDutyContext(t, endpoint, principal, broker.Connection)
 	job, err := beginTestJob(t, failed, endpoint, broker.Administration)
 	if err != nil {
 		t.Fatal(err)
@@ -269,7 +269,7 @@ func TestTextContextCleanupFailureClosesExistingAndFutureJobAdmission(t *testing
 		if err != nil {
 			t.Fatal(err)
 		}
-		replacement, err := endpoint.beginTextContext(context.Background(), capability, principal, broker.Administration)
+		replacement, err := endpoint.beginDutyContext(context.Background(), capability, principal, broker.Administration)
 		if err == nil {
 			_ = replacement.Close()
 			t.Fatal("fresh context reused local authority after unjoined cgroup cleanup")

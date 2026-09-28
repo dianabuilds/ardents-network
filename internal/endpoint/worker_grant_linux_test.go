@@ -11,8 +11,8 @@ import (
 )
 
 func TestCompletedTextWorkerResultCannotCrossReplacement(t *testing.T) {
-	endpoint, principal := textContextEndpoint(t)
-	owner := admittedTextContext(t, endpoint, principal, broker.Connection)
+	endpoint, principal := dutyContextEndpoint(t)
+	owner := admittedDutyContext(t, endpoint, principal, broker.Connection)
 	job, err := beginTestJob(t, owner, endpoint, broker.Connection)
 	if err != nil {
 		t.Fatal(err)
@@ -51,8 +51,8 @@ func TestCompletedTextWorkerResultCannotCrossReplacement(t *testing.T) {
 }
 
 func TestCancelledTextJobClosesLateGrantWithoutCrossingReplacement(t *testing.T) {
-	endpoint, principal := textContextEndpoint(t)
-	owner := admittedTextContext(t, endpoint, principal, broker.Connection)
+	endpoint, principal := dutyContextEndpoint(t)
+	owner := admittedDutyContext(t, endpoint, principal, broker.Connection)
 	job, err := beginTestJob(t, owner, endpoint, broker.Connection)
 	if err != nil {
 		t.Fatal(err)
@@ -122,8 +122,8 @@ func TestTextWorkerOperationCannotReserveTwiceOrAfterCancel(t *testing.T) {
 }
 
 func TestAlreadyCancelledTextLaunchHasNoEffects(t *testing.T) {
-	endpoint, principal := textContextEndpoint(t)
-	owner := admittedTextContext(t, endpoint, principal, broker.Connection)
+	endpoint, principal := dutyContextEndpoint(t)
+	owner := admittedDutyContext(t, endpoint, principal, broker.Connection)
 	release, err := endpoint.acquireLaunch(t.Context())
 	if err != nil {
 		t.Fatal(err)
@@ -140,14 +140,14 @@ func TestAlreadyCancelledTextLaunchHasNoEffects(t *testing.T) {
 	if pending {
 		t.Fatal("cancelled launch retained a job")
 	}
-	if !endpoint.textAvailable() {
+	if !endpoint.dutyAvailable() {
 		t.Fatal("no-effect cancellation terminalized Endpoint")
 	}
 }
 
 func TestTextLaunchCancellationReleasesWaitingReservation(t *testing.T) {
-	endpoint, principal := textContextEndpoint(t)
-	owner := admittedTextContext(t, endpoint, principal, broker.Connection)
+	endpoint, principal := dutyContextEndpoint(t)
+	owner := admittedDutyContext(t, endpoint, principal, broker.Connection)
 	release, err := endpoint.acquireLaunch(t.Context())
 	if err != nil {
 		t.Fatal(err)
@@ -186,7 +186,7 @@ func TestTextLaunchCancellationReleasesWaitingReservation(t *testing.T) {
 	owner.mu.Lock()
 	pending := owner.job != nil
 	owner.mu.Unlock()
-	if pending || !endpoint.textAvailable() {
+	if pending || !endpoint.dutyAvailable() {
 		t.Fatal("no-effect waiting cancellation retained pressure or terminalized Endpoint")
 	}
 }

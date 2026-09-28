@@ -13,7 +13,7 @@ import (
 // provisionPermission is the participant's finite offline handover. The
 // observer receives only the public request digest; it supplies no success or
 // permission authority. Its synchronous implementation must honor the supplied bounded context and join its output before return. Only an actual matching Custody file can complete provisioning.
-func (owner *textContext) provisionPermission(ctx context.Context, requestPath, responsePath string, maxima [3]uint32, report func(context.Context, [32]byte) error) (outcome error) {
+func (owner *dutyContext) provisionPermission(ctx context.Context, requestPath, responsePath string, maxima [3]uint32, report func(context.Context, [32]byte) error) (outcome error) {
 	if owner == nil || ctx == nil || ctx.Err() != nil || report == nil || requestPath == responsePath {
 		return errors.New("text permission provisioning unavailable")
 	}

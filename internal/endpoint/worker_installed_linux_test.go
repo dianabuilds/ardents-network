@@ -22,7 +22,7 @@ func TestInstalledTextWorkerLifecycle(t *testing.T) {
 	if err := worker.VerifyEndpointService(ctx); err != nil {
 		t.Fatalf("invalid installed environment: %v", err)
 	}
-	endpoint, principal := textContextEndpoint(t)
+	endpoint, principal := dutyContextEndpoint(t)
 	for _, role := range []struct {
 		name     string
 		surface  broker.Surface
@@ -32,7 +32,7 @@ func TestInstalledTextWorkerLifecycle(t *testing.T) {
 		{"publisher", broker.Administration, []byte("one immutable installed snapshot\n")},
 	} {
 		t.Run(role.name, func(t *testing.T) {
-			owner := admittedTextContext(t, endpoint, principal, role.surface)
+			owner := admittedDutyContext(t, endpoint, principal, role.surface)
 			var previous *qualifiedWorker
 			var previousNonce [32]byte
 			for attempt := 0; attempt < 12; attempt++ {

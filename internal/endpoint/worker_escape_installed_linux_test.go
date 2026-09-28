@@ -46,8 +46,8 @@ func TestInstalledTextWorkerEscapeMatrix(t *testing.T) {
 		{"publisher", broker.Administration, []byte("escape profile snapshot")},
 	} {
 		t.Run(role.name, func(t *testing.T) {
-			endpoint, principal := textContextEndpoint(t)
-			owner := admittedTextContext(t, endpoint, principal, role.surface)
+			endpoint, principal := dutyContextEndpoint(t)
+			owner := admittedDutyContext(t, endpoint, principal, role.surface)
 			worker, err := owner.launchWorker(ctx, role.snapshot)
 			if err != nil {
 				t.Fatalf("escape artifact did not reach verified readiness: %v", err)

@@ -38,9 +38,9 @@ func (permissionSecretFixture) Confirm(context.Context, custody.ConfirmationProm
 	return false, errors.New("unexpected custody confirmation")
 }
 
-func permissionContextFixture(t *testing.T, endpoint *endpoint, principal [32]byte, surface broker.Surface) *textContext {
+func permissionContextFixture(t *testing.T, endpoint *endpoint, principal [32]byte, surface broker.Surface) *dutyContext {
 	t.Helper()
-	owner := admittedTextContext(t, endpoint, principal, surface)
+	owner := admittedDutyContext(t, endpoint, principal, surface)
 	job, err := beginTestJob(t, owner, endpoint, surface)
 	if err != nil {
 		t.Fatal(err)
@@ -73,7 +73,7 @@ func TestTextPermissionCustodyRoundTripAndContextOwnership(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	endpoint, principal := textContextEndpoint(t)
+	endpoint, principal := dutyContextEndpoint(t)
 	endpoint.network, endpoint.clock = fixtureID(222), func() time.Time { return now }
 	projection := &permissionStateFixture{profile: state.ClosedProfileView{NetworkID: endpoint.network,
 		StateGeneration: fixtureID(224), StateDigest: fixtureID(225), Digest: fixtureID(226),
@@ -231,7 +231,7 @@ func TestTextPermissionCustodyRoundTripAndContextOwnership(t *testing.T) {
 	if _, _, err := publisher.requestPermission([3]uint32{0, 64, 0}); err != nil {
 		t.Fatalf("reader revoke destroyed Publisher role: %v", err)
 	}
-	if err := endpoint.closeTextContexts(); err != nil {
+	if err := endpoint.closeDutyContexts(); err != nil {
 		t.Fatal(err)
 	}
 	if publisher.tokens.permission != nil {
@@ -240,8 +240,8 @@ func TestTextPermissionCustodyRoundTripAndContextOwnership(t *testing.T) {
 }
 
 func TestTextPermissionRequiresVerifiedContext(t *testing.T) {
-	endpoint, principal := textContextEndpoint(t)
-	owner := admittedTextContext(t, endpoint, principal, broker.Connection)
+	endpoint, principal := dutyContextEndpoint(t)
+	owner := admittedDutyContext(t, endpoint, principal, broker.Connection)
 	if _, _, err := owner.requestPermission([3]uint32{1, 0, 0}); err == nil {
 		t.Fatal("unqualified context created holder")
 	}

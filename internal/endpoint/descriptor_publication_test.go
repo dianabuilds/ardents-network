@@ -129,7 +129,7 @@ func TestTextPublisherCommitsInstanceSignedDescriptor(t *testing.T) {
 	}
 }
 
-func lookupPublishedProof(t *testing.T, owner *textContext, target [32]byte) []byte {
+func lookupPublishedProof(t *testing.T, owner *dutyContext, target [32]byte) []byte {
 	t.Helper()
 	prefix := owner.source.currentLocked()
 	receiver, err := prefix.ResolutionRecipient()

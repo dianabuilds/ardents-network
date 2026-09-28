@@ -58,7 +58,7 @@ func prefixPreparationFailureStage(cause error) string {
 
 // openPrefix uses only the context's retained members and finalized stock.
 // It never upgrades an issuance-bootstrap lane or accepts a worker peer list.
-func (owner *textContext) openPrefix(ctx context.Context) (*sourceHandle, error) {
+func (owner *dutyContext) openPrefix(ctx context.Context) (*sourceHandle, error) {
 	if owner == nil || ctx == nil || ctx.Err() != nil {
 		return nil, prefixPreparationFailureAt("context", errors.New("text prefix context unavailable"))
 	}
@@ -127,9 +127,9 @@ func (operation *operationFlight) presentToken(selection client.ClosedBootstrapS
 }
 
 func (endpoint *endpoint) tokenJournal() (*tokenjournal.Journal, error) {
-	endpoint.textMu.Lock()
-	defer endpoint.textMu.Unlock()
-	if endpoint.textClosed || endpoint.closedTokenRoot == "" {
+	endpoint.dutyMu.Lock()
+	defer endpoint.dutyMu.Unlock()
+	if endpoint.dutyClosed || endpoint.closedTokenRoot == "" {
 		return nil, errors.New("text token journal root unavailable")
 	}
 	if endpoint.closedTokenJournal == nil {
@@ -142,7 +142,7 @@ func (endpoint *endpoint) tokenJournal() (*tokenjournal.Journal, error) {
 	return endpoint.closedTokenJournal, nil
 }
 
-func (owner *textContext) ensurePrefixStock(ctx context.Context, opening *operationFlight) (client.ClosedBootstrapSelection, error) {
+func (owner *dutyContext) ensurePrefixStock(ctx context.Context, opening *operationFlight) (client.ClosedBootstrapSelection, error) {
 	owner.mu.Lock()
 	_, _, err := owner.permissionProfileLocked()
 	if err != nil || ctx.Err() != nil || !owner.tokens.permission.hasAccepted() ||

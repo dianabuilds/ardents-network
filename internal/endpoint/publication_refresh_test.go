@@ -339,7 +339,7 @@ func TestTextPublicationRefreshExpiresPermissionWithoutResurrection(t *testing.T
 	}
 }
 
-func waitRefreshCondition(t *testing.T, owner *textContext, condition func() bool) {
+func waitRefreshCondition(t *testing.T, owner *dutyContext, condition func() bool) {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	defer cancel()
@@ -366,7 +366,7 @@ func waitRefreshCondition(t *testing.T, owner *textContext, condition func() boo
 	}
 }
 
-func deliverRefreshAttempt(t *testing.T, reader, publisher *textContext, readerJob, publisherJob *jobIdentity, prepared *introductionAttempt) {
+func deliverRefreshAttempt(t *testing.T, reader, publisher *dutyContext, readerJob, publisherJob *jobIdentity, prepared *introductionAttempt) {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(t.Context(), 8*time.Second)
 	defer cancel()
@@ -389,8 +389,8 @@ func deliverRefreshAttempt(t *testing.T, reader, publisher *textContext, readerJ
 }
 
 func TestTextRefreshRetainsOriginalCleanupFailure(t *testing.T) {
-	endpoint, principal := textContextEndpoint(t)
-	owner := admittedTextContext(t, endpoint, principal, broker.Administration)
+	endpoint, principal := dutyContextEndpoint(t)
+	owner := admittedDutyContext(t, endpoint, principal, broker.Administration)
 	ctx, cancel := context.WithCancel(owner.lease.Context())
 	defer cancel()
 	release := make(chan struct{})

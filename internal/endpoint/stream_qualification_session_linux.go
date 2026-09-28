@@ -95,7 +95,7 @@ func (worker *qualifiedWorker) ReplenishPrefixes(ctx context.Context, present cl
 // files, and worker.
 type qualificationSession struct {
 	*qualifiedWorker
-	owner            *textContext
+	owner            *dutyContext
 	surface          broker.Surface
 	permission       PermissionFiles
 	reportPermission func(context.Context, [32]byte) error
@@ -168,7 +168,7 @@ type qualificationPreparation struct {
 
 func (qualificationPreparation) QualificationPreparation() {}
 
-func (owner *textContext) streamConnectionLimitLocked() int {
+func (owner *dutyContext) streamConnectionLimitLocked() int {
 	if owner.job != nil && owner.job.qualification != nil {
 		schedule, err := owner.job.qualification.Init().Profile.Definition(owner.job.qualification.Init().Role)
 		if err == nil {
@@ -178,7 +178,7 @@ func (owner *textContext) streamConnectionLimitLocked() int {
 	return 16
 }
 
-func (owner *textContext) streamExchangeLimitLocked() int {
+func (owner *dutyContext) streamExchangeLimitLocked() int {
 	if owner.job != nil && owner.job.qualification != nil {
 		// Retained transports plus finite simultaneous introduction/recovery work.
 		return owner.streamConnectionLimitLocked() + 16
@@ -186,7 +186,7 @@ func (owner *textContext) streamExchangeLimitLocked() int {
 	return 16
 }
 
-func (owner *textContext) ensureQualificationTokenReserve(ctx context.Context, receiver [32]byte, class uint8, minimum int) error {
+func (owner *dutyContext) ensureQualificationTokenReserve(ctx context.Context, receiver [32]byte, class uint8, minimum int) error {
 	if owner == nil || ctx == nil || ctx.Err() != nil || receiver == [32]byte{} || class < 1 || class > 3 || minimum < 1 || minimum > 32 {
 		return errors.New("qualification token reserve unavailable")
 	}
@@ -210,7 +210,7 @@ func (owner *textContext) ensureQualificationTokenReserve(ctx context.Context, r
 	return owner.issueTokens(ctx, receivers, class)
 }
 
-func (owner *textContext) ensureQualificationIssuerReserve(ctx context.Context, minimum int) error {
+func (owner *dutyContext) ensureQualificationIssuerReserve(ctx context.Context, minimum int) error {
 	owner.mu.Lock()
 	profile, _, err := owner.permissionProfileLocked()
 	if err != nil || owner.tokens.permission == nil || ctx.Err() != nil {
@@ -249,7 +249,7 @@ func (owner *textContext) ensureQualificationIssuerReserve(ctx context.Context, 
 	return owner.issueTokens(ctx, receivers, 1)
 }
 
-func (owner *textContext) presentQualifiedRefill(ctx context.Context, job *jobIdentity, hello ardp.Hello, class uint8) ([]byte, error) {
+func (owner *dutyContext) presentQualifiedRefill(ctx context.Context, job *jobIdentity, hello ardp.Hello, class uint8) ([]byte, error) {
 	release, err := owner.acquireSourceOperation(ctx)
 	if err != nil {
 		return nil, err

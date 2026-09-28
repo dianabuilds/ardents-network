@@ -7,17 +7,17 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/entry"
 )
 
-// endpointTextState belongs to the installed Ubuntu text composition. Its
-// existing textMu and publisherMu ownership is unchanged by platform selection.
-type endpointTextState struct {
+// endpointDutyState belongs to the installed Ubuntu text composition. Its
+// existing dutyMu and publisherMu ownership is unchanged by platform selection.
+type endpointDutyState struct {
 	publicationLive    bool
-	publisherOwner     *textContext
+	publisherOwner     *dutyContext
 	closedTokenRoot    string
 	closedTokenJournal *tokenjournal.Journal
-	textMu             textContextGuard
-	textContexts       map[*textContext]struct{}
-	textClosed         bool
-	textErr            error
+	dutyMu             dutyContextGuard
+	dutyContexts       map[*dutyContext]struct{}
+	dutyClosed         bool
+	dutyErr            error
 	closedState        closedEndpointState
 	closedEntries      *entry.ClosedSets
 	closedEntryRoot    string

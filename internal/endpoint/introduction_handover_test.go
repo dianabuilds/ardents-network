@@ -66,7 +66,7 @@ func (source *preparationBoundaryState) CurrentClosedProfile() (state.ClosedProf
 	return source.sourceStateFixture.CurrentClosedProfile()
 }
 
-func checkPreparationCallerHandover(t *testing.T, owner *textContext, job *jobIdentity, source *sourceStateFixture,
+func checkPreparationCallerHandover(t *testing.T, owner *dutyContext, job *jobIdentity, source *sourceStateFixture,
 	destination targetlink.Link, bounds [3]int64) {
 	t.Helper()
 	endpoint := owner.endpoint

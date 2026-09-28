@@ -16,7 +16,7 @@ import (
 // withdrawal. The participant supplies the separately authorized context;
 // neither snapshot bytes nor the local socket supply authority or a Target.
 type administration struct {
-	context   *textContext
+	context   *dutyContext
 	mu        sync.Mutex
 	closed    bool
 	ending    bool
@@ -27,7 +27,7 @@ type administration struct {
 	closeErr  error
 }
 
-func (owner *textContext) openAdministration() (*administration, error) {
+func (owner *dutyContext) openAdministration() (*administration, error) {
 	if owner == nil {
 		return nil, errors.New("text Administration unavailable")
 	}

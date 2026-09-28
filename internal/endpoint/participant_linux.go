@@ -83,7 +83,7 @@ func useParticipant(ctx context.Context, config ClosedParticipantConfig, withdra
 	if _, err := owner.tokenJournal(); err != nil {
 		return err
 	}
-	if _, err := owner.textEntrySets(); err != nil {
+	if _, err := owner.dutyEntrySets(); err != nil {
 		return err
 	}
 	return run(owner)
@@ -96,7 +96,7 @@ func (endpoint *endpoint) runInterfaces(ctx context.Context, config ClosedPartic
 	}
 	output := newParticipantObservation(config.Observe, clock)
 	defer func() { outcome = errors.Join(outcome, output.pendingFailure()) }()
-	var contexts [2]*textContext
+	var contexts [2]*dutyContext
 	for index, role := range []struct {
 		principal [32]byte
 		surface   broker.Surface
@@ -106,7 +106,7 @@ func (endpoint *endpoint) runInterfaces(ctx context.Context, config ClosedPartic
 		if err != nil {
 			return err
 		}
-		owner, err := endpoint.beginTextContext(ctx, capability, role.principal, role.surface)
+		owner, err := endpoint.beginDutyContext(ctx, capability, role.principal, role.surface)
 		if err != nil {
 			return err
 		}

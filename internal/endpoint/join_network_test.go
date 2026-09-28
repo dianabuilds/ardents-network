@@ -47,13 +47,13 @@ func TestTextRouteJoinConnectsSourceAndResponder(t *testing.T) {
 
 // exchangeRouteData verifies a real two-way DataJoin exchange. The optional
 // ready callback observes both joined streams before either direction writes.
-func exchangeRouteData(t *testing.T, reader, publisher *textContext, receiver [32]byte, ready func()) {
+func exchangeRouteData(t *testing.T, reader, publisher *dutyContext, receiver [32]byte, ready func()) {
 	t.Helper()
 	responder, err := publisher.openResponderPrefix(t.Context())
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, owner := range []*textContext{reader, publisher} {
+	for _, owner := range []*dutyContext{reader, publisher} {
 		if err := owner.issueTokens(t.Context(), [][32]byte{receiver}, 2); err != nil {
 			t.Fatal(err)
 		}
@@ -70,7 +70,7 @@ func exchangeRouteData(t *testing.T, reader, publisher *textContext, receiver [3
 	readerPrefix := reader.source.currentLocked()
 	reader.mu.Unlock()
 	prefixes := []joinPrefix{readerPrefix, responder}
-	for index, owner := range []*textContext{reader, publisher} {
+	for index, owner := range []*dutyContext{reader, publisher} {
 		go func() {
 			stream, err := prefixes[index].join(ctx, func(hello ardp.Hello, class uint8) ([]byte, error) {
 				owner.mu.Lock()

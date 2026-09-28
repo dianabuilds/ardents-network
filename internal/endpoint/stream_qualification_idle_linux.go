@@ -92,7 +92,7 @@ func runStreamQualificationIdle(ctx context.Context, config StreamQualificationC
 		if err != nil {
 			return err
 		}
-		owner, err := endpoint.beginTextContext(lifetime, capability, principal, broker.Connection)
+		owner, err := endpoint.beginDutyContext(lifetime, capability, principal, broker.Connection)
 		if err != nil {
 			return err
 		}

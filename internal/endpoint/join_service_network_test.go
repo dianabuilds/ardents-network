@@ -79,7 +79,7 @@ func TestTextJoinedServiceTransfersDocumentThroughNetwork(t *testing.T) {
 			if err := errors.Join(readErr, closeErr, publisherErr); err != nil || string(body) != "authenticated document through the joined network" {
 				t.Fatalf("joined document %q: %v; reader native: %v; reader cleanup: %v", body, err, stream.runErr, stream.finishErr)
 			}
-			for _, owner := range []*textContext{reader, publisher} {
+			for _, owner := range []*dutyContext{reader, publisher} {
 				owner.mu.Lock()
 				pending := len(owner.introduction.exchanges.active)
 				owner.mu.Unlock()
@@ -91,19 +91,19 @@ func TestTextJoinedServiceTransfersDocumentThroughNetwork(t *testing.T) {
 	}
 }
 
-func joinedNetworkFixture(t *testing.T, carrier routecarrier.CarrierProfile, configure ...func(int, *node.Config)) (*textContext, *textContext, targetlink.Link) {
+func joinedNetworkFixture(t *testing.T, carrier routecarrier.CarrierProfile, configure ...func(int, *node.Config)) (*dutyContext, *dutyContext, targetlink.Link) {
 	return joinedNetworkFixtureWithReaderMaxima(t, carrier, [3]uint32{64, 64, 0}, configure...)
 }
 
 func joinedNetworkFixtureWithReaderMaxima(t *testing.T, carrier routecarrier.CarrierProfile, maxima [3]uint32,
 	configure ...func(int, *node.Config),
-) (*textContext, *textContext, targetlink.Link) {
+) (*dutyContext, *dutyContext, targetlink.Link) {
 	return joinedNetworkFixtureWithReaderMaximaAndRegistration(t, carrier, maxima, 120*time.Second, configure...)
 }
 
 func joinedNetworkFixtureWithReaderMaximaAndRegistration(t *testing.T, carrier routecarrier.CarrierProfile, maxima [3]uint32,
 	registration time.Duration, configure ...func(int, *node.Config),
-) (*textContext, *textContext, targetlink.Link) {
+) (*dutyContext, *dutyContext, targetlink.Link) {
 	t.Helper()
 	reader, publisher := unpublishedNetworkFixtureWithReaderMaxima(t, carrier, maxima, configure...)
 	endpoint := publisher.endpoint
@@ -124,13 +124,13 @@ func joinedNetworkFixtureWithReaderMaximaAndRegistration(t *testing.T, carrier r
 	return reader, publisher, targetlink.Link{Network: endpoint.network, Target: descriptor.Descriptor.Target}
 }
 
-func unpublishedNetworkFixture(t *testing.T, carrier routecarrier.CarrierProfile, configure ...func(int, *node.Config)) (*textContext, *textContext) {
+func unpublishedNetworkFixture(t *testing.T, carrier routecarrier.CarrierProfile, configure ...func(int, *node.Config)) (*dutyContext, *dutyContext) {
 	return unpublishedNetworkFixtureWithReaderMaxima(t, carrier, [3]uint32{64, 64, 0}, configure...)
 }
 
 func unpublishedNetworkFixtureWithReaderMaxima(t *testing.T, carrier routecarrier.CarrierProfile, maxima [3]uint32,
 	configure ...func(int, *node.Config),
-) (*textContext, *textContext) {
+) (*dutyContext, *dutyContext) {
 	t.Helper()
 	endpoint, publisher, source := publisherNetworkWithInstance(t, carrier, func(network [32]byte, now, until time.Time) (*instance.Root, *instance.Binding) {
 		_, authority, err := ed25519.GenerateKey(rand.Reader)
@@ -145,7 +145,7 @@ func unpublishedNetworkFixtureWithReaderMaxima(t *testing.T, carrier routecarrie
 	return reader, publisher
 }
 
-func publisherNetworkWithInstance(t *testing.T, carrier routecarrier.CarrierProfile, acquire func([32]byte, time.Time, time.Time) (*instance.Root, *instance.Binding), configure ...func(int, *node.Config)) (*endpoint, *textContext, *sourceStateFixture) {
+func publisherNetworkWithInstance(t *testing.T, carrier routecarrier.CarrierProfile, acquire func([32]byte, time.Time, time.Time) (*instance.Root, *instance.Binding), configure ...func(int, *node.Config)) (*endpoint, *dutyContext, *sourceStateFixture) {
 	t.Helper()
 	endpoint, publisher, source := startRoleNetwork(t, roleNetworkFixture{carrier: carrier, resolution: true, publisher: true, join: true, configure: configure})
 	now := time.Now().UTC().Truncate(time.Second)

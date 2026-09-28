@@ -19,7 +19,7 @@ type publisherPrefixOpening interface {
 	finishOpeningLocked(*operationFlight, *client.ClosedSourcePrefix, context.CancelFunc, bool) bool
 }
 
-func (owner *textContext) openResponderPrefix(ctx context.Context) (*responderPrefixHandle, error) {
+func (owner *dutyContext) openResponderPrefix(ctx context.Context) (*responderPrefixHandle, error) {
 	if owner == nil {
 		return nil, errors.New("text Publisher owner unavailable")
 	}
@@ -36,7 +36,7 @@ func (owner *textContext) openResponderPrefix(ctx context.Context) (*responderPr
 	return handle, nil
 }
 
-func (owner *textContext) openIntroductionPrefix(ctx context.Context) (*introductionPrefixHandle, error) {
+func (owner *dutyContext) openIntroductionPrefix(ctx context.Context) (*introductionPrefixHandle, error) {
 	if owner == nil {
 		return nil, errors.New("text Publisher owner unavailable")
 	}
@@ -55,7 +55,7 @@ func (owner *textContext) openIntroductionPrefix(ctx context.Context) (*introduc
 
 // Both Publisher domains share admission/lifetime rules but retain distinct
 // allocations, transports and stock. This private selector grants no authority.
-func (owner *textContext) openPublisherPrefix(ctx context.Context, role publisherPrefixOpening, domain uint8) (*client.ClosedSourcePrefix, error) {
+func (owner *dutyContext) openPublisherPrefix(ctx context.Context, role publisherPrefixOpening, domain uint8) (*client.ClosedSourcePrefix, error) {
 	if owner == nil || ctx == nil || ctx.Err() != nil || !(domain == 4 && role == &owner.introduction.prefix || domain == 3 && role == &owner.responder) {
 		return nil, errors.New("text Publisher role context unavailable")
 	}
@@ -110,14 +110,14 @@ func (owner *textContext) openPublisherPrefix(ctx context.Context, role publishe
 		if errors.Is(openErr, client.ErrClosedSourceCleanup) || cleanup != nil {
 			owner.closeErr = errors.Join(owner.closeErr, openErr, cleanup)
 			owner.closed = true
-			owner.endpoint.failTextContexts(owner.closeErr)
+			owner.endpoint.failDutyContexts(owner.closeErr)
 		}
 		return nil, errors.Join(openErr, ctx.Err(), cleanup, errors.New("text Publisher role prefix unavailable"))
 	}
 	return prefix, nil
 }
 
-func (owner *textContext) ensurePublisherStock(role publisherPrefixOpening, flight *operationFlight, selection client.ClosedBootstrapSelection) error {
+func (owner *dutyContext) ensurePublisherStock(role publisherPrefixOpening, flight *operationFlight, selection client.ClosedBootstrapSelection) error {
 	owner.mu.Lock()
 	profile, _, err := owner.permissionProfileLocked()
 	if err != nil || !role.openingCurrentLocked(flight) || flight.context.Err() != nil || owner.tokens.permission == nil {
@@ -138,7 +138,7 @@ func (owner *textContext) ensurePublisherStock(role publisherPrefixOpening, flig
 	return nil
 }
 
-func (owner *textContext) presentPublisherForwardingToken(role publisherPrefixOpening, domain uint8, flight *operationFlight, selection client.ClosedBootstrapSelection, hello ardp.Hello, class uint8) ([]byte, error) {
+func (owner *dutyContext) presentPublisherForwardingToken(role publisherPrefixOpening, domain uint8, flight *operationFlight, selection client.ClosedBootstrapSelection, hello ardp.Hello, class uint8) ([]byte, error) {
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
 	profile, now, err := owner.permissionProfileLocked()

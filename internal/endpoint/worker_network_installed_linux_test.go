@@ -22,7 +22,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/service/instance"
 )
 
-func unpublishedNetworkWithInstance(t *testing.T, carrier routecarrier.CarrierProfile, acquire func([32]byte, time.Time, time.Time) (*instance.Root, *instance.Binding), configure ...func(int, *node.Config)) (*textContext, *textContext) {
+func unpublishedNetworkWithInstance(t *testing.T, carrier routecarrier.CarrierProfile, acquire func([32]byte, time.Time, time.Time) (*instance.Root, *instance.Binding), configure ...func(int, *node.Config)) (*dutyContext, *dutyContext) {
 	t.Helper()
 	endpoint, publisher, source := publisherNetworkWithInstance(t, carrier, acquire, configure...)
 	reader := permissionContextFixture(t, endpoint, fixtureID(211), broker.Connection)

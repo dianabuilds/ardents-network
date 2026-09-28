@@ -32,7 +32,7 @@ func sourcePreparationFailureStage(cause error) string {
 }
 
 // sourceOperationGate serializes Source opening and issuance across one
-// Context lifetime. Its zero value is ready under textContext.mu; the channel
+// Context lifetime. Its zero value is ready under dutyContext.mu; the channel
 // survives a Source prefix replacement and is never closed on retirement.
 type sourceOperationGate struct {
 	busy chan struct{}
@@ -62,7 +62,7 @@ func (gate *sourceOperationGate) acquire(ctx, lease context.Context) (func(), er
 // Serialize actual Source opening/issuance, never a publication ACK or a
 // Service stream. Waiters own no tokens and remain cancellable by their caller
 // and the independently authorized context. Validation runs after acquisition.
-func (owner *textContext) acquireSourceOperation(ctx context.Context) (func(), error) {
+func (owner *dutyContext) acquireSourceOperation(ctx context.Context) (func(), error) {
 	if owner == nil || ctx == nil || ctx.Err() != nil {
 		return nil, errors.New("text Source operation unavailable")
 	}
@@ -79,7 +79,7 @@ func (owner *textContext) acquireSourceOperation(ctx context.Context) (func(), e
 
 // Reconcile the joined Source and reserve its next opening stock during actual
 // caller work. No registration, Descriptor ACK or idle timer owns this gate.
-func (owner *textContext) prepareSourceReady(ctx context.Context) error {
+func (owner *dutyContext) prepareSourceReady(ctx context.Context) error {
 	release, err := owner.acquireSourceOperation(ctx)
 	if err != nil {
 		return sourcePreparationFailureAt("operation", err)

@@ -4,7 +4,7 @@ package endpoint
 
 // introductionDispatch owns the context-local waiter and recovery slots,
 // their single consumer gate, routing, and waiter cleanup. Slot transitions
-// run under textContext.mu; Context supplies live job and publication authority
+// run under dutyContext.mu; Context supplies live job and publication authority
 // before a slot is admitted or a claimed delivery is inspected.
 type introductionDispatch struct {
 	delivery chan struct{}

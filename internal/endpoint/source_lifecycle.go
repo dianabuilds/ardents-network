@@ -12,7 +12,7 @@ import (
 )
 
 // sourceLifecycle is the only owner of the live Source opening and its
-// in-progress replacement. The zero value is ready for use under textContext.mu.
+// in-progress replacement. The zero value is ready for use under dutyContext.mu.
 type sourceLifecycle struct {
 	live       *sourceHandle
 	opening    *operationFlight
@@ -80,7 +80,7 @@ func (acquisition *sourceJoinAcquisition) release() {
 	}
 }
 
-func (acquisition *sourceJoinAcquisition) currentLocked(owner *textContext) bool {
+func (acquisition *sourceJoinAcquisition) currentLocked(owner *dutyContext) bool {
 	if acquisition == nil {
 		return false
 	}
@@ -88,7 +88,7 @@ func (acquisition *sourceJoinAcquisition) currentLocked(owner *textContext) bool
 	return handle != nil && handle.currentLocked(&owner.source)
 }
 
-func (acquisition *sourceJoinAcquisition) issuancePrefixLocked(owner *textContext) (*sourceHandle, bool) {
+func (acquisition *sourceJoinAcquisition) issuancePrefixLocked(owner *dutyContext) (*sourceHandle, bool) {
 	if acquisition == nil {
 		return nil, false
 	}

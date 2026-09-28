@@ -23,7 +23,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/service/targetlink"
 )
 
-func liveCapsuleJob(t *testing.T, owner *textContext) *jobIdentity {
+func liveCapsuleJob(t *testing.T, owner *dutyContext) *jobIdentity {
 	t.Helper()
 	job, err := beginTestJob(t, owner, owner.endpoint, owner.surface)
 	if err != nil {
@@ -283,7 +283,7 @@ func exchangeCapsuleService(t *testing.T, reader, publisher *introductionAttempt
 }
 
 func TestTextIntroductionReplayAndOpeningRateAreContextBounded(t *testing.T) {
-	owner := &textContext{}
+	owner := &dutyContext{}
 	now := time.Now().UTC()
 	for index := 0; index < 4; index++ {
 		if err := owner.introduction.admission.reserveOpeningLocked(fixtureID(byte(index+1)), now); err != nil {

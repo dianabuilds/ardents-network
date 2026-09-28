@@ -13,7 +13,7 @@ import (
 // prepareIssuerStock funds issuer admission only for current requested
 // work. Before the first admitted prefix this uses the second bootstrap batch;
 // thereafter the last Control token can replenish stock within its allocation.
-func (owner *textContext) prepareIssuerStock(ctx context.Context, requested [][32]byte, class uint8,
+func (owner *dutyContext) prepareIssuerStock(ctx context.Context, requested [][32]byte, class uint8,
 	opening *operationFlight, acquisition joinAcquisition, expected *sourceHandle) error {
 	owner.mu.Lock()
 	profile, _, err := owner.permissionProfileLocked()

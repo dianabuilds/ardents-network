@@ -10,7 +10,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
 )
 
-func textContextEndpoint(t *testing.T) (*endpoint, [32]byte) {
+func dutyContextEndpoint(t *testing.T) (*endpoint, [32]byte) {
 	t.Helper()
 	principal := fixtureID(211)
 	admission, err := broker.New(broker.Config{ID: fixtureID(212), Grants: []broker.Grant{
@@ -24,13 +24,13 @@ func textContextEndpoint(t *testing.T) (*endpoint, [32]byte) {
 	return &endpoint{admission: admission}, principal
 }
 
-func admittedTextContext(t *testing.T, endpoint *endpoint, principal [32]byte, surface broker.Surface) *textContext {
+func admittedDutyContext(t *testing.T, endpoint *endpoint, principal [32]byte, surface broker.Surface) *dutyContext {
 	t.Helper()
 	capability, err := endpoint.Admit(principal, surface)
 	if err != nil {
 		t.Fatal(err)
 	}
-	owner, err := endpoint.beginTextContext(context.Background(), capability, principal, surface)
+	owner, err := endpoint.beginDutyContext(context.Background(), capability, principal, surface)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -39,18 +39,18 @@ func admittedTextContext(t *testing.T, endpoint *endpoint, principal [32]byte, s
 }
 
 func TestTextContextRequiresExactOneUseLocalAuthority(t *testing.T) {
-	endpoint, principal := textContextEndpoint(t)
+	endpoint, principal := dutyContextEndpoint(t)
 	for _, surface := range []broker.Surface{broker.Connection, broker.Administration} {
 		capability, err := endpoint.Admit(principal, surface)
 		if err != nil {
 			t.Fatal(err)
 		}
-		owner, err := endpoint.beginTextContext(context.Background(), capability, principal, surface)
+		owner, err := endpoint.beginDutyContext(context.Background(), capability, principal, surface)
 		if err != nil {
 			t.Fatal(err)
 		}
 		defer owner.Close()
-		if _, err := endpoint.beginTextContext(context.Background(), capability, principal, surface); err == nil {
+		if _, err := endpoint.beginDutyContext(context.Background(), capability, principal, surface); err == nil {
 			t.Fatal("replayed capability created a context")
 		}
 	}
@@ -62,16 +62,16 @@ func TestTextContextRequiresExactOneUseLocalAuthority(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if _, err := endpoint.beginTextContext(context.Background(), capability, foreign.principal, foreign.surface); err == nil {
+		if _, err := endpoint.beginDutyContext(context.Background(), capability, foreign.principal, foreign.surface); err == nil {
 			t.Fatal("foreign Principal or Publisher role acquired context authority")
 		}
 	}
 }
 
 func TestTextWorkerLossPreservesContextButNotInvocation(t *testing.T) {
-	endpoint, principal := textContextEndpoint(t)
+	endpoint, principal := dutyContextEndpoint(t)
 	for _, surface := range []broker.Surface{broker.Connection, broker.Administration} {
-		owner := admittedTextContext(t, endpoint, principal, surface)
+		owner := admittedDutyContext(t, endpoint, principal, surface)
 		job, err := beginTestJob(t, owner, endpoint, surface)
 		if err != nil {
 			t.Fatal(err)
@@ -102,7 +102,7 @@ func TestTextWorkerLossPreservesContextButNotInvocation(t *testing.T) {
 		if !owner.currentJob(endpoint, surface, replacement, replacement.nonce) {
 			t.Fatal("late retirement detached the replacement")
 		}
-		other := admittedTextContext(t, endpoint, principal, surface)
+		other := admittedDutyContext(t, endpoint, principal, surface)
 		if other.currentJob(endpoint, surface, replacement, replacement.nonce) {
 			t.Fatal("separate context acquired a foreign invocation")
 		}
@@ -110,8 +110,8 @@ func TestTextWorkerLossPreservesContextButNotInvocation(t *testing.T) {
 }
 
 func TestTextContextCleanupFailureCannotRestoreAuthority(t *testing.T) {
-	endpoint, principal := textContextEndpoint(t)
-	owner := admittedTextContext(t, endpoint, principal, broker.Connection)
+	endpoint, principal := dutyContextEndpoint(t)
+	owner := admittedDutyContext(t, endpoint, principal, broker.Connection)
 	job, err := beginTestJob(t, owner, endpoint, broker.Connection)
 	if err != nil {
 		t.Fatal(err)
@@ -137,14 +137,14 @@ func TestTextContextCleanupFailureCannotRestoreAuthority(t *testing.T) {
 func TestTextContextRejectsRevokedLostAndForeignOwners(t *testing.T) {
 	for _, stop := range []string{"revoke", "endpoint loss", "context close"} {
 		t.Run(stop, func(t *testing.T) {
-			endpoint, principal := textContextEndpoint(t)
-			owner := admittedTextContext(t, endpoint, principal, broker.Connection)
+			endpoint, principal := dutyContextEndpoint(t)
+			owner := admittedDutyContext(t, endpoint, principal, broker.Connection)
 			job, err := beginTestJob(t, owner, endpoint, broker.Connection)
 			if err != nil {
 				t.Fatal(err)
 			}
 			nonce := job.nonce
-			foreign, _ := textContextEndpoint(t)
+			foreign, _ := dutyContextEndpoint(t)
 			if owner.currentJob(foreign, broker.Connection, job, nonce) ||
 				owner.currentJob(endpoint, broker.Administration, job, nonce) {
 				t.Fatal("foreign Endpoint or role acquired a worker")
@@ -172,7 +172,7 @@ func TestTextContextRejectsRevokedLostAndForeignOwners(t *testing.T) {
 
 // The pure local-owner tests have no launched process. They must still finish
 // their reservation before the enclosing context can report joined shutdown.
-func beginTestJob(t *testing.T, owner *textContext, endpoint *endpoint, surface broker.Surface) (*jobIdentity, error) {
+func beginTestJob(t *testing.T, owner *dutyContext, endpoint *endpoint, surface broker.Surface) (*jobIdentity, error) {
 	t.Helper()
 	job, err := owner.beginJob(endpoint, surface)
 	if err == nil {

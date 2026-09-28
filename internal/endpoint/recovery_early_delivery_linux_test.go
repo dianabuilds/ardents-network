@@ -269,7 +269,7 @@ func TestTextIntroductionOrphanRefusalOutlivesCanceledWaiter(t *testing.T) {
 	}
 }
 
-func waitIntroductionOpening(t *testing.T, ctx context.Context, owner *textContext, before time.Time,
+func waitIntroductionOpening(t *testing.T, ctx context.Context, owner *dutyContext, before time.Time,
 	submitted <-chan error, deadline time.Time,
 ) {
 	t.Helper()

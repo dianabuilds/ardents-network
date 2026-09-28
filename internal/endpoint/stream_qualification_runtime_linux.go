@@ -61,7 +61,7 @@ func RunStreamQualification(ctx context.Context, config StreamQualificationConfi
 			if err != nil {
 				return err
 			}
-			owner, err := endpoint.beginTextContext(lifetime, capability, principal, surface)
+			owner, err := endpoint.beginDutyContext(lifetime, capability, principal, surface)
 			if err != nil {
 				return err
 			}

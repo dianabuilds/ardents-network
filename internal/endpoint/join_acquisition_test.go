@@ -33,11 +33,11 @@ func (*joinRetiredAfterRecipient) join(context.Context, client.ClosedTokenPresen
 	return nil, errors.New("retired JOIN acquisition used")
 }
 
-func (acquisition *joinRetiredAfterRecipient) currentLocked(*textContext) bool {
+func (acquisition *joinRetiredAfterRecipient) currentLocked(*dutyContext) bool {
 	return acquisition.current
 }
 
-func (acquisition *joinRetiredAfterRecipient) issuancePrefixLocked(*textContext) (*sourceHandle, bool) {
+func (acquisition *joinRetiredAfterRecipient) issuancePrefixLocked(*dutyContext) (*sourceHandle, bool) {
 	return nil, acquisition.current
 }
 
@@ -64,8 +64,8 @@ func TestTextJoinedTransportCloseReleasesSourceAcquisition(t *testing.T) {
 }
 
 func TestTextJoinOldAcquisitionCannotAttachAfterSourceReplacement(t *testing.T) {
-	endpoint, principal := textContextEndpoint(t)
-	owner := admittedTextContext(t, endpoint, principal, broker.Connection)
+	endpoint, principal := dutyContextEndpoint(t)
+	owner := admittedDutyContext(t, endpoint, principal, broker.Connection)
 	job := liveCapsuleJob(t, owner)
 	run, _ := qualification.NewRun(streamqualification.ReaderRole, streamqualification.ClientToPublisher, fixtureID(210))
 	job.qualification = run
@@ -159,7 +159,7 @@ func TestTextJoinSourceReplacementBeforeStockIssuanceDoesNotReserveAllocation(t 
 }
 
 func TestTextPublisherJoinIssuanceRetainsExactLiveSource(t *testing.T) {
-	owner := &textContext{textContextState: textContextState{surface: broker.Administration}}
+	owner := &dutyContext{dutyContextState: dutyContextState{surface: broker.Administration}}
 	responder := &responderPrefixHandle{rolePrefixHandleCore: rolePrefixHandleCore{owner: &owner.responder.rolePrefixCore, cancel: func() {}}}
 	responder.prefix.Store(&client.ClosedSourcePrefix{})
 	issuer := &sourceHandle{owner: &owner.source, cancel: func() {}}

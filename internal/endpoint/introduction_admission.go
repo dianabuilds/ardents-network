@@ -8,7 +8,7 @@ import (
 )
 
 // introductionAdmission owns the context-local opening rate and accepted
-// delivery replay floor. Its caller holds textContext.mu for every transition.
+// delivery replay floor. Its caller holds dutyContext.mu for every transition.
 type introductionAdmission struct {
 	replays  map[[32]byte]time.Time
 	openings [4]time.Time

@@ -175,12 +175,12 @@ func refreshFailureStage(cause error) string {
 
 // Start once after a verified publication acknowledgement. Exact retries never
 // move the original refresh time or renew the signed registration lifetime.
-func (owner *textContext) startRefreshLocked(registered *introductionRegistration) {
+func (owner *dutyContext) startRefreshLocked(registered *introductionRegistration) {
 	registered.scheduleRefreshLocked()
 	owner.publication.refresh.start(owner.lease.Context(), owner.runRefresh)
 }
 
-func (owner *textContext) runRefresh(flight *publicationRefresh) {
+func (owner *dutyContext) runRefresh(flight *publicationRefresh) {
 	for {
 		owner.mu.Lock()
 		registered := owner.publication.pair.currentLocked()
@@ -269,7 +269,7 @@ func refreshSourceContention(cause error) bool {
 	return errors.Is(cause, context.DeadlineExceeded) && roleMemberFailureStage(cause) == "conflict-read"
 }
 
-func (owner *textContext) rotatePublication(flight *publicationRefresh, previous *introductionRegistration) error {
+func (owner *dutyContext) rotatePublication(flight *publicationRefresh, previous *introductionRegistration) error {
 	owner.mu.Lock()
 	_, now, err := owner.permissionProfileLocked()
 	retained, _ := owner.publication.pair.previousLocked()
@@ -309,7 +309,7 @@ func (owner *textContext) rotatePublication(flight *publicationRefresh, previous
 
 // Failed refresh removes accepting registration readiness. It does not grant
 // a fallback to an older revision or erase a failed transport cleanup outcome.
-func (owner *textContext) failRefresh(flight *publicationRefresh, failure string, cause error) {
+func (owner *dutyContext) failRefresh(flight *publicationRefresh, failure string, cause error) {
 	owner.mu.Lock()
 	if owner.publication.refresh.current() != flight {
 		owner.mu.Unlock()
@@ -337,7 +337,7 @@ func (owner *textContext) failRefresh(flight *publicationRefresh, failure string
 	if cleanup != nil {
 		owner.closeErr = errors.Join(owner.closeErr, cleanup)
 		owner.closed = true
-		owner.endpoint.failTextContexts(cleanup)
+		owner.endpoint.failDutyContexts(cleanup)
 	}
 	owner.mu.Unlock()
 }

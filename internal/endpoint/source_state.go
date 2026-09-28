@@ -126,10 +126,10 @@ func (endpoint *endpoint) closedRoleMembers() (state.ClosedProfileView, []roleMe
 	return profile, members, now, nil
 }
 
-func (endpoint *endpoint) textEntrySets() (*entry.ClosedSets, error) {
-	endpoint.textMu.Lock()
-	defer endpoint.textMu.Unlock()
-	if endpoint.textClosed || endpoint.closedEntryRoot == "" {
+func (endpoint *endpoint) dutyEntrySets() (*entry.ClosedSets, error) {
+	endpoint.dutyMu.Lock()
+	defer endpoint.dutyMu.Unlock()
+	if endpoint.dutyClosed || endpoint.closedEntryRoot == "" {
 		return nil, errors.New("text Entry owner unavailable")
 	}
 	if endpoint.closedEntries != nil {
@@ -156,7 +156,7 @@ func (endpoint *endpoint) textEntrySets() (*entry.ClosedSets, error) {
 }
 
 func (endpoint *endpoint) closeSourceRoots() error {
-	endpoint.textMu.Lock()
-	defer endpoint.textMu.Unlock()
+	endpoint.dutyMu.Lock()
+	defer endpoint.dutyMu.Unlock()
 	return errors.Join(endpoint.closedEntries.Close(), endpoint.closedTokenJournal.Close())
 }

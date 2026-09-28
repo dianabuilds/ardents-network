@@ -13,7 +13,7 @@ func TestTextPublicationPairCancelledAcknowledgementKeepsCleanupOwnerWithoutCurr
 	registered := &introductionRegistration{}
 	pair := publicationPairLifecycle{pendingRegistration: registered}
 	endpoint := &endpoint{}
-	owner := &textContext{}
+	owner := &dutyContext{}
 	endpoint.publisherOwner = owner
 	endpoint.publicationLive = true
 	ctx, cancel := context.WithCancel(t.Context())

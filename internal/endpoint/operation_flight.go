@@ -17,20 +17,20 @@ import (
 // reservation and its terminal completion identity: the Source lifecycle
 // retains the single admission slot and cancels or joins this operation.
 type operationFlight struct {
-	owner           *textContext
+	owner           *dutyContext
 	context         context.Context
 	cancelOperation context.CancelFunc
 	done            chan struct{}
 }
 
-func newOperationFlight(owner *textContext) *operationFlight {
+func newOperationFlight(owner *dutyContext) *operationFlight {
 	attempt, cancel := context.WithCancel(owner.lease.Context())
 	return &operationFlight{owner: owner, context: attempt, cancelOperation: cancel, done: make(chan struct{})}
 }
 
 // admittedLocked accepts nil only when no opening owns the context slot. A
 // non-nil operation must be the exact live reservation retained by its owner.
-func (flight *operationFlight) admittedLocked(owner *textContext) bool {
+func (flight *operationFlight) admittedLocked(owner *dutyContext) bool {
 	if flight == nil {
 		return owner.source.openingAdmittedLocked(nil)
 	}
@@ -71,7 +71,7 @@ func (flight *operationFlight) complete(caller context.Context, prefix *client.C
 		if errors.Is(openErr, client.ErrClosedSourceCleanup) || cleanup != nil {
 			owner.closeErr = errors.Join(owner.closeErr, openErr, cleanup)
 			owner.closed = true
-			owner.endpoint.failTextContexts(owner.closeErr)
+			owner.endpoint.failDutyContexts(owner.closeErr)
 		}
 		cause := errors.Join(openErr, caller.Err(), cleanup, errors.New("text prefix unavailable"))
 		if prefixPreparationFailureStage(cause) == "unknown" {

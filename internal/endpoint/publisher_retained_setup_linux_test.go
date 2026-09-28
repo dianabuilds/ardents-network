@@ -42,7 +42,7 @@ func TestTextPublisherBuildsRetainedQualificationSetAcrossFourReaders(t *testing
 	if !ok {
 		t.Fatal("text qualification State fixture unavailable")
 	}
-	readers := []*textContext{reader}
+	readers := []*dutyContext{reader}
 	for index := 1; index < readerCount; index++ {
 		readers = append(readers, independentReaderFixture(t, reader.endpoint.network, source, [3]uint32{512, 512, 0}))
 	}
@@ -97,7 +97,7 @@ func TestTextPublisherBuildsRetainedQualificationSetAcrossFourReaders(t *testing
 	}
 	readerDone := make(chan readerResult, len(readers))
 	for index, owner := range readers {
-		go func(index int, owner *textContext, job *jobIdentity) {
+		go func(index int, owner *dutyContext, job *jobIdentity) {
 			result := readerResult{index: index}
 			worker := &qualifiedWorker{job: job}
 			until := time.Now().UTC().Add(15 * time.Minute).Unix()

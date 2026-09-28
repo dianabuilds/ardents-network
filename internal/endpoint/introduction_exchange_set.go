@@ -5,7 +5,7 @@ package endpoint
 import "context"
 
 // introductionExchangeSet owns the context-local exchange reservations.
-// Its caller holds textContext.mu for every transition and checks job authority
+// Its caller holds dutyContext.mu for every transition and checks job authority
 // before admission. A retained exchange is still joined by Context shutdown.
 type introductionExchangeSet struct {
 	active map[*introductionExchange]struct{}

@@ -16,13 +16,13 @@ import (
 )
 
 func TestTextConnectionRequiresSeparateAuthorityAndExactDestination(t *testing.T) {
-	endpoint, principal := textContextEndpoint(t)
+	endpoint, principal := dutyContextEndpoint(t)
 	endpoint.network = fixtureID(221)
-	publisher := admittedTextContext(t, endpoint, principal, broker.Administration)
+	publisher := admittedDutyContext(t, endpoint, principal, broker.Administration)
 	if _, err := publisher.openConnection(); err == nil {
 		t.Fatal("Administration acquired Reader owner")
 	}
-	contextOwner := admittedTextContext(t, endpoint, principal, broker.Connection)
+	contextOwner := admittedDutyContext(t, endpoint, principal, broker.Connection)
 	owner, err := contextOwner.openConnection()
 	if err != nil {
 		t.Fatal(err)
@@ -50,8 +50,8 @@ func TestTextConnectionRequiresSeparateAuthorityAndExactDestination(t *testing.T
 }
 
 func TestTextConnectionRetiresAlphaDestinationBeforeEffects(t *testing.T) {
-	endpoint, principal := textContextEndpoint(t)
-	contextOwner := admittedTextContext(t, endpoint, principal, broker.Connection)
+	endpoint, principal := dutyContextEndpoint(t)
+	contextOwner := admittedDutyContext(t, endpoint, principal, broker.Connection)
 	owner, err := contextOwner.openConnection()
 	if err != nil {
 		t.Fatal(err)
@@ -88,8 +88,8 @@ func TestTextConnectionRetiresAlphaDestinationBeforeEffects(t *testing.T) {
 }
 
 func TestTextConnectionReportsOnlyFixedOperationCategory(t *testing.T) {
-	endpoint, principal := textContextEndpoint(t)
-	owner := admittedTextContext(t, endpoint, principal, broker.Connection)
+	endpoint, principal := dutyContextEndpoint(t)
+	owner := admittedDutyContext(t, endpoint, principal, broker.Connection)
 	reported := make(chan string, 1)
 	owner.mu.Lock()
 	owner.operationFailure = func(failure string) { reported <- failure }
@@ -108,9 +108,9 @@ func TestTextConnectionReportsOnlyFixedOperationCategory(t *testing.T) {
 func TestTextConnectionJoinsCancelledInstalledStartup(t *testing.T) {
 	for _, ending := range []string{"caller", "context", "owner"} {
 		t.Run(ending, func(t *testing.T) {
-			endpoint, principal := textContextEndpoint(t)
+			endpoint, principal := dutyContextEndpoint(t)
 			endpoint.network = fixtureID(221)
-			contextOwner := admittedTextContext(t, endpoint, principal, broker.Connection)
+			contextOwner := admittedDutyContext(t, endpoint, principal, broker.Connection)
 			owner, err := contextOwner.openConnection()
 			if err != nil {
 				t.Fatal(err)
