@@ -17,8 +17,7 @@ import (
 type networkState struct {
 	mu              sync.RWMutex
 	config          config
-	current         *Snapshot
-	currentDecision *epoch.Decision
+	current         *epoch.Decision
 	pendingDecision *epoch.Decision
 	distribution    distributionState
 	storage         *durable.Root

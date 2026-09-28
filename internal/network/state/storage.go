@@ -9,10 +9,10 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/network/state/durable"
 )
 
-func loadCurrent(config config, storage *durable.Root) (*Snapshot, *epoch.Decision, error) {
+func loadCurrent(config config, storage *durable.Root) (*epoch.Decision, error) {
 	current, values, err := storage.LoadState()
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	generations := make(map[string]durable.Generation, len(values))
 	for _, value := range values {
@@ -20,21 +20,20 @@ func loadCurrent(config config, storage *durable.Root) (*Snapshot, *epoch.Decisi
 	}
 	if current == "" {
 		if err := missingCurrentRecovery(generations); err != nil {
-			return nil, nil, err
+			return nil, err
 		}
-		return nil, nil, nil
+		return nil, nil
 	}
 	decision, err := loadGenerationChain(config, generations, current, make(map[string]bool))
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	// A retained old-schema current root refuses with the typed recovery
 	// outcome before it can be exposed or serve as a wave base (F-50).
 	if err := classifyRetainedClosedSchema(config, decision.Header, "current"); err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-	snapshot := snapshotFromEpoch(decision.Snapshot)
-	return &snapshot, &decision, nil
+	return &decision, nil
 }
 
 func loadGeneration(config config, generation durable.Generation, previous *epoch.Snapshot) (epoch.Decision, error) {

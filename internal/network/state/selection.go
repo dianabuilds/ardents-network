@@ -99,7 +99,7 @@ func (s *networkState) startSourceWave(now time.Time) ([2]int, time.Time, error)
 	return order, deadline, nil
 }
 
-func (s *networkState) completeSourceWave(started time.Time, base *Snapshot, results []sourceResult) (Snapshot, error) {
+func (s *networkState) completeSourceWave(started time.Time, base *epoch.Decision, results []sourceResult) (Snapshot, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	defer func() { s.refreshing = false }()
@@ -170,11 +170,11 @@ func (s *networkState) recordSourceConflict(now time.Time, outcomes [4]byte, epo
 	return s.commitDistribution(state)
 }
 
-func sameGeneration(current, base *Snapshot) bool {
+func sameGeneration(current, base *epoch.Decision) bool {
 	if current == nil || base == nil {
 		return current == nil && base == nil
 	}
-	return current.Generation == base.Generation && current.Digest == base.Digest
+	return current.Snapshot.Generation == base.Snapshot.Generation && current.Snapshot.Digest == base.Snapshot.Digest
 }
 
 func (s *networkState) commitSourceFailure(now time.Time, outcomes [4]byte, epochs [4]uint64, digests [4][32]byte) error {

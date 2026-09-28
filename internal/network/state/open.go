@@ -63,11 +63,11 @@ func openResourceGuard(profile string) (*resource.Guard, error) {
 }
 
 func (s *networkState) recover(workContext context.Context, automaticTicks <-chan time.Time, automaticResults chan<- error) error {
-	current, decision, err := loadCurrent(s.config, s.storage)
+	current, err := loadCurrent(s.config, s.storage)
 	if err != nil {
 		return err
 	}
-	s.current, s.currentDecision = current, decision
+	s.current = current
 	if err := s.loadDistributionState(); err != nil {
 		return err
 	}

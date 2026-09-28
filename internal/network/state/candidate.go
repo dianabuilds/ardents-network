@@ -7,7 +7,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/network/epoch"
 )
 
-func (s *networkState) verifySourceBundle(bundle sourceBundle, current *Snapshot, currentDecision *epoch.Decision) (epoch.Decision, error) {
+func (s *networkState) verifySourceBundle(bundle sourceBundle, current *epoch.Decision) (epoch.Decision, error) {
 	if len(bundle.materials) != 1 {
 		return epoch.Decision{}, errors.New("source withheld the requested materialization index")
 	}
@@ -24,14 +24,14 @@ func (s *networkState) verifySourceBundle(bundle sourceBundle, current *Snapshot
 	if verification.now.Before(parsed.ValidFrom) {
 		verification.now = parsed.ValidFrom
 	}
-	if current != nil && parsed.Number == current.Epoch && parsed.Digest == current.Digest {
-		if currentDecision == nil || !bytes.Equal(bundle.epoch, currentDecision.EpochBytes) || !equalInputs(bundle.inputs, currentDecision.Inputs) {
+	if current != nil && parsed.Number == current.Snapshot.Epoch && parsed.Digest == current.Snapshot.Digest {
+		if !bytes.Equal(bundle.epoch, current.EpochBytes) || !equalInputs(bundle.inputs, current.Inputs) {
 			return epoch.Decision{}, errors.New("source changed bytes for the current Epoch")
 		}
-		if err := verifyDecisionMaterials(*currentDecision, bundle.materials); err != nil {
+		if err := verifyDecisionMaterials(*current, bundle.materials); err != nil {
 			return epoch.Decision{}, err
 		}
-		return *currentDecision, nil
+		return *current, nil
 	}
 	if s.pendingDecision != nil && parsed.Number == s.pendingDecision.Header.Number && parsed.Digest == s.pendingDecision.Header.Digest {
 		if !verification.now.Before(s.pendingDecision.Header.ValidUntil) {

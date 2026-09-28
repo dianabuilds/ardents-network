@@ -13,7 +13,7 @@ func (s *networkState) recoverPendingState() error {
 	if s.current == nil {
 		return errors.New("pending Epoch exists without an active predecessor")
 	}
-	if state.pendingDigest == s.current.Digest {
+	if state.pendingDigest == s.current.Snapshot.Digest {
 		state.pendingDigest = [32]byte{}
 		state.pendingValidFrom = 0
 		state.sequence++

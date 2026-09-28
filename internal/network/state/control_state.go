@@ -42,8 +42,8 @@ func (s *networkState) loadDistributionState() error {
 	}
 	if name == "" {
 		if s.current != nil {
-			s.distribution.epochFloor = s.current.Epoch
-			s.distribution.epochDigest = s.current.Digest
+			s.distribution.epochFloor = s.current.Snapshot.Epoch
+			s.distribution.epochDigest = s.current.Snapshot.Digest
 		}
 		return nil
 	}
@@ -51,13 +51,13 @@ func (s *networkState) loadDistributionState() error {
 	if err != nil || distributionDigest(raw) != name {
 		return errors.New("distribution generation is invalid")
 	}
-	if state.epochFloor != 0 && (s.current == nil || state.epochFloor > s.current.Epoch ||
-		state.epochFloor == s.current.Epoch && state.epochDigest != s.current.Digest) {
+	if state.epochFloor != 0 && (s.current == nil || state.epochFloor > s.current.Snapshot.Epoch ||
+		state.epochFloor == s.current.Snapshot.Epoch && state.epochDigest != s.current.Snapshot.Digest) {
 		if err := s.recoverDistributionActive(state); err != nil {
 			return err
 		}
 	}
-	if s.current != nil && state.epochFloor < s.current.Epoch {
+	if s.current != nil && state.epochFloor < s.current.Snapshot.Epoch {
 		return errors.New("distribution security state is older than the active generation")
 	}
 	s.distribution = state
@@ -80,8 +80,7 @@ func (s *networkState) recoverDistributionActive(state distributionState) error 
 	if err := persistDecision(s.storage, decision, true); err != nil {
 		return fmt.Errorf("repair active generation pointer: %w", err)
 	}
-	snapshot := snapshotFromEpoch(decision.Snapshot)
-	s.current, s.currentDecision = &snapshot, &decision
+	s.current = &decision
 	return nil
 }
 
@@ -106,8 +105,7 @@ func (s *networkState) commitActiveDecision(decision epoch.Decision, state distr
 	if err := s.commitDistribution(state); err != nil {
 		return err
 	}
-	snapshot := snapshotFromEpoch(decision.Snapshot)
-	s.current, s.currentDecision = &snapshot, &decision
+	s.current = &decision
 	if s.pendingDecision != nil && s.pendingDecision.Header.Digest == decision.Header.Digest {
 		s.pendingDecision = nil
 	}

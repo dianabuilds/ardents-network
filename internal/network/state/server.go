@@ -30,11 +30,11 @@ func (s *networkState) resolveDistributionRequest(_ context.Context, request sou
 		return source.Message{Status: "bad-request"}
 	}
 	s.mu.RLock()
-	if s.closed || s.currentDecision == nil {
+	if s.closed || s.current == nil {
 		s.mu.RUnlock()
 		return source.Message{Status: "busy"}
 	}
-	decision := *s.currentDecision
+	decision := *s.current
 	digest := decision.Header.Digest
 	s.mu.RUnlock()
 	if request.Operation == "by-digest" && request.ObjectDigest != digest {

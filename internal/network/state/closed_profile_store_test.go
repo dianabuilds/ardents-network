@@ -17,15 +17,15 @@ func TestAcceptClosedProfilePersistsAndConflictsByArrival(t *testing.T) {
 	now := store.config.clock()
 	authority := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{9}, ed25519.SeedSize))
 	generation := sha256.Sum256([]byte("closed profile generation"))
-	network, epochDigest := store.current.NetworkID, store.current.Digest
-	candidate := store.currentDecision.Candidates[0]
+	network, epochDigest := store.current.Snapshot.NetworkID, store.current.Snapshot.Digest
+	candidate := store.current.Candidates[0]
 	nodeID := candidate.NodeID
 	node := closedProfileNode{nodeID: nodeID, recordDigest: candidate.RecordDigest,
 		domain: 2, subrole: 6, generation: candidate.RecordGeneration}
 	root := store.storage
 	parsed, parseErr := closedprofile.Verify(first, closedprofile.Context{StateGeneration: generation, NetworkID: network, EpochDigest: epochDigest, Epoch: 9, Authority: authority.Public().(ed25519.PublicKey), Now: now})
-	if parseErr != nil || !matchesClosedProfileCandidates(parsed, store.currentDecision.Candidates) {
-		t.Fatalf("closed profile parser/join = %+v, %v, join=%t", parsed, parseErr, matchesClosedProfileCandidates(parsed, store.currentDecision.Candidates))
+	if parseErr != nil || !matchesClosedProfileCandidates(parsed, store.current.Candidates) {
+		t.Fatalf("closed profile parser/join = %+v, %v, join=%t", parsed, parseErr, matchesClosedProfileCandidates(parsed, store.current.Candidates))
 	}
 	view, err := store.AcceptClosedProfile(first)
 	if err != nil || view.Digest != sha256.Sum256(first) {
@@ -70,12 +70,12 @@ func closedProfileStoreFixture(t *testing.T) (*networkState, []byte) {
 	}
 	t.Cleanup(func() { _ = root.Close() })
 	store := &networkState{config: config{closedProfileAuthority: authority.Public().(ed25519.PublicKey), clock: func() time.Time { return now }, observe: func() time.Time { return now }}, storage: root,
-		current: &Snapshot{Generation: fmt.Sprintf("%x", generation), NetworkID: network, Epoch: 9, Digest: epochDigest,
+		current: &epoch.Decision{Snapshot: epoch.Snapshot{Generation: fmt.Sprintf("%x", generation), NetworkID: network, Epoch: 9, Digest: epochDigest,
 			EpochValidFrom: now.Truncate(time.Hour), ValidUntil: now.Truncate(time.Hour).Add(2 * time.Hour), Profile: closedRouteProfile},
-		currentDecision: &epoch.Decision{Candidates: []epoch.Candidate{{
-			NodeID: nodeID, RecordDigest: sha256.Sum256(recordRaw), RecordGeneration: recordGeneration,
-			CarrierProfile: closedTCPCarrierProfile, Domain: "rendezvous",
-		}}}}
+			Candidates: []epoch.Candidate{{
+				NodeID: nodeID, RecordDigest: sha256.Sum256(recordRaw), RecordGeneration: recordGeneration,
+				CarrierProfile: closedTCPCarrierProfile, Domain: "rendezvous",
+			}}}}
 	node := closedProfileNode{nodeID: nodeID, recordDigest: sha256.Sum256(recordRaw), domain: 2, subrole: 6, generation: recordGeneration}
 	first := testClosedProfile(t, authority, network, generation, epochDigest, now, []closedProfileNode{node})
 	return store, first

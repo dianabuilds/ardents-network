@@ -11,7 +11,9 @@
 // separate signed profile grammar. State joins that profile to current Epoch
 // candidates before durable acceptance. Refresh, selection, and offline_accept
 // choose a current or pending decision; storage and control_* coordinate durable
-// publication through the physical durable package. Snapshot_access, node_duty,
-// resolution_view, and closed_profile_accept project copied current facts.
+// publication through the physical durable package. State retains one verified
+// current Decision and derives copied public Snapshots from it. Snapshot_access,
+// node_duty, resolution_view, and closed_profile_accept project copied current
+// facts.
 // Local Source role retention and collision checks stay with local_roles.
 package state

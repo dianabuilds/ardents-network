@@ -17,7 +17,7 @@ func TestCompleteSourceWaveRechecksTrustedTimeBeforeActivatingPending(t *testing
 	defer storage.Close()
 	beforeExpiry := time.Unix(1_800_000_001, 0).UTC()
 	pending := epoch.Decision{Header: epoch.Header{Number: 2, Digest: [32]byte{2}, ValidFrom: beforeExpiry.Add(-time.Second), ValidUntil: beforeExpiry.Add(time.Second)}}
-	current := &Snapshot{Epoch: 1, Digest: [32]byte{1}}
+	current := &epoch.Decision{Snapshot: epoch.Snapshot{Epoch: 1, Digest: [32]byte{1}}}
 	opened := &networkState{config: config{root: root, localRoles: root + "-roles",
 		clock: func() time.Time { return beforeExpiry }, observe: func() time.Time { return beforeExpiry },
 		anchorWall: beforeExpiry, anchorMono: time.Now().Add(-1100 * time.Millisecond)}, storage: storage, current: current,
@@ -30,7 +30,7 @@ func TestCompleteSourceWaveRechecksTrustedTimeBeforeActivatingPending(t *testing
 	if _, err := opened.completeSourceWave(beforeExpiry, current, []sourceResult{{slot: 0, decision: pending, observations: [4]byte{sourceOutcomeValid}}}); err == nil || !strings.Contains(err.Error(), "expired before source wave completed") {
 		t.Fatalf("late pending activation returned %v", err)
 	}
-	if opened.current == nil || opened.current.Digest != current.Digest || opened.pendingDecision == nil ||
+	if opened.current == nil || opened.current.Snapshot.Digest != current.Snapshot.Digest || opened.pendingDecision == nil ||
 		opened.pendingDecision.Header.Digest != pending.Header.Digest {
 		t.Fatalf("late completion changed current/pending state")
 	}
@@ -45,7 +45,7 @@ func TestCompleteSourceWaveRecordsConflictBeforeCompletionClockFailure(t *testin
 	defer storage.Close()
 	started := time.Unix(1_800_000_000, 0).UTC()
 	opened := &networkState{config: config{root: root, clock: func() time.Time { return started }, observe: func() time.Time { return time.Time{} }},
-		storage: storage, current: &Snapshot{Epoch: 1, Digest: [32]byte{1}}}
+		storage: storage, current: &epoch.Decision{Snapshot: epoch.Snapshot{Epoch: 1, Digest: [32]byte{1}}}}
 	if err := opened.loadDistributionState(); err != nil {
 		t.Fatal(err)
 	}
@@ -74,7 +74,7 @@ func TestCompleteSourceWaveRecordsPendingConflictBeforeCompletionClockFailure(t 
 	pending := epoch.Decision{Header: epoch.Header{Number: 2, Digest: [32]byte{2}}}
 	competing := epoch.Decision{Header: epoch.Header{Number: 2, Digest: [32]byte{3}}}
 	opened := &networkState{config: config{root: root, clock: func() time.Time { return started }, observe: func() time.Time { return time.Time{} }},
-		storage: storage, current: &Snapshot{Epoch: 1, Digest: [32]byte{1}}, pendingDecision: &pending}
+		storage: storage, current: &epoch.Decision{Snapshot: epoch.Snapshot{Epoch: 1, Digest: [32]byte{1}}}, pendingDecision: &pending}
 	if err := opened.loadDistributionState(); err != nil {
 		t.Fatal(err)
 	}

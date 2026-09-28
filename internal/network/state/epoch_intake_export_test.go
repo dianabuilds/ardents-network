@@ -35,6 +35,6 @@ func VerifySourceCandidateForTest(store *networkState, epoch []byte, inputs, mat
 	store.mu.Lock()
 	defer store.mu.Unlock()
 	_, err := store.verifySourceBundle(sourceBundle{epoch: epoch, inputs: inputs, materials: materials},
-		store.current, store.currentDecision)
+		store.current)
 	return err
 }

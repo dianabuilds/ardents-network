@@ -61,7 +61,7 @@ func (s *networkState) Refresh(ctx context.Context) (Snapshot, error) {
 	s.refreshing = true
 	s.work.Add(1)
 	defer s.work.Done()
-	current, currentDecision := s.current, s.currentDecision
+	current := s.current
 	order, deadline, err := s.startSourceWave(now)
 	s.mu.Unlock()
 	if err != nil {
@@ -90,7 +90,7 @@ func (s *networkState) Refresh(ctx context.Context) (Snapshot, error) {
 		}
 		launched++
 		go func(sourceIndex int) {
-			results <- s.fetchAndVerify(waveContext, sourceIndex, current, currentDecision)
+			results <- s.fetchAndVerify(waveContext, sourceIndex, current)
 		}(index)
 	}
 	for range launched {
@@ -99,7 +99,7 @@ func (s *networkState) Refresh(ctx context.Context) (Snapshot, error) {
 	return s.completeSourceWave(now, current, observed)
 }
 
-func (s *networkState) fetchAndVerify(ctx context.Context, index int, current *Snapshot, currentDecision *epoch.Decision) sourceResult {
+func (s *networkState) fetchAndVerify(ctx context.Context, index int, current *epoch.Decision) sourceResult {
 	observations := [4]byte{}
 	resultIndex, outcomeIndex := index, index
 	response, err := s.fetchSource(ctx, index, source.Message{
@@ -132,7 +132,7 @@ func (s *networkState) fetchAndVerify(ctx context.Context, index int, current *S
 	if err != nil {
 		return failedSourceResult(resultIndex, outcomeIndex, observations, err)
 	}
-	decision, err := s.verifySourceBundle(bundle, current, currentDecision)
+	decision, err := s.verifySourceBundle(bundle, current)
 	if err != nil {
 		return failedSourceResult(resultIndex, outcomeIndex, observations, err)
 	}

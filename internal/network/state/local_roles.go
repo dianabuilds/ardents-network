@@ -15,7 +15,7 @@ import (
 var errSourceRoleCollision = errors.New("source role collides with a Candidate View member")
 
 func (s *networkState) rejectSourceCollisions() error {
-	for _, decision := range []*epoch.Decision{s.currentDecision, s.pendingDecision} {
+	for _, decision := range []*epoch.Decision{s.current, s.pendingDecision} {
 		if decision != nil && sourceCollides(s.config.sourceInfo, *decision) {
 			return fmt.Errorf("%w: identity, family, or endpoint", errSourceRoleCollision)
 		}
@@ -84,8 +84,8 @@ func (s *networkState) retainSourceServer() error {
 	if err != nil {
 		return err
 	}
-	retained := duty.Duty{Identity: s.current.NodeID, Family: sha256.Sum256([]byte(s.current.DeclaredFamily)),
-		Class: "direct-source", State: "live", NotAfter: s.current.ValidUntil}
+	retained := duty.Duty{Identity: s.current.Snapshot.NodeID, Family: sha256.Sum256([]byte(s.current.Snapshot.DeclaredFamily)),
+		Class: "direct-source", State: "live", NotAfter: s.current.Snapshot.ValidUntil}
 	return errors.Join(roles.Replace(sourceProducer("server", s.config.root), []duty.Duty{retained}), roles.Close())
 }
 

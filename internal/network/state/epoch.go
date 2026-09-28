@@ -27,11 +27,11 @@ func verifyDecision(config config, previous *epoch.Snapshot, epochBytes []byte, 
 	return epoch.Verify(policy, epochBytes, inputs, materials, requireMaterials)
 }
 
-func epochPredecessor(current *Snapshot) *epoch.Snapshot {
+func epochPredecessor(current *epoch.Decision) *epoch.Snapshot {
 	if current == nil {
 		return nil
 	}
-	return &epoch.Snapshot{Epoch: current.Epoch, Digest: current.Digest}
+	return &epoch.Snapshot{Epoch: current.Snapshot.Epoch, Digest: current.Snapshot.Digest}
 }
 
 func snapshotFromEpoch(value epoch.Snapshot) Snapshot {

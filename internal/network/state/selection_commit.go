@@ -98,7 +98,7 @@ func (s *networkState) commitActiveSourceWave(now time.Time, selected epoch.Deci
 	if state.pendingDigest == selected.Header.Digest {
 		state.pendingDigest, state.pendingValidFrom = [32]byte{}, 0
 	}
-	if s.current == nil || selected.Header.Digest != s.current.Digest {
+	if s.current == nil || selected.Header.Digest != s.current.Snapshot.Digest {
 		if err := s.commitActiveDecision(selected, state); err != nil {
 			return Snapshot{}, err
 		}
