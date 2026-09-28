@@ -35,6 +35,8 @@ type networkState struct {
 	work            sync.WaitGroup
 	refreshing      bool
 	closed          bool
+	closeOnce       sync.Once
+	closeErr        error
 }
 
 type config struct {

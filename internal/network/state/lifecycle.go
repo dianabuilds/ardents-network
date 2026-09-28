@@ -40,12 +40,14 @@ func (s *networkState) Wait(ctx context.Context) error {
 }
 
 // Close prevents further work through this Store and releases its root lease.
+// Concurrent callers wait for the same cleanup and observe its terminal result.
 func (s *networkState) Close() error {
+	s.closeOnce.Do(func() { s.closeErr = s.closeOwned() })
+	return s.closeErr
+}
+
+func (s *networkState) closeOwned() error {
 	s.mu.Lock()
-	if s.closed {
-		s.mu.Unlock()
-		return nil
-	}
 	s.closed = true
 	done, workCancel, storage := s.serverDone, s.workCancel, s.storage
 	s.mu.Unlock()
