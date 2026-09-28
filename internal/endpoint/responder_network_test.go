@@ -10,7 +10,7 @@ import (
 
 // Distinct real listeners/keys are populated by startTextRoleNetwork before
 // any Node starts. Accepted State itself remains the explicit test seam.
-func addTextResponderPrefixState(source *sourceStateFixture) {
+func addResponderPrefixState(source *sourceStateFixture) {
 	source.view.NodeCount, source.snapshot.CandidateCount = 15, 15
 	for index := 11; index < 15; index++ {
 		subrole := uint8(1)
@@ -32,7 +32,7 @@ func TestTextResponderRejectsKnownIntroductionFamiliesBeforeIssuance(t *testing.
 			if _, err := owner.openPrefix(t.Context()); err != nil {
 				t.Fatal(err)
 			}
-			if _, err := owner.openTextIntroductionPrefix(t.Context()); err != nil {
+			if _, err := owner.openIntroductionPrefix(t.Context()); err != nil {
 				t.Fatal(err)
 			}
 			source.mu.Lock()

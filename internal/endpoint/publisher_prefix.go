@@ -19,7 +19,7 @@ type publisherPrefixOpening interface {
 	finishOpeningLocked(*textOperationFlight, *client.ClosedSourcePrefix, context.CancelFunc, bool) bool
 }
 
-func (owner *textContext) openTextResponderPrefix(ctx context.Context) (*textResponderPrefixHandle, error) {
+func (owner *textContext) openResponderPrefix(ctx context.Context) (*responderPrefixHandle, error) {
 	if owner == nil {
 		return nil, errors.New("text Publisher owner unavailable")
 	}
@@ -36,7 +36,7 @@ func (owner *textContext) openTextResponderPrefix(ctx context.Context) (*textRes
 	return handle, nil
 }
 
-func (owner *textContext) openTextIntroductionPrefix(ctx context.Context) (*textIntroductionPrefixHandle, error) {
+func (owner *textContext) openIntroductionPrefix(ctx context.Context) (*introductionPrefixHandle, error) {
 	if owner == nil {
 		return nil, errors.New("text Publisher owner unavailable")
 	}

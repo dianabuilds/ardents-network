@@ -123,7 +123,7 @@ func runTextDataJoinIsolatedRoleObservation(t *testing.T, carrier routecarrier.C
 	if _, err := owner.openPrefix(t.Context()); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := owner.openTextIntroductionPrefix(t.Context()); err != nil {
+	if _, err := owner.openIntroductionPrefix(t.Context()); err != nil {
 		t.Fatal(err)
 	}
 	registration, err := owner.registerTextIntroduction(t.Context(), 1, time.Now().UTC().Add(90*time.Second).Truncate(time.Second))

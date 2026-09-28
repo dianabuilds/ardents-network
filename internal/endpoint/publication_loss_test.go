@@ -49,7 +49,7 @@ func startRegisteredPublisherNetwork(t *testing.T, carrier routecarrier.CarrierP
 	if _, err := owner.openPrefix(t.Context()); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := owner.openTextIntroductionPrefix(t.Context()); err != nil {
+	if _, err := owner.openIntroductionPrefix(t.Context()); err != nil {
 		t.Fatal(err)
 	}
 	first, err := owner.registerTextIntroduction(t.Context(), 1, time.Now().UTC().Add(120*time.Second).Truncate(time.Second))

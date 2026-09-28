@@ -9,7 +9,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/route/client"
 )
 
-func (handle *textResponderPrefixHandle) Close() error {
+func (handle *responderPrefixHandle) Close() error {
 	prefix, err := handle.routePrefix()
 	if err != nil {
 		return err
@@ -17,7 +17,7 @@ func (handle *textResponderPrefixHandle) Close() error {
 	return prefix.Close()
 }
 
-func (handle *textResponderPrefixHandle) Done() <-chan struct{} {
+func (handle *responderPrefixHandle) Done() <-chan struct{} {
 	prefix, err := handle.routePrefix()
 	if err != nil {
 		done := make(chan struct{})
@@ -29,7 +29,7 @@ func (handle *textResponderPrefixHandle) Done() <-chan struct{} {
 
 func TestTextResponderCancelledOpeningDoesNotRetireIntroductionOrPublishPrefix(t *testing.T) {
 	owner := &textContext{}
-	introduction := &textIntroductionPrefixHandle{rolePrefixHandleCore: rolePrefixHandleCore{owner: &owner.introduction.prefix.rolePrefixCore, cancel: func() {}}}
+	introduction := &introductionPrefixHandle{rolePrefixHandleCore: rolePrefixHandleCore{owner: &owner.introduction.prefix.rolePrefixCore, cancel: func() {}}}
 	introduction.prefix.Store(&client.ClosedSourcePrefix{})
 	owner.introduction.prefix.live = introduction
 	attempt, cancel := context.WithCancel(t.Context())
@@ -59,7 +59,7 @@ func TestTextResponderCancelledOpeningDoesNotRetireIntroductionOrPublishPrefix(t
 }
 
 func TestTextResponderOldOpeningCannotAcquireReplacementHandle(t *testing.T) {
-	var lifecycle textResponderPrefixLifecycle
+	var lifecycle responderPrefixLifecycle
 	firstFlight := &textOperationFlight{}
 	if !lifecycle.reserveOpeningLocked(firstFlight) {
 		t.Fatal("Responder lifecycle refused first opening")

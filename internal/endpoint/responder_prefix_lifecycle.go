@@ -12,55 +12,55 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/route/client"
 )
 
-// textResponderPrefixLifecycle is the sole owner of the Publisher's live
+// responderPrefixLifecycle is the sole owner of the Publisher's live
 // Responder prefix and an opening that may replace its absence. The shared
 // role machinery (opening slot, member set, idle retirement, stop) lives in
 // rolePrefixCore; this owner adds only the Responder handle type, its
 // Route operations and the JOIN acquisition.
-type textResponderPrefixLifecycle struct {
+type responderPrefixLifecycle struct {
 	rolePrefixCore
 }
 
-// textResponderPrefixHandle exposes only operations belonging to one exact
+// responderPrefixHandle exposes only operations belonging to one exact
 // live Responder prefix. Retirement invalidates every retained handle.
-type textResponderPrefixHandle struct {
+type responderPrefixHandle struct {
 	rolePrefixHandleCore
 }
 
-// textResponderJoinAcquisition binds one JOIN exchange to the exact Responder
+// responderJoinAcquisition binds one JOIN exchange to the exact Responder
 // handle and Source issuer current at admission.
-type textResponderJoinAcquisition struct {
-	handle atomic.Pointer[textResponderPrefixHandle]
+type responderJoinAcquisition struct {
+	handle atomic.Pointer[responderPrefixHandle]
 	issuer *sourceHandle
 }
 
-func (lifecycle *textResponderPrefixLifecycle) currentLocked() *textResponderPrefixHandle {
+func (lifecycle *responderPrefixLifecycle) currentLocked() *responderPrefixHandle {
 	if lifecycle == nil {
 		return nil
 	}
-	handle, _ := lifecycle.currentLiveLocked().(*textResponderPrefixHandle)
+	handle, _ := lifecycle.currentLiveLocked().(*responderPrefixHandle)
 	return handle
 }
 
-func (lifecycle *textResponderPrefixLifecycle) acquireOpenedLocked(prefix *client.ClosedSourcePrefix) *textResponderPrefixHandle {
+func (lifecycle *responderPrefixLifecycle) acquireOpenedLocked(prefix *client.ClosedSourcePrefix) *responderPrefixHandle {
 	if lifecycle == nil {
 		return nil
 	}
-	handle, _ := lifecycle.acquireOpenedCoreLocked(prefix).(*textResponderPrefixHandle)
+	handle, _ := lifecycle.acquireOpenedCoreLocked(prefix).(*responderPrefixHandle)
 	return handle
 }
 
-func (lifecycle *textResponderPrefixLifecycle) acquireJoinLocked(issuer *sourceHandle) *textResponderJoinAcquisition {
+func (lifecycle *responderPrefixLifecycle) acquireJoinLocked(issuer *sourceHandle) *responderJoinAcquisition {
 	live := lifecycle.currentLocked()
 	if live == nil || live.prefix.Load() == nil {
 		return nil
 	}
-	acquisition := &textResponderJoinAcquisition{issuer: issuer}
+	acquisition := &responderJoinAcquisition{issuer: issuer}
 	acquisition.handle.Store(live)
 	return acquisition
 }
 
-func (lifecycle *textResponderPrefixLifecycle) finishOpeningLocked(flight *textOperationFlight,
+func (lifecycle *responderPrefixLifecycle) finishOpeningLocked(flight *textOperationFlight,
 	prefix *client.ClosedSourcePrefix, cancel context.CancelFunc, publish bool) bool {
 	if lifecycle == nil || lifecycle.opening != flight {
 		return false
@@ -69,21 +69,21 @@ func (lifecycle *textResponderPrefixLifecycle) finishOpeningLocked(flight *textO
 	if !publish || prefix == nil {
 		return true
 	}
-	handle := &textResponderPrefixHandle{rolePrefixHandleCore: rolePrefixHandleCore{owner: &lifecycle.rolePrefixCore, cancel: cancel}}
+	handle := &responderPrefixHandle{rolePrefixHandleCore: rolePrefixHandleCore{owner: &lifecycle.rolePrefixCore, cancel: cancel}}
 	handle.prefix.Store(prefix)
 	lifecycle.live = handle
 	return true
 }
 
-func (handle *textResponderPrefixHandle) currentLocked(lifecycle *textResponderPrefixLifecycle) bool {
+func (handle *responderPrefixHandle) currentLocked(lifecycle *responderPrefixLifecycle) bool {
 	return handle != nil && lifecycle != nil && handle.rolePrefixHandleCore.currentCoreLocked(&lifecycle.rolePrefixCore)
 }
 
-func (handle *textResponderPrefixHandle) routePrefix() (*client.ClosedSourcePrefix, error) {
+func (handle *responderPrefixHandle) routePrefix() (*client.ClosedSourcePrefix, error) {
 	return handle.routeCorePrefix("text Responder prefix unavailable")
 }
 
-func (handle *textResponderPrefixHandle) dataJoinRecipient() ([32]byte, uint64, time.Time, error) {
+func (handle *responderPrefixHandle) dataJoinRecipient() ([32]byte, uint64, time.Time, error) {
 	prefix, err := handle.routePrefix()
 	if err != nil {
 		return [32]byte{}, 0, time.Time{}, err
@@ -91,7 +91,7 @@ func (handle *textResponderPrefixHandle) dataJoinRecipient() ([32]byte, uint64, 
 	return prefix.DataJoinRecipient()
 }
 
-func (handle *textResponderPrefixHandle) join(ctx context.Context, present client.ClosedTokenPresenter,
+func (handle *responderPrefixHandle) join(ctx context.Context, present client.ClosedTokenPresenter,
 	intent client.ClosedJoinIntent) (*client.ClosedJoinedStream, error) {
 	prefix, err := handle.routePrefix()
 	if err != nil {
@@ -100,11 +100,11 @@ func (handle *textResponderPrefixHandle) join(ctx context.Context, present clien
 	return prefix.Join(ctx, present, intent)
 }
 
-func (handle *textResponderPrefixHandle) replenish(ctx context.Context, present client.ClosedTokenPresenter) error {
+func (handle *responderPrefixHandle) replenish(ctx context.Context, present client.ClosedTokenPresenter) error {
 	return handle.replenishCore(ctx, present, "text Responder prefix unavailable")
 }
 
-func (handle *textResponderPrefixHandle) retired() bool {
+func (handle *responderPrefixHandle) retired() bool {
 	prefix, err := handle.routePrefix()
 	if err != nil {
 		return true
@@ -117,14 +117,14 @@ func (handle *textResponderPrefixHandle) retired() bool {
 	}
 }
 
-func (acquisition *textResponderJoinAcquisition) release() {
+func (acquisition *responderJoinAcquisition) release() {
 	if acquisition != nil {
 		acquisition.handle.Store(nil)
 		acquisition.issuer = nil
 	}
 }
 
-func (acquisition *textResponderJoinAcquisition) currentLocked(owner *textContext) bool {
+func (acquisition *responderJoinAcquisition) currentLocked(owner *textContext) bool {
 	if acquisition == nil || owner == nil || owner.surface != broker.Administration {
 		return false
 	}
@@ -132,7 +132,7 @@ func (acquisition *textResponderJoinAcquisition) currentLocked(owner *textContex
 	return handle != nil && handle.currentLocked(&owner.responder) && acquisition.issuer != nil && acquisition.issuer.currentLocked(&owner.source)
 }
 
-func (acquisition *textResponderJoinAcquisition) issuancePrefixLocked(owner *textContext) (*sourceHandle, bool) {
+func (acquisition *responderJoinAcquisition) issuancePrefixLocked(owner *textContext) (*sourceHandle, bool) {
 	current := acquisition.currentLocked(owner)
 	if acquisition == nil {
 		return nil, false
@@ -140,7 +140,7 @@ func (acquisition *textResponderJoinAcquisition) issuancePrefixLocked(owner *tex
 	return acquisition.issuer, current
 }
 
-func (acquisition *textResponderJoinAcquisition) dataJoinRecipient() ([32]byte, uint64, time.Time, error) {
+func (acquisition *responderJoinAcquisition) dataJoinRecipient() ([32]byte, uint64, time.Time, error) {
 	if acquisition == nil {
 		return [32]byte{}, 0, time.Time{}, errors.New("text Responder JOIN acquisition unavailable")
 	}
@@ -151,7 +151,7 @@ func (acquisition *textResponderJoinAcquisition) dataJoinRecipient() ([32]byte, 
 	return handle.dataJoinRecipient()
 }
 
-func (acquisition *textResponderJoinAcquisition) join(ctx context.Context, present client.ClosedTokenPresenter,
+func (acquisition *responderJoinAcquisition) join(ctx context.Context, present client.ClosedTokenPresenter,
 	intent client.ClosedJoinIntent) (*client.ClosedJoinedStream, error) {
 	if acquisition == nil {
 		return nil, errors.New("text Responder JOIN acquisition unavailable")

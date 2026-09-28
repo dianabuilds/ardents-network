@@ -49,7 +49,7 @@ func TestTextRouteJoinConnectsSourceAndResponder(t *testing.T) {
 // ready callback observes both joined streams before either direction writes.
 func exchangeTextRouteData(t *testing.T, reader, publisher *textContext, receiver [32]byte, ready func()) {
 	t.Helper()
-	responder, err := publisher.openTextResponderPrefix(t.Context())
+	responder, err := publisher.openResponderPrefix(t.Context())
 	if err != nil {
 		t.Fatal(err)
 	}

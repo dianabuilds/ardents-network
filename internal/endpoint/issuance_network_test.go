@@ -88,8 +88,8 @@ func startTextRoleNetwork(t *testing.T, fixture textRoleNetworkFixture) (*endpoi
 			t.Fatal(err)
 		}
 		owner = permissionContextFixture(t, endpoint, fixtureID(211), broker.Administration)
-		addTextIntroductionPrefixState(source)
-		addTextResponderPrefixState(source)
+		addIntroductionPrefixState(source)
+		addResponderPrefixState(source)
 		count = 15
 	}
 	if fixture.join {

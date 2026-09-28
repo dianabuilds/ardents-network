@@ -111,7 +111,7 @@ func textJoinedNetworkFixtureWithReaderMaximaAndRegistration(t *testing.T, carri
 	if _, err := publisher.openPrefix(t.Context()); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := publisher.openTextIntroductionPrefix(t.Context()); err != nil {
+	if _, err := publisher.openIntroductionPrefix(t.Context()); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := publisher.registerTextIntroduction(t.Context(), 1, now.Add(registration)); err != nil {

@@ -153,7 +153,7 @@ func (owner *textContext) receiveTextIntroductionWith(ctx context.Context, job *
 	defer clear(operation)
 	prepared, outcome = accept(lifetime, job, operation)
 	if outcome == nil {
-		outcome = owner.prepareTextResponder(lifetime, job, prepared)
+		outcome = owner.prepareResponder(lifetime, job, prepared)
 	}
 	if outcome == nil && want.generation == 1 {
 		outcome = owner.retainTextIntroductionRecovery(prepared.binding)

@@ -10,7 +10,7 @@ import (
 	routecarrier "github.com/dianabuilds/ardents-network/internal/route/carrier"
 )
 
-func addTextIntroductionPrefixState(source *sourceStateFixture) {
+func addIntroductionPrefixState(source *sourceStateFixture) {
 	source.view.NodeCount, source.snapshot.CandidateCount = 11, 11
 	for index := 7; index < 11; index++ {
 		subrole := uint8(1)
@@ -36,7 +36,7 @@ func TestTextPublisherIntroductionPrefixUsesSeparateDomainAndRealIssuance(t *tes
 			if err != nil {
 				t.Fatal(err)
 			}
-			introduction, err := owner.openTextIntroductionPrefix(t.Context())
+			introduction, err := owner.openIntroductionPrefix(t.Context())
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -46,7 +46,7 @@ func TestTextPublisherIntroductionPrefixUsesSeparateDomainAndRealIssuance(t *tes
 			if !separate {
 				t.Fatal("Publisher Introduction reused Source ownership or bootstrap admission")
 			}
-			if _, err := owner.openTextIntroductionPrefix(t.Context()); err == nil {
+			if _, err := owner.openIntroductionPrefix(t.Context()); err == nil {
 				t.Fatal("second live Introduction prefix opened")
 			}
 			registered, err := owner.registerTextIntroduction(t.Context(), 1, time.Now().UTC().Add(60*time.Second).Truncate(time.Second))

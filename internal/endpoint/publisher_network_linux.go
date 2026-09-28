@@ -92,7 +92,7 @@ func (worker *qualifiedTextWorker) ensureQualificationPublisherJoinReserve(ctx c
 	owner.mu.Unlock()
 	if prefix == nil {
 		var err error
-		prefix, err = owner.openTextResponderPrefix(ctx)
+		prefix, err = owner.openResponderPrefix(ctx)
 		if err != nil {
 			return errors.Join(err, errors.New("qualification Publisher JOIN reserve prefix unavailable"))
 		}

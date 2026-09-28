@@ -19,7 +19,7 @@ type textContextState struct {
 	publication       publication
 	introduction      textIntroduction
 	descriptorHistory descriptorhistory.History
-	responder         textResponderPrefixLifecycle
+	responder         responderPrefixLifecycle
 	resolution        *resolutionFlight
 	source            sourceLifecycle
 	tokens            tokens

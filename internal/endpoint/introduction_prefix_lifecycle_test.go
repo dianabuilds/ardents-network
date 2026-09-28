@@ -9,7 +9,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/route/client"
 )
 
-func (handle *textIntroductionPrefixHandle) Done() <-chan struct{} {
+func (handle *introductionPrefixHandle) Done() <-chan struct{} {
 	prefix, err := handle.routePrefix()
 	if err != nil {
 		done := make(chan struct{})
@@ -51,7 +51,7 @@ func TestTextIntroductionCancelledOpeningDoesNotRetireSourceOrPublishPrefix(t *t
 }
 
 func TestTextIntroductionOldOpeningCannotAcquireReplacementHandle(t *testing.T) {
-	var lifecycle textIntroductionPrefixLifecycle
+	var lifecycle introductionPrefixLifecycle
 	firstFlight := &textOperationFlight{}
 	if !lifecycle.reserveOpeningLocked(firstFlight) {
 		t.Fatal("Introduction lifecycle refused first opening")

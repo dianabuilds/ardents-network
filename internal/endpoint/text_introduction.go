@@ -10,5 +10,5 @@ type textIntroduction struct {
 	dispatch  textIntroductionDispatch
 	exchanges textIntroductionExchangeSet
 	admission textIntroductionAdmission
-	prefix    textIntroductionPrefixLifecycle
+	prefix    introductionPrefixLifecycle
 }

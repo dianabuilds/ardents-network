@@ -83,7 +83,7 @@ func TestTextIntroductionCapsuleBindsRealInstanceAndServiceStream(t *testing.T) 
 			if _, err := publisher.openPrefix(t.Context()); err != nil {
 				t.Fatal(err)
 			}
-			if _, err := publisher.openTextIntroductionPrefix(t.Context()); err != nil {
+			if _, err := publisher.openIntroductionPrefix(t.Context()); err != nil {
 				t.Fatal(err)
 			}
 			registered, err := publisher.registerTextIntroduction(t.Context(), 1, time.Now().UTC().Add(120*time.Second).Truncate(time.Second))
@@ -186,7 +186,7 @@ func TestTextIntroductionCapsuleBindsRealInstanceAndServiceStream(t *testing.T) 
 			if !distinct {
 				t.Fatal("accepted delivery did not establish independently issued Responder forwarding")
 			}
-			if err := publisher.prepareTextResponder(t.Context(), publisherJob, accepted); err != nil {
+			if err := publisher.prepareResponder(t.Context(), publisherJob, accepted); err != nil {
 				t.Fatal(err)
 			}
 			publisher.mu.Lock()
@@ -195,7 +195,7 @@ func TestTextIntroductionCapsuleBindsRealInstanceAndServiceStream(t *testing.T) 
 			if !reused {
 				t.Fatal("second accepted attempt replaced live Responder prefix")
 			}
-			checkTextResponderRetirementBoundary(t, publisher, publisherJob, accepted, source)
+			checkResponderRetirementBoundary(t, publisher, publisherJob, accepted, source)
 			responder = publisher.responder.currentLocked()
 			if accepted.digest != attempt.digest || accepted.binding.logical != attempt.binding.logical || accepted.plaintext != attempt.plaintext {
 				t.Fatal("recipient changed the authenticated Attachment or logical context")
@@ -218,7 +218,7 @@ func TestTextIntroductionCapsuleBindsRealInstanceAndServiceStream(t *testing.T) 
 				t.Fatal("worker loss retired surviving context's Responder prefix")
 			default:
 			}
-			if err := publisher.prepareTextResponder(t.Context(), publisherJob, accepted); err == nil {
+			if err := publisher.prepareResponder(t.Context(), publisherJob, accepted); err == nil {
 				t.Fatal("retired Publisher job reused Responder authority")
 			}
 			if err := publisher.Close(); err != nil {

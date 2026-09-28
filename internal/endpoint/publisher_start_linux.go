@@ -73,11 +73,11 @@ func (worker *qualifiedTextWorker) startPublication(ctx context.Context) (_ *pub
 	if _, err := owner.openPrefix(ctx); err != nil {
 		return nil, err
 	}
-	prefix, err := owner.openTextIntroductionPrefix(ctx)
+	prefix, err := owner.openIntroductionPrefix(ctx)
 	if err != nil {
 		return nil, err
 	}
-	if _, err := owner.openTextResponderPrefix(ctx); err != nil {
+	if _, err := owner.openResponderPrefix(ctx); err != nil {
 		return nil, err
 	}
 	_, until, err := prefix.introductionRecipient()

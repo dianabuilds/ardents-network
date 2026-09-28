@@ -24,7 +24,7 @@ type registrationFlight struct {
 	context  context.Context
 	cancel   context.CancelFunc
 	done     chan struct{}
-	prefix   *textIntroductionPrefixHandle
+	prefix   *introductionPrefixHandle
 	receiver [32]byte
 }
 

@@ -47,7 +47,7 @@ func TestTextPublisherCommitsInstanceSignedDescriptor(t *testing.T) {
 			if _, err := owner.openPrefix(t.Context()); err != nil {
 				t.Fatal(err)
 			}
-			if _, err := owner.openTextIntroductionPrefix(t.Context()); err != nil {
+			if _, err := owner.openIntroductionPrefix(t.Context()); err != nil {
 				t.Fatal(err)
 			}
 			first, err := owner.registerTextIntroduction(t.Context(), 1, time.Now().UTC().Add(time.Minute).Truncate(time.Second))

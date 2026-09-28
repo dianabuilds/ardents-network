@@ -52,7 +52,7 @@ func TestTextIntroductionRetryResumesExactIssuance(t *testing.T) {
 					t.Fatal("outage issued foreign tokens")
 				}
 			} else {
-				if _, err := owner.openTextIntroductionPrefix(t.Context()); err == nil {
+				if _, err := owner.openIntroductionPrefix(t.Context()); err == nil {
 					t.Fatal("outage opened Introduction")
 				}
 			}
@@ -67,7 +67,7 @@ func TestTextIntroductionRetryResumesExactIssuance(t *testing.T) {
 			owner.mu.Unlock()
 			defer clear(request)
 			outage.unavailable.Store(false)
-			prefix, err := owner.openTextIntroductionPrefix(t.Context())
+			prefix, err := owner.openIntroductionPrefix(t.Context())
 			if foreign {
 				if err == nil || prefix != nil {
 					t.Fatal("Introduction replaced foreign pending batch")

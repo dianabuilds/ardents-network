@@ -78,7 +78,7 @@ func TestTextPublisherAcceptsIntroductionAfterSourceRetirement(t *testing.T) {
 				t.Fatal("pre-dial acceptance created network work or changed allocation")
 			}
 			for cycle := range 2 {
-				if err := publisher.prepareTextResponder(t.Context(), publisherJob, accepted); err != nil {
+				if err := publisher.prepareResponder(t.Context(), publisherJob, accepted); err != nil {
 					t.Fatalf("responder cycle %d: %v", cycle, err)
 				}
 				publisher.mu.Lock()
