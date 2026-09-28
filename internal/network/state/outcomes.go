@@ -3,9 +3,7 @@ package state
 import (
 	"context"
 	"errors"
-	"math"
 	"net"
-	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/network/source"
 )
@@ -41,31 +39,6 @@ func sourceStatusError(status string) error {
 		"bad-request": sourceStatusErrors[3],
 		"internal":    sourceStatusErrors[4],
 	}[status]
-}
-
-func finishWaveState(state *distributionState, now time.Time, outcomes [4]byte) error {
-	state.sequence++
-	state.cycleActive = false
-	state.outcomes = outcomes
-	for index, status := range state.attempts {
-		if status == sourceAttemptInFlight {
-			state.attempts[index] = sourceAttemptFailed
-		}
-	}
-	for index, outcome := range outcomes {
-		if outcome == sourceOutcomeValid {
-			state.attempts[index] = sourceAttemptCompleted
-		} else if outcome != 0 {
-			state.attempts[index] = sourceAttemptFailed
-		}
-	}
-	for _, outcome := range outcomes {
-		if outcome != 0 && outcome != sourceOutcomeValid {
-			return applyFailureBackoff(state, now, state.cycleSeed)
-		}
-	}
-	state.consecutiveFailures, state.backoffLevel, state.nextAutomatic = 0, 0, 0
-	return nil
 }
 
 func classifySourceOutcome(err error) byte {
@@ -106,19 +79,4 @@ func sourceOutcomeName(outcome byte) string {
 		sourceOutcomeNotFound:    "not-found", sourceOutcomeBusy: "busy",
 		sourceOutcomeBadRequest: "bad-request", sourceOutcomeInternal: "source-internal",
 	}[outcome]
-}
-
-func applyFailureBackoff(state *distributionState, now time.Time, seed [32]byte) error {
-	if state.consecutiveFailures < math.MaxInt64 {
-		state.consecutiveFailures++
-	}
-	level := state.consecutiveFailures - 1
-	if level > 5 {
-		level = 5
-	}
-	state.backoffLevel = byte(level)
-	bases := [...]int64{60, 120, 240, 480, 960, 1800}
-	base := bases[state.backoffLevel]
-	state.nextAutomatic = now.Unix() + base/2 + int64(seed[1])*(base/2+1)/256
-	return nil
 }

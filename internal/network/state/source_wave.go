@@ -20,9 +20,7 @@ func (s *networkState) startSourceWave(now time.Time) ([2]int, time.Time, error)
 			}
 			state.cycleActive = false
 			state.sequence++
-			if err := applyFailureBackoff(&state, now, state.cycleSeed); err != nil {
-				return [2]int{}, time.Time{}, err
-			}
+			applyFailureBackoff(&state, now)
 			if err := s.commitDistribution(state); err != nil {
 				return [2]int{}, time.Time{}, err
 			}
@@ -148,9 +146,7 @@ func (s *networkState) completeSourceWaveWithConflictCommit(started time.Time, b
 func (s *networkState) recordSourceConflictWithControl(now time.Time, outcomes [4]byte, epochs [4]uint64, digests [4][32]byte, commit func(string, []byte) error) error {
 	state := s.distribution
 	state.observedEpochs, state.observedDigests = epochs, digests
-	if err := finishWaveState(&state, now, outcomes); err != nil {
-		return err
-	}
+	finishWaveState(&state, now, outcomes)
 	state.conflicting = true
 	return s.commitDistributionWithControl(state, commit)
 }
@@ -165,9 +161,7 @@ func sameGeneration(current, base *epoch.Decision) bool {
 func (s *networkState) commitSourceFailure(now time.Time, outcomes [4]byte, epochs [4]uint64, digests [4][32]byte) error {
 	state := s.distribution
 	state.observedEpochs, state.observedDigests = epochs, digests
-	if err := finishWaveState(&state, now, outcomes); err != nil {
-		return err
-	}
+	finishWaveState(&state, now, outcomes)
 	return s.commitDistribution(state)
 }
 
@@ -226,9 +220,7 @@ func (s *networkState) commitPendingSourceWave(now time.Time, selected epoch.Dec
 		// authenticated Source observations, but do not stage a future genesis.
 		state := s.distribution
 		state.observedEpochs, state.observedDigests = summary.observedEpochs, summary.observedDigests
-		if err := finishWaveState(&state, now, summary.outcomes); err != nil {
-			return Snapshot{}, err
-		}
+		finishWaveState(&state, now, summary.outcomes)
 		state.nextAutomatic = max(state.nextAutomatic, selected.Header.ValidFrom.Unix())
 		if err := s.commitDistribution(state); err != nil {
 			return Snapshot{}, err
@@ -246,9 +238,7 @@ func (s *networkState) commitPendingSourceWave(now time.Time, selected epoch.Dec
 	}
 	state := s.distribution
 	state.observedEpochs, state.observedDigests = summary.observedEpochs, summary.observedDigests
-	if err := finishWaveState(&state, now, summary.outcomes); err != nil {
-		return Snapshot{}, err
-	}
+	finishWaveState(&state, now, summary.outcomes)
 	state.pendingDigest, state.pendingValidFrom = selected.Header.Digest, selected.Header.ValidFrom.Unix()
 	if err := s.commitDistribution(state); err != nil {
 		return Snapshot{}, err
@@ -265,9 +255,7 @@ func (s *networkState) commitActiveSourceWave(now time.Time, selected epoch.Deci
 	}
 	state := s.distribution
 	state.observedEpochs, state.observedDigests = summary.observedEpochs, summary.observedDigests
-	if err := finishWaveState(&state, now, summary.outcomes); err != nil {
-		return Snapshot{}, err
-	}
+	finishWaveState(&state, now, summary.outcomes)
 	state.epochFloor, state.epochDigest = selected.Header.Number, selected.Header.Digest
 	state.trustedTimeFloor = max(state.trustedTimeFloor, now.Unix())
 	if state.pendingDigest == selected.Header.Digest {
