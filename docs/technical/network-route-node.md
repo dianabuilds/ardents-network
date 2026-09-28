@@ -220,6 +220,11 @@ fallback truth.
 | [Current readers](../../internal/network/state/snapshot_access.go) | Derive a copied Snapshot and Node-duty view; expose the accepted closed profile's exact issuer/key and recipient constraints only while State and clock remain live. | Node and Endpoint consume State projections without gaining State-root custody. |
 | [`Wait` and `Close`](../../internal/network/state/lifecycle.go) | Report terminal background failure; cancel and join accepted work, close the durable root, release the serving Source duty, and retain one cleanup result for all Close callers. | `resource` supplies pressure observations; State retains supervision and cleanup ownership. |
 
+A terminal automatic-refresh or resource-governor failure also makes
+State-owned Direct Source responses unavailable, including requests whose
+connections were already accepted. The resolver returns the existing busy
+status before materialization; Source still owns transport and framing.
+
 ### State transition admissibility
 
 State alone decides whether a verified Epoch can become current or pending.

@@ -30,7 +30,7 @@ func (s *networkState) resolveDistributionRequest(_ context.Context, request sou
 		return source.Message{Status: "bad-request"}
 	}
 	s.mu.RLock()
-	if s.closed || s.current == nil {
+	if s.closed || s.current == nil || s.automaticErr != nil || s.resourceErr != nil {
 		s.mu.RUnlock()
 		return source.Message{Status: "busy"}
 	}
