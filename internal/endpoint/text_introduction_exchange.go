@@ -49,7 +49,7 @@ func (owner *textContext) submitTextIntroduction(ctx context.Context, job *textJ
 	status, err := prefix.submitIntroduction(bounded, func(hello ardp.Hello, class uint8) ([]byte, error) {
 		owner.mu.Lock()
 		defer owner.mu.Unlock()
-		current, now, err := owner.textPermissionProfileLocked()
+		current, now, err := owner.permissionProfileLocked()
 		if err != nil || !owner.liveTextServiceJobLocked(job, broker.Connection) || bounded.Err() != nil || !prefix.currentLocked(&owner.source) ||
 			current != profile || class != 1 || hello.Purpose != ardp.PurposeSubmission || hello.RecipientNodeID != receiver ||
 			hello.NetworkID != current.NetworkID || hello.StateGeneration != current.StateGeneration || hello.StateDigest != current.StateDigest ||
@@ -61,7 +61,7 @@ func (owner *textContext) submitTextIntroduction(ctx context.Context, job *textJ
 		if err != nil || selected != receiver {
 			return nil, errors.New("text Introduction recipient changed")
 		}
-		return owner.takeTextTokenLocked(current, now, hello, class, bounded)
+		return owner.takeTokenLocked(current, now, hello, class, bounded)
 	}, prepared.operation)
 	if err != nil || status != 0 {
 		return errors.Join(err, errors.New("text Introduction delivery refused"))
@@ -192,16 +192,16 @@ func (owner *textContext) prepareTextSubmissionStockWithCancellation(ctx context
 		return [32]byte{}, state.ClosedProfileView{}, err
 	}
 	owner.mu.Lock()
-	profile, _, err := owner.textPermissionProfileLocked()
+	profile, _, err := owner.permissionProfileLocked()
 	stocked := err == nil && owner.tokens.permission.stockCountFor(profile.Digest, receiver, 1) != 0
 	owner.mu.Unlock()
 	if err != nil {
 		return [32]byte{}, state.ClosedProfileView{}, err
 	}
 	if !stocked {
-		issue := owner.issueTextTokens
+		issue := owner.issueTokens
 		if discardCanceled {
-			issue = owner.issueTextRecoveryTokens
+			issue = owner.issueRecoveryTokens
 		}
 		if err := issue(ctx, [][32]byte{receiver}, 1); err != nil {
 			return [32]byte{}, state.ClosedProfileView{}, err

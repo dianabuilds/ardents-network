@@ -26,7 +26,7 @@ func (owner *textContext) prepareTextResponder(ctx context.Context, job *textJob
 		return err
 	}
 	owner.mu.Lock()
-	_, _, err := owner.textPermissionProfileLocked()
+	_, _, err := owner.permissionProfileLocked()
 	live := err == nil && owner.liveTextServiceJobLocked(job, broker.Administration)
 	prefix := owner.responder.currentLocked()
 	owner.mu.Unlock()

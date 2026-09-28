@@ -19,21 +19,21 @@ type textPrefixPreparationFailure struct {
 	cause error
 }
 
-type textTokenPresentationFailure struct {
+type tokenPresentationFailure struct {
 	stage string
 	cause error
 }
 
-func (failure *textTokenPresentationFailure) Error() string { return failure.cause.Error() }
+func (failure *tokenPresentationFailure) Error() string { return failure.cause.Error() }
 
-func (failure *textTokenPresentationFailure) Unwrap() error { return failure.cause }
+func (failure *tokenPresentationFailure) Unwrap() error { return failure.cause }
 
-func textTokenPresentationFailureAt(stage string, cause error) error {
-	return &textTokenPresentationFailure{stage: stage, cause: cause}
+func tokenPresentationFailureAt(stage string, cause error) error {
+	return &tokenPresentationFailure{stage: stage, cause: cause}
 }
 
-func textTokenPresentationFailureStage(cause error) string {
-	var failure *textTokenPresentationFailure
+func tokenPresentationFailureStage(cause error) string {
+	var failure *tokenPresentationFailure
 	if errors.As(cause, &failure) && failure.stage != "" {
 		return failure.stage
 	}
@@ -63,7 +63,7 @@ func (owner *textContext) openTextPrefix(ctx context.Context) (*textSourceHandle
 		return nil, textPrefixPreparationFailureAt("context", errors.New("text prefix context unavailable"))
 	}
 	owner.mu.Lock()
-	_, _, err := owner.textPermissionProfileLocked()
+	_, _, err := owner.permissionProfileLocked()
 	if err != nil || !owner.tokens.permission.hasAccepted() || owner.source.currentLocked() != nil || owner.source.openingInProgressLocked() || owner.tokens.issuance != nil {
 		owner.mu.Unlock()
 		return nil, textPrefixPreparationFailureAt("authority", errors.Join(err, errors.New("text prefix owner unavailable")))
@@ -89,11 +89,11 @@ func (owner *textContext) openTextPrefix(ctx context.Context) (*textSourceHandle
 	var prefix *client.ClosedSourcePrefix
 	if openErr == nil {
 		prefix, openErr = client.OpenClosedSourcePrefix(operation.context, source, selection, func(hello ardp.Hello, class uint8) ([]byte, error) {
-			return operation.presentTextToken(selection, hello, class)
+			return operation.presentToken(selection, hello, class)
 		})
 		if openErr != nil {
 			stage := client.ClosedSourceOpenFailureStage(openErr)
-			if presentation := textTokenPresentationFailureStage(openErr); presentation != "unknown" {
+			if presentation := tokenPresentationFailureStage(openErr); presentation != "unknown" {
 				stage += "-" + presentation
 			}
 			openErr = textPrefixPreparationFailureAt("opening-"+stage, openErr)
@@ -104,29 +104,29 @@ func (owner *textContext) openTextPrefix(ctx context.Context) (*textSourceHandle
 	}
 	return operation.complete(ctx, prefix, openErr)
 }
-func (operation *textOperationFlight) presentTextToken(selection client.ClosedBootstrapSelection, hello ardp.Hello, class uint8) ([]byte, error) {
+func (operation *textOperationFlight) presentToken(selection client.ClosedBootstrapSelection, hello ardp.Hello, class uint8) ([]byte, error) {
 	owner := operation.owner
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
-	profile, now, err := owner.textPermissionProfileLocked()
+	profile, now, err := owner.permissionProfileLocked()
 	if err != nil || !owner.tokens.permission.hasAccepted() || !operation.admittedLocked(owner) ||
 		hello.NetworkID != profile.NetworkID || hello.StateGeneration != profile.StateGeneration || hello.StateDigest != profile.StateDigest ||
 		hello.ProfileDigest != profile.Digest || hello.Purpose != ardp.PurposeForwarding || class != 2 ||
 		hello.ChannelNonce == [32]byte{} || !now.Before(hello.Deadline) || hello.Deadline.After(profile.NotAfter) {
-		return nil, textTokenPresentationFailureAt("authority", errors.Join(err, errors.New("text token presentation authority unavailable")))
+		return nil, tokenPresentationFailureAt("authority", errors.Join(err, errors.New("text token presentation authority unavailable")))
 	}
 	current, err := owner.selectTextBootstrapLocked()
 	if err != nil || current != selection || (hello.RecipientNodeID != current.EntryNodeID && hello.RecipientNodeID != current.InteriorNodeID) {
-		return nil, textTokenPresentationFailureAt("selection-"+textInteriorSelectionFailureStage(err), errors.Join(err, errors.New("text token presentation source changed")))
+		return nil, tokenPresentationFailureAt("selection-"+textInteriorSelectionFailureStage(err), errors.Join(err, errors.New("text token presentation source changed")))
 	}
-	token, err := owner.takeTextTokenLocked(profile, now, hello, class, operation.context)
+	token, err := owner.takeTokenLocked(profile, now, hello, class, operation.context)
 	if err != nil {
-		return nil, textTokenPresentationFailureAt("take-"+textTokenTransferFailureStage(err), err)
+		return nil, tokenPresentationFailureAt("take-"+tokenTransferFailureStage(err), err)
 	}
 	return token, nil
 }
 
-func (endpoint *endpoint) textTokenJournal() (*tokenjournal.Journal, error) {
+func (endpoint *endpoint) tokenJournal() (*tokenjournal.Journal, error) {
 	endpoint.textMu.Lock()
 	defer endpoint.textMu.Unlock()
 	if endpoint.textClosed || endpoint.closedTokenRoot == "" {
@@ -144,7 +144,7 @@ func (endpoint *endpoint) textTokenJournal() (*tokenjournal.Journal, error) {
 
 func (owner *textContext) ensureTextPrefixStock(ctx context.Context, opening *textOperationFlight) (client.ClosedBootstrapSelection, error) {
 	owner.mu.Lock()
-	_, _, err := owner.textPermissionProfileLocked()
+	_, _, err := owner.permissionProfileLocked()
 	if err != nil || ctx.Err() != nil || !owner.tokens.permission.hasAccepted() ||
 		owner.source.currentLocked() != nil || !opening.admittedLocked(owner) || owner.tokens.issuance != nil {
 		owner.mu.Unlock()
@@ -159,11 +159,11 @@ func (owner *textContext) ensureTextPrefixStock(ctx context.Context, opening *te
 	owner.mu.Unlock()
 	if len(missing) != 0 {
 		// Independent receiver inputs share one common class/window key.
-		if err := owner.issueTextTokensForOpening(ctx, missing, 2, opening, false); err != nil {
+		if err := owner.issueTokensForOpening(ctx, missing, 2, opening, false); err != nil {
 			return client.ClosedBootstrapSelection{}, textPrefixPreparationFailureAt("stock-issuance", err)
 		}
 	}
-	if err := owner.prepareTextIssuerStock(ctx, nil, 0, opening, nil, nil); err != nil {
+	if err := owner.prepareIssuerStock(ctx, nil, 0, opening, nil, nil); err != nil {
 		return client.ClosedBootstrapSelection{}, textPrefixPreparationFailureAt("stock-issuer", err)
 	}
 	owner.mu.Lock()

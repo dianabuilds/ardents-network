@@ -13,7 +13,7 @@ import (
 // Blinding state and finalized stock never leave this context. The network
 // attempt owns copied request bytes only, so revocation can erase secrets
 // under owner.mu while cancellation interrupts and joins the transport tree.
-type textTokenBatch struct {
+type tokenBatch struct {
 	refill     bool // Retained internal stock work; never receiver admission authority.
 	prefix     *textSourceHandle
 	challenges []credential.ClosedTokenContext
@@ -21,33 +21,33 @@ type textTokenBatch struct {
 	pending    *credential.PendingClosedTokenBatch
 }
 
-// issueTextTokens is the trusted context owner's issuance operation. The
+// issueTokens is the trusted context owner's issuance operation. The
 // retained Route members and intended receiver originate in Endpoint, never
 // on a worker attachment. There is at most one live exchange per context.
-func (owner *textContext) issueTextTokens(ctx context.Context, receivers [][32]byte, class uint8) error {
-	return owner.issueTextTokensWithCancellation(ctx, receivers, class, false)
+func (owner *textContext) issueTokens(ctx context.Context, receivers [][32]byte, class uint8) error {
+	return owner.issueTokensWithCancellation(ctx, receivers, class, false)
 }
 
 // A canceled recovery proposal cannot be retried by its completed logical
 // stream. Burn its already-reserved allocation and erase only the batch that
 // this proposal created, so it cannot block a later independent Service job.
-func (owner *textContext) issueTextRecoveryTokens(ctx context.Context, receivers [][32]byte, class uint8) error {
-	return owner.issueTextTokensWithCancellation(ctx, receivers, class, true)
+func (owner *textContext) issueRecoveryTokens(ctx context.Context, receivers [][32]byte, class uint8) error {
+	return owner.issueTokensWithCancellation(ctx, receivers, class, true)
 }
 
-func (owner *textContext) issueTextTokensWithCancellation(ctx context.Context, receivers [][32]byte, class uint8,
+func (owner *textContext) issueTokensWithCancellation(ctx context.Context, receivers [][32]byte, class uint8,
 	discardCanceled bool) error {
 	release, err := owner.acquireTextSourceOperation(ctx)
 	if err != nil {
 		return err
 	}
 	defer release()
-	return owner.issueTextTokensForOpeningWithCancellation(ctx, receivers, class, nil, false, discardCanceled, nil, nil)
+	return owner.issueTokensForOpeningWithCancellation(ctx, receivers, class, nil, false, discardCanceled, nil, nil)
 }
 
-// issueTextJoinTokens retains issuance authority on the exact Source acquired
+// issueJoinTokens retains issuance authority on the exact Source acquired
 // by the JOIN. A replacement may cancel this work but cannot become its issuer.
-func (owner *textContext) issueTextJoinTokens(ctx context.Context, receivers [][32]byte, class uint8,
+func (owner *textContext) issueJoinTokens(ctx context.Context, receivers [][32]byte, class uint8,
 	acquisition textJoinAcquisition, discardCanceled bool) error {
 	release, err := owner.acquireTextSourceOperation(ctx)
 	if err != nil {
@@ -60,7 +60,7 @@ func (owner *textContext) issueTextJoinTokens(ctx context.Context, receivers [][
 	if !current {
 		return errors.New("text JOIN issuance Source acquisition unavailable")
 	}
-	err = owner.issueTextTokensForOpeningWithCancellation(ctx, receivers, class, nil, false, discardCanceled, acquisition, expected)
+	err = owner.issueTokensForOpeningWithCancellation(ctx, receivers, class, nil, false, discardCanceled, acquisition, expected)
 	owner.mu.Lock()
 	_, current = acquisition.issuancePrefixLocked(owner)
 	current = current && owner.source.currentLocked() == expected
@@ -73,30 +73,30 @@ func (owner *textContext) issueTextJoinTokens(ctx context.Context, receivers [][
 
 // A non-nil opening must be the exact retained prefix transition. Keeping it
 // across both bootstrap flights prevents unrelated issuance stealing its slot.
-func (owner *textContext) issueTextTokensForOpening(ctx context.Context, receivers [][32]byte, class uint8, opening *textOperationFlight, refill bool) error {
-	return owner.issueTextTokensForOpeningWithCancellation(ctx, receivers, class, opening, refill, false, nil, nil)
+func (owner *textContext) issueTokensForOpening(ctx context.Context, receivers [][32]byte, class uint8, opening *textOperationFlight, refill bool) error {
+	return owner.issueTokensForOpeningWithCancellation(ctx, receivers, class, opening, refill, false, nil, nil)
 }
 
-func (owner *textContext) issueTextTokensForOpeningWithCancellation(ctx context.Context, receivers [][32]byte, class uint8,
+func (owner *textContext) issueTokensForOpeningWithCancellation(ctx context.Context, receivers [][32]byte, class uint8,
 	opening *textOperationFlight, refill bool, discardCanceled bool, acquisition textJoinAcquisition,
 	expected *textSourceHandle) error {
 	if owner == nil || ctx == nil || ctx.Err() != nil || class < 1 || class > 3 || len(receivers) == 0 || len(receivers) > 32 {
 		return errors.New("text issuance context is unavailable")
 	}
 	owner.mu.Lock()
-	if !opening.admittedLocked(owner) || !textJoinIssuanceCurrentLocked(owner, acquisition, expected) {
+	if !opening.admittedLocked(owner) || !joinIssuanceCurrentLocked(owner, acquisition, expected) {
 		owner.mu.Unlock()
 		return errors.New("text issuance prefix reservation unavailable")
 	}
 	hasPrefix := owner.source.currentLocked() != nil
 	owner.mu.Unlock()
 	if hasPrefix && !refill {
-		if err := owner.prepareTextIssuerStock(ctx, receivers, class, opening, acquisition, expected); err != nil {
+		if err := owner.prepareIssuerStock(ctx, receivers, class, opening, acquisition, expected); err != nil {
 			return err
 		}
 	}
 	owner.mu.Lock()
-	profile, now, err := owner.textPermissionProfileLocked()
+	profile, now, err := owner.permissionProfileLocked()
 	if err != nil {
 		owner.mu.Unlock()
 		return err
@@ -104,7 +104,7 @@ func (owner *textContext) issueTextTokensForOpeningWithCancellation(ctx context.
 	permission := owner.tokens.permission
 	source, ok := owner.endpoint.closedState.(client.ClosedBootstrapState)
 	if !ok || !permission.currentFor(profile, now) ||
-		owner.tokens.issuance != nil || !opening.admittedLocked(owner) || !textJoinIssuanceCurrentLocked(owner, acquisition, expected) {
+		owner.tokens.issuance != nil || !opening.admittedLocked(owner) || !joinIssuanceCurrentLocked(owner, acquisition, expected) {
 		owner.mu.Unlock()
 		return errors.New("text issuance owner is unavailable")
 	}
@@ -142,13 +142,13 @@ func (owner *textContext) issueTextTokensForOpeningWithCancellation(ctx context.
 		owner.mu.Unlock()
 		return err
 	}
-	operation := newTextIssuanceOperation(owner, permission, profile, batch, discardCanceled)
+	operation := newIssuanceOperation(owner, permission, profile, batch, discardCanceled)
 	owner.tokens.issuance = operation
 	owner.mu.Unlock()
 	return operation.run(ctx, source, selection)
 }
 
-func textJoinIssuanceCurrentLocked(owner *textContext, acquisition textJoinAcquisition, expected *textSourceHandle) bool {
+func joinIssuanceCurrentLocked(owner *textContext, acquisition textJoinAcquisition, expected *textSourceHandle) bool {
 	if acquisition == nil {
 		return true
 	}

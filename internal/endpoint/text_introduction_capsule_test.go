@@ -94,7 +94,7 @@ func TestTextIntroductionCapsuleBindsRealInstanceAndServiceStream(t *testing.T) 
 			if err != nil {
 				t.Fatal(err)
 			}
-			reader := textPermissionContextFixture(t, endpoint, fixtureID(211), broker.Connection)
+			reader := permissionContextFixture(t, endpoint, fixtureID(211), broker.Connection)
 			source.issuePermission(t, reader, [3]uint32{64, 64, 0})
 			readerJob, publisherJob := liveTextCapsuleJob(t, reader), liveTextCapsuleJob(t, publisher)
 			now = time.Now().UTC()

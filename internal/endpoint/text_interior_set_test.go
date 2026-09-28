@@ -99,7 +99,7 @@ func textSourceContextFixture(t *testing.T) (*endpoint, *textContext, *textSourc
 			t.Error(err)
 		}
 	})
-	owner := textPermissionContextFixture(t, endpoint, principal, broker.Connection)
+	owner := permissionContextFixture(t, endpoint, principal, broker.Connection)
 	return endpoint, owner, source
 }
 
@@ -129,7 +129,7 @@ func TestTextSourceSetsSurviveWorkerLossAndKeepContextOwnership(t *testing.T) {
 	if repeated := selectTextSource(t, owner); repeated != selected || *owner.source.set != original {
 		t.Fatal("worker loss rotated source sets")
 	}
-	publisher := textPermissionContextFixture(t, endpoint, fixtureID(211), broker.Administration)
+	publisher := permissionContextFixture(t, endpoint, fixtureID(211), broker.Administration)
 	publisherSelection := selectTextSource(t, publisher)
 	if publisher.source.set == owner.source.set || publisherSelection.EntryNodeID != selected.EntryNodeID {
 		t.Fatal("context scope or installation Entry retention lost")

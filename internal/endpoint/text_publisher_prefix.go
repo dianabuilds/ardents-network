@@ -60,7 +60,7 @@ func (owner *textContext) openTextPublisherPrefix(ctx context.Context, role text
 		return nil, errors.New("text Publisher role context unavailable")
 	}
 	owner.mu.Lock()
-	_, _, err := owner.textPermissionProfileLocked()
+	_, _, err := owner.permissionProfileLocked()
 	if err != nil || owner.surface != broker.Administration || owner.source.currentLocked() == nil || owner.tokens.permission == nil || owner.source.openingInProgressLocked() || !role.openingAvailableLocked() {
 		owner.mu.Unlock()
 		return nil, errors.New("text Publisher role owner unavailable")
@@ -93,7 +93,7 @@ func (owner *textContext) openTextPublisherPrefix(ctx context.Context, role text
 			open = client.OpenClosedResponderPrefix
 		}
 		prefix, openErr = open(attempt, source, selection, func(hello ardp.Hello, class uint8) ([]byte, error) {
-			return owner.presentTextPublisherForwardingToken(role, domain, flight, selection, hello, class)
+			return owner.presentPublisherForwardingToken(role, domain, flight, selection, hello, class)
 		})
 	}
 	if !stop() {
@@ -119,7 +119,7 @@ func (owner *textContext) openTextPublisherPrefix(ctx context.Context, role text
 
 func (owner *textContext) ensureTextPublisherStock(role textPublisherPrefixOpening, flight *textOperationFlight, selection client.ClosedBootstrapSelection) error {
 	owner.mu.Lock()
-	profile, _, err := owner.textPermissionProfileLocked()
+	profile, _, err := owner.permissionProfileLocked()
 	if err != nil || !role.openingCurrentLocked(flight) || flight.context.Err() != nil || owner.tokens.permission == nil {
 		owner.mu.Unlock()
 		return errors.New("text Publisher role stock unavailable")
@@ -130,7 +130,7 @@ func (owner *textContext) ensureTextPublisherStock(role textPublisherPrefixOpeni
 	if len(missing) != 0 {
 		// The issuance owner resumes only an exact retained batch (including
 		// an internal issuer refill); it refuses any foreign request.
-		return owner.issueTextTokens(flight.context, missing, 2)
+		return owner.issueTokens(flight.context, missing, 2)
 	}
 	if pending {
 		return errors.New("text Publisher role cannot skip pending issuance")
@@ -138,10 +138,10 @@ func (owner *textContext) ensureTextPublisherStock(role textPublisherPrefixOpeni
 	return nil
 }
 
-func (owner *textContext) presentTextPublisherForwardingToken(role textPublisherPrefixOpening, domain uint8, flight *textOperationFlight, selection client.ClosedBootstrapSelection, hello ardp.Hello, class uint8) ([]byte, error) {
+func (owner *textContext) presentPublisherForwardingToken(role textPublisherPrefixOpening, domain uint8, flight *textOperationFlight, selection client.ClosedBootstrapSelection, hello ardp.Hello, class uint8) ([]byte, error) {
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
-	profile, now, err := owner.textPermissionProfileLocked()
+	profile, now, err := owner.permissionProfileLocked()
 	if err != nil || owner.surface != broker.Administration || !role.openingCurrentLocked(flight) || flight.context.Err() != nil || owner.tokens.permission == nil ||
 		class != 2 || hello.Purpose != ardp.PurposeForwarding || hello.NetworkID != profile.NetworkID || hello.ProfileDigest != profile.Digest ||
 		hello.StateGeneration != profile.StateGeneration || hello.StateDigest != profile.StateDigest || hello.ChannelNonce == [32]byte{} || !now.Before(hello.Deadline) || hello.Deadline.After(profile.NotAfter) {
@@ -151,5 +151,5 @@ func (owner *textContext) presentTextPublisherForwardingToken(role textPublisher
 	if err != nil || current != selection || hello.RecipientNodeID != selection.EntryNodeID && hello.RecipientNodeID != selection.InteriorNodeID {
 		return nil, errors.New("text Publisher role selection changed")
 	}
-	return owner.takeTextTokenLocked(profile, now, hello, class, flight.context)
+	return owner.takeTokenLocked(profile, now, hello, class, flight.context)
 }

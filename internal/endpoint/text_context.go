@@ -22,7 +22,7 @@ type textContextState struct {
 	responder         textResponderPrefixLifecycle
 	resolution        *textResolutionFlight
 	source            textSourceLifecycle
-	tokens            textTokens
+	tokens            tokens
 	mu                sync.Mutex
 	endpoint          *endpoint
 	lease             *broker.ActiveSession

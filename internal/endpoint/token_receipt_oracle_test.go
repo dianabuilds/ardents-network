@@ -16,11 +16,11 @@ import (
 // This test oracle reads the persisted receipt format independently of the
 // journal's production decoder. It never opens or mutates the live owner.
 const (
-	textTokenReceiptHeaderSize = 48
-	textTokenReceiptSize       = 153
+	tokenReceiptHeaderSize = 48
+	tokenReceiptSize       = 153
 )
 
-type textTokenReceipt struct {
+type tokenReceipt struct {
 	digest, profile, receiver [32]byte
 	duty                      uint64
 	window                    time.Time
@@ -29,26 +29,26 @@ type textTokenReceipt struct {
 	observed                  time.Time
 }
 
-func readTextTokenReceipts(t *testing.T, root string, network [32]byte) []textTokenReceipt {
+func readTokenReceipts(t *testing.T, root string, network [32]byte) []tokenReceipt {
 	t.Helper()
 	raw, err := os.ReadFile(filepath.Join(root, "attempts"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	return parseTextTokenReceipts(t, raw, network)
+	return parseTokenReceipts(t, raw, network)
 }
 
-func parseTextTokenReceipts(t *testing.T, raw []byte, network [32]byte) []textTokenReceipt {
+func parseTokenReceipts(t *testing.T, raw []byte, network [32]byte) []tokenReceipt {
 	t.Helper()
-	if len(raw) < textTokenReceiptHeaderSize || (len(raw)-textTokenReceiptHeaderSize)%textTokenReceiptSize != 0 ||
+	if len(raw) < tokenReceiptHeaderSize || (len(raw)-tokenReceiptHeaderSize)%tokenReceiptSize != 0 ||
 		string(raw[:8]) != "ARDTPS01" || !bytes.Equal(raw[8:40], network[:]) {
 		t.Fatal("stored token receipt header, network or length invalid")
 	}
-	receipts := make([]textTokenReceipt, 0, (len(raw)-textTokenReceiptHeaderSize)/textTokenReceiptSize)
+	receipts := make([]tokenReceipt, 0, (len(raw)-tokenReceiptHeaderSize)/tokenReceiptSize)
 	seen := make(map[[32]byte]bool)
-	for offset := textTokenReceiptHeaderSize; offset < len(raw); offset += textTokenReceiptSize {
-		item := raw[offset : offset+textTokenReceiptSize]
-		var receipt textTokenReceipt
+	for offset := tokenReceiptHeaderSize; offset < len(raw); offset += tokenReceiptSize {
+		item := raw[offset : offset+tokenReceiptSize]
+		var receipt tokenReceipt
 		copy(receipt.digest[:], item[:32])
 		copy(receipt.profile[:], item[32:64])
 		copy(receipt.receiver[:], item[64:96])
@@ -68,17 +68,17 @@ func parseTextTokenReceipts(t *testing.T, raw []byte, network [32]byte) []textTo
 	return receipts
 }
 
-func snapshotTextTokenReceipts(t *testing.T, root string, network [32]byte) map[[32]byte]textTokenReceipt {
+func snapshotTokenReceipts(t *testing.T, root string, network [32]byte) map[[32]byte]tokenReceipt {
 	t.Helper()
-	receipts := readTextTokenReceipts(t, root, network)
-	snapshot := make(map[[32]byte]textTokenReceipt, len(receipts))
+	receipts := readTokenReceipts(t, root, network)
+	snapshot := make(map[[32]byte]tokenReceipt, len(receipts))
 	for _, receipt := range receipts {
 		snapshot[receipt.digest] = receipt
 	}
 	return snapshot
 }
 
-func journalAttemptFromReceipt(receipt textTokenReceipt) tokenjournal.Attempt {
+func journalAttemptFromReceipt(receipt tokenReceipt) tokenjournal.Attempt {
 	return tokenjournal.Attempt{Profile: receipt.profile, Receiver: receipt.receiver, Duty: receipt.duty,
 		Window: receipt.window, Class: receipt.class, Nonce: receipt.attempt}
 }

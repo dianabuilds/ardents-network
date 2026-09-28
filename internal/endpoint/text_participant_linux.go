@@ -80,7 +80,7 @@ func useTextParticipant(ctx context.Context, config TextParticipantConfig, withd
 			owner.publisherMu.Unlock()
 		}()
 	}
-	if _, err := owner.textTokenJournal(); err != nil {
+	if _, err := owner.tokenJournal(); err != nil {
 		return err
 	}
 	if _, err := owner.textEntrySets(); err != nil {
@@ -112,7 +112,7 @@ func (endpoint *endpoint) runTextInterfaces(ctx context.Context, config TextPart
 		}
 		defer func() { outcome = errors.Join(outcome, owner.Close()) }()
 		contexts[index] = owner
-		if err := owner.provisionTextPermission(ctx, role.files.RequestPath, role.files.ResponsePath, role.files.Maxima, func(reportCtx context.Context, digest [32]byte) error {
+		if err := owner.provisionPermission(ctx, role.files.RequestPath, role.files.ResponsePath, role.files.Maxima, func(reportCtx context.Context, digest [32]byte) error {
 			return output.emit(reportCtx, TextParticipantEvent{Kind: "permission-required", NetworkID: endpoint.network, Surface: string(role.surface), RequestDigest: digest})
 		}); err != nil {
 			return err
@@ -143,7 +143,7 @@ func (endpoint *endpoint) runTextInterfaces(ctx context.Context, config TextPart
 	}
 	for _, owner := range contexts {
 		owner.mu.Lock()
-		profile, now, err := owner.textPermissionProfileLocked()
+		profile, now, err := owner.permissionProfileLocked()
 		current := err == nil && owner.tokens.permission.currentFor(profile, now)
 		owner.mu.Unlock()
 		if !current {

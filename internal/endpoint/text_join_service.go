@@ -237,12 +237,12 @@ func (owner *textContext) prepareTextJoinStock(ctx context.Context, attempt *tex
 	}
 	bounded, cancel := context.WithDeadline(ctx, facts.Deadline)
 	owner.mu.Lock()
-	profile, _, err := owner.textPermissionProfileLocked()
+	profile, _, err := owner.permissionProfileLocked()
 	stocked := err == nil && prefix.currentLocked(owner) &&
 		owner.tokens.permission.stockCountFor(profile.Digest, node, 2) != 0
 	owner.mu.Unlock()
 	if err == nil && !stocked {
-		err = owner.issueTextJoinTokens(bounded, [][32]byte{node}, 2, prefix,
+		err = owner.issueJoinTokens(bounded, [][32]byte{node}, 2, prefix,
 			attempt.plaintext.AttachmentGeneration > 1)
 	}
 	cancel()
@@ -265,7 +265,7 @@ func (owner *textContext) joinTextIntroduction(ctx context.Context, job *textJob
 		return nil, errors.Join(err, errors.New("text JOIN recipient changed before opening"))
 	}
 	owner.mu.Lock()
-	profile, _, err := owner.textPermissionProfileLocked()
+	profile, _, err := owner.permissionProfileLocked()
 	owner.mu.Unlock()
 	if err != nil {
 		return nil, err
@@ -276,11 +276,11 @@ func (owner *textContext) joinTextIntroduction(ctx context.Context, job *textJob
 	return prefix.join(ctx, func(hello ardp.Hello, class uint8) ([]byte, error) {
 		owner.mu.Lock()
 		defer owner.mu.Unlock()
-		current, now, err := owner.textPermissionProfileLocked()
+		current, now, err := owner.permissionProfileLocked()
 		if err != nil || current != profile || current.Digest != facts.ProfileDigest || !prefix.currentLocked(owner) || !owner.liveTextServiceJobLocked(job, owner.surface) || ctx.Err() != nil || !now.Before(facts.Deadline) || class != 2 || hello.Purpose != ardp.PurposeDataJoin || hello.RecipientNodeID != node || hello.RecipientDutyGeneration != generation || hello.NetworkID != current.NetworkID || hello.StateGeneration != current.StateGeneration || hello.StateDigest != current.StateDigest || hello.ProfileDigest != current.Digest || hello.ChannelNonce == [32]byte{} || !now.Before(hello.Deadline) || hello.Deadline.Unix() > facts.WorkSafetyNotAfter {
 			return nil, errors.New("text JOIN token authority changed")
 		}
-		return owner.takeTextTokenLocked(current, now, hello, class, ctx)
+		return owner.takeTokenLocked(current, now, hello, class, ctx)
 	}, client.ClosedJoinIntent{Secret: facts.JoinSecret, Context: facts.HandshakeContext, SetupDeadline: facts.Deadline, WorkDeadline: time.Unix(facts.WorkSafetyNotAfter, 0).UTC()})
 }
 

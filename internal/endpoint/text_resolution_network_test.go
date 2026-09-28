@@ -47,7 +47,7 @@ func TestTextResolutionUsesIssuedControlThroughRetainedPrefix(t *testing.T) {
 			if err != nil || receiver != source.view.Nodes[5].NodeID {
 				t.Fatalf("State resolution: %x %v", receiver, err)
 			}
-			if err := owner.issueTextTokens(t.Context(), [][32]byte{receiver}, 1); err != nil {
+			if err := owner.issueTokens(t.Context(), [][32]byte{receiver}, 1); err != nil {
 				t.Fatal(err)
 			}
 			// The explicit Publisher fixture sends a genuine signed proof using
@@ -55,11 +55,11 @@ func TestTextResolutionUsesIssuedControlThroughRetainedPrefix(t *testing.T) {
 			status, _, err := prefix.ExchangeDescriptor(t.Context(), func(hello ardp.Hello, class uint8) ([]byte, error) {
 				owner.mu.Lock()
 				defer owner.mu.Unlock()
-				profile, now, err := owner.textPermissionProfileLocked()
+				profile, now, err := owner.permissionProfileLocked()
 				if err != nil {
 					return nil, err
 				}
-				return owner.takeTextTokenLocked(profile, now, hello, class, t.Context())
+				return owner.takeTokenLocked(profile, now, hello, class, t.Context())
 			}, [32]byte{}, raw)
 			if err != nil || status != 0 {
 				t.Fatalf("real publication: %d %v", status, err)
@@ -71,7 +71,7 @@ func TestTextResolutionUsesIssuedControlThroughRetainedPrefix(t *testing.T) {
 			if !bytes.Equal(verified.Current.Record, verified.Descriptor.Publication) || verified.Descriptor.Private.Slot != fixtureID(182) {
 				t.Fatal("resolved proof changed")
 			}
-			if err := owner.issueTextTokens(t.Context(), [][32]byte{receiver}, 1); err != nil {
+			if err := owner.issueTokens(t.Context(), [][32]byte{receiver}, 1); err != nil {
 				t.Fatal(err)
 			}
 			owner.mu.Lock()

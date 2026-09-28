@@ -106,7 +106,7 @@ func (session *qualificationSession) BeginOperation(ctx context.Context) (contex
 }
 
 func (session *qualificationSession) ProvisionPermission(ctx context.Context) error {
-	return session.owner.provisionTextPermission(ctx, session.permission.RequestPath, session.permission.ResponsePath, session.permission.Maxima, session.reportPermission)
+	return session.owner.provisionPermission(ctx, session.permission.RequestPath, session.permission.ResponsePath, session.permission.Maxima, session.reportPermission)
 }
 
 func (session *qualificationSession) ResolveIntroduction(ctx context.Context, destination targetlink.Link) (reachability.Verified, error) {
@@ -191,7 +191,7 @@ func (owner *textContext) ensureQualificationTokenReserve(ctx context.Context, r
 		return errors.New("qualification token reserve unavailable")
 	}
 	owner.mu.Lock()
-	profile, _, err := owner.textPermissionProfileLocked()
+	profile, _, err := owner.permissionProfileLocked()
 	if err != nil || owner.tokens.permission == nil {
 		owner.mu.Unlock()
 		return errors.Join(err, errors.New("qualification token reserve unavailable"))
@@ -207,12 +207,12 @@ func (owner *textContext) ensureQualificationTokenReserve(ctx context.Context, r
 	for index := range receivers {
 		receivers[index] = receiver
 	}
-	return owner.issueTextTokens(ctx, receivers, class)
+	return owner.issueTokens(ctx, receivers, class)
 }
 
 func (owner *textContext) ensureQualificationIssuerReserve(ctx context.Context, minimum int) error {
 	owner.mu.Lock()
-	profile, _, err := owner.textPermissionProfileLocked()
+	profile, _, err := owner.permissionProfileLocked()
 	if err != nil || owner.tokens.permission == nil || ctx.Err() != nil {
 		owner.mu.Unlock()
 		return errors.Join(err, ctx.Err(), errors.New("qualification issuer reserve unavailable"))
@@ -246,7 +246,7 @@ func (owner *textContext) ensureQualificationIssuerReserve(ctx context.Context, 
 	for index := range receivers {
 		receivers[index] = profile.IssuerNodeID
 	}
-	return owner.issueTextTokens(ctx, receivers, 1)
+	return owner.issueTokens(ctx, receivers, 1)
 }
 
 func (owner *textContext) presentQualifiedRefill(ctx context.Context, job *textJobIdentity, hello ardp.Hello, class uint8) ([]byte, error) {
@@ -256,7 +256,7 @@ func (owner *textContext) presentQualifiedRefill(ctx context.Context, job *textJ
 	}
 	defer release()
 	owner.mu.Lock()
-	profile, now, err := owner.textPermissionProfileLocked()
+	profile, now, err := owner.permissionProfileLocked()
 	if err != nil || class != 2 || !owner.liveTextServiceJobLocked(job, owner.surface) || owner.tokens.permission == nil ||
 		hello.NetworkID != profile.NetworkID || hello.StateDigest != profile.StateDigest || hello.StateGeneration != profile.StateGeneration ||
 		hello.ProfileDigest != profile.Digest || hello.ChannelNonce == [32]byte{} || !now.Before(hello.Deadline) || hello.Deadline.After(profile.NotAfter) {
@@ -266,15 +266,15 @@ func (owner *textContext) presentQualifiedRefill(ctx context.Context, job *textJ
 	stocked := owner.tokens.permission.stockCountForDuty(profile.Digest, hello.RecipientNodeID, hello.RecipientDutyGeneration, 2) != 0
 	owner.mu.Unlock()
 	if !stocked {
-		if err := owner.issueTextTokensForOpening(ctx, [][32]byte{hello.RecipientNodeID}, 2, nil, false); err != nil {
+		if err := owner.issueTokensForOpening(ctx, [][32]byte{hello.RecipientNodeID}, 2, nil, false); err != nil {
 			return nil, err
 		}
 	}
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
-	current, now, err := owner.textPermissionProfileLocked()
+	current, now, err := owner.permissionProfileLocked()
 	if err != nil || current != profile || !owner.liveTextServiceJobLocked(job, owner.surface) {
 		return nil, errors.New("qualification refill authority changed")
 	}
-	return owner.takeTextTokenLocked(current, now, hello, class, ctx)
+	return owner.takeTokenLocked(current, now, hello, class, ctx)
 }

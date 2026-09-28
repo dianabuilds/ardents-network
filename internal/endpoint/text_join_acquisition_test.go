@@ -137,7 +137,7 @@ func TestTextJoinOldAcquisitionCannotAttachAfterSourceReplacement(t *testing.T) 
 
 func TestTextJoinSourceReplacementBeforeStockIssuanceDoesNotReserveAllocation(t *testing.T) {
 	_, owner, source := textSourceContextFixture(t)
-	prepareTextIssuancePermission(t, owner, source)
+	prepareIssuancePermission(t, owner, source)
 	node := source.view.Nodes[4]
 	deadline := time.Now().Add(time.Minute)
 	acquisition := &textJoinRetiredAfterRecipient{node: node.NodeID, generation: node.DutyGeneration,
@@ -168,7 +168,7 @@ func TestTextPublisherJoinIssuanceRetainsExactLiveSource(t *testing.T) {
 	owner.source.live = issuer
 	acquisition := owner.responder.acquireJoinLocked(issuer)
 	if expected, current := acquisition.issuancePrefixLocked(owner); !current || expected != issuer ||
-		!textJoinIssuanceCurrentLocked(owner, acquisition, expected) {
+		!joinIssuanceCurrentLocked(owner, acquisition, expected) {
 		t.Fatal("Publisher JOIN issuance rejected its retained live Source")
 	}
 	replacement := &textSourceHandle{owner: &owner.source, cancel: func() {}}
@@ -179,7 +179,7 @@ func TestTextPublisherJoinIssuanceRetainsExactLiveSource(t *testing.T) {
 		t.Fatal("Publisher JOIN acquisition accepted replacement Source on stocked path")
 	}
 	if expected, current := acquisition.issuancePrefixLocked(owner); current || expected != issuer ||
-		textJoinIssuanceCurrentLocked(owner, acquisition, expected) {
+		joinIssuanceCurrentLocked(owner, acquisition, expected) {
 		t.Fatal("Publisher JOIN issuance accepted a replacement Source")
 	}
 }

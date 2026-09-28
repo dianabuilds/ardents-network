@@ -11,38 +11,38 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/route/client"
 )
 
-// textIssuanceOperation owns one admitted issuance attempt through transport
+// issuanceOperation owns one admitted issuance attempt through transport
 // cancellation and terminal completion. The context retains only the single-
 // operation admission slot and joins this owner during revocation.
-type textIssuanceOperation struct {
+type issuanceOperation struct {
 	owner             *textContext
 	context           context.Context
 	cancelOperation   context.CancelFunc
 	done              chan struct{}
 	prefix            *textSourceHandle
-	permission        *textPermission
+	permission        *permission
 	profile           state.ClosedProfileView
-	batch             *textTokenBatch
+	batch             *tokenBatch
 	request           []byte
 	discardCanceled   bool
 	discardPermission bool
 }
 
-func newTextIssuanceOperation(owner *textContext, permission *textPermission, profile state.ClosedProfileView,
-	batch *textTokenBatch, discardCanceled bool) *textIssuanceOperation {
+func newIssuanceOperation(owner *textContext, permission *permission, profile state.ClosedProfileView,
+	batch *tokenBatch, discardCanceled bool) *issuanceOperation {
 	attempt, cancel := context.WithDeadline(owner.lease.Context(), permission.accepted.NotAfter)
-	return &textIssuanceOperation{owner: owner, context: attempt, cancelOperation: cancel, done: make(chan struct{}),
+	return &issuanceOperation{owner: owner, context: attempt, cancelOperation: cancel, done: make(chan struct{}),
 		prefix: batch.prefix, permission: permission, profile: profile, batch: batch, request: batch.pending.Request(),
 		discardCanceled: discardCanceled}
 }
 
-func (operation *textIssuanceOperation) cancel() {
+func (operation *issuanceOperation) cancel() {
 	if operation != nil {
 		operation.cancelOperation()
 	}
 }
 
-func (operation *textIssuanceOperation) join() {
+func (operation *issuanceOperation) join() {
 	if operation != nil {
 		<-operation.done
 	}
@@ -51,7 +51,7 @@ func (operation *textIssuanceOperation) join() {
 // retirePermissionLocked makes the permission unavailable immediately while
 // leaving its operation-owned batch intact until transport and completion have
 // joined. The caller holds the context lock.
-func (operation *textIssuanceOperation) retirePermissionLocked(permission *textPermission) bool {
+func (operation *issuanceOperation) retirePermissionLocked(permission *permission) bool {
 	if operation == nil || operation.permission != permission {
 		return false
 	}
@@ -60,7 +60,7 @@ func (operation *textIssuanceOperation) retirePermissionLocked(permission *textP
 	return true
 }
 
-func (operation *textIssuanceOperation) run(caller context.Context, source client.ClosedBootstrapState,
+func (operation *issuanceOperation) run(caller context.Context, source client.ClosedBootstrapState,
 	selection client.ClosedBootstrapSelection) error {
 	interrupted := make(chan struct{})
 	stop := context.AfterFunc(caller, func() {
@@ -73,7 +73,7 @@ func (operation *textIssuanceOperation) run(caller context.Context, source clien
 		result, exchangeErr = client.ExchangeClosedBootstrap(operation.context, source, selection, operation.request)
 	} else {
 		result, exchangeErr = operation.prefix.exchangeIssuer(operation.context, func(hello ardp.Hello, tokenClass uint8) ([]byte, error) {
-			return operation.presentTextIssuerToken(selection, hello, tokenClass)
+			return operation.presentIssuerToken(selection, hello, tokenClass)
 		}, operation.request)
 	}
 	operation.cancel()
@@ -83,7 +83,7 @@ func (operation *textIssuanceOperation) run(caller context.Context, source clien
 	return operation.complete(caller, result, exchangeErr)
 }
 
-func (operation *textIssuanceOperation) complete(caller context.Context, result client.ClosedIssuanceExchangeResult, exchangeErr error) error {
+func (operation *issuanceOperation) complete(caller context.Context, result client.ClosedIssuanceExchangeResult, exchangeErr error) error {
 	owner := operation.owner
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
@@ -99,7 +99,7 @@ func (operation *textIssuanceOperation) complete(caller context.Context, result 
 		owner.endpoint.failTextContexts(exchangeErr)
 		return exchangeErr
 	}
-	current, currentTime, currentErr := owner.textPermissionProfileLocked()
+	current, currentTime, currentErr := owner.permissionProfileLocked()
 	if currentErr != nil || owner.tokens.permission != operation.permission || current != operation.profile ||
 		!currentTime.Before(operation.permission.accepted.NotAfter) {
 		clear(result.Body)
@@ -122,9 +122,9 @@ func (operation *textIssuanceOperation) complete(caller context.Context, result 
 	return err
 }
 
-func (operation *textIssuanceOperation) finishLocked() {
+func (operation *issuanceOperation) finishLocked() {
 	if operation.discardPermission {
-		clearTextPermission(operation.permission)
+		clearPermission(operation.permission)
 	}
 	clear(operation.request)
 	close(operation.done)

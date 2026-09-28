@@ -201,7 +201,7 @@ func independentTextReaderFixture(t *testing.T, network [32]byte, source *textSo
 			t.Error(err)
 		}
 	})
-	reader := textPermissionContextFixture(t, endpoint, principal, broker.Connection)
+	reader := permissionContextFixture(t, endpoint, principal, broker.Connection)
 	source.issuePermission(t, reader, maxima)
 	return reader
 }

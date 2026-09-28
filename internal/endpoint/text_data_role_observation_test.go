@@ -138,7 +138,7 @@ func runTextDataJoinIsolatedRoleObservation(t *testing.T, carrier routecarrier.C
 		t.Fatal("receiving Store proof differs")
 	}
 	observe("published")
-	reader := textPermissionContextFixture(t, endpoint, fixtureID(211), broker.Connection)
+	reader := permissionContextFixture(t, endpoint, fixtureID(211), broker.Connection)
 	source.issuePermission(t, reader, [3]uint32{64, 64, 0})
 	if _, err := reader.openTextPrefix(t.Context()); err != nil {
 		t.Fatal(err)

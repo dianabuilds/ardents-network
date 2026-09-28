@@ -27,7 +27,7 @@ func TestTextIssuanceUsesRetainedPrefixAfterTwoBootstrapBatches(t *testing.T) {
 			// The last initial Control token must fund a real two-token refill
 			// before the final requested receiver batch can be issued.
 			for batch := range 32 {
-				if err := owner.issueTextTokens(t.Context(), [][32]byte{selection.EntryNodeID}, 2); err != nil {
+				if err := owner.issueTokens(t.Context(), [][32]byte{selection.EntryNodeID}, 2); err != nil {
 					t.Fatalf("ordinary batch %d: %v", batch+1, err)
 				}
 			}
@@ -57,7 +57,7 @@ func TestTextIssuanceUsesRetainedPrefixAfterTwoBootstrapBatches(t *testing.T) {
 			if !valid || verified != 32 {
 				t.Fatalf("retained issuance state differs: valid=%v tokens=%d", valid, verified)
 			}
-			receipts := readTextTokenReceipts(t, endpoint.closedTokenRoot, endpoint.network)
+			receipts := readTokenReceipts(t, endpoint.closedTokenRoot, endpoint.network)
 			if len(receipts) != 35 {
 				t.Fatalf("expected two forwarding and 33 issuer spend receipts, got %d", len(receipts))
 			}
@@ -83,7 +83,7 @@ func TestTextIssuanceUsesRetainedPrefixAfterTwoBootstrapBatches(t *testing.T) {
 			}
 			// Observing a retired prefix cannot switch the exhausted allocation
 			// back to bootstrap or manufacture another pending request.
-			if err := owner.issueTextTokens(t.Context(), [][32]byte{selection.EntryNodeID}, 2); err == nil {
+			if err := owner.issueTokens(t.Context(), [][32]byte{selection.EntryNodeID}, 2); err == nil {
 				t.Fatal("retired prefix created unallocated work")
 			}
 			owner.mu.Lock()

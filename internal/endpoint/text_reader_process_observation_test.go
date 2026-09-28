@@ -88,7 +88,7 @@ func runTextReaderObservationChild(t *testing.T, path string) {
 			_ = endpoint.Close()
 		}
 	}()
-	request, digest, err := owner.requestTextPermission([3]uint32{64, 64, 0})
+	request, digest, err := owner.requestPermission([3]uint32{64, 64, 0})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -103,7 +103,7 @@ func runTextReaderObservationChild(t *testing.T, path string) {
 		if err := decoder.Decode(&control); err != nil || control.Command != "permission" {
 			t.Fatal("reader controller did not provide permission")
 		}
-		if err := owner.importTextPermission(digest, control.Permission); err != nil {
+		if err := owner.importPermission(digest, control.Permission); err != nil {
 			if err := encoder.Encode(textReaderObservationEvent{Phase: "permission-refused"}); err != nil {
 				t.Fatal(err)
 			}

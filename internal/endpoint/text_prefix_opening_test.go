@@ -11,7 +11,7 @@ import (
 
 func TestTextPrefixReservesOpeningBeforeIssuanceAndJoinsCancellation(t *testing.T) {
 	_, owner, source := textSourceContextFixture(t)
-	prepareTextIssuancePermission(t, owner, source)
+	prepareIssuancePermission(t, owner, source)
 	listener, err := net.ListenTCP("tcp", &net.TCPAddr{IP: net.IPv4(127, 0, 0, 1)})
 	if err != nil {
 		t.Fatal(err)
@@ -86,7 +86,7 @@ func TestTextPrefixReservesOpeningBeforeIssuanceAndJoinsCancellation(t *testing.
 
 func TestTextPrefixOpeningExcludesUnrelatedIssuanceBetweenBatches(t *testing.T) {
 	_, owner, source := textSourceContextFixture(t)
-	prepareTextIssuancePermission(t, owner, source)
+	prepareIssuancePermission(t, owner, source)
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	done := make(chan struct{})
@@ -97,7 +97,7 @@ func TestTextPrefixOpeningExcludesUnrelatedIssuanceBetweenBatches(t *testing.T) 
 	owner.source.opening = flight
 	attempt, stop := context.WithTimeout(t.Context(), 100*time.Millisecond)
 	defer stop()
-	if err := owner.issueTextTokens(attempt, [][32]byte{source.view.Nodes[0].NodeID}, 2); err == nil {
+	if err := owner.issueTokens(attempt, [][32]byte{source.view.Nodes[0].NodeID}, 2); err == nil {
 		t.Fatal("unrelated issuance entered prefix transition")
 	}
 	owner.mu.Lock()
@@ -109,7 +109,7 @@ func TestTextPrefixOpeningExcludesUnrelatedIssuanceBetweenBatches(t *testing.T) 
 
 func TestTextPrefixOpeningRejectsObsoleteCompletionWithoutTouchingReplacement(t *testing.T) {
 	_, owner, source := textSourceContextFixture(t)
-	prepareTextIssuancePermission(t, owner, source)
+	prepareIssuancePermission(t, owner, source)
 	listener, err := net.ListenTCP("tcp", &net.TCPAddr{IP: net.IPv4(127, 0, 0, 1)})
 	if err != nil {
 		t.Fatal(err)

@@ -66,7 +66,7 @@ func (owner *textContext) openTextRegistration(ctx context.Context, revision uin
 		return nil, errors.New("text Publisher registration unavailable")
 	}
 	owner.mu.Lock()
-	profile, now, err := owner.textPermissionProfileLocked()
+	profile, now, err := owner.permissionProfileLocked()
 	if previous == nil {
 		if ended := owner.publication.pair.evictEndedTargetLocked(); ended != nil {
 			cleanup := ended.close()
@@ -113,7 +113,7 @@ func (owner *textContext) openTextRegistration(ctx context.Context, revision uin
 		owner.tokens.permission.stockCountFor(profile.Digest, receiver, 3) != 0
 	owner.mu.Unlock()
 	if !ready {
-		if err := owner.issueTextTokens(attempt, [][32]byte{receiver}, 3); err != nil {
+		if err := owner.issueTokens(attempt, [][32]byte{receiver}, 3); err != nil {
 			return nil, err
 		}
 	}
@@ -123,7 +123,7 @@ func (owner *textContext) openTextRegistration(ctx context.Context, revision uin
 	}
 	createdAt := owner.endpoint.clock().UTC().Truncate(time.Second)
 	channel, err = flight.prefix.register(attempt, func(hello ardp.Hello, class uint8) ([]byte, error) {
-		return owner.presentTextRegistrationToken(flight, hello, class)
+		return owner.presentRegistrationToken(flight, hello, class)
 	}, request)
 	if err != nil {
 		return nil, err
@@ -168,10 +168,10 @@ func (owner *textContext) finishTextRegistration(ctx context.Context, flight *te
 	return registered, nil
 }
 
-func (owner *textContext) presentTextRegistrationToken(flight *textRegistrationFlight, hello ardp.Hello, class uint8) ([]byte, error) {
+func (owner *textContext) presentRegistrationToken(flight *textRegistrationFlight, hello ardp.Hello, class uint8) ([]byte, error) {
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
-	profile, now, err := owner.textPermissionProfileLocked()
+	profile, now, err := owner.permissionProfileLocked()
 	if err != nil || owner.surface != broker.Administration || !owner.publication.pair.openingCurrentLocked(flight) || !flight.prefix.currentLocked(&owner.introduction.prefix) || flight.context.Err() != nil || owner.tokens.permission == nil ||
 		class != 3 || hello.Purpose != ardp.PurposeIntroduction || hello.RecipientNodeID != flight.receiver || hello.NetworkID != profile.NetworkID || hello.ProfileDigest != profile.Digest ||
 		hello.StateGeneration != profile.StateGeneration || hello.StateDigest != profile.StateDigest || hello.ChannelNonce == [32]byte{} || !now.Before(hello.Deadline) || hello.Deadline.After(profile.NotAfter) {
@@ -181,7 +181,7 @@ func (owner *textContext) presentTextRegistrationToken(flight *textRegistrationF
 	if err != nil || receiver != flight.receiver {
 		return nil, errors.New("text Publisher registration recipient changed")
 	}
-	return owner.takeTextTokenLocked(profile, now, hello, class, flight.context)
+	return owner.takeTokenLocked(profile, now, hello, class, flight.context)
 }
 
 func (owner *textContext) withdrawTextIntroduction(ctx context.Context) error {

@@ -22,7 +22,7 @@ func TestQualificationReopensRetiredSourcePrefixForIssuerReserve(t *testing.T) {
 	}
 	selection := selectTextSource(t, owner)
 	for _, receiver := range [][32]byte{selection.EntryNodeID, selection.InteriorNodeID} {
-		if err := owner.issueTextTokens(t.Context(), [][32]byte{receiver}, 2); err != nil {
+		if err := owner.issueTokens(t.Context(), [][32]byte{receiver}, 2); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -93,7 +93,7 @@ func TestQualificationRefillsPublisherIssuerReserveBetweenStreams(t *testing.T) 
 		return count
 	}
 	for attempts := 0; ready() >= qualification.IssuerReserveMinimum && attempts < 64; attempts++ {
-		if err := owner.issueTextTokens(t.Context(), [][32]byte{selection.EntryNodeID}, 2); err != nil {
+		if err := owner.issueTokens(t.Context(), [][32]byte{selection.EntryNodeID}, 2); err != nil {
 			t.Fatal(err)
 		}
 	}

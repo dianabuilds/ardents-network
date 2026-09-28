@@ -98,7 +98,7 @@ func runStreamQualificationIdle(ctx context.Context, config StreamQualificationC
 		}
 		defer func() { operationErr = errors.Join(operationErr, owner.Close()) }()
 		permission := config.Participant.ReaderPermission
-		if err := owner.provisionTextPermission(lifetime, permission.RequestPath, permission.ResponsePath, permission.Maxima, func(reportCtx context.Context, digest [32]byte) error {
+		if err := owner.provisionPermission(lifetime, permission.RequestPath, permission.ResponsePath, permission.Maxima, func(reportCtx context.Context, digest [32]byte) error {
 			return config.Participant.Observe(reportCtx, TextParticipantEvent{Kind: "permission-required", NetworkID: endpoint.network, Surface: string(broker.Connection), RequestDigest: digest})
 		}); err != nil {
 			return err

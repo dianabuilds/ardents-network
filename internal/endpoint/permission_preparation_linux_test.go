@@ -43,7 +43,7 @@ func TestTextPermissionPreparationJoinsUnqualifiedLaunch(t *testing.T) {
 					helpers.Wait()
 				})
 				helpers.Go(func() {
-					completed <- owner.provisionTextPermission(caller, requestPath, filepath.Join(root, "response"), [3]uint32{1, 1, 1}, func(context.Context, [32]byte) error {
+					completed <- owner.provisionPermission(caller, requestPath, filepath.Join(root, "response"), [3]uint32{1, 1, 1}, func(context.Context, [32]byte) error {
 						return errors.New("unqualified context reported a permission request")
 					})
 				})

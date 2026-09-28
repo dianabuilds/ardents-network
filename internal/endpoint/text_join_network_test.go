@@ -32,7 +32,7 @@ func TestTextRouteJoinConnectsSourceAndResponder(t *testing.T) {
 	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP, routecarrier.ClosedCarrierQUIC} {
 		t.Run(string(carrier), func(t *testing.T) {
 			endpoint, publisher, source := startTextRoleNetwork(t, textRoleNetworkFixture{carrier: carrier, resolution: true, publisher: true, join: true})
-			reader := textPermissionContextFixture(t, endpoint, fixtureID(211), broker.Connection)
+			reader := permissionContextFixture(t, endpoint, fixtureID(211), broker.Connection)
 			source.issuePermission(t, reader, [3]uint32{64, 64, 0})
 			if _, err := reader.openTextPrefix(t.Context()); err != nil {
 				t.Fatal(err)
@@ -54,7 +54,7 @@ func exchangeTextRouteData(t *testing.T, reader, publisher *textContext, receive
 		t.Fatal(err)
 	}
 	for _, owner := range []*textContext{reader, publisher} {
-		if err := owner.issueTextTokens(t.Context(), [][32]byte{receiver}, 2); err != nil {
+		if err := owner.issueTokens(t.Context(), [][32]byte{receiver}, 2); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -75,14 +75,14 @@ func exchangeTextRouteData(t *testing.T, reader, publisher *textContext, receive
 			stream, err := prefixes[index].join(ctx, func(hello ardp.Hello, class uint8) ([]byte, error) {
 				owner.mu.Lock()
 				defer owner.mu.Unlock()
-				profile, now, err := owner.textPermissionProfileLocked()
+				profile, now, err := owner.permissionProfileLocked()
 				if err != nil {
 					return nil, err
 				}
 				if hello.Purpose != ardp.PurposeDataJoin || hello.RecipientNodeID != receiver || class != 2 {
 					return nil, errors.New("JOIN crossed token purpose")
 				}
-				return owner.takeTextTokenLocked(profile, now, hello, class, ctx)
+				return owner.takeTokenLocked(profile, now, hello, class, ctx)
 			}, intent)
 			results <- opened{stream, err}
 		}()

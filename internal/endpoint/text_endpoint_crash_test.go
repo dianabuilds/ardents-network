@@ -68,7 +68,7 @@ func TestTextEndpointCrashDropsVolatileAuthorityAndRetainsSpend(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer reopened.Close()
-	reopened.closedState = &textPermissionStateFixture{profile: boundary.Profile}
+	reopened.closedState = &permissionStateFixture{profile: boundary.Profile}
 	reopened.closedTokenRoot = filepath.Join(root, "tokens")
 	if active := reopened.admission.Active(); active != 0 {
 		t.Fatalf("restart resurrected local admission: %d", active)
@@ -95,12 +95,12 @@ func TestTextEndpointCrashDropsVolatileAuthorityAndRetainsSpend(t *testing.T) {
 	if !fresh {
 		t.Fatal("restart populated volatile permission, job, join, or Route state")
 	}
-	job, _ := attachTextPermissionJob(t, owner, reopened)
+	job, _ := attachPermissionJob(t, owner, reopened)
 	owner.retireJob(job)
 	if err := owner.finishJobCleanup(job, nil); err != nil {
 		t.Fatal(err)
 	}
-	requestRaw, digest, err := owner.requestTextPermission([3]uint32{4, 4, 0})
+	requestRaw, digest, err := owner.requestPermission([3]uint32{4, 4, 0})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -116,10 +116,10 @@ func TestTextEndpointCrashDropsVolatileAuthorityAndRetainsSpend(t *testing.T) {
 		request.Permission.HolderKey == oldRequest.Permission.HolderKey {
 		t.Fatal("restart reused the lost context permission or holder")
 	}
-	if err := owner.importTextPermission(boundary.PermissionDigest, boundary.PermissionResponse); err == nil {
+	if err := owner.importPermission(boundary.PermissionDigest, boundary.PermissionResponse); err == nil {
 		t.Fatal("restart restored a response through the old request digest")
 	}
-	if err := owner.importTextPermission(digest, boundary.PermissionResponse); err == nil {
+	if err := owner.importPermission(digest, boundary.PermissionResponse); err == nil {
 		t.Fatal("restart rebound the old response to the fresh holder")
 	}
 	owner.mu.Lock()
@@ -129,7 +129,7 @@ func TestTextEndpointCrashDropsVolatileAuthorityAndRetainsSpend(t *testing.T) {
 		t.Fatal("restart resurrected token stock")
 	}
 
-	journal, err := reopened.textTokenJournal()
+	journal, err := reopened.tokenJournal()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -138,7 +138,7 @@ func TestTextEndpointCrashDropsVolatileAuthorityAndRetainsSpend(t *testing.T) {
 	if err := journal.Mark(boundary.Token, record); err == nil {
 		t.Fatal("restart revived a token already durably marked before the crash")
 	}
-	receipts := readTextTokenReceipts(t, reopened.closedTokenRoot, reopened.network)
+	receipts := readTokenReceipts(t, reopened.closedTokenRoot, reopened.network)
 	if len(receipts) != 1 {
 		t.Fatalf("restart changed durable spend journal: %d records", len(receipts))
 	}
@@ -223,7 +223,7 @@ func runTextEndpointCrashChild(t *testing.T, root string) {
 	}
 	created, err := vault.Execute(t.Context(), custody.Operation{Kind: custody.OperationCreateAdmissionAuthority,
 		Authority: custody.AuthorityState{Binding: custody.AuthorityBinding{Environment: fixtureID(244), Network: fixtureID(245),
-			Root: fixtureID(246), Kind: custody.AuthorityAdmission}}}, textPermissionSecretFixture{})
+			Root: fixtureID(246), Kind: custody.AuthorityAdmission}}}, permissionSecretFixture{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -236,7 +236,7 @@ func runTextEndpointCrashChild(t *testing.T, root string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	endpoint.closedState = &textPermissionStateFixture{profile: profile}
+	endpoint.closedState = &permissionStateFixture{profile: profile}
 	ownerCapability, err := endpoint.Admit(principal, broker.Connection)
 	if err != nil {
 		t.Fatal(err)
@@ -245,25 +245,25 @@ func runTextEndpointCrashChild(t *testing.T, root string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, workerGrant := attachTextPermissionJob(t, owner, endpoint)
+	_, workerGrant := attachPermissionJob(t, owner, endpoint)
 	if _, err := workerGrant.Admit(fixtureID(240), broker.Connection); err != nil {
 		t.Fatal(err)
 	}
-	requestRaw, digest, err := owner.requestTextPermission([3]uint32{4, 4, 0})
+	requestRaw, digest, err := owner.requestPermission([3]uint32{4, 4, 0})
 	if err != nil {
 		t.Fatal(err)
 	}
 	issued, err := vault.Execute(t.Context(), custody.Operation{Kind: custody.OperationIssueAdmissionPermission,
 		RecordID: created.RecordID, Expected: created.Authority.Binding, AdmissionRequest: requestRaw,
-		AdmissionRequestCommitment: digest}, textPermissionSecretFixture{})
+		AdmissionRequestCommitment: digest}, permissionSecretFixture{})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := owner.importTextPermission(digest, issued.AdmissionPermission); err != nil {
+	if err := owner.importPermission(digest, issued.AdmissionPermission); err != nil {
 		t.Fatal(err)
 	}
 	owner.mu.Lock()
-	owner.tokens.permission.stock = []textTokenStock{{tokens: [][]byte{bytes.Repeat([]byte{0x5a}, 354)}}}
+	owner.tokens.permission.stock = []tokenStock{{tokens: [][]byte{bytes.Repeat([]byte{0x5a}, 354)}}}
 	stockCount := len(owner.tokens.permission.stock)
 	owner.mu.Unlock()
 	oldCapability, err := endpoint.Admit(principal, broker.Connection)
@@ -303,7 +303,7 @@ func runTextEndpointCrashChild(t *testing.T, root string) {
 	t.Fatal("parent did not terminate child")
 }
 
-func attachTextPermissionJob(t *testing.T, owner *textContext, endpoint *endpoint) (*textJobIdentity, *broker.Broker) {
+func attachPermissionJob(t *testing.T, owner *textContext, endpoint *endpoint) (*textJobIdentity, *broker.Broker) {
 	t.Helper()
 	job, err := owner.beginJob(endpoint, broker.Connection)
 	if err != nil {

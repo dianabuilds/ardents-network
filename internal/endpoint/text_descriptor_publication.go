@@ -32,7 +32,7 @@ func (owner *textContext) publishTextDescriptor(ctx context.Context) (verified r
 		}
 	}()
 	owner.mu.Lock()
-	profile, now, err := owner.textPermissionProfileLocked()
+	profile, now, err := owner.permissionProfileLocked()
 	registered := owner.publication.pair.publicationTargetLocked()
 	reason := ""
 	switch {
@@ -92,7 +92,7 @@ func (owner *textContext) publishTextDescriptor(ctx context.Context) (verified r
 	defer func() { outcome = errors.Join(outcome, lease.Close()) }()
 	current := lease.Current()
 	owner.mu.Lock()
-	live, at, err := owner.textPermissionProfileLocked()
+	live, at, err := owner.permissionProfileLocked()
 	if err != nil || live != profile || owner.publication.pair.publicationTargetLocked() != registered || owner.publication.pair.drainingLocked() || !owner.liveLocked(endpoint, broker.Administration) || attempt.Err() != nil {
 		owner.mu.Unlock()
 		return verified, errors.New("text publication authority changed")
@@ -145,7 +145,7 @@ func (owner *textContext) publishTextDescriptor(ctx context.Context) (verified r
 		return reachability.Verified{}, errors.Join(errors.New("text publication resolution token preparation failed"), err)
 	}
 	status, _, err := flight.source.exchangeDescriptor(attempt, func(hello ardp.Hello, class uint8) ([]byte, error) {
-		return owner.presentTextResolutionToken(flight, hello, class)
+		return owner.presentResolutionToken(flight, hello, class)
 	}, [32]byte{}, raw)
 	if err != nil || status != 0 {
 		return reachability.Verified{}, errors.Join(fmt.Errorf("text Descriptor publication refused: status=%d", status), err)
@@ -154,7 +154,7 @@ func (owner *textContext) publishTextDescriptor(ctx context.Context) (verified r
 	locked = true
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
-	live, at, err = owner.textPermissionProfileLocked()
+	live, at, err = owner.permissionProfileLocked()
 	if err != nil || live != profile || owner.publication.pair.publicationTargetLocked() != registered || owner.publication.pair.drainingLocked() || !flight.source.currentLocked(&owner.source) ||
 		endpoint.textPublisherOwner != owner || endpoint.publisherBinding != binding || !endpoint.textPublicationLive ||
 		!owner.liveLocked(endpoint, broker.Administration) || attempt.Err() != nil || ctx.Err() != nil || registered.recipientPublicLocked(at) == [32]byte{} {

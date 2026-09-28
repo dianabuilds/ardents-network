@@ -69,7 +69,7 @@ func TestTextPublisherCommitsInstanceSignedDescriptor(t *testing.T) {
 			}
 			// Even accidental reuse of trusted internal handles cannot transfer the
 			// selected Instance into another independently admitted local context.
-			foreign := textPermissionContextFixture(t, endpoint, fixtureID(211), broker.Administration)
+			foreign := permissionContextFixture(t, endpoint, fixtureID(211), broker.Administration)
 			foreign.mu.Lock()
 			foreign.source.live, foreign.publication.pair.registration, foreign.tokens.permission = owner.source.currentLocked(), first, owner.tokens.permission
 			foreign.mu.Unlock()
@@ -136,17 +136,17 @@ func lookupTextPublishedProof(t *testing.T, owner *textContext, target [32]byte)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := owner.issueTextTokens(t.Context(), [][32]byte{receiver}, 1); err != nil {
+	if err := owner.issueTokens(t.Context(), [][32]byte{receiver}, 1); err != nil {
 		t.Fatal(err)
 	}
 	status, raw, err := prefix.ExchangeDescriptor(t.Context(), func(hello ardp.Hello, class uint8) ([]byte, error) {
 		owner.mu.Lock()
 		defer owner.mu.Unlock()
-		profile, now, err := owner.textPermissionProfileLocked()
+		profile, now, err := owner.permissionProfileLocked()
 		if err != nil {
 			return nil, err
 		}
-		return owner.takeTextTokenLocked(profile, now, hello, class, t.Context())
+		return owner.takeTokenLocked(profile, now, hello, class, t.Context())
 	}, target, nil)
 	if err != nil || status != 0 {
 		t.Fatalf("read actual Node proof: %d %v", status, err)

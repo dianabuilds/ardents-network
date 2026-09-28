@@ -137,7 +137,7 @@ func TestTextPublicationAutomaticallyRefreshesAndRetiresPredecessor(t *testing.T
 			if withdrawErr == nil || !stillScheduled {
 				t.Fatal("refused withdrawal stopped automatic refresh")
 			}
-			reader := textPermissionContextFixture(t, endpoint, fixtureID(211), broker.Connection)
+			reader := permissionContextFixture(t, endpoint, fixtureID(211), broker.Connection)
 			source.issuePermission(t, reader, [3]uint32{64, 64, 0})
 			readerJob, publisherJob := liveTextCapsuleJob(t, reader), liveTextCapsuleJob(t, owner)
 			bounds := [3]int64{now.Add(time.Minute).Unix(), now.Add(time.Minute).Unix(), now.Add(time.Minute).Unix()}

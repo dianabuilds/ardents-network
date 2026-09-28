@@ -32,7 +32,7 @@ func (owner *textContext) acceptTextIntroductionGeneration(ctx context.Context, 
 	if owner.publication.pair.drainingLocked() {
 		return nil, errTextPublicationDraining
 	}
-	profile, now, err := owner.textPermissionProfileLocked()
+	profile, now, err := owner.permissionProfileLocked()
 	registered := owner.publication.pair.selectLocked(now, capsule.Slot, capsule.Revision)
 	if err != nil || !owner.liveTextServiceJobLocked(job, broker.Administration) || registered == nil || owner.publication.pair.withdrawalInProgressLocked() ||
 		endpoint.textPublisherOwner != owner || !endpoint.textPublicationLive || endpoint.publisherBinding == nil || endpoint.publications == nil ||

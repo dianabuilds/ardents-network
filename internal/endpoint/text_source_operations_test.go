@@ -39,22 +39,22 @@ func TestTextTokenPresentationFailureRetainsNestedStageAndCause(t *testing.T) {
 	cause := errors.New("local role conflict read unavailable")
 	role := textRoleMemberFailureAt("conflict-read", cause)
 	selection := textInteriorSelectionFailureAt("role-members-"+textRoleMemberFailureStage(role), role)
-	failure := textTokenPresentationFailureAt("selection-"+textInteriorSelectionFailureStage(selection), selection)
-	if got := textTokenPresentationFailureStage(failure); got != "selection-role-members-conflict-read" {
+	failure := tokenPresentationFailureAt("selection-"+textInteriorSelectionFailureStage(selection), selection)
+	if got := tokenPresentationFailureStage(failure); got != "selection-role-members-conflict-read" {
 		t.Fatalf("token presentation stage = %q", got)
 	}
 	if !errors.Is(failure, cause) {
 		t.Fatal("token presentation failure lost its cause")
 	}
-	transfer := textTokenTransferFailureAt("journal", cause)
-	if got := textTokenTransferFailureStage(transfer); got != "journal" || !errors.Is(transfer, cause) {
+	transfer := tokenTransferFailureAt("journal", cause)
+	if got := tokenTransferFailureStage(transfer); got != "journal" || !errors.Is(transfer, cause) {
 		t.Fatalf("token transfer failure = %q, %v", got, transfer)
 	}
 }
 
 func TestTextTokenPresentationClassifiesConcurrentRoleCommit(t *testing.T) {
 	endpoint, owner, source := textSourceContextFixture(t)
-	prepareTextIssuancePermission(t, owner, source)
+	prepareIssuancePermission(t, owner, source)
 	selection := selectTextSource(t, owner)
 	writer, err := duty.Open(duty.Config{Root: endpoint.closedRoleRoot, Clock: time.Now})
 	if err != nil {
@@ -79,8 +79,8 @@ func TestTextTokenPresentationClassifiesConcurrentRoleCommit(t *testing.T) {
 		ProfileDigest: profile.Digest, RecipientNodeID: selection.EntryNodeID, RecipientDutyGeneration: source.view.Nodes[0].DutyGeneration,
 		Purpose: ardp.PurposeForwarding, Deadline: time.Now().Add(10 * time.Second), ChannelNonce: fixtureID(199)}
 	started := time.Now()
-	_, err = flight.presentTextToken(selection, hello, 2)
-	if got := textTokenPresentationFailureStage(err); got != "selection-role-members-conflict-read" {
+	_, err = flight.presentToken(selection, hello, 2)
+	if got := tokenPresentationFailureStage(err); got != "selection-role-members-conflict-read" {
 		t.Fatalf("concurrent role commit stage = %q: %v", got, err)
 	}
 	if elapsed := time.Since(started); elapsed < 900*time.Millisecond || elapsed > 2*time.Second {
@@ -115,7 +115,7 @@ func TestTextRefreshWaitsForActualSourceUse(t *testing.T) {
 			case <-time.After(40 * time.Millisecond):
 			}
 			selection := selectTextSource(t, owner)
-			if err := owner.issueTextTokensForOpening(t.Context(), [][32]byte{selection.EntryNodeID}, 2, nil, false); err != nil {
+			if err := owner.issueTokensForOpening(t.Context(), [][32]byte{selection.EntryNodeID}, 2, nil, false); err != nil {
 				t.Fatal(err)
 			}
 			release()

@@ -15,7 +15,7 @@ import (
 // cancels the operation; the caller and independently authorized context live.
 func TestTextIntroductionPreparationRetirementInterruptsBootstrap(t *testing.T) {
 	endpoint, owner, source := textSourceContextFixture(t)
-	prepareTextIssuancePermission(t, owner, source)
+	prepareIssuancePermission(t, owner, source)
 	listener, err := net.ListenTCP("tcp", &net.TCPAddr{IP: net.IPv4(127, 0, 0, 1)})
 	if err != nil {
 		t.Fatal(err)

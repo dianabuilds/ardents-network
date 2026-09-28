@@ -10,10 +10,10 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/endpoint/permissionfile"
 )
 
-// provisionTextPermission is the participant's finite offline handover. The
+// provisionPermission is the participant's finite offline handover. The
 // observer receives only the public request digest; it supplies no success or
 // permission authority. Its synchronous implementation must honor the supplied bounded context and join its output before return. Only an actual matching Custody file can complete provisioning.
-func (owner *textContext) provisionTextPermission(ctx context.Context, requestPath, responsePath string, maxima [3]uint32, report func(context.Context, [32]byte) error) (outcome error) {
+func (owner *textContext) provisionPermission(ctx context.Context, requestPath, responsePath string, maxima [3]uint32, report func(context.Context, [32]byte) error) (outcome error) {
 	if owner == nil || ctx == nil || ctx.Err() != nil || report == nil || requestPath == responsePath {
 		return errors.New("text permission provisioning unavailable")
 	}
@@ -42,7 +42,7 @@ func (owner *textContext) provisionTextPermission(ctx context.Context, requestPa
 		}
 	}
 
-	digest, err := owner.exportTextPermissionFile(ctx, requestPath, maxima)
+	digest, err := owner.exportPermissionFile(ctx, requestPath, maxima)
 	if err != nil {
 		return err
 	}
@@ -78,7 +78,7 @@ func (owner *textContext) provisionTextPermission(ctx context.Context, requestPa
 			// The import reopens and identity-checks the canonical owner-only path.
 			// Invalid or partially written responses fail; they are never retried into
 			// success. The operator installs a complete response before exposing it.
-			return owner.importTextPermissionFile(bounded, responsePath, digest)
+			return owner.importPermissionFile(bounded, responsePath, digest)
 		}
 		timer := time.NewTimer(time.Second)
 		select {

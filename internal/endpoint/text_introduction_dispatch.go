@@ -258,7 +258,7 @@ func (owner *textContext) inspectTextIntroductionDelivery(ctx context.Context, j
 	defer endpoint.publisherMu.Unlock()
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
-	profile, now, err := owner.textPermissionProfileLocked()
+	profile, now, err := owner.permissionProfileLocked()
 	registered := owner.publication.pair.selectLocked(now, capsule.Slot, capsule.Revision)
 	if err != nil || ctx.Err() != nil || !owner.liveTextServiceJobLocked(job, broker.Administration) ||
 		registered == nil || owner.publication.pair.withdrawalInProgressLocked() || endpoint.textPublisherOwner != owner ||

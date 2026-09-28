@@ -25,7 +25,7 @@ import (
 func textUnpublishedNetworkWithInstance(t *testing.T, carrier routecarrier.CarrierProfile, acquire func([32]byte, time.Time, time.Time) (*instance.Root, *instance.Binding), configure ...func(int, *node.Config)) (*textContext, *textContext) {
 	t.Helper()
 	endpoint, publisher, source := textPublisherNetworkWithInstance(t, carrier, acquire, configure...)
-	reader := textPermissionContextFixture(t, endpoint, fixtureID(211), broker.Connection)
+	reader := permissionContextFixture(t, endpoint, fixtureID(211), broker.Connection)
 	source.issuePermission(t, reader, [3]uint32{64, 64, 0})
 	return reader, publisher
 }

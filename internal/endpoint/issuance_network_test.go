@@ -87,7 +87,7 @@ func startTextRoleNetwork(t *testing.T, fixture textRoleNetworkFixture) (*endpoi
 		if err := owner.Close(); err != nil {
 			t.Fatal(err)
 		}
-		owner = textPermissionContextFixture(t, endpoint, fixtureID(211), broker.Administration)
+		owner = permissionContextFixture(t, endpoint, fixtureID(211), broker.Administration)
 		addTextIntroductionPrefixState(source)
 		addTextResponderPrefixState(source)
 		count = 15
@@ -136,7 +136,7 @@ func startTextRoleNetwork(t *testing.T, fixture textRoleNetworkFixture) (*endpoi
 		// the single-journey stock while remaining inside the real 16,384 total.
 		maxima = [3]uint32{5461, 5461, 5462}
 	}
-	issuerRoot := prepareTextIssuancePermissionWithIdentity(t, owner, source, certificates[4].PrivateKey.(ed25519.PrivateKey), maxima)
+	issuerRoot := prepareIssuancePermissionWithIdentity(t, owner, source, certificates[4].PrivateKey.(ed25519.PrivateKey), maxima)
 	endpoint.closedTokenRoot = textNetworkPrivateRoot(t)
 	last := 4
 	if fixture.resolution {

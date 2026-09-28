@@ -10,15 +10,15 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/route/client"
 )
 
-// prepareTextIssuerStock funds issuer admission only for current requested
+// prepareIssuerStock funds issuer admission only for current requested
 // work. Before the first admitted prefix this uses the second bootstrap batch;
 // thereafter the last Control token can replenish stock within its allocation.
-func (owner *textContext) prepareTextIssuerStock(ctx context.Context, requested [][32]byte, class uint8,
+func (owner *textContext) prepareIssuerStock(ctx context.Context, requested [][32]byte, class uint8,
 	opening *textOperationFlight, acquisition textJoinAcquisition, expected *textSourceHandle) error {
 	owner.mu.Lock()
-	profile, _, err := owner.textPermissionProfileLocked()
+	profile, _, err := owner.permissionProfileLocked()
 	if err != nil || ctx.Err() != nil || owner.tokens.permission == nil || !opening.admittedLocked(owner) ||
-		!textJoinIssuanceCurrentLocked(owner, acquisition, expected) {
+		!joinIssuanceCurrentLocked(owner, acquisition, expected) {
 		owner.mu.Unlock()
 		return errors.New("text issuer stock owner unavailable")
 	}
@@ -39,7 +39,7 @@ func (owner *textContext) prepareTextIssuerStock(ctx context.Context, requested 
 			receivers[index] = challenge.ReceiverNodeID
 		}
 		owner.mu.Unlock()
-		return owner.issueTextTokensForOpeningWithCancellation(ctx, receivers, 1, opening, true, false, acquisition, expected)
+		return owner.issueTokensForOpeningWithCancellation(ctx, receivers, 1, opening, true, false, acquisition, expected)
 	}
 	self := class == 1 && len(requested) != 0
 	for _, receiver := range requested {
@@ -61,14 +61,14 @@ func (owner *textContext) prepareTextIssuerStock(ctx context.Context, requested 
 		receivers[index] = profile.IssuerNodeID
 	}
 	owner.mu.Unlock()
-	return owner.issueTextTokensForOpeningWithCancellation(ctx, receivers, 1, opening, true, false, acquisition, expected)
+	return owner.issueTokensForOpeningWithCancellation(ctx, receivers, 1, opening, true, false, acquisition, expected)
 }
 
-func (operation *textIssuanceOperation) presentTextIssuerToken(selection client.ClosedBootstrapSelection, hello ardp.Hello, class uint8) ([]byte, error) {
+func (operation *issuanceOperation) presentIssuerToken(selection client.ClosedBootstrapSelection, hello ardp.Hello, class uint8) ([]byte, error) {
 	owner := operation.owner
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
-	profile, now, err := owner.textPermissionProfileLocked()
+	profile, now, err := owner.permissionProfileLocked()
 	if err != nil || owner.tokens.issuance != operation || operation.context == nil || operation.context.Err() != nil ||
 		operation.prefix == nil || !operation.prefix.currentLocked(&owner.source) || !owner.tokens.permission.pendingFor(operation.prefix) ||
 		hello.Purpose != ardp.PurposeIssuer || class != 1 ||
@@ -81,5 +81,5 @@ func (operation *textIssuanceOperation) presentTextIssuerToken(selection client.
 	if err != nil || current != selection {
 		return nil, errors.New("text issuer token source changed")
 	}
-	return owner.takeTextTokenLocked(profile, now, hello, class, operation.context)
+	return owner.takeTokenLocked(profile, now, hello, class, operation.context)
 }

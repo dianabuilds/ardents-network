@@ -24,7 +24,7 @@ import (
 // The qualified-worker/State and in-flight-opening seams are explicit fixtures;
 // this test verifies the Endpoint's real stock-to-journal consumer.
 func TestTextTokenPresentationBurnsStockBeforeReturningBytes(t *testing.T) {
-	endpoint, owner, selection, _, hello, original := textTokenPresentationFixture(t)
+	endpoint, owner, selection, _, hello, original := tokenPresentationFixture(t)
 	defer clear(original)
 	flightContext, cancel := context.WithCancel(t.Context())
 	defer cancel()
@@ -32,7 +32,7 @@ func TestTextTokenPresentationBurnsStockBeforeReturningBytes(t *testing.T) {
 	close(done)
 	opening := &textOperationFlight{owner: owner, context: flightContext, cancelOperation: cancel, done: done}
 	owner.source.opening = opening
-	returned, err := opening.presentTextToken(selection, hello, 2)
+	returned, err := opening.presentToken(selection, hello, 2)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -41,15 +41,15 @@ func TestTextTokenPresentationBurnsStockBeforeReturningBytes(t *testing.T) {
 		t.Fatal("stock transfer wrong")
 	}
 	raw, err := os.ReadFile(filepath.Join(endpoint.closedTokenRoot, "attempts"))
-	if err != nil || len(raw) != textTokenReceiptHeaderSize+textTokenReceiptSize || bytes.Contains(raw, original) {
+	if err != nil || len(raw) != tokenReceiptHeaderSize+tokenReceiptSize || bytes.Contains(raw, original) {
 		t.Fatal("missing durable receipt or leaked token")
 	}
-	receipts := parseTextTokenReceipts(t, raw, endpoint.network)
+	receipts := parseTokenReceipts(t, raw, endpoint.network)
 	if len(receipts) != 1 || receipts[0].attempt != hello.ChannelNonce || receipts[0].receiver != hello.RecipientNodeID {
 		t.Fatal("receipt lost attempt binding")
 	}
 	hello.ChannelNonce[0]++
-	if token, err := opening.presentTextToken(selection, hello, 2); err == nil || len(token) != 0 {
+	if token, err := opening.presentToken(selection, hello, 2); err == nil || len(token) != 0 {
 		t.Fatal("stock replayed")
 	}
 	if err := owner.Close(); err != nil {
@@ -71,15 +71,15 @@ func TestTextTokenPresentationBurnsStockBeforeReturningBytes(t *testing.T) {
 // Invalid issuer stock is consumed locally and never becomes a durable attempt
 // or bytes presented to Route.
 func TestTextTokenInvalidStockCannotReachJournal(t *testing.T) {
-	endpoint, owner, _, profile, hello, original := textTokenPresentationFixture(t)
+	endpoint, owner, _, profile, hello, original := tokenPresentationFixture(t)
 	defer clear(original)
 	owner.mu.Lock()
 	owner.tokens.permission.stock[0].tokens[0][0] ^= 0xff
-	returned, err := owner.takeTextTokenLocked(profile, time.Now().UTC(), hello, 2, t.Context())
+	returned, err := owner.takeTokenLocked(profile, time.Now().UTC(), hello, 2, t.Context())
 	remaining := len(owner.tokens.permission.stock[0].tokens)
 	owner.mu.Unlock()
-	if err == nil || len(returned) != 0 || remaining != 0 || textTokenTransferFailureStage(err) != "verification" {
-		t.Fatalf("invalid stock transfer: bytes=%d remaining=%d stage=%s err=%v", len(returned), remaining, textTokenTransferFailureStage(err), err)
+	if err == nil || len(returned) != 0 || remaining != 0 || tokenTransferFailureStage(err) != "verification" {
+		t.Fatalf("invalid stock transfer: bytes=%d remaining=%d stage=%s err=%v", len(returned), remaining, tokenTransferFailureStage(err), err)
 	}
 	if _, err := os.Stat(filepath.Join(endpoint.closedTokenRoot, "attempts")); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("invalid stock reached durable journal: %v", err)
@@ -87,19 +87,19 @@ func TestTextTokenInvalidStockCannotReachJournal(t *testing.T) {
 }
 
 func TestTextTokenCancellationAfterDurableMarkRetainsBurn(t *testing.T) {
-	endpoint, owner, _, profile, hello, original := textTokenPresentationFixture(t)
+	endpoint, owner, _, profile, hello, original := tokenPresentationFixture(t)
 	defer clear(original)
 	attempt, cancel := context.WithCancel(t.Context())
 	cancel()
 	owner.mu.Lock()
-	returned, err := owner.takeTextTokenLocked(profile, time.Now().UTC(), hello, 2, attempt)
+	returned, err := owner.takeTokenLocked(profile, time.Now().UTC(), hello, 2, attempt)
 	remaining := len(owner.tokens.permission.stock[0].tokens)
 	owner.mu.Unlock()
-	if err == nil || len(returned) != 0 || remaining != 0 || textTokenTransferFailureStage(err) != "owner" {
+	if err == nil || len(returned) != 0 || remaining != 0 || tokenTransferFailureStage(err) != "owner" {
 		t.Fatalf("cancelled durable spend returned token or wrong result: bytes=%d remaining=%d stage=%s err=%v",
-			len(returned), remaining, textTokenTransferFailureStage(err), err)
+			len(returned), remaining, tokenTransferFailureStage(err), err)
 	}
-	receipts := readTextTokenReceipts(t, endpoint.closedTokenRoot, endpoint.network)
+	receipts := readTokenReceipts(t, endpoint.closedTokenRoot, endpoint.network)
 	if len(receipts) != 1 || receipts[0].attempt != hello.ChannelNonce {
 		t.Fatal("cancelled spend lost its durable attempt receipt")
 	}
@@ -119,11 +119,11 @@ func TestTextTokenCancellationAfterDurableMarkRetainsBurn(t *testing.T) {
 	}
 }
 
-func textTokenPresentationFixture(t *testing.T) (*endpoint, *textContext, client.ClosedBootstrapSelection,
+func tokenPresentationFixture(t *testing.T) (*endpoint, *textContext, client.ClosedBootstrapSelection,
 	state.ClosedProfileView, ardp.Hello, []byte) {
 	t.Helper()
 	endpoint, owner, source := textSourceContextFixture(t)
-	root := prepareTextIssuancePermission(t, owner, source)
+	root := prepareIssuancePermission(t, owner, source)
 	endpoint.closedTokenRoot = t.TempDir()
 	selection := selectTextSource(t, owner)
 	profile := source.view.Profile
@@ -162,7 +162,7 @@ func textTokenPresentationFixture(t *testing.T) (*endpoint, *textContext, client
 		t.Fatal(err)
 	}
 	original := bytes.Clone(tokens[0])
-	owner.tokens.permission.stock = []textTokenStock{{challenge: challenge, tokens: tokens}}
+	owner.tokens.permission.stock = []tokenStock{{challenge: challenge, tokens: tokens}}
 	hello := ardp.Hello{NetworkID: profile.NetworkID, StateGeneration: profile.StateGeneration, StateDigest: profile.StateDigest,
 		ProfileDigest: profile.Digest, RecipientNodeID: challenge.ReceiverNodeID, RecipientDutyGeneration: duty,
 		Purpose: ardp.PurposeForwarding, ChannelNonce: [32]byte{242}, Deadline: profile.NotAfter}

@@ -13,7 +13,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/route/credential"
 )
 
-type textTokenStock struct {
+type tokenStock struct {
 	challenge credential.ClosedTokenContext
 	tokens    [][]byte
 }
@@ -21,12 +21,12 @@ type textTokenStock struct {
 // stockCountFor inspects candidate stock before Route supplies the exact
 // recipient duty. Presentation still matches and verifies the full challenge;
 // this preflight grants no spending authority.
-func (permission *textPermission) stockCountFor(profileDigest, receiver [32]byte, class uint8) int {
+func (permission *permission) stockCountFor(profileDigest, receiver [32]byte, class uint8) int {
 	return permission.countStock(profileDigest, receiver, 0, class, false)
 }
 
 // stockCountForDuty uses a known recipient duty when the caller has one.
-func (permission *textPermission) stockCountForDuty(profileDigest, receiver [32]byte, duty uint64, class uint8) int {
+func (permission *permission) stockCountForDuty(profileDigest, receiver [32]byte, duty uint64, class uint8) int {
 	return permission.countStock(profileDigest, receiver, duty, class, true)
 }
 
@@ -34,7 +34,7 @@ func (permission *textPermission) stockCountForDuty(profileDigest, receiver [32]
 // of the given class for the profile digest. It runs under textContext.mu and
 // only inspects; the caller decides whether and how to issue the missing
 // stock, and must unlock before any issuance.
-func (permission *textPermission) missingStockFor(profileDigest [32]byte, receivers [][32]byte, class uint8) [][32]byte {
+func (permission *permission) missingStockFor(profileDigest [32]byte, receivers [][32]byte, class uint8) [][32]byte {
 	var missing [][32]byte
 	for _, receiver := range receivers {
 		if permission.stockCountFor(profileDigest, receiver, class) == 0 {
@@ -44,7 +44,7 @@ func (permission *textPermission) missingStockFor(profileDigest [32]byte, receiv
 	return missing
 }
 
-func (permission *textPermission) countStock(profileDigest, receiver [32]byte, duty uint64, class uint8, exactDuty bool) int {
+func (permission *permission) countStock(profileDigest, receiver [32]byte, duty uint64, class uint8, exactDuty bool) int {
 	if permission == nil {
 		return 0
 	}
@@ -61,7 +61,7 @@ func (permission *textPermission) countStock(profileDigest, receiver [32]byte, d
 
 // remaining owns the allocation arithmetic so malformed retained state cannot
 // turn a spent grant into an apparently large unsigned balance.
-func (permission *textPermission) remaining(class uint8) uint32 {
+func (permission *permission) remaining(class uint8) uint32 {
 	if permission == nil || class < 1 || class > 3 || permission.reserved[class-1] > permission.accepted.Maxima[class-1] {
 		return 0
 	}
@@ -71,9 +71,9 @@ func (permission *textPermission) remaining(class uint8) uint32 {
 // reserveBatchLocked owns exact retry matching and allocation reservation. The
 // Context holds its admission lock while selecting the live Route prefix and
 // State challenges; the permission alone changes its batch and quota state.
-func (permission *textPermission) reserveBatchLocked(profile state.ClosedProfileView, now time.Time,
+func (permission *permission) reserveBatchLocked(profile state.ClosedProfileView, now time.Time,
 	challenges []credential.ClosedTokenContext, selection client.ClosedBootstrapSelection, refill bool,
-	current *textSourceHandle, joined bool, expected *textSourceHandle) (*textTokenBatch, error) {
+	current *textSourceHandle, joined bool, expected *textSourceHandle) (*tokenBatch, error) {
 	if batch := permission.pending; batch != nil {
 		if batch.refill != refill || !slices.Equal(batch.challenges, challenges) || batch.selection != selection ||
 			joined && batch.prefix != expected ||
@@ -98,7 +98,7 @@ func (permission *textPermission) reserveBatchLocked(profile state.ClosedProfile
 	if err != nil {
 		return nil, err
 	}
-	batch := &textTokenBatch{refill: refill, prefix: prefix, challenges: challenges, selection: selection, pending: pending}
+	batch := &tokenBatch{refill: refill, prefix: prefix, challenges: challenges, selection: selection, pending: pending}
 	permission.pending = batch
 	permission.reserved[class-1] += uint32(len(challenges))
 	if prefix == nil {
@@ -109,7 +109,7 @@ func (permission *textPermission) reserveBatchLocked(profile state.ClosedProfile
 
 // discardPendingBatch erases only the admitted batch. Its allocation remains
 // reserved after cancellation, so a separate attempt cannot reuse that grant.
-func (permission *textPermission) discardPendingBatch(batch *textTokenBatch) {
+func (permission *permission) discardPendingBatch(batch *tokenBatch) {
 	if permission == nil || batch == nil || permission.pending != batch {
 		return
 	}
@@ -119,7 +119,7 @@ func (permission *textPermission) discardPendingBatch(batch *textTokenBatch) {
 
 // acceptIssuedBatch finalizes the exact retained batch and deposits its tokens
 // in the permission-owned stock. A failed finalization consumes the batch.
-func (permission *textPermission) acceptIssuedBatch(batch *textTokenBatch, nonce [32]byte, body []byte) error {
+func (permission *permission) acceptIssuedBatch(batch *tokenBatch, nonce [32]byte, body []byte) error {
 	if permission == nil || batch == nil || permission.pending != batch {
 		return errors.New("text issuance batch owner changed")
 	}
@@ -139,28 +139,28 @@ func (permission *textPermission) acceptIssuedBatch(batch *textTokenBatch, nonce
 			}
 		}
 		if !found {
-			permission.stock = append(permission.stock, textTokenStock{challenge: challenge, tokens: [][]byte{token}})
+			permission.stock = append(permission.stock, tokenStock{challenge: challenge, tokens: [][]byte{token}})
 		}
 	}
 	return nil
 }
 
-// consumeTextToken burns one exact stock entry under textContext.mu before
+// consumeToken burns one exact stock entry under textContext.mu before
 // verifying its signature. An invalid token is never returned or restored.
-func (permission *textPermission) consumeTextToken(profile state.ClosedProfileView, now time.Time, hello ardp.Hello, class uint8) ([]byte, error) {
+func (permission *permission) consumeToken(profile state.ClosedProfileView, now time.Time, hello ardp.Hello, class uint8) ([]byte, error) {
 	if !permission.currentFor(profile, now) {
-		return nil, textTokenTransferFailureAt("permission", errors.New("text token permission expired"))
+		return nil, tokenTransferFailureAt("permission", errors.New("text token permission expired"))
 	}
 	challenge := credential.ClosedTokenContext{NetworkID: profile.NetworkID, ProfileDigest: profile.Digest, IssuerNodeID: profile.IssuerNodeID,
 		ReceiverNodeID: hello.RecipientNodeID, ReceiverDutyGeneration: hello.RecipientDutyGeneration, Class: class, WindowStart: permission.accepted.NotBefore}
 	if int(profile.TokenKeyCount) > len(profile.TokenKeys) {
-		return nil, textTokenTransferFailureAt("key-inventory", errors.New("text token key inventory unavailable"))
+		return nil, tokenTransferFailureAt("key-inventory", errors.New("text token key inventory unavailable"))
 	}
 	var spki []byte
 	for _, key := range profile.TokenKeys[:profile.TokenKeyCount] {
 		if key.Class == class && key.WindowStart == challenge.WindowStart {
 			if spki != nil {
-				return nil, textTokenTransferFailureAt("key-ambiguity", errors.New("text token key ambiguous"))
+				return nil, tokenTransferFailureAt("key-ambiguity", errors.New("text token key ambiguous"))
 			}
 			spki = key.SPKI[:]
 		}
@@ -175,9 +175,9 @@ func (permission *textPermission) consumeTextToken(profile state.ClosedProfileVi
 		stock.tokens = stock.tokens[1:]
 		if err := credential.VerifyClosedToken(challenge, spki, token); err != nil {
 			clear(token)
-			return nil, textTokenTransferFailureAt("verification", err)
+			return nil, tokenTransferFailureAt("verification", err)
 		}
 		return token, nil
 	}
-	return nil, textTokenTransferFailureAt("stock", errors.New("text forwarding token stock unavailable"))
+	return nil, tokenTransferFailureAt("stock", errors.New("text forwarding token stock unavailable"))
 }

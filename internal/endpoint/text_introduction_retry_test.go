@@ -15,12 +15,12 @@ import (
 // Only the retained Route prefix sees this outage; Endpoint can still prepare
 // its real blinded request from the independently available accepted State.
 // Node runtimes retain the original State and keep their real network duties.
-type textIssuerOutageState struct {
+type issuerOutageState struct {
 	*textSourceStateFixture
 	unavailable atomic.Bool
 }
 
-func (source *textIssuerOutageState) CurrentClosedRoute() (state.ClosedRouteView, error) {
+func (source *issuerOutageState) CurrentClosedRoute() (state.ClosedRouteView, error) {
 	if source.unavailable.Load() {
 		return state.ClosedRouteView{}, errors.New("issuer attempt State temporarily unavailable")
 	}
@@ -35,20 +35,20 @@ func TestTextIntroductionRetryResumesExactIssuance(t *testing.T) {
 		}
 		t.Run(name, func(t *testing.T) {
 			endpoint, owner, source := startTextRoleNetwork(t, textRoleNetworkFixture{carrier: carrier.ClosedCarrierTCP, resolution: true, publisher: true})
-			outage := &textIssuerOutageState{textSourceStateFixture: source}
+			outage := &issuerOutageState{textSourceStateFixture: source}
 			endpoint.closedState = outage
 			if _, err := owner.openTextPrefix(t.Context()); err != nil {
 				t.Fatal(err)
 			}
 			endpoint.closedState = source
 			receiver := source.view.Nodes[7].NodeID
-			if err := owner.prepareTextIssuerStock(t.Context(), [][32]byte{receiver}, 2, nil, nil, nil); err != nil {
+			if err := owner.prepareIssuerStock(t.Context(), [][32]byte{receiver}, 2, nil, nil, nil); err != nil {
 				t.Fatal(err)
 			}
 			outage.unavailable.Store(true)
 			if foreign {
 				receiver = source.view.Nodes[5].NodeID
-				if err := owner.issueTextTokens(t.Context(), [][32]byte{receiver}, 1); err == nil {
+				if err := owner.issueTokens(t.Context(), [][32]byte{receiver}, 1); err == nil {
 					t.Fatal("outage issued foreign tokens")
 				}
 			} else {
@@ -78,7 +78,7 @@ func TestTextIntroductionRetryResumesExactIssuance(t *testing.T) {
 				if !unchanged {
 					t.Fatal("foreign pending batch mutated")
 				}
-				if err := owner.issueTextTokens(t.Context(), [][32]byte{receiver}, 1); err != nil {
+				if err := owner.issueTokens(t.Context(), [][32]byte{receiver}, 1); err != nil {
 					t.Fatal(err)
 				}
 				return

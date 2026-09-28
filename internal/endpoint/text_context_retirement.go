@@ -17,7 +17,7 @@ type textContextRetirement struct {
 	introduction        *textRolePrefixRetirement
 	responder           *textRolePrefixRetirement
 	source              *textSourceRetirement
-	issuance            *textIssuanceOperation
+	issuance            *issuanceOperation
 	resolution          *textResolutionFlight
 	withdrawal          *textOperationFlight
 	exchanges           []*textIntroductionExchange
@@ -45,7 +45,7 @@ func (owner *textContext) stopTextContextChildrenLocked() *textContextRetirement
 	retirement.introduction = owner.introduction.prefix.stopLocked()
 	retirement.responder = owner.responder.stopLocked()
 	retirement.source = owner.source.stopLocked()
-	owner.clearTextPermissionLocked()
+	owner.clearPermissionLocked()
 	retirement.issuance = owner.tokens.issuance
 	retirement.issuance.cancel()
 	retirement.resolution = owner.resolution

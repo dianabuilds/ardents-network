@@ -33,7 +33,7 @@ func TestTextIssuanceStartsAfterIdleListeners(t *testing.T) {
 				t.Fatalf("bootstrap after idle listeners: %v", err)
 			}
 			selection := selectTextSource(t, owner)
-			if err := owner.issueTextTokens(t.Context(), [][32]byte{selection.EntryNodeID}, 2); err != nil {
+			if err := owner.issueTokens(t.Context(), [][32]byte{selection.EntryNodeID}, 2); err != nil {
 				t.Fatalf("ordinary issuance after idle listeners: %v", err)
 			}
 		})

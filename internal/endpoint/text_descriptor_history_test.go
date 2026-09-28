@@ -125,17 +125,17 @@ func TestTextResolutionNetworkCannotRollBackLocalDescriptorFloor(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if err := owner.issueTextTokens(t.Context(), [][32]byte{receiver}, 1); err != nil {
+			if err := owner.issueTokens(t.Context(), [][32]byte{receiver}, 1); err != nil {
 				t.Fatal(err)
 			}
 			status, _, err := prefix.ExchangeDescriptor(t.Context(), func(hello ardp.Hello, class uint8) ([]byte, error) {
 				owner.mu.Lock()
 				defer owner.mu.Unlock()
-				profile, at, err := owner.textPermissionProfileLocked()
+				profile, at, err := owner.permissionProfileLocked()
 				if err != nil {
 					return nil, err
 				}
-				return owner.takeTextTokenLocked(profile, at, hello, class, t.Context())
+				return owner.takeTokenLocked(profile, at, hello, class, t.Context())
 			}, [32]byte{}, first)
 			if err != nil || status != 0 {
 				t.Fatalf("actual fixture publication: %d %v", status, err)

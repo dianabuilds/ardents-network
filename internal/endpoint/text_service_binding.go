@@ -46,7 +46,7 @@ func (owner *textContext) newTextServiceBinding(job *textJobIdentity, destinatio
 	if !owner.liveTextServiceJobLocked(job, broker.Connection) {
 		return nil, errors.New("text Service reader job unavailable")
 	}
-	profile, _, err := owner.textPermissionProfileLocked()
+	profile, _, err := owner.permissionProfileLocked()
 	if err != nil {
 		return nil, err
 	}
@@ -87,7 +87,7 @@ func (owner *textContext) newTextServiceBinding(job *textJobIdentity, destinatio
 
 func (owner *textContext) bindTextServiceLocked(job *textJobIdentity, current publication.Current,
 	facts nativeconnection.ProtectedContextInput) (*textServiceBinding, error) {
-	profile, now, err := owner.textPermissionProfileLocked()
+	profile, now, err := owner.permissionProfileLocked()
 	if err != nil {
 		return nil, err
 	}
@@ -149,7 +149,7 @@ func (binding *textServiceBinding) current() error {
 	if !owner.liveTextServiceJobLocked(binding.job, owner.surface) {
 		return errors.New("text Service job retired")
 	}
-	profile, now, err := owner.textPermissionProfileLocked()
+	profile, now, err := owner.permissionProfileLocked()
 	if err != nil || profile.Digest != binding.facts.ProfileDigest || profile.StateDigest != binding.candidateView ||
 		!now.Before(time.Unix(binding.facts.WorkSafetyNotAfter, 0)) ||
 		!now.Before(time.Unix(binding.credential.NotAfter, 0)) {

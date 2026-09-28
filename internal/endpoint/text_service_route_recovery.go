@@ -76,7 +76,7 @@ func (owner *textContext) prepareTextRecovery(ctx context.Context, job *textJobI
 	}
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
-	profile, now, err := owner.textPermissionProfileLocked()
+	profile, now, err := owner.permissionProfileLocked()
 	prefix := owner.source.currentLocked()
 	recipient := verified.Descriptor.Private
 	if attemptErr := ctx.Err(); attemptErr != nil {

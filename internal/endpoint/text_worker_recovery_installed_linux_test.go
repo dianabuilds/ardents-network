@@ -160,7 +160,7 @@ func exerciseInstalledTextWorkerRecovery(t *testing.T, ctx context.Context, carr
 		cancel()
 		t.Fatalf("initial protected Service: %v; Publisher: %v; worker: %v", err, remote.err, <-publisherDone)
 	}
-	initialTokens := textTokenAttemptSnapshot(t, reader.endpoint)
+	initialTokens := tokenAttemptSnapshot(t, reader.endpoint)
 	release()
 	actual, readErr := readerWorker.completeServiceRead(ctx, readerLifetime, finishReader, clientStream, nil)
 	readerFinished = true
@@ -182,7 +182,7 @@ func exerciseInstalledTextWorkerRecovery(t *testing.T, ctx context.Context, carr
 		t.Fatalf("single installed recovery elapsed=%s, exceeds 5s smoke bound", recoveryElapsed)
 	}
 	assertInstalledRecoveryRoute(t, prepared.digest, remote.digest, clientRecovery, remote.recovery)
-	assertFreshRecoveryTokenAttempts(t, initialTokens, textTokenAttemptSnapshot(t, reader.endpoint))
+	assertFreshRecoveryTokenAttempts(t, initialTokens, tokenAttemptSnapshot(t, reader.endpoint))
 	for _, owner := range []*textContext{reader, publisher} {
 		owner.mu.Lock()
 		pending := len(owner.introduction.exchanges.active)

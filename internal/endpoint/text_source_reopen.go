@@ -23,7 +23,7 @@ func (owner *textContext) prepareTextSourceReopen(ctx context.Context, flight *t
 // which must not reserve or wait for a publication's resolution flight.
 func (owner *textContext) prepareTextSourceReopenOwned(ctx context.Context, flight *textResolutionFlight) error {
 	owner.mu.Lock()
-	profile, _, err := owner.textPermissionProfileLocked()
+	profile, _, err := owner.permissionProfileLocked()
 	if err != nil || ctx.Err() != nil || owner.source.currentLocked() == nil || flight != nil && (owner.resolution != flight || flight.source == nil || !flight.source.currentLocked(&owner.source)) || owner.tokens.permission == nil {
 		owner.mu.Unlock()
 		return textSourcePreparationFailureAt("stock", errors.New("text Source reopen stock unavailable"))
@@ -36,7 +36,7 @@ func (owner *textContext) prepareTextSourceReopenOwned(ctx context.Context, flig
 	missing := owner.tokens.permission.missingStockFor(profile.Digest, [][32]byte{selection.EntryNodeID, selection.InteriorNodeID}, 2)
 	owner.mu.Unlock()
 	if len(missing) != 0 {
-		if err := owner.issueTextTokensForOpening(ctx, missing, 2, nil, false); err != nil {
+		if err := owner.issueTokensForOpening(ctx, missing, 2, nil, false); err != nil {
 			return textSourcePreparationFailureAt("issuance", err)
 		}
 	}

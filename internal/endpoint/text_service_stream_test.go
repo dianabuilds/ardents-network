@@ -35,7 +35,7 @@ func textServiceFixture(t *testing.T) (*textServiceBinding, *textServiceBinding,
 	newPeer := func(surface broker.Surface) (*textContext, *textJobIdentity) {
 		peer, principal := textContextEndpoint(t)
 		peer.network, peer.clock = profile.NetworkID, time.Now
-		peer.closedState = &textPermissionStateFixture{profile: profile}
+		peer.closedState = &permissionStateFixture{profile: profile}
 		t.Cleanup(func() {
 			if err := peer.Close(); err != nil {
 				t.Error(err)

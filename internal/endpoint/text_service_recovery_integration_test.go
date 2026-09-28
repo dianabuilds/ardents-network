@@ -194,7 +194,7 @@ func TestTextJoinedServiceRecoversAcceptedRequestAcrossFreshProtectedRoute(t *te
 				t.Fatal(remote.err)
 			}
 			stopInitialReceiver := holdTextInitialIntroductionReceiver(t, ctx, publisher, publisherJob)
-			initialTokens := textTokenAttemptSnapshot(t, reader.endpoint)
+			initialTokens := tokenAttemptSnapshot(t, reader.endpoint)
 
 			body := bytes.Repeat([]byte("network recovery\n"), 4096)
 			snapshot, err := textdocument.NewSnapshot(body)
@@ -231,7 +231,7 @@ func TestTextJoinedServiceRecoversAcceptedRequestAcrossFreshProtectedRoute(t *te
 				t.Fatalf("recovered protected Route document=%d/%d: %v; client route=%v; Publisher route=%v",
 					len(received), len(body), err, clientRecovery.outcome(), publisherRecovery.outcome())
 			}
-			recoveredTokens := textTokenAttemptSnapshot(t, reader.endpoint)
+			recoveredTokens := tokenAttemptSnapshot(t, reader.endpoint)
 			assertFreshRecoveryTokenAttempts(t, initialTokens, recoveredTokens)
 			clientAttempts, clientDigests, clientRouteErr := clientRecovery.observation()
 			publisherAttempts, publisherDigests, publisherRouteErr := publisherRecovery.observation()
@@ -255,7 +255,7 @@ func TestTextJoinedServiceRecoversAcceptedRequestAcrossFreshProtectedRoute(t *te
 				t.Fatalf("recovery cleanup revived a Route instead of joining cancellation: client=%v Publisher=%v",
 					clientRecovery.outcome(), publisherRecovery.outcome())
 			}
-			if afterCleanup := textTokenAttemptSnapshot(t, reader.endpoint); !sameTextTokenAttemptSnapshot(recoveredTokens, afterCleanup) {
+			if afterCleanup := tokenAttemptSnapshot(t, reader.endpoint); !sameTokenAttemptSnapshot(recoveredTokens, afterCleanup) {
 				t.Fatal("recovery cleanup spent another receiver token")
 			}
 			for _, owner := range []*textContext{reader, publisher} {
@@ -353,7 +353,7 @@ func TestTextServiceRecoveryRefusesChangedImmutableRequest(t *testing.T) {
 			}
 		})
 	}
-	state := client.owner.endpoint.closedState.(*textPermissionStateFixture)
+	state := client.owner.endpoint.closedState.(*permissionStateFixture)
 	originalProfile := state.profile
 	defer func() { state.profile = originalProfile }()
 	state.profile.StateDigest[0]++
@@ -367,12 +367,12 @@ type openedTextService struct {
 	err    error
 }
 
-func textTokenAttemptSnapshot(t *testing.T, current *endpoint) map[[32]byte]textTokenReceipt {
+func tokenAttemptSnapshot(t *testing.T, current *endpoint) map[[32]byte]tokenReceipt {
 	t.Helper()
-	return snapshotTextTokenReceipts(t, current.closedTokenRoot, current.network)
+	return snapshotTokenReceipts(t, current.closedTokenRoot, current.network)
 }
 
-func assertFreshRecoveryTokenAttempts(t *testing.T, initial, recovered map[[32]byte]textTokenReceipt) {
+func assertFreshRecoveryTokenAttempts(t *testing.T, initial, recovered map[[32]byte]tokenReceipt) {
 	t.Helper()
 	classes := [4]int{}
 	nonces := make(map[[32]byte]struct{}, len(recovered)-len(initial))
@@ -400,7 +400,7 @@ func assertFreshRecoveryTokenAttempts(t *testing.T, initial, recovered map[[32]b
 	}
 }
 
-func sameTextTokenAttemptSnapshot(left, right map[[32]byte]textTokenReceipt) bool {
+func sameTokenAttemptSnapshot(left, right map[[32]byte]tokenReceipt) bool {
 	if len(left) != len(right) {
 		return false
 	}

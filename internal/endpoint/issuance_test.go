@@ -20,17 +20,17 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/route/credential"
 )
 
-func prepareTextIssuancePermission(t *testing.T, owner *textContext, source *textSourceStateFixture) string {
+func prepareIssuancePermission(t *testing.T, owner *textContext, source *textSourceStateFixture) string {
 	t.Helper()
 	_, private, err := ed25519.GenerateKey(rand.Reader)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer clear(private)
-	return prepareTextIssuancePermissionWithIdentity(t, owner, source, private, [3]uint32{0, 32, 0})
+	return prepareIssuancePermissionWithIdentity(t, owner, source, private, [3]uint32{0, 32, 0})
 }
 
-func prepareTextIssuancePermissionWithIdentity(t *testing.T, owner *textContext, source *textSourceStateFixture, private ed25519.PrivateKey, maxima [3]uint32) string {
+func prepareIssuancePermissionWithIdentity(t *testing.T, owner *textContext, source *textSourceStateFixture, private ed25519.PrivateKey, maxima [3]uint32) string {
 	t.Helper()
 	public := private.Public().(ed25519.PublicKey)
 	vault, err := custody.Open(custody.VaultConfig{Root: t.TempDir(), Now: time.Now})
@@ -43,7 +43,7 @@ func prepareTextIssuancePermissionWithIdentity(t *testing.T, owner *textContext,
 		}
 	})
 	created, err := vault.Execute(t.Context(), custody.Operation{Kind: custody.OperationCreateAdmissionAuthority,
-		Authority: custody.AuthorityState{Binding: custody.AuthorityBinding{Environment: fixtureID(231), Network: owner.endpoint.network, Root: fixtureID(232), Kind: custody.AuthorityAdmission}}}, textPermissionSecretFixture{})
+		Authority: custody.AuthorityState{Binding: custody.AuthorityBinding{Environment: fixtureID(231), Network: owner.endpoint.network, Root: fixtureID(232), Kind: custody.AuthorityAdmission}}}, permissionSecretFixture{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -76,7 +76,7 @@ func prepareTextIssuancePermissionWithIdentity(t *testing.T, owner *textContext,
 		t.Helper()
 
 		issued, err := vault.Execute(t.Context(), custody.Operation{Kind: custody.OperationIssueAdmissionPermission, RecordID: created.RecordID, Expected: created.Authority.Binding,
-			AdmissionRequest: raw, AdmissionRequestCommitment: digest}, textPermissionSecretFixture{})
+			AdmissionRequest: raw, AdmissionRequestCommitment: digest}, permissionSecretFixture{})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -84,11 +84,11 @@ func prepareTextIssuancePermissionWithIdentity(t *testing.T, owner *textContext,
 	}
 	source.issuePermission = func(t *testing.T, owner *textContext, maxima [3]uint32) {
 		t.Helper()
-		raw, digest, err := owner.requestTextPermission(maxima)
+		raw, digest, err := owner.requestPermission(maxima)
 		if err != nil {
 			t.Fatal(err)
 		}
-		if err := owner.importTextPermission(digest, source.issueRawPermission(t, raw, digest)); err != nil {
+		if err := owner.importPermission(digest, source.issueRawPermission(t, raw, digest)); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -101,12 +101,12 @@ func prepareTextIssuancePermissionWithIdentity(t *testing.T, owner *textContext,
 // ownership of failed/retried requests, not successful network qualification.
 func TestTextIssuanceRetainsExactPendingBatchAcrossFailedAttempts(t *testing.T) {
 	_, owner, source := textSourceContextFixture(t)
-	prepareTextIssuancePermission(t, owner, source)
+	prepareIssuancePermission(t, owner, source)
 	receiver := source.view.Nodes[0].NodeID
 	attempt := func() error {
 		ctx, cancel := context.WithTimeout(t.Context(), 2*time.Second)
 		defer cancel()
-		return owner.issueTextTokens(ctx, [][32]byte{receiver}, 2)
+		return owner.issueTokens(ctx, [][32]byte{receiver}, 2)
 	}
 	if err := attempt(); err == nil {
 		t.Fatal("unavailable network issued tokens")
@@ -129,7 +129,7 @@ func TestTextIssuanceRetainsExactPendingBatchAcrossFailedAttempts(t *testing.T) 
 		t.Fatal("retry rotated blinding state, source, allowance, or left live flight")
 	}
 	owner.mu.Unlock()
-	if err := owner.issueTextTokens(t.Context(), [][32]byte{source.view.Nodes[1].NodeID}, 2); err == nil {
+	if err := owner.issueTokens(t.Context(), [][32]byte{source.view.Nodes[1].NodeID}, 2); err == nil {
 		t.Fatal("retry changed receiving challenge")
 	}
 	if err := owner.Close(); err != nil {
@@ -142,18 +142,18 @@ func TestTextIssuanceRetainsExactPendingBatchAcrossFailedAttempts(t *testing.T) 
 
 func TestTextPermissionRevocationDefersActiveBatchDiscardUntilOperationCompletion(t *testing.T) {
 	_, owner, source := textSourceContextFixture(t)
-	prepareTextIssuancePermission(t, owner, source)
+	prepareIssuancePermission(t, owner, source)
 	receiver := source.view.Nodes[0].NodeID
 	ctx, cancel := context.WithTimeout(t.Context(), 2*time.Second)
 	defer cancel()
-	if err := owner.issueTextTokens(ctx, [][32]byte{receiver}, 2); err == nil {
+	if err := owner.issueTokens(ctx, [][32]byte{receiver}, 2); err == nil {
 		t.Fatal("unavailable network issued tokens")
 	}
 
 	owner.mu.Lock()
 	permission := owner.tokens.permission
 	batch := permission.pending
-	operation := newTextIssuanceOperation(owner, permission, permission.profile, batch, false)
+	operation := newIssuanceOperation(owner, permission, permission.profile, batch, false)
 	owner.tokens.issuance = operation
 	t.Cleanup(func() {
 		select {
@@ -166,7 +166,7 @@ func TestTextPermissionRevocationDefersActiveBatchDiscardUntilOperationCompletio
 		stop()
 		_ = operation.complete(canceled, client.ClosedIssuanceExchangeResult{}, context.Canceled)
 	})
-	owner.clearTextPermissionLocked()
+	owner.clearPermissionLocked()
 	if owner.tokens.permission != nil || !operation.discardPermission || len(batch.pending.Request()) == 0 {
 		owner.mu.Unlock()
 		t.Fatal("revocation did not detach permission while retaining the active operation batch")
@@ -185,7 +185,7 @@ func TestTextPermissionRevocationDefersActiveBatchDiscardUntilOperationCompletio
 
 func TestTextRecoveryIssuanceCancellationDiscardsBatchWithoutRefund(t *testing.T) {
 	_, owner, source := textSourceContextFixture(t)
-	prepareTextIssuancePermission(t, owner, source)
+	prepareIssuancePermission(t, owner, source)
 	listener, err := net.ListenTCP("tcp", &net.TCPAddr{IP: net.IPv4(127, 0, 0, 1)})
 	if err != nil {
 		t.Fatal(err)
@@ -214,7 +214,7 @@ func TestTextRecoveryIssuanceCancellationDiscardsBatchWithoutRefund(t *testing.T
 	})
 	go func() {
 		defer close(workerDone)
-		result <- owner.issueTextRecoveryTokens(ctx, [][32]byte{receiver}, 2)
+		result <- owner.issueRecoveryTokens(ctx, [][32]byte{receiver}, 2)
 	}()
 	accepted, err := listener.Accept()
 	if err != nil {
@@ -241,7 +241,7 @@ func TestTextRecoveryIssuanceCancellationDiscardsBatchWithoutRefund(t *testing.T
 
 func TestTextIssuanceRequiresPermissionBeforeSelectingAnyPeers(t *testing.T) {
 	endpoint, owner, source := textSourceContextFixture(t)
-	if err := owner.issueTextTokens(t.Context(), [][32]byte{source.view.Nodes[0].NodeID}, 2); err == nil {
+	if err := owner.issueTokens(t.Context(), [][32]byte{source.view.Nodes[0].NodeID}, 2); err == nil {
 		t.Fatal("missing permission admitted")
 	}
 	if endpoint.closedEntries != nil || owner.source.set != nil {
@@ -249,7 +249,7 @@ func TestTextIssuanceRequiresPermissionBeforeSelectingAnyPeers(t *testing.T) {
 	}
 	canceled, cancel := context.WithCancel(t.Context())
 	cancel()
-	if err := owner.issueTextTokens(canceled, [][32]byte{source.view.Nodes[0].NodeID}, 2); err == nil {
+	if err := owner.issueTokens(canceled, [][32]byte{source.view.Nodes[0].NodeID}, 2); err == nil {
 		t.Fatal("canceled caller admitted")
 	}
 	if endpoint.closedEntries != nil {
@@ -259,7 +259,7 @@ func TestTextIssuanceRequiresPermissionBeforeSelectingAnyPeers(t *testing.T) {
 
 func TestTextIssuanceRevocationBeforeDelayedCompletionJoinsTransport(t *testing.T) {
 	_, owner, source := textSourceContextFixture(t)
-	prepareTextIssuancePermission(t, owner, source)
+	prepareIssuancePermission(t, owner, source)
 	listener, err := net.ListenTCP("tcp", &net.TCPAddr{IP: net.IPv4(127, 0, 0, 1)})
 	if err != nil {
 		t.Fatal(err)
@@ -292,7 +292,7 @@ func TestTextIssuanceRevocationBeforeDelayedCompletionJoinsTransport(t *testing.
 	workers.Add(1)
 	go func() {
 		defer workers.Done()
-		issued <- owner.issueTextTokens(t.Context(), [][32]byte{receiver}, 2)
+		issued <- owner.issueTokens(t.Context(), [][32]byte{receiver}, 2)
 	}()
 	accepted, err := listener.Accept()
 	if err != nil {
@@ -342,7 +342,7 @@ func TestTextIssuanceRevocationBeforeDelayedCompletionJoinsTransport(t *testing.
 
 func TestTextPrefixPreparesBothReceiversInOneRetryableBatch(t *testing.T) {
 	_, owner, source := textSourceContextFixture(t)
-	prepareTextIssuancePermission(t, owner, source)
+	prepareIssuancePermission(t, owner, source)
 	attempt := func() {
 		t.Helper()
 		ctx, cancel := context.WithTimeout(t.Context(), 2*time.Second)
@@ -388,11 +388,11 @@ func TestTextIssuerStockRetryRetainsOriginalInternalBatch(t *testing.T) {
 	certificate, _ := testCertificate(t, 391, "issuer-stock-retry")
 	private := certificate.PrivateKey.(ed25519.PrivateKey)
 	defer clear(private)
-	prepareTextIssuancePermissionWithIdentity(t, owner, source, private, [3]uint32{4, 8, 0})
+	prepareIssuancePermissionWithIdentity(t, owner, source, private, [3]uint32{4, 8, 0})
 	attempt := func() error {
 		ctx, cancel := context.WithTimeout(t.Context(), 100*time.Millisecond)
 		defer cancel()
-		return owner.prepareTextIssuerStock(ctx, nil, 0, nil, nil, nil)
+		return owner.prepareIssuerStock(ctx, nil, 0, nil, nil, nil)
 	}
 	if err := attempt(); err == nil {
 		t.Fatal("unavailable issuer unexpectedly funded stock")

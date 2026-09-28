@@ -121,7 +121,7 @@ func (owner *textContext) prepareResolvedTextIntroduction(ctx context.Context, j
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
 	binding.bindIntroductionLocked(verified.Descriptor.Private)
-	profile, now, err := owner.textPermissionProfileLocked()
+	profile, now, err := owner.permissionProfileLocked()
 	prefix := owner.source.currentLocked()
 	if err != nil || !owner.liveTextServiceJobLocked(job, broker.Connection) || ctx.Err() != nil || prefix == nil ||
 		profile.Digest != verified.Descriptor.ProfileDigest || !owner.descriptorHistory.Matches(destination.Target, verified.Current.Digest, verified.Descriptor.Private.Revision) {
@@ -184,7 +184,7 @@ func (owner *textContext) refreshTextIntroduction(ctx context.Context, job *text
 	}
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
-	profile, now, err := owner.textPermissionProfileLocked()
+	profile, now, err := owner.permissionProfileLocked()
 	introduction := attempt.binding.introductionLocked()
 	if err != nil || !owner.liveTextServiceJobLocked(job, broker.Connection) || !prefix.currentLocked(&owner.source) ||
 		ctx.Err() != nil || profile.Digest != attempt.plaintext.ProfileDigest ||

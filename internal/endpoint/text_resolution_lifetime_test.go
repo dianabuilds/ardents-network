@@ -142,7 +142,7 @@ func TestTextResolutionOldAcquisitionCannotCommitAfterSourceReplacement(t *testi
 	defer clear(raw)
 
 	owner.mu.Lock()
-	profile, _, err := owner.textPermissionProfileLocked()
+	profile, _, err := owner.permissionProfileLocked()
 	if err != nil {
 		owner.mu.Unlock()
 		t.Fatal(err)

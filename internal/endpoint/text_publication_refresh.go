@@ -271,7 +271,7 @@ func textRefreshSourceContention(cause error) bool {
 
 func (owner *textContext) rotateTextPublication(flight *textPublicationRefresh, previous *textIntroductionRegistration) error {
 	owner.mu.Lock()
-	_, now, err := owner.textPermissionProfileLocked()
+	_, now, err := owner.permissionProfileLocked()
 	retained, _ := owner.publication.pair.previousLocked()
 	if err != nil || owner.publication.refresh.current() != flight || owner.publication.pair.currentLocked() != previous || retained != nil ||
 		previous.revisionExhausted() || !owner.liveLocked(owner.endpoint, broker.Administration) {

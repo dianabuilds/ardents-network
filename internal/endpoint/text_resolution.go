@@ -36,7 +36,7 @@ func (owner *textContext) lookupTextDescriptor(ctx context.Context, target [32]b
 		return reachability.Verified{}, errors.New("text resolution input unavailable")
 	}
 	owner.mu.Lock()
-	profile, _, err := owner.textPermissionProfileLocked()
+	profile, _, err := owner.permissionProfileLocked()
 	if err != nil || owner.surface != broker.Connection || owner.tokens.permission == nil || owner.source.currentLocked() == nil || owner.resolution != nil || owner.source.openingInProgressLocked() || owner.tokens.issuance != nil {
 		owner.mu.Unlock()
 		return reachability.Verified{}, errors.New("text resolution owner unavailable")
@@ -75,7 +75,7 @@ func (owner *textContext) lookupTextDescriptor(ctx context.Context, target [32]b
 		return reachability.Verified{}, err
 	}
 	status, raw, err := flight.source.exchangeDescriptor(attempt, func(hello ardp.Hello, class uint8) ([]byte, error) {
-		return owner.presentTextResolutionToken(flight, hello, class)
+		return owner.presentResolutionToken(flight, hello, class)
 	}, target, nil)
 	defer clear(raw)
 	if err != nil || status != 0 {
@@ -88,7 +88,7 @@ func (owner *textContext) acceptTextResolutionResult(caller context.Context, fli
 	profile state.ClosedProfileView, target [32]byte, raw []byte) (reachability.Verified, error) {
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
-	current, now, err := owner.textPermissionProfileLocked()
+	current, now, err := owner.permissionProfileLocked()
 	if caller == nil || err != nil || flight == nil || owner.resolution != flight || flight.source == nil ||
 		current != profile || !flight.source.currentLocked(&owner.source) || flight.context.Err() != nil || caller.Err() != nil {
 		return reachability.Verified{}, errors.New("text resolution authority changed")
@@ -96,10 +96,10 @@ func (owner *textContext) acceptTextResolutionResult(caller context.Context, fli
 	return owner.descriptorHistory.Accept(raw, target, profile.NetworkID, profile.Digest, now)
 }
 
-func (owner *textContext) presentTextResolutionToken(flight *textResolutionFlight, hello ardp.Hello, class uint8) ([]byte, error) {
+func (owner *textContext) presentResolutionToken(flight *textResolutionFlight, hello ardp.Hello, class uint8) ([]byte, error) {
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
-	profile, now, err := owner.textPermissionProfileLocked()
+	profile, now, err := owner.permissionProfileLocked()
 	if err != nil || flight == nil || owner.resolution != flight || flight.source == nil || !flight.source.currentLocked(&owner.source) || flight.context.Err() != nil ||
 		owner.tokens.permission == nil || hello.Purpose != ardp.PurposeReachability || class != 1 || hello.RecipientNodeID != flight.receiver ||
 		hello.NetworkID != profile.NetworkID || hello.StateGeneration != profile.StateGeneration || hello.StateDigest != profile.StateDigest ||
@@ -110,14 +110,14 @@ func (owner *textContext) presentTextResolutionToken(flight *textResolutionFligh
 	if err != nil || receiver != flight.receiver {
 		return nil, errors.New("text resolution recipient changed")
 	}
-	return owner.takeTextTokenLocked(profile, now, hello, class, flight.context)
+	return owner.takeTokenLocked(profile, now, hello, class, flight.context)
 }
 
 // Reuse only unspent stock for this exact current recipient/window. A retained
 // unfinished issuance batch must complete before another operation can use it.
 func (owner *textContext) ensureTextResolutionStock(flight *textResolutionFlight) error {
 	owner.mu.Lock()
-	profile, _, err := owner.textPermissionProfileLocked()
+	profile, _, err := owner.permissionProfileLocked()
 	if err != nil || owner.resolution != flight || flight.source == nil || !flight.source.currentLocked(&owner.source) || flight.context.Err() != nil || owner.tokens.permission == nil {
 		owner.mu.Unlock()
 		return errors.New("text resolution stock owner changed")
@@ -127,7 +127,7 @@ func (owner *textContext) ensureTextResolutionStock(flight *textResolutionFlight
 		return nil
 	}
 	owner.mu.Unlock()
-	return owner.issueTextTokens(flight.context, [][32]byte{flight.receiver}, 1)
+	return owner.issueTokens(flight.context, [][32]byte{flight.receiver}, 1)
 }
 
 func (owner *textContext) finishTextResolution(flight *textResolutionFlight, outcome error) {

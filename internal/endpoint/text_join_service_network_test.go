@@ -140,7 +140,7 @@ func textUnpublishedNetworkFixtureWithReaderMaxima(t *testing.T, carrier routeca
 		defer clear(authority)
 		return acceptedInstanceBinding(t, serviceInstanceFixtureRoot(t), network, authority, now, until)
 	}, configure...)
-	reader := textPermissionContextFixture(t, endpoint, fixtureID(211), broker.Connection)
+	reader := permissionContextFixture(t, endpoint, fixtureID(211), broker.Connection)
 	source.issuePermission(t, reader, maxima)
 	return reader, publisher
 }
