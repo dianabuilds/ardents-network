@@ -3,6 +3,7 @@ package source
 import (
 	"bytes"
 	"encoding/hex"
+	"io"
 	"testing"
 )
 
@@ -52,5 +53,26 @@ func TestResponseRejectsNonOKObject(t *testing.T) {
 	raw[8], raw[9] = notFoundStatus, 1
 	if _, err := readResponse(bytes.NewReader(raw[:])); err == nil {
 		t.Fatal("non-OK wire response carried an object")
+	}
+}
+
+func TestWritersRejectMixedMessageVariants(t *testing.T) {
+	for _, test := range []struct {
+		name    string
+		message Message
+		write   func(io.Writer, Message) error
+	}{
+		{name: "request with status", message: Message{Operation: "latest", Status: "busy"}, write: writeRequest},
+		{name: "request with payload", message: Message{Operation: "latest", Payload: []byte{1}}, write: writeRequest},
+		{name: "response with operation", message: Message{Status: "busy", Operation: "latest"}, write: writeResponse},
+		{name: "response with network digest", message: Message{Status: "busy", NetworkDigest: [32]byte{1}}, write: writeResponse},
+		{name: "response with material index", message: Message{Status: "busy", MaterialIndex: 1}, write: writeResponse},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			var wire bytes.Buffer
+			if err := test.write(&wire, test.message); err == nil || wire.Len() != 0 {
+				t.Fatalf("mixed message write = %v, bytes=%x", err, wire.Bytes())
+			}
+		})
 	}
 }
