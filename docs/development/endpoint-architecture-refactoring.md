@@ -301,14 +301,16 @@ systemd/cgroup qualification.
   behavior/coverage decisions (e.g. tagging `heapdump_parser_test.go`) are
   escalated to PO explicitly.
 - **Interface**: n/a. **Shutdown order**: n/a.
-- **Affected tests**: 6 merges (worker installed helper files into their sole
-  consumers; service recovery 3→1; introduction handover+boundary→capsule;
-  publication initial_ack→loss; optional publisher start+withdraw), 2 single-
-  test moves (Admission rate test → `introduction/`, retiring
-  `testsupport.SeedReplay`; RefreshFailureStage test → `publication/`), and
-  fixture-file renames. Constraints: the retained-setup `!race`/`race` pair
-  changes together; package-visible helpers with external consumers survive
-  every rename.
+- **Affected tests**: Source failure-stage wrappers are checked in
+  `internal/endpoint/source/failure_test.go`; the root Source-operation,
+  nested role-failure, and exact-handle retirement tests stay with their
+  Context orchestration. Further audited candidates include recovery fixtures,
+  worker and Introduction helpers, publication ACK, admission-rate, and refresh
+  classifier tests. Merge or move a test only with its actual behavior owner,
+  preserving assertions, setup, and independently useful fixtures. The
+  retained-setup `!race`/`race` pair changes together; package-visible helpers
+  with external consumers survive every rename.
+
 - **Integration gate**: same as L1 (commits wait for the shared window to be
   free so commit-hook quick-check does not contend with other owners'
   timing-sensitive gates).
