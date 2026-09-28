@@ -416,8 +416,13 @@ EOF, or Terminal. That replay remains ordered with later Application bytes and
 is joined or interrupted by the Connection's existing terminal cleanup.
 
 Publication persists public proof and its non-decreasing generation floor but
-never persists a live Instance private key. The maintained Publisher participant
-receives one opened host Instance binding as an opaque signer. For current
+never persists a live Instance private key. The supported generation floor
+comes only from the current Publication root's floor file. An empty owned root
+starts at zero; a root retaining a generation or current pointer without its
+floor refuses recovery. The former separate plain-decimal generation file has
+no Target, Authority, or Network binding. Its bytes remain untouched: the
+maintained runtime neither reads nor migrates it. The maintained Publisher
+participant receives one opened host Instance binding as an opaque signer. For current
 private Introduction, it creates a volatile `PrivateRecipient` with a bounded
 revision and expiry; the recipient opens only the authenticated private
 capsule, without an Interface returning private bytes or an exportable HPKE

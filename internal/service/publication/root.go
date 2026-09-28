@@ -170,14 +170,6 @@ func (root *durableRoot) restore(config Config) error {
 		if len(entries) != 0 || currentExists(root.path) {
 			return errors.New("publication root lacks its monotonic floor")
 		}
-		legacy, legacyErr := readLegacyFloor(config.LegacyFloor)
-		if legacyErr != nil {
-			return legacyErr
-		}
-		floor = legacy
-		if floor != 0 && writeFloor(root.path, floor) != nil {
-			return errors.New("publication root cannot persist migrated floor")
-		}
 	}
 	root.floor = floor
 	pointer, pointerExists, err := readPointer(root.path)
@@ -228,24 +220,6 @@ func readFloor(root string) (uint64, bool, error) {
 		return 0, false, errors.New("publication floor is malformed")
 	}
 	return value, true, nil
-}
-
-func readLegacyFloor(path string) (uint64, error) {
-	if path == "" {
-		return 0, nil
-	}
-	raw, err := readFile(path, 21)
-	if errors.Is(err, os.ErrNotExist) {
-		return 0, nil
-	}
-	if err != nil || len(raw) == 0 || len(raw) > 20 {
-		return 0, errors.New("legacy publication floor is malformed")
-	}
-	value, parseErr := strconv.ParseUint(strings.TrimSpace(string(raw)), 10, 64)
-	if parseErr != nil {
-		return 0, errors.New("legacy publication floor is malformed")
-	}
-	return value, nil
 }
 
 func writeFloor(root string, floor uint64) error {

@@ -284,7 +284,6 @@
           "internal/service/publication.readDirectory",
           "internal/service/publication.readFile",
           "internal/service/publication.readFloor",
-          "internal/service/publication.readLegacyFloor",
           "internal/service/publication.readPointer",
           "internal/service/publication.removeGeneration",
           "internal/service/publication.replaceFile",

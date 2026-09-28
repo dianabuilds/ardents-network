@@ -24,14 +24,12 @@ type Credential struct {
 	Signature      [64]byte
 }
 
-// Config owns one publication root. LegacyFloor is read only during the C1
-// migration; publication never writes that former H3 generation file.
+// Config owns one publication root and its current generation floor.
 type Config struct {
-	Root        string
-	LegacyFloor string
-	NetworkID   [32]byte
-	Authority   ed25519.PublicKey
-	Clock       func() time.Time
+	Root      string
+	NetworkID [32]byte
+	Authority ed25519.PublicKey
+	Clock     func() time.Time
 }
 
 // PublishInput supplies one fresh, higher-generation live Instance.

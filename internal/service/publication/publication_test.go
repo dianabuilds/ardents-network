@@ -120,6 +120,33 @@ func TestPersistedPublicationIsNotLiveAfterRestartAndFloorSurvives(t *testing.T)
 	}
 }
 
+func TestEmptyPublicationRootReopensWithZeroFloor(t *testing.T) {
+	t.Parallel()
+	fixture := newPublicationFixture(t)
+	root := t.TempDir()
+	owner, err := Open(fixture.config(root))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if floor, err := owner.Floor(); err != nil || floor != 0 {
+		t.Fatalf("new root floor = %d, %v", floor, err)
+	}
+	if err := owner.Close(); err != nil {
+		t.Fatal(err)
+	}
+	reopened, err := Open(fixture.config(root))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer reopened.Close()
+	if floor, err := reopened.Floor(); err != nil || floor != 0 {
+		t.Fatalf("reopened empty root floor = %d, %v", floor, err)
+	}
+	if _, err := reopened.Publish(t.Context(), fixture.input(t, 1)); err != nil {
+		t.Fatalf("first publication after empty reopen: %v", err)
+	}
+}
+
 func TestOpenRejectsSurplusOrTamperedPublicationState(t *testing.T) {
 	t.Parallel()
 	fixture := newPublicationFixture(t)
