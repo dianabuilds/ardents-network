@@ -3,6 +3,7 @@ package route
 import (
 	"encoding/binary"
 	"errors"
+	"slices"
 	"sync"
 	"time"
 
@@ -297,7 +298,7 @@ func (channel *ClosedForwardingChannel) NextAvailable(available func(ClosedForwa
 		if available != nil && !available(event) {
 			continue
 		}
-		channel.controls = append(channel.controls[:index], channel.controls[index+1:]...)
+		channel.controls = slices.Delete(channel.controls, index, index+1)
 		channel.controlBytes -= closedForwardControlSize(event)
 		channel.releaseControlQueue(uint64(closedForwardControlSize(event)))
 		return event, true
@@ -315,7 +316,13 @@ func (channel *ClosedForwardingChannel) NextAvailable(available func(ClosedForwa
 			channel.ready = append(channel.ready, lane)
 			continue
 		}
+		// The returned event now owns these bytes. A live child must not keep
+		// consumed frame bodies through the old queue backing array.
+		child.frames[0] = nil
 		child.frames = child.frames[1:]
+		if len(child.frames) == 0 {
+			child.frames = nil
+		}
 		child.delivered += uint64(len(event.Bytes))
 		if len(child.frames) > 0 {
 			channel.ready = append(channel.ready, lane)
