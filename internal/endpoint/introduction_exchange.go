@@ -61,7 +61,7 @@ func (owner *dutyContext) submitIntroduction(ctx context.Context, job *jobIdenti
 		if err != nil || selected != receiver {
 			return nil, errors.New("text Introduction recipient changed")
 		}
-		return owner.takeTokenLocked(current, now, hello, class, bounded)
+		return owner.tokens.TakeTokenLocked(current, now, hello, class, bounded)
 	}, prepared.operation)
 	if err != nil || status != 0 {
 		return errors.Join(err, errors.New("text Introduction delivery refused"))
@@ -193,7 +193,7 @@ func (owner *dutyContext) prepareSubmissionStockWithCancellation(ctx context.Con
 	}
 	owner.mu.Lock()
 	profile, _, err := owner.permissionProfileLocked()
-	stocked := err == nil && owner.tokens.permission.stockCountFor(profile.Digest, receiver, 1) != 0
+	stocked := err == nil && owner.tokens.Permission.StockCountFor(profile.Digest, receiver, 1) != 0
 	owner.mu.Unlock()
 	if err != nil {
 		return [32]byte{}, state.ClosedProfileView{}, err

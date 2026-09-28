@@ -37,7 +37,7 @@ func (owner *dutyContext) lookupDescriptor(ctx context.Context, target [32]byte)
 	}
 	owner.mu.Lock()
 	profile, _, err := owner.permissionProfileLocked()
-	if err != nil || owner.surface != broker.Connection || owner.tokens.permission == nil || owner.source.currentLocked() == nil || owner.resolution != nil || owner.source.openingInProgressLocked() || owner.tokens.issuance != nil {
+	if err != nil || owner.surface != broker.Connection || owner.tokens.Permission == nil || owner.source.currentLocked() == nil || owner.resolution != nil || owner.source.openingInProgressLocked() || owner.tokens.Issuance != nil {
 		owner.mu.Unlock()
 		return reachability.Verified{}, errors.New("text resolution owner unavailable")
 	}
@@ -101,7 +101,7 @@ func (owner *dutyContext) presentResolutionToken(flight *resolutionFlight, hello
 	defer owner.mu.Unlock()
 	profile, now, err := owner.permissionProfileLocked()
 	if err != nil || flight == nil || owner.resolution != flight || flight.source == nil || !flight.source.currentLocked(&owner.source) || flight.context.Err() != nil ||
-		owner.tokens.permission == nil || hello.Purpose != ardp.PurposeReachability || class != 1 || hello.RecipientNodeID != flight.receiver ||
+		owner.tokens.Permission == nil || hello.Purpose != ardp.PurposeReachability || class != 1 || hello.RecipientNodeID != flight.receiver ||
 		hello.NetworkID != profile.NetworkID || hello.StateGeneration != profile.StateGeneration || hello.StateDigest != profile.StateDigest ||
 		hello.ProfileDigest != profile.Digest || hello.ChannelNonce == [32]byte{} || !now.Before(hello.Deadline) || hello.Deadline.After(profile.NotAfter) {
 		return nil, errors.New("text resolution token authority unavailable")
@@ -110,7 +110,7 @@ func (owner *dutyContext) presentResolutionToken(flight *resolutionFlight, hello
 	if err != nil || receiver != flight.receiver {
 		return nil, errors.New("text resolution recipient changed")
 	}
-	return owner.takeTokenLocked(profile, now, hello, class, flight.context)
+	return owner.tokens.TakeTokenLocked(profile, now, hello, class, flight.context)
 }
 
 // Reuse only unspent stock for this exact current recipient/window. A retained
@@ -118,11 +118,11 @@ func (owner *dutyContext) presentResolutionToken(flight *resolutionFlight, hello
 func (owner *dutyContext) ensureResolutionStock(flight *resolutionFlight) error {
 	owner.mu.Lock()
 	profile, _, err := owner.permissionProfileLocked()
-	if err != nil || owner.resolution != flight || flight.source == nil || !flight.source.currentLocked(&owner.source) || flight.context.Err() != nil || owner.tokens.permission == nil {
+	if err != nil || owner.resolution != flight || flight.source == nil || !flight.source.currentLocked(&owner.source) || flight.context.Err() != nil || owner.tokens.Permission == nil {
 		owner.mu.Unlock()
 		return errors.New("text resolution stock owner changed")
 	}
-	if !owner.tokens.permission.hasPending() && owner.tokens.permission.stockCountFor(profile.Digest, flight.receiver, 1) != 0 {
+	if !owner.tokens.Permission.HasPending() && owner.tokens.Permission.StockCountFor(profile.Digest, flight.receiver, 1) != 0 {
 		owner.mu.Unlock()
 		return nil
 	}

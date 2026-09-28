@@ -42,17 +42,17 @@ func (owner *dutyContext) provisionPermission(ctx context.Context, requestPath, 
 		}
 	}
 
-	digest, err := owner.exportPermissionFile(ctx, requestPath, maxima)
+	digest, err := owner.tokens.ExportFile(ctx, requestPath, maxima)
 	if err != nil {
 		return err
 	}
 	owner.mu.Lock()
-	pending := owner.tokens.permission
-	if pending == nil || pending.digest != digest {
+	pending := owner.tokens.Permission
+	if pending == nil || pending.Digest != digest {
 		owner.mu.Unlock()
 		return errors.New("text permission request owner changed")
 	}
-	expiry := pending.request.Permission.NotAfter
+	expiry := pending.Request.Permission.NotAfter
 	owner.mu.Unlock()
 	bounded, cancel := context.WithDeadline(ctx, expiry)
 	defer cancel()
@@ -78,7 +78,7 @@ func (owner *dutyContext) provisionPermission(ctx context.Context, requestPath, 
 			// The import reopens and identity-checks the canonical owner-only path.
 			// Invalid or partially written responses fail; they are never retried into
 			// success. The operator installs a complete response before exposing it.
-			return owner.importPermissionFile(bounded, responsePath, digest)
+			return owner.tokens.ImportFile(bounded, responsePath, digest)
 		}
 		timer := time.NewTimer(time.Second)
 		select {

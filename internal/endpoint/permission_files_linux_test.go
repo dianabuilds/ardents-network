@@ -80,7 +80,7 @@ func TestTextPermissionFilesConsumeActualCustodyApproval(t *testing.T) {
 	if err != nil || decoded.Role != admission.AllocationPublisher {
 		t.Fatalf("publisher request: %v", err)
 	}
-	if repeated, err := owner.exportPermissionFile(t.Context(), requestPath, maxima); err != nil || repeated != digest {
+	if repeated, err := owner.tokens.ExportFile(t.Context(), requestPath, maxima); err != nil || repeated != digest {
 		t.Fatalf("exact export retry: %v", err)
 	}
 	approved, err := vault.Execute(t.Context(), custody.Operation{Kind: custody.OperationIssueAdmissionPermission,
@@ -146,19 +146,19 @@ func TestTextPermissionFilesConsumeActualCustodyApproval(t *testing.T) {
 		})
 	}
 	foreign := permissionContextFixture(t, endpoint, principal, broker.Administration)
-	_, foreignDigest, err := foreign.requestPermission(maxima)
+	_, foreignDigest, err := foreign.tokens.Request(maxima)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := foreign.importPermissionFile(t.Context(), responsePath, foreignDigest); err == nil {
+	if err := foreign.tokens.ImportFile(t.Context(), responsePath, foreignDigest); err == nil {
 		t.Fatal("foreign context imported permission")
 	}
 	canceled, cancel := context.WithCancel(t.Context())
 	cancel()
-	if err := owner.importPermissionFile(canceled, responsePath, digest); err == nil {
+	if err := owner.tokens.ImportFile(canceled, responsePath, digest); err == nil {
 		t.Fatal("canceled import succeeded")
 	}
-	if _, err := owner.exportPermissionFile(canceled, filepath.Join(root, "canceled"), maxima); err == nil {
+	if _, err := owner.tokens.ExportFile(canceled, filepath.Join(root, "canceled"), maxima); err == nil {
 		t.Fatal("canceled export succeeded")
 	}
 	if _, err := os.Stat(filepath.Join(root, "canceled")); !os.IsNotExist(err) {
@@ -167,7 +167,7 @@ func TestTextPermissionFilesConsumeActualCustodyApproval(t *testing.T) {
 	if err := os.WriteFile(requestPath, []byte("occupied"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := owner.exportPermissionFile(t.Context(), requestPath, maxima); err == nil {
+	if _, err := owner.tokens.ExportFile(t.Context(), requestPath, maxima); err == nil {
 		t.Fatal("export replaced conflicting destination")
 	}
 	retained, err := os.ReadFile(requestPath)
@@ -175,17 +175,17 @@ func TestTextPermissionFilesConsumeActualCustodyApproval(t *testing.T) {
 		t.Fatal("conflicting destination changed")
 	}
 	clock.Store(now.Truncate(time.Hour).Add(time.Hour).Unix())
-	if err := owner.importPermissionFile(t.Context(), responsePath, digest); err == nil {
+	if err := owner.tokens.ImportFile(t.Context(), responsePath, digest); err == nil {
 		t.Fatal("expired permission imported")
 	}
 	clock.Store(now.Unix()) // Keep closure refusal independent of expiry.
-	if err := owner.importPermissionFile(t.Context(), responsePath, digest); err != nil {
+	if err := owner.tokens.ImportFile(t.Context(), responsePath, digest); err != nil {
 		t.Fatalf("live control before closure: %v", err)
 	}
 	if err := owner.Close(); err != nil {
 		t.Fatal(err)
 	}
-	if err := owner.importPermissionFile(t.Context(), responsePath, digest); err == nil {
+	if err := owner.tokens.ImportFile(t.Context(), responsePath, digest); err == nil {
 		t.Fatal("closed context restored from file")
 	}
 }

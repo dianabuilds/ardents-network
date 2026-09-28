@@ -30,9 +30,9 @@ func TestQualificationReopensRetiredSourcePrefixForIssuerReserve(t *testing.T) {
 		owner.mu.Lock()
 		defer owner.mu.Unlock()
 		count := 0
-		for _, stock := range owner.tokens.permission.stock {
-			if stock.challenge.ReceiverNodeID == source.view.Profile.IssuerNodeID && stock.challenge.Class == 1 {
-				count += len(stock.tokens)
+		for _, stock := range owner.tokens.Permission.Stock {
+			if stock.Challenge.ReceiverNodeID == source.view.Profile.IssuerNodeID && stock.Challenge.Class == 1 {
+				count += len(stock.Tokens)
 			}
 		}
 		return count
@@ -42,11 +42,11 @@ func TestQualificationReopensRetiredSourcePrefixForIssuerReserve(t *testing.T) {
 	}
 	for ready() > 4 {
 		owner.mu.Lock()
-		for slot := range owner.tokens.permission.stock {
-			stock := &owner.tokens.permission.stock[slot]
-			if stock.challenge.ReceiverNodeID == source.view.Profile.IssuerNodeID && stock.challenge.Class == 1 && len(stock.tokens) > 0 {
-				clear(stock.tokens[0])
-				stock.tokens = stock.tokens[1:]
+		for slot := range owner.tokens.Permission.Stock {
+			stock := &owner.tokens.Permission.Stock[slot]
+			if stock.Challenge.ReceiverNodeID == source.view.Profile.IssuerNodeID && stock.Challenge.Class == 1 && len(stock.Tokens) > 0 {
+				clear(stock.Tokens[0])
+				stock.Tokens = stock.Tokens[1:]
 				break
 			}
 		}
@@ -85,9 +85,9 @@ func TestQualificationRefillsPublisherIssuerReserveBetweenStreams(t *testing.T) 
 		owner.mu.Lock()
 		defer owner.mu.Unlock()
 		count := 0
-		for _, stock := range owner.tokens.permission.stock {
-			if stock.challenge.ReceiverNodeID == source.view.Profile.IssuerNodeID && stock.challenge.Class == 1 {
-				count += len(stock.tokens)
+		for _, stock := range owner.tokens.Permission.Stock {
+			if stock.Challenge.ReceiverNodeID == source.view.Profile.IssuerNodeID && stock.Challenge.Class == 1 {
+				count += len(stock.Tokens)
 			}
 		}
 		return count

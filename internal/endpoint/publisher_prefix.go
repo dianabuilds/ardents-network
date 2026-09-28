@@ -61,7 +61,7 @@ func (owner *dutyContext) openPublisherPrefix(ctx context.Context, role publishe
 	}
 	owner.mu.Lock()
 	_, _, err := owner.permissionProfileLocked()
-	if err != nil || owner.surface != broker.Administration || owner.source.currentLocked() == nil || owner.tokens.permission == nil || owner.source.openingInProgressLocked() || !role.openingAvailableLocked() {
+	if err != nil || owner.surface != broker.Administration || owner.source.currentLocked() == nil || owner.tokens.Permission == nil || owner.source.openingInProgressLocked() || !role.openingAvailableLocked() {
 		owner.mu.Unlock()
 		return nil, errors.New("text Publisher role owner unavailable")
 	}
@@ -120,12 +120,12 @@ func (owner *dutyContext) openPublisherPrefix(ctx context.Context, role publishe
 func (owner *dutyContext) ensurePublisherStock(role publisherPrefixOpening, flight *operationFlight, selection client.ClosedBootstrapSelection) error {
 	owner.mu.Lock()
 	profile, _, err := owner.permissionProfileLocked()
-	if err != nil || !role.openingCurrentLocked(flight) || flight.context.Err() != nil || owner.tokens.permission == nil {
+	if err != nil || !role.openingCurrentLocked(flight) || flight.context.Err() != nil || owner.tokens.Permission == nil {
 		owner.mu.Unlock()
 		return errors.New("text Publisher role stock unavailable")
 	}
-	pending := owner.tokens.permission.hasPending()
-	missing := owner.tokens.permission.missingStockFor(profile.Digest, [][32]byte{selection.EntryNodeID, selection.InteriorNodeID}, 2)
+	pending := owner.tokens.Permission.HasPending()
+	missing := owner.tokens.Permission.MissingStockFor(profile.Digest, [][32]byte{selection.EntryNodeID, selection.InteriorNodeID}, 2)
 	owner.mu.Unlock()
 	if len(missing) != 0 {
 		// The issuance owner resumes only an exact retained batch (including
@@ -142,7 +142,7 @@ func (owner *dutyContext) presentPublisherForwardingToken(role publisherPrefixOp
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
 	profile, now, err := owner.permissionProfileLocked()
-	if err != nil || owner.surface != broker.Administration || !role.openingCurrentLocked(flight) || flight.context.Err() != nil || owner.tokens.permission == nil ||
+	if err != nil || owner.surface != broker.Administration || !role.openingCurrentLocked(flight) || flight.context.Err() != nil || owner.tokens.Permission == nil ||
 		class != 2 || hello.Purpose != ardp.PurposeForwarding || hello.NetworkID != profile.NetworkID || hello.ProfileDigest != profile.Digest ||
 		hello.StateGeneration != profile.StateGeneration || hello.StateDigest != profile.StateDigest || hello.ChannelNonce == [32]byte{} || !now.Before(hello.Deadline) || hello.Deadline.After(profile.NotAfter) {
 		return nil, errors.New("text Publisher role forwarding authority unavailable")
@@ -151,5 +151,5 @@ func (owner *dutyContext) presentPublisherForwardingToken(role publisherPrefixOp
 	if err != nil || current != selection || hello.RecipientNodeID != selection.EntryNodeID && hello.RecipientNodeID != selection.InteriorNodeID {
 		return nil, errors.New("text Publisher role selection changed")
 	}
-	return owner.takeTokenLocked(profile, now, hello, class, flight.context)
+	return owner.tokens.TakeTokenLocked(profile, now, hello, class, flight.context)
 }

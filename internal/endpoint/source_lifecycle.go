@@ -268,7 +268,13 @@ func (handle *sourceHandle) join(ctx context.Context, present client.ClosedToken
 	return prefix.Join(ctx, present, intent)
 }
 
-func (handle *sourceHandle) exchangeIssuer(ctx context.Context, present client.ClosedTokenPresenter, batch []byte) (client.ClosedIssuanceExchangeResult, error) {
+// Loaded and ExchangeIssuer are the Source side of the token owner's
+// Prefix seam: batch identity binding plus the issuer-bootstrap transport.
+func (handle *sourceHandle) Loaded() bool {
+	return handle != nil && handle.prefix.Load() != nil
+}
+
+func (handle *sourceHandle) ExchangeIssuer(ctx context.Context, present client.ClosedTokenPresenter, batch []byte) (client.ClosedIssuanceExchangeResult, error) {
 	prefix, err := handle.routePrefix()
 	if err != nil {
 		return client.ClosedIssuanceExchangeResult{}, err

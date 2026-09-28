@@ -49,7 +49,7 @@ func (worker *qualifiedWorker) RefillSnapshot() qualification.Refill {
 	if !snapshot.Live {
 		return snapshot
 	}
-	snapshot.Busy = owner.tokens.issuance != nil
+	snapshot.Busy = owner.tokens.Issuance != nil
 	if snapshot.Busy {
 		return snapshot
 	}
@@ -192,12 +192,12 @@ func (owner *dutyContext) ensureQualificationTokenReserve(ctx context.Context, r
 	}
 	owner.mu.Lock()
 	profile, _, err := owner.permissionProfileLocked()
-	if err != nil || owner.tokens.permission == nil {
+	if err != nil || owner.tokens.Permission == nil {
 		owner.mu.Unlock()
 		return errors.Join(err, errors.New("qualification token reserve unavailable"))
 	}
-	ready := owner.tokens.permission.stockCountFor(profile.Digest, receiver, class)
-	remaining := owner.tokens.permission.remaining(class)
+	ready := owner.tokens.Permission.StockCountFor(profile.Digest, receiver, class)
+	remaining := owner.tokens.Permission.Remaining(class)
 	owner.mu.Unlock()
 	missing := min(minimum-ready, int(remaining))
 	if missing <= 0 {
@@ -213,12 +213,12 @@ func (owner *dutyContext) ensureQualificationTokenReserve(ctx context.Context, r
 func (owner *dutyContext) ensureQualificationIssuerReserve(ctx context.Context, minimum int) error {
 	owner.mu.Lock()
 	profile, _, err := owner.permissionProfileLocked()
-	if err != nil || owner.tokens.permission == nil || ctx.Err() != nil {
+	if err != nil || owner.tokens.Permission == nil || ctx.Err() != nil {
 		owner.mu.Unlock()
 		return errors.Join(err, ctx.Err(), errors.New("qualification issuer reserve unavailable"))
 	}
-	ready := owner.tokens.permission.stockCountForDuty(profile.Digest, profile.IssuerNodeID, profile.IssuerDutyGeneration, 1)
-	remaining := owner.tokens.permission.remaining(1)
+	ready := owner.tokens.Permission.StockCountForDuty(profile.Digest, profile.IssuerNodeID, profile.IssuerDutyGeneration, 1)
+	remaining := owner.tokens.Permission.Remaining(1)
 	prefixLive := owner.source.currentLocked() != nil
 	owner.mu.Unlock()
 	if ready >= minimum || remaining == 0 {
@@ -233,7 +233,7 @@ func (owner *dutyContext) ensureQualificationIssuerReserve(ctx context.Context, 
 		// refill; the next completed-stream boundary observes its result.
 		if _, openErr := owner.openPrefix(ctx); openErr != nil {
 			owner.mu.Lock()
-			inProgress := owner.source.currentLocked() != nil || owner.source.openingInProgressLocked() || owner.tokens.issuance != nil
+			inProgress := owner.source.currentLocked() != nil || owner.source.openingInProgressLocked() || owner.tokens.Issuance != nil
 			owner.mu.Unlock()
 			if !inProgress {
 				return errors.Join(openErr, errors.New("qualification issuer prefix rebirth failed"))
@@ -257,13 +257,13 @@ func (owner *dutyContext) presentQualifiedRefill(ctx context.Context, job *jobId
 	defer release()
 	owner.mu.Lock()
 	profile, now, err := owner.permissionProfileLocked()
-	if err != nil || class != 2 || !owner.liveServiceJobLocked(job, owner.surface) || owner.tokens.permission == nil ||
+	if err != nil || class != 2 || !owner.liveServiceJobLocked(job, owner.surface) || owner.tokens.Permission == nil ||
 		hello.NetworkID != profile.NetworkID || hello.StateDigest != profile.StateDigest || hello.StateGeneration != profile.StateGeneration ||
 		hello.ProfileDigest != profile.Digest || hello.ChannelNonce == [32]byte{} || !now.Before(hello.Deadline) || hello.Deadline.After(profile.NotAfter) {
 		owner.mu.Unlock()
 		return nil, errors.New("qualification refill authority unavailable")
 	}
-	stocked := owner.tokens.permission.stockCountForDuty(profile.Digest, hello.RecipientNodeID, hello.RecipientDutyGeneration, 2) != 0
+	stocked := owner.tokens.Permission.StockCountForDuty(profile.Digest, hello.RecipientNodeID, hello.RecipientDutyGeneration, 2) != 0
 	owner.mu.Unlock()
 	if !stocked {
 		if err := owner.issueTokensForOpening(ctx, [][32]byte{hello.RecipientNodeID}, 2, nil, false); err != nil {
@@ -276,5 +276,5 @@ func (owner *dutyContext) presentQualifiedRefill(ctx context.Context, job *jobId
 	if err != nil || current != profile || !owner.liveServiceJobLocked(job, owner.surface) {
 		return nil, errors.New("qualification refill authority changed")
 	}
-	return owner.takeTokenLocked(current, now, hello, class, ctx)
+	return owner.tokens.TakeTokenLocked(current, now, hello, class, ctx)
 }

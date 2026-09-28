@@ -71,11 +71,11 @@ func TestTextPublisherCommitsInstanceSignedDescriptor(t *testing.T) {
 			// selected Instance into another independently admitted local context.
 			foreign := permissionContextFixture(t, endpoint, fixtureID(211), broker.Administration)
 			foreign.mu.Lock()
-			foreign.source.live, foreign.publication.pair.registration, foreign.tokens.permission = owner.source.currentLocked(), first, owner.tokens.permission
+			foreign.source.live, foreign.publication.pair.registration, foreign.tokens.Permission = owner.source.currentLocked(), first, owner.tokens.Permission
 			foreign.mu.Unlock()
 			_, foreignErr := foreign.publishDescriptor(t.Context())
 			foreign.mu.Lock()
-			foreign.source.live, foreign.publication.pair.registration, foreign.tokens.permission = nil, nil, nil
+			foreign.source.live, foreign.publication.pair.registration, foreign.tokens.Permission = nil, nil, nil
 			foreign.mu.Unlock()
 			if foreignErr == nil || endpoint.publisherOwner != owner {
 				t.Fatal("another context stole the Instance publication")
@@ -146,7 +146,7 @@ func lookupPublishedProof(t *testing.T, owner *dutyContext, target [32]byte) []b
 		if err != nil {
 			return nil, err
 		}
-		return owner.takeTokenLocked(profile, now, hello, class, t.Context())
+		return owner.tokens.TakeTokenLocked(profile, now, hello, class, t.Context())
 	}, target, nil)
 	if err != nil || status != 0 {
 		t.Fatalf("read actual Node proof: %d %v", status, err)

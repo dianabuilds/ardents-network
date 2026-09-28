@@ -57,13 +57,13 @@ func TestTextIntroductionRetryResumesExactIssuance(t *testing.T) {
 				}
 			}
 			owner.mu.Lock()
-			pending := owner.tokens.permission.pending
-			if pending == nil || pending.refill {
+			pending := owner.tokens.Permission.Pending
+			if pending == nil || pending.Refill {
 				owner.mu.Unlock()
 				t.Fatal("outage did not retain requested batch")
 			}
-			request := pending.pending.Request()
-			reserved := owner.tokens.permission.reserved
+			request := pending.Pending.Request()
+			reserved := owner.tokens.Permission.Reserved
 			owner.mu.Unlock()
 			defer clear(request)
 			outage.unavailable.Store(false)
@@ -73,7 +73,7 @@ func TestTextIntroductionRetryResumesExactIssuance(t *testing.T) {
 					t.Fatal("Introduction replaced foreign pending batch")
 				}
 				owner.mu.Lock()
-				unchanged := owner.tokens.permission.pending == pending && bytes.Equal(request, pending.pending.Request()) && reserved == owner.tokens.permission.reserved
+				unchanged := owner.tokens.Permission.Pending == pending && bytes.Equal(request, pending.Pending.Request()) && reserved == owner.tokens.Permission.Reserved
 				owner.mu.Unlock()
 				if !unchanged {
 					t.Fatal("foreign pending batch mutated")
@@ -87,7 +87,7 @@ func TestTextIntroductionRetryResumesExactIssuance(t *testing.T) {
 				t.Fatalf("matching retry did not resume: %v", err)
 			}
 			owner.mu.Lock()
-			completed := owner.tokens.permission.pending == nil && owner.tokens.permission.reserved[1] == reserved[1] && owner.introduction.prefix.currentLocked() == prefix
+			completed := owner.tokens.Permission.Pending == nil && owner.tokens.Permission.Reserved[1] == reserved[1] && owner.introduction.prefix.currentLocked() == prefix
 			owner.mu.Unlock()
 			if !completed {
 				t.Fatal("retry replaced or charged requested issuance again")

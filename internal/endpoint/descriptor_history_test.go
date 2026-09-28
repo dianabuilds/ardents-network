@@ -135,7 +135,7 @@ func TestTextResolutionNetworkCannotRollBackLocalDescriptorFloor(t *testing.T) {
 				if err != nil {
 					return nil, err
 				}
-				return owner.takeTokenLocked(profile, at, hello, class, t.Context())
+				return owner.tokens.TakeTokenLocked(profile, at, hello, class, t.Context())
 			}, [32]byte{}, first)
 			if err != nil || status != 0 {
 				t.Fatalf("actual fixture publication: %d %v", status, err)
@@ -186,10 +186,10 @@ func TestTextResolutionNetworkCannotRollBackLocalDescriptorFloor(t *testing.T) {
 				}
 			}
 			_, err = owner.descriptorHistory.Accept(second, current.Credential.Target, profile.NetworkID, profile.Digest, now)
-			reserved, batches := owner.tokens.permission.reserved, owner.tokens.permission.batches
+			reserved, batches := owner.tokens.Permission.Reserved, owner.tokens.Permission.Batches
 			tokensBefore := 0
-			for _, stock := range owner.tokens.permission.stock {
-				tokensBefore += len(stock.tokens)
+			for _, stock := range owner.tokens.Permission.Stock {
+				tokensBefore += len(stock.Tokens)
 			}
 			owner.mu.Unlock()
 			if err != nil {
@@ -200,12 +200,12 @@ func TestTextResolutionNetworkCannotRollBackLocalDescriptorFloor(t *testing.T) {
 			}
 			owner.mu.Lock()
 			tokensAfter := 0
-			for _, stock := range owner.tokens.permission.stock {
-				tokensAfter += len(stock.tokens)
+			for _, stock := range owner.tokens.Permission.Stock {
+				tokensAfter += len(stock.Tokens)
 			}
 			unchanged := !owner.descriptorHistory.CanAdmit(fixtureID(199)) &&
-				owner.descriptorHistory.Matches(current.Credential.Target, current.Digest, 2) && owner.tokens.permission.reserved == reserved &&
-				owner.tokens.permission.batches == batches && tokensBefore == tokensAfter && owner.resolution == nil && owner.tokens.issuance == nil
+				owner.descriptorHistory.Matches(current.Credential.Target, current.Digest, 2) && owner.tokens.Permission.Reserved == reserved &&
+				owner.tokens.Permission.Batches == batches && tokensBefore == tokensAfter && owner.resolution == nil && owner.tokens.Issuance == nil
 			owner.mu.Unlock()
 			if !unchanged {
 				t.Fatal("capacity refusal evicted floors or consumed network issuance/admission")

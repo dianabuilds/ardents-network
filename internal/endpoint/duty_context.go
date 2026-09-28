@@ -9,6 +9,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
 	"github.com/dianabuilds/ardents-network/internal/endpoint/descriptorhistory"
+	"github.com/dianabuilds/ardents-network/internal/endpoint/tokens"
 )
 
 // dutyContextState owns platform-independent local authorization for a context.
@@ -22,7 +23,7 @@ type dutyContextState struct {
 	responder         responderPrefixLifecycle
 	resolution        *resolutionFlight
 	source            sourceLifecycle
-	tokens            tokens
+	tokens            tokens.Owner
 	mu                sync.Mutex
 	endpoint          *endpoint
 	lease             *broker.ActiveSession
@@ -69,6 +70,7 @@ func (endpoint *endpoint) beginDutyContext(ctx context.Context, capability, prin
 		return nil, errors.New("text context authorization is unavailable")
 	}
 	owner := &dutyContext{dutyContextState: dutyContextState{endpoint: endpoint, lease: lease, principal: principal, surface: surface, done: make(chan struct{})}}
+	owner.tokens.Init(&owner.mu, dutyTokenHost{owner})
 	if err := endpoint.retainDutyContext(owner); err != nil {
 		lease.Release()
 		return nil, err

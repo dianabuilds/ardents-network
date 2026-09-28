@@ -19,6 +19,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/custody"
 	"github.com/dianabuilds/ardents-network/internal/endpoint/durableroot"
 	"github.com/dianabuilds/ardents-network/internal/endpoint/tokenjournal"
+	"github.com/dianabuilds/ardents-network/internal/endpoint/tokens"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 )
 
@@ -88,7 +89,7 @@ func TestTextEndpointCrashDropsVolatileAuthorityAndRetainsSpend(t *testing.T) {
 	}
 	defer owner.Close()
 	owner.mu.Lock()
-	fresh := owner.tokens.permission == nil && owner.job == nil && owner.verifiedJob == nil && owner.source.set == nil &&
+	fresh := owner.tokens.Permission == nil && owner.job == nil && owner.verifiedJob == nil && owner.source.set == nil &&
 		owner.source.currentLocked() == nil && owner.publication.pair.registration == nil && owner.publication.pair.previousRegistration == nil &&
 		owner.introduction.exchanges.active == nil && owner.introduction.admission.replays == nil && owner.descriptorHistory.Cleared()
 	owner.mu.Unlock()
@@ -100,7 +101,7 @@ func TestTextEndpointCrashDropsVolatileAuthorityAndRetainsSpend(t *testing.T) {
 	if err := owner.finishJobCleanup(job, nil); err != nil {
 		t.Fatal(err)
 	}
-	requestRaw, digest, err := owner.requestPermission([3]uint32{4, 4, 0})
+	requestRaw, digest, err := owner.tokens.Request([3]uint32{4, 4, 0})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -116,14 +117,14 @@ func TestTextEndpointCrashDropsVolatileAuthorityAndRetainsSpend(t *testing.T) {
 		request.Permission.HolderKey == oldRequest.Permission.HolderKey {
 		t.Fatal("restart reused the lost context permission or holder")
 	}
-	if err := owner.importPermission(boundary.PermissionDigest, boundary.PermissionResponse); err == nil {
+	if err := owner.tokens.Import(boundary.PermissionDigest, boundary.PermissionResponse); err == nil {
 		t.Fatal("restart restored a response through the old request digest")
 	}
-	if err := owner.importPermission(digest, boundary.PermissionResponse); err == nil {
+	if err := owner.tokens.Import(digest, boundary.PermissionResponse); err == nil {
 		t.Fatal("restart rebound the old response to the fresh holder")
 	}
 	owner.mu.Lock()
-	stock := len(owner.tokens.permission.stock)
+	stock := len(owner.tokens.Permission.Stock)
 	owner.mu.Unlock()
 	if stock != 0 {
 		t.Fatal("restart resurrected token stock")
@@ -249,7 +250,7 @@ func runEndpointCrashChild(t *testing.T, root string) {
 	if _, err := workerGrant.Admit(fixtureID(240), broker.Connection); err != nil {
 		t.Fatal(err)
 	}
-	requestRaw, digest, err := owner.requestPermission([3]uint32{4, 4, 0})
+	requestRaw, digest, err := owner.tokens.Request([3]uint32{4, 4, 0})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -259,12 +260,12 @@ func runEndpointCrashChild(t *testing.T, root string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := owner.importPermission(digest, issued.AdmissionPermission); err != nil {
+	if err := owner.tokens.Import(digest, issued.AdmissionPermission); err != nil {
 		t.Fatal(err)
 	}
 	owner.mu.Lock()
-	owner.tokens.permission.stock = []tokenStock{{tokens: [][]byte{bytes.Repeat([]byte{0x5a}, 354)}}}
-	stockCount := len(owner.tokens.permission.stock)
+	owner.tokens.Permission.Stock = []tokens.Stock{{Tokens: [][]byte{bytes.Repeat([]byte{0x5a}, 354)}}}
+	stockCount := len(owner.tokens.Permission.Stock)
 	owner.mu.Unlock()
 	oldCapability, err := endpoint.Admit(principal, broker.Connection)
 	if err != nil {

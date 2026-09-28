@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/endpoint/tokens"
 	"github.com/dianabuilds/ardents-network/internal/network/duty"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	routecarrier "github.com/dianabuilds/ardents-network/internal/route/carrier"
@@ -46,8 +47,8 @@ func TestTextTokenPresentationFailureRetainsNestedStageAndCause(t *testing.T) {
 	if !errors.Is(failure, cause) {
 		t.Fatal("token presentation failure lost its cause")
 	}
-	transfer := tokenTransferFailureAt("journal", cause)
-	if got := tokenTransferFailureStage(transfer); got != "journal" || !errors.Is(transfer, cause) {
+	transfer := tokens.TransferFailureAt("journal", cause)
+	if got := tokens.TransferFailureStage(transfer); got != "journal" || !errors.Is(transfer, cause) {
 		t.Fatalf("token transfer failure = %q, %v", got, transfer)
 	}
 }
@@ -66,7 +67,7 @@ func TestTextTokenPresentationClassifiesConcurrentRoleCommit(t *testing.T) {
 	flight := &operationFlight{owner: owner, context: attempt, cancelOperation: cancel, done: make(chan struct{})}
 	owner.mu.Lock()
 	owner.source.opening = flight
-	profile := owner.tokens.permission.profile
+	profile := owner.tokens.Permission.Profile
 	owner.mu.Unlock()
 	defer func() {
 		owner.mu.Lock()
@@ -124,7 +125,7 @@ func TestTextRefreshWaitsForActualSourceUse(t *testing.T) {
 				return owner.publication.pair.registration != nil && owner.publication.pair.registration != first && !owner.publication.pair.registration.refreshAt.IsZero()
 			})
 			owner.mu.Lock()
-			valid := owner.publication.pair.previousRegistration == first && owner.publication.refresh.outcome(refresh) == nil && owner.tokens.permission.batches == 2
+			valid := owner.publication.pair.previousRegistration == first && owner.publication.refresh.outcome(refresh) == nil && owner.tokens.Permission.Batches == 2
 			owner.mu.Unlock()
 			if !valid {
 				t.Fatal("refresh lost original registration or repeated bootstrap")

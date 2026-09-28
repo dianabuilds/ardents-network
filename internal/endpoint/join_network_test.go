@@ -82,7 +82,7 @@ func exchangeRouteData(t *testing.T, reader, publisher *dutyContext, receiver [3
 				if hello.Purpose != ardp.PurposeDataJoin || hello.RecipientNodeID != receiver || class != 2 {
 					return nil, errors.New("JOIN crossed token purpose")
 				}
-				return owner.takeTokenLocked(profile, now, hello, class, ctx)
+				return owner.tokens.TakeTokenLocked(profile, now, hello, class, ctx)
 			}, intent)
 			results <- opened{stream, err}
 		}()

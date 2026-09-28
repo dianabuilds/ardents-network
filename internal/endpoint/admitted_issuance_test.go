@@ -32,19 +32,19 @@ func TestTextIssuanceUsesRetainedPrefixAfterTwoBootstrapBatches(t *testing.T) {
 				}
 			}
 			owner.mu.Lock()
-			permission := owner.tokens.permission
-			valid := owner.source.currentLocked() == prefix && owner.tokens.issuance == nil && owner.source.opening == nil &&
-				permission.pending == nil && permission.batches == 2 && permission.reserved == [3]uint32{34, 34, 0}
+			permission := owner.tokens.Permission
+			valid := owner.source.currentLocked() == prefix && owner.tokens.Issuance == nil && owner.source.opening == nil &&
+				permission.Pending == nil && permission.Batches == 2 && permission.Reserved == [3]uint32{34, 34, 0}
 			verified := 0
 			profile := source.view.Profile
-			for _, stock := range permission.stock {
-				if stock.challenge.ReceiverNodeID != selection.EntryNodeID || stock.challenge.Class != 2 {
+			for _, stock := range permission.Stock {
+				if stock.Challenge.ReceiverNodeID != selection.EntryNodeID || stock.Challenge.Class != 2 {
 					continue
 				}
-				for _, token := range stock.tokens {
+				for _, token := range stock.Tokens {
 					for _, key := range profile.TokenKeys[:profile.TokenKeyCount] {
-						if key.Class == 2 && key.WindowStart == permission.accepted.NotBefore {
-							if err := credential.VerifyClosedToken(stock.challenge, key.SPKI[:], token); err != nil {
+						if key.Class == 2 && key.WindowStart == permission.Accepted.NotBefore {
+							if err := credential.VerifyClosedToken(stock.Challenge, key.SPKI[:], token); err != nil {
 								owner.mu.Unlock()
 								t.Fatal(err)
 							}
@@ -87,8 +87,8 @@ func TestTextIssuanceUsesRetainedPrefixAfterTwoBootstrapBatches(t *testing.T) {
 				t.Fatal("retired prefix created unallocated work")
 			}
 			owner.mu.Lock()
-			retired := owner.source.currentLocked() == nil && owner.tokens.permission == permission &&
-				permission.pending == nil && permission.batches == 2 && permission.reserved == [3]uint32{34, 34, 0}
+			retired := owner.source.currentLocked() == nil && owner.tokens.Permission == permission &&
+				permission.Pending == nil && permission.Batches == 2 && permission.Reserved == [3]uint32{34, 34, 0}
 			owner.mu.Unlock()
 			if !retired {
 				t.Fatal("retirement lost private owner or repeated allocation")
@@ -97,7 +97,7 @@ func TestTextIssuanceUsesRetainedPrefixAfterTwoBootstrapBatches(t *testing.T) {
 				t.Fatal(err)
 			}
 			owner.mu.Lock()
-			joined := owner.source.currentLocked() == nil && owner.tokens.issuance == nil && owner.tokens.permission == nil
+			joined := owner.source.currentLocked() == nil && owner.tokens.Issuance == nil && owner.tokens.Permission == nil
 			owner.mu.Unlock()
 			if !joined {
 				t.Fatal("context close retained prefix or private stock")

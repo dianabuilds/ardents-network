@@ -58,11 +58,6 @@ func (handle *sourceHandle) Join(ctx context.Context, present client.ClosedToken
 	return handle.join(ctx, present, intent)
 }
 
-func (handle *sourceHandle) ExchangeIssuer(ctx context.Context, present client.ClosedTokenPresenter,
-	batch []byte) (client.ClosedIssuanceExchangeResult, error) {
-	return handle.exchangeIssuer(ctx, present, batch)
-}
-
 func (handle *sourceHandle) Replenish(ctx context.Context, present client.ClosedTokenPresenter) error {
 	return handle.replenish(ctx, present)
 }

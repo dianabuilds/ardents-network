@@ -48,7 +48,7 @@ func (owner *dutyContext) publishDescriptor(ctx context.Context) (verified reach
 		reason = "Introduction registration withdrawal is in progress"
 	case owner.publication.pair.openingInProgressLocked():
 		reason = "Introduction registration opening is in progress"
-	case owner.tokens.permission == nil:
+	case owner.tokens.Permission == nil:
 		reason = "Permission is absent"
 	case owner.resolution != nil:
 		reason = "resolution flight is active"

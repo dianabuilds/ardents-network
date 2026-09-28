@@ -16,6 +16,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/admission"
 	"github.com/dianabuilds/ardents-network/internal/custody"
+	"github.com/dianabuilds/ardents-network/internal/endpoint/tokens"
 	"github.com/dianabuilds/ardents-network/internal/route/client"
 	"github.com/dianabuilds/ardents-network/internal/route/credential"
 )
@@ -84,11 +85,11 @@ func prepareIssuancePermissionWithIdentity(t *testing.T, owner *dutyContext, sou
 	}
 	source.issuePermission = func(t *testing.T, owner *dutyContext, maxima [3]uint32) {
 		t.Helper()
-		raw, digest, err := owner.requestPermission(maxima)
+		raw, digest, err := owner.tokens.Request(maxima)
 		if err != nil {
 			t.Fatal(err)
 		}
-		if err := owner.importPermission(digest, source.issueRawPermission(t, raw, digest)); err != nil {
+		if err := owner.tokens.Import(digest, source.issueRawPermission(t, raw, digest)); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -112,19 +113,19 @@ func TestTextIssuanceRetainsExactPendingBatchAcrossFailedAttempts(t *testing.T) 
 		t.Fatal("unavailable network issued tokens")
 	}
 	owner.mu.Lock()
-	pending := owner.tokens.permission.pending
+	pending := owner.tokens.Permission.Pending
 	if pending == nil {
 		owner.mu.Unlock()
 		t.Fatal("failed exchange lost prepared batch")
 	}
-	original := pending.pending.Request()
-	selection := pending.selection
+	original := pending.Pending.Request()
+	selection := pending.Selection
 	owner.mu.Unlock()
 	if err := attempt(); err == nil {
 		t.Fatal("unavailable retry issued tokens")
 	}
 	owner.mu.Lock()
-	if owner.tokens.permission.pending != pending || !bytes.Equal(original, pending.pending.Request()) || pending.selection != selection || owner.tokens.permission.batches != 1 || len(owner.tokens.permission.stock) != 0 || owner.tokens.issuance != nil {
+	if owner.tokens.Permission.Pending != pending || !bytes.Equal(original, pending.Pending.Request()) || pending.Selection != selection || owner.tokens.Permission.Batches != 1 || len(owner.tokens.Permission.Stock) != 0 || owner.tokens.Issuance != nil {
 		owner.mu.Unlock()
 		t.Fatal("retry rotated blinding state, source, allowance, or left live flight")
 	}
@@ -135,7 +136,7 @@ func TestTextIssuanceRetainsExactPendingBatchAcrossFailedAttempts(t *testing.T) 
 	if err := owner.Close(); err != nil {
 		t.Fatal(err)
 	}
-	if owner.tokens.permission != nil || len(pending.pending.Request()) != 0 {
+	if owner.tokens.Permission != nil || len(pending.Pending.Request()) != 0 {
 		t.Fatal("context loss retained secret batch")
 	}
 }
@@ -151,23 +152,23 @@ func TestTextPermissionRevocationDefersActiveBatchDiscardUntilOperationCompletio
 	}
 
 	owner.mu.Lock()
-	permission := owner.tokens.permission
-	batch := permission.pending
-	operation := newIssuanceOperation(owner, permission, permission.profile, batch, false)
-	owner.tokens.issuance = operation
+	permission := owner.tokens.Permission
+	batch := permission.Pending
+	operation := tokens.NewOperation(&owner.tokens, permission, permission.Profile, batch, false)
+	owner.tokens.Issuance = operation
 	t.Cleanup(func() {
 		select {
-		case <-operation.done:
+		case <-operation.Done:
 			return
 		default:
 		}
-		operation.cancel()
+		operation.Cancel()
 		canceled, stop := context.WithCancel(context.Background())
 		stop()
-		_ = operation.complete(canceled, client.ClosedIssuanceExchangeResult{}, context.Canceled)
+		_ = operation.Complete(canceled, client.ClosedIssuanceExchangeResult{}, context.Canceled)
 	})
-	owner.clearPermissionLocked()
-	if owner.tokens.permission != nil || !operation.discardPermission || len(batch.pending.Request()) == 0 {
+	owner.tokens.ClearPermissionLocked()
+	if owner.tokens.Permission != nil || !operation.DiscardPermission || len(batch.Pending.Request()) == 0 {
 		owner.mu.Unlock()
 		t.Fatal("revocation did not detach permission while retaining the active operation batch")
 	}
@@ -175,10 +176,10 @@ func TestTextPermissionRevocationDefersActiveBatchDiscardUntilOperationCompletio
 
 	canceled, stop := context.WithCancel(t.Context())
 	stop()
-	if err := operation.complete(canceled, client.ClosedIssuanceExchangeResult{}, context.Canceled); err == nil {
+	if err := operation.Complete(canceled, client.ClosedIssuanceExchangeResult{}, context.Canceled); err == nil {
 		t.Fatal("revoked operation completed")
 	}
-	if len(batch.pending.Request()) != 0 {
+	if len(batch.Pending.Request()) != 0 {
 		t.Fatal("completed revoked operation retained its secret batch")
 	}
 }
@@ -232,10 +233,10 @@ func TestTextRecoveryIssuanceCancellationDiscardsBatchWithoutRefund(t *testing.T
 	}
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
-	if owner.tokens.issuance != nil || owner.tokens.permission.pending != nil || owner.tokens.permission.batches != 1 ||
-		owner.tokens.permission.reserved != [3]uint32{0, 1, 0} || len(owner.tokens.permission.stock) != 0 {
+	if owner.tokens.Issuance != nil || owner.tokens.Permission.Pending != nil || owner.tokens.Permission.Batches != 1 ||
+		owner.tokens.Permission.Reserved != [3]uint32{0, 1, 0} || len(owner.tokens.Permission.Stock) != 0 {
 		t.Fatalf("recovery cancellation state: issuance=%v pending=%v batches=%d reserved=%v stock=%d",
-			owner.tokens.issuance != nil, owner.tokens.permission.pending != nil, owner.tokens.permission.batches, owner.tokens.permission.reserved, len(owner.tokens.permission.stock))
+			owner.tokens.Issuance != nil, owner.tokens.Permission.Pending != nil, owner.tokens.Permission.Batches, owner.tokens.Permission.Reserved, len(owner.tokens.Permission.Stock))
 	}
 }
 
@@ -300,7 +301,7 @@ func TestTextIssuanceRevocationBeforeDelayedCompletionJoinsTransport(t *testing.
 	}
 	defer accepted.Close()
 	owner.mu.Lock()
-	started := owner.tokens.issuance != nil && owner.tokens.permission != nil && owner.tokens.permission.pending != nil
+	started := owner.tokens.Issuance != nil && owner.tokens.Permission != nil && owner.tokens.Permission.Pending != nil
 	owner.mu.Unlock()
 	if !started {
 		t.Fatal("issuance transport opened before its operation was retained")
@@ -335,7 +336,7 @@ func TestTextIssuanceRevocationBeforeDelayedCompletionJoinsTransport(t *testing.
 	}
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
-	if owner.tokens.issuance != nil || owner.tokens.permission != nil {
+	if owner.tokens.Issuance != nil || owner.tokens.Permission != nil {
 		t.Fatal("revoked issuance retained operation or usable token material")
 	}
 }
@@ -357,18 +358,18 @@ func TestTextPrefixPreparesBothReceiversInOneRetryableBatch(t *testing.T) {
 	}
 	attempt()
 	owner.mu.Lock()
-	pending := owner.tokens.permission.pending
-	if pending == nil || len(pending.challenges) != 2 || owner.tokens.permission.batches != 1 {
+	pending := owner.tokens.Permission.Pending
+	if pending == nil || len(pending.Challenges) != 2 || owner.tokens.Permission.Batches != 1 {
 		owner.mu.Unlock()
 		t.Fatal("cold prefix did not retain one two-receiver batch")
 	}
-	if pending.challenges[0].ReceiverNodeID != pending.selection.EntryNodeID ||
-		pending.challenges[1].ReceiverNodeID != pending.selection.InteriorNodeID ||
-		pending.challenges[0].Class != 2 || pending.challenges[1].Class != 2 {
+	if pending.Challenges[0].ReceiverNodeID != pending.Selection.EntryNodeID ||
+		pending.Challenges[1].ReceiverNodeID != pending.Selection.InteriorNodeID ||
+		pending.Challenges[0].Class != 2 || pending.Challenges[1].Class != 2 {
 		owner.mu.Unlock()
 		t.Fatal("prefix batch does not match private source selection")
 	}
-	original := pending.pending.Request()
+	original := pending.Pending.Request()
 	owner.mu.Unlock()
 	request, err := credential.DecodeClosedTokenBatch(original)
 	if err != nil || len(request.BlindedRequests) != 2 || request.Class != 2 {
@@ -377,8 +378,8 @@ func TestTextPrefixPreparesBothReceiversInOneRetryableBatch(t *testing.T) {
 	attempt()
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
-	if owner.tokens.permission.pending != pending || owner.tokens.permission.batches != 1 || !bytes.Equal(original, pending.pending.Request()) ||
-		owner.tokens.issuance != nil || owner.source.opening != nil || len(owner.tokens.permission.stock) != 0 {
+	if owner.tokens.Permission.Pending != pending || owner.tokens.Permission.Batches != 1 || !bytes.Equal(original, pending.Pending.Request()) ||
+		owner.tokens.Issuance != nil || owner.source.opening != nil || len(owner.tokens.Permission.Stock) != 0 {
 		t.Fatal("retry changed receiver ordering, blinding, batch debit or lifecycle")
 	}
 }
@@ -398,12 +399,12 @@ func TestTextIssuerStockRetryRetainsOriginalInternalBatch(t *testing.T) {
 		t.Fatal("unavailable issuer unexpectedly funded stock")
 	}
 	owner.mu.Lock()
-	batch := owner.tokens.permission.pending
+	batch := owner.tokens.Permission.Pending
 	if batch == nil {
 		owner.mu.Unlock()
 		t.Fatal("internal batch lost on failure")
 	}
-	original := batch.pending.Request()
+	original := batch.Pending.Request()
 	owner.mu.Unlock()
 	defer clear(original)
 	if err := attempt(); err == nil {
@@ -411,8 +412,8 @@ func TestTextIssuerStockRetryRetainsOriginalInternalBatch(t *testing.T) {
 	}
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
-	if owner.tokens.permission.pending != batch || !bytes.Equal(original, batch.pending.Request()) ||
-		owner.tokens.permission.batches != 1 || owner.tokens.permission.reserved != [3]uint32{4, 0, 0} {
+	if owner.tokens.Permission.Pending != batch || !bytes.Equal(original, batch.Pending.Request()) ||
+		owner.tokens.Permission.Batches != 1 || owner.tokens.Permission.Reserved != [3]uint32{4, 0, 0} {
 		t.Fatal("internal stock retry changed request or repeated allocation")
 	}
 }

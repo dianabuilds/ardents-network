@@ -82,7 +82,7 @@ func (owner *dutyContext) openRegistration(ctx context.Context, revision uint64,
 	}
 	prefix := owner.introduction.prefix.currentLocked()
 	prior, _ := owner.publication.pair.previousLocked()
-	if err != nil || owner.surface != broker.Administration || prefix == nil || owner.introduction.prefix.openingInProgressLocked() || previous != nil && (prior != nil || !owner.publication.refresh.matchesContext(ctx) || previous.recipient == nil || revision <= previous.request.Revision) || owner.tokens.permission == nil || !now.Before(expiry) || expiry.After(now.Add(600*time.Second)) {
+	if err != nil || owner.surface != broker.Administration || prefix == nil || owner.introduction.prefix.openingInProgressLocked() || previous != nil && (prior != nil || !owner.publication.refresh.matchesContext(ctx) || previous.recipient == nil || revision <= previous.request.Revision) || owner.tokens.Permission == nil || !now.Before(expiry) || expiry.After(now.Add(600*time.Second)) {
 		owner.mu.Unlock()
 		return nil, errors.New("text Publisher registration owner unavailable")
 	}
@@ -109,8 +109,8 @@ func (owner *dutyContext) openRegistration(ctx context.Context, revision uint64,
 	}
 	flight.receiver = receiver
 	owner.mu.Lock()
-	ready := !owner.tokens.permission.hasPending() &&
-		owner.tokens.permission.stockCountFor(profile.Digest, receiver, 3) != 0
+	ready := !owner.tokens.Permission.HasPending() &&
+		owner.tokens.Permission.StockCountFor(profile.Digest, receiver, 3) != 0
 	owner.mu.Unlock()
 	if !ready {
 		if err := owner.issueTokens(attempt, [][32]byte{receiver}, 3); err != nil {
@@ -172,7 +172,7 @@ func (owner *dutyContext) presentRegistrationToken(flight *registrationFlight, h
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
 	profile, now, err := owner.permissionProfileLocked()
-	if err != nil || owner.surface != broker.Administration || !owner.publication.pair.openingCurrentLocked(flight) || !flight.prefix.currentLocked(&owner.introduction.prefix) || flight.context.Err() != nil || owner.tokens.permission == nil ||
+	if err != nil || owner.surface != broker.Administration || !owner.publication.pair.openingCurrentLocked(flight) || !flight.prefix.currentLocked(&owner.introduction.prefix) || flight.context.Err() != nil || owner.tokens.Permission == nil ||
 		class != 3 || hello.Purpose != ardp.PurposeIntroduction || hello.RecipientNodeID != flight.receiver || hello.NetworkID != profile.NetworkID || hello.ProfileDigest != profile.Digest ||
 		hello.StateGeneration != profile.StateGeneration || hello.StateDigest != profile.StateDigest || hello.ChannelNonce == [32]byte{} || !now.Before(hello.Deadline) || hello.Deadline.After(profile.NotAfter) {
 		return nil, errors.New("text Publisher registration token authority unavailable")
@@ -181,7 +181,7 @@ func (owner *dutyContext) presentRegistrationToken(flight *registrationFlight, h
 	if err != nil || receiver != flight.receiver {
 		return nil, errors.New("text Publisher registration recipient changed")
 	}
-	return owner.takeTokenLocked(profile, now, hello, class, flight.context)
+	return owner.tokens.TakeTokenLocked(profile, now, hello, class, flight.context)
 }
 
 func (owner *dutyContext) withdrawIntroduction(ctx context.Context) error {

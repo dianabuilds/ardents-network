@@ -88,7 +88,7 @@ func runReaderObservationChild(t *testing.T, path string) {
 			_ = endpoint.Close()
 		}
 	}()
-	request, digest, err := owner.requestPermission([3]uint32{64, 64, 0})
+	request, digest, err := owner.tokens.Request([3]uint32{64, 64, 0})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -103,7 +103,7 @@ func runReaderObservationChild(t *testing.T, path string) {
 		if err := decoder.Decode(&control); err != nil || control.Command != "permission" {
 			t.Fatal("reader controller did not provide permission")
 		}
-		if err := owner.importPermission(digest, control.Permission); err != nil {
+		if err := owner.tokens.Import(digest, control.Permission); err != nil {
 			if err := encoder.Encode(readerObservationEvent{Phase: "permission-refused"}); err != nil {
 				t.Fatal(err)
 			}
@@ -219,14 +219,14 @@ func readerLookupObservation(t *testing.T, owner *dutyContext, input readerProce
 	}
 	responseDigest := sha256.Sum256(input.Expected)
 	owner.mu.Lock()
-	permission := owner.tokens.permission
-	if permission == nil || permission.accepted == (admission.Permission{}) || permission.batches == 0 {
+	permission := owner.tokens.Permission
+	if permission == nil || permission.Accepted == (admission.Permission{}) || permission.Batches == 0 {
 		owner.mu.Unlock()
 		t.Fatal("reader lookup lost its actual permission allocation")
 	}
-	holderDigest, permissionIDDigest := sha256.Sum256(permission.accepted.HolderKey[:]), sha256.Sum256(permission.accepted.PermissionID[:])
-	batches := permission.batches
-	reserved := permission.reserved
+	holderDigest, permissionIDDigest := sha256.Sum256(permission.Accepted.HolderKey[:]), sha256.Sum256(permission.Accepted.PermissionID[:])
+	batches := permission.Batches
+	reserved := permission.Reserved
 	floorRetained := owner.descriptorHistory.Matches(input.Target, verified.Current.Digest, verified.Descriptor.Private.Revision)
 	owner.mu.Unlock()
 	if !floorRetained {

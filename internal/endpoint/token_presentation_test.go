@@ -15,6 +15,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/route/terminal"
 
 	"github.com/dianabuilds/ardents-network/internal/endpoint/tokenjournal"
+	"github.com/dianabuilds/ardents-network/internal/endpoint/tokens"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/route/client"
 	"github.com/dianabuilds/ardents-network/internal/route/credential"
@@ -37,7 +38,7 @@ func TestTextTokenPresentationBurnsStockBeforeReturningBytes(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer clear(returned)
-	if !bytes.Equal(returned, original) || len(owner.tokens.permission.stock[0].tokens) != 0 {
+	if !bytes.Equal(returned, original) || len(owner.tokens.Permission.Stock[0].Tokens) != 0 {
 		t.Fatal("stock transfer wrong")
 	}
 	raw, err := os.ReadFile(filepath.Join(endpoint.closedTokenRoot, "attempts"))
@@ -74,12 +75,12 @@ func TestTextTokenInvalidStockCannotReachJournal(t *testing.T) {
 	endpoint, owner, _, profile, hello, original := tokenPresentationFixture(t)
 	defer clear(original)
 	owner.mu.Lock()
-	owner.tokens.permission.stock[0].tokens[0][0] ^= 0xff
-	returned, err := owner.takeTokenLocked(profile, time.Now().UTC(), hello, 2, t.Context())
-	remaining := len(owner.tokens.permission.stock[0].tokens)
+	owner.tokens.Permission.Stock[0].Tokens[0][0] ^= 0xff
+	returned, err := owner.tokens.TakeTokenLocked(profile, time.Now().UTC(), hello, 2, t.Context())
+	remaining := len(owner.tokens.Permission.Stock[0].Tokens)
 	owner.mu.Unlock()
-	if err == nil || len(returned) != 0 || remaining != 0 || tokenTransferFailureStage(err) != "verification" {
-		t.Fatalf("invalid stock transfer: bytes=%d remaining=%d stage=%s err=%v", len(returned), remaining, tokenTransferFailureStage(err), err)
+	if err == nil || len(returned) != 0 || remaining != 0 || tokens.TransferFailureStage(err) != "verification" {
+		t.Fatalf("invalid stock transfer: bytes=%d remaining=%d stage=%s err=%v", len(returned), remaining, tokens.TransferFailureStage(err), err)
 	}
 	if _, err := os.Stat(filepath.Join(endpoint.closedTokenRoot, "attempts")); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("invalid stock reached durable journal: %v", err)
@@ -92,12 +93,12 @@ func TestTextTokenCancellationAfterDurableMarkRetainsBurn(t *testing.T) {
 	attempt, cancel := context.WithCancel(t.Context())
 	cancel()
 	owner.mu.Lock()
-	returned, err := owner.takeTokenLocked(profile, time.Now().UTC(), hello, 2, attempt)
-	remaining := len(owner.tokens.permission.stock[0].tokens)
+	returned, err := owner.tokens.TakeTokenLocked(profile, time.Now().UTC(), hello, 2, attempt)
+	remaining := len(owner.tokens.Permission.Stock[0].Tokens)
 	owner.mu.Unlock()
-	if err == nil || len(returned) != 0 || remaining != 0 || tokenTransferFailureStage(err) != "owner" {
+	if err == nil || len(returned) != 0 || remaining != 0 || tokens.TransferFailureStage(err) != "owner" {
 		t.Fatalf("cancelled durable spend returned token or wrong result: bytes=%d remaining=%d stage=%s err=%v",
-			len(returned), remaining, tokenTransferFailureStage(err), err)
+			len(returned), remaining, tokens.TransferFailureStage(err), err)
 	}
 	receipts := readTokenReceipts(t, endpoint.closedTokenRoot, endpoint.network)
 	if len(receipts) != 1 || receipts[0].attempt != hello.ChannelNonce {
@@ -134,9 +135,9 @@ func tokenPresentationFixture(t *testing.T) (*endpoint, *dutyContext, client.Clo
 		}
 	}
 	challenge := credential.ClosedTokenContext{NetworkID: profile.NetworkID, ProfileDigest: profile.Digest, IssuerNodeID: profile.IssuerNodeID,
-		ReceiverNodeID: selection.EntryNodeID, ReceiverDutyGeneration: duty, Class: 2, WindowStart: owner.tokens.permission.accepted.NotBefore}
+		ReceiverNodeID: selection.EntryNodeID, ReceiverDutyGeneration: duty, Class: 2, WindowStart: owner.tokens.Permission.Accepted.NotBefore}
 	pending, err := credential.PrepareClosedTokenBatch(credential.ClosedTokenBatchConfig{Profile: profile, Contexts: []credential.ClosedTokenContext{challenge},
-		Permission: owner.tokens.permission.accepted, HolderKey: owner.tokens.permission.holder, Now: time.Now().UTC()})
+		Permission: owner.tokens.Permission.Accepted, HolderKey: owner.tokens.Permission.Holder, Now: time.Now().UTC()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -154,15 +155,15 @@ func tokenPresentationFixture(t *testing.T) (*endpoint, *dutyContext, client.Clo
 	if err != nil {
 		t.Fatal(err)
 	}
-	tokens, err := pending.FinalizeTerminalOperation(nonce, response)
-	if err != nil || len(tokens) != 1 {
+	issued, err := pending.FinalizeTerminalOperation(nonce, response)
+	if err != nil || len(issued) != 1 {
 		t.Fatalf("fixture issuance: %v", err)
 	}
 	if err := issuer.Close(); err != nil {
 		t.Fatal(err)
 	}
-	original := bytes.Clone(tokens[0])
-	owner.tokens.permission.stock = []tokenStock{{challenge: challenge, tokens: tokens}}
+	original := bytes.Clone(issued[0])
+	owner.tokens.Permission.Stock = []tokens.Stock{{Challenge: challenge, Tokens: issued}}
 	hello := ardp.Hello{NetworkID: profile.NetworkID, StateGeneration: profile.StateGeneration, StateDigest: profile.StateDigest,
 		ProfileDigest: profile.Digest, RecipientNodeID: challenge.ReceiverNodeID, RecipientDutyGeneration: duty,
 		Purpose: ardp.PurposeForwarding, ChannelNonce: [32]byte{242}, Deadline: profile.NotAfter}

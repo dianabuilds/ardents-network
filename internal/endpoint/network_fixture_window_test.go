@@ -21,7 +21,7 @@ func TestTextNetworkFixtureWindowAvoidsExpiredPermissionImport(t *testing.T) {
 	owner, response, closeOwner := networkFixturePermission(t, &current)
 	defer closeOwner()
 	current = boundary.Add(20 * time.Second)
-	if err := owner.importPermission(response.digest, response.raw); err == nil {
+	if err := owner.tokens.Import(response.digest, response.raw); err == nil {
 		t.Fatal("expired fixture permission imported across its hour boundary")
 	}
 
@@ -33,7 +33,7 @@ func TestTextNetworkFixtureWindowAvoidsExpiredPermissionImport(t *testing.T) {
 	owner, response, closeOwner = networkFixturePermission(t, &current)
 	defer closeOwner()
 	current = start.Add(networkFixtureMinimumWindow - time.Second)
-	if err := owner.importPermission(response.digest, response.raw); err != nil {
+	if err := owner.tokens.Import(response.digest, response.raw); err != nil {
 		t.Fatalf("fixture permission did not cover its bounded carrier episode: %v", err)
 	}
 }
@@ -61,7 +61,7 @@ func networkFixturePermission(t *testing.T, current *time.Time) (*dutyContext, n
 		StateGeneration: fixtureID(244), StateDigest: fixtureID(245), Digest: fixtureID(246), IssuanceAuthorityKey: created.AdmissionAuthority.Public,
 		IssuerNodeID: fixtureID(247), IssuerDutyGeneration: 1, NotBefore: current.Truncate(time.Hour), NotAfter: current.Truncate(time.Hour).Add(3 * time.Hour)}}
 	owner := permissionContextFixture(t, endpoint, principal, broker.Connection)
-	request, digest, err := owner.requestPermission([3]uint32{32, 32, 0})
+	request, digest, err := owner.tokens.Request([3]uint32{32, 32, 0})
 	if err != nil {
 		_ = endpoint.Close()
 		_ = vault.Close()

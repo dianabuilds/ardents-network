@@ -22,8 +22,8 @@ func TestTextPublisherAcceptsIntroductionAfterSourceRetirement(t *testing.T) {
 			}
 			defer clear(prepared.operation)
 			publisher.mu.Lock()
-			prefix, registration, permission := publisher.source.currentLocked(), publisher.publication.pair.registration, publisher.tokens.permission
-			reserved := permission.reserved
+			prefix, registration, permission := publisher.source.currentLocked(), publisher.publication.pair.registration, publisher.tokens.Permission
+			reserved := permission.Reserved
 			publisher.mu.Unlock()
 			if err := prefix.Close(); err != nil {
 				t.Fatal(err)
@@ -61,7 +61,7 @@ func TestTextPublisherAcceptsIntroductionAfterSourceRetirement(t *testing.T) {
 					t.Fatal("idle Publisher accepted foreign recipient facts")
 				}
 				publisher.mu.Lock()
-				noWork := publisher.source.currentLocked() == nil && publisher.responder.currentLocked() == nil && permission.reserved == reserved
+				noWork := publisher.source.currentLocked() == nil && publisher.responder.currentLocked() == nil && permission.Reserved == reserved
 				publisher.mu.Unlock()
 				if !noWork {
 					t.Fatal("refused capsule created Source work or consumed allocation")
@@ -72,7 +72,7 @@ func TestTextPublisherAcceptsIntroductionAfterSourceRetirement(t *testing.T) {
 				t.Fatalf("registered Publisher after Source retirement: %v", err)
 			}
 			publisher.mu.Lock()
-			unchanged := publisher.source.currentLocked() == nil && publisher.tokens.permission == permission && permission.reserved == reserved && publisher.responder.currentLocked() == nil
+			unchanged := publisher.source.currentLocked() == nil && publisher.tokens.Permission == permission && permission.Reserved == reserved && publisher.responder.currentLocked() == nil
 			publisher.mu.Unlock()
 			if !unchanged {
 				t.Fatal("pre-dial acceptance created network work or changed allocation")
@@ -83,7 +83,7 @@ func TestTextPublisherAcceptsIntroductionAfterSourceRetirement(t *testing.T) {
 				}
 				publisher.mu.Lock()
 				sourcePrefix, dataPrefix := publisher.source.currentLocked(), publisher.responder.currentLocked()
-				same := publisher.tokens.permission == permission && permission.batches == 2
+				same := publisher.tokens.Permission == permission && permission.Batches == 2
 				publisher.mu.Unlock()
 				if sourcePrefix == nil || dataPrefix == nil || !same {
 					t.Fatal("responder lost retained permission or repeated bootstrap")

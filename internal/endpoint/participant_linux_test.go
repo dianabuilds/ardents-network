@@ -88,7 +88,7 @@ func TestTextParticipantCancellationBeforeQualificationExposesNoCommands(t *test
 	retained := len(endpoint.dutyContexts)
 	endpoint.dutyMu.Unlock()
 	owner.mu.Lock()
-	clean := owner.closed && owner.job == nil && owner.verifiedJob == nil && owner.tokens.permission == nil && job.finished && job.cleanupErr == nil
+	clean := owner.closed && owner.job == nil && owner.verifiedJob == nil && owner.tokens.Permission == nil && job.finished && job.cleanupErr == nil
 	owner.mu.Unlock()
 	if retained != 0 || !clean {
 		t.Fatal("runtime retained unqualified context or worker after cancellation")

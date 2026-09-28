@@ -6,20 +6,10 @@ import (
 	"context"
 	"errors"
 
+	"github.com/dianabuilds/ardents-network/internal/endpoint/tokens"
 	"github.com/dianabuilds/ardents-network/internal/route/client"
 	"github.com/dianabuilds/ardents-network/internal/route/credential"
 )
-
-// Blinding state and finalized stock never leave this context. The network
-// attempt owns copied request bytes only, so revocation can erase secrets
-// under owner.mu while cancellation interrupts and joins the transport tree.
-type tokenBatch struct {
-	refill     bool // Retained internal stock work; never receiver admission authority.
-	prefix     *sourceHandle
-	challenges []credential.ClosedTokenContext
-	selection  client.ClosedBootstrapSelection
-	pending    *credential.PendingClosedTokenBatch
-}
 
 // issueTokens is the trusted context owner's issuance operation. The
 // retained Route members and intended receiver originate in Endpoint, never
@@ -101,10 +91,10 @@ func (owner *dutyContext) issueTokensForOpeningWithCancellation(ctx context.Cont
 		owner.mu.Unlock()
 		return err
 	}
-	permission := owner.tokens.permission
+	permission := owner.tokens.Permission
 	source, ok := owner.endpoint.closedState.(client.ClosedBootstrapState)
-	if !ok || !permission.currentFor(profile, now) ||
-		owner.tokens.issuance != nil || !opening.admittedLocked(owner) || !joinIssuanceCurrentLocked(owner, acquisition, expected) {
+	if !ok || !permission.CurrentFor(profile, now) ||
+		owner.tokens.Issuance != nil || !opening.admittedLocked(owner) || !joinIssuanceCurrentLocked(owner, acquisition, expected) {
 		owner.mu.Unlock()
 		return errors.New("text issuance owner is unavailable")
 	}
@@ -121,7 +111,7 @@ func (owner *dutyContext) issueTokensForOpeningWithCancellation(ctx context.Cont
 	challenges := make([]credential.ClosedTokenContext, len(receivers))
 	for index, receiver := range receivers {
 		challenge := credential.ClosedTokenContext{NetworkID: profile.NetworkID, ProfileDigest: profile.Digest, IssuerNodeID: profile.IssuerNodeID,
-			ReceiverNodeID: receiver, Class: class, WindowStart: permission.accepted.NotBefore}
+			ReceiverNodeID: receiver, Class: class, WindowStart: permission.Accepted.NotBefore}
 		for _, node := range view.Nodes[:view.NodeCount] {
 			if node.NodeID == receiver {
 				if challenge.ReceiverDutyGeneration != 0 {
@@ -137,15 +127,15 @@ func (owner *dutyContext) issueTokensForOpeningWithCancellation(ctx context.Cont
 		}
 		challenges[index] = challenge
 	}
-	batch, err := permission.reserveBatchLocked(profile, now, challenges, selection, refill, owner.source.currentLocked(), acquisition != nil, expected)
+	batch, err := permission.ReserveBatch(profile, now, challenges, selection, refill, prefixRef(owner.source.currentLocked()), acquisition != nil, prefixRef(expected))
 	if err != nil {
 		owner.mu.Unlock()
 		return err
 	}
-	operation := newIssuanceOperation(owner, permission, profile, batch, discardCanceled)
-	owner.tokens.issuance = operation
+	operation := tokens.NewOperation(&owner.tokens, permission, profile, batch, discardCanceled)
+	owner.tokens.Issuance = operation
 	owner.mu.Unlock()
-	return operation.run(ctx, source, selection)
+	return operation.Run(ctx, source, selection)
 }
 
 func joinIssuanceCurrentLocked(owner *dutyContext, acquisition joinAcquisition, expected *sourceHandle) bool {
