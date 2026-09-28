@@ -112,7 +112,6 @@
           "internal/endpoint/durableroot.setEndpointRootDACL",
           "internal/endpoint/durableroot.Lease.Release",
           "internal/network/duty.ReadConflict",
-          "internal/network/duty.store.Conflict",
           "internal/service/connection.ChallengeDigest",
           "internal/service/connection.Context",
           "internal/service/connection.ContinuesNameOrigin",

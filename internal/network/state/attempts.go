@@ -53,7 +53,7 @@ func (s *networkState) beginDigestAttempt(source int, digest [32]byte) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	index := 2 + source
-	if !s.distribution.cycleActive || s.distribution.attempts[index] != 0 || isZero32(digest) {
+	if !s.distribution.cycleActive || s.distribution.attempts[index] != 0 || digest == [32]byte{} {
 		return errors.New("by-digest source attempt is not available")
 	}
 	state := s.distribution
@@ -81,4 +81,13 @@ func (s *networkState) finishDigestAttempt(source int, succeeded bool) error {
 		state.attempts[index] = 2
 	}
 	return s.commitDistribution(state)
+}
+
+func containsIdentity(history [][32]byte, identity [32]byte) bool {
+	for _, current := range history {
+		if current == identity {
+			return true
+		}
+	}
+	return false
 }

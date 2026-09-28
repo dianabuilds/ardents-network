@@ -171,6 +171,9 @@ func TestClosedIntakeKeepsAuthenticatedOldPredecessorChain(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
+	if err := state.CommitRetainedControlForTest(root, 3, third.Digest, [32]byte{}, 0); err != nil {
+		t.Fatal(err)
+	}
 	store, err := state.Open(closedIntakeConfig(root, network, authority, now))
 	if err != nil {
 		t.Fatalf("v3 current with v1/v2 predecessors refused: %v", err)

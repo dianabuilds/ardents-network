@@ -90,7 +90,7 @@ func parseEpoch(raw []byte) (epochEnvelope, error) {
 			return epochEnvelope{}, err
 		}
 	}
-	unsignedEnd := d.Consumed()
+	unsignedEnd := d.offset
 	signerCount, err := d.byte()
 	if err != nil || signerCount == 0 || signerCount > 16 {
 		return epochEnvelope{}, errors.New("epoch signer count is invalid")

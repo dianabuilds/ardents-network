@@ -1,6 +1,9 @@
 package state
 
-import "github.com/dianabuilds/ardents-network/internal/network/state/durable"
+import (
+	"github.com/dianabuilds/ardents-network/internal/network/source"
+	"github.com/dianabuilds/ardents-network/internal/network/state/durable"
+)
 
 // CommitRetainedGenerationForTest writes one durable generation exactly as a
 // historical build would have committed it, so the F-50 evidence tests can
@@ -34,7 +37,7 @@ func CommitRetainedControlForTest(root string, epochFloor uint64, epochDigest, p
 func VerifySourceCandidateForTest(store *networkState, epoch []byte, inputs, materials [][]byte) error {
 	store.mu.Lock()
 	defer store.mu.Unlock()
-	_, err := store.verifySourceBundle(sourceBundle{epoch: epoch, inputs: inputs, materials: materials},
-		store.current, store.currentDecision)
+	_, err := store.verifySourceBundle(source.Bundle{Epoch: epoch, Inputs: inputs, Materials: materials},
+		store.current)
 	return err
 }

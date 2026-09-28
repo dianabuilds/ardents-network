@@ -1,6 +1,7 @@
 package source
 
 import (
+	"crypto/sha256"
 	"encoding/binary"
 	"errors"
 	"io"
@@ -17,6 +18,12 @@ const (
 	badStatus      = byte(3)
 	internalStatus = byte(4)
 )
+
+// NetworkDigest binds a private Source request to one selected Network ID.
+func NetworkDigest(networkID [32]byte) [32]byte {
+	prefix := []byte("ardents-h3-network-id-v1\x00")
+	return sha256.Sum256(append(prefix, networkID[:]...))
+}
 
 // Message is one exact acquisition request or bounded terminal response.
 // Requests set Operation, NetworkDigest, ObjectDigest, and MaterialIndex and
@@ -59,7 +66,7 @@ func readRequest(reader io.Reader) (Message, error) {
 
 func writeRequest(writer io.Writer, request Message) error {
 	opcode := operationCode(request.Operation)
-	if opcode == 0 || request.MaterialIndex >= 64 ||
+	if opcode == 0 || request.MaterialIndex >= 64 || request.Status != "" || len(request.Payload) != 0 ||
 		(request.Operation == "latest" && request.ObjectDigest != [32]byte{}) ||
 		(request.Operation == "by-digest" && request.ObjectDigest == [32]byte{}) {
 		return errors.New("distribution request is invalid")
@@ -105,7 +112,8 @@ func readResponse(reader io.Reader) (Message, error) {
 
 func writeResponse(writer io.Writer, response Message) error {
 	status := statusCode(response.Status)
-	if status > internalStatus || statusName(status) == "" {
+	if status > internalStatus || statusName(status) == "" ||
+		response.Operation != "" || response.NetworkDigest != [32]byte{} || response.MaterialIndex != 0 {
 		return errors.New("distribution response status is invalid")
 	}
 	if response.Status != "ok" && (response.ObjectDigest != [32]byte{} || len(response.Payload) != 0) {

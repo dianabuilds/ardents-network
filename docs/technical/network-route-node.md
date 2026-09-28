@@ -187,7 +187,7 @@ already pinned authority retain their previous State and Source behavior.
 | internal/network/epoch | Verify bounded Epoch/Record/View grammar, authority signatures, commitments, assignments and materializations under explicit State policy; return owned canonical bytes and authenticated candidate facts. | Source selection, State admission/publication, durable roots, clock-confidence policy, or consumer views. |
 | internal/network/closedprofile | Verify only canonical signed ARDCPR03 bytes against an explicit caller-supplied State context; prepare/sign the same grammar for the bounded control command and validate its exact RSA-PSS token SPKI. | Epoch candidate/duty joining, State durable acceptance/conflict, currentness, consumer views, or a replacement authority. |
 | internal/network/state/durable | Hold the exclusive State-root lease and preserve opaque generations, the distribution journal, and closed-profile bytes with bounded, synced physical transactions. | Epoch authority verification, Source selection, conflict decisions, or runtime View publication. |
-| internal/network/source | Obtain one finite selected Direct-Origin source input with its credential, TLS transport, material selector, ordering, and exposure identity. | Accepting State or selecting a peer protocol. |
+| internal/network/source | Obtain one finite selected Direct-Origin source input with its credential, TLS transport, network-scoped request digest and response-bundle framing, material selector, ordering, and exposure identity. | Verifying Epoch authority, accepting State, or selecting a peer protocol. |
 | internal/network/duty | Persist the Endpoint-local Role Domain generation, watermark, expiry, and current conflict Duties. Its root schema is version 2. The `SpendTransitGrant` operation was retired with the Route v2 execution closure (ADR-0093), and ADR-0107 then retired the persisted spend ledger itself (F-53): a strictly validated version-1 generation converts in place at load, dropping its spend records while preserving conflict duties, generation continuity, and the watermark; every committed generation is version 2. No current receiving-Node admission path exists. | Network State publication, assignment creation, Route ownership, issuer custody, or Node process lifecycle. |
 | internal/resource | Check selected process placement and measure process/cgroup pressure through a process-local Guard. Separately own the initialized durable shared Hosting period, interface-counter charging and work/termination reservations. | State or Node authority, admission, listener shutdown, forgiving an outstanding reservation on handle close, or a claim for unsupported platforms. |
 | internal/entry | Own the protected Endpoint's durable closed Entry sets: select exactly two State-current members per adjacent Role Domain before use, revalidate a selected member, retain the generation floor, and refuse legacy-root substitution. The Invite subsystem — the `entry recipient/import` operator commands and their older Invite root — is retired by ADR-0106; existing Invite roots stay on disk byte-for-byte with no reader, converter, or deleter. | Complete Route selection, receiving Entry admission, carrier choice, User identity, or any read, conversion, or deletion of a legacy Invite root. |
@@ -208,6 +208,18 @@ immutable snapshots only after durable publication. A source, clock, or
 resource uncertainty prevents fresh State publication rather than creating a
 fallback truth.
 
+### State execution paths
+
+| Entry | State-owned sequence | Adjacent owner |
+| --- | --- | --- |
+| [`Open`](../../internal/network/state/open.go) | Validate the one configuration and clock, claim the durable root, verify the retained current chain and distribution journal (an active current without that journal requires explicit recovery), recover pending or interrupted publication, then start the optional Source server, automatic refresh, and resource governor. | `epoch` authenticates restored bytes; `durable` leases and reads opaque generations; `source` validates its TLS plan. |
+| [`Accept`](../../internal/network/state/offline_accept.go) | Verify one offline genesis or exact successor and its materialization under one clock sample, apply the closed-schema gate and pending-conflict rule, then publish the active decision and any serving Source duty. | `epoch` verifies the candidate; `durable` commits its generation, control floor, and current pointer; `duty` guards the serving role. |
+| [`Refresh`](../../internal/network/state/refresh.go) | Admit one finite Source wave, journal attempts and exposure duties, fetch both configured Sources, verify their bundles, and select conflict, pending, active, or bounded failure before a reader can see a new current decision. | `source` owns TLS and private request/bundle framing; `epoch` authenticates the returned decision; `durable` and `duty` retain the resulting floors and exposures. |
+| [Source serving](../../internal/network/state/server.go) | Answer one bounded request from the same verified current decision, or refuse while closed or unavailable; joined shutdown releases the server role. | `source` owns listener, TLS and request/response framing; State owns which authenticated bytes may be served. |
+| [`AcceptClosedProfile`](../../internal/network/state/closed_profile_accept.go) | Verify and durably accept one signed profile only for the current closed Epoch; a second valid digest records a durable conflict instead of selecting a winner. If a crash left immutable bytes before the state record, only an exact verified retry may finish acceptance; readers cannot use byte-only evidence. | `closedprofile` verifies signed grammar; `durable` stores its accepted bytes and conflict floor. |
+| [Current readers](../../internal/network/state/snapshot_access.go) | Derive a copied Snapshot and Node-duty view; expose the accepted closed profile's exact issuer/key and recipient constraints only while State and clock remain live. | Node and Endpoint consume State projections without gaining State-root custody. |
+| [`Wait` and `Close`](../../internal/network/state/lifecycle.go) | Report terminal background failure; cancel and join accepted work, close the durable root, release the serving Source duty, and retain one cleanup result for all Close callers. | `resource` supplies pressure observations; State retains supervision and cleanup ownership. |
+
 ### State transition admissibility
 
 State alone decides whether a verified Epoch can become current or pending.
@@ -221,9 +233,23 @@ time. A second digest for the pending
 Epoch number records a persistent conflict, preserves the current and pending
 evidence, and refuses later admission or automatic winner selection. Reopen
 recovers the same current/pending/conflict relation before State-dependent work
-can proceed. A Source bootstrap with no active predecessor never stages a future
-genesis: it records the complete wave and defers retry until that Epoch becomes
-current, leaving the root reopenable without a current generation.
+can proceed. State retains one verified current Epoch decision and derives
+reader Snapshots from it; the Source wave uses that same decision as its base.
+Every persisted current or pending generation is bound to its verified digest
+by its immutable directory name before it is restored. A Source bootstrap with
+no active predecessor never stages a future genesis: it records the complete
+wave and defers retry until that Epoch becomes current, leaving the root
+reopenable without a current generation.
+
+A serving Direct Source also owns one local `direct-source` duty for the
+current Epoch's materialized identity, family, and validity window. Offline
+acceptance and Source-wave activation advance that duty through their shared
+active-decision commit. State holds the local role root while replacing the
+duty and publishing the successor, so another role owner cannot observe an
+unprotected transition. A failure before the durable distribution floor is
+committed restores the predecessor duty; loss of that guard retires the
+serving State owner. Once the floor commits, the successor duty stays with
+the recoverable active decision even if the final State pointer needs repair.
 
 The closed Route profile pins its Epoch envelope: new closed candidates are
 accepted only as AREP v3 (ADR-0111). Offline acceptance and the Source-wave
@@ -363,7 +389,9 @@ accepts only the configured CA, hostname, and server leaf-key pin. Its server
 requires a CA-verified client certificate and an authorized client leaf-key
 pin. `ardents` and `ardents-node` read the declared PEM key pairs and roots
 while constructing the bounded Source configuration; `internal/network/source`
-then owns copies for its one configured TLS client or listener. Replacing a PEM
+then owns copies for its one configured TLS client or listener. Network State
+supplies the Source TLS verification clock from its sole configured time owner;
+a nested override is refused before opening the State root. Replacing a PEM
 file does not alter a running Source process: there is no hot reload or
 Source-side certificate issuer in the maintained surface. A changed certificate
 therefore needs a separately checked new configuration and lifecycle action;
@@ -371,6 +399,12 @@ the X.509 `NotBefore`/`NotAfter` limits are checked during a new handshake.
 The current contract does not promise seamless rotation or that an already
 established TLS connection is immediately interrupted when a certificate
 expires.
+
+A finite Source fetch binds dial, handshake, response, and terminal TLS close
+to the caller's total exchange context. Cancellation closes an established
+connection and discards any partially received Object Digest; State cannot
+start a BY_DIGEST fallback from a canceled exchange. A live partial response
+may retain its transport-observed selector for the one bounded fallback.
 
 ## Node and Resource lifecycle
 

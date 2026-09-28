@@ -6,6 +6,8 @@ import (
 	"errors"
 )
 
+const MaxMaterializationBytes = 35 << 10
+
 type materialization struct {
 	epochDigest [32]byte
 	index       uint32
@@ -19,7 +21,7 @@ func decodeMaterializations(encoded [][]byte) ([]materialization, error) {
 	}
 	materials := make([]materialization, len(encoded))
 	for index, raw := range encoded {
-		if len(raw) == 0 || len(raw) > 35<<10 {
+		if len(raw) == 0 || len(raw) > MaxMaterializationBytes {
 			return nil, errors.New("materialization framing length is invalid")
 		}
 		value, err := decodeMaterialization(raw)

@@ -26,21 +26,25 @@ func (s *networkState) serveSource(ctx context.Context, ready chan<- error) erro
 }
 
 func (s *networkState) resolveDistributionRequest(_ context.Context, request source.Message) source.Message {
-	if request.NetworkDigest != networkIdentityDigest(s.config.networkID) {
+	if request.NetworkDigest != source.NetworkDigest(s.config.networkID) {
 		return source.Message{Status: "bad-request"}
 	}
 	s.mu.RLock()
-	if s.closed || s.currentDecision == nil {
+	if s.closed || s.current == nil {
 		s.mu.RUnlock()
 		return source.Message{Status: "busy"}
 	}
-	decision := *s.currentDecision
+	decision := *s.current
 	digest := decision.Header.Digest
 	s.mu.RUnlock()
 	if request.Operation == "by-digest" && request.ObjectDigest != digest {
 		return source.Message{Status: "not-found"}
 	}
-	payload, err := encodeSourceBundle(decision, request.MaterialIndex)
+	material, err := decision.Materialization(request.MaterialIndex)
+	if err != nil {
+		return source.Message{Status: "internal"}
+	}
+	payload, err := source.EncodeBundle(source.Bundle{Epoch: decision.EpochBytes, Inputs: decision.Inputs, Materials: [][]byte{material}})
 	if err != nil {
 		return source.Message{Status: "internal"}
 	}

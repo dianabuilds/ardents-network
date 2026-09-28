@@ -55,16 +55,16 @@ type ClosedProfileTokenKey struct {
 func (s *networkState) AcceptClosedProfile(raw []byte) (ClosedProfileView, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if s.closed || s.current == nil || s.currentDecision == nil || s.current.Profile != closedRouteProfile || s.distribution.conflicting {
+	if s.closed || s.current == nil || s.current.Snapshot.Profile != closedRouteProfile || s.distribution.conflicting {
 		return ClosedProfileView{}, errors.New("closed profile is unavailable")
 	}
-	generation, err := closedProfileGeneration(s.current.Generation)
+	generation, err := closedProfileGeneration(s.current.Snapshot.Generation)
 	if err != nil {
 		return ClosedProfileView{}, err
 	}
 	now := s.config.clock().UTC()
 	profile, err := s.verifyClosedProfileLocked(raw, generation, now)
-	if err != nil || profile.NotBefore.Before(s.current.EpochValidFrom) || profile.NotAfter.After(s.current.ValidUntil) || !matchesClosedProfileCandidates(profile, s.currentDecision.Candidates) {
+	if err != nil || profile.NotBefore.Before(s.current.Snapshot.EpochValidFrom) || profile.NotAfter.After(s.current.Snapshot.ValidUntil) || !matchesClosedProfileCandidates(profile, s.current.Candidates) {
 		return ClosedProfileView{}, errors.New("closed profile does not match accepted State")
 	}
 	stored, storedRaw, err := s.storage.LoadClosedProfile(generation)
@@ -128,7 +128,7 @@ func (s *networkState) CurrentClosedRoute() (ClosedRouteView, error) {
 // Offline profile acceptance is separate: possession of persisted signed
 // bytes does not permit runtime use after time confidence or its owner fails.
 func (s *networkState) currentClosedProfileLocked() (closedprofile.Profile, error) {
-	if s.closed || s.current == nil || s.currentDecision == nil || s.current.Profile != closedRouteProfile || s.distribution.conflicting {
+	if s.closed || s.current == nil || s.current.Snapshot.Profile != closedRouteProfile || s.distribution.conflicting {
 		return closedprofile.Profile{}, errors.New("closed profile is unavailable")
 	}
 	if err := errors.Join(s.automaticErr, s.resourceErr); err != nil {
@@ -141,20 +141,20 @@ func (s *networkState) currentClosedProfileLocked() (closedprofile.Profile, erro
 	if err != nil {
 		return closedprofile.Profile{}, err
 	}
-	if now.Before(s.current.EpochValidFrom) || !now.Before(s.current.ValidUntil) {
+	if now.Before(s.current.Snapshot.EpochValidFrom) || !now.Before(s.current.Snapshot.ValidUntil) {
 		return closedprofile.Profile{}, errors.New("closed profile State is not current")
 	}
-	generation, err := closedProfileGeneration(s.current.Generation)
+	generation, err := closedProfileGeneration(s.current.Snapshot.Generation)
 	if err != nil {
 		return closedprofile.Profile{}, err
 	}
 	stored, raw, err := s.storage.LoadClosedProfile(generation)
-	if err != nil || stored == (durable.ClosedProfileState{}) || stored.Conflict != [32]byte{} || stored.Epoch != s.current.Epoch {
+	if err != nil || stored == (durable.ClosedProfileState{}) || stored.Conflict != [32]byte{} || stored.Epoch != s.current.Snapshot.Epoch {
 		return closedprofile.Profile{}, errors.New("closed profile is unavailable")
 	}
 	profile, err := s.verifyClosedProfileLocked(raw, generation, now)
-	if err != nil || profile.Digest != stored.Accepted || profile.NotBefore.Before(s.current.EpochValidFrom) || profile.NotAfter.After(s.current.ValidUntil) ||
-		!matchesClosedProfileCandidates(profile, s.currentDecision.Candidates) {
+	if err != nil || profile.Digest != stored.Accepted || profile.NotBefore.Before(s.current.Snapshot.EpochValidFrom) || profile.NotAfter.After(s.current.Snapshot.ValidUntil) ||
+		!matchesClosedProfileCandidates(profile, s.current.Candidates) {
 		return closedprofile.Profile{}, errors.New("closed profile is unavailable")
 	}
 	return profile, nil
@@ -191,8 +191,8 @@ func closedRouteView(profile closedprofile.Profile) ClosedRouteView {
 // context; the grammar verifier itself has no State acceptance authority.
 func (s *networkState) verifyClosedProfileLocked(raw []byte, generation [32]byte, now time.Time) (closedprofile.Profile, error) {
 	return closedprofile.Verify(raw, closedprofile.Context{
-		StateGeneration: generation, NetworkID: s.current.NetworkID,
-		EpochDigest: s.current.Digest, Epoch: s.current.Epoch,
+		StateGeneration: generation, NetworkID: s.current.Snapshot.NetworkID,
+		EpochDigest: s.current.Snapshot.Digest, Epoch: s.current.Snapshot.Epoch,
 		Authority: s.config.closedProfileAuthority, Now: now,
 	})
 }

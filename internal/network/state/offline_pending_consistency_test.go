@@ -3,6 +3,9 @@ package state_test
 import (
 	"context"
 	"crypto/sha256"
+	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -58,6 +61,57 @@ func TestOfflineAcceptRejectsCandidateConflictingWithPendingEpoch(t *testing.T) 
 	}
 	if _, err := restarted.Accept(context.Background(), pending.epoch, pending.inputs, pending.materializations); err == nil || !strings.Contains(err.Error(), "persistent") {
 		t.Fatalf("accept after durable conflict returned %v", err)
+	}
+}
+
+func TestReopenRefusesSignedPendingGenerationUnderWrongName(t *testing.T) {
+	genesis := newFixture(t)
+	pending := futureFixture(t, genesis, genesis.now+20)
+	replacement := buildFixtureEpoch(t, genesis, pendingEpoch, genesis.epochDigest,
+		sha256.Sum256([]byte("different-pending-assignment")),
+		time.Unix(pending.now, 0).UTC(), time.Unix(genesis.now+3600, 0).UTC())
+	if replacement.epochDigest == pending.epochDigest {
+		t.Fatal("replacement did not change the signed Epoch digest")
+	}
+	config, closeSources := sourceEnvironment(t, genesis, pending, pending)
+	defer closeSources()
+	opened, err := state.Open(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	staged, err := opened.Refresh(context.Background())
+	if err != nil || staged.PendingDigest != pending.epochDigest {
+		t.Fatalf("stage pending Epoch: snapshot=%+v err=%v", staged, err)
+	}
+	if err := opened.Close(); err != nil {
+		t.Fatal(err)
+	}
+	currentPath := filepath.Join(config.Root, "current")
+	controlPath := filepath.Join(config.Root, "distribution", "current")
+	currentBefore, err := os.ReadFile(currentPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	controlBefore, err := os.ReadFile(controlPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	pendingPath := filepath.Join(config.Root, "generations", fmt.Sprintf("%x", pending.epochDigest), "epoch.bin")
+	if err := os.WriteFile(pendingPath, replacement.epoch, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	reopened, err := state.Open(config)
+	if err == nil {
+		_ = reopened.Close()
+		t.Fatal("reopen accepted a different signed Epoch under the pending generation name")
+	}
+	if !strings.Contains(err.Error(), "generation identity") {
+		t.Fatalf("reopen error = %v, want generation identity refusal", err)
+	}
+	currentAfter, currentErr := os.ReadFile(currentPath)
+	controlAfter, controlErr := os.ReadFile(controlPath)
+	if currentErr != nil || controlErr != nil || string(currentAfter) != string(currentBefore) || string(controlAfter) != string(controlBefore) {
+		t.Fatalf("failed recovery changed durable pointers: current=%v control=%v", currentErr, controlErr)
 	}
 }
 

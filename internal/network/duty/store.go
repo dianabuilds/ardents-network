@@ -12,7 +12,7 @@ import (
 func Open(input Config) (*store, error) {
 	return open(input, nil)
 }
-func open(input Config, ctx context.Context) (*store, error) {
+func open(input Config, ctx context.Context) (openedStore *store, resultErr error) {
 	if ctx != nil && ctx.Err() != nil {
 		return nil, ctx.Err()
 	}
@@ -41,7 +41,9 @@ func open(input Config, ctx context.Context) (*store, error) {
 	opened := false
 	defer func() {
 		if !opened {
-			_ = lease.release()
+			if releaseErr := lease.release(); releaseErr != nil {
+				resultErr = errors.Join(resultErr, releaseErr)
+			}
 		}
 	}()
 	if err := verifyRootClaim(root, input.Create); err != nil {
@@ -130,15 +132,16 @@ func (store *store) Conflict(identity, family [32]byte) (bool, error) {
 	return false, nil
 }
 
-// Close releases the exclusive root lease. It is idempotent.
+// Close releases the exclusive root lease once and retains its terminal result.
 func (store *store) Close() error {
 	store.mu.Lock()
 	defer store.mu.Unlock()
 	if store.closed {
-		return nil
+		return store.closeErr
 	}
 	store.closed = true
-	return store.lease.release()
+	store.closeErr = store.lease.release()
+	return store.closeErr
 }
 
 func validDuty(duty Duty, now time.Time) bool {

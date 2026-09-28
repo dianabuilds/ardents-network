@@ -1,9 +1,47 @@
 package state
 
-import "errors"
+import (
+	"encoding/binary"
+	"errors"
+)
+
+// distributionDecoder bounds reads from canonical distribution journal bytes.
+type distributionDecoder struct {
+	raw    []byte
+	offset int
+}
+
+func newDistributionDecoder(raw []byte) distributionDecoder { return distributionDecoder{raw: raw} }
+
+func (d *distributionDecoder) bytes(length int) ([]byte, error) {
+	if length < 0 || length > len(d.raw)-d.offset {
+		return nil, errors.New("truncated canonical bytes")
+	}
+	value := d.raw[d.offset : d.offset+length]
+	d.offset += length
+	return value, nil
+}
+
+func (d *distributionDecoder) byte() (byte, error) {
+	value, err := d.bytes(1)
+	if err != nil {
+		return 0, err
+	}
+	return value[0], nil
+}
+
+func (d *distributionDecoder) uint64() (uint64, error) {
+	value, err := d.bytes(8)
+	if err != nil {
+		return 0, err
+	}
+	return binary.BigEndian.Uint64(value), nil
+}
+
+func (d *distributionDecoder) done() bool { return d.offset == len(d.raw) }
 
 func decodeDistributionState(raw []byte) (distributionState, error) {
-	d := newDecoder(raw)
+	d := newDistributionDecoder(raw)
 	magic, err := d.bytes(8)
 	if err != nil || string(magic) != "ARDS1D4\x00" {
 		return distributionState{}, errors.New("distribution state magic is invalid")
@@ -24,7 +62,7 @@ func decodeDistributionState(raw []byte) (distributionState, error) {
 	return state, nil
 }
 
-func decodeDistributionHeader(d *decoder, state *distributionState) error {
+func decodeDistributionHeader(d *distributionDecoder, state *distributionState) error {
 	var err error
 	if state.sequence, err = d.uint64(); err != nil {
 		return err
@@ -74,7 +112,7 @@ func decodeDistributionHeader(d *decoder, state *distributionState) error {
 	return nil
 }
 
-func decodeDistributionCycle(d *decoder, state *distributionState) error {
+func decodeDistributionCycle(d *distributionDecoder, state *distributionState) error {
 	var err error
 	if state.cycleID, err = d.uint64(); err != nil {
 		return err
@@ -125,14 +163,14 @@ func decodeDistributionCycle(d *decoder, state *distributionState) error {
 			return readErr
 		}
 		copy(state.requestedDigests[index][:], digest)
-		if isZero32(state.requestedDigests[index]) != (state.attempts[index+2] == 0) {
+		if (state.requestedDigests[index] == [32]byte{}) != (state.attempts[index+2] == 0) {
 			return errors.New("BY_DIGEST attempt lacks its exact selector")
 		}
 	}
 	return nil
 }
 
-func decodeDistributionEvidence(d *decoder, state *distributionState) error {
+func decodeDistributionEvidence(d *distributionDecoder, state *distributionState) error {
 	var err error
 	for index := range state.observedEpochs {
 		if state.observedEpochs[index], err = d.uint64(); err != nil {
@@ -143,7 +181,7 @@ func decodeDistributionEvidence(d *decoder, state *distributionState) error {
 			return readErr
 		}
 		copy(state.observedDigests[index][:], digest)
-		if (state.observedEpochs[index] == 0) != isZero32(state.observedDigests[index]) {
+		if (state.observedEpochs[index] == 0) != (state.observedDigests[index] == [32]byte{}) {
 			return errors.New("observed source candidate identity is incomplete")
 		}
 	}
@@ -157,7 +195,7 @@ func decodeDistributionEvidence(d *decoder, state *distributionState) error {
 		return err
 	}
 	state.pendingValidFrom = int64(pendingAt)
-	if isZero32(state.pendingDigest) != (state.pendingValidFrom == 0) {
+	if (state.pendingDigest == [32]byte{}) != (state.pendingValidFrom == 0) {
 		return errors.New("distribution pending identity is incomplete")
 	}
 	seed, err := d.bytes(32)

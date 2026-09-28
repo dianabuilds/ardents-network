@@ -63,10 +63,11 @@ func validateConfig(input Config) (config, error) {
 		authorities[id] = append(ed25519.PublicKey(nil), public...)
 	}
 	initial := clock().UTC()
-	sourceInput := input.Source
-	if sourceInput.VerificationClock == nil {
-		sourceInput.VerificationClock = clock
+	if input.Source.VerificationClock != nil {
+		return config{}, errors.New("source verification clock is owned by Network State")
 	}
+	sourceInput := input.Source
+	sourceInput.VerificationClock = clock
 	sourcePlan, sourceInfo, err := source.New(sourceInput, authorities)
 	if err != nil {
 		return config{}, err

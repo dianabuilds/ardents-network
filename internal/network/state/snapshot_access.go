@@ -53,7 +53,7 @@ func (s *networkState) snapshotWithDistribution(now time.Time) Snapshot {
 	if s.current == nil {
 		return Snapshot{}
 	}
-	snapshot := *s.current
+	snapshot := snapshotFromEpoch(s.current.Snapshot)
 	ids := make([][32]byte, 0, len(s.config.authorities))
 	for id := range s.config.authorities {
 		ids = append(ids, id)
@@ -64,7 +64,7 @@ func (s *networkState) snapshotWithDistribution(now time.Time) Snapshot {
 		snapshot.EpochAuthorityIDs[index] = id
 		copy(snapshot.EpochAuthorityKeys[index][:], s.config.authorities[id])
 	}
-	snapshot.Candidates, snapshot.CandidateCount = routeCandidates(s.currentDecision)
+	snapshot.Candidates, snapshot.CandidateCount = routeCandidates(s.current)
 	snapshot.Conflicting = s.distribution.conflicting
 	snapshot.SourceAttempts = uint16(len(s.distribution.history))
 	snapshot.LatestCompleteness = "latest completeness unproven"
@@ -87,7 +87,7 @@ func (s *networkState) snapshotWithDistribution(now time.Time) Snapshot {
 	switch {
 	case snapshot.Conflicting:
 		snapshot.Freshness = "conflicting"
-	case s.currentDecision != nil && now.Before(s.currentDecision.Header.ValidFrom):
+	case now.Before(s.current.Header.ValidFrom):
 		snapshot.Freshness = "staged"
 	case !now.Before(snapshot.ValidUntil):
 		snapshot.Freshness = "expired"

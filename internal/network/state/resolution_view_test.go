@@ -9,7 +9,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 )
 
-func TestCurrentResolutionViewOwnsFreshEpochAndCandidateFacts(t *testing.T) {
+func TestCurrentResolutionViewOwnsFreshEpochFacts(t *testing.T) {
 	value := newFixture(t)
 	opened, err := state.Open(state.Config{Root: t.TempDir(), NetworkID: value.networkID,
 		Authorities: map[[32]byte]ed25519.PublicKey{value.authorityID: value.authorityPublic},
@@ -34,9 +34,6 @@ func TestCurrentResolutionViewOwnsFreshEpochAndCandidateFacts(t *testing.T) {
 	again, available := view.Epoch(at, at.Add(time.Second))
 	if !available || again.Authorities[0].PublicKey == [32]byte{} {
 		t.Fatal("caller mutation changed the owned Resolution trust fact")
-	}
-	if _, available := view.Candidate(value.accepted[0].nodeID, at, at.Add(time.Second)); !available {
-		t.Fatal("valid authenticated candidate was unavailable to Resolution")
 	}
 	if _, available := view.Epoch(at, at.Add(16*time.Second)); available {
 		t.Fatal("Resolution view accepted a window above the accepted limit")

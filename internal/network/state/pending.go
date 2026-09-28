@@ -7,13 +7,13 @@ import (
 
 func (s *networkState) recoverPendingState() error {
 	state := s.distribution
-	if isZero32(state.pendingDigest) {
+	if state.pendingDigest == [32]byte{} {
 		return nil
 	}
 	if s.current == nil {
 		return errors.New("pending Epoch exists without an active predecessor")
 	}
-	if state.pendingDigest == s.current.Digest {
+	if state.pendingDigest == s.current.Snapshot.Digest {
 		state.pendingDigest = [32]byte{}
 		state.pendingValidFrom = 0
 		state.sequence++

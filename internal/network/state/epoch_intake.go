@@ -44,3 +44,19 @@ func classifyRetainedClosedSchema(config config, header epoch.Header, role strin
 	}
 	return nil
 }
+
+var (
+	errPersistentStateConflict = errors.New("network state has a persistent conflict")
+	errPendingEpochConflict    = errors.New("candidate Epoch conflicts with the durable pending Epoch")
+)
+
+func (s *networkState) allowCandidateTransition(candidate epoch.Decision) error {
+	if s.distribution.conflicting {
+		return errPersistentStateConflict
+	}
+	if s.pendingDecision != nil && candidate.Header.Number == s.pendingDecision.Header.Number &&
+		candidate.Header.Digest != s.pendingDecision.Header.Digest {
+		return errPendingEpochConflict
+	}
+	return nil
+}

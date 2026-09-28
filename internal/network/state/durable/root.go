@@ -23,14 +23,15 @@ var generationName = regexp.MustCompile(`^[0-9a-f]{64}$`)
 
 // Root owns the only writer lease and physical State-root transaction.
 type Root struct {
-	limits Limits
-	mu     sync.Mutex
-	path   string
-	lease  rootLease
-	closed bool
+	limits   Limits
+	mu       sync.Mutex
+	path     string
+	lease    rootLease
+	closed   bool
+	closeErr error
 }
 
-func Open(path string, limits Limits) (*Root, error) {
+func Open(path string, limits Limits) (openedRoot *Root, resultErr error) {
 	if limits.EpochBytes <= 0 || limits.RecordBytes <= 0 || limits.ClosedProfileBytes <= 0 {
 		return nil, errors.New("state storage bounds are invalid")
 	}
@@ -48,7 +49,9 @@ func Open(path string, limits Limits) (*Root, error) {
 	opened := false
 	defer func() {
 		if !opened {
-			_ = lease.release()
+			if releaseErr := lease.release(); releaseErr != nil {
+				resultErr = errors.Join(resultErr, releaseErr)
+			}
 		}
 	}()
 	if err := prepareRoot(absolute); err != nil {
@@ -65,14 +68,16 @@ func Open(path string, limits Limits) (*Root, error) {
 	return root, nil
 }
 
+// Close releases the root lease once and retains its terminal result.
 func (root *Root) Close() error {
 	root.mu.Lock()
 	defer root.mu.Unlock()
 	if root.closed {
-		return nil
+		return root.closeErr
 	}
 	root.closed = true
-	return root.lease.release()
+	root.closeErr = root.lease.release()
+	return root.closeErr
 }
 
 func (root *Root) available() error {

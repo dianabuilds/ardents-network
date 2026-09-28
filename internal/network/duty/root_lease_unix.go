@@ -29,14 +29,7 @@ func (lease rootLease) release() error {
 		return nil
 	}
 	unlockErr := syscall.Flock(int(lease.file.Fd()), syscall.LOCK_UN)
-	return errorsJoin(unlockErr, lease.file.Close())
-}
-
-func errorsJoin(first, second error) error {
-	if first != nil {
-		return first
-	}
-	return second
+	return errors.Join(unlockErr, lease.file.Close())
 }
 
 func rootLeaseBusy(err error) bool {

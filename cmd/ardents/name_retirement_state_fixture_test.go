@@ -115,16 +115,31 @@ func prepareRetiredNameState(t *testing.T, root string, now time.Time, endpoints
 			t.Errorf("close recovered Name fixture State: %v", err)
 		}
 	})
-	view, viewErr := recovered.CurrentResolution()
+	snapshot, stateErr := recovered.Current()
 	closeErr := closeRecovered()
-	if viewErr != nil || closeErr != nil {
-		t.Fatalf("recovered Name fixture State: view=%v close=%v", viewErr, closeErr)
+	if stateErr != nil || closeErr != nil {
+		t.Fatalf("recovered Name fixture State: current=%v close=%v", stateErr, closeErr)
+	}
+	if snapshot.Freshness != "fresh" {
+		t.Fatalf("recovered Name fixture State freshness = %q", snapshot.Freshness)
 	}
 	window := now.Add(15 * time.Second)
 	for index := range records {
-		candidate, available := view.Candidate([32]byte{byte(index + 1)}, now, window)
-		if !available || candidate.Domain != domains[index] || candidate.Endpoint != endpoints[index] {
-			t.Fatalf("accepted Name fixture candidate %d = %+v, available=%v", index, candidate, available)
+		found := false
+		for _, candidate := range snapshot.Candidates[:snapshot.CandidateCount] {
+			if candidate.NodeID != [32]byte{byte(index + 1)} {
+				continue
+			}
+			if candidate.Domain != domains[index] || candidate.Endpoint != endpoints[index] ||
+				candidate.Capacity == 0 || candidate.Family == "" || now.Before(candidate.ValidFrom) ||
+				!window.Before(candidate.ValidUntil) || candidate.AssignmentNotAfter.Before(window) {
+				t.Fatalf("accepted Name fixture candidate %d = %+v", index, candidate)
+			}
+			found = true
+			break
+		}
+		if !found {
+			t.Fatalf("accepted Name fixture candidate %d is missing", index)
 		}
 	}
 	return retiredNameState{root: stateRoot, network: network, digest: digest,
