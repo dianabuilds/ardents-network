@@ -5,6 +5,8 @@ import (
 	"crypto/ed25519"
 	"crypto/sha256"
 	"fmt"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -54,7 +56,32 @@ func TestAcceptClosedProfilePersistsAndConflictsByArrival(t *testing.T) {
 	}
 }
 
+func TestAcceptClosedProfileRetriesInterruptedPublication(t *testing.T) {
+	rootPath := t.TempDir()
+	store, first := closedProfileStoreFixtureAt(t, rootPath)
+	generation := sha256.Sum256([]byte("closed profile generation"))
+	profilePath := filepath.Join(rootPath, fmt.Sprintf("closed-profile-%x.bin", generation))
+	if err := os.WriteFile(profilePath, first, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := store.CurrentClosedProfile(); err == nil {
+		t.Fatal("published profile bytes without durable state")
+	}
+	view, err := store.AcceptClosedProfile(first)
+	if err != nil || view.Digest != sha256.Sum256(first) {
+		t.Fatalf("retry exact profile after interrupted publication: digest=%x, err=%v", view.Digest, err)
+	}
+	current, err := store.CurrentClosedProfile()
+	if err != nil || current != view {
+		t.Fatalf("current closed profile after retry: digest=%x, err=%v", current.Digest, err)
+	}
+}
+
 func closedProfileStoreFixture(t *testing.T) (*networkState, []byte) {
+	return closedProfileStoreFixtureAt(t, t.TempDir())
+}
+
+func closedProfileStoreFixtureAt(t *testing.T, rootPath string) (*networkState, []byte) {
 	t.Helper()
 	now := time.Unix(1_800_000_000, 0).UTC()
 	authority := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{9}, ed25519.SeedSize))
@@ -64,7 +91,7 @@ func closedProfileStoreFixture(t *testing.T) (*networkState, []byte) {
 	nodeID := sha256.Sum256([]byte("issuer node"))
 	recordRaw := []byte("authenticated schema-2 record")
 	recordGeneration := uint64(5)
-	root, err := openTestDurableRoot(t.TempDir())
+	root, err := openTestDurableRoot(rootPath)
 	if err != nil {
 		t.Fatal(err)
 	}

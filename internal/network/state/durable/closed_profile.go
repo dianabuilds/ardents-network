@@ -65,11 +65,9 @@ func (root *Root) LoadClosedProfile(generation [32]byte) (ClosedProfileState, []
 	stateName, profileName := closedProfileStateName(generation), closedProfileBytesName(generation)
 	stateRaw, err := readBoundedFile(filepath.Join(root.path, stateName), closedProfileStateSize)
 	if os.IsNotExist(err) {
-		if _, statErr := os.Lstat(filepath.Join(root.path, profileName)); statErr == nil {
-			return ClosedProfileState{}, nil, errors.New("closed profile bytes lack durable state")
-		} else if !os.IsNotExist(statErr) {
-			return ClosedProfileState{}, nil, statErr
-		}
+		// A crash can leave the immutable bytes before the state record. They
+		// are not accepted until State verifies an exact retry and CommitClosedProfile
+		// confirms the on-disk bytes match before publishing the state.
 		return ClosedProfileState{}, nil, nil
 	}
 	if err != nil {
