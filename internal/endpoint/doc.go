@@ -17,18 +17,21 @@
 //     and serialized operation reservation. source_operations.go coordinates
 //     Context admission and Source use; the root retains the Interior Set,
 //     and interior_set.go selects peers for Source and Publisher prefixes.
-//   - introduction_prefix_lifecycle.go and
-//     responder_prefix_lifecycle.go own the two Publisher prefixes.
-//     introduction_admission.go, introduction_dispatch.go,
-//     and introduction_exchange_set.go own opening rate, delivery routing,
-//     and in-flight exchange membership under the Context lock.
-//     introduction_recovery.go owns buffered recovery delivery, its
-//     deadline refusal, and the join before waiter handoff or retirement.
-//   - permission.go and permission_stock.go own holder authority and
-//     issued stock; issuance_operation.go owns an admitted issuance attempt.
-//   - publication_pair_lifecycle.go and publication_refresh.go own
-//     the in-flight registration, withdrawal, publication pair, and refresh;
-//     descriptor_publication.go coordinates the signed Descriptor effect.
+//   - introduction.go composes the prefix, admission, dispatch, and exchange
+//     owners under the Context lock. introduction/admission.go,
+//     dispatch_state.go, exchange_set.go, recovery.go, and pair_lifecycle.go
+//     own their respective mechanisms; introduction_prefix_lifecycle.go and
+//     responder_prefix_lifecycle.go own the two Publisher prefixes. Root
+//     introduction_registration.go and introduction_receive.go coordinate
+//     registration and delivery with the other Context owners.
+//   - permission.go checks the live State profile. The tokens package owns
+//     holder permission, issued stock, and the admitted operation;
+//     issuance.go coordinates Source use and token issuance.
+//   - publication.go composes the registration pair and refresh scheduler
+//     with Publisher startup and drain. introduction/pair_lifecycle.go owns
+//     current, pending, and previous registrations; publication/refresh.go
+//     owns scheduler identity. publication_refresh.go coordinates rotation,
+//     and descriptor_publication.go coordinates the signed Descriptor effect.
 //   - descriptorhistory owns per-Context verified Descriptor floors;
 //     resolution.go coordinates lookup and rechecks live authority.
 //   - job_lifecycle.go owns invocation identity and joined cleanup;
@@ -36,9 +39,10 @@
 //     The child worker package owns the installed worker mechanism only —
 //     artifact pinning, activation, process identity, credentialed attachment,
 //     and verified stop — and grants nothing.
-//   - service_tls.go owns Instance authentication and exporter handoff;
-//     protected_service_tls.go selects the protected Service groups and preserves
-//     authenticated Route retirement through the TLS wrapper.
+//   - service_binding.go retains job and publication authority. The service
+//     package owns TLS Instance authentication, protected Service attachment,
+//     workload and stream mechanics; service_route_recovery.go coordinates
+//     Route recovery across the binding seam.
 //
 // The Route capsule package owns Introduction sealing and decoding; Endpoint
 // checks decoded facts against live participant and publication authority.
