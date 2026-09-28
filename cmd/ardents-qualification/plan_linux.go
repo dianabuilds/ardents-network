@@ -80,7 +80,7 @@ func decodePlan(input io.Reader) (decodedQualificationPlan, error) {
 			readers[item.ReaderIndex] = true
 		}
 		var participant struct {
-			endpoint.TextParticipantConfig
+			endpoint.ClosedParticipantConfig
 			Network json.RawMessage
 		}
 		if err := decodeExact(item.Participant, &participant); err != nil {
@@ -109,11 +109,11 @@ func decodePlan(input io.Reader) (decodedQualificationPlan, error) {
 		if err != nil {
 			return decodedQualificationPlan{}, err
 		}
-		participant.TextParticipantConfig.Network = network.Config
+		participant.ClosedParticipantConfig.Network = network.Config
 		if len(configs) > 0 && (configs[0].HostingRoot != item.HostingRoot || configs[0].Profile != item.Profile || configs[0].Condition != item.Condition || configs[0].Seed != seed) {
 			return decodedQualificationPlan{}, errors.New("one host run must share its period and workload")
 		}
-		configs = append(configs, endpoint.StreamQualificationConfig{Participant: participant.TextParticipantConfig, Role: item.Role, Profile: item.Profile, Condition: item.Condition, Seed: seed, ReaderIndex: item.ReaderIndex, Link: item.Link, HostingRoot: item.HostingRoot})
+		configs = append(configs, endpoint.StreamQualificationConfig{Participant: participant.ClosedParticipantConfig, Role: item.Role, Profile: item.Profile, Condition: item.Condition, Seed: seed, ReaderIndex: item.ReaderIndex, Link: item.Link, HostingRoot: item.HostingRoot})
 	}
 	if plan.Mode == "net32-idle" {
 		if len(configs) != 1 || ownerRole != streamqualification.ReaderRole || configs[0].Profile != streamqualification.ClientToPublisher || configs[0].Condition != streamqualification.NormalNetwork || configs[0].ReaderIndex != 0 || configs[0].Link != "" {

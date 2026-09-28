@@ -15,19 +15,19 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/service/instance"
 )
 
-func runTextParticipant(ctx context.Context, config TextParticipantConfig) error {
-	return withTextParticipant(ctx, config, func(owner *endpoint) error { return owner.runTextInterfaces(ctx, config) })
+func runClosedParticipant(ctx context.Context, config ClosedParticipantConfig) error {
+	return withParticipant(ctx, config, func(owner *endpoint) error { return owner.runInterfaces(ctx, config) })
 }
 
-func withTextParticipant(ctx context.Context, config TextParticipantConfig, run func(*endpoint) error) error {
-	return useTextParticipant(ctx, config, true, run)
+func withParticipant(ctx context.Context, config ClosedParticipantConfig, run func(*endpoint) error) error {
+	return useParticipant(ctx, config, true, run)
 }
 
-func inspectTextParticipant(ctx context.Context, config TextParticipantConfig, run func(*endpoint) error) error {
-	return useTextParticipant(ctx, config, false, run)
+func inspectParticipant(ctx context.Context, config ClosedParticipantConfig, run func(*endpoint) error) error {
+	return useParticipant(ctx, config, false, run)
 }
 
-func useTextParticipant(ctx context.Context, config TextParticipantConfig, withdrawBinding bool, run func(*endpoint) error) (outcome error) {
+func useParticipant(ctx context.Context, config ClosedParticipantConfig, withdrawBinding bool, run func(*endpoint) error) (outcome error) {
 	clock := config.Clock
 	if clock == nil {
 		clock = time.Now
@@ -89,18 +89,18 @@ func useTextParticipant(ctx context.Context, config TextParticipantConfig, withd
 	return run(owner)
 }
 
-func (endpoint *endpoint) runTextInterfaces(ctx context.Context, config TextParticipantConfig) (outcome error) {
+func (endpoint *endpoint) runInterfaces(ctx context.Context, config ClosedParticipantConfig) (outcome error) {
 	clock := config.Clock
 	if clock == nil {
 		clock = time.Now
 	}
-	output := newTextParticipantObservation(config.Observe, clock)
+	output := newParticipantObservation(config.Observe, clock)
 	defer func() { outcome = errors.Join(outcome, output.pendingFailure()) }()
 	var contexts [2]*textContext
 	for index, role := range []struct {
 		principal [32]byte
 		surface   broker.Surface
-		files     TextPermissionFiles
+		files     PermissionFiles
 	}{{config.ConnectionPrincipal, broker.Connection, config.ReaderPermission}, {config.AdministrationPrincipal, broker.Administration, config.PublisherPermission}} {
 		capability, err := endpoint.Admit(role.principal, role.surface)
 		if err != nil {
@@ -113,7 +113,7 @@ func (endpoint *endpoint) runTextInterfaces(ctx context.Context, config TextPart
 		defer func() { outcome = errors.Join(outcome, owner.Close()) }()
 		contexts[index] = owner
 		if err := owner.provisionPermission(ctx, role.files.RequestPath, role.files.ResponsePath, role.files.Maxima, func(reportCtx context.Context, digest [32]byte) error {
-			return output.emit(reportCtx, TextParticipantEvent{Kind: "permission-required", NetworkID: endpoint.network, Surface: string(role.surface), RequestDigest: digest})
+			return output.emit(reportCtx, ClosedParticipantEvent{Kind: "permission-required", NetworkID: endpoint.network, Surface: string(role.surface), RequestDigest: digest})
 		}); err != nil {
 			return err
 		}
@@ -122,12 +122,12 @@ func (endpoint *endpoint) runTextInterfaces(ctx context.Context, config TextPart
 			owner.publication.refreshFailure = func(failure string) {
 				// A failed refresh is local operational state. Its fixed category
 				// exposes neither a wrapped transport error nor private route data.
-				output.background(TextParticipantEvent{Kind: "publication-refresh-failed", NetworkID: endpoint.network, Failure: failure})
+				output.background(ClosedParticipantEvent{Kind: "publication-refresh-failed", NetworkID: endpoint.network, Failure: failure})
 			}
 			owner.publication.withdrawalFailure = func(failure string) {
 				// The category identifies the trusted local boundary that rejected an
 				// administrative withdrawal without exposing a wrapped error or data.
-				output.background(TextParticipantEvent{Kind: "publication-withdrawal-failed", NetworkID: endpoint.network, Surface: string(role.surface), Failure: failure})
+				output.background(ClosedParticipantEvent{Kind: "publication-withdrawal-failed", NetworkID: endpoint.network, Surface: string(role.surface), Failure: failure})
 			}
 			owner.mu.Unlock()
 		}
@@ -136,7 +136,7 @@ func (endpoint *endpoint) runTextInterfaces(ctx context.Context, config TextPart
 			owner.operationFailure = func(failure string) {
 				// The category tells a local operator which trusted boundary failed
 				// without serializing a peer, route, document, or wrapped error.
-				output.background(TextParticipantEvent{Kind: "connection-operation-failed", NetworkID: endpoint.network, Surface: string(role.surface), Failure: failure})
+				output.background(ClosedParticipantEvent{Kind: "connection-operation-failed", NetworkID: endpoint.network, Surface: string(role.surface), Failure: failure})
 			}
 			owner.mu.Unlock()
 		}
@@ -173,7 +173,7 @@ func (endpoint *endpoint) runTextInterfaces(ctx context.Context, config TextPart
 		return err
 	}
 	defer func() { outcome = errors.Join(outcome, adminServer.Close()) }()
-	if err := output.emit(ctx, TextParticipantEvent{Kind: "ready", NetworkID: endpoint.network, ApplicationAddress: config.ApplicationAddress, AdministrationAddress: config.AdministrationAddress}); err != nil {
+	if err := output.emit(ctx, ClosedParticipantEvent{Kind: "ready", NetworkID: endpoint.network, ApplicationAddress: config.ApplicationAddress, AdministrationAddress: config.AdministrationAddress}); err != nil {
 		return err
 	}
 	return output.wait(ctx)

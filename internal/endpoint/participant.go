@@ -12,31 +12,31 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/route/carrier"
 )
 
-// TextPermissionFiles is a trusted local offline handover, never Application
+// PermissionFiles is a trusted local offline handover, never Application
 // input. Its signed response is checked against this process's exact request.
-type TextPermissionFiles struct {
+type PermissionFiles struct {
 	RequestPath  string
 	ResponsePath string
 	Maxima       [3]uint32
 }
 
-// TextParticipantConfig owns one closed text participant generation. It has
+// ClosedParticipantConfig owns one closed text participant generation. It has
 // no legacy Invite, alternate protection mode, Target, or private signing key.
-type TextParticipantConfig struct {
+type ClosedParticipantConfig struct {
 	Network                                                state.Config
 	RefreshNetwork                                         bool
 	EntryRoot, LocalRoleRoot, TokenRoot                    string
 	PublicationRoot, ServiceInstanceRoot                   string
 	ApplicationAddress, AdministrationAddress              string
 	BrokerID, ConnectionPrincipal, AdministrationPrincipal [32]byte
-	ReaderPermission, PublisherPermission                  TextPermissionFiles
+	ReaderPermission, PublisherPermission                  PermissionFiles
 	Clock                                                  func() time.Time
-	Observe                                                func(context.Context, TextParticipantEvent) error
+	Observe                                                func(context.Context, ClosedParticipantEvent) error
 }
 
-// TextParticipantEvent exposes only local lifecycle or the public commitment
+// ClosedParticipantEvent exposes only local lifecycle or the public commitment
 // for an offline approval. Observers must honor their context and join output.
-type TextParticipantEvent struct {
+type ClosedParticipantEvent struct {
 	At                                        time.Time
 	Kind                                      string
 	NetworkID                                 [32]byte
@@ -46,7 +46,7 @@ type TextParticipantEvent struct {
 	ApplicationAddress, AdministrationAddress string
 }
 
-func (config TextParticipantConfig) validate() error {
+func (config ClosedParticipantConfig) validate() error {
 	if config.Network.AcceptedProfile != carrier.ClosedRouteProfile || config.Network.NetworkID == [32]byte{} || config.BrokerID == [32]byte{} || config.ConnectionPrincipal == [32]byte{} || config.AdministrationPrincipal == [32]byte{} || config.Observe == nil {
 		return errors.New("text participant configuration incomplete")
 	}
@@ -57,7 +57,7 @@ func (config TextParticipantConfig) validate() error {
 		}
 		seen[path] = true
 	}
-	for index, permission := range []TextPermissionFiles{config.ReaderPermission, config.PublisherPermission} {
+	for index, permission := range []PermissionFiles{config.ReaderPermission, config.PublisherPermission} {
 		maximum := uint64(4096)
 		if index == 1 {
 			maximum = 16384
@@ -70,9 +70,9 @@ func (config TextParticipantConfig) validate() error {
 	return nil
 }
 
-// RunTextParticipant qualifies and provisions both contexts before exposing
+// RunClosedParticipant qualifies and provisions both contexts before exposing
 // local commands, retaining the State, Instance and worker cleanup owners.
-func RunTextParticipant(ctx context.Context, config TextParticipantConfig) error {
+func RunClosedParticipant(ctx context.Context, config ClosedParticipantConfig) error {
 	if ctx == nil {
 		return errors.New("text participant context unavailable")
 	}
@@ -82,5 +82,5 @@ func RunTextParticipant(ctx context.Context, config TextParticipantConfig) error
 	if err := config.validate(); err != nil {
 		return err
 	}
-	return runTextParticipant(ctx, config)
+	return runClosedParticipant(ctx, config)
 }

@@ -97,7 +97,7 @@ type qualificationSession struct {
 	*qualifiedWorker
 	owner            *textContext
 	surface          broker.Surface
-	permission       TextPermissionFiles
+	permission       PermissionFiles
 	reportPermission func(context.Context, [32]byte) error
 }
 

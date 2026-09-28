@@ -24,12 +24,12 @@ func TestTextParticipantCancellationBeforeQualificationExposesNoCommands(t *test
 		t.Fatal(err)
 	}
 	path := func(name string) string { return filepath.Join(root, name) }
-	config := TextParticipantConfig{
+	config := ClosedParticipantConfig{
 		ConnectionPrincipal: principal, AdministrationPrincipal: principal,
 		ApplicationAddress: path("reader.sock"), AdministrationAddress: path("publisher.sock"),
-		ReaderPermission:    TextPermissionFiles{RequestPath: path("reader-request"), ResponsePath: path("reader-response"), Maxima: [3]uint32{1, 1, 1}},
-		PublisherPermission: TextPermissionFiles{RequestPath: path("publisher-request"), ResponsePath: path("publisher-response"), Maxima: [3]uint32{1, 1, 1}},
-		Observe: func(context.Context, TextParticipantEvent) error {
+		ReaderPermission:    PermissionFiles{RequestPath: path("reader-request"), ResponsePath: path("reader-response"), Maxima: [3]uint32{1, 1, 1}},
+		PublisherPermission: PermissionFiles{RequestPath: path("publisher-request"), ResponsePath: path("publisher-response"), Maxima: [3]uint32{1, 1, 1}},
+		Observe: func(context.Context, ClosedParticipantEvent) error {
 			t.Error("unqualified runtime exposed an event")
 			return errors.New("unqualified runtime exposed an event")
 		},
@@ -44,7 +44,7 @@ func TestTextParticipantCancellationBeforeQualificationExposesNoCommands(t *test
 		}
 		tasks.Wait()
 	})
-	tasks.Go(func() { completed <- endpoint.runTextInterfaces(ctx, config) })
+	tasks.Go(func() { completed <- endpoint.runInterfaces(ctx, config) })
 	deadline := time.NewTimer(5 * time.Second)
 	defer deadline.Stop()
 	tick := time.NewTicker(time.Millisecond)

@@ -20,7 +20,7 @@ import (
 func TestHeadlessTextRefreshFailureEventExposesOnlyFixedCategory(t *testing.T) {
 	output := &headlessTextBufferedOutput{}
 	at := time.Date(2026, time.September, 25, 9, 30, 0, 0, time.UTC)
-	event := endpointapi.TextParticipantEvent{At: at, Kind: "publication-refresh-failed", NetworkID: [32]byte{1}, Failure: "rotation"}
+	event := endpointapi.ClosedParticipantEvent{At: at, Kind: "publication-refresh-failed", NetworkID: [32]byte{1}, Failure: "rotation"}
 	if err := writeHeadlessTextEvent(t.Context(), output, event); err != nil {
 		t.Fatal(err)
 	}
@@ -142,7 +142,9 @@ func testHeadlessTextCancellation(t *testing.T, socket bool) {
 	done := make(chan error, 1)
 	entered := make(chan struct{})
 	observed := &headlessTextObservedWrite{headlessTextEventOutput: output, entered: entered}
-	go func() { done <- writeHeadlessTextEvent(ctx, observed, endpointapi.TextParticipantEvent{Kind: "ready"}) }()
+	go func() {
+		done <- writeHeadlessTextEvent(ctx, observed, endpointapi.ClosedParticipantEvent{Kind: "ready"})
+	}()
 	select {
 	case err := <-done:
 		t.Fatalf("event unexpectedly completed while pipe was full: %v", err)

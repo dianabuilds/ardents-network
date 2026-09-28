@@ -86,7 +86,7 @@ func runStreamQualificationIdle(ctx context.Context, config StreamQualificationC
 		report.Samples++
 		return hostSample, nil
 	}
-	outcome = withTextParticipant(lifetime, config.Participant, func(endpoint *endpoint) (operationErr error) {
+	outcome = withParticipant(lifetime, config.Participant, func(endpoint *endpoint) (operationErr error) {
 		principal := config.Participant.ConnectionPrincipal
 		capability, err := endpoint.Admit(principal, broker.Connection)
 		if err != nil {
@@ -99,7 +99,7 @@ func runStreamQualificationIdle(ctx context.Context, config StreamQualificationC
 		defer func() { operationErr = errors.Join(operationErr, owner.Close()) }()
 		permission := config.Participant.ReaderPermission
 		if err := owner.provisionPermission(lifetime, permission.RequestPath, permission.ResponsePath, permission.Maxima, func(reportCtx context.Context, digest [32]byte) error {
-			return config.Participant.Observe(reportCtx, TextParticipantEvent{Kind: "permission-required", NetworkID: endpoint.network, Surface: string(broker.Connection), RequestDigest: digest})
+			return config.Participant.Observe(reportCtx, ClosedParticipantEvent{Kind: "permission-required", NetworkID: endpoint.network, Surface: string(broker.Connection), RequestDigest: digest})
 		}); err != nil {
 			return err
 		}

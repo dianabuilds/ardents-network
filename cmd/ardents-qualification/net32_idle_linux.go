@@ -49,13 +49,13 @@ func runNET32Idle(ctx context.Context, config endpoint.StreamQualificationConfig
 			Event       endpoint.StreamQualificationEvent
 		}{0, event})
 	}
-	config.Participant.Observe = func(eventCtx context.Context, event endpoint.TextParticipantEvent) error {
+	config.Participant.Observe = func(eventCtx context.Context, event endpoint.ClosedParticipantEvent) error {
 		if err := eventCtx.Err(); err != nil {
 			return err
 		}
 		return emit(struct {
 			Participant int
-			Event       endpoint.TextParticipantEvent
+			Event       endpoint.ClosedParticipantEvent
 		}{0, event})
 	}
 	stateBytes, stateFiles, stateErr := boundedStateProfile(config.Participant.Network.Root)

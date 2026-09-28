@@ -14,7 +14,7 @@ import (
 func TestQualificationPreflightPreparesIdempotentPrivateRoots(t *testing.T) {
 	root := t.TempDir()
 	now := time.Date(2026, 9, 16, 12, 0, 0, 0, time.UTC)
-	config := TextParticipantConfig{
+	config := ClosedParticipantConfig{
 		LocalRoleRoot: filepath.Join(root, "roles"),
 		TokenRoot:     filepath.Join(root, "tokens"),
 		Clock:         func() time.Time { return now },

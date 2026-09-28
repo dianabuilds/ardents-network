@@ -134,13 +134,13 @@ func run(ctx context.Context, arguments []string, output io.Writer) (outcome err
 				Event       endpoint.StreamQualificationEvent
 			}{index, event})
 		}
-		config.Participant.Observe = func(eventCtx context.Context, event endpoint.TextParticipantEvent) error {
+		config.Participant.Observe = func(eventCtx context.Context, event endpoint.ClosedParticipantEvent) error {
 			if err := eventCtx.Err(); err != nil {
 				return err
 			}
 			return emit(struct {
 				Participant int
-				Event       endpoint.TextParticipantEvent
+				Event       endpoint.ClosedParticipantEvent
 			}{index, event})
 		}
 		go func() {

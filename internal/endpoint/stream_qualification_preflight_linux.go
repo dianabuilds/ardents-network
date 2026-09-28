@@ -21,7 +21,7 @@ type StreamQualificationPreflight struct {
 	EntryNodeID, InteriorNodeID [32]byte
 }
 
-func prepareStreamQualificationParticipantRoots(config TextParticipantConfig) (outcome error) {
+func prepareStreamQualificationParticipantRoots(config ClosedParticipantConfig) (outcome error) {
 	clock := config.Clock
 	if clock == nil {
 		clock = time.Now
@@ -51,7 +51,7 @@ func PreflightStreamQualification(ctx context.Context, config StreamQualificatio
 		return result, err
 	}
 	if config.Participant.Observe == nil {
-		config.Participant.Observe = func(context.Context, TextParticipantEvent) error { return nil }
+		config.Participant.Observe = func(context.Context, ClosedParticipantEvent) error { return nil }
 	}
 	if err := config.Participant.validate(); err != nil {
 		return result, err
@@ -78,7 +78,7 @@ func PreflightStreamQualification(ctx context.Context, config StreamQualificatio
 	// its live clock observation are checked by the normal participant owner.
 	config.Participant.Network.AutomaticRefreshInterval = 0
 	result.Role = config.Role
-	return result, inspectTextParticipant(ctx, config.Participant, func(endpoint *endpoint) error {
+	return result, inspectParticipant(ctx, config.Participant, func(endpoint *endpoint) error {
 		domain := uint8(1)
 		if config.Role == streamqualification.PublisherRole {
 			domain = 3

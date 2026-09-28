@@ -40,10 +40,10 @@ func runTextHeadlessRuntime(ctx context.Context, plan decodedHeadlessRuntimePlan
 		network.ClockObservationFile = plan.TimeConfidenceFile
 		network.LocalRoleStateRoot = plan.LocalRoleStateRoot
 	}
-	files := func(plan headlessPermissionPlan) endpointapi.TextPermissionFiles {
-		return endpointapi.TextPermissionFiles{RequestPath: plan.RequestPath, ResponsePath: plan.ResponsePath, Maxima: plan.Maxima}
+	files := func(plan headlessPermissionPlan) endpointapi.PermissionFiles {
+		return endpointapi.PermissionFiles{RequestPath: plan.RequestPath, ResponsePath: plan.ResponsePath, Maxima: plan.Maxima}
 	}
-	return endpointapi.RunTextParticipant(ctx, endpointapi.TextParticipantConfig{Network: network, RefreshNetwork: refresh, EntryRoot: plan.EntryStateRoot, LocalRoleRoot: plan.LocalRoleStateRoot, TokenRoot: plan.TextTokenRoot, PublicationRoot: plan.PublicationRoot, ServiceInstanceRoot: plan.ServiceInstanceRoot, ApplicationAddress: plan.ApplicationSocket, AdministrationAddress: plan.AdministrationSocket, BrokerID: plan.BrokerID, ConnectionPrincipal: plan.ConnectionPrincipal, AdministrationPrincipal: plan.AdministrationPrincipal, ReaderPermission: files(plan.ReaderPermission), PublisherPermission: files(plan.PublisherPermission), Clock: clock, Observe: func(reportCtx context.Context, event endpointapi.TextParticipantEvent) error {
+	return endpointapi.RunClosedParticipant(ctx, endpointapi.ClosedParticipantConfig{Network: network, RefreshNetwork: refresh, EntryRoot: plan.EntryStateRoot, LocalRoleRoot: plan.LocalRoleStateRoot, TokenRoot: plan.TextTokenRoot, PublicationRoot: plan.PublicationRoot, ServiceInstanceRoot: plan.ServiceInstanceRoot, ApplicationAddress: plan.ApplicationSocket, AdministrationAddress: plan.AdministrationSocket, BrokerID: plan.BrokerID, ConnectionPrincipal: plan.ConnectionPrincipal, AdministrationPrincipal: plan.AdministrationPrincipal, ReaderPermission: files(plan.ReaderPermission), PublisherPermission: files(plan.PublisherPermission), Clock: clock, Observe: func(reportCtx context.Context, event endpointapi.ClosedParticipantEvent) error {
 		if writeErr := writeHeadlessTextEvent(reportCtx, opened, event); writeErr != nil {
 			outputFailed.Store(true)
 			return writeErr
@@ -67,7 +67,7 @@ func reportHeadlessTextFailure(ctx context.Context, output headlessTextEventOutp
 	// lifecycle phase; wrapped Route, peer and filesystem details stay out.
 	reportCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	return errors.Join(err, writeHeadlessTextEvent(reportCtx, output, endpointapi.TextParticipantEvent{
+	return errors.Join(err, writeHeadlessTextEvent(reportCtx, output, endpointapi.ClosedParticipantEvent{
 		At: clock().UTC(), Kind: "failed", NetworkID: networkID, Failure: failure,
 	}))
 }
@@ -106,7 +106,7 @@ type headlessTextEventOutput interface {
 	SetWriteDeadline(time.Time) error
 }
 
-func writeHeadlessTextEvent(ctx context.Context, output headlessTextEventOutput, event endpointapi.TextParticipantEvent) (outcome error) {
+func writeHeadlessTextEvent(ctx context.Context, output headlessTextEventOutput, event endpointapi.ClosedParticipantEvent) (outcome error) {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
