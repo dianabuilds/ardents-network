@@ -30,7 +30,7 @@ type publisherRun struct {
 // or Descriptor effect. The separately authorized context must already hold
 // its genuine offline permission; a snapshot cannot supply that authority.
 func (owner *textContext) startPublisher(ctx context.Context, snapshot []byte) (*publisherRun, error) {
-	worker, err := owner.launchTextWorker(ctx, snapshot)
+	worker, err := owner.launchWorker(ctx, snapshot)
 	if err != nil {
 		return nil, err
 	}
@@ -41,7 +41,7 @@ func (owner *textContext) startPublisher(ctx context.Context, snapshot []byte) (
 	return run, nil
 }
 
-func (worker *qualifiedTextWorker) startPublication(ctx context.Context) (_ *publisherRun, resultErr error) {
+func (worker *qualifiedWorker) startPublication(ctx context.Context) (_ *publisherRun, resultErr error) {
 	if worker == nil || worker.job == nil || ctx == nil || ctx.Err() != nil {
 		return nil, errors.New("text Publisher startup unavailable")
 	}

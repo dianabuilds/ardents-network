@@ -25,7 +25,7 @@ func TestTextWorkerInitializationRevokeCancelsBeforeReadiness(t *testing.T) {
 	joined := make(chan struct{})
 	go func() {
 		defer close(joined)
-		finished <- initializeTextWorker(context.Background(), attachment, instance, job, nil)
+		finished <- initializeWorker(context.Background(), attachment, instance, job, nil)
 	}()
 	t.Cleanup(func() {
 		_ = attachment.Close()

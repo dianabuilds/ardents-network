@@ -22,15 +22,15 @@ import (
 // Only launch qualification is supplied by the existing explicit worker
 // fixture. This uses real Service authentication, worker RESULT, and local
 // document projection. The installed profile exercises Open's actual launcher.
-func readTextWorkerResultFixture(t *testing.T, ctx context.Context, worker *qualifiedTextWorker, destination targetlink.Link, bounds [3]int64) ([]byte, error) {
-	stream, err := openTextWorkerResultFixture(t, ctx, worker, destination, bounds)
+func readWorkerResultFixture(t *testing.T, ctx context.Context, worker *qualifiedWorker, destination targetlink.Link, bounds [3]int64) ([]byte, error) {
+	stream, err := openWorkerResultFixture(t, ctx, worker, destination, bounds)
 	if err != nil {
 		return nil, err
 	}
 	return textdocument.Read(ctx, stream)
 }
 
-func openTextWorkerResultFixture(t *testing.T, ctx context.Context, worker *qualifiedTextWorker, destination targetlink.Link, bounds [3]int64) (_ *textReadResult, outcome error) {
+func openWorkerResultFixture(t *testing.T, ctx context.Context, worker *qualifiedWorker, destination targetlink.Link, bounds [3]int64) (_ *textReadResult, outcome error) {
 	t.Helper()
 	contextOwner := worker.job.owner
 	owner, err := contextOwner.openTextConnection()
@@ -120,7 +120,7 @@ func TestTextReadResultJoinsContextLossBeforeLocalRequest(t *testing.T) {
 		}
 	})
 	until := time.Now().Add(time.Minute).Unix()
-	stream, err := openTextWorkerResultFixture(t, ctx, reader, run.link, [3]int64{until, until, until})
+	stream, err := openWorkerResultFixture(t, ctx, reader, run.link, [3]int64{until, until, until})
 	if err != nil {
 		t.Fatal(err)
 	}

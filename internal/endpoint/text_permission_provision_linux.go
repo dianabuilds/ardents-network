@@ -30,7 +30,7 @@ func (owner *textContext) provisionPermission(ctx context.Context, requestPath, 
 	qualified := owner.verifiedJob != nil && owner.verifiedJob.owner == owner && owner.verifiedJob.workerGrant != nil
 	owner.mu.Unlock()
 	if !qualified {
-		worker, err := owner.launchTextWorker(ctx, nil)
+		worker, err := owner.launchWorker(ctx, nil)
 		if err != nil {
 			return err
 		}

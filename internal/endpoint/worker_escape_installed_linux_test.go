@@ -48,14 +48,14 @@ func TestInstalledTextWorkerEscapeMatrix(t *testing.T) {
 		t.Run(role.name, func(t *testing.T) {
 			endpoint, principal := textContextEndpoint(t)
 			owner := admittedTextContext(t, endpoint, principal, role.surface)
-			worker, err := owner.launchTextWorker(ctx, role.snapshot)
+			worker, err := owner.launchWorker(ctx, role.snapshot)
 			if err != nil {
 				t.Fatalf("escape artifact did not reach verified readiness: %v", err)
 			}
 			if worker.grant.Active() != 1 || worker.lease.Context().Err() != nil {
 				t.Fatal("escape artifact did not receive the bounded verified Grant")
 			}
-			instance := installedTextWorkerInstance(t, ctx, worker, role.name)
+			instance := installedWorkerInstance(t, ctx, worker, role.name)
 			events, err := worker.PinCgroup(instance)
 			if err != nil {
 				t.Fatal(err)
@@ -72,7 +72,7 @@ func TestInstalledTextWorkerEscapeMatrix(t *testing.T) {
 			if worker.grant.Active() != 0 || worker.lease.Context().Err() == nil {
 				t.Fatal("escape worker retained Grant after cleanup")
 			}
-			requireInstalledTextWorkerCollected(t, ctx, instance.Name, role.name)
+			requireInstalledWorkerCollected(t, ctx, instance.Name, role.name)
 			probes.requireNoContact(t)
 		})
 	}

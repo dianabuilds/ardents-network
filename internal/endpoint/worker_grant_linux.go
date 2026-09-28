@@ -10,21 +10,21 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
 )
 
-// qualifiedTextWorker is private to the verified installed launch. It is not
+// qualifiedWorker is private to the verified installed launch. It is not
 // an Application-provided attestation and cannot be reconstructed from wire
 // identities. Its only delegated use is the already-admitted byte stream;
 // Publisher administration and all network selection stay with its context.
-type qualifiedTextWorker struct {
+type qualifiedWorker struct {
 	job      *textJobIdentity
-	lifetime *textWorkerLifetime
+	lifetime *workerLifetime
 	grant    *broker.Broker
 	lease    *broker.ActiveSession
 }
 
-// bindTextWorker is called only at the end of launchTextWorker's artifact,
+// bindWorker is called only at the end of launchWorker's artifact,
 // activation, credentials and readiness checks. Broker keeps generic mechanics;
 // this Endpoint owner is responsible for the verified launch assertion.
-func (owner *textContext) bindTextWorker(job *textJobIdentity, lifetime *textWorkerLifetime) (*qualifiedTextWorker, error) {
+func (owner *textContext) bindWorker(job *textJobIdentity, lifetime *workerLifetime) (*qualifiedWorker, error) {
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
 	if job == nil || lifetime == nil || !owner.liveLocked(owner.endpoint, owner.surface) || owner.job != job ||
@@ -55,10 +55,10 @@ func (owner *textContext) bindTextWorker(job *textJobIdentity, lifetime *textWor
 	if !job.handoffGrantLocked(owner, grant, lease) {
 		return nil, errors.New("text worker Grant owner changed before handoff")
 	}
-	return &qualifiedTextWorker{job: job, lifetime: lifetime, grant: grant, lease: lease}, nil
+	return &qualifiedWorker{job: job, lifetime: lifetime, grant: grant, lease: lease}, nil
 }
 
-func (worker *qualifiedTextWorker) beginOperation(ctx context.Context, surface broker.Surface) (context.Context, func(), error) {
+func (worker *qualifiedWorker) beginOperation(ctx context.Context, surface broker.Surface) (context.Context, func(), error) {
 	if worker == nil || worker.job == nil || worker.lease == nil || ctx == nil {
 		return nil, nil, errors.New("text worker operation is unavailable")
 	}
@@ -86,7 +86,7 @@ func (worker *qualifiedTextWorker) beginOperation(ctx context.Context, surface b
 	}, nil
 }
 
-func (worker *qualifiedTextWorker) completedCurrent() bool {
+func (worker *qualifiedWorker) completedCurrent() bool {
 	if worker == nil || worker.job == nil || worker.job.owner == nil {
 		return false
 	}
@@ -97,7 +97,7 @@ func (worker *qualifiedTextWorker) completedCurrent() bool {
 		worker.job.finished && worker.job.cleanupErr == nil
 }
 
-func (worker *qualifiedTextWorker) Close() error {
+func (worker *qualifiedWorker) Close() error {
 	if worker == nil {
 		return nil
 	}

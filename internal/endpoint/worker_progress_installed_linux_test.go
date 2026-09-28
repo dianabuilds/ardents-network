@@ -16,7 +16,7 @@ import (
 // This is an explicit local stream fixture, not authenticated Route admission.
 // Actual worker framing and the immutable snapshot must still make progress
 // after a different hostile cgroup is removed.
-func requireInstalledPublisherProgress(t *testing.T, ctx context.Context, worker *qualifiedTextWorker, document []byte) {
+func requireInstalledPublisherProgress(t *testing.T, ctx context.Context, worker *qualifiedWorker, document []byte) {
 	t.Helper()
 	_, finish, err := worker.beginOperation(ctx, broker.Administration)
 	if err != nil {

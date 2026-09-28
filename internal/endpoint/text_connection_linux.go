@@ -96,7 +96,7 @@ func (owner *textConnection) Open(ctx context.Context, request connection.Reques
 			lease.Release()
 		}
 	}()
-	worker, err := owner.context.launchTextWorker(lease.Context(), nil)
+	worker, err := owner.context.launchWorker(lease.Context(), nil)
 	if err != nil {
 		owner.context.reportTextOperationFailure("worker-launch")
 		return nil, err
@@ -180,7 +180,7 @@ type textReadResult struct {
 	err    error
 }
 
-func newTextReadResult(owner *textConnection, pending chan struct{}, lease *broker.ActiveSession, cancel context.CancelFunc, worker *qualifiedTextWorker, bounded context.Context, finish func(), service *serviceStream, joinCaller func(), report func(string)) *textReadResult {
+func newTextReadResult(owner *textConnection, pending chan struct{}, lease *broker.ActiveSession, cancel context.CancelFunc, worker *qualifiedWorker, bounded context.Context, finish func(), service *serviceStream, joinCaller func(), report func(string)) *textReadResult {
 	request, input := io.Pipe()
 	output, response := io.Pipe()
 	result := &textReadResult{input: input, output: output, cancel: cancel, joined: make(chan struct{}), done: make(chan connection.Outcome, 1)}

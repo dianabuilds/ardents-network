@@ -18,11 +18,11 @@ import (
 // same-process Unix attachment and joined goroutine. It grants no host verdict.
 // Both fixed worker protocols, private worker Grant leases and Service owners
 // below execute production code.
-func serviceWorkerFixture(t *testing.T, binding *serviceBinding, snapshot []byte) *qualifiedTextWorker {
+func serviceWorkerFixture(t *testing.T, binding *serviceBinding, snapshot []byte) *qualifiedWorker {
 	t.Helper()
 	attachment, peer := textAttachmentPair(t)
 	ctx, cancel := context.WithCancel(binding.job.context)
-	lifetime := &textWorkerLifetime{context: ctx, cancel: cancel, attachment: attachment, done: make(chan struct{})}
+	lifetime := &workerLifetime{context: ctx, cancel: cancel, attachment: attachment, done: make(chan struct{})}
 	mode := textdocument.ReaderWorker
 	if binding.owner.surface == broker.Administration {
 		mode = textdocument.PublisherWorker
@@ -62,7 +62,7 @@ func serviceWorkerFixture(t *testing.T, binding *serviceBinding, snapshot []byte
 	}
 	binding.job.workerGrant.Close()
 	binding.job.workerGrant = nil
-	worker, err := binding.owner.bindTextWorker(binding.job, lifetime)
+	worker, err := binding.owner.bindWorker(binding.job, lifetime)
 	if err != nil {
 		t.Fatal(err)
 	}

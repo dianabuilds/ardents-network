@@ -11,11 +11,11 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/endpoint/worker"
 )
 
-// textWorkerLifetime joins an observed worker to its existing local job.
+// workerLifetime joins an observed worker to its existing local job.
 // It is not a qualified-launch receipt: artifact/activation verification and
 // installed stop authority remain separate prerequisites for Grant delivery.
 // No Principal or Grant is created by initialization or possession of this owner.
-type textWorkerLifetime struct {
+type workerLifetime struct {
 	artifact      *worker.Artifact
 	cgroup        string
 	useMu         sync.Mutex
@@ -28,11 +28,11 @@ type textWorkerLifetime struct {
 	err           error
 }
 
-// initializeOwnedTextWorker consumes one previously unclaimed job reservation
+// initializeOwnedWorker consumes one previously unclaimed job reservation
 // and its attachment. Repeated calls leave their input owned by the caller.
 // The installed launch owner supplies its exact observed
 // instance; this function pins cleanup before sending any INIT bytes.
-func initializeOwnedTextWorker(ctx, startup context.Context, attachment *worker.Attachment, instance worker.Instance, job *textJobIdentity, snapshot []byte, artifact *worker.Artifact) (*textWorkerLifetime, error) {
+func initializeOwnedWorker(ctx, startup context.Context, attachment *worker.Attachment, instance worker.Instance, job *textJobIdentity, snapshot []byte, artifact *worker.Artifact) (*workerLifetime, error) {
 	if job == nil || job.owner == nil {
 		return nil, errors.Join(errors.New("text worker has no job owner"), attachment.Close())
 	}
@@ -50,14 +50,14 @@ func initializeOwnedTextWorker(ctx, startup context.Context, attachment *worker.
 		attachment.Connected() && attachment.PID() == instance.PID && attachment.UID() == instance.UID
 	owner.mu.Unlock()
 	if !current {
-		return nil, failTextWorkerInitialization(job, attachment, errors.New("text worker lifetime is unavailable"))
+		return nil, failWorkerInitialization(job, attachment, errors.New("text worker lifetime is unavailable"))
 	}
 	cleanup, err := worker.NewCleanup(instance)
 	if err != nil {
-		return nil, failTextWorkerInitialization(job, attachment, err)
+		return nil, failWorkerInitialization(job, attachment, err)
 	}
 	bounded, cancel := context.WithCancel(job.context)
-	lifetime := &textWorkerLifetime{artifact: artifact, cgroup: instance.Cgroup, attachment: attachment, cancel: cancel, done: make(chan struct{}), context: bounded}
+	lifetime := &workerLifetime{artifact: artifact, cgroup: instance.Cgroup, attachment: attachment, cancel: cancel, done: make(chan struct{}), context: bounded}
 	// Join the parent's cancellation callback as well as worker cleanup. The
 	// callback only interrupts; it never waits for the lifetime it interrupted.
 	callbackDone := make(chan struct{})
@@ -84,7 +84,7 @@ func initializeOwnedTextWorker(ctx, startup context.Context, attachment *worker.
 	}()
 	initializationErr := artifact.Verify()
 	if initializationErr == nil {
-		initializationErr = initializeTextWorker(startup, attachment, instance, job, snapshot)
+		initializationErr = initializeWorker(startup, attachment, instance, job, snapshot)
 	}
 	close(initializationDone)
 	if initializationErr != nil {
@@ -96,14 +96,14 @@ func initializeOwnedTextWorker(ctx, startup context.Context, attachment *worker.
 	return lifetime, nil
 }
 
-func failTextWorkerInitialization(job *textJobIdentity, attachment *worker.Attachment, cause error) error {
+func failWorkerInitialization(job *textJobIdentity, attachment *worker.Attachment, cause error) error {
 	// Without the pinned original cgroup, closing a socket cannot prove cleanup.
 	// Keep the failure and terminalize the context, even if the peer later exits.
 	job.owner.retireJob(job)
 	return job.owner.finishJobCleanup(job, errors.Join(cause, attachment.Close()))
 }
 
-func (lifetime *textWorkerLifetime) Close() error {
+func (lifetime *workerLifetime) Close() error {
 	if lifetime == nil {
 		return nil
 	}
@@ -115,7 +115,7 @@ func (lifetime *textWorkerLifetime) Close() error {
 // beginUse reserves the one complete reader operation or publication lifetime.
 // Cleanup interrupts the attachment first, then joins this application's I/O
 // before releasing the context's job reservation or reporting Close complete.
-func (lifetime *textWorkerLifetime) beginUse() (func(), error) {
+func (lifetime *workerLifetime) beginUse() (func(), error) {
 	if lifetime == nil {
 		return nil, errors.New("text worker lifetime is absent")
 	}

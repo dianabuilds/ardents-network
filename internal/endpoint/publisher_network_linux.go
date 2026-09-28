@@ -17,7 +17,7 @@ import (
 const qualificationPublisherOpeningParallelism = qualification.SetupLimit
 const qualificationPublisherOpeningBatch = 16
 
-func (worker *qualifiedTextWorker) produceNetwork(lifetime context.Context, delivered chan<- connection.Stream) error {
+func (worker *qualifiedWorker) produceNetwork(lifetime context.Context, delivered chan<- connection.Stream) error {
 	if worker == nil || worker.job == nil {
 		return errors.New("text Publisher producer unavailable")
 	}
@@ -27,7 +27,7 @@ func (worker *qualifiedTextWorker) produceNetwork(lifetime context.Context, deli
 	return worker.produceQualificationNetwork(lifetime, delivered)
 }
 
-func (worker *qualifiedTextWorker) produceNetworkSequential(lifetime context.Context, delivered chan<- connection.Stream) error {
+func (worker *qualifiedWorker) produceNetworkSequential(lifetime context.Context, delivered chan<- connection.Stream) error {
 	owner := worker.job.owner
 	network, cancel := context.WithCancel(lifetime)
 	var retired sync.WaitGroup
@@ -85,7 +85,7 @@ func (worker *qualifiedTextWorker) produceNetworkSequential(lifetime context.Con
 	}
 }
 
-func (worker *qualifiedTextWorker) ensureQualificationPublisherJoinReserve(ctx context.Context, minimum int) error {
+func (worker *qualifiedWorker) ensureQualificationPublisherJoinReserve(ctx context.Context, minimum int) error {
 	owner := worker.job.owner
 	owner.mu.Lock()
 	prefix := owner.responder.currentLocked()
@@ -104,7 +104,7 @@ func (worker *qualifiedTextWorker) ensureQualificationPublisherJoinReserve(ctx c
 	return owner.ensureQualificationTokenReserve(ctx, receiver, 2, minimum)
 }
 
-func (worker *qualifiedTextWorker) produceQualificationNetwork(lifetime context.Context, delivered chan<- connection.Stream) error {
+func (worker *qualifiedWorker) produceQualificationNetwork(lifetime context.Context, delivered chan<- connection.Stream) error {
 	owner := worker.job.owner
 	network, cancel := context.WithCancel(lifetime)
 	if err := worker.ensureQualificationPublisherJoinReserve(network, 32); err != nil {

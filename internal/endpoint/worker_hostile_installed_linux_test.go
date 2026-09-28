@@ -34,12 +34,12 @@ func TestInstalledTextWorkerHostileTree(t *testing.T) {
 			siblingOwner := admittedTextContext(t, endpoint, principal, broker.Administration)
 			document := []byte("sibling publication survives hostile tree cleanup\n")
 			sibling := launchInstalledHostileWorker(t, ctx, siblingOwner, document)
-			siblingUnit := installedTextWorkerInstance(t, ctx, sibling, "publisher")
+			siblingUnit := installedWorkerInstance(t, ctx, sibling, "publisher")
 			siblingEvents, siblingPIDs := pinInstalledHostileTree(t, siblingUnit)
 
 			owner := admittedTextContext(t, endpoint, principal, role.surface)
 			bound := launchInstalledHostileWorker(t, ctx, owner, role.snapshot)
-			unit := installedTextWorkerInstance(t, ctx, bound, role.name)
+			unit := installedWorkerInstance(t, ctx, bound, role.name)
 			events, processes := pinInstalledHostileTree(t, unit)
 			if unit.uid == siblingUnit.uid || unit.cgroup == siblingUnit.cgroup {
 				t.Fatal("sibling workers share an isolation identity")
@@ -57,7 +57,7 @@ func TestInstalledTextWorkerHostileTree(t *testing.T) {
 			if bound.grant.Active() != 0 || bound.lease.Context().Err() == nil || !bound.completedCurrent() {
 				t.Fatal("cleanup failed to revoke only the victim job")
 			}
-			requireInstalledTextWorkerCollected(t, ctx, unit.name, role.name)
+			requireInstalledWorkerCollected(t, ctx, unit.name, role.name)
 			if current, err := worker.ObserveInstance(ctx, siblingUnit.Name, "publisher"); err != nil || current != siblingUnit {
 				t.Fatalf("victim cleanup changed sibling invocation: %v", err)
 			}
@@ -72,7 +72,7 @@ func TestInstalledTextWorkerHostileTree(t *testing.T) {
 				t.Fatal(err)
 			}
 			requireInstalledTreeGone(t, siblingEvents, siblingPIDs)
-			requireInstalledTextWorkerCollected(t, ctx, siblingUnit.Name, "publisher")
+			requireInstalledWorkerCollected(t, ctx, siblingUnit.Name, "publisher")
 			if sibling.completedCurrent() || sibling.grant.Active() != 0 {
 				t.Fatal("sibling owner revoke retained authority")
 			}
@@ -86,7 +86,7 @@ func TestInstalledTextWorkerHostileTree(t *testing.T) {
 			if replacement.job == bound.job || replacementNonce == originalNonce || replacementNonce == [32]byte{} || bound.completedCurrent() {
 				t.Fatal("replacement inherited the retired job")
 			}
-			replacementUnit := installedTextWorkerInstance(t, ctx, replacement, role.name)
+			replacementUnit := installedWorkerInstance(t, ctx, replacement, role.name)
 			replacementEvents, replacementPIDs := pinInstalledHostileTree(t, replacementUnit)
 			if err := replacement.lifetime.attachment.Close(); err != nil {
 				t.Fatal(err)
@@ -99,15 +99,15 @@ func TestInstalledTextWorkerHostileTree(t *testing.T) {
 			if replacement.grant.Active() != 0 || !replacement.completedCurrent() {
 				t.Fatal("parent-exit cleanup retained the old job or lost its context")
 			}
-			requireInstalledTextWorkerCollected(t, ctx, replacementUnit.name, role.name)
+			requireInstalledWorkerCollected(t, ctx, replacementUnit.name, role.name)
 			t.Log("hostile descendants removed; sibling served snapshot; owner revoke joined sibling; parent exit triggered manager cleanup before Endpoint Close")
 		})
 	}
 }
 
-func launchInstalledHostileWorker(t *testing.T, ctx context.Context, owner *textContext, snapshot []byte) *qualifiedTextWorker {
+func launchInstalledHostileWorker(t *testing.T, ctx context.Context, owner *textContext, snapshot []byte) *qualifiedWorker {
 	t.Helper()
-	bound, err := owner.launchTextWorker(ctx, snapshot)
+	bound, err := owner.launchWorker(ctx, snapshot)
 	if err != nil {
 		t.Fatal(err)
 	}

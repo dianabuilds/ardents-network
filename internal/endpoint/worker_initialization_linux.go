@@ -13,10 +13,10 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/endpoint/worker"
 )
 
-// initializeTextWorker checks the current local owner on both sides of the
+// initializeWorker checks the current local owner on both sides of the
 // fixed readiness exchange. It creates no Principal or Grant and cannot replace
 // installed-artifact verification or the separate joined cleanup owner.
-func initializeTextWorker(ctx context.Context, attachment *worker.Attachment, instance worker.Instance, job *textJobIdentity, snapshot []byte) error {
+func initializeWorker(ctx context.Context, attachment *worker.Attachment, instance worker.Instance, job *textJobIdentity, snapshot []byte) error {
 	surface, mode := broker.Connection, textdocument.ReaderWorker
 	if instance.Role == "publisher" {
 		surface, mode = broker.Administration, textdocument.PublisherWorker

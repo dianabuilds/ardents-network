@@ -33,22 +33,22 @@ func TestInstalledTextWorkersRecoverAcceptedRequestAcrossJoinedNetwork(t *testin
 	}
 	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP, routecarrier.ClosedCarrierQUIC} {
 		t.Run(string(carrier), func(t *testing.T) {
-			exerciseInstalledTextWorkerRecovery(t, ctx, carrier)
+			exerciseInstalledWorkerRecovery(t, ctx, carrier)
 		})
 	}
 }
 
-func exerciseInstalledTextWorkerRecovery(t *testing.T, ctx context.Context, carrier routecarrier.CarrierProfile) {
+func exerciseInstalledWorkerRecovery(t *testing.T, ctx context.Context, carrier routecarrier.CarrierProfile) {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(ctx, 45*time.Second)
 	defer cancel()
 	reader, publisher, destination := installedTextRecoveryNetwork(t, carrier)
 	body := bytes.Repeat([]byte("r"), (64<<10)-13)
-	readerWorker, err := reader.launchTextWorker(ctx, nil)
+	readerWorker, err := reader.launchWorker(ctx, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	publisherWorker, err := publisher.launchTextWorker(ctx, body)
+	publisherWorker, err := publisher.launchWorker(ctx, body)
 	if err != nil {
 		_ = readerWorker.Close()
 		t.Fatal(err)
@@ -58,8 +58,8 @@ func exerciseInstalledTextWorkerRecovery(t *testing.T, ctx context.Context, carr
 			t.Error(err)
 		}
 	})
-	readerInstance := installedTextWorkerInstance(t, ctx, readerWorker, "reader")
-	publisherInstance := installedTextWorkerInstance(t, ctx, publisherWorker, "publisher")
+	readerInstance := installedWorkerInstance(t, ctx, readerWorker, "reader")
+	publisherInstance := installedWorkerInstance(t, ctx, publisherWorker, "publisher")
 	readerEvents, err := worker.PinCgroup(readerInstance)
 	if err != nil {
 		t.Fatal(err)
@@ -191,8 +191,8 @@ func exerciseInstalledTextWorkerRecovery(t *testing.T, ctx context.Context, carr
 			t.Errorf("installed recovery retained %d Introduction exchanges", pending)
 		}
 	}
-	assertInstalledTextWorkerRetired(t, ctx, readerWorker, readerInstance, readerEvents)
-	assertInstalledTextWorkerRetired(t, ctx, publisherWorker, publisherInstance, publisherEvents)
+	assertInstalledWorkerRetired(t, ctx, readerWorker, readerInstance, readerEvents)
+	assertInstalledWorkerRetired(t, ctx, publisherWorker, publisherInstance, publisherEvents)
 	bitrate := float64(len(body)*8) / recoveryElapsed.Seconds()
 	t.Logf("installed recovery smoke: useful-bytes=%d elapsed=%s useful-bitrate=%.0f-bit/s", len(body), recoveryElapsed, bitrate)
 }
@@ -221,7 +221,7 @@ func assertInstalledRecoveryRoute(t *testing.T, initialClient, initialPublisher 
 	}
 }
 
-func assertInstalledTextWorkerRetired(t *testing.T, ctx context.Context, bound *qualifiedTextWorker,
+func assertInstalledWorkerRetired(t *testing.T, ctx context.Context, bound *qualifiedWorker,
 	instance worker.Instance, events *os.File) {
 	t.Helper()
 	removed, populated, err := worker.ReadCgroup(events)
@@ -231,7 +231,7 @@ func assertInstalledTextWorkerRetired(t *testing.T, ctx context.Context, bound *
 	if bound.grant.Active() != 0 || bound.lease.Context().Err() == nil {
 		t.Fatalf("installed %s worker authority survived recovery completion", instance.Role)
 	}
-	requireInstalledTextWorkerCollected(t, ctx, instance.Name, instance.Role)
+	requireInstalledWorkerCollected(t, ctx, instance.Name, instance.Role)
 }
 
 func installedTextRecoveryNetwork(t *testing.T, carrier routecarrier.CarrierProfile) (*textContext, *textContext, targetlink.Link) {

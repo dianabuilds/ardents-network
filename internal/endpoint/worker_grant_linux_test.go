@@ -17,7 +17,7 @@ func TestCompletedTextWorkerResultCannotCrossReplacement(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	worker := &qualifiedTextWorker{job: job}
+	worker := &qualifiedWorker{job: job}
 	if worker.completedCurrent() {
 		t.Fatal("unjoined job supplied a result")
 	}
@@ -45,7 +45,7 @@ func TestCompletedTextWorkerResultCannotCrossReplacement(t *testing.T) {
 	if err := owner.Close(); err != nil {
 		t.Fatal(err)
 	}
-	if (&qualifiedTextWorker{job: replacement}).completedCurrent() {
+	if (&qualifiedWorker{job: replacement}).completedCurrent() {
 		t.Fatal("result survived context revoke")
 	}
 }
@@ -102,7 +102,7 @@ func TestCancelledTextJobClosesLateGrantWithoutCrossingReplacement(t *testing.T)
 
 func TestTextWorkerOperationCannotReserveTwiceOrAfterCancel(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
-	lifetime := &textWorkerLifetime{context: ctx}
+	lifetime := &workerLifetime{context: ctx}
 	finish, err := lifetime.beginUse()
 	if err != nil {
 		t.Fatal(err)
@@ -115,7 +115,7 @@ func TestTextWorkerOperationCannotReserveTwiceOrAfterCancel(t *testing.T) {
 	if _, err := lifetime.beginUse(); err == nil {
 		t.Fatal("finished operation was reused")
 	}
-	lifetime = &textWorkerLifetime{context: ctx}
+	lifetime = &workerLifetime{context: ctx}
 	if _, err := lifetime.beginUse(); err == nil {
 		t.Fatal("cancelled lifetime admitted work")
 	}
@@ -131,7 +131,7 @@ func TestAlreadyCancelledTextLaunchHasNoEffects(t *testing.T) {
 	defer release()
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
-	if worker, err := owner.launchTextWorker(ctx, nil); err == nil || worker != nil {
+	if worker, err := owner.launchWorker(ctx, nil); err == nil || worker != nil {
 		t.Fatal("cancelled launch accepted")
 	}
 	owner.mu.Lock()
@@ -156,7 +156,7 @@ func TestTextLaunchCancellationReleasesWaitingReservation(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	finished := make(chan error, 1)
-	go func() { _, err := owner.launchTextWorker(ctx, nil); finished <- err }()
+	go func() { _, err := owner.launchWorker(ctx, nil); finished <- err }()
 	deadline := time.NewTimer(2 * time.Second)
 	defer deadline.Stop()
 	ticker := time.NewTicker(time.Millisecond)

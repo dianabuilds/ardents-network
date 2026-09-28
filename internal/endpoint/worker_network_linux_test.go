@@ -11,7 +11,7 @@ import (
 	routecarrier "github.com/dianabuilds/ardents-network/internal/route/carrier"
 )
 
-func exchangeTextWorkersThroughNetwork(t *testing.T, carrier routecarrier.CarrierProfile, body []byte, launch func(*testing.T, *textContext, []byte) *qualifiedTextWorker) {
+func exchangeWorkersThroughNetwork(t *testing.T, carrier routecarrier.CarrierProfile, body []byte, launch func(*testing.T, *textContext, []byte) *qualifiedWorker) {
 	t.Helper()
 	readerOwner, publisherOwner := textUnpublishedNetworkFixture(t, carrier)
 	reader := launch(t, readerOwner, nil)
@@ -26,7 +26,7 @@ func exchangeTextWorkersThroughNetwork(t *testing.T, carrier routecarrier.Carrie
 	}
 	t.Cleanup(func() { _ = run.Close() })
 	until := time.Now().UTC().Add(2 * time.Minute).Unix()
-	actual, readErr := readTextWorkerResultFixture(t, ctx, reader, run.link, [3]int64{until, until, until})
+	actual, readErr := readWorkerResultFixture(t, ctx, reader, run.link, [3]int64{until, until, until})
 	if readErr != nil {
 		t.Fatalf("worker network read failed: %v; Publisher cleanup: %v", readErr, run.Close())
 	}
@@ -54,7 +54,7 @@ func exchangeTextWorkersThroughNetwork(t *testing.T, carrier routecarrier.Carrie
 func TestTextWorkersReadTargetThroughJoinedNetwork(t *testing.T) {
 	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP, routecarrier.ClosedCarrierQUIC} {
 		t.Run(string(carrier), func(t *testing.T) {
-			exchangeTextWorkersThroughNetwork(t, carrier, bytes.Repeat([]byte("x"), 64<<10), func(t *testing.T, owner *textContext, snapshot []byte) *qualifiedTextWorker {
+			exchangeWorkersThroughNetwork(t, carrier, bytes.Repeat([]byte("x"), 64<<10), func(t *testing.T, owner *textContext, snapshot []byte) *qualifiedWorker {
 				job := liveCapsuleJob(t, owner)
 				return serviceWorkerFixture(t, &serviceBinding{owner: owner, job: job}, snapshot)
 			})

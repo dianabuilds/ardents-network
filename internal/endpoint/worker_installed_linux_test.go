@@ -33,10 +33,10 @@ func TestInstalledTextWorkerLifecycle(t *testing.T) {
 	} {
 		t.Run(role.name, func(t *testing.T) {
 			owner := admittedTextContext(t, endpoint, principal, role.surface)
-			var previous *qualifiedTextWorker
+			var previous *qualifiedWorker
 			var previousNonce [32]byte
 			for attempt := 0; attempt < 12; attempt++ {
-				bound, err := owner.launchTextWorker(ctx, role.snapshot)
+				bound, err := owner.launchWorker(ctx, role.snapshot)
 				if err != nil {
 					t.Fatalf("attempt %d launch: %v", attempt, err)
 				}
@@ -58,9 +58,9 @@ func TestInstalledTextWorkerLifecycle(t *testing.T) {
 					previousNonce == currentNonce || previous.completedCurrent()) {
 					t.Fatal("replacement inherited a prior job or completion")
 				}
-				instance := installedTextWorkerInstance(t, ctx, bound, role.name)
+				instance := installedWorkerInstance(t, ctx, bound, role.name)
 				if attempt == 0 {
-					requireInstalledTextWorkerCollectionPolicy(t, ctx, instance)
+					requireInstalledWorkerCollectionPolicy(t, ctx, instance)
 				}
 				events, err := worker.PinCgroup(instance)
 				if err != nil {
@@ -94,13 +94,13 @@ func TestInstalledTextWorkerLifecycle(t *testing.T) {
 				if err := bound.Close(); err != nil {
 					t.Fatal(err)
 				}
-				requireInstalledTextWorkerCollected(t, ctx, instance.Name, role.name)
+				requireInstalledWorkerCollected(t, ctx, instance.Name, role.name)
 				previous, previousNonce = bound, currentNonce
 			}
 			if previous.completedCurrent() {
 				t.Fatal("completion survived Endpoint context revocation")
 			}
-			if bound, err := owner.launchTextWorker(ctx, role.snapshot); err == nil || bound != nil {
+			if bound, err := owner.launchWorker(ctx, role.snapshot); err == nil || bound != nil {
 				t.Fatal("revoked context launched another worker")
 			}
 			t.Log("12 installed activations: real readiness and Grant; fresh jobs; pinned cgroups empty; context revoke refused late launch")
@@ -108,7 +108,7 @@ func TestInstalledTextWorkerLifecycle(t *testing.T) {
 	}
 }
 
-func installedTextWorkerInstance(t *testing.T, ctx context.Context, bound *qualifiedTextWorker, role string) worker.Instance {
+func installedWorkerInstance(t *testing.T, ctx context.Context, bound *qualifiedWorker, role string) worker.Instance {
 	t.Helper()
 	listing, err := worker.ListInstances(ctx, role, worker.Text)
 	if err != nil {
@@ -129,7 +129,7 @@ func installedTextWorkerInstance(t *testing.T, ctx context.Context, bound *quali
 
 // Collection is a resource assertion after pinned cgroup cleanup has succeeded.
 // An absent unit is never substituted for the kernel's cleanup observation.
-func requireInstalledTextWorkerCollected(t *testing.T, parent context.Context, name, role string) {
+func requireInstalledWorkerCollected(t *testing.T, parent context.Context, name, role string) {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(parent, 3*time.Second)
 	defer cancel()
@@ -152,7 +152,7 @@ func requireInstalledTextWorkerCollected(t *testing.T, parent context.Context, n
 	}
 }
 
-func requireInstalledTextWorkerCollectionPolicy(t *testing.T, ctx context.Context, instance worker.Instance) {
+func requireInstalledWorkerCollectionPolicy(t *testing.T, ctx context.Context, instance worker.Instance) {
 	t.Helper()
 	version, err := worker.ManagerVersion(ctx)
 	if err != nil {

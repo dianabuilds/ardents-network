@@ -18,14 +18,14 @@ import (
 // Introduction acceptance, JOIN and Service authentication are Endpoint-owned;
 // the Application sees only streams authenticated for this exact live job.
 // Cancellation terminates and joins the producer, bridge and installed worker.
-func (worker *qualifiedTextWorker) serveNetwork(ctx context.Context) error {
+func (worker *qualifiedWorker) serveNetwork(ctx context.Context) error {
 	return worker.serveFrom(ctx, worker.produceNetwork)
 }
 
 // serve accepts only this Publisher job's opaque authenticated streams.
 // Closing incoming requests a finite drain. Cancellation joins the bridge and
 // any stream received but not yet transferred before installed worker cleanup.
-func (worker *qualifiedTextWorker) serve(ctx context.Context, incoming <-chan *serviceStream) error {
+func (worker *qualifiedWorker) serve(ctx context.Context, incoming <-chan *serviceStream) error {
 	if incoming == nil {
 		return errors.New("text Publisher Connections unavailable")
 	}
@@ -36,7 +36,7 @@ func (worker *qualifiedTextWorker) serve(ctx context.Context, incoming <-chan *s
 
 // serveFrom joins the producer before retiring the worker operation. A producer
 // owns every stream until the bridge accepts it; no admission queue is retained.
-func (worker *qualifiedTextWorker) serveFrom(ctx context.Context, produce func(context.Context, chan<- connection.Stream) error) error {
+func (worker *qualifiedWorker) serveFrom(ctx context.Context, produce func(context.Context, chan<- connection.Stream) error) error {
 	bounded, finish, err := worker.beginOperation(ctx, broker.Administration)
 	if err != nil {
 		return err
@@ -46,7 +46,7 @@ func (worker *qualifiedTextWorker) serveFrom(ctx context.Context, produce func(c
 
 // There is no buffered admission queue. A received stream remains owned here
 // until the worker bridge receives it; all other inputs remain producer-owned.
-func (worker *qualifiedTextWorker) forwardServiceStreams(ctx context.Context, incoming <-chan *serviceStream,
+func (worker *qualifiedWorker) forwardServiceStreams(ctx context.Context, incoming <-chan *serviceStream,
 	delivered chan<- connection.Stream) error {
 	for {
 		if err := ctx.Err(); err != nil {
@@ -78,7 +78,7 @@ func (worker *qualifiedTextWorker) forwardServiceStreams(ctx context.Context, in
 // readService holds the qualified worker's operation from Service setup
 // through joined stream I/O, then joins the worker before exposing a result.
 // The Route/capsule producer must use this exact binding and authorized job.
-func (worker *qualifiedTextWorker) readService(ctx context.Context, binding *serviceBinding, raw net.Conn, capsuleDigest [32]byte) ([]byte, error) {
+func (worker *qualifiedWorker) readService(ctx context.Context, binding *serviceBinding, raw net.Conn, capsuleDigest [32]byte) ([]byte, error) {
 	if worker == nil || binding == nil || worker.job == nil || worker.job != binding.job || worker.job.owner != binding.owner {
 		return nil, errors.Join(errors.New("text Service stream belongs to a different worker"), closeServiceInput(raw))
 	}
@@ -100,7 +100,7 @@ func closeServiceInput(raw net.Conn) error {
 // readTarget begins verified worker use before any destination-dependent lookup,
 // issuance or JOIN. Endpoint alone resolves and authenticates the Service; the
 // worker receives only that authorized stream, then the complete tree is joined.
-func (worker *qualifiedTextWorker) readTarget(ctx context.Context, destination targetlink.Link, bounds [3]int64) ([]byte, error) {
+func (worker *qualifiedWorker) readTarget(ctx context.Context, destination targetlink.Link, bounds [3]int64) ([]byte, error) {
 	bounded, finish, err := worker.beginOperation(ctx, broker.Connection)
 	if err != nil {
 		return nil, err

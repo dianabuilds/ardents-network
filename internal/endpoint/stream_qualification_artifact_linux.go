@@ -7,7 +7,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/qualification"
 )
 
-func (lifetime *textWorkerLifetime) qualificationArtifact() *qualification.Artifact {
+func (lifetime *workerLifetime) qualificationArtifact() *qualification.Artifact {
 	if lifetime.artifact == nil || lifetime.artifact.Inventory() != worker.Stream {
 		return nil
 	}

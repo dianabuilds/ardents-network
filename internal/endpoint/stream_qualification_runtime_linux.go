@@ -72,10 +72,10 @@ func RunStreamQualification(ctx context.Context, config StreamQualificationConfi
 			}
 			defer func() { operationErr = errors.Join(operationErr, worker.Close()) }()
 			session := &qualificationSession{
-				qualifiedTextWorker: worker,
-				owner:               owner,
-				surface:             surface,
-				permission:          permission,
+				qualifiedWorker: worker,
+				owner:           owner,
+				surface:         surface,
+				permission:      permission,
 				reportPermission: func(reportCtx context.Context, digest [32]byte) error {
 					return config.Participant.Observe(reportCtx, TextParticipantEvent{Kind: "permission-required", NetworkID: endpoint.network, Surface: string(surface), RequestDigest: digest})
 				},

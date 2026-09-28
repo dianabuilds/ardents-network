@@ -27,21 +27,21 @@ import (
 // every Node during issuance.
 const qualificationIssuerRefill = 8
 
-func (worker *qualifiedTextWorker) Run() *qualification.Run { return worker.job.qualification }
+func (worker *qualifiedWorker) Run() *qualification.Run { return worker.job.qualification }
 
-func (worker *qualifiedTextWorker) Now() time.Time { return worker.job.owner.endpoint.clock() }
+func (worker *qualifiedWorker) Now() time.Time { return worker.job.owner.endpoint.clock() }
 
-func (worker *qualifiedTextWorker) Artifact() *qualification.Artifact {
+func (worker *qualifiedWorker) Artifact() *qualification.Artifact {
 	return worker.lifetime.qualificationArtifact()
 }
 
-func (worker *qualifiedTextWorker) Cgroup() string { return worker.lifetime.cgroup }
+func (worker *qualifiedWorker) Cgroup() string { return worker.lifetime.cgroup }
 
-func (worker *qualifiedTextWorker) WorkerAttachment() io.ReadWriteCloser {
+func (worker *qualifiedWorker) WorkerAttachment() io.ReadWriteCloser {
 	return worker.lifetime.attachment
 }
 
-func (worker *qualifiedTextWorker) RefillSnapshot() qualification.Refill {
+func (worker *qualifiedWorker) RefillSnapshot() qualification.Refill {
 	owner := worker.job.owner
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
@@ -57,15 +57,15 @@ func (worker *qualifiedTextWorker) RefillSnapshot() qualification.Refill {
 	return snapshot
 }
 
-func (worker *qualifiedTextWorker) EnsureIssuerReserve(ctx context.Context, minimum int) error {
+func (worker *qualifiedWorker) EnsureIssuerReserve(ctx context.Context, minimum int) error {
 	return worker.job.owner.ensureQualificationIssuerReserve(ctx, minimum)
 }
 
-func (worker *qualifiedTextWorker) PresentRefill(ctx context.Context, hello ardp.Hello, class uint8) ([]byte, error) {
+func (worker *qualifiedWorker) PresentRefill(ctx context.Context, hello ardp.Hello, class uint8) ([]byte, error) {
 	return worker.job.owner.presentQualifiedRefill(ctx, worker.job, hello, class)
 }
 
-func (worker *qualifiedTextWorker) ReplenishPrefixes(ctx context.Context, present client.ClosedTokenPresenter) error {
+func (worker *qualifiedWorker) ReplenishPrefixes(ctx context.Context, present client.ClosedTokenPresenter) error {
 	owner := worker.job.owner
 	owner.mu.Lock()
 	source := owner.source.currentLocked()
@@ -94,7 +94,7 @@ func (worker *qualifiedTextWorker) ReplenishPrefixes(ctx context.Context, presen
 // authorized participant operations of its Context, surface, permission
 // files, and worker.
 type qualificationSession struct {
-	*qualifiedTextWorker
+	*qualifiedWorker
 	owner            *textContext
 	surface          broker.Surface
 	permission       TextPermissionFiles
@@ -102,7 +102,7 @@ type qualificationSession struct {
 }
 
 func (session *qualificationSession) BeginOperation(ctx context.Context) (context.Context, func(), error) {
-	return session.qualifiedTextWorker.beginOperation(ctx, session.surface)
+	return session.qualifiedWorker.beginOperation(ctx, session.surface)
 }
 
 func (session *qualificationSession) ProvisionPermission(ctx context.Context) error {
@@ -152,7 +152,7 @@ func (session *qualificationSession) EnsureTokenReserve(ctx context.Context, rec
 }
 
 func (session *qualificationSession) StartPublication(ctx context.Context) (qualification.Publication, error) {
-	publication, err := session.qualifiedTextWorker.startPublication(ctx)
+	publication, err := session.qualifiedWorker.startPublication(ctx)
 	if err != nil {
 		return nil, err
 	}

@@ -85,7 +85,7 @@ func TestTextPublisherBuildsRetainedQualificationSetAcrossFourReaders(t *testing
 	_ = pubRun.BindInvocation(fixtureID(245))
 	publisherJob.qualification = pubRun
 	publisherJob.workload = mustServiceWorkloadBounds(t, 64<<20, 64<<20)
-	publisherWorker := &qualifiedTextWorker{job: publisherJob}
+	publisherWorker := &qualifiedWorker{job: publisherJob}
 	delivered := make(chan connection.Stream)
 	producerDone := make(chan error, 1)
 	go func() { producerDone <- publisherWorker.produceNetwork(ctx, delivered) }()
@@ -99,7 +99,7 @@ func TestTextPublisherBuildsRetainedQualificationSetAcrossFourReaders(t *testing
 	for index, owner := range readers {
 		go func(index int, owner *textContext, job *textJobIdentity) {
 			result := readerResult{index: index}
-			worker := &qualifiedTextWorker{job: job}
+			worker := &qualifiedWorker{job: job}
 			until := time.Now().UTC().Add(15 * time.Minute).Unix()
 			verified, err := owner.resolveIntroduction(ctx, job, destination)
 			if err != nil {
