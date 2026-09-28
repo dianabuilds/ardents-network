@@ -1,6 +1,7 @@
 package forwarding
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"testing"
@@ -83,4 +84,59 @@ func busyForwardingBenchmarkFixture(b *testing.B, children int) (*route.ClosedFo
 		links[id] = &forwardLink{forwarding: true}
 	}
 	return channel, links
+}
+
+// BenchmarkAdmitTinyFramesWithBusyWriters includes one admitted ARDP input and
+// its Node dispatch attempt per frame. The bootstrap fixture keeps 2,048
+// one-byte frames inside its finite input budget; this is an in-memory
+// component measurement, not a TCP/TLS or class-2 throughput result.
+func BenchmarkAdmitTinyFramesWithBusyWriters(b *testing.B) {
+	const framesPerParent = 2048
+	ctx := context.Background()
+	for _, children := range []int{1, 64, route.ClosedForwardChildren} {
+		for _, parsed := range []bool{false, true} {
+			mode := "decoded"
+			if parsed {
+				mode = "parsed"
+			}
+			b.Run(fmt.Sprintf("%s/ready=%d/body=1", mode, children), func(b *testing.B) {
+				input := ardp.Frame{Kind: ardp.KindBytes, Lane: 1, Body: []byte{1}}
+				raw, err := ardp.EncodeFrame(input)
+				if err != nil {
+					b.Fatal(err)
+				}
+				var reader bytes.Reader
+				server := &forwardServer{}
+				b.SetBytes(framesPerParent * (ardp.HeaderSize + 1))
+				b.ReportAllocs()
+				b.ResetTimer()
+				for range b.N {
+					b.StopTimer()
+					channel, links := busyForwardingBenchmarkFixture(b, children)
+					b.StartTimer()
+					for range framesPerParent {
+						frame := input
+						if parsed {
+							reader.Reset(raw)
+							frame, err = ardp.ReadFrame(&reader)
+							if err != nil {
+								b.Fatal(err)
+							}
+						}
+						if _, err := channel.Accept(frame); err != nil {
+							b.Fatal(err)
+						}
+						if err := server.drainForwarding(ctx, channel, links, nil, nil, nil); err != nil {
+							b.Fatal(err)
+						}
+					}
+					b.StopTimer()
+					if err := channel.Cancel(); err != nil {
+						b.Fatal(err)
+					}
+				}
+				b.ReportMetric(framesPerParent, "frames/parent")
+			})
+		}
+	}
 }

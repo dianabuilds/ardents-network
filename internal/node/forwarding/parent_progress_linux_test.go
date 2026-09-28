@@ -6,7 +6,12 @@ import (
 	"errors"
 	"io"
 	"net"
+	"os"
+	"path/filepath"
+	"runtime"
+	"runtime/pprof"
 	"sync"
+	"syscall"
 	"testing"
 	"time"
 
@@ -183,6 +188,16 @@ func TestClosedForwardingParentReaderServesControlWhileOpenBlocks(t *testing.T) 
 	case <-time.After(6 * time.Second):
 		t.Fatal("A did not begin blocked downstream HELLO")
 	}
+	// These well-framed bytes remain accounted by the admitted parent while
+	// this child has no completed downstream HELLO/ACCEPT. CLOSE must release
+	// them before the independent child is opened.
+	pendingStart := time.Now()
+	for range 512 {
+		if err = ardp.WriteFrame(client, ardp.Frame{Kind: ardp.KindBytes, Lane: 1, Body: []byte{1}}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	t.Logf("pending OPEN: accepted 512 one-byte frames in %s", time.Since(pendingStart))
 	if err = ardp.WriteFrame(client, ardp.Frame{Kind: 9, Lane: 1, Body: []byte{1}}); err != nil {
 		t.Fatal(err)
 	}
@@ -264,9 +279,23 @@ func closedForwardingParentReaderAccepted(t *testing.T, server *forwardServer, k
 }
 
 // A completed OPEN must not let one child's physical downstream write hold the
-// parent reader. The A peer deliberately stops reading after its child OPEN;
+// parent reader. The A peer deliberately stops reading after its child OPENs;
 // B uses a distinct selected TCP Carrier and must complete before A is released.
 func TestClosedForwardingParentReaderServesIndependentChildWhileWriteBlocks(t *testing.T) {
+	testClosedForwardingParentReaderServesIndependentChildWhileWriteBlocks(t, 1)
+}
+
+func TestClosedForwardingParentReaderServesIndependentChildWith63QueuedLanes(t *testing.T) {
+	testClosedForwardingParentReaderServesIndependentChildWhileWriteBlocks(t, 63)
+}
+
+func TestClosedForwardingParentReaderServesIndependentChildWith255QueuedLanes(t *testing.T) {
+	testClosedForwardingParentReaderServesIndependentChildWhileWriteBlocks(t, 255)
+}
+
+func testClosedForwardingParentReaderServesIndependentChildWhileWriteBlocks(t *testing.T, busyLanes int) {
+	t.Helper()
+	const tinyFrames = 32 << 10
 	fixture := newClosedBootstrapFixture(t)
 	now := time.Now().UTC().Truncate(time.Hour).Add(time.Hour + 10*time.Minute)
 	fixture.now = now
@@ -384,10 +413,12 @@ func TestClosedForwardingParentReaderServesIndependentChildWhileWriteBlocks(t *t
 			peerDone <- frameErr
 			return
 		}
-		child, readErr := ardp.ReadFrame(accepted.Connection)
-		if readErr != nil || child.Kind != 4 {
-			peerDone <- errors.New("A child OPEN missing")
-			return
+		for index := range busyLanes {
+			child, readErr := ardp.ReadFrame(accepted.Connection)
+			if readErr != nil || child.Kind != 4 || child.Lane != uint32(index*2+1) {
+				peerDone <- errors.New("A child OPEN missing")
+				return
+			}
 		}
 		close(aOpen)
 		frame, readErr := ardp.ReadFrame(accepted.Connection)
@@ -406,7 +437,7 @@ func TestClosedForwardingParentReaderServesIndependentChildWhileWriteBlocks(t *t
 		}
 		peerDone <- nil
 	}()
-	bProgress := make(chan struct{})
+	bProgress, bTinyDone := make(chan struct{}), make(chan struct{})
 	workers.Add(1)
 	go func() {
 		defer workers.Done()
@@ -435,6 +466,14 @@ func TestClosedForwardingParentReaderServesIndependentChildWhileWriteBlocks(t *t
 			return
 		}
 		close(bProgress)
+		for range tinyFrames {
+			frame, readErr := ardp.ReadFrame(accepted.Connection)
+			if readErr != nil || frame.Kind != ardp.KindBytes || len(frame.Body) != 1 {
+				peerDone <- errors.New("B tiny forwarded bytes missing")
+				return
+			}
+		}
+		close(bTinyDone)
 		<-releaseB
 		peerDone <- nil
 	}()
@@ -452,8 +491,10 @@ func TestClosedForwardingParentReaderServesIndependentChildWhileWriteBlocks(t *t
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err = ardp.WriteFrame(client, ardp.Frame{Kind: 4, Lane: 1, Body: aBody}); err != nil {
-		t.Fatal(err)
+	for index := range busyLanes {
+		if err = ardp.WriteFrame(client, ardp.Frame{Kind: 4, Lane: uint32(index*2 + 1), Body: aBody}); err != nil {
+			t.Fatal(err)
+		}
 	}
 	select {
 	case <-aOpen:
@@ -475,12 +516,33 @@ func TestClosedForwardingParentReaderServesIndependentChildWhileWriteBlocks(t *t
 	case <-time.After(2 * time.Second):
 		t.Fatal("A downstream write did not start")
 	}
+	if busyLanes > 1 {
+		// The A Carrier has stopped reading. Give every other live A lane a
+		// first writer and another queued frame, then apply a finite tiny burst
+		// while the independent B Carrier is still able to make progress.
+		for range 2 {
+			for index := 1; index < busyLanes; index++ {
+				lane := uint32(index*2 + 1)
+				if err = ardp.WriteFrame(client, ardp.Frame{Kind: ardp.KindBytes, Lane: lane, Body: []byte{1}}); err != nil {
+					t.Fatal(err)
+				}
+			}
+		}
+		burstStart := time.Now()
+		for range 2048 {
+			if err = ardp.WriteFrame(client, ardp.Frame{Kind: ardp.KindBytes, Lane: 3, Body: []byte{1}}); err != nil {
+				t.Fatal(err)
+			}
+		}
+		t.Logf("A peer stopped reading after %d OPENs; accepted 2048 additional one-byte frames in %s", busyLanes, time.Since(burstStart))
+	}
+	bLane := uint32(busyLanes*2 + 1)
 	bOpen := route.ClosedOpen{NextNodeID: fixture.snapshot.Candidates[0].NodeID, NextDutyGeneration: fixture.view.Nodes[0].DutyGeneration, Purpose: ardp.PurposeForwarding, Deadline: now.Add(20 * time.Second)}
 	bBody, err := route.EncodeClosedOpen(bOpen)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err = ardp.WriteFrame(client, ardp.Frame{Kind: 4, Lane: 3, Body: bBody}); err != nil {
+	if err = ardp.WriteFrame(client, ardp.Frame{Kind: 4, Lane: bLane, Body: bBody}); err != nil {
 		t.Fatal(err)
 	}
 	select {
@@ -489,6 +551,41 @@ func TestClosedForwardingParentReaderServesIndependentChildWhileWriteBlocks(t *t
 		t.Fatal(err)
 	case <-time.After(2 * time.Second):
 		t.Fatal("B did not progress while A downstream write was held")
+	}
+	var memoryBefore runtime.MemStats
+	runtime.ReadMemStats(&memoryBefore)
+	var usageBefore syscall.Rusage
+	if err := syscall.Getrusage(syscall.RUSAGE_SELF, &usageBefore); err != nil {
+		t.Fatal(err)
+	}
+	stopProfile := startTinyFrameCPUProfile(t)
+	defer stopProfile()
+	tinyStart := time.Now()
+	for range tinyFrames {
+		if err = ardp.WriteFrame(client, ardp.Frame{Kind: ardp.KindBytes, Lane: bLane, Body: []byte{1}}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	offerElapsed := time.Since(tinyStart)
+	select {
+	case <-bTinyDone:
+		elapsed := time.Since(tinyStart)
+		var memoryAfter runtime.MemStats
+		runtime.ReadMemStats(&memoryAfter)
+		var usageAfter syscall.Rusage
+		if err := syscall.Getrusage(syscall.RUSAGE_SELF, &usageAfter); err != nil {
+			t.Fatal(err)
+		}
+		stopProfile()
+		cpu := rusageCPU(usageAfter) - rusageCPU(usageBefore)
+		t.Logf("admitted parent and TCP/TLS Carrier: offered and delivered %d one-byte B frames with %d A lanes; offer=%s delivery=%s offeredFramesPerSec=%.0f deliveredFramesPerSec=%.0f offeredWireBytesPerSec=%.0f deliveredWireBytesPerSec=%.0f processCPU=%s allocated=%dB heapAfter=%dB GC=%d processPeakRSS=%dKiB",
+			tinyFrames, busyLanes, offerElapsed, elapsed, float64(tinyFrames)/offerElapsed.Seconds(), float64(tinyFrames)/elapsed.Seconds(),
+			float64(tinyFrames*(ardp.HeaderSize+1))/offerElapsed.Seconds(), float64(tinyFrames*(ardp.HeaderSize+1))/elapsed.Seconds(),
+			cpu, memoryAfter.TotalAlloc-memoryBefore.TotalAlloc, memoryAfter.HeapAlloc, memoryAfter.NumGC-memoryBefore.NumGC, usageAfter.Maxrss)
+	case err := <-peerDone:
+		t.Fatal(err)
+	case <-time.After(5 * time.Second):
+		t.Fatal("B tiny frames did not progress while A was blocked")
 	}
 	if err = ardp.WriteFrame(client, ardp.Frame{Kind: 2, Lane: 0, Body: append([]byte{2}, closedRestrictionToken(t, fixture)...)}); err != nil {
 		t.Fatal(err)
@@ -507,5 +604,41 @@ func TestClosedForwardingParentReaderServesIndependentChildWhileWriteBlocks(t *t
 		joined = true
 	case <-time.After(3 * time.Second):
 		t.Fatal("parent did not join downstream I/O during cleanup")
+	}
+}
+
+func rusageCPU(usage syscall.Rusage) time.Duration {
+	return time.Duration(usage.Utime.Sec+usage.Stime.Sec)*time.Second +
+		time.Duration(usage.Utime.Usec+usage.Stime.Usec)*time.Microsecond
+}
+
+// An explicitly selected profile covers only the tiny-frame transfer, not
+// certificate and token fixture setup. The caller supplies an absolute output
+// path; measurement runs place profiles outside the repository.
+func startTinyFrameCPUProfile(t *testing.T) func() {
+	t.Helper()
+	path := os.Getenv("ARDENTS_ROUTE_TINY_CPU_PROFILE")
+	if path == "" {
+		return func() {}
+	}
+	if !filepath.IsAbs(path) {
+		t.Fatal("tiny-frame CPU profile path must be absolute")
+	}
+	file, err := os.Create(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := pprof.StartCPUProfile(file); err != nil {
+		_ = file.Close()
+		t.Fatal(err)
+	}
+	var once sync.Once
+	return func() {
+		once.Do(func() {
+			pprof.StopCPUProfile()
+			if err := file.Close(); err != nil {
+				t.Fatal(err)
+			}
+		})
 	}
 }
