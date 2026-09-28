@@ -44,8 +44,7 @@ func (s *networkState) loadDistributionState() error {
 	}
 	if name == "" {
 		if s.current != nil {
-			s.distribution.epochFloor = s.current.Snapshot.Epoch
-			s.distribution.epochDigest = s.current.Snapshot.Digest
+			return &RecoveryRequiredError{Reason: "distribution journal is missing from an active root"}
 		}
 		return nil
 	}

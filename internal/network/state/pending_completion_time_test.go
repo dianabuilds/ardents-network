@@ -22,9 +22,8 @@ func TestCompleteSourceWaveRechecksTrustedTimeBeforeActivatingPending(t *testing
 		clock: func() time.Time { return beforeExpiry }, observe: func() time.Time { return beforeExpiry },
 		anchorWall: beforeExpiry, anchorMono: time.Now().Add(-1100 * time.Millisecond)}, storage: storage, current: current,
 		pendingDecision: &pending}
-	if err := opened.loadDistributionState(); err != nil {
-		t.Fatal(err)
-	}
+	opened.distribution.epochFloor = opened.current.Snapshot.Epoch
+	opened.distribution.epochDigest = opened.current.Snapshot.Digest
 	opened.distribution.pendingDigest = pending.Header.Digest
 	opened.distribution.pendingValidFrom = pending.Header.ValidFrom.Unix()
 	if _, err := opened.completeSourceWave(beforeExpiry, current, []sourceResult{{slot: 0, decision: pending, observations: [4]byte{sourceOutcomeValid}}}); err == nil || !strings.Contains(err.Error(), "expired before source wave completed") {
@@ -46,9 +45,8 @@ func TestCompleteSourceWaveRecordsConflictBeforeCompletionClockFailure(t *testin
 	started := time.Unix(1_800_000_000, 0).UTC()
 	opened := &networkState{config: config{root: root, clock: func() time.Time { return started }, observe: func() time.Time { return time.Time{} }},
 		storage: storage, current: &epoch.Decision{Snapshot: epoch.Snapshot{Epoch: 1, Digest: [32]byte{1}}}}
-	if err := opened.loadDistributionState(); err != nil {
-		t.Fatal(err)
-	}
+	opened.distribution.epochFloor = opened.current.Snapshot.Epoch
+	opened.distribution.epochDigest = opened.current.Snapshot.Digest
 	first := epoch.Decision{Header: epoch.Header{Number: 2, Digest: [32]byte{2}}}
 	second := epoch.Decision{Header: epoch.Header{Number: 2, Digest: [32]byte{3}}}
 	if _, err := opened.completeSourceWave(started, opened.current, []sourceResult{
@@ -75,9 +73,8 @@ func TestCompleteSourceWaveRecordsPendingConflictBeforeCompletionClockFailure(t 
 	competing := epoch.Decision{Header: epoch.Header{Number: 2, Digest: [32]byte{3}}}
 	opened := &networkState{config: config{root: root, clock: func() time.Time { return started }, observe: func() time.Time { return time.Time{} }},
 		storage: storage, current: &epoch.Decision{Snapshot: epoch.Snapshot{Epoch: 1, Digest: [32]byte{1}}}, pendingDecision: &pending}
-	if err := opened.loadDistributionState(); err != nil {
-		t.Fatal(err)
-	}
+	opened.distribution.epochFloor = opened.current.Snapshot.Epoch
+	opened.distribution.epochDigest = opened.current.Snapshot.Digest
 	opened.distribution.pendingDigest = pending.Header.Digest
 	if _, err := opened.completeSourceWave(started, opened.current, []sourceResult{
 		{slot: 0, decision: competing, observations: [4]byte{sourceOutcomeValid}},
