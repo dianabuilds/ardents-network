@@ -111,7 +111,17 @@ func (root *Root) CommitClosedProfile(state ClosedProfileState, profile []byte) 
 	return replaceClosedProfileState(root.path, closedProfileStateName(state.Generation), encodeClosedProfileState(state))
 }
 
+// ErrClosedProfileStateSyncUncertain means the state record rename succeeded
+// but its directory sync failed. The accepted or conflicting record may already
+// be visible, so the live State owner must stop serving it until reopen verifies it.
+var ErrClosedProfileStateSyncUncertain = errors.New("closed profile state durability is uncertain after rename")
+
 func replaceClosedProfileState(root, name string, raw []byte) error {
+	return replaceClosedProfileStateWithSync(root, name, raw, syncDirectory)
+}
+
+// The injected sync isolates the post-rename boundary in deterministic tests.
+func replaceClosedProfileStateWithSync(root, name string, raw []byte, sync func(string) error) error {
 	temporary, err := os.CreateTemp(root, ".closed-profile-")
 	if err != nil {
 		return err
@@ -134,5 +144,8 @@ func replaceClosedProfileState(root, name string, raw []byte) error {
 	if err := os.Rename(temporaryPath, filepath.Join(root, name)); err != nil {
 		return err
 	}
-	return syncDirectory(root)
+	if err := sync(root); err != nil {
+		return fmt.Errorf("sync closed profile state: %w: %w", ErrClosedProfileStateSyncUncertain, err)
+	}
+	return nil
 }

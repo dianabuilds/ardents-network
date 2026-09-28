@@ -5,16 +5,33 @@ import (
 	"context"
 	"crypto/ed25519"
 	"crypto/sha256"
-	"github.com/dianabuilds/ardents-network/internal/network/closedprofile"
+	"errors"
+	"fmt"
 	"testing"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/network/closedprofile"
+	"github.com/dianabuilds/ardents-network/internal/network/state/durable"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 )
 
 // A signed profile must join the domain assigned by a genuinely accepted
 // Epoch. Refusal leaves no accepted profile; matching input survives reopen.
 func TestClosedProfileRoleDomainMustMatchEpochAssignment(t *testing.T) {
+	for _, test := range []struct {
+		name      string
+		uncertain bool
+	}{
+		{name: "ordinary acceptance"},
+		{name: "post-rename sync uncertainty", uncertain: true},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			testClosedProfileRoleJoinCase(t, test.uncertain)
+		})
+	}
+}
+
+func testClosedProfileRoleJoinCase(t *testing.T, uncertain bool) {
 	now := time.Now().UTC()
 	hour := now.Truncate(time.Hour)
 	authority := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{9}, ed25519.SeedSize))
@@ -84,24 +101,46 @@ func TestClosedProfileRoleDomainMustMatchEpochAssignment(t *testing.T) {
 	otherEntry.domain = 1
 	matching := testClosedProfileAt(t, authority, networkID, epoch.Digest, epoch.Digest, 1, now,
 		[]closedProfileNode{issuerEntry, otherEntry})
-	view, err := store.AcceptClosedProfile(matching)
-	if err != nil || view.Digest != sha256.Sum256(matching) {
-		t.Fatalf("accept matching profile: %+v / %v", view, err)
-	}
-	route, err := store.CurrentClosedRoute()
-	if err != nil || route.NodeCount != 2 || route.Nodes[0].RoleDomain != 2 ||
-		route.Nodes[1].RoleDomain != 1 {
-		t.Fatalf("current joined route: %+v / %v", route, err)
-	}
-	if err := store.Close(); err != nil {
-		t.Fatal(err)
+	if uncertain {
+		failure := errors.New("injected post-rename directory sync failure")
+		_, err = store.acceptClosedProfileWithCommit(matching, func(state durable.ClosedProfileState, raw []byte) error {
+			if err := store.storage.CommitClosedProfile(state, raw); err != nil {
+				return err
+			}
+			return fmt.Errorf("%w: %w", durable.ErrClosedProfileStateSyncUncertain, failure)
+		})
+		if !errors.Is(err, durable.ErrClosedProfileStateSyncUncertain) || !store.closed {
+			t.Fatalf("uncertain signed profile acceptance: err=%v closed=%t", err, store.closed)
+		}
+		if _, err := store.CurrentClosedRoute(); err == nil {
+			t.Fatal("retired State exposed signed route")
+		}
+		if err := store.Wait(context.Background()); !errors.Is(err, failure) {
+			t.Fatalf("Wait lost sync failure: %v", err)
+		}
+		if err := store.Close(); !errors.Is(err, failure) {
+			t.Fatalf("Close lost sync failure: %v", err)
+		}
+	} else {
+		view, err := store.AcceptClosedProfile(matching)
+		if err != nil || view.Digest != sha256.Sum256(matching) {
+			t.Fatalf("accept matching profile: %+v / %v", view, err)
+		}
+		route, err := store.CurrentClosedRoute()
+		if err != nil || route.NodeCount != 2 || route.Nodes[0].RoleDomain != 2 ||
+			route.Nodes[1].RoleDomain != 1 {
+			t.Fatalf("current joined route: %+v / %v", route, err)
+		}
+		if err := store.Close(); err != nil {
+			t.Fatal(err)
+		}
 	}
 	reopened, err := Open(config)
 	if err != nil {
 		t.Fatalf("reopen accepted State/profile: %v", err)
 	}
 	defer reopened.Close()
-	route, err = reopened.CurrentClosedRoute()
+	route, err := reopened.CurrentClosedRoute()
 	if err != nil || route.NodeCount != 2 || route.Nodes[0].RoleDomain != 2 ||
 		route.Nodes[1].RoleDomain != 1 {
 		t.Fatalf("reopened joined route: %+v / %v", route, err)

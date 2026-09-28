@@ -226,6 +226,17 @@ fallback truth.
 | [Current readers](../../internal/network/state/snapshot_access.go) | Derive a copied Snapshot and Node-duty view; expose the accepted closed profile's exact issuer/key and recipient constraints only while State and clock remain live. | Node and Endpoint consume State projections without gaining State-root custody. |
 | [`Wait` and `Close`](../../internal/network/state/lifecycle.go) | Report terminal background failure; cancel and join accepted work, close the durable root, release the serving Source duty, and retain one cleanup result for all Close callers. | `resource` supplies pressure observations; State retains supervision and cleanup ownership. |
 
+A closed-profile state record is published by rename followed by directory
+sync. If that final sync fails, the new accepted or conflicting record may
+already be visible. The live State owner retires, refuses closed-profile and
+closed-route readers, and reports the terminal cause through `Wait` and
+`Close`; reopening verifies the persisted record against the signed current
+Epoch before serving it. If State has verified a second distinct profile digest
+for the same Epoch but cannot persist its conflict, it likewise retires even
+when the old accepted record remains on disk. A failed pre-rename conflict
+cannot be inferred from that old record after restart; recovery uses only
+verified persisted evidence.
+
 The ARDS1D4 distribution journal records one finite Source cycle. Its two
 `LATEST` attempt slots are 0 and 1; `BY_DIGEST` slots 2 and 3 use the same
 Source index plus 2. The persisted attempt byte has these meanings:

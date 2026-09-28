@@ -3,6 +3,7 @@ package state
 import (
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/network/closedprofile"
@@ -53,6 +54,10 @@ type ClosedProfileTokenKey struct {
 // current closed Route Epoch. A second valid digest becomes durable conflict;
 // callers never select a winner by arrival order.
 func (s *networkState) AcceptClosedProfile(raw []byte) (ClosedProfileView, error) {
+	return s.acceptClosedProfileWithCommit(raw, s.storage.CommitClosedProfile)
+}
+
+func (s *networkState) acceptClosedProfileWithCommit(raw []byte, commit func(durable.ClosedProfileState, []byte) error) (ClosedProfileView, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.closed || s.current == nil || s.current.Snapshot.Profile != closedRouteProfile || s.distribution.conflicting {
@@ -75,13 +80,21 @@ func (s *networkState) AcceptClosedProfile(raw []byte) (ClosedProfileView, error
 		if stored.Epoch != profile.Epoch || stored.Accepted != profile.Digest || stored.Conflict != [32]byte{} {
 			if stored.Conflict == [32]byte{} && stored.Epoch == profile.Epoch && stored.Accepted != profile.Digest {
 				stored.Conflict = profile.Digest
-				if err := s.storage.CommitClosedProfile(stored, storedRaw); err != nil {
+				if err := commit(stored, storedRaw); err != nil {
+					// A second verified digest is already known. If its conflict
+					// cannot be persisted, the old accepted profile is unsafe to serve.
+					s.terminalErr = fmt.Errorf("persist closed profile conflict: %w", err)
+					s.retireStateLocked()
 					return ClosedProfileView{}, err
 				}
 			}
 			return ClosedProfileView{}, errors.New("closed profile has a durable conflict")
 		}
-	} else if err := s.storage.CommitClosedProfile(durable.ClosedProfileState{Generation: generation, Epoch: profile.Epoch, Accepted: profile.Digest}, raw); err != nil {
+	} else if err := commit(durable.ClosedProfileState{Generation: generation, Epoch: profile.Epoch, Accepted: profile.Digest}, raw); err != nil {
+		if errors.Is(err, durable.ErrClosedProfileStateSyncUncertain) {
+			s.terminalErr = fmt.Errorf("closed profile publication is uncertain: %w", err)
+			s.retireStateLocked()
+		}
 		return ClosedProfileView{}, err
 	}
 	return closedProfileView(profile), nil

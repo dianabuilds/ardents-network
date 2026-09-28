@@ -1,7 +1,9 @@
 package durable
 
 import (
+	"bytes"
 	"crypto/sha256"
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -82,5 +84,61 @@ func TestClosedProfileOrphanRequiresExactRetry(t *testing.T) {
 	}
 	if state, raw, err := root.LoadClosedProfile(generation); err != nil || state != accepted || string(raw) != string(first) {
 		t.Fatalf("accepted exact retry: state=%+v, raw=%q, err=%v", state, raw, err)
+	}
+}
+
+func TestClosedProfileStateSyncFailureMarksVisibleRecordUncertain(t *testing.T) {
+	for _, conflict := range []bool{false, true} {
+		name := "accepted"
+		if conflict {
+			name = "conflict"
+		}
+		t.Run(name, func(t *testing.T) {
+			root := t.TempDir()
+			state := ClosedProfileState{
+				Generation: sha256.Sum256([]byte("generation")),
+				Epoch:      7,
+				Accepted:   sha256.Sum256([]byte("accepted profile")),
+			}
+			if conflict {
+				state.Conflict = sha256.Sum256([]byte("second signed profile"))
+			}
+			name := closedProfileStateName(state.Generation)
+			raw := encodeClosedProfileState(state)
+			syncFailure := errors.New("injected directory sync failure")
+			err := replaceClosedProfileStateWithSync(root, name, raw, func(path string) error {
+				if path != root {
+					t.Fatalf("synced directory %q, want %q", path, root)
+				}
+				visible, readErr := os.ReadFile(filepath.Join(root, name))
+				if readErr != nil || !bytes.Equal(visible, raw) {
+					t.Fatalf("state record after rename: read=%v bytes=%x", readErr, visible)
+				}
+				return syncFailure
+			})
+			if !errors.Is(err, ErrClosedProfileStateSyncUncertain) || !errors.Is(err, syncFailure) {
+				t.Fatalf("post-rename sync failure = %v", err)
+			}
+			visible, err := os.ReadFile(filepath.Join(root, name))
+			if err != nil || !bytes.Equal(visible, raw) {
+				t.Fatalf("visible state record: read=%v bytes=%x", err, visible)
+			}
+			decoded, err := decodeClosedProfileState(visible)
+			if err != nil || decoded != state {
+				t.Fatalf("visible state identity: %+v, %v", decoded, err)
+			}
+		})
+	}
+}
+
+func TestClosedProfileStateFailureBeforeRenameIsNotSyncUncertain(t *testing.T) {
+	missingRoot := filepath.Join(t.TempDir(), "missing")
+	syncCalled := false
+	err := replaceClosedProfileStateWithSync(missingRoot, "state", []byte("state"), func(string) error {
+		syncCalled = true
+		return nil
+	})
+	if err == nil || errors.Is(err, ErrClosedProfileStateSyncUncertain) || syncCalled {
+		t.Fatalf("pre-rename failure = %v, sync called=%t", err, syncCalled)
 	}
 }

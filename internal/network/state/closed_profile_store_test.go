@@ -2,8 +2,10 @@ package state
 
 import (
 	"bytes"
+	"context"
 	"crypto/ed25519"
 	"crypto/sha256"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -12,6 +14,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/network/closedprofile"
 	"github.com/dianabuilds/ardents-network/internal/network/epoch"
+	"github.com/dianabuilds/ardents-network/internal/network/state/durable"
 )
 
 func TestAcceptClosedProfilePersistsAndConflictsByArrival(t *testing.T) {
@@ -106,4 +109,119 @@ func closedProfileStoreFixtureAt(t *testing.T, rootPath string) (*networkState, 
 	node := closedProfileNode{nodeID: nodeID, recordDigest: sha256.Sum256(recordRaw), domain: 2, subrole: 6, generation: recordGeneration}
 	first := testClosedProfile(t, authority, network, generation, epochDigest, now, []closedProfileNode{node})
 	return store, first
+}
+
+func TestAcceptClosedProfileUncertainStateRecordRetiresLiveOwner(t *testing.T) {
+	store, first := closedProfileStoreFixture(t)
+	canceled := false
+	store.workCancel = func() { canceled = true }
+	failure := errors.New("injected state-directory sync failure")
+	_, err := store.acceptClosedProfileWithCommit(first, func(state durable.ClosedProfileState, raw []byte) error {
+		if err := store.storage.CommitClosedProfile(state, raw); err != nil {
+			return err
+		}
+		return fmt.Errorf("%w: %w", durable.ErrClosedProfileStateSyncUncertain, failure)
+	})
+	if !errors.Is(err, durable.ErrClosedProfileStateSyncUncertain) || !errors.Is(err, failure) || !store.closed || !canceled {
+		t.Fatalf("uncertain acceptance: err=%v closed=%t canceled=%t", err, store.closed, canceled)
+	}
+	generation := sha256.Sum256([]byte("closed profile generation"))
+	stored, raw, err := store.storage.LoadClosedProfile(generation)
+	if err != nil || stored.Accepted != sha256.Sum256(first) || !bytes.Equal(raw, first) {
+		t.Fatalf("visible accepted profile after failure: state=%+v bytes=%d err=%v", stored, len(raw), err)
+	}
+	if value, err := store.CurrentClosedProfile(); err == nil || value != (ClosedProfileView{}) {
+		t.Fatalf("retired State exposed profile: %+v, %v", value, err)
+	}
+	if value, err := store.CurrentClosedRoute(); err == nil || value != (ClosedRouteView{}) {
+		t.Fatalf("retired State exposed route: %+v, %v", value, err)
+	}
+	if err := store.Wait(context.Background()); !errors.Is(err, failure) {
+		t.Fatalf("Wait lost terminal cause: %v", err)
+	}
+	if err := store.Close(); !errors.Is(err, failure) {
+		t.Fatalf("Close lost terminal cause: %v", err)
+	}
+}
+
+func TestAcceptClosedProfilePreRenameFailureAllowsExactRetry(t *testing.T) {
+	store, first := closedProfileStoreFixture(t)
+	failure := errors.New("injected pre-rename failure")
+	if _, err := store.acceptClosedProfileWithCommit(first, func(durable.ClosedProfileState, []byte) error {
+		return failure
+	}); !errors.Is(err, failure) || store.closed {
+		t.Fatalf("pre-rename failure: err=%v closed=%t", err, store.closed)
+	}
+	if _, err := store.CurrentClosedProfile(); err == nil {
+		t.Fatal("served a profile without a durable state record")
+	}
+	if _, err := store.AcceptClosedProfile(first); err != nil {
+		t.Fatalf("exact retry: %v", err)
+	}
+	if _, err := store.CurrentClosedProfile(); err != nil {
+		t.Fatalf("profile after exact retry: %v", err)
+	}
+}
+
+func TestAcceptClosedProfileFailedConflictRetiresLiveOwner(t *testing.T) {
+	for _, persisted := range []bool{false, true} {
+		name := "before state rename"
+		if persisted {
+			name = "after state rename"
+		}
+		t.Run(name, func(t *testing.T) {
+			store, first := closedProfileStoreFixture(t)
+			if _, err := store.AcceptClosedProfile(first); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := store.CurrentClosedRoute(); err != nil {
+				t.Fatal(err)
+			}
+			authority := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{9}, ed25519.SeedSize))
+			generation := sha256.Sum256([]byte("closed profile generation"))
+			candidate := store.current.Candidates[0]
+			node := closedProfileNode{nodeID: candidate.NodeID, recordDigest: candidate.RecordDigest,
+				domain: 2, subrole: 6, generation: candidate.RecordGeneration}
+			second := testClosedProfile(t, authority, store.current.Snapshot.NetworkID, generation,
+				store.current.Snapshot.Digest, store.config.clock(), []closedProfileNode{node})
+			if sha256.Sum256(second) == sha256.Sum256(first) {
+				t.Fatal("test did not produce a second digest")
+			}
+			failure := errors.New("injected conflict persistence failure")
+			canceled := false
+			store.workCancel = func() { canceled = true }
+			_, err := store.acceptClosedProfileWithCommit(second, func(state durable.ClosedProfileState, raw []byte) error {
+				if persisted {
+					if err := store.storage.CommitClosedProfile(state, raw); err != nil {
+						return err
+					}
+					return fmt.Errorf("%w: %w", durable.ErrClosedProfileStateSyncUncertain, failure)
+				}
+				return failure
+			})
+			if !errors.Is(err, failure) || !store.closed || !canceled {
+				t.Fatalf("failed conflict: err=%v closed=%t canceled=%t", err, store.closed, canceled)
+			}
+			stored, raw, err := store.storage.LoadClosedProfile(generation)
+			wantConflict := [32]byte{}
+			if persisted {
+				wantConflict = sha256.Sum256(second)
+			}
+			if err != nil || stored.Accepted != sha256.Sum256(first) || stored.Conflict != wantConflict || !bytes.Equal(raw, first) {
+				t.Fatalf("durable conflict after failure: state=%+v bytes=%d err=%v", stored, len(raw), err)
+			}
+			if value, err := store.CurrentClosedProfile(); err == nil || value != (ClosedProfileView{}) {
+				t.Fatalf("retired State exposed accepted profile: %+v, %v", value, err)
+			}
+			if value, err := store.CurrentClosedRoute(); err == nil || value != (ClosedRouteView{}) {
+				t.Fatalf("retired State exposed route: %+v, %v", value, err)
+			}
+			if err := store.Wait(context.Background()); !errors.Is(err, failure) {
+				t.Fatalf("Wait lost terminal cause: %v", err)
+			}
+			if err := store.Close(); !errors.Is(err, failure) {
+				t.Fatalf("Close lost terminal cause: %v", err)
+			}
+		})
+	}
 }
