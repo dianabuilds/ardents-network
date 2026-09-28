@@ -21,17 +21,13 @@ func Run(ctx context.Context, input Config) (result Result, runErr error) {
 	if err := config.openClosedHosting(); err != nil {
 		return Result{}, err
 	}
-	if config.host != nil {
-		config.hostLifetime = hosting.NewLifetime(config.host)
-		defer func() { runErr = errors.Join(runErr, config.hostLifetime.Close()) }()
-	}
-	machine := stateMachine{current: stateAbsent}
-	retained := false
+	config.cleanup = &dutyCleanup{host: hosting.NewLifetime(config.host), release: func() error { return releaseLocalDuty(config) }}
 	defer func() {
-		if retained {
-			runErr = errors.Join(runErr, releaseLocalDuty(config))
+		if !config.cleanup.attempted {
+			runErr = errors.Join(runErr, config.cleanup.Close())
 		}
 	}()
+	machine := stateMachine{current: stateAbsent}
 	if err := emitState(config, machine, state.NodeDuty{}, "process started"); err != nil {
 		return Result{State: stateNames[stateFailed], Reason: err.Error()}, err
 	}
@@ -50,14 +46,14 @@ func Run(ctx context.Context, input Config) (result Result, runErr error) {
 			if err := retainLocalDuty(config, snapshot, "prepared"); err != nil {
 				return fail(config, &machine, nil, "local role state is unavailable", err)
 			}
-			retained = true
+			config.cleanup.retained = true
 			return runDuty(ctx, config, &machine, snapshot)
 		case admissionPrepared:
 			if machine.current == stateAbsent {
 				if err := retainLocalDuty(config, snapshot, "prepared"); err != nil {
 					return fail(config, &machine, nil, "local role state is unavailable", err)
 				}
-				retained = true
+				config.cleanup.retained = true
 				if err := moveAndEmit(config, &machine, statePrepared, snapshot, admission.reason); err != nil {
 					return fail(config, &machine, nil, "external evidence channel failed", err)
 				}
@@ -79,6 +75,7 @@ func runDuty(ctx context.Context, config runtimeConfig, machine *stateMachine, s
 	if err := retainLocalDuty(config, snapshot, "quarantined"); err != nil {
 		return fail(config, machine, nil, "local role state is unavailable", err)
 	}
+	config.cleanup.retained = true
 	if machine.current == stateAbsent {
 		if err := moveAndEmit(config, machine, statePrepared, snapshot, "verified assignment is quarantined"); err != nil {
 			return fail(config, machine, nil, "external evidence channel failed", err)
@@ -112,6 +109,7 @@ func runDuty(ctx context.Context, config runtimeConfig, machine *stateMachine, s
 	if err := retainLocalDuty(config, current, "live"); err != nil {
 		return fail(config, machine, server, "local role state is unavailable", err)
 	}
+	config.cleanup.retained = true
 	if err := moveAndEmit(config, machine, stateReady, current, ""); err != nil {
 		return fail(config, machine, server, "external evidence channel failed", err)
 	}
@@ -209,10 +207,15 @@ func withdraw(config runtimeConfig, machine *stateMachine, server *dutyHandle, s
 		return fail(config, machine, server, "external evidence channel failed", err)
 	}
 	if drainErr := server.Drain(context.Background()); drainErr != nil {
-		if !dutyJoined(server.Joined) {
-			config.hostLifetime.DeferCloseUntil(server.Joined)
-		}
+		config.cleanup.deferUntil(server.Joined)
 		return fail(config, machine, nil, "Node role cleanup failed", drainErr)
+	}
+	if !dutyJoined(server.Joined) {
+		config.cleanup.deferUntil(server.Joined)
+		return fail(config, machine, nil, "Node role cleanup failed", errors.New("Node role drain returned before joining its workers"))
+	}
+	if cleanupErr := config.cleanup.Close(); cleanupErr != nil {
+		return fail(config, machine, nil, "Node process cleanup failed", cleanupErr)
 	}
 	if err := moveAndEmit(config, machine, stateWithdrawn, snapshot, reason); err != nil {
 		return fail(config, machine, nil, "external evidence channel failed", err)
@@ -232,9 +235,7 @@ func fail(config runtimeConfig, machine *stateMachine, server *dutyHandle, reaso
 	}
 	if server != nil {
 		drainErr := server.Drain(context.Background())
-		if !dutyJoined(server.Joined) {
-			config.hostLifetime.DeferCloseUntil(server.Joined)
-		}
+		config.cleanup.deferUntil(server.Joined)
 		terminalErr = errors.Join(terminalErr, drainErr)
 	}
 	return Result{State: stateNames[stateFailed], Reason: reason}, errors.Join(cause, terminalErr)

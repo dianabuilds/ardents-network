@@ -51,10 +51,11 @@ type Config struct {
 
 // Handle transfers process supervision without transferring role resources.
 type Handle struct {
-	Done  <-chan error
-	Usage func() (uint64, uint64, uint64)
-	Stop  func()
-	Drain func(context.Context) error
+	Done   <-chan error
+	Joined <-chan struct{}
+	Usage  func() (uint64, uint64, uint64)
+	Stop   func()
+	Drain  func(context.Context) error
 }
 
 func Validate(local Profile, source authority.Source, snapshot state.NodeDuty, now time.Time, endpointLiteral bool) error {
@@ -107,7 +108,7 @@ func Start(config Config) (*Handle, error) {
 		pairs: pairs, spends: spends, limits: limits, capacity: make(chan struct{}, local.ConnectionLimit), cancel: cancel,
 		done: make(chan error, 1), drained: make(chan struct{})}
 	go running.run(ctx)
-	return &Handle{Done: running.done, Usage: func() (uint64, uint64, uint64) {
+	return &Handle{Done: running.done, Joined: running.drained, Usage: func() (uint64, uint64, uint64) {
 		active := uint64(running.active.Load())
 		return active, active, 0
 	}, Stop: func() { _ = running.stop() }, Drain: func(ctx context.Context) error {

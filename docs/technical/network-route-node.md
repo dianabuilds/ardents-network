@@ -435,6 +435,15 @@ shutdown, and owned issuer/Entry root close errors propagate to the lifecycle
 result. Node may emit `DRAINING` while cleanup is attempted, but it must move to
 `FAILED` and must not publish `WITHDRAWN` if any required cleanup fails or its
 result is unavailable.
+The shared Hosting handle closes and the local-role producer record is removed
+before `WITHDRAWN` is published. If a role has not joined by its bounded drain
+deadline, Node reports `FAILED`, retains the local-role conflict until its
+authenticated expiry, and defers shared Hosting close until that role joins.
+The lifetime owner retains an eventual Hosting close error for a later `Close`
+call; that error cannot revise the already returned bounded `Run` result.
+Node resolves the configured local-role root once when starting the process,
+so later retention and removal use the same root even if the working directory
+changes.
 For emergency resource pressure, Node emits resource `DRAIN` before stopping
 the duty and resource `EXIT` only after a successful withdrawal. A failed drain
 emits lifecycle `FAILED` without claiming that resource exit completed.

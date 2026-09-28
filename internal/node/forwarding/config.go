@@ -48,10 +48,11 @@ type Config struct {
 
 // Handle transfers process supervision without transferring role resources.
 type Handle struct {
-	Done  <-chan error
-	Usage func() (uint64, uint64, uint64)
-	Stop  func()
-	Drain func(context.Context) error
+	Done   <-chan error
+	Joined <-chan struct{}
+	Usage  func() (uint64, uint64, uint64)
+	Stop   func()
+	Drain  func(context.Context) error
 }
 
 func Start(config Config) (*Handle, error) {
@@ -79,7 +80,7 @@ func Start(config Config) (*Handle, error) {
 	dependencies := dependencies{current: config.CurrentDuty, authority: config.Authority, verify: config.VerifyAdmission,
 		replenish: config.Replenish, relayEndpoint: local.CarrierRelayEndpoint, literalEndpoint: config.LiteralEndpoint}
 	running := newServerWithHost(dependencies, local.Certificate, shared, receiving, pool, host, local.ConnectionLimit, config.Now)
-	return &Handle{Done: running.Done(), Usage: func() (uint64, uint64, uint64) {
+	return &Handle{Done: running.Done(), Joined: running.drained, Usage: func() (uint64, uint64, uint64) {
 		active := uint64(running.Active())
 		return active, active, 0
 	}, Stop: func() { _ = running.Stop() }, Drain: func(ctx context.Context) error {

@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/network/state"
-	"github.com/dianabuilds/ardents-network/internal/node/hosting"
 	"github.com/dianabuilds/ardents-network/internal/node/probe"
 	"github.com/dianabuilds/ardents-network/internal/resource"
 )
@@ -71,7 +70,7 @@ type runtimeConfig struct {
 	hostingSample     *resource.HostingSample
 	hostingUsage      resource.Sample
 	host              closedHostingHandle
-	hostLifetime      *hosting.Lifetime
+	cleanup           *dutyCleanup
 	hostingNext       time.Time
 	hostingLevel      pressureLevel
 	Config

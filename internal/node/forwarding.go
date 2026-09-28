@@ -75,7 +75,7 @@ func startClosedForwarding(local ClosedForwardingProfile, inputs roleInputs, sna
 	if err != nil {
 		return nil, err
 	}
-	return &dutyHandle{Done: running.Done, Protect: func(bool) {}, Usage: running.Usage, Stop: running.Stop, Drain: running.Drain}, nil
+	return &dutyHandle{Done: running.Done, Joined: running.Joined, Protect: func(bool) {}, Usage: running.Usage, Stop: running.Stop, Drain: running.Drain}, nil
 }
 
 func validateClosedForwardingProfile(local ClosedForwardingProfile, source authority.Source, snapshot state.NodeDuty, now time.Time) error {

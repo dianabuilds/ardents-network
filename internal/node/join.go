@@ -41,7 +41,7 @@ func startClosedDataJoin(local ClosedDataJoinProfile, inputs roleInputs, snapsho
 	if err != nil {
 		return nil, err
 	}
-	return &dutyHandle{Done: role.Done, Protect: func(bool) {}, Usage: role.Usage, Stop: role.Stop, Drain: role.Drain}, nil
+	return &dutyHandle{Done: role.Done, Joined: role.Joined, Protect: func(bool) {}, Usage: role.Usage, Stop: role.Stop, Drain: role.Drain}, nil
 }
 
 // joinHosting keeps the shared provider policy in Node while the JOIN role

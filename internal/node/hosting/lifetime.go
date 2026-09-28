@@ -26,6 +26,9 @@ func (lifetime *Lifetime) Close() error {
 	}
 	lifetime.mu.Lock()
 	if lifetime.handed {
+		if lifetime.closed {
+			return lifetime.closeLocked()
+		}
 		lifetime.mu.Unlock()
 		return nil
 	}

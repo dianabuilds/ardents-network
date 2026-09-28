@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/ed25519"
 	"errors"
+	"path/filepath"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/network/state"
@@ -33,6 +34,11 @@ func resolveConfig(input Config) (runtimeConfig, error) {
 	if input.Current == nil || input.Emit == nil || input.LocalRoleStateRoot == "" {
 		return runtimeConfig{}, errors.New("node lifecycle callbacks are required")
 	}
+	roleRoot, pathErr := filepath.Abs(input.LocalRoleStateRoot)
+	if pathErr != nil {
+		return runtimeConfig{}, pathErr
+	}
+	input.LocalRoleStateRoot = roleRoot
 	if len(input.IdentityKey) != ed25519.PrivateKeySize {
 		return runtimeConfig{}, errors.New("node lifecycle identity is invalid")
 	}

@@ -1,12 +1,66 @@
 package node
 
 import (
+	"context"
 	"crypto/ed25519"
+	"crypto/sha256"
 	"errors"
-	"github.com/dianabuilds/ardents-network/internal/network/state"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
+
+	localroles "github.com/dianabuilds/ardents-network/internal/network/duty"
+	"github.com/dianabuilds/ardents-network/internal/network/state"
 )
+
+func TestResolvePinsLocalRoleRootAcrossWorkingDirectoryChange(t *testing.T) {
+	fixture := newLifecycleFixture(t)
+	workingDirectory, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	roleRoot, err := filepath.Abs(fixture.config.LocalRoleStateRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	relativeRoot, err := filepath.Rel(workingDirectory, roleRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fixture.config.LocalRoleStateRoot = relativeRoot
+	fixture.config.Current = func() (state.NodeDuty, error) { return fixture.snapshot, nil }
+	fixture.config.Emit = func(context.Context, Event) error { return nil }
+	config, err := resolveConfig(fixture.config)
+	if err != nil || config.LocalRoleStateRoot != roleRoot {
+		t.Fatalf("resolved local role root = %q, %v, want %q", config.LocalRoleStateRoot, err, roleRoot)
+	}
+	t.Chdir(t.TempDir())
+	if err := retainLocalDuty(config, fixture.snapshot, "live"); err != nil {
+		t.Fatal(err)
+	}
+	roles, err := localroles.Open(localroles.Config{Root: roleRoot, Clock: time.Now})
+	if err != nil {
+		t.Fatal(err)
+	}
+	conflict, checkErr := roles.Conflict(fixture.snapshot.NodeID, sha256.Sum256([]byte(fixture.snapshot.DeclaredFamily)))
+	closeErr := roles.Close()
+	if checkErr != nil || closeErr != nil || !conflict {
+		t.Fatalf("role was redirected after cwd change: conflict %v, check %v, close %v", conflict, checkErr, closeErr)
+	}
+	if err := releaseLocalDuty(config); err != nil {
+		t.Fatal(err)
+	}
+	roles, err = localroles.Open(localroles.Config{Root: roleRoot, Clock: time.Now})
+	if err != nil {
+		t.Fatal(err)
+	}
+	conflict, checkErr = roles.Conflict(fixture.snapshot.NodeID, sha256.Sum256([]byte(fixture.snapshot.DeclaredFamily)))
+	closeErr = roles.Close()
+	if checkErr != nil || closeErr != nil || conflict {
+		t.Fatalf("role removal was redirected after cwd change: conflict %v, check %v, close %v", conflict, checkErr, closeErr)
+	}
+}
 
 func TestAdmissionRequiresEveryPrerequisite(t *testing.T) {
 	t.Parallel()
