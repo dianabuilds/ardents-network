@@ -229,6 +229,16 @@ no active predecessor never stages a future genesis: it records the complete
 wave and defers retry until that Epoch becomes current, leaving the root
 reopenable without a current generation.
 
+A serving Direct Source also owns one local `direct-source` duty for the
+current Epoch's materialized identity, family, and validity window. Offline
+acceptance and Source-wave activation advance that duty through their shared
+active-decision commit. State holds the local role root while replacing the
+duty and publishing the successor, so another role owner cannot observe an
+unprotected transition. A failure before the durable distribution floor is
+committed restores the predecessor duty; loss of that guard retires the
+serving State owner. Once the floor commits, the successor duty stays with
+the recoverable active decision even if the final State pointer needs repair.
+
 The closed Route profile pins its Epoch envelope: new closed candidates are
 accepted only as AREP v3 (ADR-0111). Offline acceptance and the Source-wave
 verifier share one schema gate and refuse a retired envelope with the typed

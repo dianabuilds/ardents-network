@@ -84,9 +84,12 @@ func (s *networkState) retainSourceServer() error {
 	if err != nil {
 		return err
 	}
-	retained := duty.Duty{Identity: s.current.Snapshot.NodeID, Family: sha256.Sum256([]byte(s.current.Snapshot.DeclaredFamily)),
-		Class: "direct-source", State: "live", NotAfter: s.current.Snapshot.ValidUntil}
-	return errors.Join(roles.Replace(sourceProducer("server", s.config.root), []duty.Duty{retained}), roles.Close())
+	return errors.Join(roles.Replace(sourceProducer("server", s.config.root), []duty.Duty{sourceServerDuty(*s.current)}), roles.Close())
+}
+
+func sourceServerDuty(decision epoch.Decision) duty.Duty {
+	return duty.Duty{Identity: decision.Snapshot.NodeID, Family: sha256.Sum256([]byte(decision.Snapshot.DeclaredFamily)),
+		Class: "direct-source", State: "live", NotAfter: decision.Snapshot.ValidUntil}
 }
 
 func (s *networkState) releaseSourceServer() error {
