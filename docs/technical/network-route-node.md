@@ -255,6 +255,9 @@ unprotected transition. A failure before the durable distribution floor is
 committed restores the predecessor duty; loss of that guard retires the
 serving State owner. Once the floor commits, the successor duty stays with
 the recoverable active decision even if the final State pointer needs repair.
+State resolves the configured local role root once at Open, so later duty
+replacement and release use the same root if the process working directory
+changes.
 
 The closed Route profile pins its Epoch envelope: new closed candidates are
 accepted only as AREP v3 (ADR-0111). Offline acceptance and the Source-wave

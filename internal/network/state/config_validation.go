@@ -75,6 +75,13 @@ func validateConfig(input Config) (config, error) {
 	if (sourceInfo.Configured || sourceInfo.Serving) && input.LocalRoleStateRoot == "" {
 		return config{}, errors.New("direct Source work requires local role state")
 	}
+	localRoles := input.LocalRoleStateRoot
+	if localRoles != "" {
+		localRoles, err = filepath.Abs(localRoles)
+		if err != nil {
+			return config{}, fmt.Errorf("resolve local role state root: %w", err)
+		}
+	}
 	acceptedProfile := input.AcceptedProfile
 	if acceptedProfile == "" {
 		acceptedProfile = epoch.ProfileRoleProbe
@@ -99,7 +106,7 @@ func validateConfig(input Config) (config, error) {
 		source: sourcePlan, sourceInfo: sourceInfo, observation: input.ClockObservation.UTC(), observe: observe,
 		automatic: input.AutomaticRefreshInterval, profile: input.RuntimeProfile,
 		resources:  input.ObserveResources,
-		localRoles: input.LocalRoleStateRoot,
+		localRoles: localRoles,
 		anchorWall: initial, anchorMono: time.Now(),
 	}
 	if resolved.profile != "" && resolved.profile != "h3-s-v1" {

@@ -212,3 +212,50 @@ func configureSourceServer(t *testing.T, config state.Config) state.Config {
 	config.Source.ServeClientKeyDigests = [][32]byte{client.pin}
 	return config
 }
+
+func TestServingSourceDutyKeepsOpeningRoleRootAfterChdir(t *testing.T) {
+	genesis := newFixture(t)
+	successor := nextFixture(t, genesis)
+	config := installedServingSourceConfig(t, genesis)
+	openingDirectory := t.TempDir()
+	laterDirectory := t.TempDir()
+	t.Chdir(openingDirectory)
+	config.LocalRoleStateRoot = "roles"
+
+	serving, err := state.Open(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	current, err := serving.Current()
+	if err != nil {
+		_ = serving.Close()
+		t.Fatal(err)
+	}
+	roleRoot := filepath.Join(openingDirectory, "roles")
+	clock := func() time.Time { return time.Unix(genesis.now, 0).UTC() }
+	family := sha256.Sum256([]byte(current.DeclaredFamily))
+	if conflict, err := duty.ReadConflict(roleRoot, clock, current.NodeID, family); err != nil || !conflict {
+		_ = serving.Close()
+		t.Fatalf("serving Source duty at opening root = %t, %v; want retained", conflict, err)
+	}
+
+	t.Chdir(laterDirectory)
+	advanced, err := serving.Accept(context.Background(), successor.epoch, successor.inputs, successor.materializations)
+	if err != nil {
+		_ = serving.Close()
+		t.Fatalf("accept after working directory changed: %v", err)
+	}
+	afterOriginal := current.ValidUntil.Add(time.Minute)
+	if conflict, err := duty.ReadConflict(roleRoot, func() time.Time { return afterOriginal }, advanced.NodeID,
+		sha256.Sum256([]byte(advanced.DeclaredFamily))); err != nil || !conflict {
+		_ = serving.Close()
+		t.Fatalf("successor Source duty at opening root = %t, %v; want retained", conflict, err)
+	}
+	if err := serving.Close(); err != nil {
+		t.Fatalf("close after working directory changed: %v", err)
+	}
+	if conflict, err := duty.ReadConflict(roleRoot, clock, advanced.NodeID,
+		sha256.Sum256([]byte(advanced.DeclaredFamily))); err != nil || conflict {
+		t.Fatalf("serving Source duty after close = %t, %v; want released", conflict, err)
+	}
+}
