@@ -123,6 +123,19 @@ func (owner *closedSourceChannels) Close() error {
 	return owner.closeErr
 }
 
+func (owner *closedSourceChannels) childCapacityLocked(purpose ardp.Purpose) (reserved, available bool) {
+	extra := 0
+	for _, lane := range owner.lanes {
+		if lane.reservedControl {
+			extra++
+		}
+	}
+	if len(owner.lanes)-extra < route.ClosedForwardChildren {
+		return false, true
+	}
+	return true, route.ClosedControlPurpose(purpose) && extra < 2
+}
+
 func (owner *closedSourceChannels) open(ctx context.Context, open route.ClosedOpen, pending time.Time) (*closedSourceLane, error) {
 	body, err := route.EncodeClosedOpen(open)
 	if err != nil {
