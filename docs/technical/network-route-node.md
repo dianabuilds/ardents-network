@@ -157,12 +157,13 @@ and Introduction sender orchestration. Shared credential-relay grammar and the
 standalone reachability Relay remain with their actual consumers; test-local
 reciprocal fixtures do not restore a production receiving path.
 The old Node-leg dial and client confirmation entrypoint are also absent.
-The v1 `ListenNodeCarrier` and its exclusive helpers are absent. Current Node duties use
-`ListenClosedSharedCarrier`; the direct role issuer uses
-`ListenClosedRoleCarrier`. Shared byte-lane and TLS/QUIC mechanics remain
-with those closed consumers. The v1 State/profile readers and reciprocal
-codec are separate compatibility questions and are not retired by this
-listener disposition.
+The v1 `ListenNodeCarrier` and its exclusive helpers are absent. Current Node
+duties, including the issuer, use `ListenClosedSharedCarrier`. The issuer
+passes that listener to Credential's admitted bootstrap server; its direct
+`ListenClosedRoleCarrier` branch has no current production Node caller. Shared
+byte-lane and TLS/QUIC mechanics remain with the closed consumers. The v1
+State/profile readers and reciprocal codec are separate compatibility
+questions and are not retired by this listener disposition.
 No retirement path inherits a duty,
 regenerates a key, resets a root or floor, converts state, or adopts foreign
 files. Compatibility readers and separately owned retirement surfaces remain
