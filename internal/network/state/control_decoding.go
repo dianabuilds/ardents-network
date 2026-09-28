@@ -122,7 +122,7 @@ func decodeDistributionCycle(d *distributionDecoder, state *distributionState) e
 		return errors.New("distribution cycle flag is invalid")
 	}
 	state.cycleActive = active == 1
-	if state.cyclePurpose, err = d.byte(); err != nil || state.cyclePurpose > 1 {
+	if state.cyclePurpose, err = d.byte(); err != nil || state.cyclePurpose > sourceCyclePurposeRefresh {
 		return errors.New("distribution cycle purpose is invalid")
 	}
 	started, err := d.uint64()
@@ -134,7 +134,7 @@ func decodeDistributionCycle(d *distributionDecoder, state *distributionState) e
 		return err
 	}
 	state.cycleStarted, state.cycleDeadline = int64(started), int64(deadline)
-	if state.cycleActive && (state.cyclePurpose != 1 || state.cycleStarted <= 0 || state.cycleDeadline <= state.cycleStarted) {
+	if state.cycleActive && (state.cyclePurpose != sourceCyclePurposeRefresh || state.cycleStarted <= 0 || state.cycleDeadline <= state.cycleStarted) {
 		return errors.New("active distribution cycle metadata is incomplete")
 	}
 	statuses, err := d.bytes(len(state.attempts))
@@ -143,7 +143,7 @@ func decodeDistributionCycle(d *distributionDecoder, state *distributionState) e
 	}
 	copy(state.attempts[:], statuses)
 	for _, status := range state.attempts {
-		if status > 3 {
+		if status > sourceAttemptFailed {
 			return errors.New("distribution attempt status is invalid")
 		}
 	}
@@ -163,7 +163,7 @@ func decodeDistributionCycle(d *distributionDecoder, state *distributionState) e
 			return readErr
 		}
 		copy(state.requestedDigests[index][:], digest)
-		if (state.requestedDigests[index] == [32]byte{}) != (state.attempts[index+2] == 0) {
+		if (state.requestedDigests[index] == [32]byte{}) != (state.attempts[digestAttemptSlot(index)] == sourceAttemptNotStarted) {
 			return errors.New("BY_DIGEST attempt lacks its exact selector")
 		}
 	}

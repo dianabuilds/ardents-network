@@ -11,6 +11,23 @@ import (
 
 const maximumSourceExposureHistory = 2
 
+// These values are persisted in the ARDS1D4 distribution journal. Renaming
+// in-memory states must never renumber an existing byte.
+// Zero is the unset purpose in a fresh root.
+const sourceCyclePurposeRefresh byte = 1
+
+const (
+	sourceAttemptNotStarted byte = iota
+	sourceAttemptInFlight
+	sourceAttemptCompleted
+	sourceAttemptFailed // includes a persisted interrupted attempt
+)
+
+const sourceDigestSlotOffset = 2
+
+// LATEST uses slots 0 and 1; BY_DIGEST uses slots 2 and 3.
+func digestAttemptSlot(sourceIndex int) int { return sourceDigestSlotOffset + sourceIndex }
+
 type distributionState struct {
 	sequence            uint64
 	epochFloor          uint64

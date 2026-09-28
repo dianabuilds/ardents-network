@@ -113,7 +113,7 @@ func (s *networkState) fetchAndVerify(ctx context.Context, index int, current *e
 			return failedSourceResult(index, outcomeIndex, observations, startErr)
 		}
 		requestedDigest := response.ObjectDigest
-		resultIndex, outcomeIndex = fallback, 2+fallback
+		resultIndex, outcomeIndex = fallback, digestAttemptSlot(fallback)
 		response, err = s.fetchSource(ctx, fallback, source.Message{
 			Operation: "by-digest", NetworkDigest: source.NetworkDigest(s.config.networkID), ObjectDigest: response.ObjectDigest,
 			MaterialIndex: s.config.sourceInfo.MaterialIndex,

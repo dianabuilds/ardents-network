@@ -25,20 +25,18 @@ func (s *networkState) beginLatestAttempt(index int) (bool, byte, error) {
 	if !state.cycleActive || index < 0 || index > 1 {
 		return false, 0, errors.New("LATEST source attempt is outside the active cycle")
 	}
-	if state.attempts[index] == 1 {
+	if state.interruptUnresolvedAttempt(index) {
 		state.sequence++
-		state.attempts[index] = 3
-		state.outcomes[index] = sourceOutcomeInterrupted
 		if err := s.commitDistribution(state); err != nil {
 			return false, 0, err
 		}
 		return false, sourceOutcomeInterrupted, nil
 	}
-	if state.attempts[index] != 0 {
+	if state.attempts[index] != sourceAttemptNotStarted {
 		return false, state.outcomes[index], nil
 	}
 	state.sequence++
-	state.attempts[index] = 1
+	state.attempts[index] = sourceAttemptInFlight
 	exposure := s.config.sourceInfo.Exposures[index]
 	if !containsIdentity(state.history, exposure) {
 		state.history = append(state.history, exposure)
@@ -52,13 +50,13 @@ func (s *networkState) beginLatestAttempt(index int) (bool, byte, error) {
 func (s *networkState) beginDigestAttempt(source int, digest [32]byte) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	index := 2 + source
-	if !s.distribution.cycleActive || s.distribution.attempts[index] != 0 || digest == [32]byte{} {
+	index := digestAttemptSlot(source)
+	if !s.distribution.cycleActive || s.distribution.attempts[index] != sourceAttemptNotStarted || digest == [32]byte{} {
 		return errors.New("by-digest source attempt is not available")
 	}
 	state := s.distribution
 	state.sequence++
-	state.attempts[index] = 1
+	state.attempts[index] = sourceAttemptInFlight
 	state.requestedDigests[source] = digest
 	exposure := s.config.sourceInfo.Exposures[source]
 	if !containsIdentity(state.history, exposure) {
@@ -67,20 +65,34 @@ func (s *networkState) beginDigestAttempt(source int, digest [32]byte) error {
 	return s.commitDistribution(state)
 }
 
-func (s *networkState) finishDigestAttempt(source int, succeeded bool) error {
+func (s *networkState) finishDigestAttempt(source int, responseCompleted bool) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	index := 2 + source
-	if !s.distribution.cycleActive || s.distribution.attempts[index] != 1 {
+	index := digestAttemptSlot(source)
+	if !s.distribution.cycleActive || s.distribution.attempts[index] != sourceAttemptInFlight {
 		return errors.New("by-digest source attempt is not started")
 	}
 	state := s.distribution
 	state.sequence++
-	state.attempts[index] = 3
-	if succeeded {
-		state.attempts[index] = 2
+	state.attempts[index] = sourceAttemptFailed
+	if responseCompleted {
+		state.attempts[index] = sourceAttemptCompleted
 	}
 	return s.commitDistribution(state)
+}
+
+// interruptUnresolvedAttempt closes an attempt whose result was not recorded.
+// A BY_DIGEST response can be marked completed before its object is verified;
+// after a crash its missing outcome must not look like "not attempted".
+func (state *distributionState) interruptUnresolvedAttempt(slot int) bool {
+	status := state.attempts[slot]
+	if status != sourceAttemptInFlight &&
+		(status != sourceAttemptCompleted || state.outcomes[slot] != 0) {
+		return false
+	}
+	state.attempts[slot] = sourceAttemptFailed
+	state.outcomes[slot] = sourceOutcomeInterrupted
+	return true
 }
 
 func containsIdentity(history [][32]byte, identity [32]byte) bool {

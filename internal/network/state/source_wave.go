@@ -9,15 +9,14 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/network/epoch"
 )
 
+const sourceWaveDuration = 15 * time.Second
+
 func (s *networkState) startSourceWave(now time.Time) ([2]int, time.Time, error) {
 	state := s.distribution
 	if state.cycleActive {
 		if now.Unix() >= state.cycleDeadline {
-			for index, status := range state.attempts {
-				if status == 1 {
-					state.attempts[index] = 3
-					state.outcomes[index] = sourceOutcomeInterrupted
-				}
+			for index := range state.attempts {
+				state.interruptUnresolvedAttempt(index)
 			}
 			state.cycleActive = false
 			state.sequence++
@@ -30,10 +29,8 @@ func (s *networkState) startSourceWave(now time.Time) ([2]int, time.Time, error)
 			return [2]int{}, time.Time{}, fmt.Errorf("%w: durable source cycle reached its recorded deadline", errRefreshUnavailable)
 		}
 		changed := false
-		for index := 2; index < len(state.attempts); index++ {
-			if state.attempts[index] == 1 {
-				state.attempts[index] = 3
-				state.outcomes[index] = sourceOutcomeInterrupted
+		for index := sourceDigestSlotOffset; index < len(state.attempts); index++ {
+			if state.interruptUnresolvedAttempt(index) {
 				changed = true
 			}
 		}
@@ -53,9 +50,9 @@ func (s *networkState) startSourceWave(now time.Time) ([2]int, time.Time, error)
 	state.trustedTimeFloor = max(state.trustedTimeFloor, now.Unix())
 	state.cycleID++
 	state.cycleActive = true
-	state.cyclePurpose = 1
+	state.cyclePurpose = sourceCyclePurposeRefresh
 	state.cycleStarted = now.Unix()
-	state.cycleDeadline = now.Add(15 * time.Second).Unix()
+	state.cycleDeadline = now.Add(sourceWaveDuration).Unix()
 	state.attempts = [4]byte{}
 	state.outcomes = [4]byte{}
 	state.requestedDigests = [2][32]byte{}

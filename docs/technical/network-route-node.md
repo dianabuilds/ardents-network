@@ -226,6 +226,28 @@ fallback truth.
 | [Current readers](../../internal/network/state/snapshot_access.go) | Derive a copied Snapshot and Node-duty view; expose the accepted closed profile's exact issuer/key and recipient constraints only while State and clock remain live. | Node and Endpoint consume State projections without gaining State-root custody. |
 | [`Wait` and `Close`](../../internal/network/state/lifecycle.go) | Report terminal background failure; cancel and join accepted work, close the durable root, release the serving Source duty, and retain one cleanup result for all Close callers. | `resource` supplies pressure observations; State retains supervision and cleanup ownership. |
 
+The ARDS1D4 distribution journal records one finite Source cycle. Its two
+`LATEST` attempt slots are 0 and 1; `BY_DIGEST` slots 2 and 3 use the same
+Source index plus 2. The persisted attempt byte has these meanings:
+
+| Byte | State | Transition owner |
+| --- | --- | --- |
+| 0 | Not started | A new cycle clears all four slots; only an unstarted attempt may begin. |
+| 1 | In flight | Starting `LATEST` or `BY_DIGEST` commits the attempt before contact. |
+| 2 | Completed | A `BY_DIGEST` response completed, or a final valid `LATEST` observation closed the attempt. |
+| 3 | Failed or interrupted | A failed observation, interrupted attempt, or expired cycle closes it without replay. |
+
+Within the recorded 15-second deadline, reopening the cycle preserves its
+Source order and exposure floor. An in-flight `LATEST` is recorded as
+interrupted when reached again and is not repeated; an unstarted `LATEST` may
+run. An in-flight `BY_DIGEST` is recorded as interrupted before the resumed
+wave. A `BY_DIGEST` response can reach completed before its bundle is
+verified; wave closure records the final outcome. After a crash, a
+completed attempt without that outcome is recorded as interrupted and its
+spent selector is not replayed. At the deadline, every unresolved slot becomes
+interrupted and the cycle enters durable backoff. The journal keeps the same purpose/status
+byte values and exact encoding across implementation refactors.
+
 A terminal automatic-refresh or resource-governor failure also makes
 State-owned Direct Source responses unavailable, including requests whose
 connections were already accepted. The resolver returns the existing busy

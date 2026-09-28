@@ -47,15 +47,15 @@ func finishWaveState(state *distributionState, now time.Time, outcomes [4]byte) 
 	state.cycleActive = false
 	state.outcomes = outcomes
 	for index, status := range state.attempts {
-		if status == 1 {
-			state.attempts[index] = 3
+		if status == sourceAttemptInFlight {
+			state.attempts[index] = sourceAttemptFailed
 		}
 	}
 	for index, outcome := range outcomes {
 		if outcome == sourceOutcomeValid {
-			state.attempts[index] = 2
+			state.attempts[index] = sourceAttemptCompleted
 		} else if outcome != 0 {
-			state.attempts[index] = 3
+			state.attempts[index] = sourceAttemptFailed
 		}
 	}
 	for _, outcome := range outcomes {
