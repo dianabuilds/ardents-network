@@ -237,6 +237,19 @@ when the old accepted record remains on disk. A failed pre-rename conflict
 cannot be inferred from that old record after restart; recovery uses only
 verified persisted evidence.
 
+The durable State root can retain 64 immutable Epoch generations and two
+ClosedProfile files per accepted generation. Its root scan therefore admits
+five fixed entries plus those 128 profile entries, with a separate finite
+allowance of 64 interrupted staging files. The `generations` child admits 64
+committed directories and its own allowance of 64 staging directories.
+After taking the root lease, recovery checks both directory populations before
+cleanup, removes only regular `.current-*` and `.closed-profile-*` files at the
+root and `.stage-*` directories in `generations`, and syncs the changed
+directories. Unrelated entries remain untouched and count against the stable
+budget; an excess or unexpected staging type refuses recovery. This is
+physical recovery only: State still authenticates restored generations and
+retains its Direct Source collision guard before publishing a current decision.
+
 The ARDS1D4 distribution journal records one finite Source cycle. Its two
 `LATEST` attempt slots are 0 and 1; `BY_DIGEST` slots 2 and 3 use the same
 Source index plus 2. The persisted attempt byte has these meanings:
