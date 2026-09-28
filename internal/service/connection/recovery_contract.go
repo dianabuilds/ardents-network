@@ -2,18 +2,6 @@ package connection
 
 import "errors"
 
-// ContinuesNameOrigin accepts only an update that preserves the immutable
-// Service target and ancestry while advancing the resolved revision or
-// repeating its exact record digest.
-func ContinuesNameOrigin(initial, update DestinationBinding) bool {
-	if update == (DestinationBinding{}) || update.Name != initial.Name || update.Generation != initial.Generation ||
-		update.Revision < initial.Revision || update.Authority != initial.Authority || update.Target != initial.Target ||
-		update.ParentName != initial.ParentName || update.ParentGeneration != initial.ParentGeneration {
-		return false
-	}
-	return update.Revision > initial.Revision || update.RecordDigest == initial.RecordDigest
-}
-
 // ValidateRecovery admits an absent recovery contract only when no Attachment
 // opener was supplied. A present contract must bind the ConnectionContext and
 // remain inside the Credential and Work Safety lifetime.

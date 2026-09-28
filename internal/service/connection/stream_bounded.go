@@ -13,7 +13,6 @@ import (
 // existing authenticated Terminal record at its exact logical offset; it is a
 // normal half-close rather than an exact-workload failure.
 func (stream *Stream) RunBounded(sendLimit, receiveLimit uint32) (Outcome, error) {
-	stream.watchNameOrigin()
 	stop := context.AfterFunc(stream.ctx, func() { stream.fail(stream.ctx.Err()) })
 	var releaseSafety func()
 	tail := false

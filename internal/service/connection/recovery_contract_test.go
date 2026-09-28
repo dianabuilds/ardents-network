@@ -2,22 +2,6 @@ package connection
 
 import "testing"
 
-func TestContinuesNameOriginPinsTargetAndAncestry(t *testing.T) {
-	t.Parallel()
-	binding := DestinationBinding{Name: "service", Generation: 1, Revision: 2, Authority: "authority",
-		Target: [32]byte{1}, ParentName: "parent", ParentGeneration: 3, RecordDigest: [32]byte{4}, Commitment: [32]byte{5}}
-	continued := binding
-	continued.Revision++
-	continued.RecordDigest = [32]byte{8}
-	if !ContinuesNameOrigin(binding, continued) {
-		t.Fatal("higher same-target revision was rejected")
-	}
-	continued.Target[0]++
-	if ContinuesNameOrigin(binding, continued) {
-		t.Fatal("target substitution was accepted")
-	}
-}
-
 func TestValidateRecoveryRequiresAnExactFiniteContract(t *testing.T) {
 	t.Parallel()
 	recovery := Recovery{CandidateView: [32]byte{1}, IsolationContext: [32]byte{2},

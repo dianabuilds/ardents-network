@@ -22,21 +22,6 @@ type ContextInput struct {
 	WorkSafetyNotAfter, WorkSafetyMaximum, NoNewRecoveryAfter int64
 }
 
-// DestinationBinding is the immutable Service Name provenance that a logical
-// connection pins for its entire lifetime. It contains no Namespace record or
-// mutable resolution owner.
-type DestinationBinding struct {
-	Name             string
-	Generation       uint64
-	Revision         uint64
-	Authority        string
-	Target           [32]byte
-	ParentName       string
-	ParentGeneration uint64
-	RecordDigest     [32]byte
-	Commitment       [32]byte
-}
-
 // Recovery fixes the immutable constraints for one fresh Route Attachment.
 // The lifecycle replaces only the attachment generation and deadline; it must
 // carry every other fact unchanged into each opening attempt.

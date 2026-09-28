@@ -91,8 +91,6 @@ type StreamConfig struct {
 	ContinuityKey  [32]byte
 	Authorized     time.Time
 	Client         bool
-	NameBinding    DestinationBinding
-	NameUpdates    <-chan DestinationBinding
 	// CloseApplicationOnRemoteTerminal makes one local presentation treat a
 	// verified remote EOF as a full local close. It is opt-in: ordinary native
 	// streams retain their bidirectional half-close semantics.
@@ -133,8 +131,6 @@ type Stream struct {
 	authorized                       time.Time
 	started                          time.Time
 	resources                        func(string, int) uint32
-	nameBinding                      DestinationBinding
-	nameUpdates                      <-chan DestinationBinding
 	closeApplicationOnRemoteTerminal bool
 	done                             chan struct{}
 
@@ -203,9 +199,9 @@ func NewStream(input StreamConfig) (*Stream, error) {
 	stream := &Stream{ctx: input.Context, application: input.Application, networkID: input.NetworkID, recovery: input.Recovery,
 		opener: input.OpenAttachment, continuity: input.ContinuityKey, client: input.Client,
 		authorized: input.Authorized, started: now, lastProgress: now, resources: input.Resources,
-		nameBinding: input.NameBinding, nameUpdates: input.NameUpdates, closeApplicationOnRemoteTerminal: input.CloseApplicationOnRemoteTerminal,
-		done:    make(chan struct{}),
-		current: input.Initial, ackSignal: make(chan struct{}, 1)}
+		closeApplicationOnRemoteTerminal: input.CloseApplicationOnRemoteTerminal,
+		done:                             make(chan struct{}),
+		current:                          input.Initial, ackSignal: make(chan struct{}, 1)}
 	stream.cond = sync.NewCond(&stream.mu)
 	return stream, nil
 }

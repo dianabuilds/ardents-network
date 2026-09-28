@@ -56,25 +56,6 @@ func (stream *Stream) outcome() Outcome {
 		Recoveries: stream.recoveries, ContinuityCommitment: stream.continuityCommitment()}
 }
 
-func (stream *Stream) watchNameOrigin() {
-	if stream.nameBinding == (DestinationBinding{}) {
-		return
-	}
-	go func() {
-		for {
-			select {
-			case <-stream.done:
-				return
-			case update, ok := <-stream.nameUpdates:
-				if !ok || !ContinuesNameOrigin(stream.nameBinding, update) {
-					stream.fail(errors.New("resolved Service Name binding changed"))
-					return
-				}
-			}
-		}
-	}()
-}
-
 func (stream *Stream) attachment() (*Attachment, error) {
 	stream.mu.Lock()
 	defer stream.mu.Unlock()

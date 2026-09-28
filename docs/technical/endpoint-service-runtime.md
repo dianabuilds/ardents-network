@@ -494,7 +494,7 @@ retirement and AAI3 version-refusal evidence.
 | Option | Authorizing consumer and finite workload | Product consequence | Decision |
 |---|---|---|---|
 | Preserve through a generic AAI3 caller | None exists. The selected AAI3 caller is the fixed protected text reader, not an arbitrary byte application. | Would widen the trusted Interface and confinement contract and make an unsupported generic Application a product surface. | Rejected. |
-| Retire generic `endpoint open` | No successor consumer is required; the command is closed at its adapter before effects. | Removes the file-to-file binary CLI contract while preserving protected text, Service Names, Administration, and shared native stream semantics. | Selected. |
+| Retire generic `endpoint open` | No successor consumer is required; the command is closed at its adapter before effects. | Removes the file-to-file binary CLI contract while preserving protected text, Target Links, Administration, and shared native stream semantics. | Selected. |
 
 The generic `ardents endpoint open <application-socket> <target-link>
 <input-file> <output-file>` command is selected for retirement. No current
@@ -514,8 +514,9 @@ creating an output, dialing the Application socket, or causing Endpoint,
 Route, or Network work. It selects no alternate command, text request, Target,
 or migration path.
 
-This decision preserves four separate facts. Human-facing Service Names and
-Target Links remain product functions on the selected protected protocol. The
+This decision preserves four separate facts. Target Links remain the maintained
+destination input; future protected Service Names require a new scoped design
+under ADR-0113. The
 fixed text AAI3 Interface remains selected. Service Administration remains a
 separately authorized Interface. The shared native Service Connection retains
 its directional half-close semantics for selected callers. None of those facts
