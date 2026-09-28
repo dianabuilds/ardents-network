@@ -15,11 +15,11 @@ import (
 func TestTextWorkerInitializationRevokeCancelsBeforeReadiness(t *testing.T) {
 	endpoint, principal := textContextEndpoint(t)
 	owner := admittedTextContext(t, endpoint, principal, broker.Connection)
-	job, err := beginTextTestJob(t, owner, endpoint, broker.Connection)
+	job, err := beginTestJob(t, owner, endpoint, broker.Connection)
 	if err != nil {
 		t.Fatal(err)
 	}
-	attachment, peer := textAttachmentPair(t)
+	attachment, peer := attachmentPair(t)
 	instance := worker.Instance{Name: "ardents-text-reader@0-12-997.service", Role: "reader", PID: attachment.PID(), UID: attachment.UID()}
 	finished := make(chan error, 1)
 	joined := make(chan struct{})

@@ -69,12 +69,12 @@ func (owner *serviceRecoveryTestOwner) Close() {
 	contexts := append([]*textContext(nil), owner.contexts...)
 	owner.mu.Unlock()
 	for _, connection := range connections {
-		if err := connection.Close(); !textRecoveryTestCleanupOnly(err) {
+		if err := connection.Close(); !recoveryTestCleanupOnly(err) {
 			owner.t.Errorf("recovery test transport cleanup: %v", err)
 		}
 	}
 	for _, stream := range streams {
-		if err := stream.Close(); err != nil && !textReadCancellationOnly(err) {
+		if err := stream.Close(); err != nil && !readCancellationOnly(err) {
 			owner.t.Errorf("recovery test stream cleanup: %v", err)
 		}
 	}
@@ -83,7 +83,7 @@ func (owner *serviceRecoveryTestOwner) Close() {
 	lateStreams := append([]*serviceStream(nil), owner.streams[len(streams):]...)
 	owner.mu.Unlock()
 	for _, stream := range lateStreams {
-		if err := stream.Close(); err != nil && !textReadCancellationOnly(err) {
+		if err := stream.Close(); err != nil && !readCancellationOnly(err) {
 			owner.t.Errorf("late recovery test stream cleanup: %v", err)
 		}
 	}
@@ -100,7 +100,7 @@ func (owner *serviceRecoveryTestOwner) Close() {
 // Cleanup may observe only cancellation and already-closed transport leaves.
 // Inspect every joined cause so that one expected close cannot hide a physical
 // retirement failure carried beside it.
-func textRecoveryTestCleanupOnly(err error) bool {
+func recoveryTestCleanupOnly(err error) bool {
 	if err == nil || err == context.Canceled || err == context.DeadlineExceeded || err == net.ErrClosed ||
 		err == io.ErrClosedPipe || err == client.ErrClosedSourceStopped {
 		return true
@@ -117,14 +117,14 @@ func textRecoveryTestCleanupOnly(err error) bool {
 			}
 		}
 		for _, cause := range causes {
-			if !textRecoveryTestCleanupOnly(cause) {
+			if !recoveryTestCleanupOnly(cause) {
 				return false
 			}
 		}
 		return true
 	}
 	if wrapped := errors.Unwrap(err); wrapped != nil {
-		return textRecoveryTestCleanupOnly(wrapped)
+		return recoveryTestCleanupOnly(wrapped)
 	}
 	return false
 }

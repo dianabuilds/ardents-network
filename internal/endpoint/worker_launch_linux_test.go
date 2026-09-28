@@ -10,7 +10,7 @@ import (
 
 func TestTextWorkerLaunchGateSerializesEndpointInstances(t *testing.T) {
 	first, second := &endpoint{}, &endpoint{}
-	releaseFirst, err := first.acquireTextLaunch(t.Context())
+	releaseFirst, err := first.acquireLaunch(t.Context())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -23,14 +23,14 @@ func TestTextWorkerLaunchGateSerializesEndpointInstances(t *testing.T) {
 
 	blocked, cancel := context.WithTimeout(t.Context(), 25*time.Millisecond)
 	defer cancel()
-	if release, err := second.acquireTextLaunch(blocked); err == nil {
+	if release, err := second.acquireLaunch(blocked); err == nil {
 		release()
 		t.Fatal("distinct Endpoint bypassed the process worker activation gate")
 	}
 
 	releaseFirst()
 	firstHeld = false
-	releaseSecond, err := second.acquireTextLaunch(t.Context())
+	releaseSecond, err := second.acquireLaunch(t.Context())
 	if err != nil {
 		t.Fatal(err)
 	}

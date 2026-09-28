@@ -15,14 +15,14 @@ import (
 // in-progress replacement. The zero value is ready for use under textContext.mu.
 type sourceLifecycle struct {
 	live       *sourceHandle
-	opening    *textOperationFlight
+	opening    *operationFlight
 	operations sourceOperationGate
-	set        *textInteriorSet
+	set        *interiorSet
 }
 
 // The retained Interior Set survives prefix replacement and belongs to this
 // context's Source lifecycle, not to an individual Route opening.
-func (lifecycle *sourceLifecycle) membersSlotLocked() **textInteriorSet {
+func (lifecycle *sourceLifecycle) membersSlotLocked() **interiorSet {
 	return &lifecycle.set
 }
 
@@ -32,7 +32,7 @@ func (lifecycle *sourceLifecycle) hasMembersLocked() bool {
 
 type sourceRetirement struct {
 	prefix  *client.ClosedSourcePrefix
-	opening *textOperationFlight
+	opening *operationFlight
 }
 
 // sourceHandle is a read-only capability for one exact published Source
@@ -170,7 +170,7 @@ func (lifecycle *sourceLifecycle) openingInProgressLocked() bool {
 	return lifecycle != nil && lifecycle.opening != nil
 }
 
-func (lifecycle *sourceLifecycle) reserveOpeningLocked(operation *textOperationFlight) bool {
+func (lifecycle *sourceLifecycle) reserveOpeningLocked(operation *operationFlight) bool {
 	if lifecycle == nil || operation == nil || lifecycle.live != nil || lifecycle.opening != nil {
 		return false
 	}
@@ -178,7 +178,7 @@ func (lifecycle *sourceLifecycle) reserveOpeningLocked(operation *textOperationF
 	return true
 }
 
-func (lifecycle *sourceLifecycle) openingAdmittedLocked(operation *textOperationFlight) bool {
+func (lifecycle *sourceLifecycle) openingAdmittedLocked(operation *operationFlight) bool {
 	if lifecycle == nil {
 		return false
 	}
@@ -188,7 +188,7 @@ func (lifecycle *sourceLifecycle) openingAdmittedLocked(operation *textOperation
 	return lifecycle.opening == operation
 }
 
-func (lifecycle *sourceLifecycle) finishOpeningLocked(operation *textOperationFlight,
+func (lifecycle *sourceLifecycle) finishOpeningLocked(operation *operationFlight,
 	prefix *client.ClosedSourcePrefix, cancel context.CancelFunc, publish bool) (*sourceHandle, bool) {
 	if lifecycle == nil || lifecycle.opening != operation {
 		return nil, false
@@ -305,7 +305,7 @@ func (lifecycle *sourceLifecycle) retireIdleLocked() error {
 	return prefix.Close()
 }
 
-func (lifecycle *sourceLifecycle) detachLocked() (*client.ClosedSourcePrefix, *textOperationFlight) {
+func (lifecycle *sourceLifecycle) detachLocked() (*client.ClosedSourcePrefix, *operationFlight) {
 	handle, opening := lifecycle.live, lifecycle.opening
 	lifecycle.live, lifecycle.opening = nil, nil
 	var prefix *client.ClosedSourcePrefix

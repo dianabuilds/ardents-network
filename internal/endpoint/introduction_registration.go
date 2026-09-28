@@ -195,7 +195,7 @@ func (owner *textContext) withdrawIntroduction(ctx context.Context) error {
 		return errors.New("text Publisher registration absent or ending")
 	}
 	attempt, cancel := context.WithCancel(owner.lease.Context())
-	flight := &textOperationFlight{owner: owner, context: attempt, cancelOperation: cancel, done: make(chan struct{})}
+	flight := &operationFlight{owner: owner, context: attempt, cancelOperation: cancel, done: make(chan struct{})}
 	if !owner.publication.pair.reserveWithdrawalLocked(flight) {
 		cancel()
 		owner.mu.Unlock()

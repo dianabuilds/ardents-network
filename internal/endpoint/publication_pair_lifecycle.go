@@ -15,7 +15,7 @@ import (
 // is usable.
 type publicationPairLifecycle struct {
 	opening              *registrationFlight
-	withdrawal           *textOperationFlight
+	withdrawal           *operationFlight
 	registration         *introductionRegistration
 	pendingRegistration  *introductionRegistration
 	previousRegistration *introductionRegistration
@@ -28,14 +28,14 @@ func (lifecycle *publicationPairLifecycle) withdrawalInProgressLocked() bool {
 	return lifecycle != nil && lifecycle.withdrawal != nil
 }
 
-func (lifecycle *publicationPairLifecycle) withdrawalLocked() *textOperationFlight {
+func (lifecycle *publicationPairLifecycle) withdrawalLocked() *operationFlight {
 	if lifecycle == nil {
 		return nil
 	}
 	return lifecycle.withdrawal
 }
 
-func (lifecycle *publicationPairLifecycle) reserveWithdrawalLocked(flight *textOperationFlight) bool {
+func (lifecycle *publicationPairLifecycle) reserveWithdrawalLocked(flight *operationFlight) bool {
 	if lifecycle == nil || flight == nil || lifecycle.withdrawal != nil {
 		return false
 	}
@@ -43,7 +43,7 @@ func (lifecycle *publicationPairLifecycle) reserveWithdrawalLocked(flight *textO
 	return true
 }
 
-func (lifecycle *publicationPairLifecycle) finishWithdrawalLocked(flight *textOperationFlight) {
+func (lifecycle *publicationPairLifecycle) finishWithdrawalLocked(flight *operationFlight) {
 	if lifecycle == nil || flight == nil || lifecycle.withdrawal != flight {
 		return
 	}
@@ -93,7 +93,7 @@ func (lifecycle *publicationPairLifecycle) evictEndedTargetLocked() *introductio
 // completeWithdrawalLocked retires the withdrawn target and its bounded
 // predecessor in one transition, clears the withdrawal flight, and returns the
 // predecessor for caller-owned close. Signaling waiters stays with the Context.
-func (lifecycle *publicationPairLifecycle) completeWithdrawalLocked(flight *textOperationFlight, registered *introductionRegistration) *introductionRegistration {
+func (lifecycle *publicationPairLifecycle) completeWithdrawalLocked(flight *operationFlight, registered *introductionRegistration) *introductionRegistration {
 	if lifecycle == nil {
 		return nil
 	}

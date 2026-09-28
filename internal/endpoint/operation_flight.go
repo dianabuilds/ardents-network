@@ -9,41 +9,41 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/route/client"
 )
 
-// textOperationFlight records cancellation and completion of one Context
+// operationFlight records cancellation and completion of one Context
 // operation. The Source stock-to-opening reservation, the Publisher
 // Introduction/Responder openings and the withdrawal all use this single
 // lifetime shape; their separate lifecycle owners retain the pointers.
 // For the Source opening the flight also owns the exact stock-to-Source
 // reservation and its terminal completion identity: the Source lifecycle
 // retains the single admission slot and cancels or joins this operation.
-type textOperationFlight struct {
+type operationFlight struct {
 	owner           *textContext
 	context         context.Context
 	cancelOperation context.CancelFunc
 	done            chan struct{}
 }
 
-func newTextOperationFlight(owner *textContext) *textOperationFlight {
+func newOperationFlight(owner *textContext) *operationFlight {
 	attempt, cancel := context.WithCancel(owner.lease.Context())
-	return &textOperationFlight{owner: owner, context: attempt, cancelOperation: cancel, done: make(chan struct{})}
+	return &operationFlight{owner: owner, context: attempt, cancelOperation: cancel, done: make(chan struct{})}
 }
 
 // admittedLocked accepts nil only when no opening owns the context slot. A
 // non-nil operation must be the exact live reservation retained by its owner.
-func (flight *textOperationFlight) admittedLocked(owner *textContext) bool {
+func (flight *operationFlight) admittedLocked(owner *textContext) bool {
 	if flight == nil {
 		return owner.source.openingAdmittedLocked(nil)
 	}
 	return flight.owner == owner && owner.source.openingAdmittedLocked(flight) && flight.context.Err() == nil
 }
 
-func (flight *textOperationFlight) join() {
+func (flight *operationFlight) join() {
 	if flight != nil {
 		<-flight.done
 	}
 }
 
-func (flight *textOperationFlight) cancel() {
+func (flight *operationFlight) cancel() {
 	if flight != nil {
 		flight.cancelOperation()
 	}
@@ -52,7 +52,7 @@ func (flight *textOperationFlight) cancel() {
 // complete terminates the Source opening reservation under owner.mu. Each
 // runner completes its flight exactly once; the unconditional done close
 // relies on that single-completion discipline.
-func (flight *textOperationFlight) complete(caller context.Context, prefix *client.ClosedSourcePrefix,
+func (flight *operationFlight) complete(caller context.Context, prefix *client.ClosedSourcePrefix,
 	openErr error) (*sourceHandle, error) {
 	owner := flight.owner
 	owner.mu.Lock()

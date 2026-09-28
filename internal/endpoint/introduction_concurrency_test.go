@@ -69,7 +69,7 @@ func TestTextIntroductionDeliversFourConcurrentReaders(t *testing.T) {
 	time.Sleep(10 * time.Second)
 	readers := make([]*textContext, 0, 4)
 	for range 4 {
-		readers = append(readers, independentTextReaderFixture(t, publisher.endpoint.network, source))
+		readers = append(readers, independentReaderFixture(t, publisher.endpoint.network, source))
 	}
 	// Keep bootstrap issuance outside the concurrent delivery trigger. This
 	// test isolates the Introduction failure observed after worker readiness.
@@ -87,7 +87,7 @@ func TestTextIntroductionDeliversFourConcurrentReaders(t *testing.T) {
 	defer cancel()
 	type readerWork struct {
 		owner *textContext
-		job   *textJobIdentity
+		job   *jobIdentity
 	}
 	type deliveryResult struct {
 		index      int
@@ -173,7 +173,7 @@ func TestTextIntroductionDeliversFourConcurrentReaders(t *testing.T) {
 	}
 }
 
-func independentTextReaderFixture(t *testing.T, network [32]byte, source *sourceStateFixture, requested ...[3]uint32) *textContext {
+func independentReaderFixture(t *testing.T, network [32]byte, source *sourceStateFixture, requested ...[3]uint32) *textContext {
 	t.Helper()
 	maxima := [3]uint32{64, 64, 0}
 	if len(requested) == 1 {

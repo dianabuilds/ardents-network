@@ -11,7 +11,7 @@ import (
 // Exclude a public member whose key or known family bridges a different live
 // assignment. Apply before Entry/Interior selection and again in admission's
 // current selection check; failure never resamples a retained set.
-func textRoleSeparated(member textRoleMember, view state.ClosedRouteView, snapshot state.Snapshot, now time.Time) bool {
+func roleSeparated(member roleMember, view state.ClosedRouteView, snapshot state.Snapshot, now time.Time) bool {
 	for _, role := range view.Nodes[:view.NodeCount] {
 		if role.RoleDomain == member.Domain && role.Subrole == member.subrole {
 			continue

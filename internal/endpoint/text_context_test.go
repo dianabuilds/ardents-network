@@ -72,7 +72,7 @@ func TestTextWorkerLossPreservesContextButNotInvocation(t *testing.T) {
 	endpoint, principal := textContextEndpoint(t)
 	for _, surface := range []broker.Surface{broker.Connection, broker.Administration} {
 		owner := admittedTextContext(t, endpoint, principal, surface)
-		job, err := beginTextTestJob(t, owner, endpoint, surface)
+		job, err := beginTestJob(t, owner, endpoint, surface)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -90,7 +90,7 @@ func TestTextWorkerLossPreservesContextButNotInvocation(t *testing.T) {
 		if err := owner.finishJobCleanup(job, nil); err != nil {
 			t.Fatal(err)
 		}
-		replacement, err := beginTextTestJob(t, owner, endpoint, surface)
+		replacement, err := beginTestJob(t, owner, endpoint, surface)
 		if err != nil {
 			t.Fatalf("surviving Endpoint context was lost with its worker: %v", err)
 		}
@@ -112,7 +112,7 @@ func TestTextWorkerLossPreservesContextButNotInvocation(t *testing.T) {
 func TestTextContextCleanupFailureCannotRestoreAuthority(t *testing.T) {
 	endpoint, principal := textContextEndpoint(t)
 	owner := admittedTextContext(t, endpoint, principal, broker.Connection)
-	job, err := beginTextTestJob(t, owner, endpoint, broker.Connection)
+	job, err := beginTestJob(t, owner, endpoint, broker.Connection)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -139,7 +139,7 @@ func TestTextContextRejectsRevokedLostAndForeignOwners(t *testing.T) {
 		t.Run(stop, func(t *testing.T) {
 			endpoint, principal := textContextEndpoint(t)
 			owner := admittedTextContext(t, endpoint, principal, broker.Connection)
-			job, err := beginTextTestJob(t, owner, endpoint, broker.Connection)
+			job, err := beginTestJob(t, owner, endpoint, broker.Connection)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -172,7 +172,7 @@ func TestTextContextRejectsRevokedLostAndForeignOwners(t *testing.T) {
 
 // The pure local-owner tests have no launched process. They must still finish
 // their reservation before the enclosing context can report joined shutdown.
-func beginTextTestJob(t *testing.T, owner *textContext, endpoint *endpoint, surface broker.Surface) (*textJobIdentity, error) {
+func beginTestJob(t *testing.T, owner *textContext, endpoint *endpoint, surface broker.Surface) (*jobIdentity, error) {
 	t.Helper()
 	job, err := owner.beginJob(endpoint, surface)
 	if err == nil {

@@ -11,10 +11,10 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/qualification"
 )
 
-// textJobIdentity owns one invocation's nonce, verified worker Grant handoff,
+// jobIdentity owns one invocation's nonce, verified worker Grant handoff,
 // retirement, and immutable joined cleanup result. The text context retains
 // only the admission reservation that points at this exact job.
-type textJobIdentity struct {
+type jobIdentity struct {
 	// The qualification run is bound to this exact Job so late callbacks
 	// cannot attach streams, samples or cleanup to its replacement.
 	qualification *qualification.Run
@@ -31,15 +31,15 @@ type textJobIdentity struct {
 	workerGrant   *broker.Broker
 }
 
-type textJobRetirement struct {
-	job *textJobIdentity
+type jobRetirement struct {
+	job *jobIdentity
 }
 
-func newTextJobIdentity(owner *textContext) (*textJobIdentity, error) {
+func newJobIdentity(owner *textContext) (*jobIdentity, error) {
 	if owner == nil || owner.lease == nil {
 		return nil, errors.New("text worker identity is unavailable")
 	}
-	job := &textJobIdentity{owner: owner, done: make(chan struct{})}
+	job := &jobIdentity{owner: owner, done: make(chan struct{})}
 	if _, err := rand.Read(job.nonce[:]); err != nil || job.nonce == [32]byte{} {
 		return nil, errors.New("text worker identity is unavailable")
 	}
@@ -47,14 +47,14 @@ func newTextJobIdentity(owner *textContext) (*textJobIdentity, error) {
 	return job, nil
 }
 
-func (job *textJobIdentity) currentLocked(owner *textContext, endpoint *endpoint, surface broker.Surface, nonce [32]byte) bool {
+func (job *jobIdentity) currentLocked(owner *textContext, endpoint *endpoint, surface broker.Surface, nonce [32]byte) bool {
 	return job != nil && owner != nil && job.owner == owner && owner.job == job && !job.retired &&
 		nonce != [32]byte{} && job.nonce == nonce && owner.liveLocked(endpoint, surface)
 }
 
 // claimWorkerLocked consumes the one worker-lifetime handoff before INIT. It
 // does not assert verified readiness or create a Grant.
-func (job *textJobIdentity) claimWorkerLocked(owner *textContext) bool {
+func (job *jobIdentity) claimWorkerLocked(owner *textContext) bool {
 	if job == nil || owner == nil || job.owner != owner || job.bound || job.finished {
 		return false
 	}
@@ -64,7 +64,7 @@ func (job *textJobIdentity) claimWorkerLocked(owner *textContext) bool {
 
 // handoffGrantLocked publishes a Grant only to this exact live, claimed job.
 // Rejected late handoffs are closed here and cannot attach to a replacement.
-func (job *textJobIdentity) handoffGrantLocked(owner *textContext, grant *broker.Broker, lease *broker.ActiveSession) bool {
+func (job *jobIdentity) handoffGrantLocked(owner *textContext, grant *broker.Broker, lease *broker.ActiveSession) bool {
 	if grant == nil || lease == nil {
 		if grant != nil {
 			grant.Close()
@@ -82,7 +82,7 @@ func (job *textJobIdentity) handoffGrantLocked(owner *textContext, grant *broker
 	return true
 }
 
-func (job *textJobIdentity) retire() {
+func (job *jobIdentity) retire() {
 	if job == nil || job.owner == nil {
 		return
 	}
@@ -91,7 +91,7 @@ func (job *textJobIdentity) retire() {
 	job.retireLocked(job.owner)
 }
 
-func (job *textJobIdentity) retireLocked(owner *textContext) bool {
+func (job *jobIdentity) retireLocked(owner *textContext) bool {
 	if job == nil || owner == nil || job.owner != owner || owner.job != job {
 		return false
 	}
@@ -104,14 +104,14 @@ func (job *textJobIdentity) retireLocked(owner *textContext) bool {
 	return true
 }
 
-func (job *textJobIdentity) stopLocked(owner *textContext) *textJobRetirement {
+func (job *jobIdentity) stopLocked(owner *textContext) *jobRetirement {
 	if !job.retireLocked(owner) {
 		return nil
 	}
-	return &textJobRetirement{job: job}
+	return &jobRetirement{job: job}
 }
 
-func (retirement *textJobRetirement) join() error {
+func (retirement *jobRetirement) join() error {
 	if retirement == nil || retirement.job == nil {
 		return nil
 	}
@@ -124,7 +124,7 @@ func (retirement *textJobRetirement) join() error {
 // finishCleanup publishes the first joined cleanup result and releases only
 // this job's reservation. A late completion cannot release a replacement or
 // erase a prior failure.
-func (job *textJobIdentity) finishCleanup(cleanupErr error) error {
+func (job *jobIdentity) finishCleanup(cleanupErr error) error {
 	if job == nil || job.owner == nil {
 		return errors.New("text worker cleanup does not match the retired job")
 	}

@@ -15,7 +15,7 @@ import (
 func TestTextContextCloseRevokesEveryChildBeforeOrderedJoin(t *testing.T) {
 	endpoint, principal := textContextEndpoint(t)
 	owner := admittedTextContext(t, endpoint, principal, broker.Connection)
-	job, err := beginTextTestJob(t, owner, endpoint, broker.Connection)
+	job, err := beginTestJob(t, owner, endpoint, broker.Connection)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -121,7 +121,7 @@ func TestTextContextCloseRevokesEveryChildBeforeOrderedJoin(t *testing.T) {
 func TestTextContextCloseJoinsPendingLaunchAndRetainsFailure(t *testing.T) {
 	endpoint, principal := textContextEndpoint(t)
 	owner := admittedTextContext(t, endpoint, principal, broker.Connection)
-	job, err := beginTextTestJob(t, owner, endpoint, broker.Connection)
+	job, err := beginTestJob(t, owner, endpoint, broker.Connection)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -166,17 +166,17 @@ func TestTextEndpointCloseCancelsAllBeforeJoiningAnyWorker(t *testing.T) {
 	endpoint, principal := textContextEndpoint(t)
 	first := admittedTextContext(t, endpoint, principal, broker.Connection)
 	second := admittedTextContext(t, endpoint, principal, broker.Administration)
-	firstJob, err := beginTextTestJob(t, first, endpoint, broker.Connection)
+	firstJob, err := beginTestJob(t, first, endpoint, broker.Connection)
 	if err != nil {
 		t.Fatal(err)
 	}
-	secondJob, err := beginTextTestJob(t, second, endpoint, broker.Administration)
+	secondJob, err := beginTestJob(t, second, endpoint, broker.Administration)
 	if err != nil {
 		t.Fatal(err)
 	}
 	closed := make(chan error, 1)
 	go func() { closed <- endpoint.Close() }()
-	for _, job := range []*textJobIdentity{firstJob, secondJob} {
+	for _, job := range []*jobIdentity{firstJob, secondJob} {
 		select {
 		case <-job.context.Done():
 		case <-time.After(time.Second):
@@ -219,7 +219,7 @@ func TestTextContextPendingCleanupKeepsFiniteAdmissionPressure(t *testing.T) {
 			t.Fatal(err)
 		}
 		t.Cleanup(func() { _ = owner.Close() })
-		job, err := beginTextTestJob(t, owner, endpoint, broker.Administration)
+		job, err := beginTestJob(t, owner, endpoint, broker.Administration)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -245,7 +245,7 @@ func TestTextContextCleanupFailureClosesExistingAndFutureJobAdmission(t *testing
 	endpoint, principal := textContextEndpoint(t)
 	failed := admittedTextContext(t, endpoint, principal, broker.Administration)
 	idle := admittedTextContext(t, endpoint, principal, broker.Connection)
-	job, err := beginTextTestJob(t, failed, endpoint, broker.Administration)
+	job, err := beginTestJob(t, failed, endpoint, broker.Administration)
 	if err != nil {
 		t.Fatal(err)
 	}

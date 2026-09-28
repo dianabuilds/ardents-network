@@ -21,7 +21,7 @@ import (
 // supplied "established" flag or copied wire nonce.
 type serviceBinding struct {
 	owner              *textContext
-	job                *textJobIdentity
+	job                *jobIdentity
 	credential         servicepublication.Credential
 	facts              nativeconnection.ProtectedContextInput
 	logical            [32]byte
@@ -36,7 +36,7 @@ type serviceBinding struct {
 // newServiceBinding is the Initiator's local owner operation after
 // destination authorization and verified reachability. The local Connection
 // context and its salt never leave this Endpoint.
-func (owner *textContext) newServiceBinding(job *textJobIdentity, destination targetlink.Link, current servicepublication.Current,
+func (owner *textContext) newServiceBinding(job *jobIdentity, destination targetlink.Link, current servicepublication.Current,
 	bounds [3]int64) (*serviceBinding, error) {
 	if owner == nil {
 		return nil, errors.New("text Service context unavailable")
@@ -85,7 +85,7 @@ func (owner *textContext) newServiceBinding(job *textJobIdentity, destination ta
 	return owner.bindServiceLocked(job, current, facts)
 }
 
-func (owner *textContext) bindServiceLocked(job *textJobIdentity, current servicepublication.Current,
+func (owner *textContext) bindServiceLocked(job *jobIdentity, current servicepublication.Current,
 	facts nativeconnection.ProtectedContextInput) (*serviceBinding, error) {
 	profile, now, err := owner.permissionProfileLocked()
 	if err != nil {
@@ -134,7 +134,7 @@ func (owner *textContext) bindServiceLocked(job *textJobIdentity, current servic
 		candidateView: profile.StateDigest, destinationBinding: sha256.Sum256([]byte(spelling))}, nil
 }
 
-func (owner *textContext) liveServiceJobLocked(job *textJobIdentity, surface broker.Surface) bool {
+func (owner *textContext) liveServiceJobLocked(job *jobIdentity, surface broker.Surface) bool {
 	return owner.liveLocked(owner.endpoint, surface) && job != nil && job.owner == owner && owner.job == job &&
 		owner.verifiedJob == job && !job.retired && job.bound && job.workerGrant != nil && job.context.Err() == nil
 }
@@ -164,7 +164,7 @@ func (binding *serviceBinding) matchesPublication(current servicepublication.Cur
 }
 
 // servesJob reports the exact immutable Context and job ownership.
-func (binding *serviceBinding) servesJob(owner *textContext, job *textJobIdentity) bool {
+func (binding *serviceBinding) servesJob(owner *textContext, job *jobIdentity) bool {
 	return binding != nil && binding.owner == owner && binding.job == job
 }
 
@@ -174,7 +174,7 @@ func (binding *serviceBinding) servesOwnerJob(owner *textContext) bool {
 }
 
 // jobIdentity returns the immutable job bound at construction.
-func (binding *serviceBinding) jobIdentity() *textJobIdentity {
+func (binding *serviceBinding) jobIdentity() *jobIdentity {
 	return binding.job
 }
 
@@ -218,7 +218,7 @@ func (binding *serviceBinding) sameAuthorityAs(other *serviceBinding) bool {
 
 // dispatchRecoveryLocked returns the recovery slot only for the binding that
 // serves the exact Context and job.
-func (binding *serviceBinding) dispatchRecoveryLocked(owner *textContext, job *textJobIdentity) *introductionRecoveryOwner {
+func (binding *serviceBinding) dispatchRecoveryLocked(owner *textContext, job *jobIdentity) *introductionRecoveryOwner {
 	if !binding.servesJob(owner, job) {
 		return nil
 	}

@@ -14,11 +14,11 @@ import (
 func TestTextWorkerLifetimeRefusesUnpinnedInvocationBeforeINIT(t *testing.T) {
 	endpoint, principal := textContextEndpoint(t)
 	owner := admittedTextContext(t, endpoint, principal, broker.Connection)
-	job, err := beginTextTestJob(t, owner, endpoint, broker.Connection)
+	job, err := beginTestJob(t, owner, endpoint, broker.Connection)
 	if err != nil {
 		t.Fatal(err)
 	}
-	attachment, peer := textAttachmentPair(t)
+	attachment, peer := attachmentPair(t)
 	// Matching local socket credentials cannot substitute for an observed and
 	// pinned installed invocation. No real cgroup is created by this fixture.
 	instance := worker.Instance{Name: "ardents-text-reader@0-12-997.service", Role: "reader", PID: attachment.PID(), UID: attachment.UID()}
@@ -41,15 +41,15 @@ func TestTextWorkerLifetimeRefusesUnpinnedInvocationBeforeINIT(t *testing.T) {
 func TestTextWorkerLifetimeRepeatedInitializationCannotConsumeAnotherAttachment(t *testing.T) {
 	endpoint, principal := textContextEndpoint(t)
 	owner := admittedTextContext(t, endpoint, principal, broker.Connection)
-	job, err := beginTextTestJob(t, owner, endpoint, broker.Connection)
+	job, err := beginTestJob(t, owner, endpoint, broker.Connection)
 	if err != nil {
 		t.Fatal(err)
 	}
-	first, _ := textAttachmentPair(t)
+	first, _ := attachmentPair(t)
 	if _, err := initializeOwnedWorker(context.Background(), context.Background(), first, worker.Instance{}, job, nil, nil); err == nil {
 		t.Fatal("empty invocation accepted")
 	}
-	other, peer := textAttachmentPair(t)
+	other, peer := attachmentPair(t)
 	if _, err := initializeOwnedWorker(context.Background(), context.Background(), other, worker.Instance{}, job, nil, nil); err == nil {
 		t.Fatal("job consumed twice")
 	}

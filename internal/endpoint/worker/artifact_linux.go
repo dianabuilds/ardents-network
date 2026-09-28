@@ -14,8 +14,8 @@ import (
 	"syscall"
 )
 
-const textArtifactPath = "/etc/ardents/text-worker-artifact.json"
-const textStopRulePath = "/usr/share/polkit-1/rules.d/50-ardents-text.rules"
+const artifactPath = "/etc/ardents/text-worker-artifact.json"
+const stopRulePath = "/usr/share/polkit-1/rules.d/50-ardents-text.rules"
 
 type Artifact struct {
 	manifestDigest [32]byte

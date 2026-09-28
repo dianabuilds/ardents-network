@@ -227,7 +227,7 @@ func TestTextRecoveryPublisherRejectsCapsuleBeyondLocalAttemptDeadline(t *testin
 
 	clientRequest := initial.binding.serviceRecovery()
 	clientRequest.Generation, clientRequest.Role, clientRequest.Deadline = 2, "client", now.Add(8*time.Second).UTC().Truncate(time.Second)
-	recovery, err := reader.prepareTextRecovery(ctx, readerJob, initial.binding, clientRequest)
+	recovery, err := reader.prepareRecovery(ctx, readerJob, initial.binding, clientRequest)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -237,7 +237,7 @@ func TestTextRecoveryPublisherRejectsCapsuleBeyondLocalAttemptDeadline(t *testin
 	if !recovery.plaintext.Deadline.After(publisherRequest.Deadline) {
 		t.Fatal("fixture did not exceed the Publisher recovery deadline")
 	}
-	if accepted, err := publisher.acceptTextRecovery(ctx, publisherJob, recovery.operation, publisherBinding, publisherRequest); err == nil || accepted != nil {
+	if accepted, err := publisher.acceptRecovery(ctx, publisherJob, recovery.operation, publisherBinding, publisherRequest); err == nil || accepted != nil {
 		t.Fatal("Publisher accepted a recovery capsule beyond its local attempt deadline")
 	}
 }

@@ -33,7 +33,7 @@ func TestTextResponderCancelledOpeningDoesNotRetireIntroductionOrPublishPrefix(t
 	introduction.prefix.Store(&client.ClosedSourcePrefix{})
 	owner.introduction.prefix.live = introduction
 	attempt, cancel := context.WithCancel(t.Context())
-	flight := &textOperationFlight{context: attempt, cancelOperation: cancel, done: make(chan struct{})}
+	flight := &operationFlight{context: attempt, cancelOperation: cancel, done: make(chan struct{})}
 	if !owner.responder.reserveOpeningLocked(flight) {
 		t.Fatal("Responder lifecycle refused its first opening")
 	}
@@ -60,7 +60,7 @@ func TestTextResponderCancelledOpeningDoesNotRetireIntroductionOrPublishPrefix(t
 
 func TestTextResponderOldOpeningCannotAcquireReplacementHandle(t *testing.T) {
 	var lifecycle responderPrefixLifecycle
-	firstFlight := &textOperationFlight{}
+	firstFlight := &operationFlight{}
 	if !lifecycle.reserveOpeningLocked(firstFlight) {
 		t.Fatal("Responder lifecycle refused first opening")
 	}
@@ -69,7 +69,7 @@ func TestTextResponderOldOpeningCannotAcquireReplacementHandle(t *testing.T) {
 		t.Fatal("Responder lifecycle refused first completion")
 	}
 	retirement := lifecycle.stopLocked()
-	secondFlight := &textOperationFlight{}
+	secondFlight := &operationFlight{}
 	if !lifecycle.reserveOpeningLocked(secondFlight) {
 		t.Fatal("Responder lifecycle refused replacement opening")
 	}

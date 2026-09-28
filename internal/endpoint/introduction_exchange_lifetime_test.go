@@ -12,7 +12,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/route/client"
 )
 
-func (owner *textContext) retainServiceTransportExchange(job *textJobIdentity, flight *introductionExchange) bool {
+func (owner *textContext) retainServiceTransportExchange(job *jobIdentity, flight *introductionExchange) bool {
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
 	return owner.retainServiceTransportExchangeLocked(job, flight)

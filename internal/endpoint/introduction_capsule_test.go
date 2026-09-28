@@ -23,9 +23,9 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/service/targetlink"
 )
 
-func liveCapsuleJob(t *testing.T, owner *textContext) *textJobIdentity {
+func liveCapsuleJob(t *testing.T, owner *textContext) *jobIdentity {
 	t.Helper()
-	job, err := beginTextTestJob(t, owner, owner.endpoint, owner.surface)
+	job, err := beginTestJob(t, owner, owner.endpoint, owner.surface)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -208,7 +208,7 @@ func TestTextIntroductionCapsuleBindsRealInstanceAndServiceStream(t *testing.T) 
 			}
 			exchangeCapsuleService(t, attempt, accepted)
 			checkCapsuleAdmissionBoundaries(t, publisher, reader, source, publisherJob, attempt, descriptor.Descriptor.Private.RecipientKey)
-			checkTextPreparationCallerHandover(t, reader, readerJob, source, targetlink.Link{Network: endpoint.network, Target: descriptor.Descriptor.Target}, bounds)
+			checkPreparationCallerHandover(t, reader, readerJob, source, targetlink.Link{Network: endpoint.network, Target: descriptor.Descriptor.Target}, bounds)
 			publisher.retireJob(publisherJob)
 			if err := publisher.finishJobCleanup(publisherJob, nil); err != nil {
 				t.Fatal(err)

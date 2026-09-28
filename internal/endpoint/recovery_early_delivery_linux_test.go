@@ -50,7 +50,7 @@ func TestTextRecoveryDeliveryMayArriveBeforePublisherFailureDetection(t *testing
 	clientRequest.Generation, clientRequest.Deadline, clientRequest.Role = 2, now.Add(6*time.Second), "client"
 	publisherRequest := remote.attempt.binding.serviceRecovery()
 	publisherRequest.Generation, publisherRequest.Deadline, publisherRequest.Role = 2, clientRequest.Deadline, "publisher"
-	early, err := reader.prepareTextRecovery(ctx, readerJob, initial.binding, clientRequest)
+	early, err := reader.prepareRecovery(ctx, readerJob, initial.binding, clientRequest)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -69,7 +69,7 @@ func TestTextRecoveryDeliveryMayArriveBeforePublisherFailureDetection(t *testing
 	default:
 	}
 
-	recovered, err := publisher.receiveTextRecovery(ctx, publisherJob, remote.attempt.binding, publisherRequest)
+	recovered, err := publisher.receiveRecovery(ctx, publisherJob, remote.attempt.binding, publisherRequest)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -87,7 +87,7 @@ func TestTextRecoveryDeliveryMayArriveBeforePublisherFailureDetection(t *testing
 	// claimed deliveries stranded when no local recovery waiter appears.
 	nextRequest := initial.binding.serviceRecovery()
 	nextRequest.Generation, nextRequest.Deadline, nextRequest.Role = 3, time.Now().UTC().Add(2*time.Second), "client"
-	next, err := reader.prepareTextRecovery(ctx, readerJob, initial.binding, nextRequest)
+	next, err := reader.prepareRecovery(ctx, readerJob, initial.binding, nextRequest)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -161,7 +161,7 @@ func TestTextRecoveryRefusalOutlivesCanceledAttempt(t *testing.T) {
 
 	request := initial.binding.serviceRecovery()
 	request.Generation, request.Role, request.Deadline = 2, "client", now.Add(6*time.Second)
-	recovery, err := reader.prepareTextRecovery(ctx, readerJob, initial.binding, request)
+	recovery, err := reader.prepareRecovery(ctx, readerJob, initial.binding, request)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -172,7 +172,7 @@ func TestTextRecoveryRefusalOutlivesCanceledAttempt(t *testing.T) {
 	received := make(chan error, 1)
 	go func() {
 		_, receiveErr := publisher.receiveIntroductionWith(attemptContext, publisherJob, want, remote.attempt.binding,
-			func(context.Context, *textJobIdentity, []byte) (*introductionAttempt, error) {
+			func(context.Context, *jobIdentity, []byte) (*introductionAttempt, error) {
 				cancelAttempt()
 				return nil, refused
 			}, nil)

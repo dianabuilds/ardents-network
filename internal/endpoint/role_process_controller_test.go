@@ -20,7 +20,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/node"
 )
 
-type textRoleProcess struct {
+type roleProcess struct {
 	capture func(string)
 	dump    func(string)
 	stop    func() error
@@ -28,13 +28,13 @@ type textRoleProcess struct {
 	heap    bool
 }
 
-func startTextRoleProcess(t *testing.T, index int, config node.Config, snapshot state.Snapshot, root string, testName ...string) *textRoleProcess {
+func startRoleProcess(t *testing.T, index int, config node.Config, snapshot state.Snapshot, root string, testName ...string) *roleProcess {
 	t.Helper()
 	view, err := config.CurrentClosedRoute()
 	if err != nil {
 		t.Fatalf("missing profile: %v", err)
 	}
-	input := textRoleProcessInput{HostingRoot: config.HostingRoot, Snapshot: snapshot, View: view, Key: config.IdentityKey, StateRoot: config.LocalRoleStateRoot}
+	input := roleProcessInput{HostingRoot: config.HostingRoot, Snapshot: snapshot, View: view, Key: config.IdentityKey, StateRoot: config.LocalRoleStateRoot}
 	switch {
 	case config.ClosedIssuer.Root != "":
 		v := config.ClosedIssuer
@@ -112,7 +112,7 @@ func startTextRoleProcess(t *testing.T, index int, config node.Config, snapshot 
 		}
 	}
 	expect("role-ready")
-	process := &textRoleProcess{output: input.Output, heap: true}
+	process := &roleProcess{output: input.Output, heap: true}
 	process.capture = func(phase string) {
 		t.Helper()
 		if _, err := fmt.Fprintln(stdin, "state "+phase); err != nil {

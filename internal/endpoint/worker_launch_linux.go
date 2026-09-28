@@ -100,7 +100,7 @@ func (owner *textContext) launchInstalledWorker(ctx context.Context, snapshot []
 	defer cancel()
 	stopCaller := context.AfterFunc(ctx, cancel)
 	defer stopCaller()
-	release, err = owner.endpoint.acquireTextLaunch(bounded)
+	release, err = owner.endpoint.acquireLaunch(bounded)
 	if err != nil {
 		return nil, err
 	}
@@ -137,7 +137,7 @@ func (owner *textContext) launchInstalledWorker(ctx context.Context, snapshot []
 	return bound, nil
 }
 
-func (endpoint *endpoint) acquireTextLaunch(ctx context.Context) (func(), error) {
+func (endpoint *endpoint) acquireLaunch(ctx context.Context) (func(), error) {
 	select {
 	case workerLaunchGate <- struct{}{}:
 		if ctx.Err() != nil || !endpoint.textAvailable() {

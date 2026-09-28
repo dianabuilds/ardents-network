@@ -22,11 +22,11 @@ import (
 // or complete P3 analysis. Public State and worker qualification are fixtures.
 func TestTextPublicationIsolatedRoleObservations(t *testing.T) {
 	if path := os.Getenv("ARDENTS_TEXT_READER_CHILD"); path != "" {
-		runTextReaderObservationChild(t, path)
+		runReaderObservationChild(t, path)
 		return
 	}
 	if path := os.Getenv("ARDENTS_TEXT_ROLE_CHILD"); path != "" {
-		runTextRoleObservationChild(t, path)
+		runRoleObservationChild(t, path)
 		return
 	}
 	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP, routecarrier.ClosedCarrierQUIC} {
@@ -34,22 +34,22 @@ func TestTextPublicationIsolatedRoleObservations(t *testing.T) {
 			output := t.TempDir()
 			if root := os.Getenv("ARDENTS_TEXT_ROLE_OBSERVATIONS"); root != "" {
 				var err error
-				output, err = createTextRoleObservationOutput(root, string(carrier))
+				output, err = createRoleObservationOutput(root, string(carrier))
 				if err != nil {
 					t.Fatal(err)
 				}
 			} else {
 				var err error
-				output, err = textRoleObservationCaptureRoot(output)
+				output, err = roleObservationCaptureRoot(output)
 				if err != nil {
 					t.Fatal(err)
 				}
 			}
-			var processes []*textRoleProcess
+			var processes []*roleProcess
 			publisherRoot := textNetworkPrivateRoot(t)
 			publisherProcess := startPublisherDurableCapture(t, output, publisherRoot)
 			runner := func(t *testing.T, index int, config node.Config, snapshot state.Snapshot) func() error {
-				process := startTextRoleProcess(t, index, config, snapshot, output)
+				process := startRoleProcess(t, index, config, snapshot, output)
 				processes = append(processes, process)
 				return process.stop
 			}
@@ -97,12 +97,12 @@ func TestTextPublicationIsolatedRoleObservations(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if !bytes.Equal(lookupTextPublishedProof(t, owner, published.Descriptor.Target), registration.descriptor) {
+			if !bytes.Equal(lookupPublishedProof(t, owner, published.Descriptor.Target), registration.descriptor) {
 				t.Fatal("receiving Store proof differs")
 			}
-			observeTextIndependentReader(t, source, published.Descriptor.Target, registration.descriptor, output, string(carrier))
-			awaitTextReaderBootstrapRetirement(t)
-			contextEvidence, foreignPermission := observeTextIndependentReaderContexts(t, source, published.Descriptor.Target, registration.descriptor, output)
+			observeIndependentReader(t, source, published.Descriptor.Target, registration.descriptor, output, string(carrier))
+			awaitReaderBootstrapRetirement(t)
+			contextEvidence, foreignPermission := observeIndependentReaderContexts(t, source, published.Descriptor.Target, registration.descriptor, output)
 			observe("published")
 			if err := owner.withdrawIntroduction(t.Context()); err != nil {
 				t.Fatal(err)
@@ -126,7 +126,7 @@ func TestTextPublicationIsolatedRoleObservations(t *testing.T) {
 						}
 					}
 				}
-				verifyTextRoleDurableStateCapture(t, process.output, "startup", "published", "withdrawn", "stopped")
+				verifyRoleDurableStateCapture(t, process.output, "startup", "published", "withdrawn", "stopped")
 			}
 			if err := endpoint.Close(); err != nil {
 				t.Fatal(err)
@@ -134,10 +134,10 @@ func TestTextPublicationIsolatedRoleObservations(t *testing.T) {
 			if err := publisherProcess.stop(); err != nil {
 				t.Fatal(err)
 			}
-			verifyTextRoleDurableStateCapture(t, publisherProcess.output, "startup", "published", "withdrawn", "stopped")
-			allProcesses := append([]*textRoleProcess{publisherProcess}, processes...)
-			writeAndVerifyTextRoleDurableReceipt(t, output, string(carrier), allProcesses)
-			writeAndVerifyTextReaderContextIsolation(t, output, string(carrier), contextEvidence, foreignPermission)
+			verifyRoleDurableStateCapture(t, publisherProcess.output, "startup", "published", "withdrawn", "stopped")
+			allProcesses := append([]*roleProcess{publisherProcess}, processes...)
+			writeAndVerifyRoleDurableReceipt(t, output, string(carrier), allProcesses)
+			writeAndVerifyReaderContextIsolation(t, output, string(carrier), contextEvidence, foreignPermission)
 			t.Logf("15 isolated Node roles and the Publisher durable root captured in one publication/lookup/withdrawal run; incomplete P3")
 		})
 	}

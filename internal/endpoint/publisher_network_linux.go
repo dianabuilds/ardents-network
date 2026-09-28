@@ -7,7 +7,7 @@ import (
 	"errors"
 	"sync"
 
-	"github.com/dianabuilds/ardents-network/internal/application/interfacev2/connection"
+	interfacev2connection "github.com/dianabuilds/ardents-network/internal/application/interfacev2/connection"
 	"github.com/dianabuilds/ardents-network/internal/qualification"
 )
 
@@ -17,7 +17,7 @@ import (
 const qualificationPublisherOpeningParallelism = qualification.SetupLimit
 const qualificationPublisherOpeningBatch = 16
 
-func (worker *qualifiedWorker) produceNetwork(lifetime context.Context, delivered chan<- connection.Stream) error {
+func (worker *qualifiedWorker) produceNetwork(lifetime context.Context, delivered chan<- interfacev2connection.Stream) error {
 	if worker == nil || worker.job == nil {
 		return errors.New("text Publisher producer unavailable")
 	}
@@ -27,7 +27,7 @@ func (worker *qualifiedWorker) produceNetwork(lifetime context.Context, delivere
 	return worker.produceQualificationNetwork(lifetime, delivered)
 }
 
-func (worker *qualifiedWorker) produceNetworkSequential(lifetime context.Context, delivered chan<- connection.Stream) error {
+func (worker *qualifiedWorker) produceNetworkSequential(lifetime context.Context, delivered chan<- interfacev2connection.Stream) error {
 	owner := worker.job.owner
 	network, cancel := context.WithCancel(lifetime)
 	var retired sync.WaitGroup
@@ -104,7 +104,7 @@ func (worker *qualifiedWorker) ensureQualificationPublisherJoinReserve(ctx conte
 	return owner.ensureQualificationTokenReserve(ctx, receiver, 2, minimum)
 }
 
-func (worker *qualifiedWorker) produceQualificationNetwork(lifetime context.Context, delivered chan<- connection.Stream) error {
+func (worker *qualifiedWorker) produceQualificationNetwork(lifetime context.Context, delivered chan<- interfacev2connection.Stream) error {
 	owner := worker.job.owner
 	network, cancel := context.WithCancel(lifetime)
 	if err := worker.ensureQualificationPublisherJoinReserve(network, 32); err != nil {

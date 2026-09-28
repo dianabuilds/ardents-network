@@ -73,12 +73,12 @@ func (owner *textContext) issueJoinTokens(ctx context.Context, receivers [][32]b
 
 // A non-nil opening must be the exact retained prefix transition. Keeping it
 // across both bootstrap flights prevents unrelated issuance stealing its slot.
-func (owner *textContext) issueTokensForOpening(ctx context.Context, receivers [][32]byte, class uint8, opening *textOperationFlight, refill bool) error {
+func (owner *textContext) issueTokensForOpening(ctx context.Context, receivers [][32]byte, class uint8, opening *operationFlight, refill bool) error {
 	return owner.issueTokensForOpeningWithCancellation(ctx, receivers, class, opening, refill, false, nil, nil)
 }
 
 func (owner *textContext) issueTokensForOpeningWithCancellation(ctx context.Context, receivers [][32]byte, class uint8,
-	opening *textOperationFlight, refill bool, discardCanceled bool, acquisition joinAcquisition,
+	opening *operationFlight, refill bool, discardCanceled bool, acquisition joinAcquisition,
 	expected *sourceHandle) error {
 	if owner == nil || ctx == nil || ctx.Err() != nil || class < 1 || class > 3 || len(receivers) == 0 || len(receivers) > 32 {
 		return errors.New("text issuance context is unavailable")
@@ -108,7 +108,7 @@ func (owner *textContext) issueTokensForOpeningWithCancellation(ctx context.Cont
 		owner.mu.Unlock()
 		return errors.New("text issuance owner is unavailable")
 	}
-	selection, err := owner.selectTextBootstrapLocked()
+	selection, err := owner.selectBootstrapLocked()
 	if err != nil || selection.ProfileDigest != profile.Digest {
 		owner.mu.Unlock()
 		return errors.New("text issuance source selection unavailable")

@@ -7,14 +7,14 @@ import (
 	"errors"
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
-	"github.com/dianabuilds/ardents-network/internal/application/interfacev1/administration"
+	interfacev1administration "github.com/dianabuilds/ardents-network/internal/application/interfacev1/administration"
 	"github.com/dianabuilds/ardents-network/internal/service/targetlink"
 )
 
 // PublishedLink projects only the committed run's canonical destination. It
 // consumes fresh Administration authority, does no network lookup and cannot
 // create, retry, refresh or resurrect a publication.
-func (owner *textAdministration) PublishedLink(ctx context.Context) (link string, outcome error) {
+func (owner *administration) PublishedLink(ctx context.Context) (link string, outcome error) {
 	if err := owner.authorize(ctx); err != nil {
 		return "", err
 	}
@@ -62,4 +62,4 @@ func (owner *textAdministration) PublishedLink(ctx context.Context) (link string
 	return targetlink.Encode(run.link)
 }
 
-var _ administration.PublishedLinkProvider = (*textAdministration)(nil)
+var _ interfacev1administration.PublishedLinkProvider = (*administration)(nil)

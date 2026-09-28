@@ -6,14 +6,14 @@ import (
 	"context"
 	"errors"
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
-	"github.com/dianabuilds/ardents-network/internal/application/interfacev2/connection"
+	interfacev2connection "github.com/dianabuilds/ardents-network/internal/application/interfacev2/connection"
 	"github.com/dianabuilds/ardents-network/internal/service/targetlink"
 	"net"
 )
 
 // Component fixtures compose already-qualified worker operations directly.
 // They do not exercise installed startup, publication readiness or AAI3 admission.
-// Production uses startPublication and textConnection.Open with reserved operations.
+// Production uses startPublication and interfacev2connection.Open with reserved operations.
 // serveNetwork retains one Publisher worker across independent network reads.
 // Introduction acceptance, JOIN and Service authentication are Endpoint-owned;
 // the Application sees only streams authenticated for this exact live job.
@@ -29,14 +29,14 @@ func (worker *qualifiedWorker) serve(ctx context.Context, incoming <-chan *servi
 	if incoming == nil {
 		return errors.New("text Publisher Connections unavailable")
 	}
-	return worker.serveFrom(ctx, func(forwarding context.Context, delivered chan<- connection.Stream) error {
+	return worker.serveFrom(ctx, func(forwarding context.Context, delivered chan<- interfacev2connection.Stream) error {
 		return worker.forwardServiceStreams(forwarding, incoming, delivered)
 	})
 }
 
 // serveFrom joins the producer before retiring the worker operation. A producer
 // owns every stream until the bridge accepts it; no admission queue is retained.
-func (worker *qualifiedWorker) serveFrom(ctx context.Context, produce func(context.Context, chan<- connection.Stream) error) error {
+func (worker *qualifiedWorker) serveFrom(ctx context.Context, produce func(context.Context, chan<- interfacev2connection.Stream) error) error {
 	bounded, finish, err := worker.beginOperation(ctx, broker.Administration)
 	if err != nil {
 		return err
@@ -47,7 +47,7 @@ func (worker *qualifiedWorker) serveFrom(ctx context.Context, produce func(conte
 // There is no buffered admission queue. A received stream remains owned here
 // until the worker bridge receives it; all other inputs remain producer-owned.
 func (worker *qualifiedWorker) forwardServiceStreams(ctx context.Context, incoming <-chan *serviceStream,
-	delivered chan<- connection.Stream) error {
+	delivered chan<- interfacev2connection.Stream) error {
 	for {
 		if err := ctx.Err(); err != nil {
 			return err

@@ -14,45 +14,45 @@ import (
 	"testing"
 )
 
-type textRoleDurableStateCapture struct {
-	Role           string                       `json:"role"`
-	Phase          string                       `json:"phase"`
-	InputSHA256    string                       `json:"inputSHA256"`
-	SequentialRead bool                         `json:"sequentialRead"`
-	Roots          []textRoleDurableRootCapture `json:"roots"`
+type roleDurableStateCapture struct {
+	Role           string                   `json:"role"`
+	Phase          string                   `json:"phase"`
+	InputSHA256    string                   `json:"inputSHA256"`
+	SequentialRead bool                     `json:"sequentialRead"`
+	Roots          []roleDurableRootCapture `json:"roots"`
 }
 
-type textRoleDurableRootCapture struct {
-	Name  string                       `json:"name"`
-	Files []textRoleDurableFileCapture `json:"files"`
+type roleDurableRootCapture struct {
+	Name  string                   `json:"name"`
+	Files []roleDurableFileCapture `json:"files"`
 }
 
-type textRoleDurableFileCapture struct {
+type roleDurableFileCapture struct {
 	Path   string `json:"path"`
 	SHA256 string `json:"sha256"`
 	Bytes  int64  `json:"bytes"`
 }
 
-type textRoleDurableReceipt struct {
-	Carrier string                       `json:"carrier"`
-	Roles   []textRoleDurableReceiptRole `json:"roles"`
+type roleDurableReceipt struct {
+	Carrier string                   `json:"carrier"`
+	Roles   []roleDurableReceiptRole `json:"roles"`
 }
 
-type textRoleDurableReceiptRole struct {
-	Path        string                        `json:"path"`
-	Role        string                        `json:"role"`
-	InputSHA256 string                        `json:"inputSHA256"`
-	Phases      []textRoleDurableReceiptPhase `json:"phases"`
+type roleDurableReceiptRole struct {
+	Path        string                    `json:"path"`
+	Role        string                    `json:"role"`
+	InputSHA256 string                    `json:"inputSHA256"`
+	Phases      []roleDurableReceiptPhase `json:"phases"`
 }
 
-type textRoleDurableReceiptPhase struct {
+type roleDurableReceiptPhase struct {
 	Phase          string   `json:"phase"`
 	Manifest       string   `json:"manifest"`
 	ManifestSHA256 string   `json:"manifestSHA256"`
 	Roots          []string `json:"roots"`
 }
 
-type textRoleDurableRoot struct {
+type roleDurableRoot struct {
 	name string
 	path string
 }
@@ -67,7 +67,7 @@ func TestCaptureTextRoleDurableStateRejectsRootInsideOutput(t *testing.T) {
 	if err := os.Mkdir(nested, 0o700); err != nil {
 		t.Fatal(err)
 	}
-	err := captureTextRoleDurableState(textRoleProcessInput{Output: output, StateRoot: nested}, inputPath, "startup")
+	err := captureRoleDurableState(roleProcessInput{Output: output, StateRoot: nested}, inputPath, "startup")
 	if err == nil || !strings.Contains(err.Error(), "root overlaps role output") {
 		t.Fatalf("capture error = %v, want root overlap", err)
 	}
@@ -76,7 +76,7 @@ func TestCaptureTextRoleDurableStateRejectsRootInsideOutput(t *testing.T) {
 	}
 }
 
-func captureTextRoleDurableState(input textRoleProcessInput, inputPath, phase string) error {
+func captureRoleDurableState(input roleProcessInput, inputPath, phase string) error {
 	if phase != "startup" && phase != "published" && phase != "data" && phase != "withdrawn" && phase != "stopped" {
 		return errors.New("invalid durable state phase")
 	}
@@ -86,7 +86,7 @@ func captureTextRoleDurableState(input textRoleProcessInput, inputPath, phase st
 	if !filepath.IsAbs(input.Output) || filepath.Clean(input.Output) != input.Output {
 		return errors.New("role output is not a clean absolute path")
 	}
-	roots := textRoleDurableRoots(input)
+	roots := roleDurableRoots(input)
 	for _, root := range roots {
 		if err := durableRootWithinRoleOutput(input.Output, root.path); err != nil {
 			return fmt.Errorf("%s root: %w", root.name, err)
@@ -104,12 +104,12 @@ func captureTextRoleDurableState(input textRoleProcessInput, inputPath, phase st
 	completed := false
 	defer func() {
 		if !completed {
-			_ = writeTextRoleDurableFile(filepath.Join(input.Output, phase+".durable.incomplete"), []byte("durable capture incomplete; do not use this phase"))
+			_ = writeRoleDurableFile(filepath.Join(input.Output, phase+".durable.incomplete"), []byte("durable capture incomplete; do not use this phase"))
 		}
 	}()
-	manifest := textRoleDurableStateCapture{Role: input.Role, Phase: phase, InputSHA256: hex.EncodeToString(inputDigest[:]), SequentialRead: true}
+	manifest := roleDurableStateCapture{Role: input.Role, Phase: phase, InputSHA256: hex.EncodeToString(inputDigest[:]), SequentialRead: true}
 	for _, root := range roots {
-		captured, err := copyTextRoleDurableRoot(root, output)
+		captured, err := copyRoleDurableRoot(root, output)
 		if err != nil {
 			return err
 		}
@@ -119,34 +119,34 @@ func captureTextRoleDurableState(input textRoleProcessInput, inputPath, phase st
 	if err != nil {
 		return err
 	}
-	if err := writeTextRoleDurableFile(filepath.Join(input.Output, phase+".durable.json"), encoded); err != nil {
+	if err := writeRoleDurableFile(filepath.Join(input.Output, phase+".durable.json"), encoded); err != nil {
 		return err
 	}
 	completed = true
 	return nil
 }
 
-func textRoleDurableRoots(input textRoleProcessInput) []textRoleDurableRoot {
-	var roots []textRoleDurableRoot
+func roleDurableRoots(input roleProcessInput) []roleDurableRoot {
+	var roots []roleDurableRoot
 	if input.StateRoot != "" {
-		roots = append(roots, textRoleDurableRoot{name: "local-role-state", path: input.StateRoot})
+		roots = append(roots, roleDurableRoot{name: "local-role-state", path: input.StateRoot})
 	}
 	if input.Root != "" {
 		name := "role"
 		if input.Role == "publisher" {
 			name = "publisher"
 		}
-		roots = append(roots, textRoleDurableRoot{name: name, path: input.Root})
+		roots = append(roots, roleDurableRoot{name: name, path: input.Root})
 	}
 	if input.AdmissionRoot != "" {
-		roots = append(roots, textRoleDurableRoot{name: "admission", path: input.AdmissionRoot})
+		roots = append(roots, roleDurableRoot{name: "admission", path: input.AdmissionRoot})
 	}
 	return roots
 }
 
-func startPublisherDurableCapture(t *testing.T, root, publisherRoot string) *textRoleProcess {
+func startPublisherDurableCapture(t *testing.T, root, publisherRoot string) *roleProcess {
 	t.Helper()
-	input := textRoleProcessInput{Role: "publisher", Root: publisherRoot, Output: filepath.Join(root, "publisher")}
+	input := roleProcessInput{Role: "publisher", Root: publisherRoot, Output: filepath.Join(root, "publisher")}
 	if err := os.Mkdir(input.Output, 0o700); err != nil {
 		t.Fatal(err)
 	}
@@ -159,27 +159,27 @@ func startPublisherDurableCapture(t *testing.T, root, publisherRoot string) *tex
 		t.Fatal(err)
 	}
 	clear(raw)
-	process := &textRoleProcess{output: input.Output}
+	process := &roleProcess{output: input.Output}
 	process.capture = func(phase string) {
 		t.Helper()
-		if err := captureTextRoleDurableState(input, path, phase); err != nil {
+		if err := captureRoleDurableState(input, path, phase); err != nil {
 			t.Fatal(err)
 		}
 	}
 	process.dump = func(string) {}
-	process.stop = func() error { return captureTextRoleDurableState(input, path, "stopped") }
+	process.stop = func() error { return captureRoleDurableState(input, path, "stopped") }
 	return process
 }
 
-func textRoleObservationCaptureRoot(root string) (string, error) {
-	worktree, err := textRoleObservationWorktree()
+func roleObservationCaptureRoot(root string) (string, error) {
+	worktree, err := roleObservationWorktree()
 	if err != nil {
 		return "", err
 	}
-	return textRoleObservationCaptureRootAgainstWorktree(root, worktree)
+	return roleObservationCaptureRootAgainstWorktree(root, worktree)
 }
 
-func textRoleObservationCaptureRootAgainstWorktree(root, worktree string) (string, error) {
+func roleObservationCaptureRootAgainstWorktree(root, worktree string) (string, error) {
 	if !filepath.IsAbs(root) || filepath.Clean(root) != root {
 		return "", errors.New("capture root must be a clean absolute path")
 	}
@@ -204,7 +204,7 @@ func textRoleObservationCaptureRootAgainstWorktree(root, worktree string) (strin
 	return canonicalRoot, nil
 }
 
-func textRoleObservationWorktree() (string, error) {
+func roleObservationWorktree() (string, error) {
 	directory, err := os.Getwd()
 	if err != nil {
 		return "", err
@@ -222,11 +222,11 @@ func textRoleObservationWorktree() (string, error) {
 }
 
 func TestTextRoleObservationCaptureRootRejectsWorktree(t *testing.T) {
-	worktree, err := textRoleObservationWorktree()
+	worktree, err := roleObservationWorktree()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := textRoleObservationCaptureRoot(worktree); err == nil || !strings.Contains(err.Error(), "outside the Git worktree") {
+	if _, err := roleObservationCaptureRoot(worktree); err == nil || !strings.Contains(err.Error(), "outside the Git worktree") {
 		t.Fatalf("capture root error = %v, want worktree rejection", err)
 	}
 }
@@ -237,7 +237,7 @@ func TestTextRoleObservationCaptureRootRejectsSymlink(t *testing.T) {
 	if err := os.Symlink(root, link); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := textRoleObservationCaptureRoot(link); err == nil || !strings.Contains(err.Error(), "non-symlink directory") {
+	if _, err := roleObservationCaptureRoot(link); err == nil || !strings.Contains(err.Error(), "non-symlink directory") {
 		t.Fatalf("capture root error = %v, want symlink rejection", err)
 	}
 }
@@ -252,7 +252,7 @@ func TestTextRoleObservationCaptureRootRejectsIntermediateSymlink(t *testing.T) 
 	if err := os.Symlink(worktree, link); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := textRoleObservationCaptureRootAgainstWorktree(filepath.Join(link, "captures"), worktree); err == nil || !strings.Contains(err.Error(), "outside the Git worktree") {
+	if _, err := roleObservationCaptureRootAgainstWorktree(filepath.Join(link, "captures"), worktree); err == nil || !strings.Contains(err.Error(), "outside the Git worktree") {
 		t.Fatalf("capture root error = %v, want intermediate symlink rejection", err)
 	}
 }
@@ -272,7 +272,7 @@ func durablePathContains(parent, child string) bool {
 	return err == nil && (relative == "." || (relative != ".." && !strings.HasPrefix(relative, ".."+string(filepath.Separator)) && !filepath.IsAbs(relative)))
 }
 
-func writeTextRoleDurableFile(path string, data []byte) error {
+func writeRoleDurableFile(path string, data []byte) error {
 	file, err := os.OpenFile(path, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600)
 	if err != nil {
 		return err
@@ -282,7 +282,7 @@ func writeTextRoleDurableFile(path string, data []byte) error {
 	return errors.Join(writeErr, syncErr, closeErr)
 }
 
-func verifyTextRoleDurableStateCapture(t *testing.T, output string, phases ...string) {
+func verifyRoleDurableStateCapture(t *testing.T, output string, phases ...string) {
 	t.Helper()
 	input, err := os.ReadFile(filepath.Join(output, "input.json"))
 	if err != nil {
@@ -294,7 +294,7 @@ func verifyTextRoleDurableStateCapture(t *testing.T, output string, phases ...st
 		if err != nil {
 			t.Fatal(err)
 		}
-		var capture textRoleDurableStateCapture
+		var capture roleDurableStateCapture
 		if err := json.Unmarshal(raw, &capture); err != nil {
 			t.Fatal(err)
 		}
@@ -303,7 +303,7 @@ func verifyTextRoleDurableStateCapture(t *testing.T, output string, phases ...st
 		}
 		for _, root := range capture.Roots {
 			for _, file := range root.Files {
-				path, err := textRoleDurablePath(output, filepath.Join(phase+"-durable", root.Name, filepath.FromSlash(file.Path)))
+				path, err := roleDurablePath(output, filepath.Join(phase+"-durable", root.Name, filepath.FromSlash(file.Path)))
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -320,7 +320,7 @@ func verifyTextRoleDurableStateCapture(t *testing.T, output string, phases ...st
 	}
 }
 
-func textRoleDurablePath(output, relative string) (string, error) {
+func roleDurablePath(output, relative string) (string, error) {
 	path := filepath.Join(output, relative)
 	if !durablePathContains(output, path) {
 		return "", errors.New("durable path is outside role output")
@@ -328,12 +328,12 @@ func textRoleDurablePath(output, relative string) (string, error) {
 	return path, nil
 }
 
-func writeAndVerifyTextRoleDurableReceipt(t *testing.T, output, carrier string, processes []*textRoleProcess, phases ...string) {
+func writeAndVerifyRoleDurableReceipt(t *testing.T, output, carrier string, processes []*roleProcess, phases ...string) {
 	t.Helper()
 	if len(phases) == 0 {
 		phases = []string{"startup", "published", "withdrawn", "stopped"}
 	}
-	receipt := textRoleDurableReceipt{Carrier: carrier}
+	receipt := roleDurableReceipt{Carrier: carrier}
 	for _, process := range processes {
 		inputPath := filepath.Join(process.output, "input.json")
 		input, err := os.ReadFile(inputPath)
@@ -345,14 +345,14 @@ func writeAndVerifyTextRoleDurableReceipt(t *testing.T, output, carrier string, 
 			t.Fatal(err)
 		}
 		inputDigest := sha256.Sum256(input)
-		role := textRoleDurableReceiptRole{Path: filepath.Base(process.output), Role: declared.Role, InputSHA256: hex.EncodeToString(inputDigest[:])}
+		role := roleDurableReceiptRole{Path: filepath.Base(process.output), Role: declared.Role, InputSHA256: hex.EncodeToString(inputDigest[:])}
 		for _, phase := range phases {
 			path := filepath.Join(process.output, phase+".durable.json")
 			raw, err := os.ReadFile(path)
 			if err != nil {
 				t.Fatal(err)
 			}
-			var capture textRoleDurableStateCapture
+			var capture roleDurableStateCapture
 			if err := json.Unmarshal(raw, &capture); err != nil {
 				t.Fatal(err)
 			}
@@ -364,7 +364,7 @@ func writeAndVerifyTextRoleDurableReceipt(t *testing.T, output, carrier string, 
 			for _, root := range capture.Roots {
 				roots = append(roots, root.Name)
 			}
-			role.Phases = append(role.Phases, textRoleDurableReceiptPhase{Phase: phase, Manifest: filepath.ToSlash(filepath.Join(role.Path, phase+".durable.json")), ManifestSHA256: hex.EncodeToString(digest[:]), Roots: roots})
+			role.Phases = append(role.Phases, roleDurableReceiptPhase{Phase: phase, Manifest: filepath.ToSlash(filepath.Join(role.Path, phase+".durable.json")), ManifestSHA256: hex.EncodeToString(digest[:]), Roots: roots})
 		}
 		receipt.Roles = append(receipt.Roles, role)
 	}
@@ -376,13 +376,13 @@ func writeAndVerifyTextRoleDurableReceipt(t *testing.T, output, carrier string, 
 		t.Fatal(err)
 	}
 	path := filepath.Join(output, "durable-receipt.json")
-	if err := writeTextRoleDurableFile(path, encoded); err != nil {
+	if err := writeRoleDurableFile(path, encoded); err != nil {
 		t.Fatal(err)
 	}
-	verifyTextRoleDurableReceipt(t, output, carrier, processes, phases...)
+	verifyRoleDurableReceipt(t, output, carrier, processes, phases...)
 }
 
-func verifyTextRoleDurableReceipt(t *testing.T, output, carrier string, processes []*textRoleProcess, phases ...string) {
+func verifyRoleDurableReceipt(t *testing.T, output, carrier string, processes []*roleProcess, phases ...string) {
 	t.Helper()
 	if len(phases) == 0 {
 		phases = []string{"startup", "published", "withdrawn", "stopped"}
@@ -391,7 +391,7 @@ func verifyTextRoleDurableReceipt(t *testing.T, output, carrier string, processe
 	if err != nil {
 		t.Fatal(err)
 	}
-	var receipt textRoleDurableReceipt
+	var receipt roleDurableReceipt
 	if err := json.Unmarshal(raw, &receipt); err != nil {
 		t.Fatal(err)
 	}
@@ -408,7 +408,7 @@ func verifyTextRoleDurableReceipt(t *testing.T, output, carrier string, processe
 			if phase.Phase != phases[index] || len(phase.Roots) == 0 || filepath.Base(phase.Manifest) != phase.Phase+".durable.json" {
 				t.Fatalf("invalid durable receipt phase %#v", phase)
 			}
-			path, err := textRoleDurablePath(output, filepath.FromSlash(phase.Manifest))
+			path, err := roleDurablePath(output, filepath.FromSlash(phase.Manifest))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -416,7 +416,7 @@ func verifyTextRoleDurableReceipt(t *testing.T, output, carrier string, processe
 			if err != nil {
 				t.Fatal(err)
 			}
-			var capture textRoleDurableStateCapture
+			var capture roleDurableStateCapture
 			if err := json.Unmarshal(captured, &capture); err != nil {
 				t.Fatal(err)
 			}

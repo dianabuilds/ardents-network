@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
-	"github.com/dianabuilds/ardents-network/internal/application/interfacev2/connection"
+	interfacev2connection "github.com/dianabuilds/ardents-network/internal/application/interfacev2/connection"
 	"github.com/dianabuilds/ardents-network/internal/service/targetlink"
 )
 
@@ -19,11 +19,11 @@ func TestTextConnectionRequiresSeparateAuthorityAndExactDestination(t *testing.T
 	endpoint, principal := textContextEndpoint(t)
 	endpoint.network = fixtureID(221)
 	publisher := admittedTextContext(t, endpoint, principal, broker.Administration)
-	if _, err := publisher.openTextConnection(); err == nil {
+	if _, err := publisher.openConnection(); err == nil {
 		t.Fatal("Administration acquired Reader owner")
 	}
 	contextOwner := admittedTextContext(t, endpoint, principal, broker.Connection)
-	owner, err := contextOwner.openTextConnection()
+	owner, err := contextOwner.openConnection()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -36,7 +36,7 @@ func TestTextConnectionRequiresSeparateAuthorityAndExactDestination(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, request := range []connection.Request{{Destination: connection.Name, Value: "reserved"}, {Destination: connection.TargetLink, Value: "malformed"}, {Destination: connection.TargetLink, Value: foreign}} {
+	for _, request := range []interfacev2connection.Request{{Destination: interfacev2connection.Name, Value: "reserved"}, {Destination: interfacev2connection.TargetLink, Value: "malformed"}, {Destination: interfacev2connection.TargetLink, Value: foreign}} {
 		if stream, err := owner.Open(t.Context(), request); err == nil || stream != nil {
 			t.Fatal("invalid destination accepted")
 		}
@@ -52,7 +52,7 @@ func TestTextConnectionRequiresSeparateAuthorityAndExactDestination(t *testing.T
 func TestTextConnectionRetiresAlphaDestinationBeforeEffects(t *testing.T) {
 	endpoint, principal := textContextEndpoint(t)
 	contextOwner := admittedTextContext(t, endpoint, principal, broker.Connection)
-	owner, err := contextOwner.openTextConnection()
+	owner, err := contextOwner.openConnection()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -62,7 +62,7 @@ func TestTextConnectionRetiresAlphaDestinationBeforeEffects(t *testing.T) {
 		}
 	})
 	path := filepath.Join(t.TempDir(), "connection.sock")
-	server, err := connection.Listen(path, owner)
+	server, err := interfacev2connection.Listen(path, owner)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -71,12 +71,12 @@ func TestTextConnectionRetiresAlphaDestinationBeforeEffects(t *testing.T) {
 			t.Error(err)
 		}
 	})
-	stream, err := connection.Dial(t.Context(), path, connection.Request{Destination: connection.TargetLink, Value: "ardents-alpha://retained.example"})
+	stream, err := interfacev2connection.Dial(t.Context(), path, interfacev2connection.Request{Destination: interfacev2connection.TargetLink, Value: "ardents-alpha://retained.example"})
 	if stream != nil || err == nil || err.Error() != "service unavailable: alpha service link is retired" {
 		t.Fatalf("retired Alpha destination = (%v, %v)", stream, err)
 	}
-	var refusal connection.SetupRefusalError
-	if !errors.As(err, &refusal) || refusal.Outcome().Class != connection.ServiceUnavailable {
+	var refusal interfacev2connection.SetupRefusalError
+	if !errors.As(err, &refusal) || refusal.Outcome().Class != interfacev2connection.ServiceUnavailable {
 		t.Fatalf("retired Alpha destination lost its setup class: %v", err)
 	}
 	contextOwner.mu.Lock()
@@ -94,7 +94,7 @@ func TestTextConnectionReportsOnlyFixedOperationCategory(t *testing.T) {
 	owner.mu.Lock()
 	owner.operationFailure = func(failure string) { reported <- failure }
 	owner.mu.Unlock()
-	owner.reportTextOperationFailure("service-result")
+	owner.reportOperationFailure("service-result")
 	select {
 	case failure := <-reported:
 		if failure != "service-result" {
@@ -111,11 +111,11 @@ func TestTextConnectionJoinsCancelledInstalledStartup(t *testing.T) {
 			endpoint, principal := textContextEndpoint(t)
 			endpoint.network = fixtureID(221)
 			contextOwner := admittedTextContext(t, endpoint, principal, broker.Connection)
-			owner, err := contextOwner.openTextConnection()
+			owner, err := contextOwner.openConnection()
 			if err != nil {
 				t.Fatal(err)
 			}
-			release, err := endpoint.acquireTextLaunch(t.Context())
+			release, err := endpoint.acquireLaunch(t.Context())
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -135,7 +135,7 @@ func TestTextConnectionJoinsCancelledInstalledStartup(t *testing.T) {
 				helpers.Wait()
 			})
 			helpers.Go(func() {
-				stream, err := owner.Open(caller, connection.Request{Destination: connection.TargetLink, Value: destination})
+				stream, err := owner.Open(caller, interfacev2connection.Request{Destination: interfacev2connection.TargetLink, Value: destination})
 				if stream != nil {
 					stream.Close()
 				}
@@ -145,7 +145,7 @@ func TestTextConnectionJoinsCancelledInstalledStartup(t *testing.T) {
 			defer deadline.Stop()
 			tick := time.NewTicker(time.Millisecond)
 			defer tick.Stop()
-			var job *textJobIdentity
+			var job *jobIdentity
 			for job == nil {
 				contextOwner.mu.Lock()
 				job = contextOwner.job

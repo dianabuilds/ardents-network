@@ -103,7 +103,7 @@ func runStreamQualificationIdle(ctx context.Context, config StreamQualificationC
 		}); err != nil {
 			return err
 		}
-		connection, err := owner.openTextConnection()
+		connection, err := owner.openConnection()
 		if err != nil {
 			return err
 		}

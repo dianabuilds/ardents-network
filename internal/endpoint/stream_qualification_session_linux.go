@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
-	"github.com/dianabuilds/ardents-network/internal/application/interfacev2/connection"
+	interfacev2connection "github.com/dianabuilds/ardents-network/internal/application/interfacev2/connection"
 	"github.com/dianabuilds/ardents-network/internal/qualification"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	"github.com/dianabuilds/ardents-network/internal/route/client"
@@ -121,7 +121,7 @@ func (session *qualificationSession) PrepareIntroduction(ctx context.Context, de
 	return qualificationPreparation{attempt: attempt}, nil
 }
 
-func (session *qualificationSession) OpenJoinedService(ctx context.Context, preparation qualification.Preparation, setupComplete func()) (connection.Stream, error) {
+func (session *qualificationSession) OpenJoinedService(ctx context.Context, preparation qualification.Preparation, setupComplete func()) (interfacev2connection.Stream, error) {
 	prepared, ok := preparation.(qualificationPreparation)
 	if !ok || prepared.attempt == nil {
 		return nil, errors.New("qualification introduction preparation unavailable")
@@ -249,7 +249,7 @@ func (owner *textContext) ensureQualificationIssuerReserve(ctx context.Context, 
 	return owner.issueTokens(ctx, receivers, 1)
 }
 
-func (owner *textContext) presentQualifiedRefill(ctx context.Context, job *textJobIdentity, hello ardp.Hello, class uint8) ([]byte, error) {
+func (owner *textContext) presentQualifiedRefill(ctx context.Context, job *jobIdentity, hello ardp.Hello, class uint8) ([]byte, error) {
 	release, err := owner.acquireSourceOperation(ctx)
 	if err != nil {
 		return nil, err

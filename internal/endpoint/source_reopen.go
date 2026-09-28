@@ -28,7 +28,7 @@ func (owner *textContext) prepareSourceReopenOwned(ctx context.Context, flight *
 		owner.mu.Unlock()
 		return sourcePreparationFailureAt("stock", errors.New("text Source reopen stock unavailable"))
 	}
-	selection, err := owner.selectTextBootstrapLocked()
+	selection, err := owner.selectBootstrapLocked()
 	if err != nil {
 		owner.mu.Unlock()
 		return sourcePreparationFailureAt("selection", err)

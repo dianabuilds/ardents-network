@@ -73,7 +73,7 @@ func (owner *textContext) openPrefix(ctx context.Context) (*sourceHandle, error)
 		owner.mu.Unlock()
 		return nil, prefixPreparationFailureAt("state", errors.New("text prefix State unavailable"))
 	}
-	operation := newTextOperationFlight(owner)
+	operation := newOperationFlight(owner)
 	// Reserve the whole stock -> opening transition. Concurrent opens cannot
 	// spend a second bootstrap batch from an obsolete missing-stock snapshot.
 	if !owner.source.reserveOpeningLocked(operation) {
@@ -104,7 +104,7 @@ func (owner *textContext) openPrefix(ctx context.Context) (*sourceHandle, error)
 	}
 	return operation.complete(ctx, prefix, openErr)
 }
-func (operation *textOperationFlight) presentToken(selection client.ClosedBootstrapSelection, hello ardp.Hello, class uint8) ([]byte, error) {
+func (operation *operationFlight) presentToken(selection client.ClosedBootstrapSelection, hello ardp.Hello, class uint8) ([]byte, error) {
 	owner := operation.owner
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
@@ -115,9 +115,9 @@ func (operation *textOperationFlight) presentToken(selection client.ClosedBootst
 		hello.ChannelNonce == [32]byte{} || !now.Before(hello.Deadline) || hello.Deadline.After(profile.NotAfter) {
 		return nil, tokenPresentationFailureAt("authority", errors.Join(err, errors.New("text token presentation authority unavailable")))
 	}
-	current, err := owner.selectTextBootstrapLocked()
+	current, err := owner.selectBootstrapLocked()
 	if err != nil || current != selection || (hello.RecipientNodeID != current.EntryNodeID && hello.RecipientNodeID != current.InteriorNodeID) {
-		return nil, tokenPresentationFailureAt("selection-"+textInteriorSelectionFailureStage(err), errors.Join(err, errors.New("text token presentation source changed")))
+		return nil, tokenPresentationFailureAt("selection-"+interiorSelectionFailureStage(err), errors.Join(err, errors.New("text token presentation source changed")))
 	}
 	token, err := owner.takeTokenLocked(profile, now, hello, class, operation.context)
 	if err != nil {
@@ -142,7 +142,7 @@ func (endpoint *endpoint) tokenJournal() (*tokenjournal.Journal, error) {
 	return endpoint.closedTokenJournal, nil
 }
 
-func (owner *textContext) ensurePrefixStock(ctx context.Context, opening *textOperationFlight) (client.ClosedBootstrapSelection, error) {
+func (owner *textContext) ensurePrefixStock(ctx context.Context, opening *operationFlight) (client.ClosedBootstrapSelection, error) {
 	owner.mu.Lock()
 	_, _, err := owner.permissionProfileLocked()
 	if err != nil || ctx.Err() != nil || !owner.tokens.permission.hasAccepted() ||
@@ -150,10 +150,10 @@ func (owner *textContext) ensurePrefixStock(ctx context.Context, opening *textOp
 		owner.mu.Unlock()
 		return client.ClosedBootstrapSelection{}, prefixPreparationFailureAt("stock-authority", errors.Join(err, ctx.Err(), errors.New("text prefix stock owner unavailable")))
 	}
-	selection, err := owner.selectTextBootstrapLocked()
+	selection, err := owner.selectBootstrapLocked()
 	if err != nil {
 		owner.mu.Unlock()
-		return client.ClosedBootstrapSelection{}, prefixPreparationFailureAt("stock-selection-"+textInteriorSelectionFailureStage(err), err)
+		return client.ClosedBootstrapSelection{}, prefixPreparationFailureAt("stock-selection-"+interiorSelectionFailureStage(err), err)
 	}
 	missing := owner.tokens.permission.missingStockFor(selection.ProfileDigest, [][32]byte{selection.EntryNodeID, selection.InteriorNodeID}, 2)
 	owner.mu.Unlock()
@@ -168,7 +168,7 @@ func (owner *textContext) ensurePrefixStock(ctx context.Context, opening *textOp
 	}
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
-	current, err := owner.selectTextBootstrapLocked()
+	current, err := owner.selectBootstrapLocked()
 	if err != nil || current != selection || ctx.Err() != nil || !opening.admittedLocked(owner) {
 		return client.ClosedBootstrapSelection{}, prefixPreparationFailureAt("stock-stability", errors.Join(err, ctx.Err(), errors.New("text prefix selection changed during issuance")))
 	}

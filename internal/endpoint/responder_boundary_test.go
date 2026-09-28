@@ -6,7 +6,7 @@ import "testing"
 
 // Interrupt the real retained prefix inside the final authority read. The
 // callback is a scheduling seam, not a substitute transport or close result.
-func checkResponderRetirementBoundary(t *testing.T, owner *textContext, job *textJobIdentity, accepted *introductionAttempt, source *sourceStateFixture) {
+func checkResponderRetirementBoundary(t *testing.T, owner *textContext, job *jobIdentity, accepted *introductionAttempt, source *sourceStateFixture) {
 	t.Helper()
 	prefix := owner.responder.currentLocked()
 	// Measure the already-ready path so Source preparation may add authority

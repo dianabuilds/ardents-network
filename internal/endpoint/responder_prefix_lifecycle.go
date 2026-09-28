@@ -60,7 +60,7 @@ func (lifecycle *responderPrefixLifecycle) acquireJoinLocked(issuer *sourceHandl
 	return acquisition
 }
 
-func (lifecycle *responderPrefixLifecycle) finishOpeningLocked(flight *textOperationFlight,
+func (lifecycle *responderPrefixLifecycle) finishOpeningLocked(flight *operationFlight,
 	prefix *client.ClosedSourcePrefix, cancel context.CancelFunc, publish bool) bool {
 	if lifecycle == nil || lifecycle.opening != flight {
 		return false

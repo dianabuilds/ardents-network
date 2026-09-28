@@ -58,14 +58,14 @@ func TestTextPublicationRefreshRetriesConcurrentRoleCommit(t *testing.T) {
 }
 
 func TestTextPublicationRefreshRetriesOnlyConflictReadTimeout(t *testing.T) {
-	contention := textRoleMemberFailureAt("conflict-read", context.DeadlineExceeded)
+	contention := roleMemberFailureAt("conflict-read", context.DeadlineExceeded)
 	for name, test := range map[string]struct {
 		cause error
 		want  bool
 	}{
 		"contention":       {contention, true},
-		"other role stage": {textRoleMemberFailureAt("binding", context.DeadlineExceeded), false},
-		"other cause":      {textRoleMemberFailureAt("conflict-read", errors.New("corrupt generation")), false},
+		"other role stage": {roleMemberFailureAt("binding", context.DeadlineExceeded), false},
+		"other cause":      {roleMemberFailureAt("conflict-read", errors.New("corrupt generation")), false},
 		"bare timeout":     {context.DeadlineExceeded, false},
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -212,7 +212,7 @@ func TestTextPublicationAutomaticallyRefreshesAndRetiresPredecessor(t *testing.T
 			if !sameCutoff {
 				t.Fatal("exact Descriptor retry extended predecessor cutoff")
 			}
-			raw := lookupTextPublishedProof(t, owner, link.Target)
+			raw := lookupPublishedProof(t, owner, link.Target)
 			current, err := reachability.VerifyPrivate(raw, link.Target, endpoint.network, source.view.Profile.Digest, time.Now().UTC())
 			if err != nil || current.Current.Digest != published.Current.Digest || current.Descriptor.Private.Revision != 2 ||
 				current.Descriptor.Private.Slot == published.Descriptor.Private.Slot || current.Descriptor.Private.RecipientKey == published.Descriptor.Private.RecipientKey {
@@ -246,7 +246,7 @@ func TestTextPublicationAutomaticallyRefreshesAndRetiresPredecessor(t *testing.T
 			publisherRecovery := oldAccepted.binding.serviceRecovery()
 			publisherRecovery.Generation, publisherRecovery.Role = 2, "publisher"
 			publisherRecovery.Deadline = clientRecovery.Deadline
-			recovery, err := reader.prepareTextRecovery(t.Context(), readerJob, oldAttempt.binding, clientRecovery)
+			recovery, err := reader.prepareRecovery(t.Context(), readerJob, oldAttempt.binding, clientRecovery)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -257,7 +257,7 @@ func TestTextPublicationAutomaticallyRefreshesAndRetiresPredecessor(t *testing.T
 			}
 			receivedRecovery := make(chan recoveryResult, 1)
 			go func() {
-				attempt, receiveErr := owner.receiveTextRecovery(t.Context(), publisherJob, oldAccepted.binding, publisherRecovery)
+				attempt, receiveErr := owner.receiveRecovery(t.Context(), publisherJob, oldAccepted.binding, publisherRecovery)
 				receivedRecovery <- recoveryResult{attempt: attempt, err: receiveErr}
 			}()
 			if err := reader.submitIntroduction(t.Context(), readerJob, recovery); err != nil {
@@ -366,7 +366,7 @@ func waitRefreshCondition(t *testing.T, owner *textContext, condition func() boo
 	}
 }
 
-func deliverRefreshAttempt(t *testing.T, reader, publisher *textContext, readerJob, publisherJob *textJobIdentity, prepared *introductionAttempt) {
+func deliverRefreshAttempt(t *testing.T, reader, publisher *textContext, readerJob, publisherJob *jobIdentity, prepared *introductionAttempt) {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(t.Context(), 8*time.Second)
 	defer cancel()

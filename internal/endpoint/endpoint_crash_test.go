@@ -22,7 +22,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 )
 
-type textEndpointCrashBoundary struct {
+type endpointCrashBoundary struct {
 	Profile            state.ClosedProfileView `json:"profile"`
 	Principal          [32]byte                `json:"principal,omitzero"`
 	Capability         [32]byte                `json:"capability,omitzero"`
@@ -48,20 +48,20 @@ type textEndpointCrashBoundary struct {
 // cleanup is covered by the separate worker lifecycle profile.
 func TestTextEndpointCrashDropsVolatileAuthorityAndRetainsSpend(t *testing.T) {
 	if root := os.Getenv("ARDENTS_TEXT_ENDPOINT_CRASH_ROOT"); root != "" {
-		runTextEndpointCrashChild(t, root)
+		runEndpointCrashChild(t, root)
 		return
 	}
 	root := t.TempDir()
 	if err := os.Chmod(root, 0o700); err != nil {
 		t.Fatal(err)
 	}
-	boundary := runAndKillTextEndpointCrashChild(t, root)
+	boundary := runAndKillEndpointCrashChild(t, root)
 	if boundary.AdmissionActive != 2 || boundary.WorkerGrantActive != 1 || !boundary.JobLive || boundary.StockCount != 1 {
 		t.Fatalf("crash precondition missing: admission=%d worker-grant=%d job=%t stock=%d",
 			boundary.AdmissionActive, boundary.WorkerGrantActive, boundary.JobLive, boundary.StockCount)
 	}
 
-	clock := func() time.Time { return textEndpointCrashTime() }
+	clock := func() time.Time { return endpointCrashTime() }
 	reopened, err := newEndpoint(setup{NetworkID: boundary.Profile.NetworkID, BrokerID: fixtureID(243),
 		ConnectionPrincipal: boundary.Principal, Clock: clock})
 	if err != nil {
@@ -144,7 +144,7 @@ func TestTextEndpointCrashDropsVolatileAuthorityAndRetainsSpend(t *testing.T) {
 	}
 }
 
-func runAndKillTextEndpointCrashChild(t *testing.T, root string) textEndpointCrashBoundary {
+func runAndKillEndpointCrashChild(t *testing.T, root string) endpointCrashBoundary {
 	t.Helper()
 	binary, err := os.Executable()
 	if err != nil {
@@ -171,7 +171,7 @@ func runAndKillTextEndpointCrashChild(t *testing.T, root string) textEndpointCra
 	path := filepath.Join(root, "boundary.json")
 	tick := time.NewTicker(10 * time.Millisecond)
 	defer tick.Stop()
-	var boundary textEndpointCrashBoundary
+	var boundary endpointCrashBoundary
 	for boundary.Profile.NetworkID == [32]byte{} {
 		raw, readErr := os.ReadFile(path)
 		if readErr == nil {
@@ -208,14 +208,14 @@ func runAndKillTextEndpointCrashChild(t *testing.T, root string) textEndpointCra
 	return boundary
 }
 
-func runTextEndpointCrashChild(t *testing.T, root string) {
+func runEndpointCrashChild(t *testing.T, root string) {
 	t.Helper()
 	for _, name := range []string{"custody", "tokens"} {
 		if err := os.Mkdir(filepath.Join(root, name), 0o700); err != nil {
 			t.Fatal(err)
 		}
 	}
-	now := textEndpointCrashTime()
+	now := endpointCrashTime()
 	clock := func() time.Time { return now }
 	vault, err := custody.Open(custody.VaultConfig{Root: filepath.Join(root, "custody"), Now: clock})
 	if err != nil {
@@ -280,7 +280,7 @@ func runTextEndpointCrashChild(t *testing.T, root string) {
 	if err := journal.Mark(token, record); err != nil {
 		t.Fatal(err)
 	}
-	boundary := textEndpointCrashBoundary{Profile: profile, Principal: principal, Capability: oldCapability,
+	boundary := endpointCrashBoundary{Profile: profile, Principal: principal, Capability: oldCapability,
 		PermissionRequest: requestRaw, PermissionResponse: issued.AdmissionPermission, PermissionDigest: digest,
 		Token: token, AttemptProfile: record.Profile, Receiver: record.Receiver, Nonce: record.Nonce,
 		Duty: record.Duty, Window: record.Window, AdmissionActive: endpoint.admission.Active(),
@@ -303,7 +303,7 @@ func runTextEndpointCrashChild(t *testing.T, root string) {
 	t.Fatal("parent did not terminate child")
 }
 
-func attachPermissionJob(t *testing.T, owner *textContext, endpoint *endpoint) (*textJobIdentity, *broker.Broker) {
+func attachPermissionJob(t *testing.T, owner *textContext, endpoint *endpoint) (*jobIdentity, *broker.Broker) {
 	t.Helper()
 	job, err := owner.beginJob(endpoint, broker.Connection)
 	if err != nil {
@@ -321,6 +321,6 @@ func attachPermissionJob(t *testing.T, owner *textContext, endpoint *endpoint) (
 	return job, grant
 }
 
-func textEndpointCrashTime() time.Time {
+func endpointCrashTime() time.Time {
 	return time.Date(2030, 8, 9, 10, 11, 12, 0, time.UTC)
 }

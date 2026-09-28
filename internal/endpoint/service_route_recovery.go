@@ -18,7 +18,7 @@ import (
 // Connection's immutable recovery request. The client creates one fresh
 // capsule/JOIN; the Publisher accepts only that generation for the retained
 // logical binding. Neither side can open another Application operation.
-func (owner *textContext) serviceRouteRecoveryOpener(job *textJobIdentity,
+func (owner *textContext) serviceRouteRecoveryOpener(job *jobIdentity,
 	binding *serviceBinding) serviceAttachmentOpener {
 	if owner == nil || !binding.servesJob(owner, job) {
 		return nil
@@ -37,9 +37,9 @@ func (owner *textContext) serviceRouteRecoveryOpener(job *textJobIdentity,
 		var err error
 		switch owner.surface {
 		case broker.Connection:
-			prepared, err = owner.prepareTextRecovery(ctx, job, binding, request)
+			prepared, err = owner.prepareRecovery(ctx, job, binding, request)
 		case broker.Administration:
-			prepared, err = owner.receiveTextRecovery(ctx, job, binding, request)
+			prepared, err = owner.receiveRecovery(ctx, job, binding, request)
 		default:
 			err = errors.New("text recovery surface unavailable")
 		}
@@ -55,10 +55,10 @@ func (owner *textContext) serviceRouteRecoveryOpener(job *textJobIdentity,
 	}
 }
 
-// prepareTextRecovery resolves the current recipient for the original Target
+// prepareRecovery resolves the current recipient for the original Target
 // and accepts it only under the Connection's immutable Publication authority.
 // It creates fresh per-Attachment secrets without resetting any work deadline.
-func (owner *textContext) prepareTextRecovery(ctx context.Context, job *textJobIdentity, binding *serviceBinding,
+func (owner *textContext) prepareRecovery(ctx context.Context, job *jobIdentity, binding *serviceBinding,
 	request nativeconnection.Recovery) (*introductionAttempt, error) {
 	if owner == nil || ctx == nil || !binding.servesJob(owner, job) ||
 		owner.surface != broker.Connection {

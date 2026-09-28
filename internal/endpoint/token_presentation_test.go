@@ -30,7 +30,7 @@ func TestTextTokenPresentationBurnsStockBeforeReturningBytes(t *testing.T) {
 	defer cancel()
 	done := make(chan struct{})
 	close(done)
-	opening := &textOperationFlight{owner: owner, context: flightContext, cancelOperation: cancel, done: done}
+	opening := &operationFlight{owner: owner, context: flightContext, cancelOperation: cancel, done: done}
 	owner.source.opening = opening
 	returned, err := opening.presentToken(selection, hello, 2)
 	if err != nil {

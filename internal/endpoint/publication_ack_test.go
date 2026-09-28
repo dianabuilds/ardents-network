@@ -97,7 +97,7 @@ func (gate *descriptorACKGate) committed(root string, profile state.ClosedProfil
 	return false
 }
 
-func deliverBeforeDescriptorACK(t *testing.T, gate *descriptorACKGate, reader, publisher *textContext, readerJob, publisherJob *textJobIdentity, prepared *introductionAttempt) *introductionAttempt {
+func deliverBeforeDescriptorACK(t *testing.T, gate *descriptorACKGate, reader, publisher *textContext, readerJob, publisherJob *jobIdentity, prepared *introductionAttempt) *introductionAttempt {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(t.Context(), 3*time.Second)
 	defer cancel()
@@ -139,7 +139,7 @@ func deliverBeforeDescriptorACK(t *testing.T, gate *descriptorACKGate, reader, p
 // A hostile submitter can see the committed public Descriptor before its
 // Publisher receives the ACK. Build that candidate with actual Instance bytes;
 // it must not gain local admission merely because its signature is valid.
-func refuseBeforeDescriptorACK(t *testing.T, gate *descriptorACKGate, owner *textContext, job *textJobIdentity, prior *introductionAttempt) []byte {
+func refuseBeforeDescriptorACK(t *testing.T, gate *descriptorACKGate, owner *textContext, job *jobIdentity, prior *introductionAttempt) []byte {
 	t.Helper()
 	owner.mu.Lock()
 	registered := owner.publication.pair.pendingRegistration

@@ -12,17 +12,17 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
-	"github.com/dianabuilds/ardents-network/internal/application/interfacev2/connection"
+	interfacev2connection "github.com/dianabuilds/ardents-network/internal/application/interfacev2/connection"
 	"github.com/dianabuilds/ardents-network/internal/application/textdocument"
 	"github.com/dianabuilds/ardents-network/internal/route/client"
 	nativeconnection "github.com/dianabuilds/ardents-network/internal/service/connection"
 	"github.com/dianabuilds/ardents-network/internal/service/targetlink"
 )
 
-// textConnection retains the participant's separately authorized Reader
+// connection retains the participant's separately authorized Reader
 // context. A local request supplies only a Target Link, never worker identity,
 // qualification, permission material, or network selection.
-type textConnection struct {
+type connection struct {
 	context  *textContext
 	mu       sync.Mutex
 	closed   bool
@@ -32,7 +32,7 @@ type textConnection struct {
 	closeErr error
 }
 
-func (owner *textContext) openTextConnection() (*textConnection, error) {
+func (owner *textContext) openConnection() (*connection, error) {
 	if owner == nil {
 		return nil, errors.New("text Connection unavailable")
 	}
@@ -41,16 +41,16 @@ func (owner *textContext) openTextConnection() (*textConnection, error) {
 	if !owner.liveLocked(owner.endpoint, broker.Connection) || owner.principal == [32]byte{} {
 		return nil, errors.New("text Connection requires its own current authorization")
 	}
-	return &textConnection{context: owner}, nil
+	return &connection{context: owner}, nil
 }
 
-func (owner *textConnection) Open(ctx context.Context, request connection.Request) (_ connection.Stream, outcome error) {
-	if owner == nil || ctx == nil || ctx.Err() != nil || request.Destination != connection.TargetLink {
+func (owner *connection) Open(ctx context.Context, request interfacev2connection.Request) (_ interfacev2connection.Stream, outcome error) {
+	if owner == nil || ctx == nil || ctx.Err() != nil || request.Destination != interfacev2connection.TargetLink {
 		return nil, errors.New("text destination unavailable")
 	}
 	target, err := owner.context.endpoint.TargetFromLink(request.Value)
 	if errors.Is(err, ErrAlphaDestinationRetired) {
-		return nil, connection.Refuse(connection.Outcome{Class: connection.ServiceUnavailable, Reason: err.Error()})
+		return nil, interfacev2connection.Refuse(interfacev2connection.Outcome{Class: interfacev2connection.ServiceUnavailable, Reason: err.Error()})
 	}
 	if err != nil {
 		return nil, errors.New("text destination unavailable")
@@ -83,12 +83,12 @@ func (owner *textConnection) Open(ctx context.Context, request connection.Reques
 	endpoint := owner.context.endpoint
 	capability, err := endpoint.Admit(owner.context.principal, broker.Connection)
 	if err != nil {
-		owner.context.reportTextOperationFailure("admission")
+		owner.context.reportOperationFailure("admission")
 		return nil, err
 	}
 	lease, _, err := endpoint.admission.Activate(lifetime, capability, owner.context.principal, broker.Connection)
 	if err != nil {
-		owner.context.reportTextOperationFailure("activation")
+		owner.context.reportOperationFailure("activation")
 		return nil, err
 	}
 	defer func() {
@@ -98,7 +98,7 @@ func (owner *textConnection) Open(ctx context.Context, request connection.Reques
 	}()
 	worker, err := owner.context.launchWorker(lease.Context(), nil)
 	if err != nil {
-		owner.context.reportTextOperationFailure("worker-launch")
+		owner.context.reportOperationFailure("worker-launch")
 		return nil, err
 	}
 	defer func() {
@@ -108,7 +108,7 @@ func (owner *textConnection) Open(ctx context.Context, request connection.Reques
 	}()
 	bounded, finish, err := worker.beginOperation(lease.Context(), broker.Connection)
 	if err != nil {
-		owner.context.reportTextOperationFailure("worker-operation")
+		owner.context.reportOperationFailure("worker-operation")
 		return nil, err
 	}
 	defer func() {
@@ -119,26 +119,26 @@ func (owner *textConnection) Open(ctx context.Context, request connection.Reques
 	until := endpoint.clock().UTC().Add(2 * time.Minute).Unix()
 	attempt, err := owner.context.prepareIntroduction(bounded, worker.job, destination, [3]int64{until, until, until})
 	if err != nil {
-		owner.context.reportTextOperationFailure("introduction-preparation")
+		owner.context.reportOperationFailure("introduction-preparation")
 		return nil, err
 	}
 	service, err := owner.context.openJoinedService(bounded, worker.job, attempt)
 	if err != nil {
-		owner.context.reportTextOperationFailure("service-join")
+		owner.context.reportOperationFailure("service-join")
 		return nil, err
 	}
 	if err := lease.Context().Err(); err != nil {
-		owner.context.reportTextOperationFailure("post-join-lifetime")
+		owner.context.reportOperationFailure("post-join-lifetime")
 		return nil, errors.Join(err, service.Close())
 	}
 	// Open returns only after Service authentication. The fixed request and
 	// confined worker exchange follow local ACCEPT, within this same lifetime.
-	stream := newTextReadResult(owner, pending, lease, cancel, worker, bounded, finish, service, joinCaller, owner.context.reportTextOperationFailure)
+	stream := newReadResult(owner, pending, lease, cancel, worker, bounded, finish, service, joinCaller, owner.context.reportOperationFailure)
 	transferred = true
 	return stream, nil
 }
 
-func (owner *textConnection) finish(pending chan struct{}) {
+func (owner *connection) finish(pending chan struct{}) {
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
 	if owner.pending == pending {
@@ -148,7 +148,7 @@ func (owner *textConnection) finish(pending chan struct{}) {
 	}
 }
 
-func (owner *textConnection) Close() error {
+func (owner *connection) Close() error {
 	if owner == nil {
 		return nil
 	}
@@ -168,22 +168,22 @@ func (owner *textConnection) Close() error {
 	return owner.closeErr
 }
 
-// textReadResult projects one validated worker RESULT through the fixed local
+// readResult projects one validated worker RESULT through the fixed local
 // document grammar. It never opens a second remote stream. Raw worker output
 // and partial results cannot reach the trusted UI.
-type textReadResult struct {
+type readResult struct {
 	input  *io.PipeWriter
 	output *io.PipeReader
 	cancel context.CancelFunc
 	joined chan struct{}
-	done   chan connection.Outcome
+	done   chan interfacev2connection.Outcome
 	err    error
 }
 
-func newTextReadResult(owner *textConnection, pending chan struct{}, lease *broker.ActiveSession, cancel context.CancelFunc, worker *qualifiedWorker, bounded context.Context, finish func(), service *serviceStream, joinCaller func(), report func(string)) *textReadResult {
+func newReadResult(owner *connection, pending chan struct{}, lease *broker.ActiveSession, cancel context.CancelFunc, worker *qualifiedWorker, bounded context.Context, finish func(), service *serviceStream, joinCaller func(), report func(string)) *readResult {
 	request, input := io.Pipe()
 	output, response := io.Pipe()
-	result := &textReadResult{input: input, output: output, cancel: cancel, joined: make(chan struct{}), done: make(chan connection.Outcome, 1)}
+	result := &readResult{input: input, output: output, cancel: cancel, joined: make(chan struct{}), done: make(chan interfacev2connection.Outcome, 1)}
 	go func() {
 		defer close(result.joined)
 		defer owner.finish(pending)
@@ -214,7 +214,7 @@ func newTextReadResult(owner *textConnection, pending chan struct{}, lease *brok
 			serviceErr := service.Close()
 			finish()
 			cleanupErr := errors.Join(serviceErr, worker.Close())
-			if lifetimeErr != nil && textCanceledBeforeRequestCleanupOnly(cleanupErr) {
+			if lifetimeErr != nil && canceledBeforeRequestCleanupOnly(cleanupErr) {
 				// No local request was admitted. A native active-protocol abort is
 				// therefore a consequence of our cancellation, not peer evidence.
 				err = lifetimeErr
@@ -236,9 +236,9 @@ func newTextReadResult(owner *textConnection, pending chan struct{}, lease *brok
 		}
 		err = errors.Join(err, lease.Context().Err())
 		result.err = err
-		outcome := connection.Outcome{Class: connection.CleanClose}
+		outcome := interfacev2connection.Outcome{Class: interfacev2connection.CleanClose}
 		if err != nil {
-			outcome = connection.Outcome{Class: connection.ServiceUnavailable, Reason: "text read did not complete"}
+			outcome = interfacev2connection.Outcome{Class: interfacev2connection.ServiceUnavailable, Reason: "text read did not complete"}
 		}
 		request.CloseWithError(err)
 		response.CloseWithError(err)
@@ -248,7 +248,7 @@ func newTextReadResult(owner *textConnection, pending chan struct{}, lease *brok
 	return result
 }
 
-func textCanceledBeforeRequestCleanupOnly(err error) bool {
+func canceledBeforeRequestCleanupOnly(err error) bool {
 	if err == nil || err == context.Canceled || err == os.ErrDeadlineExceeded || err == nativeconnection.ErrActiveViolation {
 		return true
 	}
@@ -270,23 +270,23 @@ func textCanceledBeforeRequestCleanupOnly(err error) bool {
 			}
 		}
 		for _, cause := range causes {
-			if !textCanceledBeforeRequestCleanupOnly(cause) {
+			if !canceledBeforeRequestCleanupOnly(cause) {
 				return false
 			}
 		}
 		return true
 	}
 	if wrapped := errors.Unwrap(err); wrapped != nil {
-		return textCanceledBeforeRequestCleanupOnly(wrapped)
+		return canceledBeforeRequestCleanupOnly(wrapped)
 	}
 	return false
 }
 
-func (stream *textReadResult) Read(body []byte) (int, error)   { return stream.output.Read(body) }
-func (stream *textReadResult) Write(body []byte) (int, error)  { return stream.input.Write(body) }
-func (stream *textReadResult) CloseInput() error               { return stream.input.Close() }
-func (stream *textReadResult) Done() <-chan connection.Outcome { return stream.done }
-func (stream *textReadResult) Close() error {
+func (stream *readResult) Read(body []byte) (int, error)              { return stream.output.Read(body) }
+func (stream *readResult) Write(body []byte) (int, error)             { return stream.input.Write(body) }
+func (stream *readResult) CloseInput() error                          { return stream.input.Close() }
+func (stream *readResult) Done() <-chan interfacev2connection.Outcome { return stream.done }
+func (stream *readResult) Close() error {
 	stream.cancel()
 	stream.input.CloseWithError(context.Canceled)
 	stream.output.CloseWithError(context.Canceled)

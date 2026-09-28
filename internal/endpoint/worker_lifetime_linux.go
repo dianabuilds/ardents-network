@@ -32,7 +32,7 @@ type workerLifetime struct {
 // and its attachment. Repeated calls leave their input owned by the caller.
 // The installed launch owner supplies its exact observed
 // instance; this function pins cleanup before sending any INIT bytes.
-func initializeOwnedWorker(ctx, startup context.Context, attachment *worker.Attachment, instance worker.Instance, job *textJobIdentity, snapshot []byte, artifact *worker.Artifact) (*workerLifetime, error) {
+func initializeOwnedWorker(ctx, startup context.Context, attachment *worker.Attachment, instance worker.Instance, job *jobIdentity, snapshot []byte, artifact *worker.Artifact) (*workerLifetime, error) {
 	if job == nil || job.owner == nil {
 		return nil, errors.Join(errors.New("text worker has no job owner"), attachment.Close())
 	}
@@ -96,7 +96,7 @@ func initializeOwnedWorker(ctx, startup context.Context, attachment *worker.Atta
 	return lifetime, nil
 }
 
-func failWorkerInitialization(job *textJobIdentity, attachment *worker.Attachment, cause error) error {
+func failWorkerInitialization(job *jobIdentity, attachment *worker.Attachment, cause error) error {
 	// Without the pinned original cgroup, closing a socket cannot prove cleanup.
 	// Keep the failure and terminalize the context, even if the peer later exits.
 	job.owner.retireJob(job)

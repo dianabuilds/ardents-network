@@ -9,13 +9,13 @@ import (
 	"unicode/utf8"
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
-	"github.com/dianabuilds/ardents-network/internal/application/interfacev1/administration"
+	interfacev1administration "github.com/dianabuilds/ardents-network/internal/application/interfacev1/administration"
 )
 
-// textAdministration owns one explicit snapshot publication and its terminal
+// administration owns one explicit snapshot publication and its terminal
 // withdrawal. The participant supplies the separately authorized context;
 // neither snapshot bytes nor the local socket supply authority or a Target.
-type textAdministration struct {
+type administration struct {
 	context   *textContext
 	mu        sync.Mutex
 	closed    bool
@@ -27,7 +27,7 @@ type textAdministration struct {
 	closeErr  error
 }
 
-func (owner *textContext) openTextAdministration() (*textAdministration, error) {
+func (owner *textContext) openAdministration() (*administration, error) {
 	if owner == nil {
 		return nil, errors.New("text Administration unavailable")
 	}
@@ -36,10 +36,10 @@ func (owner *textContext) openTextAdministration() (*textAdministration, error) 
 	if !owner.liveLocked(owner.endpoint, broker.Administration) || owner.principal == [32]byte{} {
 		return nil, errors.New("text Administration requires its own current authorization")
 	}
-	return &textAdministration{context: owner}, nil
+	return &administration{context: owner}, nil
 }
 
-func (owner *textAdministration) authorize(ctx context.Context) error {
+func (owner *administration) authorize(ctx context.Context) error {
 	if owner == nil || owner.context == nil || ctx == nil || ctx.Err() != nil {
 		return errors.New("text Administration unavailable")
 	}
@@ -53,18 +53,18 @@ func (owner *textAdministration) authorize(ctx context.Context) error {
 }
 
 // Publish cannot invent a snapshot for the preceding bodyless operation.
-func (owner *textAdministration) Publish(context.Context) error {
+func (owner *administration) Publish(context.Context) error {
 	return errors.New("text publication requires an explicit snapshot")
 }
 
 // PublishSnapshot returns only after installed worker qualification and the
 // actual Descriptor acknowledgement. Its completed caller does not own the
 // retained publication lifetime. The worker receives its snapshot during INIT.
-func (owner *textAdministration) PublishSnapshot(ctx context.Context, snapshot []byte) (outcome error) {
+func (owner *administration) PublishSnapshot(ctx context.Context, snapshot []byte) (outcome error) {
 	if err := owner.authorize(ctx); err != nil {
 		return err
 	}
-	if len(snapshot) > administration.MaximumSnapshotBytes || !utf8.Valid(snapshot) {
+	if len(snapshot) > interfacev1administration.MaximumSnapshotBytes || !utf8.Valid(snapshot) {
 		return errors.New("text publication snapshot invalid")
 	}
 	owner.mu.Lock()
@@ -102,7 +102,7 @@ func (owner *textAdministration) PublishSnapshot(ctx context.Context, snapshot [
 // Withdraw remains reachable while startup runs. In that case it cancels and
 // joins startup, preventing a late published result. A committed run uses the
 // existing five-second drain; repeated calls cannot start another drain.
-func (owner *textAdministration) Withdraw(ctx context.Context) error {
+func (owner *administration) Withdraw(ctx context.Context) error {
 	if err := owner.authorize(ctx); err != nil {
 		owner.context.reportWithdrawalFailure("authorization")
 		return err
@@ -131,7 +131,7 @@ func (owner *textAdministration) Withdraw(ctx context.Context) error {
 
 // Close revokes the context and joins startup and the retained run. It is an
 // abort used by participant shutdown, not a successful withdrawal receipt.
-func (owner *textAdministration) Close() error {
+func (owner *administration) Close() error {
 	if owner == nil {
 		return nil
 	}
@@ -154,5 +154,5 @@ func (owner *textAdministration) Close() error {
 	return owner.closeErr
 }
 
-var _ administration.Interface = (*textAdministration)(nil)
-var _ administration.SnapshotPublisher = (*textAdministration)(nil)
+var _ interfacev1administration.Interface = (*administration)(nil)
+var _ interfacev1administration.SnapshotPublisher = (*administration)(nil)

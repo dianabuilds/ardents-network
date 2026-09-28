@@ -21,18 +21,18 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/admission"
 )
 
-type textReaderContextEvidence struct {
-	ID               string                     `json:"id"`
-	InputSHA256      string                     `json:"inputSHA256"`
-	ExchangeSHA256   string                     `json:"exchangeSHA256"`
-	RequestSHA256    string                     `json:"requestSHA256"`
-	PermissionSHA256 string                     `json:"permissionSHA256"`
-	HolderSHA256     string                     `json:"holderSHA256"`
-	PermissionIDHash string                     `json:"permissionIDHash"`
-	Lookups          []textReaderLookupEvidence `json:"lookups"`
+type readerContextEvidence struct {
+	ID               string                 `json:"id"`
+	InputSHA256      string                 `json:"inputSHA256"`
+	ExchangeSHA256   string                 `json:"exchangeSHA256"`
+	RequestSHA256    string                 `json:"requestSHA256"`
+	PermissionSHA256 string                 `json:"permissionSHA256"`
+	HolderSHA256     string                 `json:"holderSHA256"`
+	PermissionIDHash string                 `json:"permissionIDHash"`
+	Lookups          []readerLookupEvidence `json:"lookups"`
 }
 
-type textReaderLookupEvidence struct {
+type readerLookupEvidence struct {
 	DescriptorSHA256        string    `json:"descriptorSHA256"`
 	ResponseRevision        uint64    `json:"responseRevision"`
 	HolderSHA256            string    `json:"holderSHA256"`
@@ -42,23 +42,23 @@ type textReaderLookupEvidence struct {
 	DescriptorFloorRevision uint64    `json:"descriptorFloorRevision"`
 }
 
-type textReaderContextIsolationReceipt struct {
-	Carrier                      string                      `json:"carrier"`
-	Contexts                     []textReaderContextEvidence `json:"contexts"`
-	ForeignPermissionRefusalHash string                      `json:"foreignPermissionRefusalHash"`
-	RoleDurableReceiptSHA256     string                      `json:"roleDurableReceiptSHA256"`
-	RoleObservations             []textReaderRoleObservation `json:"roleObservations"`
+type readerContextIsolationReceipt struct {
+	Carrier                      string                  `json:"carrier"`
+	Contexts                     []readerContextEvidence `json:"contexts"`
+	ForeignPermissionRefusalHash string                  `json:"foreignPermissionRefusalHash"`
+	RoleDurableReceiptSHA256     string                  `json:"roleDurableReceiptSHA256"`
+	RoleObservations             []readerRoleObservation `json:"roleObservations"`
 }
 
-type textReaderRoleObservation struct {
+type readerRoleObservation struct {
 	Role        string `json:"role"`
 	InputSHA256 string `json:"inputSHA256"`
 }
 
-type textReaderContextProcess struct {
+type readerContextProcess struct {
 	t                           *testing.T
 	source                      *sourceStateFixture
-	input                       textReaderProcessInput
+	input                       readerProcessInput
 	id, inputPath, exchangePath string
 	command                     *exec.Cmd
 	stdin                       io.WriteCloser
@@ -67,7 +67,7 @@ type textReaderContextProcess struct {
 	encoder                     *json.Encoder
 	stdout, stderr              bytes.Buffer
 	request, permission         []byte
-	lookups                     []textReaderLookupEvidence
+	lookups                     []readerLookupEvidence
 	joined                      bool
 }
 
@@ -75,7 +75,7 @@ type textReaderContextProcess struct {
 // their bounded ten-second admission lifetime after a reader exits, so the
 // next independent observation must not turn the intentional four-lane
 // admission ceiling into a context-isolation failure.
-func awaitTextReaderBootstrapRetirement(t *testing.T) {
+func awaitReaderBootstrapRetirement(t *testing.T) {
 	t.Helper()
 	timer := time.NewTimer(11 * time.Second)
 	defer timer.Stop()
@@ -86,10 +86,10 @@ func awaitTextReaderBootstrapRetirement(t *testing.T) {
 	}
 }
 
-func startTextReaderContextProcess(t *testing.T, source *sourceStateFixture, target [32]byte, expected []byte, output, id string) *textReaderContextProcess {
+func startReaderContextProcess(t *testing.T, source *sourceStateFixture, target [32]byte, expected []byte, output, id string) *readerContextProcess {
 	t.Helper()
 	source.mu.Lock()
-	input := textReaderProcessInput{Snapshot: source.snapshot, View: source.view, Target: target, Expected: append([]byte(nil), expected...)}
+	input := readerProcessInput{Snapshot: source.snapshot, View: source.view, Target: target, Expected: append([]byte(nil), expected...)}
 	source.mu.Unlock()
 	prefix := "reader-context-" + id + "-"
 	inputPath := filepath.Join(output, prefix+"input.json")
@@ -118,7 +118,7 @@ func startTextReaderContextProcess(t *testing.T, source *sourceStateFixture, tar
 		t.Fatal(err)
 	}
 	command.ExtraFiles = []*os.File{protocolWrite}
-	process := &textReaderContextProcess{t: t, source: source, input: input, id: id, inputPath: inputPath, exchangePath: filepath.Join(output, prefix+"exchange.json"), command: command, stdin: stdin}
+	process := &readerContextProcess{t: t, source: source, input: input, id: id, inputPath: inputPath, exchangePath: filepath.Join(output, prefix+"exchange.json"), command: command, stdin: stdin}
 	t.Cleanup(process.stopAfterFailure)
 	t.Cleanup(func() { _ = protocolRead.Close() })
 	command.Stdout, command.Stderr = &process.stdout, &process.stderr
@@ -146,7 +146,7 @@ func startTextReaderContextProcess(t *testing.T, source *sourceStateFixture, tar
 	return process
 }
 
-func (process *textReaderContextProcess) stopAfterFailure() {
+func (process *readerContextProcess) stopAfterFailure() {
 	if process == nil || process.joined || process.command == nil || process.command.Process == nil {
 		return
 	}
@@ -155,12 +155,12 @@ func (process *textReaderContextProcess) stopAfterFailure() {
 	process.joined = true
 }
 
-func (process *textReaderContextProcess) importPermission(permission []byte, accepted bool) {
+func (process *readerContextProcess) importPermission(permission []byte, accepted bool) {
 	process.t.Helper()
-	if err := process.encoder.Encode(textReaderControl{Command: "permission", Permission: permission}); err != nil {
+	if err := process.encoder.Encode(readerControl{Command: "permission", Permission: permission}); err != nil {
 		process.t.Fatal(err)
 	}
-	var event textReaderObservationEvent
+	var event readerObservationEvent
 	if err := process.decoder.Decode(&event); err != nil {
 		process.t.Fatal(err)
 	}
@@ -174,22 +174,22 @@ func (process *textReaderContextProcess) importPermission(permission []byte, acc
 	}
 }
 
-func (process *textReaderContextProcess) issueAndImport() {
+func (process *readerContextProcess) issueAndImport() {
 	process.t.Helper()
 	permission := process.source.issueRawPermission(process.t, process.request, sha256.Sum256(process.request))
 	process.importPermission(permission, true)
 }
 
-func (process *textReaderContextProcess) lookup(repeat bool) {
+func (process *readerContextProcess) lookup(repeat bool) {
 	process.t.Helper()
 	command := "lookup"
 	if repeat {
 		command = "repeat-lookup"
 	}
-	if err := process.encoder.Encode(textReaderControl{Command: command}); err != nil {
+	if err := process.encoder.Encode(readerControl{Command: command}); err != nil {
 		process.t.Fatal(err)
 	}
-	var event textReaderObservationEvent
+	var event readerObservationEvent
 	if !repeat {
 		var raw json.RawMessage
 		if err := process.decoder.Decode(&raw); err != nil {
@@ -198,7 +198,7 @@ func (process *textReaderContextProcess) lookup(repeat bool) {
 		if err := json.Unmarshal(raw, &event); err != nil || event.Phase != "protected-lookup-active" {
 			process.t.Fatalf("reader %s active lookup event: %#v / %q / %v", process.id, event, raw, err)
 		}
-		if err := process.encoder.Encode(textReaderControl{Command: "release-lookup"}); err != nil {
+		if err := process.encoder.Encode(readerControl{Command: "release-lookup"}); err != nil {
 			process.t.Fatal(err)
 		}
 	}
@@ -230,12 +230,12 @@ func (process *textReaderContextProcess) lookup(repeat bool) {
 	if event.ResponseRevision == 0 || event.DescriptorFloorRevision < event.ResponseRevision {
 		process.t.Fatalf("reader %s lookup did not retain its descriptor floor", process.id)
 	}
-	process.lookups = append(process.lookups, textReaderLookupEvidence{DescriptorSHA256: event.ResponseDescriptorSHA256, ResponseRevision: event.ResponseRevision, HolderSHA256: event.HolderSHA256, PermissionIDHash: event.PermissionIDSHA256, IssuanceBatches: event.IssuanceBatches, Reserved: event.Reserved, DescriptorFloorRevision: event.DescriptorFloorRevision})
+	process.lookups = append(process.lookups, readerLookupEvidence{DescriptorSHA256: event.ResponseDescriptorSHA256, ResponseRevision: event.ResponseRevision, HolderSHA256: event.HolderSHA256, PermissionIDHash: event.PermissionIDSHA256, IssuanceBatches: event.IssuanceBatches, Reserved: event.Reserved, DescriptorFloorRevision: event.DescriptorFloorRevision})
 }
 
 // childFailure preserves the child test's diagnostic before the parent ends the
 // observation. A closed private pipe is otherwise reported as an unhelpful EOF.
-func (process *textReaderContextProcess) childFailure(readErr error) string {
+func (process *readerContextProcess) childFailure(readErr error) string {
 	process.t.Helper()
 	joined := make(chan error, 1)
 	go func() { joined <- process.command.Wait() }()
@@ -251,7 +251,7 @@ func (process *textReaderContextProcess) childFailure(readErr error) string {
 	}
 }
 
-func (process *textReaderContextProcess) stop() {
+func (process *readerContextProcess) stop() {
 	process.t.Helper()
 	if process.joined {
 		return
@@ -261,7 +261,7 @@ func (process *textReaderContextProcess) stop() {
 			process.stopAfterFailure()
 		}
 	}()
-	if err := process.encoder.Encode(textReaderControl{Command: "stop"}); err != nil {
+	if err := process.encoder.Encode(readerControl{Command: "stop"}); err != nil {
 		process.t.Fatal(err)
 	}
 	if err := process.stdin.Close(); err != nil {
@@ -278,14 +278,14 @@ func (process *textReaderContextProcess) stop() {
 	}
 }
 
-func (process *textReaderContextProcess) writeEvidence() textReaderContextEvidence {
+func (process *readerContextProcess) writeEvidence() readerContextEvidence {
 	process.t.Helper()
 	if len(process.request) == 0 || len(process.permission) == 0 || len(process.lookups) == 0 {
 		process.t.Fatal("reader context has incomplete evidence")
 	}
 	exchange, err := json.Marshal(struct {
 		Request, Permission, Descriptor []byte
-		Lookups                         []textReaderLookupEvidence
+		Lookups                         []readerLookupEvidence
 	}{Request: process.request, Permission: process.permission, Descriptor: process.input.Expected, Lookups: process.lookups})
 	if err != nil {
 		process.t.Fatal(err)
@@ -308,19 +308,19 @@ func (process *textReaderContextProcess) writeEvidence() textReaderContextEviden
 	inputHash, exchangeHash := sha256.Sum256(input), sha256.Sum256(persisted)
 	requestHash, permissionHash := sha256.Sum256(process.request), sha256.Sum256(process.permission)
 	holderHash, permissionIDHash := sha256.Sum256(request.Permission.HolderKey[:]), sha256.Sum256(request.Permission.PermissionID[:])
-	return textReaderContextEvidence{ID: process.id, InputSHA256: hex.EncodeToString(inputHash[:]), ExchangeSHA256: hex.EncodeToString(exchangeHash[:]),
-		RequestSHA256: hex.EncodeToString(requestHash[:]), PermissionSHA256: hex.EncodeToString(permissionHash[:]), HolderSHA256: hex.EncodeToString(holderHash[:]), PermissionIDHash: hex.EncodeToString(permissionIDHash[:]), Lookups: append([]textReaderLookupEvidence(nil), process.lookups...)}
+	return readerContextEvidence{ID: process.id, InputSHA256: hex.EncodeToString(inputHash[:]), ExchangeSHA256: hex.EncodeToString(exchangeHash[:]),
+		RequestSHA256: hex.EncodeToString(requestHash[:]), PermissionSHA256: hex.EncodeToString(permissionHash[:]), HolderSHA256: hex.EncodeToString(holderHash[:]), PermissionIDHash: hex.EncodeToString(permissionIDHash[:]), Lookups: append([]readerLookupEvidence(nil), process.lookups...)}
 }
 
-func observeTextIndependentReaderContexts(t *testing.T, source *sourceStateFixture, target [32]byte, expected []byte, output string) ([]textReaderContextEvidence, [32]byte) {
+func observeIndependentReaderContexts(t *testing.T, source *sourceStateFixture, target [32]byte, expected []byte, output string) ([]readerContextEvidence, [32]byte) {
 	t.Helper()
-	first := startTextReaderContextProcess(t, source, target, expected, output, "first")
+	first := startReaderContextProcess(t, source, target, expected, output, "first")
 	defer first.stopAfterFailure()
 	first.issueAndImport()
 	first.lookup(false)
 	first.lookup(true)
 	first.stop()
-	second := startTextReaderContextProcess(t, source, target, expected, output, "second")
+	second := startReaderContextProcess(t, source, target, expected, output, "second")
 	defer second.stopAfterFailure()
 	second.importPermission(first.permission, false)
 	second.issueAndImport()
@@ -338,7 +338,7 @@ func observeTextIndependentReaderContexts(t *testing.T, source *sourceStateFixtu
 	if firstEvidence.HolderSHA256 == secondEvidence.HolderSHA256 || firstEvidence.PermissionIDHash == secondEvidence.PermissionIDHash || firstEvidence.RequestSHA256 == secondEvidence.RequestSHA256 || len(firstEvidence.Lookups) != 2 || len(secondEvidence.Lookups) != 1 {
 		t.Fatal("reader contexts did not preserve independent holder/request boundaries and first-context repetition")
 	}
-	for _, context := range []textReaderContextEvidence{firstEvidence, secondEvidence} {
+	for _, context := range []readerContextEvidence{firstEvidence, secondEvidence} {
 		for _, lookup := range context.Lookups {
 			if lookup.HolderSHA256 != context.HolderSHA256 || lookup.PermissionIDHash != context.PermissionIDHash || lookup.IssuanceBatches == 0 {
 				t.Fatalf("reader context %s lookup lost its allocation boundary", context.ID)
@@ -356,10 +356,10 @@ func observeTextIndependentReaderContexts(t *testing.T, source *sourceStateFixtu
 	if firstEvidence.Lookups[1].DescriptorFloorRevision < firstEvidence.Lookups[0].DescriptorFloorRevision {
 		t.Fatalf("reader %s reset its quota or spend floor across the repeat lookup: %#v / %#v", firstEvidence.ID, firstEvidence.Lookups[0], firstEvidence.Lookups[1])
 	}
-	return []textReaderContextEvidence{firstEvidence, secondEvidence}, sha256.Sum256(first.permission)
+	return []readerContextEvidence{firstEvidence, secondEvidence}, sha256.Sum256(first.permission)
 }
 
-func writeAndVerifyTextReaderContextIsolation(t *testing.T, output, carrier string, contexts []textReaderContextEvidence, foreignHash [32]byte) {
+func writeAndVerifyReaderContextIsolation(t *testing.T, output, carrier string, contexts []readerContextEvidence, foreignHash [32]byte) {
 	t.Helper()
 	if len(contexts) != 2 {
 		t.Fatal("reader context evidence count is invalid")
@@ -369,22 +369,22 @@ func writeAndVerifyTextReaderContextIsolation(t *testing.T, output, carrier stri
 		t.Fatal(err)
 	}
 	roleHash := sha256.Sum256(roleReceipt)
-	var durable textRoleDurableReceipt
+	var durable roleDurableReceipt
 	if err := json.Unmarshal(roleReceipt, &durable); err != nil || durable.Carrier != carrier {
 		t.Fatalf("reader context durable receipt = %#v / %v", durable, err)
 	}
-	roles := make([]textReaderRoleObservation, 0, 3)
+	roles := make([]readerRoleObservation, 0, 3)
 	seen := map[string]bool{}
 	for _, role := range durable.Roles {
 		if !seen[role.Role] && (role.Role == "issuer" || role.Role == "forwarding" || role.Role == "resolution") {
 			seen[role.Role] = true
-			roles = append(roles, textReaderRoleObservation{Role: role.Role, InputSHA256: role.InputSHA256})
+			roles = append(roles, readerRoleObservation{Role: role.Role, InputSHA256: role.InputSHA256})
 		}
 	}
 	if len(roles) != 3 {
 		t.Fatal("durable receipt lacks issuer, forwarding, or Gateway resolution observation")
 	}
-	receiptBytes, err := json.Marshal(textReaderContextIsolationReceipt{Carrier: carrier, Contexts: contexts, ForeignPermissionRefusalHash: hex.EncodeToString(foreignHash[:]), RoleDurableReceiptSHA256: hex.EncodeToString(roleHash[:]), RoleObservations: roles})
+	receiptBytes, err := json.Marshal(readerContextIsolationReceipt{Carrier: carrier, Contexts: contexts, ForeignPermissionRefusalHash: hex.EncodeToString(foreignHash[:]), RoleDurableReceiptSHA256: hex.EncodeToString(roleHash[:]), RoleObservations: roles})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -396,7 +396,7 @@ func writeAndVerifyTextReaderContextIsolation(t *testing.T, output, carrier stri
 	if err != nil {
 		t.Fatal(err)
 	}
-	var receipt textReaderContextIsolationReceipt
+	var receipt readerContextIsolationReceipt
 	if err := json.Unmarshal(persisted, &receipt); err != nil || receipt.Carrier != carrier || !reflect.DeepEqual(receipt.Contexts, contexts) || receipt.ForeignPermissionRefusalHash != hex.EncodeToString(foreignHash[:]) || receipt.RoleDurableReceiptSHA256 != hex.EncodeToString(roleHash[:]) || !reflect.DeepEqual(receipt.RoleObservations, roles) {
 		t.Fatalf("reader context receipt = %#v / %v", receipt, err)
 	}

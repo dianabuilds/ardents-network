@@ -118,7 +118,7 @@ func runInstalledServiceCommand(t *testing.T, binary string, arguments ...string
 	defer cancel()
 	command := exec.CommandContext(ctx, binary, arguments...)
 	command.WaitDelay = 5 * time.Second
-	output, diagnostic := &installedTextOutput{limit: 128 << 10, cancel: cancel}, &installedTextOutput{limit: 4096, cancel: cancel}
+	output, diagnostic := &installedOutput{limit: 128 << 10, cancel: cancel}, &installedOutput{limit: 4096, cancel: cancel}
 	command.Stdout, command.Stderr = output, diagnostic
 	if err := command.Run(); err != nil || ctx.Err() != nil || diagnostic.buffer.Len() != 0 {
 		t.Fatalf("installed Instance command failed: %v / %v", err, ctx.Err())

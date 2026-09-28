@@ -21,7 +21,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/resource"
 )
 
-type textRoleProcessInput struct {
+type roleProcessInput struct {
 	Snapshot                                                  state.Snapshot
 	View                                                      state.ClosedRouteView
 	Key                                                       ed25519.PrivateKey
@@ -31,7 +31,7 @@ type textRoleProcessInput struct {
 	Drain                                                     time.Duration
 }
 
-func textRoleProcessConfig(input textRoleProcessInput) node.Config {
+func roleProcessConfig(input roleProcessInput) node.Config {
 	config := node.Config{HostingRoot: input.HostingRoot, NetworkID: input.Snapshot.NetworkID, NodeID: input.Snapshot.NodeID, IdentityKey: input.Key,
 		Current:              func() (state.NodeDuty, error) { return state.ProjectNodeDuty(input.Snapshot), nil },
 		CurrentClosedProfile: func() (state.ClosedProfileView, bool) { return input.View.Profile, true },
@@ -55,17 +55,17 @@ func textRoleProcessConfig(input textRoleProcessInput) node.Config {
 
 // Public State/placement are explicit fixtures; all receiving duties use Run.
 // These heaps contain role secrets, stay local and cannot qualify latency.
-func runTextRoleObservationChild(t *testing.T, path string) {
+func runRoleObservationChild(t *testing.T, path string) {
 	raw, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatal(err)
 	}
-	var input textRoleProcessInput
+	var input roleProcessInput
 	if err := json.Unmarshal(raw, &input); err != nil {
 		t.Fatal(err)
 	}
 	clear(raw)
-	config := textRoleProcessConfig(input)
+	config := roleProcessConfig(input)
 	ready := make(chan struct{}, 1)
 	config.Emit = func(_ context.Context, event node.Event) error {
 		if event.State == "READY" {
@@ -116,7 +116,7 @@ func runTextRoleObservationChild(t *testing.T, path string) {
 			case <-time.After(5 * time.Second):
 				t.Fatal("role stop timeout")
 			}
-			if err := captureTextRoleDurableState(input, path, "stopped"); err != nil {
+			if err := captureRoleDurableState(input, path, "stopped"); err != nil {
 				t.Fatal(err)
 			}
 			fmt.Println("role-stopped")
@@ -124,7 +124,7 @@ func runTextRoleObservationChild(t *testing.T, path string) {
 		}
 		if strings.HasPrefix(phase, "state ") {
 			phase = strings.TrimPrefix(phase, "state ")
-			if err := captureTextRoleDurableState(input, path, phase); err != nil {
+			if err := captureRoleDurableState(input, path, phase); err != nil {
 				t.Fatal(err)
 			}
 			fmt.Println("role-state " + phase)

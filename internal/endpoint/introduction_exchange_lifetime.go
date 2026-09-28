@@ -19,7 +19,7 @@ type introductionExchange struct {
 
 // Reserve before the first State read or I/O. Context retirement cancels and
 // joins these exchanges even when the worker's own cleanup has already ended.
-func (owner *textContext) beginIntroductionExchange(caller context.Context, job *textJobIdentity, surface broker.Surface) (context.Context, func(error) error, error) {
+func (owner *textContext) beginIntroductionExchange(caller context.Context, job *jobIdentity, surface broker.Surface) (context.Context, func(error) error, error) {
 	owner.mu.Lock()
 	if caller == nil || caller.Err() != nil || !owner.liveServiceJobLocked(job, surface) || owner.introduction.exchanges.fullLocked(owner.streamExchangeLimitLocked()) {
 		owner.mu.Unlock()
@@ -49,7 +49,7 @@ func (owner *textContext) beginIntroductionExchange(caller context.Context, job 
 // distinct from job authorization. The caller still cancels setup; after
 // detach and retain, job loss stops Service work while the transport remains
 // alive only long enough for its owner to send terminal control and join it.
-func (owner *textContext) beginServiceTransportExchange(caller context.Context, job *textJobIdentity, surface broker.Surface) (context.Context, *introductionExchange, func() bool, func(error) error, error) {
+func (owner *textContext) beginServiceTransportExchange(caller context.Context, job *jobIdentity, surface broker.Surface) (context.Context, *introductionExchange, func() bool, func(error) error, error) {
 	owner.mu.Lock()
 	if caller == nil || caller.Err() != nil || !owner.liveServiceJobLocked(job, surface) || owner.introduction.exchanges.fullLocked(owner.streamExchangeLimitLocked()) {
 		owner.mu.Unlock()
@@ -84,7 +84,7 @@ func (owner *textContext) beginServiceTransportExchange(caller context.Context, 
 	return lifetime, flight, detach, finish, nil
 }
 
-func (owner *textContext) retainServiceTransportExchangeLocked(job *textJobIdentity, flight *introductionExchange) bool {
+func (owner *textContext) retainServiceTransportExchangeLocked(job *jobIdentity, flight *introductionExchange) bool {
 	if flight == nil || owner.closed || !owner.liveServiceJobLocked(job, owner.surface) {
 		return false
 	}

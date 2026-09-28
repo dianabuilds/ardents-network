@@ -41,7 +41,7 @@ func (permissionSecretFixture) Confirm(context.Context, custody.ConfirmationProm
 func permissionContextFixture(t *testing.T, endpoint *endpoint, principal [32]byte, surface broker.Surface) *textContext {
 	t.Helper()
 	owner := admittedTextContext(t, endpoint, principal, surface)
-	job, err := beginTextTestJob(t, owner, endpoint, surface)
+	job, err := beginTestJob(t, owner, endpoint, surface)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -173,7 +173,7 @@ func TestTextPermissionCustodyRoundTripAndContextOwnership(t *testing.T) {
 	}
 
 	// A successfully joined replacement worker cannot rotate the context holder.
-	job, err := beginTextTestJob(t, reader, endpoint, broker.Connection)
+	job, err := beginTestJob(t, reader, endpoint, broker.Connection)
 	if err != nil {
 		t.Fatal(err)
 	}

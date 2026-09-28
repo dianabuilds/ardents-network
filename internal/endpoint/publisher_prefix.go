@@ -13,10 +13,10 @@ import (
 
 type publisherPrefixOpening interface {
 	openingAvailableLocked() bool
-	membersSlotLocked() **textInteriorSet
-	reserveOpeningLocked(*textOperationFlight) bool
-	openingCurrentLocked(*textOperationFlight) bool
-	finishOpeningLocked(*textOperationFlight, *client.ClosedSourcePrefix, context.CancelFunc, bool) bool
+	membersSlotLocked() **interiorSet
+	reserveOpeningLocked(*operationFlight) bool
+	openingCurrentLocked(*operationFlight) bool
+	finishOpeningLocked(*operationFlight, *client.ClosedSourcePrefix, context.CancelFunc, bool) bool
 }
 
 func (owner *textContext) openResponderPrefix(ctx context.Context) (*responderPrefixHandle, error) {
@@ -70,13 +70,13 @@ func (owner *textContext) openPublisherPrefix(ctx context.Context, role publishe
 		owner.mu.Unlock()
 		return nil, errors.New("text Publisher State unavailable")
 	}
-	selection, err := owner.selectTextAdjacentLocked(domain, role.membersSlotLocked())
+	selection, err := owner.selectAdjacentLocked(domain, role.membersSlotLocked())
 	if err != nil {
 		owner.mu.Unlock()
 		return nil, err
 	}
 	attempt, cancel := context.WithCancel(owner.lease.Context())
-	flight := &textOperationFlight{owner: owner, context: attempt, cancelOperation: cancel, done: make(chan struct{})}
+	flight := &operationFlight{owner: owner, context: attempt, cancelOperation: cancel, done: make(chan struct{})}
 	if !role.reserveOpeningLocked(flight) {
 		owner.mu.Unlock()
 		cancel()
@@ -117,7 +117,7 @@ func (owner *textContext) openPublisherPrefix(ctx context.Context, role publishe
 	return prefix, nil
 }
 
-func (owner *textContext) ensurePublisherStock(role publisherPrefixOpening, flight *textOperationFlight, selection client.ClosedBootstrapSelection) error {
+func (owner *textContext) ensurePublisherStock(role publisherPrefixOpening, flight *operationFlight, selection client.ClosedBootstrapSelection) error {
 	owner.mu.Lock()
 	profile, _, err := owner.permissionProfileLocked()
 	if err != nil || !role.openingCurrentLocked(flight) || flight.context.Err() != nil || owner.tokens.permission == nil {
@@ -138,7 +138,7 @@ func (owner *textContext) ensurePublisherStock(role publisherPrefixOpening, flig
 	return nil
 }
 
-func (owner *textContext) presentPublisherForwardingToken(role publisherPrefixOpening, domain uint8, flight *textOperationFlight, selection client.ClosedBootstrapSelection, hello ardp.Hello, class uint8) ([]byte, error) {
+func (owner *textContext) presentPublisherForwardingToken(role publisherPrefixOpening, domain uint8, flight *operationFlight, selection client.ClosedBootstrapSelection, hello ardp.Hello, class uint8) ([]byte, error) {
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
 	profile, now, err := owner.permissionProfileLocked()
@@ -147,7 +147,7 @@ func (owner *textContext) presentPublisherForwardingToken(role publisherPrefixOp
 		hello.StateGeneration != profile.StateGeneration || hello.StateDigest != profile.StateDigest || hello.ChannelNonce == [32]byte{} || !now.Before(hello.Deadline) || hello.Deadline.After(profile.NotAfter) {
 		return nil, errors.New("text Publisher role forwarding authority unavailable")
 	}
-	current, err := owner.selectTextAdjacentLocked(domain, role.membersSlotLocked())
+	current, err := owner.selectAdjacentLocked(domain, role.membersSlotLocked())
 	if err != nil || current != selection || hello.RecipientNodeID != selection.EntryNodeID && hello.RecipientNodeID != selection.InteriorNodeID {
 		return nil, errors.New("text Publisher role selection changed")
 	}

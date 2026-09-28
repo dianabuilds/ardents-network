@@ -28,15 +28,15 @@ type textContextState struct {
 	lease             *broker.ActiveSession
 	principal         [32]byte
 	surface           broker.Surface
-	job               *textJobIdentity
-	lastJob           *textJobIdentity
-	verifiedJob       *textJobIdentity
+	job               *jobIdentity
+	lastJob           *jobIdentity
+	verifiedJob       *jobIdentity
 	closed            bool
 	done              chan struct{}
 	closeErr          error
 }
 
-func (owner *textContext) reportTextOperationFailure(failure string) {
+func (owner *textContext) reportOperationFailure(failure string) {
 	owner.mu.Lock()
 	report := owner.operationFailure
 	owner.mu.Unlock()
@@ -80,7 +80,7 @@ func (endpoint *endpoint) beginTextContext(ctx context.Context, capability, prin
 // beginJob requires an explicit owner action after the previous invocation
 // has retired. Its caller must finishJobCleanup on every exit, even if launch
 // fails before an attachment exists. Close joins that reservation as well.
-func (owner *textContext) beginJob(endpoint *endpoint, surface broker.Surface) (*textJobIdentity, error) {
+func (owner *textContext) beginJob(endpoint *endpoint, surface broker.Surface) (*jobIdentity, error) {
 	if owner == nil {
 		return nil, errors.New("text context is unavailable")
 	}
@@ -89,7 +89,7 @@ func (owner *textContext) beginJob(endpoint *endpoint, surface broker.Surface) (
 	if !owner.liveLocked(endpoint, surface) || owner.job != nil {
 		return nil, errors.New("text context is unavailable or already has a worker")
 	}
-	job, err := newTextJobIdentity(owner)
+	job, err := newJobIdentity(owner)
 	if err != nil {
 		return nil, err
 	}
@@ -99,7 +99,7 @@ func (owner *textContext) beginJob(endpoint *endpoint, surface broker.Surface) (
 
 // currentJob is checked at every asynchronous completion. A copied nonce,
 // old job pointer, foreign Endpoint, or opposite local role cannot attach.
-func (owner *textContext) currentJob(endpoint *endpoint, surface broker.Surface, job *textJobIdentity, nonce [32]byte) bool {
+func (owner *textContext) currentJob(endpoint *endpoint, surface broker.Surface, job *jobIdentity, nonce [32]byte) bool {
 	if owner == nil {
 		return false
 	}
@@ -110,7 +110,7 @@ func (owner *textContext) currentJob(endpoint *endpoint, surface broker.Surface,
 
 // retireJob invalidates completions and interrupts invocation I/O before
 // cleanup starts. The separately authorized Endpoint context survives.
-func (owner *textContext) retireJob(job *textJobIdentity) {
+func (owner *textContext) retireJob(job *jobIdentity) {
 	if job != nil {
 		job.retire()
 	}
@@ -119,7 +119,7 @@ func (owner *textContext) retireJob(job *textJobIdentity) {
 // finishJobCleanup publishes one immutable cleanup outcome. A later callback
 // cannot erase failure or release a replacement's reservation. This internal
 // completion is not installed confinement evidence.
-func (owner *textContext) finishJobCleanup(job *textJobIdentity, cleanupErr error) error {
+func (owner *textContext) finishJobCleanup(job *jobIdentity, cleanupErr error) error {
 	if job == nil || job.owner != owner {
 		return errors.New("text context is unavailable")
 	}

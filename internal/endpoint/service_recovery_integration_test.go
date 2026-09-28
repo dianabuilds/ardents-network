@@ -284,12 +284,12 @@ func TestTextRecoveryPreparesFreshAttachmentUnderRetainedAuthority(t *testing.T)
 	defer clear(initial.operation)
 	request := initial.binding.serviceRecovery()
 	request.Generation, request.Role, request.Deadline = 2, "client", now.Add(10*time.Second).UTC().Truncate(time.Second)
-	first, err := reader.prepareTextRecovery(ctx, job, initial.binding, request)
+	first, err := reader.prepareRecovery(ctx, job, initial.binding, request)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer clear(first.operation)
-	second, err := reader.prepareTextRecovery(ctx, job, initial.binding, request)
+	second, err := reader.prepareRecovery(ctx, job, initial.binding, request)
 	if err != nil {
 		t.Fatal(err)
 	}

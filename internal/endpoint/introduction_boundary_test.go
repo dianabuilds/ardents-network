@@ -36,7 +36,7 @@ func (source *capsuleBoundaryState) CurrentClosedProfile() (state.ClosedProfileV
 }
 
 func checkCapsuleAdmissionBoundaries(t *testing.T, publisher, reader *textContext, source *sourceStateFixture,
-	job *textJobIdentity, original *introductionAttempt, recipient [32]byte) {
+	job *jobIdentity, original *introductionAttempt, recipient [32]byte) {
 	t.Helper()
 	endpoint := publisher.endpoint
 	for index, name := range []string{"resolution family", "Introduction family", "issuer family", "caller cancellation", "deadline"} {

@@ -37,9 +37,9 @@ func TestTextPrefixPreparationFailureRetainsStageAndCause(t *testing.T) {
 
 func TestTextTokenPresentationFailureRetainsNestedStageAndCause(t *testing.T) {
 	cause := errors.New("local role conflict read unavailable")
-	role := textRoleMemberFailureAt("conflict-read", cause)
-	selection := textInteriorSelectionFailureAt("role-members-"+textRoleMemberFailureStage(role), role)
-	failure := tokenPresentationFailureAt("selection-"+textInteriorSelectionFailureStage(selection), selection)
+	role := roleMemberFailureAt("conflict-read", cause)
+	selection := interiorSelectionFailureAt("role-members-"+roleMemberFailureStage(role), role)
+	failure := tokenPresentationFailureAt("selection-"+interiorSelectionFailureStage(selection), selection)
 	if got := tokenPresentationFailureStage(failure); got != "selection-role-members-conflict-read" {
 		t.Fatalf("token presentation stage = %q", got)
 	}
@@ -63,7 +63,7 @@ func TestTextTokenPresentationClassifiesConcurrentRoleCommit(t *testing.T) {
 	defer writer.Close()
 
 	attempt, cancel := context.WithCancel(t.Context())
-	flight := &textOperationFlight{owner: owner, context: attempt, cancelOperation: cancel, done: make(chan struct{})}
+	flight := &operationFlight{owner: owner, context: attempt, cancelOperation: cancel, done: make(chan struct{})}
 	owner.mu.Lock()
 	owner.source.opening = flight
 	profile := owner.tokens.permission.profile

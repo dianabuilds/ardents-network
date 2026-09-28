@@ -41,7 +41,7 @@ func (lifecycle *introductionPrefixLifecycle) acquireOpenedLocked(prefix *client
 	return handle
 }
 
-func (lifecycle *introductionPrefixLifecycle) finishOpeningLocked(flight *textOperationFlight,
+func (lifecycle *introductionPrefixLifecycle) finishOpeningLocked(flight *operationFlight,
 	prefix *client.ClosedSourcePrefix, cancel context.CancelFunc, publish bool) bool {
 	if lifecycle == nil || lifecycle.opening != flight {
 		return false

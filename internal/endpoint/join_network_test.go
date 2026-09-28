@@ -40,14 +40,14 @@ func TestTextRouteJoinConnectsSourceAndResponder(t *testing.T) {
 			if _, err := publisher.openPrefix(t.Context()); err != nil {
 				t.Fatal(err)
 			}
-			exchangeTextRouteData(t, reader, publisher, source.view.Nodes[15].NodeID, nil)
+			exchangeRouteData(t, reader, publisher, source.view.Nodes[15].NodeID, nil)
 		})
 	}
 }
 
-// exchangeTextRouteData verifies a real two-way DataJoin exchange. The optional
+// exchangeRouteData verifies a real two-way DataJoin exchange. The optional
 // ready callback observes both joined streams before either direction writes.
-func exchangeTextRouteData(t *testing.T, reader, publisher *textContext, receiver [32]byte, ready func()) {
+func exchangeRouteData(t *testing.T, reader, publisher *textContext, receiver [32]byte, ready func()) {
 	t.Helper()
 	responder, err := publisher.openResponderPrefix(t.Context())
 	if err != nil {

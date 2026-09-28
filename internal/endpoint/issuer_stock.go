@@ -14,7 +14,7 @@ import (
 // work. Before the first admitted prefix this uses the second bootstrap batch;
 // thereafter the last Control token can replenish stock within its allocation.
 func (owner *textContext) prepareIssuerStock(ctx context.Context, requested [][32]byte, class uint8,
-	opening *textOperationFlight, acquisition joinAcquisition, expected *sourceHandle) error {
+	opening *operationFlight, acquisition joinAcquisition, expected *sourceHandle) error {
 	owner.mu.Lock()
 	profile, _, err := owner.permissionProfileLocked()
 	if err != nil || ctx.Err() != nil || owner.tokens.permission == nil || !opening.admittedLocked(owner) ||
@@ -77,7 +77,7 @@ func (operation *issuanceOperation) presentIssuerToken(selection client.ClosedBo
 		hello.ChannelNonce == [32]byte{} || !now.Before(hello.Deadline) || hello.Deadline.After(profile.NotAfter) {
 		return nil, errors.New("text issuer token presentation authority unavailable")
 	}
-	current, err := owner.selectTextBootstrapLocked()
+	current, err := owner.selectBootstrapLocked()
 	if err != nil || current != selection {
 		return nil, errors.New("text issuer token source changed")
 	}

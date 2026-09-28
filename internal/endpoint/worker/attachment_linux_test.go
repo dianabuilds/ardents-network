@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-func textAttachmentPair(t *testing.T) (*Attachment, *net.UnixConn) {
+func attachmentPair(t *testing.T) (*Attachment, *net.UnixConn) {
 	t.Helper()
 	pair, err := syscall.Socketpair(syscall.AF_UNIX, syscall.SOCK_STREAM|syscall.SOCK_CLOEXEC, 0)
 	if err != nil {
@@ -46,7 +46,7 @@ func textAttachmentPair(t *testing.T) (*Attachment, *net.UnixConn) {
 }
 
 func TestTextWorkerAttachmentChecksEveryReadAndRejectsForeignPID(t *testing.T) {
-	attachment, peer := textAttachmentPair(t)
+	attachment, peer := attachmentPair(t)
 	for _, body := range []string{"first", "later"} {
 		if _, err := peer.Write([]byte(body)); err != nil {
 			t.Fatal(err)
@@ -66,7 +66,7 @@ func TestTextWorkerAttachmentChecksEveryReadAndRejectsForeignPID(t *testing.T) {
 }
 
 func TestTextWorkerAttachmentRejectsDescriptorPassingAfterOrdinaryBytes(t *testing.T) {
-	attachment, peer := textAttachmentPair(t)
+	attachment, peer := attachmentPair(t)
 	file, err := os.Open("/dev/null")
 	if err != nil {
 		t.Fatal(err)
@@ -123,7 +123,7 @@ func TestTextWorkerControlClosesEveryUnwantedDescriptor(t *testing.T) {
 }
 
 func TestTextWorkerAttachmentCloseIsJoinedAndIdempotent(t *testing.T) {
-	attachment, _ := textAttachmentPair(t)
+	attachment, _ := attachmentPair(t)
 	completed := make(chan error, 1)
 	joined := make(chan struct{})
 	go func() { defer close(joined); _, err := attachment.Read(make([]byte, 1)); completed <- err }()

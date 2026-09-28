@@ -26,7 +26,7 @@ import (
 // complete privacy verdict follows from this test.
 func TestTextDataJoinIsolatedRoleObservations(t *testing.T) {
 	if path := os.Getenv("ARDENTS_TEXT_ROLE_CHILD"); path != "" {
-		runTextRoleObservationChild(t, path)
+		runRoleObservationChild(t, path)
 		return
 	}
 	if selected := os.Getenv("ARDENTS_TEXT_DATA_ROLE_CARRIER"); selected != "" {
@@ -71,22 +71,22 @@ func runDataJoinIsolatedRoleObservation(t *testing.T, carrier routecarrier.Carri
 	output := t.TempDir()
 	if root := os.Getenv("ARDENTS_TEXT_DATA_ROLE_OBSERVATIONS"); root != "" {
 		var err error
-		output, err = createTextRoleObservationOutput(root, string(carrier))
+		output, err = createRoleObservationOutput(root, string(carrier))
 		if err != nil {
 			t.Fatal(err)
 		}
 	} else {
 		var err error
-		output, err = textRoleObservationCaptureRoot(output)
+		output, err = roleObservationCaptureRoot(output)
 		if err != nil {
 			t.Fatal(err)
 		}
 	}
-	var processes []*textRoleProcess
+	var processes []*roleProcess
 	publisherRoot := textNetworkPrivateRoot(t)
 	publisherProcess := startPublisherDurableCapture(t, output, publisherRoot)
 	runner := func(t *testing.T, index int, config node.Config, snapshot state.Snapshot) func() error {
-		process := startTextRoleProcess(t, index, config, snapshot, output, "^TestTextDataJoinIsolatedRoleObservations$")
+		process := startRoleProcess(t, index, config, snapshot, output, "^TestTextDataJoinIsolatedRoleObservations$")
 		processes = append(processes, process)
 		return process.stop
 	}
@@ -134,7 +134,7 @@ func runDataJoinIsolatedRoleObservation(t *testing.T, carrier routecarrier.Carri
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !bytes.Equal(lookupTextPublishedProof(t, owner, published.Descriptor.Target), registration.descriptor) {
+	if !bytes.Equal(lookupPublishedProof(t, owner, published.Descriptor.Target), registration.descriptor) {
 		t.Fatal("receiving Store proof differs")
 	}
 	observe("published")
@@ -143,7 +143,7 @@ func runDataJoinIsolatedRoleObservation(t *testing.T, carrier routecarrier.Carri
 	if _, err := reader.openPrefix(t.Context()); err != nil {
 		t.Fatal(err)
 	}
-	exchangeTextRouteData(t, reader, owner, source.view.Nodes[15].NodeID, func() { observe("data") })
+	exchangeRouteData(t, reader, owner, source.view.Nodes[15].NodeID, func() { observe("data") })
 	if err := reader.Close(); err != nil {
 		t.Fatal(err)
 	}
@@ -167,7 +167,7 @@ func runDataJoinIsolatedRoleObservation(t *testing.T, carrier routecarrier.Carri
 				t.Fatal("invalid heap capture")
 			}
 		}
-		verifyTextRoleDurableStateCapture(t, process.output, "startup", "published", "data", "withdrawn", "stopped")
+		verifyRoleDurableStateCapture(t, process.output, "startup", "published", "data", "withdrawn", "stopped")
 	}
 	if err := endpoint.Close(); err != nil {
 		t.Fatal(err)
@@ -175,11 +175,11 @@ func runDataJoinIsolatedRoleObservation(t *testing.T, carrier routecarrier.Carri
 	if err := publisherProcess.stop(); err != nil {
 		t.Fatal(err)
 	}
-	verifyTextRoleDurableStateCapture(t, publisherProcess.output, "startup", "published", "data", "withdrawn", "stopped")
-	allProcesses := append([]*textRoleProcess{publisherProcess}, processes...)
+	verifyRoleDurableStateCapture(t, publisherProcess.output, "startup", "published", "data", "withdrawn", "stopped")
+	allProcesses := append([]*roleProcess{publisherProcess}, processes...)
 	if len(allProcesses) != 17 {
 		t.Fatalf("captured roles = %d, want publisher plus 16 Nodes", len(allProcesses))
 	}
-	writeAndVerifyTextRoleDurableReceipt(t, output, string(carrier), allProcesses, "startup", "published", "data", "withdrawn", "stopped")
+	writeAndVerifyRoleDurableReceipt(t, output, string(carrier), allProcesses, "startup", "published", "data", "withdrawn", "stopped")
 	t.Logf("fresh DataJoin observation captured 16 isolated Node roles and the Publisher durable root; incomplete P3")
 }

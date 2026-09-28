@@ -14,7 +14,7 @@ import (
 
 func TestTextParticipantCancellationBeforeQualificationExposesNoCommands(t *testing.T) {
 	endpoint, principal := textContextEndpoint(t)
-	release, err := endpoint.acquireTextLaunch(t.Context())
+	release, err := endpoint.acquireLaunch(t.Context())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -50,7 +50,7 @@ func TestTextParticipantCancellationBeforeQualificationExposesNoCommands(t *test
 	tick := time.NewTicker(time.Millisecond)
 	defer tick.Stop()
 	var owner *textContext
-	var job *textJobIdentity
+	var job *jobIdentity
 	for job == nil {
 		endpoint.textMu.Lock()
 		for candidate := range endpoint.textContexts {

@@ -15,7 +15,7 @@ import (
 // identities. Its only delegated use is the already-admitted byte stream;
 // Publisher administration and all network selection stay with its context.
 type qualifiedWorker struct {
-	job      *textJobIdentity
+	job      *jobIdentity
 	lifetime *workerLifetime
 	grant    *broker.Broker
 	lease    *broker.ActiveSession
@@ -24,7 +24,7 @@ type qualifiedWorker struct {
 // bindWorker is called only at the end of launchWorker's artifact,
 // activation, credentials and readiness checks. Broker keeps generic mechanics;
 // this Endpoint owner is responsible for the verified launch assertion.
-func (owner *textContext) bindWorker(job *textJobIdentity, lifetime *workerLifetime) (*qualifiedWorker, error) {
+func (owner *textContext) bindWorker(job *jobIdentity, lifetime *workerLifetime) (*qualifiedWorker, error) {
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
 	if job == nil || lifetime == nil || !owner.liveLocked(owner.endpoint, owner.surface) || owner.job != job ||

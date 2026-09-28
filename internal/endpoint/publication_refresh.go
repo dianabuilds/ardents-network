@@ -266,7 +266,7 @@ func (owner *textContext) runRefresh(flight *publicationRefresh) {
 }
 
 func refreshSourceContention(cause error) bool {
-	return errors.Is(cause, context.DeadlineExceeded) && textRoleMemberFailureStage(cause) == "conflict-read"
+	return errors.Is(cause, context.DeadlineExceeded) && roleMemberFailureStage(cause) == "conflict-read"
 }
 
 func (owner *textContext) rotatePublication(flight *publicationRefresh, previous *introductionRegistration) error {

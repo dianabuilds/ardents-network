@@ -6,19 +6,19 @@ import (
 	"context"
 	"errors"
 
-	"github.com/dianabuilds/ardents-network/internal/application/interfacev2/connection"
+	interfacev2connection "github.com/dianabuilds/ardents-network/internal/application/interfacev2/connection"
 	"github.com/dianabuilds/ardents-network/internal/application/textdocument"
 	"github.com/dianabuilds/ardents-network/internal/qualification"
 )
 
 // serveOperation consumes the already reserved worker operation. Startup may
 // reserve it before publication so readiness never races another worker use.
-func (worker *qualifiedWorker) serveOperation(ctx, bounded context.Context, finish func(), produce func(context.Context, chan<- connection.Stream) error) error {
+func (worker *qualifiedWorker) serveOperation(ctx, bounded context.Context, finish func(), produce func(context.Context, chan<- interfacev2connection.Stream) error) error {
 	if worker.job.qualification != nil {
 		return qualification.ServePublisher(ctx, bounded, worker, finish, produce)
 	}
 	forwarding, cancel := context.WithCancel(bounded)
-	delivered := make(chan connection.Stream)
+	delivered := make(chan interfacev2connection.Stream)
 	forwarded := make(chan error, 1)
 	go func() {
 		defer close(delivered)

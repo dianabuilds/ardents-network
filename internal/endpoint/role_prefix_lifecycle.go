@@ -65,8 +65,8 @@ func (handle *rolePrefixHandleCore) replenishCore(ctx context.Context, present c
 // its opening admission, operations gate and acquisitions diverge.
 type rolePrefixCore struct {
 	live    rolePrefixLive
-	opening *textOperationFlight
-	set     *textInteriorSet
+	opening *operationFlight
+	set     *interiorSet
 }
 
 func (core *rolePrefixCore) liveCoreLocked() *rolePrefixHandleCore {
@@ -99,11 +99,11 @@ func (core *rolePrefixCore) openingAvailableLocked() bool {
 	return core != nil && core.live == nil && core.opening == nil
 }
 
-func (core *rolePrefixCore) membersSlotLocked() **textInteriorSet {
+func (core *rolePrefixCore) membersSlotLocked() **interiorSet {
 	return &core.set
 }
 
-func (core *rolePrefixCore) reserveOpeningLocked(flight *textOperationFlight) bool {
+func (core *rolePrefixCore) reserveOpeningLocked(flight *operationFlight) bool {
 	if core == nil || flight == nil || core.live != nil || core.opening != nil {
 		return false
 	}
@@ -111,7 +111,7 @@ func (core *rolePrefixCore) reserveOpeningLocked(flight *textOperationFlight) bo
 	return true
 }
 
-func (core *rolePrefixCore) openingCurrentLocked(flight *textOperationFlight) bool {
+func (core *rolePrefixCore) openingCurrentLocked(flight *operationFlight) bool {
 	return core != nil && core.opening == flight
 }
 
@@ -163,7 +163,7 @@ func (core *rolePrefixCore) stopLocked() *rolePrefixRetirement {
 // closing the prefix run without textContext.mu.
 type rolePrefixRetirement struct {
 	prefix  *client.ClosedSourcePrefix
-	opening *textOperationFlight
+	opening *operationFlight
 }
 
 func (retirement *rolePrefixRetirement) joinOpening() {

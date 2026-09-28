@@ -22,7 +22,7 @@ func TestTextPermissionPreparationJoinsUnqualifiedLaunch(t *testing.T) {
 			t.Run(string(surface)+map[bool]string{false: "/cancel", true: "/retire"}[retire], func(t *testing.T) {
 				endpoint, principal := textContextEndpoint(t)
 				owner := admittedTextContext(t, endpoint, principal, surface)
-				release, err := endpoint.acquireTextLaunch(t.Context())
+				release, err := endpoint.acquireLaunch(t.Context())
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -51,7 +51,7 @@ func TestTextPermissionPreparationJoinsUnqualifiedLaunch(t *testing.T) {
 				defer deadline.Stop()
 				tick := time.NewTicker(time.Millisecond)
 				defer tick.Stop()
-				var job *textJobIdentity
+				var job *jobIdentity
 				for job == nil {
 					owner.mu.Lock()
 					job = owner.job

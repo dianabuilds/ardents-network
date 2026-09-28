@@ -12,10 +12,10 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/endpoint/worker"
 )
 
-// textAttachmentPair binds a same-process credentialed attachment to a raw
+// attachmentPair binds a same-process credentialed attachment to a raw
 // peer socket. The peer stands in for the not-yet-verified worker process in
 // readiness and lifetime tests; it grants no host verdict.
-func textAttachmentPair(t *testing.T) (*worker.Attachment, *net.UnixConn) {
+func attachmentPair(t *testing.T) (*worker.Attachment, *net.UnixConn) {
 	t.Helper()
 	pair, err := syscall.Socketpair(syscall.AF_UNIX, syscall.SOCK_STREAM|syscall.SOCK_CLOEXEC, 0)
 	if err != nil {

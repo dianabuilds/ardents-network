@@ -17,15 +17,15 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-func createTextRoleObservationOutput(root, carrier string) (string, error) {
-	worktree, err := textRoleObservationWorktree()
+func createRoleObservationOutput(root, carrier string) (string, error) {
+	worktree, err := roleObservationWorktree()
 	if err != nil {
 		return "", err
 	}
-	return createTextRoleObservationOutputAgainstWorktree(root, carrier, worktree)
+	return createRoleObservationOutputAgainstWorktree(root, carrier, worktree)
 }
 
-func createTextRoleObservationOutputAgainstWorktree(root, carrier, worktree string) (string, error) {
+func createRoleObservationOutputAgainstWorktree(root, carrier, worktree string) (string, error) {
 	if !filepath.IsAbs(root) || filepath.Clean(root) != root {
 		return "", errors.New("capture root must be a clean absolute path")
 	}
@@ -84,29 +84,29 @@ func TestCreateTextRoleObservationOutputRejectsCaptureInsideWorktree(t *testing.
 	if err := os.Symlink(worktree, link); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := createTextRoleObservationOutputAgainstWorktree(filepath.Join(link, "captures"), "carrier", worktree); err == nil || !strings.Contains(err.Error(), "outside the Git worktree") {
+	if _, err := createRoleObservationOutputAgainstWorktree(filepath.Join(link, "captures"), "carrier", worktree); err == nil || !strings.Contains(err.Error(), "outside the Git worktree") {
 		t.Fatalf("capture output error = %v, want worktree rejection", err)
 	}
 }
 
-func copyTextRoleDurableRoot(root textRoleDurableRoot, output string) (textRoleDurableRootCapture, error) {
+func copyRoleDurableRoot(root roleDurableRoot, output string) (roleDurableRootCapture, error) {
 	fd, err := unix.Open(root.path, unix.O_RDONLY|unix.O_DIRECTORY|unix.O_NOFOLLOW|unix.O_CLOEXEC, 0)
 	if err != nil {
-		return textRoleDurableRootCapture{}, err
+		return roleDurableRootCapture{}, err
 	}
 	defer unix.Close(fd)
-	capture := textRoleDurableRootCapture{Name: root.name}
+	capture := roleDurableRootCapture{Name: root.name}
 	destination := filepath.Join(output, root.name)
 	if err := os.Mkdir(destination, 0o700); err != nil {
-		return textRoleDurableRootCapture{}, err
+		return roleDurableRootCapture{}, err
 	}
-	if err := copyTextRoleDurableDirectory(fd, destination, "", &capture); err != nil {
-		return textRoleDurableRootCapture{}, err
+	if err := copyRoleDurableDirectory(fd, destination, "", &capture); err != nil {
+		return roleDurableRootCapture{}, err
 	}
 	return capture, nil
 }
 
-func copyTextRoleDurableDirectory(fd int, destination, relative string, capture *textRoleDurableRootCapture) error {
+func copyRoleDurableDirectory(fd int, destination, relative string, capture *roleDurableRootCapture) error {
 	readFD, err := unix.Dup(fd)
 	if err != nil {
 		return err
@@ -133,14 +133,14 @@ func copyTextRoleDurableDirectory(fd int, destination, relative string, capture 
 				unix.Close(child)
 				return err
 			}
-			err = copyTextRoleDurableDirectory(child, childDestination, childRelative, capture)
+			err = copyRoleDurableDirectory(child, childDestination, childRelative, capture)
 			closeErr := unix.Close(child)
 			if err != nil || closeErr != nil {
 				return errors.Join(err, closeErr)
 			}
 			continue
 		}
-		copied, err := copyTextRoleDurableFileAt(fd, name, filepath.Join(destination, name), childRelative)
+		copied, err := copyRoleDurableFileAt(fd, name, filepath.Join(destination, name), childRelative)
 		if err != nil {
 			return err
 		}
@@ -149,29 +149,29 @@ func copyTextRoleDurableDirectory(fd int, destination, relative string, capture 
 	return nil
 }
 
-func copyTextRoleDurableFileAt(directory int, name, destination, relative string) (textRoleDurableFileCapture, error) {
+func copyRoleDurableFileAt(directory int, name, destination, relative string) (roleDurableFileCapture, error) {
 	fd, err := unix.Openat(directory, name, unix.O_RDONLY|unix.O_NOFOLLOW|unix.O_CLOEXEC, 0)
 	if err != nil {
-		return textRoleDurableFileCapture{}, err
+		return roleDurableFileCapture{}, err
 	}
 	from := os.NewFile(uintptr(fd), "durable-file")
 	defer from.Close()
 	var status unix.Stat_t
 	if err := unix.Fstat(fd, &status); err != nil {
-		return textRoleDurableFileCapture{}, err
+		return roleDurableFileCapture{}, err
 	}
 	if status.Mode&unix.S_IFMT != unix.S_IFREG {
-		return textRoleDurableFileCapture{}, fmt.Errorf("durable root contains non-regular file %q", name)
+		return roleDurableFileCapture{}, fmt.Errorf("durable root contains non-regular file %q", name)
 	}
 	to, err := os.OpenFile(destination, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600)
 	if err != nil {
-		return textRoleDurableFileCapture{}, err
+		return roleDurableFileCapture{}, err
 	}
 	hash := sha256.New()
 	size, copyErr := io.Copy(io.MultiWriter(to, hash), from)
 	syncErr, closeErr := to.Sync(), to.Close()
 	if copyErr != nil || syncErr != nil || closeErr != nil {
-		return textRoleDurableFileCapture{}, errors.Join(copyErr, syncErr, closeErr)
+		return roleDurableFileCapture{}, errors.Join(copyErr, syncErr, closeErr)
 	}
-	return textRoleDurableFileCapture{Path: filepath.ToSlash(relative), SHA256: hex.EncodeToString(hash.Sum(nil)), Bytes: size}, nil
+	return roleDurableFileCapture{Path: filepath.ToSlash(relative), SHA256: hex.EncodeToString(hash.Sum(nil)), Bytes: size}, nil
 }

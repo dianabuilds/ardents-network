@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
-	"github.com/dianabuilds/ardents-network/internal/application/interfacev1/administration"
+	interfacev1administration "github.com/dianabuilds/ardents-network/internal/application/interfacev1/administration"
 	applicationconnection "github.com/dianabuilds/ardents-network/internal/application/interfacev2/connection"
 	"github.com/dianabuilds/ardents-network/internal/endpoint/worker"
 	"github.com/dianabuilds/ardents-network/internal/node"
@@ -43,19 +43,19 @@ func TestInstalledTextWorkersReadTargetThroughJoinedNetwork(t *testing.T) {
 				bytes int
 			}{{"empty", 0}, {"reference", 64 << 10}, {"maximum", 4 << 20}, {"refresh", 64 << 10}} {
 				t.Run(size.name, func(t *testing.T) {
-					exchangeInstalledTextAdministration(t, carrier, bytes.Repeat([]byte("x"), size.bytes), size.name == "refresh")
+					exchangeInstalledAdministration(t, carrier, bytes.Repeat([]byte("x"), size.bytes), size.name == "refresh")
 				})
 			}
 		})
 	}
 }
 
-func exchangeInstalledTextAdministration(t *testing.T, carrier routecarrier.CarrierProfile, body []byte, refresh bool) {
+func exchangeInstalledAdministration(t *testing.T, carrier routecarrier.CarrierProfile, body []byte, refresh bool) {
 	t.Helper()
 	readerOwner, publisherOwner := textUnpublishedNetworkWithInstance(t, carrier, func(network [32]byte, now, until time.Time) (*instance.Root, *instance.Binding) {
 		return acquireInstalledServiceInstance(t, network, now, until)
 	})
-	owner, err := publisherOwner.openTextAdministration()
+	owner, err := publisherOwner.openAdministration()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -74,7 +74,7 @@ func exchangeInstalledTextAdministration(t *testing.T, carrier routecarrier.Carr
 		}
 	})
 	socket := filepath.Join(directory, "admin.sock")
-	server, err := administration.Listen(socket, owner)
+	server, err := interfacev1administration.Listen(socket, owner)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -94,7 +94,7 @@ func exchangeInstalledTextAdministration(t *testing.T, carrier routecarrier.Carr
 	if err := os.WriteFile(document, body, 0600); err != nil {
 		t.Fatal(err)
 	}
-	published := runInstalledTextCommand(t, startup, nil, "publish", socket, document)
+	published := runInstalledCommand(t, startup, nil, "publish", socket, document)
 	finishStartup()
 	if len(published) != 0 {
 		t.Fatal("publish command emitted unexpected output")
@@ -110,7 +110,7 @@ func exchangeInstalledTextAdministration(t *testing.T, carrier routecarrier.Carr
 	}
 	// Obtain the destination through the real separately authorized local owner.
 	// No test-side projection of the run's private fields supplies the Link.
-	reader, err := readerOwner.openTextConnection()
+	reader, err := readerOwner.openConnection()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -129,12 +129,12 @@ func exchangeInstalledTextAdministration(t *testing.T, carrier routecarrier.Carr
 			t.Error(err)
 		}
 	})
-	destination := runInstalledTextCommand(t, ctx, nil, "link", socket)
+	destination := runInstalledCommand(t, ctx, nil, "link", socket)
 	defer clear(destination)
 	if len(destination) < 2 || destination[len(destination)-1] != '\n' || bytes.Count(destination, []byte{'\n'}) != 1 {
 		t.Fatal("link command did not emit exactly one destination line")
 	}
-	actual := runInstalledTextCommand(t, ctx, destination, "read", readSocket)
+	actual := runInstalledCommand(t, ctx, destination, "read", readSocket)
 	defer clear(actual)
 	if !bytes.Equal(actual, body) {
 		t.Fatalf("installed command document length %d, wanted %d", len(actual), len(body))
@@ -145,8 +145,8 @@ func exchangeInstalledTextAdministration(t *testing.T, carrier routecarrier.Carr
 	if !retired {
 		t.Fatal("document returned before reader retirement")
 	}
-	outcome, err := administration.Request(ctx, socket, administration.Withdraw)
-	if err != nil || outcome != administration.Withdrawn {
+	outcome, err := interfacev1administration.Request(ctx, socket, interfacev1administration.Withdraw)
+	if err != nil || outcome != interfacev1administration.Withdrawn {
 		t.Fatalf("withdraw Administration: %s, %v", outcome, err)
 	}
 	select {
@@ -158,7 +158,7 @@ func exchangeInstalledTextAdministration(t *testing.T, carrier routecarrier.Carr
 
 // Execute the manifest-pinned ordinary artifact, outside its worker root, in
 // trusted UI mode. CommandContext and WaitDelay bound and join child/pipes.
-func runInstalledTextCommand(t *testing.T, ctx context.Context, input []byte, arguments ...string) []byte {
+func runInstalledCommand(t *testing.T, ctx context.Context, input []byte, arguments ...string) []byte {
 	t.Helper()
 	if _, err := worker.LoadArtifact(worker.Text); err != nil {
 		t.Fatalf("installed command artifact: %v", err)
@@ -171,8 +171,8 @@ func runInstalledTextCommand(t *testing.T, ctx context.Context, input []byte, ar
 	command.WaitDelay = 5 * time.Second
 	command.Stdin = bytes.NewReader(input)
 	limit := map[string]int{"publish": 0, "link": 514, "read": 4 << 20}[arguments[0]]
-	output := &installedTextOutput{limit: limit, cancel: cancel}
-	diagnostic := &installedTextOutput{limit: 4096, cancel: cancel}
+	output := &installedOutput{limit: limit, cancel: cancel}
+	diagnostic := &installedOutput{limit: 4096, cancel: cancel}
 	command.Stdout, command.Stderr = output, diagnostic
 	err := command.Run()
 	defer clear(diagnostic.buffer.Bytes())
@@ -185,13 +185,13 @@ func runInstalledTextCommand(t *testing.T, ctx context.Context, input []byte, ar
 
 // Each stream has one os/exec copy goroutine. Overflow cancels the child before
 // returning an error, so neither a noisy child nor its pipe can outlive Run.
-type installedTextOutput struct {
+type installedOutput struct {
 	buffer bytes.Buffer
 	limit  int
 	cancel context.CancelFunc
 }
 
-func (output *installedTextOutput) Write(value []byte) (int, error) {
+func (output *installedOutput) Write(value []byte) (int, error) {
 	if len(value) > output.limit-output.buffer.Len() {
 		output.cancel()
 		return 0, io.ErrShortBuffer

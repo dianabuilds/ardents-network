@@ -19,9 +19,9 @@ type textContextRetirement struct {
 	source              *sourceRetirement
 	issuance            *issuanceOperation
 	resolution          *resolutionFlight
-	withdrawal          *textOperationFlight
+	withdrawal          *operationFlight
 	exchanges           []*introductionExchange
-	job                 *textJobRetirement
+	job                 *jobRetirement
 }
 
 // stopTextContextChildrenLocked revokes every child before any join. The

@@ -107,7 +107,7 @@ func selectSource(t *testing.T, owner *textContext) client.ClosedBootstrapSelect
 	t.Helper()
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
-	selected, err := owner.selectTextBootstrapLocked()
+	selected, err := owner.selectBootstrapLocked()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -118,7 +118,7 @@ func TestTextSourceSetsSurviveWorkerLossAndKeepContextOwnership(t *testing.T) {
 	endpoint, owner, _ := sourceContextFixture(t)
 	selected := selectSource(t, owner)
 	original := *owner.source.set
-	job, err := beginTextTestJob(t, owner, endpoint, broker.Connection)
+	job, err := beginTestJob(t, owner, endpoint, broker.Connection)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -157,7 +157,7 @@ func TestTextSourceWithdrawalCannotResampleInterior(t *testing.T) {
 	}
 	source.mu.Unlock()
 	owner.mu.Lock()
-	_, err := owner.selectTextBootstrapLocked()
+	_, err := owner.selectBootstrapLocked()
 	owner.mu.Unlock()
 	if err == nil || *owner.source.set != retained {
 		t.Fatal("withdrawn Interior replaced before set expiry")
@@ -168,7 +168,7 @@ func TestTextSourceRejectsCrossProjectionStateBeforeSelection(t *testing.T) {
 	endpoint, owner, source := sourceContextFixture(t)
 	source.snapshot.Digest[0] ^= 1
 	owner.mu.Lock()
-	_, err := owner.selectTextBootstrapLocked()
+	_, err := owner.selectBootstrapLocked()
 	owner.mu.Unlock()
 	if err == nil || owner.source.set != nil || endpoint.closedEntries != nil {
 		t.Fatal("mixed State projections created selection owner")
@@ -182,20 +182,20 @@ func TestTextInteriorSelectionIgnoresStateMemberOrder(t *testing.T) {
 			RecordDigest: fixtureID(id + 60), DutyGeneration: uint64(id), Domain: 1, NotAfter: now.Add(time.Hour)}
 	}
 	entries := [2]entry.ClosedSetMember{entryMember(1), entryMember(2)}
-	members := []textRoleMember{
+	members := []roleMember{
 		{ClosedSetMember: entryMember(10), subrole: 2},
 		{ClosedSetMember: entryMember(11), subrole: 2},
 		{ClosedSetMember: entryMember(12), subrole: 2},
 		{ClosedSetMember: entryMember(13), subrole: 2},
 	}
-	baseline, err := chooseTextInteriorSet(members, entries, now, 1)
+	baseline, err := chooseInteriorSet(members, entries, now, 1)
 	if err != nil {
 		t.Fatal(err)
 	}
 	for shift := 1; shift < len(members); shift++ {
-		rotated := append([]textRoleMember(nil), members[shift:]...)
+		rotated := append([]roleMember(nil), members[shift:]...)
 		rotated = append(rotated, members[:shift]...)
-		selected, err := chooseTextInteriorSet(rotated, entries, now, 1)
+		selected, err := chooseInteriorSet(rotated, entries, now, 1)
 		if err != nil {
 			t.Fatal(err)
 		}

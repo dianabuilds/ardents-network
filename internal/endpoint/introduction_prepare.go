@@ -28,7 +28,7 @@ type introductionAttempt struct {
 // prepareIntroduction consumes real resolution and its retained conflict
 // floors. Neither the worker nor a Descriptor selects Rendezvous or supplies
 // a join secret, local-context identifier, HPKE input or shared authority tuple.
-func (owner *textContext) prepareIntroduction(ctx context.Context, job *textJobIdentity, destination targetlink.Link, bounds [3]int64) (prepared *introductionAttempt, outcome error) {
+func (owner *textContext) prepareIntroduction(ctx context.Context, job *jobIdentity, destination targetlink.Link, bounds [3]int64) (prepared *introductionAttempt, outcome error) {
 	verified, err := owner.resolveIntroduction(ctx, job, destination)
 	if err != nil {
 		return nil, err
@@ -36,7 +36,7 @@ func (owner *textContext) prepareIntroduction(ctx context.Context, job *textJobI
 	return owner.prepareResolvedIntroduction(ctx, job, destination, bounds, verified)
 }
 
-func (owner *textContext) resolveIntroduction(ctx context.Context, job *textJobIdentity, destination targetlink.Link) (verified reachability.Verified, outcome error) {
+func (owner *textContext) resolveIntroduction(ctx context.Context, job *jobIdentity, destination targetlink.Link) (verified reachability.Verified, outcome error) {
 	if owner == nil || ctx == nil || ctx.Err() != nil {
 		return reachability.Verified{}, errors.New("text Introduction caller unavailable")
 	}
@@ -83,7 +83,7 @@ func (owner *textContext) resolveIntroduction(ctx context.Context, job *textJobI
 	return owner.lookupDescriptor(ctx, destination.Target)
 }
 
-func (owner *textContext) prepareResolvedIntroduction(ctx context.Context, job *textJobIdentity, destination targetlink.Link, bounds [3]int64,
+func (owner *textContext) prepareResolvedIntroduction(ctx context.Context, job *jobIdentity, destination targetlink.Link, bounds [3]int64,
 	verified reachability.Verified) (prepared *introductionAttempt, outcome error) {
 	if owner == nil || ctx == nil || ctx.Err() != nil {
 		return nil, errors.New("text Introduction caller unavailable")
@@ -171,7 +171,7 @@ func (owner *textContext) prepareResolvedIntroduction(ctx context.Context, job *
 // JOIN and submission admission stock is ready. None of that prerequisite
 // work has exposed the earlier sealed bytes, so replacing them cannot create a
 // second wire attempt or weaken replay ownership.
-func (owner *textContext) refreshIntroduction(ctx context.Context, job *textJobIdentity,
+func (owner *textContext) refreshIntroduction(ctx context.Context, job *jobIdentity,
 	attempt *introductionAttempt, prefix *sourceHandle) error {
 	if owner == nil || ctx == nil || ctx.Err() != nil || attempt == nil ||
 		!attempt.binding.servesJob(owner, job) || prefix == nil ||

@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/application/interfacev1/administration"
+	interfacev1administration "github.com/dianabuilds/ardents-network/internal/application/interfacev1/administration"
 	"github.com/dianabuilds/ardents-network/internal/route/carrier"
 	"github.com/dianabuilds/ardents-network/internal/service/targetlink"
 )
@@ -17,7 +17,7 @@ import (
 // Registration, Descriptor ACK and the public local Link query are real.
 func TestTextPublicationLinkRequiresCommittedLiveRun(t *testing.T) {
 	_, publisher := textUnpublishedNetworkFixture(t, carrier.ClosedCarrierTCP)
-	owner, err := publisher.openTextAdministration()
+	owner, err := publisher.openAdministration()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -27,7 +27,7 @@ func TestTextPublicationLinkRequiresCommittedLiveRun(t *testing.T) {
 		}
 	})
 	socket := filepath.Join(t.TempDir(), "admin.sock")
-	server, err := administration.Listen(socket, owner)
+	server, err := interfacev1administration.Listen(socket, owner)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -36,7 +36,7 @@ func TestTextPublicationLinkRequiresCommittedLiveRun(t *testing.T) {
 			t.Error(err)
 		}
 	})
-	if _, err := administration.RequestPublishedLink(t.Context(), socket); err == nil {
+	if _, err := interfacev1administration.RequestPublishedLink(t.Context(), socket); err == nil {
 		t.Fatal("unpublished context supplied a Link")
 	}
 	job := liveCapsuleJob(t, publisher)
@@ -50,7 +50,7 @@ func TestTextPublicationLinkRequiresCommittedLiveRun(t *testing.T) {
 	owner.mu.Lock()
 	owner.run = run
 	owner.mu.Unlock()
-	encoded, err := administration.RequestPublishedLink(t.Context(), socket)
+	encoded, err := interfacev1administration.RequestPublishedLink(t.Context(), socket)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -61,7 +61,7 @@ func TestTextPublicationLinkRequiresCommittedLiveRun(t *testing.T) {
 	if err := owner.Withdraw(t.Context()); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := administration.RequestPublishedLink(t.Context(), socket); err == nil {
+	if _, err := interfacev1administration.RequestPublishedLink(t.Context(), socket); err == nil {
 		t.Fatal("withdrawn publication supplied a live Link")
 	}
 }

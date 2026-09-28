@@ -18,7 +18,7 @@ func (owner *textContext) introductionRecipientLocked() ([32]byte, uint64, time.
 	if !ok || !owner.source.hasMembersLocked() {
 		return [32]byte{}, 0, time.Time{}, errors.New("text Introduction retained Source unavailable")
 	}
-	selection, err := owner.selectTextBootstrapLocked()
+	selection, err := owner.selectBootstrapLocked()
 	if err != nil {
 		return [32]byte{}, 0, time.Time{}, err
 	}

@@ -85,7 +85,7 @@ func PreflightStreamQualification(ctx context.Context, config StreamQualificatio
 		}
 		owner := &textContext{textContextState: textContextState{endpoint: endpoint}}
 		owner.mu.Lock()
-		selection, err := owner.selectTextAdjacentLocked(domain, owner.source.membersSlotLocked())
+		selection, err := owner.selectAdjacentLocked(domain, owner.source.membersSlotLocked())
 		owner.mu.Unlock()
 		if err != nil {
 			return err

@@ -63,7 +63,7 @@ func TestTextPublisherCommitsInstanceSignedDescriptor(t *testing.T) {
 				fields.RecipientKey == [32]byte{} || published.Current.Credential != binding.Credential() {
 				t.Fatal("private Descriptor escaped its registered Instance")
 			}
-			retrieved := lookupTextPublishedProof(t, owner, published.Descriptor.Target)
+			retrieved := lookupPublishedProof(t, owner, published.Descriptor.Target)
 			if !bytes.Equal(retrieved, first.descriptor) {
 				t.Fatal("resolution Node did not retain exact signed Descriptor")
 			}
@@ -108,7 +108,7 @@ func TestTextPublisherCommitsInstanceSignedDescriptor(t *testing.T) {
 				refreshed.Descriptor.Private.RecipientKey == fields.RecipientKey || refreshed.Descriptor.Private.Slot == fields.Slot {
 				t.Fatal("refresh changed publication generation or reused slot/key")
 			}
-			retrieved = lookupTextPublishedProof(t, owner, refreshed.Descriptor.Target)
+			retrieved = lookupPublishedProof(t, owner, refreshed.Descriptor.Target)
 			decoded, err := reachability.VerifyPrivate(retrieved, refreshed.Descriptor.Target, endpoint.network, source.view.Profile.Digest, time.Now().UTC())
 			if err != nil || decoded.Descriptor.Private.Revision != 2 {
 				t.Fatalf("refreshed Node proof: %v", err)
@@ -129,7 +129,7 @@ func TestTextPublisherCommitsInstanceSignedDescriptor(t *testing.T) {
 	}
 }
 
-func lookupTextPublishedProof(t *testing.T, owner *textContext, target [32]byte) []byte {
+func lookupPublishedProof(t *testing.T, owner *textContext, target [32]byte) []byte {
 	t.Helper()
 	prefix := owner.source.currentLocked()
 	receiver, err := prefix.ResolutionRecipient()

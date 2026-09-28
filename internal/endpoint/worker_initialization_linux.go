@@ -16,7 +16,7 @@ import (
 // initializeWorker checks the current local owner on both sides of the
 // fixed readiness exchange. It creates no Principal or Grant and cannot replace
 // installed-artifact verification or the separate joined cleanup owner.
-func initializeWorker(ctx context.Context, attachment *worker.Attachment, instance worker.Instance, job *textJobIdentity, snapshot []byte) error {
+func initializeWorker(ctx context.Context, attachment *worker.Attachment, instance worker.Instance, job *jobIdentity, snapshot []byte) error {
 	surface, mode := broker.Connection, textdocument.ReaderWorker
 	if instance.Role == "publisher" {
 		surface, mode = broker.Administration, textdocument.PublisherWorker

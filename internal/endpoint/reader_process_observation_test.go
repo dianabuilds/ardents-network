@@ -25,14 +25,14 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/service/reachability"
 )
 
-type textReaderProcessInput struct {
+type readerProcessInput struct {
 	Snapshot state.Snapshot
 	View     state.ClosedRouteView
 	Target   [32]byte
 	Expected []byte
 }
 
-type textReaderObservationEvent struct {
+type readerObservationEvent struct {
 	Phase                    string    `json:"phase"`
 	ResponseDescriptorSHA256 string    `json:"responseDescriptorSHA256,omitempty"`
 	ResponseRevision         uint64    `json:"responseRevision,omitempty"`
@@ -43,21 +43,21 @@ type textReaderObservationEvent struct {
 	DescriptorFloorRevision  uint64    `json:"descriptorFloorRevision,omitempty"`
 }
 
-type textReaderControl struct {
+type readerControl struct {
 	Command    string `json:"command"`
 	Permission []byte `json:"permission,omitempty"`
 }
 
-type textReaderLiveBoundaryReceipt struct {
-	Carrier                  string                   `json:"carrier"`
-	InputSHA256              string                   `json:"inputSHA256"`
-	ExchangeSHA256           string                   `json:"exchangeSHA256"`
-	Boundaries               []textReaderLiveBoundary `json:"boundaries"`
-	ResponseDescriptorSHA256 string                   `json:"responseDescriptorSHA256"`
-	ResponseRevision         uint64                   `json:"responseRevision"`
+type readerLiveBoundaryReceipt struct {
+	Carrier                  string               `json:"carrier"`
+	InputSHA256              string               `json:"inputSHA256"`
+	ExchangeSHA256           string               `json:"exchangeSHA256"`
+	Boundaries               []readerLiveBoundary `json:"boundaries"`
+	ResponseDescriptorSHA256 string               `json:"responseDescriptorSHA256"`
+	ResponseRevision         uint64               `json:"responseRevision"`
 }
 
-type textReaderLiveBoundary struct {
+type readerLiveBoundary struct {
 	Phase                        string   `json:"phase"`
 	ObservedOwners               []string `json:"observedOwners"`
 	UnobservedReceivingOwners    []string `json:"unobservedReceivingOwners"`
@@ -66,12 +66,12 @@ type textReaderLiveBoundary struct {
 
 // Public State/worker qualification are fixtures. The child creates its own
 // Endpoint, context, holder key, roots, token stock and real network channels.
-func runTextReaderObservationChild(t *testing.T, path string) {
+func runReaderObservationChild(t *testing.T, path string) {
 	raw, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatal(err)
 	}
-	var input textReaderProcessInput
+	var input readerProcessInput
 	if err := json.Unmarshal(raw, &input); err != nil {
 		t.Fatal(err)
 	}
@@ -92,26 +92,26 @@ func runTextReaderObservationChild(t *testing.T, path string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	protocol := textReaderProtocol(t)
+	protocol := readerProtocol(t)
 	defer protocol.Close()
 	encoder, decoder := json.NewEncoder(protocol), json.NewDecoder(os.Stdin)
 	if err := encoder.Encode(request); err != nil {
 		t.Fatal(err)
 	}
-	var control textReaderControl
+	var control readerControl
 	for {
 		if err := decoder.Decode(&control); err != nil || control.Command != "permission" {
 			t.Fatal("reader controller did not provide permission")
 		}
 		if err := owner.importPermission(digest, control.Permission); err != nil {
-			if err := encoder.Encode(textReaderObservationEvent{Phase: "permission-refused"}); err != nil {
+			if err := encoder.Encode(readerObservationEvent{Phase: "permission-refused"}); err != nil {
 				t.Fatal(err)
 			}
 			continue
 		}
 		break
 	}
-	if err := encoder.Encode(textReaderObservationEvent{Phase: "permission-imported"}); err != nil {
+	if err := encoder.Encode(readerObservationEvent{Phase: "permission-imported"}); err != nil {
 		t.Fatal(err)
 	}
 	// The opened prefix retains this wrapper. Keep it inactive while opening,
@@ -127,9 +127,9 @@ func runTextReaderObservationChild(t *testing.T, path string) {
 		}
 		switch control.Command {
 		case "lookup":
-			textReaderLookupObservation(t, owner, input, encoder, decoder, paused, true)
+			readerLookupObservation(t, owner, input, encoder, decoder, paused, true)
 		case "repeat-lookup":
-			textReaderLookupObservation(t, owner, input, encoder, decoder, paused, false)
+			readerLookupObservation(t, owner, input, encoder, decoder, paused, false)
 		case "stop":
 			if err := owner.Close(); err != nil {
 				t.Fatal(err)
@@ -145,7 +145,7 @@ func runTextReaderObservationChild(t *testing.T, path string) {
 	}
 }
 
-func textReaderProtocol(t *testing.T) *os.File {
+func readerProtocol(t *testing.T) *os.File {
 	t.Helper()
 	fd, err := strconv.Atoi(os.Getenv("ARDENTS_TEXT_READER_PROTOCOL_FD"))
 	if err != nil || fd < 3 {
@@ -158,7 +158,7 @@ func textReaderProtocol(t *testing.T) *os.File {
 	return protocol
 }
 
-func textReaderLookupObservation(t *testing.T, owner *textContext, input textReaderProcessInput, encoder *json.Encoder, decoder *json.Decoder, paused *pausedResolutionState, first bool) {
+func readerLookupObservation(t *testing.T, owner *textContext, input readerProcessInput, encoder *json.Encoder, decoder *json.Decoder, paused *pausedResolutionState, first bool) {
 	t.Helper()
 	var verified reachability.Verified
 	if first {
@@ -193,10 +193,10 @@ func textReaderLookupObservation(t *testing.T, owner *textContext, input textRea
 		case <-time.After(5 * time.Second):
 			t.Fatal("reader lookup did not reach active boundary")
 		}
-		if err := encoder.Encode(textReaderObservationEvent{Phase: "protected-lookup-active"}); err != nil {
+		if err := encoder.Encode(readerObservationEvent{Phase: "protected-lookup-active"}); err != nil {
 			t.Fatal(err)
 		}
-		var control textReaderControl
+		var control readerControl
 		if err := decoder.Decode(&control); err != nil || control.Command != "release-lookup" {
 			t.Fatal("reader controller did not release lookup")
 		}
@@ -232,7 +232,7 @@ func textReaderLookupObservation(t *testing.T, owner *textContext, input textRea
 	if !floorRetained {
 		t.Fatal("reader lookup did not retain the verified Descriptor floor")
 	}
-	if err := encoder.Encode(textReaderObservationEvent{Phase: "response-received-before-close", ResponseDescriptorSHA256: hex.EncodeToString(responseDigest[:]), ResponseRevision: verified.Descriptor.Private.Revision, HolderSHA256: hex.EncodeToString(holderDigest[:]), PermissionIDSHA256: hex.EncodeToString(permissionIDDigest[:]), IssuanceBatches: batches, Reserved: reserved, DescriptorFloorRevision: verified.Descriptor.Private.Revision}); err != nil {
+	if err := encoder.Encode(readerObservationEvent{Phase: "response-received-before-close", ResponseDescriptorSHA256: hex.EncodeToString(responseDigest[:]), ResponseRevision: verified.Descriptor.Private.Revision, HolderSHA256: hex.EncodeToString(holderDigest[:]), PermissionIDSHA256: hex.EncodeToString(permissionIDDigest[:]), IssuanceBatches: batches, Reserved: reserved, DescriptorFloorRevision: verified.Descriptor.Private.Revision}); err != nil {
 		t.Fatal(err)
 	}
 	// This is the observer's known Store proof, accepted only after the real
@@ -243,10 +243,10 @@ func textReaderLookupObservation(t *testing.T, owner *textContext, input textRea
 	}
 }
 
-func observeTextIndependentReader(t *testing.T, source *sourceStateFixture, target [32]byte, expected []byte, output, carrier string) {
+func observeIndependentReader(t *testing.T, source *sourceStateFixture, target [32]byte, expected []byte, output, carrier string) {
 	t.Helper()
 	source.mu.Lock()
-	input := textReaderProcessInput{Snapshot: source.snapshot, View: source.view, Target: target, Expected: append([]byte(nil), expected...)}
+	input := readerProcessInput{Snapshot: source.snapshot, View: source.view, Target: target, Expected: append([]byte(nil), expected...)}
 	source.mu.Unlock()
 	raw, err := json.Marshal(input)
 	if err != nil {
@@ -297,20 +297,20 @@ func observeTextIndependentReader(t *testing.T, source *sourceStateFixture, targ
 		t.Fatalf("reader permission request: %v", err)
 	}
 	permission := source.issueRawPermission(t, request, sha256.Sum256(request))
-	if err := encoder.Encode(textReaderControl{Command: "permission", Permission: permission}); err != nil {
+	if err := encoder.Encode(readerControl{Command: "permission", Permission: permission}); err != nil {
 		t.Fatal(err)
 	}
-	var event textReaderObservationEvent
+	var event readerObservationEvent
 	if err := decoder.Decode(&event); err != nil || event.Phase != "permission-imported" {
 		t.Fatalf("reader permission import event: %#v / %v", event, err)
 	}
-	if err := encoder.Encode(textReaderControl{Command: "lookup"}); err != nil {
+	if err := encoder.Encode(readerControl{Command: "lookup"}); err != nil {
 		t.Fatal(err)
 	}
 	if err := decoder.Decode(&event); err != nil || event.Phase != "protected-lookup-active" {
 		t.Fatalf("reader active lookup event: %#v / %v", event, err)
 	}
-	if err := encoder.Encode(textReaderControl{Command: "release-lookup"}); err != nil {
+	if err := encoder.Encode(readerControl{Command: "release-lookup"}); err != nil {
 		t.Fatal(err)
 	}
 	responseDigest := sha256.Sum256(expected)
@@ -347,12 +347,12 @@ func observeTextIndependentReader(t *testing.T, source *sourceStateFixture, targ
 		t.Fatal(err)
 	}
 	inputDigest, exchangeDigest := sha256.Sum256(inputBytes), sha256.Sum256(exchangeBytes)
-	boundaries := []textReaderLiveBoundary{
+	boundaries := []readerLiveBoundary{
 		{Phase: "permission-imported", ObservedOwners: []string{"reader permission-import owner"}, UnobservedReceivingOwners: []string{"Resolution receiving owner"}, UnobservedAdmissionTLSOwners: []string{"Resolution admission owner", "Resolution role TLS owner"}},
 		{Phase: "protected-lookup-active", ObservedOwners: []string{"reader resolutionFlight with retained Source prefix before Resolution recipient selection"}, UnobservedReceivingOwners: []string{"Resolution receiving owner"}, UnobservedAdmissionTLSOwners: []string{"Resolution admission owner", "Resolution role TLS owner"}},
 		{Phase: "response-received-before-close", ObservedOwners: []string{"reader resolutionFlight verified response owner"}, UnobservedReceivingOwners: []string{"Resolution receiving owner"}, UnobservedAdmissionTLSOwners: []string{"Resolution admission owner", "Resolution role TLS owner"}},
 	}
-	receiptBytes, err := json.Marshal(textReaderLiveBoundaryReceipt{
+	receiptBytes, err := json.Marshal(readerLiveBoundaryReceipt{
 		Carrier:                  carrier,
 		InputSHA256:              hex.EncodeToString(inputDigest[:]),
 		ExchangeSHA256:           hex.EncodeToString(exchangeDigest[:]),
@@ -371,11 +371,11 @@ func observeTextIndependentReader(t *testing.T, source *sourceStateFixture, targ
 	if err != nil {
 		t.Fatal(err)
 	}
-	var receipt textReaderLiveBoundaryReceipt
+	var receipt readerLiveBoundaryReceipt
 	if err := json.Unmarshal(persisted, &receipt); err != nil || receipt.Carrier != carrier || receipt.InputSHA256 != hex.EncodeToString(inputDigest[:]) || receipt.ExchangeSHA256 != hex.EncodeToString(exchangeDigest[:]) || receipt.ResponseDescriptorSHA256 != event.ResponseDescriptorSHA256 || receipt.ResponseRevision != event.ResponseRevision || !reflect.DeepEqual(receipt.Boundaries, boundaries) {
 		t.Fatalf("reader boundary receipt = %#v / %v", receipt, err)
 	}
-	if err := encoder.Encode(textReaderControl{Command: "stop"}); err != nil {
+	if err := encoder.Encode(readerControl{Command: "stop"}); err != nil {
 		t.Fatal(err)
 	}
 	_ = stdin.Close()

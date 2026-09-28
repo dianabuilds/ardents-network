@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/application/interfacev2/connection"
+	interfacev2connection "github.com/dianabuilds/ardents-network/internal/application/interfacev2/connection"
 	"github.com/dianabuilds/ardents-network/internal/application/streamqualification"
 	"github.com/dianabuilds/ardents-network/internal/node"
 	"github.com/dianabuilds/ardents-network/internal/qualification"
@@ -44,7 +44,7 @@ func TestTextPublisherBuildsRetainedQualificationSetAcrossFourReaders(t *testing
 	}
 	readers := []*textContext{reader}
 	for index := 1; index < readerCount; index++ {
-		readers = append(readers, independentTextReaderFixture(t, reader.endpoint.network, source, [3]uint32{512, 512, 0}))
+		readers = append(readers, independentReaderFixture(t, reader.endpoint.network, source, [3]uint32{512, 512, 0}))
 	}
 	// Bootstrap output is duty-wide and intentionally rate-limited. The
 	// installed qualification's offline permission exchange supplies this
@@ -59,7 +59,7 @@ func TestTextPublisherBuildsRetainedQualificationSetAcrossFourReaders(t *testing
 			time.Sleep(5 * time.Second)
 		}
 	}
-	readerJobs := make([]*textJobIdentity, len(readers))
+	readerJobs := make([]*jobIdentity, len(readers))
 	// The installed runner gives every Reader the same delivery pacer.
 	// Independent preparation loops can drift together under a constrained
 	// scheduler, so their initial phase offsets alone do not enforce the
@@ -86,7 +86,7 @@ func TestTextPublisherBuildsRetainedQualificationSetAcrossFourReaders(t *testing
 	publisherJob.qualification = pubRun
 	publisherJob.workload = mustServiceWorkloadBounds(t, 64<<20, 64<<20)
 	publisherWorker := &qualifiedWorker{job: publisherJob}
-	delivered := make(chan connection.Stream)
+	delivered := make(chan interfacev2connection.Stream)
 	producerDone := make(chan error, 1)
 	go func() { producerDone <- publisherWorker.produceNetwork(ctx, delivered) }()
 
@@ -97,7 +97,7 @@ func TestTextPublisherBuildsRetainedQualificationSetAcrossFourReaders(t *testing
 	}
 	readerDone := make(chan readerResult, len(readers))
 	for index, owner := range readers {
-		go func(index int, owner *textContext, job *textJobIdentity) {
+		go func(index int, owner *textContext, job *jobIdentity) {
 			result := readerResult{index: index}
 			worker := &qualifiedWorker{job: job}
 			until := time.Now().UTC().Add(15 * time.Minute).Unix()
@@ -170,10 +170,10 @@ func TestTextPublisherBuildsRetainedQualificationSetAcrossFourReaders(t *testing
 		}(index, owner, readerJobs[index])
 	}
 
-	var readerStreams []connection.Stream
-	var publisherStreams []connection.Stream
-	readerStreamsByID := make(map[uint32]connection.Stream, readerCount*streamsPerReader)
-	publisherStreamsByID := make(map[uint32]connection.Stream, readerCount*streamsPerReader)
+	var readerStreams []interfacev2connection.Stream
+	var publisherStreams []interfacev2connection.Stream
+	readerStreamsByID := make(map[uint32]interfacev2connection.Stream, readerCount*streamsPerReader)
+	publisherStreamsByID := make(map[uint32]interfacev2connection.Stream, readerCount*streamsPerReader)
 	readersFinished := 0
 	producerFinished := false
 	var setupErr error

@@ -13,7 +13,7 @@ import (
 func TestCompletedTextWorkerResultCannotCrossReplacement(t *testing.T) {
 	endpoint, principal := textContextEndpoint(t)
 	owner := admittedTextContext(t, endpoint, principal, broker.Connection)
-	job, err := beginTextTestJob(t, owner, endpoint, broker.Connection)
+	job, err := beginTestJob(t, owner, endpoint, broker.Connection)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -28,7 +28,7 @@ func TestCompletedTextWorkerResultCannotCrossReplacement(t *testing.T) {
 	if !worker.completedCurrent() {
 		t.Fatal("joined current result refused")
 	}
-	replacement, err := beginTextTestJob(t, owner, endpoint, broker.Connection)
+	replacement, err := beginTestJob(t, owner, endpoint, broker.Connection)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -53,7 +53,7 @@ func TestCompletedTextWorkerResultCannotCrossReplacement(t *testing.T) {
 func TestCancelledTextJobClosesLateGrantWithoutCrossingReplacement(t *testing.T) {
 	endpoint, principal := textContextEndpoint(t)
 	owner := admittedTextContext(t, endpoint, principal, broker.Connection)
-	job, err := beginTextTestJob(t, owner, endpoint, broker.Connection)
+	job, err := beginTestJob(t, owner, endpoint, broker.Connection)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -67,7 +67,7 @@ func TestCancelledTextJobClosesLateGrantWithoutCrossingReplacement(t *testing.T)
 	if err := owner.finishJobCleanup(job, nil); err != nil {
 		t.Fatal(err)
 	}
-	replacement, err := beginTextTestJob(t, owner, endpoint, broker.Connection)
+	replacement, err := beginTestJob(t, owner, endpoint, broker.Connection)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -124,7 +124,7 @@ func TestTextWorkerOperationCannotReserveTwiceOrAfterCancel(t *testing.T) {
 func TestAlreadyCancelledTextLaunchHasNoEffects(t *testing.T) {
 	endpoint, principal := textContextEndpoint(t)
 	owner := admittedTextContext(t, endpoint, principal, broker.Connection)
-	release, err := endpoint.acquireTextLaunch(t.Context())
+	release, err := endpoint.acquireLaunch(t.Context())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -148,7 +148,7 @@ func TestAlreadyCancelledTextLaunchHasNoEffects(t *testing.T) {
 func TestTextLaunchCancellationReleasesWaitingReservation(t *testing.T) {
 	endpoint, principal := textContextEndpoint(t)
 	owner := admittedTextContext(t, endpoint, principal, broker.Connection)
-	release, err := endpoint.acquireTextLaunch(t.Context())
+	release, err := endpoint.acquireLaunch(t.Context())
 	if err != nil {
 		t.Fatal(err)
 	}

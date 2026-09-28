@@ -30,10 +30,10 @@ func readWorkerResultFixture(t *testing.T, ctx context.Context, worker *qualifie
 	return textdocument.Read(ctx, stream)
 }
 
-func openWorkerResultFixture(t *testing.T, ctx context.Context, worker *qualifiedWorker, destination targetlink.Link, bounds [3]int64) (_ *textReadResult, outcome error) {
+func openWorkerResultFixture(t *testing.T, ctx context.Context, worker *qualifiedWorker, destination targetlink.Link, bounds [3]int64) (_ *readResult, outcome error) {
 	t.Helper()
 	contextOwner := worker.job.owner
-	owner, err := contextOwner.openTextConnection()
+	owner, err := contextOwner.openConnection()
 	if err != nil {
 		return nil, err
 	}
@@ -92,7 +92,7 @@ func openWorkerResultFixture(t *testing.T, ctx context.Context, worker *qualifie
 	pending := make(chan struct{})
 	owner.pending, owner.cancel = pending, cancel
 	owner.mu.Unlock()
-	stream := newTextReadResult(owner, pending, lease, cancel, worker, bounded, finish, service, joinCaller, contextOwner.reportTextOperationFailure)
+	stream := newReadResult(owner, pending, lease, cancel, worker, bounded, finish, service, joinCaller, contextOwner.reportOperationFailure)
 	transferred = true
 	return stream, nil
 }
@@ -112,7 +112,7 @@ func TestTextReadResultJoinsContextLossBeforeLocalRequest(t *testing.T) {
 		// request. The Publisher's abort may preserve that cancellation; it
 		// must still join, and a different failure is not an accepted result.
 		if err := run.Close(); err != nil {
-			if !textReadCancellationOnly(err) {
+			if !readCancellationOnly(err) {
 				t.Error(err)
 			} else {
 				t.Logf("joined Publisher abort: %v", err)
@@ -125,11 +125,11 @@ func TestTextReadResultJoinsContextLossBeforeLocalRequest(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() {
-		if err := stream.Close(); !textReadCancellationOnly(err) {
+		if err := stream.Close(); !readCancellationOnly(err) {
 			t.Errorf("unexpected read retirement: %v", err)
 		}
 	})
-	if err := readerOwner.Close(); err != nil && !textReadCancellationOnly(err) {
+	if err := readerOwner.Close(); err != nil && !readCancellationOnly(err) {
 		t.Fatal(err)
 	}
 	select {
@@ -137,7 +137,7 @@ func TestTextReadResultJoinsContextLossBeforeLocalRequest(t *testing.T) {
 	case <-ctx.Done():
 		t.Fatal("context loss did not join blocked local request")
 	}
-	if err := stream.Close(); !textReadCancellationOnly(err) {
+	if err := stream.Close(); !readCancellationOnly(err) {
 		t.Fatalf("cancelled local request returned unexpected outcome: %v", err)
 	}
 }
@@ -145,7 +145,7 @@ func TestTextReadResultJoinsContextLossBeforeLocalRequest(t *testing.T) {
 // Check every joined cause, not merely the presence of context.Canceled.
 // These exact first-child labels are the current owners' diagnostic wrappers;
 // they are accepted only when every underlying cause is cancellation.
-func textReadCancellationOnly(err error) bool {
+func readCancellationOnly(err error) bool {
 	if err == context.Canceled || err == os.ErrDeadlineExceeded || err == nativeconnection.ErrActiveViolation ||
 		err == client.ErrClosedJoinPeerCleanupDeadline {
 		return true
@@ -168,14 +168,14 @@ func textReadCancellationOnly(err error) bool {
 			}
 		}
 		for _, cause := range causes {
-			if !textReadCancellationOnly(cause) {
+			if !readCancellationOnly(cause) {
 				return false
 			}
 		}
 		return true
 	}
 	if wrapped := errors.Unwrap(err); wrapped != nil {
-		return textReadCancellationOnly(wrapped)
+		return readCancellationOnly(wrapped)
 	}
 	return false
 }
@@ -183,18 +183,18 @@ func textReadCancellationOnly(err error) bool {
 func TestTextReadCancellationRejectsAdditionalCleanupFailure(t *testing.T) {
 	fault := errors.New("unexpected cleanup failure")
 	for _, err := range []error{nil, fault, errors.Join(context.Canceled, fault), errors.Join(errors.New("text Service cleanup failed"), context.Canceled, fault), errors.New("text Service cleanup failed")} {
-		if textReadCancellationOnly(err) {
+		if readCancellationOnly(err) {
 			t.Fatalf("accepted non-cancellation cause: %v", err)
 		}
 	}
-	if !textReadCancellationOnly(errors.Join(errors.New("text Service cleanup failed"), errors.Join(context.Canceled, context.Canceled))) {
+	if !readCancellationOnly(errors.Join(errors.New("text Service cleanup failed"), errors.Join(context.Canceled, context.Canceled))) {
 		t.Fatal("exact cancellation wrapper refused")
 	}
-	if !textReadCancellationOnly(errors.Join(errors.New("text Service cleanup failed"), context.Canceled,
+	if !readCancellationOnly(errors.Join(errors.New("text Service cleanup failed"), context.Canceled,
 		&net.OpError{Op: "write", Err: os.ErrDeadlineExceeded})) {
 		t.Fatal("cancellation timeout wrapper refused")
 	}
-	if !textReadCancellationOnly(errors.Join(errors.New("text Service cleanup failed"), context.Canceled,
+	if !readCancellationOnly(errors.Join(errors.New("text Service cleanup failed"), context.Canceled,
 		nativeconnection.ErrActiveViolation, client.ErrClosedJoinPeerCleanupDeadline)) {
 		t.Fatal("known cancellation-induced native abort refused")
 	}
@@ -204,10 +204,10 @@ func TestTextReadCancellationRejectsAdditionalCleanupFailure(t *testing.T) {
 		errors.Join(errors.New("text Service transport retirement failed"), context.Canceled,
 			client.ErrClosedJoinPeerCleanupDeadline, &net.OpError{Op: "write", Err: os.ErrDeadlineExceeded}),
 	)
-	if !textCanceledBeforeRequestCleanupOnly(localAbort) {
+	if !canceledBeforeRequestCleanupOnly(localAbort) {
 		t.Fatal("known cancellation-induced native abort refused")
 	}
-	if textCanceledBeforeRequestCleanupOnly(errors.Join(localAbort, fault)) {
+	if canceledBeforeRequestCleanupOnly(errors.Join(localAbort, fault)) {
 		t.Fatal("additional cleanup failure was suppressed")
 	}
 }
@@ -215,12 +215,12 @@ func TestTextReadCancellationRejectsAdditionalCleanupFailure(t *testing.T) {
 func TestTextRouteStopOnlyRejectsJoinedPhysicalFailure(t *testing.T) {
 	fault := errors.New("physical retirement failed")
 	for _, err := range []error{nil, client.ErrClosedSourceStopped, errors.Join(client.ErrClosedSourceStopped, net.ErrClosed)} {
-		if !textRouteStopOnly(err) {
+		if !routeStopOnly(err) {
 			t.Fatalf("intentional Source stop refused: %v", err)
 		}
 	}
 	for _, err := range []error{fault, errors.Join(client.ErrClosedSourceStopped, fault)} {
-		if textRouteStopOnly(err) {
+		if routeStopOnly(err) {
 			t.Fatalf("physical failure hidden as Source stop: %v", err)
 		}
 	}
@@ -230,13 +230,13 @@ func TestTextRecoveryTestCleanupOnlyRejectsJoinedPhysicalFailure(t *testing.T) {
 	fault := errors.New("physical cleanup failed")
 	for _, err := range []error{nil, context.Canceled, context.DeadlineExceeded, net.ErrClosed,
 		io.ErrClosedPipe, client.ErrClosedSourceStopped, errors.Join(context.Canceled, net.ErrClosed)} {
-		if !textRecoveryTestCleanupOnly(err) {
+		if !recoveryTestCleanupOnly(err) {
 			t.Fatalf("intentional cleanup refused: %v", err)
 		}
 	}
 	for _, err := range []error{fault, errors.Join(context.Canceled, fault),
 		errors.Join(errors.New("text Service cleanup failed"), context.Canceled, fault)} {
-		if textRecoveryTestCleanupOnly(err) {
+		if recoveryTestCleanupOnly(err) {
 			t.Fatalf("physical failure hidden as cleanup: %v", err)
 		}
 	}

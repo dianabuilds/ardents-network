@@ -20,7 +20,7 @@ import (
 // below execute production code.
 func serviceWorkerFixture(t *testing.T, binding *serviceBinding, snapshot []byte) *qualifiedWorker {
 	t.Helper()
-	attachment, peer := textAttachmentPair(t)
+	attachment, peer := attachmentPair(t)
 	ctx, cancel := context.WithCancel(binding.job.context)
 	lifetime := &workerLifetime{context: ctx, cancel: cancel, attachment: attachment, done: make(chan struct{})}
 	mode := textdocument.ReaderWorker

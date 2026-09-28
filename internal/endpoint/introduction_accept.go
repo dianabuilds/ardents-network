@@ -13,7 +13,7 @@ import (
 	nativeconnection "github.com/dianabuilds/ardents-network/internal/service/connection"
 )
 
-func (owner *textContext) acceptIntroductionGeneration(ctx context.Context, job *textJobIdentity, operation []byte,
+func (owner *textContext) acceptIntroductionGeneration(ctx context.Context, job *jobIdentity, operation []byte,
 	original *serviceBinding, expectedGeneration uint64, recoveryDeadline time.Time,
 	openingReserved bool) (attempt *introductionAttempt, outcome error) {
 	if owner == nil || ctx == nil || ctx.Err() != nil {

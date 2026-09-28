@@ -24,14 +24,14 @@ func (inventory Inventory) root() string {
 	if inventory == Stream {
 		return "/usr/lib/ardents/network-stream-worker-root"
 	}
-	return textRoot
+	return workerRoot
 }
 
 func (inventory Inventory) manifest() string {
 	if inventory == Stream {
 		return "/etc/ardents/network-stream-worker-artifact.json"
 	}
-	return textArtifactPath
+	return artifactPath
 }
 
 func (inventory Inventory) schema() string {
@@ -45,7 +45,7 @@ func (inventory Inventory) rule() string {
 	if inventory == Stream {
 		return "/usr/share/polkit-1/rules.d/50-ardents-stream-qualification.rules"
 	}
-	return textStopRulePath
+	return stopRulePath
 }
 
 func (inventory Inventory) socket(role string) string {
