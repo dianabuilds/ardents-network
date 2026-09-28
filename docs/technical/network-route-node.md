@@ -275,8 +275,11 @@ byte values and exact encoding across implementation refactors.
 
 A terminal automatic-refresh or resource-governor failure also makes
 State-owned Direct Source responses unavailable, including requests whose
-connections were already accepted. The resolver returns the existing busy
-status before materialization; Source still owns transport and framing.
+connections were already accepted. A persisted or recovered Network State
+conflict likewise makes `LATEST` and matching `BY_DIGEST` requests return the existing
+busy status without a digest or payload, while `Current` retains its
+conflicting diagnostic Snapshot. The resolver refuses before materialization;
+Source still owns transport and framing.
 
 ### State transition admissibility
 
@@ -293,6 +296,12 @@ evidence, and refuses later admission or automatic winner selection. Reopen
 recovers the same current/pending/conflict relation before State-dependent work
 can proceed. State retains one verified current Epoch decision and derives
 reader Snapshots from it; the Source wave uses that same decision as its base.
+If an ordinary pre-pointer failure prevents the first verified conflict record
+from committing, the live State owner retires under its lock: `Current`, Direct
+Source, and further admission refuse the prior decision, and `Wait` and `Close`
+retain the failure cause. The prior authenticated generation and journal remain
+the durable recovery evidence; a restart cannot infer the unrecorded conflict.
+The serving Source duty stays protected until the retired owner's joined Close.
 Every persisted current or pending generation is bound to its verified digest
 by its immutable directory name before it is restored. A Source bootstrap with
 no active predecessor never stages a future genesis: it records the complete

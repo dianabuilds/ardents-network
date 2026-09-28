@@ -7,6 +7,10 @@ import (
 
 // Accept verifies a complete offline decision before committing a new generation.
 func (s *networkState) Accept(ctx context.Context, epoch []byte, inputs [][]byte, encodedMaterials [][]byte) (Snapshot, error) {
+	return s.acceptWithConflictCommit(ctx, epoch, inputs, encodedMaterials, s.storage.CommitControl)
+}
+
+func (s *networkState) acceptWithConflictCommit(ctx context.Context, epoch []byte, inputs [][]byte, encodedMaterials [][]byte, commit func(string, []byte) error) (Snapshot, error) {
 	if err := ctx.Err(); err != nil {
 		return Snapshot{}, err
 	}
@@ -41,7 +45,7 @@ func (s *networkState) Accept(ctx context.Context, epoch []byte, inputs [][]byte
 			state.sequence++
 			state.trustedTimeFloor = max(state.trustedTimeFloor, verification.now.Unix())
 			state.conflicting = true
-			if commitErr := s.commitDistribution(state); commitErr != nil {
+			if commitErr := s.commitDistributionWithControl(state, commit); commitErr != nil {
 				return Snapshot{}, commitErr
 			}
 		}
