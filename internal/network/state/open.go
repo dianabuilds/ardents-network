@@ -83,8 +83,12 @@ func (s *networkState) recover(workContext context.Context, automaticTicks <-cha
 		}()
 	}
 	if s.config.profile == "h3-s-v1" {
+		s.resourceDone = make(chan struct{})
 		s.work.Add(1)
-		go s.runResourceGovernor(workContext)
+		go func() {
+			defer close(s.resourceDone)
+			s.runResourceGovernor(workContext)
+		}()
 	}
 	return nil
 }
