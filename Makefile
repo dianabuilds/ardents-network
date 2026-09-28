@@ -159,9 +159,11 @@ vuln: tools-check
 deadcode: tools-check
 	go run ./scripts/check-deadcode.go
 
+installed-tag-compile-check: export GOOS := linux
+installed-tag-compile-check: export GOARCH := amd64
 installed-tag-compile-check:
 	$(INSTALLED_TAG_COMPILE_MKDIR)
-	$(foreach package,$(INSTALLED_TAG_COMPILE_PACKAGES),GOOS=linux GOARCH=amd64 go test -c -tags text_worker_installed -o "$(INSTALLED_TAG_COMPILE_ROOT)/$(subst /,_,$(package)).test" $(package)$(newline))
+	$(foreach package,$(INSTALLED_TAG_COMPILE_PACKAGES),go test -c -tags text_worker_installed -o "$(INSTALLED_TAG_COMPILE_ROOT)/$(subst /,_,$(package)).test" $(package)$(newline))
 
 quick-check:
 	$(MAKE) --output-sync=target -j 4 $(QUICK_CHECK_TARGETS)
