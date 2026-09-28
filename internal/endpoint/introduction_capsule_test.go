@@ -1,0 +1,309 @@
+//go:build linux
+
+package endpoint
+
+import (
+	"bytes"
+	"context"
+	"crypto/ed25519"
+	"crypto/rand"
+	"errors"
+	"net"
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/application/broker"
+	applicationconnection "github.com/dianabuilds/ardents-network/internal/application/interfacev2/connection"
+	"github.com/dianabuilds/ardents-network/internal/application/textdocument"
+	"github.com/dianabuilds/ardents-network/internal/network/state"
+	introductioncapsule "github.com/dianabuilds/ardents-network/internal/route/capsule"
+	routecarrier "github.com/dianabuilds/ardents-network/internal/route/carrier"
+	servicepublication "github.com/dianabuilds/ardents-network/internal/service/publication"
+	"github.com/dianabuilds/ardents-network/internal/service/targetlink"
+)
+
+func liveCapsuleJob(t *testing.T, owner *dutyContext) *jobIdentity {
+	t.Helper()
+	job, err := beginTestJob(t, owner, owner.endpoint, owner.surface)
+	if err != nil {
+		t.Fatal(err)
+	}
+	job.workload, err = documentServiceWorkloadBounds()
+	if err != nil {
+		t.Fatal(err)
+	}
+	grant, err := broker.New(broker.Config{ID: job.nonce, Grants: []broker.Grant{{Principal: fixtureID(218), Surface: broker.Connection}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	owner.mu.Lock()
+	job.bound, job.workerGrant, owner.verifiedJob = true, grant, job
+	owner.mu.Unlock()
+	return job
+}
+
+// Real15Node registration/publication/lookup/issuance/delivery/Responder plus real Instance HPKE
+// and both Service owners. Accepted State/worker qualification and the data
+// joining transport are explicit fixtures: no network JOIN claim.
+func TestTextIntroductionCapsuleBindsRealInstanceAndServiceStream(t *testing.T) {
+	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP, routecarrier.ClosedCarrierQUIC} {
+		t.Run(string(carrier), func(t *testing.T) {
+			endpoint, publisher, source := startRoleNetwork(t, roleNetworkFixture{carrier: carrier, resolution: true, publisher: true})
+			// Rendezvous eligibility is a public-State fixture. It is never dialed
+			// here; the actual data-pair transport below is a separate explicit seam.
+			source.mu.Lock()
+			source.view.NodeCount, source.snapshot.CandidateCount = 16, 16
+			source.view.Nodes[15] = state.ClosedRouteNodeView{NodeID: fixtureID(202), RecordDigest: fixtureID(203), DutyGeneration: 16, RoleDomain: 2, Subrole: 4}
+			candidate := source.snapshot.Candidates[4]
+			candidate.NodeID, candidate.RecordDigest, candidate.FamilyID = fixtureID(202), fixtureID(203), fixtureID(204)
+			candidate.PublicKey = fixtureID(205)
+			source.snapshot.Candidates[15] = candidate
+			source.mu.Unlock()
+			public, authority, err := ed25519.GenerateKey(rand.Reader)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer clear(authority)
+			now := time.Now().UTC().Truncate(time.Second)
+			root, binding := acceptedInstanceBinding(t, serviceInstanceFixtureRoot(t), endpoint.network, authority, now.Add(-time.Second), source.view.Profile.NotAfter)
+			t.Cleanup(func() {
+				if err := endpoint.Close(); err != nil {
+					t.Error(err)
+				}
+				if err := root.Close(); err != nil {
+					t.Error(err)
+				}
+			})
+			publications, err := servicepublication.Open(servicepublication.Config{Root: networkPrivateRoot(t), NetworkID: endpoint.network, Authority: public, Clock: time.Now})
+			if err != nil {
+				t.Fatal(err)
+			}
+			endpoint.publisherBinding, endpoint.publications, endpoint.authority = binding, publications, [32]byte(public)
+			if _, err := publisher.openPrefix(t.Context()); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := publisher.openIntroductionPrefix(t.Context()); err != nil {
+				t.Fatal(err)
+			}
+			registered, err := publisher.registerIntroduction(t.Context(), 1, time.Now().UTC().Add(120*time.Second).Truncate(time.Second))
+			if err != nil {
+				t.Fatal(err)
+			}
+			descriptor, err := publisher.publishDescriptor(t.Context())
+			if err != nil {
+				t.Fatal(err)
+			}
+			reader := permissionContextFixture(t, endpoint, fixtureID(211), broker.Connection)
+			source.issuePermission(t, reader, [3]uint32{64, 64, 0})
+			readerJob, publisherJob := liveCapsuleJob(t, reader), liveCapsuleJob(t, publisher)
+			now = time.Now().UTC()
+			bounds := [3]int64{now.Add(time.Minute).Unix(), now.Add(time.Minute).Unix(), now.Add(time.Minute).Unix()}
+			attempt, err := reader.prepareIntroduction(t.Context(), readerJob, targetlink.Link{Network: endpoint.network, Target: descriptor.Descriptor.Target}, bounds)
+			if err != nil {
+				t.Fatal(err)
+			}
+			agedDeadline := time.Now().UTC().Add(time.Second).Truncate(time.Second)
+			attempt.plaintext.Deadline = agedDeadline
+			oldOperation := append([]byte(nil), attempt.operation...)
+			reader.mu.Lock()
+			sourcePrefix := reader.source.CurrentLocked()
+			reader.mu.Unlock()
+			if err := reader.refreshIntroduction(t.Context(), readerJob, attempt, sourcePrefix); err != nil {
+				t.Fatal(err)
+			}
+			if !attempt.plaintext.Deadline.After(agedDeadline) || bytes.Equal(attempt.operation, oldOperation) {
+				t.Fatal("prepared stock did not receive a fresh on-wire capsule lifetime")
+			}
+			_, sealed, err := introductioncapsule.DecodeSubmission(attempt.operation)
+			if err != nil || len(attempt.operation) != 4096 {
+				t.Fatalf("capsule operation: %v", err)
+			}
+			for _, hidden := range [][32]byte{attempt.plaintext.Target, attempt.plaintext.RendezvousNode, attempt.plaintext.JoinSecret, attempt.plaintext.ConnectionNonce, readerJob.nonce} {
+				if bytes.Contains(attempt.operation, hidden[:]) {
+					t.Fatal("recipient-only/local binding exposed outside HPKE")
+				}
+			}
+			mutations := []struct {
+				name   string
+				change func(*introductioncapsule.Plaintext)
+			}{
+				{"Target", func(value *introductioncapsule.Plaintext) { value.Target = fixtureID(190) }},
+				{"Rendezvous", func(value *introductioncapsule.Plaintext) { value.RendezvousNode = source.view.Nodes[4].NodeID }},
+				{"authority bounds", func(value *introductioncapsule.Plaintext) {
+					value.WorkSafetyMaximum = descriptor.Current.Credential.NotAfter + 1
+				}},
+			}
+			for index, mutation := range mutations {
+				altered := attempt.plaintext
+				mutation.change(&altered)
+				envelope := introductioncapsule.Capsule{Slot: sealed.Slot, Revision: sealed.Revision, Expiry: sealed.Expiry, DeliveryNonce: fixtureID(byte(180 + index))}
+				changed, _, err := introductioncapsule.Seal(envelope, descriptor.Descriptor.Private.RecipientKey, altered)
+				if err != nil {
+					t.Fatal(err)
+				}
+				operation, err := introductioncapsule.EncodeSubmission(fixtureID(byte(170+index)), changed)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if accepted, err := publisher.acceptIntroduction(t.Context(), publisherJob, operation); err == nil || accepted != nil || strings.Contains(err.Error(), "rate unavailable") {
+					t.Fatalf("%s was not rejected by authority validation: %v", mutation.name, err)
+				}
+			}
+			publisher.mu.Lock()
+			noResponder := publisher.responder.currentLocked() == nil && publisher.responder.set == nil
+			beforeForward := publisher.tokens.Permission.Reserved[1]
+			publisher.mu.Unlock()
+			if !noResponder {
+				t.Fatal("refused capsule created Responder work")
+			}
+			type deliveryOutcome struct {
+				attempt *introductionAttempt
+				err     error
+			}
+			received := make(chan deliveryOutcome, 1)
+			go func() {
+				accepted, err := publisher.receiveIntroduction(t.Context(), publisherJob)
+				received <- deliveryOutcome{accepted, err}
+			}()
+			if err := reader.submitIntroduction(t.Context(), readerJob, attempt); err != nil {
+				_ = registered.channel.Close()
+				<-received
+				t.Fatal(err)
+			}
+			result := <-received
+			accepted, err := result.attempt, result.err
+			if err != nil {
+				t.Fatal(err)
+			}
+			publisher.mu.Lock()
+			responder := publisher.responder.currentLocked()
+			introduction := publisher.introduction.prefix.currentLocked()
+			distinct := responder != nil && introduction != nil && responder.prefix.Load() != introduction.prefix.Load() &&
+				publisher.responder.set != nil && publisher.responder.set != publisher.sourceSet && publisher.responder.set != publisher.introduction.prefix.set &&
+				publisher.responder.set.interior[0].Domain == 3 && publisher.tokens.Permission.Reserved[1] > beforeForward && publisher.responder.opening == nil
+			publisher.mu.Unlock()
+			if !distinct {
+				t.Fatal("accepted delivery did not establish independently issued Responder forwarding")
+			}
+			if err := publisher.prepareResponder(t.Context(), publisherJob, accepted); err != nil {
+				t.Fatal(err)
+			}
+			publisher.mu.Lock()
+			reused := publisher.responder.currentLocked() == responder
+			publisher.mu.Unlock()
+			if !reused {
+				t.Fatal("second accepted attempt replaced live Responder prefix")
+			}
+			checkResponderRetirementBoundary(t, publisher, publisherJob, accepted, source)
+			responder = publisher.responder.currentLocked()
+			if accepted.digest != attempt.digest || accepted.binding.logical != attempt.binding.logical || accepted.plaintext != attempt.plaintext {
+				t.Fatal("recipient changed the authenticated Attachment or logical context")
+			}
+			if _, err := publisher.acceptIntroduction(t.Context(), publisherJob, attempt.operation); err == nil || !strings.Contains(err.Error(), "replay") {
+				t.Fatalf("replayed capsule accepted: %v", err)
+			}
+			if publisher.introduction.admission.replays[sealed.DeliveryNonce] != registered.request.Expiry.Add(60*time.Second) {
+				t.Fatal("replay retention does not cover original signed slot expiry")
+			}
+			exchangeCapsuleService(t, attempt, accepted)
+			checkCapsuleAdmissionBoundaries(t, publisher, reader, source, publisherJob, attempt, descriptor.Descriptor.Private.RecipientKey)
+			checkPreparationCallerHandover(t, reader, readerJob, source, targetlink.Link{Network: endpoint.network, Target: descriptor.Descriptor.Target}, bounds)
+			publisher.retireJob(publisherJob)
+			if err := publisher.finishJobCleanup(publisherJob, nil); err != nil {
+				t.Fatal(err)
+			}
+			select {
+			case <-responder.Done():
+				t.Fatal("worker loss retired surviving context's Responder prefix")
+			default:
+			}
+			if err := publisher.prepareResponder(t.Context(), publisherJob, accepted); err == nil {
+				t.Fatal("retired Publisher job reused Responder authority")
+			}
+			if err := publisher.Close(); err != nil {
+				t.Fatal(err)
+			}
+			select {
+			case <-responder.Done():
+			default:
+				t.Fatal("context Close did not join Responder prefix")
+			}
+			if err := registered.recipient.Close(); err != nil {
+				t.Fatal(err)
+			}
+			if _, _, err := introductioncapsule.Open(sealed, source.view.Profile.Digest, registered.recipient, time.Now()); err == nil {
+				t.Fatal("retired Instance recipient decrypted capsule")
+			}
+		})
+	}
+}
+
+func exchangeCapsuleService(t *testing.T, reader, publisher *introductionAttempt) {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
+	defer cancel()
+	client, server := net.Pipe()
+	snapshot, err := textdocument.NewSnapshot([]byte("recipient-only capsule bound this Service"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	done := make(chan error, 1)
+	go func() {
+		stream, err := publisher.binding.openServiceStreamWithRecovery(ctx, server, publisher.digest, nil)
+		if err != nil {
+			done <- err
+			return
+		}
+		err = snapshot.Respond(stream, stream)
+		if err == nil {
+			err = stream.CloseInput()
+		}
+		if err == nil {
+			result := <-stream.Done()
+			if result.Class != applicationconnection.CleanClose {
+				err = errors.New("capsule Publisher terminal failed")
+			}
+		}
+		done <- errors.Join(err, stream.Close())
+	}()
+	stream, err := reader.binding.openServiceStreamWithRecovery(ctx, client, reader.digest, nil)
+	if err != nil {
+		cancel()
+		_ = client.Close()
+		<-done
+		t.Fatal(err)
+	}
+	body, err := textdocument.Read(ctx, stream)
+	closeErr := stream.Close()
+	publisherErr := <-done
+	if err != nil || closeErr != nil || publisherErr != nil || string(body) != "recipient-only capsule bound this Service" {
+		t.Fatalf("capsule-bound document: %q %v %v %v", body, err, closeErr, publisherErr)
+	}
+}
+
+func TestTextIntroductionReplayAndOpeningRateAreContextBounded(t *testing.T) {
+	owner := &dutyContext{}
+	now := time.Now().UTC()
+	for index := 0; index < 4; index++ {
+		if err := owner.introduction.admission.reserveOpeningLocked(fixtureID(byte(index+1)), now); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := owner.introduction.admission.reserveOpeningLocked(fixtureID(8), now.Add(time.Second-time.Nanosecond)); err == nil {
+		t.Fatal("more than four openings in one second")
+	}
+	if err := owner.introduction.admission.reserveOpeningLocked(fixtureID(8), now.Add(time.Second)); err != nil {
+		t.Fatal(err)
+	}
+	if err := owner.introduction.admission.reserveOpeningLocked(fixtureID(9), now); err == nil {
+		t.Fatal("clock rollback reopened rate allowance")
+	}
+	owner.introduction.admission.replays = map[[32]byte]time.Time{fixtureID(10): now.Add(2 * time.Second)}
+	if err := owner.introduction.admission.reserveOpeningLocked(fixtureID(10), now.Add(time.Second)); err == nil {
+		t.Fatal("replay allowed before expiry")
+	}
+	if err := owner.introduction.admission.reserveOpeningLocked(fixtureID(10), now.Add(2*time.Second)); err != nil {
+		t.Fatal(err)
+	}
+}

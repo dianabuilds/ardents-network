@@ -13,9 +13,9 @@ import (
 )
 
 func TestCancelledQualificationRunCannotPublishIntoReplacement(t *testing.T) {
-	endpoint, principal := textContextEndpoint(t)
-	owner := admittedTextContext(t, endpoint, principal, broker.Connection)
-	firstJob, err := beginTextTestJob(t, owner, endpoint, broker.Connection)
+	endpoint, principal := dutyContextEndpoint(t)
+	owner := admittedDutyContext(t, endpoint, principal, broker.Connection)
+	firstJob, err := beginTestJob(t, owner, endpoint, broker.Connection)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -41,7 +41,7 @@ func TestCancelledQualificationRunCannotPublishIntoReplacement(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	replacementJob, err := beginTextTestJob(t, owner, endpoint, broker.Connection)
+	replacementJob, err := beginTestJob(t, owner, endpoint, broker.Connection)
 	if err != nil {
 		t.Fatal(err)
 	}

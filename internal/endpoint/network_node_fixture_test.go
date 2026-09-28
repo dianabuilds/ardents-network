@@ -1,0 +1,80 @@
+//go:build linux
+
+package endpoint
+
+import (
+	"context"
+	"fmt"
+	"testing"
+	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/network/state"
+	"github.com/dianabuilds/ardents-network/internal/node"
+)
+
+// networkNodeRuntime owns one fixture Node's readiness and joined cleanup.
+// The role-network builder owns the selected config and port lease.
+type networkNodeRuntime struct {
+	ready   chan struct{}
+	history *networkNodeEvents
+}
+
+func newTextNetworkNodeRuntime(history *networkNodeEvents) *networkNodeRuntime {
+	return &networkNodeRuntime{ready: make(chan struct{}, 1), history: history}
+}
+
+func (runtime *networkNodeRuntime) emit(_ context.Context, event node.Event) error {
+	runtime.history.record(event)
+	if event.State == "READY" {
+		select {
+		case runtime.ready <- struct{}{}:
+		default:
+		}
+	}
+	return nil
+}
+
+func (runtime *networkNodeRuntime) start(t *testing.T, index int, config node.Config,
+	snapshot state.Snapshot, runner func(*testing.T, int, node.Config, state.Snapshot) func() error) {
+	t.Helper()
+	if runner != nil {
+		stop := runner(t, index, config, snapshot)
+		t.Cleanup(func() {
+			if err := stop(); err != nil {
+				t.Error(err)
+			}
+		})
+		return
+	}
+	// Nodes are fixture infrastructure. testing.T cancels its Context before
+	// Cleanup, which would race an unrelated network shutdown against the
+	// Endpoint's normal cleanup. The explicit cleanup below owns each Node.
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan error, 1)
+	go func() {
+		result, err := node.Run(ctx, config)
+		if err != nil {
+			err = fmt.Errorf("Node %d result %+v: %w", index, result, err)
+		}
+		done <- err
+	}()
+	t.Cleanup(func() {
+		cancel()
+		select {
+		case err := <-done:
+			if err != nil {
+				t.Error(err)
+			}
+		case <-time.After(4 * time.Second):
+			t.Error("Node runtime did not join")
+		}
+	})
+	select {
+	case <-runtime.ready:
+	case err := <-done:
+		done <- err
+		t.Fatalf("Node %d failed before READY: %v", index, err)
+	case <-time.After(5 * time.Second):
+		t.Fatalf("Node %d did not become READY", index)
+	}
+}

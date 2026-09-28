@@ -29,7 +29,7 @@ func (connection *authenticatedRetirementTestConn) AuthenticatedPeerRetired() bo
 }
 
 func TestProtectedServiceTLSRouteRetirementWitnessSurvivesWrapperChain(t *testing.T) {
-	reader, publisher, _ := textServiceFixture(t)
+	reader, publisher, _ := serviceFixture(t)
 	ctx, cancel := context.WithTimeout(t.Context(), 2*time.Second)
 	defer cancel()
 	lease, err := publisher.owner.endpoint.publications.AcquireAt(ctx, time.Now().UTC())
@@ -41,7 +41,7 @@ func TestProtectedServiceTLSRouteRetirementWitnessSurvivesWrapperChain(t *testin
 	var localRetired, remoteRetired atomic.Bool
 	local := &authenticatedRetirementTestConn{Conn: localRaw, retired: &localRetired, peerRetired: &remoteRetired}
 	remote := &authenticatedRetirementTestConn{Conn: remoteRaw, retired: &remoteRetired, peerRetired: &localRetired}
-	joined := &textJoinedTransport{Conn: remote, stop: func() {}, finish: func(err error) error { return err }}
+	joined := &joinedTransport{Conn: remote, stop: func() {}, finish: func(err error) error { return err }}
 	service := &protectedServiceTransport{Conn: joined}
 	clientResult := make(chan *securedAttachment, 1)
 	clientError := make(chan error, 1)
@@ -83,7 +83,7 @@ func TestProtectedServiceTLSOnlySelectedGroups(t *testing.T) {
 	for _, role := range []string{"reader", "publisher"} {
 		for _, group := range []tls.CurveID{tls.CurveP256, tls.X25519, tls.X25519MLKEM768} {
 			t.Run(role+"/"+group.String(), func(t *testing.T) {
-				client, publisher, _ := textServiceFixture(t)
+				client, publisher, _ := serviceFixture(t)
 				binding := client
 				ctx, cancel := context.WithTimeout(t.Context(), 2*time.Second)
 				defer cancel()
@@ -112,7 +112,7 @@ func TestProtectedServiceTLSOnlySelectedGroups(t *testing.T) {
 				}
 				done := make(chan error, 1)
 				go func() {
-					stream, err := binding.openTextServiceStreamWithRecovery(ctx, local, fixtureID(81), nil)
+					stream, err := binding.openServiceStreamWithRecovery(ctx, local, fixtureID(81), nil)
 					if stream != nil {
 						_ = stream.Close()
 					}

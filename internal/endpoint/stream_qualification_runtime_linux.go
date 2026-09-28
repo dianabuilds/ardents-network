@@ -15,7 +15,7 @@ import (
 // contains normal trusted participant configuration, never a worker selector,
 // privilege receipt, network bypass or caller-provided worker identity.
 type StreamQualificationConfig struct {
-	Participant  TextParticipantConfig
+	Participant  ClosedParticipantConfig
 	Role         streamqualification.Role
 	Profile      streamqualification.Profile
 	Condition    streamqualification.NetworkCondition
@@ -52,7 +52,7 @@ func RunStreamQualification(ctx context.Context, config StreamQualificationConfi
 		ValidateParticipant: config.Participant.validate,
 	}
 	scenario.WithSession = func(lifetime context.Context, run *qualification.Run, use func(qualification.Session) error) error {
-		return withTextParticipant(lifetime, config.Participant, func(endpoint *endpoint) (operationErr error) {
+		return withParticipant(lifetime, config.Participant, func(endpoint *endpoint) (operationErr error) {
 			principal, surface, permission := config.Participant.ConnectionPrincipal, broker.Connection, config.Participant.ReaderPermission
 			if config.Role == streamqualification.PublisherRole {
 				principal, surface, permission = config.Participant.AdministrationPrincipal, broker.Administration, config.Participant.PublisherPermission
@@ -61,7 +61,7 @@ func RunStreamQualification(ctx context.Context, config StreamQualificationConfi
 			if err != nil {
 				return err
 			}
-			owner, err := endpoint.beginTextContext(lifetime, capability, principal, surface)
+			owner, err := endpoint.beginDutyContext(lifetime, capability, principal, surface)
 			if err != nil {
 				return err
 			}
@@ -72,12 +72,12 @@ func RunStreamQualification(ctx context.Context, config StreamQualificationConfi
 			}
 			defer func() { operationErr = errors.Join(operationErr, worker.Close()) }()
 			session := &qualificationSession{
-				qualifiedTextWorker: worker,
-				owner:               owner,
-				surface:             surface,
-				permission:          permission,
+				qualifiedWorker: worker,
+				owner:           owner,
+				surface:         surface,
+				permission:      permission,
 				reportPermission: func(reportCtx context.Context, digest [32]byte) error {
-					return config.Participant.Observe(reportCtx, TextParticipantEvent{Kind: "permission-required", NetworkID: endpoint.network, Surface: string(surface), RequestDigest: digest})
+					return config.Participant.Observe(reportCtx, ClosedParticipantEvent{Kind: "permission-required", NetworkID: endpoint.network, Surface: string(surface), RequestDigest: digest})
 				},
 			}
 			return use(session)

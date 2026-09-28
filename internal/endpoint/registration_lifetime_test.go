@@ -1,0 +1,46 @@
+//go:build linux
+
+package endpoint
+
+import (
+	"context"
+	"errors"
+	"testing"
+
+	"github.com/dianabuilds/ardents-network/internal/application/broker"
+	"github.com/dianabuilds/ardents-network/internal/route/client"
+)
+
+func TestTextRegistrationCompletionRetainsFailedCleanup(t *testing.T) {
+	endpoint, principal := dutyContextEndpoint(t)
+	owner := admittedDutyContext(t, endpoint, principal, broker.Administration)
+	attempt, cancel := context.WithCancel(owner.lease.Context())
+	defer cancel()
+	flight := &registrationFlight{context: attempt, cancel: cancel, done: make(chan struct{})}
+	if !owner.publication.pair.beginOpeningLocked(flight, nil) {
+		t.Fatal("registration opening reservation unavailable")
+	}
+	original := errors.New("registration terminal CLOSE could not be emitted")
+	failure := errors.Join(client.ErrClosedSourceCleanup, original)
+	registered, err := owner.finishRegistration(context.Background(), flight, nil, nil, failure)
+	if registered != nil || !errors.Is(err, original) {
+		t.Fatalf("failed setup handed over or lost cause: %v", err)
+	}
+	if endpoint.dutyAvailable() {
+		t.Fatal("cleanup failure left Endpoint accepting jobs")
+	}
+	select {
+	case <-flight.done:
+	default:
+		t.Fatal("completion did not release flight")
+	}
+	if err := owner.Close(); !errors.Is(err, original) {
+		t.Fatalf("context lost cleanup cause: %v", err)
+	}
+	if err := owner.Close(); !errors.Is(err, client.ErrClosedSourceCleanup) {
+		t.Fatalf("repeated Close lost cleanup class: %v", err)
+	}
+	if err := endpoint.Close(); !errors.Is(err, original) {
+		t.Fatalf("Endpoint lost cleanup cause: %v", err)
+	}
+}

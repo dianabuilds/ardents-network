@@ -51,7 +51,7 @@ func TestTextWorkerCgroupPathRejectsTraversalAndForeignUnits(t *testing.T) {
 }
 
 func TestTextWorkerCleanupRejectsChangedOrUnknownInvocation(t *testing.T) {
-	instance, unit, service := textCleanupObservation(t)
+	instance, unit, service := cleanupObservation(t)
 	if !sameCleanupInstance(instance, unit, service) {
 		t.Fatal("exact live cleanup invocation refused")
 	}
@@ -68,7 +68,7 @@ func TestTextWorkerCleanupRejectsChangedOrUnknownInvocation(t *testing.T) {
 		{false, "KillMode", "s", `"process"`}, {false, "TimeoutStopUSec", "t", `0`},
 		{false, "Restart", "s", `"always"`}, {false, "ExecStop", "a(sasbttttuii)", `null`},
 	} {
-		instance, unit, service := textCleanupObservation(t)
+		instance, unit, service := cleanupObservation(t)
 		properties := service
 		if test.unit {
 			properties = unit
@@ -85,7 +85,7 @@ func TestTextWorkerCleanupRejectsChangedOrUnknownInvocation(t *testing.T) {
 	}
 }
 
-func textCleanupObservation(t *testing.T) (Instance, Properties, Properties) {
+func cleanupObservation(t *testing.T) (Instance, Properties, Properties) {
 	t.Helper()
 	instance := Instance{Name: "ardents-text-reader@0-12-997.service", Role: "reader", PID: 42, UID: 61234, Invocation: [16]byte{1}}
 	instance.Cgroup = "/system.slice/" + instance.Name

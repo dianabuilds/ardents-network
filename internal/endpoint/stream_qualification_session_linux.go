@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
-	"github.com/dianabuilds/ardents-network/internal/application/interfacev2/connection"
+	interfacev2connection "github.com/dianabuilds/ardents-network/internal/application/interfacev2/connection"
 	"github.com/dianabuilds/ardents-network/internal/qualification"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	"github.com/dianabuilds/ardents-network/internal/route/client"
@@ -27,29 +27,29 @@ import (
 // every Node during issuance.
 const qualificationIssuerRefill = 8
 
-func (worker *qualifiedTextWorker) Run() *qualification.Run { return worker.job.qualification }
+func (worker *qualifiedWorker) Run() *qualification.Run { return worker.job.qualification }
 
-func (worker *qualifiedTextWorker) Now() time.Time { return worker.job.owner.endpoint.clock() }
+func (worker *qualifiedWorker) Now() time.Time { return worker.job.owner.endpoint.clock() }
 
-func (worker *qualifiedTextWorker) Artifact() *qualification.Artifact {
+func (worker *qualifiedWorker) Artifact() *qualification.Artifact {
 	return worker.lifetime.qualificationArtifact()
 }
 
-func (worker *qualifiedTextWorker) Cgroup() string { return worker.lifetime.cgroup }
+func (worker *qualifiedWorker) Cgroup() string { return worker.lifetime.cgroup }
 
-func (worker *qualifiedTextWorker) WorkerAttachment() io.ReadWriteCloser {
+func (worker *qualifiedWorker) WorkerAttachment() io.ReadWriteCloser {
 	return worker.lifetime.attachment
 }
 
-func (worker *qualifiedTextWorker) RefillSnapshot() qualification.Refill {
+func (worker *qualifiedWorker) RefillSnapshot() qualification.Refill {
 	owner := worker.job.owner
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
-	snapshot := qualification.Refill{Live: owner.liveTextServiceJobLocked(worker.job, owner.surface)}
+	snapshot := qualification.Refill{Live: owner.liveServiceJobLocked(worker.job, owner.surface)}
 	if !snapshot.Live {
 		return snapshot
 	}
-	snapshot.Busy = owner.tokens.issuance != nil
+	snapshot.Busy = owner.tokens.Issuance != nil
 	if snapshot.Busy {
 		return snapshot
 	}
@@ -57,23 +57,23 @@ func (worker *qualifiedTextWorker) RefillSnapshot() qualification.Refill {
 	return snapshot
 }
 
-func (worker *qualifiedTextWorker) EnsureIssuerReserve(ctx context.Context, minimum int) error {
+func (worker *qualifiedWorker) EnsureIssuerReserve(ctx context.Context, minimum int) error {
 	return worker.job.owner.ensureQualificationIssuerReserve(ctx, minimum)
 }
 
-func (worker *qualifiedTextWorker) PresentRefill(ctx context.Context, hello ardp.Hello, class uint8) ([]byte, error) {
+func (worker *qualifiedWorker) PresentRefill(ctx context.Context, hello ardp.Hello, class uint8) ([]byte, error) {
 	return worker.job.owner.presentQualifiedRefill(ctx, worker.job, hello, class)
 }
 
-func (worker *qualifiedTextWorker) ReplenishPrefixes(ctx context.Context, present client.ClosedTokenPresenter) error {
+func (worker *qualifiedWorker) ReplenishPrefixes(ctx context.Context, present client.ClosedTokenPresenter) error {
 	owner := worker.job.owner
 	owner.mu.Lock()
-	source := owner.source.currentLocked()
+	source := owner.source.CurrentLocked()
 	introduction := owner.introduction.prefix.currentLocked()
 	responder := owner.responder.currentLocked()
 	owner.mu.Unlock()
 	if source != nil {
-		if err := source.replenish(ctx, present); err != nil {
+		if err := source.Replenish(ctx, present); err != nil {
 			return err
 		}
 	}
@@ -94,39 +94,39 @@ func (worker *qualifiedTextWorker) ReplenishPrefixes(ctx context.Context, presen
 // authorized participant operations of its Context, surface, permission
 // files, and worker.
 type qualificationSession struct {
-	*qualifiedTextWorker
-	owner            *textContext
+	*qualifiedWorker
+	owner            *dutyContext
 	surface          broker.Surface
-	permission       TextPermissionFiles
+	permission       PermissionFiles
 	reportPermission func(context.Context, [32]byte) error
 }
 
 func (session *qualificationSession) BeginOperation(ctx context.Context) (context.Context, func(), error) {
-	return session.qualifiedTextWorker.beginOperation(ctx, session.surface)
+	return session.qualifiedWorker.beginOperation(ctx, session.surface)
 }
 
 func (session *qualificationSession) ProvisionPermission(ctx context.Context) error {
-	return session.owner.provisionTextPermission(ctx, session.permission.RequestPath, session.permission.ResponsePath, session.permission.Maxima, session.reportPermission)
+	return session.owner.provisionPermission(ctx, session.permission.RequestPath, session.permission.ResponsePath, session.permission.Maxima, session.reportPermission)
 }
 
 func (session *qualificationSession) ResolveIntroduction(ctx context.Context, destination targetlink.Link) (reachability.Verified, error) {
-	return session.owner.resolveTextIntroduction(ctx, session.job, destination)
+	return session.owner.resolveIntroduction(ctx, session.job, destination)
 }
 
 func (session *qualificationSession) PrepareIntroduction(ctx context.Context, destination targetlink.Link, bounds [3]int64, verified reachability.Verified) (qualification.Preparation, error) {
-	attempt, err := session.owner.prepareResolvedTextIntroduction(ctx, session.job, destination, bounds, verified)
+	attempt, err := session.owner.prepareResolvedIntroduction(ctx, session.job, destination, bounds, verified)
 	if err != nil {
 		return nil, err
 	}
 	return qualificationPreparation{attempt: attempt}, nil
 }
 
-func (session *qualificationSession) OpenJoinedService(ctx context.Context, preparation qualification.Preparation, setupComplete func()) (connection.Stream, error) {
+func (session *qualificationSession) OpenJoinedService(ctx context.Context, preparation qualification.Preparation, setupComplete func()) (interfacev2connection.Stream, error) {
 	prepared, ok := preparation.(qualificationPreparation)
 	if !ok || prepared.attempt == nil {
 		return nil, errors.New("qualification introduction preparation unavailable")
 	}
-	service, err := session.owner.openTextJoinedServiceAfterSetup(ctx, session.job, prepared.attempt, setupComplete)
+	service, err := session.owner.openJoinedServiceAfterSetup(ctx, session.job, prepared.attempt, setupComplete)
 	if err != nil {
 		return nil, err
 	}
@@ -136,14 +136,14 @@ func (session *qualificationSession) OpenJoinedService(ctx context.Context, prep
 func (session *qualificationSession) ReserveRecipients() (qualification.ReserveRecipients, error) {
 	owner := session.owner
 	owner.mu.Lock()
-	prefix := owner.source.currentLocked()
+	prefix := owner.source.CurrentLocked()
 	owner.mu.Unlock()
 	if prefix == nil {
 		return qualification.ReserveRecipients{}, errors.New("qualification Source prefix unavailable")
 	}
 	var recipients qualification.ReserveRecipients
-	recipients.Join, _, _, recipients.JoinErr = prefix.dataJoinRecipient()
-	recipients.Submission, recipients.SubmissionErr = prefix.submissionRecipient()
+	recipients.Join, _, _, recipients.JoinErr = prefix.DataJoinRecipient()
+	recipients.Submission, recipients.SubmissionErr = prefix.SubmissionRecipient()
 	return recipients, nil
 }
 
@@ -152,7 +152,7 @@ func (session *qualificationSession) EnsureTokenReserve(ctx context.Context, rec
 }
 
 func (session *qualificationSession) StartPublication(ctx context.Context) (qualification.Publication, error) {
-	publication, err := session.qualifiedTextWorker.startPublication(ctx)
+	publication, err := session.qualifiedWorker.startPublication(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -163,12 +163,12 @@ func (session *qualificationSession) StartPublication(ctx context.Context) (qual
 // preparation. Endpoint owns the attempt state; the scenario only hands it
 // back to OpenJoinedService.
 type qualificationPreparation struct {
-	attempt *textIntroductionAttempt
+	attempt *introductionAttempt
 }
 
 func (qualificationPreparation) QualificationPreparation() {}
 
-func (owner *textContext) streamConnectionLimitLocked() int {
+func (owner *dutyContext) streamConnectionLimitLocked() int {
 	if owner.job != nil && owner.job.qualification != nil {
 		schedule, err := owner.job.qualification.Init().Profile.Definition(owner.job.qualification.Init().Role)
 		if err == nil {
@@ -178,7 +178,7 @@ func (owner *textContext) streamConnectionLimitLocked() int {
 	return 16
 }
 
-func (owner *textContext) streamExchangeLimitLocked() int {
+func (owner *dutyContext) streamExchangeLimitLocked() int {
 	if owner.job != nil && owner.job.qualification != nil {
 		// Retained transports plus finite simultaneous introduction/recovery work.
 		return owner.streamConnectionLimitLocked() + 16
@@ -186,18 +186,18 @@ func (owner *textContext) streamExchangeLimitLocked() int {
 	return 16
 }
 
-func (owner *textContext) ensureQualificationTokenReserve(ctx context.Context, receiver [32]byte, class uint8, minimum int) error {
+func (owner *dutyContext) ensureQualificationTokenReserve(ctx context.Context, receiver [32]byte, class uint8, minimum int) error {
 	if owner == nil || ctx == nil || ctx.Err() != nil || receiver == [32]byte{} || class < 1 || class > 3 || minimum < 1 || minimum > 32 {
 		return errors.New("qualification token reserve unavailable")
 	}
 	owner.mu.Lock()
-	profile, _, err := owner.textPermissionProfileLocked()
-	if err != nil || owner.tokens.permission == nil {
+	profile, _, err := owner.permissionProfileLocked()
+	if err != nil || owner.tokens.Permission == nil {
 		owner.mu.Unlock()
 		return errors.Join(err, errors.New("qualification token reserve unavailable"))
 	}
-	ready := owner.tokens.permission.stockCountFor(profile.Digest, receiver, class)
-	remaining := owner.tokens.permission.remaining(class)
+	ready := owner.tokens.Permission.StockCountFor(profile.Digest, receiver, class)
+	remaining := owner.tokens.Permission.Remaining(class)
 	owner.mu.Unlock()
 	missing := min(minimum-ready, int(remaining))
 	if missing <= 0 {
@@ -207,19 +207,19 @@ func (owner *textContext) ensureQualificationTokenReserve(ctx context.Context, r
 	for index := range receivers {
 		receivers[index] = receiver
 	}
-	return owner.issueTextTokens(ctx, receivers, class)
+	return owner.issueTokens(ctx, receivers, class)
 }
 
-func (owner *textContext) ensureQualificationIssuerReserve(ctx context.Context, minimum int) error {
+func (owner *dutyContext) ensureQualificationIssuerReserve(ctx context.Context, minimum int) error {
 	owner.mu.Lock()
-	profile, _, err := owner.textPermissionProfileLocked()
-	if err != nil || owner.tokens.permission == nil || ctx.Err() != nil {
+	profile, _, err := owner.permissionProfileLocked()
+	if err != nil || owner.tokens.Permission == nil || ctx.Err() != nil {
 		owner.mu.Unlock()
 		return errors.Join(err, ctx.Err(), errors.New("qualification issuer reserve unavailable"))
 	}
-	ready := owner.tokens.permission.stockCountForDuty(profile.Digest, profile.IssuerNodeID, profile.IssuerDutyGeneration, 1)
-	remaining := owner.tokens.permission.remaining(1)
-	prefixLive := owner.source.currentLocked() != nil
+	ready := owner.tokens.Permission.StockCountForDuty(profile.Digest, profile.IssuerNodeID, profile.IssuerDutyGeneration, 1)
+	remaining := owner.tokens.Permission.Remaining(1)
+	prefixLive := owner.source.CurrentLocked() != nil
 	owner.mu.Unlock()
 	if ready >= minimum || remaining == 0 {
 		// No new admission is due here, so a Source prefix retired on its
@@ -231,9 +231,9 @@ func (owner *textContext) ensureQualificationIssuerReserve(ctx context.Context, 
 		// through the same retained-member bootstrap that opened it at job
 		// start. A concurrent opening or issuance flight already owns the
 		// refill; the next completed-stream boundary observes its result.
-		if _, openErr := owner.openTextPrefix(ctx); openErr != nil {
+		if _, openErr := owner.openPrefix(ctx); openErr != nil {
 			owner.mu.Lock()
-			inProgress := owner.source.currentLocked() != nil || owner.source.openingInProgressLocked() || owner.tokens.issuance != nil
+			inProgress := owner.source.CurrentLocked() != nil || owner.source.OpeningInProgressLocked() || owner.tokens.Issuance != nil
 			owner.mu.Unlock()
 			if !inProgress {
 				return errors.Join(openErr, errors.New("qualification issuer prefix rebirth failed"))
@@ -246,35 +246,35 @@ func (owner *textContext) ensureQualificationIssuerReserve(ctx context.Context, 
 	for index := range receivers {
 		receivers[index] = profile.IssuerNodeID
 	}
-	return owner.issueTextTokens(ctx, receivers, 1)
+	return owner.issueTokens(ctx, receivers, 1)
 }
 
-func (owner *textContext) presentQualifiedRefill(ctx context.Context, job *textJobIdentity, hello ardp.Hello, class uint8) ([]byte, error) {
-	release, err := owner.acquireTextSourceOperation(ctx)
+func (owner *dutyContext) presentQualifiedRefill(ctx context.Context, job *jobIdentity, hello ardp.Hello, class uint8) ([]byte, error) {
+	release, err := owner.acquireSourceOperation(ctx)
 	if err != nil {
 		return nil, err
 	}
 	defer release()
 	owner.mu.Lock()
-	profile, now, err := owner.textPermissionProfileLocked()
-	if err != nil || class != 2 || !owner.liveTextServiceJobLocked(job, owner.surface) || owner.tokens.permission == nil ||
+	profile, now, err := owner.permissionProfileLocked()
+	if err != nil || class != 2 || !owner.liveServiceJobLocked(job, owner.surface) || owner.tokens.Permission == nil ||
 		hello.NetworkID != profile.NetworkID || hello.StateDigest != profile.StateDigest || hello.StateGeneration != profile.StateGeneration ||
 		hello.ProfileDigest != profile.Digest || hello.ChannelNonce == [32]byte{} || !now.Before(hello.Deadline) || hello.Deadline.After(profile.NotAfter) {
 		owner.mu.Unlock()
 		return nil, errors.New("qualification refill authority unavailable")
 	}
-	stocked := owner.tokens.permission.stockCountForDuty(profile.Digest, hello.RecipientNodeID, hello.RecipientDutyGeneration, 2) != 0
+	stocked := owner.tokens.Permission.StockCountForDuty(profile.Digest, hello.RecipientNodeID, hello.RecipientDutyGeneration, 2) != 0
 	owner.mu.Unlock()
 	if !stocked {
-		if err := owner.issueTextTokensForOpening(ctx, [][32]byte{hello.RecipientNodeID}, 2, nil, false); err != nil {
+		if err := owner.issueTokensForOpening(ctx, [][32]byte{hello.RecipientNodeID}, 2, nil, false); err != nil {
 			return nil, err
 		}
 	}
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
-	current, now, err := owner.textPermissionProfileLocked()
-	if err != nil || current != profile || !owner.liveTextServiceJobLocked(job, owner.surface) {
+	current, now, err := owner.permissionProfileLocked()
+	if err != nil || current != profile || !owner.liveServiceJobLocked(job, owner.surface) {
 		return nil, errors.New("qualification refill authority changed")
 	}
-	return owner.takeTextTokenLocked(current, now, hello, class, ctx)
+	return owner.tokens.TakeTokenLocked(current, now, hello, class, ctx)
 }

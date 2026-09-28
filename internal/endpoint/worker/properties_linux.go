@@ -9,9 +9,9 @@ import (
 	"strings"
 )
 
-const textRoot = "/usr/lib/ardents/text-worker-root"
+const workerRoot = "/usr/lib/ardents/text-worker-root"
 
-// verifyTextWorkerProperties is only one input to a qualified launch receipt.
+// verifyWorkerProperties is only one input to a qualified launch receipt.
 // The caller must separately establish the pinned artifact, accepted socket's
 // kernel credentials, live process/cgroup identity and joined cleanup owner.
 func VerifyPropertiesVersion(unit, service Properties, name, role, cgroup string, pid uint32, version uint16) error {

@@ -14,7 +14,19 @@
     }
   ],
   "production": {
-    "linux-amd64": [],
+    "linux-amd64": [
+      {
+        "symbols": [
+          "internal/endpoint/source.RouteDone",
+          "internal/endpoint/source.TerminateRoute",
+          "internal/endpoint/source.TransplantLive"
+        ],
+        "classification": "test fixture support",
+        "rationale": "The Linux endpoint integration tests force finite Route lifetimes and exercise handle identity guards without the production Handle exposing Close, Done, or its live slot; Linux production retires route prefixes only through the Lifecycle retirement paths.",
+        "owner": "Product Owner and Codex",
+        "retirement": "Remove them when the endpoint test audit slice reworks route-death and transplant simulation onto production seams."
+      }
+    ],
     "windows-amd64": [
       {
         "symbols": [

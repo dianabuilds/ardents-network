@@ -1,0 +1,63 @@
+//go:build linux
+
+package endpoint
+
+import (
+	"context"
+	"io"
+	"testing"
+
+	"github.com/dianabuilds/ardents-network/internal/application/broker"
+	"github.com/dianabuilds/ardents-network/internal/endpoint/worker"
+)
+
+func TestTextWorkerLifetimeRefusesUnpinnedInvocationBeforeINIT(t *testing.T) {
+	endpoint, principal := dutyContextEndpoint(t)
+	owner := admittedDutyContext(t, endpoint, principal, broker.Connection)
+	job, err := beginTestJob(t, owner, endpoint, broker.Connection)
+	if err != nil {
+		t.Fatal(err)
+	}
+	attachment, peer := attachmentPair(t)
+	// Matching local socket credentials cannot substitute for an observed and
+	// pinned installed invocation. No real cgroup is created by this fixture.
+	instance := worker.Instance{Name: "ardents-text-reader@0-12-997.service", Role: "reader", PID: attachment.PID(), UID: attachment.UID()}
+	lifetime, err := initializeOwnedWorker(context.Background(), context.Background(), attachment, instance, job, nil, nil)
+	if err == nil || lifetime != nil {
+		t.Fatal("unverified invocation initialized a worker")
+	}
+	var one [1]byte
+	if n, err := peer.Read(one[:]); n != 0 || err != io.EOF {
+		t.Fatalf("INIT bytes or unclosed attachment: %d %v", n, err)
+	}
+	if err := owner.Close(); err == nil {
+		t.Fatal("missing cgroup cleanup became successful context shutdown")
+	}
+	if _, err := owner.beginJob(endpoint, broker.Connection); err == nil {
+		t.Fatal("unjoined invocation allowed replacement")
+	}
+}
+
+func TestTextWorkerLifetimeRepeatedInitializationCannotConsumeAnotherAttachment(t *testing.T) {
+	endpoint, principal := dutyContextEndpoint(t)
+	owner := admittedDutyContext(t, endpoint, principal, broker.Connection)
+	job, err := beginTestJob(t, owner, endpoint, broker.Connection)
+	if err != nil {
+		t.Fatal(err)
+	}
+	first, _ := attachmentPair(t)
+	if _, err := initializeOwnedWorker(context.Background(), context.Background(), first, worker.Instance{}, job, nil, nil); err == nil {
+		t.Fatal("empty invocation accepted")
+	}
+	other, peer := attachmentPair(t)
+	if _, err := initializeOwnedWorker(context.Background(), context.Background(), other, worker.Instance{}, job, nil, nil); err == nil {
+		t.Fatal("job consumed twice")
+	}
+	if _, err := peer.Write([]byte{7}); err != nil {
+		t.Fatal(err)
+	}
+	var one [1]byte
+	if _, err := io.ReadFull(other, one[:]); err != nil || one[0] != 7 {
+		t.Fatalf("repeated call took ownership of another attachment: %v", err)
+	}
+}

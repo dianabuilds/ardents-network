@@ -125,7 +125,7 @@ The local runtime has separate Modules and Interfaces:
 | internal/application/broker | Admit and consume one short-lived Local Grant capability for either connection or administration; revoke, drain, and close pending capabilities and active Connection leases; report generic/unqualified. | Capability generation, replay removal, expiry, commitments, admission-load accounting, and grant invalidation. |
 | internal/application/interfacev2/connection | Carry one typed Target-Link request and the fixed protected text exchange under AAI3; refuse reserved Name requests and join terminal/cancellation cleanup. It is not a generic binary Application interface. | State, Entry, Target, Route, worker authority, confinement, Service keys, retries, fallback, and Network diagnostics. |
 | internal/application/interfacev1/administration | Carry one separately authorized `publish` or `withdraw` request and its closed success/unavailable result under the same interface version and vectors. | Connection bytes, publication inputs, Credential/key material, State, Route, Target, and Network diagnostics. |
-| internal/endpoint | Compose the selected protected text participant and implement its AAI3 Connection Adapter plus the separate Administration Interface. `RunTextParticipant` opens authenticated participant owners, delegates local transports to the Application Modules, and joins shutdown. | Broker consumption, authenticated State/Entry/Target projection, TLS carrier setup, publication acquisition, and Connection invocation. |
+| internal/endpoint | Compose the selected protected text participant and implement its AAI3 Connection Adapter plus the separate Administration Interface. `RunClosedParticipant` opens authenticated participant owners, delegates local transports to the Application Modules, and joins shutdown. | Broker consumption, authenticated State/Entry/Target projection, TLS carrier setup, publication acquisition, and Connection invocation. |
 | internal/service/publication | Open, publish, acquire, unpublish, and close one exclusive Service Instance generation. | Crash-atomic public record/floor persistence, volatile Instance signer, live-reference accounting, drain, and private-material erasure. |
 | internal/service/connection | Carry one logical authenticated Service Connection across fresh Route Attachments, preserve directional Application EOF through its existing authenticated Terminal record, and return one terminal outcome. | Exact Instance challenge/proof, continuity MAC, ordered data/acknowledgement offsets, replay handling, recovery deadline, and attachment cleanup. |
 
@@ -356,7 +356,7 @@ read. One retained Reader context admits one read through result completion.
 Local network tests exercise this result projection with explicit qualification
 fixtures. The installed profile uses the actual AAI3 owner and launcher, but
 that revised profile still requires execution on its qualified host.
-The protected `RunTextParticipant` composition opens the accepted closed State,
+The protected `RunClosedParticipant` composition opens the accepted closed State,
 Entry sets, the `internal/endpoint/tokenjournal` durable attempt owner, and
 existing Instance binding. It qualifies and
 provisions both retained text contexts before opening the AAI3 Connection and

@@ -86,24 +86,24 @@ func runStreamQualificationIdle(ctx context.Context, config StreamQualificationC
 		report.Samples++
 		return hostSample, nil
 	}
-	outcome = withTextParticipant(lifetime, config.Participant, func(endpoint *endpoint) (operationErr error) {
+	outcome = withParticipant(lifetime, config.Participant, func(endpoint *endpoint) (operationErr error) {
 		principal := config.Participant.ConnectionPrincipal
 		capability, err := endpoint.Admit(principal, broker.Connection)
 		if err != nil {
 			return err
 		}
-		owner, err := endpoint.beginTextContext(lifetime, capability, principal, broker.Connection)
+		owner, err := endpoint.beginDutyContext(lifetime, capability, principal, broker.Connection)
 		if err != nil {
 			return err
 		}
 		defer func() { operationErr = errors.Join(operationErr, owner.Close()) }()
 		permission := config.Participant.ReaderPermission
-		if err := owner.provisionTextPermission(lifetime, permission.RequestPath, permission.ResponsePath, permission.Maxima, func(reportCtx context.Context, digest [32]byte) error {
-			return config.Participant.Observe(reportCtx, TextParticipantEvent{Kind: "permission-required", NetworkID: endpoint.network, Surface: string(broker.Connection), RequestDigest: digest})
+		if err := owner.provisionPermission(lifetime, permission.RequestPath, permission.ResponsePath, permission.Maxima, func(reportCtx context.Context, digest [32]byte) error {
+			return config.Participant.Observe(reportCtx, ClosedParticipantEvent{Kind: "permission-required", NetworkID: endpoint.network, Surface: string(broker.Connection), RequestDigest: digest})
 		}); err != nil {
 			return err
 		}
-		connection, err := owner.openTextConnection()
+		connection, err := owner.openConnection()
 		if err != nil {
 			return err
 		}

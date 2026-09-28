@@ -9,7 +9,7 @@ import (
 	"sync"
 
 	nativeconnection "github.com/dianabuilds/ardents-network/internal/service/connection"
-	"github.com/dianabuilds/ardents-network/internal/service/publication"
+	servicepublication "github.com/dianabuilds/ardents-network/internal/service/publication"
 )
 
 // protectedServiceTransport gives TLS, cancellation and final cleanup one
@@ -44,19 +44,19 @@ func (transport *protectedServiceTransport) Close() error {
 	return transport.err
 }
 
-// textServiceAttachmentOpener returns one already authorized protected Route
+// serviceAttachmentOpener returns one already authorized protected Route
 // transport and its exact fresh capsule digest. The native Connection owns TLS,
 // exporter and retained-continuity verification before committing it.
-type textServiceAttachmentOpener func(context.Context, nativeconnection.Recovery) (net.Conn, [32]byte, error)
+type serviceAttachmentOpener func(context.Context, nativeconnection.Recovery) (net.Conn, [32]byte, error)
 
 // openProtectedServiceInitialAttachment authenticates the first physical
 // transport. The caller owns the returned Publisher lease through stream
 // cleanup, including when Attachment construction fails.
-func (binding *textServiceBinding) openProtectedServiceInitialAttachment(lifetime context.Context,
+func (binding *serviceBinding) openProtectedServiceInitialAttachment(lifetime context.Context,
 	raw net.Conn, exporterContext [32]byte, client bool, continuity *[32]byte,
-) (*nativeconnection.Attachment, *publication.Lease, error) {
+) (*nativeconnection.Attachment, *servicepublication.Lease, error) {
 	var secured *securedAttachment
-	var lease *publication.Lease
+	var lease *servicepublication.Lease
 	var err error
 	if client {
 		secured, *continuity, err = secureProtectedServiceClient(lifetime, raw, binding.credential, exporterContext, 1)
@@ -85,10 +85,10 @@ func (binding *textServiceBinding) openProtectedServiceInitialAttachment(lifetim
 
 // openProtectedServiceRecoveryAttachment owns one replacement Route transport
 // until TLS authenticates it and a native Attachment is constructed.
-func (binding *textServiceBinding) openProtectedServiceRecoveryAttachment(attempt context.Context,
-	request nativeconnection.Recovery, open textServiceAttachmentOpener, lease *publication.Lease, client bool,
+func (binding *serviceBinding) openProtectedServiceRecoveryAttachment(attempt context.Context,
+	request nativeconnection.Recovery, open serviceAttachmentOpener, lease *servicepublication.Lease, client bool,
 ) (_ *nativeconnection.Attachment, outcome error) {
-	if err := binding.validateTextServiceRecovery(request); err != nil {
+	if err := binding.validateServiceRecovery(request); err != nil {
 		return nil, err
 	}
 	replacementRaw, replacementDigest, err := open(attempt, request)
