@@ -10,10 +10,6 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/resource"
 )
 
-// RendezvousDedicatedHostResourceProfile is the only selected native Node
-// resource profile and is restricted to the dedicated Rendezvous duty.
-const RendezvousDedicatedHostResourceProfile = resource.RendezvousDedicatedHostProfile
-
 // Config binds one local identity, authenticated duty facts, and private role-probe listener.
 type ProbeConfig = probe.Config
 

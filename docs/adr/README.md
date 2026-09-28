@@ -78,6 +78,7 @@ Current decisions:
 
 Completed retirement decisions:
 
+- [0116 — Remove the dedicated-host resource profile and the Node clock-observation trigger as production-unreachable](0116-remove-dedicated-host-resource-profile-clock-observation.md)
 - [0115 — Retire the uncomposed interactive State resolution projection](0115-retire-interactive-state-resolution-projection.md)
 - [0114 — Remove the dedicated-host Contributor retirement mechanism entirely](0114-remove-dedicated-host-contributor-retirement.md)
 - [0113 — Retire the retained Alpha corpus/link compatibility surface and the local Name wire encoder](0113-retire-retained-alpha-compatibility-surface.md)

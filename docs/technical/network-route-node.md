@@ -510,15 +510,16 @@ tracers. Any new source transport, peer announcement, public bootstrap,
 directory, carrier fallback, or supported Node operating profile requires its
 own decision, compatibility rule, and Qualification evidence.
 
-The retained native resource profile identity is
-`ardents-rendezvous-dedicated-host-v1`. Its 1-CPU, 192/256-MiB, 128-MiB Go,
-64-task, and 256-FD bounds remain the selected dedicated-host resource
-placement evidence; they do not authorize a new Rendezvous Node start.
-The Node command refuses an old reservation before resource-profile validation
-and no longer normalizes the historical `h4-5-rendezvous-alpha-v1` identity
-into a runnable plan. Retained engine tests and `h3-*` guard profiles
-are compatibility evidence pending their own deletion slices, not accepting
-command routes.
+The former native resource profile identity
+`ardents-rendezvous-dedicated-host-v1` was proven production-unreachable —
+no runnable Node or State configuration can select it — and was removed
+together with its Node clock-observation trigger by ADR-0116; the resource
+guard now refuses it like the historical `h4-5-rendezvous-alpha-v1`
+identity. The Node command refuses an old reservation before
+resource-profile validation and no longer normalizes the historical
+identity into a runnable plan. Retained engine tests and `h3-*` guard
+profiles are compatibility evidence pending their own deletion slices, not
+accepting command routes.
 
 The dedicated-host Contributor command, its module, and its runbook were
 removed entirely by ADR-0114 after the Product Owner confirmed that no live

@@ -136,7 +136,6 @@ type nodeRuntime struct {
 	state               state.Config
 	node                node.Config
 	diagnosticDirectory string
-	clockObservation    string
 }
 
 func readNodePlan(path string) (nodeRuntime, error) {
@@ -232,12 +231,7 @@ func readNodePlan(path string) (nodeRuntime, error) {
 		return nodeRuntime{}, err
 	}
 	nodeConfig.NetworkStateRoot = plan.StateRoot
-	clockObservation := ""
-	if plan.NodeResourceProfile == node.RendezvousDedicatedHostResourceProfile {
-		clockObservation = plan.ClockObservationFile
-	}
-	return nodeRuntime{state: state, node: nodeConfig, diagnosticDirectory: plan.DiagnosticDirectory,
-		clockObservation: clockObservation}, nil
+	return nodeRuntime{state: state, node: nodeConfig, diagnosticDirectory: plan.DiagnosticDirectory}, nil
 }
 
 func oldNodeDutyReservation(plan nodePlan) string {

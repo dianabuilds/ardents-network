@@ -23,21 +23,13 @@ func runNodeRuntime(ctx context.Context, runtime nodeRuntime, output io.Writer) 
 	if !ok {
 		return errors.New("node lifecycle output does not support write deadlines")
 	}
-	var err error
-	stopClockObservation := func() error { return nil }
-	if runtime.clockObservation != "" {
-		stopClockObservation, err = node.StartContributorClockObservation(ctx, runtime.clockObservation, node.ContributorClockObservationInterval)
-		if err != nil {
-			return err
-		}
-	}
 	store, err := state.Open(runtime.state)
 	if err != nil {
-		return errors.Join(err, stopClockObservation())
+		return err
 	}
 	if _, currentErr := store.Current(); errors.Is(currentErr, state.ErrNoCurrentGeneration) {
 		if _, refreshErr := store.Refresh(ctx); refreshErr != nil {
-			return errors.Join(refreshErr, store.Close(), stopClockObservation())
+			return errors.Join(refreshErr, store.Close())
 		}
 	}
 	runtime.node.Current = store.CurrentNodeDuty
@@ -48,5 +40,5 @@ func runNodeRuntime(ctx context.Context, runtime nodeRuntime, output io.Writer) 
 	runtime.node.CurrentClosedRoute = store.CurrentClosedRoute
 	runtime.node.Emit = nodeEventEmitter(boundedOutput, runtime.diagnosticDirectory)
 	_, runErr := node.Run(ctx, runtime.node)
-	return errors.Join(runErr, store.Close(), stopClockObservation())
+	return errors.Join(runErr, store.Close())
 }
