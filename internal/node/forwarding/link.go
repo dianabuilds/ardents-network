@@ -332,7 +332,7 @@ func (server *forwardServer) openForwardingLink(ctx context.Context, open route.
 	if err != nil {
 		return nil, err
 	}
-	candidate, err := Recipient(server.dependencies.authority, updated, open, server.clock(), server.dependencies.literalEndpoint)
+	candidate, err := recipient(server.dependencies.authority, updated, open, server.clock(), server.dependencies.literalEndpoint)
 	if err != nil {
 		return nil, err
 	}
@@ -340,7 +340,7 @@ func (server *forwardServer) openForwardingLink(ctx context.Context, open route.
 	if !available {
 		return nil, errors.New("closed forwarding receiver is unavailable")
 	}
-	dialEndpoint, err := DialAddress(candidate.Endpoint, server.dependencies.relayEndpoint)
+	dialEndpoint, err := dialAddress(candidate.Endpoint, server.dependencies.relayEndpoint)
 	if err != nil {
 		return nil, err
 	}
@@ -351,7 +351,7 @@ func (server *forwardServer) openForwardingLink(ctx context.Context, open route.
 		if readErr != nil {
 			return readErr
 		}
-		selected, selectErr := Recipient(server.dependencies.authority, fresh, open, server.clock(), server.dependencies.literalEndpoint)
+		selected, selectErr := recipient(server.dependencies.authority, fresh, open, server.clock(), server.dependencies.literalEndpoint)
 		if selectErr != nil || selected.NodeID != candidate.NodeID || selected.PublicKey != candidate.PublicKey || selected.RecordDigest != candidate.RecordDigest ||
 			selected.Endpoint != candidate.Endpoint || selected.CarrierProfile != candidate.CarrierProfile {
 			return errors.New("closed forwarding recipient changed")

@@ -59,7 +59,7 @@ Five production callers used `serveClosedOuter` and its serialized writer.
 The first boundary places that operation in `internal/node/outer`; the
 accepted connection's final physical close result stays with each role's
 accept loop.
-After the process-test audit, the root contains 21 production files and 29
+After the process-test audit, the root contains 22 production files and 29
 test files. `duty_server.go` holds both role dispatch and its narrow supervision
 handle; `process_config.go` keeps public inputs beside the process's retained
 runtime state; `lifecycle_event.go` keeps event/result values beside their
@@ -128,10 +128,15 @@ share one `session_test.go`; Linux-specific tests retain their tags when they
 need the installed resource/Carrier fixture. Outgoing Carrier opening outcomes,
 deadline and same-key reuse share `open_linux_test.go`. The parent connection's
 progress during a blocked child open or write is covered together in
-`parent_progress_linux_test.go`. Separate admission, shutdown and host-monitor
-tests retain their own owners.
-At the process boundary, `forwarding/recipient_test.go` checks the recipient
-owner directly. Root network tests call `Run` or a private process adapter and
+`parent_progress_linux_test.go`. The package-local recipient and relay cases now
+share `recipient_selection_test.go`; bootstrap admission and exact adjacency
+share `bootstrap_accept_test.go`. Session cancellation and parent expiry share
+`session_lifetime_test.go`. Accepted close, a delayed session reader and the
+fake shared-Hosting sampler share `listener_lifecycle_test.go`, because each
+checks the listener's joined shutdown. The portable role projection fixture
+supports those tests and the Linux Carrier scenarios.
+At the process boundary, forwarding tests check the recipient owner directly.
+Root network tests call `Run` or a private process adapter and
 exercise combinations of roles; moving them to a role package would transfer
 process authority or require a new exported test seam. Related scenarios and
 their single-purpose fixtures now share files: bootstrap exchange/forwarding,
@@ -143,17 +148,22 @@ its pure window calculation runs on both platforms. Linux-only tests use the
 network work. Process lifecycle, admission, identity, pressure and event tests
 remain beside their production owners; component behavior tests live in the
 role packages.
-The root has 18 Linux-tagged test files and its child packages have 14,
-including fixtures. Its journal writer test uses Linux Unix-socket behavior;
-live TCP/TLS and QUIC process scenarios depend on the Linux-selected role-root
-and Hosting fixtures. Forwarding's Linux tests use those network and ledger
-fixtures; Hosting checks its Linux ledger; Issuer tests late root close with
-the Linux fixture. Some fixture code is portable in isolation but is tagged
-with its only Linux callers, so cross-platform unit rules such as the
-recipient-window calculation live in untagged tests. The source filename
-matches the Linux build tag. Windows `make check` does not exercise those
-Linux process scenarios; the read-only Linux Docker Node run does. Neither
-run qualifies the installed systemd/cgroup startup profile.
+The root has 18 Linux-tagged test files and its child packages have 12:
+nine in forwarding, two in issuer and one in hosting. The root's journal
+writer uses a Linux Unix socket; its actual TCP/TLS and QUIC process tests
+retain the selected Linux role-root and Hosting fixtures. The pure root
+admission projection case now lives in untagged `admission_test.go`; the
+direct bootstrap adjacency table lives with forwarding. Forwarding's
+in-memory bootstrap acceptance, projection fixture and fake Host/listener
+reaper run on Windows as well as Linux. Linux-only fixture helpers for actual
+network scenarios stay in a tagged file because Windows has no callers.
+Its remaining Linux tests use actual Carriers, replay/spend roots or
+permission-sensitive paths. Hosting samples
+its Linux ledger; issuer tests late root close with the Linux fixture. Other
+fixture-only Linux files have solely Linux callers. The source filename
+matches each Linux build tag. Windows `make check` covers the portable
+assertions; the read-only Linux Docker Node run covers the selected Linux
+scenarios. Neither run qualifies the installed systemd/cgroup startup profile.
 The isolated four-reader Endpoint scenario passed with the existing two-second
 Introduction drain bound under Docker quotas of 2, 1 and 0.25 CPUs. CPU quota
 alone did not reproduce the earlier host-load Node 6 cleanup deadline. A

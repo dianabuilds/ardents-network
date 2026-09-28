@@ -11,11 +11,11 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 )
 
-// BootstrapRecipient checks the entire locally observable hop before
+// bootstrapRecipient checks the entire locally observable hop before
 // OPEN can dial. A direct source may reach only an adjacent duty; an interior
 // must have an authenticated current adjacent Node in the same Role Domain.
 // Neither caller-supplied addresses nor issuer responses select a recipient.
-func BootstrapRecipient(source authority.Source, snapshot state.NodeDuty, receiver route.ClosedRoleReceiver, incomingKey [32]byte, open route.ClosedOpen, now time.Time, literalEndpoint func(string) bool) error {
+func bootstrapRecipient(source authority.Source, snapshot state.NodeDuty, receiver route.ClosedRoleReceiver, incomingKey [32]byte, open route.ClosedOpen, now time.Time, literalEndpoint func(string) bool) error {
 	if source.CurrentRoute == nil || snapshot.DeclaredFamily == "" || int(snapshot.CandidateCount) > len(snapshot.Candidates) {
 		return errors.New("closed bootstrap current route is unavailable")
 	}
@@ -51,7 +51,7 @@ func BootstrapRecipient(source authority.Source, snapshot state.NodeDuty, receiv
 	} else {
 		return errors.New("closed bootstrap receiver role is unavailable")
 	}
-	candidate, err := Recipient(source, snapshot, open, now, literalEndpoint)
+	candidate, err := recipient(source, snapshot, open, now, literalEndpoint)
 	if err != nil {
 		return err
 	}
@@ -116,7 +116,7 @@ func (server *forwardServer) admitBootstrap(receiver route.ClosedRoleReceiver, i
 		if err != nil {
 			return err
 		}
-		return BootstrapRecipient(server.dependencies.authority, current, receiver, incomingKey, open, server.clock().UTC(), server.dependencies.literalEndpoint)
+		return bootstrapRecipient(server.dependencies.authority, current, receiver, incomingKey, open, server.clock().UTC(), server.dependencies.literalEndpoint)
 	}, server.clock)
 	return channel, deadline, err
 }

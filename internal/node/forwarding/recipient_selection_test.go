@@ -3,6 +3,7 @@ package forwarding
 import (
 	"encoding/hex"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -28,22 +29,48 @@ func TestClosedForwardRecipientRequiresExactStateRecipientAndRecord(t *testing.T
 	view.Nodes[0] = state.ClosedRouteNodeView{NodeID: target, RecordDigest: recordDigest, RoleDomain: 1, Subrole: 1, DutyGeneration: 9}
 	source := authority.Source{CurrentRoute: func() (state.ClosedRouteView, error) { return view, nil }}
 	open := route.ClosedOpen{NextNodeID: target, NextDutyGeneration: 9, Purpose: ardp.PurposeForwarding, Deadline: now.Add(time.Second)}
-	candidate, err := Recipient(source, snapshot, open, now, ValidCarrierEndpoint)
+	candidate, err := recipient(source, snapshot, open, now, ValidCarrierEndpoint)
 	if err != nil || candidate != snapshot.Candidates[0] {
 		t.Fatalf("closed forward recipient = %+v / %v", candidate, err)
 	}
 	open.NextDutyGeneration++
-	if _, err := Recipient(source, snapshot, open, now, ValidCarrierEndpoint); err == nil {
+	if _, err := recipient(source, snapshot, open, now, ValidCarrierEndpoint); err == nil {
 		t.Fatal("accepted a forwarding OPEN with mismatched duty")
 	}
 	open.NextDutyGeneration--
 	view.Nodes[0].RecordDigest[0]++
-	if _, err := Recipient(source, snapshot, open, now, ValidCarrierEndpoint); err == nil {
+	if _, err := recipient(source, snapshot, open, now, ValidCarrierEndpoint); err == nil {
 		t.Fatal("accepted a forwarding OPEN with mismatched record digest")
 	}
 	stateErr := errors.New("injected closed Route State failure")
 	source.CurrentRoute = func() (state.ClosedRouteView, error) { return state.ClosedRouteView{}, stateErr }
-	if _, err := Recipient(source, snapshot, open, now, ValidCarrierEndpoint); err == nil {
+	if _, err := recipient(source, snapshot, open, now, ValidCarrierEndpoint); err == nil {
 		t.Fatal("accepted a forwarding OPEN without a current closed Route")
+	}
+}
+
+func TestClosedForwardingUsesTransparentCarrierRelayWithoutChangingStatePeer(t *testing.T) {
+	got, err := dialAddress("203.0.113.24:48127", "198.51.100.7:49128")
+	if err != nil || got != "198.51.100.7:49128" {
+		t.Fatalf("closed Carrier relay = %q / %v", got, err)
+	}
+	got, err = dialAddress("203.0.113.24:48127", "")
+	if err != nil || got != "203.0.113.24:48127" {
+		t.Fatalf("closed direct Carrier = %q / %v", got, err)
+	}
+}
+
+func TestClosedForwardingRejectsInvalidCarrierRelayEndpoint(t *testing.T) {
+	for _, input := range []struct{ advertised, relay string }{
+		{"hostname.test:48127", "198.51.100.7:49128"},
+		{"0.0.0.0:48127", "198.51.100.7:49128"},
+		{"203.0.113.24:0", "198.51.100.7:49128"},
+		{"203.0.113.24:48127", "relay.test:49128"},
+		{"203.0.113.24:48127", "0.0.0.0:49128"},
+		{"203.0.113.24:48127", "198.51.100.7:0"},
+	} {
+		if _, err := dialAddress(input.advertised, input.relay); err == nil || !strings.Contains(err.Error(), "Carrier relay endpoint") {
+			t.Fatalf("closed Carrier relay %q -> %q error = %v", input.advertised, input.relay, err)
+		}
 	}
 }

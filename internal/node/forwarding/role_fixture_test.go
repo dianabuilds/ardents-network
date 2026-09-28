@@ -1,5 +1,3 @@
-//go:build linux
-
 package forwarding
 
 import (
@@ -24,10 +22,7 @@ type ClosedForwardingProfile struct {
 	Certificate        tls.Certificate
 	AdmissionTraffic   resource.HostingTraffic
 	TerminationTraffic resource.HostingTraffic
-	host               hosting.Host
 }
-
-type closedForwardingHostReservation = hosting.Reservation
 
 type forwardingFixtureConfig struct {
 	Current              func() (state.NodeDuty, error)
@@ -59,27 +54,10 @@ func closedRouteReceiver(config forwardingFixtureConfig, snapshot state.NodeDuty
 	return config.source().Receiver(snapshot, purpose, now)
 }
 
-func closedForwardRecipient(config forwardingFixtureConfig, snapshot state.NodeDuty, open route.ClosedOpen, now time.Time) (state.NodeDutyCandidate, error) {
-	return Recipient(config.source(), snapshot, open, now, literalForwardingFixtureEndpoint)
-}
-
 func literalForwardingFixtureEndpoint(endpoint string) bool {
 	host, port, err := net.SplitHostPort(endpoint)
 	number, portErr := strconv.Atoi(port)
 	return err == nil && net.ParseIP(host) != nil && portErr == nil && number >= 1 && number <= 65535
-}
-
-func reserveAddress(t *testing.T) string {
-	t.Helper()
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		t.Fatal(err)
-	}
-	address := listener.Addr().String()
-	if err := listener.Close(); err != nil {
-		t.Fatal(err)
-	}
-	return address
 }
 
 type closedBootstrapFixture struct {

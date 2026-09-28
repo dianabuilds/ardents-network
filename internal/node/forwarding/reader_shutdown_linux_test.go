@@ -88,7 +88,7 @@ func TestClosedForwardingDrainJoinsActualAcceptedProducerBeforeReader(t *testing
 	fixture.config.CurrentClosedProfile = func() (state.ClosedProfileView, bool) { return fixture.view.Profile, true }
 	host := &cleanupFailureHost{}
 	fixture.config.ClosedForwarding = ClosedForwardingProfile{Certificate: serverCertificate,
-		AdmissionTraffic: resource.HostingTraffic{Tx: 1}, TerminationTraffic: resource.HostingTraffic{Tx: 1}, host: host}
+		AdmissionTraffic: resource.HostingTraffic{Tx: 1}, TerminationTraffic: resource.HostingTraffic{Tx: 1}}
 	open := fixture.open
 	open.Deadline = now.Add(20 * time.Second)
 	candidate, err := closedForwardRecipient(fixture.config, fixture.snapshot, open, now)

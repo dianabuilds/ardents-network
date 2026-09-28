@@ -59,7 +59,7 @@ func TestClosedForwardingServeDirectRetainsDuplicateSpendCleanupFailure(t *testi
 	fixture.config.Current = func() (state.NodeDuty, error) { return fixture.snapshot, nil }
 	fixture.config.CurrentClosedProfile = func() (state.ClosedProfileView, bool) { return fixture.view.Profile, true }
 	host := &cleanupFailureHost{}
-	fixture.config.ClosedForwarding = ClosedForwardingProfile{Certificate: certificate, AdmissionTraffic: resource.HostingTraffic{Tx: 1}, TerminationTraffic: resource.HostingTraffic{Tx: 1}, host: host}
+	fixture.config.ClosedForwarding = ClosedForwardingProfile{Certificate: certificate, AdmissionTraffic: resource.HostingTraffic{Tx: 1}, TerminationTraffic: resource.HostingTraffic{Tx: 1}}
 	receiver, available := closedRouteReceiver(fixture.config, fixture.snapshot, ardp.PurposeForwarding, fixture.now)
 	if !available {
 		t.Fatal("fixture receiver unavailable")
@@ -111,7 +111,7 @@ func TestClosedForwardingServeDirectRetainsExpiredLeaseCleanupFailure(t *testing
 	fixture.config.CurrentClosedProfile = func() (state.ClosedProfileView, bool) { return fixture.view.Profile, true }
 	cleanup := errors.New("host release failed")
 	host := &cleanupFailureHost{release: cleanup}
-	fixture.config.ClosedForwarding = ClosedForwardingProfile{Certificate: certificate, AdmissionTraffic: resource.HostingTraffic{Tx: 1}, TerminationTraffic: resource.HostingTraffic{Tx: 1}, host: host}
+	fixture.config.ClosedForwarding = ClosedForwardingProfile{Certificate: certificate, AdmissionTraffic: resource.HostingTraffic{Tx: 1}, TerminationTraffic: resource.HostingTraffic{Tx: 1}}
 	receiver, available := closedRouteReceiver(fixture.config, fixture.snapshot, ardp.PurposeForwarding, fixture.now)
 	if !available {
 		t.Fatal("fixture receiver unavailable")
@@ -173,7 +173,7 @@ func TestClosedForwardingServeDirectRetainsSpendStorageCleanupFailure(t *testing
 	fixture.config.CurrentClosedProfile = func() (state.ClosedProfileView, bool) { return fixture.view.Profile, true }
 	cleanup := errors.New("host release failed")
 	host := &cleanupFailureHost{release: cleanup}
-	fixture.config.ClosedForwarding = ClosedForwardingProfile{Certificate: certificate, AdmissionTraffic: resource.HostingTraffic{Tx: 1}, TerminationTraffic: resource.HostingTraffic{Tx: 1}, host: host}
+	fixture.config.ClosedForwarding = ClosedForwardingProfile{Certificate: certificate, AdmissionTraffic: resource.HostingTraffic{Tx: 1}, TerminationTraffic: resource.HostingTraffic{Tx: 1}}
 	receiver, available := closedRouteReceiver(fixture.config, fixture.snapshot, ardp.PurposeForwarding, fixture.now)
 	if !available {
 		t.Fatal("fixture receiver unavailable")
@@ -234,7 +234,7 @@ func TestClosedForwardingServeDirectRetainsCapacityCleanupFailure(t *testing.T) 
 	fixture.config.CurrentClosedProfile = func() (state.ClosedProfileView, bool) { return fixture.view.Profile, true }
 	cleanup := errors.New("host release failed")
 	host := &cleanupFailureHost{release: cleanup}
-	fixture.config.ClosedForwarding = ClosedForwardingProfile{Certificate: certificate, AdmissionTraffic: resource.HostingTraffic{Tx: 1}, TerminationTraffic: resource.HostingTraffic{Tx: 1}, host: host}
+	fixture.config.ClosedForwarding = ClosedForwardingProfile{Certificate: certificate, AdmissionTraffic: resource.HostingTraffic{Tx: 1}, TerminationTraffic: resource.HostingTraffic{Tx: 1}}
 	receiver, available := closedRouteReceiver(fixture.config, fixture.snapshot, ardp.PurposeForwarding, fixture.now)
 	if !available {
 		t.Fatal("fixture receiver unavailable")

@@ -4,6 +4,8 @@ import (
 	"context"
 	"crypto/ed25519"
 	"crypto/sha256"
+	"crypto/tls"
+	"encoding/hex"
 	"errors"
 	"os"
 	"path/filepath"
@@ -12,6 +14,10 @@ import (
 
 	localroles "github.com/dianabuilds/ardents-network/internal/network/duty"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
+	"github.com/dianabuilds/ardents-network/internal/resource"
+	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
+	routecarrier "github.com/dianabuilds/ardents-network/internal/route/carrier"
 )
 
 func TestResolvePinsLocalRoleRootAcrossWorkingDirectoryChange(t *testing.T) {
@@ -110,4 +116,82 @@ func TestAdmissionRequiresEveryPrerequisite(t *testing.T) {
 			}
 		})
 	}
+}
+
+type closedBootstrapFixture struct {
+	now      time.Time
+	config   runtimeConfig
+	snapshot state.NodeDuty
+	receiver route.ClosedRoleReceiver
+	peer     [32]byte
+	open     route.ClosedOpen
+	view     state.ClosedRouteView
+}
+
+// Projection fixture only: accepted State parsing and its signature/record
+// joins have their own tests. This exercises the Node's additional pre-dial
+// adjacency, role transition and family exclusions.
+func newClosedBootstrapFixture(t *testing.T) *closedBootstrapFixture {
+	t.Helper()
+	fixture := &closedBootstrapFixture{now: time.Unix(1_800_000_000, 0).UTC()}
+	generation := [32]byte{1}
+	profile := state.ClosedProfileView{NetworkID: [32]byte{2}, StateGeneration: generation, StateDigest: [32]byte{3}, Digest: [32]byte{4},
+		Epoch: 5, IssuerNodeID: [32]byte{13}, IssuerDutyGeneration: 13, NotBefore: fixture.now, NotAfter: fixture.now.Add(time.Hour)}
+	fixture.view = state.ClosedRouteView{Profile: profile, NodeCount: 3}
+	for index := 0; index < 3; index++ {
+		fixture.view.Nodes[index] = state.ClosedRouteNodeView{NodeID: [32]byte{byte(11 + index)}, RecordDigest: [32]byte{byte(21 + index)},
+			RoleDomain: 1, Subrole: uint8(index + 1), DutyGeneration: uint64(11 + index)}
+	}
+	fixture.view.Nodes[2].RoleDomain, fixture.view.Nodes[2].Subrole = 2, 6
+	fixture.snapshot = state.NodeDuty{Generation: hex.EncodeToString(generation[:]), NetworkID: profile.NetworkID, Epoch: profile.Epoch, Digest: profile.StateDigest,
+		EpochValidFrom: fixture.now, ValidUntil: profile.NotAfter, Profile: routecarrier.ClosedRouteProfile, Fresh: true, NodeID: fixture.view.Nodes[1].NodeID,
+		RecordGeneration: 12, RecordValidUntil: profile.NotAfter, DeclaredFamily: "bootstrap-interior", CandidateCount: 2}
+	for index, role := range []state.ClosedRouteNodeView{fixture.view.Nodes[0], fixture.view.Nodes[2]} {
+		fixture.snapshot.Candidates[index] = state.NodeDutyCandidate{NodeID: role.NodeID, RecordDigest: role.RecordDigest, PublicKey: [32]byte{byte(31 + index)},
+			FamilyID: [32]byte{byte(41 + index)}, Endpoint: "127.0.0.1:41000", CarrierProfile: string(routecarrier.ClosedCarrierTCP), ValidFrom: fixture.now,
+			ValidUntil: profile.NotAfter, AssignmentNotAfter: profile.NotAfter}
+	}
+	fixture.config = runtimeConfig{Config: Config{CurrentClosedRoute: func() (state.ClosedRouteView, error) { return fixture.view, nil }}}
+	var available bool
+	fixture.receiver, available = nodeAuthority(fixture.config).Receiver(fixture.snapshot, ardp.PurposeForwarding, fixture.now)
+	if !available {
+		t.Fatal("fixture receiver unavailable")
+	}
+	fixture.peer = fixture.snapshot.Candidates[0].PublicKey
+	fixture.open = route.ClosedOpen{NextNodeID: profile.IssuerNodeID, NextDutyGeneration: profile.IssuerDutyGeneration,
+		Purpose: ardp.PurposeIssuer, Deadline: fixture.now.Add(time.Second)}
+	return fixture
+}
+
+func TestClosedAdmissionUsesOneConsistentRouteProjection(t *testing.T) {
+	fixture := newClosedBootstrapFixture(t)
+	identity := ed25519.NewKeyFromSeed(make([]byte, ed25519.SeedSize))
+	copy(fixture.snapshot.NodePublicKey[:], identity.Public().(ed25519.PublicKey))
+	fixture.snapshot.RecordPresent = true
+	fixture.snapshot.RecordValidFrom = fixture.now
+	fixture.snapshot.ProbeEndpoint = "127.0.0.1:41000"
+	fixture.snapshot.CarrierProfile = string(routecarrier.ClosedCarrierTCP)
+	fixture.config.NetworkID = fixture.snapshot.NetworkID
+	fixture.config.NodeID = fixture.snapshot.NodeID
+	fixture.config.IdentityKey = identity
+	fixture.config.CheckPlacement = func() error { return nil }
+	fixture.config.now = func() time.Time { return fixture.now }
+	fixture.config.ClosedForwarding = ClosedForwardingProfile{Root: t.TempDir(), HostingRoot: t.TempDir(),
+		Certificate: tlsCertificate(identity), ConnectionLimit: 1, DrainTimeout: time.Second,
+		AdmissionTraffic: resource.HostingTraffic{Tx: 1}, TerminationTraffic: resource.HostingTraffic{Tx: 1}}
+	calls := 0
+	fixture.config.CurrentClosedRoute = func() (state.ClosedRouteView, error) {
+		calls++
+		if calls > 1 {
+			return state.ClosedRouteView{}, errors.New("second Route projection read")
+		}
+		return fixture.view, nil
+	}
+	if got := assessAdmission(fixture.config, fixture.snapshot); got.kind != admissionReady || calls != 1 {
+		t.Fatalf("closed admission did not retain one Route projection: %+v calls=%d", got, calls)
+	}
+}
+
+func tlsCertificate(identity ed25519.PrivateKey) tls.Certificate {
+	return tls.Certificate{PrivateKey: identity}
 }

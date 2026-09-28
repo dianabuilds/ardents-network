@@ -12,11 +12,11 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/route/carrier"
 )
 
-// Recipient intersects an OPEN with current State's signed
+// recipient intersects an OPEN with current State's signed
 // closed-route recipient and its exact public Node Record. It is deliberately
 // a pre-dial check: the returned record is not a Carrier and cannot select a
 // fallback peer.
-func Recipient(source authority.Source, snapshot state.NodeDuty, open route.ClosedOpen, now time.Time, literalEndpoint func(string) bool) (state.NodeDutyCandidate, error) {
+func recipient(source authority.Source, snapshot state.NodeDuty, open route.ClosedOpen, now time.Time, literalEndpoint func(string) bool) (state.NodeDutyCandidate, error) {
 	if source.CurrentRoute == nil || !now.Before(open.Deadline) || snapshot.Profile != carrier.ClosedRouteProfile || !snapshot.Fresh || snapshot.Conflicting {
 		return state.NodeDutyCandidate{}, errors.New("closed forwarding recipient is unavailable")
 	}
@@ -59,10 +59,10 @@ func Recipient(source authority.Source, snapshot state.NodeDuty, open route.Clos
 	return candidate, nil
 }
 
-// DialAddress retains the State-selected recipient while routing
+// dialAddress retains the State-selected recipient while routing
 // this Node's physical Carrier through one operator-owned transparent relay.
 // Authentication still uses the selected recipient key after the relay dial.
-func DialAddress(advertised, relay string) (string, error) {
+func dialAddress(advertised, relay string) (string, error) {
 	if relay == "" {
 		return advertised, nil
 	}

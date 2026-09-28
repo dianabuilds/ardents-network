@@ -51,7 +51,7 @@ func TestClosedForwardingParentReaderServesControlWhileOpenBlocks(t *testing.T) 
 	fixture.config.Current = func() (state.NodeDuty, error) { return fixture.snapshot, nil }
 	fixture.config.CurrentClosedProfile = func() (state.ClosedProfileView, bool) { return fixture.view.Profile, true }
 	host := &cleanupFailureHost{}
-	fixture.config.ClosedForwarding = ClosedForwardingProfile{Certificate: serverCertificate, AdmissionTraffic: resource.HostingTraffic{Tx: 1}, TerminationTraffic: resource.HostingTraffic{Tx: 1}, host: host}
+	fixture.config.ClosedForwarding = ClosedForwardingProfile{Certificate: serverCertificate, AdmissionTraffic: resource.HostingTraffic{Tx: 1}, TerminationTraffic: resource.HostingTraffic{Tx: 1}}
 	receiver, ok := closedRouteReceiver(fixture.config, fixture.snapshot, ardp.PurposeForwarding, now)
 	if !ok {
 		t.Fatal("receiver unavailable")
@@ -297,7 +297,7 @@ func TestClosedForwardingParentReaderServesIndependentChildWhileWriteBlocks(t *t
 	fixture.config.Current = func() (state.NodeDuty, error) { return fixture.snapshot, nil }
 	fixture.config.CurrentClosedProfile = func() (state.ClosedProfileView, bool) { return fixture.view.Profile, true }
 	host := &cleanupFailureHost{}
-	fixture.config.ClosedForwarding = ClosedForwardingProfile{Certificate: serverCertificate, AdmissionTraffic: resource.HostingTraffic{Tx: 1}, TerminationTraffic: resource.HostingTraffic{Tx: 1}, host: host}
+	fixture.config.ClosedForwarding = ClosedForwardingProfile{Certificate: serverCertificate, AdmissionTraffic: resource.HostingTraffic{Tx: 1}, TerminationTraffic: resource.HostingTraffic{Tx: 1}}
 	receiver, ok := closedRouteReceiver(fixture.config, fixture.snapshot, ardp.PurposeForwarding, now)
 	if !ok {
 		t.Fatal("receiver unavailable")

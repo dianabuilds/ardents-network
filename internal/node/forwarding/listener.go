@@ -363,7 +363,7 @@ func (server *forwardServer) serveDirect(ctx context.Context, connection net.Con
 				if readErr != nil {
 					return readErr
 				}
-				_, readErr = Recipient(server.dependencies.authority, updated, open, server.clock(), server.dependencies.literalEndpoint)
+				_, readErr = recipient(server.dependencies.authority, updated, open, server.clock(), server.dependencies.literalEndpoint)
 				return readErr
 			}, server.dependencies.replenish(receiver, server.receiving.spends), server.clock)
 			if admitErr != nil {
