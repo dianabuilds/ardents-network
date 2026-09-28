@@ -25,14 +25,15 @@ type Duty struct {
 
 // store serializes one bounded durable generation and owns its root lease.
 type store struct {
-	mu      sync.Mutex
-	root    string
-	clock   func() time.Time
-	lease   rootLease
-	state   durableState
-	current string
-	closed  bool
-	failed  error
+	mu       sync.Mutex
+	root     string
+	clock    func() time.Time
+	lease    rootLease
+	state    durableState
+	current  string
+	closed   bool
+	failed   error
+	closeErr error
 }
 
 // durableState is the one current root format (version 2). ADR-0107 retired
