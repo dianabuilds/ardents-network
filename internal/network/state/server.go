@@ -40,7 +40,11 @@ func (s *networkState) resolveDistributionRequest(_ context.Context, request sou
 	if request.Operation == "by-digest" && request.ObjectDigest != digest {
 		return source.Message{Status: "not-found"}
 	}
-	payload, err := encodeSourceBundle(decision, request.MaterialIndex)
+	material, err := decision.Materialization(request.MaterialIndex)
+	if err != nil {
+		return source.Message{Status: "internal"}
+	}
+	payload, err := source.EncodeBundle(source.Bundle{Epoch: decision.EpochBytes, Inputs: decision.Inputs, Materials: [][]byte{material}})
 	if err != nil {
 		return source.Message{Status: "internal"}
 	}

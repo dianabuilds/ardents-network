@@ -128,7 +128,7 @@ func (s *networkState) fetchAndVerify(ctx context.Context, index int, current *e
 	if err != nil {
 		return failedSourceResult(resultIndex, outcomeIndex, observations, err)
 	}
-	bundle, err := decodeSourceBundle(response.Payload)
+	bundle, err := source.DecodeBundle(response.Payload)
 	if err != nil {
 		return failedSourceResult(resultIndex, outcomeIndex, observations, err)
 	}

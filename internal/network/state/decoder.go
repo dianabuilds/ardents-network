@@ -5,7 +5,7 @@ import (
 	"errors"
 )
 
-// decoder owns State's bounded cursor over canonical Source and control bytes.
+// decoder owns State's bounded cursor over canonical control bytes.
 type decoder struct {
 	raw    []byte
 	offset int
@@ -28,22 +28,6 @@ func (d *decoder) byte() (byte, error) {
 		return 0, err
 	}
 	return value[0], nil
-}
-
-func (d *decoder) uint16() (uint16, error) {
-	value, err := d.bytes(2)
-	if err != nil {
-		return 0, err
-	}
-	return binary.BigEndian.Uint16(value), nil
-}
-
-func (d *decoder) uint32() (uint32, error) {
-	value, err := d.bytes(4)
-	if err != nil {
-		return 0, err
-	}
-	return binary.BigEndian.Uint32(value), nil
 }
 
 func (d *decoder) uint64() (uint64, error) {
