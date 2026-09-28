@@ -2,7 +2,7 @@ package epoch
 
 import "testing"
 
-func TestCanonicalReaderText(t *testing.T) {
+func TestDecoderText(t *testing.T) {
 	t.Parallel()
 	for _, test := range []struct {
 		name      string
@@ -18,13 +18,13 @@ func TestCanonicalReaderText(t *testing.T) {
 		{name: "nonprinting", raw: []byte{1, ' '}, wantError: true},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			reader := canonicalReader{raw: test.raw}
-			got, err := reader.Text(3)
+			reader := newDecoder(test.raw)
+			got, err := reader.text(3)
 			if (err != nil) != test.wantError || got != test.want {
-				t.Fatalf("Text(3) = %q, %v; want %q, error=%v", got, err, test.want, test.wantError)
+				t.Fatalf("text(3) = %q, %v; want %q, error=%v", got, err, test.want, test.wantError)
 			}
-			if !test.wantError && reader.Consumed() != len(test.raw) {
-				t.Fatalf("consumed %d of %d bytes", reader.Consumed(), len(test.raw))
+			if !test.wantError && !reader.done() {
+				t.Fatalf("consumed %d of %d bytes", reader.offset, len(test.raw))
 			}
 		})
 	}
