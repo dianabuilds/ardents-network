@@ -27,6 +27,8 @@ type Config struct {
 	Now             time.Time
 	Clock           func() time.Time
 
+	// Source declares acquisition and serving; State supplies its own TLS
+	// verification clock. Callers leave Source.VerificationClock nil.
 	Source source.Config
 
 	// ClockObservation is the initial independent observation. ObserveClock

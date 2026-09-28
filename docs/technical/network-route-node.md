@@ -363,7 +363,9 @@ accepts only the configured CA, hostname, and server leaf-key pin. Its server
 requires a CA-verified client certificate and an authorized client leaf-key
 pin. `ardents` and `ardents-node` read the declared PEM key pairs and roots
 while constructing the bounded Source configuration; `internal/network/source`
-then owns copies for its one configured TLS client or listener. Replacing a PEM
+then owns copies for its one configured TLS client or listener. Network State
+supplies the Source TLS verification clock from its sole configured time owner;
+a nested override is refused before opening the State root. Replacing a PEM
 file does not alter a running Source process: there is no hot reload or
 Source-side certificate issuer in the maintained surface. A changed certificate
 therefore needs a separately checked new configuration and lifecycle action;

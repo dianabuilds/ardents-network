@@ -5,6 +5,7 @@ import (
 	"crypto/ed25519"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -133,5 +134,26 @@ func TestClosedRouteProfileRequiresPinnedProfileAuthority(t *testing.T) {
 	}
 	if err := store.Close(); err != nil {
 		t.Fatalf("close closed route state: %v", err)
+	}
+}
+
+func TestStateOwnsSourceTLSVerificationClock(t *testing.T) {
+	t.Parallel()
+	value := newFixture(t)
+	root := filepath.Join(t.TempDir(), "state-root")
+	now := time.Unix(value.now, 0).UTC()
+	config := state.Config{Root: root, NetworkID: value.networkID,
+		Authorities: map[[32]byte]ed25519.PublicKey{value.authorityID: value.authorityPublic},
+		Threshold:   1, Now: now}
+	config.Source.VerificationClock = func() time.Time { return now.Add(-time.Hour) }
+	store, err := state.Open(config)
+	if store != nil {
+		_ = store.Close()
+	}
+	if err == nil || !strings.Contains(err.Error(), "source verification clock") {
+		t.Fatalf("State accepted an independent Source TLS clock: %v", err)
+	}
+	if _, statErr := os.Stat(root); !os.IsNotExist(statErr) {
+		t.Fatalf("invalid Source clock created State root: %v", statErr)
 	}
 }
