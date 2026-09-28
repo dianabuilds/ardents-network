@@ -30,7 +30,7 @@ type textServiceBinding struct {
 	// introduction is the already verified recipient selected for this
 	// Target-Link Connection. It remains client-local and finite.
 	introduction reachability.PrivateIntroduction
-	recovery     *textIntroductionRecoveryOwner
+	recovery     *introductionRecoveryOwner
 }
 
 // newTextServiceBinding is the Initiator's local owner operation after
@@ -100,7 +100,7 @@ func (owner *textContext) bindTextServiceLocked(job *textJobIdentity, current se
 		facts.PublicationDigest != verified.Digest || facts.ProfileDigest != profile.Digest ||
 		facts.WorkSafetyNotAfter <= now.Unix() || facts.NoNewRecoveryAfter <= now.Unix() ||
 		facts.WorkSafetyMaximum > verified.Credential.NotAfter || facts.WorkSafetyMaximum > profile.NotAfter.Unix() {
-		return nil, &textIntroductionRefusal{cause: errors.New("text Service publication or authority bounds unavailable")}
+		return nil, &introductionRefusal{cause: errors.New("text Service publication or authority bounds unavailable")}
 	}
 	if owner.surface == broker.Administration {
 		if owner.endpoint.publications == nil {
@@ -116,19 +116,19 @@ func (owner *textContext) bindTextServiceLocked(job *textJobIdentity, current se
 			return nil, errors.Join(errors.New("text Service Publisher publication unavailable"), closeErr)
 		}
 		if published.Credential != verified.Credential || published.Digest != verified.Digest {
-			return nil, &textIntroductionRefusal{cause: errors.New("text Service Publisher publication differs")}
+			return nil, &introductionRefusal{cause: errors.New("text Service Publisher publication differs")}
 		}
 	}
 	if deadline, ok := job.context.Deadline(); ok && time.Unix(facts.WorkSafetyMaximum, 0).After(deadline) {
-		return nil, &textIntroductionRefusal{cause: errors.New("text Service bounds exceed local job authority")}
+		return nil, &introductionRefusal{cause: errors.New("text Service bounds exceed local job authority")}
 	}
 	logical, err := nativeconnection.ProtectedContext(facts)
 	if err != nil {
-		return nil, &textIntroductionRefusal{cause: err}
+		return nil, &introductionRefusal{cause: err}
 	}
 	spelling, err := targetlink.Encode(targetlink.Link{Network: facts.Network, Target: facts.Target})
 	if err != nil {
-		return nil, &textIntroductionRefusal{cause: errors.New("text Service destination binding unavailable")}
+		return nil, &introductionRefusal{cause: errors.New("text Service destination binding unavailable")}
 	}
 	return &textServiceBinding{owner: owner, job: job, credential: verified.Credential, facts: facts, logical: logical,
 		candidateView: profile.StateDigest, destinationBinding: sha256.Sum256([]byte(spelling))}, nil
@@ -218,7 +218,7 @@ func (binding *textServiceBinding) sameAuthorityAs(other *textServiceBinding) bo
 
 // dispatchRecoveryLocked returns the recovery slot only for the binding that
 // serves the exact Context and job.
-func (binding *textServiceBinding) dispatchRecoveryLocked(owner *textContext, job *textJobIdentity) *textIntroductionRecoveryOwner {
+func (binding *textServiceBinding) dispatchRecoveryLocked(owner *textContext, job *textJobIdentity) *introductionRecoveryOwner {
 	if !binding.servesJob(owner, job) {
 		return nil
 	}
@@ -227,7 +227,7 @@ func (binding *textServiceBinding) dispatchRecoveryLocked(owner *textContext, jo
 
 // ownsRecoveryLocked reports whether this binding retains exactly that
 // recovery owner.
-func (binding *textServiceBinding) ownsRecoveryLocked(recovery *textIntroductionRecoveryOwner) bool {
+func (binding *textServiceBinding) ownsRecoveryLocked(recovery *introductionRecoveryOwner) bool {
 	return binding != nil && recovery != nil && binding.recovery == recovery
 }
 
@@ -239,12 +239,12 @@ func (binding *textServiceBinding) hasRecoveryLocked() bool {
 // claimRecoveryLocked creates the one recovery owner slot of this binding.
 // The shared Context lock makes creation and dispatcher registration one
 // transition.
-func (binding *textServiceBinding) claimRecoveryLocked() *textIntroductionRecoveryOwner {
+func (binding *textServiceBinding) claimRecoveryLocked() *introductionRecoveryOwner {
 	if binding == nil || binding.recovery != nil {
 		return nil
 	}
-	recovery := &textIntroductionRecoveryOwner{binding: binding, generation: 2,
-		delivery: make(chan textIntroductionRoutedDelivery, 1)}
+	recovery := &introductionRecoveryOwner{binding: binding, generation: 2,
+		delivery: make(chan introductionRoutedDelivery, 1)}
 	binding.recovery = recovery
 	return recovery
 }

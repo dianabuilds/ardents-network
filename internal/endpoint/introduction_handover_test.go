@@ -75,7 +75,7 @@ func checkTextPreparationCallerHandover(t *testing.T, owner *textContext, job *t
 	defer func() { endpoint.closedState = source }()
 	// Measure the last current-profile read in an otherwise identical warm
 	// attempt; neither pass refills the already populated token stock.
-	prepared, err := owner.prepareTextIntroduction(t.Context(), job, destination, bounds)
+	prepared, err := owner.prepareIntroduction(t.Context(), job, destination, bounds)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -86,7 +86,7 @@ func checkTextPreparationCallerHandover(t *testing.T, owner *textContext, job *t
 	caller := &textDelayedCancellation{Context: context.Background(), done: make(chan struct{})}
 	paused := &textPreparationBoundaryState{sourceStateFixture: source, cancelAt: counting.reads, caller: caller}
 	endpoint.closedState = paused
-	prepared, err = owner.prepareTextIntroduction(caller, job, destination, bounds)
+	prepared, err = owner.prepareIntroduction(caller, job, destination, bounds)
 	if paused.reads != paused.cancelAt || caller.Err() == nil {
 		t.Fatal("test did not cancel at the final authority read")
 	}

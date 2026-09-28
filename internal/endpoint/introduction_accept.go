@@ -13,15 +13,15 @@ import (
 	nativeconnection "github.com/dianabuilds/ardents-network/internal/service/connection"
 )
 
-func (owner *textContext) acceptTextIntroductionGeneration(ctx context.Context, job *textJobIdentity, operation []byte,
+func (owner *textContext) acceptIntroductionGeneration(ctx context.Context, job *textJobIdentity, operation []byte,
 	original *textServiceBinding, expectedGeneration uint64, recoveryDeadline time.Time,
-	openingReserved bool) (attempt *textIntroductionAttempt, outcome error) {
+	openingReserved bool) (attempt *introductionAttempt, outcome error) {
 	if owner == nil || ctx == nil || ctx.Err() != nil {
 		return nil, errors.New("text Introduction caller unavailable")
 	}
 	_, capsule, err := introductioncapsule.DecodeSubmission(operation)
 	if err != nil {
-		return nil, &textIntroductionRefusal{cause: err}
+		return nil, &introductionRefusal{cause: err}
 	}
 	defer clear(capsule.Ciphertext)
 	endpoint := owner.endpoint
@@ -40,14 +40,14 @@ func (owner *textContext) acceptTextIntroductionGeneration(ctx context.Context, 
 		return nil, errors.New("text Introduction registration authority unavailable")
 	}
 	if !registered.matchesRequest(capsule.Slot, capsule.Revision) || !now.Before(capsule.Expiry) || capsule.Expiry.After(registered.expiry()) {
-		return nil, &textIntroductionRefusal{cause: errors.New("text Introduction registration input mismatch")}
+		return nil, &introductionRefusal{cause: errors.New("text Introduction registration input mismatch")}
 	}
 	if registered.ended() {
 		return nil, fmt.Errorf("text Introduction registration ended: %s", registered.endReason())
 	}
 	if !openingReserved {
 		if err := owner.introduction.admission.reserveOpeningLocked(capsule.DeliveryNonce, now); err != nil {
-			return nil, &textIntroductionRefusal{cause: err}
+			return nil, &introductionRefusal{cause: err}
 		}
 	}
 	lease, err := endpoint.publications.AcquireAt(ctx, now)
@@ -69,16 +69,16 @@ func (owner *textContext) acceptTextIntroductionGeneration(ctx context.Context, 
 	}
 	plaintext, digest, err := registered.openCapsuleLocked(capsule, profile.Digest, now)
 	if err != nil {
-		return nil, &textIntroductionRefusal{cause: err}
+		return nil, &introductionRefusal{cause: err}
 	}
-	node, generation, until, err := owner.textIntroductionRecipientLocked()
+	node, generation, until, err := owner.introductionRecipientLocked()
 	if err != nil || ctx.Err() != nil || !owner.liveTextServiceJobLocked(job, broker.Administration) {
 		return nil, errors.Join(err, ctx.Err(), errors.New("text Introduction recipient authority unavailable"))
 	}
 	if node != plaintext.RendezvousNode || generation != plaintext.RendezvousDutyGeneration || plaintext.Deadline.After(until) ||
 		plaintext.Network != profile.NetworkID || plaintext.Target != current.Credential.Target || plaintext.PublicationDigest != current.Digest ||
 		plaintext.AttachmentGeneration != expectedGeneration || !recoveryDeadline.IsZero() && plaintext.Deadline.After(recoveryDeadline) {
-		return nil, &textIntroductionRefusal{cause: errors.New("text Introduction recipient facts unavailable")}
+		return nil, &introductionRefusal{cause: errors.New("text Introduction recipient facts unavailable")}
 	}
 	facts := nativeconnection.ProtectedContextInput{Network: plaintext.Network, Target: plaintext.Target, PublicationDigest: plaintext.PublicationDigest,
 		InstancePublic: current.Credential.InstancePublic, InstanceGeneration: current.Credential.Generation, ProfileDigest: plaintext.ProfileDigest,
@@ -90,7 +90,7 @@ func (owner *textContext) acceptTextIntroductionGeneration(ctx context.Context, 
 	}
 	if original != nil {
 		if !binding.sameAuthorityAs(original) {
-			return nil, &textIntroductionRefusal{cause: errors.New("text recovery changed logical Service authority")}
+			return nil, &introductionRefusal{cause: errors.New("text recovery changed logical Service authority")}
 		}
 		binding = original
 	}
@@ -103,5 +103,5 @@ func (owner *textContext) acceptTextIntroductionGeneration(ctx context.Context, 
 		return nil, errors.Join(ctx.Err(), errors.New("text Introduction authority ended during binding"))
 	}
 	owner.introduction.admission.retainAcceptedLocked(capsule.DeliveryNonce, registered.expiry())
-	return &textIntroductionAttempt{binding: binding, plaintext: plaintext, digest: digest}, nil
+	return &introductionAttempt{binding: binding, plaintext: plaintext, digest: digest}, nil
 }

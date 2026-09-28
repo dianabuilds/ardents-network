@@ -87,7 +87,7 @@ func exerciseInstalledTextWorkerRecovery(t *testing.T, ctx context.Context, carr
 	}()
 	now := time.Now().UTC()
 	bounds := [3]int64{now.Add(25 * time.Second).Unix(), now.Add(25 * time.Second).Unix(), now.Add(25 * time.Second).Unix()}
-	prepared, err := reader.prepareTextIntroduction(readerLifetime, readerWorker.job, destination, bounds)
+	prepared, err := reader.prepareIntroduction(readerLifetime, readerWorker.job, destination, bounds)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -109,7 +109,7 @@ func exerciseInstalledTextWorkerRecovery(t *testing.T, ctx context.Context, carr
 
 	go func() {
 		publisherDone <- publisherWorker.serveFrom(ctx, func(lifetime context.Context, delivered chan<- connection.Stream) error {
-			accepted, err := publisher.receiveTextIntroduction(lifetime, publisherWorker.job)
+			accepted, err := publisher.receiveIntroduction(lifetime, publisherWorker.job)
 			if err != nil {
 				opened <- publisherOpening{err: err}
 				return err
@@ -247,7 +247,7 @@ func installedTextRecoveryNetwork(t *testing.T, carrier routecarrier.CarrierProf
 	if _, err := publisher.openIntroductionPrefix(t.Context()); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := publisher.registerTextIntroduction(t.Context(), 1, now.Add(120*time.Second)); err != nil {
+	if _, err := publisher.registerIntroduction(t.Context(), 1, now.Add(120*time.Second)); err != nil {
 		t.Fatal(err)
 	}
 	descriptor, err := publisher.publishDescriptor(t.Context())

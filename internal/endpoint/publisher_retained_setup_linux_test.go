@@ -101,7 +101,7 @@ func TestTextPublisherBuildsRetainedQualificationSetAcrossFourReaders(t *testing
 			result := readerResult{index: index}
 			worker := &qualifiedTextWorker{job: job}
 			until := time.Now().UTC().Add(15 * time.Minute).Unix()
-			verified, err := owner.resolveTextIntroduction(ctx, job, destination)
+			verified, err := owner.resolveIntroduction(ctx, job, destination)
 			if err != nil {
 				result.err = fmt.Errorf("Reader %d resolution: %w", index, err)
 				readerDone <- result
@@ -115,7 +115,7 @@ func TestTextPublisherBuildsRetainedQualificationSetAcrossFourReaders(t *testing
 					var release sync.Once
 					releaseOwner := func() { release.Do(ownerWork.Unlock) }
 					defer releaseOwner()
-					attempt, err := owner.prepareResolvedTextIntroduction(setup, job, destination, [3]int64{until, until, until}, verified)
+					attempt, err := owner.prepareResolvedIntroduction(setup, job, destination, [3]int64{until, until, until}, verified)
 					if err != nil {
 						owner.mu.Lock()
 						state := fmt.Sprintf("prefix=%t resolution=%t opening=%t issuance=%t permission=%t closed=%t",

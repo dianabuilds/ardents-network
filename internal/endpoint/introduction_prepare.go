@@ -14,9 +14,9 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/service/targetlink"
 )
 
-// textIntroductionAttempt keeps recipient-only join facts and the exact shared
+// introductionAttempt keeps recipient-only join facts and the exact shared
 // Service binding local to one job. It is preparation, not a joined Attachment.
-type textIntroductionAttempt struct {
+type introductionAttempt struct {
 	submitted bool
 	joined    bool
 	binding   *textServiceBinding
@@ -25,18 +25,18 @@ type textIntroductionAttempt struct {
 	digest    [32]byte
 }
 
-// prepareTextIntroduction consumes real resolution and its retained conflict
+// prepareIntroduction consumes real resolution and its retained conflict
 // floors. Neither the worker nor a Descriptor selects Rendezvous or supplies
 // a join secret, local-context identifier, HPKE input or shared authority tuple.
-func (owner *textContext) prepareTextIntroduction(ctx context.Context, job *textJobIdentity, destination targetlink.Link, bounds [3]int64) (prepared *textIntroductionAttempt, outcome error) {
-	verified, err := owner.resolveTextIntroduction(ctx, job, destination)
+func (owner *textContext) prepareIntroduction(ctx context.Context, job *textJobIdentity, destination targetlink.Link, bounds [3]int64) (prepared *introductionAttempt, outcome error) {
+	verified, err := owner.resolveIntroduction(ctx, job, destination)
 	if err != nil {
 		return nil, err
 	}
-	return owner.prepareResolvedTextIntroduction(ctx, job, destination, bounds, verified)
+	return owner.prepareResolvedIntroduction(ctx, job, destination, bounds, verified)
 }
 
-func (owner *textContext) resolveTextIntroduction(ctx context.Context, job *textJobIdentity, destination targetlink.Link) (verified reachability.Verified, outcome error) {
+func (owner *textContext) resolveIntroduction(ctx context.Context, job *textJobIdentity, destination targetlink.Link) (verified reachability.Verified, outcome error) {
 	if owner == nil || ctx == nil || ctx.Err() != nil {
 		return reachability.Verified{}, errors.New("text Introduction caller unavailable")
 	}
@@ -83,8 +83,8 @@ func (owner *textContext) resolveTextIntroduction(ctx context.Context, job *text
 	return owner.lookupDescriptor(ctx, destination.Target)
 }
 
-func (owner *textContext) prepareResolvedTextIntroduction(ctx context.Context, job *textJobIdentity, destination targetlink.Link, bounds [3]int64,
-	verified reachability.Verified) (prepared *textIntroductionAttempt, outcome error) {
+func (owner *textContext) prepareResolvedIntroduction(ctx context.Context, job *textJobIdentity, destination targetlink.Link, bounds [3]int64,
+	verified reachability.Verified) (prepared *introductionAttempt, outcome error) {
 	if owner == nil || ctx == nil || ctx.Err() != nil {
 		return nil, errors.New("text Introduction caller unavailable")
 	}
@@ -164,15 +164,15 @@ func (owner *textContext) prepareResolvedTextIntroduction(ctx context.Context, j
 		clear(operation)
 		return nil, errors.New("text Introduction job ended during sealing")
 	}
-	return &textIntroductionAttempt{binding: binding, plaintext: plaintext, operation: operation, digest: digest}, nil
+	return &introductionAttempt{binding: binding, plaintext: plaintext, operation: operation, digest: digest}, nil
 }
 
-// refreshTextIntroduction starts the capsule lifetime only after the local
+// refreshIntroduction starts the capsule lifetime only after the local
 // JOIN and submission admission stock is ready. None of that prerequisite
 // work has exposed the earlier sealed bytes, so replacing them cannot create a
 // second wire attempt or weaken replay ownership.
-func (owner *textContext) refreshTextIntroduction(ctx context.Context, job *textJobIdentity,
-	attempt *textIntroductionAttempt, prefix *sourceHandle) error {
+func (owner *textContext) refreshIntroduction(ctx context.Context, job *textJobIdentity,
+	attempt *introductionAttempt, prefix *sourceHandle) error {
 	if owner == nil || ctx == nil || ctx.Err() != nil || attempt == nil ||
 		!attempt.binding.servesJob(owner, job) || prefix == nil ||
 		attempt.plaintext.AttachmentGeneration != 1 || attempt.submitted {

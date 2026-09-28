@@ -80,7 +80,7 @@ func openTextWorkerResultFixture(t *testing.T, ctx context.Context, worker *qual
 			finish()
 		}
 	}()
-	attempt, err := contextOwner.prepareTextIntroduction(bounded, worker.job, destination, bounds)
+	attempt, err := contextOwner.prepareIntroduction(bounded, worker.job, destination, bounds)
 	if err != nil {
 		return nil, err
 	}

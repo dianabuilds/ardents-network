@@ -175,7 +175,7 @@ func refreshFailureStage(cause error) string {
 
 // Start once after a verified publication acknowledgement. Exact retries never
 // move the original refresh time or renew the signed registration lifetime.
-func (owner *textContext) startRefreshLocked(registered *textIntroductionRegistration) {
+func (owner *textContext) startRefreshLocked(registered *introductionRegistration) {
 	registered.scheduleRefreshLocked()
 	owner.publication.refresh.start(owner.lease.Context(), owner.runRefresh)
 }
@@ -269,7 +269,7 @@ func refreshSourceContention(cause error) bool {
 	return errors.Is(cause, context.DeadlineExceeded) && textRoleMemberFailureStage(cause) == "conflict-read"
 }
 
-func (owner *textContext) rotatePublication(flight *publicationRefresh, previous *textIntroductionRegistration) error {
+func (owner *textContext) rotatePublication(flight *publicationRefresh, previous *introductionRegistration) error {
 	owner.mu.Lock()
 	_, now, err := owner.permissionProfileLocked()
 	retained, _ := owner.publication.pair.previousLocked()
@@ -326,7 +326,7 @@ func (owner *textContext) failRefresh(flight *publicationRefresh, failure string
 	if errors.Is(cause, client.ErrClosedSourceCleanup) {
 		cleanup = cause
 	}
-	for _, registered := range []*textIntroductionRegistration{current, pending, previous} {
+	for _, registered := range []*introductionRegistration{current, pending, previous} {
 		if registered != nil {
 			registered.cancel()
 			cleanup = errors.Join(cleanup, registered.close())

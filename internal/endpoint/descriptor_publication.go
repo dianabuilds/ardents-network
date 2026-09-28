@@ -180,7 +180,7 @@ func (owner *textContext) publishDescriptor(ctx context.Context) (verified reach
 // publisherMu serializes this existing publication/Instance ownership with
 // legacy start and withdrawal. Local publication proof is distinct from the
 // later resolution acknowledgement and eventual protected Service readiness.
-func (owner *textContext) acquirePublication(ctx context.Context, registered *textIntroductionRegistration, binding *instance.Binding, now time.Time) (*servicepublication.Lease, error) {
+func (owner *textContext) acquirePublication(ctx context.Context, registered *introductionRegistration, binding *instance.Binding, now time.Time) (*servicepublication.Lease, error) {
 	endpoint := owner.endpoint
 	credential := binding.Credential()
 	if err := validateCredential(credential, endpoint.authority, endpoint.network, now, publishCapability|connectCapability); err != nil {
@@ -224,7 +224,7 @@ func (owner *textContext) acquirePublication(ctx context.Context, registered *te
 }
 
 // Every commit outcome retains cleanup ownership before a cancellable handover.
-func (owner *textContext) finishPublicationCommit(ctx context.Context, registered *textIntroductionRegistration, binding *instance.Binding, now time.Time, commitErr error) (*servicepublication.Lease, error) {
+func (owner *textContext) finishPublicationCommit(ctx context.Context, registered *introductionRegistration, binding *instance.Binding, now time.Time, commitErr error) (*servicepublication.Lease, error) {
 	endpoint := owner.endpoint
 	endpoint.publisherOwner = owner
 	if commitErr != nil {

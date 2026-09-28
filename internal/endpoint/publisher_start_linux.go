@@ -88,7 +88,7 @@ func (worker *qualifiedTextWorker) startPublication(ctx context.Context) (_ *pub
 	if until.Before(expiry) {
 		expiry = until
 	}
-	if _, err := owner.registerTextIntroduction(ctx, 1, expiry); err != nil {
+	if _, err := owner.registerIntroduction(ctx, 1, expiry); err != nil {
 		return nil, err
 	}
 	descriptor, err := owner.publishDescriptor(ctx)

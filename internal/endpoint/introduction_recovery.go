@@ -7,14 +7,14 @@ import (
 	"time"
 )
 
-// textIntroductionRecoveryOwner exists from initial acceptance until the
+// introductionRecoveryOwner exists from initial acceptance until the
 // Publisher Service stream retires. It can own the next valid recovery capsule
 // before the native Connection detects the failed Carrier. All slot transitions
 // run under textContext.mu; completion and timer joins run after unlocking.
-type textIntroductionRecoveryOwner struct {
+type introductionRecoveryOwner struct {
 	binding    *textServiceBinding
 	generation uint64
-	delivery   chan textIntroductionRoutedDelivery
+	delivery   chan introductionRoutedDelivery
 	expiryStop context.CancelFunc
 	expiryDone chan struct{}
 }
@@ -22,7 +22,7 @@ type textIntroductionRecoveryOwner struct {
 // admitGenerationLocked advances only the next generation of this exact
 // binding. A stale or speculative later waiter cannot change which capsule
 // the recovery slot may retain.
-func (recovery *textIntroductionRecoveryOwner) admitGenerationLocked(binding *textServiceBinding,
+func (recovery *introductionRecoveryOwner) admitGenerationLocked(binding *textServiceBinding,
 	generation uint64) bool {
 	if recovery == nil || recovery.binding != binding || generation < recovery.generation ||
 		generation > recovery.generation+1 {
@@ -34,7 +34,7 @@ func (recovery *textIntroductionRecoveryOwner) admitGenerationLocked(binding *te
 	return true
 }
 
-func (recovery *textIntroductionRecoveryOwner) acceptsLocked(key textIntroductionDeliveryKey) bool {
+func (recovery *introductionRecoveryOwner) acceptsLocked(key introductionDeliveryKey) bool {
 	return recovery != nil && recovery.binding.ownsRecoveryLocked(recovery) &&
 		len(recovery.delivery) == 0 && recovery.binding.connectionNonce() == key.connection &&
 		key.generation >= recovery.generation && key.generation <= recovery.generation+1
@@ -43,11 +43,11 @@ func (recovery *textIntroductionRecoveryOwner) acceptsLocked(key textIntroductio
 // handoffLocked transfers a buffered capsule to its exact waiter and returns
 // the expiry join. The caller must wait for that join after dropping Context's
 // lock, so an expiring capsule cannot also be completed by the waiter.
-func (recovery *textIntroductionRecoveryOwner) handoffLocked(want textIntroductionDeliveryKey,
-	waiter *textIntroductionWaiter) <-chan struct{} {
+func (recovery *introductionRecoveryOwner) handoffLocked(want introductionDeliveryKey,
+	waiter *introductionWaiter) <-chan struct{} {
 	select {
 	case routed := <-recovery.delivery:
-		if textIntroductionDeliveryMatches(routed.key, want) {
+		if introductionDeliveryMatches(routed.key, want) {
 			var expiryDone <-chan struct{}
 			if recovery.expiryStop != nil {
 				recovery.expiryStop()
@@ -66,11 +66,11 @@ func (recovery *textIntroductionRecoveryOwner) handoffLocked(want textIntroducti
 // bufferLocked retains only one capsule for a live recovery owner and starts
 // its deadline refusal. The shared Context lock makes routing and retention
 // one transition with waiter selection.
-func (recovery *textIntroductionRecoveryOwner) bufferLocked(owner *textContext,
-	routed textIntroductionRoutedDelivery) bool {
+func (recovery *introductionRecoveryOwner) bufferLocked(owner *textContext,
+	routed introductionRoutedDelivery) bool {
 	if recovery == nil || !recovery.binding.ownsRecoveryLocked(recovery) ||
 		len(recovery.delivery) != 0 || recovery.expiryDone != nil || routed.delivery == nil ||
-		!owner.endpoint.clock().Add(textIntroductionExpiryReserve).Before(routed.expires) {
+		!owner.endpoint.clock().Add(introductionExpiryReserve).Before(routed.expires) {
 		return false
 	}
 	lifetime, stop := context.WithCancel(owner.lease.Context())
@@ -81,8 +81,8 @@ func (recovery *textIntroductionRecoveryOwner) bufferLocked(owner *textContext,
 	return true
 }
 
-func (recovery *textIntroductionRecoveryOwner) expire(owner *textContext, ctx context.Context,
-	stop context.CancelFunc, routed textIntroductionRoutedDelivery, done chan struct{}) {
+func (recovery *introductionRecoveryOwner) expire(owner *textContext, ctx context.Context,
+	stop context.CancelFunc, routed introductionRoutedDelivery, done chan struct{}) {
 	defer stop()
 	defer func() {
 		owner.mu.Lock()
@@ -92,7 +92,7 @@ func (recovery *textIntroductionRecoveryOwner) expire(owner *textContext, ctx co
 		owner.mu.Unlock()
 		close(done)
 	}()
-	wait := routed.expires.Sub(owner.endpoint.clock()) - textIntroductionExpiryReserve
+	wait := routed.expires.Sub(owner.endpoint.clock()) - introductionExpiryReserve
 	if wait < 0 {
 		wait = 0
 	}
@@ -108,7 +108,7 @@ func (recovery *textIntroductionRecoveryOwner) expire(owner *textContext, ctx co
 		owner.mu.Unlock()
 		return
 	}
-	var expired textIntroductionRoutedDelivery
+	var expired introductionRoutedDelivery
 	select {
 	case expired = <-recovery.delivery:
 	default:
@@ -129,13 +129,13 @@ func (recovery *textIntroductionRecoveryOwner) expire(owner *textContext, ctx co
 // retireLocked removes the buffered capsule and interrupts deadline refusal.
 // The caller joins expiryDone before completing the capsule from its own
 // lifetime, keeping the shared Publisher registration alive for other streams.
-func (recovery *textIntroductionRecoveryOwner) retireLocked() (<-chan struct{}, textIntroductionRoutedDelivery) {
+func (recovery *introductionRecoveryOwner) retireLocked() (<-chan struct{}, introductionRoutedDelivery) {
 	expiryStop, expiryDone := recovery.expiryStop, recovery.expiryDone
 	recovery.expiryStop, recovery.expiryDone = nil, nil
 	if expiryStop != nil {
 		expiryStop()
 	}
-	var routed textIntroductionRoutedDelivery
+	var routed introductionRoutedDelivery
 	select {
 	case routed = <-recovery.delivery:
 	default:

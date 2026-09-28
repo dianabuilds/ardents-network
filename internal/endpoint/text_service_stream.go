@@ -42,7 +42,7 @@ func (binding *textServiceBinding) openTextServiceStreamWithRecovery(ctx context
 	recoveryTransferred := false
 	defer func() {
 		if !recoveryTransferred {
-			resultErr = errors.Join(resultErr, binding.releaseTextIntroductionRecovery())
+			resultErr = errors.Join(resultErr, binding.releaseIntroductionRecovery())
 		}
 	}()
 	if raw == nil {
@@ -99,9 +99,9 @@ func (binding *textServiceBinding) openTextServiceStreamWithRecovery(ctx context
 		var cleanupErr error
 		if nativeOwned {
 			_ = transport.Close()
-			cleanupErr = errors.Join(owned.Close(), binding.releaseTextIntroductionRecovery())
+			cleanupErr = errors.Join(owned.Close(), binding.releaseIntroductionRecovery())
 		} else {
-			cleanupErr = errors.Join(owned.Close(), transport.Close(), binding.releaseTextIntroductionRecovery())
+			cleanupErr = errors.Join(owned.Close(), transport.Close(), binding.releaseIntroductionRecovery())
 		}
 		if lease != nil {
 			cleanupErr = errors.Join(cleanupErr, lease.Close())

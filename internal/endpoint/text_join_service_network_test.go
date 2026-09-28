@@ -32,7 +32,7 @@ func TestTextJoinedServiceTransfersDocumentThroughNetwork(t *testing.T) {
 			defer cancel()
 			now := time.Now().UTC()
 			bounds := [3]int64{now.Add(time.Minute).Unix(), now.Add(time.Minute).Unix(), now.Add(time.Minute).Unix()}
-			attempt, err := reader.prepareTextIntroduction(ctx, readerJob, destination, bounds)
+			attempt, err := reader.prepareIntroduction(ctx, readerJob, destination, bounds)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -42,7 +42,7 @@ func TestTextJoinedServiceTransfersDocumentThroughNetwork(t *testing.T) {
 			}
 			completed := make(chan error, 1)
 			go func() {
-				accepted, err := publisher.receiveTextIntroduction(ctx, publisherJob)
+				accepted, err := publisher.receiveIntroduction(ctx, publisherJob)
 				if err != nil {
 					completed <- err
 					return
@@ -114,7 +114,7 @@ func textJoinedNetworkFixtureWithReaderMaximaAndRegistration(t *testing.T, carri
 	if _, err := publisher.openIntroductionPrefix(t.Context()); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := publisher.registerTextIntroduction(t.Context(), 1, now.Add(registration)); err != nil {
+	if _, err := publisher.registerIntroduction(t.Context(), 1, now.Add(registration)); err != nil {
 		t.Fatal(err)
 	}
 	descriptor, err := publisher.publishDescriptor(t.Context())

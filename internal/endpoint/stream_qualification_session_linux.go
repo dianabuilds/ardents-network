@@ -110,11 +110,11 @@ func (session *qualificationSession) ProvisionPermission(ctx context.Context) er
 }
 
 func (session *qualificationSession) ResolveIntroduction(ctx context.Context, destination targetlink.Link) (reachability.Verified, error) {
-	return session.owner.resolveTextIntroduction(ctx, session.job, destination)
+	return session.owner.resolveIntroduction(ctx, session.job, destination)
 }
 
 func (session *qualificationSession) PrepareIntroduction(ctx context.Context, destination targetlink.Link, bounds [3]int64, verified reachability.Verified) (qualification.Preparation, error) {
-	attempt, err := session.owner.prepareResolvedTextIntroduction(ctx, session.job, destination, bounds, verified)
+	attempt, err := session.owner.prepareResolvedIntroduction(ctx, session.job, destination, bounds, verified)
 	if err != nil {
 		return nil, err
 	}
@@ -163,7 +163,7 @@ func (session *qualificationSession) StartPublication(ctx context.Context) (qual
 // preparation. Endpoint owns the attempt state; the scenario only hands it
 // back to OpenJoinedService.
 type qualificationPreparation struct {
-	attempt *textIntroductionAttempt
+	attempt *introductionAttempt
 }
 
 func (qualificationPreparation) QualificationPreparation() {}

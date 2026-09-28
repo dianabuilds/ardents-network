@@ -20,7 +20,7 @@ type textContextRetirement struct {
 	issuance            *issuanceOperation
 	resolution          *resolutionFlight
 	withdrawal          *textOperationFlight
-	exchanges           []*textIntroductionExchange
+	exchanges           []*introductionExchange
 	job                 *textJobRetirement
 }
 

@@ -40,7 +40,7 @@ func TestTextPublisherNetworkRetainsSnapshotAcrossReaders(t *testing.T) {
 					t.Error("Publisher producer did not join during test cleanup")
 				}
 			})
-			waitTextIntroductionWaiters(t, ctx, publisherOwner, initialWaiters+1)
+			waitIntroductionWaiters(t, ctx, publisherOwner, initialWaiters+1)
 			// A syntactically valid capsule with broken authentication must be
 			// refused without terminating this snapshot's receive loop.
 			for _, fault := range []struct {
@@ -49,7 +49,7 @@ func TestTextPublisherNetworkRetainsSnapshotAcrossReaders(t *testing.T) {
 				refusedJob := liveTextCapsuleJob(t, readerOwner)
 				refusedWorker := textServiceWorkerFixture(t, &textServiceBinding{owner: readerOwner, job: refusedJob}, nil)
 				refusalUntil := time.Now().UTC().Add(2 * time.Minute).Unix()
-				refused, err := readerOwner.prepareTextIntroduction(ctx, refusedJob, destination, [3]int64{refusalUntil, refusalUntil, refusalUntil})
+				refused, err := readerOwner.prepareIntroduction(ctx, refusedJob, destination, [3]int64{refusalUntil, refusalUntil, refusalUntil})
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -91,7 +91,7 @@ func TestTextPublisherNetworkRetainsSnapshotAcrossReaders(t *testing.T) {
 				} else {
 					clear(decoded.Ciphertext)
 				}
-				if err := readerOwner.submitTextIntroduction(ctx, refusedJob, refused); err == nil {
+				if err := readerOwner.submitIntroduction(ctx, refusedJob, refused); err == nil {
 					t.Fatal("corrupt capsule was accepted")
 				}
 				publisherOwner.mu.Lock()
@@ -176,7 +176,7 @@ func TestTextPublisherNetworkRetainsSnapshotAcrossReaders(t *testing.T) {
 	}
 }
 
-func waitTextIntroductionWaiters(t *testing.T, ctx context.Context, owner *textContext, minimum int) {
+func waitIntroductionWaiters(t *testing.T, ctx context.Context, owner *textContext, minimum int) {
 	t.Helper()
 	for {
 		owner.mu.Lock()

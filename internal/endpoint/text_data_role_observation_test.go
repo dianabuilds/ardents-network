@@ -126,7 +126,7 @@ func runTextDataJoinIsolatedRoleObservation(t *testing.T, carrier routecarrier.C
 	if _, err := owner.openIntroductionPrefix(t.Context()); err != nil {
 		t.Fatal(err)
 	}
-	registration, err := owner.registerTextIntroduction(t.Context(), 1, time.Now().UTC().Add(90*time.Second).Truncate(time.Second))
+	registration, err := owner.registerIntroduction(t.Context(), 1, time.Now().UTC().Add(90*time.Second).Truncate(time.Second))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -147,7 +147,7 @@ func runTextDataJoinIsolatedRoleObservation(t *testing.T, carrier routecarrier.C
 	if err := reader.Close(); err != nil {
 		t.Fatal(err)
 	}
-	if err := owner.withdrawTextIntroduction(t.Context()); err != nil {
+	if err := owner.withdrawIntroduction(t.Context()); err != nil {
 		t.Fatal(err)
 	}
 	if err := owner.Close(); err != nil {

@@ -129,7 +129,7 @@ func TestTextPublicationAutomaticallyRefreshesAndRetiresPredecessor(t *testing.T
 			owner.mu.Lock()
 			owner.resolution = &resolutionFlight{}
 			owner.mu.Unlock()
-			withdrawErr := owner.withdrawTextIntroduction(t.Context())
+			withdrawErr := owner.withdrawIntroduction(t.Context())
 			owner.mu.Lock()
 			owner.resolution = nil
 			stillScheduled := owner.publication.refresh.current() == refresh && refresh.context.Err() == nil
@@ -142,7 +142,7 @@ func TestTextPublicationAutomaticallyRefreshesAndRetiresPredecessor(t *testing.T
 			readerJob, publisherJob := liveTextCapsuleJob(t, reader), liveTextCapsuleJob(t, owner)
 			bounds := [3]int64{now.Add(time.Minute).Unix(), now.Add(time.Minute).Unix(), now.Add(time.Minute).Unix()}
 			link := targetlink.Link{Network: endpoint.network, Target: published.Descriptor.Target}
-			oldAttempt, err := reader.prepareTextIntroduction(t.Context(), readerJob, link, bounds)
+			oldAttempt, err := reader.prepareIntroduction(t.Context(), readerJob, link, bounds)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -176,12 +176,12 @@ func TestTextPublicationAutomaticallyRefreshesAndRetiresPredecessor(t *testing.T
 			pendingOperation := refuseBeforeDescriptorACK(t, gate, owner, publisherJob, oldAttempt)
 			switchEarliest := time.Now().UTC().Truncate(time.Second)
 			gate.open()
-			var second *textIntroductionRegistration
+			var second *introductionRegistration
 			waitRefreshCondition(t, owner, func() bool {
 				second = owner.publication.pair.registration
 				return second != nil && second != first && !second.refreshAt.IsZero()
 			})
-			if _, err := owner.acceptTextIntroduction(t.Context(), publisherJob, pendingOperation); err != nil {
+			if _, err := owner.acceptIntroduction(t.Context(), publisherJob, pendingOperation); err != nil {
 				t.Fatalf("same new capsule was not accepted after Descriptor ACK: %v", err)
 			}
 			owner.mu.Lock()
@@ -218,7 +218,7 @@ func TestTextPublicationAutomaticallyRefreshesAndRetiresPredecessor(t *testing.T
 				current.Descriptor.Private.Slot == published.Descriptor.Private.Slot || current.Descriptor.Private.RecipientKey == published.Descriptor.Private.RecipientKey {
 				t.Fatalf("replacement changed authority or reused recipient: %v", err)
 			}
-			newAttempt, err := reader.prepareTextIntroduction(t.Context(), readerJob, link, bounds)
+			newAttempt, err := reader.prepareIntroduction(t.Context(), readerJob, link, bounds)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -252,7 +252,7 @@ func TestTextPublicationAutomaticallyRefreshesAndRetiresPredecessor(t *testing.T
 			}
 			defer clear(recovery.operation)
 			type recoveryResult struct {
-				attempt *textIntroductionAttempt
+				attempt *introductionAttempt
 				err     error
 			}
 			receivedRecovery := make(chan recoveryResult, 1)
@@ -260,7 +260,7 @@ func TestTextPublicationAutomaticallyRefreshesAndRetiresPredecessor(t *testing.T
 				attempt, receiveErr := owner.receiveTextRecovery(t.Context(), publisherJob, oldAccepted.binding, publisherRecovery)
 				receivedRecovery <- recoveryResult{attempt: attempt, err: receiveErr}
 			}()
-			if err := reader.submitTextIntroduction(t.Context(), readerJob, recovery); err != nil {
+			if err := reader.submitIntroduction(t.Context(), readerJob, recovery); err != nil {
 				t.Fatal(err)
 			}
 			acceptedRecovery := <-receivedRecovery
@@ -269,7 +269,7 @@ func TestTextPublicationAutomaticallyRefreshesAndRetiresPredecessor(t *testing.T
 				t.Fatalf("recovery did not advance to current Introduction recipient: client revision=%d Publisher=%v: %v",
 					recovery.plaintext.Revision, acceptedRecovery.attempt, acceptedRecovery.err)
 			}
-			if err := owner.withdrawTextIntroduction(t.Context()); err != nil {
+			if err := owner.withdrawIntroduction(t.Context()); err != nil {
 				t.Fatal(err)
 			}
 			select {
@@ -366,19 +366,19 @@ func waitRefreshCondition(t *testing.T, owner *textContext, condition func() boo
 	}
 }
 
-func deliverRefreshAttempt(t *testing.T, reader, publisher *textContext, readerJob, publisherJob *textJobIdentity, prepared *textIntroductionAttempt) {
+func deliverRefreshAttempt(t *testing.T, reader, publisher *textContext, readerJob, publisherJob *textJobIdentity, prepared *introductionAttempt) {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(t.Context(), 8*time.Second)
 	defer cancel()
 	result := make(chan error, 1)
 	go func() {
-		accepted, err := publisher.receiveTextIntroduction(ctx, publisherJob)
+		accepted, err := publisher.receiveIntroduction(ctx, publisherJob)
 		if err == nil && (accepted.digest != prepared.digest || accepted.plaintext != prepared.plaintext) {
 			err = context.Canceled
 		}
 		result <- err
 	}()
-	sent := reader.submitTextIntroduction(ctx, readerJob, prepared)
+	sent := reader.submitIntroduction(ctx, readerJob, prepared)
 	if sent != nil {
 		cancel()
 	}

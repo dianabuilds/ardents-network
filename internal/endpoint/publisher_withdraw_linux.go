@@ -52,7 +52,7 @@ func (run *publisherRun) Withdraw(ctx context.Context) error {
 	// Join an in-flight refresh before withdrawing its final selected registration.
 	// The admission stop is already visible throughout this network operation.
 	owner.publication.stopRefresh()
-	withdrawalErr := owner.withdrawTextIntroduction(bounded)
+	withdrawalErr := owner.withdrawIntroduction(bounded)
 	if withdrawalErr != nil {
 		run.cancel()
 	}

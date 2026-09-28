@@ -139,19 +139,19 @@ func TestTextJoinedServiceRecoversAcceptedRequestAcrossFreshProtectedRoute(t *te
 			t.Cleanup(testOwner.Close)
 			now := time.Now().UTC()
 			bounds := [3]int64{now.Add(25 * time.Second).Unix(), now.Add(25 * time.Second).Unix(), now.Add(25 * time.Second).Unix()}
-			prepared, err := reader.prepareTextIntroduction(ctx, readerJob, destination, bounds)
+			prepared, err := reader.prepareIntroduction(ctx, readerJob, destination, bounds)
 			if err != nil {
 				t.Fatal(err)
 			}
 
 			type joined struct {
-				attempt *textIntroductionAttempt
+				attempt *introductionAttempt
 				raw     *textJoinedTransport
 				err     error
 			}
 			publisherJoined := make(chan joined, 1)
 			testOwner.Go(func() {
-				accepted, err := publisher.receiveTextIntroduction(ctx, publisherJob)
+				accepted, err := publisher.receiveIntroduction(ctx, publisherJob)
 				if err != nil {
 					publisherJoined <- joined{err: err}
 					return
@@ -193,7 +193,7 @@ func TestTextJoinedServiceRecoversAcceptedRequestAcrossFreshProtectedRoute(t *te
 				cancel()
 				t.Fatal(remote.err)
 			}
-			stopInitialReceiver := holdTextInitialIntroductionReceiver(t, ctx, publisher, publisherJob)
+			stopInitialReceiver := holdInitialIntroductionReceiver(t, ctx, publisher, publisherJob)
 			initialTokens := tokenAttemptSnapshot(t, reader.endpoint)
 
 			body := bytes.Repeat([]byte("network recovery\n"), 4096)
@@ -277,7 +277,7 @@ func TestTextRecoveryPreparesFreshAttachmentUnderRetainedAuthority(t *testing.T)
 	defer cancel()
 	now := time.Now().UTC()
 	bounds := [3]int64{now.Add(12 * time.Second).Unix(), now.Add(12 * time.Second).Unix(), now.Add(12 * time.Second).Unix()}
-	initial, err := reader.prepareTextIntroduction(ctx, job, destination, bounds)
+	initial, err := reader.prepareIntroduction(ctx, job, destination, bounds)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -295,7 +295,7 @@ func TestTextRecoveryPreparesFreshAttachmentUnderRetainedAuthority(t *testing.T)
 	}
 	defer clear(second.operation)
 
-	for index, attempt := range []*textIntroductionAttempt{first, second} {
+	for index, attempt := range []*introductionAttempt{first, second} {
 		facts := attempt.plaintext
 		if facts.Network != initial.binding.facts.Network || facts.Target != initial.binding.facts.Target ||
 			facts.PublicationDigest != initial.binding.facts.PublicationDigest || facts.ProfileDigest != initial.binding.facts.ProfileDigest ||

@@ -86,7 +86,7 @@ func TestTextIntroductionCapsuleBindsRealInstanceAndServiceStream(t *testing.T) 
 			if _, err := publisher.openIntroductionPrefix(t.Context()); err != nil {
 				t.Fatal(err)
 			}
-			registered, err := publisher.registerTextIntroduction(t.Context(), 1, time.Now().UTC().Add(120*time.Second).Truncate(time.Second))
+			registered, err := publisher.registerIntroduction(t.Context(), 1, time.Now().UTC().Add(120*time.Second).Truncate(time.Second))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -99,7 +99,7 @@ func TestTextIntroductionCapsuleBindsRealInstanceAndServiceStream(t *testing.T) 
 			readerJob, publisherJob := liveTextCapsuleJob(t, reader), liveTextCapsuleJob(t, publisher)
 			now = time.Now().UTC()
 			bounds := [3]int64{now.Add(time.Minute).Unix(), now.Add(time.Minute).Unix(), now.Add(time.Minute).Unix()}
-			attempt, err := reader.prepareTextIntroduction(t.Context(), readerJob, targetlink.Link{Network: endpoint.network, Target: descriptor.Descriptor.Target}, bounds)
+			attempt, err := reader.prepareIntroduction(t.Context(), readerJob, targetlink.Link{Network: endpoint.network, Target: descriptor.Descriptor.Target}, bounds)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -109,7 +109,7 @@ func TestTextIntroductionCapsuleBindsRealInstanceAndServiceStream(t *testing.T) 
 			reader.mu.Lock()
 			sourcePrefix := reader.source.currentLocked()
 			reader.mu.Unlock()
-			if err := reader.refreshTextIntroduction(t.Context(), readerJob, attempt, sourcePrefix); err != nil {
+			if err := reader.refreshIntroduction(t.Context(), readerJob, attempt, sourcePrefix); err != nil {
 				t.Fatal(err)
 			}
 			if !attempt.plaintext.Deadline.After(agedDeadline) || bytes.Equal(attempt.operation, oldOperation) {
@@ -146,7 +146,7 @@ func TestTextIntroductionCapsuleBindsRealInstanceAndServiceStream(t *testing.T) 
 				if err != nil {
 					t.Fatal(err)
 				}
-				if accepted, err := publisher.acceptTextIntroduction(t.Context(), publisherJob, operation); err == nil || accepted != nil || strings.Contains(err.Error(), "rate unavailable") {
+				if accepted, err := publisher.acceptIntroduction(t.Context(), publisherJob, operation); err == nil || accepted != nil || strings.Contains(err.Error(), "rate unavailable") {
 					t.Fatalf("%s was not rejected by authority validation: %v", mutation.name, err)
 				}
 			}
@@ -158,15 +158,15 @@ func TestTextIntroductionCapsuleBindsRealInstanceAndServiceStream(t *testing.T) 
 				t.Fatal("refused capsule created Responder work")
 			}
 			type deliveryOutcome struct {
-				attempt *textIntroductionAttempt
+				attempt *introductionAttempt
 				err     error
 			}
 			received := make(chan deliveryOutcome, 1)
 			go func() {
-				accepted, err := publisher.receiveTextIntroduction(t.Context(), publisherJob)
+				accepted, err := publisher.receiveIntroduction(t.Context(), publisherJob)
 				received <- deliveryOutcome{accepted, err}
 			}()
-			if err := reader.submitTextIntroduction(t.Context(), readerJob, attempt); err != nil {
+			if err := reader.submitIntroduction(t.Context(), readerJob, attempt); err != nil {
 				_ = registered.channel.Close()
 				<-received
 				t.Fatal(err)
@@ -200,7 +200,7 @@ func TestTextIntroductionCapsuleBindsRealInstanceAndServiceStream(t *testing.T) 
 			if accepted.digest != attempt.digest || accepted.binding.logical != attempt.binding.logical || accepted.plaintext != attempt.plaintext {
 				t.Fatal("recipient changed the authenticated Attachment or logical context")
 			}
-			if _, err := publisher.acceptTextIntroduction(t.Context(), publisherJob, attempt.operation); err == nil || !strings.Contains(err.Error(), "replay") {
+			if _, err := publisher.acceptIntroduction(t.Context(), publisherJob, attempt.operation); err == nil || !strings.Contains(err.Error(), "replay") {
 				t.Fatalf("replayed capsule accepted: %v", err)
 			}
 			if publisher.introduction.admission.replays[sealed.DeliveryNonce] != registered.request.Expiry.Add(60*time.Second) {
@@ -239,7 +239,7 @@ func TestTextIntroductionCapsuleBindsRealInstanceAndServiceStream(t *testing.T) 
 	}
 }
 
-func exchangeTextCapsuleService(t *testing.T, reader, publisher *textIntroductionAttempt) {
+func exchangeTextCapsuleService(t *testing.T, reader, publisher *introductionAttempt) {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 	defer cancel()

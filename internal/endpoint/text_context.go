@@ -17,7 +17,7 @@ import (
 type textContextState struct {
 	operationFailure  func(string)
 	publication       publication
-	introduction      textIntroduction
+	introduction      introduction
 	descriptorHistory descriptorhistory.History
 	responder         responderPrefixLifecycle
 	resolution        *resolutionFlight

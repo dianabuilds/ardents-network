@@ -117,7 +117,7 @@ func (owner *textConnection) Open(ctx context.Context, request connection.Reques
 		}
 	}()
 	until := endpoint.clock().UTC().Add(2 * time.Minute).Unix()
-	attempt, err := owner.context.prepareTextIntroduction(bounded, worker.job, destination, [3]int64{until, until, until})
+	attempt, err := owner.context.prepareIntroduction(bounded, worker.job, destination, [3]int64{until, until, until})
 	if err != nil {
 		owner.context.reportTextOperationFailure("introduction-preparation")
 		return nil, err

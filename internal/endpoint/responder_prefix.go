@@ -12,7 +12,7 @@ import (
 // prepareResponder consumes the accepted capsule and live Publisher job.
 // Issuance remains on Source; the data prefix uses separate Domain-3 members.
 // This establishes only forwarding readiness, never a paired Attachment.
-func (owner *textContext) prepareResponder(ctx context.Context, job *textJobIdentity, accepted *textIntroductionAttempt) error {
+func (owner *textContext) prepareResponder(ctx context.Context, job *textJobIdentity, accepted *introductionAttempt) error {
 	if owner == nil || ctx == nil || ctx.Err() != nil || accepted == nil ||
 		!accepted.binding.servesJob(owner, job) {
 		return errors.New("text Responder authority unavailable")

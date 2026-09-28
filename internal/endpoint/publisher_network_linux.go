@@ -52,12 +52,12 @@ func (worker *qualifiedTextWorker) produceNetworkSequential(lifetime context.Con
 		case <-network.Done():
 			return network.Err()
 		}
-		attempt, err := owner.receiveTextIntroduction(network, worker.job)
+		attempt, err := owner.receiveIntroduction(network, worker.job)
 		if onlyPublicationDraining(err) {
 			draining = true
 			return nil
 		}
-		if onlyTextIntroductionRefusal(err) {
+		if onlyIntroductionRefusal(err) {
 			<-slots
 			continue
 		}
@@ -144,7 +144,7 @@ func (worker *qualifiedTextWorker) produceQualificationNetwork(lifetime context.
 		openings.Add(1)
 		go func() {
 			defer openings.Done()
-			attempt, err := owner.receiveTextIntroduction(network, worker.job)
+			attempt, err := owner.receiveIntroduction(network, worker.job)
 			if err != nil {
 				opened <- openingResult{err: err}
 				return
@@ -196,7 +196,7 @@ func (worker *qualifiedTextWorker) produceQualificationNetwork(lifetime context.
 					drain = nil
 					continue
 				}
-				if onlyTextIntroductionRefusal(result.err) {
+				if onlyIntroductionRefusal(result.err) {
 					continue
 				}
 				if !stopping || !qualification.CancellationOnly(result.err) {

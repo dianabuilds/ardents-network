@@ -50,7 +50,7 @@ func TestTextPublisherCommitsInstanceSignedDescriptor(t *testing.T) {
 			if _, err := owner.openIntroductionPrefix(t.Context()); err != nil {
 				t.Fatal(err)
 			}
-			first, err := owner.registerTextIntroduction(t.Context(), 1, time.Now().UTC().Add(time.Minute).Truncate(time.Second))
+			first, err := owner.registerIntroduction(t.Context(), 1, time.Now().UTC().Add(time.Minute).Truncate(time.Second))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -90,13 +90,13 @@ func TestTextPublisherCommitsInstanceSignedDescriptor(t *testing.T) {
 			if !bytes.Equal(first.descriptor, original) {
 				t.Fatal("publication retry rotated signed bytes or key")
 			}
-			if err := owner.withdrawTextIntroduction(t.Context()); err != nil {
+			if err := owner.withdrawIntroduction(t.Context()); err != nil {
 				t.Fatal(err)
 			}
 			if first.recipient.Public(time.Now()) != [32]byte{} {
 				t.Fatal("withdrawal retained recipient key")
 			}
-			second, err := owner.registerTextIntroduction(t.Context(), 2, time.Now().UTC().Add(time.Minute).Truncate(time.Second))
+			second, err := owner.registerIntroduction(t.Context(), 2, time.Now().UTC().Add(time.Minute).Truncate(time.Second))
 			if err != nil {
 				t.Fatal(err)
 			}

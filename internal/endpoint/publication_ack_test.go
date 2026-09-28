@@ -97,24 +97,24 @@ func (gate *descriptorACKGate) committed(root string, profile state.ClosedProfil
 	return false
 }
 
-func deliverBeforeDescriptorACK(t *testing.T, gate *descriptorACKGate, reader, publisher *textContext, readerJob, publisherJob *textJobIdentity, prepared *textIntroductionAttempt) *textIntroductionAttempt {
+func deliverBeforeDescriptorACK(t *testing.T, gate *descriptorACKGate, reader, publisher *textContext, readerJob, publisherJob *textJobIdentity, prepared *introductionAttempt) *introductionAttempt {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(t.Context(), 3*time.Second)
 	defer cancel()
 	type receivedIntroduction struct {
-		attempt *textIntroductionAttempt
+		attempt *introductionAttempt
 		err     error
 	}
 	received, sent := make(chan receivedIntroduction, 1), make(chan error, 1)
 	go func() {
-		accepted, err := publisher.receiveTextIntroduction(ctx, publisherJob)
+		accepted, err := publisher.receiveIntroduction(ctx, publisherJob)
 		if err == nil && (accepted.digest != prepared.digest || accepted.plaintext != prepared.plaintext) {
 			err = fmt.Errorf("accepted capsule changed")
 		}
 		received <- receivedIntroduction{attempt: accepted, err: err}
 	}()
-	go func() { sent <- reader.submitTextIntroduction(ctx, readerJob, prepared) }()
-	var accepted *textIntroductionAttempt
+	go func() { sent <- reader.submitIntroduction(ctx, readerJob, prepared) }()
+	var accepted *introductionAttempt
 	select {
 	case result := <-received:
 		if result.err != nil {
@@ -139,7 +139,7 @@ func deliverBeforeDescriptorACK(t *testing.T, gate *descriptorACKGate, reader, p
 // A hostile submitter can see the committed public Descriptor before its
 // Publisher receives the ACK. Build that candidate with actual Instance bytes;
 // it must not gain local admission merely because its signature is valid.
-func refuseBeforeDescriptorACK(t *testing.T, gate *descriptorACKGate, owner *textContext, job *textJobIdentity, prior *textIntroductionAttempt) []byte {
+func refuseBeforeDescriptorACK(t *testing.T, gate *descriptorACKGate, owner *textContext, job *textJobIdentity, prior *introductionAttempt) []byte {
 	t.Helper()
 	owner.mu.Lock()
 	registered := owner.publication.pair.pendingRegistration
@@ -165,7 +165,7 @@ func refuseBeforeDescriptorACK(t *testing.T, gate *descriptorACKGate, owner *tex
 	defer cancel()
 	result := make(chan error, 1)
 	go func() {
-		_, err := owner.acceptTextIntroduction(ctx, job, operation)
+		_, err := owner.acceptIntroduction(ctx, job, operation)
 		result <- err
 	}()
 	select {

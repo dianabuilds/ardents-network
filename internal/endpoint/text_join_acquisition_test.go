@@ -69,7 +69,7 @@ func TestTextJoinOldAcquisitionCannotAttachAfterSourceReplacement(t *testing.T) 
 	job := liveTextCapsuleJob(t, owner)
 	run, _ := qualification.NewRun(streamqualification.ReaderRole, streamqualification.ClientToPublisher, fixtureID(210))
 	job.qualification = run
-	attempt := &textIntroductionAttempt{binding: &textServiceBinding{owner: owner, job: job}}
+	attempt := &introductionAttempt{binding: &textServiceBinding{owner: owner, job: job}}
 
 	owner.mu.Lock()
 	old := &sourceHandle{owner: &owner.source, cancel: func() {}}
@@ -142,7 +142,7 @@ func TestTextJoinSourceReplacementBeforeStockIssuanceDoesNotReserveAllocation(t 
 	deadline := time.Now().Add(time.Minute)
 	acquisition := &textJoinRetiredAfterRecipient{node: node.NodeID, generation: node.DutyGeneration,
 		deadline: deadline.Add(time.Minute), current: true}
-	attempt := &textIntroductionAttempt{plaintext: introductioncapsule.Plaintext{
+	attempt := &introductionAttempt{plaintext: introductioncapsule.Plaintext{
 		RendezvousNode: node.NodeID, RendezvousDutyGeneration: node.DutyGeneration, Deadline: deadline,
 	}}
 	owner.mu.Lock()

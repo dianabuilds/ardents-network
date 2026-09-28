@@ -49,14 +49,14 @@ func TestTextPublisherIntroductionPrefixUsesSeparateDomainAndRealIssuance(t *tes
 			if _, err := owner.openIntroductionPrefix(t.Context()); err == nil {
 				t.Fatal("second live Introduction prefix opened")
 			}
-			registered, err := owner.registerTextIntroduction(t.Context(), 1, time.Now().UTC().Add(60*time.Second).Truncate(time.Second))
+			registered, err := owner.registerIntroduction(t.Context(), 1, time.Now().UTC().Add(60*time.Second).Truncate(time.Second))
 			if err != nil {
 				t.Fatal(err)
 			}
 			if registered.node == [32]byte{} || registered.request.Slot == [32]byte{} {
 				t.Fatal("registration lost its State recipient or random slot")
 			}
-			if err := owner.withdrawTextIntroduction(t.Context()); err != nil {
+			if err := owner.withdrawIntroduction(t.Context()); err != nil {
 				t.Fatal(err)
 			}
 			select {
@@ -64,7 +64,7 @@ func TestTextPublisherIntroductionPrefixUsesSeparateDomainAndRealIssuance(t *tes
 			default:
 				t.Fatal("withdrawal did not join registration")
 			}
-			second, err := owner.registerTextIntroduction(t.Context(), 2, time.Now().UTC().Add(60*time.Second).Truncate(time.Second))
+			second, err := owner.registerIntroduction(t.Context(), 2, time.Now().UTC().Add(60*time.Second).Truncate(time.Second))
 			if err != nil {
 				t.Fatal(err)
 			}

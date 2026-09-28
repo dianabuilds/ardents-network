@@ -35,7 +35,7 @@ func TestTextIntroductionPreparationRetirementInterruptsBootstrap(t *testing.T) 
 	result := make(chan error, 1)
 	now := time.Now()
 	go func() {
-		_, err := owner.prepareTextIntroduction(caller, job, targetlink.Link{Network: endpoint.network, Target: fixtureID(199)},
+		_, err := owner.prepareIntroduction(caller, job, targetlink.Link{Network: endpoint.network, Target: fixtureID(199)},
 			[3]int64{now.Add(time.Minute).Unix(), now.Add(time.Minute).Unix(), now.Add(time.Minute).Unix()})
 		result <- err
 	}()

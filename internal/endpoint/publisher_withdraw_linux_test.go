@@ -34,7 +34,7 @@ func TestTextPublisherWithdrawalDrainsAdmittedRead(t *testing.T) {
 				t.Fatal(err)
 			}
 			until := time.Now().UTC().Add(time.Minute).Unix()
-			attempt, err := readerOwner.prepareTextIntroduction(bounded, readerJob, run.link, [3]int64{until, until, until})
+			attempt, err := readerOwner.prepareIntroduction(bounded, readerJob, run.link, [3]int64{until, until, until})
 			if err != nil {
 				finish()
 				t.Fatal(err)
@@ -86,7 +86,7 @@ func TestTextPublisherWithdrawalBoundsStalledRead(t *testing.T) {
 				t.Fatal(err)
 			}
 			until := time.Now().UTC().Add(time.Minute).Unix()
-			attempt, err := readerOwner.prepareTextIntroduction(bounded, readerJob, run.link, [3]int64{until, until, until})
+			attempt, err := readerOwner.prepareIntroduction(bounded, readerJob, run.link, [3]int64{until, until, until})
 			if err != nil {
 				finish()
 				t.Fatal(err)

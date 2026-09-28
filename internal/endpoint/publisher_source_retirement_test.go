@@ -16,7 +16,7 @@ func TestTextPublisherAcceptsIntroductionAfterSourceRetirement(t *testing.T) {
 			reader, publisher, destination := textJoinedNetworkFixture(t, carrier)
 			readerJob, publisherJob := liveTextCapsuleJob(t, reader), liveTextCapsuleJob(t, publisher)
 			until := time.Now().Add(time.Minute).Unix()
-			prepared, err := reader.prepareTextIntroduction(t.Context(), readerJob, destination, [3]int64{until, until, until})
+			prepared, err := reader.prepareIntroduction(t.Context(), readerJob, destination, [3]int64{until, until, until})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -55,7 +55,7 @@ func TestTextPublisherAcceptsIntroductionAfterSourceRetirement(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				rejected, refusal := publisher.acceptTextIntroduction(t.Context(), publisherJob, operation)
+				rejected, refusal := publisher.acceptIntroduction(t.Context(), publisherJob, operation)
 				clear(operation)
 				if refusal == nil || rejected != nil {
 					t.Fatal("idle Publisher accepted foreign recipient facts")
@@ -67,7 +67,7 @@ func TestTextPublisherAcceptsIntroductionAfterSourceRetirement(t *testing.T) {
 					t.Fatal("refused capsule created Source work or consumed allocation")
 				}
 			}
-			accepted, err := publisher.acceptTextIntroduction(t.Context(), publisherJob, prepared.operation)
+			accepted, err := publisher.acceptIntroduction(t.Context(), publisherJob, prepared.operation)
 			if err != nil || accepted == nil {
 				t.Fatalf("registered Publisher after Source retirement: %v", err)
 			}

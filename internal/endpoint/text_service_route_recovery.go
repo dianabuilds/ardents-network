@@ -33,7 +33,7 @@ func (owner *textContext) textServiceRouteRecoveryOpener(job *textJobIdentity,
 		if err := binding.validateTextServiceRecovery(request); err != nil {
 			return nil, [32]byte{}, err
 		}
-		var prepared *textIntroductionAttempt
+		var prepared *introductionAttempt
 		var err error
 		switch owner.surface {
 		case broker.Connection:
@@ -59,7 +59,7 @@ func (owner *textContext) textServiceRouteRecoveryOpener(job *textJobIdentity,
 // and accepts it only under the Connection's immutable Publication authority.
 // It creates fresh per-Attachment secrets without resetting any work deadline.
 func (owner *textContext) prepareTextRecovery(ctx context.Context, job *textJobIdentity, binding *textServiceBinding,
-	request nativeconnection.Recovery) (*textIntroductionAttempt, error) {
+	request nativeconnection.Recovery) (*introductionAttempt, error) {
 	if owner == nil || ctx == nil || !binding.servesJob(owner, job) ||
 		owner.surface != broker.Connection {
 		return nil, errors.New("text recovery preparation unavailable")
@@ -135,5 +135,5 @@ func (owner *textContext) prepareTextRecovery(ctx context.Context, job *textJobI
 		clear(operation)
 		return nil, errors.New("text recovery authority ended during sealing")
 	}
-	return &textIntroductionAttempt{binding: binding, plaintext: plaintext, operation: operation, digest: digest}, nil
+	return &introductionAttempt{binding: binding, plaintext: plaintext, operation: operation, digest: digest}, nil
 }

@@ -88,11 +88,11 @@ func textRouteStopOnly(err error) bool {
 
 // openTextJoinedService consumes the initial protected Route and installs its
 // bounded replacement owner before Application bytes become reachable.
-func (owner *textContext) openTextJoinedService(ctx context.Context, job *textJobIdentity, attempt *textIntroductionAttempt) (_ *textServiceStream, outcome error) {
+func (owner *textContext) openTextJoinedService(ctx context.Context, job *textJobIdentity, attempt *introductionAttempt) (_ *textServiceStream, outcome error) {
 	return owner.openTextJoinedServiceAfterSetup(ctx, job, attempt, nil)
 }
 
-func (owner *textContext) openTextJoinedServiceAfterSetup(ctx context.Context, job *textJobIdentity, attempt *textIntroductionAttempt, setupComplete func()) (_ *textServiceStream, outcome error) {
+func (owner *textContext) openTextJoinedServiceAfterSetup(ctx context.Context, job *textJobIdentity, attempt *introductionAttempt, setupComplete func()) (_ *textServiceStream, outcome error) {
 	transport, err := owner.openTextJoinedTransportAfterSetup(ctx, job, attempt, setupComplete)
 	if err != nil {
 		return nil, err
@@ -105,11 +105,11 @@ func (owner *textContext) openTextJoinedServiceAfterSetup(ctx context.Context, j
 // accepted capsule. Source submission and JOIN run concurrently; neither
 // grants Service authority. Its returned transport joins the complete Route
 // exchange when the Service Attachment releases it.
-func (owner *textContext) openTextJoinedTransport(ctx context.Context, job *textJobIdentity, attempt *textIntroductionAttempt) (_ *textJoinedTransport, outcome error) {
+func (owner *textContext) openTextJoinedTransport(ctx context.Context, job *textJobIdentity, attempt *introductionAttempt) (_ *textJoinedTransport, outcome error) {
 	return owner.openTextJoinedTransportAfterSetup(ctx, job, attempt, nil)
 }
 
-func (owner *textContext) openTextJoinedTransportAfterSetup(ctx context.Context, job *textJobIdentity, attempt *textIntroductionAttempt, setupComplete func()) (_ *textJoinedTransport, outcome error) {
+func (owner *textContext) openTextJoinedTransportAfterSetup(ctx context.Context, job *textJobIdentity, attempt *introductionAttempt, setupComplete func()) (_ *textJoinedTransport, outcome error) {
 	if owner == nil || ctx == nil || ctx.Err() != nil || attempt == nil || !attempt.binding.servesJob(owner, job) {
 		return nil, errors.New("text JOIN owner unavailable")
 	}
@@ -135,7 +135,7 @@ func (owner *textContext) openTextJoinedTransportAfterSetup(ctx context.Context,
 			stop()
 			outcome = finish(outcome)
 			if attempt.plaintext.AttachmentGeneration == 1 {
-				outcome = errors.Join(outcome, attempt.binding.releaseTextIntroductionRecovery())
+				outcome = errors.Join(outcome, attempt.binding.releaseIntroductionRecovery())
 			}
 			if acquisition != nil {
 				acquisition.release()
@@ -176,7 +176,7 @@ func (owner *textContext) openTextJoinedTransportAfterSetup(ctx context.Context,
 		}
 	}
 	if attempt.plaintext.AttachmentGeneration == 1 && owner.surface == broker.Connection {
-		if err := owner.refreshTextIntroduction(joining, job, attempt, source); err != nil {
+		if err := owner.refreshIntroduction(joining, job, attempt, source); err != nil {
 			return nil, err
 		}
 	}
@@ -189,12 +189,12 @@ func (owner *textContext) openTextJoinedTransportAfterSetup(ctx context.Context,
 	}
 	joined := make(chan joinedResult, 1)
 	go func() {
-		stream, err := owner.joinTextIntroduction(joining, job, attempt, acquisition)
+		stream, err := owner.joinIntroduction(joining, job, attempt, acquisition)
 		joined <- joinedResult{stream, err}
 	}()
 	submitted := make(chan error, 1)
 	if owner.surface == broker.Connection {
-		go func() { submitted <- owner.submitTextIntroduction(joining, job, attempt) }()
+		go func() { submitted <- owner.submitIntroduction(joining, job, attempt) }()
 	} else {
 		submitted <- nil
 	}
@@ -229,7 +229,7 @@ func (owner *textContext) openTextJoinedTransportAfterSetup(ctx context.Context,
 	return transport, nil
 }
 
-func (owner *textContext) prepareTextJoinStock(ctx context.Context, attempt *textIntroductionAttempt, prefix textJoinAcquisition) error {
+func (owner *textContext) prepareTextJoinStock(ctx context.Context, attempt *introductionAttempt, prefix textJoinAcquisition) error {
 	node, generation, until, err := prefix.dataJoinRecipient()
 	facts := attempt.plaintext
 	if err != nil || node != facts.RendezvousNode || generation != facts.RendezvousDutyGeneration || facts.Deadline.After(until) {
@@ -258,7 +258,7 @@ func (owner *textContext) prepareTextJoinStock(ctx context.Context, attempt *tex
 	return nil
 }
 
-func (owner *textContext) joinTextIntroduction(ctx context.Context, job *textJobIdentity, attempt *textIntroductionAttempt, prefix textJoinAcquisition) (*client.ClosedJoinedStream, error) {
+func (owner *textContext) joinIntroduction(ctx context.Context, job *textJobIdentity, attempt *introductionAttempt, prefix textJoinAcquisition) (*client.ClosedJoinedStream, error) {
 	facts := attempt.plaintext
 	node, generation, _, err := prefix.dataJoinRecipient()
 	if err != nil || node != facts.RendezvousNode || generation != facts.RendezvousDutyGeneration {
@@ -284,8 +284,8 @@ func (owner *textContext) joinTextIntroduction(ctx context.Context, job *textJob
 	}, client.ClosedJoinIntent{Secret: facts.JoinSecret, Context: facts.HandshakeContext, SetupDeadline: facts.Deadline, WorkDeadline: time.Unix(facts.WorkSafetyNotAfter, 0).UTC()})
 }
 
-func (owner *textContext) retainTextJoinedTransport(job *textJobIdentity, attempt *textIntroductionAttempt,
-	flight *textIntroductionExchange, acquisition textJoinAcquisition, joined *client.ClosedJoinedStream) bool {
+func (owner *textContext) retainTextJoinedTransport(job *textJobIdentity, attempt *introductionAttempt,
+	flight *introductionExchange, acquisition textJoinAcquisition, joined *client.ClosedJoinedStream) bool {
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
 	if attempt == nil || !attempt.binding.servesJob(owner, job) ||

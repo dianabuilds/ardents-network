@@ -55,7 +55,7 @@ func TestTextIntroductionDeliversFourConcurrentReaders(t *testing.T) {
 	if _, err := publisher.openPublisherPrefix(t.Context(), &publisher.responder, 3); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := publisher.registerTextIntroduction(t.Context(), 1, now.Add(120*time.Second)); err != nil {
+	if _, err := publisher.registerIntroduction(t.Context(), 1, now.Add(120*time.Second)); err != nil {
 		t.Fatal(err)
 	}
 	descriptor, err := publisher.publishDescriptor(t.Context())
@@ -107,7 +107,7 @@ func TestTextIntroductionDeliversFourConcurrentReaders(t *testing.T) {
 	for index := range work {
 		go func(index int) {
 			<-start
-			attempt, err := publisher.receiveTextIntroduction(ctx, publisherJob)
+			attempt, err := publisher.receiveIntroduction(ctx, publisherJob)
 			result := deliveryResult{index: index, stage: "receive", err: err}
 			if attempt != nil && attempt.binding != nil {
 				result.connection = attempt.binding.facts.ConnectionNonce
@@ -121,14 +121,14 @@ func TestTextIntroductionDeliversFourConcurrentReaders(t *testing.T) {
 			<-start
 			now := time.Now().UTC()
 			bounds := [3]int64{now.Add(time.Minute).Unix(), now.Add(time.Minute).Unix(), now.Add(time.Minute).Unix()}
-			attempt, err := item.owner.prepareTextIntroduction(ctx, item.job, destination, bounds)
+			attempt, err := item.owner.prepareIntroduction(ctx, item.job, destination, bounds)
 			result := deliveryResult{index: index, stage: "prepare", err: err}
 			if attempt != nil && attempt.binding != nil {
 				result.connection = attempt.binding.facts.ConnectionNonce
 			}
 			if err == nil {
 				result.stage = "submit"
-				result.err = item.owner.submitTextIntroduction(ctx, item.job, attempt)
+				result.err = item.owner.submitIntroduction(ctx, item.job, attempt)
 			}
 			result.elapsed = time.Since(trigger)
 			senders <- result

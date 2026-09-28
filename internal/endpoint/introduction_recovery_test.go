@@ -11,15 +11,15 @@ import (
 )
 
 func TestTextIntroductionRecoveryHandoffOwnsBufferedDelivery(t *testing.T) {
-	key := textIntroductionDeliveryKey{generation: 2}
+	key := introductionDeliveryKey{generation: 2}
 	key.connection[0] = 1
-	routed := textIntroductionRoutedDelivery{delivery: &client.ClosedIntroductionDelivery{}, key: key}
-	recovery := &textIntroductionRecoveryOwner{delivery: make(chan textIntroductionRoutedDelivery, 1)}
+	routed := introductionRoutedDelivery{delivery: &client.ClosedIntroductionDelivery{}, key: key}
+	recovery := &introductionRecoveryOwner{delivery: make(chan introductionRoutedDelivery, 1)}
 	recovery.delivery <- routed
 	_, stop := context.WithCancel(t.Context())
 	done := make(chan struct{})
 	recovery.expiryStop, recovery.expiryDone = stop, done
-	waiter := &textIntroductionWaiter{delivery: make(chan textIntroductionRoutedDelivery, 1)}
+	waiter := &introductionWaiter{delivery: make(chan introductionRoutedDelivery, 1)}
 
 	wrong := key
 	wrong.connection[0] = 2
@@ -45,8 +45,8 @@ func TestTextIntroductionRecoveryHandoffOwnsBufferedDelivery(t *testing.T) {
 }
 
 func TestTextIntroductionRecoveryRetirementOwnsBufferedDelivery(t *testing.T) {
-	routed := textIntroductionRoutedDelivery{delivery: &client.ClosedIntroductionDelivery{}}
-	recovery := &textIntroductionRecoveryOwner{delivery: make(chan textIntroductionRoutedDelivery, 1)}
+	routed := introductionRoutedDelivery{delivery: &client.ClosedIntroductionDelivery{}}
+	recovery := &introductionRecoveryOwner{delivery: make(chan introductionRoutedDelivery, 1)}
 	recovery.delivery <- routed
 	ctx, stop := context.WithCancel(t.Context())
 	done := make(chan struct{})
@@ -64,10 +64,10 @@ func TestTextIntroductionRecoveryRetirementOwnsBufferedDelivery(t *testing.T) {
 func TestTextIntroductionRecoveryKeepsExactBindingAndGeneration(t *testing.T) {
 	binding := &textServiceBinding{}
 	binding.facts.ConnectionNonce[0] = 1
-	recovery := &textIntroductionRecoveryOwner{binding: binding, generation: 2,
-		delivery: make(chan textIntroductionRoutedDelivery, 1)}
+	recovery := &introductionRecoveryOwner{binding: binding, generation: 2,
+		delivery: make(chan introductionRoutedDelivery, 1)}
 	binding.recovery = recovery
-	key := textIntroductionDeliveryKey{connection: binding.facts.ConnectionNonce, generation: 2}
+	key := introductionDeliveryKey{connection: binding.facts.ConnectionNonce, generation: 2}
 	if !recovery.acceptsLocked(key) || !recovery.admitGenerationLocked(binding, 3) {
 		t.Fatal("exact recovery owner rejected its next generation")
 	}

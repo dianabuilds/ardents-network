@@ -36,7 +36,7 @@ func (source *textCapsuleBoundaryState) CurrentClosedProfile() (state.ClosedProf
 }
 
 func checkTextCapsuleAdmissionBoundaries(t *testing.T, publisher, reader *textContext, source *sourceStateFixture,
-	job *textJobIdentity, original *textIntroductionAttempt, recipient [32]byte) {
+	job *textJobIdentity, original *introductionAttempt, recipient [32]byte) {
 	t.Helper()
 	endpoint := publisher.endpoint
 	for index, name := range []string{"resolution family", "Introduction family", "issuer family", "caller cancellation", "deadline"} {
@@ -104,7 +104,7 @@ func checkTextCapsuleAdmissionBoundaries(t *testing.T, publisher, reader *textCo
 					}
 				}}
 			}
-			accepted, err := publisher.acceptTextIntroduction(ctx, job, operation)
+			accepted, err := publisher.acceptIntroduction(ctx, job, operation)
 			if err == nil || accepted != nil || strings.Contains(err.Error(), "rate unavailable") {
 				t.Errorf("invalid final admission accepted: %v", err)
 			}

@@ -13,7 +13,7 @@ import (
 	nativeconnection "github.com/dianabuilds/ardents-network/internal/service/connection"
 )
 
-func (owner *textContext) submitTextIntroduction(ctx context.Context, job *textJobIdentity, prepared *textIntroductionAttempt) (outcome error) {
+func (owner *textContext) submitIntroduction(ctx context.Context, job *textJobIdentity, prepared *introductionAttempt) (outcome error) {
 	if owner == nil || ctx == nil || ctx.Err() != nil || prepared == nil ||
 		!prepared.binding.servesJob(owner, job) {
 		return errors.New("text Introduction submission unavailable")
@@ -28,7 +28,7 @@ func (owner *textContext) submitTextIntroduction(ctx context.Context, job *textJ
 	if !live {
 		return errors.New("text Introduction submission owner changed")
 	}
-	lifetime, finish, err := owner.beginTextIntroductionExchange(ctx, job, broker.Connection)
+	lifetime, finish, err := owner.beginIntroductionExchange(ctx, job, broker.Connection)
 	if err != nil {
 		return err
 	}
@@ -69,17 +69,17 @@ func (owner *textContext) submitTextIntroduction(ctx context.Context, job *textJ
 	return prepared.binding.current()
 }
 
-// receiveTextIntroduction consumes one delivery from the actual channel owned
+// receiveIntroduction consumes one delivery from the actual channel owned
 // by this Publisher, then acknowledges only after independent local acceptance.
-func (owner *textContext) receiveTextIntroduction(ctx context.Context, job *textJobIdentity) (prepared *textIntroductionAttempt, outcome error) {
-	return owner.receiveTextIntroductionWith(ctx, job, textIntroductionDeliveryKey{generation: 1}, nil,
-		func(ctx context.Context, job *textJobIdentity, operation []byte) (*textIntroductionAttempt, error) {
-			return owner.acceptTextIntroductionGeneration(ctx, job, operation, nil, 1, time.Time{}, true)
+func (owner *textContext) receiveIntroduction(ctx context.Context, job *textJobIdentity) (prepared *introductionAttempt, outcome error) {
+	return owner.receiveIntroductionWith(ctx, job, introductionDeliveryKey{generation: 1}, nil,
+		func(ctx context.Context, job *textJobIdentity, operation []byte) (*introductionAttempt, error) {
+			return owner.acceptIntroductionGeneration(ctx, job, operation, nil, 1, time.Time{}, true)
 		}, nil)
 }
 
 func (owner *textContext) receiveTextRecovery(ctx context.Context, job *textJobIdentity, binding *textServiceBinding,
-	request nativeconnection.Recovery) (*textIntroductionAttempt, error) {
+	request nativeconnection.Recovery) (*introductionAttempt, error) {
 	if ctx == nil {
 		return nil, errors.New("text recovery receiver context unavailable")
 	}
@@ -92,23 +92,23 @@ func (owner *textContext) receiveTextRecovery(ctx context.Context, job *textJobI
 	if err := binding.validateTextServiceRecovery(request); err != nil {
 		return nil, err
 	}
-	want := textIntroductionDeliveryKey{connection: binding.connectionNonce(), generation: request.Generation}
-	return owner.receiveTextIntroductionWith(ctx, job, want, binding, func(ctx context.Context, job *textJobIdentity, operation []byte) (*textIntroductionAttempt, error) {
+	want := introductionDeliveryKey{connection: binding.connectionNonce(), generation: request.Generation}
+	return owner.receiveIntroductionWith(ctx, job, want, binding, func(ctx context.Context, job *textJobIdentity, operation []byte) (*introductionAttempt, error) {
 		if !binding.servesJob(owner, job) {
 			return nil, errors.New("text recovery binding unavailable")
 		}
 		if err := binding.validateTextServiceRecovery(request); err != nil {
 			return nil, err
 		}
-		return owner.acceptTextIntroductionGeneration(ctx, job, operation, binding, request.Generation, request.Deadline, true)
+		return owner.acceptIntroductionGeneration(ctx, job, operation, binding, request.Generation, request.Deadline, true)
 	}, nil)
 }
 
-type textIntroductionAcceptor func(context.Context, *textJobIdentity, []byte) (*textIntroductionAttempt, error)
+type introductionAcceptor func(context.Context, *textJobIdentity, []byte) (*introductionAttempt, error)
 
-func (owner *textContext) receiveTextIntroductionWith(ctx context.Context, job *textJobIdentity,
-	want textIntroductionDeliveryKey, binding *textServiceBinding,
-	accept textIntroductionAcceptor, deliveryReceived func()) (prepared *textIntroductionAttempt, outcome error) {
+func (owner *textContext) receiveIntroductionWith(ctx context.Context, job *textJobIdentity,
+	want introductionDeliveryKey, binding *textServiceBinding,
+	accept introductionAcceptor, deliveryReceived func()) (prepared *introductionAttempt, outcome error) {
 	if owner == nil || ctx == nil {
 		return nil, errors.New("text Introduction receiver unavailable")
 	}
@@ -128,7 +128,7 @@ func (owner *textContext) receiveTextIntroductionWith(ctx context.Context, job *
 	if !live {
 		return nil, errors.New("text Introduction Publisher job unavailable")
 	}
-	lifetime, finish, err := owner.beginTextIntroductionExchange(ctx, job, broker.Administration)
+	lifetime, finish, err := owner.beginIntroductionExchange(ctx, job, broker.Administration)
 	if err != nil {
 		return nil, err
 	}
@@ -136,7 +136,7 @@ func (owner *textContext) receiveTextIntroductionWith(ctx context.Context, job *
 	defer func() {
 		outcome = finish(outcome)
 		if outcome != nil && retainedBinding != nil {
-			outcome = errors.Join(outcome, retainedBinding.releaseTextIntroductionRecovery())
+			outcome = errors.Join(outcome, retainedBinding.releaseIntroductionRecovery())
 		}
 		if outcome != nil {
 			prepared = nil
@@ -156,7 +156,7 @@ func (owner *textContext) receiveTextIntroductionWith(ctx context.Context, job *
 		outcome = owner.prepareResponder(lifetime, job, prepared)
 	}
 	if outcome == nil && want.generation == 1 {
-		outcome = owner.retainTextIntroductionRecovery(prepared.binding)
+		outcome = owner.retainIntroductionRecovery(prepared.binding)
 		if outcome == nil {
 			retainedBinding = prepared.binding
 		}
@@ -167,7 +167,7 @@ func (owner *textContext) receiveTextIntroductionWith(ctx context.Context, job *
 	}
 	// The registration owns the terminal RESULT after routing. A recovery
 	// attempt may be canceled after local refusal without stranding its lane.
-	if err := owner.completeTextIntroductionDelivery(delivery.delivery, delivery.expires, status); err != nil {
+	if err := owner.completeIntroductionDelivery(delivery.delivery, delivery.expires, status); err != nil {
 		return nil, errors.Join(outcome, err)
 	}
 	if prepared != nil && !owner.endpoint.clock().Before(prepared.plaintext.Deadline) {

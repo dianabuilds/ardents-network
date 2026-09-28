@@ -24,7 +24,7 @@ func observeInstalledRefresh(t *testing.T, ctx context.Context, owner *textConte
 	if scheduled != created.Add(300*time.Second) || initialKey == [32]byte{} {
 		t.Fatal("initial refresh schedule or recipient invalid")
 	}
-	var second *textIntroductionRegistration
+	var second *introductionRegistration
 	var cutoff time.Time
 	for {
 		owner.mu.Lock()

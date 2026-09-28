@@ -24,21 +24,21 @@ func TestTextRecoveryDeliveryMayArriveBeforePublisherFailureDetection(t *testing
 	defer cancel()
 	now := time.Now().UTC()
 	bounds := [3]int64{now.Add(7 * time.Second).Unix(), now.Add(7 * time.Second).Unix(), now.Add(7 * time.Second).Unix()}
-	initial, err := reader.prepareTextIntroduction(ctx, readerJob, destination, bounds)
+	initial, err := reader.prepareIntroduction(ctx, readerJob, destination, bounds)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer clear(initial.operation)
 	type received struct {
-		attempt *textIntroductionAttempt
+		attempt *introductionAttempt
 		err     error
 	}
 	accepted := make(chan received, 1)
 	go func() {
-		attempt, receiveErr := publisher.receiveTextIntroduction(ctx, publisherJob)
+		attempt, receiveErr := publisher.receiveIntroduction(ctx, publisherJob)
 		accepted <- received{attempt: attempt, err: receiveErr}
 	}()
-	if err := reader.submitTextIntroduction(ctx, readerJob, initial); err != nil {
+	if err := reader.submitIntroduction(ctx, readerJob, initial); err != nil {
 		t.Fatal(err)
 	}
 	remote := <-accepted
@@ -55,14 +55,14 @@ func TestTextRecoveryDeliveryMayArriveBeforePublisherFailureDetection(t *testing
 		t.Fatal(err)
 	}
 	defer clear(early.operation)
-	stopInitial := holdTextInitialIntroductionReceiver(t, ctx, publisher, publisherJob)
+	stopInitial := holdInitialIntroductionReceiver(t, ctx, publisher, publisherJob)
 
 	publisher.mu.Lock()
 	before := publisher.introduction.admission.openings[3]
 	publisher.mu.Unlock()
 	submitted := make(chan error, 1)
-	go func() { submitted <- reader.submitTextIntroduction(ctx, readerJob, early) }()
-	waitTextIntroductionOpening(t, ctx, publisher, before, submitted, early.plaintext.Deadline)
+	go func() { submitted <- reader.submitIntroduction(ctx, readerJob, early) }()
+	waitIntroductionOpening(t, ctx, publisher, before, submitted, early.plaintext.Deadline)
 	select {
 	case err := <-submitted:
 		t.Fatalf("early recovery delivery was completed before its live owner waited: %v", err)
@@ -96,8 +96,8 @@ func TestTextRecoveryDeliveryMayArriveBeforePublisherFailureDetection(t *testing
 	before = publisher.introduction.admission.openings[3]
 	publisher.mu.Unlock()
 	nextSubmitted := make(chan error, 1)
-	go func() { nextSubmitted <- reader.submitTextIntroduction(ctx, readerJob, next) }()
-	waitTextIntroductionOpening(t, ctx, publisher, before, nextSubmitted, next.plaintext.Deadline)
+	go func() { nextSubmitted <- reader.submitIntroduction(ctx, readerJob, next) }()
+	waitIntroductionOpening(t, ctx, publisher, before, nextSubmitted, next.plaintext.Deadline)
 	if err := <-nextSubmitted; err == nil {
 		t.Fatal("expired buffered recovery delivery was accepted")
 	}
@@ -115,7 +115,7 @@ func TestTextRecoveryDeliveryMayArriveBeforePublisherFailureDetection(t *testing
 		t.Fatal("expired recovery delivery ended the shared Publisher registration")
 	default:
 	}
-	if err := remote.attempt.binding.releaseTextIntroductionRecovery(); err != nil {
+	if err := remote.attempt.binding.releaseIntroductionRecovery(); err != nil {
 		t.Fatal(err)
 	}
 	publisher.mu.Lock()
@@ -137,21 +137,21 @@ func TestTextRecoveryRefusalOutlivesCanceledAttempt(t *testing.T) {
 	defer cancel()
 	now := time.Now().UTC()
 	bounds := [3]int64{now.Add(7 * time.Second).Unix(), now.Add(7 * time.Second).Unix(), now.Add(7 * time.Second).Unix()}
-	initial, err := reader.prepareTextIntroduction(ctx, readerJob, destination, bounds)
+	initial, err := reader.prepareIntroduction(ctx, readerJob, destination, bounds)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer clear(initial.operation)
 	type receivedIntroduction struct {
-		attempt *textIntroductionAttempt
+		attempt *introductionAttempt
 		err     error
 	}
 	initialReceived := make(chan receivedIntroduction, 1)
 	go func() {
-		attempt, receiveErr := publisher.receiveTextIntroduction(ctx, publisherJob)
+		attempt, receiveErr := publisher.receiveIntroduction(ctx, publisherJob)
 		initialReceived <- receivedIntroduction{attempt: attempt, err: receiveErr}
 	}()
-	if err := reader.submitTextIntroduction(ctx, readerJob, initial); err != nil {
+	if err := reader.submitIntroduction(ctx, readerJob, initial); err != nil {
 		t.Fatal(err)
 	}
 	remote := <-initialReceived
@@ -166,20 +166,20 @@ func TestTextRecoveryRefusalOutlivesCanceledAttempt(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer clear(recovery.operation)
-	want := textIntroductionDeliveryKey{connection: remote.attempt.binding.facts.ConnectionNonce, generation: 2}
+	want := introductionDeliveryKey{connection: remote.attempt.binding.facts.ConnectionNonce, generation: 2}
 	attemptContext, cancelAttempt := context.WithCancel(ctx)
 	refused := errors.New("forced matched recovery refusal")
 	received := make(chan error, 1)
 	go func() {
-		_, receiveErr := publisher.receiveTextIntroductionWith(attemptContext, publisherJob, want, remote.attempt.binding,
-			func(context.Context, *textJobIdentity, []byte) (*textIntroductionAttempt, error) {
+		_, receiveErr := publisher.receiveIntroductionWith(attemptContext, publisherJob, want, remote.attempt.binding,
+			func(context.Context, *textJobIdentity, []byte) (*introductionAttempt, error) {
 				cancelAttempt()
 				return nil, refused
 			}, nil)
 		received <- receiveErr
 	}()
 	submitted := make(chan error, 1)
-	go func() { submitted <- reader.submitTextIntroduction(ctx, readerJob, recovery) }()
+	go func() { submitted <- reader.submitIntroduction(ctx, readerJob, recovery) }()
 	if receiveErr := <-received; !errors.Is(receiveErr, refused) {
 		t.Fatalf("matched recovery refusal = %v", receiveErr)
 	}
@@ -206,7 +206,7 @@ func TestTextIntroductionOrphanRefusalOutlivesCanceledWaiter(t *testing.T) {
 	defer cancel()
 	now := time.Now().UTC()
 	bounds := [3]int64{now.Add(7 * time.Second).Unix(), now.Add(7 * time.Second).Unix(), now.Add(7 * time.Second).Unix()}
-	attempt, err := reader.prepareTextIntroduction(ctx, readerJob, destination, bounds)
+	attempt, err := reader.prepareIntroduction(ctx, readerJob, destination, bounds)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -233,12 +233,12 @@ func TestTextIntroductionOrphanRefusalOutlivesCanceledWaiter(t *testing.T) {
 		t.Fatal(err)
 	}
 	submitted := make(chan error, 1)
-	go func() { submitted <- reader.submitTextIntroduction(ctx, readerJob, attempt) }()
-	delivery, err := publisher.nextTextIntroductionDelivery(ctx)
+	go func() { submitted <- reader.submitIntroduction(ctx, readerJob, attempt) }()
+	delivery, err := publisher.nextIntroductionDelivery(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
-	key, expires, err := publisher.inspectTextIntroductionDelivery(ctx, publisherJob, delivery)
+	key, expires, err := publisher.inspectIntroductionDelivery(ctx, publisherJob, delivery)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -253,7 +253,7 @@ func TestTextIntroductionOrphanRefusalOutlivesCanceledWaiter(t *testing.T) {
 	if err := delivery.Complete(waiter, 1); err == nil {
 		t.Fatal("canceled waiter unexpectedly completed the orphan delivery")
 	}
-	if err := publisher.refuseTextIntroductionDelivery(delivery, expires); err != nil {
+	if err := publisher.refuseIntroductionDelivery(delivery, expires); err != nil {
 		t.Fatal(err)
 	}
 	if err := <-submitted; err == nil {
@@ -269,7 +269,7 @@ func TestTextIntroductionOrphanRefusalOutlivesCanceledWaiter(t *testing.T) {
 	}
 }
 
-func waitTextIntroductionOpening(t *testing.T, ctx context.Context, owner *textContext, before time.Time,
+func waitIntroductionOpening(t *testing.T, ctx context.Context, owner *textContext, before time.Time,
 	submitted <-chan error, deadline time.Time,
 ) {
 	t.Helper()

@@ -11,15 +11,15 @@ import (
 )
 
 func TestTextIntroductionRefusalCannotHideTerminalFailure(t *testing.T) {
-	refusal := &textIntroductionRefusal{cause: errors.New("invalid capsule")}
+	refusal := &introductionRefusal{cause: errors.New("invalid capsule")}
 	for _, err := range []error{refusal, errors.Join(refusal), errors.Join(refusal, refusal)} {
-		if !onlyTextIntroductionRefusal(err) {
+		if !onlyIntroductionRefusal(err) {
 			t.Fatal("input refusal lost its scope")
 		}
 	}
 	for _, err := range []error{nil, context.Canceled, errors.Join(refusal, context.Canceled),
 		errors.Join(errors.Join(refusal), client.ErrClosedSourceCleanup), errors.Join(refusal, errors.New("acknowledgement failed"))} {
-		if onlyTextIntroductionRefusal(err) {
+		if onlyIntroductionRefusal(err) {
 			t.Fatalf("terminal failure treated as input refusal: %v", err)
 		}
 	}

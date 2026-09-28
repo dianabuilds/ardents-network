@@ -2,13 +2,13 @@
 
 package endpoint
 
-// textIntroduction is the single owner of the context's Introduction
+// introduction is the single owner of the context's Introduction
 // subsystem: the admitted Introduction prefix lifecycle, the delivery
 // dispatch rendezvous, the bounded exchange set, and the cryptographic
 // admission window. The zero value is ready for use under textContext.mu.
-type textIntroduction struct {
-	dispatch  textIntroductionDispatch
-	exchanges textIntroductionExchangeSet
-	admission textIntroductionAdmission
+type introduction struct {
+	dispatch  introductionDispatch
+	exchanges introductionExchangeSet
+	admission introductionAdmission
 	prefix    introductionPrefixLifecycle
 }

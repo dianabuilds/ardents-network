@@ -10,7 +10,7 @@ import (
 )
 
 func TestTextPublicationPairCancelledAcknowledgementKeepsCleanupOwnerWithoutCurrentCommit(t *testing.T) {
-	registered := &textIntroductionRegistration{}
+	registered := &introductionRegistration{}
 	pair := publicationPairLifecycle{pendingRegistration: registered}
 	endpoint := &endpoint{}
 	owner := &textContext{}
@@ -30,7 +30,7 @@ func TestTextPublicationPairCancelledAcknowledgementKeepsCleanupOwnerWithoutCurr
 }
 
 func TestTextPublicationPairDrainRejectsLateAcknowledgement(t *testing.T) {
-	registered := &textIntroductionRegistration{}
+	registered := &introductionRegistration{}
 	pair := publicationPairLifecycle{pendingRegistration: registered}
 	if !pair.beginDrainLocked() {
 		t.Fatal("pair refused its first drain transition")

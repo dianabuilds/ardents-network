@@ -106,7 +106,7 @@ func TestTextPublicationFailedWithdrawalRetainsBindingAndError(t *testing.T) {
 	}
 	defer restore()
 	endpoint.publisherMu.Lock()
-	_, err := owner.acquirePublication(t.Context(), &textIntroductionRegistration{cancel: func() {}}, binding, now)
+	_, err := owner.acquirePublication(t.Context(), &introductionRegistration{cancel: func() {}}, binding, now)
 	retained := endpoint.publisherBinding == binding && endpoint.publisherOwner == owner
 	endpoint.publisherMu.Unlock()
 	if err == nil || !retained || endpoint.textAvailable() {

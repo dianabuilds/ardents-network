@@ -106,7 +106,7 @@ func (worker *qualifiedTextWorker) readTarget(ctx context.Context, destination t
 		return nil, err
 	}
 	owner := worker.job.owner
-	attempt, err := owner.prepareTextIntroduction(bounded, worker.job, destination, bounds)
+	attempt, err := owner.prepareIntroduction(bounded, worker.job, destination, bounds)
 	var stream *textServiceStream
 	if err == nil {
 		stream, err = owner.openTextJoinedService(bounded, worker.job, attempt)

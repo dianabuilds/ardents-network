@@ -16,7 +16,7 @@ import (
 
 // The same real registered Publisher setup feeds successful and interrupted
 // Descriptor handovers. Only accepted State and worker qualification are fixtures.
-func startRegisteredPublisherNetwork(t *testing.T, carrier routecarrier.CarrierProfile, gate *descriptorACKGate) (*endpoint, *textContext, *sourceStateFixture, *textIntroductionRegistration) {
+func startRegisteredPublisherNetwork(t *testing.T, carrier routecarrier.CarrierProfile, gate *descriptorACKGate) (*endpoint, *textContext, *sourceStateFixture, *introductionRegistration) {
 	t.Helper()
 	endpoint, owner, source := startTextRoleNetwork(t, textRoleNetworkFixture{carrier: carrier, resolution: true, publisher: true, configure: []func(int, *node.Config){gate.configure(t)}})
 	source.mu.Lock()
@@ -52,7 +52,7 @@ func startRegisteredPublisherNetwork(t *testing.T, carrier routecarrier.CarrierP
 	if _, err := owner.openIntroductionPrefix(t.Context()); err != nil {
 		t.Fatal(err)
 	}
-	first, err := owner.registerTextIntroduction(t.Context(), 1, time.Now().UTC().Add(120*time.Second).Truncate(time.Second))
+	first, err := owner.registerIntroduction(t.Context(), 1, time.Now().UTC().Add(120*time.Second).Truncate(time.Second))
 	if err != nil {
 		t.Fatal(err)
 	}

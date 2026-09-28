@@ -207,7 +207,7 @@ func TestTextRecoveryPublisherRejectsCapsuleBeyondLocalAttemptDeadline(t *testin
 	defer cancel()
 	now := time.Now().UTC()
 	bounds := [3]int64{now.Add(12 * time.Second).Unix(), now.Add(12 * time.Second).Unix(), now.Add(12 * time.Second).Unix()}
-	initial, err := reader.prepareTextIntroduction(ctx, readerJob, destination, bounds)
+	initial, err := reader.prepareIntroduction(ctx, readerJob, destination, bounds)
 	if err != nil {
 		t.Fatal(err)
 	}

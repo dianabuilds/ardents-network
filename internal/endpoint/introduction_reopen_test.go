@@ -19,7 +19,7 @@ func TestTextIntroductionReopensJoinedSource(t *testing.T) {
 			job := liveTextCapsuleJob(t, reader)
 			until := time.Now().Add(time.Minute).Unix()
 			bounds := [3]int64{until, until, until}
-			first, err := reader.prepareTextIntroduction(t.Context(), job, destination, bounds)
+			first, err := reader.prepareIntroduction(t.Context(), job, destination, bounds)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -35,7 +35,7 @@ func TestTextIntroductionReopensJoinedSource(t *testing.T) {
 			default:
 				t.Fatal("Source Close did not join")
 			}
-			second, err := reader.prepareTextIntroduction(t.Context(), job, destination, bounds)
+			second, err := reader.prepareIntroduction(t.Context(), job, destination, bounds)
 			if err != nil {
 				t.Fatalf("explicit read after joined Source: %v", err)
 			}
