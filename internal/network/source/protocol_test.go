@@ -6,6 +6,15 @@ import (
 	"testing"
 )
 
+func TestNetworkDigestFrozenBytes(t *testing.T) {
+	t.Parallel()
+	got := NetworkDigest([32]byte{1})
+	const want = "20ea355786b5be7b1acd1c4bf345e3c2e3d5c3057dad57adc4be674a6dd6a169"
+	if hex.EncodeToString(got[:]) != want {
+		t.Fatalf("Source network request digest changed: %x", got)
+	}
+}
+
 func TestRequestFrozenBytes(t *testing.T) {
 	t.Parallel()
 	request := Message{Operation: "by-digest", MaterialIndex: 7}

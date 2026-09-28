@@ -7,7 +7,7 @@ import (
 
 func (s *networkState) recoverPendingState() error {
 	state := s.distribution
-	if isZero32(state.pendingDigest) {
+	if state.pendingDigest == [32]byte{} {
 		return nil
 	}
 	if s.current == nil {

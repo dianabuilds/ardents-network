@@ -78,7 +78,7 @@ func (s *networkState) startSourceWave(now time.Time) ([2]int, time.Time, error)
 	state.observedEpochs = [4]uint64{}
 	state.observedDigests = [4][32]byte{}
 	seed := s.config.sourceInfo.OrderSeed
-	if isZero32(seed) {
+	if seed == [32]byte{} {
 		if _, err := rand.Read(seed[:]); err != nil {
 			return [2]int{}, time.Time{}, fmt.Errorf("draw source order: %w", err)
 		}

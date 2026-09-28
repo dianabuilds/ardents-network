@@ -125,7 +125,7 @@ func decodeDistributionCycle(d *decoder, state *distributionState) error {
 			return readErr
 		}
 		copy(state.requestedDigests[index][:], digest)
-		if isZero32(state.requestedDigests[index]) != (state.attempts[index+2] == 0) {
+		if (state.requestedDigests[index] == [32]byte{}) != (state.attempts[index+2] == 0) {
 			return errors.New("BY_DIGEST attempt lacks its exact selector")
 		}
 	}
@@ -143,7 +143,7 @@ func decodeDistributionEvidence(d *decoder, state *distributionState) error {
 			return readErr
 		}
 		copy(state.observedDigests[index][:], digest)
-		if (state.observedEpochs[index] == 0) != isZero32(state.observedDigests[index]) {
+		if (state.observedEpochs[index] == 0) != (state.observedDigests[index] == [32]byte{}) {
 			return errors.New("observed source candidate identity is incomplete")
 		}
 	}
@@ -157,7 +157,7 @@ func decodeDistributionEvidence(d *decoder, state *distributionState) error {
 		return err
 	}
 	state.pendingValidFrom = int64(pendingAt)
-	if isZero32(state.pendingDigest) != (state.pendingValidFrom == 0) {
+	if (state.pendingDigest == [32]byte{}) != (state.pendingValidFrom == 0) {
 		return errors.New("distribution pending identity is incomplete")
 	}
 	seed, err := d.bytes(32)

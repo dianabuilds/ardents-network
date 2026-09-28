@@ -1,6 +1,7 @@
 package source
 
 import (
+	"crypto/sha256"
 	"encoding/binary"
 	"errors"
 	"io"
@@ -17,6 +18,12 @@ const (
 	badStatus      = byte(3)
 	internalStatus = byte(4)
 )
+
+// NetworkDigest binds a private Source request to one selected Network ID.
+func NetworkDigest(networkID [32]byte) [32]byte {
+	prefix := []byte("ardents-h3-network-id-v1\x00")
+	return sha256.Sum256(append(prefix, networkID[:]...))
+}
 
 // Message is one exact acquisition request or bounded terminal response.
 // Requests set Operation, NetworkDigest, ObjectDigest, and MaterialIndex and

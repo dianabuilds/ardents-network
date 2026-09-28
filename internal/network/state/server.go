@@ -26,7 +26,7 @@ func (s *networkState) serveSource(ctx context.Context, ready chan<- error) erro
 }
 
 func (s *networkState) resolveDistributionRequest(_ context.Context, request source.Message) source.Message {
-	if request.NetworkDigest != networkIdentityDigest(s.config.networkID) {
+	if request.NetworkDigest != source.NetworkDigest(s.config.networkID) {
 		return source.Message{Status: "bad-request"}
 	}
 	s.mu.RLock()

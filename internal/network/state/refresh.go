@@ -103,10 +103,10 @@ func (s *networkState) fetchAndVerify(ctx context.Context, index int, current *e
 	observations := [4]byte{}
 	resultIndex, outcomeIndex := index, index
 	response, err := s.fetchSource(ctx, index, source.Message{
-		Operation: "latest", NetworkDigest: networkIdentityDigest(s.config.networkID),
+		Operation: "latest", NetworkDigest: source.NetworkDigest(s.config.networkID),
 		MaterialIndex: s.config.sourceInfo.MaterialIndex,
 	})
-	if err != nil && !isZero32(response.ObjectDigest) {
+	if err != nil && response.ObjectDigest != [32]byte{} {
 		observations[index] = classifySourceOutcome(err)
 		fallback := 1 - index
 		if startErr := s.beginDigestAttempt(fallback, response.ObjectDigest); startErr != nil {
@@ -115,7 +115,7 @@ func (s *networkState) fetchAndVerify(ctx context.Context, index int, current *e
 		requestedDigest := response.ObjectDigest
 		resultIndex, outcomeIndex = fallback, 2+fallback
 		response, err = s.fetchSource(ctx, fallback, source.Message{
-			Operation: "by-digest", NetworkDigest: networkIdentityDigest(s.config.networkID), ObjectDigest: response.ObjectDigest,
+			Operation: "by-digest", NetworkDigest: source.NetworkDigest(s.config.networkID), ObjectDigest: response.ObjectDigest,
 			MaterialIndex: s.config.sourceInfo.MaterialIndex,
 		})
 		if terminalErr := s.finishDigestAttempt(fallback, err == nil); terminalErr != nil {
