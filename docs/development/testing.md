@@ -308,6 +308,11 @@ The maintained local profiles are:
   refusal and a workload-verdict failure after one-byte truncation. This is
   binary-corpus conformance for the pinned laboratory caller, not an installed
   profile result or support for arbitrary Applications.
+- `text-worker-tree`, the separately pinned installed hostile child/grandchild cleanup
+  profile invoked by `make text-worker-tree-check`; it requires both role receipts,
+  original-cgroup cleanup and independent Publisher sibling snapshot progress. It
+  does not replace the escape matrix, protected Route admission or full host
+  qualification.
 - `text-worker-escape`, the separately pinned installed P6/P7 escape matrix invoked
   by `make text-worker-escape-check`; it tests hostile worker access attempts under
   the effective selected unit policy and does not establish whole-host qualification.

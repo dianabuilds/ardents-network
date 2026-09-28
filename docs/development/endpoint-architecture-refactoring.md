@@ -37,10 +37,13 @@ subpackages (`worker`, `tokens`, `publication`, `source`, `introduction`,
 seam that the root implements. Node composes roles and their resources
 without exposing one role's configuration to another.
 
-Endpoint package tree (current; all Linux-only subpackages carry
-`//go:build linux` on every file including `doc.go`, and stay out of
-`tests/profiles/deterministic-packages.txt` because Windows `go list`
-cannot see them):
+Endpoint package tree (current; implementation files of the extracted
+mechanisms are Linux-tagged. `worker/doc.go` is untagged, so that package is
+Windows-visible and listed in `tests/profiles/deterministic-packages.txt`.
+`tokens`, `introduction`, and `service` have Linux-tagged `doc.go` files;
+`publication` and `source` currently place their package comments in
+implementation files and still need dedicated Linux-tagged `doc.go` files
+to satisfy the repository package rule):
 
 ```
 internal/endpoint/               composition root: admission, dutyContext
@@ -213,9 +216,9 @@ contract stays in `docs/technical/endpoint-service-runtime.md`.
 3. Extract a package only when it has one cohesive resource or lifecycle, a
    small caller-facing contract, a non-test caller, and an import graph with no
    cycle. A new package gets `doc.go` (with `//go:build linux` when the whole
-   package is Linux-only — an untagged `doc.go` makes the package
-   Windows-visible and breaks the profile-membership architecture gate),
-   behavior tests, and a package-map entry in the same change.
+   package is Linux-only; an untagged `doc.go` makes it Windows-visible and
+   requires the profile registry to list it, as for `worker`), behavior tests,
+   and a package-map entry in the same change.
 4. Keep the extracted `internal/endpoint/tokenjournal` as the durable
    attempt owner. Endpoint supplies only the selected token and its binding;
    the journal owns replay/time floors and persisted receipts through
