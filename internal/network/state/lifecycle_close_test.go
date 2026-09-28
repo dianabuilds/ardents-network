@@ -11,11 +11,13 @@ import (
 
 func TestCloseRetainsTerminalAndSourceReleaseFailures(t *testing.T) {
 	for _, test := range []struct {
-		name        string
-		serverErr   error
-		resourceErr error
+		name         string
+		serverErr    error
+		automaticErr error
+		resourceErr  error
 	}{
 		{name: "server failure", serverErr: errors.New("source server failed")},
+		{name: "automatic refresh failure after source cancellation", serverErr: context.Canceled, automaticErr: errors.New("automatic refresh failed")},
 		{name: "resource failure after source cancellation", serverErr: context.Canceled, resourceErr: errors.New("resource accounting failed")},
 	} {
 		t.Run(test.name, func(t *testing.T) {
@@ -24,7 +26,7 @@ func TestCloseRetainsTerminalAndSourceReleaseFailures(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			state := &networkState{storage: storage, serverErr: test.serverErr, resourceErr: test.resourceErr}
+			state := &networkState{storage: storage, serverErr: test.serverErr, automaticErr: test.automaticErr, resourceErr: test.resourceErr}
 			state.config.sourceInfo.Serving = true
 			state.config.localRoles = filepath.Join(t.TempDir(), "absent-local-role-root")
 			state.config.clock = time.Now
@@ -37,6 +39,9 @@ func TestCloseRetainsTerminalAndSourceReleaseFailures(t *testing.T) {
 				t.Fatalf("Close() = %v, missing source-role release failure %v", got, releaseErr)
 			}
 			primary := test.serverErr
+			if test.automaticErr != nil {
+				primary = test.automaticErr
+			}
 			if test.resourceErr != nil {
 				primary = test.resourceErr
 			}
