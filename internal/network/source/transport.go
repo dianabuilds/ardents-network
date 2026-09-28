@@ -21,32 +21,48 @@ func fetch(ctx context.Context, client client, request Message) (Message, error)
 	defer cancel()
 	connection, err := (&net.Dialer{Timeout: dialTimeout}).DialContext(totalContext, "tcp", client.address)
 	if err != nil {
-		return Message{}, fmt.Errorf("distribution source unavailable: %w", err)
+		return fetchFailure(totalContext, Message{}, fmt.Errorf("distribution source unavailable: %w", err))
 	}
 	defer connection.Close()
+	// DialContext and HandshakeContext stop at their own boundaries. Keep the
+	// established socket tied to the complete exchange and caller lifetime.
+	stopCancellation := context.AfterFunc(totalContext, func() { _ = connection.Close() })
+	defer stopCancellation()
 	if err := connection.SetDeadline(time.Now().Add(exchangeTimeout)); err != nil {
-		return Message{}, err
+		return fetchFailure(totalContext, Message{}, err)
 	}
 	tlsConnection := tls.Client(connection, clientTLSConfig(client))
 	handshakeContext, stopHandshake := context.WithTimeout(totalContext, handshakeTimeout)
 	err = tlsConnection.HandshakeContext(handshakeContext)
 	stopHandshake()
 	if err != nil {
-		return Message{}, fmt.Errorf("distribution source authentication failed: %w", err)
+		return fetchFailure(totalContext, Message{}, fmt.Errorf("distribution source authentication failed: %w", err))
 	}
 	if err := writeRequest(tlsConnection, request); err != nil {
-		return Message{}, fmt.Errorf("write distribution request: %w", err)
+		return fetchFailure(totalContext, Message{}, fmt.Errorf("write distribution request: %w", err))
 	}
 	response, err := readResponse(tlsConnection)
 	if err != nil {
-		return response, fmt.Errorf("read distribution response: %w", err)
+		return fetchFailure(totalContext, response, fmt.Errorf("read distribution response: %w", err))
 	}
 	var trailing [1]byte
 	if count, trailingErr := tlsConnection.Read(trailing[:]); count != 0 ||
 		(trailingErr != nil && !errors.Is(trailingErr, io.EOF)) {
-		return Message{}, errors.New("distribution response has trailing bytes or an unclean close")
+		return fetchFailure(totalContext, Message{}, errors.New("distribution response has trailing bytes or an unclean close"))
+	}
+	if contextErr := totalContext.Err(); contextErr != nil {
+		return Message{}, contextErr
 	}
 	return response, nil
+}
+
+// fetchFailure retains a partial response only for a live exchange, where its
+// transport-observed object digest may justify State's one bounded BY_DIGEST retry.
+func fetchFailure(ctx context.Context, response Message, err error) (Message, error) {
+	if contextErr := ctx.Err(); contextErr != nil {
+		return Message{}, contextErr
+	}
+	return response, err
 }
 
 // Serve owns the configured bounded TLS listener until cancellation or

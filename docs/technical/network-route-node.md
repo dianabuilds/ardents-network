@@ -400,6 +400,12 @@ The current contract does not promise seamless rotation or that an already
 established TLS connection is immediately interrupted when a certificate
 expires.
 
+A finite Source fetch binds dial, handshake, response, and terminal TLS close
+to the caller's total exchange context. Cancellation closes an established
+connection and discards any partially received Object Digest; State cannot
+start a BY_DIGEST fallback from a canceled exchange. A live partial response
+may retain its transport-observed selector for the one bounded fallback.
+
 ## Node and Resource lifecycle
 
 Node consumes narrow authenticated State and Duty facts, then moves a local
