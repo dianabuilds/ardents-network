@@ -36,6 +36,7 @@ func TestClosedForwardingStartRejectsMissingDependenciesBeforeOpeningResources(t
 		omit func(*Config)
 	}{
 		{"current route", func(config *Config) { config.Authority.CurrentRoute = nil }},
+		{"current profile", func(config *Config) { config.Authority.CurrentProfile = nil }},
 		{"current duty", func(config *Config) { config.CurrentDuty = nil }},
 		{"admission", func(config *Config) { config.VerifyAdmission = nil }},
 		{"replenishment", func(config *Config) { config.Replenish = nil }},
@@ -47,7 +48,10 @@ func TestClosedForwardingStartRejectsMissingDependenciesBeforeOpeningResources(t
 			closeErr := errors.New("host close failed")
 			host := &startupHost{err: closeErr}
 			config := Config{Profile: Profile{Root: root}, Host: host,
-				Authority:       authority.Source{CurrentRoute: func() (state.ClosedRouteView, error) { return state.ClosedRouteView{}, nil }},
+				Authority: authority.Source{
+					CurrentRoute:   func() (state.ClosedRouteView, error) { return state.ClosedRouteView{}, nil },
+					CurrentProfile: func() (state.ClosedProfileView, bool) { return state.ClosedProfileView{}, false },
+				},
 				CurrentDuty:     func() (state.NodeDuty, error) { return state.NodeDuty{}, nil },
 				VerifyAdmission: func(route.ClosedRoleReceiver) route.ClosedAdmissionVerifier { return nil },
 				Replenish:       func(route.ClosedRoleReceiver, *replay.Ledger) route.ClosedForwardingReplenisher { return nil },

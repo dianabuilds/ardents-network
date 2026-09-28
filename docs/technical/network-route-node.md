@@ -30,7 +30,8 @@ closes the exact spend-root lease once; an initialization failure retains both
 its initial cause and any cleanup cause. Node validates the local profile and
 address, then opens and transfers a shared Hosting handle. The role owns that
 handle's late close after its accepted producers and Carrier readers join.
-The forwarding Start boundary checks its borrowed State, admission, clock and
+The forwarding Start boundary checks both current Route and current Profile
+State callbacks, plus its admission, clock and
 endpoint callbacks before opening receiving resources. If those dependencies
 are incomplete, it closes the transferred Hosting handle and retains its
 close result. Issuer, Resolution, Introduction and JOIN likewise check their
