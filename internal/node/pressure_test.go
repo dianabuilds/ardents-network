@@ -88,6 +88,30 @@ func TestEmergencyPressureDrainsAndExitsWithoutNewAdmission(t *testing.T) {
 	}
 }
 
+func TestEmergencyPressureDoesNotReportCompletedExitWhenDrainFails(t *testing.T) {
+	drainErr := errors.New("role drain failed")
+	var events []Event
+	config := runtimeConfig{Config: Config{Emit: func(_ context.Context, event Event) error {
+		events = append(events, event)
+		return nil
+	}}, now: func() time.Time { return time.Unix(100, 0).UTC() }}
+	machine := stateMachine{current: stateReady}
+	server := &dutyHandle{Stop: func() {}, Drain: func(context.Context) error { return drainErr }}
+	result, err := withdrawForResourcePressure(config, &machine, server, state.NodeDuty{Assignment: "rendezvous"})
+	if result.State != "FAILED" || !errors.Is(err, drainErr) {
+		t.Fatalf("resource withdrawal = %+v, %v", result, err)
+	}
+	var resourceStates []string
+	for _, event := range events {
+		if event.Kind == "resource" {
+			resourceStates = append(resourceStates, event.State)
+		}
+	}
+	if len(resourceStates) != 1 || resourceStates[0] != "DRAIN" {
+		t.Fatalf("resource states after failed drain = %v, want DRAIN without EXIT", resourceStates)
+	}
+}
+
 func TestResourcePressureDeadlineHasSafeLifecycleReason(t *testing.T) {
 	fixture := newLifecycleFixture(t)
 	events := make(chan Event, 32)

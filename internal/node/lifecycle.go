@@ -141,14 +141,7 @@ func runDuty(ctx context.Context, config runtimeConfig, machine *stateMachine, s
 				nextResourceEvidence = now.Add(time.Second)
 			}
 			if pressure == pressureDrain {
-				if err := emitResourceState(config, current, "DRAIN", "resource pressure crossed an emergency threshold"); err != nil {
-					return fail(config, machine, server, "external evidence channel failed", err)
-				}
-				result, err := withdraw(config, machine, server, current, "resource pressure crossed an emergency threshold")
-				if exitErr := emitResourceState(config, current, "EXIT", "resource drain completed"); exitErr != nil {
-					return result, errors.Join(err, exitErr)
-				}
-				return result, err
+				return withdrawForResourcePressure(config, machine, server, current)
 			}
 			if pressure == pressureProtect && !protected {
 				server.Protect(true)
@@ -176,6 +169,18 @@ func runDuty(ctx context.Context, config runtimeConfig, machine *stateMachine, s
 			}
 		}
 	}
+}
+
+func withdrawForResourcePressure(config runtimeConfig, machine *stateMachine, server *dutyHandle, snapshot state.NodeDuty) (Result, error) {
+	const reason = "resource pressure crossed an emergency threshold"
+	if err := emitResourceState(config, snapshot, "DRAIN", reason); err != nil {
+		return fail(config, machine, server, "external evidence channel failed", err)
+	}
+	result, err := withdraw(config, machine, server, snapshot, reason)
+	if err != nil {
+		return result, err
+	}
+	return result, emitResourceState(config, snapshot, "EXIT", "resource drain completed")
 }
 
 func emitResourceDiagnostic(config runtimeConfig, snapshot state.NodeDuty, at time.Time, sample resource.Sample) error {

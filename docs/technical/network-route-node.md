@@ -430,6 +430,9 @@ shutdown, and owned issuer/Entry root close errors propagate to the lifecycle
 result. Node may emit `DRAINING` while cleanup is attempted, but it must move to
 `FAILED` and must not publish `WITHDRAWN` if any required cleanup fails or its
 result is unavailable.
+For emergency resource pressure, Node emits resource `DRAIN` before stopping
+the duty and resource `EXIT` only after a successful withdrawal. A failed drain
+emits lifecycle `FAILED` without claiming that resource exit completed.
 
 Resource measurement is Linux-only until another native Adapter is selected
 and measured. Unsupported platforms refuse rather than silently reporting
