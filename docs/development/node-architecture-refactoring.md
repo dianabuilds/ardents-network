@@ -4,9 +4,9 @@ Status: **current ownership plan**. The product scope, threat model, accepted
 ADRs, [Network/Node technical owner](../technical/network-route-node.md), and
 GitHub issues govern behavior and delivery. This document records code
 boundaries, not a second task ledger. The initial source graph was checked
-against `dev` at `51b38337` on 2026-09-27. The current boundaries and file
-inventory below were checked against `dev` at `c2126de2` on 2026-09-28;
-individual integration receipts remain in Git history.
+against `dev` at `51b38337` on 2026-09-27. The current ownership, shutdown
+order, and test layout below were rechecked against `dev` at `8063040b` on
+2026-09-28; individual integration receipts remain in Git history.
 Installed systemd/cgroup evidence remains a later shared qualification
 milestone.
 The [C0 component reconstruction](c0-component-reconstruction.md) and
@@ -44,26 +44,31 @@ Node process composer  -------->  selected role owner
         +--> process event and terminal result
 ```
 
-Route owns wire, authenticated Carrier, bridge state, and receiving operations;
-it neither selects a Node duty nor closes a role's durable root. Credential
-owns issuer key and token operations; the Node issuer role owns their listener
-and late root close after workers join. State alone authenticates current
-duty/profile/recipient views. Resource owns measurement and the shared Hosting
-ledger; Node decides whether to protect or drain. No child imports the root.
+Route owns wire, authenticated Carrier, bridge state, and receiving admission,
+queue, credit, and JOIN operations. Its client and credential packages also
+recheck copied State authority at their use points. Route neither selects a
+Node duty nor closes a role's durable root. Credential owns issuer key and
+token operations; the Node issuer role owns their listener and late root close
+after workers join. State alone authenticates current duty/profile/recipient
+views. Resource owns measurement and the provider-period ledger primitive;
+`node/hosting` owns the opened ledger handle and shared reservation policy.
+Node decides whether to protect or drain. No child imports the root.
 
 ## Source and resource map
 
-At the checked base the Node root had 52 production files. `runtimeConfig`
-embedded all of `Config`; every role could read unrelated local settings.
-Five production callers used `serveClosedOuter` and its serialized writer.
-The first boundary places that operation in `internal/node/outer`; the
-accepted connection's final physical close result stays with each role's
-accept loop.
-After the process-test audit, the root contains 22 production files and 29
-test files. `duty_server.go` holds both role dispatch and its narrow supervision
-handle; `process_config.go` keeps public inputs beside the process's retained
-runtime state; `lifecycle_event.go` keeps event/result values beside their
-bounded emitter. Platform-specific event writers remain separate files.
+At the initial checked base the Node root had 52 production files.
+`runtimeConfig` embedded all of `Config`, and the roles could read unrelated
+process settings. Five production callers used `serveClosedOuter` and its
+serialized writer. That accepted-connection lifetime now belongs to
+`internal/node/outer`; the final physical close result remains with each
+receiving role's accept loop.
+
+The current root keeps process composition, admission, pressure, events and
+terminal cleanup. `duty_server.go` holds role dispatch and its narrow
+supervision handle; `process_config.go` keeps public inputs beside the
+process's retained runtime state; `lifecycle_event.go` keeps event/result
+values beside their bounded emitter. Platform-specific event writers remain
+separate files. File counts are navigation evidence, not an extraction target.
 
 | Owner | Inputs and state | Stop and final result |
 | --- | --- | --- |
@@ -87,6 +92,11 @@ also belong to Hosting.
 The child borrows current State, authority, token policy and endpoint validation
 through explicit dependencies, never `runtimeConfig`. It rechecks State at each
 existing admission point and cannot accept a plan-supplied peer or key.
+Route's receiving channel owns queued-frame accounting and credit. The Node
+forwarding link drains those channels into child lanes and owns its downstream
+writers. A change to either side of that boundary needs one agreed contract
+and one implementer per affected package so that admission and retained
+resources remain accounted for across the handoff.
 The root files named `forwarding.go`, `issuer.go`, `resolution.go`,
 `introduction.go`, and `join.go` are process adapters: they validate the selected
 local profile, choose its listen address and map each child handle to lifecycle
@@ -148,10 +158,10 @@ its pure window calculation runs on both platforms. Linux-only tests use the
 network work. Process lifecycle, admission, identity, pressure and event tests
 remain beside their production owners; component behavior tests live in the
 role packages.
-The root has 18 Linux-tagged test files and its child packages have 12:
-nine in forwarding, two in issuer and one in hosting. The root's journal
-writer uses a Linux Unix socket; its actual TCP/TLS and QUIC process tests
-retain the selected Linux role-root and Hosting fixtures. The pure root
+The root's Linux-tagged tests exercise its journal Unix socket, actual
+TCP/TLS and QUIC processes, selected role roots and Hosting fixtures.
+Forwarding, issuer and hosting keep their Linux-only Carrier, root and ledger
+tests beside those component owners. The pure root
 admission projection case now lives in untagged `admission_test.go`; the
 direct bootstrap adjacency table lives with forwarding. Forwarding's
 in-memory bootstrap acceptance, projection fixture and fake Host/listener
@@ -231,12 +241,13 @@ that installed evidence.
 
 ## Coordination and integration
 
-The Node owner works in the main checkout on `codex/node-decomposition`; the
-Endpoint owner works in its separately registered worktree (current path in
-`C:\Users\vitek\code\ardents-coordination\endpoint.md`). Both read the
-same coordination directory outside their worktrees before a new slice, a
-shared interface edit, or integration. Assign exactly one implementer to
-each bounded Route, Credential, common-command, or shared-interface change.
+The Node owner integrates ready slices in the main `dev` checkout. Endpoint,
+Route and Network owners work in their separately registered worktrees;
+their current paths and active slices are recorded in
+`C:\Users\vitek\code\ardents-coordination\`. All owners read that shared
+directory outside their worktrees before a new slice, a shared interface edit,
+or integration. Assign exactly one implementer to each bounded Route,
+Credential, common-command, or shared-interface change.
 Independent work does not wait for a reply. Integrate only named, locally
 verified commits into `dev`; preserve unfinished work in its original tree
 and resolve combined failures at their actual owner. A passing component
