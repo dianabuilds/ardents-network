@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
+	"github.com/dianabuilds/ardents-network/internal/endpoint/publication"
 	"github.com/dianabuilds/ardents-network/internal/network/duty"
 	routecarrier "github.com/dianabuilds/ardents-network/internal/route/carrier"
 	"github.com/dianabuilds/ardents-network/internal/route/client"
@@ -25,7 +26,7 @@ func TestTextPublicationRefreshRetriesConcurrentRoleCommit(t *testing.T) {
 		t.Fatal(err)
 	}
 	owner.mu.Lock()
-	oldSource, refresh := owner.source.currentLocked(), owner.publication.refresh.current()
+	oldSource, refresh := owner.source.currentLocked(), owner.publication.refresh.Current()
 	owner.mu.Unlock()
 	if oldSource == nil || refresh == nil {
 		t.Fatal("published registration has no Source or refresh owner")
@@ -43,10 +44,10 @@ func TestTextPublicationRefreshRetriesConcurrentRoleCommit(t *testing.T) {
 	owner.mu.Unlock()
 	timer := time.NewTimer(1200 * time.Millisecond)
 	select {
-	case <-refresh.done:
+	case <-refresh.Done:
 		timer.Stop()
 		_ = writer.Close()
-		t.Fatalf("transient local-role commit ended refresh: %v", owner.publication.refresh.outcome(refresh))
+		t.Fatalf("transient local-role commit ended refresh: %v", owner.publication.refresh.Outcome(refresh))
 	case <-timer.C:
 	}
 	if err := writer.Close(); err != nil {
@@ -100,7 +101,7 @@ func TestTextPublicationAutomaticallyRefreshesAndRetiresPredecessor(t *testing.T
 				t.Fatal(err)
 			}
 			owner.mu.Lock()
-			refresh, originalAt, originalExpiry := owner.publication.refresh.current(), first.refreshAt, first.request.Expiry
+			refresh, originalAt, originalExpiry := owner.publication.refresh.Current(), first.refreshAt, first.request.Expiry
 			owner.mu.Unlock()
 			if refresh == nil || originalAt != first.createdAt.Add(300*time.Second) || time.Until(originalAt) > 298*time.Second {
 				t.Fatal("verified publication did not schedule its bounded refresh")
@@ -110,7 +111,7 @@ func TestTextPublicationAutomaticallyRefreshesAndRetiresPredecessor(t *testing.T
 				owner.startRefreshLocked(first)
 				owner.publication.signalRegistrationsLocked()
 			}
-			sameScheduler := owner.publication.refresh.current() == refresh
+			sameScheduler := owner.publication.refresh.Current() == refresh
 			unchangedBounds := first.refreshAt == originalAt && first.request.Expiry == originalExpiry
 			owner.mu.Unlock()
 			if !sameScheduler || !unchangedBounds {
@@ -132,7 +133,7 @@ func TestTextPublicationAutomaticallyRefreshesAndRetiresPredecessor(t *testing.T
 			withdrawErr := owner.withdrawIntroduction(t.Context())
 			owner.mu.Lock()
 			owner.resolution = nil
-			stillScheduled := owner.publication.refresh.current() == refresh && refresh.context.Err() == nil
+			stillScheduled := owner.publication.refresh.Current() == refresh && refresh.Context.Err() == nil
 			owner.mu.Unlock()
 			if withdrawErr == nil || !stillScheduled {
 				t.Fatal("refused withdrawal stopped automatic refresh")
@@ -273,7 +274,7 @@ func TestTextPublicationAutomaticallyRefreshesAndRetiresPredecessor(t *testing.T
 				t.Fatal(err)
 			}
 			select {
-			case <-refresh.done:
+			case <-refresh.Done:
 			default:
 				t.Fatal("withdrawal did not join refresh")
 			}
@@ -282,7 +283,7 @@ func TestTextPublicationAutomaticallyRefreshesAndRetiresPredecessor(t *testing.T
 				owner.startRefreshLocked(second)
 				owner.publication.signalRegistrationsLocked()
 			}
-			stopped := owner.publication.refresh.current() == refresh && refresh.context.Err() != nil && !owner.publication.pair.openingInProgressLocked() && owner.resolution == nil &&
+			stopped := owner.publication.refresh.Current() == refresh && refresh.Context.Err() != nil && !owner.publication.pair.openingInProgressLocked() && owner.resolution == nil &&
 				owner.publication.pair.registration == nil && owner.publication.pair.pendingRegistration == nil
 			owner.mu.Unlock()
 			if !stopped {
@@ -308,7 +309,7 @@ func TestTextPublicationRefreshExpiresPermissionWithoutResurrection(t *testing.T
 				t.Fatal(err)
 			}
 			owner.mu.Lock()
-			refresh := owner.publication.refresh.current()
+			refresh := owner.publication.refresh.Current()
 			expires := owner.tokens.Permission.Accepted.NotAfter
 			first.refreshAt = time.Now().Add(-time.Second)
 			if refresh == nil || expires.IsZero() {
@@ -319,12 +320,12 @@ func TestTextPublicationRefreshExpiresPermissionWithoutResurrection(t *testing.T
 			owner.publication.signalRegistrationsLocked()
 			owner.mu.Unlock()
 			select {
-			case <-refresh.done:
+			case <-refresh.Done:
 			case <-time.After(10 * time.Second):
 				t.Fatal("expired permission did not finish scheduled refresh")
 			}
 			owner.mu.Lock()
-			retired := owner.publication.pair.registration == nil && owner.publication.pair.previousRegistration == nil && owner.publication.refresh.outcome(refresh) != nil
+			retired := owner.publication.pair.registration == nil && owner.publication.pair.previousRegistration == nil && owner.publication.refresh.Outcome(refresh) != nil
 			owner.mu.Unlock()
 			if !retired {
 				t.Fatal("expired permission retained accepting refresh readiness")
@@ -349,8 +350,8 @@ func waitRefreshCondition(t *testing.T, owner *dutyContext, condition func() boo
 		owner.mu.Lock()
 		ok := condition()
 		var err error
-		refresh := owner.publication.refresh.current()
-		err = owner.publication.refresh.outcome(refresh)
+		refresh := owner.publication.refresh.Current()
+		err = owner.publication.refresh.Outcome(refresh)
 		owner.mu.Unlock()
 		if ok {
 			return
@@ -397,7 +398,7 @@ func TestTextRefreshRetainsOriginalCleanupFailure(t *testing.T) {
 	var releaseOnce sync.Once
 	releaseRefresh := func() { releaseOnce.Do(func() { close(release) }) }
 	t.Cleanup(releaseRefresh)
-	flight := owner.publication.refresh.start(ctx, func(*publicationRefresh) { <-release })
+	flight := owner.publication.refresh.Start(ctx, func(*publication.Refresh) { <-release })
 	owner.mu.Lock()
 	reported := make(chan string, 1)
 	owner.publication.refreshFailure = func(failure string) { reported <- failure }
@@ -413,7 +414,7 @@ func TestTextRefreshRetainsOriginalCleanupFailure(t *testing.T) {
 		t.Fatal("refresh failure did not report its fixed category")
 	}
 	releaseRefresh()
-	if err := owner.publication.refresh.join(flight); !errors.Is(err, failed) {
+	if err := owner.publication.refresh.Join(flight); !errors.Is(err, failed) {
 		t.Fatalf("refresh lifecycle lost cleanup failure: %v", err)
 	}
 	if _, err := owner.beginJob(endpoint, broker.Administration); err == nil {
@@ -431,11 +432,11 @@ func TestTextRefreshRetainsOriginalCleanupFailure(t *testing.T) {
 
 func TestTextRefreshFailureStagePreservesUnderlyingCause(t *testing.T) {
 	cause := errors.New("source preparation failed")
-	failure := refreshFailureAt("rotation-source", cause)
-	if refreshFailureStage(failure) != "rotation-source" || !errors.Is(failure, cause) {
+	failure := publication.RefreshFailureAt("rotation-source", cause)
+	if publication.RefreshFailureStage(failure) != "rotation-source" || !errors.Is(failure, cause) {
 		t.Fatalf("refresh stage did not retain classification and cause: %v", failure)
 	}
-	if refreshFailureStage(cause) != "rotation" {
+	if publication.RefreshFailureStage(cause) != "rotation" {
 		t.Fatal("uncategorized refresh failure received a fabricated stage")
 	}
 }

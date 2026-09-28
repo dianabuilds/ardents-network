@@ -74,18 +74,18 @@ func TestTextPublicationLossBeforeAcknowledgementRetiresRecipients(t *testing.T)
 					}
 					gate.arm(t)
 					owner.mu.Lock()
-					refresh := owner.publication.refresh.current()
+					refresh := owner.publication.refresh.Current()
 					first.refreshAt = time.Now().Add(-time.Second)
 					owner.publication.signalRegistrationsLocked()
 					owner.mu.Unlock()
 					select {
 					case <-gate.held:
-					case <-refresh.done:
-						cause := owner.publication.refresh.outcome(refresh)
+					case <-refresh.Done:
+						cause := owner.publication.refresh.Outcome(refresh)
 						t.Fatalf("refresh ended before replacement Store commit: %v", cause)
 					case <-time.After(10 * time.Second):
 						owner.mu.Lock()
-						cause, registered := owner.publication.refresh.outcome(refresh), owner.publication.pair.pendingRegistration != nil && owner.publication.pair.pendingRegistration != first
+						cause, registered := owner.publication.refresh.Outcome(refresh), owner.publication.pair.pendingRegistration != nil && owner.publication.pair.pendingRegistration != first
 						owner.mu.Unlock()
 						t.Fatalf("replacement did not reach Store commit before ACK: registered=%t refresh=%v", registered, cause)
 					}
@@ -110,7 +110,7 @@ func TestTextPublicationLossBeforeAcknowledgementRetiresRecipients(t *testing.T)
 					}
 					gate.open()
 					select {
-					case <-refresh.done:
+					case <-refresh.Done:
 					case <-time.After(10 * time.Second):
 						t.Fatal("failed publication did not join refresh")
 					}
@@ -123,7 +123,7 @@ func TestTextPublicationLossBeforeAcknowledgementRetiresRecipients(t *testing.T)
 					}
 					owner.mu.Lock()
 					retired := owner.publication.pair.registration == nil && owner.publication.pair.pendingRegistration == nil && owner.publication.pair.previousRegistration == nil && !second.published
-					cause := owner.publication.refresh.outcome(refresh)
+					cause := owner.publication.refresh.Outcome(refresh)
 					owner.mu.Unlock()
 					if !retired || failure != "context revoke" && cause == nil {
 						t.Fatalf("late ACK retained readiness or lost failure: retired=%t cause=%v", retired, cause)

@@ -2,15 +2,23 @@
 
 package endpoint
 
-// publication is the single local owner of one context's publication
+import "github.com/dianabuilds/ardents-network/internal/endpoint/publication"
+
+// publicationOwner is the single local owner of one context's publication
 // state: the Registration pair lifecycle, the refresh scheduler identity, the
 // installed Publisher startup/drain barriers, and the two fixed failure
 // reporting callbacks. Like every Context owner, the pair state carries no
 // mutex of its own: its ...Locked methods run under dutyContext.mu. Only the
-// refresh lifecycle keeps a private mutex for scheduler identity.
-type publication struct {
+// refresh lifecycle keeps a private mutex for scheduler identity, which now
+// lives in the publication subpackage.
+//
+// The owner type is named publicationOwner rather than publication so the root
+// can import the publication subpackage (the refresh scheduler mechanism)
+// without a package-name collision; the dutyContextState field stays
+// `publication`, so every owner.publication selector is unchanged.
+type publicationOwner struct {
 	pair              publicationPairLifecycle
-	refresh           publicationRefreshLifecycle
+	refresh           publication.RefreshLifecycle
 	starting          bool
 	drain             chan struct{}
 	refreshFailure    func(string)
@@ -21,7 +29,7 @@ type publication struct {
 // It refuses while a start is already in flight, the pair is draining, or a
 // registration is already current; on success it opens the drain channel the
 // run's producers will watch. The caller holds dutyContext.mu.
-func (publication *publication) beginStartLocked() bool {
+func (publication *publicationOwner) beginStartLocked() bool {
 	if publication.starting || publication.pair.drainingLocked() || publication.pair.currentLocked() != nil {
 		return false
 	}
@@ -32,7 +40,7 @@ func (publication *publication) beginStartLocked() bool {
 
 // endStartLocked releases the startup barrier. The drain channel stays open
 // for the retained run's producers until withdrawal or retirement closes it.
-func (publication *publication) endStartLocked() {
+func (publication *publicationOwner) endStartLocked() {
 	publication.starting = false
 }
 
@@ -40,7 +48,7 @@ func (publication *publication) endStartLocked() {
 // draining first, the drain barrier closes next, and registration change
 // waiters plus the refresh scheduler are signalled last. The caller holds
 // dutyContext.mu and has already verified that no drain is in progress.
-func (publication *publication) beginDrainLocked() {
+func (publication *publicationOwner) beginDrainLocked() {
 	publication.pair.beginDrainLocked()
 	close(publication.drain)
 	publication.signalRegistrationsLocked()
@@ -48,14 +56,14 @@ func (publication *publication) beginDrainLocked() {
 
 // signalRegistrationsLocked wakes registration change waiters and the refresh
 // scheduler in one transition. The caller holds dutyContext.mu.
-func (publication *publication) signalRegistrationsLocked() {
+func (publication *publicationOwner) signalRegistrationsLocked() {
 	publication.pair.signalLocked()
-	publication.refresh.wake()
+	publication.refresh.Wake()
 }
 
 // stopRefresh terminates the refresh scheduler identity and discards its
 // terminal cause; refresh failures are published by the refresh owner itself,
 // and Context shutdown only joins resource cleanup.
-func (publication *publication) stopRefresh() {
-	_ = publication.refresh.stop()
+func (publication *publicationOwner) stopRefresh() {
+	_ = publication.refresh.Stop()
 }

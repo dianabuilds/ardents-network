@@ -5,6 +5,7 @@ package endpoint
 import (
 	"errors"
 
+	"github.com/dianabuilds/ardents-network/internal/endpoint/publication"
 	"github.com/dianabuilds/ardents-network/internal/endpoint/tokens"
 )
 
@@ -13,7 +14,7 @@ import (
 // stopDutyContextChildrenLocked returns, the context is closed and every
 // captured child has already received cancellation.
 type dutyContextRetirement struct {
-	refresh             *publicationRefreshRetirement
+	refresh             *publication.RefreshRetirement
 	publication         *publicationPairRetirement
 	registrationOpening *registrationFlight
 	introduction        *rolePrefixRetirement
@@ -31,7 +32,7 @@ type dutyContextRetirement struct {
 // dutyContext-owned; extracted owners clear their own state through stop.
 func (owner *dutyContext) stopDutyContextChildrenLocked() *dutyContextRetirement {
 	retirement := &dutyContextRetirement{}
-	retirement.refresh = owner.publication.refresh.stopAsync()
+	retirement.refresh = owner.publication.refresh.StopAsync()
 	retirement.publication = owner.publication.pair.stopLocked()
 	owner.publication.signalRegistrationsLocked()
 	retirement.exchanges = owner.introduction.exchanges.stopLocked()
@@ -76,7 +77,7 @@ func (retirement *dutyContextRetirement) join() error {
 	// Refresh terminal causes are published by their own owner. Context
 	// shutdown must join that owner, but only resource cleanup failures belong
 	// in the Context Close result.
-	_ = retirement.refresh.join()
+	_ = retirement.refresh.Join()
 	var outcome error
 	outcome = errors.Join(outcome, retirement.publication.join())
 	outcome = errors.Join(outcome, retirement.introduction.closePrefix())

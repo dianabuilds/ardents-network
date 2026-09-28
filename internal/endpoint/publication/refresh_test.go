@@ -1,6 +1,6 @@
 //go:build linux
 
-package endpoint
+package publication
 
 import (
 	"context"
@@ -12,17 +12,17 @@ import (
 
 func TestTextPublicationRefreshLifecycleStartsOnceAndRepeatedStopJoins(t *testing.T) {
 	const callers = 16
-	var lifecycle publicationRefreshLifecycle
+	var lifecycle RefreshLifecycle
 	var starts atomic.Int32
 	started := make(chan struct{}, callers)
 	stopping := make(chan struct{}, 1)
 	cleanup := make(chan struct{})
 	var cleanupOnce sync.Once
 	releaseCleanup := func() { cleanupOnce.Do(func() { close(cleanup) }) }
-	run := func(flight *publicationRefresh) {
+	run := func(flight *Refresh) {
 		starts.Add(1)
 		started <- struct{}{}
-		<-flight.context.Done()
+		<-flight.Context.Done()
 		stopping <- struct{}{}
 		<-cleanup
 	}
@@ -30,16 +30,16 @@ func TestTextPublicationRefreshLifecycleStartsOnceAndRepeatedStopJoins(t *testin
 	t.Cleanup(func() {
 		cancel()
 		releaseCleanup()
-		_ = lifecycle.stop()
+		_ = lifecycle.Stop()
 	})
-	flights := make([]*publicationRefresh, callers)
+	flights := make([]*Refresh, callers)
 	var group sync.WaitGroup
 	for index := range callers {
 		group.Add(1)
 		go func() {
 			defer group.Done()
-			flights[index] = lifecycle.start(ctx, run)
-			lifecycle.wake()
+			flights[index] = lifecycle.Start(ctx, run)
+			lifecycle.Wake()
 		}()
 	}
 	group.Wait()
@@ -57,8 +57,8 @@ func TestTextPublicationRefreshLifecycleStartsOnceAndRepeatedStopJoins(t *testin
 		}
 	}
 	stopped := make(chan error, 2)
-	go func() { stopped <- lifecycle.stop() }()
-	go func() { stopped <- lifecycle.stop() }()
+	go func() { stopped <- lifecycle.Stop() }()
+	go func() { stopped <- lifecycle.Stop() }()
 	select {
 	case <-stopping:
 	case <-time.After(time.Second):
@@ -75,8 +75,8 @@ func TestTextPublicationRefreshLifecycleStartsOnceAndRepeatedStopJoins(t *testin
 			t.Fatal(err)
 		}
 	}
-	lifecycle.wake()
-	if got := lifecycle.start(ctx, run); got != flights[0] || starts.Load() != 1 {
+	lifecycle.Wake()
+	if got := lifecycle.Start(ctx, run); got != flights[0] || starts.Load() != 1 {
 		t.Fatal("wake or start after Stop replaced the terminal scheduler")
 	}
 }

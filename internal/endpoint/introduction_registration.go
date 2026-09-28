@@ -82,7 +82,7 @@ func (owner *dutyContext) openRegistration(ctx context.Context, revision uint64,
 	}
 	prefix := owner.introduction.prefix.currentLocked()
 	prior, _ := owner.publication.pair.previousLocked()
-	if err != nil || owner.surface != broker.Administration || prefix == nil || owner.introduction.prefix.openingInProgressLocked() || previous != nil && (prior != nil || !owner.publication.refresh.matchesContext(ctx) || previous.recipient == nil || revision <= previous.request.Revision) || owner.tokens.Permission == nil || !now.Before(expiry) || expiry.After(now.Add(600*time.Second)) {
+	if err != nil || owner.surface != broker.Administration || prefix == nil || owner.introduction.prefix.openingInProgressLocked() || previous != nil && (prior != nil || !owner.publication.refresh.MatchesContext(ctx) || previous.recipient == nil || revision <= previous.request.Revision) || owner.tokens.Permission == nil || !now.Before(expiry) || expiry.After(now.Add(600*time.Second)) {
 		owner.mu.Unlock()
 		return nil, errors.New("text Publisher registration owner unavailable")
 	}

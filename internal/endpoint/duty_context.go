@@ -17,7 +17,7 @@ import (
 // verified launch boundary may give a worker a Principal and Grant.
 type dutyContextState struct {
 	operationFailure  func(string)
-	publication       publication
+	publication       publicationOwner
 	introduction      introduction
 	descriptorHistory descriptorhistory.History
 	responder         responderPrefixLifecycle
