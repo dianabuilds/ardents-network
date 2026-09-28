@@ -8,9 +8,9 @@ import (
 	"errors"
 	"time"
 
+	applicationadministration "github.com/dianabuilds/ardents-network/internal/application/administration"
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
-	interfacev1administration "github.com/dianabuilds/ardents-network/internal/application/interfacev1/administration"
-	interfacev2connection "github.com/dianabuilds/ardents-network/internal/application/interfacev2/connection"
+	applicationconnection "github.com/dianabuilds/ardents-network/internal/application/connection"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/service/instance"
 )
@@ -163,12 +163,12 @@ func (endpoint *endpoint) runInterfaces(ctx context.Context, config ClosedPartic
 		return err
 	}
 	defer func() { outcome = errors.Join(outcome, publisher.Close()) }()
-	readServer, err := interfacev2connection.Listen(config.ApplicationAddress, reader)
+	readServer, err := applicationconnection.Listen(config.ApplicationAddress, reader)
 	if err != nil {
 		return err
 	}
 	defer func() { outcome = errors.Join(outcome, readServer.Close()) }()
-	adminServer, err := interfacev1administration.Listen(config.AdministrationAddress, publisher)
+	adminServer, err := applicationadministration.Listen(config.AdministrationAddress, publisher)
 	if err != nil {
 		return err
 	}

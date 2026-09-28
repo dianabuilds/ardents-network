@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	interfacev2connection "github.com/dianabuilds/ardents-network/internal/application/interfacev2/connection"
+	applicationconnection "github.com/dianabuilds/ardents-network/internal/application/connection"
 	"github.com/dianabuilds/ardents-network/internal/application/streamqualification"
 	"github.com/dianabuilds/ardents-network/internal/qualification"
 )
@@ -19,7 +19,7 @@ import (
 type retainedQualificationMemoryStream struct {
 	inbound   *retainedQualificationMemoryDirection
 	outbound  *retainedQualificationMemoryDirection
-	done      chan interfacev2connection.Outcome
+	done      chan applicationconnection.Outcome
 	closeOnce sync.Once
 }
 
@@ -116,8 +116,8 @@ type retainedQualificationMemoryOwner struct {
 func (owner *retainedQualificationMemoryOwner) pair() (*retainedQualificationMemoryStream, *retainedQualificationMemoryStream) {
 	leftToRight := newRetainedQualificationMemoryDirection()
 	rightToLeft := newRetainedQualificationMemoryDirection()
-	left := &retainedQualificationMemoryStream{inbound: rightToLeft, outbound: leftToRight, done: make(chan interfacev2connection.Outcome, 1)}
-	right := &retainedQualificationMemoryStream{inbound: leftToRight, outbound: rightToLeft, done: make(chan interfacev2connection.Outcome, 1)}
+	left := &retainedQualificationMemoryStream{inbound: rightToLeft, outbound: leftToRight, done: make(chan applicationconnection.Outcome, 1)}
+	right := &retainedQualificationMemoryStream{inbound: leftToRight, outbound: rightToLeft, done: make(chan applicationconnection.Outcome, 1)}
 	owner.mu.Lock()
 	owner.streams = append(owner.streams, left, right)
 	owner.mu.Unlock()
@@ -166,7 +166,7 @@ func (stream *retainedQualificationMemoryStream) CloseInput() error {
 	return nil
 }
 
-func (stream *retainedQualificationMemoryStream) Done() <-chan interfacev2connection.Outcome {
+func (stream *retainedQualificationMemoryStream) Done() <-chan applicationconnection.Outcome {
 	return stream.done
 }
 
@@ -174,7 +174,7 @@ func (stream *retainedQualificationMemoryStream) Close() error {
 	stream.closeOnce.Do(func() {
 		stream.inbound.close()
 		stream.outbound.close()
-		stream.done <- interfacev2connection.Outcome{Class: interfacev2connection.CleanClose}
+		stream.done <- applicationconnection.Outcome{Class: applicationconnection.CleanClose}
 		close(stream.done)
 	})
 	return nil
@@ -225,7 +225,7 @@ func TestTextPublisherBuildsRetainedQualificationSetAcrossFourReaders(t *testing
 		readerWork.Wait()
 		streamOwner.closeAndAssert(t)
 	}()
-	delivered := make(chan interfacev2connection.Stream, readerCount*streamsPerReader)
+	delivered := make(chan applicationconnection.Stream, readerCount*streamsPerReader)
 	readers := make(chan readerResult, readerCount)
 	for reader := 0; reader < readerCount; reader++ {
 		reader := reader
@@ -251,7 +251,7 @@ func TestTextPublisherBuildsRetainedQualificationSetAcrossFourReaders(t *testing
 	}
 
 	wanted := readerCount * streamsPerReader
-	readerByID := make(map[uint32]interfacev2connection.Stream, wanted)
+	readerByID := make(map[uint32]applicationconnection.Stream, wanted)
 	for range readerCount {
 		result := <-readers
 		if result.err != nil {
@@ -264,7 +264,7 @@ func TestTextPublisherBuildsRetainedQualificationSetAcrossFourReaders(t *testing
 			readerByID[bound.ID] = bound.Stream
 		}
 	}
-	publisherByID := make(map[uint32]interfacev2connection.Stream, wanted)
+	publisherByID := make(map[uint32]applicationconnection.Stream, wanted)
 	for range wanted {
 		stream := <-delivered
 		var hello [45]byte

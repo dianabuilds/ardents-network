@@ -6,8 +6,8 @@ import (
 	"context"
 	"errors"
 
+	applicationadministration "github.com/dianabuilds/ardents-network/internal/application/administration"
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
-	interfacev1administration "github.com/dianabuilds/ardents-network/internal/application/interfacev1/administration"
 	"github.com/dianabuilds/ardents-network/internal/service/targetlink"
 )
 
@@ -62,4 +62,4 @@ func (owner *administration) PublishedLink(ctx context.Context) (link string, ou
 	return targetlink.Encode(run.link)
 }
 
-var _ interfacev1administration.PublishedLinkProvider = (*administration)(nil)
+var _ applicationadministration.PublishedLinkProvider = (*administration)(nil)

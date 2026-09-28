@@ -15,7 +15,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
-	applicationconnection "github.com/dianabuilds/ardents-network/internal/application/interfacev2/connection"
+	applicationconnection "github.com/dianabuilds/ardents-network/internal/application/connection"
 	"github.com/dianabuilds/ardents-network/internal/application/textdocument"
 	"github.com/dianabuilds/ardents-network/internal/endpoint/service"
 	"github.com/dianabuilds/ardents-network/internal/network/state"

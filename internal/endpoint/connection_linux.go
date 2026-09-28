@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
-	interfacev2connection "github.com/dianabuilds/ardents-network/internal/application/interfacev2/connection"
+	applicationconnection "github.com/dianabuilds/ardents-network/internal/application/connection"
 	"github.com/dianabuilds/ardents-network/internal/application/textdocument"
 	"github.com/dianabuilds/ardents-network/internal/endpoint/service"
 	"github.com/dianabuilds/ardents-network/internal/route/client"
@@ -45,13 +45,13 @@ func (owner *dutyContext) openConnection() (*connection, error) {
 	return &connection{context: owner}, nil
 }
 
-func (owner *connection) Open(ctx context.Context, request interfacev2connection.Request) (_ interfacev2connection.Stream, outcome error) {
-	if owner == nil || ctx == nil || ctx.Err() != nil || request.Destination != interfacev2connection.TargetLink {
+func (owner *connection) Open(ctx context.Context, request applicationconnection.Request) (_ applicationconnection.Stream, outcome error) {
+	if owner == nil || ctx == nil || ctx.Err() != nil || request.Destination != applicationconnection.TargetLink {
 		return nil, errors.New("text destination unavailable")
 	}
 	target, err := owner.context.endpoint.TargetFromLink(request.Value)
 	if errors.Is(err, ErrAlphaDestinationRetired) {
-		return nil, interfacev2connection.Refuse(interfacev2connection.Outcome{Class: interfacev2connection.ServiceUnavailable, Reason: err.Error()})
+		return nil, applicationconnection.Refuse(applicationconnection.Outcome{Class: applicationconnection.ServiceUnavailable, Reason: err.Error()})
 	}
 	if err != nil {
 		return nil, errors.New("text destination unavailable")
@@ -177,14 +177,14 @@ type readResult struct {
 	output *io.PipeReader
 	cancel context.CancelFunc
 	joined chan struct{}
-	done   chan interfacev2connection.Outcome
+	done   chan applicationconnection.Outcome
 	err    error
 }
 
 func newReadResult(owner *connection, pending chan struct{}, lease *broker.ActiveSession, cancel context.CancelFunc, worker *qualifiedWorker, bounded context.Context, finish func(), serviceStream *service.Stream, joinCaller func(), report func(string)) *readResult {
 	request, input := io.Pipe()
 	output, response := io.Pipe()
-	result := &readResult{input: input, output: output, cancel: cancel, joined: make(chan struct{}), done: make(chan interfacev2connection.Outcome, 1)}
+	result := &readResult{input: input, output: output, cancel: cancel, joined: make(chan struct{}), done: make(chan applicationconnection.Outcome, 1)}
 	go func() {
 		defer close(result.joined)
 		defer owner.finish(pending)
@@ -237,9 +237,9 @@ func newReadResult(owner *connection, pending chan struct{}, lease *broker.Activ
 		}
 		err = errors.Join(err, lease.Context().Err())
 		result.err = err
-		outcome := interfacev2connection.Outcome{Class: interfacev2connection.CleanClose}
+		outcome := applicationconnection.Outcome{Class: applicationconnection.CleanClose}
 		if err != nil {
-			outcome = interfacev2connection.Outcome{Class: interfacev2connection.ServiceUnavailable, Reason: "text read did not complete"}
+			outcome = applicationconnection.Outcome{Class: applicationconnection.ServiceUnavailable, Reason: "text read did not complete"}
 		}
 		request.CloseWithError(err)
 		response.CloseWithError(err)
@@ -286,7 +286,7 @@ func canceledBeforeRequestCleanupOnly(err error) bool {
 func (stream *readResult) Read(body []byte) (int, error)              { return stream.output.Read(body) }
 func (stream *readResult) Write(body []byte) (int, error)             { return stream.input.Write(body) }
 func (stream *readResult) CloseInput() error                          { return stream.input.Close() }
-func (stream *readResult) Done() <-chan interfacev2connection.Outcome { return stream.done }
+func (stream *readResult) Done() <-chan applicationconnection.Outcome { return stream.done }
 func (stream *readResult) Close() error {
 	stream.cancel()
 	stream.input.CloseWithError(context.Canceled)

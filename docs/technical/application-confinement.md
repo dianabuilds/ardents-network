@@ -398,7 +398,7 @@ surviving-boundary claim; testing a sibling worker does not prove otherwise.
 
 | Owner | Responsibility / permitted imports when implemented |
 |---|---|
-| internal/application/interfacev2/connection | Version-2 local Connection grammar, typed destination, bounded stream and conformance; standard library only |
+| internal/application/connection | Version-2 local Connection grammar, typed destination, bounded stream and conformance; standard library only |
 | internal/application/textdocument | Fixed text request/response, bounded snapshots and safe presentation; the version-2 Connection contract and standard library |
 | internal/endpoint | Verified installed-unit/socket identity, local job lifecycle, opaque launch receipt, Broker composition and existing Network/Service orchestration; use existing owned imports and the two selected Application contracts |
 | cmd/ardents-text | Thin trusted text UI and fixed worker entrypoints calling textdocument; standard library and the selected text/Connection owners |

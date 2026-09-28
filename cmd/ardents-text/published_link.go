@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/application/interfacev1/administration"
+	"github.com/dianabuilds/ardents-network/internal/application/administration"
 )
 
 // showPublishedLink owns one explicit destination presentation. The value is

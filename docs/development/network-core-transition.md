@@ -189,7 +189,7 @@ Introduction обслуживает установление связи; Service
 
 - Route: `internal/route/closed_lane.go`, `EncodeClosedLaneFrame`, ARDP;
 - Service Connection: `internal/service/connection/record.go`, `Read`/`Write`;
-- локальный Application: `internal/application/interfacev2/connection/transport_frames.go`, AAI3.
+- локальный Application: `internal/application/connection/transport_frames.go`, AAI3.
 
 Поэтому план **не** заменяет эти три уровня одним новым «бинарным протоколом».
 Route отвечает за перенос/допуск lanes, Connection — за логическую сессию,
@@ -870,7 +870,7 @@ Code cards с ещё не принятым контрактом явно усл�
 | Обязанность / реальные остатки | Сохраняемое поведение и целевой владелец | Ограниченный результат |
 |---|---|---|
 | Удалённые `internal/endpoint/alpha_control.go`, `alpha_control_test.go` и exclusive fixture больше не оставляют `AcceptAlphaCorpusControl` или ACA2 intake на Endpoint | Историческое чтение/floors остаются у naming/alpha как ADR-0088 compatibility reader; ACA2 control inspection снята по ADR-0110 вместе с командой `inspect-alpha-corpus` | Отдельно подтверждены отсутствие production caller и removal exact deadcode allowance; исторические readers, floors и command refusals сохранены |
-| `internal/endpoint/service_administration.go` → `publisher_attachment_acquisition.go` → `transit_credential_acquisition.go` / `transit_acquisition.go`; внешний caller пока только `publisher_start_test.go` | Current `text_administration_linux.go` и shared interfacev1/administration, roots и cleanup не теряются | #233: exact keep/remove карта одной старой Publisher-цепочки, затем отдельные removal cards по owner |
+| `internal/endpoint/service_administration.go` → `publisher_attachment_acquisition.go` → `transit_credential_acquisition.go` / `transit_acquisition.go`; внешний caller пока только `publisher_start_test.go` | Current `text_administration_linux.go` и shared `internal/application/administration`, roots и cleanup не теряются | #233: exact keep/remove карта одной старой Publisher-цепочки, затем отдельные removal cards по owner |
 | `internal/naming/resolution` удалён по ADR-0100 вместе с тестами пакета; `cmd/ardents/name_retirement_fixture_test.go` стал bounded-фикстурой без транспортов | Names, Namespace/custody/floors и zero-effect command refusal; future Name authority не выбирается | #234 закрыт: модуль снят, zero-effect oracle сохранён на bounded durable-root фикстуре; OHTTP-зависимости ушли из go.mod после последнего use |
 | Удалённые `internal/route/node_carrier_listener.go` и старый `ListenNodeCarrier`; рядом сохранены `closed_shared_carrier.go` / `closed_role_carrier.go` | Current closed TCP/TLS/QUIC listeners, authentication, TLS/decoder helpers с реальными consumers | #250: listener и его exclusive helpers removed; не весь Route |
 | `internal/endpoint/text_service_binding.go`, `text_service_stream.go`, `protected_service_tls.go`, `text_service_route_recovery.go`; callers в Job/workload composition | Connection composition отделена от text Application и Job; сохраняются cancel, authentication, readiness, Join | #236 после #233: одна owner/interface/import/name карта четырёх файлов, исполнимые переносы по одному owner |

@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
-	interfacev2connection "github.com/dianabuilds/ardents-network/internal/application/interfacev2/connection"
+	applicationconnection "github.com/dianabuilds/ardents-network/internal/application/connection"
 	"github.com/dianabuilds/ardents-network/internal/service/targetlink"
 )
 
@@ -36,7 +36,7 @@ func TestTextConnectionRequiresSeparateAuthorityAndExactDestination(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, request := range []interfacev2connection.Request{{Destination: interfacev2connection.Name, Value: "reserved"}, {Destination: interfacev2connection.TargetLink, Value: "malformed"}, {Destination: interfacev2connection.TargetLink, Value: foreign}} {
+	for _, request := range []applicationconnection.Request{{Destination: applicationconnection.Name, Value: "reserved"}, {Destination: applicationconnection.TargetLink, Value: "malformed"}, {Destination: applicationconnection.TargetLink, Value: foreign}} {
 		if stream, err := owner.Open(t.Context(), request); err == nil || stream != nil {
 			t.Fatal("invalid destination accepted")
 		}
@@ -62,7 +62,7 @@ func TestTextConnectionRetiresAlphaDestinationBeforeEffects(t *testing.T) {
 		}
 	})
 	path := filepath.Join(t.TempDir(), "connection.sock")
-	server, err := interfacev2connection.Listen(path, owner)
+	server, err := applicationconnection.Listen(path, owner)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -71,12 +71,12 @@ func TestTextConnectionRetiresAlphaDestinationBeforeEffects(t *testing.T) {
 			t.Error(err)
 		}
 	})
-	stream, err := interfacev2connection.Dial(t.Context(), path, interfacev2connection.Request{Destination: interfacev2connection.TargetLink, Value: "ardents-alpha://retained.example"})
+	stream, err := applicationconnection.Dial(t.Context(), path, applicationconnection.Request{Destination: applicationconnection.TargetLink, Value: "ardents-alpha://retained.example"})
 	if stream != nil || err == nil || err.Error() != "service unavailable: alpha service link is retired" {
 		t.Fatalf("retired Alpha destination = (%v, %v)", stream, err)
 	}
-	var refusal interfacev2connection.SetupRefusalError
-	if !errors.As(err, &refusal) || refusal.Outcome().Class != interfacev2connection.ServiceUnavailable {
+	var refusal applicationconnection.SetupRefusalError
+	if !errors.As(err, &refusal) || refusal.Outcome().Class != applicationconnection.ServiceUnavailable {
 		t.Fatalf("retired Alpha destination lost its setup class: %v", err)
 	}
 	contextOwner.mu.Lock()
@@ -135,7 +135,7 @@ func TestTextConnectionJoinsCancelledInstalledStartup(t *testing.T) {
 				helpers.Wait()
 			})
 			helpers.Go(func() {
-				stream, err := owner.Open(caller, interfacev2connection.Request{Destination: interfacev2connection.TargetLink, Value: destination})
+				stream, err := owner.Open(caller, applicationconnection.Request{Destination: applicationconnection.TargetLink, Value: destination})
 				if stream != nil {
 					stream.Close()
 				}

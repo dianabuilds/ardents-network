@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
-	interfacev2connection "github.com/dianabuilds/ardents-network/internal/application/interfacev2/connection"
+	applicationconnection "github.com/dianabuilds/ardents-network/internal/application/connection"
 	"github.com/dianabuilds/ardents-network/internal/endpoint/introduction"
 	"github.com/dianabuilds/ardents-network/internal/endpoint/worker"
 	routecarrier "github.com/dianabuilds/ardents-network/internal/route/carrier"
@@ -108,7 +108,7 @@ func exerciseInstalledWorkerRecovery(t *testing.T, ctx context.Context, carrier 
 	interruptedAt := make(chan time.Time, 1)
 
 	go func() {
-		publisherDone <- publisherWorker.serveFrom(ctx, func(lifetime context.Context, delivered chan<- interfacev2connection.Stream) error {
+		publisherDone <- publisherWorker.serveFrom(ctx, func(lifetime context.Context, delivered chan<- applicationconnection.Stream) error {
 			accepted, err := publisher.receiveIntroduction(lifetime, publisherWorker.job)
 			if err != nil {
 				opened <- publisherOpening{err: err}
@@ -198,7 +198,7 @@ func exerciseInstalledWorkerRecovery(t *testing.T, ctx context.Context, carrier 
 }
 
 type installedRecoveryStream struct {
-	interfacev2connection.Stream
+	applicationconnection.Stream
 	reader io.Reader
 }
 
