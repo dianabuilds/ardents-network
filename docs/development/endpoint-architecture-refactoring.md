@@ -266,8 +266,9 @@ hashes:
 
 Per Node's 2026-09-28 status review, each remaining slice is recorded by
 state owner, interface, shutdown order, affected tests, and integration gate
-— not by file counts or unmeasured percentages. Structural acceptance of #45
-is distinct from the #309/#311 bug fixes, protocol choices, and installed
+— not by file counts or unmeasured percentages. Structural acceptance of this
+Endpoint decomposition is distinct from the #309/#311 bug fixes, protocol
+choices, and installed
 systemd/cgroup qualification.
 
 ### L1 — dutyContext dissolution (phase 2; the remaining structural core)
