@@ -55,6 +55,9 @@ func Validate(local Profile, source authority.Source, snapshot state.NodeDuty, n
 
 // Start transfers all accepted children and durable roots to one server.
 func Start(config Config) (*Server, error) {
+	if config.Authority.CurrentRoute == nil || config.CurrentDuty == nil || config.VerifyAdmission == nil || config.Now == nil {
+		return nil, errors.New("closed Introduction dependencies are incomplete")
+	}
 	local, snapshot := config.Profile, config.Snapshot
 	receiver, available := config.Authority.Receiver(snapshot, ardp.PurposeIntroduction, config.Now())
 	if !available {

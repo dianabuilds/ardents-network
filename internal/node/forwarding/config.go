@@ -60,6 +60,10 @@ func Start(config Config) (*Handle, error) {
 	if host == nil {
 		return nil, errors.New("closed forwarding host allowance is unavailable")
 	}
+	if config.Authority.CurrentRoute == nil || config.CurrentDuty == nil || config.VerifyAdmission == nil ||
+		config.Replenish == nil || config.LiteralEndpoint == nil || config.Now == nil {
+		return nil, errors.Join(errors.New("closed forwarding dependencies are incomplete"), host.Close())
+	}
 	receiving, err := openReceivingResources(local.Root, replay.Binding{NetworkID: receiver.NetworkID, ProfileDigest: receiver.ProfileDigest,
 		ReceiverNodeID: receiver.NodeID, ReceiverDutyGeneration: receiver.DutyGeneration}, config.Now)
 	if err != nil {

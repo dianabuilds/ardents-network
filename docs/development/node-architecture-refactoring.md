@@ -110,6 +110,12 @@ Admission and startup use one private ordered role selector. Admission checks
 the captured State view at its single poll time; startup rechecks the current
 State view with its live clock before transferring resources to the selected
 role. Profile validation and process failure decisions remain in the root.
+Each role's `Start` checks the borrowed callbacks it will invoke before
+opening its own roots or listener. Forwarding receives a Host handle already
+opened by Node; an incomplete dependency set closes that handle and returns
+both the prerequisite error and any close error. The other roles acquire their
+own resources only after this check. These are role-local contracts rather
+than a shared generic validator.
 Within the forwarding package, the listener owns accepted producers; the
 session set owns each retained outgoing Carrier reader and its child frame
 queues; a link joins one child lane to that session. They share one shutdown

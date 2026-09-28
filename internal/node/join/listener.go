@@ -73,6 +73,9 @@ func Validate(local Profile, source authority.Source, snapshot state.NodeDuty, n
 }
 
 func Start(config Config) (*Handle, error) {
+	if config.Authority.CurrentRoute == nil || config.CurrentDuty == nil || config.OpenHost == nil || config.Now == nil {
+		return nil, errors.New("closed JOIN dependencies are incomplete")
+	}
 	local, snapshot := config.Profile, config.Snapshot
 	receiver, available := config.Authority.Receiver(snapshot, ardp.PurposeDataJoin, config.Now())
 	if !available {

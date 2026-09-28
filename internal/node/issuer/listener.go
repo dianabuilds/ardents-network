@@ -47,6 +47,10 @@ type Handle struct {
 }
 
 func Start(config Config) (*Handle, error) {
+	if config.Authority.CurrentRoute == nil || config.Authority.CurrentProfile == nil || config.CurrentDuty == nil ||
+		config.VerifyAdmission == nil || config.Now == nil {
+		return nil, errors.New("closed issuer dependencies are incomplete")
+	}
 	local, snapshot := config.Profile, config.Snapshot
 	releases := &releaseErrors{}
 	current := func() (state.ClosedProfileView, bool) {

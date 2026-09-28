@@ -67,6 +67,9 @@ func Validate(local ClosedResolutionProfile, source authority.Source, snapshot s
 }
 
 func Start(config Config) (*Handle, error) {
+	if config.Authority.CurrentRoute == nil || config.CurrentDuty == nil || config.VerifyAdmission == nil || config.Now == nil {
+		return nil, errors.New("closed resolution dependencies are incomplete")
+	}
 	local, snapshot := config.Profile, config.Snapshot
 	receiver, available := config.Authority.Receiver(snapshot, ardp.PurposeReachability, config.Now())
 	if !available {

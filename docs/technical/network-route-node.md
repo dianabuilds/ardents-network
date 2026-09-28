@@ -30,6 +30,11 @@ closes the exact spend-root lease once; an initialization failure retains both
 its initial cause and any cleanup cause. Node validates the local profile and
 address, then opens and transfers a shared Hosting handle. The role owns that
 handle's late close after its accepted producers and Carrier readers join.
+The forwarding Start boundary checks its borrowed State, admission, clock and
+endpoint callbacks before opening receiving resources. If those dependencies
+are incomplete, it closes the transferred Hosting handle and retains its
+close result. Issuer, Resolution, Introduction and JOIN likewise check their
+borrowed callbacks before opening their own roots or listeners.
 The Node Hosting adapter supplies class-2 reservation policy without giving
 the role process pressure or the provider-period ledger's global ownership.
 For a generation-3 TCP Node Carrier, terminal retirement closes the owned

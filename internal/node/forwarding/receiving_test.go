@@ -1,13 +1,71 @@
 package forwarding
 
 import (
+	"context"
 	"errors"
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/network/state"
+	"github.com/dianabuilds/ardents-network/internal/node/authority"
+	"github.com/dianabuilds/ardents-network/internal/resource"
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/replay"
 )
+
+type startupHost struct {
+	closes int
+	err    error
+}
+
+func (*startupHost) Sample(context.Context, time.Duration) (resource.HostingSample, error) {
+	return resource.HostingSample{}, nil
+}
+
+func (host *startupHost) Close() error {
+	host.closes++
+	return host.err
+}
+
+func TestClosedForwardingStartRejectsMissingDependenciesBeforeOpeningResources(t *testing.T) {
+	for _, test := range []struct {
+		name string
+		omit func(*Config)
+	}{
+		{"current route", func(config *Config) { config.Authority.CurrentRoute = nil }},
+		{"current duty", func(config *Config) { config.CurrentDuty = nil }},
+		{"admission", func(config *Config) { config.VerifyAdmission = nil }},
+		{"replenishment", func(config *Config) { config.Replenish = nil }},
+		{"endpoint", func(config *Config) { config.LiteralEndpoint = nil }},
+		{"clock", func(config *Config) { config.Now = nil }},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			root := filepath.Join(t.TempDir(), "receiving")
+			closeErr := errors.New("host close failed")
+			host := &startupHost{err: closeErr}
+			config := Config{Profile: Profile{Root: root}, Host: host,
+				Authority:       authority.Source{CurrentRoute: func() (state.ClosedRouteView, error) { return state.ClosedRouteView{}, nil }},
+				CurrentDuty:     func() (state.NodeDuty, error) { return state.NodeDuty{}, nil },
+				VerifyAdmission: func(route.ClosedRoleReceiver) route.ClosedAdmissionVerifier { return nil },
+				Replenish:       func(route.ClosedRoleReceiver, *replay.Ledger) route.ClosedForwardingReplenisher { return nil },
+				LiteralEndpoint: func(string) bool { return true }, Now: time.Now}
+			test.omit(&config)
+			running, err := Start(config)
+			if running != nil || err == nil || !strings.Contains(err.Error(), "dependencies are incomplete") || !errors.Is(err, closeErr) {
+				t.Fatalf("Start = %v, %v", running, err)
+			}
+			if host.closes != 1 {
+				t.Fatalf("host closed %d times", host.closes)
+			}
+			if _, err := os.Stat(root); !errors.Is(err, os.ErrNotExist) {
+				t.Fatalf("receiving root created before dependency check: %v", err)
+			}
+		})
+	}
+}
 
 func TestClosedForwardingReceivingRollbackRetainsInitializationAndCleanupFailures(t *testing.T) {
 	for _, test := range []struct {
