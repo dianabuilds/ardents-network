@@ -25,6 +25,7 @@ type networkState struct {
 	resourceDone    chan struct{}
 	automaticDone   chan struct{}
 	serverErr       error
+	terminalErr     error
 	automaticErr    error
 	resourceErr     error
 	resourceProtect bool

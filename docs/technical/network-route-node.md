@@ -279,10 +279,16 @@ current Epoch's materialized identity, family, and validity window. Offline
 acceptance and Source-wave activation advance that duty through their shared
 active-decision commit. State holds the local role root while replacing the
 duty and publishing the successor, so another role owner cannot observe an
-unprotected transition. A failure before the durable distribution floor is
-committed restores the predecessor duty; loss of that guard retires the
-serving State owner. Once the floor commits, the successor duty stays with
-the recoverable active decision even if the final State pointer needs repair.
+unprotected transition. A failure before the durable distribution pointer is replaced restores the
+predecessor duty; loss of that guard retires the serving State owner. If the
+pointer rename succeeds but its directory sync fails, the visible floor is
+uncertain: the live State owner closes under its lock, cancels work, and
+rejects later Current reads and Source resolutions. The successor duty remains as
+a collision guard until Close; it is not rolled back to a possibly stale
+predecessor. Reopen verifies the journal floor and exact generation before
+starting the Source server, or refuses recovery. Once the floor commits
+without error, the successor duty stays with the recoverable active decision
+even if the final State pointer needs repair.
 State resolves the configured local role root once at Open, so later duty
 replacement and release use the same root if the process working directory
 changes.

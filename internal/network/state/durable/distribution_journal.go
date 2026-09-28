@@ -60,6 +60,10 @@ func (root *Root) LoadControl() (string, []byte, error) {
 }
 
 func (root *Root) CommitControl(name string, raw []byte) error {
+	return root.commitControlWithPointerSync(name, raw, syncDirectory)
+}
+
+func (root *Root) commitControlWithPointerSync(name string, raw []byte, sync func(string) error) error {
 	root.mu.Lock()
 	defer root.mu.Unlock()
 	if err := root.available(); err != nil {
@@ -82,7 +86,7 @@ func (root *Root) CommitControl(name string, raw []byte) error {
 		if !bytes.Equal(existing, raw) {
 			return errors.New("existing immutable control generation disagrees with supplied bytes")
 		}
-		return replacePointer(directory, "current", name)
+		return replacePointerWithSync(directory, "current", name, sync)
 	} else if !os.IsNotExist(readErr) {
 		return readErr
 	}
@@ -103,7 +107,7 @@ func (root *Root) CommitControl(name string, raw []byte) error {
 	if err := syncDirectory(generations); err != nil {
 		return err
 	}
-	return replacePointer(directory, "current", name)
+	return replacePointerWithSync(directory, "current", name, sync)
 }
 
 func pruneSupersededControl(directory, generations string) error {

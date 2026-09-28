@@ -7,6 +7,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/network/duty"
 	"github.com/dianabuilds/ardents-network/internal/network/epoch"
+	"github.com/dianabuilds/ardents-network/internal/network/state/durable"
 )
 
 const maximumSourceExposureHistory = 2
@@ -103,26 +104,41 @@ func (s *networkState) recoverDistributionActive(state distributionState) error 
 }
 
 func (s *networkState) commitDistribution(state distributionState) error {
+	return s.commitDistributionWithControl(state, s.storage.CommitControl)
+}
+
+func (s *networkState) commitDistributionWithControl(state distributionState, commit func(string, []byte) error) error {
+	if s.closed {
+		return errors.New("network state is closed")
+	}
 	raw := encodeDistributionState(state)
 	name := distributionDigest(raw)
-	if err := s.storage.CommitControl(name, raw); err != nil {
+	if err := commit(name, raw); err != nil {
+		if errors.Is(err, durable.ErrPointerSyncUncertain) {
+			s.terminalErr = fmt.Errorf("distribution control commit is uncertain: %w", err)
+			s.retireStateLocked()
+		}
 		return err
 	}
 	s.distribution = state
 	return nil
 }
 
-func (s *networkState) commitActiveDecision(decision epoch.Decision, state distributionState) (result error) {
+func (s *networkState) commitActiveDecision(decision epoch.Decision, state distributionState) error {
+	return s.commitActiveDecisionWithControl(decision, state, s.storage.CommitControl)
+}
+
+func (s *networkState) commitActiveDecisionWithControl(decision epoch.Decision, state distributionState, commit func(string, []byte) error) (result error) {
 	if s.config.sourceInfo.Serving && s.current == nil {
 		return errors.New("direct Source server has no current identity")
 	}
-	controlCommitted := false
+	restorePreviousDuty := true
 	if s.config.sourceInfo.Serving {
 		// Hold the role root across both publications. Other role owners cannot
 		// observe a gap between the old and successor Source duties.
 		roles, err := duty.OpenOperation(context.Background(), duty.Config{Root: s.config.localRoles, Clock: s.config.clock})
 		if err != nil {
-			s.retireServingSourceLocked()
+			s.retireStateLocked()
 			return err
 		}
 		defer func() { result = errors.Join(result, roles.Close()) }()
@@ -131,19 +147,19 @@ func (s *networkState) commitActiveDecision(decision epoch.Decision, state distr
 		if err := roles.Replace(producer, []duty.Duty{sourceServerDuty(decision)}); err != nil {
 			protected, guardErr := roles.Conflict(previous.Identity, previous.Family)
 			if guardErr != nil || !protected {
-				s.retireServingSourceLocked()
+				s.retireStateLocked()
 				return errors.Join(err, guardErr, errors.New("previous serving Source duty is unavailable"))
 			}
 			return err
 		}
 		defer func() {
-			if controlCommitted {
+			if !restorePreviousDuty {
 				return
 			}
 			if err := roles.Replace(producer, []duty.Duty{previous}); err != nil {
 				// The old decision may still be served. Retire this owner if its
 				// local collision guard could not be restored.
-				s.retireServingSourceLocked()
+				s.retireStateLocked()
 				result = errors.Join(result, fmt.Errorf("restore serving Source duty: %w", err))
 			}
 		}()
@@ -155,10 +171,15 @@ func (s *networkState) commitActiveDecision(decision epoch.Decision, state distr
 	if state.pendingDigest == decision.Header.Digest {
 		state.pendingDigest, state.pendingValidFrom = [32]byte{}, 0
 	}
-	if err := s.commitDistribution(state); err != nil {
+	if err := s.commitDistributionWithControl(state, commit); err != nil {
+		if errors.Is(err, durable.ErrPointerSyncUncertain) {
+			// The successor may already be the durable floor. Keep its
+			// collision guard while the retired owner refuses all work.
+			restorePreviousDuty = false
+		}
 		return err
 	}
-	controlCommitted = true
+	restorePreviousDuty = false
 	s.current = &decision
 	if s.pendingDecision != nil && s.pendingDecision.Header.Digest == decision.Header.Digest {
 		s.pendingDecision = nil
@@ -166,9 +187,9 @@ func (s *networkState) commitActiveDecision(decision epoch.Decision, state distr
 	return persistDecision(s.storage, decision, true)
 }
 
-// retireServingSourceLocked makes a lost local collision guard terminal for
-// this State owner. Callers hold s.mu; Close still joins the canceled work.
-func (s *networkState) retireServingSourceLocked() {
+// retireStateLocked makes an unsafe publication or lost role guard terminal.
+// Runtime callers hold s.mu; Open may call this before publishing the owner.
+func (s *networkState) retireStateLocked() {
 	s.closed = true
 	s.resourceProtect = true
 	if s.workCancel != nil {
