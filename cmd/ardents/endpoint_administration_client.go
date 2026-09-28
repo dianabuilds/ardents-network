@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"io"
 
-	"github.com/dianabuilds/ardents-network/internal/application/interfacev1/administration"
+	"github.com/dianabuilds/ardents-network/internal/application/administration"
 )
 
 func runHeadlessAdministration(ctx context.Context, operation, socket string, output io.Writer) error {

@@ -202,9 +202,9 @@ The Network audit candidate is the headless maintained product surface:
   Grant admission and session lifecycle;
 - the Network-owned server implementations of the selected typed local
   Application Interfaces in `internal/endpoint`: protected text Connection
-  under `internal/application/interfacev2/connection` and separately
+  under `internal/application/connection` and separately
   authorized Administration under
-  `internal/application/interfacev1/administration`;
+  `internal/application/administration`;
 - the enrollment-v3 headless artifact lane and the maintained deterministic,
   process, race, and fuzz profiles, the architecture gate, and purpose-named
   qualification profiles.
@@ -225,10 +225,10 @@ defined at activation by the [deep-audit method](../development/deep-audit.md).
 ## C0 Application Interface
 
 The maintained Connection surface is the typed v2 contract in
-`internal/application/interfacev2/connection`; its Target-Link request is
+`internal/application/connection`; its Target-Link request is
 admitted only by the protected text composition and does not authorize a
 generic workload. The maintained Administration surface remains the separate
-v1 contract in `internal/application/interfacev1/administration`. Each owns its
+v1 contract in `internal/application/administration`. Each owns its
 versioned local contract, bounds, lifecycle, outcome grammar, local transport,
 and conformance evidence. Network implements the server behavior in
 `internal/endpoint`, and maintained commands use only the selected interface

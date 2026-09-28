@@ -81,6 +81,10 @@ func (s *networkState) startSourceWave(now time.Time) ([2]int, time.Time, error)
 }
 
 func (s *networkState) completeSourceWave(started time.Time, base *epoch.Decision, results []sourceResult) (Snapshot, error) {
+	return s.completeSourceWaveWithConflictCommit(started, base, results, s.storage.CommitControl)
+}
+
+func (s *networkState) completeSourceWaveWithConflictCommit(started time.Time, base *epoch.Decision, results []sourceResult, commit func(string, []byte) error) (Snapshot, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	defer func() { s.refreshing = false }()
@@ -92,13 +96,13 @@ func (s *networkState) completeSourceWave(started time.Time, base *epoch.Decisio
 	}
 	summary := summarizeSourceWave(results)
 	if summary.collisionErr != nil {
-		if err := s.recordSourceConflict(started, summary.outcomes, summary.observedEpochs, summary.observedDigests); err != nil {
+		if err := s.recordSourceConflictWithControl(started, summary.outcomes, summary.observedEpochs, summary.observedDigests, commit); err != nil {
 			return Snapshot{}, err
 		}
 		return Snapshot{}, summary.collisionErr
 	}
 	if sourceConflict(summary.valid) {
-		if err := s.recordSourceConflict(started, summary.outcomes, summary.observedEpochs, summary.observedDigests); err != nil {
+		if err := s.recordSourceConflictWithControl(started, summary.outcomes, summary.observedEpochs, summary.observedDigests, commit); err != nil {
 			return Snapshot{}, err
 		}
 		return Snapshot{}, errors.New("sources exposed threshold-valid conflicting Epochs")
@@ -106,7 +110,7 @@ func (s *networkState) completeSourceWave(started time.Time, base *epoch.Decisio
 	if len(summary.valid) > 0 {
 		selected := newestSourceDecision(summary.valid)
 		if err := s.allowCandidateTransition(selected); err != nil {
-			if err := s.recordSourceConflict(started, summary.outcomes, summary.observedEpochs, summary.observedDigests); err != nil {
+			if err := s.recordSourceConflictWithControl(started, summary.outcomes, summary.observedEpochs, summary.observedDigests, commit); err != nil {
 				return Snapshot{}, err
 			}
 			return Snapshot{}, err
@@ -141,14 +145,14 @@ func (s *networkState) completeSourceWave(started time.Time, base *epoch.Decisio
 	return s.commitActiveSourceWave(now, selected, summary)
 }
 
-func (s *networkState) recordSourceConflict(now time.Time, outcomes [4]byte, epochs [4]uint64, digests [4][32]byte) error {
+func (s *networkState) recordSourceConflictWithControl(now time.Time, outcomes [4]byte, epochs [4]uint64, digests [4][32]byte, commit func(string, []byte) error) error {
 	state := s.distribution
 	state.observedEpochs, state.observedDigests = epochs, digests
 	if err := finishWaveState(&state, now, outcomes); err != nil {
 		return err
 	}
 	state.conflicting = true
-	return s.commitDistribution(state)
+	return s.commitDistributionWithControl(state, commit)
 }
 
 func sameGeneration(current, base *epoch.Decision) bool {

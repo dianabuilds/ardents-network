@@ -8,8 +8,8 @@ import (
 	"sync"
 	"unicode/utf8"
 
+	applicationadministration "github.com/dianabuilds/ardents-network/internal/application/administration"
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
-	interfacev1administration "github.com/dianabuilds/ardents-network/internal/application/interfacev1/administration"
 )
 
 // administration owns one explicit snapshot publication and its terminal
@@ -64,7 +64,7 @@ func (owner *administration) PublishSnapshot(ctx context.Context, snapshot []byt
 	if err := owner.authorize(ctx); err != nil {
 		return err
 	}
-	if len(snapshot) > interfacev1administration.MaximumSnapshotBytes || !utf8.Valid(snapshot) {
+	if len(snapshot) > applicationadministration.MaximumSnapshotBytes || !utf8.Valid(snapshot) {
 		return errors.New("text publication snapshot invalid")
 	}
 	owner.mu.Lock()
@@ -154,5 +154,5 @@ func (owner *administration) Close() error {
 	return owner.closeErr
 }
 
-var _ interfacev1administration.Interface = (*administration)(nil)
-var _ interfacev1administration.SnapshotPublisher = (*administration)(nil)
+var _ applicationadministration.Interface = (*administration)(nil)
+var _ applicationadministration.SnapshotPublisher = (*administration)(nil)

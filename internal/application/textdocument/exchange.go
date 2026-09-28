@@ -5,7 +5,7 @@ import (
 	"context"
 	"encoding/binary"
 	"errors"
-	"github.com/dianabuilds/ardents-network/internal/application/interfacev2/connection"
+	"github.com/dianabuilds/ardents-network/internal/application/connection"
 	"io"
 	"unicode/utf8"
 )

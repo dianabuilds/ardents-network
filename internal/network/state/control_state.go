@@ -117,6 +117,11 @@ func (s *networkState) commitDistributionWithControl(state distributionState, co
 		if errors.Is(err, durable.ErrPointerSyncUncertain) {
 			s.terminalErr = fmt.Errorf("distribution control commit is uncertain: %w", err)
 			s.retireStateLocked()
+		} else if state.conflicting && !s.distribution.conflicting {
+			// The conflict has already been verified. An ordinary
+			// pre-pointer failure cannot make the prior decision safe to serve.
+			s.terminalErr = fmt.Errorf("persist verified network state conflict: %w", err)
+			s.retireStateLocked()
 		}
 		return err
 	}

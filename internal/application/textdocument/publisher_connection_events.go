@@ -6,7 +6,7 @@ import (
 	"encoding/binary"
 	"errors"
 
-	"github.com/dianabuilds/ardents-network/internal/application/interfacev2/connection"
+	"github.com/dianabuilds/ardents-network/internal/application/connection"
 )
 
 func (owner *publisherConnections) fromService(event publisherEvent) error {

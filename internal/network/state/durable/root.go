@@ -17,6 +17,13 @@ const (
 	rootMarkerName = ".ardents-network-state-v1"
 	rootMarker     = "ardents-network-state-v1\n"
 	rootLockName   = ".ardents-network-state-lock"
+
+	// The root retains a marker, lease, generations directory, distribution
+	// directory, current pointer, and two ClosedProfile files per generation.
+	maximumRootStableEntries = 5 + 2*maximumStateGenerations
+	// Interrupted transactions can accumulate across crashes. Recovery scans a
+	// finite number before removing only the staging names it owns.
+	maximumOwnedStagingEntries = maximumStateGenerations
 )
 
 var generationName = regexp.MustCompile(`^[0-9a-f]{64}$`)
@@ -120,8 +127,14 @@ func prepareRoot(root string) error {
 		return err
 	}
 	generations := filepath.Join(root, "generations")
-	if err := os.MkdirAll(generations, 0o700); err != nil {
-		return fmt.Errorf("create generations directory: %w", err)
+	if info, err := os.Lstat(generations); os.IsNotExist(err) {
+		if err := os.Mkdir(generations, 0o700); err != nil {
+			return fmt.Errorf("create generations directory: %w", err)
+		}
+	} else if err != nil {
+		return fmt.Errorf("inspect generations directory: %w", err)
+	} else if !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
+		return errors.New("state generations root is not an owned directory")
 	}
 	if err := cleanupOwnedStaging(root, generations); err != nil {
 		return err
@@ -156,20 +169,84 @@ func ensureRootMarker(root string) error {
 }
 
 func cleanupOwnedStaging(root, generations string) error {
-	for directory, prefix := range map[string]string{root: ".current-", generations: ".stage-"} {
-		entries, err := readBoundedDirectory(directory, 128)
-		if err != nil {
-			return fmt.Errorf("scan owned state root: %w", err)
-		}
-		for _, entry := range entries {
-			if strings.HasPrefix(entry.Name(), prefix) {
-				if err := os.RemoveAll(filepath.Join(directory, entry.Name())); err != nil {
-					return fmt.Errorf("remove interrupted owned state %q: %w", entry.Name(), err)
-				}
-			}
+	rootStaging, err := scanRootStaging(root)
+	if err != nil {
+		return fmt.Errorf("scan owned state root: %w", err)
+	}
+	generationStaging, err := scanGenerationStaging(generations)
+	if err != nil {
+		return fmt.Errorf("scan state generations root: %w", err)
+	}
+	for _, name := range rootStaging {
+		if err := os.Remove(filepath.Join(root, name)); err != nil {
+			return fmt.Errorf("remove interrupted owned state %q: %w", name, err)
 		}
 	}
+	for _, name := range generationStaging {
+		if err := os.RemoveAll(filepath.Join(generations, name)); err != nil {
+			return fmt.Errorf("remove interrupted state generation %q: %w", name, err)
+		}
+	}
+	if len(generationStaging) != 0 {
+		return syncDirectory(generations)
+	}
 	return nil
+}
+
+func scanRootStaging(root string) ([]string, error) {
+	entries, err := readBoundedDirectory(root, maximumRootStableEntries+maximumOwnedStagingEntries)
+	if err != nil {
+		return nil, err
+	}
+	stable := 0
+	staging := make([]string, 0)
+	for _, entry := range entries {
+		name := entry.Name()
+		if !strings.HasPrefix(name, ".current-") && !strings.HasPrefix(name, ".closed-profile-") {
+			stable++
+			continue
+		}
+		info, err := entry.Info()
+		if err != nil {
+			return nil, fmt.Errorf("inspect staging %q: %w", name, err)
+		}
+		if !info.Mode().IsRegular() {
+			return nil, fmt.Errorf("owned staging %q is not a regular file", name)
+		}
+		staging = append(staging, name)
+	}
+	if stable > maximumRootStableEntries || len(staging) > maximumOwnedStagingEntries {
+		return nil, errors.New("state root exceeds its entry bound")
+	}
+	return staging, nil
+}
+
+func scanGenerationStaging(generations string) ([]string, error) {
+	entries, err := readBoundedDirectory(generations, maximumStateGenerations+maximumOwnedStagingEntries)
+	if err != nil {
+		return nil, err
+	}
+	committed := 0
+	staging := make([]string, 0)
+	for _, entry := range entries {
+		name := entry.Name()
+		if !strings.HasPrefix(name, ".stage-") {
+			committed++
+			continue
+		}
+		info, err := entry.Info()
+		if err != nil {
+			return nil, fmt.Errorf("inspect generation staging %q: %w", name, err)
+		}
+		if !info.IsDir() {
+			return nil, fmt.Errorf("generation staging %q is not a directory", name)
+		}
+		staging = append(staging, name)
+	}
+	if committed > maximumStateGenerations || len(staging) > maximumOwnedStagingEntries {
+		return nil, errors.New("state generations root exceeds its entry bound")
+	}
+	return staging, nil
 }
 
 func verifyRootWritable(root string) error {

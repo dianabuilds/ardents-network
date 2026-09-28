@@ -17,7 +17,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/application/interfacev2/connection"
+	"github.com/dianabuilds/ardents-network/internal/application/connection"
 )
 
 type echoOwner struct{ calls atomic.Int32 }

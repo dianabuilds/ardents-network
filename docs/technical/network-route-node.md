@@ -157,12 +157,13 @@ and Introduction sender orchestration. Shared credential-relay grammar and the
 standalone reachability Relay remain with their actual consumers; test-local
 reciprocal fixtures do not restore a production receiving path.
 The old Node-leg dial and client confirmation entrypoint are also absent.
-The v1 `ListenNodeCarrier` and its exclusive helpers are absent. Current Node duties use
-`ListenClosedSharedCarrier`; the direct role issuer uses
-`ListenClosedRoleCarrier`. Shared byte-lane and TLS/QUIC mechanics remain
-with those closed consumers. The v1 State/profile readers and reciprocal
-codec are separate compatibility questions and are not retired by this
-listener disposition.
+The v1 `ListenNodeCarrier` and its exclusive helpers are absent. Current Node
+duties, including the issuer, use `ListenClosedSharedCarrier`. The issuer
+passes that listener to Credential's admitted bootstrap server; its direct
+`ListenClosedRoleCarrier` branch has no current production Node caller. Shared
+byte-lane and TLS/QUIC mechanics remain with the closed consumers. The v1
+State/profile readers and reciprocal codec are separate compatibility
+questions and are not retired by this listener disposition.
 No retirement path inherits a duty,
 regenerates a key, resets a root or floor, converts state, or adopts foreign
 files. Compatibility readers and separately owned retirement surfaces remain
@@ -237,6 +238,19 @@ when the old accepted record remains on disk. A failed pre-rename conflict
 cannot be inferred from that old record after restart; recovery uses only
 verified persisted evidence.
 
+The durable State root can retain 64 immutable Epoch generations and two
+ClosedProfile files per accepted generation. Its root scan therefore admits
+five fixed entries plus those 128 profile entries, with a separate finite
+allowance of 64 interrupted staging files. The `generations` child admits 64
+committed directories and its own allowance of 64 staging directories.
+After taking the root lease, recovery checks both directory populations before
+cleanup, removes only regular `.current-*` and `.closed-profile-*` files at the
+root and `.stage-*` directories in `generations`, and syncs the changed
+directories. Unrelated entries remain untouched and count against the stable
+budget; an excess or unexpected staging type refuses recovery. This is
+physical recovery only: State still authenticates restored generations and
+retains its Direct Source collision guard before publishing a current decision.
+
 The ARDS1D4 distribution journal records one finite Source cycle. Its two
 `LATEST` attempt slots are 0 and 1; `BY_DIGEST` slots 2 and 3 use the same
 Source index plus 2. The persisted attempt byte has these meanings:
@@ -261,8 +275,11 @@ byte values and exact encoding across implementation refactors.
 
 A terminal automatic-refresh or resource-governor failure also makes
 State-owned Direct Source responses unavailable, including requests whose
-connections were already accepted. The resolver returns the existing busy
-status before materialization; Source still owns transport and framing.
+connections were already accepted. A persisted or recovered Network State
+conflict likewise makes `LATEST` and matching `BY_DIGEST` requests return the existing
+busy status without a digest or payload, while `Current` retains its
+conflicting diagnostic Snapshot. The resolver refuses before materialization;
+Source still owns transport and framing.
 
 ### State transition admissibility
 
@@ -279,6 +296,12 @@ evidence, and refuses later admission or automatic winner selection. Reopen
 recovers the same current/pending/conflict relation before State-dependent work
 can proceed. State retains one verified current Epoch decision and derives
 reader Snapshots from it; the Source wave uses that same decision as its base.
+If an ordinary pre-pointer failure prevents the first verified conflict record
+from committing, the live State owner retires under its lock: `Current`, Direct
+Source, and further admission refuse the prior decision, and `Wait` and `Close`
+retain the failure cause. The prior authenticated generation and journal remain
+the durable recovery evidence; a restart cannot infer the unrecorded conflict.
+The serving Source duty stays protected until the retired owner's joined Close.
 Every persisted current or pending generation is bound to its verified digest
 by its immutable directory name before it is restored. A Source bootstrap with
 no active predecessor never stages a future genesis: it records the complete

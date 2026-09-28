@@ -55,8 +55,8 @@ func TestArdentsLinuxClosureRetiresAAI2(t *testing.T) {
 		t.Fatalf("receipt = %+v", receipt)
 	}
 	for _, required := range []string{
-		ardentsModulePath + "/internal/application/interfacev1/administration",
-		ardentsModulePath + "/internal/application/interfacev2/connection",
+		ardentsModulePath + "/internal/application/administration",
+		ardentsModulePath + "/internal/application/connection",
 	} {
 		if !receipt.Dependencies[required] {
 			t.Errorf("Linux %s closure does not retain %s", receipt.Command, required)
@@ -217,7 +217,7 @@ func TestSelectedApplicationSeamsMatchTheirAdapters(t *testing.T) {
 	if listedDirectImports(t, root, "./cmd/ardents")[retiredConnection] {
 		t.Error("./cmd/ardents directly imports the retired generic AAI2 Connection client")
 	}
-	selectedConnection := "github.com/dianabuilds/ardents-network/internal/application/interfacev2/connection"
+	selectedConnection := "github.com/dianabuilds/ardents-network/internal/application/connection"
 	selectedAdapters := []string{"./cmd/ardents-text"}
 	if runtime.GOOS == "linux" {
 		selectedAdapters = append(selectedAdapters, "./internal/endpoint")
@@ -227,7 +227,7 @@ func TestSelectedApplicationSeamsMatchTheirAdapters(t *testing.T) {
 			t.Errorf("%s does not use the selected protected text Connection Module", packagePath)
 		}
 	}
-	administration := "github.com/dianabuilds/ardents-network/internal/application/interfacev1/administration"
+	administration := "github.com/dianabuilds/ardents-network/internal/application/administration"
 	administrationAdapters := []string{"./cmd/ardents"}
 	if runtime.GOOS == "linux" {
 		administrationAdapters = append(administrationAdapters, "./internal/endpoint")

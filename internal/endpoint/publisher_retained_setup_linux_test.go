@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	interfacev2connection "github.com/dianabuilds/ardents-network/internal/application/interfacev2/connection"
+	applicationconnection "github.com/dianabuilds/ardents-network/internal/application/connection"
 	"github.com/dianabuilds/ardents-network/internal/application/streamqualification"
 	"github.com/dianabuilds/ardents-network/internal/endpoint/service"
 	"github.com/dianabuilds/ardents-network/internal/node"
@@ -96,7 +96,7 @@ func TestTextPublisherBuildsRetainedQualificationSetAcrossFourReaders(t *testing
 	publisherJob.qualification = pubRun
 	publisherJob.workload = mustServiceWorkloadBounds(t, 64<<20, 64<<20)
 	publisherWorker := &qualifiedWorker{job: publisherJob}
-	delivered := make(chan interfacev2connection.Stream)
+	delivered := make(chan applicationconnection.Stream)
 	producerDone := make(chan error, 1)
 	go func() { producerDone <- publisherWorker.produceNetwork(ctx, delivered) }()
 
@@ -180,10 +180,10 @@ func TestTextPublisherBuildsRetainedQualificationSetAcrossFourReaders(t *testing
 		}(index, owner, readerJobs[index])
 	}
 
-	var readerStreams []interfacev2connection.Stream
-	var publisherStreams []interfacev2connection.Stream
-	readerStreamsByID := make(map[uint32]interfacev2connection.Stream, readerCount*streamsPerReader)
-	publisherStreamsByID := make(map[uint32]interfacev2connection.Stream, readerCount*streamsPerReader)
+	var readerStreams []applicationconnection.Stream
+	var publisherStreams []applicationconnection.Stream
+	readerStreamsByID := make(map[uint32]applicationconnection.Stream, readerCount*streamsPerReader)
+	publisherStreamsByID := make(map[uint32]applicationconnection.Stream, readerCount*streamsPerReader)
 	readersFinished := 0
 	producerFinished := false
 	var setupErr error

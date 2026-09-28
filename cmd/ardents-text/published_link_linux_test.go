@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/application/interfacev1/administration"
+	"github.com/dianabuilds/ardents-network/internal/application/administration"
 )
 
 type textLinkPeer struct{ publicationPeer }

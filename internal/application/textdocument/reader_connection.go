@@ -9,7 +9,7 @@ import (
 	"io"
 	"unicode/utf8"
 
-	"github.com/dianabuilds/ardents-network/internal/application/interfacev2/connection"
+	"github.com/dianabuilds/ardents-network/internal/application/connection"
 )
 
 // ReadWorkerConnection forwards one already-authorized Service Connection to

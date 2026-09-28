@@ -12,9 +12,9 @@ import (
 	"testing"
 	"time"
 
+	applicationadministration "github.com/dianabuilds/ardents-network/internal/application/administration"
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
-	interfacev1administration "github.com/dianabuilds/ardents-network/internal/application/interfacev1/administration"
-	applicationconnection "github.com/dianabuilds/ardents-network/internal/application/interfacev2/connection"
+	applicationconnection "github.com/dianabuilds/ardents-network/internal/application/connection"
 	"github.com/dianabuilds/ardents-network/internal/endpoint/worker"
 	"github.com/dianabuilds/ardents-network/internal/node"
 	routecarrier "github.com/dianabuilds/ardents-network/internal/route/carrier"
@@ -73,7 +73,7 @@ func exchangeInstalledAdministration(t *testing.T, carrier routecarrier.CarrierP
 		}
 	})
 	socket := filepath.Join(directory, "admin.sock")
-	server, err := interfacev1administration.Listen(socket, owner)
+	server, err := applicationadministration.Listen(socket, owner)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -144,8 +144,8 @@ func exchangeInstalledAdministration(t *testing.T, carrier routecarrier.CarrierP
 	if !retired {
 		t.Fatal("document returned before reader retirement")
 	}
-	outcome, err := interfacev1administration.Request(ctx, socket, interfacev1administration.Withdraw)
-	if err != nil || outcome != interfacev1administration.Withdrawn {
+	outcome, err := applicationadministration.Request(ctx, socket, applicationadministration.Withdraw)
+	if err != nil || outcome != applicationadministration.Withdrawn {
 		t.Fatalf("withdraw Administration: %s, %v", outcome, err)
 	}
 	select {

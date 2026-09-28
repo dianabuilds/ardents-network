@@ -7,7 +7,7 @@ import (
 	"io"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/application/interfacev2/connection"
+	"github.com/dianabuilds/ardents-network/internal/application/connection"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	"github.com/dianabuilds/ardents-network/internal/route/client"
 	"github.com/dianabuilds/ardents-network/internal/service/reachability"

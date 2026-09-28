@@ -2,17 +2,17 @@
   "schema": "ardents-source-ownership-v1",
   "owners": [
     "network",
-    "application-interface-v1",
+    "application-administration",
     "historical-evidence",
-    "application-interface-v2",
+    "application-connection",
     "text-application"
   ],
   "rules": [
     {
-      "id": "application-interface-v1",
-      "owner": "application-interface-v1",
+      "id": "application-administration",
+      "owner": "application-administration",
       "include_prefixes": [
-        "internal/application/interfacev1/"
+        "internal/application/administration/"
       ]
     },
     {
@@ -66,9 +66,9 @@
       "exclude_prefixes": [
         "docs/research/",
         "experiments/",
-        "internal/application/interfacev1/",
+        "internal/application/administration/",
         "tests/compatibility/",
-        "internal/application/interfacev2/",
+        "internal/application/connection/",
         "internal/application/textdocument/",
         "cmd/ardents-text/",
         "packaging/text-worker/",
@@ -79,10 +79,10 @@
       ]
     },
     {
-      "id": "application-interface-v2",
-      "owner": "application-interface-v2",
+      "id": "application-connection",
+      "owner": "application-connection",
       "include_prefixes": [
-        "internal/application/interfacev2/"
+        "internal/application/connection/"
       ]
     },
     {

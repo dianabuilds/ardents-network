@@ -8,9 +8,9 @@ or a complete Route/Node qualification.
 
 Although its directory is under `internal/application`, the Broker is
 Network-owned because the maintained headless Endpoint uses it for local-grant
-admission and session lifecycle. The sibling `interfacev1` directory has the
-distinct `application-interface-v1` owner: it freezes the local protocol used
-on both sides without owning either Network behavior or Browser presentation.
+admission and session lifecycle. The sibling `administration` and `connection`
+packages have separate owners and preserve their respective v1 and v2 local
+protocol identities without owning Endpoint behavior or Browser presentation.
 
 The selected closed successor's [workload](../product/protected-service-workload.md),
 [confinement](application-confinement.md) and [protocol](protected-route-protocol.md)
@@ -123,8 +123,8 @@ The local runtime has separate Modules and Interfaces:
 | Module | Interface responsibility | Implementation hidden from callers |
 |---|---|---|
 | internal/application/broker | Admit and consume one short-lived Local Grant capability for either connection or administration; revoke, drain, and close pending capabilities and active Connection leases; report generic/unqualified. | Capability generation, replay removal, expiry, commitments, admission-load accounting, and grant invalidation. |
-| internal/application/interfacev2/connection | Carry one typed Target-Link request and the fixed protected text exchange under AAI3; refuse reserved Name requests and join terminal/cancellation cleanup. It is not a generic binary Application interface. | State, Entry, Target, Route, worker authority, confinement, Service keys, retries, fallback, and Network diagnostics. |
-| internal/application/interfacev1/administration | Carry one separately authorized `publish` or `withdraw` request and its closed success/unavailable result under the same interface version and vectors. | Connection bytes, publication inputs, Credential/key material, State, Route, Target, and Network diagnostics. |
+| internal/application/connection | Carry one typed Target-Link request and the fixed protected text exchange under AAI3; refuse reserved Name requests and join terminal/cancellation cleanup. It is not a generic binary Application interface. | State, Entry, Target, Route, worker authority, confinement, Service keys, retries, fallback, and Network diagnostics. |
+| internal/application/administration | Carry one separately authorized `publish` or `withdraw` request and its closed success/unavailable result under the same interface version and vectors. | Connection bytes, publication inputs, Credential/key material, State, Route, Target, and Network diagnostics. |
 | internal/endpoint | Compose the selected protected text participant and implement its AAI3 Connection Adapter plus the separate Administration Interface. `RunClosedParticipant` opens authenticated participant owners, delegates local transports to the Application Modules, and joins shutdown. | Broker consumption, authenticated State/Entry/Target projection, TLS carrier setup, publication acquisition, and Connection invocation. |
 | internal/service/publication | Open, publish, acquire, unpublish, and close one exclusive Service Instance generation. | Crash-atomic public record/floor persistence, volatile Instance signer, live-reference accounting, drain, and private-material erasure. |
 | internal/service/connection | Carry one logical authenticated Service Connection across fresh Route Attachments, preserve directional Application EOF through its existing authenticated Terminal record, and return one terminal outcome. | Exact Instance challenge/proof, continuity MAC, ordered data/acknowledgement offsets, replay handling, recovery deadline, and attachment cleanup. |
@@ -527,7 +527,7 @@ The removed AAI2 grammar accepted a non-empty Target Link, opaque frames and a
 typed terminal outcome. Those bytes have no maintained decoder, server, client,
 Endpoint adapter, persisted-state reader, or compatibility promise. The
 historical Service Connection v2 network identity is unrelated and remains
-unchanged. `internal/application/interfacev1/administration` separately owns
+unchanged. `internal/application/administration` separately owns
 only `publish` and `withdraw`; it cannot carry Connection data or silently turn
 a failure into another success state. No Browser client is selected in the
 maintained product.
