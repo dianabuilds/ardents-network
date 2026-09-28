@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"io"
 )
 
@@ -77,8 +78,14 @@ func writeRequest(writer io.Writer, request Message) error {
 	copy(raw[9:41], request.NetworkDigest[:])
 	copy(raw[41:73], request.ObjectDigest[:])
 	binary.BigEndian.PutUint32(raw[73:77], request.MaterialIndex)
-	_, err := writer.Write(raw[:])
-	return err
+	count, err := writer.Write(raw[:])
+	if err != nil {
+		return fmt.Errorf("%w: %w", ErrUnavailable, err)
+	}
+	if count != len(raw) {
+		return fmt.Errorf("%w: %w", ErrUnavailable, io.ErrShortWrite)
+	}
+	return nil
 }
 
 func readResponse(reader io.Reader) (Message, error) {

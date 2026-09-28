@@ -17,6 +17,8 @@ type sourceResult struct {
 	err          error
 }
 
+var errSourceObjectMismatch = errors.New("source response object identity mismatch")
+
 // Refresh waits for the complete two-source wave and accepts its highest valid state.
 func (s *networkState) Refresh(ctx context.Context) (Snapshot, error) {
 	if s.resourceGuard != nil {
@@ -140,7 +142,8 @@ func (s *networkState) fetchAndVerify(ctx context.Context, index int, current *e
 		return failedSourceResult(resultIndex, outcomeIndex, observations, err)
 	}
 	if response.ObjectDigest != decision.Header.Digest {
-		return failedSourceResult(resultIndex, outcomeIndex, observations, errors.New("source header digest disagrees with its authenticated Epoch"))
+		return failedSourceResult(resultIndex, outcomeIndex, observations,
+			fmt.Errorf("%w: source header digest disagrees with its authenticated Epoch", errSourceObjectMismatch))
 	}
 	observations[outcomeIndex] = sourceOutcomeValid
 	return sourceResult{index: resultIndex, slot: outcomeIndex, decision: decision, observations: observations}
@@ -148,7 +151,7 @@ func (s *networkState) fetchAndVerify(ctx context.Context, index int, current *e
 
 func validateByDigestResponse(requested, returned [32]byte) error {
 	if requested != returned {
-		return errors.New("BY_DIGEST source returned a different object")
+		return fmt.Errorf("%w: BY_DIGEST source returned a different object", errSourceObjectMismatch)
 	}
 	return nil
 }

@@ -284,6 +284,18 @@ spent selector is not replayed. At the deadline, every unresolved slot becomes
 interrupted and the cycle enters durable backoff. The journal keeps the same purpose/status
 byte values and exact encoding across implementation refactors.
 
+Source marks transport unavailability, TLS authentication, and response or
+bundle framing failures at the operation that detects them. State gives caller
+cancellation and deadlines precedence, preserves the four distinct protocol
+statuses, marks response object-identity mismatch, and records the cause
+without parsing diagnostic text. An unrecognized local or verification error
+is `invalid-state`. The existing
+`resource-failed` outcome byte remains readable in older journals; a new wave
+uses it only when its operation identifies a concrete resource failure.
+Peer close during TLS handshake, EOF before a response, and socket I/O failures
+such as a reset are transport unavailability. Peer verification failure is
+authentication; an invalid or truncated response frame is framing.
+
 A terminal automatic-refresh or resource-governor failure also makes
 State-owned Direct Source responses unavailable, including requests whose
 connections were already accepted. A persisted or recovered Network State

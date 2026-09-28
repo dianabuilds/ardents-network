@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
+	"fmt"
 
 	"github.com/dianabuilds/ardents-network/internal/network/epoch"
 )
@@ -57,6 +58,14 @@ func EncodeBundle(bundle Bundle) ([]byte, error) {
 // DecodeBundle checks only private wire framing. State checks the decoded
 // members against its current Epoch, authorities, and requested material.
 func DecodeBundle(raw []byte) (Bundle, error) {
+	bundle, err := decodeBundle(raw)
+	if err != nil {
+		return Bundle{}, fmt.Errorf("%w: %w", ErrFraming, err)
+	}
+	return bundle, nil
+}
+
+func decodeBundle(raw []byte) (Bundle, error) {
 	if len(raw) == 0 || len(raw) > maximumPayloadBytes {
 		return Bundle{}, errors.New("source bundle length is invalid")
 	}

@@ -3,9 +3,21 @@ package source
 import (
 	"bytes"
 	"encoding/hex"
+	"errors"
 	"io"
 	"testing"
 )
+
+type shortRequestWriter struct{}
+
+func (shortRequestWriter) Write(raw []byte) (int, error) { return len(raw) - 1, nil }
+
+func TestShortRequestWriteIsUnavailable(t *testing.T) {
+	err := writeRequest(shortRequestWriter{}, Message{Operation: "latest"})
+	if !errors.Is(err, ErrUnavailable) || !errors.Is(err, io.ErrShortWrite) {
+		t.Fatalf("short request write cause=%v; want unavailable and short write", err)
+	}
+}
 
 func TestNetworkDigestFrozenBytes(t *testing.T) {
 	t.Parallel()

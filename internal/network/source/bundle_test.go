@@ -3,6 +3,7 @@ package source
 import (
 	"bytes"
 	"encoding/hex"
+	"errors"
 	"testing"
 
 	"github.com/dianabuilds/ardents-network/internal/network/epoch"
@@ -45,8 +46,8 @@ func TestDecodeBundleRejectsMalformedFraming(t *testing.T) {
 	}
 	for name, raw := range cases {
 		t.Run(name, func(t *testing.T) {
-			if _, err := DecodeBundle(raw); err == nil {
-				t.Fatal("accepted malformed bundle")
+			if _, err := DecodeBundle(raw); !errors.Is(err, ErrFraming) {
+				t.Fatalf("malformed bundle cause=%v; want framing", err)
 			}
 		})
 	}

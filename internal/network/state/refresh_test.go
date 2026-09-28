@@ -162,7 +162,8 @@ func TestRefreshPersistsTLSFailureBackoff(t *testing.T) {
 		t.Fatalf("TLS-pin failure returned %v", err)
 	}
 	failed, err := endpoint.Current()
-	if err != nil || failed.SourceAttempts != 2 || failed.NextAutomatic.IsZero() {
+	if err != nil || failed.SourceAttempts != 2 || failed.NextAutomatic.IsZero() ||
+		failed.SourceOutcomes != [4]string{"authentication-failed", "authentication-failed", "not-attempted", "not-attempted"} {
 		t.Fatalf("failure state=%+v err=%v", failed, err)
 	}
 	if err := endpoint.Close(); err != nil {
@@ -175,6 +176,59 @@ func TestRefreshPersistsTLSFailureBackoff(t *testing.T) {
 	defer restarted.Close()
 	if _, err := restarted.Refresh(context.Background()); err == nil || !strings.Contains(err.Error(), "durable backoff") {
 		t.Fatalf("restart ignored durable backoff: %v", err)
+	}
+}
+
+func TestRefreshPersistsHandshakeTransportFailureAsUnavailable(t *testing.T) {
+	genesis := newFixture(t)
+	successor := nextFixture(t, genesis)
+	config, closeSources := sourceEnvironment(t, genesis, successor, successor)
+	defer closeSources()
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer listener.Close()
+	serverDone := make(chan error, 1)
+	go func() {
+		connection, acceptErr := listener.Accept()
+		if acceptErr != nil {
+			serverDone <- acceptErr
+			return
+		}
+		serverDone <- connection.Close()
+	}()
+	config.Source.Sources[0].Address = listener.Addr().String()
+	endpoint, err := state.Open(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	refreshed, err := endpoint.Refresh(context.Background())
+	if err != nil {
+		t.Fatalf("refresh after one closed handshake: %v", err)
+	}
+	if refreshed.Epoch != 2 || refreshed.SourceOutcomes != [4]string{"unavailable", "valid", "not-attempted", "not-attempted"} {
+		t.Fatalf("closed handshake wave=%+v", refreshed)
+	}
+	if err := endpoint.Close(); err != nil {
+		t.Fatal(err)
+	}
+	reopened, err := state.Open(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer reopened.Close()
+	stored, err := reopened.Current()
+	if err != nil || stored.SourceOutcomes != refreshed.SourceOutcomes {
+		t.Fatalf("durable closed handshake outcome=%v, err=%v; want %v", stored.SourceOutcomes, err, refreshed.SourceOutcomes)
+	}
+	select {
+	case serverErr := <-serverDone:
+		if serverErr != nil {
+			t.Fatal(serverErr)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("refresh did not contact the closing source")
 	}
 }
 

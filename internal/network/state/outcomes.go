@@ -5,8 +5,9 @@ import (
 	"errors"
 	"math"
 	"net"
-	"strings"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/network/source"
 )
 
 const (
@@ -83,16 +84,12 @@ func classifySourceOutcome(err error) byte {
 	if errors.Is(err, context.DeadlineExceeded) || errors.As(err, &networkError) && networkError.Timeout() {
 		return sourceOutcomeTimeout
 	}
-	message := strings.ToLower(err.Error())
 	switch {
-	case strings.Contains(message, "authentication") || strings.Contains(message, "certificate") || strings.Contains(message, "pin"):
+	case errors.Is(err, source.ErrAuthentication):
 		return sourceOutcomeAuthentication
-	case strings.Contains(message, "exceed") || strings.Contains(message, "bound") || strings.Contains(message, "length"):
-		return sourceOutcomeResource
-	case strings.Contains(message, "unavailable") || strings.Contains(message, "connection"):
+	case errors.Is(err, source.ErrUnavailable):
 		return sourceOutcomeUnavailable
-	case strings.Contains(message, "response") || strings.Contains(message, "bundle") || strings.Contains(message, "framing") ||
-		strings.Contains(message, "magic") || strings.Contains(message, "trailing") || strings.Contains(message, "digest") || strings.Contains(message, "eof"):
+	case errors.Is(err, source.ErrFraming), errors.Is(err, errSourceObjectMismatch):
 		return sourceOutcomeFraming
 	default:
 		return sourceOutcomeInvalidState
