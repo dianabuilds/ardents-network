@@ -212,10 +212,11 @@ The Network audit candidate is the headless maintained product surface:
 Endpoint composes authenticated State, Entry, Route, Service, and local
 Application boundaries. It does not own Browser presentation, Browser Entry,
 Firefox, local Application wire clients, Release authority, Network State
-authority, or Authority Custody. A Publisher attachment is available only when
-authenticated State projects exactly one current Introduction, Rendezvous, and
-Responder; Endpoint then acquires the separate Introduction and Responder
-credentials without caller-supplied Route, peer, role, Grant, or key material.
+authority, or Authority Custody. A Publisher path requires State's current
+accepted closed Route profile joined to the same authenticated Epoch and exact
+recipient Node Records.
+Missing, conflicting, expired, or mismatched State makes that path unavailable;
+the Application cannot choose Route peers or State identities.
 
 The C0 Network candidate is ready to be *audited*, not qualified for public
 operation. The audit must use the exact frozen commit and artifact identities

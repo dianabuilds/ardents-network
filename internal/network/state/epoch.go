@@ -7,15 +7,10 @@ import (
 )
 
 const (
-	interactiveRouteProfile                  = epoch.ProfileInteractiveRoute
-	closedRouteProfile                       = epoch.ProfileClosedRoute
-	closedTCPCarrierProfile                  = epoch.CarrierClosedTCP
-	maximumEpochBytes                        = epoch.MaxEpochBytes
-	maximumRecordBytes                       = epoch.MaxRecordBytes
-	maximumDestinationResolutionProfileBytes = epoch.MaxDestinationResolutionProfileBytes
-	maximumTransitIssuanceProfileBytes       = epoch.MaxTransitIssuanceProfileBytes
-	destinationResolutionDomain              = epoch.DomainDestinationResolution
-	transitIssuanceDomain                    = epoch.DomainTransitIssuance
+	closedRouteProfile      = epoch.ProfileClosedRoute
+	closedTCPCarrierProfile = epoch.CarrierClosedTCP
+	maximumEpochBytes       = epoch.MaxEpochBytes
+	maximumRecordBytes      = epoch.MaxRecordBytes
 )
 
 func verifyDecision(config config, previous *epoch.Snapshot, epochBytes []byte, inputs, materials [][]byte, requireMaterials bool) (epoch.Decision, error) {
@@ -47,13 +42,7 @@ func snapshotFromEpoch(value epoch.Snapshot) Snapshot {
 		DeclaredFamily: value.DeclaredFamily, ProbeEndpoint: value.ProbeEndpoint,
 		CarrierProfile: value.CarrierProfile,
 		ProbeCapacity:  value.ProbeCapacity, Assignment: value.Assignment,
-		AssignmentDigest:                 value.AssignmentDigest,
-		DestinationResolutionNodeID:      value.DestinationResolutionNodeID,
-		DestinationResolutionProfile:     value.DestinationResolutionProfile,
-		DestinationResolutionProfileSize: value.DestinationResolutionProfileSize,
-		TransitIssuanceNodeID:            value.TransitIssuanceNodeID,
-		TransitIssuanceProfile:           value.TransitIssuanceProfile,
-		TransitIssuanceProfileSize:       value.TransitIssuanceProfileSize,
+		AssignmentDigest: value.AssignmentDigest,
 	}
 }
 

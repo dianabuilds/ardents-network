@@ -424,16 +424,14 @@ only its ed25519 Instance key, the accepted Credential v3 no longer binds a
 legacy introduction recipient, and the private v3 capsule uses its separate
 volatile recipient. Pre-v3 Instance roots meet the typed `ErrLegacyRoot`
 refusal and require re-initialization under a new root.
-The maintained participant runtime opens the Instance
-binding only after reconciling the
-accepted public Credential with the durable publication floor. When its
-optional host `service_instance_root` is configured, it consumes State's
-indivisible Publisher attachment projection, obtains separate Introduction
-and Responder credentials through the Endpoint-owned at-most-once journals,
-and constructs the live profile without caller-supplied peers, roles, Grants,
-keys, or Route facts. Missing, conflicting, or ambiguous State projection is
-unavailable; without a Service Instance root the same process remains a
-User-only participant.
+The maintained closed participant requires `service_instance_root` and
+opens its Instance binding only after reconciling the accepted public
+Credential with the durable publication floor. It reads the current accepted
+closed Route profile and Snapshot from State, checks the matching generation
+and issuer/recipient Node Records, and uses Endpoint's closed token journal
+for admitted work. Missing, conflicting, expired, or mismatched State/profile
+blocks that work; the Application cannot choose peers, roles, keys, or Route
+facts.
 AcquireAt yields an opaque Lease; the Lease can sign for its generation without
 exposing the signer. Withdrawal, supersession, expiry, or close first prevent
 new acquisition, then wait for bounded references before erasing private
