@@ -172,6 +172,10 @@ The source owner serializes terminal OPEN allocation with emission order and
 retains a separate reader, credit and deadline for each child. The retained
 Entry/Interior framing reapplies its original parent deadline to its own CREDIT;
 a completed child's payload deadline cannot poison later parent consumption.
+Source child CREDIT likewise uses the child's admitted lifetime rather than
+the deadline left by a completed inner payload write. This does not extend
+payload write authority; a changed write deadline still interrupts CREDIT
+already using the physical writer and retains any resulting write failure.
 Waiting for the physical writer or payload credit remains bounded by the exact
 payload deadline, including concurrent deadline updates. Updating a deadline
 still interrupts an already active physical frame. Cancellation removes
