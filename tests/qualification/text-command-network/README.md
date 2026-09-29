@@ -51,3 +51,12 @@ Each of the six document/Carrier cases observes a real five-minute Descriptor
 refresh. The Go test deadline is therefore 49 minutes and the independent
 outer command limit is 51 minutes; a timeout is retained as evidence rather
 than retried or treated as a pass.
+
+The positive cell checks the remaining UTC-hour Permission window before
+creating a Service Instance, then checks the `NotAfter` of each actually issued
+reader and publisher Permission before delivering it to Endpoint. The required
+window covers the temporary Endpoint unit's 600-second maximum lifetime, which
+includes the scheduled refresh and post-refresh read. An insufficient window
+is reported as `invalid prerequisite` and the run fails without a publication;
+it is neither a product failure nor a passing qualification cell. Permission
+is not renewed or extended to make the test pass.
