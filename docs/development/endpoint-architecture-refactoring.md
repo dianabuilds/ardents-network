@@ -1,14 +1,11 @@
 # Endpoint architecture refactoring design
 
 Status: **accepted working plan for the ongoing decomposition**. This is a
-target ownership map, not an accepted runtime contract or a second delivery
-ledger; per-slice evidence lives in the coordination journals
-(`ardents-coordination/endpoint.md` §-entries) and commit history.
-Baseline: `dev` at `c849226f` (2026-09-28). Coordination with the parallel
-Node decomposition, the Route owner, and the Network owner lives in
-`C:\Users\vitek\code\ardents-coordination` (`assignments.md` plus one status
-file per implementer); `dev` is the single integration point and the Node
-implementer performs merges into it.
+target ownership map, not an accepted runtime contract or a delivery ledger.
+GitHub Issues in the C0 milestone own delivery state; commit history records
+implementation evidence. Original planning baseline: `dev` at `c849226f`
+(2026-09-28). `dev` remains the integration point; assigned owners follow
+[agent execution and handoff](agent-execution.md).
 
 ## Objective
 
@@ -236,9 +233,8 @@ contract stays in `docs/technical/endpoint-service-runtime.md`.
 
 ## Completed slices
 
-Each slice was one coherent commit series, locally verified and integrated
-into `dev` through the single integrator; evidence is recorded in
-`ardents-coordination/endpoint.md` (§-entries) — this plan does not duplicate
+Each slice was locally verified and integrated into `dev`. GitHub Issues and
+commit history contain the delivery evidence; this plan does not duplicate
 hashes:
 
 1. **Worker extraction**: installed mechanism in `internal/endpoint/worker`
@@ -264,17 +260,21 @@ hashes:
    quick-check/check via `installed-tag-compile-check` (target-specific
    `export GOOS/GOARCH` — inline recipe env prefixes are not portable across
    Windows make shells).
+7. **Descriptor resolution flight (#345)**: private `resolutionLifecycle`
+   owns the one lookup-or-publication flight, caller cancellation join,
+   admitted Source release, and once-only completion under the Context lock.
+   Root retains Permission, current Source, Publisher/Instance, and Descriptor
+   authority checks and terminal cleanup failure.
 
-## Remaining-slice ledger (bounded)
+## Remaining architecture review
 
-Per Node's 2026-09-28 status review, each remaining slice is recorded by
-state owner, interface, shutdown order, affected tests, and integration gate
-— not by file counts or unmeasured percentages. Structural acceptance of this
+Evaluate each further slice by state owner, interface, shutdown order, affected
+tests, and integration gate — not by file counts or unmeasured percentages.
+GitHub Issues own selection and delivery state. Structural acceptance of this
 Endpoint decomposition is distinct from the #309/#311 bug fixes, protocol
-choices, and installed
-systemd/cgroup qualification.
+choices, and installed systemd/cgroup qualification.
 
-### L1 — dutyContext dissolution (phase 2; the remaining structural core)
+### L1 — dutyContext boundary review
 
 - **State owner**: `dutyContextState` still holds publication, introduction
   (root aggregate over the extracted mechanisms), responder, resolution,
@@ -294,14 +294,8 @@ systemd/cgroup qualification.
   helpers (`worker_composition_linux_test.go`), and every family consuming
   `liveCapsuleJob` (~20 files); behavior tests stay beside their production
   owner as they move.
-- **Selected bounded seam**: the private `resolutionLifecycle` under the
-  existing Context lock owns exact flight identity, admitted Source acquisition,
-  caller cancellation join, stop snapshot and once-only completion for Descriptor
-  lookup and publication. Root retains Permission, registration,
-  Publisher/Instance, token and current-Source authority checks and Context
-  terminal cleanup failure. The owner preserves lookup/publication exclusion,
-  old-Source refusal and the shutdown order above; it is neither a new package
-  nor a generic flight scheduler.
+- **Next seam**: none selected in this plan; a bounded issue must identify its
+  exact state owner, lifetime invariant, callers, and retirement tests.
 - **Integration gate**: per slice — commit-hook quick-check (includes the
   installed-tag compile gate), targeted Linux Docker battery in a claimed
   host-wide serialized window, then the integration owner's combined full
@@ -309,11 +303,9 @@ systemd/cgroup qualification.
 
 ### L2 — test-audit consolidation (mechanical)
 
-- **State owner**: none (test-tree only). Proposal list with per-file
-  verdicts delivered to PO (0 deletions proposed); Node confirmed mechanical
-  consolidation within the accepted contract needs no PO checkpoint —
-  behavior/coverage decisions (e.g. tagging `heapdump_parser_test.go`) are
-  escalated to PO explicitly.
+- **State owner**: none (test-tree only). Mechanical consolidation within the
+  accepted contract needs no separate PO checkpoint; behavior or coverage
+  changes (e.g. tagging `heapdump_parser_test.go`) need explicit review.
 - **Interface**: n/a. **Shutdown order**: n/a.
 - **Affected tests**: Source failure-stage wrappers are checked in
   `internal/endpoint/source/failure_test.go`; the root Source-operation,
@@ -338,8 +330,8 @@ systemd/cgroup qualification.
   `introduction/testsupport.go` 20 allowlist symbols, `source/testsupport.go` 3)
   with their recorded retirement condition: the test-audit slice reworks
   whitebox fixtures onto production seams, then the allowlist entries are removed.
-- **Integration gate**: review notes published in `endpoint.md`; code changes
-  (if any) ride L1/L2 slices.
+- **Integration gate**: review notes go to the owning GitHub issue; code changes
+  (if any) ride bounded implementation slices.
 
 ### L4 — #309/#311 (separate bug fixes, not structural acceptance)
 
@@ -386,11 +378,10 @@ adapter only supplies input and output.
 Owner-specific event fields and privacy limits stay typed. Background delivery failures terminate the participant and return to its caller;
 a private observation owner serializes output and retains the first such failure.
 
-## Integration rule for this worktree
+## Integration rule for Endpoint slices
 
-The Endpoint branch (`refactor/endpoint-decomposition`) starts from `dev`
-and integrates back into `dev` through the Node implementer as single
-integrator. Rules:
+Completed Endpoint slices integrate into `dev` through the assigned
+integration owner. Rules:
 
 - Integrate only completed, locally verified slices; never integrate half of
   a slice. Keep unfinished work in its own tree as temporary WIP commits —
@@ -400,11 +391,11 @@ integrator. Rules:
   repository-wide rules — have one assigned owner per bounded change; the
   other implementer states the required contract and proceeds with
   independent work.
-- All implementers read `ardents-coordination/assignments.md` and the owner
-  status files before starting a slice, editing a shared interface, or
-  integrating; each writes only its own status file.
+- The assigned owner reads the current issue, affected current owners, and
+  [agent execution and handoff](agent-execution.md) before a slice or shared
+  interface change; progress goes to the issue and active conversation.
 - One heavy host/Docker window at a time, host-wide; claims and releases are
-  recorded in the owner files. Per slice run the targeted checks for the
+  communicated to the integration owner. Per slice run targeted checks for the
   touched packages; the combined gate (Windows suite plus the docker linux
   battery, the exact candidate, and both selected Carriers where affected)
   runs before merging into `dev`, not twice in parallel per implementer.
