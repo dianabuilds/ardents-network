@@ -55,10 +55,11 @@ func waitNetworkFixtureStart(t *testing.T) {
 }
 
 type roleNetworkFixture struct {
-	carrier    routecarrier.CarrierProfile
-	resolution bool
-	publisher  bool
-	join       bool
+	carrier          routecarrier.CarrierProfile
+	resolution       bool
+	publisher        bool
+	join             bool
+	closeExpectation *endpointCloseExpectation
 	// reservedWindow is set only by a child process whose parent selected
 	// the current Permission window before starting its bounded episode.
 	reservedWindow bool
@@ -77,7 +78,7 @@ func startRoleNetwork(t *testing.T, fixture roleNetworkFixture) (*endpoint, *dut
 	if !fixture.reservedWindow {
 		waitNetworkFixtureStart(t)
 	}
-	endpoint, owner, source := sourceContextFixture(t)
+	endpoint, owner, source := sourceContextFixture(t, fixture.closeExpectation)
 	count := 5
 	if fixture.resolution {
 		count = 7
@@ -209,9 +210,7 @@ func startRoleNetwork(t *testing.T, fixture roleNetworkFixture) (*endpoint, *dut
 	// Registered after Node cleanup callbacks: LIFO keeps the real network
 	// available until all Endpoint channels and their workers have joined.
 	t.Cleanup(func() {
-		if err := endpoint.Close(); err != nil {
-			t.Error(err)
-		}
+		checkFixtureEndpointClose(t, endpoint, fixture.closeExpectation)
 	})
 	return endpoint, owner, source
 }

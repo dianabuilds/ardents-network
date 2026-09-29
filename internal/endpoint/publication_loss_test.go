@@ -17,9 +17,13 @@ import (
 
 // The same real registered Publisher setup feeds successful and interrupted
 // Descriptor handovers. Only accepted State and worker qualification are fixtures.
-func startRegisteredPublisherNetwork(t *testing.T, carrier routecarrier.CarrierProfile, gate *descriptorACKGate) (*endpoint, *dutyContext, *sourceStateFixture, *introduction.Registration) {
+func startRegisteredPublisherNetwork(t *testing.T, carrier routecarrier.CarrierProfile, gate *descriptorACKGate, expectations ...*endpointCloseExpectation) (*endpoint, *dutyContext, *sourceStateFixture, *introduction.Registration) {
 	t.Helper()
-	endpoint, owner, source := startRoleNetwork(t, roleNetworkFixture{carrier: carrier, resolution: true, publisher: true, configure: []func(int, *node.Config){gate.configure(t)}})
+	var closeExpectation *endpointCloseExpectation
+	if len(expectations) != 0 {
+		closeExpectation = expectations[0]
+	}
+	endpoint, owner, source := startRoleNetwork(t, roleNetworkFixture{carrier: carrier, resolution: true, publisher: true, closeExpectation: closeExpectation, configure: []func(int, *node.Config){gate.configure(t)}})
 	source.mu.Lock()
 	source.view.NodeCount, source.snapshot.CandidateCount = 16, 16
 	source.view.Nodes[15] = state.ClosedRouteNodeView{NodeID: fixtureID(202), RecordDigest: fixtureID(203), DutyGeneration: 16, RoleDomain: 2, Subrole: 4}
@@ -35,9 +39,7 @@ func startRegisteredPublisherNetwork(t *testing.T, carrier routecarrier.CarrierP
 	now := time.Now().UTC().Truncate(time.Second)
 	root, binding := acceptedInstanceBinding(t, serviceInstanceFixtureRoot(t), endpoint.network, authority, now.Add(-time.Second), source.view.Profile.NotAfter)
 	t.Cleanup(func() {
-		if err := endpoint.Close(); err != nil {
-			t.Error(err)
-		}
+		checkFixtureEndpointClose(t, endpoint, closeExpectation)
 		if err := root.Close(); err != nil {
 			t.Error(err)
 		}

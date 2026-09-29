@@ -7,6 +7,8 @@ import (
 	"errors"
 	"io"
 	"net"
+	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -31,9 +33,97 @@ func (connection *sourceDeadlineBoundary) SetWriteDeadline(end time.Time) error 
 	return err
 }
 
+// sourceCloseWriteBoundary pauses after the source writer records its terminal
+// attempt, while the lower child has not yet begun its physical write.
+type sourceCloseWriteBoundary struct {
+	net.Conn
+	armed            atomic.Bool
+	entered, release chan struct{}
+}
+
+func (connection *sourceCloseWriteBoundary) Write(value []byte) (int, error) {
+	if connection.armed.CompareAndSwap(true, false) {
+		close(connection.entered)
+		<-connection.release
+	}
+	return connection.Conn.Write(value)
+}
+
 func TestClosedSourceParentTerminalBeforeCloseEmission(t *testing.T) {
 	for _, mode := range []string{"unwritten", "partial", "refused", "raw-eof"} {
 		t.Run(mode, func(t *testing.T) { checkSourceCloseBoundary(t, mode) })
+	}
+}
+
+func TestClosedSourcePeerRefusalDuringTerminalAttempt(t *testing.T) {
+	local, peer := net.Pipe()
+	defer peer.Close()
+	end := time.Now().UTC().Add(10 * time.Second).Truncate(time.Second)
+	retirement := &closedRoleRetirement{transport: local}
+	prefix := &ClosedSourcePrefix{retirement: retirement, stop: func() bool { return true }, interrupted: make(chan struct{}), done: make(chan struct{})}
+	child := prefix.newChild(local, end)
+	held := &sourceCloseWriteBoundary{Conn: child, entered: make(chan struct{}), release: make(chan struct{})}
+	var release sync.Once
+	prefix.connection, prefix.child = held, child
+	prefix.interruptMu.Lock()
+	prefix.channels = newClosedSourceChannelOwner(held, end, retirement.close)
+	prefix.channels.framing = child
+	prefix.channels.start()
+	prefix.interruptMu.Unlock()
+	go prefix.finishAfterChannels()
+	defer prefix.Close()
+	defer release.Do(func() { close(held.release) })
+	opened := make(chan error, 1)
+	go func() { _, err := ardp.ReadFrame(peer); opened <- err }()
+	lane, err := prefix.channels.open(context.Background(), sourceIssuerOpen(end), end)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := <-opened; err != nil {
+		t.Fatal(err)
+	}
+	held.armed.Store(true)
+	closed := make(chan error, 1)
+	go func() { closed <- lane.Close() }()
+	select {
+	case <-held.entered:
+	case <-time.After(time.Second):
+		t.Fatal("terminal writer did not reach attempted-write boundary")
+	}
+	prefix.channels.mu.Lock()
+	active := prefix.channels.active
+	attemptedClose := active != nil && active.frame.Kind == ardp.KindClose && active.attempted
+	prefix.channels.mu.Unlock()
+	if !attemptedClose {
+		t.Fatal("write boundary did not hold an attempted terminal CLOSE")
+	}
+	if err := ardp.WriteFrame(peer, ardp.Frame{Kind: ardp.KindClose, Lane: 1, Body: []byte{1}}); err != nil {
+		t.Fatal(err)
+	}
+	for {
+		child.mu.Lock()
+		terminal, changed := child.terminal, child.writeChanged
+		child.mu.Unlock()
+		if terminal != nil {
+			if !strings.Contains(terminal.Error(), "closed bootstrap child refused") {
+				t.Fatalf("lower child observed another terminal cause: %v", terminal)
+			}
+			break
+		}
+		select {
+		case <-changed:
+		case <-time.After(time.Second):
+			t.Fatal("peer refusal was not observed")
+		}
+	}
+	release.Do(func() { close(held.release) })
+	select {
+	case outcome := <-closed:
+		if !errors.Is(outcome, ErrClosedSourceCleanup) || !strings.Contains(outcome.Error(), "closed bootstrap child refused") {
+			t.Fatalf("attempted terminal write lost peer refusal: %v", outcome)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("terminal cleanup did not join")
 	}
 }
 

@@ -5,12 +5,14 @@ package endpoint
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/endpoint/introduction"
 	"github.com/dianabuilds/ardents-network/internal/endpoint/source"
 	routecarrier "github.com/dianabuilds/ardents-network/internal/route/carrier"
+	"github.com/dianabuilds/ardents-network/internal/route/client"
 )
 
 // The actual Store commits revision 1 before the barrier releases its RESULT.
@@ -23,7 +25,8 @@ func TestTextInitialPublicationLossBeforeAcknowledgement(t *testing.T) {
 				t.Run(failure, func(t *testing.T) {
 					gate := newDescriptorACKGate()
 					gate.revision = 1
-					endpoint, owner, _, registered := startRegisteredPublisherNetwork(t, carrier, gate)
+					closeExpectation := &endpointCloseExpectation{}
+					endpoint, owner, _, registered := startRegisteredPublisherNetwork(t, carrier, gate, closeExpectation)
 					t.Cleanup(gate.open)
 					binding := endpoint.publisherBinding
 					gate.arm(t)
@@ -93,8 +96,11 @@ func TestTextInitialPublicationLossBeforeAcknowledgement(t *testing.T) {
 							t.Fatal("failed initial publication revived through exact retry")
 						}
 					}
-					if err := owner.Close(); err != nil {
-						t.Fatal(err)
+					closeErr := owner.Close()
+					if closeErr != nil && (failure != "context revoke" ||
+						!errors.Is(closeErr, client.ErrClosedSourceCleanup) ||
+						!strings.Contains(closeErr.Error(), "closed bootstrap child refused")) {
+						t.Fatalf("unexpected Context cleanup failure: %v", closeErr)
 					}
 					if recipient.Public(time.Now()) != [32]byte{} || binding.Public() != nil {
 						t.Fatal("closed initial publication retained recipient or Instance signer")
@@ -102,6 +108,24 @@ func TestTextInitialPublicationLossBeforeAcknowledgement(t *testing.T) {
 					if lease, err := endpoint.publications.Acquire(t.Context()); err == nil {
 						_ = lease.Close()
 						t.Fatal("closed initial publication retained local availability")
+					}
+					if failure == "context revoke" {
+						endpointErr := endpoint.Close()
+						if endpointErr != nil {
+							endpoint.dutyMu.Lock()
+							retained := endpoint.dutyErr
+							endpoint.dutyMu.Unlock()
+							if retained == nil || !errors.Is(retained, client.ErrClosedSourceCleanup) ||
+								!strings.Contains(retained.Error(), "closed bootstrap child refused") {
+								t.Fatalf("unexpected Endpoint cleanup failure: %v", endpointErr)
+							}
+							closeExpectation.allow(retained)
+							if !closeExpectation.accepts(endpointErr) {
+								t.Fatalf("Endpoint Close added a second cleanup failure: %v", endpointErr)
+							}
+						} else if closeErr != nil {
+							t.Fatal("Endpoint Close lost the retained Context failure")
+						}
 					}
 				})
 			}

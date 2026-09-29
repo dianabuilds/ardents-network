@@ -4,6 +4,7 @@ package endpoint
 
 import (
 	"encoding/hex"
+	"errors"
 	"net"
 	"os"
 	"sync"
@@ -28,6 +29,67 @@ type sourceStateFixture struct {
 	snapshot           state.Snapshot
 }
 
+// endpointCloseExpectation lets fixture callbacks repeat one previously
+// classified Endpoint Close result without hiding a later cleanup failure.
+type endpointCloseExpectation struct {
+	mu       sync.Mutex
+	expected error
+}
+
+func (expectation *endpointCloseExpectation) allow(err error) {
+	expectation.mu.Lock()
+	expectation.expected = err
+	expectation.mu.Unlock()
+}
+
+func (expectation *endpointCloseExpectation) accepts(err error) bool {
+	if expectation == nil || err == nil {
+		return false
+	}
+	expectation.mu.Lock()
+	expected := expectation.expected
+	expectation.mu.Unlock()
+	if expected == nil {
+		return false
+	}
+	for err != expected {
+		joined, ok := err.(interface{ Unwrap() []error })
+		if !ok {
+			return false
+		}
+		children := joined.Unwrap()
+		if len(children) != 1 {
+			return false
+		}
+		err = children[0]
+	}
+	return true
+}
+
+func checkFixtureEndpointClose(t *testing.T, endpoint *endpoint, expectation *endpointCloseExpectation) {
+	t.Helper()
+	if err := endpoint.Close(); err != nil && !expectation.accepts(err) {
+		t.Error(err)
+	}
+}
+
+func TestEndpointCloseExpectationRejectsAdditionalFailure(t *testing.T) {
+	retained := errors.New("retained Route refusal")
+	expectation := &endpointCloseExpectation{}
+	expectation.allow(retained)
+	if !expectation.accepts(errors.Join(errors.Join(retained))) {
+		t.Fatal("fixture cleanup rejected the exact retained failure")
+	}
+	for _, err := range []error{
+		errors.Join(retained, errors.New("outer cleanup failure")),
+		errors.Join(errors.Join(retained, errors.New("nested cleanup failure"))),
+	} {
+		if expectation.accepts(err) {
+			t.Fatal("fixture cleanup hid an additional failure")
+		}
+	}
+}
+
 func (source *sourceStateFixture) CurrentClosedProfile() (state.ClosedProfileView, error) {
 	source.mu.Lock()
 	defer source.mu.Unlock()
@@ -44,8 +106,12 @@ func (source *sourceStateFixture) Current() (state.Snapshot, error) {
 	return source.snapshot, nil
 }
 
-func sourceContextFixture(t *testing.T) (*endpoint, *dutyContext, *sourceStateFixture) {
+func sourceContextFixture(t *testing.T, expectations ...*endpointCloseExpectation) (*endpoint, *dutyContext, *sourceStateFixture) {
 	t.Helper()
+	var closeExpectation *endpointCloseExpectation
+	if len(expectations) != 0 {
+		closeExpectation = expectations[0]
+	}
 	now := time.Now().UTC()
 	window := now.Truncate(time.Hour)
 	source := &sourceStateFixture{}
@@ -95,9 +161,7 @@ func sourceContextFixture(t *testing.T) (*endpoint, *dutyContext, *sourceStateFi
 		t.Fatal(err)
 	}
 	t.Cleanup(func() {
-		if err := endpoint.Close(); err != nil {
-			t.Error(err)
-		}
+		checkFixtureEndpointClose(t, endpoint, closeExpectation)
 	})
 	owner := permissionContextFixture(t, endpoint, principal, broker.Connection)
 	return endpoint, owner, source
