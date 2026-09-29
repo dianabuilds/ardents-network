@@ -87,13 +87,13 @@ func exportedAttachment(connection *tls.Conn, connectionContext [32]byte, genera
 		return nil, [32]byte{}, err
 	}
 	key := hmac.New(sha256.New, material)
-	_, _ = key.Write([]byte("ardents-service-connection-continuity-key-v1\x00"))
+	_, _ = key.Write([]byte("ardents-service-connection-continuity-key-v3\x00"))
 	continuityBytes := key.Sum(nil)
 	var continuity [32]byte
 	copy(continuity[:], continuityBytes)
 	erase(material)
 	erase(continuityBytes)
-	exporterCommitment := sha256.Sum256(append([]byte("ardents-service-connection-exporter-v1\x00"), continuity[:]...))
+	exporterCommitment := sha256.Sum256(append([]byte("ardents-service-connection-exporter-v3\x00"), continuity[:]...))
 	return &SecuredAttachment{connection: connection, generation: generation,
 		context: connectionContext, transport: connection.NetConn(), exporterCommitment: exporterCommitment}, continuity, nil
 }

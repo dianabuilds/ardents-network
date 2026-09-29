@@ -71,7 +71,7 @@ func TestLinuxCredentialResponsePublicationRecoversAfterFileSizeLimit(t *testing
 		RequestSHA256 string `json:"request_sha256"`
 	}
 	if err := json.Unmarshal(initialized, &initialization); err != nil ||
-		initialization.Schema != "ardents-service-instance-request-v1" || initialization.RequestSHA256 == "" {
+		initialization.Schema != "ardents-service-instance-request-v3" || initialization.RequestSHA256 == "" {
 		t.Fatalf("Service Instance initialization receipt = %+v / %v", initialization, err)
 	}
 	request, err := os.ReadFile(requestPath)
