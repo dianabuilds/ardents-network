@@ -7,6 +7,8 @@ import (
 	"os"
 	"sync"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 )
 
 type closedSourceLane struct {
@@ -68,7 +70,11 @@ func (lane *closedSourceLane) SetWriteDeadline(end time.Time) error {
 	defer owner.mu.Unlock()
 	lane.writeEnd = lane.bound(end)
 	owner.signalLocked()
-	if owner.active != nil && owner.active.lane == lane && owner.active.end.IsZero() {
+	if owner.active != nil && owner.active.lane == lane && (owner.active.end.IsZero() || owner.active.frame.Kind == ardp.KindCredit && !lane.closed) {
+		if owner.active.frame.Kind == ardp.KindCredit {
+			// A new deadline still interrupts credit already using the writer.
+			owner.active.end = lane.writeEnd
+		}
 		return owner.parent.SetWriteDeadline(lane.writeEnd)
 	}
 	return nil

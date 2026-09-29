@@ -40,8 +40,12 @@ func (lane *closedSourceLane) Close() error {
 				// Cutting it short needlessly retires the shared physical prefix.
 				// Never extend its original write authority or the cleanup bound.
 				deadline = cleanupEnd
-				if lane.writeEnd.Before(deadline) {
-					deadline = lane.writeEnd
+				creditEnd := owner.active.end
+				if creditEnd.IsZero() {
+					creditEnd = lane.writeEnd
+				}
+				if creditEnd.Before(deadline) {
+					deadline = creditEnd
 				}
 				owner.active.end = deadline
 			}

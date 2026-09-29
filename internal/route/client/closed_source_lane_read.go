@@ -97,7 +97,9 @@ func (lane *closedSourceLane) returnCredit() error {
 	lane.consumed = 0
 	lane.receiveCredit += count
 	owner.mu.Unlock()
-	err := lane.send(ardp.Frame{Kind: ardp.KindCredit, Lane: lane.id, Body: binary.BigEndian.AppendUint32(nil, count)}, time.Time{})
+	// Framing credit returns already consumed bytes within this admitted lane.
+	// A completed payload's write deadline does not shorten that reservation.
+	err := lane.send(ardp.Frame{Kind: ardp.KindCredit, Lane: lane.id, Body: binary.BigEndian.AppendUint32(nil, count)}, lane.end)
 	// A joined outer parent can fail after these bytes were accepted but before
 	// CREDIT enters its queue. No credit is usable after that terminal state;
 	// retain the parent cause for the reader instead of replacing it with a
