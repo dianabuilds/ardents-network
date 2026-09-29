@@ -2,6 +2,7 @@ package state
 
 import (
 	"crypto/sha256"
+	"errors"
 	"testing"
 	"time"
 
@@ -59,6 +60,12 @@ func TestSourceCycleInterruptedAttemptRecovery(t *testing.T) {
 	if held, err := duty.ReadConflict(config.localRoles, probe, config.sourceInfo.Identities[0], [32]byte{}); err != nil || !held {
 		t.Fatalf("interrupted contact guard was lost before recovery: held=%t err=%v", held, err)
 	}
+	restarted.config.sourceInfo.Configured = false
+	var required *RecoveryRequiredError
+	if err := restarted.recoverSourceWaveGuard(); !errors.As(err, &required) {
+		t.Fatalf("reopen without historical Source plan returned %v", err)
+	}
+	restarted.config.sourceInfo.Configured = true
 	if err := restarted.recoverSourceWaveGuard(); err != nil {
 		t.Fatal(err)
 	}

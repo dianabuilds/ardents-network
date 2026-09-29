@@ -121,12 +121,20 @@ func (s *networkState) releaseJoinedSourceWave() error {
 // tie a previous wave to the configured Source pair; if it disagrees, keep the
 // old producer guard intact until the operator restores that plan.
 func (s *networkState) recoverSourceWaveGuard() error {
-	if !s.config.sourceInfo.Configured || !s.distribution.cycleActive && len(s.distribution.history) == 0 {
+	if !s.distribution.cycleActive && len(s.distribution.history) == 0 {
+		return nil
+	}
+	if !s.config.sourceInfo.Configured {
+		if s.distribution.cycleActive {
+			return &RecoveryRequiredError{Reason: "active Source journal has no configured Source plan"}
+		}
+		// A terminal journal has no contact to resume. Offline readers leave
+		// its previously committed Duty producer intact without reclaiming it.
 		return nil
 	}
 	for _, exposure := range s.distribution.history {
 		if exposure != s.config.sourceInfo.Exposures[0] && exposure != s.config.sourceInfo.Exposures[1] {
-			return nil
+			return &RecoveryRequiredError{Reason: "Source exposure history does not match the configured Source plan"}
 		}
 	}
 	return s.releaseJoinedSourceWave()
