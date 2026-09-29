@@ -6,8 +6,9 @@ an ordinary unit or container test.
 
 From the exact source commit, run
 `ARDENTS_TEXT_COMMAND_CANDIDATE_PARENT=/absolute/stages make text-command-network-build`
-with Go 1.26.8 on Linux x86-64. The parent must be an existing directory
-outside the repository. The build creates a new private stage with
+with Go 1.26.8 on Linux x86-64. The builder sets `CGO_ENABLED=0` so the
+worker can execute inside its single-file `RootDirectory`. The parent must be
+an existing directory outside the repository. The build creates a new private stage with
 `READY`, `GO-VERSION`, and `SHA256SUMS`. A stage without `READY` is incomplete;
 retain its failure output rather than installing it. Record the source commit
 alongside the stage and verify `SHA256SUMS` before and after copying.

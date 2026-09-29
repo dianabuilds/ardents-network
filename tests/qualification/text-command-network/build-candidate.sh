@@ -1,7 +1,7 @@
 #!/bin/sh
 # Build one immutable input set for the installed Ubuntu command journey.
 set -eu
-export GOENV=off GOTOOLCHAIN=local GOFLAGS=-mod=readonly
+export GOENV=off GOTOOLCHAIN=local GOFLAGS=-mod=readonly CGO_ENABLED=0
 
 fail() { printf '%s\n' "$*" >&2; exit 1; }
 
