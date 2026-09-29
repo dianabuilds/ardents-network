@@ -241,9 +241,9 @@ that installed evidence.
 
 ## Coordination and integration
 
-The Node owner integrates ready slices in the main `dev` checkout. Endpoint,
-Route and Network owners work in their separately registered worktrees;
-their current paths and active slices are recorded in
+The assigned cross-owner coordinator integrates ready slices in the main `dev`
+checkout. Node, Endpoint, Route and Network owners work in their registered
+checkouts or worktrees. Their current paths and active slices are recorded in
 `C:\Users\vitek\code\ardents-coordination\`. All owners read that shared
 directory outside their worktrees before a new slice, a shared interface edit,
 or integration. Assign exactly one implementer to each bounded Route,
