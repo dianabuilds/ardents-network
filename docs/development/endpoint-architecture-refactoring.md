@@ -330,27 +330,27 @@ choices, and installed systemd/cgroup qualification.
   `introduction/testsupport.go` 20 allowlist symbols, `source/testsupport.go` 3)
   with their recorded retirement condition: the test-audit slice reworks
   whitebox fixtures onto production seams, then the allowlist entries are removed.
+- **Current audit**: the remaining Introduction and Source fixture exports and
+  the Service worker-ownership witness have active behavior checks. Having no
+  production caller alone does not justify removal. A replacement fixture must
+  preserve each negative or retirement oracle through a real owner transition.
 - **Integration gate**: review notes go to the owning GitHub issue; code changes
   (if any) ride bounded implementation slices.
 
 ### L4 — #309/#311 (separate bug fixes, not structural acceptance)
 
-- **#309**: an intermittent terminal-receipt recovery failure remains open.
-  A late generation-2 receipt after the acknowledgement worker exits is one
-  unproven race candidate in shared `internal/service/connection`. First obtain
-  a deterministic RED at that boundary in a claimed quiet window; assign one
-  shared-package implementer before any fix edit.
-- **#311**: the exact Windows snapshot/withdrawal test intermittently times
-  out reading an Administration response. A temporary diagnostic captured the
-  server waiting for request EOF after the client completed CloseWrite; other
-  minimized request sequences also failed intermittently. The transport cause
-  is unproven. Trace the request/EOF boundary before choosing a fix, in a
-  timing-sensitive window free of other heavy work.
-- Rules: no retry/skip/quarantine; fix only the confirmed owner with a
-  deterministic regression; do not suppress EOF/integrity; do not change
-  deadlines before reproduction.
+- Terminal-receipt recovery and Administration snapshot withdrawal belong to
+  their confirmed Service Connection and Administration owners. Their
+  reproduction, repair, checks, and integration receipts live in GitHub
+  [#309](https://github.com/dianabuilds/ardents-network/issues/309) and
+  [#311](https://github.com/dianabuilds/ardents-network/issues/311), not in
+  this architecture plan. Neither defect's acceptance proves a structural
+  Endpoint seam, and a structural slice cannot waive either defect gate.
+- Any recurrence needs an owner-boundary reproduction and a deterministic
+  regression. Do not add retry, skip, or quarantine; suppress EOF or integrity
+  failures; or change deadlines before establishing the cause.
 
-### L5 — protocol cure (awaits PO decision)
+### L5 — protocol review (separate contract decisions)
 
 - Any structural cleanup with unchanged wire needs one bounded owner and a
   concrete caller/acceptance seam. Semantic or compatibility changes in shared
