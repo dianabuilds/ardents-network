@@ -2,6 +2,7 @@ package state
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -9,7 +10,9 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/network/duty"
+	"github.com/dianabuilds/ardents-network/internal/network/epoch"
 	"github.com/dianabuilds/ardents-network/internal/network/source"
+	"github.com/dianabuilds/ardents-network/internal/network/state/durable"
 )
 
 func TestFailedSourceGuardReleaseRetiresState(t *testing.T) {
@@ -28,6 +31,37 @@ func TestFailedSourceGuardReleaseRetiresState(t *testing.T) {
 	}
 	if !state.closed || state.terminalErr == nil {
 		t.Fatal("failed guard release left State available")
+	}
+}
+
+func TestUncertainSourceWaveCommitKeepsLiveGuard(t *testing.T) {
+	now := time.Unix(1_800_000_100, 0).UTC()
+	root := t.TempDir()
+	storage, err := openTestDurableRoot(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer storage.Close()
+	roleRoot := filepath.Join(t.TempDir(), "roles")
+	state := &networkState{config: config{root: root, localRoles: roleRoot, clock: func() time.Time { return now },
+		sourceInfo: source.Details{Configured: true, Identities: [2][32]byte{{1}, {2}}, Families: [2]string{"first", "second"}, OrderSeed: [32]byte{1}}},
+		storage: storage}
+	if _, _, err := state.startSourceWave(now); err != nil {
+		t.Fatal(err)
+	}
+	failure := fmt.Errorf("%w: injected Source pointer sync", durable.ErrPointerSyncUncertain)
+	first := epoch.Decision{Header: epoch.Header{Number: 1, Digest: [32]byte{1}}}
+	second := epoch.Decision{Header: epoch.Header{Number: 1, Digest: [32]byte{2}}}
+	_, err = state.completeSourceWaveWithConflictCommit(now, nil, []sourceResult{
+		{slot: 0, decision: first, observations: [4]byte{sourceOutcomeValid}},
+		{slot: 1, decision: second, observations: [4]byte{0, sourceOutcomeValid}},
+	}, func(string, []byte) error { return failure })
+	if !errors.Is(err, durable.ErrPointerSyncUncertain) || !state.closed {
+		t.Fatalf("uncertain Source commit did not retire State: closed=%t err=%v", state.closed, err)
+	}
+	probe := func() time.Time { return now.Add(2 * sourceWaveDuration) }
+	if held, err := duty.ReadConflict(roleRoot, probe, [32]byte{1}, [32]byte{}); err != nil || !held {
+		t.Fatalf("uncertain Source commit lost its live guard: held=%t err=%v", held, err)
 	}
 }
 
