@@ -82,15 +82,6 @@ func RetainedReplay(admission *Admission, nonce [32]byte) (time.Time, bool) {
 	return until, retained
 }
 
-// SeedReplay records one replay retention entry, replacing the retired
-// whitebox map assignment.
-func SeedReplay(admission *Admission, nonce [32]byte, until time.Time) {
-	if admission.replays == nil {
-		admission.replays = make(map[[32]byte]time.Time)
-	}
-	admission.replays[nonce] = until
-}
-
 // OpeningWindow copies the four opening-rate instants.
 func OpeningWindow(admission *Admission) [4]time.Time {
 	return admission.openings

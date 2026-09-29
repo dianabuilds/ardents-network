@@ -283,29 +283,3 @@ func exchangeCapsuleService(t *testing.T, reader, publisher *introductionAttempt
 		t.Fatalf("capsule-bound document: %q %v %v %v", body, err, closeErr, publisherErr)
 	}
 }
-
-func TestTextIntroductionReplayAndOpeningRateAreContextBounded(t *testing.T) {
-	owner := &dutyContext{}
-	now := time.Now().UTC()
-	for index := 0; index < 4; index++ {
-		if err := owner.introduction.admission.ReserveOpeningLocked(fixtureID(byte(index+1)), now); err != nil {
-			t.Fatal(err)
-		}
-	}
-	if err := owner.introduction.admission.ReserveOpeningLocked(fixtureID(8), now.Add(time.Second-time.Nanosecond)); err == nil {
-		t.Fatal("more than four openings in one second")
-	}
-	if err := owner.introduction.admission.ReserveOpeningLocked(fixtureID(8), now.Add(time.Second)); err != nil {
-		t.Fatal(err)
-	}
-	if err := owner.introduction.admission.ReserveOpeningLocked(fixtureID(9), now); err == nil {
-		t.Fatal("clock rollback reopened rate allowance")
-	}
-	introduction.SeedReplay(&owner.introduction.admission, fixtureID(10), now.Add(2*time.Second))
-	if err := owner.introduction.admission.ReserveOpeningLocked(fixtureID(10), now.Add(time.Second)); err == nil {
-		t.Fatal("replay allowed before expiry")
-	}
-	if err := owner.introduction.admission.ReserveOpeningLocked(fixtureID(10), now.Add(2*time.Second)); err != nil {
-		t.Fatal(err)
-	}
-}

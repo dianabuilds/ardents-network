@@ -44,7 +44,6 @@
           "internal/endpoint/introduction.RecoveryCount",
           "internal/endpoint/introduction.ReplayCount",
           "internal/endpoint/introduction.RetainedReplay",
-          "internal/endpoint/introduction.SeedReplay",
           "internal/endpoint/introduction.Slot",
           "internal/endpoint/introduction.TransplantCurrent",
           "internal/endpoint/introduction.WaiterCount"
