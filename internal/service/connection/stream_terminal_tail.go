@@ -19,8 +19,11 @@ func (stream *Stream) startTerminalTail(cleanup func(), receiver <-chan error) b
 	for stream.applicationWriting && stream.terminal == nil {
 		stream.cond.Wait()
 	}
+	confirmationWritten := stream.terminalConfirmationWrittenGeneration != 0 &&
+		stream.terminalConfirmationWrittenGeneration <= stream.terminalAcknowledgedGeneration &&
+		stream.terminalConfirmationWrittenOffset == stream.terminalOffset
 	eligible := stream.opener != nil && stream.terminal == nil && stream.localTerminal && stream.remoteTerminal &&
-		stream.terminalConfirmationSent
+		confirmationWritten
 	if eligible {
 		stream.postClose = true
 	}

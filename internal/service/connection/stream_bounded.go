@@ -441,6 +441,13 @@ func (stream *Stream) sendBoundedAcknowledgements() error {
 			if confirmation && stream.current == attachment {
 				stream.terminalConfirmationSent = true
 			}
+			if confirmation && stream.localTerminal && offset == stream.terminalOffset {
+				// A later duplicate receipt can make the current confirmation
+				// pending again after this worker exits. Keep proof of this
+				// successful write for the same logical Terminal across replay.
+				stream.terminalConfirmationWrittenGeneration = attachment.generation
+				stream.terminalConfirmationWrittenOffset = offset
+			}
 			stream.mu.Unlock()
 		}
 	}

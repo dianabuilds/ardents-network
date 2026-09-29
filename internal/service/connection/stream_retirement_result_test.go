@@ -133,7 +133,8 @@ func TestTerminalTailRetainsAttachmentRetirementResult(t *testing.T) {
 		recovery: Recovery{NoNewRecoveryAfter: now.Add(time.Minute).Unix()}, localTerminal: true, remoteTerminal: true,
 		terminalAcknowledgedGeneration: 1, terminalAckPending: true, terminalAckSent: true,
 		terminalAckGeneration: 1, terminalAckConfirmedGeneration: 1, terminalConfirmationPending: true,
-		terminalConfirmationSent: true, ackSignal: make(chan struct{}, 1), done: make(chan struct{}),
+		terminalConfirmationSent: true, terminalConfirmationWrittenGeneration: 1,
+		ackSignal: make(chan struct{}, 1), done: make(chan struct{}),
 		resources: func(string, int) uint32 { return 0 }}
 	stream.cond = sync.NewCond(&stream.mu)
 	if !stream.startTerminalTail(func() {}, nil) {
