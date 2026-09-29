@@ -333,24 +333,96 @@ no active predecessor never stages a future genesis: it records the complete
 wave and defers retry until that Epoch becomes current, leaving the root
 reopenable without a current generation.
 
-A serving Direct Source also owns one local `direct-source` duty for the
-current Epoch's materialized identity, family, and validity window. Offline
-acceptance and Source-wave activation advance that duty through their shared
-active-decision commit. State holds the local role root while replacing the
-duty and publishing the successor, so another role owner cannot observe an
-unprotected transition. A failure before the durable distribution pointer is replaced restores the
-predecessor duty; loss of that guard retires the serving State owner. If the
-pointer rename succeeds but its directory sync fails, the visible floor is
-uncertain: the live State owner closes under its lock, cancels work, and
-rejects later Current reads and Source resolutions. The successor duty remains as
-a collision guard until Close; it is not rolled back to a possibly stale
-predecessor. Reopen verifies the journal floor and exact generation before
-starting the Source server, or refuses recovery. Once the floor commits
-without error, the successor duty stays with the recoverable active decision
-even if the final State pointer needs repair.
+A serving Direct Source owns local `direct-source/live` collision guards for its
+current identity/family and every predecessor still needed by an accepted
+handler. Offline acceptance and Source-wave activation advance the guards
+through their shared active-decision commit. State holds the local role root
+while installing the successor guard and publishing the decision, so another
+role owner cannot observe an unprotected transition. A failure before the
+durable distribution pointer is replaced retains the predecessor guard;
+loss of a needed guard retires the serving State owner. If the pointer rename
+succeeds but its directory sync fails, the visible floor is uncertain: the
+live State owner closes under its lock, cancels work, and rejects later Current
+reads and Source resolutions. Every possibly served predecessor and successor
+guard stays until joined Close or verified recovery; it is not rolled back to
+one possibly stale decision. Reopen verifies the journal floor and exact
+generation before starting the Source server, or refuses recovery. Once the
+floor commits without error, the successor guard stays with the recoverable
+active decision even if the final State pointer needs repair. The precise
+release rule is below.
 State resolves the configured local role root once at Open, so later duty
 replacement and release use the same root if the process working directory
 changes.
+
+### Direct Source Duty lifetime and release
+
+This contract is selected by
+[ADR-0118](../adr/0118-retain-direct-source-guards-through-dependent-work.md)
+from [R-169](../research/records/r-169-source-duty-lifetime.md). The present
+runtime still sets serving Duty `NotAfter` to Epoch `ValidUntil` and initial
+outbound Duty `NotAfter` to the 15-second wave deadline. It does not yet meet
+this accepted release rule; the correction needs a GitHub implementation issue
+before its C0 slice is selected. Neither timestamp proves safe release.
+
+For a serving Source, State must install an effective `direct-source/live`
+identity and family collision guard before admitting a connection or publishing
+a decision that can be served. The guard covers the selected decision and every
+accepted connection/response handler that could use its bytes. `ValidUntil`
+remains an authenticated Epoch bound; it does not by itself authorize removal.
+State first stops further admission and joins the listener and all handlers,
+then removes the last serving guard. A normal `Close`, terminal retirement, or
+explicit server stop may take this path. A failed removal keeps a collision or
+refuses reopening; it never becomes a readable no-conflict result. Choosing
+whether an expired retained Epoch should still produce `ok` requires a
+separate clock/response-policy decision and does not weaken this guard.
+
+Active publication must install the successor guard before any reader can
+select successor bytes. A handler that selected predecessor A may still send A
+after B becomes current. If C follows B before that handler joins, A, B, and C
+identities and known families remain guarded as long as each has a possible
+dependent handler or current readable decision. Implementations may retain all
+predecessors conservatively until *all* accepted handlers join, then shrink to
+the current decision. State's serving producer may hold overlapping
+`direct-source/live` predecessor records for the same identity/family. State's
+exposure producer may retain overlapping *distinct* contacted tuples across
+waves when they are still dependent; the two Sources in one accepted plan remain
+distinct in identity and family. Any collision between different producers
+remains a refusal, including when identity alone or family alone matches. A
+failed or uncertain publication must retain every possibly served
+identity until State can verify the pointer and handler set or retire and join.
+
+For an outbound wave, State guards both precommitted Source tuples before
+contact. The recorded 15-second cycle deadline limits new attempts and
+recovery replay; it does not release a guard while contact, TLS, verification,
+or terminal State publication is in progress. Cancellation and deadline
+expiration close attempts and join their work before release. If the wave
+accepts current or pending State, its contacted identities/families remain
+excluded through that authenticated derived State's terminal bound and any
+dependent work, even after the wave joins. A wave with no accepted derived
+State may release the new wave's exposure only after its minimum exposure lease
+and all attempts and terminal publication have joined, and only if no earlier
+retained State still depends on the same Source. Interrupted or uncertain
+publication keeps the conservative guard and refuses new dependent work. The
+existing two-tuple Source history and installation-wide 64 Direct Source record
+cap stay hard; exhaustion refuses a new contact or publication before an
+unguarded identity can be exposed.
+
+Reopen takes the exclusive State-root lease, verifies durable current/pending
+generations, journal and pointer floors, and restores every guard needed by
+readable State before allowing a Source response or new wave. After a crash,
+process death plus the exclusive root lease prove that old handlers cannot
+resume; there is no persisted handler set to reconstruct. State may reclaim its
+own serving predecessor only when the verified active floor no longer names it
+and it protected no other retained decision. For outbound exposure, State may
+reclaim a work-only guard only if the verified journal and derived State prove
+no retained dependency; otherwise it remains protected. An ambiguous pointer,
+journal, dependency, owner provenance, or guard write fails closed.
+No other producer's record is cleaned up during this recovery. Implementation
+must make this lifetime visible to `duty.Conflict` across clock boundaries;
+merely storing a future `NotAfter` is insufficient if active work can outlive
+it. Tests must include a blocked real handler and a blocked real wave,
+A→B→C with identity-only and family-only changes, cap exhaustion, and crash
+points before/after pointer and guard commits.
 
 The closed Route profile pins its Epoch envelope: new closed candidates are
 accepted only as AREP v3 (ADR-0111). Offline acceptance and the Source-wave

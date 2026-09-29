@@ -27,6 +27,14 @@ implementation-linked; their maintained contracts are owned respectively by
 [Alpha-control transition](../technical/alpha-control-transition.md), the
 [C0 product scope](../product/scope.md), and
 [ADR-0067](../adr/0067-retire-completed-local-alpha-ceremonies.md).
+
+[R-169](records/r-169-source-duty-lifetime.md) decided that a local Direct
+Source guard follows joined dependent work and retained derived State, rather
+than only the Epoch or wave deadline. Its contract is promoted to
+[ADR-0118](../adr/0118-retain-direct-source-guards-through-dependent-work.md)
+and the [Network owner](../technical/network-route-node.md#direct-source-duty-lifetime-and-release).
+This clarification of ADR-0005 is not a second active C0 research question;
+the runtime correction needs a GitHub implementation issue.
 R-135 is decided and promoted to [ADR-0068](../adr/0068-bind-transit-issuer-roots-to-state-generation.md);
 its Transit implementation has since been retired under
 [ADR-0092](../adr/0092-retire-generic-publisher-transit-chain.md) and
