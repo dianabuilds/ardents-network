@@ -109,7 +109,7 @@ func sourceSingleFieldSuccessor(t *testing.T, previous fixture, number uint64, f
 	next.accepted = append([]fixtureRecord(nil), previous.accepted...)
 	for index, prior := range previous.accepted {
 		marker := firstMarker + byte(index)
-		family := prior.family
+		var family string
 		if changeIdentity {
 			// Keep the selected predecessor family while rotating its identity.
 			// This fixture's assignment selects the opposite candidate at C.
