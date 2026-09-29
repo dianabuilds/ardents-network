@@ -225,7 +225,7 @@ func assignMaterializationIndices(records []networkfixture.Record, nodes []fixtu
 	for index := range nodes {
 		materialization, found := indices[nodes[index].ID]
 		if !found {
-			return errors.New("Route Node has no Epoch materialization")
+			return errors.New("qualification Route Node has no Epoch materialization")
 		}
 		nodes[index].MaterializationIndex = materialization
 	}
@@ -233,7 +233,7 @@ func assignMaterializationIndices(records []networkfixture.Record, nodes []fixtu
 		for index := range group {
 			materialization, found := indices[group[index].ID]
 			if !found {
-				return errors.New("State owner has no Epoch materialization")
+				return errors.New("qualification State owner has no Epoch materialization")
 			}
 			group[index].MaterializationIndex = materialization
 		}

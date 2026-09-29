@@ -73,7 +73,7 @@ type nodeResultsInput struct {
 func readNodeResults(path string, manifest qualificationNetworkManifest, inventorySHA256 string, owners map[streamqualification.Role]ownerNetworkVerdict) (nodeOwnersVerdict, []streamqualification.Criterion, error) {
 	body, err := os.ReadFile(path)
 	if err != nil || len(body) == 0 || len(body) > 16<<20 {
-		return nodeOwnersVerdict{}, nil, errors.Join(err, errors.New("Node result input is invalid"))
+		return nodeOwnersVerdict{}, nil, errors.Join(err, errors.New("qualification Node result input is invalid"))
 	}
 	var inputSet nodeResultsInput
 	if err := decodeExact(body, &inputSet); err != nil {
@@ -129,7 +129,7 @@ func readNodeResults(path string, manifest qualificationNetworkManifest, invento
 	add("route-node-owner-set", float64(len(verdict.Nodes)), "=", 16, clean && len(verdict.Nodes) == 16)
 	add("state-source-owner-set", float64(len(verdict.Sources)), "=", 2, clean && len(verdict.Sources) == 2)
 	if !streamqualification.CriteriaPassed(criteria) {
-		return verdict, criteria, errors.New("Route Node and State Source owner evidence is incomplete")
+		return verdict, criteria, errors.New("qualification Route Node and State Source owner evidence is incomplete")
 	}
 	return verdict, criteria, nil
 }

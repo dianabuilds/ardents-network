@@ -167,11 +167,11 @@ func boundedStateProfile(root string) (bytes, files uint64, outcome error) {
 			return err
 		}
 		if info.Mode()&os.ModeSymlink != 0 || !info.IsDir() && !info.Mode().IsRegular() {
-			return errors.New("State profile contains a non-regular entry")
+			return errors.New("qualification State profile contains a non-regular entry")
 		}
 		if info.Mode().IsRegular() {
 			if info.Size() < 0 || uint64(info.Size()) > (64<<10)-bytes {
-				return errors.New("State profile exceeds 64 KiB")
+				return errors.New("qualification State profile exceeds 64 KiB")
 			}
 			bytes += uint64(info.Size())
 			files++

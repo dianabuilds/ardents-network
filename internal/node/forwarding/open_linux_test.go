@@ -382,7 +382,7 @@ func TestClosedForwardingOpenExpiresWhileExactCarrierDialWaits(t *testing.T) {
 	case <-time.After(500 * time.Millisecond):
 		releaseOnce.Do(func() { close(release) })
 		select {
-		case openErr = <-openDone:
+		case <-openDone:
 		case <-time.After(time.Second):
 			t.Fatal("forwarding open did not join after blocked dial release")
 		}

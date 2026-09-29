@@ -122,10 +122,10 @@ func decodePlan(input io.Reader) (decodedQualificationPlan, error) {
 		return decodedQualificationPlan{Mode: plan.Mode, Configs: configs}, nil
 	}
 	if ownerRole == streamqualification.PublisherRole && (len(configs) != 1 || !publisher) {
-		return decodedQualificationPlan{}, errors.New("Publisher owner plan must contain its one participant")
+		return decodedQualificationPlan{}, errors.New("qualification Publisher owner plan must contain its one participant")
 	}
 	if ownerRole == streamqualification.ReaderRole && (len(configs) != 4 || len(readers) != 4) {
-		return decodedQualificationPlan{}, errors.New("User owner plan must contain all four Readers")
+		return decodedQualificationPlan{}, errors.New("qualification User owner plan must contain all four Readers")
 	}
 	return decodedQualificationPlan{Mode: plan.Mode, Configs: configs}, nil
 }

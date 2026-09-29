@@ -204,12 +204,9 @@ func runReader(ctx context.Context, session Session, destination targetlink.Link
 			if err := session.EnsureTokenReserve(setup, recipients.Submission, 1, ReaderSetupParallelism); err != nil {
 				return bound, fmt.Errorf("qualification Reader %d stream %d submission reserve: %w", reader, index, err)
 			}
-			releaseSetup := func() {}
-			if releaseSetup == nil {
-				releaseSetup, err = run.AcquireSetup(setup)
-				if err != nil {
-					return bound, fmt.Errorf("qualification Reader %d stream %d setup admission: %w", reader, index, err)
-				}
+			releaseSetup, err := run.AcquireSetup(setup)
+			if err != nil {
+				return bound, fmt.Errorf("qualification Reader %d stream %d setup admission: %w", reader, index, err)
 			}
 			defer releaseSetup()
 			// Token issuance and admission waits can take seconds on the shaped
