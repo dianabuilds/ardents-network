@@ -72,7 +72,7 @@ func (s *networkState) replaceSourceExposures(notAfter time.Time, state string) 
 			Class:  "direct-source", State: state, NotAfter: notAfter}
 	}
 	if err := roles.Replace(sourceProducer("exposure", s.config.root), duties); err != nil {
-		return errors.Join(wrapSourceReplaceError(err), roles.Close())
+		return errors.Join(fmt.Errorf("replace Source exposure: %w", err), roles.Close())
 	}
 	return roles.Close()
 }
@@ -130,13 +130,6 @@ func (s *networkState) recoverSourceWaveGuard() error {
 		}
 	}
 	return s.releaseJoinedSourceWave()
-}
-
-func wrapSourceReplaceError(err error) error {
-	if errors.Is(err, duty.ErrInstallationSourceExhausted) {
-		return errors.New("source exposure set is full: " + err.Error())
-	}
-	return err
 }
 
 func (s *networkState) retainSourceServer() error {
