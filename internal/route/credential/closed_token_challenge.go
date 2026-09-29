@@ -12,8 +12,10 @@ import (
 )
 
 const (
-	closedTokenType = uint16(2)
-	closedTokenSize = 354
+	closedTokenType        = uint16(2)
+	closedTokenSize        = 354
+	closedTokenInputSize   = 2 + 32 + 32 + 32
+	closedTokenKeyIDOffset = closedTokenInputSize - 32
 )
 
 // ClosedTokenContext is the exact public receiver fact set bound into one
@@ -52,7 +54,7 @@ func ClosedTokenChallenge(context ClosedTokenContext, spki []byte, nonce [32]byt
 	challenge = append(challenge, originName...)
 	keyID := sha256.Sum256(spki)
 	digest := sha256.Sum256(challenge)
-	input := make([]byte, 0, 98)
+	input := make([]byte, 0, closedTokenInputSize)
 	input = binary.BigEndian.AppendUint16(input, closedTokenType)
 	input = append(input, nonce[:]...)
 	input = append(input, digest[:]...)

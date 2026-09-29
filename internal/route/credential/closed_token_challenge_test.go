@@ -33,6 +33,19 @@ func TestClosedTokenChallengeBindsOnlyPublicReceiverFacts(t *testing.T) {
 	if _, _, _, err := ClosedTokenChallenge(context, append([]byte(nil), spki[:len(spki)-1]...), nonce); err == nil {
 		t.Fatal("accepted malformed exact State SPKI")
 	}
+	token := append(append([]byte(nil), input...), make([]byte, closedTokenSize-len(input))...)
+	if got, ok := ClosedTokenKeyID(token); !ok || got != keyID {
+		t.Fatalf("unverified token key ID = %x, %v; want %x", got, ok, keyID)
+	}
+	for name, malformed := range map[string][]byte{
+		"short":      token[:len(token)-1],
+		"long":       append(append([]byte(nil), token...), 0),
+		"wrong type": append([]byte{0, 3}, token[2:]...),
+	} {
+		if got, ok := ClosedTokenKeyID(malformed); ok || got != [32]byte{} {
+			t.Errorf("%s token yielded key ID %x, %v", name, got, ok)
+		}
+	}
 	issuerDigest := sha256.Sum256(context.IssuerNodeID[:])
 	receiverDigest := sha256.Sum256(context.ReceiverNodeID[:])
 	encodeName := func(prefix string, digest [32]byte) string {

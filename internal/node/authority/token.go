@@ -14,7 +14,11 @@ import (
 // respective duty owners.
 func (source Source) TokenVerifier(receiver route.ClosedRoleReceiver, clock func() time.Time) route.ClosedAdmissionVerifier {
 	return func(input route.ClosedAdmissionVerification) (route.ClosedAdmissionApproval, error) {
-		if len(input.Token) != 354 || input.Class < 1 || input.Class > 3 || source.CurrentProfile == nil {
+		if input.Class < 1 || input.Class > 3 || source.CurrentProfile == nil {
+			return route.ClosedAdmissionApproval{}, errors.New("closed forwarding token is unavailable")
+		}
+		keyID, framed := credential.ClosedTokenKeyID(input.Token)
+		if !framed {
 			return route.ClosedAdmissionApproval{}, errors.New("closed forwarding token is unavailable")
 		}
 		profile, available := source.CurrentProfile()
@@ -23,8 +27,6 @@ func (source Source) TokenVerifier(receiver route.ClosedRoleReceiver, clock func
 			profile.Digest != receiver.ProfileDigest || profile.NotBefore.After(now) || !now.Before(profile.NotAfter) {
 			return route.ClosedAdmissionApproval{}, errors.New("closed forwarding token is unavailable")
 		}
-		var keyID [32]byte
-		copy(keyID[:], input.Token[66:98])
 		for index := uint8(0); index < profile.TokenKeyCount; index++ {
 			key := profile.TokenKeys[index]
 			if key.Class != input.Class || key.WindowStart != now.Truncate(time.Hour) || sha256.Sum256(key.SPKI[:]) != keyID {
