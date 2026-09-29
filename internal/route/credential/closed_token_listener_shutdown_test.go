@@ -110,11 +110,17 @@ func TestClosedTokenListenerStopCancelsIdleNode(t *testing.T) {
 		t.Fatal(err)
 	}
 	<-started
+	if got := listener.Active(); got != 1 {
+		t.Fatalf("active Node listener slots = %d, want 1", got)
+	}
 	drain, finish := context.WithTimeout(t.Context(), time.Second)
 	err = listener.Drain(drain)
 	finish()
 	if err != nil {
 		t.Error(err)
+	}
+	if got := listener.Active(); got != 0 {
+		t.Errorf("active Node listener slots after drain = %d, want 0", got)
 	}
 	// Unblock the old implementation on test failure, without hiding it.
 	cancel()

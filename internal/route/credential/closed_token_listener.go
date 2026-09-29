@@ -7,7 +7,6 @@ import (
 	"io"
 	"net"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/route"
@@ -45,7 +44,6 @@ type ClosedTokenListener struct {
 	controller *route.ClosedBootstrapController
 	clock      func() time.Time
 	limit      chan struct{}
-	active     atomic.Uint32
 	stopOnce   sync.Once
 	stopErr    error
 	cancel     context.CancelFunc
@@ -108,11 +106,12 @@ func (listener *ClosedTokenListener) Done() <-chan error {
 	return listener.done
 }
 
+// Active reports occupied connection-limit slots for Node usage sampling.
 func (listener *ClosedTokenListener) Active() uint32 {
 	if listener == nil {
 		return 0
 	}
-	return listener.active.Load()
+	return uint32(len(listener.limit))
 }
 
 // Stop refuses new peers. Drain joins currently bounded exchanges but does not
@@ -178,7 +177,6 @@ func (listener *ClosedTokenListener) serve(ctx context.Context) {
 			if accepted.Kind == routecarrier.ClosedSharedNode && accepted.Connection != nil {
 				select {
 				case listener.limit <- struct{}{}:
-					listener.active.Add(1)
 					listener.workers.Add(1)
 					go listener.serveNode(ctx, accepted)
 				default:
@@ -218,7 +216,6 @@ func (listener *ClosedTokenListener) serve(ctx context.Context) {
 func (listener *ClosedTokenListener) startDirect(ctx context.Context, connection net.Conn) {
 	select {
 	case listener.limit <- struct{}{}:
-		listener.active.Add(1)
 		listener.workers.Add(1)
 		go listener.serveConnection(ctx, connection)
 	default:
@@ -228,7 +225,7 @@ func (listener *ClosedTokenListener) startDirect(ctx context.Context, connection
 
 func (listener *ClosedTokenListener) serveConnection(ctx context.Context, connection net.Conn) {
 	defer listener.workers.Done()
-	defer func() { <-listener.limit; listener.active.Add(^uint32(0)); listener.closeCarrier(connection) }()
+	defer func() { <-listener.limit; listener.closeCarrier(connection) }()
 	deadline := listener.clock().UTC().Add(10 * time.Second)
 	if err := connection.SetDeadline(deadline); err != nil {
 		return
@@ -271,7 +268,6 @@ func (listener *ClosedTokenListener) serveNode(ctx context.Context, carrier rout
 			<-interrupted
 		}
 		<-listener.limit
-		listener.active.Add(^uint32(0))
 	}()
 	listener.node(ctx, carrier, listener.serveVerified)
 }
