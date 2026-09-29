@@ -11,9 +11,6 @@ x-base: &base
   cap_drop: [ALL]
   security_opt: [no-new-privileges:true]
   environment:
-    XDG_CACHE_HOME: /tmp/diagnostic-cache
-    XDG_DATA_HOME: /tmp/diagnostic-data
-    XDG_CONFIG_HOME: /tmp/diagnostic-config
     POWERSHELL_TELEMETRY_OPTOUT: "1"
     DOTNET_CLI_TELEMETRY_OPTOUT: "1"
     GOENV: "off"

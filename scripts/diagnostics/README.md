@@ -230,3 +230,10 @@ and declared 256-stream pacing must be preserved by any measured optimization.
 The network profile also permits CHOWN/SETUID/SETGID so Debian tcpdump can
 create its bounded capture and drop to the diagnostic account. These rights
 remain confined to that container; the default runner grants none.
+
+The live transition tail is independent of periodic resource samples.
+The latest resource event remains separate, including DRAIN/EXIT states.
+Caller interruption has its own fixed metric and never displays as success.
+Source inventory rejects special files and shares the whole-run budget.
+Profile temporaries are unlinked before sensitive data is written; the first
+cleanup failure remains terminal.

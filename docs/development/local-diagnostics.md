@@ -61,7 +61,7 @@ No TCP debug listener, automatic remote export or worker escape is introduced.
    Keep race and performance runs separate. Delete sensitive evidence explicitly
    after diagnosis according to the local owner's retention decision.
 
-Collector limits: 16 KiB per input line; 256 recent projected events; 16 MiB per
+Collector limits: 16 KiB per input line; 256 recent lifecycle/pressure transitions and one latest periodic resource sample; 16 MiB per
 raw stream; 4 MiB per event/sample file; 1024 observed group processes; one-second
 sampling; maximum caller duration 24 h. Saturation continues pipe draining and
 increments independent loss counters. A disk/write failure is retained and makes
@@ -76,9 +76,9 @@ read budget 2 s, write 35 s, idle 2 s, shutdown 3 s. Profiling opts into block
 sampling at 1 ms and mutex fraction 10 for the diagnostic process lifetime;
 CPU/trace only run on request. These costs change timing. Profiles contain
 addresses/stacks and potentially sensitive runtime material, so profile capture
-requires explicit `-sensitive` and remains private. Private temporary files
-avoid returning HTTP success after a failed profile write and are removed when
-the request ends. Runtime counters report process health, not product readiness.
+requires explicit `-sensitive` and remains private. Private temporary files are unlinked before the first sensitive write; failed
+unlink prevents capture, and the first cleanup failure is retained in the
+joined terminal outcome. Failed profile writes never return HTTP success. Runtime counters report process health, not product readiness.
 
 ## Environment and privilege boundary
 
@@ -113,3 +113,14 @@ Introduce them at their owning module with fixed categories, finite cardinality,
 bounded output and adversarial behavior tests. Cross-role identifiers, targets,
 peer addresses or token/body tracing need the privacy owner's explicit design;
 the local collector cannot invent them or turn them into metric labels.
+
+Recognized owner categories outside the bounded projection are represented as
+unclassified/missing, increment a fixed unknown-category counter, and make
+evidence incomplete. Their original value is never copied into telemetry.
+For a full retained preparation-stage string use the existing private timeline
+command; this panel is a bounded projection, not that exact text interface.
+
+At terminal completion the collector rechecks source content within the same
+run budget. A changed/unavailable final inventory invalidates the candidate
+receipt with a fixed source-change flag. Freeze the source before an accepted
+measurement; this comparison is not a transactional filesystem snapshot.

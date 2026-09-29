@@ -358,9 +358,9 @@ func freshEndpointProcessRoot(t *testing.T, pattern string) string {
 
 func assertDistinctAlphaControlRoots(t *testing.T, endpointRoots, readerRoots [2]string) {
 	t.Helper()
-	seen := make(map[string]struct{}, 10)
+	seen := make(map[string]struct{}, 6)
 	for _, root := range endpointRoots {
-		for _, child := range []string{"config", "state", "cache", "runtime"} {
+		for _, child := range []string{"state", "runtime"} {
 			path := filepath.Join(root, child, "ardents")
 			if info, err := os.Lstat(path); err != nil || !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
 				t.Fatalf("fresh Endpoint XDG root %s = %v / %v", path, info, err)
@@ -369,6 +369,14 @@ func assertDistinctAlphaControlRoots(t *testing.T, endpointRoots, readerRoots [2
 				t.Fatalf("alpha control process root is duplicated: %s", path)
 			}
 			seen[path] = struct{}{}
+		}
+	}
+	for _, root := range endpointRoots {
+		for _, child := range []string{"config", "cache"} {
+			path := filepath.Join(root, child)
+			if _, err := os.Lstat(path); !errors.Is(err, os.ErrNotExist) {
+				t.Fatalf("retired Endpoint XDG scaffold %s exists or cannot be checked: %v", path, err)
+			}
 		}
 	}
 	for _, root := range readerRoots {

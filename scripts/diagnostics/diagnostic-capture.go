@@ -67,15 +67,16 @@ func openBounded(dir, name string, limit int64) (*boundedFile, error) {
 }
 
 type event struct {
-	ObservedAt time.Time          `json:"observed_at"`
-	At         string             `json:"at,omitempty"`
-	Schema     string             `json:"schema"`
-	Kind       string             `json:"kind"`
-	State      string             `json:"state,omitempty"`
-	Carrier    string             `json:"carrier,omitempty"`
-	Failure    string             `json:"failure,omitempty"`
-	Resource   map[string]float64 `json:"resource,omitempty"`
-	Hosting    map[string]float64 `json:"hosting,omitempty"`
+	ObservedAt        time.Time          `json:"observed_at"`
+	At                string             `json:"at,omitempty"`
+	Schema            string             `json:"schema"`
+	Kind              string             `json:"kind"`
+	State             string             `json:"state,omitempty"`
+	Carrier           string             `json:"carrier,omitempty"`
+	Failure           string             `json:"failure,omitempty"`
+	UnknownCategories uint64             `json:"unknown_categories,omitempty"`
+	Resource          map[string]float64 `json:"resource,omitempty"`
+	Hosting           map[string]float64 `json:"hosting,omitempty"`
 }
 
 type summary struct {
@@ -84,18 +85,21 @@ type summary struct {
 	ExitCode           int                `json:"exit_code"`
 	TimedOut           bool               `json:"timed_out"`
 	Interrupted        bool               `json:"interrupted"`
+	SourceChanged      bool               `json:"source_tree_changed"`
 	CaptureIncomplete  bool               `json:"capture_incomplete"`
 	StdoutBytes        int64              `json:"stdout_bytes"`
 	StderrBytes        int64              `json:"stderr_bytes"`
 	RawDroppedBytes    int64              `json:"raw_dropped_bytes"`
 	EventDroppedBytes  int64              `json:"event_dropped_bytes"`
 	SampleDroppedBytes int64              `json:"sample_dropped_bytes"`
+	UnknownCategories  uint64             `json:"unknown_categories"`
 	InvalidLines       uint64             `json:"invalid_lines"`
 	UnrecognizedLines  uint64             `json:"unrecognized_lines"`
 	OversizedLines     uint64             `json:"oversized_lines"`
 	SampleFailures     uint64             `json:"sample_failures"`
 	Samples            uint64             `json:"samples"`
 	Counts             map[string]uint64  `json:"counts"`
+	LastResource       *event             `json:"last_resource,omitempty"`
 	LastEvents         []event            `json:"last_events"`
 	Peak               map[string]float64 `json:"peak"`
 }
@@ -161,9 +165,30 @@ func project(body []byte) (event, string) {
 		}
 	}
 	e := event{ObservedAt: time.Now().UTC(), At: at, Schema: schema, Kind: kind,
-		State:   selected(data["state"], "ABSENT PREPARED READY DRAINING WITHDRAWN FAILED OBSERVED NORMAL PROTECT"),
+		State:   selected(data["state"], "ABSENT PREPARED READY DRAINING WITHDRAWN FAILED OBSERVED NORMAL PROTECT DRAIN EXIT"),
 		Carrier: selected(data["carrier_profile"], "ardents-carrier-tcp-tls-v2 ardents-carrier-quic-v2"),
-		Failure: selected(data["failure"], "local-failure indeterminate-failure capacity-unavailable unavailable canceled timeout interrupted"), Resource: numbers(data["resource"], resourceFields)}
+		Failure: selected(data["failure"], "startup running rotation authorization publication-state publication-handover caller-context publisher-ended publication-draining registration-absent publisher-not-live registration publisher-drain deadline admission activation worker-launch worker-operation introduction-preparation service-join post-join-lifetime service-result rotation-authority rotation-prefix rotation-recipient rotation-expired rotation-registration rotation-publication"), Resource: numbers(data["resource"], resourceFields)}
+	if schema == "ardents-source-event-v1" {
+		e.Failure = selected(data["reason"], "background-work cleanup")
+	}
+	if schema == "ardents-node-event-v1" {
+		e.Failure = ""
+	}
+	for key, value := range map[string]string{"state": e.State, "carrier_profile": e.Carrier} {
+		if raw, ok := data[key].(string); ok && raw != "" && value == "" {
+			e.UnknownCategories++
+		}
+	}
+	failureKey := "failure"
+	if schema == "ardents-source-event-v1" {
+		failureKey = "reason"
+	}
+	if schema != "ardents-node-event-v1" {
+		if raw, ok := data[failureKey].(string); ok && raw != "" && e.Failure == "" {
+			e.Failure = "unclassified"
+			e.UnknownCategories++
+		}
+	}
 	if hosting, ok := data["hosting"].(map[string]any); ok {
 		e.Hosting = numbers(hosting["Observation"], hostingFields)
 	}
@@ -190,9 +215,15 @@ func (p *projection) line(body []byte) {
 		return
 	}
 	p.summary.Counts[e.Kind]++
-	p.summary.LastEvents = append(p.summary.LastEvents, e)
-	if len(p.summary.LastEvents) > 256 {
-		p.summary.LastEvents = p.summary.LastEvents[1:]
+	p.summary.UnknownCategories += e.UnknownCategories
+	p.summary.CaptureIncomplete = p.summary.CaptureIncomplete || e.UnknownCategories > 0
+	if e.Kind == "resource-sample" {
+		p.summary.LastResource = &e
+	} else {
+		p.summary.LastEvents = append(p.summary.LastEvents, e)
+		if len(p.summary.LastEvents) > 256 {
+			p.summary.LastEvents = p.summary.LastEvents[1:]
+		}
 	}
 	raw, err := json.Marshal(e)
 	if err == nil {
@@ -257,21 +288,40 @@ func drain(reader io.Reader, raw *boundedFile, p *projection, stdout bool) error
 }
 
 func supervise(dir, source string, command []string, timeout time.Duration, raw bool) (outcome error) {
+	signalCtx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+	ctx, cancel := context.WithTimeout(signalCtx, timeout)
+	defer cancel()
+	p := &projection{summary: summary{Started: time.Now().UTC(), ExitCode: -1, Counts: map[string]uint64{}, Peak: map[string]float64{}}}
+	terminalWritten := false
 	if err := os.Mkdir(dir, 0700); err != nil {
 		return err
 	}
-	info := map[string]any{"schema": "ardents-local-diagnostics-v1", "started": time.Now().UTC(), "timeout": timeout.String(), "raw": raw, "command": filepath.Base(command[0]), "arguments_retained": raw, "source_sha": sourceRevision(source), "source_tree_sha256": sourceDiffDigest(source), "go": query(source, "go", "version"), "image": os.Getenv("ARDENTS_DIAGNOSTIC_IMAGE"), "scope": "local development; process-group samples and network-namespace counters, not installed qualification"}
+	defer func() {
+		if !terminalWritten {
+			p.summary.Finished = time.Now().UTC()
+			p.summary.CaptureIncomplete = true
+			p.summary.TimedOut = errors.Is(ctx.Err(), context.DeadlineExceeded)
+			p.summary.Interrupted = ctx.Err() != nil && !p.summary.TimedOut
+			outcome = errors.Join(outcome, writeJSON(filepath.Join(dir, "summary.json"), p.summary))
+		}
+	}()
+	info := map[string]any{"schema": "ardents-local-diagnostics-v1", "started": p.summary.Started, "timeout": timeout.String(), "raw": raw, "command": filepath.Base(command[0]), "arguments_retained": raw, "source_sha": sourceRevision(ctx, source), "source_tree_sha256": sourceDiffDigest(ctx, source), "go": query(ctx, source, "go", "version"), "image": os.Getenv("ARDENTS_DIAGNOSTIC_IMAGE"), "scope": "local development; process-group samples and network-namespace counters, not installed qualification"}
 	if inventory, err := os.ReadFile("/opt/ardents-diagnostics/inventory.txt"); err == nil && len(inventory) <= 1<<20 {
 		if err := os.WriteFile(filepath.Join(dir, "tools.txt"), inventory, 0600); err != nil {
 			return err
 		}
 	}
-	if info["source_tree_sha256"] == "unavailable" {
-		return errors.New("source inventory unavailable")
-	}
 	if err := writeJSON(filepath.Join(dir, "manifest.json"), info); err != nil {
 		return err
 	}
+	if info["source_tree_sha256"] == "unavailable" {
+		return errors.Join(ctx.Err(), errors.New("source inventory unavailable"))
+	}
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+
 	if raw {
 		if err := writeJSON(filepath.Join(dir, "command.json"), command); err != nil {
 			return err
@@ -287,7 +337,7 @@ func supervise(dir, source string, command []string, timeout time.Duration, raw 
 		return err
 	}
 	defer func() { outcome = errors.Join(outcome, samples.Close()) }()
-	p := &projection{events: events, summary: summary{Started: time.Now().UTC(), ExitCode: -1, Counts: map[string]uint64{}, Peak: map[string]float64{}}}
+	p.events = events
 	var stdoutRaw, stderrRaw *boundedFile
 	if raw {
 		stdoutRaw, err = openBounded(dir, "stdout.log", logLimit)
@@ -301,10 +351,6 @@ func supervise(dir, source string, command []string, timeout time.Duration, raw 
 		}
 		defer func() { outcome = errors.Join(outcome, stderrRaw.Close()) }()
 	}
-	signalCtx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer stop()
-	ctx, cancel := context.WithTimeout(signalCtx, timeout)
-	defer cancel()
 	cmd := exec.Command(command[0], command[1:]...)
 	cmd.Dir = source
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
@@ -322,12 +368,16 @@ func supervise(dir, source string, command []string, timeout time.Duration, raw 
 	defer stderrW.Close()
 	cmd.Stdout = stdoutW
 	cmd.Stderr = stderrW
-	startErr := cmd.Start()
+	startErr := ctx.Err()
+	if startErr == nil {
+		startErr = cmd.Start()
+	}
 	stdoutW.Close()
 	stderrW.Close()
 	if startErr != nil {
 		p.summary.Finished = time.Now().UTC()
 		p.summary.CaptureIncomplete = true
+		terminalWritten = true
 		return errors.Join(startErr, writeJSON(filepath.Join(dir, "summary.json"), p.summary))
 	}
 	drains := make(chan error, 2)
@@ -399,6 +449,15 @@ func supervise(dir, source string, command []string, timeout time.Duration, raw 
 			drainErr = errors.Join(drainErr, err)
 		}
 	}
+	if ctx.Err() == nil {
+		finalHash := sourceDiffDigest(ctx, source)
+		p.summary.SourceChanged = finalHash == "unavailable" || finalHash != info["source_tree_sha256"]
+		p.summary.CaptureIncomplete = p.summary.CaptureIncomplete || p.summary.SourceChanged
+	}
+	if ctx.Err() != nil {
+		p.summary.TimedOut = errors.Is(ctx.Err(), context.DeadlineExceeded)
+		p.summary.Interrupted = !p.summary.TimedOut
+	}
 	p.summary.Finished = time.Now().UTC()
 	p.summary.ExitCode = cmd.ProcessState.ExitCode()
 	if stdoutRaw != nil {
@@ -415,6 +474,7 @@ func supervise(dir, source string, command []string, timeout time.Duration, raw 
 		closeErr = errors.Join(closeErr, stdoutRaw.Close(), stderrRaw.Close())
 	}
 	p.summary.CaptureIncomplete = p.summary.CaptureIncomplete || closeErr != nil
+	terminalWritten = true
 	summaryErr := errors.Join(closeErr, writeJSON(filepath.Join(dir, "summary.json"), p.summary))
 	fmt.Printf("evidence: %s; exit=%d timeout=%t incomplete=%t\n", dir, p.summary.ExitCode, p.summary.TimedOut, p.summary.CaptureIncomplete)
 	if p.summary.TimedOut || p.summary.Interrupted || p.summary.CaptureIncomplete {
@@ -423,8 +483,8 @@ func supervise(dir, source string, command []string, timeout time.Duration, raw 
 	return errors.Join(commandErr, drainErr, summaryErr)
 }
 
-func query(dir, name string, args ...string) string {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+func query(parent context.Context, dir, name string, args ...string) string {
+	ctx, cancel := context.WithTimeout(parent, 5*time.Second)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, name, args...)
 	cmd.Dir = dir
@@ -567,10 +627,10 @@ func sampleGroup(group int, at time.Time) (processSample, error) {
 	return s, nil
 }
 
-func sourceRevision(source string) string {
+func sourceRevision(ctx context.Context, source string) string {
 	revision := os.Getenv("ARDENTS_DIAGNOSTIC_SOURCE_SHA")
 	if len(revision) == 40 && strings.IndexFunc(revision, func(c rune) bool { return !(c >= '0' && c <= '9' || c >= 'a' && c <= 'f') }) < 0 {
 		return revision
 	}
-	return query(source, "git", "rev-parse", "HEAD")
+	return query(ctx, source, "git", "rev-parse", "HEAD")
 }

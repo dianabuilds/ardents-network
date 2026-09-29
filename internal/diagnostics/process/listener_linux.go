@@ -111,6 +111,18 @@ func open(ctx context.Context, path string) (func() error, error) {
 	}
 	runCtx, cancel := context.WithCancel(ctx)
 	profiles := make(chan struct{}, 1)
+	var cleanupMu sync.Mutex
+	var cleanupFailure error
+	retainCleanup := func(err error) {
+		if err != nil {
+			cleanupMu.Lock()
+			if cleanupFailure == nil {
+				cleanupFailure = err
+			}
+			cleanupMu.Unlock()
+		}
+	}
+
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /runtime", func(w http.ResponseWriter, r *http.Request) {
 		var m runtime.MemStats
@@ -136,7 +148,7 @@ func open(ctx context.Context, path string) (func() error, error) {
 		}
 		kind := r.PathValue("kind")
 		if kind == "cpu" {
-			captureTimed(r, w, runCtx, parent, pprof.StartCPUProfile, pprof.StopCPUProfile)
+			captureTimed(r, w, runCtx, parent, retainCleanup, pprof.StartCPUProfile, pprof.StopCPUProfile)
 			return
 		}
 		if kind != "heap" && kind != "allocs" && kind != "goroutine" && kind != "block" && kind != "mutex" {
@@ -148,13 +160,12 @@ func open(ctx context.Context, path string) (func() error, error) {
 			http.Error(w, "diagnostic profile unavailable", http.StatusServiceUnavailable)
 			return
 		}
-		file, err := os.CreateTemp(parent, ".profile-")
+		file, err := openProfileFile(parent, retainCleanup)
 		if err != nil {
 			http.Error(w, "diagnostic storage unavailable", http.StatusServiceUnavailable)
 			return
 		}
-		defer os.Remove(file.Name())
-		defer file.Close()
+		defer func() { retainCleanup(file.Close()) }()
 		writer := &limitedWriter{output: file, remaining: maximumProfileBytes, ctx: r.Context()}
 		if err := errors.Join(profile.WriteTo(writer, 0), writer.failure); err != nil {
 			http.Error(w, "diagnostic profile incomplete", http.StatusServiceUnavailable)
@@ -170,7 +181,7 @@ func open(ctx context.Context, path string) (func() error, error) {
 			http.Error(w, "diagnostic capture busy", http.StatusTooManyRequests)
 			return
 		}
-		captureTimed(r, w, runCtx, parent, trace.Start, trace.Stop)
+		captureTimed(r, w, runCtx, parent, retainCleanup, trace.Start, trace.Stop)
 	})
 	var handlers sync.WaitGroup
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -201,6 +212,9 @@ func open(ctx context.Context, path string) (func() error, error) {
 			case <-end.Done():
 				result = errors.Join(result, errors.New("diagnostic handlers did not join within shutdown budget"))
 			}
+			cleanupMu.Lock()
+			result = errors.Join(result, cleanupFailure)
+			cleanupMu.Unlock()
 			serveErr := <-terminal
 			if !errors.Is(serveErr, http.ErrServerClosed) {
 				result = errors.Join(result, serveErr)
@@ -218,19 +232,38 @@ func open(ctx context.Context, path string) (func() error, error) {
 	}, nil
 }
 
-func captureTimed(r *http.Request, w http.ResponseWriter, ctx context.Context, parent string, start func(io.Writer) error, stop func()) {
+// Unlink before any sensitive write. The open descriptor remains seekable on
+// Linux, while namespace residue cannot retain secret-bearing profile data.
+func openProfileFile(parent string, retainCleanup func(error)) (*os.File, error) {
+	file, err := os.CreateTemp(parent, ".profile-")
+	if err != nil {
+		return nil, err
+	}
+	if err := unlinkProfileFile(file, retainCleanup); err != nil {
+		failure := errors.Join(err, file.Close())
+		retainCleanup(failure)
+		return nil, failure
+	}
+	return file, nil
+}
+func unlinkProfileFile(file *os.File, retainCleanup func(error)) error {
+	err := os.Remove(file.Name())
+	retainCleanup(err)
+	return err
+}
+
+func captureTimed(r *http.Request, w http.ResponseWriter, ctx context.Context, parent string, retainCleanup func(error), start func(io.Writer) error, stop func()) {
 	seconds, err := strconv.Atoi(r.URL.Query().Get("seconds"))
 	if err != nil || seconds < 1 || seconds > 30 {
 		http.Error(w, "seconds must be between 1 and 30", http.StatusBadRequest)
 		return
 	}
-	file, err := os.CreateTemp(parent, ".profile-")
+	file, err := openProfileFile(parent, retainCleanup)
 	if err != nil {
 		http.Error(w, "diagnostic storage unavailable", http.StatusServiceUnavailable)
 		return
 	}
-	defer os.Remove(file.Name())
-	defer file.Close()
+	defer func() { retainCleanup(file.Close()) }()
 	writer := &limitedWriter{output: file, remaining: maximumProfileBytes, ctx: r.Context()}
 	if err := start(writer); err != nil {
 		http.Error(w, "diagnostic recorder unavailable", http.StatusServiceUnavailable)

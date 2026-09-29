@@ -237,3 +237,42 @@ func TestPrivateListenerRefusesExcessClientAndRecoversSlot(t *testing.T) {
 		t.Fatal("slot did not recover")
 	}
 }
+
+func TestProfileUnlinkedBeforeSensitiveWriteAndRemovalFailureRetained(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Fatal("profile cleanup denial requires an unprivileged Linux process")
+	}
+	parent := filepath.Dir(privateSocket(t))
+	var retained error
+	file, err := openProfileFile(parent, func(err error) { retained = err })
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer file.Close()
+	if _, err := os.Lstat(file.Name()); !errors.Is(err, os.ErrNotExist) {
+		t.Fatal("profile remains linked before write")
+	}
+	if _, err := file.Write([]byte("sensitive")); err != nil {
+		t.Fatal(err)
+	}
+	denied, err := os.CreateTemp(parent, ".profile-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer denied.Close()
+	if err := os.Chmod(parent, 0500); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { os.Chmod(parent, 0700) })
+	failure := unlinkProfileFile(denied, func(err error) { retained = err })
+	if !errors.Is(failure, os.ErrPermission) {
+		t.Fatalf("unlink denial was not observed: %v", failure)
+	}
+	// This is an empty file; failed initial unlink never admits sensitive writes.
+	if info, err := denied.Stat(); err != nil || info.Size() != 0 {
+		t.Fatal("failed unlink admitted profile bytes")
+	}
+	if !errors.Is(retained, os.ErrPermission) {
+		t.Fatal("cleanup denial was not retained")
+	}
+}

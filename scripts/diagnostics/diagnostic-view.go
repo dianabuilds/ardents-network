@@ -24,12 +24,15 @@ import (
 	"time"
 )
 
-func sourceDiffDigest(root string) string {
+func sourceDiffDigest(ctx context.Context, root string) string {
 	// Hash exact mounted source content, including uncommitted files, without retaining paths or diff text.
 	h := sha256.New()
 	count := 0
 	err := filepath.WalkDir(root, func(path string, entry os.DirEntry, err error) error {
 		if err != nil {
+			return err
+		}
+		if err := ctx.Err(); err != nil {
 			return err
 		}
 		if entry.Name() == ".git" {
@@ -41,8 +44,8 @@ func sourceDiffDigest(root string) string {
 		if entry.IsDir() {
 			return nil
 		}
-		if entry.Type()&os.ModeSymlink != 0 {
-			return errors.New("source inventory contains symlink")
+		if !entry.Type().IsRegular() {
+			return errors.New("source inventory contains non-regular file")
 		}
 		count++
 		if count > 20000 {
@@ -52,18 +55,17 @@ func sourceDiffDigest(root string) string {
 		if err != nil {
 			return err
 		}
-		f, err := os.Open(path)
+		f, err := os.OpenFile(path, os.O_RDONLY|syscall.O_NONBLOCK|syscall.O_NOFOLLOW, 0)
 		if err != nil {
 			return err
 		}
 		info, err := f.Stat()
-		if err != nil {
-			f.Close()
-			return err
+		if err != nil || !info.Mode().IsRegular() {
+			return errors.Join(err, errors.New("source inventory requires regular files"), f.Close())
 		}
 		normalized := filepath.ToSlash(rel)
 		fmt.Fprintf(h, "%d:%s:%d\n", len(normalized), normalized, info.Size())
-		n, readErr := io.Copy(h, io.LimitReader(f, 64<<20+1))
+		n, readErr := io.Copy(h, inventoryReader{ctx: ctx, reader: io.LimitReader(f, 64<<20+1)})
 		closeErr := f.Close()
 		if n > 64<<20 {
 			return errors.New("source file exceeds bound")
@@ -74,6 +76,18 @@ func sourceDiffDigest(root string) string {
 		return "unavailable"
 	}
 	return hex.EncodeToString(h.Sum(nil))
+}
+
+type inventoryReader struct {
+	ctx    context.Context
+	reader io.Reader
+}
+
+func (r inventoryReader) Read(body []byte) (int, error) {
+	if err := r.ctx.Err(); err != nil {
+		return 0, err
+	}
+	return r.reader.Read(body)
 }
 
 func (p *projection) snapshot(dir string) error {
@@ -120,7 +134,7 @@ func readSummary(dir string) (summary, error) {
 func metricText(s summary) string {
 	var b strings.Builder
 	// No dynamic labels: raw values, identities and unknown keys cannot add series.
-	fmt.Fprintf(&b, "ardents_diagnostic_exit_code %d\nardents_diagnostic_timed_out %d\nardents_diagnostic_capture_incomplete %d\nardents_diagnostic_samples_total %d\nardents_diagnostic_sample_failures_total %d\nardents_diagnostic_unrecognized_lines_total %d\nardents_diagnostic_invalid_lines_total %d\nardents_diagnostic_oversized_lines_total %d\nardents_diagnostic_raw_dropped_bytes_total %d\nardents_diagnostic_event_dropped_bytes_total %d\nardents_diagnostic_sample_dropped_bytes_total %d\n", s.ExitCode, boolNumber(s.TimedOut), boolNumber(s.CaptureIncomplete), s.Samples, s.SampleFailures, s.UnrecognizedLines, s.InvalidLines, s.OversizedLines, s.RawDroppedBytes, s.EventDroppedBytes, s.SampleDroppedBytes)
+	fmt.Fprintf(&b, "ardents_diagnostic_exit_code %d\nardents_diagnostic_timed_out %d\nardents_diagnostic_interrupted %d\nardents_diagnostic_capture_incomplete %d\nardents_diagnostic_source_tree_changed %d\nardents_diagnostic_samples_total %d\nardents_diagnostic_sample_failures_total %d\nardents_diagnostic_unrecognized_lines_total %d\nardents_diagnostic_invalid_lines_total %d\nardents_diagnostic_unknown_categories_total %d\nardents_diagnostic_oversized_lines_total %d\nardents_diagnostic_raw_dropped_bytes_total %d\nardents_diagnostic_event_dropped_bytes_total %d\nardents_diagnostic_sample_dropped_bytes_total %d\n", s.ExitCode, boolNumber(s.TimedOut), boolNumber(s.Interrupted), boolNumber(s.CaptureIncomplete), boolNumber(s.SourceChanged), s.Samples, s.SampleFailures, s.UnrecognizedLines, s.InvalidLines, s.UnknownCategories, s.OversizedLines, s.RawDroppedBytes, s.EventDroppedBytes, s.SampleDroppedBytes)
 	for _, name := range resourceFields {
 		if value, ok := s.Peak[name]; ok {
 			fmt.Fprintf(&b, "ardents_diagnostic_peak_%s %s\n", name, strconv.FormatFloat(value, 'g', -1, 64))
@@ -229,10 +243,10 @@ const dashboard = `<!doctype html><html lang="en"><meta charset="utf-8"><meta na
 <h1>Ardents · local diagnostics</h1><p>Development observation. Readiness comes from the owner event; process existence is not readiness. Namespace network counters include all local fixture traffic.</p>
 <section><h2 id="status">Waiting for capture</h2><pre id="health"></pre></section>
 <section><h2>Process group RSS (MiB)</h2><svg id="rss" viewBox="0 0 1000 180" preserveAspectRatio="none"></svg><pre id="sample"></pre></section>
-<section><h2>Latest owner events</h2><table><thead><tr><th>Observed UTC</th><th>Kind</th><th>State</th><th>Carrier</th><th>Failure</th></tr></thead><tbody id="events"></tbody></table></section>
+<section><h2>Latest owner transitions</h2><pre id="resource-state"></pre><table><thead><tr><th>Observed UTC</th><th>Kind</th><th>State</th><th>Carrier</th><th>Failure</th></tr></thead><tbody id="events"></tbody></table></section>
 <section><h2>Resource peaks</h2><pre id="peaks"></pre><a href="/metrics">Bounded metrics</a></section>
 <script>
-async function update(){try{let r=await fetch('/summary',{cache:'no-store'});if(!r.ok)throw Error('Capture unavailable or not started');let s=await r.json();let done=s.finished&&!s.finished.startsWith('0001');let bad=s.capture_incomplete||s.timed_out||(done&&s.exit_code!==0);let title=document.getElementById('status');title.textContent=done?(bad?'Failed / incomplete':'Command completed'):'Collecting';title.className=bad?'bad':'good';document.getElementById('health').textContent=JSON.stringify({started:s.started,finished:done?s.finished:null,exit_code:s.exit_code,timed_out:s.timed_out,interrupted:s.interrupted,capture_incomplete:s.capture_incomplete,samples:s.samples,sample_failures:s.sample_failures,invalid_lines:s.invalid_lines,unrecognized_lines:s.unrecognized_lines,oversized_lines:s.oversized_lines,raw_dropped_bytes:s.raw_dropped_bytes,event_dropped_bytes:s.event_dropped_bytes,sample_dropped_bytes:s.sample_dropped_bytes},null,2);let table=document.getElementById('events');table.replaceChildren();for(let e of (s.last_events||[]).slice(-32).reverse()){let tr=document.createElement('tr');for(let k of ['observed_at','kind','state','carrier','failure']){let td=document.createElement('td');td.textContent=e[k]||'—';tr.append(td)}table.append(tr)}document.getElementById('peaks').textContent=JSON.stringify(s.peak,null,2);let sr=await fetch('/samples',{cache:'no-store'});if(sr.ok){let text=await sr.text();let rows=text.trim().split('\n').filter(Boolean).map(x=>JSON.parse(x));let last=rows.at(-1);document.getElementById('sample').textContent=JSON.stringify(last||{samples:'not yet available'},null,2);let svg=document.getElementById('rss');svg.replaceChildren();if(rows.length){let maximum=Math.max(1,...rows.map(x=>x.rss_bytes));let path=document.createElementNS('http://www.w3.org/2000/svg','polyline');path.setAttribute('points',rows.map((x,i)=>[i*1000/Math.max(1,rows.length-1),170-160*x.rss_bytes/maximum].join(',')).join(' '));path.setAttribute('fill','none');path.setAttribute('stroke','#9bcbff');path.setAttribute('stroke-width','2');svg.append(path)}}}catch(e){document.getElementById('status').textContent=e.message;document.getElementById('status').className='bad'}}update();setInterval(update,2000);
+async function update(){try{let r=await fetch('/summary',{cache:'no-store'});if(!r.ok)throw Error('Capture unavailable or not started');let s=await r.json();document.getElementById('resource-state').textContent=s.last_resource?JSON.stringify(s.last_resource,null,2):'No resource event observed';let done=s.finished&&!s.finished.startsWith('0001');let bad=s.capture_incomplete||s.timed_out||s.interrupted||(done&&s.exit_code!==0);let title=document.getElementById('status');title.textContent=done?(bad?'Failed / incomplete':'Command completed'):'Collecting';title.className=bad?'bad':'good';document.getElementById('health').textContent=JSON.stringify({started:s.started,finished:done?s.finished:null,exit_code:s.exit_code,timed_out:s.timed_out,interrupted:s.interrupted,capture_incomplete:s.capture_incomplete,samples:s.samples,sample_failures:s.sample_failures,invalid_lines:s.invalid_lines,unrecognized_lines:s.unrecognized_lines,oversized_lines:s.oversized_lines,raw_dropped_bytes:s.raw_dropped_bytes,event_dropped_bytes:s.event_dropped_bytes,sample_dropped_bytes:s.sample_dropped_bytes},null,2);let table=document.getElementById('events');table.replaceChildren();for(let e of (s.last_events||[]).slice(-32).reverse()){let tr=document.createElement('tr');for(let k of ['observed_at','kind','state','carrier','failure']){let td=document.createElement('td');td.textContent=e[k]||'—';tr.append(td)}table.append(tr)}document.getElementById('peaks').textContent=JSON.stringify(s.peak,null,2);let sr=await fetch('/samples',{cache:'no-store'});if(sr.ok){let text=await sr.text();let rows=text.trim().split('\n').filter(Boolean).map(x=>JSON.parse(x));let last=rows.at(-1);document.getElementById('sample').textContent=JSON.stringify(last||{samples:'not yet available'},null,2);let svg=document.getElementById('rss');svg.replaceChildren();if(rows.length){let maximum=Math.max(1,...rows.map(x=>x.rss_bytes));let path=document.createElementNS('http://www.w3.org/2000/svg','polyline');path.setAttribute('points',rows.map((x,i)=>[i*1000/Math.max(1,rows.length-1),170-160*x.rss_bytes/maximum].join(',')).join(' '));path.setAttribute('fill','none');path.setAttribute('stroke','#9bcbff');path.setAttribute('stroke-width','2');svg.append(path)}}}catch(e){document.getElementById('status').textContent=e.message;document.getElementById('status').className='bad'}}update();setInterval(update,2000);
 </script></html>`
 
 func snapshotCommand(args []string) error {

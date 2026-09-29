@@ -4,12 +4,14 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"io"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 )
@@ -150,9 +152,9 @@ func TestEventTailRemainsBounded(t *testing.T) {
 func TestSourceDigestIncludesUncommittedContent(t *testing.T) {
 	dir := t.TempDir()
 	os.WriteFile(filepath.Join(dir, "untracked"), []byte("one"), 0600)
-	first := sourceDiffDigest(dir)
+	first := sourceDiffDigest(context.Background(), dir)
 	os.WriteFile(filepath.Join(dir, "untracked"), []byte("two"), 0600)
-	if first == "unavailable" || first == sourceDiffDigest(dir) {
+	if first == "unavailable" || first == sourceDiffDigest(context.Background(), dir) {
 		t.Fatal("source content identity lost")
 	}
 }
@@ -186,5 +188,96 @@ func TestTimingsKeepFailedTestsAndExcludeOverlappingSubtests(t *testing.T) {
 	}
 	if err := writeTestTimings(strings.NewReader(`{"Action":"run"}`), io.Discard); err == nil {
 		t.Fatal("incomplete timing passed")
+	}
+}
+
+func TestCurrentOwnerCategoriesAndLifecycleTailSurviveResourceSamples(t *testing.T) {
+	p := newProjection(t)
+	p.line([]byte(`{"schema":"ardents-node-event-v1","kind":"lifecycle","state":"READY"}`))
+	p.line([]byte(`{"schema":"ardents-node-event-v1","kind":"resource","state":"PROTECT"}`))
+	for i := 0; i < 300; i++ {
+		p.line([]byte(`{"schema":"ardents-node-event-v1","kind":"resource-sample","state":"OBSERVED"}`))
+	}
+	if len(p.summary.LastEvents) != 2 || p.summary.LastEvents[0].State != "READY" || p.summary.LastEvents[1].State != "PROTECT" || p.summary.LastResource.State != "OBSERVED" {
+		t.Fatal("resource samples displaced transition or drain state")
+	}
+	for _, failure := range []string{"startup", "running", "rotation"} {
+		event, reason := project([]byte(`{"schema":"ardents-headless-runtime-event-v1","kind":"headless-runtime-failed","failure":"` + failure + `"}`))
+		if reason != "" || event.Failure != failure {
+			t.Fatalf("failure category lost: %s", failure)
+		}
+	}
+	body := metricText(summary{Interrupted: true, ExitCode: 0})
+	if !strings.Contains(body, "ardents_diagnostic_interrupted 1\n") {
+		t.Fatal("interruption hidden from metrics")
+	}
+}
+func TestSourceInventoryRejectsFIFOAndHonorsCanceledContext(t *testing.T) {
+	root := t.TempDir()
+	if err := syscall.Mkfifo(filepath.Join(root, "fifo"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	done := make(chan string, 1)
+	go func() { done <- sourceDiffDigest(context.Background(), root) }()
+	select {
+	case digest := <-done:
+		if digest != "unavailable" {
+			t.Fatal("FIFO accepted")
+		}
+	case <-time.After(time.Second):
+		t.Fatal("FIFO blocked inventory")
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if sourceDiffDigest(ctx, t.TempDir()) != "unavailable" {
+		t.Fatal("canceled inventory accepted")
+	}
+}
+func TestWholeRunDeadlineIncludesInventoryAndProducesFailureReceipt(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "expired")
+	if err := supervise(dir, t.TempDir(), []string{"sh", "-c", "exit 0"}, time.Nanosecond, false); err == nil {
+		t.Fatal("expired setup accepted")
+	}
+	body, err := os.ReadFile(filepath.Join(dir, "summary.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var result summary
+	if err := json.Unmarshal(body, &result); err != nil {
+		t.Fatal(err)
+	}
+	if !result.TimedOut || !result.CaptureIncomplete || result.ExitCode != -1 {
+		t.Fatalf("setup failure not retained: %+v", result)
+	}
+}
+
+func TestUnsupportedOwnerCategoryIsVisibleWithoutPrivateValue(t *testing.T) {
+	p := newProjection(t)
+	p.line([]byte(`{"schema":"ardents-headless-runtime-event-v1","kind":"headless-runtime-failed","failure":"PRIVATE"}`))
+	body, _ := json.Marshal(p.summary)
+	if bytes.Contains(body, []byte("PRIVATE")) || !p.summary.CaptureIncomplete || p.summary.UnknownCategories != 1 || p.summary.LastEvents[0].Failure != "unclassified" {
+		t.Fatalf("unsupported category hidden/leaked: %s", body)
+	}
+}
+
+func TestSourceMutationInvalidatesExactCandidateReceipt(t *testing.T) {
+	source := t.TempDir()
+	if err := os.WriteFile(filepath.Join(source, "payload"), []byte("before"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	out := filepath.Join(t.TempDir(), "mutation")
+	if err := supervise(out, source, []string{"sh", "-c", "printf after > payload"}, time.Second, false); err == nil {
+		t.Fatal("changing candidate accepted")
+	}
+	body, err := os.ReadFile(filepath.Join(out, "summary.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var result summary
+	if err := json.Unmarshal(body, &result); err != nil {
+		t.Fatal(err)
+	}
+	if !result.SourceChanged || !result.CaptureIncomplete || result.ExitCode != 0 {
+		t.Fatal(string(body))
 	}
 }
