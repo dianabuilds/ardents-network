@@ -207,6 +207,7 @@ already pinned authority retain their previous State and Source behavior.
 | internal/node/introduction | Own the closed Introduction listener, registration slots, capsule deliveries, spend ledger and joined drain. | Process admission, State custody, Hosting pressure, or Route capsule grammar. |
 | internal/node/join | Own the closed data JOIN listener, pair set, spend ledger and leased Hosting handle through joined shutdown. Node supplies the shared provider-period policy. | Process admission, State custody, global Hosting pressure, or Route pair grammar. |
 | internal/node/outer | Serve one accepted authenticated outer Carrier, serialize inner-lane writes, interrupt and join inner handlers on cancellation. The receiving Node duty retains admission, durable roots and the accepted connection's final close result. | Node duty selection, token admission, physical Carrier authentication, or durable-root close. |
+| internal/node/probe | Own the private role-probe TLS listener, validated credential copy, fixed request/response, bounded nonce replay memory and joined shutdown; expose a handle for Node supervision. | Authenticated duty selection, State-root custody, process pressure or a separate probe runtime. |
 | internal/node/resolution | Own the closed resolution listener, accepted children, Descriptor store and spend ledger; retain terminal and cleanup outcomes after joined drain. | State-root custody, process admission, other Node duties, or Route wire grammar. |
 
 Each Module exposes one consumer-relevant Interface while retaining codec,
