@@ -28,7 +28,7 @@ type Source struct {
 // and digest slices; any declared field requires its complete half, and a
 // material index outside its bound is rejected. VerificationClock and
 // MaterialIndex alone do not declare acquisition or serving. Addresses use a
-// literal IP and numeric TCP port.
+// literal IP and nonzero numeric TCP port.
 type Config struct {
 	Sources           [2]Source
 	ClientCertificate tls.Certificate

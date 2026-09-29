@@ -37,13 +37,13 @@ func TestNewRejectsPartiallyDeclaredHalves(t *testing.T) {
 	}
 }
 
-func TestSourceAddressRequiresNumericTCPPort(t *testing.T) {
-	for _, address := range []string{"127.0.0.1:service", "127.0.0.1:65536", "[::1]:-1", "127.0.0.1:+80", "127.0.0.1:80x"} {
+func TestSourceAddressRequiresUsableTCPPort(t *testing.T) {
+	for _, address := range []string{"127.0.0.1:service", "127.0.0.1:65536", "[::1]:-1", "127.0.0.1:+80", "127.0.0.1:80x", "127.0.0.1:0", "[::1]:00000"} {
 		if _, _, err := New(Config{ServeAddress: address, VerificationClock: time.Now}, nil); err == nil || !strings.Contains(err.Error(), "source address") {
 			t.Errorf("Source plan accepted invalid TCP address %q: %v", address, err)
 		}
 	}
-	for _, address := range []string{"127.0.0.1:0", "[::1]:65535"} {
+	for _, address := range []string{"127.0.0.1:1", "[::1]:65535"} {
 		if err := validateAddress(address); err != nil {
 			t.Errorf("valid TCP address %q: %v", address, err)
 		}

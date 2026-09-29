@@ -138,7 +138,7 @@ func validateAddress(address string) error {
 		}
 	}
 	number, err := strconv.Atoi(port)
-	if err != nil || number > 65535 {
+	if err != nil || number == 0 || number > 65535 {
 		return errors.New("source address must be a literal IP and port")
 	}
 	return nil
