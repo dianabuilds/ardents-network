@@ -138,6 +138,7 @@
           "internal/application/broker.grantCommitment",
           "internal/application/administration.Listen",
           "internal/application/administration.refuseMalformedRequest",
+          "internal/application/administration.requestInput.Read",
           "internal/application/administration.server.Close",
           "internal/application/administration.server.handle",
           "internal/application/administration.server.handlePublishedLink",

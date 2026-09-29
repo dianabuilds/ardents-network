@@ -43,7 +43,7 @@ func RequestSnapshot(ctx context.Context, path string, snapshot []byte) (Outcome
 	}, Published)
 }
 
-func (server *server) handleSnapshot(connection *net.UnixConn) {
+func (server *server) handleSnapshot(connection *net.UnixConn, input io.Reader) {
 	owner, ok := server.owner.(SnapshotPublisher)
 	if !ok {
 		writeResponse(connection, "unavailable\n")
@@ -59,7 +59,7 @@ func (server *server) handleSnapshot(connection *net.UnixConn) {
 		return
 	}
 	var size [4]byte
-	if _, err := io.ReadFull(connection, size[:]); err != nil {
+	if _, err := io.ReadFull(input, size[:]); err != nil {
 		writeResponse(connection, "unavailable\n")
 		return
 	}
@@ -70,13 +70,13 @@ func (server *server) handleSnapshot(connection *net.UnixConn) {
 	}
 	body := make([]byte, int(length))
 	defer clear(body)
-	if _, err := io.ReadFull(connection, body); err != nil || !utf8.Valid(body) {
+	if _, err := io.ReadFull(input, body); err != nil || !utf8.Valid(body) {
 		writeResponse(connection, "unavailable\n")
 		return
 	}
 	var trailing [1]byte
-	if n, err := connection.Read(trailing[:]); n != 0 || err != io.EOF {
-		refuseMalformedRequest(connection, n, err)
+	if n, err := input.Read(trailing[:]); n != 0 || err != io.EOF {
+		refuseMalformedRequest(connection, input, n, err)
 		return
 	}
 	if err := owner.PublishSnapshot(server.ctx, body); err != nil {

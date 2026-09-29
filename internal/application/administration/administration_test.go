@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -20,6 +21,68 @@ type testInterface struct {
 
 func (owner testInterface) Publish(ctx context.Context) error  { return owner.publish(ctx) }
 func (owner testInterface) Withdraw(ctx context.Context) error { return owner.withdraw(ctx) }
+
+type timeoutThenEOF struct {
+	reads     int
+	deadlines []time.Time
+}
+
+func (reader *timeoutThenEOF) Read([]byte) (int, error) {
+	reader.reads++
+	if reader.reads == 1 {
+		return 0, os.ErrDeadlineExceeded
+	}
+	return 0, io.EOF
+}
+
+func (reader *timeoutThenEOF) SetReadDeadline(deadline time.Time) error {
+	reader.deadlines = append(reader.deadlines, deadline)
+	return nil
+}
+
+func TestAdministrationRequestReadRearmsBeforeAbsoluteDeadline(t *testing.T) {
+	deadline := time.Now().Add(time.Second)
+	connection := &timeoutThenEOF{}
+	input := requestInput{connection: connection, deadline: deadline}
+	var trailing [1]byte
+	if n, err := input.Read(trailing[:]); n != 0 || err != io.EOF {
+		t.Fatalf("request EOF = %d, %v", n, err)
+	}
+	if connection.reads != 2 || len(connection.deadlines) != 2 {
+		t.Fatalf("request reads = %d, deadlines = %d", connection.reads, len(connection.deadlines))
+	}
+	for _, readDeadline := range connection.deadlines {
+		if readDeadline.After(deadline) {
+			t.Fatalf("request read exceeded absolute deadline: %s > %s", readDeadline, deadline)
+		}
+	}
+	expired := &timeoutThenEOF{}
+	input = requestInput{connection: expired, deadline: time.Now().Add(-time.Second)}
+	if _, err := input.Read(trailing[:]); !errors.Is(err, os.ErrDeadlineExceeded) || expired.reads != 1 {
+		t.Fatalf("expired request read = %v after %d reads", err, expired.reads)
+	}
+}
+
+func TestAdministrationHalfCloseEOFProgress(t *testing.T) {
+	path := filepath.Join(os.TempDir(), fmt.Sprintf("aa-eof-%d.sock", time.Now().UnixNano()))
+	var calls atomic.Int32
+	server, err := Listen(path, testInterface{
+		publish:  func(context.Context) error { return errors.New("unexpected publish") },
+		withdraw: func(context.Context) error { calls.Add(1); return nil },
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = server.Close() })
+	for iteration := range 4096 {
+		if outcome, err := Request(t.Context(), path, Withdraw); err != nil || outcome != Withdrawn {
+			t.Fatalf("withdrawal %d = %q, %v", iteration, outcome, err)
+		}
+	}
+	if calls.Load() != 4096 {
+		t.Fatalf("withdrawal owner calls = %d, want 4096", calls.Load())
+	}
+}
 
 func TestLocalAdministrationDispatchesOnlyClosedOperations(t *testing.T) {
 	path := filepath.Join(os.TempDir(), fmt.Sprintf("aa-%d.sock", time.Now().UnixNano()))
