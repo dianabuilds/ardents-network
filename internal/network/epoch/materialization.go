@@ -8,6 +8,20 @@ import (
 
 const MaxMaterializationBytes = 35 << 10
 
+// InspectMaterializationIndex reads only the bounded framing prefix. It does
+// not validate the remaining materialization or authenticate its proof; callers
+// must still use Verify or Decision.VerifyMaterials before accepting the bytes.
+func InspectMaterializationIndex(raw []byte) (uint32, error) {
+	if len(raw) < 36 || len(raw) > MaxMaterializationBytes {
+		return 0, errors.New("materialization framing length is invalid")
+	}
+	d := newDecoder(raw)
+	if _, err := d.bytes(32); err != nil {
+		return 0, err
+	}
+	return d.uint32()
+}
+
 type materialization struct {
 	epochDigest [32]byte
 	index       uint32

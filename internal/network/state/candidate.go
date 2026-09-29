@@ -2,7 +2,6 @@ package state
 
 import (
 	"bytes"
-	"encoding/binary"
 	"errors"
 
 	"github.com/dianabuilds/ardents-network/internal/network/epoch"
@@ -13,7 +12,7 @@ func (s *networkState) verifySourceBundle(bundle source.Bundle, current *epoch.D
 	if len(bundle.Materials) != 1 {
 		return epoch.Decision{}, errors.New("source withheld the requested materialization index")
 	}
-	index, err := materializationIndex(bundle.Materials[0])
+	index, err := epoch.InspectMaterializationIndex(bundle.Materials[0])
 	if err != nil || index != s.config.sourceInfo.MaterialIndex {
 		return epoch.Decision{}, errors.New("source withheld the requested materialization index")
 	}
@@ -70,11 +69,4 @@ func equalInputs(first, second [][]byte) bool {
 		}
 	}
 	return true
-}
-
-func materializationIndex(raw []byte) (uint32, error) {
-	if len(raw) < 36 || len(raw) > epoch.MaxMaterializationBytes {
-		return 0, errors.New("materialization framing length is invalid")
-	}
-	return binary.BigEndian.Uint32(raw[32:36]), nil
 }
