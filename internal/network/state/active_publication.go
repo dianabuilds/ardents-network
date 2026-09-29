@@ -21,6 +21,7 @@ func (s *networkState) commitActiveDecisionWithControl(decision epoch.Decision, 
 		return errors.New("direct Source server has no current identity")
 	}
 	restorePreviousDuty := true
+	var nextPredecessors []duty.Duty
 	if s.config.sourceInfo.Serving {
 		// Hold the role root across both publications. Other role owners cannot
 		// observe a gap between the old and successor Source duties.
@@ -31,9 +32,13 @@ func (s *networkState) commitActiveDecisionWithControl(decision epoch.Decision, 
 		}
 		defer func() { result = errors.Join(result, roles.Close()) }()
 		producer := sourceProducer("server", s.config.root)
-		previous := sourceServerDuty(*s.current)
-		if err := roles.Replace(producer, []duty.Duty{sourceServerDuty(decision)}); err != nil {
-			protected, guardErr := roles.Conflict(previous.Identity, previous.Family)
+		previous := servingDutySet(*s.current, s.servingPredecessors)
+		if s.activeSource > 0 {
+			nextPredecessors = previous
+		}
+		if err := roles.Replace(producer, servingDutySet(decision, nextPredecessors)); err != nil {
+			old := sourceServerDuty(*s.current)
+			protected, guardErr := roles.Conflict(old.Identity, old.Family)
 			if guardErr != nil || !protected {
 				s.retireStateLocked()
 				return errors.Join(err, guardErr, errors.New("previous serving Source duty is unavailable"))
@@ -44,7 +49,7 @@ func (s *networkState) commitActiveDecisionWithControl(decision epoch.Decision, 
 			if !restorePreviousDuty {
 				return
 			}
-			if err := roles.Replace(producer, []duty.Duty{previous}); err != nil {
+			if err := roles.Replace(producer, previous); err != nil {
 				// The old decision may still be served. Retire this owner if its
 				// local collision guard could not be restored.
 				s.retireStateLocked()
@@ -69,6 +74,9 @@ func (s *networkState) commitActiveDecisionWithControl(decision epoch.Decision, 
 	}
 	restorePreviousDuty = false
 	s.current = &decision
+	if s.config.sourceInfo.Serving {
+		s.servingPredecessors = nextPredecessors
+	}
 	if s.pendingDecision != nil && s.pendingDecision.Header.Digest == decision.Header.Digest {
 		s.pendingDecision = nil
 	}

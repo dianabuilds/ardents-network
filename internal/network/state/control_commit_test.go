@@ -342,12 +342,18 @@ func TestActiveControlCommitFailureKeepsCorrectSourceDuty(t *testing.T) {
 	for _, test := range []struct {
 		name      string
 		uncertain bool
+		active    bool
 	}{
 		{name: "before pointer replacement"},
+		{name: "before pointer replacement with handler", active: true},
 		{name: "after pointer replacement", uncertain: true},
+		{name: "after pointer replacement with handler", uncertain: true, active: true},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			s, current := newControlCommitFixture(t, true)
+			if test.active {
+				s.activeSource = 1
+			}
 			successor := current
 			successor.Header.Number++
 			successor.Header.Digest = sha256.Sum256([]byte("control-commit-successor"))
@@ -386,7 +392,7 @@ func TestActiveControlCommitFailureKeepsCorrectSourceDuty(t *testing.T) {
 				t.Fatal(err)
 			}
 			if test.uncertain {
-				if !s.closed || oldProtected || !newProtected {
+				if !s.closed || oldProtected != test.active || !newProtected {
 					t.Fatalf("uncertain Source guard: closed=%t old=%t successor=%t", s.closed, oldProtected, newProtected)
 				}
 				if _, err := s.Current(); err == nil {

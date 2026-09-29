@@ -4,15 +4,17 @@ import (
 	"bytes"
 	"context"
 	"crypto/sha256"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 )
 
-func TestSourcePlanRotationRefusesBeforeExhaustingDurableHistory(t *testing.T) {
+func TestSourcePlanRotationRefusesRecoveryWithUnprovenExposureHistory(t *testing.T) {
 	genesis := newFixture(t)
 	successor := nextFixture(t, genesis)
 	config, closeSources := sourceEnvironment(t, genesis, successor, successor)
@@ -36,24 +38,26 @@ func TestSourcePlanRotationRefusesBeforeExhaustingDurableHistory(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	original := config.Source.Sources[0].Identity
 	config.Source.Sources[0].Identity = sha256.Sum256([]byte("replacement-source-identity"))
-	rotated, err := state.Open(config)
+	rotated, reopenErr := state.Open(config)
+	if rotated != nil {
+		_ = rotated.Close()
+	}
+	var required *state.RecoveryRequiredError
+	if !errors.As(reopenErr, &required) || !strings.Contains(reopenErr.Error(), "Source exposure history") {
+		t.Fatalf("changed Source plan recovered without proven guards: %v", reopenErr)
+	}
+	withoutSources := fixtureConfig(genesis, config.Root, time.Unix(genesis.now, 0).UTC())
+	readOnly, err := state.Open(withoutSources)
 	if err != nil {
+		t.Fatalf("terminal Source journal refused offline reader: %v", err)
+	}
+	if _, err := readOnly.Current(); err != nil {
+		t.Fatalf("offline reader lost accepted State: %v", err)
+	}
+	if err := readOnly.Close(); err != nil {
 		t.Fatal(err)
-	}
-	_, refreshErr := rotated.Refresh(context.Background())
-	if err := rotated.Close(); err != nil {
-		t.Fatal(err)
-	}
-	reopened, reopenErr := state.Open(config)
-	if refreshErr == nil {
-		if reopened != nil {
-			_ = reopened.Close()
-		}
-		t.Fatalf("third Source exposure was accepted; reopen returned %v", reopenErr)
-	}
-	if !strings.Contains(refreshErr.Error(), "Source exposure history is full") {
-		t.Fatalf("Source exposure exhaustion returned %v", refreshErr)
 	}
 	after, err := os.ReadFile(controlPath)
 	if err != nil {
@@ -62,8 +66,10 @@ func TestSourcePlanRotationRefusesBeforeExhaustingDurableHistory(t *testing.T) {
 	if !bytes.Equal(before, after) {
 		t.Fatal("exhausted Source plan changed the distribution pointer")
 	}
+	config.Source.Sources[0].Identity = original
+	reopened, reopenErr := state.Open(config)
 	if reopenErr != nil {
-		t.Fatalf("reopen after refused Source plan: %v", reopenErr)
+		t.Fatalf("reopen with original Source plan: %v", reopenErr)
 	}
 	defer reopened.Close()
 	current, err := reopened.Current()

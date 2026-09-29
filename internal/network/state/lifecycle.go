@@ -64,10 +64,16 @@ func (s *networkState) closeOwned() error {
 	s.mu.RLock()
 	serverErr, automaticErr, resourceErr, terminalErr := s.serverErr, s.automaticErr, s.resourceErr, s.terminalErr
 	s.mu.RUnlock()
+	var exposureErr error
+	if terminalErr == nil {
+		// A terminal journal permits time-bound release after contacts join.
+		// An interrupted active journal retains its live guard for recovery.
+		exposureErr = s.releaseSourceWave()
+	}
 	storageErr := storage.Close()
 	roleErr := s.releaseSourceServer()
 	if serverErr == context.Canceled {
 		serverErr = nil
 	}
-	return errors.Join(serverErr, automaticErr, resourceErr, terminalErr, storageErr, roleErr)
+	return errors.Join(serverErr, automaticErr, resourceErr, terminalErr, exposureErr, storageErr, roleErr)
 }

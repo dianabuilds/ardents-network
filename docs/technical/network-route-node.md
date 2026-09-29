@@ -358,11 +358,15 @@ changes.
 
 This contract is selected by
 [ADR-0118](../adr/0118-retain-direct-source-guards-through-dependent-work.md)
-from [R-169](../research/records/r-169-source-duty-lifetime.md). The present
-runtime still sets serving Duty `NotAfter` to Epoch `ValidUntil` and initial
-outbound Duty `NotAfter` to the 15-second wave deadline. It does not yet meet
-this accepted release rule; the correction needs a GitHub implementation issue
-before its C0 slice is selected. Neither timestamp proves safe release.
+from [R-169](../research/records/r-169-source-duty-lifetime.md). Serving Duty
+still stores Epoch `ValidUntil`, but `direct-source/live` conflict truth follows
+explicit owner release; State holds accepted-handler predecessors through their
+joined close. Outbound contact uses an owner-held live guard across the journal
+deadline. After both attempts and terminal publication join, State replaces it
+with a time-bound exposure through the current or pending Epoch bound. An
+interrupted journal retains the live guard through `Close`; verified reopen
+may release work-only retention once the old process and contacts are gone.
+Neither timestamp alone proves safe release.
 
 For a serving Source, State must install an effective `direct-source/live`
 identity and family collision guard before admitting a connection or publishing
@@ -423,6 +427,13 @@ merely storing a future `NotAfter` is insufficient if active work can outlive
 it. Tests must include a blocked real handler and a blocked real wave,
 A→B→C with identity-only and family-only changes, cap exhaustion, and crash
 points before/after pointer and guard commits.
+
+A root with retained outbound Source exposure history refuses a different
+configured Source plan: the changed plan cannot establish the historical
+guard's identity/family provenance. A terminal journal may reopen without
+Sources for offline reading or `Accept`; it leaves the previously committed
+Duty producer intact. An active interrupted journal without its Source plan
+requires explicit recovery before the root becomes readable.
 
 The closed Route profile pins its Epoch envelope: new closed candidates are
 accepted only as AREP v3 (ADR-0111). Offline acceptance and the Source-wave

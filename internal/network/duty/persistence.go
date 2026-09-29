@@ -251,6 +251,10 @@ func conflictFree(records []dutyRecord) bool {
 		for second := first + 1; second < len(records); second++ {
 			if records[second].Class != "ordinary-initiator" &&
 				(records[first].Identity == records[second].Identity || records[first].Family == records[second].Family) {
+				if records[first].Producer == records[second].Producer &&
+					records[first].Class == "direct-source" && records[second].Class == "direct-source" {
+					continue
+				}
 				return false
 			}
 		}

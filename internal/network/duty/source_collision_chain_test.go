@@ -1,6 +1,7 @@
 package duty_test
 
 import (
+	"errors"
 	"path/filepath"
 	"testing"
 	"time"
@@ -168,5 +169,112 @@ func TestGAP6DirectSourceExpiredExposure(t *testing.T) {
 	defer reopened.Close()
 	if conflict, err := reopened.Conflict(identity, family); err != nil || conflict {
 		t.Fatalf("expired store.Conflict = %v, %v", conflict, err)
+	}
+}
+
+func TestServingSourceGuardSurvivesDeadlineAndUnrelatedReplacement(t *testing.T) {
+	t.Parallel()
+	seed := time.Unix(1_800_000_000, 0).UTC()
+	now := seed
+	clock := func() time.Time { return now }
+	root := filepath.Join(t.TempDir(), "local-roles")
+	store, err := localroles.Open(localroles.Config{Root: root, Clock: clock, Create: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	identity, family := [32]byte{11}, [32]byte{31}
+	if err := store.Replace([32]byte{1}, []localroles.Duty{{
+		Identity: identity, Family: family, Class: "direct-source", State: "live", NotAfter: seed.Add(time.Second),
+	}}); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.Close(); err != nil {
+		t.Fatal(err)
+	}
+	now = seed.Add(2 * time.Second)
+	if protected, err := localroles.ReadConflict(root, clock, identity, family); err != nil || !protected {
+		t.Fatalf("serving Source after its stored deadline: protected=%t err=%v", protected, err)
+	}
+	store, err = localroles.Open(localroles.Config{Root: root, Clock: clock})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	if err := store.Replace([32]byte{1}, []localroles.Duty{{
+		Identity: identity, Family: family, Class: "direct-source", State: "live", NotAfter: seed.Add(time.Second),
+	}}); err != nil {
+		t.Fatalf("reinstall held serving guard after its timestamp: %v", err)
+	}
+	if err := store.Replace([32]byte{2}, []localroles.Duty{{
+		Identity: [32]byte{12}, Family: [32]byte{32}, Class: "node-duty", State: "live", NotAfter: now.Add(time.Hour),
+	}}); err != nil {
+		t.Fatal(err)
+	}
+	if protected, err := store.Conflict(identity, family); err != nil || !protected {
+		t.Fatalf("unrelated Replace pruned serving Source: protected=%t err=%v", protected, err)
+	}
+	if err := store.Remove([32]byte{1}); err != nil {
+		t.Fatal(err)
+	}
+	if protected, err := store.Conflict(identity, family); err != nil || protected {
+		t.Fatalf("serving Source after owner Remove: protected=%t err=%v", protected, err)
+	}
+}
+
+func TestDirectSourcePredecessorsMayOverlapOnlyWithinProducer(t *testing.T) {
+	t.Parallel()
+	now := time.Unix(1_800_000_000, 0).UTC()
+	store, err := localroles.Open(localroles.Config{
+		Root: filepath.Join(t.TempDir(), "local-roles"), Clock: func() time.Time { return now }, Create: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	first := localroles.Duty{Identity: [32]byte{11}, Family: [32]byte{31}, Class: "direct-source", State: "live", NotAfter: now.Add(time.Hour)}
+	second := localroles.Duty{Identity: first.Identity, Family: [32]byte{32}, Class: "direct-source", State: "live", NotAfter: now.Add(time.Hour)}
+	if err := store.Replace([32]byte{1}, []localroles.Duty{first, second}); err != nil {
+		t.Fatalf("same-producer guarded predecessors: %v", err)
+	}
+	if err := store.Replace([32]byte{2}, []localroles.Duty{{
+		Identity: [32]byte{12}, Family: second.Family, Class: "node-duty", State: "live", NotAfter: now.Add(time.Hour),
+	}}); !errors.Is(err, localroles.ErrLocalRoleConflict) {
+		t.Fatalf("cross-producer family collision = %v, want ErrLocalRoleConflict", err)
+	}
+}
+
+func TestHeldServingSourceStillCountsAgainstInstallationCap(t *testing.T) {
+	t.Parallel()
+	seed := time.Unix(1_800_000_000, 0).UTC()
+	now := seed
+	store, err := localroles.Open(localroles.Config{
+		Root: filepath.Join(t.TempDir(), "local-roles"), Clock: func() time.Time { return now }, Create: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	serving := localroles.Duty{Identity: [32]byte{1}, Family: [32]byte{101},
+		Class: "direct-source", State: "live", NotAfter: seed.Add(time.Second)}
+	if err := store.Replace([32]byte{1}, []localroles.Duty{serving}); err != nil {
+		t.Fatal(err)
+	}
+	now = seed.Add(2 * time.Second)
+	batch := make([]localroles.Duty, 0, 64)
+	for index := 0; index < 64; index++ {
+		batch = append(batch, localroles.Duty{Identity: [32]byte{byte(index + 2)}, Family: [32]byte{byte(index + 102)},
+			Class: "direct-source", State: "exposed", NotAfter: now.Add(time.Hour)})
+	}
+	if err := store.Replace([32]byte{2}, batch); !errors.Is(err, localroles.ErrInstallationSourceExhausted) {
+		t.Fatalf("expired-clock live guard was not counted: %v", err)
+	}
+	if protected, err := store.Conflict(serving.Identity, serving.Family); err != nil || !protected {
+		t.Fatalf("failed over-cap replacement lost serving guard: protected=%t err=%v", protected, err)
+	}
+	if err := store.Remove([32]byte{1}); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.Replace([32]byte{2}, batch); err != nil {
+		t.Fatalf("cap was not freed by owner removal: %v", err)
 	}
 }
