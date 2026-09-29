@@ -297,8 +297,16 @@ func assertInstalledCommandEqualSourceFamiliesRefuse(t *testing.T, binary string
 	ctx, cancel := context.WithTimeout(t.Context(), 15*time.Second)
 	defer cancel()
 	output, diagnostic, commandErr := installedCommandExecAs(ctx, nil, uid, gid, "bash", "-o", "pipefail", "-c", `cat | "$@" | cat`, "endpoint-source-plan", binary, "endpoint", "headless", badRuntime)
-	if commandErr == nil || len(output) != 0 || !strings.Contains(string(diagnostic), "source identities, families, handles, addresses, and keys must be distinct") {
-		t.Fatalf("equal Source families reached ordinary Endpoint work: output=%q diagnostic=%q err=%v", output, diagnostic, commandErr)
+	var failure struct {
+		Schema    string    `json:"schema"`
+		Kind      string    `json:"kind"`
+		At        time.Time `json:"at"`
+		NetworkID string    `json:"network_id"`
+		Failure   string    `json:"failure"`
+	}
+	decodeErr := json.Unmarshal(output, &failure)
+	if commandErr == nil || ctx.Err() != nil || decodeErr != nil || failure.Schema != "ardents-headless-runtime-event-v1" || failure.Kind != "headless-runtime-failed" || failure.At.IsZero() || failure.NetworkID != runtime["network_id"] || failure.Failure != "startup" || !strings.Contains(string(diagnostic), "source identities, families, handles, addresses, and keys must be distinct") {
+		t.Fatalf("equal Source families were not refused at startup: output=%q diagnostic=%q err=%v decode=%v", output, diagnostic, commandErr, decodeErr)
 	}
 }
 
