@@ -7,7 +7,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/service/publication"
 )
 
-const responseDomain = "ardents-service-instance-response-v2\x00"
+const responseDomain = "ardents-service-instance-response-v3\x00"
 
 // ResponseView is the public Authority response for one exact pending request.
 type ResponseView struct {

@@ -1,6 +1,7 @@
 package publication
 
 import (
+	"bytes"
 	"context"
 	"crypto"
 	"crypto/ed25519"
@@ -86,6 +87,24 @@ func TestPublishRetainsNonExportingInstanceSigner(t *testing.T) {
 	}
 }
 
+func TestDecodeRefusesOldPublicationRecord(t *testing.T) {
+	fixture := newPublicationFixture(t)
+	owner, err := Open(fixture.config(t.TempDir()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer owner.Close()
+	current, err := owner.Publish(context.Background(), fixture.input(t, 1))
+	if err != nil {
+		t.Fatal(err)
+	}
+	old := append([]byte(nil), current.Record...)
+	copy(old[:len(publicationPrefix)], []byte("ardents-service-publication-v1\x00"))
+	if _, err := Decode(old, fixture.authority, fixture.network, fixture.now); err == nil {
+		t.Fatal("old publication record was accepted")
+	}
+}
+
 func TestPersistedPublicationIsNotLiveAfterRestartAndFloorSurvives(t *testing.T) {
 	t.Parallel()
 	fixture := newPublicationFixture(t)
@@ -167,6 +186,26 @@ func TestOpenRejectsSurplusOrTamperedPublicationState(t *testing.T) {
 	}
 	if _, err := Open(fixture.config(root)); err == nil {
 		t.Fatal("surplus immutable generation was accepted")
+	}
+}
+
+func TestOpenRefusesOldPublicationRootBeforeCreatingLease(t *testing.T) {
+	fixture := newPublicationFixture(t)
+	root := t.TempDir()
+	oldMarker := []byte("ardents-service-publication-v1\n")
+	oldPath := filepath.Join(root, ".ardents-service-publication-v1")
+	if err := os.WriteFile(oldPath, oldMarker, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Open(fixture.config(root)); err == nil {
+		t.Fatal("old publication root was accepted")
+	}
+	if _, err := os.Lstat(filepath.Join(root, rootLockName)); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("old root gained a lease: %v", err)
+	}
+	retained, err := os.ReadFile(oldPath)
+	if err != nil || !bytes.Equal(retained, oldMarker) {
+		t.Fatalf("old root marker changed: %v", err)
 	}
 }
 

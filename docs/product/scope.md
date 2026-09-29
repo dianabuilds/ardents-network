@@ -11,6 +11,13 @@ labels and completed campaign names are provenance only; they are not runtime,
 package, release, wire, or persisted identities. Existing accepted wire or
 persisted identities that contain an earlier label remain compatibility
 obligations until a separately researched migration retires them.
+For the exact closed Service identities inventoried in
+[R-168](../research/records/r-168-service-v3-format-reset.md),
+[ADR-0117](../adr/0117-reset-closed-service-formats-to-v3.md) selects a
+fresh-root v3 replacement instead: there are no supported old Service clients,
+and old formats receive only refusal without conversion or automatic deletion.
+This selection does not change unrelated Route, State, or Application identities
+and is not evidence that the v3 replacement has been integrated or qualified.
 
 ## Product core
 

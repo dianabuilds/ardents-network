@@ -5,6 +5,10 @@ implemented closed-test-network Modules. They are not a public operator API,
 installer, supported Node hosting profile, or compatibility promise for old
 plans and results, except for explicitly documented bounded migration adapters.
 
+[ADR-0117](../adr/0117-reset-closed-service-formats-to-v3.md) selects the
+current Service v3 identities and fresh-root startup. A mixed set of old and
+new Service artifacts is not a supported workflow.
+
 Every command fails closed on malformed, unavailable, or unqualified input.
 Its bounded input belongs to the owning Module; a plan is not an ambient
 configuration format or an authority source.

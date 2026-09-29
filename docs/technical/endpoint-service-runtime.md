@@ -6,6 +6,13 @@ Modules that exist in the repository. It does not select a supported desktop
 profile, a qualified Application Isolation profile, a public Service protocol,
 or a complete Route/Node qualification.
 
+ADR-0117 selects and implements a coordinated fresh-root Service v3 format
+reset. Historical v1/v2 Service bytes authorize no compatibility reader or
+mixed-version deployment. The Connection record profile is
+`ardents-service-connection-profile-v3`, independent of `ardents-route-v3`.
+Changing the Target derivation changes the Target and Link even for a reused
+Authority key. Old bytes are refused without automatic mutation.
+
 Although its directory is under `internal/application`, the Broker is
 Network-owned because the maintained headless Endpoint uses it for local-grant
 admission and session lifecycle. The sibling `administration` and `connection`
@@ -14,9 +21,8 @@ protocol identities without owning Endpoint behavior or Browser presentation.
 
 The selected closed successor's [workload](../product/protected-service-workload.md),
 [confinement](application-confinement.md) and [protocol](protected-route-protocol.md)
-own its future Endpoint composition under ADR-0081. The current runtime facts
-below remain until explicit migration; generic callers do not acquire a
-qualified-launch receipt through compatibility.
+own its Endpoint composition under ADR-0081. Installed-host qualification
+remains separate; generic callers do not acquire a qualified-launch receipt.
 
 The successor text Publisher context independently owns its Introduction and
 Responder prefixes and its Introduction registration. It consumes the existing accepted Instance binding to commit
@@ -216,14 +222,14 @@ requires separate research and an ADR.
       -> immutable public record + volatile signer
       -> the participant-owned Connection boundary activates a session
       -> session authorization precedes State/Entry/issuer/Route work
-      -> exact-Instance TLS challenge/proof + Service Connection v2
+      -> exact-Instance TLS challenge/proof + Service Connection v3
       -> zero or more replacement Attachments under immutable recovery facts
       -> one terminal outcome and exactly-once session release
       -> withdraw/supersede stops acquisitions, drains references, erases private material
 
-The Service Connection record grammar retains ardents-interactive-route-v2,
-including in the selected successor; the protected Route changes its context
-and Attachment composition, not those record bytes. There is no H3 reader,
+The Service Connection v3 record grammar uses its own fixed
+`ardents-service-connection-profile-v3`; the selected protected Route keeps
+its separate `ardents-route-v3` identity. There is no H3 reader,
 record-profile negotiation, direct fallback, Publication private key, or
 Application IPC authorization. The parser bound of 16 KiB per Data record is
 an allocation limit, not a product throughput promise.
@@ -430,8 +436,8 @@ key. The SealedIntroduction v1 grammar is retired by ADR-0094; the current
 private Introduction path is only the v3 capsule recipient. ADR-0102 supersedes ADR-0034: the Service Instance root emits
 only its ed25519 Instance key, the accepted Credential v3 no longer binds a
 legacy introduction recipient, and the private v3 capsule uses its separate
-volatile recipient. Pre-v3 Instance roots meet the typed `ErrLegacyRoot`
-refusal and require re-initialization under a new root.
+volatile recipient. Old Instance roots fail the v3 marker check without state
+decoding and require re-initialization under a new root.
 The maintained closed participant requires `service_instance_root` and
 opens its Instance binding only after reconciling the accepted public
 Credential with the durable publication floor. It reads the current accepted
@@ -535,8 +541,8 @@ callable Administration client and its behavior test remain unchanged.
 The removed AAI2 grammar accepted a non-empty Target Link, opaque frames and a
 typed terminal outcome. Those bytes have no maintained decoder, server, client,
 Endpoint adapter, persisted-state reader, or compatibility promise. The
-historical Service Connection v2 network identity is unrelated and remains
-unchanged. `internal/application/administration` separately owns
+Service Connection v3 is a separate network identity and is unaffected by
+AAI2 retirement. `internal/application/administration` separately owns
 only `publish` and `withdraw`; it cannot carry Connection data or silently turn
 a failure into another success state. No Browser client is selected in the
 maintained product.
@@ -602,8 +608,8 @@ carrier loss, and full close remain abort paths, and neither local nor native
 EOF is semantic success without the one typed terminal outcome.
 
 A locally written Terminal is a directional completion obligation, not proof
-of peer receipt. Under the closed Service Connection v2 grammar selected by
-[ADR-0075](../adr/0075-service-connection-v2-terminal-receipt.md), marker `1`
+of peer receipt. Under the closed Service Connection v3 grammar selected by
+[ADR-0117](../adr/0117-reset-closed-service-formats-to-v3.md), marker `1`
 is a Terminal receipt: it names the same generation and offset and is sent only
 after the peer verifies that Terminal. Marker `2` confirms the peer observed
 that receipt; the receiving endpoint retains recovery ownership until it has

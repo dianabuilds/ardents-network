@@ -22,6 +22,23 @@ func prepareStoreRoot(root string) error {
 		}
 	} else if !errors.Is(err, os.ErrNotExist) {
 		return err
+	} else {
+		entries, err := os.ReadDir(root)
+		if err != nil {
+			return err
+		}
+		for _, entry := range entries {
+			if entry.Name() == storeLockName {
+				continue
+			}
+			if entry.Name() != storeRecords || !entry.IsDir() || entry.Type()&os.ModeSymlink != 0 {
+				return errors.New("reachability root format is unsupported")
+			}
+			contents, err := os.ReadDir(filepath.Join(root, storeRecords))
+			if err != nil || len(contents) != 0 {
+				return errors.New("reachability root format is unsupported")
+			}
+		}
 	}
 	if err := ensureStoreFile(lock, nil); err != nil {
 		return err

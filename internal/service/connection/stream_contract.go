@@ -211,5 +211,5 @@ func (stream *Stream) authorizationTime() time.Time {
 }
 
 func (stream *Stream) continuityCommitment() [32]byte {
-	return sha256.Sum256(append([]byte("ardents-service-connection-continuity-commitment-v1\x00"), stream.continuity[:]...))
+	return sha256.Sum256(append([]byte("ardents-service-connection-continuity-commitment-v3\x00"), stream.continuity[:]...))
 }

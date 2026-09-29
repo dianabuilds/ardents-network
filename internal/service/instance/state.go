@@ -13,7 +13,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/service/publication"
 )
 
-const stateSchema = "ardents-service-instance-root-v2"
+const stateSchema = "ardents-service-instance-root-v3"
 
 type durableState struct {
 	Phase             State
@@ -160,9 +160,7 @@ func unmarshalState(raw []byte) (durableState, error) {
 	if len(raw) == 0 || len(raw) > 4096 {
 		return durableState{}, ErrInvalid
 	}
-	// The lenient schema probe runs before the strict decode so a pre-v3
-	// root reports the typed ErrLegacyRoot refusal instead of a generic
-	// field error (ADR-0102).
+	// Check the current schema before decoding the remaining state fields.
 	var probe struct {
 		Schema string `json:"schema"`
 	}
@@ -170,7 +168,7 @@ func unmarshalState(raw []byte) (durableState, error) {
 		return durableState{}, ErrInvalid
 	}
 	if probe.Schema != stateSchema {
-		return durableState{}, ErrLegacyRoot
+		return durableState{}, ErrInvalid
 	}
 	var stored storedState
 	decoder := json.NewDecoder(bytes.NewReader(raw))

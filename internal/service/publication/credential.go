@@ -62,7 +62,7 @@ func Validate(value Credential, authority, network [32]byte, at time.Time, capab
 func Target(authority [32]byte) [32]byte { return targetFor(authority) }
 
 func targetFor(authority [32]byte) [32]byte {
-	return sha256.Sum256(append([]byte("ardents-service-target-v1\x00"), authority[:]...))
+	return sha256.Sum256(append([]byte("ardents-service-target-v3\x00"), authority[:]...))
 }
 
 func credentialBody(value Credential) []byte {

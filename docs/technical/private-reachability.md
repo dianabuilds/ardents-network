@@ -4,10 +4,10 @@ Status: **current generation-3 private Descriptor and receiving-Store contract
 under ADR-0081; installed qualification remains pending.** Node Resolution
 calls `Store.PublishPrivate` and `LookupPrivate` on the selected protected
 Route. ADR-0091 retired the unwired generation-2 OHTTP Relay/Gateway/Client
-adapter. ADR-0109 (F-32) closed the persisted-root decision: the old-format
-Store decoder is deleted and a stored legacy record now refuses its whole
-root with the typed `ErrLegacyRecord`; the short generation-2 note below
-records that disposition without defining a second live lookup route. ADR-0036 and ADR-0037
+adapter. ADR-0117 makes the private stored-record envelope and root v3:
+older bytes refuse the whole root without decoding or mutation. The short
+generation-2 note below records provenance without defining a second live
+lookup route. ADR-0036 and ADR-0037
 record its accepted origin.
 
 The current [protected protocol](protected-route-protocol.md#terminal-payloads-and-private-reachability)
@@ -111,16 +111,15 @@ with the terminal publication-conflict flag. Further valid conflicts can extend
 this expiry floor even after lookup becomes unavailable; a shorter conflict
 cannot reduce it. Reopening reconstructs the same signed floor, and a higher
 generation must start at or after that expiry. This preserves the existing
-record format; previously discarded observations cannot be reconstructed from
+current v3 record format; previously discarded observations cannot be reconstructed from
 an older root and still require explicit adoption evidence.
 Expired records retain their floors, never exposing a predecessor. The Store
 retains at most 128 Targets, refuses additional Targets before writing, and
 continues to permit updates of existing Targets without evicting their floors.
 
-Private stored records use version 2 with separate publication/revision
-conflict flags. A record in the retired version-1 envelope is never adopted
-or decoded: it refuses the whole root with the typed `ErrLegacyRecord`
-(ADR-0109). Before acknowledgement,
+Private stored records use version 3 with separate publication/revision
+conflict flags. Any other envelope version is never adopted or decoded: it
+refuses the whole root with a format error (ADR-0117). Before acknowledgement,
 the Store syncs the record and containing directory. Initialization also
 syncs directory links and creates the marker only after the records directory
 is durable. A marked root with missing records, or an unmarked root with
@@ -190,8 +189,8 @@ lookup route; its detailed implementation remains in Git history.
 ADR-0105 retired the uncalled legacy `Issue`, `Store.Publish`, and
 `Store.Lookup` generation-2 writers; [ADR-0109](../adr/0109-refuse-legacy-reachability-records.md)
 (F-32) then deleted the retained v1/v2 decoder and the legacy branches of the
-floor comparison. A root holding a stored-record version-1 envelope refuses
-to open as a whole with the typed `ErrLegacyRecord`; the historical bytes
+floor comparison. Under ADR-0117, a root holding an old envelope refuses
+to open as a whole with a format error; the historical bytes
 stay on disk untouched and unread, and a fresh Target requires a new root.
 Consistent with the no-backward-compatibility policy, no adoption or
 migration path exists, and neither historical bytes authorize a second

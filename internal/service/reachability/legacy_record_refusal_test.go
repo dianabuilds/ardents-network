@@ -4,7 +4,6 @@ package reachability_test
 
 import (
 	"bytes"
-	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -14,10 +13,8 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/service/reachability"
 )
 
-// ADR-0109 (F-32): the retired generation-2 stored-record envelope is
-// recognized only to refuse it. The v1/v2 decode grammar is deleted; a root
-// holding a legacy record refuses to open as a whole, the historical bytes
-// stay on disk untouched, and the typed sentinel names the exact cause.
+// An unsupported stored-record envelope refuses the whole root. Its bytes
+// remain untouched, and no older Descriptor decoder is needed.
 
 func seedLegacyRecord(t *testing.T, root string) (string, []byte) {
 	t.Helper()
@@ -41,12 +38,32 @@ func TestOpenStoreRefusesRetiredLegacyRecord(t *testing.T) {
 	}
 	path, payload := seedLegacyRecord(t, root)
 	_, err = reachability.OpenStore(reachability.StoreConfig{Root: root, NetworkID: fixture.network})
-	if !errors.Is(err, reachability.ErrLegacyRecord) {
-		t.Fatalf("OpenStore over a legacy record = %v, want ErrLegacyRecord", err)
+	if err == nil {
+		t.Fatal("OpenStore accepted an old stored record")
 	}
 	retained, readErr := os.ReadFile(path)
 	if readErr != nil || !bytes.Equal(retained, payload) {
 		t.Fatalf("refused legacy record bytes changed: %v", readErr)
+	}
+}
+
+func TestOpenStoreRefusesOldRootBeforeCreatingLease(t *testing.T) {
+	fixture := newStoreFixture(t)
+	root := t.TempDir()
+	oldMarker := []byte("ardents-reachability-store-v1\n")
+	oldPath := filepath.Join(root, ".ardents-reachability-store-v1")
+	if err := os.WriteFile(oldPath, oldMarker, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := reachability.OpenStore(reachability.StoreConfig{Root: root, NetworkID: fixture.network}); err == nil {
+		t.Fatal("old reachability root was accepted")
+	}
+	if _, err := os.Lstat(filepath.Join(root, ".ardents-reachability-store-lock")); !os.IsNotExist(err) {
+		t.Fatalf("old root gained a lease: %v", err)
+	}
+	retained, err := os.ReadFile(oldPath)
+	if err != nil || !bytes.Equal(retained, oldMarker) {
+		t.Fatalf("old root marker changed: %v", err)
 	}
 }
 
@@ -71,8 +88,8 @@ func TestOpenStoreRefusesWholeRootMixingLegacyAndPrivateRecords(t *testing.T) {
 		_, err := reachability.OpenStore(reachability.StoreConfig{Root: root, NetworkID: fixture.network})
 		return err
 	}
-	if err := reopen(); !errors.Is(err, reachability.ErrLegacyRecord) {
-		t.Fatalf("mixed-root OpenStore = %v, want ErrLegacyRecord", err)
+	if err := reopen(); err == nil {
+		t.Fatal("mixed-root OpenStore accepted an old stored record")
 	}
 	// The refusal is the only obstacle: removing the retired bytes (an
 	// explicit operator decision, never a silent Store action) reopens the

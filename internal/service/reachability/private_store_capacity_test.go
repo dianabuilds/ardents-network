@@ -53,7 +53,7 @@ func TestPrivateStoreBoundsTargetsBeforeAcknowledgement(t *testing.T) {
 }
 
 func TestPrivateStoreDoesNotRecreateLostInitializedRecords(t *testing.T) {
-	for _, lost := range []string{"records", ".ardents-reachability-store-v1"} {
+	for _, lost := range []string{"records", ".ardents-reachability-store-v3"} {
 		t.Run(lost, func(t *testing.T) {
 			fixture := newStoreFixture(t)
 			root := t.TempDir()

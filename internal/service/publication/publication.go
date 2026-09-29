@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	publicationPrefix           = "ardents-service-publication-v1\x00"
+	publicationPrefix           = "ardents-service-publication-v3\x00"
 	publicationSize             = len(publicationPrefix) + credentialSize + 32 + ed25519.SignatureSize
 	maximumAcknowledgementBytes = 4096
 )
