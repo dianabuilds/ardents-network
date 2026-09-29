@@ -62,15 +62,6 @@ func run(arguments []string) error {
 }
 
 func textFailure(err error) string {
-	var refusal connection.SetupRefusalError
-	if errors.As(err, &refusal) {
-		switch refusal.Outcome().Class {
-		case connection.LocalCancellation:
-			return "text read cancelled"
-		case connection.LocalTimeout:
-			return "text read timed out"
-		}
-	}
 	switch {
 	case errors.Is(err, context.Canceled):
 		return "text read cancelled"
@@ -78,7 +69,21 @@ func textFailure(err error) string {
 		return "text read timed out"
 	case errors.Is(err, errTextInput):
 		return "text destination or local input is invalid"
-	default:
-		return "text operation unavailable"
 	}
+	var refusal connection.SetupRefusalError
+	if errors.As(err, &refusal) {
+		switch refusal.Outcome().Class {
+		case connection.LocalCancellation:
+			return "text read cancelled"
+		case connection.LocalTimeout:
+			return "text read timed out"
+		case connection.LocalFailure:
+			return "text local connection failed"
+		case connection.IndeterminateFailure:
+			return "text connection outcome unknown"
+		case connection.CapacityUnavailable:
+			return "text capacity unavailable"
+		}
+	}
+	return "text operation unavailable"
 }

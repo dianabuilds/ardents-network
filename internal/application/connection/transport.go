@@ -69,7 +69,7 @@ func (server *server) serve() {
 		if server.ctx.Err() != nil || len(server.clients) >= 64 {
 			server.mu.Unlock()
 			_ = connection.SetDeadline(time.Now().Add(time.Second))
-			_ = writeRefusal(connection, Refuse(Outcome{Class: "insufficient local or network capacity", Reason: "local Application capacity exhausted"}))
+			_ = writeRefusal(connection, Refuse(Outcome{Class: CapacityUnavailable, Reason: "local Application capacity exhausted"}))
 			_ = connection.Close()
 			continue
 		}

@@ -79,14 +79,45 @@ func TestTextReadNeverPresentsPartialOrFailedConnection(t *testing.T) {
 }
 
 func TestTextReadPreservesRefusedSetupClassWithoutPresentingItsReason(t *testing.T) {
-	peer := &refusingTextReadPeer{outcome: connection.Outcome{Class: connection.ServiceUnavailable, Reason: "private fixture detail"}}
-	socket := textReadSocket(t, peer)
-	output := &textOutput{}
-	err := readText(t.Context(), socket, io.NopCloser(strings.NewReader("fixture-link\n")), output)
-	var refusal connection.SetupRefusalError
-	if !errors.As(err, &refusal) || refusal.Outcome().Class != connection.ServiceUnavailable ||
-		output.Len() != 0 || !output.closed || peer.opens.Load() != 1 || textFailure(err) != "text operation unavailable" {
-		t.Fatalf("refused setup = %v, output=%d, closed=%t, opens=%d", err, output.Len(), output.closed, peer.opens.Load())
+	for _, test := range []struct {
+		class connection.OutcomeClass
+		want  string
+	}{
+		{connection.ServiceUnavailable, "text operation unavailable"},
+		{connection.LocalFailure, "text local connection failed"},
+		{connection.IndeterminateFailure, "text connection outcome unknown"},
+		{connection.CapacityUnavailable, "text capacity unavailable"},
+		{connection.LocalCancellation, "text read cancelled"},
+		{connection.LocalTimeout, "text read timed out"},
+		{connection.CleanClose, "text operation unavailable"},
+		{"fixture private class", "text operation unavailable"},
+	} {
+		t.Run(string(test.class), func(t *testing.T) {
+			peer := &refusingTextReadPeer{outcome: connection.Outcome{Class: test.class, Reason: "private fixture detail"}}
+			socket := textReadSocket(t, peer)
+			output := &textOutput{}
+			err := readText(t.Context(), socket, io.NopCloser(strings.NewReader("fixture-link\n")), output)
+			var refusal connection.SetupRefusalError
+			if !errors.As(err, &refusal) || refusal.Outcome().Class != test.class ||
+				output.Len() != 0 || !output.closed || peer.opens.Load() != 1 || textFailure(err) != test.want {
+				t.Fatalf("refused setup = %v, output=%d, closed=%t, opens=%d", err, output.Len(), output.closed, peer.opens.Load())
+			}
+		})
+	}
+}
+
+func TestTextReadLocalContextDiagnosticPrecedesDeliveredRefusal(t *testing.T) {
+	refusal := connection.Refuse(connection.Outcome{Class: connection.CapacityUnavailable, Reason: "private fixture detail"})
+	for _, test := range []struct {
+		contextErr error
+		want       string
+	}{
+		{context.Canceled, "text read cancelled"},
+		{context.DeadlineExceeded, "text read timed out"},
+	} {
+		if got := textFailure(errors.Join(refusal, test.contextErr)); got != test.want {
+			t.Fatalf("local context diagnostic = %q, want %q", got, test.want)
+		}
 	}
 }
 

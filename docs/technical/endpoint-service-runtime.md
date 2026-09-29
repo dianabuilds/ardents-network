@@ -166,13 +166,19 @@ The fixed text reader has these setup outcomes:
 |---|---|---|
 | The caller cancels its `Dial` context or reaches its deadline while setup is pending | Raw `context.Canceled` or `context.DeadlineExceeded`; the local caller context takes precedence | The existing cancellation or timeout diagnostic |
 | Server-side setup returns a delivered `LocalCancellation` or `LocalTimeout` refusal | The same bounded class in `connection.SetupRefusalError` | The existing cancellation or timeout diagnostic |
-| Endpoint refuses the typed Target Link with a bounded outcome, such as the retired alpha destination | The same outcome class in `connection.SetupRefusalError` | The existing generic unavailable diagnostic |
+| Endpoint refuses the typed Target Link with a bounded outcome, such as the retired alpha destination | The same outcome class in `connection.SetupRefusalError` | A fixed safe diagnostic for a recognized class; otherwise generic unavailable |
 | Endpoint setup fails without a bounded refusal | `ServiceUnavailable` with the fixed safe reason | The existing generic unavailable diagnostic |
 
 This table applies only to the selected Target-Link text reader. It does not
 extend the Interface to Name, a generic Application, or a stream-terminal
-result. The caller can inspect the bounded class for its local behavior; it
-does not present the refusal reason, Target Link, or Endpoint failure detail.
+result. For an already delivered setup refusal, the trusted client presents
+`LocalFailure` as a local connection failure, `IndeterminateFailure` as an
+unknown connection outcome, and the existing capacity class as capacity unavailable.
+`ServiceUnavailable`, unknown classes and a refused `CleanClose` keep the
+generic unavailable diagnostic. The caller context takes precedence over a
+delivered refusal. The client never presents the refusal reason, Target Link,
+or Endpoint failure detail. This presentation does not create missing Endpoint
+classifications for authority, currentness, generation or stream termination.
 
 The generic `route.Route` User composition described by
 [ADR-0070](../adr/0070-own-volatile-user-route-orchestration.md) was retired

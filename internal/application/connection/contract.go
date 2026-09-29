@@ -15,6 +15,7 @@ const (
 const (
 	CleanClose           OutcomeClass = "clean service connection close"
 	ServiceUnavailable   OutcomeClass = "service unavailable"
+	CapacityUnavailable  OutcomeClass = "insufficient local or network capacity"
 	LocalFailure         OutcomeClass = "local attachment failure"
 	LocalCancellation    OutcomeClass = "local cancellation"
 	LocalTimeout         OutcomeClass = "local timeout or cancellation"
