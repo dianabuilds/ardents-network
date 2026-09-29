@@ -8,10 +8,12 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/network/duty"
+	"github.com/dianabuilds/ardents-network/internal/network/source"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 )
 
@@ -34,8 +36,8 @@ func TestServingSourceDutyTracksAcceptedSuccessor(t *testing.T) {
 	}
 	afterOriginal := original.ValidUntil.Add(time.Minute)
 	family := sha256.Sum256([]byte(original.DeclaredFamily))
-	if conflict, err := duty.ReadConflict(config.LocalRoleStateRoot, func() time.Time { return afterOriginal }, original.NodeID, family); err != nil || conflict {
-		t.Fatalf("initial Source duty after its Epoch = %t, %v; want expired", conflict, err)
+	if conflict, err := duty.ReadConflict(config.LocalRoleStateRoot, func() time.Time { return afterOriginal }, original.NodeID, family); err != nil || !conflict {
+		t.Fatalf("initial Source duty after its Epoch = %t, %v; want held until Close", conflict, err)
 	}
 
 	advanced, err := serving.Accept(context.Background(), successor.epoch, successor.inputs, successor.materializations)
@@ -47,6 +49,70 @@ func TestServingSourceDutyTracksAcceptedSuccessor(t *testing.T) {
 	}
 	if conflict, err := duty.ReadConflict(config.LocalRoleStateRoot, func() time.Time { return afterOriginal }, advanced.NodeID, family); err != nil || !conflict {
 		t.Fatalf("serving Source duty after accepted successor = %t, %v; want retained", conflict, err)
+	}
+}
+
+func TestServingSourceDutyProtectsRealResponseAfterEpochExpiry(t *testing.T) {
+	genesis := newFixture(t)
+	now := time.Unix(genesis.now, 0).UTC()
+	config := fixtureConfig(genesis, t.TempDir(), now)
+	installed, err := state.Open(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := installed.Accept(t.Context(), genesis.epoch, genesis.inputs, genesis.materializations); err != nil {
+		_ = installed.Close()
+		t.Fatal(err)
+	}
+	if err := installed.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	clientAuthority := makeTestAuthority(t, 0x81, "expiry-client-root")
+	client := makeTestLeaf(t, clientAuthority, 0x82, "expiry-client.test", false)
+	serverAuthority := makeTestAuthority(t, 0x83, "expiry-server-root")
+	server := makeTestLeaf(t, serverAuthority, 0x84, "expiry-server.test", true)
+	otherAuthority := makeTestAuthority(t, 0x85, "other-source-root")
+	other := makeTestLeaf(t, otherAuthority, 0x86, "other-source.test", true)
+	var unixClock atomic.Int64
+	unixClock.Store(now.Unix())
+	clock := func() time.Time { return time.Unix(unixClock.Load(), 0).UTC() }
+	config.Now = time.Time{}
+	config.Clock = clock
+	config.Source.ServeAddress = availableAddresses(t, 1)[0]
+	config.Source.ServeCertificate = server.certificate
+	config.Source.ServeClientRootPEM = clientAuthority.rootPEM
+	config.Source.ServeClientKeyDigests = [][32]byte{client.pin}
+	serving, err := state.Open(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if err := serving.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
+	current, err := serving.Current()
+	if err != nil {
+		t.Fatal(err)
+	}
+	clientPlan, _, err := source.New(source.Config{Sources: [2]source.Source{
+		{Address: config.Source.ServeAddress, ServerName: "expiry-server.test", Identity: current.NodeID,
+			Family: current.DeclaredFamily, EndpointHandle: "expiry-server", RootPEM: serverAuthority.rootPEM, LeafKeyDigest: server.pin},
+		{Address: "127.0.0.1:4109", ServerName: "other-source.test", Identity: sha256.Sum256([]byte("other-source")),
+			Family: "other-source-family", EndpointHandle: "other-source", RootPEM: otherAuthority.rootPEM, LeafKeyDigest: other.pin},
+	}, ClientCertificate: client.certificate, VerificationClock: clock}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	unixClock.Store(current.ValidUntil.Add(time.Minute).Unix())
+	response, err := clientPlan.Fetch(t.Context(), 0, source.Message{Operation: "latest", NetworkDigest: source.NetworkDigest(config.NetworkID)})
+	if err != nil || response.Status != "ok" || response.ObjectDigest != current.Digest || len(response.Payload) == 0 {
+		t.Fatalf("real Source response after Epoch expiry: status=%q digest=%x payload=%d err=%v", response.Status, response.ObjectDigest, len(response.Payload), err)
+	}
+	family := sha256.Sum256([]byte(current.DeclaredFamily))
+	if protected, err := duty.ReadConflict(config.LocalRoleStateRoot, clock, current.NodeID, family); err != nil || !protected {
+		t.Fatalf("Source served while its identity/family guard was unavailable: protected=%t err=%v", protected, err)
 	}
 }
 

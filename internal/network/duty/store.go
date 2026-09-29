@@ -88,7 +88,7 @@ func (store *store) Replace(producer [32]byte, duties []Duty) error {
 	now := store.clock().UTC()
 	next := durableState{Duties: make([]dutyRecord, 0, len(store.state.Duties)+len(duties))}
 	for _, retained := range store.state.Duties {
-		if retained.Producer != producer && now.Unix() < retained.NotAfter {
+		if retained.Producer != producer && dutyEffective(retained, now.Unix()) {
 			next.Duties = append(next.Duties, retained)
 		}
 	}
@@ -111,8 +111,8 @@ func (store *store) Replace(producer [32]byte, duties []Duty) error {
 // Remove atomically removes every duty owned by producer.
 func (store *store) Remove(producer [32]byte) error { return store.Replace(producer, nil) }
 
-// Conflict reads the held current generation and reports one non-Initiator,
-// unexpired identity or family collision.
+// Conflict reads the held current generation and reports one effective
+// non-Initiator identity or family collision.
 func (store *store) Conflict(identity, family [32]byte) (bool, error) {
 	store.mu.Lock()
 	defer store.mu.Unlock()
@@ -124,12 +124,18 @@ func (store *store) Conflict(identity, family [32]byte) (bool, error) {
 	}
 	now := store.clock().UTC().Unix()
 	for _, duty := range store.state.Duties {
-		if now < duty.NotAfter && duty.Class != "ordinary-initiator" &&
+		if dutyEffective(duty, now) && duty.Class != "ordinary-initiator" &&
 			(identity != ([32]byte{}) && duty.Identity == identity || family != ([32]byte{}) && duty.Family == family) {
 			return true, nil
 		}
 	}
 	return false, nil
+}
+
+// A live Direct Source is released by its producer after dependent work joins.
+// Its persisted NotAfter cannot prove that a serving handler has completed.
+func dutyEffective(record dutyRecord, now int64) bool {
+	return (record.Class == "direct-source" && record.State == "live") || now < record.NotAfter
 }
 
 // Close releases the exclusive root lease once and retains its terminal result.
@@ -150,7 +156,7 @@ func validDuty(duty Duty, now time.Time) bool {
 }
 
 // maximumInstallationDirectSource bounds the cumulative installation-wide
-// unexpired `direct-source` Duty set. The per-store cap in `validRecords`
+// effective `direct-source` Duty set. The per-store cap in `validRecords`
 // is also raised to 64, so the installation-wide bound is a true distinct
 // ceiling (not a subset of the per-store cap) and growth across multiple
 // Epochs and network sources remains reachable through the same atomic
@@ -159,7 +165,7 @@ func validDuty(duty Duty, now time.Time) bool {
 const maximumInstallationDirectSource = 64
 
 // ErrInstallationSourceExhausted is returned when an installation cannot retain
-// any additional unexpired `direct-source` Duty without exceeding the bounded
+// any additional effective `direct-source` Duty without exceeding the bounded
 // exposure set. Callers may wrap it.
 var ErrInstallationSourceExhausted = errors.New("direct-source exposure set is full")
 
