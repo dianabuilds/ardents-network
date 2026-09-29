@@ -146,7 +146,7 @@ func (store *store) Close() error {
 
 func validDuty(duty Duty, now time.Time) bool {
 	return duty.Identity != ([32]byte{}) && duty.Family != ([32]byte{}) &&
-		validClass(duty.Class) && validState(duty.State) && now.Before(duty.NotAfter)
+		validClass(duty.Class) && validState(duty.State) && now.Unix() < duty.NotAfter.Unix()
 }
 
 // maximumInstallationDirectSource bounds the cumulative installation-wide
