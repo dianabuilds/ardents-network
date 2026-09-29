@@ -7,6 +7,7 @@ import (
 	"crypto/ed25519"
 	"crypto/rand"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -60,8 +61,7 @@ func TestTextJoinedServiceTransfersDocumentThroughNetwork(t *testing.T) {
 				if err == nil {
 					result := <-stream.Done()
 					if result.Class != applicationconnection.CleanClose {
-						<-stream.Finished()
-						err = errors.Join(errors.New("joined Publisher Service ended without clean close"), stream.RunErr(), stream.FinishErr())
+						err = fmt.Errorf("joined Publisher Service ended without clean close: %s (%s)", result.Class, result.Reason)
 					}
 				}
 				completed <- errors.Join(err, stream.Close())
@@ -78,7 +78,7 @@ func TestTextJoinedServiceTransfersDocumentThroughNetwork(t *testing.T) {
 			}
 			publisherErr := <-completed
 			if err := errors.Join(readErr, closeErr, publisherErr); err != nil || string(body) != "authenticated document through the joined network" {
-				t.Fatalf("joined document %q: %v; reader native: %v; reader cleanup: %v", body, err, stream.RunErr(), stream.FinishErr())
+				t.Fatalf("joined document %q: read=%v close=%v Publisher=%v", body, readErr, closeErr, publisherErr)
 			}
 			for _, owner := range []*dutyContext{reader, publisher} {
 				owner.mu.Lock()

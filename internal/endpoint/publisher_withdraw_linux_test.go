@@ -55,7 +55,7 @@ func TestTextPublisherWithdrawalDrainsAdmittedRead(t *testing.T) {
 			}
 			actual, readErr := reader.completeServiceRead(t.Context(), bounded, finish, stream, nil)
 			if readErr != nil || !bytes.Equal(actual, body) {
-				t.Fatalf("admitted read did not drain: %v; native: %v; cleanup: %v; withdrawal: %v", readErr, stream.RunErr(), stream.FinishErr(), <-withdrawn)
+				t.Fatalf("admitted read did not drain: read=%v; actual=%d expected=%d; withdrawal=%v", readErr, len(actual), len(body), <-withdrawn)
 			}
 			if err := <-withdrawn; err != nil {
 				t.Fatalf("withdrawal failed after drain: %v", err)

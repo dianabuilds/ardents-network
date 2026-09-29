@@ -30,7 +30,6 @@ type Stream struct {
 	once       sync.Once
 	closeErr   error
 	finishErr  error
-	runErr     error // Internal terminal cause, read only after finished closes.
 }
 
 // OpenStream binds the initial joined Route transport to a real TLS
@@ -181,7 +180,6 @@ func (connection *Stream) runNative(ctx, lifetime context.Context, stream *nativ
 ) {
 	_, runErr := stream.RunBounded(send, receive)
 	runErr = errors.Join(runErr, ctx.Err(), lifetime.Err(), connection.binding.Current())
-	connection.runErr = runErr
 	nativeFinished := false
 	select {
 	case <-stream.Done():
