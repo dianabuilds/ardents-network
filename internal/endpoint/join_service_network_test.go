@@ -122,7 +122,18 @@ func joinedNetworkFixtureWithReaderMaximaAndRegistration(t *testing.T, carrier r
 	if err != nil {
 		t.Fatal(err)
 	}
-	return reader, publisher, targetlink.Link{Network: endpoint.network, Target: descriptor.Descriptor.Target}
+	if want := servicepublication.Target(endpoint.authority); descriptor.Descriptor.Target != want {
+		t.Fatal("published Descriptor lost the freshly issued Authority Target")
+	}
+	spelling, err := targetlink.Encode(targetlink.Link{Network: endpoint.network, Target: descriptor.Descriptor.Target})
+	if err != nil {
+		t.Fatal(err)
+	}
+	destination, err := targetlink.Decode(spelling)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return reader, publisher, destination
 }
 
 func unpublishedNetworkFixture(t *testing.T, carrier routecarrier.CarrierProfile, configure ...func(int, *node.Config)) (*dutyContext, *dutyContext) {
