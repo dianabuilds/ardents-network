@@ -39,7 +39,7 @@ func (s *networkState) startSourceWave(now time.Time) ([2]int, time.Time, error)
 			}
 		}
 		deadline := time.Unix(state.cycleDeadline, 0)
-		if err := s.retainSourceExposures(deadline); err != nil {
+		if err := s.holdSourceExposures(deadline); err != nil {
 			return [2]int{}, time.Time{}, err
 		}
 		return [2]int{int(state.sourceOrder[0]), int(state.sourceOrder[1])}, deadline, nil
@@ -72,7 +72,7 @@ func (s *networkState) startSourceWave(now time.Time) ([2]int, time.Time, error)
 		return order, time.Time{}, err
 	}
 	deadline := time.Unix(state.cycleDeadline, 0)
-	if err := s.retainSourceExposures(deadline); err != nil {
+	if err := s.holdSourceExposures(deadline); err != nil {
 		return order, time.Time{}, err
 	}
 	return order, deadline, nil
@@ -82,10 +82,17 @@ func (s *networkState) completeSourceWave(started time.Time, base *epoch.Decisio
 	return s.completeSourceWaveWithConflictCommit(started, base, results, s.storage.CommitControl)
 }
 
-func (s *networkState) completeSourceWaveWithConflictCommit(started time.Time, base *epoch.Decision, results []sourceResult, commit func(string, []byte) error) (Snapshot, error) {
+func (s *networkState) completeSourceWaveWithConflictCommit(started time.Time, base *epoch.Decision, results []sourceResult, commit func(string, []byte) error) (snapshot Snapshot, resultErr error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	defer func() { s.refreshing = false }()
+	defer func() {
+		// Keep refresh ownership until the live contact guard has been demoted.
+		// Failed or uncertain terminal writes leave the guard live.
+		if !s.closed && !s.distribution.cycleActive {
+			resultErr = errors.Join(resultErr, s.releaseSourceWaveLocked())
+		}
+		s.refreshing = false
+	}()
 	if s.closed {
 		return Snapshot{}, errors.New("network state is closed")
 	}
@@ -227,9 +234,6 @@ func (s *networkState) commitPendingSourceWave(now time.Time, selected epoch.Dec
 		}
 		return Snapshot{}, errors.Join(errRefreshUnavailable, errors.New("genesis Epoch is not yet current"))
 	}
-	if err := s.retainSourceExposures(selected.Header.ValidUntil); err != nil {
-		return Snapshot{}, err
-	}
 	newPending := s.pendingDecision == nil
 	if newPending {
 		if err := stageGeneration(s.storage, selected); err != nil {
@@ -250,9 +254,6 @@ func (s *networkState) commitPendingSourceWave(now time.Time, selected epoch.Dec
 }
 
 func (s *networkState) commitActiveSourceWave(now time.Time, selected epoch.Decision, summary sourceWaveSummary) (Snapshot, error) {
-	if err := s.retainSourceExposures(selected.Header.ValidUntil); err != nil {
-		return Snapshot{}, err
-	}
 	state := s.distribution
 	state.observedEpochs, state.observedDigests = summary.observedEpochs, summary.observedDigests
 	finishWaveState(&state, now, summary.outcomes)

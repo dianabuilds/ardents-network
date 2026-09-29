@@ -361,9 +361,13 @@ This contract is selected by
 from [R-169](../research/records/r-169-source-duty-lifetime.md). Serving Duty
 still stores Epoch `ValidUntil`, but `direct-source/live` conflict truth follows
 explicit owner release; State holds accepted-handler predecessors through their
-joined close. Initial outbound exposure still uses the 15-second wave deadline
-and does not yet meet this accepted rule. Neither timestamp proves safe release;
-the remaining runtime correction is tracked by GitHub issue #353.
+joined close. Outbound contact uses an owner-held live guard across the journal
+deadline. After both attempts and terminal publication join, State replaces it
+with a time-bound exposure through the current or pending Epoch bound. An
+interrupted journal retains the live guard through `Close`; verified reopen
+may release work-only retention once the old process and contacts are gone.
+Neither timestamp alone proves safe release. GitHub issue #353 tracks the
+remaining acceptance and integration work.
 
 For a serving Source, State must install an effective `direct-source/live`
 identity and family collision guard before admitting a connection or publishing

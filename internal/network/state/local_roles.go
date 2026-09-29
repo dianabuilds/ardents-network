@@ -53,6 +53,14 @@ func epochDecisionCollides(decision epoch.Decision, identity [32]byte, family, e
 }
 
 func (s *networkState) retainSourceExposures(notAfter time.Time) error {
+	return s.replaceSourceExposures(notAfter, "exposed")
+}
+
+func (s *networkState) holdSourceExposures(notAfter time.Time) error {
+	return s.replaceSourceExposures(notAfter, "live")
+}
+
+func (s *networkState) replaceSourceExposures(notAfter time.Time, state string) error {
 	roles, err := duty.OpenOperation(context.Background(), duty.Config{Root: s.config.localRoles, Clock: s.config.clock, Create: true})
 	if err != nil {
 		return err
@@ -61,12 +69,67 @@ func (s *networkState) retainSourceExposures(notAfter time.Time) error {
 	for index, identity := range s.config.sourceInfo.Identities {
 		duties[index] = duty.Duty{Identity: identity,
 			Family: sha256.Sum256([]byte(s.config.sourceInfo.Families[index])),
-			Class:  "direct-source", State: "exposed", NotAfter: notAfter}
+			Class:  "direct-source", State: state, NotAfter: notAfter}
 	}
 	if err := roles.Replace(sourceProducer("exposure", s.config.root), duties); err != nil {
 		return errors.Join(wrapSourceReplaceError(err), roles.Close())
 	}
 	return roles.Close()
+}
+
+// The contact owner calls this only after both contacts have joined and the
+// terminal wave state has been committed. The current and pending generations
+// may outlive the journal deadline, so their exposure bound takes precedence.
+func (s *networkState) releaseSourceWave() error {
+	if !s.config.sourceInfo.Configured || s.distribution.cycleActive {
+		return nil
+	}
+	return s.releaseJoinedSourceWave()
+}
+
+// Called under the State lock while the Refresh owner is still active.
+func (s *networkState) releaseSourceWaveLocked() error {
+	if err := s.releaseSourceWave(); err != nil {
+		s.terminalErr = fmt.Errorf("release direct Source contact guard: %w", err)
+		s.retireStateLocked()
+		return s.terminalErr
+	}
+	return nil
+}
+
+func (s *networkState) releaseJoinedSourceWave() error {
+	if !s.config.sourceInfo.Configured || s.distribution.cycleID == 0 {
+		return nil
+	}
+	bound := time.Unix(s.distribution.cycleDeadline, 0)
+	for _, decision := range []*epoch.Decision{s.current, s.pendingDecision} {
+		if decision != nil && decision.Header.ValidUntil.After(bound) {
+			bound = decision.Header.ValidUntil
+		}
+	}
+	if bound.After(s.config.clock()) {
+		return s.retainSourceExposures(bound)
+	}
+	roles, err := duty.OpenOperation(context.Background(), duty.Config{Root: s.config.localRoles, Clock: s.config.clock, Create: true})
+	if err != nil {
+		return err
+	}
+	return errors.Join(roles.Remove(sourceProducer("exposure", s.config.root)), roles.Close())
+}
+
+// A reopened root owns no old contacts. Only the durable exposure history can
+// tie a previous wave to the configured Source pair; if it disagrees, keep the
+// old producer guard intact until the operator restores that plan.
+func (s *networkState) recoverSourceWaveGuard() error {
+	if !s.config.sourceInfo.Configured || !s.distribution.cycleActive && len(s.distribution.history) == 0 {
+		return nil
+	}
+	for _, exposure := range s.distribution.history {
+		if exposure != s.config.sourceInfo.Exposures[0] && exposure != s.config.sourceInfo.Exposures[1] {
+			return nil
+		}
+	}
+	return s.releaseJoinedSourceWave()
 }
 
 func wrapSourceReplaceError(err error) error {

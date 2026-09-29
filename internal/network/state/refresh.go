@@ -67,8 +67,7 @@ func (s *networkState) Refresh(ctx context.Context) (Snapshot, error) {
 	order, deadline, err := s.startSourceWave(now)
 	s.mu.Unlock()
 	if err != nil {
-		s.finishRefresh()
-		return Snapshot{}, err
+		return Snapshot{}, errors.Join(err, s.finishRefresh())
 	}
 
 	waveContext, cancel := context.WithDeadline(ctx, deadline)
@@ -172,4 +171,12 @@ func (s *networkState) fetchSource(ctx context.Context, index int, request sourc
 	return response, nil
 }
 
-func (s *networkState) finishRefresh() { s.mu.Lock(); s.refreshing = false; s.mu.Unlock() }
+func (s *networkState) finishRefresh() error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	defer func() { s.refreshing = false }()
+	if s.closed || s.terminalErr != nil {
+		return nil
+	}
+	return s.releaseSourceWaveLocked()
+}

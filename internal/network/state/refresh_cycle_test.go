@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/network/duty"
 	"github.com/dianabuilds/ardents-network/internal/network/source"
 )
 
@@ -15,7 +16,7 @@ func TestSourceCycleInterruptedAttemptRecovery(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer storage.Close()
-	config := config{root: root, sourceInfo: source.Details{OrderSeed: sha256.Sum256([]byte("resume-order"))},
+	config := config{root: root, sourceInfo: source.Details{Configured: true, OrderSeed: sha256.Sum256([]byte("resume-order"))},
 		localRoles: root + "-local-roles", clock: func() time.Time { return time.Unix(1_800_000_100, 0).UTC() }}
 	config.sourceInfo.Identities = [2][32]byte{{1}, {2}}
 	config.sourceInfo.Exposures = [2][32]byte{{3}, {4}}
@@ -53,6 +54,16 @@ func TestSourceCycleInterruptedAttemptRecovery(t *testing.T) {
 	restarted := &networkState{config: config, storage: storage}
 	if err := restarted.loadDistributionState(); err != nil {
 		t.Fatal(err)
+	}
+	probe := func() time.Time { return deadline.Add(time.Second) }
+	if held, err := duty.ReadConflict(config.localRoles, probe, config.sourceInfo.Identities[0], [32]byte{}); err != nil || !held {
+		t.Fatalf("interrupted contact guard was lost before recovery: held=%t err=%v", held, err)
+	}
+	if err := restarted.recoverSourceWaveGuard(); err != nil {
+		t.Fatal(err)
+	}
+	if held, err := duty.ReadConflict(config.localRoles, probe, config.sourceInfo.Identities[0], [32]byte{}); err != nil || held {
+		t.Fatalf("recovered contact guard stayed live after deadline: held=%t err=%v", held, err)
 	}
 	recoveredOrder, recoveredDeadline, err := restarted.startSourceWave(now.Add(time.Second))
 	if err != nil || recoveredOrder != order || !recoveredDeadline.Equal(deadline) {

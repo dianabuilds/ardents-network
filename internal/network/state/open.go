@@ -73,6 +73,9 @@ func (s *networkState) recover(workContext context.Context, automaticTicks <-cha
 	if err := s.loadDistributionState(); err != nil {
 		return err
 	}
+	if err := s.recoverSourceWaveGuard(); err != nil {
+		return err
+	}
 	if err := s.startSource(workContext); err != nil {
 		return err
 	}
