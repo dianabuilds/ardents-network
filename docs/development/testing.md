@@ -293,8 +293,12 @@ The maintained local profiles are:
 - `text-command-network`, the separately pinned installed ordinary-command journey
   invoked by `make text-command-network-check`; it exercises the real `ardents`,
   `ardents-custody`, `ardents-node` and `ardents-text` candidate binaries through
-  both Carriers, with exact empty, 64 KiB and 4 MiB command cases. It is functional
-  journey evidence, not full host, privacy, hostile-network or p95 qualification.
+  both Carriers, with exact empty, 64 KiB and 4 MiB command cases. It supplies
+  journey evidence with each Node's separate systemd scope and actual single-
+  process membership verified at READY, joined empty-scope cleanup, and no
+  observed topology loss of READY before completion. Orchestrator commands
+  remain outside Node pressure owners. This is not continuous-duty evidence.
+  It does not qualify full host, privacy, hostile-network or p95 behavior.
 
 - `text-worker-policy`, the root-driven installed authorization matrix invoked
   by `make text-worker-policy-check`; it does not qualify the complete host.

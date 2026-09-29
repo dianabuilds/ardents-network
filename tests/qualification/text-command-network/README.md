@@ -35,7 +35,16 @@ SHA-256 values for the test binary, unit, five commands and worker through the
 `ARDENTS_TEXT_COMMAND_*_SHA256` variables.
 
 The runner rejects changed, symlinked, non-root-owned or missing inputs. It
-requires exactly one root result and each empty, 64 KiB and 4 MiB subtest on
+requires `systemd-run`; every Node owns a separate verified systemd scope,
+whose sole process is the READY Node. Cleanup must stop that unit and establish
+an absent or unpopulated cgroup. The orchestrator and its short-lived commands
+are outside these Node pressure owners. An emitted loss of READY or process
+exit before completion remains a failure even if the affected Node was not
+used by that document's Route.
+The runner supplies a unique `ARDENTS_TEXT_COMMAND_SCOPE_PREFIX` derived from
+its private output file. Its exit cleanup stops only scopes in that invocation's
+namespace, including after the independent timeout terminates the Go test.
+It requires exactly one root result and each empty, 64 KiB and 4 MiB subtest on
 TCP/TLS and QUIC. Preserve the complete invocation journal and artifact/host
 inventories outside Git. This is functional journey evidence, not whole-host,
 privacy, hostile-network or p95 qualification.

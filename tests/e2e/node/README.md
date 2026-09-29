@@ -73,8 +73,16 @@ independently hashed, root-owned product commands from the same candidate.
 The ordinary worker and its manifest must match that candidate. Missing setup
 is an invalid environment; the profile has no fixture fallback.
 
-The test provisions canonical State and all sixteen real Node commands, creates
-and accepts a Service Instance through Custody and Instance commands, then runs
+The test provisions canonical State and all sixteen real Node commands. It starts
+each Node in a separate systemd scope and verifies that its READY process is
+the sole member of that scope. Short-lived orchestrator commands therefore do
+not enter a Node's required pressure sample. Scope cleanup must establish an
+inactive unit and an absent or unpopulated cgroup. The topology is checked for
+process exit or emitted loss of READY before and after the participant journey;
+an unused failed Node cannot be hidden by successful text commands. These are
+fixture placement and observed lifecycle checks, not a continuous-duty or
+whole-host qualification.
+The test creates and accepts a Service Instance through Custody and Instance commands, then runs
 the ordinary `ardents endpoint headless` as the unprivileged Endpoint service's
 MainPID. Its Source plan uses the two live Sources and retains actual exposure
 history in the Endpoint-owned local-role root. The fixture shares a Source client

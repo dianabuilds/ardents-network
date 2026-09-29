@@ -36,12 +36,13 @@ type processCert struct {
 }
 
 type nodeProcess struct {
-	command *exec.Cmd
-	events  chan nodeEvent
-	done    chan struct{}
-	stderr  *bytes.Buffer
-	waitMu  sync.Mutex
-	waitErr error
+	command         *exec.Cmd
+	verifyPlacement func(*testing.T)
+	events          chan nodeEvent
+	done            chan struct{}
+	stderr          *bytes.Buffer
+	waitMu          sync.Mutex
+	waitErr         error
 }
 
 type nodeEvent struct {
@@ -275,13 +276,13 @@ func startNode(t *testing.T, binary, plan string) *nodeProcess {
 
 func startNodeCommand(t *testing.T, binary string, arguments ...string) *nodeProcess {
 	t.Helper()
-	command := exec.Command(binary, arguments...)
+	command, verifyPlacement := nodeProcessCommand(t, binary, arguments...)
 	command.Env = append(os.Environ(), "GOMAXPROCS=1", "GOMEMLIMIT=320MiB")
 	stdout, err := command.StdoutPipe()
 	if err != nil {
 		t.Fatal(err)
 	}
-	process := &nodeProcess{command: command, events: make(chan nodeEvent, 32), done: make(chan struct{}), stderr: new(bytes.Buffer)}
+	process := &nodeProcess{command: command, verifyPlacement: verifyPlacement, events: make(chan nodeEvent, 32), done: make(chan struct{}), stderr: new(bytes.Buffer)}
 	command.Stderr = process.stderr
 	if err := command.Start(); err != nil {
 		t.Fatal(err)
@@ -317,6 +318,9 @@ func waitNodeState(t *testing.T, process *nodeProcess, state string, timeout tim
 			}
 			t.Logf("Node %d event: state=%s epoch=%d assignment=%s", process.command.Process.Pid, event.State, event.Epoch, event.Assignment)
 			if event.State == state {
+				if state == "READY" && process.verifyPlacement != nil {
+					process.verifyPlacement(t)
+				}
 				return event
 			}
 		case <-process.done:
@@ -326,6 +330,9 @@ func waitNodeState(t *testing.T, process *nodeProcess, state string, timeout tim
 				}
 				t.Logf("Node %d event: state=%s epoch=%d assignment=%s", process.command.Process.Pid, event.State, event.Epoch, event.Assignment)
 				if event.State == state {
+					if state == "READY" && process.verifyPlacement != nil {
+						process.verifyPlacement(t)
+					}
 					return event
 				}
 			}

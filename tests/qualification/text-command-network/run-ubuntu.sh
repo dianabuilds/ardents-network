@@ -5,7 +5,7 @@ set -eu
 fail() { printf '%s\n' "$*" >&2; exit 1; }
 
 [ "$(id -u)" = 0 ] || fail 'invalid environment: root installed-command driver required'
-for program in systemctl sha256sum stat uname grep timeout awk cmp mktemp rm cat; do
+for program in systemctl systemd-run sha256sum stat uname grep timeout awk cmp mktemp rm cat; do
 	command -v "$program" >/dev/null || fail "invalid environment: $program unavailable"
 done
 . /etc/os-release
@@ -89,13 +89,48 @@ if [ -n "${ARDENTS_TEXT_COMMAND_EVIDENCE_ROOT-}" ]; then
     printf 'command-evidence-log=%s\n' "$run_log" >&2
 else
     run_log=$(mktemp /var/tmp/ardents-text-command-network.XXXXXX) || fail 'invalid environment: command evidence log unavailable'
-    trap 'rm -f "$run_log"' EXIT HUP INT TERM
 fi
+scope_prefix="ardents-command-node-${run_log##*/}-"
+cleanup_scopes() {
+    scopes=$(systemctl list-units --all --type=scope --no-legend --plain "$scope_prefix*.scope") || return 1
+    cleanup_result=0
+    for scope in $(printf '%s\n' "$scopes" | awk '{print $1}'); do
+        case "$scope" in
+            "$scope_prefix"*.scope) ;;
+            *) cleanup_result=1; continue ;;
+        esac
+        # A completed scope may already have been collected by systemd.
+        stop_result=0
+        timeout --signal=TERM --kill-after=1s 6s systemctl stop "$scope" || stop_result=$?
+        scope_state=$(systemctl show "$scope" --property=ActiveState --value) || cleanup_result=1
+        if [ "$scope_state" != inactive ]; then
+            printf 'Node scope cleanup lacks inactive evidence (stop exit %s)\n' "$stop_result" >&2
+            cleanup_result=1
+        fi
+        scope_cgroup="/sys/fs/cgroup/system.slice/$scope"
+        if [ -e "$scope_cgroup" ]; then
+            grep -qx 'populated 0' "$scope_cgroup/cgroup.events" || cleanup_result=1
+        fi
+    done
+    return "$cleanup_result"
+}
+cleanup() {
+    result=$?
+    trap - EXIT HUP INT TERM
+    cleanup_scopes || result=1
+    if [ -z "${ARDENTS_TEXT_COMMAND_EVIDENCE_ROOT-}" ]; then
+        rm -f "$run_log" || result=1
+    fi
+    exit "$result"
+}
+trap cleanup EXIT
+trap 'exit 1' HUP INT TERM
 result=0
-ARDENTS_TEXT_COMMAND_QUALIFICATION=1 ARDENTS_E2E_COMMAND_ROOT="$command_root" \
+ARDENTS_TEXT_COMMAND_SCOPE_PREFIX="$scope_prefix" ARDENTS_TEXT_COMMAND_QUALIFICATION=1 ARDENTS_E2E_COMMAND_ROOT="$command_root" \
     timeout --signal=TERM --kill-after=30s 3060s "$binary" -test.run='^TestInstalledClosedTextCommandsThroughNodeProcesses$' -test.v -test.timeout=49m >"$run_log" 2>&1 || result=$?
 cat "$run_log"
 [ "$result" -eq 0 ] || fail "installed command journey test failed with exit status $result"
+cleanup_scopes || fail 'installed command journey retained a Node scope'
 [ "$(systemctl show ardents-endpoint.service -p ActiveState --value)" = inactive ] &&
 	[ "$(systemctl show ardents-endpoint.service -p MainPID --value)" = 0 ] ||
 	fail 'installed command journey retained the temporary Endpoint'
