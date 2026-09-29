@@ -28,21 +28,6 @@
       },
       {
         "symbols": [
-          "internal/endpoint/service.InstanceCertificate",
-          "internal/endpoint/service.NewProtectedTransport",
-          "internal/endpoint/service.NewRetirementCarrier",
-          "internal/endpoint/service.SecureClient",
-          "internal/endpoint/service.SecurePublisher",
-          "internal/endpoint/service.SecuredAttachment.Connection",
-          "internal/endpoint/service.VerifyInstance"
-        ],
-        "classification": "test fixture support",
-        "rationale": "The Linux endpoint root tests own the real Service fixture and drive protected TLS handshakes, the retirement carrier chain, and Instance certificate verification through this deliberate seam; production establishes attachments only inside the service package.",
-        "owner": "Product Owner and Codex",
-        "retirement": "Remove them when the endpoint test audit slice moves the protected TLS tests into the service package or reworks them onto production seams."
-      },
-      {
-        "symbols": [
           "internal/endpoint/introduction.ActiveExchangeCount",
           "internal/endpoint/introduction.BufferedRecovery",
           "internal/endpoint/introduction.ClearOpeningWindow",

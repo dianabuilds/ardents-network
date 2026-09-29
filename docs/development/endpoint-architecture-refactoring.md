@@ -333,11 +333,11 @@ systemd/cgroup qualification.
 
 - **State owner**: n/a (design review). Scope: `service.Binding` (14 methods)
   depth/locality — a one-implementation interface is not forbidden by itself,
-  but each method must justify crossing the seam; and the fixture-only
-  exports (`service/testsupport.go` 7 allowlist symbols,
-  `introduction/testsupport.go` 20, `source/testsupport.go` 3) with their
-  recorded retirement condition: the test-audit slice reworks whitebox
-  fixtures onto production seams, then the allowlist entries are removed.
+  but each method must justify crossing the seam; and the remaining fixture-only
+  exports (`service/testsupport.go` worker-ownership and terminal diagnostics,
+  `introduction/testsupport.go` 20 allowlist symbols, `source/testsupport.go` 3)
+  with their recorded retirement condition: the test-audit slice reworks
+  whitebox fixtures onto production seams, then the allowlist entries are removed.
 - **Integration gate**: review notes published in `endpoint.md`; code changes
   (if any) ride L1/L2 slices.
 
