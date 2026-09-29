@@ -2,6 +2,7 @@ package state
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/dianabuilds/ardents-network/internal/network/source"
 )
@@ -13,16 +14,29 @@ func (s *networkState) serveSource(ctx context.Context, ready chan<- error) erro
 			defer s.mu.RUnlock()
 			return s.resourceProtect
 		},
-		func(delta int) {
-			s.mu.Lock()
-			if delta > 0 {
-				s.activeSource++
-			} else {
-				s.activeSource--
-			}
-			s.mu.Unlock()
-		},
+		s.sourceConnectionActive,
 		s.resolveDistributionRequest)
+}
+
+// A response can keep predecessor bytes after a successor is published. The
+// last accepted handler releases those predecessor guards after it closes.
+func (s *networkState) sourceConnectionActive(delta int) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if delta > 0 {
+		s.activeSource++
+		return
+	}
+	s.activeSource--
+	if s.activeSource != 0 || s.closed || len(s.servingPredecessors) == 0 {
+		return
+	}
+	if err := s.retainSourceServer(); err != nil {
+		s.terminalErr = fmt.Errorf("release joined Source predecessors: %w", err)
+		s.retireStateLocked()
+		return
+	}
+	s.servingPredecessors = nil
 }
 
 func (s *networkState) resolveDistributionRequest(_ context.Context, request source.Message) source.Message {

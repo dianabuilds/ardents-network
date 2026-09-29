@@ -200,6 +200,11 @@ func TestServingSourceGuardSurvivesDeadlineAndUnrelatedReplacement(t *testing.T)
 		t.Fatal(err)
 	}
 	defer store.Close()
+	if err := store.Replace([32]byte{1}, []localroles.Duty{{
+		Identity: identity, Family: family, Class: "direct-source", State: "live", NotAfter: seed.Add(time.Second),
+	}}); err != nil {
+		t.Fatalf("reinstall held serving guard after its timestamp: %v", err)
+	}
 	if err := store.Replace([32]byte{2}, []localroles.Duty{{
 		Identity: [32]byte{12}, Family: [32]byte{32}, Class: "node-duty", State: "live", NotAfter: now.Add(time.Hour),
 	}}); err != nil {

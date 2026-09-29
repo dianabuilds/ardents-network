@@ -92,6 +92,20 @@ func sourceServerDuty(decision epoch.Decision) duty.Duty {
 		Class: "direct-source", State: "live", NotAfter: decision.Snapshot.ValidUntil}
 }
 
+// servingDutySet keeps distinct still-servable identity/family pairs. When a
+// successor reuses both, its authenticated bound replaces the old record.
+func servingDutySet(decision epoch.Decision, predecessors []duty.Duty) []duty.Duty {
+	duties := append([]duty.Duty(nil), predecessors...)
+	current := sourceServerDuty(decision)
+	for index := range duties {
+		if duties[index].Identity == current.Identity && duties[index].Family == current.Family {
+			duties[index] = current
+			return duties
+		}
+	}
+	return append(duties, current)
+}
+
 func (s *networkState) releaseSourceServer() error {
 	if !s.config.sourceInfo.Serving {
 		return nil

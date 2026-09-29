@@ -358,11 +358,12 @@ changes.
 
 This contract is selected by
 [ADR-0118](../adr/0118-retain-direct-source-guards-through-dependent-work.md)
-from [R-169](../research/records/r-169-source-duty-lifetime.md). The present
-runtime still sets serving Duty `NotAfter` to Epoch `ValidUntil` and initial
-outbound Duty `NotAfter` to the 15-second wave deadline. It does not yet meet
-this accepted release rule; the correction needs a GitHub implementation issue
-before its C0 slice is selected. Neither timestamp proves safe release.
+from [R-169](../research/records/r-169-source-duty-lifetime.md). Serving Duty
+still stores Epoch `ValidUntil`, but `direct-source/live` conflict truth follows
+explicit owner release; State holds accepted-handler predecessors through their
+joined close. Initial outbound exposure still uses the 15-second wave deadline
+and does not yet meet this accepted rule. Neither timestamp proves safe release;
+the remaining runtime correction is tracked by GitHub issue #353.
 
 For a serving Source, State must install an effective `direct-source/live`
 identity and family collision guard before admitting a connection or publishing

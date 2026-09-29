@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/network/duty"
 	"github.com/dianabuilds/ardents-network/internal/network/epoch"
 	"github.com/dianabuilds/ardents-network/internal/network/source"
 	"github.com/dianabuilds/ardents-network/internal/network/state/durable"
@@ -15,29 +16,30 @@ import (
 // networkState owns verified-decision admission, finite Source work, and publication order.
 // The durable package holds its exclusive physical root and persisted bytes.
 type networkState struct {
-	mu              sync.RWMutex
-	config          config
-	current         *epoch.Decision
-	pendingDecision *epoch.Decision
-	distribution    distributionState
-	storage         *durable.Root
-	serverDone      chan struct{}
-	resourceDone    chan struct{}
-	automaticDone   chan struct{}
-	serverErr       error
-	terminalErr     error
-	automaticErr    error
-	resourceErr     error
-	resourceProtect bool
-	resourceGuard   *resource.Guard
-	activeSource    uint16
-	workContext     context.Context
-	workCancel      context.CancelFunc
-	work            sync.WaitGroup
-	refreshing      bool
-	closed          bool
-	closeOnce       sync.Once
-	closeErr        error
+	mu                  sync.RWMutex
+	config              config
+	current             *epoch.Decision
+	pendingDecision     *epoch.Decision
+	distribution        distributionState
+	storage             *durable.Root
+	serverDone          chan struct{}
+	resourceDone        chan struct{}
+	automaticDone       chan struct{}
+	serverErr           error
+	terminalErr         error
+	automaticErr        error
+	resourceErr         error
+	resourceProtect     bool
+	resourceGuard       *resource.Guard
+	activeSource        uint16
+	servingPredecessors []duty.Duty
+	workContext         context.Context
+	workCancel          context.CancelFunc
+	work                sync.WaitGroup
+	refreshing          bool
+	closed              bool
+	closeOnce           sync.Once
+	closeErr            error
 }
 
 type config struct {

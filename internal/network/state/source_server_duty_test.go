@@ -267,6 +267,11 @@ func installedServingSourceConfig(t *testing.T, genesis fixture) state.Config {
 }
 
 func configureSourceServer(t *testing.T, config state.Config) state.Config {
+	configured, _, _ := configureSourceServerWithClient(t, config)
+	return configured
+}
+
+func configureSourceServerWithClient(t *testing.T, config state.Config) (state.Config, testCertificate, []byte) {
 	t.Helper()
 	clientAuthority := makeTestAuthority(t, 0x61, "source-duty-client-root")
 	client := makeTestLeaf(t, clientAuthority, 0x62, "source-duty-client.test", false)
@@ -276,7 +281,7 @@ func configureSourceServer(t *testing.T, config state.Config) state.Config {
 	config.Source.ServeCertificate = server.certificate
 	config.Source.ServeClientRootPEM = clientAuthority.rootPEM
 	config.Source.ServeClientKeyDigests = [][32]byte{client.pin}
-	return config
+	return config, client, serverAuthority.rootPEM
 }
 
 func TestServingSourceDutyKeepsOpeningRoleRootAfterChdir(t *testing.T) {
