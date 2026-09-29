@@ -30,6 +30,9 @@ HEADLESS_COMMANDS := $(subst $(newline), ,$(file <tests/profiles/headless-comman
 HEADLESS_GOOS := $(shell go env GOOS)
 HEADLESS_GOARCH := $(shell go env GOARCH)
 HEADLESS_PLATFORM := $(HEADLESS_GOOS)-$(HEADLESS_GOARCH)
+ifeq ($(HEADLESS_GOOS),linux)
+UNIT_PACKAGES += $(subst $(newline), ,$(file <tests/profiles/deterministic-linux-packages.txt))
+endif
 HEADLESS_SUFFIX := $(if $(filter windows,$(HEADLESS_GOOS)),.exe,)
 HEADLESS_ARTIFACT_ROOT ?= $(QUALITY_CACHE_ROOT)/headless-artifacts/$(HEADLESS_PLATFORM)
 HEADLESS_ENDPOINT_ARTIFACT := $(HEADLESS_ARTIFACT_ROOT)/ardents-$(HEADLESS_PLATFORM)$(HEADLESS_SUFFIX)
@@ -185,6 +188,11 @@ tools-install:
 	go install honnef.co/go/tools/cmd/staticcheck@2025.1.1
 	go install golang.org/x/vuln/cmd/govulncheck@v1.1.4
 	go install golang.org/x/tools/cmd/deadcode@v0.48.0
+ifeq ($(DIAGNOSTIC_TOOLS),1)
+	go install github.com/go-delve/delve/cmd/dlv@v1.27.2
+	go install github.com/kisielk/errcheck@v1.20.0
+	sh ./scripts/diagnostics/install-powershell.sh
+endif
 
 .PHONY: text-worker-policy-check
 text-worker-policy-check:
@@ -221,3 +229,9 @@ text-role-durable-state-capture:
 	@test "$$(dirname "$(ARDENTS_TEXT_ROLE_OBSERVATIONS)")" != "$(ARDENTS_TEXT_ROLE_OBSERVATIONS)" || (echo "ARDENTS_TEXT_ROLE_OBSERVATIONS must not be a filesystem root"; exit 1)
 	@test -d "$(ARDENTS_TEXT_ROLE_OBSERVATIONS)" && test -w "$(ARDENTS_TEXT_ROLE_OBSERVATIONS)" && test ! -L "$(ARDENTS_TEXT_ROLE_OBSERVATIONS)" || (echo "ARDENTS_TEXT_ROLE_OBSERVATIONS must name an existing writable non-symlink directory"; exit 1)
 	go test ./internal/endpoint -run '^TestTextPublicationIsolatedRoleObservations$$' -count=1 -timeout=4m
+
+# Explicit local diagnostics; ordinary checks stay Docker-free.
+.PHONY: diagnostics-check
+diagnostics-check:
+	@test "$$(go env GOOS)" = linux || (echo "diagnostics-check requires Linux"; exit 2)
+	go test ./scripts/diagnostics/diagnostic-command.go ./scripts/diagnostics/diagnostic-capture.go ./scripts/diagnostics/diagnostic-view.go ./scripts/diagnostics/diagnostic-capture_test.go -count=1 -timeout=1m

@@ -1264,3 +1264,20 @@ transition, drain, update, Application Principal/network isolation, anonymous
 admission, uninstall/purge, Sybil/concentration, and recovery drills plus
 independent review. Internal consistency and passing local tests do not
 establish implemented anonymity.
+
+## Explicit local process diagnostics
+
+Endpoint and Node commands can explicitly expose a private Linux Unix-socket
+runtime diagnostic Interface through `ARDENTS_DEBUG_SOCKET`; empty input has
+no effect. The [diagnostic owner](../development/local-diagnostics.md) defines
+owner-only placement, finite client/profile/request bounds and joined cleanup.
+This protects raw runtime observations from other unprivileged local accounts
+under the stated directory/socket permissions; root, the same UID, compromised
+Endpoint/Node code and a selected debugger can inspect process material. There
+is no remote or Application authority grant. Profiles/traces and raw captures
+can reveal stacks, addresses, timings and sensitive material and remain local
+owner-private evidence; the dashboard projects only fixed categories/numeric
+fields and never publishes raw profiles. Behavior tests exercise unsafe
+placement, existing/replaced sockets, capture bounds and cancellation. This
+mode changes scheduling and does not establish anonymity or privacy against a
+privileged host, qualify confinement, or authorize a cross-role tracing scheme.

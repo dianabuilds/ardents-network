@@ -740,3 +740,89 @@ artifact qualification runner. Any version or runtime use repeats this review.
 
 `make tools-install` is the only documented installation command. Normal build
 and quick-check targets never install or upgrade tools implicitly.
+
+## Local diagnostic tools
+
+The engineering diagnostics owner is [local-diagnostics.md](local-diagnostics.md).
+The image uses Go 1.26.8 and the digest-pinned official Debian Bookworm Go image
+`sha256:9fdc884aacc3bec89b20ffc69f4bb369c78210e3e4f600387b5128b12c199f81`.
+The existing accepted quality tools retain their reviewed pins; normal gates do
+not install additional tools. Explicit `make tools-install DIAGNOSTIC_TOOLS=1`
+adds **Delve v1.27.2**, module `github.com/go-delve/delve/cmd/dlv`, MIT, solely
+inside the local development environment. It is not a product import or shipped
+artifact. Standard Go runtime profiles/traces and a stdlib-only private Unix
+Interface avoid a new runtime SDK, telemetry exporter or backend dependency.
+
+Primary review accessed 2026-09-30:
+[Delve immutable v1.27.2 release](https://github.com/go-delve/delve/releases/tag/v1.27.2),
+[upstream changelog](https://github.com/go-delve/delve/blob/master/CHANGELOG.md),
+[MIT license](https://github.com/go-delve/delve/blob/v1.27.2/LICENSE),
+[Go diagnostics](https://go.dev/doc/diagnostics), and
+[Docker service limits](https://docs.docker.com/reference/compose-file/services/).
+The upstream release and follow-up activity provide a maintained update path;
+release notes/changelog cover Go 1.26 module-data support and subsequent debugger
+fixes. This is not a claim that an old patch has independent long-term support.
+Reassess new release fixes and advisories before renewing the image. Delve can
+read/write target memory and ptrace; run only in the explicitly selected isolated
+profile without host PID/network, credentials or production authority roots.
+Debugger TCP serving is not selected. Go/Delve telemetry is disabled in the image.
+
+Debian-installed strace, iproute2 (ss/tc), tcpdump, procps and Graphviz provide
+syscalls, namespace socket/fault/packet evidence and local profile rendering.
+Use Debian's signed security repositories; actual versions and full native
+package closure are captured by `dpkg-query -W` inside the image inventory.
+That build is identified by its actual image ID, because package updates make
+a rebuild a distinct environment. Tool module closure/compiler is captured
+with `go version -m`; module integrity is checked during build. Before admission,
+run the relevant behavior/race tests and vulnerability inspection of the exact
+tool artifact; retain findings and any scoped non-applicability evidence. Image
+presence or a clean scanner alone does not establish continued upstream support.
+
+The Product Owner and Codex maintain this local tool environment. Update via an
+explicit reviewed image rebuild and the installation target. Remove Delve when
+interactive source/memory debugging is no longer needed; remove native tools
+when their recipes are retired. Prefer standard Go pprof/trace/objdump for
+ordinary diagnosis; GDB/eBPF/kernel instrumentation is not selected merely
+because it could be useful. No new dependency enters the root product module.
+
+The same explicit diagnostics installation adds **errcheck v1.20.0**, module
+`github.com/kisielk/errcheck`, MIT, as an advisory unchecked-error/type-assertion
+analyzer. Primary [release notes](https://github.com/kisielk/errcheck/releases/tag/v1.20.0)
+and [source/license](https://github.com/kisielk/errcheck/tree/v1.20.0), accessed
+2026-09-30, identify its maintained update path and Go >=1.25/tooling update.
+Its actual binary/compiler/module closure is inventoried and inspected with
+Delve. The static diagnostic operation retains findings and a failing exit;
+findings require owner/call-path review and are not automatically product bugs.
+It neither replaces official gates nor becomes a runtime import. Remove it if
+Staticcheck/vet cover its needed checks. Explicit rebuild/update ownership is
+the same local tool owner as Delve.
+
+The first inspected Delve 1.27.0 candidate was rejected after binary analysis
+reported GO-2026-6238 in cilium/ebpf 0.11.0. The selected upstream Delve 1.27.2
+source `d116177dd925e085ba5dd340f8c644f4a1501a3b` raises that dependency to the
+fixed 0.22.0; module integrity is `h1:dhcjFjiVoQI53uwsG7EqYiMhdvFuywsBZx4KDOK+sYE=`.
+See the [upstream fixing release](https://github.com/go-delve/delve/releases/tag/v1.27.2)
+and [Go advisory](https://pkg.go.dev/vuln/GO-2026-6238), accessed 2026-09-30.
+Keep the rejected scan with the corrected candidate evidence; no exemption is
+used for its presence in the earlier artifact.
+
+Exact errcheck 1.20.0 binary review reported module-only GO-2026-6180 and
+GO-2026-6179 for x/mod 0.35.0, with no affected imported packages or symbols.
+The vulnerable packages are x/mod/sumdb and x/mod/sumdb/tlog; inspect the exact
+source closure with `go list -deps .` inside errcheck's pinned module, and the
+binary with `go tool nm /go/bin/errcheck`. Neither package participates in this
+analyzer executable. Its `go/packages` subprocess uses the separately reviewed
+Go 1.26.8 toolchain, not errcheck's embedded sumdb implementation. This scoped
+non-applicability is invalidated by a changed tool version, imported closure,
+Go toolchain, or invocation that admits a sumdb implementation. Retain verbose
+binary scan and closure evidence; module-only findings are not erased by a
+successful scanner exit.
+
+The explicit Linux tool installation also installs PowerShell 7.6.6 (MIT)
+from the [upstream immutable release](https://github.com/PowerShell/PowerShell/releases/tag/v7.6.6),
+accessed 2026-09-30, using SHA256
+`ddbc4a2d113bbd46d283cfedcbcd117a70caefd7673f41f2b4e0000badf103bc`.
+It supplies the maintained architecture script tests, not a product dependency.
+The release uses .NET 10.0.401; Debian native dependencies and Python 3 come
+from signed security repositories and are included in the environment inventory.
+Rebuild on upstream/security fixes; validate the actual required scripts.

@@ -101,6 +101,14 @@
   ],
   "pr_check_mappings": [
     {
+      "path_prefix": "scripts/diagnostics/",
+      "race": true,
+      "owners": [
+        { "package": "internal/architecture", "test_pattern": "^TestLocalDiagnosticsCollector$" },
+        { "package": "internal/diagnostics/process", "test_pattern": "^Test" }
+      ]
+    },
+    {
       "path_prefix": "packaging/stream-qualification-worker/",
       "race": true,
       "owners": [

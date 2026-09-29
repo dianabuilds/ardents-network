@@ -517,3 +517,24 @@ HTTP/OHTTP adapters made the exact private Resolution and adjacent Namespace
 verification closure production-dead; ADR-0105 and ADR-0113 then deleted that
 closure with its packages, and their deadcode allowance groups were retired
 with them.
+
+## Local diagnostic environment
+
+The [local diagnostics owner](local-diagnostics.md) and its
+[recipes](../../scripts/diagnostics/README.md) define the explicit Docker tools,
+private live process mode, event/resource collection, race/profile separation,
+source identity, failure/loss and privilege limits. `make diagnostics-build`
+is explicit setup; `make diagnostics-check` exercises the Linux collector.
+The Linux architecture deterministic profile runs that collector's meaningful
+negative/terminal evidence tests without Docker. Process diagnostic behavior
+belongs to `internal/diagnostics/process` in the deterministic/race profile.
+The live Unix Interface is explicitly enabled by `ARDENTS_DEBUG_SOCKET` only
+for Endpoint/Node commands; it supplies no worker-confinement or Network
+readiness qualification. Product runtime dependencies are unchanged.
+
+The deterministic inventory has an explicit Linux-only supplement in
+`tests/profiles/deterministic-linux-packages.txt` for Endpoint introduction,
+source, Service, token and publication owners whose files have Linux build
+constraints. Linux unit/race gates include it; Windows checks retain the common
+inventory. Architecture checks validate both inventories and Linux selection;
+no build-error-based filtering or passing platform skip supplies that membership.

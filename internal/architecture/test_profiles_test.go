@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -26,6 +27,11 @@ func TestPackageProfileMembershipIsComplete(t *testing.T) {
 	root := repositoryRoot(t)
 	actual := listedPackages(t, root, "./cmd/...", "./internal/...", "./tests/epochfixture/network")
 	deterministic := listedProfilePackages(t, root, "tests/profiles/deterministic-packages.txt")
+	if runtime.GOOS == "linux" {
+		for path := range listedProfilePackages(t, root, "tests/profiles/deterministic-linux-packages.txt") {
+			deterministic[path] = true
+		}
+	}
 	for packagePath := range actual {
 		_, inDeterministic := deterministic[packagePath]
 		if !inDeterministic {
@@ -65,6 +71,32 @@ func TestProfilePackageEntriesAreCurrent(t *testing.T) {
 				t.Errorf("profile %s contains non-current package %s", path, packagePath)
 			}
 		}
+	}
+}
+
+// The Linux-only inventory is explicit, never inferred by dropping build errors.
+func TestLinuxOnlyProfileNamesActualPlatformPackages(t *testing.T) {
+	root := repositoryRoot(t)
+	command := exec.Command("go", "list", "./internal/endpoint/...")
+	command.Dir = root
+	command.Env = append(os.Environ(), "GOOS=linux", "GOARCH=amd64")
+	body, err := command.Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	actual := packageSet(t, string(body))
+	base := listedProfilePackages(t, root, "tests/profiles/deterministic-packages.txt")
+	for path := range listedProfilePackages(t, root, "tests/profiles/deterministic-linux-packages.txt") {
+		if !actual[path] {
+			t.Errorf("Linux profile contains nonexistent package %s", path)
+		}
+		if base[path] {
+			t.Errorf("package %s belongs to both inventories", path)
+		}
+	}
+	makefile := string(readProjectFile(t, root, "Makefile"))
+	if !strings.Contains(makefile, "ifeq ($(HEADLESS_GOOS),linux)\nUNIT_PACKAGES += $(subst $(newline), ,$(file <tests/profiles/deterministic-linux-packages.txt))\nendif") {
+		t.Fatal("Linux profile is not selected explicitly")
 	}
 }
 

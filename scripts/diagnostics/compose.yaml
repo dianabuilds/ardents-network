@@ -1,0 +1,84 @@
+name: ardents-diagnostics
+x-base: &base
+  image: ardents-diagnostics:local
+  user: "10001:10001"
+  working_dir: /source
+  read_only: true
+  init: true
+  pids_limit: 512
+  mem_limit: 4g
+  cpus: 4
+  cap_drop: [ALL]
+  security_opt: [no-new-privileges:true]
+  environment:
+    XDG_CACHE_HOME: /tmp/diagnostic-cache
+    XDG_DATA_HOME: /tmp/diagnostic-data
+    XDG_CONFIG_HOME: /tmp/diagnostic-config
+    POWERSHELL_TELEMETRY_OPTOUT: "1"
+    DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+    GOENV: "off"
+    GOTOOLCHAIN: local
+    GOTELEMETRY: "off"
+    GOFLAGS: -mod=readonly
+    GOCACHE: /cache/go-build
+    GOMODCACHE: /go/pkg/mod
+    STATICCHECK_CACHE: /cache/staticcheck
+    QUALITY_CACHE_ROOT: /cache/quality
+    ARDENTS_DIAGNOSTIC_IMAGE: ${ARDENTS_DIAGNOSTIC_IMAGE:-unrecorded}
+    ARDENTS_DIAGNOSTIC_SOURCE_SHA: ${ARDENTS_DIAGNOSTIC_SOURCE_SHA:-unavailable}
+  tmpfs:
+    - /tmp:rw,exec,size=1g,mode=1777
+    - /run:rw,size=16m
+  volumes:
+    - type: bind
+      source: ${ARDENTS_DIAGNOSTIC_SOURCE:?set absolute source path}
+      target: /source
+      read_only: true
+    - type: bind
+      source: ${ARDENTS_DIAGNOSTIC_EVIDENCE:?set private evidence path outside Git}
+      target: /evidence
+    - diagnostic-cache:/cache
+    - diagnostic-state:/state
+services:
+  runner:
+    <<: *base
+    network_mode: none
+  online:
+    <<: *base
+    profiles: [online]
+    # Explicit opt-in for module/advisory access; source credentials are never mounted.
+  debugger:
+    <<: *base
+    profiles: [debug]
+    network_mode: none
+    cap_add: [SYS_PTRACE]
+    security_opt: [no-new-privileges:true, seccomp:unconfined]
+    stdin_open: true
+    tty: true
+    entrypoint: [dlv]
+  gate:
+    <<: *base
+    profiles: [gate]
+    # Unprivileged ordinary tests; explicit sudo is needed only by package-e2e.
+    cap_add: [CHOWN, DAC_OVERRIDE, FOWNER, SETGID, SETUID]
+    security_opt: []
+  network:
+    <<: *base
+    profiles: [network]
+    network_mode: none
+    user: "0:0"
+    cap_add: [NET_ADMIN, NET_RAW, CHOWN, SETUID, SETGID]
+    # Only this disposable container namespace; no host PID/network or Docker socket.
+  dashboard:
+    <<: *base
+    profiles: [view]
+    ports: ["127.0.0.1:8090:8090"]
+    command: [serve, -container, -listen, "0.0.0.0:8090", -dir, "/evidence/${ARDENTS_DIAGNOSTIC_RUN:-latest}"]
+    volumes:
+      - type: bind
+        source: ${ARDENTS_DIAGNOSTIC_EVIDENCE:?set private evidence path outside Git}
+        target: /evidence
+        read_only: true
+volumes:
+  diagnostic-cache:
+  diagnostic-state:
