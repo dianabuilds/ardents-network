@@ -58,38 +58,60 @@ func (owner *Cleanup) join() error {
 	// selected two-second stop is inside this independent finite join bound.
 	ctx, cancel := context.WithTimeout(context.Background(), 8*time.Second)
 	defer cancel()
-	removed, _, initialErr := ReadCgroup(owner.events)
+	return owner.joinObserved(ctx, ReadCgroup, ReadProperties, stopInstance)
+}
+
+func (owner *Cleanup) joinObserved(
+	ctx context.Context,
+	read func(*os.File) (bool, bool, error),
+	properties func(context.Context, string, string) (Properties, Properties, error),
+	stop func(context.Context, string, string) error,
+) error {
+	removed, _, initialErr := read(owner.events)
 	if removed && initialErr == nil {
 		return nil
 	}
-	unit, service, err := ReadProperties(ctx, owner.instance.Name, owner.instance.Role)
+	unit, service, err := properties(ctx, owner.instance.Name, owner.instance.Role)
 	if err != nil {
-		// A crashing unit can disappear between the first observation and the
-		// manager query. Only the original kernel object's removal resolves it.
-		if gone, _, observedErr := ReadCgroup(owner.events); gone && observedErr == nil && initialErr == nil {
-			return nil
-		}
-		return errors.New("text worker cleanup invocation is unavailable")
+		// The manager may disappear while the original cgroup is still live.
+		// Keep observing its pinned descriptor without stopping another unit.
+		return owner.waitOriginalCgroup(ctx, read, initialErr,
+			errors.New("text worker cleanup invocation is unavailable"), true)
 	}
 	if !sameCleanupInstance(owner.instance, unit, service) {
-		return errors.New("text worker cleanup invocation changed")
+		return owner.waitOriginalCgroup(ctx, read, initialErr,
+			errors.New("text worker cleanup invocation changed"), false)
 	}
-	if err := stopInstance(ctx, owner.instance.Name, owner.instance.Role); err != nil {
+	if err := stop(ctx, owner.instance.Name, owner.instance.Role); err != nil {
 		return errors.Join(initialErr, err)
 	}
+	return owner.waitOriginalCgroup(ctx, read, initialErr, nil, false)
+}
+
+// waitOriginalCgroup observes only the cgroup pinned before worker readiness.
+// A manager identity mismatch cannot authorize a stop of the replacement.
+func (owner *Cleanup) waitOriginalCgroup(
+	ctx context.Context,
+	read func(*os.File) (bool, bool, error),
+	initialErr, identityErr error,
+	acceptRemoval bool,
+) error {
 	ticker := time.NewTicker(20 * time.Millisecond)
 	defer ticker.Stop()
 	for {
-		gone, populated, err := ReadCgroup(owner.events)
+		gone, populated, err := read(owner.events)
 		if err != nil {
-			return errors.Join(initialErr, err)
+			return errors.Join(initialErr, identityErr, err)
 		}
 		if (gone || !populated) && ctx.Err() == nil {
-			return initialErr
+			if gone && acceptRemoval && initialErr == nil {
+				return nil
+			}
+			return errors.Join(initialErr, identityErr)
 		}
 		select {
 		case <-ctx.Done():
-			return errors.Join(initialErr, errors.New("text worker cgroup cleanup did not complete"))
+			return errors.Join(initialErr, identityErr, errors.New("text worker cgroup cleanup did not complete"))
 		case <-ticker.C:
 		}
 	}

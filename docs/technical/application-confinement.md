@@ -205,6 +205,11 @@ Endpoint cleanup retains the original cgroup v2 `cgroup.events` descriptor
 before readiness. It rechecks the exact systemd InvocationID and fixed
 control-group stop policy, uses noninteractive `systemctl stop` with a finite
 join deadline, and verifies that the pinned subtree has no live processes.
+If manager properties are unavailable or identify another invocation, cleanup
+keeps observing the original pinned cgroup through that deadline without
+stopping the replacement. A changed invocation remains a cleanup failure even
+after the original cgroup empties; manager unavailability can be accepted only
+when the original pinned cgroup itself is observed removed.
 The [kernel populated field](https://docs.kernel.org/admin-guide/cgroup-v2.html#un-populated-notification)
 includes descendants. Removal is recognized only by `ENODEV` on that already
 verified core events file, including its seek operation; a missing pathname,

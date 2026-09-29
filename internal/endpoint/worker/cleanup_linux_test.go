@@ -3,9 +3,13 @@
 package worker
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
+	"os"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestTextWorkerCgroupObservationNeverInfersEmptyFromMissingData(t *testing.T) {
@@ -109,5 +113,133 @@ func TestTextWorkerCleanupFailureCannotBecomeSuccessOnRepeat(t *testing.T) {
 	first := owner.Close()
 	if first == nil || owner.Close() != first {
 		t.Fatal("missing cleanup identity became reusable after failure")
+	}
+}
+
+func TestTextWorkerCleanupJoinsOriginalCgroupAfterInvocationChange(t *testing.T) {
+	instance, unit, service := cleanupObservation(t)
+	unit["InvocationID"] = Value{Type: "ay", Data: json.RawMessage(`[2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]`)}
+	owner := &Cleanup{instance: instance}
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	reads, stops := 0, 0
+	err := owner.joinObserved(ctx,
+		func(*os.File) (bool, bool, error) {
+			reads++
+			return false, reads == 1, nil
+		},
+		func(context.Context, string, string) (Properties, Properties, error) {
+			return unit, service, nil
+		},
+		func(context.Context, string, string) error {
+			stops++
+			return nil
+		})
+	if err == nil || err.Error() != "text worker cleanup invocation changed" {
+		t.Fatalf("changed invocation result: %v", err)
+	}
+	if reads < 2 || stops != 0 {
+		t.Fatalf("original cgroup observations=%d, replacement stops=%d", reads, stops)
+	}
+}
+
+func TestTextWorkerCleanupJoinsOriginalCgroupWhenManagerUnavailable(t *testing.T) {
+	instance, _, _ := cleanupObservation(t)
+	owner := &Cleanup{instance: instance}
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	reads, stops := 0, 0
+	err := owner.joinObserved(ctx,
+		func(*os.File) (bool, bool, error) {
+			reads++
+			return false, reads < 3, nil
+		},
+		func(context.Context, string, string) (Properties, Properties, error) {
+			return nil, nil, errors.New("manager unavailable")
+		},
+		func(context.Context, string, string) error {
+			stops++
+			return nil
+		})
+	if err == nil || err.Error() != "text worker cleanup invocation is unavailable" {
+		t.Fatalf("unavailable manager result: %v", err)
+	}
+	if reads < 3 || stops != 0 {
+		t.Fatalf("original cgroup observations=%d, replacement stops=%d", reads, stops)
+	}
+}
+
+func TestTextWorkerCleanupAcceptsOriginalCgroupRemovalWithoutManager(t *testing.T) {
+	instance, _, _ := cleanupObservation(t)
+	owner := &Cleanup{instance: instance}
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	reads := 0
+	err := owner.joinObserved(ctx,
+		func(*os.File) (bool, bool, error) {
+			reads++
+			return reads == 2, reads == 1, nil
+		},
+		func(context.Context, string, string) (Properties, Properties, error) {
+			return nil, nil, errors.New("manager unavailable")
+		},
+		func(context.Context, string, string) error {
+			t.Fatal("replacement stop requested")
+			return nil
+		})
+	if err != nil || reads != 2 {
+		t.Fatalf("removed original cgroup: observations=%d, result=%v", reads, err)
+	}
+}
+
+func TestTextWorkerCleanupUnknownOriginalObservationFails(t *testing.T) {
+	instance, unit, service := cleanupObservation(t)
+	unit["InvocationID"] = Value{Type: "ay", Data: json.RawMessage(`[2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]`)}
+	owner := &Cleanup{instance: instance}
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	unknown := errors.New("unknown pinned cgroup observation")
+	reads := 0
+	err := owner.joinObserved(ctx,
+		func(*os.File) (bool, bool, error) {
+			reads++
+			if reads > 1 {
+				return false, false, unknown
+			}
+			return false, true, nil
+		},
+		func(context.Context, string, string) (Properties, Properties, error) {
+			return unit, service, nil
+		},
+		func(context.Context, string, string) error {
+			t.Fatal("replacement stop requested")
+			return nil
+		})
+	if !errors.Is(err, unknown) || reads != 2 {
+		t.Fatalf("unknown original cgroup: observations=%d, result=%v", reads, err)
+	}
+}
+
+func TestTextWorkerCleanupLiveOriginalCgroupHasFiniteJoin(t *testing.T) {
+	instance, unit, service := cleanupObservation(t)
+	unit["InvocationID"] = Value{Type: "ay", Data: json.RawMessage(`[2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]`)}
+	owner := &Cleanup{instance: instance}
+	ctx, cancel := context.WithTimeout(context.Background(), 45*time.Millisecond)
+	defer cancel()
+	reads := 0
+	err := owner.joinObserved(ctx,
+		func(*os.File) (bool, bool, error) {
+			reads++
+			return false, true, nil
+		},
+		func(context.Context, string, string) (Properties, Properties, error) {
+			return unit, service, nil
+		},
+		func(context.Context, string, string) error {
+			t.Fatal("replacement stop requested")
+			return nil
+		})
+	if err == nil || !strings.Contains(err.Error(), "text worker cgroup cleanup did not complete") || reads < 2 {
+		t.Fatalf("live original cgroup: observations=%d, result=%v", reads, err)
 	}
 }
