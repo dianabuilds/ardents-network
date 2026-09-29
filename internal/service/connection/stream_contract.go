@@ -163,6 +163,7 @@ type Stream struct {
 	terminalAckConfirmedGeneration                                                    uint64
 	terminalConfirmationPending, terminalConfirmationSent                             bool
 	terminalConfirmationGeneration, terminalConfirmationOffset                        uint64
+	terminalConfirmationWrittenGeneration, terminalConfirmationWrittenOffset          uint64
 	queueMax                                                                          uint32
 	localTerminal, terminalSettled, dataReplaying, terminalReplaying, terminalWriting bool
 	dataReplayDone                                                                    chan struct{}

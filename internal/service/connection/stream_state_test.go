@@ -93,7 +93,8 @@ func TestTerminalTailStopsAtNoNewRecoveryBoundary(t *testing.T) {
 	stream := &Stream{ctx: t.Context(), application: application, current: attachment, authorized: now, started: now,
 		opener:   func(context.Context, Recovery) (*Attachment, error) { return nil, errors.New("unexpected recovery") },
 		recovery: Recovery{NoNewRecoveryAfter: time.Now().Add(-time.Second).Unix()}, localTerminal: true,
-		remoteTerminal: true, terminalConfirmationSent: true, ackSignal: make(chan struct{}, 1), done: make(chan struct{}),
+		remoteTerminal: true, terminalConfirmationSent: true, terminalAcknowledgedGeneration: 1,
+		terminalConfirmationWrittenGeneration: 1, ackSignal: make(chan struct{}, 1), done: make(chan struct{}),
 		resources: func(kind string, change int) uint32 {
 			if kind == "timer" {
 				return uint32(timers.Add(int32(change)))
