@@ -250,8 +250,8 @@ _Avoid_: Namespace, public directory, hidden registry
 **Target Link**:
 The explicit shareable Ardents form of a machine-verifiable Service Target. It
 bypasses naming but never target authentication, routing, or Application
-authorization. Its v1 form is `ardents-target:v1:<base64url>` over exactly a
-fixed Target algorithm identifier, 32-byte Ardents network identifier, and
+authorization. It carries a fixed Target algorithm identifier, 32-byte Ardents
+network identifier, and
 32-byte opaque Target; it is unambiguously distinct from a Service Link and
 contains no origin or mutable reachability.
 _Avoid_: Service Name, origin address, naming fallback

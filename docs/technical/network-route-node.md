@@ -458,9 +458,9 @@ LegBinding was wire-only and never persisted. The sealed Introduction v1
 grammar and its canonical vectors are retired by ADR-0094; ADR-0026 and
 ADR-0034 remain the historical provenance of its bytes. The
 `IntroductionPublic` data remnant was closed by ADR-0102 with the typed
-refusal disposition: Credential v3 and the v2 Instance request/response
-grammars carry no introduction key, and pre-v3 roots are refused with
-`ErrLegacyRoot` instead of a compatibility decoder.
+refusal disposition: Credential v3 and the current v3 Instance request/response
+grammars carry no introduction key, and old roots are refused at their marker
+without a compatibility decoder under ADR-0117.
 The production-dead Interactive User Route v2 Open/Attach owner and its
 EntryBinding, private reachability, relay-setup, sealed-Introduction sender,
 credential-relay grammar, Endpoint-transit binding, and volatile composition

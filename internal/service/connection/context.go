@@ -7,11 +7,10 @@ import (
 	"errors"
 )
 
-const contextDomain = "ardents-service-connection-context-v1\x00"
+const contextDomain = "ardents-service-connection-context-v3\x00"
 
 // Context derives the one immutable ConnectionContext digest from the exact
-// facts selected in ADR-0075. Its v1 domain label is a retained compatibility
-// obligation of the immutable ConnectionContext digest, not a grammar choice.
+// facts selected for the closed Service Connection v3 edition.
 func Context(input ContextInput) ([32]byte, error) {
 	if input.Network == [32]byte{} || input.Target == [32]byte{} || input.InstancePublic == [32]byte{} ||
 		input.PublicationDigest == [32]byte{} || input.InstanceGeneration == 0 {
@@ -45,7 +44,7 @@ func Context(input ContextInput) ([32]byte, error) {
 
 func continuityNonce(key [32]byte, role Role, generation uint64, exporter [32]byte) [32]byte {
 	mac := hmac.New(sha256.New, key[:])
-	_, _ = mac.Write([]byte("ardents-service-connection-nonce-v1\x00"))
+	_, _ = mac.Write([]byte("ardents-service-connection-nonce-v3\x00"))
 	_, _ = mac.Write([]byte{byte(role)})
 	var raw [8]byte
 	binary.BigEndian.PutUint64(raw[:], generation)
@@ -58,7 +57,7 @@ func continuityNonce(key [32]byte, role Role, generation uint64, exporter [32]by
 
 func continuityMAC(key [32]byte, value Continuity) [32]byte {
 	mac := hmac.New(sha256.New, key[:])
-	_, _ = mac.Write([]byte("ardents-service-connection-continuity-v1\x00"))
+	_, _ = mac.Write([]byte("ardents-service-connection-continuity-v3\x00"))
 	_, _ = mac.Write(continuityTranscript(value))
 	var result [32]byte
 	copy(result[:], mac.Sum(nil))

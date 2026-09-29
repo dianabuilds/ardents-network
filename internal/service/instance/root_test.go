@@ -45,26 +45,30 @@ func TestInitializedHostRootReopensTheSamePublicRequest(t *testing.T) {
 	}
 }
 
-func TestLegacyRootBytesAreTypedRefusals(t *testing.T) {
+func TestOldRootBytesAreRefusedWithoutMutation(t *testing.T) {
 	now := time.Date(2030, 1, 2, 3, 4, 5, 0, time.UTC)
 	config := InitializeConfig{NetworkID: [32]byte{1}, NotBefore: now, NotAfter: now.Add(time.Hour)}
 
-	// A root persisted under the pre-v3 marker refuses both entry paths with
-	// the typed sentinel; its bytes stay on disk as refused evidence (ADR-0102).
+	// A root with an unsupported marker refuses both entry paths without
+	// changing the marker bytes.
 	legacy := instanceFixtureRoot(t)
-	if err := os.WriteFile(filepath.Join(legacy, markerName), []byte(legacyMarker), 0o600); err != nil {
+	oldMarker := []byte("ardents-service-instance-root-v2\n")
+	if err := os.WriteFile(filepath.Join(legacy, markerName), oldMarker, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := Open(legacy); !errors.Is(err, ErrLegacyRoot) {
-		t.Fatalf("Open(pre-v3 marker) = %v, want ErrLegacyRoot", err)
+	if _, err := Open(legacy); !errors.Is(err, ErrInvalid) {
+		t.Fatalf("Open(old marker) = %v, want ErrInvalid", err)
 	}
 	config.Root = legacy
-	if _, err := Initialize(config); !errors.Is(err, ErrLegacyRoot) {
-		t.Fatalf("Initialize(pre-v3 marker) = %v, want ErrLegacyRoot", err)
+	if _, err := Initialize(config); !errors.Is(err, ErrInvalid) {
+		t.Fatalf("Initialize(old marker) = %v, want ErrInvalid", err)
+	}
+	retained, err := os.ReadFile(filepath.Join(legacy, markerName))
+	if err != nil || !bytes.Equal(retained, oldMarker) {
+		t.Fatalf("old marker changed: %v", err)
 	}
 
-	// A v2-marked root whose state file still carries the v1 schema meets the
-	// same typed refusal from the lenient probe before any field decode.
+	// A v3-marked root whose state file carries the old schema is invalid.
 	migrated := instanceFixtureRoot(t)
 	if err := os.WriteFile(filepath.Join(migrated, markerName), []byte(marker), 0o600); err != nil {
 		t.Fatal(err)
@@ -72,11 +76,11 @@ func TestLegacyRootBytesAreTypedRefusals(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(migrated, lockName), nil, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(migrated, stateName), []byte(`{"schema":"ardents-service-instance-root-v1"}`+"\n"), 0o600); err != nil {
+	if err := os.WriteFile(filepath.Join(migrated, stateName), []byte(`{"schema":"ardents-service-instance-root-v2"}`+"\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := Open(migrated); !errors.Is(err, ErrLegacyRoot) {
-		t.Fatalf("Open(v1 state schema) = %v, want ErrLegacyRoot", err)
+	if _, err := Open(migrated); !errors.Is(err, ErrInvalid) {
+		t.Fatalf("Open(old state schema) = %v, want ErrInvalid", err)
 	}
 }
 

@@ -1,5 +1,10 @@
 # Open research queue
 
+R-168 is decided by [the closed Service v3 format inventory](records/r-168-service-v3-format-reset.md)
+and promoted to [ADR-0117](../adr/0117-reset-closed-service-formats-to-v3.md).
+It records the Product Owner's fresh-root/no-supported-client assumption; it is
+not an additional active C0 research question.
+
 Research is temporary decision work. Once a question is decided, its current
 contract is promoted to an ADR, product, security, technical, reference, or
 development owner. The completed record remains provenance under

@@ -13,7 +13,7 @@ func TestEncodeDecodeRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if text != "ardents-target:v1:AQECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8gISIjJCUmJygpKissLS4vMDEyMzQ1Njc4OTo7PD0-P0A" {
+	if text != "ardents-target:v3:AQECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8gISIjJCUmJygpKissLS4vMDEyMzQ1Njc4OTo7PD0-P0A" {
 		t.Fatalf("Target Link = %q", text)
 	}
 	got, err := Decode(text)
@@ -50,6 +50,7 @@ func TestDecodeRejectsNonCanonicalAndForeignText(t *testing.T) {
 		err  error
 	}{
 		{"foreign-prefix", strings.Replace(valid, prefix, "ardents://", 1), ErrFormat},
+		{"old-edition", strings.Replace(valid, prefix, "ardents-target:v1:", 1), ErrFormat},
 		{"padding", valid + "=", ErrFormat},
 		{"wrong-size", prefix + base64.RawURLEncoding.EncodeToString(payload[:64]), ErrFormat},
 		{"unknown-algorithm", prefix + base64.RawURLEncoding.EncodeToString(unknown), ErrAlgorithm},

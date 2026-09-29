@@ -8,8 +8,8 @@ import (
 )
 
 const (
-	connectionPrefix = "ardents-service-connection-v2\x00"
-	version          = uint16(2)
+	connectionPrefix = "ardents-service-connection-v3\x00"
+	version          = uint16(3)
 
 	kindChallenge       = byte(1)
 	kindProof           = byte(2)

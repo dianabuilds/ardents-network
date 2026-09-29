@@ -3,9 +3,9 @@ package connection
 import "time"
 
 const (
-	// Profile is the only endpoint record profile accepted by native Service
-	// Connection v1. It is never negotiated or chosen by a peer.
-	Profile = "ardents-interactive-route-v2"
+	// Profile is the fixed Service Connection record profile. It is independent
+	// of the Route profile and is never negotiated or chosen by a peer.
+	Profile = "ardents-service-connection-profile-v3"
 
 	// MaximumDataBytes is a parser/allocation bound, not a product stream
 	// limit or workload contract.

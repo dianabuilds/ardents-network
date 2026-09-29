@@ -17,10 +17,6 @@ var (
 	ErrUnavailable = errors.New("service Instance generation is unavailable")
 	// ErrSuccessorRequired reports a generation already committed to publication.
 	ErrSuccessorRequired = errors.New("service Instance successor is required")
-	// ErrLegacyRoot reports a root persisted under the pre-v3 Credential
-	// contract. Its bytes are refused evidence; the operator path is
-	// re-initialization under a new root (ADR-0102).
-	ErrLegacyRoot = errors.New("service Instance root predates the Credential v3 contract; re-initialize it")
 )
 
 // State is the durable one-generation Instance lifecycle classification.

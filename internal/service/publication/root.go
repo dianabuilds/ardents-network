@@ -16,8 +16,8 @@ import (
 )
 
 const (
-	rootMarkerName = ".ardents-service-publication-v1"
-	rootMarker     = "ardents-service-publication-v1\n"
+	rootMarkerName = ".ardents-service-publication-v3"
+	rootMarker     = "ardents-service-publication-v3\n"
 	rootLockName   = ".ardents-service-publication-lock"
 	floorName      = "floor"
 	currentName    = "current"
@@ -110,6 +110,19 @@ func inspectRoot(path string) error {
 	}
 	if !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
 		return errors.New("publication root is not an owned directory")
+	}
+	if _, err := os.Lstat(filepath.Join(path, rootMarkerName)); errors.Is(err, os.ErrNotExist) {
+		entries, readErr := readDirectory(path, 2)
+		if readErr != nil {
+			return errors.New("publication root contents are invalid")
+		}
+		for _, entry := range entries {
+			if entry.Name() != rootLockName {
+				return errors.New("publication root format is unsupported")
+			}
+		}
+	} else if err != nil {
+		return errors.New("publication root ownership marker is invalid")
 	}
 	return nil
 }

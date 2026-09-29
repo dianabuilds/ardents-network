@@ -22,7 +22,7 @@ import (
 	servicepublication "github.com/dianabuilds/ardents-network/internal/service/publication"
 )
 
-const exporterLabel = "EXPORTER-ardents-service-connection-v1"
+const exporterLabel = "EXPORTER-ardents-service-connection-v3"
 
 var errInstanceMismatch = errors.New("service Instance certificate does not match the current Credential")
 

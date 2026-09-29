@@ -9,8 +9,8 @@ import (
 )
 
 const (
-	storeMarkerName = ".ardents-reachability-store-v1"
-	storeMarker     = "ardents-reachability-store-v1\n"
+	storeMarkerName = ".ardents-reachability-store-v3"
+	storeMarker     = "ardents-reachability-store-v3\n"
 	storeLockName   = ".ardents-reachability-store-lock"
 	storeRecords    = "records"
 	maximumTargets  = 128

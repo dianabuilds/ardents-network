@@ -27,9 +27,6 @@ func admittedRoot(path string) (string, error) {
 func prepareRoot(root string) error {
 	markerPath := filepath.Join(root, markerName)
 	if raw, err := readBounded(markerPath, 128); err == nil {
-		if bytes.Equal(raw, []byte(legacyMarker)) {
-			return ErrLegacyRoot
-		}
 		if !bytes.Equal(raw, []byte(marker)) {
 			return ErrInvalid
 		}
@@ -79,9 +76,6 @@ func validateMarker(root string) error {
 	raw, err := readBounded(filepath.Join(root, markerName), 128)
 	if err != nil {
 		return ErrInvalid
-	}
-	if bytes.Equal(raw, []byte(legacyMarker)) {
-		return ErrLegacyRoot
 	}
 	if !bytes.Equal(raw, []byte(marker)) {
 		return ErrInvalid

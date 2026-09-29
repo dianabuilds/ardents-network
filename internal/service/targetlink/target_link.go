@@ -7,7 +7,7 @@ import (
 )
 
 const (
-	prefix          = "ardents-target:v1:"
+	prefix          = "ardents-target:v3:"
 	payloadSize     = 65
 	algorithmOffset = 0
 	networkOffset   = 1
@@ -16,8 +16,8 @@ const (
 )
 
 var (
-	// ErrFormat reports text which is not the canonical Target Link v1 form.
-	ErrFormat = errors.New("invalid Target Link v1 format")
+	// ErrFormat reports text which is not the canonical Target Link v3 form.
+	ErrFormat = errors.New("invalid Target Link v3 format")
 	// ErrAlgorithm reports an unsupported Target algorithm identifier.
 	ErrAlgorithm = errors.New("unsupported Target Link algorithm")
 )
@@ -29,7 +29,7 @@ type Link struct {
 	Target  [32]byte
 }
 
-// Encode returns the only canonical Target Link v1 spelling for link.
+// Encode returns the only canonical Target Link v3 spelling for link.
 func Encode(link Link) (string, error) {
 	if empty(link.Network) || empty(link.Target) {
 		return "", ErrFormat
@@ -41,7 +41,7 @@ func Encode(link Link) (string, error) {
 	return prefix + base64.RawURLEncoding.EncodeToString(payload), nil
 }
 
-// Decode accepts only canonical, unpadded base64url Target Link v1 text.
+// Decode accepts only canonical, unpadded base64url Target Link v3 text.
 func Decode(text string) (Link, error) {
 	if !strings.HasPrefix(text, prefix) {
 		return Link{}, ErrFormat

@@ -54,7 +54,7 @@ func TestServiceInstanceInitializePublishesOnlyStableRequest(t *testing.T) {
 		t.Fatal(err)
 	}
 	view, err := instance.ParseRequest(receipt.Request)
-	if err != nil || receipt.Schema != "ardents-service-instance-request-v2" || view.NetworkID != network {
+	if err != nil || receipt.Schema != "ardents-service-instance-request-v3" || view.NetworkID != network {
 		t.Fatalf("Service Instance receipt = %+v, view = %+v, err = %v", receipt, view, err)
 	}
 	persistedRequest, err := os.ReadFile(requestPath)

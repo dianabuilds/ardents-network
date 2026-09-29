@@ -15,19 +15,8 @@ import (
 )
 
 const (
-	// storeRecordVersion is the retired generation-2 stored-record envelope.
-	// ADR-0109 (F-32) deleted its decode grammar; the constant survives only
-	// so restore can recognize the envelope and refuse it with a typed error.
-	storeRecordVersion        = byte(1)
-	privateStoreRecordVersion = byte(2)
+	privateStoreRecordVersion = byte(3)
 )
-
-// ErrLegacyRecord reports a stored record in the retired generation-2
-// envelope (stored-record version 1). ADR-0109 (F-32) chose typed refusal
-// over adoption or migration: a root holding such a record refuses to open
-// as a whole, the historical bytes stay on disk untouched, and a fresh
-// Target requires a new root.
-var ErrLegacyRecord = errors.New("reachability store holds a retired legacy record")
 
 func (store *Store) restore() error {
 	directory := filepath.Join(store.path, storeRecords)
@@ -49,9 +38,6 @@ func (store *Store) restore() error {
 		}
 		record, err := decodeStored(raw, store.network)
 		if err != nil {
-			if errors.Is(err, ErrLegacyRecord) {
-				return fmt.Errorf("reachability store record %s: %w", entry.Name(), err)
-			}
 			return errors.New("reachability store record is invalid")
 		}
 		if targetName(record.verified.Descriptor.Target) != entry.Name() {
@@ -89,16 +75,11 @@ func encodeStored(record storedDescriptor) ([]byte, error) {
 	return append([]byte{privateStoreRecordVersion, flags}, record.raw...), nil
 }
 
-// decodeStored authenticates one retained record. ADR-0109 (F-32): the
-// retired generation-2 envelope is recognized only to refuse it with
-// ErrLegacyRecord; every accepted record is a private v3 proof re-verified
-// against its own signed floor.
+// decodeStored authenticates one retained private v3 proof against its own
+// signed floor. Other envelope versions are refused without conversion.
 func decodeStored(raw []byte, network [32]byte) (storedDescriptor, error) {
 	if len(raw) < 2 {
 		return storedDescriptor{}, errors.New("reachability stored descriptor header is invalid")
-	}
-	if raw[0] == storeRecordVersion {
-		return storedDescriptor{}, ErrLegacyRecord
 	}
 	if raw[0] != privateStoreRecordVersion || raw[1] > 3 {
 		return storedDescriptor{}, errors.New("reachability stored descriptor header is invalid")

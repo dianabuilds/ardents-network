@@ -6,7 +6,7 @@ import (
 	"encoding/binary"
 )
 
-const requestDomain = "ardents-service-instance-request-v2\x00"
+const requestDomain = "ardents-service-instance-request-v3\x00"
 
 const requestSize = len(requestDomain) + 32 + 32 + 8 + 8 + 32
 
