@@ -270,6 +270,13 @@ retains the exact admission reservation until that Job reports joined cleanup;
 it does not edit handoff fields. A late handoff is closed against its old Job
 and cannot supply a Grant or completion to a replacement.
 
+An owned Service binding refuses a canceled Context with that Context's
+cancellation cause, including the interval before cancellation reaches its Job
+and after joined Job cleanup. It does not synthesize a separate Job-retirement
+failure from that propagation order. Independent Job retirement under a live
+Context and a foreign Job remain distinct refusals; physical cleanup errors
+retain their existing joined owners.
+
 Context shutdown uses one explicit stop/join dependency table. Stop runs while
 the Context mutex is held and revokes every child before any wait; join runs
 after releasing that mutex. Extracted lifecycle owners detach and retire their
@@ -375,11 +382,19 @@ Local network tests exercise this result projection with explicit qualification
 fixtures. The installed profile uses the actual AAI3 owner and launcher, but
 that revised profile still requires execution on its qualified host.
 The protected `RunClosedParticipant` composition opens the accepted closed State,
-Entry sets, the `internal/endpoint/tokenjournal` durable attempt owner, and
-existing Instance binding. It qualifies and
-provisions both retained text contexts before opening the AAI3 Connection and
-snapshot Administration transports, rechecks permission currentness before
-exposure, and joins servers, contexts and persistent owners on shutdown.
+Entry sets and the `internal/endpoint/tokenjournal` durable attempt owner.
+The default composition also opens the existing Instance binding and provisions
+both retained text contexts before opening the AAI3 Connection and snapshot
+Administration transports. An explicit v2 `role: reader` selects only the
+Connection context. It requires its own State/Source/time/local-role/Entry/token
+inputs, Broker and Connection principal, Application socket and Reader Permission.
+It rejects nonempty Instance, Publication, Administration or Publisher Permission
+configuration and opens none of those owners, grants or transports. An omitted
+role preserves the existing dual-role contract; any other role refuses before
+runtime effects. The internal composition carries this choice as `ReaderOnly`.
+Both compositions retain the same required worker qualification, State and
+Permission currentness, finite allocation and joined shutdown. No protection
+mode, wire identity or permission authority is added.
 `endpoint headless` selects this composition through an explicit v2 plan;
 missing permissions or mixed legacy fields fail without selecting another
 runtime. The decoder refuses persisted v1 plans under
@@ -388,6 +403,13 @@ protected composition still requires installed command
 and full network lifecycle
 qualification. No caller-supplied Target, permission file or local context
 identifier may bypass these owners.
+
+Reader-only component checks do not establish the two-Endpoint installed journey.
+The fixed worker boundary verifies the MainPID of `ardents-endpoint.service`;
+two Endpoints therefore require separate system-manager installations, each with
+its own roots and principals and the unchanged fixed unit/account/worker checks.
+Fixture-written plans do not supply the supported authenticated installation
+handoff or a complete Ubuntu systemd/cgroup qualification.
 
 The participant serializes local lifecycle output. Each event records UTC occurrence time before output delivery; the local JSON-line adapter uses `schema`, `kind`, and `at` for correlation with Node lifecycle events while retaining the existing bounded, role-specific fields. A background failure event uses a
 bounded observer context; if delivery fails, the participant ends the generation,

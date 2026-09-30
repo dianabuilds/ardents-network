@@ -23,6 +23,7 @@ type PermissionFiles struct {
 // ClosedParticipantConfig owns one closed text participant generation. It has
 // no legacy Invite, alternate protection mode, Target, or private signing key.
 type ClosedParticipantConfig struct {
+	ReaderOnly                                             bool
 	Network                                                state.Config
 	RefreshNetwork                                         bool
 	EntryRoot, LocalRoleRoot, TokenRoot                    string
@@ -47,17 +48,27 @@ type ClosedParticipantEvent struct {
 }
 
 func (config ClosedParticipantConfig) validate() error {
-	if config.Network.AcceptedProfile != carrier.ClosedRouteProfile || config.Network.NetworkID == [32]byte{} || config.BrokerID == [32]byte{} || config.ConnectionPrincipal == [32]byte{} || config.AdministrationPrincipal == [32]byte{} || config.Observe == nil {
+	if config.Network.AcceptedProfile != carrier.ClosedRouteProfile || config.Network.NetworkID == [32]byte{} || config.BrokerID == [32]byte{} || config.ConnectionPrincipal == [32]byte{} || !config.ReaderOnly && config.AdministrationPrincipal == [32]byte{} || config.Observe == nil {
 		return errors.New("text participant configuration incomplete")
 	}
+	paths := []string{config.Network.Root, config.EntryRoot, config.LocalRoleRoot, config.TokenRoot, config.ApplicationAddress, config.ReaderPermission.RequestPath, config.ReaderPermission.ResponsePath}
+	permissions := []PermissionFiles{config.ReaderPermission}
+	if config.ReaderOnly {
+		if config.PublicationRoot != "" || config.ServiceInstanceRoot != "" || config.AdministrationAddress != "" || config.AdministrationPrincipal != [32]byte{} || config.PublisherPermission != (PermissionFiles{}) {
+			return errors.New("reader participant cannot select Publisher inputs")
+		}
+	} else {
+		paths = append(paths, config.PublicationRoot, config.ServiceInstanceRoot, config.AdministrationAddress, config.PublisherPermission.RequestPath, config.PublisherPermission.ResponsePath)
+		permissions = append(permissions, config.PublisherPermission)
+	}
 	seen := make(map[string]bool)
-	for _, path := range []string{config.Network.Root, config.EntryRoot, config.LocalRoleRoot, config.TokenRoot, config.PublicationRoot, config.ServiceInstanceRoot, config.ApplicationAddress, config.AdministrationAddress, config.ReaderPermission.RequestPath, config.ReaderPermission.ResponsePath, config.PublisherPermission.RequestPath, config.PublisherPermission.ResponsePath} {
+	for _, path := range paths {
 		if !filepath.IsAbs(path) || filepath.Clean(path) != path || seen[path] {
 			return errors.New("text participant paths must be distinct, absolute and canonical")
 		}
 		seen[path] = true
 	}
-	for index, permission := range []PermissionFiles{config.ReaderPermission, config.PublisherPermission} {
+	for index, permission := range permissions {
 		maximum := uint64(4096)
 		if index == 1 {
 			maximum = 16384
@@ -70,8 +81,9 @@ func (config ClosedParticipantConfig) validate() error {
 	return nil
 }
 
-// RunClosedParticipant qualifies and provisions both contexts before exposing
-// local commands, retaining the State, Instance and worker cleanup owners.
+// RunClosedParticipant qualifies and provisions each selected context before
+// exposing local commands, retaining State and worker cleanup owners. A Reader
+// owns no Instance or Publication; the default also retains those owners.
 func RunClosedParticipant(ctx context.Context, config ClosedParticipantConfig) error {
 	if ctx == nil {
 		return errors.New("text participant context unavailable")
