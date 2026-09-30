@@ -40,6 +40,12 @@ services:
   runner:
     <<: *base
     network_mode: none
+  monitor:
+    <<: *base
+    profiles: [monitor]
+    ports: ["127.0.0.1:8094:8094"]
+    # Operator supplies monitor flags and an explicit -- source command.
+    command: [monitor]
   online:
     <<: *base
     profiles: [online]
