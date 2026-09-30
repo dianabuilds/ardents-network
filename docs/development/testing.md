@@ -48,6 +48,15 @@ substitute for independent review.
 - Focused Linux race checks retain raw command, stdout, stderr, and exit status
   outside Git. They may compose existing owner tests for a bounded lifecycle
   fact, but do not turn that composition into an end-to-end qualification.
+
+The two-Node lifecycle process test retains TCP port reservations throughout
+State and plan preparation. It releases each reservation immediately before its
+Source or Node starts, while other addresses remain owned. This prevents its
+own ephemeral allocator from assigning a Node address to a Source. The ordinary
+child bind still has a release-to-bind gap in which an external process could
+claim that address; bind failures remain failures without a retry or waiver.
+These reservations do not qualify installed networking or systemd/cgroup use.
+
 - The retained text Publisher setup keeps its real 4-by-64 authenticated
   loopback composition in the ordinary Linux profile. Its race counterpart
   checks the same 256 workload bindings, retained identities, concurrent Reader
