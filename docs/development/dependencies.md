@@ -826,3 +826,19 @@ It supplies the maintained architecture script tests, not a product dependency.
 The release uses .NET 10.0.401; Debian native dependencies and Python 3 come
 from signed security repositories and are included in the environment inventory.
 Rebuild on upstream/security fixes; validate the actual required scripts.
+
+### Prebuilt standard Go diagnostic parsers
+
+The local diagnostics owner uses the selected Go 1.26.8 source packages
+`cmd/pprof` and `cmd/trace`, with the Go distribution license, to parse explicitly
+selected private profiles offline. Explicit `make tools-install` builds them into
+`GOBIN` or `GOPATH/bin`; `DIAGNOSTIC_PARSERS_ONLY=1` installs only this pair. They
+are not new module imports, product binaries or a separate upstream selection.
+Their source/support/security owner is the existing pinned Go toolchain above;
+rebuild and revalidate both on each toolchain change. The image/doctor inventory
+records actual compiler/build metadata. Remove this installation when private
+bundle format validation is retired. No symbolization, selected executable,
+remote URL, HTTP parser service or artifact execution is enabled by this use.
+Per-file deadline, process-group cancellation and discarded-output caps belong
+to the local diagnostics owner. Native/parser prerequisite failure blocks that
+profile instead of triggering implicit compilation or a passing skip.

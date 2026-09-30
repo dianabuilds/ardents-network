@@ -184,7 +184,12 @@ ifeq ($(HEADLESS_GOOS),linux)
 endif
 	$(MAKE) --output-sync=target test-race
 
+DIAGNOSTIC_PARSER_ROOT ?= $(if $(GOBIN),$(GOBIN),$(shell go env GOPATH)/bin)
+
 tools-install:
+	go build -trimpath -buildvcs=false -o "$(DIAGNOSTIC_PARSER_ROOT)/pprof$(HEADLESS_SUFFIX)" cmd/pprof
+	go build -trimpath -buildvcs=false -o "$(DIAGNOSTIC_PARSER_ROOT)/trace$(HEADLESS_SUFFIX)" cmd/trace
+ifneq ($(DIAGNOSTIC_PARSERS_ONLY),1)
 	go install honnef.co/go/tools/cmd/staticcheck@2025.1.1
 	go install golang.org/x/vuln/cmd/govulncheck@v1.1.4
 	go install golang.org/x/tools/cmd/deadcode@v0.48.0
@@ -192,6 +197,7 @@ ifeq ($(DIAGNOSTIC_TOOLS),1)
 	go install github.com/go-delve/delve/cmd/dlv@v1.27.2
 	go install github.com/kisielk/errcheck@v1.20.0
 	sh ./scripts/diagnostics/install-powershell.sh
+endif
 endif
 
 .PHONY: text-worker-policy-check
@@ -234,4 +240,4 @@ text-role-durable-state-capture:
 .PHONY: diagnostics-check
 diagnostics-check:
 	@test "$$(go env GOOS)" = linux || (echo "diagnostics-check requires Linux"; exit 2)
-	go test ./scripts/diagnostics/diagnostic-command.go ./scripts/diagnostics/diagnostic-capture.go ./scripts/diagnostics/diagnostic-view.go ./scripts/diagnostics/diagnostic-report.go ./scripts/diagnostics/diagnostic-monitor.go scripts/diagnostics/diagnostic-monitor-view.go scripts/diagnostics/diagnostic-monitor_test.go ./scripts/diagnostics/diagnostic-log-retention.go ./scripts/diagnostics/diagnostic-log-retention_test.go ./scripts/diagnostics/diagnostic-capture_test.go ./scripts/diagnostics/diagnostic-report_test.go -count=1 -timeout=1m
+	go test ./scripts/diagnostics/diagnostic-command.go ./scripts/diagnostics/diagnostic-capture.go ./scripts/diagnostics/diagnostic-view.go ./scripts/diagnostics/diagnostic-report.go ./scripts/diagnostics/diagnostic-monitor.go scripts/diagnostics/diagnostic-monitor-view.go scripts/diagnostics/diagnostic-monitor_test.go ./scripts/diagnostics/diagnostic-log-retention.go ./scripts/diagnostics/diagnostic-log-retention_test.go ./scripts/diagnostics/diagnostic-capture_test.go ./scripts/diagnostics/diagnostic-report_test.go ./scripts/diagnostics/diagnostic-evidence.go ./scripts/diagnostics/diagnostic-evidence_test.go -count=1 -timeout=1m
