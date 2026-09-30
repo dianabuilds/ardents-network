@@ -275,7 +275,12 @@ The maintained local profiles are:
 - `service-credential-response-linux`;
 - `text-role-durable-state-capture`, the Linux-only isolated Role and Publisher
   durable-state observation; it retains secret-bearing raw observations only in
-  an existing, writable, non-symlink directory outside the Git worktree;
+  an existing, writable, non-symlink directory outside the Git worktree. State,
+  OS placement and pressure/owner-use are explicit component models: participants
+  share a container cgroup, so its departing processes cannot supply isolated
+  Role owner-use evidence. Duties still run through Node with real durable
+  hosting allowance accounting. This profile does not qualify systemd/cgroup
+  placement, resource use, latency or full P3 protection;
 - the retired two-Endpoint alpha-control runner is no longer a contributor
   route. Its historical receipts remain in their existing evidence locations;
   its last source revision is retained in Git as `6ac9cba0856a7a0b92f2e8a4e11b246625f6716d`;
