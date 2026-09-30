@@ -1,5 +1,87 @@
 # Endpoint and Service runtime
 
+## Selected protected installation handoff
+
+The following bounded command contract implements ADR-0119's selected
+installation boundary. It is not implemented or a supported command receipt
+yet. Commands remain thin adapters under `ardents endpoint`; the owning
+implementation issue must register any new package before adding one.
+
+| Command | Input and owner effect |
+| --- | --- |
+| `endpoint provision <request-file>` | Explicit root operation after independent first-artifact verification. Authenticate executable/generation through Release, validate local declarations, stage and select one complete stopped installation. No implicit start. |
+| `endpoint installation-check <installation-root>` | Read-only bounded local integrity/selected-generation observation; does not create authority, repair files or claim readiness. |
+| `endpoint start-installed <installation-root>` | Fixed system-unit ExecStart consumer under ardents-endpoint account. Verify binding, program bytes and observed unit/MainPID/InvocationID before participant effects, then consume the bound v2 plan. No generic privileged launcher. |
+| `endpoint upgrade-installed <request-file>` | Explicit root operation with fresh coherent Release proofs and strictly newer generation; stop/join predecessor, stage fixed resources and select successor. Starts only after all validation and selection succeed. |
+| `endpoint recover-installed <installation-root>` | Explicit root recovery from exact owned journal and generations; revalidate current Release authority and never lower floors. Refuse repair-required when no authorized complete generation is available. |
+
+The provision/upgrade request is canonical bounded JSON (maximum 64 KiB), with
+only schema, bundle root, independent first-install pin where applicable,
+installation root, Release floor root, reference time, and the existing
+headless/Source operator declarations. Its schema belongs to the installation
+owner, not the wire protocol. Reject duplicate/unknown keys, symlinks,
+noncanonical or nonabsolute paths, overlapping immutable/mutable roots, and
+Reader requests containing Publisher/Instance/administration inputs. Root may
+declare local identities and paths; it cannot manufacture Network, Custody,
+Instance or holder permission authority. Exact field projection reuses current
+v2 owners rather than a second grammar for their content.
+
+Immutable generations are root-owned direct directories, identified by the
+authenticated generation descriptor digest. No service-account write or
+symlinked ancestor is allowed. A bounded local binding contains both verified
+target facts, program/resource and rendered v2 plan/Source/unit digests, fixed
+account/unit names and explicit mutable root identities. Files readable by
+the service account are mode0640 with root ownership and its group; program
+and installed worker retain their required execution/read-only modes.
+The selection is root-owned, readable by the Endpoint group and never writable
+by it; the mutation journal is root-only. No stored serialized
+Release authorization may be replayed as a fresh proof.
+
+Use the fixed `ardents-endpoint.service` and current worker unit/socket names.
+The Endpoint unit template is authenticated before rendering its one selected
+generation's absolute program/installation-root arguments. This consumer
+rechecks the rendered output as well as actual manager observations, not merely
+the template digest. Mutable State/Entry/token/Publication/Instance roots are
+separate, never copied into generation bytes or cleared on replacement.
+Explicit root provisioning owns service-account creation and directory access;
+it accepts no undeclared existing account or conflicting unit silently.
+
+Stage all bytes and fsync files/directories before changing fixed resources.
+Worker's existing direct-path inventory prohibits replacing its root by a
+symlink to a generation. While the Endpoint and worker scopes are stopped and
+joined, install the exact fixed-path copies, observe their digests, publish
+selection, reload the system manager, then permit start. Every step records
+its owned journal phase and original error. No filesystem rename makes the
+manager transition atomic. A failed transition leaves the unit inactive and
+the exact prior/successor bytes available for explicit recovery; foreign
+paths, mixed resources or ambiguous journal state refuse before effects.
+
+Retaining predecessor bytes is not permission to activate an older Release.
+Recovery must finish a valid selected candidate or obtain a fresh floor-compatible
+explicit rollback authorization; otherwise report repair-required and stay
+inactive. Restart observes a new InvocationID and the same immutable selection,
+retaining durable floors. Successful process restart does not imply publication
+continuity: the current credential/recipient refusal remains an honest outcome.
+
+Implementation acceptance requires causal pre-effect refusals for missing or
+mismatched proofs, partial resource groups, digest/ancestor substitution,
+service-account edits, conflicting accounts/units, wrong executable/MainPID,
+failed writes/reload/start/join and each interrupted journal phase. The final
+installed oracle uses two separate admitted Ubuntu system managers, distinct
+Endpoint principals/roots, public provisioning and permission commands, both
+Carriers, publish/link/read/Descriptor refresh/withdraw/refusal and restart.
+Actual containment observations and post-close empty scopes are recorded
+separately. Fixture-produced JSON/units, ordinary Docker and one dual-role
+Endpoint remain component/diagnostic evidence.
+
+[ADR-0119](../adr/0119-bind-protected-endpoint-generation-to-release.md)
+selects the installation binding for the protected successor. Before participant
+effects, its consumer must verify the accepted generation, immutable plan/unit
+outputs and actual system-manager unit/account/executable/MainPID/InvocationID.
+Restart retains durable floors and does not repair Service credential continuity
+by resetting roots. Existing runtime checks alone do not implement this binding
+or qualify the complete installed two-Endpoint scenario.
+
 Status: **current maintained technical contract.** This document describes the
 local Endpoint, generic Broker, Service publication, and Service Connection
 Modules that exist in the repository. It does not select a supported desktop
