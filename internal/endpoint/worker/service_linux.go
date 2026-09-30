@@ -73,13 +73,29 @@ func ReadEndpointProperties(ctx context.Context) (Properties, Properties, error)
 	if err := verifyPlatform(ctx); err != nil {
 		return nil, nil, err
 	}
-	answer, err := managerCall(ctx, "/org/freedesktop/systemd1", "org.freedesktop.systemd1.Manager", "GetUnit", "s", "ardents-endpoint.service")
+	return readFixedUnitProperties(ctx, "ardents-endpoint.service", "Service")
+}
+
+// ReadActivationSocketProperties observes a fixed text activation socket.
+// It grants no activation, launch or stop permission.
+func ReadActivationSocketProperties(ctx context.Context, role string) (Properties, Properties, error) {
+	if ctx == nil || role != "reader" && role != "publisher" {
+		return nil, nil, errors.New("text activation socket observation is unavailable")
+	}
+	if err := verifyPlatform(ctx); err != nil {
+		return nil, nil, err
+	}
+	return readFixedUnitProperties(ctx, "ardents-text-"+role+".socket", "Socket")
+}
+
+func readFixedUnitProperties(ctx context.Context, name, propertyKind string) (Properties, Properties, error) {
+	answer, err := managerCall(ctx, "/org/freedesktop/systemd1", "org.freedesktop.systemd1.Manager", "GetUnit", "s", name)
 	var paths []string
 	if err != nil || answer.Type != "o" || json.Unmarshal(answer.Data, &paths) != nil || len(paths) != 1 {
 		return nil, nil, errors.New("text worker Endpoint service is unavailable")
 	}
 	var unit, service Properties
-	for _, kind := range []string{"Unit", "Service"} {
+	for _, kind := range []string{"Unit", propertyKind} {
 		answer, err := managerCall(ctx, paths[0], "org.freedesktop.DBus.Properties", "GetAll", "s", "org.freedesktop.systemd1."+kind)
 		var properties []Properties
 		if err != nil || answer.Type != "a{sv}" || json.Unmarshal(answer.Data, &properties) != nil || len(properties) != 1 {

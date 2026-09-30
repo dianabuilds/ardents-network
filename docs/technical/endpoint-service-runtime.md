@@ -36,6 +36,9 @@ returns the bound v2 plan to the ordinary participant composition. It opens no
 Release floor store and never recreates a fresh proof from stored target facts.
 The authenticated Endpoint unit requires both activation sockets before start;
 the socket units are PartOf the Endpoint so its stop also retires their listeners.
+Before returning the plan, startup observes both live socket units through typed
+manager properties and checks their fixed fragments, PartOf, listening state,
+Endpoint ownership, mode0600 and removal-on-stop contract.
 Effective stop/activation ordering still needs admitted installed qualification.
 The ExecStartEx flag name and typed command representation follow the
 [systemd v255 implementation](https://raw.githubusercontent.com/systemd/systemd/v255/src/core/dbus-execute.c)

@@ -78,6 +78,9 @@ func admitInstalledStart(ctx context.Context, root string) (runtimeplan.DecodedH
 	if err := verifyInstalledProcess(unit, service, checked, uint32(os.Getpid()), invocation); err != nil {
 		return refuse(err)
 	}
+	if err := observeInstalledSockets(ctx, unit); err != nil {
+		return refuse(err)
+	}
 	if err := ctx.Err(); err != nil {
 		return refuse(err)
 	}
