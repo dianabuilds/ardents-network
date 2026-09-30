@@ -36,11 +36,12 @@ func (f *boundedFile) Write(body []byte) (int, error) {
 	total := len(body)
 	remaining := max(0, f.limit-f.written)
 	if int64(len(body)) > remaining {
-		f.dropped += int64(len(body)) - remaining
 		body = body[:remaining]
 	}
+	written := 0
 	if len(body) > 0 && f.failure == nil {
 		n, err := f.file.Write(body)
+		written = n
 		f.written += int64(n)
 		if err != nil {
 			f.failure = err
@@ -48,6 +49,9 @@ func (f *boundedFile) Write(body []byte) (int, error) {
 			f.failure = io.ErrShortWrite
 		}
 	}
+	// Every consumed byte that did not reach the sink is lost, including a
+	// partial write and data drained after a retained failure. Count once.
+	f.dropped += int64(total - written)
 	return total, nil // Drain even after saturation or sink failure; report it in summary.
 }
 func (f *boundedFile) Close() error {

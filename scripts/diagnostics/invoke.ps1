@@ -1,7 +1,7 @@
 [CmdletBinding(PositionalBinding=$false)]
 param(
     [Parameter(Mandatory=$true)][string]$EvidenceRoot,
-    [ValidateSet('runner','online','debugger','network','dashboard')][string]$Service = 'runner',
+    [ValidateSet('runner','online','debugger','network','dashboard','monitor')][string]$Service = 'runner',
     [string]$RunName = 'latest',
     [switch]$Build,
     [Parameter(Position=0,ValueFromRemainingArguments=$true)][string[]]$Command
@@ -30,6 +30,9 @@ $env:ARDENTS_DIAGNOSTIC_IMAGE = $imageIdentity.Trim()
 $composeFile = Join-Path $PSScriptRoot 'compose.yaml'
 if ($Service -eq 'dashboard') {
     & docker compose -f $composeFile --profile view up -d dashboard
+} elseif ($Service -eq 'monitor') {
+    if (-not $Command -or $Command.Count -eq 0) { throw 'Supply monitor flags and an explicit -- source command' }
+    & docker compose -f $composeFile --profile monitor run --rm --service-ports monitor @Command
 } else {
     if (-not $Command -or $Command.Count -eq 0) { $Command = @('doctor') }
     & docker compose -f $composeFile --profile online --profile debug --profile network run --rm $Service @Command
