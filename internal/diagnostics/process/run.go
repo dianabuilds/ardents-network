@@ -18,6 +18,8 @@ func Run(ctx context.Context, socket string, work func(context.Context) error) (
 	if socket == "" {
 		return work(ctx)
 	}
+	capture := newConnectionCapture()
+	ctx = context.WithValue(ctx, sessionCaptureContextKey{}, capture)
 	close, err := open(ctx, socket)
 	if err != nil {
 		return err

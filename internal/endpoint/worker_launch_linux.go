@@ -11,6 +11,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
 	"github.com/dianabuilds/ardents-network/internal/application/streamqualification"
 	"github.com/dianabuilds/ardents-network/internal/application/textdocument"
+	processdiag "github.com/dianabuilds/ardents-network/internal/diagnostics/process"
 	"github.com/dianabuilds/ardents-network/internal/endpoint/service"
 	"github.com/dianabuilds/ardents-network/internal/endpoint/worker"
 	"github.com/dianabuilds/ardents-network/internal/qualification"
@@ -48,7 +49,7 @@ func (owner *dutyContext) launchStreamQualificationWorker(ctx context.Context, r
 }
 
 func (owner *dutyContext) launchInstalledWorker(ctx context.Context, snapshot []byte, run *qualification.Run,
-	workload service.WorkloadBounds) (*qualifiedWorker, error) {
+	workload service.WorkloadBounds) (_ *qualifiedWorker, outcome error) {
 	if owner == nil || ctx == nil || ctx.Err() != nil {
 		return nil, errors.New("text worker launch is unavailable")
 	}
@@ -101,6 +102,8 @@ func (owner *dutyContext) launchInstalledWorker(ctx context.Context, snapshot []
 	defer cancel()
 	stopCaller := context.AfterFunc(ctx, cancel)
 	defer stopCaller()
+	activated := processdiag.ConnectionTraceFor(ctx).Observe(processdiag.WorkerActivation, bounded)
+	defer func() { activated(outcome) }()
 	release, err = owner.endpoint.acquireLaunch(bounded)
 	if err != nil {
 		return nil, err

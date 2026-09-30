@@ -158,7 +158,10 @@ func (stream *ClosedJoinedStream) Close() error {
 // forwarded the final bytes and joined the pair. Let its role TLS/outer closure
 // arrive before retiring our outer lane; otherwise cleanup cancels that work.
 func (stream *ClosedJoinedStream) waitPeerClose() error {
-	deadline := time.Now().Add(time.Second)
+	return stream.waitPeerCloseUntil(time.Now().Add(time.Second))
+}
+
+func (stream *ClosedJoinedStream) waitPeerCloseUntil(deadline time.Time) error {
 	if stream.outer.end.Before(deadline) {
 		deadline = stream.outer.end
 	}
@@ -196,13 +199,16 @@ func (stream *ClosedJoinedStream) waitPeerClose() error {
 
 func (stream *ClosedJoinedStream) retireOuter() error {
 	stream.retireOnce.Do(func() {
+		// Peer acknowledgement and an active outer-frame join share one bound.
+		// A broken reader must not spend another second holding its writer.
+		cleanupEnd := time.Now().Add(time.Second)
 		stream.channels.mu.Lock()
 		cleanTLS := stream.channels.terminal == io.EOF
 		stream.channels.mu.Unlock()
 		if cleanTLS && stream.context.Err() == nil {
-			stream.retireErr = stream.waitPeerClose()
+			stream.retireErr = stream.waitPeerCloseUntil(cleanupEnd)
 		}
-		stream.retireErr = errors.Join(stream.retireErr, stream.outer.Close())
+		stream.retireErr = errors.Join(stream.retireErr, stream.outer.closeUntil(cleanupEnd))
 	})
 	return stream.retireErr
 }

@@ -159,6 +159,14 @@ func (binding *serviceBinding) current() error {
 	owner := binding.owner
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
+	// Parent cancellation is visible before it reaches every child context.
+	// Refuse this owned binding with that cause throughout joined retirement,
+	// rather than publishing a distinct job failure during that window.
+	if binding.job != nil && binding.job.owner == owner && owner.lease != nil {
+		if err := owner.lease.Context().Err(); err != nil {
+			return err
+		}
+	}
 	if !owner.liveServiceJobLocked(binding.job, owner.surface) {
 		return errors.New("text Service job retired")
 	}
