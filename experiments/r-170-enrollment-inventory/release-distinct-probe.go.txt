@@ -1,0 +1,40 @@
+// Appended through an overlay to release/testfixtures_test.go.
+func TestResearchDifferentTargetBytes(t *testing.T) {
+ repo := withTargetCount(t, newSyntheticRepository(t, syntheticOptions{}), 2)
+ name := "ardents/windows-amd64/spare-0001"
+ descriptor := []byte("synthetic generation descriptor data, never executable")
+ digest := sha256.Sum256(descriptor)
+ target := repo.targets.Signed.Targets[name]
+ target.Length = int64(len(descriptor))
+ target.Hashes = metadata.Hashes{"sha256": digest[:]}
+ custom := buildCustomJSON(t, syntheticOptions{}, digest[:])
+ target.Custom = &custom
+ // Existing helper re-signs targets, snapshot and timestamp using fixture keys.
+ repo = withTargetCount(t, repo, 1)
+ store := newMemoryStoreForTest()
+ first := evaluateWithStore(t, repo, store, testRefTime)
+ if first.Outcome != outcomeReleaseAccepted { t.Fatalf("first = %s: %s", first.Outcome, first.Notice) }
+ secondRepo := repo
+ secondRepo.targetPath, secondRepo.artifact = name, descriptor
+ second := evaluateWithStore(t, secondRepo, store, testRefTime)
+ if second.Outcome != outcomeNoUpdate { t.Fatalf("second = %s: %s", second.Outcome, second.Notice) }
+ proof, ok := second.Authorization()
+ if !ok { t.Fatal("different-byte second target has no authorization") }
+ observed, ok := proof.AcceptedDecision()
+ if !ok || observed.Path != name || hex.EncodeToString(observed.Digest) != hex.EncodeToString(digest[:]) || !floorSetEqual(first.Floors, second.Floors) {
+  t.Fatal("different-byte proof mismatch")
+ }
+ t.Log("4096-byte program and 54-byte descriptor: accepted then no-update with matching floors and distinct authenticated digests")
+ swapped := secondRepo
+ swapped.artifact = repo.artifact
+ bad := evaluateWithStore(t, swapped, store, testRefTime)
+ if _, ok := bad.Authorization(); ok { t.Fatal("program bytes accepted as descriptor target") }
+ t.Logf("program bytes at descriptor target: %s without proof", bad.Outcome)
+ altered := append([]byte(nil), descriptor...)
+ altered[0] ^= 1
+ swapped.artifact = altered
+ bad = evaluateWithStore(t, swapped, store, testRefTime)
+ if _, ok := bad.Authorization(); ok { t.Fatal("altered descriptor accepted") }
+ t.Logf("same-length altered descriptor: %s without proof", bad.Outcome)
+ if !floorSetEqual(first.Floors, bad.Floors) { t.Fatal("negative changed committed floors") }
+}

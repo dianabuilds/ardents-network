@@ -7,6 +7,15 @@ profile.
 
 ## Interface and ownership
 
+[ADR-0119](../adr/0119-bind-protected-endpoint-generation-to-release.md)
+selects the protected distribution successor: one initial pin and bundle,
+unchanged Network v3 descriptor, and a complete protected resource group with
+`protected-endpoint.json` projected outside Release metadata. General/headless
+acceptance retains its existing scope; protected readiness requires the new
+complete-inventory boundary. Partial group presence must refuse. This selected
+extension is not implemented by the current verifier and is not an installed
+qualification receipt.
+
 `Verify(Request)` accepts one local Bundle Root, current executable path,
 independently delivered Alpha Enrollment Pin, declared local environment,
 network, target path, architecture, and reference time. The only supported

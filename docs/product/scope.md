@@ -1,5 +1,13 @@
 # Product scope and audit boundary
 
+[ADR-0119](../adr/0119-bind-protected-endpoint-generation-to-release.md)
+selects one authenticated protected Endpoint distribution and one independently
+delivered initial pin. Executable and static text-worker generation are separate
+targets in the same signed Release set; installation-specific plans and mutable
+roots remain separate. This selected installation successor is not implemented
+or qualified by its acceptance. Product acceptance still requires two separate
+installed Endpoints, both selected Carriers and honest restart/refusal outcomes.
+
 Status: **current C0 candidate contract.** This document names the maintained
 product surfaces that may enter the next architecture and security audit. It is
 not a release qualification, Public Beta claim, or authorization to add missing

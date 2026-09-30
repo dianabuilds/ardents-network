@@ -10,13 +10,18 @@ contract is promoted to an ADR, product, security, technical, reference, or
 development owner. The completed record remains provenance under
 `docs/research/records/`, but does not remain in this active route.
 
+[R-170](records/r-170-unified-protected-endpoint-artifact.md) is decided and
+promoted to [ADR-0119](../adr/0119-bind-protected-endpoint-generation-to-release.md)
+and the enrollment/Release/runtime owners. It selects no additional active
+research; installer delivery state belongs in the GitHub milestone.
+
 An open record must state a decision-relevant question, falsifiable hypothesis,
 inputs, evidence, limitations, and the decision it can unlock. Delivery labels
 inside historical records are provenance only and authorize no implementation.
 
 | ID | Open question | Current status |
 |---|---|---|
-| R-167 / [#262](https://github.com/dianabuilds/ardents-network/issues/262) | What owner pays for or ends future transport traffic from a retained actual-work Carrier after the last child Join and its parent host reservation release? | **Selected C0 question, 2026-09-23.** Compare TCP/TLS default keep-alive, QUIC keepalive/close, 120-second idle retention, State invalidation and low-watermark behavior. A retained Carrier emitting traffic after all matching future-cost coverage is released falsifies the current safety hypothesis. This question changes no pool policy or runtime contract. |
+| R-167 / [#262](https://github.com/dianabuilds/ardents-network/issues/262) | What owner pays for or ends future transport traffic from a retained actual-work Carrier after the last child Join and its parent host reservation release? | **Paused in favor of R-170, 2026-09-30.** Preserve draft PR #275 and original evidence. Compare TCP/TLS default keep-alive, QUIC keepalive/close, 120-second idle retention, State invalidation and low-watermark behavior when reselected. A retained Carrier emitting traffic after all matching future-cost coverage is released falsifies the current safety hypothesis. No pool policy or runtime contract is accepted. |
 | R-157 / [#78](https://github.com/dianabuilds/ardents-network/issues/78) | What receive-credit and shared DATA/control reservation makes every admitted Source/forwarding lane promise payable under the existing prefix, nested-parent and receiving-duty ceilings without silently reducing the selected workload? | **Prepared, paused pending Product Owner constraint choice.** [Draft R-157 in its research revision](https://github.com/dianabuilds/ardents-network/blob/e0dc1e382070f3d3c403b7501ad520ad8bfacdc9/docs/research/records/r-157-receive-credit.md) falsifies the present 64 KiB-per-lane promise under the 4 MiB prefix, but selects no new grant, queue or wire contract. #79 remains blocked until a backed formula, compatibility and nested/latency evidence are accepted. This row does not select active research. |
 | [R-148](records/r-148-shared-resource-contributor-benefits.md) | Which concrete products using shared resources could motivate useful relay contribution, and how would people use them? | **Open; exploratory catalogue prepared on 2026-09-06.** The [product catalogue](../product/future-product-catalog.md) describes 18 user-facing concepts and possible contributor benefits without selecting priorities. Accounting, funding, privacy and recovery remain separate questions. No mechanism, experiment, C0 research execution or implementation slice selected. |
 | [R-147](records/r-147-contributor-resource-controls.md) | Which owner-controlled resource policy could make co-resident relay contribution acceptable on a personal device while preserving bounded work and useful network capacity? | **Open; theoretical comparison completed on 2026-09-06.** Recommends measured presets, editable ceilings and bounded adaptation, with optional scheduling and quota pacing. No co-resident profile, experiment, C0 research execution, or implementation slice is selected. |
