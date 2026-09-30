@@ -184,6 +184,10 @@ CREDIT may finish within the earlier of its original write deadline and the
 same one-second cleanup bound; later deadline updates cannot extend that bound.
 A received complete next-peer CLOSE retires queued forwarding work independently
 of downstream delivery, while physical write failures remain terminal errors.
+The reverse copier may join that CLOSE after the dispatcher selects a child
+frame but before emission starts. That terminal witness retires the selected
+unemitted work without failing the shared parent; generic transport loss does
+not supply it, and an existing physical write retains its error.
 A local child or parent deadline also retires reverse receive authority. Late
 frames for that owner consume no new queue reservation and cannot invalidate
 other owners sharing the physical Node Carrier. The shared reader checks that
