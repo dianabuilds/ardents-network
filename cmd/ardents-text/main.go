@@ -18,7 +18,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/application/textdocument"
 )
 
-var errTextUsage = errors.New("usage: ardents-text publish <absolute-administration-socket> <absolute-document-file> | link <absolute-administration-socket> | read <absolute-application-socket>\nPublication succeeds only after Descriptor acknowledgement; link and withdrawal use separate Administration authorization. Withdraw with ardents endpoint withdraw <administration-socket>.")
+var errTextUsage = errors.New("usage: ardents-text publish <absolute-administration-socket> <absolute-document-file> | link <absolute-administration-socket> | read <absolute-application-socket>\nPublication succeeds only after Descriptor acknowledgement; link and withdrawal use separate Administration authorization. Withdraw with ardents endpoint withdraw <administration-socket>")
 
 func main() {
 	if err := run(os.Args[1:]); err != nil {
