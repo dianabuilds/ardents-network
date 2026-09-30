@@ -639,6 +639,14 @@ unavailable` reason for other errors. The event never copies raw measurement,
 filesystem, cgroup, or provider error text; the `Run` error retains the
 underlying cause for local diagnosis.
 
+Node's existing behavior-test `ResourceMeasure` seam supplies both profile
+pressure and hosting owner-use observations when explicitly set. It does not
+replace durable hosting allowance accounting, and a measurement error still
+fails closed. Maintained runtime callers leave it nil: hosting owner use is
+measured by the live cgroup adapter, including its invalid-sample rule when a
+process disappears during measurement. A component fixture with a declared
+owner-use model cannot qualify real OS placement or resource use.
+
 ## Current limits and limitations
 
 The implemented system is a project-controlled Closed Test Network. A local
