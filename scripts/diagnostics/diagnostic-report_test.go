@@ -4,14 +4,20 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
+	"errors"
+	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"syscall"
 	"testing"
 	"time"
+
+	processdiag "github.com/dianabuilds/ardents-network/internal/diagnostics/process"
 )
 
 func reportFixture(t *testing.T, exit int) string {
@@ -529,5 +535,107 @@ func TestConnectionJoinedRequiresReleaseAfterSuccessfulActivation(t *testing.T) 
 	refusal := strings.ReplaceAll(string(connectionSnapshotFixture()), "admission", "activation")
 	if _, err := decodeConnectionObservation([]byte(refusal)); err != nil {
 		t.Fatal(err)
+	}
+}
+
+// Exercise the real diagnostic owner/socket and all consumers. The recorder
+// phases below are component inputs, not a simulated production Reader Open;
+// endpoint tests separately exercise the admitted launch and real Service route.
+func TestLiveReaderSocketUsesSameProjectionInCLIFileAndPanel(t *testing.T) {
+	for _, ending := range []string{"completed", "canceled"} {
+		t.Run(ending, func(t *testing.T) {
+			private := t.TempDir()
+			if err := os.Chmod(private, 0700); err != nil {
+				t.Fatal(err)
+			}
+			socket := filepath.Join(private, "process.sock")
+			err := processdiag.Run(t.Context(), socket, func(ctx context.Context) error {
+				waiting, err := readConnectionObservation(ctx, socket)
+				if err != nil || waiting.State != "waiting" || waiting.Outcome != "" {
+					return errors.New("enabled waiting owner was not projected")
+				}
+				capture := processdiag.ReaderTrace(ctx)
+				operation := capture.Bind(ctx)
+				capture.Observe(processdiag.Admission, operation)(nil)
+				capture.Observe(processdiag.Activation, operation)(nil)
+				bounded, cancel := context.WithTimeout(operation, 2*time.Second)
+				defer cancel()
+				finish := capture.Observe(processdiag.WorkerActivation, bounded)
+				active, err := readConnectionObservation(ctx, socket)
+				if err != nil || active.State != "active" || active.Outcome != "" {
+					return errors.New("active owner was not projected")
+				}
+				var outcome error
+				if ending == "canceled" {
+					cancel()
+					outcome = context.Canceled
+				}
+				finish(outcome)
+				capture.Observe(processdiag.CallerJoin, operation)(nil)
+				capture.Observe(processdiag.SessionRelease, operation)(nil)
+				capture.Finish(outcome)
+				observation, err := readConnectionObservation(ctx, socket)
+				if err != nil {
+					return err
+				}
+				if observation.State != "joined" || observation.Outcome != ending || observation.Association != "selected-owner-socket; command-run-association-unproven" || len(observation.Missing) == 0 {
+					return errors.New("terminal owner projection lost outcome or missing-stage limits")
+				}
+				foundBudget, foundStop := false, false
+				for _, record := range observation.Records {
+					if record.Stage == "worker-activation" && record.State == "started" && record.Budget != nil && *record.Budget > 0 && *record.Budget <= int64(2*time.Second) {
+						foundBudget = true
+					}
+					if record.Stage == "worker-activation" && record.ContextStop == "canceled" {
+						foundStop = true
+					}
+				}
+				if !foundBudget || foundStop != (ending == "canceled") {
+					return errors.New("actual budget or Context stop lost in consumer")
+				}
+				if err := connectionCommand([]string{"-socket", socket, "-json"}); err != nil {
+					return err
+				}
+				out := filepath.Join(private, "reader.json")
+				if err := snapshotCommand([]string{"-socket", socket, "-kind", "connection", "-out", out}); err != nil {
+					return err
+				}
+				body, err := os.ReadFile(out)
+				if err != nil {
+					return err
+				}
+				var saved connectionObservation
+				if err := json.Unmarshal(body, &saved); err != nil || !reflect.DeepEqual(saved, observation) {
+					return errors.New("CLI snapshot differs from live projection")
+				}
+				info, err := os.Stat(out)
+				if err != nil || info.Mode().Perm() != 0600 {
+					return errors.New("snapshot is not owner private")
+				}
+				if err := snapshotCommand([]string{"-socket", socket, "-kind", "connection", "-out", out}); err == nil {
+					return errors.New("snapshot overwrote existing evidence")
+				}
+				response := httptest.NewRecorder()
+				handlerWithConnection(reportFixture(t, 2), "", socket).ServeHTTP(response, httptest.NewRequest(http.MethodGet, "/connection", nil))
+				var panel connectionObservation
+				if response.Code != http.StatusOK || response.Header().Get("Cache-Control") != "no-store" || json.Unmarshal(response.Body.Bytes(), &panel) != nil || !reflect.DeepEqual(panel, observation) {
+					return errors.New("panel differs from CLI projection")
+				}
+				stopped, stop := context.WithCancel(ctx)
+				stop()
+				if _, err := readConnectionObservation(stopped, socket); err == nil {
+					return errors.New("consumer ignored canceled request")
+				}
+				return nil
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			unavailable := httptest.NewRecorder()
+			handlerWithConnection(reportFixture(t, 2), "", socket).ServeHTTP(unavailable, httptest.NewRequest(http.MethodGet, "/connection", nil))
+			if unavailable.Code != http.StatusServiceUnavailable || strings.Contains(unavailable.Body.String(), socket) {
+				t.Fatal("retired owner presented as live or disclosed socket path")
+			}
+		})
 	}
 }

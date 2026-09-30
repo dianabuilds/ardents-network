@@ -106,7 +106,7 @@ The one live C0 ledger is GitHub Issues in the
 Until that milestone exists and is accessible, do not begin a new C0
 implementation slice; only contract clarification, review, or a green-baseline
 repair may proceed. The milestone permits at most two in-progress C0
-implementation issue and at most one explicitly selected active research
+implementation issues and at most one explicitly selected active research
 question. An open or deferred question is not active merely because its
 historical evidence remains in the repository.
 
