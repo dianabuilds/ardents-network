@@ -241,6 +241,10 @@ func (server *forwardServer) serveInner(ctx context.Context, lane *route.ClosedO
 }
 
 func (server *forwardServer) serveDirect(ctx context.Context, connection net.Conn, first *ardp.Frame, incomingKey [32]byte, restriction route.ClosedChildRestriction, outerLane *route.ClosedOuterBridgeLane) (result error) {
+	probeID := diagnostic357ForwardIDs.Add(1)
+	probePhase := "setup"
+	probeKind := uint8(0)
+	defer func() { diagnostic357Forward("parent", probeID, probePhase, probeKind, result) }()
 
 	initialDeadline := server.clock().UTC().Add(10 * time.Second)
 	if err := connection.SetDeadline(initialDeadline); err != nil {
@@ -321,6 +325,8 @@ func (server *forwardServer) serveDirect(ctx context.Context, connection net.Con
 	var hello ardp.Hello
 	helloSize := 0
 	accept := func(frame ardp.Frame) error {
+		probePhase = "admission"
+		probeKind = uint8(frame.Kind)
 		if restriction != route.ClosedChildOrdinary && restriction != route.ClosedChildIssuerBootstrap {
 			return errors.New("closed forwarding child restriction is invalid")
 		}
@@ -383,6 +389,7 @@ func (server *forwardServer) serveDirect(ctx context.Context, connection net.Con
 		if frame.Kind == 9 {
 			writer.Lock()
 		}
+		probePhase = "frame-accept"
 		_, acceptErr := forwarding.Accept(frame)
 		if frame.Kind == 9 {
 			writer.Unlock()
@@ -399,6 +406,7 @@ func (server *forwardServer) serveDirect(ctx context.Context, connection net.Con
 				return frameErr
 			}
 		}
+		probePhase = "frame-drain"
 		return server.drainForwarding(ctx, forwarding, links, openings, write, func() { _ = connection.Close() })
 	}
 	if first != nil {
@@ -410,16 +418,19 @@ func (server *forwardServer) serveDirect(ctx context.Context, connection net.Con
 		select {
 		case input := <-reads:
 			if input.err != nil {
+				probePhase = "parent-read"
 				return input.err
 			}
 			if err := accept(input.frame); err != nil {
 				return err
 			}
 		case <-completed:
+			probePhase = "completed-drain"
 			if err := server.drainForwarding(ctx, forwarding, links, openings, write, func() { _ = connection.Close() }); err != nil {
 				return err
 			}
 		case <-ctx.Done():
+			probePhase = "context"
 			return ctx.Err()
 		}
 	}

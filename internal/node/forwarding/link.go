@@ -249,11 +249,20 @@ func nextAvailableForwarding(channel *route.ClosedForwardingChannel, links map[u
 	})
 }
 
-func (server *forwardServer) drainForwarding(ctx context.Context, channel *route.ClosedForwardingChannel, links map[uint32]*forwardLink, openings *openings, write func(ardp.Frame) error, abort func()) error {
+func (server *forwardServer) drainForwarding(ctx context.Context, channel *route.ClosedForwardingChannel, links map[uint32]*forwardLink, openings *openings, write func(ardp.Frame) error, abort func()) (result error) {
+	probePhase := "collect"
+	probeKind := uint8(0)
+	defer func() {
+		if result != nil {
+			diagnostic357Forward("drain", 0, probePhase, probeKind, result)
+		}
+	}()
 	for {
+		probePhase = "collect"
 		if err := openings.collect(links); err != nil {
 			return err
 		}
+		probePhase = "link-error"
 		for _, link := range links {
 			if err := link.forwardingError(); err != nil {
 				return err
@@ -263,6 +272,8 @@ func (server *forwardServer) drainForwarding(ctx context.Context, channel *route
 		if !available {
 			return nil
 		}
+		probeKind = uint8(event.Kind)
+		probePhase = "event"
 		switch event.Kind {
 		case 4: // OPEN
 			pending := false
