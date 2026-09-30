@@ -313,7 +313,7 @@ func TestAssistantCLIAndPanelUseSameExplanation(t *testing.T) {
 	}
 }
 func TestAssistantJSONDepthDuplicateAndBounds(t *testing.T) {
-	if validJSONRecord([]byte(`{"nested":{"x":1,"x":2}}`)) || validJSONRecord([]byte(strings.Repeat("[", 33)+"0"+strings.Repeat("]", 33))) {
+	if validJSONRecord([]byte(`{"exit_code":2,"EXIT_CODE":0}`)) || validJSONRecord([]byte(`{"nested":{"x":1,"x":2}}`)) || validJSONRecord([]byte(strings.Repeat("[", 33)+"0"+strings.Repeat("]", 33))) {
 		t.Fatal("ambiguous or too-deep input admitted")
 	}
 	dir := reportFixture(t, 0)
@@ -391,5 +391,41 @@ func TestAssistantNormalExitDoesNotInventOwnerFailure(t *testing.T) {
 	r := assessRun(dir, time.Now())
 	if !r.Complete || r.FirstObserved != nil {
 		t.Fatalf("%+v", r)
+	}
+}
+
+func TestAssistantObservedZeroAndPSIPressureAreVisible(t *testing.T) {
+	dir := reportFixture(t, 0)
+	reportRow(t, dir, "samples.ndjson", processSample{At: time.Now(), Cgroup: map[string]uint64{"memory.events:max": 5, "memory.events:oom": 0, "memory.events:oom_kill": 0}, Pressure: map[string]float64{"cpu": 0, "memory": 12.5, "io": 3.5}})
+	r := assessRun(dir, time.Now())
+	for _, key := range []string{"memory.events:oom", "memory.events:oom_kill"} {
+		value, ok := r.ResourceFacts[key]
+		if !ok || value != 0 {
+			t.Fatalf("observed zero missing: %s %+v", key, r)
+		}
+	}
+	if cpu, ok := r.PressurePeaks["cpu"]; !ok || cpu != 0 || r.PressurePeaks["memory"] != 12.5 {
+		t.Fatalf("PSI evidence missing: %+v", r)
+	}
+}
+func TestAssistantComparisonIncludesMemoryAndTaskBudgets(t *testing.T) {
+	before := reportFixture(t, 0)
+	after := reportFixture(t, 0)
+	reportRow(t, before, "samples.ndjson", processSample{At: time.Now(), Cgroup: map[string]uint64{"memory.max": 4 << 30, "pids.max": 256, "memory.events:oom_kill": 0}})
+	reportRow(t, after, "samples.ndjson", processSample{At: time.Now(), Cgroup: map[string]uint64{"memory.max": 8 << 30, "pids.max": 512, "memory.events:oom_kill": 1}})
+	r := buildAssistantReport(after, before, time.Now())
+	diff := strings.Join(r.Comparison.Differences, " ")
+	if r.Comparison.Conditions != "different" || !strings.Contains(diff, "memory-budget") || !strings.Contains(diff, "task-budget") {
+		t.Fatalf("%+v", r.Comparison)
+	}
+	if r.Comparison.ResourceChanges["memory.events:oom_kill"].Before != 0 || r.Comparison.ResourceChanges["memory.events:oom_kill"].After != 1 {
+		t.Fatal("counter differences missing")
+	}
+	var out bytes.Buffer
+	if err := writeAssistantText(&out, r); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out.String(), "memory.max") || !strings.Contains(out.String(), "pids.max") {
+		t.Fatal(out.String())
 	}
 }

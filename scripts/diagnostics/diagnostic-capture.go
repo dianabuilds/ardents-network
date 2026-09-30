@@ -133,6 +133,19 @@ func selected(value any, allowed string) string {
 	}
 	return ""
 }
+
+// eventCategories owns the fixed collector/stored-evidence category catalogue.
+func eventCategories(schema string) (kinds, failures string) {
+	switch schema {
+	case "ardents-node-event-v1":
+		return "lifecycle resource resource-sample", ""
+	case "ardents-source-event-v1":
+		return "source-ready source-wave-accepted source-failed", "background-work cleanup"
+	case "ardents-headless-runtime-event-v1":
+		return "headless-runtime-ready headless-runtime-failed headless-runtime-permission-required headless-runtime-publication-refresh-failed headless-runtime-publication-withdrawal-failed headless-runtime-connection-operation-failed", "startup running rotation authorization publication-state publication-handover caller-context publisher-ended publication-draining registration-absent publisher-not-live registration publisher-drain deadline admission activation worker-launch worker-operation introduction-preparation service-join post-join-lifetime service-result rotation-authority rotation-prefix rotation-recipient rotation-expired rotation-registration rotation-publication"
+	}
+	return "", ""
+}
 func project(body []byte) (event, string) {
 	var data map[string]any
 	if err := json.Unmarshal(body, &data); err != nil {
@@ -147,13 +160,7 @@ func project(body []byte) (event, string) {
 	if schema == "" {
 		return event{}, "unknown"
 	}
-	kinds := "lifecycle resource resource-sample"
-	if schema == "ardents-source-event-v1" {
-		kinds = "source-ready source-wave-accepted source-failed"
-	}
-	if schema == "ardents-headless-runtime-event-v1" {
-		kinds = "headless-runtime-ready headless-runtime-failed headless-runtime-permission-required headless-runtime-publication-refresh-failed headless-runtime-publication-withdrawal-failed headless-runtime-connection-operation-failed"
-	}
+	kinds, failures := eventCategories(schema)
 	kind := selected(data["kind"], kinds)
 	if kind == "" {
 		return event{}, "unknown"
@@ -167,9 +174,9 @@ func project(body []byte) (event, string) {
 	e := event{ObservedAt: time.Now().UTC(), At: at, Schema: schema, Kind: kind,
 		State:   selected(data["state"], "ABSENT PREPARED READY DRAINING WITHDRAWN FAILED OBSERVED NORMAL PROTECT DRAIN EXIT"),
 		Carrier: selected(data["carrier_profile"], "ardents-carrier-tcp-tls-v2 ardents-carrier-quic-v2"),
-		Failure: selected(data["failure"], "startup running rotation authorization publication-state publication-handover caller-context publisher-ended publication-draining registration-absent publisher-not-live registration publisher-drain deadline admission activation worker-launch worker-operation introduction-preparation service-join post-join-lifetime service-result rotation-authority rotation-prefix rotation-recipient rotation-expired rotation-registration rotation-publication"), Resource: numbers(data["resource"], resourceFields)}
+		Failure: selected(data["failure"], failures), Resource: numbers(data["resource"], resourceFields)}
 	if schema == "ardents-source-event-v1" {
-		e.Failure = selected(data["reason"], "background-work cleanup")
+		e.Failure = selected(data["reason"], failures)
 	}
 	if schema == "ardents-node-event-v1" {
 		e.Failure = ""

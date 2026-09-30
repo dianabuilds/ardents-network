@@ -22,21 +22,22 @@ import (
 // Reports are fixed-category projections of private evidence. Both CLI and HTTP
 // call assessRun; neither adapter interprets errors or executes suggestions.
 type runReport struct {
-	Status          string            `json:"status"`
-	Complete        bool              `json:"complete"`
-	Finished        bool              `json:"finished"`
-	ExitCode        int               `json:"exit_code"`
-	TimedOut        bool              `json:"timed_out"`
-	Interrupted     bool              `json:"interrupted"`
-	SourceChanged   bool              `json:"source_changed"`
-	DurationSeconds float64           `json:"duration_seconds"`
-	Conditions      reportConditions  `json:"conditions"`
-	FirstObserved   *reportFailure    `json:"first_observed_failure,omitempty"`
-	Failures        []reportFailure   `json:"failures"`
-	ResourceFacts   map[string]uint64 `json:"resource_facts"`
-	Gaps            []string          `json:"gaps"`
-	GapDescriptions map[string]string `json:"gap_descriptions"`
-	NextChecks      []reportCheck     `json:"next_checks"`
+	Status          string             `json:"status"`
+	Complete        bool               `json:"complete"`
+	Finished        bool               `json:"finished"`
+	ExitCode        int                `json:"exit_code"`
+	TimedOut        bool               `json:"timed_out"`
+	Interrupted     bool               `json:"interrupted"`
+	SourceChanged   bool               `json:"source_changed"`
+	DurationSeconds float64            `json:"duration_seconds"`
+	Conditions      reportConditions   `json:"conditions"`
+	FirstObserved   *reportFailure     `json:"first_observed_failure,omitempty"`
+	Failures        []reportFailure    `json:"failures"`
+	ResourceFacts   map[string]uint64  `json:"resource_facts"`
+	PressurePeaks   map[string]float64 `json:"container_pressure_peaks"`
+	Gaps            []string           `json:"gaps"`
+	GapDescriptions map[string]string  `json:"gap_descriptions"`
+	NextChecks      []reportCheck      `json:"next_checks"`
 }
 type reportConditions struct {
 	Source        string  `json:"source_revision,omitempty"`
@@ -74,11 +75,17 @@ type assistantReport struct {
 	Comparison *reportComparison `json:"comparison,omitempty"`
 }
 type reportComparison struct {
-	Other       runReport `json:"other"`
-	Conditions  string    `json:"conditions"`
-	Differences []string  `json:"differences"`
+	Other           runReport                       `json:"other"`
+	Conditions      string                          `json:"conditions"`
+	Differences     []string                        `json:"differences"`
+	ResourceChanges map[string]reportResourceChange `json:"resource_changes"`
 	// Display observed wall durations; deliberately no acceleration verdict.
 	DurationDifferenceSeconds float64 `json:"duration_difference_seconds"`
+}
+
+type reportResourceChange struct {
+	Before uint64 `json:"before"`
+	After  uint64 `json:"after"`
 }
 
 var hexRevision = regexp.MustCompile(`^[0-9a-f]{40}$`)
@@ -159,10 +166,11 @@ func validJSONRecord(body []byte) bool {
 					return err
 				}
 				name, ok := key.(string)
-				if !ok || seen[name] {
+				folded := strings.ToLower(name)
+				if !ok || seen[folded] {
 					return errors.New("duplicate or invalid key")
 				}
-				seen[name] = true
+				seen[folded] = true
 				if err := value(); err != nil {
 					return err
 				}
@@ -215,6 +223,7 @@ func assessRun(dir string, now time.Time) (result runReport) {
 	result.Status = "unavailable"
 	result.ExitCode = -1
 	result.ResourceFacts = map[string]uint64{}
+	result.PressurePeaks = map[string]float64{}
 	result.Failures = []reportFailure{}
 	result.Gaps = []string{}
 	result.NextChecks = []reportCheck{}
@@ -389,7 +398,7 @@ func readReportEvents(root *os.Root, r *runReport, expected map[string]uint64) {
 			r.gap("collector-time-order-uncertain")
 		}
 		previous = e.ObservedAt
-		if e.UnknownCategories > 0 {
+		if e.UnknownCategories > 0 || e.Failure == "unclassified" {
 			r.gap("owner-category-unclassified")
 			r.Complete = false
 		}
@@ -440,15 +449,8 @@ func safeReportEvent(e event) bool {
 	if e.ObservedAt.IsZero() {
 		return false
 	}
-	kinds := ""
-	switch e.Schema {
-	case "ardents-node-event-v1":
-		kinds = "lifecycle resource resource-sample"
-	case "ardents-source-event-v1":
-		kinds = "source-ready source-wave-accepted source-failed"
-	case "ardents-headless-runtime-event-v1":
-		kinds = "headless-runtime-ready headless-runtime-failed headless-runtime-permission-required headless-runtime-publication-refresh-failed headless-runtime-publication-withdrawal-failed headless-runtime-connection-operation-failed"
-	default:
+	kinds, failures := eventCategories(e.Schema)
+	if kinds == "" {
 		return false
 	}
 	if selected(e.Kind, kinds) == "" {
@@ -460,14 +462,7 @@ func safeReportEvent(e event) bool {
 	if e.Carrier != "" && selected(e.Carrier, "ardents-carrier-tcp-tls-v2 ardents-carrier-quic-v2") == "" {
 		return false
 	}
-	failures := "unclassified"
-	if e.Schema == "ardents-source-event-v1" {
-		failures += " background-work cleanup"
-	}
-	if e.Schema == "ardents-headless-runtime-event-v1" {
-		failures += " startup running rotation authorization publication-state publication-handover caller-context publisher-ended publication-draining registration-absent publisher-not-live registration publisher-drain deadline admission activation worker-launch worker-operation introduction-preparation service-join post-join-lifetime service-result rotation-authority rotation-prefix rotation-recipient rotation-expired rotation-registration rotation-publication"
-	}
-	return e.Failure == "" || selected(e.Failure, failures) != ""
+	return e.Failure == "" || selected(e.Failure, failures) != "" || e.Failure == "unclassified" && e.Schema != "ardents-node-event-v1"
 }
 
 func readReportSamples(root *os.Root, r *runReport, expected uint64) {
@@ -495,23 +490,31 @@ func readReportSamples(root *os.Root, r *runReport, expected uint64) {
 		}
 		for _, key := range strings.Fields("memory.current memory.max pids.current pids.max memory.events:max memory.events:high memory.events:oom memory.events:oom_kill cpu.stat:throttled_usec cpu.stat:nr_throttled") {
 			if value, ok := s.Cgroup[key]; ok {
-				if value > r.ResourceFacts[key] {
+				if old, observed := r.ResourceFacts[key]; !observed || value > old {
 					r.ResourceFacts[key] = value
 				}
 			}
 		}
-		if s.RSSBytes > r.ResourceFacts["process-group-rss-peak"] {
+		if old, observed := r.ResourceFacts["process-group-rss-peak"]; !observed || s.RSSBytes > old {
 			r.ResourceFacts["process-group-rss-peak"] = s.RSSBytes
 		}
 		if len(s.Unavailable) > 0 {
 			r.gap("some-resource-observations-unavailable")
 		}
 		for _, n := range s.Pressure {
-			if n < 0 || math.IsNaN(n) || math.IsInf(n, 0) {
+			if n < 0 || n > 100 || math.IsNaN(n) || math.IsInf(n, 0) {
 				r.gap("resource-samples-invalid-or-truncated")
 				r.Complete = false
 			}
 		}
+		for _, key := range strings.Fields("cpu memory io") {
+			if value, ok := s.Pressure[key]; ok && value >= 0 && value <= 100 && !math.IsNaN(value) && !math.IsInf(value, 0) {
+				if old, observed := r.PressurePeaks[key]; !observed || value > old {
+					r.PressurePeaks[key] = value
+				}
+			}
+		}
+
 	}
 	if scanner.Err() != nil || len(body) > 0 && body[len(body)-1] != '\n' {
 		r.gap("resource-samples-invalid-or-truncated")
@@ -563,7 +566,7 @@ func buildAssistantReport(dir, compare string, now time.Time) assistantReport {
 		return report
 	}
 	other := assessRun(compare, now)
-	c := &reportComparison{Other: other, Conditions: "unknown", Differences: []string{}}
+	c := &reportComparison{Other: other, Conditions: "unknown", Differences: []string{}, ResourceChanges: map[string]reportResourceChange{}}
 	a, b := report.Run.Conditions, other.Conditions
 	for _, pair := range []struct{ name, a, b string }{
 		{"source-content", a.Tree, b.Tree}, {"image", a.Image, b.Image}, {"compiler", a.Go, b.Go}, {"mode", a.Mode, b.Mode},
@@ -586,6 +589,20 @@ func buildAssistantReport(dir, compare string, now time.Time) assistantReport {
 	for _, key := range strings.Fields("staticcheck govulncheck delve errcheck powershell") {
 		if a.Tools[key] != "" && b.Tools[key] != "" && a.Tools[key] != b.Tools[key] {
 			c.Differences = append(c.Differences, "tool-"+key)
+		}
+	}
+
+	for _, key := range strings.Fields("memory.current memory.max pids.current pids.max memory.events:max memory.events:high memory.events:oom memory.events:oom_kill cpu.stat:throttled_usec cpu.stat:nr_throttled process-group-rss-peak") {
+		before, bok := other.ResourceFacts[key]
+		after, aok := report.Run.ResourceFacts[key]
+		if bok && aok && before != after {
+			c.ResourceChanges[key] = reportResourceChange{Before: before, After: after}
+			if key == "memory.max" {
+				c.Differences = append(c.Differences, "memory-budget")
+			}
+			if key == "pids.max" {
+				c.Differences = append(c.Differences, "task-budget")
+			}
 		}
 	}
 	if len(c.Differences) > 0 {
@@ -632,6 +649,8 @@ func writeAssistantText(w io.Writer, r assistantReport) error {
 	fmt.Fprintf(&b, "Условия: %s\n", conditions)
 	resources, _ := json.Marshal(r.Run.ResourceFacts)
 	fmt.Fprintf(&b, "Ресурсные факты: %s\n", resources)
+	pressure, _ := json.Marshal(r.Run.PressurePeaks)
+	fmt.Fprintf(&b, "Container PSI avg10 peaks (%%): %s\n", pressure)
 	for _, f := range r.Run.Failures {
 		fmt.Fprintf(&b, "Наблюдение events.ndjson #%d: %s / %s / %s / %s\n", f.Record, f.Owner, f.Kind, f.State, f.Category)
 	}
@@ -640,6 +659,16 @@ func writeAssistantText(w io.Writer, r assistantReport) error {
 		fmt.Fprintf(&b, "Пробел: %s [%s]\n", gapExplanation(gap), gap)
 	}
 	if r.Comparison != nil {
+		other := r.Comparison.Other
+		changes, _ := json.Marshal(r.Comparison.ResourceChanges)
+		fmt.Fprintf(&b, "Различия ресурсов (before=другой, after=выбранный): %s\n", changes)
+		fmt.Fprintf(&b, "Другой прогон: полнота=%t; timeout=%t; interruption=%t; source_changed=%t\n", other.Complete, other.TimedOut, other.Interrupted, other.SourceChanged)
+		for _, gap := range other.Gaps {
+			fmt.Fprintf(&b, "Пробел другого прогона: %s [%s]\n", gapExplanation(gap), gap)
+		}
+		if f := other.FirstObserved; f != nil {
+			fmt.Fprintf(&b, "Первый доступный отказ другого прогона: %s / %s / %s, events.ndjson #%d\n", f.Owner, f.Kind, f.Category, f.Record)
+		}
 		fmt.Fprintf(&b, "Сравнение: условия=%s; различия=%s; разность supervisor duration=%.3f с; прежний итог=%s (exit=%d). Вывод об ускорении не установлен.\n", r.Comparison.Conditions, strings.Join(r.Comparison.Differences, ","), r.Comparison.DurationDifferenceSeconds, r.Comparison.Other.Status, r.Comparison.Other.ExitCode)
 	}
 	for _, check := range r.Run.NextChecks {
