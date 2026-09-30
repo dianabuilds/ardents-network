@@ -330,6 +330,14 @@ caller closes its input direction, and opens the owner exactly once. It exercise
 Connection transport behavior only; Administration remains with the trusted
 Endpoint owner and is neither inferred from bytes nor delegated to the caller.
 
+Local Connection opening has one ten-second budget, including local dial,
+request transfer, Endpoint work and ACCEPT. The client starts it before dial;
+the server starts its own bound before reading the request and never resets
+that bound for Endpoint work. Earlier caller cancellation remains effective.
+Successful ACCEPT retires the opening timer while retaining the Stream's
+caller, authorization and attachment lifetime. Timeout refuses and joins setup;
+its bounded refusal cleanup cannot emit a late ACCEPT or extend positive work.
+
 ## Worker exchange
 
 AAI3 is the trusted local caller-to-Endpoint interface. The worker receives an

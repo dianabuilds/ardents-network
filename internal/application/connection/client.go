@@ -81,13 +81,19 @@ func Dial(ctx context.Context, path string, destination Request) (Client, error)
 	if ctx == nil || path == "" || validRequest(destination) != nil {
 		return nil, errors.New("local Application dial input is invalid")
 	}
-	raw, err := (&net.Dialer{}).DialContext(ctx, "unix", path)
+	lifetime := newOpening(ctx)
+	setupOwnsTransport := true
+	defer func() {
+		if setupOwnsTransport {
+			lifetime.close()
+		}
+	}()
+	raw, err := (&net.Dialer{}).DialContext(lifetime.ctx, "unix", path)
 	if err != nil {
-		return nil, err
+		return nil, lifetime.failure(err)
 	}
 	guard := &setupCancellation{cancel: func() { _ = raw.Close() }}
-	stopCancellation := context.AfterFunc(ctx, guard.close)
-	setupOwnsTransport := true
+	stopCancellation := context.AfterFunc(lifetime.ctx, guard.close)
 	defer func() {
 		if setupOwnsTransport {
 			stopCancellation()
@@ -98,29 +104,40 @@ func Dial(ctx context.Context, path string, destination Request) (Client, error)
 	if !ok {
 		return nil, errors.New("local Application attachment is not a Unix connection")
 	}
-	if deadline, available := ctx.Deadline(); available {
-		_ = connection.SetDeadline(deadline)
+	if err := connection.SetDeadline(lifetime.end); err != nil {
+		return nil, err
 	}
 	request, err := EncodeRequest(destination)
 	if err != nil {
 		return nil, err
 	}
 	if _, err := connection.Write(request); err != nil {
-		return nil, setupError(ctx, err)
+		return nil, lifetime.failure(err)
 	}
-	var status [1]byte
-	if _, err := io.ReadFull(connection, status[:]); err != nil {
-		return nil, setupError(ctx, errors.New("local Application Connection is unavailable"))
-	}
-	if status[0] != 1 {
-		outcome, refusalErr := readRefusal(connection)
-		if refusalErr != nil {
-			return nil, setupError(ctx, errors.New("local Application Connection is unavailable"))
+	if err := lifetime.accept(func() error {
+		var status [1]byte
+		if _, err := io.ReadFull(connection, status[:]); err != nil {
+			return lifetime.failure(errors.New("local Application Connection is unavailable"))
 		}
-		return nil, setupError(ctx, SetupRefusalError{outcome: outcome})
+		if status[0] != 1 {
+			outcome, refusalErr := readRefusal(connection)
+			if refusalErr != nil {
+				return lifetime.failure(errors.New("local Application Connection is unavailable"))
+			}
+			return lifetime.failure(SetupRefusalError{outcome: outcome})
+		}
+		return nil
+	}); err != nil {
+		return nil, lifetime.failure(err)
 	}
-	_ = connection.SetDeadline(time.Time{})
-	opened := newClientWithStop(connection, stopCancellation)
+	if err := connection.SetDeadline(time.Time{}); err != nil {
+		return nil, err
+	}
+	opened := newClientWithStop(connection, func() bool {
+		stopped := stopCancellation()
+		lifetime.close()
+		return stopped
+	})
 	go opened.receive()
 	if !guard.handoff(func() { _ = opened.Close() }) {
 		_ = opened.Close()
@@ -136,7 +153,7 @@ func Dial(ctx context.Context, path string, destination Request) (Client, error)
 
 func setupError(ctx context.Context, fallback error) error {
 	if err := ctx.Err(); err != nil {
-		return err
+		return context.Cause(ctx)
 	}
 	if deadline, available := ctx.Deadline(); available && !time.Now().Before(deadline) {
 		return context.DeadlineExceeded
