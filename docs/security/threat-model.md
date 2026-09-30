@@ -6,6 +6,18 @@ Last reviewed: 2026-09-07
 
 ## Scope
 
+The protected installation contract in
+[ADR-0119](../adr/0119-bind-protected-endpoint-generation-to-release.md)
+addresses downloaded artifact/resource substitution and local service-account
+configuration edits: under independent first-artifact verification and intact
+Release/root filesystem trust, the installation owner must bind all program,
+worker, unit and plan bytes before effects and recheck actual manager identity.
+Required measurements include causal pre-effect refusals and actual installed
+containment/cleanup; these are not yet qualification claims. A compromised root
+or trust-delivery channel is outside that local integrity guarantee. The initial
+pin grants no successor authority; retaining predecessor bytes never lowers
+Release floors or creates rollback authority.
+
 This threat model covers the current [C0 product scope](../product/scope.md) and
 the stronger public-product claims retained for later decisions. It is not a
 statement that the C0 implementation passed audit or qualification.

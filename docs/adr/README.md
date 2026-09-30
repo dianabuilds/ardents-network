@@ -79,6 +79,7 @@ Current decisions:
 Completed retirement decisions:
 
 - [0117 — Reset closed Service formats to one v3 edition](0117-reset-closed-service-formats-to-v3.md)
+- [0119 — Authenticate the protected Endpoint generation in the same Release set](0119-bind-protected-endpoint-generation-to-release.md)
 - [0116 — Remove the dedicated-host resource profile and the Node clock-observation trigger as production-unreachable](0116-remove-dedicated-host-resource-profile-clock-observation.md)
 - [0115 — Retire the uncomposed interactive State resolution projection](0115-retire-interactive-state-resolution-projection.md)
 - [0114 — Remove the dedicated-host Contributor retirement mechanism entirely](0114-remove-dedicated-host-contributor-retirement.md)

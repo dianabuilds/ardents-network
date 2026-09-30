@@ -1,5 +1,15 @@
 # Product operating model
 
+For the selected protected closed Ubuntu successor,
+[ADR-0119](../adr/0119-bind-protected-endpoint-generation-to-release.md)
+uses one initial authenticated artifact/pin and explicit root provisioning,
+joined update and recovery. Authentic signed Release metadata delivery remains
+an operator prerequisite; no maintained signing service or additional staff is
+assumed. Service-account read-only configuration, distinct mutable roots and
+fail-closed interrupted transitions belong to the
+[installation owner](../technical/endpoint-service-runtime.md#selected-protected-installation-handoff).
+That selected workflow is not a supported installation receipt yet.
+
 Status: **accepted public-product target model; not the current implementation backlog**
 
 Accepted: 2026-08-08
