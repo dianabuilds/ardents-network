@@ -2,10 +2,12 @@
 
 ## Selected protected installation handoff
 
-The following bounded command contract implements ADR-0119's selected
-installation boundary. It is not implemented or a supported command receipt
-yet. Commands remain thin adapters under `ardents endpoint`; the owning
-implementation issue must register any new package before adding one.
+The following bounded command contract selects ADR-0119's installation
+boundary. The read-only integrity consumer is implemented; provisioning,
+installed startup and update/recovery remain unfinished and there is no
+supported full installation receipt yet. Commands remain thin adapters under
+`ardents endpoint`; the owning implementation issue must register any new
+package before adding one.
 
 `internal/endpoint/runtimeplan` owns the existing bounded headless-v2 and Source-v1 local
 declarations and their role/path/permission and public-identity validation.
@@ -24,6 +26,36 @@ its readiness remains general enrollment, not protected installation. Failure
 of the second evaluation retains any already committed Release floors and
 cannot return a partial accepting pair. Provisioning, immutable selection and
 actual manager identity binding remain unimplemented by this authentication.
+
+The read-only `installation-check` consumer now checks a canonical root-owned
+selection and local binding, exact generation/resource/plan bytes, the real
+dedicated account, mutable root device/inode/access and actual fixed worker
+resources. It requires the admitted Ubuntu24.04/systemd255/cgroup-v2 platform.
+Its result is only `local-integrity-verified`: it opens no Release floor store,
+evaluates no fresh Release proof and grants neither runtime readiness nor an
+active MainPID/InvocationID receipt. Provisioning and the actual installed
+positive journey remain unfinished; byte-backed fixtures prove only component
+validation, not filesystem ownership or installed containment.
+
+The local request schema is `ardents-endpoint-installation-request-v1`, compact
+UTF-8 JSON plus LF, with fields in this order: `schema`, `bundle_root`, optional
+`manifest_sha256`, `installation_root`, `release_floor_root`, `reference_time`,
+`headless`, `source`. Nested declaration encoding uses the current shared
+grammar owners; duplicate/unknown fields and alternate encodings refuse.
+Reference time is canonical UTC RFC3339Nano. Initial provisioning requires the
+independent pin; its absence never authorizes a first installation. Inline
+Source must match the headless Network, signer map, threshold, role root and
+clock observation file, with nonzero refresh. The input headless Source-plan
+path is empty; its rendered output selects only that generation's `source.json`.
+Every declared path is absolute/canonical and remains outside the bundle,
+immutable installation and Release floor roots. No private material is copied.
+
+The local selection binds descriptor and binding digests. The binding records
+both public target facts (never opaque authorizations), exact fourteen staged
+file digests, fixed account/unit names and numeric UID/GID, and explicit mutable
+root paths/device/inodes. `binding.json` is excluded from its own digest map;
+the selection separately commits its bytes. These local facts cannot produce
+`release.Authorization`, lower floors or authorize a transition.
 
 | Command | Input and owner effect |
 | --- | --- |

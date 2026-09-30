@@ -41,7 +41,7 @@ func ValidateProtectedGeneration(raw []byte, resources map[string][]byte, releas
 		generation.ReleaseIdentity != releaseIdentity || generation.ReleaseVersion < 1 || len(generation.Files) != 9 {
 		return errors.New("protected generation descriptor identity or inventory is invalid")
 	}
-	for _, name := range protectedResourceNames() {
+	for _, name := range ProtectedResourceNames() {
 		contents, present := resources[name]
 		if !present || !equalDigest(contents, generation.Files[name]) {
 			return errors.New("protected generation resource does not match descriptor")
@@ -50,7 +50,9 @@ func ValidateProtectedGeneration(raw []byte, resources map[string][]byte, releas
 	return nil
 }
 
-func protectedResourceNames() []string {
+// ProtectedResourceNames returns the exact protected generation inventory.
+// Each call returns a fresh slice; callers cannot alter the grammar owner.
+func ProtectedResourceNames() []string {
 	return []string{"ardents-linux-amd64", "ardents-text-linux-amd64",
 		"ardents-text-reader@.service", "ardents-text-publisher@.service",
 		"ardents-text-reader.socket", "ardents-text-publisher.socket",
@@ -61,7 +63,7 @@ func protectedResourceNames() []string {
 // every enrollment entry point. The existing Endpoint executable is already
 // mandatory; it is not a signal that an old general bundle is protected.
 func projectProtectedInventory(files map[string][]byte, enrolled descriptor) (map[string][]byte, error) {
-	names := append([]string{"protected-endpoint.json"}, protectedResourceNames()[1:]...)
+	names := append([]string{"protected-endpoint.json"}, ProtectedResourceNames()[1:]...)
 	present := 0
 	for _, name := range names {
 		if _, found := files[name]; found {
@@ -78,7 +80,7 @@ func projectProtectedInventory(files map[string][]byte, enrolled descriptor) (ma
 		return nil, errors.New("protected companion inventory requires linux-amd64 Endpoint")
 	}
 	resources := make(map[string][]byte, 9)
-	for _, name := range protectedResourceNames() {
+	for _, name := range ProtectedResourceNames() {
 		resources[name] = files[name]
 	}
 	if err := ValidateProtectedGeneration(files["protected-endpoint.json"], resources, enrolled.release); err != nil {
