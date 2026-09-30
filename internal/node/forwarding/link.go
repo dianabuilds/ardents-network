@@ -182,6 +182,14 @@ func (link *forwardLink) availableForClose() bool {
 
 func (link *forwardLink) startForwarding(event route.ClosedForwardingEvent, wake func(), abort func()) bool {
 	link.forward.Lock()
+	// The reverse copier can join an authenticated peer CLOSE after this
+	// event was selected. Its terminal witness makes this unemitted work
+	// obsolete without indicting siblings on the shared Carrier. Existing
+	// physical writes still retain their errors through forwardingError.
+	if link.stopping && link.reverse.peerClosed() {
+		link.forward.Unlock()
+		return true
+	}
 	if link.forwarding || link.stopping {
 		link.forward.Unlock()
 		return false
