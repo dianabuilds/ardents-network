@@ -13,6 +13,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
 	"github.com/dianabuilds/ardents-network/internal/application/textdocument"
+	processdiag "github.com/dianabuilds/ardents-network/internal/diagnostics/process"
 	"github.com/dianabuilds/ardents-network/internal/route/carrier"
 	"github.com/dianabuilds/ardents-network/internal/route/client"
 	nativeconnection "github.com/dianabuilds/ardents-network/internal/service/connection"
@@ -42,7 +43,8 @@ func openWorkerResultFixture(t *testing.T, ctx context.Context, worker *qualifie
 			t.Error(err)
 		}
 	})
-	lifetime, cancel := context.WithCancel(contextOwner.lease.Context())
+	trace := processdiag.ReaderTrace(ctx)
+	lifetime, cancel := context.WithCancel(trace.Bind(contextOwner.lease.Context()))
 	callerDone := make(chan struct{})
 	stopCaller := context.AfterFunc(ctx, func() { defer close(callerDone); cancel() })
 	joinCaller := func() {
@@ -65,6 +67,11 @@ func openWorkerResultFixture(t *testing.T, ctx context.Context, worker *qualifie
 	transferred := false
 	defer func() {
 		if !transferred {
+			trace.Finish(outcome)
+		}
+	}()
+	defer func() {
+		if !transferred {
 			joinCaller()
 			lease.Release()
 			cancel()
@@ -80,6 +87,7 @@ func openWorkerResultFixture(t *testing.T, ctx context.Context, worker *qualifie
 			finish()
 		}
 	}()
+	bounded = trace.Bind(bounded)
 	attempt, err := contextOwner.prepareIntroduction(bounded, worker.job, destination, bounds)
 	if err != nil {
 		return nil, err
@@ -92,7 +100,7 @@ func openWorkerResultFixture(t *testing.T, ctx context.Context, worker *qualifie
 	pending := make(chan struct{})
 	owner.pending, owner.cancel = pending, cancel
 	owner.mu.Unlock()
-	stream := newReadResult(owner, pending, lease, cancel, worker, bounded, finish, service, joinCaller, contextOwner.reportOperationFailure)
+	stream := newReadResult(owner, pending, lease, cancel, worker, bounded, finish, service, joinCaller, contextOwner.reportOperationFailure, trace)
 	transferred = true
 	return stream, nil
 }

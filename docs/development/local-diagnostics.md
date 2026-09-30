@@ -7,6 +7,72 @@ It does not qualify installed Ubuntu workers, replace `make check`, or select
 additional Network behavior. Product, security and technical owners retain
 Route/currentness/authority, workload and confinement requirements.
 
+## Continuous monitoring and explicit debug mode
+
+The selected engineering direction is continuous local Node monitoring with
+console and rotating file logs, metric history, local alerts and an explicit
+debug mode. The finite command collector described below supplies diagnostic
+evidence; its file caps and saved reports do not implement this system.
+
+### Normal monitoring
+
+- Select each local process or Node explicitly. Show source identity, observation
+  time, age, collection failure and unavailable fields. Process survival and an
+  earlier ready event cannot establish present product readiness.
+- Preserve structured console output and provide a private file sink with size
+  and time rotation, finite retained bytes, file count and age. Rotation applies
+  only to logs. A bounded sink must keep draining producers during saturation;
+  report loss, full disk, write and shutdown failures independently of that sink.
+  Join producers before bounded final drain and close. Reopening after restart
+  must preserve the retention budget rather than restart its accounting at zero.
+- Capture metrics with units, source scope and availability. Distinguish gauges,
+  cumulative counters, interval rates, current values, observed peaks and actual
+  configured limits. Counter resets and missing samples break rate continuity.
+  OS process, process group, container and Node duty observations remain distinct.
+  Unpopulated admission fields are unavailable, even when their encoded default
+  is zero. Role-specific Usage values need their owner's meaning; they are not
+  automatically waiting queue length or generic workload.
+- Render time series against a shared selectable time interval. Show gaps rather
+  than interpolate healthy operation through missing evidence. Each plotted
+  value must be inspectable with its units and observation time.
+- Evaluate local alerts over measured signals with explicit windows. Retain
+  pending, firing and resolved transitions, deduplicate repeated evaluations,
+  support acknowledgement and expiring silence, and retain recovery history.
+  Silence and acknowledgement do not change measured health. Source loss and
+  collection failure are independent visible conditions. External notification
+  delivery requires separate explicit configuration and authorization.
+
+Normal monitoring must not enable expensive profiling merely to read counters.
+Its retention budgets include indexes, temporary rotation files and backend
+working space; a backend retention setting alone is not a filesystem quota.
+
+### Debug mode
+
+Debug mode adds a finite, explicitly selected capture for one local owner:
+actual operation stages, context budgets and joined cleanup; goroutine stacks;
+CPU, heap, block, mutex and Go execution trace profiles. Show capture duration,
+progress, completion, cancellation, overhead settings and failures. Keep raw
+artifacts private and summaries separate from raw profile or log access.
+
+Debug instrumentation must preserve authority, wire behavior, cancellation and
+cleanup errors. It cannot make an incomplete operation successful, retry product
+operations automatically or weaken the common Route protection baseline.
+
+### Panel and verification
+
+The primary views are Overview, Logs, Metrics, Alerts and Debug. Saved command
+runs are supporting evidence within these views. Future Node control actions
+require their own existing owner and authorization boundary; monitoring does
+not confer permission to change Node configuration or lifecycle.
+
+Verify the system with a running selected source: follow live console and file
+logs through rotation and restart; induce sink saturation and full disk;
+inspect measured gauge/counter/reset behavior and stale-source gaps; drive an
+alert through pending, firing, silence expiry and recovery; cancel a debug
+capture and check joined cleanup. Retained original failures must remain
+inspectable. A static dashboard or successful command report cannot substitute
+for these lifecycle checks.
+
 ## Existing observations and gaps
 
 | Owner | Available evidence | Gap / interpretation |
@@ -112,7 +178,7 @@ privacy/availability gates retain their original prerequisites.
 ## Further instrumentation boundary
 
 The package deliberately exposes missing observations as gaps. Useful future
-signals include owner-typed opening-stage duration, retained queue/credit and
+signals outside the explicitly enabled Reader capture below include retained queue/credit and
 token stock, JOIN pair lifecycle, cleanup outcome and explicit saturation.
 Introduce them at their owning module with fixed categories, finite cardinality,
 bounded output and adversarial behavior tests. Cross-role identifiers, targets,
@@ -129,3 +195,122 @@ At terminal completion the collector rechecks source content within the same
 run budget. A changed/unavailable final inventory invalidates the candidate
 receipt with a fixed source-change flag. Freeze the source before an accepted
 measurement; this comparison is not a transactional filesystem snapshot.
+
+## Local diagnostic assistant
+
+The CLI report and read-only panel use the same report builder over an explicitly
+selected private run, with an optional explicitly selected comparison run.
+Its Interface separates command outcome from capture validity and current
+capability readiness. It returns finite facts, named missing evidence, the first
+available explicitly observed failure with a local event ordinal, separate
+cleanup observations and a fixed catalogue of manual next-check templates.
+It neither executes recommendations nor accepts HTTP path/action selection.
+
+The builder inspects the bounded projected event history rather than inferring
+causality from the latest transition tail. Supplied owner UTC stays separate
+from collector UTC/order. Malformed/truncated history or terminal count mismatch
+invalidates completeness; lost history cannot establish a first overall cause.
+A historical READY, a live process or a clean command exit never grants current
+product readiness. Cgroup limit/OOM/throttling observations are container facts,
+not attribution to one Node or proof of why an operation failed.
+
+Manifest projection admits only exact source/image digest forms, a recognized
+compiler/platform, finite time budget, fixed collector mode and explicit test
+race/profiling flags. Tool versions are parsed only from fixed known inventory
+formats; arbitrary inventory lines remain private. Full workload/environment
+identity is absent from existing receipts and is reported as unknown.
+Comparisons retain both outcomes, display known condition differences and
+supervisor duration separately, and issue no speedup verdict. These records
+are local observations rather than authenticated Release/qualification evidence.
+
+Admission uses a canonical absolute directory and os.Root-confined regular-file
+opens with NOFOLLOW/NONBLOCK. Manifest is at most 16 KiB, tool inventory 1 MiB,
+each summary/event/sample file 4 MiB, JSON nesting 32, event/sample records 65536
+and each record 16 KiB. Object keys must be ASCII; duplicate case aliases are
+rejected before decoding so Unicode field aliases cannot override evidence.
+At most eight failures are returned with an explicit
+truncation notice. Stored fields are projected again for report, summary and
+sample routes; unknown strings/maps never become report prose, HTML or labels.
+Byte and record limits are not a transactional snapshot, filesystem quota or
+protection against root/same-UID evidence modification. Missing terminal files
+remain visible; a live snapshot older than ten seconds is stale observation,
+not proof the supervised command or product exited.
+
+Report generation success means a complete capture was explained, even when
+the command failed; incomplete/unavailable report inputs give a nonzero CLI
+result. Original command exit and failed comparison outcomes remain explicit.
+Run instructions and exact report/compare examples belong to the README.
+
+### Panel interaction and previewed export
+
+The panel separates outcome, capture validity, observed failures, gaps, manual
+checks, resource history and comparison. Its filter applies only to the 32-event
+tail; it cannot establish a first overall failure. Pause stops browser polling,
+not the collector or supervised command. Manual refresh remains available.
+The RSS plot uses at most 1000 maximum-per-bucket points on observed UTC; peak
+facts remain over the admitted sample history. The plot is not test timing.
+
+Export is browser-local and bounded to 256 KiB. The operator must open a visible
+JSON preview before download or copying. A browser download request is not
+a save receipt; copying the same preview is the fallback. That preview is frozen across automatic refresh;
+changing provenance selection invalidates it and requires another preview.
+The default projection omits source/image/tool identity and absolute event UTC.
+An explicit checkbox includes the already validated conditions. Both compared
+outcomes, completeness, gaps, resource facts and fixed manual recommendations
+remain present. Raw logs, paths, command arguments, profiles, keys, Names,
+Targets and peer histories are not included. No export upload or control route
+exists. Even the projected report is private operational metadata; the operator
+reviews its visible contents before choosing to share it elsewhere.
+
+### One owned Reader Connection capture
+
+A configured process debug socket additionally exposes read-only GET /connection.
+The first eligible Reader Open during the first ten minutes of that process
+session claims one capture. It never rearms or selects a Target. The recorder
+retains at most 64 fixed-category records in memory; expiration and dropped
+records invalidate completeness without stopping product work. With diagnostics
+disabled, the nil/zero trace handle returns the original Context and adds no
+recording, timers, callbacks or I/O. Recording itself performs bounded memory
+updates and inspects at most 64 error-tree nodes.
+
+The production Reader route observes admission, session activation, worker launch
+and operation acquisition, the actual bounded worker activation (launch gate,
+readiness and Grant binding), Introduction preparation, JOIN (including the separately
+observed initial TLS/native Service authentication), fixed request, document
+exchange, Service/worker closure, the current-owner check when actually performed,
+local response, caller-cancellation join and session release. Nested phases
+overlap and their durations must not be summed. Elapsed/duration values use the
+process monotonic clock. The inner worker activation observes its actual 15-second
+Context and Service authentication observes its actual WorkSafety deadline Context.
+The optional remaining budget is an observation of that
+stage's supplied Context deadline, not all authorization, token or protocol limits;
+an absent deadline is unknown.
+
+Observation handles explicitly cross the worker's Context re-parenting using
+diagnostic values only. Existing authority parents, cancellation, leases,
+deadlines, outcomes and wire data are preserved. The returned readResult marks
+joined completion only after deferred caller join, session release and owner
+cleanup, before publishing its joined barrier. Application EOF and native retired
+are not substitutes for this ownership boundary.
+
+Error text and remote/local identities never enter the snapshot. Terminal error
+classification is conservative: an untyped refusal remains failed even when its
+text mentions cancellation. A separately observed context_stop records canceled
+or deadline only from the supplied Context; it does not erase additional cleanup
+errors or assert their cause.
+
+CLI connection and snapshot -kind connection, and the panel's optional
+connection-socket selection use one strict bounded decoder (32 KiB, exact schema,
+fixed fields/categories, ordered paired durations). The socket schema is
+ardents-reader-trace-v1; CLI/panel projections use the distinct
+ardents-reader-observation-v1 schema with derived missing-stage and association facts. Missing/unknown/duplicate
+facts cannot become joined or healthy evidence. The panel's live owner snapshot
+is independent of the saved command receipt; their association is unproven.
+No owner socket is inferred from a stored directory. Reader snapshots are not
+included in the existing command-report export. Socket access retains its owner
+Unix permissions; opting into the loopback browser panel exposes the projected
+timing metadata to other local processes/users able to reach that listener.
+Loopback excludes remote binding, not local adversaries or endpoint compromise.
+No Network readiness, installed worker qualification or causal diagnosis follows
+from a snapshot. Other Reader operations, Publisher telemetry and Node
+queue/credit/token gauges remain outside this capture.

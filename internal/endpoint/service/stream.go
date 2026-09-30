@@ -11,6 +11,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
 	applicationconnection "github.com/dianabuilds/ardents-network/internal/application/connection"
+	processdiag "github.com/dianabuilds/ardents-network/internal/diagnostics/process"
 	nativeconnection "github.com/dianabuilds/ardents-network/internal/service/connection"
 	servicepublication "github.com/dianabuilds/ardents-network/internal/service/publication"
 )
@@ -117,6 +118,9 @@ func OpenStream(binding Binding, ctx context.Context, raw net.Conn, capsuleDiges
 	client := binding.Surface() == broker.Connection
 	var continuity [32]byte
 	defer clear(continuity[:])
+	authenticated := processdiag.ConnectionTraceFor(ctx).Observe(processdiag.ServiceAuthentication, lifetime)
+
+	defer func() { authenticated(resultErr) }()
 	first, acquired, err := openInitialAttachment(binding, lifetime, transport, exporterContext, client, &continuity)
 	lease = acquired
 	if err != nil {
@@ -149,6 +153,7 @@ func OpenStream(binding Binding, ctx context.Context, raw net.Conn, capsuleDiges
 	if err != nil {
 		return nil, err
 	}
+	authenticated(nil)
 	nativeOwned = true
 	// Only recovery-capable streams retain terminal-control ownership after
 	// RunBounded. A one-Attachment stream completes and closes immediately, so
