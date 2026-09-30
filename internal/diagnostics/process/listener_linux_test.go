@@ -349,3 +349,69 @@ func TestPrivateListenerRetainsRefusalCleanupFailure(t *testing.T) {
 		t.Fatal("refused connection changed an active slot")
 	}
 }
+
+func TestPrivateConnectionRetainsUnexpectedCloseOnce(t *testing.T) {
+	unexpected := errors.New("accepted connection cleanup failed")
+	for _, scenario := range []struct {
+		name     string
+		failure  error
+		retained int
+	}{
+		{"unexpected", unexpected, 1}, {"already-closed", net.ErrClosed, 0},
+	} {
+		t.Run(scenario.name, func(t *testing.T) {
+			socket := privateSocket(t)
+			raw, err := net.Listen("unix", socket)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer raw.Close()
+			calls := 0
+			var retained error
+			slots := make(chan struct{}, 1)
+			listener := privateListener{Listener: refusalCloseFailureListener{Listener: raw, failure: scenario.failure}, slots: slots,
+				retainCleanup: func(err error) { calls++; retained = err }}
+			peer, err := net.Dial("unix", socket)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer peer.Close()
+			accepted, err := listener.Accept()
+			if err != nil {
+				t.Fatal(err)
+			}
+			results := make(chan error, 2)
+			start := make(chan struct{})
+			for range 2 {
+				go func() { <-start; results <- accepted.Close() }()
+			}
+			close(start)
+			for range 2 {
+				select {
+				case err := <-results:
+					if !errors.Is(err, scenario.failure) {
+						t.Fatalf("close result lost: %v", err)
+					}
+				case <-time.After(time.Second):
+					t.Fatal("concurrent close did not join")
+				}
+			}
+			if calls != scenario.retained {
+				t.Fatalf("cleanup observations = %d, want %d", calls, scenario.retained)
+			}
+			if scenario.retained != 0 && !errors.Is(retained, unexpected) {
+				t.Fatalf("unexpected cleanup lost: %v", retained)
+			}
+			if len(slots) != 0 {
+				t.Fatal("accepted slot not released")
+			}
+			if err := peer.SetReadDeadline(time.Now().Add(time.Second)); err != nil {
+				t.Fatal(err)
+			}
+			var body [1]byte
+			if _, err := peer.Read(body[:]); !errors.Is(err, io.EOF) {
+				t.Fatalf("accepted connection not closed: %v", err)
+			}
+		})
+	}
+}

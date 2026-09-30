@@ -62,9 +62,9 @@ func (listener privateListener) Accept() (net.Conn, error) {
 		}
 		select {
 		case listener.slots <- struct{}{}:
-			return &privateConnection{Conn: conn, slots: listener.slots}, nil
+			return &privateConnection{Conn: conn, slots: listener.slots, retainCleanup: listener.retainCleanup}, nil
 		default:
-			if err := conn.Close(); err != nil && listener.retainCleanup != nil {
+			if err := conn.Close(); err != nil && !errors.Is(err, net.ErrClosed) && listener.retainCleanup != nil {
 				listener.retainCleanup(err)
 			}
 		}
@@ -73,14 +73,21 @@ func (listener privateListener) Accept() (net.Conn, error) {
 
 type privateConnection struct {
 	net.Conn
-	slots chan struct{}
-	once  sync.Once
+	slots         chan struct{}
+	once          sync.Once
+	closeErr      error
+	retainCleanup func(error)
 }
 
 func (conn *privateConnection) Close() error {
-	err := conn.Conn.Close()
-	conn.once.Do(func() { <-conn.slots })
-	return err
+	conn.once.Do(func() {
+		conn.closeErr = conn.Conn.Close()
+		<-conn.slots
+		if conn.closeErr != nil && !errors.Is(conn.closeErr, net.ErrClosed) && conn.retainCleanup != nil {
+			conn.retainCleanup(conn.closeErr)
+		}
+	})
+	return conn.closeErr
 }
 
 func open(ctx context.Context, path string) (func() error, error) {
