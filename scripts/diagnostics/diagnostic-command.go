@@ -26,9 +26,11 @@ func main() {
 
 func dispatch(args []string) error {
 	if len(args) == 0 {
-		return errors.New("use doctor, monitor, run, test, static, analyze, snapshot, connection, timings, report, or serve; see scripts/diagnostics/README.md")
+		return errors.New("use doctor, bundle, monitor, run, test, static, analyze, snapshot, connection, timings, report, or serve; see scripts/diagnostics/README.md")
 	}
 	switch args[0] {
+	case "bundle":
+		return bundleCommand(args[1:])
 	case "monitor":
 		return monitorCommand(args[1:])
 	case "report":

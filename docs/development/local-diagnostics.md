@@ -395,3 +395,85 @@ change at the current producer owner; the dashboard cannot invent a component,
 operation identifier, severity, stack or source-code location. Product payloads,
 keys and credentials are not diagnostic correlation fields. Reproduction recipes
 and developer checks remain engineering work, separate from normal monitoring.
+
+### Private reproduction package foundation
+
+The engineering `bundle` CLI assembles a new private JSON index from one explicitly
+selected completed capture. It preserves the existing report's command outcome,
+capture integrity and gaps separately from assembly success. The index includes
+the canonical local evidence root and hashes/sizes of the four required report input
+files plus the optional `tools.txt` input when present. It is private operational metadata, not a browser export or proof of causal
+association. It never overwrites an existing output or alters the selected capture.
+
+Input/output directories must be canonical, private and owned; inventoried files
+must be owned private regular single-link files. Each input has a finite read
+budget; assessment uses the same opened root as inventory, which is repeated
+after all selected reads. Observed content/input-set changes are refused. This is not an atomic filesystem snapshot or a guarantee against a
+malicious owner changing and restoring inputs between observations. Output is
+bounded to 256 KiB outside the source and selected capture. A failed write may leave
+an incomplete file, which is retained and cannot be silently overwritten.
+
+An optional explicitly selected owned private Reader socket uses the existing
+strict 32 KiB native decoder and safe projection. Its outcome, records, missing
+stages and unproven command association are preserved. `connection_state` states
+whether the selected observation could be read; `available` is not operation
+success, present readiness or proof that it belongs to the selected command.
+With no selection it is `unselected`. Refused/unavailable/invalid Reader evidence
+produces a private partial package with `assembly: incomplete` and a fixed failure
+category, while retaining valid command evidence and returning the original error.
+Invalid initial capture admission or observed mutation refuses package output and
+preserves the original inputs.
+
+Up to eight explicitly selected `-artifact` basenames in the selected capture
+can index private profiles, traces, the test executable or raw command receipts.
+There is no directory walk, extension-based format claim, raw content copy or
+artifact execution. `-artifact` explicitly selects an opaque `private-file`;
+`-profile` selects `pprof`; `-trace` selects `go-trace`. Required receipts have
+kind `report-input`. Selection shares the same eight-file limit. Each selected file is capped at 64 MiB; one inventory pass
+is capped at 128 MiB including report inputs. Both inventory passes validate
+private regular single-link ownership and observed identity/content stability.
+Hash/size identify observed bytes, not a valid profile format, executable match,
+operation association or a replayable reproduction. Raw artifacts may contain
+sensitive data and remain private.
+
+Explicit pprof/trace selections are parsed offline by the installed Go toolchain,
+using an admitted file descriptor, no executable or symbolization, and no remote
+source or HTTP listener. The parser has a two-second deadline per selection,
+64 KiB stderr budget and either 64 KiB pprof table or 64 MiB trace-to-profile
+stdout budget. Output is discarded, not exposed. `validation: passed` means the
+selected parser accepted the observed bytes, not semantic completeness, profile
+coverage, performance diagnosis or operation/executable association. Unsuccessful
+validation retains a private partial package with `validation: failed`, returning
+nonzero; it does not guess whether failure was corruption, tool availability or
+resource limits. Opaque artifacts have `validation: not-checked`.
+
+Assembly has an explicit positive `-timeout` up to 30 seconds (default 10),
+recorded as `assembly_budget_seconds`. SIGINT/SIGTERM and that deadline propagate
+to inventories, Reader requests and parsers. Parser process groups are canceled
+and waited; cancellation does not produce a successful package. Regular-file
+filesystem calls remain subject to kernel/storage latency: this is a cooperative
+deadline, not a hard kernel-I/O latency guarantee. A deadline during output I/O
+can leave a file that must be inspected alongside the CLI error; failed writes
+are never silently overwritten. The source/output named roots are checked against
+the opened directories before output admission. This cannot prevent an owner
+changing paths after the final observation.
+
+Known report input schema/record validation gaps produce incomplete assembly and
+a nonzero result while retaining the original interpreted command receipt.
+An optional explicit `-command` selects one `command-receipt` artifact. It is a
+UTF-8 JSON argv array capped at 16 KiB and 256 string entries, with a nonempty
+executable entry and no null/non-string/NUL arguments. It is never executed or
+copied into the package. `reproduction` records `unselected`, `available`, or
+`unavailable`, a relative artifact reference and the number of argv entries
+(including the executable) when validated. Availability means a readable typed
+receipt, not proof of command/run association or replayability. The environment
+remains `not-fully-declared`; exact flags can be read manually from the selected
+private receipt. Invalid selected receipts retain a partial package with the
+original command outcome and return nonzero.
+
+Public CLI tests exercise kernel file-size write refusal in a separate process,
+retained failed output/no overwrite, unsafe file/path/link/permission admission,
+individual/total byte limits and cancellation of an actual in-flight Reader HTTP
+request. Original captures remain preserved. Full final gates and completed
+bounded review still precede integration. No product/wire
+identity or interception grant is introduced by its engineering schema.
