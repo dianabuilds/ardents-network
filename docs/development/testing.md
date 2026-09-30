@@ -48,6 +48,16 @@ substitute for independent review.
 - Focused Linux race checks retain raw command, stdout, stderr, and exit status
   outside Git. They may compose existing owner tests for a bounded lifecycle
   fact, but do not turn that composition into an end-to-end qualification.
+
+Linux Node command tests can select `ARDENTS_NODE_SCOPE_PROFILE=system` to
+place every serving Node in its own systemd scope. The selected profile requires
+a running system manager and permission to create and stop system scopes;
+missing prerequisites fail. The runner verifies the READY process's cgroup and
+sole PID, then joins and verifies scope cleanup. Selected Node process jobs in
+Ubuntu 24.04 PR CI use this profile because worker manager queries must not
+share the Node's measured cgroup. Ordinary developer-host execution without
+this selector retains its shared-cgroup limitation. Scope verification alone
+does not qualify installed workers, a second Endpoint, or whole-host protection.
 - The retained text Publisher setup keeps its real 4-by-64 authenticated
   loopback composition in the ordinary Linux profile. Its race counterpart
   checks the same 256 workload bindings, retained identities, concurrent Reader

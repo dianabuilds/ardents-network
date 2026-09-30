@@ -1,4 +1,4 @@
-//go:build linux && text_worker_installed
+//go:build linux
 
 package state_test
 
@@ -15,11 +15,15 @@ import (
 	"time"
 )
 
-// Only the selected installed profile owns systemd placement. Ordinary process
-// tests retain their developer-host boundary and do not claim this evidence.
+// The selected system-scope process profile shares placement verification with
+// installed qualification. This alone does not qualify installed workers.
 func nodeProcessCommand(t *testing.T, binary string, arguments ...string) (*exec.Cmd, func(*testing.T)) {
 	t.Helper()
-	if os.Getenv("ARDENTS_TEXT_COMMAND_QUALIFICATION") != "1" {
+	profile := os.Getenv("ARDENTS_NODE_SCOPE_PROFILE")
+	if profile != "" && profile != "system" {
+		t.Fatal("invalid prerequisite: unknown Node scope profile")
+	}
+	if os.Getenv("ARDENTS_TEXT_COMMAND_QUALIFICATION") != "1" && profile == "" {
 		return exec.Command(binary, arguments...), nil
 	}
 	prefix := "ardents-command-node-" + strconv.Itoa(os.Getpid()) + "-"
