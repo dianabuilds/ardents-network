@@ -112,7 +112,7 @@ privacy/availability gates retain their original prerequisites.
 ## Further instrumentation boundary
 
 The package deliberately exposes missing observations as gaps. Useful future
-signals include owner-typed opening-stage duration, retained queue/credit and
+signals outside the explicitly enabled Reader capture below include retained queue/credit and
 token stock, JOIN pair lifecycle, cleanup outcome and explicit saturation.
 Introduce them at their owning module with fixed categories, finite cardinality,
 bounded output and adversarial behavior tests. Cross-role identifiers, targets,
@@ -195,3 +195,56 @@ remain present. Raw logs, paths, command arguments, profiles, keys, Names,
 Targets and peer histories are not included. No export upload or control route
 exists. Even the projected report is private operational metadata; the operator
 reviews its visible contents before choosing to share it elsewhere.
+
+### One owned Reader Connection capture
+
+A configured process debug socket additionally exposes read-only GET /connection.
+The first eligible Reader Open during the first ten minutes of that process
+session claims one capture. It never rearms or selects a Target. The recorder
+retains at most 64 fixed-category records in memory; expiration and dropped
+records invalidate completeness without stopping product work. With diagnostics
+disabled, the nil/zero trace handle returns the original Context and adds no
+recording, timers, callbacks or I/O. Recording itself performs bounded memory
+updates and inspects at most 64 error-tree nodes.
+
+The production Reader route observes admission, session activation, worker launch
+and operation acquisition, the actual bounded worker activation (launch gate,
+readiness and Grant binding), Introduction preparation, JOIN (including the separately
+observed initial TLS/native Service authentication), fixed request, document
+exchange, Service/worker closure, the current-owner check when actually performed,
+local response, caller-cancellation join and session release. Nested phases
+overlap and their durations must not be summed. Elapsed/duration values use the
+process monotonic clock. The inner worker activation observes its actual 15-second
+Context and Service authentication observes its actual WorkSafety deadline Context.
+The optional remaining budget is an observation of that
+stage's supplied Context deadline, not all authorization, token or protocol limits;
+an absent deadline is unknown.
+
+Observation handles explicitly cross the worker's Context re-parenting using
+diagnostic values only. Existing authority parents, cancellation, leases,
+deadlines, outcomes and wire data are preserved. The returned readResult marks
+joined completion only after deferred caller join, session release and owner
+cleanup, before publishing its joined barrier. Application EOF and native retired
+are not substitutes for this ownership boundary.
+
+Error text and remote/local identities never enter the snapshot. Terminal error
+classification is conservative: an untyped refusal remains failed even when its
+text mentions cancellation. A separately observed context_stop records canceled
+or deadline only from the supplied Context; it does not erase additional cleanup
+errors or assert their cause.
+
+CLI connection and snapshot -kind connection, and the panel's optional
+connection-socket selection use one strict bounded decoder (32 KiB, exact schema,
+fixed fields/categories, ordered paired durations). The socket schema is
+ardents-reader-trace-v1; CLI/panel projections use the distinct
+ardents-reader-observation-v1 schema with derived missing-stage and association facts. Missing/unknown/duplicate
+facts cannot become joined or healthy evidence. The panel's live owner snapshot
+is independent of the saved command receipt; their association is unproven.
+No owner socket is inferred from a stored directory. Reader snapshots are not
+included in the existing command-report export. Socket access retains its owner
+Unix permissions; opting into the loopback browser panel exposes the projected
+timing metadata to other local processes/users able to reach that listener.
+Loopback excludes remote binding, not local adversaries or endpoint compromise.
+No Network readiness, installed worker qualification or causal diagnosis follows
+from a snapshot. Other Reader operations, Publisher telemetry and Node
+queue/credit/token gauges remain outside this capture.

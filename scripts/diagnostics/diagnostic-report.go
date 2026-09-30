@@ -902,7 +902,7 @@ func gapExplanation(code string) string {
 	case "current-capability-readiness-not-established":
 		return "Текущая готовность функций не доказана; исторический READY и живой процесс недостаточны."
 	case "stage-durations-queues-credit-token-stock-unavailable":
-		return "Нет наблюдений длительности этапов, очередей, credit и token stock."
+		return "В сохранённом прогоне нет наблюдений длительности этапов, очередей, credit и token stock."
 	case "event-history-count-mismatch":
 		return "Количество сохранённых событий противоречит terminal summary."
 	case "resource-sample-count-mismatch":
@@ -933,4 +933,153 @@ func gapExplanation(code string) string {
 		return "Порядок сообщений collector не доказывает причинность между ролями."
 	}
 	return "Наблюдение недоступно."
+}
+
+// connectionObservation is independent of the stored command receipt. A selected
+// owner socket proves no association with that run or Network readiness.
+type connectionObservation struct {
+	Schema      string                        `json:"schema"`
+	State       string                        `json:"state"`
+	Outcome     string                        `json:"outcome,omitempty"`
+	Lost        uint64                        `json:"lost_records"`
+	Limit       int                           `json:"record_limit"`
+	Records     []connectionObservationRecord `json:"records"`
+	Missing     []string                      `json:"missing_stages"`
+	Association string                        `json:"association"`
+}
+type connectionObservationRecord struct {
+	Stage       string `json:"stage"`
+	State       string `json:"state"`
+	Elapsed     int64  `json:"elapsed_ns"`
+	Duration    *int64 `json:"duration_ns,omitempty"`
+	Budget      *int64 `json:"remaining_budget_ns,omitempty"`
+	ContextStop string `json:"context_stop,omitempty"`
+}
+
+var observedConnectionStages = strings.Fields("admission activation worker-launch worker-operation introduction service-join service-authentication local-request document-exchange service-close worker-close current-owner application-response caller-join session-release worker-activation")
+
+func decodeConnectionObservation(body []byte) (connectionObservation, error) {
+	var observation connectionObservation
+	if len(body) > 32<<10 || !validJSONRecord(body) {
+		return observation, errors.New("connection snapshot invalid")
+	}
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(body, &fields); err != nil {
+		return observation, errors.New("connection snapshot object invalid")
+	}
+	for _, key := range []string{"schema", "state", "lost_records", "record_limit", "records"} {
+		value, ok := fields[key]
+		if !ok || bytes.Equal(value, []byte("null")) {
+			return observation, errors.New("connection snapshot required fact missing")
+		}
+	}
+	for key := range fields {
+		switch key {
+		case "schema", "state", "outcome", "lost_records", "record_limit", "records":
+		default:
+			return observation, errors.New("connection snapshot field invalid")
+		}
+	}
+	var rawRecords []map[string]json.RawMessage
+	if err := json.Unmarshal(fields["records"], &rawRecords); err != nil {
+		return observation, errors.New("connection records invalid")
+	}
+	for _, record := range rawRecords {
+		for _, key := range []string{"stage", "state", "elapsed_ns"} {
+			value, ok := record[key]
+			if !ok || bytes.Equal(value, []byte("null")) {
+				return observation, errors.New("connection record required fact missing")
+			}
+		}
+		for key, value := range record {
+			switch key {
+			case "stage", "state", "elapsed_ns", "duration_ns", "remaining_budget_ns", "context_stop":
+			default:
+				return observation, errors.New("connection record field invalid")
+			}
+			if bytes.Equal(value, []byte("null")) {
+				return observation, errors.New("connection record null fact invalid")
+			}
+		}
+	}
+	decoder := json.NewDecoder(bytes.NewReader(body))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&observation); err != nil {
+		return connectionObservation{}, errors.New("connection snapshot invalid")
+	}
+	if observation.Schema != "ardents-reader-trace-v1" || observation.Limit != 64 || len(observation.Records) > 64 || observation.Association != "" || observation.Missing != nil {
+		return connectionObservation{}, errors.New("connection snapshot contract invalid")
+	}
+	switch observation.State {
+	case "waiting", "active", "joined", "expired", "incomplete":
+	default:
+		return connectionObservation{}, errors.New("connection snapshot state invalid")
+	}
+	if observation.State == "joined" && observation.Outcome == "" || observation.State == "waiting" && (len(observation.Records) != 0 || observation.Outcome != "" || observation.Lost != 0) || observation.State == "active" && observation.Outcome != "" || observation.Lost != 0 && observation.State != "incomplete" {
+		return connectionObservation{}, errors.New("connection snapshot terminal facts invalid")
+	}
+	switch observation.Outcome {
+	case "", "completed", "failed", "canceled", "deadline":
+	default:
+		return connectionObservation{}, errors.New("connection snapshot outcome invalid")
+	}
+	validStages := map[string]bool{}
+	for _, stage := range observedConnectionStages {
+		validStages[stage] = true
+	}
+	started := map[string]int64{}
+	ended := map[string]bool{}
+	stageStates := map[string]string{}
+	var last int64
+	for _, record := range observation.Records {
+		if !validStages[record.Stage] || record.Elapsed < last || record.Elapsed < 0 || record.Elapsed > int64(10*time.Minute) || record.Budget != nil && *record.Budget < 0 {
+			return connectionObservation{}, errors.New("connection snapshot record invalid")
+		}
+		if record.ContextStop != "" && record.ContextStop != "canceled" && record.ContextStop != "deadline" {
+			return connectionObservation{}, errors.New("connection context stop invalid")
+		}
+		last = record.Elapsed
+		if record.State == "started" {
+			if _, ok := started[record.Stage]; ok || record.Duration != nil || record.ContextStop != "" {
+				return connectionObservation{}, errors.New("connection snapshot start invalid")
+			}
+			started[record.Stage] = record.Elapsed
+			continue
+		}
+		switch record.State {
+		case "completed", "failed", "canceled", "deadline":
+		default:
+			return connectionObservation{}, errors.New("connection snapshot record state invalid")
+		}
+		start, ok := started[record.Stage]
+		if !ok || ended[record.Stage] || record.Duration == nil || *record.Duration != record.Elapsed-start || record.Budget != nil {
+			return connectionObservation{}, errors.New("connection snapshot completion invalid")
+		}
+		ended[record.Stage] = true
+		stageStates[record.Stage] = record.State
+		if observation.Outcome == "completed" && record.State != "completed" {
+			return connectionObservation{}, errors.New("connection terminal outcome contradicts stage failure")
+		}
+	}
+	observation.Missing = []string{}
+	for _, stage := range observedConnectionStages {
+		if !ended[stage] {
+			observation.Missing = append(observation.Missing, stage)
+		}
+	}
+	if observation.State == "joined" {
+		for stage := range started {
+			if !ended[stage] {
+				return connectionObservation{}, errors.New("connection snapshot joined with active stage")
+			}
+		}
+		// A pre-session refusal has no release obligation. A completed activation
+		// proves session acquisition and therefore requires its observed release.
+		if stageStates["caller-join"] != "completed" || stageStates["activation"] == "completed" && stageStates["session-release"] != "completed" {
+			return connectionObservation{}, errors.New("connection snapshot joined without owned cleanup")
+		}
+	}
+	observation.Schema = "ardents-reader-observation-v1"
+	observation.Association = "selected-owner-socket; command-run-association-unproven"
+	return observation, nil
 }

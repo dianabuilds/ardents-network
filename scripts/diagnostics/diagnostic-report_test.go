@@ -475,3 +475,59 @@ func TestAssistantComparisonIncludesMemoryAndTaskBudgets(t *testing.T) {
 		t.Fatal(out.String())
 	}
 }
+
+func connectionSnapshotFixture() []byte {
+	return []byte(`{"schema":"ardents-reader-trace-v1","state":"joined","outcome":"failed","lost_records":0,"record_limit":64,"records":[{"stage":"admission","state":"started","elapsed_ns":0},{"stage":"admission","state":"failed","elapsed_ns":2,"duration_ns":2},{"stage":"caller-join","state":"started","elapsed_ns":3},{"stage":"caller-join","state":"completed","elapsed_ns":4,"duration_ns":1}]}`)
+}
+
+func TestConnectionSnapshotValidationAndGaps(t *testing.T) {
+	observation, err := decodeConnectionObservation(connectionSnapshotFixture())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if observation.State != "joined" || observation.Association == "" || len(observation.Missing) != 14 {
+		t.Fatalf("projection: %+v", observation)
+	}
+	invalid := []string{
+		strings.Replace(string(connectionSnapshotFixture()), "\"outcome\":\"failed\"", "\"outcome\":\"completed\"", 1),
+		strings.Replace(string(connectionSnapshotFixture()), `"lost_records":0,`, "", 1),
+		strings.Replace(string(connectionSnapshotFixture()), `"lost_records":0`, `"Lost_records":0`, 1),
+		strings.Replace(string(connectionSnapshotFixture()), `"duration_ns":2`, `"duration_ns":1`, 1),
+		strings.Replace(string(connectionSnapshotFixture()), `"elapsed_ns":0`, `"elapsed_ns":null`, 1),
+		strings.Replace(string(connectionSnapshotFixture()), `"caller-join"`, `"peer-target"`, 1),
+		strings.Replace(string(connectionSnapshotFixture()), `"schema":`, `"Target":"private","schema":`, 1),
+		strings.Replace(string(connectionSnapshotFixture()), `"record_limit":64`, `"record_limit":65`, 1),
+		strings.Replace(string(connectionSnapshotFixture()), `"lost_records":0`, `"lost_records":1`, 1),
+		strings.Replace(string(connectionSnapshotFixture()), `"schema":`, `"schema":"foreign","schema":`, 1),
+	}
+	for _, body := range invalid {
+		if _, err := decodeConnectionObservation([]byte(body)); err == nil {
+			t.Fatal("invalid Connection facts admitted")
+		}
+	}
+	if _, err := decodeConnectionObservation(bytes.Repeat([]byte(" "), 32<<10+1)); err == nil {
+		t.Fatal("oversize input admitted")
+	}
+}
+
+func TestConnectionPanelDefaultDoesNotSelectOwnerOrAttachRun(t *testing.T) {
+	response := httptest.NewRecorder()
+	handler(reportFixture(t, 0)).ServeHTTP(response, httptest.NewRequest("GET", "/connection", nil))
+	if response.Code != 200 || !strings.Contains(response.Body.String(), `"state":"unselected"`) || strings.Contains(response.Body.String(), "joined") {
+		t.Fatal("default panel claimed live capture")
+	}
+}
+
+func TestConnectionJoinedRequiresReleaseAfterSuccessfulActivation(t *testing.T) {
+	body := string(connectionSnapshotFixture())
+	body = strings.ReplaceAll(body, "admission", "activation")
+	body = strings.Replace(body, "\"state\":\"failed\"", "\"state\":\"completed\"", 1)
+	if _, err := decodeConnectionObservation([]byte(body)); err == nil {
+		t.Fatal("acquired session joined without release")
+	}
+	// Refused activation never acquired a session; paired caller join is enough.
+	refusal := strings.ReplaceAll(string(connectionSnapshotFixture()), "admission", "activation")
+	if _, err := decodeConnectionObservation([]byte(refusal)); err != nil {
+		t.Fatal(err)
+	}
+}

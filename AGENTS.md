@@ -51,16 +51,20 @@
   alone is not an escalation reason. Review completed bounded changes rather
   than repeatedly reviewing unfinished implementation.
 - Follow [agent execution and handoff](docs/development/agent-execution.md).
-  Use one active implementation slice with an observable acceptance boundary.
+  Use one active implementation slice per implementer, with an observable
+  acceptance boundary; at most two C0 implementation slices may be active
+  across the project.
   Record other prepared work as paused, locally verified, or awaiting integration.
 - Preserve the existing branch, staged changes and untracked implementation.
   A fresh agent session is not a reason to restart from main or discard work.
 - Keep GitHub Issues as the execution ledger and give the Product Owner concise
   progress in the active conversation. Distinguish component readiness, full
   issue acceptance and integration; no test-only reachability or gate waiver.
-- Do not start implementation agents or parallel branches merely to accelerate
-  work. A skill-required review may use read-only reviewers of one bounded
-  delta; it is not independent security validation or another implementation.
+- Two explicitly selected C0 implementation tasks may proceed in parallel,
+  with separate ownership and branches or worktrees. Do not start additional
+  implementation agents or branches beyond those selected tasks merely to
+  accelerate work. A skill-required review may use read-only reviewers of one
+  bounded delta; it is not independent security validation or another implementation.
 - Do not turn an open research question or candidate brief into maintained
   subsystem implementation without an accepted contract and authorized scope.
 - Follow the [research-to-implementation handoff](docs/development/documentation.md#research-to-implementation-handoff).
@@ -101,7 +105,7 @@ The one live C0 ledger is GitHub Issues in the
 [`C0 Closed Alpha` milestone](https://github.com/dianabuilds/ardents-network/milestones).
 Until that milestone exists and is accessible, do not begin a new C0
 implementation slice; only contract clarification, review, or a green-baseline
-repair may proceed. The milestone permits exactly one in-progress C0
+repair may proceed. The milestone permits at most two in-progress C0
 implementation issue and at most one explicitly selected active research
 question. An open or deferred question is not active merely because its
 historical evidence remains in the repository.

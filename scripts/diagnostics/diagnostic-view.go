@@ -157,11 +157,29 @@ func boolNumber(value bool) int {
 func handler(dir string) http.Handler { return handlerWithComparison(dir, "") }
 
 func handlerWithComparison(dir, compare string) http.Handler {
+	return handlerWithConnection(dir, compare, "")
+}
+
+func handlerWithConnection(dir, compare, socket string) http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /{$}", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.Header().Set("Content-Security-Policy", "default-src 'self'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self'")
 		io.WriteString(w, dashboard)
+	})
+	mux.HandleFunc("GET /connection", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "no-store")
+		w.Header().Set("Content-Type", "application/json")
+		if socket == "" {
+			json.NewEncoder(w).Encode(connectionObservation{State: "unselected", Records: []connectionObservationRecord{}, Missing: []string{}})
+			return
+		}
+		observation, err := readConnectionObservation(r.Context(), socket)
+		if err != nil {
+			http.Error(w, "connection observations unavailable", http.StatusServiceUnavailable)
+			return
+		}
+		json.NewEncoder(w).Encode(observation)
 	})
 	mux.HandleFunc("GET /report", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Cache-Control", "no-store")
@@ -208,10 +226,14 @@ func serve(args []string) error {
 	flags := flag.NewFlagSet("serve", flag.ContinueOnError)
 	dir := flags.String("dir", "", "one absolute evidence directory")
 	compare := flags.String("compare", "", "optional second absolute evidence directory")
+	socket := flags.String("connection-socket", "", "optional owner-private live process socket; not associated with stored run")
 	addr := flags.String("listen", "127.0.0.1:8090", "local UI address; container bridge requires -container")
 	container := flags.Bool("container", false, "allow container wildcard; publish host loopback only")
 	if err := flags.Parse(args); err != nil {
 		return err
+	}
+	if *socket != "" && (!filepath.IsAbs(*socket) || filepath.Clean(*socket) != *socket) {
+		return errors.New("select canonical absolute connection-socket")
 	}
 	if !filepath.IsAbs(*dir) || *compare != "" && !filepath.IsAbs(*compare) || len(flags.Args()) != 0 {
 		return errors.New("select absolute -dir")
@@ -224,7 +246,7 @@ func serve(args []string) error {
 	if ip == nil || !ip.IsLoopback() && !(*container && host == "0.0.0.0") {
 		return errors.New("UI must use loopback, or explicit container binding")
 	}
-	server := &http.Server{Addr: *addr, Handler: handlerWithComparison(*dir, *compare), ReadHeaderTimeout: 3 * time.Second, ReadTimeout: 5 * time.Second, WriteTimeout: 10 * time.Second, IdleTimeout: 15 * time.Second, MaxHeaderBytes: 8192}
+	server := &http.Server{Addr: *addr, Handler: handlerWithConnection(*dir, *compare, *socket), ReadHeaderTimeout: 3 * time.Second, ReadTimeout: 5 * time.Second, WriteTimeout: 10 * time.Second, IdleTimeout: 15 * time.Second, MaxHeaderBytes: 8192}
 	listener, err := net.Listen("tcp", *addr)
 	if err != nil {
 		return err
@@ -259,9 +281,10 @@ const dashboard = `<!doctype html><html lang="ru"><meta charset="utf-8"><meta na
 :root{color-scheme:dark;--bg:#0b111b;--panel:#131e2d;--border:#29384b;--text:#e8eef8;--muted:#a1b0c5;--accent:#83b9ff;--bad:#ff9c9c;--good:#87dfb6;--warn:#f0cc82}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:14px/1.55 system-ui,sans-serif}main{max-width:1440px;margin:auto;padding:28px 32px 48px}header{display:flex;justify-content:space-between;align-items:center;gap:20px;margin-bottom:24px}.brand{letter-spacing:.14em;font-size:12px;color:var(--accent);font-weight:700}h1{font-size:28px;margin:3px 0}h2{font-size:17px;margin:0 0 14px}h3{font-size:14px;margin:0 0 8px}p{margin:8px 0}.muted,small{color:var(--muted)}.toolbar,.tabs,.tags{display:flex;gap:8px;flex-wrap:wrap;align-items:center}button,select{font:inherit;background:#1d2c40;color:var(--text);border:1px solid #39516e;border-radius:8px;padding:8px 12px;cursor:pointer}button:hover{background:#29405c}button:disabled{opacity:.45;cursor:default}button:focus-visible,a:focus-visible,summary:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:3px}.primary{background:#315d94;border-color:#5288cb}.tabs{margin:0 0 22px}.tabs a{color:var(--muted);text-decoration:none;padding:7px 12px;background:var(--panel);border:1px solid var(--border);border-radius:8px}a{color:var(--accent)}.grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:18px}.card{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:22px;min-width:0}.full{grid-column:span 12}.half{grid-column:span 6}.third{grid-column:span 4}.hero{border-left:4px solid var(--accent)}.hero.bad{border-left-color:var(--bad)}.hero.good{border-left-color:var(--good)}.hero.warn{border-left-color:var(--warn)}.hero.bad,.hero.good,.hero.warn{color:var(--text)}.hero.bad .status-title{color:var(--bad)}.hero.good .status-title{color:var(--good)}.hero.warn .status-title{color:var(--warn)}.status-title{font-size:24px;margin:2px 0 8px}.badge{font-size:12px;border-radius:6px;padding:4px 8px;background:#223147;display:inline-block}.bad{color:var(--bad)}.good{color:var(--good)}.warn{color:var(--warn)}.stat{font-size:25px;letter-spacing:-.02em;font-weight:650;margin:6px 0}.stat-label{font-size:12px;color:var(--muted)}.metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-top:18px}.metric{padding:14px;background:#0e1724;border-radius:9px;border:1px solid var(--border)}.facts{display:grid;grid-template-columns:minmax(140px,1fr) minmax(0,2fr);gap:6px 14px;font-size:13px}.facts dt{color:var(--muted)}.facts dd{margin:0;overflow-wrap:anywhere;font-family:ui-monospace,monospace}.list{display:grid;gap:10px}.notice{padding:12px 14px;background:#0e1724;border:1px solid var(--border);border-radius:8px}.check{border:1px solid var(--border);border-radius:10px;padding:16px}.check p{color:var(--muted)}.check pre{background:#0b1421;padding:12px;border-radius:8px}.check button{margin-top:8px}.section-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px}.section-head h2{margin:0}details{margin-top:14px}summary{cursor:pointer;color:var(--accent)}pre{white-space:pre-wrap;overflow-wrap:anywhere;font:12px/1.6 ui-monospace,monospace;margin:10px 0 0;max-height:400px;overflow:auto}table{width:100%;border-collapse:collapse;text-align:left;font-size:12px}th{color:var(--muted);font-weight:500}th,td{padding:10px 8px;border-bottom:1px solid var(--border);overflow-wrap:anywhere}.table-scroll{overflow:auto}svg{display:block;width:100%;height:190px}.axis{display:flex;justify-content:space-between;color:var(--muted);font-size:11px}.empty{color:var(--muted);padding:16px 0}[hidden]{display:none!important}.export-preview{max-height:450px;padding:16px;background:#0b1421;border:1px solid var(--border);border-radius:8px}.status-note{min-height:22px}footer{margin-top:24px;color:var(--muted);font-size:12px}@media(max-width:1000px){.third{grid-column:span 6}.third:last-child{grid-column:span 12}}@media(max-width:700px){main{padding:18px 14px}header{align-items:flex-start;flex-direction:column}.half,.third{grid-column:span 12}.card{padding:17px}.metrics{grid-template-columns:1fr}.facts{grid-template-columns:1fr}h1{font-size:24px}.stat{font-size:22px}}
 </style>
 <main><header><div><div class="brand">ARDENTS / LOCAL OBSERVATIONS</div><h1>Помощник диагностики</h1><div class="muted">Сохранённый прогон · факты, пробелы и следующий шаг</div></div><div class="toolbar"><span id="refresh-state" class="muted" role="status">Загрузка…</span><button id="pause" type="button">Приостановить обновление</button><button id="refresh" type="button">Обновить</button></div></header>
-<nav class="tabs" aria-label="Разделы диагностики"><a href="#overview">Обзор</a><a href="#checks">Следующие проверки</a><a href="#resources">Ресурсы</a><a href="#observations">Наблюдения</a><a href="#comparison">Сравнение</a><a href="#export">Выгрузка</a></nav>
+<nav class="tabs" aria-label="Разделы диагностики"><a href="#overview">Обзор</a><a href="#connection">Reader Connection</a><a href="#checks">Следующие проверки</a><a href="#resources">Ресурсы</a><a href="#observations">Наблюдения</a><a href="#comparison">Сравнение</a><a href="#export">Выгрузка</a></nav>
 <div class="grid">
 <section id="overview" class="card full hero"><div class="tags"><span class="badge">Результат команды</span><span id="capture" class="badge">Сбор неизвестен</span><span id="exit" class="badge">Exit —</span></div><h2 id="status" class="status-title" aria-live="polite">Ожидаем данные</h2><p id="verdict"></p><small>Это локальные инженерные наблюдения. Успех команды и исторический READY не доказывают текущую готовность сети.</small><div class="metrics"><div class="metric"><div class="stat-label">Время supervisor</div><div id="duration" class="stat">—</div><small>Включает подготовку и сбор</small></div><div class="metric"><div class="stat-label">Максимум RSS группы</div><div id="rss-peak" class="stat">—</div><small>Наблюдаемый максимум</small></div><div class="metric"><div class="stat-label">Сохранено samples</div><div id="sample-count" class="stat">—</div><small id="losses">Потери неизвестны</small></div></div></section>
+<section id="connection" class="card full"><div class="section-head"><h2>Одна Reader Connection</h2><span id="connection-state" class="badge" role="status">Источник не выбран</span></div><p class="muted">Живой снимок выбранного приватного процесса. Его связь с сохранённым прогоном не установлена. Первая операция в окне 10 минут, до 64 записей; без Targets, ключей и raw ошибок.</p><div id="connection-outcome" class="notice">Для подключения укажите connection-socket при запуске панели.</div><div class="table-scroll"><table><thead><tr><th>Этап</th><th>Наблюдение</th><th>От начала</th><th>Длительность</th><th>Остаток срока Context на входе</th></tr></thead><tbody id="connection-records"></tbody></table></div><p id="connection-gaps" class="muted"></p><small>Application EOF и аутентификация не означают joined cleanup. Отсутствующий этап означает отсутствие наблюдения; причину и готовность сети это не доказывает. Снимок Connection не включается в выгрузку отчёта прогона.</small></section>
 <section class="card half"><h2>Первый наблюдаемый отказ</h2><div id="first-failure"></div><details><summary>Остальные отказы и cleanup</summary><div id="failures" class="list"></div></details></section>
 <section class="card half"><h2>Пробелы наблюдения</h2><div id="gaps" class="list"></div></section>
 <section id="checks" class="card full"><div class="section-head"><h2>Следующие проверки</h2><span class="muted">Шаблоны запускаются вручную</span></div><div id="next-checks" class="list"></div><div id="copy-status" class="status-note muted" role="status"></div></section>
@@ -298,7 +321,11 @@ $('download-export').addEventListener('click',()=>{if(exportText===null)return;l
 $('copy-export').addEventListener('click',async()=>{if(exportText===null)return;try{await navigator.clipboard.writeText(exportText);text('export-status','Просмотренный JSON скопирован. Автоматической передачи отчёта нет.')}catch{let selection=getSelection();let range=document.createRange();range.selectNodeContents($('export-preview'));selection.removeAllRanges();selection.addRange(range);text('export-status','Просмотренный JSON выделен: используйте обычное копирование.')}});
 $('event-filter').addEventListener('change',renderEvents);
 $('pause').addEventListener('click',()=>{paused=!paused;text('pause',paused?'Продолжить обновление':'Приостановить обновление');text('refresh-state',paused?'Обновление приостановлено':'Обновление включено');if(!paused)update()});$('refresh').addEventListener('click',()=>update(true));
-async function update(manual=false){if(busy||paused&&!manual)return;busy=true;try{let reportResponse=await fetch('/report',{cache:'no-store'});if(!reportResponse.ok)throw Error('Отчёт недоступен');let a=await reportResponse.json();latest=a;let key=JSON.stringify(a);if(key!==renderedReport){renderRun(a);renderedReport=key}$('preview-export').disabled=false;let responses=await Promise.all([fetch('/summary',{cache:'no-store'}),fetch('/samples',{cache:'no-store'})]);if(responses[0].ok)renderSummary(await responses[0].json());else{latestEvents=[];renderEvents();text('sample-count','—');text('losses','Summary недоступен');text('health','Summary недоступен');text('resource-state','Resource event недоступен');text('peaks','—')}if(responses[1].ok){let body=await responses[1].text();renderSamples(body.trim().split('\n').filter(Boolean).map(x=>JSON.parse(x)))}else renderSamples([]);text('refresh-state',(paused?'Пауза · ':'Обновлено · ')+new Date().toLocaleTimeString('ru-RU'))}catch{latest=null;renderedReport=null;$('preview-export').disabled=true;text('capture','Текущий сбор неизвестен');text('exit','Текущий exit неизвестен');if(exportText!==null)text('export-status','Свежие данные недоступны. Просмотренный снимок сохранён; скачать можно прежний JSON.');text('status','Наблюдения недоступны');$('overview').className='card full hero bad';text('verdict','Не удалось получить полный ответ. Предыдущие показатели могут быть устаревшими.');text('refresh-state','Ошибка обновления')}finally{busy=false}}
+const connectionStages={'admission':'Admission','activation':'Активация сессии','worker-launch':'Запуск worker','worker-activation':'Ограниченная activation worker','worker-operation':'Получение worker operation','introduction':'Подготовка Introduction','service-join':'JOIN с аутентификацией','service-authentication':'TLS и Service authentication','local-request':'Локальный запрос','document-exchange':'Обмен документом','service-close':'Закрытие Service','worker-close':'Закрытие worker','current-owner':'Проверка текущего владельца','application-response':'Локальный ответ','caller-join':'Join отмены вызывающего','session-release':'Освобождение сессии'};
+function renderConnection(a){const states={'unselected':'Источник не выбран','waiting':'Ожидаем первую Reader операцию','active':'Операция выполняется','joined':'Cleanup завершён и joined','expired':'Окно захвата истекло','incomplete':'Наблюдения неполны'};text('connection-state',states[a.state]||'Наблюдения недоступны');text('connection-outcome',a.state==='unselected'?'Для подключения укажите connection-socket при запуске панели.':'Исход: '+({completed:'завершено',failed:'отказ',canceled:'отмена',deadline:'истёк срок'}[a.outcome]||'ещё не наблюдён')+' · потеряно записей: '+a.lost_records);let root=$('connection-records');root.replaceChildren();for(let r of a.records||[]){let row=element('tr');let state={started:'начало',completed:'завершён',failed:'отказ',canceled:'отмена',deadline:'истёк срок'}[r.state]||'неизвестно';if(r.context_stop)state+=' · Context: '+({canceled:'отменён',deadline:'срок истёк'}[r.context_stop]||'неизвестно');let values=[connectionStages[r.stage]||'Неизвестный этап',state,(r.elapsed_ns/1e6).toFixed(3)+' мс',r.duration_ns===undefined?'—':(r.duration_ns/1e6).toFixed(3)+' мс',r.state==='started'?(r.remaining_budget_ns===undefined?'не наблюдён':(r.remaining_budget_ns/1e6).toFixed(3)+' мс'):'—'];for(let v of values)row.append(element('td',v));root.append(row)}text('connection-gaps',a.state==='unselected'?'':('Без наблюдения завершения: '+((a.missing_stages||[]).map(s=>connectionStages[s]||s).join(', ')||'нет')))}
+async function updateConnection(){try{let response=await fetch('/connection',{cache:'no-store'});if(!response.ok)throw Error('unavailable');renderConnection(await response.json())}catch{renderConnection({state:'unavailable',records:[],missing_stages:[]});text('connection-outcome','Свежий снимок не получен. Исход и завершение неизвестны.');text('connection-gaps','Проверьте выбранный приватный процесс и доступ к его socket.')}}
+
+async function update(manual=false){if(busy||paused&&!manual)return;busy=true;try{let reportResponse=await fetch('/report',{cache:'no-store'});if(!reportResponse.ok)throw Error('Отчёт недоступен');let a=await reportResponse.json();latest=a;let key=JSON.stringify(a);if(key!==renderedReport){renderRun(a);renderedReport=key}$('preview-export').disabled=false;let responses=await Promise.all([fetch('/summary',{cache:'no-store'}),fetch('/samples',{cache:'no-store'})]);if(responses[0].ok)renderSummary(await responses[0].json());else{latestEvents=[];renderEvents();text('sample-count','—');text('losses','Summary недоступен');text('health','Summary недоступен');text('resource-state','Resource event недоступен');text('peaks','—')}if(responses[1].ok){let body=await responses[1].text();renderSamples(body.trim().split('\n').filter(Boolean).map(x=>JSON.parse(x)))}else renderSamples([]);text('refresh-state',(paused?'Пауза · ':'Обновлено · ')+new Date().toLocaleTimeString('ru-RU'))}catch{latest=null;renderedReport=null;$('preview-export').disabled=true;text('capture','Текущий сбор неизвестен');text('exit','Текущий exit неизвестен');if(exportText!==null)text('export-status','Свежие данные недоступны. Просмотренный снимок сохранён; скачать можно прежний JSON.');text('status','Наблюдения недоступны');$('overview').className='card full hero bad';text('verdict','Не удалось получить полный ответ. Предыдущие показатели могут быть устаревшими.');text('refresh-state','Ошибка обновления')}finally{await updateConnection();busy=false}}
 update();setInterval(()=>update(),2000);
 </script></html>`
 
@@ -306,7 +333,7 @@ func snapshotCommand(args []string) error {
 	flags := flag.NewFlagSet("snapshot", flag.ContinueOnError)
 	socket := flags.String("socket", "", "private process debug Unix socket")
 	out := flags.String("out", "", "new absolute output file outside source")
-	kind := flags.String("kind", "runtime", "runtime, cpu, heap, allocs, goroutine, block, mutex, trace")
+	kind := flags.String("kind", "runtime", "runtime, connection, cpu, heap, allocs, goroutine, block, mutex, trace")
 	seconds := flags.Int("seconds", 5, "CPU/trace duration, 1..30 seconds")
 	sensitive := flags.Bool("sensitive", false, "explicitly permit secret-bearing profile evidence")
 	if err := flags.Parse(args); err != nil {
@@ -318,6 +345,8 @@ func snapshotCommand(args []string) error {
 	route := "/runtime"
 	switch *kind {
 	case "runtime":
+	case "connection":
+		route = "/connection"
 	case "cpu", "heap", "allocs", "goroutine", "block", "mutex":
 		route = "/profile/" + *kind
 	case "trace":
@@ -325,7 +354,7 @@ func snapshotCommand(args []string) error {
 	default:
 		return errors.New("unknown capture kind")
 	}
-	if *kind != "runtime" && !*sensitive {
+	if *kind != "runtime" && *kind != "connection" && !*sensitive {
 		return errors.New("profiles can contain secrets; -sensitive is required")
 	}
 	source, err := os.Getwd()
@@ -359,6 +388,17 @@ func snapshotCommand(args []string) error {
 	defer response.Body.Close()
 	if response.StatusCode != 200 {
 		return fmt.Errorf("diagnostic capture refused: HTTP %d", response.StatusCode)
+	}
+	if *kind == "connection" {
+		body, err := io.ReadAll(io.LimitReader(response.Body, 32<<10+1))
+		if err != nil {
+			return errors.New("connection snapshot read failed")
+		}
+		observation, err := decodeConnectionObservation(body)
+		if err != nil {
+			return err
+		}
+		return writeJSON(path, observation)
 	}
 	file, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
 	if err != nil {
@@ -452,5 +492,68 @@ func writeTestTimings(input io.Reader, output io.Writer) error {
 	if len(packages) == 0 {
 		return errors.New("no terminal package result; timing capture is incomplete")
 	}
+	return nil
+}
+
+func readConnectionObservation(ctx context.Context, socket string) (connectionObservation, error) {
+	transport := &http.Transport{DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
+		return (&net.Dialer{}).DialContext(ctx, "unix", socket)
+	}}
+	defer transport.CloseIdleConnections()
+	client := &http.Client{Transport: transport, Timeout: 2 * time.Second, CheckRedirect: func(*http.Request, []*http.Request) error { return errors.New("diagnostic redirect refused") }}
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, "http://local-diagnostic/connection", nil)
+	if err != nil {
+		return connectionObservation{}, errors.New("connection request unavailable")
+	}
+	response, err := client.Do(request)
+	if err != nil {
+		return connectionObservation{}, errors.New("connection socket unavailable")
+	}
+	defer response.Body.Close()
+	if response.StatusCode != http.StatusOK {
+		return connectionObservation{}, errors.New("connection capture refused")
+	}
+	body, err := io.ReadAll(io.LimitReader(response.Body, 32<<10+1))
+	if err != nil {
+		return connectionObservation{}, errors.New("connection capture read failed")
+	}
+	return decodeConnectionObservation(body)
+}
+
+func connectionCommand(args []string) error {
+	flags := flag.NewFlagSet("connection", flag.ContinueOnError)
+	socket := flags.String("socket", "", "explicit absolute owner-private process socket")
+	jsonOutput := flags.Bool("json", false, "print fixed safe snapshot JSON")
+	if err := flags.Parse(args); err != nil {
+		return err
+	}
+	if !filepath.IsAbs(*socket) || filepath.Clean(*socket) != *socket || len(flags.Args()) != 0 {
+		return errors.New("select canonical absolute socket")
+	}
+	observation, err := readConnectionObservation(context.Background(), *socket)
+	if err != nil {
+		return err
+	}
+	if *jsonOutput {
+		return json.NewEncoder(os.Stdout).Encode(observation)
+	}
+	fmt.Printf("Reader capture: %s; outcome=%s; lost=%d\n", observation.State, observation.Outcome, observation.Lost)
+	fmt.Println("Selected owner socket; association with any stored command run is unproven.")
+	for _, record := range observation.Records {
+		fmt.Printf("%s %s elapsed=%.3fms", record.Stage, record.State, float64(record.Elapsed)/1e6)
+		if record.Duration != nil {
+			fmt.Printf(" duration=%.3fms", float64(*record.Duration)/1e6)
+		}
+		if record.Budget != nil {
+			fmt.Printf(" remaining-context-budget=%.3fms", float64(*record.Budget)/1e6)
+		} else if record.State == "started" {
+			fmt.Print(" remaining-context-budget=unknown")
+		}
+		if record.ContextStop != "" {
+			fmt.Printf(" context-stop=%s", record.ContextStop)
+		}
+		fmt.Println()
+	}
+	fmt.Printf("Stages without observed completion: %s\n", strings.Join(observation.Missing, ", "))
 	return nil
 }

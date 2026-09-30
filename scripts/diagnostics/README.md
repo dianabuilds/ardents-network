@@ -310,3 +310,30 @@ profile uses 8 GiB for the combined race fixtures. Samples include actual
 `memory.max`/`pids.max` and `memory.events:max`; hitting a memory ceiling may
 cause reclaim pressure even without OOM. These are container observations,
 not a diagnosis of a specific Node or a change to product resource guards.
+
+## Observe one owned Reader Connection
+
+Enable the existing process diagnostics with ARDENTS_DEBUG_SOCKET set to a
+canonical absolute Unix socket in an existing directory owned by that process
+UID with mode 0700. The first eligible Reader Open in the first ten minutes is
+retained in memory, up to 64 fixed-category records. No automatic rearm, Target
+selection or product retry is added. Run these commands under the socket's owner:
+
+    diag connection -socket /private/process.sock
+    diag connection -socket /private/process.sock -json
+    diag snapshot -socket /private/process.sock -kind connection -out /evidence/reader.json
+    diag serve -dir /evidence/run-a -connection-socket /private/process.sock
+
+In Docker, mount the selected Linux socket directory explicitly and preserve its
+owner UID and permissions. A Windows host TCP address is not a Unix socket.
+The default panel does not contact any process. The selected live Reader snapshot
+is separate from run-a: process/run association is unproven. The loopback panel
+can be read by other local processes/users; its fixed projection still contains
+private timing metadata. It is excluded from the command-report export.
+
+Durations of nested JOIN/authentication phases overlap. A missing Context
+deadline is displayed as unknown, not zero budget. Untyped cancellation-related
+refusals remain failed; context_stop separately reports observed Context
+cancellation/deadline. Joined is emitted after owned cleanup, not Application EOF.
+Expired/incomplete observations and missing stages remain visible. These facts
+neither qualify the installed worker nor prove Network readiness or root cause.

@@ -26,7 +26,7 @@ func main() {
 
 func dispatch(args []string) error {
 	if len(args) == 0 {
-		return errors.New("use doctor, run, test, static, analyze, snapshot, timings, report, or serve; see scripts/diagnostics/README.md")
+		return errors.New("use doctor, run, test, static, analyze, snapshot, connection, timings, report, or serve; see scripts/diagnostics/README.md")
 	}
 	switch args[0] {
 	case "report":
@@ -35,6 +35,8 @@ func dispatch(args []string) error {
 		return doctor()
 	case "serve":
 		return serve(args[1:])
+	case "connection":
+		return connectionCommand(args[1:])
 	case "snapshot":
 		return snapshotCommand(args[1:])
 	case "timings":
