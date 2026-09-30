@@ -51,7 +51,9 @@ type Config struct {
 	NetworkStateRoot   string
 	LocalRoleStateRoot string
 	// ResourceMeasure and CheckPlacement are behavior-test seams. Maintained
-	// runtime callers leave them nil and use ResourceProfile's platform adapter.
+	// runtime callers leave them nil and use the platform adapters. ResourceMeasure
+	// supplies both ResourceProfile pressure and hosting owner-use observations;
+	// it does not replace the durable hosting allowance ledger's measurement.
 	ResourceMeasure func() (resource.Sample, error)
 	Now             func() time.Time
 	CheckPlacement  func() error

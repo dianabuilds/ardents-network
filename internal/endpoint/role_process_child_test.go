@@ -36,7 +36,12 @@ func roleProcessConfig(input roleProcessInput) node.Config {
 		Current:              func() (state.NodeDuty, error) { return state.ProjectNodeDuty(input.Snapshot), nil },
 		CurrentClosedProfile: func() (state.ClosedProfileView, bool) { return input.View.Profile, true },
 		CurrentClosedRoute:   func() (state.ClosedRouteView, error) { return input.View, nil },
-		LocalRoleStateRoot:   input.StateRoot, PollInterval: 20 * time.Millisecond, CheckPlacement: func() error { return nil }}
+		LocalRoleStateRoot:   input.StateRoot, PollInterval: 20 * time.Millisecond, CheckPlacement: func() error { return nil },
+		// Participants share the component container's cgroup. Owner-use evidence
+		// is an explicit model, not measurement of isolated systemd role scopes.
+		ResourceMeasure: func() (resource.Sample, error) {
+			return resource.Sample{RSSBytes: 32 << 20, MemoryBytes: 32 << 20}, nil
+		}}
 	certificate := tls.Certificate{Certificate: input.Certificates, PrivateKey: input.Key}
 	switch input.Role {
 	case "issuer":
@@ -53,7 +58,8 @@ func roleProcessConfig(input roleProcessInput) node.Config {
 	return config
 }
 
-// Public State/placement are explicit fixtures; all receiving duties use Run.
+// Public State, placement and pressure/owner-use are explicit fixtures;
+// all receiving duties use Run and retain real hosting allowance accounting.
 // These heaps contain role secrets, stay local and cannot qualify latency.
 func runRoleObservationChild(t *testing.T, path string) {
 	raw, err := os.ReadFile(path)
