@@ -7,7 +7,7 @@ permissions:
 jobs:
   authority:
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
@@ -20,7 +20,7 @@ jobs:
           TEST_RUN: ^(TestTextReadCancellationRejectsAdditionalCleanupFailure|TestTextReadResultJoinsContextLossBeforeLocalRequest)$
           TEST_RACE: "true"
         run: |
-          for attempt in $(seq 1 20); do
+          for attempt in $(seq 1 60); do
             printf 'authority-probe fresh-process=%s\n' "$attempt"
             args=(-json -count=1 -timeout=5m -run "$TEST_RUN")
             if [[ "$TEST_RACE" == true ]]; then args+=(-race); fi
