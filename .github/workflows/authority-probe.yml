@@ -14,11 +14,20 @@ jobs:
         with:
           go-version: 1.26.8
           cache: true
-      - name: Repeat exact failed test owner in fresh processes with safe boundary observations
+      - name: Repeat original CI wrapper in fresh processes with Source observations
         env:
-          GOFLAGS: -mod=readonly
+          TEST_PACKAGE: github.com/dianabuilds/ardents-network/internal/endpoint
+          TEST_RUN: ^(TestTextReadCancellationRejectsAdditionalCleanupFailure|TestTextReadResultJoinsContextLossBeforeLocalRequest)$
+          TEST_RACE: "true"
         run: |
           for attempt in $(seq 1 20); do
             printf 'authority-probe fresh-process=%s\n' "$attempt"
-            go test -json -race -count=1 -timeout=5m -run '^(TestTextReadCancellationRejectsAdditionalCleanupFailure|TestTextReadResultJoinsContextLossBeforeLocalRequest)$' ./internal/endpoint
+            args=(-json -count=1 -timeout=5m -run "$TEST_RUN")
+            if [[ "$TEST_RACE" == true ]]; then args+=(-race); fi
+            test_log="$RUNNER_TEMP/authority-$attempt.json"
+            set +e
+            timeout --signal=QUIT --kill-after=10s 330s go test "${args[@]}" "$TEST_PACKAGE" | tee "$test_log"
+            status=${PIPESTATUS[0]}
+            set -e
+            if (( status != 0 )); then exit "$status"; fi
           done
