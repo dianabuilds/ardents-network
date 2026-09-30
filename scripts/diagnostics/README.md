@@ -1,6 +1,7 @@
 # Ardents local diagnostic package
 
-A finite local Docker tool environment plus private process debug mode. Start
+A local Docker tool environment with continuous selected-source logging, a
+live log panel, finite diagnostic captures and private process debug mode. Start
 with [the owner and observability inventory](../../docs/development/local-diagnostics.md).
 Generated evidence, profiles, state and caches always remain outside Git.
 
@@ -42,9 +43,111 @@ alias diag='docker compose -f scripts/diagnostics/compose.yaml run --rm runner'
 diag doctor
 ```
 
-Always use a **new run name**, e.g. `/evidence/route-20260930-a`; existing capture
+For finite captures always use a **new run name**, e.g. `/evidence/route-20260930-a`; existing capture
 paths refuse rather than replacing evidence. The following examples use Linux
 `diag`. On Windows pass the same arguments to `invoke.ps1 -EvidenceRoot $evidence`.
+
+## Continuous logs and live monitoring
+
+Select the actual local command explicitly. Monitoring starts no profile capture,
+automatic product test or bug repair. The current live panel covers source and
+log-delivery state; measured metric history and local alert lifecycle are still
+pending. This temporary log panel is not the final Node administration design.
+
+```sh
+# No listener by default; safe JSON events go to console and retained files.
+diag monitor -name node -out /state/node-monitor -- \
+  /evidence/bin/ardents-node node --config /evidence/node-config.json
+
+# Optional live panel; publish the host port on loopback only.
+docker compose -f scripts/diagnostics/compose.yaml --profile monitor run --rm \
+  --service-ports monitor monitor -name node -out /state/node-monitor \
+  -console=false -container -listen 0.0.0.0:8094 -- \
+  /evidence/bin/ardents-node node --config /evidence/node-config.json
+```
+
+On Windows use `invoke.ps1 -EvidenceRoot $evidence -Service monitor` with the same
+`monitor ...` arguments. The panel is at `http://127.0.0.1:8094/`. Its status reads
+the selected supervisor's bounded memory, independently of file delivery. After
+source exit it keeps the terminal source result visible until the operator stops
+monitoring. Signal or optional `-timeout` bounds the monitor lifetime. The process
+exit, capture timeout and file/console/status failures remain separate; a failed
+sink or lost delivery makes the command fail even when the source exited zero.
+
+The output must be a canonical absolute directory outside source, owned by the
+process UID with mode 0700. Linux private `/state` is the Docker Desktop default;
+do not assume Windows bind mounts enforce Unix permissions. Reuse this selected
+monitor directory on restart: owned retained segments count against the same
+budget, while per-session counters and row sequence restart at zero. Unknown
+entries, symlinks, foreign ownership and a second writer refuse without deleting
+foreign files. A preserved incomplete `monitor.json.tmp` also refuses reopening;
+retain and inspect the failure before explicitly cleaning its private evidence.
+
+| Flag | Default | Meaning |
+|---|---|---|
+| `-segment-bytes` | 8 MiB | Maximum segment size; at least the 16 KiB input fragment limit |
+| `-retain-bytes` | 64 MiB | Total owned log payload bytes; between segment size and 1 GiB |
+| `-retain-files` | 9 | All log-directory files, including the empty ownership lock; 2–128 |
+| `-rotate-after` | 15 min | Rotate on the next record after segment age |
+| `-retain-for` | 24 h | Maximum segment age; positive and at least rotation age, at most 365 days |
+| `-timeout` | 0 | Follow the selected source until signal; optional finite duration up to 24 h |
+| `-raw` | false | Explicit private retention of sensitive original stdout/stderr |
+| `-listen` | empty | No HTTP listener unless explicitly selected |
+
+The independent status file and its one temporary replacement are each bounded
+at 64 KiB outside the log payload budget. File queues contain at most 128 bounded
+records, console queues 64; the memory tail retains 64 safe rows. Record projection
+can add bytes independently of raw output, so channel-loss counters must not be
+summed into a unique lost-source-byte count. Age/count/byte retention expiry is
+reported separately from failed delivery. Retention is not a filesystem quota;
+provision finite filesystem space for logs, metadata, working space and any
+supervised-command artifacts. This store does not promise power-loss durability.
+
+Console output is safe fixed-category JSON. Structured events from stdout and
+stderr use the same projection; unknown/oversized lines produce fixed notices,
+never arbitrary content. Use `-console=false` when redirecting to a regular file;
+the optional console requires bounded pipe/terminal writes. Raw log files are
+private engineering evidence and are never served by HTTP. The panel has stream,
+category and visible-text filters, view-only pause, separate producer/collector
+freshness, source result and independent delivery failures. The visible tail is
+not the entire retained file history. Row order is collector observation order,
+not proof of cross-process causality or current Node readiness.
+
+HTTP admits at most four open connections, bounded headers/timeouts, loopback
+hosts and same-origin browser requests. `-container` permits container wildcard
+binding only with an explicitly loopback-published host port. The listener exposes
+safe local timing/numeric metadata to other local clients able to reach it; it is
+not an authority to access product payloads, keys or another participant's data.
+
+### Engineering verification of sink failures
+
+Use the ordinary diagnostic tests for rotation, restart, foreign-file/symlink
+refusal, structured stdout/stderr projection, blocked console, source timeout,
+and independent live HTTP health. A real full-disk fixture additionally needs a
+selected finite filesystem; a failed setup is an invalid environment.
+
+```sh
+# Rebuild the current image first. This fixture contains no product data.
+docker run -d --name ardents-monitor-full-disk --init --read-only \
+  --cap-drop ALL --security-opt no-new-privileges:true --user 10001:10001 \
+  --memory 256m --cpus 1 --pids-limit 32 \
+  --tmpfs /tmp:rw,size=16m,mode=1777 --tmpfs /quota:rw,size=64k,mode=1777 \
+  -p 127.0.0.1:8095:8095 ardents-diagnostics:local \
+  monitor -name full-disk-fixture -out /quota/source -console=false -raw \
+  -segment-bytes 16384 -retain-bytes 1048576 -retain-files 64 \
+  -container -listen 0.0.0.0:8095 -- \
+  python3 -c "for n in range(40000): print('internal-fixture-' + 'x'*240, flush=True)"
+```
+
+Inspect `/status` while the source finishes: exit 0 and 10,320,000 stdout bytes;
+file failure and lost bytes; continued live response and joined sinks. Confirm
+`df -B1 /quota` reports 65,536 bytes used and zero available. Save the projected
+status and file inventory outside Git before stopping. After `docker stop -t 8
+ardents-monitor-full-disk`, inspect its terminal container state: the monitor
+must exit nonzero and retain ENOSPC, even though the fixture exited zero. A full
+disk may prevent the status file itself from being saved; the in-memory live
+status is deliberately independent. This fixture is engineering verification,
+not an operator-facing monitoring check or a product readiness qualification.
 
 ## Static, race and profiles
 

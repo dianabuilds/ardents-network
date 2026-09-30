@@ -1,0 +1,190 @@
+//go:build ignore
+
+package main
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"io"
+	"net"
+	"net/http"
+	"net/url"
+	"strconv"
+	"sync"
+	"time"
+)
+
+type monitorView struct {
+	server   *http.Server
+	listener net.Listener
+	done     chan struct{}
+	outcome  error
+}
+
+// The panel reads the selected supervisor's memory, never raw files or another
+// process. A file-sink outage therefore does not hide its independent health.
+func monitorHandler(delivery *monitorDelivery) http.Handler {
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /{$}", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.Header().Set("Content-Security-Policy", "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'")
+		io.WriteString(w, monitorDashboard)
+	})
+	mux.HandleFunc("GET /status", func(w http.ResponseWriter, r *http.Request) {
+		state := delivery.snapshot()
+		age := time.Since(state.Updated).Seconds()
+		if age < 0 {
+			age = 0
+		}
+		var outputAge *float64
+		if state.LastOutput != nil {
+			value := time.Since(*state.LastOutput).Seconds()
+			if value < 0 {
+				value = 0
+			}
+			outputAge = &value
+		}
+		status := "not-started"
+		if state.StartFailed {
+			status = "start-failed"
+		} else if state.SourceAlive {
+			status = "running"
+		} else if state.Finished != nil {
+			status = "stopped"
+		}
+		if state.Finished == nil && age > 3 {
+			status = "collector-stale"
+		}
+		body, err := json.Marshal(struct {
+			State               monitorState `json:"state"`
+			SourceStatus        string       `json:"source_status"`
+			CollectorAgeSeconds float64      `json:"collector_age_seconds"`
+			OutputAgeSeconds    *float64     `json:"output_age_seconds"`
+		}{state, status, age, outputAge})
+		if err != nil || len(body) > 65536 {
+			http.Error(w, "monitor status unavailable", http.StatusServiceUnavailable)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(body)
+	})
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "no-store")
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		host, _, err := net.SplitHostPort(r.Host)
+		ip := net.ParseIP(host)
+		if err != nil || (host != "localhost" && (ip == nil || !ip.IsLoopback())) {
+			http.Error(w, "local panel host required", http.StatusForbidden)
+			return
+		}
+		if origin := r.Header.Get("Origin"); origin != "" {
+			parsed, err := url.Parse(origin)
+			if err != nil || parsed.Scheme != "http" || parsed.Host != r.Host || parsed.Path != "" {
+				http.Error(w, "same origin required", http.StatusForbidden)
+				return
+			}
+		}
+		if r.Header.Get("Sec-Fetch-Site") == "cross-site" {
+			http.Error(w, "same origin required", http.StatusForbidden)
+			return
+		}
+		mux.ServeHTTP(w, r)
+	})
+}
+
+func openMonitorView(address string, container bool, delivery *monitorDelivery) (*monitorView, error) {
+	host, port, err := net.SplitHostPort(address)
+	if err != nil {
+		return nil, err
+	}
+	ip := net.ParseIP(host)
+	numericPort, err := strconv.ParseUint(port, 10, 16)
+	if err != nil || ip == nil || !ip.IsLoopback() && !(container && host == "0.0.0.0") || numericPort > 65535 {
+		return nil, errors.New("monitor panel requires loopback or explicit container binding")
+	}
+	listener, err := net.Listen("tcp", address)
+	if err != nil {
+		return nil, err
+	}
+	bounded := &monitorListener{Listener: listener, slots: make(chan struct{}, 4)}
+	view := &monitorView{listener: bounded, done: make(chan struct{})}
+	view.server = &http.Server{Handler: monitorHandler(delivery), ReadHeaderTimeout: 3 * time.Second, ReadTimeout: 5 * time.Second, WriteTimeout: 5 * time.Second, IdleTimeout: 10 * time.Second, MaxHeaderBytes: 8192}
+	go func() {
+		outcome := view.server.Serve(bounded)
+		if errors.Is(outcome, http.ErrServerClosed) {
+			outcome = nil
+		}
+		view.outcome = outcome
+		if outcome != nil {
+			delivery.mu.Lock()
+			delivery.state.PanelFailed = true
+			delivery.mu.Unlock()
+		}
+		close(view.done)
+	}()
+	return view, nil
+}
+func (v *monitorView) close() error {
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	err := v.server.Shutdown(ctx)
+	if err != nil {
+		err = errors.Join(err, v.server.Close())
+	}
+	select {
+	case <-v.done:
+		return errors.Join(err, v.outcome)
+	case <-ctx.Done():
+		return errors.Join(err, ctx.Err())
+	}
+}
+
+type monitorListener struct {
+	net.Listener
+	slots chan struct{}
+}
+
+func (l *monitorListener) Accept() (net.Conn, error) {
+	for {
+		conn, err := l.Listener.Accept()
+		if err != nil {
+			return nil, err
+		}
+		select {
+		case l.slots <- struct{}{}:
+			return &monitorConn{Conn: conn, slots: l.slots}, nil
+		default:
+			conn.Close()
+		}
+	}
+}
+
+type monitorConn struct {
+	net.Conn
+	slots chan struct{}
+	once  sync.Once
+}
+
+func (c *monitorConn) Close() error {
+	err := c.Conn.Close()
+	c.once.Do(func() { <-c.slots })
+	return err
+}
+
+const monitorDashboard = `<!doctype html><html lang="ru"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Ardents · Мониторинг</title>
+<style>
+:root{color-scheme:dark;font:15px system-ui;background:#0b1220;color:#e5edf8}*{box-sizing:border-box}body{margin:0}main{max-width:1220px;margin:auto;padding:28px}header{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:22px}h1{font-size:26px;margin:6px 0}h2{font-size:18px;margin:0}p{color:#aebed4;line-height:1.5}section{background:#111e30;border:1px solid #26374e;border-radius:12px;padding:20px;margin:18px 0}.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.cell{padding:12px;background:#0c1728;border-radius:8px}.label{font-size:13px;color:#aebed4}.value{font-size:19px;margin-top:8px}.toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin:16px 0}button,select,input{font:inherit;color:inherit;background:#1b2e46;border:1px solid #3b526e;border-radius:6px;padding:8px 12px}button{cursor:pointer}button:hover{background:#294568}input{min-width:220px}table{width:100%;border-collapse:collapse;font-size:14px}td,th{text-align:left;vertical-align:top;padding:10px 8px;border-bottom:1px solid #26374e}th{color:#aebed4;font-weight:500}code{white-space:pre-wrap;overflow-wrap:anywhere}.table{overflow:auto}.fault{color:#ffb2ab}.muted{color:#aebed4}.right{text-align:right}details{margin-top:8px}summary{cursor:pointer;color:#9cc7ff}small{color:#aebed4}@media(max-width:750px){main{padding:16px}.grid{grid-template-columns:1fr}header{align-items:flex-start;flex-direction:column}.table{max-width:100%}}
+</style><main>
+<header><div><small>ARDENTS / LOCAL MONITORING</small><h1>Мониторинг · живые логи</h1><div id="source" class="muted">Ожидаем выбранный источник</div></div><button id="pause">Пауза просмотра</button></header>
+<section><div class="grid"><div class="cell"><div class="label">Источник</div><div id="source-state" class="value">—</div><div id="source-result" class="muted"></div></div><div class="cell"><div class="label">Сборщик</div><div id="collector-state" class="value">—</div><div id="freshness" class="muted"></div></div><div class="cell"><div class="label">Файлы логов</div><div id="file-state" class="value">—</div><div id="retention" class="muted"></div></div></div><p id="faults" class="fault"></p><div id="delivery" class="muted"></div></section>
+<section><h2>Логи</h2><div class="toolbar"><label>Поток <select id="stream"><option value="">Все</option><option>stdout</option><option>stderr</option></select></label><label>Категория <select id="kind"><option value="">Все</option></select></label><input id="search" placeholder="Фильтр видимых записей" aria-label="Фильтр логов"><button id="refresh">Обновить</button></div><p id="window">Последние 64 записи. Пауза останавливает только просмотр.</p><div class="table"><table><thead><tr><th>№</th><th>Время</th><th>Поток</th><th>Событие</th></tr></thead><tbody id="rows"></tbody></table></div><p id="empty">Ожидаем события</p></section>
+<p>Панель показывает фиксированные категории и числовые наблюдения выбранного локального процесса. Содержимое stdout/stderr и приватные файлы через HTTP не выдаются. Работающий процесс не доказывает готовность узла.</p>
+</main><script>
+const el=id=>document.getElementById(id),text=(id,value)=>el(id).textContent=value;let paused=false,busy=false,current=null,lastSeen=0,viewMissed=0;
+function bytes(n){if(n<1024)return n+' B';if(n<1048576)return (n/1024).toFixed(1)+' KiB';return (n/1048576).toFixed(1)+' MiB'}
+function rows(){if(!current)return;const state=current.state,body=el('rows');body.replaceChildren();let visible=0;for(const r of state.tail||[]){if(el('stream').value&&r.stream!==el('stream').value)continue;if(el('kind').value&&r.entry.kind!==el('kind').value)continue;const summary=[r.entry.kind,r.entry.state,r.entry.carrier,r.entry.failure].filter(Boolean).join(' · ');if(el('search').value&&!summary.toLowerCase().includes(el('search').value.toLowerCase()))continue;visible++;let row=document.createElement('tr');for(const v of [r.sequence,new Date(r.at).toLocaleTimeString('ru-RU',{hour12:false})+'.'+String(new Date(r.at).getMilliseconds()).padStart(3,'0'),r.stream,summary]){let cell=document.createElement('td');cell.textContent=v;row.append(cell)}if(r.entry.resource||r.entry.hosting){let details=document.createElement('details'),label=document.createElement('summary'),code=document.createElement('code');label.textContent='Числовые поля';code.textContent=JSON.stringify({resource:r.entry.resource,hosting:r.entry.hosting},null,2);details.append(label,code);row.lastChild.append(details)}body.append(row)}text('empty',visible?'':'Нет записей для выбранного фильтра');text('window','Показано '+visible+' из '+(state.tail||[]).length+' последних записей · всего '+state.total_rows+'. '+(viewMissed?'Вне окна просмотра: '+viewMissed+'. ':'')+'Пауза останавливает только просмотр.')}
+function render(data){current=data;let s=data.state;text('source',s.source_name+' · PID '+(s.source_pid||'не запущен')+' · с '+new Date(s.started).toLocaleString('ru-RU'));text('source-state',{'running':'Процесс работает','stopped':'Процесс завершён','start-failed':'Отказ запуска','not-started':'Ожидаем запуск','collector-stale':'Нет свежих наблюдений'}[data.source_status]||'Недоступно');text('source-result',s.source_exit===undefined?'Exit code ещё не наблюдён':'Exit code: '+s.source_exit+(s.timed_out?' · таймаут':s.interrupted?' · прерывание':''));text('collector-state',s.finished?'Сбор завершён':'Сбор выполняется');text('freshness','Снимок: '+data.collector_age_seconds.toFixed(1)+' с назад · вывод: '+(data.output_age_seconds===null?'ещё не наблюдался':data.output_age_seconds.toFixed(1)+' с назад'));text('file-state',s.file_failed?'Ошибка записи':bytes(s.logs.retained_bytes)+' / '+bytes(s.limits.max_bytes));text('retention',s.logs.files+' / '+s.limits.max_files+' файлов · удалено по сроку/лимиту '+bytes(s.logs.expired_bytes));let faults=[];if(s.console_failed)faults.push('Консоль: отказ');if(s.file_failed)faults.push('Файлы: отказ');if(s.snapshot_failed)faults.push('Сохранение состояния: отказ');if(s.cleanup_failed)faults.push('Завершение: ошибки сохранены');if(s.panel_failed)faults.push('HTTP: отказ');const lost=s.queue_dropped_bytes+s.console_dropped_bytes+s.logs.lost_bytes;if(lost)faults.push('Есть потери доставки; счётчики каждого канала приведены ниже');text('faults',faults.join(' · '));text('delivery','Очередь файлов: потеряно '+bytes(s.queue_dropped_bytes)+' · запись файлов: '+bytes(s.logs.lost_bytes)+' · консоль: '+bytes(s.console_dropped_bytes)+' · неструктурированных строк: '+s.unknown_lines+' · слишком длинных: '+s.oversized_lines);if(lastSeen&&s.total_rows-lastSeen>64)viewMissed+=s.total_rows-lastSeen-64;lastSeen=s.total_rows;const selected=el('kind').value,kinds=[...new Set((s.tail||[]).map(r=>r.entry.kind))].sort();el('kind').replaceChildren();for(const k of ['',...kinds]){let o=document.createElement('option');o.value=k;o.textContent=k||'Все';el('kind').append(o)}if(kinds.includes(selected))el('kind').value=selected;rows()}
+async function update(force=false){if(busy||(paused&&!force))return;busy=true;try{const response=await fetch('/status',{cache:'no-store',signal:AbortSignal.timeout(3000)});if(!response.ok)throw Error();render(await response.json())}catch{text('collector-state','Источник наблюдений недоступен');text('faults','Не удалось получить свежий снимок. Последние записи оставлены на экране.')}finally{busy=false}}
+el('pause').onclick=()=>{paused=!paused;text('pause',paused?'Продолжить просмотр':'Пауза просмотра');if(paused)text('freshness','Просмотр приостановлен · снимок от '+(current?new Date(current.state.updated).toLocaleTimeString('ru-RU'):'—'));else update()};el('refresh').onclick=()=>update(true);el('stream').onchange=rows;el('kind').onchange=rows;el('search').oninput=rows;update();setInterval(update,1000);
+</script></html>`

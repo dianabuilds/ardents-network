@@ -189,7 +189,7 @@ func handlerWithConnection(dir, compare, socket string) http.Handler {
 	mux.HandleFunc("GET /summary", func(w http.ResponseWriter, r *http.Request) {
 		s, err := readSummary(dir)
 		if err != nil {
-			http.Error(w, "capture unavailable", 503)
+			http.Error(w, "capture unavailable", http.StatusServiceUnavailable)
 			return
 		}
 		w.Header().Set("Cache-Control", "no-store")
@@ -198,7 +198,7 @@ func handlerWithConnection(dir, compare, socket string) http.Handler {
 	mux.HandleFunc("GET /samples", func(w http.ResponseWriter, r *http.Request) {
 		samples, err := safeSamplesForPanel(dir)
 		if err != nil {
-			http.Error(w, "samples unavailable or incomplete", 503)
+			http.Error(w, "samples unavailable or incomplete", http.StatusServiceUnavailable)
 			return
 		}
 		w.Header().Set("Cache-Control", "no-store")
@@ -213,7 +213,7 @@ func handlerWithConnection(dir, compare, socket string) http.Handler {
 	mux.HandleFunc("GET /metrics", func(w http.ResponseWriter, r *http.Request) {
 		s, err := readSummary(dir)
 		if err != nil {
-			http.Error(w, "capture unavailable", 503)
+			http.Error(w, "capture unavailable", http.StatusServiceUnavailable)
 			return
 		}
 		w.Header().Set("Content-Type", "text/plain; version=0.0.4")

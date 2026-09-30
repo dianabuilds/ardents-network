@@ -46,6 +46,37 @@ Normal monitoring must not enable expensive profiling merely to read counters.
 Its retention budgets include indexes, temporary rotation files and backend
 working space; a backend retention setting alone is not a filesystem quota.
 
+### Selected-source live log implementation
+
+The `monitor` engineering command supervises one explicitly supplied local
+command and keeps safe console delivery, private retained log segments, an
+independent bounded status writer and an optional live loopback panel. Its safe
+source label and actual PID identify the selected local process; no Network
+readiness or cross-owner attribution is inferred. Collector heartbeat and last
+producer output have separate ages. A quiet stream is not a failed Node verdict.
+
+The panel reads bounded supervisor memory, so file or snapshot failure remains
+visible without reading the failed sink. Source exit stays visible until the
+operator stops monitoring. Tail filters and pause affect the view only. Declared
+log retention enforces size, age, count and bytes across restart; loss counters
+are session-local, and intentional retention expiry is separate from failed
+delivery. The independent status file plus its one replacement are each at most
+64 KiB in addition to the log payload budget. Queues and the 64-row memory tail
+are finite. Filesystem quota remains the operator's responsibility; no power-loss
+durability is promised. A failed console stops retrying writes while continuing
+to account discarded records. Snapshot I/O does not block source cancellation;
+bounded sink joins retain timeout and write/close failures rather than declare
+incomplete cleanup successful. Uninterruptible OS I/O can exceed an individual
+worker's join bound and must remain a failed outcome.
+
+Structured stdout and stderr use the shared safe projection. Unknown or oversized
+output becomes fixed notices; raw stream retention is explicit private engineering
+capture, never HTTP access. Source arguments and private raw paths do not enter
+the live status. Continuous metric history, local alerts and the final
+monitoring/administration interface are not supplied by this log slice. Limits,
+restart refusal conditions and console prerequisites belong to the command
+[recipe](../../scripts/diagnostics/README.md#continuous-logs-and-live-monitoring).
+
 ### Debug mode
 
 Debug mode adds a finite, explicitly selected capture for one local owner:
@@ -54,14 +85,35 @@ CPU, heap, block, mutex and Go execution trace profiles. Show capture duration,
 progress, completion, cancellation, overhead settings and failures. Keep raw
 artifacts private and summaries separate from raw profile or log access.
 
+Debug mode must not introduce a lawful-interception capability: no content
+interception endpoint, decryption-key export, impersonation, protection bypass,
+or additional grant to observe another participant's Application data. Node
+administration and diagnostic access must not confer those capabilities. Product
+payloads, credentials and key material do not belong in normal logs or projected
+monitoring output. Explicit local engineering raw captures and memory profiles
+can contain sensitive data; private placement is a handling requirement, not
+proof that those artifacts contain no secrets. Diagnostic changes must check
+these boundaries at their actual producer and consumer seams.
+
 Debug instrumentation must preserve authority, wire behavior, cancellation and
 cleanup errors. It cannot make an incomplete operation successful, retry product
 operations automatically or weaken the common Route protection baseline.
 
 ### Panel and verification
 
+The current saved-run panel is a temporary engineering interface. Its layout
+and interaction model are not the design baseline for the future monitoring or
+Node administration panel; that interface requires a complete redesign around
+operator tasks.
+
 The primary views are Overview, Logs, Metrics, Alerts and Debug. Saved command
-runs are supporting evidence within these views. Future Node control actions
+runs are supporting evidence within these views. Suggested checks, test recipes
+and failure reproduction belong to developer work, not the normal monitoring
+workflow. Monitoring observes selected sources and evaluates declared alert
+rules; it does not autonomously search for or repair product bugs. Run comparison
+belongs in a separate developer tool: name both runs and their conditions,
+render units and meaningful differences, and distinguish incomparable conditions
+from measured change without presenting a speedup as established. Future Node control actions
 require their own existing owner and authorization boundary; monitoring does
 not confer permission to change Node configuration or lifecycle.
 
@@ -127,12 +179,12 @@ No TCP debug listener, automatic remote export or worker escape is introduced.
    Keep race and performance runs separate. Delete sensitive evidence explicitly
    after diagnosis according to the local owner's retention decision.
 
-Collector limits: 16 KiB per input line; 256 recent lifecycle/pressure transitions and one latest periodic resource sample; 16 MiB per
+Finite command collector limits: 16 KiB per input line; 256 recent lifecycle/pressure transitions and one latest periodic resource sample; 16 MiB per
 raw stream; 4 MiB per event/sample file; 1024 observed group processes; one-second
 sampling; maximum caller duration 24 h. Saturation continues pipe draining and
 increments independent loss counters. A disk/write failure is retained and makes
-the outcome incomplete. No backend exporter queue exists. Each run is finite;
-there is no unattended retention service. Arbitrary supervised commands and Go
+the outcome incomplete. No backend exporter queue exists. Each finite command capture is bounded; its saved-run files do not rotate.
+The separate `monitor` command owns the live retained log lifecycle. Arbitrary supervised commands and Go
 profiles can write additional files: provision a finite filesystem quota for
 long or hostile diagnostics. Log limits are not a filesystem quota.
 

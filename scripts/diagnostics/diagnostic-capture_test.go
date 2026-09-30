@@ -84,6 +84,15 @@ func TestSinkFailureDoesNotStopPipeDraining(t *testing.T) {
 	if f.failure == nil || p.summary.StderrBytes != 16 {
 		t.Fatal("sink failure lost or producer blocked")
 	}
+	if f.dropped != 16 || p.summary.RawDroppedBytes != 16 || !p.summary.CaptureIncomplete {
+		t.Fatalf("failed sink lost byte accounting: dropped=%d summary=%+v", f.dropped, p.summary)
+	}
+	if err := drain(strings.NewReader("more"), f, p, false); err != nil {
+		t.Fatal(err)
+	}
+	if f.dropped != 20 || p.summary.RawDroppedBytes != 20 || p.summary.StderrBytes != 20 {
+		t.Fatalf("discard after sink failure was not counted: dropped=%d summary=%+v", f.dropped, p.summary)
+	}
 }
 func TestFailureAndTimeoutHaveTerminalEvidence(t *testing.T) {
 	for _, tc := range []struct {
