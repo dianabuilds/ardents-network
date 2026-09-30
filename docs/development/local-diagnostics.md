@@ -185,7 +185,8 @@ The RSS plot uses at most 1000 maximum-per-bucket points on observed UTC; peak
 facts remain over the admitted sample history. The plot is not test timing.
 
 Export is browser-local and bounded to 256 KiB. The operator must open a visible
-JSON preview before download. That preview is frozen across automatic refresh;
+JSON preview before download or copying. A browser download request is not
+a save receipt; copying the same preview is the fallback. That preview is frozen across automatic refresh;
 changing provenance selection invalidates it and requires another preview.
 The default projection omits source/image/tool identity and absolute event UTC.
 An explicit checkbox includes the already validated conditions. Both compared

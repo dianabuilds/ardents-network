@@ -200,6 +200,9 @@ snapshot and cannot silently change during refresh. Source/image/tool identities
 are omitted by default; selecting their checkbox invalidates the preview.
 Event UTC, raw logs, paths, command arguments and profiles are excluded. The
 export is capped at 256 KiB, downloaded only in the browser, never uploaded.
+If browser download is unavailable, **Копировать просмотренный JSON** copies
+the same frozen projection, or selects it for ordinary manual copying when
+clipboard permission is unavailable. A download request is not a save receipt.
 Treat it as private operational metadata even after projection.
 
 ## Debugger, syscalls and network fault diagnosis
