@@ -206,6 +206,10 @@ func readLocalBinding(root string, read func(string, int64) ([]byte, error)) (ch
 	if !bytes.Equal(files["headless.json"], headlessBytes) || !bytes.Equal(files["source.json"], sourceBytes) {
 		return checkedBinding{}, errors.New("installation rendered declarations differ")
 	}
+	unit, err := renderEndpointUnit(files["ardents-endpoint.service"], request, directory)
+	if err != nil || !bytes.Equal(unit, files["endpoint-unit.service"]) {
+		return checkedBinding{}, errors.New("installation rendered Endpoint unit differs from its authenticated template")
+	}
 	role := request.Headless.Role
 	if role == "" {
 		role = "publisher"

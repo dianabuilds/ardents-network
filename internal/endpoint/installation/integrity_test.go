@@ -164,9 +164,12 @@ func bindingBytesFixture(t *testing.T) (string, map[string][]byte, localBinding)
 		}
 		files[filepath.Join(directory, name)] = body
 	}
-	// These fixture bytes do not implement or qualify a systemd unit. The
-	// platform wrapper additionally checks actual fixed resources and access.
-	files[filepath.Join(directory, "endpoint-unit.service")] = []byte("fixture rendered unit\n")
+	// Rendering is component evidence; this fixture does not run a manager.
+	rendered, err := renderEndpointUnit(enrolled.ProtectedFiles["ardents-endpoint.service"], request, directory)
+	if err != nil {
+		t.Fatal(err)
+	}
+	files[filepath.Join(directory, "endpoint-unit.service")] = rendered
 	for _, name := range []string{"protected-endpoint.json", "request.json", "headless.json", "source.json", "endpoint-unit.service"} {
 		binding.Files[name] = digestHex(files[filepath.Join(directory, name)])
 	}

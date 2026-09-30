@@ -1,5 +1,6 @@
 [Unit]
 Description=Ardents fixed text publisher activation
+PartOf=ardents-endpoint.service
 
 [Socket]
 ListenStream=/run/ardents-text/publisher.sock

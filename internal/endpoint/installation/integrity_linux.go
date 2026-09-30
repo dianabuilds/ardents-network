@@ -18,6 +18,13 @@ import (
 )
 
 func observeBinding(checked checkedBinding) error {
+	if err := observeAccountAndRoots(checked, true); err != nil {
+		return err
+	}
+	return observeFixedResources(checked)
+}
+
+func observeAccountAndRoots(checked checkedBinding, selected bool) error {
 	account, err := user.Lookup("ardents-endpoint")
 	if err != nil || account.Uid != strconv.FormatUint(uint64(checked.binding.UID), 10) || account.Gid != strconv.FormatUint(uint64(checked.binding.GID), 10) {
 		return errors.New("installation Endpoint account identity differs")
@@ -26,7 +33,7 @@ func observeBinding(checked checkedBinding) error {
 	if err != nil || group.Gid != account.Gid {
 		return errors.New("installation Endpoint group identity differs")
 	}
-	if err := checkGenerationAccess(checked.binding.InstallationRoot, checked); err != nil {
+	if err := checkGenerationAccess(checked.binding.InstallationRoot, checked, selected); err != nil {
 		return err
 	}
 	for _, root := range checked.binding.MutableRoots {
@@ -52,6 +59,10 @@ func observeBinding(checked checkedBinding) error {
 			}
 		}
 	}
+	return nil
+}
+
+func observeFixedResources(checked checkedBinding) error {
 	artifact, err := worker.LoadArtifact(worker.Text)
 	if err != nil {
 		return err
@@ -112,7 +123,7 @@ func observePlatform(ctx context.Context) error {
 	return nil
 }
 
-func checkGenerationAccess(root string, checked checkedBinding) error {
+func checkGenerationAccess(root string, checked checkedBinding, selected bool) error {
 	for _, directory := range []string{root, filepath.Join(root, "generations"), checked.directory} {
 		info, err := os.Lstat(directory)
 		if err != nil || !info.IsDir() {
@@ -123,7 +134,10 @@ func checkGenerationAccess(root string, checked checkedBinding) error {
 			return errors.New("installation generation directory ownership differs")
 		}
 	}
-	paths := []string{filepath.Join(root, "selection.json"), filepath.Join(checked.directory, "binding.json")}
+	paths := []string{filepath.Join(checked.directory, "binding.json")}
+	if selected {
+		paths = append(paths, filepath.Join(root, "selection.json"))
+	}
 	for name := range checked.files {
 		paths = append(paths, filepath.Join(checked.directory, name))
 	}

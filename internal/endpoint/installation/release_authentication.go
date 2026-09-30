@@ -20,6 +20,8 @@ const generationTarget = "ardents/linux-amd64/protected-endpoint"
 // It is not serializable into a reusable installation or restart authority.
 type Authorization struct {
 	program, generation release.Authorization
+	descriptor          []byte
+	resources           map[string][]byte
 }
 
 // Targets returns the executable proof and then the generation proof. The
@@ -86,7 +88,7 @@ func Authenticate(ctx context.Context, verifier *release.Verifier, enrolled enro
 	if err := ctx.Err(); err != nil {
 		return Authorization{}, err
 	}
-	return Authorization{program: programProof, generation: generationProof}, nil
+	return Authorization{program: programProof, generation: generationProof, descriptor: descriptor, resources: resources}, nil
 }
 
 func cloneFiles(input map[string][]byte) map[string][]byte {

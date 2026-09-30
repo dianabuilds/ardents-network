@@ -15,15 +15,20 @@ configuration format or an authority source.
 
 ## `ardents`
 
-### Selected protected installation commands — not implemented
+### Protected installation commands — qualification incomplete
 
 ADR-0119's successor selects `endpoint provision <request-file>`,
 `endpoint installation-check <installation-root>`,
 `endpoint start-installed <installation-root>`,
 `endpoint upgrade-installed <request-file>` and
-`endpoint recover-installed <installation-root>`. These spellings document the
-[implementation handoff](../technical/endpoint-service-runtime.md#selected-protected-installation-handoff),
-not callable or supported commands today. No generic privileged launch,
+`endpoint recover-installed <installation-root>`. Provision, installation-check
+and start-installed are callable; upgrade and recovery remain unfinished. The
+[implementation handoff](../technical/endpoint-service-runtime.md#selected-protected-installation-handoff)
+defines their bounded contract. Full supported installed qualification is still
+incomplete. Provision returns only `installed-stopped`; installation-check
+returns only `local-integrity-verified`; start-installed accepts only the actual
+fixed service main process before delegating to the bound participant plan.
+No generic privileged launch,
 implicit start on provision, authority-key creation or accepting test permission
 route is selected. Existing command behavior remains documented below.
 

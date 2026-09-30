@@ -9,6 +9,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"os"
 	"path/filepath"
 	"testing"
 	"time"
@@ -143,6 +144,13 @@ func protectedReleaseFixture(t *testing.T, changeGeneration func(map[string]any)
 	digests := map[string]string{}
 	for _, name := range []string{"ardents-linux-amd64", "ardents-text-linux-amd64", "ardents-text-reader@.service", "ardents-text-publisher@.service", "ardents-text-reader.socket", "ardents-text-publisher.socket", "50-ardents-text.rules", "ardents-text.conf", "ardents-endpoint.service"} {
 		resources[name] = []byte("fixture resource: " + name)
+		if name == "ardents-endpoint.service" {
+			var err error
+			resources[name], err = os.ReadFile("../../../packaging/text-worker/ardents-endpoint.service")
+			if err != nil {
+				t.Fatal(err)
+			}
+		}
 		digest := sha256.Sum256(resources[name])
 		digests[name] = hex.EncodeToString(digest[:])
 	}
