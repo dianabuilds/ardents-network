@@ -354,7 +354,7 @@ func validateEvidenceSocket(socket string) (outcome error) {
 	}
 	canonical, err := filepath.EvalSymlinks(socket)
 	if err != nil || canonical != socket {
-		return errors.New("Reader socket unavailable or contains symlinks")
+		return errors.New("reader socket unavailable or contains symlinks")
 	}
 	root, err := privateEvidenceRoot(filepath.Dir(socket))
 	if err != nil {
@@ -372,7 +372,7 @@ func validateEvidenceSocket(socket string) (outcome error) {
 	return nil
 }
 
-// Validation executes only the installed Go parser with a selected file descriptor.
+// Validation executes only the prebuilt Go parser with a selected file descriptor.
 // No symbols, executable, remote URL, shell, raw output or profile execution.
 func validateEvidenceFormat(parent context.Context, root *os.Root, name, kind string) (outcome error) {
 	f, err := root.OpenFile(name, os.O_RDONLY|syscall.O_NOFOLLOW|syscall.O_NONBLOCK, 0)
@@ -390,13 +390,15 @@ func validateEvidenceFormat(parent context.Context, root *os.Root, name, kind st
 	}
 	ctx, cancel := context.WithTimeout(parent, 2*time.Second)
 	defer cancel()
-	parserArgs := []string{"tool", "pprof", "-top", "-nodecount=1", "-symbolize=none", "/proc/self/fd/3"}
+	parserName := "pprof"
+	parserArgs := []string{"-top", "-nodecount=1", "-symbolize=none", "/proc/self/fd/3"}
 	outputLimit := 64 << 10
 	if kind == "go-trace" {
-		parserArgs = []string{"tool", "trace", "-pprof=sched", "/proc/self/fd/3"}
+		parserName = "trace"
+		parserArgs = []string{"-pprof=sched", "/proc/self/fd/3"}
 		outputLimit = 64 << 20
 	}
-	cmd := exec.CommandContext(ctx, "go", parserArgs...)
+	cmd := exec.CommandContext(ctx, parserName, parserArgs...)
 	cmd.ExtraFiles = []*os.File{f}
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	cmd.Cancel = func() error {

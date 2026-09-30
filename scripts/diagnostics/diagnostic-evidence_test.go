@@ -405,6 +405,7 @@ func TestEvidencePackagePreservesFailureWhenSelectedProfileCannotBeParsed(t *tes
 }
 
 func TestEvidencePackageAcceptsRealHeapProfileWithoutClaimingOperationAssociation(t *testing.T) {
+	t.Setenv("GOCACHE", filepath.Join(t.TempDir(), "empty-build-cache"))
 	source := reportFixture(t, 0)
 	if err := os.Chmod(source, 0700); err != nil {
 		t.Fatal(err)
@@ -526,6 +527,7 @@ func TestEvidencePackageRefusesReplacedCaptureRootDuringReaderSelection(t *testi
 }
 
 func TestEvidencePackageValidatesRealAndBrokenRuntimeTrace(t *testing.T) {
+	t.Setenv("GOCACHE", filepath.Join(t.TempDir(), "empty-build-cache"))
 	source := reportFixture(t, 0)
 	if err := os.Chmod(source, 0700); err != nil {
 		t.Fatal(err)

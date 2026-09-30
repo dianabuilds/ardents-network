@@ -436,8 +436,8 @@ Hash/size identify observed bytes, not a valid profile format, executable match,
 operation association or a replayable reproduction. Raw artifacts may contain
 sensitive data and remain private.
 
-Explicit pprof/trace selections are parsed offline by the installed Go toolchain,
-using an admitted file descriptor, no executable or symbolization, and no remote
+Explicit pprof/trace selections are parsed offline by prebuilt standard Go parsers,
+using an admitted file descriptor, no selected executable or symbolization, and no remote
 source or HTTP listener. The parser has a two-second deadline per selection,
 64 KiB stderr budget and either 64 KiB pprof table or 64 MiB trace-to-profile
 stdout budget. Output is discarded, not exposed. `validation: passed` means the
@@ -477,3 +477,17 @@ individual/total byte limits and cancellation of an actual in-flight Reader HTTP
 request. Original captures remain preserved. Full final gates and completed
 bounded review still precede integration. No product/wire
 identity or interception grant is introduced by its engineering schema.
+
+### Installed parser prerequisites
+
+The selected Go 1.26 toolchain can build its standard pprof/trace tools lazily.
+Preparation is not profile parsing and must not consume the two-second capture
+parser budget. Explicit `make tools-install` builds `cmd/pprof` and `cmd/trace`
+with the selected toolchain into the writable `GOBIN`, or `GOPATH/bin` when
+`GOBIN` is unset. `DIAGNOSTIC_PARSERS_ONLY=1` selects only those standard tools;
+it installs no third-party module. Put that directory on PATH. Missing binaries
+are an invalid diagnostic environment, never a passing skip or an implicit build.
+The diagnostic image and selected architecture CI install them before execution.
+`doctor` and image inventory retain their compiler/build metadata. Heap-profile
+and runtime-trace CLI tests use an empty Go build cache; parsing must not compile
+or fetch tools. Process/output/deadline limits remain unchanged.

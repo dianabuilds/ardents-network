@@ -486,7 +486,7 @@ Select at most eight artifact basenames (ASCII letters/digits/dot/underscore/hyp
 including report inputs. Missing, oversized, non-private, linked or observed
 changing selected files refuse assembly. Existing fixed report inputs cannot be
 selected again. Opaque `-artifact` entries have kind `private-file` and `validation: not-checked`.
-Explicit `-profile` and `-trace` use the installed Go toolchain's offline parser
+Explicit `-profile` and `-trace` use prebuilt standard Go offline parsers
 and record `pprof`/`go-trace` plus `validation: passed` or `failed`. No filename
 extension supplies that claim. Validation failure returns nonzero and retains a
 partial package; parser acceptance does not bind it to a command/executable or
@@ -523,3 +523,20 @@ while forming and verifying a separate hypothesis.
 
 Final gates and bounded review remain required before integrating this slice. Rebuild the diagnostic
 image from the current source before expecting its CLI to include `bundle`.
+
+### Standard parser installation
+
+The Docker build includes prebuilt Go 1.26.8 `pprof` and `trace` binaries and
+records their build metadata. Native Linux diagnostic tests and bundle parsing
+require an explicit preparation step:
+
+```sh
+make tools-install DIAGNOSTIC_PARSERS_ONLY=1
+```
+
+The destination is `GOBIN` when set, otherwise `GOPATH/bin`; it must be writable
+at installation and on PATH during use. This command builds only the selected
+standard-library parsers, without third-party tool downloads. Clearing or changing
+the Go build cache after installation does not trigger compilation during bundle
+parsing. The two-second per-parser and whole-assembly limits remain unchanged.
+Missing tools cause failed validation; no automatic installation or passing skip.

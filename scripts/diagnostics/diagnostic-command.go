@@ -62,7 +62,8 @@ func doctor() error {
 	}{
 		{"go", []string{"version"}}, {"staticcheck", []string{"-version"}},
 		{"govulncheck", []string{"-version"}}, {"dlv", []string{"version"}},
-		{"go", []string{"version", "-m", "/go/bin/errcheck"}}, {"strace", []string{"-V"}}, {"ss", []string{"-V"}}, {"tcpdump", []string{"--version"}},
+		{"go", []string{"version", "-m", "/go/bin/errcheck"}},
+		{"go", []string{"version", "-m", "/go/bin/pprof"}}, {"go", []string{"version", "-m", "/go/bin/trace"}}, {"strace", []string{"-V"}}, {"ss", []string{"-V"}}, {"tcpdump", []string{"--version"}},
 	} {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		body, err := exec.CommandContext(ctx, tool.name, tool.args...).CombinedOutput()
