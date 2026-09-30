@@ -16,8 +16,8 @@ import (
 var errOperatorInputTooLarge = errors.New("operator input exceeds its bound")
 
 // readOperatorInput closes one command-owned input before returning its bounded
-// contents. It is deliberately private to ardents: plans are not a shared
-// product format or cross-command authority.
+// contents. File access is private to ardents; declaration grammar validation
+// can be delegated to its owning module without granting authority.
 func readOperatorInput(path string, maximum int64) ([]byte, error) {
 	if maximum <= 0 {
 		return nil, errors.New("operator input bound must be positive")

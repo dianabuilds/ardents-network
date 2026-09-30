@@ -14,6 +14,7 @@ github.com/dianabuilds/ardents-network/internal/endpoint
 github.com/dianabuilds/ardents-network/internal/endpoint/descriptorhistory
 github.com/dianabuilds/ardents-network/internal/endpoint/durableroot
 github.com/dianabuilds/ardents-network/internal/endpoint/permissionfile
+github.com/dianabuilds/ardents-network/internal/endpoint/runtimeplan
 github.com/dianabuilds/ardents-network/internal/endpoint/tokenjournal
 github.com/dianabuilds/ardents-network/internal/enrollment
 github.com/dianabuilds/ardents-network/internal/endpoint/portable

@@ -7,6 +7,14 @@ installation boundary. It is not implemented or a supported command receipt
 yet. Commands remain thin adapters under `ardents endpoint`; the owning
 implementation issue must register any new package before adding one.
 
+`internal/endpoint/runtimeplan` owns the existing bounded headless-v2 and Source-v1 local
+declarations and their role/path/permission and public-identity validation.
+The current headless and Source refresh commands read bounded bytes and call these same decoders;
+installation consumes that grammar rather than defining another copy. Decoding
+opens no State or mutable root, contacts no manager and grants no Release,
+holder or runtime authority. Source credential loading, runtime composition and installation transitions
+remain separate owners; this parser extraction does not implement provisioning.
+
 | Command | Input and owner effect |
 | --- | --- |
 | `endpoint provision <request-file>` | Explicit root operation after independent first-artifact verification. Authenticate executable/generation through Release, validate local declarations, stage and select one complete stopped installation. No implicit start. |
