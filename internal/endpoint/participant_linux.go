@@ -46,39 +46,46 @@ func useParticipant(ctx context.Context, config ClosedParticipantConfig, withdra
 	if _, err := network.CurrentClosedRoute(); err != nil {
 		return err
 	}
-	root, err := instance.Open(config.ServiceInstanceRoot)
-	if err != nil {
-		return err
+	input := setup{NetworkID: config.Network.NetworkID, BrokerID: config.BrokerID, ConnectionPrincipal: config.ConnectionPrincipal, AdministrationPrincipal: config.AdministrationPrincipal, PublicationRoot: config.PublicationRoot, Clock: clock}
+	var root *instance.Root
+	if !config.ReaderOnly {
+		root, err = instance.Open(config.ServiceInstanceRoot)
+		if err != nil {
+			return err
+		}
+		defer func() { outcome = errors.Join(outcome, root.Close()) }()
+		credential, err := root.Credential()
+		if err != nil || credential.NetworkID != config.Network.NetworkID {
+			return errors.Join(errors.New("text participant Instance unavailable"), err)
+		}
+		input.AuthorityPublic = ed25519.PublicKey(credential.AuthorityPublic[:])
 	}
-	defer func() { outcome = errors.Join(outcome, root.Close()) }()
-	credential, err := root.Credential()
-	if err != nil || credential.NetworkID != config.Network.NetworkID {
-		return errors.Join(errors.New("text participant Instance unavailable"), err)
-	}
-	owner, err := newEndpoint(setup{NetworkID: config.Network.NetworkID, BrokerID: config.BrokerID, ConnectionPrincipal: config.ConnectionPrincipal, AdministrationPrincipal: config.AdministrationPrincipal, PublicationRoot: config.PublicationRoot, AuthorityPublic: ed25519.PublicKey(credential.AuthorityPublic[:]), Clock: clock})
+	owner, err := newEndpoint(input)
 	if err != nil {
 		return err
 	}
 	defer func() { outcome = errors.Join(outcome, owner.Close()) }()
 	owner.closedState = network
 	owner.closedEntryRoot, owner.closedRoleRoot, owner.closedTokenRoot = config.EntryRoot, config.LocalRoleRoot, config.TokenRoot
-	floor, err := owner.publications.Floor()
-	if err != nil {
-		return err
-	}
-	binding, err := root.OpenBinding(floor)
-	if err != nil {
-		return err
-	}
-	owner.publisherBinding = binding
-	if !withdrawBinding {
-		defer func() {
-			owner.publisherMu.Lock()
-			if owner.publisherBinding == binding {
-				owner.publisherBinding = nil
-			}
-			owner.publisherMu.Unlock()
-		}()
+	if root != nil {
+		floor, err := owner.publications.Floor()
+		if err != nil {
+			return err
+		}
+		binding, err := root.OpenBinding(floor)
+		if err != nil {
+			return err
+		}
+		owner.publisherBinding = binding
+		if !withdrawBinding {
+			defer func() {
+				owner.publisherMu.Lock()
+				if owner.publisherBinding == binding {
+					owner.publisherBinding = nil
+				}
+				owner.publisherMu.Unlock()
+			}()
+		}
 	}
 	if _, err := owner.tokenJournal(); err != nil {
 		return err
@@ -96,12 +103,16 @@ func (endpoint *endpoint) runInterfaces(ctx context.Context, config ClosedPartic
 	}
 	output := newParticipantObservation(config.Observe, clock)
 	defer func() { outcome = errors.Join(outcome, output.pendingFailure()) }()
-	var contexts [2]*dutyContext
-	for index, role := range []struct {
+	roles := []struct {
 		principal [32]byte
 		surface   broker.Surface
 		files     PermissionFiles
-	}{{config.ConnectionPrincipal, broker.Connection, config.ReaderPermission}, {config.AdministrationPrincipal, broker.Administration, config.PublisherPermission}} {
+	}{{config.ConnectionPrincipal, broker.Connection, config.ReaderPermission}, {config.AdministrationPrincipal, broker.Administration, config.PublisherPermission}}
+	if config.ReaderOnly {
+		roles = roles[:1]
+	}
+	contexts := make([]*dutyContext, len(roles))
+	for index, role := range roles {
 		capability, err := endpoint.Admit(role.principal, role.surface)
 		if err != nil {
 			return err
@@ -158,21 +169,23 @@ func (endpoint *endpoint) runInterfaces(ctx context.Context, config ClosedPartic
 		return err
 	}
 	defer func() { outcome = errors.Join(outcome, reader.Close()) }()
-	publisher, err := contexts[1].openAdministration()
-	if err != nil {
-		return err
-	}
-	defer func() { outcome = errors.Join(outcome, publisher.Close()) }()
 	readServer, err := applicationconnection.Listen(config.ApplicationAddress, reader)
 	if err != nil {
 		return err
 	}
 	defer func() { outcome = errors.Join(outcome, readServer.Close()) }()
-	adminServer, err := applicationadministration.Listen(config.AdministrationAddress, publisher)
-	if err != nil {
-		return err
+	if !config.ReaderOnly {
+		publisher, err := contexts[1].openAdministration()
+		if err != nil {
+			return err
+		}
+		defer func() { outcome = errors.Join(outcome, publisher.Close()) }()
+		adminServer, err := applicationadministration.Listen(config.AdministrationAddress, publisher)
+		if err != nil {
+			return err
+		}
+		defer func() { outcome = errors.Join(outcome, adminServer.Close()) }()
 	}
-	defer func() { outcome = errors.Join(outcome, adminServer.Close()) }()
 	if err := output.emit(ctx, ClosedParticipantEvent{Kind: "ready", NetworkID: endpoint.network, ApplicationAddress: config.ApplicationAddress, AdministrationAddress: config.AdministrationAddress}); err != nil {
 		return err
 	}

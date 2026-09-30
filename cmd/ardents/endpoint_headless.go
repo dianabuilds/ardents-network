@@ -25,6 +25,7 @@ type headlessPermissionPlan struct {
 }
 
 type headlessRuntimePlan struct {
+	Role                string                 `json:"role,omitempty"`
 	TextTokenRoot       string                 `json:"text_token_root,omitempty"`
 	ReaderPermission    headlessPermissionPlan `json:"reader_permission,omitempty"`
 	PublisherPermission headlessPermissionPlan `json:"publisher_permission,omitempty"`
@@ -142,11 +143,13 @@ func loadHeadlessRuntimePlan(path string) (decodedHeadlessRuntimePlan, error) {
 	if raw.Schema == "ardents-headless-runtime-v1" {
 		return decodedHeadlessRuntimePlan{}, errHeadlessRuntimeV1Retired
 	}
+	if raw.Role != "" && raw.Role != "reader" {
+		return decodedHeadlessRuntimePlan{}, errors.New("text runtime role is unavailable")
+	}
 	if raw.Schema != "ardents-headless-runtime-v2" || raw.NetworkStateRoot == "" || raw.EntryStateRoot == "" ||
-		raw.ApplicationSocket == "" || !filepath.IsAbs(raw.ApplicationSocket) || raw.AdministrationSocket == "" || !filepath.IsAbs(raw.AdministrationSocket) ||
-		raw.ApplicationSocket == raw.AdministrationSocket || raw.PublicationRoot == "" ||
+		raw.ApplicationSocket == "" || !filepath.IsAbs(raw.ApplicationSocket) ||
 		raw.LocalRoleStateRoot == "" || raw.TimeConfidenceFile == "" || raw.NetworkProfile != carrier.ClosedRouteProfile || raw.BrokerID == "" ||
-		raw.ConnectionPrincipal == "" || raw.AdministrationPrincipal == "" {
+		raw.ConnectionPrincipal == "" || raw.Role == "" && (raw.AdministrationSocket == "" || !filepath.IsAbs(raw.AdministrationSocket) || raw.ApplicationSocket == raw.AdministrationSocket || raw.PublicationRoot == "" || raw.AdministrationPrincipal == "") {
 		return decodedHeadlessRuntimePlan{}, errors.New("headless runtime plan is incomplete")
 	}
 	if err := validateHeadlessTextFields(raw); err != nil {
@@ -156,9 +159,13 @@ func loadHeadlessRuntimePlan(path string) (decodedHeadlessRuntimePlan, error) {
 	for _, field := range []struct {
 		encoded     string
 		destination []byte
-	}{{raw.NetworkID, result.NetworkID[:]}, {raw.BrokerID, result.BrokerID[:]}, {raw.ConnectionPrincipal, result.ConnectionPrincipal[:]},
-		{raw.AdministrationPrincipal, result.AdministrationPrincipal[:]}} {
+	}{{raw.NetworkID, result.NetworkID[:]}, {raw.BrokerID, result.BrokerID[:]}, {raw.ConnectionPrincipal, result.ConnectionPrincipal[:]}} {
 		if err := decodeOperatorFixedHex(field.encoded, field.destination); err != nil {
+			return decodedHeadlessRuntimePlan{}, err
+		}
+	}
+	if raw.Role == "" {
+		if err := decodeOperatorFixedHex(raw.AdministrationPrincipal, result.AdministrationPrincipal[:]); err != nil {
 			return decodedHeadlessRuntimePlan{}, err
 		}
 	}
