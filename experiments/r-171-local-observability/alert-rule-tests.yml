@@ -1,0 +1,88 @@
+rule_files:
+  - /probe/alerts.yml
+evaluation_interval: 2s
+tests:
+  - name: threshold pending firing recovery
+    interval: 2s
+    input_series:
+      - series: 'diagnostic_fixture_queue_items{job="fixture",instance="fixture:9101"}'
+        values: '0 0 20 20 20 20 0 0'
+    promql_expr_test:
+      - expr: 'count(ALERTS{alertname="FixtureQueuePressure",alertstate="pending"})'
+        eval_time: 8s
+        exp_samples:
+          - labels: '{}'
+            value: 1
+    alert_rule_test:
+      - eval_time: 8s
+        alertname: FixtureQueuePressure
+        exp_alerts: []
+      - eval_time: 10s
+        alertname: FixtureQueuePressure
+        exp_alerts:
+          - exp_labels:
+              job: fixture
+              instance: fixture:9101
+              severity: warning
+              scope: synthetic_fixture
+            exp_annotations:
+              summary: Synthetic fixture queue exceeds ten items
+      - eval_time: 12s
+        alertname: FixtureQueuePressure
+        exp_alerts: []
+  - name: fixture scrape loss window and recovery
+    interval: 2s
+    input_series:
+      - series: 'up{job="fixture",instance="fixture:9101"}'
+        values: '1 1 1 0 0 0 0 1'
+    promql_expr_test:
+      - expr: 'count(ALERTS{alertname="FixtureObservationUnavailable",alertstate="pending"})'
+        eval_time: 10s
+        exp_samples:
+          - labels: '{}'
+            value: 1
+    alert_rule_test:
+      - eval_time: 10s
+        alertname: FixtureObservationUnavailable
+        exp_alerts: []
+      - eval_time: 12s
+        alertname: FixtureObservationUnavailable
+        exp_alerts:
+          - exp_labels:
+              job: fixture
+              instance: fixture:9101
+              severity: warning
+              scope: synthetic_fixture
+            exp_annotations:
+              summary: Fixture metrics scrape failed; no Node health conclusion
+      - eval_time: 14s
+        alertname: FixtureObservationUnavailable
+        exp_alerts: []
+  - name: collector failure has its own scope
+    interval: 2s
+    input_series:
+      - series: 'up{job="collector",instance="alloy:12345"}'
+        values: '1 0 0 0 0 1'
+    promql_expr_test:
+      - expr: 'count(ALERTS{alertname="CollectorObservationUnavailable",alertstate="pending"})'
+        eval_time: 6s
+        exp_samples:
+          - labels: '{}'
+            value: 1
+    alert_rule_test:
+      - eval_time: 6s
+        alertname: CollectorObservationUnavailable
+        exp_alerts: []
+      - eval_time: 8s
+        alertname: CollectorObservationUnavailable
+        exp_alerts:
+          - exp_labels:
+              job: collector
+              instance: alloy:12345
+              severity: warning
+              scope: collector
+            exp_annotations:
+              summary: Collector scrape failed; log delivery requires separate evidence
+      - eval_time: 10s
+        alertname: CollectorObservationUnavailable
+        exp_alerts: []

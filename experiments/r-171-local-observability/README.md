@@ -1,0 +1,166 @@
+# R-171 local observability experiment
+
+Question and predeclared falsification criteria:
+[research owner](../../docs/research/records/r-171-local-observability-stack.md).
+
+Hypotheses: a single Alloy pipeline or a single OTel Collector pipeline supplies
+safe searchable logs and correct metric/alert history with less maintained code.
+Neither is accepted if privacy, failure, resource or maintenance requirements fail.
+
+## Current boundary: inspect exact image candidates
+
+These files are disposable research tooling, not a maintained monitoring stack.
+The Linux/amd64 manifest digests were read from the official repositories on
+2026-10-01. Tags are provenance; pulls use immutable platform manifests.
+`images.json` is not an admission receipt. Source licenses do not establish image
+closure licensing/security. Preserve failed attempts and do not launch candidates
+with product/private inputs before their closure and configuration are reviewed.
+
+From this directory on the selected Windows Docker Desktop host:
+
+```powershell
+make tools-install EVIDENCE_ROOT=C:/Users/vitek/AppData/Local/Temp/ardents-r171-images-a
+```
+
+Use a new absolute directory outside Git for every attempt. The explicit install
+command downloads public images into Docker's image cache, records pull outcomes,
+checks platform/digest identity and saves config digests, defaults and sizes. It
+creates no containers, listener, volume or collector. No automatic tool download
+on a test path. Preinstalled Docker, PowerShell and make are prerequisites.
+
+Docker image-cache footprint is distinct from the predeclared probe-state and
+private evidence budgets; admission must inventory it as installation overhead.
+No raw Node logs, profiles, credentials, authority roots or Docker socket enter
+this inspection. Upstream identity is not a guarantee against supply-chain compromise.
+
+## Next measured boundary
+
+Complete exact image binary/OS/transitive licensing and advisory review. Then run
+one finite synthetic source with backend ports isolated, real authenticated query
+access, external egress blocked, reporting disabled, explicit memory/CPU/process
+budgets and sized state. Compare one collector at a time with equivalent input.
+A volatile tmpfs first probe cannot prove persistent retention or crash durability.
+
+Capture searchable events, metric units/type/scope/reset/gaps, threshold and
+source/collector-loss pending/firing/recovery, silence expiry, rotation/restart,
+backend outage, storage pressure, rejection/loss and resource measurements.
+Use safe synthetic sentinels; no actual Application data. A process staying alive
+or a static dashboard is not the required result. Keep originals outside Git and
+record measured results and disposition in R-171.
+
+## Result and disposition
+
+Initial isolated runtime attempts are now recorded below. Image installation and the initial exact-binary scan completed. Findings remain under applicability review; JSON exit zero is not security acceptance. Prometheus was changed from the first 3.13.3 input to 3.15.0 after comparing actual scan fix floors with the newer exact-tag dependency manifest. Initial receipts and scans remain preserved. The inspected source-release candidate OTel Contrib 0.162.0
+was not found at either documented-family Docker Hub or GHCR paths during initial
+manifest inspection. Preserve that negative observation; do not silently substitute
+a different release or treat it as rejection of all OTel Collector configurations.
+The next step is to verify publication/source-build alternatives against the same
+support, closure and experiment requirements. The five pinned images cover the
+Alloy candidate only. No new Ardents package, SDK, protocol or administration
+power is selected by this experiment.
+## Synthetic runtime inputs and isolated pipeline
+
+`fixture.py` owns one finite synthetic process: 600-second lifetime, a 60-second
+queue-pressure interval, structured events and three explicitly typed metrics.
+It serves only /metrics, exits on SIGTERM/SIGINT and joins its HTTP worker.
+Fixture queue values are declared test inputs, not measured Node workload.
+The planned input volume is private and sized; only its events file is available
+to the collector. No arbitrary log root or host process namespace is admitted.
+
+`prometheus.yml` scrapes explicit fixture and collector addresses; `alerts.yml`
+contains pending windows for fixture threshold, scrape loss and collector loss.
+`alertmanager.yml` has no notification integration. These are not durable
+acknowledgement or incident-history features. Current syntax and all three rules
+were checked with the exact candidate promtool, network disabled.
+
+`config.alloy` tails only the synthetic file, drops the filename label and writes
+to local Loki with verified client TLS. `loki.yml` requires a verified client
+certificate and confines gRPC to its container loopback. Setting auth_enabled to
+false selects one tenant; it does not disable the configured transport-level
+client authentication. Certificates, permissions, listener isolation, egress,
+configuration validation and real failure behavior still require the runtime
+harness. No default insecure launcher is provided. Alloy launch must explicitly
+set a non-root UID, disable usage reporting and support bundles, and use a finite
+sized state directory. Neither config is a privacy or lifecycle acceptance proof.
+### Verified preparation and fixture (2026-10-01)
+
+The fixture was run in a container with no network or host ports, 128 MiB memory,
+0.25 CPU, a 16-PID cap and private 16 MiB tmpfs, as UID/GID 10001. Typed metric
+queries observed the event counter increase from 17 to 97; neither query occurred
+during queue pressure. Structured logs recorded thirty pressure events. SIGTERM
+joined the HTTP worker and exited zero. This is not backend delivery evidence.
+
+All four configuration validators accepted the current files. The Prometheus
+rule evaluator passed assertions for pending, firing and recovery for each of
+three rules, including separate fixture and collector scopes. It requires a
+writable bounded test-store /tmp even with a read-only root. On the selected
+PowerShell host, pass dotted Loki CLI flags as quoted strings. Original failed
+preparations are retained alongside corrected results. The full five-service
+pipeline, private TLS credential preparation and Grafana view remain unverified.
+
+### Explicit synthetic pipeline probe
+
+After explicit image installation, from this experiment directory:
+
+```powershell
+make probe EVIDENCE_ROOT=C:/Users/vitek/AppData/Local/Temp/ardents-r171-pipeline-new RUN_NAME=r171-pipeline-new
+```
+
+Use a fresh external evidence directory and unique run name. The launcher creates
+private role credentials offline, starts only the pinned backends on an internal
+Docker network without host ports, then starts a finite synthetic source. No Node
+or Application inputs enter this probe. Grafana backend plugins use a bounded
+private /tmp for Unix sockets; only Prometheus and Loki bundled datasource
+backends are enabled. The Grafana PID limit includes their Go threads.
+
+Query observations are saved privately and assert actual synthetic queue values,
+scoped log delivery and the pressure alert reaching Alertmanager, in addition to
+datasource health and anonymous-access refusal. A zero exit from an earlier
+HTTP-only probe does not establish these assertions. Docker internal-network
+configuration alone does not prove complete external/DNS egress denial.
+
+Finally the launcher saves bounded service logs and removes containers/network.
+The named finite tmpfs fixture volume remains; retain its identity and remove it
+explicitly after evidence disposition. This first volatile probe does not prove
+retention, restart durability, silence expiry, recovery history, source/collector
+outage behavior, shared-interval rendering or the five-minute resource target.
+
+### Preserved runtime corrections
+
+Attempts A-E did not complete: child PowerShell ACL cmdlet availability, nested
+read-only bind-mount preparation, plugin Unix-socket /tmp and insufficient Grafana
+thread budgets were corrected. F completed its HTTP observations but contained
+zero Loki records and only a pending pressure alert, with no Alertmanager receipt.
+Its successful exit is not log/alert acceptance. Alloy had encountered a missing
+file before source startup; periodic discovery of that exact selected file now
+handles later creation. The probe now waits through the declared pending window
+and rejects missing log delivery or firing receipt. Original private reports in
+ardents-r171-pipeline-a through -f remain preserved. Full findings and admission
+limits belong to the research record.
+
+G passed strengthened content assertions: normal queue 0 with 12 scoped records; pressure queue 20 with 44 records and firing receipt in Alertmanager. Both Grafana datasource health checks passed and anonymous accesses were refused. This short volatile journey is not full stack admission; remaining boundaries above still apply.
+
+
+The current probe also observes a twelve-second scoped silence and its expiry,
+threshold clearance, separate source and collector pending/firing/clearance
+journeys. It freezes/resumes the selected synthetic processes with Docker pause;
+this is not a stop/restart or persisted-state test. Per-attempt query reports are
+retained privately. The lifecycle-a run passed all nine transition assertions.
+The 600-second finite fixture permits a future five-minute resource measurement;
+no such resource-window acceptance follows from the short lifecycle result.
+
+Post-outage catch-up now snapshots the producer counter and requires every
+sequence through that watermark in Loki. The native Alloy timestamp stage uses
+valid fixture event time; the probe checks the actual stored nanosecond timestamp
+against the producer's RFC3339 value. Timestamp parse failure uses skip and must
+not be presented as valid source time for unsupported inputs. The event-time-a
+run passed catch-up without duplicates in the selected query and returned actual
+Grafana metric/log frames for one explicit 180-second interval, including a
+12000 ms metric gap during source freeze. API frames do not prove visual rendering.
+
+Bundled datasource binaries require their own dependency review. The inspected
+server image contains Prometheus plugin13.2.1 and Loki plugin13.2.0, both built with
+Go1.26.7. Actual binary scans reported grpc and openpgp findings; see the R171
+record. No admitted replacement or blanket local-only exception is claimed.
+Do not overlap the stack/query probe with a public scanner configured above
+0.5 CPU; shared-a's initial one-CPU scanner overlap is not resource acceptance.

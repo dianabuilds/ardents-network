@@ -1,0 +1,27 @@
+groups:
+  - name: synthetic-source-observation
+    rules:
+      - alert: FixtureQueuePressure
+        expr: diagnostic_fixture_queue_items > 10
+        for: 6s
+        labels:
+          severity: warning
+          scope: synthetic_fixture
+        annotations:
+          summary: Synthetic fixture queue exceeds ten items
+      - alert: FixtureObservationUnavailable
+        expr: up{job="fixture"} == 0
+        for: 6s
+        labels:
+          severity: warning
+          scope: synthetic_fixture
+        annotations:
+          summary: Fixture metrics scrape failed; no Node health conclusion
+      - alert: CollectorObservationUnavailable
+        expr: up{job="collector"} == 0
+        for: 6s
+        labels:
+          severity: warning
+          scope: collector
+        annotations:
+          summary: Collector scrape failed; log delivery requires separate evidence
