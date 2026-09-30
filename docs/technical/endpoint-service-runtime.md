@@ -158,6 +158,9 @@ imports a bounded snapshot and invokes `PublishSnapshot`; its bodyless
 `Publish` refuses because the generic `StartPublisher` transaction was
 retired by
 [ADR-0092](../adr/0092-retire-generic-publisher-transit-chain.md).
+The `ardents endpoint publish` command refuses at dispatch before dialing its
+Administration socket and directs the operator to `ardents-text publish` with
+an explicit document file. The local bodyless protocol refusal remains intact.
 `Withdraw` cancels and joins the retained publication. The Connection Interface cannot invoke either operation.
 
 The fixed text reader has these setup outcomes:

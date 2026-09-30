@@ -33,7 +33,7 @@ system-manager launch boundary.
 | `service-instance accept --root PATH --response PATH` | Atomically accept only the exact canonical public Authority response for that pending root. An exact repeat is harmless; malformed or different input terminally rejects/conflicts rather than replacing the generation. |
 | `endpoint headless <headless-runtime.json>` | Only an explicit `ardents-headless-runtime-v2` plan selects the protected text participant with the closed Route profile, an explicit `closed_profile_authority` Ed25519 public key already present in `network_authorities`, existing `service_instance_root`, distinct absolute State/Entry/local-role/publication/token roots, two sockets, and `reader_permission`/`publisher_permission` objects containing `request_path`, `response_path`, and three-class `maxima`. Both actual offline permissions must be accepted before command exposure. Legacy acquisition and corpus fields are rejected in v2. Event output must be a pollable pipe or stream socket (including the systemd journal); each JSON line carries `schema: ardents-headless-runtime-event-v1`, `kind`, and UTC `at` for local timeline inspection. Cancellation and bounded writes retain descriptor ownership. Full installed command qualification remains required. |
 | `endpoint open <application-socket> <target-link> <input-file> <output-file>` | Return `endpoint open is retired` before opening either file, dialing the local socket, or causing Endpoint/Network work. The AAI2 codec/server/client and exclusive Endpoint adapter are absent; no generic AAI3 translation or fallback is selected. |
-| `endpoint publish <administration-socket>` | Request publication through the exact local one-use Service Administration capability and render its bounded receipt. |
+| `endpoint publish <administration-socket>` | Return `endpoint publish is retired; use ardents-text publish <administration-socket> <document-file>` before dialing the Administration socket or starting Endpoint/Network work. Use `ardents-text publish /absolute/path/to/administration.sock /absolute/path/to/document` for snapshot publication. |
 | `endpoint withdraw <administration-socket>` | Request withdrawal through the exact local one-use Service Administration capability and render its bounded receipt. A publisher plan must explicitly retain its administration listener after publication for this route. |
 | `endpoint enrollment-check <bundle-root> <manifest-sha256>` | Diagnose one already-running artifact against an independently pinned closed-alpha inventory. It does not authenticate first execution. |
 | `endpoint enroll <bundle-root> <manifest-sha256>` | Run the explicit Ubuntu Portable enrollment and per-user profile start. On first acceptance it verifies the pin and Release Decision before reporting `ready`; that event proves the generic local probe attachment, not protected text Service readiness. An exact current-program restart uses its retained replacement record. |
@@ -327,9 +327,15 @@ The trusted publication client is
 On Linux it imports the selected regular UTF-8 file without following symlinks,
 rejects changing or oversized input, and sends only its bounded snapshot to the
 Administration owner. It returns success only after the owner confirms committed
-publication; it emits no document or path and does not retry. The current
-Endpoint Administration owner refuses this extension until protected snapshot
-publication is connected. Client/transport conformance is separate evidence.
+publication, including the actual Descriptor acknowledgement. It emits no
+document or path and does not retry. The Endpoint Administration owner launches
+the fixed Publisher worker with that snapshot and retains the publication after
+the command returns. Obtain its Target Link with `ardents-text link
+/absolute/path/to/administration.sock`; withdraw through `ardents endpoint
+withdraw /absolute/path/to/administration.sock`. These commands require the
+running text participant and its separately accepted Administration permission.
+Component conformance and installed journey results remain separate evidence;
+command success does not establish full host qualification.
 
 The installed `worker-reader` and `worker-publisher` entrypoints accept no
 additional arguments. They perform their descriptor audit and fixed worker
