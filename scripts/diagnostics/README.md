@@ -238,3 +238,9 @@ Caller interruption has its own fixed metric and never displays as success.
 Source inventory rejects special files and shares the whole-run budget.
 Profile temporaries are unlinked before sensitive data is written; the first
 cleanup failure remains terminal.
+
+The ordinary containers use a finite 4 GiB memory budget; the full `gate`
+profile uses 8 GiB for the combined race fixtures. Samples include actual
+`memory.max`/`pids.max` and `memory.events:max`; hitting a memory ceiling may
+cause reclaim pressure even without OOM. These are container observations,
+not a diagnosis of a specific Node or a change to product resource guards.

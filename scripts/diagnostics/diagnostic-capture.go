@@ -576,7 +576,7 @@ func sampleGroup(group int, at time.Time) (processSample, error) {
 	}
 	s.Cgroup = map[string]uint64{}
 	s.Pressure = map[string]float64{}
-	for _, name := range []string{"memory.current", "pids.current"} {
+	for _, name := range []string{"memory.current", "memory.max", "pids.current", "pids.max"} {
 		body, err := os.ReadFile(filepath.Join("/sys/fs/cgroup", name))
 		if err != nil {
 			s.Unavailable = append(s.Unavailable, name)
@@ -600,7 +600,7 @@ func sampleGroup(group int, at time.Time) (processSample, error) {
 			if len(fields) != 2 {
 				continue
 			}
-			if selected(fields[0], "usage_usec throttled_usec nr_throttled high oom oom_kill") != "" {
+			if selected(fields[0], "usage_usec throttled_usec nr_throttled high max oom oom_kill") != "" {
 				value, err := strconv.ParseUint(fields[1], 10, 64)
 				if err == nil {
 					s.Cgroup[name+":"+fields[0]] = value

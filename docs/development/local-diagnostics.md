@@ -84,6 +84,9 @@ joined terminal outcome. Failed profile writes never return HTTP success. Runtim
 
 Default runner: no external network, read-only source/root filesystem, no Linux
 capabilities, 4 GiB memory, four CPU quota, 512 tasks and finite temporary mounts.
+The full gate has a separate finite 8 GiB budget: race fixtures reached the
+ordinary 4 GiB ceiling without OOM. Samples include memory/pid limits and
+`memory.events:max` so pressure at a hard limit is visible before OOM.
 The ordinary runner uses UID 10001. The selected gate profile permits the
 existing package-e2e sudo prerequisite within a disposable container. KILL
 permits that root test owner to signal and join its deliberately dropped-UID

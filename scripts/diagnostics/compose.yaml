@@ -55,6 +55,8 @@ services:
     entrypoint: [dlv]
   gate:
     <<: *base
+    # Full race fixtures reached the ordinary 4 GiB ceiling; retain a finite gate budget.
+    mem_limit: 8g
     profiles: [gate]
     # Unprivileged ordinary tests; explicit sudo is needed only by package-e2e.
     cap_add: [CHOWN, DAC_OVERRIDE, FOWNER, KILL, SETGID, SETUID]
