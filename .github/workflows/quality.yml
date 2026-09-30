@@ -94,6 +94,24 @@ jobs:
           TEST_RUN: ${{ matrix.run }}
           TEST_RACE: ${{ matrix.race }}
         run: |
+          # Temporary PID probe for the retained Node/statm failure. Overlay
+          # results are diagnostic evidence, not source qualification.
+          if [[ "$TEST_PACKAGE" == "github.com/dianabuilds/ardents-network/tests/e2e/node" && "$TEST_RUN" == *TestClosedReaderParticipantRetainsStateWithoutPublisher* ]]; then
+            python3 - <<'PY'
+          import json, os, pathlib
+          source = pathlib.Path("internal/endpoint/worker/manager_linux.go").resolve()
+          body = source.read_text()
+          needle = "\tif err := command.Run(); err != nil {"
+          assert body.count(needle) == 1, "manager execution boundary changed"
+          body = body.replace('"errors"', '"errors"\n\t"fmt"\n\t"os"', 1)
+          body = body.replace(needle, '\trunErr := command.Start()\n\tif runErr == nil {\n\t\tfmt.Fprintf(os.Stderr, "[DEBUG-367-busctl] parent=%d child=%d\\n", os.Getpid(), command.Process.Pid)\n\t\trunErr = command.Wait()\n\t}\n\tif err := runErr; err != nil {', 1)
+          root = pathlib.Path(os.environ["RUNNER_TEMP"])
+          probe = root / "367-manager-pid.go"
+          probe.write_text(body)
+          (root / "367-manager-overlay.json").write_text(json.dumps({"Replace": {str(source): str(probe)}}))
+          PY
+            export GOFLAGS="${GOFLAGS:+$GOFLAGS }-overlay=$RUNNER_TEMP/367-manager-overlay.json"
+          fi
           if [[ "$TEST_PACKAGE" == "github.com/dianabuilds/ardents-network/tests/e2e/node" ]]; then
             export ARDENTS_E2E_COMMAND_ROOT="$RUNNER_TEMP/e2e-commands"
             mkdir -p "$ARDENTS_E2E_COMMAND_ROOT"
