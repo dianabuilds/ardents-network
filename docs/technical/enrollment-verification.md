@@ -18,6 +18,14 @@ digests and projects those bytes separately. This is manifest authentication,
 not the required fresh Release generation authorization or an installed
 qualification receipt; the installation consumer remains unfinished.
 
+After this manifest-only projection, `internal/endpoint/installation` now
+composes fresh program and generation Release proofs from the same frozen
+metadata/local/reference inputs. The enrolled command uses this composition
+when the complete protected group is present, and passes only the program proof
+to executable replacement. Its existing general readiness is not protected
+readiness. Immutable generation installation and actual system-manager binding
+remain separate unfinished obligations.
+
 The descriptor is compact UTF-8 JSON followed by one LF, with the five fields
 in the order stated by ADR-0119 and `files` keys in lexical order. Re-encoding
 must reproduce the exact input; unknown/duplicate fields, alternate whitespace

@@ -12,6 +12,7 @@ import (
 	"runtime"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/endpoint/installation"
 	"github.com/dianabuilds/ardents-network/internal/endpoint/portable"
 	"github.com/dianabuilds/ardents-network/internal/endpoint/replacement"
 	"github.com/dianabuilds/ardents-network/internal/enrollment"
@@ -233,7 +234,21 @@ func runEnrolledEndpoint(ctx context.Context, output io.Writer, allowInstalledRe
 	if err != nil {
 		return encodeEnrolledFailure(encoder, err, portable.Event{State: portable.StateBlocked, Reason: releaseDecisionUnavailable})
 	}
-	decision := verifier.Evaluate(ctx, verified.Inputs)
+	var decision release.Decision
+	if len(verified.ProtectedDescriptor) != 0 {
+		protection, protectionErr := installation.Authenticate(ctx, verifier, verified)
+		if protectionErr != nil {
+			return encodeEnrolledFailure(encoder, errors.Join(protectionErr, verifier.Close()), portable.Event{State: portable.StateBlocked, Reason: releaseDecisionRejected})
+		}
+		programProof, _ := protection.Targets()
+		var accepted bool
+		decision, accepted = programProof.AcceptedDecision()
+		if !accepted {
+			return encodeEnrolledFailure(encoder, errors.Join(errors.New("protected Release composition lacks its executable proof"), verifier.Close()), portable.Event{State: portable.StateBlocked, Reason: releaseDecisionRejected})
+		}
+	} else {
+		decision = verifier.Evaluate(ctx, verified.Inputs)
+	}
 	closeErr := verifier.Close()
 	if closeErr != nil {
 		return encodeEnrolledFailure(encoder, closeErr, portable.Event{State: portable.StateBlocked, Reason: releaseDecisionUnavailable})

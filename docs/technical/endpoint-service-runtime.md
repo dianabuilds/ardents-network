@@ -15,6 +15,16 @@ opens no State or mutable root, contacts no manager and grants no Release,
 holder or runtime authority. Source credential loading, runtime composition and installation transitions
 remain separate owners; this parser extraction does not implement provisioning.
 
+`internal/endpoint/installation` composes the two fresh Release evaluations from
+one frozen set of enrolled metadata and the same local/reference facts. It
+checks complete resource bytes and coherent authenticated target identities and
+Targets floors before returning their opaque proofs. The ordinary enrolled
+command consumes only the executable proof for its existing replacement owner;
+its readiness remains general enrollment, not protected installation. Failure
+of the second evaluation retains any already committed Release floors and
+cannot return a partial accepting pair. Provisioning, immutable selection and
+actual manager identity binding remain unimplemented by this authentication.
+
 | Command | Input and owner effect |
 | --- | --- |
 | `endpoint provision <request-file>` | Explicit root operation after independent first-artifact verification. Authenticate executable/generation through Release, validate local declarations, stage and select one complete stopped installation. No implicit start. |
