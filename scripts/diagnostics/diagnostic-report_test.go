@@ -181,6 +181,15 @@ func TestAssistantComparisonKeepsFailAndRefusesSpeedup(t *testing.T) {
 	failed := reportFixture(t, 2)
 	passed := reportFixture(t, 0)
 	a := buildAssistantReport(passed, failed, time.Now())
+	found := false
+	for _, c := range a.Comparison.Other.NextChecks {
+		if c.ID == "owner-observation-control" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatal("missing owner evidence offers no next observation")
+	}
 	if a.Comparison == nil || a.Comparison.Other.ExitCode != 2 || a.Comparison.Conditions != "unknown" {
 		t.Fatalf("%+v", a)
 	}

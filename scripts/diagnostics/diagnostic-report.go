@@ -541,6 +541,10 @@ func nextChecks(r runReport) []reportCheck {
 	if r.ResourceFacts["memory.events:max"] > 0 || r.ResourceFacts["memory.events:oom"] > 0 || r.ResourceFacts["memory.events:oom_kill"] > 0 || r.ResourceFacts["cpu.stat:nr_throttled"] > 0 {
 		add("resource-control", "Наблюдались ненулевые общие cgroup counters; причинная связь с отказом не установлена.", "Та же объявленная нагрузка; отдельный контроль с зафиксированными бюджетами.", "Конечный лимит времени и памяти; 1-секундные samples.", "Изменение счётчиков относительно начала и результат команды; принадлежность ресурса владельцу проверяется отдельно.", false)
 	}
+
+	if r.FirstObserved == nil && r.Finished && (r.ExitCode != 0 || r.TimedOut || r.Interrupted) {
+		add("owner-observation-control", "Команда отказала, но безопасные события не называют владельца; причину нельзя восстановить из общего exit code.", "Выбрать собственный поддерживаемый процесс с существующим typed JSON event output; никаких новых grants или чужих roots.", "Новый конечный прогон; event line 16 KiB, history 4 MiB; исходный FAIL сохраняется.", "Либо явная Node/Source/Endpoint категория в events.ndjson, либо подтверждённый пробел наблюдаемости для отдельной instrumentation задачи.", false)
+	}
 	if r.FirstObserved != nil {
 		add("bounded-owner-profile", "Наблюдался отказ; stacks/CPU profile могут уточнить гипотезу, но не доказывают её.", "Оператор выбирает свой живой debug socket; требуется explicit sensitive capture.", "Один профиль, CPU/trace 1–30 секунд, 64 MiB; отдельный контроль без profiling.", "Сохранённый приватный профиль и воспроизводимая owner-level проверка гипотезы.", true)
 		add("owner-race-control", "Есть явно наблюдаемый отказ владельца; следующее доказательство ищется на его границе.", "Оператор выбирает реальный affected-owner test из текущего кода; отдельный race run.", "Один пакет, явный test pattern, timeout до 24 часов; исходные отказы сохраняются.", "Воспроизводимая положительная/отрицательная проверка причины; PASS повтора не стирает FAIL.", false)
@@ -833,6 +837,8 @@ func checkInvocation(id string) string {
 	switch id {
 	case "doctor-and-complete-capture":
 		return "ardents-diagnostics doctor"
+	case "owner-observation-control":
+		return "ardents-diagnostics run -out <NEW_PRIVATE_DIR> -timeout <FINITE_BUDGET> -- <OWNED_COMMAND_WITH_SUPPORTED_TYPED_EVENTS>"
 	case "resource-control":
 		return "ardents-diagnostics run -out <NEW_PRIVATE_DIR> -timeout <FINITE_BUDGET> -- <SAME_DECLARED_COMMAND>"
 	case "owner-race-control":

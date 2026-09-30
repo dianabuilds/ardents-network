@@ -256,7 +256,8 @@ func serve(args []string) error {
 const dashboard = `<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Ardents local diagnostics</title>
 <style>body{font:16px system-ui;background:#121b28;color:#e9f0f8;margin:2rem;max-width:1200px}h1{font-size:1.5rem}section{background:#1b293c;border-radius:12px;padding:1rem;margin:1rem 0}pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px}table{width:100%;font-size:13px;text-align:left}td,th{padding:6px;border-bottom:1px solid #344457}.bad{color:#ffab91}.good{color:#9ce0bd}svg{width:100%;height:180px}a{color:#9bcbff}</style>
 <h1>Ardents · local diagnostics</h1><p>Development observation. Readiness comes from the owner event; process existence is not readiness. Namespace network counters include all local fixture traffic.</p>
-<section><h2>Помощник диагностики</h2><pre id="assistant"></pre></section>\n<section><h2 id="status">Waiting for capture</h2><pre id="health"></pre></section>
+<section><h2>Помощник диагностики</h2><pre id="assistant"></pre></section>
+<section><h2 id="status">Waiting for capture</h2><pre id="health"></pre></section>
 <section><h2>Process group RSS (MiB)</h2><svg id="rss" viewBox="0 0 1000 180" preserveAspectRatio="none"></svg><pre id="sample"></pre></section>
 <section><h2>Latest owner transitions</h2><pre id="resource-state"></pre><table><thead><tr><th>Observed UTC</th><th>Kind</th><th>State</th><th>Carrier</th><th>Failure</th></tr></thead><tbody id="events"></tbody></table></section>
 <section><h2>Resource peaks</h2><pre id="peaks"></pre><a href="/metrics">Bounded metrics</a></section>
