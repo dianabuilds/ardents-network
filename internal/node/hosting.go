@@ -56,7 +56,11 @@ func (config *runtimeConfig) hostingPressure() (pressureLevel, error) {
 	if installed, ok := config.host.(*hosting.Ledger); ok {
 		sample, sampleErr := installed.Sample(ctx, time.Second)
 		config.hostingSample = &sample
-		config.hostingUsage, err = resource.MeasureOwnerCgroups(nil)
+		if config.ResourceMeasure != nil {
+			config.hostingUsage, err = config.ResourceMeasure()
+		} else {
+			config.hostingUsage, err = resource.MeasureOwnerCgroups(nil)
+		}
 		err = errors.Join(err, sampleErr)
 		observation = sample.Observation
 	} else {
