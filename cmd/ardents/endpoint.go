@@ -12,6 +12,7 @@ import (
 	"runtime"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/endpoint/installation"
 	"github.com/dianabuilds/ardents-network/internal/endpoint/portable"
 	"github.com/dianabuilds/ardents-network/internal/endpoint/replacement"
 	"github.com/dianabuilds/ardents-network/internal/enrollment"
@@ -25,6 +26,15 @@ var errEndpointPublishRetired = errors.New("endpoint publish is retired; use ard
 // result projection. The Endpoint owns process and connection lifecycle; this
 // command only selects its explicit operator route.
 func runEndpoint(ctx context.Context, arguments []string, output io.Writer) error {
+	if len(arguments) == 3 && arguments[1] == "start-installed" {
+		return runInstalledEndpoint(ctx, arguments[2], output)
+	}
+	if len(arguments) == 3 && arguments[1] == "provision" {
+		return runEndpointProvision(ctx, arguments[2], output)
+	}
+	if len(arguments) == 3 && arguments[1] == "installation-check" {
+		return runInstallationCheck(ctx, arguments[2], output)
+	}
 	if len(arguments) == 3 && arguments[1] == "enrollment-check" {
 		return runLegacyEnrollmentCheck(arguments[2], output)
 	}
@@ -73,7 +83,7 @@ func runEndpoint(ctx context.Context, arguments []string, output io.Writer) erro
 	if len(arguments) == 3 && arguments[1] == "rollback" {
 		return runEndpointRollback(ctx, arguments[2], output)
 	}
-	return errors.New("usage: ardents endpoint <enrollment-check <bundle-root> <manifest-sha256>|enroll <bundle-root> <manifest-sha256>|enroll-installed <package-enrollment.json>|headless <headless-runtime.json>|open <application-socket> <target-link> <input-file> <output-file> (retired; refuses before effects)|publish <administration-socket> (retired; use ardents-text publish <administration-socket> <document-file>)|withdraw <administration-socket>|user-unit <bundle-root> <manifest-sha256>|installed-user-unit <package-enrollment.json>|replacement-self-test <replacement-state-root>|replacement-recovery|replace <replacement-bundle>|rollback <replacement-bundle>>")
+	return errors.New("usage: ardents endpoint <provision <request-file>|start-installed <installation-root>|installation-check <installation-root>|enrollment-check <bundle-root> <manifest-sha256>|enroll <bundle-root> <manifest-sha256>|enroll-installed <package-enrollment.json>|headless <headless-runtime.json>|open <application-socket> <target-link> <input-file> <output-file> (retired; refuses before effects)|publish <administration-socket> (retired; use ardents-text publish <administration-socket> <document-file>)|withdraw <administration-socket>|user-unit <bundle-root> <manifest-sha256>|installed-user-unit <package-enrollment.json>|replacement-self-test <replacement-state-root>|replacement-recovery|replace <replacement-bundle>|rollback <replacement-bundle>>")
 }
 
 // runReplacementSelfTest is the candidate-side, no-network Endpoint
@@ -233,7 +243,21 @@ func runEnrolledEndpoint(ctx context.Context, output io.Writer, allowInstalledRe
 	if err != nil {
 		return encodeEnrolledFailure(encoder, err, portable.Event{State: portable.StateBlocked, Reason: releaseDecisionUnavailable})
 	}
-	decision := verifier.Evaluate(ctx, verified.Inputs)
+	var decision release.Decision
+	if len(verified.ProtectedDescriptor) != 0 {
+		protection, protectionErr := installation.Authenticate(ctx, verifier, verified)
+		if protectionErr != nil {
+			return encodeEnrolledFailure(encoder, errors.Join(protectionErr, verifier.Close()), portable.Event{State: portable.StateBlocked, Reason: releaseDecisionRejected})
+		}
+		programProof, _ := protection.Targets()
+		var accepted bool
+		decision, accepted = programProof.AcceptedDecision()
+		if !accepted {
+			return encodeEnrolledFailure(encoder, errors.Join(errors.New("protected Release composition lacks its executable proof"), verifier.Close()), portable.Event{State: portable.StateBlocked, Reason: releaseDecisionRejected})
+		}
+	} else {
+		decision = verifier.Evaluate(ctx, verified.Inputs)
+	}
 	closeErr := verifier.Close()
 	if closeErr != nil {
 		return encodeEnrolledFailure(encoder, closeErr, portable.Event{State: portable.StateBlocked, Reason: releaseDecisionUnavailable})

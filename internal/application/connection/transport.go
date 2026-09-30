@@ -90,18 +90,30 @@ func (server *server) serve() {
 
 func (server *server) handle(local *net.UnixConn) {
 	defer local.Close()
-	_ = local.SetDeadline(time.Now().Add(15 * time.Second))
+	lifetime := newOpening(server.ctx)
+	defer lifetime.close()
+	if err := local.SetDeadline(lifetime.end); err != nil {
+		return
+	}
+	refuse := func(cause error) {
+		if !time.Now().Before(lifetime.end) {
+			cause = errors.Join(cause, context.DeadlineExceeded)
+		}
+		// Refusal cleanup has its own bound; it cannot emit a late ACCEPT.
+		if local.SetWriteDeadline(time.Now().Add(time.Second)) == nil {
+			_ = writeRefusal(local, cause)
+		}
+	}
 	targetLink, err := readRequest(local)
 	if err != nil {
-		_ = writeRefusal(local, err)
+		refuse(errors.Join(err, context.Cause(lifetime.ctx)))
 		return
 	}
-	application, cancel, err := server.openAuthorizedAttachment(local, targetLink)
+	application, err := server.openAuthorizedAttachment(local, targetLink, lifetime)
 	if err != nil || application == nil {
-		_ = writeRefusal(local, err)
+		refuse(err)
 		return
 	}
-	defer cancel()
 	stop := context.AfterFunc(server.ctx, func() { _ = application.Close() })
 	defer stop()
 	defer func() {
@@ -112,10 +124,15 @@ func (server *server) handle(local *net.UnixConn) {
 		}
 		server.mu.Unlock()
 	}()
-	if _, err := local.Write([]byte{1}); err != nil {
+	if err := lifetime.accept(func() error {
+		_, err := local.Write([]byte{1})
+		return err
+	}); err != nil {
 		return
 	}
-	_ = local.SetDeadline(time.Time{})
+	if err := local.SetDeadline(time.Time{}); err != nil {
+		return
+	}
 	inputDone := make(chan struct{})
 	go func() {
 		defer close(inputDone)

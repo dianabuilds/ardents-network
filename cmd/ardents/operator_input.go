@@ -1,8 +1,6 @@
 package main
 
 import (
-	"crypto/ed25519"
-	"crypto/sha256"
 	"crypto/tls"
 	"encoding/hex"
 	"encoding/json"
@@ -16,8 +14,8 @@ import (
 var errOperatorInputTooLarge = errors.New("operator input exceeds its bound")
 
 // readOperatorInput closes one command-owned input before returning its bounded
-// contents. It is deliberately private to ardents: plans are not a shared
-// product format or cross-command authority.
+// contents. File access is private to ardents; declaration grammar validation
+// can be delegated to its owning module without granting authority.
 func readOperatorInput(path string, maximum int64) ([]byte, error) {
 	if maximum <= 0 {
 		return nil, errors.New("operator input bound must be positive")
@@ -63,21 +61,6 @@ func decodeOperatorFixedHex(encoded string, destination []byte) error {
 	}
 	copy(destination, decoded)
 	return nil
-}
-
-func decodeOperatorAuthorities(encoded []string, maximum int) (map[[32]byte]ed25519.PublicKey, error) {
-	if len(encoded) == 0 || len(encoded) > maximum {
-		return nil, errors.New("authority key count is invalid")
-	}
-	values := make(map[[32]byte]ed25519.PublicKey, len(encoded))
-	for _, value := range encoded {
-		public := make([]byte, ed25519.PublicKeySize)
-		if err := decodeOperatorFixedHex(value, public); err != nil {
-			return nil, err
-		}
-		values[sha256.Sum256(public)] = ed25519.PublicKey(public)
-	}
-	return values, nil
 }
 
 func readOperatorKeyPair(certificatePath, keyPath string) (tls.Certificate, error) {

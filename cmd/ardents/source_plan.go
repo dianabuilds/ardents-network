@@ -8,35 +8,13 @@ import (
 	"io"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/endpoint/runtimeplan"
 	"github.com/dianabuilds/ardents-network/internal/network/source"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 )
 
-type sourcePlan struct {
-	Schema               string             `json:"schema"`
-	NetworkID            string             `json:"network_id"`
-	AuthorityPublic      []string           `json:"authority_public"`
-	Threshold            int                `json:"threshold"`
-	ClockObservedAt      string             `json:"clock_observed_at"`
-	ClockObservationFile string             `json:"clock_observation_file,omitempty"`
-	OrderSeed            string             `json:"order_seed"`
-	MaterializationIndex uint32             `json:"materialization_index"`
-	RefreshIntervalMS    uint32             `json:"refresh_interval_ms,omitempty"`
-	RuntimeProfile       string             `json:"runtime_profile,omitempty"`
-	LocalRoleStateRoot   string             `json:"local_role_state_root"`
-	ClientCertificate    string             `json:"client_certificate"`
-	ClientKey            string             `json:"client_key"`
-	Sources              []sourcePlanMember `json:"sources"`
-}
-type sourcePlanMember struct {
-	Address        string `json:"address"`
-	ServerName     string `json:"server_name"`
-	Identity       string `json:"identity"`
-	Family         string `json:"family"`
-	EndpointHandle string `json:"endpoint_handle"`
-	RootCA         string `json:"root_ca"`
-	LeafKeyDigest  string `json:"leaf_key_digest"`
-}
+type sourcePlan = runtimeplan.Source
+type sourcePlanMember = runtimeplan.SourceMember
 
 func runRefreshSources(ctx context.Context, arguments []string, output io.Writer) (resultErr error) {
 	flags := flag.NewFlagSet("refresh-sources", flag.ContinueOnError)
@@ -97,33 +75,26 @@ func runRefreshSources(ctx context.Context, arguments []string, output io.Writer
 	return store.Wait(ctx)
 }
 func readSourcePlan(root, path string) (state.Config, error) {
-	var plan sourcePlan
-	if err := decodeOperatorInput(path, 32<<10, &plan); err != nil {
+	raw, err := readOperatorInput(path, 32<<10)
+	if err != nil {
 		return state.Config{}, fmt.Errorf("decode source plan: %w", err)
 	}
-	if plan.Schema != "ardents-source-plan-v1" || plan.LocalRoleStateRoot == "" || len(plan.Sources) != 2 {
-		return state.Config{}, errors.New("source plan is not canonical or complete")
-	}
-	var err error
-	config := state.Config{Root: root, LocalRoleStateRoot: plan.LocalRoleStateRoot, Threshold: plan.Threshold,
-		Source: source.Config{MaterialIndex: plan.MaterializationIndex}, RuntimeProfile: plan.RuntimeProfile,
-		AutomaticRefreshInterval: time.Duration(plan.RefreshIntervalMS) * time.Millisecond}
-	if err := decodeOperatorFixedHex(plan.NetworkID, config.NetworkID[:]); err != nil {
-		return config, err
-	}
-	config.Authorities, err = decodeOperatorAuthorities(plan.AuthorityPublic, 16)
+	plan, err := runtimeplan.DecodeSource(raw)
 	if err != nil {
-		return config, err
+		return state.Config{}, fmt.Errorf("decode source plan: %w", err)
 	}
-	config.Clock = time.Now
-	config.ClockObservationFile = plan.ClockObservationFile
-	if config.ClockObservation, err = time.Parse(time.RFC3339, plan.ClockObservedAt); err != nil {
-		return config, err
+	config := state.Config{Root: root, LocalRoleStateRoot: plan.LocalRoleStateRoot, Threshold: plan.Threshold,
+		NetworkID: plan.NetworkID, Authorities: plan.Authorities,
+		Source: source.Config{MaterialIndex: plan.MaterializationIndex, OrderSeed: plan.OrderSeed}, RuntimeProfile: plan.RuntimeProfile,
+		AutomaticRefreshInterval: time.Duration(plan.RefreshIntervalMS) * time.Millisecond,
+		Clock:                    time.Now, ClockObservationFile: plan.ClockObservationFile, ClockObservation: plan.ClockObservation}
+	for index, member := range plan.Sources {
+		declared := &config.Source.Sources[index]
+		declared.Address, declared.ServerName = member.Address, member.ServerName
+		declared.Family, declared.EndpointHandle = member.Family, member.EndpointHandle
+		declared.Identity, declared.LeafKeyDigest = plan.Identities[index], plan.LeafKeyDigests[index]
 	}
-	if err := decodeOperatorFixedHex(plan.OrderSeed, config.Source.OrderSeed[:]); err != nil {
-		return config, err
-	}
-	if err := loadSourceCredentials(&config, plan); err != nil {
+	if err := loadSourceCredentials(&config, plan.Source); err != nil {
 		return config, err
 	}
 	return config, nil

@@ -13,8 +13,9 @@ import (
 // openAuthorizedAttachment keeps setup cancellation tied to the actual local
 // peer. Clients send no data until ACCEPT, so an early byte or disconnection
 // refuses setup rather than becoming an unbounded optimistic input queue.
-func (server *server) openAuthorizedAttachment(local *net.UnixConn, request Request) (Stream, context.CancelFunc, error) {
-	ctx, cancel := context.WithTimeout(server.ctx, 15*time.Second)
+func (server *server) openAuthorizedAttachment(local *net.UnixConn, request Request, lifetime *opening) (Stream, error) {
+	ctx := lifetime.ctx
+	cancel := func() { lifetime.cancel(context.Canceled) }
 	var mu sync.Mutex
 	finished := false
 	monitorDone := make(chan struct{})
@@ -27,7 +28,11 @@ func (server *server) openAuthorizedAttachment(local *net.UnixConn, request Requ
 		mu.Unlock()
 		var networkErr net.Error
 		if n != 0 || !ready || !errors.As(err, &networkErr) || !networkErr.Timeout() {
-			cancel()
+			cause := error(context.Canceled)
+			if !time.Now().Before(lifetime.end) {
+				cause = context.DeadlineExceeded
+			}
+			lifetime.cancel(cause)
 		}
 	}()
 	stream, openErr := server.owner.Open(ctx, request)
@@ -40,17 +45,17 @@ func (server *server) openAuthorizedAttachment(local *net.UnixConn, request Requ
 	}
 	<-monitorDone
 	if openErr != nil || stream == nil || ctx.Err() != nil {
-		contextErr := ctx.Err()
+		contextErr := context.Cause(ctx)
 		cancel()
 		if stream != nil {
 			_ = stream.Close()
 		}
-		return nil, nil, errors.Join(openErr, contextErr, errors.New("local Application setup did not complete"))
+		return nil, errors.Join(openErr, contextErr, errors.New("local Application setup did not complete"))
 	}
 	if err := local.SetReadDeadline(time.Time{}); err != nil {
 		cancel()
 		_ = stream.Close()
-		return nil, nil, err
+		return nil, err
 	}
-	return stream, cancel, nil
+	return stream, nil
 }

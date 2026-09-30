@@ -99,7 +99,7 @@ func TestHeadlessRuntimeSourcePlanMustShareItsStateOwners(t *testing.T) {
 	public := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{9}, ed25519.SeedSize)).Public().(ed25519.PublicKey)
 	identity := [32]byte{81}
 	plan := decodedHeadlessRuntimePlan{NetworkID: [32]byte{80}, NetworkAuthorities: map[[32]byte]ed25519.PublicKey{identity: public},
-		headlessRuntimePlan: headlessRuntimePlan{NetworkThreshold: 1, LocalRoleStateRoot: sharedRoles, TimeConfidenceFile: sharedClock}}
+		Headless: headlessRuntimePlan{NetworkThreshold: 1, LocalRoleStateRoot: sharedRoles, TimeConfidenceFile: sharedClock}}
 	matching := state.Config{NetworkID: plan.NetworkID, Authorities: map[[32]byte]ed25519.PublicKey{identity: public}, Threshold: 1,
 		LocalRoleStateRoot: sharedRoles, ClockObservationFile: sharedClock, AutomaticRefreshInterval: time.Second}
 	if !matchesHeadlessSourcePlan(plan, matching) {

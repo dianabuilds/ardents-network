@@ -68,7 +68,10 @@ type Stream interface {
 // Interface opens one Target Link without accepting Network or Route facts.
 // The link is non-empty and at most 512 bytes. The context governs both setup
 // and the returned Stream lifetime. An implementation may return Refuse for a
-// classified denial; every other error is exposed as ServiceUnavailable by
+// classified denial. The local Adapter applies one ten-second opening budget
+// through ACCEPT, then retires that timer without canceling this context;
+// caller, authorization and attachment cancellation still govern the Stream.
+// Every other error is exposed as ServiceUnavailable by
 // the server Adapter. No operation retries or opens an alternate Target Link.
 type Interface interface {
 	Open(context.Context, Request) (Stream, error)
