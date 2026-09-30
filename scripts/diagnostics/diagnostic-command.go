@@ -26,9 +26,11 @@ func main() {
 
 func dispatch(args []string) error {
 	if len(args) == 0 {
-		return errors.New("use doctor, run, test, static, analyze, or serve; see scripts/diagnostics/README.md")
+		return errors.New("use doctor, run, test, static, analyze, snapshot, timings, report, or serve; see scripts/diagnostics/README.md")
 	}
 	switch args[0] {
+	case "report":
+		return reportCommand(args[1:])
 	case "doctor":
 		return doctor()
 	case "serve":
@@ -152,7 +154,12 @@ func collect(mode string, args []string) error {
 	if len(command) == 0 {
 		return errors.New("run requires -- command arguments")
 	}
-	return supervise(absolute, root, command, *timeout, *raw)
+	conditions := reportConditions{Mode: mode}
+	if mode == "test" {
+		conditions.Race = race
+		conditions.Profiling = profile
+	}
+	return superviseWithConditions(absolute, root, command, *timeout, *raw, conditions)
 }
 
 func within(root, path string) bool {

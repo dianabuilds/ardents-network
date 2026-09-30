@@ -129,3 +129,46 @@ At terminal completion the collector rechecks source content within the same
 run budget. A changed/unavailable final inventory invalidates the candidate
 receipt with a fixed source-change flag. Freeze the source before an accepted
 measurement; this comparison is not a transactional filesystem snapshot.
+
+## Local diagnostic assistant
+
+The CLI report and read-only panel use the same report builder over an explicitly
+selected private run, with an optional explicitly selected comparison run.
+Its Interface separates command outcome from capture validity and current
+capability readiness. It returns finite facts, named missing evidence, the first
+available explicitly observed failure with a local event ordinal, separate
+cleanup observations and a fixed catalogue of manual next-check templates.
+It neither executes recommendations nor accepts HTTP path/action selection.
+
+The builder inspects the bounded projected event history rather than inferring
+causality from the latest transition tail. Supplied owner UTC stays separate
+from collector UTC/order. Malformed/truncated history or terminal count mismatch
+invalidates completeness; lost history cannot establish a first overall cause.
+A historical READY, a live process or a clean command exit never grants current
+product readiness. Cgroup limit/OOM/throttling observations are container facts,
+not attribution to one Node or proof of why an operation failed.
+
+Manifest projection admits only exact source/image digest forms, a recognized
+compiler/platform, finite time budget, fixed collector mode and explicit test
+race/profiling flags. Tool versions are parsed only from fixed known inventory
+formats; arbitrary inventory lines remain private. Full workload/environment
+identity is absent from existing receipts and is reported as unknown.
+Comparisons retain both outcomes, display known condition differences and
+supervisor duration separately, and issue no speedup verdict. These records
+are local observations rather than authenticated Release/qualification evidence.
+
+Admission uses a canonical absolute directory and os.Root-confined regular-file
+opens with NOFOLLOW/NONBLOCK. Manifest is at most 16 KiB, tool inventory 1 MiB,
+each summary/event/sample file 4 MiB, JSON nesting 32, event/sample records 65536
+and each record 16 KiB. At most eight failures are returned with an explicit
+truncation notice. Stored fields are projected again for report, summary and
+sample routes; unknown strings/maps never become report prose, HTML or labels.
+Byte and record limits are not a transactional snapshot, filesystem quota or
+protection against root/same-UID evidence modification. Missing terminal files
+remain visible; a live snapshot older than ten seconds is stale observation,
+not proof the supervised command or product exited.
+
+Report generation success means a complete capture was explained, even when
+the command failed; incomplete/unavailable report inputs give a nonzero CLI
+result. Original command exit and failed comparison outcomes remain explicit.
+Run instructions and exact report/compare examples belong to the README.

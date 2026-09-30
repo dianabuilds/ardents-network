@@ -139,6 +139,56 @@ incomplete evidence; it exposes no raw log/profile files. Fixed metrics have
 no Target, peer, request ID, permission or arbitrary error labels. Loss counters
 and unrecognized input are visible, including when the product emits no events.
 
+## Diagnostic assistant
+
+The same explanation is available in the panel and CLI:
+
+~~~sh
+diag report -dir /evidence/check-a
+diag report -dir /evidence/check-b -compare /evidence/check-a -json
+~~~
+
+An explanation distinguishes command failure, timeout, caller interruption,
+source change, lost observations and missing evidence. It identifies the first
+available explicit owner failure by its local ordinal in the projected
+events.ndjson history, keeps cleanup separately, and supplies fixed manual
+command templates with prerequisites, budgets and sensitivity. It does not
+execute suggestions. Collector order is not causal order; owner UTC is retained
+separately when available. The full bounded event file is inspected rather than
+only the panel's transition tail.
+
+A report command exits zero when it successfully explains complete evidence,
+even if that evidence records a command FAIL. Read its explicit status/exit_code;
+report success is never a test, readiness or qualification PASS. Unavailable,
+invalid or incomplete evidence returns a nonzero report exit after the safe
+explanation. A missing resource sample can be legitimate for a short command;
+a missing sample file or mismatch with a terminal summary is incomplete.
+
+Old captures remain readable. Unknown workload, environment, compiler/image
+or tool versions are named gaps. New test captures declare race/profiling, and
+the collector records its command mode without exposing arguments. Comparison
+shows known differences and observed supervisor duration, preserves the earlier
+FAIL, and gives no acceleration verdict: existing receipts do not declare the
+full workload and environment. Cold compilation and collection overhead remain
+inside supervisor duration; use timings for test execution.
+
+The normal dashboard adds this report for its explicitly selected run. To
+compare two runs in the panel, stop the existing dashboard occupying port 8090
+and explicitly select both directories at startup:
+
+~~~sh
+docker compose -f scripts/diagnostics/compose.yaml --profile view stop dashboard
+docker compose -f scripts/diagnostics/compose.yaml --profile view run --rm --service-ports dashboard \
+  serve -container -listen 0.0.0.0:8090 \
+  -dir /evidence/check-b -compare /evidence/check-a
+~~~
+
+/report accepts no caller-selected file paths or actions. All file access is
+confined to the startup directories, rejects symlinks/special files, and is
+bounded. The panel's existing summary and sample routes also re-project stored
+records before output; unknown strings/metric fields cannot become visible.
+The server remains read-only, with the existing host-loopback publication.
+
 ## Debugger, syscalls and network fault diagnosis
 
 Use `-gcflags="all=-N -l"` only for a separate local artifact. Delve accepts

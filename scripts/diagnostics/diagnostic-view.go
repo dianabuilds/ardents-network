@@ -112,23 +112,25 @@ func (p *projection) snapshot(dir string) error {
 
 func readSummary(dir string) (summary, error) {
 	var s summary
-	f, err := os.Open(filepath.Join(dir, "summary.json"))
+	root, err := openEvidenceRoot(dir)
+	if err != nil {
+		return s, err
+	}
+	body, _, err := readEvidence(root, "summary.json", recordLimit)
 	if errors.Is(err, os.ErrNotExist) {
-		f, err = os.Open(filepath.Join(dir, "live.json"))
+		body, _, err = readEvidence(root, "live.json", recordLimit)
 	}
+	err = errors.Join(err, root.Close())
 	if err != nil {
 		return s, err
 	}
-	defer f.Close()
-	body, err := io.ReadAll(io.LimitReader(f, recordLimit+1))
-	if err != nil {
+	if !validJSONRecord(body) {
+		return s, errors.New("summary invalid")
+	}
+	if err := json.Unmarshal(body, &s); err != nil {
 		return s, err
 	}
-	if len(body) > recordLimit {
-		return s, errors.New("summary exceeds bound")
-	}
-	err = json.Unmarshal(body, &s)
-	return s, err
+	return safeSummaryForPanel(s)
 }
 
 func metricText(s summary) string {
@@ -152,12 +154,19 @@ func boolNumber(value bool) int {
 	return 0
 }
 
-func handler(dir string) http.Handler {
+func handler(dir string) http.Handler { return handlerWithComparison(dir, "") }
+
+func handlerWithComparison(dir, compare string) http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /{$}", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.Header().Set("Content-Security-Policy", "default-src 'self'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self'")
 		io.WriteString(w, dashboard)
+	})
+	mux.HandleFunc("GET /report", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "no-store")
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(buildAssistantReport(dir, compare, time.Now().UTC()))
 	})
 	mux.HandleFunc("GET /summary", func(w http.ResponseWriter, r *http.Request) {
 		s, err := readSummary(dir)
@@ -169,14 +178,19 @@ func handler(dir string) http.Handler {
 		json.NewEncoder(w).Encode(s)
 	})
 	mux.HandleFunc("GET /samples", func(w http.ResponseWriter, r *http.Request) {
-		f, err := os.Open(filepath.Join(dir, "samples.ndjson"))
+		samples, err := safeSamplesForPanel(dir)
 		if err != nil {
-			http.Error(w, "samples unavailable", 503)
+			http.Error(w, "samples unavailable or incomplete", 503)
 			return
 		}
-		defer f.Close()
+		w.Header().Set("Cache-Control", "no-store")
 		w.Header().Set("Content-Type", "application/x-ndjson")
-		io.Copy(w, io.LimitReader(f, recordLimit))
+		encoder := json.NewEncoder(w)
+		for _, row := range samples {
+			if err := encoder.Encode(row); err != nil {
+				return
+			}
+		}
 	})
 	mux.HandleFunc("GET /metrics", func(w http.ResponseWriter, r *http.Request) {
 		s, err := readSummary(dir)
@@ -193,12 +207,13 @@ func handler(dir string) http.Handler {
 func serve(args []string) error {
 	flags := flag.NewFlagSet("serve", flag.ContinueOnError)
 	dir := flags.String("dir", "", "one absolute evidence directory")
+	compare := flags.String("compare", "", "optional second absolute evidence directory")
 	addr := flags.String("listen", "127.0.0.1:8090", "local UI address; container bridge requires -container")
 	container := flags.Bool("container", false, "allow container wildcard; publish host loopback only")
 	if err := flags.Parse(args); err != nil {
 		return err
 	}
-	if !filepath.IsAbs(*dir) || len(flags.Args()) != 0 {
+	if !filepath.IsAbs(*dir) || *compare != "" && !filepath.IsAbs(*compare) || len(flags.Args()) != 0 {
 		return errors.New("select absolute -dir")
 	}
 	host, _, err := net.SplitHostPort(*addr)
@@ -209,7 +224,7 @@ func serve(args []string) error {
 	if ip == nil || !ip.IsLoopback() && !(*container && host == "0.0.0.0") {
 		return errors.New("UI must use loopback, or explicit container binding")
 	}
-	server := &http.Server{Addr: *addr, Handler: handler(*dir), ReadHeaderTimeout: 3 * time.Second, ReadTimeout: 5 * time.Second, WriteTimeout: 10 * time.Second, IdleTimeout: 15 * time.Second, MaxHeaderBytes: 8192}
+	server := &http.Server{Addr: *addr, Handler: handlerWithComparison(*dir, *compare), ReadHeaderTimeout: 3 * time.Second, ReadTimeout: 5 * time.Second, WriteTimeout: 10 * time.Second, IdleTimeout: 15 * time.Second, MaxHeaderBytes: 8192}
 	listener, err := net.Listen("tcp", *addr)
 	if err != nil {
 		return err
@@ -241,12 +256,12 @@ func serve(args []string) error {
 const dashboard = `<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Ardents local diagnostics</title>
 <style>body{font:16px system-ui;background:#121b28;color:#e9f0f8;margin:2rem;max-width:1200px}h1{font-size:1.5rem}section{background:#1b293c;border-radius:12px;padding:1rem;margin:1rem 0}pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px}table{width:100%;font-size:13px;text-align:left}td,th{padding:6px;border-bottom:1px solid #344457}.bad{color:#ffab91}.good{color:#9ce0bd}svg{width:100%;height:180px}a{color:#9bcbff}</style>
 <h1>Ardents · local diagnostics</h1><p>Development observation. Readiness comes from the owner event; process existence is not readiness. Namespace network counters include all local fixture traffic.</p>
-<section><h2 id="status">Waiting for capture</h2><pre id="health"></pre></section>
+<section><h2>Помощник диагностики</h2><pre id="assistant"></pre></section>\n<section><h2 id="status">Waiting for capture</h2><pre id="health"></pre></section>
 <section><h2>Process group RSS (MiB)</h2><svg id="rss" viewBox="0 0 1000 180" preserveAspectRatio="none"></svg><pre id="sample"></pre></section>
 <section><h2>Latest owner transitions</h2><pre id="resource-state"></pre><table><thead><tr><th>Observed UTC</th><th>Kind</th><th>State</th><th>Carrier</th><th>Failure</th></tr></thead><tbody id="events"></tbody></table></section>
 <section><h2>Resource peaks</h2><pre id="peaks"></pre><a href="/metrics">Bounded metrics</a></section>
 <script>
-async function update(){try{let r=await fetch('/summary',{cache:'no-store'});if(!r.ok)throw Error('Capture unavailable or not started');let s=await r.json();document.getElementById('resource-state').textContent=s.last_resource?JSON.stringify(s.last_resource,null,2):'No resource event observed';let done=s.finished&&!s.finished.startsWith('0001');let bad=s.capture_incomplete||s.timed_out||s.interrupted||(done&&s.exit_code!==0);let title=document.getElementById('status');title.textContent=done?(bad?'Failed / incomplete':'Command completed'):'Collecting';title.className=bad?'bad':'good';document.getElementById('health').textContent=JSON.stringify({started:s.started,finished:done?s.finished:null,exit_code:s.exit_code,timed_out:s.timed_out,interrupted:s.interrupted,capture_incomplete:s.capture_incomplete,samples:s.samples,sample_failures:s.sample_failures,invalid_lines:s.invalid_lines,unrecognized_lines:s.unrecognized_lines,oversized_lines:s.oversized_lines,raw_dropped_bytes:s.raw_dropped_bytes,event_dropped_bytes:s.event_dropped_bytes,sample_dropped_bytes:s.sample_dropped_bytes},null,2);let table=document.getElementById('events');table.replaceChildren();for(let e of (s.last_events||[]).slice(-32).reverse()){let tr=document.createElement('tr');for(let k of ['observed_at','kind','state','carrier','failure']){let td=document.createElement('td');td.textContent=e[k]||'—';tr.append(td)}table.append(tr)}document.getElementById('peaks').textContent=JSON.stringify(s.peak,null,2);let sr=await fetch('/samples',{cache:'no-store'});if(sr.ok){let text=await sr.text();let rows=text.trim().split('\n').filter(Boolean).map(x=>JSON.parse(x));let last=rows.at(-1);document.getElementById('sample').textContent=JSON.stringify(last||{samples:'not yet available'},null,2);let svg=document.getElementById('rss');svg.replaceChildren();if(rows.length){let maximum=Math.max(1,...rows.map(x=>x.rss_bytes));let path=document.createElementNS('http://www.w3.org/2000/svg','polyline');path.setAttribute('points',rows.map((x,i)=>[i*1000/Math.max(1,rows.length-1),170-160*x.rss_bytes/maximum].join(',')).join(' '));path.setAttribute('fill','none');path.setAttribute('stroke','#9bcbff');path.setAttribute('stroke-width','2');svg.append(path)}}}catch(e){document.getElementById('status').textContent=e.message;document.getElementById('status').className='bad'}}update();setInterval(update,2000);
+async function update(){try{let ar=await fetch('/report',{cache:'no-store'});if(ar.ok){let a=await ar.json();let run=a.run;let lines=['Итог: '+run.status+'; exit='+run.exit_code+'; полнота='+run.complete];let f=run.first_observed_failure;if(f)lines.push('Первый доступный отказ: '+f.owner+' / '+f.kind+' / '+(f.category||f.state)+' — events.ndjson #'+f.record,'Первопричина этим наблюдением не доказана.');lines.push('Время supervisor: '+run.duration_seconds.toFixed(3)+' с (включает подготовку и сбор).','Условия: '+JSON.stringify(run.conditions),'Ресурсные факты: '+JSON.stringify(run.resource_facts));for(let e of run.failures)lines.push('Наблюдение #'+e.record+': '+e.owner+' / '+e.kind+' / '+(e.category||e.state));for(let gap of run.gaps)lines.push('Пробел: '+run.gap_descriptions[gap]);for(let check of run.next_checks)lines.push('','Следующая проверка ['+check.id+']: '+check.reason,'Условия: '+check.prerequisites,'Лимит: '+check.budget,'Чувствительные данные: '+check.sensitive,'Ожидается: '+check.expected,'Шаблон команды: '+check.invocation);if(a.comparison)lines.push('','Сравнение условий: '+a.comparison.conditions+'; различия: '+a.comparison.differences.join(', '),'Предыдущий итог: '+a.comparison.other.status+'; exit='+a.comparison.other.exit_code,'Разность supervisor duration: '+a.comparison.duration_difference_seconds.toFixed(3)+' с. Ускорение не установлено.');document.getElementById('assistant').textContent=lines.join('\\n')}let r=await fetch('/summary',{cache:'no-store'});if(!r.ok)throw Error('Capture unavailable or not started');let s=await r.json();document.getElementById('resource-state').textContent=s.last_resource?JSON.stringify(s.last_resource,null,2):'No resource event observed';let done=s.finished&&!s.finished.startsWith('0001');let bad=s.capture_incomplete||s.timed_out||s.interrupted||(done&&s.exit_code!==0);let title=document.getElementById('status');title.textContent=done?(bad?'Failed / incomplete':'Command completed'):'Collecting';title.className=bad?'bad':'good';document.getElementById('health').textContent=JSON.stringify({started:s.started,finished:done?s.finished:null,exit_code:s.exit_code,timed_out:s.timed_out,interrupted:s.interrupted,capture_incomplete:s.capture_incomplete,samples:s.samples,sample_failures:s.sample_failures,invalid_lines:s.invalid_lines,unrecognized_lines:s.unrecognized_lines,oversized_lines:s.oversized_lines,raw_dropped_bytes:s.raw_dropped_bytes,event_dropped_bytes:s.event_dropped_bytes,sample_dropped_bytes:s.sample_dropped_bytes},null,2);let table=document.getElementById('events');table.replaceChildren();for(let e of (s.last_events||[]).slice(-32).reverse()){let tr=document.createElement('tr');for(let k of ['observed_at','kind','state','carrier','failure']){let td=document.createElement('td');td.textContent=e[k]||'—';tr.append(td)}table.append(tr)}document.getElementById('peaks').textContent=JSON.stringify(s.peak,null,2);let sr=await fetch('/samples',{cache:'no-store'});if(sr.ok){let text=await sr.text();let rows=text.trim().split('\n').filter(Boolean).map(x=>JSON.parse(x));let last=rows.at(-1);document.getElementById('sample').textContent=JSON.stringify(last||{samples:'not yet available'},null,2);let svg=document.getElementById('rss');svg.replaceChildren();if(rows.length){let maximum=Math.max(1,...rows.map(x=>x.rss_bytes));let path=document.createElementNS('http://www.w3.org/2000/svg','polyline');path.setAttribute('points',rows.map((x,i)=>[i*1000/Math.max(1,rows.length-1),170-160*x.rss_bytes/maximum].join(',')).join(' '));path.setAttribute('fill','none');path.setAttribute('stroke','#9bcbff');path.setAttribute('stroke-width','2');svg.append(path)}}}catch(e){document.getElementById('status').textContent=e.message;document.getElementById('status').className='bad'}}update();setInterval(update,2000);
 </script></html>`
 
 func snapshotCommand(args []string) error {

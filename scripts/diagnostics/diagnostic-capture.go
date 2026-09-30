@@ -287,7 +287,11 @@ func drain(reader io.Reader, raw *boundedFile, p *projection, stdout bool) error
 	}
 }
 
-func supervise(dir, source string, command []string, timeout time.Duration, raw bool) (outcome error) {
+func supervise(dir, source string, command []string, timeout time.Duration, raw bool) error {
+	return superviseWithConditions(dir, source, command, timeout, raw, reportConditions{})
+}
+
+func superviseWithConditions(dir, source string, command []string, timeout time.Duration, raw bool, conditions reportConditions) (outcome error) {
 	signalCtx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	ctx, cancel := context.WithTimeout(signalCtx, timeout)
@@ -306,7 +310,7 @@ func supervise(dir, source string, command []string, timeout time.Duration, raw 
 			outcome = errors.Join(outcome, writeJSON(filepath.Join(dir, "summary.json"), p.summary))
 		}
 	}()
-	info := map[string]any{"schema": "ardents-local-diagnostics-v1", "started": p.summary.Started, "timeout": timeout.String(), "raw": raw, "command": filepath.Base(command[0]), "arguments_retained": raw, "source_sha": sourceRevision(ctx, source), "source_tree_sha256": sourceDiffDigest(ctx, source), "go": query(ctx, source, "go", "version"), "image": os.Getenv("ARDENTS_DIAGNOSTIC_IMAGE"), "scope": "local development; process-group samples and network-namespace counters, not installed qualification"}
+	info := map[string]any{"mode": conditions.Mode, "race": conditions.Race, "profiling": conditions.Profiling, "schema": "ardents-local-diagnostics-v1", "started": p.summary.Started, "timeout": timeout.String(), "raw": raw, "command": filepath.Base(command[0]), "arguments_retained": raw, "source_sha": sourceRevision(ctx, source), "source_tree_sha256": sourceDiffDigest(ctx, source), "go": query(ctx, source, "go", "version"), "image": os.Getenv("ARDENTS_DIAGNOSTIC_IMAGE"), "scope": "local development; process-group samples and network-namespace counters, not installed qualification"}
 	if inventory, err := os.ReadFile("/opt/ardents-diagnostics/inventory.txt"); err == nil && len(inventory) <= 1<<20 {
 		if err := os.WriteFile(filepath.Join(dir, "tools.txt"), inventory, 0600); err != nil {
 			return err
