@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
@@ -56,10 +57,13 @@ func (owner *dutyContext) lookupDescriptor(ctx context.Context, target [32]byte)
 	if err := owner.ensureResolutionStock(flight); err != nil {
 		return reachability.Verified{}, err
 	}
+	diagnosticID := flight.source.Diagnostic357ID()
+	fmt.Fprintf(os.Stderr, "[DEBUG-357-source] at=%s id=%d boundary=lookup-begin\n", time.Now().UTC().Format(time.RFC3339Nano), diagnosticID)
 	status, raw, err := flight.source.ExchangeDescriptor(attempt, func(hello ardp.Hello, class uint8) ([]byte, error) {
 		return owner.presentResolutionToken(flight, hello, class)
 	}, target, nil)
 	defer clear(raw)
+	fmt.Fprintf(os.Stderr, "[DEBUG-357-source] at=%s id=%d boundary=lookup-return success=%t\n", time.Now().UTC().Format(time.RFC3339Nano), diagnosticID, err == nil && status == 0)
 	if err != nil || status != 0 {
 		return reachability.Verified{}, errors.Join(errors.New("text private resolution unavailable"), err)
 	}
@@ -71,6 +75,7 @@ func (owner *dutyContext) acceptResolutionResult(caller context.Context, flight 
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
 	current, now, err := owner.permissionProfileLocked()
+	fmt.Fprintf(os.Stderr, "[DEBUG-357-source] at=%s boundary=lookup-authority source-current=%t permission-ok=%t flight-ended=%t caller-ended=%t\n", time.Now().UTC().Format(time.RFC3339Nano), owner.resolution.CurrentSourceLocked(flight, &owner.source), err == nil, flight.context.Err() != nil, caller.Err() != nil)
 	if caller == nil || err != nil || flight == nil || !owner.resolution.CurrentSourceLocked(flight, &owner.source) ||
 		current != profile || flight.context.Err() != nil || caller.Err() != nil {
 		fmt.Fprintf(os.Stderr, "[DEBUG-357-auth] boundary=resolution-accept permission-ok=%t source-current=%t same-profile=%t flight-ended=%t caller-ended=%t owner-closed=%t source-present=%t cleanup-error=%t\n", err == nil, owner.resolution.CurrentSourceLocked(flight, &owner.source), current == profile, flight.context.Err() != nil, caller.Err() != nil, owner.closed, owner.source.CurrentLocked() != nil, errors.Is(err, client.ErrClosedSourceCleanup))

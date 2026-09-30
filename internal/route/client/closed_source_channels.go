@@ -25,6 +25,7 @@ var ErrClosedSourceStopped = errors.Join(net.ErrClosed, errors.New("closed sourc
 // writer. Lanes carry opaque TLS; only the caller selecting an authenticated
 // role may create one. No lane owns or changes the parent's read deadline.
 type closedSourceChannels struct {
+	diagnostic357ID                   uint64
 	queueParent                       *closedSourceChannels
 	refillBase                        uint64
 	retainClosedRead                  bool // Joined clients drain received bytes before releasing their reservation.
@@ -64,7 +65,7 @@ type closedSourceWrite struct {
 }
 
 func newClosedSourceChannelOwner(parent net.Conn, end time.Time, retire func() error) *closedSourceChannels {
-	return &closedSourceChannels{parent: parent, retire: retire, end: end, changed: make(chan struct{}), lanes: make(map[uint32]*closedSourceLane), done: make(chan struct{}), idleUntil: time.Now().Add(closedSourceRetention)}
+	return &closedSourceChannels{diagnostic357ID: diagnostic357Counter.Add(1), parent: parent, retire: retire, end: end, changed: make(chan struct{}), lanes: make(map[uint32]*closedSourceLane), done: make(chan struct{}), idleUntil: time.Now().Add(closedSourceRetention)}
 }
 
 func (owner *closedSourceChannels) start() {
@@ -84,6 +85,7 @@ func (owner *closedSourceChannels) fail(err error) {
 	owner.mu.Lock()
 	if owner.terminal == nil {
 		owner.terminal = err
+		owner.diagnostic357Terminal(err)
 		for _, queue := range [][]*closedSourceWrite{owner.terminals, owner.controls, owner.data} {
 			for _, request := range queue {
 				request.err = err
