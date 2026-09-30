@@ -197,7 +197,8 @@ purpose ends, and provision a filesystem quota for arbitrary commands/profiles.
 
 Ordinary runner/tests use UID 10001, required by real filesystem-denial tests.
 The explicit `gate` profile permits sudo only inside its disposable container
-for the existing package-e2e root prerequisite; it is distinct from the default
+for the existing package-e2e root prerequisite (including KILL for its
+dropped-UID child signal/join); it is distinct from the default
 no-new-privileges runner. It also has online access for advisory checks.
 
 ```sh

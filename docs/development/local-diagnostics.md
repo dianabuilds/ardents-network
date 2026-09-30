@@ -85,7 +85,9 @@ joined terminal outcome. Failed profile writes never return HTTP success. Runtim
 Default runner: no external network, read-only source/root filesystem, no Linux
 capabilities, 4 GiB memory, four CPU quota, 512 tasks and finite temporary mounts.
 The ordinary runner uses UID 10001. The selected gate profile permits the
-existing package-e2e sudo prerequisite within a disposable container.
+existing package-e2e sudo prerequisite within a disposable container. KILL
+permits that root test owner to signal and join its deliberately dropped-UID
+Endpoint child; it grants no host process access.
 Online advisory/module access, SYS_PTRACE debugger and NET_ADMIN/NET_RAW network
 fault/capture profiles are individually selected. Network capture also grants
 CHOWN/SETUID/SETGID for tcpdump to drop to its diagnostic UID. No Docker socket, host PID,
