@@ -94,34 +94,20 @@ jobs:
           TEST_RUN: ${{ matrix.run }}
           TEST_RACE: ${{ matrix.race }}
         run: |
-          # Temporary PID probe for the retained Node/statm failure. Overlay
-          # results are diagnostic evidence, not source qualification.
-          if [[ "$TEST_PACKAGE" == "github.com/dianabuilds/ardents-network/tests/e2e/node" && "$TEST_RUN" == *TestClosedReaderParticipantRetainsStateWithoutPublisher* ]]; then
-            python3 - <<'PY'
-          import json, os, pathlib
-          source = pathlib.Path("internal/endpoint/worker/manager_linux.go").resolve()
-          body = source.read_text()
-          needle = "\tif err := command.Run(); err != nil {"
-          assert body.count(needle) == 1, "manager execution boundary changed"
-          body = body.replace('"errors"', '"errors"\n\t"fmt"\n\t"os"', 1)
-          body = body.replace(needle, '\trunErr := command.Start()\n\tif runErr == nil {\n\t\tfmt.Fprintf(os.Stderr, "[DEBUG-367-busctl] parent=%d child=%d\\n", os.Getpid(), command.Process.Pid)\n\t\trunErr = command.Wait()\n\t}\n\tif err := runErr; err != nil {', 1)
-          root = pathlib.Path(os.environ["RUNNER_TEMP"])
-          probe = root / "367-manager-pid.go"
-          probe.write_text(body)
-          (root / "367-manager-overlay.json").write_text(json.dumps({"Replace": {str(source): str(probe)}}))
-          PY
-            export GOFLAGS="${GOFLAGS:+$GOFLAGS }-overlay=$RUNNER_TEMP/367-manager-overlay.json"
-          fi
+          test_command=(go)
           if [[ "$TEST_PACKAGE" == "github.com/dianabuilds/ardents-network/tests/e2e/node" ]]; then
             export ARDENTS_E2E_COMMAND_ROOT="$RUNNER_TEMP/e2e-commands"
             mkdir -p "$ARDENTS_E2E_COMMAND_ROOT"
             go build -trimpath -buildvcs=false -o "$ARDENTS_E2E_COMMAND_ROOT/" ./cmd/ardents ./cmd/ardents-node ./cmd/ardents-control ./cmd/ardents-custody
+            export ARDENTS_NODE_SCOPE_PROFILE=system
+            export GOCACHE="$(go env GOCACHE)" GOMODCACHE="$(go env GOMODCACHE)"
+            test_command=(sudo --preserve-env=ARDENTS_E2E_COMMAND_ROOT,ARDENTS_NODE_SCOPE_PROFILE,GOCACHE,GOMODCACHE,GOTOOLCHAIN,GOFLAGS "$(command -v go)")
           fi
           args=(-json -count=1 -timeout=5m -run "$TEST_RUN")
           if [[ "$TEST_RACE" == true ]]; then args+=(-race); fi
           test_log="$RUNNER_TEMP/selected-test.json"
           set +e
-          timeout --signal=QUIT --kill-after=10s 330s go test "${args[@]}" "$TEST_PACKAGE" | tee "$test_log"
+          timeout --signal=QUIT --kill-after=10s 330s "${test_command[@]}" test "${args[@]}" "$TEST_PACKAGE" | tee "$test_log"
           status=${PIPESTATUS[0]}
           set -e
           if (( status != 0 )); then
