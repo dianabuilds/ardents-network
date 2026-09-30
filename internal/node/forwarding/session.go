@@ -323,10 +323,12 @@ func (session *session) copyReverse() {
 	for {
 		frame, err := ardp.ReadFrame(session.carrier)
 		if err != nil || frame.Lane == 0 || (frame.Kind != 5 && frame.Kind != 6 && frame.Kind != 7 && frame.Kind != 8 && frame.Kind != 9) {
+			diagnostic357Forward("session-abort", 0, "read-or-frame", uint8(frame.Kind), err)
 			session.fail()
 			return
 		}
 		if !session.deliverReverse(frame) {
+			diagnostic357Forward("session-abort", 0, "delivery", uint8(frame.Kind), errors.New("diagnostic reverse delivery refused"))
 			session.fail()
 			return
 		}

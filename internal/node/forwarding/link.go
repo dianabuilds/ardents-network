@@ -436,6 +436,7 @@ func (link *forwardLink) copyReverse() {
 			if errors.Is(err, route.ErrClosedForwardingChildRetired) {
 				return
 			}
+			diagnostic357Forward("reverse-abort", 0, "write", uint8(frame.Kind), err)
 			link.abort()
 			return
 		}
@@ -446,6 +447,7 @@ func (link *forwardLink) copyReverse() {
 	select {
 	case <-link.stopped:
 	default:
+		diagnostic357Forward("reverse-abort", 0, "queue-ended", 0, errors.New("diagnostic reverse queue ended"))
 		link.abort()
 	}
 }
