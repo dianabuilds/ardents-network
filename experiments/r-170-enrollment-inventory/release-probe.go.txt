@@ -1,0 +1,30 @@
+// Appended through an overlay to release/public_vector_test.go.
+// This probes current two-target floor/authorization behavior, not generation semantics.
+func TestResearchTwoTargetsShareFloors(t *testing.T) {
+ repo := withTargetCount(t, newSyntheticRepository(t, syntheticOptions{}), 2)
+ verifier, err := Open(filepath.Join(t.TempDir(), "floors"))
+ if err != nil { t.Fatal(err) }
+ defer func() { if err := verifier.Close(); err != nil { t.Error(err) } }()
+ input := Inputs{RootBytes: repo.rootBytes, Files: repo.files, TargetPath: repo.targetPath, Artifact: repo.artifact, Local: defaultLocalEnvironment(testRefTime)}
+ first := verifier.Evaluate(context.Background(), input)
+ if first.Outcome != outcomeReleaseAccepted { t.Fatalf("first = %s: %s", first.Outcome, first.Notice) }
+ if _, ok := first.Authorization(); !ok { t.Fatal("first has no authorization") }
+ input.TargetPath = "ardents/windows-amd64/spare-0001"
+ second := verifier.Evaluate(context.Background(), input)
+ if second.Outcome != outcomeNoUpdate { t.Fatalf("second = %s: %s", second.Outcome, second.Notice) }
+ proof, ok := second.Authorization()
+ if !ok { t.Fatal("second no-update has no fresh authorization") }
+ observed, ok := proof.AcceptedDecision()
+ if !ok || observed.Path != input.TargetPath || !floorSetEqual(first.Floors, observed.Floors) { t.Fatal("second proof target/floors mismatch") }
+ t.Log("distinct signed targets in same set: release-accepted then no-update, both opaque proofs with equal floors")
+ input.Artifact = append([]byte(nil), repo.artifact...)
+ input.Artifact[0] ^= 1
+ bad := verifier.Evaluate(context.Background(), input)
+ if _, ok := bad.Authorization(); ok { t.Fatal("changed second artifact received authorization") }
+ t.Logf("changed second artifact: %s without authorization", bad.Outcome)
+ input.Artifact = repo.artifact
+ input.TargetPath = "ardents/windows-amd64/absent"
+ missing := verifier.Evaluate(context.Background(), input)
+ if _, ok := missing.Authorization(); ok { t.Fatal("absent second target received authorization") }
+ t.Logf("absent second target: %s without authorization", missing.Outcome)
+}

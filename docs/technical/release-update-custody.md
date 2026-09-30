@@ -122,6 +122,17 @@ implementation defects in the current Module.
 
 ## Release and Update ownership
 
+[ADR-0119](../adr/0119-bind-protected-endpoint-generation-to-release.md)
+selects a protected Endpoint generation target in the same signed metadata set
+as the executable. The installation owner consumes two fresh coherent opaque
+authorizations, verifies their shared Targets floors and release/local facts,
+and binds all resource bytes through the authenticated generation descriptor.
+The initial pin never authorizes successors; changed resources require a newer
+generation even when executable bytes are unchanged. Existing executable-only
+replacement remains its current implementation; it does not implement this
+selected generation transaction. No signing API or independent-builder claim
+is added.
+
 internal/release is the sole owner of release trust roots and non-decreasing
 release floors. It verifies the selected TUF-compatible metadata profile,
 consecutive root rotation, exact target identity, protocol/build state, and
