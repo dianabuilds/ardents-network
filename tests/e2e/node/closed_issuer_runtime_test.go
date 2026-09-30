@@ -132,15 +132,10 @@ func runClosedIssuerProcess(t *testing.T, node, endpoint string, acceptArguments
 	}
 	// Each process reached READY and must remain alive after the last Node
 	// starts. This does not prove continuous duty readiness or an Endpoint exchange.
-	for _, process := range live {
-		select {
-		case <-process.done:
-			t.Fatalf("closed topology Node exited after readiness: %v", process.terminalErr())
-		default:
-		}
-	}
+	assertClosedTopologyLive(t, live)
 	if nodeCount != 3 {
 		participant(resolutionRoot, plan)
+		assertClosedTopologyLive(t, live)
 		return
 	}
 	exchange(false)
@@ -155,6 +150,33 @@ func runClosedIssuerProcess(t *testing.T, node, endpoint string, acceptArguments
 	exchange(false)
 	terminateLiveClosedIssuer(t, restarted)
 
+}
+
+// A journey cannot pass while an unused topology member has already failed.
+// Periodic pressure samples are drained separately by the event collector.
+func assertClosedTopologyLive(t *testing.T, live []*nodeProcess) {
+	t.Helper()
+	for _, process := range live {
+		select {
+		case <-process.done:
+			t.Fatalf("closed topology Node exited after readiness: %v", process.terminalErr())
+		default:
+		}
+	observed:
+		for {
+			select {
+			case event, open := <-process.events:
+				if !open {
+					t.Fatal("closed topology Node output ended after readiness")
+				}
+				if event.Kind == "lifecycle" && event.State != "READY" {
+					t.Fatalf("closed topology Node lost its ready duty: %s", event.State)
+				}
+			default:
+				break observed
+			}
+		}
+	}
 }
 
 // initializeClosedForwardingHosting uses the public one-time command so every

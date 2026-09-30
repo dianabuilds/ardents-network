@@ -19,9 +19,21 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/admission"
 	"github.com/dianabuilds/ardents-network/internal/application/administration"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 )
+
+// The temporary Endpoint unit bounds all remaining positive work after a
+// Permission is delivered, including the scheduled refresh and final read.
+const installedCommandEndpointLifetime = 600 * time.Second
+
+func installedCommandPositivePermissionWindow(now, notAfter time.Time) error {
+	if now.IsZero() || notAfter.IsZero() || !now.Add(installedCommandEndpointLifetime).Before(notAfter) {
+		return errors.New("Permission window cannot cover the positive installed command journey")
+	}
+	return nil
+}
 
 // Root orchestrates real commands outside the Endpoint service. The ordinary
 // Endpoint itself remains the unprivileged systemd MainPID required by launch.
@@ -65,6 +77,11 @@ func runInstalledClosedTextParticipant(t *testing.T, config state.Config, binary
 		t.Fatal(err)
 	}
 	now := time.Now().UTC().Truncate(time.Second)
+	// Reject a known short hour before creating the Instance or starting the
+	// Endpoint. The signed Permission is checked again before it is delivered.
+	if err := installedCommandPositivePermissionWindow(now, now.Truncate(time.Hour).Add(time.Hour)); err != nil {
+		t.Fatalf("invalid prerequisite: %v", err)
+	}
 	instance := acquireCommandServiceInstance(t, binary, config.NetworkID, now, now.Add(time.Hour))
 	directory, err := os.MkdirTemp("", "ardents-command-")
 	if err != nil {
@@ -135,6 +152,13 @@ func runInstalledClosedTextParticipant(t *testing.T, config state.Config, binary
 	for _, role := range []string{"reader", "publisher"} {
 		request := waitInstalledCommandRequest(t, invocation, path(role+".request"))
 		response := authority.issue(t, request)
+		permission, err := admission.DecodePermission(response)
+		if err != nil {
+			t.Fatalf("decode issued %s Permission: %v", role, err)
+		}
+		if err := installedCommandPositivePermissionWindow(time.Now().UTC(), permission.NotAfter); err != nil {
+			t.Fatalf("invalid prerequisite: issued %s %v", role, err)
+		}
 		staged := path(role + ".response.pending")
 		if err := os.WriteFile(staged, response, 0600); err != nil {
 			t.Fatal(err)
@@ -273,8 +297,16 @@ func assertInstalledCommandEqualSourceFamiliesRefuse(t *testing.T, binary string
 	ctx, cancel := context.WithTimeout(t.Context(), 15*time.Second)
 	defer cancel()
 	output, diagnostic, commandErr := installedCommandExecAs(ctx, nil, uid, gid, "bash", "-o", "pipefail", "-c", `cat | "$@" | cat`, "endpoint-source-plan", binary, "endpoint", "headless", badRuntime)
-	if commandErr == nil || len(output) != 0 || !strings.Contains(string(diagnostic), "source identities, families, handles, addresses, and keys must be distinct") {
-		t.Fatalf("equal Source families reached ordinary Endpoint work: output=%q diagnostic=%q err=%v", output, diagnostic, commandErr)
+	var failure struct {
+		Schema    string    `json:"schema"`
+		Kind      string    `json:"kind"`
+		At        time.Time `json:"at"`
+		NetworkID string    `json:"network_id"`
+		Failure   string    `json:"failure"`
+	}
+	decodeErr := json.Unmarshal(output, &failure)
+	if commandErr == nil || ctx.Err() != nil || decodeErr != nil || failure.Schema != "ardents-headless-runtime-event-v1" || failure.Kind != "headless-runtime-failed" || failure.At.IsZero() || failure.NetworkID != runtime["network_id"] || failure.Failure != "startup" || !strings.Contains(string(diagnostic), "source identities, families, handles, addresses, and keys must be distinct") {
+		t.Fatalf("equal Source families were not refused at startup: output=%q diagnostic=%q err=%v decode=%v", output, diagnostic, commandErr, decodeErr)
 	}
 }
 
@@ -346,7 +378,7 @@ func startInstalledCommandEndpoint(t *testing.T, binary, plan string) string {
 			t.Errorf("restore Endpoint unit: %v / %s", err, diagnostic)
 		}
 	})
-	content := fmt.Sprintf("[Unit]\nDescription=Ardents command qualification\n[Service]\nType=exec\nUser=ardents-endpoint\nGroup=ardents-endpoint\nExecStart=%s endpoint headless %s\nRemainAfterExit=no\nExitType=main\nRestart=no\nRestartMode=normal\nRuntimeMaxSec=600s\n", binary, plan)
+	content := fmt.Sprintf("[Unit]\nDescription=Ardents command qualification\n[Service]\nType=exec\nUser=ardents-endpoint\nGroup=ardents-endpoint\nExecStart=%s endpoint headless %s\nRemainAfterExit=no\nExitType=main\nRestart=no\nRestartMode=normal\nRuntimeMaxSec=%ds\n", binary, plan, int(installedCommandEndpointLifetime/time.Second))
 	if err := os.WriteFile(unit, []byte(content), 0644); err != nil {
 		t.Fatal(err)
 	}
