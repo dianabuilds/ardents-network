@@ -74,3 +74,27 @@ still delivers the digest of the **unpacked bundle's `SHA256SUMS`** as the Alpha
 Enrollment Pin through the declared authenticated direct message. Publish only
 after the signer operation, input provenance, artifact digest, and release
 record have been reviewed; GitHub Release/HTTPS is not bootstrap authority.
+
+## Protected generation inventory
+
+For the selected linux-amd64 successor, additionally set
+`ARDENTS_ALPHA_BUNDLE_TEXT` to the already-built text executable. The same
+static root must then contain `protected-endpoint.json`, the two worker service
+units, two worker sockets, `50-ardents-text.rules`, `ardents-text.conf` and
+`ardents-endpoint.service`. Any one of these inputs selects the whole required
+group; partial presence refuses. The existing general bundle remains 18
+manifest entries; a complete protected bundle has 27, within the existing cap.
+
+The descriptor must already exist before its exact bytes are signed as the
+protected target in the same Release set as the Endpoint executable. The
+assembler never regenerates it after signing. Its thin Go validation adapter
+uses the enrollment owner's canonical grammar and checks all nine digests,
+both before copying and against the complete staged inventory before manifest
+publication. This validates content consistency, not signing provenance,
+fresh Release authorization, execution permission or installed readiness.
+
+The packaging test also produces two identical protected archives, checks
+their complete manifests and unchanged descriptor, and refuses substituted
+or missing resources without an output archive. Those controls use synthetic
+unit/resource bytes and a real command binary as the text-byte fixture;
+they do not run or qualify a confined worker or the installed Service route.
