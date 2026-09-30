@@ -5,6 +5,8 @@ package endpoint
 import (
 	"context"
 	"errors"
+	"fmt"
+	"os"
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
@@ -71,6 +73,7 @@ func (owner *dutyContext) acceptResolutionResult(caller context.Context, flight 
 	current, now, err := owner.permissionProfileLocked()
 	if caller == nil || err != nil || flight == nil || !owner.resolution.CurrentSourceLocked(flight, &owner.source) ||
 		current != profile || flight.context.Err() != nil || caller.Err() != nil {
+		fmt.Fprintf(os.Stderr, "[DEBUG-357-auth] boundary=resolution-accept permission-ok=%t source-current=%t same-profile=%t flight-ended=%t caller-ended=%t owner-closed=%t source-present=%t cleanup-error=%t\n", err == nil, owner.resolution.CurrentSourceLocked(flight, &owner.source), current == profile, flight.context.Err() != nil, caller.Err() != nil, owner.closed, owner.source.CurrentLocked() != nil, errors.Is(err, client.ErrClosedSourceCleanup))
 		return reachability.Verified{}, errors.New("text resolution authority changed")
 	}
 	return owner.descriptorHistory.Accept(raw, target, profile.NetworkID, profile.Digest, now)
