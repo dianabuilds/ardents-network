@@ -69,8 +69,9 @@ docker compose -f scripts/diagnostics/compose.yaml --profile monitor run --rm \
 On Windows use `invoke.ps1 -EvidenceRoot $evidence -Service monitor` with the same
 `monitor ...` arguments. The panel is at `http://127.0.0.1:8094/`. Its status reads
 the selected supervisor's bounded memory, independently of file delivery. After
-source exit it keeps the terminal source result visible until the operator stops
-monitoring. Signal or optional `-timeout` bounds the monitor lifetime. The process
+source exit it keeps the terminal source result visible and continues periodic
+log age pruning until the operator stops monitoring. Pruning failures remain
+visible independently. Signal or optional `-timeout` bounds the monitor lifetime. The process
 exit, capture timeout and file/console/status failures remain separate; a failed
 sink or lost delivery makes the command fail even when the source exited zero.
 
@@ -79,8 +80,8 @@ process UID with mode 0700. Linux private `/state` is the Docker Desktop default
 do not assume Windows bind mounts enforce Unix permissions. Reuse this selected
 monitor directory on restart: owned retained segments count against the same
 budget, while per-session counters and row sequence restart at zero. Unknown
-entries, symlinks, foreign ownership and a second writer refuse without deleting
-foreign files. A preserved incomplete `monitor.json.tmp` also refuses reopening;
+entries, symlinks, foreign ownership, a second writer and existing segments larger than the
+selected per-file limit refuse without deleting prior files. A preserved incomplete `monitor.json.tmp` also refuses reopening;
 retain and inspect the failure before explicitly cleaning its private evidence.
 
 | Flag | Default | Meaning |
@@ -440,3 +441,12 @@ refusals remain failed; context_stop separately reports observed Context
 cancellation/deadline. Joined is emitted after owned cleanup, not Application EOF.
 Expired/incomplete observations and missing stages remain visible. These facts
 neither qualify the installed worker nor prove Network readiness or root cause.
+
+### Periodic observations and event logs
+
+Normal monitoring routes periodic `resource-sample` observations to retained
+`samples` files, separately from the event log tail and console. Status exposes
+`total_samples` and `latest_sample`; these are observations, not alert decisions
+or a complete metric query interface. Sample and event sequences are independent.
+Non-periodic resource transitions remain events. File retention and delivery-loss
+budgets remain shared and explicitly reported.

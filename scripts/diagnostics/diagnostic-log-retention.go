@@ -150,7 +150,7 @@ func openLogStore(dir string, policy logRetentionPolicy, at time.Time) (_ *logSt
 		if err != nil {
 			return nil, err
 		}
-		if !privateLogFile(info) || info.Size() > 1<<30 {
+		if !privateLogFile(info) || info.Size() > policy.SegmentBytes {
 			return nil, errors.New("unsafe log segment")
 		}
 		segment := &retainedLogSegment{name: entry.Name(), stream: stream, sequence: sequence, born: born, size: info.Size(), info: info}

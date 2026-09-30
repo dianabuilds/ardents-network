@@ -222,3 +222,30 @@ func TestLogStoreRefusesForeignFilesAndSharedWriter(t *testing.T) {
 		t.Fatal("refused symlink removed")
 	}
 }
+
+func TestLogRetentionRefusesSmallerSegmentLimitOnRestart(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "logs")
+	at := time.Now().UTC()
+	policy := logRetentionPolicy{SegmentBytes: 8, MaxBytes: 16, MaxFiles: 4, SegmentAge: time.Minute, MaxAge: time.Hour}
+	store, err := openLogStore(dir, policy, at)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := store.Append("stdout", []byte("12345678"), at); err != nil {
+		t.Fatal(err)
+	}
+	name := store.segments[0].name
+	if err := store.Close(); err != nil {
+		t.Fatal(err)
+	}
+	policy.SegmentBytes = 4
+	reopened, err := openLogStore(dir, policy, at.Add(time.Second))
+	if err == nil {
+		reopened.Close()
+		t.Fatal("restart advertised a smaller limit while keeping an oversized segment")
+	}
+	body, err := os.ReadFile(filepath.Join(dir, name))
+	if err != nil || string(body) != "12345678" {
+		t.Fatalf("refusal changed prior evidence: %q (%v)", body, err)
+	}
+}

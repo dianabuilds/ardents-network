@@ -8,6 +8,7 @@ import (
 	"errors"
 	"io"
 	"math"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -313,7 +314,7 @@ func TestMonitorNumericTailStaysWithinStatusBudget(t *testing.T) {
 	for _, field := range resourceFields {
 		values[field] = math.MaxFloat64
 	}
-	body, err := json.Marshal(map[string]any{"schema": "ardents-node-event-v1", "kind": "resource-sample", "state": "OBSERVED", "resource": values, "hosting": map[string]any{"Observation": map[string]float64{"UsedBytes": math.MaxFloat64, "ReservedBytes": math.MaxFloat64, "RemainingBytes": math.MaxFloat64}}})
+	body, err := json.Marshal(map[string]any{"schema": "ardents-node-event-v1", "kind": "resource", "state": "OBSERVED", "resource": values, "hosting": map[string]any{"Observation": map[string]float64{"UsedBytes": math.MaxFloat64, "ReservedBytes": math.MaxFloat64, "RemainingBytes": math.MaxFloat64}}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -337,5 +338,160 @@ func TestMonitorNumericTailStaysWithinStatusBudget(t *testing.T) {
 	}
 	if state.TotalRows != 64 || len(state.Tail) == 0 || state.TailEvictedRows+uint64(len(state.Tail)) != state.TotalRows {
 		t.Fatalf("tail accounting: total=%d retained=%d evicted=%d", state.TotalRows, len(state.Tail), state.TailEvictedRows)
+	}
+}
+
+func TestMonitorKeepsRetentionActiveForTerminalPanel(t *testing.T) {
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	address := listener.Addr().String()
+	if err := listener.Close(); err != nil {
+		t.Fatal(err)
+	}
+	out := filepath.Join(t.TempDir(), "monitor")
+	done := make(chan error, 1)
+	go func() {
+		done <- dispatch([]string{"monitor", "-out", out, "-console=false", "-listen", address, "-timeout", "3s", "-rotate-after", "100ms", "-retain-for", "200ms", "--", "/bin/sh", "-c", "printf 'terminal-fixture\\n'"})
+	}()
+	defer func() {
+		select {
+		case err := <-done:
+			if err != nil {
+				t.Error(err)
+			}
+		case <-time.After(5 * time.Second):
+			t.Error("terminal panel monitor did not stop")
+		}
+	}()
+	client := &http.Client{Timeout: 200 * time.Millisecond}
+	defer client.CloseIdleConnections()
+	deadline := time.Now().Add(2 * time.Second)
+	sawRetained := false
+	for time.Now().Before(deadline) {
+		response, err := client.Get("http://" + address + "/status")
+		if err != nil {
+			time.Sleep(10 * time.Millisecond)
+			continue
+		}
+		body, readErr := io.ReadAll(io.LimitReader(response.Body, 65537))
+		closeErr := response.Body.Close()
+		if err := errors.Join(readErr, closeErr); err != nil {
+			t.Fatal(err)
+		}
+		var status struct {
+			State        monitorState `json:"state"`
+			SourceStatus string       `json:"source_status"`
+		}
+		if err := json.Unmarshal(body, &status); err != nil {
+			t.Fatal(err)
+		}
+		if status.SourceStatus == "stopped" && status.State.SourceExit != nil && *status.State.SourceExit == 0 {
+			if status.State.Logs.RetainedBytes > 0 {
+				sawRetained = true
+			}
+			if sawRetained && status.State.Logs.RetainedBytes == 0 && status.State.Logs.ExpiredBytes > 0 {
+				return
+			}
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	t.Fatal("logs outlived retain-for while terminal panel remained available")
+}
+
+func TestMonitorPublishesSourceExitBeforeSinkCleanup(t *testing.T) {
+	out := filepath.Join(t.TempDir(), "monitor")
+	root, err := openMonitorRoot(out)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer root.Close()
+	at := time.Now().UTC()
+	store, err := openLogStore(filepath.Join(out, "logs"), logRetentionPolicy{SegmentBytes: lineLimit, MaxBytes: 4 * lineLimit, MaxFiles: 5, SegmentAge: time.Minute, MaxAge: time.Hour}, at)
+	if err != nil {
+		t.Fatal(err)
+	}
+	consoleR, consoleW, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer consoleR.Close()
+	if err := consoleW.SetWriteDeadline(time.Now().Add(5 * time.Millisecond)); err != nil {
+		t.Fatal(err)
+	}
+	n, err := consoleW.Write(make([]byte, 1<<20))
+	if n == 0 || err == nil {
+		t.Fatalf("blocked pipe fixture invalid: n=%d err=%v", n, err)
+	}
+	delivery := newMonitorDelivery(store, consoleW, false, at)
+	done := make(chan error, 1)
+	go func() {
+		done <- runMonitorSource(context.Background(), root, delivery, []string{"/bin/sh", "-c", "printf 'cleanup-fixture\\n'"})
+	}()
+	defer func() {
+		select {
+		case err := <-done:
+			if err == nil {
+				t.Error("blocked console lost failure")
+			}
+		case <-time.After(3 * time.Second):
+			t.Error("cleanup did not join")
+		}
+	}()
+	deadline := time.Now().Add(100 * time.Millisecond)
+	for time.Now().Before(deadline) {
+		state := delivery.snapshot()
+		if state.SourceExit != nil {
+			if state.SourceAlive || *state.SourceExit != 0 || state.SourceEnded == nil || !state.CleanupInProgress || state.Finished != nil {
+				t.Fatalf("known source exit still presented as active: %+v", state)
+			}
+			response := httptest.NewRecorder()
+			monitorHandler(delivery).ServeHTTP(response, httptest.NewRequest("GET", "http://127.0.0.1:8094/status", nil))
+			var projected struct {
+				SourceStatus string `json:"source_status"`
+			}
+			if err := json.Unmarshal(response.Body.Bytes(), &projected); err != nil || projected.SourceStatus != "stopped" {
+				t.Fatalf("HTTP exit during cleanup: %s (%v)", response.Body.Bytes(), err)
+			}
+			return
+		}
+		time.Sleep(time.Millisecond)
+	}
+	t.Fatal("source exit was held until sink cleanup")
+}
+
+func TestMonitorPeriodicSamplesDoNotDisplaceLogEvents(t *testing.T) {
+	store, err := openLogStore(filepath.Join(t.TempDir(), "logs"), logRetentionPolicy{SegmentBytes: lineLimit, MaxBytes: 4 * lineLimit, MaxFiles: 5, SegmentAge: time.Minute, MaxAge: time.Hour}, time.Now().UTC())
+	if err != nil {
+		t.Fatal(err)
+	}
+	delivery := newMonitorDelivery(store, nil, false, time.Now().UTC())
+	delivery.row("stderr", []byte(`{"schema":"ardents-node-event-v1","kind":"lifecycle","state":"FAILED"}`), false)
+	for i := 0; i < 300; i++ {
+		delivery.row("stdout", []byte(`{"schema":"ardents-node-event-v1","kind":"resource-sample","state":"OBSERVED","resource":{"memory.current":1024}}`), false)
+	}
+	state := delivery.snapshot()
+	if state.TotalRows != 1 || len(state.Tail) != 1 || state.Tail[0].Entry.State != "FAILED" || state.TailEvictedRows != 0 {
+		t.Fatalf("periodic measurements displaced the failure: total=%d tail=%d evicted=%d", state.TotalRows, len(state.Tail), state.TailEvictedRows)
+	}
+	if state.TotalSamples != 300 || state.LatestSample == nil || state.LatestSample.Entry.Kind != "resource-sample" {
+		t.Fatal("latest measurement or sample count missing")
+	}
+	if err := delivery.close(); err != nil {
+		t.Fatal(err)
+	}
+	entries, err := os.ReadDir(store.root.Name())
+	if err != nil {
+		t.Fatal(err)
+	}
+	found := false
+	for _, entry := range entries {
+		if strings.HasSuffix(entry.Name(), "-samples.log") {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatal("sample history was not routed to separate files")
 	}
 }

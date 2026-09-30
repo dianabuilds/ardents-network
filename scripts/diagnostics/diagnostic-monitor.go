@@ -32,6 +32,8 @@ type monitorState struct {
 	SourcePID           int                `json:"source_pid"`
 	LastOutput          *time.Time         `json:"last_output,omitempty"`
 	TailEvictedRows     uint64             `json:"tail_evicted_rows"`
+	TotalSamples        uint64             `json:"total_samples"`
+	LatestSample        *monitorLogRow     `json:"latest_sample,omitempty"`
 	TotalRows           uint64             `json:"total_rows"`
 	Limits              logRetentionPolicy `json:"limits"`
 	Schema              string             `json:"schema"`
@@ -40,6 +42,10 @@ type monitorState struct {
 	Finished            *time.Time         `json:"finished,omitempty"`
 	StartFailed         bool               `json:"start_failed"`
 	SourceAlive         bool               `json:"source_alive"`
+	SourceEnded         *time.Time         `json:"source_ended,omitempty"`
+	RetentionActive     bool               `json:"retention_active"`
+	RetentionFailed     bool               `json:"retention_failed"`
+	CleanupInProgress   bool               `json:"cleanup_in_progress"`
 	SourceExit          *int               `json:"source_exit,omitempty"`
 	Interrupted         bool               `json:"interrupted"`
 	TimedOut            bool               `json:"timed_out"`
@@ -115,8 +121,15 @@ func (d *monitorDelivery) row(stream string, body []byte, oversized bool) {
 		d.mu.Unlock()
 	}
 	d.mu.Lock()
-	d.state.TotalRows++
-	sequence := d.state.TotalRows
+	isSample := entry.Kind == "resource-sample"
+	var sequence uint64
+	if isSample {
+		d.state.TotalSamples++
+		sequence = d.state.TotalSamples
+	} else {
+		d.state.TotalRows++
+		sequence = d.state.TotalRows
+	}
 	row := monitorLogRow{Sequence: sequence, At: at, Stream: stream, Entry: entry}
 	encoded, err := json.Marshal(row)
 	if err != nil {
@@ -125,6 +138,13 @@ func (d *monitorDelivery) row(stream string, body []byte, oversized bool) {
 		return
 	}
 	encoded = append(encoded, '\n')
+	if isSample {
+		d.state.LatestSample = &row
+		d.state.Updated = at
+		d.mu.Unlock()
+		d.enqueue("samples", encoded, at)
+		return
+	}
 	d.state.Tail = append(d.state.Tail, row)
 	d.tailSizes = append(d.tailSizes, len(encoded))
 	d.tailBytes += len(encoded)
@@ -448,10 +468,7 @@ func monitorCommand(args []string) (outcome error) {
 	}
 	sourceErr := runMonitorSource(ctx, root, delivery, flags.Args())
 	if view != nil && ctx.Err() == nil {
-		select {
-		case <-ctx.Done():
-		case <-view.done:
-		}
+		sourceErr = errors.Join(sourceErr, maintainMonitorLogs(ctx, root, delivery, view.done))
 	}
 	return sourceErr
 }
@@ -540,6 +557,15 @@ func runMonitorSource(ctx context.Context, root *os.Root, delivery *monitorDeliv
 			snapshots.offer(delivery.snapshot())
 		}
 	}
+	ended := time.Now().UTC()
+	exit := cmd.ProcessState.ExitCode()
+	delivery.mu.Lock()
+	delivery.state.SourceAlive = false
+	delivery.state.SourceExit = &exit
+	delivery.state.SourceEnded = &ended
+	delivery.state.Updated = ended
+	delivery.state.CleanupInProgress = true
+	delivery.mu.Unlock()
 	syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
 	var drainErr error
 	timer := time.NewTimer(3 * time.Second)
@@ -562,10 +588,8 @@ func runMonitorSource(ctx context.Context, root *os.Root, delivery *monitorDeliv
 	sinkErr := delivery.close()
 	closed = true
 	finished := time.Now().UTC()
-	exit := cmd.ProcessState.ExitCode()
 	delivery.mu.Lock()
-	delivery.state.SourceAlive = false
-	delivery.state.SourceExit = &exit
+	delivery.state.CleanupInProgress = false
 	delivery.state.Finished = &finished
 	delivery.state.Updated = finished
 	delivery.state.TimedOut = errors.Is(ctx.Err(), context.DeadlineExceeded)
@@ -638,4 +662,73 @@ func validMonitorName(name string) bool {
 		}
 	}
 	return true
+}
+
+// The source and its producer drains have joined before this terminal-view stage.
+// Retained files continue to expire until the explicitly selected panel stops.
+func maintainMonitorLogs(ctx context.Context, root *os.Root, delivery *monitorDelivery, viewDone <-chan struct{}) (outcome error) {
+	prior := delivery.snapshot()
+	var store *logStore
+	var err error
+	if !prior.SinksJoined {
+		err = errors.New("retention cannot reopen unjoined log sinks")
+	} else {
+		store, err = openLogStore(delivery.store.root.Name(), delivery.store.policy, time.Now().UTC())
+	}
+	if err != nil {
+		delivery.mu.Lock()
+		delivery.state.RetentionFailed = true
+		delivery.mu.Unlock()
+		select {
+		case <-ctx.Done():
+		case <-viewDone:
+		}
+		return err
+	}
+	// Reopening is maintenance within this session: preserve delivery counters,
+	// but inventory actual retained bytes and add newly expired files.
+	store.stats.ReceivedBytes = prior.Logs.ReceivedBytes
+	store.stats.WrittenBytes = prior.Logs.WrittenBytes
+	store.stats.LostBytes = prior.Logs.LostBytes
+	store.stats.ExpiredBytes += prior.Logs.ExpiredBytes
+	delivery.store = store
+	delivery.console = nil
+	delivery.fileQueue = make(chan monitorRecord, 128)
+	delivery.consoleQueue = make(chan []byte, 64)
+	delivery.fileDone = make(chan error, 1)
+	delivery.consoleDone = make(chan error, 1)
+	delivery.mu.Lock()
+	delivery.state.RetentionActive = true
+	delivery.state.SinksJoined = false
+	delivery.state.Logs = store.Stats()
+	delivery.mu.Unlock()
+	go delivery.runFile()
+	go delivery.runConsole()
+	snapshots := newMonitorSnapshots(root, delivery)
+	defer func() {
+		sinkErr := delivery.close()
+		delivery.mu.Lock()
+		delivery.state.RetentionActive = false
+		delivery.state.Updated = time.Now().UTC()
+		delivery.state.CleanupFailed = delivery.state.CleanupFailed || sinkErr != nil
+		delivery.mu.Unlock()
+		snapshots.offer(delivery.snapshot())
+		outcome = errors.Join(outcome, sinkErr, snapshots.close())
+	}()
+	tick := time.NewTicker(time.Second)
+	defer tick.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		case <-viewDone:
+			return nil
+		case at := <-tick.C:
+			delivery.mu.Lock()
+			delivery.state.Updated = at.UTC()
+			delivery.state.RetentionFailed = delivery.state.RetentionFailed || delivery.state.Logs.Failed
+			delivery.mu.Unlock()
+			snapshots.offer(delivery.snapshot())
+		}
+	}
 }

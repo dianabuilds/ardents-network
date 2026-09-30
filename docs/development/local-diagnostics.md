@@ -57,7 +57,8 @@ producer output have separate ages. A quiet stream is not a failed Node verdict.
 
 The panel reads bounded supervisor memory, so file or snapshot failure remains
 visible without reading the failed sink. Source exit stays visible until the
-operator stops monitoring. Tail filters and pause affect the view only. Declared
+operator stops monitoring; periodic log age pruning remains active through that
+terminal-panel lifetime, with its own visible failure. Tail filters and pause affect the view only. Declared
 log retention enforces size, age, count and bytes across restart; loss counters
 are session-local, and intentional retention expiry is separate from failed
 delivery. The independent status file plus its one replacement are each at most
@@ -366,3 +367,31 @@ Loopback excludes remote binding, not local adversaries or endpoint compromise.
 No Network readiness, installed worker qualification or causal diagnosis follows
 from a snapshot. Other Reader operations, Publisher telemetry and Node
 queue/credit/token gauges remain outside this capture.
+
+### Periodic observations and event logs
+
+Normal monitoring routes periodic `resource-sample` observations to retained
+`samples` files, separately from the event log tail and console. Status exposes
+`total_samples` and `latest_sample`; these are observations, not alert decisions
+or a complete metric query interface. Sample and event sequences are independent.
+Non-periodic resource transitions remain events. File retention and delivery-loss
+budgets remain shared and explicitly reported.
+
+### Evidence for the debugging implementer
+
+The implementer needs inspectable evidence from one reproduction, rather than
+screen scraping or an inferred diagnosis. The existing finite report records
+source revision/tree, image/tool versions where available, terminal command
+outcome, first observed fixed-category failure and collection gaps. The Reader
+connection observation exposes bounded stages and explicitly unproven command
+association. Selected private runtime profiles remain separate artifacts.
+These facilities are not yet a unified incident package.
+
+The next tooling boundary should assemble those existing receipts with explicit
+artifact references and availability/loss information. It must preserve unknown
+association rather than join records by timestamp as proof of causality. Missing
+operation context, error provenance or product instrumentation requires a bounded
+change at the current producer owner; the dashboard cannot invent a component,
+operation identifier, severity, stack or source-code location. Product payloads,
+keys and credentials are not diagnostic correlation fields. Reproduction recipes
+and developer checks remain engineering work, separate from normal monitoring.
