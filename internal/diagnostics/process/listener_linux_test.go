@@ -415,3 +415,58 @@ func TestPrivateConnectionRetainsUnexpectedCloseOnce(t *testing.T) {
 		})
 	}
 }
+
+func TestLiveConnectionSnapshotIsReaderOnlyAndJoins(t *testing.T) {
+	socket := privateSocket(t)
+	err := Run(t.Context(), socket, func(ctx context.Context) error {
+		client := clientFor(socket)
+		defer client.CloseIdleConnections()
+		read := func() (connectionSnapshot, error) {
+			var snapshot connectionSnapshot
+			response, err := client.Get("http://diagnostic/connection")
+			if err != nil {
+				return snapshot, err
+			}
+			defer response.Body.Close()
+			if response.StatusCode != http.StatusOK || response.Header.Get("Cache-Control") != "no-store" {
+				return snapshot, errors.New("snapshot response unavailable")
+			}
+			err = json.NewDecoder(response.Body).Decode(&snapshot)
+			return snapshot, err
+		}
+		trace := ReaderTrace(ctx)
+		ObserveConnection(ctx, ServiceAuthentication)(nil)
+		snapshot, err := read()
+		if err != nil {
+			return err
+		}
+		if snapshot.State != "active" || len(snapshot.Records) != 0 {
+			return errors.New("foreign process operation entered capture")
+		}
+		operation := trace.Bind(ctx)
+		ended := ObserveConnection(operation, DocumentExchange)
+		ended(nil)
+		snapshot, err = read()
+		if err != nil {
+			return err
+		}
+		if snapshot.State != "active" || snapshot.Outcome != "" {
+			return errors.New("Application exchange became joined")
+		}
+		trace.Finish(context.Canceled)
+		snapshot, err = read()
+		if err != nil {
+			return err
+		}
+		if snapshot.State != "joined" || snapshot.Outcome != "canceled" || len(snapshot.Records) != 2 {
+			return errors.New("joined snapshot missing")
+		}
+		if ReaderTrace(ctx) != nil {
+			return errors.New("second Reader operation admitted")
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+}

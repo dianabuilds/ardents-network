@@ -12,8 +12,13 @@ import (
 )
 
 func (lane *closedSourceLane) Close() error {
+	return lane.closeUntil(time.Now().Add(time.Second))
+}
+
+// closeUntil shares a caller-owned retirement bound with preceding peer join.
+// The first close owns that bound; later closes cannot restart or extend it.
+func (lane *closedSourceLane) closeUntil(cleanupEnd time.Time) error {
 	lane.closeOnce.Do(func() {
-		cleanupEnd := time.Now().Add(time.Second)
 		owner := lane.owner
 		owner.mu.Lock()
 		lane.closed = true
@@ -31,21 +36,22 @@ func (lane *closedSourceLane) Close() error {
 		owner.releaseQueuedLocked(uint64(len(lane.buffer)))
 		clear(lane.buffer)
 		lane.buffer = nil
-		var activeCredit *closedSourceWrite
+		var activeFrame *closedSourceWrite
 		if owner.active != nil && owner.active.lane == lane && owner.active.frame.Kind != ardp.KindClose {
 			deadline := time.Now()
-			if owner.active.frame.Kind == ardp.KindCredit {
-				activeCredit = owner.active
-				// This already emitted control frame can finish before CLOSE.
-				// Cutting it short needlessly retires the shared physical prefix.
+			if owner.active.frame.Kind == ardp.KindCredit || owner.active.frame.Kind == ardp.KindBytes {
+				activeFrame = owner.active
+				// Join an already active DATA or CREDIT before CLOSE. Its wire
+				// prefix may be visible; interrupting it immediately can truncate
+				// a valid frame and force refusal at the opposite endpoint.
 				// Never extend its original write authority or the cleanup bound.
 				deadline = cleanupEnd
-				creditEnd := owner.active.end
-				if creditEnd.IsZero() {
-					creditEnd = lane.writeEnd
+				frameEnd := owner.active.end
+				if frameEnd.IsZero() {
+					frameEnd = lane.writeEnd
 				}
-				if creditEnd.Before(deadline) {
-					deadline = creditEnd
+				if frameEnd.Before(deadline) {
+					deadline = frameEnd
 				}
 				owner.active.end = deadline
 			}
@@ -60,10 +66,10 @@ func (lane *closedSourceLane) Close() error {
 		if opening != nil {
 			<-opening
 		}
-		var creditErr error
-		if activeCredit != nil {
-			<-activeCredit.done
-			creditErr = activeCredit.err
+		var frameErr error
+		if activeFrame != nil {
+			<-activeFrame.done
+			frameErr = activeFrame.err
 		}
 		owner.mu.Lock()
 		opened, parentEnded := lane.opened, owner.terminal != nil
@@ -99,13 +105,13 @@ func (lane *closedSourceLane) Close() error {
 			lane.remoteClosed && lane.failure == io.EOF && owner.framedParent != nil
 		owner.mu.Unlock()
 		joinedLowerClose, joinedLowerCredit := false, false
-		if (lane.closeErr != nil || creditErr != nil) && joinedPeerEnd {
+		if (lane.closeErr != nil || frameErr != nil) && joinedPeerEnd {
 			<-owner.done
 			if lane.closeErr != nil {
 				_, active, clean := owner.framedParent.closeWriteWitness()
 				joinedLowerClose = !active && clean
 			}
-			if creditErr != nil && errors.Is(creditErr, io.EOF) {
+			if frameErr != nil && activeFrame.frame.Kind == ardp.KindCredit && errors.Is(frameErr, io.EOF) {
 				_, active, clean := owner.framedParent.writeWitness()
 				joinedLowerCredit = !active && clean
 			}
@@ -118,10 +124,14 @@ func (lane *closedSourceLane) Close() error {
 			}
 			lane.closeErr = owner.retire()
 		}
-		// Check the retained CREDIT even if its failure ended the parent before
+		// Retain an active frame failure even if it ended the parent before
 		// CLOSE could be queued. Whole-parent intentional stop remains distinct.
-		if creditErr != nil && !joinedLowerCredit && !errors.Is(creditErr, ErrClosedSourceStopped) {
-			lane.closeErr = errors.Join(lane.closeErr, errors.Join(errors.New("closed source in-flight CREDIT write failed"), creditErr))
+		if frameErr != nil && !joinedLowerCredit && !errors.Is(frameErr, ErrClosedSourceStopped) {
+			phase := "closed source in-flight CREDIT write failed"
+			if activeFrame.frame.Kind == ardp.KindBytes {
+				phase = "closed source in-flight DATA write failed"
+			}
+			lane.closeErr = errors.Join(lane.closeErr, errors.Join(errors.New(phase), frameErr))
 		}
 		if lane.closeErr != nil {
 			lane.closeErr = errors.Join(ErrClosedSourceCleanup, errors.New("closed source child terminal write failed"), lane.closeErr)

@@ -57,6 +57,18 @@
     "windows-amd64": [
       {
         "symbols": [
+          "internal/diagnostics/process.ConnectionTrace.snapshot",
+          "internal/diagnostics/process.ConnectionTraceFor",
+          "internal/diagnostics/process.ObserveConnection",
+          "internal/diagnostics/process.ReaderTrace"
+        ],
+        "classification": "platform-specific Reader diagnostics",
+        "rationale": "The enabled owner-private Unix socket and admitted Reader Open are Linux production paths. ReaderTrace is called by connection.Open, ConnectionTraceFor by the actual worker/authentication owners, ObserveConnection by the document/cleanup owner, and snapshot by the Linux socket handler. Windows refuses configured process diagnostics before work; portable recorder tests remain reachable in test analysis.",
+        "owner": "Product Owner and Codex",
+        "retirement": "Remove this Windows allowance if Reader diagnostics gains a maintained Windows socket/runtime consumer, or remove these symbols with the Linux Reader observation contract."
+      },
+      {
+        "symbols": [
           "tests/epochfixture/assignment.Digest",
           "tests/epochfixture/assignment.Select",
           "tests/epochfixture/merkle.HashedRoot",

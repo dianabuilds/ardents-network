@@ -14,6 +14,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
 	applicationconnection "github.com/dianabuilds/ardents-network/internal/application/connection"
 	"github.com/dianabuilds/ardents-network/internal/application/textdocument"
+	processdiag "github.com/dianabuilds/ardents-network/internal/diagnostics/process"
 	"github.com/dianabuilds/ardents-network/internal/endpoint/service"
 	"github.com/dianabuilds/ardents-network/internal/route/client"
 	nativeconnection "github.com/dianabuilds/ardents-network/internal/service/connection"
@@ -62,7 +63,8 @@ func (owner *connection) Open(ctx context.Context, request applicationconnection
 		owner.mu.Unlock()
 		return nil, errors.New("text read already owned or unavailable")
 	}
-	lifetime, cancel := context.WithCancel(owner.context.lease.Context())
+	trace := processdiag.ReaderTrace(owner.context.lease.Context())
+	lifetime, cancel := context.WithCancel(trace.Bind(owner.context.lease.Context()))
 	callerDone := make(chan struct{})
 	stopCaller := context.AfterFunc(ctx, func() { defer close(callerDone); cancel() })
 	joinCaller := func() {
@@ -76,65 +78,93 @@ func (owner *connection) Open(ctx context.Context, request applicationconnection
 	transferred := false
 	defer func() {
 		if !transferred {
+			trace.Finish(outcome)
+		}
+	}()
+	defer func() {
+		if !transferred {
+			joined := trace.Observe(processdiag.CallerJoin, lifetime)
 			joinCaller()
+			joined(nil)
 			cancel()
 			owner.finish(pending)
 		}
 	}()
 	endpoint := owner.context.endpoint
+	admitted := trace.Observe(processdiag.Admission, lifetime)
 	capability, err := endpoint.Admit(owner.context.principal, broker.Connection)
+	admitted(err)
 	if err != nil {
 		owner.context.reportOperationFailure("admission")
 		return nil, err
 	}
+	activated := trace.Observe(processdiag.Activation, lifetime)
 	lease, _, err := endpoint.admission.Activate(lifetime, capability, owner.context.principal, broker.Connection)
+	activated(err)
 	if err != nil {
 		owner.context.reportOperationFailure("activation")
 		return nil, err
 	}
 	defer func() {
 		if !transferred {
+			released := trace.Observe(processdiag.SessionRelease, lifetime)
 			lease.Release()
+			released(nil)
 		}
 	}()
-	worker, err := owner.context.launchWorker(lease.Context(), nil)
+	launched := trace.Observe(processdiag.WorkerLaunch, lease.Context())
+	worker, err := owner.context.launchWorker(trace.Bind(lease.Context()), nil)
+	launched(err)
 	if err != nil {
 		owner.context.reportOperationFailure("worker-launch")
 		return nil, err
 	}
 	defer func() {
 		if !transferred {
-			outcome = errors.Join(outcome, worker.Close())
+			closed := trace.Observe(processdiag.WorkerClose, lifetime)
+			closeErr := worker.Close()
+			closed(closeErr)
+			outcome = errors.Join(outcome, closeErr)
 		}
 	}()
+	begun := trace.Observe(processdiag.WorkerOperation, lease.Context())
 	bounded, finish, err := worker.beginOperation(lease.Context(), broker.Connection)
+	begun(err)
 	if err != nil {
 		owner.context.reportOperationFailure("worker-operation")
 		return nil, err
 	}
+	bounded = trace.Bind(bounded)
 	defer func() {
 		if !transferred {
 			finish()
 		}
 	}()
 	until := endpoint.clock().UTC().Add(2 * time.Minute).Unix()
+	prepared := trace.Observe(processdiag.Introduction, bounded)
 	attempt, err := owner.context.prepareIntroduction(bounded, worker.job, destination, [3]int64{until, until, until})
+	prepared(err)
 	if err != nil {
 		owner.context.reportOperationFailure("introduction-preparation")
 		return nil, err
 	}
+	joined := trace.Observe(processdiag.ServiceJoin, bounded)
 	service, err := owner.context.openJoinedService(bounded, worker.job, attempt)
+	joined(err)
 	if err != nil {
 		owner.context.reportOperationFailure("service-join")
 		return nil, err
 	}
 	if err := lease.Context().Err(); err != nil {
 		owner.context.reportOperationFailure("post-join-lifetime")
-		return nil, errors.Join(err, service.Close())
+		closed := trace.Observe(processdiag.ServiceClose, bounded)
+		closeErr := service.Close()
+		closed(closeErr)
+		return nil, errors.Join(err, closeErr)
 	}
 	// Open returns only after Service authentication. The fixed request and
 	// confined worker exchange follow local ACCEPT, within this same lifetime.
-	stream := newReadResult(owner, pending, lease, cancel, worker, bounded, finish, service, joinCaller, owner.context.reportOperationFailure)
+	stream := newReadResult(owner, pending, lease, cancel, worker, bounded, finish, service, joinCaller, owner.context.reportOperationFailure, trace)
 	transferred = true
 	return stream, nil
 }
@@ -181,16 +211,17 @@ type readResult struct {
 	err    error
 }
 
-func newReadResult(owner *connection, pending chan struct{}, lease *broker.ActiveSession, cancel context.CancelFunc, worker *qualifiedWorker, bounded context.Context, finish func(), serviceStream *service.Stream, joinCaller func(), report func(string)) *readResult {
+func newReadResult(owner *connection, pending chan struct{}, lease *broker.ActiveSession, cancel context.CancelFunc, worker *qualifiedWorker, bounded context.Context, finish func(), serviceStream *service.Stream, joinCaller func(), report func(string), trace *processdiag.ConnectionTrace) *readResult {
 	request, input := io.Pipe()
 	output, response := io.Pipe()
 	result := &readResult{input: input, output: output, cancel: cancel, joined: make(chan struct{}), done: make(chan applicationconnection.Outcome, 1)}
 	go func() {
 		defer close(result.joined)
+		defer func() { trace.Finish(result.err) }()
 		defer owner.finish(pending)
-		defer lease.Release()
+		defer func() { released := trace.Observe(processdiag.SessionRelease, bounded); lease.Release(); released(nil) }()
 		defer cancel()
-		defer joinCaller()
+		defer func() { joined := trace.Observe(processdiag.CallerJoin, bounded); joinCaller(); joined(nil) }()
 		interrupted := make(chan struct{})
 		stop := context.AfterFunc(lease.Context(), func() {
 			defer close(interrupted)
@@ -199,11 +230,13 @@ func newReadResult(owner *connection, pending chan struct{}, lease *broker.Activ
 		})
 		// Respond reads at most the fixed 512 bytes plus its EOF probe.
 		// Reuse its exact parser before admitting the worker's single request.
+		requested := trace.Observe(processdiag.LocalRequest, bounded)
 		var fixed bytes.Buffer
 		empty, err := textdocument.NewSnapshot(nil)
 		if err == nil {
 			err = empty.Respond(io.TeeReader(request, &fixed), io.Discard)
 		}
+		requested(err)
 		if err != nil && lease.Context().Err() == nil && report != nil {
 			report("service-result")
 		}
@@ -212,9 +245,14 @@ func newReadResult(owner *connection, pending chan struct{}, lease *broker.Activ
 			body, err = worker.completeServiceRead(lease.Context(), bounded, finish, serviceStream, nil)
 		} else {
 			lifetimeErr := lease.Context().Err()
+			closed := trace.Observe(processdiag.ServiceClose, bounded)
 			serviceErr := serviceStream.Close()
+			closed(serviceErr)
 			finish()
-			cleanupErr := errors.Join(serviceErr, worker.Close())
+			workerClosed := trace.Observe(processdiag.WorkerClose, bounded)
+			workerErr := worker.Close()
+			workerClosed(workerErr)
+			cleanupErr := errors.Join(serviceErr, workerErr)
 			if lifetimeErr != nil && canceledBeforeRequestCleanupOnly(cleanupErr) {
 				// No local request was admitted. A native active-protocol abort is
 				// therefore a consequence of our cancellation, not peer evidence.
@@ -225,11 +263,13 @@ func newReadResult(owner *connection, pending chan struct{}, lease *broker.Activ
 		}
 		if err == nil {
 			var snapshot *textdocument.Snapshot
+			responded := trace.Observe(processdiag.ApplicationResponse, bounded)
 			snapshot, err = textdocument.NewSnapshot(body)
 			clear(body)
 			if err == nil {
 				err = snapshot.Respond(bytes.NewReader(fixed.Bytes()), response)
 			}
+			responded(err)
 		}
 		clear(body)
 		if !stop() {

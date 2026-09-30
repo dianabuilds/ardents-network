@@ -134,6 +134,16 @@ func open(ctx context.Context, path string) (func() error, error) {
 	}
 
 	mux := http.NewServeMux()
+	mux.HandleFunc("GET /connection", func(w http.ResponseWriter, r *http.Request) {
+		capture, _ := ctx.Value(sessionCaptureContextKey{}).(*ConnectionTrace)
+		if capture == nil {
+			http.Error(w, "connection capture unavailable", http.StatusServiceUnavailable)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Cache-Control", "no-store")
+		json.NewEncoder(w).Encode(capture.snapshot())
+	})
 	mux.HandleFunc("GET /runtime", func(w http.ResponseWriter, r *http.Request) {
 		var m runtime.MemStats
 		runtime.ReadMemStats(&m)

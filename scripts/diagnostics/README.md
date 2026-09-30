@@ -139,6 +139,72 @@ incomplete evidence; it exposes no raw log/profile files. Fixed metrics have
 no Target, peer, request ID, permission or arbitrary error labels. Loss counters
 and unrecognized input are visible, including when the product emits no events.
 
+## Diagnostic assistant
+
+The same explanation is available in the panel and CLI:
+
+~~~sh
+diag report -dir /evidence/check-a
+diag report -dir /evidence/check-b -compare /evidence/check-a -json
+~~~
+
+An explanation distinguishes command failure, timeout, caller interruption,
+source change, lost observations and missing evidence. It identifies the first
+available explicit owner failure by its local ordinal in the projected
+events.ndjson history, keeps cleanup separately, and supplies fixed manual
+command templates with prerequisites, budgets and sensitivity. It does not
+execute suggestions. Collector order is not causal order; owner UTC is retained
+separately when available. The full bounded event file is inspected rather than
+only the panel's transition tail.
+
+A report command exits zero when it successfully explains complete evidence,
+even if that evidence records a command FAIL. Read its explicit status/exit_code;
+report success is never a test, readiness or qualification PASS. Unavailable,
+invalid or incomplete evidence returns a nonzero report exit after the safe
+explanation. A missing resource sample can be legitimate for a short command;
+a missing sample file or mismatch with a terminal summary is incomplete.
+
+Old captures remain readable. Unknown workload, environment, compiler/image
+or tool versions are named gaps. New test captures declare race/profiling, and
+the collector records its command mode without exposing arguments. Comparison
+shows known differences and observed supervisor duration, preserves the earlier
+FAIL, and gives no acceleration verdict: existing receipts do not declare the
+full workload and environment. Cold compilation and collection overhead remain
+inside supervisor duration; use timings for test execution.
+
+The normal dashboard adds this report for its explicitly selected run. To
+compare two runs in the panel, stop the existing dashboard occupying port 8090
+and explicitly select both directories at startup:
+
+~~~sh
+docker compose -f scripts/diagnostics/compose.yaml --profile view stop dashboard
+docker compose -f scripts/diagnostics/compose.yaml --profile view run --rm --service-ports dashboard \
+  serve -container -listen 0.0.0.0:8090 \
+  -dir /evidence/check-b -compare /evidence/check-a
+~~~
+
+/report accepts no caller-selected file paths or actions. All file access is
+confined to the startup directories, rejects symlinks/special files, and is
+bounded. The panel's existing summary and sample routes also re-project stored
+records before output; unknown strings/metric fields cannot become visible.
+The server remains read-only, with the existing host-loopback publication.
+
+The panel groups outcome, missing observations, suggested checks, RSS/cgroup/PSI,
+conditions and comparison. Transition filtering covers only the last 32 events.
+Pause suspends panel polling; it does not stop the collector or product.
+Manual refresh and copyable command templates do not execute commands.
+
+For a local projected JSON export, open **Предпросмотр отчёта**, inspect its
+contents, then choose **Скачать просмотренный JSON**. The preview is a frozen
+snapshot and cannot silently change during refresh. Source/image/tool identities
+are omitted by default; selecting their checkbox invalidates the preview.
+Event UTC, raw logs, paths, command arguments and profiles are excluded. The
+export is capped at 256 KiB, downloaded only in the browser, never uploaded.
+If browser download is unavailable, **Копировать просмотренный JSON** copies
+the same frozen projection, or selects it for ordinary manual copying when
+clipboard permission is unavailable. A download request is not a save receipt.
+Treat it as private operational metadata even after projection.
+
 ## Debugger, syscalls and network fault diagnosis
 
 Use `-gcflags="all=-N -l"` only for a separate local artifact. Delve accepts
@@ -244,3 +310,30 @@ profile uses 8 GiB for the combined race fixtures. Samples include actual
 `memory.max`/`pids.max` and `memory.events:max`; hitting a memory ceiling may
 cause reclaim pressure even without OOM. These are container observations,
 not a diagnosis of a specific Node or a change to product resource guards.
+
+## Observe one owned Reader Connection
+
+Enable the existing process diagnostics with ARDENTS_DEBUG_SOCKET set to a
+canonical absolute Unix socket in an existing directory owned by that process
+UID with mode 0700. The first eligible Reader Open in the first ten minutes is
+retained in memory, up to 64 fixed-category records. No automatic rearm, Target
+selection or product retry is added. Run these commands under the socket's owner:
+
+    diag connection -socket /private/process.sock
+    diag connection -socket /private/process.sock -json
+    diag snapshot -socket /private/process.sock -kind connection -out /evidence/reader.json
+    diag serve -dir /evidence/run-a -connection-socket /private/process.sock
+
+In Docker, mount the selected Linux socket directory explicitly and preserve its
+owner UID and permissions. A Windows host TCP address is not a Unix socket.
+The default panel does not contact any process. The selected live Reader snapshot
+is separate from run-a: process/run association is unproven. The loopback panel
+can be read by other local processes/users; its fixed projection still contains
+private timing metadata. It is excluded from the command-report export.
+
+Durations of nested JOIN/authentication phases overlap. A missing Context
+deadline is displayed as unknown, not zero budget. Untyped cancellation-related
+refusals remain failed; context_stop separately reports observed Context
+cancellation/deadline. Joined is emitted after owned cleanup, not Application EOF.
+Expired/incomplete observations and missing stages remain visible. These facts
+neither qualify the installed worker nor prove Network readiness or root cause.
