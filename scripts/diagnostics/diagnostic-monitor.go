@@ -19,6 +19,8 @@ import (
 	"time"
 )
 
+const monitorTailBytes = 48 << 10
+
 type monitorLogRow struct {
 	Sequence uint64    `json:"sequence"`
 	At       time.Time `json:"at"`
@@ -29,6 +31,7 @@ type monitorState struct {
 	SourceName          string             `json:"source_name"`
 	SourcePID           int                `json:"source_pid"`
 	LastOutput          *time.Time         `json:"last_output,omitempty"`
+	TailEvictedRows     uint64             `json:"tail_evicted_rows"`
 	TotalRows           uint64             `json:"total_rows"`
 	Limits              logRetentionPolicy `json:"limits"`
 	Schema              string             `json:"schema"`
@@ -64,6 +67,8 @@ type monitorRecord struct {
 type monitorDelivery struct {
 	mu                    sync.Mutex
 	state                 monitorState
+	tailSizes             []int
+	tailBytes             int
 	fileQueue             chan monitorRecord
 	consoleQueue          chan []byte
 	fileDone, consoleDone chan error
@@ -121,8 +126,13 @@ func (d *monitorDelivery) row(stream string, body []byte, oversized bool) {
 	}
 	encoded = append(encoded, '\n')
 	d.state.Tail = append(d.state.Tail, row)
-	if len(d.state.Tail) > 64 {
-		d.state.Tail = d.state.Tail[len(d.state.Tail)-64:]
+	d.tailSizes = append(d.tailSizes, len(encoded))
+	d.tailBytes += len(encoded)
+	for len(d.state.Tail) > 64 || d.tailBytes > monitorTailBytes {
+		d.tailBytes -= d.tailSizes[0]
+		d.tailSizes = d.tailSizes[1:]
+		d.state.Tail = d.state.Tail[1:]
+		d.state.TailEvictedRows++
 	}
 	d.state.Updated = at
 	d.mu.Unlock()

@@ -61,7 +61,7 @@ operator stops monitoring. Tail filters and pause affect the view only. Declared
 log retention enforces size, age, count and bytes across restart; loss counters
 are session-local, and intentional retention expiry is separate from failed
 delivery. The independent status file plus its one replacement are each at most
-64 KiB in addition to the log payload budget. Queues and the 64-row memory tail
+64 KiB in addition to the log payload budget. Queues and the memory tail (at most 64 rows and 48 KiB of serialized rows)
 are finite. Filesystem quota remains the operator's responsibility; no power-loss
 durability is promised. A failed console stops retrying writes while continuing
 to account discarded records. Snapshot I/O does not block source cancellation;

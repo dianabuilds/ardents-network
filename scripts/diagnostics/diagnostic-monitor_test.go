@@ -7,7 +7,9 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"math"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
@@ -292,5 +294,48 @@ func TestMonitorProjectsStructuredStderrWithoutRawContent(t *testing.T) {
 	}
 	if strings.Contains(string(body), "private-") {
 		t.Fatal("private stderr fields leaked")
+	}
+}
+
+func TestMonitorNumericTailStaysWithinStatusBudget(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "logs")
+	store, err := openLogStore(dir, logRetentionPolicy{SegmentBytes: lineLimit, MaxBytes: 4 * lineLimit, MaxFiles: 5, SegmentAge: time.Minute, MaxAge: time.Hour}, time.Now().UTC())
+	if err != nil {
+		t.Fatal(err)
+	}
+	delivery := newMonitorDelivery(store, nil, false, time.Now().UTC())
+	defer func() {
+		if err := delivery.close(); err != nil {
+			t.Error(err)
+		}
+	}()
+	values := map[string]float64{}
+	for _, field := range resourceFields {
+		values[field] = math.MaxFloat64
+	}
+	body, err := json.Marshal(map[string]any{"schema": "ardents-node-event-v1", "kind": "resource-sample", "state": "OBSERVED", "resource": values, "hosting": map[string]any{"Observation": map[string]float64{"UsedBytes": math.MaxFloat64, "ReservedBytes": math.MaxFloat64, "RemainingBytes": math.MaxFloat64}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i := 0; i < 64; i++ {
+		delivery.row("stdout", body, false)
+	}
+	request := httptest.NewRequest("GET", "http://127.0.0.1:8094/status", nil)
+	response := httptest.NewRecorder()
+	monitorHandler(delivery).ServeHTTP(response, request)
+	if response.Code != http.StatusOK || response.Body.Len() > 65536 {
+		t.Fatalf("valid numeric logs disabled status: code=%d bytes=%d", response.Code, response.Body.Len())
+	}
+	state := delivery.snapshot()
+	root, err := os.OpenRoot(filepath.Dir(dir))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer root.Close()
+	if err := writeMonitorState(root, state); err != nil {
+		t.Fatalf("valid numeric rows disabled saved status: %v", err)
+	}
+	if state.TotalRows != 64 || len(state.Tail) == 0 || state.TailEvictedRows+uint64(len(state.Tail)) != state.TotalRows {
+		t.Fatalf("tail accounting: total=%d retained=%d evicted=%d", state.TotalRows, len(state.Tail), state.TailEvictedRows)
 	}
 }

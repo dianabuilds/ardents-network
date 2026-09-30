@@ -96,7 +96,7 @@ retain and inspect the failure before explicitly cleaning its private evidence.
 
 The independent status file and its one temporary replacement are each bounded
 at 64 KiB outside the log payload budget. File queues contain at most 128 bounded
-records, console queues 64; the memory tail retains 64 safe rows. Record projection
+records, console queues 64; the memory tail retains at most 64 safe rows and 48 KiB of serialized rows. Record projection
 can add bytes independently of raw output, so channel-loss counters must not be
 summed into a unique lost-source-byte count. Age/count/byte retention expiry is
 reported separately from failed delivery. Retention is not a filesystem quota;
