@@ -14,8 +14,11 @@ jobs:
         with:
           go-version: 1.26.8
           cache: true
-      - name: Repeat exact failed test owner with fixed safe boundary observations
+      - name: Repeat exact failed test owner in fresh processes with safe boundary observations
         env:
           GOFLAGS: -mod=readonly
         run: |
-          go test -json -race -count=30 -timeout=5m -run '^(TestTextReadCancellationRejectsAdditionalCleanupFailure|TestTextReadResultJoinsContextLossBeforeLocalRequest)$' ./internal/endpoint
+          for attempt in $(seq 1 20); do
+            printf 'authority-probe fresh-process=%s\n' "$attempt"
+            go test -json -race -count=1 -timeout=5m -run '^(TestTextReadCancellationRejectsAdditionalCleanupFailure|TestTextReadResultJoinsContextLossBeforeLocalRequest)$' ./internal/endpoint
+          done
