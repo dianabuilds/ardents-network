@@ -50,7 +50,8 @@ func (writer *limitedWriter) Write(body []byte) (int, error) {
 
 type privateListener struct {
 	net.Listener
-	slots chan struct{}
+	slots         chan struct{}
+	retainCleanup func(error)
 }
 
 func (listener privateListener) Accept() (net.Conn, error) {
@@ -63,7 +64,9 @@ func (listener privateListener) Accept() (net.Conn, error) {
 		case listener.slots <- struct{}{}:
 			return &privateConnection{Conn: conn, slots: listener.slots}, nil
 		default:
-			conn.Close()
+			if err := conn.Close(); err != nil && listener.retainCleanup != nil {
+				listener.retainCleanup(err)
+			}
 		}
 	}
 }
@@ -193,7 +196,9 @@ func open(ctx context.Context, path string) (func() error, error) {
 	runtime.SetBlockProfileRate(1_000_000)
 	previousMutex := runtime.SetMutexProfileFraction(10)
 	terminal := make(chan error, 1)
-	go func() { terminal <- server.Serve(privateListener{Listener: listener, slots: make(chan struct{}, 4)}) }()
+	go func() {
+		terminal <- server.Serve(privateListener{Listener: listener, slots: make(chan struct{}, 4), retainCleanup: retainCleanup})
+	}()
 	var once sync.Once
 	var result error
 	return func() error {
@@ -212,10 +217,10 @@ func open(ctx context.Context, path string) (func() error, error) {
 			case <-end.Done():
 				result = errors.Join(result, errors.New("diagnostic handlers did not join within shutdown budget"))
 			}
+			serveErr := <-terminal
 			cleanupMu.Lock()
 			result = errors.Join(result, cleanupFailure)
 			cleanupMu.Unlock()
-			serveErr := <-terminal
 			if !errors.Is(serveErr, http.ErrServerClosed) {
 				result = errors.Join(result, serveErr)
 			}

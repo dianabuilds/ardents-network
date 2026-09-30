@@ -276,3 +276,76 @@ func TestProfileUnlinkedBeforeSensitiveWriteAndRemovalFailureRetained(t *testing
 		t.Fatal("cleanup denial was not retained")
 	}
 }
+
+type refusalCloseFailureListener struct {
+	net.Listener
+	failure error
+}
+
+func (listener refusalCloseFailureListener) Accept() (net.Conn, error) {
+	conn, err := listener.Listener.Accept()
+	if err != nil {
+		return nil, err
+	}
+	return refusalCloseFailureConnection{Conn: conn, failure: listener.failure}, nil
+}
+
+type refusalCloseFailureConnection struct {
+	net.Conn
+	failure error
+}
+
+func (conn refusalCloseFailureConnection) Close() error {
+	return errors.Join(conn.Conn.Close(), conn.failure)
+}
+
+func TestPrivateListenerRetainsRefusalCleanupFailure(t *testing.T) {
+	socket := privateSocket(t)
+	raw, err := net.Listen("unix", socket)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer raw.Close()
+	failure := errors.New("refused connection cleanup failed")
+	retained := make(chan error, 1)
+	slots := make(chan struct{}, 1)
+	slots <- struct{}{}
+	listener := privateListener{Listener: refusalCloseFailureListener{Listener: raw, failure: failure}, slots: slots,
+		retainCleanup: func(err error) { retained <- err }}
+	done := make(chan error, 1)
+	go func() { _, err := listener.Accept(); done <- err }()
+	peer, err := net.Dial("unix", socket)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer peer.Close()
+	if err := peer.SetReadDeadline(time.Now().Add(time.Second)); err != nil {
+		t.Fatal(err)
+	}
+	var body [1]byte
+	if _, err := peer.Read(body[:]); !errors.Is(err, io.EOF) {
+		t.Fatalf("excess client not refused: %v", err)
+	}
+	if err := raw.Close(); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case err := <-done:
+		if !errors.Is(err, net.ErrClosed) {
+			t.Fatalf("listener did not join: %v", err)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("listener did not join")
+	}
+	select {
+	case err := <-retained:
+		if !errors.Is(err, failure) {
+			t.Fatalf("refusal cleanup failure lost: %v", err)
+		}
+	default:
+		t.Fatal("refusal cleanup failure not retained before listener joined")
+	}
+	if len(slots) != 1 {
+		t.Fatal("refused connection changed an active slot")
+	}
+}
