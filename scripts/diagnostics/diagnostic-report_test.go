@@ -335,6 +335,43 @@ func TestAssistantJSONDepthDuplicateAndBounds(t *testing.T) {
 	}
 }
 
+func TestAssistantUnicodeAliasesCannotOverrideEvidence(t *testing.T) {
+	for _, key := range []string{"\u017fource_tree_changed", "\u017famples"} {
+		t.Run(key, func(t *testing.T) {
+			dir := reportFixture(t, 0)
+			path := filepath.Join(dir, "summary.json")
+			body, err := os.ReadFile(path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var original summary
+			if err := json.Unmarshal(body, &original); err != nil {
+				t.Fatal(err)
+			}
+			original.SourceChanged = true
+			original.Samples = 1
+			body, err = json.Marshal(original)
+			if err != nil {
+				t.Fatal(err)
+			}
+			value := "false"
+			if strings.HasSuffix(key, "amples") {
+				value = "0"
+			}
+			alias := append(bytes.TrimSpace(body)[:len(bytes.TrimSpace(body))-1], []byte(`,"`+key+`":`+value+`}`)...)
+			if validJSONRecord(alias) {
+				t.Fatal("Unicode alias admitted")
+			}
+			if err := os.WriteFile(path, alias, 0600); err != nil {
+				t.Fatal(err)
+			}
+			if r := assessRun(dir, time.Now()); r.Complete {
+				t.Fatal("ambiguous summary became complete")
+			}
+		})
+	}
+}
+
 func TestAssistantMissingRowsCannotBecomeComplete(t *testing.T) {
 	dir := reportFixture(t, 0)
 	reportRow(t, dir, "events.ndjson", event{ObservedAt: time.Now(), Schema: "ardents-source-event-v1", Kind: "source-failed", Failure: "cleanup"})

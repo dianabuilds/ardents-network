@@ -143,8 +143,9 @@ func readEvidence(root *os.Root, name string, limit int64) ([]byte, time.Time, e
 	return body, info.ModTime(), errors.Join(readErr, closeErr)
 }
 
-// Reject duplicate JSON keys (including nested objects) rather than allowing
-// last-write-wins records to silently contradict earlier evidence.
+// Admit only ASCII object keys and reject case aliases, including nested keys.
+// The maintained projections use ASCII keys; Unicode folding in encoding/json
+// must not allow a second spelling to silently override validated evidence.
 func validJSONRecord(body []byte) bool {
 	d := json.NewDecoder(bytes.NewReader(body))
 	var value func() error
@@ -167,7 +168,7 @@ func validJSONRecord(body []byte) bool {
 				}
 				name, ok := key.(string)
 				folded := strings.ToLower(name)
-				if !ok || seen[folded] {
+				if !ok || strings.IndexFunc(name, func(r rune) bool { return r > 127 }) >= 0 || seen[folded] {
 					return errors.New("duplicate or invalid key")
 				}
 				seen[folded] = true

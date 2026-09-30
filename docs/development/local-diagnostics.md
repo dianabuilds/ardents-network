@@ -160,7 +160,9 @@ are local observations rather than authenticated Release/qualification evidence.
 Admission uses a canonical absolute directory and os.Root-confined regular-file
 opens with NOFOLLOW/NONBLOCK. Manifest is at most 16 KiB, tool inventory 1 MiB,
 each summary/event/sample file 4 MiB, JSON nesting 32, event/sample records 65536
-and each record 16 KiB. At most eight failures are returned with an explicit
+and each record 16 KiB. Object keys must be ASCII; duplicate case aliases are
+rejected before decoding so Unicode field aliases cannot override evidence.
+At most eight failures are returned with an explicit
 truncation notice. Stored fields are projected again for report, summary and
 sample routes; unknown strings/maps never become report prose, HTML or labels.
 Byte and record limits are not a transactional snapshot, filesystem quota or
