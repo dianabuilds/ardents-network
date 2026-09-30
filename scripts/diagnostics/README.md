@@ -189,6 +189,19 @@ bounded. The panel's existing summary and sample routes also re-project stored
 records before output; unknown strings/metric fields cannot become visible.
 The server remains read-only, with the existing host-loopback publication.
 
+The panel groups outcome, missing observations, suggested checks, RSS/cgroup/PSI,
+conditions and comparison. Transition filtering covers only the last 32 events.
+Pause suspends panel polling; it does not stop the collector or product.
+Manual refresh and copyable command templates do not execute commands.
+
+For a local projected JSON export, open **Предпросмотр отчёта**, inspect its
+contents, then choose **Скачать просмотренный JSON**. The preview is a frozen
+snapshot and cannot silently change during refresh. Source/image/tool identities
+are omitted by default; selecting their checkbox invalidates the preview.
+Event UTC, raw logs, paths, command arguments and profiles are excluded. The
+export is capped at 256 KiB, downloaded only in the browser, never uploaded.
+Treat it as private operational metadata even after projection.
+
 ## Debugger, syscalls and network fault diagnosis
 
 Use `-gcflags="all=-N -l"` only for a separate local artifact. Delve accepts

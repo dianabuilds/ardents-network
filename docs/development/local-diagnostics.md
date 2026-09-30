@@ -174,3 +174,23 @@ Report generation success means a complete capture was explained, even when
 the command failed; incomplete/unavailable report inputs give a nonzero CLI
 result. Original command exit and failed comparison outcomes remain explicit.
 Run instructions and exact report/compare examples belong to the README.
+
+### Panel interaction and previewed export
+
+The panel separates outcome, capture validity, observed failures, gaps, manual
+checks, resource history and comparison. Its filter applies only to the 32-event
+tail; it cannot establish a first overall failure. Pause stops browser polling,
+not the collector or supervised command. Manual refresh remains available.
+The RSS plot uses at most 1000 maximum-per-bucket points on observed UTC; peak
+facts remain over the admitted sample history. The plot is not test timing.
+
+Export is browser-local and bounded to 256 KiB. The operator must open a visible
+JSON preview before download. That preview is frozen across automatic refresh;
+changing provenance selection invalidates it and requires another preview.
+The default projection omits source/image/tool identity and absolute event UTC.
+An explicit checkbox includes the already validated conditions. Both compared
+outcomes, completeness, gaps, resource facts and fixed manual recommendations
+remain present. Raw logs, paths, command arguments, profiles, keys, Names,
+Targets and peer histories are not included. No export upload or control route
+exists. Even the projected report is private operational metadata; the operator
+reviews its visible contents before choosing to share it elsewhere.
