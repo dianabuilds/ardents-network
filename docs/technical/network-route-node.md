@@ -59,6 +59,12 @@ While one child is pending downstream HELLO/ACCEPT, the parent reader still
 serves lane-zero control and independently selected children. A pending child's
 frames remain in Route's bounded accounted queues; CLOSE cancels and joins only
 that child opener before its reservation is released.
+Outgoing Source child retirement removes its queued payload, then joins an
+already active DATA or CREDIT frame before sending CLOSE. That frame retains
+its original write deadline, additionally bounded by the same one-second total
+cleanup window. No queued payload or new work is admitted by retirement. A
+stalled or failed active frame retires the physical parent, and its error remains
+in the child cleanup result even if CLOSE never reached the writer.
 An old reader can invalidate only its exact Carrier lease incarnation, so a
 late terminal result cannot close a replacement with the same public key.
 

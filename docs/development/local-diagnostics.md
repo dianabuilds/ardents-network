@@ -7,6 +7,72 @@ It does not qualify installed Ubuntu workers, replace `make check`, or select
 additional Network behavior. Product, security and technical owners retain
 Route/currentness/authority, workload and confinement requirements.
 
+## Continuous monitoring and explicit debug mode
+
+The selected engineering direction is continuous local Node monitoring with
+console and rotating file logs, metric history, local alerts and an explicit
+debug mode. The finite command collector described below supplies diagnostic
+evidence; its file caps and saved reports do not implement this system.
+
+### Normal monitoring
+
+- Select each local process or Node explicitly. Show source identity, observation
+  time, age, collection failure and unavailable fields. Process survival and an
+  earlier ready event cannot establish present product readiness.
+- Preserve structured console output and provide a private file sink with size
+  and time rotation, finite retained bytes, file count and age. Rotation applies
+  only to logs. A bounded sink must keep draining producers during saturation;
+  report loss, full disk, write and shutdown failures independently of that sink.
+  Join producers before bounded final drain and close. Reopening after restart
+  must preserve the retention budget rather than restart its accounting at zero.
+- Capture metrics with units, source scope and availability. Distinguish gauges,
+  cumulative counters, interval rates, current values, observed peaks and actual
+  configured limits. Counter resets and missing samples break rate continuity.
+  OS process, process group, container and Node duty observations remain distinct.
+  Unpopulated admission fields are unavailable, even when their encoded default
+  is zero. Role-specific Usage values need their owner's meaning; they are not
+  automatically waiting queue length or generic workload.
+- Render time series against a shared selectable time interval. Show gaps rather
+  than interpolate healthy operation through missing evidence. Each plotted
+  value must be inspectable with its units and observation time.
+- Evaluate local alerts over measured signals with explicit windows. Retain
+  pending, firing and resolved transitions, deduplicate repeated evaluations,
+  support acknowledgement and expiring silence, and retain recovery history.
+  Silence and acknowledgement do not change measured health. Source loss and
+  collection failure are independent visible conditions. External notification
+  delivery requires separate explicit configuration and authorization.
+
+Normal monitoring must not enable expensive profiling merely to read counters.
+Its retention budgets include indexes, temporary rotation files and backend
+working space; a backend retention setting alone is not a filesystem quota.
+
+### Debug mode
+
+Debug mode adds a finite, explicitly selected capture for one local owner:
+actual operation stages, context budgets and joined cleanup; goroutine stacks;
+CPU, heap, block, mutex and Go execution trace profiles. Show capture duration,
+progress, completion, cancellation, overhead settings and failures. Keep raw
+artifacts private and summaries separate from raw profile or log access.
+
+Debug instrumentation must preserve authority, wire behavior, cancellation and
+cleanup errors. It cannot make an incomplete operation successful, retry product
+operations automatically or weaken the common Route protection baseline.
+
+### Panel and verification
+
+The primary views are Overview, Logs, Metrics, Alerts and Debug. Saved command
+runs are supporting evidence within these views. Future Node control actions
+require their own existing owner and authorization boundary; monitoring does
+not confer permission to change Node configuration or lifecycle.
+
+Verify the system with a running selected source: follow live console and file
+logs through rotation and restart; induce sink saturation and full disk;
+inspect measured gauge/counter/reset behavior and stale-source gaps; drive an
+alert through pending, firing, silence expiry and recovery; cancel a debug
+capture and check joined cleanup. Retained original failures must remain
+inspectable. A static dashboard or successful command report cannot substitute
+for these lifecycle checks.
+
 ## Existing observations and gaps
 
 | Owner | Available evidence | Gap / interpretation |
