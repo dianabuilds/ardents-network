@@ -450,3 +450,93 @@ Normal monitoring routes periodic `resource-sample` observations to retained
 or a complete metric query interface. Sample and event sequences are independent.
 Non-periodic resource transitions remain events. File retention and delivery-loss
 budgets remain shared and explicitly reported.
+
+## Private reproduction evidence package
+
+`bundle` indexes one completed private capture into a new private JSON file.
+Its assembly result is separate from the source command result and capture
+integrity. A failed command can have a complete package; unavailable selected
+Reader evidence yields an incomplete package and a nonzero CLI result. Existing
+outputs are refused and preserved. This is a local engineering index, not a
+browser export; its absolute evidence root is private operational metadata.
+
+```sh
+umask 077
+mkdir -m700 /state/packages
+ardents-diagnostics bundle -dir /state/completed-run -out /state/packages/run.json
+# Only when explicitly selecting a configured owned Reader process:
+ardents-diagnostics bundle -dir /state/completed-run -out /state/packages/with-reader.json \
+  -connection-socket /state/reader-private/process.sock
+# Existing private artifacts are selected by basename, never auto-discovered:
+ardents-diagnostics bundle -dir /state/completed-run -out /state/packages/profile.json \
+  -profile cpu.pprof -trace runtime.trace -artifact test.bin -command command.json
+```
+
+Both directories must be canonical, private and owned; output must be outside
+source and the selected capture. Fixed report inputs are hashed with their finite
+collector read limits; optional tools.txt is included when present. The JSON does
+not copy raw file contents. A file hash or overlapping times do not establish
+operation association. Reader results preserve the existing explicit association
+limit and missing stages. Its socket must be an owned private Unix socket in an
+owned private directory. This command does not enable debug or profiling on the
+process; select those through their existing explicit interfaces.
+
+Select at most eight artifact basenames (ASCII letters/digits/dot/underscore/hyphen,
+128 characters maximum), each up to 64 MiB; inventory totals are capped at 128 MiB
+including report inputs. Missing, oversized, non-private, linked or observed
+changing selected files refuse assembly. Existing fixed report inputs cannot be
+selected again. Opaque `-artifact` entries have kind `private-file` and `validation: not-checked`.
+Explicit `-profile` and `-trace` use prebuilt standard Go offline parsers
+and record `pprof`/`go-trace` plus `validation: passed` or `failed`. No filename
+extension supplies that claim. Validation failure returns nonzero and retains a
+partial package; parser acceptance does not bind it to a command/executable or
+prove useful profile coverage. Raw data stays private in the original capture.
+
+Assembly uses `-timeout` (default 10s, positive and at most 30s); cancellation is
+propagated to input hashing, Reader and parser requests. Each parser request has
+at most 2s, bounded discarded output and joined process-group cancellation.
+Run inside the selected diagnostic container with finite memory/CPU and writable
+cache prerequisites. The deadline is cooperative for filesystem I/O; an output
+file retained after an I/O/deadline error is not a successful command result.
+
+For the debugging implementer, inspect `run.exit_code`, `run.complete`, `run.gaps`,
+`connection_state`, `connection.missing_stages` when present, and each artifact's
+kind/validation independently. Keep the original command FAIL. `assembly: complete`
+is an index-assembly result, not a passing command or a causal diagnosis. Consult
+selected private command receipts manually; their arguments may be sensitive.
+A hypothesis such as a cleanup failure is not proven by a nearby resource peak.
+
+Select the exact saved argv receipt with `-command command.json` when the
+original collector was explicitly run with `-raw`. This shares the eight-artifact
+limit but permits only one command receipt, at most 16 KiB/256 argv string entries.
+Null/non-string/NUL arguments, empty executable and invalid UTF-8 are refused.
+`reproduction.state` is `available` only when that typed receipt was read;
+`argument_count` includes the executable. Arguments remain in the private source
+file. `unselected` does not mean the original command is known. A corrupt selected
+receipt yields `unavailable`, incomplete assembly and a nonzero CLI result.
+Command/run association and a fully replayable environment are not established.
+
+For example, inspect the package locally with `python3 -m json.tool` and manually
+read the selected command artifact under its private root. This inspection runs
+no tests, commands or bug search. Keep the original FAIL and missing-stage gaps
+while forming and verifying a separate hypothesis.
+
+Final gates and bounded review remain required before integrating this slice. Rebuild the diagnostic
+image from the current source before expecting its CLI to include `bundle`.
+
+### Standard parser installation
+
+The Docker build includes prebuilt Go 1.26.8 `pprof` and `trace` binaries and
+records their build metadata. Native Linux diagnostic tests and bundle parsing
+require an explicit preparation step:
+
+```sh
+make tools-install DIAGNOSTIC_PARSERS_ONLY=1
+```
+
+The destination is `GOBIN` when set, otherwise `GOPATH/bin`; it must be writable
+at installation and on PATH during use. This command builds only the selected
+standard-library parsers, without third-party tool downloads. Clearing or changing
+the Go build cache after installation does not trigger compilation during bundle
+parsing. The two-second per-parser and whole-assembly limits remain unchanged.
+Missing tools cause failed validation; no automatic installation or passing skip.

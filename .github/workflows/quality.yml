@@ -88,6 +88,9 @@ jobs:
         with:
           go-version: 1.26.8
           cache: true
+      - name: Install standard Go diagnostic parsers
+        if: matrix.package == 'github.com/dianabuilds/ardents-network/internal/architecture'
+        run: make tools-install DIAGNOSTIC_PARSERS_ONLY=1
       - name: Run selected group with bounded timeout
         env:
           TEST_PACKAGE: ${{ matrix.package }}

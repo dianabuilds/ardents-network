@@ -221,6 +221,22 @@ func validJSONRecord(body []byte) bool {
 }
 
 func assessRun(dir string, now time.Time) (result runReport) {
+	root, err := openEvidenceRoot(dir)
+	if err != nil {
+		return assessRunRoot(nil, now)
+	}
+	result = assessRunRoot(root, now)
+	if err := root.Close(); err != nil {
+		result.gap("evidence-close-failed")
+		result.Complete = false
+		result.NextChecks = nextChecks(result)
+	}
+	return
+}
+
+// Assessment uses the supplied root, so a private package and the ordinary
+// report share one interpretation without reopening a selected pathname.
+func assessRunRoot(root *os.Root, now time.Time) (result runReport) {
 	result.Status = "unavailable"
 	result.ExitCode = -1
 	result.ResourceFacts = map[string]uint64{}
@@ -231,17 +247,10 @@ func assessRun(dir string, now time.Time) (result runReport) {
 	defer func() {
 		result.NextChecks = nextChecks(result)
 	}()
-	root, err := openEvidenceRoot(dir)
-	if err != nil {
+	if root == nil {
 		result.gap("evidence-unavailable")
 		return
 	}
-	defer func() {
-		if root.Close() != nil {
-			result.gap("evidence-close-failed")
-			result.Complete = false
-		}
-	}()
 	var manifest struct {
 		Schema    string `json:"schema"`
 		Source    string `json:"source_sha"`

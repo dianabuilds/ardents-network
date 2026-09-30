@@ -11,10 +11,10 @@ COPY tests/profiles/ ./tests/profiles/
 COPY scripts/diagnostics/install-powershell.sh ./scripts/diagnostics/install-powershell.sh
 RUN make tools-install DIAGNOSTIC_TOOLS=1
 RUN go mod download && go mod verify
-COPY scripts/diagnostics/diagnostic-command.go scripts/diagnostics/diagnostic-capture.go scripts/diagnostics/diagnostic-view.go scripts/diagnostics/diagnostic-report.go scripts/diagnostics/diagnostic-monitor.go scripts/diagnostics/diagnostic-monitor-view.go scripts/diagnostics/diagnostic-log-retention.go ./
-RUN go build -trimpath -buildvcs=false -o /usr/local/bin/ardents-diagnostics diagnostic-command.go diagnostic-capture.go diagnostic-view.go diagnostic-report.go diagnostic-monitor.go diagnostic-monitor-view.go diagnostic-log-retention.go \
+COPY scripts/diagnostics/diagnostic-command.go scripts/diagnostics/diagnostic-capture.go scripts/diagnostics/diagnostic-view.go scripts/diagnostics/diagnostic-report.go scripts/diagnostics/diagnostic-monitor.go scripts/diagnostics/diagnostic-monitor-view.go scripts/diagnostics/diagnostic-log-retention.go scripts/diagnostics/diagnostic-evidence.go ./
+RUN go build -trimpath -buildvcs=false -o /usr/local/bin/ardents-diagnostics diagnostic-command.go diagnostic-capture.go diagnostic-view.go diagnostic-report.go diagnostic-monitor.go diagnostic-monitor-view.go diagnostic-log-retention.go diagnostic-evidence.go \
     && mkdir -p /opt/ardents-diagnostics \
-    && (go version; staticcheck -version; govulncheck -version; dlv version; pwsh --version; dpkg-query -W; go version -m /go/bin/dlv; go version -m /go/bin/errcheck) > /opt/ardents-diagnostics/inventory.txt
+    && (go version; staticcheck -version; govulncheck -version; dlv version; pwsh --version; dpkg-query -W; go version -m /go/bin/dlv; go version -m /go/bin/errcheck; go version -m /go/bin/pprof; go version -m /go/bin/trace) > /opt/ardents-diagnostics/inventory.txt
 RUN groupadd -g 10001 diagnostic && useradd -m -u 10001 -g diagnostic diagnostic \
     && mkdir -p /cache /state && chown diagnostic:diagnostic /cache /state \
     && printf "diagnostic ALL=(root) NOPASSWD: ALL\n" > /etc/sudoers.d/diagnostic \
