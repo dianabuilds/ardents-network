@@ -159,7 +159,7 @@ func assertClosedTopologyLive(t *testing.T, live []*nodeProcess) {
 	for _, process := range live {
 		select {
 		case <-process.done:
-			t.Fatalf("closed topology Node exited after readiness: %v", process.terminalErr())
+			t.Fatalf("closed topology Node exited after readiness: %v stderr=%s", process.terminalErr(), process.stderr)
 		default:
 		}
 	observed:
