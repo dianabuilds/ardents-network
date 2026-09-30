@@ -270,6 +270,13 @@ retains the exact admission reservation until that Job reports joined cleanup;
 it does not edit handoff fields. A late handoff is closed against its old Job
 and cannot supply a Grant or completion to a replacement.
 
+An owned Service binding refuses a canceled Context with that Context's
+cancellation cause, including the interval before cancellation reaches its Job
+and after joined Job cleanup. It does not synthesize a separate Job-retirement
+failure from that propagation order. Independent Job retirement under a live
+Context and a foreign Job remain distinct refusals; physical cleanup errors
+retain their existing joined owners.
+
 Context shutdown uses one explicit stop/join dependency table. Stop runs while
 the Context mutex is held and revokes every child before any wait; join runs
 after releasing that mutex. Extracted lifecycle owners detach and retire their
