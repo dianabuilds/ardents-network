@@ -234,4 +234,4 @@ text-role-durable-state-capture:
 .PHONY: diagnostics-check
 diagnostics-check:
 	@test "$$(go env GOOS)" = linux || (echo "diagnostics-check requires Linux"; exit 2)
-	go test ./scripts/diagnostics/diagnostic-command.go ./scripts/diagnostics/diagnostic-capture.go ./scripts/diagnostics/diagnostic-view.go ./scripts/diagnostics/diagnostic-capture_test.go -count=1 -timeout=1m
+	go test ./scripts/diagnostics/diagnostic-command.go ./scripts/diagnostics/diagnostic-capture.go ./scripts/diagnostics/diagnostic-view.go ./scripts/diagnostics/diagnostic-report.go ./scripts/diagnostics/diagnostic-capture_test.go ./scripts/diagnostics/diagnostic-report_test.go -count=1 -timeout=1m

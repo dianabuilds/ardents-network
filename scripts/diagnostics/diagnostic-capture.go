@@ -133,6 +133,19 @@ func selected(value any, allowed string) string {
 	}
 	return ""
 }
+
+// eventCategories owns the fixed collector/stored-evidence category catalogue.
+func eventCategories(schema string) (kinds, failures string) {
+	switch schema {
+	case "ardents-node-event-v1":
+		return "lifecycle resource resource-sample", ""
+	case "ardents-source-event-v1":
+		return "source-ready source-wave-accepted source-failed", "background-work cleanup"
+	case "ardents-headless-runtime-event-v1":
+		return "headless-runtime-ready headless-runtime-failed headless-runtime-permission-required headless-runtime-publication-refresh-failed headless-runtime-publication-withdrawal-failed headless-runtime-connection-operation-failed", "startup running rotation authorization publication-state publication-handover caller-context publisher-ended publication-draining registration-absent publisher-not-live registration publisher-drain deadline admission activation worker-launch worker-operation introduction-preparation service-join post-join-lifetime service-result rotation-authority rotation-prefix rotation-recipient rotation-expired rotation-registration rotation-publication"
+	}
+	return "", ""
+}
 func project(body []byte) (event, string) {
 	var data map[string]any
 	if err := json.Unmarshal(body, &data); err != nil {
@@ -147,13 +160,7 @@ func project(body []byte) (event, string) {
 	if schema == "" {
 		return event{}, "unknown"
 	}
-	kinds := "lifecycle resource resource-sample"
-	if schema == "ardents-source-event-v1" {
-		kinds = "source-ready source-wave-accepted source-failed"
-	}
-	if schema == "ardents-headless-runtime-event-v1" {
-		kinds = "headless-runtime-ready headless-runtime-failed headless-runtime-permission-required headless-runtime-publication-refresh-failed headless-runtime-publication-withdrawal-failed headless-runtime-connection-operation-failed"
-	}
+	kinds, failures := eventCategories(schema)
 	kind := selected(data["kind"], kinds)
 	if kind == "" {
 		return event{}, "unknown"
@@ -167,9 +174,9 @@ func project(body []byte) (event, string) {
 	e := event{ObservedAt: time.Now().UTC(), At: at, Schema: schema, Kind: kind,
 		State:   selected(data["state"], "ABSENT PREPARED READY DRAINING WITHDRAWN FAILED OBSERVED NORMAL PROTECT DRAIN EXIT"),
 		Carrier: selected(data["carrier_profile"], "ardents-carrier-tcp-tls-v2 ardents-carrier-quic-v2"),
-		Failure: selected(data["failure"], "startup running rotation authorization publication-state publication-handover caller-context publisher-ended publication-draining registration-absent publisher-not-live registration publisher-drain deadline admission activation worker-launch worker-operation introduction-preparation service-join post-join-lifetime service-result rotation-authority rotation-prefix rotation-recipient rotation-expired rotation-registration rotation-publication"), Resource: numbers(data["resource"], resourceFields)}
+		Failure: selected(data["failure"], failures), Resource: numbers(data["resource"], resourceFields)}
 	if schema == "ardents-source-event-v1" {
-		e.Failure = selected(data["reason"], "background-work cleanup")
+		e.Failure = selected(data["reason"], failures)
 	}
 	if schema == "ardents-node-event-v1" {
 		e.Failure = ""
@@ -287,7 +294,11 @@ func drain(reader io.Reader, raw *boundedFile, p *projection, stdout bool) error
 	}
 }
 
-func supervise(dir, source string, command []string, timeout time.Duration, raw bool) (outcome error) {
+func supervise(dir, source string, command []string, timeout time.Duration, raw bool) error {
+	return superviseWithConditions(dir, source, command, timeout, raw, reportConditions{})
+}
+
+func superviseWithConditions(dir, source string, command []string, timeout time.Duration, raw bool, conditions reportConditions) (outcome error) {
 	signalCtx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	ctx, cancel := context.WithTimeout(signalCtx, timeout)
@@ -306,7 +317,7 @@ func supervise(dir, source string, command []string, timeout time.Duration, raw 
 			outcome = errors.Join(outcome, writeJSON(filepath.Join(dir, "summary.json"), p.summary))
 		}
 	}()
-	info := map[string]any{"schema": "ardents-local-diagnostics-v1", "started": p.summary.Started, "timeout": timeout.String(), "raw": raw, "command": filepath.Base(command[0]), "arguments_retained": raw, "source_sha": sourceRevision(ctx, source), "source_tree_sha256": sourceDiffDigest(ctx, source), "go": query(ctx, source, "go", "version"), "image": os.Getenv("ARDENTS_DIAGNOSTIC_IMAGE"), "scope": "local development; process-group samples and network-namespace counters, not installed qualification"}
+	info := map[string]any{"mode": conditions.Mode, "race": conditions.Race, "profiling": conditions.Profiling, "schema": "ardents-local-diagnostics-v1", "started": p.summary.Started, "timeout": timeout.String(), "raw": raw, "command": filepath.Base(command[0]), "arguments_retained": raw, "source_sha": sourceRevision(ctx, source), "source_tree_sha256": sourceDiffDigest(ctx, source), "go": query(ctx, source, "go", "version"), "image": os.Getenv("ARDENTS_DIAGNOSTIC_IMAGE"), "scope": "local development; process-group samples and network-namespace counters, not installed qualification"}
 	if inventory, err := os.ReadFile("/opt/ardents-diagnostics/inventory.txt"); err == nil && len(inventory) <= 1<<20 {
 		if err := os.WriteFile(filepath.Join(dir, "tools.txt"), inventory, 0600); err != nil {
 			return err

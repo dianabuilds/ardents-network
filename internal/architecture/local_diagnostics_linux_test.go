@@ -9,7 +9,7 @@ import (
 func TestLocalDiagnosticsCollector(t *testing.T) {
 	root := repositoryRoot(t)
 	args := []string{"test"}
-	for _, name := range []string{"diagnostic-command.go", "diagnostic-capture.go", "diagnostic-view.go", "diagnostic-capture_test.go"} {
+	for _, name := range []string{"diagnostic-command.go", "diagnostic-capture.go", "diagnostic-view.go", "diagnostic-report.go", "diagnostic-capture_test.go", "diagnostic-report_test.go"} {
 		args = append(args, filepath.Join(root, "scripts", "diagnostics", name))
 	}
 	args = append(args, "-count=1", "-timeout=1m")
