@@ -3,7 +3,7 @@ global:
   scrape_timeout: 1s
   evaluation_interval: 2s
 rule_files:
-  - /probe/alerts.yml
+  - /probe/alerts.otel.yml
 alerting:
   alertmanagers:
     - scheme: https

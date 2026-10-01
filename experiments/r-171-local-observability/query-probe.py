@@ -48,6 +48,32 @@ def delivery_counters(prefix):
         present.add(key)
     if present != {'retries','drops'}: raise RuntimeError('Actual retry/drop counters unavailable')
     return counts
+def otel_delivery(prefix):
+    result = observe(prefix+'signals','https://prometheus:9090/api/v1/query?'+urllib.parse.urlencode(
+        {'query':'{job="collector",__name__=~"otelcol_(receiver_(accepted|refused)_log_records|exporter_(sent|send_failed|enqueue_failed)_log_records|exporter_queue_(size|capacity))(_total)?"}'}))
+    if result.get('status') != 'success': raise RuntimeError('Native OTel delivery query failed')
+    families = {}
+    for item in result['data']['result']:
+        name = item['metric']['__name__'].removesuffix('_total')
+        value = float(item['value'][1])
+        if not math.isfinite(value) or value < 0: raise RuntimeError('Invalid native delivery observation')
+        families.setdefault(name,[]).append(value)
+    observed = {}
+    for key,name in [('accepted','otelcol_receiver_accepted_log_records'),
+                     ('sent','otelcol_exporter_sent_log_records'),
+                     ('queue_bytes','otelcol_exporter_queue_size'),
+                     ('capacity_bytes','otelcol_exporter_queue_capacity')]:
+        values = families.get(name,[])
+        if len(values) != 1: raise RuntimeError('Native selected signal absent or ambiguous: '+name)
+        observed[key] = values[0]
+    if observed['capacity_bytes'] != 1048576: raise RuntimeError('Configured queue byte capacity changed')
+    # Failure counters are lazily emitted. Retain null availability; never
+    # substitute zero or mistake terminal failed records for retry attempts.
+    for key,name in [('send_failed','otelcol_exporter_send_failed_log_records'),
+                     ('enqueue_failed','otelcol_exporter_enqueue_failed_log_records')]:
+        values = families.get(name)
+        observed[key] = None if values is None else sum(values)
+    return observed
 if sys.argv[1]=='ready':
     deadline=time.monotonic()+75
     endpoints=('https://prometheus:9090/-/ready','https://alertmanager:9093/-/ready','https://loki:3100/ready','http://grafana:3000/api/health')
@@ -321,6 +347,66 @@ elif sys.argv[1] in ('restart-before', 'restart-after'):
                          ('collector_new_accepted_records' if collector == 'otel' else 'collector_new_read_lines'):readings['collector'],'passed':True})
         (reports/'restart-assertions.json').write_text(json.dumps(snapshot))
         print('Backend restart retained metric/log/silence history without full-file replay')
+elif sys.argv[1] in ('otel-backend-baseline','otel-backend-unavailable','otel-backend-recovered'):
+    if collector != 'otel': raise RuntimeError('Native backlog mode requires OTel profile')
+    if sys.argv[1] == 'otel-backend-baseline':
+        baseline = otel_delivery('baseline-')
+        if baseline['queue_bytes'] != 0: raise RuntimeError('No drained queue baseline')
+        (reports/'baseline.json').write_text(json.dumps(baseline))
+        print('Captured native sent/accepted counters and drained byte-queue baseline')
+    else:
+        baseline = json.loads(pathlib.Path('/history/backend-baseline/baseline.json').read_text())
+        unavailable = sys.argv[1] == 'otel-backend-unavailable'
+        if unavailable:
+            try: request('https://loki:3100/ready')
+            except (OSError,urllib.error.URLError): pass
+            else: raise RuntimeError('Stopped log backend still answered readiness')
+        deadline = time.monotonic()+(18 if unavailable else 25)
+        pending_seen = False
+        history = []
+        attempt = 0
+        while time.monotonic() < deadline:
+            attempt += 1
+            prefix = f'{attempt:02d}-'
+            signals = otel_delivery(prefix)
+            for key in ('accepted','sent'):
+                if signals[key] < baseline[key]: raise RuntimeError('Native delivery counter reset')
+            for key in ('send_failed','enqueue_failed'):
+                previous = baseline[key]
+                current = signals[key]
+                if previous is not None and (current is None or current < previous):
+                    raise RuntimeError('Native failure counter disappeared/reset')
+                if current is not None and (previous is None and current > 0 or previous is not None and current > previous):
+                    raise RuntimeError('Terminal send/enqueue failure observed during recovery profile')
+            up = observe(prefix+'availability','https://prometheus:9090/api/v1/query?'+urllib.parse.urlencode(
+                {'query':'up{job=~"fixture|collector"}'}))['data']['result']
+            health = {item['metric']['job']:float(item['value'][1]) for item in up}
+            if health != {'fixture':1,'collector':1}: raise RuntimeError('Source/collector observation unavailable')
+            rules = observe(prefix+'rules','https://prometheus:9090/api/v1/alerts')['data']['alerts']
+            manager = observe(prefix+'manager','https://alertmanager:9093/api/v2/alerts')
+            selected = [item for item in rules if item['labels']['alertname']=='CollectorLogDeliveryBacklog']
+            active = [item for item in manager if item['labels']['alertname']=='CollectorLogDeliveryBacklog']
+            if unavailable:
+                pending_seen = pending_seen or bool(selected and selected[0]['state']=='pending' and not active)
+                history.append(signals)
+                stalled = len(history)>=3 and len({item['sent'] for item in history[-3:]})==1
+                progressed = signals['accepted'] >= history[0]['accepted']+5
+                if pending_seen and stalled and progressed and signals['queue_bytes']>baseline['queue_bytes'] and \
+                        len(selected)==1 and selected[0]['state']=='firing' and len(active)==1 and active[0]['status']['state']=='active':
+                    result = {'backend_unavailable':True,'pending_observed':True,'firing_observed':True,
+                              'sent_stalled_in_last_three_samples':True,'signals':signals,'availability':health,
+                              'failure_counter_availability':{key:signals[key] is not None for key in ('send_failed','enqueue_failed')},
+                              'passed':True}
+                    break
+            elif signals['queue_bytes']==0 and signals['sent']>baseline['sent'] and not selected and not active:
+                result = {'backlog_recovered':True,'signals':signals,'availability':health,
+                          'scope':'queue drained and alert cleared; sequence delivery is checked separately',
+                          'passed':True}
+                break
+            time.sleep(0.5)
+        else: raise RuntimeError('Native OTel backlog transition not observed within budget')
+        (reports/'otel-backend-assertions.json').write_text(json.dumps(result))
+        print('Observed native OTel backlog '+('pending/firing' if unavailable else 'drain/recovery'))
 elif sys.argv[1] in ('backend-baseline', 'backend-unavailable'):
     def backend_counters(prefix):
         data = observe(prefix+'delivery', 'https://prometheus:9090/api/v1/query?'+urllib.parse.urlencode(

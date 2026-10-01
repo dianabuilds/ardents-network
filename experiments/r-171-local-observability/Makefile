@@ -34,3 +34,7 @@ probe-otel:
 .PHONY: probe-otel-resources
 probe-otel-resources:
 	powershell -NoProfile -ExecutionPolicy RemoteSigned -File probe.ps1 -EvidenceRoot "$(EVIDENCE_ROOT)" -RunName "$(RUN_NAME)" -Collector otel -RestartProbe -ResourceProbe
+
+.PHONY: probe-otel-backend-outage
+probe-otel-backend-outage:
+	powershell -NoProfile -ExecutionPolicy RemoteSigned -File probe.ps1 -EvidenceRoot "$(EVIDENCE_ROOT)" -RunName "$(RUN_NAME)" -Collector otel -RestartProbe -BackendProbe

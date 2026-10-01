@@ -301,8 +301,8 @@ Prometheus retains only fixed native OTel counter/gauge families with the same
 size/capacity use serialized bytes because the queue sizer is explicitly bytes.
 Accepted records are not file byte positions or proof of final delivery. Missing
 failure counters remain unavailable, not assumed zero or renamed retries.
-Backend-outage/storage-pressure flags currently refuse H2 until their native
-failure-counter semantics and loss checks are separately implemented and proved.
+The storage-pressure flag still refuses H2 pending its native failure/loss
+measurement. The backend-outage profile below uses separate OTel semantics.
 
 Loki explicitly ignores default resource index labels and permits only job as an
 index label; selected safe event fields remain structured metadata. The probe
@@ -310,3 +310,29 @@ uses the Series API to verify index labels: query_range response labels may also
 include structured metadata and cannot alone prove index cardinality. Parser
 drops, malformed input, extended outage, crash and state saturation remain
 separate required failure evidence before this configuration can be selected.
+
+### Native OTel backlog failure journey
+
+```powershell
+make probe-otel-backend-outage EVIDENCE_ROOT=C:/Users/vitek/AppData/Local/Temp/ardents-r171-otel-backend-outage-new RUN_NAME=r171-otel-backend-outage-new
+```
+
+This research profile captures accepted/sent record counters and a drained byte
+queue, stops its own Loki container, then observes source/collector up1, continued
+acceptance, stalled sent count, byte backlog, and the native backlog rule through
+pending/firing with an Alertmanager active receipt. It restores Loki and requires
+complete source-time sequence catch-up, a drained queue and alert clearance before
+ordered restart/history checks. Failure-series absence is retained as null, not
+zero. Counter resets/disappearance, an observed terminal send/enqueue failure or
+missing producer sequence refuse the successful-recovery assertion.
+
+The backlog rule means sustained nonempty queued serialized bytes, not a proof of
+permanent loss or a general Node health verdict. The exact exporterhelper chain
+wraps the retry sender with operation observation: send_failed counts records
+whose export operation returned error after that processing, not every retry.
+An enqueue failure is also not automatically permanent loss when the receiver
+retries the rejected batch. Persistent-queue shutdown has an additional exception:
+a shutdown-marked operation can retain its item for restart even while failure
+telemetry records an operation error. Final sequence coverage and the exact error/
+lifecycle context are required to diagnose loss. Extended retry exhaustion,
+partial delivery, queue/state saturation and crash persistence remain open.

@@ -2,7 +2,7 @@ param([Parameter(Mandatory=$true)][string]$EvidenceRoot,
       [Parameter(Mandatory=$true)][ValidatePattern('^r171-[a-z0-9-]{1,32}$')][string]$RunName, [switch]$RestartProbe, [switch]$ResourceProbe, [switch]$BackendProbe, [switch]$StorageProbe, [ValidateSet('alloy','otel')][string]$Collector='alloy')
 $ErrorActionPreference='Stop'
 if (($ResourceProbe -or $BackendProbe -or $StorageProbe) -and -not $RestartProbe) { throw 'Resource profile requires explicit restart-state profile.' }
-if ($Collector -eq 'otel' -and ($BackendProbe -or $StorageProbe)) { throw 'OTel retry/loss counter semantics require separate validation before backend/pressure profile.' }
+if ($Collector -eq 'otel' -and $StorageProbe) { throw 'OTel retry/loss counter semantics require separate validation before backend/pressure profile.' }
 $taskRoot=[IO.Path]::GetFullPath($EvidenceRoot)
 $taskRepo=[IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../..'))
 if ($taskRoot.Equals($taskRepo,[StringComparison]::OrdinalIgnoreCase) -or
@@ -27,7 +27,7 @@ foreach ($taskPrincipal in @($taskSid,[Security.Principal.SecurityIdentifier]::n
 $taskPrivate=Join-Path $taskRoot 'private'; $taskReports=Join-Path $taskRoot 'reports'
 New-Item -ItemType Directory -Path $taskPrivate,$taskReports | Out-Null
 function Get-ProbeSourceSnapshot {
-    $taskSelected=@('images.json','compose.yaml','compose.restart.yaml','fixture.py','prometheus.yml','alerts.yml','alertmanager.yml','loki.yml','config.alloy','prepare-private.py','query-probe.py','resource-window.ps1','storage-pressure.py','probe.ps1','otel.yml','compose.otel.yaml','prometheus.otel.yml','loki.otel.yml','install-collector-image.ps1')
+    $taskSelected=@('images.json','compose.yaml','compose.restart.yaml','fixture.py','prometheus.yml','alerts.yml','alertmanager.yml','loki.yml','config.alloy','prepare-private.py','query-probe.py','resource-window.ps1','storage-pressure.py','probe.ps1','otel.yml','compose.otel.yaml','prometheus.otel.yml','loki.otel.yml','install-collector-image.ps1','alerts.otel.yml')
     foreach ($taskFile in $taskSelected) {
         $taskBytes=[IO.File]::ReadAllBytes((Join-Path $PSScriptRoot $taskFile))
         $taskHasher=[Security.Cryptography.SHA256]::Create()
@@ -117,14 +117,16 @@ try {
         Invoke-ProbeQuery 'storage-recovered' 'storage-recovered'
     }
     if ($BackendProbe) {
-        Invoke-ProbeQuery 'backend-baseline' 'backend-baseline'
+        $taskBackendPrefix=if ($Collector -eq 'otel') { 'otel-' } else { '' }
+        Invoke-ProbeQuery ($taskBackendPrefix+'backend-baseline') 'backend-baseline'
         docker @taskCompose stop --timeout 5 loki
         if ($LASTEXITCODE -ne 0) { throw 'Synthetic log backend stop failed.' }
-        Invoke-ProbeQuery 'backend-unavailable' 'backend-unavailable'
+        Invoke-ProbeQuery ($taskBackendPrefix+'backend-unavailable') 'backend-unavailable'
         docker @taskCompose start loki
         if ($LASTEXITCODE -ne 0) { throw 'Synthetic log backend start failed.' }
         Invoke-ProbeQuery 'ready' 'backend-recovery-readiness'
         Invoke-ProbeQuery 'catchup' 'post-backend-outage-logs'
+        if ($Collector -eq 'otel') { Invoke-ProbeQuery 'otel-backend-recovered' 'backend-recovered' }
     }
     if ($RestartProbe) {
         Invoke-ProbeQuery 'restart-before' 'restart-before'

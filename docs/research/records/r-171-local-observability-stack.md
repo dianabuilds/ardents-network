@@ -991,3 +991,58 @@ The final naming-only receipt correction calls the native H2 restart counter
 collector_new_accepted_records; earlier captured reports retain their original
 collector_new_read_lines label, which in H2 means accepted records, not byte
 positions. No assertion logic or old report was changed by that correction.
+
+### H2 native backlog and failed-operation semantics
+
+**Exact source inspection, accessed2026-10-01:** binary buildinfo declares
+exporterhelper0.162.0 checksum h1:PYOhmghgbrcmaWMUVi3MLMWFkwR9o+J5JdVqO4Vwj1Q=.
+The corresponding tag's BaseExporter constructs timeout, retry, observation,
+then queue wrappers. obsReportSender adds send_failed records only when its
+wrapped retry operation returns an error; this is not a retry-attempt counter.
+obsQueue adds enqueue_failed records on failed Offer; a downstream rejection
+may still be retried by the selected receiver. Persistent queue onDone keeps a
+shutdown-marked dispatched item for restart instead of deleting it. Therefore,
+failed-operation records and a generic Dropping data log are not sufficient in
+every lifecycle to prove permanent record loss. Actual sequence coverage,
+shutdown/error context and storage outcome must be inspected.
+Primary selected source bytes/git-blob receipts remain external
+ardents-r171-otel-delivery-source-a:
+[wrapper order](https://github.com/open-telemetry/opentelemetry-collector/blob/v0.162.0/exporter/exporterhelper/internal/base_exporter.go),
+[operation counter](https://github.com/open-telemetry/opentelemetry-collector/blob/v0.162.0/exporter/exporterhelper/internal/obs_report_sender.go),
+[retry path](https://github.com/open-telemetry/opentelemetry-collector/blob/v0.162.0/exporter/exporterhelper/internal/retry_sender.go),
+[queue offer observation](https://github.com/open-telemetry/opentelemetry-collector/blob/v0.162.0/exporter/exporterhelper/internal/queue/obs_queue.go),
+[shutdown persistence](https://github.com/open-telemetry/opentelemetry-collector/blob/v0.162.0/exporter/exporterhelper/internal/queue/persistent_queue.go).
+This tag inspection is not a signed reproducible source-to-binary proof or a
+completed package/security admission review.
+
+**Probe criteria, encoded before start:** capture drained baseline; stop owned
+Loki; retain native signal/availability/Prometheus/Alertmanager observations
+through backlog pending/firing, continued accepted records, stalled sent records
+and positive queue bytes. Require independent fixture/collector availability,
+no observed reset or terminal operation/enqueue-failure increase, then restore
+Loki and require complete source-watermark/time coverage, drained queue and rule/
+manager clearance. Missing failure series remain null/unavailable. Subsequent
+ordered restart keeps its original history checks. This evaluates the selected
+short outage; it does not establish extended outage or retry-exhaustion safety.
+The existing H1 retry/drop assertions are retained for Alloy. A sustained queue
+alert is scoped to log_delivery and names serialized-byte backlog, not permanent
+loss or Node workload. Storage-pressure H2 remains refused pending its own probe.
+
+**H2 short backend-outage measurement:** otel-backend-outage-a completed with
+complete=true, cleanup0 and twenty selected source/config inputs stable.
+During the unavailable backend interval the source and collector remained up1;
+accepted136/sent127 records, queued2889 serialized bytes against1048576 capacity.
+Pending and firing were observed, including Alertmanager activation, while the
+last three sent-count samples stalled. send_failed/enqueue_failed series were
+absent and explicitly retained as null/unavailable, not inferred zero.
+After recovery accepted156/sent156 and queue0 were observed; the backlog rule
+and Alertmanager cleared. Independent source coverage passed watermark155 with
+156unique records, no query duplicates and original event time on attempt1.
+After the subsequent ordered restart coverage passed watermark183 with183unique
+records, no query duplicates and preserved source time on attempt1. The count
+is the captured producer set, not an inferred zero-based cardinality.
+Reports/receipt and the successful quick-check log remain external
+ardents-r171-otel-backend-outage-a. All run containers were removed. This proves
+only the selected short outage/recovery journey; positive terminal failure
+counters, retry exhaustion, queue/state saturation and abrupt crash are still
+unmeasured. No full candidate admission, product-source integration or dev merge.
