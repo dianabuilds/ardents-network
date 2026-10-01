@@ -46,35 +46,68 @@ func awaitServiceObservation(ctx context.Context, observe func(context.Context) 
 }
 
 func observeEndpointService(ctx context.Context) error {
-	if err := verifyPlatform(ctx); err != nil {
+	unit, service, err := ReadEndpointProperties(ctx)
+	if err != nil {
 		return err
 	}
 	version, err := ManagerVersion(ctx)
 	if err != nil {
 		return err
 	}
-	answer, err := managerCall(ctx, "/org/freedesktop/systemd1", "org.freedesktop.systemd1.Manager", "GetUnit", "s", "ardents-endpoint.service")
+	if !unit.exact("Id", "s", "ardents-endpoint.service") || !unit.exact("ActiveState", "s", "active") {
+		return errors.New("text worker Endpoint service is not active")
+	}
+	if os.Geteuid() == 0 || !service.exact("MainPID", "u", uint32(os.Getpid())) ||
+		!service.exact("User", "s", "ardents-endpoint") || !service.exact("Group", "s", "ardents-endpoint") || !endpointStopsWithMain(service, version) {
+		return errors.New("text worker caller is not the Endpoint service")
+	}
+	return nil
+}
+
+// ReadEndpointProperties observes the fixed system service through typed D-Bus
+// properties. It neither authorizes a caller nor starts or changes any unit.
+func ReadEndpointProperties(ctx context.Context) (Properties, Properties, error) {
+	if ctx == nil {
+		return nil, nil, errors.New("Endpoint property context is unavailable")
+	}
+	if err := verifyPlatform(ctx); err != nil {
+		return nil, nil, err
+	}
+	return readFixedUnitProperties(ctx, "ardents-endpoint.service", "Service")
+}
+
+// ReadActivationSocketProperties observes a fixed text activation socket.
+// It grants no activation, launch or stop permission.
+func ReadActivationSocketProperties(ctx context.Context, role string) (Properties, Properties, error) {
+	if ctx == nil || role != "reader" && role != "publisher" {
+		return nil, nil, errors.New("text activation socket observation is unavailable")
+	}
+	if err := verifyPlatform(ctx); err != nil {
+		return nil, nil, err
+	}
+	return readFixedUnitProperties(ctx, "ardents-text-"+role+".socket", "Socket")
+}
+
+func readFixedUnitProperties(ctx context.Context, name, propertyKind string) (Properties, Properties, error) {
+	answer, err := managerCall(ctx, "/org/freedesktop/systemd1", "org.freedesktop.systemd1.Manager", "GetUnit", "s", name)
 	var paths []string
 	if err != nil || answer.Type != "o" || json.Unmarshal(answer.Data, &paths) != nil || len(paths) != 1 {
-		return errors.New("text worker Endpoint service is unavailable")
+		return nil, nil, errors.New("text worker Endpoint service is unavailable")
 	}
-	for _, kind := range []string{"Unit", "Service"} {
+	var unit, service Properties
+	for _, kind := range []string{"Unit", propertyKind} {
 		answer, err := managerCall(ctx, paths[0], "org.freedesktop.DBus.Properties", "GetAll", "s", "org.freedesktop.systemd1."+kind)
 		var properties []Properties
 		if err != nil || answer.Type != "a{sv}" || json.Unmarshal(answer.Data, &properties) != nil || len(properties) != 1 {
-			return errors.New("text worker Endpoint service properties are unavailable")
+			return nil, nil, errors.New("text worker Endpoint service properties are unavailable")
 		}
 		if kind == "Unit" {
-			if !properties[0].exact("Id", "s", "ardents-endpoint.service") || !properties[0].exact("ActiveState", "s", "active") {
-				return errors.New("text worker Endpoint service is not active")
-			}
-		} else if os.Geteuid() == 0 || !properties[0].exact("MainPID", "u", uint32(os.Getpid())) ||
-			!properties[0].exact("User", "s", "ardents-endpoint") || !properties[0].exact("Group", "s", "ardents-endpoint") ||
-			!endpointStopsWithMain(properties[0], version) {
-			return errors.New("text worker caller is not the Endpoint service")
+			unit = properties[0]
+		} else {
+			service = properties[0]
 		}
 	}
-	return nil
+	return unit, service, nil
 }
 
 func unitAfterEndpoint(unit Properties) bool {

@@ -59,6 +59,22 @@ share the Node's measured cgroup. Ordinary developer-host execution without
 this selector retains its shared-cgroup limitation. Scope verification alone
 does not qualify installed workers, a second Endpoint, or whole-host protection.
 
+Installation filesystem component checks select
+`ARDENTS_INSTALLATION_COMPONENT_PROFILE=root` and run
+`go test -count=1 ./internal/endpoint/installation` with actual UID 0.
+The selected prerequisite test fails under a non-root UID; an ordinary
+unprivileged run cannot supply Root filesystem evidence. In Docker explicitly
+select `--user 0` and the profile environment variable rather than inferring
+privilege from the image name. Enrollment's caller-owned package test retains
+its separate unprivileged profile. Root filesystem checks do not qualify a
+system manager, cgroup containment or an admitted installed Ubuntu journey.
+The completion-channel component also requires writable `/run` and permission
+to spawn a child with kernel UID/GID 65534 and cleared supplementary groups.
+The child connects through the Root-owned directory and socket, while actual
+kernel permission refusals prevent private-intent reads and directory writes.
+Unavailable credential-switch privileges fail this selected profile. This is
+local Unix credential/access evidence, not systemd namespace qualification.
+
 The two-Node lifecycle process test retains TCP port reservations throughout
 State and plan preparation. It releases each reservation immediately before its
 Source or Node starts, while other addresses remain owned. This prevents its
@@ -547,6 +563,14 @@ closure with its packages, and their deadcode allowance groups were retired
 with them.
 
 ## Local diagnostic environment
+
+The explicit [protected installation capture driver](../../tests/qualification/protected-installation/README.md)
+invokes public provision and installation-check, then asks the admitted system
+manager to start the actual installed unit. It retains the first command failure
+without retry or reset. This is a preparation/capture surface, not the complete
+two-Endpoint Service oracle or evidence that any admitted host was exercised;
+manager-start success alone does not establish participant readiness. Its
+independent program digest and genuine operator request are selected prerequisites.
 
 The [local diagnostics owner](local-diagnostics.md) and its
 [recipes](../../scripts/diagnostics/README.md) define the explicit Docker tools,

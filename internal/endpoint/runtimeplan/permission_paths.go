@@ -1,18 +1,18 @@
-package main
+package runtimeplan
 
 import (
 	"errors"
 	"path/filepath"
 )
 
-func validateHeadlessTextFields(plan headlessRuntimePlan) error {
+func validateTextFields(plan Headless) error {
 	if plan.TransitAcquisitionRoot != "" || plan.BytesEachDirection != 0 || plan.AlphaCorpusStateRoot != "" || plan.AlphaCorpusAuthority != "" || plan.AlphaCohort != "" {
 		return errors.New("text runtime plan cannot select legacy acquisition or interfaces")
 	}
 	paths := []string{plan.NetworkStateRoot, plan.EntryStateRoot, plan.LocalRoleStateRoot, plan.TextTokenRoot, plan.ApplicationSocket, plan.ReaderPermission.RequestPath, plan.ReaderPermission.ResponsePath}
-	permissions := []headlessPermissionPlan{plan.ReaderPermission}
+	permissions := []Permission{plan.ReaderPermission}
 	if plan.Role == "reader" {
-		if plan.PublicationRoot != "" || plan.ServiceInstanceRoot != "" || plan.AdministrationSocket != "" || plan.AdministrationPrincipal != "" || plan.PublisherPermission != (headlessPermissionPlan{}) {
+		if plan.PublicationRoot != "" || plan.ServiceInstanceRoot != "" || plan.AdministrationSocket != "" || plan.AdministrationPrincipal != "" || plan.PublisherPermission != (Permission{}) {
 			return errors.New("reader runtime cannot select Publisher inputs")
 		}
 	} else {

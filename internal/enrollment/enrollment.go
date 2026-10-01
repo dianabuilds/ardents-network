@@ -49,6 +49,11 @@ type Request struct {
 // is passed unchanged to Release Decision; it does not grant execution.
 type Verified struct {
 	Inputs release.Inputs
+	// ProtectedDescriptor and ProtectedFiles are manifest-authenticated data,
+	// projected outside Release metadata. They grant no execution authority:
+	// installation must also authenticate the descriptor target through Release.
+	ProtectedDescriptor []byte
+	ProtectedFiles      map[string][]byte
 	// ControlCatalog and DisclosureRoot are enrollment-pinned alpha-control
 	// disclosure companions. They are deliberately not Release metadata.
 	ControlCatalog, DisclosureRoot []byte
@@ -226,8 +231,15 @@ func verify(request Request) (Verified, error) {
 	if nodeFound {
 		nodeArtifactName, custodyArtifactName = nodeName, custodyName
 	}
+	protectedFiles, err := projectProtectedInventory(files, descriptor)
+	if err != nil {
+		return Verified{}, err
+	}
 	metadata := make(map[string][]byte, len(files))
 	for name, contents := range files {
+		if protectedFiles != nil && (name == "protected-endpoint.json" || protectedFiles[name] != nil) {
+			continue
+		}
 		if name == descriptorName || name == descriptor.artifact || name == descriptor.trustedRoot ||
 			name == descriptor.controlCatalog || name == descriptor.disclosureRoot ||
 			name == descriptor.controlRelease || name == descriptor.controlNetwork || name == descriptor.controlCompatibility ||
@@ -248,6 +260,7 @@ func verify(request Request) (Verified, error) {
 	return Verified{Inputs: release.Inputs{RootBytes: trustedRoot, Files: metadata, TargetPath: request.TargetPath,
 		Artifact: artifact, Local: release.LocalEnvironment{Environment: request.Environment, Network: request.Network,
 			Platform: request.Pin.Platform, Architecture: request.Architecture, RefTime: request.ReferenceTime.UTC()}},
+		ProtectedDescriptor: append([]byte(nil), files["protected-endpoint.json"]...), ProtectedFiles: protectedFiles,
 		ControlCatalog: append([]byte(nil), controlCatalog...), DisclosureRoot: append([]byte(nil), disclosureRoot...),
 		ControlRelease: append([]byte(nil), controlRelease...), ControlNetwork: append([]byte(nil), controlNetwork...),
 		ControlCompatibility: append([]byte(nil), controlCompatibility...),

@@ -13,8 +13,27 @@ unchanged Network v3 descriptor, and a complete protected resource group with
 `protected-endpoint.json` projected outside Release metadata. General/headless
 acceptance retains its existing scope; protected readiness requires the new
 complete-inventory boundary. Partial group presence must refuse. This selected
-extension is not implemented by the current verifier and is not an installed
-qualification receipt.
+verifier now checks the complete group's canonical descriptor and resource
+digests and projects those bytes separately. This is manifest authentication,
+not the required fresh Release generation authorization or an installed
+qualification receipt; the installation consumer remains unfinished.
+
+After this manifest-only projection, `internal/endpoint/installation` now
+composes fresh program and generation Release proofs from the same frozen
+metadata/local/reference inputs. The enrolled command uses this composition
+when the complete protected group is present, and passes only the program proof
+to executable replacement. Its existing general readiness is not protected
+readiness. Immutable generation installation and actual system-manager binding
+remain separate unfinished obligations.
+
+The descriptor is compact UTF-8 JSON followed by one LF, with the five fields
+in the order stated by ADR-0119 and `files` keys in lexical order. Re-encoding
+must reproduce the exact input; unknown/duplicate fields, alternate whitespace
+or ordering refuse. The maximum is 16 KiB, version is a positive int64, platform
+is `linux-amd64`, and release identity matches the enrolled release. Exactly
+nine lowercase SHA-256 digests bind the actual program/resource bytes. The
+whole protected companion group is optional for existing general v3 bundles;
+any partial group refuses in both `Verify` and `VerifyHeadless`.
 
 `Verify(Request)` accepts one local Bundle Root, current executable path,
 independently delivered Alpha Enrollment Pin, declared local environment,
@@ -23,7 +42,9 @@ Installed-profile variation supplies one explicit package-owned executable in
 `ArtifactPath`; all remaining enrolled static files remain below Bundle Root.
 
 It returns `Verified`: exact bytes for Release Decision plus separately scoped
-alpha-control and corpus companions; `VerifyHeadless` additionally requires
+alpha-control, corpus and optional protected-generation companions;
+`ProtectedDescriptor` and `ProtectedFiles` grant no installation authority and
+are excluded from `Inputs.Files`. `VerifyHeadless` additionally requires
 the manifest-pinned Node and Authority Custody companions. It never executes
 or installs any byte, writes a Release or control floor, downloads from a
 source, or grants authority to a Release, State, Namespace, Route, or Endpoint.

@@ -88,6 +88,10 @@ func RequestFromManifestPin(bundleRoot, executablePath, manifestSHA256 string, a
 	if !equalDigest(manifest, manifestSHA256) {
 		return Request{}, errors.New("manifest-pinned enrollment manifest does not match the independent pin")
 	}
+	return requestFromManifest(root, executablePath, manifest, manifestSHA256, at)
+}
+
+func requestFromManifest(root, executablePath string, manifest []byte, manifestSHA256 string, at time.Time) (Request, error) {
 	entries, err := parseManifest(manifest)
 	if err != nil {
 		return Request{}, err

@@ -11,14 +11,6 @@ func loadSourceCredentials(config *state.Config, plan sourcePlan) error {
 	}
 	for index, source := range plan.Sources {
 		declared := &config.Source.Sources[index]
-		declared.Address, declared.ServerName = source.Address, source.ServerName
-		declared.Family, declared.EndpointHandle = source.Family, source.EndpointHandle
-		if err := decodeOperatorFixedHex(source.Identity, declared.Identity[:]); err != nil {
-			return err
-		}
-		if err := decodeOperatorFixedHex(source.LeafKeyDigest, declared.LeafKeyDigest[:]); err != nil {
-			return err
-		}
 		declared.RootPEM, err = readOperatorInput(source.RootCA, 64<<10)
 		if err != nil {
 			return err

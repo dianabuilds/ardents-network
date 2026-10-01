@@ -1,0 +1,38 @@
+[Unit]
+Description=Ardents protected text Endpoint
+Requires=ardents-text-reader.socket ardents-text-publisher.socket
+After=network-online.target ardents-text-reader.socket ardents-text-publisher.socket
+Wants=network-online.target
+
+[Service]
+Type=exec
+User=ardents-endpoint
+Group=ardents-endpoint
+SupplementaryGroups=
+ExecStart=:@ARDENTS_ENDPOINT_PROGRAM@ endpoint start-installed @ARDENTS_INSTALLATION_ROOT@
+WorkingDirectory=/
+UMask=0077
+NoNewPrivileges=yes
+CapabilityBoundingSet=
+AmbientCapabilities=
+PrivateTmp=yes
+ProtectHome=yes
+ProtectSystem=strict
+ReadWritePaths=@ARDENTS_WRITE_PATHS@
+ProtectControlGroups=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+MemoryAccounting=yes
+CPUAccounting=yes
+TasksAccounting=yes
+LimitCORE=0
+Restart=no
+RemainAfterExit=no
+KillMode=control-group
+TimeoutStopSec=30s
+StandardOutput=journal
+StandardError=journal
