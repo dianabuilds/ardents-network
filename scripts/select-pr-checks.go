@@ -27,6 +27,8 @@ type packageInfo struct {
 	Dir                                          string
 	GoFiles, CgoFiles, TestGoFiles, XTestGoFiles []string
 	Error                                        *struct{ Err string }
+	DepsErrors                                   []struct{ Err string }
+	Incomplete                                   bool
 }
 type declaration struct {
 	name     string
@@ -147,6 +149,12 @@ func selectChecks(base, head string) ([]check, bool, error) {
 		if info.Error != nil && !strings.HasPrefix(info.Error.Err, "build constraints exclude all Go files") {
 			return nil, false, fmt.Errorf("load package owner %s: %s", info.ImportPath, info.Error.Err)
 		}
+		for _, dependencyError := range info.DepsErrors {
+			return nil, false, fmt.Errorf("load package owner %s dependency: %s", info.ImportPath, dependencyError.Err)
+		}
+		if info.Incomplete && info.Error == nil {
+			return nil, false, fmt.Errorf("load package owner %s: incomplete package graph", info.ImportPath)
+		}
 		current := &owner{packageInfo: info, changed: map[string]bool{}, reasons: map[string]bool{}}
 		owners[info.ImportPath], directories[filepath.Clean(info.Dir)] = current, current
 		files := append(append(append(append([]string{}, info.GoFiles...), info.CgoFiles...), info.TestGoFiles...), info.XTestGoFiles...)
@@ -229,6 +237,22 @@ func selectChecks(base, head string) ([]check, bool, error) {
 					}
 				}
 				architecture.reasons[path] = true
+			}
+			// A removed package has no current declarations to propagate. Keep
+			// its removal visible at the repository architecture boundary;
+			// current consumers are selected from their own changed files.
+			if !strings.HasPrefix(path, "scripts/") {
+				if _, statErr := os.Stat(filepath.FromSlash(path)); errors.Is(statErr, os.ErrNotExist) {
+					if _, showErr := git("show", base+":"+path); showErr != nil {
+						return nil, false, fmt.Errorf("read removed Go owner %s: %w", path, showErr)
+					}
+					if architecture == nil {
+						return nil, false, fmt.Errorf("removed Go owner %s has no repository architecture check", path)
+					}
+					architecture.compile = true
+					architecture.changed["TestRepositoryArchitecture"] = true
+					architecture.reasons["removed Go owner "+path] = true
+				}
 			}
 			continue
 		}

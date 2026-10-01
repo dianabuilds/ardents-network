@@ -59,7 +59,12 @@ One supported Service Credential has a maximum 24-hour lifetime and a terminal
 horizon of 48 hours from issuance. The successor ledger also requires a new
 validity interval not to overlap its predecessor for the same Target. An exact
 retry of the same request is idempotent; it is not a reusable authorization for
-a future request. Custody has no automatic renewal route, password file,
+a future request. New issuance rechecks current validity after unlock and after
+password-derived encryption, immediately before the first successor write.
+An elapsed Service request or admission hour cannot begin a new durable
+issuance. Once a successor is persisted, its monotonic floor completion
+remains recoverable; this does not renew its terminal validity. A committed
+exact Service retry may return the same response after expiry. Custody has no automatic renewal route, password file,
 argument, environment, or configuration bypass. The service's published-root
 restart limitation remains an Endpoint implementation limit, rather than a
 claim that every future product lifecycle must work this way.

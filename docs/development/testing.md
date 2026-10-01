@@ -42,9 +42,17 @@ substitute for independent review.
   the pre-integration gate. Pull request CI uses `scripts/select-pr-checks.go`
   to run the changed Go owners,
   their imported consumers, and explicitly registered non-Go fixture owners;
-  independent selected jobs all finish and report their failures. The exact
+  Package and dependency loading errors fail selection before a matrix is
+  published. A deleted Go package without a current owner selects the repository
+  architecture check; changed surviving consumers retain their narrow checks.
+  Independent selected jobs all finish and report their failures. The exact
   candidate must still pass `make check` before integration, and a push to
   `main` repeats that complete gate.
+- `make staticcheck` also runs `standalone-staticcheck`: each maintained ignored
+  Go entrypoint in `scripts/` is analyzed separately with `GOOS=linux`,
+  `GOARCH=amd64` and `CGO_ENABLED=0`. The select-pr entrypoint uses its two
+  source files together. This cross-analysis can run on a Windows host and
+  does not execute or qualify Linux release operations.
 - Focused Linux race checks retain raw command, stdout, stderr, and exit status
   outside Git. They may compose existing owner tests for a bounded lifecycle
   fact, but do not turn that composition into an end-to-end qualification.
