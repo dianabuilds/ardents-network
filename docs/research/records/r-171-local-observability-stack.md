@@ -1652,3 +1652,42 @@ Next integration must bind an explicitly configured real Node/process, preserve
 safe rotating event delivery to Loki, demonstrate actual Prometheus scraping,
 source/collector/loss alerts and gap/reset semantics, then complete the unchanged
 dependency, durable-storage, full-gate and parent debug requirements.
+
+### Actual rebuilt monitor/Node TLS refusal boundary
+
+The existing Go monitor memory metric endpoint and separately pinned TLS1.3
+collector listener are now exercised using rebuilt Linux/amd64 artifacts, rather
+than the old installed helper's monitor or the Python snapshot research adapter.
+The explicit make tools-install COLLECTOR=monitor-tool command reuses helper
+0ecc73f220e154f40bdf3db718f9ff66890d6b381adaaf05fc3cbe989441c3ad, prohibits
+network/dependency downloads and retains source manifests/build information.
+No new runtime dependency or ready-backend selection follows from this build.
+
+Evidence2026-10-01: ardents-r171-monitor-build-c/build-receipt.json completed0.
+Go1.26.8 produced monitor11325110bytes SHA256
+1e3d58ba087e5e1b3cf7368215ed3bdf7b42bcd006e30922c51933a3ad0a1967 and
+Node15633689bytes SHA256
+a2a288a24dc0c045e72a3aa67667050c276ecf628adaa703786739930f742048.
+The receipt declares HEADf6fad918 and dirty research installer edits; all tracked
+Go/mod/sum source hashes agree before/after. The existing helper image was not
+modified. Build setup-a/b refusals are retained (unavailable Windows hashing
+cmdlet; incorrect PowerShell boolean). The corrected installer streams SHA256
+through the standard library and uses the actual boolean literal.
+
+probe-monitor-binary.py checks those exact binaries, generates dedicated
+diagnostic certificates in private native Linux tmpfs, and runs the actual Node
+with an explicitly missing mandatory plan under the monitor. Its selected TLS
+client obtains a fresh terminal process-survival0, sample_fresh0 and no Node
+resource values. Monitor cancellation preserves Node exit2 as monitor exit1
+with joined sinks and no cleanup failure. Runtime-b receipt completed0 under
+network none/read-only/user10001/no capabilities/256MiB/1CPU/pids32,16MiB tmpfs
+and45second outer timeout. Original runtime-a refused the Windows JSON BOM before
+execution; reading utf-8-sig corrected that interface without changing the
+original build receipt. Earlier direct CLI attempt assumed help exit2; current
+diagnostic main actually returns1 for help, corrected without a product change.
+
+This proves an actual binary/private TLS/supervisor refusal seam. It does not
+prove healthy Node operation, real resource samples, backend ingestion, alert
+journeys, crash durability or completed stack admission. The next full integration
+must preserve the Node's accepted signed State, two Sources and selected duty
+rather than create a weaker startup route for a monitoring demonstration.

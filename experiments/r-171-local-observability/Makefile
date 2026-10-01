@@ -1,7 +1,9 @@
 .PHONY: tools-install
 
 tools-install:
-ifeq ($(COLLECTOR),browser-relay)
+ifeq ($(COLLECTOR),monitor-tool)
+	powershell -NoProfile -ExecutionPolicy RemoteSigned -File install-monitor.ps1 -EvidenceRoot "$(EVIDENCE_ROOT)"
+else ifeq ($(COLLECTOR),browser-relay)
 	powershell -NoProfile -ExecutionPolicy RemoteSigned -File install-browser-relay.ps1 -EvidenceRoot "$(EVIDENCE_ROOT)"
 else ifeq ($(COLLECTOR),prometheus-source)
 	powershell -NoProfile -ExecutionPolicy RemoteSigned -File install-prometheus-source.ps1 -PrimaryRoot "$(PRIMARY_ROOT)" -ArtifactRoot "$(ARTIFACT_ROOT)" -EvidenceRoot "$(EVIDENCE_ROOT)"

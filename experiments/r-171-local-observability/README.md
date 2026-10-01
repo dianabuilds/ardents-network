@@ -604,3 +604,51 @@ Actual monitor snapshots traverse HTTP from survival1 to0, preserving source
 exit7 and joined log sinks. No Node sample exists in this workload; sample_fresh0
 and absence of Node CPU/memory metrics are asserted. This proves the supervisor
 bridge, not live product Node instrumentation or Prometheus/Loki ingestion.
+
+## Rebuild and exercise the actual monitor/Node binaries
+
+This is a bounded engineering probe under R171, not ready-backend admission or
+a healthy/installed Node qualification. It reuses the already installed diagnostic
+helper and refuses implicit image/dependency downloads. From repository root:
+
+~~~powershell
+make -C experiments/r-171-local-observability tools-install COLLECTOR=monitor-tool EVIDENCE_ROOT=C:/Users/vitek/AppData/Local/Temp/ardents-r171-monitor-build-new
+~~~
+
+The new output must be outside Git and absent before the command. The installer
+restricts its Windows ACL, records exact Go source hashes and helper identity,
+then builds Linux/amd64 ardents-diagnostics and ardents-node without network
+access in a read-only container. The build has a180second timeout,2GiB memory,
+2CPU,pids64 and separate512MiB scratch/cache tmpfs. Source hashes must agree
+before/after; both artifacts are bounded64MiB and have SHA256/build information.
+Existing installed helper executables remain unchanged. Dirty source is declared,
+not silently attributed to HEAD.
+
+Run probe-monitor-binary.py in that same installed helper with --network none,
+read-only root, user10001, no capabilities/no-new-privileges,256MiB,1CPU,pids32,
+a private16MiB /tmp tmpfs and a45second outer timeout. Mount the complete build
+output read-only at /binaries, this experiment read-only at /probe, and a fresh
+account-private report root writable at /reports. The command is:
+
+~~~sh
+timeout 45 python3 /probe/probe-monitor-binary.py
+~~~
+
+The probe verifies actual binary hashes and collector CLI flags. It generates
+dedicated diagnostic TLS credentials only in private Linux tmpfs, then starts
+the real monitor supervising the real Node with an explicitly missing required
+plan. The valid selected client must observe fresh terminal survival0 through
+HTTPS, resource freshness0 and absent resource values. SIGTERM joins monitoring
+and preserves the original Node exit2 as monitor exit1. No raw source output,
+keys, payloads or product authority enter metrics/reports. This deliberately
+failed Node cannot prove healthy resource coverage or readiness.
+
+Measured2026-10-01: build-c completed0 with Go1.26.8; diagnostic binary11325110bytes
+SHA2561e3d58ba087e5e1b3cf7368215ed3bdf7b42bcd006e30922c51933a3ad0a1967;
+Node15633689bytes SHA256a2a288a24dc0c045e72a3aa67667050c276ecf628adaa703786739930f742048.
+TLS runtime-b completed0 and retained source_exit2,monitor_exit1,
+sinks_joined=true,resource_samples0,tls_terminal_observed=true.
+Original build setup-a/b failures and runtime-a BOM refusal are retained separately.
+These receipts do not establish Prometheus scrape, Loki delivery, final stack
+admission or the parent debug goal. Next evidence must use an explicitly accepted
+live Node plan and the actual backend consumers.
