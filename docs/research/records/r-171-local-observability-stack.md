@@ -1173,3 +1173,28 @@ ardents-r171-minimal-build-c. govulncheck1.1.4 actual binary/symbol scan complet
 with no finding records, DB2026-09-28T16:43:40Z, external
 ardents-r171-minimal-closure-a. Clean scanner output does not replace remaining
 source/license/support/advisory and runtime admission evidence.
+
+**Configuration incompatibility found before runtime:** a first validate command
+was refused by Docker because an unused bind source was empty (exit125, no target
+launch); invocation receipt is preserved. The corrected bounded offline launch
+then executed minimal-build-c's exact binary and refused the existing H2 config:
+DefaultScheme not found in providers list (exit1). The generated main registered
+only fileprovider but inherited the Collector default env scheme. This is a real
+minimal-distribution configuration mismatch, not a passing compile assertion.
+The exact upstream Builder README documents conf_resolver.default_uri_scheme;
+builder.yml now explicitly selects file, keeping local configuration only.
+A fresh assembly/identity/scan/validate result is required; prior C scan cannot
+silently qualify the changed D binary. Original failures remain external
+ardents-r171-minimal-closure-a. No maintained runtime has been admitted.
+
+**Corrected local resolver measurement:** minimal-build-d completed0 in104.02s,
+manifest SHA256dba2cbcc49bb2d034ce8a03130d7a3146db518ab2808fe463942f3075f714775.
+Actual binary38748322bytes, SHA256
+f5be238d7d0a3d88d620bbcb8a8d15e652e4ba3d59cb244d58a018c06948a646.
+Fresh exact-binary govulncheck1.1.4 scan completed0/no finding records, and the
+existing H2 configuration validate completed0 without adding env or remote
+providers. Source/build receipts are external ardents-r171-minimal-build-d;
+scan/validate receipts are external ardents-r171-minimal-closure-b. This fixes the
+resolver incompatibility only. Actual pipeline delivery/restart/pressure/privacy/
+resource checks, package support/license closure and maintained selection remain
+required; successful validate does not assert runtime behavior or dev integration.
