@@ -19,6 +19,9 @@ bootstrap receipt before installed execution. This does not add a Release
 signing interface to `internal/release`, revive retired seed ceremonies, or
 establish independent initial distribution. Participant enrollment retains
 its independent first-pin contract; existing roots and floors are preserved.
+The [qualification release operation](../operations/qualification-release.md)
+owns preparation, protected key files, bounded signing, retained refusals and
+the completed public bootstrap receipt. It changes no runtime verifier policy.
 
 `internal/custody` exclusively unlocks and uses Authority root material. Its
 canonical `ardents-authority-envelope-v1` Vault and Recovery Bundle formats use

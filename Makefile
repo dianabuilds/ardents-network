@@ -56,7 +56,7 @@ INSTALLED_TAG_COMPILE_MKDIR = mkdir -p "$(INSTALLED_TAG_COMPILE_ROOT)"
 endif
 
 override CANONICAL_GO_BUILD_FLAGS := -trimpath -buildvcs=false
-QUICK_CHECK_TARGETS := vet unit build mod-check artifact-representation-check installed-tag-compile-check
+QUICK_CHECK_TARGETS := vet unit build mod-check artifact-representation-check installed-tag-compile-check release-operation-compile-check
 
 ifeq ($(OS),Windows_NT)
 HEADLESS_ARTIFACT_SHELL ?= C:/Program Files/Git/bin/bash.exe
@@ -174,6 +174,17 @@ installed-tag-compile-check:
 
 quick-check:
 	$(MAKE) --output-sync=target -j 4 $(QUICK_CHECK_TARGETS)
+
+.PHONY: release-operation-compile-check
+release-operation-compile-check: export GOOS := linux
+release-operation-compile-check: export GOARCH := amd64
+release-operation-compile-check: export CGO_ENABLED := 0
+release-operation-compile-check:
+	$(INSTALLED_TAG_COMPILE_MKDIR)
+	go vet ./scripts/prepare-qualification-release-keys.go
+	go vet ./scripts/sign-qualification-release.go
+	go build $(CANONICAL_GO_BUILD_FLAGS) -o "$(INSTALLED_TAG_COMPILE_ROOT)/prepare-qualification-release-keys" ./scripts/prepare-qualification-release-keys.go
+	go build $(CANONICAL_GO_BUILD_FLAGS) -o "$(INSTALLED_TAG_COMPILE_ROOT)/sign-qualification-release" ./scripts/sign-qualification-release.go
 
 issue60-checks:
 	@test -n "$(ARDENTS_ISSUE60_REPORT)" || (echo "ARDENTS_ISSUE60_REPORT is required"; exit 2)
