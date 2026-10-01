@@ -601,6 +601,13 @@ transports, declared operator family, and finite capacity. Publication makes a
 Node discoverable, not automatically eligible, independent, or trusted.
 _Avoid_: User profile, route assignment, reputation account
 
+**Operator Family**:
+Node or Direct-Origin Source identities known to share effective operational
+control. Separate machines, keys, providers, or declared labels do not split
+one family when the same party can direct them; hidden common control remains
+possible even between apparently distinct families.
+_Avoid_: Node Identity, VPS, self-declared independence
+
 **Candidate View**:
 The logical complete, canonically ordered Node/evidence set committed by one
 exact Network Epoch and Route Profile, including authenticated global counts and
