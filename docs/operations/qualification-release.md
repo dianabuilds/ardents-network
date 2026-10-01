@@ -72,6 +72,30 @@ not a power-loss durability qualification.
 
 ## Assembly and acceptance boundary
 
+The explicit `scripts/prepare-qualification-alpha-evidence.go` adapter prepares
+initial unsigned disclosure payloads and component signing inputs. Build it
+with the same canonical Linux build flags above. Pass an absolute public JSON
+plan and a previously absent absolute output directory. The plan schema is
+`ardents-qualification-alpha-evidence-plan-v1`; its other top-level fields are
+`not_before`, `not_after`, `release`, `network`, and `compatibility`. Times are
+UTC whole-second RFC3339 values. Nested evidence fields use the exported field
+names of the current `inspection` evidence contracts: byte slices are JSON
+base64 strings and fixed 32-byte arrays are JSON numeric arrays. Unknown fields
+and trailing JSON values refuse; the public plan is bounded to 32 MiB.
+
+Preparation checks canonical evidence grammar and shared Release/Network/
+Compatibility bindings, including the inspected Epoch identity. It writes
+`release.payload`, `network.payload`, and `compatibility.payload`, each with
+a `.signing-input` companion containing the exact domain-separated initial
+ACS1 signing message. Generation is fixed to one; existing signatures, negative
+or fractional timestamps and invalid validity intervals refuse. The new output
+directory and files use `0700`/`0600`, exclusive creation and synchronization
+before acknowledgement. Preserve partial outputs on failure. This public-input
+adapter does not enforce the private-key ancestor policy of the Release signer.
+It creates no keys or signatures, authenticates no State Epoch, and grants no
+Release, Network or Endpoint acceptance. Separate role signatures and ordinary
+complete-bundle inspection remain required.
+
 The four metadata files alone are not the complete bundle. Prepare the real
 current alpha-control and Network companions with their own maintained owners;
 keep authority roles separate. Supply exact signed descriptor/resources and
