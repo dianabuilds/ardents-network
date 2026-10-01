@@ -1888,3 +1888,48 @@ allowed IDs before tree access, and rejects duplicates again during inventory.
 An actual PS5 launch with a duplicate receipt returned nonzero with the exact
 pair-refusal category before any Docker command. This correction and the original
 finding are retained. No independent security validation is claimed.
+
+### Positive native terminal delivery loss and recovery
+
+The next falsifiable observation was declared before injection: retain a native
+terminal failed-record signal after the30second retry window and independently
+observe a missing synthetic sequence after Loki recovery. The existing short
+outage probe rejects loss; a new explicit minimal OTel loss profile preserves
+that probe and does not claim the separate restart profile. It uses pinned inputs,
+private role credentials/state, no raw Node traffic and the finite600second
+synthetic source. Observation budgets are70seconds for failure and30for recovery.
+
+Attempt-a: actual terminal send_failed1 appeared after Loki was stopped; accepted157,
+sent126, queue9630bytes. After recovery: accepted177,sent176,queue0,failed1;
+Loki returned176records through177, with127missing. The empty queue therefore
+cannot support complete history. Original before-loss catch-up was complete.
+
+The loss rule now checks positive cumulative terminal failed records, rather
+than increase over an absent pre-failure series. It describes an incomplete
+history in the current collector session, not present source failure or a retry
+attempt. Attempt-b repeated the actual fault and required the rule firing both
+at loss and after recovery. Final accepted190,sent189,queue0,failed1; returned189
+records through190 with139missing and loss_alert_firing=true. Both attempt
+receipts complete=true,cleanup_exit0,source_inputs_stable=true,plugin_inputs_stable=true.
+The exact containers were removed; evidence is retained privately.
+
+The actual-Node dashboard adds native failed-record and serialized-byte queue
+panels separately from local supervisor lost bytes. Missing native counters
+remain gaps, never filled zeros. This is positive synthetic exporter-loss evidence,
+not storage-pressure/crash durability or a real installed Node-loss qualification.
+Collector restart can reset the cumulative counter; durable acknowledgement and
+recovery history, support/advisory/license closure and full parent acceptance
+remain outstanding. No backend adoption or dev integration is claimed.
+
+Completed read-only Spec and Standards reviews found the same additional defect:
+the new Node rule was appended without a separating newline, invalidating YAML.
+The passing synthetic run used alerts.otel.yml and therefore could not prove
+alerts.node.yml admission. The Node file was corrected. The pinned native
+Prometheus /bin/promtool accepted7Node and6OTel rules; a private reconstruction
+of the original malformed Node entry was refused with exit1. Both the real-Node
+launcher and OTel experiment now run their actual rule file through that native
+parser before starting services, retain native-alert-rules.txt and reject failure.
+Standards recheck closed the finding. Required quick-check returned0; maintained
+Go code did not change in this loss delta. Full integration gates and admission
+remain separate obligations. Updated real-Node panels have not been browser-
+verified by the synthetic loss run.

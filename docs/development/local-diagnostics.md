@@ -42,6 +42,12 @@ evidence; its file caps and saved reports do not implement this system.
   collection failure are independent visible conditions. External notification
   delivery requires separate explicit configuration and authorization.
 
+Delivery observations retain their scope. A local sink with no lost bytes does not
+prove complete backend history. Queue drain and resumed delivery do not restore
+records already lost. Terminal failed records, retry attempts and enqueue failures
+are distinct signals. An unavailable counter cannot become measured zero; a
+counter reset cannot erase the need for retained incident history.
+
 Normal monitoring must not enable expensive profiling merely to read counters.
 Its retention budgets include indexes, temporary rotation files and backend
 working space; a backend retention setting alone is not a filesystem quota.

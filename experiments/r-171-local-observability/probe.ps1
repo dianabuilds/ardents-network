@@ -1,9 +1,11 @@
 param([Parameter(Mandatory=$true)][string]$EvidenceRoot,
-      [Parameter(Mandatory=$true)][ValidatePattern('^r171-[a-z0-9-]{1,32}$')][string]$RunName, [switch]$RestartProbe, [switch]$ResourceProbe, [switch]$BackendProbe, [switch]$StorageProbe, [ValidateSet('alloy','otel')][string]$Collector='alloy', [switch]$MinimalCollector, [string]$PatchedPluginRoot, [switch]$BrowserProbe, [string]$BrowserRelayBinary)
+      [Parameter(Mandatory=$true)][ValidatePattern('^r171-[a-z0-9-]{1,32}$')][string]$RunName, [switch]$RestartProbe, [switch]$ResourceProbe, [switch]$BackendProbe, [switch]$RetryExhaustionProbe, [switch]$StorageProbe, [ValidateSet('alloy','otel')][string]$Collector='alloy', [switch]$MinimalCollector, [string]$PatchedPluginRoot, [switch]$BrowserProbe, [string]$BrowserRelayBinary)
 $ErrorActionPreference='Stop'
+if ($RetryExhaustionProbe -and (-not $BackendProbe -or $Collector -ne 'otel' -or -not $MinimalCollector -or $ResourceProbe -or $StorageProbe -or $BrowserProbe -or $RestartProbe -or -not $PatchedPluginRoot)) { throw 'Retry exhaustion requires the isolated minimal OTel backend profile' }
 if ($BrowserProbe -and ($ResourceProbe -or $RestartProbe -or $BackendProbe -or $StorageProbe -or -not $BrowserRelayBinary)) { throw 'Browser probe requires explicitly built relay; it is outside resource measurement' }
 if ($MinimalCollector -and $Collector -ne 'otel') { throw 'Minimal variant requires explicit OTel profile.' }
-if (($ResourceProbe -or $BackendProbe -or $StorageProbe) -and -not $RestartProbe) { throw 'Resource profile requires explicit restart-state profile.' }
+if (($ResourceProbe -or $StorageProbe) -and -not $RestartProbe) { throw 'Resource profile requires explicit restart-state profile.' }
+if ($BackendProbe -and -not $RestartProbe -and -not $RetryExhaustionProbe) { throw 'Backend recovery profile requires explicit restart-state profile.' }
 if ($Collector -eq 'otel' -and $StorageProbe) { throw 'OTel retry/loss counter semantics require separate validation before backend/pressure profile.' }
 $taskRoot=[IO.Path]::GetFullPath($EvidenceRoot)
 $taskRepo=[IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../..'))
@@ -51,7 +53,7 @@ function Get-PluginTreeSnapshot {
         $taskAncestor=$taskAncestor.Parent
     }
     $taskStage=Get-Content (Join-Path $taskPluginPath 'stage-receipt.json') -Raw | ConvertFrom-Json
-    if (-not $taskStage.complete -or $taskStage.plugins.Count -ne 2) { throw 'Explicit complete plugin staging required' }
+    if (-not $taskStage.complete -or $taskStage.plugins.Count -ne 2 -or @($taskStage.plugins.id | Sort-Object -Unique).Count -ne 2) { throw 'Explicit complete plugin staging required' }
     foreach ($taskPlugin in $taskStage.plugins) {
         if (($taskPlugin.id -eq 'prometheus' -and $taskPlugin.version -eq '13.2.3') -or ($taskPlugin.id -eq 'loki' -and $taskPlugin.version -eq '13.2.1')) {} else { throw 'Unexpected staged plugin identity' }
         $taskBase=Join-Path (Join-Path $taskPluginPath 'plugins') $taskPlugin.id
@@ -91,11 +93,11 @@ if ($Collector -eq 'otel') {
 }
 $taskOld=@{}; foreach ($taskKey in $taskEnv.Keys) { $taskOld[$taskKey]=[Environment]::GetEnvironmentVariable($taskKey); [Environment]::SetEnvironmentVariable($taskKey,$taskEnv[$taskKey]) }
 $taskCompose=@('compose','-p',$RunName,'-f',(Join-Path $PSScriptRoot 'compose.yaml'))
-if ($RestartProbe) { $taskCompose += @('-f',(Join-Path $PSScriptRoot 'compose.restart.yaml')) }
+if ($RestartProbe -or $RetryExhaustionProbe) { $taskCompose += @('-f',(Join-Path $PSScriptRoot 'compose.restart.yaml')) }
 if ($Collector -eq 'otel') { $taskCompose += @('-f',(Join-Path $PSScriptRoot 'compose.otel.yaml')) }
 if ($BrowserProbe) { $taskCompose += @('-f',(Join-Path $PSScriptRoot 'compose.browser.yaml')) }
 if ($PatchedPluginRoot) { $taskCompose += @('-f',(Join-Path $PSScriptRoot 'compose.plugins.yaml')) }
-$taskReceipt=[ordered]@{browser_probe=[bool]$BrowserProbe;patched_plugins=[bool]$PatchedPluginRoot;plugin_inputs=$taskPluginBefore;collector=$Collector;minimal_distribution=[bool]$MinimalCollector;started_utc=(Get-Date).ToUniversalTime().ToString('o');run=$RunName;source_scope='synthetic fixture only';complete=$false;helper_image_id=$taskHelper;images=$taskImageIdentities;source_inputs=$taskSourceBefore}
+$taskReceipt=[ordered]@{retry_exhaustion_probe=[bool]$RetryExhaustionProbe;browser_probe=[bool]$BrowserProbe;patched_plugins=[bool]$PatchedPluginRoot;plugin_inputs=$taskPluginBefore;collector=$Collector;minimal_distribution=[bool]$MinimalCollector;started_utc=(Get-Date).ToUniversalTime().ToString('o');run=$RunName;source_scope='synthetic fixture only';complete=$false;helper_image_id=$taskHelper;images=$taskImageIdentities;source_inputs=$taskSourceBefore}
 function Invoke-ProbeQuery([string]$Mode,[string]$ReportName) {
     $taskDestination=Join-Path $taskReports $ReportName
     New-Item -ItemType Directory -Path $taskDestination | Out-Null
@@ -105,6 +107,10 @@ function Invoke-ProbeQuery([string]$Mode,[string]$ReportName) {
 try {
     docker run --rm --network none --read-only --cap-drop ALL --security-opt no-new-privileges --user 10001:10001 --memory 128m --cpus 0.5 --pids-limit 16 --mount "type=bind,source=$PSScriptRoot,target=/probe,readonly" --mount "type=bind,source=$taskPrivate,target=/private" -e R171_COLLECTOR=$Collector --entrypoint python3 $taskHelper /probe/prepare-private.py
     if ($LASTEXITCODE -ne 0) { throw 'Private preparation failed.' }
+    if ($Collector -eq 'otel') {
+        docker run --rm --pull never --network none --read-only --user 10001:10001 --cap-drop ALL --security-opt no-new-privileges --memory 128m --cpus 0.5 --pids-limit 16 --mount "type=bind,source=$PSScriptRoot,target=/probe,readonly" --entrypoint /bin/promtool $taskEnv.R171_PROMETHEUS_IMAGE check rules /probe/alerts.otel.yml | Out-File (Join-Path $taskReports 'native-alert-rules.txt') -Encoding utf8
+        if ($LASTEXITCODE -ne 0) { throw 'Native OTel alert rule admission failed' }
+    }
     docker @taskCompose config --quiet
     if ($LASTEXITCODE -ne 0) { throw 'Compose validation failed.' }
     docker @taskCompose up -d --pull never alertmanager loki prometheus alloy grafana
@@ -165,12 +171,16 @@ try {
         Invoke-ProbeQuery ($taskBackendPrefix+'backend-baseline') 'backend-baseline'
         docker @taskCompose stop --timeout 5 loki
         if ($LASTEXITCODE -ne 0) { throw 'Synthetic log backend stop failed.' }
-        Invoke-ProbeQuery ($taskBackendPrefix+'backend-unavailable') 'backend-unavailable'
+        if ($RetryExhaustionProbe) { Invoke-ProbeQuery 'otel-retry-exhausted' 'retry-exhausted' }
+        else { Invoke-ProbeQuery ($taskBackendPrefix+'backend-unavailable') 'backend-unavailable' }
         docker @taskCompose start loki
         if ($LASTEXITCODE -ne 0) { throw 'Synthetic log backend start failed.' }
         Invoke-ProbeQuery 'ready' 'backend-recovery-readiness'
-        Invoke-ProbeQuery 'catchup' 'post-backend-outage-logs'
-        if ($Collector -eq 'otel') { Invoke-ProbeQuery 'otel-backend-recovered' 'backend-recovered' }
+        if ($RetryExhaustionProbe) { Invoke-ProbeQuery 'otel-loss-recovered' 'loss-recovered' }
+        else {
+            Invoke-ProbeQuery 'catchup' 'post-backend-outage-logs'
+            if ($Collector -eq 'otel') { Invoke-ProbeQuery 'otel-backend-recovered' 'backend-recovered' }
+        }
     }
     if ($RestartProbe) {
         Invoke-ProbeQuery 'restart-before' 'restart-before'

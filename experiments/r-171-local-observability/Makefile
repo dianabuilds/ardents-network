@@ -60,3 +60,7 @@ probe-otel-backend-outage:
 .PHONY: probe-otel-minimal-backend-outage
 probe-otel-minimal-backend-outage:
 	powershell -NoProfile -ExecutionPolicy RemoteSigned -File probe.ps1 -EvidenceRoot "$(EVIDENCE_ROOT)" -RunName "$(RUN_NAME)" -Collector otel -MinimalCollector -RestartProbe -BackendProbe
+
+.PHONY: probe-otel-retry-exhaustion
+probe-otel-retry-exhaustion:
+	powershell -NoProfile -ExecutionPolicy RemoteSigned -File probe.ps1 -EvidenceRoot "$(EVIDENCE_ROOT)" -RunName "$(RUN_NAME)" -Collector otel -MinimalCollector -BackendProbe -RetryExhaustionProbe -PatchedPluginRoot "$(PLUGIN_ROOT)"

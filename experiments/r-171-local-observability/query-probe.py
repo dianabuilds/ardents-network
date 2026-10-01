@@ -360,6 +360,50 @@ elif sys.argv[1] in ('restart-before', 'restart-after'):
                          ('collector_new_accepted_records' if collector == 'otel' else 'collector_new_read_lines'):readings['collector'],'passed':True})
         (reports/'restart-assertions.json').write_text(json.dumps(snapshot))
         print('Backend restart retained metric/log/silence history without full-file replay')
+elif sys.argv[1] in ('otel-retry-exhausted', 'otel-loss-recovered'):
+    if collector != 'otel': raise RuntimeError('Native loss mode requires OTel profile')
+    baseline = json.loads(pathlib.Path('/history/backend-baseline/baseline.json').read_text())
+    deadline = time.monotonic() + (70 if sys.argv[1] == 'otel-retry-exhausted' else 30)
+    attempt = 0
+    result = None
+    while time.monotonic() < deadline:
+        attempt += 1
+        signals = otel_delivery('loss-'+str(attempt)+'-')
+        failed = signals['send_failed']
+        previous = baseline['send_failed']
+        failure_observed = failed is not None and failed > 0 and (previous is None or failed > previous)
+        loss_alert = observe('loss-'+str(attempt)+'-alert', 'https://prometheus:9090/api/v1/query?'+urllib.parse.urlencode(
+            {'query':'ALERTS{alertname="CollectorLogRecordsLost",alertstate="firing"}'}))['data']['result']
+        alert_firing = len(loss_alert) == 1 and float(loss_alert[0]['value'][1]) == 1
+        if sys.argv[1] == 'otel-retry-exhausted':
+            if failure_observed and alert_firing and signals['accepted'] > baseline['accepted']:
+                result = {'terminal_failed_records_observed':True,'signals':signals,
+                          'previous_failed_records':previous,'loss_alert_firing':True,'passed':True,
+                          'scope':'native terminal exporter failure, not a retry-attempt count'}
+                break
+        elif failure_observed and alert_firing and signals['queue_bytes'] == 0 and signals['sent'] > baseline['sent']:
+            logs = observe('loss-'+str(attempt)+'-logs', 'https://loki:3100/loki/api/v1/query_range?'+urllib.parse.urlencode(
+                {'query':'{job="fixture"}','start':str(int((time.time()-900)*1e9)),
+                 'end':str(int(time.time()*1e9)),'limit':'1000','direction':'forward'}))
+            records = [json.loads(line) for series in logs['data']['result'] for _,line in series['values']]
+            sequences = [record['sequence'] for record in records]
+            if any(type(sequence) is not int or not 1 <= sequence <= 600 for sequence in sequences):
+                raise RuntimeError('Synthetic sequence outside finite source profile')
+            if len(sequences) != len(set(sequences)):
+                raise RuntimeError('Duplicate sequence in loss recovery observation')
+            if sequences:
+                missing = sorted(set(range(1,max(sequences)+1))-set(sequences))
+                if missing:
+                    result = {'delivery_resumed':True,'queue_drained':True,'signals':signals,
+                              'previous_failed_records':previous,'loss_alert_firing':True,'missing_sequences':missing,
+                              'returned_records':len(records),'highest_returned_sequence':max(sequences),
+                              'passed':True,'scope':'bounded synthetic sequence loss; recovery does not restore expired records'}
+                    break
+        time.sleep(0.5)
+    if result is None:
+        raise RuntimeError('Expected native terminal loss/recovery evidence not observed within budget')
+    (reports/'otel-loss-assertions.json').write_text(json.dumps(result))
+    print('Observed native terminal exporter loss' if sys.argv[1] == 'otel-retry-exhausted' else 'Observed resumed delivery with retained sequence gaps')
 elif sys.argv[1] in ('otel-backend-baseline','otel-backend-unavailable','otel-backend-recovered'):
     if collector != 'otel': raise RuntimeError('Native backlog mode requires OTel profile')
     if sys.argv[1] == 'otel-backend-baseline':

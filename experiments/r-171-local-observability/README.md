@@ -806,3 +806,49 @@ This demonstrates capture/parse from the selected real process, not diagnosis of
 a product error, sufficient CPU sampling of a quiet workload, or causality between
 an operation and a profile. Use the exact selected executable and private receipt
 for later offline analysis. Never mount these artifacts into Grafana or Loki.
+
+### Native OTel retry exhaustion and retained loss
+
+Use the separate finite synthetic loss profile:
+
+~~~sh
+make -C experiments/r-171-local-observability probe-otel-retry-exhaustion EVIDENCE_ROOT=<NEW_PRIVATE_EXTERNAL_ROOT> RUN_NAME=<UNIQUE_r171_NAME> PLUGIN_ROOT=<CHECKED_PLUGIN_TREE>
+~~~
+
+This requires the installed minimal OTel image and exact checked plugin pair.
+The profile uses the existing private state-volume configuration; it does not
+request or claim the separate restart qualification. Normal backend-recovery
+probes retain their no-loss catch-up assertions. Loss injection stops only this
+new project's Loki until the actual native terminal failed-record counter appears;
+the selected exporter retry window remains30seconds. The observer has70seconds
+to see failure and30seconds for resumed delivery. All original observations and
+cleanup receipts remain outside Git. Source sequences are bounded1..600.
+
+The pre-injection full catch-up establishes the synthetic history baseline.
+After recovery, an empty serialized-byte queue and resumed sent counter are
+insufficient: the query must also find a missing synthetic sequence and the
+CollectorLogRecordsLost firing signal. The loss rule tests the positive cumulative
+terminal-failure count for the current collector session. It remains firing after
+queue recovery; restart may reset the counter, so it is not a durable incident
+or acknowledgement store. A lazily absent failure counter is unavailable, not0.
+A first positive series would be missed by a rate/increase-only rule without an
+earlier sample. Terminal failed records are not retry attempts or enqueue failures.
+
+Attempt-a observed failed_records1 and sequence127 absent after recovery.
+Attempt-b also observed failed_records1, accepted190/sent189, queue_bytes0 and
+sequence139 absent, with the new loss alert still firing. Both complete=true,
+cleanup_exit0 and source/plugin snapshots stable. Only these owned experimental
+containers were removed. This verifies the synthetic native delivery-loss path;
+it does not qualify real Node rotation/storage pressure, crash durability, full
+backend admission, Alertmanager notification delivery or acknowledgement history.
+
+The actual-Node dashboard separates local supervisor lost bytes from collector
+terminal failed record count and queue bytes. Their units and scopes differ;
+none of these observations proves a complete global history by itself.
+
+Both launch paths retain a native-alert-rules.txt preflight before starting
+services. The pinned Prometheus parser must accept the actual selected rules;
+Compose YAML validation alone cannot prove rule-file admission. The original
+malformed Node-rule append was preserved as a private native refusal and fixed.
+The loss experiment validates native alert/query behavior, not post-change
+browser rendering of the actual-Node dashboard.

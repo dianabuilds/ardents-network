@@ -31,3 +31,9 @@ groups:
         for: 6s
         labels: {severity: warning, scope: log_delivery}
         annotations: {summary: "Очередь доставки логов остаётся непустой"}
+      - alert: CollectorLogRecordsLost
+        expr: sum(otelcol_exporter_send_failed_log_records{job="collector",exporter="otlp_http/fixture"}) > 0
+        labels: {severity: warning, scope: log_history}
+        annotations:
+          summary: "Коллектор сообщил окончательно неотправленные записи в текущей сессии"
+          description: "Пустая очередь и восстановление доставки не возвращают потерянные записи. Счётчик относится к сессии коллектора; его отсутствие не доказывает полную историю."

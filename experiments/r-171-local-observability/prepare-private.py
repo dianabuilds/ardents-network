@@ -108,23 +108,25 @@ if node_preview:
         ('CPU общего контейнера', '(rate(diagnostic_selected_cgroup_cpu_usage_seconds_total{job="node"}[30s]) and on(job,instance) (count_over_time(diagnostic_selected_cgroup_cpu_usage_seconds_total{job="node"}[30s]) >= 15) and on(job,instance) (changes(diagnostic_selected_session_started_seconds{job="node"}[30s]) == 0))'+measured, 'cores'),
         ('Возраст ресурсного измерения', 'diagnostic_selected_sample_age_seconds{job="node"}', 's'),
         ('Процесс Node и доступность сбора', '{job="node",__name__=~"up|diagnostic_selected_source_process_alive|diagnostic_selected_monitor_fresh|diagnostic_selected_sample_fresh"}', 'short'),
-        ('Потерянные байты доставки', '{job="node",__name__=~"diagnostic_selected_(queue_dropped_bytes|log_lost_bytes|console_dropped_bytes)_total"}', 'bytes'),
+        ('Потери локального сборщика (байты)', '{job="node",__name__=~"diagnostic_selected_(queue_dropped_bytes|log_lost_bytes|console_dropped_bytes)_total"}', 'bytes'),
         ('Алерты: ожидание и срабатывание', 'ALERTS{alertstate=~"pending|firing"}', 'short'),
+        ('Коллектор: окончательно не отправлено', 'sum(otelcol_exporter_send_failed_log_records{job="collector",exporter="otlp_http/fixture"})', 'short'),
+        ('Коллектор: очередь доставки', 'sum(otelcol_exporter_queue_size{job="collector",exporter="otlp_http/fixture",data_type="logs"})', 'bytes'),
     ]
     for index,(title,expr,unit) in enumerate(specs):
         panels.append({'id':index+1,'title':title,'type':'timeseries',
             'gridPos':{'x':(index%3)*8,'y':4+(index//3)*8,'w':8,'h':8},'maxDataPoints':2000,
             'datasource':{'type':'prometheus','uid':'prometheus'},
-            'targets':[{'refId':'A','expr':expr,'interval':'2s','legendFormat':title if index<3 else ('{{alertname}} · {{alertstate}}' if index==5 else '{{__name__}}')}],
+            'targets':[{'refId':'A','expr':expr,'interval':'2s','legendFormat':title if index<3 or index>=6 else ('{{alertname}} · {{alertstate}}' if index==5 else '{{__name__}}')}],
             'fieldConfig':{'defaults':{'unit':unit,'custom':{'spanNulls':False}},'overrides':[]}})
-    panels.append({'id':7,'title':'События настоящего Node','type':'logs',
-        'gridPos':{'x':0,'y':20,'w':24,'h':12},'datasource':{'type':'loki','uid':'loki'},
+    panels.append({'id':9,'title':'События настоящего Node','type':'logs',
+        'gridPos':{'x':0,'y':28,'w':24,'h':12},'datasource':{'type':'loki','uid':'loki'},
         'targets':[{'refId':'A','expr':'{job="node"} | json | line_format "{{.entry_kind}} · {{.entry_state}}{{if .entry_failure}} · {{.entry_failure}}{{end}} · {{.stream}} #{{.sequence}}"'}],
         'options':{'showTime':True,'showLabels':False,'wrapLogMessage':True},
         'description':'Safe projected lifecycle events. Resource samples are separate metrics. Explore opens the original record and field filters.'})
-    panels.append({'id':8,'title':'Источник и границы наблюдения','type':'text',
+    panels.append({'id':10,'title':'Источник и границы наблюдения','type':'text',
         'gridPos':{'x':0,'y':0,'w':24,'h':4},
-        'options':{'mode':'markdown','content':'Настоящий Introduction Node и два Sources в одном локальном контейнере. **CPU и память относятся ко всему контейнеру.** Работающий процесс не доказывает готовность сети. Разрывы измерений не заполняются нулями. Go runtime/профили пока не подключены. Стенд работает один час. Подключение установленных узлов ещё не проверено.'}})
+        'options':{'mode':'markdown','content':'Настоящий Introduction Node и два Sources в одном локальном контейнере. **CPU и память относятся ко всему контейнеру.** Работающий процесс не доказывает готовность сети. Разрывы измерений не заполняются нулями. Профили доступны отдельно в приватном debug режиме и не поступают в мониторинг. Стенд работает один час. Подключение установленных узлов ещё не проверено.'}})
     (grafana/'dashboards'/'probe.json').write_text(json.dumps({'uid':'accepted-node',
         'title':'Ardents · живой Node','schemaVersion':39,'version':1,'editable':False,
         'time':{'from':'now-15m','to':'now'},'refresh':'5s','panels':panels},ensure_ascii=False))
