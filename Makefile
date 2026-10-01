@@ -183,8 +183,16 @@ release-operation-compile-check:
 	$(INSTALLED_TAG_COMPILE_MKDIR)
 	go vet ./scripts/prepare-qualification-release-keys.go
 	go vet ./scripts/sign-qualification-release.go
+	go vet ./scripts/prepare-qualification-alpha-evidence.go
+	go vet ./scripts/prepare-qualification-alpha-catalog.go
+	go vet ./scripts/prepare-qualification-alpha-keys.go
+	go vet ./scripts/sign-qualification-alpha.go
 	go build $(CANONICAL_GO_BUILD_FLAGS) -o "$(INSTALLED_TAG_COMPILE_ROOT)/prepare-qualification-release-keys" ./scripts/prepare-qualification-release-keys.go
 	go build $(CANONICAL_GO_BUILD_FLAGS) -o "$(INSTALLED_TAG_COMPILE_ROOT)/sign-qualification-release" ./scripts/sign-qualification-release.go
+	go build $(CANONICAL_GO_BUILD_FLAGS) -o "$(INSTALLED_TAG_COMPILE_ROOT)/prepare-qualification-alpha-evidence" ./scripts/prepare-qualification-alpha-evidence.go
+	go build $(CANONICAL_GO_BUILD_FLAGS) -o "$(INSTALLED_TAG_COMPILE_ROOT)/prepare-qualification-alpha-catalog" ./scripts/prepare-qualification-alpha-catalog.go
+	go build $(CANONICAL_GO_BUILD_FLAGS) -o "$(INSTALLED_TAG_COMPILE_ROOT)/prepare-qualification-alpha-keys" ./scripts/prepare-qualification-alpha-keys.go
+	go build $(CANONICAL_GO_BUILD_FLAGS) -o "$(INSTALLED_TAG_COMPILE_ROOT)/sign-qualification-alpha" ./scripts/sign-qualification-alpha.go
 
 issue60-checks:
 	@test -n "$(ARDENTS_ISSUE60_REPORT)" || (echo "ARDENTS_ISSUE60_REPORT is required"; exit 2)

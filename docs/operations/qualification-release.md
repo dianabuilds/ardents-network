@@ -36,7 +36,7 @@ history or emergency grounds.
 
 Build the two adapters explicitly from their source files:
 
-`make release-operation-compile-check` vets and cross-compiles both Linux
+`make release-operation-compile-check` vets and cross-compiles the explicit Linux
 adapters. It is required by `quick-check` and the complete `check` gate;
 compilation is not a key/signing-operation or installed qualification result.
 
@@ -71,6 +71,79 @@ operation. A file-size-limit failure exercises bounded write refusal; it is
 not a power-loss durability qualification.
 
 ## Assembly and acceptance boundary
+
+The maintained `ardents-control prepare-qualification-evidence` command prepares
+initial unsigned disclosure payloads and component signing inputs. Its explicit
+source-file adapter is `scripts/prepare-qualification-alpha-evidence.go`; both
+use the existing evidence and component codec owners. Pass `--plan` with an
+absolute public JSON plan and `--output-root` with a previously absent absolute
+output directory. The plan schema is
+`ardents-qualification-alpha-evidence-plan-v1`; its other top-level fields are
+`not_before`, `not_after`, `release`, `network`, and `compatibility`. Times are
+UTC whole-second RFC3339 values. Nested evidence fields use the exported field
+names of the current `inspection` evidence contracts: byte slices are JSON
+base64 strings and fixed 32-byte arrays are JSON numeric arrays. Unknown fields
+and trailing JSON values refuse; the public plan is bounded to 32 MiB.
+
+Preparation checks canonical evidence grammar and shared Release/Network/
+Compatibility bindings, including the inspected Epoch identity. It writes
+`release.payload`, `network.payload`, and `compatibility.payload`, each with
+a `.signing-input` companion containing the exact domain-separated initial
+ACS1 signing message. Generation is fixed to one; existing signatures, negative
+or fractional timestamps and invalid validity intervals refuse. The new output
+directory and files use `0700`/`0600`, exclusive creation and synchronization
+before acknowledgement. Preserve partial outputs on failure. This public-input
+adapter does not enforce the private-key ancestor policy of the Release signer.
+It creates no keys or signatures, authenticates no State Epoch, and grants no
+Release, Network or Endpoint acceptance. Separate role signatures and ordinary
+complete-bundle inspection remain required.
+
+After separately signing the component bytes, the explicit
+`ardents-control prepare-qualification-catalog` command prepares the initial
+ACA1 signing message (`--plan` and `--output-root`); its explicit source-file
+adapter is `scripts/prepare-qualification-alpha-catalog.go`. Its absolute public JSON plan uses schema
+`ardents-qualification-alpha-catalog-plan-v1` and a `catalog` object with the
+exported `alphacontrol.Catalog` fields. Use the same JSON array/time conventions
+above. It bounds the plan to 1 MiB, rejects unknown fields/trailing values,
+fixes catalog and component generations to one, refuses a predecessor digest
+or existing signature, and requires every component expiry after catalog start
+and no later than catalog expiry. References must name the exact signed
+component sizes/digests and their separately pinned roots. Preparation checks
+grammar only; it does not verify the referenced bytes or grant their authority.
+The new exclusive synchronized output is `catalog.signing-input`, with the
+same output permissions and partial-output retention as evidence preparation.
+Signing this message under the separate disclosure key and ordinary inspection
+of the resulting full bundle remain mandatory.
+
+The root-controlled `scripts/prepare-qualification-alpha-keys.go` adapter
+creates a new protected directory with four independently generated Ed25519
+PKCS#8 files: `catalog-key.pem`, `release-key.pem`, `network-key.pem`, and
+`compatibility-key.pem`. These are disclosure/component roles, separate from
+the five TUF keys and the State, Node, Source and Custody authorities. Its
+public receipt names each role and commitment. Four keys under one operator
+are not independent custody. The required retired `corpus.pub` companion is a
+fresh public key whose private key is immediately discarded; it grants no
+live corpus operation. Creation uses the same root/direct-ancestor, exclusive
+`0700`/`0600`, synchronization and retained-failure rules as Release keys.
+
+The explicit `scripts/sign-qualification-alpha.go` adapter takes an absolute
+public plan, that private key directory, and a new absolute output directory.
+Plan schema is `ardents-qualification-alpha-signing-plan-v1`, with `cohort`,
+`reference_time`, `not_before`, `not_after`, `release`, `network` and
+`compatibility`. Evidence JSON uses the field conventions above. The operation
+requires a current reference (-5 minutes/+1 minute), finite validity of at most
+seven days and expiry after current wall time, generation-one v3 Epoch with zero predecessor, closed Route profile,
+the fixed Endpoint target, and current/announced initial Release facts.
+It checks mutual evidence bindings, bounded direct input files and four
+distinct root-owned `0600` opened key files, signs ACS1 components and ACA1
+catalog, then verifies exact envelope bindings/signatures with the ordinary
+reader. Its callback reports component-domain decisions as unavailable;
+neither Release nor State acceptance is asserted or persisted. Completed
+outputs are the four `.ac1` files, four `.pub` files and inert `corpus.pub`.
+Private keys and any inspection roots are absent from the distribution.
+All outputs are exclusive and synchronized before the public receipt. A
+successful envelope receipt still requires ordinary complete-bundle inspection
+and bootstrap acceptance before installed execution.
 
 The four metadata files alone are not the complete bundle. Prepare the real
 current alpha-control and Network companions with their own maintained owners;
