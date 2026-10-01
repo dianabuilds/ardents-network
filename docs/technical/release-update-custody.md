@@ -12,6 +12,14 @@ continues to describe the currently implemented ownership and authority floors.
 
 ## Custody ownership
 
+[ADR-0120](../adr/0120-authorize-operator-prepared-qualification-release.md)
+authorizes one operator-prepared isolated qualification release. Codex owns
+its technical preparation and the Product Owner accepts the completed public
+bootstrap receipt before installed execution. This does not add a Release
+signing interface to `internal/release`, revive retired seed ceremonies, or
+establish independent initial distribution. Participant enrollment retains
+its independent first-pin contract; existing roots and floors are preserved.
+
 `internal/custody` exclusively unlocks and uses Authority root material. Its
 canonical `ardents-authority-envelope-v1` Vault and Recovery Bundle formats use
 the accepted fixed Argon2id/AES-GCM profile from ADR-0021. Callers receive only
