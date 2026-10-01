@@ -194,6 +194,9 @@ writing the candidate still returns an error and retains the replacement record;
 visible candidate bytes alone do not establish successful durable completion.
 An explicit retry re-establishes journal durability and completes the replacement
 on the same recorded inode.
+Initial fixed-file recovery likewise re-synchronizes its private birth record
+and record directory before repairing the recorded inode. A refusal at that
+boundary retains the current resource prefix and the original record.
 `recover-installed`
 requires an exact root-only successor intent, fresh floor-compatible proofs at
 the recovery time, the owned generation directory and exact replacement

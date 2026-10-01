@@ -11,6 +11,10 @@ import (
 )
 
 func repairCreatedInstallationFile(ctx context.Context, path string, expected []byte, mode os.FileMode, gid uint32, journal string, selected selection) (returnedErr error) {
+	return repairCreatedInstallationFileWithSync(ctx, path, expected, mode, gid, journal, selected, syncDirectory)
+}
+
+func repairCreatedInstallationFileWithSync(ctx context.Context, path string, expected []byte, mode os.FileMode, gid uint32, journal string, selected selection, syncDir func(string) error) (returnedErr error) {
 	if ctx == nil || os.Geteuid() != 0 {
 		return errors.New("initial resource repair requires root and context")
 	}
@@ -50,11 +54,24 @@ func repairCreatedInstallationFile(ctx context.Context, path string, expected []
 		(identity.Gid != 0 && identity.Gid != gid) || (info.Mode().Perm() != 0600 && info.Mode().Perm() != mode) {
 		return errors.New("repair-required: open initial repair inode differs from birth record")
 	}
+	// A visible birth record may survive an earlier failed durability step.
+	// Re-establish its durability before changing the inode it authorizes repairing.
+	recordFD, err := syscall.Open(recordPath, syscall.O_RDONLY|syscall.O_NOFOLLOW|syscall.O_CLOEXEC, 0)
+	if err != nil {
+		return err
+	}
+	recordFile := os.NewFile(uintptr(recordFD), recordPath)
+	if err := errors.Join(recordFile.Sync(), recordFile.Close()); err != nil {
+		return err
+	}
+	if err := syncDir(filepath.Dir(recordPath)); err != nil {
+		return err
+	}
 	if err := ctx.Err(); err != nil {
 		return err
 	}
 	if err := repairOpenGenerationFile(file, info, expected, mode, gid); err != nil {
 		return err
 	}
-	return errors.Join(syncDirectory(filepath.Dir(path)), ctx.Err())
+	return errors.Join(syncDir(filepath.Dir(path)), ctx.Err())
 }

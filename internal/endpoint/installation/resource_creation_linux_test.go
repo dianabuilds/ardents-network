@@ -12,6 +12,48 @@ import (
 	"testing"
 )
 
+func TestInitialRepairRequiresBirthRecordDurabilityBeforeMutation(t *testing.T) {
+	if os.Geteuid() != 0 {
+		return
+	}
+	root := replacementTestRoot(t)
+	journal := filepath.Join(root, "journal")
+	if err := os.Mkdir(journal, 0700); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(root, "installed")
+	body := []byte("authenticated complete resource")
+	selected := selection{GenerationDigest: digestHex(body)}
+	if err := createInstallationFile(context.Background(), path, body, 0644, 0, journal, selected); err != nil {
+		t.Fatal(err)
+	}
+	prefix := body[:5]
+	if err := os.WriteFile(path, prefix, 0644); err != nil {
+		t.Fatal(err)
+	}
+	recordPath := filepath.Join(journal, "creations", digestHex([]byte(path))+".json")
+	original, err := os.ReadFile(recordPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	refusal := errors.New("initial birth record directory sync refused")
+	err = repairCreatedInstallationFileWithSync(context.Background(), path, body, 0644, 0, journal, selected, func(directory string) error {
+		if directory == filepath.Dir(recordPath) {
+			return refusal
+		}
+		return syncDirectory(directory)
+	})
+	if !errors.Is(err, refusal) {
+		t.Fatal("visible birth record bypassed durability refusal", err)
+	}
+	if current, err := os.ReadFile(path); err != nil || !bytes.Equal(current, prefix) {
+		t.Fatal("initial repair mutated resource before birth record durability", err)
+	}
+	if retained, err := os.ReadFile(recordPath); err != nil || !bytes.Equal(retained, original) {
+		t.Fatal("initial repair changed birth record", err)
+	}
+}
+
 func TestInitialCreationJournalFailureRetainsEmptyFileAndOriginalRecord(t *testing.T) {
 	if os.Geteuid() != 0 {
 		return
