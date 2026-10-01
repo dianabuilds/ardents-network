@@ -1,6 +1,7 @@
 param([Parameter(Mandatory=$true)][string]$EvidenceRoot,
-      [Parameter(Mandatory=$true)][ValidatePattern('^r171-[a-z0-9-]{1,32}$')][string]$RunName)
+      [Parameter(Mandatory=$true)][ValidatePattern('^r171-[a-z0-9-]{1,32}$')][string]$RunName, [switch]$RestartProbe, [switch]$ResourceProbe, [switch]$BackendProbe)
 $ErrorActionPreference='Stop'
+if (($ResourceProbe -or $BackendProbe) -and -not $RestartProbe) { throw 'Resource profile requires explicit restart-state profile.' }
 $taskRoot=[IO.Path]::GetFullPath($EvidenceRoot)
 $taskRepo=[IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../..'))
 if ($taskRoot.Equals($taskRepo,[StringComparison]::OrdinalIgnoreCase) -or
@@ -36,11 +37,12 @@ foreach ($taskImage in $taskLock.images) {
 }
 $taskOld=@{}; foreach ($taskKey in $taskEnv.Keys) { $taskOld[$taskKey]=[Environment]::GetEnvironmentVariable($taskKey); [Environment]::SetEnvironmentVariable($taskKey,$taskEnv[$taskKey]) }
 $taskCompose=@('compose','-p',$RunName,'-f',(Join-Path $PSScriptRoot 'compose.yaml'))
+if ($RestartProbe) { $taskCompose += @('-f',(Join-Path $PSScriptRoot 'compose.restart.yaml')) }
 $taskReceipt=[ordered]@{started_utc=(Get-Date).ToUniversalTime().ToString('o');run=$RunName;source_scope='synthetic fixture only';complete=$false}
 function Invoke-ProbeQuery([string]$Mode,[string]$ReportName) {
     $taskDestination=Join-Path $taskReports $ReportName
     New-Item -ItemType Directory -Path $taskDestination | Out-Null
-    docker run --rm --network ($RunName+'_probe') --read-only --cap-drop ALL --security-opt no-new-privileges --user 10001:10001 --memory 256m --cpus 0.5 --pids-limit 16 --shm-size 1m --log-driver local --log-opt max-size=2m --log-opt max-file=2 --mount "type=bind,source=$PSScriptRoot,target=/probe,readonly" --mount "type=bind,source=$taskPrivate/query,target=/certs,readonly" --mount "type=bind,source=$taskDestination,target=/reports" --entrypoint python3 $taskHelper /probe/query-probe.py $Mode $ReportName
+    docker run --rm --network ($RunName+'_probe') --read-only --cap-drop ALL --security-opt no-new-privileges --user 10001:10001 --memory 256m --cpus 0.5 --pids-limit 16 --shm-size 1m --log-driver local --log-opt max-size=2m --log-opt max-file=2 --mount "type=bind,source=$PSScriptRoot,target=/probe,readonly" --mount "type=bind,source=$taskPrivate/query,target=/certs,readonly" --mount "type=bind,source=$taskDestination,target=/reports" --mount "type=bind,source=$taskReports,target=/history,readonly" --entrypoint python3 $taskHelper /probe/query-probe.py $Mode $ReportName
     if ($LASTEXITCODE -ne 0) { throw "Query $Mode failed; preserve original reports." }
 }
 try {
@@ -77,7 +79,53 @@ try {
     Invoke-ProbeQuery 'lifecycle' 'collector-recovered'
     Invoke-ProbeQuery 'catchup' 'post-outage-logs'
     Invoke-ProbeQuery 'shared-interval' 'grafana-shared-interval'
+    if ($BackendProbe) {
+        Invoke-ProbeQuery 'backend-baseline' 'backend-baseline'
+        docker @taskCompose stop --timeout 5 loki
+        if ($LASTEXITCODE -ne 0) { throw 'Synthetic log backend stop failed.' }
+        Invoke-ProbeQuery 'backend-unavailable' 'backend-unavailable'
+        docker @taskCompose start loki
+        if ($LASTEXITCODE -ne 0) { throw 'Synthetic log backend start failed.' }
+        Invoke-ProbeQuery 'ready' 'backend-recovery-readiness'
+        Invoke-ProbeQuery 'catchup' 'post-backend-outage-logs'
+    }
+    if ($RestartProbe) {
+        Invoke-ProbeQuery 'restart-before' 'restart-before'
+        docker @taskCompose restart --timeout 5 alertmanager loki prometheus alloy grafana
+        if ($LASTEXITCODE -ne 0) { throw 'Synthetic backend restart failed.' }
+        Invoke-ProbeQuery 'ready' 'restart-readiness'
+        Start-Sleep -Seconds 4
+        Invoke-ProbeQuery 'restart-after' 'restart-after'
+        Invoke-ProbeQuery 'catchup' 'post-restart-logs'
+    }
+    if ($ResourceProbe) {
+        & (Join-Path $PSScriptRoot 'resource-window.ps1') -RunName $RunName -ReportsRoot $taskReports
+        Invoke-ProbeQuery 'healthy-window' 'healthy-window'
+        Invoke-ProbeQuery 'catchup' 'post-resource-logs'
+    }
     docker @taskCompose stats --no-stream --format json | Out-File (Join-Path $taskReports 'resource-snapshot.json') -Encoding utf8
+    if ($RestartProbe) {
+        $taskStorageScript = @"
+import json, os
+results=[]
+for name in ('prometheus','alertmanager','loki','alloy','grafana'):
+    root='/state/'+name
+    blocks=0
+    count=0
+    for directory,dirs,files in os.walk(root):
+        for entry in files:
+            stat=os.stat(os.path.join(directory,entry),follow_symlinks=False)
+            blocks+=stat.st_blocks*512
+            count+=1
+    fs=os.statvfs(root)
+    results.append({'scope':name,'file_count':count,'allocated_file_bytes':blocks,'filesystem_used_bytes':(fs.f_blocks-fs.f_bfree)*fs.f_frsize,'filesystem_capacity_bytes':fs.f_blocks*fs.f_frsize})
+print(json.dumps({'states':results,'limit':'live non-atomic sample; excludes Grafana /tmp, fixture state and Docker service logs'}))
+"@
+        $taskAnchor=docker @taskCompose ps -q state-anchor
+        if ($LASTEXITCODE -ne 0 -or -not $taskAnchor) { throw 'Storage observation mount holder unavailable.' }
+        docker exec $taskAnchor python3 -c $taskStorageScript | Out-File (Join-Path $taskReports 'backend-storage.json') -Encoding utf8
+        if ($LASTEXITCODE -ne 0) { throw 'Backend storage observation failed.' }
+    }
     $taskReceipt.complete=$true
 } finally {
     docker @taskCompose logs --no-color --tail 2000 2>&1 | Out-File (Join-Path $taskReports 'service-logs.txt') -Encoding utf8

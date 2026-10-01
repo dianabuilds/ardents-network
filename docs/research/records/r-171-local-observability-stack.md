@@ -483,18 +483,18 @@ Both binaries report Go 1.26.7; the server's version/build floor cannot substitu
 
 - Prometheus plugin manifest 13.2.1, 32907426 bytes, SHA256
   `2fe41b679a3d319450ded2a0cd88c0da1a36f7ed48f4932238022cc49b285eca`:
-  GO-2026-6443 / CVE-2026-84445 in grpc 1.83.1, two symbol findings,
+  GO-2026-6443 / CVE-2026-84445 in grpc 1.83.1, two scanner symbol-mode records (reachability unproved),
   recorded fix floor 1.83.2.
 - Loki plugin manifest 13.2.0, 40472738 bytes, SHA256
   `c5df1ff330569638166e65e3c5ec16c2474a080444e955e94e66ba41fb494774`:
-  GO-2026-5932, seven openpgp symbol findings, no fixed version supplied.
+  GO-2026-5932, seven openpgp wildcard records (reachability unproved), no fixed version supplied.
 
 **Measurement:** Installed govulncheck 1.1.4, Go tool 1.26.8, database
 https://vuln.go.dev last-modified 2026-09-28T16:43:40Z. The actual helper image for
 these probes was `sha256:0ecc73f220e154f40bdf3db718f9ff66890d6b381adaaf05fc3cbe989441c3ad`;
 a mutable local tag must not substitute for that observed identity. Scanner
 terminated zero/no OOM with retained JSON; zero in JSON mode is not a clean result.
-Symbol presence is not selected-configuration exploitability or a source call graph.
+Symbol-mode output is not proof of linked symbols, selected-configuration exploitability or a source call graph.
 Both findings remain pending; neither severity nor local-only use is an exemption.
 
 **Sourced fact:** Prometheus datasource v13.2.2 release explicitly records a fix
@@ -509,6 +509,56 @@ actual replacement binary admission remain unproved. Sources, accessed 2026-10-0
 [v13.2.3 source](https://github.com/grafana/grafana-prometheus-datasource/blob/v13.2.3/go.mod),
 [Loki v13.2.1 source](https://github.com/grafana/grafana-loki-datasource/blob/v13.2.1/go.mod).
 
+### Scanner precision correction and restart/resource measurements
+
+**Sourced fact:** govulncheck v1.1.4 binary mode falls back to module-level
+precision when extracted package symbols are empty. It then constructs known
+vulnerable function names from the advisory, including a package wildcard when
+no function list is supplied. Therefore the earlier JSON symbol-mode record
+counts must not be read as measured linked vulnerable functions. Source accessed
+2026-10-01: [binary analysis implementation](https://github.com/golang/vuln/blob/v1.1.4/internal/vulncheck/binary.go).
+
+**Measurement and inference:** `elf-sections.txt` in the private plugin review
+shows .gopclntab but no .symtab or debug sections for both exact plugins. The
+openpgp records contain package wildcards. These observations are consistent
+with the documented stripped-binary fallback; they do not prove an openpgp call
+in either selected plugin. All advisory dispositions remain pending. The failed
+`go tool nm` attempt required an unwritable Go cache and is retained as failed;
+readelf used the installed tool without an implicit build or new installation.
+
+**Measurement:** `ardents-r171-restart-a` completed with cleanup_exit zero.
+Restarting the five backend containers preserved 59 historical metric rows,
+119 log records and one synthetic silence in the selected baseline. The live
+fixture continued; 22 new source events and 20 new collector reads were observed.
+This supports checkpoint reuse rather than a complete historical reread, not
+transactional exactly-once delivery. Post-restart catch-up returned 141 unique
+records through watermark 140 without duplicates in the selected query.
+
+**Boundary:** `compose.restart.yaml` keeps five sized named tmpfs volumes mounted
+by one idle, non-networked, non-root helper with read-only mounts. Backends retain
+only their own writable state. RAM state survives backend-container restart while
+that mount holder lives; it does not survive Docker-daemon/host restart or the
+last unmount. Compose 2.40.3-desktop.1 supports the required !override syntax.
+This experiment adds no maintained product role or administration authority.
+
+**Measurement:** `ardents-r171-resources-a` repeated the lifecycle/restart checks
+and then measured a healthy 303.1557687-second window with 37 samples. Summed
+selected-process RSS, including Grafana datasource children, peaked at
+945844224 bytes (902.03 MiB), below the predeclared 1 GiB threshold. Mean sampled
+CPU was 2.22297 percent where 100 percent is one core; the independently enforced
+aggregate selected-container CPU ceiling was 0.96 core. Native metric queries
+returned 150 queue rows, all zero, and both source up series remained one without
+a scrape gap over the checked window. The run and cleanup exited zero.
+
+**Limits:** RSS peak is sampled, CPU is a snapshot mean rather than an integrated
+average, and Docker-daemon/host CLI overhead is excluded. Resource caps bound the
+selected container set; these measurements do not establish Node workload or
+capacity. Last-sample Grafana RSS was 388362240 bytes across three processes;
+Alloy RSS was 226754560 bytes. Footprint is substantial for this synthetic source.
+Backend-state allocated bytes were not captured before cleanup and remain a
+missing receipt; configured filesystem caps alone do not prove actual retained
+usage. Storage pressure, backend outage, daemon/host persistence, egress,
+cardinality and rendered dashboard acceptance remain open. Containers were removed.
 ## Options
 
 H1 and H2 are alternatives for one collector, never a default dual pipeline.
@@ -532,3 +582,35 @@ maintained implementation. #394 owns handoff/admission and #377 retains the full
 monitoring, debugging and later existing-authority administration goal.
 
 Verification receipt: make quick-check session 10851 exited zero after lifecycle probe changes. Lifecycle-a external evidence inventory totals 591578 bytes, below the declared runtime-evidence ceiling; this measurement does not establish a general enforced filesystem quota.
+
+Resource receipt inventories (2026-10-01): restart-a retained 853209 bytes and
+resources-a retained 1062643 bytes of external evidence, below 128 MiB. This is
+an observed inventory, not an enforced host-filesystem quota. make quick-check
+session 94927 passed for the restart/resource delta; later backend-outage
+changes are a separate uncompleted verification boundary.
+### Bounded log-backend outage and allocated storage
+
+**Measurement:** `ardents-r171-backend-outage-a` completed with cleanup_exit zero.
+The probe stopped only Loki, observed its query interface unavailable while
+fixture up=1 and collector up=1, and required actual registered retry and drop
+counters. Retry increase was one, drop increase zero. Restoring Loki delivered
+all 141 sequences through captured watermark 141, with 141 unique records,
+zero duplicate sequences in the selected query and preserved source event time.
+No missing counter was treated as measured zero. The subsequent five-backend
+restart/history/checkpoint assertions also passed. This is a short graceful
+backend stop/start; it does not prove crash, extended outage, overflow or lossless
+delivery after exhausting the finite retry budget. No automatic repair follows.
+
+**Measurement:** Before cleanup, read-only state-holder observations summed
+1789952 bytes of allocated files and filesystem-used bytes across the five
+backend state volumes. Per-owner used bytes: Prometheus 57344, Alertmanager 4096,
+Loki 77824, Alloy 8192, Grafana 1642496. Actual filesystem capacities matched
+512/32/512/64/128 MiB respectively. The live sample is not atomic and excludes
+Grafana /tmp, fixture state, Docker service logs, Docker daemon and image cache.
+It does not establish a full storage-pressure or long-retention acceptance.
+Original reports and container cleanup receipts remain outside Git.
+
+Verification: make quick-check session 95776 passed during the backend-outage
+change. The actual outage run also exercised the final stricter check requiring
+both retry and drop counters. Required full gates/review/integration still belong
+to the completed maintained-adoption slice; no exact component is admitted here.

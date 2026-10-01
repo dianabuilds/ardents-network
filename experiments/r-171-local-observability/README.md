@@ -164,3 +164,44 @@ Go1.26.7. Actual binary scans reported grpc and openpgp findings; see the R171
 record. No admitted replacement or blanket local-only exception is claimed.
 Do not overlap the stack/query probe with a public scanner configured above
 0.5 CPU; shared-a's initial one-CPU scanner overlap is not resource acceptance.
+### Explicit backend restart and healthy resource window
+
+Use fresh external evidence roots and unique run names:
+
+```powershell
+make probe-restart EVIDENCE_ROOT=C:/Users/vitek/AppData/Local/Temp/ardents-r171-restart-new RUN_NAME=r171-restart-new
+make probe-resources EVIDENCE_ROOT=C:/Users/vitek/AppData/Local/Temp/ardents-r171-resources-new RUN_NAME=r171-resources-new
+```
+
+The restart overlay requires Docker Compose !override support (tested 2.40.3).
+Five sized tmpfs state volumes stay mounted by a read-only idle helper while
+backend containers restart. This preserves RAM state across that container
+restart only; daemon/host restart or final unmount loses it. No host files,
+Docker socket or product authority are mounted. Cleanup removes containers and
+network but preserves volume identities for explicit later disposition.
+
+The resource profile lowers and verifies aggregate selected-container CPU caps
+to 0.96 core, then samples for at least five minutes with no concurrent query
+helper. Process RSS includes Grafana plugin children; snapshot CPU and sampled
+RSS peaks exclude host/Docker overhead. Subsequent native queries reject source
+unavailability, scrape gaps or nonzero fixture queue during the healthy window.
+
+Restart-a preserved selected metric/log history, silence and collector checkpoint
+progress. Resources-a passed 303.16 seconds/37 samples with peak RSS 902.03 MiB
+and mean sampled CPU 2.223 percent of one core. Actual backend-state bytes,
+storage pressure, backend outage and daemon/host durability remain unverified;
+this is not component admission or real Node capacity evidence. Advisory review
+also distinguishes stripped-binary scanner placeholders from actual call reachability.
+The optional `probe-backend-outage` target uses the restart profile, stops only
+Loki, requires actual retry/drop counters while source/collector remain up, then
+starts Loki and checks catch-up through a fixed producer watermark. Failure or
+missing counters terminate the probe; absent counters are never measured zero.
+Before cleanup the restart profile also samples each backend's allocated file
+bytes and filesystem used/capacity through the read-only mount holder. This is
+a live, non-atomic sample; Grafana /tmp, fixture state and Docker logs are separate.
+Backend-outage-a completed with cleanup zero: unavailable Loki, fixture/collector
+both up, retry increase one and drop increase zero; recovery delivered all 141
+sequences through the fixed watermark without duplicates in that query. Actual
+backend-state files used 1789952 bytes; this excludes other tmpfs/log/cache space.
+Extended failure, exhausted retries, storage pressure and host durability remain
+open. Original evidence is external; no maintained component admission follows.

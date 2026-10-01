@@ -217,4 +217,118 @@ elif sys.argv[1] == 'shared-interval':
         summary[ref] = {'frames':len(result['frames']),'rows':rows,'first_ms':min(times),'last_ms':max(times),'gaps_ms':gaps}
     (reports/'shared-interval-assertions.json').write_text(json.dumps({'from_ms':start,'to_ms':end,'results':summary,'passed':True}))
     print('Grafana returned metric and log frames for the same explicit time interval')
+elif sys.argv[1] in ('restart-before', 'restart-after'):
+    before_path = pathlib.Path('/history/restart-before/restart-baseline.json')
+    if sys.argv[1] == 'restart-before':
+        end = int(time.time())
+        start = end-180
+        before = None
+    else:
+        before = json.loads(before_path.read_text())
+        start, end = before['start_seconds'], before['end_seconds']
+    metrics = observe('historical-metrics','https://prometheus:9090/api/v1/query_range?'+urllib.parse.urlencode(
+        {'query':'diagnostic_fixture_queue_items','start':start,'end':end,'step':2}))
+    metric_samples = [item for series in metrics['data']['result'] for item in series['values']]
+    logs = observe('historical-logs','https://loki:3100/loki/api/v1/query_range?'+urllib.parse.urlencode(
+        {'query':'{job="fixture"}','start':start*1000000000,'end':end*1000000000,'limit':1000,'direction':'forward'}))
+    log_keys = [[stamp,json.loads(line)['sequence']] for series in logs['data']['result'] for stamp,line in series['values']]
+    silences = observe('retained-silences','https://alertmanager:9093/api/v2/silences')
+    silence_ids = [item['id'] for item in silences if item['createdBy']=='R171 synthetic probe']
+    readings = {}
+    for name,expr in [('producer','diagnostic_fixture_events_total'),('collector','sum(loki_source_file_read_lines_total)')]:
+        result = observe(name,'https://prometheus:9090/api/v1/query?'+urllib.parse.urlencode({'query':expr}))['data']['result']
+        if len(result) != 1: raise RuntimeError('Restart observation counter unavailable: '+name)
+        readings[name] = int(float(result[0]['value'][1]))
+    dashboard = observe('grafana-dashboard','http://grafana:3000/api/dashboards/uid/synthetic-probe',auth=True)
+    if dashboard['dashboard']['uid'] != 'synthetic-probe': raise RuntimeError('Restart dashboard identity mismatch')
+    snapshot = {'start_seconds':start,'end_seconds':end,'metric_samples':metric_samples,
+                'log_keys':log_keys,'silence_ids':silence_ids,'readings':readings}
+    if not metric_samples or not log_keys or not silence_ids:
+        raise RuntimeError('Missing historical input for backend restart assertion')
+    if before is None:
+        (reports/'restart-baseline.json').write_text(json.dumps(snapshot))
+        print('Captured fixed historical interval, silence IDs and read-counter baseline')
+    else:
+        if not set(map(tuple,before['metric_samples'])).issubset(set(map(tuple,metric_samples))):
+            raise RuntimeError('Historical metric samples lost during backend restart')
+        if not set(map(tuple,before['log_keys'])).issubset(set(map(tuple,log_keys))):
+            raise RuntimeError('Historical log records lost during backend restart')
+        if not set(before['silence_ids']).issubset(silence_ids):
+            raise RuntimeError('Silence state lost during Alertmanager restart')
+        produced = readings['producer']-before['readings']['producer']
+        if produced < 0 or readings['collector'] >= before['readings']['collector']:
+            raise RuntimeError('Producer continuity or collector counter reset not observed')
+        # Four lines allow scrape timing; this rejects a complete historical reread,
+        # not a claim of transactional exactly-once delivery.
+        if readings['collector'] > produced+4:
+            raise RuntimeError('Collector reread historical file after restart')
+        snapshot.pop('metric_samples'); snapshot.pop('log_keys'); snapshot.pop('silence_ids')
+        snapshot.update({'metric_rows_retained':len(metric_samples),'log_rows_retained':len(log_keys),
+                         'silences_retained':len(silence_ids),'new_source_events':produced,
+                         'collector_new_read_lines':readings['collector'],'passed':True})
+        (reports/'restart-assertions.json').write_text(json.dumps(snapshot))
+        print('Backend restart retained metric/log/silence history without full-file replay')
+elif sys.argv[1] in ('backend-baseline', 'backend-unavailable'):
+    def backend_counters(prefix):
+        data = observe(prefix+'delivery', 'https://prometheus:9090/api/v1/query?'+urllib.parse.urlencode(
+            {'query':'{job="collector",__name__=~"loki_write_.*(retries|dropped).*"}'}))
+        if data.get('status') != 'success': raise RuntimeError('Delivery counters query failed')
+        retries = drops = 0.0
+        retry_series = drop_series = 0
+        for item in data['data']['result']:
+            name = item['metric']['__name__']
+            value = float(item['value'][1])
+            if 'retries' in name: retries += value; retry_series += 1
+            if 'dropped' in name: drops += value; drop_series += 1
+        if not retry_series or not drop_series: raise RuntimeError('Actual retry/drop counters unavailable')
+        return {'retries':retries,'drops':drops}
+    if sys.argv[1] == 'backend-baseline':
+        counters = backend_counters('baseline-')
+        (reports/'baseline.json').write_text(json.dumps(counters))
+        print('Captured actual log-delivery counter baseline')
+    else:
+        baseline = json.loads(pathlib.Path('/history/backend-baseline/baseline.json').read_text())
+        unavailable = False
+        try: request('https://loki:3100/ready')
+        except (OSError, urllib.error.URLError): unavailable = True
+        if not unavailable: raise RuntimeError('Stopped Loki still answered readiness')
+        deadline = time.monotonic()+35
+        attempt = 0
+        while time.monotonic() < deadline:
+            attempt += 1
+            counters = backend_counters(f'{attempt:02d}-')
+            up = observe(f'{attempt:02d}-source-health','https://prometheus:9090/api/v1/query?'+urllib.parse.urlencode(
+                {'query':'up{job=~"fixture|collector"}'}))['data']['result']
+            health = {item['metric']['job']:float(item['value'][1]) for item in up}
+            if counters['retries'] > baseline['retries'] and health == {'fixture':1,'collector':1}:
+                if counters['drops'] != baseline['drops']: raise RuntimeError('Log entries dropped during bounded backend outage')
+                (reports/'backend-outage-assertions.json').write_text(json.dumps({
+                    'backend_unavailable':True,'availability':health,'retry_increase':counters['retries']-baseline['retries'],
+                    'drop_increase':counters['drops']-baseline['drops'],'passed':True}))
+                print('Unavailable log backend caused visible retries while producer and collector stayed up')
+                break
+            time.sleep(1)
+        else: raise RuntimeError('No visible delivery failure within bounded backend outage')
+elif sys.argv[1] == 'healthy-window':
+    summary = json.loads(pathlib.Path('/history/resource-window/summary.json').read_text(encoding='utf-8-sig'))
+    start = int(datetime.datetime.fromisoformat(summary['started_utc']).timestamp())+2
+    end = int(datetime.datetime.fromisoformat(summary['ended_utc']).timestamp())-2
+    availability = observe('scrape-history','https://prometheus:9090/api/v1/query_range?'+urllib.parse.urlencode(
+        {'query':'up{job=~"fixture|collector"}','start':start,'end':end,'step':2}))['data']['result']
+    if len(availability) != 2 or {series['metric']['job'] for series in availability} != {'fixture','collector'}:
+        raise RuntimeError('Healthy-window source set unavailable')
+    expected_min = int((end-start)/2)-2
+    for series in availability:
+        values = series['values']
+        if len(values) < expected_min or any(float(item[1]) != 1 for item in values):
+            raise RuntimeError('Observed scrape loss during healthy resource window')
+        if any(right[0]-left[0] > 2 for left,right in zip(values,values[1:])):
+            raise RuntimeError('Missing scrape observations during resource window')
+    queue = observe('queue-history','https://prometheus:9090/api/v1/query_range?'+urllib.parse.urlencode(
+        {'query':'diagnostic_fixture_queue_items','start':start,'end':end,'step':2}))['data']['result']
+    if len(queue) != 1 or len(queue[0]['values']) < expected_min or any(float(item[1]) != 0 for item in queue[0]['values']):
+        raise RuntimeError('Resource window did not contain the declared healthy fixture input')
+    (reports/'healthy-window-assertions.json').write_text(json.dumps({'start_seconds':start,'end_seconds':end,
+        'scrape_sources':['fixture','collector'],'queue_rows':len(queue[0]['values']),'passed':True}))
+    print('Full resource window retained healthy scrape history and zero fixture pressure')
 else: raise RuntimeError('Unknown explicit query mode')
