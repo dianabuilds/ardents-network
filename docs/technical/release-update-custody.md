@@ -31,17 +31,26 @@ signing capability.
 
 ### Service Credential issuance
 
-The Service host generates its Instance and Introduction public keys and gives
+The Service host generates its Ed25519 Instance key and gives
 Custody one public request. The Custodian separately receives and types that
 request's exact lowercase SHA-256 digest, unlocks the Authority only through
 its interactive terminal, and returns one public signed response plus the
 deterministic encrypted successor record. Neither the request nor the response
 exports Authority material.
 
-The current Service Instance Credential binds an Ed25519 Instance public key
-and a separate X25519 Introduction recipient public key. The latter is not
-derived from the Instance key. These are technical format choices; Service
-Credential is the glossary's short form for the same public credential.
+The current `ardents-service-instance-request-v3` public request binds the
+Network, Instance public key, validity interval, and request commitment. The
+signed Service Instance Credential v3 delegates that Instance with its Target,
+Authority, Network, generation, validity interval, and capabilities. Neither
+format contains the retired Introduction recipient field. [ADR-0102](../adr/0102-stop-legacy-introduction-key-emission.md)
+retired that key emission; [ADR-0117](../adr/0117-reset-closed-service-formats-to-v3.md)
+selects the current v3 format identities. Service Credential is the glossary's
+short form for the same public credential.
+
+The private Introduction capsule instead uses a separate, fresh volatile
+X25519 recipient owned by the live Instance binding. Its lifecycle belongs to
+[Endpoint and Service runtime](endpoint-service-runtime.md); it is not a
+Custody issuance input or a field in the signed Credential.
 
 ### Closed admission allocation
 
