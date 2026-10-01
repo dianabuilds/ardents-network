@@ -336,3 +336,11 @@ a shutdown-marked operation can retain its item for restart even while failure
 telemetry records an operation error. Final sequence coverage and the exact error/
 lifecycle context are required to diagnose loss. Extended retry exhaustion,
 partial delivery, queue/state saturation and crash persistence remain open.
+
+The ready Grafana probe view separates observation age (seconds), pending/firing
+rule history and scrape availability from event messages. Events use query-time
+JSON formatting; Explore retains field search and original record inspection.
+Missing alert series alone do not prove recovery. The shared-interval API probe
+covers these expressions, but actual browser rendering remains a separate gate.
+Private generation supplies a separate random Grafana secret key via a file;
+keep it with the corresponding private state across the selected restart.

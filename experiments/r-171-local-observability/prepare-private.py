@@ -36,6 +36,7 @@ for role in roles:
 grafana = root/'grafana'
 password = secrets.token_hex(24)
 (grafana/'password').write_text(password)
+(grafana/'secret-key').write_text(secrets.token_hex(32))
 (root/'query'/'grafana-login.json').write_text(json.dumps({'user':'probe','password':password}))
 provisioning = grafana/'provisioning'
 (provisioning/'datasources').mkdir(parents=True)
@@ -63,9 +64,23 @@ for i,(title,expr,unit) in enumerate([
     panels.append({'id':i+1,'title':title,'type':'timeseries','gridPos':{'x':i*8,'y':0,'w':8,'h':8},
       'datasource':{'type':'prometheus','uid':'prometheus'},'targets':[{'refId':'A','expr':expr}],
       'fieldConfig':{'defaults':{'unit':unit,'custom':{'spanNulls':False}},'overrides':[]}})
-panels.append({'id':4,'title':'Synthetic events (resource samples are not logs)','type':'logs',
-    'gridPos':{'x':0,'y':8,'w':24,'h':10},'datasource':{'type':'loki','uid':'loki'},
-    'targets':[{'refId':'A','expr':'{job="fixture"}'}],
+panels.append({'id':5,'title':'Source observation age (seconds)',
+    'description':'Age of the fixture observation, independent of log silence. Missing series means unavailable.',
+    'type':'timeseries','gridPos':{'x':0,'y':8,'w':8,'h':8},
+    'datasource':{'type':'prometheus','uid':'prometheus'},
+    'targets':[{'refId':'A','expr':'time() - diagnostic_fixture_heartbeat_seconds'}],
+    'fieldConfig':{'defaults':{'unit':'s','custom':{'spanNulls':False}},'overrides':[]}})
+panels.append({'id':6,'title':'Alert history: pending / firing',
+    'description':'Measured Prometheus rule states. Absence alone is not proof of recovery; check source and collector availability. Silence does not change this history.',
+    'type':'timeseries','gridPos':{'x':8,'y':8,'w':16,'h':8},
+    'datasource':{'type':'prometheus','uid':'prometheus'},
+    'targets':[{'refId':'A','expr':'ALERTS{alertstate=~"pending|firing"}',
+                'legendFormat':'{{alertname}} · {{alertstate}} · {{scope}}'}],
+    'fieldConfig':{'defaults':{'unit':'short','custom':{'spanNulls':False}},'overrides':[]}})
+panels.append({'id':4,'title':'Events: severity / source / message','type':'logs',
+    'gridPos':{'x':0,'y':16,'w':24,'h':10},'datasource':{'type':'loki','uid':'loki'},
+    'description':'Synthetic events only. Query formatting does not rewrite stored JSON. Use Explore for field search and original record details.',
+    'targets':[{'refId':'A','expr':'{job="fixture"} | json | line_format "{{.level}} {{.scope}} {{.event}} #{{.sequence}}"'}],
     'options':{'showTime':True,'showLabels':False,'wrapLogMessage':True}})
 (grafana/'dashboards'/'probe.json').write_text(json.dumps({'uid':'synthetic-probe','title':'Local synthetic monitoring probe',
  'schemaVersion':39,'version':1,'editable':False,'time':{'from':'now-5m','to':'now'},'refresh':'5s','panels':panels}))

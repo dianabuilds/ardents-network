@@ -264,13 +264,20 @@ elif sys.argv[1] == 'shared-interval':
     request_body = {'from':str(start), 'to':str(end), 'queries':[
         {'refId':'M','datasource':{'type':'prometheus','uid':'prometheus'},'expr':'diagnostic_fixture_queue_items',
          'range':True,'instant':False,'format':'time_series','intervalMs':2000,'maxDataPoints':256},
-        {'refId':'L','datasource':{'type':'loki','uid':'loki'},'expr':'{job="fixture"}',
+        {'refId':'A','datasource':{'type':'prometheus','uid':'prometheus'},
+         'expr':'time() - diagnostic_fixture_heartbeat_seconds','range':True,'instant':False,
+         'format':'time_series','intervalMs':2000,'maxDataPoints':256},
+        {'refId':'R','datasource':{'type':'prometheus','uid':'prometheus'},
+         'expr':'ALERTS{alertstate=~"pending|firing"}','range':True,'instant':False,
+         'format':'time_series','intervalMs':2000,'maxDataPoints':256},
+        {'refId':'L','datasource':{'type':'loki','uid':'loki'},
+         'expr':'{job="fixture"} | json | line_format "{{.level}} {{.scope}} {{.event}} #{{.sequence}}"',
          'queryType':'range','maxLines':1000,'intervalMs':2000,'maxDataPoints':1000}]}
     (reports/'shared-query-input.json').write_text(json.dumps(request_body))
     response = observe('grafana-shared-query','http://grafana:3000/api/ds/query',auth=True,payload=request_body)
     results = response.get('results',{})
     summary = {}
-    for ref in ('M','L'):
+    for ref in ('M','L','A','R'):
         result = results.get(ref,{})
         if result.get('error') or result.get('status',200) != 200 or not result.get('frames'):
             raise RuntimeError('Grafana datasource query failed: '+ref)

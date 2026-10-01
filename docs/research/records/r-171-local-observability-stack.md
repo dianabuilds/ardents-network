@@ -1046,3 +1046,41 @@ ardents-r171-otel-backend-outage-a. All run containers were removed. This proves
 only the selected short outage/recovery journey; positive terminal failure
 counters, retry exhaustion, queue/state saturation and abrupt crash are still
 unmeasured. No full candidate admission, product-source integration or dev merge.
+
+### Ready Grafana diagnostic view probe
+
+The synthetic provisioned view now separates source observation age in seconds,
+measured pending/firing alert history, source/collector scrape availability and
+readable severity/source/event/sequence log messages. Formatting happens at
+query time; stored safe JSON and source timestamps remain unchanged. Absence of
+ALERTS is not treated as a recovery receipt, and silence does not alter measured
+rule states. There is no new incident store, acknowledgement claim, automatic
+bug search or product authority. Existing queue and event counters retain their
+explicit synthetic scope. Empty series remain unavailable and graphs do not
+connect missing observations.
+
+The shared-interval probe queries the exact formatted log, age and alert
+expressions through the actual Grafana datasource API in addition to its existing
+queue/gap query, requiring nonempty frames inside the same bounded interval.
+This is an API/data-path assertion, not browser rendering or usability acceptance.
+A fresh random Grafana secret key is created in its private role directory and
+read through the file configuration provider; it is distinct from the generated
+admin password and never printed. Restart reuses the same key while private
+state is retained; this is not host-reboot storage qualification.
+Primary configuration/query references, accessed2026-10-01:
+[Grafana configuration](https://grafana.com/docs/grafana/latest/setup-grafana/configure-grafana/),
+[Loki query-time JSON and line format](https://grafana.com/docs/loki/latest/query/log_queries/).
+
+**Grafana view data-path measurement:** grafana-view-a completed0/cleanup0,
+selected source/config snapshots stable; quick-check33593 completed0. The actual
+Grafana API returned one shared180s interval: queue59rows with a12000ms source
+observation gap, age59rows, six alert frames/46rows containing both pending and
+firing, and120log rows. All120lines matched readable severity/source/event/
+sequence format. This manual inspection used the actual frame schema Line field;
+it is not a rendered screenshot or an automated field-level assertion. The
+private secret-key file contains64hex characters; contents were not printed.
+After ordered restart, Grafana datasource/dashboard access and metric/log/silence
+history remained valid, with final producer catch-up passing. All run containers
+were removed. Original API responses and receipt remain external
+ardents-r171-grafana-view-a. Real-process integration, browser rendering, durable
+incident acknowledgement/history and candidate admission remain unproven.
