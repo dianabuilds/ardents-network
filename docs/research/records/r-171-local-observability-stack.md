@@ -1329,3 +1329,40 @@ not waived. Exact source/import/build closure remains the next needed evidence.
 Primary releases:
 [Prometheus13.2.3](https://github.com/grafana/grafana-prometheus-datasource/releases/tag/v13.2.3),
 [Loki13.2.1](https://github.com/grafana/grafana-loki-datasource/releases/tag/v13.2.1).
+
+### Loki OpenPGP source closure
+
+Primary advisory [GO-2026-5932](https://pkg.go.dev/vuln/GO-2026-5932),
+reviewed2026-10-01, covers all symbols of openpgp and its packet/armor/clearsign/
+errors/elgamal/s2k subpackages, not every package of x/crypto. Responsible owner:
+Codex under the local engineering dependency investigation.
+
+Exact public module at artifact revision9f30ae5c15698ebf5745439608bb8335ac1a2340
+was fetched through the checksum service:
+github.com/grafana/grafana-loki-datasource
+v0.0.0-20260928100302-9f30ae5c1569,
+module h1:1phehxKkXemj0s1FRE71OR/U9/9XNm24laphFlujaZE=,
+go.mod h1:fUdgdu/paUszT1i0j7gpk/dNZOGSpfQejfnTaB/GaoA=.
+Its go.mod/go.sum matched exact-commit primary bytes. Source graph A omitted
+the artifact's arrow_json_stdlib tag; it is retained as insufficient artifact
+configuration evidence. Corrected B used that tag, Linux/amd64, CGO_ENABLED=0
+and installed Go1.26.8 (the artifact uses1.26.7). All effective dependency module
+versions/checksums, including replacements, matched actual binary build metadata;
+no differences. The source graph excludes OpenPGP and imports only bcrypt,
+blowfish, pbkdf2 and scrypt from x/crypto. The Go dynamic plugin package is absent.
+
+This is source-level non-applicability for the inspected main package/configuration:
+affected code is outside its import closure, so input cannot enable that missing
+implementation. It is not a cryptographic reproducible-build or signed artifact
+verification, a claim about all plugin features/platforms/build tags, or permission
+to suppress findings. C additionally re-reads build metadata directly from the
+pinned binary and compares it with retained metadata. Original stripped-binary
+finding receipts remain available. The patch-toolchain difference and artifact
+signature/provenance review remain explicit for candidate admission. Runtime
+datasource compatibility is still untested.
+
+Invalidate the source disposition on source revision, dependency/replacement,
+entrypoint, tags, target, cgo/toolchain, dynamic loading or advisory changes.
+Re-run the recipe against exact new artifacts; unrelated x/crypto imports do not
+by themselves establish OpenPGP reachability. Evidence roots remain external
+ardents-r171-loki-source-primary-a and ardents-r171-loki-source-graph-a/b/c.

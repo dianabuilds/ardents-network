@@ -1,7 +1,9 @@
 .PHONY: tools-install
 
 tools-install:
-ifeq ($(COLLECTOR),grafana-plugins)
+ifeq ($(COLLECTOR),loki-source)
+	powershell -NoProfile -ExecutionPolicy RemoteSigned -File install-loki-source.ps1 -PrimaryRoot "$(ARTIFACT_ROOT)" -PluginRoot "$(PLUGIN_ROOT)" -EvidenceRoot "$(EVIDENCE_ROOT)"
+else ifeq ($(COLLECTOR),grafana-plugins)
 	powershell -NoProfile -ExecutionPolicy RemoteSigned -File install-plugins.ps1 -EvidenceRoot "$(EVIDENCE_ROOT)"
 else ifeq ($(COLLECTOR),otel-minimal-image)
 	powershell -NoProfile -ExecutionPolicy RemoteSigned -File install-collector-image.ps1 -ArtifactRoot "$(ARTIFACT_ROOT)" -EvidenceRoot "$(EVIDENCE_ROOT)" -Variant minimal

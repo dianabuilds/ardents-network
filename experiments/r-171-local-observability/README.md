@@ -412,3 +412,24 @@ backends are not executed, registered or admitted. Root manifest signatures are
 retained but not verified. Read R-171 for actual binary scan results and pending
 advisory/source/license/support/compatibility decisions. Newer release does not
 automatically close known findings, and a clean scan is not security admission.
+
+### Exact Loki source and artifact dependency reconciliation
+
+Prepare exact-commit go.mod/go.sum from the official repository in a fresh external
+primary root. Use the already checked plugin archive inspection output:
+
+~~~powershell
+make tools-install COLLECTOR=loki-source ARTIFACT_ROOT=C:/Users/vitek/AppData/Local/Temp/ardents-r171-loki-source-primary-a PLUGIN_ROOT=C:/Users/vitek/AppData/Local/Temp/ardents-r171-patched-plugins-a EVIDENCE_ROOT=C:/Users/vitek/AppData/Local/Temp/ardents-r171-loki-source-graph-new
+~~~
+
+The explicit installation route uses the installed helper, public module proxy
+and checksum service; no automatic toolchain download or plugin execution.
+One non-root read-only container has2GiB/1CPU/pids64 and a1GiB temporary module
+cache. Exact source sums must match primary bytes. Analysis fixes Linux/amd64,
+cgo off and arrow_json_stdlib to match the inspected artifact. It verifies the
+actual pinned backend hash, reads its build information without executing it,
+and reconciles effective dependency versions/checksums including replacements.
+Raw graph and a completion receipt stay outside Git. Graph output32MiB is a
+post-command assertion, not an on-disk quota; each download/list command is
+bounded180s. Package absence is source evidence, not signed/reproducible artifact
+admission; see R-171 for the precise finding disposition and invalidation scope.
