@@ -5,6 +5,34 @@ live log panel, finite diagnostic captures and private process debug mode. Start
 with [the owner and observability inventory](../../docs/development/local-diagnostics.md).
 Generated evidence, profiles, state and caches always remain outside Git.
 
+## Start here: debugging handover
+
+Use the current source and explicitly built helper; an old `:local` image does
+not acquire new CLI features when the repository changes. Windows operators use
+Docker Desktop's native Linux containers through `invoke.ps1`; the private
+socket debug workflow is Linux-native, not a qualified Windows-native listener.
+
+| Question | Existing tool and next step |
+|---|---|
+| Which Reader stage refused or stalled? | Select its private socket with `connection -socket /private/process.sock -json`, then follow [one failed Reader operation](#agent-workflow-locate-one-failed-reader-operation). |
+| CPU, allocation or contention cost? | Explicitly capture `cpu`, `heap`, `allocs`, `block` or `mutex` using [live process debug](#live-network-process-debug-mode); inspect the private profile with standard Go pprof. |
+| Goroutines blocked, operation not joining? | Select `goroutine` and `trace`; inspect the Reader task and scheduler in the private standard trace viewer. |
+| Preserve a reproduction for another local agent? | Use the [private package](#private-reproduction-evidence-package) with selected profile/trace/command receipts; retain the original failed outcome and gaps. |
+| Check whether collection itself failed? | Read runtime/capture receipts and monitor delivery/cleanup status separately from the supervised command outcome. |
+
+Enable `ARDENTS_DEBUG_SOCKET` only for the explicitly owned reproduction and
+stop the diagnostic process/viewer afterwards. Ordinary monitoring enables no
+profile sampling or debug socket. Start trace before the operation and retain
+it through joined cleanup; missing boundaries or dropped records are partial
+captures. Reader task association applies only inside that trace. CPU/heap
+profiles remain process-wide; an empty CPU profile supplies no cost diagnosis.
+Private profile bytes, raw output and command arguments never enter Grafana/Loki.
+
+The ready-component monitoring backend is still the R171 integration candidate;
+its experiments do not qualify native installation or product restart. Its
+admission and normal-Node incident-history route must be finished before claiming
+the complete monitoring goal. The commands below already support private local
+investigation without requiring that backend.
 ## Build and check
 
 From repository root:

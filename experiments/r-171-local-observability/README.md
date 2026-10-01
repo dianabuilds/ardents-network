@@ -1101,3 +1101,112 @@ This engineering fixture creates new local product fixture state when its source
 container starts. It proves monitor/backend/journal reopening, not supported
 product authority/State persistence, installed platform readiness or host crash
 recovery. Keep those qualifications separate from the cold monitoring check.
+
+### Native incident history trial
+
+The explicit `compose.history-trial.yaml` override and
+`R171_ALERT_HISTORY_TRIAL=1` private-preparation selection provision one
+Grafana-managed synthetic queue rule. Select this only with the synthetic
+fixture, existing protected Metrics datasource and checked plugins. Preparation
+refuses the actual-Node profile. Normal Node rules remain Prometheus-evaluated;
+this experiment does not migrate their evaluation or supply their incident history.
+
+Grafana's native annotation database stores pending, firing and recovery
+transitions. It is bounded to three days / 10000 alert annotations and three
+days / 1000 operator API annotations; the first retention condition applies.
+The existing persistent profile retains the database across container replacement.
+These are record-retention limits, not a disk quota or exact deletion deadline.
+The rule uses a ten-second evaluation/pending interval, independently of the
+existing Prometheus rules. Missing data and query errors stay explicit native
+NoData/Error conditions; missing series is not inferred as Node recovery.
+
+The local authenticated operator can record acknowledgement using Grafana's
+native `POST /api/annotations`: tags `diagnostic-ack`, `rule:fixture-history`
+and `transition:<annotation-id>` bind a note to one retained firing transition.
+The returned annotation identity, creator and timestamp can be queried via
+`GET /api/annotations?tags=diagnostic-ack&limit=100`. The note does not alter
+measured state or notification silence. It is an operator journal convention,
+not a custom incident store, exclusive assignment or automatic deduplication.
+Rule/transition references are local Grafana identities, not product correlation.
+Keep notes free of payloads, credentials and private profile contents.
+
+Expiring silence is a separate native Alertmanager action under
+`/api/alertmanager/grafana/api/v2/silences`, with explicit matchers and expiry.
+No external notification receiver is configured by this trial. The native
+History view/API and operator notes are the consumers; the existing Prometheus
+ALERTS chart alone does not supply resolved or acknowledged history.
+Run the trial from the repository root in Windows PowerShell5, using a new
+private external directory and already installed pinned images/plugin trees.
+The helper is selected explicitly; no tool installation occurs here. This
+sequence launches only fixture/Prometheus/Grafana and the offline initializer.
+
+```powershell
+$trialRoot = Join-Path $env:TEMP 'ardents-history-trial-new'
+$trialName = 'r171-history-trial-new'
+$trialSource = Join-Path $PWD 'experiments/r-171-local-observability'
+$trialPlugins = 'C:/private/checked-plugin-trees' # complete installed stage-receipt.json
+$trialHelper = 'sha256:0ecc73f220e154f40bdf3db718f9ff66890d6b381adaaf05fc3cbe989441c3ad'
+if (Test-Path -LiteralPath $trialRoot) { throw 'Use a new external evidence root' }
+if (@(docker ps -a --filter "label=com.docker.compose.project=$trialName" --format '{{.ID}}').Count) { throw 'Use a new project' }
+New-Item -ItemType Directory -Path $trialRoot | Out-Null
+$trialAcl = [Security.AccessControl.DirectorySecurity]::new()
+$trialAcl.SetAccessRuleProtection($true,$false)
+$trialSid = [Security.Principal.WindowsIdentity]::GetCurrent().User
+$trialAcl.SetOwner($trialSid)
+$trialAcl.AddAccessRule([Security.AccessControl.FileSystemAccessRule]::new($trialSid,'FullControl','ContainerInherit,ObjectInherit','None','Allow'))
+[IO.Directory]::SetAccessControl($trialRoot,$trialAcl)
+$trialPrivate = Join-Path $trialRoot 'private'
+New-Item -ItemType Directory -Path $trialPrivate | Out-Null
+$trialEnv = [ordered]@{R171_SOURCE=$trialSource;R171_PRIVATE=$trialPrivate;R171_HELPER_IMAGE=$trialHelper;R171_ALLOY_IMAGE=$trialHelper;R171_PATCHED_PLUGINS=$trialPlugins}
+foreach ($selected in (Get-Content (Join-Path $trialSource 'images.json') -Raw | ConvertFrom-Json).images) {
+    if ($selected.name -ne 'alloy') { $trialEnv[('R171_'+$selected.name.ToUpper()+'_IMAGE')]=$selected.image }
+}
+$trialEnvPath = Join-Path $trialRoot 'compose.env'
+[IO.File]::WriteAllLines($trialEnvPath,@($trialEnv.Keys | ForEach-Object { $_+'='+$trialEnv[$_].Replace('\','/') }),[Text.UTF8Encoding]::new($false))
+docker run --rm --network none --read-only --user 10001:10001 --cap-drop ALL --security-opt no-new-privileges --memory 128m --pids-limit 16 --mount "type=bind,source=$trialSource,target=/probe,readonly" --mount "type=bind,source=$trialPrivate,target=/private" -e R171_COLLECTOR=otel -e R171_ALERT_HISTORY_TRIAL=1 --entrypoint python3 $trialHelper /probe/prepare-private.py
+if ($LASTEXITCODE) { throw 'Preparation failed; preserve evidence' }
+$trialCompose = @('compose','--env-file',$trialEnvPath,'-p',$trialName)
+foreach ($file in @('compose.yaml','compose.restart.yaml','compose.persistent.yaml','compose.plugins.yaml','compose.history-trial.yaml')) { $trialCompose += @('-f',(Join-Path $trialSource $file)) }
+docker @trialCompose up -d --pull never prometheus grafana
+if ($LASTEXITCODE) { throw 'Backend startup failed' }
+# Wait for authenticated /api/health and the one provisioned fixture-history rule.
+# Use the query container below; then start the finite source.
+docker @trialCompose up -d --pull never fixture
+if ($LASTEXITCODE) { throw 'Fixture startup failed' }
+```
+
+Run authenticated queries from one bounded helper on `${trialName}_probe`,
+mounting `$trialPrivate/query` read-only at `/certs`. Use Python's standard
+`urllib.request` with a five-second request timeout and524288-byte response cap;
+read credentials from `/certs/grafana-login.json` and construct Basic auth in
+memory. Do not print or place the password in shell arguments. The existing
+`query-probe.py` `request` helper demonstrates the protected request format.
+Save JSON responses in the private evidence root. No host port is needed.
+
+Minimal native API requests, with explicit action bodies:
+
+```text
+GET /api/health
+GET /api/v1/provisioning/alert-rules
+GET /api/annotations?type=alert&limit=100
+  Require fixture-history's Pending, Alerting, and Normal-from-Alerting rows.
+  Fixture pressure starts at30s and recovers at90s; poll for at most150s.
+POST /api/annotations
+  {"time":<current-unix-milliseconds>,"tags":["diagnostic-ack","rule:fixture-history","transition:<selected-firing-annotation-id>"],"text":"Acknowledged selected synthetic incident; health unchanged"}
+GET /api/annotations?tags=diagnostic-ack&limit=100
+  Require returned acknowledgement ID, tags, creator and timestamp.
+POST /api/alertmanager/grafana/api/v2/silences
+  {"matchers":[{"name":"alertname","value":"FixtureQueuePressure","isRegex":false,"isEqual":true}],"startsAt":"<current-UTC-RFC3339>","endsAt":"<UTC-now-plus-20-seconds>","createdBy":"probe","comment":"Finite synthetic check"}
+GET /api/alertmanager/grafana/api/v2/silence/<returned-silenceID>
+  Require active first, expired after deadline; retain both observations.
+```
+
+For database replacement, save the selected transition/acknowledgement rows,
+then `docker @trialCompose stop -t15 grafana`; require exit0/noOOM before
+`docker @trialCompose rm -f grafana` and `docker @trialCompose up -d --pull never
+grafana`. Re-query after readiness and require all selected IDs and fields to
+match, plus retained expired silence. A new rule evaluation may add new rows;
+that does not authorize losing the selected old rows. Finish with
+`docker @trialCompose stop -t15 fixture grafana prometheus` and inspect each
+actual exit state. Keep private responses and volumes; never use a project-wide
+prune. An unsuccessful setup/query/cleanup remains a failed trial.

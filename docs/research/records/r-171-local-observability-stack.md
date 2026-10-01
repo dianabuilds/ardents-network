@@ -2494,3 +2494,49 @@ frontend rendering is not verified by this receipt; an app open request is queue
 Both bounded read-only final reviews reported no actionable findings. Full
 component admission, integration checks/dev merge, complete incident workflow,
 deeper failing-operation debugging and the overall goal remain open.
+
+### Native alert history and debug handover candidate (2026-10-01)
+
+The pinned Grafana defaults select the native annotations history backend and
+expose explicit alert/API annotation age and count limits. Primary
+[history documentation](https://grafana.com/docs/grafana/latest/alerting/set-up/configure-alert-state-history/)
+limits this route to Grafana-managed rules; Prometheus-evaluated Node rules do
+not acquire resolved/acknowledged history by enabling it. The explicit synthetic
+trial therefore does not silently migrate the current Node evaluator.
+[File provisioning](https://grafana.com/docs/grafana/latest/alerting/set-up/provision-alerting-resources/file-provisioning/)
+and the [annotation API](https://grafana.com/docs/grafana/latest/developer-resources/api-reference/http-api/api-legacy/annotations/)
+provide the ready-component route. Sources accessed2026-10-01.
+
+At unchanged Go source f31b7de8, alert-handover-a observed native NoData separately
+from the actual fixture queue sequence. Retained rule transitions included
+Normal to Pending, Pending to Alerting and Alerting to Normal. An authenticated
+operator annotation referenced one exact firing transition using explicit tags;
+that note changed neither health nor silence. A separate20-second native silence
+was active then expired. These existing annotations, creator/time/identities and
+the expired silence survived a clean Grafana container stop/removal/recreation
+using its existing persistent database. Five original transition rows and one
+acknowledgement were retained; no source/remote causal association is claimed.
+The silence check took place after fixture recovery and is not notification
+suppression proof for a currently firing Node. No external receiver was selected.
+Annotation acknowledgement is a local operator journal convention, not exclusive
+incident assignment or automatic duplicate suppression. Retention is3days,
+10000alert rows and1000API notes, not a disk quota or observed3day deletion.
+
+The initial PowerShell environment-array concatenation produced one combined
+line and refused Compose interpolation before creating containers. Its original
+file is preserved; corrected line serialization started the selected trial.
+Private receipts reside in ardents-r171-alert-handover-a outside Git. After the
+observations, exact selected trial services are stopped and history volumes
+retained. This remains an experiment, not whole-stack dependency admission or
+normal-Node incident-history acceptance.
+
+The fresh five-binary final-build-a manifest binds clean f31b7de8 Go/module inputs.
+Actual final-debug-tcp and final-debug-quic each completed the private Node
+capture: runtime/CPU/heap/allocs/goroutine/block/mutex/trace accepted, eight archive
+references verified and no cleanup failures. CPU samples were observed in both;
+this is not a measured representative overhead or product-bug diagnosis. Raw
+profiles remain private. The command README now supplies a short agent entry
+point mapping questions to existing private Connection, trace/pprof and bundle
+consumers; native Windows socket/installed deployment are not qualified by the
+Docker/Linux route. Current integration gates and exact component admission
+remain required before full-goal/dev acceptance.

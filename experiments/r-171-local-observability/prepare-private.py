@@ -9,6 +9,9 @@ import subprocess
 root = pathlib.Path('/private')
 os.umask(0o077)
 node_preview = os.environ.get('R171_SOURCE_MODE') == 'accepted-node'
+history_trial = os.environ.get('R171_ALERT_HISTORY_TRIAL') == '1'
+if history_trial and node_preview:
+    raise RuntimeError('History trial requires the synthetic source')
 roles = ('prometheus', 'alertmanager', 'loki', 'alloy', 'grafana', 'query') + (('node',) if node_preview else ())
 ca = root / 'ca'
 ca.mkdir(mode=0o700)
@@ -51,6 +54,12 @@ for name,kind,url in [('Metrics','prometheus','https://prometheus:9090'),('Logs'
         'secureJsonData':{'tlsCACert':(grafana/'ca.crt').read_text(),
                          'tlsClientCert':(grafana/'client.crt').read_text(),
                          'tlsClientKey':(grafana/'client.key').read_text()}})
+
+# Explicit isolated history trial. Normal Prometheus-evaluated Node rules stay
+# unchanged; this rule is supplied only by the selected synthetic profile.
+if history_trial:
+    history_rule = json.loads((pathlib.Path('/probe')/'alert-history-trial.json').read_text())
+    (provisioning/'alerting'/'history.yml').write_text(json.dumps(history_rule))
 # JSON is valid YAML; no external serializer or secret environment variables.
 (provisioning/'datasources'/'local.yml').write_text(json.dumps({'apiVersion':1,'datasources':datasources}))
 (provisioning/'dashboards'/'local.yml').write_text(json.dumps({'apiVersion':1,'providers':[

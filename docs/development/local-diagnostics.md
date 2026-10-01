@@ -774,3 +774,18 @@ The finite generated product fixture state is recreated separately: this does
 not establish supported product State/authority persistence, installed Node
 restart, native Windows support or host/daemon crash durability. Disk-budget
 admission and full integration remain separate from these observed boundaries.
+
+### Ready-component incident history boundary
+
+R171 now supplies an explicit synthetic Grafana-managed rule trial using the
+native annotation database for pending/firing/recovery history and tagged
+operator acknowledgement notes. Native expiring silences remain separate.
+Age/count budgets and persistent-database replacement are observed separately
+from filesystem quotas. This does not implement the normal-Node incident route:
+current Node rules are Prometheus-evaluated, and Grafana history applies only to
+Grafana-managed rules. A normal-rule migration must preserve source loss,
+NoData/query failure, measured-health semantics and notification authority before
+that requirement is accepted. The operator-note convention records an action;
+it does not change health, assign exclusive incident ownership or deduplicate
+operator acknowledgements automatically. Its explicit recipe belongs to the
+[R171 experiment](../../experiments/r-171-local-observability/README.md#native-incident-history-trial).
