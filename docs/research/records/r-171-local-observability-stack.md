@@ -7,7 +7,7 @@ started: 2026-10-01
 reviewed: 2026-10-01
 ---
 
-# R-171 — Which ready components can supply useful bounded local monitoring?
+# R-171 вЂ” Which ready components can supply useful bounded local monitoring?
 
 ## Decision this unlocks
 
@@ -1459,7 +1459,7 @@ navigation. The browser tab was closed after verification.
 Rendered D showed Queue, Events total, fixture/collector availability and
 Observation age legends; source-age units were seconds. The queue and cumulative
 event plots visibly broke at the selected source freeze; availability showed0.
-Log bodies became "synthetic_fixture · normal #175" with INFO in its own column.
+Log bodies became "synthetic_fixture В· normal #175" with INFO in its own column.
 Expanded structured metadata retained event/level/scope/sequence/source time.
 Removing redundant OTel JSON parsing eliminated duplicated _extracted fields;
 the only indexed label remained job. Stored source JSON was not changed.
@@ -2412,3 +2412,41 @@ Both bounded read-only reviews reported no actionable findings. The ordinary
 monitor recipe's stale default table is corrected to current retention settings.
 Normal preview-g retains its earlier matching monitoring binary; this debug
 receipt is a separate selected capture, not a deployment or full-goal completion.
+### Ordinary Docker-volume backend replacement (2026-10-01)
+
+The user requested ordinary capacity alerts and bounded retention rather than a
+WSL disk prerequisite. The explicit persistent research profile now uses five
+ordinary project-owned local Docker volumes, with no RAM mount anchor. Actual
+volume inspection identified local driver/no tmpfs options. Its only setup
+capability is CHOWN over the five mounted volume roots; normal backends retain
+UID/GID10001, dropped capabilities, read-only rootfs and private credentials.
+Initial roots must be root-owned and empty; admitted0700 roots need no recursive
+repair or DAC bypass. This is not maintained backend admission or a disk quota.
+
+Original attempts remain outside Git: persistent-a failed on unavailable
+Get-FileHash before backend setup; replaced with disposed .NET SHA256 streams.
+Persistent-b reached actual container replacement then failed initializer reentry
+into UID10001 mode0700 roots. O_PATH descriptor inspection corrected this without
+extra capabilities. Persistent-c stopped the backends but its exact-count guard
+failed because PowerShell5 wrapped the parsed JSON array as one item. A native
+minimal control measured wrapped count1 versus plain count2; plain assignment
+now preserves strict exit/exact-five/unique-identity checks. Each failure remains
+unaccepted; b/c cleanup succeeded and their volume/evidence bytes are retained.
+
+Persistent-d completed with cleanup exit0 and stable selected source/plugin
+inputs. All five backends stopped cleanly, were removed and recreated; the
+synthetic source stayed running. The fixed historical interval retained61metric
+rows,123log rows and one silence. A separately created unprovisioned Grafana
+marker survived in its database; it cannot be supplied by dashboard provisioning.
+The restarted collector accepted29new records against30new producer events at
+its sampled watermark, followed by complete catch-up. This bounded timing check
+rejects full-file replay, not transactional exactly-once delivery. Native reentry
+succeeded twice during backend/collector recreation. No selected project
+containers remained after teardown; persistent volumes remained deliberately.
+
+make quick-check passed and both bounded read-only review findings were repaired.
+This profile retains the finite synthetic workload and explicit one-hour/128MB
+Prometheus probe settings. It does not qualify real-Node journal persistence,
+full source restart, host/daemon crash, physical disk quotas, production retention,
+complete dependency admission, full integration gates or dev integration. The
+currently displayed real-Node preview was not changed by this profile.

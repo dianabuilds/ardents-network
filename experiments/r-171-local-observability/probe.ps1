@@ -1,6 +1,16 @@
 param([Parameter(Mandatory=$true)][string]$EvidenceRoot,
-      [Parameter(Mandatory=$true)][ValidatePattern('^r171-[a-z0-9-]{1,32}$')][string]$RunName, [switch]$RestartProbe, [switch]$ResourceProbe, [switch]$BackendProbe, [switch]$RetryExhaustionProbe, [switch]$StorageProbe, [switch]$CollectorStorageProbe, [ValidateSet('alloy','otel')][string]$Collector='alloy', [switch]$MinimalCollector, [string]$PatchedPluginRoot, [switch]$BrowserProbe, [string]$BrowserRelayBinary)
+      [Parameter(Mandatory=$true)][ValidatePattern('^r171-[a-z0-9-]{1,32}$')][string]$RunName, [switch]$RestartProbe, [switch]$PersistentProbe, [switch]$ResourceProbe, [switch]$BackendProbe, [switch]$RetryExhaustionProbe, [switch]$StorageProbe, [switch]$CollectorStorageProbe, [ValidateSet('alloy','otel')][string]$Collector='alloy', [switch]$MinimalCollector, [string]$PatchedPluginRoot, [switch]$BrowserProbe, [string]$BrowserRelayBinary)
 $ErrorActionPreference='Stop'
+if ($PersistentProbe -and (-not $RestartProbe -or $Collector -ne 'otel' -or -not $MinimalCollector -or -not $PatchedPluginRoot -or $ResourceProbe -or $StorageProbe -or $BackendProbe -or $RetryExhaustionProbe -or $CollectorStorageProbe -or $BrowserProbe)) { throw 'Persistent profile requires isolated minimal OTel restart probe and checked plugins' }
+if ($PersistentProbe) {
+    $taskExisting=@(docker ps -a --filter "label=com.docker.compose.project=$RunName" --format '{{.ID}}')
+    if ($LASTEXITCODE -ne 0 -or $taskExisting.Count) { throw 'Persistent probe requires a new project' }
+    $taskVolumes=@(docker volume ls --format '{{.Name}}')
+    if ($LASTEXITCODE -ne 0) { throw 'Volume inventory unavailable' }
+    foreach ($taskSuffix in @('fixture','prometheus-state','alertmanager-state','loki-state','alloy-state','grafana-state')) {
+        if ($taskVolumes -contains ($RunName+'_'+$taskSuffix)) { throw 'Persistent probe refuses existing project volumes' }
+    }
+}
 if ($CollectorStorageProbe -and (-not $RestartProbe -or $Collector -ne 'otel' -or -not $MinimalCollector -or $ResourceProbe -or $StorageProbe -or $BackendProbe -or $RetryExhaustionProbe -or $BrowserProbe -or -not $PatchedPluginRoot)) { throw 'Collector storage pressure requires isolated minimal OTel restart profile and checked plugins' }
 if ($RetryExhaustionProbe -and (-not $BackendProbe -or $Collector -ne 'otel' -or -not $MinimalCollector -or $ResourceProbe -or $StorageProbe -or $BrowserProbe -or $RestartProbe -or -not $PatchedPluginRoot)) { throw 'Retry exhaustion requires the isolated minimal OTel backend profile' }
 if ($BrowserProbe -and ($ResourceProbe -or $RestartProbe -or $BackendProbe -or $StorageProbe -or -not $BrowserRelayBinary)) { throw 'Browser probe requires explicitly built relay; it is outside resource measurement' }
@@ -38,7 +48,7 @@ foreach ($taskPrincipal in @($taskSid,[Security.Principal.SecurityIdentifier]::n
 $taskPrivate=Join-Path $taskRoot 'private'; $taskReports=Join-Path $taskRoot 'reports'
 New-Item -ItemType Directory -Path $taskPrivate,$taskReports | Out-Null
 function Get-ProbeSourceSnapshot {
-    $taskSelected=@('images.json','compose.yaml','compose.restart.yaml','fixture.py','prometheus.yml','alerts.yml','alertmanager.yml','loki.yml','config.alloy','prepare-private.py','query-probe.py','resource-window.ps1','storage-inventory.ps1','storage-pressure.py','collector-storage-pressure.py','probe.ps1','otel.yml','compose.otel.yaml','prometheus.otel.yml','loki.otel.yml','install-collector-image.ps1','alerts.otel.yml','alert-rule-tests.otel.yml','builder.yml','build-minimal.py','install-minimal.ps1','compose.plugins.yaml','stage-plugins.py','install-plugin-trees.ps1','compose.browser.yaml','browser-relay.go','install-browser-relay.ps1')
+    $taskSelected=@('images.json','compose.yaml','compose.restart.yaml','compose.persistent.yaml','initialize-state.py','fixture.py','prometheus.yml','alerts.yml','alertmanager.yml','loki.yml','config.alloy','prepare-private.py','query-probe.py','resource-window.ps1','storage-inventory.ps1','storage-pressure.py','collector-storage-pressure.py','probe.ps1','otel.yml','compose.otel.yaml','prometheus.otel.yml','loki.otel.yml','install-collector-image.ps1','alerts.otel.yml','alert-rule-tests.otel.yml','builder.yml','build-minimal.py','install-minimal.ps1','compose.plugins.yaml','stage-plugins.py','install-plugin-trees.ps1','compose.browser.yaml','browser-relay.go','install-browser-relay.ps1')
     foreach ($taskFile in $taskSelected) {
         $taskBytes=[IO.File]::ReadAllBytes((Join-Path $PSScriptRoot $taskFile))
         $taskHasher=[Security.Cryptography.SHA256]::Create()
@@ -69,7 +79,10 @@ function Get-PluginTreeSnapshot {
         foreach ($taskEntry in $taskFiles) {
             if ($taskEntry.Attributes -band [IO.FileAttributes]::ReparsePoint) { throw 'Refuse redirected plugin file' }
             $taskRelative=$taskEntry.FullName.Substring($taskBase.Length+1).Replace('\','/')
-            $taskDigest=(Get-FileHash -LiteralPath $taskEntry.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+            $taskHasher=[Security.Cryptography.SHA256]::Create()
+            $taskStream=[IO.File]::OpenRead($taskEntry.FullName)
+            try { $taskDigest=[BitConverter]::ToString($taskHasher.ComputeHash($taskStream)).Replace('-','').ToLowerInvariant() }
+            finally { $taskStream.Dispose(); $taskHasher.Dispose() }
             if ($taskDigest -ne $taskPlugin.files.$taskRelative) { throw 'Staged plugin hash changed' }
             [pscustomobject]@{plugin=$taskPlugin.id;name=$taskRelative;sha256=$taskDigest;bytes=$taskEntry.Length}
         }
@@ -101,10 +114,11 @@ if ($Collector -eq 'otel') {
 $taskOld=@{}; foreach ($taskKey in $taskEnv.Keys) { $taskOld[$taskKey]=[Environment]::GetEnvironmentVariable($taskKey); [Environment]::SetEnvironmentVariable($taskKey,$taskEnv[$taskKey]) }
 $taskCompose=@('compose','-p',$RunName,'-f',(Join-Path $PSScriptRoot 'compose.yaml'))
 if ($RestartProbe -or $RetryExhaustionProbe) { $taskCompose += @('-f',(Join-Path $PSScriptRoot 'compose.restart.yaml')) }
+if ($PersistentProbe) { $taskCompose += @('-f',(Join-Path $PSScriptRoot 'compose.persistent.yaml')) }
 if ($Collector -eq 'otel') { $taskCompose += @('-f',(Join-Path $PSScriptRoot 'compose.otel.yaml')) }
 if ($BrowserProbe) { $taskCompose += @('-f',(Join-Path $PSScriptRoot 'compose.browser.yaml')) }
 if ($PatchedPluginRoot) { $taskCompose += @('-f',(Join-Path $PSScriptRoot 'compose.plugins.yaml')) }
-$taskReceipt=[ordered]@{collector_storage_probe=[bool]$CollectorStorageProbe;retry_exhaustion_probe=[bool]$RetryExhaustionProbe;browser_probe=[bool]$BrowserProbe;patched_plugins=[bool]$PatchedPluginRoot;plugin_inputs=$taskPluginBefore;collector=$Collector;minimal_distribution=[bool]$MinimalCollector;started_utc=(Get-Date).ToUniversalTime().ToString('o');run=$RunName;source_scope='synthetic fixture only';complete=$false;helper_image_id=$taskHelper;images=$taskImageIdentities;source_inputs=$taskSourceBefore}
+$taskReceipt=[ordered]@{persistent_probe=[bool]$PersistentProbe;collector_storage_probe=[bool]$CollectorStorageProbe;retry_exhaustion_probe=[bool]$RetryExhaustionProbe;browser_probe=[bool]$BrowserProbe;patched_plugins=[bool]$PatchedPluginRoot;plugin_inputs=$taskPluginBefore;collector=$Collector;minimal_distribution=[bool]$MinimalCollector;started_utc=(Get-Date).ToUniversalTime().ToString('o');run=$RunName;source_scope='synthetic fixture only';complete=$false;helper_image_id=$taskHelper;images=$taskImageIdentities;source_inputs=$taskSourceBefore}
 function Invoke-ProbeQuery([string]$Mode,[string]$ReportName) {
     $taskDestination=Join-Path $taskReports $ReportName
     New-Item -ItemType Directory -Path $taskDestination | Out-Null
@@ -219,7 +233,7 @@ try {
         }
     }
     if ($RestartProbe) {
-        Invoke-ProbeQuery 'restart-before' 'restart-before'
+        Invoke-ProbeQuery $(if ($PersistentProbe) {'persistent-before'} else {'restart-before'}) 'restart-before'
         # Drain the sender while its receiver is available, before receiver shutdown.
         docker @taskCompose stop --timeout 30 alloy
         if ($LASTEXITCODE -ne 0) { throw 'Collector drain/stop failed.' }
@@ -227,13 +241,34 @@ try {
         $taskStopped=docker inspect $taskCollectorId | ConvertFrom-Json
         $taskStopped[0].State | ConvertTo-Json -Depth 5 | Out-File (Join-Path $taskReports 'collector-stopped-before-backends.json') -Encoding utf8
         if ($LASTEXITCODE -ne 0 -or $taskStopped[0].State.Running -or $taskStopped[0].State.OOMKilled -or $taskStopped[0].State.ExitCode -ne 0) { throw 'Collector did not stop cleanly within its finite drain budget.' }
-        docker @taskCompose restart --timeout 30 alertmanager loki prometheus grafana
-        if ($LASTEXITCODE -ne 0) { throw 'Synthetic backend restart failed.' }
+        if ($PersistentProbe) {
+            $taskBackends=@('alertmanager','loki','prometheus','grafana','alloy')
+            $taskBeforeIDs=@(docker @taskCompose ps -a -q @taskBackends)
+            if ($LASTEXITCODE -ne 0 -or $taskBeforeIDs.Count -ne 5) { throw 'Exact five backend identities required' }
+            docker @taskCompose stop --timeout 30 @taskBackends
+            if ($LASTEXITCODE -ne 0) { throw 'Persistent backend stop failed' }
+            $taskStates=docker inspect @taskBeforeIDs | ConvertFrom-Json
+            if ($LASTEXITCODE -ne 0 -or $taskStates.Count -ne 5 -or @($taskStates | Where-Object {$_.Id -notin $taskBeforeIDs}).Count -or @($taskStates.Id | Sort-Object -Unique).Count -ne 5) { throw 'Complete exact shutdown inspection required' }
+            $taskStates | ConvertTo-Json -Depth 8 | Out-File (Join-Path $taskReports 'persistent-stopped.json') -Encoding utf8
+            if (@($taskStates | Where-Object {$_.State.Running -or $_.State.OOMKilled -or $_.State.ExitCode -ne 0}).Count) { throw 'Backends did not stop cleanly' }
+            docker @taskCompose rm -f @taskBackends
+            if ($LASTEXITCODE -ne 0) { throw 'Owned backend removal failed' }
+            docker @taskCompose up -d --pull never alertmanager loki prometheus grafana
+            if ($LASTEXITCODE -ne 0) { throw 'Persistent backend recreation failed' }
+            $taskAfterIDs=@(docker @taskCompose ps -a -q alertmanager loki prometheus grafana)
+            if ($LASTEXITCODE -ne 0 -or $taskAfterIDs.Count -ne 4 -or @($taskAfterIDs | Where-Object {$_ -in $taskBeforeIDs}).Count) { throw 'Backend replacement was not observed' }
+            $taskReceipt.recreated_backend_ids=$taskAfterIDs
+            $taskReceipt.previous_backend_ids=$taskBeforeIDs
+        } else {
+            docker @taskCompose restart --timeout 30 alertmanager loki prometheus grafana
+            if ($LASTEXITCODE -ne 0) { throw 'Synthetic backend restart failed.' }
+        }
         Invoke-ProbeQuery 'ready' 'restart-readiness'
-        docker @taskCompose start alloy
+        if ($PersistentProbe) { docker @taskCompose up -d --pull never alloy }
+        else { docker @taskCompose start alloy }
         if ($LASTEXITCODE -ne 0) { throw 'Collector start after backend readiness failed.' }
         Start-Sleep -Seconds 4
-        Invoke-ProbeQuery 'restart-after' 'restart-after'
+        Invoke-ProbeQuery $(if ($PersistentProbe) {'persistent-after'} else {'restart-after'}) 'restart-after'
         Invoke-ProbeQuery 'catchup' 'post-restart-logs'
     }
     if ($ResourceProbe) {
@@ -241,11 +276,11 @@ try {
         Invoke-ProbeQuery 'healthy-window' 'healthy-window'
         Invoke-ProbeQuery 'catchup' 'post-resource-logs'
     }
-    if ($RestartProbe -or $RetryExhaustionProbe) {
+    if (($RestartProbe -or $RetryExhaustionProbe) -and -not $PersistentProbe) {
         & (Join-Path $PSScriptRoot 'storage-inventory.ps1') -RunName $RunName -EvidenceRoot (Join-Path $taskRoot 'storage-inventory') -SourceProfile synthetic
     }
     docker @taskCompose stats --no-stream --format json | Out-File (Join-Path $taskReports 'resource-snapshot.json') -Encoding utf8
-    if ($RestartProbe) {
+    if ($RestartProbe -and -not $PersistentProbe) {
         $taskStorageScript = @"
 import json, os
 results=[]

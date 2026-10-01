@@ -267,7 +267,7 @@ profiles can write additional files: provision a finite filesystem quota for
 long or hostile diagnostics. Log limits are not a filesystem quota.
 
 Live Interface: at most four simultaneous clients and one profile/trace request;
-fixed runtime fields; profiles capped at 64 MiB; CPU/trace 1–30 seconds; request
+fixed runtime fields; profiles capped at 64 MiB; CPU/trace 1вЂ“30 seconds; request
 read budget 2 s, write 35 s, idle 2 s, shutdown 3 s. Profiling opts into block
 sampling at 1 ms and mutex fraction 10 for the diagnostic process lifetime;
 CPU/trace only run on request. These costs change timing. Profiles contain
@@ -700,3 +700,21 @@ not operation correlation or process attestation. Profiles stay private and are
 never served by Grafana/Loki or exported as monitoring labels.
 The private runtime response also reads memory_sampling_rate_bytes from
 runtime.MemProfileRate; this describes allocation sampling, not a memory limit.
+
+### Persistent backend replacement observation
+
+The explicit R171 `probe-otel-persistent` engineering profile uses five ordinary
+local Docker state volumes instead of an active RAM mount anchor. A finite
+synthetic source continues while all five backend containers are stopped,
+removed and recreated. The oracle checks fixed historical metric/log rows,
+retained silence identities, an unprovisioned Grafana database marker and
+collector restart/read-position behavior. Provisioned dashboards alone cannot
+prove Grafana database persistence. Only empty root-owned volume roots receive
+initial UID/GID10001 mode0700 ownership; reopening admitted roots requires no
+DAC bypass or recursive changes. Normal backend processes remain unprivileged.
+
+This does not select a production storage layout, qualify a persistent real-Node
+journal or prove daemon/host crash durability. Named-volume retention survives
+container replacement but is not a filesystem quota. Explicit probe time/TSDB
+limits remain distinct from normal monitor log retention. The experiment recipe
+owns its actual command and retained failed attempts.

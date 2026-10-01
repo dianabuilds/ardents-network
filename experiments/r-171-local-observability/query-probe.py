@@ -309,9 +309,9 @@ elif sys.argv[1] == 'shared-interval':
         summary[ref] = {'frames':len(result['frames']),'rows':rows,'first_ms':min(times),'last_ms':max(times),'gaps_ms':gaps}
     (reports/'shared-interval-assertions.json').write_text(json.dumps({'from_ms':start,'to_ms':end,'results':summary,'passed':True}))
     print('Grafana returned metric and log frames for the same explicit time interval')
-elif sys.argv[1] in ('restart-before', 'restart-after'):
+elif sys.argv[1] in ('restart-before', 'restart-after', 'persistent-before', 'persistent-after'):
     before_path = pathlib.Path('/history/restart-before/restart-baseline.json')
-    if sys.argv[1] == 'restart-before':
+    if sys.argv[1] in ('restart-before', 'persistent-before'):
         end = int(time.time())
         start = end-180
         before = None
@@ -333,6 +333,22 @@ elif sys.argv[1] in ('restart-before', 'restart-after'):
         readings[name] = int(float(result[0]['value'][1]))
     dashboard = observe('grafana-dashboard','http://grafana:3000/api/dashboards/uid/synthetic-probe',auth=True)
     if dashboard['dashboard']['uid'] != 'synthetic-probe': raise RuntimeError('Restart dashboard identity mismatch')
+    if sys.argv[1] == 'persistent-before':
+        marker = {'uid':'r171-persistence-marker','title':'R171 database persistence marker',
+                  'schemaVersion':39,'panels':[], 'tags':['R171-private-persistence']}
+        created = observe('grafana-marker-created','http://grafana:3000/api/dashboards/db',
+                          auth=True,payload={'dashboard':marker,'overwrite':False})
+        if created.get('status') != 'success':
+            raise RuntimeError('Grafana database marker creation failed')
+    if sys.argv[1].startswith('persistent-'):
+        marker = observe('grafana-database-marker',
+                         'http://grafana:3000/api/dashboards/uid/r171-persistence-marker',auth=True)
+        value = marker.get('dashboard',{})
+        if (value.get('uid') != 'r171-persistence-marker' or
+            value.get('title') != 'R171 database persistence marker' or
+            value.get('tags') != ['R171-private-persistence'] or
+            marker.get('meta',{}).get('provisioned') is not False):
+            raise RuntimeError('Unprovisioned Grafana database marker unavailable')
     snapshot = {'start_seconds':start,'end_seconds':end,'metric_samples':metric_samples,
                 'log_keys':log_keys,'silence_ids':silence_ids,'readings':readings}
     if not metric_samples or not log_keys or not silence_ids:

@@ -1035,3 +1035,32 @@ monotonic elapsed time include local CLI work. CPU/trace alone request two
 seconds; cumulative contention/allocation profiles are not two-second deltas.
 Normal monitor preview does not enable the private debug socket. Sampling and
 profile parsing do not prove operation causality or representative overhead.
+### Persistent backend replacement profile
+
+```powershell
+make -C experiments/r-171-local-observability probe-otel-persistent EVIDENCE_ROOT=<NEW_PRIVATE_EXTERNAL_ROOT> RUN_NAME=<NEW_R171_PROJECT> PLUGIN_ROOT=<CHECKED_PLUGIN_TREE>
+```
+
+This explicitly selected minimal-OTel research profile replaces the five backend
+RAM volumes with ordinary project-owned local Docker volumes. It refuses existing
+project containers or state volumes before setup. The finite source remains the
+synthetic fixture, not an installed Node. Only an empty root-owned volume may be
+initialized; admitted UID/GID10001 mode0700 roots are inspected without directory
+read permission. The offline, read-only initialization helper has CHOWN only,
+changes no descendants and joins before unprivileged backends start. Its selected
+volumes are the only writable mounts. Credentials/provisioning remain separate
+private read-only mounts; no host PID/network, Docker socket or product roots.
+
+The acceptance path drains the collector, cleanly stops all five backends,
+inspects the exact stopped identities, removes those containers and recreates
+them over the same named volumes. The source remains running. Fixed historical
+metric/log rows, Alertmanager silence IDs and an explicitly created unprovisioned
+Grafana database marker must survive. Collector counter reset and bounded new
+records check against full-file replay; this is not exactly-once delivery.
+
+Volumes are retained after teardown and must not be removed with `down -v` when
+history is needed. This finite profile keeps the explicit one-hour/128MB
+Prometheus probe settings and finite source. Named volumes are not hard disk
+quotas; Loki working space, physical disk budgets, production retention and
+full source/daemon/host restart remain separate requirements. There is no RAM
+state anchor in this profile. It does not alter the currently displayed preview.
