@@ -45,6 +45,10 @@ Effective stop/activation ordering still needs admitted installed qualification.
 During successor start a root-private `start-guard.json` retains the exact intent
 independently of cursor archival. Before manager start, root binds a private
 ephemeral Unix completion socket under the protected installation root. The
+Root-private socket birth record binds its device/inode and group to the exact
+guarded intent before manager start. Recovery validates this record before
+stop; cleanup removes only that recorded socket. An unrecorded or substituted
+socket refuses even with matching Root ownership and mode, retaining the guard.
 Endpoint verifies its root peer and waits before participant composition;
 root verifies the connecting MainPID/UID and the exact InvocationID, generation
 and binding digests. Root sends completion only after the start observation and

@@ -67,6 +67,9 @@ func recoverInstalled(ctx context.Context, root string) (result ProvisionResult,
 	if err := validateSuccessorJournal(root, intent, files); err != nil {
 		return ProvisionResult{}, err
 	}
+	if err := validateStartSocket(root, intent.CandidateBinding.GID); err != nil {
+		return ProvisionResult{}, err
+	}
 	defer func() {
 		if returnedErr != nil {
 			returnedErr = errors.Join(returnedErr, retainTransitionFailure(root, intent.Candidate, returnedErr))

@@ -144,7 +144,7 @@ func loadUpgradeInput(ctx context.Context, path string) (Request, checkedBinding
 	if err := validateSuccessorPaths(request, previous); err != nil {
 		return Request{}, checkedBinding{}, Authorization{}, err
 	}
-	for _, name := range []string{"transition.json", "transition-failure.json", "start-guard.json", "start-completion.socket"} {
+	for _, name := range []string{"transition.json", "transition-failure.json", "start-guard.json", "start-completion.socket", "start-socket.json"} {
 		if _, err := os.Lstat(filepath.Join(request.InstallationRoot, name)); !os.IsNotExist(err) {
 			return Request{}, checkedBinding{}, Authorization{}, errors.New("installation requires explicit transition recovery")
 		}

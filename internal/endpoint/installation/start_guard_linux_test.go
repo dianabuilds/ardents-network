@@ -4,9 +4,12 @@ package installation
 
 import (
 	"bytes"
+	"context"
+	"net"
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 )
 
 func TestStartGuardRetainsExactIntentAcrossCursorArchival(t *testing.T) {
@@ -44,5 +47,103 @@ func TestStartGuardRetainsExactIntentAcrossCursorArchival(t *testing.T) {
 	guard, err = readStartGuard(root)
 	if err != nil || !bytes.Equal(guard, wanted) {
 		t.Fatal("refusal changed guarded recovery provenance", err)
+	}
+}
+
+func TestStartGuardCleanupRefusesDifferentSocketInode(t *testing.T) {
+	if os.Geteuid() != 0 {
+		return
+	}
+	root := replacementTestRoot(t)
+	intent := transitionIntent{Request: Request{InstallationRoot: root}, Candidate: selection{GenerationDigest: digestHex([]byte("candidate"))}}
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	completion, err := prepareStartCompletion(ctx, root, intent, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if err := completion.close(); err != nil {
+			t.Error(err)
+		}
+	}()
+	path := filepath.Join(root, "start-completion.socket")
+	if err := os.Rename(path, filepath.Join(root, "original-socket-inode")); err != nil {
+		t.Fatal(err)
+	}
+	foreign, err := net.ListenUnix("unix", &net.UnixAddr{Name: path, Net: "unix"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	foreign.SetUnlinkOnClose(false)
+	defer func() {
+		if err := foreign.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
+	if err := os.Chown(path, 0, 0); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(path, 0660); err != nil {
+		t.Fatal(err)
+	}
+	foreignInfo, err := os.Lstat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := clearStartGuard(root, intent); err == nil {
+		t.Fatal("cleanup adopted another socket inode with matching owner and mode")
+	}
+	current, err := os.Lstat(path)
+	if err != nil || !os.SameFile(current, foreignInfo) {
+		t.Fatal("refusal removed the other listener", err)
+	}
+	if _, err := readStartGuard(root); err != nil {
+		t.Fatal("refusal lost recovery guard", err)
+	}
+}
+
+func TestStartGuardCleanupRefusesSubstitutedSocket(t *testing.T) {
+	if os.Geteuid() != 0 {
+		return
+	}
+	root := replacementTestRoot(t)
+	intent := transitionIntent{Request: Request{InstallationRoot: root}, Candidate: selection{GenerationDigest: digestHex([]byte("candidate"))}}
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	completion, err := prepareStartCompletion(ctx, root, intent, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if err := completion.close(); err != nil {
+			t.Error(err)
+		}
+	}()
+	originalGuard, err := readStartGuard(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(root, "start-completion.socket")
+	if err := os.Rename(path, filepath.Join(root, "owned-listener")); err != nil {
+		t.Fatal(err)
+	}
+	foreign := []byte("unrelated file substituted at socket path")
+	if err := os.WriteFile(path, foreign, 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := clearStartGuard(root, intent); err == nil {
+		t.Fatal("cleanup removed a foreign completion path")
+	}
+	currentGuard, err := readStartGuard(root)
+	if err != nil || !bytes.Equal(currentGuard, originalGuard) {
+		t.Fatal("refused cleanup lost exact recovery provenance", err)
+	}
+	currentFile, err := os.ReadFile(path)
+	if err != nil || !bytes.Equal(currentFile, foreign) {
+		t.Fatal("refused cleanup changed substituted bytes", err)
+	}
+	if err := refusePendingTransition(root); err == nil {
+		t.Fatal("failed cleanup opened ordinary restart")
 	}
 }

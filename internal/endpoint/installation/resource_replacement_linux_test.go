@@ -48,6 +48,27 @@ func TestSuccessorReplacementRepairsOnlyRecordedOriginalInode(t *testing.T) {
 	if !bytes.Equal(body, next) {
 		t.Fatal("recorded torn write was not completed")
 	}
+	// Death after truncate, before the first successor byte, leaves an empty
+	// prefix on the recorded inode. Both recovery's reader and writer must admit
+	// that prefix without extending the same allowance to unrecorded files.
+	if err := os.Truncate(path, 0); err != nil {
+		t.Fatal(err)
+	}
+	emptyInfo, err := os.Stat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	prefix, err := readRecordedReplacementBytes(path, emptyInfo)
+	if err != nil || len(prefix) != 0 {
+		t.Fatal("recorded zero-byte prefix unavailable for recovery validation", err)
+	}
+	if err := replaceTransitionFile(context.Background(), path, old, next, 0644, 0, record, selected); err != nil {
+		t.Fatal("recorded truncate-before-write interruption refused", err)
+	}
+	body, err = os.ReadFile(path)
+	if err != nil || !bytes.Equal(body, next) {
+		t.Fatal("recorded zero-byte prefix was not completed", err)
+	}
 	if err := os.WriteFile(path, []byte("foreign bytes on recorded inode"), 0644); err != nil {
 		t.Fatal(err)
 	}
@@ -87,6 +108,21 @@ func TestSuccessorReplacementRefusesForeignPreimageAndCancellation(t *testing.T)
 	}
 	if _, err := os.Lstat(record); !os.IsNotExist(err) {
 		t.Fatal("foreign preimage created a replacement journal")
+	}
+	if err := os.Truncate(path, 0); err != nil {
+		t.Fatal(err)
+	}
+	if err := replaceTransitionFile(context.Background(), path, []byte("old"), []byte("new"), 0644, 0, record, selection{}); err == nil {
+		t.Fatal("empty unrecorded file adopted as an owned interrupted write")
+	}
+	if _, err := os.Lstat(record); !os.IsNotExist(err) {
+		t.Fatal("unrecorded empty preimage created a replacement journal")
+	}
+	if body, err := os.ReadFile(path); err != nil || len(body) != 0 {
+		t.Fatal("refusal changed unrecorded empty file", err)
+	}
+	if err := os.WriteFile(path, []byte("foreign"), 0644); err != nil {
+		t.Fatal(err)
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()

@@ -6,7 +6,6 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
-	"syscall"
 )
 
 // The guard retains exact recovery provenance independently of cursor archival.
@@ -44,25 +43,6 @@ func readStartGuard(root string) ([]byte, error) {
 		return nil, err
 	}
 	return readInstalledFile(path, 128<<10)
-}
-
-func clearStartSocket(root string, gid uint32) error {
-	path := filepath.Join(root, "start-completion.socket")
-	info, err := os.Lstat(path)
-	if os.IsNotExist(err) {
-		return nil
-	}
-	if err != nil {
-		return err
-	}
-	identity, ok := info.Sys().(*syscall.Stat_t)
-	if !ok || identity.Uid != 0 || identity.Gid != gid || info.Mode()&os.ModeSocket == 0 || info.Mode().Perm() != 0660 {
-		return errors.New("installation completion socket ownership differs")
-	}
-	if err := os.Remove(path); err != nil {
-		return err
-	}
-	return syncDirectory(root)
 }
 
 func clearStartGuard(root string, intent transitionIntent) error {

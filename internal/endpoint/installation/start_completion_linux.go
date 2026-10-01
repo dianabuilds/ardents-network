@@ -30,12 +30,18 @@ func prepareStartCompletion(ctx context.Context, root string, intent transitionI
 	if _, err := os.Lstat(path); !os.IsNotExist(err) {
 		return nil, errors.New("installation completion socket requires explicit recovery")
 	}
+	if _, err := os.Lstat(filepath.Join(root, "start-socket.json")); !os.IsNotExist(err) {
+		return nil, errors.New("installation completion socket record requires explicit recovery")
+	}
 	listener, err := net.ListenUnix("unix", &net.UnixAddr{Name: path, Net: "unix"})
 	if err != nil {
 		return nil, err
 	}
 	listener.SetUnlinkOnClose(false)
 	if err := errors.Join(os.Chown(path, 0, int(gid)), os.Chmod(path, 0660)); err != nil {
+		return nil, errors.Join(err, listener.Close())
+	}
+	if err := recordStartSocket(root, gid); err != nil {
 		return nil, errors.Join(err, listener.Close())
 	}
 	if deadline, ok := ctx.Deadline(); ok {
