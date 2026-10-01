@@ -75,6 +75,57 @@ func TestInitialRepairRequiresBirthRecordDurabilityBeforeMutation(t *testing.T) 
 	}
 }
 
+func TestInitialRepairRetainsPostWriteSyncFailureForExplicitRetry(t *testing.T) {
+	if os.Geteuid() != 0 {
+		return
+	}
+	root := replacementTestRoot(t)
+	journal := filepath.Join(root, "journal")
+	if err := os.Mkdir(journal, 0700); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(root, "installed")
+	body := []byte("authenticated complete resource")
+	selected := selection{GenerationDigest: digestHex(body)}
+	if err := createInstallationFile(context.Background(), path, body, 0644, 0, journal, selected); err != nil {
+		t.Fatal(err)
+	}
+	info, err := os.Lstat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, body[:5], 0644); err != nil {
+		t.Fatal(err)
+	}
+	recordPath := filepath.Join(journal, "creations", digestHex([]byte(path))+".json")
+	original, err := os.ReadFile(recordPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	refusal := errors.New("initial repaired resource directory sync refused")
+	err = repairCreatedInstallationFileWithSync(context.Background(), path, body, 0644, 0, journal, selected, func(directory string) error {
+		if directory == filepath.Dir(path) {
+			return refusal
+		}
+		return syncDirectory(directory)
+	})
+	if !errors.Is(err, refusal) {
+		t.Fatal("post-write initial repair refusal lost", err)
+	}
+	if current, err := os.ReadFile(path); err != nil || !bytes.Equal(current, body) {
+		t.Fatal("post-write refusal misrepresented repaired bytes", err)
+	}
+	if retained, err := os.ReadFile(recordPath); err != nil || !bytes.Equal(retained, original) {
+		t.Fatal("post-write refusal changed birth record", err)
+	}
+	if err := repairCreatedInstallationFile(context.Background(), path, body, 0644, 0, journal, selected); err != nil {
+		t.Fatal("explicit initial repair retry refused", err)
+	}
+	if after, err := os.Lstat(path); err != nil || !os.SameFile(info, after) {
+		t.Fatal("explicit retry replaced recorded inode", err)
+	}
+}
+
 func TestInitialCreationJournalFailureRetainsEmptyFileAndOriginalRecord(t *testing.T) {
 	if os.Geteuid() != 0 {
 		return
