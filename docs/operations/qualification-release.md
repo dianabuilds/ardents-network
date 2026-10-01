@@ -72,6 +72,39 @@ not a power-loss durability qualification.
 
 ## Assembly and acceptance boundary
 
+The maintained `ardents-control prepare-qualification-node-record` and
+`prepare-qualification-epoch` commands prepare the real initial Network inputs
+under ADR-0120. Both use `--plan` and `--output-root` with canonical absolute
+public paths and a previously absent output directory. Plans are bounded to
+8 MiB, reject unknown fields/trailing JSON, and use the existing JSON byte-array,
+base64 and whole-second time conventions below. The Node plan schema is
+`ardents-qualification-node-record-plan-v1` with a `record` object containing
+the exported `epoch.InitialClosedRecord` fields. NodeID and its public key are
+distinct explicit facts. Only the two closed Carrier profiles, valid host/port,
+canonical ASCII text, finite integral nonnegative validity, and capacity
+1..1024 prepare. The output is `node-record.signing-input`, unsigned existing
+ARNR-v2 bytes with generation one and closed capability two.
+
+Sign each exact message separately with its matching Node identity key before
+Epoch preparation. The Epoch plan schema is
+`ardents-qualification-epoch-plan-v1`, with an `epoch` object containing the
+exported `epoch.InitialClosedEpoch` fields. Supply 1..64 signed Records in the
+exact intended Source order, 1..16 strictly ordered Role Domains, nonzero
+Network/assignment seed, finite validity covered by every Record, and 1..16
+distinct public State authority keys. Preparation reuses ordinary Record
+evaluation and refuses any rejection/collision, including a Node key reused as
+a State authority. It computes actual input/view/rejection commitments,
+family/capacity/Domain summaries and deterministic assignments. The output
+`epoch.unsigned` is existing AREP-v3 with Epoch one, zero predecessor, closed
+Route profile and no retired interactive Gateway/Transit projection.
+
+These public commands create exclusive `0700`/`0600` outputs and synchronize
+files/directories before acknowledgement; retain partial outputs on failure.
+They sign no Record or Epoch and admit no State. Separate State signatures over
+the actual unsigned Epoch digest, ordinary verification/materializations,
+closed profile and Source delivery preparation remain required. Never use test
+fixtures, copied historical authorities or cleared floors as operational input.
+
 The maintained `ardents-control prepare-qualification-evidence` command prepares
 initial unsigned disclosure payloads and component signing inputs. Its explicit
 source-file adapter is `scripts/prepare-qualification-alpha-evidence.go`; both

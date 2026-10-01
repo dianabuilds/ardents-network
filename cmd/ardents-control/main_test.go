@@ -17,7 +17,7 @@ import (
 )
 
 func TestRetiredPlanningCampaignRoutesAreNotCommandSurface(t *testing.T) {
-	const usage = "usage: ardents-control inspect-bundle, inspect-transitions, prepare-closed-profile, sign-closed-profile, inspect-closed-profile, inspect-closed-issuer-profile, prepare-qualification-evidence, or prepare-qualification-catalog"
+	const usage = "usage: ardents-control inspect-bundle, inspect-transitions, prepare-closed-profile, sign-closed-profile, inspect-closed-profile, inspect-closed-issuer-profile, prepare-qualification-evidence, prepare-qualification-catalog, prepare-qualification-node-record, or prepare-qualification-epoch"
 	for _, route := range []string{
 		"inspect",
 		"inspect-public-control",
