@@ -213,3 +213,54 @@ func TestRecordedReplacementRequiresJournalDurabilityBeforeMutation(t *testing.T
 		t.Fatal("durability refusal changed owned journal", err)
 	}
 }
+
+func TestReplacementRetainsPostWriteSyncFailureForExplicitRetry(t *testing.T) {
+	if os.Geteuid() != 0 {
+		return
+	}
+	root := replacementTestRoot(t)
+	journal := filepath.Join(root, "journal")
+	if err := os.Mkdir(journal, 0700); err != nil {
+		t.Fatal(err)
+	}
+	path, record := filepath.Join(root, "resource"), filepath.Join(journal, "copy.json")
+	old, next := []byte("complete previous"), []byte("complete successor")
+	selected := selection{GenerationDigest: digestHex(next)}
+	if err := writeExclusiveGenerationFile(path, old, 0644, 0); err != nil {
+		t.Fatal(err)
+	}
+	before, err := os.Stat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	refusal := errors.New("original replacement resource directory sync refused")
+	err = replaceTransitionFileWithSync(context.Background(), path, old, next, 0644, 0, record, selected, func(directory string) error {
+		if directory == root {
+			return refusal
+		}
+		return syncDirectory(directory)
+	})
+	if !errors.Is(err, refusal) {
+		t.Fatal("post-write durability refusal lost", err)
+	}
+	if body, err := os.ReadFile(path); err != nil || !bytes.Equal(body, next) {
+		t.Fatal("post-write refusal did not retain complete candidate", err)
+	}
+	original, err := os.ReadFile(record)
+	if err != nil {
+		t.Fatal("post-write refusal lost repair provenance", err)
+	}
+	if err := replaceTransitionFile(context.Background(), path, old, next, 0644, 0, record, selected); err != nil {
+		t.Fatal("explicit retry of owned complete candidate refused", err)
+	}
+	after, err := os.Stat(path)
+	if err != nil || !os.SameFile(before, after) {
+		t.Fatal("explicit retry replaced the installed inode", err)
+	}
+	if body, err := os.ReadFile(path); err != nil || !bytes.Equal(body, next) {
+		t.Fatal("explicit retry changed candidate bytes", err)
+	}
+	if retained, err := os.ReadFile(record); err != nil || !bytes.Equal(retained, original) {
+		t.Fatal("explicit retry changed repair provenance", err)
+	}
+}
