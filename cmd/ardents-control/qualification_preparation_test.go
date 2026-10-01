@@ -8,7 +8,7 @@ import (
 )
 
 func TestQualificationPreparationRejectsInvalidPublicInputBeforeEffects(t *testing.T) {
-	for _, operation := range []string{"prepare-qualification-evidence", "prepare-qualification-catalog"} {
+	for _, operation := range []string{"prepare-qualification-evidence", "prepare-qualification-catalog", "prepare-qualification-node-record", "prepare-qualification-epoch"} {
 		t.Run(operation, func(t *testing.T) {
 			root := t.TempDir()
 			plan := filepath.Join(root, "plan.json")
