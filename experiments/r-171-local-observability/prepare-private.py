@@ -165,11 +165,11 @@ if node_preview:
         'templating':{'list':[
             {'name':'component','label':'Компонент','type':'custom',
              'query':'Node : ardents-node-event-v1, Source : ardents-source-event-v1, Endpoint : ardents-headless-runtime-event-v1',
-             'multi':True,'includeAll':True,'allValue':'.*',
+             'multi':False,'includeAll':True,'allValue':'.*',
              'current':{'text':'All','value':'$__all','selected':True}},
             {'name':'event_kind','label':'Событие','type':'custom',
              'query':'lifecycle, resource, source-ready, source-wave-accepted, source-failed, headless-runtime-ready, headless-runtime-failed, headless-runtime-permission-required, headless-runtime-publication-refresh-failed, headless-runtime-publication-withdrawal-failed, headless-runtime-connection-operation-failed',
-             'multi':True,'includeAll':True,'allValue':'.*',
+             'multi':False,'includeAll':True,'allValue':'.*',
              'current':{'text':'All','value':'$__all','selected':True}}
         ]},'panels':panels},ensure_ascii=False))
     (provisioning/'dashboards'/'local.yml').write_text(json.dumps({'apiVersion':1,'providers':[

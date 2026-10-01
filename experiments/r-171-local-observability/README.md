@@ -993,7 +993,8 @@ mountpoint and image associations are absent. Unknown cleanup is never success.
 ### Reading Node events
 
 The prepared Node dashboard has component and event filters over the shared
-selected time interval. These filter parsed fields at query time; they add no
+selected time interval. Each selects one catalogue value or All; selecting a
+component immediately replaces All instead of retaining both selections. These filter parsed fields at query time; they add no
 Loki index labels. Each row names Node, Source, Endpoint or the collector,
 then the event description, available state, typed failure category, Carrier,
 stream and local sequence. Expand a row in Grafana/Explore for the original

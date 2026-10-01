@@ -2297,3 +2297,46 @@ upstream documentation or a manual substitution.
 make quick-check completed exit0 for the presentation delta. Both bounded
 read-only spec/standards reviews reported no actionable finding. No full-stack
 acceptance, maintained backend admission or dev integration follows.
+
+
+### Actual frontend filtering and presentation correction (2026-10-01)
+
+A separate finite Grafana frontend used the selected existing backend diagnostic
+credentials read-only and newly generated dashboard, without overwriting the
+original provisioning/history. Native direct port publication on the internal
+network exposed no listener, so browser-c used the existing scoped loopback relay
+in a separate internal frontend network. A selected older relay failed its saved
+hash check before effects; the current source was explicitly rebuilt through
+make tools-install into a new external root. No alternate source was silently
+substituted and no backend listener/authentication was weakened.
+
+The actual browser-c view showed all five historical Node lifecycle transitions
+with their readable messages. Expanding WITHDRAWN showed entry_schema/kind/state,
+owner time, observed time and the sole job=node index label. Grafana showed an
+unknown level because the source projection does not supply severity; no level
+or current health is inferred. Selecting Node alongside All in the multiselect
+left a broad selection, requiring another action to deselect All. The prepared
+component/event variables now each select one catalogue value or All.
+
+Native preparation-d generated the corrected dashboard. Browser-d selected Node
+with one click and the URL changed to the exact Node schema; selecting Source
+replaced it directly, and selecting source-failed changed the event variable to
+that exact category. Neither retained All. During this second frontend check,
+authoritative Docker inspection found the previous backend containers absent;
+Loki DNS queries failed, with the error available in panel status. No cause for
+that external environment change is inferred. This proves the corrected frontend
+selection behavior, not post-change log delivery, empty-as-health or current Node
+readiness. Existing successful historical rendering remains separate evidence.
+Private aggregate receipts live in the external presentation-d root. Full live
+backend/debug, admission and integration obligations remain open.
+
+Owned frontend containers and their separate network were subsequently removed
+by exact identity after stopping them; the finite relay was confirmed terminal.
+The private cleanup receipt records these results. Original backend containers
+were not modified by this cleanup. No live browser preview is claimed afterward.
+
+The correction's make quick-check completed with exit 0, including the
+architecture representation gate. Both bounded read-only reviews reported no
+actionable findings. This result completes the single-choice presentation
+correction; full backend admission, live debug journeys and integration remain
+open.
