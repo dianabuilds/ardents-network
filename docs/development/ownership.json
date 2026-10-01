@@ -140,6 +140,11 @@
   ],
   "qualification_lanes": [
     {
+      "id": "protected-installation",
+      "owner": "network",
+      "path": "tests/qualification/protected-installation"
+    },
+    {
       "id": "text-worker-network",
       "owner": "network",
       "path": "tests/qualification/text-worker-network"

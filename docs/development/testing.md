@@ -564,6 +564,14 @@ with them.
 
 ## Local diagnostic environment
 
+The explicit [protected installation capture driver](../../tests/qualification/protected-installation/README.md)
+invokes public provision and installation-check, then asks the admitted system
+manager to start the actual installed unit. It retains the first command failure
+without retry or reset. This is a preparation/capture surface, not the complete
+two-Endpoint Service oracle or evidence that any admitted host was exercised;
+manager-start success alone does not establish participant readiness. Its
+independent program digest and genuine operator request are selected prerequisites.
+
 The [local diagnostics owner](local-diagnostics.md) and its
 [recipes](../../scripts/diagnostics/README.md) define the explicit Docker tools,
 private live process mode, event/resource collection, race/profile separation,
