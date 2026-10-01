@@ -68,6 +68,12 @@ select `--user 0` and the profile environment variable rather than inferring
 privilege from the image name. Enrollment's caller-owned package test retains
 its separate unprivileged profile. Root filesystem checks do not qualify a
 system manager, cgroup containment or an admitted installed Ubuntu journey.
+The completion-channel component also requires writable `/run` and permission
+to spawn a child with kernel UID/GID 65534 and cleared supplementary groups.
+The child connects through the Root-owned directory and socket, while actual
+kernel permission refusals prevent private-intent reads and directory writes.
+Unavailable credential-switch privileges fail this selected profile. This is
+local Unix credential/access evidence, not systemd namespace qualification.
 
 The two-Node lifecycle process test retains TCP port reservations throughout
 State and plan preparation. It releases each reservation immediately before its
