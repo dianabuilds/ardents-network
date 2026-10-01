@@ -184,6 +184,79 @@ select a read-only evidence mount, and run `go tool trace -http=0.0.0.0:8091`
 or `go tool pprof -http=0.0.0.0:8091` inside that disposable container. Never
 publish profiles to an external service or wildcard host address.
 
+## Agent workflow: locate one failed Reader operation
+
+Start with the safe event history and `diag connection -json` from the explicitly
+selected process. Preserve the source/build receipt, command exit, capture loss
+and joined outcome separately. A process-wide resource spike or a matching wall
+clock is not proof that this operation caused it.
+
+For an authorized reproduction, enable that process's private debug socket before
+its first eligible Reader Open. Start the explicit trace capture in another
+terminal before the Application operation (see the Reader capture commands below).
+Keep the window active through cleanup; a long operation can exceed the maximum
+30-second trace window and must remain partial. Do not retry a live product
+operation merely to obtain a trace.
+
+Open the retained trace using the standard viewer. On a native Linux diagnostic
+host, with the installed Go tools and private artifact selected explicitly:
+
+```sh
+BROWSER=/bin/true go tool trace -http=127.0.0.1:8091 /private/reader-runtime.trace
+# Open http://127.0.0.1:8091/usertask?type=ardents.reader locally.
+# Stop the viewer after diagnosis; it serves sensitive process-wide trace data.
+```
+
+The helper image also includes the prebuilt `trace` command. For a Docker viewer,
+use the read-only evidence mount and host-loopback publishing described above;
+the container's listener must be reachable through that selected mapping. A
+native loopback listener inside a container is not the host loopback listener.
+
+Use the selected task page before exporting a verbose process-wide text dump:
+
+1. Require one selected task, both task boundaries and a complete capture. Missing
+   boundaries or `reader.capture=incomplete` mean incomplete evidence. The task
+   can end while records are lost; the viewer's `(complete)` alone is insufficient.
+2. Read started/completed/failed stage pairs and their elapsed times. For example,
+   `service-authentication.completed` followed by `local-request.failed` localizes
+   the observed refusal after authentication; it does not reveal the remote cause.
+3. Check `reader.context-stop` independently of stage failure. Cancellation can
+   coexist with another error; do not replace the joined outcome with a guessed
+   cancellation diagnosis.
+4. Inspect Service/worker closure, caller join, session release and final outcome.
+   Nested stages overlap; do not sum them. The standard viewer may render a fixed
+   annotation as `log "local-request.failed"` without displaying its category.
+5. If needed, inspect the same task's goroutine/scheduler views. Capture separate
+   CPU/heap/block/mutex profiles only for the specific question being investigated.
+   They remain process-wide observations, without this task's operation binding.
+
+A small reproducible Linux regression uses existing owner tests; it is not an
+installed deployment or successful worker-launch qualification. Run in the checked
+Linux environment with a new private output directory outside the source tree:
+
+```sh
+umask 077
+mkdir /private/reader-cancel-a
+# Real Open admission/activation, cancellation while actual launch gate is held.
+go test ./internal/endpoint -run '^TestTextConnectionObservationsJoinRealCancelledLaunch$' \
+  -count=1 -timeout=30s -trace=/private/reader-cancel-a/runtime.trace
+# Real Service authentication/request/cleanup; only launch qualification is fixture supplied.
+mkdir /private/reader-service-cancel-a
+go test ./internal/endpoint \
+  -run '^TestTextConnectionObservationsThroughRealServiceAndCleanup$/^cancel-before-request$' \
+  -count=1 -timeout=30s -trace=/private/reader-service-cancel-a/runtime.trace
+```
+
+The second task should show completed Service authentication, failed local request
+and Service close, completed worker close/caller join/session release, and joined
+`canceled` outcome. The first instead retains failed worker activation/launch,
+separate observed cancellation and joined `failed` outcome. The existing tests
+also assert the private Connection snapshot and actual cleanup ownership. Test
+trace capture covers the process lifetime; the live socket capture has its own
+finite window. Retain earlier consumer/test failures when checking a new attempt.
+Keep traces, viewer pages and profiles private; neither monitoring labels nor
+Loki/Grafana receive them. Ordinary monitoring enables no debug socket or profiling.
+
 ## Live network process debug mode
 
 `ardents` and `ardents-node` accept the explicit `ARDENTS_DEBUG_SOCKET`

@@ -463,6 +463,25 @@ No Network readiness, installed worker qualification or causal diagnosis follows
 from a snapshot. Other Reader operations, Publisher telemetry and Node
 queue/credit/token gauges remain outside this capture.
 
+### Debugging consumer workflow
+
+The [diagnostic recipes](../../scripts/diagnostics/README.md#agent-workflow-locate-one-failed-reader-operation)
+route a debugging implementer from safe events and a selected private Connection
+snapshot to an explicit trace covering one authorized operation and its cleanup.
+The standard Go trace selected-task page (`/usertask?type=ardents.reader`) avoids
+exporting a verbose text dump of every runtime event. It remains a sensitive
+process-wide viewer: selecting one task does not make its listener or artifact
+safe for monitoring export. Serve only in the explicit private local diagnostic
+context and stop it after use.
+
+Require task boundaries, retained capture completeness, stage outcomes, separate
+Context-stop observations and the joined final outcome. A task marked complete
+by Go can still contain a lost/incomplete Reader capture. Task-stage ordering and
+scheduler views localize observed work and waiting; they do not prove a remote
+cause or bind separate CPU/heap profiles to the operation. The recipe includes
+existing real Open launch-cancellation and Service request-cancellation tests,
+with fixture/installation limits stated separately from their observed cleanup.
+
 ### Periodic observations and event logs
 
 Normal monitoring routes periodic `resource-sample` observations to retained
