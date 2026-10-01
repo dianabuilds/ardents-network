@@ -30,10 +30,11 @@ type Store struct {
 	path    string
 	lease   storeLease
 
-	mu      sync.Mutex
-	closed  bool
-	failure error
-	records map[[32]byte]storedDescriptor
+	mu       sync.Mutex
+	closed   bool
+	closeErr error
+	failure  error
+	records  map[[32]byte]storedDescriptor
 }
 
 // StoreClass is the closed result of descriptor publication or lookup.
@@ -98,13 +99,13 @@ func (store *Store) Close() error {
 		return nil
 	}
 	store.mu.Lock()
+	defer store.mu.Unlock()
 	if store.closed {
-		store.mu.Unlock()
-		return nil
+		return store.closeErr
 	}
 	store.closed, store.records = true, nil
-	store.mu.Unlock()
-	return store.lease.release()
+	store.closeErr = store.lease.release()
+	return store.closeErr
 }
 
 func (store *Store) publishVerified(candidate storedDescriptor) (StoreResult, error) {

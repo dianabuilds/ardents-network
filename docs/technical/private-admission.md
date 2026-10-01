@@ -458,7 +458,16 @@ snapshot cannot resume an old duty; explicit fresh State/duty/key generation
 and retained authority floors are required. Complete storage/time-authority
 rollback lies outside the surviving-boundary claim. Entries may be removed
 only after the authenticated acceptance window and its 60-second cleanup
-margin have ended; expiry never authorizes reuse.
+margin have ended; expiry never authorizes reuse. The receiving spend journal
+retains deletion time in its atomic compaction before any subsequent append.
+A supplied clock below that retained boundary refuses admission, including after
+restart; this local floor does not establish authenticated time confidence.
+The ARDSPN01 journal retains its binding header and marker-1 spend grammar.
+Compaction places one leading 41-byte record with a zero digest, positive UTC
+Unix-second deletion time and marker 2; it is committed by atomic replacement,
+never by the append crash-tail protocol. Older readers refuse this record.
+Uncompacted journals remain readable; their surviving spend records still burn
+tokens. No root reset, duty rebinding or storage rollback recovery is added.
 
 ## Bootstrap without a token cycle
 

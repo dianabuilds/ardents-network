@@ -34,12 +34,14 @@ type Binding struct {
 // holder key, permission, Target, or Application data.
 type Ledger struct {
 	closed         bool
+	closeErr       error
 	failure        error
 	slots          *IntroductionSlots
 	mu             sync.Mutex
 	path           string
 	binding        Binding
 	spent          map[[32]byte]time.Time
+	pruningFloor   time.Time
 	lease          closedSpendLease
 	openAppendFile func(string) (closedSpendAppendFile, error)
 }
@@ -63,7 +65,7 @@ func Open(root string, binding Binding) (*Ledger, error) {
 	}
 	fail := func(cause error) (*Ledger, error) { return nil, errors.Join(cause, lease.release()) }
 	path := filepath.Join(root, closedSpendLedgerName)
-	raw, err := readClosedSpendFile(path, closedSpendLedgerHeaderSize+maximumClosedSpends*closedSpendRecordSize)
+	raw, err := readClosedSpendFile(path, closedSpendLedgerHeaderSize+(maximumClosedSpends+1)*closedSpendRecordSize)
 	if errors.Is(err, os.ErrNotExist) {
 		ledger := &Ledger{path: path, binding: binding, spent: make(map[[32]byte]time.Time), lease: lease}
 		if err := writeClosedSpendExclusive(path, encodeClosedSpendHeader(binding)); err != nil {
@@ -90,18 +92,22 @@ func (ledger *Ledger) Close() error {
 	}
 	ledger.mu.Lock()
 	defer ledger.mu.Unlock()
+	if ledger.closed {
+		return ledger.closeErr
+	}
 	ledger.closed = true
 	if ledger.slots != nil {
 		ledger.slots.closed = true
 	}
 	err := ledger.lease.release()
 	ledger.lease = closedSpendLease{}
-	return errors.Join(ledger.failure, err)
+	ledger.closeErr = errors.Join(ledger.failure, err)
+	return ledger.closeErr
 }
 
 // Spend durably records a token digest before granting the caller work. A
-// duplicate or an ambiguous write is unavailable; expiry never revives a
-// token in memory and only bounds retained journal history after reopen.
+// duplicate or an ambiguous write is unavailable. Pruning atomically retains
+// its time floor, so a backward clock cannot revive deleted spends after reopen.
 func (ledger *Ledger) Spend(token []byte, window, now time.Time) error {
 	if ledger == nil || len(token) != 354 || !ValidWindow(window) || now.IsZero() {
 		return errors.New("closed token spend is invalid")
@@ -138,6 +144,9 @@ func (ledger *Ledger) Spend(token []byte, window, now time.Time) error {
 }
 
 func (ledger *Ledger) prune(now time.Time) error {
+	if now.Before(ledger.pruningFloor) {
+		return errors.New("closed spend clock below retained pruning floor")
+	}
 	retained := make(map[[32]byte]time.Time, len(ledger.spent))
 	for digest, window := range ledger.spent {
 		if now.Before(window.Add(time.Hour + time.Minute)) {
@@ -147,10 +156,11 @@ func (ledger *Ledger) prune(now time.Time) error {
 	if len(retained) == len(ledger.spent) {
 		return nil
 	}
-	if err := replaceLedger(ledger.path, ledger.binding, retained); err != nil {
+	if err := replaceLedger(ledger.path, ledger.binding, retained, now.UTC().Truncate(time.Second)); err != nil {
 		return err
 	}
 	ledger.spent = retained
+	ledger.pruningFloor = now.UTC().Truncate(time.Second)
 	return nil
 }
 
@@ -196,6 +206,16 @@ func decodeLedgerWithRepair(path string, binding Binding, raw []byte, repair fun
 	complete := len(raw) - (len(raw)-offset)%closedSpendRecordSize
 	repairAt := -1
 	for offset < complete {
+		record := raw[offset : offset+closedSpendRecordSize]
+		if record[40] == 2 {
+			seconds := binary.BigEndian.Uint64(record[32:40])
+			if offset != closedSpendLedgerHeaderSize || !bytes.Equal(record[:32], make([]byte, 32)) || seconds == 0 || seconds > 1<<63-1 {
+				return nil, errors.New("closed spend pruning floor invalid")
+			}
+			ledger.pruningFloor = time.Unix(int64(seconds), 0).UTC()
+			offset += closedSpendRecordSize
+			continue
+		}
 		digest, window, committed := decodeClosedSpendRecord(raw[offset : offset+closedSpendRecordSize])
 		if !committed {
 			// A zero marker is written before the commit byte. It is recoverable
@@ -309,7 +329,7 @@ func truncateLedger(path string, size int64) error {
 	return closeErr
 }
 
-func replaceLedger(path string, binding Binding, spends map[[32]byte]time.Time) error {
+func replaceLedger(path string, binding Binding, spends map[[32]byte]time.Time, floor time.Time) error {
 	if len(spends) > maximumClosedSpends {
 		return errors.New("closed spend ledger exceeds bound")
 	}
@@ -318,7 +338,16 @@ func replaceLedger(path string, binding Binding, spends map[[32]byte]time.Time) 
 		digests = append(digests, digest)
 	}
 	sort.Slice(digests, func(left, right int) bool { return bytes.Compare(digests[left][:], digests[right][:]) < 0 })
+	if floor.Unix() <= 0 {
+		return errors.New("closed spend pruning floor invalid")
+	}
 	raw := encodeClosedSpendHeader(binding)
+	// The leading marker-2 record is committed only by atomic replacement.
+	// Older readers refuse it; marker-1 spend records keep their exact grammar.
+	record := make([]byte, closedSpendRecordSize)
+	binary.BigEndian.PutUint64(record[32:40], uint64(floor.Unix()))
+	record[40] = 2
+	raw = append(raw, record...)
 	for _, digest := range digests {
 		window := spends[digest]
 		if !ValidWindow(window) {
