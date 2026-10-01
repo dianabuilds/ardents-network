@@ -122,6 +122,13 @@ shutdown may race to close one active Attachment; all closers join the same
 terminal cleanup, receive the same result, and cannot reuse the carrier after
 close begins.
 
+Closed Entry selection and closed Issuer root startup join their primary
+refusal with any failed exclusive-root release and return no owner. Issuer
+initialization also requires successful root release before returning its public
+SPKI receipt; a release failure returns an error and no receipt even when the
+immutable material was committed. Retained roots are never reset by cleanup;
+an explicit reopen still verifies that same material and authority.
+
 Entry owns every carrier/attachment cleanup lease returned by `Acquire`. Its
 owner rejects new acquisition as soon as close begins, cancels and joins an
 in-flight opener, closes each active attachment exactly once, and durably

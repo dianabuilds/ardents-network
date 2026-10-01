@@ -19,6 +19,10 @@ const closedSetMarker = ".ardents-entry-set-v1"
 // owner. Initial creation and subsequent commits precede every returned set;
 // ambiguous interrupted creation refuses instead of drawing replacement peers.
 func OpenClosedSets(config ClosedSetConfig) (*ClosedSets, error) {
+	return openClosedSetsWithLease(config, acquireRootLease)
+}
+
+func openClosedSetsWithLease(config ClosedSetConfig, acquire func(string) (rootLease, error)) (_ *ClosedSets, resultErr error) {
 	if config.Root == "" || config.NetworkID == [32]byte{} || config.Current == nil {
 		return nil, errors.New("closed Entry setup incomplete")
 	}
@@ -42,14 +46,14 @@ func OpenClosedSets(config ClosedSetConfig) (*ClosedSets, error) {
 	if err := validateRootPermissions(root); err != nil {
 		return nil, err
 	}
-	lease, err := acquireRootLease(root)
+	lease, err := acquire(root)
 	if err != nil {
 		return nil, err
 	}
 	opened := false
 	defer func() {
 		if !opened {
-			_ = lease.release()
+			resultErr = errors.Join(resultErr, lease.release())
 		}
 	}()
 	owner := &ClosedSets{root: root, lease: lease, current: config.Current, state: closedSetState{Version: 1, NetworkID: config.NetworkID}}

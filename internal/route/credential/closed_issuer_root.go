@@ -67,14 +67,23 @@ type closedIssuerPrivateKey struct {
 // It never imports another private key and returns only the Node-signed public
 // SPKI inventory needed by State's closed-profile preparation.
 func InitializeClosedIssuerRoot(config ClosedIssuerRootConfig) (ClosedIssuerRootReceipt, error) {
+	return initializeClosedIssuerRoot(config, openClosedIssuerRoot)
+}
+
+func initializeClosedIssuerRoot(config ClosedIssuerRootConfig, open func(string) (string, issuerRootLease, error)) (receipt ClosedIssuerRootReceipt, resultErr error) {
 	if err := validateClosedIssuerRootConfig(config); err != nil {
 		return ClosedIssuerRootReceipt{}, err
 	}
-	root, lease, err := openClosedIssuerRoot(config.Root)
+	root, lease, err := open(config.Root)
 	if err != nil {
 		return ClosedIssuerRootReceipt{}, err
 	}
-	defer lease.release()
+	defer func() {
+		resultErr = errors.Join(resultErr, lease.release())
+		if resultErr != nil {
+			receipt = ClosedIssuerRootReceipt{}
+		}
+	}()
 	materialPath := filepath.Join(root, closedIssuerMaterialName)
 	var material closedIssuerMaterial
 	if raw, readErr := readIssuerFile(materialPath, maximumClosedIssuerMaterial); readErr == nil {
@@ -139,6 +148,10 @@ func validateClosedIssuerRootConfig(config ClosedIssuerRootConfig) error {
 }
 
 func openClosedIssuerRoot(root string) (string, issuerRootLease, error) {
+	return openClosedIssuerRootWithLease(root, acquireIssuerRootLease)
+}
+
+func openClosedIssuerRootWithLease(root string, acquire func(string) (issuerRootLease, error)) (string, issuerRootLease, error) {
 	absolute, err := filepath.Abs(root)
 	if err != nil {
 		return "", issuerRootLease{}, err
@@ -150,13 +163,12 @@ func openClosedIssuerRoot(root string) (string, issuerRootLease, error) {
 	if err != nil || !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
 		return "", issuerRootLease{}, errors.New("closed issuer key root is not an owned directory")
 	}
-	lease, err := acquireIssuerRootLease(absolute)
+	lease, err := acquire(absolute)
 	if err != nil {
 		return "", issuerRootLease{}, err
 	}
 	fail := func(err error) (string, issuerRootLease, error) {
-		_ = lease.release()
-		return "", issuerRootLease{}, err
+		return "", issuerRootLease{}, errors.Join(err, lease.release())
 	}
 	if err := validateIssuerRootPermissions(absolute, info); err != nil {
 		return fail(err)

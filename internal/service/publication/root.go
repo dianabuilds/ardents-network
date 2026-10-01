@@ -63,6 +63,10 @@ func (generation *generation) releaseSigner() {
 }
 
 func openDurableRoot(config Config) (*durableRoot, error) {
+	return openDurableRootWithLease(config, acquireRootLease)
+}
+
+func openDurableRootWithLease(config Config, acquire func(string) (rootLease, error)) (_ *durableRoot, resultErr error) {
 	if config.Root == "" {
 		return nil, errors.New("publication root is required")
 	}
@@ -76,14 +80,14 @@ func openDurableRoot(config Config) (*durableRoot, error) {
 	if err := ensureLeasePath(path); err != nil {
 		return nil, err
 	}
-	lease, err := acquireRootLease(path)
+	lease, err := acquire(path)
 	if err != nil {
 		return nil, err
 	}
 	opened := false
 	defer func() {
 		if !opened {
-			_ = lease.release()
+			resultErr = errors.Join(resultErr, lease.release())
 		}
 	}()
 	if err := prepareRoot(path); err != nil {
