@@ -1234,3 +1234,55 @@ remain external ardents-r171-minimal-pipeline-a; quick-check3326 completed0.
 Healthy five-minute overhead, extended loss/storage/crash/malformed input,
 remaining support/license/advisory closure and candidate integration are still
 open. A smaller executable has not yet established smaller runtime footprint.
+
+### Minimal component support and stability review
+
+Primary exact-tag metadata/license/versioning bytes and GitHub API responses,
+accessed2026-10-01, remain external ardents-r171-minimal-support-a. file_log receiver
+logs and file_storage extension are beta with named active upstream owners;
+otlp_http exporter logs are stable (profiles alpha, not selected). Core and contrib
+root licenses are Apache2.0; this does not close every transitive module license.
+The release API currently reports v0.162.0 published2026-09-29T12:34:07Z as latest.
+The upstream security policy offers community support only for the last minor
+version. Recheck exact release/support/advisories at integration and on any newer
+minor; pinning does not extend support. VERSIONING's future major-v1 minimum
+support periods must not be attributed to these beta0.162 components.
+
+No whole-stack stable/LTS, installed C0 or independent-security claim follows
+from the local probe. Mixed component stability and the actual one-person update
+burden belong in the selection/removal decision. The first assumed docs/security.md
+path returned404; the actual exact-tag developer document is
+ docs/security-best-practices.md and links to end-user hosting/configuration
+security owners. Original partial source-review outputs were retained; missing
+path did not become evidence of absent security documentation.
+
+Primary references:
+[file receiver metadata](https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/v0.162.0/receiver/filelogreceiver/metadata.yaml),
+[file storage metadata](https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/v0.162.0/extension/storage/filestorage/metadata.yaml),
+[HTTP exporter metadata](https://github.com/open-telemetry/opentelemetry-collector/blob/v0.162.0/exporter/otlphttpexporter/metadata.yaml),
+[versioning](https://github.com/open-telemetry/opentelemetry-collector/blob/v0.162.0/VERSIONING.md),
+[community security policy](https://github.com/open-telemetry/opentelemetry-collector-contrib/security),
+[exact security developer owner](https://github.com/open-telemetry/opentelemetry-collector/blob/v0.162.0/docs/security-best-practices.md).
+
+**Minimal healthy-window measurement:** minimal-resources-a completed0/cleanup0,
+selected input snapshots stable. Seven-container healthy window307.5093897s,
+37samples, aggregate sampled peak RSS788848640bytes (752.30MiB), mean sampled CPU
+2.814054054percent of one core, combined enforced ceiling0.96core. No additional
+query helper or R-171 container was launched in that window; RSS includes Grafana
+plugin children. Daemon/host CLI overhead, integrated CPU accounting and unsampled
+peaks remain excluded. Full healthy scrape history retained152zero fixture queue
+rows for both fixture/collector sources. Final source-time catch-up covered
+watermark457 with458unique records/no query duplicates on attempt1. All run
+containers were removed. Reports/receipt remain external
+ardents-r171-minimal-resources-a; resource criteria passed.
+
+**Comparison limitation:** fixture/helper and four backend image IDs, memory and
+healthy-window CPU caps match full otel-resources-a. Its sampled peak947097600bytes
+(903.22MiB)/mean snapshot CPU2.695135135percent compare with752.30MiB/2.814054054
+in this minimal run. Preparation/query/alert/collector-selection inputs changed,
+including the ready view improvements; exact changed-name comparison receipt is
+external alongside the run. One window each is not an isolated statistical causal
+proof, sustained CPU improvement or capacity guarantee. The minimal configuration
+meets the declared local resource target and has a lower observed peak in these
+receipts. Runtime selection, remaining closure/failure/real-source/rendering and
+full candidate integration still require their own evidence.
