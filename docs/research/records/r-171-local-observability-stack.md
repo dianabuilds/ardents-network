@@ -1610,3 +1610,45 @@ Combined with the exact upstream fix inspection above, this accounts for every
 reported Go advisory in the selected source scope without suppressing scanner
 receipts. It does not close complete stack admission, real-source integration,
 runtime failure/storage behavior or the parent monitoring/debug goal.
+
+### Live supervisor snapshot export boundary
+
+A finite research HTTP exporter now reuses the exact safe snapshot metric
+mapping, reading only monitor.json from one explicit private owned Linux
+directory. Directory/file symlinks, redirected ancestors, FIFO/non-regular files,
+wrong ownership/permissions and oversized inputs refuse. An anchored directory
+descriptor preserves the selected source across normal atomic snapshot-file
+replacement without silently following directory replacement. No raw source
+stream, log/profile file, event tail, source name or PID is exposed by the fixed
+metric response. Source scope/age/units still belong to monitor_metrics.py.
+
+Actual HTTP checks distinguish unavailable input503, valid stale supervisor200
+with monitor_fresh0 and omitted resource/source-status metrics, and fresh stopped
+process survival0. The finite server has one active connection,2second idle
+timeout,16KiB response cap and<=600second explicit lifetime. Lifetime expiry
+interrupts its active socket and joins/closes the owned timer/server/descriptor.
+This is not an unconditional deadline for uninterruptible kernel filesystem I/O.
+Default loopback binding and optional explicit isolated-container binding do not
+grant an unauthenticated public monitoring/admin endpoint. Windows bind-mount
+Unix mode fidelity and managed signal/host crash cleanup remain unqualified.
+
+Installed helper0ecc73f220e154f40bdf3db718f9ff66890d6b381adaaf05fc3cbe989441c3ad
+ran15checks with network none, read-only root/source, user10001,
+capabilities none/no-new-privileges,256MiB/.5CPU/pids32 and16MiB private tmpfs.
+The initial14checks tested safe mapping, file boundaries and actual HTTP including
+an incomplete client request at expiry. The extended live test additionally used
+the real installed ardents-diagnostics monitor, supervising one explicitly owned
+shell process (sleep2; exit7). Actual safe snapshots produced survival1 then0,
+source_exit7 and sinks_joined=true. Its source refusal remained nonzero rather
+than becoming successful because HTTP export worked. The exporter completed0
+after finite lifetime. No resource-producing Node ran in this test; sample_fresh0
+and absent Node CPU values were checked. This proves a real supervisor/exporter
+seam, not product readiness, Node resource coverage or full stack ingestion.
+
+Evidence2026-10-01: ardents-r171-monitor-export-a/tests.txt (14checks) and
+live-tests.txt (15checks,8.838seconds), separate from prior synthetic stack roots.
+The snapshot exporter is research code, not maintained backend admission.
+Next integration must bind an explicitly configured real Node/process, preserve
+safe rotating event delivery to Loki, demonstrate actual Prometheus scraping,
+source/collector/loss alerts and gap/reset semantics, then complete the unchanged
+dependency, durable-storage, full-gate and parent debug requirements.

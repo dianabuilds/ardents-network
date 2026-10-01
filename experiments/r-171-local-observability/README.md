@@ -559,3 +559,48 @@ private runtime evidence under the128MiB monitoring envelope. Earlier workspace
 and cache-budget failures remain preserved. Read R-171 for scope/toolchain,
 actual receipt and unresolved artifact/source admission limits.
 Recorded graph-c:1505packages, exact source manifests and effective binary dependency versions/sums matched; no OpenPGP/S3 crypto packages or Go dynamic plugin package. R-171 limits this source disposition to the exact entrypoint/tags and records toolchain/build provenance gaps; it is not maintained stack admission.
+
+### Finite selected-snapshot HTTP exporter
+
+monitor_export.py reuses monitor_metrics.py and reads only monitor.json from one
+explicitly selected existing private directory. It opens the directory once,
+refuses redirected ancestors, anchors subsequent file opens to its descriptor,
+rejects symlinks/FIFO/non-regular/non-owned/non-private files and reads at most
+64KiB. Atomic snapshot replacement works within the selected directory; replacing
+the directory itself does not silently redirect the exporter. Raw log/profile
+paths, event tails and arbitrary filenames are never HTTP resources.
+
+Linux-only research invocation, with the selected source directory explicitly
+mounted read-only and matching its existing owner UID:
+
+~~~sh
+python3 -B /probe/monitor_export.py --snapshot-dir /selected-monitor \
+  --sample-max-age 5 --duration 300 --port 9102 --container
+~~~
+
+Use --container only on the explicitly isolated internal probe network; default
+binding is127.0.0.1. This is not a public/host administration listener or a
+maintained deployment. Windows bind mounts cannot be assumed to provide the
+required Unix ownership/0700directory/0600file guarantees. The chosen age budget
+must follow the actual producer interval;5seconds is an example, not a universal
+Node interval. Only GET /metrics is provided. Missing/invalid files return503;
+stale valid snapshots return200 with monitor_fresh0 and omitted resource/source
+status values. A stopped, fresh source emits survival0 without resource values.
+Neither survival nor a successful HTTP scrape proves product readiness.
+
+The server has one active request,2second socket idle timeout,16KiB maximum
+metric response and a finite positive lifetime at most600seconds. Expiry
+interrupts the active socket, joins its timer and closes the server/directory.
+Filesystem reads are cooperative OS operations; this does not promise an
+interruptible deadline for blocked kernel/filesystem I/O. No raw input, request
+body, private path or selected source label is logged. Current finite successful
+expiry is tested; managed signal/host crash behavior is not qualified here.
+
+Run test_monitor_metrics plus test_monitor_export in the installed helper as
+above, adding a16MiB private /tmp tmpfs. Fifteen checks passed. In addition to
+file/HTTP boundary checks, the suite launches the real installed
+ardents-diagnostics monitor supervising an owned shell process that exits7.
+Actual monitor snapshots traverse HTTP from survival1 to0, preserving source
+exit7 and joined log sinks. No Node sample exists in this workload; sample_fresh0
+and absence of Node CPU/memory metrics are asserted. This proves the supervisor
+bridge, not live product Node instrumentation or Prometheus/Loki ingestion.
