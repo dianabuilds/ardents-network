@@ -234,6 +234,11 @@ func validateInitialRecoveryJournal(journal string, intent transitionIntent) err
 			(record.Phase != phase && !(entry.Name() == "0002.json" && record.Phase == "generation-write-failed" && record.OriginalError != "")) {
 			return errors.New("repair-required: initial journal phase binding differs")
 		}
+		failurePhase := record.Phase == "generation-write-failed" || entry.Name() == "fixed-resource-failure.json" ||
+			entry.Name() == "selection-failure.json" || entry.Name() == "original-transition-failure.json"
+		if failurePhase != (record.OriginalError != "") {
+			return errors.New("repair-required: initial journal phase result contradicts its failure evidence")
+		}
 		first = first || entry.Name() == "0001.json"
 	}
 	if !first {

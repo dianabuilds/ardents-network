@@ -59,6 +59,16 @@ share the Node's measured cgroup. Ordinary developer-host execution without
 this selector retains its shared-cgroup limitation. Scope verification alone
 does not qualify installed workers, a second Endpoint, or whole-host protection.
 
+Installation filesystem component checks select
+`ARDENTS_INSTALLATION_COMPONENT_PROFILE=root` and run
+`go test -count=1 ./internal/endpoint/installation` with actual UID 0.
+The selected prerequisite test fails under a non-root UID; an ordinary
+unprivileged run cannot supply Root filesystem evidence. In Docker explicitly
+select `--user 0` and the profile environment variable rather than inferring
+privilege from the image name. Enrollment's caller-owned package test retains
+its separate unprivileged profile. Root filesystem checks do not qualify a
+system manager, cgroup containment or an admitted installed Ubuntu journey.
+
 The two-Node lifecycle process test retains TCP port reservations throughout
 State and plan preparation. It releases each reservation immediately before its
 Source or Node starts, while other addresses remain owned. This prevents its

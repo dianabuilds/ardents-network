@@ -88,6 +88,12 @@ func observeFixedResources(checked checkedBinding) error {
 }
 
 func readInstalledFile(path string, maximum int64) ([]byte, error) {
+	// Mutation journals distinguish an absent record from an invalid existing
+	// installed file. Preserve absence without weakening the worker reader's
+	// ownership, ancestor or bounded-file checks for objects that exist.
+	if _, err := os.Lstat(path); os.IsNotExist(err) {
+		return nil, err
+	}
 	return worker.ReadInstalledFile(path, maximum)
 }
 
