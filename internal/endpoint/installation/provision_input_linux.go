@@ -18,7 +18,7 @@ import (
 // Only Release floors may change here; no account, participant or unit is made.
 func loadProvisionInput(ctx context.Context, path string) (Request, Authorization, error) {
 	if ctx == nil || os.Geteuid() != 0 {
-		return Request{}, Authorization{}, errors.New("Endpoint provisioning requires root and context")
+		return Request{}, Authorization{}, errors.New("endpoint provisioning requires root and context")
 	}
 	if err := observePlatform(ctx); err != nil {
 		return Request{}, Authorization{}, err

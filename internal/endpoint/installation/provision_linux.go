@@ -11,7 +11,7 @@ import (
 
 func provisionInitial(ctx context.Context, path string) (result ProvisionResult, returnedErr error) {
 	if os.Geteuid() != 0 {
-		return ProvisionResult{}, errors.New("Endpoint provisioning requires root")
+		return ProvisionResult{}, errors.New("endpoint provisioning requires root")
 	}
 	lease, err := acquireRootLease("/run/ardents-installation.lock")
 	if err != nil {
