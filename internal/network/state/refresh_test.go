@@ -59,9 +59,9 @@ func TestRefreshWaitsForTwoAuthenticatedSourcesAndRestarts(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	endpointConfig.Clock = func() time.Time { return now }
+	endpointConfig.Clock = advancingVerificationClock(now)
 	endpointConfig.Now = time.Time{}
-	endpointConfig.ClockObservation = now
+	endpointConfig.ObserveClock = endpointConfig.Clock
 	endpointConfig.Source.Sources = [2]source.Source{
 		{Address: addresses[0], ServerName: "source-one.test", Identity: sha256.Sum256([]byte("source-one")),
 			Family: "source-family-one", EndpointHandle: "source-handle-one", RootPEM: firstAuthority.rootPEM, LeafKeyDigest: firstServer.pin},
@@ -103,7 +103,7 @@ func TestRefreshWaitsForTwoAuthenticatedSourcesAndRestarts(t *testing.T) {
 	}
 	defer restarted.Close()
 	recovered, err := restarted.Current()
-	if err != nil || recovered.Epoch != 2 || recovered.SourceAttempts != 2 || recovered.TrustedTime != now {
+	if err != nil || recovered.Epoch != 2 || recovered.SourceAttempts != 2 || recovered.TrustedTime != refreshed.TrustedTime {
 		t.Fatalf("recovered source state=%+v err=%v", recovered, err)
 	}
 	if err := restarted.Close(); err != nil {
@@ -278,7 +278,7 @@ func TestRefreshRejectsUncertainClockBeforeContact(t *testing.T) {
 	successor := nextFixture(t, genesis)
 	config, closeSources := sourceEnvironment(t, genesis, successor, successor)
 	defer closeSources()
-	config.ClockObservation = config.ClockObservation.Add(-3 * time.Second)
+	config.ObserveClock = func() time.Time { return time.Unix(genesis.now-3, 0).UTC() }
 	endpoint, err := state.Open(config)
 	if err != nil {
 		t.Fatal(err)
@@ -313,8 +313,8 @@ func TestRefreshStagesFutureEpochAndActivatesAfterRestart(t *testing.T) {
 		t.Fatal(err)
 	}
 	later := time.Unix(genesis.now+21, 0).UTC()
-	config.Clock = func() time.Time { return later }
-	config.ClockObservation = later
+	config.Clock = advancingVerificationClock(later)
+	config.ObserveClock = config.Clock
 	restarted, err := state.Open(config)
 	if err != nil {
 		t.Fatalf("restart with pending Epoch: %v", err)
@@ -356,8 +356,8 @@ func sourceEnvironment(t *testing.T, genesis, firstValue, secondValue fixture) (
 		t.Fatal(err)
 	}
 	config.Now = time.Time{}
-	config.Clock = func() time.Time { return now }
-	config.ClockObservation = now
+	config.Clock = advancingVerificationClock(now)
+	config.ObserveClock = config.Clock
 	config.Source.Sources = [2]source.Source{
 		{Address: addresses[0], ServerName: "first-source.test", Identity: sha256.Sum256([]byte("first-source")),
 			Family: "first-source-family", EndpointHandle: "first-source-handle", RootPEM: firstAuthority.rootPEM, LeafKeyDigest: firstServer.pin},
@@ -484,4 +484,12 @@ func makeTestLeaf(t *testing.T, authority testCertificate, marker byte, name str
 	prefix := []byte("ardents-h3-source-transport-key-v1\x00")
 	pin := sha256.Sum256(append(prefix, private.Public().(ed25519.PublicKey)...))
 	return testCertificate{certificate: tls.Certificate{Certificate: [][]byte{raw}, PrivateKey: private}, pin: pin}
+}
+
+// advancingVerificationClock keeps synthetic Epoch time aligned with elapsed
+// monotonic time. Source tests require current observations even when disk or
+// TLS setup takes longer than the production two-second confidence window.
+func advancingVerificationClock(base time.Time) func() time.Time {
+	started := time.Now()
+	return func() time.Time { return base.Add(time.Since(started)) }
 }

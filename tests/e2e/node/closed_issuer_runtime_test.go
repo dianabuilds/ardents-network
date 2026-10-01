@@ -21,7 +21,7 @@ import (
 // All State and issuer material below is accepted through product commands;
 // the Node's own runtime opens State and obtains its current duty projection.
 func runClosedIssuerProcess(t *testing.T, node, endpoint string, acceptArguments []string, signedProfile, issuerRoot string,
-	network, issuer [32]byte, authority, identity ed25519.PrivateKey, now time.Time, nodeCount int, exchange func(bool), participant func(string, map[string]any)) {
+	network, issuer [32]byte, authority, identity ed25519.PrivateKey, now time.Time, nodeCount int, ports []*reservedProcessPort, exchange func(bool), participant func(string, map[string]any)) {
 	t.Helper()
 	public := authority.Public().(ed25519.PublicKey)
 	clientAuthority := makeAuthority(t, "issuer-command-source-client")
@@ -69,6 +69,7 @@ func runClosedIssuerProcess(t *testing.T, node, endpoint string, acceptArguments
 		"source_client_certificate": client.certificate, "source_client_key": client.key,
 		"closed_issuer": map[string]any{"root": issuerRoot, "admission_root": t.TempDir(), "connection_limit": 2, "drain_timeout_ms": 1000}}
 	path := writeJSON(t, "closed-issuer-node.json", plan)
+	ports[1].release(t)
 	first := startNodeCommand(t, node, "issuer", "serve", "--config", path)
 	t.Cleanup(func() { stopClosedIssuerProcess(t, first) })
 	ready := waitNodeState(t, first, "READY", 10*time.Second)
@@ -125,6 +126,7 @@ func runClosedIssuerProcess(t *testing.T, node, endpoint string, acceptArguments
 			reservation["termination_traffic"] = map[string]uint64{"tx": 1, "rx": 1}
 			forwardPlan["closed_forwarding"] = reservation
 		}
+		ports[index].release(t)
 		process := startNodeCommand(t, node, "node", "--config", writeJSON(t, fmt.Sprintf("closed-node-%d.json", index+1), forwardPlan))
 		t.Cleanup(func() { stopClosedIssuerProcess(t, process) })
 		waitNodeState(t, process, "READY", 10*time.Second)

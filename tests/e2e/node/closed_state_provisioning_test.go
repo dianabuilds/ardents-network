@@ -7,7 +7,6 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
-	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -24,12 +23,13 @@ import (
 // durable State validators. No accepted projection is fabricated here.
 func closedProvisioningState(t *testing.T, network, issuer [32]byte, authority, issuerKey ed25519.PrivateKey, now time.Time, carrier string) (state.Config, state.Snapshot, []networkfixture.Record, string, []string) {
 	t.Helper()
-	return closedProvisioningStateSize(t, network, issuer, authority, issuerKey, now, carrier, 3)
+	config, snapshot, records, binary, arguments, _ := closedProvisioningStateSize(t, network, issuer, authority, issuerKey, now, carrier, 3)
+	return config, snapshot, records, binary, arguments
 }
-func closedProvisioningStateSize(t *testing.T, network, issuer [32]byte, authority, issuerKey ed25519.PrivateKey, now time.Time, carrier string, count int) (state.Config, state.Snapshot, []networkfixture.Record, string, []string) {
+func closedProvisioningStateSize(t *testing.T, network, issuer [32]byte, authority, issuerKey ed25519.PrivateKey, now time.Time, carrier string, count int) (state.Config, state.Snapshot, []networkfixture.Record, string, []string, []*reservedProcessPort) {
 	t.Helper()
 	records := make([]networkfixture.Record, count)
-	addresses := make(map[string]struct{}, count)
+	ports := make([]*reservedProcessPort, count)
 	roles := closedTextTopologyRoles(count)
 	seed := sha256.Sum256([]byte("closed command provisioning"))
 	domains := closedTopologyDomains(roles)
@@ -45,14 +45,8 @@ func closedProvisioningStateSize(t *testing.T, network, issuer [32]byte, authori
 		if index >= 2 {
 			node = [32]byte{byte(index + 1)}
 		}
-		address := closedProvisioningAddress(t, carrier)
-		for {
-			if _, exists := addresses[address]; !exists {
-				addresses[address] = struct{}{}
-				break
-			}
-			address = closedProvisioningAddress(t, carrier)
-		}
+		ports[index] = reserveProvisioningPort(t, carrier)
+		address := ports[index].address
 		family := closedRoleFamily(t, network, seed, domains, closedRoleDomainName(roles[index][0]), fmt.Sprintf("closed-node-%d", index+1))
 		record, err := networkfixture.BuildRecord(networkfixture.RecordSpec{NetworkID: network, NodeID: node, Generation: uint64(index + 1),
 			ValidFrom: now, ValidUntil: now.Add(2 * time.Hour), Family: family,
@@ -113,7 +107,7 @@ func closedProvisioningStateSize(t *testing.T, network, issuer [32]byte, authori
 	if acceptErr != nil || closeErr != nil {
 		t.Fatalf("accept canonical closed State: %v / %v", acceptErr, closeErr)
 	}
-	return config, snapshot, records, binary, arguments
+	return config, snapshot, records, binary, arguments, ports
 }
 
 func runProvisioningCommand(t *testing.T, binary string, arguments ...string) {
@@ -123,24 +117,6 @@ func runProvisioningCommand(t *testing.T, binary string, arguments ...string) {
 	if output, err := exec.CommandContext(ctx, binary, arguments...).CombinedOutput(); err != nil {
 		t.Fatalf("provisioning command %s: %v / %s", arguments[0], err, output)
 	}
-}
-
-// Windows can exclude a UDP range while allowing TCP binds to the same ports.
-// Probe the selected Carrier's socket family before signing its Node Record.
-func closedProvisioningAddress(t *testing.T, carrier string) string {
-	t.Helper()
-	if carrier != "ardents-carrier-quic-v2" {
-		return freeAddress(t)
-	}
-	listener, err := net.ListenPacket("udp4", "127.0.0.1:0")
-	if err != nil {
-		t.Fatal(err)
-	}
-	address := listener.LocalAddr().String()
-	if err := listener.Close(); err != nil {
-		t.Fatal(err)
-	}
-	return address
 }
 
 // closedTextTopologyRoles is the semantic closed Route topology: each entry is

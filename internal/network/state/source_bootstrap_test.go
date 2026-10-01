@@ -18,8 +18,8 @@ func TestSourceBootstrapWaitsForFutureGenesisWithoutStaging(t *testing.T) {
 	config.Root = root
 	config.LocalRoleStateRoot = root + "-local-roles"
 	now := time.Unix(fixtureNow-40, 0).UTC()
-	config.Clock = func() time.Time { return now }
-	config.ClockObservation = now
+	config.Clock = advancingVerificationClock(now)
+	config.ObserveClock = config.Clock
 
 	store, err := state.Open(config)
 	if err != nil {
@@ -53,7 +53,8 @@ func TestSourceBootstrapWaitsForFutureGenesisWithoutStaging(t *testing.T) {
 	}
 
 	now = time.Unix(fixtureNow-29, 0).UTC()
-	config.ClockObservation = now
+	config.Clock = advancingVerificationClock(now)
+	config.ObserveClock = config.Clock
 	current, err := state.Open(config)
 	if err != nil {
 		t.Fatal(err)

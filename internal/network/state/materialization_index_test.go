@@ -50,6 +50,9 @@ func TestRefreshRejectsWrongIndexAndMalformedMaterialization(t *testing.T) {
 				t.Fatal(err)
 			}
 			defer store.Close()
+			if test.name == "short prefix" {
+				time.Sleep(2100 * time.Millisecond)
+			}
 			if _, err := store.Refresh(context.Background()); err == nil || !strings.Contains(err.Error(), test.wantError) {
 				t.Fatalf("Refresh error = %v, want %q", err, test.wantError)
 			}
@@ -93,8 +96,8 @@ func sourceEnvironmentWithMaterial(t *testing.T, genesis, successor fixture, mat
 		t.Fatal(err)
 	}
 	config.Now = time.Time{}
-	config.Clock = func() time.Time { return now }
-	config.ClockObservation = now
+	config.Clock = advancingVerificationClock(now)
+	config.ObserveClock = config.Clock
 	config.Source.ClientCertificate = client.certificate
 	config.Source.OrderSeed = sha256.Sum256([]byte("material-source-order"))
 	var cancels [2]context.CancelFunc

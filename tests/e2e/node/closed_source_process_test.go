@@ -83,6 +83,8 @@ func TestClosedSourceProcessesDistributeAcceptedState(t *testing.T) {
 			EndpointHandle: fmt.Sprintf("endpoint-%d", index), RootPEM: pem, LeafKeyDigest: server.sourcePin}
 	}
 	config.Root, config.Source = t.TempDir(), transport
+	config.Now, config.ClockObservation = time.Time{}, time.Time{}
+	config.Clock, config.ObserveClock = time.Now, time.Now
 	config.LocalRoleStateRoot = t.TempDir()
 	if err := os.Chmod(config.LocalRoleStateRoot, 0o700); err != nil {
 		t.Fatal(err)
