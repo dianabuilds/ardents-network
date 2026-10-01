@@ -92,6 +92,26 @@ panels.append({'id':4,'title':'Events: severity / source / message','type':'logs
 print('Prepared separate role keys and local data sources; no credentials printed')
 
 if node_preview:
+    node_log_format = (
+        '{{if eq .entry_schema "ardents-node-event-v1"}}Node'
+        '{{else if eq .entry_schema "ardents-source-event-v1"}}Source'
+        '{{else if eq .entry_schema "ardents-headless-runtime-event-v1"}}Endpoint'
+        '{{else}}Collector{{end}} · {{if eq .entry_kind "lifecycle"}}Переход состояния'
+        '{{else if eq .entry_kind "resource"}}Решение по ресурсам'
+        '{{else if eq .entry_kind "source-ready"}}Source готов'
+        '{{else if eq .entry_kind "source-wave-accepted"}}Волна принята'
+        '{{else if eq .entry_kind "source-failed"}}Source сообщил об отказе'
+        '{{else if eq .entry_kind "headless-runtime-connection-operation-failed"}}Операция соединения отказала'
+        '{{else if eq .entry_kind "headless-runtime-publication-refresh-failed"}}Обновление публикации отказало'
+        '{{else if eq .entry_kind "headless-runtime-publication-withdrawal-failed"}}Снятие публикации отказало'
+        '{{else if eq .entry_kind "headless-runtime-permission-required"}}Требуется разрешение'
+        '{{else if eq .entry_kind "headless-runtime-ready"}}Endpoint готов'
+        '{{else if eq .entry_kind "headless-runtime-failed"}}Endpoint сообщил об отказе'
+        '{{else}}{{.entry_kind}}{{end}}{{if .entry_state}} · {{.entry_state}}{{end}}{{if .entry_failure}} · категория отказа: {{.entry_failure}}{{end}}{{if .entry_carrier}} · {{.entry_carrier}}{{end}} · {{.stream}} #{{.sequence}}'
+    )
+    node_log_query = ('{job="node"} | json | entry_schema=~"${component:regex}" '
+                      '| entry_kind=~"${event_kind:regex}" | line_format '
+                      + json.dumps(node_log_format, ensure_ascii=False))
     node = root / 'node'
     shutil.copyfile(ca / 'ca.crt', node / 'client-ca.crt')
     public = subprocess.run(['openssl', 'x509', '-in', str(root/'prometheus'/'client.crt'),
@@ -133,15 +153,25 @@ if node_preview:
             'description':description,'fieldConfig':{'defaults':{'unit':unit,'custom':{'spanNulls':False}},'overrides':[]}})
     panels.append({'id':9,'title':'События настоящего Node','type':'logs',
         'gridPos':{'x':0,'y':28,'w':24,'h':12},'datasource':{'type':'loki','uid':'loki'},
-        'targets':[{'refId':'A','expr':'{job="node"} | json | line_format "{{.entry_kind}} · {{.entry_state}}{{if .entry_failure}} · {{.entry_failure}}{{end}} · {{.stream}} #{{.sequence}}"'}],
-        'options':{'showTime':True,'showLabels':False,'wrapLogMessage':True},
-        'description':'Safe projected lifecycle events. Resource samples are separate metrics. Explore opens the original record and field filters.'})
+        'targets':[{'refId':'A','expr':node_log_query}],
+        'options':{'showTime':True,'showLabels':False,'wrapLogMessage':True,'sortOrder':'Descending','enableLogDetails':True},
+        'description':'Фильтры компонента и события применяются к выбранному интервалу. Раскройте строку для исходной категории, времени владельца и времени наблюдения. READY — событие в прошлом, а не текущая готовность. Категория отказа не доказывает первопричину. Ресурсные samples показаны в метриках.'})
     panels.append({'id':10,'title':'Источник и границы наблюдения','type':'text',
         'gridPos':{'x':0,'y':0,'w':24,'h':4},
         'options':{'mode':'markdown','content':'Настоящий Introduction Node и два Sources в одном локальном контейнере. **CPU и память относятся ко всему контейнеру.** Работающий процесс не доказывает готовность сети. Разрывы измерений не заполняются нулями. Профили доступны отдельно в приватном debug режиме и не поступают в мониторинг. Стенд работает один час. Подключение установленных узлов ещё не проверено.'}})
     (grafana/'dashboards'/'probe.json').write_text(json.dumps({'uid':'accepted-node',
         'title':'Ardents · живой Node','schemaVersion':39,'version':1,'editable':False,
-        'time':{'from':'now-15m','to':'now'},'refresh':'5s','panels':panels},ensure_ascii=False))
+        'time':{'from':'now-15m','to':'now'},'refresh':'5s',
+        'templating':{'list':[
+            {'name':'component','label':'Компонент','type':'custom',
+             'query':'Node : ardents-node-event-v1, Source : ardents-source-event-v1, Endpoint : ardents-headless-runtime-event-v1',
+             'multi':True,'includeAll':True,'allValue':'.*',
+             'current':{'text':'All','value':'$__all','selected':True}},
+            {'name':'event_kind','label':'Событие','type':'custom',
+             'query':'lifecycle, resource, source-ready, source-wave-accepted, source-failed, headless-runtime-ready, headless-runtime-failed, headless-runtime-permission-required, headless-runtime-publication-refresh-failed, headless-runtime-publication-withdrawal-failed, headless-runtime-connection-operation-failed',
+             'multi':True,'includeAll':True,'allValue':'.*',
+             'current':{'text':'All','value':'$__all','selected':True}}
+        ]},'panels':panels},ensure_ascii=False))
     (provisioning/'dashboards'/'local.yml').write_text(json.dumps({'apiVersion':1,'providers':[
         {'name':'Actual local Node','type':'file','disableDeletion':True,'editable':False,
          'options':{'path':'/private/dashboards'}}]}))

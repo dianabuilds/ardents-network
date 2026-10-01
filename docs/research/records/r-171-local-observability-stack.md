@@ -2254,3 +2254,46 @@ only EnableIntegrationWithDefaultWslDistro=false is explicitly stored; its
 current CLI enable supports model-runner, not WSL integration. No settings were
 changed. Pending Product Owner decision remains required before dependent
 integration changes; unrelated backend containers retain their state.
+
+
+### Readable event presentation (2026-10-01)
+
+The Node preview dashboard now describes the projected event categories instead
+of displaying only lifecycle/state tokens. Component and event custom variables
+filter parsed fields at query time with Grafana regex formatting; all remains
+the initial selection. No index labels, source instrumentation, retained event
+format or authority change is introduced. Original categories, owner/observation
+times and numeric fields remain available through expanded logs and the existing
+Loki JSON query. Component is derived from the fixed event schema, not from
+stdout/stderr. Resource samples remain excluded from the event stream.
+
+Native presentation-a accepted the initial template in the selected pinned Loki.
+Presentation-b generated the final dashboard using the real preparation script,
+then authenticated to the existing selected backend using its private diagnostic
+certificates. The all and Node/lifecycle selections each returned five historical
+rows; every selected Node row began with the expected readable Node/state-transition
+prefix. Source/source-failed accepted the query but returned zero rows. Receipts
+are private under the external ardents-r171-log-presentation-a/b roots. No source
+failure was induced and no absence-as-health, operation-association or causal
+localization claim follows. Browser rendering and deployment of this preparation
+change remain unverified. Existing preview history and provisioning are unchanged.
+
+The Product Owner authorized Ubuntu WSL integration. The available Docker CLI
+does not expose that switch, and native Windows UI control is unavailable in
+this session; the supported Settings/Resources/WSL Integration action was handed
+to the Product Owner. No Docker setting or unrelated container was changed.
+Dependent disk deployment waits for actual Docker availability in Ubuntu, while
+independent event-presentation work proceeds in the same selected engineering slice.
+
+
+Grafana's [Loki variable documentation](https://grafana.com/docs/grafana/latest/datasources/loki/template-variables/)
+and [all-value documentation](https://grafana.com/docs/grafana/latest/visualizations/dashboards/variables/add-template-variables/)
+(accessed2026-10-01) document regex formatting for multiple values and unescaped
+custom all values. The prepared variables use fixed catalogue values and explicit
+`.*` for all. Native substituted Loki queries were checked; actual frontend
+interpolation remains part of the pending browser check, not proved by that
+upstream documentation or a manual substitution.
+
+make quick-check completed exit0 for the presentation delta. Both bounded
+read-only spec/standards reviews reported no actionable finding. No full-stack
+acceptance, maintained backend admission or dev integration follows.

@@ -988,3 +988,31 @@ Windows invocation (explicit offline root bootstrap only):
 --name <NEW_SHORT_NAME>`. The finalizer discovers actual resources even when
 setup fails after effects, verifies ownership and checks that both the exact
 mountpoint and image associations are absent. Unknown cleanup is never success.
+
+
+### Reading Node events
+
+The prepared Node dashboard has component and event filters over the shared
+selected time interval. These filter parsed fields at query time; they add no
+Loki index labels. Each row names Node, Source, Endpoint or the collector,
+then the event description, available state, typed failure category, Carrier,
+stream and local sequence. Expand a row in Grafana/Explore for the original
+projected fields, including owner time and observation time. Sequence numbers
+belong to the monitor session, not a Network operation or cross-process trace.
+A historical READY event is not current readiness. An empty filtered view is
+not a health verdict, and a failure category is not a proven cause.
+
+For the debugging implementer, select the failing event kind, then inspect the
+same interval with all events to obtain surrounding transitions. Preserve
+collector/source availability and loss observations from that interval. The
+existing authenticated Loki query interface returns the projected JSON when
+`line_format` is omitted; use `entry.kind` and `entry.failure` from that JSON
+rather than parsing the translated display string. Profiles remain in the
+separate private debug package. No resource samples, raw payloads, arbitrary
+error text or private profile data are added to the event stream.
+
+Native presentation-b generated the actual13-panel dashboard and accepted all,
+Node/lifecycle and Source/source-failed queries in the selected pinned Loki.
+Five historical Node lifecycle rows were rendered by the native template;
+the Source refusal selection returned zero rows. This checks native query and
+template behavior, not browser rendering, a new live source or a causal diagnosis.
