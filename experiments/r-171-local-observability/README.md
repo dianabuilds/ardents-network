@@ -452,3 +452,44 @@ settings after the shared-interval query. Start/end tree hashes must match.
 The finite synthetic profile also checks alert/source/collector lifecycle,
 catch-up and ordered restart. It does not prove browser rendering, real process
 integration, updated resource overhead or maintained dependency admission.
+
+### Finite rendered browser profile
+
+Install the temporary standard-library Windows relay explicitly from this directory:
+
+~~~powershell
+make tools-install COLLECTOR=browser-relay EVIDENCE_ROOT=C:/Users/vitek/AppData/Local/Temp/ardents-r171-browser-relay-new
+powershell -NoProfile -ExecutionPolicy RemoteSigned -File probe.ps1 -EvidenceRoot C:/Users/vitek/AppData/Local/Temp/ardents-r171-browser-new -RunName r171-browser-new -Collector otel -MinimalCollector -PatchedPluginRoot C:/Users/vitek/AppData/Local/Temp/ardents-r171-plugin-trees-a -BrowserProbe -BrowserRelayBinary C:/Users/vitek/AppData/Local/Temp/ardents-r171-browser-relay-new/browser-relay.exe
+~~~
+
+The recipe requires the exact checked relay hash recorded in probe.ps1. A changed
+source/toolchain or build identity requires inspection and an explicit pin update;
+a fresh build is not automatically accepted. Generated executable and evidence
+stay outside Git. The relay is build-ignored experimental code, not a maintained
+package or proposed monitoring service.
+
+The profile retains native delivery checks, explicitly freezes the synthetic
+source for12seconds, then verifies catch-up, shared query intervals and plugin
+identity before opening a browser window. It excludes full lifecycle/restart,
+backend/storage pressure and resource measurement; those have separate profiles.
+Never interpret this profile's successful exit as completion of those profiles.
+
+Open the browser-ready.txt URL and use the private generated Grafana login.
+Inspect actual rendered metric gaps, legends/units, logs and expanded metadata.
+Record observations separately under reports/browser-observation.json. To release
+the finite window, write browser-done.txt in the same private evidence directory.
+This marker is an operator release, not a machine assertion of UI correctness.
+
+The host relay binds only127.0.0.1:8098, has a300second lifetime, at most8
+concurrent streams and30second idle deadlines. Its only destination is
+grafana:3000 through the explicitly named synthetic browser-tunnel container.
+That helper has128MiB/.1CPU/pids64, no host mounts or capabilities and remains
+on the existing internal network. The probe owns and stops the relay before
+Compose teardown. No daemon configuration, public egress or unsigned plugin
+loading is enabled. Loopback access still requires Grafana authentication and
+the intact local host/daemon trust assumption. Relay overhead is not qualified
+by earlier resource measurements.
+
+Read R-171 for retained Docker port-publication and initial browser chunk failures,
+the successful warm-cache render, and remaining cold-load/alert presentation
+limitations. This remains synthetic research evidence, not real Node monitoring.

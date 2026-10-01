@@ -1410,3 +1410,76 @@ monitoring acceptance still precede maintained admission and dev integration.
 Primary configuration reviewed2026-10-01:
 [Grafana external core plugin setting](https://grafana.com/docs/grafana/latest/setup-grafana/configure-grafana/#as_external),
 [signature enforcement](https://grafana.com/docs/grafana/latest/administration/plugin-management/plugin-sign/).
+
+### Rendered browser evidence and presentation repairs
+
+Browser profiles were investigated2026-10-01 with the minimal H2 distribution
+and the exact signed external datasource trees above. The normal lifecycle and
+resource profiles retain their own assertions. The finite browser profile
+excludes those profiles, explicitly freezes the fixture12seconds and preserves
+the shared-interval gap assertion. Successful probe exit alone is not UI proof.
+
+Original browser-a could query Grafana internally but the host browser could not
+connect: Docker29.1.3 retained requested HostConfig.PortBindings while
+NetworkSettings.Ports showed an empty3000/tcp binding. The backend receipt's
+complete flag does not turn that UI failure into a pass. No daemon configuration,
+external network or protection bypass was used. A temporary fixed-destination
+Docker-exec relay was added only for this synthetic investigation. It listens on
+host127.0.0.1:8098 for at most300seconds, limits concurrency to8 and has30second
+idle deadlines. Its helper has128MiB/.1CPU/pids64 on the internal probe network.
+It mounts no host socket, raw logs, product inputs or authority roots. The host
+CLI owns the Docker connection; this is not a maintained monitoring component.
+
+Relay installation-a retained a PowerShell Get-FileHash availability failure;
+.NET hashing corrected the explicit installation route. The first quick-check
+rejected the Go experiment because it lacked the required build-ignore tag and
+appeared as an unregistered maintained package. The prescribed build-ignore tag
+fixed that defect without changing the architecture gate or package map.
+Current installation-c produced4224512bytes,
+SHA25647f5668b637b115514e873b9264d3721f2a9417c8ba3eedb26ddf5440b59259b.
+The probe checks that exact identity. Temporary executables remain outside Git.
+
+Browser-b first showed a logsPanel ChunkLoadError and failed metric/log panels.
+A direct asset request succeeded200/17270bytes; the helper was alive without OOM.
+One explicit reload rendered the panels. This does not establish the failure's
+cause or reliable cold initial loading. The subsequent relay uses renewed idle
+deadlines instead of an absolute connection deadline; no causal fix claim is
+made. B expired its300second window without observing release, then cleaned up0.
+Its successful backend receipt is distinct from the initial rendered failure.
+
+Browser-c failed the shared-interval gap assertion: its shortened profile had
+omitted the source freeze. That FAIL/cleanup0 remains evidence. Browser-d added
+the explicit12second freeze and4second resumed settling interval; the gap
+assertion was retained, not relaxed. D completed with unchanged source/plugin
+snapshots, release observed after194.540441seconds, cleanup0 and no surviving
+probe containers. Its manual reports/browser-observation.json records an
+authenticated warm-cache render without another reload after dashboard
+navigation. The browser tab was closed after verification.
+
+Rendered D showed Queue, Events total, fixture/collector availability and
+Observation age legends; source-age units were seconds. The queue and cumulative
+event plots visibly broke at the selected source freeze; availability showed0.
+Log bodies became "synthetic_fixture · normal #175" with INFO in its own column.
+Expanded structured metadata retained event/level/scope/sequence/source time.
+Removing redundant OTel JSON parsing eliminated duplicated _extracted fields;
+the only indexed label remained job. Stored source JSON was not changed.
+Alloy retains its own parsing path; this render verifies the selected OTel path.
+
+This resolves basic actual-render evidence for the synthetic profile. It does
+not qualify cold first-load behavior, search/filter workflows, real-process
+integration, updated plugin/relay overhead or final administration usability.
+The alert history chart still has confusing long legends and binary line
+presentation; availability interpolation also needs presentation review.
+Acknowledgement and durable incident history remain separate contract gaps.
+Exact dependency/support/OS admission, durable storage, real-source/debug
+integration and full gates remain required before the complete monitoring
+system can be accepted or integrated into dev.
+
+External evidence: ardents-r171-browser-relay-a/b/c and
+ardents-r171-browser-a/b/c/d. Runtime-d ended2026-10-01T04:17:37.4086040Z.
+Primary Docker networking references consulted2026-10-01:
+[Desktop networking](https://docs.docker.com/desktop/features/networking/networking-how-tos/)
+and [Moby internal-network port report](https://github.com/moby/moby/discussions/53256).
+The report supports investigating the observed publication failure, not a
+general guarantee about every internal network or an authorized daemon change.
+Final delta review additionally requires the owned relay process to remain alive at readiness; an unrelated responding loopback listener cannot by itself satisfy that check. Runtime-d predates this added refusal check; it is not claimed as a replay of the final script.

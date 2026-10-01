@@ -58,17 +58,17 @@ for name,kind,url in [('Metrics','prometheus','https://prometheus:9090'),('Logs'
 (grafana/'dashboards').mkdir()
 panels = []
 for i,(title,expr,unit) in enumerate([
-    ('Synthetic queue (items; not Node duty)','diagnostic_fixture_queue_items','short'),
-    ('Generated fixture events (counter)','diagnostic_fixture_events_total','short'),
-    ('Scrape availability (fixture/collector)','up{job=~"fixture|collector"}','short')]):
+    ('Fixture queue (items)','diagnostic_fixture_queue_items','short'),
+    ('Fixture events (total)','diagnostic_fixture_events_total','short'),
+    ('Source / collector availability','up{job=~"fixture|collector"}','short')]):
     panels.append({'id':i+1,'title':title,'type':'timeseries','gridPos':{'x':i*8,'y':0,'w':8,'h':8},
-      'datasource':{'type':'prometheus','uid':'prometheus'},'targets':[{'refId':'A','expr':expr}],
+      'datasource':{'type':'prometheus','uid':'prometheus'},'targets':[{'refId':'A','expr':expr,'legendFormat':'{{job}}' if expr.startswith('up{') else ('Queue' if i==0 else 'Events total')}],
       'fieldConfig':{'defaults':{'unit':unit,'custom':{'spanNulls':False}},'overrides':[]}})
 panels.append({'id':5,'title':'Source observation age (seconds)',
     'description':'Age of the fixture observation, independent of log silence. Missing series means unavailable.',
     'type':'timeseries','gridPos':{'x':0,'y':8,'w':8,'h':8},
     'datasource':{'type':'prometheus','uid':'prometheus'},
-    'targets':[{'refId':'A','expr':'time() - diagnostic_fixture_heartbeat_seconds'}],
+    'targets':[{'refId':'A','expr':'time() - diagnostic_fixture_heartbeat_seconds','legendFormat':'Observation age'}],
     'fieldConfig':{'defaults':{'unit':'s','custom':{'spanNulls':False}},'overrides':[]}})
 panels.append({'id':6,'title':'Alert history: pending / firing',
     'description':'Measured Prometheus rule states. Absence alone is not proof of recovery; check source and collector availability. Silence does not change this history.',
@@ -77,10 +77,14 @@ panels.append({'id':6,'title':'Alert history: pending / firing',
     'targets':[{'refId':'A','expr':'ALERTS{alertstate=~"pending|firing"}',
                 'legendFormat':'{{alertname}} · {{alertstate}} · {{scope}}'}],
     'fieldConfig':{'defaults':{'unit':'short','custom':{'spanNulls':False}},'overrides':[]}})
+collector=os.environ.get('R171_COLLECTOR','alloy')
+if collector not in ('alloy','otel'): raise RuntimeError('Unknown selected collector')
+parse_stage='' if collector=='otel' else ' | json'
+log_expression='{job="fixture"}'+parse_stage+' | line_format "{{.scope}} · {{.event}} #{{.sequence}}"'
 panels.append({'id':4,'title':'Events: severity / source / message','type':'logs',
     'gridPos':{'x':0,'y':16,'w':24,'h':10},'datasource':{'type':'loki','uid':'loki'},
     'description':'Synthetic events only. Query formatting does not rewrite stored JSON. Use Explore for field search and original record details.',
-    'targets':[{'refId':'A','expr':'{job="fixture"} | json | line_format "{{.level}} {{.scope}} {{.event}} #{{.sequence}}"'}],
+    'targets':[{'refId':'A','expr':log_expression}],
     'options':{'showTime':True,'showLabels':False,'wrapLogMessage':True}})
 (grafana/'dashboards'/'probe.json').write_text(json.dumps({'uid':'synthetic-probe','title':'Local synthetic monitoring probe',
  'schemaVersion':39,'version':1,'editable':False,'time':{'from':'now-5m','to':'now'},'refresh':'5s','panels':panels}))

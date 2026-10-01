@@ -1,6 +1,7 @@
 param([Parameter(Mandatory=$true)][string]$EvidenceRoot,
-      [Parameter(Mandatory=$true)][ValidatePattern('^r171-[a-z0-9-]{1,32}$')][string]$RunName, [switch]$RestartProbe, [switch]$ResourceProbe, [switch]$BackendProbe, [switch]$StorageProbe, [ValidateSet('alloy','otel')][string]$Collector='alloy', [switch]$MinimalCollector, [string]$PatchedPluginRoot)
+      [Parameter(Mandatory=$true)][ValidatePattern('^r171-[a-z0-9-]{1,32}$')][string]$RunName, [switch]$RestartProbe, [switch]$ResourceProbe, [switch]$BackendProbe, [switch]$StorageProbe, [ValidateSet('alloy','otel')][string]$Collector='alloy', [switch]$MinimalCollector, [string]$PatchedPluginRoot, [switch]$BrowserProbe, [string]$BrowserRelayBinary)
 $ErrorActionPreference='Stop'
+if ($BrowserProbe -and ($ResourceProbe -or $RestartProbe -or $BackendProbe -or $StorageProbe -or -not $BrowserRelayBinary)) { throw 'Browser probe requires explicitly built relay; it is outside resource measurement' }
 if ($MinimalCollector -and $Collector -ne 'otel') { throw 'Minimal variant requires explicit OTel profile.' }
 if (($ResourceProbe -or $BackendProbe -or $StorageProbe) -and -not $RestartProbe) { throw 'Resource profile requires explicit restart-state profile.' }
 if ($Collector -eq 'otel' -and $StorageProbe) { throw 'OTel retry/loss counter semantics require separate validation before backend/pressure profile.' }
@@ -28,7 +29,7 @@ foreach ($taskPrincipal in @($taskSid,[Security.Principal.SecurityIdentifier]::n
 $taskPrivate=Join-Path $taskRoot 'private'; $taskReports=Join-Path $taskRoot 'reports'
 New-Item -ItemType Directory -Path $taskPrivate,$taskReports | Out-Null
 function Get-ProbeSourceSnapshot {
-    $taskSelected=@('images.json','compose.yaml','compose.restart.yaml','fixture.py','prometheus.yml','alerts.yml','alertmanager.yml','loki.yml','config.alloy','prepare-private.py','query-probe.py','resource-window.ps1','storage-pressure.py','probe.ps1','otel.yml','compose.otel.yaml','prometheus.otel.yml','loki.otel.yml','install-collector-image.ps1','alerts.otel.yml','builder.yml','build-minimal.py','install-minimal.ps1','compose.plugins.yaml','stage-plugins.py','install-plugin-trees.ps1')
+    $taskSelected=@('images.json','compose.yaml','compose.restart.yaml','fixture.py','prometheus.yml','alerts.yml','alertmanager.yml','loki.yml','config.alloy','prepare-private.py','query-probe.py','resource-window.ps1','storage-pressure.py','probe.ps1','otel.yml','compose.otel.yaml','prometheus.otel.yml','loki.otel.yml','install-collector-image.ps1','alerts.otel.yml','builder.yml','build-minimal.py','install-minimal.ps1','compose.plugins.yaml','stage-plugins.py','install-plugin-trees.ps1','compose.browser.yaml','browser-relay.go','install-browser-relay.ps1')
     foreach ($taskFile in $taskSelected) {
         $taskBytes=[IO.File]::ReadAllBytes((Join-Path $PSScriptRoot $taskFile))
         $taskHasher=[Security.Cryptography.SHA256]::Create()
@@ -92,8 +93,9 @@ $taskOld=@{}; foreach ($taskKey in $taskEnv.Keys) { $taskOld[$taskKey]=[Environm
 $taskCompose=@('compose','-p',$RunName,'-f',(Join-Path $PSScriptRoot 'compose.yaml'))
 if ($RestartProbe) { $taskCompose += @('-f',(Join-Path $PSScriptRoot 'compose.restart.yaml')) }
 if ($Collector -eq 'otel') { $taskCompose += @('-f',(Join-Path $PSScriptRoot 'compose.otel.yaml')) }
+if ($BrowserProbe) { $taskCompose += @('-f',(Join-Path $PSScriptRoot 'compose.browser.yaml')) }
 if ($PatchedPluginRoot) { $taskCompose += @('-f',(Join-Path $PSScriptRoot 'compose.plugins.yaml')) }
-$taskReceipt=[ordered]@{patched_plugins=[bool]$PatchedPluginRoot;plugin_inputs=$taskPluginBefore;collector=$Collector;minimal_distribution=[bool]$MinimalCollector;started_utc=(Get-Date).ToUniversalTime().ToString('o');run=$RunName;source_scope='synthetic fixture only';complete=$false;helper_image_id=$taskHelper;images=$taskImageIdentities;source_inputs=$taskSourceBefore}
+$taskReceipt=[ordered]@{browser_probe=[bool]$BrowserProbe;patched_plugins=[bool]$PatchedPluginRoot;plugin_inputs=$taskPluginBefore;collector=$Collector;minimal_distribution=[bool]$MinimalCollector;started_utc=(Get-Date).ToUniversalTime().ToString('o');run=$RunName;source_scope='synthetic fixture only';complete=$false;helper_image_id=$taskHelper;images=$taskImageIdentities;source_inputs=$taskSourceBefore}
 function Invoke-ProbeQuery([string]$Mode,[string]$ReportName) {
     $taskDestination=Join-Path $taskReports $ReportName
     New-Item -ItemType Directory -Path $taskDestination | Out-Null
@@ -101,7 +103,7 @@ function Invoke-ProbeQuery([string]$Mode,[string]$ReportName) {
     if ($LASTEXITCODE -ne 0) { throw "Query $Mode failed; preserve original reports." }
 }
 try {
-    docker run --rm --network none --read-only --cap-drop ALL --security-opt no-new-privileges --user 10001:10001 --memory 128m --cpus 0.5 --pids-limit 16 --mount "type=bind,source=$PSScriptRoot,target=/probe,readonly" --mount "type=bind,source=$taskPrivate,target=/private" --entrypoint python3 $taskHelper /probe/prepare-private.py
+    docker run --rm --network none --read-only --cap-drop ALL --security-opt no-new-privileges --user 10001:10001 --memory 128m --cpus 0.5 --pids-limit 16 --mount "type=bind,source=$PSScriptRoot,target=/probe,readonly" --mount "type=bind,source=$taskPrivate,target=/private" -e R171_COLLECTOR=$Collector --entrypoint python3 $taskHelper /probe/prepare-private.py
     if ($LASTEXITCODE -ne 0) { throw 'Private preparation failed.' }
     docker @taskCompose config --quiet
     if ($LASTEXITCODE -ne 0) { throw 'Compose validation failed.' }
@@ -115,6 +117,15 @@ try {
     Start-Sleep -Seconds 30
     Invoke-ProbeQuery 'observe' 'pressure'
     if ($Collector -eq 'otel') { Invoke-ProbeQuery 'otel-delivery' 'otel-delivery' }
+    if ($BrowserProbe) {
+        docker @taskCompose pause fixture
+        if ($LASTEXITCODE -ne 0) { throw 'Browser source freeze failed' }
+        Start-Sleep -Seconds 12
+        docker @taskCompose unpause fixture
+        if ($LASTEXITCODE -ne 0) { throw 'Browser source resume failed' }
+        Start-Sleep -Seconds 4
+    }
+    if (-not $BrowserProbe) {
     Invoke-ProbeQuery 'lifecycle' 'silenced'
     Invoke-ProbeQuery 'lifecycle' 'silence-expired'
     Start-Sleep -Seconds 40
@@ -133,6 +144,7 @@ try {
     docker @taskCompose unpause alloy
     if ($LASTEXITCODE -ne 0) { throw 'Synthetic collector resume failed.' }
     Invoke-ProbeQuery 'lifecycle' 'collector-recovered'
+    }
     Invoke-ProbeQuery 'catchup' 'post-outage-logs'
     Invoke-ProbeQuery 'shared-interval' 'grafana-shared-interval'
     if ($PatchedPluginRoot) { Invoke-ProbeQuery 'plugin-identities' 'plugin-identities' }
@@ -209,6 +221,35 @@ print(json.dumps({'states':results,'limit':'live non-atomic sample; excludes Gra
     $taskSourceAfter=@(Get-ProbeSourceSnapshot)
     $taskReceipt.source_inputs_stable=($taskSourceBefore | ConvertTo-Json -Compress) -eq ($taskSourceAfter | ConvertTo-Json -Compress)
     if (-not $taskReceipt.source_inputs_stable) { throw 'Probe input changed; retain original observations without acceptance.' }
+    if ($BrowserProbe) {
+        $taskBinaryPath=[IO.Path]::GetFullPath($BrowserRelayBinary)
+        $taskHasher=[Security.Cryptography.SHA256]::Create()
+        $taskStream=[IO.File]::OpenRead($taskBinaryPath)
+        try { $taskBinaryHash=[BitConverter]::ToString($taskHasher.ComputeHash($taskStream)).Replace('-','').ToLowerInvariant() }
+        finally { $taskStream.Dispose(); $taskHasher.Dispose() }
+        if ($taskBinaryHash -ne '47f5668b637b115514e873b9264d3721f2a9417c8ba3eedb26ddf5440b59259b') { throw 'Explicit checked browser relay binary required' }
+        docker @taskCompose up -d --pull never browser-tunnel
+        if ($LASTEXITCODE -ne 0) { throw 'Internal tunnel helper unavailable' }
+        $taskRelay=Start-Process -FilePath $taskBinaryPath -ArgumentList @('-container',($RunName+'-browser-tunnel-1')) -WindowStyle Hidden -PassThru
+        $taskReceipt.browser_relay_sha256=$taskBinaryHash
+        $taskPortReady=$false
+        for($taskAttempt=0;$taskAttempt -lt 20;$taskAttempt++){
+            try {
+                $taskWeb=[Net.WebRequest]::Create('http://127.0.0.1:8098/api/health')
+                $taskWeb.Timeout=2000
+                $taskResponse=$taskWeb.GetResponse()
+                $taskResponse.Dispose(); $taskPortReady=$true; break
+            } catch { Start-Sleep -Seconds 1 }
+        }
+        if (-not $taskPortReady -or $taskRelay.HasExited) { throw 'Owned loopback browser relay unavailable' }
+        'http://127.0.0.1:8098/' | Out-File (Join-Path $taskRoot 'browser-ready.txt') -Encoding utf8
+        $taskBrowserClock=[Diagnostics.Stopwatch]::StartNew()
+        while ($taskBrowserClock.Elapsed.TotalSeconds -lt 300 -and -not (Test-Path -LiteralPath (Join-Path $taskRoot 'browser-done.txt'))) {
+            Start-Sleep -Seconds 1
+        }
+        $taskReceipt.browser_window_seconds=$taskBrowserClock.Elapsed.TotalSeconds
+        $taskReceipt.browser_release_observed=Test-Path -LiteralPath (Join-Path $taskRoot 'browser-done.txt')
+    }
     $taskPluginAfter=@(Get-PluginTreeSnapshot)
     $taskReceipt.plugin_inputs_stable=($taskPluginBefore | ConvertTo-Json -Compress) -eq ($taskPluginAfter | ConvertTo-Json -Compress)
     if (-not $taskReceipt.plugin_inputs_stable) { throw 'Plugin tree changed during run' }
@@ -216,6 +257,7 @@ print(json.dumps({'states':results,'limit':'live non-atomic sample; excludes Gra
 } finally {
     $taskSourceAfter=@(Get-ProbeSourceSnapshot)
     $taskReceipt.source_inputs_stable=($taskSourceBefore | ConvertTo-Json -Compress) -eq ($taskSourceAfter | ConvertTo-Json -Compress)
+    if ($taskRelay -and -not $taskRelay.HasExited) { $taskRelay.Kill(); $taskRelay.WaitForExit() }
     docker @taskCompose logs --no-color --tail 2000 2>&1 | Out-File (Join-Path $taskReports 'service-logs.txt') -Encoding utf8
     docker @taskCompose ps -a --format json | Out-File (Join-Path $taskReports 'container-states-before-cleanup.json') -Encoding utf8
     docker @taskCompose down --timeout 5
