@@ -167,3 +167,49 @@ func replacementTestRoot(t *testing.T) string {
 	})
 	return root
 }
+
+func TestRecordedReplacementRequiresJournalDurabilityBeforeMutation(t *testing.T) {
+	if os.Geteuid() != 0 {
+		return
+	}
+	root := replacementTestRoot(t)
+	journal := filepath.Join(root, "journal")
+	if err := os.Mkdir(journal, 0700); err != nil {
+		t.Fatal(err)
+	}
+	path, record := filepath.Join(root, "resource"), filepath.Join(journal, "copy.json")
+	old, next := []byte("complete previous"), []byte("complete successor")
+	selected := selection{GenerationDigest: digestHex(next)}
+	if err := writeExclusiveGenerationFile(path, old, 0644, 0); err != nil {
+		t.Fatal(err)
+	}
+	refusal := errors.New("original replacement journal sync refused")
+	syncJournal := func(directory string) error {
+		if directory == journal {
+			return refusal
+		}
+		return syncDirectory(directory)
+	}
+	if err := replaceTransitionFileWithSync(context.Background(), path, old, next, 0644, 0, record, selected, syncJournal); !errors.Is(err, refusal) {
+		t.Fatal("initial journal durability refusal lost", err)
+	}
+	if body, err := os.ReadFile(path); err != nil || !bytes.Equal(body, old) {
+		t.Fatal("initial sync refusal changed resource", err)
+	}
+	original, err := os.ReadFile(record)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = replaceTransitionFileWithSync(context.Background(), path, old, next, 0644, 0, record, selected, syncJournal)
+	if !errors.Is(err, refusal) {
+		t.Fatal("visible journal bypassed required durability refusal", err)
+	}
+	body, err := os.ReadFile(path)
+	if err != nil || !bytes.Equal(body, old) {
+		t.Fatal("resource changed before journal durability", err)
+	}
+	retained, err := os.ReadFile(record)
+	if err != nil || !bytes.Equal(retained, original) {
+		t.Fatal("durability refusal changed owned journal", err)
+	}
+}

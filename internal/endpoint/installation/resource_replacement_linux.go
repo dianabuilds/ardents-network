@@ -30,6 +30,10 @@ type replacementRecord struct {
 // that same owned inode, after new Release authentication and joined scopes.
 // A record is observation/repair provenance, never activation authorization.
 func replaceTransitionFile(ctx context.Context, path string, previous, candidate []byte, mode os.FileMode, gid uint32, recordPath string, selected selection) (returnedErr error) {
+	return replaceTransitionFileWithSync(ctx, path, previous, candidate, mode, gid, recordPath, selected, syncDirectory)
+}
+
+func replaceTransitionFileWithSync(ctx context.Context, path string, previous, candidate []byte, mode os.FileMode, gid uint32, recordPath string, selected selection, syncDir func(string) error) (returnedErr error) {
 	if ctx == nil || os.Geteuid() != 0 || len(previous) == 0 || len(candidate) == 0 || len(candidate) > 64<<20 {
 		return errors.New("successor replacement input is invalid")
 	}
@@ -82,6 +86,16 @@ func replaceTransitionFile(ctx context.Context, path string, previous, candidate
 		if !replacementBytesAllowed(current, previous, candidate) {
 			return errors.New("successor replacement recorded inode contains foreign bytes")
 		}
+		// Visibility cannot establish that an earlier file or directory sync
+		// succeeded. Re-establish the owned record before changing its resource.
+		recordFD, err := syscall.Open(recordPath, syscall.O_RDONLY|syscall.O_NOFOLLOW|syscall.O_CLOEXEC, 0)
+		if err != nil {
+			return err
+		}
+		recordFile := os.NewFile(uintptr(recordFD), recordPath)
+		if err := errors.Join(recordFile.Sync(), recordFile.Close()); err != nil {
+			return err
+		}
 	} else if os.IsNotExist(err) {
 		if digestHex(current) != record.PreviousDigest {
 			return errors.New("successor replacement preimage differs")
@@ -89,10 +103,10 @@ func replaceTransitionFile(ctx context.Context, path string, previous, candidate
 		if err := writeExclusiveGenerationFile(recordPath, recordBytes, 0600, 0); err != nil {
 			return err
 		}
-		if err := syncDirectory(filepath.Dir(recordPath)); err != nil {
-			return err
-		}
 	} else {
+		return err
+	}
+	if err := syncDir(filepath.Dir(recordPath)); err != nil {
 		return err
 	}
 	if err := ctx.Err(); err != nil {
@@ -110,7 +124,7 @@ func replaceTransitionFile(ctx context.Context, path string, previous, candidate
 	if err := file.Sync(); err != nil {
 		return err
 	}
-	if err := syncDirectory(filepath.Dir(path)); err != nil {
+	if err := syncDir(filepath.Dir(path)); err != nil {
 		return err
 	}
 	return ctx.Err()

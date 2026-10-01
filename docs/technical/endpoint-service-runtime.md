@@ -185,7 +185,11 @@ all original pins, stopped fixed units, loaded worker inventory and remaining
 kernel scopes are checked before direct fixed-resource writes.
 
 Each successor replacement durably records its original direct inode, mode,
-group and complete old/new digests before truncation. `recover-installed`
+group and complete old/new digests before truncation. A visible existing record
+does not prove that an earlier sync succeeded: replacement re-synchronizes that
+private record and its directory before modifying the resource on a later
+attempt. A sync refusal leaves the resource and retained record unchanged.
+`recover-installed`
 requires an exact root-only successor intent, fresh floor-compatible proofs at
 the recovery time, the owned generation directory and exact replacement
 records. It can complete authorized prefixes inside that generation and torn
