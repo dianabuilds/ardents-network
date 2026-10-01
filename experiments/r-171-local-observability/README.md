@@ -344,3 +344,18 @@ Missing alert series alone do not prove recovery. The shared-interval API probe
 covers these expressions, but actual browser rendering remains a separate gate.
 Private generation supplies a separate random Grafana secret key via a file;
 keep it with the corresponding private state across the selected restart.
+
+### Official minimal Collector build prerequisite
+
+```powershell
+make tools-install COLLECTOR=otel-builder EVIDENCE_ROOT=C:/Users/vitek/AppData/Local/Temp/ardents-r171-ocb-public-new
+```
+
+This downloads one exact public OTel Builder artifact and inspects its checksum,
+buildinfo and ELF metadata without executing it. Signature/admission are not
+implied. `builder.yml` proposes the three official components needed by H2 and
+one local file configuration provider. It has not generated or built a Collector;
+a short manifest does not establish actual dependency closure or runtime fit.
+Generated sources/module/cache/binary must stay outside Git. Exact tool scan and
+next-build falsification criteria belong in R-171. This is not a second maintained
+Go module, a new Collector implementation or permission to ingest product data.

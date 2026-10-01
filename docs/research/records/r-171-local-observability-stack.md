@@ -1084,3 +1084,55 @@ history remained valid, with final producer catch-up passing. All run containers
 were removed. Original API responses and receipt remain external
 ardents-r171-grafana-view-a. Real-process integration, browser rendering, durable
 incident acknowledgement/history and candidate admission remain unproven.
+
+### H2 official-component minimal distribution investigation
+
+**Question within H2:** can official OTel Collector Builder assemble only the
+current file receiver, filesystem queue storage and OTLP HTTP exporter, reducing
+unused dependency review without first-party Collector code? This remains an
+investigation variant of the same collector comparison, not a third maintained
+collector or an accepted technology selection.
+
+**Predeclared next-build criteria:** generated Go module/source, dependency
+cache and binary stay outside Git; use installed Go1.26.8 and exact upstream
+components, no first-party components/replacements. Inspect actual generated
+component factories, go.mod/go.sum, executable buildinfo/license/support/
+advisory closure; do not infer dependency exclusion from a short manifest alone.
+The candidate must accept the existing bounded H2 configuration and preserve
+its privacy, delivery/error, alert, quota and resource requirements. Absence of
+legacy AWS crypto, affected Avro or OpenPGP in actual build closure would reduce
+specific review work, not prove overall security. Reuse runtime evidence only
+where exact identity/configuration permits it; a new binary needs actual checks.
+
+**Primary facts, accessed2026-10-01:** official OCB documentation supports
+assembling upstream components from a manifest. Exact release cmd/builder/v0.162.0
+was published2026-09-29T12:35:37Z. linux/amd64 asset8417442bytes has published
+SHA2567c74640d726f23689d8853e0d5a55707ad8b524417ca7416c036c4ecb9ddb01f.
+The checked downloaded bytes match. Buildinfo records Go1.26.8, builder module
+v0.162.0+dirty, revision62cdad2ea133239380b44d20d84eb26e114779b6,
+vcs.modified=true. Matching digest is not signature or reproducible-build proof.
+Builder has not been executed. Exact-tag upstream license is Apache2.0.
+Selected manifests/readme/license/API responses remain external
+ardents-r171-ocb-source-a; downloaded artifact/metadata/receipt remain external
+ardents-r171-ocb-public-a. No maintained admission is granted.
+
+The minimal manifest registers filestorage0.162.0, filelogreceiver0.162.0,
+otlphttpexporter0.162.0 and fileprovider1.68.0, matching exact upstream component
+module versions. It excludes remote configuration providers and additional
+receiver/exporter factories by declaration; actual dependency exclusion is still
+unmeasured. Generated module identity is a disposable example.invalid path.
+
+**Tool scan measurement:** ocb-closure-a exit2 was an invalid scanner environment:
+runtime/cgo pthread_create failed under pids16, before finding completion. Raw
+partial JSON/stderr/exit remain preserved. ocb-closure-b used pids64,
+GOMAXPROCS2 and Go DNS, same512MiB/0.5CPU/90s/no-capability/read-only envelope;
+govulncheck1.1.4 binary/symbol mode completed0 with no finding records, database
+last-modified2026-09-28T16:43:40Z. This later pass does not erase the first failure
+or prove support/security of the resulting Collector. Public build overhead is
+separate from the monitoring runtime budgets. quick-check69678 completed0.
+
+Primary references:
+[OCB documentation](https://opentelemetry.io/docs/collector/extend/ocb/),
+[exact Builder release](https://github.com/open-telemetry/opentelemetry-collector-releases/releases/tag/cmd/builder/v0.162.0),
+[exact upstream distribution manifest](https://github.com/open-telemetry/opentelemetry-collector-releases/blob/v0.162.0/distributions/otelcol-contrib/manifest.yaml),
+[exact Builder readme](https://github.com/open-telemetry/opentelemetry-collector/blob/cmd/builder/v0.162.0/cmd/builder/README.md).
