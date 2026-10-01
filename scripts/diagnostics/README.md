@@ -540,3 +540,37 @@ standard-library parsers, without third-party tool downloads. Clearing or changi
 the Go build cache after installation does not trigger compilation during bundle
 parsing. The two-second per-parser and whole-assembly limits remain unchanged.
 Missing tools cause failed validation; no automatic installation or passing skip.
+### Selected-process memory metrics
+
+The optional monitor panel serves GET /metrics as well as its existing live view
+and status. Example inside the explicitly selected local diagnostic environment:
+
+~~~sh
+ardents-diagnostics monitor -name node -out /state/node-monitor \
+  -listen 127.0.0.1:8094 -sample-max-age 5s -- \
+  /evidence/bin/ardents-node node --config /evidence/node-config.json
+# GET http://127.0.0.1:8094/metrics from the selected local context.
+~~~
+
+Use the actual producer interval to choose -sample-max-age, positive and<=1h;
+the example5s is not a universal Node interval. Default0 exports supervisor and
+delivery health only and explicitly reports resource_export_enabled0. No
+profiling is enabled. Metrics read memory, so failed file/snapshot sinks remain
+visible. The endpoint uses fixed unlabelled names under diagnostic_selected_.
+Supervisor freshness3s, producer age, source survival and resource observation
+are separate signals. Process survival is not product readiness. Stale/stopped
+sources omit resource values; absent is not zero. Invalid observations return503
+rather than a partial success. Session counter resets and source gaps still need
+explicit query handling; do not interpolate through them.
+
+See the local-diagnostics owner for scope/unit catalogue and excluded native
+unpopulated RSS/admission and role-specific fields. log_lost_bytes_total and
+queue/console loss are delivery failures; log_expired_bytes_total is intentional
+retention expiry. Observed sink flags do not require reopening that sink.
+
+The panel's existing Host/origin protections also cover metrics. A collector in
+a separate container cannot simply scrape a foreign container Host; do not
+disable this guard. An explicit protected collector connection is still needed
+before this memory endpoint is integrated into the ready backend stack. Source
+metadata remains private local engineering data; no raw file/profile access,
+product authority or public administration interface is granted.

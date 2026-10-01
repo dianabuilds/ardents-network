@@ -78,6 +78,39 @@ monitoring/administration interface are not supplied by this log slice. Limits,
 restart refusal conditions and console prerequisites belong to the command
 [recipe](../../scripts/diagnostics/README.md#continuous-logs-and-live-monitoring).
 
+### Selected-source metric endpoint
+
+The existing optional monitor panel also exposes GET /metrics from the same
+bounded supervisor memory. It opens no raw files and enables no sampling or
+profiling. Fixed unlabelled signals expose supervisor age/freshness, observed
+process survival, independent delivery/retention/cleanup failures and session
+loss/intentional-expiry counters. Source names, PID, arguments, paths and event
+tails are excluded. A three-second stale supervisor omits current source and
+delivery-health values; process survival is not Node readiness. Session start
+identifies a reset boundary but does not itself provide gap-safe rate queries.
+
+Native Linux Node resource export requires an explicit positive
+-sample-max-age budget (at most one hour) from the selected producer interval.
+Zero, the default, disables resource values without inventing a freshness
+budget. Producer and receipt times must both be fresh and within the supervisor
+session; receipt time cannot refresh an old producer observation. Missing fields
+remain absent, stopped/stale sources lose resource values, and invalid
+observations return503 without partial successful exposition.
+
+The fixed catalogue separates cgroup CPU/memory/socket-memory/PSI/local memory
+event counters from process Go-managed memory, socket/descriptor/thread and
+goroutine counts. CPU microseconds become cumulative seconds; PSI is avg10
+percent, CPU/memory some and IO full. Emergency counts sum max/oom/oom_kill,
+not distinct incidents. Native unpopulated RSS/admission and role-specific
+timer/queue/storage/Hosting Usage fields are excluded pending their own semantics.
+
+This endpoint retains the panel's loopback Host/origin protections,16KiB metric
+response cap and existing bounded HTTP lifecycle. An arbitrary container Host
+cannot bypass those protections; separately deployed collectors require an
+explicit protected integration, not a panel-protection waiver. This endpoint
+does not supply a Prometheus deployment, historical store, Loki delivery, alert
+consumer or installed Node qualification.
+
 ### Debug mode
 
 Debug mode adds a finite, explicitly selected capture for one local owner:

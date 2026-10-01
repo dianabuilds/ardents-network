@@ -495,3 +495,95 @@ func TestMonitorPeriodicSamplesDoNotDisplaceLogEvents(t *testing.T) {
 		t.Fatal("sample history was not routed to separate files")
 	}
 }
+
+func TestMonitorMetricsScopesFreshnessAndDelivery(t *testing.T) {
+	now := time.Now().UTC()
+	state := monitorState{
+		Schema: "ardents-monitor-v1", Started: now.Add(-time.Minute), Updated: now,
+		SourceAlive: true, SourcePID: 987654, SourceName: "PRIVATE_SENTINEL",
+		MetricSampleMaxAge: 5 * time.Second, SnapshotFailed: true,
+		QueueDroppedBytes: 11, Logs: logStoreStats{LostBytes: 13, ExpiredBytes: 17},
+		LatestSample: &monitorLogRow{At: now, Entry: event{
+			Schema: "ardents-node-event-v1", Kind: "resource-sample", At: now.Format(time.RFC3339Nano),
+			Resource: map[string]float64{"cpu_usage_usec": 2000000, "memory_bytes": 4096,
+				"fds": 0, "rss_bytes": 0, "admission_active": 0, "queue_items": 0},
+		}},
+	}
+	check := func(state monitorState) string {
+		t.Helper()
+		body, err := monitorMetrics(state, now)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(body) > 16<<10 {
+			t.Fatal("unbounded metric response")
+		}
+		return string(body)
+	}
+	body := check(state)
+	for _, want := range []string{
+		"diagnostic_selected_cgroup_cpu_usage_seconds_total 2\n",
+		"diagnostic_selected_cgroup_memory_bytes 4096\n",
+		"diagnostic_selected_process_fds 0\n",
+		"diagnostic_selected_snapshot_failed 1\n",
+		"diagnostic_selected_queue_dropped_bytes_total 11\n",
+		"diagnostic_selected_log_lost_bytes_total 13\n",
+		"diagnostic_selected_log_expired_bytes_total 17\n",
+	} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("missing %q", want)
+		}
+	}
+	for _, forbidden := range []string{"PRIVATE_SENTINEL", "987654", "rss_bytes", "admission", "queue_items"} {
+		if strings.Contains(body, forbidden) {
+			t.Fatalf("unsafe/unpopulated field %q", forbidden)
+		}
+	}
+	state.LatestSample.Entry.At = now.Add(-10 * time.Second).Format(time.RFC3339Nano)
+	if body = check(state); strings.Contains(body, "cgroup_memory_bytes") ||
+		!strings.Contains(body, "diagnostic_selected_sample_fresh 0\n") {
+		t.Fatal("recent receipt refreshed old producer sample")
+	}
+	state.Updated = now.Add(-4 * time.Second)
+	if body = check(state); strings.Contains(body, "source_process_alive") ||
+		strings.Contains(body, "snapshot_failed") ||
+		!strings.Contains(body, "diagnostic_selected_monitor_fresh 0\n") {
+		t.Fatal("stale supervisor presented current source/delivery health")
+	}
+	state.Updated = now
+	state.SourceAlive = false
+	if body = check(state); !strings.Contains(body, "diagnostic_selected_source_process_alive 0\n") ||
+		strings.Contains(body, "cgroup_memory_bytes") {
+		t.Fatal("stopped source exported resource values")
+	}
+}
+
+func TestMonitorMetricsMemoryOnlyHTTPAndInvalidSource(t *testing.T) {
+	now := time.Now().UTC()
+	delivery := &monitorDelivery{state: monitorState{
+		Schema: "ardents-monitor-v1", Started: now.Add(-time.Minute), Updated: now,
+		SourceAlive: true, SourcePID: 1, FileFailed: true, SnapshotFailed: true,
+	}}
+	fetch := func(host string) *httptest.ResponseRecorder {
+		t.Helper()
+		response := httptest.NewRecorder()
+		monitorHandler(delivery).ServeHTTP(response, httptest.NewRequest("GET", "http://"+host+"/metrics", nil))
+		return response
+	}
+	// No log store, file queue, directory or snapshot writer exists in this
+	// delivery. Its independent observed failures must still be readable.
+	response := fetch("127.0.0.1:8094")
+	if response.Code != http.StatusOK ||
+		!strings.Contains(response.Body.String(), "diagnostic_selected_log_file_failed 1\n") ||
+		!strings.Contains(response.Body.String(), "diagnostic_selected_resource_export_enabled 0\n") {
+		t.Fatal("memory-only metric endpoint unavailable during sink failure")
+	}
+	if response = fetch("foreign.example:8094"); response.Code != http.StatusForbidden {
+		t.Fatal("metrics bypassed existing host protection")
+	}
+	delivery.state.Updated = now.Add(time.Hour)
+	if response = fetch("127.0.0.1:8094"); response.Code != http.StatusServiceUnavailable ||
+		strings.Contains(response.Body.String(), "diagnostic_selected_") {
+		t.Fatal("invalid timestamps returned partial successful metrics")
+	}
+}

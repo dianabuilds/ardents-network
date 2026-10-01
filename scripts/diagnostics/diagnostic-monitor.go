@@ -28,6 +28,7 @@ type monitorLogRow struct {
 	Entry    event     `json:"entry"`
 }
 type monitorState struct {
+	MetricSampleMaxAge  time.Duration      `json:"metric_sample_max_age_ns"`
 	SourceName          string             `json:"source_name"`
 	SourcePID           int                `json:"source_pid"`
 	LastOutput          *time.Time         `json:"last_output,omitempty"`
@@ -420,6 +421,7 @@ func monitorCommand(args []string) (outcome error) {
 	container := flags.Bool("container", false, "allow container wildcard; publish host loopback only")
 	name := flags.String("name", "selected-process", "safe local source label (ASCII letters, digits, dash, underscore)")
 	timeout := flags.Duration("timeout", 0, "optional finite run budget; zero follows source until signal")
+	sampleMaxAge := flags.Duration("sample-max-age", 0, "explicit Node metric freshness budget; zero disables resource export")
 	segmentBytes := flags.Int64("segment-bytes", 8<<20, "bytes per log segment")
 	maxBytes := flags.Int64("retain-bytes", 64<<20, "total log bytes")
 	maxFiles := flags.Int("retain-files", 9, "log files including empty ownership lock")
@@ -431,7 +433,7 @@ func monitorCommand(args []string) (outcome error) {
 	if !validMonitorName(*name) {
 		return errors.New("monitor name must be a safe label of at most 64 ASCII characters")
 	}
-	if len(flags.Args()) == 0 || *timeout < 0 || *timeout > 24*time.Hour || *segmentBytes < lineLimit {
+	if len(flags.Args()) == 0 || *timeout < 0 || *timeout > 24*time.Hour || *segmentBytes < lineLimit || *sampleMaxAge < 0 || *sampleMaxAge > time.Hour {
 		return errors.New("monitor requires explicit -- command and valid limits")
 	}
 	root, err := openMonitorRoot(*out)
@@ -450,6 +452,7 @@ func monitorCommand(args []string) (outcome error) {
 	delivery := newMonitorDelivery(store, output, *raw, time.Now().UTC())
 	delivery.mu.Lock()
 	delivery.state.SourceName = *name
+	delivery.state.MetricSampleMaxAge = *sampleMaxAge
 	delivery.mu.Unlock()
 	var view *monitorView
 	if *listen != "" {
