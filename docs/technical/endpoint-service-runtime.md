@@ -120,7 +120,12 @@ clock observation file, with nonzero refresh. The input headless Source-plan
 path is empty; its rendered output selects only that generation's `source.json`.
 The two declared Direct Source operator families must be present and distinct;
 the installation request refuses a duplicate before creating an Endpoint account
-or selecting a generation. Distinct names do not establish independent operators.
+or selecting a generation. Distinct names pass only the syntactic check: known
+common operational control makes them one Operator Family for installed
+qualification. A one-operator artifact receipt can authorize exact-byte
+inspection and isolated negative checks, but cannot supply missing Source or
+Route family eligibility. Hidden common control among apparently distinct
+families remains an honest limitation even when the installation proceeds.
 Every declared path is absolute/canonical and remains outside the bundle,
 immutable installation and Release floor roots. No private material is copied.
 

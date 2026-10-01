@@ -87,10 +87,17 @@ is a readiness target, not evidence that the candidate is qualified, released,
 publicly supported, anonymous, independently operated, or censorship
 resistant.
 
-One technical operator may use an authenticated, manually installed Ubuntu LTS
-`x86-64` artifact against project-controlled infrastructure to publish one
-active Service Instance and let a second Endpoint connect through an explicit
-Target Link. The maintained operator surface is the four headless commands
+One person may operate the two Endpoints using an authenticated, manually
+installed Ubuntu LTS `x86-64` artifact against project-controlled
+infrastructure to publish one active Service Instance and connect through an
+explicit Target Link. That describes Endpoint staffing, not the number of
+infrastructure Operator Families. A complete Route still requires the distinct
+Direct-Origin Source families and non-overlapping Role Domain assignments of
+the accepted Network contract. Infrastructure under one known effective
+controller is one family regardless of machine count or declared labels; if
+it cannot supply those assignments, the full installed journey is unavailable.
+Same-operator artifact and host diagnostics do not qualify that journey.
+The maintained operator surface is the four headless commands
 `ardents`, `ardents-node`, `ardents-control`, and `ardents-custody`; a concrete
 journey may invoke only the subset it needs. Operator instructions must not
 require editing JSON, extracting test-fixture keys, knowing package names, or
@@ -105,11 +112,13 @@ replacement remains authenticated and explicit; automatic update is outside
 this profile.
 
 The profile does not select Browser or GUI delivery, Windows qualification,
-public or permissionless operation, independent operators, canonical Service
-Names or Namespace governance, additional Carriers, mobile/macOS, high-load
-operation, availability, anonymity, or censorship-resistance claims. Those
-items remain outside C0 unless a later Product Owner decision, research
-question, and required durable decision admit them.
+public or permissionless operation, independently audited operator control,
+canonical Service Names or Namespace governance, additional Carriers,
+mobile/macOS, high-load operation, availability, anonymity, or
+censorship-resistance claims. Distinct known families are an eligibility
+precondition, not proof that hidden common control is absent. Those unselected
+capabilities and claims remain outside C0 unless a later Product Owner
+decision, research question, and required durable decision admit them.
 
 Current C0 delivery status and work sequencing belong in GitHub Issues under
 the [`C0 Closed Alpha` milestone](https://github.com/dianabuilds/ardents-network/milestones),
