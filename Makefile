@@ -26,6 +26,9 @@ define newline
 endef
 UNIT_PACKAGES := $(subst $(newline), ,$(file <tests/profiles/deterministic-packages.txt))
 PROCESS_PACKAGES := $(subst $(newline), ,$(file <tests/profiles/process-packages.txt))
+NODE_PROCESS_PACKAGES := $(filter %/tests/e2e/node,$(PROCESS_PACKAGES))
+# Only the Node process suite may select an elevated system-scope runner.
+NODE_PROCESS_TEST_COMMAND ?= go
 HEADLESS_COMMANDS := $(subst $(newline), ,$(file <tests/profiles/headless-commands.txt))
 HEADLESS_GOOS := $(shell go env GOOS)
 HEADLESS_GOARCH := $(shell go env GOARCH)
@@ -87,7 +90,8 @@ heapdump-role-map:
 	go test -tags heapdumpcapture ./internal/endpoint -run '^TestHeapDumpRoleMapObservation$$' -count=1 -timeout=5m
 
 e2e:
-	go test -p 1 $(PROCESS_PACKAGES) -shuffle=on -count=1
+	go test -p 1 $(filter-out $(NODE_PROCESS_PACKAGES),$(PROCESS_PACKAGES)) -shuffle=on -count=1
+	$(NODE_PROCESS_TEST_COMMAND) test -p 1 $(NODE_PROCESS_PACKAGES) -shuffle=on -count=1
 
 fixture-network-test:
 	@test "$(HEADLESS_GOOS)" = linux || (echo "fixture-network-test requires Linux"; exit 2)
