@@ -66,6 +66,7 @@ build() {
   ARDENTS_ALPHA_BUNDLE_NODE="$ARDENTS_HEADLESS_NODE" \
   ARDENTS_ALPHA_BUNDLE_CONTROL="$ARDENTS_HEADLESS_CONTROL" \
   ARDENTS_ALPHA_BUNDLE_CUSTODY="$ARDENTS_HEADLESS_CUSTODY" \
+  ARDENTS_ALPHA_BUNDLE_TEXT="${protected_text:-}" \
   ARDENTS_ALPHA_BUNDLE_STATIC_ROOT="$static_root" \
   ARDENTS_ALPHA_BUNDLE_OUTPUT="$1" \
   SOURCE_DATE_EPOCH=0 \
@@ -106,7 +107,7 @@ LC_ALL=C find "$bundle" -mindepth 1 -maxdepth 1 -type f -printf '%f\n' |
 cmp -s "$expected_names" "$actual_names"
 
 if ! grep -Fqx 'LC_ALL=C find . -mindepth 1 -maxdepth 1 -type f -printf '\''%f\n'\'' | LC_ALL=C sort >"$actual_names"' \
-  "$repository/docs/product/closed-alpha-enrollment.md"; then
+  "$repository/docs/reference/portable-enrollment.md"; then
   echo 'participant inventory instruction lost locale-independent sorting' >&2
   exit 1
 fi
@@ -131,7 +132,7 @@ if [ "$(tar -tzf "$scratch/first.tar.gz")" != "$(printf '%s\n' \
   "ardents-alpha-usable-alpha-test-1-$platform/network.pub" \
   "ardents-alpha-usable-alpha-test-1-$platform/release.ac1" \
   "ardents-alpha-usable-alpha-test-1-$platform/release.pub" \
-  "ardents-alpha-usable-alpha-test-1-$platform/timestamp.json")" ]; then
+  "ardents-alpha-usable-alpha-test-1-$platform/timestamp.json" | LC_ALL=C sort)" ]; then
   echo 'alpha bundle archive inventory changed' >&2
   exit 1
 fi
@@ -144,6 +145,59 @@ if tar -tzf "$scratch/successor.tar.gz" | grep -Fqx "ardents-alpha-usable-alpha-
   ! tar -tzf "$scratch/successor.tar.gz" | grep -Fqx "ardents-alpha-usable-alpha-test-1-$platform/2.targets.json"; then
   echo 'alpha bundle did not retain exactly the selected successor metadata version' >&2
   exit 1
+fi
+
+if [ "$platform" = linux-amd64 ]; then
+  # Packaging controls use synthetic resources and an existing binary as the
+  # text-byte fixture. They do not execute or qualify a confined text worker.
+  protected_text=$ARDENTS_HEADLESS_ENDPOINT
+  resource_names="50-ardents-text.rules
+ardents-endpoint.service
+ardents-text-publisher.socket
+ardents-text-publisher@.service
+ardents-text-reader.socket
+ardents-text-reader@.service
+ardents-text.conf"
+  for name in $resource_names; do
+    printf 'resource: %s\n' "$name" > "$static_root/$name"
+  done
+  {
+    printf '{"schema":"ardents-protected-endpoint-artifact-v1","platform":"linux-amd64","release_identity":"usable-alpha-test-1","release_version":1,"files":{'
+    separator=''
+    for name in $(printf '%s\n' "$resource_names" ardents-linux-amd64 ardents-text-linux-amd64 | LC_ALL=C sort); do
+      case "$name" in
+        ardents-linux-amd64) source=$ARDENTS_HEADLESS_ENDPOINT ;;
+        ardents-text-linux-amd64) source=$protected_text ;;
+        *) source="$static_root/$name" ;;
+      esac
+      digest=$(sha256sum "$source" | cut -d ' ' -f 1)
+      printf '%s"%s":"%s"' "$separator" "$name" "$digest"
+      separator=','
+    done
+    printf '}}\n'
+  } > "$static_root/protected-endpoint.json"
+  build "$scratch/protected-first.tar.gz"
+  build "$scratch/protected-second.tar.gz"
+  cmp -s "$scratch/protected-first.tar.gz" "$scratch/protected-second.tar.gz"
+  protected_unpack="$scratch/protected-unpack"
+  mkdir "$protected_unpack"
+  tar -xzf "$scratch/protected-first.tar.gz" -C "$protected_unpack"
+  protected_bundle="$protected_unpack/ardents-alpha-usable-alpha-test-1-$platform"
+  test "$(wc -l < "$protected_bundle/SHA256SUMS" | tr -d ' ')" = 27
+  (cd "$protected_bundle" && sha256sum --strict --check SHA256SUMS)
+  cmp -s "$static_root/protected-endpoint.json" "$protected_bundle/protected-endpoint.json"
+  printf 'substitution\n' > "$static_root/ardents-text.conf"
+  if build "$scratch/protected-substitution.tar.gz"; then
+    echo 'producer accepted a substituted resource against unchanged descriptor' >&2
+    exit 1
+  fi
+  test ! -e "$scratch/protected-substitution.tar.gz"
+  rm "$static_root/ardents-text.conf"
+  if build "$scratch/protected-partial.tar.gz"; then
+    echo 'producer accepted a partial protected inventory' >&2
+    exit 1
+  fi
+  test ! -e "$scratch/protected-partial.tar.gz"
 fi
 
 printf 'unexpected\n' > "$static_root/unexpected"

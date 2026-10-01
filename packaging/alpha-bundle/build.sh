@@ -92,6 +92,33 @@ release.ac1
 release.pub
 timestamp.json"
 
+protected_names="protected-endpoint.json
+ardents-text-reader@.service
+ardents-text-publisher@.service
+ardents-text-reader.socket
+ardents-text-publisher.socket
+50-ardents-text.rules
+ardents-text.conf
+ardents-endpoint.service"
+protected=false
+if [ -n "${ARDENTS_ALPHA_BUNDLE_TEXT:-}" ]; then
+  protected=true
+fi
+for name in $protected_names; do
+  if [ -e "$ARDENTS_ALPHA_BUNDLE_STATIC_ROOT/$name" ] || [ -L "$ARDENTS_ALPHA_BUNDLE_STATIC_ROOT/$name" ]; then
+    protected=true
+  fi
+done
+if [ "$protected" = true ]; then
+  if [ "$platform" != linux-amd64 ] || [ -z "${ARDENTS_ALPHA_BUNDLE_TEXT:-}" ]; then
+    echo 'protected bundle requires linux-amd64 and explicit text executable' >&2
+    exit 2
+  fi
+  static_names="$static_names
+$protected_names"
+  (cd "$repository" && go run ./scripts/protected-generation-check.go "$ARDENTS_ALPHA_BUNDLE_STATIC_ROOT" "$ARDENTS_ALPHA_BUNDLE_ENDPOINT" "$ARDENTS_ALPHA_BUNDLE_TEXT" "$ARDENTS_ALPHA_BUNDLE_RELEASE")
+fi
+
 for name in $static_names; do
   source="$ARDENTS_ALPHA_BUNDLE_STATIC_ROOT/$name"
   if [ ! -f "$source" ] || [ -L "$source" ]; then
@@ -141,9 +168,15 @@ install -m 700 "$ARDENTS_ALPHA_BUNDLE_ENDPOINT" "$bundle/$endpoint_name"
 install -m 700 "$ARDENTS_ALPHA_BUNDLE_NODE" "$bundle/$node_name"
 install -m 700 "$ARDENTS_ALPHA_BUNDLE_CONTROL" "$bundle/$control_name"
 install -m 700 "$ARDENTS_ALPHA_BUNDLE_CUSTODY" "$bundle/$custody_name"
+if [ "$protected" = true ]; then
+  install -m 700 "$ARDENTS_ALPHA_BUNDLE_TEXT" "$bundle/ardents-text-linux-amd64"
+fi
 for name in $static_names; do
   install -m 600 "$ARDENTS_ALPHA_BUNDLE_STATIC_ROOT/$name" "$bundle/$name"
 done
+if [ "$protected" = true ]; then
+  (cd "$repository" && go run ./scripts/protected-generation-check.go "$bundle" "$bundle/$endpoint_name" "$bundle/ardents-text-linux-amd64" "$ARDENTS_ALPHA_BUNDLE_RELEASE")
+fi
 (
   cd "$bundle"
   LC_ALL=C find . -mindepth 1 -maxdepth 1 -type f ! -name SHA256SUMS -printf '%f\n' | LC_ALL=C sort | while IFS= read -r name; do
