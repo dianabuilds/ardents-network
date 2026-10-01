@@ -36,7 +36,7 @@ func prepare() error {
 	}
 	nodeCount, err := strconv.Atoi(os.Args[2])
 	if err != nil || nodeCount < 1 || nodeCount > 64 {
-		return errors.New("Node count must be 1..64")
+		return errors.New("requested Node count must be 1..64")
 	}
 	root := os.Args[1]
 	if !filepath.IsAbs(root) || filepath.Clean(root) != root || root == "/" {
@@ -67,12 +67,12 @@ func prepare() error {
 	for _, role := range roles {
 		pub, key, err := ed25519.GenerateKey(rand.Reader)
 		if err != nil {
-			return errors.New("Network key generation failed")
+			return errors.New("qualification Network key generation failed")
 		}
 		encoded, err := x509.MarshalPKCS8PrivateKey(key)
 		clear(key)
 		if err != nil {
-			return errors.New("Network key encoding failed")
+			return errors.New("qualification Network key encoding failed")
 		}
 		private := pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: encoded})
 		clear(encoded)
@@ -118,7 +118,7 @@ func writeNew(path string, contents []byte) error {
 	}
 	n, writeErr := file.Write(contents)
 	if writeErr == nil && n != len(contents) {
-		writeErr = errors.New("Network output write was incomplete")
+		writeErr = errors.New("qualification Network output write was incomplete")
 	}
 	return errors.Join(writeErr, file.Sync(), file.Close())
 }

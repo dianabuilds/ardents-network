@@ -121,8 +121,7 @@ func TestOfflineAcceptActivatesExactPendingEpoch(t *testing.T) {
 	config, closeSources := sourceEnvironment(t, genesis, pending, pending)
 	defer closeSources()
 
-	// Staging exercises pending-Epoch consistency, not stale observation refusal.
-	// Let both fixture clocks progress while the real source exchange runs.
+	// Pending consistency needs current observations during source work.
 	anchor := time.Now()
 	clock := func() time.Time { return time.Unix(genesis.now, 0).UTC().Add(time.Since(anchor)) }
 	config.Clock, config.ObserveClock = clock, clock
@@ -189,8 +188,9 @@ func TestSourceRefreshRefusesExpiredPendingEpoch(t *testing.T) {
 	}
 
 	expired := time.Unix(genesis.now+23, 0).UTC()
-	config.Clock = func() time.Time { return expired }
-	config.ClockObservation = expired
+	anchor := time.Now()
+	clock := func() time.Time { return expired.Add(time.Since(anchor)) }
+	config.Clock, config.ObserveClock = clock, clock
 	restarted, err := state.Open(config)
 	if err != nil {
 		t.Fatal(err)

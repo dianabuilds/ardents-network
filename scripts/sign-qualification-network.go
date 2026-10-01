@@ -36,7 +36,7 @@ func signNetwork() error {
 	}
 	output := os.Args[3]
 	if !filepath.IsAbs(output) || filepath.Clean(output) != output || output == "/" {
-		return errors.New("Network output path is invalid")
+		return errors.New("qualification Network output path is invalid")
 	}
 	if err := secureNetworkAncestors(filepath.Dir(output)); err != nil {
 		return err
@@ -58,7 +58,7 @@ func signNetwork() error {
 	}
 	now := time.Now().UTC()
 	if plan.Reference.IsZero() || plan.Reference.Before(now.Add(-5*time.Minute)) || plan.Reference.After(now.Add(time.Minute)) {
-		return errors.New("Network signing reference time is invalid")
+		return errors.New("qualification Network signing reference time is invalid")
 	}
 	keyBytes, err := readNetworkInput(os.Args[2], 16<<10, true)
 	if err != nil {
@@ -67,13 +67,13 @@ func signNetwork() error {
 	defer clear(keyBytes)
 	block, rest := pem.Decode(keyBytes)
 	if block == nil || len(rest) != 0 || block.Type != "PRIVATE KEY" || len(block.Headers) != 0 {
-		return errors.New("Network signing key encoding is invalid")
+		return errors.New("qualification Network signing key encoding is invalid")
 	}
 	defer clear(block.Bytes)
 	parsed, err := x509.ParsePKCS8PrivateKey(block.Bytes)
 	key, ok := parsed.(ed25519.PrivateKey)
 	if err != nil || !ok || len(key) != ed25519.PrivateKeySize {
-		return errors.New("Network signing key is not Ed25519")
+		return errors.New("qualification Network signing key is not Ed25519")
 	}
 	defer clear(key)
 	public := key.Public().(ed25519.PublicKey)
@@ -83,7 +83,7 @@ func signNetwork() error {
 	if plan.Record != nil {
 		input := *plan.Record
 		if !bytes.Equal(input.PublicKey, public) || !validSigningInterval(input.ValidFrom, input.ValidUntil, plan.Reference, now) {
-			return errors.New("Node Record signer or validity mismatch")
+			return errors.New("initial Node Record signer or validity mismatch")
 		}
 		message, err := epoch.PrepareInitialClosedRecord(input)
 		if err != nil {
@@ -91,7 +91,7 @@ func signNetwork() error {
 		}
 		signed = append(message, ed25519.Sign(key, message)...)
 		if !ed25519.Verify(public, message, signed[len(message):]) {
-			return errors.New("Node Record signature verification failed")
+			return errors.New("initial Node Record signature verification failed")
 		}
 		outputs["node-record.bin"] = signed
 	} else {
@@ -130,7 +130,7 @@ func signNetwork() error {
 		outputs["epoch.bin"] = signed
 	}
 	if err := os.Mkdir(output, 0700); err != nil {
-		return errors.New("Network output creation refused; existing output is never replaced")
+		return errors.New("qualification Network output creation refused; existing output is never replaced")
 	}
 	for name, value := range outputs {
 		if err := writeNetworkOutput(filepath.Join(output, name), value); err != nil {
@@ -155,12 +155,12 @@ func validSigningInterval(from, until, reference, now time.Time) bool {
 }
 func secureNetworkAncestors(path string) error {
 	if !filepath.IsAbs(path) || filepath.Clean(path) != path {
-		return errors.New("Network private path is invalid")
+		return errors.New("qualification Network private path is invalid")
 	}
 	for {
 		var stat unix.Stat_t
 		if unix.Lstat(path, &stat) != nil || stat.Uid != 0 || stat.Mode&unix.S_IFMT != unix.S_IFDIR || stat.Mode&0022 != 0 {
-			return errors.New("Network ancestor must be root-owned non-writable direct directory")
+			return errors.New("qualification Network ancestor must be root-owned non-writable direct directory")
 		}
 		if path == "/" {
 			return nil
@@ -171,27 +171,27 @@ func secureNetworkAncestors(path string) error {
 
 func readNetworkInput(path string, limit int64, private bool) ([]byte, error) {
 	if !filepath.IsAbs(path) || filepath.Clean(path) != path || limit < 1 {
-		return nil, errors.New("Network input path or limit is invalid")
+		return nil, errors.New("qualification Network input path or limit is invalid")
 	}
 	if err := secureNetworkAncestors(filepath.Dir(path)); err != nil {
 		return nil, err
 	}
 	fd, err := unix.Open(path, unix.O_RDONLY|unix.O_CLOEXEC|unix.O_NOFOLLOW|unix.O_NONBLOCK, 0)
 	if err != nil {
-		return nil, errors.New("Network input open refused")
+		return nil, errors.New("qualification Network input open refused")
 	}
 	file := os.NewFile(uintptr(fd), path)
 	info, statErr := file.Stat()
 	var stat unix.Stat_t
 	ownershipErr := unix.Fstat(fd, &stat)
 	if statErr != nil || ownershipErr != nil || !info.Mode().IsRegular() || info.Size() < 1 || info.Size() > limit || (private && (stat.Uid != 0 || info.Mode().Perm() != 0600)) {
-		return nil, errors.Join(errors.New("Network input is not a bounded direct file with required ownership"), statErr, ownershipErr, file.Close())
+		return nil, errors.Join(errors.New("qualification Network input is not a bounded direct file with required ownership"), statErr, ownershipErr, file.Close())
 	}
 	raw, readErr := io.ReadAll(io.LimitReader(file, limit+1))
 	closeErr := file.Close()
 	if int64(len(raw)) > limit {
 		clear(raw)
-		return nil, errors.Join(errors.New("Network input exceeds opened-file bound"), readErr, closeErr)
+		return nil, errors.Join(errors.New("qualification Network input exceeds opened-file bound"), readErr, closeErr)
 	}
 	if err := errors.Join(readErr, closeErr); err != nil {
 		clear(raw)

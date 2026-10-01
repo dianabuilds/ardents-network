@@ -59,7 +59,9 @@ func TestRefreshWaitsForTwoAuthenticatedSourcesAndRestarts(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	endpointConfig.Clock = func() time.Time { return now }
+	anchor := time.Now()
+	clock := func() time.Time { return now.Add(time.Since(anchor)) }
+	endpointConfig.Clock, endpointConfig.ObserveClock = clock, clock
 	endpointConfig.Now = time.Time{}
 	endpointConfig.ClockObservation = now
 	endpointConfig.Source.Sources = [2]source.Source{
@@ -103,7 +105,7 @@ func TestRefreshWaitsForTwoAuthenticatedSourcesAndRestarts(t *testing.T) {
 	}
 	defer restarted.Close()
 	recovered, err := restarted.Current()
-	if err != nil || recovered.Epoch != 2 || recovered.SourceAttempts != 2 || recovered.TrustedTime != now {
+	if err != nil || recovered.Epoch != 2 || recovered.SourceAttempts != 2 || recovered.TrustedTime != refreshed.TrustedTime {
 		t.Fatalf("recovered source state=%+v err=%v", recovered, err)
 	}
 	if err := restarted.Close(); err != nil {

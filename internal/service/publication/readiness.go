@@ -53,6 +53,11 @@ func (publication *Publication) publish(ctx context.Context, input PublishInput,
 		return Current{}, errors.New("publication Instance signer does not match its Credential")
 	}
 	publication.root.mu.Lock()
+	if publication.root.persistenceErr != nil {
+		err := publication.root.persistenceErr
+		publication.root.mu.Unlock()
+		return Current{}, err
+	}
 	if publication.root.closed {
 		publication.root.mu.Unlock()
 		return Current{}, errors.New("publication is closed")
@@ -76,7 +81,7 @@ func (publication *Publication) publish(ctx context.Context, input PublishInput,
 		return Current{}, err
 	}
 	if err := publication.removePersistedUnavailable(); err != nil {
-		return Current{}, err
+		return Current{}, publication.refusePersistence(err)
 	}
 
 	var record []byte
@@ -88,8 +93,8 @@ func (publication *Publication) publish(ctx context.Context, input PublishInput,
 			return Current{}, err
 		}
 	}
-	if err := writeFloor(publication.root.path, input.Credential.Generation); err != nil {
-		return Current{}, fmt.Errorf("persist publication floor: %w", err)
+	if err := writeFloor(publication.root.path, input.Credential.Generation, publication.root.syncDirectory); err != nil {
+		return Current{}, publication.refusePersistence(fmt.Errorf("persist publication floor: %w", err))
 	}
 	publication.root.mu.Lock()
 	publication.root.floor = input.Credential.Generation
@@ -107,12 +112,15 @@ func (publication *Publication) publish(ctx context.Context, input PublishInput,
 			return Current{}, err
 		}
 	}
-	if err := writeGeneration(publication.root.path, input.Credential.Generation, record); err != nil {
-		return Current{}, err
+	if err := writeGeneration(publication.root.path, input.Credential.Generation, record, publication.root.syncDirectory); err != nil {
+		return Current{}, publication.refusePersistence(err)
 	}
-	if err := replacePointer(publication.root.path, publicationGeneration(input.Credential.Generation)); err != nil {
-		cleanupErr := removeGeneration(publication.root.path, input.Credential.Generation)
-		return Current{}, errors.Join(fmt.Errorf("publish current publication: %w", err), cleanupErr)
+	if err := replacePointer(publication.root.path, publicationGeneration(input.Credential.Generation), publication.root.syncDirectory); err != nil {
+		cleanupErr := publication.root.removeCurrent()
+		if cleanupErr == nil {
+			cleanupErr = removeGeneration(publication.root.path, input.Credential.Generation, publication.root.syncDirectory)
+		}
+		return Current{}, publication.refusePersistence(errors.Join(fmt.Errorf("publish current publication: %w", err), cleanupErr))
 	}
 	retained, release := retainInstanceSigner(input.InstanceSigner)
 	current := &generation{credential: input.Credential, record: append([]byte(nil), record...), digest: digest,
@@ -126,4 +134,13 @@ func (publication *Publication) publish(ctx context.Context, input PublishInput,
 	publication.root.current = current
 	publication.root.mu.Unlock()
 	return current.current(), nil
+}
+
+// A visible rename is not a successful durability receipt. Reopen must settle
+// disk state before another attempt can consume a generation or readiness.
+func (publication *Publication) refusePersistence(err error) error {
+	publication.root.mu.Lock()
+	defer publication.root.mu.Unlock()
+	publication.root.persistenceErr = errors.Join(publication.root.persistenceErr, err)
+	return publication.root.persistenceErr
 }

@@ -23,8 +23,7 @@ func TestAutomaticRefreshSkipsAnActiveInitialWave(t *testing.T) {
 	config.Source.Sources[0].Address = firstRelay.listener.Addr().String()
 	config.Source.Sources[1].Address = secondRelay.listener.Addr().String()
 	config.AutomaticRefreshInterval = 100 * time.Millisecond
-	// This scheduler test needs a live observation across source work. A
-	// frozen fixture observation legitimately becomes uncertain after two seconds.
+	// Keep observation current across the real source exchange.
 	anchor := time.Now()
 	clock := func() time.Time { return time.Unix(genesis.now, 0).UTC().Add(time.Since(anchor)) }
 	config.Clock, config.ObserveClock = clock, clock

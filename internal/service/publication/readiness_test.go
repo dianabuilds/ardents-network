@@ -74,10 +74,10 @@ func TestOpenRecoversUnexposedReadyGenerationAsUnavailable(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := writeFloor(owner.root.path, 1); err != nil {
+	if err := writeFloor(owner.root.path, 1, owner.root.syncDirectory); err != nil {
 		t.Fatal(err)
 	}
-	if err := writeGeneration(owner.root.path, 1, record); err != nil {
+	if err := writeGeneration(owner.root.path, 1, record, owner.root.syncDirectory); err != nil {
 		t.Fatal(err)
 	}
 	if err := owner.root.lease.release(); err != nil {
