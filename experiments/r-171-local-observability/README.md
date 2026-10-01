@@ -205,3 +205,31 @@ sequences through the fixed watermark without duplicates in that query. Actual
 backend-state files used 1789952 bytes; this excludes other tmpfs/log/cache space.
 Extended failure, exhausted retries, storage pressure and host durability remain
 open. Original evidence is external; no maintained component admission follows.
+### Explicit filesystem pressure
+
+```powershell
+make probe-storage-pressure EVIDENCE_ROOT=C:/Users/vitek/AppData/Local/Temp/ardents-r171-storage-new RUN_NAME=r171-storage-new
+```
+
+This profile fills only its new Loki state volume with one injector-owned file
+until actual ENOSPC, then observes native WAL failures and a scoped alert while
+source/collector/backend scrapes remain available. The already-installed offline
+injector has 640 MiB memory / 0.25 CPU and no network; aggregate limits remain
+within the research envelope. It refuses an existing injection file and removes
+only its validated regular single-link owned file. No other state is removed.
+The fixed-volume scope is an intentional fault injection, not normal monitoring.
+
+Prometheus scrapes only three selected WAL metrics from authenticated Loki with
+a 32-sample budget. A 30-second increase window plus six-second pending period
+reports observed WAL storage failures; the counter is not a count of lost logs.
+Counter silence/recovery does not establish historical durability. The probe
+checks native alert clearance and source-event catch-up after space recovery;
+missing history or unavailable counters remain a failed result. This profile
+must not be used against an existing Node or production storage volume.
+Storage-pressure-a observed actual ENOSPC / zero filesystem free bytes, native
+WAL failure increase two and a firing Alertmanager receipt while all three
+scrape sources remained available. The injector freed only its validated file;
+the alert cleared and log catch-up plus subsequent backend restart checks passed.
+Collector retry/drop values during this pressure interval and a pending sample
+for the new rule were not separately retained, so full pressure admission is
+still incomplete. This is not a crash-durability or real Node acceptance claim.

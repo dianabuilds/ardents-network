@@ -309,6 +309,46 @@ elif sys.argv[1] in ('backend-baseline', 'backend-unavailable'):
                 break
             time.sleep(1)
         else: raise RuntimeError('No visible delivery failure within bounded backend outage')
+elif sys.argv[1] in ('storage-baseline', 'storage-pressure', 'storage-recovered'):
+    def storage_counter(prefix):
+        response = observe(prefix+'wal','https://prometheus:9090/api/v1/query?'+urllib.parse.urlencode(
+            {'query':'loki_ingester_wal_disk_full_failures_total{job="logbackend"}'}))
+        items = response['data']['result']
+        if response.get('status') != 'success' or len(items) != 1:
+            raise RuntimeError('Native WAL storage failure counter unavailable')
+        return float(items[0]['value'][1])
+    if sys.argv[1] == 'storage-baseline':
+        baseline = storage_counter('baseline-')
+        (reports/'baseline.json').write_text(json.dumps({'wal_failures':baseline}))
+        print('Native storage failure counter baseline captured')
+    else:
+        baseline = json.loads(pathlib.Path('/history/storage-baseline/baseline.json').read_text())['wal_failures']
+        deadline = time.monotonic()+40
+        attempt = 0
+        while time.monotonic() < deadline:
+            attempt += 1
+            prefix = f'{attempt:02d}-'
+            counter = storage_counter(prefix)
+            up = observe(prefix+'availability','https://prometheus:9090/api/v1/query?'+urllib.parse.urlencode(
+                {'query':'up{job=~"fixture|collector|logbackend"}'}))['data']['result']
+            health = {item['metric']['job']:float(item['value'][1]) for item in up}
+            rules = observe(prefix+'rules','https://prometheus:9090/api/v1/alerts')['data']['alerts']
+            manager = observe(prefix+'manager','https://alertmanager:9093/api/v2/alerts')
+            selected_rules = [item for item in rules if item['labels']['alertname']=='LogStoragePressure']
+            selected_manager = [item for item in manager if item['labels']['alertname']=='LogStoragePressure']
+            if sys.argv[1] == 'storage-pressure':
+                state_ok = (len(selected_rules)==1 and selected_rules[0]['state']=='firing' and
+                            len(selected_manager)==1 and selected_manager[0]['status']['state']=='active')
+            else:
+                state_ok = not selected_rules and not selected_manager
+            if counter > baseline and health == {'fixture':1,'collector':1,'logbackend':1} and state_ok:
+                (reports/'storage-assertions.json').write_text(json.dumps({'phase':sys.argv[1],
+                    'native_wal_failure_increase':counter-baseline,'availability':health,
+                    'alert_firing':sys.argv[1]=='storage-pressure','passed':True}))
+                print('Native storage signal and alert transition observed: '+sys.argv[1])
+                break
+            time.sleep(1)
+        else: raise RuntimeError('Expected storage signal/alert transition not observed within budget')
 elif sys.argv[1] == 'healthy-window':
     summary = json.loads(pathlib.Path('/history/resource-window/summary.json').read_text(encoding='utf-8-sig'))
     start = int(datetime.datetime.fromisoformat(summary['started_utc']).timestamp())+2

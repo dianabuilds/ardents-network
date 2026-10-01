@@ -614,3 +614,61 @@ Verification: make quick-check session 95776 passed during the backend-outage
 change. The actual outage run also exercised the final stricter check requiring
 both retry and drop counters. Required full gates/review/integration still belong
 to the completed maintained-adoption slice; no exact component is admitted here.
+### Predeclared filesystem-pressure probe boundary
+
+Before running a new storage-pressure attempt, fill only the new run's Loki
+512 MiB tmpfs using one explicit synthetic regular file. The offline injector
+uses the already-installed helper as UID10001, read-only root, no network,
+no capabilities, 640 MiB memory and 0.25 CPU. It mounts only that selected
+volume, its own report directory and read-only experiment code. No host log or
+product input is mounted. The combined runtime configuration stays below the
+4 GiB/4 CPU envelope; source and collector continue running.
+
+Falsification: actual ENOSPC and filesystem free bytes must be observed, not
+inferred from configured quota. Record Loki's native WAL disk-full counter and
+collector retry/drop counters, keeping unavailable metrics distinct from zero.
+Require a visible native pressure signal while scrape sources remain available.
+Do not infer persistence from HTTP success: Loki can accept an entry that cannot
+be written to WAL in the interval before its disk protection checks. Free only
+the injector-owned file, verify space recovery, then query the fixed producer
+watermark for missing/duplicate events. Missing history or a counter-based
+loss must remain a failed durability/delivery result, never an erased retry.
+
+Primary source accessed 2026-10-01: [Loki WAL behavior](https://grafana.com/docs/loki/latest/operations/storage/wal/).
+The current docs describe 90 percent disk protection and a disk-full failure
+counter, including an acknowledged-but-not-WAL-persisted window. These are
+source expectations; exact candidate behavior must be measured separately.
+### Actual WAL filesystem exhaustion and native alert
+
+**Measurement:** `ardents-r171-storage-pressure-a` terminated zero with cleanup_exit
+zero. The injector owned one regular file of 536846336 bytes in the new 512 MiB
+Loki tmpfs; an actual write returned ENOSPC and statvfs reported zero free bytes.
+After validating identity, owner, type, size and single-link count, the injector
+removed only that file. Observed free space recovered to 536846336 bytes.
+
+**Measurement:** Native `loki_ingester_wal_disk_full_failures_total` increased by
+two while fixture, collector and logbackend up all remained one. The scoped
+`LogStoragePressure` rule reached firing and Alertmanager active. Its expression
+uses a thirty-second counter-increase window and six-second pending period.
+After freeing space, the rule and active Alertmanager result cleared; the
+cumulative WAL counter remained two above baseline. This observes alert clearance,
+not erasure of the failure, proof of durability or an incident-history feature.
+
+**Measurement:** Post-pressure catch-up reached captured producer watermark 133
+on attempt twenty, returning 144 unique events without duplicates and with source
+event time preserved. The subsequent backend restart/history checks passed;
+post-restart query included every sequence through watermark 177 with 178 unique
+events. Runtime reports retained 1749804 bytes outside Git. make quick-check
+session 93482 passed. No surviving R171 containers remain after cleanup.
+
+**Limit:** This profile did not separately retain collector retry/drop counters
+during the full-disk interval, nor a pending sample for this new storage rule.
+Those predeclared evidence items remain missing; passing implemented assertions
+is not full storage-pressure admission. The probe does not crash Loki while
+writes lack WAL persistence, exhaust extended retries, prove a host/daemon
+restart, or establish future log durability from HTTP acceptance. Source events
+and limits are synthetic; no actual Node/Application inputs were admitted.
+The extra authenticated backend scrape selects only the three named WAL metrics,
+with a thirty-two-sample budget. No arbitrary exporter or raw-file discovery was
+added. Complete component selection, advisory dispositions, real-source integration
+and required completed-slice gates/review remain open under #394/#377.

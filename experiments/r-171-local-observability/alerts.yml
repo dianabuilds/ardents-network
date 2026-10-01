@@ -25,3 +25,11 @@ groups:
           scope: collector
         annotations:
           summary: Collector scrape failed; log delivery requires separate evidence
+      - alert: LogStoragePressure
+        expr: increase(loki_ingester_wal_disk_full_failures_total{job="logbackend"}[30s]) > 0
+        for: 6s
+        labels:
+          severity: warning
+          scope: log_storage
+        annotations:
+          summary: Loki WAL disk failure observed; accepted logs may lack durable storage

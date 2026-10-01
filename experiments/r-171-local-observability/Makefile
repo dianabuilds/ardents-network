@@ -17,3 +17,6 @@ probe-resources:
 .PHONY: probe-backend-outage
 probe-backend-outage:
 	powershell -NoProfile -ExecutionPolicy RemoteSigned -File probe.ps1 -EvidenceRoot "$(EVIDENCE_ROOT)" -RunName "$(RUN_NAME)" -RestartProbe -BackendProbe
+.PHONY: probe-storage-pressure
+probe-storage-pressure:
+	powershell -NoProfile -ExecutionPolicy RemoteSigned -File probe.ps1 -EvidenceRoot "$(EVIDENCE_ROOT)" -RunName "$(RUN_NAME)" -RestartProbe -StorageProbe

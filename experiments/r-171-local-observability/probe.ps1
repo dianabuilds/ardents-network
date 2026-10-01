@@ -1,7 +1,7 @@
 param([Parameter(Mandatory=$true)][string]$EvidenceRoot,
-      [Parameter(Mandatory=$true)][ValidatePattern('^r171-[a-z0-9-]{1,32}$')][string]$RunName, [switch]$RestartProbe, [switch]$ResourceProbe, [switch]$BackendProbe)
+      [Parameter(Mandatory=$true)][ValidatePattern('^r171-[a-z0-9-]{1,32}$')][string]$RunName, [switch]$RestartProbe, [switch]$ResourceProbe, [switch]$BackendProbe, [switch]$StorageProbe)
 $ErrorActionPreference='Stop'
-if (($ResourceProbe -or $BackendProbe) -and -not $RestartProbe) { throw 'Resource profile requires explicit restart-state profile.' }
+if (($ResourceProbe -or $BackendProbe -or $StorageProbe) -and -not $RestartProbe) { throw 'Resource profile requires explicit restart-state profile.' }
 $taskRoot=[IO.Path]::GetFullPath($EvidenceRoot)
 $taskRepo=[IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../..'))
 if ($taskRoot.Equals($taskRepo,[StringComparison]::OrdinalIgnoreCase) -or
@@ -79,6 +79,18 @@ try {
     Invoke-ProbeQuery 'lifecycle' 'collector-recovered'
     Invoke-ProbeQuery 'catchup' 'post-outage-logs'
     Invoke-ProbeQuery 'shared-interval' 'grafana-shared-interval'
+    if ($StorageProbe) {
+        $taskPressureReports=Join-Path $taskReports 'storage-injection'
+        New-Item -ItemType Directory -Path $taskPressureReports | Out-Null
+        Invoke-ProbeQuery 'storage-baseline' 'storage-baseline'
+        foreach ($taskAction in @('fill','free')) {
+            if ($taskAction -eq 'free') { Invoke-ProbeQuery 'storage-pressure' 'storage-pressure' }
+            docker run --rm --network none --read-only --cap-drop ALL --security-opt no-new-privileges --user 10001:10001 --memory 640m --cpus 0.25 --pids-limit 4 --shm-size 1m --log-driver local --log-opt max-size=2m --log-opt max-file=2 --mount "type=volume,source=$($RunName)_loki-state,target=/state" --mount "type=bind,source=$PSScriptRoot,target=/probe,readonly" --mount "type=bind,source=$taskPressureReports,target=/reports" --entrypoint python3 $taskHelper /probe/storage-pressure.py $taskAction
+            if ($LASTEXITCODE -ne 0) { throw 'Synthetic storage injection action failed; preserve evidence.' }
+        }
+        Invoke-ProbeQuery 'catchup' 'post-storage-pressure-logs'
+        Invoke-ProbeQuery 'storage-recovered' 'storage-recovered'
+    }
     if ($BackendProbe) {
         Invoke-ProbeQuery 'backend-baseline' 'backend-baseline'
         docker @taskCompose stop --timeout 5 loki
