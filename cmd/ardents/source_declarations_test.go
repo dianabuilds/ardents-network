@@ -17,7 +17,7 @@ func TestSourceIdentityRefusalPrecedesCredentialFileRead(t *testing.T) {
 		ClientKey: filepath.Join(root, "absent-key")}
 	for _, identity := range []string{"33", "44"} {
 		plan.Sources = append(plan.Sources, sourcePlanMember{Identity: strings.Repeat(identity, 32),
-			LeafKeyDigest: strings.Repeat("55", 32), RootCA: filepath.Join(root, "absent-ca")})
+			Family: identity, LeafKeyDigest: strings.Repeat("55", 32), RootCA: filepath.Join(root, "absent-ca")})
 	}
 	path := filepath.Join(root, "plan.json")
 	write := func() {
