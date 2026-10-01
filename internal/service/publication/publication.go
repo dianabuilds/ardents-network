@@ -91,6 +91,9 @@ func (publication *Publication) Floor() (uint64, error) {
 	if publication.root.closed {
 		return 0, errors.New("publication is closed")
 	}
+	if publication.root.persistenceErr != nil {
+		return 0, publication.root.persistenceErr
+	}
 	return publication.root.floor, nil
 }
 
@@ -204,7 +207,7 @@ func (publication *Publication) drainRetiring(ctx context.Context) error {
 		return nil
 	}
 	retiring.releaseSigner()
-	if err := removeGeneration(publication.root.path, retiring.credential.Generation); err != nil {
+	if err := removeGeneration(publication.root.path, retiring.credential.Generation, publication.root.syncDirectory); err != nil {
 		return err
 	}
 	publication.root.mu.Lock()
@@ -225,7 +228,10 @@ func (publication *Publication) removePersistedUnavailable() error {
 	if err := publication.root.removeCurrent(); err != nil {
 		return err
 	}
-	return os.RemoveAll(generationPath(publication.root.path, pointer))
+	if err := os.RemoveAll(generationPath(publication.root.path, pointer)); err != nil {
+		return err
+	}
+	return publication.root.syncDirectory(filepath.Join(publication.root.path, "generations"))
 }
 
 func (generation *generation) current() Current {
@@ -307,7 +313,7 @@ func retainInstanceSigner(signer crypto.Signer) (crypto.Signer, func()) {
 
 func publicationGeneration(value uint64) string { return fmt.Sprintf("%016x", value) }
 
-func writeGeneration(root string, number uint64, record []byte) error {
+func writeGeneration(root string, number uint64, record []byte, syncDirectory func(string) error) error {
 	generations := filepath.Join(root, "generations")
 	staging, err := os.MkdirTemp(generations, ".stage-")
 	if err != nil {
@@ -317,18 +323,21 @@ func writeGeneration(root string, number uint64, record []byte) error {
 	if err := writeExclusive(filepath.Join(staging, "publication.bin"), record); err != nil {
 		return err
 	}
+	if err := syncDirectory(staging); err != nil {
+		return err
+	}
 	final := generationPath(root, publicationGeneration(number))
 	if err := os.Rename(staging, final); err != nil {
 		return fmt.Errorf("publish immutable publication generation: %w", err)
 	}
-	return nil
+	return syncDirectory(generations)
 }
 
-func removeGeneration(root string, number uint64) error {
+func removeGeneration(root string, number uint64, syncDirectory func(string) error) error {
 	if err := os.RemoveAll(generationPath(root, publicationGeneration(number))); err != nil {
 		return fmt.Errorf("remove withdrawn publication generation: %w", err)
 	}
-	return nil
+	return syncDirectory(filepath.Join(root, "generations"))
 }
 
 func encodePublication(credential Credential, acknowledgement []byte, signer crypto.Signer) ([]byte, [32]byte, error) {

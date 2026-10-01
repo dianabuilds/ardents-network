@@ -34,6 +34,8 @@ type durableRoot struct {
 	closed            bool
 	released          bool
 	floor             uint64
+	syncDirectory     func(string) error
+	persistenceErr    error
 	current           *generation
 	retiring          *generation
 	closeDrainStarted chan struct{}
@@ -63,6 +65,10 @@ func (generation *generation) releaseSigner() {
 }
 
 func openDurableRoot(config Config) (*durableRoot, error) {
+	return openDurableRootWithSync(config, syncPublicationDirectory)
+}
+
+func openDurableRootWithSync(config Config, syncDirectory func(string) error) (*durableRoot, error) {
 	if config.Root == "" {
 		return nil, errors.New("publication root is required")
 	}
@@ -70,7 +76,7 @@ func openDurableRoot(config Config) (*durableRoot, error) {
 	if err != nil {
 		return nil, fmt.Errorf("resolve publication root: %w", err)
 	}
-	if err := inspectRoot(path); err != nil {
+	if err := inspectRoot(path, syncDirectory); err != nil {
 		return nil, err
 	}
 	if err := ensureLeasePath(path); err != nil {
@@ -86,10 +92,10 @@ func openDurableRoot(config Config) (*durableRoot, error) {
 			_ = lease.release()
 		}
 	}()
-	if err := prepareRoot(path); err != nil {
+	if err := prepareRoot(path, syncDirectory); err != nil {
 		return nil, err
 	}
-	root := &durableRoot{path: path, lease: lease, closeDrainStarted: make(chan struct{})}
+	root := &durableRoot{path: path, lease: lease, syncDirectory: syncDirectory, closeDrainStarted: make(chan struct{})}
 	if err := root.restore(config); err != nil {
 		return nil, err
 	}
@@ -97,10 +103,10 @@ func openDurableRoot(config Config) (*durableRoot, error) {
 	return root, nil
 }
 
-func inspectRoot(path string) error {
+func inspectRoot(path string, syncDirectory func(string) error) error {
 	info, err := os.Lstat(path)
 	if errors.Is(err, os.ErrNotExist) {
-		if err := os.MkdirAll(path, 0o700); err != nil {
+		if err := createPublicationDirectory(path, syncDirectory); err != nil {
 			return fmt.Errorf("create publication root: %w", err)
 		}
 		return nil
@@ -127,7 +133,7 @@ func inspectRoot(path string) error {
 	return nil
 }
 
-func prepareRoot(path string) error {
+func prepareRoot(path string, syncDirectory func(string) error) error {
 	markerPath := filepath.Join(path, rootMarkerName)
 	marker, err := os.Lstat(markerPath)
 	if errors.Is(err, os.ErrNotExist) {
@@ -143,10 +149,26 @@ func prepareRoot(path string) error {
 	} else if contents, readErr := readFile(markerPath, int64(len(rootMarker))); readErr != nil || !bytes.Equal(contents, []byte(rootMarker)) {
 		return errors.New("publication root ownership marker is invalid")
 	}
+	markerFile, err := os.OpenFile(markerPath, os.O_RDWR, 0)
+	if err != nil {
+		return err
+	}
+	if err := errors.Join(markerFile.Sync(), markerFile.Close()); err != nil {
+		return err
+	}
 	if err := os.Mkdir(filepath.Join(path, "generations"), 0o700); err != nil && !errors.Is(err, os.ErrExist) {
 		return fmt.Errorf("create publication generations: %w", err)
 	}
-	return cleanupStaging(path)
+	if err := syncDirectory(filepath.Join(path, "generations")); err != nil {
+		return err
+	}
+	if err := syncDirectory(path); err != nil {
+		return err
+	}
+	if err := syncDirectory(filepath.Dir(path)); err != nil {
+		return err
+	}
+	return cleanupStaging(path, syncDirectory)
 }
 
 func ensureLeasePath(path string) error {
@@ -156,8 +178,8 @@ func ensureLeasePath(path string) error {
 		if createErr != nil {
 			return fmt.Errorf("create publication root lease: %w", createErr)
 		}
-		if closeErr := file.Close(); closeErr != nil {
-			return fmt.Errorf("close publication root lease: %w", closeErr)
+		if err := errors.Join(file.Sync(), file.Close()); err != nil {
+			return fmt.Errorf("persist publication root lease: %w", err)
 		}
 	} else if err != nil {
 		return fmt.Errorf("inspect publication root lease: %w", err)
@@ -196,7 +218,7 @@ func (root *durableRoot) restore(config Config) error {
 		if len(entries) == 1 && entries[0].Name() == publicationGeneration(floor) {
 			generation, loadErr := loadGeneration(root.path, entries[0].Name(), config)
 			if loadErr == nil && generation.credential.Generation == floor {
-				return removeGeneration(root.path, floor)
+				return removeGeneration(root.path, floor, root.syncDirectory)
 			}
 		}
 		return errors.New("publication root has a generation without its current pointer")
@@ -217,7 +239,7 @@ func (root *durableRoot) removeCurrent() error {
 	if err := os.Remove(filepath.Join(root.path, currentName)); err != nil && !errors.Is(err, os.ErrNotExist) {
 		return fmt.Errorf("withdraw publication pointer: %w", err)
 	}
-	return nil
+	return root.syncDirectory(root.path)
 }
 
 func readFloor(root string) (uint64, bool, error) {
@@ -235,8 +257,8 @@ func readFloor(root string) (uint64, bool, error) {
 	return value, true, nil
 }
 
-func writeFloor(root string, floor uint64) error {
-	return replaceFile(root, floorName, []byte(strconv.FormatUint(floor, 10)+"\n"))
+func writeFloor(root string, floor uint64, syncDirectory func(string) error) error {
+	return replaceFile(root, floorName, []byte(strconv.FormatUint(floor, 10)+"\n"), syncDirectory)
 }
 
 func currentExists(root string) bool {
@@ -256,13 +278,13 @@ func readPointer(root string) (string, bool, error) {
 	return name, true, nil
 }
 
-func replacePointer(root, generation string) error {
-	return replaceFile(root, currentName, []byte(generation+"\n"))
+func replacePointer(root, generation string, syncDirectory func(string) error) error {
+	return replaceFile(root, currentName, []byte(generation+"\n"), syncDirectory)
 }
 
 func generationPath(root, name string) string { return filepath.Join(root, "generations", name) }
 
-func cleanupStaging(root string) error {
+func cleanupStaging(root string, syncDirectory func(string) error) error {
 	for _, directory := range []string{root, filepath.Join(root, "generations")} {
 		entries, err := readDirectory(directory, 128)
 		if err != nil {
@@ -274,6 +296,9 @@ func cleanupStaging(root string) error {
 					return fmt.Errorf("remove interrupted publication staging: %w", err)
 				}
 			}
+		}
+		if err := syncDirectory(directory); err != nil {
+			return err
 		}
 	}
 	return nil
@@ -320,16 +345,17 @@ func readDirectory(path string, maximum int) ([]os.DirEntry, error) {
 
 func writeExclusive(path string, contents []byte) error {
 	file, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
-	if err == nil {
-		_, err = file.Write(contents)
+	if err != nil {
+		return err
 	}
+	_, err = file.Write(contents)
 	if err == nil {
 		err = file.Sync()
 	}
 	return errors.Join(err, file.Close())
 }
 
-func replaceFile(root, name string, contents []byte) error {
+func replaceFile(root, name string, contents []byte, syncDirectory func(string) error) error {
 	temporary, err := os.CreateTemp(root, ".current-")
 	if err != nil {
 		return err
@@ -342,11 +368,12 @@ func replaceFile(root, name string, contents []byte) error {
 	if err == nil {
 		err = temporary.Sync()
 	}
-	if closeErr := temporary.Close(); err == nil {
-		err = closeErr
-	}
+	err = errors.Join(err, temporary.Close())
 	if err == nil {
 		err = os.Rename(path, filepath.Join(root, name))
+	}
+	if err == nil {
+		err = syncDirectory(root)
 	}
 	return err
 }
