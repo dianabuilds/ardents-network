@@ -710,6 +710,10 @@ unacknowledged Data suffix without waiting for a further local Application read,
 EOF, or Terminal. That replay remains ordered with later Application bytes and
 is joined or interrupted by the Connection's existing terminal cleanup.
 
+Publication startup joins any ownership/preparation or restore refusal with a
+failed exclusive-root release, returning no owner. Retained root evidence and
+floors are not reset as part of failure cleanup.
+
 Publication persists public proof and its non-decreasing generation floor but
 never persists a live Instance private key. The supported generation floor
 comes only from the current Publication root's floor file. An empty owned root

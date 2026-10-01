@@ -505,6 +505,13 @@ credential journal, and Service Connection owns replacement decisions through
 its own attachment type; the former Entry replay and Invite-journal state is
 retired with the Invite subsystem (ADR-0106).
 
+Closed Entry selection and closed Issuer root startup join their primary
+refusal with any failed exclusive-root release and return no owner. Issuer
+initialization also requires successful root release before returning its public
+SPKI receipt; a release failure returns an error and no receipt even when the
+immutable material was committed. Retained roots are never reset by cleanup;
+an explicit reopen still verifies that same material and authority.
+
 The Entry attachment execution machinery is retired by ADR-0095: `Acquire`,
 its guarded carrier, and the cleanup-lease tracking had no production caller
 after ADR-0093 removed the Route v2 attachment opener. ADR-0106 then retired

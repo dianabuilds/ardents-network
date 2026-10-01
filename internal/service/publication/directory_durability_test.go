@@ -182,7 +182,7 @@ func TestPublicationInitializationRetainsBarrierFailures(t *testing.T) {
 			root := t.TempDir()
 			failure := errors.New("initialization barrier failed")
 			calls := 0
-			owner, err := openDurableRootWithSync(fixture.config(root), func(path string) error {
+			owner, err := openDurableRootWithSync(fixture.config(root), acquireRootLease, func(path string) error {
 				calls++
 				if calls == phase {
 					return failure
