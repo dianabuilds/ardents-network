@@ -33,9 +33,14 @@ defines their bounded contract. Full supported installed qualification is still
 incomplete. Provision returns only `installed-stopped`; installation-check
 returns only `local-integrity-verified`; start-installed accepts only the actual
 fixed service main process before delegating to the bound participant plan.
-Upgrade returns only `installed-started`, and successful successor recovery
-returns only `installed-recovered-started`; neither is a Service readiness or
-publication-continuity receipt. Upgrade requests omit the first-install pin.
+Successful upgrade returns `installed-started`, and successful successor recovery
+returns `installed-recovered-started`; neither is a Service readiness or
+publication-continuity receipt. If Root has acknowledged the installed invocation
+but subsequent completion cleanup fails, upgrade or successor recovery emits
+`installed-started-recovery-required` together with a nonzero command result.
+The exact recovery guard remains retained; the result does not establish Service
+readiness or permit ordinary restart through that guard. Upgrade requests omit
+the first-install pin.
 No generic privileged launch,
 implicit start on provision, authority-key creation or accepting test permission
 route is selected. Existing command behavior remains documented below.
