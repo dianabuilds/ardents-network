@@ -274,6 +274,15 @@ func monitorMetrics(state monitorState, now time.Time) ([]byte, error) {
 		emit("log_retention_limit_bytes", "gauge", "Configured retained payload budget; not filesystem quota.", float64(state.Limits.MaxBytes))
 		emit("log_retention_limit_files", "gauge", "Configured file budget including the empty ownership lock.", float64(state.Limits.MaxFiles))
 	}
+	filesystemAvailable := storageAvailable && state.Logs.FilesystemAvailable
+	emit("log_filesystem_observation_available", "gauge", "Fresh capacity observation of the filesystem containing the selected logs.", boolean(filesystemAvailable))
+	if filesystemAvailable {
+		if state.Logs.FilesystemTotalBytes <= 0 || state.Logs.FilesystemFreeBytes < 0 || state.Logs.FilesystemFreeBytes > state.Logs.FilesystemTotalBytes {
+			return nil, errors.New("invalid log filesystem capacity")
+		}
+		emit("log_filesystem_total_bytes", "gauge", "Whole log filesystem capacity; may be tmpfs, not host disk or Node allocation.", float64(state.Logs.FilesystemTotalBytes))
+		emit("log_filesystem_available_bytes", "gauge", "Whole log filesystem bytes available to the monitor; includes shared usage and reserved capacity.", float64(state.Logs.FilesystemFreeBytes))
+	}
 	available := false
 	row := state.LatestSample
 	if fresh && state.SourceAlive && state.MetricSampleMaxAge > 0 && row != nil &&

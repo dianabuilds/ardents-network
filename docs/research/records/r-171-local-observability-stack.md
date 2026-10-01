@@ -2340,3 +2340,49 @@ architecture representation gate. Both bounded read-only reviews reported no
 actionable findings. This result completes the single-choice presentation
 correction; full backend admission, live debug journeys and integration remain
 open.
+### Storage prerequisite correction and CPU sampling observation (2026-10-01)
+
+The Product Owner challenged the Ubuntu integration dependency. It is withdrawn
+from the monitoring launch plan: Docker volume persistence can be tested without
+Ubuntu integration. The earlier bounded WSL filesystem experiment remains
+historical evidence, not a prerequisite or selected deployment. Complete retained
+state and finite disk-budget evidence are still required; an ordinary volume by
+itself does not enforce a quota. No general Docker setting is requested now.
+
+A fresh explicit tools-install Node fixture build-d completed from the recorded
+source manifest (HEAD1a6e4bbd with the pending presentation-only delta). Its fresh
+diagnostics binary includes the current log-accounting metrics. Actual private
+TCP/TLS debug-current-a completed with five accepted runtime/CPU/heap/goroutine/
+trace artifacts, verified archive and no cleanup failures. Offline inspection
+of its CPU profile reported Total samples =0 despite successful parser exit.
+This changes the next action: the probe now separately records cpu_sampling as
+empty, observed or unavailable from the installed parser's aggregate header.
+Parser validation still describes format acceptance, not workload coverage or
+operation causality. Unknown header formats remain unavailable. Private profiles
+and stack tables remain outside the monitoring pipeline.
+### Configured retention and filesystem pressure (2026-10-01)
+
+At the Product Owner's request, normal monitor defaults now retain up to1GiB
+payload/three days,16MiB segments and65 files including ownership lock. Existing
+small finite preview/test budgets remain explicit overrides. Whole-filesystem
+total/user-available capacity is observed via the admitted journal descriptor;
+no disk discovery, WSL integration or extra authority is introduced. Metrics use
+independent completed file-worker freshness; stale/failed observations omit
+capacity gauges and explicitly expose unavailability. tmpfs/shared storage is
+labelled as filesystem capacity, not physical host disk or per-Node allocation.
+
+The prepared Grafana view adds a percent chart. Native promtool validated80%
+warning and90% critical rules with one-minute pending windows, escalation,
+recovery and absent-series cases. Bounded review found I/O under the reopen
+state lock and an escalation warning gap; both were corrected and reviewers
+confirmed closure. Linux diagnostic suite passed after the lock correction;
+real admitted-store and stale-exposition assertions accompany the change.
+
+Fresh preview-f separately proved actual Node mTLS scrape, measured memory,
+three safe lifecycle events, only job indexed, and both Grafana datasource
+queries. Its browser displayed live memory/CPU/freshness and log-accounting
+panels without backend/plugin errors. It uses build-d and the earlier prepared
+13-panel dashboard; the new filesystem metrics/rules/panel are not yet deployed
+there. This distinction prevents attributing new behavior to an older binary.
+Full-goal completion, Ubuntu/Windows end-to-end qualification, exact backend
+admission and dev integration remain open.

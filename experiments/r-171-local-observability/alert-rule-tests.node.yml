@@ -71,3 +71,37 @@ tests:
       - eval_time: 8s
         alertname: NodeLocalLogDeliveryLost
         exp_alerts: []
+  - interval: 10s
+    input_series:
+      - series: 'diagnostic_selected_log_filesystem_total_bytes{job="node",instance="selected"}'
+        values: '100+0x24'
+      - series: 'diagnostic_selected_log_filesystem_available_bytes{job="node",instance="selected"}'
+        values: '20+0x6 10+0x6 30+0x10'
+    alert_rule_test:
+      - eval_time: 60s
+        alertname: NodeLogFilesystemNearlyFull
+        exp_alerts:
+          - exp_labels: {job: node, instance: selected, severity: warning, scope: log_filesystem}
+            exp_annotations: {summary: "Файловая система журнала заполнена на 80% или больше"}
+      - eval_time: 130s
+        alertname: NodeLogFilesystemCritical
+        exp_alerts:
+          - exp_labels: {job: node, instance: selected, severity: critical, scope: log_filesystem}
+            exp_annotations: {summary: "Файловая система журнала заполнена на 90% или больше"}
+      - eval_time: 130s
+        alertname: NodeLogFilesystemNearlyFull
+        exp_alerts:
+          - exp_labels: {job: node, instance: selected, severity: warning, scope: log_filesystem}
+            exp_annotations: {summary: "Файловая система журнала заполнена на 80% или больше"}
+      - eval_time: 140s
+        alertname: NodeLogFilesystemCritical
+        exp_alerts: []
+  - interval: 10s
+    input_series: []
+    alert_rule_test:
+      - eval_time: 120s
+        alertname: NodeLogFilesystemNearlyFull
+        exp_alerts: []
+      - eval_time: 120s
+        alertname: NodeLogFilesystemCritical
+        exp_alerts: []

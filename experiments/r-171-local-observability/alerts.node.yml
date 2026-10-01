@@ -57,3 +57,19 @@ groups:
         annotations:
           summary: "Наблюдались потери локальной доставки логов"
           description: "Положителен хотя бы один счётчик потерь за сессию монитора. Каналы имеют разные представления байтов; это не число уникальных потерянных сообщений. Рестарт может сбросить счётчики. Плановое удаление по сроку или лимиту сюда не входит."
+
+      - alert: NodeLogFilesystemNearlyFull
+        expr: (1 - diagnostic_selected_log_filesystem_available_bytes{job="node"} / diagnostic_selected_log_filesystem_total_bytes{job="node"}) >= 0.8
+        for: 1m
+        labels: {severity: warning, scope: log_filesystem}
+        annotations: {summary: "Файловая система журнала заполнена на 80% или больше"}
+      - alert: NodeLogFilesystemCritical
+        expr: (1 - diagnostic_selected_log_filesystem_available_bytes{job="node"} / diagnostic_selected_log_filesystem_total_bytes{job="node"}) >= 0.9
+        for: 1m
+        labels: {severity: critical, scope: log_filesystem}
+        annotations: {summary: "Файловая система журнала заполнена на 90% или больше"}
+      - alert: NodeLogFilesystemObservationUnavailable
+        expr: (diagnostic_selected_log_filesystem_observation_available{job="node"} == 0) and on(job,instance) (up{job="node"} == 1)
+        for: 1m
+        labels: {severity: warning, scope: log_filesystem}
+        annotations: {summary: "Недоступно измерение файловой системы журнала"}

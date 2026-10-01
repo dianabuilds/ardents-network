@@ -221,8 +221,9 @@ func (d *monitorDelivery) runFile() {
 		case record, ok := <-d.fileQueue:
 			if !ok {
 				err := d.store.Close()
+				stats := d.store.Stats()
 				d.mu.Lock()
-				d.state.Logs = d.store.Stats()
+				d.state.Logs = stats
 				d.state.LogsObservedAt = time.Now().UTC()
 				d.state.FileFailed = d.state.FileFailed || err != nil
 				d.mu.Unlock()
@@ -430,11 +431,11 @@ func monitorCommand(args []string) (outcome error) {
 	name := flags.String("name", "selected-process", "safe local source label (ASCII letters, digits, dash, underscore)")
 	timeout := flags.Duration("timeout", 0, "optional finite run budget; zero follows source until signal")
 	sampleMaxAge := flags.Duration("sample-max-age", 0, "explicit Node metric freshness budget; zero disables resource export")
-	segmentBytes := flags.Int64("segment-bytes", 8<<20, "bytes per log segment")
-	maxBytes := flags.Int64("retain-bytes", 64<<20, "total log bytes")
-	maxFiles := flags.Int("retain-files", 9, "log files including empty ownership lock")
+	segmentBytes := flags.Int64("segment-bytes", 16<<20, "bytes per log segment")
+	maxBytes := flags.Int64("retain-bytes", 1<<30, "total log bytes")
+	maxFiles := flags.Int("retain-files", 65, "log files including empty ownership lock")
 	segmentAge := flags.Duration("rotate-after", 15*time.Minute, "rotate on next record after age")
-	maxAge := flags.Duration("retain-for", 24*time.Hour, "maximum segment age")
+	maxAge := flags.Duration("retain-for", 72*time.Hour, "maximum segment age")
 	if err := flags.Parse(args); err != nil {
 		return err
 	}
@@ -723,11 +724,13 @@ func maintainMonitorLogs(ctx context.Context, root *os.Root, delivery *monitorDe
 	delivery.consoleQueue = make(chan []byte, 64)
 	delivery.fileDone = make(chan error, 1)
 	delivery.consoleDone = make(chan error, 1)
+	stats := store.Stats()
+	observedAt := time.Now().UTC()
 	delivery.mu.Lock()
 	delivery.state.RetentionActive = true
 	delivery.state.SinksJoined = false
-	delivery.state.Logs = store.Stats()
-	delivery.state.LogsObservedAt = time.Now().UTC()
+	delivery.state.Logs = stats
+	delivery.state.LogsObservedAt = observedAt
 	delivery.mu.Unlock()
 	go delivery.runFile()
 	go delivery.runConsole()

@@ -5,6 +5,7 @@ import hashlib
 import json
 import os
 import pathlib
+import re
 import shutil
 import signal
 import subprocess
@@ -281,7 +282,13 @@ try:
             elif kind == "trace":
                 invoke("parse-trace", trace, "-pprof=sched", target, timeout=2)
             else:
-                invoke("parse-" + kind, pprof, "-top", target, timeout=2)
+                parsed = invoke("parse-" + kind, pprof, "-top", target, timeout=2)
+                if kind == "cpu":
+                    # Parser acceptance alone does not establish useful CPU samples.
+                    total = re.search(rb"Total samples = ([0-9]+(?:\.[0-9]+)?)(?:[a-z]+)?(?:[ ,\r\n]|$)", parsed)
+                    receipt["cpu_sampling"] = (
+                        "empty" if total and float(total[1]) == 0 else
+                        "observed" if total else "unavailable")
             with target.open("rb") as captured:
                 digest = hashlib.file_digest(captured, "sha256").hexdigest()
             captures.append({"kind": kind, "bytes": target.stat().st_size, "sha256": digest,

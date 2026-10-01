@@ -1017,3 +1017,14 @@ Node/lifecycle and Source/source-failed queries in the selected pinned Loki.
 Five historical Node lifecycle rows were rendered by the native template;
 the Source refusal selection returned zero rows. This checks native query and
 template behavior, not browser rendering, a new live source or a causal diagnosis.
+
+CPU debug receipts distinguish parser validation from sampling: cpu_sampling is
+empty for a zero total in the installed pprof header, observed for a positive
+total, or unavailable when that header is not recognized. Even observed samples
+do not prove adequate workload coverage or association with a failing operation.
+A quiet two-second capture can legitimately be empty; it is retained rather than
+silently recaptured until useful-looking output appears.
+
+Ubuntu WSL integration is not a monitoring prerequisite. The bounded WSL disk
+experiment above remains separate evidence; future retained-state deployment
+must prove persistence and budgets through its actual Docker storage selection.

@@ -151,6 +151,12 @@ if node_preview:
             'datasource':{'type':'prometheus','uid':'prometheus'},
             'targets':[{'refId':chr(65+offset),'expr':'diagnostic_selected_'+metric+'{job="node"}'+storage_measured,'interval':'2s','legendFormat':label} for offset,(metric,label) in enumerate(signals)],
             'description':description,'fieldConfig':{'defaults':{'unit':unit,'custom':{'spanNulls':False}},'overrides':[]}})
+    panels.append({'id':14,'title':'Файловая система журнала: заполнение','type':'timeseries',
+        'gridPos':{'x':0,'y':48,'w':12,'h':8},'maxDataPoints':2000,
+        'datasource':{'type':'prometheus','uid':'prometheus'},
+        'targets':[{'refId':'A','expr':'(1 - diagnostic_selected_log_filesystem_available_bytes{job="node"} / diagnostic_selected_log_filesystem_total_bytes{job="node"}) and on(job,instance) (diagnostic_selected_log_filesystem_observation_available{job="node"} == 1)','legendFormat':'Заполнение'}],
+        'description':'Вся файловая система, содержащая журнал: учитывает другие файлы и резерв. В контейнерном стенде это может быть tmpfs, а не физический диск хоста. Нет измерения — разрыв графика.',
+        'fieldConfig':{'defaults':{'unit':'percentunit','min':0,'max':1,'custom':{'spanNulls':False},'thresholds':{'mode':'absolute','steps':[{'color':'green','value':None},{'color':'orange','value':0.8},{'color':'red','value':0.9}]}},'overrides':[]}})
     panels.append({'id':9,'title':'События настоящего Node','type':'logs',
         'gridPos':{'x':0,'y':28,'w':24,'h':12},'datasource':{'type':'loki','uid':'loki'},
         'targets':[{'refId':'A','expr':node_log_query}],

@@ -777,6 +777,7 @@ func TestMonitorRetentionMetricsFollowRealRotationAndRestart(t *testing.T) {
 		}
 		for _, expected := range []string{
 			"diagnostic_selected_log_storage_observation_available 1\n",
+			"diagnostic_selected_log_filesystem_observation_available 1\n",
 			"diagnostic_selected_log_retained_bytes 8\n",
 			"diagnostic_selected_log_retained_files 3\n",
 			"diagnostic_selected_log_retention_limit_bytes 8\n",
@@ -793,7 +794,7 @@ func TestMonitorRetentionMetricsFollowRealRotationAndRestart(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if strings.Contains(string(body), "# HELP diagnostic_selected_log_retained_bytes") || !strings.Contains(string(body), "diagnostic_selected_log_storage_observation_available 0\n") {
+		if strings.Contains(string(body), "# HELP diagnostic_selected_log_retained_bytes") || strings.Contains(string(body), "# HELP diagnostic_selected_log_filesystem_total_bytes") || !strings.Contains(string(body), "diagnostic_selected_log_storage_observation_available 0\n") || !strings.Contains(string(body), "diagnostic_selected_log_filesystem_observation_available 0\n") {
 			t.Fatal("stale payload accounting presented as current")
 		}
 		state.Updated = now // A fresh independent heartbeat cannot refresh blocked accounting.
@@ -802,7 +803,7 @@ func TestMonitorRetentionMetricsFollowRealRotationAndRestart(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if strings.Contains(string(body), "# HELP diagnostic_selected_log_retained_bytes") || !strings.Contains(string(body), "diagnostic_selected_log_storage_observation_available 0\n") {
+		if strings.Contains(string(body), "# HELP diagnostic_selected_log_retained_bytes") || strings.Contains(string(body), "# HELP diagnostic_selected_log_filesystem_total_bytes") || !strings.Contains(string(body), "diagnostic_selected_log_storage_observation_available 0\n") || !strings.Contains(string(body), "diagnostic_selected_log_filesystem_observation_available 0\n") {
 			t.Fatal("heartbeat refreshed stale file accounting")
 		}
 		state.LogsObservedAt = now

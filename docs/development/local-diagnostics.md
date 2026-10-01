@@ -657,3 +657,23 @@ console loss counter is positive. Channels are deduplicated by source without
 summing them into unique source bytes. Intentional expiry is excluded. The
 warning survives resumed delivery within the same session; reset may clear it.
 These rules provide no durable acknowledgement or incident history.
+
+### Journal retention and filesystem capacity
+
+Normal monitor defaults retain up to 1 GiB of log payload for at most three days,
+with 16-MiB segments, 15-minute rotation and at most 65 files including the empty
+ownership lock. The first reached byte, age or file limit removes the oldest
+segments. retain-bytes, retain-for, segment-bytes, rotate-after and retain-files
+remain explicit overrides; finite test/preview recipes may select smaller limits.
+Retention expiry is reported separately from failed delivery. These payload
+limits exclude filesystem metadata, status files and backend/Docker journals.
+
+The Linux monitor observes whole-filesystem capacity through the already admitted
+log lock descriptor. It exports total and user-available bytes only while both
+file accounting and supervisor observations are fresh; syscall failure is an
+explicit unavailable observation. This may describe tmpfs or shared storage and
+must not be labelled as physical host disk, per-Node allocation or log bytes.
+The backend view plots used fraction (1 minus available divided by total), with
+warning at 80% and critical at 90%, each sustained for one minute. Recovery clears
+the threshold; missing observations cannot be healthy zero. Windows-native
+filesystem observation and end-to-end platform qualification remain unverified.

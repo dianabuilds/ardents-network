@@ -26,13 +26,16 @@ type logRetentionPolicy struct {
 	MaxAge       time.Duration `json:"max_age_ns"`
 }
 type logStoreStats struct {
-	ReceivedBytes int64 `json:"received_bytes"`
-	WrittenBytes  int64 `json:"written_bytes"`
-	LostBytes     int64 `json:"lost_bytes"`
-	ExpiredBytes  int64 `json:"expired_bytes"`
-	RetainedBytes int64 `json:"retained_bytes"`
-	Files         int   `json:"files"`
-	Failed        bool  `json:"failed"`
+	FilesystemAvailable  bool  `json:"filesystem_available"`
+	FilesystemTotalBytes int64 `json:"filesystem_total_bytes"`
+	FilesystemFreeBytes  int64 `json:"filesystem_available_bytes"`
+	ReceivedBytes        int64 `json:"received_bytes"`
+	WrittenBytes         int64 `json:"written_bytes"`
+	LostBytes            int64 `json:"lost_bytes"`
+	ExpiredBytes         int64 `json:"expired_bytes"`
+	RetainedBytes        int64 `json:"retained_bytes"`
+	Files                int   `json:"files"`
+	Failed               bool  `json:"failed"`
 }
 type retainedLogSegment struct {
 	name, stream string
@@ -336,6 +339,16 @@ func (store *logStore) Stats() logStoreStats {
 	defer store.mu.Unlock()
 	result := store.stats
 	result.Files = len(store.segments) + 1
+	// The admitted lock descriptor identifies the filesystem containing these logs.
+	// This is whole-filesystem capacity, including other users and reserved space.
+	var filesystem syscall.Statfs_t
+	if !store.closed && store.lock != nil && syscall.Fstatfs(int(store.lock.Fd()), &filesystem) == nil &&
+		filesystem.Bsize > 0 && filesystem.Blocks > 0 && filesystem.Bavail <= filesystem.Blocks &&
+		filesystem.Blocks <= uint64((1<<63-1)/filesystem.Bsize) {
+		result.FilesystemAvailable = true
+		result.FilesystemTotalBytes = int64(filesystem.Blocks) * filesystem.Bsize
+		result.FilesystemFreeBytes = int64(filesystem.Bavail) * filesystem.Bsize
+	}
 	return result
 }
 func (store *logStore) Close() error {
