@@ -1,0 +1,90 @@
+# Operator-prepared qualification release
+
+[ADR-0120](../adr/0120-authorize-operator-prepared-qualification-release.md)
+selects this isolated operation. It does not qualify installation or independent
+distribution. The Release verifier and participant first-pin contract remain
+unchanged. Never use diagnostic keys as the operational release authority.
+
+## Prepare exact public inputs
+
+Build the five linux-amd64 commands twice from the exact recorded source tree
+with `CGO_ENABLED=0`, `-trimpath` and `-buildvcs=false`. Retain byte comparisons,
+toolchain, module/build settings and build-input commitments. Generate the
+protected descriptor twice from the actual nine resources; retain matching
+bytes. The descriptor's canonical grammar is owned by enrollment. Validate it
+with `scripts/protected-generation-check.go` before signing.
+
+Prepare a bounded public JSON signing plan with schema
+`ardents-qualification-release-signing-plan-v1`, `network`, `reference_time`,
+`expires`, absolute `endpoint`, `descriptor`, `resource_root` paths, and
+`endpoint_custom`/`generation_custom`. Custom values use the existing Release
+grammar. The two values must agree on all common policy/build facts; only
+their actual target-digest rebuild records differ. Version is 1 for this fresh
+cohort. Use two actual project-controlled execution receipts, not fabricated
+identities presented as independent builders. Record the component inventory's
+scope and the exact checks behind the proposed artifact admission.
+
+The fixed targets are `ardents/linux-amd64/endpoint` and
+`ardents/linux-amd64/protected-endpoint`. Metadata expiry is finite, at most
+seven days from the current reference time. The signer rejects a reference
+older than five minutes or more than one minute in the future. Refresh an
+unsigned plan before execution; never edit signed descriptor or metadata bytes.
+Use `announced` for the isolated initial protocol, without invented overlap
+history or emergency grounds.
+
+## Protected operation on Linux
+
+Build the two adapters explicitly from their source files:
+
+`make release-operation-compile-check` vets and cross-compiles both Linux
+adapters. It is required by `quick-check` and the complete `check` gate;
+compilation is not a key/signing-operation or installed qualification result.
+
+```sh
+go build -trimpath -buildvcs=false -o /absolute/new/prepare-release-keys ./scripts/prepare-qualification-release-keys.go
+go build -trimpath -buildvcs=false -o /absolute/new/sign-release ./scripts/sign-qualification-release.go
+```
+
+Run on the selected root-controlled release host. Supply previously absent
+absolute output directories under root-owned direct ancestors with no group or
+other write permissions. Private keys are PKCS#8 files protected by root-only
+filesystem permissions; these files are not encrypted Custody Vaults and add
+no Custody unlock or general Authority signing interface.
+
+```sh
+/absolute/new/prepare-release-keys /root/new-release-keys > /root/new-public-key-receipt.json
+/absolute/new/sign-release /root/public-plan.json /root/new-release-keys /root/new-release-metadata > /root/new-public-signing-receipt.json
+```
+
+Key creation uses a new `0700` directory and exclusive `0600` files, syncs
+outputs and ancestors before a public acknowledgement, and never overwrites an
+existing directory. Signing admits exactly five distinct keys with the existing
+ordinary 3-of-5 roles. It checks descriptor/resources and common target facts,
+then verifies both targets through separate fresh diagnostic Release floor
+roots before writing the four metadata files. Those verification roots do not
+alter participant floors and are not bundle entries.
+
+Any error or interruption leaves its partial output for inspection and emits
+no success acknowledgement. Do not reuse that directory or infer completion
+from its existence. Preserve the original refusal before an explicit new
+operation. A file-size-limit failure exercises bounded write refusal; it is
+not a power-loss durability qualification.
+
+## Assembly and acceptance boundary
+
+The four metadata files alone are not the complete bundle. Prepare the real
+current alpha-control and Network companions with their own maintained owners;
+keep authority roles separate. Supply exact signed descriptor/resources and
+all required static companions to the maintained alpha-bundle assembler.
+Verify the complete 27-entry unpacked inventory and collect its manifest digest.
+Wrong-pin, mixed/expired metadata, resource substitution and incomplete inventory
+must refuse. Do not copy the signing verification roots or private keys into
+the bundle.
+
+Present the completed public root commitments, artifact digests, bounded
+artifact-admission evidence and manifest digest to the Product Owner. Installed
+execution waits for that exact bootstrap receipt to be accepted. Record the
+same-operator trust boundary honestly; this does not prove independent initial
+delivery. Two installed Endpoint roots, public Custody/permission operations,
+both Carrier journeys and actual containment/empty-scope observations remain
+separate acceptance evidence.
