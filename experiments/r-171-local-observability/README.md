@@ -230,6 +230,27 @@ Storage-pressure-a observed actual ENOSPC / zero filesystem free bytes, native
 WAL failure increase two and a firing Alertmanager receipt while all three
 scrape sources remained available. The injector freed only its validated file;
 the alert cleared and log catch-up plus subsequent backend restart checks passed.
-Collector retry/drop values during this pressure interval and a pending sample
-for the new rule were not separately retained, so full pressure admission is
+Collector retry/drop values during this pressure interval
+were not separately retained, so full pressure admission is
 still incomplete. This is not a crash-durability or real Node acceptance claim.
+Correction: pressure-a raw rules reports 06 through10 already contain pending;
+report11 contains firing. The new probe explicitly requires that progression and
+actual registered retry/drop counter deltas, refusing absent counters, resets or
+loss. Its receipt records exact installed image identities and SHA256/size for
+fourteen selected source/configuration inputs at startup, then checks those same
+bytes again before success. These are two observed snapshots, not atomic source
+isolation or protection against an owner changing and restoring files between them.
+The strengthened pressure-b probe observed pending and actual retry/drop values,
+but failed later catch-up after concurrent backend/sender restart: event157 was
+missing through producer watermark183. Its nonzero receipt is retained. Planned
+restart now drains/stops Alloy with Loki available, requires a clean non-OOM exit
+within thirty seconds, restarts backends and waits for readiness before starting
+Alloy. Source production continues in its bounded selected file. Full catch-up
+assertions remain required. This is a planned lifecycle change, not a crash
+recovery guarantee. Input hashes are also checked and retained on failed runs.
+Pressure-c passed the strengthened native pending/firing/clearance and delivery
+counter checks (+4 retries during firing, +5 at clearance, zero observed drops).
+Ordered sender drain exited0 without OOM; post-restart catch-up covered watermark
+180 with181 unique events without query duplicates. Its source/config snapshots
+matched. This qualifies this bounded planned restart probe only; pressure-b's
+original loss remains evidence, and crash/extended-outage admission remains open.

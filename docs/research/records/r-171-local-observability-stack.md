@@ -662,7 +662,7 @@ events. Runtime reports retained 1749804 bytes outside Git. make quick-check
 session 93482 passed. No surviving R171 containers remain after cleanup.
 
 **Limit:** This profile did not separately retain collector retry/drop counters
-during the full-disk interval, nor a pending sample for this new storage rule.
+during the full-disk interval. Pending was not asserted in the first probe; the retained raw rules observations do contain it.
 Those predeclared evidence items remain missing; passing implemented assertions
 is not full storage-pressure admission. The probe does not crash Loki while
 writes lack WAL persistence, exhaust extended retries, prove a host/daemon
@@ -672,3 +672,62 @@ The extra authenticated backend scrape selects only the three named WAL metrics,
 with a thirty-two-sample budget. No arbitrary exporter or raw-file discovery was
 added. Complete component selection, advisory dispositions, real-source integration
 and required completed-slice gates/review remain open under #394/#377.
+### Correction: pending evidence and alternative collector publication
+
+**Measurement correction:** The pressure-a raw `06-rules.json` through
+`10-rules.json` already contain LogStoragePressure pending, at collector times
+1790813652.7870317 through 1790813657.049377. `11-rules.json` contains firing at
+1790813658.1154. The previous claim that a pending sample was missing was wrong;
+raw samples existed, but the first probe did not explicitly assert that sequence.
+The strengthened probe now requires pending without an Alertmanager firing
+receipt before accepting firing, and collects actual retry/drop baselines and
+deltas. Any unavailable counter, reset or observed drop fails that boundary.
+
+**Sourced fact:** The official collector release v0.162.0 published 2026-09-29
+12:34:07Z includes `otelcol-contrib_0.162.0_linux_amd64.tar.gz` (112285869 bytes),
+API digest `sha256:fcc063749f730f8c21fe29f2d340ff174f5f1c5885bd3156fb6c985a3036fcc3`,
+plus checksum, SBOM and Sigstore artifacts. Source accessed 2026-10-01:
+[official release](https://github.com/open-telemetry/opentelemetry-collector-releases/releases/tag/v0.162.0).
+The primary API receipt is retained in external `ardents-r171-source-review/otel-contrib-0162-release-assets.json`.
+This supplies a concrete artifact-inspection path despite the earlier absent
+image tags. API digest is published provenance, not downloaded-byte verification
+or signature validation. No asset was installed, executed, admitted or substituted
+into the Alloy pipeline by this observation. H2 remains open.
+**Preserved refusal:** pressure-b reached pending/firing/recovery with actual
+retry increase four during firing and five by clearance, no observed dropped
+entries, and successful pre-restart catch-up. The later post-restart catch-up
+failed: producer watermark183, final query203 records, sequence157 absent.
+The run terminated nonzero/cleanup zero; it is not corrected by a later pass.
+The prototype restarted sender and receiver concurrently with five-second stops,
+leaving delivery at their shutdown boundary unqualified. Exact causal attribution
+to sender versus receiver is not established by these reports.
+
+**Concrete correction to test:** stop/drain Alloy with Loki still available,
+retain and require a clean non-OOM exit within thirty seconds, restart backends,
+wait for their readiness, then start Alloy. The source keeps producing bounded
+safe events to its selected retained file throughout. All previous catch-up,
+event-time/history/counter checks remain required. This establishes ordered
+planned restart behavior only, not arbitrary crash durability or exactly-once
+transport. Input stability is now recorded also for failed terminal attempts.
+**Measurement after correction:** pressure-c completed with terminal zero and
+cleanup_exit zero. Native WAL failure increase one, pending explicitly observed,
+then firing/active receipt while fixture/collector/logbackend up stayed one.
+Collector retry delta was four during firing and five at clearance; actual drop
+delta remained zero. Space recovery and alert clearance passed. The sender
+stopped before backend shutdown with exit0, no OOM. After ordered restart, the
+query covered every event through watermark180 with181 unique records, no query
+duplicates and preserved source event time on its first attempt. This supports
+the corrected planned lifecycle for the selected synthetic configuration; it does
+not erase pressure-b's loss or prove arbitrary crash durability/exactly-once use.
+
+**Measurement:** pressure-c receipt includes five exact installed linux/amd64
+image config/manifest identities, helper image0ecc73f2 and fourteen selected
+source/configuration SHA256/size entries. Their start/end snapshots matched,
+source_inputs_stable=true. Private retained evidence totals2147603bytes. These
+are observed snapshots, not an atomic copy or protection against an owner
+changing and restoring bytes between observations. Failure receipts now also
+attempt the final identity check. quick-check54465 passed before the ordering
+correction; quick-check43616 passed afterward. All probe containers were removed.
+The bounded missing pending/delivery-counter evidence is now supplied; full
+component selection/admission, extended/crash/storage lifecycle and actual
+selected-process monitoring/debug goal acceptance remain open.

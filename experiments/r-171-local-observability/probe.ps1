@@ -25,20 +25,33 @@ foreach ($taskPrincipal in @($taskSid,[Security.Principal.SecurityIdentifier]::n
 [IO.Directory]::SetAccessControl($taskRoot,$taskAcl)
 $taskPrivate=Join-Path $taskRoot 'private'; $taskReports=Join-Path $taskRoot 'reports'
 New-Item -ItemType Directory -Path $taskPrivate,$taskReports | Out-Null
+function Get-ProbeSourceSnapshot {
+    $taskSelected=@('images.json','compose.yaml','compose.restart.yaml','fixture.py','prometheus.yml','alerts.yml','alertmanager.yml','loki.yml','config.alloy','prepare-private.py','query-probe.py','resource-window.ps1','storage-pressure.py','probe.ps1')
+    foreach ($taskFile in $taskSelected) {
+        $taskBytes=[IO.File]::ReadAllBytes((Join-Path $PSScriptRoot $taskFile))
+        $taskHasher=[Security.Cryptography.SHA256]::Create()
+        try { $taskDigest=[BitConverter]::ToString($taskHasher.ComputeHash($taskBytes)).Replace('-','').ToLowerInvariant() }
+        finally { $taskHasher.Dispose() }
+        [pscustomobject]@{name=$taskFile;bytes=$taskBytes.Length;sha256=$taskDigest}
+    }
+}
+$taskSourceBefore=@(Get-ProbeSourceSnapshot)
 $taskLock=Get-Content (Join-Path $PSScriptRoot 'images.json') -Raw | ConvertFrom-Json
 $taskEnv=[ordered]@{R171_SOURCE=$PSScriptRoot;R171_PRIVATE=$taskPrivate}
 $taskHelper=docker image inspect ardents-diagnostics:prebuilt-parsers-final-389 --format '{{.Id}}'
 if ($LASTEXITCODE -ne 0) { throw 'Explicitly installed diagnostic helper missing.' }
 $taskEnv.R171_HELPER_IMAGE=$taskHelper
+$taskImageIdentities=@()
 foreach ($taskImage in $taskLock.images) {
-    docker image inspect $taskImage.image | Out-Null
+    $taskInstalled=docker image inspect $taskImage.image | ConvertFrom-Json
     if ($LASTEXITCODE -ne 0) { throw 'Pinned image missing; run explicit make tools-install.' }
+    $taskImageIdentities += [pscustomobject]@{role=$taskImage.name;manifest=$taskImage.image;config_id=$taskInstalled[0].Id;os=$taskInstalled[0].Os;architecture=$taskInstalled[0].Architecture}
     $taskEnv[('R171_'+$taskImage.name.ToUpper()+'_IMAGE')]=$taskImage.image
 }
 $taskOld=@{}; foreach ($taskKey in $taskEnv.Keys) { $taskOld[$taskKey]=[Environment]::GetEnvironmentVariable($taskKey); [Environment]::SetEnvironmentVariable($taskKey,$taskEnv[$taskKey]) }
 $taskCompose=@('compose','-p',$RunName,'-f',(Join-Path $PSScriptRoot 'compose.yaml'))
 if ($RestartProbe) { $taskCompose += @('-f',(Join-Path $PSScriptRoot 'compose.restart.yaml')) }
-$taskReceipt=[ordered]@{started_utc=(Get-Date).ToUniversalTime().ToString('o');run=$RunName;source_scope='synthetic fixture only';complete=$false}
+$taskReceipt=[ordered]@{started_utc=(Get-Date).ToUniversalTime().ToString('o');run=$RunName;source_scope='synthetic fixture only';complete=$false;helper_image_id=$taskHelper;images=$taskImageIdentities;source_inputs=$taskSourceBefore}
 function Invoke-ProbeQuery([string]$Mode,[string]$ReportName) {
     $taskDestination=Join-Path $taskReports $ReportName
     New-Item -ItemType Directory -Path $taskDestination | Out-Null
@@ -103,9 +116,18 @@ try {
     }
     if ($RestartProbe) {
         Invoke-ProbeQuery 'restart-before' 'restart-before'
-        docker @taskCompose restart --timeout 5 alertmanager loki prometheus alloy grafana
+        # Drain the sender while its receiver is available, before receiver shutdown.
+        docker @taskCompose stop --timeout 30 alloy
+        if ($LASTEXITCODE -ne 0) { throw 'Collector drain/stop failed.' }
+        $taskCollectorId=docker @taskCompose ps -a -q alloy
+        $taskStopped=docker inspect $taskCollectorId | ConvertFrom-Json
+        $taskStopped[0].State | ConvertTo-Json -Depth 5 | Out-File (Join-Path $taskReports 'collector-stopped-before-backends.json') -Encoding utf8
+        if ($LASTEXITCODE -ne 0 -or $taskStopped[0].State.Running -or $taskStopped[0].State.OOMKilled -or $taskStopped[0].State.ExitCode -ne 0) { throw 'Collector did not stop cleanly within its finite drain budget.' }
+        docker @taskCompose restart --timeout 30 alertmanager loki prometheus grafana
         if ($LASTEXITCODE -ne 0) { throw 'Synthetic backend restart failed.' }
         Invoke-ProbeQuery 'ready' 'restart-readiness'
+        docker @taskCompose start alloy
+        if ($LASTEXITCODE -ne 0) { throw 'Collector start after backend readiness failed.' }
         Start-Sleep -Seconds 4
         Invoke-ProbeQuery 'restart-after' 'restart-after'
         Invoke-ProbeQuery 'catchup' 'post-restart-logs'
@@ -138,13 +160,18 @@ print(json.dumps({'states':results,'limit':'live non-atomic sample; excludes Gra
         docker exec $taskAnchor python3 -c $taskStorageScript | Out-File (Join-Path $taskReports 'backend-storage.json') -Encoding utf8
         if ($LASTEXITCODE -ne 0) { throw 'Backend storage observation failed.' }
     }
+    $taskSourceAfter=@(Get-ProbeSourceSnapshot)
+    $taskReceipt.source_inputs_stable=($taskSourceBefore | ConvertTo-Json -Compress) -eq ($taskSourceAfter | ConvertTo-Json -Compress)
+    if (-not $taskReceipt.source_inputs_stable) { throw 'Probe input changed; retain original observations without acceptance.' }
     $taskReceipt.complete=$true
 } finally {
+    $taskSourceAfter=@(Get-ProbeSourceSnapshot)
+    $taskReceipt.source_inputs_stable=($taskSourceBefore | ConvertTo-Json -Compress) -eq ($taskSourceAfter | ConvertTo-Json -Compress)
     docker @taskCompose logs --no-color --tail 2000 2>&1 | Out-File (Join-Path $taskReports 'service-logs.txt') -Encoding utf8
     docker @taskCompose ps -a --format json | Out-File (Join-Path $taskReports 'container-states-before-cleanup.json') -Encoding utf8
     docker @taskCompose down --timeout 5
     $taskReceipt.cleanup_exit=$LASTEXITCODE
     $taskReceipt.ended_utc=(Get-Date).ToUniversalTime().ToString('o')
-    $taskReceipt | ConvertTo-Json -Depth 4 | Out-File (Join-Path $taskRoot 'receipt.json') -Encoding utf8
+    $taskReceipt | ConvertTo-Json -Depth 8 | Out-File (Join-Path $taskRoot 'receipt.json') -Encoding utf8
     foreach ($taskKey in $taskOld.Keys) { [Environment]::SetEnvironmentVariable($taskKey,$taskOld[$taskKey]) }
 }

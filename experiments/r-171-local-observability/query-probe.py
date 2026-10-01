@@ -2,6 +2,7 @@
 import base64
 import datetime
 import json
+import math
 import pathlib
 import ssl
 import sys
@@ -29,6 +30,21 @@ def observe(name,url,**kwargs):
     except ValueError: data=body
     (reports/(name+'.json')).write_text(json.dumps({'at':time.time(),'status':status,'data':data}))
     return data
+def delivery_counters(prefix):
+    result = observe(prefix+'delivery','https://prometheus:9090/api/v1/query?'+urllib.parse.urlencode(
+        {'query':'{job="collector",__name__=~"loki_write_.*(retries|dropped).*"}'}))
+    if result.get('status') != 'success': raise RuntimeError('Delivery counter query failed')
+    counts = {'retries':0.0,'drops':0.0}
+    present = set()
+    for item in result['data']['result']:
+        name = item['metric']['__name__']
+        key = 'retries' if 'retries' in name else 'drops'
+        value = float(item['value'][1])
+        if not math.isfinite(value) or value < 0: raise RuntimeError('Invalid delivery counter')
+        counts[key] += value
+        present.add(key)
+    if present != {'retries','drops'}: raise RuntimeError('Actual retry/drop counters unavailable')
+    return counts
 if sys.argv[1]=='ready':
     deadline=time.monotonic()+75
     endpoints=('https://prometheus:9090/-/ready','https://alertmanager:9093/-/ready','https://loki:3100/ready','http://grafana:3000/api/health')
@@ -319,16 +335,21 @@ elif sys.argv[1] in ('storage-baseline', 'storage-pressure', 'storage-recovered'
         return float(items[0]['value'][1])
     if sys.argv[1] == 'storage-baseline':
         baseline = storage_counter('baseline-')
-        (reports/'baseline.json').write_text(json.dumps({'wal_failures':baseline}))
+        (reports/'baseline.json').write_text(json.dumps({'wal_failures':baseline,'delivery':delivery_counters('baseline-')}))
         print('Native storage failure counter baseline captured')
     else:
-        baseline = json.loads(pathlib.Path('/history/storage-baseline/baseline.json').read_text())['wal_failures']
+        baseline_record = json.loads(pathlib.Path('/history/storage-baseline/baseline.json').read_text())
+        baseline = baseline_record['wal_failures']
+        pending_seen = False
         deadline = time.monotonic()+40
         attempt = 0
         while time.monotonic() < deadline:
             attempt += 1
             prefix = f'{attempt:02d}-'
             counter = storage_counter(prefix)
+            delivery = delivery_counters(prefix)
+            delta = {key:delivery[key]-baseline_record['delivery'][key] for key in delivery}
+            if any(value < 0 for value in delta.values()): raise RuntimeError('Delivery counter reset during pressure observation')
             up = observe(prefix+'availability','https://prometheus:9090/api/v1/query?'+urllib.parse.urlencode(
                 {'query':'up{job=~"fixture|collector|logbackend"}'}))['data']['result']
             health = {item['metric']['job']:float(item['value'][1]) for item in up}
@@ -337,14 +358,17 @@ elif sys.argv[1] in ('storage-baseline', 'storage-pressure', 'storage-recovered'
             selected_rules = [item for item in rules if item['labels']['alertname']=='LogStoragePressure']
             selected_manager = [item for item in manager if item['labels']['alertname']=='LogStoragePressure']
             if sys.argv[1] == 'storage-pressure':
-                state_ok = (len(selected_rules)==1 and selected_rules[0]['state']=='firing' and
+                if any(item['state']=='pending' for item in selected_rules) and not selected_manager: pending_seen = True
+                state_ok = (pending_seen and len(selected_rules)==1 and selected_rules[0]['state']=='firing' and
                             len(selected_manager)==1 and selected_manager[0]['status']['state']=='active')
             else:
                 state_ok = not selected_rules and not selected_manager
             if counter > baseline and health == {'fixture':1,'collector':1,'logbackend':1} and state_ok:
                 (reports/'storage-assertions.json').write_text(json.dumps({'phase':sys.argv[1],
                     'native_wal_failure_increase':counter-baseline,'availability':health,
-                    'alert_firing':sys.argv[1]=='storage-pressure','passed':True}))
+                    'alert_firing':sys.argv[1]=='storage-pressure','pending_observed':pending_seen,
+                    'delivery_delta':delta,'passed':delta['drops']==0}))
+                if delta['drops'] != 0: raise RuntimeError('Observed dropped logs during bounded storage pressure')
                 print('Native storage signal and alert transition observed: '+sys.argv[1])
                 break
             time.sleep(1)
