@@ -48,6 +48,8 @@ func TestSourceDeclarationsRefuseMalformedInputsBeforeCredentials(t *testing.T) 
 		{"short-order-seed", func(p *Source) { p.OrderSeed = "22" }},
 		{"short-source-identity", func(p *Source) { p.Sources[1].Identity = "44" }},
 		{"short-leaf-digest", func(p *Source) { p.Sources[0].LeafKeyDigest = "55" }},
+		{"same-operator-family", func(p *Source) { p.Sources[1].Family = p.Sources[0].Family }},
+		{"missing-operator-family", func(p *Source) { p.Sources[1].Family = "" }},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			plan := sourceDeclarations(t)
