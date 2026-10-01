@@ -44,3 +44,16 @@ groups:
         annotations:
           summary: "Коллектор отказал в постановке записей в очередь в текущей сессии"
           description: "Повторная доставка может восстановить записи; отказ очереди сам по себе не доказывает окончательную потерю. Проверьте исходный поток и историю доставки."
+      - alert: NodeLogAccountingUnavailable
+        expr: (diagnostic_selected_log_storage_observation_available{job="node"} == 0) and on(job,instance) (up{job="node"} == 1)
+        for: 6s
+        labels: {severity: warning, scope: local_log_storage}
+        annotations:
+          summary: "Нет свежего учёта локального журнала"
+          description: "Сбор метрик работает, но файловый учёт отсутствует или устарел. Живой heartbeat не доказывает работающий файловый sink."
+      - alert: NodeLocalLogDeliveryLost
+        expr: max by(job,instance) ({job="node",__name__=~"diagnostic_selected_(queue_dropped_bytes|log_lost_bytes|console_dropped_bytes)_total"}) > 0
+        labels: {severity: warning, scope: local_log_history}
+        annotations:
+          summary: "Наблюдались потери локальной доставки логов"
+          description: "Положителен хотя бы один счётчик потерь за сессию монитора. Каналы имеют разные представления байтов; это не число уникальных потерянных сообщений. Рестарт может сбросить счётчики. Плановое удаление по сроку или лимиту сюда не входит."

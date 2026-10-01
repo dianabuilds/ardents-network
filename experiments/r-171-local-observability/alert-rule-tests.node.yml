@@ -1,0 +1,73 @@
+rule_files: [alerts.node.yml]
+evaluation_interval: 1s
+tests:
+  - interval: 1s
+    input_series:
+      - series: 'up{job="node",instance="selected"}'
+        values: '1+0x15'
+      - series: 'diagnostic_selected_log_storage_observation_available{job="node",instance="selected"}'
+        values: '0+0x7 1+0x7'
+    alert_rule_test:
+      - eval_time: 5s
+        alertname: NodeLogAccountingUnavailable
+        exp_alerts: []
+      - eval_time: 6s
+        alertname: NodeLogAccountingUnavailable
+        exp_alerts:
+          - exp_labels: {job: node, instance: selected, severity: warning, scope: local_log_storage}
+            exp_annotations:
+              summary: "Нет свежего учёта локального журнала"
+              description: "Сбор метрик работает, но файловый учёт отсутствует или устарел. Живой heartbeat не доказывает работающий файловый sink."
+      - eval_time: 8s
+        alertname: NodeLogAccountingUnavailable
+        exp_alerts: []
+  - interval: 1s
+    input_series:
+      - series: 'up{job="node",instance="selected"}'
+        values: '0+0x10'
+      - series: 'diagnostic_selected_log_storage_observation_available{job="node",instance="selected"}'
+        values: '0+0x10'
+      - series: 'diagnostic_selected_log_expired_bytes_total{job="node",instance="selected"}'
+        values: '100+10x10'
+    alert_rule_test:
+      - eval_time: 8s
+        alertname: NodeLogAccountingUnavailable
+        exp_alerts: []
+      - eval_time: 8s
+        alertname: NodeLocalLogDeliveryLost
+        exp_alerts: []
+  - interval: 1s
+    input_series:
+      - series: 'diagnostic_selected_log_lost_bytes_total{job="node",instance="selected"}'
+        values: '3+0x7 0+0x3'
+      - series: 'diagnostic_selected_queue_dropped_bytes_total{job="node",instance="selected"}'
+        values: '4+0x7 0+0x3'
+      - series: 'diagnostic_selected_console_dropped_bytes_total{job="unselected",instance="other"}'
+        values: '99+0x10'
+    alert_rule_test:
+      - eval_time: 0s
+        alertname: NodeLocalLogDeliveryLost
+        exp_alerts:
+          - exp_labels: {job: node, instance: selected, severity: warning, scope: local_log_history}
+            exp_annotations:
+              summary: "Наблюдались потери локальной доставки логов"
+              description: "Положителен хотя бы один счётчик потерь за сессию монитора. Каналы имеют разные представления байтов; это не число уникальных потерянных сообщений. Рестарт может сбросить счётчики. Плановое удаление по сроку или лимиту сюда не входит."
+      - eval_time: 6s
+        alertname: NodeLocalLogDeliveryLost
+        exp_alerts:
+          - exp_labels: {job: node, instance: selected, severity: warning, scope: local_log_history}
+            exp_annotations:
+              summary: "Наблюдались потери локальной доставки логов"
+              description: "Положителен хотя бы один счётчик потерь за сессию монитора. Каналы имеют разные представления байтов; это не число уникальных потерянных сообщений. Рестарт может сбросить счётчики. Плановое удаление по сроку или лимиту сюда не входит."
+      - eval_time: 8s
+        alertname: NodeLocalLogDeliveryLost
+        exp_alerts: []
+  - interval: 1s
+    input_series: []
+    alert_rule_test:
+      - eval_time: 8s
+        alertname: NodeLogAccountingUnavailable
+        exp_alerts: []
+      - eval_time: 8s
+        alertname: NodeLocalLogDeliveryLost
+        exp_alerts: []

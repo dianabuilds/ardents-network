@@ -2146,3 +2146,48 @@ Final Linux diagnostic suite after the independent accounting timestamp repair
 passed in7.017seconds. Both bounded review findings are closed. The dashboard
 provisioning is checked; browser rendering/redeployment remain outside this
 component's evidence.
+
+### Last-mount persistence boundary and local-log alerts (2026-10-01)
+
+Question: does the current bounded RAM anchor preserve evidence after the last
+holder stops, and do normal Node rules expose measured local-log problems?
+Falsification: a flushed marker on one new owned1MiB local tmpfs must remain
+while the anchor mounts it; inspect again after the last holder stops. No
+existing backend, host/daemon restart or product data is involved.
+
+Native result: anchor_keeps_marker=true; after_last_unmount_marker_exists=false;
+complete=true and cleanup_complete=true. The volume and containers were created
+only after existing-name refusals, no network/capabilities, selectedUID10001,
+read-only image and finite memory/CPU/PID/time. The writer fsynced its synthetic
+14byte marker. Evidence: privateardents-r171-last-mount-a/receipt.json.
+Therefore the existing anchor-restart receipt is not a full-stop persistence
+receipt. Existing preview backend history remains untouched. Docker's official
+[storage overview](https://docs.docker.com/engine/storage/) and
+[tmpfs documentation](https://docs.docker.com/engine/storage/tmpfs/), accessed
+2026-10-01, distinguish volatile RAM storage from persistent mounts. A
+[container writable-layer size option](https://docs.docker.com/reference/cli/docker/container/run/)
+is storage-driver/backing-filesystem dependent; it does not establish a volume
+quota. No daemon storage-driver migration or privileged disk helper is selected.
+
+Disposition: the continuous persistent profile requires an explicitly provisioned
+private disk-backed state root with independently verified finite allocation/
+quota coverage, plus full-stop/recreate history checks. Retention flags and RAM
+anchors cannot supply that prerequisite. Actual backend power-loss/host-reboot
+behavior remains unverified; this experiment does not simulate either.
+
+Normal Node rules now include NodeLogAccountingUnavailable: successful selected
+scrape plus6seconds explicitly unavailable accounting. Source scrape loss is
+separate; absent accounting is not zero. NodeLocalLogDeliveryLost warns on any
+positive selected queue/file/console session loss count, deduplicated by source
+without unique-byte aggregation. Intentional expiry is excluded. Reset can clear
+the warning; there is no durable incident acknowledgement.
+
+The selected native Prometheus promtool passed behavior cases for pending/firing,
+recovery, scrape loss, absent observations, intentional expiry, first positive
+loss without preceding zero, channel deduplication, unrelated job and reset.
+Node preview preflight now requires this behavior check before service creation.
+Both bounded read-only reviews found no actionable issue. This supplies rule
+semantics, not a fault-injected actual Node/Alertmanager acceptance journey.
+make quick-check completed exit0 for this bounded rule/preflight delta. Full
+integration gates, persistent storage and live fault-injected acceptance remain
+separate obligations.

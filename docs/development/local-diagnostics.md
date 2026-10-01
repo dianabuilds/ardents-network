@@ -645,3 +645,15 @@ worker updates logs_observed_at only after a completed retained-inventory
 observation. Current storage gauges require both observations within three
 seconds. A blocked file worker cannot borrow freshness from a live supervisor;
 missing or pre-session accounting remains unavailable.
+
+### Local log delivery and accounting alerts
+
+The Node backend recipe checks native rule behavior before container creation.
+`NodeLogAccountingUnavailable` requires a successful selected scrape and six
+seconds of explicitly unavailable accounting. It resolves on fresh accounting;
+a lost scrape is handled separately, and absent accounting does not become zero.
+`NodeLocalLogDeliveryLost` warns when any selected session-local queue/file/
+console loss counter is positive. Channels are deduplicated by source without
+summing them into unique source bytes. Intentional expiry is excluded. The
+warning survives resumed delivery within the same session; reset may clear it.
+These rules provide no durable acknowledgement or incident history.

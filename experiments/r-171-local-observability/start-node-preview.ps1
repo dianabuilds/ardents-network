@@ -93,6 +93,8 @@ try{
     if($LASTEXITCODE -ne 0){throw 'Private preparation failed'}
     docker run --rm --pull never --network none --read-only --user 10001:10001 --cap-drop ALL --security-opt no-new-privileges --memory 128m --cpus 0.5 --pids-limit 16 --mount "type=bind,source=$PSScriptRoot,target=/probe,readonly" --entrypoint /bin/promtool $taskEnv.R171_PROMETHEUS_IMAGE check rules /probe/alerts.node.yml | Out-File (Join-Path $taskReports 'native-alert-rules.txt') -Encoding utf8
     if($LASTEXITCODE -ne 0){throw 'Native Node alert rule admission failed'}
+    docker run --rm --pull never --network none --read-only --user 10001:10001 --cap-drop ALL --security-opt no-new-privileges --memory 128m --cpus 0.5 --pids-limit 16 --tmpfs /tmp:rw,nosuid,nodev,noexec,size=67108864,uid=10001,gid=10001,mode=0700 --mount "type=bind,source=$PSScriptRoot,target=/probe,readonly" --entrypoint /bin/promtool $taskEnv.R171_PROMETHEUS_IMAGE test rules /probe/alert-rule-tests.node.yml | Out-File (Join-Path $taskReports 'native-alert-behavior.txt') -Encoding utf8
+    if($LASTEXITCODE -ne 0){throw 'Native Node alert behavior failed'}
     docker @taskCompose config --quiet
     if($LASTEXITCODE -ne 0){throw 'Invalid Compose configuration'}
     docker @taskCompose create --pull never fixture

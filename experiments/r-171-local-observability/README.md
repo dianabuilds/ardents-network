@@ -948,3 +948,13 @@ Physical allocation, filesystem metadata, alternate data streams, Docker logs
 and other roots remain outside coverage; complete disk-budget verification stays
 false. In particular, Docker local-driver rotation settings are not measurements
 of actual allocated log bytes. The observer does not modify the selected tree.
+
+### Node local-log alert behavior
+
+The Node preview preflight also executes `alert-rule-tests.node.yml` with its
+selected native promtool and a bounded temporary filesystem. Cases cover six-
+second pending/firing, accounting recovery, scrape loss, absent observations,
+intentional retention expiry, the first positive loss count without a previous
+zero, multiple channel deduplication, unrelated jobs and session reset. This
+preflight validates rule evaluation; it does not supply a fault-injected actual
+Node/Alertmanager journey or durable incident acknowledgement history.
