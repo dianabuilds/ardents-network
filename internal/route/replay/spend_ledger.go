@@ -34,6 +34,7 @@ type Binding struct {
 // holder key, permission, Target, or Application data.
 type Ledger struct {
 	closed         bool
+	closeErr       error
 	failure        error
 	slots          *IntroductionSlots
 	mu             sync.Mutex
@@ -90,13 +91,17 @@ func (ledger *Ledger) Close() error {
 	}
 	ledger.mu.Lock()
 	defer ledger.mu.Unlock()
+	if ledger.closed {
+		return ledger.closeErr
+	}
 	ledger.closed = true
 	if ledger.slots != nil {
 		ledger.slots.closed = true
 	}
 	err := ledger.lease.release()
 	ledger.lease = closedSpendLease{}
-	return errors.Join(ledger.failure, err)
+	ledger.closeErr = errors.Join(ledger.failure, err)
+	return ledger.closeErr
 }
 
 // Spend durably records a token digest before granting the caller work. A

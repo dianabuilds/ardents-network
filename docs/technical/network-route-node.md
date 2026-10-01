@@ -743,6 +743,12 @@ ever surfaced, stay on disk with no reader.
   candidate, select another duty, or establish public capacity, availability,
   co-resident, permissionless, or independent-operation claims.
 
+The receiving replay Ledger retains one terminal Close result, joining any
+recorded journal failure with lease-release failure. The ClosedTokenIssuer
+erases its in-memory private material before release and retains the release
+result for every Close caller. Their lifecycle locks join concurrent closure;
+neither operation resets durable journals or issuer material on disk.
+
 ## Closed Introduction registration receiver
 
 The `closed_introduction` reservation binds one current Introduction delivery

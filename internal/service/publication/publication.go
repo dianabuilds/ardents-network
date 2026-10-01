@@ -158,8 +158,9 @@ func (publication *Publication) Close() error {
 	defer publication.opMu.Unlock()
 	publication.root.mu.Lock()
 	if publication.root.released {
+		err := publication.root.closeErr
 		publication.root.mu.Unlock()
-		return nil
+		return err
 	}
 	if !publication.root.closed {
 		publication.root.closed = true
@@ -181,6 +182,7 @@ func (publication *Publication) Close() error {
 	}
 	err = publication.root.lease.release()
 	publication.root.mu.Lock()
+	publication.root.closeErr = err
 	publication.root.released = true
 	publication.root.mu.Unlock()
 	return err
