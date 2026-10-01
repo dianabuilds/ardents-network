@@ -3,6 +3,7 @@
 package installation
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"io"
@@ -66,6 +67,10 @@ func replaceTransitionFile(ctx context.Context, path string, previous, candidate
 	if err != nil {
 		return err
 	}
+	current, err := io.ReadAll(io.LimitReader(file, 64<<20+1))
+	if err != nil || len(current) > 64<<20 {
+		return errors.New("successor replacement current bytes are unavailable")
+	}
 	if existing, err := readInstalledFile(recordPath, 4096); err == nil {
 		if err := requirePrivateJournalFile(recordPath); err != nil {
 			return err
@@ -74,9 +79,11 @@ func replaceTransitionFile(ctx context.Context, path string, previous, candidate
 		if err := decodeCanonical(existing, 4096, &observed); err != nil || observed != record {
 			return errors.New("successor replacement journal identity differs")
 		}
+		if !replacementBytesAllowed(current, previous, candidate) {
+			return errors.New("successor replacement recorded inode contains foreign bytes")
+		}
 	} else if os.IsNotExist(err) {
-		body, err := io.ReadAll(io.LimitReader(file, 64<<20+1))
-		if err != nil || len(body) > 64<<20 || digestHex(body) != record.PreviousDigest {
+		if digestHex(current) != record.PreviousDigest {
 			return errors.New("successor replacement preimage differs")
 		}
 		if err := writeExclusiveGenerationFile(recordPath, recordBytes, 0600, 0); err != nil {
@@ -107,4 +114,28 @@ func replaceTransitionFile(ctx context.Context, path string, previous, candidate
 		return err
 	}
 	return ctx.Err()
+}
+
+func replacementBytesAllowed(current, previous, candidate []byte) bool {
+	return bytes.Equal(current, previous) || (len(current) <= len(candidate) && bytes.Equal(current, candidate[:len(current)]))
+}
+
+// A recorded truncate may leave an empty regular file. Observe that owned
+// inode without treating an empty prefix as a general installed-file receipt.
+func readRecordedReplacementBytes(path string, observed os.FileInfo) (body []byte, returnedErr error) {
+	fd, err := syscall.Open(path, syscall.O_RDONLY|syscall.O_NOFOLLOW|syscall.O_CLOEXEC, 0)
+	if err != nil {
+		return nil, err
+	}
+	file := os.NewFile(uintptr(fd), path)
+	defer func() { returnedErr = errors.Join(returnedErr, file.Close()) }()
+	current, err := file.Stat()
+	if err != nil || !os.SameFile(observed, current) {
+		return nil, errors.New("recorded replacement inode changed during observation")
+	}
+	body, err = io.ReadAll(io.LimitReader(file, 64<<20+1))
+	if err != nil || len(body) > 64<<20 {
+		return nil, errors.Join(errors.New("recorded replacement bytes are unavailable"), err)
+	}
+	return body, nil
 }

@@ -25,7 +25,7 @@ func recoverInstalled(ctx context.Context, root string) (result ProvisionResult,
 	}
 	defer func() {
 		returnedErr = errors.Join(returnedErr, lease.Close())
-		if returnedErr != nil {
+		if returnedErr != nil && result.Status == "" {
 			result = ProvisionResult{}
 		}
 	}()
@@ -88,6 +88,12 @@ func recoverInstalled(ctx context.Context, root string) (result ProvisionResult,
 	if err := stopObservedInstallation(ctx, observed); err != nil {
 		return ProvisionResult{}, err
 	}
+	if err := restoreTransitionIntent(intent); err != nil {
+		return ProvisionResult{}, err
+	}
+	if err := clearStartSocket(root, intent.CandidateBinding.GID); err != nil {
+		return ProvisionResult{}, err
+	}
 	if err := repairOwnedGeneration(ctx, root, intent, files); err != nil {
 		return ProvisionResult{}, err
 	}
@@ -97,19 +103,35 @@ func recoverInstalled(ctx context.Context, root string) (result ProvisionResult,
 	}
 	result, err = finishInstalledTransition(ctx, intent, previous, candidate)
 	if err != nil {
-		return ProvisionResult{}, err
+		return result, err
 	}
 	result.Status = "installed-recovered-started"
 	return result, nil
 }
 
 func readTransitionIntent(root string) (transitionIntent, error) {
-	if err := requirePrivateJournalFile(filepath.Join(root, "transition.json")); err != nil {
+	path := filepath.Join(root, "transition.json")
+	if _, err := os.Lstat(path); os.IsNotExist(err) {
+		path = filepath.Join(root, "start-guard.json")
+	} else if err != nil {
+		return transitionIntent{}, err
+	}
+	if err := requirePrivateJournalFile(path); err != nil {
 		return transitionIntent{}, errors.Join(errors.New("repair-required: successor intent is not root-private"), err)
 	}
-	body, err := readInstalledFile(filepath.Join(root, "transition.json"), 128<<10)
+	body, err := readInstalledFile(path, 128<<10)
 	if err != nil {
 		return transitionIntent{}, errors.Join(errors.New("repair-required: no readable owned successor intent"), err)
+	}
+	if path != filepath.Join(root, "start-guard.json") {
+		if _, err := os.Lstat(filepath.Join(root, "start-guard.json")); err == nil {
+			guard, err := readStartGuard(root)
+			if err != nil || digestHex(guard) != digestHex(body) {
+				return transitionIntent{}, errors.New("repair-required: guarded and pending transition intents differ")
+			}
+		} else if !os.IsNotExist(err) {
+			return transitionIntent{}, err
+		}
 	}
 	var intent transitionIntent
 	if err := decodeCanonical(body, 128<<10, &intent); err != nil {

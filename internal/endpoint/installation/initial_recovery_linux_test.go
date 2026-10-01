@@ -90,4 +90,19 @@ func TestInitialIntentRequiresInitialPinAndNoPredecessor(t *testing.T) {
 	if _, err := readTransitionIntent(root); err == nil {
 		t.Fatal("initial intent accepted a predecessor")
 	}
+	write(intent)
+	if err := retainStartGuard(root, intent); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(filepath.Join(root, "transition.json")); err != nil {
+		t.Fatal(err)
+	}
+	guarded, err := readTransitionIntent(root)
+	if err != nil || guarded.Candidate != intent.Candidate {
+		t.Fatal("guarded recovery lost exact intent after cursor archival", err)
+	}
+	write(predecessor)
+	if _, err := readTransitionIntent(root); err == nil {
+		t.Fatal("foreign cursor accepted alongside a retained guard")
+	}
 }

@@ -73,7 +73,8 @@ func validateSuccessorJournal(root string, intent transitionIntent, files map[st
 		if entry.Name() == "0002.json" && record.Phase == "generation-write-failed" && record.OriginalError != "" {
 			continue
 		}
-		if record.Phase != phase || (entry.Name() != "original-transition-failure.json" && record.OriginalError != "") {
+		failure := entry.Name() == "original-transition-failure.json"
+		if record.Phase != phase || failure != (record.OriginalError != "") {
 			return errors.New("repair-required: successor phase differs")
 		}
 		first = first || entry.Name() == "0001.json"
@@ -165,6 +166,10 @@ func validateReplacementRecords(root string, intent transitionIntent, previous, 
 		}
 		if record.Mode != mode || record.PreviousDigest != digestHex(oldFiles[path]) || record.CandidateDigest != digestHex(newFiles[path]) {
 			return errors.New("repair-required: replacement bytes or mode differ from the owned generations")
+		}
+		current, err := readRecordedReplacementBytes(path, info)
+		if err != nil || !replacementBytesAllowed(current, oldFiles[path], newFiles[path]) {
+			return errors.New("repair-required: recorded replacement inode contains foreign bytes")
 		}
 	}
 	return nil

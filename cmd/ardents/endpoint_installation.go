@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 
 	"github.com/dianabuilds/ardents-network/internal/endpoint/installation"
@@ -27,6 +28,9 @@ func runEndpointProvision(ctx context.Context, path string, output io.Writer) er
 func runEndpointUpgrade(ctx context.Context, path string, output io.Writer) error {
 	result, err := installation.Upgrade(ctx, path)
 	if err != nil {
+		if result.Status != "" {
+			return errors.Join(err, json.NewEncoder(output).Encode(result))
+		}
 		return err
 	}
 	return json.NewEncoder(output).Encode(result)
@@ -35,6 +39,9 @@ func runEndpointUpgrade(ctx context.Context, path string, output io.Writer) erro
 func runEndpointRecovery(ctx context.Context, root string, output io.Writer) error {
 	result, err := installation.Recover(ctx, root)
 	if err != nil {
+		if result.Status != "" {
+			return errors.Join(err, json.NewEncoder(output).Encode(result))
+		}
 		return err
 	}
 	return json.NewEncoder(output).Encode(result)

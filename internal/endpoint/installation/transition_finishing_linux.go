@@ -32,7 +32,13 @@ func finishInstalledTransition(ctx context.Context, intent transitionIntent, pre
 	// A failure after start must retire the observed successor as well. Before
 	// start, all scopes are already joined and no accepting mixed path exists.
 	started := false
+	acknowledged := false
 	defer func() {
+		if returnedErr != nil && acknowledged {
+			result.Status = "installed-started-recovery-required"
+			returnedErr = errors.Join(errors.New("installed invocation acknowledged; post-acceptance cleanup requires recovery"), returnedErr, retainStartGuard(root, intent))
+			return
+		}
 		if returnedErr != nil {
 			returnedErr = errors.Join(returnedErr, restoreTransitionIntent(intent))
 		}
@@ -110,13 +116,14 @@ func finishInstalledTransition(ctx context.Context, intent transitionIntent, pre
 	if err := recordSuccessorPhase(journal, "manager-reloaded.json", selected, "successor-manager-reloaded"); err != nil {
 		return ProvisionResult{}, err
 	}
-	// The complete stopped installation is published before requesting start.
-	// A pending cursor blocks every installed start, including the old selection.
-	// If start/observation fails the deferred path restores that cursor and stops
-	// the observed successor; an explicit recovery must authenticate it afresh.
-	if err := archiveTransitionIntent(root, journal, intent); err != nil {
+	// Retain the durable cursor through process start and observation. The bound
+	// Endpoint waits at its pre-composition barrier until this owner archives it;
+	// process death before acceptance leaves that barrier closed and recoverable.
+	completion, err := prepareStartCompletion(ctx, root, intent, candidate.binding.GID)
+	if err != nil {
 		return ProvisionResult{}, err
 	}
+	defer func() { returnedErr = errors.Join(returnedErr, completion.close()) }()
 	started = true // A failed start request may still have created a process.
 	if _, err := runInstallationManager(ctx, "--system", "--no-ask-password", "--no-pager", "start", "ardents-endpoint.service"); err != nil {
 		return ProvisionResult{}, err
@@ -135,13 +142,29 @@ func finishInstalledTransition(ctx context.Context, intent transitionIntent, pre
 	if err := observeInstalledSockets(ctx, unit); err != nil {
 		return ProvisionResult{}, err
 	}
+	connection, err := completion.accept(ctx, selected, pid, candidate.binding.UID, invocation)
+	if err != nil {
+		return ProvisionResult{}, err
+	}
+	defer func() { returnedErr = errors.Join(returnedErr, connection.Close()) }()
 	if err := recordSuccessorPhase(journal, "start-observed.json", selected, "successor-start-observed"); err != nil {
 		return ProvisionResult{}, err
 	}
 	if err := ctx.Err(); err != nil {
 		return ProvisionResult{}, err
 	}
-	return ProvisionResult{Status: "installed-started", GenerationDigest: selected.GenerationDigest, Role: candidate.result.Role}, nil
+	if err := archiveTransitionIntent(root, journal, intent); err != nil {
+		return ProvisionResult{}, err
+	}
+	if err := sendStartCompletion(ctx, connection, selected, invocation); err != nil {
+		return ProvisionResult{}, err
+	}
+	acknowledged = true
+	result = ProvisionResult{Status: "installed-started", GenerationDigest: selected.GenerationDigest, Role: candidate.result.Role}
+	if err := clearStartGuard(root, intent); err != nil {
+		return result, err
+	}
+	return result, nil
 }
 
 func transitionFixedFiles(checked checkedBinding) (map[string][]byte, error) {
@@ -187,6 +210,18 @@ func recordSuccessorPhase(directory, name string, selected selection, phase stri
 }
 
 func archiveTransitionIntent(root, journal string, intent transitionIntent) error {
+	return archiveTransitionIntentWithSync(root, journal, intent, syncDirectory)
+}
+
+func archiveTransitionIntentWithSync(root, journal string, intent transitionIntent, syncDir func(string) error) error {
+	archivedFailure := filepath.Join(journal, "original-transition-failure.json")
+	if _, err := os.Lstat(archivedFailure); err == nil {
+		if err := verifyRetainedTransitionFailure(archivedFailure, intent.Candidate); err != nil {
+			return err
+		}
+	} else if !os.IsNotExist(err) {
+		return err
+	}
 	path := filepath.Join(root, "transition.json")
 	body, err := readInstalledFile(path, 128<<10)
 	if err != nil {
@@ -212,7 +247,7 @@ func archiveTransitionIntent(root, journal string, intent transitionIntent) erro
 		if err := os.Rename(failure, filepath.Join(journal, "original-transition-failure.json")); err != nil {
 			return err
 		}
-		if err := errors.Join(syncDirectory(journal), syncDirectory(root)); err != nil {
+		if err := errors.Join(syncDir(journal), syncDir(root)); err != nil {
 			return err
 		}
 	} else if !os.IsNotExist(err) {
@@ -227,5 +262,5 @@ func archiveTransitionIntent(root, journal string, intent transitionIntent) erro
 			return err
 		}
 	}
-	return errors.Join(syncDirectory(journal), syncDirectory(root))
+	return errors.Join(syncDir(journal), syncDir(root))
 }

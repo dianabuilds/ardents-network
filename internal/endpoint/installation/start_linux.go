@@ -24,9 +24,6 @@ func admitInstalledStart(ctx context.Context, root string) (runtimeplan.DecodedH
 	if err != nil {
 		return refuse(err)
 	}
-	if err := refusePendingTransition(root); err != nil {
-		return refuse(err)
-	}
 	if uint32(os.Geteuid()) != checked.binding.UID || uint32(os.Getegid()) != checked.binding.GID {
 		return refuse(errors.New("installed Endpoint process account differs"))
 	}
@@ -84,6 +81,28 @@ func admitInstalledStart(ctx context.Context, root string) (runtimeplan.DecodedH
 	if err := observeInstalledSockets(ctx, unit); err != nil {
 		return refuse(err)
 	}
+	// Type=exec lets the root transition observe this real main process before
+	// participant composition. It keeps its cursor until that observation is
+	// durable; a crashed transition never opens this finite accepting barrier.
+	selected := selection{GenerationDigest: checked.binding.GenerationDigest, BindingDigest: digestHex(checked.files["binding.json"])}
+	if err := awaitStartCompletion(ctx, root, selected, invocation); err != nil {
+		return refuse(err)
+	}
+	current, err := readLocalBinding(root, readInstalledFile)
+	if err != nil || current.binding.GenerationDigest != checked.binding.GenerationDigest ||
+		digestHex(current.files["binding.json"]) != digestHex(checked.files["binding.json"]) {
+		return refuse(errors.New("installed selection changed during start admission"))
+	}
+	unit, service, err = worker.ReadEndpointProperties(ctx)
+	if err != nil {
+		return refuse(err)
+	}
+	if err := verifyInstalledProcess(unit, service, current, uint32(os.Getpid()), invocation); err != nil {
+		return refuse(err)
+	}
+	if err := observeInstalledSockets(ctx, unit); err != nil {
+		return refuse(err)
+	}
 	if err := ctx.Err(); err != nil {
 		return refuse(err)
 	}
@@ -91,7 +110,7 @@ func admitInstalledStart(ctx context.Context, root string) (runtimeplan.DecodedH
 }
 
 func refusePendingTransition(root string) error {
-	for _, name := range []string{"transition.json", "transition-failure.json"} {
+	for _, name := range []string{"transition.json", "transition-failure.json", "start-guard.json"} {
 		if _, err := os.Lstat(filepath.Join(root, name)); !os.IsNotExist(err) {
 			return errors.New("installed Endpoint requires explicit transition recovery")
 		}

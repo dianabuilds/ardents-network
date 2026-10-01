@@ -42,6 +42,21 @@ Before returning the plan, startup observes both live socket units through typed
 manager properties and checks their fixed fragments, PartOf, listening state,
 Endpoint ownership, mode0600 and removal-on-stop contract.
 Effective stop/activation ordering still needs admitted installed qualification.
+During successor start a root-private `start-guard.json` retains the exact intent
+independently of cursor archival. Before manager start, root binds a private
+ephemeral Unix completion socket under the protected installation root. The
+Endpoint verifies its root peer and waits before participant composition;
+root verifies the connecting MainPID/UID and the exact InvocationID, generation
+and binding digests. Root sends completion only after the start observation and
+archive directory syncs succeed. Cursor absence alone grants no transition
+admission. EOF, unavailable owner, substituted identity or the existing startup
+deadline refuses. The guard retains explicit recovery provenance if root dies;
+recovery still requires fresh floor-compatible proofs and actual stop/join.
+After acknowledgement, guard/socket cleanup failure is a post-acceptance error:
+the public command retains `installed-started-recovery-required` with nonzero
+exit status instead of describing the invocation as never admitted. That receipt
+does not establish Service readiness. Socket visibility under confinement and
+the complete interrupted-cleanup matrix remain admitted qualification work.
 The ExecStartEx flag name and typed command representation follow the
 [systemd v255 implementation](https://raw.githubusercontent.com/systemd/systemd/v255/src/core/dbus-execute.c)
 and its [flag mapping](https://raw.githubusercontent.com/systemd/systemd/v255/src/shared/exec-util.c),

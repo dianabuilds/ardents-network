@@ -48,6 +48,16 @@ func TestSuccessorReplacementRepairsOnlyRecordedOriginalInode(t *testing.T) {
 	if !bytes.Equal(body, next) {
 		t.Fatal("recorded torn write was not completed")
 	}
+	if err := os.WriteFile(path, []byte("foreign bytes on recorded inode"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := replaceTransitionFile(context.Background(), path, old, next, 0644, 0, record, selected); err == nil {
+		t.Fatal("replacement journal accepted foreign bytes on its recorded inode")
+	}
+	body, _ = os.ReadFile(path)
+	if !bytes.Equal(body, []byte("foreign bytes on recorded inode")) {
+		t.Fatal("refused replacement overwrote foreign bytes")
+	}
 	if err := os.Rename(path, filepath.Join(base, "original-inode")); err != nil {
 		t.Fatal(err)
 	}

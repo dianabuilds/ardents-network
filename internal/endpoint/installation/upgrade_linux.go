@@ -53,7 +53,7 @@ func upgradeInstalled(ctx context.Context, path string) (result ProvisionResult,
 	}
 	defer func() {
 		returnedErr = errors.Join(returnedErr, lease.Close())
-		if returnedErr != nil {
+		if returnedErr != nil && result.Status == "" {
 			result = ProvisionResult{}
 		}
 	}()
@@ -91,6 +91,10 @@ func upgradeInstalled(ctx context.Context, path string) (result ProvisionResult,
 	}
 	defer func() {
 		if returnedErr != nil {
+			if result.Status != "" {
+				returnedErr = errors.Join(returnedErr, retainTransitionFailure(request.InstallationRoot, selected, returnedErr))
+				return
+			}
 			cleanup, cancel := context.WithTimeout(context.Background(), time.Minute)
 			defer cancel()
 			active, readErr := readLocalBinding(request.InstallationRoot, readInstalledFile)
@@ -140,7 +144,7 @@ func loadUpgradeInput(ctx context.Context, path string) (Request, checkedBinding
 	if err := validateSuccessorPaths(request, previous); err != nil {
 		return Request{}, checkedBinding{}, Authorization{}, err
 	}
-	for _, name := range []string{"transition.json", "transition-failure.json"} {
+	for _, name := range []string{"transition.json", "transition-failure.json", "start-guard.json", "start-completion.socket"} {
 		if _, err := os.Lstat(filepath.Join(request.InstallationRoot, name)); !os.IsNotExist(err) {
 			return Request{}, checkedBinding{}, Authorization{}, errors.New("installation requires explicit transition recovery")
 		}
