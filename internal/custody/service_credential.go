@@ -69,11 +69,15 @@ func (vault *Vault) issueServiceCredential(ctx context.Context, operation Operat
 	if !found {
 		return Receipt{}, ErrInvalid
 	}
+	expired, supported = serviceCredentialValidity(request, vault.now().UTC())
+	if !supported {
+		return Receipt{}, ErrInvalid
+	}
 	sourceCurrent, successorCurrent := floorEqualsState(floor, source), floorEqualsState(floor, successor)
 	if (!sourceCurrent && !successorCurrent) || (expired && !successorCurrent) {
 		return Receipt{}, ErrInvalid
 	}
-	successorRaw, info, err := vault.ensureServiceSuccessor(successorID, successor, password, sourceCurrent)
+	successorRaw, info, err := vault.ensureServiceSuccessor(successorID, successor, password, sourceCurrent, request)
 	if err != nil {
 		return Receipt{}, err
 	}
@@ -173,7 +177,7 @@ func serviceSuccessorRecordID(recordID string, commitment [32]byte) string {
 	return hex.EncodeToString(digest[:16])
 }
 
-func (vault *Vault) ensureServiceSuccessor(recordID string, expected AuthorityState, password []byte, allowCreation bool) ([]byte, EnvelopeInfo, error) {
+func (vault *Vault) ensureServiceSuccessor(recordID string, expected AuthorityState, password []byte, allowCreation bool, request instance.RequestView) ([]byte, EnvelopeInfo, error) {
 	path := filepath.Join(vault.records, "record-"+recordID+".json")
 	raw, err := readEnvelopeFile(path)
 	if err == nil {
@@ -184,6 +188,12 @@ func (vault *Vault) ensureServiceSuccessor(recordID string, expected AuthoritySt
 			return nil, EnvelopeInfo{}, ErrInvalid
 		}
 		zero(state.RootMaterial)
+		if allowCreation {
+			if expired, supported := serviceCredentialValidity(request, vault.now().UTC()); expired || !supported {
+				zero(raw)
+				return nil, EnvelopeInfo{}, ErrInvalid
+			}
+		}
 		return raw, info, nil
 	}
 	if !errors.Is(err, os.ErrNotExist) {
@@ -200,6 +210,12 @@ func (vault *Vault) ensureServiceSuccessor(recordID string, expected AuthoritySt
 	envelope, err := sealEnvelope(PurposeVault, plaintext, password)
 	if err != nil {
 		return nil, EnvelopeInfo{}, err
+	}
+	// Sealing performs expensive password derivation. Check again at the first
+	// durable effect; after it commits, floor completion must remain recoverable.
+	if expired, supported := serviceCredentialValidity(request, vault.now().UTC()); expired || !supported {
+		zero(envelope)
+		return nil, EnvelopeInfo{}, ErrInvalid
 	}
 	if err := vault.writeRecord(recordID, envelope); err != nil {
 		zero(envelope)
