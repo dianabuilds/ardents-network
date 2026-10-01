@@ -534,3 +534,28 @@ not live-process integration evidence. Real safe snapshot ingestion, scraping,
 log rotation delivery, alert journeys and actual Node/debug correlation remain
 the next integration boundary after exact component selection.
 CLI checks additionally exercise oversized/malformed/invalid UTF-8/deeply nested stdin and verify fixed refusal without input echo; the suite now contains ten checks.
+
+### Exact Prometheus source graph inspection
+
+Prepare exact-commit go.mod/go.sum from upstream5241a27fe3c6983549fccc32f6e65917408c63cd
+in a fresh external PrimaryRoot, and retain the pinned image binary/buildinfo
+from the actual public inspection above. Then explicitly run:
+
+~~~powershell
+make tools-install COLLECTOR=prometheus-source PRIMARY_ROOT=C:/Users/vitek/AppData/Local/Temp/ardents-r171-prometheus-source-a ARTIFACT_ROOT=C:/Users/vitek/AppData/Local/Temp/ardents-r171-prometheus-315-scan-a EVIDENCE_ROOT=C:/Users/vitek/AppData/Local/Temp/ardents-r171-prometheus-graph-new
+~~~
+
+The installed helper downloads the exact public commit module through the Go
+proxy/checksum service. GOTOOLCHAIN=local prevents automatic toolchain downloads.
+GOWORK=off selects that root module; public module archives omit nested workspace
+modules. Source go.mod/go.sum must match upstream bytes. Linux/amd64, cgo0,
+netgo/builtinassets and ./cmd/prometheus match the inspected entrypoint/tags.
+A read-only non-root container has4GiB/1CPU/pids64 and a3GiB temporary cache.
+Each download/list command is bounded180seconds. Retained graph32MiB is a
+post-command assertion, not a disk quota. Source and artifact mounts are read-only,
+output fresh/outside Git; no target executes and no product data is mounted.
+The public binary144293003bytes is separately pinned and rechecked; it is not
+private runtime evidence under the128MiB monitoring envelope. Earlier workspace
+and cache-budget failures remain preserved. Read R-171 for scope/toolchain,
+actual receipt and unresolved artifact/source admission limits.
+Recorded graph-c:1505packages, exact source manifests and effective binary dependency versions/sums matched; no OpenPGP/S3 crypto packages or Go dynamic plugin package. R-171 limits this source disposition to the exact entrypoint/tags and records toolchain/build provenance gaps; it is not maintained stack admission.

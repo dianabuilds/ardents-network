@@ -1519,3 +1519,94 @@ scrape, Loki ingestion or completed #394 acceptance. Maintained admission and
 the next live-source profile remain open. Source changes invalidate this mapping;
 no inference extends it to another producer or role.
 CLI extension: ten checks passed with the same installed helper. Actual subprocess stdin/stdout checks cover the64KiB cap, malformed/invalid UTF-8 and excessively nested JSON, fixed refusal without input echo, and stale snapshot exclusion. RecursionError is explicitly converted to the same refusal. Evidence: ardents-r171-monitor-metrics-a/cli-tests.txt. Initial quick-check completed0 before this extension; final pre-commit gate checks the completed delta.
+
+### Actual Prometheus3.15.0 binary and exact upstream fix reconciliation
+
+The installed linux/amd64 manifest86b17a25c2db1d16a61b16b3c8f336679eb19e26333d03e808da387206e40faa
+was inspected without executing Prometheus. /bin/prometheus is144293003bytes,
+SHA256dac83d1d1007961de3b9ba624942c9af0c192ee3df262ac47ef390bcade71c65.
+Build metadata reports Go1.27.1, netgo/builtinassets, cgo0, Linux/amd64,
+revision5241a27fe3c6983549fccc32f6e65917408c63cd and vcs.modified=true.
+The version ldflag is3.15.0 but the main module version is
+v0.0.0-20260925072538-5241a27fe3c6+dirty. This is not a reproduced build or
+proof that an unrecorded build-tree modification cannot affect an artifact.
+
+Actual govulncheck1.1.4 binary scan, DB2026-09-28T16:43:40Z, completed0.
+The decoded stream has12360finding records across6IDs, not12360 distinct bugs:
+GO-2022-0635/0646 and GO-2026-5932 are module-only1record each;
+GO-2026-5264/5381/5662 each have4119records against the pseudo-versioned main
+module. JSON exit0 does not mean security acceptance. Generic symbol/module
+reports do not establish executed call paths. This public artifact inspection
+used the installed helper with768MiB/.5CPU/pids64/GOMAXPROCS2, read-only input;
+it was separate from runtime resource measurement. Public binary size exceeds
+the128MiB private runtime evidence envelope and is a separate public artifact,
+not an increase in that runtime retention budget.
+
+Primary exact-tag API resolves annotated tagv3.15.0 to
+5241a27fe3c6983549fccc32f6e65917408c63cd, matching recorded artifact revision.
+Three upstream fix commits are ancestors, with comparison behind_by0 and
+merge_base equal to the fix:
+GO-2026-5264:04055ee19081d89d25ca124eec744744991db3c2 (merged PR18584);
+GO-2026-5381:38f23b9075ced1de2b82d2dad8b2bebb1ecd5b7d;
+GO-2026-5662:07c6232d159bfb474a077788be184d87adcfac3c.
+Ancestry alone could miss a reversion, so exact current source was inspected.
+storage/remote/codec.go still checks snappy.DecodedLen against32MiB before
+DecodeReadRequest allocation. Graph.tsx still escapes heatmap bucket labels.
+Current uPlotChartHelpers, GraphHelpers, MetricsExplorer and
+jquery.flot.heatmap.js retain escaping of names/labels and escaped fuzzy matches.
+An initially retrieved jquery.flot.js was not the heatmap fix file; the complete
+patch review identified the correct file and it was retrieved separately.
+All API responses, exact blob identities and source bytes are retained.
+
+This is scoped source evidence that these three fixes are present at the
+recorded upstream revision. The scanner compares the main pseudo-version to
+v0.x ranges, rather than simply treating the release ldflag3.15.0 as its module
+version. Do not suppress the original findings or claim a clean actual binary:
+vcs.modified=true, artifact provenance and the three dependency-only findings
+remain separate admission obligations. Invalidate on revision, source/build
+modifications, tags/platform/toolchain, dependencies, configuration or advisory
+change.
+
+Evidence: ardents-r171-prometheus-315-scan-a and
+ardents-r171-prometheus-source-a, inspected2026-10-01.
+Primary references:
+[remote-read advisory](https://github.com/prometheus/prometheus/security/advisories/GHSA-8rm2-7qqf-34qm),
+[heatmap advisory](https://pkg.go.dev/vuln/GO-2026-5381),
+[metric-name/label advisory](https://pkg.go.dev/vuln/GO-2026-5662),
+[exact current source](https://github.com/prometheus/prometheus/tree/5241a27fe3c6983549fccc32f6e65917408c63cd).
+
+A bounded exact source/dependency recipe was derived from the already checked
+Loki graph recipe, using ./cmd/prometheus and netgo,builtinassets. Graph-a failed
+because the public module's go.work refers to omitted nested modules. GOWORK=off
+selects the inspected root module; it does not weaken graph errors or mutate
+source/sums. Graph-b then failed ENOSPC in its1GiB temporary cache. Both original
+FAILs remain. The subsequent inspection cache is explicitly3GiB, cgroup4GiB,
+1CPU/pids64, module/list command deadlines180seconds and graph-output assertion
+32MiB. This build/inspection envelope is separate from the selected monitoring
+runtime envelope. Go1.26.8 inspection differs from Go1.27.1 artifact toolchain;
+exact source manifests and effective dependency versions/sums must reconcile
+before package absence can support a scoped source disposition.
+
+Graph-c completed0 and complete=true:1505packages, exact upstream manifests
+matched, effective artifact/source dependency versions/sums/replacements had
+module_differences[]. Exact source module sum:
+h1:XtLmosdd1QFy3Zz3x04K65kXpwWgyqAd+bIa603oOrg=;
+go.mod sum:h1:B+80h4JO0zXpoFCiWStHtpsAWrEOwY24B9/CLgzUIuc=.
+Neither golang.org/x/crypto/openpgp nor its subpackages nor
+github.com/aws/aws-sdk-go/service/s3/s3crypto occur in that selected source
+entrypoint graph. The Go dynamic plugin package is also absent. These packages,
+rather than all x/crypto/AWS HTTP clients, own the affected behaviors under
+GO-2026-5932 and GO-2022-0635/0646 respectively. The prior R-171 primary advisory
+explanations remain applicable to these exact named package prerequisites.
+
+Disposition: scoped non-applicability in the inspected source graph for those
+three package-specific advisories, not blanket dependency exemption or proof of
+a reproducible/unaltered binary. The actual image binary remains bound by its
+hash and reconciled effective modules; main vcs.modified=true and inspection
+Go1.26.8 versus artifact Go1.27.1 remain explicit artifact qualification limits.
+Source/package absence must be reconsidered for conditional imports/toolchain
+changes, and cannot silently waive missing artifact provenance or OS support.
+Combined with the exact upstream fix inspection above, this accounts for every
+reported Go advisory in the selected source scope without suppressing scanner
+receipts. It does not close complete stack admission, real-source integration,
+runtime failure/storage behavior or the parent monitoring/debug goal.

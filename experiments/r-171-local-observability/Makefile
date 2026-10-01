@@ -3,6 +3,8 @@
 tools-install:
 ifeq ($(COLLECTOR),browser-relay)
 	powershell -NoProfile -ExecutionPolicy RemoteSigned -File install-browser-relay.ps1 -EvidenceRoot "$(EVIDENCE_ROOT)"
+else ifeq ($(COLLECTOR),prometheus-source)
+	powershell -NoProfile -ExecutionPolicy RemoteSigned -File install-prometheus-source.ps1 -PrimaryRoot "$(PRIMARY_ROOT)" -ArtifactRoot "$(ARTIFACT_ROOT)" -EvidenceRoot "$(EVIDENCE_ROOT)"
 else ifeq ($(COLLECTOR),grafana-plugin-trees)
 	powershell -NoProfile -ExecutionPolicy RemoteSigned -File install-plugin-trees.ps1 -ArtifactRoot "$(ARTIFACT_ROOT)" -EvidenceRoot "$(EVIDENCE_ROOT)"
 else ifeq ($(COLLECTOR),loki-source)
