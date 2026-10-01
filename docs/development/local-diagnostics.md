@@ -403,6 +403,24 @@ disabled, the nil/zero trace handle returns the original Context and adds no
 recording, timers, callbacks or I/O. Recording itself performs bounded memory
 updates and inspects at most 64 error-tree nodes.
 
+The claimed Reader also creates one standard Go execution-trace task with the
+fixed type `ardents.reader`. Accepted memory records emit fixed `reader.stage`
+annotations; supplied Context cancellation emits a separate fixed
+`reader.context-stop` annotation. Joined Finish emits the conservative outcome,
+marks a lost capture incomplete, and ends the same task once. Expired, dropped,
+unclaimed and post-terminal stage records do not generate extra annotations.
+No raw error, deadline, identity or Task ID enters normal logs, metrics or the
+socket schema. The trace task uses a separate background Context; it cannot
+import authority values, cancellation or deadlines into product work.
+
+This does not start execution tracing or CPU profiling. Start a private trace
+request before the selected Reader Open and keep it active through joined
+cleanup to observe the whole task. A trace window that starts late or ends early
+is partial; absent task boundaries do not prove a joined operation. The runtime
+Task ID associates these annotations inside that private execution trace only;
+it does not associate separate CPU/heap profiles, a saved command, another
+process or an installed deployment. Trace scheduling/blocking observations can
+help localize waiting but do not establish remote causality.
 The production Reader route observes admission, session activation, worker launch
 and operation acquisition, the actual bounded worker activation (launch gate,
 readiness and Grant binding), Introduction preparation, JOIN (including the separately

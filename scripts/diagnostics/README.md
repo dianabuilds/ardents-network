@@ -435,6 +435,23 @@ is separate from run-a: process/run association is unproven. The loopback panel
 can be read by other local processes/users; its fixed projection still contains
 private timing metadata. It is excluded from the command-report export.
 
+To inspect the selected Reader in standard Go trace, start a private capture
+before performing the already authorized Application operation:
+
+    diag snapshot -socket /private/process.sock -kind trace -seconds 10 -sensitive -out /evidence/reader-runtime.trace
+
+While that capture is active, perform one Reader operation through its existing
+Application Interface. The recorder still selects only the first eligible Open;
+it never rearms or retries product work. Open the retained private artifact with
+the standard Go trace viewer using the private, loopback-only recipe above.
+Find the task type `ardents.reader` and its `reader.stage` annotations. Each
+annotation's runtime Task ID identifies the same selected operation even when
+its stage completion runs in another goroutine. `reader.outcome` records the
+conservative joined outcome; `reader.capture=incomplete` signals lost records.
+A capture must cover operation start through joined cleanup to support a whole
+operation observation. Missing boundaries or an early-ended capture are partial.
+Separate CPU/heap profiles remain process-wide; this task does not bind them to
+the Reader. No Task IDs or request data become normal log/index labels.
 Durations of nested JOIN/authentication phases overlap. A missing Context
 deadline is displayed as unknown, not zero budget. Untyped cancellation-related
 refusals remain failed; context_stop separately reports observed Context
