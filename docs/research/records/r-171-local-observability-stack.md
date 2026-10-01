@@ -2011,3 +2011,72 @@ the cooperative failure path, not a hard kernel/daemon latency deadline.
 Read-only Spec and Standards review found no actionable issue in the bounded
 implementation. Required make quick-check returned0. Full integration gates,
 backend admission and parent-goal acceptance remain separate obligations.
+
+### Collector filesystem exhaustion falsification plan
+
+Within the selected R-171 question, the next finite native minimal-OTel profile
+fills only one newly created owned file on its isolated 64 MiB state tmpfs.
+No product state, host filesystem or existing file is filled or deleted.
+Falsification criteria before execution: require actual ENOSPC/free-space receipt,
+then native collector scrape unavailability or increased enqueue rejection plus
+its Prometheus and Alertmanager firing observations. Mere helper ENOSPC is not
+a passing collector failure signal. Free only the unchanged owned injection file,
+retain original failure/container evidence, restore collector availability and
+empty queue, and separately prove source sequence catch-up. Any missing evidence,
+corrupt checkpoint, lost history or failed recovery retains the original failed
+receipt; no database recreation, counter reset waiver or retry-erased failure.
+Enqueue rejection is distinct from terminal loss because receiver retries may
+recover the record. This synthetic storage test cannot qualify host crash
+durability, installed Node operation or backend dependency admission.
+Attempt-a was a native negative result, not a passing storage-failure claim:
+the helper reached ENOSPC with zero free bytes, but accepted/sent records rose
+from121 to169 with no observed enqueue failure or availability alert. The
+selected tiny workload may reuse already allocated database pages. Original
+receipt remains complete=false, cleanup_exit0 and source inputs unchanged.
+Next falsification probe explicitly adds4096bytes of generated synthetic padding only during injection
+per event (still below16KiB per line and16MiB total) and pauses only the selected
+Loki during injection to require queue growth. No product payload is captured.
+This combined overload/storage fault requires a native collector ENOSPC message
+in addition to the numeric filesystem and alert receipts; backend unavailability
+alone cannot prove a storage write refusal. Recovery frees only the verified
+injection file and resumes the selected backend before sequence catch-up.
+Attempt-c observed native collector enqueue_failed3, queue26025bytes, up1,
+Prometheus firing and Alertmanager active for CollectorLogEnqueueRejected;
+three retained native error lines contained no-space-left-on-device. Actual
+injection ENOSPC was independently measured. Recovery delivered all source
+sequences through watermark132 (returned134 unique134 duplicate0), then normal
+restart retained metrics/log/silence history and filesystem inventory passed.
+Receipt complete=true, cleanup_exit0, source/plugin inputs stable. Attempt-b's
+Compose service/volume placement error and one earlier PowerShell parse refusal
+were corrected, with original private failures retained; they are not runtime
+storage failures. Native cleanup now avoids an incidental stderr record masking
+the original exception and skipping the terminal receipt. No full stack or
+parent-goal acceptance follows from this bounded synthetic result.
+The native positive-counter rule tests passed after supplying the required
+bounded64MiB /tmp for promtool test storage (the initial read-only-temp failure
+was retained, not counted as a pass). The native Node file parsed eight rules.
+A separate admission control selected attempt-a's existing state volumes:
+exit1 before new evidence-root creation, with no effects. Collector pressure now
+refuses existing project containers/state/fixture volumes before injection.
+make quick-check completed with exit0; full integration gates remain separate.
+Bounded standards review identified that broad Continue in finalization could
+hide Out-File failures. The finalizer now accumulates evidence/teardown errors,
+attempts remaining cleanup, marks an available receipt incomplete, restores
+preferences/environment and returns the accumulated failure with the original
+operation exception when present. The exact AST-extracted finalizer was exercised
+in PowerShell5 with a real directory occupying the output-file path; Docker was
+mocked only to avoid unrelated effects. Assertions passed: write refused,
+teardown attempted, receipt complete=false, errors retained and state restored.
+This control is not native Docker teardown validation; the final profile rerun
+supplies the latter. Evidence remains ardents-r171-finalization-write-refusal.
+Final native profile passed after the evidence-write repair: actual ENOSPC/free0,
+enqueue_failed2, queue17778bytes, Prometheus firing and Alertmanager active;
+all sequences through132 delivered (returned133 unique133 duplicate0), normal
+restart and inventory passed. Receipt complete/cleanup0/source+pluginstable,
+finalization_failures empty. Spec review then found a final false source comparison
+could overwrite the main check without failing. False final input stability is
+now an explicit accumulated error. The exact finalizer with an actual modified
+local source-input file refused success, attempted teardown, wrote complete=false
+and restored state; Docker remained mocked only. The stable native final receipt
+and the separate changed-input refusal cover these two paths without treating
+successful native collection as an atomic snapshot guarantee.

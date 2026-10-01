@@ -898,3 +898,36 @@ filesystem budget does not establish the full disk budget, crash durability,
 backend admission or Node capacity. No host data is deleted or filled by this
 observer. A ten-second helper alarm is cooperative; kernel/daemon latency is
 not a hard host deadline guarantee.
+
+### Native collector state exhaustion
+
+Run `make -C experiments/r-171-local-observability probe-otel-collector-storage`
+with a new private `EVIDENCE_ROOT`, unique `RUN_NAME` and checked `PLUGIN_ROOT`.
+The finite minimal-OTel restart profile fills only one new owned file on the
+selected64MiB collector-state tmpfs. A validated one-byte activation file enables
+4096bytes of generated synthetic padding only during injection; the selected
+Loki is paused briefly so the persisted queue needs to grow. No product data or
+host filesystem is filled. Raw native error output remains private evidence.
+
+Passing requires actual ENOSPC/zero-free-space, a native collector ENOSPC message,
+collector unavailability or enqueue rejection, and the corresponding firing rule
+and active Alertmanager alert. Recovery removes only the unchanged owned
+injection/activation files, resumes Loki, and checks availability/empty queue plus
+all sequences through an independently captured producer watermark. The normal
+restart history and private filesystem inventory checks follow. No state database
+is recreated to manufacture recovery. Original failed attempts remain retained.
+
+An idle/small-record full filesystem may cause no write refusal while existing
+pages are reused; that is not a passing failure test. Attempt-a demonstrated this.
+Attempt-c observed enqueue_failed3, queue26025bytes and the active rejection alert,
+then delivered every sequence through132 with no duplicates in the returned set.
+Restart retained metric/log/silence history; complete/cleanup/input-stability
+receipts passed. This is a combined synthetic queue-growth/storage-fault test,
+not host crash durability, installed Node qualification or backend admission.
+
+`CollectorLogEnqueueRejected` names retryable admission refusal separately from
+terminal failed-record loss. Its positive cumulative counter remains a warning
+for the collector session even after queue drain; a reset/restart may clear it.
+Absent counters remain unavailable. Native tests cover absent series, the first
+positive observation without a preceding zero, continued warning and reset.
+This is not durable incident, acknowledgement or notification-delivery history.

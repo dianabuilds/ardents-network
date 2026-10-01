@@ -3,12 +3,15 @@ import datetime
 import http.server
 import json
 import pathlib
+import os
 import signal
 import threading
 import time
 
 ROOT = pathlib.Path('/fixture')
 DURATION_SECONDS = 600
+padding_bytes = int(os.environ.get('R171_STORAGE_PADDING_BYTES', '0'))
+if padding_bytes not in (0, 4096): raise RuntimeError('Unknown explicit synthetic storage workload')
 started = time.monotonic()
 lock = threading.Lock()
 state = {'queue': 0, 'heartbeat': time.time(), 'events': 0}
@@ -61,6 +64,7 @@ try:
             event = {'at': datetime.datetime.now(datetime.timezone.utc).isoformat(),
                      'level': 'warning' if phase == 'pressure' else 'info',
                      'scope': 'synthetic_fixture', 'event': phase, 'sequence': sequence}
+            if padding_bytes and (ROOT/'collector-pressure-active').exists(): event['synthetic_padding'] = 'x'*padding_bytes
             output.write(json.dumps(event) + '\n')
             output.flush()
             print(json.dumps(event), flush=True)

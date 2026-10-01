@@ -598,3 +598,23 @@ They do not select a production storage layout or establish complete disk-budget
 coverage. Docker log bytes, external writable evidence and persistence remain
 separate obligations. Reproducible invocation belongs to the
 [experiment recipe](../../experiments/r-171-local-observability/README.md#selected-native-filesystem-inventory).
+
+### Collector storage-refusal observation
+
+The local backend experiment has a separate finite minimal-OTel collector-state
+exhaustion profile. It uses only its owned64MiB synthetic state tmpfs and new
+verified injection/activation files. Existing project containers or selected state/fixture volumes are refused before evidence creation. Generated padding and a brief selected Loki
+pause require queue growth; native ENOSPC, refusal/unavailability and the actual
+Prometheus/Alertmanager signal must be observed. A full filesystem alone is
+insufficient evidence of collector failure. Recovery preserves the original
+failure and separately checks queue drain and source sequence delivery; it does
+not recreate the checkpoint database. Installed Node and host crash durability
+remain outside this experimental acceptance boundary.
+
+The monitoring rule `CollectorLogEnqueueRejected` reports a positive cumulative
+native enqueue-refusal count for the current collector session. Receiver retries
+may subsequently deliver the record, so this is distinct from terminal exporter
+loss. It remains a warning after delivery recovery until the count is reset;
+absence is unknown and restart can clear it. This is neither a durable incident
+store nor acknowledgement history. Raw collector errors stay private; they do
+not enter the safe projected Node event stream or public profile output.

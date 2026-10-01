@@ -360,6 +360,57 @@ elif sys.argv[1] in ('restart-before', 'restart-after'):
                          ('collector_new_accepted_records' if collector == 'otel' else 'collector_new_read_lines'):readings['collector'],'passed':True})
         (reports/'restart-assertions.json').write_text(json.dumps(snapshot))
         print('Backend restart retained metric/log/silence history without full-file replay')
+elif sys.argv[1] in ('otel-storage-baseline', 'otel-storage-pressure', 'otel-storage-recovered'):
+    if collector != 'otel': raise RuntimeError('Collector storage observation requires OTel')
+    def collector_up(prefix):
+        result = observe(prefix+'availability', 'https://prometheus:9090/api/v1/query?'+urllib.parse.urlencode({'query': 'up{job="collector"} and (time()-timestamp(up{job="collector"}) <= 4)'}))
+        rows = result['data']['result']
+        if result.get('status') != 'success' or len(rows) != 1:
+            raise RuntimeError('Collector scrape availability absent or ambiguous')
+        value = float(rows[0]['value'][1])
+        if value not in (0, 1) or abs(time.time()-float(rows[0]['value'][0])) > 4:
+            raise RuntimeError('Invalid or stale collector scrape availability')
+        return value
+    mode = sys.argv[1]
+    if mode == 'otel-storage-baseline':
+        if collector_up('baseline-') != 1: raise RuntimeError('Collector baseline unavailable')
+        signals = otel_delivery('baseline-')
+        (reports/'baseline.json').write_text(json.dumps(signals))
+        print('Native collector storage baseline retained')
+    else:
+        baseline = json.loads(pathlib.Path('/history/collector-storage-baseline/baseline.json').read_text())
+        deadline = time.monotonic()+45
+        attempt = 0
+        history = []
+        passed = False
+        while time.monotonic() < deadline:
+            attempt += 1
+            prefix = str(attempt)+'-'
+            up = collector_up(prefix)
+            rules = observe(prefix+'rules', 'https://prometheus:9090/api/v1/alerts')['data']['alerts']
+            manager = observe(prefix+'manager', 'https://alertmanager:9093/api/v2/alerts')
+            signals = otel_delivery(prefix) if up == 1 else None
+            rejected = None if signals is None else signals['enqueue_failed']
+            previous = baseline['enqueue_failed']
+            rejection = rejected is not None and (rejected > 0 if previous is None else rejected > previous)
+            unavailable = up == 0
+            alert = 'CollectorObservationUnavailable' if unavailable else 'CollectorLogEnqueueRejected'
+            rule_firing = any(a['labels'].get('alertname') == alert and a['state'] == 'firing' for a in rules)
+            manager_active = any(a['labels'].get('alertname') == alert and a['status']['state'] == 'active' for a in manager)
+            history.append({'at':time.time(), 'up':up, 'signals':signals, 'selected_alert':alert,
+                            'rule_firing':rule_firing, 'manager_active':manager_active})
+            if mode == 'otel-storage-pressure':
+                passed = (unavailable or rejection) and rule_firing and manager_active
+            else:
+                availability_alert_absent = not any(a['labels'].get('alertname') == 'CollectorObservationUnavailable' for a in rules+manager)
+                passed = up == 1 and signals['queue_bytes'] == 0 and signals['sent'] > 0 and availability_alert_absent
+            if passed: break
+            time.sleep(0.5)
+        result = {'passed':passed, 'mode':mode, 'history':history, 'baseline':baseline,
+                  'scope':'native collector availability or enqueue rejection; sequence delivery checked separately'}
+        (reports/'collector-storage-assertions.json').write_text(json.dumps(result))
+        if not passed: raise RuntimeError('Native collector storage failure/recovery not proven within budget')
+        print('Native collector storage '+('failure alert' if mode == 'otel-storage-pressure' else 'availability and queue recovery')+' observed')
 elif sys.argv[1] in ('otel-retry-exhausted', 'otel-loss-recovered'):
     if collector != 'otel': raise RuntimeError('Native loss mode requires OTel profile')
     baseline = json.loads(pathlib.Path('/history/backend-baseline/baseline.json').read_text())

@@ -17,6 +17,7 @@ x-common: &common
       compress: "false"
 services:
   fixture:
+    environment: {R171_STORAGE_PADDING_BYTES: "${R171_STORAGE_PADDING_BYTES:-0}"}
     <<: *common
     image: ${R171_HELPER_IMAGE:?explicit installed helper required}
     mem_limit: 64m

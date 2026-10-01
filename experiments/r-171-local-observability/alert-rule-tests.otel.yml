@@ -1,0 +1,28 @@
+rule_files:
+  - /probe/alerts.otel.yml
+evaluation_interval: 2s
+tests:
+  - name: enqueue rejection absence first positive retention and session reset
+    interval: 2s
+    input_series:
+      - series: 'otelcol_exporter_enqueue_failed_log_records{job="collector",exporter="otlp_http/fixture"}'
+        values: '_ 3 3 0'
+      - series: 'otelcol_exporter_enqueue_failed_log_records{job="other"}'
+        values: '99 99 99 99'
+    promql_expr_test:
+      - expr: 'count(ALERTS{alertname="CollectorLogEnqueueRejected",alertstate="firing"})'
+        eval_time: 0s
+        exp_samples: []
+      - expr: 'count(ALERTS{alertname="CollectorLogEnqueueRejected",alertstate="firing"})'
+        eval_time: 2s
+        exp_samples:
+          - labels: '{}'
+            value: 1
+      - expr: 'count(ALERTS{alertname="CollectorLogEnqueueRejected",alertstate="firing"})'
+        eval_time: 4s
+        exp_samples:
+          - labels: '{}'
+            value: 1
+      - expr: 'count(ALERTS{alertname="CollectorLogEnqueueRejected",alertstate="firing"})'
+        eval_time: 6s
+        exp_samples: []

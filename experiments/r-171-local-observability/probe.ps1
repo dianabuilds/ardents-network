@@ -1,12 +1,19 @@
 param([Parameter(Mandatory=$true)][string]$EvidenceRoot,
-      [Parameter(Mandatory=$true)][ValidatePattern('^r171-[a-z0-9-]{1,32}$')][string]$RunName, [switch]$RestartProbe, [switch]$ResourceProbe, [switch]$BackendProbe, [switch]$RetryExhaustionProbe, [switch]$StorageProbe, [ValidateSet('alloy','otel')][string]$Collector='alloy', [switch]$MinimalCollector, [string]$PatchedPluginRoot, [switch]$BrowserProbe, [string]$BrowserRelayBinary)
+      [Parameter(Mandatory=$true)][ValidatePattern('^r171-[a-z0-9-]{1,32}$')][string]$RunName, [switch]$RestartProbe, [switch]$ResourceProbe, [switch]$BackendProbe, [switch]$RetryExhaustionProbe, [switch]$StorageProbe, [switch]$CollectorStorageProbe, [ValidateSet('alloy','otel')][string]$Collector='alloy', [switch]$MinimalCollector, [string]$PatchedPluginRoot, [switch]$BrowserProbe, [string]$BrowserRelayBinary)
 $ErrorActionPreference='Stop'
+if ($CollectorStorageProbe -and (-not $RestartProbe -or $Collector -ne 'otel' -or -not $MinimalCollector -or $ResourceProbe -or $StorageProbe -or $BackendProbe -or $RetryExhaustionProbe -or $BrowserProbe -or -not $PatchedPluginRoot)) { throw 'Collector storage pressure requires isolated minimal OTel restart profile and checked plugins' }
 if ($RetryExhaustionProbe -and (-not $BackendProbe -or $Collector -ne 'otel' -or -not $MinimalCollector -or $ResourceProbe -or $StorageProbe -or $BrowserProbe -or $RestartProbe -or -not $PatchedPluginRoot)) { throw 'Retry exhaustion requires the isolated minimal OTel backend profile' }
 if ($BrowserProbe -and ($ResourceProbe -or $RestartProbe -or $BackendProbe -or $StorageProbe -or -not $BrowserRelayBinary)) { throw 'Browser probe requires explicitly built relay; it is outside resource measurement' }
 if ($MinimalCollector -and $Collector -ne 'otel') { throw 'Minimal variant requires explicit OTel profile.' }
 if (($ResourceProbe -or $StorageProbe) -and -not $RestartProbe) { throw 'Resource profile requires explicit restart-state profile.' }
 if ($BackendProbe -and -not $RestartProbe -and -not $RetryExhaustionProbe) { throw 'Backend recovery profile requires explicit restart-state profile.' }
 if ($Collector -eq 'otel' -and $StorageProbe) { throw 'OTel retry/loss counter semantics require separate validation before backend/pressure profile.' }
+if ($CollectorStorageProbe) {
+    $taskExistingContainers=@(docker ps -a --filter "label=com.docker.compose.project=$RunName" --format '{{.ID}}')
+    if ($LASTEXITCODE -ne 0 -or $taskExistingContainers.Count -ne 0) { throw 'Collector pressure requires a new project without existing containers' }
+    $taskExistingVolumes=@(docker volume ls --format '{{.Name}}')
+    if ($LASTEXITCODE -ne 0 -or $taskExistingVolumes -contains ($RunName+'_alloy-state') -or $taskExistingVolumes -contains ($RunName+'_fixture')) { throw 'Collector pressure refuses existing state or fixture volumes' }
+}
 $taskRoot=[IO.Path]::GetFullPath($EvidenceRoot)
 $taskRepo=[IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../..'))
 if ($taskRoot.Equals($taskRepo,[StringComparison]::OrdinalIgnoreCase) -or
@@ -31,7 +38,7 @@ foreach ($taskPrincipal in @($taskSid,[Security.Principal.SecurityIdentifier]::n
 $taskPrivate=Join-Path $taskRoot 'private'; $taskReports=Join-Path $taskRoot 'reports'
 New-Item -ItemType Directory -Path $taskPrivate,$taskReports | Out-Null
 function Get-ProbeSourceSnapshot {
-    $taskSelected=@('images.json','compose.yaml','compose.restart.yaml','fixture.py','prometheus.yml','alerts.yml','alertmanager.yml','loki.yml','config.alloy','prepare-private.py','query-probe.py','resource-window.ps1','storage-inventory.ps1','storage-pressure.py','probe.ps1','otel.yml','compose.otel.yaml','prometheus.otel.yml','loki.otel.yml','install-collector-image.ps1','alerts.otel.yml','builder.yml','build-minimal.py','install-minimal.ps1','compose.plugins.yaml','stage-plugins.py','install-plugin-trees.ps1','compose.browser.yaml','browser-relay.go','install-browser-relay.ps1')
+    $taskSelected=@('images.json','compose.yaml','compose.restart.yaml','fixture.py','prometheus.yml','alerts.yml','alertmanager.yml','loki.yml','config.alloy','prepare-private.py','query-probe.py','resource-window.ps1','storage-inventory.ps1','storage-pressure.py','collector-storage-pressure.py','probe.ps1','otel.yml','compose.otel.yaml','prometheus.otel.yml','loki.otel.yml','install-collector-image.ps1','alerts.otel.yml','alert-rule-tests.otel.yml','builder.yml','build-minimal.py','install-minimal.ps1','compose.plugins.yaml','stage-plugins.py','install-plugin-trees.ps1','compose.browser.yaml','browser-relay.go','install-browser-relay.ps1')
     foreach ($taskFile in $taskSelected) {
         $taskBytes=[IO.File]::ReadAllBytes((Join-Path $PSScriptRoot $taskFile))
         $taskHasher=[Security.Cryptography.SHA256]::Create()
@@ -42,7 +49,7 @@ function Get-ProbeSourceSnapshot {
 }
 $taskSourceBefore=@(Get-ProbeSourceSnapshot)
 $taskLock=Get-Content (Join-Path $PSScriptRoot 'images.json') -Raw | ConvertFrom-Json
-$taskEnv=[ordered]@{R171_SOURCE=$PSScriptRoot;R171_PRIVATE=$taskPrivate}
+$taskEnv=[ordered]@{R171_SOURCE=$PSScriptRoot;R171_PRIVATE=$taskPrivate;R171_STORAGE_PADDING_BYTES=$(if ($CollectorStorageProbe) { "4096" } else { "0" })}
 function Get-PluginTreeSnapshot {
     if (-not $PatchedPluginRoot) { return }
     $taskPluginPath=[IO.Path]::GetFullPath($PatchedPluginRoot)
@@ -97,19 +104,22 @@ if ($RestartProbe -or $RetryExhaustionProbe) { $taskCompose += @('-f',(Join-Path
 if ($Collector -eq 'otel') { $taskCompose += @('-f',(Join-Path $PSScriptRoot 'compose.otel.yaml')) }
 if ($BrowserProbe) { $taskCompose += @('-f',(Join-Path $PSScriptRoot 'compose.browser.yaml')) }
 if ($PatchedPluginRoot) { $taskCompose += @('-f',(Join-Path $PSScriptRoot 'compose.plugins.yaml')) }
-$taskReceipt=[ordered]@{retry_exhaustion_probe=[bool]$RetryExhaustionProbe;browser_probe=[bool]$BrowserProbe;patched_plugins=[bool]$PatchedPluginRoot;plugin_inputs=$taskPluginBefore;collector=$Collector;minimal_distribution=[bool]$MinimalCollector;started_utc=(Get-Date).ToUniversalTime().ToString('o');run=$RunName;source_scope='synthetic fixture only';complete=$false;helper_image_id=$taskHelper;images=$taskImageIdentities;source_inputs=$taskSourceBefore}
+$taskReceipt=[ordered]@{collector_storage_probe=[bool]$CollectorStorageProbe;retry_exhaustion_probe=[bool]$RetryExhaustionProbe;browser_probe=[bool]$BrowserProbe;patched_plugins=[bool]$PatchedPluginRoot;plugin_inputs=$taskPluginBefore;collector=$Collector;minimal_distribution=[bool]$MinimalCollector;started_utc=(Get-Date).ToUniversalTime().ToString('o');run=$RunName;source_scope='synthetic fixture only';complete=$false;helper_image_id=$taskHelper;images=$taskImageIdentities;source_inputs=$taskSourceBefore}
 function Invoke-ProbeQuery([string]$Mode,[string]$ReportName) {
     $taskDestination=Join-Path $taskReports $ReportName
     New-Item -ItemType Directory -Path $taskDestination | Out-Null
     docker run --rm --network ($RunName+'_probe') --read-only --cap-drop ALL --security-opt no-new-privileges --user 10001:10001 --memory 256m --cpus 0.5 --pids-limit 16 --shm-size 1m --log-driver local --log-opt max-size=2m --log-opt max-file=2 --mount "type=bind,source=$PSScriptRoot,target=/probe,readonly" --mount "type=bind,source=$taskPrivate/query,target=/certs,readonly" --mount "type=bind,source=$taskDestination,target=/reports" --mount "type=bind,source=$taskReports,target=/history,readonly" --entrypoint python3 $taskHelper /probe/query-probe.py $Mode $ReportName $Collector
     if ($LASTEXITCODE -ne 0) { throw "Query $Mode failed; preserve original reports." }
 }
+$taskOperationError=$null
 try {
     docker run --rm --network none --read-only --cap-drop ALL --security-opt no-new-privileges --user 10001:10001 --memory 128m --cpus 0.5 --pids-limit 16 --mount "type=bind,source=$PSScriptRoot,target=/probe,readonly" --mount "type=bind,source=$taskPrivate,target=/private" -e R171_COLLECTOR=$Collector --entrypoint python3 $taskHelper /probe/prepare-private.py
     if ($LASTEXITCODE -ne 0) { throw 'Private preparation failed.' }
     if ($Collector -eq 'otel') {
         docker run --rm --pull never --network none --read-only --user 10001:10001 --cap-drop ALL --security-opt no-new-privileges --memory 128m --cpus 0.5 --pids-limit 16 --mount "type=bind,source=$PSScriptRoot,target=/probe,readonly" --entrypoint /bin/promtool $taskEnv.R171_PROMETHEUS_IMAGE check rules /probe/alerts.otel.yml | Out-File (Join-Path $taskReports 'native-alert-rules.txt') -Encoding utf8
         if ($LASTEXITCODE -ne 0) { throw 'Native OTel alert rule admission failed' }
+        docker run --rm --pull never --network none --read-only --user 10001:10001 --cap-drop ALL --security-opt no-new-privileges --memory 128m --cpus 0.5 --pids-limit 16 --mount "type=bind,source=$PSScriptRoot,target=/probe,readonly" --tmpfs /tmp:rw,nosuid,nodev,noexec,size=67108864,uid=10001,gid=10001,mode=0700 --entrypoint /bin/promtool $taskEnv.R171_PROMETHEUS_IMAGE test rules /probe/alert-rule-tests.otel.yml | Out-File (Join-Path $taskReports 'native-alert-behavior.txt') -Encoding utf8
+        if ($LASTEXITCODE -ne 0) { throw 'Native OTel enqueue-alert behavior failed' }
     }
     docker @taskCompose config --quiet
     if ($LASTEXITCODE -ne 0) { throw 'Compose validation failed.' }
@@ -154,6 +164,32 @@ try {
     Invoke-ProbeQuery 'catchup' 'post-outage-logs'
     Invoke-ProbeQuery 'shared-interval' 'grafana-shared-interval'
     if ($PatchedPluginRoot) { Invoke-ProbeQuery 'plugin-identities' 'plugin-identities' }
+    if ($CollectorStorageProbe) {
+        Invoke-ProbeQuery 'otel-storage-baseline' 'collector-storage-baseline'
+        docker @taskCompose pause loki
+        if ($LASTEXITCODE -ne 0) { throw 'Selected synthetic backend pause failed' }
+        $taskPressureReports=Join-Path $taskReports 'collector-storage-injection'
+        New-Item -ItemType Directory -Path $taskPressureReports | Out-Null
+        foreach ($taskAction in @('fill','free')) {
+            if ($taskAction -eq 'free') {
+                Invoke-ProbeQuery 'otel-storage-pressure' 'collector-storage-pressure'
+                $taskCollectorId=docker @taskCompose ps -a -q alloy
+                docker inspect $taskCollectorId | Out-File (Join-Path $taskReports 'collector-storage-state.json') -Encoding utf8
+                if ($LASTEXITCODE -ne 0) { throw 'Collector state receipt unavailable' }
+                docker @taskCompose logs --no-color --tail 500 alloy 2>&1 | Out-File (Join-Path $taskReports 'collector-storage-native-errors.txt') -Encoding utf8
+                if ($LASTEXITCODE -ne 0) { throw 'Native collector error receipt unavailable' }
+                if (-not (Select-String -LiteralPath (Join-Path $taskReports 'collector-storage-native-errors.txt') -SimpleMatch 'no space left on device' -Quiet)) { throw 'Native collector ENOSPC error not proven; retain failure' }
+            }
+            docker run --rm --pull never --network none --read-only --cap-drop ALL --security-opt no-new-privileges --user 10001:10001 --memory 128m --cpus 0.25 --pids-limit 4 --shm-size 1m --log-driver local --log-opt max-size=2m --log-opt max-file=2 --mount "type=volume,source=$($RunName)_alloy-state,target=/state" --mount "type=bind,source=$PSScriptRoot,target=/probe,readonly" --mount "type=bind,source=$taskPressureReports,target=/reports" --mount "type=volume,source=$($RunName)_fixture,target=/fixture" --entrypoint python3 $taskHelper /probe/collector-storage-pressure.py $taskAction
+            if ($LASTEXITCODE -ne 0) { throw 'Collector storage injection failed; preserve evidence' }
+        }
+        docker @taskCompose unpause loki
+        if ($LASTEXITCODE -ne 0) { throw 'Selected synthetic backend resume failed' }
+        docker @taskCompose start alloy
+        if ($LASTEXITCODE -ne 0) { throw 'Selected collector could not restart after space recovery' }
+        Invoke-ProbeQuery 'otel-storage-recovered' 'collector-storage-recovered'
+        Invoke-ProbeQuery 'catchup' 'post-collector-storage-logs'
+    }
     if ($StorageProbe) {
         $taskPressureReports=Join-Path $taskReports 'storage-injection'
         New-Item -ItemType Directory -Path $taskPressureReports | Out-Null
@@ -267,15 +303,46 @@ print(json.dumps({'states':results,'limit':'live non-atomic sample; excludes Gra
     $taskReceipt.plugin_inputs_stable=($taskPluginBefore | ConvertTo-Json -Compress) -eq ($taskPluginAfter | ConvertTo-Json -Compress)
     if (-not $taskReceipt.plugin_inputs_stable) { throw 'Plugin tree changed during run' }
     $taskReceipt.complete=$true
+} catch {
+    $taskOperationError=$_.Exception
+    throw
 } finally {
-    $taskSourceAfter=@(Get-ProbeSourceSnapshot)
-    $taskReceipt.source_inputs_stable=($taskSourceBefore | ConvertTo-Json -Compress) -eq ($taskSourceAfter | ConvertTo-Json -Compress)
-    if ($taskRelay -and -not $taskRelay.HasExited) { $taskRelay.Kill(); $taskRelay.WaitForExit() }
-    docker @taskCompose logs --no-color --tail 2000 2>&1 | Out-File (Join-Path $taskReports 'service-logs.txt') -Encoding utf8
-    docker @taskCompose ps -a --format json | Out-File (Join-Path $taskReports 'container-states-before-cleanup.json') -Encoding utf8
-    docker @taskCompose down --timeout 5
-    $taskReceipt.cleanup_exit=$LASTEXITCODE
-    $taskReceipt.ended_utc=(Get-Date).ToUniversalTime().ToString('o')
-    $taskReceipt | ConvertTo-Json -Depth 8 | Out-File (Join-Path $taskRoot 'receipt.json') -Encoding utf8
-    foreach ($taskKey in $taskOld.Keys) { [Environment]::SetEnvironmentVariable($taskKey,$taskOld[$taskKey]) }
+    $taskFinalizationErrors=@()
+    $taskCleanupPreference=$ErrorActionPreference
+    try {
+        try {
+            $taskSourceAfter=@(Get-ProbeSourceSnapshot)
+            $taskReceipt.source_inputs_stable=($taskSourceBefore | ConvertTo-Json -Compress) -eq ($taskSourceAfter | ConvertTo-Json -Compress)
+            if (-not $taskReceipt.source_inputs_stable) { throw 'Probe inputs changed before final receipt' }
+        } catch { $taskFinalizationErrors += $_.Exception }
+        try { if ($taskRelay -and -not $taskRelay.HasExited) { $taskRelay.Kill(); $taskRelay.WaitForExit() } }
+        catch { $taskFinalizationErrors += $_.Exception }
+        # Native stderr must not stop teardown; evidence writes still fail closed.
+        $ErrorActionPreference='Continue'
+        try {
+            docker @taskCompose logs --no-color --tail 2000 2>&1 | Out-File (Join-Path $taskReports 'service-logs.txt') -Encoding utf8 -ErrorAction Stop
+            if ($LASTEXITCODE -ne 0) { throw 'Service log collection failed' }
+        } catch { $taskFinalizationErrors += $_.Exception }
+        try {
+            docker @taskCompose ps -a --format json | Out-File (Join-Path $taskReports 'container-states-before-cleanup.json') -Encoding utf8 -ErrorAction Stop
+            if ($LASTEXITCODE -ne 0) { throw 'Container-state collection failed' }
+        } catch { $taskFinalizationErrors += $_.Exception }
+        try {
+            docker @taskCompose down --timeout 5
+            $taskReceipt.cleanup_exit=$LASTEXITCODE
+            if ($LASTEXITCODE -ne 0) { throw 'Selected project teardown failed' }
+        } catch { $taskFinalizationErrors += $_.Exception; $taskReceipt.cleanup_exit=-1 }
+        if ($taskFinalizationErrors.Count -ne 0) { $taskReceipt.complete=$false }
+        $taskReceipt.finalization_failures=@($taskFinalizationErrors | ForEach-Object { $_.Message })
+        $taskReceipt.ended_utc=(Get-Date).ToUniversalTime().ToString('o')
+        try { $taskReceipt | ConvertTo-Json -Depth 8 | Out-File (Join-Path $taskRoot 'receipt.json') -Encoding utf8 -ErrorAction Stop }
+        catch { $taskFinalizationErrors += $_.Exception }
+    } finally {
+        $ErrorActionPreference=$taskCleanupPreference
+        foreach ($taskKey in $taskOld.Keys) { [Environment]::SetEnvironmentVariable($taskKey,$taskOld[$taskKey]) }
+    }
+    if ($taskFinalizationErrors.Count -ne 0) {
+        if ($taskOperationError) { $taskFinalizationErrors += $taskOperationError }
+        throw [AggregateException]::new('Probe finalization failed; original errors retained', [Exception[]]$taskFinalizationErrors)
+    }
 }
