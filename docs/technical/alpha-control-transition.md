@@ -21,6 +21,14 @@ authenticated decision and any already committed owner floor remain visible.
 Catalog cleanup failure preserves the authenticated report but makes the
 command fail; it never rolls back an already committed floor.
 
+Initial closed Route disclosure under ADR-0120 pins exactly one State key at
+threshold one. Inspection passes that same unambiguous pinned key as the
+State-owned Closed Profile authority; it still runs ordinary State acceptance.
+ACN1 does not separately identify a Closed Profile authority among multiple
+State keys, so closed disclosures with more than one key refuse as invalid.
+This grants no Closed Profile acceptance or Route readiness; one operator
+family still cannot fill multiple Role Domains or supply two Source families.
+
 | Domain | Authority / predecessor / freshness | Rotation, revocation, and floor | Emergency, participant failure, and evidence |
 |---|---|---|---|
 | Release Safety | Enrollment-pinned Release trusted-root chain; retained Release floor and consecutive root chain; timestamp and Release Safety bounds. | Consecutive authenticated root rotation; authenticated build revocation/replacement; Endpoint-owned non-decreasing Release floor. | Stop new work or terminate at the authenticated deadline; `release unsafe`, `revoked`, `expired`, `conflicting`, or `unavailable`; exact metadata, artifact digest, Release component, and floor. |

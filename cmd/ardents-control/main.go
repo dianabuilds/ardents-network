@@ -16,7 +16,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/enrollment"
 )
 
-const commandUsage = "usage: ardents-control inspect-bundle, inspect-transitions, prepare-closed-profile, sign-closed-profile, inspect-closed-profile, or inspect-closed-issuer-profile"
+const commandUsage = "usage: ardents-control inspect-bundle, inspect-transitions, prepare-closed-profile, sign-closed-profile, inspect-closed-profile, inspect-closed-issuer-profile, prepare-qualification-evidence, prepare-qualification-catalog, prepare-qualification-node-record, or prepare-qualification-epoch"
 
 func main() {
 	if err := run(os.Args[1:], os.Stdout); err != nil {
@@ -34,6 +34,12 @@ func run(arguments []string, output io.Writer) error {
 		return inspectBundle(arguments[1:], output)
 	case "inspect-transitions":
 		return inspectTransitions(arguments[1:], output)
+	case "prepare-qualification-evidence":
+		return prepareEvidence(arguments[1:], output)
+	case "prepare-qualification-catalog":
+		return prepareCatalog(arguments[1:], output)
+	case "prepare-qualification-node-record", "prepare-qualification-epoch":
+		return prepareQualificationNetwork(arguments[0], arguments[1:], output)
 	case "inspect-alpha-corpus":
 		return errors.New("inspect-alpha-corpus is retired")
 	case "accept-alpha-corpus":

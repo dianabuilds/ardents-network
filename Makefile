@@ -26,6 +26,9 @@ define newline
 endef
 UNIT_PACKAGES := $(subst $(newline), ,$(file <tests/profiles/deterministic-packages.txt))
 PROCESS_PACKAGES := $(subst $(newline), ,$(file <tests/profiles/process-packages.txt))
+NODE_PROCESS_PACKAGES := $(filter %/tests/e2e/node,$(PROCESS_PACKAGES))
+# Only the Node process suite may select an elevated system-scope runner.
+NODE_PROCESS_TEST_COMMAND ?= go
 HEADLESS_COMMANDS := $(subst $(newline), ,$(file <tests/profiles/headless-commands.txt))
 HEADLESS_GOOS := $(shell go env GOOS)
 HEADLESS_GOARCH := $(shell go env GOARCH)
@@ -53,7 +56,7 @@ INSTALLED_TAG_COMPILE_MKDIR = mkdir -p "$(INSTALLED_TAG_COMPILE_ROOT)"
 endif
 
 override CANONICAL_GO_BUILD_FLAGS := -trimpath -buildvcs=false
-QUICK_CHECK_TARGETS := vet unit build mod-check artifact-representation-check installed-tag-compile-check
+QUICK_CHECK_TARGETS := vet unit build mod-check artifact-representation-check installed-tag-compile-check release-operation-compile-check
 
 ifeq ($(OS),Windows_NT)
 HEADLESS_ARTIFACT_SHELL ?= C:/Program Files/Git/bin/bash.exe
@@ -87,7 +90,8 @@ heapdump-role-map:
 	go test -tags heapdumpcapture ./internal/endpoint -run '^TestHeapDumpRoleMapObservation$$' -count=1 -timeout=5m
 
 e2e:
-	go test -p 1 $(PROCESS_PACKAGES) -shuffle=on -count=1
+	go test -p 1 $(filter-out $(NODE_PROCESS_PACKAGES),$(PROCESS_PACKAGES)) -shuffle=on -count=1
+	$(NODE_PROCESS_TEST_COMMAND) test -p 1 $(NODE_PROCESS_PACKAGES) -shuffle=on -count=1
 
 fixture-network-test:
 	@test "$(HEADLESS_GOOS)" = linux || (echo "fixture-network-test requires Linux"; exit 2)
@@ -170,6 +174,29 @@ installed-tag-compile-check:
 
 quick-check:
 	$(MAKE) --output-sync=target -j 4 $(QUICK_CHECK_TARGETS)
+
+.PHONY: release-operation-compile-check
+release-operation-compile-check: export GOOS := linux
+release-operation-compile-check: export GOARCH := amd64
+release-operation-compile-check: export CGO_ENABLED := 0
+release-operation-compile-check:
+	$(INSTALLED_TAG_COMPILE_MKDIR)
+	go vet ./scripts/prepare-qualification-release-keys.go
+	go vet ./scripts/sign-qualification-release.go
+	go vet ./scripts/prepare-qualification-alpha-evidence.go
+	go vet ./scripts/prepare-qualification-alpha-catalog.go
+	go vet ./scripts/prepare-qualification-alpha-keys.go
+	go vet ./scripts/prepare-qualification-network-keys.go
+	go vet ./scripts/sign-qualification-network.go
+	go vet ./scripts/sign-qualification-alpha.go
+	go build $(CANONICAL_GO_BUILD_FLAGS) -o "$(INSTALLED_TAG_COMPILE_ROOT)/prepare-qualification-release-keys" ./scripts/prepare-qualification-release-keys.go
+	go build $(CANONICAL_GO_BUILD_FLAGS) -o "$(INSTALLED_TAG_COMPILE_ROOT)/sign-qualification-release" ./scripts/sign-qualification-release.go
+	go build $(CANONICAL_GO_BUILD_FLAGS) -o "$(INSTALLED_TAG_COMPILE_ROOT)/prepare-qualification-alpha-evidence" ./scripts/prepare-qualification-alpha-evidence.go
+	go build $(CANONICAL_GO_BUILD_FLAGS) -o "$(INSTALLED_TAG_COMPILE_ROOT)/prepare-qualification-alpha-catalog" ./scripts/prepare-qualification-alpha-catalog.go
+	go build $(CANONICAL_GO_BUILD_FLAGS) -o "$(INSTALLED_TAG_COMPILE_ROOT)/prepare-qualification-alpha-keys" ./scripts/prepare-qualification-alpha-keys.go
+	go build $(CANONICAL_GO_BUILD_FLAGS) -o "$(INSTALLED_TAG_COMPILE_ROOT)/prepare-qualification-network-keys" ./scripts/prepare-qualification-network-keys.go
+	go build $(CANONICAL_GO_BUILD_FLAGS) -o "$(INSTALLED_TAG_COMPILE_ROOT)/sign-qualification-network" ./scripts/sign-qualification-network.go
+	go build $(CANONICAL_GO_BUILD_FLAGS) -o "$(INSTALLED_TAG_COMPILE_ROOT)/sign-qualification-alpha" ./scripts/sign-qualification-alpha.go
 
 issue60-checks:
 	@test -n "$(ARDENTS_ISSUE60_REPORT)" || (echo "ARDENTS_ISSUE60_REPORT is required"; exit 2)

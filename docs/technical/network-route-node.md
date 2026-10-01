@@ -5,6 +5,18 @@ implemented closed-test-network Modules and their current Interfaces. It does
 not claim public network operation, independent operators, public discovery,
 supported Node hosting, or Route qualification.
 
+Under the [bounded qualification operation](../operations/qualification-release.md)
+and [ADR-0120](../adr/0120-authorize-operator-prepared-qualification-release.md),
+`ardents-control prepare-qualification-node-record` prepares only existing
+unsigned generation-one ARNR-v2 bytes for explicit closed Node facts.
+`prepare-qualification-epoch` checks supplied signed closed Records with the
+ordinary Epoch owner, computes actual commitments/assignments and prepares
+only existing unsigned initial AREP-v3 bytes. State authorities remain distinct
+from Node identity keys; any rejected or colliding initial Record refuses
+preparation. Neither command signs, grants a duty, accepts State, modifies a
+floor or starts a Node. Existing State signature, closed-profile and Source
+verification contracts remain binding.
+
 The [selected architecture](common-privacy-architecture.md) under
 [ADR-0078](../adr/0078-select-common-split-circuit-privacy.md) and
 [ADR-0081](../adr/0081-select-closed-protected-service-contract.md) uses the

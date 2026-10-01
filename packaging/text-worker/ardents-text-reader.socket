@@ -1,5 +1,6 @@
 [Unit]
 Description=Ardents fixed text reader activation
+PartOf=ardents-endpoint.service
 
 [Socket]
 ListenStream=/run/ardents-text/reader.sock

@@ -15,15 +15,33 @@ configuration format or an authority source.
 
 ## `ardents`
 
-### Selected protected installation commands — not implemented
+### Protected installation commands — qualification incomplete
 
 ADR-0119's successor selects `endpoint provision <request-file>`,
 `endpoint installation-check <installation-root>`,
 `endpoint start-installed <installation-root>`,
 `endpoint upgrade-installed <request-file>` and
-`endpoint recover-installed <installation-root>`. These spellings document the
-[implementation handoff](../technical/endpoint-service-runtime.md#selected-protected-installation-handoff),
-not callable or supported commands today. No generic privileged launch,
+`endpoint recover-installed <installation-root>`. Provision, installation-check
+and start-installed are callable; upgrade and successor recovery also have
+production callers, while their complete interruption/installed qualification
+remains unfinished. Initial recovery requires an owned initial intent and complete
+fixed-file birth records; missing provenance returns repair-required rather than
+adopting leftover objects. It returns `installed-recovered-stopped`, preserving
+the separate explicit-start operation. The
+[implementation handoff](../technical/endpoint-service-runtime.md#selected-protected-installation-handoff)
+defines their bounded contract. Full supported installed qualification is still
+incomplete. Provision returns only `installed-stopped`; installation-check
+returns only `local-integrity-verified`; start-installed accepts only the actual
+fixed service main process before delegating to the bound participant plan.
+Successful upgrade returns `installed-started`, and successful successor recovery
+returns `installed-recovered-started`; neither is a Service readiness or
+publication-continuity receipt. If Root has acknowledged the installed invocation
+but subsequent completion cleanup fails, upgrade or successor recovery emits
+`installed-started-recovery-required` together with a nonzero command result.
+The exact recovery guard remains retained; the result does not establish Service
+readiness or permit ordinary restart through that guard. Upgrade requests omit
+the first-install pin.
+No generic privileged launch,
 implicit start on provision, authority-key creation or accepting test permission
 route is selected. Existing command behavior remains documented below.
 
@@ -275,6 +293,10 @@ and inspection roots.
 | `inspect-transitions` | `--enrollment PATH --artifact PATH --state-root PATH --at RFC3339` | Participant transition diagnostic. It runs the same enrollment-pinned inspection and emits `ardents-alpha-transition-report-v1`: nested exact closed-alpha control evidence plus independent Release Safety, Network Epoch, Compatibility, and Namespace-materialization outcomes. It advances only the explicitly named standalone inspection floors; it never mutates Endpoint state. `not-selected` for Namespace never creates a close, release, reclaim, or current Namespace state. |
 | `inspect-closed-issuer-profile` | `--profile PATH --node-key HEX --network HEX --node HEX` | Read-only offline inspection of the JSON public export from closed `ardents-node issuer initialize`. Verifies its schema, digest, Node signature and independently supplied Network/Node bindings. Reports `ardents-closed-issuer-inspection-v1`, including `NetworkID`, `IssuerNodeID`, `NotBefore`, `NotAfter` and `TokenKeys` in closed-profile-plan form. It does not accept State or decide current validity; future hourly keys may be provisioned before activation. |
 | `prepare-closed-profile` | `--plan PATH --output PATH` | Render the canonical unsigned `ARDCPR03` body from a bounded public plan into a new file. |
+| `prepare-qualification-evidence` | `--plan PATH --output-root PATH` | Prepare the mutually bound initial unsigned Release/Network/Compatibility payloads and ACS1 signing inputs under ADR-0120. Absolute public plan and previously absent absolute output root; no signatures, State acceptance or participant floor mutation. |
+| `prepare-qualification-catalog` | `--plan PATH --output-root PATH` | Prepare the initial unsigned ACA1 signing input from exact component references. Absolute public plan and previously absent absolute output root; referenced bytes and their authorities remain separately verified. |
+| `prepare-qualification-node-record` | `--plan PATH --output-root PATH` | Prepare the existing unsigned ARNR-v2 message for a fresh generation-one closed Node Record with its own public key and explicit Node identity. No Node signature, duty or State acceptance. |
+| `prepare-qualification-epoch` | `--plan PATH --output-root PATH` | Verify every supplied initial closed Node Record and prepare the existing unsigned AREP-v3 initial Epoch commitments/assignments. State signing keys are separate from Node keys; no State signature, acceptance or floor reset. |
 | `sign-closed-profile` | `--plan PATH --authority-key PATH --output PATH` | Reread the exact public plan and sign only `ARDCPR03` with the owner-only PKCS#8 Ed25519 State-authority file; write a new file and report its digest without printing key or profile bytes. |
 | `inspect-closed-profile` | `--plan PATH --profile PATH --authority HEX --at RFC3339` | Read-only verification of the signed profile against the independently pinned State authority and exact Network/Epoch/time context. Durable State acceptance is separate. |
 

@@ -2,10 +2,134 @@
 
 ## Selected protected installation handoff
 
-The following bounded command contract implements ADR-0119's selected
-installation boundary. It is not implemented or a supported command receipt
-yet. Commands remain thin adapters under `ardents endpoint`; the owning
-implementation issue must register any new package before adding one.
+The following bounded command contract selects ADR-0119's installation
+boundary. The initial stopped provisioning, read-only integrity and installed
+startup consumers are implemented but not yet qualified on an admitted installed
+host. Successor update/recovery now have production callers and component
+controls; first-provision recovery now has a bounded production caller, but
+the full interruption matrix remains unfinished, and there is no
+supported full installation receipt yet. Commands remain thin adapters under
+`ardents endpoint`; the owning implementation issue must register any new
+package before adding one.
+
+`internal/endpoint/runtimeplan` owns the existing bounded headless-v2 and Source-v1 local
+declarations and their role/path/permission and public-identity validation.
+The current headless and Source refresh commands read bounded bytes and call these same decoders;
+installation consumes that grammar rather than defining another copy. Decoding
+opens no State or mutable root, contacts no manager and grants no Release,
+holder or runtime authority. Source credential loading, runtime composition and installation transitions
+remain separate owners; this parser extraction does not implement provisioning.
+
+`internal/endpoint/installation` composes the two fresh Release evaluations from
+one frozen set of enrolled metadata and the same local/reference facts. It
+checks complete resource bytes and coherent authenticated target identities and
+Targets floors before returning their opaque proofs. The ordinary enrolled
+command consumes only the executable proof for its existing replacement owner;
+its readiness remains general enrollment, not protected installation. Failure
+of the second evaluation retains any already committed Release floors and
+cannot return a partial accepting pair. Provisioning, immutable selection and
+actual manager identity binding are separate from this authentication.
+
+`start-installed` rechecks root-owned selection, all generation and fixed bytes,
+actual mutable root identities, this process's UID/GID/executable/arguments and
+unified cgroup, and the system manager's typed unit/Service properties. MainPID,
+InvocationID, exact ExecStartEx and protection properties must match before it
+returns the bound v2 plan to the ordinary participant composition. It opens no
+Release floor store and never recreates a fresh proof from stored target facts.
+The authenticated Endpoint unit requires both activation sockets before start;
+the socket units are PartOf the Endpoint so its stop also retires their listeners.
+Before returning the plan, startup observes both live socket units through typed
+manager properties and checks their fixed fragments, PartOf, listening state,
+Endpoint ownership, mode0600 and removal-on-stop contract.
+Effective stop/activation ordering still needs admitted installed qualification.
+During successor start a root-private `start-guard.json` retains the exact intent
+independently of cursor archival. Before manager start, root binds a private
+ephemeral Unix completion socket under the protected installation root. The
+Root-private socket birth record binds its device/inode and group to the exact
+guarded intent before manager start. Recovery validates this record before
+stop; cleanup removes only that recorded socket. An unrecorded or substituted
+socket refuses even with matching Root ownership and mode, retaining the guard.
+Endpoint verifies its root peer and waits before participant composition;
+root verifies the connecting MainPID/UID and the exact InvocationID, generation
+and binding digests. Root sends completion only after the start observation and
+archive directory syncs succeed. Cursor absence alone grants no transition
+admission. EOF, unavailable owner, substituted identity or the existing startup
+deadline refuses. The guard retains explicit recovery provenance if root dies;
+recovery still requires fresh floor-compatible proofs and actual stop/join.
+After acknowledgement, guard/socket cleanup failure is a post-acceptance error:
+the public command retains `installed-started-recovery-required` with nonzero
+exit status instead of describing the invocation as never admitted. That receipt
+does not establish Service readiness. Socket visibility under confinement and
+the complete interrupted-cleanup matrix remain admitted qualification work.
+The ExecStartEx flag name and typed command representation follow the
+[systemd v255 implementation](https://raw.githubusercontent.com/systemd/systemd/v255/src/core/dbus-execute.c)
+and its [flag mapping](https://raw.githubusercontent.com/systemd/systemd/v255/src/shared/exec-util.c),
+checked 2026-10-01; component observations do not substitute for actual manager properties.
+
+The initial `endpoint provision` caller now composes platform/root admission,
+the independent manifest pin and both fresh Release proofs, explicit account
+creation, private mutable directories, immutable candidate staging, fixed
+resource copies, selection and manager reload. It returns only
+`installed-stopped` after checking the actual loaded Endpoint/socket units are
+inactive with their exact fragments and no drop-ins or worker instances. It
+never starts a unit or issues permissions. Initial installation requires absent
+managed writable directories and sockets; existing state is not adopted or
+cleared. Existing parent directories remain root-controlled, and Source
+credentials and public permission responses still require their explicit owners.
+Root-only preparation and generation phase records retain original errors.
+After preparation, provisioning records an initial transition intent before
+generation writes. Installed startup refuses either a pending intent or a
+pending failure before manager/runtime admission. Initial recovery requires
+fresh authority from the established Release floor store, the owned generation
+directory and complete fixed-file creation records (device/inode, intended digest,
+mode and group). It can repair authenticated prefixes on those owned objects,
+reload and return `installed-recovered-stopped`; explicit startup remains separate.
+An interruption before complete fixed-file birth records requires repair rather
+than adoption. Each fixed file and selection records its exclusively created inode
+durably before writing contents. The full actual interruption matrix remains
+unqualified.
+Component filesystem and manager-property controls do not qualify a positive
+Ubuntu/systemd/cgroup installation or the two-Endpoint Carrier journey.
+
+The read-only `installation-check` consumer now checks a canonical root-owned
+selection and local binding, exact generation/resource/plan bytes, the real
+dedicated account, mutable root device/inode/access and actual fixed worker
+resources. It requires a matching Ubuntu22.04/systemd249 or
+Ubuntu24.04/systemd255 amd64 profile with cgroup v2. Mixed OS/manager pairs
+and newer unadmitted managers refuse. On manager249, absent `ExitType` and
+`RestartMode` reflect unavailable selectable policies; parent lifetime still
+requires `RemainAfterExit=false`, `Restart=no` and the exact main process.
+On manager255 both observed policies remain mandatory. Every installed process
+check observes the actual manager version independently. This compatibility
+admission does not qualify either installed host profile.
+Its result is only `local-integrity-verified`: it opens no Release floor store,
+evaluates no fresh Release proof and grants neither runtime readiness nor an
+active MainPID/InvocationID receipt. The actual installed
+positive journey remains unqualified; byte-backed fixtures prove only component
+validation, not filesystem ownership or installed containment.
+
+The local request schema is `ardents-endpoint-installation-request-v1`, compact
+UTF-8 JSON plus LF, with fields in this order: `schema`, `bundle_root`, optional
+`manifest_sha256`, `installation_root`, `release_floor_root`, `reference_time`,
+`headless`, `source`. Nested declaration encoding uses the current shared
+grammar owners; duplicate/unknown fields and alternate encodings refuse.
+Reference time is canonical UTC RFC3339Nano. Initial provisioning requires the
+independent pin; its absence never authorizes a first installation. Inline
+Source must match the headless Network, signer map, threshold, role root and
+clock observation file, with nonzero refresh. The input headless Source-plan
+path is empty; its rendered output selects only that generation's `source.json`.
+The two declared Direct Source operator families must be present and distinct;
+the installation request refuses a duplicate before creating an Endpoint account
+or selecting a generation. Distinct names do not establish independent operators.
+Every declared path is absolute/canonical and remains outside the bundle,
+immutable installation and Release floor roots. No private material is copied.
+
+The local selection binds descriptor and binding digests. The binding records
+both public target facts (never opaque authorizations), exact fourteen staged
+file digests, fixed account/unit names and numeric UID/GID, and explicit mutable
+root paths/device/inodes. `binding.json` is excluded from its own digest map;
+the selection separately commits its bytes. These local facts cannot produce
+`release.Authorization`, lower floors or authorize a transition.
 
 | Command | Input and owner effect |
 | --- | --- |
@@ -55,6 +179,53 @@ its owned journal phase and original error. No filesystem rename makes the
 manager transition atomic. A failed transition leaves the unit inactive and
 the exact prior/successor bytes available for explicit recovery; foreign
 paths, mixed resources or ambiguous journal state refuse before effects.
+
+`upgrade-installed` refuses an initial manifest pin and loads a self-consistent
+candidate through the enrollment inventory owner without claiming enrollment
+authenticity. Both targets must receive fresh Release proofs from the already
+established complete floor store; a new local trust root, missing floors,
+conflicting same-version floor digest, changed Release environment or Network,
+equal generation release or changed durable roots refuses. The root-only
+successor intent binds previous selection, candidate selection and public
+candidate binding facts. Generation staging records its newly created physical
+directory identity before writing artifacts. Actual predecessor MainPID and
+InvocationID are rechecked after pinning its original cgroup; both activation
+sockets are stopped with the fixed service. Stop success alone is insufficient:
+all original pins, stopped fixed units, loaded worker inventory and remaining
+kernel scopes are checked before direct fixed-resource writes.
+
+Each successor replacement durably records its original direct inode, mode,
+group and complete old/new digests before truncation. A visible existing record
+does not prove that an earlier sync succeeded: replacement re-synchronizes that
+private record and its directory before modifying the resource on a later
+attempt. A refusal to synchronize that record or its directory leaves the
+resource and retained record unchanged. A resource-directory sync refusal after
+writing the candidate still returns an error and retains the replacement record;
+visible candidate bytes alone do not establish successful durable completion.
+An explicit retry re-establishes journal durability and completes the replacement
+on the same recorded inode.
+Initial fixed-file recovery likewise re-synchronizes its private birth record
+and record directory before repairing the recorded inode. A refusal at that
+boundary retains the current resource prefix and the original record.
+`recover-installed`
+requires an exact root-only successor intent, fresh floor-compatible proofs at
+the recovery time, the owned generation directory and exact replacement
+records. It can complete authorized prefixes inside that generation and torn
+fixed copies on their recorded inodes; another inode or foreign bytes refuses.
+Recorded target observations do not recreate a proof. Recovery reuses the
+original bound plans and public observations only after checking current proofs
+against their exact target bytes and identities. The first transition failure
+is retained and archived with the completed intent. Missing initial preparation
+or generation ownership evidence returns `repair-required`; initial recovery's
+bounded stopped path is described above. The complete first-provision and
+successor failure-injection matrix remains acceptance work. The receipts `installed-started` and
+`installed-recovered-started` observe the fixed unit, not Service continuity or
+the complete two-Endpoint journey. Component tests exercise these controls;
+actual admitted manager/namespace/seccomp/empty-scope receipts remain required.
+
+All root installation subprocesses use fixed absolute programs and only
+`PATH=/usr/bin:/bin`, `LANG=C`, `LC_ALL=C`; caller-supplied system bus, unit
+lookup and loader environment overrides are not inherited.
 
 Retaining predecessor bytes is not permission to activate an older Release.
 Recovery must finish a valid selected candidate or obtain a fresh floor-compatible
