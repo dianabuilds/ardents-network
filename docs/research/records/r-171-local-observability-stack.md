@@ -731,3 +731,54 @@ correction; quick-check43616 passed afterward. All probe containers were removed
 The bounded missing pending/delivery-counter evidence is now supplied; full
 component selection/admission, extended/crash/storage lifecycle and actual
 selected-process monitoring/debug goal acceptance remain open.
+### Official alternate collector artifact inspection
+
+**Measurement:** The official v0.162.0 SPDX-2.3 SBOM was downloaded with a3MiB
+read ceiling; actual2255297bytes and SHA25609a4df608b40031664d4e9588fe6c5ba43ed99f7ea28c8a92e481f70437c4adf
+match the release API digest. It lists1080packages,71 distinct license expressions,
+four packages without concluded licensing. Those tool-generated conclusions are
+an inventory, not independent licensing acceptance. Relevant entries include
+filelogreceiver/filestorage0.162.0, grpc1.83.2, x/crypto0.57.0 and stdlibGo1.26.8.
+Original data/receipt remain in external ardents-r171-otel-source-a.
+
+**Measurement:** Explicit `make tools-install COLLECTOR=otel` fetched the pinned
+112285869-byte archive and same SBOM, checked their actual digests and extracted
+only the regular `otelcol-contrib` member without executing it or extracting
+archive paths. Binary407498914bytes, SHA2562425bdf5f89042cd71f56cf5a66b41681d340cbe14c0b1899bcfe2a3a685a064.
+Installed Go buildinfo inspection confirms go1.26.8; ELF program headers contain
+no INTERP/DYNAMIC entries. This is metadata inspection, not successful startup,
+libc/OS admission, signature verification or runtime resource evidence. Helper
+identity0ecc73f2 is recorded. Public artifact installation overhead is separate
+from the128MiB private runtime-evidence budget. Original receipts are in
+ardents-r171-otel-public-a; installation session94112 completed zero.
+
+**Measurement:** Actual binary govulncheck1.1.4 scan (database last-modified
+2026-09-28T16:43:40Z) terminated0/noOOM. Its31finding records group into7advisories:
+GO-2022-0635/0646 (aws-sdk-go1.55.8), GO-2026-5046/5047/5048(avro/v2 2.33.0),
+GO-2026-5544(azureauthextension0.162.0), GO-2026-5932(x/crypto0.57.0).
+The larger raw OSV stream includes advisories outside the actual finding set;
+it is not a count of candidate vulnerabilities. No source call graph or
+selected-configuration reachability was proved. All dispositions remain pending.
+Raw scan/config/receipt and pending-findings.json remain in ardents-r171-otel-closure-a.
+The stopped scanner container was removed. Matching digests and JSON exit0 do
+not establish signature, component admission or ongoing support.
+
+**Sourced comparison:** exact v0.162.0 filelog defaults to reading from end,
+filename metadata enabled,1024concurrent files,1MiB entry limit, receiver retry
+disabled and offsets only in memory without selected storage. The selected-file
+probe must override these defaults and preserve source time. The exact release
+manifest supplies OTLP/HTTP exporter; Loki's native OTLP path uses that exporter,
+structured metadata and resource-to-index mapping. Do not reuse a removed legacy
+Loki-exporter example or blindly copy default identifying index attributes.
+File-storage recreation can reset state/duplicate data; compaction needs additional
+bounded working space. H2 must test finite queue/offset persistence, pressure,
+shutdown, timestamp/label mapping and footprint with equivalent input before a
+choice. No H2 runtime or maintained configuration is admitted here.
+Sources accessed2026-10-01:
+[filelog v0.162.0](https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/v0.162.0/receiver/filelogreceiver/README.md),
+[file storage v0.162.0](https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/v0.162.0/extension/storage/filestorage/README.md),
+[exact distribution manifest](https://github.com/open-telemetry/opentelemetry-collector-releases/blob/v0.162.0/distributions/otelcol-contrib/manifest.yaml),
+[native Loki OTLP ingestion](https://grafana.com/docs/loki/latest/send-data/otel/).
+
+Verification: make quick-check session36848 exited zero for installer/extractor
+changes. Full checks/review and component admission remain separate requirements.

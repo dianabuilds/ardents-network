@@ -254,3 +254,22 @@ Ordered sender drain exited0 without OOM; post-restart catch-up covered watermar
 180 with181 unique events without query duplicates. Its source/config snapshots
 matched. This qualifies this bounded planned restart probe only; pressure-b's
 original loss remains evidence, and crash/extended-outage admission remains open.
+### Explicit alternative collector inspection
+
+```powershell
+make tools-install COLLECTOR=otel EVIDENCE_ROOT=C:/Users/vitek/AppData/Local/Temp/ardents-r171-otel-public-new
+```
+
+This explicit path downloads the exact official0.162.0 public archive/SBOM,
+verifies published byte counts and SHA256 values, extracts only the selected
+regular binary member (512MiB cap), and inspects buildinfo/ELF with preinstalled
+bounded offline tools. The target executable is not run. Archive paths are never
+extracted; existing roots/output are refused. Each download has a120-second
+cooperative wall check and20-second network read timeout. All artifacts remain
+external; matching published hashes are not signature or admission proof.
+
+Observed binary size407498914bytes, Go1.26.8; no INTERP/DYNAMIC program headers.
+Actual binary scan has31finding records across7advisories, all dispositions
+pending. The published SPDX inventory has1080packages. Neither package count nor
+binary size establishes runtime RSS, reachability, security or a collector choice.
+Use the research owner for exact identities and equivalent H2 probe prerequisites.

@@ -1,7 +1,11 @@
 .PHONY: tools-install
 
 tools-install:
+ifeq ($(COLLECTOR),otel)
+	powershell -NoProfile -ExecutionPolicy RemoteSigned -File install-collector.ps1 -EvidenceRoot "$(EVIDENCE_ROOT)"
+else
 	powershell -NoProfile -ExecutionPolicy RemoteSigned -File install-images.ps1 -EvidenceRoot "$(EVIDENCE_ROOT)"
+endif
 .PHONY: probe
 probe:
 	powershell -NoProfile -ExecutionPolicy RemoteSigned -File probe.ps1 -EvidenceRoot "$(EVIDENCE_ROOT)" -RunName "$(RUN_NAME)"
