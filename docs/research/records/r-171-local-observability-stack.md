@@ -1933,3 +1933,42 @@ Standards recheck closed the finding. Required quick-check returned0; maintained
 Go code did not change in this loss delta. Full integration gates and admission
 remain separate obligations. Updated real-Node panels have not been browser-
 verified by the synthetic loss run.
+
+### Actual-source resource window preparation
+
+A selected real-source profile replaces the synthetic state-anchor role with the
+browser-tunnel role and retains seven explicitly named containers. Before effects
+all project/service identities must match. During measurement, identity, start
+time, restart count, running state and CPU caps are checked; unavailable, paused,
+restarting or OOM-killed states cannot become a zero-cost successful observation.
+The source profile enforces0.96combined cores. Selected-container RSS includes
+Grafana plugin children; host relay, Docker daemon and CLI overhead remain outside.
+
+Preview-e/resource-b measured303.719seconds with37samples, peak810811392bytes
+and mean sampledCPU3.213percent of one core. Its separate native query required
+152consecutive observations each for fresh Node scrape, collector scrape, source
+process survival and producer freshness, and no monitor-session change. This
+establishes only the declared local shared-container workload, not installed
+qualification, Network readiness, saturation capacity or backend admission.
+
+The first resource attempt failed before sampling because PowerShell5 preserved
+a nested ConvertFrom-Json array. That refusal remains separate; the array handling
+was fixed before resource-b. Completed read-only review then found a final-pass
+identity race: a restart after the pre-sample check could escape validation.
+The final script checks identities and caps after every sample as well. Spec
+recheck closed the finding. The corrected final script measured302.860seconds
+with36samples, peak813641728bytes and mean sampledCPU3.165percent of one core.
+The native query again required152consecutive observations for each of the four
+signals and an unchanged monitor session. This final receipt verifies the corrected
+version; the earlier resource-b evidence remains separate.
+
+A separate history-only negative control paused the explicitly selected source
+for12seconds. A native query over real history containing that pause refused with
+exit1 and Actual source unavailable during resource window: scrape. The control
+header selects the history interval; it is explicitly not a resource measurement
+or acceptance receipt. The source was resumed in finally. Original Compose CPU
+caps were restored afterwards, including browser-tunnel0.1core; the0.96core
+measurement claim applies only to the recorded windows. Required quick-check
+returned0. Completed read-only Spec and Standards rechecks found no remaining
+actionable issue in this bounded delta. Full integration gates, backend admission
+and parent-goal acceptance remain separate obligations.

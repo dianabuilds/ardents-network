@@ -575,6 +575,40 @@ elif sys.argv[1] == 'healthy-window':
     (reports/'healthy-window-assertions.json').write_text(json.dumps({'start_seconds':start,'end_seconds':end,
         'scrape_sources':['fixture','collector'],'queue_rows':len(queue[0]['values']),'passed':True}))
     print('Full resource window retained healthy scrape history and zero fixture pressure')
+elif sys.argv[1] == 'node-healthy-window':
+    summary = json.loads(pathlib.Path('/history/resource-window/summary.json').read_text(encoding='utf-8-sig'))
+    if not summary['passed'] or summary.get('source_profile') != 'node':
+        raise RuntimeError('Selected actual-source resource window required')
+    start = math.ceil(datetime.datetime.fromisoformat(summary['started_utc']).timestamp())
+    end = math.floor(datetime.datetime.fromisoformat(summary['ended_utc']).timestamp())
+    expected = int((end-start)/2)+1
+    expressions = {
+        'scrape': '(up{job="node"} and (time()-timestamp(up{job="node"}) <= 3))',
+        'collector': '(up{job="collector"} and (time()-timestamp(up{job="collector"}) <= 3))',
+        'process': 'diagnostic_selected_source_process_alive{job="node"}',
+        'fresh': 'diagnostic_selected_sample_fresh{job="node"}',
+    }
+    counts = {}
+    for name, expression in expressions.items():
+        data = observe(name+'-window', 'https://prometheus:9090/api/v1/query_range?'+urllib.parse.urlencode(
+            {'query':expression,'start':start,'end':end,'step':2}))
+        rows = data['data']['result']
+        if len(rows) != 1: raise RuntimeError('Actual resource-window signal unavailable: '+name)
+        values = rows[0]['values']
+        if len(values) != expected or any(float(value) != 1 for _,value in values):
+            raise RuntimeError('Actual source unavailable during resource window: '+name)
+        if any(right[0]-left[0] != 2 for left,right in zip(values,values[1:])):
+            raise RuntimeError('Actual resource-window history gap: '+name)
+        counts[name] = len(values)
+    sessions = observe('session-window','https://prometheus:9090/api/v1/query?'+urllib.parse.urlencode(
+        {'query':'changes(diagnostic_selected_session_started_seconds{job="node"}['+str(end-start)+'s])',
+         'time':end}))['data']['result']
+    if len(sessions) != 1 or float(sessions[0]['value'][1]) != 0:
+        raise RuntimeError('Selected monitor session changed or unavailable during resource window')
+    (reports/'node-healthy-window-assertions.json').write_text(json.dumps({
+        'passed':True,'start_seconds':start,'end_seconds':end,'rows':counts,
+        'scope':'actual source freshness and process survival, not Network readiness'}))
+    print('Actual source retained fresh native scrape history over the complete resource window')
 elif sys.argv[1]=='node-preview':
     def metric(expr):
         result = request('https://prometheus:9090/api/v1/query?'+urllib.parse.urlencode({'query':expr}))

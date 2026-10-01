@@ -738,6 +738,23 @@ and timeout120seconds. Do not mount host sockets, host authority roots or any
 private capture into the monitoring backends. This probe verifies the real source
 boundary; Prometheus/Loki ingestion and full backend admission remain pending.
 
+
+For an explicitly launched real-source preview, run resource-window.ps1 with
+-SourceProfile node, its exact RunName and a new ReportsRoot. This selects the
+seven real-preview roles including browser-tunnel instead of state-anchor.
+No query helper runs during the five-minute window. Selected container identity,
+start time, restart count, running state and CPU caps must remain unchanged;
+paused, restarting, OOM-killed or missing observations fail rather than become zero.
+RSS includes all observed child processes. Docker/host relay overhead remains
+outside the measurement. This is a sampled resource result, not product readiness.
+Afterwards mount that ReportsRoot as /history and run query-probe.py
+node-healthy-window with the same private query credentials. It requires fresh
+native Node and collector scrapes, source process/freshness signals and an unchanged
+monitor session over the exact measured interval. The sampler changes CPU caps;
+restore the original selected Compose caps after the window before operator use.
+Both receipts are needed; a
+resource summary alone cannot establish a healthy window or backend admission.
+
 ### Explicit real-source browser preview
 
 start-node-preview.ps1 -EvidenceRoot <NEW_PRIVATE_EXTERNAL_ROOT>
