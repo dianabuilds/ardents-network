@@ -2386,3 +2386,29 @@ panels without backend/plugin errors. It uses build-d and the earlier prepared
 there. This distinction prevents attributing new behavior to an older binary.
 Full-goal completion, Ubuntu/Windows end-to-end qualification, exact backend
 admission and dev integration remain open.
+### Explicit contention and allocation capture (2026-10-01)
+
+The real-Node debug recipe now captures eight private artifacts sequentially:
+runtime, CPU, heap, allocs, goroutine, block, mutex and trace. Existing debug-only
+block/mutex rates are unchanged; runtime JSON reports that owner's configured
+1000000ns block rate and mutex fraction10, plus the actually read memory sampling
+rate. Requests carry UTC bounds, monotonic elapsed time and requested duration
+only for CPU/trace. Cumulative contention/allocation data is not presented as a
+two-second window; request timestamps are not operation correlation. The receipt
+also retains selected build-manifest provenance alongside exact artifact hashes.
+
+Fresh build-g and actual TCP/TLS debug-current-c completed successfully. All eight
+artifacts parsed and remained inside the verified private archive; no cleanup
+failures were reported. Runtime261bytes, CPU217, heap2684, allocs3071,
+goroutine2247, block1162, mutex542 and trace195292. Observed request elapsed times
+were approximately2.008s CPU/2.015s trace; these include CLI/transport work, not a
+representative overhead benchmark. Memory sampling was524288bytes. CPU remained
+empty and was explicitly reported. A parsed block/mutex profile alone does not
+prove a contention bug or sufficient coverage. Private stacks/raw artifacts were
+not ingested into monitoring or published.
+
+Native Linux process lifecycle/cancellation tests and make quick-check passed.
+Both bounded read-only reviews reported no actionable findings. The ordinary
+monitor recipe's stale default table is corrected to current retention settings.
+Normal preview-g retains its earlier matching monitoring binary; this debug
+receipt is a separate selected capture, not a deployment or full-goal completion.

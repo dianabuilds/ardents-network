@@ -1028,3 +1028,10 @@ silently recaptured until useful-looking output appears.
 Ubuntu WSL integration is not a monitoring prerequisite. The bounded WSL disk
 experiment above remains separate evidence; future retained-state deployment
 must prove persistence and budgets through its actual Docker storage selection.
+The explicit Node debug profile now also selects allocs, block and mutex, for
+eight private artifacts total. The runtime response records the debug owner's
+configured block/mutex sampling settings. Per-artifact request UTC bounds and
+monotonic elapsed time include local CLI work. CPU/trace alone request two
+seconds; cumulative contention/allocation profiles are not two-second deltas.
+Normal monitor preview does not enable the private debug socket. Sampling and
+profile parsing do not prove operation causality or representative overhead.

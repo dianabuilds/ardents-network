@@ -19,7 +19,7 @@ parser.add_argument("--carrier", choices=("tcp-tls", "quic"), default="tcp-tls")
 parser.add_argument("--preview-seconds", type=int, default=0,
                     help="Explicit finite operator preview, 300..7200 seconds; zero runs the probe")
 parser.add_argument("--debug-profiles", action="store_true",
-                    help="Explicit private runtime/CPU/heap/goroutine/trace capture from the owned Node")
+                    help="Explicit private runtime/CPU/heap/allocs/goroutine/block/mutex/trace capture from the owned Node")
 args = parser.parse_args()
 if args.debug_profiles and args.preview_seconds:
     parser.error("private profiling cannot be combined with the monitoring preview")
@@ -102,6 +102,7 @@ try:
             if hashlib.file_digest(source, "sha256").hexdigest() != artifact["sha256"]:
                 raise RuntimeError("selected artifact changed")
     receipt["artifacts"] = manifest["artifacts"]
+    receipt["build"] = {key: manifest.get(key) for key in ("head", "dirty", "goos", "goarch", "helper_image")}
     work = pathlib.Path(tempfile.mkdtemp(prefix="accepted-node-", dir="/tmp"))
     generated = work / "generated"
     now = dt.datetime.now(dt.timezone.utc).replace(minute=0, second=0, microsecond=0)
@@ -266,17 +267,25 @@ try:
         profile_directory = runtime / "profiles"
         profile_directory.mkdir(mode=0o700)
         captures = []
-        for kind in ("runtime", "cpu", "heap", "goroutine", "trace"):
+        for kind in ("runtime", "cpu", "heap", "allocs", "goroutine", "block", "mutex", "trace"):
             target = profile_directory / (kind + (".json" if kind == "runtime" else ".out"))
             capture_args = ["snapshot", "-socket", debug_socket, "-kind", kind,
                             "-seconds", "2", "-out", target]
             if kind != "runtime":
                 capture_args.append("-sensitive")
+            capture_started = dt.datetime.now(dt.timezone.utc).isoformat()
+            capture_clock = time.monotonic()
             invoke("capture-" + kind, binaries / "ardents-diagnostics", *capture_args, timeout=10)
+            capture_completed = dt.datetime.now(dt.timezone.utc).isoformat()
+            capture_elapsed = time.monotonic() - capture_clock
             if not 0 < target.stat().st_size <= 64 << 20:
                 raise RuntimeError("private capture outside bound")
             if kind == "runtime":
                 actual_runtime = json.loads(target.read_text())
+                receipt["sampling"] = {"block_rate_ns": actual_runtime.get("block_sampling_rate_ns"),
+                                       "mutex_fraction": actual_runtime.get("mutex_sampling_fraction"),
+                                       "memory_rate_bytes": actual_runtime.get("memory_sampling_rate_bytes"),
+                                       "scope": "process-wide while the explicit debug socket is open; block/mutex/allocs are cumulative, not two-second intervals"}
                 if actual_runtime["goroutines"] <= 0 or actual_runtime["heap_alloc_bytes"] <= 0:
                     raise RuntimeError("actual Node runtime observation absent")
             elif kind == "trace":
@@ -294,7 +303,9 @@ try:
             captures.append({"kind": kind, "bytes": target.stat().st_size, "sha256": digest,
                              "private_archive": "private-fixture.tar.gz",
                              "private_artifact": "owned-local-fixture/runtime/profiles/" + target.name,
-                             "validation": "passed"})
+                             "validation": "passed", "request_started_at": capture_started,
+                             "request_completed_at": capture_completed, "request_elapsed_seconds": capture_elapsed,
+                             "requested_duration_seconds": 2 if kind in ("cpu", "trace") else None})
         receipt["debug_profiles"] = captures
         receipt["profile_scope"] = "explicitly enabled owned Introduction Node process; no operation causality claim"
     if args.preview_seconds:

@@ -86,11 +86,11 @@ retain and inspect the failure before explicitly cleaning its private evidence.
 
 | Flag | Default | Meaning |
 |---|---|---|
-| `-segment-bytes` | 8 MiB | Maximum segment size; at least the 16 KiB input fragment limit |
-| `-retain-bytes` | 64 MiB | Total owned log payload bytes; between segment size and 1 GiB |
-| `-retain-files` | 9 | All log-directory files, including the empty ownership lock; 2–128 |
+| `-segment-bytes` | 16 MiB | Maximum segment size; at least the 16 KiB input fragment limit |
+| `-retain-bytes` | 1 GiB | Total owned log payload bytes; between segment size and 1 GiB |
+| `-retain-files` | 65 | All log-directory files, including the empty ownership lock; 2–128 |
 | `-rotate-after` | 15 min | Rotate on the next record after segment age |
-| `-retain-for` | 24 h | Maximum segment age; positive and at least rotation age, at most 365 days |
+| `-retain-for` | 72 h | Maximum segment age; positive and at least rotation age, at most 365 days |
 | `-timeout` | 0 | Follow the selected source until signal; optional finite duration up to 24 h |
 | `-raw` | false | Explicit private retention of sensitive original stdout/stderr |
 | `-listen` | empty | No HTTP listener unless explicitly selected |

@@ -677,3 +677,26 @@ The backend view plots used fraction (1 minus available divided by total), with
 warning at 80% and critical at 90%, each sustained for one minute. Recovery clears
 the threshold; missing observations cannot be healthy zero. Windows-native
 filesystem observation and end-to-end platform qualification remain unverified.
+### Debug profile interpretation
+
+The private runtime response reports this diagnostic owner's configured
+block_sampling_rate_ns (1000000) and mutex_sampling_fraction (10). These are
+process-wide settings while the debug socket is open, not per-operation metrics
+or a runtime query proving another profiler has not changed the settings.
+Normal operation with an empty socket does not enable them. Existing shutdown
+restores the prior mutex fraction and disables this owner's block sampling.
+
+The explicit real-Node debug recipe collects runtime, CPU, heap, allocs,
+goroutine, block, mutex and trace sequentially. The private receipt retains
+request start/completion UTC and monotonic elapsed time for each artifact;
+those bounds include local CLI/transport work and do not prove exact process
+capture timestamps. Only CPU and trace have a requested two-second interval.
+Allocation, block and mutex profiles are cumulative sampled observations;
+heap and goroutine are snapshots. Sampling overlaps the other explicit captures
+and can affect scheduling; representative overhead has not been qualified.
+A parser pass does not establish useful samples or a cause. Artefact hashes bind
+the inspected bytes; the selected build receipt remains separate provenance,
+not operation correlation or process attestation. Profiles stay private and are
+never served by Grafana/Loki or exported as monitoring labels.
+The private runtime response also reads memory_sampling_rate_bytes from
+runtime.MemProfileRate; this describes allocation sampling, not a memory limit.
