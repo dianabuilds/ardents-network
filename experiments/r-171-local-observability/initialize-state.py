@@ -1,8 +1,13 @@
 """Initialize only empty, explicitly mounted research backend volume roots."""
 import os
 import stat
+import sys
 
 names = ("prometheus", "alertmanager", "loki", "alloy", "grafana")
+if sys.argv[1:] == ["--journal"]:
+    names += ("journal",)
+elif sys.argv[1:]:
+    raise RuntimeError("Unknown explicit volume profile")
 opened = []
 new_roots = []
 try:
@@ -24,7 +29,7 @@ try:
     for fd in new_roots:
         os.fchmod(fd, 0o700)
         os.fchown(fd, 10001, 10001)
-    print("Five private volume roots admitted; no recursive changes")
+    print(str(len(names)) + " private volume roots admitted; no recursive changes")
 finally:
     for fd in opened:
         os.close(fd)

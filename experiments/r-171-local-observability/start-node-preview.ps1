@@ -2,8 +2,15 @@ param([Parameter(Mandatory=$true)][string]$EvidenceRoot,
       [Parameter(Mandatory=$true)][string]$BinaryRoot,
       [Parameter(Mandatory=$true)][string]$PluginRoot,
       [Parameter(Mandatory=$true)][string]$RelayBinary,
-      [ValidatePattern('^r171-[a-z0-9-]{1,32}$')][string]$RunName='r171-node-preview-a')
+      [ValidatePattern('^r171-[a-z0-9-]{1,32}$')][string]$RunName='r171-node-preview-a', [switch]$PersistentState, [switch]$NoBrowserRelay)
 $ErrorActionPreference='Stop'
+$taskExisting=@(docker ps -a --filter "label=com.docker.compose.project=$RunName" --format '{{.ID}}')
+if($LASTEXITCODE -ne 0 -or $taskExisting.Count){throw 'Preview requires a new project'}
+$taskVolumeNames=@(docker volume ls --format '{{.Name}}')
+if($LASTEXITCODE -ne 0){throw 'Volume inventory unavailable'}
+foreach($taskSuffix in @('fixture','node-certs','prometheus-state','alertmanager-state','loki-state','alloy-state','grafana-state')){
+    if($taskVolumeNames -contains ($RunName+'_'+$taskSuffix)){throw 'Preview refuses existing project volumes'}
+}
 $taskRoot=[IO.Path]::GetFullPath($EvidenceRoot)
 $taskRepo=[IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../..'))
 if(Test-Path -LiteralPath $taskRoot){throw 'Refuse existing preview root'}
@@ -11,6 +18,7 @@ if($taskRoot.StartsWith($taskRepo,[StringComparison]::OrdinalIgnoreCase)){throw 
 $taskAncestor=[IO.DirectoryInfo]::new($taskRoot)
 while($null -ne $taskAncestor){
     if($taskAncestor.Exists -and ($taskAncestor.Attributes -band [IO.FileAttributes]::ReparsePoint)){throw 'Refuse redirected preview root'}
+    if(Test-Path -LiteralPath (Join-Path $taskAncestor.FullName '.git')){throw 'Preview must stay outside Git'}
     $taskAncestor=$taskAncestor.Parent
 }
 [IO.Directory]::CreateDirectory($taskRoot) | Out-Null
@@ -81,11 +89,15 @@ $taskEnvPath=Join-Path $taskRoot 'compose.env'
 $taskLines=foreach($taskKey in $taskEnv.Keys){$taskKey+'='+$taskEnv[$taskKey].Replace('\','/')}
 [IO.File]::WriteAllLines($taskEnvPath,$taskLines,[Text.UTF8Encoding]::new($false))
 $taskCompose=@('compose','--env-file',$taskEnvPath,'-p',$RunName)
-foreach($taskFile in @('compose.yaml','compose.otel.yaml','compose.plugins.yaml','compose.browser.yaml','compose.node.yaml')){
+$taskComposeFiles=@('compose.yaml')
+if($PersistentState){$taskComposeFiles+=@('compose.restart.yaml','compose.persistent.yaml')}
+$taskComposeFiles+=@('compose.otel.yaml','compose.plugins.yaml','compose.browser.yaml','compose.node.yaml')
+if($PersistentState){$taskComposeFiles+='compose.node-persistent.yaml'}
+foreach($taskFile in $taskComposeFiles){
     $taskCompose+=@('-f',(Join-Path $PSScriptRoot $taskFile))
 }
 $taskReceipt=[ordered]@{complete=$false;research_preview=$true;backend_admission=$false;
-    run=$RunName;started_utc=(Get-Date).ToUniversalTime().ToString('o');images=$taskImageReceipts;
+    run=$RunName;persistent_state=[bool]$PersistentState;browser_relay_started=$false;started_utc=(Get-Date).ToUniversalTime().ToString('o');images=$taskImageReceipts;
     artifacts=$taskBuild.artifacts;relay_sha256=(Get-PreviewHash $RelayBinary);url='http://127.0.0.1:8098/d/accepted-node';
     source_scope='one actual Node and two Sources in one shared local container';source_preview_seconds=3600}
 try{
@@ -105,10 +117,13 @@ try{
     if($LASTEXITCODE -ne 0){throw 'Private Linux certificate staging failed'}
     docker @taskCompose up -d --pull never alertmanager loki prometheus alloy grafana fixture browser-tunnel
     if($LASTEXITCODE -ne 0){throw 'Preview startup failed'}
+    if(-not $NoBrowserRelay){
     $taskRelay=Start-Process -FilePath $RelayBinary -ArgumentList @('-container',($RunName+'-browser-tunnel-1'),'-duration','3600s') -WindowStyle Hidden -PassThru -RedirectStandardOutput (Join-Path $taskReports 'relay.stdout') -RedirectStandardError (Join-Path $taskReports 'relay.stderr')
     $taskReceipt.relay_pid=$taskRelay.Id
     Start-Sleep -Seconds 1
     if($taskRelay.HasExited){throw 'Browser relay startup failed'}
+    $taskReceipt.browser_relay_started=$true
+    }
     $taskReceipt.complete=$true
 }finally{
     $taskReceipt | ConvertTo-Json -Depth 6 | Out-File (Join-Path $taskRoot 'launch-receipt.json') -Encoding utf8

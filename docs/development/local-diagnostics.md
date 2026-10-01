@@ -267,7 +267,7 @@ profiles can write additional files: provision a finite filesystem quota for
 long or hostile diagnostics. Log limits are not a filesystem quota.
 
 Live Interface: at most four simultaneous clients and one profile/trace request;
-fixed runtime fields; profiles capped at 64 MiB; CPU/trace 1вЂ“30 seconds; request
+fixed runtime fields; profiles capped at 64 MiB; CPU/trace 1РІР‚вЂњ30 seconds; request
 read budget 2 s, write 35 s, idle 2 s, shutdown 3 s. Profiling opts into block
 sampling at 1 ms and mutex fraction 10 for the diagnostic process lifetime;
 CPU/trace only run on request. These costs change timing. Profiles contain
@@ -718,3 +718,22 @@ journal or prove daemon/host crash durability. Named-volume retention survives
 container replacement but is not a filesystem quota. Explicit probe time/TSDB
 limits remain distinct from normal monitor log retention. The experiment recipe
 owns its actual command and retained failed attempts.
+
+### Persistent real-source monitor observation
+
+The R171 persistent Node preview adds an explicitly admitted sixth volume for
+safe monitor journal state. Source-container replacement reopens its retained
+segments with normal1GiB/72h/16MiB/65file budgets. Backend retention is independently
+configured: Prometheus72h/1GB, Loki72h compaction and Alertmanager72h. Loki eligibility
+and asynchronous chunk deletion are not an exact disk-erasure deadline or quota;
+compactor state stays in the persistent Loki volume. Manual log deletion is not
+exposed by this selected profile. Normal monitoring still has no debug socket.
+
+Its fixed-interval oracle compares historical samples and log-row multiplicities,
+checks a separate unprovisioned Grafana database marker and requires a finite
+newer monitor session. Sealed safe journal payloads are checked while stopped
+and after reopening. Container receipt/setup success alone is not this evidence.
+The finite generated product fixture state is recreated separately: this does
+not establish supported product State/authority persistence, installed Node
+restart, native Windows support or host/daemon crash durability. Disk-budget
+admission and full integration remain separate from these observed boundaries.

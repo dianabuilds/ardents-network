@@ -20,7 +20,11 @@ parser.add_argument("--preview-seconds", type=int, default=0,
                     help="Explicit finite operator preview, 300..7200 seconds; zero runs the probe")
 parser.add_argument("--debug-profiles", action="store_true",
                     help="Explicit private runtime/CPU/heap/allocs/goroutine/block/mutex/trace capture from the owned Node")
+parser.add_argument("--persistent-journal", action="store_true",
+                    help="Use normal retained-journal budgets in the explicit persistent preview")
 args = parser.parse_args()
+if args.persistent_journal and not args.preview_seconds:
+    parser.error("persistent journal requires an explicit preview")
 if args.debug_profiles and args.preview_seconds:
     parser.error("private profiling cannot be combined with the monitoring preview")
 if args.preview_seconds and not 300 <= args.preview_seconds <= 7200:
@@ -213,8 +217,11 @@ try:
     monitor_directory = pathlib.Path("/events/monitor") if args.preview_seconds else runtime / "monitor"
     monitor_args = [binaries / "ardents-diagnostics", "monitor", "-out", monitor_directory,
                     "-console=false", "-listen", "127.0.0.1:8094", "-sample-max-age", "2s",
-                    "-segment-bytes", "16384", "-retain-bytes", "2097152", "-retain-files", "128",
-                    "-rotate-after", "30s" if args.preview_seconds else "1s", "-retain-for", "30m"]
+                    "-segment-bytes", "16777216" if args.persistent_journal else "16384",
+                    "-retain-bytes", "1073741824" if args.persistent_journal else "2097152",
+                    "-retain-files", "65" if args.persistent_journal else "128",
+                    "-rotate-after", "15m" if args.persistent_journal else ("30s" if args.preview_seconds else "1s"),
+                    "-retain-for", "72h" if args.persistent_journal else "30m"]
     if args.preview_seconds:
         pin = pathlib.Path("/metrics-certs/client-pin.txt").read_text().strip()
         monitor_args += ["-metrics-listen", "0.0.0.0:9101", "-metrics-certs", "/metrics-certs",

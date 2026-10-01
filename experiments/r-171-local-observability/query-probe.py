@@ -735,6 +735,58 @@ elif sys.argv[1]=='node-preview':
         'cgroup_memory_bytes':float(memory[0]['value'][1]),
         'scope':'one local shared container','backend_admission':False}))
     print('Actual Node mTLS scrape, safe Loki events and Grafana datasource queries passed')
+elif sys.argv[1] in ('node-persistence-before', 'node-persistence-after'):
+    from collections import Counter
+    before = sys.argv[1].endswith('-before')
+    if before:
+        start, end = int(time.time())-3600, int(time.time())-2
+        saved = None
+        try:
+            existing_marker = request('http://grafana:3000/api/dashboards/uid/node-persistence-marker',auth=True)
+        except urllib.error.HTTPError as error:
+            if error.code != 404: raise
+            created = observe('database-marker-created','http://grafana:3000/api/dashboards/db',auth=True,
+                              payload={'dashboard':{'uid':'node-persistence-marker',
+                                       'title':'Private Node persistence marker','schemaVersion':39,'panels':[]},
+                                       'overwrite':False})
+            if created.get('status') != 'success': raise RuntimeError('Database marker creation failed')
+    else:
+        saved = json.loads(pathlib.Path('/history/node-persistence-before/baseline.json').read_text())
+        start, end = saved['start'], saved['end']
+    metrics = observe('fixed-metric-history','https://prometheus:9090/api/v1/query_range?'+urllib.parse.urlencode(
+        {'query':'diagnostic_selected_source_process_alive{job="node"}','start':start,'end':end,'step':2}))
+    samples = [row for series in metrics['data']['result'] for row in series['values']]
+    if not samples or any(float(row[1]) != 1 for row in samples):
+        raise RuntimeError('Live Node baseline history unavailable')
+    logs = observe('fixed-log-history','https://loki:3100/loki/api/v1/query_range?'+urllib.parse.urlencode(
+        {'query':'{job="node"}','start':start*1000000000,'end':end*1000000000,'limit':1000,'direction':'forward'}))
+    records = [row for stream in logs['data']['result'] for row in stream['values']]
+    if not records or len(records) >= 1000: raise RuntimeError('Log baseline absent or truncated')
+    marker = observe('database-marker','http://grafana:3000/api/dashboards/uid/node-persistence-marker',auth=True)
+    if (marker.get('dashboard',{}).get('title') != 'Private Node persistence marker' or
+        marker.get('meta',{}).get('provisioned') is not False):
+        raise RuntimeError('Unprovisioned database marker unavailable')
+    if before:
+        sessions = observe('current-session','https://prometheus:9090/api/v1/query?'+urllib.parse.urlencode(
+            {'query':'diagnostic_selected_session_started_seconds{job="node"}'}))['data']['result']
+        if len(sessions) != 1 or not math.isfinite(float(sessions[0]['value'][1])) or float(sessions[0]['value'][1]) <= 0: raise RuntimeError('Current source session unavailable')
+        (reports/'baseline.json').write_text(json.dumps({'start':start,'end':end,'samples':samples,'records':records,
+                                                       'session_started':float(sessions[0]['value'][1])}))
+    else:
+        if Counter(map(tuple,samples)) != Counter(map(tuple,saved['samples'])):
+            raise RuntimeError('Historical Node samples changed after cold recreation')
+        if Counter(map(tuple,records)) != Counter(map(tuple,saved['records'])):
+            raise RuntimeError('Historical Node log records lost or replayed after cold recreation')
+        sessions = observe('current-session','https://prometheus:9090/api/v1/query?'+urllib.parse.urlencode(
+            {'query':'diagnostic_selected_session_started_seconds{job="node"}'}))['data']['result']
+        if (len(sessions) != 1 or not math.isfinite(float(sessions[0]['value'][1])) or
+            not math.isfinite(saved['session_started']) or float(sessions[0]['value'][1]) <= saved['session_started']):
+            raise RuntimeError('New monitoring session not observed after cold recreation')
+        (reports/'node-persistence-assertions.json').write_text(json.dumps({
+            'passed':True,'start':start,'end':end,'metric_rows':len(samples),'log_rows':len(records),
+            'unprovisioned_database_marker_retained':True,
+            'scope':'fixed pre-stop interval, not full product restart qualification'}))
+    print('Fixed real-Node history and private database marker observed: '+sys.argv[1])
 elif sys.argv[1]=='node-source-alert':
     seen=set()
     history=[]

@@ -7,7 +7,7 @@ started: 2026-10-01
 reviewed: 2026-10-01
 ---
 
-# R-171 вЂ” Which ready components can supply useful bounded local monitoring?
+# R-171 РІР‚вЂќ Which ready components can supply useful bounded local monitoring?
 
 ## Decision this unlocks
 
@@ -1459,7 +1459,7 @@ navigation. The browser tab was closed after verification.
 Rendered D showed Queue, Events total, fixture/collector availability and
 Observation age legends; source-age units were seconds. The queue and cumulative
 event plots visibly broke at the selected source freeze; availability showed0.
-Log bodies became "synthetic_fixture В· normal #175" with INFO in its own column.
+Log bodies became "synthetic_fixture Р’В· normal #175" with INFO in its own column.
 Expanded structured metadata retained event/level/scope/sequence/source time.
 Removing redundant OTel JSON parsing eliminated duplicated _extracted fields;
 the only indexed label remained job. Stored source JSON was not changed.
@@ -2450,3 +2450,47 @@ Prometheus probe settings. It does not qualify real-Node journal persistence,
 full source restart, host/daemon crash, physical disk quotas, production retention,
 complete dependency admission, full integration gates or dev integration. The
 currently displayed real-Node preview was not changed by this profile.
+
+### Persistent real-Node monitoring cold recreation (2026-10-01)
+
+The persistent preview now adds an explicitly admitted safe journal volume to
+the five backend volumes. Selected monitor budgets are1GiB/72h,16MiB/65files,
+rotation15m; Prometheus72h/1GB, Loki72h and Alertmanager72h are distinct settings.
+The pinned native Loki accepted retention/compactor/store flags. Primary vendor
+[retention documentation](https://grafana.com/docs/loki/latest/operations/storage/retention/)
+(accessed2026-10-01) requires24h index periods and persistent compactor markers,
+and describes asynchronous removal; the existing24h TSDB schema fits. The
+vendor2hour deletion delay remains, manual deletion is disabled and no quota or
+actual three-day expiration measurement is claimed.
+
+Actual node-persistent-a uses build-g; all1423selected Go/module source hashes
+still match the current source. Initial actual Node mTLS scrape/safe Loki event
+projection and both Grafana datasource health checks passed. The first historical
+oracle failed because a quiet Node's startup events were older than its two-minute
+window; failed files remain separate. The corrected fixed one-hour window retained
+156metric rows/3original safe events. A private unprovisioned Grafana marker was
+independently retained, and a finite newer monitor session was observed after
+full selected-stack teardown/recreation. Exact historical multiplicity matched.
+
+Native source shutdown receipt is complete/shutdown_verified with no cleanup
+failures or log loss. Two sealed log payloads(total273158bytes) retained exact
+sizes/SHA256 after all selected containers were removed, and after source reopening.
+The journal's inventory file accounting reports3files separately from these two
+payload segments. Product fixture roots/authority are generated anew separately;
+this is monitoring persistence, not supported product restart qualification.
+
+The original browser holder ignored SIGTERM as Python PID1, reached forced137
+without OOM, and prevented a clean-stop assertion. Its first inspection is
+retained. Adding an explicit SIGTERM exit0 handler was verified on the actual
+recreated holder; all eight corrected selected states were non-running/exit0
+before final removal. The first malformed PowerShell Compose array also refused
+before stopping anything; parentheses corrected argument construction. These
+failed attempts are not waived or erased.
+
+Native cold readiness/new live scrape/log delivery/history assertions passed.
+The verified old relay was replaced by the new exact container relay on8098.
+The selected browser's automation focus command timed out twice, so current
+frontend rendering is not verified by this receipt; an app open request is queued.
+Both bounded read-only final reviews reported no actionable findings. Full
+component admission, integration checks/dev merge, complete incident workflow,
+deeper failing-operation debugging and the overall goal remain open.

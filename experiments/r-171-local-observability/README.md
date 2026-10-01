@@ -1064,3 +1064,40 @@ Prometheus probe settings and finite source. Named volumes are not hard disk
 quotas; Loki working space, physical disk budgets, production retention and
 full source/daemon/host restart remain separate requirements. There is no RAM
 state anchor in this profile. It does not alter the currently displayed preview.
+
+### Persistent real-Node preview
+
+Add `-PersistentState` to `start-node-preview.ps1` for six ordinary local volumes:
+backend state plus the safe retained monitor journal. `-NoBrowserRelay` prepares
+a separate source without taking the existing loopback browser port. Existing
+project containers or volume names are refused before setup; evidence must remain
+outside every Git checkout. The initializer admits only the explicit sixth
+journal root, with the same CHOWN-only/non-recursive private-root policy.
+
+This profile declares journal1GiB/72h,16MiB segments/65files and15minute rotation;
+Prometheus72h/1GB TSDB retention, Loki72h via its persistent compactor, and
+Alertmanager72h. Retention eligibility is not a hard physical disk quota. Loki
+chunk removal is asynchronous and keeps the vendor's2hour deletion delay;
+its manual deletion API is disabled. No source-wide profiling is enabled.
+
+The explicit `node-persistence-before`/`node-persistence-after` query modes use
+a fixed one-hour historical window and preserve sample/log multiplicity. A quiet
+Node's startup events need not fall inside the last two minutes. They verify an
+unprovisioned Grafana database marker and a finite newer monitoring session.
+The private baseline directory is `node-persistence-before` under the selected
+history mount. Reentry may reuse only the marker checked by the same fixed
+identity/title/unprovisioned policy; failed observation files stay separate.
+
+For cold recreation, stop the selected source and check its runtime-receipt
+shutdown/loss/cleanup result, then drain/stop/remove the selected stack WITHOUT
+`down -v`. Check sealed journal hashes while no source is running. Recreate with
+the same Compose env/profiles/volumes. The RAM-only diagnostic TLS volume must
+be restaged from the same private/node certificate inputs while its holder runs;
+this is instrumentation material, not product authority. Run readiness,
+node-preview and node-persistence-after with the original history mount. The
+browser helper now handles SIGTERM explicitly, so its stop has a joined exit0.
+
+This engineering fixture creates new local product fixture state when its source
+container starts. It proves monitor/backend/journal reopening, not supported
+product authority/State persistence, installed platform readiness or host crash
+recovery. Keep those qualifications separate from the cold monitoring check.
