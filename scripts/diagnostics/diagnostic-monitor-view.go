@@ -239,6 +239,7 @@ func monitorMetrics(state monitorState, now time.Time) ([]byte, error) {
 			{"log_file_failed", "Observed retained log sink failure.", state.FileFailed},
 			{"console_failed", "Observed projected console failure.", state.ConsoleFailed},
 			{"snapshot_failed", "Observed independent snapshot writer failure.", state.SnapshotFailed},
+			{"metrics_listener_failed", "Observed protected collector listener failure.", state.MetricsFailed},
 			{"retention_failed", "Observed retained log pruning failure.", state.RetentionFailed},
 			{"cleanup_failed", "Observed owned cleanup failure.", state.CleanupFailed},
 		} {

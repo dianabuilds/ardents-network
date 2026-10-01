@@ -28,6 +28,7 @@ type monitorLogRow struct {
 	Entry    event     `json:"entry"`
 }
 type monitorState struct {
+	MetricsFailed       bool               `json:"metrics_failed"`
 	MetricSampleMaxAge  time.Duration      `json:"metric_sample_max_age_ns"`
 	SourceName          string             `json:"source_name"`
 	SourcePID           int                `json:"source_pid"`
@@ -418,6 +419,9 @@ func monitorCommand(args []string) (outcome error) {
 	raw := flags.Bool("raw", false, "retain sensitive stdout and stderr")
 	console := flags.Bool("console", true, "live projected JSON console (bounded pipe/terminal)")
 	listen := flags.String("listen", "", "optional local live log panel address")
+	metricsListen := flags.String("metrics-listen", "", "optional separate mutual-TLS collector metrics address")
+	metricsCerts := flags.String("metrics-certs", "", "private diagnostic directory: server.crt, server.key, client-ca.crt")
+	metricsPin := flags.String("metrics-client-pin", "", "SHA256 of the selected diagnostic client's DER SubjectPublicKeyInfo")
 	container := flags.Bool("container", false, "allow container wildcard; publish host loopback only")
 	name := flags.String("name", "selected-process", "safe local source label (ASCII letters, digits, dash, underscore)")
 	timeout := flags.Duration("timeout", 0, "optional finite run budget; zero follows source until signal")
@@ -435,6 +439,9 @@ func monitorCommand(args []string) (outcome error) {
 	}
 	if len(flags.Args()) == 0 || *timeout < 0 || *timeout > 24*time.Hour || *segmentBytes < lineLimit || *sampleMaxAge < 0 || *sampleMaxAge > time.Hour {
 		return errors.New("monitor requires explicit -- command and valid limits")
+	}
+	if (*metricsListen == "") != (*metricsCerts == "") || (*metricsListen == "") != (*metricsPin == "") {
+		return errors.New("collector metrics requires address, private certificates and one client pin")
 	}
 	root, err := openMonitorRoot(*out)
 	if err != nil {
@@ -462,6 +469,14 @@ func monitorCommand(args []string) (outcome error) {
 		}
 		defer func() { outcome = errors.Join(outcome, view.close()) }()
 	}
+	var collector *monitorView
+	if *metricsListen != "" {
+		collector, err = openCollectorMetrics(*metricsListen, *container, delivery, *metricsCerts, *metricsPin)
+		if err != nil {
+			return errors.Join(err, delivery.close())
+		}
+		defer func() { outcome = errors.Join(outcome, collector.close()) }()
+	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	if *timeout > 0 {
@@ -470,8 +485,12 @@ func monitorCommand(args []string) (outcome error) {
 		defer cancel()
 	}
 	sourceErr := runMonitorSource(ctx, root, delivery, flags.Args())
-	if view != nil && ctx.Err() == nil {
-		sourceErr = errors.Join(sourceErr, maintainMonitorLogs(ctx, root, delivery, view.done))
+	if (view != nil || collector != nil) && ctx.Err() == nil {
+		done := collector
+		if view != nil {
+			done = view
+		}
+		sourceErr = errors.Join(sourceErr, maintainMonitorLogs(ctx, root, delivery, done.done))
 	}
 	return sourceErr
 }

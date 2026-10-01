@@ -570,7 +570,49 @@ retention expiry. Observed sink flags do not require reopening that sink.
 
 The panel's existing Host/origin protections also cover metrics. A collector in
 a separate container cannot simply scrape a foreign container Host; do not
-disable this guard. An explicit protected collector connection is still needed
-before this memory endpoint is integrated into the ready backend stack. Source
+disable this guard. Use the separate mutually authenticated collector listener
+below before integrating this memory endpoint into the ready backend stack. Source
 metadata remains private local engineering data; no raw file/profile access,
 product authority or public administration interface is granted.
+
+### Protected collector-only metrics
+
+Provision a dedicated diagnostic CA, monitor server certificate and one selected
+collector client certificate outside the repository. The server certificate must
+cover the exact IP or DNS name verified by the collector. Do not reuse product
+keys. In a native Linux private volume, prepare /state/metrics-certs as owned
+0700 and server.crt, server.key, client-ca.crt as owned 0600 regular single-link
+files. Windows bind mounts do not prove these Unix ownership/mode requirements.
+
+The selected client's SHA256 pin is the hash of its DER SubjectPublicKeyInfo,
+not its Common Name or the hash of its certificate. Compute it with the installed
+OpenSSL tool, retaining no private key in the command output:
+
+~~~sh
+openssl x509 -in /private/collector.crt -pubkey -noout |
+  openssl pkey -pubin -outform DER |
+  openssl dgst -sha256
+
+ardents-diagnostics monitor -name node -out /state/node-monitor \
+  -console=false -container \
+  -metrics-listen 0.0.0.0:9443 -metrics-certs /state/metrics-certs \
+  -metrics-client-pin <CLIENT_SPKI_SHA256_HEX> -sample-max-age 5s -- \
+  /evidence/bin/ardents-node node --config /evidence/node-config.json
+~~~
+
+Keep the listener in the selected internal Docker network; do not publish a
+wildcard host port. Configure the scraper with HTTPS, the independently selected
+server CA, the client certificate and private key, and server_name matching the
+certificate. Leave certificate verification enabled. The three monitor flags
+are required together. The endpoint grants GET /metrics only and uses TLS 1.3;
+all other paths are unavailable. The ordinary optional panel remains separate.
+
+Certificate/pin rotation requires monitor restart. Expired clients are refused,
+including requests on retained TLS connections. On source exit the observation
+remains available until the monitoring command is cancelled. Cancellation joins
+the listener; listener failure remains visible separately from source and file
+sink health. No debug capture is enabled by scraping.
+
+These are monitor connection instructions, not a qualified ready-stack deployment
+or an installed Node acceptance claim. Build the updated diagnostic tool before
+using new flags; an older installed helper image does not contain this change.

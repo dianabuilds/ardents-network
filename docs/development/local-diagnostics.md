@@ -111,6 +111,40 @@ explicit protected integration, not a panel-protection waiver. This endpoint
 does not supply a Prometheus deployment, historical store, Loki delivery, alert
 consumer or installed Node qualification.
 
+### Protected collector metrics connection
+
+The monitor can separately expose its memory metrics to one selected diagnostic
+client using -metrics-listen, -metrics-certs and -metrics-client-pin together.
+This listener serves only GET /metrics; it does not expose panel status, raw
+logs, profiles, certificate files or product control. The existing panel's
+Host/origin guard remains unchanged.
+
+The private canonical certificate directory must be owned by the monitor UID
+with no group/other permissions. Its fixed server.crt, server.key and
+client-ca.crt files must be regular, private, owned, single-link and at most
+64 KiB each. Symlinks and special files are refused. Loading finishes and
+closes files before opening the listener. Use dedicated diagnostic certificates,
+never product transport or authority keys.
+
+TLS 1.3 verifies the client chain against the explicitly supplied CA and
+requires the SHA256 pin of the selected client's DER SubjectPublicKeyInfo.
+The client must independently verify the server CA and address. Request-time
+certificate validity is rechecked on retained connections. Trust and key changes
+require monitor restart; no hot reload or revocation service is supplied.
+
+Addresses are loopback unless -container explicitly permits 0.0.0.0 in the
+selected diagnostic container. Four connections, header/read/write/idle
+timeouts and the existing 16 KiB response limit bound the endpoint. Unexpected
+listener failure is retained independently as metrics_listener_failed;
+unauthenticated peer details and keys do not enter normal logs. No source
+restart or extra product authority follows from collector failure.
+
+Metrics-only monitoring retains the terminal source observation and periodic
+log pruning until cancellation, as the panel does. Listener shutdown is joined
+and its errors remain in the command outcome. These connection checks do not
+prove Prometheus deployment, backend admission, actual Node integration or
+host/power-loss durability.
+
 ### Debug mode
 
 Debug mode adds a finite, explicitly selected capture for one local owner:
