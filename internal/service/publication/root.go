@@ -248,11 +248,11 @@ func readFloor(root string) (uint64, bool, error) {
 	if errors.Is(err, os.ErrNotExist) {
 		return 0, false, nil
 	}
-	if err != nil || len(raw) == 0 || len(raw) > 20 || strings.TrimSpace(string(raw)) != string(raw[:len(raw)-1]) {
+	if err != nil || len(raw) == 0 || len(raw) > 21 || raw[len(raw)-1] != '\n' {
 		return 0, false, errors.New("publication floor is malformed")
 	}
-	value, parseErr := strconv.ParseUint(strings.TrimSpace(string(raw)), 10, 64)
-	if parseErr != nil || value == 0 {
+	value, parseErr := strconv.ParseUint(string(raw[:len(raw)-1]), 10, 64)
+	if parseErr != nil || value == 0 || string(raw) != strconv.FormatUint(value, 10)+"\n" {
 		return 0, false, errors.New("publication floor is malformed")
 	}
 	return value, true, nil

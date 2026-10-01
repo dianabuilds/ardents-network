@@ -716,7 +716,10 @@ floors are not reset as part of failure cleanup.
 
 Publication persists public proof and its non-decreasing generation floor but
 never persists a live Instance private key. The supported generation floor
-comes only from the current Publication root's floor file. An empty owned root
+comes only from the current Publication root's floor file. Its persisted encoding
+is canonical nonzero decimal uint64 followed by LF, including 20-digit values;
+malformed and overflowing encodings refuse without changing the floor. An empty
+owned root
 starts at zero; a root retaining a generation or current pointer without its
 floor refuses recovery. The former separate plain-decimal generation file has
 no Target, Authority, or Network binding. Its bytes remain untouched: the
