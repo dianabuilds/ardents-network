@@ -147,3 +147,58 @@ func TestStartGuardCleanupRefusesSubstitutedSocket(t *testing.T) {
 		t.Fatal("failed cleanup opened ordinary restart")
 	}
 }
+
+func TestStartGuardRecoveryAtSocketBirthAndRemovalBoundaries(t *testing.T) {
+	if os.Geteuid() != 0 {
+		return
+	}
+	for _, boundary := range []string{"socket-before-birth-record", "socket-removed-before-record"} {
+		t.Run(boundary, func(t *testing.T) {
+			root := replacementTestRoot(t)
+			intent := transitionIntent{Request: Request{InstallationRoot: root}, Candidate: selection{GenerationDigest: digestHex([]byte("candidate"))}}
+			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+			defer cancel()
+			completion, err := prepareStartCompletion(ctx, root, intent, 0)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := completion.close(); err != nil {
+				t.Fatal(err)
+			}
+			if boundary == "socket-before-birth-record" {
+				if err := os.Remove(filepath.Join(root, "start-socket.json")); err != nil {
+					t.Fatal(err)
+				}
+				before, err := os.Lstat(filepath.Join(root, "start-completion.socket"))
+				if err != nil {
+					t.Fatal(err)
+				}
+				if err := clearStartGuard(root, intent); err == nil {
+					t.Fatal("unrecorded socket admitted cleanup")
+				}
+				after, err := os.Lstat(filepath.Join(root, "start-completion.socket"))
+				if err != nil || !os.SameFile(before, after) {
+					t.Fatal("refusal changed unrecorded socket", err)
+				}
+				if _, err := readStartGuard(root); err != nil {
+					t.Fatal("refusal lost recovery intent", err)
+				}
+				if err := refusePendingTransition(root); err == nil {
+					t.Fatal("unrecorded socket opened ordinary restart")
+				}
+				return
+			}
+			if err := os.Remove(filepath.Join(root, "start-completion.socket")); err != nil {
+				t.Fatal(err)
+			}
+			if err := clearStartGuard(root, intent); err != nil {
+				t.Fatal("owned interrupted socket removal could not complete", err)
+			}
+			for _, name := range []string{"start-guard.json", "start-socket.json", "start-completion.socket"} {
+				if _, err := os.Lstat(filepath.Join(root, name)); !os.IsNotExist(err) {
+					t.Fatal("completed cleanup retained artifact", name, err)
+				}
+			}
+		})
+	}
+}
