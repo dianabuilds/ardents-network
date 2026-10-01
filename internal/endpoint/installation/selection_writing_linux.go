@@ -45,6 +45,13 @@ func selectInitialInstallation(ctx context.Context, root string, selected select
 	if err := requireJournalPhases(journal, selected, []string{"writing-generation", "generation-staged", "installing-fixed-resources", "fixed-resources-installed"}); err != nil {
 		return err
 	}
+	return publishInitialSelection(ctx, root, selected, body, checked, journal, runInstallationManager)
+}
+
+// The caller retains admission checks and the writer lease throughout this
+// transition. The manager seam isolates a refusal after durable selection;
+// production always supplies the concrete installation manager.
+func publishInitialSelection(ctx context.Context, root string, selected selection, body []byte, checked checkedBinding, journal string, manager func(context.Context, ...string) (string, error)) (returnedErr error) {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
@@ -65,7 +72,7 @@ func selectInitialInstallation(ctx context.Context, root string, selected select
 	if err := appendGenerationRecord(journal, "0006.json", selected, "reloading-manager", nil); err != nil {
 		return err
 	}
-	if _, err := runInstallationManager(ctx, "daemon-reload"); err != nil {
+	if _, err := manager(ctx, "daemon-reload"); err != nil {
 		return err
 	}
 	if err := observeStoppedInstallation(ctx); err != nil {
