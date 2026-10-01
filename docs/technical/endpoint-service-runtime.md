@@ -6,8 +6,8 @@ The following bounded command contract selects ADR-0119's installation
 boundary. The initial stopped provisioning, read-only integrity and installed
 startup consumers are implemented but not yet qualified on an admitted installed
 host. Successor update/recovery now have production callers and component
-controls; the full interruption matrix and first-provision recovery remain
-unfinished, and there is no
+controls; first-provision recovery now has a bounded production caller, but
+the full interruption matrix remains unfinished, and there is no
 supported full installation receipt yet. Commands remain thin adapters under
 `ardents endpoint`; the owning implementation issue must register any new
 package before adding one.
@@ -60,9 +60,15 @@ credentials and public permission responses still require their explicit owners.
 Root-only preparation and generation phase records retain original errors.
 After preparation, provisioning records an initial transition intent before
 generation writes. Installed startup refuses either a pending intent or a
-pending failure before manager/runtime admission. Initial-transition recovery
-is not yet implemented: the successor recovery command refuses that intent;
-it cannot silently adopt the partial installation.
+pending failure before manager/runtime admission. Initial recovery requires
+fresh authority from the established Release floor store, the owned generation
+directory and complete fixed-file creation records (device/inode, intended digest,
+mode and group). It can repair authenticated prefixes on those owned objects,
+reload and return `installed-recovered-stopped`; explicit startup remains separate.
+An interruption before complete fixed-file birth records requires repair rather
+than adoption. Each fixed file and selection records its exclusively created inode
+durably before writing contents. The full actual interruption matrix remains
+unqualified.
 Component filesystem and manager-property controls do not qualify a positive
 Ubuntu/systemd/cgroup installation or the two-Endpoint Carrier journey.
 
@@ -169,9 +175,9 @@ Recorded target observations do not recreate a proof. Recovery reuses the
 original bound plans and public observations only after checking current proofs
 against their exact target bytes and identities. The first transition failure
 is retained and archived with the completed intent. Missing initial preparation
-or generation ownership evidence returns `repair-required`; complete
-first-provision interruption recovery and the full failure-injection matrix
-remain acceptance work. The receipts `installed-started` and
+or generation ownership evidence returns `repair-required`; initial recovery's
+bounded stopped path is described above. The complete first-provision and
+successor failure-injection matrix remains acceptance work. The receipts `installed-started` and
 `installed-recovered-started` observe the fixed unit, not Service continuity or
 the complete two-Endpoint journey. Component tests exercise these controls;
 actual admitted manager/namespace/seccomp/empty-scope receipts remain required.

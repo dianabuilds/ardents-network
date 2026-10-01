@@ -24,8 +24,10 @@ ADR-0119's successor selects `endpoint provision <request-file>`,
 `endpoint recover-installed <installation-root>`. Provision, installation-check
 and start-installed are callable; upgrade and successor recovery also have
 production callers, while their complete interruption/installed qualification
-remains unfinished. Initial preparation without an owned successor intent
-returns repair-required rather than adopting leftover objects. The
+remains unfinished. Initial recovery requires an owned initial intent and complete
+fixed-file birth records; missing provenance returns repair-required rather than
+adopting leftover objects. It returns `installed-recovered-stopped`, preserving
+the separate explicit-start operation. The
 [implementation handoff](../technical/endpoint-service-runtime.md#selected-protected-installation-handoff)
 defines their bounded contract. Full supported installed qualification is still
 incomplete. Provision returns only `installed-stopped`; installation-check

@@ -56,7 +56,7 @@ func selectInitialInstallation(ctx context.Context, root string, selected select
 			returnedErr = errors.Join(returnedErr, appendGenerationRecord(journal, "selection-failure.json", selected, "selection-failed", returnedErr))
 		}
 	}()
-	if err := writeExclusiveGenerationFile(filepath.Join(root, "selection.json"), body, 0640, checked.binding.GID); err != nil {
+	if err := createInstallationFile(ctx, filepath.Join(root, "selection.json"), body, 0640, checked.binding.GID, journal, selected); err != nil {
 		return err
 	}
 	if err := syncDirectory(root); err != nil {

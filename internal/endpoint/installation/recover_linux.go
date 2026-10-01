@@ -33,6 +33,9 @@ func recoverInstalled(ctx context.Context, root string) (result ProvisionResult,
 	if err != nil {
 		return ProvisionResult{}, err
 	}
+	if intent.Schema == "ardents-endpoint-installation-initial-v1" {
+		return recoverInitialInstallation(ctx, intent)
+	}
 	previous, err := readCandidateBinding(root, intent.Previous)
 	if err != nil {
 		return ProvisionResult{}, err
@@ -113,9 +116,13 @@ func readTransitionIntent(root string) (transitionIntent, error) {
 		return transitionIntent{}, err
 	}
 	bindingBytes, err := canonicalJSON(intent.CandidateBinding)
-	if err != nil || intent.Schema != "ardents-endpoint-installation-successor-v1" || intent.Request.InstallationRoot != root ||
-		intent.Request.ManifestSHA256 != "" || intent.Previous.Schema != "ardents-endpoint-installation-selection-v1" ||
-		intent.Candidate.Schema != intent.Previous.Schema || !canonicalDigest(intent.Previous.GenerationDigest) || !canonicalDigest(intent.Previous.BindingDigest) ||
+	initial := intent.Schema == "ardents-endpoint-installation-initial-v1"
+	successor := intent.Schema == "ardents-endpoint-installation-successor-v1"
+	if err != nil || (!initial && !successor) || intent.Request.InstallationRoot != root ||
+		(initial && (!canonicalDigest(intent.Request.ManifestSHA256) || intent.Previous != (selection{}))) ||
+		(successor && (intent.Request.ManifestSHA256 != "" || intent.Previous.Schema != "ardents-endpoint-installation-selection-v1" ||
+			!canonicalDigest(intent.Previous.GenerationDigest) || !canonicalDigest(intent.Previous.BindingDigest))) ||
+		intent.Candidate.Schema != "ardents-endpoint-installation-selection-v1" ||
 		!canonicalDigest(intent.Candidate.GenerationDigest) || digestHex(bindingBytes) != intent.Candidate.BindingDigest ||
 		intent.CandidateBinding.GenerationDigest != intent.Candidate.GenerationDigest || intent.CandidateBinding.InstallationRoot != root {
 		return transitionIntent{}, errors.New("repair-required: successor intent binding differs")

@@ -83,11 +83,21 @@ func repairGenerationFile(path string, expected []byte, mode os.FileMode, gid ui
 	if err != nil || !os.SameFile(before, after) {
 		return errors.New("repair-required: incomplete generation inode changed")
 	}
+	return repairOpenGenerationFile(file, after, expected, mode, gid)
+}
+
+// The caller establishes ownership of this already-open inode. Repair never
+// reopens the pathname or creates a replacement for a missing object.
+func repairOpenGenerationFile(file *os.File, info os.FileInfo, expected []byte, mode os.FileMode, gid uint32) error {
+	identity, ok := info.Sys().(*syscall.Stat_t)
+	if !ok {
+		return errors.New("repair-required: open generation identity is unavailable")
+	}
 	body, err := io.ReadAll(io.LimitReader(file, int64(len(expected))+1))
 	if err != nil || len(body) > len(expected) || !bytes.Equal(body, expected[:len(body)]) {
 		return errors.New("repair-required: incomplete generation bytes are not its authorized prefix")
 	}
-	if bytes.Equal(body, expected) && before.Mode().Perm() == mode && identity.Gid == gid {
+	if bytes.Equal(body, expected) && info.Mode().Perm() == mode && identity.Gid == gid {
 		return nil
 	}
 	if err := file.Truncate(0); err != nil {

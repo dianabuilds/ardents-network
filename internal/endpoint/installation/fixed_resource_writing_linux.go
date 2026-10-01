@@ -98,7 +98,7 @@ func installInitialFixedResources(ctx context.Context, root string, selected sel
 		if path == filepath.Join(workerRoot, "ardents-text") {
 			mode = 0555
 		}
-		if err := writeExclusiveGenerationFile(path, body, mode, 0); err != nil {
+		if err := createInstallationFile(ctx, path, body, mode, 0, journal, selected); err != nil {
 			return err
 		}
 		if err := syncDirectory(filepath.Dir(path)); err != nil {
@@ -124,7 +124,7 @@ func installInitialFixedResources(ctx context.Context, root string, selected sel
 	if err := ensureRootDirectory("/etc/ardents"); err != nil {
 		return err
 	}
-	if err := writeExclusiveGenerationFile("/etc/ardents/text-worker-artifact.json", manifest, 0644, 0); err != nil {
+	if err := createInstallationFile(ctx, "/etc/ardents/text-worker-artifact.json", manifest, 0644, 0, journal, selected); err != nil {
 		return err
 	}
 	if err := syncDirectory("/etc/ardents"); err != nil {
@@ -153,6 +153,12 @@ func requireJournalPhases(directory string, selected selection, phases []string)
 	}
 	count := len(entries)
 	for _, entry := range entries {
+		if entry.Name() == "creations" {
+			if err := requirePrivateJournalDirectory(filepath.Join(directory, entry.Name())); err != nil {
+				return err
+			}
+			count--
+		}
 		if entry.Name() == "generation-directory.json" {
 			if err := verifyGenerationDirectory(directory, filepath.Join(filepath.Dir(filepath.Dir(directory)), "generations", selected.GenerationDigest), selected); err != nil {
 				return err
