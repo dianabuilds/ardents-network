@@ -149,3 +149,76 @@ func TestTimedDirectWorkloadReportsDeliveredBytesInFixedWindow(t *testing.T) {
 		t.Fatalf("timed direct observations differ: client=%+v receiver=%+v", client, receiver)
 	}
 }
+
+func TestTimedDirectWorkloadWaitsForReceiverMeasurementStart(t *testing.T) {
+	ctx, cancel := context.WithTimeout(t.Context(), 2*time.Second)
+	defer cancel()
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer listener.Close()
+	seed := [32]byte{11}
+	var receiverOutput bytes.Buffer
+	done := make(chan error, 1)
+	go func() {
+		connection, err := listener.Accept()
+		if err != nil {
+			done <- err
+			return
+		}
+		defer connection.Close()
+		if err = setDirectLifetime(ctx, connection); err != nil {
+			done <- err
+			return
+		}
+		// Model delayed receiver scheduling after TCP connect, before measurement.
+		time.Sleep(50 * time.Millisecond)
+		done <- receiveTimedDirect(ctx, connection, DirectConfig{Seed: seed, Bytes: maximumDirectBytes,
+			MeasureDuration: 200 * time.Millisecond, Output: &receiverOutput})
+	}()
+	var senderOutput bytes.Buffer
+	senderErr := Direct(ctx, DirectConfig{Role: "direct-connect", Address: listener.Addr().String(), Seed: seed,
+		Bytes: maximumDirectBytes, MeasureDuration: 200 * time.Millisecond, Output: &senderOutput})
+	receiverErr := <-done
+	if senderErr != nil || receiverErr != nil {
+		t.Fatalf("delayed receiver exchange: sender=%v receiver=%v", senderErr, receiverErr)
+	}
+	var sender, receiver Observation
+	if json.Unmarshal(bytes.TrimSpace(senderOutput.Bytes()), &sender) != nil ||
+		json.Unmarshal(bytes.TrimSpace(receiverOutput.Bytes()), &receiver) != nil ||
+		sender.SentBytes == 0 || sender.SentBytes != receiver.ReceivedBytes || sender.SentDigest != receiver.ReceivedDigest {
+		t.Fatalf("delivered observations differ: sender=%+v receiver=%+v", sender, receiver)
+	}
+}
+
+func TestTimedDirectWorkloadCancelsBeforeReceiverStart(t *testing.T) {
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer listener.Close()
+	peer := make(chan net.Conn, 1)
+	go func() { connection, _ := listener.Accept(); peer <- connection }()
+	done := make(chan error, 1)
+	go func() {
+		done <- Direct(ctx, DirectConfig{Role: "direct-connect", Address: listener.Addr().String(),
+			Bytes: maximumDirectBytes, MeasureDuration: time.Second, Output: &bytes.Buffer{}})
+	}()
+	connection := <-peer
+	if connection == nil {
+		t.Fatal("peer accept failed")
+	}
+	defer connection.Close()
+	cancel()
+	select {
+	case err := <-done:
+		if err == nil {
+			t.Fatal("canceled receiver-start wait succeeded")
+		}
+	case <-time.After(time.Second):
+		t.Fatal("receiver-start wait did not join after cancellation")
+	}
+}

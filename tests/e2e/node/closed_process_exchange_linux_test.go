@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -20,6 +21,8 @@ import (
 func prepareClosedProcessExchange(t *testing.T, network, issuer [32]byte, _ time.Time) ([32]byte, func(state.Config, bool)) {
 	t.Helper()
 	authority := createClosedCommandAuthority(t, network)
+	clock := filepath.Join(t.TempDir(), "exchange.clock")
+	t.Cleanup(startClockObserver(t, clock))
 	var pending *credential.PendingClosedTokenBatch
 	var retained []byte
 	var challenge credential.ClosedTokenContext
@@ -31,7 +34,8 @@ func prepareClosedProcessExchange(t *testing.T, network, issuer [32]byte, _ time
 	})
 	return authority.Public, func(config state.Config, expectUnavailable bool) {
 		t.Helper()
-		config.Now, config.ClockObservation = time.Now().UTC(), time.Now().UTC()
+		config.Now, config.ClockObservation = time.Now().UTC(), time.Time{}
+		config.ClockObservationFile = clock
 		owner, err := state.Open(config)
 		if err != nil {
 			t.Fatal(err)
@@ -59,6 +63,9 @@ func prepareClosedProcessExchange(t *testing.T, network, issuer [32]byte, _ time
 			ProfileDigest: view.Profile.Digest, EntryNodeID: [32]byte{1}, InteriorNodeID: [32]byte{3}}, retained)
 		defer clear(response.Body)
 		if expectUnavailable {
+			if _, currentErr := owner.CurrentClosedRoute(); currentErr != nil {
+				t.Fatalf("issuer-loss fixture lost current State: %v", currentErr)
+			}
 			if exchangeErr == nil || ctx.Err() != nil || errors.Is(exchangeErr, client.ErrClosedBootstrapCleanup) ||
 				response.Nonce != [32]byte{} || len(response.Body) != 0 || !bytes.Equal(pending.Request(), retained) {
 				t.Fatalf("issuer loss did not cleanly refuse while preserving the exact batch: %v", exchangeErr)
