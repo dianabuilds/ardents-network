@@ -118,6 +118,26 @@ The closed-profile signer must be one of the configured pinned State authorities
 the single initial State key can fulfill that State-owned signing responsibility.
 Never reuse diagnostic keys in the admitted qualification operation.
 
+The explicit Linux-root adapter `scripts/sign-qualification-network.go` takes
+an absolute public plan, one root-owned `0600` PKCS#8 identity key and a new
+absolute output directory. Plan schema is
+`ardents-qualification-network-signing-plan-v1`, with `reference_time` and exactly
+one of `record` (`InitialClosedRecord`) or `epoch` (`InitialClosedEpoch`). The
+reference must be current within the same five-minute/past and one-minute/future
+window used by the Release operation. The finite interval must contain both
+the reference and current time and span at most seven days.
+
+The Record public key must match the supplied Node key. The Epoch operation
+admits exactly one matching initial State key, signs the unsigned digest, runs
+ordinary Epoch verification, derives every materialization and verifies again
+with all materials required. It writes `node-record.bin` or `epoch.bin` plus
+Source-ordered `input-NN.bin` and accepted-View-ordered `material-NN.bin` files.
+It rejects invalid signed inputs before creating the output directory. Output
+files and directories are synchronized before the public receipt; interrupted
+outputs remain retained and cannot be replaced. No State root, floor, Source
+credential or installed process is created, and the receipt explicitly leaves
+State acceptance and installed qualification false.
+
 The maintained `ardents-control prepare-qualification-evidence` command prepares
 initial unsigned disclosure payloads and component signing inputs. Its explicit
 source-file adapter is `scripts/prepare-qualification-alpha-evidence.go`; both
