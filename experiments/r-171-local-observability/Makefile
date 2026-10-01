@@ -1,7 +1,9 @@
 .PHONY: tools-install
 
 tools-install:
-ifeq ($(COLLECTOR),otel-builder)
+ifeq ($(COLLECTOR),otel-minimal)
+	powershell -NoProfile -ExecutionPolicy RemoteSigned -File install-minimal.ps1 -ArtifactRoot "$(ARTIFACT_ROOT)" -EvidenceRoot "$(EVIDENCE_ROOT)"
+else ifeq ($(COLLECTOR),otel-builder)
 	powershell -NoProfile -ExecutionPolicy RemoteSigned -File install-builder.ps1 -EvidenceRoot "$(EVIDENCE_ROOT)"
 else ifeq ($(COLLECTOR),otel-image)
 	powershell -NoProfile -ExecutionPolicy RemoteSigned -File install-collector-image.ps1 -ArtifactRoot "$(ARTIFACT_ROOT)" -EvidenceRoot "$(EVIDENCE_ROOT)"

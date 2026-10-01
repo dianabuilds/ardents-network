@@ -359,3 +359,22 @@ a short manifest does not establish actual dependency closure or runtime fit.
 Generated sources/module/cache/binary must stay outside Git. Exact tool scan and
 next-build falsification criteria belong in R-171. This is not a second maintained
 Go module, a new Collector implementation or permission to ingest product data.
+
+### Build the minimal official-component investigation
+
+```powershell
+make tools-install COLLECTOR=otel-minimal ARTIFACT_ROOT=C:/Users/vitek/AppData/Local/Temp/ardents-r171-ocb-public-a EVIDENCE_ROOT=C:/Users/vitek/AppData/Local/Temp/ardents-r171-minimal-build-new
+```
+
+Requires the explicitly installed exact Builder and inspection-helper image.
+Verifies Builder bytes again before execution. Uses one non-root read-only Docker
+container, no capabilities,3GiB memory/2CPU/pids128,600s Builder deadline,
+64MiB executable temporary directory only for the checked Builder and2GiB
+non-executable module/build/scratch cache. Go1.26.8 is already installed;
+GOTOOLCHAIN=local refuses automatic toolchain download. Public module downloads
+use the Go proxy/checksum service; no product inputs or authority roots are mounted.
+Generated source/module/sums/binary/log stay in the fresh external evidence root.
+The128MiB retained-output check is a post-build assertion, not a disk quota during
+compilation. Build-cache ceilings and overhead are separate from runtime monitoring
+budgets. Actual component/dependency/advisory closure and H2 runtime checks are
+required after assembly; successful compilation is not maintained admission.

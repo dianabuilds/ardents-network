@@ -1136,3 +1136,40 @@ Primary references:
 [exact Builder release](https://github.com/open-telemetry/opentelemetry-collector-releases/releases/tag/cmd/builder/v0.162.0),
 [exact upstream distribution manifest](https://github.com/open-telemetry/opentelemetry-collector-releases/blob/v0.162.0/distributions/otelcol-contrib/manifest.yaml),
 [exact Builder readme](https://github.com/open-telemetry/opentelemetry-collector/blob/cmd/builder/v0.162.0/cmd/builder/README.md).
+
+### Minimal official-component assembly receipts
+
+The explicit tools-install recipe uses the checked upstream Builder and installed
+Go1.26.8 in one3GiB/2CPU/pids128 non-root read-only container; no capabilities,
+product input, authority root, host PID/network or Docker socket. Builder has a
+600s deadline. Executable64MiB temporary storage is only for the checked Builder;
+module/build/scratch cache is a separate finite2GiB non-executable tmpfs. Public
+modules use the Go proxy/checksum service; toolchain auto-download is refused.
+Generated module/source/sums/binary and receipts stay outside Git. Retained-output
+128MiB assertion runs after compilation and is not a disk quota during compilation.
+Build overhead is not silently substituted for the monitoring runtime envelope.
+
+**Original failures retained:** minimal-build-a refused execution of /tmp/ocb
+because the temporary mount lacked explicit exec; no assembly occurred.
+minimal-build-b then reached official source generation and compilation but failed
+ENOSPC because Go scratch defaulted to the64MiB temporary mount. That partial
+generated module/factory/log/receipt is retained. The correction routes GOTMPDIR
+to the finite cache mount and declares its2GiB ceiling. Generated factories
+already show only filestorage/filelogreceiver/otlphttpexporter plus selected file
+provider; actual completed binary/dependency closure is still required. Partial
+module metadata includes Kubernetes dependencies from upstream: a tiny factory
+list must not be represented as a tiny dependency set. No failures were waived.
+
+**Completed assembly:** minimal-build-c completed0 in87.14s; Builder manifest
+SHA25634e0c596710fc497f69887f7e5fb0a4d99c46e2389ea2b022e0096a2872e1f8f.
+Actual executable38748322bytes, SHA256
+1c3642b56275cd644e4adb986fdd371a1e7fd032f03785fc08a6baec758fa12a;
+retained public outputs before buildinfo38814134bytes. Buildinfo records176dep
+lines and no aws-sdk-go/Avro modules, while x/crypto0.57.0 remains. The full
+contrib executable was407498914bytes. This establishes smaller artifact/closure,
+not runtime RSS improvement, package-level OpenPGP exclusion or security admission.
+Raw generated source/go.mod/go.sum, binary/buildinfo/log/receipt remain external
+ardents-r171-minimal-build-c. govulncheck1.1.4 actual binary/symbol scan completed0
+with no finding records, DB2026-09-28T16:43:40Z, external
+ardents-r171-minimal-closure-a. Clean scanner output does not replace remaining
+source/license/support/advisory and runtime admission evidence.
