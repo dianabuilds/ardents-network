@@ -215,11 +215,14 @@ try:
         write(node_path, node_plan)
     phase = "observe-node"
     monitor_directory = pathlib.Path("/events/monitor") if args.preview_seconds else runtime / "monitor"
+    retained_bytes_limit = 1073741824 if args.persistent_journal else 2097152
+    retained_files_limit = 65 if args.persistent_journal else 128
+    minimum_log_files = 2 if args.persistent_journal else 3
     monitor_args = [binaries / "ardents-diagnostics", "monitor", "-out", monitor_directory,
                     "-console=false", "-listen", "127.0.0.1:8094", "-sample-max-age", "2s",
                     "-segment-bytes", "16777216" if args.persistent_journal else "16384",
-                    "-retain-bytes", "1073741824" if args.persistent_journal else "2097152",
-                    "-retain-files", "65" if args.persistent_journal else "128",
+                    "-retain-bytes", str(retained_bytes_limit),
+                    "-retain-files", str(retained_files_limit),
                     "-rotate-after", "15m" if args.persistent_journal else ("30s" if args.preview_seconds else "1s"),
                     "-retain-for", "72h" if args.persistent_journal else "30m"]
     if args.preview_seconds:
@@ -330,8 +333,8 @@ try:
     state = json.loads((monitor_directory / "monitor.json").read_text())
     assert state["total_samples"] >= 2
     assert all(row["entry"]["kind"] != "resource-sample" for row in state["tail"])
-    assert 2 < state["logs"]["files"] <= 128
-    assert state["logs"]["retained_bytes"] <= 2097152
+    assert minimum_log_files <= state["logs"]["files"] <= retained_files_limit
+    assert state["logs"]["retained_bytes"] <= retained_bytes_limit
     receipt.update({"resource_samples": state["total_samples"], "safe_event_rows": state["total_rows"],
                     "source_alive": state["source_alive"], "actual_resource_observed": True,
                     "accepted_owners": len(owners)})
