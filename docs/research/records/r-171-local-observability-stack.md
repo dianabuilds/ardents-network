@@ -1483,3 +1483,39 @@ and [Moby internal-network port report](https://github.com/moby/moby/discussions
 The report supports investigating the observed publication failure, not a
 general guarantee about every internal network or an authorized daemon change.
 Final delta review additionally requires the owned relay process to remain alive at readiness; an unrelated responding loopback listener cannot by itself satisfy that check. Runtime-d predates this added refusal check; it is not claimed as a replay of the final script.
+
+### Selected-source metric mapping, before backend admission
+
+The next real-source seam was traced through the current monitorState/snapshot,
+internal/node/lifecycle.go emitResourceDiagnostic and internal/resource native
+Linux sampler/Guard.Observe. Node emits a resource-sample; the monitor retains
+its projected row separately from event logs. Linux sampleProcess populates
+cgroup CPU/memory/socket/PSI/local memory-event facts and process Go-memory,
+descriptors, sockets, threads and goroutines. Guard pressure decisions use CPU
+deltas internally but the emitted Sample still carries cumulative usage_usec.
+Go-managed memory is runtime total minus released heap bytes, not process RSS.
+RSS/admission fields are declared but not populated by this sampler. Queue,
+timer/storage and Hosting Usage values have additional owner/profile semantics.
+
+The research-only monitor_metrics.py prototype maps only this native Node
+sample from one supplied existing safe monitor snapshot, with fixed metric names
+and no labels. It does not implement another sampler or raw logger. Resource
+values are omitted on source stop or stale supervisor; sample freshness checks
+both producer and receipt timestamps. Three-second supervisor heartbeat and an
+explicit producer-age budget are separate. Missing fields remain absent and
+invalid/future observations refuse rather than become zero. Source survival is
+not product readiness. Session-start metadata exposes reset identity but this
+stateless projection does not yet enforce gap-safe rate/query continuity.
+
+Seven bounded Docker behavior checks passed on2026-10-01 using the installed
+helper0ecc73f220e154f40bdf3db718f9ff66890d6b381adaaf05fc3cbe989441c3ad,
+network none, user10001, read-only source/root, capabilities none,
+256MiB/.5CPU/pids32. They cover scope/unit conversion, absent versus measured
+zero, unpopulated/sensitive-field exclusion, supervisor staleness, old producer
+replay, stopped source, invalid numbers/times and session boundaries.
+External evidence: ardents-r171-monitor-metrics-a/tests.txt.
+These are fabricated snapshot checks, not a real Node connection, Prometheus
+scrape, Loki ingestion or completed #394 acceptance. Maintained admission and
+the next live-source profile remain open. Source changes invalidate this mapping;
+no inference extends it to another producer or role.
+CLI extension: ten checks passed with the same installed helper. Actual subprocess stdin/stdout checks cover the64KiB cap, malformed/invalid UTF-8 and excessively nested JSON, fixed refusal without input echo, and stale snapshot exclusion. RecursionError is explicitly converted to the same refusal. Evidence: ardents-r171-monitor-metrics-a/cli-tests.txt. Initial quick-check completed0 before this extension; final pre-commit gate checks the completed delta.

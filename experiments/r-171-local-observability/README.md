@@ -493,3 +493,44 @@ by earlier resource measurements.
 Read R-171 for retained Docker port-publication and initial browser chunk failures,
 the successful warm-cache render, and remaining cold-load/alert presentation
 limitations. This remains synthetic research evidence, not real Node monitoring.
+
+### Selected monitor metric mapping prototype
+
+monitor_metrics.py accepts one explicitly supplied safe monitor JSON snapshot on
+stdin, at most64KiB, and writes fixed unlabelled Prometheus exposition. It does
+not sample, discover processes, open files or sockets, forward raw logs or admit
+a monitoring backend. Require an explicit --sample-max-age in seconds from the
+selected producer interval. An external caller must bind the selected job; PID,
+source name, arbitrary JSON keys, command arguments and event tail never become
+metric labels or HELP text.
+
+For the native Linux Node sampler only, cgroup CPU cumulative microseconds are
+converted to seconds; cgroup current/socket memory stays distinct from process
+Go-managed memory, socket/FD counts, threads and goroutines. PSI is avg10 percent
+(cpu/memory some, IO full). Emergency events sum max/oom/oom_kill and are not
+distinct incidents. RSS and admission are unpopulated and excluded. Queues,
+timers, managed storage and role Usage need separately verified owner/profile
+semantics before exposure.
+
+Supervisor freshness is independently bounded3seconds. Stale supervisor omits
+the source-alive and resource metrics; a stopped process omits resource metrics.
+Fresh receipt time cannot refresh an old producer timestamp. Missing fields
+remain absent, actual measured zero remains zero, future/invalid timestamps and
+invalid numeric values refuse. source_process_alive is survival, not readiness.
+session_started_seconds exposes a supervisor reset boundary; upstream counter
+and session resets plus observation gaps still require explicit query handling.
+This stateless mapper alone does not implement gap-safe rate calculations.
+
+Run behavior checks with the installed helper, no network or writable source:
+
+~~~powershell
+docker run --rm --network none --read-only --cap-drop ALL --security-opt no-new-privileges --user 10001:10001 --memory 256m --cpus .5 --pids-limit 32 --mount "type=bind,source=C:/Users/vitek/.codex/worktrees/local-diagnostics/ardents-network/experiments/r-171-local-observability,target=/probe,readonly" --workdir /probe --entrypoint python3 sha256:0ecc73f220e154f40bdf3db718f9ff66890d6b381adaaf05fc3cbe989441c3ad -B -m unittest -v test_monitor_metrics
+~~~
+
+The seven checks cover scope/units, unpopulated and sensitive-field exclusion,
+stale supervisor, replayed producer time, stopped source, absent versus zero,
+invalid observations and session identity. They use fabricated safe snapshots,
+not live-process integration evidence. Real safe snapshot ingestion, scraping,
+log rotation delivery, alert journeys and actual Node/debug correlation remain
+the next integration boundary after exact component selection.
+CLI checks additionally exercise oversized/malformed/invalid UTF-8/deeply nested stdin and verify fixed refusal without input echo; the suite now contains ten checks.
