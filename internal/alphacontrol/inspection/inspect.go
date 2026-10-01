@@ -9,6 +9,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/alphacontrol"
 	"github.com/dianabuilds/ardents-network/internal/enrollment"
+	"github.com/dianabuilds/ardents-network/internal/network/epoch"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/release"
 )
@@ -165,8 +166,17 @@ func verifyNetwork(ctx context.Context, root string, raw []byte, at time.Time, s
 	for _, authority := range evidence.Authorities {
 		authorities[sha256Digest(authority)] = authority
 	}
-	opened, err := state.Open(state.Config{Root: root, NetworkID: evidence.NetworkID, Authorities: authorities,
-		Threshold: int(evidence.Threshold), AcceptedProfile: evidence.Profile, Now: at})
+	config := state.Config{Root: root, NetworkID: evidence.NetworkID, Authorities: authorities,
+		Threshold: int(evidence.Threshold), AcceptedProfile: evidence.Profile, Now: at}
+	if evidence.Profile == epoch.ProfileClosedRoute {
+		// The initial one-key State authority also owns Closed Profile signing.
+		// ACN1 cannot select that responsibility from multiple State keys.
+		if len(evidence.Authorities) != 1 || evidence.Threshold != 1 {
+			return alphacontrol.OutcomeInvalid, nil
+		}
+		config.ClosedProfileAuthority = evidence.Authorities[0]
+	}
+	opened, err := state.Open(config)
 	if err != nil {
 		return alphacontrol.OutcomeInvalid, nil
 	}
