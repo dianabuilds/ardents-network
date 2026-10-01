@@ -58,6 +58,11 @@ Ubuntu 24.04 PR CI use this profile because worker manager queries must not
 share the Node's measured cgroup. Ordinary developer-host execution without
 this selector retains its shared-cgroup limitation. Scope verification alone
 does not qualify installed workers, a second Endpoint, or whole-host protection.
+The complete Ubuntu CI gate selects the same profile through
+`NODE_PROCESS_TEST_COMMAND`; only the Node process package uses that runner.
+The other process packages and the unprivileged component checks retain their
+ordinary runner. Both process invocations remain serial and run every package
+in the declared process profile.
 
 Installation filesystem component checks select
 `ARDENTS_INSTALLATION_COMPONENT_PROFILE=root` and run
