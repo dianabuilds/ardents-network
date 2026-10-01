@@ -12,8 +12,13 @@ type localPaths struct {
 	lock    string
 }
 
+// prepareRoots creates and validates only the roots that have a live
+// consumer: the state base with its owner-lock and Release-floor parents,
+// and the runtime base with the local attachment. ADR-0108 (F-26) stopped
+// creating the unconsumed grants, vault, diagnostics, and cache scaffold;
+// existing on-disk bytes of former profiles stay untouched.
 func prepareRoots(config Config) (localPaths, error) {
-	for _, root := range []string{config.ConfigHome, config.StateHome, config.CacheHome, config.RuntimeHome} {
+	for _, root := range []string{config.StateHome, config.RuntimeHome} {
 		if !filepath.IsAbs(root) {
 			return localPaths{}, errors.New("local profile root is not absolute")
 		}
@@ -25,14 +30,9 @@ func prepareRoots(config Config) (localPaths, error) {
 		return localPaths{}, err
 	}
 	for _, path := range []string{
-		config.ConfigHome,
-		filepath.Join(config.ConfigHome, "grants"),
 		config.StateHome,
-		filepath.Join(config.StateHome, "vault"),
 		filepath.Join(config.StateHome, "floors"),
-		filepath.Join(config.StateHome, "diagnostics"),
 		filepath.Join(config.StateHome, "live"),
-		config.CacheHome,
 		config.RuntimeHome,
 	} {
 		if err := ensureOwnedDirectory(path); err != nil {

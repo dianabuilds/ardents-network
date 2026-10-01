@@ -179,8 +179,7 @@ func issuedResponse(t *testing.T, root *Root, authority ed25519.PrivateKey, gene
 		t.Fatal(err)
 	}
 	credential, err := (publication.Credential{InstancePublic: view.InstancePublic,
-		IntroductionHPKEPublic: view.IntroductionPublic, Generation: generation,
-		NotBefore: view.NotBefore, NotAfter: view.NotAfter, NetworkID: view.NetworkID,
+		Generation: generation, NotBefore: view.NotBefore, NotAfter: view.NotAfter, NetworkID: view.NetworkID,
 		Capabilities: publication.CapabilityPublish | publication.CapabilityConnect}).Issue(authority)
 	if err != nil {
 		t.Fatal(err)

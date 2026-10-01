@@ -300,8 +300,8 @@ func replacementRootVersion(t *testing.T, rootBytes []byte, keys []enrolledRunti
 }
 
 func endpointEnvironment(root string) []string {
-	return append(os.Environ(), "XDG_CONFIG_HOME="+filepath.Join(root, "config"), "XDG_STATE_HOME="+filepath.Join(root, "state"),
-		"XDG_CACHE_HOME="+filepath.Join(root, "cache"), "XDG_RUNTIME_DIR="+filepath.Join(root, "runtime"))
+	return append(os.Environ(), "XDG_STATE_HOME="+filepath.Join(root, "state"),
+		"XDG_RUNTIME_DIR="+filepath.Join(root, "runtime"))
 }
 
 func runEnrolledUntilStopped(t *testing.T, command, input string, environment []string) {

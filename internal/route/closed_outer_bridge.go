@@ -7,17 +7,19 @@ import (
 	"net"
 	"sync"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 )
 
 // ClosedOuterBridge owns one authenticated outer Carrier's framing boundary.
 // It exposes each accepted child as an opaque inner net.Conn; it never parses
 // TLS or role bytes itself.
 type ClosedOuterBridge struct {
-	retired             [closedForwardChildren]uint32
+	retired             [ClosedForwardChildren]uint32
 	retiredNext         uint32
 	mu                  sync.Mutex
 	handshake           *ClosedOuterHandshake
-	write               func(ClosedLaneFrame, func() time.Time) error
+	write               func(ardp.Frame, func() time.Time, bool, bool) error
 	updateWriteDeadline func(uint32, time.Time) error
 	lanes               map[uint32]*closedOuterBridgeLane
 	closed              bool
@@ -44,6 +46,9 @@ type closedOuterBridgeLane struct {
 	writeUpdate                        sync.Mutex
 	readDeadline                       time.Time
 	writeDeadline                      time.Time
+	terminalWriters                    uint32
+	closeOnce                          sync.Once
+	closeErr                           error
 	authorizedUntil                    time.Time
 	hardDeadline                       time.Time
 }
@@ -51,7 +56,7 @@ type closedOuterBridgeLane struct {
 // NewClosedOuterBridge binds one outer state machine to one serialized ARDP
 // writer. The writer must reject partial frames and must not call back into the
 // bridge while it holds its own transport lock.
-func NewClosedOuterBridge(handshake *ClosedOuterHandshake, update func(uint32, time.Time) error, write func(ClosedLaneFrame, func() time.Time) error) (*ClosedOuterBridge, error) {
+func NewClosedOuterBridge(handshake *ClosedOuterHandshake, update func(uint32, time.Time) error, write func(ardp.Frame, func() time.Time, bool, bool) error) (*ClosedOuterBridge, error) {
 	if handshake == nil || write == nil || update == nil {
 		return nil, errors.New("closed outer bridge is invalid")
 	}
@@ -60,7 +65,7 @@ func NewClosedOuterBridge(handshake *ClosedOuterHandshake, update func(uint32, t
 
 // Accept consumes one outer frame. A successful OPEN returns the fresh child
 // lane; callers give that lane only to the selected inner TLS/role owner.
-func (bridge *ClosedOuterBridge) Accept(frame ClosedLaneFrame) (*ClosedOuterBridgeLane, error) {
+func (bridge *ClosedOuterBridge) Accept(frame ardp.Frame) (*ClosedOuterBridgeLane, error) {
 	if bridge == nil {
 		return nil, errors.New("closed outer bridge is unavailable")
 	}
@@ -72,7 +77,7 @@ func (bridge *ClosedOuterBridge) Accept(frame ClosedLaneFrame) (*ClosedOuterBrid
 	if bridge.retiredFrame(frame) {
 		return nil, nil
 	}
-	if frame.Kind == closedFrameCredit {
+	if frame.Kind == ardp.KindCredit {
 		return nil, bridge.credit(frame)
 	}
 	bytes, err := bridge.handshake.Accept(frame)
@@ -80,8 +85,8 @@ func (bridge *ClosedOuterBridge) Accept(frame ClosedLaneFrame) (*ClosedOuterBrid
 		return nil, err
 	}
 	switch frame.Kind {
-	case closedFrameHello:
-		accepted, err := ClosedAcceptFrame(0, closedOuterLaneCredit)
+	case ardp.KindHello:
+		accepted, err := ardp.AcceptFrame(0, ClosedOuterLaneCredit)
 		if err != nil {
 			return nil, err
 		}
@@ -91,17 +96,17 @@ func (bridge *ClosedOuterBridge) Accept(frame ClosedLaneFrame) (*ClosedOuterBrid
 				end = bridge.handshake.receiver.Deadline
 			}
 			return end
-		})
-	case closedFrameOpen:
+		}, true, false)
+	case ardp.KindOpen:
 		open, _, _ := DecodeClosedNodeOpen(frame.Body) // Already checked by the handshake.
 		pending := bridge.handshake.clock().UTC().Add(10 * time.Second)
 		if open.Deadline.Before(pending) {
 			pending = open.Deadline
 		}
-		lane := &closedOuterBridgeLane{bridge: bridge, id: frame.Lane, restriction: ClosedChildRestriction(frame.Body[49]), notify: make(chan struct{}, 1), outboundCredit: closedOuterLaneCredit, outboundChanged: make(chan struct{}), hardDeadline: open.Deadline, readDeadline: pending, writeDeadline: pending, authorizedUntil: pending}
+		lane := &closedOuterBridgeLane{bridge: bridge, id: frame.Lane, restriction: ClosedChildRestriction(frame.Body[49]), notify: make(chan struct{}, 1), outboundCredit: ClosedOuterLaneCredit, outboundChanged: make(chan struct{}), hardDeadline: open.Deadline, readDeadline: pending, writeDeadline: pending, authorizedUntil: pending}
 		bridge.lanes[frame.Lane] = lane
 		return &ClosedOuterBridgeLane{lane: lane}, nil
-	case closedFrameBytes:
+	case ardp.KindBytes:
 		lane := bridge.lanes[frame.Lane]
 		if lane == nil {
 			return nil, errors.New("closed outer bridge lane is unavailable")
@@ -109,11 +114,11 @@ func (bridge *ClosedOuterBridge) Accept(frame ClosedLaneFrame) (*ClosedOuterBrid
 		if err := lane.feed(bytes); err != nil {
 			return nil, err
 		}
-	case closedFrameEOF:
+	case ardp.KindEOF:
 		if lane := bridge.lanes[frame.Lane]; lane != nil {
 			lane.finishInput()
 		}
-	case closedFrameClose:
+	case ardp.KindClose:
 		if lane := bridge.lanes[frame.Lane]; lane != nil {
 			if err := lane.closeInput(); err != nil {
 				return nil, err
@@ -127,7 +132,7 @@ func (bridge *ClosedOuterBridge) Accept(frame ClosedLaneFrame) (*ClosedOuterBrid
 
 // Activate verifies the encrypted inner HELLO and turns the child into the
 // ordinary credit-controlled post-TLS lane.
-func (lane *ClosedOuterBridgeLane) Activate(hello ClosedHello) error {
+func (lane *ClosedOuterBridgeLane) Activate(hello ardp.Hello) error {
 	if lane == nil || lane.lane == nil {
 		return errors.New("closed outer bridge lane is unavailable")
 	}
@@ -191,7 +196,7 @@ func (lane *ClosedOuterBridgeLane) Read(value []byte) (int, error) {
 				if err != nil {
 					return 0, err
 				}
-				if err := inner.bridge.write(credit, inner.currentWriteDeadline); err != nil {
+				if err := inner.bridge.write(credit, inner.currentWriteDeadline, true, false); err != nil {
 					return 0, err
 				}
 			}
@@ -298,7 +303,7 @@ func (lane *closedOuterBridgeLane) currentWriteDeadline() time.Time {
 	defer lane.deadlineMu.Unlock()
 	return lane.writeDeadline
 }
-func (bridge *ClosedOuterBridge) credit(frame ClosedLaneFrame) error {
+func (bridge *ClosedOuterBridge) credit(frame ardp.Frame) error {
 	if frame.Lane == 0 || len(frame.Body) != 4 {
 		return errors.New("closed outer bridge credit is invalid")
 	}
@@ -309,7 +314,7 @@ func (bridge *ClosedOuterBridge) credit(frame ClosedLaneFrame) error {
 	bytes := binary.BigEndian.Uint32(frame.Body)
 	lane.mu.Lock()
 	defer lane.mu.Unlock()
-	if !lane.active || lane.dead || bytes == 0 || bytes > closedOuterLaneCredit-lane.outboundCredit {
+	if !lane.active || lane.dead || bytes == 0 || bytes > ClosedOuterLaneCredit-lane.outboundCredit {
 		return errors.New("closed outer bridge credit is unavailable")
 	}
 	lane.outboundCredit += bytes
@@ -318,23 +323,34 @@ func (bridge *ClosedOuterBridge) credit(frame ClosedLaneFrame) error {
 }
 
 func (bridge *ClosedOuterBridge) closeLocal(lane *closedOuterBridgeLane, status byte) error {
+	lane.closeOnce.Do(func() { lane.closeErr = bridge.closeLocalOnce(lane, status) })
+	return lane.closeErr
+}
+
+func (bridge *ClosedOuterBridge) closeLocalOnce(lane *closedOuterBridgeLane, status byte) error {
 	bridge.mu.Lock()
-	defer bridge.mu.Unlock()
 	if bridge.closed || bridge.lanes[lane.id] != lane {
+		bridge.mu.Unlock()
 		return nil
 	}
-	if _, err := bridge.handshake.Accept(ClosedLaneFrame{Kind: closedFrameClose, Lane: lane.id, Body: []byte{status}}); err != nil {
+	if _, err := bridge.handshake.Accept(ardp.Frame{Kind: ardp.KindClose, Lane: lane.id, Body: []byte{status}}); err != nil {
+		bridge.mu.Unlock()
 		return err
 	}
 	bridge.rememberRetired(lane.id)
 	delete(bridge.lanes, lane.id)
-	if err := lane.closeInput(); err != nil {
-		return err
-	}
+	bridge.mu.Unlock()
 	// Retirement may follow SetDeadline(now) used to interrupt child I/O.
 	// The terminal control frame gets its own finite write bound; it carries
-	// no child payload. It remains sendable after payload authority expires.
-	return bridge.write(ClosedLaneFrame{Kind: closedFrameClose, Lane: lane.id, Body: []byte{status}}, func() time.Time { return time.Now().Add(time.Second) })
+	// no child payload. Serialize it behind an already active CREDIT before
+	// interrupting this lane; otherwise the local deadline update can cut a
+	// valid flow-control frame in half and poison the shared Carrier.
+	cleanupEnd := time.Now().Add(time.Second)
+	if err := bridge.updateWriteDeadline(lane.id, cleanupEnd); err != nil {
+		return errors.Join(err, lane.closeInput())
+	}
+	writeErr := bridge.write(ardp.Frame{Kind: ardp.KindClose, Lane: lane.id, Body: []byte{status}}, func() time.Time { return cleanupEnd }, true, true)
+	return errors.Join(writeErr, lane.closeInput())
 }
 
 func (lane *closedOuterBridgeLane) feed(value []byte) error {
@@ -342,7 +358,7 @@ func (lane *closedOuterBridgeLane) feed(value []byte) error {
 	defer lane.mu.Unlock()
 	limit := closedOuterHandshakeBytes
 	if lane.innerHello {
-		limit = closedOuterLaneCredit
+		limit = ClosedOuterLaneCredit
 	}
 	if lane.dead || lane.inputEOF || len(lane.buffer)+len(value) > limit {
 		return errors.New("closed outer bridge input is unavailable")
@@ -394,11 +410,11 @@ func (bridge *ClosedOuterBridge) rememberRetired(id uint32) {
 	bridge.retiredNext++
 }
 
-func (bridge *ClosedOuterBridge) retiredFrame(frame ClosedLaneFrame) bool {
-	if frame.Lane == 0 || !validClosedFrame(frame) {
+func (bridge *ClosedOuterBridge) retiredFrame(frame ardp.Frame) bool {
+	if frame.Lane == 0 || !ardp.ValidFrame(frame) {
 		return false
 	}
-	if frame.Kind != closedFrameBytes && frame.Kind != closedFrameCredit && frame.Kind != closedFrameEOF && frame.Kind != closedFrameClose {
+	if frame.Kind != ardp.KindBytes && frame.Kind != ardp.KindCredit && frame.Kind != ardp.KindEOF && frame.Kind != ardp.KindClose {
 		return false
 	}
 	for _, id := range bridge.retired {

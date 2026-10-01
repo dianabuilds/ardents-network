@@ -15,8 +15,7 @@ import (
 )
 
 const (
-	storeRecordVersion        = byte(1)
-	privateStoreRecordVersion = byte(2)
+	privateStoreRecordVersion = byte(3)
 )
 
 func (store *Store) restore() error {
@@ -38,7 +37,10 @@ func (store *Store) restore() error {
 			return err
 		}
 		record, err := decodeStored(raw, store.network)
-		if err != nil || targetName(record.verified.Descriptor.Target) != entry.Name() {
+		if err != nil {
+			return errors.New("reachability store record is invalid")
+		}
+		if targetName(record.verified.Descriptor.Target) != entry.Name() {
 			return errors.New("reachability store record is invalid")
 		}
 		if _, duplicate := store.records[record.verified.Descriptor.Target]; duplicate {
@@ -58,12 +60,9 @@ func (store *Store) write(record storedDescriptor) error {
 }
 
 func encodeStored(record storedDescriptor) ([]byte, error) {
-	version, maximum := storeRecordVersion, MaximumDescriptorSize
-	if record.verified.Descriptor.Version == privateDescriptorVersion {
-		version, maximum = privateStoreRecordVersion, MaximumPrivateDescriptorSize
-	}
-	if len(record.raw) == 0 || len(record.raw) > maximum || record.verified.Descriptor.Target == [32]byte{} ||
-		(version == storeRecordVersion && record.revisionConflicting) {
+	if len(record.raw) == 0 || len(record.raw) > MaximumPrivateDescriptorSize ||
+		record.verified.Descriptor.Version != privateDescriptorVersion ||
+		record.verified.Descriptor.Target == [32]byte{} {
 		return nil, errors.New("reachability stored descriptor is incomplete")
 	}
 	flags := byte(0)
@@ -73,47 +72,38 @@ func encodeStored(record storedDescriptor) ([]byte, error) {
 	if record.revisionConflicting {
 		flags |= 2
 	}
-	return append([]byte{version, flags}, record.raw...), nil
+	return append([]byte{privateStoreRecordVersion, flags}, record.raw...), nil
 }
 
+// decodeStored authenticates one retained private v3 proof against its own
+// signed floor. Other envelope versions are refused without conversion.
 func decodeStored(raw []byte, network [32]byte) (storedDescriptor, error) {
-	if len(raw) < 2 || (raw[0] != storeRecordVersion && raw[0] != privateStoreRecordVersion) ||
-		raw[1] > 3 || (raw[0] == storeRecordVersion && raw[1] > 1) {
+	if len(raw) < 2 {
 		return storedDescriptor{}, errors.New("reachability stored descriptor header is invalid")
 	}
-	var descriptor Descriptor
-	var err error
-	if raw[0] == privateStoreRecordVersion {
-		descriptor, err = decodePrivateDescriptor(raw[2:])
-	} else {
-		descriptor, _, err = decode(raw[2:])
+	if raw[0] != privateStoreRecordVersion || raw[1] > 3 {
+		return storedDescriptor{}, errors.New("reachability stored descriptor header is invalid")
 	}
+	descriptor, err := decodePrivateDescriptor(raw[2:])
 	if err != nil {
 		return storedDescriptor{}, err
 	}
 	// Restore the signed floor at a time within its original validity, even
 	// when it has since expired. This does not make it currently available:
 	// lookup re-verifies against the caller's actual profile and time.
-	at := descriptor.Introduction.NotAfter.Add(-time.Second)
-	if descriptor.Version == privateDescriptorVersion {
-		at = descriptor.Private.NotAfter.Add(-time.Second)
-	}
+	at := descriptor.Private.NotAfter.Add(-time.Second)
 	current, err := publication.Decode(descriptor.Publication, ed25519.PublicKey(descriptor.AuthorityPublic[:]), network, at)
 	if err != nil || current.Credential.Target != descriptor.Target || current.Digest != descriptor.PublicationDigest {
 		return storedDescriptor{}, errors.New("reachability stored Publication is invalid")
 	}
-	var verified Verified
-	if descriptor.Version == privateDescriptorVersion {
-		verified, err = VerifyPrivate(raw[2:], descriptor.Target, network, descriptor.ProfileDigest, at)
-	} else {
-		verified, err = Verify(raw[2:], descriptor.Target, network, at)
-	}
+	verified, err := VerifyPrivate(raw[2:], descriptor.Target, network, descriptor.ProfileDigest, at)
 	if err != nil {
 		return storedDescriptor{}, err
 	}
 	return storedDescriptor{raw: append([]byte(nil), raw[2:]...), verified: verified, digest: sha256.Sum256(raw[2:]),
 		conflicting: raw[1]&1 != 0, revisionConflicting: raw[1]&2 != 0}, nil
 }
+
 func targetName(target [32]byte) string { return fmt.Sprintf("%x", target) }
 
 func readStoreFile(path string, maximum int) ([]byte, error) {

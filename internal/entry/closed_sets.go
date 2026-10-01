@@ -28,7 +28,8 @@ type ClosedSetView struct {
 }
 
 // ClosedSetConfig claims the installation's selected-generation Entry root.
-// A legacy Invite root is incompatible and requires explicit migration.
+// A legacy Invite root is incompatible: its marker and recipient file fail
+// the closed-root inspection, and ADR-0106 removed every migration path.
 type ClosedSetConfig struct {
 	Root      string
 	NetworkID [32]byte

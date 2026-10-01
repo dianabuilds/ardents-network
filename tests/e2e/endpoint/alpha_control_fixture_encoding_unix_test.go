@@ -8,6 +8,7 @@ import (
 	"crypto/sha256"
 	"encoding/binary"
 	"sort"
+	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/alphacontrol"
 	"github.com/dianabuilds/ardents-network/internal/alphacontrol/inspection"
@@ -18,9 +19,22 @@ func signAlphaCatalogFixture(input alphacontrol.Catalog, signer ed25519.PrivateK
 		input.NotBefore.Unix(), input.NotAfter.Unix(), input.PreviousDigest, input.Components[:], signer), nil
 }
 
-func signAlphaCatalogV2Fixture(input alphacontrol.CatalogV2, signer ed25519.PrivateKey) ([]byte, error) {
-	return signAlphaCatalogFields("ACA2", "ardents-alpha-control-catalog-v2\x00", input.Cohort, input.Generation,
-		input.NotBefore.Unix(), input.NotAfter.Unix(), input.PreviousDigest, input.Components[:], signer), nil
+// historicAlphaCatalogV2 rebuilds retired ACA2 catalog bytes solely as hostile
+// input to the retirement refusals; no maintained ACA2 parser exists (ADR-0110).
+type historicAlphaCatalogV2 struct {
+	cohort              string
+	generation          uint64
+	notBefore, notAfter time.Time
+	previousDigest      [32]byte
+	components          [4]alphacontrol.Component
+}
+
+// historicComponentCorpus is the retired ACA2 fourth component class.
+const historicComponentCorpus alphacontrol.ComponentClass = 4
+
+func signAlphaCatalogV2Fixture(input historicAlphaCatalogV2, signer ed25519.PrivateKey) ([]byte, error) {
+	return signAlphaCatalogFields("ACA2", "ardents-alpha-control-catalog-v2\x00", input.cohort, input.generation,
+		input.notBefore.Unix(), input.notAfter.Unix(), input.previousDigest, input.components[:], signer), nil
 }
 
 func signAlphaCatalogFields(magic, domain, cohort string, generation uint64, notBefore, notAfter int64, previous [32]byte,

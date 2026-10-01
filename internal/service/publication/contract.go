@@ -12,26 +12,24 @@ import (
 type Credential struct {
 	AuthorityPublic [32]byte
 	Target          [32]byte
-	InstancePublic  [32]byte
-	// IntroductionHPKEPublic is the separate X25519 public recipient for
-	// SealedIntroduction. It is not derived from InstancePublic.
-	IntroductionHPKEPublic [32]byte
-	Generation             uint64
-	NotBefore              int64
-	NotAfter               int64
-	NetworkID              [32]byte
-	Capabilities           uint32
-	Signature              [64]byte
+	// ADR-0102 supersedes ADR-0034: the signed Credential v3 no longer carries
+	// the legacy X25519 introduction recipient. The private v3 capsule path
+	// issues its own volatile recipient keys.
+	InstancePublic [32]byte
+	Generation     uint64
+	NotBefore      int64
+	NotAfter       int64
+	NetworkID      [32]byte
+	Capabilities   uint32
+	Signature      [64]byte
 }
 
-// Config owns one publication root. LegacyFloor is read only during the C1
-// migration; publication never writes that former H3 generation file.
+// Config owns one publication root and its current generation floor.
 type Config struct {
-	Root        string
-	LegacyFloor string
-	NetworkID   [32]byte
-	Authority   ed25519.PublicKey
-	Clock       func() time.Time
+	Root      string
+	NetworkID [32]byte
+	Authority ed25519.PublicKey
+	Clock     func() time.Time
 }
 
 // PublishInput supplies one fresh, higher-generation live Instance.

@@ -37,7 +37,7 @@ func TestNetworkExtractionRehearsal(t *testing.T) {
 			t.Fatalf("Network extraction retained Application implementation %s", relative)
 		}
 	}
-	runCandidateGo(t, candidate, "test", "./cmd/ardents", "./cmd/ardents-node", "./cmd/ardents-control", "./cmd/ardents-custody", "./internal/application/broker", "./internal/application/interfacev1/...")
+	runCandidateGo(t, candidate, "test", "./cmd/ardents", "./cmd/ardents-node", "./cmd/ardents-control", "./cmd/ardents-custody", "./internal/application/broker", "./internal/application/administration", "./internal/application/connection")
 	for _, command := range strings.Fields(string(readProjectFile(t, candidate, "tests/profiles/headless-commands.txt"))) {
 		buildCandidateCommand(t, root, candidate, command, filepath.Join(t.TempDir(), filepath.Base(command)))
 	}
@@ -48,8 +48,8 @@ func TestNetworkExtractionRehearsal(t *testing.T) {
 // to the independently declared four-command Network lane.
 func extractNetworkBuildCandidate(t *testing.T, root string) string {
 	t.Helper()
-	return extractOwnedCandidate(t, root, "network", "application-interface-v1",
-		"application-interface-v2", "text-application")
+	return extractOwnedCandidate(t, root, "network", "application-administration",
+		"application-connection", "text-application")
 }
 
 func extractOwnedCandidate(t *testing.T, root string, owners ...string) string {

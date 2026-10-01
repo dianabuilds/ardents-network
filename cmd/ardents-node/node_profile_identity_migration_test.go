@@ -2,16 +2,17 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
-	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/carrier"
 )
 
-func TestNodePlanReaderNormalizesDedicatedHostProfile(t *testing.T) {
-	certificatePath, keyPath, nodeID := writeRendezvousListenCredential(t)
+func TestNodePlanReaderRefusesDedicatedHostProfilesForOldDuty(t *testing.T) {
+	certificatePath, keyPath, nodeID := writeNodeCredential(t)
 	rootA := writeNodeProfileInput(t, "source-a.pem", "source A root")
 	rootB := writeNodeProfileInput(t, "source-b.pem", "source B root")
 	for _, profile := range []string{"ardents-rendezvous-dedicated-host-v1", "h4-5-rendezvous-alpha-v1"} {
@@ -39,19 +40,15 @@ func TestNodePlanReaderNormalizesDedicatedHostProfile(t *testing.T) {
 			if err := os.WriteFile(path, raw, 0o600); err != nil {
 				t.Fatal(err)
 			}
-			runtime, err := readNodePlan(path)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if runtime.node.ResourceProfile != "ardents-rendezvous-dedicated-host-v1" {
-				t.Fatalf("normalized runtime profile = %q", runtime.node.ResourceProfile)
+			if _, err := readNodePlan(path); !errors.Is(err, errOldNodeDutyRetired) {
+				t.Fatalf("old dedicated-host profile error = %v", err)
 			}
 		})
 	}
 }
 
 func TestNodePlanSelectsClosedProfileOnlyForPinnedClosedIssuer(t *testing.T) {
-	certificatePath, keyPath, nodeID := writeRendezvousListenCredential(t)
+	certificatePath, keyPath, nodeID := writeNodeCredential(t)
 	rootA := writeNodeProfileInput(t, "source-a.pem", "source A root")
 	rootB := writeNodeProfileInput(t, "source-b.pem", "source B root")
 	plan := nodePlan{sourceServerPlan: sourceServerPlan{Schema: "ardents-node-plan-v1", StateRoot: t.TempDir(), LocalRoleStateRoot: t.TempDir(),
@@ -70,7 +67,7 @@ func TestNodePlanSelectsClosedProfileOnlyForPinnedClosedIssuer(t *testing.T) {
 		return path
 	}
 	runtime, err := readNodePlan(write())
-	if err != nil || runtime.state.AcceptedProfile != route.ClosedRouteProfile || len(runtime.state.ClosedProfileAuthority) == 0 ||
+	if err != nil || runtime.state.AcceptedProfile != carrier.ClosedRouteProfile || len(runtime.state.ClosedProfileAuthority) == 0 ||
 		runtime.node.ClosedIssuer.Root != plan.ClosedIssuer.Root || runtime.node.ClosedIssuer.AdmissionRoot != plan.ClosedIssuer.AdmissionRoot || runtime.node.ClosedIssuer.ConnectionLimit != plan.ClosedIssuer.ConnectionLimit {
 		t.Fatalf("closed issuer State configuration = %+v / %v", runtime.state, err)
 	}

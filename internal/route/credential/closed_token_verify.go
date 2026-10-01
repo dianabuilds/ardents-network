@@ -2,10 +2,23 @@ package credential
 
 import (
 	"bytes"
+	"encoding/binary"
 	"errors"
 
 	"github.com/cloudflare/circl/blindsign/blindrsa"
 )
+
+// ClosedTokenKeyID extracts the unverified key ID from a structurally framed
+// token. The caller must still verify the token against its selected context
+// and key before accepting it.
+func ClosedTokenKeyID(token []byte) ([32]byte, bool) {
+	if len(token) != closedTokenSize || binary.BigEndian.Uint16(token[:2]) != closedTokenType {
+		return [32]byte{}, false
+	}
+	var keyID [32]byte
+	copy(keyID[:], token[closedTokenKeyIDOffset:closedTokenInputSize])
+	return keyID, true
+}
 
 // VerifyClosedToken verifies one finalized RFC 9578 token against the exact
 // receiver context and State-admitted issuer SPKI. It neither persists a

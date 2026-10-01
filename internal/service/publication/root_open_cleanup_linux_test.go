@@ -25,8 +25,10 @@ func TestOpenPublicationRootJoinsReleaseFailure(t *testing.T) {
 				name, primary = floorName, "floor"
 				retained = []byte("invalid floor")
 			}
-			if err := os.WriteFile(filepath.Join(path, name), retained, 0600); err != nil {
-				t.Fatal(err)
+			if restore {
+				if err := os.WriteFile(filepath.Join(path, name), retained, 0600); err != nil {
+					t.Fatal(err)
+				}
 			}
 			calls := 0
 			root, err := openDurableRootWithLease(Config{Root: path}, func(path string) (rootLease, error) {
@@ -34,6 +36,14 @@ func TestOpenPublicationRootJoinsReleaseFailure(t *testing.T) {
 				lease, err := acquireRootLease(path)
 				if err != nil {
 					return lease, err
+				}
+				// Fault the post-acquisition claim check; unsupported roots now refuse
+				// before a lease is acquired under the v3 root contract.
+				if !restore {
+					if err := os.WriteFile(filepath.Join(path, name), retained, 0600); err != nil {
+						_ = lease.release()
+						t.Fatal(err)
+					}
 				}
 				if err := lease.file.Close(); err != nil {
 					t.Fatal(err)

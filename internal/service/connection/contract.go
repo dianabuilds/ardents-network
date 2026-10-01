@@ -3,9 +3,9 @@ package connection
 import "time"
 
 const (
-	// Profile is the only endpoint record profile accepted by native Service
-	// Connection v1. It is never negotiated or chosen by a peer.
-	Profile = "ardents-interactive-route-v2"
+	// Profile is the fixed Service Connection record profile. It is independent
+	// of the Route profile and is never negotiated or chosen by a peer.
+	Profile = "ardents-service-connection-profile-v3"
 
 	// MaximumDataBytes is a parser/allocation bound, not a product stream
 	// limit or workload contract.
@@ -20,21 +20,6 @@ type ContextInput struct {
 	InstanceGeneration                                        uint64
 	CandidateView, IsolationContext, DestinationBinding       [32]byte
 	WorkSafetyNotAfter, WorkSafetyMaximum, NoNewRecoveryAfter int64
-}
-
-// DestinationBinding is the immutable Service Name provenance that a logical
-// connection pins for its entire lifetime. It contains no Namespace record or
-// mutable resolution owner.
-type DestinationBinding struct {
-	Name             string
-	Generation       uint64
-	Revision         uint64
-	Authority        string
-	Target           [32]byte
-	ParentName       string
-	ParentGeneration uint64
-	RecordDigest     [32]byte
-	Commitment       [32]byte
 }
 
 // Recovery fixes the immutable constraints for one fresh Route Attachment.

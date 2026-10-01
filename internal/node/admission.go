@@ -4,10 +4,16 @@ import (
 	"bytes"
 	"crypto/ed25519"
 	"errors"
+	"path/filepath"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/network/state"
+	"github.com/dianabuilds/ardents-network/internal/node/forwarding"
+	"github.com/dianabuilds/ardents-network/internal/node/probe"
 	"github.com/dianabuilds/ardents-network/internal/resource"
 	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
+	"github.com/dianabuilds/ardents-network/internal/route/carrier"
 )
 
 type admissionKind byte
@@ -28,6 +34,11 @@ func resolveConfig(input Config) (runtimeConfig, error) {
 	if input.Current == nil || input.Emit == nil || input.LocalRoleStateRoot == "" {
 		return runtimeConfig{}, errors.New("node lifecycle callbacks are required")
 	}
+	roleRoot, pathErr := filepath.Abs(input.LocalRoleStateRoot)
+	if pathErr != nil {
+		return runtimeConfig{}, pathErr
+	}
+	input.LocalRoleStateRoot = roleRoot
 	if len(input.IdentityKey) != ed25519.PrivateKeySize {
 		return runtimeConfig{}, errors.New("node lifecycle identity is invalid")
 	}
@@ -39,28 +50,27 @@ func resolveConfig(input Config) (runtimeConfig, error) {
 		now = time.Now
 	}
 	var (
-		probePlan *probePlan
+		probePlan *probe.Plan
 		err       error
 	)
 	if input.Probe.ListenAddress != "" {
-		probePlan, err = newProbePlan(input.Probe, input.IdentityKey.Public().(ed25519.PublicKey), now)
+		probePlan, err = probe.NewPlan(input.Probe, input.IdentityKey.Public().(ed25519.PublicKey), now)
 		if err != nil {
 			return runtimeConfig{}, err
 		}
 	}
-	if probePlan == nil && input.Rendezvous.Certificate.PrivateKey == nil && input.Initiator.Certificate.PrivateKey == nil && input.Introduction.Certificate.PrivateKey == nil &&
-		input.Responder.Certificate.PrivateKey == nil && input.TransitIssuer.Certificate.PrivateKey == nil && input.ClosedIssuer.Certificate.PrivateKey == nil && input.ClosedForwarding.Certificate.PrivateKey == nil && input.ClosedResolution.Certificate.PrivateKey == nil && input.ClosedIntroduction.Certificate.PrivateKey == nil && input.ClosedDataJoin.Certificate.PrivateKey == nil {
+	if probePlan == nil && input.ClosedIssuer.Certificate.PrivateKey == nil && input.ClosedForwarding.Certificate.PrivateKey == nil &&
+		input.ClosedResolution.Certificate.PrivateKey == nil && input.ClosedIntroduction.Certificate.PrivateKey == nil && input.ClosedDataJoin.Certificate.PrivateKey == nil {
 		return runtimeConfig{}, errors.New("node needs one local listener profile")
+	}
+	if input.ClosedForwarding.CarrierRelayEndpoint != "" &&
+		(input.ClosedForwarding.Certificate.PrivateKey == nil || !forwarding.ValidCarrierEndpoint(input.ClosedForwarding.CarrierRelayEndpoint)) {
+		return runtimeConfig{}, errors.New("closed forwarding Carrier relay endpoint is invalid")
 	}
 	enforcePressure := input.ResourceProfile != ""
 	if enforcePressure {
 		switch input.ResourceProfile {
 		case "h3-np1-v1", "h3-s-v1", "h3-s-v1-strong":
-		case resource.RendezvousDedicatedHostProfile:
-			if probePlan != nil || input.Rendezvous.Certificate.PrivateKey == nil || input.Initiator.Certificate.PrivateKey != nil ||
-				input.Introduction.Certificate.PrivateKey != nil || input.Responder.Certificate.PrivateKey != nil || input.TransitIssuer.Certificate.PrivateKey != nil || input.ClosedIssuer.Certificate.PrivateKey != nil || input.ClosedForwarding.Certificate.PrivateKey != nil || input.ClosedResolution.Certificate.PrivateKey != nil || input.ClosedIntroduction.Certificate.PrivateKey != nil || input.ClosedDataJoin.Certificate.PrivateKey != nil {
-				return runtimeConfig{}, errors.New("functional-alpha resource profile requires only one Rendezvous duty")
-			}
 		default:
 			return runtimeConfig{}, errors.New("node resource profile is not supported")
 		}
@@ -86,7 +96,7 @@ func resolveConfig(input Config) (runtimeConfig, error) {
 	return config, nil
 }
 
-func assessAdmission(config runtimeConfig, snapshot dutyFacts) admission {
+func assessAdmission(config runtimeConfig, snapshot state.NodeDuty) admission {
 	if !snapshot.RecordPresent || snapshot.NodeID != config.NodeID {
 		return admission{kind: admissionAbsent, reason: "local Node has no accepted materialized record"}
 	}
@@ -95,29 +105,34 @@ func assessAdmission(config runtimeConfig, snapshot dutyFacts) admission {
 		return admission{kind: admissionFailed, reason: "local Node identity or key does not match verified state"}
 	}
 	now := config.now()
-	if snapshot.Profile == route.ClosedRouteProfile {
-		if _, available := closedRouteReceiver(config, snapshot, route.ClosedPurposeIssuer, now); available {
-			if err := validateClosedIssuerProfile(config.ClosedIssuer, config, snapshot, now); err != nil {
-				return admission{kind: admissionPrepared, reason: err.Error()}
-			}
-		} else if _, available := closedRouteReceiver(config, snapshot, route.ClosedPurposeForwarding, now); available {
-			if err := validateClosedForwardingProfile(config.ClosedForwarding, config, snapshot, now); err != nil {
-				return admission{kind: admissionPrepared, reason: err.Error()}
-			}
-		} else if _, available := closedRouteReceiver(config, snapshot, route.ClosedPurposeReachability, now); available {
-			if err := validateClosedResolutionProfile(config.ClosedResolution, config, snapshot, now); err != nil {
-				return admission{kind: admissionPrepared, reason: err.Error()}
-			}
-		} else if _, available := closedRouteReceiver(config, snapshot, route.ClosedPurposeIntroduction, now); available {
-			if err := validateClosedIntroductionProfile(config.ClosedIntroduction, config, snapshot, now); err != nil {
-				return admission{kind: admissionPrepared, reason: err.Error()}
-			}
-		} else if _, available := closedRouteReceiver(config, snapshot, route.ClosedPurposeDataJoin, now); available {
-			if err := validateClosedDataJoinProfile(config.ClosedDataJoin, config, snapshot, now); err != nil {
-				return admission{kind: admissionPrepared, reason: err.Error()}
-			}
-		} else {
-			return admission{kind: admissionPrepared, reason: "closed Route assignment is not locally implemented"}
+	if snapshot.Profile == carrier.ClosedRouteProfile {
+		closedRoute, err := currentClosedRoute(config, snapshot, now)
+		if err != nil {
+			return admission{kind: admissionPrepared, reason: "closed Route State is unavailable: " + boundedReason(err)}
+		}
+		stableConfig := config
+		stableConfig.CurrentClosedRoute = func() (state.ClosedRouteView, error) { return closedRoute, nil }
+		stableConfig.CurrentClosedProfile = func() (state.ClosedProfileView, bool) { return closedRoute.Profile, true }
+		stableAuthority := nodeAuthority(stableConfig)
+		purpose, available := selectClosedRole(stableAuthority, snapshot, func() time.Time { return now })
+		if !available {
+			return admission{kind: admissionPrepared, reason: closedRouteUnavailableReason}
+		}
+		var profileErr error
+		switch purpose {
+		case ardp.PurposeIssuer:
+			profileErr = validateClosedIssuerProfile(config.ClosedIssuer, stableAuthority, snapshot, now)
+		case ardp.PurposeForwarding:
+			profileErr = validateClosedForwardingProfile(config.ClosedForwarding, stableAuthority, snapshot, now)
+		case ardp.PurposeReachability:
+			profileErr = validateClosedResolutionProfile(config.ClosedResolution, stableAuthority, snapshot, now)
+		case ardp.PurposeIntroduction:
+			profileErr = validateClosedIntroductionProfile(config.ClosedIntroduction, stableAuthority, snapshot, now)
+		case ardp.PurposeDataJoin:
+			profileErr = validateClosedDataJoinProfile(config.ClosedDataJoin, stableAuthority, snapshot, now)
+		}
+		if profileErr != nil {
+			return admission{kind: admissionPrepared, reason: profileErr.Error()}
 		}
 		if snapshot.Conflicting || !snapshot.Fresh || now.Before(snapshot.EpochValidFrom) || now.Before(snapshot.RecordValidFrom) ||
 			!now.Before(snapshot.ValidUntil) || !now.Before(snapshot.RecordValidUntil) {
@@ -129,17 +144,7 @@ func assessAdmission(config runtimeConfig, snapshot dutyFacts) admission {
 		return admission{kind: admissionReady}
 	}
 	if snapshot.Profile == route.Profile {
-		if err := validateNativeDutyProfile(config, snapshot); err != nil {
-			return admission{kind: admissionPrepared, reason: err.Error()}
-		}
-		if snapshot.Conflicting || !snapshot.Fresh || now.Before(snapshot.EpochValidFrom) ||
-			now.Before(snapshot.RecordValidFrom) || !now.Before(snapshot.ValidUntil) || !now.Before(snapshot.RecordValidUntil) {
-			return admission{kind: admissionPrepared, reason: "freshness or validity is not satisfied"}
-		}
-		if err := config.CheckPlacement(); err != nil {
-			return admission{kind: admissionPrepared, reason: "resource placement is not ready: " + boundedReason(err)}
-		}
-		return admission{kind: admissionReady}
+		return admission{kind: admissionPrepared, reason: nativeRouteUnavailableReason}
 	}
 	if snapshot.Profile != "h3-role-probe-v1" || snapshot.Assignment == "" || snapshot.ProbeCapacity == 0 {
 		return admission{kind: admissionPrepared, reason: "profile or deterministic assignment is inactive"}

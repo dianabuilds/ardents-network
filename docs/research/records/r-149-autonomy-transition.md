@@ -69,7 +69,7 @@ and [threat model](../../security/threat-model.md#public-autonomy-target) first.
 Affected maintained owners are [Network State/Route/Node](../../technical/network-route-node.md),
 [naming](../../technical/naming.md), [Release/Custody](../../technical/release-update-custody.md),
 [enrollment](../../technical/enrollment-verification.md),
-[Transit acquisition](../../technical/transit-grant-acquisition.md), and
+[Transit acquisition](https://github.com/dianabuilds/ardents-network/blob/4764ae1c567e93180f3aa643b2544abfdb2a67dc/docs/technical/transit-grant-acquisition.md), and
 [alpha control](../../technical/alpha-control-transition.md).
 [Package map](../../development/package-map.md) and
 [documentation policy](../../development/documentation.md) govern ownership and promotion.
@@ -155,14 +155,14 @@ not copy issue state or schedule a competing implementation stream.
 ### Experiment
 
 The Product Owner selected the joint state/resource/time/Name feasibility check
-on 2026-09-06. The [bounded arithmetic experiment](../../../experiments/r-149-coupled-feasibility/README.md)
+on 2026-09-06. The [bounded arithmetic experiment](https://github.com/dianabuilds/ardents-network/blob/4764ae1c567e93180f3aa643b2544abfdb2a67dc/experiments/r-149-coupled-feasibility/README.md)
 predeclared its inputs and rejection criteria before execution; its results
 are summarized [below](#coupled-feasibility-result). This supplies calculations
 and counterexamples, not a running consensus or product qualification.
-The [finite operation/quorum experiment](../../../experiments/r-149-operation-invariants/README.md)
+The [finite operation/quorum experiment](https://github.com/dianabuilds/ardents-network/blob/4764ae1c567e93180f3aa643b2544abfdb2a67dc/experiments/r-149-operation-invariants/README.md)
 also evaluates task-first semantic counterexamples and five quorum configurations
 with its own predeclared criteria. The
-[temporary committee experiment](../../../experiments/r-149-task-committees/README.md)
+[temporary committee experiment](https://github.com/dianabuilds/ardents-network/blob/4764ae1c567e93180f3aa643b2544abfdb2a67dc/experiments/r-149-task-committees/README.md)
 adds predeclared selection, certificate, turnout and availability-filter checks
 on 2026-09-07. Product conformance cases remain unexecuted.
 Generated receipts stay outside the repository; only disposable calculators
@@ -566,7 +566,7 @@ inferences, not measurements or new component selections.
 
 **Status: first bounded task-first assessment completed on 2026-09-06.**
 This compares concrete operation semantics and candidate roles, with
-[reproducible finite counterexamples](../../../experiments/r-149-operation-invariants/README.md).
+[reproducible finite counterexamples](https://github.com/dianabuilds/ardents-network/blob/4764ae1c567e93180f3aa643b2544abfdb2a67dc/experiments/r-149-operation-invariants/README.md).
 It does not select a public algorithm or complete every mechanism-specific
 proof. The older native-work worksheet remains one separate example.
 
@@ -575,7 +575,7 @@ proof. The older native-work worksheet remains one separate example.
 **Sourced facts — current owners, accessed 2026-09-06:** publication already
 uses owner-scoped credentials, non-overlapping validity intervals, exact Target
 and Instance verification, per-Target durable floors, and conflict refusal.
-The [private reachability owner](../../technical/private-reachability.md#descriptor-authority-and-currentness)
+The [private reachability owner](../../technical/private-reachability.md#private-descriptor-recipient)
 specifies those checks. Node duties and Route still require current State;
 preserving local verification does not authorize bypassing that dependency.
 The [Namespace owner](../../technical/naming.md) separately requires an
@@ -770,7 +770,7 @@ proposed random temporary voters for one task, a provisional 24-hour window and
 excluding nonresponses; subsequent refinements add immutable proposals, future
 randomness, absolute thresholds, separate outcome certificates, willingness,
 readiness selection and ordered alternates. The
-[predeclared analytical experiment](../../../experiments/r-149-task-committees/README.md#results-and-disposition)
+[predeclared analytical experiment](https://github.com/dianabuilds/ardents-network/blob/4764ae1c567e93180f3aa643b2544abfdb2a67dc/experiments/r-149-task-committees/README.md#results-and-disposition)
 records exact probabilities, counterexamples and executable reproduction.
 No identity, weight, human-governance power, protocol or duration is selected.
 
@@ -1415,7 +1415,7 @@ receives a slice only after those applicable choices and acceptance cases close.
 
 **Status: analytical comparison executed on 2026-09-06; no complete public
 profile selected.** The Product Owner explicitly requested the joint check.
-The [predeclared worksheet and calculator](../../../experiments/r-149-coupled-feasibility/README.md)
+The [predeclared worksheet and calculator](https://github.com/dianabuilds/ardents-network/blob/4764ae1c567e93180f3aa643b2544abfdb2a67dc/experiments/r-149-coupled-feasibility/README.md)
 retain parameters, formulas, captured evidence, hostile counterexamples and
 falsification criteria. This is an executed arithmetic experiment; the
 C01-C26 product conformance cases below remain unexecuted.

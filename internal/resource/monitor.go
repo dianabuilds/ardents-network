@@ -36,21 +36,6 @@ type profile struct {
 }
 
 var profiles = map[string]profile{
-	RendezvousDedicatedHostProfile: {
-		name: RendezvousDedicatedHostProfile, maximumFDs: 256, maximumThreads: 64,
-		goMaxProcs: 1, goMemory: 128 << 20, exactGoMemory: true, noFile: 256, placementWait: 10 * time.Second,
-		maximumStorageBytes: 384 << 20, maximumStorageFiles: 5000,
-		maximumStorageDirectories: 5000, maximumStorageDepth: 32,
-		cgroup: map[string]string{"cpu.max": "100000 100000", "memory.high": "201326592", "memory.max": "268435456", "pids.max": "64"},
-		high: limits{cpu: 800_000, memory: 192 << 20, goMemory: 115 << 20, sockets: 16, fds: 205,
-			goroutines: 128, threads: 32, timers: 8, socketMemory: 32 << 20, storage: 320 << 20,
-			cpuPressure: 20, memoryPressure: 5, ioPressure: 1},
-		low: limits{cpu: 600_000, memory: 160 << 20, goMemory: 96 << 20, sockets: 12, fds: 154,
-			goroutines: 96, threads: 24, timers: 6, socketMemory: 16 << 20, storage: 256 << 20,
-			cpuPressure: 10, memoryPressure: 2.5, ioPressure: .5},
-		emergency: limits{memory: 240 << 20, sockets: 24, fds: 231, goroutines: 192, threads: 64,
-			timers: 16, socketMemory: 64 << 20, storage: 384 << 20},
-	},
 	"h3-np1-v1": {
 		name: "h3-np1-v1", maximumFDs: 512, maximumThreads: 256,
 		goMaxProcs: 1, goMemory: 320 << 20, noFile: 512,

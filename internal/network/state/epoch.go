@@ -2,40 +2,34 @@ package state
 
 import (
 	"fmt"
+
+	"github.com/dianabuilds/ardents-network/internal/network/epoch"
 )
 
-type candidateDecision struct {
-	epoch      epochEnvelope
-	epochBytes []byte
-	inputs     [][]byte
-	snapshot   Snapshot
-	verified   verifiedEpochDecision
-}
+const (
+	closedRouteProfile      = epoch.ProfileClosedRoute
+	closedTCPCarrierProfile = epoch.CarrierClosedTCP
+	maximumEpochBytes       = epoch.MaxEpochBytes
+	maximumRecordBytes      = epoch.MaxRecordBytes
+)
 
-func verifyDecision(config config, current *Snapshot, epochBytes []byte, inputs, materials [][]byte, requireMaterials bool) (candidateDecision, error) {
-	policy := epochPolicy{
+func verifyDecision(config config, previous *epoch.Snapshot, epochBytes []byte, inputs, materials [][]byte, requireMaterials bool) (epoch.Decision, error) {
+	policy := epoch.Policy{
 		NetworkID: config.networkID, Authorities: config.authorities,
 		Threshold: config.threshold, Profile: config.acceptedProfile, Now: config.now,
-		MaterializationIndex: config.sourceInfo.MaterialIndex,
+		MaterializationIndex: config.sourceInfo.MaterialIndex, Previous: previous,
 	}
-	if current != nil {
-		policy.Previous = &epochVerificationSnapshot{Epoch: current.Epoch, Digest: current.Digest}
-	}
-	verified, err := verifyEpochDecision(policy, epochBytes, inputs, materials, requireMaterials)
-	if err != nil {
-		return candidateDecision{}, err
-	}
-	snapshot := snapshotFromEpoch(verified.Snapshot)
-	return candidateDecision{
-		epoch:      verified.epoch,
-		epochBytes: verified.EpochBytes,
-		inputs:     verified.Inputs,
-		snapshot:   snapshot,
-		verified:   verified,
-	}, nil
+	return epoch.Verify(policy, epochBytes, inputs, materials, requireMaterials)
 }
 
-func snapshotFromEpoch(value epochVerificationSnapshot) Snapshot {
+func epochPredecessor(current *epoch.Decision) *epoch.Snapshot {
+	if current == nil {
+		return nil
+	}
+	return &epoch.Snapshot{Epoch: current.Snapshot.Epoch, Digest: current.Snapshot.Digest}
+}
+
+func snapshotFromEpoch(value epoch.Snapshot) Snapshot {
 	return Snapshot{
 		Generation: value.Generation, NetworkID: value.NetworkID,
 		Epoch: value.Epoch, Digest: value.Digest,
@@ -48,18 +42,12 @@ func snapshotFromEpoch(value epochVerificationSnapshot) Snapshot {
 		DeclaredFamily: value.DeclaredFamily, ProbeEndpoint: value.ProbeEndpoint,
 		CarrierProfile: value.CarrierProfile,
 		ProbeCapacity:  value.ProbeCapacity, Assignment: value.Assignment,
-		AssignmentDigest:                 value.AssignmentDigest,
-		DestinationResolutionNodeID:      value.DestinationResolutionNodeID,
-		DestinationResolutionProfile:     value.DestinationResolutionProfile,
-		DestinationResolutionProfileSize: value.DestinationResolutionProfileSize,
-		TransitIssuanceNodeID:            value.TransitIssuanceNodeID,
-		TransitIssuanceProfile:           value.TransitIssuanceProfile,
-		TransitIssuanceProfileSize:       value.TransitIssuanceProfileSize,
+		AssignmentDigest: value.AssignmentDigest,
 	}
 }
 
-func verifyDecisionMaterials(decision candidateDecision, materials [][]byte) error {
-	if err := decision.verified.VerifyMaterials(materials); err != nil {
+func verifyDecisionMaterials(decision epoch.Decision, materials [][]byte) error {
+	if err := decision.VerifyMaterials(materials); err != nil {
 		return fmt.Errorf("verify Candidate Materialization: %w", err)
 	}
 	return nil

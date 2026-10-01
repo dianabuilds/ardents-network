@@ -6,7 +6,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
-	"github.com/dianabuilds/ardents-network/internal/route"
+	routecarrier "github.com/dianabuilds/ardents-network/internal/route/carrier"
 	"math/big"
 	"net"
 	"testing"
@@ -31,9 +31,9 @@ func closedTokenListenerCertificate(t *testing.T) (tls.Certificate, [32]byte) {
 	return certificate, server
 }
 
-func closedTokenListenerEndpoint(t *testing.T, carrier route.CarrierProfile) string {
+func closedTokenListenerEndpoint(t *testing.T, carrier routecarrier.CarrierProfile) string {
 	t.Helper()
-	if carrier == route.ClosedCarrierQUIC {
+	if carrier == routecarrier.ClosedCarrierQUIC {
 		listener, err := net.ListenUDP("udp", &net.UDPAddr{IP: net.ParseIP("127.0.0.1")})
 		if err != nil {
 			t.Fatal(err)

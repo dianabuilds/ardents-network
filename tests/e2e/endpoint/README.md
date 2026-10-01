@@ -20,10 +20,12 @@ static enrollment roots. It proves install, explicit re-enrollment after a
 distinct v2 package and Release metadata set, removal, and purge retain Vault
 and Release-floor state outside package ownership.
 
-The alpha-control control case additionally creates an exact v3 enrolled bundle with
-an independent corpus root. It invokes `ardents-control accept-alpha-corpus`
-for one ACA2/corpus, accepts a successor serial, rejects an attempted rollback,
-and verifies that the persistent floor still resolves the successor Target.
+The alpha-control case additionally creates an exact v3 enrolled bundle with
+an independent corpus root and seeds one existing corpus floor. It invokes
+`ardents-control accept-alpha-corpus` with a previously valid signed successor,
+requires the stable retirement refusal before a control root exists, proves the
+floor bytes remain identical, and verifies that the retained predecessor Target
+still resolves.
 
 The bundle, TUF keys, and metadata are test-only and ephemeral. This is process
 evidence for the post-execution Enrollment Pin and Release Decision handoff; it

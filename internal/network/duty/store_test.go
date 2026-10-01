@@ -148,33 +148,6 @@ func TestOrdinaryInitiatorDutyDoesNotConflict(t *testing.T) {
 	}
 }
 
-func TestSpendTransitGrantRejectsReplayAfterRestart(t *testing.T) {
-	t.Parallel()
-	now := time.Unix(1_800_000_000, 0).UTC()
-	root := filepath.Join(t.TempDir(), "local-roles")
-	clock := func() time.Time { return now }
-	store, err := localroles.Open(localroles.Config{Root: root, Clock: clock, Create: true})
-	if err != nil {
-		t.Fatal(err)
-	}
-	nodeID, grantID := [32]byte{21}, [32]byte{22}
-	notAfter := now.Add(time.Hour)
-	if err := store.SpendTransitGrant(nodeID, grantID, notAfter); err != nil {
-		t.Fatal(err)
-	}
-	if err := store.Close(); err != nil {
-		t.Fatal(err)
-	}
-	store, err = localroles.Open(localroles.Config{Root: root, Clock: clock})
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer store.Close()
-	if err := store.SpendTransitGrant(nodeID, grantID, notAfter); err == nil {
-		t.Fatal("spent transit grant was accepted after restart")
-	}
-}
-
 func TestExpiredDutyIsIgnoredAndPurgedByNextWrite(t *testing.T) {
 	t.Parallel()
 	now := time.Unix(1_800_000_000, 0).UTC()
@@ -207,6 +180,39 @@ func TestExpiredDutyIsIgnoredAndPurgedByNextWrite(t *testing.T) {
 	defer store.Close()
 	if conflict, err := store.Conflict(identity, family); err != nil || conflict {
 		t.Fatalf("purged duty conflict after restart = %v, %v", conflict, err)
+	}
+}
+
+func TestReplaceRejectsDeadlineLostBySecondPrecision(t *testing.T) {
+	t.Parallel()
+	now := time.Unix(1_800_000_000, 500_000_000).UTC()
+	root := filepath.Join(t.TempDir(), "local-roles")
+	store, err := localroles.Open(localroles.Config{Root: root, Clock: func() time.Time { return now }, Create: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+
+	producer := [32]byte{1}
+	retained := localroles.Duty{Identity: [32]byte{2}, Family: [32]byte{3},
+		Class: "node-duty", State: "live", NotAfter: time.Unix(1_800_000_001, 0)}
+	if err := store.Replace(producer, []localroles.Duty{retained}); err != nil {
+		t.Fatalf("next-second duty: %v", err)
+	}
+	if conflict, err := store.Conflict(retained.Identity, retained.Family); err != nil || !conflict {
+		t.Fatalf("next-second duty conflict = %v, %v", conflict, err)
+	}
+
+	lost := localroles.Duty{Identity: [32]byte{4}, Family: [32]byte{5},
+		Class: "node-duty", State: "live", NotAfter: now.Add(250 * time.Millisecond)}
+	if err := store.Replace(producer, []localroles.Duty{lost}); err == nil {
+		t.Fatal("accepted duty whose stored second is already expired")
+	}
+	if conflict, err := store.Conflict(retained.Identity, retained.Family); err != nil || !conflict {
+		t.Fatalf("retained duty after rejection = %v, %v", conflict, err)
+	}
+	if conflict, err := store.Conflict(lost.Identity, lost.Family); err != nil || conflict {
+		t.Fatalf("rejected duty conflict = %v, %v", conflict, err)
 	}
 }
 

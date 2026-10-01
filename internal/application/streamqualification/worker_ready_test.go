@@ -17,11 +17,11 @@ func TestQualificationWorkloadWaitsForFullOpenedCreditedSet(t *testing.T) {
 	if qualificationWorkloadReady(streams, order, schedule) {
 		t.Fatal("workload started before active credit")
 	}
-	for index := 0; index < int(schedule.ActiveConnections); index++ {
+	for index := 0; index < int(schedule.OpenConnections); index++ {
 		streams[order[index]].sendCredit = frameCreditWindow
 	}
 	if !qualificationWorkloadReady(streams, order, schedule) {
-		t.Fatal("workload was not ready after full open and active credit")
+		t.Fatal("workload was not ready after full open and retained credit")
 	}
 	if qualificationWorkloadReady(streams, order[:len(order)-1], schedule) {
 		t.Fatal("workload started before full connection set")

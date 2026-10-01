@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/carrier"
 )
 
 func resolutionNodePlan(t *testing.T) nodePlan {
@@ -27,7 +27,7 @@ func TestNodePlanConnectsClosedResolutionToStateOwnedRuntime(t *testing.T) {
 		t.Fatal(err)
 	}
 	local := runtime.node.ClosedResolution
-	if runtime.state.AcceptedProfile != route.ClosedRouteProfile || !bytes.Equal(runtime.state.ClosedProfileAuthority, bytes.Repeat([]byte{0x12}, 32)) ||
+	if runtime.state.AcceptedProfile != carrier.ClosedRouteProfile || !bytes.Equal(runtime.state.ClosedProfileAuthority, bytes.Repeat([]byte{0x12}, 32)) ||
 		local.Root != plan.ClosedResolution.Root || local.AdmissionRoot != plan.ClosedResolution.AdmissionRoot || local.ConnectionLimit != 2 ||
 		local.DrainTimeout != 2*time.Second || local.Certificate.PrivateKey == nil || runtime.node.Probe.ListenAddress != "" || runtime.node.ClosedIssuer.Root != "" || runtime.node.ClosedForwarding.Root != "" {
 		t.Fatal("resolution reservation changed or bypassed current State")

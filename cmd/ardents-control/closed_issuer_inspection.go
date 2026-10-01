@@ -11,7 +11,7 @@ import (
 	"io"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/route/credential"
+	"github.com/dianabuilds/ardents-network/internal/admission"
 )
 
 // inspectClosedIssuerProfile verifies a public Node export for offline State
@@ -58,7 +58,7 @@ func inspectClosedIssuerProfile(arguments []string, output io.Writer) error {
 	if export.ProfileSHA256 != hex.EncodeToString(digest[:]) {
 		return errors.New("closed issuer export digest is invalid")
 	}
-	profile, err := credential.DecodeClosedIssuerProfile(export.Profile, key)
+	profile, err := admission.DecodeClosedIssuerProfile(export.Profile, key)
 	if err != nil || profile.NetworkID != network || profile.NodeID != node {
 		return errors.New("closed issuer profile was not verified")
 	}

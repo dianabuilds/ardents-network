@@ -15,7 +15,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/dianabuilds/ardents-network/internal/route/credential"
+	"github.com/dianabuilds/ardents-network/internal/admission"
 )
 
 var heapObservationPhases = []string{"startup", "published", "withdrawn"}
@@ -182,7 +182,7 @@ func heapCarrierMarkers(root, carrier string) ([]heapMapMarker, error) {
 	if err := json.Unmarshal(raw, &exchange); err != nil {
 		return nil, err
 	}
-	if _, err := credential.DecodePermission(exchange.Permission); err != nil {
+	if _, err := admission.DecodePermission(exchange.Permission); err != nil {
 		return nil, fmt.Errorf("%s issuer permission: %w", carrier, err)
 	}
 	slot, err := heapDescriptorSlot(exchange.Descriptor)

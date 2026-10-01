@@ -3,6 +3,8 @@ package route
 import (
 	"errors"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 )
 
 // NewClosedBootstrapForwardingChannel transfers an actual target-free
@@ -24,7 +26,7 @@ func NewClosedBootstrapForwardingChannel(lease *ClosedBootstrapLease, limits *Cl
 	}
 	return &ClosedForwardingChannel{duty: duty, deadline: owned.deadline, byteLimit: closedBootstrapLaneBytes,
 		bootstrap: owned, authorize: func(open ClosedOpen) error {
-			if open.Purpose != ClosedPurposeForwarding && open.Purpose != ClosedPurposeIssuer {
+			if open.Purpose != ardp.PurposeForwarding && open.Purpose != ardp.PurposeIssuer {
 				return errors.New("closed bootstrap private purpose is unavailable")
 			}
 			return authorize(open)

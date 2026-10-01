@@ -1,4 +1,4 @@
-// Command netem-relay is an native Rendezvous qualification-only transparent TCP relay.
+// Command netem-relay is a qualification-only bounded TCP or UDP relay.
 // It applies one fixed Linux netem rule to its own container interface before
-// forwarding a bounded test connection to the exact supplied upstream.
+// forwarding bounded traffic to the exact supplied upstream.
 package main

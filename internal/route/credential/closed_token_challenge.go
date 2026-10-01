@@ -8,12 +8,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/network/state"
+	"github.com/dianabuilds/ardents-network/internal/network/closedprofile"
 )
 
 const (
-	closedTokenType = uint16(2)
-	closedTokenSize = 354
+	closedTokenType        = uint16(2)
+	closedTokenSize        = 354
+	closedTokenInputSize   = 2 + 32 + 32 + 32
+	closedTokenKeyIDOffset = closedTokenInputSize - 32
 )
 
 // ClosedTokenContext is the exact public receiver fact set bound into one
@@ -33,7 +35,7 @@ func ClosedTokenChallenge(context ClosedTokenContext, spki []byte, nonce [32]byt
 	if context.NetworkID == [32]byte{} || context.ProfileDigest == [32]byte{} || context.ReceiverNodeID == [32]byte{} ||
 		context.IssuerNodeID == [32]byte{} || context.ReceiverDutyGeneration == 0 || context.Class < 1 || context.Class > 3 ||
 		context.WindowStart.IsZero() || context.WindowStart != context.WindowStart.UTC() || context.WindowStart.Truncate(time.Hour) != context.WindowStart ||
-		nonce == [32]byte{} || !state.ValidateClosedTokenSPKI(spki) {
+		nonce == [32]byte{} || !closedprofile.ValidateTokenSPKI(spki) {
 		return nil, nil, [32]byte{}, errors.New("closed token context is invalid")
 	}
 	issuerName := closedTokenServerName('i', context.IssuerNodeID)
@@ -52,7 +54,7 @@ func ClosedTokenChallenge(context ClosedTokenContext, spki []byte, nonce [32]byt
 	challenge = append(challenge, originName...)
 	keyID := sha256.Sum256(spki)
 	digest := sha256.Sum256(challenge)
-	input := make([]byte, 0, 98)
+	input := make([]byte, 0, closedTokenInputSize)
 	input = binary.BigEndian.AppendUint16(input, closedTokenType)
 	input = append(input, nonce[:]...)
 	input = append(input, digest[:]...)

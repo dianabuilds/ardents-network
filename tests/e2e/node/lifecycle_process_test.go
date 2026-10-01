@@ -36,12 +36,13 @@ type processCert struct {
 }
 
 type nodeProcess struct {
-	command *exec.Cmd
-	events  chan nodeEvent
-	done    chan struct{}
-	stderr  *bytes.Buffer
-	waitMu  sync.Mutex
-	waitErr error
+	command         *exec.Cmd
+	verifyPlacement func(*testing.T)
+	events          chan nodeEvent
+	done            chan struct{}
+	stderr          *bytes.Buffer
+	waitMu          sync.Mutex
+	waitErr         error
 }
 
 type nodeEvent struct {
@@ -54,7 +55,8 @@ type nodeEvent struct {
 }
 
 func TestTwoNodeProcessesRefreshWithdrawRestartAndReassign(t *testing.T) {
-	roleAddresses := [2]string{freeAddress(t), freeAddress(t)}
+	rolePorts := [2]*reservedProcessPort{reserveProcessPort(t), reserveProcessPort(t)}
+	roleAddresses := [2]string{rolePorts[0].address, rolePorts[1].address}
 	fixture := newLifecycleStateFixture(t, roleAddresses)
 	ardents := buildCommand(t, "ardents")
 	nodeBinary := buildCommand(t, "ardents-node")
@@ -74,13 +76,15 @@ func TestTwoNodeProcessesRefreshWithdrawRestartAndReassign(t *testing.T) {
 	for index := range sourceClients {
 		clientPins[index] = sourceClients[index].sourcePin
 	}
-	sourceAddresses := [2]string{freeAddress(t), freeAddress(t)}
+	sourcePorts := [2]*reservedProcessPort{reserveProcessPort(t), reserveProcessPort(t)}
+	sourceAddresses := [2]string{sourcePorts[0].address, sourcePorts[1].address}
 	var sourceServers [2]processCert
 	var stopSources [2]func()
 	for index := range 2 {
 		authority := makeAuthority(t, fmt.Sprintf("source-%d-root", index))
 		sourceServers[index] = makeLeaf(t, authority, fmt.Sprintf("source-%d.test", index), true)
 		plan := writeJSON(t, fmt.Sprintf("source-%d.json", index), sourceServerPlan(fixture, sourceRoots[index], sourceAddresses[index], sourceServers[index], sourceClientCA.root, clientPins))
+		sourcePorts[index].release(t)
 		stopSources[index] = startSource(t, nodeBinary, plan)
 		defer stopSources[index]()
 	}
@@ -108,6 +112,12 @@ func TestTwoNodeProcessesRefreshWithdrawRestartAndReassign(t *testing.T) {
 	var first [2]*nodeProcess
 	var firstReady [2]nodeEvent
 	for index := range 2 {
+		// State canonicalizes record order, so release by address, not index.
+		for _, port := range rolePorts {
+			if port.address == fixture.records[index].endpoint {
+				port.release(t)
+			}
+		}
 		first[index] = startNode(t, nodeBinary, plans[index])
 		process := first[index]
 		t.Cleanup(func() { stopProcess(process) })
@@ -275,13 +285,13 @@ func startNode(t *testing.T, binary, plan string) *nodeProcess {
 
 func startNodeCommand(t *testing.T, binary string, arguments ...string) *nodeProcess {
 	t.Helper()
-	command := exec.Command(binary, arguments...)
+	command, verifyPlacement := nodeProcessCommand(t, binary, arguments...)
 	command.Env = append(os.Environ(), "GOMAXPROCS=1", "GOMEMLIMIT=320MiB")
 	stdout, err := command.StdoutPipe()
 	if err != nil {
 		t.Fatal(err)
 	}
-	process := &nodeProcess{command: command, events: make(chan nodeEvent, 32), done: make(chan struct{}), stderr: new(bytes.Buffer)}
+	process := &nodeProcess{command: command, verifyPlacement: verifyPlacement, events: make(chan nodeEvent, 32), done: make(chan struct{}), stderr: new(bytes.Buffer)}
 	command.Stderr = process.stderr
 	if err := command.Start(); err != nil {
 		t.Fatal(err)
@@ -317,6 +327,9 @@ func waitNodeState(t *testing.T, process *nodeProcess, state string, timeout tim
 			}
 			t.Logf("Node %d event: state=%s epoch=%d assignment=%s", process.command.Process.Pid, event.State, event.Epoch, event.Assignment)
 			if event.State == state {
+				if state == "READY" && process.verifyPlacement != nil {
+					process.verifyPlacement(t)
+				}
 				return event
 			}
 		case <-process.done:
@@ -326,6 +339,9 @@ func waitNodeState(t *testing.T, process *nodeProcess, state string, timeout tim
 				}
 				t.Logf("Node %d event: state=%s epoch=%d assignment=%s", process.command.Process.Pid, event.State, event.Epoch, event.Assignment)
 				if event.State == state {
+					if state == "READY" && process.verifyPlacement != nil {
+						process.verifyPlacement(t)
+					}
 					return event
 				}
 			}

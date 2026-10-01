@@ -53,7 +53,25 @@ executable and sandbox-root identity against the selected local artifact.
 The system manager applies confinement before ExecStart. Only then can the
 fixed worker return its local HELLO. A per-job random nonce and the exact
 accepted socket instance bind the Broker's Application Principal and Local
-Grant. Worker HELLO alone is never proof of isolation on an unverified unit.
+Grant. One private Job lifecycle owns that nonce, consumes the verified Grant
+handoff, closes a rejected late Grant, retires the invocation and publishes its
+first joined cleanup result. The Context retains only the exact admission
+reservation; a replacement cannot inherit any of those Job-owned values.
+Worker HELLO alone is never proof of isolation on an unverified unit.
+
+The separate fixed qualification caller creates one private qualification Run.
+Only that Run owns its Init, progress observer, report destination, sampling
+cleanup and retained joined-stream set. An ordinary text Job creates none of
+that state; it can retain only the exact Run supplied by the qualification
+caller. A delayed completion publishes to its original Run and cannot populate
+a replacement Job's report.
+Its predeclared SHA-256 scheduled-byte corpus is binary rather than text: the
+fixed conformance window contains every byte value, including NUL and invalid
+UTF-8, and exact offset verification survives unequal fragment boundaries.
+Changed bytes, wrong offsets and a one-byte-short workload fail their existing
+worker/verdict boundaries. These checks do not change the installed launch,
+Grant, duration, connection-count or bitrate contract and do not admit another
+worker inventory.
 
 ## Required installed properties
 
@@ -63,6 +81,13 @@ required settings make the platform unavailable before Grant delivery:
 - RootDirectory points to the immutable root owned by root. It contains only
   the verified static worker executable and empty required runtime mount points.
   WorkingDirectory=/ is explicit.
+- Each normal fixed reader and Publisher template explicitly sets
+  `Slice=system.slice`. The Endpoint verifies that effective Service property
+  before Grant delivery, and accepts only the resulting direct
+  `/system.slice/<canonical-unit>` cgroup path. A template instance's implicit
+  per-template subslice, another slice, nested path or sibling never becomes
+  an accepted worker cgroup. The separate stream-qualification inventory retains
+  its selected qualification-owner slice.
 - DynamicUser=yes; no supplementary groups; CapabilityBoundingSet and
   AmbientCapabilities empty; NoNewPrivileges=yes.
 - PrivateNetwork=yes; PrivateIPC=yes; PrivateDevices=yes; PrivateTmp=yes;
@@ -180,6 +205,11 @@ Endpoint cleanup retains the original cgroup v2 `cgroup.events` descriptor
 before readiness. It rechecks the exact systemd InvocationID and fixed
 control-group stop policy, uses noninteractive `systemctl stop` with a finite
 join deadline, and verifies that the pinned subtree has no live processes.
+If manager properties are unavailable or identify another invocation, cleanup
+keeps observing the original pinned cgroup through that deadline without
+stopping the replacement. A changed invocation remains a cleanup failure even
+after the original cgroup empties; manager unavailability can be accepted only
+when the original pinned cgroup itself is observed removed.
 The [kernel populated field](https://docs.kernel.org/admin-guide/cgroup-v2.html#un-populated-notification)
 includes descendants. Removal is recognized only by `ENODEV` on that already
 verified core events file, including its seek operation; a missing pathname,
@@ -237,8 +267,16 @@ cleanup still occupies the finite context budget after its Broker lease is
 released. A cleanup failure closes text-job admission for this Endpoint
 generation, including previously idle contexts and late completions; creating
 another context cannot recover authority while an old cgroup may remain live.
-The original cleanup error survives context removal and repeated Endpoint
-close. The worker lifetime owner pins cleanup before INIT, closes the exact
+The Job owner publishes one immutable cleanup result: the original cleanup
+error survives context removal, repeated completion and repeated Endpoint
+close, while successful joined cleanup alone releases the Context reservation.
+Within one Context, shutdown likewise stops every extracted child owner and
+every Context-owned flight before joining any of them. Those owners detach
+their own state; the Context does not clear their implementation fields. The
+Job joins last, and the Context remains in the Endpoint shutdown tree until
+that final join, durable Publication retirement and the stored result complete.
+Repeated Context Close returns that same joined result.
+The worker lifetime owner pins cleanup before INIT, closes the exact
 attachment on cancellation, joins initialization and cgroup cleanup, and
 publishes one immutable completion. This ownership is not a qualified launch
 receipt and does not supply installed stop permission or a worker Grant.
@@ -285,7 +323,12 @@ length, u16 reason length, UTF-8 class[1..128] and reason[0..512]. Reasons conta
 no destination or private bytes. The current Stream close/Done/order semantics
 and typed terminal classes remain unchanged. The old AAI2 request is not
 accepted as a protected job. Conformance vectors cover accepted Link and refused Name tags,
-all boundaries, terminal outcomes and incompatible old requests.
+all boundaries, terminal outcomes and incompatible old requests. The local AAI3
+public-Interface oracle preserves each of the 256 byte values exactly once across
+unequal request and response fragments, observes the response only after the
+caller closes its input direction, and opens the owner exactly once. It exercises
+Connection transport behavior only; Administration remains with the trusted
+Endpoint owner and is neither inferred from bytes nor delegated to the caller.
 
 ## Worker exchange
 
@@ -313,6 +356,13 @@ worker bytes are at most 8 MiB. Grant credit only when the actual consumer has
 released space. Unknown kinds, wrong directions, unsolicited streams or
 credit overflow close the job and its attachment. A malformed document request is scoped to its admitted Service stream: emit one non-clean CLOSE and retain the Publisher snapshot and other streams. Stop replenishing that rejected stream; discard only already credited in-flight input until Endpoint closes it.
 
+The verified Endpoint composition, not worker INIT or worker frames, assigns
+the Service stream's checked directional byte contract. Ordinary text keeps a
+512-byte reader request and a response of at most 4 MiB plus its 13-byte
+framing; the fixed qualification caller keeps 64 MiB in each direction. The
+reader/publisher mapping is one composition contract, and a replacement Route
+Attachment continues its existing counters rather than acquiring fresh limits.
+
 After complete Service response validation the reader emits RESULT=6 on ID 2:
 status u8 and content-length u32, then bounded BYTES and EOF for that result.
 Endpoint accepts at most 4 MiB and independently checks length, UTF-8, current
@@ -334,6 +384,13 @@ initializes UI signal handling only after dispatch excludes the fixed worker
 entrypoints. This is a real local client; it does not supply a launch receipt,
 grant, authenticated State, or a replacement for protected Endpoint composition.
 
+When AAI3 refuses setup, the local client retains its bounded outcome class in
+`connection.SetupRefusalError`. The trusted command maps local cancellation and
+timeout to its existing stable diagnostics and presents every other setup
+outcome as unavailable. It does not present the refusal reason, destination,
+or Endpoint detail; cancellation or timeout takes precedence when cleanup
+joins it with another setup failure.
+
 The trusted UI imports the owner-selected file under the local owner's
 permissions and submits only its bounded snapshot through the existing
 owner-authorized Administration boundary. Endpoint's separate service account
@@ -346,7 +403,7 @@ surviving-boundary claim; testing a sibling worker does not prove otherwise.
 
 | Owner | Responsibility / permitted imports when implemented |
 |---|---|
-| internal/application/interfacev2/connection | Version-2 local Connection grammar, typed destination, bounded stream and conformance; standard library only |
+| internal/application/connection | Version-2 local Connection grammar, typed destination, bounded stream and conformance; standard library only |
 | internal/application/textdocument | Fixed text request/response, bounded snapshots and safe presentation; the version-2 Connection contract and standard library |
 | internal/endpoint | Verified installed-unit/socket identity, local job lifecycle, opaque launch receipt, Broker composition and existing Network/Service orchestration; use existing owned imports and the two selected Application contracts |
 | cmd/ardents-text | Thin trusted text UI and fixed worker entrypoints calling textdocument; standard library and the selected text/Connection owners |

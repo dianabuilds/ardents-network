@@ -3,75 +3,9 @@ package connection
 import (
 	"bytes"
 	"errors"
-	"io"
 	"sort"
 	"time"
 )
-
-func (stream *Stream) receiveApplication(receiveLimit, sendLimit uint64) error {
-	for {
-		stream.mu.Lock()
-		complete := stream.recvNext == receiveLimit && stream.sendBase == sendLimit
-		terminal := stream.terminal
-		stream.mu.Unlock()
-		if terminal != nil {
-			return terminal
-		}
-		if complete {
-			return nil
-		}
-		attachment, err := stream.attachment()
-		if err != nil {
-			return err
-		}
-		record, err := ReadStream(attachment.carrier)
-		if err != nil {
-			stream.mu.Lock()
-			complete = stream.recvNext == receiveLimit && stream.sendBase == sendLimit
-			stream.mu.Unlock()
-			if complete && (errors.Is(err, io.EOF) || errors.Is(err, io.ErrClosedPipe)) {
-				return nil
-			}
-			if recoverErr := stream.recoverAttachment(attachment); recoverErr != nil {
-				return errors.Join(errRecoveryTerminal, err, recoverErr)
-			}
-			continue
-		}
-		var generation, offset uint64
-		switch {
-		case record.Data != nil:
-			generation, offset = record.Data.AttachmentGeneration, record.Data.Offset
-		case record.Acknowledgement != nil:
-			generation, offset = record.Acknowledgement.AttachmentGeneration, record.Acknowledgement.Offset
-		case record.Terminal != nil:
-			generation, offset = record.Terminal.AttachmentGeneration, record.Terminal.Offset
-		default:
-			return ErrActiveViolation
-		}
-		if generation != attachment.generation {
-			return ErrActiveViolation
-		}
-		switch {
-		case record.Acknowledgement != nil:
-			stream.mu.Lock()
-			err = stream.acknowledgeLocked(offset)
-			stream.mu.Unlock()
-		case record.Data != nil:
-			err = stream.acceptData(record.Data, receiveLimit)
-		case record.Terminal != nil:
-			stream.mu.Lock()
-			valid := offset == stream.recvNext
-			stream.mu.Unlock()
-			if !valid {
-				return ErrActiveViolation
-			}
-			return errors.New("remote Application stream ended before the declared byte count")
-		}
-		if err != nil {
-			return err
-		}
-	}
-}
 
 func (stream *Stream) acknowledgeLocked(offset uint64) error {
 	if offset < stream.sendBase {

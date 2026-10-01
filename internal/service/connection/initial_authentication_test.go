@@ -262,7 +262,7 @@ func TestInitialAuthenticationCancellationJoinsCarrierClose(t *testing.T) {
 	ctx, cancel := context.WithCancel(config.Context)
 	config.Context = ctx
 	entered, release := make(chan struct{}), make(chan struct{})
-	config.Initial.close = func() {
+	config.Initial.close = func() error {
 		_ = local.Close()
 		select {
 		case <-entered:
@@ -270,6 +270,7 @@ func TestInitialAuthenticationCancellationJoinsCarrierClose(t *testing.T) {
 			close(entered)
 		}
 		<-release
+		return nil
 	}
 	result := make(chan error, 1)
 	go func() { _, err := NewAuthenticatedStream(config, identity); result <- err }()

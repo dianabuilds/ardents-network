@@ -41,12 +41,11 @@ type InitializeConfig struct {
 
 // RequestView is the complete public credential-request surface.
 type RequestView struct {
-	NetworkID          [32]byte
-	InstancePublic     [32]byte
-	IntroductionPublic [32]byte
-	NotBefore          int64
-	NotAfter           int64
-	Commitment         [32]byte
+	NetworkID      [32]byte
+	InstancePublic [32]byte
+	NotBefore      int64
+	NotAfter       int64
+	Commitment     [32]byte
 }
 
 // Acceptance is the public result of one exact response transition.

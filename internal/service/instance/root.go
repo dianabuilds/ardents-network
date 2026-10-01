@@ -10,7 +10,7 @@ import (
 
 const (
 	markerName = "instance-root.marker"
-	marker     = "ardents-service-instance-root-v1\n"
+	marker     = "ardents-service-instance-root-v3\n"
 	stateName  = "instance-root.json"
 	lockName   = ".instance-root.lock"
 )
@@ -35,20 +35,17 @@ func Initialize(config InitializeConfig) (*Root, error) {
 	if root.state.present() {
 		if root.state.NetworkID != config.NetworkID || root.state.NotBefore != config.NotBefore.Unix() ||
 			root.state.NotAfter != config.NotAfter.Unix() {
-			_ = root.Close()
-			return nil, ErrInvalid
+			return nil, errors.Join(ErrInvalid, root.Close())
 		}
 		return root, nil
 	}
 	state, err := generateState(config)
 	if err != nil {
-		_ = root.Close()
-		return nil, fmt.Errorf("generate Service Instance root: %w", err)
+		return nil, errors.Join(fmt.Errorf("generate Service Instance root: %w", err), root.Close())
 	}
 	if err := writeState(path, state); err != nil {
 		state.erase()
-		_ = root.Close()
-		return nil, err
+		return nil, errors.Join(err, root.Close())
 	}
 	root.state = state
 	return root, nil
@@ -65,8 +62,7 @@ func Open(path string) (*Root, error) {
 		return nil, err
 	}
 	if !root.state.present() {
-		_ = root.Close()
-		return nil, ErrInvalid
+		return nil, errors.Join(ErrInvalid, root.Close())
 	}
 	return root, nil
 }
@@ -81,13 +77,11 @@ func openPrepared(path string) (*Root, error) {
 	}
 	state, err := readState(path)
 	if err != nil && !errors.Is(err, os.ErrNotExist) {
-		_ = lock.release()
-		return nil, err
+		return nil, errors.Join(err, lock.release())
 	}
 	if err := validateRootEntries(path, state.present()); err != nil {
 		state.erase()
-		_ = lock.release()
-		return nil, err
+		return nil, errors.Join(err, lock.release())
 	}
 	return &Root{path: path, lock: lock, state: state}, nil
 }

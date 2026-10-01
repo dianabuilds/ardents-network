@@ -1,0 +1,11 @@
+**
+!Makefile
+!go.mod
+!go.sum
+!tests/
+!tests/profiles/
+!tests/profiles/**
+!scripts/
+!scripts/diagnostics/
+!scripts/diagnostics/diagnostic-*.go
+!scripts/diagnostics/install-powershell.sh

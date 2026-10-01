@@ -13,8 +13,10 @@ type Config struct {
 	Create bool
 }
 
-// Duty is one authenticated or locally retained conflict fact with a finite
-// terminal bound. Family is the canonical family digest.
+// Duty is one authenticated or locally retained conflict fact. NotAfter is the
+// terminal bound for time-held records; direct-source/live remains effective
+// until its producer replaces or removes it after joined work. Family is the
+// canonical family digest.
 type Duty struct {
 	Identity [32]byte
 	Family   [32]byte
@@ -25,22 +27,25 @@ type Duty struct {
 
 // store serializes one bounded durable generation and owns its root lease.
 type store struct {
-	mu      sync.Mutex
-	root    string
-	clock   func() time.Time
-	lease   rootLease
-	state   durableState
-	current string
-	closed  bool
-	failed  error
+	mu       sync.Mutex
+	root     string
+	clock    func() time.Time
+	lease    rootLease
+	state    durableState
+	current  string
+	closed   bool
+	failed   error
+	closeErr error
 }
 
+// durableState is the one current root format (version 2). ADR-0107 retired
+// the historical receiving one-use Transit Grant spend field; the bounded
+// version-1 conversion lives in persistence.go.
 type durableState struct {
-	Version            uint8               `json:"version"`
-	Generation         uint64              `json:"generation"`
-	Previous           string              `json:"previous,omitempty"`
-	Duties             []dutyRecord        `json:"duties"`
-	TransitGrantSpends []transitGrantSpend `json:"transit_grant_spends"`
+	Version    uint8        `json:"version"`
+	Generation uint64       `json:"generation"`
+	Previous   string       `json:"previous,omitempty"`
+	Duties     []dutyRecord `json:"duties"`
 }
 
 type dutyRecord struct {
@@ -52,16 +57,7 @@ type dutyRecord struct {
 	NotAfter int64    `json:"not_after"`
 }
 
-// transitGrantSpend is one Node-local, finite, irreversible consumption of an
-// already State-authorized transit admission capability. It has no Target,
-// Service, or client material.
-type transitGrantSpend struct {
-	NodeID   [32]byte `json:"node_id"`
-	GrantID  [32]byte `json:"grant_id"`
-	NotAfter int64    `json:"not_after"`
-}
+const maximumStateBytes = 64 << 10
 
-const (
-	maximumStateBytes         = 64 << 10
-	maximumTransitGrantSpends = 64
-)
+// durableStateVersion is the sole written schema version.
+const durableStateVersion = uint8(2)

@@ -18,6 +18,67 @@ type hostingLease struct{ file *os.File }
 func hostingPlatform() error { return nil }
 
 func acquireHostingLease(ctx context.Context, root *os.Root) (*hostingLease, error) {
+	return acquireHostingLeaseMode(ctx, root, syscall.LOCK_EX)
+}
+
+func acquireHostingLeaseMode(ctx context.Context, root *os.Root, mode int) (*hostingLease, error) {
+	file, err := openHostingLease(root)
+	if err != nil {
+		return nil, err
+	}
+	wait, cancel := context.WithTimeout(ctx, time.Second)
+	defer cancel()
+	retryDelay := time.Millisecond
+	for {
+		if err := wait.Err(); err != nil {
+			return nil, errors.Join(err, file.Close())
+		}
+		err := syscall.Flock(int(file.Fd()), mode|syscall.LOCK_NB)
+		if err == nil {
+			return &hostingLease{file: file}, nil
+		}
+		if err != syscall.EWOULDBLOCK && err != syscall.EAGAIN {
+			return nil, errors.Join(err, file.Close())
+		}
+		timer := time.NewTimer(retryDelay)
+		select {
+		case <-wait.Done():
+			timer.Stop()
+		case <-timer.C:
+		}
+		if retryDelay < 32*time.Millisecond {
+			retryDelay *= 2
+		}
+	}
+}
+
+func tryAcquireHostingReadLease(ctx context.Context, root *os.Root) (*hostingLease, bool, error) {
+	return tryAcquireHostingLease(ctx, root, syscall.LOCK_SH)
+}
+
+func tryAcquireHostingWriteLease(ctx context.Context, root *os.Root) (*hostingLease, bool, error) {
+	return tryAcquireHostingLease(ctx, root, syscall.LOCK_EX)
+}
+
+func tryAcquireHostingLease(ctx context.Context, root *os.Root, mode int) (*hostingLease, bool, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, false, err
+	}
+	file, err := openHostingLease(root)
+	if err != nil {
+		return nil, false, err
+	}
+	err = syscall.Flock(int(file.Fd()), mode|syscall.LOCK_NB)
+	if err == nil {
+		return &hostingLease{file: file}, true, nil
+	}
+	if err == syscall.EWOULDBLOCK || err == syscall.EAGAIN {
+		return nil, false, file.Close()
+	}
+	return nil, false, errors.Join(err, file.Close())
+}
+
+func openHostingLease(root *os.Root) (*os.File, error) {
 	before, err := root.Lstat("period.lock")
 	if err != nil || !before.Mode().IsRegular() {
 		return nil, errors.New("hosting lock is unavailable")
@@ -30,26 +91,7 @@ func acquireHostingLease(ctx context.Context, root *os.Root) (*hostingLease, err
 	if err != nil || !os.SameFile(before, opened) {
 		return nil, errors.Join(errors.New("hosting lock changed"), file.Close())
 	}
-	wait, cancel := context.WithTimeout(ctx, time.Second)
-	defer cancel()
-	for {
-		if err := wait.Err(); err != nil {
-			return nil, errors.Join(err, file.Close())
-		}
-		err := syscall.Flock(int(file.Fd()), syscall.LOCK_EX|syscall.LOCK_NB)
-		if err == nil {
-			return &hostingLease{file: file}, nil
-		}
-		if err != syscall.EWOULDBLOCK && err != syscall.EAGAIN {
-			return nil, errors.Join(err, file.Close())
-		}
-		timer := time.NewTimer(time.Millisecond)
-		select {
-		case <-wait.Done():
-			timer.Stop()
-		case <-timer.C:
-		}
-	}
+	return file, nil
 }
 
 func (lease *hostingLease) close() error {

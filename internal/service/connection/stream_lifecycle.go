@@ -1,54 +1,9 @@
 package connection
 
 import (
-	"context"
 	"errors"
 	"time"
 )
-
-// Run copies the exact declared byte counts in both directions, recovering
-// only through the immutable AttachmentOpener contract.
-func (stream *Stream) Run(sendCount, receiveCount uint32) (Outcome, error) {
-	defer close(stream.done)
-	stream.watchNameOrigin()
-	stop := context.AfterFunc(stream.ctx, func() { stream.fail(stream.ctx.Err()) })
-	defer stop()
-	if err := stream.establishInitialAttachment(); err != nil {
-		stream.fail(err)
-		return stream.outcome(), err
-	}
-	if stream.recovery.WorkSafetyNotAfter != 0 {
-		remaining := time.Unix(stream.recovery.WorkSafetyNotAfter, 0).Sub(stream.authorizationTime())
-		releaseTimer := acquireResource(stream.resources, "timer")
-		safetyTimer := time.AfterFunc(remaining, func() { stream.fail(errWorkSafetyExpired) })
-		defer func() {
-			safetyTimer.Stop()
-			releaseTimer()
-		}()
-	}
-	defer stream.close()
-	dataResults := make(chan error, 2)
-	ackResult := make(chan error, 1)
-	go func() { dataResults <- stream.sendApplication(uint64(sendCount)) }()
-	go func() { dataResults <- stream.receiveApplication(uint64(receiveCount), uint64(sendCount)) }()
-	go func() { ackResult <- stream.sendAcknowledgements(uint64(receiveCount)) }()
-	first := <-dataResults
-	if errors.Is(first, ErrActiveViolation) || errors.Is(first, errRecoveryTerminal) {
-		stream.fail(first)
-	}
-	second := <-dataResults
-	dataErr := errors.Join(first, second)
-	if dataErr != nil {
-		stream.fail(dataErr)
-	}
-	err := errors.Join(dataErr, <-ackResult)
-	stream.mu.Lock()
-	if err == nil {
-		err = stream.terminal
-	}
-	stream.mu.Unlock()
-	return stream.outcome(), err
-}
 
 func (stream *Stream) establishInitialAttachment() error {
 	stream.mu.Lock()
@@ -101,25 +56,6 @@ func (stream *Stream) outcome() Outcome {
 		Recoveries: stream.recoveries, ContinuityCommitment: stream.continuityCommitment()}
 }
 
-func (stream *Stream) watchNameOrigin() {
-	if stream.nameBinding == (DestinationBinding{}) {
-		return
-	}
-	go func() {
-		for {
-			select {
-			case <-stream.done:
-				return
-			case update, ok := <-stream.nameUpdates:
-				if !ok || !ContinuesNameOrigin(stream.nameBinding, update) {
-					stream.fail(errors.New("resolved Service Name binding changed"))
-					return
-				}
-			}
-		}
-	}()
-}
-
 func (stream *Stream) attachment() (*Attachment, error) {
 	stream.mu.Lock()
 	defer stream.mu.Unlock()
@@ -161,9 +97,7 @@ func (stream *Stream) failLocked(err error) (*Attachment, Application) {
 }
 
 func (stream *Stream) releaseFailure(attachment *Attachment, application Application) {
-	if attachment != nil {
-		attachment.closeCarrier()
-	}
+	stream.retireAttachment(attachment)
 	if application != nil {
 		if deadline, ok := application.(interface{ SetDeadline(time.Time) error }); ok {
 			_ = deadline.SetDeadline(time.Now())
@@ -180,10 +114,49 @@ func (stream *Stream) releaseFailure(attachment *Attachment, application Applica
 func (stream *Stream) close() {
 	stream.mu.Lock()
 	if stream.current != nil {
-		stream.current.closeCarrier()
+		stream.recordRetirementLocked(stream.current.retireCarrier())
 	}
 	stream.mu.Unlock()
 	erase(stream.continuity[:])
+}
+
+// retireAttachment performs one Attachment's exactly-once physical retirement
+// and retains its failure for the post-Done result. Callers hold no lock; the
+// performing caller alone records, so a serialized reader and the recovery
+// worker cannot duplicate one retained result (F-23).
+func (stream *Stream) retireAttachment(attachment *Attachment) {
+	if attachment == nil {
+		return
+	}
+	result, performed := attachment.retireCarrier()
+	if !performed || result == nil {
+		return
+	}
+	stream.mu.Lock()
+	stream.retirementErr = errors.Join(stream.retirementErr, result)
+	stream.mu.Unlock()
+}
+
+// recordRetirementLocked joins the result of a physical retirement this
+// caller actually performed. Callers hold stream.mu.
+func (stream *Stream) recordRetirementLocked(result error, performed bool) {
+	if !performed || result == nil {
+		return
+	}
+	stream.retirementErr = errors.Join(stream.retirementErr, result)
+}
+
+// RetirementResult returns the joined physical Attachment retirement
+// failures this Stream retained. It is meaningful once done has closed:
+// both the ordinary RunBounded path and the terminal-control tail retire
+// the current Attachment before they close done (F-23).
+func (stream *Stream) RetirementResult() error {
+	if stream == nil {
+		return nil
+	}
+	stream.mu.Lock()
+	defer stream.mu.Unlock()
+	return stream.retirementErr
 }
 
 func (stream *Stream) currentGenerationLocked() uint64 {

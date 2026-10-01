@@ -1,0 +1,60 @@
+//go:build linux
+
+package endpoint
+
+import (
+	"github.com/dianabuilds/ardents-network/internal/network/state"
+	routecarrier "github.com/dianabuilds/ardents-network/internal/route/carrier"
+	"testing"
+)
+
+// Distinct real listeners/keys are populated by startRoleNetwork before
+// any Node starts. Accepted State itself remains the explicit test seam.
+func addResponderPrefixState(source *sourceStateFixture) {
+	source.view.NodeCount, source.snapshot.CandidateCount = 15, 15
+	for index := 11; index < 15; index++ {
+		subrole := uint8(1)
+		if index >= 13 {
+			subrole = 2
+		}
+		id, record := fixtureID(byte(10+index)), fixtureID(byte(30+index))
+		source.view.Nodes[index] = state.ClosedRouteNodeView{NodeID: id, RecordDigest: record, RoleDomain: 3, Subrole: subrole, DutyGeneration: uint64(index + 1)}
+		candidate := source.snapshot.Candidates[4]
+		candidate.NodeID, candidate.RecordDigest = id, record
+		source.snapshot.Candidates[index] = candidate
+	}
+}
+
+func TestTextResponderRejectsKnownIntroductionFamiliesBeforeIssuance(t *testing.T) {
+	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP, routecarrier.ClosedCarrierQUIC} {
+		t.Run(string(carrier), func(t *testing.T) {
+			_, owner, source := startRoleNetwork(t, roleNetworkFixture{carrier: carrier, resolution: true, publisher: true})
+			if _, err := owner.openPrefix(t.Context()); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := owner.openIntroductionPrefix(t.Context()); err != nil {
+				t.Fatal(err)
+			}
+			source.mu.Lock()
+			// Each Responder member stays distinct from its own pair and issuer.
+			// Only the forbidden cross-domain observation has been introduced.
+			for i := 11; i < 15; i++ {
+				source.snapshot.Candidates[i].FamilyID = source.snapshot.Candidates[i-4].FamilyID
+			}
+			source.mu.Unlock()
+			owner.mu.Lock()
+			before := owner.tokens.Permission.Reserved
+			owner.mu.Unlock()
+			opened, err := owner.openPublisherPrefix(t.Context(), &owner.responder, 3)
+			if err == nil || opened != nil {
+				t.Error("Responder admitted a known Introduction family")
+			}
+			owner.mu.Lock()
+			after := owner.tokens.Permission.Reserved
+			owner.mu.Unlock()
+			if before != after {
+				t.Error("forbidden role consumed issuance before refusal")
+			}
+		})
+	}
+}

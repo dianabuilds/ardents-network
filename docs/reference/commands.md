@@ -5,38 +5,122 @@ implemented closed-test-network Modules. They are not a public operator API,
 installer, supported Node hosting profile, or compatibility promise for old
 plans and results, except for explicitly documented bounded migration adapters.
 
+[ADR-0117](../adr/0117-reset-closed-service-formats-to-v3.md) selects the
+current Service v3 identities and fresh-root startup. A mixed set of old and
+new Service artifacts is not a supported workflow.
+
 Every command fails closed on malformed, unavailable, or unqualified input.
 Its bounded input belongs to the owning Module; a plan is not an ambient
 configuration format or an authority source.
 
 ## `ardents`
 
+### Protected installation commands — qualification incomplete
+
+ADR-0119's successor selects `endpoint provision <request-file>`,
+`endpoint installation-check <installation-root>`,
+`endpoint start-installed <installation-root>`,
+`endpoint upgrade-installed <request-file>` and
+`endpoint recover-installed <installation-root>`. Provision, installation-check
+and start-installed are callable; upgrade and successor recovery also have
+production callers, while their complete interruption/installed qualification
+remains unfinished. Initial recovery requires an owned initial intent and complete
+fixed-file birth records; missing provenance returns repair-required rather than
+adopting leftover objects. It returns `installed-recovered-stopped`, preserving
+the separate explicit-start operation. The
+[implementation handoff](../technical/endpoint-service-runtime.md#selected-protected-installation-handoff)
+defines their bounded contract. Full supported installed qualification is still
+incomplete. Provision returns only `installed-stopped`; installation-check
+returns only `local-integrity-verified`; start-installed accepts only the actual
+fixed service main process before delegating to the bound participant plan.
+Successful upgrade returns `installed-started`, and successful successor recovery
+returns `installed-recovered-started`; neither is a Service readiness or
+publication-continuity receipt. If Root has acknowledged the installed invocation
+but subsequent completion cleanup fails, upgrade or successor recovery emits
+`installed-started-recovery-required` together with a nonzero command result.
+The exact recovery guard remains retained; the result does not establish Service
+readiness or permit ordinary restart through that guard. Upgrade requests omit
+the first-install pin.
+No generic privileged launch,
+implicit start on provision, authority-key creation or accepting test permission
+route is selected. Existing command behavior remains documented below.
+
 `ardents` is the Endpoint and Network State command adapter.
+
+For the Portable `endpoint user-unit` and `endpoint enroll` first execution,
+follow the [independently pinned Ubuntu procedure](portable-enrollment.md)
+before running the downloaded program. That procedure starts the generic
+per-user profile; the protected text Service has a separate installed
+system-manager launch boundary.
 
 | Route | Purpose |
 |---|---|
-| `accept-offline --state-root PATH --network-id HEX --authorities HEX,... --threshold N --at RFC3339 --epoch PATH --inputs PATH --materialization PATH --profile NAME` | Accept one complete authenticated offline Network State generation under the exact selected State profile. It emits one `ardents-state-event-v1` `generation-accepted` JSON event. |
+| `accept-offline --state-root PATH --network-id HEX --authorities HEX,... --threshold N --at RFC3339 --epoch PATH --inputs PATH --materialization PATH --profile NAME [--closed-profile-authority HEX] [--closed-profile PATH]` | Accept one complete authenticated offline Network State generation under the exact selected State profile. The closed Route profile requires its pinned authority even when submitted later. When `--closed-profile` is supplied, the command accepts that signed profile **after** committing the Epoch; a profile refusal does not undo the accepted generation. Success emits one `ardents-state-event-v1` `generation-accepted` JSON event, with `closed_profile_sha256` when the profile was also accepted. |
 | `accept-closed-profile --state-root PATH --network-id HEX --authorities HEX,... --threshold N --at RFC3339 --profile ardents-route-v3 --closed-profile-authority HEX --closed-profile PATH` | Submit one signed `ARDCPR03` only to an already accepted State root under its explicit pinned closed-profile signer. It neither accepts an Epoch nor contacts Source. An exact retry is harmless; a different valid digest records durable conflict and makes the closed profile unavailable. It emits one `ardents-state-event-v1` `closed-profile-accepted` JSON event containing only the State generation, Epoch and profile digest. |
-| `refresh-sources --state-root PATH --source-plan PATH [--once|--resume]` | Run one selected Direct-Origin Source wave, resume from current State, or wait for the plan-owned `ardents-source-plan-v1` refresh interval. `--once` and `--resume` are mutually exclusive. It emits an `ardents-source-event-v1` `source-wave-accepted` event only after actual acceptance. |
+| `refresh-sources --state-root PATH --source-plan PATH [--once|--resume]` | Run one selected Direct-Origin Source wave, resume from current State, or wait for the plan-owned `ardents-source-plan-v1` refresh interval. `--once` and `--resume` are mutually exclusive. The `ardents-source-event-v1` `source-wave-accepted` event is emitted only by a wave that actually ran; `--resume` merely confirms the current accepted State is readable before entering the scheduler and invents no acceptance event. |
+| `diagnostics timeline` | Read app JSON lines or journalctl JSON from standard input and stream a local timeline of Node, Source, and Endpoint events. It reads no authority root, contacts no peer, and saves no history. |
 | `service-instance initialize --config PATH` | Create or reopen one host-owned Service Instance generation from an `ardents-service-instance-initialize-v1` plan whose `request_file` names one new public output, and emit its stable public request plus `request_sha256` for the independently transferred custody ceremony. The command exposes neither private key, Service Authority, Credential, Target, Route, nor Browser state. |
 | `service-instance accept --root PATH --response PATH` | Atomically accept only the exact canonical public Authority response for that pending root. An exact repeat is harmless; malformed or different input terminally rejects/conflicts rather than replacing the generation. |
-| `ardents-text link <administration-socket>` | Explicitly present the canonical Target Link of the currently committed text publication through the private Administration socket. Refuse unavailable, uncommitted or withdrawn publication; this operation does not publish or retry. Output is owned interruptible terminal/pipe presentation and is absent from ordinary diagnostics. |
-| `endpoint headless <headless-runtime.json>` | An explicit `ardents-headless-runtime-v2` plan selects the protected text participant with the closed Route profile, an explicit `closed_profile_authority` Ed25519 public key already present in `network_authorities`, existing `service_instance_root`, distinct absolute State/Entry/local-role/publication/token roots, two sockets, and `reader_permission`/`publisher_permission` objects containing `request_path`, `response_path`, and three-class `maxima`. Both actual offline permissions must be accepted before command exposure. Legacy acquisition and corpus fields are rejected in v2. Event output must be a pollable pipe or stream socket (including the systemd journal); cancellation and bounded writes retain descriptor ownership. Full installed command qualification remains required. For persisted v1 compatibility: decode the bounded participant plan and call the Endpoint-owned runtime, which retains accepted State, Entry, separate Introduction/Responder acquisition state, and the local Application transports. An optional `service_instance_root` names an already accepted host Instance generation: the runtime reconciles its public Credential with the publication floor, opens the non-exporting binding, and consumes only State's exact Publisher attachment projection. Without that field it is User-only. It exposes only the Target-Link Connection Interface and separately capability-bound Service Administration socket; Browser presentation is absent. Network Epoch authorities are never substituted for Service Authority. A complete historical `alpha_corpus_*` triple is accepted only to restart or migrate an already persisted v1 plan, and resolves only an exact accepted `ardents-alpha://` link through that plan's local floor. |
-| `endpoint open <application-socket> <target-link> <input-file> <output-file>` | Open one explicit Target Link through the local Application Interface, half-close after streaming the exact input bytes, and create one new output file from returned bytes. The command receives no State, Entry, Grant, raw Target, or Route input. |
-| `endpoint publish <administration-socket>` | Request publication through the exact local one-use Service Administration capability and render its bounded receipt. |
+| `endpoint headless <headless-runtime.json>` | Only an explicit `ardents-headless-runtime-v2` plan selects the protected text participant. With omitted `role`, it requires the closed Route profile, an explicit `closed_profile_authority` Ed25519 public key already present in `network_authorities`, existing `service_instance_root`, distinct absolute State/Entry/local-role/publication/token roots, two sockets, and `reader_permission`/`publisher_permission` objects containing `request_path`, `response_path`, and three-class `maxima`. With omitted `role`, both actual offline permissions must be accepted before command exposure. An explicit `role: reader` requires only its own Connection principal/socket and Reader Permission, together with the same State/Source/time/Entry/local-role/token and qualified-worker inputs; it rejects nonempty Instance/Publication/Administration/Publisher inputs and opens no Administration transport. Unknown roles refuse before effects. This component selection does not establish the supported installed two-Endpoint journey. Legacy acquisition and corpus fields are rejected in v2. Event output must be a pollable pipe or stream socket (including the systemd journal); each JSON line carries `schema: ardents-headless-runtime-event-v1`, `kind`, and UTC `at` for local timeline inspection. Cancellation and bounded writes retain descriptor ownership. Full installed command qualification remains required. |
+| `endpoint open <application-socket> <target-link> <input-file> <output-file>` | Return `endpoint open is retired` before opening either file, dialing the local socket, or causing Endpoint/Network work. The AAI2 codec/server/client and exclusive Endpoint adapter are absent; no generic AAI3 translation or fallback is selected. |
+| `endpoint publish <administration-socket>` | Return `endpoint publish is retired; use ardents-text publish <administration-socket> <document-file>` before dialing the Administration socket or starting Endpoint/Network work. Use `ardents-text publish /absolute/path/to/administration.sock /absolute/path/to/document` for snapshot publication. |
 | `endpoint withdraw <administration-socket>` | Request withdrawal through the exact local one-use Service Administration capability and render its bounded receipt. A publisher plan must explicitly retain its administration listener after publication for this route. |
 | `endpoint enrollment-check <bundle-root> <manifest-sha256>` | Diagnose one already-running artifact against an independently pinned closed-alpha inventory. It does not authenticate first execution. |
-| `endpoint enroll <bundle-root> <manifest-sha256>` | Run the explicit Ubuntu Portable enrollment/start path after pin and Release Decision verification. |
-| `endpoint enroll-installed <package-enrollment.json>` | Run the explicit Ubuntu Installed enrollment/start path for one root-owned package artifact and versioned static enrollment root. |
+| `endpoint enroll <bundle-root> <manifest-sha256>` | Run the explicit Ubuntu Portable enrollment and per-user profile start. On first acceptance it verifies the pin and Release Decision before reporting `ready`; that event proves the generic local probe attachment, not protected text Service readiness. An exact current-program restart uses its retained replacement record. |
+| `endpoint enroll-installed <package-enrollment.json>` | Run the Installed enrollment and per-user profile start for one root-owned package artifact and versioned static enrollment root. Its `ready` event has the same generic attachment scope; protected text runs through the separate `endpoint headless` route. |
 | `endpoint user-unit <bundle-root> <manifest-sha256>` / `endpoint installed-user-unit <package-enrollment.json>` | Render, but never write, enable, or start, the matching `systemd --user` unit. |
 | `endpoint replace <replacement-bundle>` | Perform one explicit Ubuntu local Release-authorized replacement against the fixed user unit; it neither downloads nor schedules updates. After a preactivation staging or temporary stop refusal, rerun this same command with a still-valid bundle for the exact candidate bytes. It rechecks Release and the retained transaction; do not edit or delete replacement state manually. |
 | `endpoint replacement-recovery` | Report durable replacement recovery classification only; it never starts, replaces, or rolls back a program. An owned interrupted temporary write does not invalidate a matching committed executable; this read-only route leaves the residue untouched. Unexpected state must not be manually edited or deleted. |
 | `<journal-bound-recovery-program> endpoint rollback <replacement-bundle>` | Perform the only permitted explicit rollback: the retained predecessor, with a fresh Release authorization for its exact bytes. |
-| `entry recipient <entry-import-plan.json>` | Create or reopen the Entry-owned root as needed and print the retained public recipient key for the offline issuer. It never exports the private TLS key or mutates an Invite slot. |
-| `entry import <entry-import-plan.json>` | Import one signed State-referenced Entry Invite into Entry-owned durable replay and replacement state. It returns `wrong-recipient` without mutating that state when the signed recipient does not match the root's retained recipient identity. |
-| `name encode <name>` | Print one canonical Service Name wire encoding as lowercase hexadecimal. |
-| `name resolve <input-file> <name> <context-hex>` | Perform one private resolution exchange through the selected Namespace and State views. |
-| `name control <input-file> <operation-file> <context-hex>` | Perform one admitted private Namespace control exchange. |
+| `entry recipient <entry-import-plan.json>` | Return `entry Invite command is retired; the closed Entry set has no operator import surface` at command dispatch before interpreting the remaining arguments, reading the plan file, or creating any root. It never prints a recipient key; no Invite root reader, converter, or deleter remains (ADR-0106). |
+| `entry import <entry-import-plan.json>` | Return the same retirement refusal at command dispatch before any argument interpretation or filesystem effect. Existing Invite roots stay on disk byte-for-byte; the closed Entry set root refuses them by marker and allowed-name inspection (ADR-0106). |
+| `name encode <name>` | Return `name network command is retired; protected Service Name access is not selected` at command dispatch before interpreting the argument; ADR-0113 retired the local canonical encoder with its package. |
+| `name resolve <input-file> <name> <context-hex>` | Return `name network command is retired; protected Service Name access is not selected` at command dispatch before validating the remaining arguments, reading input, opening State, constructing or using HTTP/OHTTP transport, writing output, or changing Namespace state. |
+| `name control <input-file> <operation-file> <context-hex>` | Return the same retirement refusal at command dispatch before validating the remaining arguments or reading the operation; no control operation, Namespace mutation, migration, or fallback is selected. |
+
+The diagnostic timeline accepts the bounded runtime schemas from Node,
+Source, and the headless Endpoint. For a live local view, pipe an authorized
+journal stream into it, for example:
+
+    journalctl -f -o json | ardents diagnostics timeline
+
+Each tab-separated row is occurrence time (UTC), clock origin (event or journal),
+owner, journal process ID, role, Carrier, kind, state, and quoted bounded reason. It preserves input order.
+Old Source events without an occurrence time use the journal receipt time when
+available. Unknown schemas and unrelated journal messages are ignored; corrupt
+input records and malformed recognized categories fail without printing their
+raw content. The projection
+omits Network IDs, destinations, addresses, permission commitments, tokens,
+document bytes, and all other fields. It is a local navigation view of existing
+events, not an authority source, telemetry export, or complete Route trace.
+An Endpoint fatal return after event output is acquired adds
+`headless-runtime-failed` with a `startup` or
+`running` category. The local command error remains on stderr; the timeline
+does not include its wrapped details.
+
+`endpoint headless` refuses `ardents-headless-runtime-v1` before opening any
+plan-owned runtime resource. The exact refusal and retained-data boundary are
+defined by the
+[Endpoint startup retirement contract](../technical/endpoint-service-runtime.md#v1-startup-retirement).
+The former v1 participant process composition has been removed; refusal does
+not retain a hidden fallback or migration runtime.
+Generic `endpoint open` is separately selected for
+[effect-free retirement](../technical/endpoint-service-runtime.md#generic-connection-command-retirement).
+Service Administration remains selected and is not carried by the removed AAI2
+or by the protected text AAI3 Connection.
+The architecture inventory independently guards this exact retirement through
+the [bounded closure receipt](../development/testing.md#reachability-audit),
+whose exact scope is owned by Testing.
+
+The old Name operator network adapters have their own selected
+[retirement boundary](../technical/naming.md#name-command-family-retirement).
+ADR-0113 subsequently retired `name encode` itself and deleted the canonical
+Naming wire grammar with its package; the whole `name` verb family now
+refuses, and protected Service Name access is still not delivered. The
+command dispatch enforces the refusal, and the command-owned HTTP/OHTTP
+plan, State-view, receipt, operation, and encoder adapters are absent. ADR-0105 subsequently removed the whole
+Namespace subsystem and its never-command-exposed custody operations; an old
+Namespace root stays on disk untouched with no read path at all.
 
 The current State and source event schemas are coordinated C0 command outputs:
 there is no H3 reader or compatibility window. Resource observations are
@@ -51,18 +135,37 @@ the independently delivered manifest pin argument.
 
 ## `ardents-node`
 
-`ardents-node issuer initialize --config PATH` performs the owner-only bootstrap
-of one durable purpose-scoped Transit Grant issuer root. It emits only the
-stable public profile receipt; the retained root contains no Network State root
-key. Repeating the exact initialization reopens the same public binding.
+`ardents-node hosting initialize --config PATH` accepts a canonical
+`ardents-hosting-initialization-v1` plan and initializes the host-owned Resource
+policy root for one provider period. Later Node plans reopen that root; they
+cannot replace its policy.
 
-`ardents-node issuer serve --config PATH` runs only that initialized issuer
-under its exact current `transit-issuance` State assignment. It accepts no
-parallel native duty reservation, rechecks the State-selected issuer,
-Initiator, profile, epoch, and deadline, and withdraws when that binding ceases
-to be current.
+The accepted
+[old-start retirement contract](../technical/network-route-node.md#old-start-retirement)
+selects refusal of the old Node reservations, Source
+`native_rendezvous_profile`, and Transit issuer initialize/serve before their
+first root, key, listener, supervisor, or Network effect. It preserves the
+separately named closed duties, closed Source profile, and closed issuer.
+The Node-reservation, Source-profile, and Transit issuer start command gates
+are integrated. The retired dedicated-host Contributor subcommand is removed
+entirely (ADR-0114): `contributor` is no longer a recognized command shape and
+fails with the standard usage error before any effect.
 
-The closed-profile issuer variant instead uses the closed_issuer stanza with
+`ardents-node issuer initialize --config PATH` recognizes the bounded legacy
+`ardents-transit-issuer-initialize-v1` schema only to return
+`old Transit issuer start is retired`. That refusal follows bounded plan decode
+and precedes path validation, identity-key access, root creation and output.
+It does not convert, erase or reopen an existing Transit issuer root.
+
+`ardents-node issuer serve --config PATH` rejects a legacy `transit_issuer`
+reservation through the old-duty gate before plan-owned keys, certificates,
+State roots, issuer roots or listeners are opened. Its issuer validator accepts
+only one isolated `closed_issuer` runtime. The old Node-side Transit signer,
+listener, Handler, and mutable root ledger are absent. Existing root bytes are
+left untouched; no command reopens or migrates them. The signed-profile decoder
+and one-use client remain solely for the separate Endpoint acquisition path.
+
+The retained closed-profile issuer uses the `closed_issuer` stanza with
 an initialized signing root and a separate, existing owner-only admission_root
 for receiving Control-token spends, plus connection_limit and drain_timeout_ms.
 Both paths must be clean absolute paths and cannot identify the same root.
@@ -72,26 +175,42 @@ these local storage paths confer no network authority. Missing admission
 storage makes startup unavailable.
 `ardents-node source --config PATH` runs one selected Direct-Origin Source
 server from an `ardents-source-server-v1` input and emits
-`ardents-source-event-v1` after its State view is ready.
+`ardents-source-event-v1` after its State view is ready. A terminal background
+or cleanup failure after readiness emits `source-failed` with only the bounded
+`background-work` or `cleanup` reason; the full error remains on stderr. Plan
+and State admission refusals still emit no runtime event.
+The retained `native_rendezvous_profile` field identifies old input only and
+returns `old Source profile is retired` after bounded schema recognition,
+before trust-map validation, root or key access, listener bind, output or
+Network work. Combining it with current profile fields receives the same
+refusal and cannot fall back.
 For the selected closed Route, the Source input specifies
 `state_profile: "ardents-route-v3"` and `state_profile_authority`, an Ed25519
 public key in hex already pinned by `authority_public`. Unsupported profiles,
-mixed legacy selection, missing or foreign pins are refused. These Source-only
+missing or foreign pins are refused. These Source-only
 fields cannot override a Node's duty-selected profile. The Source distributes
 signed Epoch evidence; this does not distribute the separate closed profile
 or qualify Node duties.
 
 `ardents-node node --config PATH` runs one separately keyed Node process from
-an `ardents-node-plan-v1` input. It
-owns one admitted native duty, pressure reaction, drain, withdrawal, and joined
-cleanup; lifecycle JSON uses `ardents-node-event-v1`. On Linux, `SIGTERM` and
-the foreground interrupt request that local withdrawal before process exit.
-An arbitrary Node config is not a supported Node operating profile. A config
-file is a bounded Node-owned input, not a general Node configuration contract. The Rendezvous,
-Initiator, Introduction and Responder stanzas must set their finite
-`admission_timeout_ms`: it bounds TLS
-and binding admission only, is capped by the current State expiry, and has no
-implicit default or retry/fallback behavior.
+an `ardents-node-plan-v1` input. The schema remains shared with current closed
+duties, but the old `rendezvous`, `initiator`, `introduction`, `responder`, and
+`transit_issuer` reservations return `old Node duty reservation is retired`
+after bounded plan recognition and before any plan-owned key, certificate,
+Source root, State root, listener, resource, or duty effect. A mixed old and
+closed plan receives the same refusal; omission never selects an old default or
+a closed fallback. The retained old stanza fields identify refused input. The
+Rendezvous, Initiator, Responder, Introduction, and Transit-issuance engines and
+their command composition are absent. Their plan stanzas remain only so the
+adapter can classify and refuse bounded input; none is a runnable command
+profile.
+
+A current closed Node process owns one admitted duty, pressure reaction, drain,
+withdrawal, and joined cleanup; lifecycle JSON uses
+`ardents-node-event-v1`. On Linux, `SIGTERM` and foreground interrupt request
+local withdrawal before process exit. An arbitrary Node config is not a
+supported Node operating profile; the bounded config cannot override State's
+duty selection.
 
 The generation-3 forwarding reservation is `closed_forwarding`, containing
 only an existing owner-only receiving-spend `root`, `connection_limit` (1–16)
@@ -114,23 +233,14 @@ listener opens. The stanza accepts no endpoint, peer, role, profile digest or
 verification/storage callback. Descriptor lookup and publication use actual
 Control admission and the durable Store; this configuration alone does not
 establish Publisher readiness or private Introduction registration.
-The Rendezvous stanza may additionally set `listen_loopback_override` only to
-a literal loopback IP with the same numeric port as the authenticated
-State-advertised Rendezvous candidate. This is an operational bind adapter for
-a host-owned byte-transparent Carrier relay: State remains the sole owner of
-the advertised endpoint, identity, digest, Epoch, and Carrier profile. A
-hostname, unspecified or non-loopback address, zero/out-of-range port, or port
-mismatch is rejected. Omitting the field retains the State endpoint as the
-listener and does not change existing plan behavior.
 
-On Linux, `ardents-node contributor` exposes the complete
-`ardents-rendezvous-dedicated-host-v1` dedicated-host lifecycle: `apply`, `diagnose`,
-`restart`, `drain`, `withdraw`, and confirmed `remove`. It accepts no other
-duty or system-service operation. The exact prerequisites, authenticated
-bundle, commands, limits, diagnostics, update recovery, and residue contract
-are in the [Rendezvous Contributor runbook](rendezvous-contributor.md). The
-surface is accepted only for the project-qualified dedicated-host Functional
-Alpha; it is not a public Contributor offer or a capacity/availability claim.
+The retired dedicated-host Contributor subcommand (`apply`, `restart`,
+`diagnose`, `drain`, `withdraw`, `remove`) is removed entirely by ADR-0114: no
+live `ardents-rendezvous-contributor` installation remains, the owned-shutdown
+obligation of ADR-0089 has no object, and `internal/contributor` with its
+runbook is deleted. A `contributor` argument is no longer a recognized command
+shape and fails with the standard usage error before any platform, filesystem,
+supervisor, or Network effect.
 
 ## `ardents-custody`
 
@@ -142,8 +252,10 @@ Application data stream.
 |---|---|---|
 | `create-service-authority` | `--vault-root PATH` plus exact environment, Network, and Authority-root public commitments | Reads a new password and confirmation only from the terminal, generates the Service Authority inside custody, and emits its opaque record ID, public Authority, derived Target, and identity commitment. |
 | `issue-service-credential` | `--vault-root PATH --record ID --request PATH --response PATH` plus the exact public Service Authority binding | Before opening the Vault or asking for its password, requires the Custodian to type the lowercase `request_sha256` transferred independently from the requesting host. A mismatch fails without password entry, response, record, or floor mutation. The supported issuer additionally limits one Credential to 24 hours and its terminal horizon to 48 hours. It then writes the monotonic public response to the explicit new file and emits its deterministic encrypted successor record ID. An exact retry returns the same response; a different request cannot advance the stale record. |
+| `create-admission-authority` | `--vault-root PATH --environment-commitment HEX --network-commitment HEX --root-commitment HEX` | Creates a separate interactive admission Authority in Custody and emits its record ID, identity commitment, and public key as `ardents-admission-authority-v1`. |
+| `issue-admission-permission` | `--vault-root PATH --record ID --request PATH --permission-output PATH --environment-commitment HEX --network-commitment HEX --root-commitment HEX --kind admission --id-commitment HEX` | Requires the Custodian to enter the independently transferred request SHA-256 before opening the Vault or asking for its password. After verifying the exact admission Authority binding, writes the private permission to the explicit owner-only destination without replacing different bytes and emits a public receipt with only the permission digest. |
 | `inspect-envelope` | `--envelope PATH` | Validates and prints only canonical public envelope facts as `ardents-custody-inspection-v1`. It owns no Vault root and cannot create custody state. |
-| `verify-record` | `--vault-root PATH --record ID --environment-commitment HEX --network-commitment HEX --root-commitment HEX --kind service|name --id-commitment HEX` | Reads one password from an interactive no-echo terminal, verifies one active encrypted record against exact public commitments, and prints bounded non-secret facts as `ardents-custody-verification-v1`. |
+| `verify-record` | `--vault-root PATH --record ID --environment-commitment HEX --network-commitment HEX --root-commitment HEX --kind service|name|admission --id-commitment HEX` | Reads one password from an interactive no-echo terminal, verifies one active encrypted record against exact public commitments, and prints bounded non-secret facts as `ardents-custody-verification-v1`. |
 | `export-recovery-bundle` | Exact vault record, public Authority commitments, and output Bundle path | Reads the record secret only from the terminal, writes a separately passworded Bundle, and test-restores it before success. |
 | `restore-recovery-bundle` | Empty destination Vault, public commitments, Bundle path | Reads the Bundle password from the terminal and writes only an `authority-locked` quarantine record. |
 | `purge-record` | Exact vault record, public commitments, and terminal confirmation | Deletes only the exact verified encrypted record after explicit confirmation while retaining the Authority floor. |
@@ -155,11 +267,12 @@ are owned by [Custody](../technical/release-update-custody.md) and
 file, changing a Target, or deleting state is not a command-level recovery
 procedure.
 
-The custody command deliberately exposes no Service recovery activation,
-reconciliation without a Namespace witness, or Namespace signing route. A
-restored Service Authority remains locked and issuance-unavailable; a restored
-Name Authority remains locked until a separate fresh opaque Namespace witness
-is implemented and verified.
+The custody command deliberately exposes no Service recovery activation. A
+restored Service Authority remains locked and issuance-unavailable. ADR-0105
+retired the never-exposed Namespace signing, submission, and reconciliation
+operations along with the subsystem itself; a restored Name Authority record
+remains inspectable, verifiable, exportable, and purgeable through the
+generic record commands, and no Namespace witness or activation route exists.
 
 The completed `ardents-release-custody` and `ardents-state-custody` local
 ceremony commands have no maintained routes. ADR-0067 retires their current
@@ -170,18 +283,31 @@ historical evidence.
 
 `ardents-control` is a separate alpha-control program. It never starts an
 Endpoint, downloads bytes, changes Release/Network State roots, or turns an
-alpha name into canonical Namespace state.
+alpha name into any canonical Naming state. It has no current two-Endpoint
+qualification intake; the retained routes below own their own explicit inputs
+and inspection roots.
 
 | Route | Required flags | Result |
 |---|---|---|
 | `inspect-bundle` | `--enrollment PATH --artifact PATH --state-root PATH --at RFC3339` | Participant closed-alpha route. It first verifies the exact enrolled bundle and artifact, then runs the maintained Release Decision, Network State, ACA1 catalog, and Release/Network/Compatibility component verifiers. The named standalone inspection root owns separate `catalog`, `release`, and `network` floor children and is physically distinct from Endpoint state. Repeating the same accepted input against the same inspection root reports the cached/no-update outcome; a second absent inspection root supplies an independent fresh observation. |
 | `inspect-transitions` | `--enrollment PATH --artifact PATH --state-root PATH --at RFC3339` | Participant transition diagnostic. It runs the same enrollment-pinned inspection and emits `ardents-alpha-transition-report-v1`: nested exact closed-alpha control evidence plus independent Release Safety, Network Epoch, Compatibility, and Namespace-materialization outcomes. It advances only the explicitly named standalone inspection floors; it never mutates Endpoint state. `not-selected` for Namespace never creates a close, release, reclaim, or current Namespace state. |
-| `inspect-alpha-corpus` | `--catalog PATH --corpus PATH --disclosure-key HEX --corpus-key HEX --network HEX --at RFC3339` | Read-only diagnostic for one explicit ACA2 catalog and separately signed Alpha Name Corpus under independent keys. It accepts no Endpoint state root, never opens or observes a persistent floor, and reports `ardents-alpha-corpus-report-v1`; invalid, expired, or wrong-network input fails without state mutation. |
-| `accept-alpha-corpus` | `--enrollment PATH --artifact PATH --control-state-root PATH --corpus-state-root PATH --catalog PATH --corpus PATH --at RFC3339` | First verifies the exact enrollment-v3-or-later bundle, its enrolled Endpoint executable, and that the running platform-specific `ardents-control` file is the exact separately manifested companion. It then accepts the fixed ACA1 Release/Network/Compatibility evidence and verifies the independently pinned ACA2/corpus component before advancing only the named Endpoint-local corpus floor. An exact repeat is harmless; a higher serial replaces the retained corpus, while a lower or same-serial-different input fails. It reports `ardents-alpha-corpus-acceptance-v1`. |
 | `inspect-closed-issuer-profile` | `--profile PATH --node-key HEX --network HEX --node HEX` | Read-only offline inspection of the JSON public export from closed `ardents-node issuer initialize`. Verifies its schema, digest, Node signature and independently supplied Network/Node bindings. Reports `ardents-closed-issuer-inspection-v1`, including `NetworkID`, `IssuerNodeID`, `NotBefore`, `NotAfter` and `TokenKeys` in closed-profile-plan form. It does not accept State or decide current validity; future hourly keys may be provisioned before activation. |
 | `prepare-closed-profile` | `--plan PATH --output PATH` | Render the canonical unsigned `ARDCPR03` body from a bounded public plan into a new file. |
+| `prepare-qualification-evidence` | `--plan PATH --output-root PATH` | Prepare the mutually bound initial unsigned Release/Network/Compatibility payloads and ACS1 signing inputs under ADR-0120. Absolute public plan and previously absent absolute output root; no signatures, State acceptance or participant floor mutation. |
+| `prepare-qualification-catalog` | `--plan PATH --output-root PATH` | Prepare the initial unsigned ACA1 signing input from exact component references. Absolute public plan and previously absent absolute output root; referenced bytes and their authorities remain separately verified. |
+| `prepare-qualification-node-record` | `--plan PATH --output-root PATH` | Prepare the existing unsigned ARNR-v2 message for a fresh generation-one closed Node Record with its own public key and explicit Node identity. No Node signature, duty or State acceptance. |
+| `prepare-qualification-epoch` | `--plan PATH --output-root PATH` | Verify every supplied initial closed Node Record and prepare the existing unsigned AREP-v3 initial Epoch commitments/assignments. State signing keys are separate from Node keys; no State signature, acceptance or floor reset. |
 | `sign-closed-profile` | `--plan PATH --authority-key PATH --output PATH` | Reread the exact public plan and sign only `ARDCPR03` with the owner-only PKCS#8 Ed25519 State-authority file; write a new file and report its digest without printing key or profile bytes. |
 | `inspect-closed-profile` | `--plan PATH --profile PATH --authority HEX --at RFC3339` | Read-only verification of the signed profile against the independently pinned State authority and exact Network/Epoch/time context. Durable State acceptance is separate. |
+
+The historical exact `accept-alpha-corpus` and `inspect-alpha-corpus` routes
+are omitted from usage and each returns `<route> is retired` before parsing
+arguments or opening an enrollment input, artifact, catalog, corpus, control
+root, inspection root, or corpus floor. Neither creates a new root nor changes
+retained floor bytes, and no ACA2 verifier remains in the tree
+([ADR-0110](../adr/0110-retire-aca2-corpus-inspection.md)). The
+[Endpoint Alpha destination retirement contract](../technical/endpoint-service-runtime.md#alpha-destination-retirement)
+owns the wider existing-link and retained-data boundary.
 
 The caller-keyed low-level `inspect` route and the always-unqualified future
 `inspect-public-control` projection are not maintained command routes. Their
@@ -196,11 +322,21 @@ unchanged in the accepted ADRs, research records, external evidence, and Git
 history; they are not current command compatibility promises.
 
 None of these routes launches a browser, opens a Service, chooses a Relay/Gateway, or
-makes an `ardents-alpha://` link a public DNS/HTTPS address. The acceptance
-route retains only supplied bytes after its checks; it does not fetch or
-install an Endpoint.
+makes an `ardents-alpha://` link a public DNS/HTTPS address. The retired intake
+route retains no supplied bytes: it refuses before parsing arguments or opening
+files and does not fetch or install an Endpoint. The Endpoint has no accepting
+Alpha destination adapter: the historical prefix receives `alpha service link
+is retired` before a retained corpus-floor read, resolver/network work, or any
+Target-Link fallback.
 
 ## Trusted text UI and workers
+
+`ardents-text link /absolute/path/to/administration.sock` explicitly presents
+the canonical Target Link of the currently committed text publication through
+the private Administration socket. It refuses an unavailable, uncommitted, or
+withdrawn publication; it neither publishes nor retries. The output is an
+interruptible terminal or pipe presentation and is absent from ordinary
+diagnostics.
 
 The local client command is `ardents-text read /absolute/path/to/connection.sock`.
 Use Linux terminal or pipe input/output; non-interruptible descriptors are refused.
@@ -225,9 +361,15 @@ The trusted publication client is
 On Linux it imports the selected regular UTF-8 file without following symlinks,
 rejects changing or oversized input, and sends only its bounded snapshot to the
 Administration owner. It returns success only after the owner confirms committed
-publication; it emits no document or path and does not retry. The current
-Endpoint Administration owner refuses this extension until protected snapshot
-publication is connected. Client/transport conformance is separate evidence.
+publication, including the actual Descriptor acknowledgement. It emits no
+document or path and does not retry. The Endpoint Administration owner launches
+the fixed Publisher worker with that snapshot and retains the publication after
+the command returns. Obtain its Target Link with `ardents-text link
+/absolute/path/to/administration.sock`; withdraw through `ardents endpoint
+withdraw /absolute/path/to/administration.sock`. These commands require the
+running text participant and its separately accepted Administration permission.
+Component conformance and installed journey results remain separate evidence;
+command success does not establish full host qualification.
 
 The installed `worker-reader` and `worker-publisher` entrypoints accept no
 additional arguments. They perform their descriptor audit and fixed worker

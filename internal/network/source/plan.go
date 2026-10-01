@@ -25,8 +25,10 @@ type Source struct {
 // Config declares the complete finite Direct-Origin Source plan. Acquisition
 // is either absent or exactly two fully declared sources. Serving is absent or
 // a complete mutually authenticated endpoint. New copies PEM, certificates,
-// and digest slices; a partially configured half or a material index outside
-// its bound is rejected.
+// and digest slices; any declared field requires its complete half, and a
+// material index outside its bound is rejected. VerificationClock and
+// MaterialIndex alone do not declare acquisition or serving. Addresses use a
+// literal IP and nonzero numeric TCP port.
 type Config struct {
 	Sources           [2]Source
 	ClientCertificate tls.Certificate
@@ -88,7 +90,7 @@ func New(input Config, authorities map[[32]byte]ed25519.PublicKey) (*Plan, Detai
 	if input.MaterialIndex >= 64 {
 		return nil, Details{}, errors.New("source materialization index exceeds its bound")
 	}
-	if input.Sources[0].Address != "" || input.Sources[1].Address != "" {
+	if acquisitionDeclared(input) {
 		if input.VerificationClock == nil {
 			return nil, Details{}, errors.New("source verification clock is required")
 		}
@@ -96,7 +98,7 @@ func New(input Config, authorities map[[32]byte]ed25519.PublicKey) (*Plan, Detai
 			return nil, Details{}, err
 		}
 	}
-	if input.ServeAddress != "" {
+	if servingDeclared(input) {
 		if input.VerificationClock == nil {
 			return nil, Details{}, errors.New("source verification clock is required")
 		}
@@ -108,6 +110,32 @@ func New(input Config, authorities map[[32]byte]ed25519.PublicKey) (*Plan, Detai
 		plan.details.Serving = true
 	}
 	return plan, plan.details, nil
+}
+
+func acquisitionDeclared(input Config) bool {
+	if input.OrderSeed != [32]byte{} || certificateDeclared(input.ClientCertificate) {
+		return true
+	}
+	for _, declared := range input.Sources {
+		if declared.Address != "" || declared.ServerName != "" || declared.Identity != [32]byte{} ||
+			declared.Family != "" || declared.EndpointHandle != "" || len(declared.RootPEM) != 0 ||
+			declared.LeafKeyDigest != [32]byte{} {
+			return true
+		}
+	}
+	return false
+}
+
+func servingDeclared(input Config) bool {
+	return input.ServeAddress != "" || certificateDeclared(input.ServeCertificate) ||
+		len(input.ServeClientRootPEM) != 0 || len(input.ServeClientKeyDigests) != 0 ||
+		input.ServeHeaderTimeout != 0
+}
+
+func certificateDeclared(certificate tls.Certificate) bool {
+	return len(certificate.Certificate) != 0 || certificate.PrivateKey != nil || certificate.Leaf != nil ||
+		len(certificate.OCSPStaple) != 0 || len(certificate.SignedCertificateTimestamps) != 0 ||
+		len(certificate.SupportedSignatureAlgorithms) != 0
 }
 
 // Fetch performs one bounded authenticated request through a configured source.

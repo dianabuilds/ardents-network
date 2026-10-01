@@ -113,10 +113,14 @@ func readHostingFile(root *os.Root, name string, maximum int64) ([]byte, error) 
 }
 
 func readHostingState(root *os.Root) (hostingState, error) {
-	var state hostingState
 	if _, err := root.Lstat("period.pending"); !errors.Is(err, os.ErrNotExist) {
-		return state, errors.New("hosting state has an unfinished write")
+		return hostingState{}, errors.New("hosting state has an unfinished write")
 	}
+	return readCommittedHostingState(root)
+}
+
+func readCommittedHostingState(root *os.Root) (hostingState, error) {
+	var state hostingState
 	raw, err := readHostingFile(root, "period.json", 16<<10)
 	if err != nil {
 		return state, err

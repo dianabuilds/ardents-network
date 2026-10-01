@@ -74,6 +74,14 @@
       "invalid_environment": "not applicable"
     },
     {
+      "id": "fixture-network-linux",
+      "state": "active",
+      "make_target": "fixture-network-test",
+      "surface": "bounded two-host qualification fixture command and Route selection",
+      "prerequisites": ["Linux host"],
+      "invalid_environment": "the selected Linux fixture-command environment is unavailable"
+    },
+    {
       "id": "heapdump-capture",
       "state": "active",
       "make_target": "heapdump-capture",
@@ -120,8 +128,8 @@
       "state": "active",
       "make_target": "headless-check",
       "surface": "headless Network command build, bounded process journey, and enrollment-v3 artifact inventory",
-      "prerequisites": ["local process execution", "POSIX artifact shell with mktemp, install, sha256sum, GNU tar, gzip, cmp, ln, find, and hard-link-capable temporary storage"],
-      "invalid_environment": "headless command build, artifact shell, or local process prerequisites unavailable"
+      "prerequisites": ["Linux x86-64 host", "local process execution", "POSIX artifact shell with mktemp, install, sha256sum, GNU tar, gzip, cmp, ln, find, and hard-link-capable temporary storage"],
+      "invalid_environment": "selected Linux host, headless command build, artifact shell, or local process prerequisites unavailable"
     },
     {
       "id": "race",
@@ -174,22 +182,6 @@
       "prerequisites": ["POSIX shell with id, mktemp, and rm", "unprivileged Docker client with a reachable daemon", "preinstalled golang:1.26.8 image", "local Go 1.26.8 toolchain and populated immutable module cache"],
       "invalid_environment": "the selected Linux/Docker Service Credential response profile is unavailable",
       "timeout": "2m"
-    },
-    {
-      "id": "native-rendezvous-multihost",
-      "state": "active",
-      "make_target": "qualification-native-rendezvous-multihost",
-      "surface": "two-host native Rendezvous qualification",
-      "prerequisites": ["Windows host", "literal project VPS IP", "matching SSH key", "free public high port and two remote-loopback Source ports", "remote Docker host networking", "pre-existing golang:1.26.8 image"],
-      "invalid_environment": "the selected Windows-to-VPS native Route qualification environment is unavailable"
-    },
-    {
-      "id": "alpha-control-two-endpoints",
-      "state": "active",
-      "make_target": "qualification-alpha-control-two-endpoints",
-      "surface": "two fresh unprivileged Ubuntu Endpoints observing one exact immutable alpha-control bundle",
-      "prerequisites": ["clean Windows qualification checkout", "exact immutable Linux amd64 release archive and all independently fixed archive, enrollment, artifact, cohort, release, and time inputs", "previously absent external evidence directory", "literal project VPS IPv4 address and matching root-capable SSH account", "Ubuntu 22.04 x86_64 host with preinstalled POSIX shell, coreutils, tar, and setpriv"],
-      "invalid_environment": "the selected Windows-to-Ubuntu two-fresh-Endpoint alpha-control qualification environment is unavailable"
     }
   ],
   "suite_roots": [

@@ -5,16 +5,19 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/dianabuilds/ardents-network/internal/network/epoch"
 	"github.com/dianabuilds/ardents-network/internal/network/source"
 )
 
 type sourceResult struct {
 	index        int
 	slot         int
-	decision     candidateDecision
+	decision     epoch.Decision
 	observations [4]byte
 	err          error
 }
+
+var errSourceObjectMismatch = errors.New("source response object identity mismatch")
 
 // Refresh waits for the complete two-source wave and accepts its highest valid state.
 func (s *networkState) Refresh(ctx context.Context) (Snapshot, error) {
@@ -53,15 +56,18 @@ func (s *networkState) Refresh(ctx context.Context) (Snapshot, error) {
 		s.mu.Unlock()
 		return Snapshot{}, err
 	}
+	if err := s.checkSourceExposureCapacity(); err != nil {
+		s.mu.Unlock()
+		return Snapshot{}, err
+	}
 	s.refreshing = true
 	s.work.Add(1)
 	defer s.work.Done()
-	current, currentDecision := s.current, s.currentDecision
+	current := s.current
 	order, deadline, err := s.startSourceWave(now)
 	s.mu.Unlock()
 	if err != nil {
-		s.finishRefresh()
-		return Snapshot{}, err
+		return Snapshot{}, errors.Join(err, s.finishRefresh())
 	}
 
 	waveContext, cancel := context.WithDeadline(ctx, deadline)
@@ -85,7 +91,7 @@ func (s *networkState) Refresh(ctx context.Context) (Snapshot, error) {
 		}
 		launched++
 		go func(sourceIndex int) {
-			results <- s.fetchAndVerify(waveContext, sourceIndex, current, currentDecision)
+			results <- s.fetchAndVerify(waveContext, sourceIndex, current)
 		}(index)
 	}
 	for range launched {
@@ -94,23 +100,23 @@ func (s *networkState) Refresh(ctx context.Context) (Snapshot, error) {
 	return s.completeSourceWave(now, current, observed)
 }
 
-func (s *networkState) fetchAndVerify(ctx context.Context, index int, current *Snapshot, currentDecision *candidateDecision) sourceResult {
+func (s *networkState) fetchAndVerify(ctx context.Context, index int, current *epoch.Decision) sourceResult {
 	observations := [4]byte{}
 	resultIndex, outcomeIndex := index, index
 	response, err := s.fetchSource(ctx, index, source.Message{
-		Operation: "latest", NetworkDigest: networkIdentityDigest(s.config.networkID),
+		Operation: "latest", NetworkDigest: source.NetworkDigest(s.config.networkID),
 		MaterialIndex: s.config.sourceInfo.MaterialIndex,
 	})
-	if err != nil && !isZero32(response.ObjectDigest) {
+	if err != nil && response.ObjectDigest != [32]byte{} {
 		observations[index] = classifySourceOutcome(err)
 		fallback := 1 - index
 		if startErr := s.beginDigestAttempt(fallback, response.ObjectDigest); startErr != nil {
 			return failedSourceResult(index, outcomeIndex, observations, startErr)
 		}
 		requestedDigest := response.ObjectDigest
-		resultIndex, outcomeIndex = fallback, 2+fallback
+		resultIndex, outcomeIndex = fallback, digestAttemptSlot(fallback)
 		response, err = s.fetchSource(ctx, fallback, source.Message{
-			Operation: "by-digest", NetworkDigest: networkIdentityDigest(s.config.networkID), ObjectDigest: response.ObjectDigest,
+			Operation: "by-digest", NetworkDigest: source.NetworkDigest(s.config.networkID), ObjectDigest: response.ObjectDigest,
 			MaterialIndex: s.config.sourceInfo.MaterialIndex,
 		})
 		if terminalErr := s.finishDigestAttempt(fallback, err == nil); terminalErr != nil {
@@ -123,19 +129,20 @@ func (s *networkState) fetchAndVerify(ctx context.Context, index int, current *S
 	if err != nil {
 		return failedSourceResult(resultIndex, outcomeIndex, observations, err)
 	}
-	bundle, err := decodeSourceBundle(response.Payload)
+	bundle, err := source.DecodeBundle(response.Payload)
 	if err != nil {
 		return failedSourceResult(resultIndex, outcomeIndex, observations, err)
 	}
-	decision, err := s.verifySourceBundle(bundle, current, currentDecision)
+	decision, err := s.verifySourceBundle(bundle, current)
 	if err != nil {
 		return failedSourceResult(resultIndex, outcomeIndex, observations, err)
 	}
 	if err := s.rejectDecisionSourceCollisions(decision); err != nil {
 		return failedSourceResult(resultIndex, outcomeIndex, observations, err)
 	}
-	if response.ObjectDigest != decision.epoch.digest {
-		return failedSourceResult(resultIndex, outcomeIndex, observations, errors.New("source header digest disagrees with its authenticated Epoch"))
+	if response.ObjectDigest != decision.Header.Digest {
+		return failedSourceResult(resultIndex, outcomeIndex, observations,
+			fmt.Errorf("%w: source header digest disagrees with its authenticated Epoch", errSourceObjectMismatch))
 	}
 	observations[outcomeIndex] = sourceOutcomeValid
 	return sourceResult{index: resultIndex, slot: outcomeIndex, decision: decision, observations: observations}
@@ -143,7 +150,7 @@ func (s *networkState) fetchAndVerify(ctx context.Context, index int, current *S
 
 func validateByDigestResponse(requested, returned [32]byte) error {
 	if requested != returned {
-		return errors.New("BY_DIGEST source returned a different object")
+		return fmt.Errorf("%w: BY_DIGEST source returned a different object", errSourceObjectMismatch)
 	}
 	return nil
 }
@@ -162,4 +169,14 @@ func (s *networkState) fetchSource(ctx context.Context, index int, request sourc
 		return response, sourceStatusError(response.Status)
 	}
 	return response, nil
+}
+
+func (s *networkState) finishRefresh() error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	defer func() { s.refreshing = false }()
+	if s.closed || s.terminalErr != nil {
+		return nil
+	}
+	return s.releaseSourceWaveLocked()
 }

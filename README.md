@@ -47,7 +47,7 @@ For maintained C0 work, read in this order:
    [network/route/node](docs/technical/network-route-node.md),
    [endpoint/service](docs/technical/endpoint-service-runtime.md),
    [private reachability](docs/technical/private-reachability.md),
-   [Transit Grant acquisition](docs/technical/transit-grant-acquisition.md),
+   [private admission](docs/technical/private-admission.md),
    [enrollment verification](docs/technical/enrollment-verification.md),
    [release/update/custody](docs/technical/release-update-custody.md), or
    [alpha-control transitions](docs/technical/alpha-control-transition.md);

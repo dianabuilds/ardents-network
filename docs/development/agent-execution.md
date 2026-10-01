@@ -17,19 +17,22 @@ GitHub Issues in the C0 milestone own delivery state; this file is not a ledger.
 4. Preserve the existing worktree and index. Record source and evidence identity
    at a checkpoint; never restore, clean or reset mixed work to simplify a task.
 
-## One active implementation slice
+## Active implementation slices
 
-Terra owns implementation, diagnosis, verification and authorized Git/PR work.
-It resolves routine questions independently from current owners and code. Astra
-reviews completed bounded changes and consequential unresolved design gaps;
-it is not an approval checkpoint for routine steps or individual test failures.
-Before escalating, Terra checks the authoritative sources and supplies the
-specific unresolved contradiction, evidence and a reviewable proposal.
+The assigned implementer owns implementation, diagnosis, verification and
+authorized Git/PR work, and resolves routine questions from current owners and
+code. Review covers completed bounded changes and consequential unresolved
+design gaps; it is not an approval checkpoint for routine steps or individual
+test failures. Before escalating, the implementer checks authoritative sources
+and supplies the specific contradiction, evidence and a reviewable proposal.
+Assignments belong to the active task, not to model names in repository policy.
 
 A component needed by another issue can be implemented earlier within the
 accepted contract. Record that dependency in the owning issue and dependency
 map. This does not waive the predecessor's acceptance obligations or permit
-multiple active implementations.
+implementations beyond the two explicitly selected tasks permitted by AGENTS.md.
+Each implementer retains one active slice with separate ownership and a worktree
+or branch.
 
 Keep one concrete next result. If a defect blocks it, diagnose and repair that
 owner before adding another feature. An exhausted observation timeout does not
@@ -68,7 +71,7 @@ and the owning GitHub record, within the user's authorized publication scope:
 Use distinct states: in progress, verified locally, awaiting integration, and
 accepted/integrated. Do not use an invented completion percentage or count code
 changes as a delivered user journey. Keep the parent plan consistent with the
-single active child.
+active child assigned to that implementer.
 
 Do not publish raw captures, local secrets or sensitive operational details.
 If automatic approval review rejects a write, report the exact action and

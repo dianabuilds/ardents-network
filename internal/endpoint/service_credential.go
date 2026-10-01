@@ -1,16 +1,18 @@
+//go:build linux
+
 package endpoint
 
 import (
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/service/publication"
+	servicepublication "github.com/dianabuilds/ardents-network/internal/service/publication"
 )
 
 // Credential is the Authority-signed public delegation owned by publication.
 // The alias preserves this temporary adapter's product vocabulary while M9
 // replaces the former serviceconn owner.
-type publicationCredential = publication.Credential
+type publicationCredential = servicepublication.Credential
 
 func validateCredential(value publicationCredential, authority, network [32]byte, at time.Time, capability uint32) error {
-	return publication.Validate(value, authority, network, at, capability)
+	return servicepublication.Validate(value, authority, network, at, capability)
 }

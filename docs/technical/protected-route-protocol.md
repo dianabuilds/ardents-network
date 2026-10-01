@@ -3,7 +3,11 @@
 Status: **closed successor design contract**; authenticated generation 3,
 profile name `ardents-route-v3`. It is the one construction for the
 [selected workload](../product/protected-service-workload.md).
-It does not change the current generation-2 implementation until migration.
+The maintained tree already contains closed v3 Node duties, Carrier/ARDP
+owners, and the protected Endpoint's v3 composition. This contract does not
+claim that their combined installed C0 journey has been qualified. Retained
+generation-2 records and readers have separate retirement or migration
+obligations; they do not define a fallback Route.
 
 ## Carrier, cryptography and information flow
 
@@ -93,6 +97,10 @@ of the complete signed record. The closed State verifier owns acceptance and
 returns an immutable verified profile; credential code consumes its narrow
 issuer/key/permission projection, never an unchecked raw-profile callback.
 
+The pinned closed State itself has one accepted envelope: new closed Epochs
+are admitted only as AREP v3, and a retired v1/v2 envelope is refused with a
+typed error before any durable effect (ADR-0111).
+
 `ardents-control prepare-closed-profile` renders only this canonical unsigned
 body from a bounded public plan. `sign-closed-profile` rereads that plan, uses
 one owner-only PKCS#8 Ed25519 State-authority file, and writes a new profile
@@ -109,7 +117,7 @@ data join=4, resolution=5 and issuance=6. Adjacent/interior use one of the three
 adjacent Domains Initiator (1), Responder (3) and Introduction (4); Rendezvous (2) is never adjacent. Delivery uses Introduction; data join/resolution/issuance use
 Rendezvous. The issuer entry is the sole issuance subrole. Current Node Records
 supply the exact address, Ed25519 key, family and selected Carrier; their digest,
-identity, assignment and duty must match. No address/key is duplicated in this
+identity, assignment and duty must match: the State verifier joins each entry's Role-Domain to the assignment the accepted Epoch gives that record's family, refusing an unknown or mismatched assignment before durable acceptance and on every read-back (ADR-0103). No address/key is duplicated in this
 profile. Subroles refine existing Role Domains; they do not create new ones.
 Node Record schema 2 retains its canonical byte layout, but this generation
 requires one of the two successor Carrier identifiers above. Schema 1 and the
@@ -164,6 +172,10 @@ The source owner serializes terminal OPEN allocation with emission order and
 retains a separate reader, credit and deadline for each child. The retained
 Entry/Interior framing reapplies its original parent deadline to its own CREDIT;
 a completed child's payload deadline cannot poison later parent consumption.
+Source child CREDIT likewise uses the child's admitted lifetime rather than
+the deadline left by a completed inner payload write. This does not extend
+payload write authority; a changed write deadline still interrupts CREDIT
+already using the physical writer and retains any resulting write failure.
 Waiting for the physical writer or payload credit remains bounded by the exact
 payload deadline, including concurrent deadline updates. Updating a deadline
 still interrupts an already active physical frame. Cancellation removes
@@ -172,6 +184,10 @@ CREDIT may finish within the earlier of its original write deadline and the
 same one-second cleanup bound; later deadline updates cannot extend that bound.
 A received complete next-peer CLOSE retires queued forwarding work independently
 of downstream delivery, while physical write failures remain terminal errors.
+The reverse copier may join that CLOSE after the dispatcher selects a child
+frame but before emission starts. That terminal witness retires the selected
+unemitted work without failing the shared parent; generic transport loss does
+not supply it, and an existing physical write retains its error.
 A local child or parent deadline also retires reverse receive authority. Late
 frames for that owner consume no new queue reservation and cannot invalidate
 other owners sharing the physical Node Carrier. The shared reader checks that
@@ -192,6 +208,19 @@ through the same terminal path as explicit Close before notifying Endpoint.
 Endpoint observes that completed retirement before new private work; it keeps
 the context's source members, allocation and exact pending-batch binding.
 Retirement never creates another bootstrap allowance or starts an idle refill.
+Endpoint retains that live Source and any in-progress opening in one concrete
+lifecycle owner. Other local operations receive only a read-only handle bound
+to the exact published opening; retirement invalidates it before joined Route
+cleanup, so a retained consumer cannot act through a retired or replacement
+prefix. Opening completion publishes only while its exact reservation remains
+current. A late completion closes its own result without changing replacement
+state, retained members, allocation, deadline, or bootstrap-batch count.
+Descriptor lookup takes a separate exact Source acquisition for its one Control
+exchange. Its completion must still match the live Source and lookup operation
+before verified proof or conflict-floor state is committed. Stop, cancellation
+or Source replacement invalidates that acquisition; releasing it cannot release
+or revive the replacement. Descriptor publication and JOIN retain their current
+separate consumers until their bounded ownership slices.
 An idle Publisher checks an incoming capsule's independently selected current
 Rendezvous and control-family separation without opening a Source. Only an
 accepted capsule may prepare Source/Responder forwarding. Source readiness and
@@ -199,7 +228,10 @@ ordinary token issuance share a cancellable context-local operation reservation;
 Descriptor acknowledgement and Service streams do not hold it. Admission,
 registration and publication revalidate their own authority after waiting for
 actual issuance instead of treating another valid issuer operation as lost
-publication authority. Existing pending batches and finite allocations remain
+publication authority. A private local pair lifecycle makes a Registration
+current only after the Descriptor ACK is revalidated, preserves the monotonic
+durable Publication/Instance floors on failure, and rejects every late commit
+after the withdrawal drain barrier. Existing pending batches and finite allocations remain
 unchanged. A cancelled waiter cannot release the active operation's reservation.
 During explicit reader resolution or scheduled publication, Endpoint ensures
 an unspent forwarding token is available per retained Source receiver for the
@@ -221,6 +253,13 @@ child, but withdrawal/expiry joins all children before closing the Carrier.
 This is finite reuse of useful-work setup, with no reserved Service Connection.
 The pool and its session borrowers share one physical close operation and retain
 its original result; concurrent withdrawal joins that same close.
+An in-flight dial occupies the same finite pool bound as a retained Carrier.
+One opening or retirement operation may own a directed pair; a caller for the
+same key waits with its own cancellation context, while unrelated ready keys
+may acquire and release. A changed binding waits for that pair operation, then
+revalidates before replacing its prior incarnation. The dial and State revalidation run outside the pool mutex. A changed binding,
+withdrawal, failed revalidation, or late result closes the unpublishable
+Carrier; Close waits for owned in-flight dials before its retained close result.
 The outer HELLO lifetime is bounded by the current signed profile and receiving
 State/duty bounds, independently of the first child's ten-second handshake.
 The initial HELLO/ACCEPT exchange and sending a new OPEN use a separate
@@ -267,21 +306,44 @@ For a joined stream, a late CREDIT may become unnecessary after the exact outer
 lane receives CLOSE(0). Discard only an unemitted CREDIT: the outer lane's
 monotonic physical-attempt count must be unchanged across the entire encoded
 write. An already counted outer write may finish between observations; the
-final observation requires no active writer, no local close, no parent failure,
-and no earlier failed physical write. Keep the reader and its bounded reservation alive to consume
+final observation requires no active writer, no parent failure and no earlier
+failed physical write. A concurrent local close may appear only after this
+attempted CREDIT itself returned EOF from the already authenticated CLOSE(0);
+the caller checks that exact result. A local close before the attempt returns
+its own closure error and cannot become peer success. Keep the reader and its bounded reservation alive to consume
 already accepted inner records and validate their terminal. Raw EOF, refusal,
 partial output and missing inner completion cannot become document success.
 For a wholly unemitted local JOIN CLOSE, the outer-lane cleanup witness counts all non-CREDIT physical attempts across the entire encoded write. A concurrent CREDIT may exist at the initial observation, but the final observation requires no active write, an unchanged count, actual CLOSE(0), no local close or parent failure, and no earlier failed physical write of any kind. Only then may joined parent retirement discharge that CLOSE. Refusal, partial output and failed CREDIT remain failures; cleanup grants no payload success.
 A registered Publisher may maintain one Introduction prefix and one data-role
 prefix as finite publication readiness. These count as publication background
 work; no unvisited Service is kept ready by an idle User. Publication refresh
-may renew this readiness; an idle User's expired prefix never self-refills.
+may renew this readiness; an idle User's expired prefix never self-refills. One
+private refresh lifecycle owns its single scheduler, coalesced wake-up and
+joined stop result. Repeated Descriptor acknowledgements or wake-ups cannot
+create another scheduler or move the original refresh and expiry bounds; stop
+prevents any subsequent network attempt. Separately, one private Introduction
+lifecycle owns the exact live prefix, its in-progress
+opening and joined retirement. Registration and refresh use its read-only exact
+handle; cancellation or retirement invalidates that handle before cleanup, so
+a late opening or registration cannot attach to a replacement. This lifecycle
+does not close or recreate the sibling Source or Responder owners.
+The Responder has its own exact-handle lifecycle with the same isolation: a
+failed or cancelled opening cannot publish a usable prefix or close the sibling
+Introduction or borrowed Source. Publisher JOIN retains an acquisition for the
+exact admitted Responder handle and Source issuer until joined transport cleanup.
 
 A forwarding-channel admission reserves its own aggregate byte/time budget
 and permits at most 256 simultaneous work lanes and two reserved control lanes
 within that reserve. Each
 child has its own next-recipient admission. An additional child cannot multiply
 its parent's allowance. Under
+
+While a selected child waits for downstream HELLO/ACCEPT, its BYTES, CREDIT,
+EOF and CLOSE stay in the parent's existing bounded queue accounting. The
+reader may serve lane-zero control and another eligible child; no unaccounted
+asynchronous forwarding queue exists. CLOSE cancels and joins that pending
+child only before releasing its lane reservation.
+
 [ADR-0085](../adr/0085-bound-forwarding-replenishment.md), replenishment
 changes only the parent's remaining byte reserve: after the complete
 post-initial ADMIT has been debited, it becomes exactly 32 MiB rather than an
@@ -435,8 +497,14 @@ queues remain within the admission owner's 64 MiB ceiling.
 A slow lane cannot block reading another lane's bounded control/termination.
 
 Schedule one at-most-16-KiB frame per ready lane in round-robin order. Reserve
-a separate 16 KiB/channel control queue and service it before data, with
-control-rate admission to prevent priority flooding.
+a separate 16 KiB/channel control queue. Give a newly available control frame
+first service, then one already queued data frame before another control frame,
+with control-rate admission to prevent priority flooding or data starvation.
+An authenticated terminal that becomes ready while another control is already
+physically active may take the next service before queued data so the active
+frame cannot strand teardown. That terminal consumes the one priority turn:
+one queued data frame precedes every further terminal or control frame. This is
+scheduling only and changes neither wire kind nor control/data accounting.
 The receiving-duty governor reserves that 16 KiB for each admitted channel
 inside its existing 64 MiB total before admitting data. Forward and reverse
 control frames share this reservation, including their complete headers;
@@ -666,6 +734,16 @@ durably marked. Source does not await JOIN acknowledgement before delivering
 the capsule. Publisher independently validates the capsule and opens its
 Responder prefix before JOIN. Existing end-to-end Service authentication must
 complete before Application data is exposed.
+An Endpoint Connection admits each initial or recovery JOIN through one exact
+Source acquisition. Its recipient check, HELLO presentation and final stream
+transfer all refer to that acquisition; Source replacement or job loss refuses
+a late completion rather than rebinding it. Failed completion joins any returned
+stream and releases only the acquisition. Successful completion transfers both
+the joined stream and acquisition to the Service transport until its joined
+close. This changes no JOIN bytes, secrets, authority or recovery state, and the
+Publisher continues to use its separately owned Responder prefix through an
+exact lifecycle handle; retirement or replacement refuses a late JOIN instead
+of rebinding it.
 Introduction keys and slots live for 600 seconds, with refresh at 300 seconds.
 The predecessor accepts already bounded capsules for at most 60 seconds after
 a replacement, never past its original signed expiry. Each delivery nonce has
@@ -707,9 +785,11 @@ The Publisher also enables Application work only after its receiving checks;
 no early Application Data is introduced. Retain every existing signature, MAC,
 role, offset, exporter and nonce check. The Connection owner returns an opaque
 verified initial-state result to its stream lifecycle, never a caller-provided
-established flag. Current generation 2 retains its old sequential composition
-until migration; this generation-3 schedule changes no record encoding or
-cryptographic primitive. The model's one Service-authentication RTT includes
+established flag. The protected Endpoint calls the coalesced
+`NewAuthenticatedStream`; the older sequential `NewStream` remains a shared
+initializer but has no independent non-test production caller in this tree.
+This generation-3 schedule changes no record encoding or cryptographic
+primitive. The model's one Service-authentication RTT includes
 this initial Continuity exchange. Later recovery keeps its retained continuity
 authentication and original authority.
 

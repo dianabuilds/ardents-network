@@ -13,7 +13,6 @@ import (
 // existing authenticated Terminal record at its exact logical offset; it is a
 // normal half-close rather than an exact-workload failure.
 func (stream *Stream) RunBounded(sendLimit, receiveLimit uint32) (Outcome, error) {
-	stream.watchNameOrigin()
 	stop := context.AfterFunc(stream.ctx, func() { stream.fail(stream.ctx.Err()) })
 	var releaseSafety func()
 	tail := false
@@ -26,8 +25,10 @@ func (stream *Stream) RunBounded(sendLimit, receiveLimit uint32) (Outcome, error
 		if releaseSafety != nil {
 			releaseSafety()
 		}
-		close(stream.done)
+		// Done closes only after the current Attachment's physical retirement
+		// so a waiter joining Done observes the complete retirement result (F-23).
 		stream.close()
+		close(stream.done)
 	}()
 	if err := stream.establishInitialAttachment(); err != nil {
 		stream.fail(err)
@@ -234,13 +235,25 @@ func (stream *Stream) receiveApplicationBounded(limit uint64) error {
 		record, err := ReadStream(attachment.carrier)
 		if err != nil {
 			stream.mu.Lock()
+			if stream.postClose && stream.tailRetiring {
+				stream.mu.Unlock()
+				return nil
+			}
+			if stream.postClose && errors.Is(err, ErrAttachmentRetired) {
+				stream.tailRetiring = true
+				stream.cond.Broadcast()
+				stream.mu.Unlock()
+				stream.signalAcknowledgement()
+				return nil
+			}
 			writingTerminal := stream.terminalReplaying || stream.terminalWriting
 			stream.mu.Unlock()
 			if writingTerminal && stream.opener != nil {
 				// Recovery owns the failed carrier. Closing it here releases a
 				// serialized write so its worker can perform the one coordinated
-				// replacement instead of leaving both workers blocked.
-				attachment.closeCarrier()
+				// replacement instead of leaving both workers blocked. The
+				// performing caller alone retains the result (F-23).
+				stream.retireAttachment(attachment)
 			}
 			stream.mu.Lock()
 			for writingTerminal && (stream.terminalReplaying || stream.terminalWriting) && stream.terminal == nil {
@@ -362,6 +375,10 @@ func (stream *Stream) receiveApplicationBounded(limit uint64) error {
 func (stream *Stream) sendBoundedAcknowledgements() error {
 	for {
 		stream.mu.Lock()
+		if stream.postClose && stream.tailRetiring {
+			stream.mu.Unlock()
+			return nil
+		}
 		if stream.terminal != nil {
 			err := stream.terminal
 			stream.mu.Unlock()
@@ -423,6 +440,13 @@ func (stream *Stream) sendBoundedAcknowledgements() error {
 			}
 			if confirmation && stream.current == attachment {
 				stream.terminalConfirmationSent = true
+			}
+			if confirmation && stream.localTerminal && offset == stream.terminalOffset {
+				// A later duplicate receipt can make the current confirmation
+				// pending again after this worker exits. Keep proof of this
+				// successful write for the same logical Terminal across replay.
+				stream.terminalConfirmationWrittenGeneration = attachment.generation
+				stream.terminalConfirmationWrittenOffset = offset
 			}
 			stream.mu.Unlock()
 		}

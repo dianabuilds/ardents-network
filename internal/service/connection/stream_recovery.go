@@ -47,7 +47,7 @@ func (stream *Stream) recoverAttachment(failed *Attachment) error {
 	state := ContinuityExchange{Key: stream.continuity, Generation: generation, SendBase: stream.sendBase,
 		SendEnd: stream.sendEnd, ReceiveNext: stream.recvNext}
 	stream.mu.Unlock()
-	failed.closeCarrier()
+	stream.retireAttachment(failed)
 
 	var last error
 	for {
@@ -91,9 +91,7 @@ func (stream *Stream) recoverAttachment(failed *Attachment) error {
 		complete := stream.finishRecoveryIfCompleteLocked()
 		stream.mu.Unlock()
 		if complete {
-			if attachment != nil {
-				attachment.closeCarrier()
-			}
+			stream.retireAttachment(attachment)
 			cancel()
 			releaseTimer()
 			return nil
@@ -104,12 +102,12 @@ func (stream *Stream) recoverAttachment(failed *Attachment) error {
 				state.Role = RolePublisher
 			}
 			state.Context, state.ExporterCommitment = attachment.context, attachment.exporterCommitment
-			stopContinuity := context.AfterFunc(attempt, attachment.closeCarrier)
+			stopContinuity := context.AfterFunc(attempt, func() { stream.retireAttachment(attachment) })
 			peer, exchangeErr := ExchangeContinuity(attempt, attachment.carrier, state)
 			if !stopContinuity() {
 				// Join a cancellation callback that may still own the proposed
 				// carrier before deciding whether this Attachment can transfer.
-				attachment.closeCarrier()
+				stream.retireAttachment(attachment)
 			}
 			if attemptErr := attempt.Err(); attemptErr != nil {
 				err = attemptErr
@@ -119,7 +117,7 @@ func (stream *Stream) recoverAttachment(failed *Attachment) error {
 				err = stream.commitAttachment(failed, attachment, peer)
 			}
 			if err != nil {
-				attachment.closeCarrier()
+				stream.retireAttachment(attachment)
 			}
 		}
 		cancel()

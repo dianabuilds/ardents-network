@@ -2,10 +2,10 @@ package architecture
 
 import (
 	"encoding/json"
-	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -25,8 +25,13 @@ type testSuiteRoot struct {
 
 func TestPackageProfileMembershipIsComplete(t *testing.T) {
 	root := repositoryRoot(t)
-	actual := listedPackages(t, root, "./cmd/...", "./internal/...")
+	actual := listedPackages(t, root, "./cmd/...", "./internal/...", "./tests/epochfixture/network")
 	deterministic := listedProfilePackages(t, root, "tests/profiles/deterministic-packages.txt")
+	if runtime.GOOS == "linux" {
+		for path := range listedProfilePackages(t, root, "tests/profiles/deterministic-linux-packages.txt") {
+			deterministic[path] = true
+		}
+	}
 	for packagePath := range actual {
 		_, inDeterministic := deterministic[packagePath]
 		if !inDeterministic {
@@ -49,14 +54,19 @@ func TestEndToEndPackageProfileMembershipIsComplete(t *testing.T) {
 func TestProcessProfileSerializesPackagesSharingLoopbackResources(t *testing.T) {
 	root := repositoryRoot(t)
 	makefile := string(readProjectFile(t, root, "Makefile"))
-	if !strings.Contains(makefile, "e2e:\n\tgo test -p 1 $(PROCESS_PACKAGES) -shuffle=on -count=1") {
-		t.Fatal("process profile does not serialize packages that allocate loopback listener addresses")
+	for _, command := range []string{
+		"go test -p 1 $(filter-out $(NODE_PROCESS_PACKAGES),$(PROCESS_PACKAGES)) -shuffle=on -count=1",
+		"$(NODE_PROCESS_TEST_COMMAND) test -p 1 $(NODE_PROCESS_PACKAGES) -shuffle=on -count=1",
+	} {
+		if !strings.Contains(makefile, command) {
+			t.Fatal("process profile does not serialize packages that allocate loopback listener addresses")
+		}
 	}
 }
 
 func TestProfilePackageEntriesAreCurrent(t *testing.T) {
 	root := repositoryRoot(t)
-	actual := listedPackages(t, root, "./cmd/...", "./internal/...", "./tests/e2e/...")
+	actual := listedPackages(t, root, "./cmd/...", "./internal/...", "./tests/e2e/...", "./tests/epochfixture/network")
 	for _, path := range []string{
 		"tests/profiles/deterministic-packages.txt",
 		"tests/profiles/process-packages.txt",
@@ -66,6 +76,32 @@ func TestProfilePackageEntriesAreCurrent(t *testing.T) {
 				t.Errorf("profile %s contains non-current package %s", path, packagePath)
 			}
 		}
+	}
+}
+
+// The Linux-only inventory is explicit, never inferred by dropping build errors.
+func TestLinuxOnlyProfileNamesActualPlatformPackages(t *testing.T) {
+	root := repositoryRoot(t)
+	command := exec.Command("go", "list", "./internal/endpoint/...")
+	command.Dir = root
+	command.Env = append(os.Environ(), "GOOS=linux", "GOARCH=amd64")
+	body, err := command.Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	actual := packageSet(t, string(body))
+	base := listedProfilePackages(t, root, "tests/profiles/deterministic-packages.txt")
+	for path := range listedProfilePackages(t, root, "tests/profiles/deterministic-linux-packages.txt") {
+		if !actual[path] {
+			t.Errorf("Linux profile contains nonexistent package %s", path)
+		}
+		if base[path] {
+			t.Errorf("package %s belongs to both inventories", path)
+		}
+	}
+	makefile := string(readProjectFile(t, root, "Makefile"))
+	if !strings.Contains(makefile, "ifeq ($(HEADLESS_GOOS),linux)\nUNIT_PACKAGES += $(subst $(newline), ,$(file <tests/profiles/deterministic-linux-packages.txt))\nendif") {
+		t.Fatal("Linux profile is not selected explicitly")
 	}
 }
 
@@ -116,17 +152,16 @@ func TestTestProfileRegistryIsFactualAndWired(t *testing.T) {
 	}
 	makefile := string(readProjectFile(t, root, "Makefile"))
 	required := map[string]bool{
-		"alpha-control-two-endpoints":       false,
 		"developer":                         false,
 		"deterministic":                     false,
 		"endpoint-portable-ubuntu":          false,
 		"endpoint-replacement-ubuntu":       false,
 		"fuzz":                              false,
+		"fixture-network-linux":             false,
 		"headless-network":                  false,
 		"heapdump-capture":                  false,
 		"heapdump-role-map":                 false,
 		"text-role-durable-state-capture":   false,
-		"native-rendezvous-multihost":       false,
 		"package-e2e":                       false,
 		"process":                           false,
 		"qualification":                     false,
@@ -152,7 +187,8 @@ func TestTestProfileRegistryIsFactualAndWired(t *testing.T) {
 		if profile.State != "active" && profile.State != "inactive" {
 			t.Errorf("profile %q has invalid state %q", profile.ID, profile.State)
 		}
-		if profile.State == "active" && (profile.MakeTarget == "" || !strings.Contains(makefile, "\n"+profile.MakeTarget+":")) {
+		commands, targetExists := makeProfileTargetCommands(makefile, profile.MakeTarget)
+		if profile.State == "active" && (profile.MakeTarget == "" || !targetExists) {
 			t.Errorf("active profile %q names absent Make target %q", profile.ID, profile.MakeTarget)
 		}
 		if profile.State == "inactive" && (profile.MakeTarget != "" || profile.Activation == "") {
@@ -164,7 +200,7 @@ func TestTestProfileRegistryIsFactualAndWired(t *testing.T) {
 		if profile.InvalidEnvironment == "not applicable" && len(profile.Prerequisites) != 0 {
 			t.Errorf("profile %q cannot have prerequisites when invalid environment is not applicable", profile.ID)
 		}
-		if profile.Timeout != "" && !strings.Contains(makefile, "-timeout="+profile.Timeout) {
+		if profile.Timeout != "" && !strings.Contains(commands, "-timeout="+profile.Timeout) {
 			t.Errorf("profile %q timeout %q is absent from its Make entrypoint", profile.ID, profile.Timeout)
 		}
 	}
@@ -221,25 +257,6 @@ func TestHeadlessNetworkProfileHasClosedCommandAndArtifactBoundary(t *testing.T)
 	}
 }
 
-func TestAlphaBundleUsesTheEnrollmentExecutableIdentityForControl(t *testing.T) {
-	root := repositoryRoot(t)
-	helper := string(readProjectFile(t, root, "scripts/enrollment-artifact-name.go"))
-	if !strings.Contains(helper, "enrollment.ExecutableArtifactName(") {
-		t.Fatal("artifact-name helper does not delegate to the enrollment package owner")
-	}
-	for _, path := range []string{"packaging/alpha-bundle/build.sh", "packaging/alpha-bundle/test.sh"} {
-		contents := string(readProjectFile(t, root, path))
-		if !strings.Contains(contents, `artifact_name ardents-control "$platform"`) {
-			t.Errorf("%s does not consume the enrollment-owned ardents-control identity", path)
-		}
-		for _, duplicate := range []string{"executable_suffix", `ardents-control-$platform`} {
-			if strings.Contains(contents, duplicate) {
-				t.Errorf("%s reconstructs the enrollment-owned identity with %q", path, duplicate)
-			}
-		}
-	}
-}
-
 func TestHeadlessCommandsHaveBrowserFreeDependencyGraphs(t *testing.T) {
 	root := repositoryRoot(t)
 	for _, commandPath := range []string{"./cmd/ardents", "./cmd/ardents-control", "./cmd/ardents-node", "./cmd/ardents-custody"} {
@@ -255,141 +272,6 @@ func TestHeadlessCommandsHaveBrowserFreeDependencyGraphs(t *testing.T) {
 				}
 			}
 		})
-	}
-}
-
-func TestApplicationSeamsAreSharedByTheirAdapters(t *testing.T) {
-	root := repositoryRoot(t)
-	connection := "github.com/dianabuilds/ardents-network/internal/application/interfacev1/connection"
-	for _, packagePath := range []string{"./cmd/ardents", "./internal/endpoint"} {
-		if !listedDependencies(t, root, packagePath)[connection] {
-			t.Errorf("%s does not use the shared Application Connection Module", packagePath)
-		}
-	}
-	administration := "github.com/dianabuilds/ardents-network/internal/application/interfacev1/administration"
-	for _, packagePath := range []string{"./cmd/ardents", "./internal/endpoint"} {
-		if !listedDependencies(t, root, packagePath)[administration] {
-			t.Errorf("%s does not use the shared Application Administration Module", packagePath)
-		}
-	}
-}
-
-func TestHeadlessCommandDelegatesParticipantRuntimeComposition(t *testing.T) {
-	root := repositoryRoot(t)
-	source := string(readProjectFile(t, root, "cmd/ardents/endpoint_headless.go"))
-	if !strings.Contains(source, "endpointapi.RunParticipant(") {
-		t.Fatal("headless command does not delegate to the Endpoint participant runtime")
-	}
-	for _, forbidden := range []string{
-		"state.Open(",
-		"entry.Open(",
-		"applicationconnection.Listen(",
-		"administration.Listen(",
-		"Authorities[0]",
-	} {
-		if strings.Contains(source, forbidden) {
-			t.Errorf("headless command retains runtime or authority decision %q", forbidden)
-		}
-	}
-}
-
-func TestEndpointOwnsNoSecondLocalApplicationTransport(t *testing.T) {
-	root := repositoryRoot(t)
-	command := string(readProjectFile(t, root, "cmd/ardents/endpoint.go"))
-	for _, forbidden := range []string{`arguments[1] == "run"`, "endpoint.Run("} {
-		if strings.Contains(command, forbidden) {
-			t.Errorf("ardents command retains legacy Endpoint transport %q", forbidden)
-		}
-	}
-	for _, file := range []string{"config.go", "connections.go", "endpoint.go", "publication.go",
-		"service_introduction.go", "service_introduction_acknowledgement.go"} {
-		if _, err := os.Stat(filepath.Join(root, "internal", "endpoint", file)); err == nil || !errors.Is(err, os.ErrNotExist) {
-			t.Errorf("Endpoint retains legacy local transport owner %s", file)
-		}
-	}
-	runtime := string(readProjectFile(t, root, "internal/endpoint/service_runtime.go"))
-	if strings.Contains(runtime, "PublicationRequest") {
-		t.Fatal("Endpoint retains the raw legacy publication API")
-	}
-	if _, err := os.Stat(filepath.Join(root, "internal", "service", "publication", "legacy_introduction_receipt.go")); err == nil || !errors.Is(err, os.ErrNotExist) {
-		t.Error("Service Publication retains the historical ARIA receipt grammar in production")
-	}
-}
-
-func TestEndpointContainsNoBrowserImplementation(t *testing.T) {
-	root := repositoryRoot(t)
-	endpointRoot := filepath.Join(root, "internal", "endpoint")
-	err := filepath.WalkDir(endpointRoot, func(path string, entry os.DirEntry, walkErr error) error {
-		if walkErr != nil {
-			return walkErr
-		}
-		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".go") {
-			return nil
-		}
-		lowerName := strings.ToLower(entry.Name())
-		if strings.Contains(lowerName, "browser") || strings.Contains(lowerName, "firefox") {
-			t.Errorf("Endpoint retains Browser implementation file %s", filepath.ToSlash(path))
-		}
-		contents, err := os.ReadFile(path)
-		if err != nil {
-			return err
-		}
-		text := string(contents)
-		for _, forbidden := range []string{
-			"internal/browser/adapter",
-			"internal/browser/entry",
-			"internal/browser/reference",
-			"//go:build browsercompat",
-		} {
-			if strings.Contains(text, forbidden) {
-				t.Errorf("Endpoint file %s retains forbidden Browser boundary %q", filepath.ToSlash(path), forbidden)
-			}
-		}
-		return nil
-	})
-	if err != nil {
-		t.Fatalf("inspect Endpoint source boundary: %v", err)
-	}
-}
-
-func TestRetiredBrowserSurfaceHasNoCurrentPaths(t *testing.T) {
-	root := repositoryRoot(t)
-	for _, relative := range []string{
-		"cmd/ardents-browser",
-		"cmd/ardents-browser-entry",
-		"internal/browser",
-		"packaging/browser-bundle",
-		"packaging/firefox-alpha-browser-entry",
-		"tests/qualification/browser-signed-xpi",
-		"tests/qualification/browser-entry-windows",
-		"tests/qualification/browser-entry-ubuntu",
-		"tests/profiles/browser-commands.txt",
-	} {
-		if _, err := os.Stat(filepath.Join(root, filepath.FromSlash(relative))); !os.IsNotExist(err) {
-			t.Errorf("retired Browser path still exists: %s", relative)
-		}
-	}
-	for _, relative := range []string{
-		"Makefile",
-		"tests/profiles/profiles.json",
-		"tests/profiles/deterministic-packages.txt",
-		"docs/development/package-map.md",
-		"docs/development/ownership.json",
-	} {
-		contents := string(readProjectFile(t, root, relative))
-		for _, forbidden := range []string{
-			"cmd/ardents-browser",
-			"cmd/ardents-browser-entry",
-			"internal/browser/",
-			"browser-check",
-			"browser-build",
-			"qualification-browser-",
-			"browser-commands.txt",
-		} {
-			if strings.Contains(contents, forbidden) {
-				t.Errorf("current boundary %s retains retired Browser reference %q", relative, forbidden)
-			}
-		}
 	}
 }
 

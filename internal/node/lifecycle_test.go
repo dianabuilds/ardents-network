@@ -11,17 +11,34 @@ import (
 	"encoding/binary"
 	"encoding/pem"
 	"errors"
+	localroles "github.com/dianabuilds/ardents-network/internal/network/duty"
+	"github.com/dianabuilds/ardents-network/internal/network/state"
+	"github.com/dianabuilds/ardents-network/internal/node/hosting"
+	"github.com/dianabuilds/ardents-network/internal/resource"
 	"io"
 	"math/big"
 	"net"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
-
-	localroles "github.com/dianabuilds/ardents-network/internal/network/duty"
-	"github.com/dianabuilds/ardents-network/internal/resource"
 )
+
+func TestPreparedCancellationRetainsTerminalEventFailure(t *testing.T) {
+	outputErr := errors.New("terminal event output failed")
+	var observed Event
+	config := runtimeConfig{Config: Config{Emit: func(_ context.Context, event Event) error {
+		observed = event
+		return outputErr
+	}}, now: func() time.Time { return time.Unix(100, 0).UTC() }}
+	machine := stateMachine{current: statePrepared}
+	result, err := terminalWithoutDuty(config, &machine, state.NodeDuty{Assignment: "closed_issuer"}, context.Canceled)
+	if result.State != stateNames[stateFailed] || observed.State != stateNames[stateFailed] ||
+		!errors.Is(err, context.Canceled) || !errors.Is(err, outputErr) {
+		t.Fatalf("prepared cancellation = %+v, event %+v, %v", result, observed, err)
+	}
+}
 
 func TestWithdrawDoesNotPublishSuccessWhenRoleDrainFails(t *testing.T) {
 	cleanupErr := errors.New("injected role drain failure")
@@ -31,8 +48,8 @@ func TestWithdrawDoesNotPublishSuccessWhenRoleDrainFails(t *testing.T) {
 		return nil
 	}}, now: func() time.Time { return time.Unix(100, 0).UTC() }}
 	machine := stateMachine{current: stateReady}
-	server := &probeServer{Stop: func() {}, Drain: func(context.Context) error { return cleanupErr }}
-	result, err := withdraw(config, &machine, server, dutyFacts{Assignment: "rendezvous"}, "test withdrawal")
+	server := &dutyHandle{Stop: func() {}, Drain: func(context.Context) error { return cleanupErr }}
+	result, err := withdraw(config, &machine, server, state.NodeDuty{Assignment: "rendezvous"}, "test withdrawal")
 	if !errors.Is(err, cleanupErr) || result.State == stateNames[stateWithdrawn] {
 		t.Fatalf("withdraw result = %+v, %v", result, err)
 	}
@@ -53,7 +70,7 @@ var testProbeProfile = sha256.Sum256([]byte("h3-role-probe-v1"))
 
 type lifecycleFixture struct {
 	config      Config
-	snapshot    dutyFacts
+	snapshot    state.NodeDuty
 	serverRoots *x509.CertPool
 	client      tls.Certificate
 	serverName  string
@@ -71,7 +88,7 @@ type issuedCertificate struct {
 func TestRunServesBoundProbeThenWithdrawsOnRecordRemoval(t *testing.T) {
 	fixture := newLifecycleFixture(t)
 	events := make(chan Event, 16)
-	fixture.config.Current = func() (DutyView, error) {
+	fixture.config.Current = func() (state.NodeDuty, error) {
 		fixture.mu.RLock()
 		defer fixture.mu.RUnlock()
 		return fixture.snapshot, nil
@@ -161,7 +178,7 @@ func TestDrainCancelsEstablishedProbeAtDeadline(t *testing.T) {
 	fixture := newLifecycleFixture(t)
 	fixture.config.Probe.DrainTimeout = 30 * time.Millisecond
 	events := make(chan Event, 16)
-	fixture.config.Current = func() (DutyView, error) {
+	fixture.config.Current = func() (state.NodeDuty, error) {
 		fixture.mu.RLock()
 		defer fixture.mu.RUnlock()
 		return fixture.snapshot, nil
@@ -195,7 +212,7 @@ func TestDrainCancelsEstablishedProbeAtDeadline(t *testing.T) {
 func TestProtectPreservesEstablishedWorkAndRejectsNewAdmission(t *testing.T) {
 	fixture := newLifecycleFixture(t)
 	events := make(chan Event, 32)
-	fixture.config.Current = func() (DutyView, error) { return fixture.snapshot, nil }
+	fixture.config.Current = func() (state.NodeDuty, error) { return fixture.snapshot, nil }
 	fixture.config.Emit = func(_ context.Context, event Event) error { events <- event; return nil }
 	fixture.config.ResourceProfile = "h3-np1-v1"
 	var protect atomic.Bool
@@ -239,7 +256,7 @@ func TestProtectPreservesEstablishedWorkAndRejectsNewAdmission(t *testing.T) {
 func TestRunFailsBeforeReadinessOnKeyMismatch(t *testing.T) {
 	fixture := newLifecycleFixture(t)
 	fixture.snapshot.NodePublicKey[0]++
-	fixture.config.Current = func() (DutyView, error) { return fixture.snapshot, nil }
+	fixture.config.Current = func() (state.NodeDuty, error) { return fixture.snapshot, nil }
 	events := make(chan Event, 4)
 	fixture.config.Emit = func(_ context.Context, event Event) error { events <- event; return nil }
 	result, err := Run(context.Background(), fixture.config)
@@ -254,11 +271,29 @@ func TestRunFailsBeforeReadinessOnKeyMismatch(t *testing.T) {
 	}
 }
 
+func TestRunReportsReadinessLossDuringQuarantine(t *testing.T) {
+	fixture := newLifecycleFixture(t)
+	fixture.config.Quarantine = 10 * time.Millisecond
+	var calls atomic.Int32
+	fixture.config.Current = func() (state.NodeDuty, error) {
+		snapshot := fixture.snapshot
+		if calls.Add(1) > 1 {
+			snapshot.ProbeCapacity = 0
+		}
+		return snapshot, nil
+	}
+	fixture.config.Emit = func(context.Context, Event) error { return nil }
+	result, err := Run(context.Background(), fixture.config)
+	if err == nil || result.State != "FAILED" || !strings.Contains(result.Reason, "assignment lost readiness during quarantine: profile or deterministic assignment is inactive") {
+		t.Fatalf("quarantine readiness result = %+v, %v", result, err)
+	}
+}
+
 func TestPreparedNodeFailsWhenRecordDisappears(t *testing.T) {
 	fixture := newLifecycleFixture(t)
 	fixture.snapshot.ProbeCapacity = 0
 	events := make(chan Event, 8)
-	fixture.config.Current = func() (DutyView, error) {
+	fixture.config.Current = func() (state.NodeDuty, error) {
 		fixture.mu.RLock()
 		defer fixture.mu.RUnlock()
 		return fixture.snapshot, nil
@@ -282,7 +317,7 @@ func TestPreparedNodeFailsWhenRecordDisappears(t *testing.T) {
 
 func TestResolveRejectsInvalidOrUnboundedClientTrust(t *testing.T) {
 	fixture := newLifecycleFixture(t)
-	fixture.config.Current = func() (DutyView, error) { return fixture.snapshot, nil }
+	fixture.config.Current = func() (state.NodeDuty, error) { return fixture.snapshot, nil }
 	fixture.config.Emit = func(context.Context, Event) error { return nil }
 	for _, roots := range [][]byte{[]byte("not PEM"), make([]byte, (64<<10)+1)} {
 		config := fixture.config
@@ -304,7 +339,7 @@ func newLifecycleFixture(t *testing.T) *lifecycleFixture {
 	server := createCertificate(t, &ca, "node.test", false)
 	client := createCertificate(t, &ca, "harness.test", false)
 	address := reserveAddress(t)
-	snapshot := dutyFacts{Generation: "generation-1", NetworkID: [32]byte{1}, Epoch: 1,
+	snapshot := state.NodeDuty{Generation: "generation-1", NetworkID: [32]byte{1}, Epoch: 1,
 		Digest: [32]byte{3}, EpochValidFrom: now.Add(-time.Hour), ValidUntil: now.Add(time.Hour),
 		Profile: "h3-role-probe-v1", Fresh: true, RecordPresent: true, NodeID: [32]byte{2}, DeclaredFamily: "family-a",
 		RecordValidFrom: now.Add(-time.Hour), RecordValidUntil: now.Add(time.Hour), ProbeEndpoint: address, ProbeCapacity: 4,
@@ -399,7 +434,7 @@ func probeClientTLS(fixture *lifecycleFixture) *tls.Config {
 		ServerName: fixture.serverName, Certificates: []tls.Certificate{fixture.client}, SessionTicketsDisabled: true}
 }
 
-func encodeProbeRequest(snapshot dutyFacts, nonce [32]byte, payload []byte) []byte {
+func encodeProbeRequest(snapshot state.NodeDuty, nonce [32]byte, payload []byte) []byte {
 	request := make([]byte, testProbeHeaderBytes+testProbePayloadBytes)
 	copy(request, "ARNP")
 	request[4] = 1
@@ -446,5 +481,174 @@ func drainStates(events <-chan Event) []string {
 	}
 }
 
-// Test snapshots implement the external DutyView seam; production projects authenticated State.
-func (facts dutyFacts) DutyRecordGeneration() uint64 { return facts.RecordGeneration }
+type hostingLifetimeTestHost struct {
+	closed atomic.Int32
+	err    error
+}
+
+func (host *hostingLifetimeTestHost) Sample(context.Context, time.Duration) (resource.HostingSample, error) {
+	return resource.HostingSample{}, nil
+}
+
+func (host *hostingLifetimeTestHost) Reserve(context.Context, resource.HostingTraffic, resource.HostingTraffic, time.Time) (hosting.Reservation, error) {
+	return nil, nil
+}
+
+func (host *hostingLifetimeTestHost) Close() error {
+	host.closed.Add(1)
+	return host.err
+}
+
+func TestWithdrawTransfersHostingCloseToUnjoinedLateChild(t *testing.T) {
+	host := &hostingLifetimeTestHost{}
+	config := runtimeConfig{Config: Config{Emit: func(context.Context, Event) error { return nil }},
+		now: func() time.Time { return time.Unix(100, 0).UTC() }}
+	var released atomic.Int32
+	config.cleanup = &dutyCleanup{host: hosting.NewLifetime(host), retained: true, release: func() error {
+		released.Add(1)
+		return nil
+	}}
+	machine := stateMachine{current: stateReady}
+	joined := make(chan struct{})
+	server := &dutyHandle{Stop: func() {}, Joined: joined,
+		Drain: func(context.Context) error { return context.DeadlineExceeded }}
+	result, err := withdraw(config, &machine, server, state.NodeDuty{Assignment: "rendezvous"}, "test withdrawal")
+	if !errors.Is(err, context.DeadlineExceeded) || result.State == stateNames[stateWithdrawn] {
+		t.Fatalf("withdraw result = %+v, %v", result, err)
+	}
+	// The deferred Run-level close must transfer, not close: a late child can
+	// still release its Hosting reservation against the shared handle (F-62).
+	if err := config.cleanup.Close(); err != nil {
+		t.Fatalf("transferred Hosting close failed: %v", err)
+	}
+	if host.closed.Load() != 0 {
+		t.Fatal("shared Hosting closed before the late child joined")
+	}
+	if released.Load() != 0 {
+		t.Fatal("local role was released before the late child joined")
+	}
+	close(joined)
+	deadline := time.After(time.Second)
+	for host.closed.Load() == 0 {
+		select {
+		case <-deadline:
+			t.Fatal("shared Hosting did not close after the late child joined")
+		default:
+			time.Sleep(time.Millisecond)
+		}
+	}
+	if released.Load() != 0 {
+		t.Fatal("failed withdrawal released its local role before expiry")
+	}
+}
+
+func TestWithdrawPublishesSuccessOnlyAfterProcessCleanup(t *testing.T) {
+	for _, selected := range []struct {
+		name       string
+		hostErr    error
+		releaseErr error
+	}{
+		{name: "complete cleanup"},
+		{name: "host close", hostErr: errors.New("host close failed")},
+		{name: "local role removal", releaseErr: errors.New("role removal failed")},
+	} {
+		t.Run(selected.name, func(t *testing.T) {
+			host := &hostingLifetimeTestHost{err: selected.hostErr}
+			var events []Event
+			var released bool
+			config := runtimeConfig{Config: Config{Emit: func(_ context.Context, event Event) error {
+				if event.State == "WITHDRAWN" && (host.closed.Load() != 1 || !released) {
+					t.Error("WITHDRAWN was emitted before Hosting close and local role removal")
+				}
+				events = append(events, event)
+				return nil
+			}}, now: func() time.Time { return time.Unix(100, 0).UTC() }}
+			config.cleanup = &dutyCleanup{host: hosting.NewLifetime(host), retained: true, release: func() error {
+				released = true
+				return selected.releaseErr
+			}}
+			machine := stateMachine{current: stateReady}
+			server := &dutyHandle{Stop: func() {}, Drain: func(context.Context) error { return nil }}
+			result, err := withdraw(config, &machine, server, state.NodeDuty{Assignment: "rendezvous"}, "test withdrawal")
+			want := selected.hostErr
+			if want == nil {
+				want = selected.releaseErr
+			}
+			if want == nil && (result.State != "WITHDRAWN" || err != nil) ||
+				want != nil && (result.State != "FAILED" || !errors.Is(err, want)) {
+				t.Fatalf("withdraw result = %+v, %v", result, err)
+			}
+			if host.closed.Load() != 1 || released != (selected.hostErr == nil) {
+				t.Fatalf("cleanup order: host closes = %d, role released = %v", host.closed.Load(), released)
+			}
+			for _, event := range events {
+				if want != nil && event.State == "WITHDRAWN" {
+					t.Fatal("WITHDRAWN published before complete process cleanup")
+				}
+			}
+		})
+	}
+}
+
+func TestWithdrawRejectsUnjoinedDrainResult(t *testing.T) {
+	host := &hostingLifetimeTestHost{}
+	joined := make(chan struct{})
+	var released bool
+	var events []Event
+	config := runtimeConfig{Config: Config{Emit: func(_ context.Context, event Event) error {
+		events = append(events, event)
+		return nil
+	}}, now: func() time.Time { return time.Unix(100, 0).UTC() }}
+	config.cleanup = &dutyCleanup{host: hosting.NewLifetime(host), retained: true, release: func() error {
+		released = true
+		return nil
+	}}
+	machine := stateMachine{current: stateReady}
+	server := &dutyHandle{Joined: joined, Stop: func() {}, Drain: func(context.Context) error { return nil }}
+	result, err := withdraw(config, &machine, server, state.NodeDuty{Assignment: "rendezvous"}, "test withdrawal")
+	if result.State != "FAILED" || err == nil {
+		t.Fatalf("unjoined drain result = %+v, %v", result, err)
+	}
+	if err := config.cleanup.Close(); err != nil || released || host.closed.Load() != 0 {
+		t.Fatalf("unjoined resources were released: %v, %v, %d", err, released, host.closed.Load())
+	}
+	for _, event := range events {
+		if event.State == "WITHDRAWN" {
+			t.Fatal("unjoined role was reported withdrawn")
+		}
+	}
+	close(joined)
+	deadline := time.After(time.Second)
+	for host.closed.Load() == 0 {
+		select {
+		case <-deadline:
+			t.Fatal("shared Hosting did not close after the unjoined role finished")
+		default:
+			time.Sleep(time.Millisecond)
+		}
+	}
+}
+
+func TestUnjoinedRoleKeepsDurableLocalConflict(t *testing.T) {
+	fixture := newLifecycleFixture(t)
+	config := runtimeConfig{Config: fixture.config, now: time.Now}
+	if err := retainLocalDuty(config, fixture.snapshot, "live"); err != nil {
+		t.Fatal(err)
+	}
+	joined := make(chan struct{})
+	config.cleanup = &dutyCleanup{retained: true, release: func() error { return releaseLocalDuty(config) }}
+	config.cleanup.deferUntil(joined)
+	if err := config.cleanup.Close(); err != nil {
+		t.Fatal(err)
+	}
+	roles, err := localroles.Open(localroles.Config{Root: config.LocalRoleStateRoot, Clock: time.Now})
+	if err != nil {
+		t.Fatal(err)
+	}
+	conflict, checkErr := roles.Conflict(fixture.snapshot.NodeID, sha256.Sum256([]byte(fixture.snapshot.DeclaredFamily)))
+	closeErr := roles.Close()
+	if checkErr != nil || closeErr != nil || !conflict {
+		t.Fatalf("local duty after unknown join = %v, check %v, close %v", conflict, checkErr, closeErr)
+	}
+	close(joined)
+}

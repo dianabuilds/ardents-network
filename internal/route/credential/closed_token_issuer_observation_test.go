@@ -13,8 +13,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/admission"
+	"github.com/dianabuilds/ardents-network/internal/route/terminal"
+
 	"github.com/dianabuilds/ardents-network/internal/network/state"
-	"github.com/dianabuilds/ardents-network/internal/route"
 )
 
 type issuerReservationObservation struct {
@@ -92,7 +94,7 @@ func observeClosedIssuer(t *testing.T, issuer *ClosedTokenIssuer, phase string) 
 // Provisioning and the lower channel are fixtures: this does not claim two
 // Endpoint processes, a TLS transcript, complete transient state, or full P3.
 func checkClosedIssuerSeparatePermissionObservation(t *testing.T, issuer *ClosedTokenIssuer, profile state.ClosedProfileView,
-	original Permission, authority ed25519.PrivateKey, tokenContext ClosedTokenContext, now time.Time, originalOperation, originalReply []byte) {
+	original admission.Permission, authority ed25519.PrivateKey, tokenContext ClosedTokenContext, now time.Time, originalOperation, originalReply []byte) {
 	t.Helper()
 	before := observeClosedIssuer(t, issuer, "after original permission and exhausted retry")
 	if len(before.Reservations) != 1 || before.Reservations[0].PermissionID != original.PermissionID || before.Reservations[0].Count != 2 {
@@ -109,7 +111,7 @@ func checkClosedIssuerSeparatePermissionObservation(t *testing.T, issuer *Closed
 	}
 	copy(separate.HolderKey[:], holderPublic)
 	separate.Maxima = [3]uint32{1, 0, 0}
-	copy(separate.Signature[:], ed25519.Sign(authority, permissionTranscript(separate)))
+	copy(separate.Signature[:], ed25519.Sign(authority, admission.PermissionTranscript(separate)))
 	if separate.PermissionID == original.PermissionID || separate.HolderKey == original.HolderKey {
 		t.Fatal("independent permission reused scoped identity")
 	}
@@ -123,7 +125,7 @@ func checkClosedIssuerSeparatePermissionObservation(t *testing.T, issuer *Closed
 		t.Fatal(err)
 	}
 	requestBytes := pending.Request()
-	operation, err := route.EncodeClosedIssuanceRequest(nonce, requestBytes)
+	operation, err := terminal.EncodeIssuanceRequest(nonce, requestBytes)
 	if err != nil {
 		t.Fatal(err)
 	}

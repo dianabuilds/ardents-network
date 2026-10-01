@@ -1,13 +1,16 @@
-// Package entry owns the durable, bounded Entry Invite set for the native
-// Interactive Route. It retains one owner-local recipient TLS identity and
-// validates signed State-referenced recipient-bound Invites against its own
-// retained recipient identity at local import and against the presented TLS
-// key at Initiator admission, retains one replacement per slot, and
-// never chooses a complete Route, transport, or User identity.
+// Package entry owns the installation-scoped closed Entry sets for the
+// Linux protected text Endpoint: exactly two State-current members per
+// activated adjacent Role Domain, durably and uniformly selected before
+// use, retained through failure and restart until expiry, and revalidated
+// without failure-triggered replacement. Its distinct claimed root refuses
+// every foreign population through its own marker and allowed-name
+// inspection.
 //
-// The closed successor additionally owns installation-scoped two-member Entry
-// sets for each activated adjacent Role Domain. Their random selection is
-// durable before use and remains fixed through failure/restart until expiry.
-// A distinct claimed root refuses legacy Invite state pending explicit migration;
-// it carries no holder identity, credential, context, destination or transport.
+// The former Invite subsystem - recipient-bound Entry Invite v2 decoding
+// and validation, the owner-local recipient identity, the two-slot
+// replacement/replay set, the retained attempt/contact journal schema, and
+// the `entry recipient`/`entry import` operator commands - was retired by
+// ADR-0106. No working-tree code reads, converts, or deletes an existing
+// Invite root; its stored bytes remain on disk as unread typed-incompatible
+// data, and the retired commands refuse before any effect.
 package entry

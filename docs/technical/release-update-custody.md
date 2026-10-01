@@ -12,6 +12,17 @@ continues to describe the currently implemented ownership and authority floors.
 
 ## Custody ownership
 
+[ADR-0120](../adr/0120-authorize-operator-prepared-qualification-release.md)
+authorizes one operator-prepared isolated qualification release. Codex owns
+its technical preparation and the Product Owner accepts the completed public
+bootstrap receipt before installed execution. This does not add a Release
+signing interface to `internal/release`, revive retired seed ceremonies, or
+establish independent initial distribution. Participant enrollment retains
+its independent first-pin contract; existing roots and floors are preserved.
+The [qualification release operation](../operations/qualification-release.md)
+owns preparation, protected key files, bounded signing, retained refusals and
+the completed public bootstrap receipt. It changes no runtime verifier policy.
+
 `internal/custody` exclusively unlocks and uses Authority root material. Its
 canonical `ardents-authority-envelope-v1` Vault and Recovery Bundle formats use
 the accepted fixed Argon2id/AES-GCM profile from ADR-0021. Callers receive only
@@ -53,12 +64,14 @@ argument, environment, or configuration bypass. The service's published-root
 restart limitation remains an Endpoint implementation limit, rather than a
 claim that every future product lifecycle must work this way.
 
-An active Name Authority signs either one exact sealed transition or the
-ordered pair that `naming/namespace/authority.Prepare` derives from an unsigned
-existing-Name Intent. The pair must have the active public key, the active
-predecessor generation/revision, and a successor Record exactly one revision
-later. Admission still binds the static Intent digest; only Namespace `Submit`
-writes the pending journal.
+The former Name Authority signing route is retired by ADR-0105 together with
+the whole Namespace subsystem. Custody no longer declares
+`sign-namespace-transition`, `prepare-namespace-submission`, or
+`activate-recovered-authority` operations, their transition/submission
+operation fields, or receipt proof/submission fields, and it imports no
+Namespace package. Existing Name Authority vault records remain inspectable,
+verifiable, exportable, and purgeable because the `AuthorityName` kind stays
+recognized in the generic record grammar.
 
 ## Recovery lifecycle
 
@@ -66,17 +79,14 @@ writes the pending journal.
 active encrypted Vault record
   -> explicit Bundle export and isolated test restore
   -> restore into separate encrypted authority-locked quarantine record
-  -> fresh current Namespace witness, strictly higher than the recovered state
-  -> new encrypted active successor + durable floor
-  -> first sealed signature
 ```
 
-The witness is opaque and can originate only from an already verified current
-Namespace materialization. It identifies exactly one active Name Authority;
-absent, ambiguous, inactive, stale, equal, or wrong-authority state fails
-closed. Activation advances local watermarks and creates no runtime Instance
-Key or Local Grant. The original quarantine record remains export-only and
-cannot sign.
+The former activation step required an opaque witness originating only from
+an already verified current Namespace materialization, strictly higher than
+the recovered state. ADR-0105 retired both the witness producer and the
+`activate-recovered-authority` operation, so a restored quarantine record is
+terminal: it remains export-only and can never sign. No activation route
+creates a runtime Instance Key or Local Grant.
 
 ## Custody disposition
 
@@ -90,8 +100,10 @@ implementation defects in the current Module.
 
 ## Explicit limits
 
-- `ardents name control` consumes the retained complete signed control wire;
-  it is an operator input boundary, not a second Authority signing route.
+- The retired `ardents name control` command refuses before reading its former
+  operation input. ADR-0105 also deleted the custody-side Namespace
+  preparation and signing machinery, so no signed control wire exists
+  anywhere in the working tree.
 - Endpoint replacement has no Vault/root input. The current replacement-owner
   test proves byte-for-byte preservation of an encrypted Authority Vault and a
   persisted Release-floor root across successful replacement, stop refusal,
@@ -106,23 +118,31 @@ implementation defects in the current Module.
   Vault-status interpretation is permitted.
 - Windows/Ubuntu crash, permissions, and power-loss qualification are future
   product/platform work, not current support claims.
-- R-044 threshold recovery already replaces the effective Name Authority in
-  Namespace; its completed Record rejects a signature from the former key.
-  However, an active Vault has only opaque environment/network/root/authority
-  commitments, not the Name needed to discover that replacement. It therefore
-  cannot safely demote itself merely from a generic current-state view.
-  A future opaque replacement proof needs its own format decision before any
-  D08 migration. Broker Grant
-  revocation remains a separate local-admission transition.
+- R-044 threshold recovery historically replaced the effective Name Authority
+  in Namespace. Since ADR-0105 no Namespace exists and no Name replacement
+  route remains; Name Authority records persist only as encrypted
+  export-only evidence, and the former active-Vault demotion concern is
+  moot. Broker Grant revocation remains a separate local-admission
+  transition.
 - Supported lifecycle/installer work is future product scope.
 
 ## Evidence
 
 - [ADR-0021](../adr/0021-use-password-derived-authority-custody.md)
 - `internal/custody/vault_operation_test.go`
-- `internal/custody/vault_namespace_signing_test.go`
 
 ## Release and Update ownership
+
+[ADR-0119](../adr/0119-bind-protected-endpoint-generation-to-release.md)
+selects a protected Endpoint generation target in the same signed metadata set
+as the executable. The installation owner consumes two fresh coherent opaque
+authorizations, verifies their shared Targets floors and release/local facts,
+and binds all resource bytes through the authenticated generation descriptor.
+The initial pin never authorizes successors; changed resources require a newer
+generation even when executable bytes are unchanged. Existing executable-only
+replacement remains its current implementation; it does not implement this
+selected generation transaction. No signing API or independent-builder claim
+is added.
 
 internal/release is the sole owner of release trust roots and non-decreasing
 release floors. It verifies the selected TUF-compatible metadata profile,

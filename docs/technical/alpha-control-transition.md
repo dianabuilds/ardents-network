@@ -9,10 +9,25 @@ independent custody, public control, availability, or a canonical Namespace.
 `internal/release` owns Release Safety. `internal/network/state` owns accepted
 Epoch successors and duty withdrawal. The enrollment-pinned Compatibility
 component binds accepted Release and Network facts without becoming either
-authority. `internal/naming/namespace` retains local technical transitions, but
-no global Namespace close/materialization input is selected. The
-`internal/alphacontrol` declaration and `ardents-control inspect-transitions`
-are read-only diagnostic projections; neither changes an owner root.
+authority. ADR-0105 removed the whole Namespace subsystem, so no global
+Namespace close/materialization input exists at all. The
+`internal/alphacontrol` declaration and the `ardents-control
+inspect-transitions` report authorize no Endpoint action. The inspector owns
+separate catalog, Release, and Network roots: successful inspection can advance
+their authenticated floors without changing a live Endpoint root. Current
+inspection returns an error if any of their Close operations fails. A component
+with failed Release or Network cleanup is reported unavailable, while the
+authenticated decision and any already committed owner floor remain visible.
+Catalog cleanup failure preserves the authenticated report but makes the
+command fail; it never rolls back an already committed floor.
+
+Initial closed Route disclosure under ADR-0120 pins exactly one State key at
+threshold one. Inspection passes that same unambiguous pinned key as the
+State-owned Closed Profile authority; it still runs ordinary State acceptance.
+ACN1 does not separately identify a Closed Profile authority among multiple
+State keys, so closed disclosures with more than one key refuse as invalid.
+This grants no Closed Profile acceptance or Route readiness; one operator
+family still cannot fill multiple Role Domains or supply two Source families.
 
 | Domain | Authority / predecessor / freshness | Rotation, revocation, and floor | Emergency, participant failure, and evidence |
 |---|---|---|---|
@@ -38,6 +53,17 @@ exact alpha-control report identity, and a result for all four domains. The acce
 outcomes are `accepted` and `not-selected`; failure outcomes are
 `forged`, `stale`, `replayed`, `revoked`, `conflicting`, and `unavailable`.
 
+ADR-0110 selects ACA1 as the sole maintained control-inspection format. The
+ACA1 catalog and independent Release and Network inspection floors continue
+to back `inspect-bundle` and this transition report. The separate ACA2
+Alpha Corpus diagnostic is retired and removed: the exact
+`inspect-alpha-corpus` route refuses before parsing arguments or opening any
+file, root, or floor, and no ACA2 verifier remains in the tree. Retained
+Alpha Corpus floor bytes were the ADR-0088 compatibility obligation; ADR-0113
+deleted that reader, so existing floor bytes are byte-for-byte inert evidence
+that no maintained code can read, convert, or delete. The removed diagnostic
+never owned an inspection floor or Endpoint authority.
+
 ## Verification
 
 The maintained report classifier exercises the complete matrix. The Linux
@@ -51,5 +77,6 @@ Beta promotion.
 
 ## Governing decisions
 
-ADR-0004, ADR-0006, ADR-0038, ADR-0043, ADR-0053, and ADR-0054 govern this
-contract. R-123 records its decision evidence.
+ADR-0004, ADR-0006, ADR-0038, ADR-0043, ADR-0053, ADR-0054, and ADR-0110 govern this
+contract. R-123 records its transition evidence; F-49 records the one-format
+inspection disposition.

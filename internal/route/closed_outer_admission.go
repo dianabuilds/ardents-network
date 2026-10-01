@@ -6,6 +6,9 @@ import (
 	"crypto/tls"
 	"errors"
 	"net"
+
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
+	"github.com/dianabuilds/ardents-network/internal/route/carrier"
 )
 
 // Admit consumes no new authority. It binds the actual receiving admission
@@ -19,12 +22,12 @@ func (lane *ClosedOuterBridgeLane) Admit(lease *ClosedAdmission, connection net.
 	if !ok || secured == nil || secured.NetConn() != lane {
 		return errors.New("closed outer admission belongs to another TLS channel")
 	}
-	body, err := EncodeClosedHello(lease.hello)
+	body, err := ardp.EncodeHello(lease.hello)
 	if err != nil {
 		return err
 	}
 	context := sha256.Sum256(body)
-	exporter, err := ClosedRoleTLSExporter(secured)
+	exporter, err := carrier.ClosedRoleTLSExporter(secured)
 	if err != nil {
 		return err
 	}
@@ -52,7 +55,7 @@ func (handshake *ClosedOuterHandshake) admit(lane uint32, lease *ClosedAdmission
 	child, exists := handshake.children[lane]
 	now := handshake.clock().UTC()
 	if handshake.duty == nil || !exists || !child.active || child.admitted || child.eof ||
-		child.restriction != ClosedChildOrdinary || lease.duty == nil || lease.hello != child.hello ||
+		child.restriction != ClosedChildOrdinary || !lease.claim.live() || lease.hello != child.hello ||
 		!closedOuterAdmissionClass(lease) || lease.Bytes != closedClassBytes(lease.Class) || !now.Before(child.pendingDeadline) ||
 		!now.Before(lease.Deadline) || lease.Deadline.After(child.deadline) || lease.Deadline.After(handshake.receiver.Deadline) {
 		return errors.New("closed outer admission does not match live child")
@@ -64,6 +67,6 @@ func (handshake *ClosedOuterHandshake) admit(lane uint32, lease *ClosedAdmission
 }
 
 func closedOuterAdmissionClass(lease *ClosedAdmission) bool {
-	return lease.Class == 2 && (lease.hello.Purpose == ClosedPurposeForwarding || lease.hello.Purpose == ClosedPurposeDataJoin) ||
-		lease.Class == 1 && (lease.hello.Purpose == ClosedPurposeIssuer || lease.hello.Purpose == ClosedPurposeReachability || lease.hello.Purpose == ClosedPurposeSubmission) || lease.Class == 3 && lease.hello.Purpose == ClosedPurposeIntroduction
+	return lease.Class == 2 && (lease.hello.Purpose == ardp.PurposeForwarding || lease.hello.Purpose == ardp.PurposeDataJoin) ||
+		lease.Class == 1 && (lease.hello.Purpose == ardp.PurposeIssuer || lease.hello.Purpose == ardp.PurposeReachability || lease.hello.Purpose == ardp.PurposeSubmission) || lease.Class == 3 && lease.hello.Purpose == ardp.PurposeIntroduction
 }

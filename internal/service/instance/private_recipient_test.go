@@ -39,8 +39,8 @@ func TestPrivateRecipientRequiresConsumedInstanceAndRetainsRevisionFloor(t *test
 		t.Fatal(err)
 	}
 	public := first.Public(now)
-	if public == [32]byte{} || public == binding.IntroductionPublic() {
-		t.Fatal("private recipient reused legacy key")
+	if public == [32]byte{} {
+		t.Fatal("private recipient issued a zero key")
 	}
 	overlap, err := binding.NewPrivateRecipient(2, now, end)
 	if err != nil {

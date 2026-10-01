@@ -1,6 +1,10 @@
 package route
 
-import "errors"
+import (
+	"errors"
+
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
+)
 
 // ClosedChildRestriction is a negative constraint on one authenticated Node
 // child. Ordinary does not supply any receiver admission or authority.
@@ -17,7 +21,7 @@ func EncodeClosedNodeOpen(open ClosedOpen, restriction ClosedChildRestriction) (
 	if restriction != ClosedChildOrdinary && restriction != ClosedChildIssuerBootstrap {
 		return nil, errors.New("closed Node child restriction is invalid")
 	}
-	if restriction == ClosedChildIssuerBootstrap && open.Purpose != ClosedPurposeForwarding && open.Purpose != ClosedPurposeIssuer {
+	if restriction == ClosedChildIssuerBootstrap && open.Purpose != ardp.PurposeForwarding && open.Purpose != ardp.PurposeIssuer {
 		return nil, errors.New("closed Node bootstrap purpose is unavailable")
 	}
 	body, err := EncodeClosedOpen(open)

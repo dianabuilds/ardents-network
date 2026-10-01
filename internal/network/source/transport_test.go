@@ -3,6 +3,7 @@ package source
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"errors"
 	"net"
 	"strings"
@@ -31,6 +32,97 @@ type testAddress string
 
 func (address testAddress) Network() string { return "test" }
 func (address testAddress) String() string  { return string(address) }
+
+func TestRequestWriteFailureHasUnavailableCause(t *testing.T) {
+	connection := &responseWriteFailure{}
+	err := writeRequest(connection, Message{Operation: "latest"})
+	if !errors.Is(err, ErrUnavailable) || !errors.Is(err, errTestResponseWrite) {
+		t.Fatalf("request write cause=%v; want unavailable and writer failure", err)
+	}
+	if err := writeRequest(connection, Message{}); errors.Is(err, ErrUnavailable) {
+		t.Fatalf("invalid local request was classified as an unavailable source: %v", err)
+	}
+}
+
+func TestFetchHandshakePeerCloseIsUnavailable(t *testing.T) {
+	now := time.Date(2032, time.February, 3, 4, 5, 6, 0, time.UTC)
+	fixture := newSourceTLSFixture(t, now)
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer listener.Close()
+	serverDone := make(chan error, 1)
+	go func() {
+		connection, acceptErr := listener.Accept()
+		if acceptErr != nil {
+			serverDone <- acceptErr
+			return
+		}
+		serverDone <- connection.Close()
+	}()
+	_, err = fetch(t.Context(), client{
+		address: listener.Addr().String(), roots: fixture.authority.pool,
+		serverName: fixture.serverName, leafKeyDigest: fixture.serverPin,
+		certificate: fixture.client, clock: func() time.Time { return now },
+	}, Message{Operation: "latest"})
+	if !errors.Is(err, ErrUnavailable) || errors.Is(err, ErrAuthentication) {
+		t.Fatalf("closed handshake cause=%v; want unavailable, not authentication", err)
+	}
+	if serverErr := <-serverDone; serverErr != nil {
+		t.Fatal(serverErr)
+	}
+}
+
+func TestFetchResponseResetIsUnavailable(t *testing.T) {
+	now := time.Date(2032, time.February, 3, 4, 5, 6, 0, time.UTC)
+	fixture := newSourceTLSFixture(t, now)
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer listener.Close()
+	serverDone := make(chan error, 1)
+	go func() {
+		connection, acceptErr := listener.Accept()
+		if acceptErr != nil {
+			serverDone <- acceptErr
+			return
+		}
+		secured := tls.Server(connection, serverTLSConfig(server{
+			certificate: fixture.server, clientRoots: fixture.authority.pool,
+			clientDigests: map[[32]byte]bool{fixture.clientPin: true},
+			clock:         func() time.Time { return now },
+		}))
+		if handshakeErr := secured.Handshake(); handshakeErr != nil {
+			_ = connection.Close()
+			serverDone <- handshakeErr
+			return
+		}
+		if _, requestErr := readRequest(secured); requestErr != nil {
+			_ = connection.Close()
+			serverDone <- requestErr
+			return
+		}
+		if resetErr := connection.(*net.TCPConn).SetLinger(0); resetErr != nil {
+			_ = connection.Close()
+			serverDone <- resetErr
+			return
+		}
+		serverDone <- connection.Close()
+	}()
+	_, err = fetch(t.Context(), client{
+		address: listener.Addr().String(), roots: fixture.authority.pool,
+		serverName: fixture.serverName, leafKeyDigest: fixture.serverPin,
+		certificate: fixture.client, clock: func() time.Time { return now },
+	}, Message{Operation: "latest"})
+	if !errors.Is(err, ErrUnavailable) || errors.Is(err, ErrFraming) {
+		t.Fatalf("reset response cause=%v; want unavailable, not framing", err)
+	}
+	if serverErr := <-serverDone; serverErr != nil {
+		t.Fatal(serverErr)
+	}
+}
 
 func TestHandleConnectionReturnsFinalResponseWriteError(t *testing.T) {
 	var request bytes.Buffer

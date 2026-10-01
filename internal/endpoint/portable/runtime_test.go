@@ -1,14 +1,12 @@
 package portable
 
 import (
-	"context"
 	"errors"
 	"net"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
-	"time"
 )
 
 func TestOpenCreatesSeparatedRootsAndProvesAttachment(t *testing.T) {
@@ -20,18 +18,29 @@ func TestOpenCreatesSeparatedRootsAndProvesAttachment(t *testing.T) {
 	t.Cleanup(func() { _ = runtime.Close() })
 
 	for _, path := range []string{
-		filepath.Join(config.ConfigHome, "grants"),
-		filepath.Join(config.StateHome, "vault"),
+		config.StateHome,
 		filepath.Join(config.StateHome, "floors"),
-		filepath.Join(config.StateHome, "diagnostics"),
 		filepath.Join(config.StateHome, "live"),
-		config.CacheHome,
 		config.RuntimeHome,
 	} {
 		info, statErr := os.Lstat(path)
 		if statErr != nil || !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
 			t.Fatalf("owned root %s is invalid: info=%v err=%v", path, info, statErr)
 		}
+	}
+	// ADR-0108 (F-26): the contracted profile owns exactly the state and
+	// runtime roots; the state base holds only its floor and lock parents,
+	// and the retired vault/diagnostics scaffold is never created.
+	if entries, err := os.ReadDir(filepath.Dir(config.StateHome)); err != nil || len(entries) != 2 {
+		t.Fatalf("profile base holds unexpected roots: entries=%v err=%v", entries, err)
+	}
+	for _, name := range []string{"vault", "diagnostics"} {
+		if _, err := os.Lstat(filepath.Join(config.StateHome, name)); !os.IsNotExist(err) {
+			t.Fatalf("retired scaffold root %s was created: err=%v", name, err)
+		}
+	}
+	if entries, err := os.ReadDir(config.StateHome); err != nil || len(entries) != 2 {
+		t.Fatalf("state root holds unexpected entries: entries=%v err=%v", entries, err)
 	}
 	if err := probeAttachment(runtime.Attachment()); err != nil {
 		t.Fatalf("probe attachment: %v", err)
@@ -122,36 +131,6 @@ func TestOpenRefusesAttachmentPathBeyondDeclaredBudgetBeforeBind(t *testing.T) {
 	}
 }
 
-func TestRunReportsStartingReadyAndStopped(t *testing.T) {
-	ctx, cancel := context.WithCancel(t.Context())
-	defer cancel()
-	config := testConfig(t)
-	states := make(chan Event, 3)
-	done := make(chan error, 1)
-	go func() {
-		done <- Run(ctx, config, func(event Event) { states <- event })
-	}()
-
-	first := <-states
-	second := <-states
-	if first.State != StateStarting || second.State != StateReady {
-		t.Fatalf("startup events = %#v, %#v", first, second)
-	}
-	cancel()
-	select {
-	case err := <-done:
-		if err != nil {
-			t.Fatalf("Run returned %v after requested stop", err)
-		}
-	case <-time.After(time.Second):
-		t.Fatal("Run did not stop")
-	}
-	stopped := <-states
-	if stopped.State != StateStopped {
-		t.Fatalf("terminal event = %#v, want stopped", stopped)
-	}
-}
-
 func testConfig(t *testing.T) Config {
 	t.Helper()
 	root, err := os.MkdirTemp(os.TempDir(), "an-")
@@ -160,9 +139,7 @@ func testConfig(t *testing.T) Config {
 	}
 	t.Cleanup(func() { _ = os.RemoveAll(root) })
 	return Config{
-		ConfigHome:  filepath.Join(root, "config"),
 		StateHome:   filepath.Join(root, "state"),
-		CacheHome:   filepath.Join(root, "cache"),
 		RuntimeHome: filepath.Join(root, "runtime"),
 	}
 }

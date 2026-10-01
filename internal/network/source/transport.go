@@ -13,6 +13,15 @@ import (
 	"time"
 )
 
+var (
+	// ErrUnavailable marks failed contact or transport I/O.
+	ErrUnavailable = errors.New("distribution source unavailable")
+	// ErrAuthentication marks TLS peer verification or handshake protocol failure.
+	ErrAuthentication = errors.New("distribution source authentication failed")
+	// ErrFraming marks a malformed response or bundle.
+	ErrFraming = errors.New("distribution source framing failed")
+)
+
 func fetch(ctx context.Context, client client, request Message) (Message, error) {
 	dialTimeout := time.Second
 	handshakeTimeout := 2 * time.Second
@@ -21,32 +30,70 @@ func fetch(ctx context.Context, client client, request Message) (Message, error)
 	defer cancel()
 	connection, err := (&net.Dialer{Timeout: dialTimeout}).DialContext(totalContext, "tcp", client.address)
 	if err != nil {
-		return Message{}, fmt.Errorf("distribution source unavailable: %w", err)
+		return fetchFailure(totalContext, Message{}, fmt.Errorf("%w: %w", ErrUnavailable, err))
 	}
 	defer connection.Close()
+	// DialContext and HandshakeContext stop at their own boundaries. Keep the
+	// established socket tied to the complete exchange and caller lifetime.
+	stopCancellation := context.AfterFunc(totalContext, func() { _ = connection.Close() })
+	defer stopCancellation()
 	if err := connection.SetDeadline(time.Now().Add(exchangeTimeout)); err != nil {
-		return Message{}, err
+		return fetchFailure(totalContext, Message{}, fmt.Errorf("%w: set exchange deadline: %w", ErrUnavailable, err))
 	}
 	tlsConnection := tls.Client(connection, clientTLSConfig(client))
 	handshakeContext, stopHandshake := context.WithTimeout(totalContext, handshakeTimeout)
 	err = tlsConnection.HandshakeContext(handshakeContext)
 	stopHandshake()
 	if err != nil {
-		return Message{}, fmt.Errorf("distribution source authentication failed: %w", err)
+		cause := ErrAuthentication
+		if transportReadFailure(err) || errors.Is(err, io.ErrUnexpectedEOF) {
+			cause = ErrUnavailable
+		}
+		return fetchFailure(totalContext, Message{}, fmt.Errorf("%w: %w", cause, err))
 	}
 	if err := writeRequest(tlsConnection, request); err != nil {
-		return Message{}, fmt.Errorf("write distribution request: %w", err)
+		return fetchFailure(totalContext, Message{}, fmt.Errorf("write distribution request: %w", err))
 	}
 	response, err := readResponse(tlsConnection)
 	if err != nil {
-		return response, fmt.Errorf("read distribution response: %w", err)
+		cause := ErrFraming
+		if transportReadFailure(err) {
+			cause = ErrUnavailable
+		}
+		return fetchFailure(totalContext, response, fmt.Errorf("%w: read distribution response: %w", cause, err))
 	}
 	var trailing [1]byte
-	if count, trailingErr := tlsConnection.Read(trailing[:]); count != 0 ||
-		(trailingErr != nil && !errors.Is(trailingErr, io.EOF)) {
-		return Message{}, errors.New("distribution response has trailing bytes or an unclean close")
+	count, trailingErr := tlsConnection.Read(trailing[:])
+	if count != 0 {
+		return fetchFailure(totalContext, Message{}, fmt.Errorf("%w: distribution response has trailing bytes", ErrFraming))
+	}
+	if trailingErr != nil && !errors.Is(trailingErr, io.EOF) {
+		cause := ErrFraming
+		if transportReadFailure(trailingErr) || errors.Is(trailingErr, io.ErrUnexpectedEOF) {
+			cause = ErrUnavailable
+		}
+		return fetchFailure(totalContext, Message{}, fmt.Errorf("%w: read distribution response closure: %w", cause, trailingErr))
+	}
+	if contextErr := totalContext.Err(); contextErr != nil {
+		return Message{}, contextErr
 	}
 	return response, nil
+}
+
+// A socket failure is distinct from a peer that answered with malformed wire
+// bytes. io.ErrUnexpectedEOF during response decoding means a partial frame.
+func transportReadFailure(err error) bool {
+	var operationError *net.OpError
+	return errors.Is(err, io.EOF) || errors.Is(err, net.ErrClosed) || errors.As(err, &operationError)
+}
+
+// fetchFailure retains a partial response only for a live exchange, where its
+// transport-observed object digest may justify State's one bounded BY_DIGEST retry.
+func fetchFailure(ctx context.Context, response Message, err error) (Message, error) {
+	if contextErr := ctx.Err(); contextErr != nil {
+		return Message{}, contextErr
+	}
+	return response, err
 }
 
 // Serve owns the configured bounded TLS listener until cancellation or

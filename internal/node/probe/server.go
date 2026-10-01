@@ -1,0 +1,202 @@
+package probe
+
+import (
+	"context"
+	"crypto/sha256"
+	"crypto/tls"
+	"crypto/x509"
+	"errors"
+	"net"
+	"sync"
+	"sync/atomic"
+	"time"
+)
+
+type probeListener struct {
+	plan        *Plan
+	duty        Duty
+	listener    net.Listener
+	active      chan struct{}
+	open        chan struct{}
+	mu          sync.Mutex
+	connections map[net.Conn]struct{}
+	nonces      [512][32]byte
+	nonceCount  int
+	nonceNext   int
+	stop        chan struct{}
+	stopOnce    sync.Once
+	cleanup     cleanupResult
+	protected   atomic.Bool
+	terminal    chan error
+	work        sync.WaitGroup
+}
+
+// Handle gives process supervision the bounded lifetime of one listener.
+type Handle struct {
+	Done    <-chan error
+	Protect func(bool)
+	Usage   func() (uint64, uint64, uint64)
+	Stop    func()
+	Drain   func(context.Context) error
+}
+
+// Start binds the plan to one authenticated duty.
+func (p *Plan) Start(duty Duty) (*Handle, error) {
+	if duty.Capacity == 0 {
+		return nil, errors.New("role-probe duty has no capacity")
+	}
+	listener, err := net.Listen("tcp", p.config.ListenAddress)
+	if err != nil {
+		return nil, err
+	}
+	running := &probeListener{plan: p, duty: duty, listener: tls.NewListener(listener, probeTLSConfig(p.config)),
+		active: make(chan struct{}, min(4, int(duty.Capacity))), open: make(chan struct{}, 16), connections: make(map[net.Conn]struct{}),
+		stop: make(chan struct{}), terminal: make(chan error, 1)}
+	running.work.Add(1)
+	go running.accept()
+	return &Handle{Done: running.terminal, Protect: running.protect, Usage: running.usage,
+		Stop: running.stopAdmission, Drain: running.drain}, nil
+}
+
+func probeTLSConfig(config Config) *tls.Config {
+	roots := x509.NewCertPool()
+	roots.AppendCertsFromPEM(config.ClientRootPEM)
+	pins := make(map[[32]byte]bool, len(config.ClientKeyPins))
+	for _, pin := range config.ClientKeyPins {
+		pins[pin] = true
+	}
+	return &tls.Config{MinVersion: tls.VersionTLS13, MaxVersion: tls.VersionTLS13,
+		Certificates: []tls.Certificate{config.Certificate}, ClientAuth: tls.RequireAndVerifyClientCert,
+		ClientCAs: roots, SessionTicketsDisabled: true, VerifyConnection: func(state tls.ConnectionState) error {
+			if len(state.PeerCertificates) == 0 {
+				return errors.New("role-probe client certificate is missing")
+			}
+			raw, err := x509.MarshalPKIXPublicKey(state.PeerCertificates[0].PublicKey)
+			if err != nil || !pins[sha256.Sum256(raw)] {
+				return errors.New("role-probe client leaf key pin is not authorized")
+			}
+			return nil
+		}}
+}
+
+func (s *probeListener) accept() {
+	defer s.work.Done()
+	for {
+		select {
+		case s.open <- struct{}{}:
+		case <-s.stop:
+			s.terminal <- nil
+			return
+		}
+		connection, err := s.listener.Accept()
+		if err != nil {
+			<-s.open
+			select {
+			case <-s.stop:
+				s.terminal <- nil
+			default:
+				s.terminal <- err
+			}
+			return
+		}
+		if s.protected.Load() {
+			<-s.open
+			s.cleanup.record(connection.Close())
+			continue
+		}
+		s.track(connection, true)
+		s.work.Add(1)
+		go s.handle(connection)
+	}
+}
+
+func (s *probeListener) protect(value bool) { s.protected.Store(value) }
+
+func (s *probeListener) usage() (uint64, uint64, uint64) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	open := uint64(len(s.connections))
+	return open + 1, uint64(len(s.active)), 0
+}
+
+func (s *probeListener) handle(connection net.Conn) {
+	defer s.work.Done()
+	defer func() { <-s.open }()
+	defer s.track(connection, false)
+	defer func() { s.cleanup.record(connection.Close()) }()
+	now := s.plan.now()
+	deadline := now.Add(s.plan.config.MaximumDuty)
+	if now.Before(s.duty.EpochValidFrom) || now.Before(s.duty.RecordValidFrom) ||
+		!deadline.Before(s.duty.EpochValidUntil) || !deadline.Before(s.duty.RecordValidUntil) {
+		return
+	}
+	if err := connection.SetDeadline(deadline); err != nil {
+		return
+	}
+	select {
+	case s.active <- struct{}{}:
+		defer func() { <-s.active }()
+	default:
+		return
+	}
+	request, err := readProbeRequest(connection)
+	if err == nil && requestMatches(request, s.duty) && s.acceptNonce(request.nonce) {
+		_ = writeProbeResponse(connection, request)
+	}
+}
+
+func (s *probeListener) acceptNonce(nonce [32]byte) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for index := 0; index < s.nonceCount; index++ {
+		if s.nonces[index] == nonce {
+			return false
+		}
+	}
+	s.nonces[s.nonceNext] = nonce
+	if s.nonceCount < len(s.nonces) {
+		s.nonceCount++
+	}
+	s.nonceNext = (s.nonceNext + 1) % len(s.nonces)
+	return true
+}
+
+func (s *probeListener) track(connection net.Conn, add bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if add {
+		s.connections[connection] = struct{}{}
+	} else {
+		delete(s.connections, connection)
+	}
+}
+
+func (s *probeListener) drain(ctx context.Context) error {
+	s.stopAdmission()
+	done := make(chan struct{})
+	go func() { s.work.Wait(); close(done) }()
+	timer := time.NewTimer(s.plan.config.DrainTimeout)
+	defer timer.Stop()
+	var drainErr error
+	select {
+	case <-done:
+		return s.cleanup.result()
+	case <-ctx.Done():
+		drainErr = ctx.Err()
+	case <-timer.C:
+	}
+	s.mu.Lock()
+	for connection := range s.connections {
+		s.cleanup.record(connection.Close())
+	}
+	s.mu.Unlock()
+	<-done
+	return errors.Join(s.cleanup.result(), drainErr)
+}
+
+func (s *probeListener) stopAdmission() {
+	s.stopOnce.Do(func() {
+		close(s.stop)
+		s.cleanup.record(s.listener.Close())
+	})
+}

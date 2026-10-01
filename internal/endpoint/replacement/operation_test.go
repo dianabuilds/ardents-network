@@ -317,6 +317,14 @@ func TestReplaceRetiresOnlyCompletedPredecessorBeforeNextAuthorizedSuccessor(t *
 	}
 }
 
+// replaceWithInterruption is the test-side crash-boundary seam (ADR-0099).
+// It keeps all real file, journal, unit, and candidate-test operations but
+// returns just after one durable checkpoint, leaving recovery-owned evidence
+// intact for the Recover oracle below.
+func replaceWithInterruption(ctx context.Context, operation Operation, control operationControl) (Result, error) {
+	return replace(ctx, operation, &control)
+}
+
 func TestReplaceInterruptionLeavesOnlyExplicitRecoveryPaths(t *testing.T) {
 	if err := requireLinux(); err != nil {
 		t.Skip(err)

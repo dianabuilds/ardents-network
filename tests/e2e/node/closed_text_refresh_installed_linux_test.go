@@ -40,9 +40,12 @@ func readInstalledCommandDescriptor(t *testing.T, root string, profile state.Clo
 		if readErr != nil || closeErr != nil || len(raw) > reachability.MaximumPrivateDescriptorSize+2 || len(raw) < 3 {
 			t.Fatalf("invalid persisted Descriptor observation: %v / %v", readErr, closeErr)
 		}
-		// The current Store's two-byte prefix records its version and conflict flags. A conflict
-		// cannot count as successful refresh, even when the remaining proof verifies.
-		if raw[0] != 2 || raw[1] != 0 {
+		// The current Store's two-byte prefix records its v3 version and conflict flags.
+		if raw[0] != 3 {
+			t.Fatal("unexpected stored Descriptor version")
+		}
+		// A conflict cannot count as successful refresh, even when the proof verifies.
+		if raw[1] != 0 {
 			t.Fatal("conflicting publication observed")
 		}
 		value, err := reachability.VerifyPrivatePublication(raw[2:], profile.NetworkID, profile.Digest, time.Now().UTC())

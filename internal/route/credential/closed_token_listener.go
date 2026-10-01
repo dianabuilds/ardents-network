@@ -7,10 +7,11 @@ import (
 	"io"
 	"net"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
+	routecarrier "github.com/dianabuilds/ardents-network/internal/route/carrier"
 )
 
 const closedIssuerDirectAdjacency = byte(1)
@@ -20,9 +21,9 @@ const closedIssuerDirectAdjacency = byte(1)
 // derive all of them; no Target, holder, permission or authority enters here.
 type ClosedTokenListenerConfig struct {
 	Issuer          *ClosedTokenIssuer
-	SharedListener  route.ClosedSharedCarrierListener
+	SharedListener  routecarrier.ClosedSharedCarrierListener
 	NodeHandler     ClosedNodeBootstrapHandler
-	CarrierProfile  route.CarrierProfile
+	CarrierProfile  routecarrier.CarrierProfile
 	Endpoint        string
 	Certificate     tls.Certificate
 	ConnectionLimit uint16
@@ -31,19 +32,18 @@ type ClosedTokenListenerConfig struct {
 
 // ClosedNodeBootstrapHandler owns the Node-authenticated outer state and may
 // invoke serve only after it has completed inner TLS and verified inner HELLO.
-type ClosedNodeBootstrapHandler func(context.Context, route.ClosedSharedCarrier, func(context.Context, io.ReadWriter, [32]byte, route.ClosedHello) error)
+type ClosedNodeBootstrapHandler func(context.Context, routecarrier.ClosedSharedCarrier, func(context.Context, io.ReadWriter, [32]byte, ardp.Hello) error)
 
 // ClosedTokenListener owns bounded direct role bootstrap serving. Its caller
 // separately owns State refresh and issuer-root lifetime.
 type ClosedTokenListener struct {
 	issuer     *ClosedTokenIssuer
-	listener   route.ClosedRoleCarrierListener
-	shared     route.ClosedSharedCarrierListener
+	listener   routecarrier.ClosedRoleCarrierListener
+	shared     routecarrier.ClosedSharedCarrierListener
 	node       ClosedNodeBootstrapHandler
 	controller *route.ClosedBootstrapController
 	clock      func() time.Time
 	limit      chan struct{}
-	active     atomic.Uint32
 	stopOnce   sync.Once
 	stopErr    error
 	cancel     context.CancelFunc
@@ -51,6 +51,8 @@ type ClosedTokenListener struct {
 	done       chan error
 	stopped    chan struct{}
 	workers    sync.WaitGroup
+	closeMu    sync.Mutex
+	closeErr   error
 }
 
 // StartClosedTokenListener starts one selected direct role carrier. All
@@ -61,10 +63,10 @@ func StartClosedTokenListener(ctx context.Context, config ClosedTokenListenerCon
 		(config.SharedListener == nil && config.NodeHandler != nil) || (config.SharedListener != nil && config.NodeHandler == nil) {
 		return nil, errors.New("closed token listener configuration is invalid")
 	}
-	var listener route.ClosedRoleCarrierListener
+	var listener routecarrier.ClosedRoleCarrierListener
 	if config.SharedListener == nil {
 		var err error
-		listener, err = route.ListenClosedRoleCarrier(config.CarrierProfile, config.Endpoint, config.Certificate)
+		listener, err = routecarrier.ListenClosedRoleCarrier(config.CarrierProfile, config.Endpoint, config.Certificate)
 		if err != nil {
 			return nil, err
 		}
@@ -104,11 +106,12 @@ func (listener *ClosedTokenListener) Done() <-chan error {
 	return listener.done
 }
 
+// Active reports occupied connection-limit slots for Node usage sampling.
 func (listener *ClosedTokenListener) Active() uint32 {
 	if listener == nil {
 		return 0
 	}
-	return listener.active.Load()
+	return uint32(len(listener.limit))
 }
 
 // Stop refuses new peers. Drain joins currently bounded exchanges but does not
@@ -136,7 +139,7 @@ func (listener *ClosedTokenListener) Drain(ctx context.Context) error {
 	stopErr := listener.Stop()
 	select {
 	case <-listener.drained:
-		return stopErr
+		return errors.Join(stopErr, listener.closeErr)
 	case <-ctx.Done():
 		return errors.Join(stopErr, ctx.Err())
 	}
@@ -158,30 +161,32 @@ func (listener *ClosedTokenListener) serve(ctx context.Context) {
 				case <-ctx.Done():
 					return
 				default:
+					if routecarrier.IsClosedSharedPeerFailure(err) {
+						continue
+					}
 					terminal = err
 					return
 				}
 			}
 			if ctx.Err() != nil {
 				if accepted.Connection != nil {
-					_ = accepted.Connection.Close()
+					listener.closeCarrier(accepted.Connection)
 				}
 				return
 			}
-			if accepted.Kind == route.ClosedSharedNode && accepted.Connection != nil {
+			if accepted.Kind == routecarrier.ClosedSharedNode && accepted.Connection != nil {
 				select {
 				case listener.limit <- struct{}{}:
-					listener.active.Add(1)
 					listener.workers.Add(1)
 					go listener.serveNode(ctx, accepted)
 				default:
-					_ = accepted.Connection.Close()
+					listener.closeCarrier(accepted.Connection)
 				}
 				continue
 			}
-			if accepted.Kind != route.ClosedSharedDirect || accepted.Connection == nil {
+			if accepted.Kind != routecarrier.ClosedSharedDirect || accepted.Connection == nil {
 				if accepted.Connection != nil {
-					_ = accepted.Connection.Close()
+					listener.closeCarrier(accepted.Connection)
 				}
 				continue
 			}
@@ -201,7 +206,7 @@ func (listener *ClosedTokenListener) serve(ctx context.Context) {
 			}
 		}
 		if ctx.Err() != nil {
-			_ = connection.Close()
+			listener.closeCarrier(connection)
 			return
 		}
 		listener.startDirect(ctx, connection)
@@ -211,17 +216,16 @@ func (listener *ClosedTokenListener) serve(ctx context.Context) {
 func (listener *ClosedTokenListener) startDirect(ctx context.Context, connection net.Conn) {
 	select {
 	case listener.limit <- struct{}{}:
-		listener.active.Add(1)
 		listener.workers.Add(1)
 		go listener.serveConnection(ctx, connection)
 	default:
-		_ = connection.Close()
+		listener.closeCarrier(connection)
 	}
 }
 
 func (listener *ClosedTokenListener) serveConnection(ctx context.Context, connection net.Conn) {
 	defer listener.workers.Done()
-	defer func() { <-listener.limit; listener.active.Add(^uint32(0)); _ = connection.Close() }()
+	defer func() { <-listener.limit; listener.closeCarrier(connection) }()
 	deadline := listener.clock().UTC().Add(10 * time.Second)
 	if err := connection.SetDeadline(deadline); err != nil {
 		return
@@ -229,7 +233,7 @@ func (listener *ClosedTokenListener) serveConnection(ctx context.Context, connec
 	var adjacency [32]byte
 	adjacency[0] = closedIssuerDirectAdjacency
 	interrupted := make(chan struct{})
-	stop := context.AfterFunc(ctx, func() { defer close(interrupted); _ = connection.Close() })
+	stop := context.AfterFunc(ctx, func() { defer close(interrupted); listener.closeCarrier(connection) })
 	defer func() {
 		if !stop() {
 			<-interrupted
@@ -246,25 +250,24 @@ func (listener *ClosedTokenListener) serveConnection(ctx context.Context, connec
 	}
 }
 
-func (listener *ClosedTokenListener) serveVerified(ctx context.Context, carrier io.ReadWriter, adjacency [32]byte, hello route.ClosedHello) error {
+func (listener *ClosedTokenListener) serveVerified(ctx context.Context, carrier io.ReadWriter, adjacency [32]byte, hello ardp.Hello) error {
 	return listener.issuer.ServeBootstrapAfterHello(ctx, carrier, listener.controller, adjacency, hello)
 }
 
-func (listener *ClosedTokenListener) serveNode(ctx context.Context, carrier route.ClosedSharedCarrier) {
+func (listener *ClosedTokenListener) serveNode(ctx context.Context, carrier routecarrier.ClosedSharedCarrier) {
 	defer listener.workers.Done()
 	interrupted := make(chan struct{})
 	stop := context.AfterFunc(ctx, func() {
 		defer close(interrupted)
 		_ = carrier.Connection.SetDeadline(time.Now())
-		_ = carrier.Connection.Close()
+		listener.closeCarrier(carrier.Connection)
 	})
 	defer func() {
-		_ = carrier.Connection.Close()
+		listener.closeCarrier(carrier.Connection)
 		if !stop() {
 			<-interrupted
 		}
 		<-listener.limit
-		listener.active.Add(^uint32(0))
 	}()
 	listener.node(ctx, carrier, listener.serveVerified)
 }

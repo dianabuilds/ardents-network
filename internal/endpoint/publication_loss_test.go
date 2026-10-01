@@ -1,0 +1,153 @@
+//go:build linux
+
+package endpoint
+
+import (
+	"crypto/ed25519"
+	"crypto/rand"
+	"testing"
+	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/endpoint/introduction"
+	"github.com/dianabuilds/ardents-network/internal/network/state"
+	"github.com/dianabuilds/ardents-network/internal/node"
+	routecarrier "github.com/dianabuilds/ardents-network/internal/route/carrier"
+	servicepublication "github.com/dianabuilds/ardents-network/internal/service/publication"
+)
+
+// The same real registered Publisher setup feeds successful and interrupted
+// Descriptor handovers. Only accepted State and worker qualification are fixtures.
+func startRegisteredPublisherNetwork(t *testing.T, carrier routecarrier.CarrierProfile, gate *descriptorACKGate, expectations ...*endpointCloseExpectation) (*endpoint, *dutyContext, *sourceStateFixture, *introduction.Registration) {
+	t.Helper()
+	var closeExpectation *endpointCloseExpectation
+	if len(expectations) != 0 {
+		closeExpectation = expectations[0]
+	}
+	endpoint, owner, source := startRoleNetwork(t, roleNetworkFixture{carrier: carrier, resolution: true, publisher: true, closeExpectation: closeExpectation, configure: []func(int, *node.Config){gate.configure(t)}})
+	source.mu.Lock()
+	source.view.NodeCount, source.snapshot.CandidateCount = 16, 16
+	source.view.Nodes[15] = state.ClosedRouteNodeView{NodeID: fixtureID(202), RecordDigest: fixtureID(203), DutyGeneration: 16, RoleDomain: 2, Subrole: 4}
+	candidate := source.snapshot.Candidates[4]
+	candidate.NodeID, candidate.RecordDigest, candidate.FamilyID, candidate.PublicKey = fixtureID(202), fixtureID(203), fixtureID(204), fixtureID(205)
+	source.snapshot.Candidates[15] = candidate
+	source.mu.Unlock()
+	public, authority, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer clear(authority)
+	now := time.Now().UTC().Truncate(time.Second)
+	root, binding := acceptedInstanceBinding(t, serviceInstanceFixtureRoot(t), endpoint.network, authority, now.Add(-time.Second), source.view.Profile.NotAfter)
+	t.Cleanup(func() {
+		checkFixtureEndpointClose(t, endpoint, closeExpectation)
+		if err := root.Close(); err != nil {
+			t.Error(err)
+		}
+	})
+	publications, err := servicepublication.Open(servicepublication.Config{Root: networkPrivateRoot(t), NetworkID: endpoint.network, Authority: public, Clock: time.Now})
+	if err != nil {
+		t.Fatal(err)
+	}
+	endpoint.publisherBinding, endpoint.publications, endpoint.authority = binding, publications, [32]byte(public)
+	if _, err := owner.openPrefix(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := owner.openIntroductionPrefix(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	first, err := owner.registerIntroduction(t.Context(), 1, time.Now().UTC().Add(120*time.Second).Truncate(time.Second))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return endpoint, owner, source, first
+}
+
+// Every failure occurs after the real Store commits the replacement, before
+// its network acknowledgement. None may revive accepting readiness or keys.
+func TestTextPublicationLossBeforeAcknowledgementRetiresRecipients(t *testing.T) {
+	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP, routecarrier.ClosedCarrierQUIC} {
+		t.Run(string(carrier), func(t *testing.T) {
+			for _, failure := range []string{"replacement channel", "predecessor channel", "context revoke"} {
+				t.Run(failure, func(t *testing.T) {
+					gate := newDescriptorACKGate()
+					defer gate.open()
+					endpoint, owner, _, first := startRegisteredPublisherNetwork(t, carrier, gate)
+					if _, err := owner.publishDescriptor(t.Context()); err != nil {
+						t.Fatal(err)
+					}
+					gate.arm(t)
+					owner.mu.Lock()
+					refresh := owner.publication.refresh.Current()
+					introduction.ForceRefreshAt(first, time.Now().Add(-time.Second))
+					owner.publication.signalRegistrationsLocked()
+					owner.mu.Unlock()
+					select {
+					case <-gate.held:
+					case <-refresh.Done:
+						cause := owner.publication.refresh.Outcome(refresh)
+						t.Fatalf("refresh ended before replacement Store commit: %v", cause)
+					case <-time.After(10 * time.Second):
+						owner.mu.Lock()
+						cause, registered := owner.publication.refresh.Outcome(refresh), introduction.PairPending(&owner.publication.pair) != nil && introduction.PairPending(&owner.publication.pair) != first
+						owner.mu.Unlock()
+						t.Fatalf("replacement did not reach Store commit before ACK: registered=%t refresh=%v", registered, cause)
+					}
+					owner.mu.Lock()
+					second := introduction.PairPending(&owner.publication.pair)
+					ready := first.PublishedLocked() && second != nil && second != first && !second.PublishedLocked() && second.HasRecipientLocked()
+					owner.mu.Unlock()
+					if !ready || first.RecipientPublicLocked(time.Now()) == [32]byte{} || second.RecipientPublicLocked(time.Now()) == [32]byte{} {
+						t.Fatal("failure was not injected between live registration and acknowledged replacement")
+					}
+					switch failure {
+					case "replacement channel":
+						if err := second.Close(); err != nil {
+							t.Fatal(err)
+						}
+					case "predecessor channel":
+						if err := first.Close(); err != nil {
+							t.Fatal(err)
+						}
+					case "context revoke":
+						owner.lease.Release()
+					}
+					gate.open()
+					select {
+					case <-refresh.Done:
+					case <-time.After(10 * time.Second):
+						t.Fatal("failed publication did not join refresh")
+					}
+					if failure == "context revoke" {
+						select {
+						case <-owner.done:
+						case <-time.After(10 * time.Second):
+							t.Fatal("revoked context did not finish cleanup")
+						}
+					}
+					owner.mu.Lock()
+					lossPrevious, _ := owner.publication.pair.PreviousLocked()
+					retired := owner.publication.pair.CurrentLocked() == nil && introduction.PairPending(&owner.publication.pair) == nil && lossPrevious == nil && !second.PublishedLocked()
+					cause := owner.publication.refresh.Outcome(refresh)
+					owner.mu.Unlock()
+					if !retired || failure != "context revoke" && cause == nil {
+						t.Fatalf("late ACK retained readiness or lost failure: retired=%t cause=%v", retired, cause)
+					}
+					if first.RecipientPublicLocked(time.Now()) != [32]byte{} || second.RecipientPublicLocked(time.Now()) != [32]byte{} {
+						t.Fatal("failed replacement retained recipient key material")
+					}
+					if _, err := owner.publishDescriptor(t.Context()); err == nil {
+						t.Fatal("failed replacement resurrected through exact publication retry")
+					}
+					if failure == "context revoke" {
+						endpoint.publisherMu.Lock()
+						released := endpoint.publisherBinding == nil && !endpoint.publicationLive
+						endpoint.publisherMu.Unlock()
+						if !released {
+							t.Fatal("revocation retained Instance publication authority")
+						}
+					}
+				})
+			}
+		})
+	}
+}

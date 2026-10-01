@@ -5,6 +5,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/network/state/durable"
 	"github.com/dianabuilds/ardents-network/internal/resource"
 )
 
@@ -13,7 +14,7 @@ func Open(input Config) (*networkState, error) {
 	return open(input, nil, nil)
 }
 
-func open(input Config, automaticTicks <-chan time.Time, automaticResults chan<- error) (*networkState, error) {
+func open(input Config, automaticTicks <-chan time.Time, automaticResults chan<- error) (openedState *networkState, resultErr error) {
 	resolved, err := validateConfig(input)
 	if err != nil {
 		return nil, err
@@ -22,14 +23,16 @@ func open(input Config, automaticTicks <-chan time.Time, automaticResults chan<-
 	if err != nil {
 		return nil, err
 	}
-	storage, err := openDurableRoot(resolved.root)
+	storage, err := durable.Open(resolved.root, storageLimits())
 	if err != nil {
 		return nil, err
 	}
 	opened := false
 	defer func() {
 		if !opened {
-			_ = storage.close()
+			if closeErr := storage.Close(); closeErr != nil {
+				resultErr = errors.Join(resultErr, closeErr)
+			}
 		}
 	}()
 	workContext, workCancel := context.WithCancel(context.Background())
@@ -62,12 +65,15 @@ func openResourceGuard(profile string) (*resource.Guard, error) {
 }
 
 func (s *networkState) recover(workContext context.Context, automaticTicks <-chan time.Time, automaticResults chan<- error) error {
-	current, decision, err := loadCurrent(s.config, s.storage)
+	current, err := loadCurrent(s.config, s.storage)
 	if err != nil {
 		return err
 	}
-	s.current, s.currentDecision = current, decision
+	s.current = current
 	if err := s.loadDistributionState(); err != nil {
+		return err
+	}
+	if err := s.recoverSourceWaveGuard(); err != nil {
 		return err
 	}
 	if err := s.startSource(workContext); err != nil {
@@ -82,8 +88,12 @@ func (s *networkState) recover(workContext context.Context, automaticTicks <-cha
 		}()
 	}
 	if s.config.profile == "h3-s-v1" {
+		s.resourceDone = make(chan struct{})
 		s.work.Add(1)
-		go s.runResourceGovernor(workContext)
+		go func() {
+			defer close(s.resourceDone)
+			s.runResourceGovernor(workContext)
+		}()
 	}
 	return nil
 }

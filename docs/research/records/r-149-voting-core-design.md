@@ -97,10 +97,10 @@ performance is inferred. A later selection needs pinned-source assessment.
 
 ### Experiment
 
-The [predeclared envelope experiment](../../../experiments/r-149-voting-envelope/README.md)
+The [predeclared envelope experiment](https://github.com/dianabuilds/ardents-network/blob/4764ae1c567e93180f3aa643b2544abfdb2a67dc/experiments/r-149-voting-envelope/README.md)
 checks exact finite sampling, response capacity, volunteer filtering, workload
 and cross-jury conflict. It implements no cryptography, peer delivery or people.
-The earlier [committee experiment](../../../experiments/r-149-task-committees/README.md)
+The earlier [committee experiment](https://github.com/dianabuilds/ardents-network/blob/4764ae1c567e93180f3aa643b2544abfdb2a67dc/experiments/r-149-task-committees/README.md)
 remains evidence for proposal grinding, reserves and unsafe deadline examples.
 
 ## Findings

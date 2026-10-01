@@ -1,5 +1,13 @@
 # Product scope and audit boundary
 
+[ADR-0119](../adr/0119-bind-protected-endpoint-generation-to-release.md)
+selects one authenticated protected Endpoint distribution and one independently
+delivered initial pin. Executable and static text-worker generation are separate
+targets in the same signed Release set; installation-specific plans and mutable
+roots remain separate. This selected installation successor is not implemented
+or qualified by its acceptance. Product acceptance still requires two separate
+installed Endpoints, both selected Carriers and honest restart/refusal outcomes.
+
 Status: **current C0 candidate contract.** This document names the maintained
 product surfaces that may enter the next architecture and security audit. It is
 not a release qualification, Public Beta claim, or authorization to add missing
@@ -11,6 +19,13 @@ labels and completed campaign names are provenance only; they are not runtime,
 package, release, wire, or persisted identities. Existing accepted wire or
 persisted identities that contain an earlier label remain compatibility
 obligations until a separately researched migration retires them.
+For the exact closed Service identities inventoried in
+[R-168](../research/records/r-168-service-v3-format-reset.md),
+[ADR-0117](../adr/0117-reset-closed-service-formats-to-v3.md) selects a
+fresh-root v3 replacement instead: there are no supported old Service clients,
+and old formats receive only refusal without conversion or automatic deletion.
+This selection does not change unrelated Route, State, or Application identities
+and is not evidence that the v3 replacement has been integrated or qualified.
 
 ## Product core
 
@@ -72,10 +87,17 @@ is a readiness target, not evidence that the candidate is qualified, released,
 publicly supported, anonymous, independently operated, or censorship
 resistant.
 
-One technical operator may use an authenticated, manually installed Ubuntu LTS
-`x86-64` artifact against project-controlled infrastructure to publish one
-active Service Instance and let a second Endpoint connect through an explicit
-Target Link. The maintained operator surface is the four headless commands
+One person may operate the two Endpoints using an authenticated, manually
+installed Ubuntu LTS `x86-64` artifact against project-controlled
+infrastructure to publish one active Service Instance and connect through an
+explicit Target Link. That describes Endpoint staffing, not the number of
+infrastructure Operator Families. A complete Route still requires the distinct
+Direct-Origin Source families and non-overlapping Role Domain assignments of
+the accepted Network contract. Infrastructure under one known effective
+controller is one family regardless of machine count or declared labels; if
+it cannot supply those assignments, the full installed journey is unavailable.
+Same-operator artifact and host diagnostics do not qualify that journey.
+The maintained operator surface is the four headless commands
 `ardents`, `ardents-node`, `ardents-control`, and `ardents-custody`; a concrete
 journey may invoke only the subset it needs. Operator instructions must not
 require editing JSON, extracting test-fixture keys, knowing package names, or
@@ -90,11 +112,13 @@ replacement remains authenticated and explicit; automatic update is outside
 this profile.
 
 The profile does not select Browser or GUI delivery, Windows qualification,
-public or permissionless operation, independent operators, canonical Service
-Names or Namespace governance, additional Carriers, mobile/macOS, high-load
-operation, availability, anonymity, or censorship-resistance claims. Those
-items remain outside C0 unless a later Product Owner decision, research
-question, and required durable decision admit them.
+public or permissionless operation, independently audited operator control,
+canonical Service Names or Namespace governance, additional Carriers,
+mobile/macOS, high-load operation, availability, anonymity, or
+censorship-resistance claims. Distinct known families are an eligibility
+precondition, not proof that hidden common control is absent. Those unselected
+capabilities and claims remain outside C0 unless a later Product Owner
+decision, research question, and required durable decision admit them.
 
 Current C0 delivery status and work sequencing belong in GitHub Issues under
 the [`C0 Closed Alpha` milestone](https://github.com/dianabuilds/ardents-network/milestones),
@@ -105,14 +129,15 @@ the tracker is the one live task ledger.
 
 The four commands have non-interchangeable C0 roles: `ardents-control` verifies
 the enrollment-pinned control evidence; `ardents-node` runs only the
-project-controlled Source, Transit issuance, and selected Node duties;
+project-controlled Source and selected closed Node duties, including the
+closed-token issuer;
 `ardents-custody` creates the Service Authority and issues the one public
 Service Credential without exporting Authority material; and `ardents` owns
 Endpoint enrollment/runtime, Service Instance initialization/acceptance,
 publication, and local Application byte exchange. Their durable inputs remain
 separate: immutable artifact and enrollment inputs, project Node/issuer roots,
 Authority Vault, Service Instance root and public request/response, Endpoint
-State/Entry/Transit/Publication roots, and local Application/Administration
+State/Entry/text-token/Publication roots, and local Application/Administration
 sockets. No role may borrow another role's root or private material.
 
 The C0 operator route must expose stable, actionable failures for a rejected
@@ -123,14 +148,71 @@ resource; cancellation or timeout; and closed Service Connection. A lower
 level diagnostic may add detail but cannot silently reinterpret one of these
 classes as success or fallback.
 
-The maintained `ardents endpoint open` route now accepts only an explicit
-Target Link. Its bounded two-Endpoint test proves the Target Link-to-Connection
-transition through the Endpoint-owned Resolution and Route boundaries. The
-portable enrollment route receives only the bundle root and an independently
+The generic `ardents endpoint open` route is selected for retirement rather
+than translation to AAI3. There is no current product consumer for its
+arbitrary binary file-to-file workload. The protected text reader is a distinct
+typed Application with a fixed workload and confinement contract; it is not a
+generic successor. The retirement transition refuses the recognized command
+before opening either input or output path, dialing its local socket, or
+starting Endpoint or Network work. The accepting file client has been removed;
+the uncalled AAI2 codec/server/client and exclusive Endpoint adapter have also
+been removed. AAI2 supplies no C0 readiness or compatibility surface. The
+portable enrollment route
+receives only the bundle root and an independently
 delivered manifest SHA-256 pin; it verifies that pin before parsing the
 manifest and derives the remaining enrollment facts from its bound `RELEASE`
 descriptor. This does not bypass Endpoint-owned Resolution, Route, or
 authority boundaries.
+
+The selected Endpoint startup transition retires acceptance of
+`ardents-headless-runtime-v1` rather than converting it into the protected v2
+composition. Existing root and floor bytes remain retained evidence, not
+authority for an automatic migration. The
+[Endpoint startup retirement contract](../technical/endpoint-service-runtime.md#v1-startup-retirement)
+owns the exact refusal and effect boundary. The command now implements that
+boundary: bounded persisted v1 plans are refused without runtime effects, while
+v2 remains the sole accepted headless startup schema. The separate
+[generic Connection command](../technical/endpoint-service-runtime.md#generic-connection-command-retirement)
+has its own selected retirement boundary; neither decision retires the
+Administration interface.
+
+[ADR-0088](../adr/0088-retire-alpha-service-links-and-corpus-intake.md)
+selects final retirement of Alpha Service Links and fresh corpus intake rather
+than a grace period or conversion. Both transitions are integrated: intake
+refuses before floor effects, and the Endpoint has no accepting Alpha
+destination adapter or Target-Link fallback. Human-facing Service Names remain
+a product function over the protected protocol; they do not keep the legacy
+Alpha network path alive. Existing floor bytes remain retained evidence pending
+a separate data decision. The
+[Endpoint contract](../technical/endpoint-service-runtime.md#alpha-destination-retirement)
+owns the exact effect and compatibility boundary.
+
+[ADR-0089](../adr/0089-retire-old-node-starts-preserve-owned-shutdown.md)
+retires every new old Node-role, Source-profile, and Transit-issuer start
+rather than keeping a second accepting network path. The selected closed Node
+duties, closed Source profile, and closed issuer remain unchanged.
+[ADR-0114](../adr/0114-remove-dedicated-host-contributor-retirement.md)
+completed the dedicated-host Contributor retirement: no live installation
+remains, so the de-installation mechanism and the ADR-0089 retained bounded
+no-start actions are removed entirely and the subcommand is no longer
+recognized. Existing roots, keys, floors, installation records, and historical
+profile identity remain evidence, not migration or execution authority. The
+[Network/Node owner](../technical/network-route-node.md#old-start-retirement)
+defines the exact selectors and effect boundary.
+
+[ADR-0090](../adr/0090-retire-name-operator-network-adapters.md) retired the
+old operator `name resolve` and `name control` HTTP/OHTTP
+adapters before any file, State, transport, output, or Namespace effect;
+[ADR-0113](../adr/0113-retire-retained-alpha-compatibility-surface.md) then
+retired `name encode` and deleted the whole canonical Naming grammar, so no
+maintained surface presents or consumes Service Names. The successor
+protected wire, Resolver/Gateway topology, authority, governance, migration,
+and AAI3 integration remain unselected; future protected Service Name access
+requires an entirely new scoped design. The
+[Naming owner](../technical/naming.md#name-command-family-retirement)
+defines the retired surface and state boundary. The refusal is integrated and
+the command-owned HTTP/OHTTP adapters are absent; this does not make protected
+Service Name access available.
 
 ## C0 Network candidate
 
@@ -139,12 +221,14 @@ The Network audit candidate is the headless maintained product surface:
 - `ardents`, `ardents-node`, `ardents-control`, and `ardents-custody`;
 - Network State and Source, Entry, Route and Carrier, Node duties, Endpoint,
   Service publication/connection/instance/reachability, naming, enrollment,
-  Release, Custody, contributor, control-inspection, and resource Modules;
+  Release, Custody, control-inspection, and resource Modules;
 - the `internal/application/broker` used by the Network Endpoint for local
   Grant admission and session lifecycle;
-- the Network-owned server implementations of the versioned local Application
-  Interface in `internal/endpoint`, with the neutral v1 contract under
-  `internal/application/interfacev1`;
+- the Network-owned server implementations of the selected typed local
+  Application Interfaces in `internal/endpoint`: protected text Connection
+  under `internal/application/connection` and separately
+  authorized Administration under
+  `internal/application/administration`;
 - the enrollment-v3 headless artifact lane and the maintained deterministic,
   process, race, and fuzz profiles, the architecture gate, and purpose-named
   qualification profiles.
@@ -152,10 +236,11 @@ The Network audit candidate is the headless maintained product surface:
 Endpoint composes authenticated State, Entry, Route, Service, and local
 Application boundaries. It does not own Browser presentation, Browser Entry,
 Firefox, local Application wire clients, Release authority, Network State
-authority, or Authority Custody. A Publisher attachment is available only when
-authenticated State projects exactly one current Introduction, Rendezvous, and
-Responder; Endpoint then acquires the separate Introduction and Responder
-credentials without caller-supplied Route, peer, role, Grant, or key material.
+authority, or Authority Custody. A Publisher path requires State's current
+accepted closed Route profile joined to the same authenticated Epoch and exact
+recipient Node Records.
+Missing, conflicting, expired, or mismatched State makes that path unavailable;
+the Application cannot choose Route peers or State identities.
 
 The C0 Network candidate is ready to be *audited*, not qualified for public
 operation. The audit must use the exact frozen commit and artifact identities
@@ -163,14 +248,18 @@ defined at activation by the [deep-audit method](../development/deep-audit.md).
 
 ## C0 Application Interface
 
-The maintained Application surface is the neutral v1 contract in
-`internal/application/interfacev1/connection` and
-`internal/application/interfacev1/administration`. It owns the small versioned
-local contract, bounds, lifecycle, error/outcome grammar, local transport, and
-conformance vectors. Network implements the server behavior in `internal/endpoint`
-and the maintained commands use only the selected interface seam. No Browser
-client, presentation, native host, extension, or enrollment-v4 artifact is a
-current product surface.
+The maintained Connection surface is the typed v2 contract in
+`internal/application/connection`; its Target-Link request is
+admitted only by the protected text composition and does not authorize a
+generic workload. The maintained Administration surface remains the separate
+v1 contract in `internal/application/administration`. Each owns its
+versioned local contract, bounds, lifecycle, outcome grammar, local transport,
+and conformance evidence. Network implements the server behavior in
+`internal/endpoint`, and maintained commands use only the selected interface
+seam. The former `internal/application/interfacev1/connection` AAI2 grammar and
+exclusive Endpoint adapter are absent; AAI3 rejects an AAI2 request before
+Application owner I/O. No Browser client, presentation, native
+host, extension, or enrollment-v4 artifact is a current product surface.
 
 [`ownership.json`](../development/ownership.json) is the machine-checked source,
 test, command, packaging, qualification, Interface, and historical-evidence
@@ -179,12 +268,12 @@ current artifact set contains only the four headless commands, while the
 Application Interface remains a neutral shared seam.
 
 The former Browser implementation and qualification lanes are retired by
-[ADR-0069](../adr/0069-retire-active-browser-implementation.md). The retained
-Firefox/Endpoint source under `tests/compatibility/browser-endpoint-v4`, its
-accepted ADRs and research records, and immutable audit receipts are
-non-executable evidence only. They do not inherit a Network security claim,
-Browser isolation claim, Web PKI identity, general proxy authority, or
-supported Firefox participant journey.
+[ADR-0069](../adr/0069-retire-active-browser-implementation.md), and
+[ADR-0091](../adr/0091-retire-uncomposed-legacy-artifacts.md) retired the
+in-tree Firefox/Endpoint compatibility source. Its accepted ADRs, research
+records, and immutable audit receipts remain non-executable evidence only.
+They do not inherit a Network security claim, Browser isolation claim, Web PKI
+identity, general proxy authority, or supported Firefox participant journey.
 
 ## Excluded historical evidence
 
@@ -196,13 +285,12 @@ The following are not maintained candidate surfaces:
 - retired release-assembly and project-control simulation commands;
 - superseded planning briefs, status chronology, and split-candidate release
   ledgers; and
-- Firefox/Endpoint source retained as non-executable evidence under
-  `tests/compatibility/browser-endpoint-v4` by ADR-0061.
+- Firefox/Endpoint source formerly retained under
+  `tests/compatibility/browser-endpoint-v4`, retired by ADR-0091.
 
-Git history and accepted research/ADR records preserve the first four items'
-provenance. The ADR-0061 compatibility tree is intentionally retained but is
-excluded from builds, package inventories, current qualification, and the C0
-Network candidate.
+Git history and accepted research/ADR records preserve every item's
+provenance. None of them is part of builds, package inventories, current
+qualification, or the C0 Network candidate.
 
 ## Claims withheld from C0
 

@@ -14,7 +14,7 @@ import (
 	"sort"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/route/credential"
+	"github.com/dianabuilds/ardents-network/internal/admission"
 )
 
 const (
@@ -28,7 +28,7 @@ const (
 
 type admissionAllocation struct {
 	window uint64
-	role   credential.AllocationRole
+	role   admission.AllocationRole
 	tokens uint32
 	id     [32]byte
 	digest [32]byte
@@ -60,7 +60,6 @@ func (vault *Vault) createAdmissionAuthority(ctx context.Context, operation Oper
 func validAdmissionAuthorityCreation(operation Operation) bool {
 	binding := operation.Authority.Binding
 	return operation.RecordID == "" && operation.Path == "" && operation.Expected == (AuthorityBinding{}) &&
-		operation.Transition == nil && operation.Preparation == nil && operation.Reconciliation == nil &&
 		binding.Kind == AuthorityAdmission && binding.Environment != [32]byte{} && binding.Network != [32]byte{} &&
 		binding.Root != [32]byte{} && binding.IDCommitment == [32]byte{} && len(operation.Authority.RootMaterial) == 0 &&
 		operation.Authority.Generation == 0 && operation.Authority.Revision == 0 && len(operation.Authority.Watermarks) == 0
@@ -70,7 +69,7 @@ func (vault *Vault) issueAdmissionPermission(ctx context.Context, operation Oper
 	if secrets == nil || !validAdmissionIssuance(operation) {
 		return Receipt{}, ErrInvalid
 	}
-	request, err := credential.DecodePermissionRequest(operation.AdmissionRequest)
+	request, err := admission.DecodePermissionRequest(operation.AdmissionRequest)
 	if err != nil || request.Permission.NetworkID != operation.Expected.Network {
 		return Receipt{}, ErrInvalid
 	}
@@ -146,7 +145,7 @@ func validAdmissionIssuance(operation Operation) bool {
 	return validRecordID(operation.RecordID) && operation.Expected != (AuthorityBinding{}) && operation.Expected.Kind == AuthorityAdmission &&
 		len(operation.AdmissionRequest) != 0 && operation.AdmissionRequestCommitment == sha256.Sum256(operation.AdmissionRequest) &&
 		len(operation.ServiceRequest) == 0 && operation.ServiceRequestCommitment == ([32]byte{}) && operation.Path == "" &&
-		isZeroAuthorityState(operation.Authority) && operation.Transition == nil && operation.Preparation == nil && operation.Reconciliation == nil
+		isZeroAuthorityState(operation.Authority)
 }
 
 func openAdmissionAuthority(raw, password []byte, expected AuthorityBinding) (AuthorityState, EnvelopeInfo, error) {
@@ -210,26 +209,14 @@ func admissionSuccessor(source AuthorityState, allocations []admissionAllocation
 		Watermarks: []Watermark{{Domain: admissionAllocationWatermark, Value: source.Watermarks[0].Value + 1}}}, nil
 }
 
-func signAdmissionPermission(private ed25519.PrivateKey, permission credential.Permission) ([]byte, error) {
+func signAdmissionPermission(private ed25519.PrivateKey, permission admission.Permission) ([]byte, error) {
 	if len(private) != ed25519.PrivateKeySize {
 		return nil, ErrInvalid
 	}
-	transcript := make([]byte, 0, len("ardents-issuance-permission-v1\x00")+164)
-	transcript = append(transcript, "ardents-issuance-permission-v1\x00"...)
-	for _, item := range [][32]byte{permission.NetworkID, permission.IssuerNodeID} {
-		transcript = append(transcript, item[:]...)
-	}
-	transcript = binary.BigEndian.AppendUint64(transcript, permission.DutyGeneration)
-	for _, item := range [][32]byte{permission.PermissionID, permission.HolderKey} {
-		transcript = append(transcript, item[:]...)
-	}
-	transcript = binary.BigEndian.AppendUint64(transcript, uint64(permission.NotBefore.Unix()))
-	transcript = binary.BigEndian.AppendUint64(transcript, uint64(permission.NotAfter.Unix()))
-	for _, maximum := range permission.Maxima {
-		transcript = binary.BigEndian.AppendUint32(transcript, maximum)
-	}
-	copy(permission.Signature[:], ed25519.Sign(private, transcript))
-	return credential.EncodePermission(permission)
+	// The signed grammar is single-sourced in internal/admission: Custody
+	// signs the exact transcript the authority verifies against.
+	copy(permission.Signature[:], ed25519.Sign(private, admission.PermissionTranscript(permission)))
+	return admission.EncodePermission(permission)
 }
 
 func permissionTokens(maxima [3]uint32) uint32 {
@@ -247,11 +234,11 @@ func withinAdmissionBudget(allocations []admissionAllocation) bool {
 	var user, publisher, issuer uint64
 	for _, allocation := range allocations {
 		if allocation.tokens == 0 || uint64(allocation.tokens) > maximumIssuerAllocation || allocation.window == 0 ||
-			allocation.role != credential.AllocationUser && allocation.role != credential.AllocationPublisher {
+			allocation.role != admission.AllocationUser && allocation.role != admission.AllocationPublisher {
 			return false
 		}
 		issuer += uint64(allocation.tokens)
-		if allocation.role == credential.AllocationUser {
+		if allocation.role == admission.AllocationUser {
 			user += uint64(allocation.tokens)
 		} else {
 			publisher += uint64(allocation.tokens)
@@ -324,7 +311,7 @@ func decodeAdmissionJournal(raw []byte) ([]admissionAllocation, error) {
 		allocation := &allocations[index]
 		allocation.window = binary.BigEndian.Uint64(raw[offset : offset+8])
 		offset += 8
-		allocation.role = credential.AllocationRole(raw[offset])
+		allocation.role = admission.AllocationRole(raw[offset])
 		offset++
 		allocation.tokens = binary.BigEndian.Uint32(raw[offset : offset+4])
 		offset += 4

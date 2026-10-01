@@ -34,7 +34,8 @@ type PrivateIssueInput struct {
 }
 
 // VerifyPrivate requires the exact Target, Network and current State profile.
-// The legacy Verify interface deliberately cannot accept this generation.
+// ADR-0109 (F-32) deleted the generation-2 verifier; this is the package's
+// only Descriptor verification entry point.
 func VerifyPrivate(raw []byte, target, network, profile [32]byte, at time.Time) (Verified, error) {
 	if target == [32]byte{} || network == [32]byte{} || profile == [32]byte{} || at.IsZero() {
 		return Verified{}, errors.New("private reachability verification input is invalid")

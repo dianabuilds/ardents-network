@@ -11,6 +11,9 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
+	"github.com/dianabuilds/ardents-network/internal/route/terminal"
 )
 
 // The stream tests use real loopback TCP carrying canonical frames and actual
@@ -82,26 +85,26 @@ func newClosedJoinStreamWithConnection(t *testing.T, wrap func(net.Conn) net.Con
 		go func() { f.results[i] <- f.sides[i].Serve(ctx, server) }()
 	}
 	for i, client := range f.clients {
-		result, err := ReadClosedLaneFrame(client)
+		result, err := ardp.ReadFrame(client)
 		if err != nil {
 			t.Fatal(err)
 		}
-		if result.Kind != closedFrameResult || result.Lane != 1 {
+		if result.Kind != ardp.KindResult || result.Lane != 1 {
 			t.Fatal("missing local JOIN result")
 		}
-		if status, err := DecodeClosedJoinResult(result.Body, f.sides[i].nonce); err != nil || status != 0 {
+		if status, err := terminal.DecodeJoinResult(result.Body, f.sides[i].nonce); err != nil || status != 0 {
 			t.Fatal("wrong local JOIN result")
 		}
 	}
 	return f
 }
 
-func (f *closedJoinStreamFixture) transfer(t *testing.T, from int, frame ClosedLaneFrame) {
+func (f *closedJoinStreamFixture) transfer(t *testing.T, from int, frame ardp.Frame) {
 	t.Helper()
-	if err := WriteClosedLaneFrame(f.clients[from], frame); err != nil {
+	if err := ardp.WriteFrame(f.clients[from], frame); err != nil {
 		t.Fatal(err)
 	}
-	received, err := ReadClosedLaneFrame(f.clients[1-from])
+	received, err := ardp.ReadFrame(f.clients[1-from])
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -126,17 +129,17 @@ func (f *closedJoinStreamFixture) joined(t *testing.T) {
 
 func TestClosedJoinStreamBidirectionalCreditAndEOF(t *testing.T) {
 	f := newClosedJoinStreamFixture(t)
-	block := bytes.Repeat([]byte{41}, closedLaneMaximum)
+	block := bytes.Repeat([]byte{41}, ardp.MaximumBodySize)
 	for i := 0; i < 4; i++ {
-		f.transfer(t, 0, ClosedLaneFrame{Kind: closedFrameBytes, Lane: 1, Body: block})
+		f.transfer(t, 0, ardp.Frame{Kind: ardp.KindBytes, Lane: 1, Body: block})
 	}
 	credit := binary.BigEndian.AppendUint32(nil, uint32(closedLaneCredit))
-	f.transfer(t, 1, ClosedLaneFrame{Kind: closedFrameCredit, Lane: 1, Body: credit})
-	f.transfer(t, 0, ClosedLaneFrame{Kind: closedFrameBytes, Lane: 1, Body: []byte("after credit")})
-	f.transfer(t, 0, ClosedLaneFrame{Kind: closedFrameEOF, Lane: 1})
-	f.transfer(t, 1, ClosedLaneFrame{Kind: closedFrameBytes, Lane: 1, Body: []byte("reverse after EOF")})
-	f.transfer(t, 1, ClosedLaneFrame{Kind: closedFrameEOF, Lane: 1})
-	f.transfer(t, 1, ClosedLaneFrame{Kind: closedFrameClose, Lane: 1, Body: []byte{0}})
+	f.transfer(t, 1, ardp.Frame{Kind: ardp.KindCredit, Lane: 1, Body: credit})
+	f.transfer(t, 0, ardp.Frame{Kind: ardp.KindBytes, Lane: 1, Body: []byte("after credit")})
+	f.transfer(t, 0, ardp.Frame{Kind: ardp.KindEOF, Lane: 1})
+	f.transfer(t, 1, ardp.Frame{Kind: ardp.KindBytes, Lane: 1, Body: []byte("reverse after EOF")})
+	f.transfer(t, 1, ardp.Frame{Kind: ardp.KindEOF, Lane: 1})
+	f.transfer(t, 1, ardp.Frame{Kind: ardp.KindClose, Lane: 1, Body: []byte{0}})
 	f.joined(t)
 }
 
@@ -144,28 +147,28 @@ func TestClosedJoinStreamRefusesCreditAndPostEOFData(t *testing.T) {
 	for _, reason := range []string{"credit", "after-eof", "duplicate-eof", "second-join", "wrong-lane", "window"} {
 		t.Run(reason, func(t *testing.T) {
 			f := newClosedJoinStreamFixture(t)
-			frame := ClosedLaneFrame{Kind: closedFrameBytes, Lane: 1, Body: []byte{1}}
+			frame := ardp.Frame{Kind: ardp.KindBytes, Lane: 1, Body: []byte{1}}
 			switch reason {
 			case "credit":
-				frame = ClosedLaneFrame{Kind: closedFrameCredit, Lane: 1, Body: binary.BigEndian.AppendUint32(nil, 1)}
+				frame = ardp.Frame{Kind: ardp.KindCredit, Lane: 1, Body: binary.BigEndian.AppendUint32(nil, 1)}
 			case "after-eof", "duplicate-eof":
-				f.transfer(t, 0, ClosedLaneFrame{Kind: closedFrameEOF, Lane: 1})
+				f.transfer(t, 0, ardp.Frame{Kind: ardp.KindEOF, Lane: 1})
 				if reason == "duplicate-eof" {
-					frame = ClosedLaneFrame{Kind: closedFrameEOF, Lane: 1}
+					frame = ardp.Frame{Kind: ardp.KindEOF, Lane: 1}
 				}
 			case "second-join":
-				frame = ClosedLaneFrame{Kind: closedFrameOperation, Lane: 1, Body: make([]byte, 4096)}
+				frame = ardp.Frame{Kind: ardp.KindOperation, Lane: 1, Body: make([]byte, 4096)}
 			case "wrong-lane":
 				frame.Lane = 3
 			case "window":
 				for i := 0; i < 4; i++ {
-					f.transfer(t, 0, ClosedLaneFrame{Kind: closedFrameBytes, Lane: 1, Body: make([]byte, closedLaneMaximum)})
+					f.transfer(t, 0, ardp.Frame{Kind: ardp.KindBytes, Lane: 1, Body: make([]byte, ardp.MaximumBodySize)})
 				}
 			}
-			if err := WriteClosedLaneFrame(f.clients[0], frame); err != nil {
+			if err := ardp.WriteFrame(f.clients[0], frame); err != nil {
 				t.Fatal(err)
 			}
-			if _, err := ReadClosedLaneFrame(f.clients[1]); err == nil {
+			if _, err := ardp.ReadFrame(f.clients[1]); err == nil {
 				t.Fatal("invalid frame relayed")
 			}
 			f.joined(t)
@@ -178,7 +181,7 @@ func TestClosedJoinStreamCancellationJoinsBlockedReads(t *testing.T) {
 	f.cancel()
 	f.joined(t)
 	for _, client := range f.clients {
-		if _, err := ReadClosedLaneFrame(client); err == nil {
+		if _, err := ardp.ReadFrame(client); err == nil {
 			t.Fatal("canceled stream remained usable")
 		}
 	}
@@ -256,7 +259,7 @@ func TestClosedJoinStreamCancellationJoinsOppositeWriter(t *testing.T) {
 	f := newClosedJoinStreamWithConnection(t, func(connection net.Conn) net.Conn {
 		return &closedJoinHeldWriter{Conn: connection, entered: entered, release: release}
 	})
-	f.transfer(t, 1, ClosedLaneFrame{Kind: closedFrameBytes, Lane: 1, Body: []byte("held completion")})
+	f.transfer(t, 1, ardp.Frame{Kind: ardp.KindBytes, Lane: 1, Body: []byte("held completion")})
 	select {
 	case <-entered:
 	case <-time.After(time.Second):
@@ -289,19 +292,19 @@ func TestClosedJoinStreamCancellationJoinsOppositeWriter(t *testing.T) {
 
 func TestClosedJoinStreamOriginalByteBudgetIncludesControl(t *testing.T) {
 	f := newClosedJoinStreamFixture(t)
-	block := make([]byte, closedLaneMaximum)
+	block := make([]byte, ardp.MaximumBodySize)
 	credit := binary.BigEndian.AppendUint32(nil, uint32(len(block)))
 	// Each round consumes a data header/body and a returned CREDIT header/body
 	// on each role channel. Less than the nominal payload-only count must fit.
-	rounds := int(closedClassBytes(2) / uint64(closedLaneHeaderSize+len(block)+closedLaneHeaderSize+len(credit)))
+	rounds := int(closedClassBytes(2) / uint64(ardp.HeaderSize+len(block)+ardp.HeaderSize+len(credit)))
 	for i := 0; i < rounds-1; i++ {
-		f.transfer(t, 0, ClosedLaneFrame{Kind: closedFrameBytes, Lane: 1, Body: block})
-		f.transfer(t, 1, ClosedLaneFrame{Kind: closedFrameCredit, Lane: 1, Body: credit})
+		f.transfer(t, 0, ardp.Frame{Kind: ardp.KindBytes, Lane: 1, Body: block})
+		f.transfer(t, 1, ardp.Frame{Kind: ardp.KindCredit, Lane: 1, Body: credit})
 	}
-	if err := WriteClosedLaneFrame(f.clients[0], ClosedLaneFrame{Kind: closedFrameBytes, Lane: 1, Body: block}); err != nil {
+	if err := ardp.WriteFrame(f.clients[0], ardp.Frame{Kind: ardp.KindBytes, Lane: 1, Body: block}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := ReadClosedLaneFrame(f.clients[1]); err == nil {
+	if _, err := ardp.ReadFrame(f.clients[1]); err == nil {
 		t.Fatal("JOIN/RESULT and control traffic escaped original budget")
 	}
 	f.joined(t)
@@ -315,7 +318,7 @@ func TestClosedJoinStreamLateCloseCannotRelabelCancellation(t *testing.T) {
 	f := newClosedJoinStreamWithConnection(t, func(connection net.Conn) net.Conn {
 		return &closedJoinHeldWriter{Conn: connection, entered: entered, release: release}
 	})
-	f.transfer(t, 1, ClosedLaneFrame{Kind: closedFrameClose, Lane: 1, Body: []byte{0}})
+	f.transfer(t, 1, ardp.Frame{Kind: ardp.KindClose, Lane: 1, Body: []byte{0}})
 	<-entered
 	f.sides[0].Abort()
 	releaseWriter()
@@ -327,7 +330,7 @@ func TestClosedJoinStreamLateCloseCannotRelabelCancellation(t *testing.T) {
 
 func TestClosedJoinStreamNonzeroCloseIsNotSuccess(t *testing.T) {
 	f := newClosedJoinStreamFixture(t)
-	f.transfer(t, 0, ClosedLaneFrame{Kind: closedFrameClose, Lane: 1, Body: []byte{1}})
+	f.transfer(t, 0, ardp.Frame{Kind: ardp.KindClose, Lane: 1, Body: []byte{1}})
 	f.joined(t)
 	if f.sides[0].pair.graceful {
 		t.Fatal("nonzero terminal status became success")
@@ -379,13 +382,13 @@ func TestClosedJoinGracefulCloseJoinsOppositeWriterBeforeTransport(t *testing.T)
 	f := newClosedJoinStreamWithConnection(t, func(connection net.Conn) net.Conn {
 		return &closedJoinObservedClose{closedJoinHeldWriter: &closedJoinHeldWriter{Conn: connection, entered: entered, release: release}, closed: closed}
 	})
-	f.transfer(t, 1, ClosedLaneFrame{Kind: closedFrameBytes, Lane: 1, Body: []byte("held completion")})
+	f.transfer(t, 1, ardp.Frame{Kind: ardp.KindBytes, Lane: 1, Body: []byte("held completion")})
 	select {
 	case <-entered:
 	case <-time.After(time.Second):
 		t.Fatal("writer not reached")
 	}
-	f.transfer(t, 0, ClosedLaneFrame{Kind: closedFrameClose, Lane: 1, Body: []byte{0}})
+	f.transfer(t, 0, ardp.Frame{Kind: ardp.KindClose, Lane: 1, Body: []byte{0}})
 	select {
 	case <-closed:
 		t.Fatal("graceful pair closed physical transport with outstanding writer")
@@ -416,13 +419,13 @@ func TestClosedJoinGracefulCloseRefreshesDeadlineAfterWriterJoin(t *testing.T) {
 		}}
 		return probe
 	})
-	f.transfer(t, 1, ClosedLaneFrame{Kind: closedFrameBytes, Lane: 1, Body: []byte("held completion")})
+	f.transfer(t, 1, ardp.Frame{Kind: ardp.KindBytes, Lane: 1, Body: []byte("held completion")})
 	select {
 	case <-entered:
 	case <-time.After(time.Second):
 		t.Fatal("writer not reached")
 	}
-	f.transfer(t, 0, ClosedLaneFrame{Kind: closedFrameClose, Lane: 1, Body: []byte{0}})
+	f.transfer(t, 0, ardp.Frame{Kind: ardp.KindClose, Lane: 1, Body: []byte{0}})
 	releaseWriter()
 	for _, result := range f.results {
 		if err := <-result; errors.Is(err, context.DeadlineExceeded) {

@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/admission"
 )
 
 func TestClosedTokenIssuerLedgerAllowsOnlyTwoBatchesPerPermission(t *testing.T) {
@@ -13,7 +15,7 @@ func TestClosedTokenIssuerLedgerAllowsOnlyTwoBatchesPerPermission(t *testing.T) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	request := ClosedTokenBatchRequest{Permission: Permission{PermissionID: [32]byte{4}, Maxima: [3]uint32{8, 0, 0}},
+	request := ClosedTokenBatchRequest{Permission: admission.Permission{PermissionID: [32]byte{4}, Maxima: [3]uint32{8, 0, 0}},
 		Class: 1, WindowStart: time.Unix(1_800_000_000, 0).UTC().Truncate(time.Hour), BlindedRequests: [][]byte{{1}}}
 	for index := byte(1); index <= 2; index++ {
 		request.RequestID = [32]byte{index}
@@ -36,7 +38,7 @@ func TestClosedTokenIssuerLedgerDropsOnlyUncommittedCrashTail(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	request := ClosedTokenBatchRequest{Permission: Permission{PermissionID: [32]byte{24}, Maxima: [3]uint32{2, 0, 0}},
+	request := ClosedTokenBatchRequest{Permission: admission.Permission{PermissionID: [32]byte{24}, Maxima: [3]uint32{2, 0, 0}},
 		RequestID: [32]byte{25}, Class: 1, WindowStart: time.Unix(1_800_000_000, 0).UTC().Truncate(time.Hour), BlindedRequests: [][]byte{{1}}}
 	digest := [32]byte{26}
 	if reserved, err := ledger.reserve(request, digest, closedIssuanceBootstrap); err != nil || !reserved {

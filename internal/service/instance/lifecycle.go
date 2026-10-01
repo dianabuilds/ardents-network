@@ -3,17 +3,13 @@ package instance
 import (
 	"bytes"
 	"crypto"
-	"crypto/ecdh"
 	"crypto/ed25519"
-	"crypto/hpke"
 	"crypto/sha256"
 	"errors"
 	"io"
 
 	"github.com/dianabuilds/ardents-network/internal/service/publication"
 )
-
-const introductionInfo = "ardents-interactive-route-v2\x00sealed-introduction\x00"
 
 // Accept performs the one durable at-most-once response transition.
 func (root *Root) Accept(raw []byte) (Acceptance, error) {
@@ -188,49 +184,6 @@ func (binding *Binding) Credential() publication.Credential {
 	return credential
 }
 
-// IntroductionPublic returns only the accepted Introduction recipient public
-// key. It returns zero after the binding becomes unavailable.
-func (binding *Binding) IntroductionPublic() [32]byte {
-	root, ok := binding.activeRoot()
-	if !ok {
-		return [32]byte{}
-	}
-	root.mu.Lock()
-	defer root.mu.Unlock()
-	if !binding.usableLocked(root) {
-		return [32]byte{}
-	}
-	return root.state.IntroductionPublic
-}
-
-// OpenIntroduction performs only the fixed SealedIntroduction v1 HPKE
-// operation without returning a private key or a general recipient object.
-func (binding *Binding) OpenIntroduction(encapsulation, info, authenticatedHeader, ciphertext []byte) ([]byte, error) {
-	root, ok := binding.activeRoot()
-	if !ok {
-		return nil, ErrUnavailable
-	}
-	root.mu.Lock()
-	defer root.mu.Unlock()
-	if !binding.usableLocked(root) || len(encapsulation) != 32 || !bytes.Equal(info, []byte(introductionInfo)) ||
-		len(authenticatedHeader) == 0 || len(ciphertext) < 16 || len(ciphertext) > 65535 {
-		return nil, ErrUnavailable
-	}
-	private, err := ecdh.X25519().NewPrivateKey(root.state.IntroductionPrivate)
-	if err != nil {
-		return nil, ErrInvalid
-	}
-	recipient, err := hpke.NewDHKEMPrivateKey(private)
-	if err != nil {
-		return nil, ErrInvalid
-	}
-	receiver, err := hpke.NewRecipient(encapsulation, recipient, hpke.HKDFSHA256(), hpke.AES128GCM(), info)
-	if err != nil {
-		return nil, err
-	}
-	return receiver.Open(authenticatedHeader, ciphertext)
-}
-
 // CommitPublished redacts durable private material only after publication has
 // committed this exact generation. The live process binding remains usable
 // until orderly withdrawal; a restart cannot revive it.
@@ -305,7 +258,6 @@ func acceptanceFor(state durableState, causes ...error) (Acceptance, error) {
 
 func cloneState(state durableState) durableState {
 	state.InstancePrivate = append(ed25519.PrivateKey(nil), state.InstancePrivate...)
-	state.IntroductionPrivate = append([]byte(nil), state.IntroductionPrivate...)
 	state.Response = append([]byte(nil), state.Response...)
 	return state
 }

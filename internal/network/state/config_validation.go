@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/network/epoch"
 	"github.com/dianabuilds/ardents-network/internal/network/source"
 )
 
@@ -62,10 +63,11 @@ func validateConfig(input Config) (config, error) {
 		authorities[id] = append(ed25519.PublicKey(nil), public...)
 	}
 	initial := clock().UTC()
-	sourceInput := input.Source
-	if sourceInput.VerificationClock == nil {
-		sourceInput.VerificationClock = clock
+	if input.Source.VerificationClock != nil {
+		return config{}, errors.New("source verification clock is owned by Network State")
 	}
+	sourceInput := input.Source
+	sourceInput.VerificationClock = clock
 	sourcePlan, sourceInfo, err := source.New(sourceInput, authorities)
 	if err != nil {
 		return config{}, err
@@ -73,11 +75,18 @@ func validateConfig(input Config) (config, error) {
 	if (sourceInfo.Configured || sourceInfo.Serving) && input.LocalRoleStateRoot == "" {
 		return config{}, errors.New("direct Source work requires local role state")
 	}
+	localRoles := input.LocalRoleStateRoot
+	if localRoles != "" {
+		localRoles, err = filepath.Abs(localRoles)
+		if err != nil {
+			return config{}, fmt.Errorf("resolve local role state root: %w", err)
+		}
+	}
 	acceptedProfile := input.AcceptedProfile
 	if acceptedProfile == "" {
-		acceptedProfile = "h3-role-probe-v1"
+		acceptedProfile = epoch.ProfileRoleProbe
 	}
-	if !knownProfile(acceptedProfile) {
+	if !epoch.KnownProfile(acceptedProfile) {
 		return config{}, errors.New("accepted Network State profile is unsupported")
 	}
 	closedProfileAuthority := append(ed25519.PublicKey(nil), input.ClosedProfileAuthority...)
@@ -97,7 +106,7 @@ func validateConfig(input Config) (config, error) {
 		source: sourcePlan, sourceInfo: sourceInfo, observation: input.ClockObservation.UTC(), observe: observe,
 		automatic: input.AutomaticRefreshInterval, profile: input.RuntimeProfile,
 		resources:  input.ObserveResources,
-		localRoles: input.LocalRoleStateRoot,
+		localRoles: localRoles,
 		anchorWall: initial, anchorMono: time.Now(),
 	}
 	if resolved.profile != "" && resolved.profile != "h3-s-v1" {

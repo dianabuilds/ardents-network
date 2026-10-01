@@ -21,7 +21,6 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/alphacontrol"
 	"github.com/dianabuilds/ardents-network/internal/alphacontrol/inspection"
-	"github.com/dianabuilds/ardents-network/internal/naming/alpha"
 	"github.com/dianabuilds/ardents-network/internal/release"
 )
 
@@ -59,92 +58,93 @@ func TestAlphaControlReaderVerifiesPinnedBundleAndCachedRestart(t *testing.T) {
 	}
 }
 
-func TestAlphaCorpusAcceptanceUsesV3EnrolledControlCompanion(t *testing.T) {
+func TestAlphaCorpusIntakeRetirementPreservesExistingFloor(t *testing.T) {
 	endpoint := buildArdents(t)
 	control := buildControl(t)
 	fixture := alphaControlBundle(t, endpoint, control)
-	link, err := alpha.ParseServiceLink("ardents-alpha://reference")
-	if err != nil {
-		t.Fatal(err)
-	}
-	corpus, err := alpha.IssueCorpus(alpha.CorpusInput{Cohort: "closed-cohort-1", Network: fixture.network, Serial: 4,
-		Bindings: []alpha.BindingInput{{Link: link, Target: [32]byte{7}}}, NotBefore: fixture.now.Add(-time.Minute), NotAfter: fixture.now.Add(10 * time.Minute)}, fixture.corpusPrivate)
-	if err != nil {
-		t.Fatal(err)
-	}
 	directory := t.TempDir()
-	catalogPath, corpusPath := filepath.Join(directory, "catalog.ac2"), filepath.Join(directory, "corpus.anc")
-	writeEnrollmentFile(t, catalogPath, alphaCorpusCatalog(t, fixture, 4, corpus), 0o600)
-	writeEnrollmentFile(t, corpusPath, corpus, 0o600)
 	controlRoot, corpusRoot := filepath.Join(directory, "control"), filepath.Join(directory, "corpus-floor")
+	// ADR-0113 deleted the retained corpus parser and floor reader, so the
+	// retired-floor evidence is a test-local historic builder plus synthetic
+	// floor-shaped bytes: the retired intake refuses before parsing any of it.
+	if err := os.Mkdir(corpusRoot, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	markerPath, floorPath := filepath.Join(corpusRoot, ".ardents-alpha-corpus-floor-v1"), filepath.Join(corpusRoot, "corpus-floor.bin")
+	seed := historicAlphaCorpus(t, fixture, 4, [32]byte{7})
+	markerBefore := append([]byte("ardents-alpha-corpus-floor-v1"), 0)
+	markerBefore = append(markerBefore, []byte("closed-cohort-1")...)
+	floorBefore := seed
+	writeEnrollmentFile(t, markerPath, markerBefore, 0o600)
+	writeEnrollmentFile(t, floorPath, floorBefore, 0o600)
+	successor := historicAlphaCorpus(t, fixture, 5, [32]byte{8})
+	catalogPath, corpusPath := filepath.Join(directory, "catalog.ac2"), filepath.Join(directory, "corpus.anc")
+	writeEnrollmentFile(t, catalogPath, alphaCorpusCatalog(t, fixture, 5, successor), 0o600)
+	writeEnrollmentFile(t, corpusPath, successor, 0o600)
 	arguments := []string{"accept-alpha-corpus", "--enrollment", fixture.input, "--artifact", fixture.artifact,
 		"--control-state-root", controlRoot, "--corpus-state-root", corpusRoot, "--catalog", catalogPath, "--corpus", corpusPath,
 		"--at", fixture.now.Format(time.RFC3339)}
-	if output, commandErr := exec.Command(control, arguments...).CombinedOutput(); commandErr == nil {
-		t.Fatalf("outside alpha control command unexpectedly accepted enrolled corpus: %s", output)
+	commandContext, cancelCommand := context.WithTimeout(t.Context(), 10*time.Second)
+	t.Cleanup(cancelCommand)
+	output, commandErr := exec.CommandContext(commandContext, fixture.control, arguments...).CombinedOutput()
+	commandContextErr := commandContext.Err()
+	cancelCommand()
+	if commandContextErr == context.DeadlineExceeded {
+		t.Fatalf("retired alpha corpus intake exceeded its deadline: %v\n%s", commandErr, output)
 	}
-	for attempt := 0; attempt < 2; attempt++ {
-		output, commandErr := exec.Command(fixture.control, arguments...).CombinedOutput()
-		if commandErr != nil {
-			t.Fatalf("alpha corpus acceptance attempt %d: %v\n%s", attempt, commandErr, output)
-		}
-		var report struct {
-			Schema  string `json:"schema"`
-			Corpus  string `json:"corpus"`
-			Network string `json:"network"`
-			Serial  uint64 `json:"serial"`
-		}
-		if err := json.Unmarshal(output, &report); err != nil || report.Schema != "ardents-alpha-corpus-acceptance-v1" ||
-			report.Corpus != "accepted" || report.Network != hex.EncodeToString(fixture.network[:]) || report.Serial != 4 {
-			t.Fatalf("alpha corpus acceptance attempt %d = %s / %+v / %v", attempt, output, report, err)
-		}
+	if commandErr == nil || string(output) != "accept-alpha-corpus is retired\n" {
+		t.Fatalf("retired alpha corpus intake = %v\n%s", commandErr, output)
 	}
-	successor, err := alpha.IssueCorpus(alpha.CorpusInput{Cohort: "closed-cohort-1", Network: fixture.network, Serial: 5,
-		Bindings: []alpha.BindingInput{{Link: link, Target: [32]byte{8}}}, NotBefore: fixture.now.Add(-time.Minute), NotAfter: fixture.now.Add(10 * time.Minute)}, fixture.corpusPrivate)
+	if _, err := os.Stat(controlRoot); !os.IsNotExist(err) {
+		t.Fatalf("retired alpha corpus intake created control root: %v", err)
+	}
+	markerAfter, err := os.ReadFile(markerPath)
 	if err != nil {
 		t.Fatal(err)
 	}
-	writeEnrollmentFile(t, catalogPath, alphaCorpusCatalog(t, fixture, 5, successor), 0o600)
-	writeEnrollmentFile(t, corpusPath, successor, 0o600)
-	output, commandErr := exec.Command(fixture.control, arguments...).CombinedOutput()
-	if commandErr != nil {
-		t.Fatalf("alpha corpus successor acceptance: %v\n%s", commandErr, output)
-	}
-	var successorReport struct {
-		Serial uint64 `json:"serial"`
-	}
-	if err := json.Unmarshal(output, &successorReport); err != nil || successorReport.Serial != 5 {
-		t.Fatalf("alpha corpus successor report = %s / %+v / %v", output, successorReport, err)
-	}
-	writeEnrollmentFile(t, catalogPath, alphaCorpusCatalog(t, fixture, 4, corpus), 0o600)
-	writeEnrollmentFile(t, corpusPath, corpus, 0o600)
-	if output, commandErr := exec.Command(fixture.control, arguments...).CombinedOutput(); commandErr == nil {
-		t.Fatalf("alpha corpus rollback unexpectedly accepted: %s", output)
-	}
-	floor, err := alpha.OpenPersistentFloor(alpha.PersistentFloorConfig{Root: corpusRoot, Authority: fixture.corpusPublic, Cohort: "closed-cohort-1", Network: fixture.network})
+	floorAfter, err := os.ReadFile(floorPath)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer floor.Close()
-	current, err := floor.Current()
-	if err != nil || current.Serial() != 5 {
-		t.Fatalf("alpha corpus floor after replacement = %+v / %v", current, err)
+	if !bytes.Equal(markerAfter, markerBefore) || !bytes.Equal(floorAfter, floorBefore) {
+		t.Fatal("retired alpha corpus intake changed retired floor bytes")
 	}
-	binding, err := current.Resolve(link, fixture.now)
-	if err != nil || binding.Target() != [32]byte{8} {
-		t.Fatalf("alpha corpus successor binding = %+v / %v", binding, err)
-	}
+}
+
+// historicAlphaCorpus rebuilds one signed corpus in the retired
+// "ardents-alpha-corpus-v1" wire layout (ADR-0113 deleted the production
+// grammar; the retired intake refuses before parsing it, so the bytes only
+// carry historic shape): domain, version 1, length-prefixed cohort, serial,
+// network, canonical millisecond validity window, active status, and one
+// binding whose name is the frozen Stage 6 wire encoding of the single
+// canonical label "reference".
+func historicAlphaCorpus(t *testing.T, fixture alphaControlBundleFixture, serial uint64, target [32]byte) []byte {
+	t.Helper()
+	body := append([]byte("ardents-alpha-corpus-v1"), 0)
+	body = append(body, 1, byte(len("closed-cohort-1")))
+	body = append(body, []byte("closed-cohort-1")...)
+	body = binary.BigEndian.AppendUint64(body, serial)
+	body = append(body, fixture.network[:]...)
+	body = binary.BigEndian.AppendUint64(body, uint64(fixture.now.Add(-time.Minute).UnixMilli()))
+	body = binary.BigEndian.AppendUint64(body, uint64(fixture.now.Add(10*time.Minute).UnixMilli()))
+	body = append(body, 0, 1)
+	body = binary.BigEndian.AppendUint16(body, 12)
+	body = append(body, 0x00, 0x01, 0x09)
+	body = append(body, []byte("reference")...)
+	body = append(body, target[:]...)
+	return append(body, ed25519.Sign(fixture.corpusPrivate, body)...)
 }
 
 func alphaCorpusCatalog(t *testing.T, fixture alphaControlBundleFixture, serial uint64, corpus []byte) []byte {
 	t.Helper()
-	catalog := alphacontrol.CatalogV2{Cohort: "closed-cohort-1", Generation: 1, NotBefore: fixture.now.Add(-time.Minute), NotAfter: fixture.now.Add(20 * time.Minute)}
+	catalog := historicAlphaCatalogV2{cohort: "closed-cohort-1", generation: 1,
+		notBefore: fixture.now.Add(-time.Minute), notAfter: fixture.now.Add(20 * time.Minute)}
 	for index := 0; index < 3; index++ {
 		body := []byte{byte(index + 1)}
-		catalog.Components[index] = alphacontrol.Component{Class: alphacontrol.ComponentClass(index + 1), RootID: [32]byte{byte(index + 1)},
-			Generation: 1, NotAfter: catalog.NotAfter, Size: uint32(len(body)), Digest: sha256.Sum256(body)}
+		catalog.components[index] = alphacontrol.Component{Class: alphacontrol.ComponentClass(index + 1), RootID: [32]byte{byte(index + 1)},
+			Generation: 1, NotAfter: catalog.notAfter, Size: uint32(len(body)), Digest: sha256.Sum256(body)}
 	}
-	catalog.Components[3] = alphacontrol.Component{Class: alphacontrol.ComponentCorpus, RootID: sha256.Sum256(fixture.corpusPublic),
+	catalog.components[3] = alphacontrol.Component{Class: historicComponentCorpus, RootID: sha256.Sum256(fixture.corpusPublic),
 		Generation: serial, NotAfter: fixture.now.Add(10 * time.Minute), Size: uint32(len(corpus)), Digest: sha256.Sum256(corpus)}
 	raw, err := signAlphaCatalogV2Fixture(catalog, fixture.disclosurePrivate)
 	if err != nil {

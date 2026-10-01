@@ -7,6 +7,7 @@ import (
 	"crypto/x509"
 	"errors"
 	"net"
+	"strconv"
 	"time"
 )
 
@@ -129,6 +130,15 @@ func validateAddress(address string) error {
 	}
 	host, port, err := net.SplitHostPort(address)
 	if err != nil || net.ParseIP(host) == nil || port == "" {
+		return errors.New("source address must be a literal IP and port")
+	}
+	for _, digit := range port {
+		if digit < '0' || digit > '9' {
+			return errors.New("source address must be a literal IP and port")
+		}
+	}
+	number, err := strconv.Atoi(port)
+	if err != nil || number == 0 || number > 65535 {
 		return errors.New("source address must be a literal IP and port")
 	}
 	return nil

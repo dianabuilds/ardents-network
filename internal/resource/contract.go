@@ -10,12 +10,9 @@ import (
 
 var errUnsupportedPlatform = errors.New("resource guard is unsupported on this platform")
 
-// RendezvousDedicatedHostProfile is the sole selected dedicated-host
-// Rendezvous resource placement. It is not a general Node-capacity profile.
-const RendezvousDedicatedHostProfile = "ardents-rendezvous-dedicated-host-v1"
-
 // Sample is one bounded process/cgroup observation.
 type Sample struct {
+	RSSBytes          uint64  `json:"rss_bytes"`
 	CPUUsageUsec      uint64  `json:"cpu_usage_usec"`
 	MemoryBytes       uint64  `json:"memory_bytes"`
 	GoMemoryBytes     uint64  `json:"go_memory_bytes"`

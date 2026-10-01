@@ -73,12 +73,15 @@ func (err *Error) Unwrap() error {
 	return err.cause
 }
 
-// Config contains final, platform-resolved, per-user roots. Program bytes are
-// deliberately not represented: they are outside the Portable state profile.
+// Config contains the final, platform-resolved, per-user roots that have a
+// live consumer: StateHome carries the owner lock, the Release-floor parent,
+// and the replacement ledger; RuntimeHome carries the local attachment.
+// Program bytes are deliberately not represented: they are outside the
+// Portable state profile. ADR-0108 (F-26) contracted the former
+// configuration and cache root scaffold; no code creates or reads those
+// roots anymore.
 type Config struct {
-	ConfigHome  string
 	StateHome   string
-	CacheHome   string
 	RuntimeHome string
 }
 
@@ -162,25 +165,6 @@ func (runtime *Runtime) Wait(ctx context.Context) error {
 	}
 	<-ctx.Done()
 	return runtime.Close()
-}
-
-// Run owns the normal foreground Portable lifecycle. A requested context stop
-// is a clean participant stop and therefore returns nil after cleanup.
-func Run(ctx context.Context, config Config, observe func(Event)) error {
-	emit(observe, Event{State: StateStarting})
-	runtime, err := Open(config)
-	if err != nil {
-		emit(observe, FailureEvent(err))
-		return err
-	}
-	emit(observe, Event{State: StateReady, Attachment: runtime.Attachment()})
-	err = runtime.Wait(ctx)
-	if err != nil {
-		emit(observe, Event{State: StateBlocked, Reason: ReasonLockError})
-		return err
-	}
-	emit(observe, Event{State: StateStopped})
-	return nil
 }
 
 func (runtime *Runtime) serveAttachment() {
@@ -276,10 +260,4 @@ func FailureEvent(err error) Event {
 		}
 	}
 	return Event{State: StateIncompatible, Reason: ReasonLocalProfileInvalid}
-}
-
-func emit(observe func(Event), event Event) {
-	if observe != nil {
-		observe(event)
-	}
 }

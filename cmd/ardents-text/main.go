@@ -14,8 +14,11 @@ import (
 	"path/filepath"
 	"syscall"
 
+	"github.com/dianabuilds/ardents-network/internal/application/connection"
 	"github.com/dianabuilds/ardents-network/internal/application/textdocument"
 )
+
+var errTextUsage = errors.New("usage: ardents-text publish <absolute-administration-socket> <absolute-document-file> | link <absolute-administration-socket> | read <absolute-application-socket>\nPublication succeeds only after Descriptor acknowledgement; link and withdrawal use separate Administration authorization. Withdraw with ardents endpoint withdraw <administration-socket>")
 
 func main() {
 	if err := run(os.Args[1:]); err != nil {
@@ -26,6 +29,9 @@ func main() {
 }
 
 func run(arguments []string) error {
+	if len(arguments) == 0 || len(arguments) == 1 && (arguments[0] == "--help" || arguments[0] == "help") {
+		return errTextUsage
+	}
 	if len(arguments) == 2 && arguments[0] == "link" && filepath.IsAbs(arguments[1]) {
 		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 		defer stop()
@@ -62,13 +68,29 @@ func run(arguments []string) error {
 
 func textFailure(err error) string {
 	switch {
+	case errors.Is(err, errTextUsage):
+		return errTextUsage.Error()
 	case errors.Is(err, context.Canceled):
 		return "text read cancelled"
 	case errors.Is(err, context.DeadlineExceeded):
 		return "text read timed out"
 	case errors.Is(err, errTextInput):
 		return "text destination or local input is invalid"
-	default:
-		return "text operation unavailable"
 	}
+	var refusal connection.SetupRefusalError
+	if errors.As(err, &refusal) {
+		switch refusal.Outcome().Class {
+		case connection.LocalCancellation:
+			return "text read cancelled"
+		case connection.LocalTimeout:
+			return "text read timed out"
+		case connection.LocalFailure:
+			return "text local connection failed"
+		case connection.IndeterminateFailure:
+			return "text connection outcome unknown"
+		case connection.CapacityUnavailable:
+			return "text capacity unavailable"
+		}
+	}
+	return "text operation unavailable"
 }

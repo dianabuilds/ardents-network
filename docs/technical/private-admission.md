@@ -80,9 +80,17 @@ a new context needs a fresh permission within the operator's remaining hourly
 allocation. Neither that crash nor an unused permission refunds a signed
 allocation or an issuer debit.
 
-Issuer initialization generates dedicated class/window RSA keys in its fresh,
-exclusive owner-only issuer root and exports only exact public SPKI/profile
-inputs. It receives no admission-authority private key. Preserve its durable
+Closed issuer initialization generates dedicated class/window RSA keys in its
+fresh, exclusive owner-only issuer root and exports only exact public
+SPKI/profile inputs. The legacy Transit issuer initialization schema is
+recognized only for a pre-effect retirement refusal and cannot read an identity
+key or create/reopen a root; `issuer serve` likewise admits only the closed
+issuer reservation. The old Node-side Transit signer, listener, State-duty
+projection, issuer Handler, and mutable root ledger are absent. Existing old
+root bytes are not opened, converted, or erased. The signed Transit profile
+decoder and one-use client remain for the separately owned Endpoint acquisition
+path; they confer no receiving authority. The closed issuer receives no
+admission-authority private key. Preserve its durable
 reservation and receiving ledgers with atomic write/flush/reopen before
 acknowledgement. Provision successor hourly keys before use; never replace
 bytes under an already signed key/window or reuse a key across cohorts.
@@ -138,6 +146,17 @@ or a restored context. File paths are trusted composition inputs and are not
 accepted by Application transports. This adapter has local Linux/Custody
 behavior evidence; the ordinary command's provisioning lifecycle is not yet
 connected by its presence.
+The context admits at most one live issuance operation under its existing
+Source-operation reservation and derives the source selection before handing
+off. One private concrete issuance owner then retains the attempt context,
+transport callback, cancellation and terminal completion through join. Context
+revocation cancels and joins that owner without completing its fields itself;
+a late issuer result therefore cannot install usable stock after permission
+erasure. Ordinary caller cancellation retains the exact pending blind batch
+for an explicit same-process retry. Cancellation of a completed logical
+recovery instead discards only its pending batch while retaining the consumed
+reservation and batch allowance; neither path refunds authority.
+
 The issuance operation derives its source selection inside the context. The
 installation Entry owner commits both ordered alternatives under an exclusive
 root lease before returning either member. Its retained floor survives pointer
@@ -155,7 +174,12 @@ any challenge on a same-process retry is refused. One context reservation spans
 stock preparation, issuance and prefix opening, so concurrent opens cannot
 debit duplicate bootstrap batches from an obsolete stock observation.
 The reservation also excludes unrelated issuance between its bootstrap
-exchanges. The second batch can fund the selected issuer's class-1 stock.
+exchanges. One private concrete opening handle owns that exact reservation and
+its terminal completion identity. Issuance and stock preparation ask the handle
+to validate admission instead of comparing the context's opening pointer. An
+obsolete completion joins and cleans only its own result; it cannot clear a
+replacement reservation, publish its prefix, or change the replacement's
+stock. The second batch can fund the selected issuer's class-1 stock.
 Ordinary issuance opens a fresh terminal TLS child under the same admitted
 prefix; its presenter checks the actual issuer HELLO and durably marks the
 Control token before returning its bytes. Each pending batch retains its
@@ -169,7 +193,9 @@ whole result before grouping tokens into the corresponding private stocks.
 Each attempt rechecks the opened State projections and local duty conflicts;
 neither imported permission bytes nor the worker can supply these facts.
 The closed Entry root has its own marker and refuses a legacy Invite root;
-that refusal is not a migration procedure.
+that refusal is not a migration procedure. ADR-0106 removed every Invite
+writer and every migration path: a legacy Invite root stays on disk
+byte-for-byte with no reader, converter, or deleter.
 
 ## Canonical signed permission
 
@@ -276,7 +302,10 @@ still live. This separates spend-ledger expiry from the lifetime of already
 authorized work. The longer class-2 lease allows a complete ten-minute network
 workload after setup; the text Application's own job deadline remains 600 s.
 
-A receiving duty has at most 1,024 live role channels and 1,024 child lanes,
+A copied admitted handle shares one private claim: exactly one forwarding or
+JOIN owner may take its channel and optional host reservation, and every stale
+copy becomes unable to release that live owner. A receiving duty has at most
+1,024 live role channels and 1,024 child lanes,
 64 MiB queued ciphertext and
 65,536 spent-token entries per hour. Control and pre-admission work use separate
 smaller counters so an Application stream cannot consume termination capacity.
@@ -375,6 +404,26 @@ Replacing a lane uses a fresh token and the existing bounded Connection
 continuity rules; no Application-operation replay follows.
 A failed disk write or ambiguous ledger ownership means unavailable.
 
+If verification has already reserved the receiving host envelope but initial
+admission then refuses for duty capacity, a duplicate or failed durable Spend,
+or an expired lease, Route releases only that failed attempt's reservation.
+The receiving Node preserves the bounded refusal and joins a failed release
+with it for its local owner result. After admission, a refused outer-lane
+handoff or failed forwarding-owner construction follows the same rule until
+the handoff succeeds; the successor forwarding owner then exclusively cancels
+the reservation. A clean release leaves the ordinary refusal
+unchanged. It neither refunds another live admission, resets the spend root,
+nor exposes storage or peer detail through Application IPC. Once admission has
+returned its owner handle, that handle's transfer and cleanup lifecycle is a
+separate boundary.
+
+The local hosting reservation records three Release phases. A context rejected
+before its state-change callback starts leaves that one handle retryable. On
+callback entry, including a continuity refusal, the handle becomes terminal:
+any later storage outcome can follow a committed release and is not retried.
+Observed interface consumption is always retained independently of a released
+reservation.
+
 The Endpoint's separate owner-only token-attempt root records each potential
 spend before Route receives its token bytes. It uses an exclusive process
 lease, marker ardents-token-attempts-v1, and ARDTPS01 journal header:
@@ -397,8 +446,10 @@ The format stores no reusable token, holder, permission, Target or document.
 
 A fresh source prefix consumes distinct genuine class-2 stock for Entry and
 Interior on new authenticated channels after bootstrap retirement. The local
-context retains the opening operation and returned prefix; cancellation joins
-their physical transport and child readers before releasing the journal root.
+context retains the opening operation's admission slot and returned prefix; the
+private opening handle owns exact stock-to-opening completion, cancellation and
+join. Cancellation joins its physical transport and child readers before
+releasing the journal root.
 This transport composition does not itself provide a trusted participant
 command, terminal Service consumer, prefix idle policy or root migration.
 
@@ -452,3 +503,31 @@ the closed permission format cannot become a permanent public administrator.
 
 Evidence and limitations are in the
 [R-152 contract research](../research/records/r-152-closed-scheme-contract.md).
+
+## Spend journal failure containment
+
+The accepted [consolidation decision in the design revision](https://github.com/dianabuilds/ardents-network/blob/e6168f167332f5a77f02613cc7f30a35a0c49787/docs/adr/0086-consolidate-protected-network-and-retire-predecessor-runtimes.md)
+clarifies the required failure boundary: any error from a mutating spend-ledger
+operation terminalizes that open owner's admission until close and verified
+reopen. Preserve the first storage failure; subsequent Spend calls must not
+write or admit work. Include modifying pruning as well as append/sync/close.
+The protocol caller returns its existing unavailable outcome, without an
+automatic reopen/retry in the same request. This is a required correction,
+not a statement that the current implementation already satisfies it.
+
+The forwarding receiver opens its spend ledger, local duty limits and bootstrap
+controller through one private Node receiving-resource builder. The builder
+retains the exact spend-root lease until all three resources exist, then
+transfers only the complete concrete group to the server. Any later
+initialization failure closes that lease exactly once and reports both the
+initial and cleanup causes. Listener, outgoing-pool and host ownership remain
+outside this group; a borrowed host does not acquire another close path.
+
+Recovery may truncate exactly once, and only a valid final incomplete tail: a
+final zero commit marker or bytes short of one record after committed records.
+A nonzero/non-commit marker, or any bytes after an incomplete record, makes
+recovery unsafe. Refuse receiver startup without mutating that journal rather
+than discard a potentially acknowledged Spend. A truncate or sync failure also
+refuses startup. Previously committed Spend remains unavailable after safe
+recovery. Keep the existing token and journal encodings; introduce no generic
+persistence engine, new root or authority to repair an ambiguous journal.

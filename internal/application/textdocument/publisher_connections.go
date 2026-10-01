@@ -8,7 +8,7 @@ import (
 	"io"
 	"math"
 
-	"github.com/dianabuilds/ardents-network/internal/application/interfacev2/connection"
+	"github.com/dianabuilds/ardents-network/internal/application/connection"
 )
 
 const publisherOpenLimit = 256

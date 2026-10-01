@@ -9,8 +9,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/admission"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
-	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/client"
 	"github.com/dianabuilds/ardents-network/internal/route/credential"
 )
 
@@ -54,11 +55,11 @@ func prepareClosedProcessExchange(t *testing.T, network, issuer [32]byte, _ time
 		}
 		ctx, cancel := context.WithTimeout(t.Context(), 15*time.Second)
 		defer cancel()
-		response, exchangeErr := route.ExchangeClosedBootstrap(ctx, owner, route.ClosedBootstrapSelection{
+		response, exchangeErr := client.ExchangeClosedBootstrap(ctx, owner, client.ClosedBootstrapSelection{
 			ProfileDigest: view.Profile.Digest, EntryNodeID: [32]byte{1}, InteriorNodeID: [32]byte{3}}, retained)
 		defer clear(response.Body)
 		if expectUnavailable {
-			if exchangeErr == nil || ctx.Err() != nil || errors.Is(exchangeErr, route.ErrClosedBootstrapCleanup) ||
+			if exchangeErr == nil || ctx.Err() != nil || errors.Is(exchangeErr, client.ErrClosedBootstrapCleanup) ||
 				response.Nonce != [32]byte{} || len(response.Body) != 0 || !bytes.Equal(pending.Request(), retained) {
 				t.Fatalf("issuer loss did not cleanly refuse while preserving the exact batch: %v", exchangeErr)
 			}
@@ -92,17 +93,17 @@ func prepareClosedProcessExchange(t *testing.T, network, issuer [32]byte, _ time
 func closedProcessBatch(t *testing.T, authority closedCommandAuthority, profile state.ClosedProfileView,
 	challenge credential.ClosedTokenContext, now time.Time) *credential.PendingClosedTokenBatch {
 	t.Helper()
-	request, holder, err := credential.PreparePermissionRequest(authority.Public, challenge.NetworkID, challenge.IssuerNodeID,
-		profile.IssuerDutyGeneration, credential.AllocationUser, challenge.WindowStart, [3]uint32{1, 0, 0})
+	request, holder, err := admission.PreparePermissionRequest(authority.Public, challenge.NetworkID, challenge.IssuerNodeID,
+		profile.IssuerDutyGeneration, admission.AllocationUser, challenge.WindowStart, [3]uint32{1, 0, 0})
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer clear(holder)
-	raw, err := credential.EncodePermissionRequest(request)
+	raw, err := admission.EncodePermissionRequest(request)
 	if err != nil {
 		t.Fatal(err)
 	}
-	permission, err := credential.DecodePermission(authority.issue(t, raw))
+	permission, err := admission.DecodePermission(authority.issue(t, raw))
 	if err != nil {
 		t.Fatal(err)
 	}

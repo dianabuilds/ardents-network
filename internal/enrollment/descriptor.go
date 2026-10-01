@@ -5,8 +5,12 @@ import (
 	"strings"
 )
 
+// ErrLegacyEnrollmentDescriptor is the typed refusal for a recognized retired
+// Network enrollment descriptor version (ADR-0112). Existing v1/v2 bundle
+// bytes stay on disk unchanged; no converter or compatibility reader exists.
+var ErrLegacyEnrollmentDescriptor = errors.New("retired Network enrollment descriptor version")
+
 type descriptor struct {
-	schema                                                           string
 	cohort, release, platform, environment, network, targetPath      string
 	artifact, trustedRoot, controlCatalog, disclosureRoot            string
 	controlRelease, controlNetwork, controlCompatibility             string
@@ -20,13 +24,14 @@ func parseDescriptor(raw []byte) (descriptor, error) {
 	if len(lines) == 0 || len(raw) == 0 || raw[len(raw)-1] != '\n' {
 		return descriptor{}, errors.New("alpha descriptor is not canonical")
 	}
-	keys := baseKeys
-	if lines[0] == "schema=ardents-closed-alpha-enrollment-v2" || lines[0] == "schema=ardents-closed-alpha-enrollment-v3" {
-		keys = append(append([]string(nil), baseKeys...), "corpus_authority")
+	// Recognize the retired Network versions only to refuse them with a typed
+	// classification before any companion or inventory work (ADR-0112). An
+	// unknown schema, including Browser enrollment-v4, keeps its generic
+	// invalid refusal below.
+	if lines[0] == "schema=ardents-closed-alpha-enrollment-v1" || lines[0] == "schema=ardents-closed-alpha-enrollment-v2" {
+		return descriptor{}, ErrLegacyEnrollmentDescriptor
 	}
-	if lines[0] == "schema=ardents-closed-alpha-enrollment-v3" {
-		keys = append(keys, "control_artifact")
-	}
+	keys := append(append([]string(nil), baseKeys...), "corpus_authority", "control_artifact")
 	if len(lines) != len(keys) {
 		return descriptor{}, errors.New("alpha descriptor is not canonical")
 	}
@@ -41,27 +46,21 @@ func parseDescriptor(raw []byte) (descriptor, error) {
 	if !validDescriptor(values) {
 		return descriptor{}, errors.New("alpha descriptor is invalid")
 	}
-	return descriptor{schema: values["schema"], cohort: values["cohort"], release: values["release"], platform: values["platform"], environment: values["environment"], network: values["network"], targetPath: values["target_path"], artifact: values["artifact"], trustedRoot: values["trusted_root"], controlCatalog: values["control_catalog"], disclosureRoot: values["disclosure_root"], controlRelease: values["control_release"], controlNetwork: values["control_network"], controlCompatibility: values["control_compatibility"], controlReleaseRoot: values["control_release_root"], controlNetworkRoot: values["control_network_root"], controlCompatibilityRoot: values["control_compatibility_root"], corpusAuthority: values["corpus_authority"], controlArtifact: values["control_artifact"]}, nil
+	return descriptor{cohort: values["cohort"], release: values["release"], platform: values["platform"], environment: values["environment"], network: values["network"], targetPath: values["target_path"], artifact: values["artifact"], trustedRoot: values["trusted_root"], controlCatalog: values["control_catalog"], disclosureRoot: values["disclosure_root"], controlRelease: values["control_release"], controlNetwork: values["control_network"], controlCompatibility: values["control_compatibility"], controlReleaseRoot: values["control_release_root"], controlNetworkRoot: values["control_network_root"], controlCompatibilityRoot: values["control_compatibility_root"], corpusAuthority: values["corpus_authority"], controlArtifact: values["control_artifact"]}, nil
 }
 
 func validDescriptor(values map[string]string) bool {
 	schema := values["schema"]
-	if (schema != "ardents-closed-alpha-enrollment-v1" && schema != "ardents-closed-alpha-enrollment-v2" && schema != "ardents-closed-alpha-enrollment-v3") || values["control_release"] != "release.ac1" || values["control_network"] != "network.ac1" || values["control_compatibility"] != "compatibility.ac1" || values["control_release_root"] != "release.pub" || values["control_network_root"] != "network.pub" || values["control_compatibility_root"] != "compatibility.pub" {
+	if schema != "ardents-closed-alpha-enrollment-v3" || values["control_release"] != "release.ac1" || values["control_network"] != "network.ac1" || values["control_compatibility"] != "compatibility.ac1" || values["control_release_root"] != "release.pub" || values["control_network_root"] != "network.pub" || values["control_compatibility_root"] != "compatibility.pub" {
 		return false
 	}
-	if (schema == "ardents-closed-alpha-enrollment-v2" || schema == "ardents-closed-alpha-enrollment-v3") && values["corpus_authority"] != "corpus.pub" {
+	if values["corpus_authority"] != "corpus.pub" {
 		return false
 	}
-	if schema == "ardents-closed-alpha-enrollment-v3" && values["control_artifact"] != ExecutableArtifactName("ardents-control", values["platform"]) {
+	if values["control_artifact"] != ExecutableArtifactName("ardents-control", values["platform"]) {
 		return false
 	}
-	names := []string{values["artifact"], values["trusted_root"], values["control_catalog"], values["disclosure_root"], values["control_release"], values["control_network"], values["control_compatibility"], values["control_release_root"], values["control_network_root"], values["control_compatibility_root"]}
-	if schema == "ardents-closed-alpha-enrollment-v2" || schema == "ardents-closed-alpha-enrollment-v3" {
-		names = append(names, values["corpus_authority"])
-	}
-	if schema == "ardents-closed-alpha-enrollment-v3" {
-		names = append(names, values["control_artifact"])
-	}
+	names := []string{values["artifact"], values["trusted_root"], values["control_catalog"], values["disclosure_root"], values["control_release"], values["control_network"], values["control_compatibility"], values["control_release_root"], values["control_network_root"], values["control_compatibility_root"], values["corpus_authority"], values["control_artifact"]}
 	seen := make(map[string]struct{}, len(names))
 	for _, name := range names {
 		if !validName(name) || name == descriptorName {

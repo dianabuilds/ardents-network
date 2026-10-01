@@ -12,10 +12,11 @@ import (
 	"os"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/alphacontrol"
 	"github.com/dianabuilds/ardents-network/internal/alphacontrol/inspection"
 	"github.com/dianabuilds/ardents-network/internal/enrollment"
 )
+
+const commandUsage = "usage: ardents-control inspect-bundle, inspect-transitions, prepare-closed-profile, sign-closed-profile, inspect-closed-profile, inspect-closed-issuer-profile, prepare-qualification-evidence, prepare-qualification-catalog, prepare-qualification-node-record, or prepare-qualification-epoch"
 
 func main() {
 	if err := run(os.Args[1:], os.Stdout); err != nil {
@@ -26,17 +27,23 @@ func main() {
 
 func run(arguments []string, output io.Writer) error {
 	if len(arguments) == 0 {
-		return errors.New("usage: ardents-control inspect-bundle, inspect-transitions, inspect-alpha-corpus, accept-alpha-corpus, prepare-closed-profile, sign-closed-profile, inspect-closed-profile, or inspect-closed-issuer-profile")
+		return errors.New(commandUsage)
 	}
 	switch arguments[0] {
 	case "inspect-bundle":
 		return inspectBundle(arguments[1:], output)
 	case "inspect-transitions":
 		return inspectTransitions(arguments[1:], output)
+	case "prepare-qualification-evidence":
+		return prepareEvidence(arguments[1:], output)
+	case "prepare-qualification-catalog":
+		return prepareCatalog(arguments[1:], output)
+	case "prepare-qualification-node-record", "prepare-qualification-epoch":
+		return prepareQualificationNetwork(arguments[0], arguments[1:], output)
 	case "inspect-alpha-corpus":
-		return inspectAlphaCorpus(arguments[1:], output)
+		return errors.New("inspect-alpha-corpus is retired")
 	case "accept-alpha-corpus":
-		return acceptAlphaCorpus(arguments[1:], output)
+		return errors.New("accept-alpha-corpus is retired")
 	case "prepare-closed-profile":
 		return prepareClosedProfile(arguments[1:], output)
 	case "sign-closed-profile":
@@ -46,58 +53,8 @@ func run(arguments []string, output io.Writer) error {
 	case "inspect-closed-profile":
 		return inspectClosedProfile(arguments[1:], output)
 	default:
-		return errors.New("usage: ardents-control inspect-bundle, inspect-transitions, inspect-alpha-corpus, accept-alpha-corpus, prepare-closed-profile, sign-closed-profile, inspect-closed-profile, or inspect-closed-issuer-profile")
+		return errors.New(commandUsage)
 	}
-}
-
-func inspectAlphaCorpus(arguments []string, output io.Writer) error {
-	flags := flag.NewFlagSet("inspect-alpha-corpus", flag.ContinueOnError)
-	flags.SetOutput(io.Discard)
-	var catalogPath, corpusPath, disclosureKey, corpusKey, networkText, atText string
-	flags.StringVar(&catalogPath, "catalog", "", "ACA2 catalog file")
-	flags.StringVar(&corpusPath, "corpus", "", "signed alpha corpus file")
-	flags.StringVar(&disclosureKey, "disclosure-key", "", "ACA2 disclosure public key in lowercase hex")
-	flags.StringVar(&corpusKey, "corpus-key", "", "alpha corpus authority public key in lowercase hex")
-	flags.StringVar(&networkText, "network", "", "Ardents network ID in lowercase hex")
-	flags.StringVar(&atText, "at", "", "decision time in RFC3339")
-	if err := flags.Parse(arguments); err != nil || flags.NArg() != 0 {
-		return errors.New("alpha corpus inspection arguments are invalid")
-	}
-	disclosure, err := decodePublicKey(disclosureKey)
-	if err != nil {
-		return err
-	}
-	corpusAuthority, err := decodePublicKey(corpusKey)
-	if err != nil {
-		return errors.New("alpha corpus authority key is invalid")
-	}
-	network, err := decodeIdentifier(networkText)
-	if err != nil {
-		return errors.New("alpha corpus network is invalid")
-	}
-	at, err := time.Parse(time.RFC3339, atText)
-	if err != nil {
-		return errors.New("alpha corpus inspection time is invalid")
-	}
-	catalog, err := readControlFile(catalogPath, alphacontrol.MaximumCatalogSize)
-	if err != nil {
-		return err
-	}
-	corpusRaw, err := readControlFile(corpusPath, 4096)
-	if err != nil {
-		return err
-	}
-	corpus, outcome := inspection.VerifyACA2Corpus(catalog, disclosure, corpusAuthority, corpusRaw, network, at.UTC())
-	if outcome != alphacontrol.OutcomeAccepted || corpus == nil {
-		return errors.New("alpha corpus control was not accepted")
-	}
-	return json.NewEncoder(output).Encode(struct {
-		Schema  string `json:"schema"`
-		Cohort  string `json:"cohort"`
-		Corpus  string `json:"corpus"`
-		Network string `json:"network"`
-		Serial  uint64 `json:"serial"`
-	}{Schema: "ardents-alpha-corpus-report-v1", Cohort: corpus.Cohort(), Corpus: string(alphacontrol.OutcomeAccepted), Network: networkText, Serial: corpus.Serial()})
 }
 
 func inspectBundle(arguments []string, output io.Writer) error {

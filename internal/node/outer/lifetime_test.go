@@ -1,0 +1,216 @@
+package outer
+
+import (
+	"context"
+	"errors"
+	"io"
+	"net"
+	"sync"
+	"sync/atomic"
+	"testing"
+	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
+)
+
+func TestClosedOuterLifetimeInterruptsAndJoinsAllChildren(t *testing.T) {
+	for _, ending := range []string{"peer-close", "cancel", "invalid-frame"} {
+		t.Run(ending, func(t *testing.T) {
+			now := time.Now().UTC().Truncate(time.Second)
+			receiver := route.ClosedOuterReceiver{NetworkID: [32]byte{1}, StateGeneration: [32]byte{2}, StateDigest: [32]byte{3}, ProfileDigest: [32]byte{4},
+				NodeID: [32]byte{5}, RecordDigest: [32]byte{6}, DutyGeneration: 7, RoleDomain: 2, Subrole: 6, Deadline: now.Add(10 * time.Second)}
+			limits, err := route.NewClosedDutyLimits(time.Now)
+			if err != nil {
+				t.Fatal(err)
+			}
+			outer, err := route.NewClosedOuterHandshake(receiver, limits, time.Now)
+			if err != nil {
+				t.Fatal(err)
+			}
+			local, peer := net.Pipe()
+			defer local.Close()
+			defer peer.Close()
+			if err := peer.SetDeadline(time.Now().Add(5 * time.Second)); err != nil {
+				t.Fatal(err)
+			}
+			observed := &closedOuterObservedWriter{Conn: local, writing: make(chan struct{})}
+			ctx, cancel := context.WithCancel(t.Context())
+			defer cancel()
+			started, outcomes := make(chan struct{}, 3), make(chan error, 3)
+			begin, release := make(chan struct{}), make(chan struct{})
+			var releaseOnce sync.Once
+			defer releaseOnce.Do(func() { close(release) })
+			var sequence, finished atomic.Uint32
+			done := make(chan uint32, 1)
+			go func() {
+				Serve(ctx, observed, outer, func(child context.Context, lane *route.ClosedOuterBridgeLane) {
+					index := sequence.Add(1)
+					started <- struct{}{}
+					<-begin
+					var err error
+					switch index {
+					case 1:
+						_, err = lane.Read(make([]byte, 1))
+						if !errors.Is(err, io.EOF) {
+							outcomes <- errors.New("child reader did not receive terminal EOF")
+							<-release
+							finished.Add(1)
+							return
+						}
+					case 2:
+						_, err = lane.Write([]byte{1})
+					case 3:
+						<-child.Done()
+						err = child.Err()
+					}
+					if err == nil {
+						outcomes <- errors.New("child operation survived termination")
+					} else {
+						outcomes <- nil
+					}
+					<-release
+					finished.Add(1)
+				})
+				done <- finished.Load()
+			}()
+			hello := ardp.Hello{NetworkID: receiver.NetworkID, StateGeneration: receiver.StateGeneration, StateDigest: receiver.StateDigest, ProfileDigest: receiver.ProfileDigest,
+				RecipientNodeID: receiver.NodeID, RecipientDutyGeneration: receiver.DutyGeneration, Purpose: ardp.PurposeForwarding, ChannelNonce: [32]byte{8}, Deadline: receiver.Deadline}
+			body, err := ardp.EncodeHello(hello)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := ardp.WriteFrame(peer, ardp.Frame{Kind: 1, Body: body}); err != nil {
+				t.Fatal(err)
+			}
+			if frame, err := ardp.ReadFrame(peer); err != nil || frame.Kind != 5 {
+				t.Fatalf("outer HELLO: %+v %v", frame, err)
+			}
+			body, err = route.EncodeClosedNodeOpen(route.ClosedOpen{NextNodeID: receiver.NodeID, NextDutyGeneration: receiver.DutyGeneration, Purpose: ardp.PurposeIssuer, Deadline: receiver.Deadline}, route.ClosedChildOrdinary)
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, id := range []uint32{1, 3, 5} {
+				if err := ardp.WriteFrame(peer, ardp.Frame{Kind: 4, Lane: id, Body: body}); err != nil {
+					t.Fatal(err)
+				}
+				select {
+				case <-started:
+				case <-time.After(5 * time.Second):
+					t.Fatal("child not started")
+				}
+			}
+			close(begin)
+			select {
+			case <-observed.writing:
+			case <-time.After(5 * time.Second):
+				t.Fatal("child write not reached")
+			}
+			switch ending {
+			case "peer-close":
+				_ = peer.Close()
+			case "cancel":
+				cancel()
+			case "invalid-frame":
+				if err := ardp.WriteFrame(peer, ardp.Frame{Kind: 3, Body: []byte{2}}); err != nil {
+					t.Fatal(err)
+				}
+			}
+			for range 3 {
+				select {
+				case err := <-outcomes:
+					if err != nil {
+						t.Fatal(err)
+					}
+				case <-time.After(5 * time.Second):
+					t.Fatal("child operation not interrupted")
+				}
+			}
+			select {
+			case count := <-done:
+				t.Fatalf("outer returned before child cleanup (%d)", count)
+			default:
+			}
+			releaseOnce.Do(func() { close(release) })
+			select {
+			case count := <-done:
+				if count != 3 {
+					t.Fatalf("joined %d children", count)
+				}
+			case <-time.After(5 * time.Second):
+				t.Fatal("outer did not join")
+			}
+			if _, err := outer.Accept(ardp.Frame{Kind: 4, Lane: 7, Body: body}); err == nil {
+				t.Fatal("retired outer allocated another child")
+			}
+		})
+	}
+}
+
+// A later role-level Close commonly reports net.ErrClosed. The first physical
+// close result therefore has to cross Serve's interface before it disappears.
+func TestClosedOuterReturnsFirstPhysicalCloseFailure(t *testing.T) {
+	now := time.Now().UTC().Truncate(time.Second)
+	receiver := route.ClosedOuterReceiver{NetworkID: [32]byte{1}, StateGeneration: [32]byte{2}, StateDigest: [32]byte{3}, ProfileDigest: [32]byte{4},
+		NodeID: [32]byte{5}, RecordDigest: [32]byte{6}, DutyGeneration: 7, RoleDomain: 2, Subrole: 6, Deadline: now.Add(10 * time.Second)}
+	limits, err := route.NewClosedDutyLimits(time.Now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	handshake, err := route.NewClosedOuterHandshake(receiver, limits, time.Now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	local, peer := net.Pipe()
+	defer peer.Close()
+	closeErr := errors.New("first physical close failed")
+	connection := &firstCloseFailureConn{Conn: local, failure: closeErr}
+	ctx, cancel := context.WithCancel(t.Context())
+	done := make(chan error, 1)
+	go func() {
+		done <- Serve(ctx, connection, handshake, func(context.Context, *route.ClosedOuterBridgeLane) {})
+	}()
+	cancel()
+	select {
+	case err := <-done:
+		if !errors.Is(err, closeErr) {
+			t.Fatalf("outer close result = %v", err)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("outer did not join after cancellation")
+	}
+	if err := connection.Close(); !errors.Is(err, net.ErrClosed) {
+		t.Fatalf("later role close = %v, want already closed", err)
+	}
+}
+
+type firstCloseFailureConn struct {
+	net.Conn
+	once    sync.Once
+	failure error
+}
+
+func (connection *firstCloseFailureConn) Close() error {
+	first := false
+	connection.once.Do(func() {
+		first = true
+		_ = connection.Conn.Close()
+	})
+	if first {
+		return connection.failure
+	}
+	return net.ErrClosed
+}
+
+type closedOuterObservedWriter struct {
+	net.Conn
+	writing chan struct{}
+	once    sync.Once
+}
+
+func (connection *closedOuterObservedWriter) Write(value []byte) (int, error) {
+	if len(value) >= 7 && string(value[:4]) == "ARDP" && value[6] == 6 {
+		connection.once.Do(func() { close(connection.writing) })
+	}
+	return connection.Conn.Write(value)
+}

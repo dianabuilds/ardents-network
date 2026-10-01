@@ -3,104 +3,92 @@ package node
 import (
 	"context"
 	"errors"
+	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/network/state"
+	"github.com/dianabuilds/ardents-network/internal/node/authority"
 	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
+	"github.com/dianabuilds/ardents-network/internal/route/carrier"
 )
 
-func startDuty(config runtimeConfig, snapshot dutyFacts) (*probeServer, error) {
-	if snapshot.Profile == route.ClosedRouteProfile {
-		if _, available := closedRouteReceiver(config, snapshot, route.ClosedPurposeIssuer, config.now()); available {
-			return startClosedIssuer(config, snapshot)
-		}
-		if _, available := closedRouteReceiver(config, snapshot, route.ClosedPurposeForwarding, config.now()); available {
-			return startClosedForwarding(config, snapshot)
-		}
-		if _, available := closedRouteReceiver(config, snapshot, route.ClosedPurposeReachability, config.now()); available {
-			return startClosedResolution(config, snapshot)
-		}
-		if _, available := closedRouteReceiver(config, snapshot, route.ClosedPurposeIntroduction, config.now()); available {
-			return startClosedIntroduction(config, snapshot)
-		}
-		if _, available := closedRouteReceiver(config, snapshot, route.ClosedPurposeDataJoin, config.now()); available {
-			return startClosedDataJoin(config, snapshot)
-		}
-		return nil, errors.New("closed Route assignment is not locally implemented")
-	}
-	if snapshot.Profile != route.Profile {
-		return config.probe.startProbe(newProbeDuty(snapshot))
-	}
-	switch snapshot.Assignment {
-	case "rendezvous":
-		plan, err := rendezvousDuty(config.Rendezvous, snapshot)
-		if err != nil {
-			return nil, err
-		}
-		running, err := startRendezvous(plan)
-		if err != nil {
-			return nil, err
-		}
-		return &probeServer{Done: running.Done(), Protect: running.Protect, Usage: func() (uint64, uint64, uint64) {
-			return rendezvousPressureUsage(running.Usage())
-		}, Stop: running.Stop, Drain: running.Drain}, nil
-	case "initiator":
-		admitter, closeAdmitter, err := openStateEntryAdmitter(config.LocalRoleStateRoot, snapshot,
-			func() (dutyFacts, error) { return currentFacts(config) }, config.now)
-		if err != nil {
-			return nil, err
-		}
-		plan, err := initiatorDuty(config.Initiator, snapshot, admitter)
-		if err != nil {
-			return nil, errors.Join(err, closeAdmitter())
-		}
-		running, err := startInitiator(plan)
-		if err != nil {
-			return nil, errors.Join(err, closeAdmitter())
-		}
-		return &probeServer{Done: running.Done(), Protect: running.Protect, Usage: func() (uint64, uint64, uint64) {
-			usage := running.Usage()
-			return uint64(usage.Handshakes), uint64(usage.Connections), usage.RelayedBytes
-		}, Stop: running.Stop, Drain: func(ctx context.Context) error {
-			return errors.Join(running.Drain(ctx), closeAdmitter())
-		}}, nil
-	case "introduction":
-		plan, err := introductionDuty(config.Introduction, snapshot, stateTransitGrantAdmitter(config.LocalRoleStateRoot, snapshot,
-			func() (dutyFacts, error) { return currentFacts(config) }, config.now))
-		if err != nil {
-			return nil, err
-		}
-		running, err := startIntroduction(plan)
-		if err != nil {
-			return nil, err
-		}
-		return &probeServer{Done: running.Done(), Protect: running.Protect, Usage: func() (uint64, uint64, uint64) {
-			usage := running.Usage()
-			return uint64(usage.Handshakes + usage.Deliveries), uint64(usage.Connections), 0
-		}, Stop: running.Stop, Drain: running.Drain}, nil
-	case "responder":
-		plan, err := responderDuty(config.Responder, snapshot, stateTransitGrantAdmitter(config.LocalRoleStateRoot, snapshot,
-			func() (dutyFacts, error) { return currentFacts(config) }, config.now))
-		if err != nil {
-			return nil, err
-		}
-		running, err := startResponder(plan)
-		if err != nil {
-			return nil, err
-		}
-		return &probeServer{Done: running.Done(), Protect: running.Protect, Usage: func() (uint64, uint64, uint64) {
-			usage := running.Usage()
-			return uint64(usage.Handshakes), uint64(usage.Connections), usage.RelayedBytes
-		}, Stop: running.Stop, Drain: running.Drain}, nil
-	case "transit-issuance":
-		return startTransitIssuer(config, snapshot)
-	default:
-		return nil, errors.New("native Route assignment is not implemented")
+// dutyHandle is the bounded supervision surface of one selected role.
+type dutyHandle struct {
+	Done    <-chan error
+	Joined  <-chan struct{}
+	Protect func(bool)
+	Usage   func() (uint64, uint64, uint64)
+	Stop    func()
+	Drain   func(context.Context) error
+}
+
+// roleInputs projects the process-owned dependencies needed to start one
+// selected network role. Role adapters do not receive the entire process
+// configuration or its pressure and event state.
+type roleInputs struct {
+	authority      authority.Source
+	currentDuty    func() (state.NodeDuty, error)
+	now            func() time.Time
+	listenOverride string
+}
+
+func projectRoleInputs(config runtimeConfig) roleInputs {
+	current := config.Current
+	return roleInputs{
+		authority:   nodeAuthority(config),
+		currentDuty: func() (state.NodeDuty, error) { return currentFacts(current) },
+		now:         config.now, listenOverride: config.ClosedListenOverride,
 	}
 }
 
-func rendezvousPressureUsage(usage rendezvousUsage) (timers, queueItems, queueBytes uint64) {
-	// Completed pairs, connections, and relayed bytes are cumulative evidence,
-	// not live reservations. The Rendezvous implementation exposes its live
-	// bounded work as handshakes and waiting legs; active pairs are protected by
-	// the profile's own pair and byte limits.
-	return uint64(usage.Handshakes + usage.WaitingLegs), 0, 0
+const nativeRouteUnavailableReason = "native Route assignment is not implemented"
+const closedRouteUnavailableReason = "closed Route assignment is not locally implemented"
+
+// selectClosedRole preserves the process dispatch order. Admission supplies one
+// captured poll time; startup supplies its live clock for each authority check.
+func selectClosedRole(source authority.Source, snapshot state.NodeDuty, now func() time.Time) (ardp.Purpose, bool) {
+	for _, purpose := range [...]ardp.Purpose{
+		ardp.PurposeIssuer,
+		ardp.PurposeForwarding,
+		ardp.PurposeReachability,
+		ardp.PurposeIntroduction,
+		ardp.PurposeDataJoin,
+	} {
+		if _, available := source.Receiver(snapshot, purpose, now()); available {
+			return purpose, true
+		}
+	}
+	return 0, false
+}
+
+func startDuty(config runtimeConfig, snapshot state.NodeDuty) (*dutyHandle, error) {
+	if snapshot.Profile == carrier.ClosedRouteProfile {
+		inputs := projectRoleInputs(config)
+		purpose, available := selectClosedRole(inputs.authority, snapshot, inputs.now)
+		if !available {
+			return nil, errors.New(closedRouteUnavailableReason)
+		}
+		switch purpose {
+		case ardp.PurposeIssuer:
+			return startClosedIssuer(config.ClosedIssuer, inputs, config.host, snapshot)
+		case ardp.PurposeForwarding:
+			return startClosedForwarding(config.ClosedForwarding, inputs, snapshot)
+		case ardp.PurposeReachability:
+			return startClosedResolution(config.ClosedResolution, inputs, config.host, snapshot)
+		case ardp.PurposeIntroduction:
+			return startClosedIntroduction(config.ClosedIntroduction, inputs, config.host, snapshot)
+		case ardp.PurposeDataJoin:
+			return startClosedDataJoin(config.ClosedDataJoin, inputs, snapshot)
+		}
+		return nil, errors.New(closedRouteUnavailableReason)
+	}
+	if snapshot.Profile == route.Profile {
+		return nil, errors.New(nativeRouteUnavailableReason)
+	}
+	selected, err := config.probe.Start(newProbeDuty(snapshot))
+	if err != nil {
+		return nil, err
+	}
+	return &dutyHandle{Done: selected.Done, Protect: selected.Protect, Usage: selected.Usage,
+		Stop: selected.Stop, Drain: selected.Drain}, nil
 }

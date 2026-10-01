@@ -1,0 +1,99 @@
+//go:build linux
+
+package endpoint
+
+import (
+	"context"
+	"errors"
+	"sync"
+
+	"github.com/dianabuilds/ardents-network/internal/application/broker"
+	"github.com/dianabuilds/ardents-network/internal/endpoint/introduction"
+	"github.com/dianabuilds/ardents-network/internal/route/client"
+)
+
+// Reserve before the first State read or I/O. Context retirement cancels and
+// joins these exchanges even when the worker's own cleanup has already ended.
+func (owner *dutyContext) beginIntroductionExchange(caller context.Context, job *jobIdentity, surface broker.Surface) (context.Context, func(error) error, error) {
+	owner.mu.Lock()
+	if caller == nil || caller.Err() != nil || !owner.liveServiceJobLocked(job, surface) || owner.introduction.exchanges.FullLocked(owner.streamExchangeLimitLocked()) {
+		owner.mu.Unlock()
+		return nil, nil, errors.New("text Introduction exchange owner unavailable")
+	}
+	lifetime, cancel := context.WithCancel(job.context)
+	flight := owner.introduction.exchanges.AddLocked(cancel)
+	owner.mu.Unlock()
+	interrupted := make(chan struct{})
+	stop := context.AfterFunc(caller, func() { defer close(interrupted); cancel() })
+	if caller.Err() != nil {
+		cancel()
+	}
+	return lifetime, func(outcome error) error {
+		cancel()
+		if !stop() {
+			<-interrupted
+		}
+		outcome = errors.Join(outcome, caller.Err(), job.context.Err())
+		owner.mu.Lock()
+		defer owner.mu.Unlock()
+		return owner.finishIntroductionExchangeLocked(flight, outcome)
+	}, nil
+}
+
+// beginServiceTransportExchange gives an accepted JOIN a cleanup lifetime
+// distinct from job authorization. The caller still cancels setup; after
+// detach and retain, job loss stops Service work while the transport remains
+// alive only long enough for its owner to send terminal control and join it.
+func (owner *dutyContext) beginServiceTransportExchange(caller context.Context, job *jobIdentity, surface broker.Surface) (context.Context, *introduction.Exchange, func() bool, func(error) error, error) {
+	owner.mu.Lock()
+	if caller == nil || caller.Err() != nil || !owner.liveServiceJobLocked(job, surface) || owner.introduction.exchanges.FullLocked(owner.streamExchangeLimitLocked()) {
+		owner.mu.Unlock()
+		return nil, nil, nil, nil, errors.New("text Introduction exchange owner unavailable")
+	}
+	lifetime, cancel := context.WithCancel(context.WithoutCancel(job.context))
+	flight := owner.introduction.exchanges.AddLocked(cancel)
+	owner.mu.Unlock()
+	interrupted := make(chan struct{})
+	stop := context.AfterFunc(caller, func() { defer close(interrupted); cancel() })
+	var joinCaller sync.Once
+	detached := false
+	detach := func() bool {
+		joinCaller.Do(func() {
+			if !stop() {
+				<-interrupted
+			}
+			detached = caller.Err() == nil
+		})
+		return detached
+	}
+	finish := func(outcome error) error {
+		cancel()
+		if !detach() {
+			outcome = errors.Join(outcome, caller.Err())
+		}
+		outcome = errors.Join(outcome, job.context.Err())
+		owner.mu.Lock()
+		defer owner.mu.Unlock()
+		return owner.finishIntroductionExchangeLocked(flight, outcome)
+	}
+	return lifetime, flight, detach, finish, nil
+}
+
+func (owner *dutyContext) retainServiceTransportExchangeLocked(job *jobIdentity, flight *introduction.Exchange) bool {
+	if flight == nil || owner.closed || !owner.liveServiceJobLocked(job, owner.surface) {
+		return false
+	}
+	return owner.introduction.exchanges.RetainLocked(flight)
+}
+
+// finishIntroductionExchangeLocked publishes a failed Route cleanup before
+// releasing the reservation, so both exchange paths terminalize Context alike.
+func (owner *dutyContext) finishIntroductionExchangeLocked(flight *introduction.Exchange, outcome error) error {
+	if errors.Is(outcome, client.ErrClosedSourceCleanup) {
+		owner.closeErr = errors.Join(owner.closeErr, outcome)
+		owner.closed = true
+		owner.endpoint.failDutyContexts(outcome)
+	}
+	owner.introduction.exchanges.RemoveLocked(flight)
+	return outcome
+}

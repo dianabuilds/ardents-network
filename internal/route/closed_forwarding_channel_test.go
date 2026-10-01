@@ -5,6 +5,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 )
 
 func newForwardingTestChannel(lease *ClosedAdmission, authorize ClosedForwardingAuthorizer, clock func() time.Time) (*ClosedForwardingChannel, error) {
@@ -20,8 +22,8 @@ func TestClosedForwardingChannelBoundsAuthorizedOddChild(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	lease := ClosedAdmission{Class: 2, Bytes: 32 << 20, Deadline: now.Add(time.Minute), duty: reservation}
-	allowed := ClosedOpen{NextNodeID: [32]byte{1}, NextDutyGeneration: 2, Purpose: ClosedPurposeForwarding, Deadline: now.Add(30 * time.Second)}
+	lease := ClosedAdmission{Class: 2, Bytes: 32 << 20, Deadline: now.Add(time.Minute), claim: newClosedAdmissionClaim(reservation, nil)}
+	allowed := ClosedOpen{NextNodeID: [32]byte{1}, NextDutyGeneration: 2, Purpose: ardp.PurposeForwarding, Deadline: now.Add(30 * time.Second)}
 	channel, err := newForwardingTestChannel(&lease, func(open ClosedOpen) error {
 		if open != allowed {
 			return errUnexpectedForwardOpen
@@ -36,45 +38,45 @@ func TestClosedForwardingChannelBoundsAuthorizedOddChild(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := channel.Accept(ClosedLaneFrame{Kind: closedFrameOpen, Lane: 1, Body: body}); err != nil {
+	if _, err := channel.Accept(ardp.Frame{Kind: ardp.KindOpen, Lane: 1, Body: body}); err != nil {
 		t.Fatal(err)
 	}
-	if event, available := channel.Next(); !available || event.Kind != closedFrameOpen || event.Open != allowed || event.Restriction != ClosedChildOrdinary {
+	if event, available := channel.NextAvailable(nil); !available || event.Kind != ardp.KindOpen || event.Open != allowed || event.Restriction != ClosedChildOrdinary {
 		t.Fatalf("scheduled open = %+v / %t", event, available)
 	}
-	bytesFrame := ClosedLaneFrame{Kind: closedFrameBytes, Lane: 1, Body: bytes.Repeat([]byte{3}, int(closedLaneCredit))}
+	bytesFrame := ardp.Frame{Kind: ardp.KindBytes, Lane: 1, Body: bytes.Repeat([]byte{3}, int(closedLaneCredit))}
 	if _, err := channel.Accept(bytesFrame); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := channel.Accept(ClosedLaneFrame{Kind: closedFrameBytes, Lane: 1, Body: []byte{1}}); err == nil {
+	if _, err := channel.Accept(ardp.Frame{Kind: ardp.KindBytes, Lane: 1, Body: []byte{1}}); err == nil {
 		t.Fatal("accepted bytes beyond fixed credit")
 	}
-	if event, available := channel.Next(); !available || event.Kind != closedFrameBytes || len(event.Bytes) != int(closedLaneCredit) {
+	if event, available := channel.NextAvailable(nil); !available || event.Kind != ardp.KindBytes || len(event.Bytes) != int(closedLaneCredit) {
 		t.Fatalf("scheduled bytes = %+v / %t", event, available)
 	}
 	credit, err := channel.Credit(1, 1)
-	if err != nil || credit.Kind != closedFrameCredit {
+	if err != nil || credit.Kind != ardp.KindCredit {
 		t.Fatalf("credit = %+v / %v", credit, err)
 	}
-	if _, err := channel.Accept(ClosedLaneFrame{Kind: closedFrameBytes, Lane: 1, Body: []byte{1}}); err != nil {
+	if _, err := channel.Accept(ardp.Frame{Kind: ardp.KindBytes, Lane: 1, Body: []byte{1}}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := channel.Accept(ClosedLaneFrame{Kind: closedFrameOpen, Lane: 1, Body: body}); err == nil {
+	if _, err := channel.Accept(ardp.Frame{Kind: ardp.KindOpen, Lane: 1, Body: body}); err == nil {
 		t.Fatal("reused child lane")
 	}
-	if _, err := channel.Accept(ClosedLaneFrame{Kind: closedFrameOpen, Lane: 2, Body: body}); err == nil {
+	if _, err := channel.Accept(ardp.Frame{Kind: ardp.KindOpen, Lane: 2, Body: body}); err == nil {
 		t.Fatal("accepted endpoint even lane")
 	}
-	if _, err := channel.Accept(ClosedLaneFrame{Kind: closedFrameEOF, Lane: 1}); err != nil {
+	if _, err := channel.Accept(ardp.Frame{Kind: ardp.KindEOF, Lane: 1}); err != nil {
 		t.Fatal(err)
 	}
-	if event, available := channel.Next(); !available || event.Kind != closedFrameBytes || len(event.Bytes) != 1 {
+	if event, available := channel.NextAvailable(nil); !available || event.Kind != ardp.KindBytes || len(event.Bytes) != 1 {
 		t.Fatalf("scheduled trailing bytes = %+v / %t", event, available)
 	}
-	if event, available := channel.Next(); !available || event.Kind != closedFrameEOF {
+	if event, available := channel.NextAvailable(nil); !available || event.Kind != ardp.KindEOF {
 		t.Fatalf("scheduled EOF = %+v / %t", event, available)
 	}
-	if _, err := channel.Accept(ClosedLaneFrame{Kind: closedFrameBytes, Lane: 1, Body: []byte{1}}); err == nil {
+	if _, err := channel.Accept(ardp.Frame{Kind: ardp.KindBytes, Lane: 1, Body: []byte{1}}); err == nil {
 		t.Fatal("accepted bytes after EOF")
 	}
 }
@@ -89,8 +91,8 @@ func TestClosedForwardingChannelSerializesConcurrentLaneReuse(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	allowed := ClosedOpen{NextNodeID: [32]byte{11}, NextDutyGeneration: 12, Purpose: ClosedPurposeForwarding, Deadline: now.Add(time.Minute)}
-	lease := ClosedAdmission{Class: 2, Bytes: 32 << 20, Deadline: now.Add(time.Minute), duty: reservation}
+	allowed := ClosedOpen{NextNodeID: [32]byte{11}, NextDutyGeneration: 12, Purpose: ardp.PurposeForwarding, Deadline: now.Add(time.Minute)}
+	lease := ClosedAdmission{Class: 2, Bytes: 32 << 20, Deadline: now.Add(time.Minute), claim: newClosedAdmissionClaim(reservation, nil)}
 	channel, err := newForwardingTestChannel(&lease,
 		func(open ClosedOpen) error {
 			if open != allowed {
@@ -111,7 +113,7 @@ func TestClosedForwardingChannelSerializesConcurrentLaneReuse(t *testing.T) {
 		group.Add(1)
 		go func() {
 			defer group.Done()
-			_, err := channel.Accept(ClosedLaneFrame{Kind: closedFrameOpen, Lane: 1, Body: body})
+			_, err := channel.Accept(ardp.Frame{Kind: ardp.KindOpen, Lane: 1, Body: body})
 			errs <- err
 		}()
 	}
@@ -139,8 +141,8 @@ func TestClosedForwardingChannelBoundsOnePrefixQueueBeforeDutyQueue(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	lease := ClosedAdmission{Class: 2, Bytes: 32 << 20, Deadline: now.Add(time.Minute), duty: reservation}
-	allowed := ClosedOpen{NextNodeID: [32]byte{21}, NextDutyGeneration: 22, Purpose: ClosedPurposeForwarding, Deadline: now.Add(time.Minute)}
+	lease := ClosedAdmission{Class: 2, Bytes: 32 << 20, Deadline: now.Add(time.Minute), claim: newClosedAdmissionClaim(reservation, nil)}
+	allowed := ClosedOpen{NextNodeID: [32]byte{21}, NextDutyGeneration: 22, Purpose: ardp.PurposeForwarding, Deadline: now.Add(time.Minute)}
 	channel, err := newForwardingTestChannel(&lease, func(open ClosedOpen) error {
 		if open != allowed {
 			return errUnexpectedForwardOpen
@@ -155,10 +157,10 @@ func TestClosedForwardingChannelBoundsOnePrefixQueueBeforeDutyQueue(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	frame := ClosedLaneFrame{Kind: closedFrameBytes, Body: bytes.Repeat([]byte{4}, int(closedLaneCredit))}
+	frame := ardp.Frame{Kind: ardp.KindBytes, Body: bytes.Repeat([]byte{4}, int(closedLaneCredit))}
 	for index := uint32(0); index < uint32(closedPrefixQueueBytes/closedLaneCredit); index++ {
 		lane := index*2 + 1
-		if _, err := channel.Accept(ClosedLaneFrame{Kind: closedFrameOpen, Lane: lane, Body: openBody}); err != nil {
+		if _, err := channel.Accept(ardp.Frame{Kind: ardp.KindOpen, Lane: lane, Body: openBody}); err != nil {
 			t.Fatalf("open lane %d: %v", lane, err)
 		}
 		frame.Lane = lane
@@ -167,7 +169,7 @@ func TestClosedForwardingChannelBoundsOnePrefixQueueBeforeDutyQueue(t *testing.T
 		}
 	}
 	lane := uint32(closedPrefixQueueBytes/closedLaneCredit)*2 + 1
-	if _, err := channel.Accept(ClosedLaneFrame{Kind: closedFrameOpen, Lane: lane, Body: openBody}); err != nil {
+	if _, err := channel.Accept(ardp.Frame{Kind: ardp.KindOpen, Lane: lane, Body: openBody}); err != nil {
 		t.Fatal(err)
 	}
 	frame.Lane = lane
@@ -186,8 +188,8 @@ func TestClosedForwardingChannelSchedulesControlThenRoundRobinData(t *testing.T)
 	if err != nil {
 		t.Fatal(err)
 	}
-	lease := ClosedAdmission{Class: 2, Bytes: 32 << 20, Deadline: now.Add(time.Minute), duty: reservation}
-	allowed := ClosedOpen{NextNodeID: [32]byte{31}, NextDutyGeneration: 32, Purpose: ClosedPurposeForwarding, Deadline: now.Add(time.Minute)}
+	lease := ClosedAdmission{Class: 2, Bytes: 32 << 20, Deadline: now.Add(time.Minute), claim: newClosedAdmissionClaim(reservation, nil)}
+	allowed := ClosedOpen{NextNodeID: [32]byte{31}, NextDutyGeneration: 32, Purpose: ardp.PurposeForwarding, Deadline: now.Add(time.Minute)}
 	channel, err := newForwardingTestChannel(&lease, func(open ClosedOpen) error {
 		if open != allowed {
 			return errUnexpectedForwardOpen
@@ -203,20 +205,20 @@ func TestClosedForwardingChannelSchedulesControlThenRoundRobinData(t *testing.T)
 		t.Fatal(err)
 	}
 	for _, lane := range []uint32{1, 3} {
-		if _, err := channel.Accept(ClosedLaneFrame{Kind: closedFrameOpen, Lane: lane, Body: openBody}); err != nil {
+		if _, err := channel.Accept(ardp.Frame{Kind: ardp.KindOpen, Lane: lane, Body: openBody}); err != nil {
 			t.Fatal(err)
 		}
 	}
 	for _, lane := range []uint32{1, 3} {
-		event, available := channel.Next()
-		if !available || event.Kind != closedFrameOpen || event.Lane != lane {
+		event, available := channel.NextAvailable(nil)
+		if !available || event.Kind != ardp.KindOpen || event.Lane != lane {
 			t.Fatalf("control schedule = %+v / %t", event, available)
 		}
 	}
-	for _, frame := range []ClosedLaneFrame{
-		{Kind: closedFrameBytes, Lane: 1, Body: []byte{1}},
-		{Kind: closedFrameBytes, Lane: 3, Body: []byte{3}},
-		{Kind: closedFrameBytes, Lane: 1, Body: []byte{2}},
+	for _, frame := range []ardp.Frame{
+		{Kind: ardp.KindBytes, Lane: 1, Body: []byte{1}},
+		{Kind: ardp.KindBytes, Lane: 3, Body: []byte{3}},
+		{Kind: ardp.KindBytes, Lane: 1, Body: []byte{2}},
 	} {
 		if _, err := channel.Accept(frame); err != nil {
 			t.Fatal(err)
@@ -226,16 +228,216 @@ func TestClosedForwardingChannelSchedulesControlThenRoundRobinData(t *testing.T)
 		lane  uint32
 		value byte
 	}{{1, 1}, {3, 3}, {1, 2}} {
-		event, available := channel.Next()
-		if !available || event.Kind != closedFrameBytes || event.Lane != want.lane || len(event.Bytes) != 1 || event.Bytes[0] != want.value {
+		event, available := channel.NextAvailable(nil)
+		if !available || event.Kind != ardp.KindBytes || event.Lane != want.lane || len(event.Bytes) != 1 || event.Bytes[0] != want.value {
 			t.Fatalf("round-robin schedule = %+v / %t", event, available)
 		}
 	}
-	if _, err := channel.Accept(ClosedLaneFrame{Kind: closedFrameClose, Lane: 1, Body: []byte{5}}); err != nil {
+	if _, err := channel.Accept(ardp.Frame{Kind: ardp.KindClose, Lane: 1, Body: []byte{5}}); err != nil {
 		t.Fatal(err)
 	}
-	if event, available := channel.Next(); !available || event.Kind != closedFrameClose || event.Lane != 1 || len(event.Bytes) != 1 || event.Bytes[0] != 5 {
+	if event, available := channel.NextAvailable(nil); !available || event.Kind != ardp.KindClose || event.Lane != 1 || len(event.Bytes) != 1 || event.Bytes[0] != 5 {
 		t.Fatalf("scheduled close = %+v / %t", event, available)
+	}
+}
+
+func TestClosedForwardingChannelAlternatesAvailableControlAndData(t *testing.T) {
+	newChannel := func(t *testing.T) *ClosedForwardingChannel {
+		t.Helper()
+		now := time.Unix(1_800_000_000, 0).UTC()
+		limits, err := NewClosedDutyLimits(func() time.Time { return now })
+		if err != nil {
+			t.Fatal(err)
+		}
+		reservation, err := limits.reserveChannel()
+		if err != nil {
+			t.Fatal(err)
+		}
+		lease := ClosedAdmission{Class: 2, Bytes: 32 << 20, Deadline: now.Add(time.Minute), claim: newClosedAdmissionClaim(reservation, nil)}
+		open := ClosedOpen{NextNodeID: [32]byte{51}, NextDutyGeneration: 52, Purpose: ardp.PurposeForwarding, Deadline: lease.Deadline}
+		channel, err := newForwardingTestChannel(&lease, func(value ClosedOpen) error {
+			if value != open {
+				return errUnexpectedForwardOpen
+			}
+			return nil
+		}, func() time.Time { return now })
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { _ = channel.Cancel() })
+		body, err := EncodeClosedOpen(open)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := channel.Accept(ardp.Frame{Kind: ardp.KindOpen, Lane: 1, Body: body}); err != nil {
+			t.Fatal(err)
+		}
+		if event, ok := channel.NextAvailable(nil); !ok || event.Kind != ardp.KindOpen || event.Lane != 1 {
+			t.Fatalf("initial OPEN = %+v / %t", event, ok)
+		}
+		if _, err := channel.Accept(ardp.Frame{Kind: ardp.KindBytes, Lane: 1, Body: []byte{6}}); err != nil {
+			t.Fatal(err)
+		}
+		if event, ok := channel.NextAvailable(nil); !ok || event.Kind != ardp.KindBytes || event.Lane != 1 {
+			t.Fatalf("initial BYTES = %+v / %t", event, ok)
+		}
+		if _, err := channel.Credit(1, 1); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := channel.Accept(ardp.Frame{Kind: ardp.KindBytes, Lane: 1, Body: []byte{7}}); err != nil {
+			t.Fatal(err)
+		}
+		for _, lane := range []uint32{3, 5} {
+			if _, err := channel.Accept(ardp.Frame{Kind: ardp.KindOpen, Lane: lane, Body: body}); err != nil {
+				t.Fatal(err)
+			}
+		}
+		return channel
+	}
+	check := func(t *testing.T, channel *ClosedForwardingChannel, available func(ClosedForwardingEvent) bool, kind uint8, lane uint32) {
+		t.Helper()
+		event, ok := channel.NextAvailable(available)
+		if !ok || event.Kind != kind || event.Lane != lane {
+			t.Fatalf("next event = %+v / %t, want kind %d lane %d", event, ok, kind, lane)
+		}
+	}
+	t.Run("ready data between controls", func(t *testing.T) {
+		channel := newChannel(t)
+		check(t, channel, nil, ardp.KindOpen, 3)
+		check(t, channel, nil, ardp.KindBytes, 1)
+		check(t, channel, nil, ardp.KindOpen, 5)
+	})
+	t.Run("busy data does not hold control", func(t *testing.T) {
+		channel := newChannel(t)
+		busy := func(event ClosedForwardingEvent) bool { return event.Kind != ardp.KindBytes }
+		check(t, channel, busy, ardp.KindOpen, 3)
+		check(t, channel, busy, ardp.KindOpen, 5)
+		check(t, channel, nil, ardp.KindBytes, 1)
+	})
+	t.Run("late CLOSE follows one data turn", func(t *testing.T) {
+		channel := newChannel(t)
+		check(t, channel, nil, ardp.KindOpen, 3)
+		for _, lane := range []uint32{3, 5} {
+			if _, err := channel.Accept(ardp.Frame{Kind: ardp.KindClose, Lane: lane, Body: []byte{0}}); err != nil {
+				t.Fatal(err)
+			}
+		}
+		check(t, channel, nil, ardp.KindBytes, 1)
+		check(t, channel, nil, ardp.KindOpen, 5)
+		check(t, channel, nil, ardp.KindClose, 3)
+		check(t, channel, nil, ardp.KindClose, 5)
+	})
+	t.Run("prequeued CLOSE yields to owed data", func(t *testing.T) {
+		channel := newChannel(t)
+		if _, err := channel.Accept(ardp.Frame{Kind: ardp.KindClose, Lane: 3, Body: []byte{0}}); err != nil {
+			t.Fatal(err)
+		}
+		check(t, channel, nil, ardp.KindOpen, 3)
+		check(t, channel, nil, ardp.KindBytes, 1)
+		check(t, channel, nil, ardp.KindOpen, 5)
+		check(t, channel, nil, ardp.KindClose, 3)
+	})
+	t.Run("ready EOF precedes other lane data", func(t *testing.T) {
+		channel := newChannel(t)
+		check(t, channel, nil, ardp.KindOpen, 3)
+		check(t, channel, nil, ardp.KindBytes, 1)
+		check(t, channel, nil, ardp.KindOpen, 5)
+		if _, err := channel.Accept(ardp.Frame{Kind: ardp.KindBytes, Lane: 1, Body: []byte{8}}); err != nil {
+			t.Fatal(err)
+		}
+		check(t, channel, nil, ardp.KindBytes, 1)
+		if _, err := channel.Accept(ardp.Frame{Kind: ardp.KindBytes, Lane: 1, Body: []byte{9}}); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := channel.Accept(ardp.Frame{Kind: ardp.KindEOF, Lane: 3}); err != nil {
+			t.Fatal(err)
+		}
+		check(t, channel, nil, ardp.KindEOF, 3)
+		check(t, channel, nil, ardp.KindBytes, 1)
+	})
+	t.Run("busy EOF stays pending without blocking data", func(t *testing.T) {
+		channel := newChannel(t)
+		check(t, channel, nil, ardp.KindOpen, 3)
+		check(t, channel, nil, ardp.KindBytes, 1)
+		check(t, channel, nil, ardp.KindOpen, 5)
+		if _, err := channel.Accept(ardp.Frame{Kind: ardp.KindBytes, Lane: 1, Body: []byte{9}}); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := channel.Accept(ardp.Frame{Kind: ardp.KindEOF, Lane: 3}); err != nil {
+			t.Fatal(err)
+		}
+		busy := func(event ClosedForwardingEvent) bool { return event.Kind != ardp.KindEOF }
+		check(t, channel, busy, ardp.KindBytes, 1)
+		check(t, channel, nil, ardp.KindEOF, 3)
+	})
+	t.Run("CLOSE retires a pending EOF", func(t *testing.T) {
+		channel := newChannel(t)
+		check(t, channel, nil, ardp.KindOpen, 3)
+		check(t, channel, nil, ardp.KindBytes, 1)
+		check(t, channel, nil, ardp.KindOpen, 5)
+		if _, err := channel.Accept(ardp.Frame{Kind: ardp.KindEOF, Lane: 3}); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := channel.Accept(ardp.Frame{Kind: ardp.KindClose, Lane: 3, Body: []byte{0}}); err != nil {
+			t.Fatal(err)
+		}
+		check(t, channel, nil, ardp.KindClose, 3)
+		if event, ok := channel.NextAvailable(nil); ok {
+			t.Fatalf("retired EOF remained available: %+v", event)
+		}
+	})
+}
+
+func TestClosedForwardingChannelKeepsSkippedLaneAccounted(t *testing.T) {
+	now := time.Unix(1_800_000_000, 0).UTC()
+	limits, err := NewClosedDutyLimits(func() time.Time { return now })
+	if err != nil {
+		t.Fatal(err)
+	}
+	reservation, err := limits.reserveChannel()
+	if err != nil {
+		t.Fatal(err)
+	}
+	lease := ClosedAdmission{Class: 2, Bytes: 32 << 20, Deadline: now.Add(time.Minute), claim: newClosedAdmissionClaim(reservation, nil)}
+	open := ClosedOpen{NextNodeID: [32]byte{51}, NextDutyGeneration: 52, Purpose: ardp.PurposeForwarding, Deadline: now.Add(time.Minute)}
+	channel, err := newForwardingTestChannel(&lease, func(value ClosedOpen) error {
+		if value != open {
+			return errUnexpectedForwardOpen
+		}
+		return nil
+	}, func() time.Time { return now })
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer channel.Cancel()
+	body, err := EncodeClosedOpen(open)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, lane := range []uint32{1, 3} {
+		if _, err := channel.Accept(ardp.Frame{Kind: ardp.KindOpen, Lane: lane, Body: body}); err != nil {
+			t.Fatal(err)
+		}
+		channel.NextAvailable(nil)
+	}
+	if _, err := channel.Accept(ardp.Frame{Kind: ardp.KindBytes, Lane: 1, Body: []byte{1}}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := channel.Accept(ardp.Frame{Kind: ardp.KindBytes, Lane: 3, Body: []byte{3}}); err != nil {
+		t.Fatal(err)
+	}
+
+	if event, ok := channel.NextAvailable(func(event ClosedForwardingEvent) bool { return event.Lane != 1 }); !ok || event.Kind != ardp.KindBytes || event.Lane != 3 || event.Bytes[0] != 3 {
+		t.Fatalf("allowed B bytes = %+v / %t", event, ok)
+	}
+	if _, err := channel.Credit(3, 1); err != nil {
+		t.Fatal(err)
+	}
+	if channel.queued != 1 {
+		t.Fatalf("skipped A bytes lost accounting: %d", channel.queued)
+	}
+	if event, ok := channel.NextAvailable(nil); !ok || event.Kind != ardp.KindBytes || event.Lane != 1 || event.Bytes[0] != 1 {
+		t.Fatalf("skipped A bytes = %+v / %t", event, ok)
 	}
 }
 
@@ -249,8 +451,8 @@ func TestClosedForwardingChannelRetains256ReadyLanesInRoundRobin(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	lease := ClosedAdmission{Class: 2, Bytes: 32 << 20, Deadline: now.Add(time.Minute), duty: reservation}
-	allowed := ClosedOpen{NextNodeID: [32]byte{41}, NextDutyGeneration: 42, Purpose: ClosedPurposeForwarding, Deadline: now.Add(time.Minute)}
+	lease := ClosedAdmission{Class: 2, Bytes: 32 << 20, Deadline: now.Add(time.Minute), claim: newClosedAdmissionClaim(reservation, nil)}
+	allowed := ClosedOpen{NextNodeID: [32]byte{41}, NextDutyGeneration: 42, Purpose: ardp.PurposeForwarding, Deadline: now.Add(time.Minute)}
 	channel, err := newForwardingTestChannel(&lease, func(open ClosedOpen) error {
 		if open != allowed {
 			return errUnexpectedForwardOpen
@@ -265,26 +467,26 @@ func TestClosedForwardingChannelRetains256ReadyLanesInRoundRobin(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for lane := uint32(1); lane <= 2*closedForwardChildren-1; lane += 2 {
-		if _, err := channel.Accept(ClosedLaneFrame{Kind: closedFrameOpen, Lane: lane, Body: open}); err != nil {
+	for lane := uint32(1); lane <= 2*ClosedForwardChildren-1; lane += 2 {
+		if _, err := channel.Accept(ardp.Frame{Kind: ardp.KindOpen, Lane: lane, Body: open}); err != nil {
 			t.Fatalf("open lane %d: %v", lane, err)
 		}
-		event, available := channel.Next()
-		if !available || event.Kind != closedFrameOpen || event.Lane != lane {
+		event, available := channel.NextAvailable(nil)
+		if !available || event.Kind != ardp.KindOpen || event.Lane != lane {
 			t.Fatalf("open schedule for lane %d = %+v / %t", lane, event, available)
 		}
 	}
-	if _, err := channel.Accept(ClosedLaneFrame{Kind: closedFrameOpen, Lane: 2*closedForwardChildren + 1, Body: open}); err == nil {
+	if _, err := channel.Accept(ardp.Frame{Kind: ardp.KindOpen, Lane: 2*ClosedForwardChildren + 1, Body: open}); err == nil {
 		t.Fatal("accepted a 257th forwarding lane")
 	}
-	for lane := uint32(1); lane <= 2*closedForwardChildren-1; lane += 2 {
-		if _, err := channel.Accept(ClosedLaneFrame{Kind: closedFrameBytes, Lane: lane, Body: []byte{byte(lane)}}); err != nil {
+	for lane := uint32(1); lane <= 2*ClosedForwardChildren-1; lane += 2 {
+		if _, err := channel.Accept(ardp.Frame{Kind: ardp.KindBytes, Lane: lane, Body: []byte{byte(lane)}}); err != nil {
 			t.Fatalf("queue lane %d: %v", lane, err)
 		}
 	}
-	for lane := uint32(1); lane <= 2*closedForwardChildren-1; lane += 2 {
-		event, available := channel.Next()
-		if !available || event.Kind != closedFrameBytes || event.Lane != lane || len(event.Bytes) != 1 || event.Bytes[0] != byte(lane) {
+	for lane := uint32(1); lane <= 2*ClosedForwardChildren-1; lane += 2 {
+		event, available := channel.NextAvailable(nil)
+		if !available || event.Kind != ardp.KindBytes || event.Lane != lane || len(event.Bytes) != 1 || event.Bytes[0] != byte(lane) {
 			t.Fatalf("data schedule for lane %d = %+v / %t", lane, event, available)
 		}
 	}
@@ -300,7 +502,7 @@ func TestClosedForwardingChannelRefillDebitsOldReserveAndRetainsHostRelease(t *t
 	if err != nil {
 		t.Fatal(err)
 	}
-	lease := ClosedAdmission{Class: 2, Bytes: 32 << 20, Deadline: now.Add(time.Minute), hello: ClosedHello{ChannelNonce: [32]byte{9}}, exporter: [32]byte{8}, duty: reservation}
+	lease := ClosedAdmission{Class: 2, Bytes: 32 << 20, Deadline: now.Add(time.Minute), hello: ardp.Hello{ChannelNonce: [32]byte{9}}, exporter: [32]byte{8}, claim: newClosedAdmissionClaim(reservation, nil)}
 	called, released := 0, 0
 	channel, err := NewReplenishableClosedForwardingChannel(&lease, func(ClosedOpen) error { return nil }, func(input ClosedAdmissionVerification) (func() error, error) {
 		called++
@@ -313,17 +515,17 @@ func TestClosedForwardingChannelRefillDebitsOldReserveAndRetainsHostRelease(t *t
 		t.Fatal(err)
 	}
 	initialLimit := channel.byteLimit
-	admit := ClosedLaneFrame{Kind: closedFrameAdmit, Body: append([]byte{2}, bytes.Repeat([]byte{7}, 354)...)}
+	admit := ardp.Frame{Kind: ardp.KindAdmit, Body: append([]byte{2}, bytes.Repeat([]byte{7}, 354)...)}
 	if _, err := channel.Accept(admit); err != nil {
 		t.Fatal(err)
 	}
 	if called != 1 || channel.byteLimit-channel.usedBytes != 32<<20 || channel.byteLimit <= initialLimit {
 		t.Fatalf("refill did not set one exact remaining reserve: called=%d limit=%d used=%d", called, channel.byteLimit, channel.usedBytes)
 	}
-	if _, err := channel.Accept(ClosedLaneFrame{Kind: closedFrameAdmit, Lane: 1, Body: admit.Body}); err == nil {
+	if _, err := channel.Accept(ardp.Frame{Kind: ardp.KindAdmit, Lane: 1, Body: admit.Body}); err == nil {
 		t.Fatal("child lane replenishment was accepted")
 	}
-	if _, err := channel.Accept(ClosedLaneFrame{Kind: closedFrameAdmit, Body: append([]byte{1}, bytes.Repeat([]byte{7}, 354)...)}); err == nil {
+	if _, err := channel.Accept(ardp.Frame{Kind: ardp.KindAdmit, Body: append([]byte{1}, bytes.Repeat([]byte{7}, 354)...)}); err == nil {
 		t.Fatal("non-forward token replenished parent")
 	}
 	if err := channel.Cancel(); err != nil || released != 1 {

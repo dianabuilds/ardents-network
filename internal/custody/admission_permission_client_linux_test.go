@@ -6,7 +6,7 @@ import (
 	"crypto/ed25519"
 	"crypto/sha256"
 	"errors"
-	"github.com/dianabuilds/ardents-network/internal/route/credential"
+	"github.com/dianabuilds/ardents-network/internal/admission"
 	"testing"
 	"time"
 )
@@ -26,13 +26,13 @@ func TestIssueAdmissionPermissionRejectsWallClockRollback(t *testing.T) {
 		t.Fatalf("create admission authority: %v", err)
 	}
 	issue := func(at time.Time, maxima [3]uint32) error {
-		request, holder, requestErr := credential.PreparePermissionRequest(created.AdmissionAuthority.Public, binding.Network, [32]byte{4}, 5,
-			credential.AllocationUser, at, maxima)
+		request, holder, requestErr := admission.PreparePermissionRequest(created.AdmissionAuthority.Public, binding.Network, [32]byte{4}, 5,
+			admission.AllocationUser, at, maxima)
 		if requestErr != nil {
 			return requestErr
 		}
 		defer zero(holder)
-		raw, requestErr := credential.EncodePermissionRequest(request)
+		raw, requestErr := admission.EncodePermissionRequest(request)
 		if requestErr != nil {
 			return requestErr
 		}
@@ -67,8 +67,8 @@ func TestIssueAdmissionPermissionAdvancesEncryptedAllocationLedger(t *testing.T)
 	if err != nil {
 		t.Fatalf("create admission authority: %v", err)
 	}
-	request, holder, err := credential.PreparePermissionRequest(created.AdmissionAuthority.Public, binding.Network, [32]byte{4}, 5,
-		credential.AllocationUser, now, [3]uint32{32, 0, 16})
+	request, holder, err := admission.PreparePermissionRequest(created.AdmissionAuthority.Public, binding.Network, [32]byte{4}, 5,
+		admission.AllocationUser, now, [3]uint32{32, 0, 16})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -77,7 +77,7 @@ func TestIssueAdmissionPermissionAdvancesEncryptedAllocationLedger(t *testing.T)
 			holder[index] = 0
 		}
 	})
-	raw, err := credential.EncodePermissionRequest(request)
+	raw, err := admission.EncodePermissionRequest(request)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -92,8 +92,8 @@ func TestIssueAdmissionPermissionAdvancesEncryptedAllocationLedger(t *testing.T)
 	if err != nil || verified.Authority.Generation != 2 || verified.Authority.Revision != 1 {
 		t.Fatalf("verify current admission ledger = %+v / %v", verified, err)
 	}
-	permission, err := credential.DecodePermission(first.AdmissionPermission)
-	if err != nil || credential.VerifyPermission(permission, ed25519.PublicKey(created.AdmissionAuthority.Public[:]), binding.Network, request.Permission.IssuerNodeID, request.Permission.DutyGeneration, now) != nil {
+	permission, err := admission.DecodePermission(first.AdmissionPermission)
+	if err != nil || admission.VerifyPermission(permission, ed25519.PublicKey(created.AdmissionAuthority.Public[:]), binding.Network, request.Permission.IssuerNodeID, request.Permission.DutyGeneration, now) != nil {
 		t.Fatalf("verify signed admission permission = %+v / %v", permission, err)
 	}
 	retry, err := vault.Execute(t.Context(), issue, &sequenceSecrets{values: [][]byte{password}})
@@ -108,13 +108,13 @@ func TestIssueAdmissionPermissionAdvancesEncryptedAllocationLedger(t *testing.T)
 	if err != nil {
 		t.Fatal(err)
 	}
-	secondRequest, secondHolder, err := credential.PreparePermissionRequest(created.AdmissionAuthority.Public, binding.Network, [32]byte{4}, 5,
-		credential.AllocationPublisher, now, [3]uint32{0, 16, 0})
+	secondRequest, secondHolder, err := admission.PreparePermissionRequest(created.AdmissionAuthority.Public, binding.Network, [32]byte{4}, 5,
+		admission.AllocationPublisher, now, [3]uint32{0, 16, 0})
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { zero(secondHolder) })
-	secondRaw, err := credential.EncodePermissionRequest(secondRequest)
+	secondRaw, err := admission.EncodePermissionRequest(secondRequest)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -131,11 +131,11 @@ func TestIssueAdmissionPermissionAdvancesEncryptedAllocationLedger(t *testing.T)
 	}
 	changed := request
 	changed.Permission.Maxima[0]++
-	changed, err = credential.SealPermissionRequest(changed, holder)
+	changed, err = admission.SealPermissionRequest(changed, holder)
 	if err != nil {
 		t.Fatal(err)
 	}
-	changedRaw, err := credential.EncodePermissionRequest(changed)
+	changedRaw, err := admission.EncodePermissionRequest(changed)
 	if err != nil {
 		t.Fatal(err)
 	}

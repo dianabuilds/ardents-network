@@ -1,3 +1,5 @@
+//go:build linux
+
 package state_test
 
 import (
@@ -12,7 +14,6 @@ import (
 	"math/big"
 	"os"
 	"path/filepath"
-	"runtime"
 	"testing"
 	"time"
 )
@@ -37,8 +38,7 @@ func runClosedIssuerProcess(t *testing.T, node, endpoint string, acceptArguments
 		name := fmt.Sprintf("issuer-command-source-%d.test", index)
 		server := makeLeaf(t, makeAuthority(t, name), name, true)
 		address := freeAddress(t)
-		plan := nativeDutySourcePlan(network, public, time.Now().UTC(), root, roleRoot, address, server, clientAuthority.root, client.sourcePin)
-		delete(plan, "native_rendezvous_profile")
+		plan := sourceServerPlanFixture(network, public, time.Now().UTC(), root, roleRoot, address, server, clientAuthority.root, client.sourcePin)
 		plan["state_profile"], plan["state_profile_authority"], plan["materialization_index"] = "ardents-route-v3", hex.EncodeToString(public), 1
 		stop := startSource(t, node, writeJSON(t, fmt.Sprintf("issuer-source-%d.json", index), plan))
 		t.Cleanup(stop)
@@ -59,8 +59,10 @@ func runClosedIssuerProcess(t *testing.T, node, endpoint string, acceptArguments
 	t.Cleanup(startClockObserver(t, clock))
 	certificate, key := closedIssuerListenCredential(t, identity, now)
 	order := sha256.Sum256([]byte("issuer-command-source-order"))
+	forwardingHostingRoot := initializeClosedForwardingHosting(t, node)
 	plan := map[string]any{"schema": "ardents-node-plan-v1", "state_root": root, "local_role_state_root": roleRoot,
-		"network_id": hex.EncodeToString(network[:]), "authority_public": []string{hex.EncodeToString(public)}, "threshold": 1,
+		"hosting_root": forwardingHostingRoot,
+		"network_id":   hex.EncodeToString(network[:]), "authority_public": []string{hex.EncodeToString(public)}, "threshold": 1,
 		"closed_profile_authority": hex.EncodeToString(public), "server_certificate": certificate, "server_key": key,
 		"node_id": hex.EncodeToString(issuer[:]), "identity_key": key, "clock_observation_file": clock,
 		"materialization_index": 1, "order_seed": hex.EncodeToString(order[:]), "sources": sources,
@@ -73,11 +75,8 @@ func runClosedIssuerProcess(t *testing.T, node, endpoint string, acceptArguments
 	if ready.Epoch != 1 || ready.AssignmentDigest == [32]byte{} {
 		t.Fatalf("closed issuer has no accepted duty binding: %+v", ready)
 	}
-	forwardingHostingRoot := ""
-	if runtime.GOOS == "linux" {
-		forwardingHostingRoot = initializeClosedForwardingHosting(t, node)
-	}
 	resolutionRoot := ""
+
 	live := []*nodeProcess{first}
 	for index, role := range closedTextTopologyRoles(nodeCount) {
 		if index == 1 {
@@ -116,15 +115,14 @@ func runClosedIssuerProcess(t *testing.T, node, endpoint string, acceptArguments
 			reservation["admission_root"] = t.TempDir()
 			forwardPlan["closed_introduction"] = reservation
 		case [2]uint8{2, 4}:
+			reservation["hosting_root"] = forwardingHostingRoot
 			reservation["admission_root"] = t.TempDir()
 			forwardPlan["closed_data_join"] = reservation
 		default:
 			reservation["root"] = t.TempDir()
-			if forwardingHostingRoot != "" {
-				reservation["hosting_root"] = forwardingHostingRoot
-				reservation["admission_traffic"] = map[string]uint64{"tx": 1, "rx": 1}
-				reservation["termination_traffic"] = map[string]uint64{"tx": 1, "rx": 1}
-			}
+			reservation["hosting_root"] = forwardingHostingRoot
+			reservation["admission_traffic"] = map[string]uint64{"tx": 1, "rx": 1}
+			reservation["termination_traffic"] = map[string]uint64{"tx": 1, "rx": 1}
 			forwardPlan["closed_forwarding"] = reservation
 		}
 		process := startNodeCommand(t, node, "node", "--config", writeJSON(t, fmt.Sprintf("closed-node-%d.json", index+1), forwardPlan))
@@ -134,15 +132,10 @@ func runClosedIssuerProcess(t *testing.T, node, endpoint string, acceptArguments
 	}
 	// Each process reached READY and must remain alive after the last Node
 	// starts. This does not prove continuous duty readiness or an Endpoint exchange.
-	for _, process := range live {
-		select {
-		case <-process.done:
-			t.Fatalf("closed topology Node exited after readiness: %v", process.terminalErr())
-		default:
-		}
-	}
+	assertClosedTopologyLive(t, live)
 	if nodeCount != 3 {
 		participant(resolutionRoot, plan)
+		assertClosedTopologyLive(t, live)
 		return
 	}
 	exchange(false)
@@ -157,6 +150,33 @@ func runClosedIssuerProcess(t *testing.T, node, endpoint string, acceptArguments
 	exchange(false)
 	terminateLiveClosedIssuer(t, restarted)
 
+}
+
+// A journey cannot pass while an unused topology member has already failed.
+// Periodic pressure samples are drained separately by the event collector.
+func assertClosedTopologyLive(t *testing.T, live []*nodeProcess) {
+	t.Helper()
+	for _, process := range live {
+		select {
+		case <-process.done:
+			t.Fatalf("closed topology Node exited after readiness: %v stderr=%s", process.terminalErr(), process.stderr)
+		default:
+		}
+	observed:
+		for {
+			select {
+			case event, open := <-process.events:
+				if !open {
+					t.Fatal("closed topology Node output ended after readiness")
+				}
+				if event.Kind == "lifecycle" && event.State != "READY" {
+					t.Fatalf("closed topology Node lost its ready duty: %s", event.State)
+				}
+			default:
+				break observed
+			}
+		}
+	}
 }
 
 // initializeClosedForwardingHosting uses the public one-time command so every

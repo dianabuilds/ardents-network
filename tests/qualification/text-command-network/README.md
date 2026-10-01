@@ -4,14 +4,29 @@
 a dedicated Ubuntu 24.04 x86-64 host with systemd 255 and cgroup v2. It is not
 an ordinary unit or container test.
 
-Build the candidate outside the repository with Go 1.26.8 and install these
-root-owned mode-0555 regular files:
+From the exact source commit, run
+`ARDENTS_TEXT_COMMAND_CANDIDATE_PARENT=/absolute/stages make text-command-network-build`
+with Go 1.26.8 on Linux x86-64. The builder sets `CGO_ENABLED=0` so the
+worker can execute inside its single-file `RootDirectory`. The parent must be
+an existing directory outside the repository. The build creates a new private stage with
+`READY`, `GO-VERSION`, and `SHA256SUMS`. A stage without `READY` is incomplete;
+retain its failure output rather than installing it. Record the source commit
+alongside the stage and verify `SHA256SUMS` before and after copying.
+
+Install these files from that stage as root-owned mode-0555 regular files:
 
 - `/usr/lib/ardents/qualification/closed-text-commands.test` from
-  `go test -c -tags text_worker_installed -trimpath -buildvcs=false -o OUTPUT ./tests/e2e/node`;
-- `/usr/lib/ardents/qualification/commands/{ardents,ardents-custody,ardents-node,ardents-control,ardents-text}`;
+  `closed-text-commands.test`;
+- `/usr/lib/ardents/qualification/commands/{ardents,ardents-custody,ardents-node,ardents-control,ardents-text}`
+  from `commands/`;
 - `/usr/lib/ardents/text-worker-root/ardents-text`, byte-identical to the
-  pinned `ardents-text` command candidate.
+  pinned `worker/ardents-text` and `commands/ardents-text` candidate.
+
+Update the root-owned `/etc/ardents/text-worker-artifact.json` so its worker
+digest matches that exact candidate. Start the installed
+`ardents-text-reader.socket` and `ardents-text-publisher.socket` units; both
+must expose Endpoint-owned mode-0600 sockets under `/run/ardents-text/`.
+The runner checks these prerequisites before creating the network topology.
 
 Install a fresh root-owned mode-0644 `/run/systemd/system/ardents-endpoint.service`
 with no drop-ins. The root test binary itself temporarily replaces that unit
@@ -20,12 +35,38 @@ SHA-256 values for the test binary, unit, five commands and worker through the
 `ARDENTS_TEXT_COMMAND_*_SHA256` variables.
 
 The runner rejects changed, symlinked, non-root-owned or missing inputs. It
-requires exactly one root result and each empty, 64 KiB and 4 MiB subtest on
+requires `systemd-run`; every Node owns a separate verified systemd scope,
+whose sole process is the READY Node. Cleanup must stop that unit and establish
+an absent or unpopulated cgroup. The orchestrator and its short-lived commands
+are outside these Node pressure owners. An emitted loss of READY or process
+exit before completion remains a failure even if the affected Node was not
+used by that document's Route.
+The runner supplies a unique `ARDENTS_TEXT_COMMAND_SCOPE_PREFIX` derived from
+its private output file. Its exit cleanup stops only scopes in that invocation's
+namespace, including after the independent timeout terminates the Go test.
+It requires exactly one root result and each empty, 64 KiB and 4 MiB subtest on
 TCP/TLS and QUIC. Preserve the complete invocation journal and artifact/host
 inventories outside Git. This is functional journey evidence, not whole-host,
 privacy, hostile-network or p95 qualification.
+
+Set `ARDENTS_TEXT_COMMAND_EVIDENCE_ROOT` to an existing absolute, root-owned,
+mode-0700 directory outside the repository to retain the complete test output
+after either success or failure. The runner creates a unique mode-0600 file
+there and prints its path before starting the test, so an interrupted run can
+still be inspected. Without this variable, the output is printed to the caller
+and the temporary file is removed. The retained file may contain private
+runtime observations; keep its access and retention under local operator control.
 
 Each of the six document/Carrier cases observes a real five-minute Descriptor
 refresh. The Go test deadline is therefore 49 minutes and the independent
 outer command limit is 51 minutes; a timeout is retained as evidence rather
 than retried or treated as a pass.
+
+The positive cell checks the remaining UTC-hour Permission window before
+creating a Service Instance, then checks the `NotAfter` of each actually issued
+reader and publisher Permission before delivering it to Endpoint. The required
+window covers the temporary Endpoint unit's 600-second maximum lifetime, which
+includes the scheduled refresh and post-refresh read. An insufficient window
+is reported as `invalid prerequisite` and the run fails without a publication;
+it is neither a product failure nor a passing qualification cell. Permission
+is not renewed or extended to make the test pass.

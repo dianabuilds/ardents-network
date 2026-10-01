@@ -1,0 +1,1179 @@
+# C0 component reconstruction
+
+Status: **review-ready architecture proposal** for rebuilding the maintained code
+around the selected journey. This is not a new product contract, package
+registry, delivery ledger, or authorization to replace persisted formats.
+Initial file inventory: `codex/architecture-refactor` at `50026274`
+(2026-09-25). The package graph and file inventory are now reconciled to
+`53f02e64`, which includes the adjacent task's accepted ADR-0092 generic
+Publisher/Transit retirement. Selected behavior traces retain their inspected
+revision labels. The remaining Route v2 and Service plaintext retirement
+questions below are separate from that completed Endpoint change.
+
+The completed inventory and behavior snapshots were retired to Git history on
+2026-09-27. Their revision-pinned links below preserve the analysis behind this
+proposal; counts and paths describe those snapshots. Current membership belongs
+to the working tree and package map, and unresolved design must be rechecked
+against them. Do not recreate the retired CSVs to accompany routine edits.
+
+## Architecture decision checkpoint
+
+The repository-wide inventory is sufficient to choose a direction without
+reading every source and test file in sequence. The selected journey needs the
+fourteen ownership components below, but does not require fourteen new Go
+packages or a rewrite from an empty tree. Keep each existing deep module
+whose authority and lifetime are coherent; split the crowded Endpoint, Node,
+and Route roots only at a proven caller/ownership seam. One supported runtime
+version per contract is the target; old bytes remain only under an explicit,
+bounded migration or refusal rule (F-42/F-50; F-08 is closed by the ADR-0106 typed refusal and F-32 by the ADR-0109 typed refusal).
+
+| Decision now | Evidence and unresolved gate |
+| --- | --- |
+| Preserve State, Instance, Publication, Reachability and Custody as single authority/floor owners. | Their durable roots and transitions are cohesive; package size alone does not justify splitting them. The identified close-result and old-root handling gaps are repaired (F-19/F-68/F-71/F-72 realized), so their files may move when a caller and import direction exist; the old-Descriptor-root gap F-32 is closed by the ADR-0109 typed refusal. |
+| Rebuild Endpoint, Node and Route around admission, duty, Carrier, wire, client path and resource lifetime. | The focused 360-file inventory assigns a concrete responsibility to every file; a package move still needs the caller and import direction, especially Route/Credential and Endpoint qualification. The adjacent Endpoint/network slices must be integrated first. |
+| Stop alternate writers/execution, then close each retained-root obligation. | The old Route v2, Invite Entry, Reachability Descriptor, Instance Introduction key (closed by ADR-0102) and multi-version Epoch intake have different last callers and persisted floors. Their retirement gates are listed in the one-version table below; removing parsers wholesale would lose authority history. |
+| Treat the installed Ubuntu Publisher-to-Reader path as the acceptance boundary. | Individual component tests and `make check` do not establish artifact-to-system-unit identity, restart, and both Carriers on one candidate (F-27/F-31/F-67). This is an implementation/integration gate, not a reason to postpone the architecture decision. |
+
+Further source review is decision-driven: inspect an exact caller, root, test,
+or current document only when a proposed move, retirement, interface or
+compatibility rule depends on it. Raw counts of source-traced files and tests
+measure evidence coverage, not progress toward a desired percentage. The
+subsequent contract and implementation work is to close the specific gates
+in the table, reconcile finished parallel changes, and record each selected
+boundary in its current owner and package map.
+
+### Short execution route from this review
+
+This is the order of **decisions and bounded changes**, not a second issue
+ledger. There is one active C0 implementation issue; the ongoing network and
+Endpoint work retains its current owner. A later architecture slice starts
+only after that owner's completed delta is reconciled with this map.
+At the inspected snapshot, the main committed HEAD is an ancestor of the
+architecture branch, while the sampled #253, #277, #279, #281, #282 and #285
+issue branches have separate commits based on an earlier common point.
+Therefore the integration boundary is each completed issue delta, not a blind
+copy of either worktree or an assumption that a green result on one branch
+qualifies their combined candidate.
+
+| Order | Decision and change | Evidence that closes the slice |
+| --- | --- | --- |
+| 1. Preserve and reconcile | Keep the accepted State, Custody, Instance, Publication, Reachability, Service Connection and local Application owners. Compare completed network/Endpoint changes against the 360-file owner inventory before touching their source. | One integrated revision, exact changed-owner list, unchanged authority and durable roots; no duplicated fix from another worktree. |
+| 2. Correct authority before moving code | Join each signed Epoch role to the closed Node profile; pin one new closed AREP intake version while defining old current/pending/predecessor recovery; retain terminal close errors at the actual owner. | Refusal before effects for mismatched role/old new-intake bytes, restart with retained floors, and observed final cleanup results. These are separate implementation slices under their existing owners. |
+| 3. End alternate execution | For old Route v2, Invite Entry, old Reachability writer, Instance Introduction key (closed by ADR-0102 typed refusal) and legacy Installed startup: stop the last writer or opener, decide each persisted population's migration or typed refusal, then retire its reader when its obligation ends. | Last production caller and stored floor named for every removal; one active C0 version per contract, no historical runtime fallback. The older Installed command waits for the proved protected successor. |
+| 4. Make ownership visible | Deepen Endpoint participant/qualification, Node duties, Route client path/Carrier/protected wire/receiving spend in their current packages first. Extract only a cohesive boundary with a real non-test caller and acyclic import graph. | Resource transfer and close owner, smallest caller Interface, behavior tests, `doc.go` and package-map edge in each actual extraction. Filenames follow the final owner rather than a bulk `text_` or `closed_` rename. |
+| 5. Reduce verification and diagnostic friction | Consolidate only byte-identical fixture copies; register the missing generator checks in the selected profile; keep Node/Endpoint security-specific event envelopes and expose bounded causes and late cleanup errors. | Existing expected results remain independent, checked profile covers each canonical fixture, and a failed installed journey identifies its state transition and owner without a diagnostic rebuild. |
+| 6. Prove the supported installation | Bind accepted artifact/Release, root-owned plan and system unit, service account, MainPID and fixed worker identity into one operator route. Then run installed Publisher-to-Reader and restart on TCP/TLS and QUIC. | No manual JSON or fixture key, real Service readiness and terminal outcome, retained floors, both Carriers, `make check` and recorded installed evidence on the same candidate. |
+
+The architecture study can select these owners and order without running the
+future installed candidate. Contract changes in rows 2, 3 and 6 still require
+their own accepted owner decisions before implementation; this table does not
+silently select a migration or weaken an existing refusal.
+
+## Starting from the required result
+
+The selected [C0 readiness profile](../product/scope.md#c0-closed-alpha-readiness-profile)
+and [protected text workload](../product/protected-service-workload.md)
+require one installed Ubuntu Publisher to expose an immutable text document,
+and a second Endpoint to open an explicit Target Link and read it. The candidate
+uses both TCP/TLS and QUIC Carriers. Stop/restart must retain required durable
+state and return an honest terminal outcome.
+
+The journey has four phases:
+
+1. Verify the artifact and enrollment, establish current Network State and
+   separately held authority, permission, and Service Instance material.
+2. Admit the Publisher, confine its worker, prepare its network prefixes,
+   register Introduction, publish the signed Descriptor, and return a Target
+   Link only after readiness.
+3. Admit a Reader, validate its Target Link, resolve the current Descriptor,
+   establish Introduction and JOIN, authenticate the Service, exchange one
+   bounded text request/response, and verify the terminal result.
+4. Revoke or withdraw new work, cancel and join accepted work in dependency
+   order, close physical transports, and report cleanup failure when present.
+
+Every component below is required by one of those phases or by an accepted
+authority, safety, or persistence obligation. A component is an ownership
+boundary; one component need not equal one Go package or process.
+
+## Minimum component set
+
+| Component | Owns and returns | Current implementation to assess |
+| --- | --- | --- |
+| Artifact and enrollment trust | Authenticate first-execution executable/static inputs, retain the current-program record across restart, and gate actual protected-Service readiness on that identity under the selected system-manager unit/account. | `internal/enrollment`, `internal/release`, `internal/endpoint/replacement`, `internal/endpoint/portable`, enrollment and headless adapters under `cmd/ardents`. The per-user enrollment and installed protected-text system-unit lanes are not yet composed (F-25/F-27). |
+| Network State and time | Publish an authenticated current view and refuse stale, conflicting, or absent authority. Join each closed-profile numeric role to the accepted Epoch assignment before exporting an immutable duty projection; own the State root. | `internal/network/state`, `internal/network/source`. Node's installed Contributor clock marker is joined operational evidence, not State authority (F-33). The role join is enforced in the State owner (ADR-0103 closed F-45). |
+| Service authority and Instance | Keep Authority signing material separate; issue the public Credential; own the host-local Instance key and generation. | `internal/custody`, `internal/service/instance`, `cmd/ardents-custody`. |
+| Permission and token issuance | Issue bounded permission and tokens under separate authority; retain issuer roots and exact retry state. | `internal/route/credential`, Endpoint permission and token-attempt journals, Node issuer duty. These are several trust owners, not one package. |
+| Receiving spend | Verify admission at the selected recipient, spend once durably, enforce class and resource limits. | `internal/route/replay`, Route admission channels, Node role-specific spend roots. |
+| Carrier | Open/listen on the State-selected TCP/TLS or QUIC profile and own physical connection retirement. Expose authenticated peer/transport evidence. | Carrier implementations and listeners currently inside `internal/route`. |
+| Protected wire and channels | Encode/decode bounded frames and operations, multiplex lanes, enforce credit/deadlines, and terminate channels. | `internal/route/ardp`, `internal/route/terminal`, and channel owners in `internal/route`. |
+| Client path | Select and retain the exact Source/Introduction/Responder handles from current State, present tokens, perform resolution and JOIN, and join its Route transport. | Endpoint's prefix owners together with client operations in `internal/route`. |
+| Node duties | Start one State-authorized receiver from an already joined duty view, accept its work, retain listener/host/session/spend lifetimes, react to pressure, drain, and return terminal cleanup. | `internal/node` plus Route receiving operations and its joined installed-Contributor clock observation. Issuer, forwarding, resolution, Introduction, and Data Join have distinct lifetimes. |
+| Service publication and discovery | Own Instance publication, private Descriptor proof/revision, and exact Target Link interpretation. | `internal/service/publication`, `internal/service/reachability`, `internal/service/targetlink`, Endpoint publication coordination. |
+| Service Connection | Authenticate the Service Instance and own one ordered logical byte stream, attachment replacement, continuity, and final authenticated terminal state. | `internal/service/connection`; Endpoint supplies authenticated attachments and local lifetime. |
+| Endpoint and local admission | Admit Client/Publisher capabilities, bind the current State, permission, publication, route, worker and Application Interface to one local lifetime, and revoke/join children. | `internal/endpoint`, `internal/application/broker`. |
+| Confined Application and local interface | Verify worker confinement before network effects; exchange one bounded text request/response through separately authorized local Connection and Administration surfaces. | `internal/application/connection`, `internal/application/administration`, `textdocument`, Endpoint installed-worker code, `cmd/ardents-text`. `textdocument` is one cohesive fixed-grammar package used by trusted UI, Endpoint and confined worker roles; their process/descriptor authority is enforced by installed launch, not by moving its files to role-named packages. |
+| Resource and diagnostic evidence | Measure actual limits, choose protect/drain, emit bounded safe causes and retain cleanup failures. Each owner supplies its own event facts. | `internal/resource`, Node/Endpoint event owners, `internal/diagnostics/timeline`. |
+
+Qualification tools, fixtures, and architecture gates verify this system; they
+are not production data-path owners. Compatibility refusals for retired plans
+and retained persisted floors are obligations at existing command/storage
+boundaries, not second accepting runtime implementations.
+
+### Where the component boundaries meet today's packages
+
+The [focused file inventory](https://github.com/dianabuilds/ardents-network/blob/4764ae1c567e93180f3aa643b2544abfdb2a67dc/docs/development/c0-component-inventory.csv) assigns 360 production
+files to 17 responsibility tags. These tags describe ownership for the audit;
+they are **not** a proposal for 17 new Go packages. The
+[package disposition map](https://github.com/dianabuilds/ardents-network/blob/4764ae1c567e93180f3aa643b2544abfdb2a67dc/docs/development/repository-package-disposition.csv) separately
+classifies all 55 physical packages, including provisioning, verification and
+retained uncomposed code outside this focused set. The large root packages
+combine several tags, while some existing child packages already have a useful
+cohesive boundary:
+
+| Physical package at `53f02e64` | Focused production files by responsibility | Package decision |
+| --- | --- | --- |
+| `internal/route` (74) | Client path 25; protected wire 13; Carrier 13; old Route v2 12; receiving spend 6; compatibility 4; Node duty bridge 1. | Keep the existing `route/ardp`, `route/terminal`, `route/capsule`, and `route/replay` owners. Extract the Carrier only after its shared-helper closure and Credential issuer import direction are resolved; retire the uncalled v2 closure only with its persisted and refusal obligations. A single root rename would preserve the present mix. |
+| `internal/endpoint` (95) | Publication/discovery 20; client path 18; confined Application 15; local admission 15; Service Connection bridge 11; permission issuance 8; qualification 6; diagnostics 2. | Keep Endpoint as the admission and lifetime composer while the adjacent implementation task finishes its selected slice. Then reconcile its actual file moves with this map. Neither a blanket `text_` rename nor one participant child package defines the eight different owners. |
+| `internal/node` (45) | Node duty 44; diagnostics 1. | Node remains the process and duty lifetime owner. A receiver child package depends on a real accepted-child close interface, resource-pressure ownership and issuer separation; the current file count alone does not supply that seam. |
+| `internal/route/credential` (28) | Permission issuance 28. | Retain the issuer authority boundary. Three live issuer files import Route for wire/channel operations; resolve that direction before extracting Route's Carrier or claiming Credential is independent. |
+| `internal/service/connection` (20), `service/instance` (16), `service/reachability` (15), `service/publication` (9) | Service Connection, identity and publication/discovery already occupy distinct packages. | Preserve their present authority and lifetime boundaries; repair the identified attachment replacement and close-result defects inside the owning package. |
+
+Other focused files are in existing narrow packages such as
+`endpoint/durableroot`, `endpoint/tokenjournal`, `endpoint/permissionfile`,
+`service/targetlink`, and `route/replay`. The inventory's physical file counts
+are a navigation aid, not a measure of architectural quality. Any future
+package extraction must name a real caller and small interface, preserve one
+active accepting version of each contract, and satisfy the package-map and
+behavior-evidence requirements in `AGENTS.md`.
+
+**Decision for each of the 17 focused responsibility cohorts.** Counts below
+are an exact grouping of the 360-row inventory, not a count of future
+packages. “Move” names a resource/interface boundary to implement only when
+its stated gate is satisfied.
+
+| Cohort (files) | Architectural treatment | Gate before a move or retirement |
+| --- | --- | --- |
+| Artifact/enrollment (17) | Retain trust owners; compose their result into installed launch. | Exact Release/plan/system-unit identity (F-27/F-67). |
+| Carrier (13) | Move toward one physical Carrier owner; retain Node/Endpoint selection outside it. | Shared TLS/helper closure and Credential import direction (F-30). |
+| Client path (43) | Deepen Route prefix/operation lifetime and Endpoint coordination; move only the cohesive lower operation. | Keep Source/Introduction/Responder reservations and JOIN lease/close transfer explicit. |
+| Compatibility (4) | Retain minimum readers/refusals temporarily. | Closed: every persisted root and wire identity received its migration/refusal exit gate - F-52 via ADR-0093/ADR-0094, F-53 via the ADR-0107 duty-root conversion. |
+| Confined Application (15) | Deepen Endpoint worker/admission handoff in place. | Installed unit/account/MainPID and worker close authority (F-27). |
+| Durable storage (7) | Retain existing narrow filesystem owners. | No generic filesystem package without a real shared authority boundary. |
+| Endpoint admission (15) | Keep Endpoint as local capability and context lifetime owner; split mixed files by responsibility. | Reconcile the adjacent Endpoint slice before choosing any child package. |
+| Legacy Route v2 (12) | Retire uncalled execution after extracting shared historical readers/refusals. | Closed: the old wire obligations were decided by ADR-0093/ADR-0094 (F-52) and the Grant ledger by the ADR-0107 version-2 conversion (F-53). |
+| Node duty (45) | Deepen Node's five duty lifetimes in place; rename the common handle for its actual role. | Accepted-child close and the issuer late-root owner are realized in place (F-17/F-39/F-61 done). |
+| Permission issuance (41) | Retain issuer authority and Endpoint attempt owners; the offline grammar is separated from the Route-facing listener in `internal/admission` (F-28/F-30 done). | No parent Route import cycle; keep exact signed bytes; the late issuer-root close owner is realized in Node (F-17 done). |
+| Protected wire (31) | Retain ARDP/terminal/capsule owners; narrow shared Route root by operation. | Preserve frame bounds, accepted-channel and physical Carrier close ownership. The terminal Descriptor proof bound is realized terminal-local (F-29 done). |
+| Publication/discovery (48) | Retain Publication, Reachability and Target Link floors; deepen Endpoint publication coordinator. | The old Descriptor root policy is closed by the ADR-0109 typed refusal (F-32); the obsolete instruction codecs were retired by ADR-0094. |
+| Qualification (6) | Retain Endpoint's stream-qualification adapter for verification; do not treat its fixture path as ordinary Publisher/Reader behavior. | Its installed verdict remains separate from `make check` and the ordinary text-command verdict (F-31). |
+| Receiving spend (13) | Retain Replay ledger and Node duty admission as distinct owners. | No spend-root close before accepted children join. |
+| Resource/diagnostics (3) | Retain Resource and event owners; route results into bounded diagnostics. | Keep observation failure and stop/join result visible to the process owner. |
+| Service Connection (31) | Retain native logical stream owner and Endpoint physical adapter. | Error-bearing replacement Attachment and completion barrier are realized in the existing package (F-23 done). |
+| Service identity (16) | Retain one Instance root; the old decryptor was retired by ADR-0094. | F-42 closed by ADR-0102: Credential v3 request/response grammars; pre-v3 and phase-less roots meet the typed `ErrLegacyRoot` refusal. Instance startup failures now retain both the primary error and exclusive-lock release failure (F-72). |
+
+### Network State: one authority root with distinct internal work
+
+`internal/network/state` has 57 production Go files at `53f02e64`;
+`networkState` has 43 methods across 19 files. The count alone does not
+justify a package split. `Config` is validated as one trust/source/clock
+input, and `Snapshot` is copied as one verified generation. The owner's
+current/pending/conflict relation is shared by offline `Accept`, Source
+refresh, pending activation and `AcceptClosedProfile`; splitting those
+mutations into independent roots would introduce a second authority.
+
+| Internal responsibility | Current source and owned lifetime | Boundary decision |
+| --- | --- | --- |
+| Signed Epoch and closed-profile grammar | `epoch_*`, `closed_profile*.go` verify supplied bytes and project bounded results. | Pure parsing can be made more navigable within State. A new package is warranted only if it has a small real caller interface and does not let callers bypass the accepted current/pending/conflict decision. |
+| Durable admission and conflict floors | `durable_*`, `control_state.go`, `distribution_journal.go`, `selection*.go`, `offline_accept.go` commit one root under the `networkState` lock. | Keep one State decision and recovery owner. The exact role/profile join is fixed (ADR-0103); select the closed Epoch-envelope rule with old-root treatment (F-50) before moving grammar. |
+| Source and runtime observation | `refresh.go`, `server.go`, `scheduler.go`, `resources.go`, `clock_observation.go` run children of the State owner. | Source transport and `resource.Guard` remain separate lower modules; State owns their admission, cancellation and terminal errors. `Close` joins terminal server/resource failures with root and Source-role release failures; expected Source cancellation alone remains successful (F-19). |
+| Borrowed current views | `snapshot_access.go`, `node_duty.go`, `resolution_view.go`, `closed_profile_accept.go` return checked, immutable projections. | Keep State's currentness check at the boundary. The Node duty projection is now one copied `NodeDuty` value carrying only the caller's actual fields (F-07, closed by ADR-0104). |
+
+The next State work is a bounded correctness repair and internal navigation,
+not an automatic `state/epoch` extraction. This source pass covers the
+owner's public transitions and close order; the file map still marks 32 of
+its 57 production files at package-contract depth pending exact behavior
+review where a move or retirement depends on them.
+
+### Release: retain one decision and floor owner
+
+`internal/release` has 29 production files, but its public composition is
+`Open` -> `Verifier.Evaluate` -> checked `Close`. The caller supplies exact
+offline metadata, artifact bytes and local binding; the Verifier alone owns
+the exclusive `release-decision` root. `buildVerifiedSet` verifies a bounded
+consecutive TUF root chain and durably publishes each newly trusted root
+before using it. `evaluate` then verifies the target identity and
+build/protocol state and commits executable metadata floors only for an
+accepted or no-update decision that advances them. One `Decision` supplies
+opaque replacement authorization only after acceptance. Root rotation,
+artifact identity and floor publication are distinct internal steps of the
+same authority decision; splitting them into separately openable packages
+would expose an intermediate trusted root or duplicate the rollback floor.
+
+The command enrollment and replacement paths both open the same floor root
+and check `Close` before using authorization. The protected `endpoint
+headless` path does not join that decision to its plan, system unit or worker
+manifest (F-27/F-67). The architectural repair is the installed provisioning
+handoff, not a second Release implementation or a package split. Keep the
+historical metadata identity bytes until their own researched migration;
+their version labels do not select an alternate executable runtime.
+
+## Necessary runtime versus retained surroundings
+
+The component table is the **selected C0 runtime composition**, not a demand
+to import every currently maintained package into one process. The package
+graph contains 55 `cmd`/`internal` packages. Command import closures include
+non-C0 branches and shared packages, so compile reachability is not a count
+of required C0 Modules. `ardents-text` is a separate installed
+Application process; the two qualification commands are verification tools.
+
+The 815 production Go files classify by their **physical package role** as
+follows (joined from the file and package-disposition maps at `53f02e64`):
+
+| Current package role | Production files | Architectural implication |
+| --- | ---: | --- |
+| Runtime or mixed runtime | 535 | Includes selected C0 paths and old operations sharing their packages; this is not a 535-file C0 execution closure. |
+| Provisioning, operator and retirement commands | 157 | Distinct authority and retained-root obligations; only the required installation handoff composes into the selected journey. |
+| Verification and architecture gate | 45 | Evidence producers, not product runtime owners. |
+| Retained uncomposed or evidence-only packages | 78 | Included 69 Namespace/Resolution files without a selected C0 composition at study time; ADR-0100 and ADR-0105 have since removed the whole cluster (F-51 closed). |
+
+The total is 815, with no unclassified production row. This explains why
+deleting everything outside the text journey would be unsound while also
+identifying the 69-file uncomposed Name cluster as a concrete reduction target.
+
+| Surrounding code | Target relationship to the C0 composition | Current decision limit |
+| --- | --- | --- |
+| Retained operator and compatibility work: Portable user-unit enrollment/replacement, Invite Entry, local Name encoding, historical floors and refusals | Keep exact command/storage owners and acceptance evidence, but do not make them alternate C0 paths or pull their authority into the text Service. The selected protected worker boundary requires a system-managed Endpoint account and root-owned units (F-27). The dedicated-host Contributor retirement owner already received its explicit decision: ADR-0114 removed it entirely because no live installation remains (F-56 deletion path). | Remove only after an explicit retirement or migration decision for each persisted or operator obligation. |
+| Installed qualification commands, stream-test Application, architecture gates, and test fixtures | Exercise the real C0 path and report evidence; keep their plans/verdicts outside product runtime ownership. | A test-only callback is not proof of installed behavior. |
+| Canonical Namespace and private Resolution without a selected production composition | Closed by the ADR-0100/ADR-0105 chain (F-51 closed): the Resolution transport, the whole 54-file Namespace subsystem, the never-command-exposed custody Namespace operations, and the uncalled generation-2 reachability writers are all deleted. The product owner confirmed that no deployed Namespace root deserves data support or backward compatibility; old roots stay on disk byte-for-byte with no working-tree read path, which is itself the typed incompatibility. | The exact old-command refusal survives with its zero-effect oracle on a synthetic Namespace-shaped root; ADR-0113 subsequently retired `name encode` and deleted the canonical encoder. Future protected Service Name access requires an entirely new scoped decision, not revival. |
+| Historical Alpha private OHTTP resolver | Already retired from maintained source under ADR-0091; its floor parser and supplied-bytes inspection remain in separate owners. | Git history retains the old exchange evidence; do not reintroduce it as a C0 component. |
+| Question-scoped R-149/R-152 experiments and research drafts | Evidence and open design, not C0 runtime foundations. | Existing research links must remain usable if a spike is retired. |
+
+This separation makes removal measurable: a source file leaves the maintained
+tree only after its live consumer, persisted/wire identity, refusal oracle,
+test evidence, and documentation owner are accounted for. It also prevents a
+large uncomposed research package from influencing the necessary C0 package
+graph merely because it exists in the same repository.
+
+## Current reduction decisions and limits
+
+| Material | Source-backed disposition for this study |
+| --- | --- |
+| Five duplicate Network State fixture files in `tests/e2e/node` | Consolidate their two caller sites onto `tests/epochfixture/network`; the 356 copied lines differ only in package declarations. Keep the distinct older network-source and State unit-test oracles. |
+| Historical `internal/naming/alpha/private` | Retired from the working tree under accepted ADR-0091, including its package-map row and deadcode allowances. `internal/naming/alpha` then owned the corpus parser/floor; ADR-0113 has since deleted it outright. External refusal remains. The former exchange is Git-history evidence. |
+| Fifteen production files in `internal/naming/resolution` | Resolved by ADR-0100 on F-51's first-candidate disposition: the package, its tests, and the whole OHTTP dependency closure are removed; the command refusal's zero-effect oracle now stands on a bounded durable-root fixture. The Namespace-side Gateway/verifier views were subsequently deleted by ADR-0105 with the whole subsystem. |
+| Sixteen production files in `internal/service/instance` | Retain as one deep host-key/root Module. Initialization, exact response acceptance, durable phase, non-exporting binding and restart refusal share one authority invariant; the traced command has a real non-test call path. |
+| Uncomposed OHTTP facade in `internal/service/reachability` | Retired under ADR-0091 with its exact allowances and tests. The shared Store and private v3 publication/lookup remain; ADR-0109 (F-32) deleted the legacy Descriptor reader and refuses a stored legacy record with the typed ErrLegacyRecord, closing the persisted-root migration decision. |
+| Portable profile scaffold (`ConfigHome/grants`, `StateHome/vault`, `StateHome/diagnostics`, `CacheHome`) | Closed by ADR-0108 (F-26) after ADR-0099 removed the test-only `Run` facade: `Config` now carries only `StateHome` and `RuntimeHome`, `prepareRoots` creates only the state base with its `floors` and `live` parents and the runtime attachment base, and the XDG config/cache derivations are gone. Existing on-disk bytes of former profiles are preserved and unread; the operator procedure and the Ubuntu qualification oracles now cite the retained live/floor roots. |
+| Offline Control/Custody imports of `route/credential` | Realized by the `internal/admission` extraction (F-28/F-30): the sealed 228-byte permission grant, the 269-byte holder-signed request with its Linux-only holder-request construction, and the ARDCIP01 issuer key-inventory codec live in one leaf grammar package that depends only on `internal/network/state`; the live networked issuer engine stays in `route/credential`. Custody signs through the exported `admission.PermissionTranscript` instead of duplicating the canonical layout. Both offline command closures and `internal/custody` contain no QUIC or CIRCL package on either platform (Linux closures fell from 296/229 to 259/182 packages). Node/Endpoint network dependencies are kept. |
+| Legacy Endpoint Transit acquisition and generic Publisher setup | Removed under ADR-0092 with their exact deadcode allowances. The protected text participant retains its permission and token-attempt journals. ADR-0062's historical Grant bytes retired with the Route v2 closure (F-52, ADR-0093) and the separate durable local-role spend field with the ADR-0107 duty-root conversion (F-53); do not conflate those with the live closed-token issuer or receiving spend. |
+| Proposed `network-core-transition.md` and wire appendix | Keep as unaccepted design while decisions are open; promote selected facts to current owners and retire superseded execution chronology after reconciling issue state and links. Do not implement candidate wire grammar by document proximity. |
+
+This ledger intentionally mixes removals with explicit retentions. It avoids
+using raw file count as a proxy for necessary work and will expand only when a
+caller/resource/contract trace supports a disposition.
+
+### Former v2 execution closure after ADR-0092
+
+ADR-0092 removed the thirteen former Endpoint `retirement-review` files and
+`route/credential/profile.go`. At the time of that inventory thirteen
+`retirement-review` rows remained - twelve Route and one Service Publication -
+and all were retired by the committed ADR-0093/ADR-0094 chain; the current
+file map records zero such rows. Do not carry the Route
+closure forward merely because it still compiles; do not delete a persisted
+reader or current issuer by treating this count as a package boundary.
+
+| Closure | Exact files or mixed owner | Current reachability and removal gate |
+| --- | --- | --- |
+| Generic Endpoint Publisher/Transit | Thirteen former Endpoint `retirement-review` rows, including the six-file `endpoint/transit` package | Removed by committed ADR-0092. The protected text participant and durable token journal remain. |
+| Old Route Entry/Transit attachment | `entry_attachment.go`, `entry_binding.go`, `endpoint_transit_attachment.go`, `endpoint_transit_binding.go` | Removed by committed ADR-0093. `internal/entry`'s separate durable Invite owner keeps its import/reopen contract; its own uncalled attachment execution machinery was then retired by ADR-0095. |
+| Old Route relay and Introduction I/O | `credential_relay_io.go`, `credential_relay_setup.go`, `introduction_control_io.go`, `introduction_outcome_io.go`, `introduction_outcome.go`, `introduction_slot_registration.go`, `sealed_introduction.go` | Removed by committed ADR-0093; `sealed_introduction.go` survived it byte-exact and was then retired by ADR-0094 after its superseding record. The current private capsule lives in `route/capsule`. |
+| Old Route profile and shared v2 wire | `route/credential/profile.go` was removed; `route/wire_encoding.go` remains | Done per the F-52 order: ADR-0093 moved the still-needed envelope framing into `sealed_introduction.go` and deleted `wire_encoding.go` with the Grant verifier, LegBinding decoder, and Node binding; the old-profile refusal identity moved to `closed_node_carrier.go`. ADR-0094 then retired the sealed grammar itself. |
+| Old Service Introduction plaintext | `service/publication/introduction_instruction.go` | Retired by committed ADR-0094, the superseding record for ADR-0035; ADR-0081's private v3 capsule is the sole Introduction path. |
+| Mixed or shared-package prerequisites | `route/transit_grant.go`, `network/duty/store.go`, and `service/instance/lifecycle.go` remain; the old `route/credential/client.go` is removed | Credential's `contract.go` now contains only live closed-issuer declarations (F-40). ADR-0093 retired `transit_grant.go` and `SpendTransitGrant` (F-53) while the persisted duty spend-ledger schema kept its own data disposition, since closed by ADR-0107's bounded version-2 root conversion; ADR-0094 retired the Instance decryptor out of `lifecycle.go`, whose current Binding methods remain. ADR-0102 then closed the Introduction key data contract (F-42): Credential v3 drops the key, and pre-v3 roots meet the typed `ErrLegacyRoot` refusal. |
+
+The current caller audit finds no selected external production caller for the
+eleven pure Route attachment/relay/Introduction files or the Service v1
+instruction. Their own local helper calls do not constitute a supported
+runtime. The twelfth Route file, `wire_encoding.go`, is mixed: the old v2
+envelope/IO uses it, but historical Grant and LegBinding readers and old
+Node-profile refusal still need an explicit disposition. The target remains
+one closed Route accepting path, with no v2 fallback.
+
+**Removal order for this closure:**
+
+1. Decide the historical wire/vector obligations under ADR-0035, ADR-0062,
+   ADR-0072 and the generation-2 migration clause of ADR-0081. Name the
+   persisted Grant-spend treatment separately; it shares the live local-role
+   root (F-53). This step records which old bytes remain verifiable or typed
+   refused and the eventual condition for removing their readers.
+2. If needed, isolate the minimal historical Grant cursor, LegBinding reader
+   and old-profile refusal from the v2 execution envelope. Keep the selected
+   closed ARDP writer and current Node duties unchanged. A reader retained
+   for migration never starts old admission or wire execution.
+3. Retire the eleven uncalled Route files, the old Service plaintext file,
+   and then the obsolete part or entirety of `wire_encoding.go` with their
+   exact tests, architecture allowances and package-map/document owners.
+   Check the full `cmd`/`internal` caller graph and the selected installed
+   C0 path on the same integrated candidate before closing that slice.
+
+**Status (2026-09-27):** all three steps executed by committed ADR-0093 and
+ADR-0094. The ADR-0034 Instance/Credential Introduction key card (F-42) is
+closed by ADR-0102 with the typed-refusal disposition. The last Route v2-era
+obligation - the duty spend-ledger migration-or-refusal decision (F-53) - is
+closed by ADR-0107: the duty root schema is version 2, and a strictly
+validated version-1 generation converts in place at load with its spend
+records dropped while conflict duties, generation continuity, and the
+watermark survive. No Route v2-era obligation remains.
+
+## Transition dependencies visible so far
+
+This is a dependency order for review, not a second issue ledger or a new C0
+implementation slice. Each step must be compared with the active network and
+Endpoint owners before execution; accepted ADRs, current contracts and the
+single C0 work-in-progress rule continue to control scope.
+
+| Order | Bounded outcome | Evidence required before the next step |
+| --- | --- | --- |
+| 1. Reconcile the source baseline | Freeze one reviewed architecture-worktree revision, classify the other agent's completed Endpoint and network changes by touched owner, and update this map only where behavior actually changed. | Exact HEAD/diff, no lost staged or untracked changes, current issue owner, and affected current technical owner. |
+| 2. Repair observed authority and outcome gaps | The accepted four-domain Epoch-to-closed-profile mapping is enforced in the State owner and a signed mismatch is refused before durable profile acceptance and listener start (F-45, ADR-0103). State root/role close failures are retained in the terminal result (F-19). Instance startup retains exclusive-lock cleanup errors (F-72); alpha inspection reports catalog, Release and Network close failures (F-64); Endpoint replacement returns writer-lock release failures (F-68). The accepted Source-wave event now belongs solely to the branch that actually runs `Refresh`; `--resume` only confirms State readability and enters the plan-owned scheduler without inventing an acceptance (F-21 realized). The Issuer roots' later close owner after a bounded drain timeout is realized (F-17: Node's `closedIssuerServer` sole late owner); Reachability startup lease-release failures are joined with the restore refusal (F-71 realized); control-admission Hosting release results are joined into the duty drain outcome and the shared handle's close transfers to the late child's join instead of racing it (F-62 realized). | The full-Epoch valid-signature mismatch refusal case landed with ADR-0103. The F-62 injected-release test proves a Resolution drain retains the Hosting release failure after a successful publish/lookup reply, the withdraw-transfer test proves a drain timeout hands the shared-handle close to the unjoined late child, and the hosting-lifetime test covers the successful join; the issuer delayed-child/late-close test landed with F-17, the Reachability restore/release injected-failure test landed with F-71, and both resume and actual-wave command branches are verified in the black-box Source process test. Unchanged signed bytes and one accepting closed Route version. These corrections precede package moves. |
+| 3. Close alternate accepting C0 versions | The sole AREP v3 envelope schema for new closed Epoch intake is selected (ADR-0111), offline and Source-wave candidate acceptance is separated from authentication of retained State generations, and explicit current, pending, and predecessor restart outcomes are defined and gated (F-50 realized). Network enrollment v3 is the sole accepted descriptor grammar at every maintained command boundary, superseding ADR-0042's retained v1/v2 verification clause with a typed retirement refusal (F-47 realized, ADR-0112); the old Installed startup still retires only with the supported system-unit launch in step 6. Stop other old-format writers only after deciding their roots and accepted operator obligations. | Exact old-envelope/closed-profile refusal before staging or activation; reopen and pending-promotion evidence with chain/control floors intact; version decisions in the owning contract, with no new writer or alternate runtime. An accepted old operator path is not silently relabeled C0-ready. This precedes broad decoder removal or package moves. |
+| 4. Remove verified duplication and retire only decided dead paths | The 17 copied frozen-vector paths are gone; command and replacement tests read canonical State and Release vectors while keeping their own assertions (F-69). The canonical fixture runs in the deterministic profile, and the Linux qualification-generator tests are selected by `make check` (F-70). The five exact Node E2E fixture copies were consolidated (F-16), and Node's post-refusal duty validation now covers only closed reservations (F-46). ADR-0091 retired Alpha private, Browser compatibility source and the unwired Reachability OHTTP adapter; ADR-0100 retired the Resolution Module; ADR-0105 retired Namespace. | Caller and compatibility/refusal evidence, affected fixture/command tests and source-extraction profile, package-map/deadcode changes where applicable, checked-profile wiring, and unchanged black-box fixture verification. |
+| 5. Deepen the real network owners | Use the [Node plan](node-architecture-refactoring.md) and observed Route/Credential/Terminal edges to make duty, Carrier, wire, spend, and logical Connection ownership navigable. Node's common handle is now `dutyHandle` (F-39); keep duty-specific servers separate. Extract a package only with a real caller, small Interface, tests and no parent import cycle. | One coherent passing slice at a time, exact stop/join/error owner, targeted Linux/Windows build as affected, `make quick-check` at the required boundary. |
+| 6. Integrate Endpoint and qualify the combined journey | Reconcile completed Endpoint refactoring with Node/Route; design the root-owned artifact/Release-to-system-unit handoff and supported v2 plan/unit provisioning, keeping the exact service account/MainPID and worker-binding invariant (F-25/F-27). With its installed successor proved and accepted obligations resolved, retire the older `enroll-installed`/per-user-unit startup rather than leaving two maintained readiness routes; the old descriptor reader is deleted; ADR-0109 refuses a stored legacy record with a typed error. Then exercise installed Ubuntu Publisher/Reader with both TCP/TLS and QUIC and final repository gates. | One installed operator path proves authenticated artifact, plan and unit identity, restart, system-manager identity and actual Service readiness together without manual JSON or fixture keys; no test-only reachability, preserved enrollment/Custody/State roots, real Application terminal outcome, `make check`, and separately recorded installed evidence. |
+
+Further source traces may reorder or split these steps. In particular, a
+network bug already owned by the other active task stays there; this study
+does not duplicate its implementation merely because it appears in a map.
+
+### One supported C0 configuration
+
+**Product Owner direction:** maintain one current version of each C0 contract.
+The reconstruction is incomplete while an older implementation can still be
+selected, writes new data, or remains supported as an alternate operating
+path. For each older version, name its last production caller and decide its
+retirement in the owning contract; do not leave compatibility open-ended.
+
+The target is one supported C0 configuration, with one writer and one accepting
+path for each contract in that configuration. This includes maintained operator
+commands and diagnostic formats: they must not leave two supported versions of
+the same contract on the normal C0 surface. There is no runtime version
+selection, negotiation with an older implementation, or fallback to it. Retire
+an older execution path once its exact callers and accepted obligations are
+resolved; a lack of callers is a reason to finish that decision, not to maintain
+the path indefinitely.
+
+Old persisted records are a separate, temporary migration or recovery problem,
+not another supported version. For each old record population, record the owner,
+retained authority or rollback floor, chosen migration or typed refusal, and
+the condition for removing its reader. The migration or refusal must have a
+bounded completion criterion; it is not a second long-lived product mode. An
+old record must not start an old runtime. Simply ignoring it may erase durable
+authority or a rollback floor.
+The intended end state has no old reader once its recorded obligation is closed.
+
+Version numbers belong to different contracts, not one project-wide release:
+closed Route v3 currently carries the active Service Connection v2 record
+grammar, and the separate Administration interface is v1. These are each the
+single current version of their own contract. Renaming their bytes to v3
+would change accepted contracts without removing a second implementation.
+
+**Decision order for removing mixed versions.** First close the actual
+acceptance defect: State currently admits signed AREP v1/v2 on the closed
+C0 candidate path despite the v3 fixture and Route profile (F-50). Select
+v3 as the sole *new closed-C0 intake* in State's technical owner, then make
+offline and Source admission enforce it before staging; old current,
+pending and predecessor roots need their own authenticated restart rule.
+Second close old-write surfaces: the dispatchable Invite `entry import`
+and current old-key Instance initialization, plus the formerly uncalled
+public Reachability `Store.Publish` and Name `CommitLegacy` APIs; ADR-0105
+has since retired both (the second died with the whole Namespace tree), and
+ADR-0106 has retired the dispatchable Invite `entry import`/`entry
+recipient` writer with a before-effect refusal.
+The remaining surfaces still require individual decisions before removal;
+this order does not authorize deletion now. Third remove uncalled execution
+closures and temporary readers only after each old population has a
+migration or typed-refusal exit gate. Finally converge legacy Installed and
+ACA1 operator routes on proved successors; a new unit or diagnostic format
+must preserve their current authority floors. This order prioritizes a
+currently accepting wrong version over an unreachable old codec.
+
+| Contract and current C0 path | Older entrypoint and direction | Current production reachability | Disposition gate |
+| --- | --- | --- | --- |
+| Closed Route v3 duty | `cmd/ardents-node/readNodePlan` refuses old reservation keys before effects; later duty validation now covers only the five closed reservations (F-46). `node/admission.go` and `node/duty_server.go` separately read old `route.Profile`. | Refusal only; old profile starts no Node duty. | Retain effect-free old-key refusal; audit the separate State/Node input refusal before deleting it. Do not restore a v2 duty. |
+| Closed Route v3 wire | Retired: ADR-0093 deleted `route/wire_encoding.go`, the v2-dialing `route/entry_attachment.go`, and the historical Grant v1 verifier; ADR-0094 retired the sealed grammar that had taken over the envelope framing (F-52). | No production file reads or writes a v2 envelope; the surviving typed refusal identity in `route/closed_route_profile.go` serves only `node/admission.go`, `node/duty_server.go`, and State's own signed-record projection. The duty root schema is version 2; ADR-0107's conversion dropped the historical Grant spends from persisted generations (F-52/F-53 closed). | Done: the uncalled v2 execution closure is retired with its exact tests and document owners; no v2 envelope reached v3 ARDP and the retained data never became a second supported Route. |
+| Closed Entry set | `route.OpenEntryAttachment` (ADR-0093), the uncalled attachment machinery (ADR-0095), and the closed-alpha issuance surface (ADR-0096) were retired in sequence; ADR-0106 then deleted the whole Invite subsystem - the `entry recipient/import` commands refuse before effects, and the attempt/contact journal schema and the internal `validateInvite` classifier died with it (F-08 closed). | Endpoint opens `entry.OpenClosedSets` for its current State-selected members; the surviving Linux-only `internal/entry` package serves that root alone. Existing Invite roots stay on disk byte-for-byte, and the two roots reject each other's marker. | Closed by ADR-0106: the existing Invite roots' disposition is typed incompatibility - no reader, converter, or deleter, and the operator commands refuse before any effect. Nothing remains to decide for F-08. |
+| Headless runtime plan v2 | `cmd/ardents/endpoint_headless.go:loadHeadlessRuntimePlan` reads the v1 schema marker | Effect-free v1 refusal before v2 startup; no v1 runtime dispatch. | Keep refusal evidence; remove only unreachable v1 execution, without a converter. |
+| Network enrollment descriptor v3 | Closed: ADR-0112 (F-47) pinned `ardents-closed-alpha-enrollment-v3` as the sole accepted descriptor grammar at every maintained command boundary; a recognized v1/v2 schema is refused with the typed `ErrLegacyEnrollmentDescriptor` after the pin and descriptor-digest checks, and the v1/v2 parsing grammar is deleted. | `enroll-installed`, both enrollment-check forms, the Portable first-run gate, and the read-only control inspection accept only v3; `Verify` and `VerifyHeadless` differ by companion inventory scope, not version. The installed-package process test upgrades through a v3 descriptor; existing legacy bundles stay on disk byte-for-byte with no converter, and an unknown schema such as Browser enrollment-v4 keeps its generic refusal. | Done for version acceptance under ADR-0112, superseding ADR-0042's retained v1/v2 verification clause, consistent with the no-backward-compatibility decision. The retained Installed startup itself still retires only with the proved protected system-unit successor in step 6. |
+| Private Reachability Descriptor v3 | Closed: ADR-0109 (F-32) deleted the retained v1/v2 decode grammar and the legacy floor-comparison branches; `store_files.go:restore` recognizes the stored-record version-1 envelope only to refuse it, after ADR-0105 deleted the uncalled generation-2 `Issue`/`Store.Publish`/`Store.Lookup` writer/reader APIs | Node Resolution calls only `PublishPrivate`/`LookupPrivate` for v3. A root holding a legacy record refuses to open as a whole with the typed `ErrLegacyRecord`; its bytes stay on disk unread and a fresh Target requires a new root. | Done: typed refusal plus new-Target policy under ADR-0109, consistent with the no-backward-compatibility decision; ADR-0091 and ADR-0105 previously retired OHTTP and the generation-2 writers. |
+| Closed State and Carrier v2 | `network/state/epoch_record.go:parseRecord` reads signed Node Record v1/v2 and v1/v2 Carrier identities | For a closed Route epoch, `validCarrierForEpoch` accepts only v2 Carrier identities; an old v1 Record supplies the v1 TCP identity and cannot become a closed Carrier. | Preserve the signed-record interpretation and refusal until State's own compatibility/migration contract retires those inputs; do not expose v1 Carrier dialing as a fallback. |
+| Closed C0 Epoch envelope | Closed: ADR-0111 (F-50) pinned AREP v3 as the sole new closed-Epoch intake; `state/epoch_intake.go` gates offline `Accept` and the `verifySourceBundle` tail (both Source result forms, including the exact current/pending reuse branches), and retained old current/recovered-active/pending generations are classified at Open. | A retired v1/v2 candidate is refused with the typed `ErrLegacyEpochIntake` before any commit, staging, or activation; a retained old generation returns a `RecoveryRequiredError` with generations, pointer, and control floors preserved byte-intact. Predecessor chain authentication is unchanged, and both State/Route technical owners now state the sole AREP byte. | Done for intake selection under ADR-0111, consistent with the one-version direction and the no-backward-compatibility decision; the old decoders are removed only when the retained population they serve is closed. |
+| Name Record v4 (retired) | ADR-0105 deleted the whole `naming/namespace` tree, including `record.DecodeRecord`, `VerifyRecord`, `SignRecord`, `epoch.Store`, and the uncalled `CommitLegacy` writer; no working-tree code reads or writes any Name Record version. | The v3/v4 split (F-48) and the ADR-0022 migration obligation are historical evidence in the ADR chain and Git history; stored old roots are unread typed-incompatible data, not a decoder obligation. | Closed with F-51; the product owner confirmed no data support or backward compatibility is owed to old Namespace roots. |
+| Alpha-control disclosure inspection | Closed: ADR-0110 (F-49) retired the ACA2 diagnostic — the exact `inspect-alpha-corpus` route refuses before parsing arguments or opening any file, root, or floor, while `inspect-bundle`/`inspect-transitions` keep the ACA1 `Reader` with its durable catalog floor. | ACA1 is the sole maintained format with its separate Catalog, Release and Network floors; the ACA2 command, production verifier and exclusive fixtures are deleted, and command tests cover both corpus-command refusals before effects. ACA2 had no floor to migrate and no Endpoint authority. | Done: retired in one bounded slice with before-effect refusal and unchanged ACA1 inspection; retained Alpha Corpus floor bytes stay under the separate ADR-0088 compatibility reader, and enrollment-format obligations are separate (F-47). |
+| Protected Service Connection v2 | `service/connection/record.go` writes/reads v2 records with retained `ardents-interactive-route-v2` profile bytes | `endpoint/text_service_binding.go` uses the v2 core in the selected protected path; this is its one active grammar, despite the historical name. | Keep accepted bytes and shared TLS core; the unwired generic Endpoint adapter was removed under ADR-0092 (F-37). |
+| Private Introduction capsule v3 | `instance.Binding.OpenIntroduction` and `publication.IntroductionInstruction` retain the old SealedIntroduction v1 operation | The current text path uses `PrivateRecipient.OpenPrivateIntroduction`; after committed ADR-0092 deletion, no non-test call to the old decryptor or instruction grammar was found. ADR-0102 stopped the old key emission: new Instance roots generate only the ed25519 Instance key, the v2 request/Credential v3 grammars carry no introduction key, and the `root-v2` decoder refuses pre-v3 or phase-less retained JSON with the typed `ErrLegacyRoot` before any field decode (F-42 closed). | Done. Old execution retired after the committed call-graph check; new writes of the old key stopped by ADR-0102, the superseding decision for ADR-0034, with the explicit v2 Instance request/v3 Credential contract change and the typed `ErrLegacyRoot` disposition for both phase-less and current pre-v3 stored roots. |
+| Local Application Connection v2 and Administration v1 | `application/connection` and `application/administration` accept distinct local contracts | Both serve the selected protected journey; the former Connection v1/AAI2 implementation is removed. | Keep the accepted Administration v1 identity and Connection v2 grammar; the Go package paths name responsibilities without changing either protocol. |
+
+This first source-backed pass over selected C0 version boundaries does not
+discard persisted floors or alter accepted wire identities. The remaining exact-caller
+audit must distinguish old write operations from startup/refusal readers and
+identify the accepted owner for each retirement slice.
+It must end with a removal sequence: stop writing the old format, migrate or
+retire old data under an accepted decision, remove its reader and execution
+code, then remove obsolete refusal and test scaffolding that has no remaining
+contract. Coordinate ownership with the network agent before editing its code.
+
+**AREP retirement needs separate intake and recovery policies at the State owner.** The proposed
+v3-only closed intake cannot be implemented as a global `parseEpoch` change:
+the same decoder authenticates retained generations. The source trace at
+`53f02e64` identifies the exact acceptance and recovery boundaries:
+
+| Boundary | Current path | Required result for the proposed single version |
+| --- | --- | --- |
+| New offline decision | `networkState.Accept` -> `verifyDecision` -> `verifyEpochCandidate` -> `verifyEpoch` -> `parseEpoch`, then `commitActiveDecision` | Refuse an older closed-profile envelope before any generation or control-floor commit. |
+| New Source decision | `verifySourceBundle` falls through to `verifyDecision`; `commitPendingSourceWave` can stage it and `commitActiveSourceWave` can activate it | Refuse an older new candidate before either staging or activation, including both LATEST and BY_DIGEST results. |
+| Exact current/pending Source result | `verifySourceBundle` returns an already loaded decision after byte/input and materialization checks | Apply the recovered-current/pending policy here too; a gate only in `verifyDecision` leaves this path open. |
+| Retained predecessor | `loadGenerationChain` -> `loadGeneration` -> `verifyDecision` authenticates each prior signed generation | Keep historical decoding solely to prove the chain and retained floors; do not expose an old predecessor as the active C0 runtime. |
+| Recovered current or pending | `loadCurrent`, `recoverDistributionActive`, and `recoverPendingState` install authenticated decisions; the Source wave can later promote pending | Decide an explicit recoverable refusal or independently signed successor for an older active/pending envelope before opening its C0 duties. Preserve the control floor and old bytes until that decision is complete. |
+
+This is the boundary for the owning contract and later implementation tests,
+not a claim that v3-only intake or old-root migration already exists. The
+tests must separately cover offline intake, both Source result forms, restart
+from old current and pending roots, and a v3 successor with old predecessors.
+The existing `state.RecoveryRequiredError` is a suitable typed *refusal
+result* for an authenticated old active/pending root: keep its bytes and
+chain/control floors, expose no C0 duty, and require a separately authorized
+State repair or signed successor. It is not itself that repair operation.
+`parseEpoch` must continue to authenticate retained predecessors while the
+new-candidate and runtime-use gates enforce the single current version.
+The accepted State owner still needs to specify how a v3 successor can be
+admitted when an old pending slot already exists; silently clearing the slot
+would violate the current/pending/conflict invariant. This is the precise
+remaining contract decision, rather than a reason to keep v1/v2 as live C0
+envelopes.
+
+## One read through the proposed boundaries
+
+```text
+Reader Application -> local Connection Interface -> Reader Endpoint
+    -> current State + local permission + Target Link / Descriptor
+    -> client path -> protected channels -> selected Carrier
+    -> forwarding / Introduction / resolution / JOIN Node duties
+    -> Publisher Endpoint -> authenticated Service Connection
+    -> confined Publisher Application
+```
+
+The Publisher setup prepares its Instance, worker, prefixes and Introduction
+registration, then commits its Descriptor and returns the Target Link. During a
+read, Endpoint first admits the local operation; the client path obtains the
+selected recipient and physical attachment; Service Connection authenticates
+the final Instance and owns ordered Application bytes. A network JOIN result
+alone is not a completed Service read.
+
+## Import direction and the first exact seams
+
+The observed Linux package graph has `endpoint -> route`, `node -> route`,
+`route/credential -> route`, and `route/terminal -> service/reachability`.
+Endpoint imports 24 first-party packages and Node imports ten. These are
+compile-time edges, not evidence that the imported owner is needed on every
+runtime path. The target should first assign each concrete decision and
+resource to an owner, then let the top-level process composition call that
+owner. It should not turn a 74-file Route root into a generic transport API.
+
+| Current edge or mixed responsibility | Source-level reason | Target decision before moving files |
+| --- | --- | --- |
+| State `CurrentNodeDuty` `->` Node duty value (F-07, closed by ADR-0104) | The 38-getter `DutyView` Interface, the State-side `NodeDutyView` wrapper over a full copied Snapshot, and Node's second `dutyFacts` copy are deleted. The handoff is now `Config.Current func() (state.NodeDuty, error)`: one State-created copied value with Epoch identity/freshness, the local signed record and assignment, and bounded candidates. | State's authenticated currentness stays at the boundary (`CurrentNodeDuty` composes `Current()` with the pure `ProjectNodeDuty`); Node revalidates the candidate bound on receipt and retains its per-poll copy. The unused authority and Transit-issuance projections retired after their compatibility audit: Transit Grant verification closed with Route v2 (ADR-0093) and the persisted ledger disposition (F-53) closed with the ADR-0107 version-2 conversion. No new package or reverse import was added. |
+| `route/terminal -> service/reachability` (F-29, realized) | Two terminal production files imported Reachability solely for `MaximumPrivateDescriptorSize`; its proof and Store enforce the same bound. Terminal no longer inherits Reachability's 111-package static closure in production. | Realized: terminal carries its own exact wire bound `MaximumDescriptorProofSize = 15000`, a Linux-only cross-owner test pins it to the Reachability constant, and the existing framing tests keep the exact 15,000/15,001-byte outcomes. Only the production import was removed; Reachability stays authoritative for the signed proof and the Store, and no one-constant package was added. The test-only equality import remains, so the package map still permits Reachability for terminal behavior tests. |
+| `route/credential -> route` | After ADR-0092, only `closed_token_listener.go`, `closed_token_bootstrap.go` and `closed_token_admitted.go` import parent Route; all serve the live Node issuer (F-30). Credential's issuer root/reservation ledger and Replay's receiving spend ledger have different owners. | Preserve the live issuer core and Node-owned listener/admission lifetime; extract a narrow Route-facing adapter only after assigning accepted-child join and late issuer-root cleanup. A broad Carrier interface does not resolve either ownership question. |
+| Offline Control/Custody `-> route/credential` | Control calls only the signed public issuer-profile decoder; Custody calls only permission/request grammar. The package also contains the live Route-facing issuer listener, so static dependency closure still includes QUIC and CIRCL in these offline commands, but no OHTTP. | Give the signed offline grammar a cohesive owner with a non-test caller and exact validation tests. Keep the live networked issuer adapter separate without changing bytes or moving admission authority into Route. |
+| Node forwarding `->` shared Carrier listener | Route supplies `ClosedSharedCarrierListener.Accept/Close` and a direct-role or authenticated outer-Node result with caller-owned `net.Conn`. The extracted forwarding duty owns the accept loop, work limit, children and joined drain. Listener `Close` reaches `Drain`; accepted connection close failures, including capacity refusal, join its final result. | Keep Carrier mechanics behind the narrow listener seam. Node retains process admission and supervision, while the forwarding child retains its listener, spend root and late close after workers join. No broad Carrier interface is needed. |
+| Endpoint Descriptor publication `->` Route Control lane `->` Node Reachability Store | Endpoint owns the signed bytes and exact retry; Route sends one nonce-bound operation; Node checks current Introduction and calls `PublishPrivate`. Status 0 follows `StoreAccepted` or `StoreAlreadyCurrent`, after the Store's file and directory sync for a new record. | Keep durable revision/conflict floors with Reachability, State/duty admission with Node, and caller lifetime with Endpoint. The result Interface must distinguish a committed or already-current ACK from refusal and uncertain transport loss; it must not turn a lost reply into a second publication identity. |
+| `endpoint -> route` and `node -> route` | Both processes borrow transport/channel operations, while Endpoint also coordinates publication and Node owns receiving duties. | Keep process admission, lifecycle, and terminal error ownership at Endpoint/Node. The shared Route boundary should expose only the operations and leases each caller actually consumes. |
+| `service/connection` has no first-party imports | It owns authenticated logical byte ordering and attachment lifetime without importing Endpoint or Route. | Preserve this deep boundary; adapt physical attachment at its caller, not inside Service Connection. |
+| Replacement Service Attachment close (F-23, realized) | Native `Attachment` takes an exactly-once `func() error` retirement callback; the initial transport still caches its close result behind the Endpoint wrapper, and replacement Route transports now cross the error-bearing callback. `NewAttachment` has one non-test caller: Endpoint's protected Service adapter. | Realized: native Stream joins every physical retirement failure under its lock and publishes it through `RetirementResult` after `Done` closes; `Done` closes only after the current Attachment's physical retirement on both the ordinary and tail paths. Endpoint joins the replacement-path close failure at the recovery boundary and joins the post-`Done` retirement result into the final `textServiceStream.Close()` error. Exactly-once retirement, the already-published Application outcome, and authenticated terminal ordering are preserved. |
+
+The target import rule is therefore directional: command adapters compose
+Endpoint, Node, State, Service, and trust owners; Endpoint/Node borrow the
+smallest Route operations required for their exact duty; wire and Carrier
+mechanics do not own Service publication, Network authority, or process
+lifetime. This is a constraint for the source-level design, not a package
+creation list. The Endpoint agent's accepted boundary and the concurrent
+network changes must be read before finalizing exact exported Interfaces.
+
+### Observed Interfaces and the smallest target handoffs
+
+**Decision on the first three seams at `53f02e64`; the first is realized by
+ADR-0104.** The checked State-to-Node handoff is now one State-created
+immutable duty value (`state.NodeDuty`), copied and bounded again by Node, in
+the existing packages. `cmd/ardents-node` is its only production caller; no
+new interface package was added. The role/profile join (F-45) fixed by
+ADR-0103 froze that value's fields. This is a
+navigation and change-amplification improvement, not a prerequisite for
+retiring the old Route or making the installed C0 path work.
+
+The offline permission/profile grammar now lives outside `route/credential`:
+`internal/admission` owns the sealed permission grant, the holder-signed
+request with its Linux-only holder-request construction, and the ARDCIP01
+issuer key-inventory codec, and Control and Custody depend on that grammar
+without importing the live network listener (F-28/F-30 realized). The live
+`route/credential` issuer and its three Route-facing adapter files stay
+together during the current C0 correctness work: their listener and admitted
+child lifetime needed the F-17 close owner first (now realized as Node's
+`closedIssuerServer` late finalizer), and relocating their remaining methods
+would still either export issuer internals or create a parent import cycle.
+With that owner settled, the next step puts Route
+accept/bootstrap/ARDP exchange in the Node-facing adapter. That was a
+dependency cleanup slice, not an additional accepting credential version.
+
+Service Connection's Attachment seam is repaired (F-23, realized):
+`NewAttachment` takes an exactly-once `close func() error` owned by the
+Attachment; native Stream retains the joined retirement result and completes
+`Done()` only after ordinary and terminal-tail physical retirement. Endpoint
+may publish its Application outcome earlier but returns the late cleanup
+error from final `Close()`. No new package or broader transport
+interface was needed. The terminal and Service Connection decisions are
+realized (F-29/F-23); the Credential decision keeps implementation ownership
+and tests in separate bounded slices.
+
+These are source-observed call boundaries at `9835e225`, not proposed exported
+Go declarations. A caller-local interface can stay private even when its
+implementation later moves. The final signatures depend on the active Endpoint
+slice and the selected package direction.
+
+| Caller and operation | Existing seam | Target handoff and owner |
+| --- | --- | --- |
+| Node accepts a selected Carrier | `route.ClosedSharedCarrierListener.Accept(ctx, timeout)/Close` returns a classified `ClosedSharedCarrier` with caller-owned `net.Conn`. | Route owns TLS/QUIC authentication and physical listener mechanics. Node owns State freshness, admission limit, accepted handlers and drain. Preserve listener-close errors in Node's terminal result; settle the separate accepted-connection close policy. |
+| Endpoint retains a Source/Introduction/Responder path | `route.OpenClosed*Prefix` returns a `ClosedSourcePrefix`; its `Close` stops channels, joins children and returns physical retirement failure. Endpoint owns its source acquisition and release around that value. | Keep prefix lifetime with the exact Endpoint owner and channel mechanics with Route. The result must remain closeable with an error; do not export Endpoint's `textContext` or its handle locks to make a new package. |
+| Endpoint publishes or looks up a Descriptor | The private `textResolutionSource` supplies currentness, recipient and `exchangeDescriptor`; Route's `ClosedSourcePrefix.ExchangeDescriptor` opens one Control lane and returns status/proof after nonce checking. Endpoint validates the signed proof or commits its publication only after ACK. | Keep `textResolutionSource` as a caller-local coordination seam: its `currentLocked(*textContext)` cannot be an independent Route API. A cross-package operation should use only current-State-bound recipient selection, a token presenter and exact operation bytes, return a bounded result or transport uncertainty, and leave proof/history and publication authority with Endpoint/Reachability. |
+| Endpoint pairs a Data JOIN | The private `textJoinAcquisition` chooses a recipient and calls `ClosedSourcePrefix.Join`; the returned `ClosedJoinedStream.Close` joins channel and peer-close results. Endpoint's `textJoinedTransport.Close` additionally releases Job qualification and its acquisition lease. | Route owns channel/JOIN mechanics; Endpoint owns pairing intent, simultaneous capsule submission, Job, token attempt and lease transfer to Service Connection. Preserve a returned close error and one owner for the joined stream. Private methods taking `*textContext` or returning `*textSourceHandle` remain local coordination, not a package contract. |
+| Service Connection replaces an Attachment (F-23, realized) | Native `connection.AttachmentOpener` returns an authenticated Attachment under an immutable Recovery context. Endpoint's opener obtains and authenticates the new Route transport. Native `Attachment` takes an exactly-once `func() error` retirement callback. | Service Connection keeps logical identity, offsets, terminal and recovery rules; Endpoint retains Route selection and physical close outcome. Realized: the callback returns the replacement-close error, native Stream retains it until `Done`, and Endpoint joins it into the final `Close()`; the boundary is complete. |
+
+This inventory already rules out one tempting split: moving the Endpoint-local
+`textResolutionSource` or `textJoinAcquisition` declarations into Route would
+force Route to know Endpoint's private context and locks. The package seam is
+the narrow operation plus its owned result, while those coordination checks
+remain with the Endpoint owner.
+
+### Carrier source cluster: one responsibility, three lifetimes
+
+The ten Carrier rows in the [file inventory](https://github.com/dianabuilds/ardents-network/blob/4764ae1c567e93180f3aa643b2544abfdb2a67dc/docs/development/c0-component-inventory.csv) now
+have concrete callers and resource owners. They do not move as ten independent
+files:
+
+| Cohort | Production caller and lifetime | Package-boundary dependency |
+| --- | --- | --- |
+| Node physical dial and byte lane: `closed_node_carrier.go`, `closed_tcp_transport.go`, `node_carrier_quic.go`, `node_carrier.go`, `tls_adapter.go` | Node forwarding dials one State-selected adjacent peer through `OpenClosedNodeCarrier`; the returned `Carrier` belongs to its lease/session. TCP closes the physical socket once and retains its result; QUIC owns stream and connection close. | Dial validates literal endpoint, v3 profile, exact peer TLS and shared `Carrier` interface. The v1 symbolic constants in `node_carrier.go` have no non-test Go caller; the negative test can keep its old-profile refusal without keeping those exported names. State's v1 signed-record reader is a separate obligation. |
+| Direct role and shared listeners: `closed_role_carrier_client_linux.go`, `closed_role_carrier.go`, `closed_shared_carrier.go` | Closed Source/bootstrap opens a direct role Carrier; Credential's direct issuer and all five Node duties accept through narrow `Accept/Close` listeners. The accepted connection transfers to the caller; Node or Credential joins its handlers. | The role files call `closed_role_tls*.go`, while `ClosedRoleTLSExporter` returns a type declared in `closed_admission_channel.go`. A Carrier package move must place TLS authentication/exporter consistently or it will import Route back. |
+| Retained outgoing Carrier: `closed_carrier_pool.go`, `closed_carrier_retirement.go` | Node forwarding supplies exact State validation and an open callback. The pool retains only a used Carrier, gives each borrower a lease, invalidates one incarnation, and shares one physical close result. | Pool policy is Route's bounded physical reuse; Node keeps peer selection, session reader and shutdown order. A package seam must return the lease's real close result to Node. |
+
+`literalEndpoint`, `exactPeer`, `ClosedRouteProfile` and role TLS validation are
+shared security rules, not convenience imports. That package decision is now
+realized: the cohort and its TLS dependencies form `internal/route/carrier`,
+one acyclic leaf owner whose only non-standard-library dependency is
+`github.com/quic-go/quic-go`, with Route, Node, Credential, Endpoint and both
+node commands as direct non-test callers and no delegating wrappers. The
+`ClosedTLSExporter` type moved to the Carrier side of the seam,
+`literalEndpoint` was exported as `carrier.LiteralEndpoint` for the one
+literal-address rule, and the retired v2 `Profile` refusal identity stayed in
+Route (`closed_route_profile.go`). The existing listener and lease Interfaces
+remain the small external seam; no broader transport abstraction was added.
+
+### Client-path source cluster: four ownership scales
+
+The 25 Route-root rows grouped under `client-path` do not have one
+resource lifetime. Their source-specific dispositions are in the
+[file inventory](https://github.com/dianabuilds/ardents-network/blob/4764ae1c567e93180f3aa643b2544abfdb2a67dc/docs/development/c0-component-inventory.csv):
+
+| Source group | Actual owner and boundary implication |
+| --- | --- |
+| `closed_bootstrap_exchange.go`, `closed_bootstrap_plan.go`, `closed_recipient_inspection.go` | Endpoint calls the one-shot issuance exchange and recipient inspection. The exchange closes its own Entry/Interior transport before returning; inspection opens none. The plan validates the live State selection for both this exchange and retained prefixes. Keep its State contract shared without pretending the operation owns a retained Source. |
+| `closed_bootstrap.go` | Credential's `closed_token_listener.go` constructs `ClosedBootstrapController` for receiver-side queue/byte admission. It is a duty resource controller, not a client Source object; the inventory now assigns it to `node-duty`. |
+| `closed_source_prefix.go`, `closed_source_channels.go`, `closed_source_capacity.go`, `closed_source_queue.go`, `closed_source_lifetime.go`, `closed_source_lane*.go`, `closed_role_child_stream.go`, `closed_terminal_priority_linux.go` | Route owns an admitted parent Carrier, multiplexed lanes, credit, child joins and physical-close result. The child-stream and terminal-priority helpers are called only by outgoing bootstrap/prefix owners. Endpoint retains separate Source, Introduction and Responder prefix handles selected from current State. `ClosedSourcePrefix.Close` joins channels and child before returning failure to that owner. |
+| `closed_source_control.go`, `closed_source_issuance.go`, `closed_source_resolution.go`, `closed_source_submission.go`, `closed_source_replenishment.go`, `closed_introduction_client.go`, `closed_join_client.go`, `closed_join_client_stream.go` | These operations borrow a retained prefix, but registration and joined stream each acquire their own child lifetime. Endpoint owns publication, token attempt, pairing and Service Connection transfer; Route owns operation framing and the child transport cleanup. |
+| `closed_introduction_delivery.go`, `closed_terminal_recipient.go` | Delivery state is owned by one retained Introduction registration and claimed by Endpoint; completion joins its result and terminal close. Terminal-recipient selection opens no channel and rechecks the current State and unique role before Endpoint uses the result. Both belong to the client path, with different lifetimes. |
+
+That package decision is now realized as `internal/route/client`: every
+client-path file in the table except the receiver-side `closed_bootstrap.go`,
+which stayed in Route as a node duty, forms one acyclic leaf owner whose
+production files are all Linux-tagged, with Endpoint, Qualification and Node
+behavior tests as direct callers and no delegating wrappers. The shared
+bootstrap plan moved with the exchange that validates it, and Route's
+parent/child ownership is preserved through exported single-definition facts
+(admission frame cost, class lifetime, control purpose, role-domain and duty
+bytes, forwarding child bound, outer lane credit) plus
+`ClosedOuterBridgeLane.BeginTerminalWrite`, called by the moved
+terminal-priority switch. Endpoint receives closeable results and keeps its
+own lock and root lifetime. The realized move grouped the files by these
+ownership scales rather than moving every `closed_`-prefixed file into one
+package, which would have concealed the different lifetimes and moved the
+receiver-side admission controller with client code.
+
+### Endpoint client path: separate reservations and close owners
+
+The 20 Endpoint Source/Introduction/Responder/JOIN rows now have source-specific
+reasons in the [file inventory](https://github.com/dianabuilds/ardents-network/blob/4764ae1c567e93180f3aa643b2544abfdb2a67dc/docs/development/c0-component-inventory.csv). They do not form
+one `text_` lifecycle:
+
+| Endpoint owner | Observed reservation and terminal boundary |
+| --- | --- |
+| Source | `textSourceLifecycle` retains the Route prefix and lends JOIN/Resolution acquisitions; `textSourceOperationGate` serializes actual opening and issuance across prefix replacement. `textPrefixOpeningOperation` owns one stock-to-open attempt and closes a prefix that loses admission. |
+| Introduction | `textIntroductionExchangeSet` bounds flights reserved before State reads or I/O. Worker cancellation ends the attempt, while an accepted Service transport may retain its own cleanup lifetime. Publisher registration has a separate `textIntroductionPrefixLifecycle`. |
+| Responder | Accepted Introduction prepares a Domain-3 prefix under the Publisher job; `textResponderPrefixLifecycle` retains that prefix and lends JOIN acquisition. Source issuance readiness is checked separately from Descriptor publication ACK. |
+| JOIN to Service | `textJoinAcquisition` borrows Reader Source or Publisher Responder. `textJoinedTransport.Close` joins the Route transport and releases the Qualification join and acquisition; the Service binding receives that exact closeable transport. |
+| Endpoint roots | `text_source_state.go` selects live State/Entry members but also opens and closes Endpoint Entry and token-journal roots; `text_source_prefix.go` opens a Source but also lazily opens the token journal. Those root methods have a different lifetime from one client operation. |
+
+This supports two in-package file splits and a Route-to-Service boundary review,
+not an immediate package move. Preserve separate Source, Introduction and
+Responder shutdown: `text_context_retirement.go` cancels their openings,
+joins them, then closes each retained prefix and joins exchange flights.
+
+### Node forwarding has its own duty owner; role probe stays under Node
+
+`internal/node/forwarding` owns the selected duty's listener, admitted
+handlers, receiving spend root, limits, bootstrap allocation, Carrier pool,
+sessions and joined drain. The receiving group opens before the listener;
+`finishShutdown` joins accepted producers and outgoing readers before closing
+the transferred Host handle and spend root. Node validates the profile and
+address, opens the shared Host handle, and adapts the child's small handle to
+process supervision. The child receives explicit current-State and admission
+dependencies instead of `runtimeConfig`; class-2 reservations share the
+`internal/node/hosting` owner with JOIN.
+
+The private role probe is an active Node duty selected only after
+`assessAdmission` checks `h3-role-probe-v1`; `duty_server.go` starts it through
+the same `dutyHandle` lifecycle. The [current technical owner](../technical/network-route-node.md#node-and-resource-lifecycle)
+explicitly excludes a standalone probe runtime. Its four implementation
+files therefore remain Node-owned. The former `contract.go` declarations now
+reside in responsibility-named Node files after ADR-0104 removed the DutyView
+projection. This improves local navigation without a new package. The shared
+`dutyHandle` return type names all five current closed duties as well as the
+private probe (F-39), while preserving distinct duty resources.
+
+The six `stream_qualification_*.go` Endpoint files are the concrete
+qualification adapter: they open actual participant roots, Service streams,
+worker artifacts and refill tokens, then pass bounded streams and observations
+to `internal/qualification` and `internal/streamqualification`. The latter
+owners hold workload and verdict; Endpoint must keep its worker, Job and
+transport resources. Their callers and ownership now support retaining these
+six files in Endpoint, with local file cleanup if needed. A second
+qualification runtime package would duplicate this composition.
+
+### Installed worker: verification and lifetime are one Endpoint handoff
+
+The 15 worker-related Endpoint files now have source-specific reasons in the
+inventory. `workerInventory` chooses exact installed roots, units, sockets and
+accounts; the artifact, manager, property and cgroup readers verify what is
+installed. `launchInstalledWorker` reserves one Context Job, verifies the
+parent service and immutable artifact, observes one new manager invocation,
+then transfers the local attachment to `textWorkerLifetime` before INIT and
+Grant. The lifetime interrupts the attachment, joins Application I/O, asks
+`textWorkerCleanup` to stop only that pinned invocation, and releases the Job.
+The separate workload bounds limit what can cross the worker attachment.
+
+This is a real confinement and resource owner, but moving its files wholesale
+would require exporting `textContext` and `textJobIdentity` or moving Context
+admission with them. First keep the launch-to-lifetime handoff explicit in
+Endpoint; extract only an independently owned installed-artifact or manager
+reader if it has a real caller and a smaller Interface. These readers verify
+existing units; they do not install the root-owned Endpoint and worker units.
+The missing installation/provisioning handoff remains F-25/F-27.
+
+### Resource and diagnostic handoff
+
+`resource.Guard` is a process-local monitor. State constructs one, checks
+placement before accepting current authority, and owns its periodic governor
+and cancellation. Node constructs another for its duty and combines its
+`Observe` result with the shared host-period observation before deciding
+NORMAL/PROTECT/DRAIN. The Guard has no close operation or durable root.
+
+`resource.Hosting` is a separate, durable period opened from one operator
+initialized root. Its relevant Interface is `Sample`/`Observe`, `Reserve`,
+`HostingReservation.Release`, and `Close`. A reservation commits work **and**
+termination capacity before effects and remains charged until the borrowing
+Node or qualification owner joins the work and releases it. `Close` releases
+the root handle; it cannot forgive an outstanding reservation. Node owns
+the listener/session response to pressure and its bounded event facts;
+`cmd/ardents-node` owns stdout and diagnostic-file destinations. The local
+timeline only projects those already emitted facts. No generic logging owner
+should acquire the State, Node or Hosting lifetime to make events uniform.
+
+### Installed Endpoint launch: exact provisioning boundary
+
+`cmd/ardents/endpoint_headless.go` decodes one supplied v2 JSON plan and
+`endpoint_text_linux.go` starts the participant. The installed command test
+`tests/e2e/node/closed_text_command_installed_linux_test.go` constructs that
+plan, grants its service account access to fixture roots, writes a temporary
+root-owned **system** unit, and responds to permission requests with a test
+Authority. This proves the runtime can consume those inputs, not that a
+maintained operator path can produce and authenticate them (F-25/F-27).
+
+| Plan or unit input | Current test producer and actual owner | Required production handoff |
+| --- | --- | --- |
+| Executable, static Enrollment and Release facts | Installed package and separate enrollment test verify these bytes; the protected text command test builds its binary independently. | Independently pinned first execution and retained current-program acceptance must bind the exact system-unit MainPID before protected readiness. |
+| Network root, direct-Source plan, Network ID, authorities, threshold, closed-profile signer, clock marker and local-role root | Test supplies `state.Config`, reads the accepted closed profile, writes a Source plan and clock observer, then repeats trust anchors in runtime JSON. `headlessNetworkConfig` checks equality only when a Source plan is present. The plan parser checks syntax and referenced path spelling, not the origin of the plan file (F-67). | One authenticated provisioning owner supplies the trust anchors and paths; State keeps the exclusive root and rejects a mismatch before participant effects. |
+| Entry, token and Publication roots, Service Instance root | Test creates or acquires each fixture path; Instance itself is accepted through separate command and Authority operations. | Name the owner and permissions of each path; preserve Instance/Custody separation and the token and Publication durable floors. Do not package mutable roots with the executable. |
+| Reader/Publisher permission request and response paths with maxima | Test constructs both path pairs and answers them after the unit starts. | A separate Custody operator produces exact responses to the public requests; plan provisioning fixes only allowed paths and bounds, never embeds Authority private material. |
+| Broker ID, Connection and Administration principals, local socket paths | Test invents three fixed identities and two sockets under its fixture directory. | Define how the installation pins these identities, socket locations and authorized local peers; Endpoint must not derive their authority from arbitrary service-account-edited JSON. |
+| Text Application and confined-worker artifact | The alpha bundle inventories four headless binaries and static enrollment inputs. The installed command candidate separately builds `ardents-text`, copies it as the worker and hashes it with the test binary. Endpoint verifies a separate root-owned manifest for the worker executable, two service units, two sockets and the stop rule. | Bind that exact six-file worker inventory to the accepted candidate and active Endpoint unit, or specify a separately authenticated installation handoff. Keep Endpoint's local re-verification before and after worker activation; a test-stage checksum is not a maintained operator installation procedure (F-27). |
+| Endpoint system unit and worker relationship | Test overwrites `/run/systemd/system/ardents-endpoint.service` with `User=ardents-endpoint` and `ExecStart=... endpoint headless <plan>`; worker units are a separate installed fixture. | A maintained root-owned system-manager unit producer binds the accepted artifact, plan, service account, MainPID and fixed worker units. The existing per-user enrollment unit cannot stand in for it. |
+
+The design decision is the **producer and authenticity of the plan/unit
+handoff**, not a new runtime version. The selected consumer stays the sole v2
+headless plan. Provisioning must keep its paths and trust anchors stable across
+restart or make an explicit, authenticated replacement transition. The
+installed acceptance boundary is one launched Publisher and Reader on both
+Carriers, after the same enrollment/Release sequence, with the actual
+system-manager and worker identities observed. No fixture-created plan or
+temporary unit may substitute for that operator route in the final verdict.
+The selected handoff must cover the bytes of the headless and Source plans,
+not just the root-owned unit pointing to them: current `decodeOperatorInput`
+does not authenticate plan-file ownership or a release binding (F-67).
+
+**Proposed production handoff for this missing component.** Add one bounded
+installation operation under the existing `ardents endpoint` command owner;
+its exact verb and wire-free file schema belong to the implementation brief,
+not to a new runtime package. It consumes an independently verified artifact
+and accepted Release/enrollment record, the selected State/Source and local
+root declarations, public Custody/Instance facts, and the fixed worker-unit
+inventory. It must not mint Authority keys or silently accept a test-issued
+permission response. Before starting the Endpoint, it atomically publishes
+the v2 headless plan, Source plan, worker manifest and system-unit inputs
+under a root-controlled directory whose files are readable but not writable
+by the Endpoint service account. One manifest binds their exact digests to
+the accepted artifact, account, unit names and MainPID verification rule.
+
+The existing `endpoint headless` consumer then verifies that binding and
+file ownership before opening State, Instance or worker resources; the
+system manager's observed unit/account/InvocationID/MainPID must match it.
+Restart re-verifies the same durable plan and floors. Manual replacement
+uses the accepted Release decision and explicit predecessor recovery without
+lowering its floor. A partial write, mismatched plan,
+service-account edit, wrong unit or wrong executable fails before participant
+effects and leaves the prior accepted bundle recoverable. This is a proposed
+authority boundary, not an implemented installer or an accepted change to
+the v2 plan grammar. It needs the affected product/security owners and an
+independently reviewable implementation slice before C0 qualification.
+
+### Verification evidence for the combined candidate
+
+The [testing owner](testing.md#current-profiles) defines the checked profiles;
+this table records what their current code can establish for the reconstruction.
+Run results must name one exact integrated artifact and host. A green profile
+on a different branch or a fixture-produced installation cannot be promoted
+to installed C0 acceptance.
+
+| Required fact | Existing profile and source evidence | Remaining combined-candidate proof |
+| --- | --- | --- |
+| Repository code and artifact gates | `make quick-check` covers formatting, architecture, vet, deterministic packages and command builds; `make check` adds process/race/static/vulnerability and Linux package evidence. `make headless-check` checks the headless artifact lane. | Re-run required gates on the exact integration candidate after Endpoint/network reconciliation. None alone exercises the installed ordinary text command journey. |
+| Ordinary Publisher/Reader exchange on both Carriers | `make text-command-network-check` pins five command binaries, the worker, test binary and temporary root-owned unit; `TestInstalledClosedTextCommandsThroughNodeProcesses` loops TCP/TLS and QUIC and exercises publish, Link, read, refresh, withdraw and refusal. The testing owner names empty, 64 KiB and 4 MiB cases. | Replace test-written runtime plan, authority responses and temporary unit with the maintained authenticated provisioning path while retaining the same real-command and terminal observations. |
+| Worker confinement and lifecycle | `text-worker-network`, `text-worker-lifecycle`, `text-worker-policy`, and `text-worker-escape` each have a separately selected installed profile. They check bounded network composition, effective unit/cgroup lifetime, policy and hostile-worker access attempts. | Bind their exact worker artifact and unit policy to the accepted Release/enrollment candidate; preserve the Endpoint MainPID, service account, socket and six-file manifest identity on restart. These profiles do not by themselves qualify the whole host. |
+| Interrupted work and durable recovery | `text-worker-recovery` interrupts one accepted request over each Carrier. Module/process tests cover token, publication, State and replacement journals; the replacement qualification concerns the existing user-unit adapter. | Exercise selected installed restart, retained floors, explicit rollback/refusal and final cleanup under the supported system-unit composition. Do not count a module recovery oracle as that installed result. |
+| Authority and version refusals | Deterministic/architecture tests cover bounded old-input refusal and retained parsers; `text-command-network` uses current fixture-issued permissions. | Sole AREP v3 closed intake and old-root policy selected (ADR-0111, F-50 realized), retire alternate operator startup only after its successor, and verify old inputs cannot enter the new installed accepting path without losing retained floors. |
+
+`make check` does **not** invoke the separately selected
+`text-command-network-check`; both results are necessary on the same candidate.
+The final verdict also needs a record of candidate digests, Ubuntu/systemd
+environment, exact commands, Publisher/Reader outcomes for both Carriers,
+restart and withdrawal outcomes, and any failed cleanup result. This is the
+evidence boundary for the design; the implementation owner still decides the
+specific test cases and profile registration with its bounded slice.
+
+The permission files in Endpoint are the holder side of this handoff, not the
+Node issuer. Offline provisioning first prepares an installed worker, exports
+one public request, and accepts only a matching Custody response. The
+`textPermission` stock and `textIssuanceOperation` retain one exact blinded
+batch across an uncertain issuer exchange; `text_token_transfer.go` marks a
+token attempt in the durable journal before its bytes reach Route. Node's
+issuer root and receiver-side Replay spend remain different authorities. A
+package split must preserve this order and the Context's cancellation/join
+ownership rather than grouping every `token` file under one owner.
+
+### Receiving wire: physical and virtual close are separate
+
+The same `serveClosedOuter` in Node serves issuer, forwarding, resolution,
+Introduction and Data Join. It owns the accepted physical connection,
+interrupts it, closes Route's `ClosedOuterBridge`, then joins every inner
+handler. Node's `closedOuterWriter` serializes terminal, control and payload
+frames on that connection. These two files belong to the Node duty lifecycle;
+moving them to a wire package would transfer the accepted-handler join owner.
+
+Route's `ClosedOuterHandshake` and `ClosedOuterBridge` validate and multiplex
+virtual inner lanes. `ClosedOuterBridge.Close` wakes blocked lane readers; it
+does not join the Node handlers or retire the physical Carrier by itself.
+`ClosedAdmissionChannel` binds an admitted lane to the role TLS exporter,
+spends its token in the durable Replay ledger and transfers a bounded
+reservation to the duty handler. Data Join's `ClosedJoinPairs` owns the
+ephemeral matched pair and its queue/timer; Node owns its listener, spend root
+and final shutdown. The boundary between these owners must preserve the exact
+order of interruption, child join and spend-root close.
+
+The source pass also reassigns `closed_role_tls*.go` to Carrier identity,
+`closed_terminal_recipient.go` and `closed_introduction_delivery.go` to the
+client path, and JOIN receiver files to receiving spend. Their filename prefix
+was insufficient evidence for a single protected-wire package.
+
+### Target dependency order to validate
+
+This is a component import direction, not a registry of new Go package names.
+It is derived from the observed Linux/Windows [package graph](https://github.com/dianabuilds/ardents-network/blob/4764ae1c567e93180f3aa643b2544abfdb2a67dc/docs/development/repository-package-graph.csv)
+and the exact operation seams above. A package extraction must implement one
+row with a real caller and tests; the whole graph cannot be created as empty
+scaffolding.
+
+```text
+command composition
+  -> Endpoint / Node / offline Custody and Control
+Endpoint -> checked State, Service owners, client path, local Application owners
+Node     -> checked State, Reachability Store, receiving spend, receiver duties
+client path -> checked State for per-operation freshness and peer selection
+client path / receiver duties -> protected channels -> physical Carrier
+client path / receiver duties -> network token adapter -> offline token grammar
+protected channels -> ARDP and bounded operation grammar
+Reachability Store -> Service Publication
+Service Connection -> standard library only (current boundary)
+offline Custody / Control -> offline token and issuer-profile grammar
+```
+
+The Carrier takes an already selected profile, certificate and current-peer
+verifier from its caller; it does not decide State authority. Protected
+channels enforce framed operations and own child/lane retirement; they do not
+commit a Descriptor, spend a permission, or declare a Node duty current. Node
+and Endpoint compose those decisions and own their process terminal results.
+
+Five observed edges determine the next Go import-graph changes:
+
+1. `route/credential -> route` now comes only from three live issuer adapters
+   (F-30); ADR-0092 removed the uncomposed OHTTP Transit client. The offline
+   permission/profile grammar moved below the live network listener into
+   `internal/admission` (F-28/F-30 realized); issuer reservation stays in
+   Credential. Put Route-facing bootstrap, admission channel and Carrier calls
+   behind a Node-owned operation adapter now that accepted-child join and
+   issuer-root late-close ownership are assigned (F-17 realized as Node's
+   `closedIssuerServer`). Moving the current
+   Credential package inward as one unit creates a parent import cycle.
+2. `route/terminal -> service/reachability` existed only for the 15,000-byte
+   Descriptor bound in `descriptor.go` and `descriptor_client_linux.go`.
+   Realized (F-29): terminal keeps the local `MaximumDescriptorProofSize =
+   15000` bound, a Linux-only cross-owner equality test pins it to the
+   Reachability constant, and the production import is gone with no change to
+   refusal behavior and no one-constant package. Reachability remains the
+   proof/Store authority.
+3. Offline Control and Custody formerly imported all of `route/credential`
+   for the profile decoder and permission grammar. Realized (F-28): both reach
+   the same verified bytes through the leaf `internal/admission` owner, which
+   depends only on `internal/network/state`; their post-split Linux closures
+   are 259 and 182 packages and contain no QUIC or CIRCL at all. The former
+   coupling was import coupling, not proof of runtime network use.
+4. `route -> network/state` is a live Linux edge in
+   `closed_bootstrap_plan.go` and `closed_source_prefix.go`: the client path
+   builds a bounded plan from the current view and rechecks it while opening
+   the prefix. Keep a checked-State dependency in that operation boundary;
+   replacing it with one stale Endpoint snapshot would lose the existing
+   freshness check. It can use a smaller caller-local view only if that view
+   preserves each pre-effect recheck.
+5. `route -> entry` came from `entry_attachment.go`, the uncalled old v2
+   attachment path after ADR-0092. The edge is gone from the package graph:
+   ADR-0093 removed the v2 execution closure, and ADR-0106 settled the
+   retained-root obligation as typed incompatibility, so nothing blocks the
+   live client path (F-52 remains tracked separately).
+
+**Package placement decision for the first reconstruction slices.** The
+physical package map remains authoritative until each extraction lands with
+its caller and tests. These are concrete target placements, with the blocking
+source edge stated where the package cannot yet be created:
+
+| Placement | Current decision and exact gate |
+| --- | --- |
+| `internal/network/state`, `internal/service/{instance,publication,reachability,connection}`, `internal/route/{ardp,capsule,replay,terminal}` | Keep these existing authority, wire or lifetime owners. Repair the State role join, Service Connection completion barrier and terminal-to-Reachability size-bound import in their own slices; none requires a replacement catch-all package. |
+| Candidate `internal/route/carrier` | Move the 13-file physical transport/authentication cohort only after moving the one `CarrierProfile`/`Carrier` byte-lane contract, shared TLS peer and literal-address rules, role TLS helpers, and the exporter function type out of Route-root declarations. Node and Route's client/receiver paths are real callers; Carrier must import neither parent `route` nor receiving spend/Service authority. The old v1 symbolic constants are not an accepting Carrier API. |
+| Candidate `internal/route/client` | The 25 Route-root outgoing bootstrap, Source, Introduction, resolution and JOIN files may follow Carrier after their transitive shared declarations and per-effect State rechecks are preserved. The Endpoint-local Source handle, token attempt, Job and publication coordination stay in `internal/endpoint`; moving them would import its private context back into Route. |
+| `internal/route/credential` with a Node-facing issuer adapter | Keep the live issuer together until its late root-close owner exists. Then separate the three Route-importing listener/bootstrap/admitted files from the offline profile and permission grammar. Do not make `route` import `credential` while `credential` still imports parent `route`. |
+| `internal/node` and `internal/endpoint` | Keep them as process/local composition roots while deepening private duty and participant owners. A possible `internal/node/outer` has only the two accepted-outer lifetime files as its source closure; Endpoint qualification already owns workload/verdict separately but still borrows Endpoint runtime. Neither root gets a speculative subpackage just to hide filenames. |
+
+The remaining receiving Route cluster stays in its current package until its
+Node accepted-child and spend transfer is expressed as one error-bearing
+operation. An inventory responsibility tag is not, by itself, a suitable
+package name or Interface. The [Route boundary analysis](route-refactoring-boundary.md)
+records the Carrier type-use blockers, and the [focused inventory](https://github.com/dianabuilds/ardents-network/blob/4764ae1c567e93180f3aa643b2544abfdb2a67dc/docs/development/c0-component-inventory.csv)
+records the exact candidate files. This placement preserves an acyclic
+direction without requiring every component to become a package at once.
+
+The first-party graph counterfactual in F-28 predicted that these edge cuts
+primarily simplify offline Control/Custody, and the realized
+`internal/admission` split confirms it: the two offline command closures fell
+from 296 to 259 and from 229 to 182 Linux packages, while the Linux Endpoint
+and Node closures are unchanged because those commands reach the same owners
+through other live imports. Measure real Go dependency and artifact changes
+after each buildable split.
+
+The existing `service/connection` package is already below Endpoint and
+Route: it has no first-party imports and receives authenticated Attachment
+bytes through an opener. That direction is preserved and the lost
+replacement-close result is fixed (F-23, realized): the ordinary native
+`Done()` and the terminal tail both close only after physical
+`stream.close()`, and the Endpoint-owned close result stays observable at
+final `Close()` without changing a previously published Application outcome.
+Revalidate the graph against the active Endpoint
+agent's completed revision before assigning exact package paths.
+
+## State and close ownership
+
+| Resource or decision | Owner at the boundary | Terminal obligation |
+| --- | --- | --- |
+| Current Network State | State runtime; Node and Endpoint borrow checked views. | Close the State root after borrowers stop; successor/loss refuses new effects. |
+| Endpoint replacement writer lease | `endpoint/replacement` claims it for Prepare, CommitPrepared, Replace and Rollback. | All four writer paths join the release result to their public error after the last journal/program effect (F-68); a release failure cannot undo an already committed pointer or imply rollback. |
+| Local grant and participant job | Endpoint/Broker and the exact participant context. | Revoke new admission, cancel all children, then join operations and worker. |
+| Instance key and publication generation | Instance and Publication owners, borrowed by Endpoint. | Withdraw publication, join leases, erase/close the Instance binding in the required order. |
+| Private Descriptor revision/conflict floor | Reachability Store under one Node resolution duty. | Return success only after durable write; refuse new operations after ambiguous write failure, restore the highest valid floor on reopen, and recheck duty currentness before ACK. |
+| Source/Introduction/Responder prefix | Exact client-path owner. | Retire admission and join child channels before releasing the parent transport. |
+| Node listener and accepted sessions | The selected Node duty. | Stop acceptance, join accepted producers/readers, then release spend and host resources. All five closed duties now retain non-benign accepted-connection close errors in `Drain` (F-61). Issuer releases its roots after a completed listener join even when physical close fails, and retains them when the join is incomplete. |
+| Physical Carrier | Carrier lease/connection owner. | Close once; report physical close failure to its borrowing duty or path. |
+| Logical Service Connection | Service Connection owner with Endpoint's attachment opener. | Verify terminal outcome and join physical attachment cleanup before reporting completion. |
+| Confined worker | Endpoint's installed-worker owner. | Stop and join its process tree/cgroup before releasing its job authority. |
+
+### Durable roots and their first lifetime owner
+
+This is the selected journey's root registry, not a directory layout proposal.
+The operator plans supply paths; each named Module owns the bytes and recovery
+rule. The Endpoint plan checks its supplied root/socket/file paths for exact
+distinctness, absolute form and canonical spelling in
+`cmd/ardents/endpoint_text_plan.go`. A Node plan selects exactly one closed
+receiver duty; the role-specific rows below are alternatives across Nodes.
+
+| Root supplied or opened | First durable owner and current opener | Retained fact and boundary on redesign |
+| --- | --- | --- |
+| Portable artifact, Release floor, Endpoint replacement | `endpoint/portable` verifies the first artifact; `release.Open` owns the decision floor; `endpoint/replacement` owns current/prepared/journal and retained predecessor. | Preserve first-run pin and accepted Release floor separately from executable activation. Replacement's predecessor is for explicit authorized recovery, never a second running version. Four public writer operations now return lease-release failures (F-68). The `systemctl --user` adapter is not yet the protected system-unit composition (F-27). |
+| `network_state_root` | `network/state.Open` in both Endpoint and Node commands. | State alone commits accepted Epoch, current/pending and conflict floors; borrowers receive checked views and close before its root. Historical Epoch intake needs the F-50 decision before decoder retirement. |
+| `local_role_state_root` and `entry_state_root` | `network/duty` owns local role/conflict records; `entry.OpenClosedSets` owns the Endpoint's closed Entry set. | Keep the role and Entry roots distinct from each other and from State. The old Invite command is retired by the ADR-0106 before-effect refusal; its former root is never read again and cannot supply the selected closed set (F-53). |
+| `service_instance_root` and `publication_root` | `service/instance.Open` supplies the binding; `service/publication.Open` is constructed by Endpoint's `newEndpoint`. | Keep signing key/generation separate from Descriptor publication/revision. Endpoint joins publication and Instance close after local work; pre-v3 Instance roots are refused with the typed `ErrLegacyRoot` (ADR-0102, F-42). |
+| `text_token_root` | `endpoint/tokenjournal.Open` on Source-prefix admission; Endpoint holds the opened journal until its source roots close. | Retain retry/presentation state across restart; it is not Node's receiving spend ledger. Its close result joins the Endpoint terminal outcome. |
+| Closed Issuer `root` and `admission_root` | `route/credential.OpenClosedTokenIssuer` and `route/replay.Open`, composed by `node/startClosedIssuer`. | Issuer key/issuance and receiving spend have separate roots. Realized (F-17): after a bounded Drain timeout Node's `closedIssuerServer` stays the later root-close owner; it joins every accepted child without the caller deadline, then closes the spend ledger and the key root in that order and records one finalization result. |
+| Closed forwarding `root` and `hosting_root` | `route/replay.Open` in `node/forwarding`; `resource.OpenHosting` via Node's shared host adapter. | Spend once and host-period accounting are different authorities. Node owns the shared sampler and opens the Host handle; forwarding owns that handle's late close and its joined terminal result. |
+| Closed Resolution `root` and `admission_root` | `service/reachability.OpenStore` and `route/replay.Open` in `node/startClosedResolution`. | Descriptor revision/conflict and receiving token spends must retain distinct floors; a publication ACK follows durable Store acceptance, and shutdown joins both roots. |
+| Closed Introduction and Data JOIN `admission_root` | Each Node listener opens its own `route/replay` receiving ledger. | No timeout may release a spend root while an accepted child still owns a commit or reply. The duty owns the final join, not the Carrier package. |
+
+This registry covers the selected C0 data path and the directly required
+first-run/replacement path. Other maintained roots, including Custody Vault
+and legacy operator state, remain in the broader file and behavior maps until
+their accepted retention or retirement decision is made; the Namespace root
+decision landed in ADR-0105, which removed every reader and leaves old roots
+on disk unread. They must
+not be silently folded into one of these C0 roots.
+
+The reduction decision for those other roots is bounded by their actual
+openers, not by a package name:
+
+| Retained or absent root | Current owner and consequence for reconstruction |
+| --- | --- |
+| Custody Vault and its offline allocation journal | `cmd/ardents-custody` and the permission handover open `internal/custody` authority; the Vault commits its own floor before the Endpoint token attempt or Node receiving spend. Keep this offline trust root separate from all Route/Endpoint journals. Its verification command closes the Vault and reports close failure. |
+| Older Invite Entry root | `ardents entry import`/`entry recipient` return their ADR-0106 retirement refusal before any effect; the closed Endpoint opens a different `entry.OpenClosedSets` root whose marker rejects Invite data. Existing Invite roots stay on disk byte-for-byte with no reader, converter, or deleter, so Invite bytes can never be imported as closed members by filename coincidence (F-08 closed). |
+| ACA1 reader and transition floors | `ardents-control inspect-bundle` and `inspect-transitions` open the ACA1 reader/catalog root and separately advance Release and Network inspection floors. ADR-0110 keeps these roots and ACA1 as the sole maintained format; ACA2 corpus inspection is removed — the exact command refuses before effects and no ACA2 verifier or reader root remains (F-49 realized). |
+| Dedicated-host Contributor installation root (retired) | ADR-0114 removed the Contributor command, `internal/contributor`, and the runbook after the Product Owner confirmed that no live `ardents-rendezvous-contributor` installation remains; the ADR-0089 owned-shutdown obligation has no object (F-56 deletion path). Any such root, if it ever surfaced, stays on disk byte-for-byte with no reader; the unrecognized subcommand fails with the standard usage error before any effect. |
+| Namespace composition (retired) | ADR-0105 deleted the Namespace subsystem and the never-exposed custody operations (F-01/F-51 closed); the maintained command graph never opened a Namespace runtime root or Gateway/Resolver. Old roots stay on disk with no read path; nothing merged into State or Reachability, and the retirement-test fixture now uses a synthetic Namespace-shaped root. |
+
+The [behavior traces](https://github.com/dianabuilds/ardents-network/blob/4764ae1c567e93180f3aa643b2544abfdb2a67dc/docs/development/repository-behavior-map.md#source-trace-separate-service-authority-issuance)
+and [one-version disposition](#one-supported-c0-configuration) supply the
+caller and migration/refusal questions for these rows. This table records
+ownership; it does not decide to erase a retained root.
+
+These relationships are checked against the current
+[Node/Route contract](../technical/network-route-node.md) and
+[Endpoint/Service contract](../technical/endpoint-service-runtime.md). The
+[first per-file ownership pass](https://github.com/dianabuilds/ardents-network/blob/4764ae1c567e93180f3aa643b2544abfdb2a67dc/docs/development/c0-component-inventory.csv) is recorded.
+The [Node receiver resource matrix](https://github.com/dianabuilds/ardents-network/blob/4764ae1c567e93180f3aa643b2544abfdb2a67dc/docs/development/repository-behavior-map.md#node-receiver-resource-matrix)
+now distinguishes all five duty roots and late cleanup after a caller timeout;
+the Issuer's later root-close owner is realized as Node's
+`closedIssuerServer` (F-17). The installed text
+Endpoint's local socket servers and adapters have a source-backed handler
+join before Endpoint, Instance and State close. Nested worker and Route
+lifetimes, physical connection-close error policy and combined installed
+evidence still require targeted review before moving package boundaries. The
+[JOIN-to-Service handoff trace](https://github.com/dianabuilds/ardents-network/blob/4764ae1c567e93180f3aa643b2544abfdb2a67dc/docs/development/repository-behavior-map.md#source-trace-join-transport-transfer-into-service-connection)
+now resolves the initial Route stream's opening-failure and successful-transfer
+close owner; the replacement-close result and the native completion barrier
+are realized (F-23).
+
+### Issuer's late close owner
+
+Realized (F-17). `startClosedIssuer` composes the opened key root and the
+receiving spend ledger into Node's `closedIssuerServer`, the sole late owner
+of both roots. The server is the only consumer of `ClosedTokenListener.Done()`
+and forwards the buffered accept-loop cause to `node.Run` before any wait, so
+supervision keeps the terminal signal even while an accepted child still
+borrows the roots. Its unbounded run goroutine then stops the listener and
+waits for every accepted child without the caller's short deadline through
+`listener.Drain(context.Background())`, which also retains the physical
+child-close result; only after the last borrower joined does it close the
+spend ledger and the issuer root in that order, recording one joined
+finalization result: the listener join result, retained admitted-child
+release errors, spend-close and issuer-close errors. The forwarded cause
+stays out of that join, so `fail()` does not report it twice. The handle's
+`Drain` waits for the recorded result up to the configured deadline and
+reports unproven cleanup on timeout without claiming success or closing
+anything; later waits return the same recorded result and never close a root
+twice, and `Joined` exposes the wrapper's drained channel so
+`hostLifetime.deferCloseUntil` waits for the real root release. No new
+Route/Credential package was added and the issuer key and spend ledger stay
+separate authorities; the exported `ClosedTokenListener.Joined`/`Drained`
+projections were retired with the old adapter path. If the process exits
+after a timeout, the terminal result remains failed/unproven and restart
+proves durable-root recovery separately. The delayed accepted-child test
+(`closed_issuer_late_close_test.go`) checks lock exclusion before join (both
+root leases refuse a second open), the cause forwarded while a child still
+borrows, eventual close while the process stays alive (both roots reopen
+after the join), repeated identical wait results, and a distinct root-close
+error: a removed spend journal is retained as the spend-root close failure
+and is never confused with the forwarded accept cause.
+
+## First source inventory
+
+The inventory covers all **360 tracked, non-test Go files** under
+`internal/node`, `internal/route`, `internal/endpoint`, and
+`internal/service` at committed `53f02e64`: Node 45, Route 127, Endpoint 126,
+Service 62. It includes platform files and package documentation. It excludes
+commands, other `internal` packages and tests. No committed file
+is omitted or assigned twice. The CSV assigns a proposed primary
+component to each file; a mixed file is explicitly marked for a boundary or
+split review. This is an ownership hypothesis, not a deletion list or a
+package-move instruction.
+
+| Treatment | Files | Meaning |
+| --- | ---: | --- |
+| `retain` | 165 | The existing package or primitive appears to have a coherent owner; preserve its contract while composing the new shape. |
+| `deepen` | 96 | Local ownership is visible but buried in a broad package; make the owner and lifetime explicit before deciding on a new package. |
+| `move-candidate` | 32 | The file's current package mixes different component responsibilities; decide the destination with the caller and close graph first. |
+| `boundary-review` | 40 | The file bridges components or its exact owner is unclear from the current API. Eight Node and five Route rows now have source-backed owners (F-33/F-34/F-44); Service Connection's `Done` promise and ordinary close order now agree (F-23 realized). |
+| `split-candidate` | 10 | One file contains distinct responsibilities; determine whether a local file split or a package boundary is justified. |
+| `compatibility-review` | 4 | A codec or Attachment appears to have no maintained production caller; confirm the accepted compatibility evidence before disposition. |
+| `retirement-review` | 0 | All former rows are cleared: the generic Endpoint chain was retired by ADR-0092, the twelve Route v2 files by ADR-0093, and the Service plaintext instruction by ADR-0094 (F-30/F-37/F-42). |
+
+The strongest positive boundary is already in `service/connection`,
+`service/instance`, `route/replay`, and Endpoint's small durable packages.
+`route/credential` has a cohesive token and ledger core, but three production
+files import the parent `route` package for its listener, admission channel
+and bootstrap controller. The largest
+unresolved boundary is the Route root package:
+its 74 production files mix Carrier, protected wire, client Source/JOIN,
+receiver admission, and compatibility evidence. The Endpoint root has 95
+production files with participant lifetime, publication, worker, and client
+path mixed together; recheck this inventory after any later accepted slice.
+
+Several source checks changed the classification:
+
+- `reachability.OpenStore` is called by Node resolution, so Reachability's
+  `store*.go` files are active storage, not old debris. `portable` and
+  `replacement` are called by `cmd/ardents`; they remain in the artifact and
+  enrollment path.
+- `node/closed_forwarding_admission.go` holds both forwarding reservation and
+  a role-token verifier used by control duties. `node/closed_hosting.go` holds
+  the shared host period, control admission, and pressure response. Moving
+  either whole file by its prefix would put shared authority under one duty.
+- `route/closed_node_open.go` combines the Node OPEN grammar with an accessor
+  on the bridge lane. `route/terminal/descriptor.go` imports
+  `service/reachability` for the private Descriptor bound. These are concrete
+  cases where a desired package move needs an API/dependency decision first.
+- Admission is a process-spanning operation, not one storage owner:
+  Custody's encrypted allocation journal, Credential's issuer reservation
+  ledger, Endpoint's potential-presentation journal and Replay's receiving
+  spend ledger have separate retry, restart and close rules. The installed
+  text command test invokes real Custody permission issuance for both roles;
+  these boundaries are current C0 behavior, not candidate file names.
+- The current Go import graph has `node -> route`, `endpoint -> route`,
+  `route/credential -> route`, and `route/terminal -> service/reachability ->
+  service/publication`. The issuer listener in `route/credential` therefore
+  cannot simply be pulled into a Route-root caller, and a new low-level wire
+  package must not inherit all of Reachability's store dependencies
+  just for its Descriptor size limit.
+- The v1 `LegBinding` codec and older Reachability Gateway/Relay/Client path
+  have no external production caller found in the targeted symbol pass. They
+  are review candidates only; this pass did not establish that their accepted
+  compatibility or test obligations can be retired.
+
+### Ten mixed files: first split within existing packages
+
+The ten `split-candidate` rows have source-level first cuts.
+These cuts name implementation responsibilities, not new package names or
+permission to change admission behavior.
+
+| Current file | Distinct responsibilities and callers | First cut |
+| --- | --- | --- |
+| `node/closed_forwarding_admission.go` | `closedForwardingAdmissionVerifier` and `closedForwardingReplenisher` reserve the forwarding host allowance and spend class-2 tokens; `closedRoleTokenVerifier` verifies selected-profile class keys for forwarding **and** control duties. | Realized: `closed_role_token_verification.go` owns the shared verifier inside `node`. Forwarding and control retain the same caller, reservation order, spend path and errors. No package seam or wire change was needed. |
+| `node/closed_hosting.go` | `openClosedHosting` opens one period before duty activation; `hostingPressure` samples that period for `resource_pressure.go`; `closedControlTokenVerifier` wraps shared token verification with class-1/3 host reservation for issuer, Introduction, Resolution and JOIN callers. | Realized: `closed_control_admission.go` owns the control admission wrapper; `closed_hosting.go` retains period opening and pressure. All control duties still call the same verifier and keep the same host reservation lifetime. |
+| `node/contract.go` | `Config.Current` receives one copied `state.NodeDuty` value (ADR-0104 retired the `DutyView`/`dutyFacts` getter facade); `Config` and role profiles select local roots/keys; `Event`/`Result` report lifecycle; `runtimeConfig` holds mutable host, pressure and clock state. | Split by local configuration and lifecycle observation/runtime state inside `node`. The F-07 State-owned copied `NodeDuty` handoff is applied; the remaining action is the local file split by responsibility, not a seam change. |
+| `route/closed_node_open.go` | `EncodeClosedNodeOpen`/`DecodeClosedNodeOpen` enforce the mandatory 50-byte Node OPEN and restriction grammar; `(*ClosedOuterBridgeLane).Restriction` reads an already-authenticated bridge child constraint. The decoder is called by the handshake and bridge; Node consumes the encoder/accessor. | Keep wire grammar together; move the accessor beside `ClosedOuterBridgeLane` implementation within `route` before considering package extraction. Preserve refusal of the retired 49-byte form and the non-ordinary nil-lane result. |
+| `endpoint/text_source_state.go` | `closedTextRoleMembers` binds current State to candidate members; `textEntrySets` opens the retained Entry root; `closeTextSourceRoots` closes Entry and token-journal roots. | Keep the State/Entry projection in an admission responsibility file and place the root open/close methods with the Endpoint root owner. Preserve the same lock and close-error path. |
+| `endpoint/text_source_prefix.go` | `openTextPrefix` reserves a Source opening and Route prefix under Context; `endpoint.textTokenJournal` lazily opens the root-owned durable journal. | Keep Source opening with its operation identity and move the token-journal root accessor beside Endpoint root lifetime. Do not transfer journal ownership to a transient prefix. |
+| `endpoint/text_introduction_registration.go` | `openTextRegistration` and `finishTextRegistration` own one registered Route channel and token spend; the latter half of the 401-line file projects committed Descriptor proof, refresh time, recipient and predecessor state. | Keep the registration type and its lock/ACK invariant; put registration opening/withdrawal and committed proof/refresh methods in responsibility-named files inside `endpoint`. Do not treat registration as publication readiness before the Descriptor ACK. |
+| `service/connection/stream_lifecycle.go` | The exact-count `Run` entrypoint and its exclusive send/receive/ack helpers are retired by ADR-0097; `establishInitialAttachment`, failure and close methods remain in the file serving current `RunBounded`, and the package map now claims only bounded half-close support. | Resolved by ADR-0097: exact-workload support is retired from the accepted owner; no separate responsibility file is needed. |
+| `service/connection/stream_support.go` | `acquireResource`, `erase` and `writeAll` serve timer observation, continuity-byte clearing and Application writes respectively. | Put each small helper beside the lifecycle or receive operation it supports and remove the catch-all file. Preserve timer release and full-write behavior. |
+| `service/instance/lifecycle.go` | Current durable Instance acceptance, Binding signing, publication commit and withdrawal remain; the old `OpenIntroduction` SealedIntroduction v1 decryptor was retired by ADR-0094 (F-42). | Done. ADR-0102 superseded ADR-0034 and stopped Introduction key emission: the persisted fields are gone from the `root-v2` schema, and pre-v3 roots are refused with the typed `ErrLegacyRoot`. |
+
+Each cut can be reviewed with existing direct tests and a source diff before
+any package move. It does not shorten the required final gate, and it should
+be scheduled after the active Endpoint/network slice rather than run as a
+second implementation stream.
+
+The table is intentionally file-level, not a claim that every Go file needs a
+different module. Before a move, inspect its non-test callers, imports,
+mutable state, resource ownership, and terminal cleanup. Then choose one
+interface and import direction for the component, updating `package-map.md`
+only when the package is actually introduced or renamed.
+
+## Where current packages obscure the model
+
+1. `internal/route` currently combines Carrier opening/listening, ARDP and
+   terminal grammar, admitted channels, client Source/JOIN operations, and
+   receiver-side primitives. The word *Route* does not identify which of those
+   owns physical transport, protected wire, or a client path.
+2. `internal/node` composes a process and five receiver duties in one package.
+   Forwarding also retains outgoing Carrier sessions and links; Route owns
+   some of their physical and admitted channel behavior. Their stop/join
+   relationship is real and must be explicit in the new shape.
+3. `internal/endpoint` composes local capability admission, worker, token stock,
+   publication, Route prefixes, authenticated Service attachment and Application
+   exchange. Its context coordinates necessary cross-owner ordering, while
+   private owner implementations remain difficult to navigate in one directory.
+4. `internal/service` already has distinct Instance, Publication, Reachability,
+   Target Link and Connection packages. The distinction between Service's
+   logical Connection and Route/Carrier physical connections needs to appear
+   in interfaces and naming at their handoff. The Route terminal Descriptor
+   codec currently imports `service/reachability` for a size bound, a concrete
+   dependency to resolve when placing wire grammar.
+5. `closed_*` and `text_*` filenames encode the implementation campaign across
+   many responsibilities. A package or owner name should supply that context
+   after the actual boundary is moved; a bulk rename alone cannot establish it.
+
+## Reconstruction method and next decisions
+
+1. Carry the selected handoffs into bounded owner changes:
+   State-to-Node's checked duty value is realized (F-07, ADR-0104; its F-45 role join settled by ADR-0103) and the
+   Service Connection attachment's physical-close result is realized in its existing package (F-23 done) and the offline
+   admission grammar lives in `internal/admission` (F-28/F-30 done) and the live issuer adapter's late-close owner is realized in Node as
+   `closedIssuerServer` (F-17 done). The table
+   of observed handoffs above already gives callers, input, result and close
+   owners. State's duty value fields are fixed against the accepted role join (ADR-0103/0104); Credential's
+   package move no longer awaits the late issuer-root close owner and stands on its own merits. Refine exported signatures only in the selected slice.
+2. Decide one-version retirement in accepted contract order: old Route v2
+   execution, Invite Entry writer, Reachability old writer/root, Instance old
+   key/root and AREP intake. For each, record last caller, persisted floor,
+   migration or typed refusal, and reader-removal criterion. Do not keep a
+   second writer simply because its decoder must temporarily remain.
+3. Assign each focused source cohort **retain**, **move/deepen**, or
+   **retire after decision** from the existing 360-file inventory. Reopen an
+   individual file only when those three decisions still conflict with its
+   caller or resource owner. This avoids treating 815 direct source traces as
+   a prerequisite for the architecture verdict.
+4. After the active Endpoint/network slices finish, freeze one integrated
+   candidate. Diff their actual production and test owners against this map;
+   preserve their changes and revise only conclusions invalidated by the diff.
+5. Hand bounded, accepted slices to the one active C0 implementation owner
+   under the repository work-in-progress limit. A new Go package, if needed,
+   arrives with its real caller, implementation, tests, `doc.go` and
+   package-map edge in one buildable slice. The combined installed Ubuntu
+   Publisher/Reader journey on TCP/TLS and QUIC, plus `make check`, is the
+   later implementation acceptance gate, not a condition for finishing the
+   architecture analysis.
+
+The existing [Node refactoring plan](node-architecture-refactoring.md) and
+[Endpoint ownership map](endpoint-architecture-refactoring.md) are inputs to
+steps 1-2. Their proposed packages are not fixed until the cross-system
+dependency and close-ownership map is complete.

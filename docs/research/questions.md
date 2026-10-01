@@ -1,9 +1,19 @@
 # Open research queue
 
+R-168 is decided by [the closed Service v3 format inventory](records/r-168-service-v3-format-reset.md)
+and promoted to [ADR-0117](../adr/0117-reset-closed-service-formats-to-v3.md).
+It records the Product Owner's fresh-root/no-supported-client assumption; it is
+not an additional active C0 research question.
+
 Research is temporary decision work. Once a question is decided, its current
 contract is promoted to an ADR, product, security, technical, reference, or
 development owner. The completed record remains provenance under
 `docs/research/records/`, but does not remain in this active route.
+
+[R-170](records/r-170-unified-protected-endpoint-artifact.md) is decided and
+promoted to [ADR-0119](../adr/0119-bind-protected-endpoint-generation-to-release.md)
+and the enrollment/Release/runtime owners. It selects no additional active
+research; installer delivery state belongs in the GitHub milestone.
 
 An open record must state a decision-relevant question, falsifiable hypothesis,
 inputs, evidence, limitations, and the decision it can unlock. Delivery labels
@@ -11,12 +21,14 @@ inside historical records are provenance only and authorize no implementation.
 
 | ID | Open question | Current status |
 |---|---|---|
+| R-167 / [#262](https://github.com/dianabuilds/ardents-network/issues/262) | What owner pays for or ends future transport traffic from a retained actual-work Carrier after the last child Join and its parent host reservation release? | **Paused in favor of R-170, 2026-09-30.** Preserve draft PR #275 and original evidence. Compare TCP/TLS default keep-alive, QUIC keepalive/close, 120-second idle retention, State invalidation and low-watermark behavior when reselected. A retained Carrier emitting traffic after all matching future-cost coverage is released falsifies the current safety hypothesis. No pool policy or runtime contract is accepted. |
+| R-157 / [#78](https://github.com/dianabuilds/ardents-network/issues/78) | What receive-credit and shared DATA/control reservation makes every admitted Source/forwarding lane promise payable under the existing prefix, nested-parent and receiving-duty ceilings without silently reducing the selected workload? | **Prepared, paused pending Product Owner constraint choice.** [Draft R-157 in its research revision](https://github.com/dianabuilds/ardents-network/blob/e0dc1e382070f3d3c403b7501ad520ad8bfacdc9/docs/research/records/r-157-receive-credit.md) falsifies the present 64 KiB-per-lane promise under the 4 MiB prefix, but selects no new grant, queue or wire contract. #79 remains blocked until a backed formula, compatibility and nested/latency evidence are accepted. This row does not select active research. |
 | [R-148](records/r-148-shared-resource-contributor-benefits.md) | Which concrete products using shared resources could motivate useful relay contribution, and how would people use them? | **Open; exploratory catalogue prepared on 2026-09-06.** The [product catalogue](../product/future-product-catalog.md) describes 18 user-facing concepts and possible contributor benefits without selecting priorities. Accounting, funding, privacy and recovery remain separate questions. No mechanism, experiment, C0 research execution or implementation slice selected. |
 | [R-147](records/r-147-contributor-resource-controls.md) | Which owner-controlled resource policy could make co-resident relay contribution acceptable on a personal device while preserving bounded work and useful network capacity? | **Open; theoretical comparison completed on 2026-09-06.** Recommends measured presets, editable ceilings and bounded adaptation, with optional scheduling and quota pacing. No co-resident profile, experiment, C0 research execution, or implementation slice is selected. |
 | [R-149](records/r-149-autonomy-transition.md) | How can Ardents meet its public product tasks in a potentially fully hostile environment without indispensable appointed administration or weakened owner rights? | **Open; voting-core composition assessed on 2026-09-07.** The [focused assessment](records/r-149-voting-core-design.md) records the no-cryptoasset/public-pseudonym choices, component comparison, executed conditional sampling/turnout/workload envelope and five unresolved architecture gates. A [conditional development/verification map](records/r-149-voting-work-packages.md) prepares the handoff; no task is implementation-ready or activated. Identity-splitting neutrality, actual admission/close/bootstrap and joint budgets remain unresolved. Canonical Names/View and no-disclosure remain binding; no public protocol, human authority or live network experiment selected. |
 | [R-137](records/r-137-c0-stress-test.md) | Did the pre-C0 Linux stress spike reveal a maintained-candidate defect? | **Deferred.** The partial runner isolated a test-lifecycle artefact but did not produce a clean exact-candidate stress result. Reopen only with a selected C0 Linux budget and external evidence root. |
-| R-138 | Can a bounded real-concurrency simulation validate the maintained multi-agent loop without claiming production coordination or substitute-user validation? | **Deferred outside C0.** The experiment's smoke slice and S3.6 retry logic remain unaccepted evidence; they create no C0 requirement or claim. Reopen only after a Product Owner selects this decision over C0 readiness work. |
-| R-139 | Can a coordinator constrain goal-driven agents to stable consumer identities and immutable decisions while preserving real Source acceptance and an expected invalid-State rejection? | **Deferred outside C0.** S3.6.5 locally qualifies the repaired coordinator, but four-persona concurrency and any cap-exhaustion security claim remain separately gated. Reopen only after a Product Owner selects this decision over C0 readiness work. |
+| R-138 | Can a bounded real-concurrency simulation validate the maintained multi-agent loop without claiming production coordination or substitute-user validation? | **Deferred outside C0; historical harness retired.** The [pinned S3.1/S3.6 source and runnable instructions](https://github.com/dianabuilds/ardents-network/tree/7905139df8bc87dc17df4ddad51ddf37384e61b2/experiments/long-running-simulation-2026-09-04) remain historical evidence. The smoke slice and S3.6 retry logic were not accepted, and Docker-backed 100-tick and external trials were not run. They create no C0 requirement or claim. Reopen only after a Product Owner selects this decision over C0 readiness work. |
+| R-139 | Can a coordinator constrain goal-driven agents to stable consumer identities and immutable decisions while preserving real Source acceptance and an expected invalid-State rejection? | **Deferred outside C0; historical harness retired.** The sequential local-Docker observation at [`8bcbdf6c`](https://github.com/dianabuilds/ardents-network/commit/8bcbdf6cbf4f20e6210b772c2f21fdff4cf4d954) recorded the repaired harness's ten local acceptance checks as passing, including stable per-persona roots, immutable events, and one expected `invalid-state` probe rejection. Its owner acceptance was pending when the runnable tree was retired. It did not qualify four-persona concurrency, cap-exhaustion attacker reachability, a VPS or public network, independent operators, or any current C0 product behavior. Reopen only after a Product Owner selects this decision over C0 readiness work. |
 
 R-093 is deferred without a selected co-resident Contributor experiment and is
 not active work. R-097, R-105, R-113, R-129, and R-134 are decided and
@@ -25,8 +37,31 @@ implementation-linked; their maintained contracts are owned respectively by
 [Alpha-control transition](../technical/alpha-control-transition.md), the
 [C0 product scope](../product/scope.md), and
 [ADR-0067](../adr/0067-retire-completed-local-alpha-ceremonies.md).
+
+[R-169](records/r-169-source-duty-lifetime.md) decided that a local Direct
+Source guard follows joined dependent work and retained derived State, rather
+than only the Epoch or wave deadline. Its contract is promoted to
+[ADR-0118](../adr/0118-retain-direct-source-guards-through-dependent-work.md)
+and the [Network owner](../technical/network-route-node.md#direct-source-duty-lifetime-and-release).
+This clarification of ADR-0005 is not a second active C0 research question;
+the runtime correction needs a GitHub implementation issue.
 R-135 is decided and promoted to [ADR-0068](../adr/0068-bind-transit-issuer-roots-to-state-generation.md);
-its maintained contract belongs to [Transit Grant acquisition](../technical/transit-grant-acquisition.md).
+its Transit implementation has since been retired under
+[ADR-0092](../adr/0092-retire-generic-publisher-transit-chain.md) and
+[ADR-0093](../adr/0093-retire-route-v2-execution-closure.md).
+
+R-155 is decided and promoted to
+[ADR-0089](../adr/0089-retire-old-node-starts-preserve-owned-shutdown.md).
+The [Network/Node owner](../technical/network-route-node.md#old-start-retirement)
+and [Contributor runbook](../reference/rendezvous-contributor.md#selected-retirement-transition)
+hold the maintained retirement boundary; implementation remains in the GitHub
+ledger rather than this research queue.
+R-156 is decided and promoted to
+[ADR-0090](../adr/0090-retire-name-operator-network-adapters.md). The
+[Naming owner](../technical/naming.md#operator-name-network-command-retirement)
+and [command reference](../reference/commands.md#ardents) hold the maintained
+retirement boundary. Runtime refusal remains issue #99 in the GitHub ledger;
+the decision does not select or implement protected Service Name access.
 R-136 is decided and promoted to [ADR-0070](../adr/0070-own-volatile-user-route-orchestration.md);
 its maintained Route/Endpoint boundary belongs to [Network Route and Node](../technical/network-route-node.md)
 and [Endpoint and Service runtime](../technical/endpoint-service-runtime.md).

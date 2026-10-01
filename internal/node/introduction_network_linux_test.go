@@ -1,0 +1,114 @@
+//go:build linux
+
+package node
+
+import (
+	"net"
+	"testing"
+	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
+	"github.com/dianabuilds/ardents-network/internal/route/terminal"
+
+	routecarrier "github.com/dianabuilds/ardents-network/internal/route/carrier"
+)
+
+func TestClosedIntroductionRegistrationOwnsSlotUntilExpiry(t *testing.T) {
+	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP, routecarrier.ClosedCarrierQUIC} {
+		t.Run(string(carrier), func(t *testing.T) {
+			fixture := newPrivateRecipientNetworkFixture(t, carrier, ardp.PurposeIntroduction, 3)
+			request := terminal.RegistrationRequest{Nonce: [32]byte{101}, Slot: [32]byte{102}, Revision: 1, Expiry: time.Now().UTC().Add(5 * time.Second).Truncate(time.Second)}
+			first, closeFirst, status := registerIntroductionFixture(t, fixture, 0, request)
+			defer closeFirst()
+			if status != 0 {
+				t.Fatal("valid Publication registration refused")
+			}
+			_, closeDuplicate, status := registerIntroductionFixture(t, fixture, 1, request)
+			closeDuplicate()
+			if status != 1 {
+				t.Fatal("duplicate slot replaced its owning channel")
+			}
+			withdraw := terminal.RegistrationRequest{Nonce: [32]byte{103}, Slot: request.Slot, Revision: request.Revision, Withdraw: true}
+			if status := sendRegistrationFixture(t, first, withdraw); status != 0 {
+				t.Fatal("owning withdrawal refused")
+			}
+			closeFirst()
+			_, closeReclaim, status := registerIntroductionFixture(t, fixture, 2, request)
+			closeReclaim()
+			if status != 1 {
+				t.Fatal("withdrawn slot was reclaimed within its expiry")
+			}
+			request.Slot[0]++
+			request.Nonce[0]++
+			request.Expiry = time.Now().UTC().Add(5 * time.Second).Truncate(time.Second)
+			_, closeLost, status := registerIntroductionFixture(t, fixture, 3, request)
+			if status != 0 {
+				t.Fatal("fresh slot refused")
+			}
+			closeLost()
+			_, closeAfterLoss, status := registerIntroductionFixture(t, fixture, 4, request)
+			closeAfterLoss()
+			if status != 1 {
+				t.Fatal("channel loss made old slot reclaimable")
+			}
+			if _, closeReplay, err := fixture.openTerminal(t.Context(), fixture.tokens[3], 3); err == nil {
+				closeReplay()
+				t.Fatal("spent Publication token admitted")
+			}
+			if _, closeWrong, err := fixture.openTerminal(t.Context(), fixture.tokens[5], 1); err == nil {
+				closeWrong()
+				t.Fatal("wrong admission class accepted")
+			}
+			request.Slot[0]++
+			request.Nonce[0]++
+			request.Expiry = time.Now().UTC().Add(5 * time.Second).Truncate(time.Second)
+			valid, closeValid, status := registerIntroductionFixture(t, fixture, 5, request)
+			defer closeValid()
+			if status != 0 {
+				t.Fatal("wrong-class attempt spent a valid class-3 token")
+			}
+			withdraw.Nonce = request.Nonce // Replaying the request nonce must close the registration.
+			withdraw.Slot, withdraw.Revision = request.Slot, request.Revision
+			body, err := terminal.EncodeRegistrationRequest(withdraw)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := ardp.WriteFrame(valid, ardp.Frame{Kind: 10, Body: body}); err != nil {
+				t.Fatal(err)
+			}
+			if frame, err := ardp.ReadFrame(valid); err == nil {
+				t.Fatalf("replayed nonce accepted: %+v", frame)
+			}
+		})
+	}
+}
+
+func registerIntroductionFixture(t *testing.T, fixture *resolutionNetworkFixture, token int, request terminal.RegistrationRequest) (net.Conn, func(), uint8) {
+	t.Helper()
+	connection, closeCarrier, err := fixture.openTerminal(t.Context(), fixture.tokens[token], 3)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(closeCarrier)
+	return connection, closeCarrier, sendRegistrationFixture(t, connection, request)
+}
+
+func sendRegistrationFixture(t *testing.T, connection net.Conn, request terminal.RegistrationRequest) uint8 {
+	t.Helper()
+	body, err := terminal.EncodeRegistrationRequest(request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := ardp.WriteFrame(connection, ardp.Frame{Kind: 10, Body: body}); err != nil {
+		t.Fatal(err)
+	}
+	frame, err := ardp.ReadFrame(connection)
+	if err != nil || frame.Kind != 11 || frame.Lane != 0 {
+		t.Fatalf("registration result: %v", err)
+	}
+	status, proof, err := terminal.DecodeDescriptorResult(frame.Body, request.Nonce)
+	if err != nil || len(proof) != 0 {
+		t.Fatalf("registration result payload: %v", err)
+	}
+	return status
+}

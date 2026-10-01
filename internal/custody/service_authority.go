@@ -43,7 +43,6 @@ func (vault *Vault) createServiceAuthority(ctx context.Context, operation Operat
 func validServiceAuthorityCreation(operation Operation) bool {
 	binding := operation.Authority.Binding
 	return operation.RecordID == "" && operation.Path == "" && operation.Expected == (AuthorityBinding{}) &&
-		operation.Transition == nil && operation.Preparation == nil && operation.Reconciliation == nil &&
 		binding.Kind == AuthorityService && binding.Environment != [32]byte{} && binding.Network != [32]byte{} &&
 		binding.Root != [32]byte{} && binding.IDCommitment == [32]byte{} && len(operation.Authority.RootMaterial) == 0 &&
 		operation.Authority.Generation == 0 && operation.Authority.Revision == 0 && len(operation.Authority.Watermarks) == 0

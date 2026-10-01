@@ -2,7 +2,6 @@ package architecture
 
 import (
 	"bytes"
-	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -27,7 +26,8 @@ func walk(t *testing.T, root string, visit func(string, os.DirEntry)) {
 			return err
 		}
 		if entry.IsDir() && (entry.Name() == ".git" || entry.Name() == ".idea" ||
-			entry.Name() == ".codex-tmp" || entry.Name() == ".codex-remote-attachments") {
+			entry.Name() == ".codex-tmp" || entry.Name() == ".codex-remote-attachments" ||
+			entry.Name() == ".claude") {
 			return filepath.SkipDir
 		}
 		paths = append(paths, path)
@@ -72,8 +72,3 @@ type fileInfoEntry struct{ os.FileInfo }
 
 func (entry fileInfoEntry) Type() os.FileMode          { return entry.Mode().Type() }
 func (entry fileInfoEntry) Info() (os.FileInfo, error) { return entry.FileInfo, nil }
-
-func Example_projectShape() {
-	fmt.Println("cmd -> internal")
-	// Output: cmd -> internal
-}

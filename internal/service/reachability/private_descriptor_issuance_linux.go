@@ -6,6 +6,9 @@ import (
 	"crypto"
 	"crypto/ed25519"
 	"errors"
+	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/service/publication"
 )
 
 // IssuePrivate binds one short-lived recipient to the exact public publication
@@ -34,5 +37,18 @@ func IssuePrivate(input PrivateIssueInput) ([]byte, Descriptor, error) {
 		return nil, Descriptor{}, errors.New("private reachability Instance signature failed")
 	}
 	copy(value.Signature[:], signature)
-	return append(body, signature...), cloneDescriptor(value), nil
+	// Every variable-length field of value was freshly copied at
+	// construction, so the issued Descriptor shares no slice with the caller.
+	return append(body, signature...), value, nil
+}
+
+// verifiedCurrent re-verifies the exact supplied publication record against its
+// own Authority credential. It serves the private issuance path only; ADR-0105
+// retired the generation-2 writers that once shared it.
+func verifiedCurrent(value publication.Current) (publication.Current, error) {
+	if value.Credential.AuthorityPublic == [32]byte{} || value.Credential.NetworkID == [32]byte{} || len(value.Record) == 0 {
+		return publication.Current{}, errors.New("publication is incomplete")
+	}
+	return publication.Decode(value.Record, ed25519.PublicKey(value.Credential.AuthorityPublic[:]), value.Credential.NetworkID,
+		time.Unix(value.Credential.NotBefore, 0).UTC())
 }

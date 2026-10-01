@@ -87,6 +87,8 @@ across long runs. No test-only issuer, unlimited quota, clock rollback or
 ledger reset may manufacture enough successful samples. Failures count even
 when a later retry succeeds. Run each seed on both selected Carriers.
 
+For issue #60, NET-32 uses a declared ten-minute observation and conservative 24-hour projection; no 24-hour campaign is part of this issue. The receipt states both durations and cannot be treated as an observed-day result.
+
 User-idle measurement starts after explicit enrollment/bootstrap, with no
 Application job or publication active, and includes required State/time refresh,
 cleanup, failed refresh and any bounded preparation. Report startup separately.
@@ -105,6 +107,11 @@ It generates the predeclared useful byte schedule and canaries instead of the
 text grammar; it has no arbitrary egress or authority. The qualification runner
 is its sole caller. A normal text-job inventory cannot admit its executable,
 and there is no runtime flag, caller bool or arbitrary-program launch bypass.
+The deterministic scheduled-byte generator covers all 256 byte values in its
+fixed conformance window, including NUL and invalid UTF-8. Verification is
+offset-sensitive across unequal fragments; corruption and a one-byte-short
+workload cannot pass. This checks the laboratory corpus, not a text snapshot or
+an arbitrary Application payload contract.
 Register its exact test package/caller/profile with the implementing change.
 The real Endpoint, Node, Route and Service implementations remain unchanged
 between the text journey and these network measurements. Report Application
@@ -180,8 +187,9 @@ candidate results. No such stronger claim is admitted by P9 here.
 | Endpoint/Broker/Application | Admit only verified confined workers for the successor; add typed Name/Link local Interface version 2 and the fixed text Application without arbitrary execution authority |
 | Resource/Release/install | Admit one complete candidate inventory with root-owned units and worker; enforce host periods, authenticated adoption and drain; preserve release/authority floors |
 
-Compatibility is explicit: the current C0 generation and local AAI2 remain
-their existing contracts before adoption. Prepare successor binaries,
+Compatibility is explicit: the current C0 generation retains its persisted and
+network identities, but the uncalled local AAI2 implementation is removed.
+Prepare successor binaries,
 configuration, units and validated state conversion without accepting new
 successor traffic. Quiesce new old-generation jobs, drain at most 5 seconds,
 terminate remaining work, then atomically adopt one generation and its exact
@@ -209,3 +217,29 @@ publication/Connection composition -> qualified local job/install integration
 -> complete migration and system trials. Each layer uses the already selected
 contract of its dependencies. This is a design dependency graph, not issues,
 assigned work or authorization to start multiple C0 slices.
+
+## Consolidation verification
+
+[ADR-0086 in the accepted design revision](https://github.com/dianabuilds/ardents-network/blob/e6168f167332f5a77f02613cc7f30a35a0c49787/docs/adr/0086-consolidate-protected-network-and-retire-predecessor-runtimes.md)
+preserves this entire acceptance contract for the changed consolidated candidate.
+Each bounded refactor/retirement includes its affected behavior checks and owner
+documents. Do not defer them into the final system campaign. The AAI2 removal
+is gated by retained binary-stream, fragmentation, half-close, cancellation
+and terminal cases through AAI3 with strict version refusal before Application
+owner I/O.
+
+Final qualification separates ordinary installed TCP/TLS and QUIC journeys,
+durable admission/adoption failures (P5/P7/P10), wire/volatile lifecycle (P2/P7),
+resource cost and floods (P5/P8), confinement/worker loss (P6/P7), complete role
+observations and honest correlation diagnostics (P3/P9), cryptographic bindings
+(P4), and exact supply-chain closure (P11). P1 is exercised by the installed
+journeys. Every applicable case and numeric bound above remains required;
+splitting execution into issues never waives a case. Bind all results to the
+same declared source/build candidate and invalidate affected evidence after
+changes. Historical results do not automatically qualify the new composition.
+
+Existing lifecycle tests should exercise real owners through their consumer
+seams. A retirement replaces a supported old positive path only after its
+contract change, with explicit negative entrypoint tests and retained required
+migration evidence. Architecture/profile/deadcode inventories change with the
+owning implementation, not by excluding a failing required path.

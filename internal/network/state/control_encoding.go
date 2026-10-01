@@ -4,7 +4,6 @@ import (
 	"crypto/sha256"
 	"encoding/binary"
 	"fmt"
-	"time"
 )
 
 func encodeDistributionState(state distributionState) []byte {
@@ -54,23 +53,4 @@ func encodeDistributionState(state distributionState) []byte {
 func distributionDigest(raw []byte) string {
 	value := sha256.Sum256(append([]byte("ardents-h3-distribution-state-v1\x00"), raw...))
 	return fmt.Sprintf("%x", value)
-}
-
-func trustedNow(config config, state distributionState) (time.Time, error) {
-	now := config.clock().UTC()
-	monotonic := config.anchorWall.Add(time.Since(config.anchorMono))
-	if monotonic.After(now) {
-		now = monotonic
-	}
-	observation := config.observe().UTC()
-	if observation.IsZero() || now.Sub(observation).Abs() > 2*time.Second {
-		return time.Time{}, errClockUncertain
-	}
-	if now.Unix()+2 < state.trustedTimeFloor {
-		return time.Time{}, errClockUncertain
-	}
-	if now.Unix() < state.trustedTimeFloor {
-		return time.Unix(state.trustedTimeFloor, 0).UTC(), nil
-	}
-	return now, nil
 }

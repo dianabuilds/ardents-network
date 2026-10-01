@@ -2,17 +2,17 @@
   "schema": "ardents-source-ownership-v1",
   "owners": [
     "network",
-    "application-interface-v1",
+    "application-administration",
     "historical-evidence",
-    "application-interface-v2",
+    "application-connection",
     "text-application"
   ],
   "rules": [
     {
-      "id": "application-interface-v1",
-      "owner": "application-interface-v1",
+      "id": "application-administration",
+      "owner": "application-administration",
       "include_prefixes": [
-        "internal/application/interfacev1/"
+        "internal/application/administration/"
       ]
     },
     {
@@ -66,9 +66,9 @@
       "exclude_prefixes": [
         "docs/research/",
         "experiments/",
-        "internal/application/interfacev1/",
+        "internal/application/administration/",
         "tests/compatibility/",
-        "internal/application/interfacev2/",
+        "internal/application/connection/",
         "internal/application/textdocument/",
         "cmd/ardents-text/",
         "packaging/text-worker/",
@@ -79,10 +79,10 @@
       ]
     },
     {
-      "id": "application-interface-v2",
-      "owner": "application-interface-v2",
+      "id": "application-connection",
+      "owner": "application-connection",
       "include_prefixes": [
-        "internal/application/interfacev2/"
+        "internal/application/connection/"
       ]
     },
     {
@@ -99,7 +99,51 @@
       ]
     }
   ],
+  "pr_check_mappings": [
+    {
+      "path_prefix": "scripts/diagnostics/",
+      "race": true,
+      "owners": [
+        { "package": "internal/architecture", "test_pattern": "^TestLocalDiagnosticsCollector$" },
+        { "package": "internal/diagnostics/process", "test_pattern": "^Test" }
+      ]
+    },
+    {
+      "path_prefix": "packaging/stream-qualification-worker/",
+      "race": true,
+      "owners": [
+        {"package": "cmd/ardents-qualification", "test_pattern": "^Test"},
+        {"package": "cmd/ardents-stream-qualification", "test_pattern": "^Test"},
+        {"package": "internal/application/streamqualification", "test_pattern": "^Test"}
+      ]
+    },
+    {
+      "path_prefix": "tests/qualification/stream-network-two-host/",
+      "race": true,
+      "owners": [
+        {"package": "cmd/ardents-qualification", "test_pattern": "^Test(?:Qualification|ResourceVerdict|Issue60|WholeOwner|FailedNET14V)"},
+        {"package": "tests/e2e/node/fixturecommand/netem-relay", "test_pattern": "^Test(?:RelayConfiguration|CopyRelayDirection|QualificationNetworkCells)"},
+        {"package": "tests/epochfixture/network", "test_pattern": "^Test"},
+        {"package": "tests/qualification/stream-network-two-host/fixturecommand/qualification-network", "test_pattern": "^Test"},
+        {"package": "internal/endpoint", "test_pattern": "^Test.*(?:Qualification|Stream)"},
+        {"package": "internal/node", "test_pattern": "^Test(?:Closed|Hosting)"}
+      ]
+    },
+    {
+      "path_prefix": "tests/qualification/net32-idle-one-host/",
+      "race": true,
+      "owners": [
+        {"package": "cmd/ardents-qualification", "test_pattern": "^Test(?:Qualification|ResourceVerdict|Issue60|WholeOwner|FailedNET14V)"},
+        {"package": "internal/endpoint", "test_pattern": "^Test.*(?:Qualification|Stream)"}
+      ]
+    }
+  ],
   "qualification_lanes": [
+    {
+      "id": "protected-installation",
+      "owner": "network",
+      "path": "tests/qualification/protected-installation"
+    },
     {
       "id": "text-worker-network",
       "owner": "network",
@@ -151,19 +195,14 @@
       "path": "tests/qualification/service-credential-response-linux"
     },
     {
-      "id": "native-rendezvous-multihost",
+      "id": "net32-idle-one-host",
       "owner": "network",
-      "path": "tests/qualification/native-rendezvous-multihost"
+      "path": "tests/qualification/net32-idle-one-host"
     },
     {
-      "id": "native-rendezvous-host",
+      "id": "stream-network-two-host",
       "owner": "network",
-      "path": "tests/qualification/native-rendezvous-host"
-    },
-    {
-      "id": "alpha-control-two-endpoints",
-      "owner": "network",
-      "path": "tests/qualification/alpha-control-two-endpoints"
+      "path": "tests/qualification/stream-network-two-host"
     }
   ],
   "artifact_lanes": [

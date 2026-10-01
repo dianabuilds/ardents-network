@@ -10,7 +10,7 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/dianabuilds/ardents-network/internal/application/interfacev2/connection"
+	"github.com/dianabuilds/ardents-network/internal/application/connection"
 )
 
 // This is only a local AAI3 peer. It supplies no State, Route, worker launch or
@@ -22,6 +22,30 @@ type textReadPeer struct {
 	responseSent chan struct{}
 	opens        atomic.Int32
 	requestBytes atomic.Int32
+}
+
+type refusingTextReadPeer struct {
+	outcome connection.Outcome
+	opens   atomic.Int32
+}
+
+func (peer *refusingTextReadPeer) Open(_ context.Context, request connection.Request) (connection.Stream, error) {
+	if request.Destination != connection.TargetLink || request.Value != "fixture-link" {
+		return nil, errors.New("fixture refused destination")
+	}
+	peer.opens.Add(1)
+	return nil, connection.Refuse(peer.outcome)
+}
+
+type setupBlockingTextReadPeer struct{ entered chan struct{} }
+
+func (peer *setupBlockingTextReadPeer) Open(ctx context.Context, request connection.Request) (connection.Stream, error) {
+	if request.Destination != connection.TargetLink || request.Value != "fixture-link" {
+		return nil, errors.New("fixture refused destination")
+	}
+	close(peer.entered)
+	<-ctx.Done()
+	return nil, ctx.Err()
 }
 
 func textResponse(body []byte) []byte {

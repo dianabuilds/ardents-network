@@ -121,8 +121,10 @@ func enrollmentBundle(t *testing.T, command string) (string, string, string) {
 		t.Fatal(err)
 	}
 	artifactName := "ardents-" + runtime.GOOS + "-" + runtime.GOARCH
+	controlName := "ardents-control-" + runtime.GOOS + "-" + runtime.GOARCH
 	if runtime.GOOS == "windows" {
 		artifactName += ".exe"
+		controlName += ".exe"
 	}
 	artifact, err := os.ReadFile(command)
 	if err != nil {
@@ -132,7 +134,7 @@ func enrollmentBundle(t *testing.T, command string) (string, string, string) {
 	platform := runtime.GOOS + "-" + runtime.GOARCH
 	targetPath := "ardents/" + platform + "/endpoint"
 	descriptor := strings.Join([]string{
-		"schema=ardents-closed-alpha-enrollment-v1",
+		"schema=ardents-closed-alpha-enrollment-v3",
 		"cohort=closed-cohort-1",
 		"release=alpha-1",
 		"platform=" + platform,
@@ -149,6 +151,8 @@ func enrollmentBundle(t *testing.T, command string) (string, string, string) {
 		"control_release_root=release.pub",
 		"control_network_root=network.pub",
 		"control_compatibility_root=compatibility.pub",
+		"corpus_authority=corpus.pub",
+		"control_artifact=" + controlName,
 	}, "\n") + "\n"
 	files := map[string][]byte{
 		"1.root.json":       []byte("synthetic trusted root\n"),
@@ -161,15 +165,21 @@ func enrollmentBundle(t *testing.T, command string) (string, string, string) {
 		"release.pub":       []byte("release key"),
 		"network.pub":       []byte("network key"),
 		"compatibility.pub": []byte("compatibility key"),
+		"corpus.pub":        []byte("corpus authority\n"),
+		controlName:         []byte("separately manifested alpha control command"),
 		artifactName:        artifact,
 		"timestamp.json":    []byte("synthetic metadata\n"),
 	}
 	for name, contents := range files {
+		mode := os.FileMode(0o600)
+		if name == controlName {
+			mode = 0o700
+		}
 		if name != artifactName {
-			writeEnrollmentFile(t, filepath.Join(bundle, name), contents, 0o600)
+			writeEnrollmentFile(t, filepath.Join(bundle, name), contents, mode)
 		}
 	}
-	names := []string{"1.root.json", "RELEASE", artifactName, "catalog.ac1", "catalog.pub", "compatibility.ac1", "compatibility.pub", "network.ac1", "network.pub", "release.ac1", "release.pub", "timestamp.json"}
+	names := []string{"1.root.json", "RELEASE", controlName, artifactName, "catalog.ac1", "catalog.pub", "compatibility.ac1", "compatibility.pub", "corpus.pub", "network.ac1", "network.pub", "release.ac1", "release.pub", "timestamp.json"}
 	lines := make([]string, 0, len(names))
 	for _, name := range names {
 		digest := sha256.Sum256(files[name])

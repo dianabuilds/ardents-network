@@ -17,7 +17,7 @@ func TestClosedNativeRecordRoundTrips(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := "eb4eb78a776102345e0ad6667090d44640ab648f17ba013afa49e57f8f3636ea"; fmt.Sprintf("%x", context) != got {
+	if got := "9888b97e710b9e7aedea7c708fb42fa0247657d79a9021f08d0401fe1a15a8d7"; fmt.Sprintf("%x", context) != got {
 		t.Fatalf("ConnectionContext = %x, want %s", context, got)
 	}
 	challenge := Challenge{Network: [32]byte{1}, Target: [32]byte{2}, InstanceGeneration: 5, Context: context, Nonce: [32]byte{9}}
@@ -83,6 +83,11 @@ func TestNativeRecordRejectsProfileKindLengthAndContinuityMutations(t *testing.T
 		t.Fatal(err)
 	}
 	base := wire.Bytes()
+	old := append([]byte(nil), base...)
+	copy(old[:len(connectionPrefix)], []byte("ardents-service-connection-v2\x00"))
+	if _, err := Read(bytes.NewReader(old)); err == nil {
+		t.Fatal("old Service Connection record was accepted")
+	}
 	for _, mutation := range []struct {
 		name  string
 		at    int

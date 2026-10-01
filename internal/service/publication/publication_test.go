@@ -1,6 +1,7 @@
 package publication
 
 import (
+	"bytes"
 	"context"
 	"crypto"
 	"crypto/ed25519"
@@ -86,6 +87,24 @@ func TestPublishRetainsNonExportingInstanceSigner(t *testing.T) {
 	}
 }
 
+func TestDecodeRefusesOldPublicationRecord(t *testing.T) {
+	fixture := newPublicationFixture(t)
+	owner, err := Open(fixture.config(t.TempDir()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer owner.Close()
+	current, err := owner.Publish(context.Background(), fixture.input(t, 1))
+	if err != nil {
+		t.Fatal(err)
+	}
+	old := append([]byte(nil), current.Record...)
+	copy(old[:len(publicationPrefix)], []byte("ardents-service-publication-v1\x00"))
+	if _, err := Decode(old, fixture.authority, fixture.network, fixture.now); err == nil {
+		t.Fatal("old publication record was accepted")
+	}
+}
+
 func TestPersistedPublicationIsNotLiveAfterRestartAndFloorSurvives(t *testing.T) {
 	t.Parallel()
 	fixture := newPublicationFixture(t)
@@ -120,6 +139,33 @@ func TestPersistedPublicationIsNotLiveAfterRestartAndFloorSurvives(t *testing.T)
 	}
 }
 
+func TestEmptyPublicationRootReopensWithZeroFloor(t *testing.T) {
+	t.Parallel()
+	fixture := newPublicationFixture(t)
+	root := t.TempDir()
+	owner, err := Open(fixture.config(root))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if floor, err := owner.Floor(); err != nil || floor != 0 {
+		t.Fatalf("new root floor = %d, %v", floor, err)
+	}
+	if err := owner.Close(); err != nil {
+		t.Fatal(err)
+	}
+	reopened, err := Open(fixture.config(root))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer reopened.Close()
+	if floor, err := reopened.Floor(); err != nil || floor != 0 {
+		t.Fatalf("reopened empty root floor = %d, %v", floor, err)
+	}
+	if _, err := reopened.Publish(t.Context(), fixture.input(t, 1)); err != nil {
+		t.Fatalf("first publication after empty reopen: %v", err)
+	}
+}
+
 func TestOpenRejectsSurplusOrTamperedPublicationState(t *testing.T) {
 	t.Parallel()
 	fixture := newPublicationFixture(t)
@@ -140,6 +186,26 @@ func TestOpenRejectsSurplusOrTamperedPublicationState(t *testing.T) {
 	}
 	if _, err := Open(fixture.config(root)); err == nil {
 		t.Fatal("surplus immutable generation was accepted")
+	}
+}
+
+func TestOpenRefusesOldPublicationRootBeforeCreatingLease(t *testing.T) {
+	fixture := newPublicationFixture(t)
+	root := t.TempDir()
+	oldMarker := []byte("ardents-service-publication-v1\n")
+	oldPath := filepath.Join(root, ".ardents-service-publication-v1")
+	if err := os.WriteFile(oldPath, oldMarker, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Open(fixture.config(root)); err == nil {
+		t.Fatal("old publication root was accepted")
+	}
+	if _, err := os.Lstat(filepath.Join(root, rootLockName)); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("old root gained a lease: %v", err)
+	}
+	retained, err := os.ReadFile(oldPath)
+	if err != nil || !bytes.Equal(retained, oldMarker) {
+		t.Fatalf("old root marker changed: %v", err)
 	}
 }
 
@@ -413,7 +479,7 @@ func TestUnpublishRetryRepairsPointerBeforeRetiredGeneration(t *testing.T) {
 	}
 }
 
-func TestCredentialBindsSeparateIntroductionHPKEPublic(t *testing.T) {
+func TestCredentialDecodeRejectsForeignVersion(t *testing.T) {
 	t.Parallel()
 	fixture := newPublicationFixture(t)
 	credential := fixture.input(t, 1).Credential
@@ -423,33 +489,20 @@ func TestCredentialBindsSeparateIntroductionHPKEPublic(t *testing.T) {
 		t.Fatalf("Validate Credential = %v", err)
 	}
 
-	tampered := credential
-	tampered.IntroductionHPKEPublic[0] ^= 1
-	if err := Validate(tampered, authority, fixture.network, fixture.now, connectCapability); err == nil {
-		t.Fatal("Credential accepted an unsigned replacement Introduction HPKE key")
-	}
-
-	missing := credential
-	missing.IntroductionHPKEPublic = [32]byte{}
-	if _, err := missing.Issue(fixture.authPriv); err == nil {
-		t.Fatal("Issue accepted a missing Introduction HPKE key")
-	}
-
 	encoded := encodeCredential(credential)
 	encoded[1] = 1
 	if _, err := decodeCredential(encoded); err == nil {
-		t.Fatal("Decode accepted Credential v1")
+		t.Fatal("Decode accepted a foreign Credential version")
 	}
 }
 
 type publicationFixture struct {
-	now              time.Time
-	network          [32]byte
-	introductionHPKE [32]byte
-	authority        ed25519.PublicKey
-	private          ed25519.PrivateKey
-	public           ed25519.PublicKey
-	authPriv         ed25519.PrivateKey
+	now       time.Time
+	network   [32]byte
+	authority ed25519.PublicKey
+	private   ed25519.PrivateKey
+	public    ed25519.PublicKey
+	authPriv  ed25519.PrivateKey
 }
 
 type nonExportingTestSigner struct{ private ed25519.PrivateKey }
@@ -470,7 +523,7 @@ func newPublicationFixture(t *testing.T) publicationFixture {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return publicationFixture{now: time.Unix(2_000_000_000, 0), network: [32]byte{1}, introductionHPKE: [32]byte{9}, authority: authority,
+	return publicationFixture{now: time.Unix(2_000_000_000, 0), network: [32]byte{1}, authority: authority,
 		authPriv: authorityPrivate, private: private, public: public}
 }
 
@@ -482,7 +535,7 @@ func (fixture publicationFixture) input(t *testing.T, generation uint64) Publish
 	t.Helper()
 	var instance [32]byte
 	copy(instance[:], fixture.public)
-	credential, err := (Credential{InstancePublic: instance, IntroductionHPKEPublic: fixture.introductionHPKE, Generation: generation,
+	credential, err := (Credential{InstancePublic: instance, Generation: generation,
 		NotBefore: fixture.now.Add(-time.Minute).Unix(), NotAfter: fixture.now.Add(time.Minute).Unix(),
 		NetworkID: fixture.network, Capabilities: publishCapability | connectCapability}).Issue(fixture.authPriv)
 	if err != nil {

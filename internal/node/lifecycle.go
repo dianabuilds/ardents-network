@@ -5,6 +5,9 @@ import (
 	"errors"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/network/state"
+	"github.com/dianabuilds/ardents-network/internal/node/hosting"
+	"github.com/dianabuilds/ardents-network/internal/node/probe"
 	"github.com/dianabuilds/ardents-network/internal/resource"
 )
 
@@ -15,20 +18,23 @@ func Run(ctx context.Context, input Config) (result Result, runErr error) {
 	if err != nil {
 		return Result{}, err
 	}
-	machine := stateMachine{current: stateAbsent}
-	retained := false
+	if err := config.openClosedHosting(); err != nil {
+		return Result{}, err
+	}
+	config.cleanup = &dutyCleanup{host: hosting.NewLifetime(config.host), release: func() error { return releaseLocalDuty(config) }}
 	defer func() {
-		if retained {
-			runErr = errors.Join(runErr, releaseLocalDuty(config))
+		if !config.cleanup.attempted {
+			runErr = errors.Join(runErr, config.cleanup.Close())
 		}
 	}()
-	if err := emitState(config, machine, dutyFacts{}, "process started"); err != nil {
+	machine := stateMachine{current: stateAbsent}
+	if err := emitState(config, machine, state.NodeDuty{}, "process started"); err != nil {
 		return Result{State: stateNames[stateFailed], Reason: err.Error()}, err
 	}
 	ticker := time.NewTicker(config.PollInterval)
 	defer ticker.Stop()
 	for {
-		snapshot, currentErr := currentFacts(config)
+		snapshot, currentErr := currentFacts(config.Current)
 		if currentErr != nil {
 			return fail(config, &machine, nil, "persistent Network State is unavailable", currentErr)
 		}
@@ -40,14 +46,14 @@ func Run(ctx context.Context, input Config) (result Result, runErr error) {
 			if err := retainLocalDuty(config, snapshot, "prepared"); err != nil {
 				return fail(config, &machine, nil, "local role state is unavailable", err)
 			}
-			retained = true
+			config.cleanup.retained = true
 			return runDuty(ctx, config, &machine, snapshot)
 		case admissionPrepared:
 			if machine.current == stateAbsent {
 				if err := retainLocalDuty(config, snapshot, "prepared"); err != nil {
 					return fail(config, &machine, nil, "local role state is unavailable", err)
 				}
-				retained = true
+				config.cleanup.retained = true
 				if err := moveAndEmit(config, &machine, statePrepared, snapshot, admission.reason); err != nil {
 					return fail(config, &machine, nil, "external evidence channel failed", err)
 				}
@@ -65,10 +71,11 @@ func Run(ctx context.Context, input Config) (result Result, runErr error) {
 	}
 }
 
-func runDuty(ctx context.Context, config runtimeConfig, machine *stateMachine, snapshot dutyFacts) (Result, error) {
+func runDuty(ctx context.Context, config runtimeConfig, machine *stateMachine, snapshot state.NodeDuty) (Result, error) {
 	if err := retainLocalDuty(config, snapshot, "quarantined"); err != nil {
 		return fail(config, machine, nil, "local role state is unavailable", err)
 	}
+	config.cleanup.retained = true
 	if machine.current == stateAbsent {
 		if err := moveAndEmit(config, machine, statePrepared, snapshot, "verified assignment is quarantined"); err != nil {
 			return fail(config, machine, nil, "external evidence channel failed", err)
@@ -83,11 +90,16 @@ func runDuty(ctx context.Context, config runtimeConfig, machine *stateMachine, s
 		case <-timer.C:
 		}
 	}
-	current, err := currentFacts(config)
+	current, err := currentFacts(config.Current)
 	if err != nil {
 		return fail(config, machine, nil, "persistent Network State is unavailable", err)
 	}
-	if assessAdmission(config, current).kind != admissionReady || !sameDuty(snapshot, current) {
+	currentAdmission := assessAdmission(config, current)
+	if currentAdmission.kind != admissionReady {
+		reason := "assignment lost readiness during quarantine: " + currentAdmission.reason
+		return fail(config, machine, nil, reason, errors.New(reason))
+	}
+	if !sameDuty(snapshot, current) {
 		return fail(config, machine, nil, "assignment changed during quarantine", errors.New("assignment changed during quarantine"))
 	}
 	server, err := startDuty(config, current)
@@ -97,6 +109,7 @@ func runDuty(ctx context.Context, config runtimeConfig, machine *stateMachine, s
 	if err := retainLocalDuty(config, current, "live"); err != nil {
 		return fail(config, machine, server, "local role state is unavailable", err)
 	}
+	config.cleanup.retained = true
 	if err := moveAndEmit(config, machine, stateReady, current, ""); err != nil {
 		return fail(config, machine, server, "external evidence channel failed", err)
 	}
@@ -116,7 +129,7 @@ func runDuty(ctx context.Context, config runtimeConfig, machine *stateMachine, s
 		case <-ticker.C:
 			pressure, sample, pressureErr := config.resourcePressure(server)
 			if pressureErr != nil {
-				return fail(config, machine, server, "resource pressure evidence is unavailable", pressureErr)
+				return fail(config, machine, server, resourcePressureFailureReason(pressureErr), pressureErr)
 			}
 			now := config.now()
 			if !now.Before(nextResourceEvidence) {
@@ -126,14 +139,7 @@ func runDuty(ctx context.Context, config runtimeConfig, machine *stateMachine, s
 				nextResourceEvidence = now.Add(time.Second)
 			}
 			if pressure == pressureDrain {
-				if err := emitResourceState(config, current, "DRAIN", "resource pressure crossed an emergency threshold"); err != nil {
-					return fail(config, machine, server, "external evidence channel failed", err)
-				}
-				result, err := withdraw(config, machine, server, current, "resource pressure crossed an emergency threshold")
-				if exitErr := emitResourceState(config, current, "EXIT", "resource drain completed"); exitErr != nil {
-					return result, errors.Join(err, exitErr)
-				}
-				return result, err
+				return withdrawForResourcePressure(config, machine, server, current)
 			}
 			if pressure == pressureProtect && !protected {
 				server.Protect(true)
@@ -148,7 +154,7 @@ func runDuty(ctx context.Context, config runtimeConfig, machine *stateMachine, s
 					return fail(config, machine, server, "external evidence channel failed", err)
 				}
 			}
-			updated, readErr := currentFacts(config)
+			updated, readErr := currentFacts(config.Current)
 			if readErr != nil {
 				return fail(config, machine, server, "persistent Network State is unavailable", readErr)
 			}
@@ -163,15 +169,31 @@ func runDuty(ctx context.Context, config runtimeConfig, machine *stateMachine, s
 	}
 }
 
-func emitResourceDiagnostic(config runtimeConfig, snapshot dutyFacts, at time.Time, sample resource.Sample) error {
+func withdrawForResourcePressure(config runtimeConfig, machine *stateMachine, server *dutyHandle, snapshot state.NodeDuty) (Result, error) {
+	const reason = "resource pressure crossed an emergency threshold"
+	if err := emitResourceState(config, snapshot, "DRAIN", reason); err != nil {
+		return fail(config, machine, server, "external evidence channel failed", err)
+	}
+	result, err := withdraw(config, machine, server, snapshot, reason)
+	if err != nil {
+		return result, err
+	}
+	return result, emitResourceState(config, snapshot, "EXIT", "resource drain completed")
+}
+
+func emitResourceDiagnostic(config runtimeConfig, snapshot state.NodeDuty, at time.Time, sample resource.Sample) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
-	return config.Emit(ctx, Event{Schema: eventSchema, Kind: "resource-sample", State: "OBSERVED", At: at,
+	elapsed := time.Duration(0)
+	if !config.measurementOrigin.IsZero() {
+		elapsed = time.Since(config.measurementOrigin)
+	}
+	return config.Emit(ctx, Event{Elapsed: elapsed, Hosting: config.hostingSample, Schema: eventSchema, Kind: "resource-sample", State: "OBSERVED", At: at,
 		Epoch: snapshot.Epoch, Generation: snapshot.Generation, Assignment: snapshot.Assignment,
 		CarrierProfile: selectedDutyCarrier(snapshot), AssignmentDigest: snapshot.AssignmentDigest, Resource: &sample})
 }
 
-func emitResourceState(config runtimeConfig, snapshot dutyFacts, state, reason string) error {
+func emitResourceState(config runtimeConfig, snapshot state.NodeDuty, state, reason string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 	return config.Emit(ctx, Event{Schema: eventSchema, Kind: "resource", State: state, At: config.now(),
@@ -179,13 +201,21 @@ func emitResourceState(config runtimeConfig, snapshot dutyFacts, state, reason s
 		CarrierProfile: selectedDutyCarrier(snapshot), AssignmentDigest: snapshot.AssignmentDigest, Reason: reason})
 }
 
-func withdraw(config runtimeConfig, machine *stateMachine, server *probeServer, snapshot dutyFacts, reason string) (Result, error) {
+func withdraw(config runtimeConfig, machine *stateMachine, server *dutyHandle, snapshot state.NodeDuty, reason string) (Result, error) {
 	server.Stop()
 	if err := moveAndEmit(config, machine, stateDraining, snapshot, reason); err != nil {
 		return fail(config, machine, server, "external evidence channel failed", err)
 	}
 	if drainErr := server.Drain(context.Background()); drainErr != nil {
+		config.cleanup.deferUntil(server.Joined)
 		return fail(config, machine, nil, "Node role cleanup failed", drainErr)
+	}
+	if !dutyJoined(server.Joined) {
+		config.cleanup.deferUntil(server.Joined)
+		return fail(config, machine, nil, "Node role cleanup failed", errors.New("node role drain returned before joining its workers"))
+	}
+	if cleanupErr := config.cleanup.Close(); cleanupErr != nil {
+		return fail(config, machine, nil, "Node process cleanup failed", cleanupErr)
 	}
 	if err := moveAndEmit(config, machine, stateWithdrawn, snapshot, reason); err != nil {
 		return fail(config, machine, nil, "external evidence channel failed", err)
@@ -193,98 +223,82 @@ func withdraw(config runtimeConfig, machine *stateMachine, server *probeServer, 
 	return resultFor(machine, snapshot, reason), nil
 }
 
-func fail(config runtimeConfig, machine *stateMachine, server *probeServer, reason string, cause error) (Result, error) {
+func fail(config runtimeConfig, machine *stateMachine, server *dutyHandle, reason string, cause error) (Result, error) {
 	if server != nil {
 		server.Stop()
 	}
 	var terminalErr error
 	if moveErr := machine.move(stateFailed); moveErr == nil {
-		terminalErr = emitState(config, *machine, dutyFacts{}, reason)
+		terminalErr = emitState(config, *machine, state.NodeDuty{}, reason)
 	} else {
 		terminalErr = moveErr
 	}
 	if server != nil {
-		terminalErr = errors.Join(terminalErr, server.Drain(context.Background()))
+		drainErr := server.Drain(context.Background())
+		config.cleanup.deferUntil(server.Joined)
+		terminalErr = errors.Join(terminalErr, drainErr)
 	}
 	return Result{State: stateNames[stateFailed], Reason: reason}, errors.Join(cause, terminalErr)
 }
 
-func terminalWithoutDuty(config runtimeConfig, machine *stateMachine, snapshot dutyFacts, cause error) (Result, error) {
+func dutyJoined(joined <-chan struct{}) bool {
+	if joined == nil {
+		return true
+	}
+	select {
+	case <-joined:
+		return true
+	default:
+		return false
+	}
+}
+
+func terminalWithoutDuty(config runtimeConfig, machine *stateMachine, snapshot state.NodeDuty, cause error) (Result, error) {
 	if machine.current != statePrepared {
 		return fail(config, machine, nil, "shutdown before assignment admission", cause)
 	}
 	if err := machine.move(stateFailed); err != nil {
 		return Result{}, err
 	}
-	_ = emitState(config, *machine, snapshot, "shutdown before assignment admission")
-	return resultFor(machine, snapshot, "shutdown before assignment admission"), cause
+	eventErr := emitState(config, *machine, snapshot, "shutdown before assignment admission")
+	return resultFor(machine, snapshot, "shutdown before assignment admission"), errors.Join(cause, eventErr)
 }
 
-func sameDuty(first, second dutyFacts) bool {
+func sameDuty(first, second state.NodeDuty) bool {
 	return first.Generation == second.Generation && first.NetworkID == second.NetworkID && first.Epoch == second.Epoch &&
 		first.Digest == second.Digest && first.NodeID == second.NodeID && first.Assignment == second.Assignment &&
 		first.AssignmentDigest == second.AssignmentDigest
 }
 
-func currentFacts(config runtimeConfig) (dutyFacts, error) {
-	view, err := config.Current()
+// currentFacts receives the State-created duty value copy for one poll and
+// revalidates its bound before Node retains it. The value type already copies
+// every fact; State keeps freshness and conflict classification ownership.
+func currentFacts(current func() (state.NodeDuty, error)) (state.NodeDuty, error) {
+	duty, err := current()
 	if err != nil {
-		return dutyFacts{}, err
+		return state.NodeDuty{}, err
 	}
-	if view == nil {
-		return dutyFacts{}, errors.New("node duty view is unavailable")
+	if duty.CandidateCount > uint8(len(duty.Candidates)) {
+		return state.NodeDuty{}, errors.New("node duty candidate count is outside its bound")
 	}
-	result := dutyFacts{Generation: view.DutyGeneration(), NetworkID: view.DutyNetworkID(), Epoch: view.DutyEpoch(),
-		Digest: view.DutyDigest(), EpochValidFrom: view.DutyEpochValidFrom(), ValidUntil: view.DutyValidUntil(),
-		Profile: view.DutyProfile(), Fresh: view.DutyFresh(), Conflicting: view.DutyConflicting(),
-		RecordPresent: view.DutyRecordPresent(), NodeID: view.DutyNodeID(), NodePublicKey: view.DutyNodePublicKey(), RecordGeneration: view.DutyRecordGeneration(),
-		RecordValidFrom: view.DutyRecordValidFrom(), RecordValidUntil: view.DutyRecordValidUntil(),
-		DeclaredFamily: view.DutyDeclaredFamily(), ProbeEndpoint: view.DutyProbeEndpoint(), CarrierProfile: view.DutyCarrierProfile(),
-		ProbeCapacity: view.DutyProbeCapacity(), Assignment: view.DutyAssignment(),
-		AssignmentDigest: view.DutyAssignmentDigest(), CandidateCount: view.DutyCandidateCount(),
-		TransitIssuerProfileDigest: view.DutyTransitIssuanceProfileDigest(), TransitIssuerNodeID: view.DutyTransitIssuanceNodeID(),
-		TransitIssuerProfile: view.DutyTransitIssuanceProfile()}
-	if result.CandidateCount > uint8(len(result.Candidates)) {
-		return dutyFacts{}, errors.New("node duty view candidate count is outside its bound")
-	}
-	result.AuthorityCount = view.DutyAuthorityCount()
-	if result.AuthorityCount > uint8(len(result.Authorities)) {
-		return dutyFacts{}, errors.New("node duty view authority count is outside its bound")
-	}
-	for index := uint8(0); index < result.AuthorityCount; index++ {
-		result.Authorities[index] = dutyAuthority{ID: view.DutyAuthorityID(index), PublicKey: view.DutyAuthorityPublicKey(index)}
-		if result.Authorities[index].ID == [32]byte{} || result.Authorities[index].PublicKey == [32]byte{} {
-			return dutyFacts{}, errors.New("node duty view authority is incomplete")
-		}
-	}
-	for index := uint8(0); index < result.CandidateCount; index++ {
-		result.Candidates[index] = dutyCandidate{NodeID: view.DutyCandidateNodeID(index), PublicKey: view.DutyCandidatePublicKey(index),
-			KeyID: view.DutyCandidateKeyID(index), FamilyID: view.DutyCandidateFamilyID(index), RecordDigest: view.DutyCandidateRecordDigest(index),
-			DomainProofDigest: view.DutyCandidateDomainProofDigest(index), Endpoint: view.DutyCandidateEndpoint(index), CarrierProfile: view.DutyCandidateCarrierProfile(index),
-			Capacity: view.DutyCandidateCapacity(index), Assignment: view.DutyCandidateAssignment(index),
-			ValidFrom: view.DutyCandidateValidFrom(index), ValidUntil: view.DutyCandidateValidUntil(index), AssignmentNotAfter: view.DutyCandidateAssignmentNotAfter(index)}
-	}
-	if err := attachTransitGrantSigner(&result, config.now().UTC()); err != nil {
-		return dutyFacts{}, err
-	}
-	return result, nil
+	return duty, nil
 }
 
-func newProbeDuty(snapshot dutyFacts) probeDuty {
-	return probeDuty{NetworkID: snapshot.NetworkID, EpochDigest: snapshot.Digest, NodeID: snapshot.NodeID,
+func newProbeDuty(snapshot state.NodeDuty) probe.Duty {
+	return probe.Duty{NetworkID: snapshot.NetworkID, EpochDigest: snapshot.Digest, NodeID: snapshot.NodeID,
 		AssignmentDigest: snapshot.AssignmentDigest, EpochValidFrom: snapshot.EpochValidFrom,
 		EpochValidUntil: snapshot.ValidUntil, RecordValidFrom: snapshot.RecordValidFrom,
 		RecordValidUntil: snapshot.RecordValidUntil, Capacity: snapshot.ProbeCapacity}
 }
 
-func moveAndEmit(config runtimeConfig, machine *stateMachine, next lifecycleState, snapshot dutyFacts, reason string) error {
+func moveAndEmit(config runtimeConfig, machine *stateMachine, next lifecycleState, snapshot state.NodeDuty, reason string) error {
 	if err := machine.move(next); err != nil {
 		return err
 	}
 	return emitState(config, *machine, snapshot, reason)
 }
 
-func emitState(config runtimeConfig, machine stateMachine, snapshot dutyFacts, reason string) error {
+func emitState(config runtimeConfig, machine stateMachine, snapshot state.NodeDuty, reason string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 	return config.Emit(ctx, Event{Schema: eventSchema, Kind: "lifecycle", State: machine.name(), At: config.now(),
@@ -292,22 +306,14 @@ func emitState(config runtimeConfig, machine stateMachine, snapshot dutyFacts, r
 		CarrierProfile: selectedDutyCarrier(snapshot), AssignmentDigest: snapshot.AssignmentDigest, Reason: reason})
 }
 
-func resultFor(machine *stateMachine, snapshot dutyFacts, reason string) Result {
+func resultFor(machine *stateMachine, snapshot state.NodeDuty, reason string) Result {
 	return Result{State: machine.name(), Epoch: snapshot.Epoch, Assignment: snapshot.Assignment, CarrierProfile: selectedDutyCarrier(snapshot),
 		AssignmentDigest: snapshot.AssignmentDigest, Reason: reason}
 }
 
-func selectedDutyCarrier(snapshot dutyFacts) string {
+func selectedDutyCarrier(snapshot state.NodeDuty) string {
 	if snapshot.Assignment == "rendezvous" {
 		return snapshot.CarrierProfile
-	}
-	if snapshot.Assignment != "initiator" && snapshot.Assignment != "responder" {
-		return ""
-	}
-	for index := uint8(0); index < snapshot.CandidateCount; index++ {
-		if snapshot.Candidates[index].Assignment == "rendezvous" {
-			return snapshot.Candidates[index].CarrierProfile
-		}
 	}
 	return ""
 }

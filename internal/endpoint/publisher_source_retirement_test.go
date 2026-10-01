@@ -1,0 +1,100 @@
+//go:build linux
+
+package endpoint
+
+import (
+	"testing"
+	"time"
+
+	introductioncapsule "github.com/dianabuilds/ardents-network/internal/route/capsule"
+	routecarrier "github.com/dianabuilds/ardents-network/internal/route/carrier"
+)
+
+func TestTextPublisherAcceptsIntroductionAfterSourceRetirement(t *testing.T) {
+	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP, routecarrier.ClosedCarrierQUIC} {
+		t.Run(string(carrier), func(t *testing.T) {
+			reader, publisher, destination := joinedNetworkFixture(t, carrier)
+			readerJob, publisherJob := liveCapsuleJob(t, reader), liveCapsuleJob(t, publisher)
+			until := time.Now().Add(time.Minute).Unix()
+			prepared, err := reader.prepareIntroduction(t.Context(), readerJob, destination, [3]int64{until, until, until})
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer clear(prepared.operation)
+			publisher.mu.Lock()
+			prefix, registration, permission := publisher.source.CurrentLocked(), publisher.publication.pair.CurrentLocked(), publisher.tokens.Permission
+			reserved := permission.Reserved
+			publisher.mu.Unlock()
+			if err := closeSourceHandle(prefix); err != nil {
+				t.Fatal(err)
+			}
+			select {
+			case <-registration.DoneSignal():
+				t.Fatal("Source retirement closed independent Introduction registration")
+			default:
+			}
+			// A validly sealed but wrong Target/Rendezvous must still refuse before
+			// Source or Responder work, including when the prior Source is retired.
+			_, capsule, err := introductioncapsule.DecodeSubmission(prepared.operation)
+			if err != nil {
+				t.Fatal(err)
+			}
+			for index := range 2 {
+				wrong := prepared.plaintext
+				if index == 0 {
+					wrong.RendezvousNode = fixtureID(231)
+				} else {
+					wrong.Target = fixtureID(232)
+				}
+				envelope := introductioncapsule.Capsule{Slot: capsule.Slot, Revision: capsule.Revision, Expiry: capsule.Expiry, DeliveryNonce: fixtureID(byte(233 + index))}
+				sealed, _, err := introductioncapsule.Seal(envelope, registration.RecipientPublicLocked(time.Now()), wrong)
+				if err != nil {
+					t.Fatal(err)
+				}
+				operation, err := introductioncapsule.EncodeSubmission(fixtureID(byte(235+index)), sealed)
+				if err != nil {
+					t.Fatal(err)
+				}
+				rejected, refusal := publisher.acceptIntroduction(t.Context(), publisherJob, operation)
+				clear(operation)
+				if refusal == nil || rejected != nil {
+					t.Fatal("idle Publisher accepted foreign recipient facts")
+				}
+				publisher.mu.Lock()
+				noWork := publisher.source.CurrentLocked() == nil && publisher.responder.currentLocked() == nil && permission.Reserved == reserved
+				publisher.mu.Unlock()
+				if !noWork {
+					t.Fatal("refused capsule created Source work or consumed allocation")
+				}
+			}
+			accepted, err := publisher.acceptIntroduction(t.Context(), publisherJob, prepared.operation)
+			if err != nil || accepted == nil {
+				t.Fatalf("registered Publisher after Source retirement: %v", err)
+			}
+			publisher.mu.Lock()
+			unchanged := publisher.source.CurrentLocked() == nil && publisher.tokens.Permission == permission && permission.Reserved == reserved && publisher.responder.currentLocked() == nil
+			publisher.mu.Unlock()
+			if !unchanged {
+				t.Fatal("pre-dial acceptance created network work or changed allocation")
+			}
+			for cycle := range 2 {
+				if err := publisher.prepareResponder(t.Context(), publisherJob, accepted); err != nil {
+					t.Fatalf("responder cycle %d: %v", cycle, err)
+				}
+				publisher.mu.Lock()
+				sourcePrefix, dataPrefix := publisher.source.CurrentLocked(), publisher.responder.currentLocked()
+				same := publisher.tokens.Permission == permission && permission.Batches == 2
+				publisher.mu.Unlock()
+				if sourcePrefix == nil || dataPrefix == nil || !same {
+					t.Fatal("responder lost retained permission or repeated bootstrap")
+				}
+				if err := closeSourceHandle(sourcePrefix); err != nil {
+					t.Fatal(err)
+				}
+				if err := dataPrefix.Close(); err != nil {
+					t.Fatal(err)
+				}
+			}
+		})
+	}
+}

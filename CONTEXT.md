@@ -250,8 +250,8 @@ _Avoid_: Namespace, public directory, hidden registry
 **Target Link**:
 The explicit shareable Ardents form of a machine-verifiable Service Target. It
 bypasses naming but never target authentication, routing, or Application
-authorization. Its v1 form is `ardents-target:v1:<base64url>` over exactly a
-fixed Target algorithm identifier, 32-byte Ardents network identifier, and
+authorization. It carries a fixed Target algorithm identifier, 32-byte Ardents
+network identifier, and
 32-byte opaque Target; it is unambiguously distinct from a Service Link and
 contains no origin or mutable reachability.
 _Avoid_: Service Name, origin address, naming fallback
@@ -600,6 +600,13 @@ A Node-authenticated, expiring declaration of its key, supported capabilities,
 transports, declared operator family, and finite capacity. Publication makes a
 Node discoverable, not automatically eligible, independent, or trusted.
 _Avoid_: User profile, route assignment, reputation account
+
+**Operator Family**:
+Node or Direct-Origin Source identities known to share effective operational
+control. Separate machines, keys, providers, or declared labels do not split
+one family when the same party can direct them; hidden common control remains
+possible even between apparently distinct families.
+_Avoid_: Node Identity, VPS, self-declared independence
 
 **Candidate View**:
 The logical complete, canonically ordered Node/evidence set committed by one

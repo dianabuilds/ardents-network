@@ -1,3 +1,5 @@
+//go:build linux
+
 package endpoint
 
 import "github.com/dianabuilds/ardents-network/internal/network/state"

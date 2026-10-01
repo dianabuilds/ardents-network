@@ -97,18 +97,44 @@ func TestFiniteSourceCommandsAsBlackBoxProcesses(t *testing.T) {
 	var event struct {
 		Schema             string    `json:"schema"`
 		Kind               string    `json:"kind"`
+		At                 time.Time `json:"at"`
 		Generation         string    `json:"generation"`
 		SourceAttempts     uint16    `json:"source_attempts"`
 		SourceOutcomes     [4]string `json:"source_outcomes"`
 		LatestCompleteness string    `json:"latest_completeness"`
 	}
 	if err := json.Unmarshal(bytes.TrimSpace(output), &event); err != nil || event.Schema != "ardents-source-event-v1" ||
-		event.Kind != "source-wave-accepted" ||
+		event.Kind != "source-wave-accepted" || event.At.IsZero() ||
 		event.Generation != fixture.generation || event.SourceAttempts != 2 ||
 		event.SourceOutcomes != [4]string{"valid", "valid", "not-attempted", "not-attempted"} ||
 		event.LatestCompleteness != "latest completeness unproven" {
 		t.Fatalf("unexpected source refresh event: event=%+v err=%v raw=%s", event, err, output)
 	}
+
+	// F-21: --resume confirms the accepted State is readable and enters the
+	// plan-owned scheduler; with no plan interval it must exit successfully
+	// without inventing an accepted-wave event or any other output.
+	resumePlan := make(map[string]any, len(plan))
+	for key, value := range plan {
+		resumePlan[key] = value
+	}
+	resumePlan["refresh_interval_ms"] = 0
+	resumePath := writeProcessJSON(t, "endpoint-resume-plan.json", resumePlan)
+	resumeOutput, err := exec.Command(ardents, "refresh-sources", "--resume", "--state-root", endpointRoot,
+		"--source-plan", resumePath).CombinedOutput()
+	if err != nil {
+		t.Fatalf("resume source processes: %v\n%s", err, resumeOutput)
+	}
+	if trimmed := bytes.TrimSpace(resumeOutput); len(trimmed) != 0 {
+		t.Fatalf("resume invented output: %s", trimmed)
+	}
+	// Resume against a root that never accepted a generation must refuse
+	// instead of reporting success.
+	if output, err := exec.Command(ardents, "refresh-sources", "--resume", "--state-root", t.TempDir(),
+		"--source-plan", resumePath).CombinedOutput(); err == nil {
+		t.Fatalf("resume accepted an uninitialized state root: %s", output)
+	}
+
 	authorityID := sha256.Sum256(fixture.authorityPublic)
 	opened, err := state.Open(state.Config{Root: endpointRoot, NetworkID: fixture.networkID,
 		Authorities: map[[32]byte]ed25519.PublicKey{authorityID: fixture.authorityPublic},
@@ -186,10 +212,14 @@ func startSourceProcess(t *testing.T, binary, plan string) func() {
 	}()
 	select {
 	case line := <-ready:
-		if !strings.Contains(line, `"kind":"source-ready"`) {
+		var event struct {
+			Kind string
+			At   time.Time
+		}
+		if err := json.Unmarshal([]byte(line), &event); err != nil || event.Kind != "source-ready" || event.At.IsZero() {
 			cancel()
 			_ = command.Wait()
-			t.Fatalf("source did not become ready: line=%q stderr=%s", line, stderr.String())
+			t.Fatalf("source did not become ready with event time: line=%q stderr=%s err=%v", line, stderr.String(), err)
 		}
 	case <-time.After(5 * time.Second):
 		cancel()

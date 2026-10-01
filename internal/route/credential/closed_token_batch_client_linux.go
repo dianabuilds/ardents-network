@@ -9,6 +9,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"github.com/cloudflare/circl/blindsign/blindrsa"
+	"github.com/dianabuilds/ardents-network/internal/admission"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"time"
 )
@@ -154,7 +155,7 @@ func EncodeClosedTokenBatch(request ClosedTokenBatchRequest) ([]byte, error) {
 	if err := validateClosedTokenBatchRequest(request); err != nil {
 		return nil, err
 	}
-	permission, err := EncodePermission(request.Permission)
+	permission, err := admission.EncodePermission(request.Permission)
 	if err != nil {
 		return nil, err
 	}
@@ -189,7 +190,7 @@ func validateClosedTokenBatchConfig(config ClosedTokenBatchConfig) (state.Closed
 	}
 	if config.Permission.HolderKey != [32]byte(config.HolderKey.Public().(ed25519.PublicKey)) ||
 		config.Permission.Maxima[first.Class-1] < uint32(len(config.Contexts)) ||
-		VerifyPermission(config.Permission, ed25519.PublicKey(config.Profile.IssuanceAuthorityKey[:]), config.Profile.NetworkID,
+		admission.VerifyPermission(config.Permission, ed25519.PublicKey(config.Profile.IssuanceAuthorityKey[:]), config.Profile.NetworkID,
 			config.Profile.IssuerNodeID, config.Profile.IssuerDutyGeneration, config.Now) != nil {
 		return state.ClosedProfileTokenKey{}, errors.New("closed token batch permission is invalid")
 	}
@@ -217,7 +218,7 @@ func validateClosedTokenBatchConfig(config ClosedTokenBatchConfig) (state.Closed
 type ClosedTokenBatchConfig struct {
 	Profile    state.ClosedProfileView
 	Contexts   []ClosedTokenContext
-	Permission Permission
+	Permission admission.Permission
 	HolderKey  ed25519.PrivateKey
 	Now        time.Time
 }

@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"testing"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 )
 
 func TestClosedForwardingControlQueueCountsCompleteFrames(t *testing.T) {
@@ -13,7 +15,7 @@ func TestClosedForwardingControlQueueCountsCompleteFrames(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = channel.Cancel() })
-	open := ClosedOpen{NextNodeID: [32]byte{1}, NextDutyGeneration: 1, Purpose: ClosedPurposeForwarding, Deadline: now.Add(time.Minute)}
+	open := ClosedOpen{NextNodeID: [32]byte{1}, NextDutyGeneration: 1, Purpose: ardp.PurposeForwarding, Deadline: now.Add(time.Minute)}
 	body, err := EncodeClosedOpen(open)
 	if err != nil {
 		t.Fatal(err)
@@ -21,17 +23,17 @@ func TestClosedForwardingControlQueueCountsCompleteFrames(t *testing.T) {
 	// Each canonical OPEN occupies 16 header bytes plus 50 body bytes.
 	// 248 fit in the selected 16 KiB control queue; a 249th does not.
 	for lane := uint32(1); lane < 497; lane += 2 {
-		if _, err := channel.Accept(ClosedLaneFrame{Kind: closedFrameOpen, Lane: lane, Body: body}); err != nil {
+		if _, err := channel.Accept(ardp.Frame{Kind: ardp.KindOpen, Lane: lane, Body: body}); err != nil {
 			t.Fatalf("admit lane %d: %v", lane, err)
 		}
 	}
-	if _, err := channel.Accept(ClosedLaneFrame{Kind: closedFrameOpen, Lane: 497, Body: body}); err == nil {
+	if _, err := channel.Accept(ardp.Frame{Kind: ardp.KindOpen, Lane: 497, Body: body}); err == nil {
 		t.Fatal("control queue admitted more than 16 KiB of complete frames")
 	}
-	if event, ok := channel.Next(); !ok || event.Kind != closedFrameOpen || event.Lane != 1 {
+	if event, ok := channel.NextAvailable(nil); !ok || event.Kind != ardp.KindOpen || event.Lane != 1 {
 		t.Fatal("control pressure lost previously admitted work")
 	}
-	if _, err := channel.Accept(ClosedLaneFrame{Kind: closedFrameOpen, Lane: 499, Body: body}); err != nil {
+	if _, err := channel.Accept(ardp.Frame{Kind: ardp.KindOpen, Lane: 499, Body: body}); err != nil {
 		t.Fatalf("consumed control frame did not release capacity: %v", err)
 	}
 }
@@ -50,7 +52,7 @@ func TestClosedForwardingDataPressurePreservesEveryChannelControl(t *testing.T) 
 		if err != nil {
 			t.Fatal(err)
 		}
-		lease := &ClosedAdmission{Class: 2, Bytes: 32 << 20, Deadline: now.Add(time.Minute), duty: reservation}
+		lease := &ClosedAdmission{Class: 2, Bytes: 32 << 20, Deadline: now.Add(time.Minute), claim: newClosedAdmissionClaim(reservation, nil)}
 		channel, err := newForwardingTestChannel(lease, func(ClosedOpen) error { return nil }, func() time.Time { return now })
 		if err != nil {
 			t.Fatal(err)
@@ -58,22 +60,28 @@ func TestClosedForwardingDataPressurePreservesEveryChannelControl(t *testing.T) 
 		t.Cleanup(func() { _ = channel.Cancel() })
 		channels = append(channels, channel)
 	}
-	body, err := EncodeClosedOpen(ClosedOpen{NextNodeID: [32]byte{1}, NextDutyGeneration: 1, Purpose: ClosedPurposeForwarding, Deadline: now.Add(time.Minute)})
+	body, err := EncodeClosedOpen(ClosedOpen{NextNodeID: [32]byte{1}, NextDutyGeneration: 1, Purpose: ardp.PurposeForwarding, Deadline: now.Add(time.Minute)})
 	if err != nil {
 		t.Fatal(err)
 	}
 	data := bytes.Repeat([]byte{1}, 16<<10)
 	for _, channel := range channels {
 		for lane := uint32(1); lane < 128; lane += 2 {
-			if _, err := channel.Accept(ClosedLaneFrame{Kind: closedFrameOpen, Lane: lane, Body: body}); err != nil {
+			if _, err := channel.Accept(ardp.Frame{Kind: ardp.KindOpen, Lane: lane, Body: body}); err != nil {
 				t.Fatalf("admit control during data pressure: %v", err)
 			}
-			if event, ok := channel.Next(); !ok || event.Kind != closedFrameOpen || event.Lane != lane {
-				t.Fatal("data pressure prevented control progress")
+			// A preceding control may owe one already queued data frame a turn.
+			// The new OPEN must still make progress immediately after that turn.
+			event, ok := channel.NextAvailable(nil)
+			if ok && event.Kind == ardp.KindBytes {
+				event, ok = channel.NextAvailable(nil)
+			}
+			if !ok || event.Kind != ardp.KindOpen || event.Lane != lane {
+				t.Fatalf("data pressure delayed control beyond one data frame: %+v / %t", event, ok)
 			}
 			for range 4 {
 				// Filling is allowed to stop at the ancestor's data limit.
-				if _, err := channel.Accept(ClosedLaneFrame{Kind: closedFrameBytes, Lane: lane, Body: data}); err != nil {
+				if _, err := channel.Accept(ardp.Frame{Kind: ardp.KindBytes, Lane: lane, Body: data}); err != nil {
 					break
 				}
 			}
@@ -84,14 +92,20 @@ func TestClosedForwardingDataPressurePreservesEveryChannelControl(t *testing.T) 
 		t.Fatal("admitted a channel without room for its control reserve")
 	}
 	for _, channel := range channels {
-		if err := channel.QueueReverse(ClosedLaneFrame{Kind: closedFrameClose, Lane: 3, Body: []byte{0}}); err != nil {
+		if err := channel.QueueReverse(ardp.Frame{Kind: ardp.KindClose, Lane: 3, Body: []byte{0}}); err != nil {
 			t.Fatalf("data consumed reverse termination reserve: %v", err)
 		}
-		if _, err := channel.Accept(ClosedLaneFrame{Kind: closedFrameClose, Lane: 1, Body: []byte{0}}); err != nil {
+		if _, err := channel.Accept(ardp.Frame{Kind: ardp.KindClose, Lane: 1, Body: []byte{0}}); err != nil {
 			t.Fatalf("data consumed an admitted channel's termination reserve: %v", err)
 		}
-		if event, ok := channel.Next(); !ok || event.Kind != closedFrameClose || event.Lane != 1 {
-			t.Fatal("termination did not precede queued data")
+		// No active physical control write is known at this Route boundary;
+		// a queued data frame may take its owed turn before CLOSE.
+		event, ok := channel.NextAvailable(nil)
+		if ok && event.Kind == ardp.KindBytes {
+			event, ok = channel.NextAvailable(nil)
+		}
+		if !ok || event.Kind != ardp.KindClose || event.Lane != 1 {
+			t.Fatalf("termination did not progress after one data frame: %+v / %t", event, ok)
 		}
 	}
 	reservation, err := limits.reserveChannel()
@@ -108,16 +122,16 @@ func TestClosedForwardingControlDirectionsShareOneBound(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = channel.Cancel() })
-	body, err := EncodeClosedOpen(ClosedOpen{NextNodeID: [32]byte{1}, NextDutyGeneration: 1, Purpose: ClosedPurposeForwarding, Deadline: now.Add(time.Minute)})
+	body, err := EncodeClosedOpen(ClosedOpen{NextNodeID: [32]byte{1}, NextDutyGeneration: 1, Purpose: ardp.PurposeForwarding, Deadline: now.Add(time.Minute)})
 	if err != nil {
 		t.Fatal(err)
 	}
 	for lane := uint32(1); lane <= 199; lane += 2 {
-		if _, err := channel.Accept(ClosedLaneFrame{Kind: closedFrameOpen, Lane: lane, Body: body}); err != nil {
+		if _, err := channel.Accept(ardp.Frame{Kind: ardp.KindOpen, Lane: lane, Body: body}); err != nil {
 			t.Fatal(err)
 		}
 	}
-	credit := ClosedLaneFrame{Kind: closedFrameCredit, Lane: 1, Body: []byte{0, 0, 0, 1}}
+	credit := ardp.Frame{Kind: ardp.KindCredit, Lane: 1, Body: []byte{0, 0, 0, 1}}
 	// 100 outgoing Node OPEN frames use 6,600 bytes. Another 489 reverse
 	// CREDIT frames use 9,780 bytes: 16,380 together, leaving only four.
 	for range 489 {
@@ -128,7 +142,7 @@ func TestClosedForwardingControlDirectionsShareOneBound(t *testing.T) {
 	if err := channel.QueueReverse(credit); err == nil {
 		t.Fatal("forward and reverse controls multiplied the 16 KiB reserve")
 	}
-	if event, ok := channel.Next(); !ok || event.Kind != closedFrameOpen {
+	if event, ok := channel.NextAvailable(nil); !ok || event.Kind != ardp.KindOpen {
 		t.Fatal("control pressure lost admitted OPEN")
 	}
 	// Releasing one 66-byte OPEN makes room for three 20-byte credits.
@@ -144,35 +158,35 @@ func TestClosedForwardingControlDirectionsShareOneBound(t *testing.T) {
 
 func TestClosedForwardingLateControlReleaseCannotDebitSibling(t *testing.T) {
 	_, _, lease, now := closedOuterAdmissionFixture(t)
-	limits := lease.duty.limits
+	limits := lease.claim.duty.limits
 	channel, err := newForwardingTestChannel(lease, func(ClosedOpen) error { return nil }, func() time.Time { return *now })
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = channel.Cancel() })
-	body, err := EncodeClosedOpen(ClosedOpen{NextNodeID: [32]byte{1}, NextDutyGeneration: 1, Purpose: ClosedPurposeForwarding, Deadline: now.Add(time.Minute)})
+	body, err := EncodeClosedOpen(ClosedOpen{NextNodeID: [32]byte{1}, NextDutyGeneration: 1, Purpose: ardp.PurposeForwarding, Deadline: now.Add(time.Minute)})
 	if err != nil {
 		t.Fatal(err)
 	}
 	for _, lane := range []uint32{1, 3} {
-		if _, err := channel.Accept(ClosedLaneFrame{Kind: closedFrameOpen, Lane: lane, Body: body}); err != nil {
+		if _, err := channel.Accept(ardp.Frame{Kind: ardp.KindOpen, Lane: lane, Body: body}); err != nil {
 			t.Fatal(err)
 		}
-		if _, ok := channel.Next(); !ok {
+		if _, ok := channel.NextAvailable(nil); !ok {
 			t.Fatal("missing OPEN")
 		}
 	}
-	retired := ClosedLaneFrame{Kind: closedFrameClose, Lane: 1, Body: []byte{0}}
+	retired := ardp.Frame{Kind: ardp.KindClose, Lane: 1, Body: []byte{0}}
 	if err := channel.QueueReverse(retired); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := channel.Accept(retired); err != nil {
 		t.Fatal(err)
 	}
-	if _, ok := channel.Next(); !ok {
+	if _, ok := channel.NextAvailable(nil); !ok {
 		t.Fatal("missing CLOSE")
 	}
-	credit := ClosedLaneFrame{Kind: closedFrameCredit, Lane: 3, Body: []byte{0, 0, 0, 1}}
+	credit := ardp.Frame{Kind: ardp.KindCredit, Lane: 3, Body: []byte{0, 0, 0, 1}}
 	for range 819 {
 		if err := channel.QueueReverse(credit); err != nil {
 			t.Fatal(err)

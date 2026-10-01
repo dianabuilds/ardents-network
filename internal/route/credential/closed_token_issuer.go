@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/cloudflare/circl/blindsign/blindrsa"
+	"github.com/dianabuilds/ardents-network/internal/admission"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 )
 
@@ -90,7 +91,7 @@ func (issuer *ClosedTokenIssuer) issue(raw []byte, kind closedIssuanceKind) Clos
 		return ClosedTokenBatchResult{Status: ClosedTokenUnavailable}
 	}
 	now := issuer.clock().UTC()
-	if VerifyPermission(request.Permission, ed25519.PublicKey(issuer.profile.IssuanceAuthorityKey[:]), issuer.network,
+	if admission.VerifyPermission(request.Permission, ed25519.PublicKey(issuer.profile.IssuanceAuthorityKey[:]), issuer.network,
 		issuer.profile.IssuerNodeID, issuer.profile.IssuerDutyGeneration, now) != nil || request.WindowStart != request.Permission.NotBefore {
 		return ClosedTokenBatchResult{Status: ClosedTokenUnavailable}
 	}

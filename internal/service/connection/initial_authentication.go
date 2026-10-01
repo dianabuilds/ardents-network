@@ -72,7 +72,9 @@ func authenticateInitialStream(ctx context.Context, attachment *Attachment, key 
 	interrupted := make(chan struct{})
 	stop := context.AfterFunc(bounded, func() {
 		defer close(interrupted)
-		attachment.closeCarrier()
+		// No Stream exists yet during initial authentication; the Endpoint's
+		// cached physical transport close retains this result (F-23).
+		_, _ = attachment.retireCarrier()
 	})
 	defer func() {
 		if !stop() {

@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -34,7 +35,10 @@ func TestVerifyPinsExactBundleBeforeParsingAndBuildsReleaseInputs(t *testing.T) 
 		string(verified.ControlNetworkRoot) != "network key" || string(verified.ControlCompatibilityRoot) != "compatibility key" || verified.Inputs.Files[release.MetadataURL("catalog.ac1")] != nil ||
 		verified.Inputs.Files[release.MetadataURL("release.ac1")] != nil || verified.Inputs.Files[release.MetadataURL("network.ac1")] != nil ||
 		verified.Inputs.Files[release.MetadataURL("compatibility.ac1")] != nil || verified.Inputs.Files[release.MetadataURL("release.pub")] != nil ||
-		verified.Inputs.Files[release.MetadataURL("network.pub")] != nil || verified.Inputs.Files[release.MetadataURL("compatibility.pub")] != nil {
+		verified.Inputs.Files[release.MetadataURL("network.pub")] != nil || verified.Inputs.Files[release.MetadataURL("compatibility.pub")] != nil ||
+		verified.Inputs.Files[release.MetadataURL("corpus.pub")] != nil || verified.Inputs.Files[release.MetadataURL(fixtureControlName)] != nil ||
+		verified.ControlArtifactName != fixtureControlName || !bytes.Equal(verified.ControlArtifact, fixtureControlArtifact) ||
+		!bytes.Equal(verified.CorpusAuthority, fixtureCorpusAuthority) {
 		t.Fatalf("alpha control companions crossed the Release boundary: %+v", verified)
 	}
 	if err := os.WriteFile(filepath.Join(root, manifestName), []byte("not a manifest\n"), 0o600); err != nil {
@@ -62,42 +66,32 @@ func TestVerifyRejectsUnknownInventoryAndExecutableSubstitution(t *testing.T) {
 	}
 }
 
-func TestVerifyReturnsV2IndependentlyPinnedCorpusAuthority(t *testing.T) {
-	root, request := enrolledFixture(t)
-	authority := bytes.Repeat([]byte{9}, 32)
-	if err := os.WriteFile(filepath.Join(root, "corpus.pub"), authority, 0o600); err != nil {
-		t.Fatal(err)
-	}
-	descriptorPath := filepath.Join(root, descriptorName)
-	descriptor, err := os.ReadFile(descriptorPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	descriptor = bytes.Replace(descriptor, []byte("schema=ardents-closed-alpha-enrollment-v1"), []byte("schema=ardents-closed-alpha-enrollment-v2"), 1)
-	descriptor = append(descriptor[:len(descriptor)-1], []byte("\ncorpus_authority=corpus.pub\n")...)
-	if err := os.WriteFile(descriptorPath, descriptor, 0o600); err != nil {
-		t.Fatal(err)
-	}
-	files := make(map[string][]byte)
-	for _, name := range []string{"1.root.json", "RELEASE", "ardents-linux-amd64", "catalog.ac1", "catalog.pub", "compatibility.ac1", "compatibility.pub", "corpus.pub", "network.ac1", "network.pub", "release.ac1", "release.pub", "timestamp.json"} {
-		contents, readErr := os.ReadFile(filepath.Join(root, name))
-		if readErr != nil {
-			t.Fatal(readErr)
+func TestVerifyRefusesRetiredDescriptorVersions(t *testing.T) {
+	// ADR-0112 evidence: a recognized retired Network schema is refused with
+	// the typed sentinel through both entry points, even over a consistent
+	// manifest whose pin matches.
+	for _, schema := range []string{"v1", "v2"} {
+		_, request := enrolledFixtureWithSchema(t, schema)
+		if _, err := Verify(request); !errors.Is(err, ErrLegacyEnrollmentDescriptor) {
+			t.Fatalf("retired %s Verify = %v", schema, err)
 		}
-		files[name] = contents
+		if _, err := VerifyHeadless(request); !errors.Is(err, ErrLegacyEnrollmentDescriptor) {
+			t.Fatalf("retired %s VerifyHeadless = %v", schema, err)
+		}
 	}
-	manifest := makeManifest(t, files)
-	if err := os.WriteFile(filepath.Join(root, manifestName), manifest, 0o600); err != nil {
+	// An unknown schema keeps its generic invalid refusal, not the typed one.
+	_, unknown := enrolledFixtureWithSchema(t, "v4")
+	if _, err := Verify(unknown); err == nil || errors.Is(err, ErrLegacyEnrollmentDescriptor) {
+		t.Fatalf("unknown schema result = %v", err)
+	}
+	// The manifest pin still precedes descriptor parsing: a retired bundle
+	// with a mismatched pin reports the pin failure, not the version.
+	root, retired := enrolledFixtureWithSchema(t, "v1")
+	if err := os.WriteFile(filepath.Join(root, manifestName), []byte("not a manifest\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	pinned := sha256.Sum256(manifest)
-	request.Pin.ManifestSHA256 = hex.EncodeToString(pinned[:])
-	verified, err := Verify(request)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !bytes.Equal(verified.CorpusAuthority, authority) || verified.Inputs.Files[release.MetadataURL("corpus.pub")] != nil {
-		t.Fatalf("v2 corpus authority crossed an incorrect boundary: %+v", verified)
+	if _, err := Verify(retired); err == nil || !strings.Contains(err.Error(), "independent pin") {
+		t.Fatalf("pin precedence over the typed refusal = %v", err)
 	}
 }
 
@@ -117,17 +111,21 @@ func TestExecutableArtifactNameIsCanonicalForEveryEnrollmentPlatform(t *testing.
 
 const windowsV3VerifierChild = "ARDENTS_WINDOWS_V3_VERIFIER_CHILD"
 
-func TestWindowsV3ManifestAndRunningCompanionShareArtifactIdentity(t *testing.T) {
+func TestWindowsV3ManifestVerifyPinsTheRunningArtifactIdentity(t *testing.T) {
 	if os.Getenv(windowsV3VerifierChild) == "1" {
 		var request Request
 		if err := json.Unmarshal([]byte(os.Getenv("ARDENTS_WINDOWS_V3_REQUEST")), &request); err != nil {
 			t.Fatal(err)
 		}
-		verified, err := Verify(request)
+		running, err := os.Executable()
 		if err != nil {
 			t.Fatal(err)
 		}
-		if err := VerifyRunningCompanion(request, verified.ControlArtifactName, verified.ControlArtifact); err != nil {
+		request.ExecutablePath = running
+		// Verify's own running-artifact gate (exactExecutable) must accept
+		// this process as the exact enrolled endpoint artifact; the retired
+		// companion verifier (ADR-0113) added no separate authority.
+		if _, err := Verify(request); err != nil {
 			t.Fatal(err)
 		}
 		return
@@ -180,7 +178,7 @@ func TestWindowsV3ManifestAndRunningCompanionShareArtifactIdentity(t *testing.T)
 	if err != nil {
 		t.Fatal(err)
 	}
-	command := exec.Command(filepath.Join(root, controlName), "-test.run=^TestWindowsV3ManifestAndRunningCompanionShareArtifactIdentity$")
+	command := exec.Command(filepath.Join(root, endpointName), "-test.run=^TestWindowsV3ManifestVerifyPinsTheRunningArtifactIdentity$")
 	command.Env = append(os.Environ(), windowsV3VerifierChild+"=1", "ARDENTS_WINDOWS_V3_REQUEST="+string(encoded))
 	if output, err := command.CombinedOutput(); err != nil {
 		t.Fatalf("Windows enrollment-v3 verifier contract: %v\n%s", err, output)
@@ -189,68 +187,61 @@ func TestWindowsV3ManifestAndRunningCompanionShareArtifactIdentity(t *testing.T)
 
 func TestVerifyReturnsV3HeadlessArtifactsOutsideReleaseMetadata(t *testing.T) {
 	root, request := enrolledFixture(t)
-	authority, control := bytes.Repeat([]byte{9}, 32), []byte("separately manifested alpha control command")
-	node, custody := []byte("separately manifested Network Node command"), []byte("separately manifested Authority Custody command")
-	if err := os.WriteFile(filepath.Join(root, "corpus.pub"), authority, 0o600); err != nil {
-		t.Fatal(err)
-	}
-	const controlName = "ardents-control-linux-amd64"
 	const nodeName = "ardents-node-linux-amd64"
 	const custodyName = "ardents-custody-linux-amd64"
-	for name, contents := range map[string][]byte{controlName: control, nodeName: node, custodyName: custody} {
-		if err := os.WriteFile(filepath.Join(root, name), contents, 0o700); err != nil {
-			t.Fatal(err)
-		}
-	}
-	descriptorPath := filepath.Join(root, descriptorName)
-	descriptor, err := os.ReadFile(descriptorPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	descriptor = bytes.Replace(descriptor, []byte("schema=ardents-closed-alpha-enrollment-v1"), []byte("schema=ardents-closed-alpha-enrollment-v3"), 1)
-	descriptor = append(descriptor[:len(descriptor)-1], []byte("\ncorpus_authority=corpus.pub\ncontrol_artifact="+controlName+"\n")...)
-	if err := os.WriteFile(descriptorPath, descriptor, 0o600); err != nil {
-		t.Fatal(err)
-	}
+	node, custody := []byte("separately manifested Network Node command"), []byte("separately manifested Authority Custody command")
+	names := []string{"1.root.json", "RELEASE", "ardents-linux-amd64", fixtureControlName, "catalog.ac1", "catalog.pub", "compatibility.ac1", "compatibility.pub", "corpus.pub", "network.ac1", "network.pub", "release.ac1", "release.pub", "timestamp.json"}
 	files := make(map[string][]byte)
-	for _, name := range []string{"1.root.json", "RELEASE", "ardents-linux-amd64", controlName, nodeName, custodyName, "catalog.ac1", "catalog.pub", "compatibility.ac1", "compatibility.pub", "corpus.pub", "network.ac1", "network.pub", "release.ac1", "release.pub", "timestamp.json"} {
+	for _, name := range names {
 		contents, readErr := os.ReadFile(filepath.Join(root, name))
 		if readErr != nil {
 			t.Fatal(readErr)
 		}
 		files[name] = contents
 	}
-	manifest := makeManifest(t, files)
-	if err := os.WriteFile(filepath.Join(root, manifestName), manifest, 0o600); err != nil {
-		t.Fatal(err)
+	repin := func() {
+		t.Helper()
+		manifest := makeManifest(t, files)
+		if err := os.WriteFile(filepath.Join(root, manifestName), manifest, 0o600); err != nil {
+			t.Fatal(err)
+		}
+		pinned := sha256.Sum256(manifest)
+		request.Pin.ManifestSHA256 = hex.EncodeToString(pinned[:])
 	}
-	pinned := sha256.Sum256(manifest)
-	request.Pin.ManifestSHA256 = hex.EncodeToString(pinned[:])
+	for name, contents := range map[string][]byte{nodeName: node, custodyName: custody} {
+		if err := os.WriteFile(filepath.Join(root, name), contents, 0o700); err != nil {
+			t.Fatal(err)
+		}
+		files[name] = contents
+	}
+	repin()
 	verified, err := VerifyHeadless(request)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !bytes.Equal(verified.CorpusAuthority, authority) || verified.ControlArtifactName != controlName ||
-		!bytes.Equal(verified.ControlArtifact, control) || verified.NodeArtifactName != nodeName || !bytes.Equal(verified.NodeArtifact, node) ||
+	if !bytes.Equal(verified.CorpusAuthority, fixtureCorpusAuthority) || verified.ControlArtifactName != fixtureControlName ||
+		!bytes.Equal(verified.ControlArtifact, fixtureControlArtifact) || verified.NodeArtifactName != nodeName || !bytes.Equal(verified.NodeArtifact, node) ||
 		verified.CustodyArtifactName != custodyName || !bytes.Equal(verified.CustodyArtifact, custody) ||
-		verified.Inputs.Files[release.MetadataURL(controlName)] != nil || verified.Inputs.Files[release.MetadataURL(nodeName)] != nil ||
-		verified.Inputs.Files[release.MetadataURL(custodyName)] != nil {
+		verified.Inputs.Files[release.MetadataURL("corpus.pub")] != nil || verified.Inputs.Files[release.MetadataURL(fixtureControlName)] != nil ||
+		verified.Inputs.Files[release.MetadataURL(nodeName)] != nil || verified.Inputs.Files[release.MetadataURL(custodyName)] != nil {
 		t.Fatalf("v3 control artifact crossed an incorrect boundary: %+v", verified)
 	}
-	delete(files, nodeName)
-	delete(files, custodyName)
+	// A partial companion pair fails closed.
 	if err := os.Remove(filepath.Join(root, nodeName)); err != nil {
 		t.Fatal(err)
 	}
+	delete(files, nodeName)
+	repin()
+	if _, err := Verify(request); err == nil || !strings.Contains(err.Error(), "partial headless companion") {
+		t.Fatalf("partial companion pair result = %v", err)
+	}
+	// The accepted v3 inventory without companions still verifies generally,
+	// while the headless gate refuses it.
 	if err := os.Remove(filepath.Join(root, custodyName)); err != nil {
 		t.Fatal(err)
 	}
-	legacyManifest := makeManifest(t, files)
-	if err := os.WriteFile(filepath.Join(root, manifestName), legacyManifest, 0o600); err != nil {
-		t.Fatal(err)
-	}
-	legacyPin := sha256.Sum256(legacyManifest)
-	request.Pin.ManifestSHA256 = hex.EncodeToString(legacyPin[:])
+	delete(files, custodyName)
+	repin()
 	if _, err := Verify(request); err != nil {
 		t.Fatalf("accepted ADR-0042 v3 inventory no longer verifies: %v", err)
 	}
@@ -259,7 +250,23 @@ func TestVerifyReturnsV3HeadlessArtifactsOutsideReleaseMetadata(t *testing.T) {
 	}
 }
 
+const fixtureControlName = "ardents-control-linux-amd64"
+
+var (
+	fixtureCorpusAuthority = bytes.Repeat([]byte{9}, 32)
+	fixtureControlArtifact = []byte("separately manifested alpha control command")
+)
+
 func enrolledFixture(t *testing.T) (string, Request) {
+	t.Helper()
+	return enrolledFixtureWithSchema(t, "v3")
+}
+
+// enrolledFixtureWithSchema builds one bundle with a consistent manifest and
+// independent pin for the named Network enrollment descriptor schema. Only the
+// v3 grammar verifies; the retired v1/v2 forms exist as typed-refusal evidence
+// and an unknown schema keeps its generic refusal (ADR-0112).
+func enrolledFixtureWithSchema(t *testing.T, schema string) (string, Request) {
 	t.Helper()
 	root := t.TempDir()
 	executable, err := os.Executable()
@@ -271,11 +278,8 @@ func enrolledFixture(t *testing.T) (string, Request) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(artifactPath, artifact, 0o700); err != nil {
-		t.Fatal(err)
-	}
-	descriptor := strings.Join([]string{
-		"schema=ardents-closed-alpha-enrollment-v1",
+	lines := []string{
+		"schema=ardents-closed-alpha-enrollment-" + schema,
 		"cohort=cohort-1",
 		"release=alpha-1",
 		"platform=linux-amd64",
@@ -292,12 +296,28 @@ func enrolledFixture(t *testing.T) (string, Request) {
 		"control_release_root=release.pub",
 		"control_network_root=network.pub",
 		"control_compatibility_root=compatibility.pub",
-	}, "\n") + "\n"
-	files := map[string][]byte{"RELEASE": []byte(descriptor), "1.root.json": []byte("trusted root"), "timestamp.json": []byte("timestamp"), "catalog.ac1": []byte("catalog"), "catalog.pub": []byte("key"), "release.ac1": []byte("release control"), "network.ac1": []byte("network control"), "compatibility.ac1": []byte("compatibility control"), "release.pub": []byte("release key"), "network.pub": []byte("network key"), "compatibility.pub": []byte("compatibility key")}
+	}
+	files := map[string][]byte{"1.root.json": []byte("trusted root"), "timestamp.json": []byte("timestamp"), "catalog.ac1": []byte("catalog"), "catalog.pub": []byte("key"), "release.ac1": []byte("release control"), "network.ac1": []byte("network control"), "compatibility.ac1": []byte("compatibility control"), "release.pub": []byte("release key"), "network.pub": []byte("network key"), "compatibility.pub": []byte("compatibility key")}
+	if schema == "v2" || schema == "v3" {
+		lines = append(lines, "corpus_authority=corpus.pub")
+		files["corpus.pub"] = fixtureCorpusAuthority
+	}
+	if schema == "v3" {
+		lines = append(lines, "control_artifact="+fixtureControlName)
+		files[fixtureControlName] = fixtureControlArtifact
+	}
+	files[descriptorName] = []byte(strings.Join(lines, "\n") + "\n")
 	for name, contents := range files {
-		if err := os.WriteFile(filepath.Join(root, name), contents, 0o600); err != nil {
+		mode := os.FileMode(0o600)
+		if name == fixtureControlName {
+			mode = 0o700
+		}
+		if err := os.WriteFile(filepath.Join(root, name), contents, mode); err != nil {
 			t.Fatal(err)
 		}
+	}
+	if err := os.WriteFile(artifactPath, artifact, 0o700); err != nil {
+		t.Fatal(err)
 	}
 	files["ardents-linux-amd64"] = artifact
 	manifest := makeManifest(t, files)

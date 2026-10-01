@@ -19,19 +19,84 @@ substitute for independent review.
 
 ## Ordinary checks
 
-- `make unit` runs the positive deterministic package inventory.
+- `make unit` runs the positive deterministic package inventory, including the
+  canonical Network epoch fixture, with one explicit 15-minute terminal timeout
+  per package. The retained 256-stream
+  Linux Endpoint setup stays in that profile; exceeding the bound fails with
+  the Go runtime's goroutine dump.
 - `make e2e` runs the positive local process package inventory.
-- `make quick-check` runs formatting, architecture, vet, unit, the four named
-  command builds, module tidiness, and the canonical artifact representation
-  proof.
-- `make headless-check` builds the exact Network command inventory, checks the
-  enrollment-v3 artifact, runs bounded Endpoint, Source, Node, and Service
+- `make quick-check` runs the unit inventory, including architecture and
+  formatting checks, plus vet, the four named command builds, module tidiness,
+  and the canonical artifact representation proof. `make format-check` remains
+  available as a focused architecture and formatting check.
+- On Linux x86-64, `make headless-check` builds the exact Network command
+  inventory, checks the enrollment-v3 artifact, runs bounded Endpoint, Source, Node, and Service
   process evidence, then rebuilds and tests the headless command candidate in
   a fresh temporary tree containing no Browser/Application implementation. It
   also proves that canonical command bytes are unchanged when the same owned
   source is represented as a Git repository or as a VCS-free extraction.
 - `make check` runs unit, process, race, command build, formatting,
-  Staticcheck, and vulnerability checks. It is the pre-integration gate.
+  Staticcheck, and vulnerability checks. On Linux it also runs the bounded
+  two-host qualification fixture command tests through `fixture-network-test`;
+  invoking that target elsewhere fails with an invalid environment. This is
+  the pre-integration gate. Pull request CI uses `scripts/select-pr-checks.go`
+  to run the changed Go owners,
+  their imported consumers, and explicitly registered non-Go fixture owners;
+  independent selected jobs all finish and report their failures. The exact
+  candidate must still pass `make check` before integration, and a push to
+  `main` repeats that complete gate.
+- Focused Linux race checks retain raw command, stdout, stderr, and exit status
+  outside Git. They may compose existing owner tests for a bounded lifecycle
+  fact, but do not turn that composition into an end-to-end qualification.
+
+Linux Node command tests can select `ARDENTS_NODE_SCOPE_PROFILE=system` to
+place every serving Node in its own systemd scope. The selected profile requires
+a running system manager and permission to create and stop system scopes;
+missing prerequisites fail. The runner verifies the READY process's cgroup and
+sole PID, then joins and verifies scope cleanup. Selected Node process jobs in
+Ubuntu 24.04 PR CI use this profile because worker manager queries must not
+share the Node's measured cgroup. Ordinary developer-host execution without
+this selector retains its shared-cgroup limitation. Scope verification alone
+does not qualify installed workers, a second Endpoint, or whole-host protection.
+The complete Ubuntu CI gate selects the same profile through
+`NODE_PROCESS_TEST_COMMAND`; only the Node process package uses that runner.
+The other process packages and the unprivileged component checks retain their
+ordinary runner. Both process invocations remain serial and run every package
+in the declared process profile.
+The full Ubuntu CI job has a 60-minute orchestration budget for the sequential
+complete gate, including cold compiler caches and the race suite. The Go test
+timeouts and required checks remain unchanged; cancellation is an incomplete
+gate, never a passing result.
+
+Installation filesystem component checks select
+`ARDENTS_INSTALLATION_COMPONENT_PROFILE=root` and run
+`go test -count=1 ./internal/endpoint/installation` with actual UID 0.
+The selected prerequisite test fails under a non-root UID; an ordinary
+unprivileged run cannot supply Root filesystem evidence. In Docker explicitly
+select `--user 0` and the profile environment variable rather than inferring
+privilege from the image name. Enrollment's caller-owned package test retains
+its separate unprivileged profile. Root filesystem checks do not qualify a
+system manager, cgroup containment or an admitted installed Ubuntu journey.
+The completion-channel component also requires writable `/run` and permission
+to spawn a child with kernel UID/GID 65534 and cleared supplementary groups.
+The child connects through the Root-owned directory and socket, while actual
+kernel permission refusals prevent private-intent reads and directory writes.
+Unavailable credential-switch privileges fail this selected profile. This is
+local Unix credential/access evidence, not systemd namespace qualification.
+
+The two-Node lifecycle process test retains TCP port reservations throughout
+State and plan preparation. It releases each reservation immediately before its
+Source or Node starts, while other addresses remain owned. This prevents its
+own ephemeral allocator from assigning a Node address to a Source. The ordinary
+child bind still has a release-to-bind gap in which an external process could
+claim that address; bind failures remain failures without a retry or waiver.
+These reservations do not qualify installed networking or systemd/cgroup use.
+
+- The retained text Publisher setup keeps its real 4-by-64 authenticated
+  loopback composition in the ordinary Linux profile. Its race counterpart
+  checks the same 256 workload bindings, retained identities, concurrent Reader
+  ownership, and ready barrier at an in-memory stream seam; race-detector
+  slowdown is not a wall-clock throughput verdict for the loopback fixture.
 - Its serial race inventory gives each package an explicit 15-minute terminal
   timeout. This keeps the race-instrumented Linux Endpoint's cryptographic
   fixtures inside the checked profile without inheriting Go's shorter default;
@@ -42,12 +107,16 @@ substitute for independent review.
   Git; the test writes secret-bearing raw observations there and retains them
   locally. A non-Linux host or missing capture directory is an invalid profile,
   not a passing skip.
-- `make fuzz` mutation-fuzzes the selected State and Contributor targets for a
-  bounded 30 seconds each. State owns canonical Epoch/Node Record framing and
-  checks successful parser digest/key/raw invariants; Contributor owns strict
-  JSON decoding and checks its successful round trip. The command fails if
-  either named target is absent or fails, and does not claim coverage of every
-  untrusted grammar. The deterministic architecture profile independently
+- The installed `text-command-network` runner can retain its complete raw
+  output in an explicitly supplied owner-private directory outside Git. It
+  prints the file path before the long-running test and keeps failures and
+  timeouts for diagnosis; the caller retains candidate and host inventories
+  separately.
+- `make fuzz` mutation-fuzzes the selected State target for a bounded
+  30 seconds. State owns canonical Epoch/Node Record framing and checks
+  successful parser digest/key/raw invariants. The command fails if the named
+  target is absent or fails, and does not claim coverage of every untrusted
+  grammar. The deterministic architecture profile independently
   checks the selected inventory, its declarations, the Make entry point, and
   the exact mutation commands. It does not mutation-fuzz under an ordinary
   deterministic profile.
@@ -97,13 +166,34 @@ checks in the existing Linux deterministic/race profiles; a Windows unit pass
 does not execute or qualify them. Windows retains the pre-existing Endpoint
 journey and an explicit unsupported text-command refusal. Shared State,
 Custody, Node and protocol consumers keep their own platform contracts. The
-Endpoint-originating Route bootstrap/prefix client and its stream, credit,
-JOIN and network-issuance tests also execute in the Linux profiles. Receiving
-Node checks that do not require that client remain on both platforms. Codec
+[measured Linux Endpoint test cost](https://github.com/dianabuilds/ardents-network/blob/4764ae1c567e93180f3aa643b2544abfdb2a67dc/docs/development/endpoint-test-cost.md) records one
+development baseline and the deliberate workload and Permission-hour waits;
+it does not change this checked profile. The Endpoint-originating Route
+bootstrap/prefix client and its stream, credit,
+JOIN and network-issuance tests also execute in the Linux profiles. The
+Endpoint role-network fixture names its selected Carrier, resolution, Publisher,
+and JOIN roles explicitly; it substitutes accepted State and worker qualification
+while starting the actual Node runtimes, Custody allocation, token stock,
+Route forwarding, and role TLS. Its reserved-window variant is used only when
+the child observation process inherits a Permission hour selected by its parent.
+On a failed test, the fixture reports the last 16 bounded state events per
+Node after their cleanup attempts. Periodic resource samples cannot displace
+the transition history; the retained fields are time, kind, state, Carrier,
+and reason, without resource samples or assignment material.
+Receiving Node checks that do not require that client remain on both platforms. Codec
 round trips, private-capsule cryptography and network tests that construct
 Endpoint operations execute with the Linux client. Shared outer-handshake
 admission and receiving-listener address/certificate fixtures remain separately
 available to the platform-independent Node tests.
+The Linux Node deterministic/race checks run actual TCP/TLS and QUIC forwarding
+open success, refusal, cancellation, and concurrent same-key one-HELLO cases.
+The Linux parent-reader regression holds one downstream HELLO, then proves a
+distinct selected TCP child and lane-zero control progress; its pending CLOSE
+variant observes the first carrier close before accepting that result. Route
+queue bound and Node Stop/invalidation tests remain separate owner evidence,
+not one end-to-end lifecycle qualification.
+Portable session checks retain blocked-HELLO/ready-unrelated progress and
+independent waiter/creator cancellation ownership.
 ## Reachability audit
 
 `make deadcode` runs `golang.org/x/tools/cmd/deadcode` for the maintained
@@ -121,18 +211,63 @@ owner either removes it or reviews it with a concrete retirement condition.
 An absent listed symbol also fails the gate, so the registry cannot silently
 accumulate stale exemptions. `make check` includes this audit.
 
+The dedicated Initiator closure audit removed the production-dead Entry
+admission engine, receiving relay grammar, and direct credential/reachability
+OHTTP adapters. The User Route closure oracle additionally requires the
+uncalled Open/Attach owner, private reachability exchange, and exclusive relay
+and Introduction sender files and declarations to remain absent. It also names
+the shared Attachment evidence and current Introduction receiver surfaces that
+must remain. Endpoint and Node behavior tests may use bounded test-local
+reciprocal fixtures; those fixtures do not restore production reachability.
+Shared credential-relay codec leaves and the standalone reachability Relay
+remain exactly classified under their current consumers in the deadcode
+registry.
+
+The old Node-leg dial, TCP/QUIC client adapters, and client confirmation
+entrypoint are absent. The retained reciprocal decoder remains in its exact
+reviewed grammar group. Current closed TCP/TLS and QUIC tests prove exact peer
+rejection, cancellation before handshake, caller-owned lifetime after a
+completed handshake, and unchanged Carrier profile bounds.
+
+Removing the old cross-platform Rendezvous listener once exposed the shared
+server-side Carrier and admission closure as production-dead. The current
+analysis reaches it through the composed `ardents-node node --config` command,
+and ADR-0101 resolved the last two Node entries that still carried the stale
+"no selected C0 command" claim: the `dutyFacts` DutyView test-seam projection
+moved into test scope and the unimplemented local admission-timeout helpers
+were retired, so `internal/node` holds no common deadcode allowance.
+ADR-0104 subsequently replaced the getter seam itself with one copied
+`state.NodeDuty` value, deleting the test-scope projection along with the
+Interface it satisfied.
+Additional shared framing leaves are unreachable only in the Windows
+projection and remain in its platform allowance because Linux production
+still has retained Route consumers. That allowance does not permit removing
+or reconnecting shared mechanics in the one-engine retirement slice.
+
 The headless command inventory declares the four-command Network artifact lane;
 the text-worker inventory declares its separately owned Application lane under
 `tests/profiles/`. Architecture tests check actual transitive dependency
 graphs, the explicit [`ownership.json`](ownership.json) registry, exact
 qualification/artifact-lane ownership, and every maintained package and suite.
 
+The AAI2 retirement closure receipt has source `go list -deps -json`, profile
+`GOOS=linux GOARCH=amd64 CGO_ENABLED=0`, and command `./cmd/ardents`. Its scope
+is limited to repository-owned production Go files in that one Linux command
+dependency closure. The architecture gate rejects the removed
+`internal/application/interfacev1/connection` dependency and every exact
+`RunParticipant` identifier while requiring the selected AAI3 Connection and
+Administration dependencies to remain. A temporary local module with the
+forbidden import and symbol proves that the gate fails on their return. This is
+not an all-platform, all-command, supply-chain, privacy, or release
+qualification.
+
 Canonical command builds use the non-overridable
 `-trimpath -buildvcs=false` policy. The public Make proof builds all four current
 headless artifacts from two independent normal clones, a linked worktree, and
 two independent VCS-free ownership extractions,
-including the Endpoint source dependencies owned by both Application Interfaces
-and text-application without changing their ownership or the artifact lane,
+including the Endpoint source dependencies owned by the selected protected text
+Connection and Administration Interfaces and text-application without changing
+their ownership or the artifact lane,
 then requires byte-identical
 outputs without implicit `vcs.*` settings. Source revision and builder
 provenance remain explicit authenticated release-metadata,
@@ -161,10 +296,10 @@ Network authority/lifecycle repairs:
 - Entry close cancels acquisition, joins and terminalizes active attachment
   cleanup before releasing its root, including concurrent and failure cases.
 
-The architecture suite additionally prevents floor authority from returning to
-`inspect-alpha-corpus`. These are ongoing regression checks for the repaired
-candidate, not completion of the formal deep audit or authorization to begin
-its later security, concurrency, or wire tracks.
+The command tests exercise the retired `accept-alpha-corpus` and
+`inspect-alpha-corpus` refusals before effects. These are regression checks
+for the repaired candidate, not completion of the formal deep audit or
+authorization to begin its later security, concurrency, or wire tracks.
 
 ## Current profiles
 
@@ -172,6 +307,9 @@ its later security, concurrency, or wire tracks.
 checked registry. Every active profile has one real Make entrypoint and exact
 prerequisites. Missing Docker, binaries, privilege, platform, host input, or
 artifact is an invalid environment, never a skip or passing result.
+The architecture gate checks a declared timeout against that Make target's
+recipe and its target dependencies, so another profile's timeout cannot satisfy
+the registry entry.
 
 The maintained local profiles are:
 
@@ -179,11 +317,19 @@ The maintained local profiles are:
 - `qualification`, the aggregate selected Ubuntu Endpoint lifecycle profile;
 - `endpoint-portable-ubuntu` and `endpoint-replacement-ubuntu`;
 - `service-credential-response-linux`;
-- `native-rendezvous-multihost`;
 - `text-role-durable-state-capture`, the Linux-only isolated Role and Publisher
   durable-state observation; it retains secret-bearing raw observations only in
-  an existing, writable, non-symlink directory outside the Git worktree;
-- `alpha-control-two-endpoints`;
+  an existing, writable, non-symlink directory outside the Git worktree. State,
+  OS placement and pressure/owner-use are explicit component models: participants
+  share a container cgroup, so its departing processes cannot supply isolated
+  Role owner-use evidence. Duties still run through Node with real durable
+  hosting allowance accounting. This profile does not qualify systemd/cgroup
+  placement, resource use, latency or full P3 protection;
+- the retired two-Endpoint alpha-control runner is no longer a contributor
+  route. Its historical receipts remain in their existing evidence locations;
+  its last source revision is retained in Git as `6ac9cba0856a7a0b92f2e8a4e11b246625f6716d`;
+  current enrolled-bundle and inspection regressions stay with
+  `headless-evidence` and its owned package tests;
 - `text-worker-network`, the installed confined worker/network composition invoked
   by `make text-worker-network-check`; requires all eight document/Carrier and elapsed-refresh cases,
   exact invocation evidence and terminal service success. State and authority setup
@@ -196,14 +342,30 @@ The maintained local profiles are:
 - `text-command-network`, the separately pinned installed ordinary-command journey
   invoked by `make text-command-network-check`; it exercises the real `ardents`,
   `ardents-custody`, `ardents-node` and `ardents-text` candidate binaries through
-  both Carriers, with exact empty, 64 KiB and 4 MiB command cases. It is functional
-  journey evidence, not full host, privacy, hostile-network or p95 qualification.
+  both Carriers, with exact empty, 64 KiB and 4 MiB command cases. It supplies
+  journey evidence with each Node's separate systemd scope and actual single-
+  process membership verified at READY, joined empty-scope cleanup, and no
+  observed topology loss of READY before completion. Orchestrator commands
+  remain outside Node pressure owners. This is not continuous-duty evidence.
+  It does not qualify full host, privacy, hostile-network or p95 behavior.
+
 - `text-worker-policy`, the root-driven installed authorization matrix invoked
   by `make text-worker-policy-check`; it does not qualify the complete host.
 - `text-worker-lifecycle`, the separately selected installed Endpoint launch/Grant/
   cgroup profile invoked by `make text-worker-lifecycle-check`; its tagged test binary
   and exact temporary unit must be independently pinned. No-tests success is
   refused; this profile does not replace hostile-worker or Service journey tests.
+- the fixed stream-qualification worker's deterministic scheduled-byte corpus is
+  checked locally for all 256 byte values (including NUL and invalid UTF-8), exact
+  verification across unequal fragment boundaries, wrong-offset/corrupted-byte
+  refusal and a workload-verdict failure after one-byte truncation. This is
+  binary-corpus conformance for the pinned laboratory caller, not an installed
+  profile result or support for arbitrary Applications.
+- `text-worker-tree`, the separately pinned installed hostile child/grandchild cleanup
+  profile invoked by `make text-worker-tree-check`; it requires both role receipts,
+  original-cgroup cleanup and independent Publisher sibling snapshot progress. It
+  does not replace the escape matrix, protected Route admission or full host
+  qualification.
 - `text-worker-escape`, the separately pinned installed P6/P7 escape matrix invoked
   by `make text-worker-escape-check`; it tests hostile worker access attempts under
   the effective selected unit policy and does not establish whole-host qualification.
@@ -221,10 +383,11 @@ product claim, environment, fixture, and Product Owner decision.
 The C0 Network candidate is exercised by the deterministic/process/race lanes,
 `headless-check`, and the selected Network qualifications. This includes the
 Endpoint-owned `internal/application/broker`; its directory is not a separate
-Application product. The neutral Application Interface v1 remains covered by
-its conformance vectors and the Endpoint's shared seam. No Browser command,
-Browser implementation, Browser artifact, or Browser qualification is part of
-the current candidate.
+Application product. Protected text AAI3 and the separate Administration v1
+Interface remain covered at their selected seams. The deleted AAI2 package and
+vectors are neither a generic Endpoint workload nor compatibility surface. No
+Browser command, Browser implementation, Browser artifact, or Browser
+qualification is part of the current candidate.
 
 ADR-0067 retires the completed release-seed and fixed State-genesis ceremony
 commands, their deterministic writers, and their separate artifact/process
@@ -232,11 +395,12 @@ profile. R-119 through R-121 retain the exact historical result; current test
 inventories contain no compatibility exception or hidden replacement route for
 those writers.
 
-`tests/compatibility/browser-endpoint-v4` is the sole retained non-executable
-source exception. ADR-0061 requires it to remain outside Go package discovery,
-ordinary checks, and current qualification until an explicit supersede or
-retirement decision. Completed experiments and the former `reference-c2`
-fixture are available only from Git history and accepted research records.
+[ADR-0091](../adr/0091-retire-uncomposed-legacy-artifacts.md) retired the
+`tests/compatibility/browser-endpoint-v4` non-executable source tree that
+ADR-0061 had retained pending an explicit supersede or retirement decision.
+Completed experiments, the former `reference-c2` fixture, and the retired
+compatibility tree are available only from Git history and accepted research
+records.
 
 ## Historical qualification provenance
 
@@ -268,9 +432,10 @@ belongs to exactly one process profile. A new package, file, or suite cannot
 enter through a negative filter, wildcard exception, or directory naming
 alone.
 
-`tests/compatibility/` is non-executable provenance. Compatibility evidence
-must name its former observer and deletion/reactivation condition and does not
-belong to a maintained package inventory.
+Non-executable compatibility provenance lives in Git history and accepted
+research records, not in the working tree. Compatibility evidence must name
+its former observer and deletion/reactivation condition and does not belong to
+a maintained package inventory.
 
 ## Validity and reruns
 
@@ -291,6 +456,12 @@ or eventual-consistency oracles. Every goroutine, process, listener, file, lock,
 timer, and fixture has one owner, cancellation path, join, residue assertion,
 and cleanup-failure path.
 
+The fixed stream qualification uses a qualification-only Run seam: its report,
+observer callbacks, sampling cleanup and joined streams never belong to an
+ordinary text Job. Its cancellation oracle delays an old Run's completion
+until a replacement exists, then proves the completion remains on the old Run
+and that the first sampling cleanup error is immutable.
+
 Two tests are duplicate-removal candidates only when requirement, owning seam,
 oracle, transition/fault, platform/format, and independence role are all the
 same. A seam migration moves behavior tests to the new Module Interface,
@@ -306,7 +477,9 @@ cleanliness.
 
 The closed text Endpoint's durable Entry Set owner and its persistence and
 class-specific adjacency tests compile on Linux, matching their sole production
-consumer. Legacy Entry Invite and receiving-admission checks remain portable.
+consumer. Legacy Entry Invite validation and retained admission-history
+decoding remain portable; receiving-admission checks were retired with the old
+Initiator closure.
 
 Holder-request construction and its end-to-end Custody allocation tests run on
 Linux with the text Endpoint client. The shared request decoder, proof verifier,
@@ -330,4 +503,99 @@ server framing tests remain portable; their failure checks are unchanged.
 AAI3 server admission, lifecycle, cleanup and request round trips execute on
 Linux with the Endpoint. Portable client cancellation/close tests retain their
 independent socket peer and explicit terminal-frame fixture; they do not require
-the selected Linux server to produce a response.
+the selected Linux server to produce a response. The public AAI3 client/server
+conformance oracle writes every byte value exactly once through unequal input
+fragments, closes only the input direction, and then reads the reversed bytes
+through different response fragments. Existing client tests retain cancellation,
+concurrent close, and Write-before-CloseInput ordering coverage; request tests
+retain refused Name and explicitly send a complete AAI2 request plus data frame
+to prove refusal before the Application owner is called. This mapping does not
+retain the removed AAI2 test suite or claim generic Endpoint workloads.
+
+The headless command decoder rejects both a previously valid
+`ardents-headless-runtime-v1` plan and mixed v1/v2 fields before creating any
+named root or socket or emitting runtime output. A separate dispatch oracle
+shows valid and broken v2 plans reach the selected v2 runtime or decoder refusal
+without returning the retired-v1 outcome. The command dispatch and plan-decoder
+tests exercise the selected runtime and the retired-v1 refusal.
+
+The exact legacy `endpoint open` syntax returns its stable retirement error at
+the command adapter. Its regression supplies missing and existing file paths
+and an available Unix socket, then proves no output creation or mutation and no
+IPC acceptance. The removed accepting client fixtures no longer qualify AAI2;
+the AAI2 codec/server/client and exclusive Endpoint adapter are absent, while
+the independent Administration client round trip remains covered. Shared
+directional-close evidence remains with AAI3 and native Service Connection.
+
+The `ardents-node node --config` retirement oracle submits each old
+`rendezvous`, `initiator`, `introduction`, `responder`, and `transit_issuer`
+reservation plus a mixed old/closed plan through the real command adapter. Each
+must return the typed old-duty retirement outcome while deliberately absent
+key, certificate, Source-root, State-root, and role-root paths remain absent.
+The complete command package retains independent positive and refusal coverage
+for `closed_issuer`, `closed_forwarding`, `closed_resolution`,
+`closed_introduction`, and `closed_data_join`. The old Initiator, Responder,
+Introduction, Transit-issuance, and Rendezvous engines and their direct server
+tests are absent. State and Node tests exercise the State-to-Node value
+interface, its projection, and the receipt-time bound. Historical file
+inventories do not guard these
+boundaries: command behavior proves the old starts refuse before effects, and
+the current closed-duty tests prove their accepting paths.
+
+The `ardents-node source --config` retirement oracle submits old-only and
+mixed old/closed `native_rendezvous_profile` plans through the real command
+adapter. Both return `old Source profile is retired` with no output while the
+deliberately absent State and local-role roots remain absent; deliberately
+missing TLS inputs also prove the refusal precedes key access and listener
+creation. The closed Source process test independently starts the explicit
+`ardents-route-v3` profile with its previously pinned signer and verifies the
+same signed State bytes through the real Source transport.
+
+The retired `ardents-node contributor` start-retirement oracle and the
+Contributor no-start recovery oracle were removed together with the whole
+retirement mechanism and its package (ADR-0114). The standard command-usage
+test keeps the unrecognized `contributor` shape failing before any effect.
+
+The `ardents name encode/resolve/control` retirement oracle submits all three
+recognized command shapes, including absent inputs and incomplete remaining
+arguments, through the real command dispatch. The complete inputs are shaped
+like the former adapter inputs against one authenticated State root and one
+synthetic root shaped like the retired Namespace store. Every retired command
+case returns the exact refusal with no output; a recording default transport
+observes zero attempts, and all files in those same durable roots remain
+byte-for-byte unchanged. The retired `name encode` verb refuses like the
+others; its former exact byte vector survives only as inlined fixture bytes
+that never execute an encoder (ADR-0113). Removing the command-only
+HTTP/OHTTP adapters made the exact private Resolution and adjacent Namespace
+verification closure production-dead; ADR-0105 and ADR-0113 then deleted that
+closure with its packages, and their deadcode allowance groups were retired
+with them.
+
+## Local diagnostic environment
+
+The explicit [protected installation capture driver](../../tests/qualification/protected-installation/README.md)
+invokes public provision and installation-check, then asks the admitted system
+manager to start the actual installed unit. It retains the first command failure
+without retry or reset. This is a preparation/capture surface, not the complete
+two-Endpoint Service oracle or evidence that any admitted host was exercised;
+manager-start success alone does not establish participant readiness. Its
+independent program digest and genuine operator request are selected prerequisites.
+
+The [local diagnostics owner](local-diagnostics.md) and its
+[recipes](../../scripts/diagnostics/README.md) define the explicit Docker tools,
+private live process mode, event/resource collection, race/profile separation,
+source identity, failure/loss and privilege limits. `make diagnostics-build`
+is explicit setup; `make diagnostics-check` exercises the Linux collector.
+The Linux architecture deterministic profile runs that collector's meaningful
+negative/terminal evidence tests without Docker. Process diagnostic behavior
+belongs to `internal/diagnostics/process` in the deterministic/race profile.
+The live Unix Interface is explicitly enabled by `ARDENTS_DEBUG_SOCKET` only
+for Endpoint/Node commands; it supplies no worker-confinement or Network
+readiness qualification. Product runtime dependencies are unchanged.
+
+The deterministic inventory has an explicit Linux-only supplement in
+`tests/profiles/deterministic-linux-packages.txt` for Endpoint introduction,
+source, Service, token and publication owners whose files have Linux build
+constraints. Linux unit/race gates include it; Windows checks retain the common
+inventory. Architecture checks validate both inventories and Linux selection;
+no build-error-based filtering or passing platform skip supplies that membership.

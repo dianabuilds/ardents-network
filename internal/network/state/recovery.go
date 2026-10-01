@@ -3,6 +3,9 @@ package state
 import (
 	"errors"
 	"fmt"
+
+	"github.com/dianabuilds/ardents-network/internal/network/epoch"
+	"github.com/dianabuilds/ardents-network/internal/network/state/durable"
 )
 
 // RecoveryRequiredError reports durable State that cannot safely become active
@@ -15,37 +18,29 @@ func (err *RecoveryRequiredError) Error() string {
 	return "network state recovery required: " + err.Reason
 }
 
-func loadGenerationChain(config config, generations map[string]durableGeneration, name string, seen map[string]bool) (candidateDecision, map[string]bool, error) {
+func loadGenerationChain(config config, generations map[string]durable.Generation, name string, seen map[string]bool) (epoch.Decision, error) {
 	value, exists := generations[name]
-	if !exists || seen[name] || len(seen) >= maximumEpochChain {
-		return candidateDecision{}, seen, errors.New("generation chain identity, cycle, or length is invalid")
+	if !exists || seen[name] || len(seen) >= epoch.MaxEpochChain {
+		return epoch.Decision{}, errors.New("generation chain identity, cycle, or length is invalid")
 	}
 	seen[name] = true
-	parsed, err := parseEpoch(value.Epoch)
+	parsed, err := epoch.Inspect(value.Epoch)
 	if err != nil {
-		return candidateDecision{}, seen, fmt.Errorf("parse generation chain Epoch: %w", err)
+		return epoch.Decision{}, fmt.Errorf("parse generation chain Epoch: %w", err)
 	}
-	var previous *Snapshot
-	if parsed.number > 1 {
-		previousName := fmt.Sprintf("%x", parsed.previous)
-		prior, updated, priorErr := loadGenerationChain(config, generations, previousName, seen)
-		seen = updated
+	var previous *epoch.Snapshot
+	if parsed.Number > 1 {
+		previousName := fmt.Sprintf("%x", parsed.Previous)
+		prior, priorErr := loadGenerationChain(config, generations, previousName, seen)
 		if priorErr != nil {
-			return candidateDecision{}, seen, priorErr
+			return epoch.Decision{}, priorErr
 		}
-		previous = &prior.snapshot
+		previous = &prior.Snapshot
 	}
-	decision, err := loadGeneration(config, value, previous)
-	if err != nil {
-		return candidateDecision{}, seen, err
-	}
-	if decision.snapshot.Generation != name {
-		return candidateDecision{}, seen, errors.New("generation identity does not match its verified digest")
-	}
-	return decision, seen, nil
+	return loadGeneration(config, value, previous)
 }
 
-func missingCurrentRecovery(generations map[string]durableGeneration) error {
+func missingCurrentRecovery(generations map[string]durable.Generation) error {
 	if len(generations) == 0 {
 		return nil
 	}

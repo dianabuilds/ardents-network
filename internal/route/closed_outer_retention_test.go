@@ -3,6 +3,8 @@ package route
 import (
 	"testing"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 )
 
 func TestClosedOuterRetainedCarrierKeepsFreshChildDeadlines(t *testing.T) {
@@ -19,30 +21,30 @@ func TestClosedOuterRetainedCarrierKeepsFreshChildDeadlines(t *testing.T) {
 	}
 	defer handshake.Close()
 	parentEnd := now.Add(time.Minute)
-	hello := ClosedHello{NetworkID: receiver.NetworkID, StateGeneration: receiver.StateGeneration, StateDigest: receiver.StateDigest,
+	hello := ardp.Hello{NetworkID: receiver.NetworkID, StateGeneration: receiver.StateGeneration, StateDigest: receiver.StateDigest,
 		ProfileDigest: receiver.ProfileDigest, RecipientNodeID: receiver.NodeID, RecipientDutyGeneration: receiver.DutyGeneration,
-		Purpose: ClosedPurposeForwarding, ChannelNonce: [32]byte{8}, Deadline: parentEnd}
-	body, err := EncodeClosedHello(hello)
+		Purpose: ardp.PurposeForwarding, ChannelNonce: [32]byte{8}, Deadline: parentEnd}
+	body, err := ardp.EncodeHello(hello)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := handshake.Accept(ClosedLaneFrame{Kind: closedFrameHello, Body: body}); err != nil {
+	if _, err := handshake.Accept(ardp.Frame{Kind: ardp.KindHello, Body: body}); err != nil {
 		t.Fatal(err)
 	}
 	open := func(id uint32, end time.Time) error {
 		t.Helper()
 		body, err := EncodeClosedNodeOpen(ClosedOpen{NextNodeID: receiver.NodeID, NextDutyGeneration: receiver.DutyGeneration,
-			Purpose: ClosedPurposeIssuer, Deadline: end}, ClosedChildIssuerBootstrap)
+			Purpose: ardp.PurposeIssuer, Deadline: end}, ClosedChildIssuerBootstrap)
 		if err != nil {
 			t.Fatal(err)
 		}
-		_, err = handshake.Accept(ClosedLaneFrame{Kind: closedFrameOpen, Lane: id, Body: body})
+		_, err = handshake.Accept(ardp.Frame{Kind: ardp.KindOpen, Lane: id, Body: body})
 		return err
 	}
 	if err := open(1, now.Add(10*time.Second)); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := handshake.Accept(ClosedLaneFrame{Kind: closedFrameClose, Lane: 1, Body: []byte{0}}); err != nil {
+	if _, err := handshake.Accept(ardp.Frame{Kind: ardp.KindClose, Lane: 1, Body: []byte{0}}); err != nil {
 		t.Fatal(err)
 	}
 	now = now.Add(11 * time.Second)

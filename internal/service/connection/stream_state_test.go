@@ -93,7 +93,8 @@ func TestTerminalTailStopsAtNoNewRecoveryBoundary(t *testing.T) {
 	stream := &Stream{ctx: t.Context(), application: application, current: attachment, authorized: now, started: now,
 		opener:   func(context.Context, Recovery) (*Attachment, error) { return nil, errors.New("unexpected recovery") },
 		recovery: Recovery{NoNewRecoveryAfter: time.Now().Add(-time.Second).Unix()}, localTerminal: true,
-		remoteTerminal: true, terminalConfirmationSent: true, ackSignal: make(chan struct{}, 1), done: make(chan struct{}),
+		remoteTerminal: true, terminalConfirmationSent: true, terminalAcknowledgedGeneration: 1,
+		terminalConfirmationWrittenGeneration: 1, ackSignal: make(chan struct{}, 1), done: make(chan struct{}),
 		resources: func(kind string, change int) uint32 {
 			if kind == "timer" {
 				return uint32(timers.Add(int32(change)))
@@ -183,7 +184,7 @@ func TestStreamRecoveryCancelsProposalAfterTerminalConfirmation(t *testing.T) {
 		opener: func(context.Context, Recovery) (*Attachment, error) {
 			close(opened)
 			<-release
-			return &Attachment{generation: 2, close: func() { close(closed) }}, nil
+			return &Attachment{generation: 2, close: func() error { close(closed); return nil }}, nil
 		}}
 	stream.cond = sync.NewCond(&stream.mu)
 	result := make(chan error, 1)
@@ -256,10 +257,10 @@ func TestStreamExchangesInitialContinuityBeforeBidirectionalData(t *testing.T) {
 		t.Fatal(err)
 	}
 	results := make(chan error, 2)
-	go func() { _, err := client.Run(3, 3); results <- err }()
-	go func() { _, err := publisher.Run(3, 3); results <- err }()
-	go func() { _, _ = clientUser.Write([]byte("one")) }()
-	go func() { _, _ = publisherUser.Write([]byte("two")) }()
+	go func() { _, err := client.RunBounded(3, 3); results <- err }()
+	go func() { _, err := publisher.RunBounded(3, 3); results <- err }()
+	go func() { _, _ = clientUser.Write([]byte("one")); _ = clientUser.CloseInput() }()
+	go func() { _, _ = publisherUser.Write([]byte("two")); _ = publisherUser.CloseInput() }()
 	clientRead, publisherRead := make([]byte, 3), make([]byte, 3)
 	if _, err := io.ReadFull(clientUser, clientRead); err != nil {
 		t.Fatal(err)

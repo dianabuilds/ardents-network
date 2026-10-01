@@ -331,3 +331,42 @@ func TestDistributionStateRepairsStaleCurrentMirror(t *testing.T) {
 		t.Fatalf("recovered active generation=%s err=%v", current.Generation, err)
 	}
 }
+
+func TestOpenRequiresDistributionJournalForActiveEpoch(t *testing.T) {
+	t.Parallel()
+	fixture := newFixture(t)
+	root := t.TempDir()
+	config := state.Config{
+		Root: root, NetworkID: fixture.networkID,
+		Authorities: map[[32]byte]ed25519.PublicKey{fixture.authorityID: fixture.authorityPublic},
+		Threshold:   1, Now: time.Unix(fixture.now, 0),
+	}
+	store, err := state.Open(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	accepted, err := store.Accept(context.Background(), fixture.epoch, fixture.inputs, fixture.materializations)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := store.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.RemoveAll(filepath.Join(root, "distribution")); err != nil {
+		t.Fatal(err)
+	}
+	reopened, err := state.Open(config)
+	if reopened != nil {
+		defer reopened.Close()
+	}
+	var recoveryRequired *state.RecoveryRequiredError
+	if !errors.As(err, &recoveryRequired) {
+		t.Fatalf("missing distribution journal error = %v, want RecoveryRequiredError", err)
+	}
+	if recoveryRequired.Reason != "distribution journal is missing from an active root" {
+		t.Fatalf("recovery reason = %q", recoveryRequired.Reason)
+	}
+	if _, err := os.Stat(filepath.Join(root, "generations", accepted.Generation, "epoch.bin")); err != nil {
+		t.Fatalf("active generation was not retained: %v", err)
+	}
+}

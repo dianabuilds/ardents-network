@@ -11,8 +11,8 @@ func TestWorkerEntrypointsAcceptOnlyTheirFixedRole(t *testing.T) {
 	nonce := [32]byte{1}
 	input := bytes.NewBuffer(initialization(streamqualification.ReaderRole, streamqualification.ClientToPublisher, nonce, [32]byte{2}))
 	var output bytes.Buffer
-	if err := run([]string{"worker-reader"}, input, &output); err != nil {
-		t.Fatal(err)
+	if err := run([]string{"worker-reader"}, input, &output); err == nil {
+		t.Fatal("readiness without the complete stream workload passed")
 	}
 	if actual := output.Bytes(); len(actual) != 40 || string(actual[:8]) != "ARDTQR01" || !bytes.Equal(actual[8:], nonce[:]) {
 		t.Fatal("worker did not return the exact fixed readiness acknowledgement")

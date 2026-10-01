@@ -19,8 +19,7 @@ type fuzzTarget struct {
 }
 
 var selectedFuzzTargets = []fuzzTarget{
-	{packagePath: "./internal/network/state", name: "FuzzCanonicalParsers", budget: 30 * time.Second},
-	{packagePath: "./internal/contributor", name: "FuzzContributorJSONDecoders", budget: 30 * time.Second},
+	{packagePath: "./internal/network/epoch", name: "FuzzCanonicalParsers", budget: 30 * time.Second},
 }
 
 func main() {

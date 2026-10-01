@@ -22,15 +22,10 @@ type ComponentStatement struct {
 	Signature           [64]byte
 }
 
-// VerifyComponent verifies the component-local signature under the separately
-// supplied component root and its exact catalog reference. It intentionally
-// cannot alter Release, Network State, or Endpoint roots: it returns a
-// reader-only classification.
-func VerifyComponent(reference Component, raw []byte, root ed25519.PublicKey, at time.Time) Outcome {
-	_, outcome := verifiedComponent(reference, raw, root, at)
-	return outcome
-}
-
+// verifiedComponent verifies the component-local signature under the
+// separately supplied component root and its exact catalog reference. It
+// intentionally cannot alter Release, Network State, or Endpoint roots: it
+// returns a reader-only classification.
 func verifiedComponent(reference Component, raw []byte, root ed25519.PublicKey, at time.Time) (ComponentStatement, Outcome) {
 	if len(raw) == 0 {
 		return ComponentStatement{}, OutcomeUnavailable

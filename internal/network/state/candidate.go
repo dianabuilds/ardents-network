@@ -3,47 +3,60 @@ package state
 import (
 	"bytes"
 	"errors"
+
+	"github.com/dianabuilds/ardents-network/internal/network/epoch"
+	"github.com/dianabuilds/ardents-network/internal/network/source"
 )
 
-func (s *networkState) verifySourceBundle(bundle sourceBundle, current *Snapshot, currentDecision *candidateDecision) (candidateDecision, error) {
-	if len(bundle.materials) != 1 {
-		return candidateDecision{}, errors.New("source withheld the requested materialization index")
+func (s *networkState) verifySourceBundle(bundle source.Bundle, current *epoch.Decision) (epoch.Decision, error) {
+	if len(bundle.Materials) != 1 {
+		return epoch.Decision{}, errors.New("source withheld the requested materialization index")
 	}
-	index, err := materializationIndex(bundle.materials[0])
+	index, err := epoch.InspectMaterializationIndex(bundle.Materials[0])
 	if err != nil || index != s.config.sourceInfo.MaterialIndex {
-		return candidateDecision{}, errors.New("source withheld the requested materialization index")
+		return epoch.Decision{}, errors.New("source withheld the requested materialization index")
 	}
-	parsed, err := parseEpoch(bundle.epoch)
+	parsed, err := epoch.Inspect(bundle.Epoch)
 	if err != nil {
-		return candidateDecision{}, err
+		return epoch.Decision{}, err
 	}
 	verification := s.config
 	verification.now = verification.clock().UTC()
-	if verification.now.Before(parsed.validFrom) {
-		verification.now = parsed.validFrom
+	if verification.now.Before(parsed.ValidFrom) {
+		verification.now = parsed.ValidFrom
 	}
-	if current != nil && parsed.number == current.Epoch && parsed.digest == current.Digest {
-		if currentDecision == nil || !bytes.Equal(bundle.epoch, currentDecision.epochBytes) || !equalInputs(bundle.inputs, currentDecision.inputs) {
-			return candidateDecision{}, errors.New("source changed bytes for the current Epoch")
+	if current != nil && parsed.Number == current.Snapshot.Epoch && parsed.Digest == current.Snapshot.Digest {
+		if !bytes.Equal(bundle.Epoch, current.EpochBytes) || !equalInputs(bundle.Inputs, current.Inputs) {
+			return epoch.Decision{}, errors.New("source changed bytes for the current Epoch")
 		}
-		if err := verifyDecisionMaterials(*currentDecision, bundle.materials); err != nil {
-			return candidateDecision{}, err
+		if err := verifyDecisionMaterials(*current, bundle.Materials); err != nil {
+			return epoch.Decision{}, err
 		}
-		return *currentDecision, nil
+		return *current, nil
 	}
-	if s.pendingDecision != nil && parsed.number == s.pendingDecision.epoch.number && parsed.digest == s.pendingDecision.epoch.digest {
-		if !verification.now.Before(s.pendingDecision.epoch.validUntil) {
-			return candidateDecision{}, errors.New("pending Epoch is not strictly current")
+	if s.pendingDecision != nil && parsed.Number == s.pendingDecision.Header.Number && parsed.Digest == s.pendingDecision.Header.Digest {
+		if !verification.now.Before(s.pendingDecision.Header.ValidUntil) {
+			return epoch.Decision{}, errors.New("pending Epoch is not strictly current")
 		}
-		if !bytes.Equal(bundle.epoch, s.pendingDecision.epochBytes) || !equalInputs(bundle.inputs, s.pendingDecision.inputs) {
-			return candidateDecision{}, errors.New("source changed bytes for the pending Epoch")
+		if !bytes.Equal(bundle.Epoch, s.pendingDecision.EpochBytes) || !equalInputs(bundle.Inputs, s.pendingDecision.Inputs) {
+			return epoch.Decision{}, errors.New("source changed bytes for the pending Epoch")
 		}
-		if err := verifyDecisionMaterials(*s.pendingDecision, bundle.materials); err != nil {
-			return candidateDecision{}, err
+		if err := verifyDecisionMaterials(*s.pendingDecision, bundle.Materials); err != nil {
+			return epoch.Decision{}, err
 		}
 		return *s.pendingDecision, nil
 	}
-	return verifyDecision(verification, current, bundle.epoch, bundle.inputs, bundle.materials, true)
+	decision, err := verifyDecision(verification, epochPredecessor(current), bundle.Epoch, bundle.Inputs, bundle.Materials, true)
+	if err != nil {
+		return epoch.Decision{}, err
+	}
+	// A Source wave can only stage or activate a candidate that passed the
+	// sole closed intake schema; the reuse branches above return retained
+	// decisions that Open already classified (F-50).
+	if err := requireClosedIntakeSchema(s.config, decision.Header); err != nil {
+		return epoch.Decision{}, err
+	}
+	return decision, nil
 }
 
 func equalInputs(first, second [][]byte) bool {

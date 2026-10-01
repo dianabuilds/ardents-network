@@ -1,22 +1,286 @@
 # Endpoint and Service runtime
 
+## Selected protected installation handoff
+
+The following bounded command contract selects ADR-0119's installation
+boundary. The initial stopped provisioning, read-only integrity and installed
+startup consumers are implemented but not yet qualified on an admitted installed
+host. Successor update/recovery now have production callers and component
+controls; first-provision recovery now has a bounded production caller, but
+the full interruption matrix remains unfinished, and there is no
+supported full installation receipt yet. Commands remain thin adapters under
+`ardents endpoint`; the owning implementation issue must register any new
+package before adding one.
+
+`internal/endpoint/runtimeplan` owns the existing bounded headless-v2 and Source-v1 local
+declarations and their role/path/permission and public-identity validation.
+The current headless and Source refresh commands read bounded bytes and call these same decoders;
+installation consumes that grammar rather than defining another copy. Decoding
+opens no State or mutable root, contacts no manager and grants no Release,
+holder or runtime authority. Source credential loading, runtime composition and installation transitions
+remain separate owners; this parser extraction does not implement provisioning.
+
+`internal/endpoint/installation` composes the two fresh Release evaluations from
+one frozen set of enrolled metadata and the same local/reference facts. It
+checks complete resource bytes and coherent authenticated target identities and
+Targets floors before returning their opaque proofs. The ordinary enrolled
+command consumes only the executable proof for its existing replacement owner;
+its readiness remains general enrollment, not protected installation. Failure
+of the second evaluation retains any already committed Release floors and
+cannot return a partial accepting pair. Provisioning, immutable selection and
+actual manager identity binding are separate from this authentication.
+
+`start-installed` rechecks root-owned selection, all generation and fixed bytes,
+actual mutable root identities, this process's UID/GID/executable/arguments and
+unified cgroup, and the system manager's typed unit/Service properties. MainPID,
+InvocationID, exact ExecStartEx and protection properties must match before it
+returns the bound v2 plan to the ordinary participant composition. It opens no
+Release floor store and never recreates a fresh proof from stored target facts.
+The authenticated Endpoint unit requires both activation sockets before start;
+the socket units are PartOf the Endpoint so its stop also retires their listeners.
+Before returning the plan, startup observes both live socket units through typed
+manager properties and checks their fixed fragments, PartOf, listening state,
+Endpoint ownership, mode0600 and removal-on-stop contract.
+Effective stop/activation ordering still needs admitted installed qualification.
+During successor start a root-private `start-guard.json` retains the exact intent
+independently of cursor archival. Before manager start, root binds a private
+ephemeral Unix completion socket under the protected installation root. The
+Root-private socket birth record binds its device/inode and group to the exact
+guarded intent before manager start. Recovery validates this record before
+stop; cleanup removes only that recorded socket. An unrecorded or substituted
+socket refuses even with matching Root ownership and mode, retaining the guard.
+Endpoint verifies its root peer and waits before participant composition;
+root verifies the connecting MainPID/UID and the exact InvocationID, generation
+and binding digests. Root sends completion only after the start observation and
+archive directory syncs succeed. Cursor absence alone grants no transition
+admission. EOF, unavailable owner, substituted identity or the existing startup
+deadline refuses. The guard retains explicit recovery provenance if root dies;
+recovery still requires fresh floor-compatible proofs and actual stop/join.
+After acknowledgement, guard/socket cleanup failure is a post-acceptance error:
+the public command retains `installed-started-recovery-required` with nonzero
+exit status instead of describing the invocation as never admitted. That receipt
+does not establish Service readiness. Socket visibility under confinement and
+the complete interrupted-cleanup matrix remain admitted qualification work.
+The ExecStartEx flag name and typed command representation follow the
+[systemd v255 implementation](https://raw.githubusercontent.com/systemd/systemd/v255/src/core/dbus-execute.c)
+and its [flag mapping](https://raw.githubusercontent.com/systemd/systemd/v255/src/shared/exec-util.c),
+checked 2026-10-01; component observations do not substitute for actual manager properties.
+
+The initial `endpoint provision` caller now composes platform/root admission,
+the independent manifest pin and both fresh Release proofs, explicit account
+creation, private mutable directories, immutable candidate staging, fixed
+resource copies, selection and manager reload. It returns only
+`installed-stopped` after checking the actual loaded Endpoint/socket units are
+inactive with their exact fragments and no drop-ins or worker instances. It
+never starts a unit or issues permissions. Initial installation requires absent
+managed writable directories and sockets; existing state is not adopted or
+cleared. Existing parent directories remain root-controlled, and Source
+credentials and public permission responses still require their explicit owners.
+Root-only preparation and generation phase records retain original errors.
+After preparation, provisioning records an initial transition intent before
+generation writes. Installed startup refuses either a pending intent or a
+pending failure before manager/runtime admission. Initial recovery requires
+fresh authority from the established Release floor store, the owned generation
+directory and complete fixed-file creation records (device/inode, intended digest,
+mode and group). It can repair authenticated prefixes on those owned objects,
+reload and return `installed-recovered-stopped`; explicit startup remains separate.
+An interruption before complete fixed-file birth records requires repair rather
+than adoption. Each fixed file and selection records its exclusively created inode
+durably before writing contents. The full actual interruption matrix remains
+unqualified.
+Component filesystem and manager-property controls do not qualify a positive
+Ubuntu/systemd/cgroup installation or the two-Endpoint Carrier journey.
+
+The read-only `installation-check` consumer now checks a canonical root-owned
+selection and local binding, exact generation/resource/plan bytes, the real
+dedicated account, mutable root device/inode/access and actual fixed worker
+resources. It requires a matching Ubuntu22.04/systemd249 or
+Ubuntu24.04/systemd255 amd64 profile with cgroup v2. Mixed OS/manager pairs
+and newer unadmitted managers refuse. On manager249, absent `ExitType` and
+`RestartMode` reflect unavailable selectable policies; parent lifetime still
+requires `RemainAfterExit=false`, `Restart=no` and the exact main process.
+On manager255 both observed policies remain mandatory. Every installed process
+check observes the actual manager version independently. This compatibility
+admission does not qualify either installed host profile.
+Its result is only `local-integrity-verified`: it opens no Release floor store,
+evaluates no fresh Release proof and grants neither runtime readiness nor an
+active MainPID/InvocationID receipt. The actual installed
+positive journey remains unqualified; byte-backed fixtures prove only component
+validation, not filesystem ownership or installed containment.
+
+The local request schema is `ardents-endpoint-installation-request-v1`, compact
+UTF-8 JSON plus LF, with fields in this order: `schema`, `bundle_root`, optional
+`manifest_sha256`, `installation_root`, `release_floor_root`, `reference_time`,
+`headless`, `source`. Nested declaration encoding uses the current shared
+grammar owners; duplicate/unknown fields and alternate encodings refuse.
+Reference time is canonical UTC RFC3339Nano. Initial provisioning requires the
+independent pin; its absence never authorizes a first installation. Inline
+Source must match the headless Network, signer map, threshold, role root and
+clock observation file, with nonzero refresh. The input headless Source-plan
+path is empty; its rendered output selects only that generation's `source.json`.
+The two declared Direct Source operator families must be present and distinct;
+the installation request refuses a duplicate before creating an Endpoint account
+or selecting a generation. Distinct names pass only the syntactic check: known
+common operational control makes them one Operator Family for installed
+qualification. A one-operator artifact receipt can authorize exact-byte
+inspection and isolated negative checks, but cannot supply missing Source or
+Route family eligibility. Hidden common control among apparently distinct
+families remains an honest limitation even when the installation proceeds.
+Every declared path is absolute/canonical and remains outside the bundle,
+immutable installation and Release floor roots. No private material is copied.
+
+The local selection binds descriptor and binding digests. The binding records
+both public target facts (never opaque authorizations), exact fourteen staged
+file digests, fixed account/unit names and numeric UID/GID, and explicit mutable
+root paths/device/inodes. `binding.json` is excluded from its own digest map;
+the selection separately commits its bytes. These local facts cannot produce
+`release.Authorization`, lower floors or authorize a transition.
+
+| Command | Input and owner effect |
+| --- | --- |
+| `endpoint provision <request-file>` | Explicit root operation after independent first-artifact verification. Authenticate executable/generation through Release, validate local declarations, stage and select one complete stopped installation. No implicit start. |
+| `endpoint installation-check <installation-root>` | Read-only bounded local integrity/selected-generation observation; does not create authority, repair files or claim readiness. |
+| `endpoint start-installed <installation-root>` | Fixed system-unit ExecStart consumer under ardents-endpoint account. Verify binding, program bytes and observed unit/MainPID/InvocationID before participant effects, then consume the bound v2 plan. No generic privileged launcher. |
+| `endpoint upgrade-installed <request-file>` | Explicit root operation with fresh coherent Release proofs and strictly newer generation; stop/join predecessor, stage fixed resources and select successor. Starts only after all validation and selection succeed. |
+| `endpoint recover-installed <installation-root>` | Explicit root recovery from exact owned journal and generations; revalidate current Release authority and never lower floors. Refuse repair-required when no authorized complete generation is available. |
+
+The provision/upgrade request is canonical bounded JSON (maximum 64 KiB), with
+only schema, bundle root, independent first-install pin where applicable,
+installation root, Release floor root, reference time, and the existing
+headless/Source operator declarations. Its schema belongs to the installation
+owner, not the wire protocol. Reject duplicate/unknown keys, symlinks,
+noncanonical or nonabsolute paths, overlapping immutable/mutable roots, and
+Reader requests containing Publisher/Instance/administration inputs. Root may
+declare local identities and paths; it cannot manufacture Network, Custody,
+Instance or holder permission authority. Exact field projection reuses current
+v2 owners rather than a second grammar for their content.
+
+Immutable generations are root-owned direct directories, identified by the
+authenticated generation descriptor digest. No service-account write or
+symlinked ancestor is allowed. A bounded local binding contains both verified
+target facts, program/resource and rendered v2 plan/Source/unit digests, fixed
+account/unit names and explicit mutable root identities. Files readable by
+the service account are mode0640 with root ownership and its group; program
+and installed worker retain their required execution/read-only modes.
+The selection is root-owned, readable by the Endpoint group and never writable
+by it; the mutation journal is root-only. No stored serialized
+Release authorization may be replayed as a fresh proof.
+
+Use the fixed `ardents-endpoint.service` and current worker unit/socket names.
+The Endpoint unit template is authenticated before rendering its one selected
+generation's absolute program/installation-root arguments. This consumer
+rechecks the rendered output as well as actual manager observations, not merely
+the template digest. Mutable State/Entry/token/Publication/Instance roots are
+separate, never copied into generation bytes or cleared on replacement.
+Explicit root provisioning owns service-account creation and directory access;
+it accepts no undeclared existing account or conflicting unit silently.
+
+Stage all bytes and fsync files/directories before changing fixed resources.
+Worker's existing direct-path inventory prohibits replacing its root by a
+symlink to a generation. While the Endpoint and worker scopes are stopped and
+joined, install the exact fixed-path copies, observe their digests, publish
+selection, reload the system manager, then permit start. Every step records
+its owned journal phase and original error. No filesystem rename makes the
+manager transition atomic. A failed transition leaves the unit inactive and
+the exact prior/successor bytes available for explicit recovery; foreign
+paths, mixed resources or ambiguous journal state refuse before effects.
+
+`upgrade-installed` refuses an initial manifest pin and loads a self-consistent
+candidate through the enrollment inventory owner without claiming enrollment
+authenticity. Both targets must receive fresh Release proofs from the already
+established complete floor store; a new local trust root, missing floors,
+conflicting same-version floor digest, changed Release environment or Network,
+equal generation release or changed durable roots refuses. The root-only
+successor intent binds previous selection, candidate selection and public
+candidate binding facts. Generation staging records its newly created physical
+directory identity before writing artifacts. Actual predecessor MainPID and
+InvocationID are rechecked after pinning its original cgroup; both activation
+sockets are stopped with the fixed service. Stop success alone is insufficient:
+all original pins, stopped fixed units, loaded worker inventory and remaining
+kernel scopes are checked before direct fixed-resource writes.
+
+Each successor replacement durably records its original direct inode, mode,
+group and complete old/new digests before truncation. A visible existing record
+does not prove that an earlier sync succeeded: replacement re-synchronizes that
+private record and its directory before modifying the resource on a later
+attempt. A refusal to synchronize that record or its directory leaves the
+resource and retained record unchanged. A resource-directory sync refusal after
+writing the candidate still returns an error and retains the replacement record;
+visible candidate bytes alone do not establish successful durable completion.
+An explicit retry re-establishes journal durability and completes the replacement
+on the same recorded inode.
+Initial fixed-file recovery likewise re-synchronizes its private birth record
+and record directory before repairing the recorded inode. A refusal at that
+boundary retains the current resource prefix and the original record.
+`recover-installed`
+requires an exact root-only successor intent, fresh floor-compatible proofs at
+the recovery time, the owned generation directory and exact replacement
+records. It can complete authorized prefixes inside that generation and torn
+fixed copies on their recorded inodes; another inode or foreign bytes refuses.
+Recorded target observations do not recreate a proof. Recovery reuses the
+original bound plans and public observations only after checking current proofs
+against their exact target bytes and identities. The first transition failure
+is retained and archived with the completed intent. Missing initial preparation
+or generation ownership evidence returns `repair-required`; initial recovery's
+bounded stopped path is described above. The complete first-provision and
+successor failure-injection matrix remains acceptance work. The receipts `installed-started` and
+`installed-recovered-started` observe the fixed unit, not Service continuity or
+the complete two-Endpoint journey. Component tests exercise these controls;
+actual admitted manager/namespace/seccomp/empty-scope receipts remain required.
+
+All root installation subprocesses use fixed absolute programs and only
+`PATH=/usr/bin:/bin`, `LANG=C`, `LC_ALL=C`; caller-supplied system bus, unit
+lookup and loader environment overrides are not inherited.
+
+Retaining predecessor bytes is not permission to activate an older Release.
+Recovery must finish a valid selected candidate or obtain a fresh floor-compatible
+explicit rollback authorization; otherwise report repair-required and stay
+inactive. Restart observes a new InvocationID and the same immutable selection,
+retaining durable floors. Successful process restart does not imply publication
+continuity: the current credential/recipient refusal remains an honest outcome.
+
+Implementation acceptance requires causal pre-effect refusals for missing or
+mismatched proofs, partial resource groups, digest/ancestor substitution,
+service-account edits, conflicting accounts/units, wrong executable/MainPID,
+failed writes/reload/start/join and each interrupted journal phase. The final
+installed oracle uses two separate admitted Ubuntu system managers, distinct
+Endpoint principals/roots, public provisioning and permission commands, both
+Carriers, publish/link/read/Descriptor refresh/withdraw/refusal and restart.
+Actual containment observations and post-close empty scopes are recorded
+separately. Fixture-produced JSON/units, ordinary Docker and one dual-role
+Endpoint remain component/diagnostic evidence.
+
+[ADR-0119](../adr/0119-bind-protected-endpoint-generation-to-release.md)
+selects the installation binding for the protected successor. Before participant
+effects, its consumer must verify the accepted generation, immutable plan/unit
+outputs and actual system-manager unit/account/executable/MainPID/InvocationID.
+Restart retains durable floors and does not repair Service credential continuity
+by resetting roots. Existing runtime checks alone do not implement this binding
+or qualify the complete installed two-Endpoint scenario.
+
 Status: **current maintained technical contract.** This document describes the
 local Endpoint, generic Broker, Service publication, and Service Connection
 Modules that exist in the repository. It does not select a supported desktop
 profile, a qualified Application Isolation profile, a public Service protocol,
 or a complete Route/Node qualification.
 
+ADR-0117 selects and implements a coordinated fresh-root Service v3 format
+reset. Historical v1/v2 Service bytes authorize no compatibility reader or
+mixed-version deployment. The Connection record profile is
+`ardents-service-connection-profile-v3`, independent of `ardents-route-v3`.
+Changing the Target derivation changes the Target and Link even for a reused
+Authority key. Old bytes are refused without automatic mutation.
+
 Although its directory is under `internal/application`, the Broker is
 Network-owned because the maintained headless Endpoint uses it for local-grant
-admission and session lifecycle. The sibling `interfacev1` directory has the
-distinct `application-interface-v1` owner: it freezes the local protocol used
-on both sides without owning either Network behavior or Browser presentation.
+admission and session lifecycle. The sibling `administration` and `connection`
+packages have separate owners and preserve their respective v1 and v2 local
+protocol identities without owning Endpoint behavior or Browser presentation.
 
 The selected closed successor's [workload](../product/protected-service-workload.md),
 [confinement](application-confinement.md) and [protocol](protected-route-protocol.md)
-own its future Endpoint composition under ADR-0081. The current runtime facts
-below remain until explicit migration; generic callers do not acquire a
-qualified-launch receipt through compatibility.
+own its Endpoint composition under ADR-0081. Installed-host qualification
+remains separate; generic callers do not acquire a qualified-launch receipt.
 
 The successor text Publisher context independently owns its Introduction and
 Responder prefixes and its Introduction registration. It consumes the existing accepted Instance binding to commit
@@ -27,8 +291,14 @@ withdrawing Publication and Instance. A committed Publication retains cleanup
 ownership even when cancellation prevents Lease handover. Failed withdrawal
 retains its binding and original error until cleanup completes. This tested
 composition consumes real recipient-confidential capsule delivery before opening
-its separate Responder-domain forwarding prefix. Both Publisher prefixes obtain
-genuine tokens through Source and share admission/cleanup code while retaining
+its separate Responder-domain forwarding prefix. A private Introduction
+lifecycle alone reserves and publishes its opening, exposes an exact read-only
+handle to registration/refresh/refill callers, invalidates that handle before
+retirement, and joins opening and Route cleanup without closing the borrowed
+Source. A separate private Responder lifecycle owns its exact live handle,
+opening, idle retirement and context-stop cleanup without closing the sibling
+Introduction or borrowed Source. Both Publisher prefixes obtain
+genuine tokens through Source and share admission rules while retaining
 separate selections and transports. Known Node/key/family overlaps across live
 domains or subroles are excluded before selection and issuance; losing a member
 cannot resample a retained set. A final handover rechecks the exact live
@@ -36,7 +306,12 @@ Responder owner. Worker loss preserves a surviving context's allocation, while
 context loss joins both prefixes. Its refresh scheduler retains the old
 published registration while the replacement Descriptor awaits acknowledgement;
 the new registration cannot accept a capsule until that acknowledgement is
-verified against its still-live context, Instance, channel and profile. Network
+verified against its still-live context, Instance, channel and profile. One
+private Publication-pair lifecycle owns current/predecessor registration
+visibility and the withdrawal drain barrier. It commits the acknowledged local
+pair in one transition; cancellation after remote ACK leaves it non-accepting
+while the existing durable Publication owner retains cleanup. Withdrawal makes
+the barrier visible before drain, so a late ACK cannot revive the pair. Network
 publication does not hold the shared Publisher mutex: a checked context
 reservation retains exclusive Instance ownership against legacy publication
 operations. Only the first successful switch bounds predecessor overlap to
@@ -55,6 +330,50 @@ Source JOIN and capsule submission; each exact HELLO still requires its own
 durable token transfer. Publisher JOIN consumes its independently accepted capsule
 and current Responder prefix. The worker receives no raw JOIN stream: the existing
 Service TLS and native Instance authentication precede Application I/O.
+Each initial or recovery Connection JOIN acquires an operation-local wrapper for
+the exact current Source handle before stock preparation. Publisher JOIN likewise
+acquires the exact current Responder handle and its exact retained Source issuer.
+Token presentation and the final transport transfer recheck that same
+acquisition under the context lock. Failure joins any returned Route stream
+before releasing only that
+acquisition; success transfers the acquisition to the joined transport, whose
+close joins Route cleanup and then releases it. A replacement Source therefore
+cannot be used by a late old JOIN, and a replacement Responder cannot be exposed
+through an older opening or JOIN acquisition.
+
+Endpoint context composition serializes issuance admission with its retained
+Source-operation reservation, but one private issuance operation owns each
+admitted attempt's network context, cancellation, issuer presentation and
+terminal completion. Context or Endpoint revocation cancels and joins that
+operation before permission material is released. A delayed completion cannot
+publish usable stock after revocation; ordinary retry retention and the
+recovery-only canceled-batch discard remain distinct and consume the same
+existing reservation and bootstrap allowance.
+
+One private Source lifecycle owns the stock-to-opening reservation, the exact
+published Route prefix and its cancellation through joined retirement. It alone
+mutates those states. Existing Descriptor, JOIN, issuance and qualification
+consumers receive a read-only handle for the exact published opening; they can
+perform their existing Route operations and test that identity under the context
+lock, but cannot close or replace the prefix. Retirement invalidates the handle
+before closing its Route owner. A late completion from an obsolete opening
+cleans and joins only its own result, cannot publish over a replacement, and
+cannot renew stock or the two-batch bootstrap allowance. The context lock and
+Source-operation serialization remain the admission boundary; Publisher
+Introduction and Responder lifecycles keep separate exact handles, openings and
+stop/join cleanup. Context shutdown and their callers no longer mutate either
+prefix's fields.
+
+Descriptor lookup and publication share one private resolution-flight owner
+under the Context lock. Admission retains one operation-local acquisition of
+the exact current Source handle; a second flight cannot replace it. The owner
+joins caller cancellation, releases that acquisition once and closes its exact
+completion barrier. Recipient selection, stock preparation, token presentation
+and a returned proof remain bound to the acquired Source. Cancellation, Source
+retirement or replacement makes it non-current, so a late response cannot
+commit a Descriptor floor or publication acknowledgement or attach to later
+Source work. Context shutdown cancels the flight before its ordered join;
+Permission, Publisher/Instance and Descriptor authority remain root checks.
 
 A clean JOIN peer CLOSE may precede consumption of the final authenticated
 Service record. The client retains those bounded received bytes and their original
@@ -71,9 +390,9 @@ The local runtime has separate Modules and Interfaces:
 | Module | Interface responsibility | Implementation hidden from callers |
 |---|---|---|
 | internal/application/broker | Admit and consume one short-lived Local Grant capability for either connection or administration; revoke, drain, and close pending capabilities and active Connection leases; report generic/unqualified. | Capability generation, replay removal, expiry, commitments, admission-load accounting, and grant invalidation. |
-| internal/application/interfacev1/connection | Carry one Target Link, one ordered byte stream with explicit directional input close, and exactly one bounded terminal outcome under `ardents-application-interface-v1`; retain the accepted AAI2 bytes and executable conformance vectors. | State, Entry, Target, Route, Credential, Custody, Service keys, retries, fallback, and Network diagnostics. |
-| internal/application/interfacev1/administration | Carry one separately authorized `publish` or `withdraw` request and its closed success/unavailable result under the same interface version and vectors. | Connection bytes, publication inputs, Credential/key material, State, Route, Target, and Network diagnostics. |
-| internal/endpoint | Compose one role-local participant and implement the shared Connection and Administration Interfaces. `RunParticipant` opens authenticated participant owners, delegates local transports to the Application Modules, and joins shutdown. | Broker consumption, authenticated State/Entry/Target projection, TLS carrier setup, publication acquisition, and Connection invocation. |
+| internal/application/connection | Carry one typed Target-Link request and the fixed protected text exchange under AAI3; refuse reserved Name requests and join terminal/cancellation cleanup. It is not a generic binary Application interface. | State, Entry, Target, Route, worker authority, confinement, Service keys, retries, fallback, and Network diagnostics. |
+| internal/application/administration | Carry one separately authorized `publish` or `withdraw` request and its closed success/unavailable result under the same interface version and vectors. | Connection bytes, publication inputs, Credential/key material, State, Route, Target, and Network diagnostics. |
+| internal/endpoint | Compose the selected protected text participant and implement its AAI3 Connection Adapter plus the separate Administration Interface. `RunClosedParticipant` opens authenticated participant owners, delegates local transports to the Application Modules, and joins shutdown. | Broker consumption, authenticated State/Entry/Target projection, TLS carrier setup, publication acquisition, and Connection invocation. |
 | internal/service/publication | Open, publish, acquire, unpublish, and close one exclusive Service Instance generation. | Crash-atomic public record/floor persistence, volatile Instance signer, live-reference accounting, drain, and private-material erasure. |
 | internal/service/connection | Carry one logical authenticated Service Connection across fresh Route Attachments, preserve directional Application EOF through its existing authenticated Terminal record, and return one terminal outcome. | Exact Instance challenge/proof, continuity MAC, ordered data/acknowledgement offsets, replay handling, recovery deadline, and attachment cleanup. |
 
@@ -82,29 +401,55 @@ cannot include Route, Credential, signer, or Application facts, and an outbound
 connection cannot supply a Publisher binding. This keeps publication ownership, local admission, Route
 attachment, and logical-stream recovery out of one mutable request bag.
 
-The maintained Connection Interface adds one narrower consumer operation over
-that composition. A headless caller supplies one explicit Target Link; Endpoint
-retains the local Connection principal, authenticated State, Entry, Target
-authentication, Route inputs, the one-use Transit Grant/key, and the Broker
-admission input. After syntactic Target Link parsing and Network binding, Endpoint activates
-and consumes the Connection capability before it reads current State, touches
-Entry or private reachability, asks an issuer for a Transit Grant, opens Route,
-or sends Introduction. Only an authenticated ordered byte stream and bounded
-terminal class cross the Interface. The `Publish` and `Withdraw`
-Administration operations remain separately authorized; Publish dispatches the
-Endpoint-owned `StartPublisher` transaction, not a raw Credential/signer
-request. The Connection Interface cannot invoke either operation.
+The selected protected text Connection Interface adds one narrower consumer
+operation over that composition. Its typed AAI3 caller supplies one explicit
+Target Link and one fixed text request; Endpoint retains the local Connection
+principal, authenticated State, Entry, Target authentication, Route inputs,
+the closed token and durable attempt journal, worker qualification, and Broker
+admission input. After Target-Link parsing and Network binding, Endpoint
+activates and consumes the Connection capability before it reads current State, touches Entry
+or private reachability, acquires a closed token, opens Route, or
+sends Introduction. Only the fixed text exchange and bounded terminal class
+cross the Interface. This does not preserve the generic AAI2 binary workload.
+Administration remains separately authorized. The selected text Publisher
+imports a bounded snapshot and invokes `PublishSnapshot`; its bodyless
+`Publish` refuses because the generic `StartPublisher` transaction was
+retired by
+[ADR-0092](../adr/0092-retire-generic-publisher-transit-chain.md).
+The `ardents endpoint publish` command refuses at dispatch before dialing its
+Administration socket and directs the operator to `ardents-text publish` with
+an explicit document file. The local bodyless protocol refusal remains intact.
+`Withdraw` cancels and joins the retained publication. The Connection Interface cannot invoke either operation.
 
-For a User connection, Endpoint parses and binds the Target Link to its Network,
-activates its local capability, and passes only the authenticated Target to the
-opened `route.Route`. Route owns the volatile State/Entry/private-reachability/
-Introduction sequence and returns only a verified Attachment plus immutable
-Target/publication evidence. Endpoint supplies Route a narrow callback for its
-durable membership Transit Grant journal; the callback cannot select a carrier
-or peer. A Grant is terminalized immediately after receiving-Introduction TLS
-admission, even when subsequent delivery or Service TLS fails. Fixed Grants
-remain verified against current State inside Route. This is the boundary
-selected by [ADR-0070](../adr/0070-own-volatile-user-route-orchestration.md).
+The fixed text reader has these setup outcomes:
+
+| Observed condition | AAI3 caller result | Command presentation |
+|---|---|---|
+| The caller cancels its `Dial` context or reaches its deadline while setup is pending | Raw `context.Canceled` or `context.DeadlineExceeded`; the local caller context takes precedence | The existing cancellation or timeout diagnostic |
+| Server-side setup returns a delivered `LocalCancellation` or `LocalTimeout` refusal | The same bounded class in `connection.SetupRefusalError` | The existing cancellation or timeout diagnostic |
+| Endpoint refuses the typed Target Link with a bounded outcome, such as the retired alpha destination | The same outcome class in `connection.SetupRefusalError` | A fixed safe diagnostic for a recognized class; otherwise generic unavailable |
+| Endpoint setup fails without a bounded refusal | `ServiceUnavailable` with the fixed safe reason | The existing generic unavailable diagnostic |
+
+This table applies only to the selected Target-Link text reader. It does not
+extend the Interface to Name, a generic Application, or a stream-terminal
+result. For an already delivered setup refusal, the trusted client presents
+`LocalFailure` as a local connection failure, `IndeterminateFailure` as an
+unknown connection outcome, and the existing capacity class as capacity unavailable.
+`ServiceUnavailable`, unknown classes and a refused `CleanClose` keep the
+generic unavailable diagnostic. The caller context takes precedence over a
+delivered refusal. The client never presents the refusal reason, Target Link,
+or Endpoint failure detail. This presentation does not create missing Endpoint
+classifications for authority, currentness, generation or stream termination.
+
+The generic `route.Route` User composition described by
+[ADR-0070](../adr/0070-own-volatile-user-route-orchestration.md) was retired
+with its Open/Attach owner. The selected text Reader keeps the active Broker
+lease in Endpoint, verifies the current protected State and Target, and uses
+its closed Source, private Descriptor lookup, Introduction and JOIN owners.
+Endpoint owns the durable closed-token attempt journal; State selects the
+issuer and Route recipients. Service Connection receives only a verified
+Attachment and immutable publication evidence. No generic User Route or
+Transit Grant fallback is selected for C0.
 
 ## Local admission
 
@@ -144,14 +489,14 @@ requires separate research and an ADR.
       -> immutable public record + volatile signer
       -> the participant-owned Connection boundary activates a session
       -> session authorization precedes State/Entry/issuer/Route work
-      -> exact-Instance TLS challenge/proof + Service Connection v2
+      -> exact-Instance TLS challenge/proof + Service Connection v3
       -> zero or more replacement Attachments under immutable recovery facts
       -> one terminal outcome and exactly-once session release
       -> withdraw/supersede stops acquisitions, drains references, erases private material
 
-The Service Connection record grammar retains ardents-interactive-route-v2,
-including in the selected successor; the protected Route changes its context
-and Attachment composition, not those record bytes. There is no H3 reader,
+The Service Connection v3 record grammar uses its own fixed
+`ardents-service-connection-profile-v3`; the selected protected Route keeps
+its separate `ardents-route-v3` identity. There is no H3 reader,
 record-profile negotiation, direct fallback, Publication private key, or
 Application IPC authorization. The parser bound of 16 KiB per Data record is
 an allocation limit, not a product throughput promise.
@@ -177,6 +522,35 @@ digest and generation. TLS 1.3 permits only the selected X25519MLKEM768 and
 X25519 groups. Publisher TLS and Instance proof use the currently acquired
 opaque publication lease.
 
+The private Job lifecycle owns its random invocation nonce, verified worker
+Grant handoff, retirement and first joined cleanup result. The text Context
+retains the exact admission reservation until that Job reports joined cleanup;
+it does not edit handoff fields. A late handoff is closed against its old Job
+and cannot supply a Grant or completion to a replacement.
+
+An owned Service binding refuses a canceled Context with that Context's
+cancellation cause, including the interval before cancellation reaches its Job
+and after joined Job cleanup. It does not synthesize a separate Job-retirement
+failure from that propagation order. Independent Job retirement under a live
+Context and a foreign Job remain distinct refusals; physical cleanup errors
+retain their existing joined owners.
+
+Context shutdown uses one explicit stop/join dependency table. Stop runs while
+the Context mutex is held and revokes every child before any wait; join runs
+after releasing that mutex. Extracted lifecycle owners detach and retire their
+own state, while Context-owned maps and flights remain with the Context:
+
+| Ordered phase | Owners or state | Required dependency |
+| --- | --- | --- |
+| Stop | refresh, Publication pair, Registration opening, Introduction/Responder/Source prefixes, issuance, resolution, withdrawal, exchanges and Job | Every admission/effect path observes revoke before the first join. |
+| Join openings | Source, Introduction and Responder openings; Registration opening | No Route prefix is closed while its opening can still publish it. |
+| Join producers | refresh and the Publication pair | No scheduler or registration producer remains before registrations close. |
+| Close prefixes and join Context flights | Introduction, Responder and Source prefixes; issuance, resolution, withdrawal and exchanges | Route and Context-owned operations finish in their established dependency order. |
+| Join Job, then release root | Job cleanup; durable Publication retirement; Context reservation | The first cleanup error and finite admission reservation survive until the last child is terminal. |
+
+No generic callback registry participates in this order. Repeated Context
+Close waits for and returns the one stored joined result.
+
 The initial text-Service stream invokes that real TLS/native Connection path
 and retains its opaque job binding. The reader holds its worker operation
 through authentication and document exchange. Publisher accepts only streams
@@ -191,6 +565,11 @@ with the real installed launcher, Introduction/Route producers, Service authenti
 and confined worker protocols for empty, 64-KiB and 4-MiB documents on both Carriers.
 Its State, Authority/Instance provisioning and registration scheduling remain explicit
 fixtures; this does not qualify the complete protected journey or hostile host.
+The four-Reader retained qualification shares one local Introduction delivery
+slot. A Reader takes it immediately before submitting its capsule; completion
+or refusal releases it, and the next submission waits at least 300 ms. This
+paces acknowledged deliveries across the cohort despite variable preparation
+and Route timing while preserving the Publisher's four-openings-per-second cap.
 
 The Endpoint's text Publisher network producer retains one qualified worker
 across independent reads and owns Introduction receipt, JOIN and authenticated
@@ -198,10 +577,10 @@ Service-stream handover. It uses an unbuffered handover; cancellation joins the
 producer, bridge and worker. A refused malformed, unauthenticated or rate-limited
 capsule can leave the snapshot available only when the refusal acknowledgement
 succeeds and no cancellation or cleanup failure accompanies it.
-The Publisher startup owner qualifies the worker before opening its Source and
-Introduction prefixes, creates the initial registration, and waits for verified
-Descriptor publication before returning its Link. The returned owner retains
-the network producer under the job lifetime, independently of the completed
+The Publisher startup owner qualifies the worker before opening its Source,
+Introduction, and Responder prefixes, creates the initial registration, and
+waits for verified Descriptor publication before returning its Link. The
+returned owner retains the network producer under the job lifetime, independently of the completed
 startup request. Startup failure joins worker/context cleanup. Its Close is an
 abort. Its separate withdrawal operation stops new Introduction acceptance before
 network withdrawal and joins scheduled refresh before withdrawing the final
@@ -213,6 +592,10 @@ held the lease. The failed opening publishes no token or registration; every
 retry repeats current authority, State, selection and admission checks after a
 fixed local delay. Other Source, Route, journal and cleanup failures remain
 terminal, and retry never extends the registration, permission or Route expiry.
+One private refresh lifecycle owns the single scheduler identity, coalesced
+wake-up, cancellation and joined terminal result. A verified Descriptor ACK may
+start it once or wake that same scheduler; context shutdown and withdrawal stop
+and join the same result before any later network attempt can begin.
 Producer drain preserves cancellation and cleanup failures, and context cleanup
 waits for withdrawal ownership to finish. This composition still requires full
 network lifecycle qualification and ordinary command adoption.
@@ -256,17 +639,45 @@ read. One retained Reader context admits one read through result completion.
 Local network tests exercise this result projection with explicit qualification
 fixtures. The installed profile uses the actual AAI3 owner and launcher, but
 that revised profile still requires execution on its qualified host.
-The protected `RunTextParticipant` composition opens the accepted closed State,
-Entry sets, token journal and existing Instance binding. It qualifies and
-provisions both retained text contexts before opening the AAI3 Connection and
-snapshot Administration transports, rechecks permission currentness before
-exposure, and joins servers, contexts and persistent owners on shutdown.
+The protected `RunClosedParticipant` composition opens the accepted closed State,
+Entry sets and the `internal/endpoint/tokenjournal` durable attempt owner.
+The default composition also opens the existing Instance binding and provisions
+both retained text contexts before opening the AAI3 Connection and snapshot
+Administration transports. An explicit v2 `role: reader` selects only the
+Connection context. It requires its own State/Source/time/local-role/Entry/token
+inputs, Broker and Connection principal, Application socket and Reader Permission.
+It rejects nonempty Instance, Publication, Administration or Publisher Permission
+configuration and opens none of those owners, grants or transports. An omitted
+role preserves the existing dual-role contract; any other role refuses before
+runtime effects. The internal composition carries this choice as `ReaderOnly`.
+Both compositions retain the same required worker qualification, State and
+Permission currentness, finite allocation and joined shutdown. No protection
+mode, wire identity or permission authority is added.
 `endpoint headless` selects this composition through an explicit v2 plan;
 missing permissions or mixed legacy fields fail without selecting another
-runtime. Persisted v1 plans retain `RunParticipant` compatibility. The protected
-composition still requires installed command and full network lifecycle
+runtime. The decoder refuses persisted v1 plans under
+[v1 startup retirement](#v1-startup-retirement) before runtime dispatch. The
+protected composition still requires installed command
+and full network lifecycle
 qualification. No caller-supplied Target, permission file or local context
 identifier may bypass these owners.
+
+Reader-only component checks do not establish the two-Endpoint installed journey.
+The fixed worker boundary verifies the MainPID of `ardents-endpoint.service`;
+two Endpoints therefore require separate system-manager installations, each with
+its own roots and principals and the unchanged fixed unit/account/worker checks.
+Fixture-written plans do not supply the supported authenticated installation
+handoff or a complete Ubuntu systemd/cgroup qualification.
+
+The participant serializes local lifecycle output. Each event records UTC occurrence time before output delivery; the local JSON-line adapter uses `schema`, `kind`, and `at` for correlation with Node lifecycle events while retaining the existing bounded, role-specific fields. A background failure event uses a
+bounded observer context; if delivery fails, the participant ends the generation,
+joins its owners, and returns the output failure instead of silently discarding it.
+After the event output is acquired and the participant has joined its owners,
+an uncanceled fatal return emits
+`headless-runtime-failed` with only `startup` or `running` as its failure category.
+It does not serialize the returned error; stderr retains that detail for local
+investigation. A failed event output is not retried through the same output.
+
 The coalesced authenticated stream requires its directional Terminal receipt
 and peer confirmation even when only the initial Attachment is available.
 Missing confirmation cannot yield a successful bounded outcome. The protected
@@ -280,6 +691,15 @@ current job, State, publication or registration, and local recovery deadline
 before transfer and after asynchronous opening. A successful proposal transfers
 the Route lifetime from its bounded opening attempt to the Service Connection,
 so normal attempt cancellation cannot retire the accepted Attachment.
+
+Trusted worker composition also supplies one checked directional byte contract
+before the job can receive a Service stream. The ordinary text composition
+retains the existing 512-byte reader request and 4 MiB plus 13-byte framing
+response bounds; the fixed qualification composition retains 64 MiB in each
+direction. Reader and Publisher derive their opposite directions from that one
+contract. The native Service stream therefore neither imports text-document
+policy nor inspects qualification job input, and recovery continues the same
+logical byte counters instead of resetting either bound.
 
 This is maintained component integration, not installed-host P7 or NET-14
 qualification. A path that supplies no Attachment opener retains its existing
@@ -295,19 +715,30 @@ failed exclusive-root release, returning no owner. Retained root evidence and
 floors are not reset as part of failure cleanup.
 
 Publication persists public proof and its non-decreasing generation floor but
-never persists a live Instance private key. The lower-level accepted Publisher
-composition can receive one opened host Instance binding and use it as an
-opaque Instance signer and fixed-purpose SealedIntroduction v1 recipient
-without any Interface returning private bytes or an exportable HPKE key. The
-maintained participant runtime opens that binding only after reconciling the
-accepted public Credential with the durable publication floor. When its
-optional host `service_instance_root` is configured, it consumes State's
-indivisible Publisher attachment projection, obtains separate Introduction
-and Responder credentials through the Endpoint-owned at-most-once journals,
-and constructs the live profile without caller-supplied peers, roles, Grants,
-keys, or Route facts. Missing, conflicting, or ambiguous State projection is
-unavailable; without a Service Instance root the same process remains a
-User-only participant.
+never persists a live Instance private key. The supported generation floor
+comes only from the current Publication root's floor file. An empty owned root
+starts at zero; a root retaining a generation or current pointer without its
+floor refuses recovery. The former separate plain-decimal generation file has
+no Target, Authority, or Network binding. Its bytes remain untouched: the
+maintained runtime neither reads nor migrates it. The maintained Publisher
+participant receives one opened host Instance binding as an opaque signer. For current
+private Introduction, it creates a volatile `PrivateRecipient` with a bounded
+revision and expiry; the recipient opens only the authenticated private
+capsule, without an Interface returning private bytes or an exportable HPKE
+key. The SealedIntroduction v1 grammar is retired by ADR-0094; the current
+private Introduction path is only the v3 capsule recipient. ADR-0102 supersedes ADR-0034: the Service Instance root emits
+only its ed25519 Instance key, the accepted Credential v3 no longer binds a
+legacy introduction recipient, and the private v3 capsule uses its separate
+volatile recipient. Old Instance roots fail the v3 marker check without state
+decoding and require re-initialization under a new root.
+The maintained closed participant requires `service_instance_root` and
+opens its Instance binding only after reconciling the accepted public
+Credential with the durable publication floor. It reads the current accepted
+closed Route profile and Snapshot from State, checks the matching generation
+and issuer/recipient Node Records, and uses Endpoint's closed token journal
+for admitted work. Missing, conflicting, expired, or mismatched State/profile
+blocks that work; the Application cannot choose peers, roles, keys, or Route
+facts.
 AcquireAt yields an opaque Lease; the Lease can sign for its generation without
 exposing the signer. Withdrawal, supersession, expiry, or close first prevent
 new acquisition, then wait for bounded references before erasing private
@@ -341,20 +772,73 @@ change this limitation, but the maintained runtime has no such recovery path.
 
 ## Endpoint process contract
 
-`internal/application/interfacev1/connection` owns the sole local Target-Link
-Connection Interface: one private Unix attachment carries a non-empty Target
-Link of at most 512 bytes, opaque frames of at most 16 KiB, and one UTF-8 typed
-terminal outcome with a 128-byte class and 512-byte diagnostic reason. EOF
-without that outcome is not success. Setup does not retry or select an
-alternate link. `internal/application/interfacev1/administration` separately
-owns only `publish` and `withdraw`; it cannot carry Connection data or silently
-turn a failure into another success state. Both packages declare
-`ardents-application-interface-v1` and execute checked vectors under
-`testdata/conformance-v1.json`. There is no result sideband or Endpoint-owned
-local grammar. `RunParticipant` retains the Network server implementation and
-closes its exact socket paths after cancelling and joining active clients;
-external Applications use only the versioned client. No Browser client is
-selected in the maintained product.
+### v1 startup retirement
+
+The selected successor behavior for an `ardents-headless-runtime-v1` input is
+one bounded refusal before State, Entry, Route, Application sockets, network
+operations, or durable roots are opened. The refusal leaves every existing
+root and floor byte unchanged. It does not synthesize or convert a Grant, key,
+permission, protected plan, or other authority. Malformed or incomplete v2
+input is refused by the v2 path and never falls back to v1. Existing retained
+bytes require a separately selected reader, recovery, or migration contract;
+startup retirement supplies none. The command decoder now enforces this before
+validating or opening any plan-owned path. The unreachable `RunParticipant`
+composition and its exclusive configuration/event wiring have been removed.
+That startup removal did not retire Administration, which remains selected.
+The separately callable AAI2 Connection was removed only after its own caller
+retirement and AAI3 version-refusal evidence.
+
+## Generic Connection command retirement
+
+| Option | Authorizing consumer and finite workload | Product consequence | Decision |
+|---|---|---|---|
+| Preserve through a generic AAI3 caller | None exists. The selected AAI3 caller is the fixed protected text reader, not an arbitrary byte application. | Would widen the trusted Interface and confinement contract and make an unsupported generic Application a product surface. | Rejected. |
+| Retire generic `endpoint open` | No successor consumer is required; the command is closed at its adapter before effects. | Removes the file-to-file binary CLI contract while preserving protected text, Target Links, Administration, and shared native stream semantics. | Selected. |
+
+The generic `ardents endpoint open <application-socket> <target-link>
+<input-file> <output-file>` command is selected for retirement. No current
+product journey or maintained Application requires its arbitrary binary
+file-to-file workload, and no real generic AAI3 Endpoint caller exists. The
+AAI3 caller belongs to the protected text composition: it carries a typed
+Target-Link request, launches a qualified fixed worker, and enforces that
+workload's bounds. Treating it as a generic replacement would widen that
+Interface and its confinement claim without an authorizing consumer.
+
+The command's binary input, concurrent binary output, explicit input
+half-close, terminal-class rendering, and output-file commit are therefore
+retired as a caller contract, not translated. The bounded enforcement point is
+the command adapter: a recognized exact `endpoint open` invocation returns a
+deterministic non-success result before validating or opening either file,
+creating an output, dialing the Application socket, or causing Endpoint,
+Route, or Network work. It selects no alternate command, text request, Target,
+or migration path.
+
+This decision preserves four separate facts. Target Links remain the maintained
+destination input; future protected Service Names require a new scoped design
+under ADR-0113. The
+fixed text AAI3 Interface remains selected. Service Administration remains a
+separately authorized Interface. The shared native Service Connection retains
+its directional half-close semantics for selected callers. None of those facts
+is a caller for AAI2, and qualification-only or conformance fixtures cannot
+supply one. After both accepting callers closed, the AAI2 codec/server/client,
+vectors, and exclusive Endpoint adapter were removed. AAI3 now rejects a
+complete AAI2 request before calling its Application owner.
+
+The command adapter now implements that refusal with the stable diagnostic
+`endpoint open is retired`. The former accepting file client and its
+success/cancellation fixtures are absent. A command-level regression uses both
+missing and existing files plus an available local socket to prove the refusal
+precedes file validation or mutation and IPC connection. The separately
+callable Administration client and its behavior test remain unchanged.
+
+The removed AAI2 grammar accepted a non-empty Target Link, opaque frames and a
+typed terminal outcome. Those bytes have no maintained decoder, server, client,
+Endpoint adapter, persisted-state reader, or compatibility promise. The
+Service Connection v3 is a separate network identity and is unaffected by
+AAI2 retirement. `internal/application/administration` separately owns
+only `publish` and `withdraw`; it cannot carry Connection data or silently turn
+a failure into another success state. No Browser client is selected in the
+maintained product.
 
 The Administration client owns its Unix socket from successful dial through the
 closed `publish` or `withdraw` response. Caller cancellation immediately
@@ -364,15 +848,41 @@ has already been stopped. This aborts local waiting, not a server operation
 already accepted by the peer: the client never invents an outcome, retry, or
 rollback for Publish or Withdraw.
 
-The `ardents-application-interface-v1` frame identity and its opaque link bytes
-remain accepted persisted-interface obligations. A runtime plan carrying the
-complete historical Alpha corpus triple is therefore a narrow migration
-adapter: it recognizes only an exact `ardents-alpha://` Service Link, resolves
-it through that plan's already accepted local floor, and then supplies the
-bound Target to the same Endpoint/Route path. Fresh C0 plans omit that triple
-and accept only Target Links. A malformed Target Link never falls back to a
-Service Link, and the adapter ends only after an explicit versioned
-plan/interface migration.
+The Administration `ardents-application-interface-v1` identity remains its own
+contract and is not an AAI2 Connection fallback. The historical Alpha corpus
+triple has no accepting runtime adapter: v1 plans are refused before path
+validation or owner startup, and v2 rejects those fields. Existing retained
+bytes require a separately selected reader, recovery, or migration contract;
+this removal creates none.
+
+### Alpha destination retirement
+
+Under
+[ADR-0088](../adr/0088-retire-alpha-service-links-and-corpus-intake.md),
+the Alpha Service Link transition is an explicit final refusal, not a grace
+period. Fresh `accept-alpha-corpus` intake now returns its stable retirement
+refusal before parsing arguments or opening, creating, or changing either named
+floor. The former accepting adapter and its floor-mutation authority are
+absent. Under
+[ADR-0110](../adr/0110-retire-aca2-corpus-inspection.md), the independent
+`inspect-alpha-corpus` diagnostic is retired the same way: the exact route
+refuses before parsing arguments or opening any file, root, or floor, and its
+ACA2 production verifier is removed; it never conferred Endpoint authority. Every accepting Alpha destination adapter
+is absent. The maintained Target-Link seam recognizes the exact historical
+`ardents-alpha://` prefix only to return `alpha service link is retired`; it
+does so before Target-Link decoding, a corpus-floor read, resolver call,
+Network or Route work, dial, fallback, or conversion.
+
+The transition neither converts an Alpha Link or old Target nor resets or
+deletes existing corpus floor files.
+[ADR-0113](../adr/0113-retire-retained-alpha-compatibility-surface.md) then
+deleted the retained read-only corpus parser and persistent-floor reader
+outright: those floor bytes are byte-for-byte inert evidence — their serial,
+digest, signed withdrawal, rollback, and conflict facts remain on disk, but
+no maintained code can read, convert, or delete them, and the absence of any
+read path is itself the incompatibility. They do not authorize continued
+Alpha resolution, and no successor reader, migration, or grace contract
+exists.
 
 Endpoint is a composition Module, not a second durable domain owner. It owns
 no Namespace, Network State, Release, Update, Custody, or Route-selection
@@ -380,20 +890,19 @@ state. Route Attachments are already authenticated opaque carriers; Namespace
 and State facts arrive only in the typed inputs required for Connection
 binding.
 
-`Stream.CloseInput` is an orderly directional operation, distinct from
-`Stream.Close`. A local Application sends the accepted zero-length AAI2 input
-frame to state that no more request bytes will arrive; the local transport
-preserves it through Endpoint and native Service Connection as the existing
-authenticated Terminal record. Conversely, only a verified matching remote
-Terminal gives the local Application reader EOF. Either transition leaves the
-opposite direction available for a response, is safe to repeat, and rejects
-later writes in its closed input direction. Cancellation, malformed local
-input, carrier loss, and full close remain abort paths, and neither local nor
-native EOF is semantic success without the one typed terminal outcome.
+`Stream.CloseInput` remains an orderly directional operation in the selected
+AAI3 transport and native Service Connection, distinct from `Stream.Close`.
+The local transport preserves it through Endpoint as the authenticated native
+Terminal record. Conversely, only a verified matching remote Terminal gives
+the local Application reader EOF. Either transition leaves the opposite
+direction available for a response, is safe to repeat, and rejects later
+writes in its closed input direction. Cancellation, malformed local input,
+carrier loss, and full close remain abort paths, and neither local nor native
+EOF is semantic success without the one typed terminal outcome.
 
 A locally written Terminal is a directional completion obligation, not proof
-of peer receipt. Under the closed Service Connection v2 grammar selected by
-[ADR-0075](../adr/0075-service-connection-v2-terminal-receipt.md), marker `1`
+of peer receipt. Under the closed Service Connection v3 grammar selected by
+[ADR-0117](../adr/0117-reset-closed-service-formats-to-v3.md), marker `1`
 is a Terminal receipt: it names the same generation and offset and is sent only
 after the peer verifies that Terminal. Marker `2` confirms the peer observed
 that receipt; the receiving endpoint retains recovery ownership until it has
@@ -418,36 +927,13 @@ missing final control proof. The tail adds neither durable recovery state nor a
 headless recovery path. The Endpoint may publish that completed Application
 outcome before the tail ends, but explicit text-stream close cancels and joins
 the native tail, its current Attachment and the owning Introduction exchange
-before releasing the stream owner.
-
-The v1 Application Client serializes `Write` with `CloseInput`, so an accepted
-write's complete frames precede the zero-length input-close frame; if the
-directional close wins, the later write is rejected. Full `Close` and lifetime
-context cancellation are aborts and do not wait for that serialization lock:
-they close the owned Unix transport to interrupt any blocked read or write,
-reject later operations, and join Client-owned work before publishing `local
-cancellation`. A verified remote terminal outcome completed by the joined
-receiver remains authoritative; transport errors induced by the abort cannot
-replace it or become a second outcome. An interrupted `Write` may report only
-its completed payload prefix plus an error and can never become clean success.
-
-`Dial` owns the Unix transport and its cancellation from the instant a socket is
-opened through request write, status, and any refusal read. A setup cancellation
-guard closes that transport immediately and returns the originating cancellation
-or deadline error; no later setup deadline or silent peer can replace it. On an
-accepted status, one locked handoff changes that same guard from setup transport
-cleanup to `Client.Close` before `Dial` returns. If cancellation won first,
-setup joins its cleanup and returns no Client; if the successful handoff won,
-the returned Client owns the remaining context watch, transport, I/O joins, and
-terminal outcome. Thus neither an error branch nor the success/cancellation race
-leaves an unowned socket or a guard that can close a successfully transferred
-Client without a cancellation.
-
-Repeated and concurrent `Close` calls join the same cleanup and return its
-result. The headless `open`
-caller joins its response copier on input failure or cancellation and removes
-the partial output before returning; it neither receives nor closes the socket
-directly.
+before releasing the stream owner. TLS may map the admitted Route child's
+authenticated `CLOSE(0)` to transport truncation because Service TLS has no
+second close-notify exchange. The exact child exposes that already decoded
+clean retirement to the text-Service adapter; only that witness may end a
+peer's already complete tail without recovery. Raw EOF, local close, refusal,
+truncation without the witness and every other Carrier failure retain the
+bounded recovery path.
 
 Explicit publication withdrawal uses a fresh Service Administration capability
 and returns `unpublished` only for the exact Target/generation after retained
@@ -465,21 +951,35 @@ HTTP status, response completeness, or semantic retry belongs to the external
 Application. Endpoint never substitutes another Target or an Internet path.
 
 The Endpoint contains no Browser presentation or Browser Entry state. The
-former Browser implementation and qualification lanes are retired; Firefox
-source remains only as non-executable compatibility evidence under
-`tests/compatibility/browser-endpoint-v4` in accordance with [ADR-0061](../adr/0061-retain-firefox-entry-as-compatibility-evidence.md)
+former Browser implementation and qualification lanes are retired, and
+[ADR-0091](../adr/0091-retire-uncomposed-legacy-artifacts.md) retired the
+in-tree Firefox compatibility source; it survives only in Git history in
+accordance with [ADR-0061](../adr/0061-retain-firefox-entry-as-compatibility-evidence.md)
 and [ADR-0069](../adr/0069-retire-active-browser-implementation.md).
 
 ## Verification and related decisions
 
 - Go tests for Broker, Endpoint, Publication, and Service Connection exercise
   the Module Interfaces and failure paths.
-- Application Connection and Administration behavior tests exercise framing,
-  typed refusal/outcome, cancellation, join, and exact socket cleanup through
-  their public Interfaces. Architecture tests forbid a second Endpoint-local
+- Protected text AAI3 Connection and Administration behavior tests exercise
+  framing, typed refusal/outcome, cancellation, join, and exact socket cleanup
+  through their public Interfaces. AAI3 rejects the removed AAI2 request before
+  Application owner I/O. Architecture tests forbid a second Endpoint-local
   transport owner and enforce the command dependency graphs.
 - [ADR-0024](../adr/0024-native-interactive-route-foundation.md) selects the
   native Route foundation; [ADR-0075](../adr/0075-service-connection-v2-terminal-receipt.md)
   selects the closed Service Connection grammar.
 - The Broker is limited to its explicit generic/unqualified contract; it makes
   no platform-isolation or Application-level Endpoint Location Privacy claim.
+
+## Local process debugging
+
+The command adapter can explicitly enable the owner-private process Interface
+with `ARDENTS_DEBUG_SOCKET` under the
+[local diagnostic contract](../development/local-diagnostics.md). It supplies
+runtime counters and finite profile/trace requests without modifying Route,
+State authority, peer selection, Application privileges or worker confinement.
+Empty input creates no diagnostic resources; configured admission failures
+precede product dispatch and diagnostic cleanup is joined to command outcome.
+The diagnostic interface reports process observations; existing owner events
+remain the source of readiness and typed product failure.

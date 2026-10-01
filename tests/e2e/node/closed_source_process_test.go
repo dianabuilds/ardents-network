@@ -41,8 +41,7 @@ func TestClosedSourceProcessesDistributeAcceptedState(t *testing.T) {
 		if err := os.Chmod(roleRoot, 0o700); err != nil {
 			t.Fatal(err)
 		}
-		plan := nativeDutySourcePlan(network, authority.Public().(ed25519.PublicKey), now, root, roleRoot, address, server, clientAuthority.root, client.sourcePin)
-		delete(plan, "native_rendezvous_profile")
+		plan := sourceServerPlanFixture(network, authority.Public().(ed25519.PublicKey), now, root, roleRoot, address, server, clientAuthority.root, client.sourcePin)
 		plan["state_profile"] = "ardents-route-v3"
 		plan["state_profile_authority"] = hex.EncodeToString(authority.Public().(ed25519.PublicKey))
 		if index == 0 {
@@ -52,7 +51,7 @@ func TestClosedSourceProcessesDistributeAcceptedState(t *testing.T) {
 				reason string
 			}{
 				{"state_profile", "unselected", "unsupported or ambiguous"},
-				{"native_rendezvous_profile", true, "unsupported or ambiguous"},
+				{"native_rendezvous_profile", true, "old Source profile is retired"},
 				{"state_profile_authority", "", "source State profile authority:"},
 				{"state_profile_authority", hex.EncodeToString(nodeKey.Public().(ed25519.PublicKey)), "not pinned by State"},
 				{"state_profile", "", "requires an explicit State profile"},

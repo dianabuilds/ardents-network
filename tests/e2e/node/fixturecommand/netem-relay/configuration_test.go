@@ -43,3 +43,34 @@ func TestImpairedRelayConfigurationFixesEveryFaultParameter(t *testing.T) {
 		t.Fatalf("impaired netem arguments = %q, want %q", got, want)
 	}
 }
+
+func TestQualificationNetworkCellsSupportTCPAndUDPWithFiniteBulkLimit(t *testing.T) {
+	for _, network := range []string{"tcp", "udp"} {
+		for _, mode := range []string{netemNET14ADDelayMode, netemNET14ADLossMode, netemNET14SDelayMode, netemNET14SLossMode} {
+			loss := "0"
+			if mode == netemNET14ADLossMode || mode == netemNET14SLossMode {
+				loss = "1000"
+			}
+			configuration, err := parseRelayConfiguration([]string{"-listen", ":47929", "-target", "host:47926", "-network", network, "-mode", mode, "-upstream-rate", "20000000", "-client-rate", "100000000", "-segment-delay", "6667us", "-segment-jitter", "1ms", "-segment-loss-ppm", loss})
+			if err != nil {
+				t.Fatalf("%s/%s: %v", network, mode, err)
+			}
+			if configuration.network != network || configuration.directionByteLimit() != 8<<30 || configuration.upstreamRate != 20_000_000 || configuration.clientRate != 100_000_000 {
+				t.Fatalf("%s/%s configuration = %+v", network, mode, configuration)
+			}
+			commands := configuration.trafficControlCommands()
+			if len(commands) != 6 || len(commands[3]) < 11 || commands[3][8] != "netem" || commands[3][9] != "delay" ||
+				len(commands[4]) < 11 || commands[4][8] != "netem" || commands[4][9] != "delay" {
+				t.Fatalf("%s/%s traffic control lost its netem operation: %q", network, mode, commands)
+			}
+		}
+	}
+	for _, arguments := range [][]string{
+		{"-listen", ":1", "-target", "host:2", "-network", "sctp", "-mode", netemNET14ADLossMode},
+		{"-listen", ":1", "-target", "host:2", "-network", "udp", "-mode", netemDelayMode, "-delay", "2s"},
+	} {
+		if _, err := parseRelayConfiguration(arguments); err == nil {
+			t.Fatalf("invalid qualification relay accepted: %q", arguments)
+		}
+	}
+}

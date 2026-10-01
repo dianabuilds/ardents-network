@@ -1,0 +1,77 @@
+//go:build linux
+
+package endpoint
+
+import (
+	"context"
+	"testing"
+
+	"github.com/dianabuilds/ardents-network/internal/route/client"
+)
+
+func (handle *introductionPrefixHandle) Done() <-chan struct{} {
+	prefix, err := handle.routePrefix()
+	if err != nil {
+		done := make(chan struct{})
+		close(done)
+		return done
+	}
+	return prefix.Done()
+}
+
+func TestTextIntroductionCancelledOpeningDoesNotRetireSourceOrPublishPrefix(t *testing.T) {
+	owner := &dutyContext{}
+	planted := plantSourceHandle(&owner.source)
+	attempt, cancel := context.WithCancel(t.Context())
+	flight := &operationFlight{context: attempt, cancelOperation: cancel, done: make(chan struct{})}
+	if !owner.introduction.prefix.reserveOpeningLocked(flight) {
+		t.Fatal("Introduction lifecycle refused its first opening")
+	}
+	retirement := owner.introduction.prefix.stopLocked()
+	if attempt.Err() == nil {
+		t.Fatal("Introduction stop did not cancel its opening")
+	}
+	late := &client.ClosedSourcePrefix{}
+	if owner.introduction.prefix.finishOpeningLocked(flight, late, func() {}, true) {
+		t.Fatal("cancelled Introduction opening published a usable prefix")
+	}
+	close(flight.done)
+	retirement.joinOpening()
+	if err := retirement.closePrefix(); err != nil {
+		t.Fatal(err)
+	}
+	if owner.source.CurrentLocked() != planted || !planted.Loaded() {
+		t.Fatal("Introduction cancellation retired its borrowed Source")
+	}
+	if owner.introduction.prefix.currentLocked() != nil || owner.introduction.prefix.openingInProgressLocked() {
+		t.Fatal("cancelled Introduction opening remained usable")
+	}
+}
+
+func TestTextIntroductionOldOpeningCannotAcquireReplacementHandle(t *testing.T) {
+	var lifecycle introductionPrefixLifecycle
+	firstFlight := &operationFlight{}
+	if !lifecycle.reserveOpeningLocked(firstFlight) {
+		t.Fatal("Introduction lifecycle refused first opening")
+	}
+	first := &client.ClosedSourcePrefix{}
+	if !lifecycle.finishOpeningLocked(firstFlight, first, func() {}, true) {
+		t.Fatal("Introduction lifecycle refused first completion")
+	}
+	retirement := lifecycle.stopLocked()
+	secondFlight := &operationFlight{}
+	if !lifecycle.reserveOpeningLocked(secondFlight) {
+		t.Fatal("Introduction lifecycle refused replacement opening")
+	}
+	second := &client.ClosedSourcePrefix{}
+	if !lifecycle.finishOpeningLocked(secondFlight, second, func() {}, true) {
+		t.Fatal("Introduction lifecycle refused replacement completion")
+	}
+	if lifecycle.acquireOpenedLocked(first) != nil {
+		t.Fatal("old Introduction opening acquired replacement handle")
+	}
+	if handle := lifecycle.acquireOpenedLocked(second); handle == nil || handle.prefix.Load() != second {
+		t.Fatal("replacement opening did not retain its exact handle")
+	}
+	retirement.prefix = nil // Zero-value Route prefixes are identity fixtures only.
+}

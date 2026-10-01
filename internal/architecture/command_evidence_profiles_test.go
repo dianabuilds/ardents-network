@@ -1,10 +1,12 @@
 package architecture
 
 import (
+	"encoding/json"
 	"go/ast"
 	"go/parser"
 	"go/token"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -92,19 +94,29 @@ func headlessEvidenceGoTests(t *testing.T, makefile string) []string {
 
 func packageTestFunctions(t *testing.T, root, packagePath string) map[string]bool {
 	t.Helper()
-	directory := filepath.Join(root, filepath.FromSlash(strings.TrimPrefix(packagePath, "./")))
-	entries, err := os.ReadDir(directory)
+	// Headless evidence is a Linux profile. Ask Go which test files its actual
+	// build includes, so a name hidden behind another build tag cannot satisfy
+	// the selected-test gate.
+	command := exec.Command("go", "list", "-json", packagePath)
+	command.Dir = root
+	command.Env = append(os.Environ(), "GOOS=linux", "GOARCH=amd64")
+	output, err := command.Output()
 	if err != nil {
-		t.Fatalf("read selected test package %s: %v", packagePath, err)
+		t.Fatalf("list Linux test package %s: %v", packagePath, err)
 	}
+	var selected struct {
+		TestGoFiles  []string
+		XTestGoFiles []string
+	}
+	if err := json.Unmarshal(output, &selected); err != nil {
+		t.Fatalf("decode Linux test package %s: %v", packagePath, err)
+	}
+	directory := filepath.Join(root, filepath.FromSlash(strings.TrimPrefix(packagePath, "./")))
 	functions := make(map[string]bool)
-	for _, entry := range entries {
-		if entry.IsDir() || !strings.HasSuffix(entry.Name(), "_test.go") {
-			continue
-		}
-		file, parseErr := parser.ParseFile(token.NewFileSet(), filepath.Join(directory, entry.Name()), nil, 0)
+	for _, name := range append(selected.TestGoFiles, selected.XTestGoFiles...) {
+		file, parseErr := parser.ParseFile(token.NewFileSet(), filepath.Join(directory, name), nil, 0)
 		if parseErr != nil {
-			t.Fatalf("parse selected test source %s: %v", entry.Name(), parseErr)
+			t.Fatalf("parse selected Linux test source %s: %v", name, parseErr)
 		}
 		for _, declaration := range file.Decls {
 			function, ok := declaration.(*ast.FuncDecl)

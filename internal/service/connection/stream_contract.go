@@ -23,6 +23,11 @@ var (
 	errTerminalDataPending = errors.New("Terminal waits for accepted Data")
 	errWorkSafetyExpired   = errors.New("authenticated Work Safety expired")
 	errTerminalTailExpired = errors.New("terminal-control recovery period expired")
+	// ErrAttachmentRetired is returned only when an authenticated Attachment
+	// owner observed its peer's graceful transport retirement. A terminal-control
+	// tail may accept it after the complete native Terminal exchange; ordinary
+	// EOF and truncated transport loss still require bounded recovery.
+	ErrAttachmentRetired = errors.New("authenticated Attachment retired")
 )
 
 // Attachment is one already-authenticated Route byte carrier. TLS and Route
@@ -32,32 +37,42 @@ type Attachment struct {
 	carrier                     io.ReadWriteCloser
 	generation                  uint64
 	context, exporterCommitment [32]byte
-	close                       func()
+	close                       func() error
 	closeOnce                   sync.Once
+	closeErr                    error
 }
 
 // NewAttachment admits one authenticated carrier for a fixed attachment
-// generation. close may additionally release Route-local resources.
+// generation. close may additionally release Route-local resources; its
+// result becomes the Attachment's retained exactly-once retirement result
+// and is published through the owning Stream (F-23).
 func NewAttachment(carrier io.ReadWriteCloser, generation uint64, connectionContext,
-	exporterCommitment [32]byte, close func()) (*Attachment, error) {
+	exporterCommitment [32]byte, close func() error) (*Attachment, error) {
 	if carrier == nil || generation == 0 || connectionContext == [32]byte{} || exporterCommitment == [32]byte{} {
 		return nil, errors.New("authenticated connection attachment is incomplete")
 	}
 	if close == nil {
-		close = func() { _ = carrier.Close() }
+		close = func() error { return carrier.Close() }
 	}
 	return &Attachment{carrier: carrier, generation: generation, context: connectionContext,
 		exporterCommitment: exporterCommitment, close: close}, nil
 }
 
-func (attachment *Attachment) closeCarrier() {
-	if attachment != nil {
-		attachment.closeOnce.Do(func() {
-			if attachment.close != nil {
-				attachment.close()
-			}
-		})
+// retireCarrier performs the exactly-once physical retirement. performed
+// reports whether this caller ran the close callback, so a Stream records
+// each Attachment's retained result exactly once even when a serialized
+// reader and the recovery worker release the same failed carrier (F-23).
+func (attachment *Attachment) retireCarrier() (result error, performed bool) {
+	if attachment == nil {
+		return nil, false
 	}
+	attachment.closeOnce.Do(func() {
+		performed = true
+		if attachment.close != nil {
+			attachment.closeErr = attachment.close()
+		}
+	})
+	return attachment.closeErr, performed
 }
 
 // AttachmentOpener supplies another already-authenticated, exact-context
@@ -76,8 +91,6 @@ type StreamConfig struct {
 	ContinuityKey  [32]byte
 	Authorized     time.Time
 	Client         bool
-	NameBinding    DestinationBinding
-	NameUpdates    <-chan DestinationBinding
 	// CloseApplicationOnRemoteTerminal makes one local presentation treat a
 	// verified remote EOF as a full local close. It is opt-in: ordinary native
 	// streams retain their bidirectional half-close semantics.
@@ -118,8 +131,6 @@ type Stream struct {
 	authorized                       time.Time
 	started                          time.Time
 	resources                        func(string, int) uint32
-	nameBinding                      DestinationBinding
-	nameUpdates                      <-chan DestinationBinding
 	closeApplicationOnRemoteTerminal bool
 	done                             chan struct{}
 
@@ -152,6 +163,7 @@ type Stream struct {
 	terminalAckConfirmedGeneration                                                    uint64
 	terminalConfirmationPending, terminalConfirmationSent                             bool
 	terminalConfirmationGeneration, terminalConfirmationOffset                        uint64
+	terminalConfirmationWrittenGeneration, terminalConfirmationWrittenOffset          uint64
 	queueMax                                                                          uint32
 	localTerminal, terminalSettled, dataReplaying, terminalReplaying, terminalWriting bool
 	dataReplayDone                                                                    chan struct{}
@@ -160,8 +172,13 @@ type Stream struct {
 	terminalWritingGeneration                                                         uint64
 	terminalOffset                                                                    uint64
 	terminalAcknowledgedGeneration                                                    uint64
-	postClose                                                                         bool
+	postClose, tailRetiring                                                           bool
 	applicationWriting                                                                bool
+
+	// retirementErr joins every physical Attachment retirement failure this
+	// Stream observed. It is written under mu and published after done closes
+	// through RetirementResult (F-23).
+	retirementErr error
 }
 
 type receivedRange struct {
@@ -183,9 +200,9 @@ func NewStream(input StreamConfig) (*Stream, error) {
 	stream := &Stream{ctx: input.Context, application: input.Application, networkID: input.NetworkID, recovery: input.Recovery,
 		opener: input.OpenAttachment, continuity: input.ContinuityKey, client: input.Client,
 		authorized: input.Authorized, started: now, lastProgress: now, resources: input.Resources,
-		nameBinding: input.NameBinding, nameUpdates: input.NameUpdates, closeApplicationOnRemoteTerminal: input.CloseApplicationOnRemoteTerminal,
-		done:    make(chan struct{}),
-		current: input.Initial, ackSignal: make(chan struct{}, 1)}
+		closeApplicationOnRemoteTerminal: input.CloseApplicationOnRemoteTerminal,
+		done:                             make(chan struct{}),
+		current:                          input.Initial, ackSignal: make(chan struct{}, 1)}
 	stream.cond = sync.NewCond(&stream.mu)
 	return stream, nil
 }
@@ -195,5 +212,5 @@ func (stream *Stream) authorizationTime() time.Time {
 }
 
 func (stream *Stream) continuityCommitment() [32]byte {
-	return sha256.Sum256(append([]byte("ardents-service-connection-continuity-commitment-v1\x00"), stream.continuity[:]...))
+	return sha256.Sum256(append([]byte("ardents-service-connection-continuity-commitment-v3\x00"), stream.continuity[:]...))
 }

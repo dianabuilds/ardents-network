@@ -151,8 +151,9 @@ Go TLS/HPKE and a publicly verifiable blind-token family. The TLS component
 experiment is byte-cost evidence, not full protocol or security acceptance.
 [ADR-0081](../adr/0081-select-closed-protected-service-contract.md) selects
 CIRCL v1.6.5 ordinary blindrsa SHA384PSSDeterministic for the exact
-[admission construction](../technical/private-admission.md), beyond its retained
-HPKE use. The [R-152 assessment](../research/records/r-152-closed-scheme-contract.md)
+[admission construction](../technical/private-admission.md), beyond its then-retained HPKE
+use; ADR-0100 removed the last HPKE importer together with the uncomposed
+private-resolution package. The [R-152 assessment](../research/records/r-152-closed-scheme-contract.md)
 records dated source/support/license/advisory review, exact three-package plus
 standard-library closure, checksum verification, upstream tests and the composed
 probe. Its owner is internal/route/credential. Do not import other CIRCL schemes
@@ -237,44 +238,197 @@ installed-artifact inspection, and platform execution remain separate candidate
 and qualification evidence; Windows or cross-target analysis cannot replace
 them.
 
+### `cmd/ardents` Linux dependency projection
+
+**Current import-graph check, 2026-09-26.** At architecture-worktree revision
+`53f02e64`, Linux/amd64 with cgo disabled, `go list -mod=readonly -deps`
+completed for all four participant/control commands. The package counts
+below include standard-library packages. None of these four closures now
+contains `openpcc/ohttp` or `openpcc/twoway`; all four still contain CIRCL
+and quic-go through their current imports. OHTTP remained at that revision only
+for the retained, then-uncomposed `internal/naming/resolution` package;
+ADR-0100 has since removed that package, and `go mod tidy` dropped
+`openpcc/ohttp`, `openpcc/twoway`, `openpcc/bhttp`, `cespare/xxhash/v2`,
+`go.opentelemetry.io/otel`, `go.opentelemetry.io/otel/trace`, and
+`golang.org/x/text` from `go.mod` and `go.sum`.
+This is static reachability, not executed network behavior or a linked-binary
+measurement.
+
+| Command | Current packages | OHTTP package imports | QUIC package import |
+| --- | ---: | ---: | ---: |
+| `cmd/ardents` | 312 | 0 | yes |
+| `cmd/ardents-node` | 220 | 0 | yes |
+| `cmd/ardents-control` | 296 | 0 | yes |
+| `cmd/ardents-custody` | 229 | 0 | yes |
+
+**Prior projection at `e48d4c3c`.** The following package/module counts and
+representative import paths were captured before ADR-0092 using
+`go list -mod=readonly -deps -e`. They are provenance, not current command
+closures. That check inspected empty `Error` and `DepsErrors` fields.
+
+| Command | Packages | External packages | External modules |
+| --- | ---: | ---: | ---: |
+| `cmd/ardents` | 357 | 120 | 22 |
+| `cmd/ardents-node` | 283 | 71 | 12 |
+| `cmd/ardents-control` | 340 | 120 | 22 |
+| `cmd/ardents-custody` | 292 | 74 | 13 |
+
+At that prior revision, `cmd/ardents` paths included
+`endpoint -> service/reachability -> circl/hpke`,
+`endpoint -> route/credential -> openpcc/ohttp`, and
+`route -> quic-go`. Control reaches the same network libraries through its
+public issuer-profile decoder in `route/credential`; Custody reaches them
+through that package's offline permission grammar. Those were
+package-boundary overhead; ADR-0092 removed their OHTTP Transit source.
+Current Control/Custody still inherit QUIC through the live Route-facing
+issuer adapter in `route/credential` (F-28). This is not a reason to remove
+network dependencies from Endpoint or Node.
+
+To repeat the check, use the PowerShell environment assignments in the dated
+projection below, set `GOCACHE` to a writable directory outside the repository,
+and run the same `go list` format for each of the four `./cmd/...` paths above.
+Inspect `Error` and `DepsErrors` rather than relying only on the exit code of
+`go list -e`. No dependency disposition is changed by this observation.
+
+Status: **dated import-closure evidence, not whole-repository or runtime-call
+reachability.** On 2026-09-22 the exact `dev` source revision
+`ebe30149d03e3b149ed0fed5b9d6ef1877185fc4` was projected for
+`./cmd/ardents` with Go 1.26.8, `GOOS=linux`, `GOARCH=amd64`,
+`GOAMD64=v1`, `CGO_ENABLED=0`, the toolchain-default experiment set,
+`GOFIPS140=off`, default build tags, module mode, no workspace and no
+downloads. The
+`go.exe` SHA-256 was
+`21761eceb9302062c9623fb699f332c8c7fe000f15f70efe8da01a2cfbbc16b9`;
+`go.mod` and `go.sum` SHA-256 were respectively
+`a5e05aceb2ec1fa5afbfd7a9ff657cfca7ff04de43095fee692af7bb48872026`
+and
+`5167264d35ddb70683f5b7a3fbc6cffac8fa0ec6cb15d72c1d4747a7976627a2`.
+This owning change alters only this register, so the recorded source and module
+inputs are the ones classified below.
+
+The reproducible PowerShell command was:
+
+```powershell
+$env:GOOS = 'linux'
+$env:GOARCH = 'amd64'
+$env:GOAMD64 = 'v1'
+$env:CGO_ENABLED = '0'
+$env:GOEXPERIMENT = ''
+$env:GOFIPS140 = 'off'
+$env:GO111MODULE = 'on'
+$env:GOENV = 'off'
+$env:GOTOOLCHAIN = 'local'
+$env:GOWORK = 'off'
+$env:GOFLAGS = ''
+$env:GOPROXY = 'off'
+$env:GOSUMDB = 'off'
+go list -mod=readonly -deps -e -f '{{.ImportPath}}|{{with .Module}}{{.Path}}@{{.Version}}{{end}}|{{join .Imports ","}}|{{with .Error}}{{.Err}}{{end}}|{{range .DepsErrors}}{{.Err}} || {{end}}' ./cmd/ardents
+```
+
+The fourth and fifth fields retain each package `Error` and `DepsErrors`;
+stderr remains visible for Go warnings. The captured run returned 358
+packages—202 standard-library, 36 repository-owned and 120 external—from 22
+external module versions. All 358 lines parsed, both error fields were empty,
+and stderr contained no warning. `GOPROXY=off` makes a missing module-cache
+input a failed or incomplete observation rather than a download.
+
+Every external module present in this one projection is listed here. The
+package count is a classification aid, not a claim that every package symbol
+executes:
+
+| Module version | Packages |
+|---|---:|
+| `github.com/cespare/xxhash/v2@v2.3.0` | 1 |
+| `github.com/cloudflare/circl@v1.6.5` | 19 |
+| `github.com/google/go-containerregistry@v0.21.9` | 1 |
+| `github.com/opencontainers/go-digest@v1.0.0` | 1 |
+| `github.com/openpcc/bhttp@v0.0.80` | 1 |
+| `github.com/openpcc/ohttp@v0.0.80` | 3 |
+| `github.com/openpcc/twoway@v0.0.80` | 2 |
+| `github.com/quic-go/quic-go@v0.62.0` | 16 |
+| `github.com/secure-systems-lab/go-securesystemslib@v0.11.1` | 2 |
+| `github.com/sigstore/protobuf-specs@v0.5.2` | 1 |
+| `github.com/sigstore/sigstore@v1.10.9` | 4 |
+| `github.com/theupdateframework/go-tuf/v2@v2.4.2` | 2 |
+| `github.com/youmark/pkcs8@v0.0.0-20240726163527-a2c0da244d78` | 1 |
+| `go.opentelemetry.io/otel@v1.45.0` | 5 |
+| `go.opentelemetry.io/otel/trace@v1.45.0` | 4 |
+| `golang.org/x/crypto@v0.56.0` | 11 |
+| `golang.org/x/net@v0.58.0` | 7 |
+| `golang.org/x/sys@v0.47.0` | 2 |
+| `golang.org/x/term@v0.45.0` | 1 |
+| `golang.org/x/text@v0.41.0` | 4 |
+| `google.golang.org/genproto/googleapis/api@v0.0.0-20260819154853-08b0e4226688` | 2 |
+| `google.golang.org/protobuf@v1.36.12` | 30 |
+
+The direct `go.mod` requirements have the following exact status. A path is a
+shortest package-import path in this projection, not a runtime execution trace:
+
+| Direct module | Status in this projection | Representative import path |
+|---|---|---|
+| `github.com/aymanbagabas/go-pty@v0.2.3` | Absent | No path. This supports only the `cmd/ardents` Linux projection; the module remains required by repository test/qualification consumers. |
+| `github.com/cloudflare/circl@v1.6.5` | Present | `cmd/ardents → internal/naming/resolution → circl/hpke` |
+| `github.com/openpcc/ohttp@v0.0.80` | Present | `cmd/ardents → internal/naming/resolution → openpcc/ohttp` |
+| `github.com/quic-go/quic-go@v0.62.0` | Present | `cmd/ardents → internal/route → quic-go` |
+| `github.com/sigstore/sigstore@v1.10.9` | Present, transitively | `cmd/ardents → internal/release → go-tuf/v2/metadata → sigstore/pkg/cryptoutils` |
+| `github.com/theupdateframework/go-tuf/v2@v2.4.2` | Present | `cmd/ardents → internal/release → go-tuf/v2/metadata` |
+| `golang.org/x/crypto@v0.56.0` | Present | `cmd/ardents → internal/naming/resolution → circl/hpke → x/crypto/chacha20poly1305` |
+| `golang.org/x/sys@v0.47.0` | Present | `cmd/ardents → internal/endpoint/replacement → x/sys/unix` |
+| `golang.org/x/term@v0.45.0` | Present, transitively | `cmd/ardents → internal/release → go-tuf/v2/metadata → sigstore/pkg/cryptoutils → x/term` |
+
+Sigstore is therefore part of this product-shaped command closure even though
+Ardents has no direct production import of it. The four selected packages are
+`pkg/cryptoutils`, `pkg/signature`, `pkg/signature/options` and
+`pkg/signature/payload`; both `cryptoutils` and `signature` enter through
+`go-tuf/v2/metadata`. Conversely, absence of `go-pty`, `creack/pty` and
+`u-root` from this projection does not make them unnecessary to the repository
+or qualify their test execution environment.
+
+This evidence does not cover another command, target, architecture, cgo mode,
+build tag, test/build tool, runtime call reachability, linked artifact or
+vulnerability/support status. Any such claim requires its own projection or
+candidate evidence.
+
 The successor confidential control channels can replace OHTTP transport only
-with the explicit new grammar and migration. Existing OHTTP imports and their
-full closure remain subject to review for as long as any maintained use exists.
-Removal is an owner change with dependency/compatibility evidence, not an
-automatic consequence of selecting the architecture.
+with the explicit new grammar and migration. ADR-0100 removed the last maintained
+OHTTP importer, so the full OHTTP closure has left `go.mod`; a successor
+channel would reintroduce dependencies only through a fresh review with
+dependency/compatibility evidence.
 
 ## Current runtime dependencies
 
 The maintained product-shaped Modules use the Go standard library, the
-Windows-only `golang.org/x/sys/windows` surfaces described below, and the exact
-OHTTP closure owned by `internal/naming/resolution` and
-`internal/service/reachability`. ADR-0014 selects the
-maintained private-resolution profile; the set must enter
-`go.mod` as this reviewed set rather than as the vulnerable versions declared
-by `openpcc/ohttp v0.0.80`.
+Windows-only `golang.org/x/sys/windows` surfaces described below, CIRCL
+Blind RSA for the closed-token Route credential, and `golang.org/x/crypto`
+for the Custody canonical envelope. ADR-0091 retired the unwired OHTTP
+adapter from `internal/service/reachability`; ADR-0100 then removed
+`internal/naming/resolution`, the last maintained OHTTP importer, and
+`go mod tidy` dropped the whole reviewed OHTTP closure (`openpcc/ohttp`,
+`openpcc/twoway`, `openpcc/bhttp`, `cespare/xxhash/v2`,
+`go.opentelemetry.io/otel`, `go.opentelemetry.io/otel/trace`, and
+`golang.org/x/text`) from `go.mod`. `golang.org/x/net` remains only as an
+indirect module-graph entry with no maintained package import. ADR-0014's
+reviewed-set decision and R-047/R-026 remain the historical selection
+evidence for a future confidential Name exchange; that exchange would
+require a fresh dependency review rather than reuse of the retired set.
 
 | Module | Reviewed version | License | Purpose |
 |---|---:|---|---|
-| `github.com/openpcc/ohttp` | `v0.0.80`, commit `79bec89d804248df1a71a0f56c882b116579035d` | Apache-2.0 | RFC 9458 client and Gateway encapsulation |
-| `github.com/openpcc/twoway` | `v0.0.80` | Apache-2.0 | request/response HPKE context used by OHTTP |
-| `github.com/openpcc/bhttp` | `v0.0.80` | Apache-2.0 | RFC 9292 known-length HTTP encoding |
-| `github.com/cloudflare/circl` | `v1.6.5` | BSD-3-Clause | reviewed HPKE implementation |
-| `github.com/quic-go/quic-go` | `v0.62.0` | MIT | maintained QUIC v1 Carrier Adapter and QUIC varint closure required by BHTTP |
-| `github.com/cespare/xxhash/v2` | `v2.3.0` | MIT | tracing dependency closure |
-| `go.opentelemetry.io/otel` | `v1.45.0` | Apache-2.0 | OHTTP tracing types |
-| `go.opentelemetry.io/otel/trace` | `v1.45.0` | Apache-2.0 | OHTTP tracing Interface |
+| `github.com/cloudflare/circl` | `v1.6.5` | BSD-3-Clause | reviewed Blind RSA implementation for the closed-token Route credential |
+| `github.com/quic-go/quic-go` | `v0.62.0` | MIT | maintained QUIC v1 Carrier Adapter |
+| `github.com/go-logr/logr` | `v1.4.4` | Apache-2.0 | indirect logging interface inside the go-tuf/sigstore release-verifier chain |
 | `golang.org/x/crypto` | `v0.56.0` | BSD-3-Clause | selected cryptographic support closure |
-| `golang.org/x/net` | `v0.58.0` | BSD-3-Clause | BHTTP HTTP support |
 | `golang.org/x/sys` | `v0.47.0` | BSD-3-Clause | Windows owner-only DACL/locking and registry enforcement plus platform atomic replacement support; Linux-only Endpoint durable-state behavior tests use descriptor-relative no-follow capture |
-| `golang.org/x/text` | `v0.41.0` | BSD-3-Clause | BHTTP normalization |
 
-**Need and owner:** RFC 9458 is the accepted external-first Private Resolution
-shape. `internal/naming/resolution` owns the Namespace OHTTP/CIRCL Adapter and
-`internal/service/reachability` owns the separately authenticated Target
-descriptor adapter; neither is a general HTTP proxy. A change repeats the
-affected current-owner conformance, dependency and observer checks. R-047/R-026
-retain the selection evidence; they are not instructions to reopen the original
-research or a second current specification.
+**Need and owner:** `internal/route/credential` owns the CIRCL Blind RSA
+closed-token issuer; `internal/custody` owns the `golang.org/x/crypto`
+canonical envelope; `internal/route` owns the QUIC Carrier Adapter.
+Reachability's private Descriptor proof and stored-record reader are
+separate owners. None is a general HTTP proxy. A change repeats the
+affected current-owner conformance, dependency and observer checks.
+R-047/R-026 retain the historical OHTTP selection evidence; they are not
+instructions to reopen the original research or a second current
+specification.
 
 **Windows platform use:** current platform-specific owners use
 `golang.org/x/sys/windows` on Windows to apply a protected DACL granting the
@@ -287,20 +441,20 @@ the selected version has the existing checksum/license review, passes the
 repository's offline build/tests and reachable vulnerability scan, and the
 remaining callers use no cgo or first-party `unsafe`.
 
-**Maintenance and security review:** `openpcc/ohttp` has versioned releases, an
-Apache-2.0 license, tests including RFC vectors and malformed inputs, and a
-published security contact. Its selected tag predates three now-known reachable
-dependency advisories, so the raised versions above are mandatory. On Go
-1.26.6 the exact set passes checksums, upstream and independent role-view tests,
-offline build/test with cgo disabled, and reachable `govulncheck`. The reachable
-Go packages have no cgo files or `unsafe` imports. CIRCL contains optimized
+**Maintenance and security review:** the OHTTP-closure maintenance history
+(versioned releases, the three raised dependency advisories, and the Go 1.26.6
+checksum, upstream role-view, offline build/test and reachable `govulncheck`
+evidence) is preserved in ADR-0014, the Go 1.26.8 admission evidence above,
+and earlier revisions of this register; since ADR-0100 it describes no
+maintained dependency. The retained modules pass checksums, offline
+build/test with cgo disabled, and reachable `govulncheck`; their reachable Go
+packages have no cgo files or `unsafe` imports. CIRCL contains optimized
 assembly behind portable Go APIs; Ardents selects no custom cryptographic suite.
 
-**Alternatives:** `chris-wood/ohttp-go` at commit `776f22a178b8` has a smaller
-MIT/BSD closure and passes with CIRCL `v1.6.5`, but has no release
-and declares its implementation/API experimental. First-party OHTTP/PIR, local
-lookup, direct/DNS/HTTP resolution, alternate Namespace, and cached-success
-fallback are rejected.
+**Alternatives:** the OHTTP implementation comparison (`chris-wood/ohttp-go`,
+first-party OHTTP/PIR, local lookup, direct/DNS/HTTP resolution, alternate
+Namespace, cached-success fallback) is historical ADR-0014 selection evidence;
+since ADR-0100 no maintained OHTTP use remains to re-select.
 
 For Windows ACL enforcement, an external PowerShell/`icacls` subprocess breaks
 the no-process import contract, while raw first-party system calls require the
@@ -324,6 +478,97 @@ QUIC implementation is forbidden cryptographic/protocol work; TCP-only cannot
 exercise the required second Carrier seam. Remove this direct use if QUIC is
 withdrawn as a maintained profile. Any version change repeats license,
 advisory, MTU, cancellation, resource, and hostile-network qualification.
+
+### Existing QUIC finding: return-path reply budget
+
+**Finding ID:** `ARDENTS-QUIC-2026-09-21-RETURN-PATH-REPLY-BUDGET`.
+This is a locally recorded component observation, not a CVE, GHSA, upstream
+report, proof of novelty, or demonstrated attack against an Ardents deployment.
+It concerns `quic-go v0.62.0`, with module checksum
+`h1:ZHDjCk5OacATwGvs8PWE97CTvX7AqZiVoW7++ZOXTf8=` and `go.mod` checksum
+`h1:RAro2j2yN9a9EiPACLHT9IB2NXCvGQmmo/alT0yYI0w=`. The upstream source
+identity is immutable release tag `v0.62.0`, annotated-tag object
+`738877626f361538cf07bc4c40cef79483a3ddbf`, peeled commit
+`793f74d8e03368c5aded128af6f48d21dbb47f73`; the release and source were
+rechecked on 2026-09-23.
+
+**Observed evidence and limit:** retained Windows and Linux loopback,
+user-space NAT-mapping probes on Go 1.26.8 report a 32-byte inbound event and
+a 1200-byte path-probe reply while the old mapping is retained. Their original
+nonzero exits remain evidence rather than being converted into passes. The
+evidence establishes that result for the probe fixture and source inspection;
+it does not establish kernel-NAT behavior, source-address spoofing,
+third-party reflection, sustained rate or lifetime, a CVE-class exploit, or
+behavior in the exact Ardents TLS/ALPN/listener profile. In particular, the
+actual Linux OOB send path and the full admitted profile combination were not
+measured.
+
+The local evidence is retained outside Git at
+`C:\Users\vitek\AppData\Local\Temp\ardents-handover-model-11a26ed48d104b1a826aa64fd2e1ea9c`.
+It is identified, rather than replaced by an inference, by:
+
+- `quic-applicability-note.md` SHA-256
+  `9890cd1a2fc3eca600e557d216ea002c60aa8aaefae7d0e63641d49feca94cf7`;
+- `finding-disposition-and-g10-lanes.md` SHA-256
+  `6226691653199302de7551d0b5f7ad413b6d3928fa1168855f0766436753bbd6`;
+- `quic-nat-probe/inputs.json` SHA-256
+  `b04da0ed3675d31184e2564a8ae37981dbd37264add8bea2e7f9204309bdc42c`,
+  with retained Windows result SHA-256
+  `0a2539282e89204a01735aa3da7fdba96738080ba6e153677abcf9877b73b97b`
+  and Linux old-map-dropped result SHA-256
+  `0eeb48547b21cbcd91f38a89f0d5884fb0976c09c29d4063e659513a57cfa3f0`;
+- `quic-egress-probe/inputs.json` SHA-256
+  `892ceb4fc280634bc40f81b70bb6d8647ca3b21dd7fd17e0066aea13b04c592d`.
+
+These hashes and the pinned module/source identities make the repository
+record independently inspectable; the temporary directory is not the only
+basis for this disposition. Its raw captures are provenance, not a current
+qualification result.
+
+**Admitted-use disposition at `dev@6134408ff561db83ff4f98f2aad2f1ef11198701`:**
+the affected server use remains unresolved. `ListenClosedSharedCarrier` is
+selected by the forwarding, resolution, introduction, join, and issuer Node
+listeners; `ListenClosedRoleCarrier` is selected by the credential token
+listener. When either selects QUIC, it is the server-side path covered by this
+finding's source inspection. The live server callers and the three route
+adapter files were checked at that commit; their SHA-256 identities are
+recorded in the issue evidence.
+
+`OpenClosedNodeCarrier` and `OpenClosedRoleCarrier` are outgoing-only uses.
+For this finding's claimed reflector role, source inspection supports a
+bounded non-applicability argument: the observed new-remote-address handling
+is server-side. It does not qualify client receive accounting, general QUIC
+safety, or a future client migration feature. TCP/TLS selections do not
+execute the QUIC path. QUIC fixture tests exercise the adapters but neither
+turn the server disposition into qualified use nor replace the missing
+profile-specific measurement. The removed `ListenNodeCarrier` is not a current
+server caller.
+
+**Current disposition:** the unresolved applicability/qualification of the
+affected QUIC server use blocks its admission under the maintenance and
+vulnerability acceptance rule. Removing a historical caller, a quiet advisory
+scan, or passing adapter tests does not close that blocker. No fix, replacement,
+private fork, upstream report, or network experiment is selected by this
+record.
+
+**Upstream/advisory review (accessed 2026-09-23):** the official release and
+GitHub advisory records were checked. The published identifiers
+`GHSA-vvgj-x9jq-8cj9`/`CVE-2026-40898`, `GHSA-g754-hx8w-x2g6`/`CVE-2025-64702`,
+`GHSA-47m2-4cr7-mhcw`/`CVE-2025-59530`, and
+`GHSA-j972-j939-p2v3`/`CVE-2025-29785` describe other defects and their
+published affected ranges end before v0.62.0. They do not identify this local
+finding. This review is not an assertion that no other advisory exists or that
+the component is free of vulnerabilities.
+
+The disposition must be revisited if the module, checksum, source, Go version,
+QUIC configuration, server caller, path-migration behavior, platform/backend,
+or an upstream/advisory record changes. Closure requires a preserved,
+exact-artifact profile measurement that covers each admitted QUIC server
+listener on its supported platform and TLS/ALPN/configuration, demonstrates
+the selected mitigation or enforceable non-applicability boundary, and records
+the relevant bounded-rate/lifetime and cleanup result. A subsequent dependency
+or architecture decision must then satisfy this document's normal review and
+qualification requirements.
 
 **Offline supply:** an explicit preparation step runs `go mod download` and
 `go mod verify` outside the repository, then supplies a temporary vendor context
@@ -495,3 +740,105 @@ artifact qualification runner. Any version or runtime use repeats this review.
 
 `make tools-install` is the only documented installation command. Normal build
 and quick-check targets never install or upgrade tools implicitly.
+
+## Local diagnostic tools
+
+The engineering diagnostics owner is [local-diagnostics.md](local-diagnostics.md).
+The image uses Go 1.26.8 and the digest-pinned official Debian Bookworm Go image
+`sha256:9fdc884aacc3bec89b20ffc69f4bb369c78210e3e4f600387b5128b12c199f81`.
+The existing accepted quality tools retain their reviewed pins; normal gates do
+not install additional tools. Explicit `make tools-install DIAGNOSTIC_TOOLS=1`
+adds **Delve v1.27.2**, module `github.com/go-delve/delve/cmd/dlv`, MIT, solely
+inside the local development environment. It is not a product import or shipped
+artifact. Standard Go runtime profiles/traces and a stdlib-only private Unix
+Interface avoid a new runtime SDK, telemetry exporter or backend dependency.
+
+Primary review accessed 2026-09-30:
+[Delve immutable v1.27.2 release](https://github.com/go-delve/delve/releases/tag/v1.27.2),
+[upstream changelog](https://github.com/go-delve/delve/blob/master/CHANGELOG.md),
+[MIT license](https://github.com/go-delve/delve/blob/v1.27.2/LICENSE),
+[Go diagnostics](https://go.dev/doc/diagnostics), and
+[Docker service limits](https://docs.docker.com/reference/compose-file/services/).
+The upstream release and follow-up activity provide a maintained update path;
+release notes/changelog cover Go 1.26 module-data support and subsequent debugger
+fixes. This is not a claim that an old patch has independent long-term support.
+Reassess new release fixes and advisories before renewing the image. Delve can
+read/write target memory and ptrace; run only in the explicitly selected isolated
+profile without host PID/network, credentials or production authority roots.
+Debugger TCP serving is not selected. Go/Delve telemetry is disabled in the image.
+
+Debian-installed strace, iproute2 (ss/tc), tcpdump, procps and Graphviz provide
+syscalls, namespace socket/fault/packet evidence and local profile rendering.
+Use Debian's signed security repositories; actual versions and full native
+package closure are captured by `dpkg-query -W` inside the image inventory.
+That build is identified by its actual image ID, because package updates make
+a rebuild a distinct environment. Tool module closure/compiler is captured
+with `go version -m`; module integrity is checked during build. Before admission,
+run the relevant behavior/race tests and vulnerability inspection of the exact
+tool artifact; retain findings and any scoped non-applicability evidence. Image
+presence or a clean scanner alone does not establish continued upstream support.
+
+The Product Owner and Codex maintain this local tool environment. Update via an
+explicit reviewed image rebuild and the installation target. Remove Delve when
+interactive source/memory debugging is no longer needed; remove native tools
+when their recipes are retired. Prefer standard Go pprof/trace/objdump for
+ordinary diagnosis; GDB/eBPF/kernel instrumentation is not selected merely
+because it could be useful. No new dependency enters the root product module.
+
+The same explicit diagnostics installation adds **errcheck v1.20.0**, module
+`github.com/kisielk/errcheck`, MIT, as an advisory unchecked-error/type-assertion
+analyzer. Primary [release notes](https://github.com/kisielk/errcheck/releases/tag/v1.20.0)
+and [source/license](https://github.com/kisielk/errcheck/tree/v1.20.0), accessed
+2026-09-30, identify its maintained update path and Go >=1.25/tooling update.
+Its actual binary/compiler/module closure is inventoried and inspected with
+Delve. The static diagnostic operation retains findings and a failing exit;
+findings require owner/call-path review and are not automatically product bugs.
+It neither replaces official gates nor becomes a runtime import. Remove it if
+Staticcheck/vet cover its needed checks. Explicit rebuild/update ownership is
+the same local tool owner as Delve.
+
+The first inspected Delve 1.27.0 candidate was rejected after binary analysis
+reported GO-2026-6238 in cilium/ebpf 0.11.0. The selected upstream Delve 1.27.2
+source `d116177dd925e085ba5dd340f8c644f4a1501a3b` raises that dependency to the
+fixed 0.22.0; module integrity is `h1:dhcjFjiVoQI53uwsG7EqYiMhdvFuywsBZx4KDOK+sYE=`.
+See the [upstream fixing release](https://github.com/go-delve/delve/releases/tag/v1.27.2)
+and [Go advisory](https://pkg.go.dev/vuln/GO-2026-6238), accessed 2026-09-30.
+Keep the rejected scan with the corrected candidate evidence; no exemption is
+used for its presence in the earlier artifact.
+
+Exact errcheck 1.20.0 binary review reported module-only GO-2026-6180 and
+GO-2026-6179 for x/mod 0.35.0, with no affected imported packages or symbols.
+The vulnerable packages are x/mod/sumdb and x/mod/sumdb/tlog; inspect the exact
+source closure with `go list -deps .` inside errcheck's pinned module, and the
+binary with `go tool nm /go/bin/errcheck`. Neither package participates in this
+analyzer executable. Its `go/packages` subprocess uses the separately reviewed
+Go 1.26.8 toolchain, not errcheck's embedded sumdb implementation. This scoped
+non-applicability is invalidated by a changed tool version, imported closure,
+Go toolchain, or invocation that admits a sumdb implementation. Retain verbose
+binary scan and closure evidence; module-only findings are not erased by a
+successful scanner exit.
+
+The explicit Linux tool installation also installs PowerShell 7.6.6 (MIT)
+from the [upstream immutable release](https://github.com/PowerShell/PowerShell/releases/tag/v7.6.6),
+accessed 2026-09-30, using SHA256
+`ddbc4a2d113bbd46d283cfedcbcd117a70caefd7673f41f2b4e0000badf103bc`.
+It supplies the maintained architecture script tests, not a product dependency.
+The release uses .NET 10.0.401; Debian native dependencies and Python 3 come
+from signed security repositories and are included in the environment inventory.
+Rebuild on upstream/security fixes; validate the actual required scripts.
+
+### Prebuilt standard Go diagnostic parsers
+
+The local diagnostics owner uses the selected Go 1.26.8 source packages
+`cmd/pprof` and `cmd/trace`, with the Go distribution license, to parse explicitly
+selected private profiles offline. Explicit `make tools-install` builds them into
+`GOBIN` or `GOPATH/bin`; `DIAGNOSTIC_PARSERS_ONLY=1` installs only this pair. They
+are not new module imports, product binaries or a separate upstream selection.
+Their source/support/security owner is the existing pinned Go toolchain above;
+rebuild and revalidate both on each toolchain change. The image/doctor inventory
+records actual compiler/build metadata. Remove this installation when private
+bundle format validation is retired. No symbolization, selected executable,
+remote URL, HTTP parser service or artifact execution is enabled by this use.
+Per-file deadline, process-group cancellation and discarded-output caps belong
+to the local diagnostics owner. Native/parser prerequisite failure blocks that
+profile instead of triggering implicit compilation or a passing skip.

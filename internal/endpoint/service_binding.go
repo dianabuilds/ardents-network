@@ -1,0 +1,407 @@
+//go:build linux
+
+package endpoint
+
+import (
+	"context"
+	"crypto/ed25519"
+	"crypto/rand"
+	"crypto/sha256"
+	"errors"
+	"net"
+	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/application/broker"
+	"github.com/dianabuilds/ardents-network/internal/endpoint/introduction"
+	"github.com/dianabuilds/ardents-network/internal/endpoint/service"
+	nativeconnection "github.com/dianabuilds/ardents-network/internal/service/connection"
+	servicepublication "github.com/dianabuilds/ardents-network/internal/service/publication"
+	"github.com/dianabuilds/ardents-network/internal/service/reachability"
+	"github.com/dianabuilds/ardents-network/internal/service/targetlink"
+)
+
+// serviceBinding retains the exact job and independently verified
+// publication. It cannot be reconstructed by a local Application from a
+// supplied "established" flag or copied wire nonce.
+type serviceBinding struct {
+	owner              *dutyContext
+	job                *jobIdentity
+	credential         servicepublication.Credential
+	facts              nativeconnection.ProtectedContextInput
+	logical            [32]byte
+	candidateView      [32]byte
+	destinationBinding [32]byte
+	// introduction is the already verified recipient selected for this
+	// Target-Link Connection. It remains client-local and finite.
+	introduction reachability.PrivateIntroduction
+	recovery     *introduction.RecoveryOwner
+}
+
+// serviceBinding implements the introduction package's RecoveryBinding seam:
+// recovery-slot identity and the immutable per-Connection nonce commitment.
+var _ introduction.RecoveryBinding = (*serviceBinding)(nil)
+
+// serviceBinding is the service package's retained authority seam. Every
+// method answers from the exact immutable job, publication, and duty-context
+// facts recorded at construction.
+var _ service.Binding = (*serviceBinding)(nil)
+
+// newServiceBinding is the Initiator's local owner operation after
+// destination authorization and verified reachability. The local Connection
+// context and its salt never leave this Endpoint.
+func (owner *dutyContext) newServiceBinding(job *jobIdentity, destination targetlink.Link, current servicepublication.Current,
+	bounds [3]int64) (*serviceBinding, error) {
+	if owner == nil {
+		return nil, errors.New("text Service context unavailable")
+	}
+	owner.mu.Lock()
+	defer owner.mu.Unlock()
+	if !owner.liveServiceJobLocked(job, broker.Connection) {
+		return nil, errors.New("text Service reader job unavailable")
+	}
+	profile, _, err := owner.permissionProfileLocked()
+	if err != nil {
+		return nil, err
+	}
+	spelling, err := targetlink.Encode(destination)
+	if err != nil || destination.Network != owner.endpoint.network {
+		return nil, errors.New("text Service destination unavailable")
+	}
+	// This is the existing private ConnectionContext construction. Only its
+	// independently salted per-Connection commitment enters the shared tuple.
+	destinationBinding := sha256.Sum256([]byte(spelling))
+	local, err := nativeconnection.Context(nativeconnection.ContextInput{
+		Network: destination.Network, Target: destination.Target, InstancePublic: current.Credential.InstancePublic,
+		InstanceGeneration: current.Credential.Generation, PublicationDigest: current.Digest,
+		CandidateView: profile.StateDigest, IsolationContext: job.nonce, DestinationBinding: destinationBinding,
+		WorkSafetyNotAfter: bounds[0], WorkSafetyMaximum: bounds[1], NoNewRecoveryAfter: bounds[2]})
+	if err != nil {
+		return nil, err
+	}
+	var salt, nonce [32]byte
+	if _, err := rand.Read(salt[:]); err != nil {
+		return nil, err
+	}
+	defer clear(salt[:])
+	if _, err := rand.Read(nonce[:]); err != nil {
+		return nil, err
+	}
+	encoded := []byte("ardents-initiator-binding-v3\x00")
+	encoded = append(encoded, salt[:]...)
+	encoded = append(encoded, local[:]...)
+	defer clear(encoded)
+	facts := nativeconnection.ProtectedContextInput{
+		Network: destination.Network, Target: destination.Target,
+		InstancePublic: current.Credential.InstancePublic, InstanceGeneration: current.Credential.Generation,
+		PublicationDigest: current.Digest, ProfileDigest: profile.Digest, ConnectionNonce: nonce,
+		InitiatorBinding: sha256.Sum256(encoded), WorkSafetyNotAfter: bounds[0], WorkSafetyMaximum: bounds[1], NoNewRecoveryAfter: bounds[2]}
+	return owner.bindServiceLocked(job, current, facts)
+}
+
+func (owner *dutyContext) bindServiceLocked(job *jobIdentity, current servicepublication.Current,
+	facts nativeconnection.ProtectedContextInput) (*serviceBinding, error) {
+	profile, now, err := owner.permissionProfileLocked()
+	if err != nil {
+		return nil, err
+	}
+	verified, err := servicepublication.Decode(current.Record, ed25519.PublicKey(current.Credential.AuthorityPublic[:]), owner.endpoint.network, now)
+	if err != nil || verified.Credential != current.Credential || verified.Digest != current.Digest {
+		return nil, errors.New("text Service publication unavailable")
+	}
+	if facts.Network != owner.endpoint.network || facts.Target != verified.Credential.Target ||
+		facts.InstancePublic != verified.Credential.InstancePublic || facts.InstanceGeneration != verified.Credential.Generation ||
+		facts.PublicationDigest != verified.Digest || facts.ProfileDigest != profile.Digest ||
+		facts.WorkSafetyNotAfter <= now.Unix() || facts.NoNewRecoveryAfter <= now.Unix() ||
+		facts.WorkSafetyMaximum > verified.Credential.NotAfter || facts.WorkSafetyMaximum > profile.NotAfter.Unix() {
+		return nil, introduction.NewRefusal(errors.New("text Service publication or authority bounds unavailable"))
+	}
+	if owner.surface == broker.Administration {
+		if owner.endpoint.publications == nil {
+			return nil, errors.New("text Service Publisher publication unavailable")
+		}
+		lease, err := owner.endpoint.publications.AcquireAt(job.context, now)
+		if err != nil {
+			return nil, errors.New("text Service Publisher publication unavailable")
+		}
+		published := lease.Current()
+		closeErr := lease.Close()
+		if closeErr != nil {
+			return nil, errors.Join(errors.New("text Service Publisher publication unavailable"), closeErr)
+		}
+		if published.Credential != verified.Credential || published.Digest != verified.Digest {
+			return nil, introduction.NewRefusal(errors.New("text Service Publisher publication differs"))
+		}
+	}
+	if deadline, ok := job.context.Deadline(); ok && time.Unix(facts.WorkSafetyMaximum, 0).After(deadline) {
+		return nil, introduction.NewRefusal(errors.New("text Service bounds exceed local job authority"))
+	}
+	logical, err := nativeconnection.ProtectedContext(facts)
+	if err != nil {
+		return nil, introduction.NewRefusal(err)
+	}
+	spelling, err := targetlink.Encode(targetlink.Link{Network: facts.Network, Target: facts.Target})
+	if err != nil {
+		return nil, introduction.NewRefusal(errors.New("text Service destination binding unavailable"))
+	}
+	return &serviceBinding{owner: owner, job: job, credential: verified.Credential, facts: facts, logical: logical,
+		candidateView: profile.StateDigest, destinationBinding: sha256.Sum256([]byte(spelling))}, nil
+}
+
+func (owner *dutyContext) liveServiceJobLocked(job *jobIdentity, surface broker.Surface) bool {
+	return owner.liveLocked(owner.endpoint, surface) && job != nil && job.owner == owner && owner.job == job &&
+		owner.verifiedJob == job && !job.retired && job.bound && job.workerGrant != nil && job.context.Err() == nil
+}
+
+func (binding *serviceBinding) current() error {
+	if binding == nil || binding.owner == nil {
+		return errors.New("text Service binding unavailable")
+	}
+	owner := binding.owner
+	owner.mu.Lock()
+	defer owner.mu.Unlock()
+	// Parent cancellation is visible before it reaches every child context.
+	// Refuse this owned binding with that cause throughout joined retirement,
+	// rather than publishing a distinct job failure during that window.
+	if binding.job != nil && binding.job.owner == owner && owner.lease != nil {
+		if err := owner.lease.Context().Err(); err != nil {
+			return err
+		}
+	}
+	if !owner.liveServiceJobLocked(binding.job, owner.surface) {
+		return errors.New("text Service job retired")
+	}
+	profile, now, err := owner.permissionProfileLocked()
+	if err != nil || profile.Digest != binding.facts.ProfileDigest || profile.StateDigest != binding.candidateView ||
+		!now.Before(time.Unix(binding.facts.WorkSafetyNotAfter, 0)) ||
+		!now.Before(time.Unix(binding.credential.NotAfter, 0)) {
+		return errors.New("text Service binding expired or changed")
+	}
+	return nil
+}
+
+// MatchesPublication reports the exact retained Credential and digest.
+func (binding *serviceBinding) MatchesPublication(current servicepublication.Current) bool {
+	return binding != nil && current.Credential == binding.credential && current.Digest == binding.facts.PublicationDigest &&
+		len(current.Record) != 0 && sha256.Sum256(current.Record) == current.Digest
+}
+
+// servesJob reports the exact immutable Context and job ownership.
+func (binding *serviceBinding) servesJob(owner *dutyContext, job *jobIdentity) bool {
+	return binding != nil && binding.owner == owner && binding.job == job
+}
+
+// servesOwnerJob reports the Context ownership of a present job identity.
+func (binding *serviceBinding) servesOwnerJob(owner *dutyContext) bool {
+	return binding != nil && binding.owner == owner && binding.job != nil
+}
+
+// jobIdentity returns the immutable job bound at construction.
+func (binding *serviceBinding) jobIdentity() *jobIdentity {
+	return binding.job
+}
+
+// ConnectionNonce returns the immutable per-Connection nonce commitment.
+func (binding *serviceBinding) ConnectionNonce() [32]byte {
+	return binding.facts.ConnectionNonce
+}
+
+// target returns the immutable publication Target.
+func (binding *serviceBinding) target() [32]byte {
+	return binding.facts.Target
+}
+
+// profileDigest returns the immutable permission profile digest.
+func (binding *serviceBinding) profileDigest() [32]byte {
+	return binding.facts.ProfileDigest
+}
+
+// publicationDigest returns the immutable publication digest.
+func (binding *serviceBinding) publicationDigest() [32]byte {
+	return binding.facts.PublicationDigest
+}
+
+// workSafetyNotAfter returns the immutable work-safety deadline in Unix
+// seconds.
+func (binding *serviceBinding) workSafetyNotAfter() int64 {
+	return binding.facts.WorkSafetyNotAfter
+}
+
+// Facts copies the full immutable shared authority tuple.
+func (binding *serviceBinding) Facts() nativeconnection.ProtectedContextInput {
+	if binding == nil {
+		return nativeconnection.ProtectedContextInput{}
+	}
+	return binding.facts
+}
+
+// sameAuthorityAs compares every immutable authority fact of two bindings.
+func (binding *serviceBinding) sameAuthorityAs(other *serviceBinding) bool {
+	return binding != nil && other != nil && binding.logical == other.logical &&
+		binding.facts == other.facts && binding.credential == other.credential &&
+		binding.candidateView == other.candidateView
+}
+
+// dispatchRecoveryLocked returns the recovery slot only for the binding that
+// serves the exact Context and job.
+func (binding *serviceBinding) dispatchRecoveryLocked(owner *dutyContext, job *jobIdentity) *introduction.RecoveryOwner {
+	if !binding.servesJob(owner, job) {
+		return nil
+	}
+	return binding.recovery
+}
+
+// OwnsRecoveryLocked reports whether this binding retains exactly that
+// recovery owner.
+func (binding *serviceBinding) OwnsRecoveryLocked(recovery *introduction.RecoveryOwner) bool {
+	return binding != nil && recovery != nil && binding.recovery == recovery
+}
+
+// hasRecoveryLocked reports an occupied recovery slot.
+func (binding *serviceBinding) hasRecoveryLocked() bool {
+	return binding != nil && binding.recovery != nil
+}
+
+// claimRecoveryLocked creates the one recovery owner slot of this binding.
+// The shared Context lock makes creation and dispatcher registration one
+// transition.
+func (binding *serviceBinding) claimRecoveryLocked() *introduction.RecoveryOwner {
+	if binding == nil || binding.recovery != nil {
+		return nil
+	}
+	recovery := introduction.NewRecoveryOwner(binding)
+	binding.recovery = recovery
+	return recovery
+}
+
+// bindIntroductionLocked records the verified Descriptor recipient for later
+// capsule issuance.
+func (binding *serviceBinding) bindIntroductionLocked(recipient reachability.PrivateIntroduction) {
+	binding.introduction = recipient
+}
+
+// introductionLocked returns the current Descriptor recipient facts.
+func (binding *serviceBinding) introductionLocked() reachability.PrivateIntroduction {
+	return binding.introduction
+}
+
+func (binding *serviceBinding) serviceRecovery() nativeconnection.Recovery {
+	if binding == nil || binding.owner == nil || binding.job == nil {
+		return nativeconnection.Recovery{}
+	}
+	return nativeconnection.Recovery{NetworkID: binding.facts.Network, CandidateView: binding.candidateView,
+		IsolationContext: binding.job.nonce, DestinationBinding: binding.destinationBinding, RouteProfile: nativeconnection.Profile,
+		WorkSafetyNotAfter: binding.facts.WorkSafetyNotAfter, WorkSafetyMaximum: binding.facts.WorkSafetyMaximum,
+		NoNewRecoveryAfter: binding.facts.NoNewRecoveryAfter}
+}
+
+func (binding *serviceBinding) validateServiceRecovery(request nativeconnection.Recovery) error {
+	expected := binding.serviceRecovery()
+	role := "client"
+	if binding != nil && binding.owner != nil && binding.owner.surface == broker.Administration {
+		role = "publisher"
+	}
+	if request.Generation <= 1 || request.Deadline.IsZero() || request.NetworkID != expected.NetworkID ||
+		request.CandidateView != expected.CandidateView || request.IsolationContext != expected.IsolationContext ||
+		request.DestinationBinding != expected.DestinationBinding || request.RouteProfile != expected.RouteProfile ||
+		request.Role != role ||
+		request.WorkSafetyNotAfter != expected.WorkSafetyNotAfter || request.WorkSafetyMaximum != expected.WorkSafetyMaximum ||
+		request.NoNewRecoveryAfter != expected.NoNewRecoveryAfter {
+		return errors.New("text Service recovery changed immutable authority")
+	}
+	return binding.current()
+}
+
+// The remaining methods are the service.Binding seam. Each answers from the
+// exact immutable facts retained at construction and stays nil-safe so a
+// typed-nil binding keeps producing the established refusals.
+
+// Current revalidates the live job and unchanged permission authority.
+func (binding *serviceBinding) Current() error { return binding.current() }
+
+// Logical returns the immutable per-Connection logical context.
+func (binding *serviceBinding) Logical() [32]byte {
+	if binding == nil {
+		return [32]byte{}
+	}
+	return binding.logical
+}
+
+// Credential returns the independently verified publication Credential.
+func (binding *serviceBinding) Credential() servicepublication.Credential {
+	if binding == nil {
+		return servicepublication.Credential{}
+	}
+	return binding.credential
+}
+
+// Surface returns the local Application Interface role.
+func (binding *serviceBinding) Surface() broker.Surface {
+	if binding == nil || binding.owner == nil {
+		return broker.Surface("")
+	}
+	return binding.owner.surface
+}
+
+// JobContext returns the bounded context of the exact bound job.
+func (binding *serviceBinding) JobContext() context.Context {
+	if binding == nil || binding.job == nil {
+		return nil
+	}
+	return binding.job.context
+}
+
+// WorkloadDirection returns the checked send/receive byte contract for the
+// local surface.
+func (binding *serviceBinding) WorkloadDirection() (uint32, uint32, error) {
+	if binding == nil || binding.job == nil || binding.owner == nil {
+		return 0, 0, errors.New("text Service workload direction is unavailable")
+	}
+	return binding.job.workload.Direction(binding.owner.surface)
+}
+
+// Clock reads the Endpoint generation clock.
+func (binding *serviceBinding) Clock() time.Time {
+	if binding == nil || binding.owner == nil || binding.owner.endpoint == nil {
+		return time.Time{}
+	}
+	return binding.owner.endpoint.clock()
+}
+
+// Resources returns the Endpoint resource ledger.
+func (binding *serviceBinding) Resources() func(string, int) uint32 {
+	if binding == nil || binding.owner == nil || binding.owner.endpoint == nil {
+		return nil
+	}
+	return binding.owner.endpoint.resources
+}
+
+// AcquirePublication leases the Publisher's current publication; a client-only
+// Endpoint has no publication owner and is refused.
+func (binding *serviceBinding) AcquirePublication(ctx context.Context) (*servicepublication.Lease, error) {
+	if binding == nil || binding.owner == nil || binding.owner.endpoint == nil ||
+		binding.owner.endpoint.publications == nil {
+		return nil, errors.New("text Publisher publication owner unavailable")
+	}
+	return binding.owner.endpoint.publications.AcquireAt(ctx, binding.owner.endpoint.clock().UTC())
+}
+
+// Recovery computes the immutable recovery authority request.
+func (binding *serviceBinding) Recovery() nativeconnection.Recovery { return binding.serviceRecovery() }
+
+// ValidateRecovery refuses any request that changed immutable authority.
+func (binding *serviceBinding) ValidateRecovery(request nativeconnection.Recovery) error {
+	return binding.validateServiceRecovery(request)
+}
+
+// ReleaseIntroductionRecovery retires the binding's recovery slot.
+func (binding *serviceBinding) ReleaseIntroductionRecovery() error {
+	return binding.releaseIntroductionRecovery()
+}
+
+// openServiceStreamWithRecovery binds one joined Route transport through the
+// service package. The root keeps this thin seam so every role orchestrator
+// and test continues to call the binding directly.
+func (binding *serviceBinding) openServiceStreamWithRecovery(ctx context.Context, raw net.Conn,
+	capsuleDigest [32]byte, open service.AttachmentOpener) (*service.Stream, error) {
+	return service.OpenStream(binding, ctx, raw, capsuleDigest, open)
+}

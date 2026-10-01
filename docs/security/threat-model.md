@@ -6,6 +6,18 @@ Last reviewed: 2026-09-07
 
 ## Scope
 
+The protected installation contract in
+[ADR-0119](../adr/0119-bind-protected-endpoint-generation-to-release.md)
+addresses downloaded artifact/resource substitution and local service-account
+configuration edits: under independent first-artifact verification and intact
+Release/root filesystem trust, the installation owner must bind all program,
+worker, unit and plan bytes before effects and recheck actual manager identity.
+Required measurements include causal pre-effect refusals and actual installed
+containment/cleanup; these are not yet qualification claims. A compromised root
+or trust-delivery channel is outside that local integrity guarantee. The initial
+pin grants no successor authority; retaining predecessor bytes never lowers
+Release floors or creates rollback authority.
+
 This threat model covers the current [C0 product scope](../product/scope.md) and
 the stronger public-product claims retained for later decisions. It is not a
 statement that the C0 implementation passed audit or qualification.
@@ -1164,18 +1176,20 @@ or privacy claim.
   version-compatible Network Epoch state. Authorization is independent of
   distribution: package, cache, mirror, peer, or imported file may carry the same
   authenticated bytes but cannot make different bytes authoritative.
-- A dynamic Transit Grant signer is a distinct State-authenticated purpose key,
-  never an Epoch authority or holder of a State private key. Its exclusive
-  durable duty root fixes one finite global budget and a bounded Request-ID
-  idempotency ledger; rollback, corruption, scope substitution, withdrawal, or
-  exhaustion fails closed. Compromise can spend only the remaining current-duty
-  budget and cannot authorize State, Route selection, Target, Namespace,
-  Release, or enrollment.
-- Endpoint Transit Grant acquisition persists one exact target-free request and
-  one-use TLS key before exchange. Reconciliation may repeat only that Request
-  ID and byte-identical tuple. Once Node presentation begins, every success or
-  ambiguity burns the attempt and erases the key; it cannot replay an
-  Application operation or create an implicit replacement request.
+- Historical ADR-0062 Transit Grant signer obligations remain provenance after
+  ADR-0092; no current C0 Transit Grant Node issuer or Endpoint acquisition
+  runs this path. The separate closed-token issuer remains current.
+  The former signer was a distinct State-authenticated purpose key, never an
+  Epoch authority or State private-key holder. Its exclusive root bounded
+  budget and Request-ID idempotency; rollback, corruption, scope substitution,
+  withdrawal, or exhaustion failed closed. It could not authorize State,
+  Route selection, Target, Namespace, Release, or enrollment.
+- Historical Endpoint Transit Grant acquisition retained one exact target-free
+  request and one-use TLS key. Its reconciliation repeated only the same
+  Request ID and tuple; success or ambiguity after Node presentation burned
+  the attempt and erased the key. It could not replay an Application operation
+  or create an implicit replacement request. These are not a current C0
+  acquisition or fallback contract.
 - A directly contacted bootstrap, Candidate Materialization, authenticated-time,
   or Release Safety distributor may observe requester origin, public artifact,
   timing, and probable Ardents use. For every mandatory pre-Route artifact class,
@@ -1262,3 +1276,20 @@ transition, drain, update, Application Principal/network isolation, anonymous
 admission, uninstall/purge, Sybil/concentration, and recovery drills plus
 independent review. Internal consistency and passing local tests do not
 establish implemented anonymity.
+
+## Explicit local process diagnostics
+
+Endpoint and Node commands can explicitly expose a private Linux Unix-socket
+runtime diagnostic Interface through `ARDENTS_DEBUG_SOCKET`; empty input has
+no effect. The [diagnostic owner](../development/local-diagnostics.md) defines
+owner-only placement, finite client/profile/request bounds and joined cleanup.
+This protects raw runtime observations from other unprivileged local accounts
+under the stated directory/socket permissions; root, the same UID, compromised
+Endpoint/Node code and a selected debugger can inspect process material. There
+is no remote or Application authority grant. Profiles/traces and raw captures
+can reveal stacks, addresses, timings and sensitive material and remain local
+owner-private evidence; the dashboard projects only fixed categories/numeric
+fields and never publishes raw profiles. Behavior tests exercise unsafe
+placement, existing/replaced sockets, capture bounds and cancellation. This
+mode changes scheduling and does not establish anonymity or privacy against a
+privileged host, qualify confinement, or authorize a cross-role tracing scheme.

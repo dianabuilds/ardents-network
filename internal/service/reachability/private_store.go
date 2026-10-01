@@ -25,7 +25,7 @@ func (store *Store) PublishPrivate(raw []byte, profile [32]byte, at time.Time) (
 }
 
 // LookupPrivate returns only the highest unconflicted live proof under the
-// caller's current authenticated profile. Legacy lookup never exposes it.
+// caller's current authenticated profile. No other lookup grammar is accepted.
 func (store *Store) LookupPrivate(target, profile [32]byte, at time.Time) ([]byte, StoreClass, error) {
 	if profile == [32]byte{} {
 		return nil, StoreInvalid, errors.New("private reachability lookup profile is missing")

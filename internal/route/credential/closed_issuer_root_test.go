@@ -4,13 +4,13 @@ import (
 	"bytes"
 	"crypto/ed25519"
 	"crypto/rand"
-	"encoding/binary"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/network/state"
+	"github.com/dianabuilds/ardents-network/internal/admission"
+	"github.com/dianabuilds/ardents-network/internal/network/closedprofile"
 )
 
 // closedIssuerFixtureRoot makes the private-root precondition explicit rather
@@ -22,6 +22,12 @@ func closedIssuerFixtureRoot(t *testing.T) string {
 		t.Fatal(err)
 	}
 	return root
+}
+
+func credentialID(marker byte) [32]byte {
+	var value [32]byte
+	value[0] = marker
+	return value
 }
 
 func TestInitializeClosedIssuerRootPublishesExactSPKIInventory(t *testing.T) {
@@ -40,13 +46,13 @@ func TestInitializeClosedIssuerRootPublishesExactSPKIInventory(t *testing.T) {
 	if err != nil || !bytes.Equal(first.Profile, second.Profile) || first.ProfileDigest != second.ProfileDigest {
 		t.Fatalf("reopen closed issuer root changed public profile: %v", err)
 	}
-	profile, err := DecodeClosedIssuerProfile(first.Profile, public)
+	profile, err := admission.DecodeClosedIssuerProfile(first.Profile, public)
 	if err != nil || profile.NetworkID != config.NetworkID || profile.NodeID != config.NodeID || len(profile.Keys) != 3 {
 		t.Fatalf("decode closed issuer profile = %+v, %v", profile, err)
 	}
 	seen := map[[32]byte]bool{}
 	for index, key := range profile.Keys {
-		if key.WindowStart != now || key.Class != byte(index+1) || len(key.SPKI) != 346 || !state.ValidateClosedTokenSPKI(key.SPKI) ||
+		if key.WindowStart != now || key.Class != byte(index+1) || len(key.SPKI) != 346 || !closedprofile.ValidateTokenSPKI(key.SPKI) ||
 			key.KeyID != credentialID(0) && seen[key.KeyID] {
 			t.Fatalf("closed issuer key %d = %+v", index, key)
 		}
@@ -80,23 +86,16 @@ func TestDecodeClosedIssuerProfileRejectsReorderedKey(t *testing.T) {
 	first, second := append([]byte(nil), body[profileHeader:profileHeader+keyEntry]...), append([]byte(nil), body[profileHeader+keyEntry:profileHeader+2*keyEntry]...)
 	copy(body[profileHeader:profileHeader+keyEntry], second)
 	copy(body[profileHeader+keyEntry:profileHeader+2*keyEntry], first)
-	changed := append(body, ed25519.Sign(private, closedIssuerTranscript(body))...)
-	if _, err := DecodeClosedIssuerProfile(changed, public); err == nil {
+	changed := append(body, ed25519.Sign(private, closedIssuerProfileTranscript(body))...)
+	if _, err := admission.DecodeClosedIssuerProfile(changed, public); err == nil {
 		t.Fatal("decoded reordered closed issuer keys")
 	}
 }
 
-func TestDecodeClosedIssuerProfileRejectsSignedEmptyInvalidInterval(t *testing.T) {
-	private := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{19}, ed25519.SeedSize))
-	body := make([]byte, 8+32+32+8+8+2)
-	copy(body, closedIssuerProfileMagic)
-	body[8], body[40] = 1, 2
-	// An empty interval makes the expected key count zero; it must not make
-	// an equally empty inventory valid merely because the signature verifies.
-	binary.BigEndian.PutUint64(body[72:80], 1_800_000_000)
-	binary.BigEndian.PutUint64(body[80:88], 1_800_000_000)
-	raw := append(body, ed25519.Sign(private, closedIssuerTranscript(body))...)
-	if _, err := DecodeClosedIssuerProfile(raw, private.Public().(ed25519.PublicKey)); err == nil {
-		t.Fatal("accepted a signed empty inventory with an invalid interval")
-	}
+// closedIssuerProfileTranscript rebuilds the exact signed transcript locally so
+// this forgery test keeps pinning the domain-separation bytes after the
+// grammar moved to internal/admission (F-28/F-30 seam).
+func closedIssuerProfileTranscript(body []byte) []byte {
+	domain := []byte("ardents-closed-issuer-keys-v1\x00")
+	return append(append([]byte(nil), domain...), body...)
 }

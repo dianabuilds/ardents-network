@@ -13,11 +13,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/application/interfacev2/connection"
+	"github.com/dianabuilds/ardents-network/internal/application/connection"
 	"github.com/dianabuilds/ardents-network/internal/application/textdocument"
 )
 
-func textReadSocket(t *testing.T, peer *textReadPeer) string {
+func textReadSocket(t *testing.T, peer connection.Interface) string {
 	t.Helper()
 	dir, err := os.MkdirTemp("", "text-read-")
 	if err != nil {
@@ -75,6 +75,73 @@ func TestTextReadNeverPresentsPartialOrFailedConnection(t *testing.T) {
 			output.Len() != 0 || peer.opens.Load() != 1 || !output.closed {
 			t.Fatal("failed response produced output or retried")
 		}
+	}
+}
+
+func TestTextReadPreservesRefusedSetupClassWithoutPresentingItsReason(t *testing.T) {
+	for _, test := range []struct {
+		class connection.OutcomeClass
+		want  string
+	}{
+		{connection.ServiceUnavailable, "text operation unavailable"},
+		{connection.LocalFailure, "text local connection failed"},
+		{connection.IndeterminateFailure, "text connection outcome unknown"},
+		{connection.CapacityUnavailable, "text capacity unavailable"},
+		{connection.LocalCancellation, "text read cancelled"},
+		{connection.LocalTimeout, "text read timed out"},
+		{connection.CleanClose, "text operation unavailable"},
+		{"fixture private class", "text operation unavailable"},
+	} {
+		t.Run(string(test.class), func(t *testing.T) {
+			peer := &refusingTextReadPeer{outcome: connection.Outcome{Class: test.class, Reason: "private fixture detail"}}
+			socket := textReadSocket(t, peer)
+			output := &textOutput{}
+			err := readText(t.Context(), socket, io.NopCloser(strings.NewReader("fixture-link\n")), output)
+			var refusal connection.SetupRefusalError
+			if !errors.As(err, &refusal) || refusal.Outcome().Class != test.class ||
+				output.Len() != 0 || !output.closed || peer.opens.Load() != 1 || textFailure(err) != test.want {
+				t.Fatalf("refused setup = %v, output=%d, closed=%t, opens=%d", err, output.Len(), output.closed, peer.opens.Load())
+			}
+		})
+	}
+}
+
+func TestTextReadLocalContextDiagnosticPrecedesDeliveredRefusal(t *testing.T) {
+	refusal := connection.Refuse(connection.Outcome{Class: connection.CapacityUnavailable, Reason: "private fixture detail"})
+	for _, test := range []struct {
+		contextErr error
+		want       string
+	}{
+		{context.Canceled, "text read cancelled"},
+		{context.DeadlineExceeded, "text read timed out"},
+	} {
+		if got := textFailure(errors.Join(refusal, test.contextErr)); got != test.want {
+			t.Fatalf("local context diagnostic = %q, want %q", got, test.want)
+		}
+	}
+}
+
+func TestTextReadCancellationDuringSetupJoinsWithoutPresentation(t *testing.T) {
+	peer := &setupBlockingTextReadPeer{entered: make(chan struct{})}
+	socket := textReadSocket(t, peer)
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	output := &textOutput{}
+	done := make(chan error, 1)
+	go func() { done <- readText(ctx, socket, io.NopCloser(strings.NewReader("fixture-link\n")), output) }()
+	select {
+	case <-peer.entered:
+	case <-time.After(time.Second):
+		t.Fatal("reader did not reach setup")
+	}
+	cancel()
+	select {
+	case err := <-done:
+		if !errors.Is(err, context.Canceled) || output.Len() != 0 || !output.closed {
+			t.Fatalf("cancelled setup = %v, output=%d, closed=%t", err, output.Len(), output.closed)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("reader setup cancellation did not join")
 	}
 }
 

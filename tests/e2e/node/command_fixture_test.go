@@ -34,7 +34,7 @@ func buildCommand(t *testing.T, name string) string {
 		suffix = ".exe"
 	}
 	path := filepath.Join(t.TempDir(), name+suffix)
-	command := exec.Command("go", "build", "-o", path, "./cmd/"+name)
+	command := exec.Command("go", "build", "-trimpath", "-buildvcs=false", "-o", path, "./cmd/"+name)
 	command.Dir = filepath.Join("..", "..", "..")
 	command.Env = append(os.Environ(), "GOTOOLCHAIN=local")
 	if output, err := command.CombinedOutput(); err != nil {

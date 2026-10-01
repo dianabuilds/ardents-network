@@ -14,7 +14,7 @@ import (
 // The runtime adapter reads the named host interfaces, including control,
 // retransmission and other processes; these totals are not Application bytes.
 type Hosting struct {
-	mu       sync.Mutex
+	gate     chan struct{}
 	root     *os.Root
 	measure  func([]string) (hostingReading, error)
 	now      func() time.Time
@@ -65,10 +65,11 @@ func openHosting(path string, measure func([]string) (hostingReading, error), no
 	if err != nil {
 		return nil, err
 	}
-	owner := &Hosting{root: root, measure: measure, now: now}
+	owner := &Hosting{gate: make(chan struct{}, 1), root: root, measure: measure, now: now}
+	owner.gate <- struct{}{}
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
-	if _, err := owner.Observe(ctx); err != nil {
+	if _, err := owner.Sample(ctx, time.Second); err != nil {
 		return nil, errors.Join(err, owner.Close())
 	}
 	return owner, nil
@@ -77,7 +78,8 @@ func openHosting(path string, measure func([]string) (hostingReading, error), no
 // Observe durably charges the new interface-counter delta before returning a
 // pressure decision. Ambiguous counters or storage require drain, never a reset.
 func (owner *Hosting) Observe(ctx context.Context) (HostingObservation, error) {
-	return owner.transact(ctx, nil)
+	_, observation, err := owner.transact(ctx, 0, nil)
+	return observation, err
 }
 
 // Reserve commits both work and termination before the caller may admit effects.
@@ -85,7 +87,7 @@ func (owner *Hosting) Observe(ctx context.Context) (HostingObservation, error) {
 // original authority and byte/time limits. Low-watermark space is not lendable.
 func (owner *Hosting) Reserve(ctx context.Context, work, termination HostingTraffic, end time.Time) (*HostingReservation, error) {
 	var reserved uint64
-	_, err := owner.transact(ctx, func(state *hostingState, now time.Time) error {
+	_, _, err := owner.transact(ctx, 0, func(state *hostingState, now time.Time) error {
 		view := state.observation(now)
 		if view.Protect || view.Drain || !now.Before(end) || end.After(state.Policy.End) {
 			return errors.New("hosting admission is unavailable")
@@ -123,14 +125,19 @@ func (reservation *HostingReservation) Release(ctx context.Context) error {
 	if reservation.released {
 		return reservation.err
 	}
-	reservation.released = true
-	_, reservation.err = reservation.owner.transact(ctx, func(state *hostingState, _ time.Time) error {
+	mutating := false
+	_, _, reservation.err = reservation.owner.transact(ctx, 0, func(state *hostingState, _ time.Time) error {
+		mutating = true
 		if reservation.bytes > state.Reserved {
 			return errors.New("hosting reservation continuity is unavailable")
 		}
 		state.Reserved -= reservation.bytes
 		return nil
 	})
+	// A rejected context before this callback has not started a mutation and
+	// leaves this handle retryable. Once the callback starts, a later storage
+	// failure may follow a committed refund, so the handle remains unresolved.
+	reservation.released = mutating
 	return reservation.err
 }
 
@@ -139,8 +146,8 @@ func (owner *Hosting) Close() error {
 	if owner == nil {
 		return nil
 	}
-	owner.mu.Lock()
-	defer owner.mu.Unlock()
+	<-owner.gate
+	defer func() { owner.gate <- struct{}{} }()
 	if !owner.closed {
 		owner.closed = true
 		owner.closeErr = owner.root.Close()
@@ -148,31 +155,42 @@ func (owner *Hosting) Close() error {
 	return owner.closeErr
 }
 
-func (owner *Hosting) transact(ctx context.Context, change func(*hostingState, time.Time) error) (HostingObservation, error) {
+func (owner *Hosting) transact(ctx context.Context, maximumAge time.Duration,
+	change func(*hostingState, time.Time) error) (hostingState, HostingObservation, error) {
+	var empty hostingState
 	unavailable := HostingObservation{Protect: true, Drain: true}
 	if owner == nil || ctx == nil || ctx.Err() != nil {
-		return unavailable, errors.New("hosting operation is unavailable")
+		return empty, unavailable, errors.New("hosting operation is unavailable")
 	}
-	owner.mu.Lock()
-	defer owner.mu.Unlock()
+	if err := owner.enter(ctx); err != nil {
+		return empty, unavailable, err
+	}
+	defer owner.leave()
 	if owner.closed || ctx.Err() != nil {
-		return unavailable, errors.New("hosting owner is unavailable")
+		return empty, unavailable, errors.New("hosting owner is unavailable")
 	}
 	lease, err := acquireHostingLease(ctx, owner.root)
 	if err != nil {
-		return unavailable, err
+		return empty, unavailable, err
 	}
 	state, err := readHostingState(owner.root)
 	if err != nil {
-		return unavailable, errors.Join(err, lease.close())
+		return empty, unavailable, errors.Join(err, lease.close())
 	}
-	reading, err := owner.measure(state.Policy.Interfaces)
 	now := owner.now()
-	if err == nil {
-		err = state.observe(reading, now)
+	recent := maximumAge > 0 && !now.Before(state.Observed) && now.Sub(state.Observed) <= maximumAge
+	if maximumAge > 0 && now.Before(state.Observed) {
+		return empty, unavailable, errors.Join(errors.New("hosting observation continuity is unavailable"), lease.close())
+	}
+	if !recent {
+		reading, measureErr := owner.measure(state.Policy.Interfaces)
+		err = measureErr
+		if err == nil {
+			err = state.observe(reading, now)
+		}
 	}
 	if err != nil {
-		return unavailable, errors.Join(err, lease.close())
+		return empty, unavailable, errors.Join(err, lease.close())
 	}
 	var refusal error
 	if ctx.Err() != nil {
@@ -181,11 +199,24 @@ func (owner *Hosting) transact(ctx context.Context, change func(*hostingState, t
 		refusal = change(&state, now)
 	}
 	// Even a refused reservation must retain already incurred host traffic.
-	if err := writeHostingState(owner.root, state); err != nil {
-		return unavailable, errors.Join(err, lease.close())
+	if !recent || change != nil {
+		if err := writeHostingState(owner.root, state); err != nil {
+			return empty, unavailable, errors.Join(err, lease.close())
+		}
 	}
 	if err := lease.close(); err != nil {
-		return unavailable, errors.Join(refusal, err)
+		return empty, unavailable, errors.Join(refusal, err)
 	}
-	return state.observation(now), refusal
+	return state, state.observation(now), refusal
 }
+
+func (owner *Hosting) enter(ctx context.Context) error {
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-owner.gate:
+		return nil
+	}
+}
+
+func (owner *Hosting) leave() { owner.gate <- struct{}{} }

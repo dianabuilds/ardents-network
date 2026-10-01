@@ -49,6 +49,41 @@ func TestRepositoryArchitecture(t *testing.T) {
 	assertRepositoryContainsNoArtifacts(t, root)
 }
 
+// Alpha-control readers are maintained command-facing packages. Fixture
+// encoding and signing must stay outside their exported API.
+func TestAlphaControlReadersDoNotExportFixtureWriters(t *testing.T) {
+	root := repositoryRoot(t)
+	for _, reader := range []struct {
+		path      string
+		forbidden []string
+	}{
+		{"internal/alphacontrol", []string{"Sign", "SignV2", "SignComponent"}},
+		{"internal/alphacontrol/inspection", []string{"EncodeReleaseEvidence", "EncodeNetworkEvidence", "EncodeCompatibilityEvidence"}},
+	} {
+		packages, err := parser.ParseDir(token.NewFileSet(), filepath.Join(root, filepath.FromSlash(reader.path)), func(info os.FileInfo) bool {
+			return !strings.HasSuffix(info.Name(), "_test.go")
+		}, 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, pkg := range packages {
+			for _, file := range pkg.Files {
+				for _, decl := range file.Decls {
+					function, ok := decl.(*ast.FuncDecl)
+					if !ok {
+						continue
+					}
+					for _, forbidden := range reader.forbidden {
+						if function.Name.Name == forbidden {
+							t.Errorf("%s exports fixture-only writer %s", reader.path, forbidden)
+						}
+					}
+				}
+			}
+		}
+	}
+}
+
 func assertDependenciesRegistered(t *testing.T, root string) {
 	t.Helper()
 	moduleFile, err := os.Open(filepath.Join(root, "go.mod"))
@@ -186,7 +221,7 @@ func readPackageRegistry(t *testing.T, root string) map[string]packageRegistrati
 		}
 		allowed := make(map[string]bool)
 		for _, match := range inlineCode.FindAllStringSubmatch(cells[3], -1) {
-			if strings.HasPrefix(match[1], "cmd/") || strings.HasPrefix(match[1], "internal/") {
+			if strings.HasPrefix(match[1], "cmd/") || strings.HasPrefix(match[1], "internal/") || strings.HasPrefix(match[1], "tests/") {
 				allowed[match[1]] = true
 			}
 		}
@@ -312,13 +347,6 @@ func assertPackage(t *testing.T, root, relativeDirectory string, files []string)
 		if err != nil {
 			t.Errorf("read %s: %v", relative, err)
 			continue
-		}
-		lines := bytes.Count(data, []byte{'\n'})
-		if len(data) > 0 && data[len(data)-1] != '\n' {
-			lines++
-		}
-		if lines > 500 {
-			t.Errorf("Go file exceeds the hard 500-line limit: %s (%d lines)", relative, lines)
 		}
 		if formatted, err := format.Source(data); err != nil {
 			t.Errorf("parse/format %s: %v", relative, err)

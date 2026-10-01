@@ -74,7 +74,10 @@ func validateRootEntries(root string, hasState bool) error {
 
 func validateMarker(root string) error {
 	raw, err := readBounded(filepath.Join(root, markerName), 128)
-	if err != nil || !bytes.Equal(raw, []byte(marker)) {
+	if err != nil {
+		return ErrInvalid
+	}
+	if !bytes.Equal(raw, []byte(marker)) {
 		return ErrInvalid
 	}
 	return nil

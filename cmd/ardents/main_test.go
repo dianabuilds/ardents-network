@@ -14,7 +14,7 @@ import (
 
 func TestAcceptOfflineCommandPublishesFrozenGeneration(t *testing.T) {
 	t.Parallel()
-	base := "testdata"
+	base := filepath.Join("..", "..", "internal", "network", "state", "testdata")
 	fixture := t.TempDir()
 	inputs := filepath.Join(fixture, "inputs")
 	if err := os.Mkdir(inputs, 0o700); err != nil {
@@ -53,7 +53,7 @@ func TestAcceptOfflineCommandPublishesFrozenGeneration(t *testing.T) {
 	if result.Schema != "ardents-state-event-v1" || result.Generation != "243fba444fe71948f6cd4a253552301192857a156c7eb6359eed604c2d2cda4b" || result.Epoch != 1 || result.ViewLength != 2 {
 		t.Fatalf("unexpected command result: %+v", result)
 	}
-	wantEvent, err := os.ReadFile(filepath.Join(base, "event.jsonl"))
+	wantEvent, err := os.ReadFile(filepath.Join("testdata", "event.jsonl"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -134,11 +134,12 @@ func TestInstalledUserUnitUsesOnlyExplicitInstalledEnrollmentAction(t *testing.T
 	}
 }
 
-func TestEntryImportRouteRejectsIncompleteCommand(t *testing.T) {
+func TestEntryImportRouteReturnsRetirementRefusal(t *testing.T) {
 	t.Parallel()
 	var output bytes.Buffer
-	if err := run(t.Context(), []string{"entry", "import"}, &output); err == nil || output.Len() != 0 {
-		t.Fatalf("incomplete entry command err=%v output=%q", err, output.String())
+	if err := run(t.Context(), []string{"entry", "import"}, &output); err == nil ||
+		err.Error() != errEntryCommandRetired.Error() || output.Len() != 0 {
+		t.Fatalf("retired entry command err=%v output=%q", err, output.String())
 	}
 }
 
@@ -153,7 +154,7 @@ func TestNameRouteRejectsIncompleteCommand(t *testing.T) {
 func TestRootUsageListsRetainedRoutes(t *testing.T) {
 	t.Parallel()
 	err := run(t.Context(), nil, &bytes.Buffer{})
-	if err == nil || err.Error() != "usage: ardents <accept-offline|accept-closed-profile|refresh-sources|endpoint|entry|name|service-instance> arguments" {
+	if err == nil || err.Error() != "usage: ardents <accept-offline|accept-closed-profile|refresh-sources|diagnostics|endpoint|entry|name|service-instance> arguments" {
 		t.Fatalf("root usage error = %v", err)
 	}
 }
