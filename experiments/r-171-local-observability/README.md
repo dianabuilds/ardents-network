@@ -397,3 +397,18 @@ the selected minimal binary/image. They are not product runtime identities.
 Build/configuration inputs extend the probe snapshot; original full-variant
 commands remain available. Storage-pressure minimal H2 is still refused pending
 its native loss/failure evidence. This profile is not maintained admission.
+
+### Patched datasource artifact inspection
+
+```powershell
+make tools-install COLLECTOR=grafana-plugins EVIDENCE_ROOT=C:/Users/vitek/AppData/Local/Temp/ardents-r171-patched-plugins-new
+```
+
+Downloads exact public linux/amd64 plugin archives from official releases, checks
+published SHA256/length, and inspects bounded ZIP entries without unpacking a
+whole plugin tree. Rejects unsafe names, links/encryption, excessive inventory or
+expansion. Extracts only one bounded ELF backend and selected manifest metadata;
+backends are not executed, registered or admitted. Root manifest signatures are
+retained but not verified. Read R-171 for actual binary scan results and pending
+advisory/source/license/support/compatibility decisions. Newer release does not
+automatically close known findings, and a clean scan is not security admission.

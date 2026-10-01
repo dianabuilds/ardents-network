@@ -1,7 +1,9 @@
 .PHONY: tools-install
 
 tools-install:
-ifeq ($(COLLECTOR),otel-minimal-image)
+ifeq ($(COLLECTOR),grafana-plugins)
+	powershell -NoProfile -ExecutionPolicy RemoteSigned -File install-plugins.ps1 -EvidenceRoot "$(EVIDENCE_ROOT)"
+else ifeq ($(COLLECTOR),otel-minimal-image)
 	powershell -NoProfile -ExecutionPolicy RemoteSigned -File install-collector-image.ps1 -ArtifactRoot "$(ARTIFACT_ROOT)" -EvidenceRoot "$(EVIDENCE_ROOT)" -Variant minimal
 else ifeq ($(COLLECTOR),otel-minimal)
 	powershell -NoProfile -ExecutionPolicy RemoteSigned -File install-minimal.ps1 -ArtifactRoot "$(ARTIFACT_ROOT)" -EvidenceRoot "$(EVIDENCE_ROOT)"

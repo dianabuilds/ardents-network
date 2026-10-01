@@ -1286,3 +1286,46 @@ proof, sustained CPU improvement or capacity guarantee. The minimal configuratio
 meets the declared local resource target and has a lower observed peak in these
 receipts. Runtime selection, remaining closure/failure/real-source/rendering and
 full candidate integration still require their own evidence.
+
+### Actual patched Grafana datasource artifacts
+
+Official release metadata, rechecked2026-10-01, identifies Prometheus13.2.3 and
+Loki13.2.1 linux/amd64 ZIPs. Explicit tools-install checked exact lengths/hashes:
+Prometheus17204906bytes/SHA256
+8bdd6583e398f84d497dabec0287563b9eee471d711dea08a21482db5cd5a294;
+Loki14811536bytes/SHA256
+ad64433709b43eee8744b4817f1e183bd08266dae12ac943e037b56670d49c52.
+Bounded archive inspection extracted one ELF backend each and retained plugin.json/
+MANIFEST metadata; no backend execution or whole plugin-tree installation.
+MANIFEST presence is not signature verification. Artifact/inspection receipts
+remain external ardents-r171-patched-plugins-a.
+
+Actual Prometheus backend33214624bytes, SHA256
+ ee2b4e699130b6a4c0382df20abd4b6e88580d81940150aedc45823a464d7966,
+built Go1.27.1 with grpc1.85.0-dev.0.20260825072537-93e31b48545e.
+Actual Loki backend40472738bytes, SHA256
+283f0a20397b1767f6348ac3f3bb845e0d04dca3c6ac2f1c9db9484b6b654412,
+built Go1.26.7, grpc1.83.2, x/crypto0.56.0, plugin-sdk-go0.296.4;
+vcs revision9f30ae5c15698ebf5745439608bb8335ac1a2340/unmodified.
+These actual metadata differ from assuming every plugin uses the Grafana server
+Go version or a stable grpc release. The project toolchain has not changed.
+
+**Actual scans:** govulncheck1.1.4 binary/symbol mode, database
+2026-09-28T16:43:40Z, completed0 for both. Prometheus has no finding records;
+Loki has15records for GO-2026-5932. Missing grpc finding after its update does not
+close remaining OpenPGP review. Stripped-binary module/symbol precision limitations
+remain as already documented; not fifteen proven executed vulnerable paths.
+Raw scan/config/summary/stderr remain external ardents-r171-patched-plugin-closure-a.
+No maintained replacement/admission or dev merge is claimed.
+
+**Static precision investigation:** first readelf section-string capture exceeded
+its16MiB retained-text cap and stopped, not a successful absence assertion.
+Streamed follow-up inspected19759123/23339946bytes of Prometheus/Loki gopclntab
+text under64MiB/time/line bounds and retained only the summary. No openpgp text
+matches appeared; Loki has gopclntab and no symtab. These string observations are
+not a source/build callgraph or package absence proof, so the pending finding is
+not waived. Exact source/import/build closure remains the next needed evidence.
+
+Primary releases:
+[Prometheus13.2.3](https://github.com/grafana/grafana-prometheus-datasource/releases/tag/v13.2.3),
+[Loki13.2.1](https://github.com/grafana/grafana-loki-datasource/releases/tag/v13.2.1).
