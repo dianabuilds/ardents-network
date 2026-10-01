@@ -568,3 +568,20 @@ The diagnostic image and selected architecture CI install them before execution.
 `doctor` and image inventory retain their compiler/build metadata. Heap-profile
 and runtime-trace CLI tests use an empty Go build cache; parsing must not compile
 or fetch tools. Process/output/deadline limits remain unchanged.
+
+### Selected backend filesystem budget observation
+
+The local observability experiment now exposes a private metadata-only
+filesystem inventory for an explicitly selected Compose project. It joins only
+that container's PID namespace under the same UID, with no added capabilities,
+and observes fixed state, temporary and image-declared data roots. It reads no
+file contents or profiles. Missing measurements remain unavailable; shared
+filesystem quantities are not attributed to a process or Node. Capacity on
+unbounded image-created volumes cannot satisfy a selected quota merely because
+the configured database path uses another bounded filesystem.
+
+This observer and its bounded experimental mounts are engineering preparation.
+They do not select a production storage layout or establish complete disk-budget
+coverage. Docker log bytes, external writable evidence and persistence remain
+separate obligations. Reproducible invocation belongs to the
+[experiment recipe](../../experiments/r-171-local-observability/README.md#selected-native-filesystem-inventory).

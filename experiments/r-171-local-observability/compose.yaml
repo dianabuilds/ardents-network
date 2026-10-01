@@ -31,7 +31,7 @@ services:
     mem_limit: 768m
     cpus: 0.75
     command: ["--config.file=/probe/prometheus.yml", "--web.config.file=/certs/web.yml", "--storage.tsdb.path=/state", "--storage.tsdb.retention.time=1h", "--storage.tsdb.retention.size=128MB"]
-    tmpfs: ["/state:rw,nosuid,nodev,noexec,size=536870912,uid=10001,gid=10001,mode=0700"]
+    tmpfs: ["/state:rw,nosuid,nodev,noexec,size=536870912,uid=10001,gid=10001,mode=0700", "/prometheus:rw,nosuid,nodev,noexec,size=1048576,uid=10001,gid=10001,mode=0700"]
     volumes:
       - ${R171_SOURCE}:/probe:ro
       - ${R171_PRIVATE:?}/prometheus:/certs:ro
@@ -41,7 +41,7 @@ services:
     mem_limit: 128m
     cpus: 0.25
     command: ["--config.file=/probe/alertmanager.yml", "--web.config.file=/certs/web.yml", "--storage.path=/state", "--cluster.listen-address=", "--data.retention=1h"]
-    tmpfs: ["/state:rw,nosuid,nodev,noexec,size=33554432,uid=10001,gid=10001,mode=0700"]
+    tmpfs: ["/state:rw,nosuid,nodev,noexec,size=33554432,uid=10001,gid=10001,mode=0700", "/alertmanager:rw,nosuid,nodev,noexec,size=1048576,uid=10001,gid=10001,mode=0700"]
     volumes:
       - ${R171_SOURCE}:/probe:ro
       - ${R171_PRIVATE}/alertmanager:/certs:ro

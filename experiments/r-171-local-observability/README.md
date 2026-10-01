@@ -869,3 +869,32 @@ Compose YAML validation alone cannot prove rule-file admission. The original
 malformed Node-rule append was preserved as a private native refusal and fixed.
 The loss experiment validates native alert/query behavior, not post-change
 browser rendering of the actual-Node dashboard.
+
+### Selected native filesystem inventory
+
+Run storage-inventory.ps1 -RunName <EXACT_PROJECT> -EvidenceRoot
+<NEW_PRIVATE_EXTERNAL_ROOT> -SourceProfile node (or synthetic).
+The existing restart and retry-exhaustion profiles invoke this after their
+workload checks. The observer uses the pinned already installed Python helper,
+the selected container PID namespace and its original UID. It reads stat/statvfs
+metadata only for fixed declared roots; no directory walk, file content, keys,
+raw producer output, host PID namespace, root UID or added capabilities.
+Unavailable measurements fail and remain named in the private receipt.
+Container identity/start/restart/running state are checked around observation.
+
+Filesystem capacity/used/free quantities are filesystem-wide, not directory,
+process or Node allocations. Distinct roots on the same filesystem are counted
+once. This matters for image-defined anonymous volumes: /prometheus and
+/alertmanager originally exposed the shared Docker backing filesystem without
+a selected quota, even though configured backend state goes to /state.
+The base and restart Compose profiles now cover these unused image paths with
+one-MiB tmpfs limits. State/index/WAL and temporary allocations remain inside
+their selected filesystem limits. The inventory rejects aggregate selected
+filesystem capacity above two GiB. Its live snapshot is non-atomic.
+
+Docker log-driver configuration is recorded, but actual log bytes and external
+writable bind-mount files are separate unknown coverage. A successful selected
+filesystem budget does not establish the full disk budget, crash durability,
+backend admission or Node capacity. No host data is deleted or filled by this
+observer. A ten-second helper alarm is cooperative; kernel/daemon latency is
+not a hard host deadline guarantee.

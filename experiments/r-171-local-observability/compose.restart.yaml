@@ -27,11 +27,11 @@ services:
       - grafana-state:/state/grafana:ro
   prometheus:
     depends_on: [state-anchor]
-    tmpfs: !override []
+    tmpfs: !override ["/prometheus:rw,nosuid,nodev,noexec,size=1048576,uid=10001,gid=10001,mode=0700"]
     volumes: [prometheus-state:/state]
   alertmanager:
     depends_on: [state-anchor]
-    tmpfs: !override []
+    tmpfs: !override ["/alertmanager:rw,nosuid,nodev,noexec,size=1048576,uid=10001,gid=10001,mode=0700"]
     volumes: [alertmanager-state:/state]
   loki:
     depends_on: [state-anchor]

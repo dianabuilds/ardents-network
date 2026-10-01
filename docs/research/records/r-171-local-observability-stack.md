@@ -1972,3 +1972,42 @@ measurement claim applies only to the recorded windows. Required quick-check
 returned0. Completed read-only Spec and Standards rechecks found no remaining
 actionable issue in this bounded delta. Full integration gates, backend admission
 and parent-goal acceptance remain separate obligations.
+
+### Native filesystem budget and image-created volumes
+
+A metadata-only observer now measures stat/statvfs for fixed roots in each
+explicitly selected container PID namespace under its original UID. It reads no
+file contents, producer raw data, keys or profiles and adds no root/capabilities.
+The private receipt distinguishes unavailable observations, configured Docker
+log-driver limits and external writable mounts. Quantities are filesystem-wide;
+used bytes cannot be attributed to a directory, process or Node. Shared devices
+are counted once. A successful selected filesystem budget does not prove the
+complete disk budget, host durability or backend admission.
+
+The real preview initially exposed unbounded image-created /prometheus and
+/alertmanager volumes, despite configured state going to bounded /state mounts.
+Both paths shared a backing filesystem with capacity1081101176832bytes. Including
+it produced aggregate capacity1082601689088bytes and correctly refused the2GiB
+selected-filesystem budget. This is shared filesystem capacity, not evidence of
+selected component consumption. The original private refusal remains intact.
+
+The base and restart Compose configurations now mount these unused image paths
+as separate1MiB tmpfs filesystems. The observer is called after the existing
+restart/retry-exhaustion profiles. First bounded run and final bounded run both
+preserved native metric/log/silence history, collector checkpoint progress and
+catch-up after backend restart. Both receipts report complete=true,cleanup_exit0,
+source_inputs_stable=true,plugin_inputs_stable=true; their selected containers
+were removed by the unchanged cleanup path.
+
+Final storage-inventory.json measured16unique filesystems with aggregate
+capacity1368391680bytes and filesystem-used1867776bytes, within the selected
+2GiB ceiling. Docker-log actual bytes and external writable evidence remain
+separate unknown coverage: complete_disk_budget_verified=false. No state
+retention or successful startup substitutes for this distinction. Original
+PowerShell argument failures and the first incomplete inventory are retained
+separately. The exact native observer, with an injected11second stat delay,
+refused with explicit deadline RuntimeError/exit1 after10.765seconds. This proves
+the cooperative failure path, not a hard kernel/daemon latency deadline.
+Read-only Spec and Standards review found no actionable issue in the bounded
+implementation. Required make quick-check returned0. Full integration gates,
+backend admission and parent-goal acceptance remain separate obligations.
