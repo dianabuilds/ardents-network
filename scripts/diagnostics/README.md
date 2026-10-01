@@ -492,9 +492,33 @@ extension supplies that claim. Validation failure returns nonzero and retains a
 partial package; parser acceptance does not bind it to a command/executable or
 prove useful profile coverage. Raw data stays private in the original capture.
 
+To retain a useful offline table for the debugging implementer, explicitly add
+`-profile-top` alongside `-profile`. For example:
+
+```sh
+ardents-diagnostics bundle -dir /state/completed-run -out /state/packages/top.json \
+  -profile cpu.pprof -profile heap.pprof -profile-top
+```
+
+Read each selected artifact's `private_pprof_top` locally. Standard pprof reports
+the default sample type, total, and flat/cumulative costs for up to ten rows.
+The table is bounded to 16 KiB per profile and may contain sensitive embedded
+symbols, build metadata and comments. It is private debug evidence; never upload
+it to the monitoring log stream or treat it as safe browser content. Without the
+flag, parser output remains discarded. The flag requires an explicit pprof
+selection; it does not retain trace-derived profiles, execute the selected
+program or enable source/remote symbolization. Empty, invalid UTF-8 or oversized
+tables fail selection and retain an incomplete package, without successful
+partial text. Existing package-size and time limits still apply.
+
+Check profile type and total before interpreting the table. A quiet CPU profile
+may have insufficient samples; parser acceptance and a top function do not prove
+a cause of failure. Selected profile/build/operation association remains unproven,
+and the original command FAIL is retained independently.
+
 Assembly uses `-timeout` (default 10s, positive and at most 30s); cancellation is
 propagated to input hashing, Reader and parser requests. Each parser request has
-at most 2s, bounded discarded output and joined process-group cancellation.
+at most 2s, bounded output and joined process-group cancellation.
 Run inside the selected diagnostic container with finite memory/CPU and writable
 cache prerequisites. The deadline is cooperative for filesystem I/O; an output
 file retained after an I/O/deadline error is not a successful command result.

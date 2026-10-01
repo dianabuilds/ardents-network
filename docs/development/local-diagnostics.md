@@ -517,7 +517,20 @@ Explicit pprof/trace selections are parsed offline by prebuilt standard Go parse
 using an admitted file descriptor, no selected executable or symbolization, and no remote
 source or HTTP listener. The parser has a two-second deadline per selection,
 64 KiB stderr budget and either 64 KiB pprof table or 64 MiB trace-to-profile
-stdout budget. Output is discarded, not exposed. `validation: passed` means the
+stdout budget. Output is discarded by default. Explicit `-profile-top` requires
+at least one `-profile` selection and retains standard offline pprof top tables
+for those selections only, at most ten rows and 16 KiB per table. The JSON
+`private_pprof_top` field may contain sensitive embedded function names, build
+metadata and profile comments: it stays in this private local package and is
+never sent to monitoring, HTTP, Loki or a public report. No executable, source
+lookup or remote symbolization is added. Trace-derived output is still discarded.
+The package's 256 KiB output budget, artifact inventory, identity checks and
+parser/assembly deadlines remain in force. Over-budget, empty or invalid UTF-8
+top output fails selection; partial text is not presented as a successful table.
+A table shows the profile's default sample type, total and flat/cumulative costs;
+this does not establish sufficient sampling, operation/build association or a
+cause of failure. Embedded symbols are observed profile content, not authenticated
+source provenance. `validation: passed` means the
 selected parser accepted the observed bytes, not semantic completeness, profile
 coverage, performance diagnosis or operation/executable association. Unsuccessful
 validation retains a private partial package with `validation: failed`, returning

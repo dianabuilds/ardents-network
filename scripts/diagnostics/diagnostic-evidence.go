@@ -27,6 +27,7 @@ type evidenceArtifact struct {
 	Bytes      int64  `json:"bytes"`
 	Kind       string `json:"kind"`
 	Validation string `json:"validation"`
+	PrivateTop string `json:"private_pprof_top,omitempty"`
 }
 type evidenceReproduction struct {
 	State       string `json:"state"`
@@ -59,6 +60,7 @@ func bundleCommand(args []string) (outcome error) {
 	out := flags.String("out", "", "new private JSON file outside source and capture")
 	timeout := flags.Duration("timeout", 10*time.Second, "whole assembly cooperative deadline, positive and at most 30s")
 	socket := flags.String("connection-socket", "", "optional explicitly selected owner-private Reader socket")
+	profileTop := flags.Bool("profile-top", false, "retain bounded sensitive offline pprof top tables in this private package")
 	var selectedArtifacts []string
 	selectedKinds := map[string]string{}
 	selectArtifact := func(kind string) func(string) error {
@@ -96,6 +98,15 @@ func bundleCommand(args []string) (outcome error) {
 	}
 	if *timeout <= 0 || *timeout > 30*time.Second {
 		return errors.New("assembly timeout must be positive and at most 30s")
+	}
+	if *profileTop {
+		profileSelected := false
+		for _, kind := range selectedKinds {
+			profileSelected = profileSelected || kind == "pprof"
+		}
+		if !profileSelected {
+			return errors.New("profile-top requires an explicit profile selection")
+		}
 	}
 	signalCtx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
@@ -178,6 +189,7 @@ func bundleCommand(args []string) (outcome error) {
 		}
 	}
 	validations := map[string]string{}
+	privateTops := map[string]string{}
 	if commandArtifact != "" {
 		packet.Reproduction.Artifact = commandArtifact
 		count, err := validateEvidenceCommand(source, commandArtifact)
@@ -197,13 +209,15 @@ func bundleCommand(args []string) (outcome error) {
 		if selectedKinds[name] != "pprof" && selectedKinds[name] != "go-trace" {
 			continue
 		}
-		if err := validateEvidenceFormat(ctx, source, name, selectedKinds[name]); err != nil {
+		top, err := inspectEvidenceFormat(ctx, source, name, selectedKinds[name], *profileTop && selectedKinds[name] == "pprof")
+		if err != nil {
 			validations[name] = "failed"
 			packet.Assembly = "incomplete"
 			packet.Failures = append(packet.Failures, "profile-validation-failed")
 			selectionErr = errors.Join(selectionErr, err)
 		} else {
 			validations[name] = "passed"
+			privateTops[name] = top
 		}
 	}
 	afterNames, err := evidenceInputNames(source)
@@ -229,6 +243,7 @@ func bundleCommand(args []string) (outcome error) {
 			kind = "report-input"
 		}
 		packet.Artifacts[i].Kind = kind
+		packet.Artifacts[i].PrivateTop = privateTops[packet.Artifacts[i].Name]
 		packet.Artifacts[i].Validation = "not-checked"
 		if state, checked := validations[packet.Artifacts[i].Name]; checked {
 			packet.Artifacts[i].Validation = state
@@ -372,27 +387,34 @@ func validateEvidenceSocket(socket string) (outcome error) {
 	return nil
 }
 
-// Validation executes only the prebuilt Go parser with a selected file descriptor.
-// No symbols, executable, remote URL, shell, raw output or profile execution.
-func validateEvidenceFormat(parent context.Context, root *os.Root, name, kind string) (outcome error) {
+// Retained text is sensitive embedded profile metadata, explicitly selected for
+// a private package only. A top table does not establish coverage or causality.
+func inspectEvidenceFormat(parent context.Context, root *os.Root, name, kind string, retainTop bool) (top string, outcome error) {
 	f, err := root.OpenFile(name, os.O_RDONLY|syscall.O_NOFOLLOW|syscall.O_NONBLOCK, 0)
 	if err != nil {
-		return err
+		return "", err
 	}
 	defer func() { outcome = errors.Join(outcome, f.Close()) }()
 	info, err := f.Stat()
 	if err != nil {
-		return err
+		return "", err
 	}
 	stat, ok := info.Sys().(*syscall.Stat_t)
 	if !info.Mode().IsRegular() || info.Mode().Perm()&0077 != 0 || !ok || stat.Uid != uint32(os.Geteuid()) || stat.Nlink != 1 || info.Size() < 0 || info.Size() > 64<<20 {
-		return errors.New("profile admission failed")
+		return "", errors.New("profile admission failed")
+	}
+	if retainTop && kind != "pprof" {
+		return "", errors.New("top table requires pprof selection")
 	}
 	ctx, cancel := context.WithTimeout(parent, 2*time.Second)
 	defer cancel()
 	parserName := "pprof"
 	parserArgs := []string{"-top", "-nodecount=1", "-symbolize=none", "/proc/self/fd/3"}
 	outputLimit := 64 << 10
+	if retainTop {
+		parserArgs[1] = "-nodecount=10"
+		outputLimit = 16 << 10
+	}
 	if kind == "go-trace" {
 		parserName = "trace"
 		parserArgs = []string{"-pprof=sched", "/proc/self/fd/3"}
@@ -409,12 +431,38 @@ func validateEvidenceFormat(parent context.Context, root *os.Root, name, kind st
 		return err
 	}
 	cmd.WaitDelay = time.Second
-	cmd.Stdout = &evidenceDiscard{remaining: outputLimit}
+	captured := &evidenceTopWriter{remaining: outputLimit}
+	if retainTop {
+		cmd.Stdout = captured
+	} else {
+		cmd.Stdout = &evidenceDiscard{remaining: outputLimit}
+	}
 	cmd.Stderr = &evidenceDiscard{remaining: 64 << 10}
 	if err := cmd.Run(); err != nil {
-		return errors.Join(errors.New("selected diagnostic format validation failed"), ctx.Err())
+		return "", errors.Join(errors.New("selected diagnostic format validation failed"), ctx.Err())
 	}
-	return nil
+	if retainTop {
+		if !utf8.Valid(captured.body.Bytes()) || captured.body.Len() == 0 {
+			return "", errors.New("profile top table unavailable or invalid")
+		}
+		return captured.body.String(), nil
+	}
+	return "", nil
+}
+
+type evidenceTopWriter struct {
+	body      bytes.Buffer
+	remaining int
+}
+
+func (w *evidenceTopWriter) Write(body []byte) (int, error) {
+	n := min(len(body), w.remaining)
+	w.remaining -= n
+	_, _ = w.body.Write(body[:n])
+	if n != len(body) {
+		return n, errors.New("profile parser output exceeded budget")
+	}
+	return n, nil
 }
 
 type evidenceDiscard struct{ remaining int }
