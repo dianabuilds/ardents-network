@@ -97,13 +97,17 @@ session; receipt time cannot refresh an old producer observation. Missing fields
 remain absent, stopped/stale sources lose resource values, and invalid
 observations return503 without partial successful exposition.
 
-The fixed catalogue separates cgroup CPU/memory/socket-memory/PSI/local memory
-event counters from process Go-managed memory, socket/descriptor/thread and
-goroutine counts. CPU microseconds become cumulative seconds; PSI is avg10
-percent, CPU/memory some and IO full. Emergency counts sum max/oom/oom_kill,
-not distinct incidents. Native unpopulated RSS/admission and role-specific
-timer/queue/storage/Hosting Usage fields are excluded pending their own semantics.
-
+The fixed catalogue exports only cumulative cgroup CPU time and current cgroup
+memory, which both current Node measurement paths populate. CPU microseconds
+become cumulative seconds; cgroup memory includes kernel and cache charges and
+is not process RSS. The resource event does not identify whether the extended
+process sampler or the closed owner-cgroup sampler supplied it. Consequently
+encoded zero or positive values for Go memory, descriptors, sockets, threads,
+goroutines, socket memory, PSI and memory-event counters cannot establish
+availability and are excluded until producer measurement coverage is explicit.
+RSS/admission and role-specific timer/queue/storage/Hosting Usage values remain
+excluded pending their own source scope and semantics. A fresh sample does not
+mean every serialized field was measured.
 This endpoint retains the panel's loopback Host/origin protections,16KiB metric
 response cap and existing bounded HTTP lifecycle. An arbitrary container Host
 cannot bypass those protections; separately deployed collectors require an

@@ -2,7 +2,7 @@
 
 tools-install:
 ifeq ($(COLLECTOR),monitor-tool)
-	powershell -NoProfile -ExecutionPolicy RemoteSigned -File install-monitor.ps1 -EvidenceRoot "$(EVIDENCE_ROOT)"
+	powershell -NoProfile -ExecutionPolicy RemoteSigned -File install-monitor.ps1 -EvidenceRoot "$(EVIDENCE_ROOT)" $(if $(filter 1,$(NODE_FIXTURE)),-NodeFixture,)
 else ifeq ($(COLLECTOR),browser-relay)
 	powershell -NoProfile -ExecutionPolicy RemoteSigned -File install-browser-relay.ps1 -EvidenceRoot "$(EVIDENCE_ROOT)"
 else ifeq ($(COLLECTOR),prometheus-source)

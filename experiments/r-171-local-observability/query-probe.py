@@ -531,4 +531,80 @@ elif sys.argv[1] == 'healthy-window':
     (reports/'healthy-window-assertions.json').write_text(json.dumps({'start_seconds':start,'end_seconds':end,
         'scrape_sources':['fixture','collector'],'queue_rows':len(queue[0]['values']),'passed':True}))
     print('Full resource window retained healthy scrape history and zero fixture pressure')
+elif sys.argv[1]=='node-preview':
+    def metric(expr):
+        result = request('https://prometheus:9090/api/v1/query?'+urllib.parse.urlencode({'query':expr}))
+        data = json.loads(result[1])
+        if data['status'] != 'success': raise RuntimeError('Prometheus query failed')
+        return data['data']['result']
+    deadline = time.monotonic()+60
+    last = None
+    while time.monotonic()<deadline:
+        try:
+            up = metric('up{job="node"}')
+            memory = metric('diagnostic_selected_cgroup_memory_bytes{job="node"}')
+            if len(up)==1 and float(up[0]['value'][1])==1 and len(memory)==1:
+                break
+        except (OSError,ValueError,KeyError) as error:
+            last = type(error).__name__
+        time.sleep(1)
+    else: raise RuntimeError('Actual Node scrape unavailable: '+str(last))
+    for expr in ('diagnostic_selected_source_process_alive{job="node"}',
+                 'diagnostic_selected_sample_fresh{job="node"}'):
+        rows = metric(expr)
+        if len(rows)!=1 or float(rows[0]['value'][1])!=1:
+            raise RuntimeError('Actual Node observation absent/stale')
+    if float(memory[0]['value'][1])<=0: raise RuntimeError('Real cgroup memory missing')
+    if metric('diagnostic_selected_process_go_memory_bytes{job="node"}'):
+        raise RuntimeError('Unsupported process measurement exported')
+    deadline = time.monotonic()+60
+    while time.monotonic()<deadline:
+        try:
+            raw = request('https://loki:3100/loki/api/v1/query_range?'+urllib.parse.urlencode(
+                {'query':'{job="node"}','limit':100}))
+            logs = json.loads(raw[1])
+            rows = [json.loads(line) for stream in logs['data']['result'] for _,line in stream['values']]
+            if len(rows)>=3: break
+        except (OSError,ValueError,KeyError):
+            pass
+        time.sleep(1)
+    else: raise RuntimeError('Actual safe Node events unavailable in Loki')
+    for row in rows:
+        if set(row)-{'sequence','at','stream','entry'}:
+            raise RuntimeError('Unexpected projected log field')
+        if row['entry']['kind']=='resource-sample':
+            raise RuntimeError('Resource sample incorrectly ingested as event')
+        if row['entry']['schema']!='ardents-node-event-v1':
+            raise RuntimeError('Unexpected producer in selected stream')
+    series = json.loads(request('https://loki:3100/loki/api/v1/series?'+urllib.parse.urlencode(
+        {'match[]':'{job="node"}'}))[1])
+    if series['data'] != [{'job':'node'}]: raise RuntimeError('Unexpected indexed metadata')
+    dashboard = observe('actual-dashboard','http://grafana:3000/api/dashboards/uid/accepted-node',auth=True)
+    for datasource in ('prometheus','loki'):
+        health=observe(datasource+'-health','http://grafana:3000/api/datasources/uid/'+datasource+'/health',auth=True)
+        if health.get('status')!='OK': raise RuntimeError('Grafana datasource unavailable')
+    (reports/'node-preview-assertions.json').write_text(json.dumps({
+        'passed':True,'at':time.time(),'actual_node_scrape':True,'unsupported_metrics_absent':True,
+        'safe_events':len(rows),'event_kinds':sorted({r['entry']['kind'] for r in rows}),
+        'indexed_labels':['job'],'dashboard_uid':dashboard['dashboard']['uid'],
+        'cgroup_memory_bytes':float(memory[0]['value'][1]),
+        'scope':'one local shared container','backend_admission':False}))
+    print('Actual Node mTLS scrape, safe Loki events and Grafana datasource queries passed')
+elif sys.argv[1]=='node-source-alert':
+    seen=set()
+    history=[]
+    deadline=time.monotonic()+60
+    while time.monotonic()<deadline:
+        data=json.loads(request('https://prometheus:9090/api/v1/alerts')[1])
+        selected=[a for a in data['data']['alerts'] if a['labels'].get('alertname')=='NodeMetricsUnavailable']
+        states={a['state'] for a in selected}
+        seen.update(states)
+        history.append({'at':time.time(),'states':sorted(states)})
+        if {'pending','firing'}<=seen and not states:
+            break
+        time.sleep(0.5)
+    passed={'pending','firing'}<=seen and not states
+    (reports/'node-source-alert.json').write_text(json.dumps({'passed':passed,'history':history}))
+    if not passed: raise RuntimeError('Real source-loss pending/firing/recovery not proven')
+    print('Actual Node scrape-loss alert pending/firing/recovery passed')
 else: raise RuntimeError('Unknown explicit query mode')

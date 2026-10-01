@@ -8,7 +8,8 @@ import subprocess
 
 root = pathlib.Path('/private')
 os.umask(0o077)
-roles = ('prometheus', 'alertmanager', 'loki', 'alloy', 'grafana', 'query')
+node_preview = os.environ.get('R171_SOURCE_MODE') == 'accepted-node'
+roles = ('prometheus', 'alertmanager', 'loki', 'alloy', 'grafana', 'query') + (('node',) if node_preview else ())
 ca = root / 'ca'
 ca.mkdir(mode=0o700)
 def openssl(*args):
@@ -26,7 +27,7 @@ for role in roles:
     openssl('x509','-req','-days','1','-in',directory/'request.csr','-CA',ca/'ca.crt',
             '-CAkey',ca/'ca.key','-set_serial',roles.index(role)+1,
             '-extfile',directory/'extensions.txt','-out',directory/'client.crt')
-    if role in ('prometheus','alertmanager','loki'):
+    if role in ('prometheus','alertmanager','loki','node'):
         shutil.copyfile(directory/'client.key',directory/'server.key')
         shutil.copyfile(directory/'client.crt',directory/'server.crt')
     if role in ('prometheus','alertmanager'):
@@ -89,3 +90,44 @@ panels.append({'id':4,'title':'Events: severity / source / message','type':'logs
 (grafana/'dashboards'/'probe.json').write_text(json.dumps({'uid':'synthetic-probe','title':'Local synthetic monitoring probe',
  'schemaVersion':39,'version':1,'editable':False,'time':{'from':'now-5m','to':'now'},'refresh':'5s','panels':panels}))
 print('Prepared separate role keys and local data sources; no credentials printed')
+
+if node_preview:
+    node = root / 'node'
+    shutil.copyfile(ca / 'ca.crt', node / 'client-ca.crt')
+    public = subprocess.run(['openssl', 'x509', '-in', str(root/'prometheus'/'client.crt'),
+                             '-pubkey', '-noout'], capture_output=True, check=True, timeout=5).stdout
+    der = subprocess.run(['openssl', 'pkey', '-pubin', '-outform', 'DER'],
+                         input=public, capture_output=True, check=True, timeout=5).stdout
+    import hashlib
+    (node/'client-pin.txt').write_text(hashlib.sha256(der).hexdigest())
+    (root/'source-reports').mkdir(mode=0o700)
+    measured = ' and on(job,instance) (up{job="node"} == 1) and on(job,instance) (diagnostic_selected_sample_fresh{job="node"} == 1) and on(job,instance) (diagnostic_selected_source_process_alive{job="node"} == 1)'
+    panels = []
+    specs = [
+        ('Память общего контейнера', 'diagnostic_selected_cgroup_memory_bytes{job="node"}'+measured, 'bytes'),
+        ('CPU общего контейнера', '(rate(diagnostic_selected_cgroup_cpu_usage_seconds_total{job="node"}[30s]) and on(job,instance) (count_over_time(diagnostic_selected_cgroup_cpu_usage_seconds_total{job="node"}[30s]) >= 15) and on(job,instance) (changes(diagnostic_selected_session_started_seconds{job="node"}[30s]) == 0))'+measured, 'cores'),
+        ('Возраст ресурсного измерения', 'diagnostic_selected_sample_age_seconds{job="node"}', 's'),
+        ('Процесс Node и доступность сбора', '{job="node",__name__=~"up|diagnostic_selected_source_process_alive|diagnostic_selected_monitor_fresh|diagnostic_selected_sample_fresh"}', 'short'),
+        ('Потерянные байты доставки', '{job="node",__name__=~"diagnostic_selected_(queue_dropped_bytes|log_lost_bytes|console_dropped_bytes)_total"}', 'bytes'),
+        ('Алерты: ожидание и срабатывание', 'ALERTS{alertstate=~"pending|firing"}', 'short'),
+    ]
+    for index,(title,expr,unit) in enumerate(specs):
+        panels.append({'id':index+1,'title':title,'type':'timeseries',
+            'gridPos':{'x':(index%3)*8,'y':4+(index//3)*8,'w':8,'h':8},'maxDataPoints':2000,
+            'datasource':{'type':'prometheus','uid':'prometheus'},
+            'targets':[{'refId':'A','expr':expr,'interval':'2s','legendFormat':title if index<3 else ('{{alertname}} · {{alertstate}}' if index==5 else '{{__name__}}')}],
+            'fieldConfig':{'defaults':{'unit':unit,'custom':{'spanNulls':False}},'overrides':[]}})
+    panels.append({'id':7,'title':'События настоящего Node','type':'logs',
+        'gridPos':{'x':0,'y':20,'w':24,'h':12},'datasource':{'type':'loki','uid':'loki'},
+        'targets':[{'refId':'A','expr':'{job="node"} | json | line_format "{{.entry_kind}} · {{.entry_state}}{{if .entry_failure}} · {{.entry_failure}}{{end}} · {{.stream}} #{{.sequence}}"'}],
+        'options':{'showTime':True,'showLabels':False,'wrapLogMessage':True},
+        'description':'Safe projected lifecycle events. Resource samples are separate metrics. Explore opens the original record and field filters.'})
+    panels.append({'id':8,'title':'Источник и границы наблюдения','type':'text',
+        'gridPos':{'x':0,'y':0,'w':24,'h':4},
+        'options':{'mode':'markdown','content':'Настоящий Introduction Node и два Sources в одном локальном контейнере. **CPU и память относятся ко всему контейнеру.** Работающий процесс не доказывает готовность сети. Разрывы измерений не заполняются нулями. Go runtime/профили пока не подключены. Стенд работает один час. Подключение установленных узлов ещё не проверено.'}})
+    (grafana/'dashboards'/'probe.json').write_text(json.dumps({'uid':'accepted-node',
+        'title':'Ardents · живой Node','schemaVersion':39,'version':1,'editable':False,
+        'time':{'from':'now-15m','to':'now'},'refresh':'5s','panels':panels},ensure_ascii=False))
+    (provisioning/'dashboards'/'local.yml').write_text(json.dumps({'apiVersion':1,'providers':[
+        {'name':'Actual local Node','type':'file','disableDeletion':True,'editable':False,
+         'options':{'path':'/private/dashboards'}}]}))

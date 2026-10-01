@@ -1,0 +1,33 @@
+groups:
+  - name: selected-local-node
+    rules:
+      - alert: NodeMetricsUnavailable
+        expr: up{job="node"} == 0
+        for: 6s
+        labels: {severity: warning, scope: node_metrics}
+        annotations: {summary: "Недоступен сбор метрик Node"}
+      - alert: NodeProcessStopped
+        expr: diagnostic_selected_source_process_alive{job="node"} == 0
+        for: 6s
+        labels: {severity: warning, scope: process}
+        annotations: {summary: "Наблюдаемый процесс Node завершён"}
+      - alert: NodeResourceObservationStale
+        expr: diagnostic_selected_sample_fresh{job="node"} == 0
+        for: 6s
+        labels: {severity: warning, scope: resource}
+        annotations: {summary: "Нет свежего ресурсного измерения"}
+      - alert: LocalContainerMemoryPressure
+        expr: diagnostic_selected_cgroup_memory_bytes{job="node"} > 419430400
+        for: 10s
+        labels: {severity: warning, scope: shared_container}
+        annotations: {summary: "Общий контейнер использует более 400 MiB из 512 MiB"}
+      - alert: CollectorObservationUnavailable
+        expr: up{job="collector"} == 0
+        for: 6s
+        labels: {severity: warning, scope: collector}
+        annotations: {summary: "Недоступно наблюдение коллектора логов"}
+      - alert: CollectorLogDeliveryBacklog
+        expr: sum(otelcol_exporter_queue_size{job="collector",data_type="logs"}) > 0
+        for: 6s
+        labels: {severity: warning, scope: log_delivery}
+        annotations: {summary: "Очередь доставки логов остаётся непустой"}

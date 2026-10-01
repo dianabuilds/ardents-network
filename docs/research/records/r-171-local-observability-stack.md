@@ -1691,3 +1691,200 @@ prove healthy Node operation, real resource samples, backend ingestion, alert
 journeys, crash durability or completed stack admission. The next full integration
 must preserve the Node's accepted signed State, two Sources and selected duty
 rather than create a weaker startup route for a monitoring demonstration.
+
+### Accepted Node setup refusal in the existing qualification generator
+
+The expanded explicit Node fixture build completed0 on2026-10-01. It adds current
+ardents, ardents-control and qualification-network without new downloads or
+dependencies. Nonignored untracked Go/mod/sum inputs are now included alongside
+tracked inputs, bounded20000files. The same diagnostic/Node artifact hashes
+were reproduced; fixture generator6275058bytes SHA256
+5c6ba7cd61a0674e310149a4b3c2cc570034221f7c0bb61ea12d816d6cdb33b9.
+
+probe-node-resource.py uses the actual current commands and owner-private
+canonical fixture inputs, not a fabricated State.Current or relaxed Node start.
+It generates fresh input, selects one Introduction Node and two Sources,
+remaps filesystem placement only, accepts State, initializes/inspects issuer
+keys and signs/inspects the profile. Submission fails at accept-profile-0 with
+closed profile does not match accepted State. No Sources or Node started.
+Original accepted-node-a runtime receipt is incomplete with no process outcomes;
+437877bytes of private fixture/command evidence were retained outside Git.
+
+The current generator constructs authenticated Epoch Domains issue60-a and
+issue60-b (fixture.go), while the closed-profile join in state/closed_profile_accept.go
+requires each Candidate.Domain to map to initiator/rendezvous/responder/introduction.
+Its independently declared RoleDomain numbers cannot supply that missing join.
+This static contradiction is deterministic for every generated Node/seed and
+supports a repair at the generator, not a State validator waiver. Filed
+[issue395](https://github.com/dianabuilds/ardents-network/issues/395) as a prepared
+fixture defect; it is not an additional active implementation assignment.
+
+The attempted local shared-container probe has no two-host/installed-confinement,
+ordinary Permission/Custody, provider-tariff or complete readiness claim.
+Dedicated generated fixture secrets stay private and outside the monitoring
+pipeline. Live resource samples, rotation/stop behavior, Prometheus/Loki and
+the parent debug goal are still not proven. Existing correct canonical role
+family assignment in the current Node process tests supplies a possible future
+fixture repair seam; implementation belongs to that owner.
+
+### Actual accepted Node: measurement coverage correction
+
+On 2026-10-01 the local shared-container fixture reached actual accepted State
+and closed profiles, started two actual Sources, and obtained a fresh resource
+event from one actual Introduction Node. Attempt-e failed its Go-memory assertion:
+the encoded go_memory_bytes and goroutines were zero despite a live process.
+The current call chain is hostingPressure -> MeasureOwnerCgroups(nil), then
+resourcePressure with no selected extended ResourceProfile -> hostingUsage.
+MeasureOwnerCgroups measures cgroup CPU, memory and owner RSS only; other Sample
+members retain defaults. The resource-sample schema does not name measurement
+coverage. The earlier native sampleProcess mapping was therefore insufficient
+evidence for this closed Node path, including PSI and memory-event zero values.
+
+A regression using the actual serialized default pattern failed with
+"unsafe/unpopulated field process_fds" before the exporter correction. Both the
+Go exporter and research Python mapper now expose only the common measured CPU
+and cgroup-memory fields. This prevents false measurements; it does not deliver
+the still-required Go runtime, descriptor, contention or profile instrumentation.
+The accepted-Node probe now requires actual positive fixture CPU/memory and the
+absence of unsupported process/PSI metric series. It does not replace the full
+monitoring acceptance boundary with these two metrics. Failed attempts a-e and
+private producer evidence are retained outside Git and are never HTTP/Loki input.
+
+### Accepted Node corrected source boundary, both Carriers
+
+Final local accepted-node-h (TCP/TLS) and accepted-node-i (QUIC) completed0,
+each in approximately7seconds under the pinned installed helper, network none,
+UID10001,512MiB memory,2CPUs,64PIDs and a64MiB tmpfs. Each accepted three
+actual State/profile owners, started two Sources and observed three actual Node
+resource samples. Assertions cover absent unsupported metrics, no sample rows
+in the event tail, timed rotation12files within2MiB/128files, shutdown Node0,
+Sources/clock0, intentional monitor cancellation1, joined sinks and no cleanup,
+file, snapshot, retention or delivery-loss failure. Retained bytes were9055 and
+9454. This shared-container observation does not attribute cgroup resources to
+the Node alone, qualify two installed hosts or supply Permission/Custody flow.
+
+The local fixture repair chooses canonical authenticated Role Domain families
+through the existing assignment implementation. Product validators and the
+Node/ardents/control binaries did not change. Rebuilt diagnostics11320982bytes
+SHA25635b96b33ec8eefcf54d9503f4e4c6f2de991f387d1578572b551cf159dc3b267;
+generator6280191bytes
+SHA256ad351078f45a9069bda177357b43c770f003d846fec270a5d8fa2db78ff410bf.
+Linux diagnostic behavior checks passed7.191seconds, generator behavior tests
+passed0.026seconds, ten Python mapper checks passed, and make quick-check
+completed0. The final missing-field Python assertion was corrected afterward
+and its ten-check rerun also completed0 (0.258seconds). Full make check is still required before integration.
+
+This closes the earlier real-source observation gap only. Current production
+measurement coverage, protected Prometheus ingestion, Loki safe events,
+agent correlation/profile analysis, alert acknowledgement/history and full
+backend support/advisory admission remain outstanding in the active goal.
+
+### Real-source operator preview
+
+The Product Owner requested a new browser-accessible container after confirming
+that8090/8092/8093/8097 were old previews. The explicit start-node-preview.ps1
+adds a finite3600second operator view, not backend admission or a replacement
+acceptance boundary. Real State/profile/source/Node setup is reused. Normal
+preview disables monitor raw capture and producer diagnostic_directory.
+Only safe *-events.log segments enter the sole minimal OTel collector; resource
+samples, source state, keys and generated private fixture archives are excluded.
+The Prometheus scrape uses the actual pinned-client TLS endpoint. The provisioned
+Grafana dashboard uses measured cgroup memory/CPU, independent freshness and
+process signals, delivery-loss counters, actual alert history and readable events.
+Its CPU rate requires full30second observation coverage and unchanged session;
+gaps/current unavailable samples omit the series. Process survival is not readiness.
+
+Original preparation-a refused because PowerShell property Count did not count
+the plugin manifest collection; corrected explicit collection count preserved
+all204/14file hash checks. Preparation-b reached running backends but the actual
+source failed because setup's tmpfs certificate volume was unmounted before its
+consumer started. Preparation-c retained a native-volume ownership refusal;
+no root/capability waiver was introduced. Preparation-d anchors the1MiB
+owner10001 RAM certificate volume in the browser tunnel running as UID10002,
+which cannot read its0700root. Actual monitor continues as10001 with strict
+private-directory/key checks. Certs never enter Grafana/Loki input.
+
+The first real d ingestion check failed because the collector glob omitted the
+actual logs/ subdirectory. Correcting the path and restarting only the owned
+collector produced the preserved corrected proof: actual Node mTLS scrape,
+positive cgroup memory66748416bytes, unsupported Go metric absent, three actual
+ABSENT/PREPARED/READY lifecycle events in Loki, only job indexed, both actual
+Grafana datasource health checks OK and accepted-node dashboard returned.
+
+A bounded14second pause/resume of only the owned source container then proved
+the real NodeMetricsUnavailable alert through pending, firing and recovery.
+The source was verified running and unpaused afterward. Browser inspection
+showed real graphs and readable lifecycle rows; the tab is retained for the owner.
+A standalone local loopback relay serves only this owned Grafana for3600seconds.
+No general proxy, host socket mount, external notification or product control
+was added. The initial500MiB Grafana working-set snapshot is a point observation,
+not a healthy-window overhead qualification. Full gates, component admission,
+richer producer coverage and the remaining parent debug requirements stay open.
+
+### Two-browser relay refusal and corrected bounded concurrency
+
+On 2026-10-01 the operator's external Chrome showed Failed to fetch and
+ChunkLoadError for Grafana's JavaScript modules while the in-app browser retained
+a working dashboard. The temporary raw TCP relay admitted only eight simultaneous
+connections and closed excess clients immediately. A direct socket reproduction
+held twelve connections and issued a thirteenth health request without HTTP
+client retries: the transport aborted. An initial Invoke-WebRequest reproduction
+returned200; its retry behavior did not demonstrate a successful first request.
+The screenshot alone does not prove every Chrome failure had this cause.
+
+The relay now admits sixteen connections, enough for two six-connection browser
+sessions plus live streams within the tunnel's64PID budget. The same direct
+socket case returned HTTP/1.1 200 OK. Five actual Grafana JavaScript requests then
+returned200 with54939,408645,4112991,5107384 and769449bytes. This is a bounded
+concurrency regression result, not an unlimited browser-load qualification.
+Only the identity-checked owned relay process was replaced; source and backends
+were not restarted, and the replacement uses the original source's remaining
+3600second budget. Original failure and replacement identity are retained in
+private evidence. Direct post-fix Chrome rendering remains unverified.
+
+The final ordinary source probe was rerun after preview-mode changes on both
+TCP/TLS and QUIC and returned0 for both. make quick-check also returned0 for
+the current delta. Full make check was started afterward; it must be recorded
+by its actual terminal result before integration. Launcher admission additionally
+checks the exact five unique artifact names, input regular-file bounds,
+receipt size and SHA256, and the exact plugin identities and unredirected tree.
+These changes do not complete component admission or the debug/profile goal.
+
+### Actual private debug capture on the accepted Node
+
+A separate explicit --debug-profiles probe enabled the already maintained
+ARDENTS_DEBUG_SOCKET only on the actual accepted Introduction Node; no product
+implementation or authority behavior changed. Normal preview and profiling are
+mutually exclusive. Under the same private bounded container profile, runtime,
+two-second CPU, heap, goroutine and two-second runtime trace captures succeeded.
+Runtime had positive actual heap allocation and goroutine count. Already installed
+standard pprof/trace tools accepted all selected captures offline within their
+two-second parser budgets. No lazy Go build or network fetch occurred.
+
+The probe returned0; actual source/clock/Node termination and monitor sink joins
+were verified, with no cleanup or loss failures. Private working bytes699077;
+profile sizes were runtime163,CPU778,heap3245,goroutine2249,trace191117.
+Private receipt records exact source artifact identities and capture hashes.
+The archive, parser tables and profile contents stay outside Git and monitoring
+backends. This proves a real live-process debug capture path; it neither locates
+a product bug by itself nor proves operation/profile causal association or useful
+CPU sample coverage for every workload. Full debug analysis remains outstanding.
+
+### Final local checks and completed-delta review
+
+The current Windows make check completed0, including quick targets, staticcheck,
+govulncheck/deadcode, process e2e and race tests. This platform does not execute
+the Linux-only installed package gate; earlier bounded Linux diagnostic/generator
+checks and actual TCP/TLS/QUIC source probes retain their separate stated scope.
+No installed qualification or component supply-chain admission follows from this.
+The final QUIC debug probe also completed0 after archive reference validation:
+profile_archive_verified=true, shutdown_verified=true, private_work_bytes706720.
+Captured members were checked against receipt size/SHA256 without extraction.
+
+Read-only completed-delta Spec review found no actionable bounded-slice defects.
+Standards review found one provenance error: duplicate plugin IDs could leave
+an existing second tree unverified. The launcher now requires exactly two distinct
+allowed IDs before tree access, and rejects duplicates again during inventory.
+An actual PS5 launch with a duplicate receipt returned nonzero with the exact
+pair-refusal category before any Docker command. This correction and the original
+finding are retained. No independent security validation is claimed.

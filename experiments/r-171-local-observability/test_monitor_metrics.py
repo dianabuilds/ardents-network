@@ -27,7 +27,7 @@ class ProjectionTests(unittest.TestCase):
         result = monitor_metrics.project(snapshot(), NOW, 5)
         self.assertIn("diagnostic_selected_cgroup_cpu_usage_seconds_total 2\n", result)
         self.assertIn("diagnostic_selected_cgroup_memory_bytes 4096\n", result)
-        self.assertIn("diagnostic_selected_process_fds 0\n", result)
+        self.assertNotIn("diagnostic_selected_process_fds", result)
         for absent in ("rss", "admission", "queue_items", "PRIVATE_SENTINEL", "987654"):
             self.assertNotIn(absent, result)
 
@@ -53,14 +53,14 @@ class ProjectionTests(unittest.TestCase):
 
     def test_missing_field_is_absent_not_zero(self):
         state = snapshot()
-        del state["latest_sample"]["entry"]["resource"]["fds"]
-        self.assertNotIn("diagnostic_selected_process_fds",
+        del state["latest_sample"]["entry"]["resource"]["memory_bytes"]
+        self.assertNotIn("diagnostic_selected_cgroup_memory_bytes",
                          monitor_metrics.project(state, NOW, 5))
 
     def test_invalid_values_and_future_time_refuse(self):
         for value in (True, -1, float("nan"), float("inf"), "0"):
             state = snapshot()
-            state["latest_sample"]["entry"]["resource"]["fds"] = value
+            state["latest_sample"]["entry"]["resource"]["memory_bytes"] = value
             with self.assertRaises(ValueError):
                 monitor_metrics.project(state, NOW, 5)
         state = snapshot()

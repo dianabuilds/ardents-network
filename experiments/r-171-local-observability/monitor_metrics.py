@@ -14,27 +14,9 @@ FIELDS = (
      "Cumulative selected cgroup CPU time; resets break continuity."),
     ("memory_bytes", "cgroup_memory_bytes", "gauge", 1,
      "Current selected cgroup memory; not process RSS."),
-    ("socket_memory_bytes", "cgroup_socket_memory_bytes", "gauge", 1,
-     "Current selected cgroup socket memory."),
-    ("go_memory_bytes", "process_go_memory_bytes", "gauge", 1,
-     "Selected process Go-managed memory observation."),
-    ("sockets", "process_sockets", "gauge", 1, "Selected process socket descriptors."),
-    ("fds", "process_fds", "gauge", 1, "Selected process file descriptors."),
-    ("threads", "process_threads", "gauge", 1, "Selected process OS threads."),
-    ("goroutines", "process_goroutines", "gauge", 1, "Selected process goroutines."),
-    ("cpu_pressure", "cgroup_cpu_pressure_avg10_percent", "gauge", 1,
-     "Selected cgroup CPU PSI some avg10 percentage."),
-    ("memory_pressure", "cgroup_memory_pressure_avg10_percent", "gauge", 1,
-     "Selected cgroup memory PSI some avg10 percentage."),
-    ("io_pressure", "cgroup_io_pressure_avg10_percent", "gauge", 1,
-     "Selected cgroup IO PSI full avg10 percentage."),
-    ("high_events", "cgroup_memory_high_events_total", "counter", 1,
-     "Selected cgroup local memory high events; resets break continuity."),
-    ("emergency_events", "cgroup_memory_emergency_events_total", "counter", 1,
-     "Sum of local max, oom and oom_kill counters; not distinct incidents."),
 )
-# RSS/admission are unpopulated by this native sampler. Role Usage, queues,
-# timers and managed storage need separate owner/profile semantics; exclude them.
+# Both current Node samplers populate CPU/memory. Other serialized fields do
+# not identify availability: the closed owner-cgroup sampler leaves defaults.
 
 
 def timestamp(value):

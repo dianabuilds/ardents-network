@@ -29,11 +29,15 @@ func (c idleConnection) Write(buffer []byte) (int, error) {
 
 func main() {
 	container := flag.String("container", "", "owned synthetic probe tunnel container")
+	duration := flag.Duration("duration", 300*time.Second, "explicit finite local preview duration, at most two hours")
 	flag.Parse()
+	if *duration < time.Minute || *duration > 2*time.Hour {
+		os.Exit(2)
+	}
 	if !regexp.MustCompile("^r171-[a-z0-9-]{1,32}-browser-tunnel-1$").MatchString(*container) {
 		os.Exit(2)
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), *duration)
 	defer cancel()
 	listener, err := net.Listen("tcp4", "127.0.0.1:8098")
 	if err != nil {
@@ -41,7 +45,9 @@ func main() {
 	}
 	defer listener.Close()
 	go func() { <-ctx.Done(); listener.Close() }()
-	slots := make(chan struct{}, 8)
+	// Two browser sessions can each retain six HTTP connections plus live streams.
+	// Keep the tunnel below its 64-PID limit, including Python forwarding threads.
+	slots := make(chan struct{}, 16)
 	var workers sync.WaitGroup
 	for {
 		client, err := listener.Accept()

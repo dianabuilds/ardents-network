@@ -1,4 +1,4 @@
-param([Parameter(Mandatory=$true)][string]$EvidenceRoot)
+param([Parameter(Mandatory=$true)][string]$EvidenceRoot, [switch]$NodeFixture)
 $ErrorActionPreference='Stop'
 $taskRoot=[IO.Path]::GetFullPath($EvidenceRoot)
 $taskRepo=[IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../..'))
@@ -28,8 +28,9 @@ function Get-BuildHash([string]$Path) {
     finally { $taskStream.Dispose(); $taskHasher.Dispose() }
 }
 function Get-BuildInputs {
-    $taskNames=git -C $taskRepo ls-files -- '*.go' 'go.mod' 'go.sum'
+    $taskNames=git -C $taskRepo ls-files --cached --others --exclude-standard -- '*.go' 'go.mod' 'go.sum'
     if($LASTEXITCODE -ne 0){throw 'Cannot identify selected source'}
+    if(@($taskNames).Count -gt 20000){throw 'Selected source manifest exceeds bound'}
     foreach($taskName in $taskNames){
         $taskPath=Join-Path $taskRepo $taskName
         if((Get-Item -LiteralPath $taskPath).Attributes -band [IO.FileAttributes]::ReparsePoint){throw 'Refuse redirected source'}
@@ -45,6 +46,17 @@ $taskGoFiles=@('diagnostic-command.go','diagnostic-capture.go','diagnostic-view.
 $taskBuild='set -eu; umask 077; go version > /output/toolchain.txt; go build -trimpath -buildvcs=false -o /output/ardents-diagnostics'
 foreach($taskFile in $taskGoFiles){$taskBuild+=' /src/scripts/diagnostics/'+$taskFile}
 $taskBuild+='; go build -trimpath -buildvcs=false -o /output/ardents-node ./cmd/ardents-node; go version -m /output/ardents-diagnostics > /output/diagnostics-buildinfo.txt; go version -m /output/ardents-node > /output/node-buildinfo.txt'
+$taskArtifactNames=@('ardents-diagnostics','ardents-node')
+if($NodeFixture){
+    foreach($taskCommand in @('ardents','ardents-control')){
+        $taskBuild+='; go build -trimpath -buildvcs=false -o /output/'+$taskCommand+' ./cmd/'+$taskCommand
+        $taskBuild+='; go version -m /output/'+$taskCommand+' > /output/'+$taskCommand+'-buildinfo.txt'
+        $taskArtifactNames+=$taskCommand
+    }
+    $taskBuild+='; go build -trimpath -buildvcs=false -o /output/qualification-network ./tests/qualification/stream-network-two-host/fixturecommand/qualification-network'
+    $taskBuild+='; go version -m /output/qualification-network > /output/qualification-network-buildinfo.txt'
+    $taskArtifactNames+='qualification-network'
+}
 $taskName='r171-monitor-build-'+[Guid]::NewGuid().ToString('N').Substring(0,12)
 $taskRun=@('run','--rm','--name',$taskName,'--network','none','--read-only','--cap-drop','ALL','--security-opt','no-new-privileges','--user','10001:10001','--memory','2g','--cpus','2','--pids-limit','64','--tmpfs','/tmp:rw,nosuid,nodev,exec,size=536870912,uid=10001,gid=10001,mode=0700','--tmpfs','/cache:rw,nosuid,nodev,noexec,size=536870912,uid=10001,gid=10001,mode=0700','-e','HOME=/tmp','-e','GOCACHE=/cache','-e','GOTOOLCHAIN=local','-e','GOFLAGS=-mod=readonly','-e','GOPROXY=off','-e','GOSUMDB=off','-e','CGO_ENABLED=0','-e','GOMAXPROCS=2','-e','GOOS=linux','-e','GOARCH=amd64','--mount',"type=bind,source=$taskRepo,target=/src,readonly",'--mount',"type=bind,source=$taskRoot,target=/output",'--workdir','/src','--entrypoint','timeout',$taskHelper,'180','sh','-c',$taskBuild)
 try {
@@ -53,7 +65,7 @@ try {
     if($LASTEXITCODE -ne 0){throw 'Selected monitor/Node build failed; keep original receipt'}
     $taskAfter=@(Get-BuildInputs)
     if(($taskBefore | ConvertTo-Json -Depth 4 -Compress) -ne ($taskAfter | ConvertTo-Json -Depth 4 -Compress)){throw 'Selected source changed during build'}
-    $taskReceipt.artifacts=@(foreach($taskBinary in @('ardents-diagnostics','ardents-node')){
+    $taskReceipt.artifacts=@(foreach($taskBinary in $taskArtifactNames){
         $taskPath=Join-Path $taskRoot $taskBinary
         $taskSize=(Get-Item -LiteralPath $taskPath).Length
         if($taskSize -le 0 -or $taskSize -gt 64MB){throw 'Build artifact outside declared bound'}

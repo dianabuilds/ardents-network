@@ -504,14 +504,14 @@ selected producer interval. An external caller must bind the selected job; PID,
 source name, arbitrary JSON keys, command arguments and event tail never become
 metric labels or HELP text.
 
-For the native Linux Node sampler only, cgroup CPU cumulative microseconds are
-converted to seconds; cgroup current/socket memory stays distinct from process
-Go-managed memory, socket/FD counts, threads and goroutines. PSI is avg10 percent
-(cpu/memory some, IO full). Emergency events sum max/oom/oom_kill and are not
-distinct incidents. RSS and admission are unpopulated and excluded. Queues,
-timers, managed storage and role Usage need separately verified owner/profile
-semantics before exposure.
-
+The current common catalogue exports cgroup cumulative CPU microseconds as
+seconds and cgroup current memory. Both the extended process sampler and the
+closed owner-cgroup sampler populate these fields. The event does not declare
+measurement coverage: extended Go/process/socket/PSI/event-counter fields may
+be unpopulated defaults and are excluded, even when present in JSON. RSS,
+admission, timers, queues, storage and Hosting Usage need separate verified
+scope/availability semantics. Actual accepted-Node attempt-e exposed this gap;
+earlier prototype checks did not qualify the closed producer path.
 Supervisor freshness is independently bounded3seconds. Stale supervisor omits
 the source-alive and resource metrics; a stopped process omits resource metrics.
 Fresh receipt time cannot refresh an old producer timestamp. Missing fields
@@ -652,3 +652,157 @@ Original build setup-a/b failures and runtime-a BOM refusal are retained separat
 These receipts do not establish Prometheus scrape, Loki delivery, final stack
 admission or the parent debug goal. Next evidence must use an explicitly accepted
 live Node plan and the actual backend consumers.
+
+### Accepted Node preparation profile and retained refusal
+
+NODE_FIXTURE=1 explicitly adds current ardents, ardents-control and the existing
+qualification-network generator to the offline build. The source manifest now
+includes cached and nonignored untracked Go/mod/sum inputs, bounded20000files;
+the before/after check therefore also covers new implementation files.
+
+~~~powershell
+make -C experiments/r-171-local-observability tools-install COLLECTOR=monitor-tool NODE_FIXTURE=1 EVIDENCE_ROOT=C:/Users/vitek/AppData/Local/Temp/ardents-r171-node-fixture-build-new
+~~~
+
+probe-node-resource.py validates all five exact artifact hashes, generates a
+new private canonical fixture, remaps only local filesystem placement, and
+uses actual commands for State acceptance, issuer initialization/inspection,
+profile signing/inspection/submission and Hosting initialization. It selects
+one Introduction Node and two real Sources. The clock observer uses the current
+qualification recipe. This local shared-container placement is not two hosts,
+a provider tariff, installed confinement or an ordinary Permission/Custody
+qualification. A separate OpenSSL-generated fixture admission key is declared;
+no user authority or product private key is imported.
+
+Run in the installed helper with network none, read-only root/source/binaries,
+user10001, no capabilities/no-new-privileges,4GiB,2CPU,pids128,128MiB private
+/tmp tmpfs and240second outer timeout. Mount binaries at /binaries, this
+experiment at /probe, the current stream-network-two-host directory read-only
+at /qualification and a new account-private output at /reports:
+
+~~~sh
+timeout 240 python3 /probe/probe-node-resource.py
+~~~
+
+The output includes a bounded owner-private fixture archive containing generated
+test keys and seeds; never publish or ingest it into Loki/HTTP. Command results
+remain private. The public-shaped receipt records phase/cleanup/availability
+rather than identities. Successful live observations would retain safe projected
+metrics separately. The first refusal and subsequent correction are recorded below.
+
+Actual attempt accepted-node-a failed at accept-profile-0, before any source
+start: closed profile does not match accepted State. Static owner inspection
+found the generator's Domains issue60-a/issue60-b cannot map through the actual
+closed-profile Role Domain join. Filed #395 with exact source/artifact provenance
+and the command failure. Do not weaken the join or treat serialization checks
+as healthy Node admission. Native metrics, log rotation, source stop, backend
+ingestion and healthy shutdown remain unverified by this attempt.
+
+### Accepted Node resource and shutdown correction
+
+The canonical fixture now selects family names through the existing actual Epoch
+assignment for initiator/rendezvous/responder/introduction, rather than declare
+Role Domains independently of the authenticated State. Product State/profile
+validators remain unchanged. Probe setup creates every declared DutyRoot before
+Node startup; failure-d retained the missing spend-lock parent. The producer
+diagnostic_directory and monitor -raw are explicit private captures for this
+owned generated fixture, not normal monitoring defaults or HTTP/Loki input.
+
+Final accepted-node-h (TCP/TLS) and accepted-node-i (QUIC) both completed0:
+three actual State/profile owners accepted, two actual Sources started, one
+actual Introduction Node produced three samples. Unsupported default-valued
+Go/process/PSI fields stayed absent from /metrics. Resource samples did not
+occupy the event tail; timed rotation produced12 files,9055/9454 retained bytes,
+within the2MiB/128file cap. Actual Node exit0, Sources/clock exit0, intentional
+monitor interruption exit1, sinks_joined=true and cleanup/snapshot/file/
+retention failures=false were asserted after shutdown. No delivery loss occurred.
+This is one shared local container: cgroup CPU/memory covers that container,
+not an independent per-Node attribution or two-host qualification.
+
+Build-c diagnostic SHA256:
+35b96b33ec8eefcf54d9503f4e4c6f2de991f387d1578572b551cf159dc3b267.
+The fixture generator SHA256:
+ad351078f45a9069bda177357b43c770f003d846fec270a5d8fa2db78ff410bf.
+Product Node/ardents/control hashes remained unchanged from build-a.
+Failure-e exposed unsupported encoded zeros; failure-f retained an outdated
+probe assertion before its corrected expectation. Failure receipts are kept.
+
+Run the explicitly rebuilt five-artifact set with probe-node-resource.py
+--carrier tcp-tls or --carrier quic. Mount the artifact root read-only at
+/binaries, this experiment read-only at/probe, the current
+tests/qualification/stream-network-two-host tree read-only at/qualification and
+a fresh account-private external result root at/reports. Use the pinned installed
+diagnostic helper, UID10001, network none, read-only root, no capabilities,
+no-new-privileges,512MiB memory,2CPUs,64PIDs,64MiB private executable/tmp tmpfs
+and timeout120seconds. Do not mount host sockets, host authority roots or any
+private capture into the monitoring backends. This probe verifies the real source
+boundary; Prometheus/Loki ingestion and full backend admission remain pending.
+
+### Explicit real-source browser preview
+
+start-node-preview.ps1 -EvidenceRoot <NEW_PRIVATE_EXTERNAL_ROOT>
+-BinaryRoot <EXPLICIT_FIVE_ARTIFACT_BUILD> -PluginRoot <CHECKED_PLUGIN_TREE>
+-RelayBinary <EXPLICIT_BUILT_BROWSER_RELAY> -RunName <UNIQUE_r171_NAME>
+uses the existing pinned images and minimal OTel distribution without downloads.
+Build the helper commands only through the explicit tools-install recipes above.
+The selected source is one real accepted Introduction Node and two real Sources
+inside one local container. No raw producer capture is enabled in this preview.
+
+The source and loopback8098 relay run for one hour. Backends retain their finite
+memory/CPU/TSDB/tmpfs/log budgets and do not restart automatically. TLS server
+material remains in a1MiB owner-private RAM volume; the existing tunnel holds
+that mount with UID10002, which cannot read it. Collector mounts only safe
+monitor storage and includes /fixture/monitor/logs/*-events.log, not raw/sample
+files or private fixture roots. The generated Grafana password is account-private
+at <ROOT>/private/grafana/password, login probe. Do not publish it.
+
+After startup, run query-probe.py node-preview through the private query
+certificate mount and selected internal network. A launch receipt alone does
+not prove ingestion. The query must prove actual mTLS Node scrape, fresh measured
+CPU/memory, unavailable extended fields, actual safe lifecycle events in Loki,
+only job indexed and both Grafana datasource queries. Use the shared time picker
+and Explore for details/field filters. Actual resource scope is the shared
+container. An old READY record is not present readiness.
+
+To stop only this preview, use docker compose --env-file <ROOT>/compose.env
+-p <RunName> with compose.yaml,compose.otel.yaml,compose.plugins.yaml,
+compose.browser.yaml and compose.node.yaml, then down --volumes. Stop only the
+relay process identified in the launch receipt after checking its executable.
+Generated private failure receipts survive outside Git. Removing these specific
+volumes destroys this disposable preview's RAM history; it must not target any
+other project. This preview does not qualify backend adoption, installed
+two-host behavior, full profile/debug instrumentation or the parent goal.
+
+The temporary loopback relay has sixteen simultaneous connection slots. This
+supports two ordinary browser sessions within the tunnel's64PID limit; it is not
+a general serving proxy. A cold browser must load actual module files rather
+than rely on another browser's cache. The twelve-held-connections/raw health
+request refusal and correction are recorded in the research owner. When replacing
+an owned relay during an existing finite preview, verify its executable and
+container argument, retain the original receipt, and save the replacement PID
+and remaining budget separately. Cleanup must use the verified replacement PID,
+not the original exited process ID. No replacement restarts or extends the source.
+
+### Explicit private live-Node profiles
+
+The same accepted-Node probe accepts --debug-profiles with --carrier tcp-tls
+or --carrier quic. This explicit option sets ARDENTS_DEBUG_SOCKET only on the
+owned Introduction Node, in a0700 private native tmpfs directory. It cannot be
+combined with --preview-seconds. Normal monitoring remains unchanged.
+
+The probe captures runtime, two-second CPU, heap, goroutine and two-second trace
+through the existing private snapshot CLI. Each capture is bounded64MiB. Runtime
+must contain actual positive heap allocation and goroutine observations; pprof
+captures and trace scheduling output are checked offline by already installed
+standard Go parsers with a two-second parser deadline. Nothing is built or fetched
+during parsing. Profiles, parser tables and command outputs stay inside the
+private fixture archive; only kind/size/hash/reference/validation enter the
+private result receipt. Archive admission still has its64MiB total bound.
+
+The first actual TCP/TLS debug run returned0 with joined normal shutdown and no
+cleanup failures. Runtime163bytes, CPU778bytes, heap3245bytes, goroutine2249bytes
+and trace191117bytes were accepted. Total private working files699077bytes.
+This demonstrates capture/parse from the selected real process, not diagnosis of
+a product error, sufficient CPU sampling of a quiet workload, or causality between
+an operation and a profile. Use the exact selected executable and private receipt
+for later offline analysis. Never mount these artifacts into Grafana or Loki.

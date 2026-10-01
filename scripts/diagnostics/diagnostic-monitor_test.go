@@ -515,7 +515,10 @@ func TestMonitorMetricsScopesFreshnessAndDelivery(t *testing.T) {
 		LatestSample: &monitorLogRow{At: now, Entry: event{
 			Schema: "ardents-node-event-v1", Kind: "resource-sample", At: now.Format(time.RFC3339Nano),
 			Resource: map[string]float64{"cpu_usage_usec": 2000000, "memory_bytes": 4096,
-				"fds": 0, "rss_bytes": 0, "admission_active": 0, "queue_items": 0},
+				"fds": 0, "go_memory_bytes": 0, "goroutines": 0, "socket_memory_bytes": 0,
+				"cpu_pressure": 0, "memory_pressure": 0, "io_pressure": 0,
+				"threads": 0, "sockets": 0, "high_events": 0, "emergency_events": 0,
+				"rss_bytes": 0, "admission_active": 0, "queue_items": 0},
 		}},
 	}
 	check := func(state monitorState) string {
@@ -533,7 +536,6 @@ func TestMonitorMetricsScopesFreshnessAndDelivery(t *testing.T) {
 	for _, want := range []string{
 		"diagnostic_selected_cgroup_cpu_usage_seconds_total 2\n",
 		"diagnostic_selected_cgroup_memory_bytes 4096\n",
-		"diagnostic_selected_process_fds 0\n",
 		"diagnostic_selected_snapshot_failed 1\n",
 		"diagnostic_selected_queue_dropped_bytes_total 11\n",
 		"diagnostic_selected_log_lost_bytes_total 13\n",
@@ -543,7 +545,7 @@ func TestMonitorMetricsScopesFreshnessAndDelivery(t *testing.T) {
 			t.Fatalf("missing %q", want)
 		}
 	}
-	for _, forbidden := range []string{"PRIVATE_SENTINEL", "987654", "rss_bytes", "admission", "queue_items"} {
+	for _, forbidden := range []string{"PRIVATE_SENTINEL", "987654", "rss_bytes", "admission", "queue_items", "process_fds", "process_go_memory", "process_goroutines", "socket_memory", "pressure_avg10", "process_threads", "process_sockets", "high_events", "emergency_events"} {
 		if strings.Contains(body, forbidden) {
 			t.Fatalf("unsafe/unpopulated field %q", forbidden)
 		}

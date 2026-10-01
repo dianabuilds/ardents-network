@@ -272,25 +272,15 @@ func monitorMetrics(state monitorState, now time.Time) ([]byte, error) {
 		emit("sample_age_seconds", "gauge", "Selected producer observation age.", now.Sub(producer).Seconds())
 		available = now.Sub(producer) <= state.MetricSampleMaxAge && now.Sub(row.At) <= state.MetricSampleMaxAge
 		if available {
-			// Native Linux sampler only. RSS/admission are unpopulated; queues,
-			// timers, storage and role Usage require separate owner semantics.
+			// Both current Node samplers measure cgroup CPU and memory. The event
+			// schema does not identify which sampler populated other fields;
+			// their encoded defaults are not availability evidence.
 			for _, signal := range []struct {
 				field, name, kind, help string
 				scale                   float64
 			}{
 				{"cpu_usage_usec", "cgroup_cpu_usage_seconds_total", "counter", "Selected cgroup cumulative CPU time; reset breaks continuity.", 1e-6},
 				{"memory_bytes", "cgroup_memory_bytes", "gauge", "Selected cgroup current memory; not process RSS.", 1},
-				{"socket_memory_bytes", "cgroup_socket_memory_bytes", "gauge", "Selected cgroup socket memory.", 1},
-				{"go_memory_bytes", "process_go_memory_bytes", "gauge", "Selected process Go total minus released heap memory.", 1},
-				{"sockets", "process_sockets", "gauge", "Selected process socket descriptors.", 1},
-				{"fds", "process_fds", "gauge", "Selected process file descriptors.", 1},
-				{"threads", "process_threads", "gauge", "Selected process OS threads.", 1},
-				{"goroutines", "process_goroutines", "gauge", "Selected process goroutines.", 1},
-				{"cpu_pressure", "cgroup_cpu_pressure_avg10_percent", "gauge", "Selected cgroup CPU PSI some avg10 percent.", 1},
-				{"memory_pressure", "cgroup_memory_pressure_avg10_percent", "gauge", "Selected cgroup memory PSI some avg10 percent.", 1},
-				{"io_pressure", "cgroup_io_pressure_avg10_percent", "gauge", "Selected cgroup IO PSI full avg10 percent.", 1},
-				{"high_events", "cgroup_memory_high_events_total", "counter", "Selected cgroup local high events; reset breaks continuity.", 1},
-				{"emergency_events", "cgroup_memory_emergency_events_total", "counter", "Sum of local max/oom/oom_kill; not distinct incidents.", 1},
 			} {
 				value, ok := row.Entry.Resource[signal.field]
 				if !ok {
