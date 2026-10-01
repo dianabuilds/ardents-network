@@ -304,3 +304,101 @@ func TestPRSelectionRejectsStaleRegistryMappings(t *testing.T) {
 		})
 	}
 }
+
+func TestPRSelectionDeletedPackageAndDependencyErrors(t *testing.T) {
+	root, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, mode := range []string{"broken deletion", "valid deletion", "missing dependency"} {
+		t.Run(mode, func(t *testing.T) {
+			fixture := t.TempDir()
+			write := func(name, body string) {
+				t.Helper()
+				path := filepath.Join(fixture, filepath.FromSlash(name))
+				if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(path, []byte(body), 0600); err != nil {
+					t.Fatal(err)
+				}
+			}
+			run := func(name string, args ...string) []byte {
+				t.Helper()
+				c := exec.Command(name, args...)
+				c.Dir = fixture
+				c.Env = isolatedFixtureEnvironment()
+				out, err := c.CombinedOutput()
+				if err != nil {
+					t.Fatalf("%s: %v\n%s", name, err, out)
+				}
+				return out
+			}
+			write("go.mod", "module example.com/deletion\n\ngo 1.26.8\n")
+			write("docs/development/ownership.json", `{"pr_check_mappings":[]}`)
+			write("cmd/tool/main.go", "package main\nfunc main(){}\n")
+			write("tests/probe/probe_test.go", "package probe\nimport \"testing\"\nfunc TestUnrelated(t *testing.T){}\n")
+			write("internal/architecture/architecture_test.go", "package architecture\nimport \"testing\"\nfunc TestRepositoryArchitecture(t *testing.T){}\nfunc TestUnrelated(t *testing.T){}\n")
+			write("internal/source/value.go", "package source\nfunc Value() int{return 1}\n")
+			write("internal/consumer/read.go", "package consumer\nimport \"example.com/deletion/internal/source\"\nfunc Read() int{return source.Value()}\n")
+			write("internal/consumer/read_test.go", "package consumer\nimport \"testing\"\nfunc TestRead(t *testing.T){_=Read()}\nfunc TestUnrelated(t *testing.T){}\n")
+			run("git", "init", "-q")
+			run("git", "add", ".")
+			commit := func() {
+				run("git", "-c", "core.hooksPath="+filepath.Join(fixture, "absent-hooks"), "-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "commit", "-qm", "fixture")
+			}
+			commit()
+			base := strings.TrimSpace(string(run("git", "rev-parse", "HEAD")))
+			if mode == "missing dependency" {
+				write("internal/consumer/read.go", "package consumer\nimport \"example.com/deletion/internal/missing\"\nfunc Read() int{return missing.Value()}\n")
+			} else {
+				if err := os.Remove(filepath.Join(fixture, "internal/source/value.go")); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if mode == "valid deletion" {
+				write("internal/consumer/read.go", "package consumer\nfunc Read() int{return 2}\n")
+			}
+			run("git", "add", "-A")
+			commit()
+			matrixPath := filepath.Join(fixture, "matrix.json")
+			c := exec.Command("go", "run", filepath.Join(root, "scripts/select-pr-checks.go"), filepath.Join(root, "scripts/select-pr-check-registry.go"), "--base", base, "--head", "HEAD", "--matrix", matrixPath)
+			c.Dir = fixture
+			c.Env = isolatedFixtureEnvironment()
+			out, err := c.CombinedOutput()
+			if mode != "valid deletion" {
+				if err == nil || !strings.Contains(string(out), "load package owner") {
+					t.Fatalf("broken import selection: %v\n%s", err, out)
+				}
+				if _, err := os.Stat(matrixPath); !os.IsNotExist(err) {
+					t.Fatalf("failed selection published matrix: %v", err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("valid deletion: %v\n%s", err, out)
+			}
+			body, err := os.ReadFile(matrixPath)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var matrix struct {
+				Include []struct{ Package, Run string }
+			}
+			if err := json.Unmarshal(body, &matrix); err != nil {
+				t.Fatal(err)
+			}
+			architecture, consumer := false, false
+			for _, entry := range matrix.Include {
+				if strings.Contains(entry.Run, "TestUnrelated") || strings.Contains(entry.Package, "/source") {
+					t.Fatalf("unrelated or deleted check: %+v", entry)
+				}
+				architecture = architecture || strings.Contains(entry.Run, "TestRepositoryArchitecture")
+				consumer = consumer || strings.Contains(entry.Run, "TestRead")
+			}
+			if !architecture || !consumer {
+				t.Fatalf("deletion omitted static owner or affected consumer: %+v", matrix.Include)
+			}
+		})
+	}
+}
