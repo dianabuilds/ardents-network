@@ -63,6 +63,10 @@ The complete Ubuntu CI gate selects the same profile through
 The other process packages and the unprivileged component checks retain their
 ordinary runner. Both process invocations remain serial and run every package
 in the declared process profile.
+The full Ubuntu CI job has a 60-minute orchestration budget for the sequential
+complete gate, including cold compiler caches and the race suite. The Go test
+timeouts and required checks remain unchanged; cancellation is an incomplete
+gate, never a passing result.
 
 Installation filesystem component checks select
 `ARDENTS_INSTALLATION_COMPONENT_PROFILE=root` and run
