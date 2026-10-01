@@ -63,6 +63,9 @@ func writeGeneration(ctx context.Context, root string, authorization Authorizati
 	if err := syncDirectory(parent); err != nil {
 		return selection{}, err
 	}
+	if err := recordGenerationDirectory(journal, directory, selected); err != nil {
+		return selection{}, err
+	}
 	names := make([]string, 0, len(files))
 	for name := range files {
 		names = append(names, name)

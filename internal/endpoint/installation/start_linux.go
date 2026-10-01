@@ -24,6 +24,9 @@ func admitInstalledStart(ctx context.Context, root string) (runtimeplan.DecodedH
 	if err != nil {
 		return refuse(err)
 	}
+	if err := refusePendingTransition(root); err != nil {
+		return refuse(err)
+	}
 	if uint32(os.Geteuid()) != checked.binding.UID || uint32(os.Getegid()) != checked.binding.GID {
 		return refuse(errors.New("installed Endpoint process account differs"))
 	}
@@ -85,6 +88,15 @@ func admitInstalledStart(ctx context.Context, root string) (runtimeplan.DecodedH
 		return refuse(err)
 	}
 	return runtimeplan.DecodeHeadless(checked.files["headless.json"])
+}
+
+func refusePendingTransition(root string) error {
+	for _, name := range []string{"transition.json", "transition-failure.json"} {
+		if _, err := os.Lstat(filepath.Join(root, name)); !os.IsNotExist(err) {
+			return errors.New("installed Endpoint requires explicit transition recovery")
+		}
+	}
+	return nil
 }
 
 func readProcessFile(path string, maximum int64) ([]byte, error) {

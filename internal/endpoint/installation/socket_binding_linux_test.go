@@ -34,6 +34,15 @@ func TestInstalledSocketRefusesForeignOwnershipAndStopBinding(t *testing.T) {
 			if err := verifyInstalledSocket(unit, socket, role); err != nil {
 				t.Fatal(err)
 			}
+			stopped := cloneProperties(unit)
+			put(stopped, "ActiveState", "s", "inactive")
+			put(stopped, "SubState", "s", "dead")
+			if err := verifyBoundSocket(stopped, socket, role); err != nil {
+				t.Fatal("an inactive bound socket cannot be retired", err)
+			}
+			if err := verifyInstalledSocket(stopped, socket, role); err == nil {
+				t.Fatal("stop identity observation weakened installed startup")
+			}
 			for _, change := range []struct {
 				key, signature string
 				unit           bool

@@ -87,6 +87,7 @@ func runInstallationManager(ctx context.Context, arguments ...string) (string, e
 
 func runInstallationCommand(ctx context.Context, program string, arguments ...string) (string, error) {
 	command := exec.CommandContext(ctx, program, arguments...)
+	command.Env = []string{"PATH=/usr/bin:/bin", "LANG=C", "LC_ALL=C"}
 	var output, diagnostic commandOutput
 	command.Stdout, command.Stderr = &output, &diagnostic
 	if err := command.Run(); err != nil {

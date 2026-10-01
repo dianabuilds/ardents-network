@@ -24,6 +24,22 @@ func runEndpointProvision(ctx context.Context, path string, output io.Writer) er
 	return json.NewEncoder(output).Encode(result)
 }
 
+func runEndpointUpgrade(ctx context.Context, path string, output io.Writer) error {
+	result, err := installation.Upgrade(ctx, path)
+	if err != nil {
+		return err
+	}
+	return json.NewEncoder(output).Encode(result)
+}
+
+func runEndpointRecovery(ctx context.Context, root string, output io.Writer) error {
+	result, err := installation.Recover(ctx, root)
+	if err != nil {
+		return err
+	}
+	return json.NewEncoder(output).Encode(result)
+}
+
 func runInstalledEndpoint(ctx context.Context, root string, output io.Writer) error {
 	plan, err := installation.AdmitStart(ctx, root)
 	if err != nil {

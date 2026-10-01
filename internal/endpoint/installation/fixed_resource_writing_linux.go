@@ -148,7 +148,19 @@ func requireStagedJournal(directory string, selected selection) error {
 
 func requireJournalPhases(directory string, selected selection, phases []string) error {
 	entries, err := os.ReadDir(directory)
-	if err != nil || len(entries) != len(phases) {
+	if err != nil {
+		return errors.New("installation staging journal is ambiguous")
+	}
+	count := len(entries)
+	for _, entry := range entries {
+		if entry.Name() == "generation-directory.json" {
+			if err := verifyGenerationDirectory(directory, filepath.Join(filepath.Dir(filepath.Dir(directory)), "generations", selected.GenerationDigest), selected); err != nil {
+				return err
+			}
+			count--
+		}
+	}
+	if count != len(phases) {
 		return errors.New("installation staging journal is ambiguous")
 	}
 	for index, phase := range phases {

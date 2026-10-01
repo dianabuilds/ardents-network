@@ -33,11 +33,18 @@ func observeInstalledSockets(ctx context.Context, endpoint worker.Properties) er
 }
 
 func verifyInstalledSocket(unit, socket worker.Properties, role string) error {
+	if !propertyIs(unit, "ActiveState", "s", "active") || !propertyIs(unit, "SubState", "s", "listening") {
+		return errors.New("installed activation socket is not listening")
+	}
+	return verifyBoundSocket(unit, socket, role)
+}
+
+func verifyBoundSocket(unit, socket worker.Properties, role string) error {
 	if role != "reader" && role != "publisher" {
 		return errors.New("installed activation role is invalid")
 	}
 	name := "ardents-text-" + role + ".socket"
-	for key, want := range map[string]string{"Id": name, "LoadState": "loaded", "ActiveState": "active", "SubState": "listening", "FragmentPath": "/etc/systemd/system/" + name} {
+	for key, want := range map[string]string{"Id": name, "LoadState": "loaded", "FragmentPath": "/etc/systemd/system/" + name} {
 		if !propertyIs(unit, key, "s", want) {
 			return errors.New("installed activation socket unit differs")
 		}
@@ -46,6 +53,19 @@ func verifyInstalledSocket(unit, socket worker.Properties, role string) error {
 		!propertyIs(socket, "Accept", "b", true) || !propertyIs(socket, "SocketUser", "s", "ardents-endpoint") || !propertyIs(socket, "SocketGroup", "s", "ardents-endpoint") ||
 		!propertyIs(socket, "SocketMode", "u", uint32(0600)) || !propertyIs(socket, "RemoveOnStop", "b", true) {
 		return errors.New("installed activation socket ownership or lifetime differs")
+	}
+	return nil
+}
+
+func observeBoundSocketsForStop(ctx context.Context) error {
+	for _, role := range []string{"reader", "publisher"} {
+		unit, socket, err := worker.ReadActivationSocketProperties(ctx, role)
+		if err != nil {
+			return err
+		}
+		if err := verifyBoundSocket(unit, socket, role); err != nil {
+			return err
+		}
 	}
 	return nil
 }

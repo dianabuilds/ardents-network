@@ -35,6 +35,22 @@ func TestEndpointProvisionRefusesUnsupportedPlatformBeforeFileEffects(t *testing
 	}
 }
 
+func TestEndpointTransitionCommandsRefuseUnsupportedPlatformBeforeEffects(t *testing.T) {
+	for _, command := range []string{"upgrade-installed", "recover-installed"} {
+		t.Run(command, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "absent-transition")
+			var output bytes.Buffer
+			err := runEndpoint(context.Background(), []string{"endpoint", command, path}, &output)
+			if err == nil || !strings.Contains(err.Error(), "requires Ubuntu24.04 amd64") || output.Len() != 0 {
+				t.Fatalf("unsupported transition produced a receipt: %v", err)
+			}
+			if _, err := os.Stat(path); !os.IsNotExist(err) {
+				t.Fatalf("unsupported transition changed input: %v", err)
+			}
+		})
+	}
+}
+
 func TestInstalledEndpointRefusesUnsupportedPlatformBeforeRuntimeEffects(t *testing.T) {
 	root := filepath.Join(t.TempDir(), "absent-installation")
 	var output bytes.Buffer

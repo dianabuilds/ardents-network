@@ -35,18 +35,24 @@ func (authorization Authorization) Targets() (release.Authorization, release.Aut
 // durable Release floors. A subsequent refusal retains those floors; no
 // participant, filesystem installation or manager effect is performed here.
 func Authenticate(ctx context.Context, verifier *release.Verifier, enrolled enrollment.Verified) (Authorization, error) {
+	return authenticateInputs(ctx, verifier, enrolled.Inputs, enrolled.ProtectedDescriptor, enrolled.ProtectedFiles)
+}
+
+func authenticateInputs(ctx context.Context, verifier *release.Verifier, input release.Inputs, descriptor []byte, resources map[string][]byte) (Authorization, error) {
 	if verifier == nil {
 		return Authorization{}, errors.New("protected installation requires a Release verifier")
+	}
+	if ctx == nil {
+		return Authorization{}, errors.New("protected installation context is absent")
 	}
 	if err := ctx.Err(); err != nil {
 		return Authorization{}, err
 	}
-	input := enrolled.Inputs
 	input.RootBytes = bytes.Clone(input.RootBytes)
 	input.Artifact = bytes.Clone(input.Artifact)
 	input.Files = cloneFiles(input.Files)
-	descriptor := bytes.Clone(enrolled.ProtectedDescriptor)
-	resources := cloneFiles(enrolled.ProtectedFiles)
+	descriptor = bytes.Clone(descriptor)
+	resources = cloneFiles(resources)
 	if input.TargetPath != programTarget || input.Local.Platform != "linux-amd64" || input.Local.Architecture != "amd64" {
 		return Authorization{}, errors.New("protected installation requires the linux-amd64 Endpoint target")
 	}

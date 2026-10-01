@@ -5,7 +5,9 @@
 The following bounded command contract selects ADR-0119's installation
 boundary. The initial stopped provisioning, read-only integrity and installed
 startup consumers are implemented but not yet qualified on an admitted installed
-host; update/recovery remain unfinished and there is no
+host. Successor update/recovery now have production callers and component
+controls; the full interruption matrix and first-provision recovery remain
+unfinished, and there is no
 supported full installation receipt yet. Commands remain thin adapters under
 `ardents endpoint`; the owning implementation issue must register any new
 package before adding one.
@@ -55,8 +57,12 @@ never starts a unit or issues permissions. Initial installation requires absent
 managed writable directories and sockets; existing state is not adopted or
 cleared. Existing parent directories remain root-controlled, and Source
 credentials and public permission responses still require their explicit owners.
-Root-only preparation and generation phase records retain original errors;
-an incomplete transition refuses an implicit retry. Recovery is unfinished.
+Root-only preparation and generation phase records retain original errors.
+After preparation, provisioning records an initial transition intent before
+generation writes. Installed startup refuses either a pending intent or a
+pending failure before manager/runtime admission. Initial-transition recovery
+is not yet implemented: the successor recovery command refuses that intent;
+it cannot silently adopt the partial installation.
 Component filesystem and manager-property controls do not qualify a positive
 Ubuntu/systemd/cgroup installation or the two-Endpoint Carrier journey.
 
@@ -138,6 +144,41 @@ its owned journal phase and original error. No filesystem rename makes the
 manager transition atomic. A failed transition leaves the unit inactive and
 the exact prior/successor bytes available for explicit recovery; foreign
 paths, mixed resources or ambiguous journal state refuse before effects.
+
+`upgrade-installed` refuses an initial manifest pin and loads a self-consistent
+candidate through the enrollment inventory owner without claiming enrollment
+authenticity. Both targets must receive fresh Release proofs from the already
+established complete floor store; a new local trust root, missing floors,
+conflicting same-version floor digest, changed Release environment or Network,
+equal generation release or changed durable roots refuses. The root-only
+successor intent binds previous selection, candidate selection and public
+candidate binding facts. Generation staging records its newly created physical
+directory identity before writing artifacts. Actual predecessor MainPID and
+InvocationID are rechecked after pinning its original cgroup; both activation
+sockets are stopped with the fixed service. Stop success alone is insufficient:
+all original pins, stopped fixed units, loaded worker inventory and remaining
+kernel scopes are checked before direct fixed-resource writes.
+
+Each successor replacement durably records its original direct inode, mode,
+group and complete old/new digests before truncation. `recover-installed`
+requires an exact root-only successor intent, fresh floor-compatible proofs at
+the recovery time, the owned generation directory and exact replacement
+records. It can complete authorized prefixes inside that generation and torn
+fixed copies on their recorded inodes; another inode or foreign bytes refuses.
+Recorded target observations do not recreate a proof. Recovery reuses the
+original bound plans and public observations only after checking current proofs
+against their exact target bytes and identities. The first transition failure
+is retained and archived with the completed intent. Missing initial preparation
+or generation ownership evidence returns `repair-required`; complete
+first-provision interruption recovery and the full failure-injection matrix
+remain acceptance work. The receipts `installed-started` and
+`installed-recovered-started` observe the fixed unit, not Service continuity or
+the complete two-Endpoint journey. Component tests exercise these controls;
+actual admitted manager/namespace/seccomp/empty-scope receipts remain required.
+
+All root installation subprocesses use fixed absolute programs and only
+`PATH=/usr/bin:/bin`, `LANG=C`, `LC_ALL=C`; caller-supplied system bus, unit
+lookup and loader environment overrides are not inherited.
 
 Retaining predecessor bytes is not permission to activate an older Release.
 Recovery must finish a valid selected candidate or obtain a fresh floor-compatible
