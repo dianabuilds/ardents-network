@@ -45,7 +45,7 @@ func restoreTransitionIntent(intent transitionIntent) error {
 
 func upgradeInstalled(ctx context.Context, path string) (result ProvisionResult, returnedErr error) {
 	if os.Geteuid() != 0 {
-		return ProvisionResult{}, errors.New("Endpoint upgrade requires root")
+		return ProvisionResult{}, errors.New("endpoint upgrade requires root")
 	}
 	lease, err := acquireRootLease("/run/ardents-installation.lock")
 	if err != nil {

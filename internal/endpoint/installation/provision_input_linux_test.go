@@ -4,14 +4,19 @@ package installation
 
 import (
 	"bytes"
+	"context"
 	"os"
 	"path/filepath"
 	"testing"
 )
 
 func TestProvisionInputRequiresContextBeforeEffects(t *testing.T) {
-	if _, _, err := loadProvisionInput(nil, filepath.Join(t.TempDir(), "absent-request")); err == nil {
-		t.Fatal("nil-context provision accepted")
+	for name, ctx := range map[string]context.Context{"absent": nil} {
+		t.Run(name, func(t *testing.T) {
+			if _, _, err := loadProvisionInput(ctx, filepath.Join(t.TempDir(), "absent-request")); err == nil {
+				t.Fatal("nil-context provision accepted")
+			}
+		})
 	}
 }
 

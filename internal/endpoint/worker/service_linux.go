@@ -68,7 +68,7 @@ func observeEndpointService(ctx context.Context) error {
 // properties. It neither authorizes a caller nor starts or changes any unit.
 func ReadEndpointProperties(ctx context.Context) (Properties, Properties, error) {
 	if ctx == nil {
-		return nil, nil, errors.New("Endpoint property context is unavailable")
+		return nil, nil, errors.New("endpoint property context is unavailable")
 	}
 	if err := verifyPlatform(ctx); err != nil {
 		return nil, nil, err

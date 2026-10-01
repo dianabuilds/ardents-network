@@ -17,7 +17,7 @@ import (
 
 func recoverInstalled(ctx context.Context, root string) (result ProvisionResult, returnedErr error) {
 	if os.Geteuid() != 0 || !canonicalPath(root) {
-		return ProvisionResult{}, errors.New("Endpoint recovery requires root and canonical installation path")
+		return ProvisionResult{}, errors.New("endpoint recovery requires root and canonical installation path")
 	}
 	lease, err := acquireRootLease("/run/ardents-installation.lock")
 	if err != nil {

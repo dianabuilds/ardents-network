@@ -61,7 +61,11 @@ func TestInstallationJoinRefusesCancelledEmptyObservation(t *testing.T) {
 }
 
 func TestInstallationStopRefusesBeforeEffectsWithoutRootContext(t *testing.T) {
-	if err := stopInstalledPredecessor(nil, checkedBinding{}); err == nil || !strings.Contains(err.Error(), "root and context") {
-		t.Fatal("stop admitted absent context")
+	for name, ctx := range map[string]context.Context{"absent": nil} {
+		t.Run(name, func(t *testing.T) {
+			if err := stopInstalledPredecessor(ctx, checkedBinding{}); err == nil || !strings.Contains(err.Error(), "root and context") {
+				t.Fatal("stop admitted absent context")
+			}
+		})
 	}
 }
