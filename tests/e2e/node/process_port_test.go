@@ -11,6 +11,7 @@ import (
 type reservedProcessPort struct {
 	address  string
 	listener net.Listener
+	packet   net.PacketConn
 }
 
 func reserveProcessPort(t *testing.T) *reservedProcessPort {
@@ -26,6 +27,12 @@ func reserveProcessPort(t *testing.T) *reservedProcessPort {
 
 func (port *reservedProcessPort) release(t *testing.T) {
 	t.Helper()
+	if port.packet != nil {
+		if err := port.packet.Close(); err != nil {
+			t.Fatal(err)
+		}
+		port.packet = nil
+	}
 	if port.listener == nil {
 		return
 	}
@@ -70,5 +77,50 @@ func TestProcessPortReservationsRetainOtherAddresses(t *testing.T) {
 		if err := listener.Close(); err != nil {
 			t.Fatal(err)
 		}
+	}
+}
+
+func reserveProvisioningPort(t *testing.T, carrier string) *reservedProcessPort {
+	t.Helper()
+	if carrier != "ardents-carrier-quic-v2" {
+		return reserveProcessPort(t)
+	}
+	listener, err := net.ListenPacket("udp4", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	port := &reservedProcessPort{address: listener.LocalAddr().String(), packet: listener}
+	t.Cleanup(func() { port.release(t) })
+	return port
+}
+
+func TestProvisioningPortsHoldSelectedCarrierUntilRelease(t *testing.T) {
+	for _, carrier := range []string{"ardents-carrier-tcp-tls-v2", "ardents-carrier-quic-v2"} {
+		t.Run(carrier, func(t *testing.T) {
+			first, second := reserveProvisioningPort(t, carrier), reserveProvisioningPort(t, carrier)
+			if first.address == second.address {
+				t.Fatal("signed Node addresses share a reservation")
+			}
+			bind := func(address string) (interface{ Close() error }, error) {
+				if carrier == "ardents-carrier-quic-v2" {
+					return net.ListenPacket("udp4", address)
+				}
+				return net.Listen("tcp", address)
+			}
+			if listener, err := bind(first.address); err == nil {
+				_ = listener.Close()
+				t.Fatal("signed address was released before its Node started")
+			}
+			first.release(t)
+			listener, err := bind(first.address)
+			if err != nil {
+				t.Fatalf("Node cannot bind its released address: %v", err)
+			}
+			defer listener.Close()
+			if other, err := bind(second.address); err == nil {
+				_ = other.Close()
+				t.Fatal("starting one Node released another Node's reservation")
+			}
+		})
 	}
 }

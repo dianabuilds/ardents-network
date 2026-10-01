@@ -1,0 +1,11 @@
+# Research service name alloy is an orchestration alias, not collector identity.
+# The receipt records the actual selected OTel image/configuration.
+services:
+  alloy:
+    image: ${R171_OTEL_IMAGE:?explicit installed OTel image config ID required}
+    entrypoint: !override [/otelcol-contrib]
+    command: !override [--config, /probe/otel.yml]
+  loki:
+    command: !override [-config.file=/probe/loki.otel.yml]
+  prometheus:
+    command: !override [--config.file=/probe/prometheus.otel.yml, --web.config.file=/certs/web.yml, --storage.tsdb.path=/state, --storage.tsdb.retention.time=1h, --storage.tsdb.retention.size=128MB]

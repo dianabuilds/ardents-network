@@ -35,6 +35,7 @@ func buildFixture(config fixtureConfig) error {
 		return err
 	}
 	carrier := "ardents-carrier-" + config.Carrier + "-v2"
+	assignmentSeed := sha256.Sum256(append([]byte("ardents-issue60-assignment-v1"), seed...))
 	records := make([]networkfixture.Record, 0, 23)
 	nodeMembers := make([]routeMember, 0, 16)
 	nodes := make([]fixtureNode, 0, 16)
@@ -42,7 +43,10 @@ func buildFixture(config fixtureConfig) error {
 		key := derivedKey(seed, fmt.Sprintf("route-node-%02d", index))
 		public := key.Public().(ed25519.PublicKey)
 		nodeID := sha256.Sum256(append([]byte("ardents-issue60-node-v1"), public...))
-		family := fmt.Sprintf("issue60-route-node-%02d", index)
+		family, err := qualificationRoleFamily(networkID, assignmentSeed, role[0], fmt.Sprintf("issue60-route-node-%02d", index))
+		if err != nil {
+			return fmt.Errorf("select Route Node family: %w", err)
+		}
 		host, address := nodeHost(config, index), nodeHostAddress(config, index)
 		endpoint := fmt.Sprintf("%s:%d", address, 50000+index)
 		record, err := networkfixture.BuildRecord(networkfixture.RecordSpec{
@@ -80,8 +84,8 @@ func buildFixture(config fixtureConfig) error {
 	epoch, err := networkfixture.BuildEpoch(networkfixture.EpochSpec{
 		NetworkID: networkID, Number: 1, ValidFrom: notBefore, ValidUntil: notAfter,
 		Inputs: recordBodies(records), Accepted: records,
-		AssignmentSeed: sha256.Sum256(append([]byte("ardents-issue60-assignment-v1"), seed...)),
-		Profile:        "ardents-route-v3", Version: 3, Domains: []string{"issue60-a", "issue60-b"},
+		AssignmentSeed: assignmentSeed,
+		Profile:        "ardents-route-v3", Version: 3, Domains: qualificationRoleDomains(),
 		Authorities: []ed25519.PrivateKey{authority},
 	})
 	if err != nil {

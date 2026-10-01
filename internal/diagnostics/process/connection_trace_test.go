@@ -1,9 +1,11 @@
 package process
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
+	runtimetrace "runtime/trace"
 	"strings"
 	"sync"
 	"testing"
@@ -128,5 +130,46 @@ func TestConnectionCancellationCannotHideCleanupFailure(t *testing.T) {
 	}
 	if connectionOutcome(errors.Join(context.Canceled, context.DeadlineExceeded)) != "deadline" {
 		t.Fatal("deadline classification lost")
+	}
+}
+
+func TestConnectionCaptureWritesPrivateRuntimeTask(t *testing.T) {
+	var output bytes.Buffer
+	if err := runtimetrace.Start(&output); err != nil {
+		t.Fatal(err)
+	}
+	defer runtimetrace.Stop()
+	capture := newConnectionCapture()
+	ctx := context.WithValue(t.Context(), sessionCaptureContextKey{}, capture)
+	reader := ReaderTrace(ctx)
+	if reader.traceTask == nil || reader.traceContext == nil {
+		t.Fatal("Reader runtime task unavailable")
+	}
+	if reader.traceContext.Value(sessionCaptureContextKey{}) != nil || reader.traceContext.Done() != nil {
+		t.Fatal("runtime task imported product Context")
+	}
+	finish := reader.Observe(Admission, ctx)
+	joined := make(chan struct{})
+	go func() {
+		finish(errors.New("private-request-content"))
+		reader.Finish(errors.New("private-request-content"))
+		reader.Finish(nil)
+		reader.Observe(ServiceJoin, ctx)(nil)
+		close(joined)
+	}()
+	<-joined
+	runtimetrace.Stop()
+	body := output.String()
+	for _, want := range []string{"ardents.reader", "reader.stage", "admission.started", "admission.failed", "reader.outcome", "failed"} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("runtime trace lacks fixed annotation %s", want)
+		}
+	}
+	if strings.Contains(body, "private-request-content") || strings.Contains(body, "service-join.started") {
+		t.Fatal("private or post-terminal annotation retained")
+	}
+	snapshot := capture.snapshot()
+	if snapshot.State != "joined" || snapshot.Outcome != "failed" || len(snapshot.Records) != 2 {
+		t.Fatal("runtime annotations changed Reader outcome")
 	}
 }

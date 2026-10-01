@@ -23,10 +23,7 @@ func TestAutomaticRefreshSkipsAnActiveInitialWave(t *testing.T) {
 	config.Source.Sources[0].Address = firstRelay.listener.Addr().String()
 	config.Source.Sources[1].Address = secondRelay.listener.Addr().String()
 	config.AutomaticRefreshInterval = 100 * time.Millisecond
-	// Keep observation current across the real source exchange.
-	anchor := time.Now()
-	clock := func() time.Time { return time.Unix(genesis.now, 0).UTC().Add(time.Since(anchor)) }
-	config.Clock, config.ObserveClock = clock, clock
+	config.ObserveClock = config.Clock
 	ticks, automaticResults := make(chan time.Time), make(chan error, 2)
 	endpoint, err := state.OpenWithAutomaticTicksForTest(config, ticks, automaticResults)
 	if err != nil {

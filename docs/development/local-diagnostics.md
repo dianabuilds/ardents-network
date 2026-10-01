@@ -42,6 +42,12 @@ evidence; its file caps and saved reports do not implement this system.
   collection failure are independent visible conditions. External notification
   delivery requires separate explicit configuration and authorization.
 
+Delivery observations retain their scope. A local sink with no lost bytes does not
+prove complete backend history. Queue drain and resumed delivery do not restore
+records already lost. Terminal failed records, retry attempts and enqueue failures
+are distinct signals. An unavailable counter cannot become measured zero; a
+counter reset cannot erase the need for retained incident history.
+
 Normal monitoring must not enable expensive profiling merely to read counters.
 Its retention budgets include indexes, temporary rotation files and backend
 working space; a backend retention setting alone is not a filesystem quota.
@@ -77,6 +83,77 @@ the live status. Continuous metric history, local alerts and the final
 monitoring/administration interface are not supplied by this log slice. Limits,
 restart refusal conditions and console prerequisites belong to the command
 [recipe](../../scripts/diagnostics/README.md#continuous-logs-and-live-monitoring).
+
+### Selected-source metric endpoint
+
+The existing optional monitor panel also exposes GET /metrics from the same
+bounded supervisor memory. It opens no raw files and enables no sampling or
+profiling. Fixed unlabelled signals expose supervisor age/freshness, observed
+process survival, independent delivery/retention/cleanup failures and session
+loss/intentional-expiry counters. Source names, PID, arguments, paths and event
+tails are excluded. A three-second stale supervisor omits current source and
+delivery-health values; process survival is not Node readiness. Session start
+identifies a reset boundary but does not itself provide gap-safe rate queries.
+
+Native Linux Node resource export requires an explicit positive
+-sample-max-age budget (at most one hour) from the selected producer interval.
+Zero, the default, disables resource values without inventing a freshness
+budget. Producer and receipt times must both be fresh and within the supervisor
+session; receipt time cannot refresh an old producer observation. Missing fields
+remain absent, stopped/stale sources lose resource values, and invalid
+observations return503 without partial successful exposition.
+
+The fixed catalogue exports only cumulative cgroup CPU time and current cgroup
+memory, which both current Node measurement paths populate. CPU microseconds
+become cumulative seconds; cgroup memory includes kernel and cache charges and
+is not process RSS. The resource event does not identify whether the extended
+process sampler or the closed owner-cgroup sampler supplied it. Consequently
+encoded zero or positive values for Go memory, descriptors, sockets, threads,
+goroutines, socket memory, PSI and memory-event counters cannot establish
+availability and are excluded until producer measurement coverage is explicit.
+RSS/admission and role-specific timer/queue/storage/Hosting Usage values remain
+excluded pending their own source scope and semantics. A fresh sample does not
+mean every serialized field was measured.
+This endpoint retains the panel's loopback Host/origin protections,16KiB metric
+response cap and existing bounded HTTP lifecycle. An arbitrary container Host
+cannot bypass those protections; separately deployed collectors require an
+explicit protected integration, not a panel-protection waiver. This endpoint
+does not supply a Prometheus deployment, historical store, Loki delivery, alert
+consumer or installed Node qualification.
+
+### Protected collector metrics connection
+
+The monitor can separately expose its memory metrics to one selected diagnostic
+client using -metrics-listen, -metrics-certs and -metrics-client-pin together.
+This listener serves only GET /metrics; it does not expose panel status, raw
+logs, profiles, certificate files or product control. The existing panel's
+Host/origin guard remains unchanged.
+
+The private canonical certificate directory must be owned by the monitor UID
+with no group/other permissions. Its fixed server.crt, server.key and
+client-ca.crt files must be regular, private, owned, single-link and at most
+64 KiB each. Symlinks and special files are refused. Loading finishes and
+closes files before opening the listener. Use dedicated diagnostic certificates,
+never product transport or authority keys.
+
+TLS 1.3 verifies the client chain against the explicitly supplied CA and
+requires the SHA256 pin of the selected client's DER SubjectPublicKeyInfo.
+The client must independently verify the server CA and address. Request-time
+certificate validity is rechecked on retained connections. Trust and key changes
+require monitor restart; no hot reload or revocation service is supplied.
+
+Addresses are loopback unless -container explicitly permits 0.0.0.0 in the
+selected diagnostic container. Four connections, header/read/write/idle
+timeouts and the existing 16 KiB response limit bound the endpoint. Unexpected
+listener failure is retained independently as metrics_listener_failed;
+unauthenticated peer details and keys do not enter normal logs. No source
+restart or extra product authority follows from collector failure.
+
+Metrics-only monitoring retains the terminal source observation and periodic
+log pruning until cancellation, as the panel does. Listener shutdown is joined
+and its errors remain in the command outcome. These connection checks do not
+prove Prometheus deployment, backend admission, actual Node integration or
+host/power-loss durability.
 
 ### Debug mode
 
@@ -190,7 +267,7 @@ profiles can write additional files: provision a finite filesystem quota for
 long or hostile diagnostics. Log limits are not a filesystem quota.
 
 Live Interface: at most four simultaneous clients and one profile/trace request;
-fixed runtime fields; profiles capped at 64 MiB; CPU/trace 1–30 seconds; request
+fixed runtime fields; profiles capped at 64 MiB; CPU/trace 1РІР‚вЂњ30 seconds; request
 read budget 2 s, write 35 s, idle 2 s, shutdown 3 s. Profiling opts into block
 sampling at 1 ms and mutex fraction 10 for the diagnostic process lifetime;
 CPU/trace only run on request. These costs change timing. Profiles contain
@@ -326,6 +403,24 @@ disabled, the nil/zero trace handle returns the original Context and adds no
 recording, timers, callbacks or I/O. Recording itself performs bounded memory
 updates and inspects at most 64 error-tree nodes.
 
+The claimed Reader also creates one standard Go execution-trace task with the
+fixed type `ardents.reader`. Accepted memory records emit fixed `reader.stage`
+annotations; supplied Context cancellation emits a separate fixed
+`reader.context-stop` annotation. Joined Finish emits the conservative outcome,
+marks a lost capture incomplete, and ends the same task once. Expired, dropped,
+unclaimed and post-terminal stage records do not generate extra annotations.
+No raw error, deadline, identity or Task ID enters normal logs, metrics or the
+socket schema. The trace task uses a separate background Context; it cannot
+import authority values, cancellation or deadlines into product work.
+
+This does not start execution tracing or CPU profiling. Start a private trace
+request before the selected Reader Open and keep it active through joined
+cleanup to observe the whole task. A trace window that starts late or ends early
+is partial; absent task boundaries do not prove a joined operation. The runtime
+Task ID associates these annotations inside that private execution trace only;
+it does not associate separate CPU/heap profiles, a saved command, another
+process or an installed deployment. Trace scheduling/blocking observations can
+help localize waiting but do not establish remote causality.
 The production Reader route observes admission, session activation, worker launch
 and operation acquisition, the actual bounded worker activation (launch gate,
 readiness and Grant binding), Introduction preparation, JOIN (including the separately
@@ -367,6 +462,25 @@ Loopback excludes remote binding, not local adversaries or endpoint compromise.
 No Network readiness, installed worker qualification or causal diagnosis follows
 from a snapshot. Other Reader operations, Publisher telemetry and Node
 queue/credit/token gauges remain outside this capture.
+
+### Debugging consumer workflow
+
+The [diagnostic recipes](../../scripts/diagnostics/README.md#agent-workflow-locate-one-failed-reader-operation)
+route a debugging implementer from safe events and a selected private Connection
+snapshot to an explicit trace covering one authorized operation and its cleanup.
+The standard Go trace selected-task page (`/usertask?type=ardents.reader`) avoids
+exporting a verbose text dump of every runtime event. It remains a sensitive
+process-wide viewer: selecting one task does not make its listener or artifact
+safe for monitoring export. Serve only in the explicit private local diagnostic
+context and stop it after use.
+
+Require task boundaries, retained capture completeness, stage outcomes, separate
+Context-stop observations and the joined final outcome. A task marked complete
+by Go can still contain a lost/incomplete Reader capture. Task-stage ordering and
+scheduler views localize observed work and waiting; they do not prove a remote
+cause or bind separate CPU/heap profiles to the operation. The recipe includes
+existing real Open launch-cancellation and Service request-cancellation tests,
+with fixture/installation limits stated separately from their observed cleanup.
 
 ### Periodic observations and event logs
 
@@ -440,7 +554,20 @@ Explicit pprof/trace selections are parsed offline by prebuilt standard Go parse
 using an admitted file descriptor, no selected executable or symbolization, and no remote
 source or HTTP listener. The parser has a two-second deadline per selection,
 64 KiB stderr budget and either 64 KiB pprof table or 64 MiB trace-to-profile
-stdout budget. Output is discarded, not exposed. `validation: passed` means the
+stdout budget. Output is discarded by default. Explicit `-profile-top` requires
+at least one `-profile` selection and retains standard offline pprof top tables
+for those selections only, at most ten rows and 16 KiB per table. The JSON
+`private_pprof_top` field may contain sensitive embedded function names, build
+metadata and profile comments: it stays in this private local package and is
+never sent to monitoring, HTTP, Loki or a public report. No executable, source
+lookup or remote symbolization is added. Trace-derived output is still discarded.
+The package's 256 KiB output budget, artifact inventory, identity checks and
+parser/assembly deadlines remain in force. Over-budget, empty or invalid UTF-8
+top output fails selection; partial text is not presented as a successful table.
+A table shows the profile's default sample type, total and flat/cumulative costs;
+this does not establish sufficient sampling, operation/build association or a
+cause of failure. Embedded symbols are observed profile content, not authenticated
+source provenance. `validation: passed` means the
 selected parser accepted the observed bytes, not semantic completeness, profile
 coverage, performance diagnosis or operation/executable association. Unsuccessful
 validation retains a private partial package with `validation: failed`, returning
@@ -491,3 +618,174 @@ The diagnostic image and selected architecture CI install them before execution.
 `doctor` and image inventory retain their compiler/build metadata. Heap-profile
 and runtime-trace CLI tests use an empty Go build cache; parsing must not compile
 or fetch tools. Process/output/deadline limits remain unchanged.
+
+### Selected backend filesystem budget observation
+
+The local observability experiment now exposes a private metadata-only
+filesystem inventory for an explicitly selected Compose project. It joins only
+that container's PID namespace under the same UID, with no added capabilities,
+and observes fixed state, temporary and image-declared data roots. It reads no
+file contents or profiles. Missing measurements remain unavailable; shared
+filesystem quantities are not attributed to a process or Node. Capacity on
+unbounded image-created volumes cannot satisfy a selected quota merely because
+the configured database path uses another bounded filesystem.
+
+This observer and its bounded experimental mounts are engineering preparation.
+They do not select a production storage layout or establish complete disk-budget
+coverage. Docker log bytes, external writable evidence and persistence remain
+separate obligations. Reproducible invocation belongs to the
+[experiment recipe](../../experiments/r-171-local-observability/README.md#selected-native-filesystem-inventory).
+
+### Collector storage-refusal observation
+
+The local backend experiment has a separate finite minimal-OTel collector-state
+exhaustion profile. It uses only its owned64MiB synthetic state tmpfs and new
+verified injection/activation files. Existing project containers or selected state/fixture volumes are refused before evidence creation. Generated padding and a brief selected Loki
+pause require queue growth; native ENOSPC, refusal/unavailability and the actual
+Prometheus/Alertmanager signal must be observed. A full filesystem alone is
+insufficient evidence of collector failure. Recovery preserves the original
+failure and separately checks queue drain and source sequence delivery; it does
+not recreate the checkpoint database. Installed Node and host crash durability
+remain outside this experimental acceptance boundary.
+
+The monitoring rule `CollectorLogEnqueueRejected` reports a positive cumulative
+native enqueue-refusal count for the current collector session. Receiver retries
+may subsequently deliver the record, so this is distinct from terminal exporter
+loss. It remains a warning after delivery recovery until the count is reset;
+absence is unknown and restart can clear it. This is neither a durable incident
+store nor acknowledgement history. Raw collector errors stay private; they do
+not enter the safe projected Node event stream or public profile output.
+### Private artifact storage observation
+
+The experiment also measures logical file lengths in one explicitly selected,
+account-owned external artifact root whose privacy remains an operator prerequisite, not an observation result. A bounded metadata-only double
+observation refuses redirects, changes and the selected 128-MiB overrun, retaining
+an aggregate private receipt. It does not read payload/profile content. This
+snapshot neither enforces a continuous quota nor proves physical allocation;
+Docker logs and filesystem metadata remain separate coverage. Invocation and
+limits belong to the experiment's private artifact observation recipe.
+
+### Log retention accounting metrics
+
+The selected monitor exports fresh retained payload bytes/file counts and their
+configured limits, plus explicit log-storage observation availability. Values
+come from the admitted store's bounded in-memory accounting, not a filesystem
+walk. File count includes the empty ownership lock. Missing/stale accounting
+omits current quantities; impossible counts fail exposition. Configured payload
+limits are not filesystem quotas and exclude metadata/status files/Docker logs.
+The Node experiment dashboard plots these quantities and intentional expiry
+separately from delivery loss. Retained inventory survives reopening; expiry and
+loss counters remain session-local, not durable incident history.
+
+Accounting freshness is independent of the supervisor heartbeat: the file
+worker updates logs_observed_at only after a completed retained-inventory
+observation. Current storage gauges require both observations within three
+seconds. A blocked file worker cannot borrow freshness from a live supervisor;
+missing or pre-session accounting remains unavailable.
+
+### Local log delivery and accounting alerts
+
+The Node backend recipe checks native rule behavior before container creation.
+`NodeLogAccountingUnavailable` requires a successful selected scrape and six
+seconds of explicitly unavailable accounting. It resolves on fresh accounting;
+a lost scrape is handled separately, and absent accounting does not become zero.
+`NodeLocalLogDeliveryLost` warns when any selected session-local queue/file/
+console loss counter is positive. Channels are deduplicated by source without
+summing them into unique source bytes. Intentional expiry is excluded. The
+warning survives resumed delivery within the same session; reset may clear it.
+These rules provide no durable acknowledgement or incident history.
+
+### Journal retention and filesystem capacity
+
+Normal monitor defaults retain up to 1 GiB of log payload for at most three days,
+with 16-MiB segments, 15-minute rotation and at most 65 files including the empty
+ownership lock. The first reached byte, age or file limit removes the oldest
+segments. retain-bytes, retain-for, segment-bytes, rotate-after and retain-files
+remain explicit overrides; finite test/preview recipes may select smaller limits.
+Retention expiry is reported separately from failed delivery. These payload
+limits exclude filesystem metadata, status files and backend/Docker journals.
+
+The Linux monitor observes whole-filesystem capacity through the already admitted
+log lock descriptor. It exports total and user-available bytes only while both
+file accounting and supervisor observations are fresh; syscall failure is an
+explicit unavailable observation. This may describe tmpfs or shared storage and
+must not be labelled as physical host disk, per-Node allocation or log bytes.
+The backend view plots used fraction (1 minus available divided by total), with
+warning at 80% and critical at 90%, each sustained for one minute. Recovery clears
+the threshold; missing observations cannot be healthy zero. Windows-native
+filesystem observation and end-to-end platform qualification remain unverified.
+### Debug profile interpretation
+
+The private runtime response reports this diagnostic owner's configured
+block_sampling_rate_ns (1000000) and mutex_sampling_fraction (10). These are
+process-wide settings while the debug socket is open, not per-operation metrics
+or a runtime query proving another profiler has not changed the settings.
+Normal operation with an empty socket does not enable them. Existing shutdown
+restores the prior mutex fraction and disables this owner's block sampling.
+
+The explicit real-Node debug recipe collects runtime, CPU, heap, allocs,
+goroutine, block, mutex and trace sequentially. The private receipt retains
+request start/completion UTC and monotonic elapsed time for each artifact;
+those bounds include local CLI/transport work and do not prove exact process
+capture timestamps. Only CPU and trace have a requested two-second interval.
+Allocation, block and mutex profiles are cumulative sampled observations;
+heap and goroutine are snapshots. Sampling overlaps the other explicit captures
+and can affect scheduling; representative overhead has not been qualified.
+A parser pass does not establish useful samples or a cause. Artefact hashes bind
+the inspected bytes; the selected build receipt remains separate provenance,
+not operation correlation or process attestation. Profiles stay private and are
+never served by Grafana/Loki or exported as monitoring labels.
+The private runtime response also reads memory_sampling_rate_bytes from
+runtime.MemProfileRate; this describes allocation sampling, not a memory limit.
+
+### Persistent backend replacement observation
+
+The explicit R171 `probe-otel-persistent` engineering profile uses five ordinary
+local Docker state volumes instead of an active RAM mount anchor. A finite
+synthetic source continues while all five backend containers are stopped,
+removed and recreated. The oracle checks fixed historical metric/log rows,
+retained silence identities, an unprovisioned Grafana database marker and
+collector restart/read-position behavior. Provisioned dashboards alone cannot
+prove Grafana database persistence. Only empty root-owned volume roots receive
+initial UID/GID10001 mode0700 ownership; reopening admitted roots requires no
+DAC bypass or recursive changes. Normal backend processes remain unprivileged.
+
+This does not select a production storage layout, qualify a persistent real-Node
+journal or prove daemon/host crash durability. Named-volume retention survives
+container replacement but is not a filesystem quota. Explicit probe time/TSDB
+limits remain distinct from normal monitor log retention. The experiment recipe
+owns its actual command and retained failed attempts.
+
+### Persistent real-source monitor observation
+
+The R171 persistent Node preview adds an explicitly admitted sixth volume for
+safe monitor journal state. Source-container replacement reopens its retained
+segments with normal1GiB/72h/16MiB/65file budgets. Backend retention is independently
+configured: Prometheus72h/1GB, Loki72h compaction and Alertmanager72h. Loki eligibility
+and asynchronous chunk deletion are not an exact disk-erasure deadline or quota;
+compactor state stays in the persistent Loki volume. Manual log deletion is not
+exposed by this selected profile. Normal monitoring still has no debug socket.
+
+Its fixed-interval oracle compares historical samples and log-row multiplicities,
+checks a separate unprovisioned Grafana database marker and requires a finite
+newer monitor session. Sealed safe journal payloads are checked while stopped
+and after reopening. Container receipt/setup success alone is not this evidence.
+The finite generated product fixture state is recreated separately: this does
+not establish supported product State/authority persistence, installed Node
+restart, native Windows support or host/daemon crash durability. Disk-budget
+admission and full integration remain separate from these observed boundaries.
+
+### Ready-component incident history boundary
+
+R171 now supplies an explicit synthetic Grafana-managed rule trial using the
+native annotation database for pending/firing/recovery history and tagged
+operator acknowledgement notes. Native expiring silences remain separate.
+Age/count budgets and persistent-database replacement are observed separately
+from filesystem quotas. This does not implement the normal-Node incident route:
+current Node rules are Prometheus-evaluated, and Grafana history applies only to
+Grafana-managed rules. A normal-rule migration must preserve source loss,
+NoData/query failure, measured-health semantics and notification authority before
+that requirement is accepted. The operator-note convention records an action;
+it does not change health, assign exclusive incident ownership or deduplicate
+operator acknowledgements automatically. Its explicit recipe belongs to the
+[R171 experiment](../../experiments/r-171-local-observability/README.md#native-incident-history-trial).

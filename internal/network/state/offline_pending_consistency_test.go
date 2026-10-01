@@ -188,9 +188,8 @@ func TestSourceRefreshRefusesExpiredPendingEpoch(t *testing.T) {
 	}
 
 	expired := time.Unix(genesis.now+23, 0).UTC()
-	anchor := time.Now()
-	clock := func() time.Time { return expired.Add(time.Since(anchor)) }
-	config.Clock, config.ObserveClock = clock, clock
+	config.Clock = advancingVerificationClock(expired)
+	config.ObserveClock = config.Clock
 	restarted, err := state.Open(config)
 	if err != nil {
 		t.Fatal(err)
@@ -225,8 +224,8 @@ func TestSourceRefreshRejectsCandidateConflictingWithPendingEpoch(t *testing.T) 
 	config := fixtureConfig(genesis, t.TempDir(), now)
 	installGenesis(t, config, genesis)
 	config.Now = time.Time{}
-	config.Clock = func() time.Time { return now }
-	config.ClockObservation = now
+	config.Clock = advancingVerificationClock(now)
+	config.ObserveClock = config.Clock
 	config.Source.ClientCertificate = client.certificate
 	config.Source.OrderSeed = sha256.Sum256([]byte("pending-conflict-source-order"))
 	config.Source.Sources = sourcePair(addresses[:2], firstAuthority, secondAuthority, firstServer, secondServer)
@@ -248,7 +247,8 @@ func TestSourceRefreshRejectsCandidateConflictingWithPendingEpoch(t *testing.T) 
 		t.Fatal(err)
 	}
 	now = time.Unix(genesis.now+21, 0).UTC()
-	config.ClockObservation = now
+	config.Clock = advancingVerificationClock(now)
+	config.ObserveClock = config.Clock
 
 	replacementFirst := openTestSource(t, conflicting, addresses[2], firstServer, clientAuthority.rootPEM, client.pin)
 	replacementSecond := openTestSource(t, conflicting, addresses[3], secondServer, clientAuthority.rootPEM, client.pin)

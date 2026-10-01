@@ -249,3 +249,20 @@ func TestLogRetentionRefusesSmallerSegmentLimitOnRestart(t *testing.T) {
 		t.Fatalf("refusal changed prior evidence: %q (%v)", body, err)
 	}
 }
+
+func TestLogFilesystemObservationRequiresOpenAdmittedStore(t *testing.T) {
+	store, err := openLogStore(filepath.Join(t.TempDir(), "logs"), logRetentionPolicy{SegmentBytes: 4, MaxBytes: 8, MaxFiles: 3, SegmentAge: time.Minute, MaxAge: time.Hour}, time.Now().UTC())
+	if err != nil {
+		t.Fatal(err)
+	}
+	stats := store.Stats()
+	if !stats.FilesystemAvailable || stats.FilesystemTotalBytes <= 0 || stats.FilesystemFreeBytes < 0 || stats.FilesystemFreeBytes > stats.FilesystemTotalBytes {
+		t.Fatalf("native filesystem observation: %+v", stats)
+	}
+	if err := store.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if closed := store.Stats(); closed.FilesystemAvailable || closed.FilesystemTotalBytes != 0 || closed.FilesystemFreeBytes != 0 {
+		t.Fatalf("closed store borrowed filesystem freshness: %+v", closed)
+	}
+}

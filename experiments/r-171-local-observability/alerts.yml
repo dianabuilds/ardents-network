@@ -1,0 +1,35 @@
+groups:
+  - name: synthetic-source-observation
+    rules:
+      - alert: FixtureQueuePressure
+        expr: diagnostic_fixture_queue_items > 10
+        for: 6s
+        labels:
+          severity: warning
+          scope: synthetic_fixture
+        annotations:
+          summary: Synthetic fixture queue exceeds ten items
+      - alert: FixtureObservationUnavailable
+        expr: up{job="fixture"} == 0
+        for: 6s
+        labels:
+          severity: warning
+          scope: synthetic_fixture
+        annotations:
+          summary: Fixture metrics scrape failed; no Node health conclusion
+      - alert: CollectorObservationUnavailable
+        expr: up{job="collector"} == 0
+        for: 6s
+        labels:
+          severity: warning
+          scope: collector
+        annotations:
+          summary: Collector scrape failed; log delivery requires separate evidence
+      - alert: LogStoragePressure
+        expr: increase(loki_ingester_wal_disk_full_failures_total{job="logbackend"}[30s]) > 0
+        for: 6s
+        labels:
+          severity: warning
+          scope: log_storage
+        annotations:
+          summary: Loki WAL disk failure observed; accepted logs may lack durable storage

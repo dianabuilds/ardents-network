@@ -43,8 +43,8 @@ func TestIncompleteLatestUsesExactSameIndexFallback(t *testing.T) {
 	if err := installed.Close(); err != nil {
 		t.Fatal(err)
 	}
-	config.Now, config.Clock = time.Time{}, func() time.Time { return now }
-	config.ClockObservation = now
+	config.Now, config.Clock = time.Time{}, advancingVerificationClock(now)
+	config.ObserveClock = config.Clock
 	config.Source.Sources = [2]source.Source{
 		{Address: addresses[0], ServerName: "truncated-source.test", Identity: [32]byte{1}, Family: "truncated-family",
 			EndpointHandle: "truncated-handle", RootPEM: firstAuthority.rootPEM, LeafKeyDigest: firstServer.pin},

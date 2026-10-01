@@ -447,7 +447,7 @@ func TestEvidencePackageAcceptsRealHeapProfileWithoutClaimingOperationAssociatio
 			found = true
 		}
 	}
-	if !found || packet.Assembly != "complete" || packet.Association != "explicit-input-selection; operation-association-unproven" {
+	if !found || strings.Contains(string(body), "private_pprof_top") || packet.Assembly != "complete" || packet.Association != "explicit-input-selection; operation-association-unproven" {
 		t.Fatal("real profile validation or association limit missing")
 	}
 }
@@ -574,7 +574,7 @@ func TestEvidencePackageValidatesRealAndBrokenRuntimeTrace(t *testing.T) {
 			found = true
 		}
 	}
-	if !found || packet.Assembly != "complete" || packet.Association != "explicit-input-selection; operation-association-unproven" {
+	if !found || strings.Contains(string(body), "private_pprof_top") || packet.Assembly != "complete" || packet.Association != "explicit-input-selection; operation-association-unproven" {
 		t.Fatal("real profile validation or association limit missing")
 	}
 	if err := os.WriteFile(filepath.Join(source, "runtime.trace"), []byte("private-broken-runtime-trace"), 0600); err != nil {
@@ -938,5 +938,73 @@ func TestEvidencePackageCancelsInFlightReaderAtAssemblyDeadline(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(source, "summary.json")); err != nil {
 		t.Fatal("lost original capture")
+	}
+}
+
+func TestEvidencePackageIncludesExplicitPrivateProfileTop(t *testing.T) {
+	source := reportFixture(t, 1)
+	if err := os.Chmod(source, 0700); err != nil {
+		t.Fatal(err)
+	}
+	f, err := os.OpenFile(filepath.Join(source, "heap.pprof"), os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0600)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := errors.Join(pprof.WriteHeapProfile(f), f.Close()); err != nil {
+		t.Fatal(err)
+	}
+	private := t.TempDir()
+	if err := os.Chmod(private, 0700); err != nil {
+		t.Fatal(err)
+	}
+	out := filepath.Join(private, "evidence.json")
+	if err := dispatch([]string{"bundle", "-dir", source, "-out", out, "-profile", "heap.pprof", "-profile-top"}); err != nil {
+		t.Fatal(err)
+	}
+	body, err := os.ReadFile(out)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var packet struct {
+		Run struct {
+			ExitCode int `json:"exit_code"`
+		} `json:"run"`
+		Artifacts []struct {
+			Name       string `json:"name"`
+			Validation string `json:"validation"`
+			Top        string `json:"private_pprof_top"`
+		} `json:"artifacts"`
+	}
+	if err := json.Unmarshal(body, &packet); err != nil {
+		t.Fatal(err)
+	}
+	found := false
+	for _, a := range packet.Artifacts {
+		if a.Name == "heap.pprof" {
+			found = a.Validation == "passed" && len(a.Top) > 0 && len(a.Top) <= 16<<10 && strings.Contains(a.Top, "Type:") && strings.Contains(a.Top, "flat") && strings.Contains(a.Top, "cum")
+		} else if a.Top != "" {
+			t.Fatal("unselected artifact acquired profile text")
+		}
+	}
+	if !found || packet.Run.ExitCode != 1 {
+		t.Fatal("private top table missing or original command FAIL lost")
+	}
+	refused := filepath.Join(private, "unselected.json")
+	if err := dispatch([]string{"bundle", "-dir", source, "-out", refused, "-profile-top"}); err == nil {
+		t.Fatal("profile top without explicit profile selection accepted")
+	}
+	if _, err := os.Stat(refused); !errors.Is(err, os.ErrNotExist) {
+		t.Fatal("invalid selection wrote package")
+	}
+}
+
+func TestEvidenceTopWriterRefusesOverflowWithoutGrowing(t *testing.T) {
+	w := &evidenceTopWriter{remaining: 16 << 10}
+	input := []byte(strings.Repeat("x", (16<<10)+1))
+	if n, err := w.Write(input); n != 16<<10 || err == nil || w.body.Len() != 16<<10 {
+		t.Fatal("profile table output budget not enforced")
+	}
+	if n, err := w.Write([]byte("extra")); n != 0 || err == nil || w.body.Len() != 16<<10 {
+		t.Fatal("overflow continued growing private table")
 	}
 }

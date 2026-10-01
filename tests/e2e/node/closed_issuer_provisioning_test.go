@@ -78,7 +78,7 @@ func testClosedIssuerProvisioningParticipant(t *testing.T, carrier string, nodeC
 		t.Fatalf("issuer inventory does not supply all six class/window keys: %v", err)
 	}
 	identifier := func(value byte) string { return hex.EncodeToString(bytes.Repeat([]byte{value}, 32)) }
-	config, acceptedState, records, endpointBinary, acceptArguments := closedProvisioningStateSize(t, network, issuerNode, statePrivate, nodePrivate, now, carrier, nodeCount)
+	config, acceptedState, records, endpointBinary, acceptArguments, ports := closedProvisioningStateSize(t, network, issuerNode, statePrivate, nodePrivate, now, carrier, nodeCount)
 	roles := closedTextTopologyRoles(nodeCount)
 	nodePlans := make([]map[string]any, len(records))
 	for index, record := range records {
@@ -252,7 +252,7 @@ func testClosedIssuerProvisioningParticipant(t *testing.T, carrier string, nodeC
 	if retainErr != nil || closeErr != nil || retained != route {
 		t.Fatalf("reopened closed State changed: %v / %v", retainErr, closeErr)
 	}
-	runClosedIssuerProcess(t, nodeBinary, endpointBinary, acceptArguments, signedPath, issuerRoot, network, issuerNode, statePrivate, nodePrivate, now, nodeCount, func(unavailable bool) { exchange(config, unavailable) }, func(resolutionRoot string, sourcePlan map[string]any) {
+	runClosedIssuerProcess(t, nodeBinary, endpointBinary, acceptArguments, signedPath, issuerRoot, network, issuerNode, statePrivate, nodePrivate, now, nodeCount, ports, func(unavailable bool) { exchange(config, unavailable) }, func(resolutionRoot string, sourcePlan map[string]any) {
 		if participant != nil {
 			participant(config, endpointBinary, resolutionRoot, sourcePlan)
 		}

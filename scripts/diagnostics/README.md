@@ -5,6 +5,34 @@ live log panel, finite diagnostic captures and private process debug mode. Start
 with [the owner and observability inventory](../../docs/development/local-diagnostics.md).
 Generated evidence, profiles, state and caches always remain outside Git.
 
+## Start here: debugging handover
+
+Use the current source and explicitly built helper; an old `:local` image does
+not acquire new CLI features when the repository changes. Windows operators use
+Docker Desktop's native Linux containers through `invoke.ps1`; the private
+socket debug workflow is Linux-native, not a qualified Windows-native listener.
+
+| Question | Existing tool and next step |
+|---|---|
+| Which Reader stage refused or stalled? | Select its private socket with `connection -socket /private/process.sock -json`, then follow [one failed Reader operation](#agent-workflow-locate-one-failed-reader-operation). |
+| CPU, allocation or contention cost? | Explicitly capture `cpu`, `heap`, `allocs`, `block` or `mutex` using [live process debug](#live-network-process-debug-mode); inspect the private profile with standard Go pprof. |
+| Goroutines blocked, operation not joining? | Select `goroutine` and `trace`; inspect the Reader task and scheduler in the private standard trace viewer. |
+| Preserve a reproduction for another local agent? | Use the [private package](#private-reproduction-evidence-package) with selected profile/trace/command receipts; retain the original failed outcome and gaps. |
+| Check whether collection itself failed? | Read runtime/capture receipts and monitor delivery/cleanup status separately from the supervised command outcome. |
+
+Enable `ARDENTS_DEBUG_SOCKET` only for the explicitly owned reproduction and
+stop the diagnostic process/viewer afterwards. Ordinary monitoring enables no
+profile sampling or debug socket. Start trace before the operation and retain
+it through joined cleanup; missing boundaries or dropped records are partial
+captures. Reader task association applies only inside that trace. CPU/heap
+profiles remain process-wide; an empty CPU profile supplies no cost diagnosis.
+Private profile bytes, raw output and command arguments never enter Grafana/Loki.
+
+The ready-component monitoring backend is still the R171 integration candidate;
+its experiments do not qualify native installation or product restart. Its
+admission and normal-Node incident-history route must be finished before claiming
+the complete monitoring goal. The commands below already support private local
+investigation without requiring that backend.
 ## Build and check
 
 From repository root:
@@ -86,11 +114,11 @@ retain and inspect the failure before explicitly cleaning its private evidence.
 
 | Flag | Default | Meaning |
 |---|---|---|
-| `-segment-bytes` | 8 MiB | Maximum segment size; at least the 16 KiB input fragment limit |
-| `-retain-bytes` | 64 MiB | Total owned log payload bytes; between segment size and 1 GiB |
-| `-retain-files` | 9 | All log-directory files, including the empty ownership lock; 2–128 |
+| `-segment-bytes` | 16 MiB | Maximum segment size; at least the 16 KiB input fragment limit |
+| `-retain-bytes` | 1 GiB | Total owned log payload bytes; between segment size and 1 GiB |
+| `-retain-files` | 65 | All log-directory files, including the empty ownership lock; 2–128 |
 | `-rotate-after` | 15 min | Rotate on the next record after segment age |
-| `-retain-for` | 24 h | Maximum segment age; positive and at least rotation age, at most 365 days |
+| `-retain-for` | 72 h | Maximum segment age; positive and at least rotation age, at most 365 days |
 | `-timeout` | 0 | Follow the selected source until signal; optional finite duration up to 24 h |
 | `-raw` | false | Explicit private retention of sensitive original stdout/stderr |
 | `-listen` | empty | No HTTP listener unless explicitly selected |
@@ -183,6 +211,79 @@ For an interactive trace/pprof UI, publish only a chosen host loopback port,
 select a read-only evidence mount, and run `go tool trace -http=0.0.0.0:8091`
 or `go tool pprof -http=0.0.0.0:8091` inside that disposable container. Never
 publish profiles to an external service or wildcard host address.
+
+## Agent workflow: locate one failed Reader operation
+
+Start with the safe event history and `diag connection -json` from the explicitly
+selected process. Preserve the source/build receipt, command exit, capture loss
+and joined outcome separately. A process-wide resource spike or a matching wall
+clock is not proof that this operation caused it.
+
+For an authorized reproduction, enable that process's private debug socket before
+its first eligible Reader Open. Start the explicit trace capture in another
+terminal before the Application operation (see the Reader capture commands below).
+Keep the window active through cleanup; a long operation can exceed the maximum
+30-second trace window and must remain partial. Do not retry a live product
+operation merely to obtain a trace.
+
+Open the retained trace using the standard viewer. On a native Linux diagnostic
+host, with the installed Go tools and private artifact selected explicitly:
+
+```sh
+BROWSER=/bin/true go tool trace -http=127.0.0.1:8091 /private/reader-runtime.trace
+# Open http://127.0.0.1:8091/usertask?type=ardents.reader locally.
+# Stop the viewer after diagnosis; it serves sensitive process-wide trace data.
+```
+
+The helper image also includes the prebuilt `trace` command. For a Docker viewer,
+use the read-only evidence mount and host-loopback publishing described above;
+the container's listener must be reachable through that selected mapping. A
+native loopback listener inside a container is not the host loopback listener.
+
+Use the selected task page before exporting a verbose process-wide text dump:
+
+1. Require one selected task, both task boundaries and a complete capture. Missing
+   boundaries or `reader.capture=incomplete` mean incomplete evidence. The task
+   can end while records are lost; the viewer's `(complete)` alone is insufficient.
+2. Read started/completed/failed stage pairs and their elapsed times. For example,
+   `service-authentication.completed` followed by `local-request.failed` localizes
+   the observed refusal after authentication; it does not reveal the remote cause.
+3. Check `reader.context-stop` independently of stage failure. Cancellation can
+   coexist with another error; do not replace the joined outcome with a guessed
+   cancellation diagnosis.
+4. Inspect Service/worker closure, caller join, session release and final outcome.
+   Nested stages overlap; do not sum them. The standard viewer may render a fixed
+   annotation as `log "local-request.failed"` without displaying its category.
+5. If needed, inspect the same task's goroutine/scheduler views. Capture separate
+   CPU/heap/block/mutex profiles only for the specific question being investigated.
+   They remain process-wide observations, without this task's operation binding.
+
+A small reproducible Linux regression uses existing owner tests; it is not an
+installed deployment or successful worker-launch qualification. Run in the checked
+Linux environment with a new private output directory outside the source tree:
+
+```sh
+umask 077
+mkdir /private/reader-cancel-a
+# Real Open admission/activation, cancellation while actual launch gate is held.
+go test ./internal/endpoint -run '^TestTextConnectionObservationsJoinRealCancelledLaunch$' \
+  -count=1 -timeout=30s -trace=/private/reader-cancel-a/runtime.trace
+# Real Service authentication/request/cleanup; only launch qualification is fixture supplied.
+mkdir /private/reader-service-cancel-a
+go test ./internal/endpoint \
+  -run '^TestTextConnectionObservationsThroughRealServiceAndCleanup$/^cancel-before-request$' \
+  -count=1 -timeout=30s -trace=/private/reader-service-cancel-a/runtime.trace
+```
+
+The second task should show completed Service authentication, failed local request
+and Service close, completed worker close/caller join/session release, and joined
+`canceled` outcome. The first instead retains failed worker activation/launch,
+separate observed cancellation and joined `failed` outcome. The existing tests
+also assert the private Connection snapshot and actual cleanup ownership. Test
+trace capture covers the process lifetime; the live socket capture has its own
+finite window. Retain earlier consumer/test failures when checking a new attempt.
+Keep traces, viewer pages and profiles private; neither monitoring labels nor
+Loki/Grafana receive them. Ordinary monitoring enables no debug socket or profiling.
 
 ## Live network process debug mode
 
@@ -435,6 +536,23 @@ is separate from run-a: process/run association is unproven. The loopback panel
 can be read by other local processes/users; its fixed projection still contains
 private timing metadata. It is excluded from the command-report export.
 
+To inspect the selected Reader in standard Go trace, start a private capture
+before performing the already authorized Application operation:
+
+    diag snapshot -socket /private/process.sock -kind trace -seconds 10 -sensitive -out /evidence/reader-runtime.trace
+
+While that capture is active, perform one Reader operation through its existing
+Application Interface. The recorder still selects only the first eligible Open;
+it never rearms or retries product work. Open the retained private artifact with
+the standard Go trace viewer using the private, loopback-only recipe above.
+Find the task type `ardents.reader` and its `reader.stage` annotations. Each
+annotation's runtime Task ID identifies the same selected operation even when
+its stage completion runs in another goroutine. `reader.outcome` records the
+conservative joined outcome; `reader.capture=incomplete` signals lost records.
+A capture must cover operation start through joined cleanup to support a whole
+operation observation. Missing boundaries or an early-ended capture are partial.
+Separate CPU/heap profiles remain process-wide; this task does not bind them to
+the Reader. No Task IDs or request data become normal log/index labels.
 Durations of nested JOIN/authentication phases overlap. A missing Context
 deadline is displayed as unknown, not zero budget. Untyped cancellation-related
 refusals remain failed; context_stop separately reports observed Context
@@ -492,9 +610,33 @@ extension supplies that claim. Validation failure returns nonzero and retains a
 partial package; parser acceptance does not bind it to a command/executable or
 prove useful profile coverage. Raw data stays private in the original capture.
 
+To retain a useful offline table for the debugging implementer, explicitly add
+`-profile-top` alongside `-profile`. For example:
+
+```sh
+ardents-diagnostics bundle -dir /state/completed-run -out /state/packages/top.json \
+  -profile cpu.pprof -profile heap.pprof -profile-top
+```
+
+Read each selected artifact's `private_pprof_top` locally. Standard pprof reports
+the default sample type, total, and flat/cumulative costs for up to ten rows.
+The table is bounded to 16 KiB per profile and may contain sensitive embedded
+symbols, build metadata and comments. It is private debug evidence; never upload
+it to the monitoring log stream or treat it as safe browser content. Without the
+flag, parser output remains discarded. The flag requires an explicit pprof
+selection; it does not retain trace-derived profiles, execute the selected
+program or enable source/remote symbolization. Empty, invalid UTF-8 or oversized
+tables fail selection and retain an incomplete package, without successful
+partial text. Existing package-size and time limits still apply.
+
+Check profile type and total before interpreting the table. A quiet CPU profile
+may have insufficient samples; parser acceptance and a top function do not prove
+a cause of failure. Selected profile/build/operation association remains unproven,
+and the original command FAIL is retained independently.
+
 Assembly uses `-timeout` (default 10s, positive and at most 30s); cancellation is
 propagated to input hashing, Reader and parser requests. Each parser request has
-at most 2s, bounded discarded output and joined process-group cancellation.
+at most 2s, bounded output and joined process-group cancellation.
 Run inside the selected diagnostic container with finite memory/CPU and writable
 cache prerequisites. The deadline is cooperative for filesystem I/O; an output
 file retained after an I/O/deadline error is not a successful command result.
@@ -540,3 +682,91 @@ standard-library parsers, without third-party tool downloads. Clearing or changi
 the Go build cache after installation does not trigger compilation during bundle
 parsing. The two-second per-parser and whole-assembly limits remain unchanged.
 Missing tools cause failed validation; no automatic installation or passing skip.
+### Selected-process memory metrics
+
+The optional monitor panel serves GET /metrics as well as its existing live view
+and status. Example inside the explicitly selected local diagnostic environment:
+
+~~~sh
+ardents-diagnostics monitor -name node -out /state/node-monitor \
+  -listen 127.0.0.1:8094 -sample-max-age 5s -- \
+  /evidence/bin/ardents-node node --config /evidence/node-config.json
+# GET http://127.0.0.1:8094/metrics from the selected local context.
+~~~
+
+Use the actual producer interval to choose -sample-max-age, positive and<=1h;
+the example5s is not a universal Node interval. Default0 exports supervisor and
+delivery health only and explicitly reports resource_export_enabled0. No
+profiling is enabled. Metrics read memory, so failed file/snapshot sinks remain
+visible. The endpoint uses fixed unlabelled names under diagnostic_selected_.
+Supervisor freshness3s, producer age, source survival and resource observation
+are separate signals. Process survival is not product readiness. Stale/stopped
+sources omit resource values; absent is not zero. Invalid observations return503
+rather than a partial success. Session counter resets and source gaps still need
+explicit query handling; do not interpolate through them.
+
+See the local-diagnostics owner for scope/unit catalogue and excluded native
+unpopulated RSS/admission and role-specific fields. log_lost_bytes_total and
+queue/console loss are delivery failures; log_expired_bytes_total is intentional
+retention expiry. Observed sink flags do not require reopening that sink.
+
+The panel's existing Host/origin protections also cover metrics. A collector in
+a separate container cannot simply scrape a foreign container Host; do not
+disable this guard. Use the separate mutually authenticated collector listener
+below before integrating this memory endpoint into the ready backend stack. Source
+metadata remains private local engineering data; no raw file/profile access,
+product authority or public administration interface is granted.
+
+### Protected collector-only metrics
+
+Provision a dedicated diagnostic CA, monitor server certificate and one selected
+collector client certificate outside the repository. The server certificate must
+cover the exact IP or DNS name verified by the collector. Do not reuse product
+keys. In a native Linux private volume, prepare /state/metrics-certs as owned
+0700 and server.crt, server.key, client-ca.crt as owned 0600 regular single-link
+files. Windows bind mounts do not prove these Unix ownership/mode requirements.
+
+The selected client's SHA256 pin is the hash of its DER SubjectPublicKeyInfo,
+not its Common Name or the hash of its certificate. Compute it with the installed
+OpenSSL tool, retaining no private key in the command output:
+
+~~~sh
+openssl x509 -in /private/collector.crt -pubkey -noout |
+  openssl pkey -pubin -outform DER |
+  openssl dgst -sha256
+
+ardents-diagnostics monitor -name node -out /state/node-monitor \
+  -console=false -container \
+  -metrics-listen 0.0.0.0:9443 -metrics-certs /state/metrics-certs \
+  -metrics-client-pin <CLIENT_SPKI_SHA256_HEX> -sample-max-age 5s -- \
+  /evidence/bin/ardents-node node --config /evidence/node-config.json
+~~~
+
+Keep the listener in the selected internal Docker network; do not publish a
+wildcard host port. Configure the scraper with HTTPS, the independently selected
+server CA, the client certificate and private key, and server_name matching the
+certificate. Leave certificate verification enabled. The three monitor flags
+are required together. The endpoint grants GET /metrics only and uses TLS 1.3;
+all other paths are unavailable. The ordinary optional panel remains separate.
+
+Certificate/pin rotation requires monitor restart. Expired clients are refused,
+including requests on retained TLS connections. On source exit the observation
+remains available until the monitoring command is cancelled. Cancellation joins
+the listener; listener failure remains visible separately from source and file
+sink health. No debug capture is enabled by scraping.
+
+These are monitor connection instructions, not a qualified ready-stack deployment
+or an installed Node acceptance claim. Build the updated diagnostic tool before
+using new flags; an older installed helper image does not contain this change.
+
+The `/metrics` catalogue also exposes `diagnostic_selected_log_retained_bytes`,
+`log_retained_files`, `log_retention_limit_bytes`, `log_retention_limit_files`
+(all prefixed `diagnostic_selected_`) and
+`diagnostic_selected_log_storage_observation_available`. These are fresh local
+payload-accounting observations/configuration; file count includes the lock.
+Stale or unconfigured storage has availability0 and no current quantities.
+The existing `diagnostic_selected_log_expired_bytes_total` is intentional
+retention expiry for the current session, separately from lost delivery.
+Reopening preserves retained file/byte inventory but resets session counters.
+Physical disk allocation and continuously enforced filesystem quotas are outside
+these metrics.

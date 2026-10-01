@@ -1,0 +1,8 @@
+route:
+  receiver: local-observation-only
+  group_by: [alertname, scope]
+  group_wait: 1s
+  group_interval: 2s
+  repeat_interval: 1h
+receivers:
+  - name: local-observation-only

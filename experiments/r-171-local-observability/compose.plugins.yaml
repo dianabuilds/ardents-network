@@ -1,0 +1,8 @@
+services:
+  grafana:
+    environment:
+      GF_PATHS_PLUGINS: /plugins
+      GF_PLUGIN_PROMETHEUS_AS_EXTERNAL: "true"
+      GF_PLUGIN_LOKI_AS_EXTERNAL: "true"
+    volumes:
+      - ${R171_PATCHED_PLUGINS:?explicit checked plugin tree required}/plugins:/plugins:ro

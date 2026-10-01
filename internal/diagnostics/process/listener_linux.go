@@ -18,7 +18,11 @@ import (
 	"time"
 )
 
-const maximumProfileBytes = 64 << 20
+const (
+	maximumProfileBytes      = 64 << 20
+	blockSamplingNanoseconds = 1_000_000
+	mutexSamplingFraction    = 10
+)
 
 type limitedWriter struct {
 	output    io.Writer
@@ -149,14 +153,17 @@ func open(ctx context.Context, path string) (func() error, error) {
 		runtime.ReadMemStats(&m)
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(struct {
-			At          time.Time `json:"at"`
-			Goroutines  int       `json:"goroutines"`
-			HeapAlloc   uint64    `json:"heap_alloc_bytes"`
-			HeapSys     uint64    `json:"heap_sys_bytes"`
-			HeapObjects uint64    `json:"heap_objects"`
-			NumGC       uint32    `json:"gc_cycles"`
-			PauseTotal  uint64    `json:"gc_pause_total_ns"`
-		}{time.Now().UTC(), runtime.NumGoroutine(), m.HeapAlloc, m.HeapSys, m.HeapObjects, m.NumGC, m.PauseTotalNs})
+			At            time.Time `json:"at"`
+			Goroutines    int       `json:"goroutines"`
+			HeapAlloc     uint64    `json:"heap_alloc_bytes"`
+			HeapSys       uint64    `json:"heap_sys_bytes"`
+			HeapObjects   uint64    `json:"heap_objects"`
+			NumGC         uint32    `json:"gc_cycles"`
+			PauseTotal    uint64    `json:"gc_pause_total_ns"`
+			BlockRate     int       `json:"block_sampling_rate_ns"`
+			MutexFraction int       `json:"mutex_sampling_fraction"`
+			MemoryRate    int       `json:"memory_sampling_rate_bytes"`
+		}{time.Now().UTC(), runtime.NumGoroutine(), m.HeapAlloc, m.HeapSys, m.HeapObjects, m.NumGC, m.PauseTotalNs, blockSamplingNanoseconds, mutexSamplingFraction, runtime.MemProfileRate})
 	})
 	mux.HandleFunc("GET /profile/{kind}", func(w http.ResponseWriter, r *http.Request) {
 		select {
@@ -210,8 +217,8 @@ func open(ctx context.Context, path string) (func() error, error) {
 		mux.ServeHTTP(w, r)
 	})
 	server := &http.Server{Handler: handler, ReadHeaderTimeout: 2 * time.Second, ReadTimeout: 2 * time.Second, WriteTimeout: 35 * time.Second, IdleTimeout: 2 * time.Second, MaxHeaderBytes: 4096, BaseContext: func(net.Listener) context.Context { return runCtx }}
-	runtime.SetBlockProfileRate(1_000_000)
-	previousMutex := runtime.SetMutexProfileFraction(10)
+	runtime.SetBlockProfileRate(blockSamplingNanoseconds)
+	previousMutex := runtime.SetMutexProfileFraction(mutexSamplingFraction)
 	terminal := make(chan error, 1)
 	go func() {
 		terminal <- server.Serve(privateListener{Listener: listener, slots: make(chan struct{}, 4), retainCleanup: retainCleanup})

@@ -28,6 +28,8 @@ type monitorLogRow struct {
 	Entry    event     `json:"entry"`
 }
 type monitorState struct {
+	MetricsFailed       bool               `json:"metrics_failed"`
+	MetricSampleMaxAge  time.Duration      `json:"metric_sample_max_age_ns"`
 	SourceName          string             `json:"source_name"`
 	SourcePID           int                `json:"source_pid"`
 	LastOutput          *time.Time         `json:"last_output,omitempty"`
@@ -62,6 +64,7 @@ type monitorState struct {
 	SnapshotFailed      bool               `json:"snapshot_failed"`
 	SinksJoined         bool               `json:"sinks_joined"`
 	CleanupFailed       bool               `json:"cleanup_failed"`
+	LogsObservedAt      time.Time          `json:"logs_observed_at,omitempty"`
 	Logs                logStoreStats      `json:"logs"`
 	Tail                []monitorLogRow    `json:"tail"`
 }
@@ -85,7 +88,7 @@ type monitorDelivery struct {
 // File I/O never runs in producer drains or while holding the state lock.
 func newMonitorDelivery(store *logStore, console *os.File, raw bool, at time.Time) *monitorDelivery {
 	d := &monitorDelivery{store: store, console: console, fileQueue: make(chan monitorRecord, 128), consoleQueue: make(chan []byte, 64), fileDone: make(chan error, 1), consoleDone: make(chan error, 1),
-		state: monitorState{Schema: "ardents-monitor-v1", Started: at, Updated: at, Raw: raw, SourceName: "selected-process", Limits: store.policy, Logs: store.Stats()}}
+		state: monitorState{Schema: "ardents-monitor-v1", Started: at, Updated: at, Raw: raw, SourceName: "selected-process", Limits: store.policy, Logs: store.Stats(), LogsObservedAt: at}}
 	go d.runFile()
 	go d.runConsole()
 	return d
@@ -218,8 +221,10 @@ func (d *monitorDelivery) runFile() {
 		case record, ok := <-d.fileQueue:
 			if !ok {
 				err := d.store.Close()
+				stats := d.store.Stats()
 				d.mu.Lock()
-				d.state.Logs = d.store.Stats()
+				d.state.Logs = stats
+				d.state.LogsObservedAt = time.Now().UTC()
 				d.state.FileFailed = d.state.FileFailed || err != nil
 				d.mu.Unlock()
 				d.fileDone <- err
@@ -229,6 +234,7 @@ func (d *monitorDelivery) runFile() {
 			stats := d.store.Stats()
 			d.mu.Lock()
 			d.state.Logs = stats
+			d.state.LogsObservedAt = time.Now().UTC()
 			d.state.FileFailed = d.state.FileFailed || err != nil
 			d.mu.Unlock()
 		case at := <-tick.C:
@@ -236,6 +242,7 @@ func (d *monitorDelivery) runFile() {
 			stats := d.store.Stats()
 			d.mu.Lock()
 			d.state.Logs = stats
+			d.state.LogsObservedAt = time.Now().UTC()
 			d.state.FileFailed = d.state.FileFailed || err != nil
 			d.mu.Unlock()
 		}
@@ -417,22 +424,29 @@ func monitorCommand(args []string) (outcome error) {
 	raw := flags.Bool("raw", false, "retain sensitive stdout and stderr")
 	console := flags.Bool("console", true, "live projected JSON console (bounded pipe/terminal)")
 	listen := flags.String("listen", "", "optional local live log panel address")
+	metricsListen := flags.String("metrics-listen", "", "optional separate mutual-TLS collector metrics address")
+	metricsCerts := flags.String("metrics-certs", "", "private diagnostic directory: server.crt, server.key, client-ca.crt")
+	metricsPin := flags.String("metrics-client-pin", "", "SHA256 of the selected diagnostic client's DER SubjectPublicKeyInfo")
 	container := flags.Bool("container", false, "allow container wildcard; publish host loopback only")
 	name := flags.String("name", "selected-process", "safe local source label (ASCII letters, digits, dash, underscore)")
 	timeout := flags.Duration("timeout", 0, "optional finite run budget; zero follows source until signal")
-	segmentBytes := flags.Int64("segment-bytes", 8<<20, "bytes per log segment")
-	maxBytes := flags.Int64("retain-bytes", 64<<20, "total log bytes")
-	maxFiles := flags.Int("retain-files", 9, "log files including empty ownership lock")
+	sampleMaxAge := flags.Duration("sample-max-age", 0, "explicit Node metric freshness budget; zero disables resource export")
+	segmentBytes := flags.Int64("segment-bytes", 16<<20, "bytes per log segment")
+	maxBytes := flags.Int64("retain-bytes", 1<<30, "total log bytes")
+	maxFiles := flags.Int("retain-files", 65, "log files including empty ownership lock")
 	segmentAge := flags.Duration("rotate-after", 15*time.Minute, "rotate on next record after age")
-	maxAge := flags.Duration("retain-for", 24*time.Hour, "maximum segment age")
+	maxAge := flags.Duration("retain-for", 72*time.Hour, "maximum segment age")
 	if err := flags.Parse(args); err != nil {
 		return err
 	}
 	if !validMonitorName(*name) {
 		return errors.New("monitor name must be a safe label of at most 64 ASCII characters")
 	}
-	if len(flags.Args()) == 0 || *timeout < 0 || *timeout > 24*time.Hour || *segmentBytes < lineLimit {
+	if len(flags.Args()) == 0 || *timeout < 0 || *timeout > 24*time.Hour || *segmentBytes < lineLimit || *sampleMaxAge < 0 || *sampleMaxAge > time.Hour {
 		return errors.New("monitor requires explicit -- command and valid limits")
+	}
+	if (*metricsListen == "") != (*metricsCerts == "") || (*metricsListen == "") != (*metricsPin == "") {
+		return errors.New("collector metrics requires address, private certificates and one client pin")
 	}
 	root, err := openMonitorRoot(*out)
 	if err != nil {
@@ -450,6 +464,7 @@ func monitorCommand(args []string) (outcome error) {
 	delivery := newMonitorDelivery(store, output, *raw, time.Now().UTC())
 	delivery.mu.Lock()
 	delivery.state.SourceName = *name
+	delivery.state.MetricSampleMaxAge = *sampleMaxAge
 	delivery.mu.Unlock()
 	var view *monitorView
 	if *listen != "" {
@@ -459,6 +474,14 @@ func monitorCommand(args []string) (outcome error) {
 		}
 		defer func() { outcome = errors.Join(outcome, view.close()) }()
 	}
+	var collector *monitorView
+	if *metricsListen != "" {
+		collector, err = openCollectorMetrics(*metricsListen, *container, delivery, *metricsCerts, *metricsPin)
+		if err != nil {
+			return errors.Join(err, delivery.close())
+		}
+		defer func() { outcome = errors.Join(outcome, collector.close()) }()
+	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	if *timeout > 0 {
@@ -467,8 +490,12 @@ func monitorCommand(args []string) (outcome error) {
 		defer cancel()
 	}
 	sourceErr := runMonitorSource(ctx, root, delivery, flags.Args())
-	if view != nil && ctx.Err() == nil {
-		sourceErr = errors.Join(sourceErr, maintainMonitorLogs(ctx, root, delivery, view.done))
+	if (view != nil || collector != nil) && ctx.Err() == nil {
+		done := collector
+		if view != nil {
+			done = view
+		}
+		sourceErr = errors.Join(sourceErr, maintainMonitorLogs(ctx, root, delivery, done.done))
 	}
 	return sourceErr
 }
@@ -697,10 +724,13 @@ func maintainMonitorLogs(ctx context.Context, root *os.Root, delivery *monitorDe
 	delivery.consoleQueue = make(chan []byte, 64)
 	delivery.fileDone = make(chan error, 1)
 	delivery.consoleDone = make(chan error, 1)
+	stats := store.Stats()
+	observedAt := time.Now().UTC()
 	delivery.mu.Lock()
 	delivery.state.RetentionActive = true
 	delivery.state.SinksJoined = false
-	delivery.state.Logs = store.Stats()
+	delivery.state.Logs = stats
+	delivery.state.LogsObservedAt = observedAt
 	delivery.mu.Unlock()
 	go delivery.runFile()
 	go delivery.runConsole()

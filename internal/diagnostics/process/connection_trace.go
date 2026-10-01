@@ -3,6 +3,7 @@ package process
 import (
 	"context"
 	"errors"
+	"runtime/trace"
 	"sync"
 	"time"
 )
@@ -41,15 +42,17 @@ type sessionCaptureContextKey struct{}
 // enabled process session. Its zero and nil values are disabled. It owns no product work,
 // deadlines, cancellation, authority or timers.
 type ConnectionTrace struct {
-	mu       sync.Mutex
-	now      func() time.Time
-	opened   time.Time
-	started  time.Time
-	claimed  bool
-	terminal bool
-	outcome  string
-	lost     uint64
-	records  []connectionRecord
+	mu           sync.Mutex
+	now          func() time.Time
+	opened       time.Time
+	started      time.Time
+	claimed      bool
+	terminal     bool
+	outcome      string
+	lost         uint64
+	records      []connectionRecord
+	traceContext context.Context
+	traceTask    *trace.Task
 }
 
 type connectionRecord struct {
@@ -91,6 +94,7 @@ func ReaderTrace(ctx context.Context) *ConnectionTrace {
 	}
 	capture.claimed = true
 	capture.started = capture.now()
+	capture.traceContext, capture.traceTask = trace.NewTask(context.Background(), "ardents.reader")
 	return capture
 }
 
@@ -104,7 +108,8 @@ func (capture *ConnectionTrace) Bind(ctx context.Context) context.Context {
 }
 
 // Observe records a fixed stage start and returns its once-only completion.
-// It performs bounded memory work only. Error text is never retained.
+// It performs bounded memory work and fixed private runtime-trace annotations.
+// It never enables tracing. Error text is never retained.
 func (capture *ConnectionTrace) Observe(stage ConnectionStage, ctx context.Context) func(error) {
 	if capture == nil || capture.now == nil || stage < Admission || int(stage) >= len(connectionStages) {
 		return ignoreConnectionOutcome
@@ -216,6 +221,12 @@ func (capture *ConnectionTrace) appendLocked(record connectionRecord) {
 		return
 	}
 	capture.records = append(capture.records, record)
+	if capture.traceContext != nil {
+		trace.Log(capture.traceContext, "reader.stage", record.Stage+"."+record.State)
+		if record.ContextStop != "" {
+			trace.Log(capture.traceContext, "reader.context-stop", record.Stage+"."+record.ContextStop)
+		}
+	}
 }
 
 // Finish marks joined completion, after all owned cleanup and caller callbacks.
@@ -234,6 +245,13 @@ func (capture *ConnectionTrace) Finish(err error) {
 	}
 	capture.terminal = true
 	capture.outcome = connectionOutcome(err)
+	if capture.traceTask != nil {
+		trace.Log(capture.traceContext, "reader.outcome", capture.outcome)
+		if capture.lost != 0 {
+			trace.Log(capture.traceContext, "reader.capture", "incomplete")
+		}
+		capture.traceTask.End()
+	}
 }
 
 func (capture *ConnectionTrace) snapshot() connectionSnapshot {

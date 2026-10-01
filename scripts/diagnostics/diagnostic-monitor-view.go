@@ -6,11 +6,14 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
+	"math"
 	"net"
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 )
@@ -67,6 +70,15 @@ func monitorHandler(delivery *monitorDelivery) http.Handler {
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
+		w.Write(body)
+	})
+	mux.HandleFunc("GET /metrics", func(w http.ResponseWriter, r *http.Request) {
+		body, err := monitorMetrics(delivery.snapshot(), time.Now().UTC())
+		if err != nil {
+			http.Error(w, "monitor metrics unavailable", http.StatusServiceUnavailable)
+			return
+		}
+		w.Header().Set("Content-Type", "text/plain; version=0.0.4; charset=utf-8")
 		w.Write(body)
 	})
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -190,3 +202,123 @@ function render(data){current=data;let s=data.state;text('samples','Измере
 async function update(force=false){if(busy||(paused&&!force))return;busy=true;try{const response=await fetch('/status',{cache:'no-store',signal:AbortSignal.timeout(3000)});if(!response.ok)throw Error();render(await response.json())}catch{text('source-state','Текущее состояние неизвестно');text('source-result','Связь со сборщиком потеряна');text('freshness','Сохранённый снимок от '+(current?new Date(current.state.updated).toLocaleTimeString('ru-RU'):'—'));text('collector-state','Источник наблюдений недоступен');text('faults','Не удалось получить свежий снимок. Последние записи оставлены на экране.')}finally{busy=false}}
 el('pause').onclick=()=>{paused=!paused;text('pause',paused?'Продолжить просмотр':'Пауза просмотра');if(paused)text('freshness','Просмотр приостановлен · снимок от '+(current?new Date(current.state.updated).toLocaleTimeString('ru-RU'):'—'));else update()};el('refresh').onclick=()=>update(true);el('stream').onchange=rows;el('kind').onchange=rows;el('search').oninput=rows;update();setInterval(update,1000);
 </script></html>`
+
+// monitorMetrics exposes only fixed safe signals from supervisor memory.
+// It reads no files and starts no sampling or profiling operation.
+func monitorMetrics(state monitorState, now time.Time) ([]byte, error) {
+	if state.Schema != "ardents-monitor-v1" || state.Started.IsZero() || state.Updated.IsZero() ||
+		state.Updated.After(now) || state.Started.After(state.Updated) ||
+		state.MetricSampleMaxAge < 0 || state.MetricSampleMaxAge > time.Hour {
+		return nil, errors.New("invalid metric observation interval")
+	}
+	var output strings.Builder
+	emit := func(name, kind, help string, value float64) {
+		name = "diagnostic_selected_" + name
+		fmt.Fprintf(&output, "# HELP %s %s\n# TYPE %s %s\n%s %g\n", name, help, name, kind, name, value)
+	}
+	boolean := func(value bool) float64 {
+		if value {
+			return 1
+		}
+		return 0
+	}
+	age := now.Sub(state.Updated)
+	fresh := age <= 3*time.Second
+	emit("monitor_fresh", "gauge", "Supervisor heartbeat within three seconds.", boolean(fresh))
+	emit("monitor_observation_age_seconds", "gauge", "Supervisor heartbeat age.", age.Seconds())
+	emit("session_started_seconds", "gauge", "Supervisor session start; counter reset boundary.", float64(state.Started.UnixNano())/1e9)
+	emit("resource_export_enabled", "gauge", "Explicit producer freshness budget configured.", boolean(state.MetricSampleMaxAge > 0))
+	if fresh {
+		if state.SourcePID > 0 || state.StartFailed || state.SourceExit != nil {
+			emit("source_process_alive", "gauge", "Observed process survival; not product readiness.", boolean(state.SourceAlive))
+		}
+		for _, signal := range []struct {
+			name, help string
+			value      bool
+		}{
+			{"log_file_failed", "Observed retained log sink failure.", state.FileFailed},
+			{"console_failed", "Observed projected console failure.", state.ConsoleFailed},
+			{"snapshot_failed", "Observed independent snapshot writer failure.", state.SnapshotFailed},
+			{"metrics_listener_failed", "Observed protected collector listener failure.", state.MetricsFailed},
+			{"retention_failed", "Observed retained log pruning failure.", state.RetentionFailed},
+			{"cleanup_failed", "Observed owned cleanup failure.", state.CleanupFailed},
+		} {
+			emit(signal.name, "gauge", signal.help, boolean(signal.value))
+		}
+		for _, signal := range []struct {
+			name, help string
+			value      int64
+		}{
+			{"queue_dropped_bytes_total", "Session bytes lost at delivery queues.", state.QueueDroppedBytes},
+			{"console_dropped_bytes_total", "Session bytes lost at console delivery.", state.ConsoleDroppedBytes},
+			{"log_lost_bytes_total", "Session bytes lost at retained log delivery.", state.Logs.LostBytes},
+			{"log_expired_bytes_total", "Session bytes intentionally expired by retention; not failed delivery.", state.Logs.ExpiredBytes},
+		} {
+			if signal.value < 0 {
+				return nil, errors.New("invalid delivery metric")
+			}
+			emit(signal.name, "counter", signal.help, float64(signal.value))
+		}
+	}
+	// Limits originate from the admitted log store, not producer resource fields.
+	// These are payload accounting gauges; they do not measure physical disk use.
+	storageFresh := !state.LogsObservedAt.IsZero() && !state.LogsObservedAt.After(now) && !state.LogsObservedAt.Before(state.Started) && now.Sub(state.LogsObservedAt) <= 3*time.Second
+	storageAvailable := fresh && storageFresh && state.Limits.SegmentBytes > 0 && state.Limits.MaxBytes >= state.Limits.SegmentBytes && state.Limits.MaxFiles >= 2
+	emit("log_storage_observation_available", "gauge", "Fresh admitted log payload accounting; not filesystem allocation.", boolean(storageAvailable))
+	if storageAvailable {
+		if state.Logs.RetainedBytes < 0 || state.Logs.RetainedBytes > state.Limits.MaxBytes || state.Logs.Files < 1 || state.Logs.Files > state.Limits.MaxFiles {
+			return nil, errors.New("invalid retained log accounting")
+		}
+		emit("log_retained_bytes", "gauge", "Observed retained log payload bytes; excludes filesystem metadata and status files.", float64(state.Logs.RetainedBytes))
+		emit("log_retained_files", "gauge", "Observed owned log-directory files including the empty ownership lock.", float64(state.Logs.Files))
+		emit("log_retention_limit_bytes", "gauge", "Configured retained payload budget; not filesystem quota.", float64(state.Limits.MaxBytes))
+		emit("log_retention_limit_files", "gauge", "Configured file budget including the empty ownership lock.", float64(state.Limits.MaxFiles))
+	}
+	filesystemAvailable := storageAvailable && state.Logs.FilesystemAvailable
+	emit("log_filesystem_observation_available", "gauge", "Fresh capacity observation of the filesystem containing the selected logs.", boolean(filesystemAvailable))
+	if filesystemAvailable {
+		if state.Logs.FilesystemTotalBytes <= 0 || state.Logs.FilesystemFreeBytes < 0 || state.Logs.FilesystemFreeBytes > state.Logs.FilesystemTotalBytes {
+			return nil, errors.New("invalid log filesystem capacity")
+		}
+		emit("log_filesystem_total_bytes", "gauge", "Whole log filesystem capacity; may be tmpfs, not host disk or Node allocation.", float64(state.Logs.FilesystemTotalBytes))
+		emit("log_filesystem_available_bytes", "gauge", "Whole log filesystem bytes available to the monitor; includes shared usage and reserved capacity.", float64(state.Logs.FilesystemFreeBytes))
+	}
+	available := false
+	row := state.LatestSample
+	if fresh && state.SourceAlive && state.MetricSampleMaxAge > 0 && row != nil &&
+		row.Entry.Schema == "ardents-node-event-v1" && row.Entry.Kind == "resource-sample" {
+		producer, err := time.Parse(time.RFC3339Nano, row.Entry.At)
+		if err != nil || producer.After(now) || row.At.After(now) ||
+			producer.Before(state.Started) || row.At.Before(state.Started) {
+			return nil, errors.New("invalid selected producer observation")
+		}
+		emit("sample_age_seconds", "gauge", "Selected producer observation age.", now.Sub(producer).Seconds())
+		available = now.Sub(producer) <= state.MetricSampleMaxAge && now.Sub(row.At) <= state.MetricSampleMaxAge
+		if available {
+			// Both current Node samplers measure cgroup CPU and memory. The event
+			// schema does not identify which sampler populated other fields;
+			// their encoded defaults are not availability evidence.
+			for _, signal := range []struct {
+				field, name, kind, help string
+				scale                   float64
+			}{
+				{"cpu_usage_usec", "cgroup_cpu_usage_seconds_total", "counter", "Selected cgroup cumulative CPU time; reset breaks continuity.", 1e-6},
+				{"memory_bytes", "cgroup_memory_bytes", "gauge", "Selected cgroup current memory; not process RSS.", 1},
+			} {
+				value, ok := row.Entry.Resource[signal.field]
+				if !ok {
+					continue
+				}
+				if value < 0 || math.IsNaN(value) || math.IsInf(value, 0) {
+					return nil, errors.New("invalid selected resource metric")
+				}
+				emit(signal.name, signal.kind, signal.help, value*signal.scale)
+			}
+		}
+	}
+	emit("sample_fresh", "gauge", "Fresh selected Node observation; missing fields remain absent.", boolean(available))
+	if output.Len() > 16<<10 {
+		return nil, errors.New("metric response exceeds bound")
+	}
+	return []byte(output.String()), nil
+}

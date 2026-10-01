@@ -15,13 +15,23 @@ import (
 const timedDirectReceiptBytes = 8 + sha256.Size
 
 func sendTimedDirect(ctx context.Context, connection net.Conn, config DirectConfig) error {
+	stop := context.AfterFunc(ctx, func() { abortTimedDirect(connection) })
+	defer stop()
+
+	// Do not spend the measurement window while the peer has not begun receiving.
+	// This marker belongs only to the paired timed TCP baseline fixture.
+	var ready [1]byte
+	if _, err := io.ReadFull(connection, ready[:]); err != nil {
+		return err
+	}
+	if ready[0] != 1 {
+		return errors.New("timed direct receiver start is invalid")
+	}
 	started := time.Now()
 	deadline := started.Add(config.MeasureDuration)
 	if contextDeadline, ok := ctx.Deadline(); ok && contextDeadline.Before(deadline) {
 		deadline = contextDeadline
 	}
-	stop := context.AfterFunc(ctx, func() { abortTimedDirect(connection) })
-	defer stop()
 	if err := connection.SetWriteDeadline(deadline); err != nil {
 		return err
 	}
@@ -101,6 +111,9 @@ func receiveTimedDirect(ctx context.Context, connection net.Conn, config DirectC
 	stop := context.AfterFunc(ctx, func() { abortTimedDirect(connection) })
 	defer stop()
 	started := time.Now()
+	if _, err := connection.Write([]byte{1}); err != nil {
+		return err
+	}
 	hash, expected := sha256.New(), generator{seed: config.Seed}
 	value, want := make([]byte, 16_381), make([]byte, 16_381)
 	received := 0
