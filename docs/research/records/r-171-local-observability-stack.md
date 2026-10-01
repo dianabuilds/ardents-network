@@ -2080,3 +2080,28 @@ local source-input file refused success, attempted teardown, wrote complete=fals
 and restored state; Docker remained mocked only. The stable native final receipt
 and the separate changed-input refusal cover these two paths without treating
 successful native collection as an atomic snapshot guarantee.
+### Selected private artifact logical-byte observation (2026-10-01)
+
+Question: can selected external evidence be measured without reading contents or
+claiming the log-driver rotation policy as actual physical disk accounting?
+Falsification: over-budget input, redirected entries, volume roots, changed
+metadata or existing output must not produce success. Source ownership is
+checked; source privacy remains an unverified operator prerequisite.
+
+The metadata-only observer of the retained native collector-storage-final
+receipt tree measured1576654logical bytes,480files and42directories in two
+stable observations under the fixed128MiB budget. Final native controls refused
+134217729logical bytes while retaining incomplete/over-budget evidence, refused
+an actual junction without changing the unselected sentinel, and refused existing
+output without modifying its bytes. C:/ was separately refused before output
+creation. Evidence: ardents-r171-artifact-inventory-final-b,
+ardents-r171-artifact-controls-b, ardents-r171-volume-refusal-a (output absent).
+Bounded reviews found the volume-root trim defect and a source-privacy overclaim;
+both were corrected and rechecked. make quick-check completed exit0.
+
+Disposition: use this bounded logical-byte snapshot for selected private
+artifacts. It does not enforce a quota, inspect contents or establish physical
+allocation, alternate-stream coverage, Docker-log bytes, host-crash durability
+or complete disk-budget acceptance. File lengths/creation/write metadata are
+non-atomic observations, not stable open-handle file identities. No product
+permission or interception capability is added.

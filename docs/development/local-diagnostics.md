@@ -618,3 +618,12 @@ loss. It remains a warning after delivery recovery until the count is reset;
 absence is unknown and restart can clear it. This is neither a durable incident
 store nor acknowledgement history. Raw collector errors stay private; they do
 not enter the safe projected Node event stream or public profile output.
+### Private artifact storage observation
+
+The experiment also measures logical file lengths in one explicitly selected,
+account-owned external artifact root whose privacy remains an operator prerequisite, not an observation result. A bounded metadata-only double
+observation refuses redirects, changes and the selected 128-MiB overrun, retaining
+an aggregate private receipt. It does not read payload/profile content. This
+snapshot neither enforces a continuous quota nor proves physical allocation;
+Docker logs and filesystem metadata remain separate coverage. Invocation and
+limits belong to the experiment's private artifact observation recipe.

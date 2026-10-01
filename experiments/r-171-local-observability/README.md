@@ -931,3 +931,20 @@ for the collector session even after queue drain; a reset/restart may clear it.
 Absent counters remain unavailable. Native tests cover absent series, the first
 positive observation without a preceding zero, continued warning and reset.
 This is not durable incident, acknowledgement or notification-delivery history.
+### Private artifact logical-byte observation
+
+Run `powershell -NoProfile -File artifact-storage.ps1 -SourceRoot
+<EXACT_ACCOUNT_OWNED_PRIVATE_ROOT> -EvidenceRoot <NEW_PRIVATE_EXTERNAL_ROOT>`.
+The two roots must be disjoint and outside Git; whole-volume roots are refused. Source privacy is an operator prerequisite and is not verified by this observer. The observer reads metadata only,
+refuses reparse points and foreign root ownership, and writes an account/SYSTEM
+private aggregate receipt without source paths or contents. It makes two
+observations within a cooperative ten-second/ten-thousand-entry budget and
+refuses changed metadata. Failure retains an incomplete receipt after admission.
+
+The fixed 128-MiB budget applies to the sum of logical file lengths in the selected
+root. Hard-linked directory entries are counted separately. This is a bounded
+snapshot, not a continuously enforced quota or an atomic file-identity guarantee.
+Physical allocation, filesystem metadata, alternate data streams, Docker logs
+and other roots remain outside coverage; complete disk-budget verification stays
+false. In particular, Docker local-driver rotation settings are not measurements
+of actual allocated log bytes. The observer does not modify the selected tree.
