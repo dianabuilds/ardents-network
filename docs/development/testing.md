@@ -45,6 +45,11 @@ substitute for independent review.
   independent selected jobs all finish and report their failures. The exact
   candidate must still pass `make check` before integration, and a push to
   `main` repeats that complete gate.
+- `make staticcheck` also runs `standalone-staticcheck`: each maintained ignored
+  Go entrypoint in `scripts/` is analyzed separately with `GOOS=linux`,
+  `GOARCH=amd64` and `CGO_ENABLED=0`. The select-pr entrypoint uses its two
+  source files together. This cross-analysis can run on a Windows host and
+  does not execute or qualify Linux release operations.
 - Focused Linux race checks retain raw command, stdout, stderr, and exit status
   outside Git. They may compose existing owner tests for a bounded lifecycle
   fact, but do not turn that composition into an end-to-end qualification.
