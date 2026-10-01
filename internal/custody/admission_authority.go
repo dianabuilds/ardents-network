@@ -82,6 +82,9 @@ func (vault *Vault) issueAdmissionPermission(ctx context.Context, operation Oper
 		return Receipt{}, err
 	}
 	defer zero(password)
+	if !vault.now().UTC().Truncate(time.Hour).Equal(now) {
+		return Receipt{}, ErrInvalid
+	}
 	source, _, err := vault.openCurrentAdmissionAuthority(operation.RecordID, password, operation.Expected)
 	if err != nil {
 		return Receipt{}, err
@@ -130,7 +133,7 @@ func (vault *Vault) issueAdmissionPermission(ctx context.Context, operation Oper
 	if err != nil {
 		return Receipt{}, err
 	}
-	info, err := vault.writeAdmissionSuccessor(operation.RecordID, source, successor, password)
+	info, err := vault.writeAdmissionSuccessor(operation.RecordID, source, successor, password, now)
 	if err != nil {
 		return Receipt{}, err
 	}
@@ -425,7 +428,7 @@ func admissionLedgerFollowsFloor(state AuthorityState, floor authorityFloor) boo
 	return true
 }
 
-func (vault *Vault) writeAdmissionSuccessor(recordID string, source, expected AuthorityState, password []byte) (EnvelopeInfo, error) {
+func (vault *Vault) writeAdmissionSuccessor(recordID string, source, expected AuthorityState, password []byte, window time.Time) (EnvelopeInfo, error) {
 	path, err := admissionLedgerPath(vault.root, recordID)
 	if err != nil {
 		return EnvelopeInfo{}, err
@@ -460,6 +463,11 @@ func (vault *Vault) writeAdmissionSuccessor(recordID string, source, expected Au
 		return EnvelopeInfo{}, err
 	}
 	defer zero(envelope)
+	// Do not reserve an elapsed hour after password derivation. Once written,
+	// the existing successor recovery must still complete its durable floor.
+	if !vault.now().UTC().Truncate(time.Hour).Equal(window) {
+		return EnvelopeInfo{}, ErrInvalid
+	}
 	if err := writeAtomicPrivate(path, envelope); err != nil {
 		zero(envelope)
 		return EnvelopeInfo{}, err

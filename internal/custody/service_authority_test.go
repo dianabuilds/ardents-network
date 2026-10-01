@@ -2,6 +2,7 @@ package custody
 
 import (
 	"bytes"
+	"context"
 	"crypto/ed25519"
 	"crypto/sha256"
 	"errors"
@@ -107,6 +108,13 @@ func TestIssueServiceCredentialAdvancesAuthorityAndRetriesExactRequest(t *testin
 	if err != nil || response2.Credential.Generation != 2 || response2.Credential.NotBefore != now.Add(time.Hour).Unix() {
 		t.Fatalf("successor response = %+v / %v", response2, err)
 	}
+	clock = now.Add(time.Hour)
+	delayedRetry, err := vault.Execute(t.Context(), issue2, advancingServiceRetrySecret{password: password, advance: func() {
+		clock = now.Add(3 * time.Hour)
+	}})
+	if err != nil || delayedRetry.RecordID != second.RecordID || !bytes.Equal(delayedRetry.ServiceResponse, second.ServiceResponse) {
+		t.Fatalf("committed retry expired during unlock: %+v / %v", delayedRetry, err)
+	}
 	clock = now.Add(3 * time.Hour)
 	expiredRetry, err := vault.Execute(t.Context(), issue2, &sequenceSecrets{values: [][]byte{password}})
 	if err != nil || expiredRetry.RecordID != second.RecordID ||
@@ -170,4 +178,18 @@ func serviceInstanceFixtureRoot(t *testing.T) string {
 		t.Fatal(err)
 	}
 	return root
+}
+
+// A committed exact retry remains valid even when its unlock crosses expiry.
+type advancingServiceRetrySecret struct {
+	password []byte
+	advance  func()
+}
+
+func (s advancingServiceRetrySecret) ReadSecret(context.Context, SecretPrompt) ([]byte, error) {
+	s.advance()
+	return append([]byte(nil), s.password...), nil
+}
+func (s advancingServiceRetrySecret) Confirm(context.Context, ConfirmationPrompt) (bool, error) {
+	return false, nil
 }
