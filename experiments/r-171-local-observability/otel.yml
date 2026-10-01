@@ -6,7 +6,7 @@ extensions:
     create_directory: false
     recreate: false
 receivers:
-  filelog/fixture:
+  file_log/fixture:
     include: [/fixture/events.ndjson]
     start_at: beginning
     include_file_name: false
@@ -24,7 +24,7 @@ receivers:
       max_interval: 5s
       max_elapsed_time: 30s
     resource:
-      service.name: fixture
+      job: fixture
     operators:
       - type: json_parser
         on_error: drop
@@ -62,8 +62,14 @@ service:
     logs:
       level: warn
     metrics:
-      level: none
+      level: normal
+      readers:
+        - pull:
+            exporter:
+              prometheus:
+                host: 0.0.0.0
+                port: 12345
   pipelines:
     logs/fixture:
-      receivers: [filelog/fixture]
+      receivers: [file_log/fixture]
       exporters: [otlp_http/fixture]

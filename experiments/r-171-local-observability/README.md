@@ -273,11 +273,40 @@ Actual binary scan has31finding records across7advisories, all dispositions
 pending. The published SPDX inventory has1080packages. Neither package count nor
 binary size establishes runtime RSS, reachability, security or a collector choice.
 Use the research owner for exact identities and equivalent H2 probe prerequisites.
-`otel.yml` is an H2 configuration-validation input only. The exact inspected
-binary accepted it offline (see R-171 identities and retained failed attempts).
-It selects one synthetic file and OTLP/HTTP with finite persistent queue/retries.
-Internal metrics are intentionally absent from this first validation input;
-start/end timestamp, delivery-counter, label mapping, invalid-input loss,
-restart/outage/pressure and equivalent resource measurements remain required
-before it can replace Alloy. Never use this file against product data or treat
-`validate` success as an admitted monitoring stack.
+`otel.yml` is an H2 synthetic investigation configuration. Its initial version
+passed offline validation; the current profile adds a native Prometheus reader
+and uses the current file_log receiver name. Exact lifecycle/resource evidence
+and unresolved admission requirements belong in R-171. Never use this file
+against product data or treat `validate` success as an admitted monitoring stack.
+
+### Alternative collector runtime comparison
+
+```powershell
+make tools-install COLLECTOR=otel-image ARTIFACT_ROOT=C:/Users/vitek/AppData/Local/Temp/ardents-r171-otel-public-a EVIDENCE_ROOT=C:/Users/vitek/AppData/Local/Temp/ardents-r171-otel-image-new
+make probe-otel EVIDENCE_ROOT=C:/Users/vitek/AppData/Local/Temp/ardents-r171-otel-pipeline-new RUN_NAME=r171-otel-pipeline-new
+```
+
+The first command verifies and copies only the previously inspected exact binary
+into an external scratch-image context; no base image, OS packages or tools are
+fetched. The installed linux/amd64 image ID is recorded and passed directly to
+Compose. The service named alloy remains only an orchestration alias in this
+research profile; its actual image is OTel, and Alloy is not also started.
+Persistent queue/offset state uses the same finite retained RAM volume while the
+anchor exists, with the same limits and host-reboot limitation as H1.
+
+The H2 profile uses the same fixture, alert/source/collector-loss journey,
+catch-up/source timestamp, Grafana shared-interval and ordered restart checks.
+Prometheus retains only fixed native OTel counter/gauge families with the same
+256-sample cap. Accepted/sent/refused values count log records; exporter queue
+size/capacity use serialized bytes because the queue sizer is explicitly bytes.
+Accepted records are not file byte positions or proof of final delivery. Missing
+failure counters remain unavailable, not assumed zero or renamed retries.
+Backend-outage/storage-pressure flags currently refuse H2 until their native
+failure-counter semantics and loss checks are separately implemented and proved.
+
+Loki explicitly ignores default resource index labels and permits only job as an
+index label; selected safe event fields remain structured metadata. The probe
+uses the Series API to verify index labels: query_range response labels may also
+include structured metadata and cannot alone prove index cardinality. Parser
+drops, malformed input, extended outage, crash and state saturation remain
+separate required failure evidence before this configuration can be selected.

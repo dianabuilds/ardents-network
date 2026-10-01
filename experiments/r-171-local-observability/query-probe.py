@@ -10,6 +10,9 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
+collector = sys.argv[3] if len(sys.argv) > 3 else 'alloy'
+if collector not in ('alloy','otel'): raise RuntimeError('Unknown selected collector')
+collector_read_expression = 'sum({job="collector",__name__=~"otelcol_receiver_accepted_log_records(_total)?"})' if collector == 'otel' else 'sum(loki_source_file_read_lines_total)'
 root=pathlib.Path('/certs'); reports=pathlib.Path('/reports')
 context=ssl.create_default_context(cafile=str(root/'ca.crt'))
 context.load_cert_chain(str(root/'client.crt'),str(root/'client.key'))
@@ -108,6 +111,40 @@ elif sys.argv[1]=='observe':
     else: raise RuntimeError('Grafana anonymous dashboard access succeeded')
     (reports/'unauthenticated-refusals.json').write_text(json.dumps({'denied':denials,'grafana_status':401}))
     print('Authenticated observations saved; anonymous accesses refused')
+elif sys.argv[1] == 'otel-delivery':
+    if collector != 'otel': raise RuntimeError('OTel telemetry mode requires its selected profile')
+    result = observe('collector-signals','https://prometheus:9090/api/v1/query?'+urllib.parse.urlencode(
+        {'query':'{job="collector",__name__=~"otelcol_(receiver_(accepted|refused)_log_records|exporter_(sent|send_failed|enqueue_failed)_log_records|exporter_queue_(size|capacity)|process_memory_rss)(_total|_bytes)?"}'}))
+    if result.get('status') != 'success': raise RuntimeError('Collector telemetry query failed')
+    signals = {}
+    for item in result['data']['result']:
+        name = item['metric']['__name__']
+        value = float(item['value'][1])
+        if not math.isfinite(value) or value < 0: raise RuntimeError('Invalid OTel telemetry observation')
+        signals.setdefault(name,[]).append(value)
+    for base in ('otelcol_receiver_accepted_log_records','otelcol_exporter_sent_log_records'):
+        matches = [values for name,values in signals.items() if name in (base,base+'_total')]
+        if len(matches) != 1 or len(matches[0]) != 1 or matches[0][0] <= 0:
+            raise RuntimeError('Actual accepted/sent log record counter unavailable or ambiguous: '+base)
+    logs = observe('mapped-logs','https://loki:3100/loki/api/v1/query_range?'+urllib.parse.urlencode(
+        {'query':'{job="fixture"}','limit':1000,'direction':'forward'}))
+    if logs.get('status') != 'success' or not logs['data']['result']:
+        raise RuntimeError('OTLP mapped log stream absent')
+    # Query responses include structured metadata as extracted labels; those
+    # per-record fields are not necessarily index labels. Inspect the series API.
+    series = observe('indexed-series','https://loki:3100/loki/api/v1/series?'+urllib.parse.urlencode(
+        {'match[]':'{job="fixture"}'}))
+    if series.get('status') != 'success' or series.get('data') != [{'job':'fixture'}]:
+        raise RuntimeError('Unexpected OTLP index identity/cardinality mapping')
+    allowed = {'job','at','level','scope','event','sequence','observed_timestamp',
+               'severity_number','severity_text','detected_level'}
+    if any(set(stream['stream']) - allowed for stream in logs['data']['result']):
+        raise RuntimeError('Unexpected OTLP returned metadata fields')
+    (reports/'otel-delivery-assertions.json').write_text(json.dumps({
+        'counter_names':sorted(signals),'index_labels':{'job':'fixture'},
+        'scope':'accepted/sent counters and mapped synthetic stream; absent failure counters are unavailable, not zero',
+        'passed':True}))
+    print('Observed native OTel accepted/sent telemetry and bounded OTLP index mapping')
 elif sys.argv[1] == 'lifecycle':
     phase = sys.argv[2]
     modes = {
@@ -251,7 +288,7 @@ elif sys.argv[1] in ('restart-before', 'restart-after'):
     silences = observe('retained-silences','https://alertmanager:9093/api/v2/silences')
     silence_ids = [item['id'] for item in silences if item['createdBy']=='R171 synthetic probe']
     readings = {}
-    for name,expr in [('producer','diagnostic_fixture_events_total'),('collector','sum(loki_source_file_read_lines_total)')]:
+    for name,expr in [('producer','diagnostic_fixture_events_total'),('collector',collector_read_expression)]:
         result = observe(name,'https://prometheus:9090/api/v1/query?'+urllib.parse.urlencode({'query':expr}))['data']['result']
         if len(result) != 1: raise RuntimeError('Restart observation counter unavailable: '+name)
         readings[name] = int(float(result[0]['value'][1]))
@@ -281,7 +318,7 @@ elif sys.argv[1] in ('restart-before', 'restart-after'):
         snapshot.pop('metric_samples'); snapshot.pop('log_keys'); snapshot.pop('silence_ids')
         snapshot.update({'metric_rows_retained':len(metric_samples),'log_rows_retained':len(log_keys),
                          'silences_retained':len(silence_ids),'new_source_events':produced,
-                         'collector_new_read_lines':readings['collector'],'passed':True})
+                         ('collector_new_accepted_records' if collector == 'otel' else 'collector_new_read_lines'):readings['collector'],'passed':True})
         (reports/'restart-assertions.json').write_text(json.dumps(snapshot))
         print('Backend restart retained metric/log/silence history without full-file replay')
 elif sys.argv[1] in ('backend-baseline', 'backend-unavailable'):

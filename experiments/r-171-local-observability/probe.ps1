@@ -1,7 +1,8 @@
 param([Parameter(Mandatory=$true)][string]$EvidenceRoot,
-      [Parameter(Mandatory=$true)][ValidatePattern('^r171-[a-z0-9-]{1,32}$')][string]$RunName, [switch]$RestartProbe, [switch]$ResourceProbe, [switch]$BackendProbe, [switch]$StorageProbe)
+      [Parameter(Mandatory=$true)][ValidatePattern('^r171-[a-z0-9-]{1,32}$')][string]$RunName, [switch]$RestartProbe, [switch]$ResourceProbe, [switch]$BackendProbe, [switch]$StorageProbe, [ValidateSet('alloy','otel')][string]$Collector='alloy')
 $ErrorActionPreference='Stop'
 if (($ResourceProbe -or $BackendProbe -or $StorageProbe) -and -not $RestartProbe) { throw 'Resource profile requires explicit restart-state profile.' }
+if ($Collector -eq 'otel' -and ($BackendProbe -or $StorageProbe)) { throw 'OTel retry/loss counter semantics require separate validation before backend/pressure profile.' }
 $taskRoot=[IO.Path]::GetFullPath($EvidenceRoot)
 $taskRepo=[IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../..'))
 if ($taskRoot.Equals($taskRepo,[StringComparison]::OrdinalIgnoreCase) -or
@@ -26,7 +27,7 @@ foreach ($taskPrincipal in @($taskSid,[Security.Principal.SecurityIdentifier]::n
 $taskPrivate=Join-Path $taskRoot 'private'; $taskReports=Join-Path $taskRoot 'reports'
 New-Item -ItemType Directory -Path $taskPrivate,$taskReports | Out-Null
 function Get-ProbeSourceSnapshot {
-    $taskSelected=@('images.json','compose.yaml','compose.restart.yaml','fixture.py','prometheus.yml','alerts.yml','alertmanager.yml','loki.yml','config.alloy','prepare-private.py','query-probe.py','resource-window.ps1','storage-pressure.py','probe.ps1')
+    $taskSelected=@('images.json','compose.yaml','compose.restart.yaml','fixture.py','prometheus.yml','alerts.yml','alertmanager.yml','loki.yml','config.alloy','prepare-private.py','query-probe.py','resource-window.ps1','storage-pressure.py','probe.ps1','otel.yml','compose.otel.yaml','prometheus.otel.yml','loki.otel.yml','install-collector-image.ps1')
     foreach ($taskFile in $taskSelected) {
         $taskBytes=[IO.File]::ReadAllBytes((Join-Path $PSScriptRoot $taskFile))
         $taskHasher=[Security.Cryptography.SHA256]::Create()
@@ -43,19 +44,29 @@ if ($LASTEXITCODE -ne 0) { throw 'Explicitly installed diagnostic helper missing
 $taskEnv.R171_HELPER_IMAGE=$taskHelper
 $taskImageIdentities=@()
 foreach ($taskImage in $taskLock.images) {
+    if ($Collector -eq 'otel' -and $taskImage.name -eq 'alloy') { continue }
     $taskInstalled=docker image inspect $taskImage.image | ConvertFrom-Json
     if ($LASTEXITCODE -ne 0) { throw 'Pinned image missing; run explicit make tools-install.' }
     $taskImageIdentities += [pscustomobject]@{role=$taskImage.name;manifest=$taskImage.image;config_id=$taskInstalled[0].Id;os=$taskInstalled[0].Os;architecture=$taskInstalled[0].Architecture}
     $taskEnv[('R171_'+$taskImage.name.ToUpper()+'_IMAGE')]=$taskImage.image
 }
+if ($Collector -eq 'otel') {
+    $taskOtel=docker image inspect ardents-r171-otel:0.162.0 | ConvertFrom-Json
+    if ($LASTEXITCODE -ne 0 -or $taskOtel[0].Architecture -ne 'amd64' -or $taskOtel[0].Os -ne 'linux') { throw 'Explicitly installed OTel image required.' }
+    $taskEnv.R171_OTEL_IMAGE=$taskOtel[0].Id
+    # Required interpolation in the base compose is replaced by the OTel override.
+    $taskEnv.R171_ALLOY_IMAGE=$taskOtel[0].Id
+    $taskImageIdentities += [pscustomobject]@{role='otel';manifest='local scratch image';config_id=$taskOtel[0].Id;os=$taskOtel[0].Os;architecture=$taskOtel[0].Architecture}
+}
 $taskOld=@{}; foreach ($taskKey in $taskEnv.Keys) { $taskOld[$taskKey]=[Environment]::GetEnvironmentVariable($taskKey); [Environment]::SetEnvironmentVariable($taskKey,$taskEnv[$taskKey]) }
 $taskCompose=@('compose','-p',$RunName,'-f',(Join-Path $PSScriptRoot 'compose.yaml'))
 if ($RestartProbe) { $taskCompose += @('-f',(Join-Path $PSScriptRoot 'compose.restart.yaml')) }
-$taskReceipt=[ordered]@{started_utc=(Get-Date).ToUniversalTime().ToString('o');run=$RunName;source_scope='synthetic fixture only';complete=$false;helper_image_id=$taskHelper;images=$taskImageIdentities;source_inputs=$taskSourceBefore}
+if ($Collector -eq 'otel') { $taskCompose += @('-f',(Join-Path $PSScriptRoot 'compose.otel.yaml')) }
+$taskReceipt=[ordered]@{collector=$Collector;started_utc=(Get-Date).ToUniversalTime().ToString('o');run=$RunName;source_scope='synthetic fixture only';complete=$false;helper_image_id=$taskHelper;images=$taskImageIdentities;source_inputs=$taskSourceBefore}
 function Invoke-ProbeQuery([string]$Mode,[string]$ReportName) {
     $taskDestination=Join-Path $taskReports $ReportName
     New-Item -ItemType Directory -Path $taskDestination | Out-Null
-    docker run --rm --network ($RunName+'_probe') --read-only --cap-drop ALL --security-opt no-new-privileges --user 10001:10001 --memory 256m --cpus 0.5 --pids-limit 16 --shm-size 1m --log-driver local --log-opt max-size=2m --log-opt max-file=2 --mount "type=bind,source=$PSScriptRoot,target=/probe,readonly" --mount "type=bind,source=$taskPrivate/query,target=/certs,readonly" --mount "type=bind,source=$taskDestination,target=/reports" --mount "type=bind,source=$taskReports,target=/history,readonly" --entrypoint python3 $taskHelper /probe/query-probe.py $Mode $ReportName
+    docker run --rm --network ($RunName+'_probe') --read-only --cap-drop ALL --security-opt no-new-privileges --user 10001:10001 --memory 256m --cpus 0.5 --pids-limit 16 --shm-size 1m --log-driver local --log-opt max-size=2m --log-opt max-file=2 --mount "type=bind,source=$PSScriptRoot,target=/probe,readonly" --mount "type=bind,source=$taskPrivate/query,target=/certs,readonly" --mount "type=bind,source=$taskDestination,target=/reports" --mount "type=bind,source=$taskReports,target=/history,readonly" --entrypoint python3 $taskHelper /probe/query-probe.py $Mode $ReportName $Collector
     if ($LASTEXITCODE -ne 0) { throw "Query $Mode failed; preserve original reports." }
 }
 try {
@@ -72,6 +83,7 @@ try {
     Invoke-ProbeQuery 'observe' 'normal'
     Start-Sleep -Seconds 30
     Invoke-ProbeQuery 'observe' 'pressure'
+    if ($Collector -eq 'otel') { Invoke-ProbeQuery 'otel-delivery' 'otel-delivery' }
     Invoke-ProbeQuery 'lifecycle' 'silenced'
     Invoke-ProbeQuery 'lifecycle' 'silence-expired'
     Start-Sleep -Seconds 40

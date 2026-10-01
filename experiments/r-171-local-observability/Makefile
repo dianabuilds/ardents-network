@@ -1,7 +1,9 @@
 .PHONY: tools-install
 
 tools-install:
-ifeq ($(COLLECTOR),otel)
+ifeq ($(COLLECTOR),otel-image)
+	powershell -NoProfile -ExecutionPolicy RemoteSigned -File install-collector-image.ps1 -ArtifactRoot "$(ARTIFACT_ROOT)" -EvidenceRoot "$(EVIDENCE_ROOT)"
+else ifeq ($(COLLECTOR),otel)
 	powershell -NoProfile -ExecutionPolicy RemoteSigned -File install-collector.ps1 -EvidenceRoot "$(EVIDENCE_ROOT)"
 else
 	powershell -NoProfile -ExecutionPolicy RemoteSigned -File install-images.ps1 -EvidenceRoot "$(EVIDENCE_ROOT)"
@@ -24,3 +26,11 @@ probe-backend-outage:
 .PHONY: probe-storage-pressure
 probe-storage-pressure:
 	powershell -NoProfile -ExecutionPolicy RemoteSigned -File probe.ps1 -EvidenceRoot "$(EVIDENCE_ROOT)" -RunName "$(RUN_NAME)" -RestartProbe -StorageProbe
+
+.PHONY: probe-otel
+probe-otel:
+	powershell -NoProfile -ExecutionPolicy RemoteSigned -File probe.ps1 -EvidenceRoot "$(EVIDENCE_ROOT)" -RunName "$(RUN_NAME)" -Collector otel -RestartProbe
+
+.PHONY: probe-otel-resources
+probe-otel-resources:
+	powershell -NoProfile -ExecutionPolicy RemoteSigned -File probe.ps1 -EvidenceRoot "$(EVIDENCE_ROOT)" -RunName "$(RUN_NAME)" -Collector otel -RestartProbe -ResourceProbe

@@ -871,3 +871,123 @@ should use an explicit installed image rather than copy407MiB on each startup;
 the copy here is disposable investigation overhead, not a proposed deployment.
 
 Verification: make quick-check session37095 terminated zero for this research/configuration delta. All three validation containers were removed. Full candidate checks, admission, equivalent H2 ingestion and dev integration remain open.
+
+### H2 runtime path and native metric/index inspection
+
+**Measurement:** explicit `make tools-install COLLECTOR=otel-image` verified the
+previously inspected407498914-byte binary SHA2562425bdf5, copied it into an
+external bounded context, then built a linux/amd64 scratch image without a base
+OS/tool/package fetch or RUN instruction. Build exit0, config ID
+bfb8f2802ab8f2d9d6f024264ffb30ccbc9b97faedc0fa5be2188da0967db640.
+Image/context/build receipt remain external ardents-r171-otel-image-c. This is an
+investigation artifact, not an admitted or signature-verified distribution.
+Original attempt-a failed before creating its output because this selected
+Windows PowerShell lacked Get-FileHash. Attempt-b retained a non-complete receipt
+when native Docker progress on stderr was treated as a terminating ErrorRecord;
+no successful build was claimed from that attempt. The corrected installer uses
+.NET SHA256 and retains both build streams, checking the actual native exit code.
+Those installer failures do not become passing retries or component evidence.
+
+**Current experimental input:** OTel replaces Alloy in the same finite Compose
+profile; the service name alloy is a research orchestration alias only. Its
+actual pinned image ID/collector selection is retained in the probe receipt.
+The file_log receiver (filelog deprecated alias removed after native warning)
+uses the explicit safe synthetic file. Native Prometheus telemetry now listens
+only inside the private probe network. Only fixed accepted/refused/sent/send-
+failed/enqueue-failed record counter, queue gauge and process-RSS families may
+pass the existing256-sample scrape cap. Native accepted/sent counters represent
+records, not source file offsets or proven final durability. Persistent queue
+size/capacity use serialized bytes in this selected configuration. Missing
+failure series are unavailable, not zero or Alloy retry equivalents. Backend
+outage/pressure flags therefore currently refuse H2 pending separate native
+error/loss semantics and measurements; this is an incomplete comparison boundary.
+
+**Preserved failure and concrete correction:** otel-pipeline-a delivered normal
+and pressure records with actual accepted44/sent44/refused0, queue size0 and
+capacity1048576, but its index-label assertion failed. It incorrectly treated
+query_range returned labels (including per-record structured metadata) as
+indexed stream identities. [Loki structured metadata](https://grafana.com/docs/loki/latest/get-started/labels/structured-metadata/)
+explicitly describes their automatic extraction into query labels.
+The [Series API](https://grafana.com/docs/loki/latest/reference/loki-http-api/#query-streams)
+reports stored stream label sets. The corrected assertion requires precisely
+one indexed series `{job="fixture"}` and separately checks the finite permitted
+returned metadata keys. Loki ignores default resource index attributes,
+explicitly selects job and drops other resource/scope attributes; safe event
+fields remain bounded structured metadata. Source access date2026-10-01.
+The original run exited nonzero/cleanup0 and remains external otel-pipeline-a.
+
+**Measurement:** otel-pipeline-b completed0/cleanup0 with19 selected input hash/
+size snapshots stable. Actual Series API returned only job=fixture; native
+accepted/sent counters were observed and nonzero. Silence12s/suppression/expiry,
+threshold recovery, and source/collector freeze pending/firing/recovery all
+passed. Post-freeze catch-up watermark116 returned117 unique records, no query
+duplicates, preserving original source timestamps within the existing1000ns
+check. Shared180-second Grafana query produced metric59rows/log118rows and an
+observed10000ms source gap. These are actual datasource frames, not browser
+rendering or novice usability.
+
+The sender drained/stopped cleanly0/noOOM before backend restart. Restart
+retained60metric samples/118log keys/one silence; source advanced24events and
+new receiver accepted21records, rejecting a full historical reread. Subsequent
+catch-up through watermark144 returned144 unique records without query duplicates
+and preserved source time, attempt2. This is planned restart with anchored RAM
+state, not arbitrary crash/daemon/host persistence or exactly-once delivery.
+Retained private evidence totals1195908bytes; allocated backend-state files
+1847296bytes (live non-atomic sample excluding Grafana/tmp, fixture and Docker
+service logs). All run containers were removed. Original reports/receipt are in
+external ardents-r171-otel-pipeline-b. quick-check77576 terminated0 before the
+separate healthy resource probe; no full candidate check/admission/dev merge.
+
+**Primary advisory clarification during H2 measurement:** GO-2022-0635 and
+GO-2022-0646 describe the legacy AWS S3 encryption client's algorithm negotiation
+and CBC padding-oracle paths, requiring access to the relevant encrypted S3
+objects/decryption path. They are not generic failures of every AWS HTTP request.
+The Crypto client V2 recommendation is not interchangeable with finding an
+aws-sdk-go-v2 module in the distribution. GO-2026-5932 specifically identifies
+unmaintained x/crypto/openpgp packages; it is not a blanket claim about every
+x/crypto package. These prerequisite descriptions guide the remaining source/
+configuration inspection, not an already reviewed non-applicability decision.
+Primary Go vulnerability DB files and upstream git blob receipts are external
+ardents-r171-otel-advisory-review-a, accessed2026-10-01:
+[GO-2022-0635](https://github.com/golang/vulndb/blob/master/data/osv/GO-2022-0635.json),
+[GO-2022-0646](https://github.com/golang/vulndb/blob/master/data/osv/GO-2022-0646.json),
+[GO-2026-5932](https://github.com/golang/vulndb/blob/master/data/osv/GO-2026-5932.json).
+
+**Exact buildinfo clarification:** the binary declares hamba/avro/v2 v2.31.0
+replaced by iskorotkov/avro/v2 v2.33.0, checksum
+h1:fbscLHxRFT4QBPQp6MuYEL2Ao9o89KPAWYCHQ//5K18=; it also separately declares
+iskorotkov/avro/v2 v2.33.1, checksum
+h1:/tyfa5IFPNDkeB59kuyu9fyPZ3aiwv9YsMZwd39CNg0=.
+Seeing the later version does not remove the earlier replacement or close its
+three scanner findings. Existing raw buildinfo/scan remain the authoritative
+inputs. Both relevant source/import paths and any admitted configuration must
+be assessed rather than treating the distribution as containing one Avro version.
+
+**H2 healthy-window measurement:** otel-resources-a completed0/cleanup0 with
+nineteen selected source/config snapshots stable. Healthy interval302.9017528s,
+37samples, sampled peak process RSS947097600bytes (903.22MiB), mean sampled CPU
+2.695135135percent of one core, combined enforced ceiling0.96core. No query
+helper or other R-171 container ran during that seven-container window. RSS
+includes Grafana's plugin children; daemon/host CLI overhead, integrated CPU
+accounting and unsampled peaks are excluded. Native collector RSS at the final
+sample219152384bytes; complete-stack limits remained below4GiB/4CPU.
+Full healthy history retained150zero-queue samples and fixture/collector up1
+without observation gaps. Final catch-up covered watermark452 with453unique
+records/no query duplicates and preserved source time on attempt1.
+Allocated backend-state files2154496bytes; private evidence before the small
+comparison receipt1452965bytes. Quota capacities and exclusions remain
+as in H1; anchored RAM survives selected container restart only. Reports and
+receipt are external ardents-r171-otel-resources-a. No surviving run containers.
+
+**Comparison scope:** exact fixture/helper and four backend image IDs, memory
+and healthy-window CPU caps match resources-a: True. Selected collector,
+collector metrics and Loki's OTLP mapping differ by design. H1 sampled peak
+945844224bytes/mean snapshot CPU2.222972973percent; H2's whole-stack observations
+do not demonstrate a useful footprint improvement. One window per configuration
+is not a statistical performance claim or proof of a general regression.
+Choose from failure visibility, privacy and maintenance closure as well as these
+measurements; H2 backend/pressure/loss and remaining advisory admission are open.
+The final naming-only receipt correction calls the native H2 restart counter
+collector_new_accepted_records; earlier captured reports retain their original
+collector_new_read_lines label, which in H2 means accepted records, not byte
+positions. No assertion logic or old report was changed by that correction.

@@ -1,0 +1,44 @@
+global:
+  scrape_interval: 2s
+  scrape_timeout: 1s
+  evaluation_interval: 2s
+rule_files:
+  - /probe/alerts.yml
+alerting:
+  alertmanagers:
+    - scheme: https
+      tls_config:
+        ca_file: /certs/ca.crt
+        cert_file: /certs/client.crt
+        key_file: /certs/client.key
+        server_name: alertmanager
+      static_configs:
+        - targets: ['alertmanager:9093']
+scrape_configs:
+  - job_name: fixture
+    sample_limit: 32
+    label_limit: 8
+    static_configs:
+      - targets: ['fixture:9101']
+  - job_name: collector
+    sample_limit: 256
+    metric_relabel_configs:
+      - source_labels: [__name__]
+        regex: 'otelcol_(receiver_(accepted|refused)_log_records|exporter_(sent|send_failed|enqueue_failed)_log_records|exporter_queue_(size|capacity)|process_memory_rss)(_total|_bytes)?'
+        action: keep
+    static_configs:
+      - targets: ['alloy:12345']
+  - job_name: logbackend
+    scheme: https
+    tls_config:
+      ca_file: /certs/ca.crt
+      cert_file: /certs/client.crt
+      key_file: /certs/client.key
+      server_name: loki
+    sample_limit: 32
+    metric_relabel_configs:
+      - source_labels: [__name__]
+        regex: 'loki_ingester_wal_disk_full_failures_total|loki_ingester_wal_disk_usage_percent|loki_ingester_wal_corruptions_total'
+        action: keep
+    static_configs:
+      - targets: ['loki:3100']
