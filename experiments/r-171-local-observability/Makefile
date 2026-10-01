@@ -1,7 +1,9 @@
 .PHONY: tools-install
 
 tools-install:
-ifeq ($(COLLECTOR),otel-minimal)
+ifeq ($(COLLECTOR),otel-minimal-image)
+	powershell -NoProfile -ExecutionPolicy RemoteSigned -File install-collector-image.ps1 -ArtifactRoot "$(ARTIFACT_ROOT)" -EvidenceRoot "$(EVIDENCE_ROOT)" -Variant minimal
+else ifeq ($(COLLECTOR),otel-minimal)
 	powershell -NoProfile -ExecutionPolicy RemoteSigned -File install-minimal.ps1 -ArtifactRoot "$(ARTIFACT_ROOT)" -EvidenceRoot "$(EVIDENCE_ROOT)"
 else ifeq ($(COLLECTOR),otel-builder)
 	powershell -NoProfile -ExecutionPolicy RemoteSigned -File install-builder.ps1 -EvidenceRoot "$(EVIDENCE_ROOT)"
@@ -42,3 +44,7 @@ probe-otel-resources:
 .PHONY: probe-otel-backend-outage
 probe-otel-backend-outage:
 	powershell -NoProfile -ExecutionPolicy RemoteSigned -File probe.ps1 -EvidenceRoot "$(EVIDENCE_ROOT)" -RunName "$(RUN_NAME)" -Collector otel -RestartProbe -BackendProbe
+
+.PHONY: probe-otel-minimal-backend-outage
+probe-otel-minimal-backend-outage:
+	powershell -NoProfile -ExecutionPolicy RemoteSigned -File probe.ps1 -EvidenceRoot "$(EVIDENCE_ROOT)" -RunName "$(RUN_NAME)" -Collector otel -MinimalCollector -RestartProbe -BackendProbe

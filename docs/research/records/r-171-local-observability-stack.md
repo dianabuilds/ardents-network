@@ -1198,3 +1198,39 @@ scan/validate receipts are external ardents-r171-minimal-closure-b. This fixes t
 resolver incompatibility only. Actual pipeline delivery/restart/pressure/privacy/
 resource checks, package support/license closure and maintained selection remain
 required; successful validate does not assert runtime behavior or dev integration.
+
+### Minimal H2 runtime probe criteria and exact image
+
+Existing H2 short backend outage/lifecycle/restart criteria are retained for the
+minimal official-component binary; no native failure counter is renamed retries
+or absence inferred zero. The image installer verifies the exact corrected D
+binary38748322bytes/SHA256f5be238d7d0a3d88d620bbcb8a8d15e652e4ba3d59cb244d58a018c06948a646,
+rechecks the external context copy and builds scratch with no base/package fetch.
+minimal-image-b completed0; linux/amd64 image config ID
+7c345035ed2941c4df2f0e95dedcf3209297ca5ef2df8b297694584c4a0a6fc1.
+The probe selects that immutable ID, records minimal_distribution=true and adds
+builder/build recipe inputs to its existing source snapshots. The compatibility
+executable path /otelcol-contrib and service alloy do not name the binary's actual
+distribution; exact receipt remains authoritative. Original image-a invocation
+refused before creating evidence because a leftover unconditional full-binary
+hash overrode the minimal selection. That adapter defect was removed without
+weakening size/hash/copy checks; original failed tool output is retained.
+No previous H2 runtime result is transferred automatically to this new image.
+
+**Minimal runtime measurement:** minimal-pipeline-a completed0/cleanup0,
+minimal_distribution=true and selected input snapshots stable. Native short
+backend-outage criteria passed: source/collector up1, accepted133/sent124,
+queue2889serialized bytes/capacity1048576, pending/firing and Alertmanager receipt,
+last-three-sample sent count stalled. Failure series remained null/unavailable.
+After restoration accepted153/sent153/queue0 and backlog/manager clearance passed;
+source-time coverage watermark152/152unique events/no query duplicates on attempt1.
+After ordered restart coverage watermark178/178unique events/no query duplicates
+and preserved source time passed on attempt1. Metric/log/silence history survived
+that selected restart; all run containers were removed.
+Grafana shared180s interval returned queue60rows with12000ms observation gap,
+age60rows, alert6frames/46rows and122log rows. This remains API/data-path evidence,
+not rendered-browser usability or real-process integration. Reports and receipt
+remain external ardents-r171-minimal-pipeline-a; quick-check3326 completed0.
+Healthy five-minute overhead, extended loss/storage/crash/malformed input,
+remaining support/license/advisory closure and candidate integration are still
+open. A smaller executable has not yet established smaller runtime footprint.

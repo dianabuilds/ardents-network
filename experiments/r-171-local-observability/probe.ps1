@@ -1,6 +1,7 @@
 param([Parameter(Mandatory=$true)][string]$EvidenceRoot,
-      [Parameter(Mandatory=$true)][ValidatePattern('^r171-[a-z0-9-]{1,32}$')][string]$RunName, [switch]$RestartProbe, [switch]$ResourceProbe, [switch]$BackendProbe, [switch]$StorageProbe, [ValidateSet('alloy','otel')][string]$Collector='alloy')
+      [Parameter(Mandatory=$true)][ValidatePattern('^r171-[a-z0-9-]{1,32}$')][string]$RunName, [switch]$RestartProbe, [switch]$ResourceProbe, [switch]$BackendProbe, [switch]$StorageProbe, [ValidateSet('alloy','otel')][string]$Collector='alloy', [switch]$MinimalCollector)
 $ErrorActionPreference='Stop'
+if ($MinimalCollector -and $Collector -ne 'otel') { throw 'Minimal variant requires explicit OTel profile.' }
 if (($ResourceProbe -or $BackendProbe -or $StorageProbe) -and -not $RestartProbe) { throw 'Resource profile requires explicit restart-state profile.' }
 if ($Collector -eq 'otel' -and $StorageProbe) { throw 'OTel retry/loss counter semantics require separate validation before backend/pressure profile.' }
 $taskRoot=[IO.Path]::GetFullPath($EvidenceRoot)
@@ -27,7 +28,7 @@ foreach ($taskPrincipal in @($taskSid,[Security.Principal.SecurityIdentifier]::n
 $taskPrivate=Join-Path $taskRoot 'private'; $taskReports=Join-Path $taskRoot 'reports'
 New-Item -ItemType Directory -Path $taskPrivate,$taskReports | Out-Null
 function Get-ProbeSourceSnapshot {
-    $taskSelected=@('images.json','compose.yaml','compose.restart.yaml','fixture.py','prometheus.yml','alerts.yml','alertmanager.yml','loki.yml','config.alloy','prepare-private.py','query-probe.py','resource-window.ps1','storage-pressure.py','probe.ps1','otel.yml','compose.otel.yaml','prometheus.otel.yml','loki.otel.yml','install-collector-image.ps1','alerts.otel.yml')
+    $taskSelected=@('images.json','compose.yaml','compose.restart.yaml','fixture.py','prometheus.yml','alerts.yml','alertmanager.yml','loki.yml','config.alloy','prepare-private.py','query-probe.py','resource-window.ps1','storage-pressure.py','probe.ps1','otel.yml','compose.otel.yaml','prometheus.otel.yml','loki.otel.yml','install-collector-image.ps1','alerts.otel.yml','builder.yml','build-minimal.py','install-minimal.ps1')
     foreach ($taskFile in $taskSelected) {
         $taskBytes=[IO.File]::ReadAllBytes((Join-Path $PSScriptRoot $taskFile))
         $taskHasher=[Security.Cryptography.SHA256]::Create()
@@ -51,7 +52,9 @@ foreach ($taskImage in $taskLock.images) {
     $taskEnv[('R171_'+$taskImage.name.ToUpper()+'_IMAGE')]=$taskImage.image
 }
 if ($Collector -eq 'otel') {
-    $taskOtel=docker image inspect ardents-r171-otel:0.162.0 | ConvertFrom-Json
+    $taskOtelSelector='ardents-r171-otel:0.162.0'
+    if ($MinimalCollector) { $taskOtelSelector='sha256:7c345035ed2941c4df2f0e95dedcf3209297ca5ef2df8b297694584c4a0a6fc1' }
+    $taskOtel=docker image inspect $taskOtelSelector | ConvertFrom-Json
     if ($LASTEXITCODE -ne 0 -or $taskOtel[0].Architecture -ne 'amd64' -or $taskOtel[0].Os -ne 'linux') { throw 'Explicitly installed OTel image required.' }
     $taskEnv.R171_OTEL_IMAGE=$taskOtel[0].Id
     # Required interpolation in the base compose is replaced by the OTel override.
@@ -62,7 +65,7 @@ $taskOld=@{}; foreach ($taskKey in $taskEnv.Keys) { $taskOld[$taskKey]=[Environm
 $taskCompose=@('compose','-p',$RunName,'-f',(Join-Path $PSScriptRoot 'compose.yaml'))
 if ($RestartProbe) { $taskCompose += @('-f',(Join-Path $PSScriptRoot 'compose.restart.yaml')) }
 if ($Collector -eq 'otel') { $taskCompose += @('-f',(Join-Path $PSScriptRoot 'compose.otel.yaml')) }
-$taskReceipt=[ordered]@{collector=$Collector;started_utc=(Get-Date).ToUniversalTime().ToString('o');run=$RunName;source_scope='synthetic fixture only';complete=$false;helper_image_id=$taskHelper;images=$taskImageIdentities;source_inputs=$taskSourceBefore}
+$taskReceipt=[ordered]@{collector=$Collector;minimal_distribution=[bool]$MinimalCollector;started_utc=(Get-Date).ToUniversalTime().ToString('o');run=$RunName;source_scope='synthetic fixture only';complete=$false;helper_image_id=$taskHelper;images=$taskImageIdentities;source_inputs=$taskSourceBefore}
 function Invoke-ProbeQuery([string]$Mode,[string]$ReportName) {
     $taskDestination=Join-Path $taskReports $ReportName
     New-Item -ItemType Directory -Path $taskDestination | Out-Null

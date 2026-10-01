@@ -378,3 +378,22 @@ The128MiB retained-output check is a post-build assertion, not a disk quota duri
 compilation. Build-cache ceilings and overhead are separate from runtime monitoring
 budgets. Actual component/dependency/advisory closure and H2 runtime checks are
 required after assembly; successful compilation is not maintained admission.
+
+### Minimal Collector runtime comparison
+
+```powershell
+make tools-install COLLECTOR=otel-minimal-image ARTIFACT_ROOT=C:/Users/vitek/AppData/Local/Temp/ardents-r171-minimal-build-d EVIDENCE_ROOT=C:/Users/vitek/AppData/Local/Temp/ardents-r171-minimal-image-new
+make probe-otel-minimal-backend-outage EVIDENCE_ROOT=C:/Users/vitek/AppData/Local/Temp/ardents-r171-minimal-pipeline-new RUN_NAME=r171-minimal-pipeline-new
+```
+
+The installer accepts only the exact corrected D binary size/SHA256 and copies it
+into a scratch context outside Git, rechecking the copy. No base image or package
+is fetched. Minimal and full variants use separate image tags; the minimal probe
+selects immutable image config ID7c345035ed2941c4df2f0e95dedcf3209297ca5ef2df8b297694584c4a0a6fc1,
+records minimal_distribution=true and uses the same H2 configuration/semantics.
+The internal /otelcol-contrib executable path and Compose service alloy are only
+compatibility aliases of this research orchestration; actual receipt identifies
+the selected minimal binary/image. They are not product runtime identities.
+Build/configuration inputs extend the probe snapshot; original full-variant
+commands remain available. Storage-pressure minimal H2 is still refused pending
+its native loss/failure evidence. This profile is not maintained admission.
