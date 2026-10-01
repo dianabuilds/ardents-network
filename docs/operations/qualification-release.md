@@ -96,6 +96,22 @@ It creates no keys or signatures, authenticates no State Epoch, and grants no
 Release, Network or Endpoint acceptance. Separate role signatures and ordinary
 complete-bundle inspection remain required.
 
+After separately signing the component bytes, the explicit
+`scripts/prepare-qualification-alpha-catalog.go` adapter prepares the initial
+ACA1 signing message. Its absolute public JSON plan uses schema
+`ardents-qualification-alpha-catalog-plan-v1` and a `catalog` object with the
+exported `alphacontrol.Catalog` fields. Use the same JSON array/time conventions
+above. It bounds the plan to 1 MiB, rejects unknown fields/trailing values,
+fixes catalog and component generations to one, refuses a predecessor digest
+or existing signature, and requires every component expiry after catalog start
+and no later than catalog expiry. References must name the exact signed
+component sizes/digests and their separately pinned roots. Preparation checks
+grammar only; it does not verify the referenced bytes or grant their authority.
+The new exclusive synchronized output is `catalog.signing-input`, with the
+same output permissions and partial-output retention as evidence preparation.
+Signing this message under the separate disclosure key and ordinary inspection
+of the resulting full bundle remain mandatory.
+
 The four metadata files alone are not the complete bundle. Prepare the real
 current alpha-control and Network companions with their own maintained owners;
 keep authority roles separate. Supply exact signed descriptor/resources and
