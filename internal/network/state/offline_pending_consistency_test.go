@@ -121,6 +121,11 @@ func TestOfflineAcceptActivatesExactPendingEpoch(t *testing.T) {
 	config, closeSources := sourceEnvironment(t, genesis, pending, pending)
 	defer closeSources()
 
+	// Pending consistency needs current observations during source work.
+	anchor := time.Now()
+	clock := func() time.Time { return time.Unix(genesis.now, 0).UTC().Add(time.Since(anchor)) }
+	config.Clock, config.ObserveClock = clock, clock
+
 	endpoint, err := state.Open(config)
 	if err != nil {
 		t.Fatal(err)
