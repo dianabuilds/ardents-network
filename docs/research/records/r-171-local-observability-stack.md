@@ -782,3 +782,92 @@ Sources accessed2026-10-01:
 
 Verification: make quick-check session36848 exited zero for installer/extractor
 changes. Full checks/review and component admission remain separate requirements.
+### Scoped Azure authentication finding correction
+
+**Sourced fact, accessed 2026-10-01:** GO-2026-5544 points to
+[GHSA-pjv4-3c63-699f](https://github.com/open-telemetry/opentelemetry-collector-contrib/security/advisories/GHSA-pjv4-3c63-699f).
+The upstream advisory describes inbound authentication comparing the supplied
+bearer token against a credential token obtained using client-controlled Host;
+it lists affected versions0.124.0 through0.150.0 and no patched version. Our
+binary scanner nevertheless reported azureauthextension0.162.0. The advisory
+range alone does not explain or waive that finding.
+
+**Measurement/source inspection:** Downloaded source module0.162.0 checksum
+`h1:sA8bT9TBgVtlyeyJM6TYjeTpE6ucJAtCg+STOcUSme8=` matches the dependency entry
+in the inspected407498914-byte linux/amd64 Collector binary whose SHA256 is
+2425bdf5f89042cd71f56cf5a66b41681d340cbe14c0b1899bcfe2a3a685a064.
+Go's module receipt identifies upstream commit
+ae8c507510f48f433ab47dd1c6b01a59d6c388b5, module tag
+extension/azureauthextension/v0.162.0. This correlates the source module with the
+binary's declared build information; it is not a signed reproducible build proof.
+
+At that exact source, `Authenticate` rejects a nil verifier and delegates the
+incoming bearer token to `a.verifier.Verify`; it does not read Host or call
+getTokenForHost. Start constructs the OIDC provider from configured issuer and
+passes the configured audience as ClientID. getTokenForHost still exists in the
+outbound client path; its existence is not evidence of the old inbound defect.
+[Exact source](https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/ae8c507510f48f433ab47dd1c6b01a59d6c388b5/extension/azureauthextension/extension.go).
+Source SHA25638bfa64a17e91eaf0cf86a7faceaa5b78e9d0e070ff1106e22d2461233ab81a8.
+The upstream test named TestAuthenticateRejectsReplayedBearerToken uses a mock
+verifier returning audience mismatch; inspecting it is not executing a real
+signature/issuer/audience/expiry validation test. Those broader claims are not
+made here. No production Azure credential or token was acquired.
+
+**Scoped disposition:** the particular Host-derived token-comparison defect is
+corrected in the inspected source module corresponding to this exact binary.
+Preserve the scanner finding and the upstream metadata discrepancy; do not
+classify every Azure feature or the entire Collector as secure. Owner: Codex
+under R-171. Covered target: this linux/amd64 artifact and its declared source;
+no other build/platform/configuration is admitted. Reassess after any artifact,
+module/checksum/source, advisory, inbound-auth configuration, OIDC dependency or
+privilege change. The remaining six advisory IDs, full verification closure,
+signature, licenses/support and actual H2 runtime remain unresolved.
+
+Reproduction: in an external empty directory, set GOMODCACHE to a separate
+external cache and GOTOOLCHAIN=local, GOENV=off, GOWORK=off; run
+`go mod download -json github.com/open-telemetry/opentelemetry-collector-contrib/extension/azureauthextension@v0.162.0`.
+Compare its Sum with the actual binary's retained `go version -m` output; hash
+binary and extension.go against the identities above; inspect Authenticate,
+Start and the named mock test. This downloads source only, not a tool install or
+module execution. Original module receipt and static assertion/hash receipt are
+external ardents-r171-otel-module-review-a/azure-module-receipt.json and
+source-disposition.json. The bounded assertion completed zero on2026-10-01;
+it checks the reviewed method boundary, not compiler/runtime semantics.
+
+### H2 selected-file configuration validation
+
+The experimental `otel.yml` selects only filelog/fixture, file_storage/fixture
+and otlp_http/fixture. It reads the exact synthetic events.ndjson, disables file
+name/path metadata, uses one file/batch,16KiB entry cap, explicit source timestamp
+and severity parsing, one persistent queue consumer and1MiB serialized queue
+limit. Receiver/exporter retries each have30-second finite bounds; these are
+separate retry stages, not one proven end-to-end deadline. The exporter names
+only the existing private Loki OTLP endpoint with mTLS and TLS1.2 minimum.
+Offsets and queue share a proposed64MiB state filesystem. Configured queue bytes
+are not a proof of database/compaction working-space bounds. Parser on_error=drop
+needs actual loss/invalid-input observations before admission. Internal metrics
+are disabled in this validation-only configuration; delivery telemetry must be
+explicitly enabled and checked before any comparative runtime probe or selection.
+No inbound telemetry receiver, Azure extension, cloud exporter, external endpoint
+or debug exporter is selected. This configuration list does not establish full
+binary reachability/non-applicability for the remaining findings.
+
+**Measurement:** exact binary2425bdf5 passed its `validate --config /probe/otel.yml`
+command offline, UID10001, read-only root, no capabilities/no-new-privileges,
+network none,16PID,768MiB/.5CPU. Its SHA256 was checked immediately before copying
+to a448MiB private executable tmpfs; state tmpfs64MiB remained noexec. Terminal
+exit0/noOOM. No components were started for ingestion, no TLS connection was
+established and no Node/process data was read. Config validity is not runtime
+footprint, delivery, timestamp, storage, privacy or component-admission evidence.
+
+Original first attempt was refused by exec permissions on the Windows bind
+mount; second copied the verified binary but the Docker tmpfs default remained
+noexec and raised PermissionError. Third explicitly supplied exec for the owned
+binary-copy tmpfs and passed. The initial shell also reported an accidental
+nonexistent reporting command after the retained Docker error; it has no bearing
+on validation success. All three original states/output are retained in external
+ardents-r171-otel-config-a; none was reclassified as a pass. The runtime probe
+should use an explicit installed image rather than copy407MiB on each startup;
+the copy here is disposable investigation overhead, not a proposed deployment.
+
+Verification: make quick-check session37095 terminated zero for this research/configuration delta. All three validation containers were removed. Full candidate checks, admission, equivalent H2 ingestion and dev integration remain open.

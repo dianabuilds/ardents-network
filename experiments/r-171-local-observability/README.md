@@ -273,3 +273,11 @@ Actual binary scan has31finding records across7advisories, all dispositions
 pending. The published SPDX inventory has1080packages. Neither package count nor
 binary size establishes runtime RSS, reachability, security or a collector choice.
 Use the research owner for exact identities and equivalent H2 probe prerequisites.
+`otel.yml` is an H2 configuration-validation input only. The exact inspected
+binary accepted it offline (see R-171 identities and retained failed attempts).
+It selects one synthetic file and OTLP/HTTP with finite persistent queue/retries.
+Internal metrics are intentionally absent from this first validation input;
+start/end timestamp, delivery-counter, label mapping, invalid-input loss,
+restart/outage/pressure and equivalent resource measurements remain required
+before it can replace Alloy. Never use this file against product data or treat
+`validate` success as an admitted monitoring stack.

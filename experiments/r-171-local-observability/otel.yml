@@ -1,0 +1,69 @@
+# Synthetic-only H2 investigation; not an admitted monitoring configuration.
+extensions:
+  file_storage/fixture:
+    directory: /state
+    timeout: 1s
+    create_directory: false
+    recreate: false
+receivers:
+  filelog/fixture:
+    include: [/fixture/events.ndjson]
+    start_at: beginning
+    include_file_name: false
+    include_file_path: false
+    include_file_name_resolved: false
+    include_file_path_resolved: false
+    max_concurrent_files: 1
+    max_batches: 1
+    max_log_size: 16KiB
+    poll_interval: 1s
+    storage: file_storage/fixture
+    retry_on_failure:
+      enabled: true
+      initial_interval: 1s
+      max_interval: 5s
+      max_elapsed_time: 30s
+    resource:
+      service.name: fixture
+    operators:
+      - type: json_parser
+        on_error: drop
+        timestamp:
+          parse_from: attributes.at
+          layout_type: gotime
+          layout: '2006-01-02T15:04:05.999999999Z07:00'
+        severity:
+          parse_from: attributes.level
+exporters:
+  otlp_http/fixture:
+    endpoint: https://loki:3100/otlp
+    compression: none
+    timeout: 3s
+    tls:
+      ca_file: /certs/ca.crt
+      cert_file: /certs/client.crt
+      key_file: /certs/client.key
+      server_name_override: loki
+      min_version: '1.2'
+    retry_on_failure:
+      enabled: true
+      initial_interval: 1s
+      max_interval: 5s
+      max_elapsed_time: 30s
+    sending_queue:
+      enabled: true
+      num_consumers: 1
+      sizer: bytes
+      queue_size: 1048576
+      storage: file_storage/fixture
+service:
+  extensions: [file_storage/fixture]
+  telemetry:
+    logs:
+      level: warn
+    metrics:
+      level: none
+  pipelines:
+    logs/fixture:
+      receivers: [filelog/fixture]
+      exporters: [otlp_http/fixture]
