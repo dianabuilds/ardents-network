@@ -33,3 +33,16 @@ coverage, the two-Endpoint Service journey, namespace/seccomp/cgroup confinement
 joined empty scopes, or restart acceptance. A successful systemctl start for a
 Type=exec unit is only manager-start evidence. Docker cannot substitute for the
 admitted host. No actual admitted-host execution is claimed by adding this driver.
+
+After the real Reader Endpoint is admitted and ready, capture one public read
+with `python3 capture-read.py /absolute/ardents-text program-sha256
+/absolute/application.sock /absolute/transferred-link expected-presentation-sha256
+/absolute/new-private-evidence`. Supply the independently verified program and
+expected digest of the **presented output bytes**, not an assumed document-file
+digest. Transfer the actual public Target Link from the Publisher separately.
+The driver uses pipes because the text UI refuses regular-file stdout, preserves
+the command exit and any timeout, and never retries. Its private output can
+contain document content and must not be published. It does not create authority,
+establish participant readiness, identify the Carrier, observe Descriptor refresh,
+or qualify withdrawal, restart, the two-host journey or confinement. Use the
+separately admitted hosts and retain the installation and host observations.
