@@ -8,5 +8,5 @@ import (
 )
 
 func recoverInstalled(context.Context, string) (ProvisionResult, error) {
-	return ProvisionResult{}, errors.New("protected Endpoint recovery requires Ubuntu24.04 amd64")
+	return ProvisionResult{}, errors.New("protected Endpoint recovery requires admitted Ubuntu LTS amd64")
 }

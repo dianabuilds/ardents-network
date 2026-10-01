@@ -68,7 +68,7 @@ func stopObservedInstallation(ctx context.Context, checked checkedBinding) (retu
 		!decodeInstalledInvocation(unit["InvocationID"], &invocation) {
 		return errors.New("installed predecessor identity is unavailable")
 	}
-	if err := verifyInstalledProcess(unit, service, checked, pid, invocation); err != nil {
+	if err := verifyInstalledProcess(ctx, unit, service, checked, pid, invocation); err != nil {
 		return err
 	}
 	if err := observeBoundSocketsForStop(ctx); err != nil {
@@ -88,7 +88,7 @@ func stopObservedInstallation(ctx context.Context, checked checkedBinding) (retu
 	if err != nil {
 		return err
 	}
-	if err := verifyInstalledProcess(unit, service, checked, pid, invocation); err != nil {
+	if err := verifyInstalledProcess(ctx, unit, service, checked, pid, invocation); err != nil {
 		return err
 	}
 	_, stopErr := runInstallationManager(ctx, "--system", "--no-ask-password", "--no-pager", "stop",

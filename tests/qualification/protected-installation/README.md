@@ -1,7 +1,7 @@
 # Public initial installation capture
 
-Run the explicit driver on each separately admitted Ubuntu 24.04 x86-64,
-systemd 255, cgroup-v2 host after preparing the actual public Release, Network,
+Run the explicit driver on each separately admitted Ubuntu 22.04/systemd 249
+or Ubuntu 24.04/systemd 255 x86-64, cgroup-v2 host after preparing the actual public Release, Network,
 Source and Custody prerequisites. It installs the fixed resources selected by
 the request and starts the actual installed unit. Use dedicated authorized hosts.
 

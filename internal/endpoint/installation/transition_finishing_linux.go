@@ -136,7 +136,7 @@ func finishInstalledTransition(ctx context.Context, intent transitionIntent, pre
 	if err != nil {
 		return ProvisionResult{}, err
 	}
-	if err := verifyInstalledProcess(unit, service, candidate, pid, invocation); err != nil {
+	if err := verifyInstalledProcess(ctx, unit, service, candidate, pid, invocation); err != nil {
 		return ProvisionResult{}, err
 	}
 	if err := observeInstalledSockets(ctx, unit); err != nil {

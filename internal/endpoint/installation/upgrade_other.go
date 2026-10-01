@@ -8,5 +8,5 @@ import (
 )
 
 func upgradeInstalled(context.Context, string) (ProvisionResult, error) {
-	return ProvisionResult{}, errors.New("protected Endpoint upgrade requires Ubuntu24.04 amd64")
+	return ProvisionResult{}, errors.New("protected Endpoint upgrade requires admitted Ubuntu LTS amd64")
 }

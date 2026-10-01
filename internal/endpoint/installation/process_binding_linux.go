@@ -3,6 +3,7 @@
 package installation
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"path/filepath"
@@ -12,7 +13,18 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/endpoint/worker"
 )
 
-func verifyInstalledProcess(unit, service worker.Properties, checked checkedBinding, pid uint32, invocation [16]byte) error {
+func verifyInstalledProcess(ctx context.Context, unit, service worker.Properties, checked checkedBinding, pid uint32, invocation [16]byte) error {
+	version, err := worker.ManagerVersion(ctx)
+	if err != nil {
+		return err
+	}
+	return verifyInstalledProcessVersion(version, unit, service, checked, pid, invocation)
+}
+
+func verifyInstalledProcessVersion(version uint16, unit, service worker.Properties, checked checkedBinding, pid uint32, invocation [16]byte) error {
+	if version != 249 && version != 255 {
+		return errors.New("installed Endpoint manager version is unavailable")
+	}
 	if pid == 0 || invocation == [16]byte{} {
 		return errors.New("installed process identity is incomplete")
 	}
@@ -24,9 +36,19 @@ func verifyInstalledProcess(unit, service worker.Properties, checked checkedBind
 	if !propertyIs(unit, "DropInPaths", "as", []string{}) || !propertyIs(unit, "InvocationID", "ay", invocation) {
 		return errors.New("installed Endpoint invocation or drop-ins differ")
 	}
-	for key, want := range map[string]string{"User": "ardents-endpoint", "Group": "ardents-endpoint", "Type": "exec", "ControlGroup": "/system.slice/ardents-endpoint.service", "WorkingDirectory": "/", "ProtectHome": "yes", "ProtectSystem": "strict", "KillMode": "control-group", "Restart": "no", "ExitType": "main", "RestartMode": "normal"} {
+	for key, want := range map[string]string{"User": "ardents-endpoint", "Group": "ardents-endpoint", "Type": "exec", "ControlGroup": "/system.slice/ardents-endpoint.service", "WorkingDirectory": "/", "ProtectHome": "yes", "ProtectSystem": "strict", "KillMode": "control-group", "Restart": "no"} {
 		if !propertyIs(service, key, "s", want) {
 			return errors.New("installed Endpoint service contract differs")
+		}
+	}
+	for key, want := range map[string]string{"ExitType": "main", "RestartMode": "normal"} {
+		// Only the observed 249 manager lacks these selectable policies. Its
+		// parent lifetime remains mandatory through RemainAfterExit=false.
+		if _, present := service[key]; !present && version == 249 {
+			continue
+		}
+		if !propertyIs(service, key, "s", want) {
+			return errors.New("installed Endpoint parent lifetime differs")
 		}
 	}
 	if !propertyIs(service, "MainPID", "u", pid) || !propertyIs(service, "UMask", "u", uint32(0077)) ||

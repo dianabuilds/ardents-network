@@ -94,7 +94,14 @@ Ubuntu/systemd/cgroup installation or the two-Endpoint Carrier journey.
 The read-only `installation-check` consumer now checks a canonical root-owned
 selection and local binding, exact generation/resource/plan bytes, the real
 dedicated account, mutable root device/inode/access and actual fixed worker
-resources. It requires the admitted Ubuntu24.04/systemd255/cgroup-v2 platform.
+resources. It requires a matching Ubuntu22.04/systemd249 or
+Ubuntu24.04/systemd255 amd64 profile with cgroup v2. Mixed OS/manager pairs
+and newer unadmitted managers refuse. On manager249, absent `ExitType` and
+`RestartMode` reflect unavailable selectable policies; parent lifetime still
+requires `RemainAfterExit=false`, `Restart=no` and the exact main process.
+On manager255 both observed policies remain mandatory. Every installed process
+check observes the actual manager version independently. This compatibility
+admission does not qualify either installed host profile.
 Its result is only `local-integrity-verified`: it opens no Release floor store,
 evaluates no fresh Release proof and grants neither runtime readiness nor an
 active MainPID/InvocationID receipt. The actual installed

@@ -75,7 +75,7 @@ func admitInstalledStart(ctx context.Context, root string) (runtimeplan.DecodedH
 	if err != nil {
 		return refuse(err)
 	}
-	if err := verifyInstalledProcess(unit, service, checked, uint32(os.Getpid()), invocation); err != nil {
+	if err := verifyInstalledProcess(ctx, unit, service, checked, uint32(os.Getpid()), invocation); err != nil {
 		return refuse(err)
 	}
 	if err := observeInstalledSockets(ctx, unit); err != nil {
@@ -97,7 +97,7 @@ func admitInstalledStart(ctx context.Context, root string) (runtimeplan.DecodedH
 	if err != nil {
 		return refuse(err)
 	}
-	if err := verifyInstalledProcess(unit, service, current, uint32(os.Getpid()), invocation); err != nil {
+	if err := verifyInstalledProcess(ctx, unit, service, current, uint32(os.Getpid()), invocation); err != nil {
 		return refuse(err)
 	}
 	if err := observeInstalledSockets(ctx, unit); err != nil {

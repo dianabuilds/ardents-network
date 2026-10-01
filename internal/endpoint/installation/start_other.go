@@ -10,5 +10,5 @@ import (
 )
 
 func admitInstalledStart(context.Context, string) (runtimeplan.DecodedHeadless, error) {
-	return runtimeplan.DecodedHeadless{}, errors.New("installed Endpoint start requires Ubuntu24.04 amd64")
+	return runtimeplan.DecodedHeadless{}, errors.New("installed Endpoint start requires admitted Ubuntu LTS amd64")
 }

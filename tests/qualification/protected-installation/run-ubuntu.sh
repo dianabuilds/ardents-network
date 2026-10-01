@@ -15,8 +15,12 @@ for program in systemctl stat uname awk sha256sum python3 timeout; do
 	command -v "$program" >/dev/null || fail "invalid environment: $program unavailable"
 done
 . /etc/os-release
-[ "$ID" = ubuntu ] && [ "$VERSION_ID" = 24.04 ] && [ "$(uname -m)" = x86_64 ] || fail 'invalid environment: Ubuntu 24.04 x86-64 required'
-[ "$(systemctl --version | awk 'NR == 1 {print $2}')" = 255 ] || fail 'invalid environment: systemd 255 required'
+[ "$ID" = ubuntu ] && [ "$(uname -m)" = x86_64 ] || fail 'invalid environment: admitted Ubuntu LTS x86-64 required'
+manager_version=$(systemctl show --property=Version --value)
+case "$VERSION_ID:$manager_version" in
+	22.04:249|22.04:249.*|24.04:255|24.04:255.*) ;;
+	*) fail 'invalid environment: matching Ubuntu22.04/systemd249 or Ubuntu24.04/systemd255 manager required' ;;
+esac
 [ "$(stat -fc %T /sys/fs/cgroup)" = cgroup2fs ] || fail 'invalid environment: cgroup v2 required'
 [ -f "$binary" ] && [ ! -L "$binary" ] || fail 'invalid environment: direct program required'
 printf '%s  %s\n' "$digest" "$binary" | sha256sum --check --status || fail 'invalid environment: independently declared program digest differs'

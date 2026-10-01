@@ -99,7 +99,7 @@ func readInstalledFile(path string, maximum int64) ([]byte, error) {
 
 func observePlatform(ctx context.Context) error {
 	if runtime.GOARCH != "amd64" {
-		return errors.New("protected installation requires Ubuntu24.04 amd64")
+		return errors.New("protected installation requires admitted Ubuntu LTS amd64")
 	}
 	body, err := worker.ReadInstalledFile("/usr/lib/os-release", 16<<10)
 	if err != nil {
@@ -115,18 +115,22 @@ func observePlatform(ctx context.Context) error {
 			fields[key] = strings.Trim(value, "\"")
 		}
 	}
-	if fields["ID"] != "ubuntu" || fields["VERSION_ID"] != "24.04" {
-		return errors.New("protected installation requires Ubuntu24.04")
+	if fields["ID"] != "ubuntu" || fields["VERSION_ID"] != "22.04" && fields["VERSION_ID"] != "24.04" {
+		return errors.New("protected installation requires Ubuntu22.04 or Ubuntu24.04")
 	}
 	version, err := worker.ManagerVersion(ctx)
-	if err != nil || version != 255 {
-		return errors.Join(errors.New("protected installation requires actual system manager255"), err)
+	if err != nil || !installationPlatformPair(fields["VERSION_ID"], version) {
+		return errors.Join(errors.New("protected installation requires matching Ubuntu/system manager profile"), err)
 	}
 	var filesystem syscall.Statfs_t
 	if syscall.Statfs("/sys/fs/cgroup", &filesystem) != nil || filesystem.Type != 0x63677270 {
 		return errors.New("protected installation requires cgroup v2")
 	}
 	return nil
+}
+
+func installationPlatformPair(release string, version uint16) bool {
+	return release == "22.04" && version == 249 || release == "24.04" && version == 255
 }
 
 func checkGenerationAccess(root string, checked checkedBinding, selected bool) error {

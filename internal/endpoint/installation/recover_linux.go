@@ -84,7 +84,7 @@ func recoverInstalled(ctx context.Context, root string) (result ProvisionResult,
 		if err != nil {
 			return ProvisionResult{}, err
 		}
-		if pid, invocation, err := installedInvocation(unit, service); err == nil && verifyInstalledProcess(unit, service, candidate, pid, invocation) == nil {
+		if pid, invocation, err := installedInvocation(unit, service); err == nil && verifyInstalledProcess(ctx, unit, service, candidate, pid, invocation) == nil {
 			observed = candidate
 		}
 	}

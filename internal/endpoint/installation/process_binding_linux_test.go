@@ -19,7 +19,7 @@ func TestInstalledProcessBindingRefusesForeignInvocationAndExecution(t *testing.
 	}
 	invocation := [16]byte{1}
 	unit, service := installedProcessPropertiesFixture(t, checked, invocation)
-	if err := verifyInstalledProcess(unit, service, checked, 42, invocation); err != nil {
+	if err := verifyInstalledProcessVersion(255, unit, service, checked, 42, invocation); err != nil {
 		t.Fatal(err)
 	}
 	for _, mutation := range []struct {
@@ -49,7 +49,7 @@ func TestInstalledProcessBindingRefusesForeignInvocationAndExecution(t *testing.
 				t.Fatal(err)
 			}
 			target[mutation.key] = worker.Value{Type: mutation.signature, Data: body}
-			if err := verifyInstalledProcess(changedUnit, changedService, checked, 42, invocation); err == nil {
+			if err := verifyInstalledProcessVersion(255, changedUnit, changedService, checked, 42, invocation); err == nil {
 				t.Fatal("foreign process binding accepted")
 			}
 		})
@@ -59,8 +59,51 @@ func TestInstalledProcessBindingRefusesForeignInvocationAndExecution(t *testing.
 		value := changed["ExecStartEx"]
 		value.Data = json.RawMessage(strings.Replace(string(value.Data), change.from, change.to, 1))
 		changed["ExecStartEx"] = value
-		if err := verifyInstalledProcess(unit, changed, checked, 42, invocation); err == nil {
+		if err := verifyInstalledProcessVersion(255, unit, changed, checked, 42, invocation); err == nil {
 			t.Fatal("changed command accepted")
+		}
+	}
+}
+
+func TestInstalledProcessBindingUbuntu249ParentLifetime(t *testing.T) {
+	root, files, _ := bindingBytesFixture(t)
+	checked, err := readLocalBinding(root, fixtureReader(files))
+	if err != nil {
+		t.Fatal(err)
+	}
+	invocation := [16]byte{1}
+	unit, service := installedProcessPropertiesFixture(t, checked, invocation)
+	// The actual systemd 249 manager exposes neither selectable exit type nor
+	// restart mode. Its parent lifetime still must be checked before admission.
+	delete(service, "ExitType")
+	delete(service, "RestartMode")
+	if err := verifyInstalledProcessVersion(249, unit, service, checked, 42, invocation); err != nil {
+		t.Fatalf("systemd 249 parent lifetime refused: %v", err)
+	}
+	for _, version := range []uint16{0, 255, 259} {
+		if err := verifyInstalledProcessVersion(version, unit, service, checked, 42, invocation); err == nil {
+			t.Fatalf("missing lifetime properties accepted for manager %d", version)
+		}
+	}
+	for _, mutation := range []struct {
+		key, signature string
+		value          any
+	}{
+		{"ExitType", "s", "cgroup"},
+		{"RestartMode", "s", "direct"},
+		{"ExitType", "b", false},
+		{"RemainAfterExit", "b", true},
+		{"Restart", "s", "always"},
+		{"MainPID", "u", uint32(43)},
+	} {
+		changed := cloneProperties(service)
+		body, err := json.Marshal(mutation.value)
+		if err != nil {
+			t.Fatal(err)
+		}
+		changed[mutation.key] = worker.Value{Type: mutation.signature, Data: body}
+		if err := verifyInstalledProcessVersion(249, unit, changed, checked, 42, invocation); err == nil {
+			t.Fatalf("changed %s accepted on manager 249", mutation.key)
 		}
 	}
 }

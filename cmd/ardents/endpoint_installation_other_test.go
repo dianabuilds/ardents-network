@@ -15,7 +15,7 @@ func TestInstallationCheckRefusesUnsupportedPlatformBeforeFileEffects(t *testing
 	root := filepath.Join(t.TempDir(), "absent-installation")
 	var output bytes.Buffer
 	err := runEndpoint(context.Background(), []string{"endpoint", "installation-check", root}, &output)
-	if err == nil || !strings.Contains(err.Error(), "requires Ubuntu24.04 amd64") || output.Len() != 0 {
+	if err == nil || !strings.Contains(err.Error(), "requires admitted Ubuntu LTS amd64") || output.Len() != 0 {
 		t.Fatalf("unsupported installation observation produced a receipt: %v / %q", err, output.String())
 	}
 	if _, err := os.Stat(root); !os.IsNotExist(err) {
@@ -27,7 +27,7 @@ func TestEndpointProvisionRefusesUnsupportedPlatformBeforeFileEffects(t *testing
 	path := filepath.Join(t.TempDir(), "absent-request")
 	var output bytes.Buffer
 	err := runEndpoint(context.Background(), []string{"endpoint", "provision", path}, &output)
-	if err == nil || !strings.Contains(err.Error(), "requires Ubuntu24.04 amd64") || output.Len() != 0 {
+	if err == nil || !strings.Contains(err.Error(), "requires admitted Ubuntu LTS amd64") || output.Len() != 0 {
 		t.Fatalf("unsupported provision produced a receipt: %v / %q", err, output.String())
 	}
 	if _, err := os.Stat(path); !os.IsNotExist(err) {
@@ -41,7 +41,7 @@ func TestEndpointTransitionCommandsRefuseUnsupportedPlatformBeforeEffects(t *tes
 			path := filepath.Join(t.TempDir(), "absent-transition")
 			var output bytes.Buffer
 			err := runEndpoint(context.Background(), []string{"endpoint", command, path}, &output)
-			if err == nil || !strings.Contains(err.Error(), "requires Ubuntu24.04 amd64") || output.Len() != 0 {
+			if err == nil || !strings.Contains(err.Error(), "requires admitted Ubuntu LTS amd64") || output.Len() != 0 {
 				t.Fatalf("unsupported transition produced a receipt: %v", err)
 			}
 			if _, err := os.Stat(path); !os.IsNotExist(err) {
@@ -55,7 +55,7 @@ func TestInstalledEndpointRefusesUnsupportedPlatformBeforeRuntimeEffects(t *test
 	root := filepath.Join(t.TempDir(), "absent-installation")
 	var output bytes.Buffer
 	err := runEndpoint(context.Background(), []string{"endpoint", "start-installed", root}, &output)
-	if err == nil || !strings.Contains(err.Error(), "requires Ubuntu24.04 amd64") || output.Len() != 0 {
+	if err == nil || !strings.Contains(err.Error(), "requires admitted Ubuntu LTS amd64") || output.Len() != 0 {
 		t.Fatalf("unsupported installed start produced output: %v / %q", err, output.String())
 	}
 	if _, err := os.Stat(root); !os.IsNotExist(err) {

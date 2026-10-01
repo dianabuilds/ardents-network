@@ -26,7 +26,7 @@ func renderEndpointUnit(template []byte, request Request, directory string) ([]b
 		"Service.ProtectControlGroups": "yes", "Service.ProtectKernelTunables": "yes", "Service.ProtectKernelModules": "yes", "Service.ProtectKernelLogs": "yes",
 		"Service.RestrictSUIDSGID": "yes", "Service.LockPersonality": "yes", "Service.RestrictAddressFamilies": "AF_UNIX AF_INET AF_INET6",
 		"Service.MemoryAccounting": "yes", "Service.CPUAccounting": "yes", "Service.TasksAccounting": "yes", "Service.LimitCORE": "0",
-		"Service.Restart": "no", "Service.RemainAfterExit": "no", "Service.ExitType": "main", "Service.RestartMode": "normal",
+		"Service.Restart": "no", "Service.RemainAfterExit": "no",
 		"Service.KillMode": "control-group", "Service.TimeoutStopSec": "30s", "Service.StandardOutput": "journal", "Service.StandardError": "journal",
 	}
 	section := ""
