@@ -39,6 +39,7 @@ type ClosedTokenIssuer struct {
 	current  func() (state.ClosedProfileView, bool)
 	clock    func() time.Time
 	closed   bool
+	closeErr error
 }
 
 // OpenClosedTokenIssuer opens an initialized closed issuer root. A root can
@@ -129,14 +130,15 @@ func (issuer *ClosedTokenIssuer) Close() error {
 	issuer.mu.Lock()
 	defer issuer.mu.Unlock()
 	if issuer.closed {
-		return nil
+		return issuer.closeErr
 	}
 	issuer.closed = true
 	for index := range issuer.material.keys {
 		clear(issuer.material.keys[index].der)
 	}
 	issuer.material.keys = nil
-	return issuer.lease.release()
+	issuer.closeErr = issuer.lease.release()
+	return issuer.closeErr
 }
 
 func (issuer *ClosedTokenIssuer) profileCurrent() bool {

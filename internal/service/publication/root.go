@@ -33,6 +33,7 @@ type durableRoot struct {
 	lease             rootLease
 	closed            bool
 	released          bool
+	closeErr          error
 	floor             uint64
 	syncDirectory     func(string) error
 	persistenceErr    error

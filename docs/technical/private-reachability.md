@@ -130,6 +130,10 @@ failures beyond its filesystem's sync guarantees.
 If restoring retained records fails during `OpenStore`, the returned error
 includes both the restore failure and any failure to release the exclusive
 lease. No Store handle is returned on that path.
+Normal Store Close serializes through physical lease release and retains its
+first release result for every repeated or concurrent caller. Accepted durable
+floors and conflicts remain unchanged by closure.
+
 
 ## Recipient-only capsule composition
 

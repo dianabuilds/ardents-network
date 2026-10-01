@@ -3,6 +3,7 @@
 package credential
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -27,10 +28,5 @@ func (lease issuerRootLease) release() error {
 	if lease.file == nil {
 		return nil
 	}
-	unlockErr := syscall.Flock(int(lease.file.Fd()), syscall.LOCK_UN)
-	if unlockErr != nil {
-		_ = lease.file.Close()
-		return unlockErr
-	}
-	return lease.file.Close()
+	return errors.Join(syscall.Flock(int(lease.file.Fd()), syscall.LOCK_UN), lease.file.Close())
 }
