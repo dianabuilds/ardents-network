@@ -157,8 +157,34 @@ mod-check:
 tools-check:
 	go run ./scripts/check-tools.go
 
-staticcheck: tools-check
+staticcheck: tools-check standalone-staticcheck
 	staticcheck ./...
+
+.PHONY: standalone-staticcheck standalone-staticcheck-linux
+standalone-staticcheck: tools-check
+standalone-staticcheck-linux: export GOOS := linux
+standalone-staticcheck-linux: export GOARCH := amd64
+standalone-staticcheck-linux: export CGO_ENABLED := 0
+standalone-staticcheck:
+	$(MAKE) --output-sync=target standalone-staticcheck-linux
+
+standalone-staticcheck-linux:
+# Ignored entrypoints are separate programs; select-pr owns two files together.
+	staticcheck ./scripts/check-deadcode.go
+	staticcheck ./scripts/check-tools.go
+	staticcheck ./scripts/enrollment-artifact-name.go
+	staticcheck ./scripts/prepare-qualification-alpha-catalog.go
+	staticcheck ./scripts/prepare-qualification-alpha-evidence.go
+	staticcheck ./scripts/prepare-qualification-alpha-keys.go
+	staticcheck ./scripts/prepare-qualification-network-keys.go
+	staticcheck ./scripts/prepare-qualification-release-keys.go
+	staticcheck ./scripts/protected-generation-check.go
+	staticcheck ./scripts/run-fuzz-targets.go
+	staticcheck ./scripts/run-issue60-checks.go
+	staticcheck ./scripts/sign-qualification-alpha.go
+	staticcheck ./scripts/sign-qualification-network.go
+	staticcheck ./scripts/sign-qualification-release.go
+	staticcheck ./scripts/select-pr-checks.go ./scripts/select-pr-check-registry.go
 
 vuln: tools-check
 	govulncheck ./...
