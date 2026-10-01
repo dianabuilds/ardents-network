@@ -52,6 +52,27 @@ func TestInitialRepairRequiresBirthRecordDurabilityBeforeMutation(t *testing.T) 
 	if retained, err := os.ReadFile(recordPath); err != nil || !bytes.Equal(retained, original) {
 		t.Fatal("initial repair changed birth record", err)
 	}
+	// Cancellation after journal durability must still precede resource repair.
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	err = repairCreatedInstallationFileWithSync(ctx, path, body, 0644, 0, journal, selected, func(directory string) error {
+		if err := syncDirectory(directory); err != nil {
+			return err
+		}
+		if directory == filepath.Dir(recordPath) {
+			cancel()
+		}
+		return nil
+	})
+	if !errors.Is(err, context.Canceled) {
+		t.Fatal("post-journal cancellation lost", err)
+	}
+	if current, err := os.ReadFile(path); err != nil || !bytes.Equal(current, prefix) {
+		t.Fatal("cancelled initial repair changed resource", err)
+	}
+	if retained, err := os.ReadFile(recordPath); err != nil || !bytes.Equal(retained, original) {
+		t.Fatal("cancelled initial repair changed birth record", err)
+	}
 }
 
 func TestInitialCreationJournalFailureRetainsEmptyFileAndOriginalRecord(t *testing.T) {
