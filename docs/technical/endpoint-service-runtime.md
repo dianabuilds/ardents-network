@@ -188,7 +188,12 @@ Each successor replacement durably records its original direct inode, mode,
 group and complete old/new digests before truncation. A visible existing record
 does not prove that an earlier sync succeeded: replacement re-synchronizes that
 private record and its directory before modifying the resource on a later
-attempt. A sync refusal leaves the resource and retained record unchanged.
+attempt. A refusal to synchronize that record or its directory leaves the
+resource and retained record unchanged. A resource-directory sync refusal after
+writing the candidate still returns an error and retains the replacement record;
+visible candidate bytes alone do not establish successful durable completion.
+An explicit retry re-establishes journal durability and completes the replacement
+on the same recorded inode.
 `recover-installed`
 requires an exact root-only successor intent, fresh floor-compatible proofs at
 the recovery time, the owned generation directory and exact replacement
