@@ -958,3 +958,33 @@ intentional retention expiry, the first positive loss count without a previous
 zero, multiple channel deduplication, unrelated jobs and session reset. This
 preflight validates rule evaluation; it does not supply a fault-injected actual
 Node/Alertmanager journey or durable incident acknowledgement history.
+
+### Offline bounded disk-state investigation
+
+`probe-disk-state.py --name <NEW_SHORT_NAME>` is a finite Linux/WSL filesystem
+experiment, not the persistent Docker launcher. It explicitly requires WSL root
+only to create/mount one new64MiB ext4 regular-file image below its fixed private
+`/tmp/ardents-r171-disk-<name>` root. Existing roots are refused. No tools are
+installed, daemon settings changed, Docker socket mounted, host PID/network
+namespace joined or product input supplied. Root authority exists only in this
+offline bootstrap; it is not granted to Node or monitoring components.
+
+The experiment formats the newly created regular file rather than a block-device
+path, checks the selected loop association and mount identity, exercises native
+ENOSPC on one synthetic filler, frees that file, and checks a flushed marker after
+unmount/remount. It unmounts/detaches only the verified selected association.
+Images and receipts remain private for inspection; no recursive deletion occurs.
+A failed cleanup is retained and raises failure. Tool subprocesses have20second
+cooperative deadlines; uninterruptible kernel I/O remains outside a hard bound.
+
+Current Windows Docker integration of Ubuntu is unavailable. Successful native
+filesystem observation does not establish Docker bind visibility, backend
+history, daemon/host reboot durability, supported bootstrap dependencies or
+maintained adoption. General Docker/WSL settings are not changed by this probe.
+
+Windows invocation (explicit offline root bootstrap only):
+`wsl -d Ubuntu-24.04 -u root -- python3
+/mnt/c/<EXACT_WORKTREE>/experiments/r-171-local-observability/probe-disk-state.py
+--name <NEW_SHORT_NAME>`. The finalizer discovers actual resources even when
+setup fails after effects, verifies ownership and checks that both the exact
+mountpoint and image associations are absent. Unknown cleanup is never success.

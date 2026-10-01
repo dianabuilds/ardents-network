@@ -2191,3 +2191,66 @@ semantics, not a fault-injected actual Node/Alertmanager acceptance journey.
 make quick-check completed exit0 for this bounded rule/preflight delta. Full
 integration gates, persistent storage and live fault-injected acceptance remain
 separate obligations.
+
+### Offline disk-state investigation (2026-10-01)
+
+Question/falsification under the existing R171 storage criterion: a new private
+finite disk image must expose no capacity above its64MiB allocation, refuse
+writes at actual ENOSPC, recover space and retain a flushed marker after
+unmount/remount. Existing image roots and changed loop/mount identity must be
+refused. This root-only WSL bootstrap is an explicit offline investigation, not
+product authority or maintained Docker state provisioning. No privileged Node/
+collector or Docker daemon configuration change is selected.
+
+Observed prerequisites: Windows Docker29.1.3 uses containerd snapshotter; Ubuntu
+WSL exists but Docker integration is disabled. Ubuntu defaultUID1000 cannot
+noninteractively sudo; explicit WSL root invocation is available. Preinstalled
+losetup/mount report util-linux2.39.3; no tool installation occurred. The native
+image experiment-a exposed58675200capacity bytes from67108864image bytes and
+retained the marker after remount, cleanup complete,4341760allocated image bytes.
+Experiment-b additionally observed actual ENOSPC at57303040pressure-file bytes,
+recovered53952512available bytes and retained the marker after remount; cleanup
+complete,55779328retained allocated image bytes. Receipts/images remain in the
+root-private Ubuntu paths /tmp/ardents-r171-disk-a and-b, outside Git. Reusing-b
+refused before effects; exact-mount lookup confirmed no active probe mount.
+
+The [upstream losetup manual](https://man7.org/linux/man-pages/man8/losetup.8.html)
+(accessed2026-10-01) documents file association, nooverlap and scoped detachment;
+multiple associations to the same file can corrupt data. The helper verifies its
+selected association before mount and cleanup, never formats a block-device
+path and never detaches all loops. [Docker bind-mount documentation](https://docs.docker.com/engine/storage/bind-mounts/)
+explains the host/daemon filesystem boundary; native Ubuntu state alone does not
+prove Docker visibility. The Product Owner was asked about the currently disabled
+Ubuntu integration because changing it is a general Docker setting and may
+require restarting unrelated containers. Dependent deployment remains pending;
+existing preview backends and history remain untouched.
+
+Disposition: finite disk-backed persistence is technically available through
+standard preinstalled tools, with measured write enforcement. This does not
+admit their support/security closure, Docker mounting, continuous monitoring,
+backend history, host/daemon reboot behavior or full system completion. Root
+bootstrap is separated from non-root runtime ownership; no new data-interception
+capability is introduced.
+
+Both reviews found that a setup command could create a loop/mount and then fail
+before its assignment flag updated. The finalizer now reconciles actual exact-
+image associations and the exact mountpoint, refuses ambiguity, validates
+association ownership before unmount/detach and independently confirms absence
+at completion. Failed reconciliation records incomplete cleanup/overall status.
+Native final-e passed ENOSPC/recovery/remount and cleanup; allocated image bytes
+55721984. Native setup controls-c/d performed real losetup/mount effects and then
+injected TimeoutExpired exceptions: operation complete=false, cleanup=true,
+operation failure retained, and independent queries found no association/mount.
+These simulate a deadline exception after actual effects, not a measured20second
+wall timeout. Both bounded review findings are closed.
+
+Native package inventory: e2fsprogs1.47.0-2.4~exp1ubuntu4.1;
+mount/util-linux2.39.3-9ubuntu6.5; kernel6.6.87.2-microsoft-standard-WSL2.
+This is identity evidence, not support/advisory admission. Retained ext4 images
+are bounded probe state; their receipts are private artifact evidence. No image
+or generated file enters Git and no existing disk/image is formatted.
+make quick-check completed exit0. Read-only DockerDesktop inspection confirms
+only EnableIntegrationWithDefaultWslDistro=false is explicitly stored; its
+current CLI enable supports model-runner, not WSL integration. No settings were
+changed. Pending Product Owner decision remains required before dependent
+integration changes; unrelated backend containers retain their state.
