@@ -1,5 +1,5 @@
 param([Parameter(Mandatory=$true)][string]$EvidenceRoot,
-      [Parameter(Mandatory=$true)][ValidatePattern('^r171-[a-z0-9-]{1,32}$')][string]$RunName, [switch]$RestartProbe, [switch]$ResourceProbe, [switch]$BackendProbe, [switch]$StorageProbe, [ValidateSet('alloy','otel')][string]$Collector='alloy', [switch]$MinimalCollector)
+      [Parameter(Mandatory=$true)][ValidatePattern('^r171-[a-z0-9-]{1,32}$')][string]$RunName, [switch]$RestartProbe, [switch]$ResourceProbe, [switch]$BackendProbe, [switch]$StorageProbe, [ValidateSet('alloy','otel')][string]$Collector='alloy', [switch]$MinimalCollector, [string]$PatchedPluginRoot)
 $ErrorActionPreference='Stop'
 if ($MinimalCollector -and $Collector -ne 'otel') { throw 'Minimal variant requires explicit OTel profile.' }
 if (($ResourceProbe -or $BackendProbe -or $StorageProbe) -and -not $RestartProbe) { throw 'Resource profile requires explicit restart-state profile.' }
@@ -28,7 +28,7 @@ foreach ($taskPrincipal in @($taskSid,[Security.Principal.SecurityIdentifier]::n
 $taskPrivate=Join-Path $taskRoot 'private'; $taskReports=Join-Path $taskRoot 'reports'
 New-Item -ItemType Directory -Path $taskPrivate,$taskReports | Out-Null
 function Get-ProbeSourceSnapshot {
-    $taskSelected=@('images.json','compose.yaml','compose.restart.yaml','fixture.py','prometheus.yml','alerts.yml','alertmanager.yml','loki.yml','config.alloy','prepare-private.py','query-probe.py','resource-window.ps1','storage-pressure.py','probe.ps1','otel.yml','compose.otel.yaml','prometheus.otel.yml','loki.otel.yml','install-collector-image.ps1','alerts.otel.yml','builder.yml','build-minimal.py','install-minimal.ps1')
+    $taskSelected=@('images.json','compose.yaml','compose.restart.yaml','fixture.py','prometheus.yml','alerts.yml','alertmanager.yml','loki.yml','config.alloy','prepare-private.py','query-probe.py','resource-window.ps1','storage-pressure.py','probe.ps1','otel.yml','compose.otel.yaml','prometheus.otel.yml','loki.otel.yml','install-collector-image.ps1','alerts.otel.yml','builder.yml','build-minimal.py','install-minimal.ps1','compose.plugins.yaml','stage-plugins.py','install-plugin-trees.ps1')
     foreach ($taskFile in $taskSelected) {
         $taskBytes=[IO.File]::ReadAllBytes((Join-Path $PSScriptRoot $taskFile))
         $taskHasher=[Security.Cryptography.SHA256]::Create()
@@ -40,6 +40,33 @@ function Get-ProbeSourceSnapshot {
 $taskSourceBefore=@(Get-ProbeSourceSnapshot)
 $taskLock=Get-Content (Join-Path $PSScriptRoot 'images.json') -Raw | ConvertFrom-Json
 $taskEnv=[ordered]@{R171_SOURCE=$PSScriptRoot;R171_PRIVATE=$taskPrivate}
+function Get-PluginTreeSnapshot {
+    if (-not $PatchedPluginRoot) { return }
+    $taskPluginPath=[IO.Path]::GetFullPath($PatchedPluginRoot)
+    $taskAncestor=[IO.DirectoryInfo]::new($taskPluginPath)
+    while ($null -ne $taskAncestor) {
+        if ($taskAncestor.Exists -and ($taskAncestor.Attributes -band [IO.FileAttributes]::ReparsePoint)) { throw 'Refuse redirected plugin root' }
+        if (Test-Path -LiteralPath (Join-Path $taskAncestor.FullName '.git')) { throw 'Plugin trees must stay outside Git' }
+        $taskAncestor=$taskAncestor.Parent
+    }
+    $taskStage=Get-Content (Join-Path $taskPluginPath 'stage-receipt.json') -Raw | ConvertFrom-Json
+    if (-not $taskStage.complete -or $taskStage.plugins.Count -ne 2) { throw 'Explicit complete plugin staging required' }
+    foreach ($taskPlugin in $taskStage.plugins) {
+        if (($taskPlugin.id -eq 'prometheus' -and $taskPlugin.version -eq '13.2.3') -or ($taskPlugin.id -eq 'loki' -and $taskPlugin.version -eq '13.2.1')) {} else { throw 'Unexpected staged plugin identity' }
+        $taskBase=Join-Path (Join-Path $taskPluginPath 'plugins') $taskPlugin.id
+        $taskFiles=@(Get-ChildItem -LiteralPath $taskBase -File -Recurse)
+        if ($taskFiles.Count -gt 4096 -or $taskFiles.Count -ne @($taskPlugin.files.PSObject.Properties).Count) { throw 'Staged inventory changed' }
+        foreach ($taskEntry in $taskFiles) {
+            if ($taskEntry.Attributes -band [IO.FileAttributes]::ReparsePoint) { throw 'Refuse redirected plugin file' }
+            $taskRelative=$taskEntry.FullName.Substring($taskBase.Length+1).Replace('\','/')
+            $taskDigest=(Get-FileHash -LiteralPath $taskEntry.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+            if ($taskDigest -ne $taskPlugin.files.$taskRelative) { throw 'Staged plugin hash changed' }
+            [pscustomobject]@{plugin=$taskPlugin.id;name=$taskRelative;sha256=$taskDigest;bytes=$taskEntry.Length}
+        }
+    }
+}
+$taskPluginBefore=@(Get-PluginTreeSnapshot)
+if ($PatchedPluginRoot) { $taskEnv.R171_PATCHED_PLUGINS=[IO.Path]::GetFullPath($PatchedPluginRoot) }
 $taskHelper=docker image inspect ardents-diagnostics:prebuilt-parsers-final-389 --format '{{.Id}}'
 if ($LASTEXITCODE -ne 0) { throw 'Explicitly installed diagnostic helper missing.' }
 $taskEnv.R171_HELPER_IMAGE=$taskHelper
@@ -65,7 +92,8 @@ $taskOld=@{}; foreach ($taskKey in $taskEnv.Keys) { $taskOld[$taskKey]=[Environm
 $taskCompose=@('compose','-p',$RunName,'-f',(Join-Path $PSScriptRoot 'compose.yaml'))
 if ($RestartProbe) { $taskCompose += @('-f',(Join-Path $PSScriptRoot 'compose.restart.yaml')) }
 if ($Collector -eq 'otel') { $taskCompose += @('-f',(Join-Path $PSScriptRoot 'compose.otel.yaml')) }
-$taskReceipt=[ordered]@{collector=$Collector;minimal_distribution=[bool]$MinimalCollector;started_utc=(Get-Date).ToUniversalTime().ToString('o');run=$RunName;source_scope='synthetic fixture only';complete=$false;helper_image_id=$taskHelper;images=$taskImageIdentities;source_inputs=$taskSourceBefore}
+if ($PatchedPluginRoot) { $taskCompose += @('-f',(Join-Path $PSScriptRoot 'compose.plugins.yaml')) }
+$taskReceipt=[ordered]@{patched_plugins=[bool]$PatchedPluginRoot;plugin_inputs=$taskPluginBefore;collector=$Collector;minimal_distribution=[bool]$MinimalCollector;started_utc=(Get-Date).ToUniversalTime().ToString('o');run=$RunName;source_scope='synthetic fixture only';complete=$false;helper_image_id=$taskHelper;images=$taskImageIdentities;source_inputs=$taskSourceBefore}
 function Invoke-ProbeQuery([string]$Mode,[string]$ReportName) {
     $taskDestination=Join-Path $taskReports $ReportName
     New-Item -ItemType Directory -Path $taskDestination | Out-Null
@@ -107,6 +135,7 @@ try {
     Invoke-ProbeQuery 'lifecycle' 'collector-recovered'
     Invoke-ProbeQuery 'catchup' 'post-outage-logs'
     Invoke-ProbeQuery 'shared-interval' 'grafana-shared-interval'
+    if ($PatchedPluginRoot) { Invoke-ProbeQuery 'plugin-identities' 'plugin-identities' }
     if ($StorageProbe) {
         $taskPressureReports=Join-Path $taskReports 'storage-injection'
         New-Item -ItemType Directory -Path $taskPressureReports | Out-Null
@@ -180,6 +209,9 @@ print(json.dumps({'states':results,'limit':'live non-atomic sample; excludes Gra
     $taskSourceAfter=@(Get-ProbeSourceSnapshot)
     $taskReceipt.source_inputs_stable=($taskSourceBefore | ConvertTo-Json -Compress) -eq ($taskSourceAfter | ConvertTo-Json -Compress)
     if (-not $taskReceipt.source_inputs_stable) { throw 'Probe input changed; retain original observations without acceptance.' }
+    $taskPluginAfter=@(Get-PluginTreeSnapshot)
+    $taskReceipt.plugin_inputs_stable=($taskPluginBefore | ConvertTo-Json -Compress) -eq ($taskPluginAfter | ConvertTo-Json -Compress)
+    if (-not $taskReceipt.plugin_inputs_stable) { throw 'Plugin tree changed during run' }
     $taskReceipt.complete=$true
 } finally {
     $taskSourceAfter=@(Get-ProbeSourceSnapshot)

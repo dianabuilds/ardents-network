@@ -87,6 +87,12 @@ if sys.argv[1]=='ready':
         if remaining: time.sleep(1)
     if remaining: raise RuntimeError('Backend readiness not observed before deadline: '+','.join(sorted(remaining)))
     print('Backend readiness endpoints answered; no product readiness claim')
+elif sys.argv[1]=='plugin-identities':
+    for plugin,version in [('prometheus','13.2.3'),('loki','13.2.1')]:
+        data=observe(plugin+'-registration','http://grafana:3000/api/plugins/'+plugin+'/settings',auth=True)
+        if data.get('info',{}).get('version')!=version or data.get('signature')!='valid' or data.get('signatureOrg')!='Grafana Labs' or data.get('signatureType')!='grafana':
+            raise RuntimeError('Updated plugin version/signature not proven: '+plugin)
+    (reports/'assertions.json').write_text(json.dumps({'versions':{'prometheus':'13.2.3','loki':'13.2.1'},'signature':'valid','passed':True}))
 elif sys.argv[1]=='observe':
     observations = {}
     for name,url in [('prometheus','https://prometheus:9090/api/v1/query?query='+urllib.parse.quote('diagnostic_fixture_queue_items')),

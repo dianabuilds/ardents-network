@@ -1,7 +1,9 @@
 .PHONY: tools-install
 
 tools-install:
-ifeq ($(COLLECTOR),loki-source)
+ifeq ($(COLLECTOR),grafana-plugin-trees)
+	powershell -NoProfile -ExecutionPolicy RemoteSigned -File install-plugin-trees.ps1 -ArtifactRoot "$(ARTIFACT_ROOT)" -EvidenceRoot "$(EVIDENCE_ROOT)"
+else ifeq ($(COLLECTOR),loki-source)
 	powershell -NoProfile -ExecutionPolicy RemoteSigned -File install-loki-source.ps1 -PrimaryRoot "$(ARTIFACT_ROOT)" -PluginRoot "$(PLUGIN_ROOT)" -EvidenceRoot "$(EVIDENCE_ROOT)"
 else ifeq ($(COLLECTOR),grafana-plugins)
 	powershell -NoProfile -ExecutionPolicy RemoteSigned -File install-plugins.ps1 -EvidenceRoot "$(EVIDENCE_ROOT)"

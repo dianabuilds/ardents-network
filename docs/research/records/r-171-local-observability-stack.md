@@ -1366,3 +1366,47 @@ entrypoint, tags, target, cgo/toolchain, dynamic loading or advisory changes.
 Re-run the recipe against exact new artifacts; unrelated x/crypto imports do not
 by themselves establish OpenPGP reachability. Evidence roots remain external
 ardents-r171-loki-source-primary-a and ardents-r171-loki-source-graph-a/b/c.
+
+### Updated datasource compatibility probe
+
+Official complete Prometheus13.2.3/Loki13.2.1 linux/amd64 archive trees were
+staged outside Git through explicit tools-install. Pinned archive hashes were
+rechecked, unsafe/duplicate paths refused, inventory<=4096files and
+expanded<=128MiB per archive. Extracted file digests exactly matched each
+MANIFEST file map. This hash reconciliation alone did not verify its signature.
+Prometheus expanded56135559bytes; Loki43775603bytes. Grafana retained its enabled signature check,
+offline built-in public key, no unsigned-plugin permission or development mode.
+The supported plugin-specific as_external setting selected these external core
+versions. Plugin trees are read-only; complete file hashes are checked before and
+after runtime alongside the selected source snapshots.
+
+patched-runtime-a failed after successful shared-time queries: our assertion
+mistook the API's signatureOrg display name for its organization identifier.
+The actual response was signature=valid, signatureType=grafana,
+signatureOrg=Grafana Labs, Prometheus13.2.3. A/cleanup0 is retained.
+Corrected patched-runtime-b completed0/cleanup0, source/plugin input hashes
+stable. Authenticated plugin settings explicitly confirmed those signature
+fields for both exact updated versions. No runtime signature protection was
+disabled to obtain that result. This verifies Grafana's plugin trust check, not
+independent provenance or a reproducible build of the plugin binaries.
+
+B covered finite silence expiry, threshold recovery, source and collector
+pending/firing/recovery, source-time log catch-up, shared metric/log query frames
+and ordered collector drain/backend restart. Restart retained historical
+metrics/logs/silence state without full-file replay. These remain synthetic,
+authenticated API observations, not browser rendering, product readiness or
+daemon/host crash persistence. Manual post-restart identity query arrived after
+automatic network teardown and failed125; it supplies no additional signature
+proof. Signature settings were checked before restart; source/plugin snapshots
+and restored query/history evidence are separately recorded. Earlier resource
+measurements do not establish updated plugin overhead.
+
+Receipts stay external ardents-r171-plugin-trees-a and
+ardents-r171-patched-runtime-a/b. quick-check passed before the display-name
+assertion correction; the final changed delta receives its own quick-check.
+Exact source/dependency/support/advisory/OS closure and real-source/rendered
+monitoring acceptance still precede maintained admission and dev integration.
+
+Primary configuration reviewed2026-10-01:
+[Grafana external core plugin setting](https://grafana.com/docs/grafana/latest/setup-grafana/configure-grafana/#as_external),
+[signature enforcement](https://grafana.com/docs/grafana/latest/administration/plugin-management/plugin-sign/).

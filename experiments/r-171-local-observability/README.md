@@ -433,3 +433,22 @@ Raw graph and a completion receipt stay outside Git. Graph output32MiB is a
 post-command assertion, not an on-disk quota; each download/list command is
 bounded180s. Package absence is source evidence, not signed/reproducible artifact
 admission; see R-171 for the precise finding disposition and invalidation scope.
+
+### Updated signed datasource compatibility profile
+
+~~~powershell
+make tools-install COLLECTOR=grafana-plugin-trees ARTIFACT_ROOT=C:/Users/vitek/AppData/Local/Temp/ardents-r171-patched-plugins-a EVIDENCE_ROOT=C:/Users/vitek/AppData/Local/Temp/ardents-r171-plugin-trees-new
+powershell -NoProfile -ExecutionPolicy RemoteSigned -File probe.ps1 -EvidenceRoot C:/Users/vitek/AppData/Local/Temp/ardents-r171-patched-runtime-new -RunName r171-patched-runtime-new -Collector otel -MinimalCollector -RestartProbe -PatchedPluginRoot C:/Users/vitek/AppData/Local/Temp/ardents-r171-plugin-trees-new
+~~~
+
+Staging rechecks exact public archive identities, bounded inventory/expansion,
+safe paths and complete manifest file hashes. No plugin runs during staging.
+The opt-in Compose override mounts those trees read-only and loads supported
+external core versions. Grafana's signature verifier remains enabled using its
+built-in key; outbound key retrieval remains disabled. No unsigned loading,
+development mode or arbitrary host log discovery is enabled. Runtime asserts
+exact versions and valid Grafana Labs signatures through authenticated plugin
+settings after the shared-interval query. Start/end tree hashes must match.
+The finite synthetic profile also checks alert/source/collector lifecycle,
+catch-up and ordered restart. It does not prove browser rendering, real process
+integration, updated resource overhead or maintained dependency admission.
