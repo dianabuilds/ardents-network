@@ -468,7 +468,9 @@ private resolver, Introduction submission, data Rendezvous or arbitrary IP.
 At each hop allow at most 128 KiB and 10 seconds per bootstrap lane, 4 live
 lanes per adjacent connection, 16 total per duty and 256 KiB queued work.
 The duty's aggregate bootstrap output ceiling is 1 MiB/minute with a 128 KiB
-burst. Fresh source addresses or keys cannot enlarge that aggregate ceiling.
+burst. Refill retains fractional byte credit across output attempts, including
+refused sends; reaching the burst ceiling discards surplus credit. Fresh source
+addresses or keys cannot enlarge that aggregate ceiling.
 
 The issuer requires the offline permission before expensive signing.
 [ADR-0082](../adr/0082-bind-bootstrap-restriction-to-node-child.md) binds the

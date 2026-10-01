@@ -27,6 +27,8 @@ type ClosedBootstrapController struct {
 	queued   uint64
 	tokens   uint64
 	refilled time.Time
+	// remainder retains sub-byte credit in nanoseconds times bytes/minute.
+	remainder uint64
 }
 
 // ClosedBootstrapLease is one short-lived target-free bootstrap allocation.
@@ -193,14 +195,19 @@ func (controller *ClosedBootstrapController) refill(now time.Time) {
 	elapsed := now.Sub(controller.refilled)
 	if elapsed >= time.Minute {
 		controller.tokens = closedBootstrapOutputBurst
+		controller.remainder = 0
 		controller.refilled = now
 		return
 	}
-	add := uint64(elapsed) * closedBootstrapOutputRate / uint64(time.Minute)
-	if add > closedBootstrapOutputBurst-controller.tokens {
+	// elapsed is below one minute, so scaled and its bounded remainder fit uint64.
+	scaled := uint64(elapsed)*closedBootstrapOutputRate + controller.remainder
+	add := scaled / uint64(time.Minute)
+	if add >= closedBootstrapOutputBurst-controller.tokens {
 		controller.tokens = closedBootstrapOutputBurst
+		controller.remainder = 0
 	} else {
 		controller.tokens += add
+		controller.remainder = scaled % uint64(time.Minute)
 	}
 	controller.refilled = now
 }
