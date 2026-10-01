@@ -105,6 +105,19 @@ the actual unsigned Epoch digest, ordinary verification/materializations,
 closed profile and Source delivery preparation remain required. Never use test
 fixtures, copied historical authorities or cleared floors as operational input.
 
+The explicit Linux-root adapter `scripts/prepare-qualification-network-keys.go`
+takes a previously absent canonical absolute private directory and a Node count
+from 1 to 64. It creates one `state-key.pem` and the requested distinct
+`node-00-key.pem` through `node-63-key.pem` identities, using fresh Ed25519 keys.
+The same root-owned ancestor, exclusive mode, synchronization and interrupted
+output rules as the Release operation apply. Its public receipt records roles,
+public keys and their digests and declares `independent_custody: false`.
+It signs nothing, grants no Node duty and creates no Network identity or State
+floor. Keep these roles separate from Release, alpha, Source and Custody keys.
+The closed-profile signer must be one of the configured pinned State authorities;
+the single initial State key can fulfill that State-owned signing responsibility.
+Never reuse diagnostic keys in the admitted qualification operation.
+
 The maintained `ardents-control prepare-qualification-evidence` command prepares
 initial unsigned disclosure payloads and component signing inputs. Its explicit
 source-file adapter is `scripts/prepare-qualification-alpha-evidence.go`; both
