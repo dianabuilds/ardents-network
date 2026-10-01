@@ -72,6 +72,46 @@ not a power-loss durability qualification.
 
 ## Assembly and acceptance boundary
 
+The explicit `scripts/prepare-qualification-alpha-evidence.go` adapter prepares
+initial unsigned disclosure payloads and component signing inputs. Build it
+with the same canonical Linux build flags above. Pass an absolute public JSON
+plan and a previously absent absolute output directory. The plan schema is
+`ardents-qualification-alpha-evidence-plan-v1`; its other top-level fields are
+`not_before`, `not_after`, `release`, `network`, and `compatibility`. Times are
+UTC whole-second RFC3339 values. Nested evidence fields use the exported field
+names of the current `inspection` evidence contracts: byte slices are JSON
+base64 strings and fixed 32-byte arrays are JSON numeric arrays. Unknown fields
+and trailing JSON values refuse; the public plan is bounded to 32 MiB.
+
+Preparation checks canonical evidence grammar and shared Release/Network/
+Compatibility bindings, including the inspected Epoch identity. It writes
+`release.payload`, `network.payload`, and `compatibility.payload`, each with
+a `.signing-input` companion containing the exact domain-separated initial
+ACS1 signing message. Generation is fixed to one; existing signatures, negative
+or fractional timestamps and invalid validity intervals refuse. The new output
+directory and files use `0700`/`0600`, exclusive creation and synchronization
+before acknowledgement. Preserve partial outputs on failure. This public-input
+adapter does not enforce the private-key ancestor policy of the Release signer.
+It creates no keys or signatures, authenticates no State Epoch, and grants no
+Release, Network or Endpoint acceptance. Separate role signatures and ordinary
+complete-bundle inspection remain required.
+
+After separately signing the component bytes, the explicit
+`scripts/prepare-qualification-alpha-catalog.go` adapter prepares the initial
+ACA1 signing message. Its absolute public JSON plan uses schema
+`ardents-qualification-alpha-catalog-plan-v1` and a `catalog` object with the
+exported `alphacontrol.Catalog` fields. Use the same JSON array/time conventions
+above. It bounds the plan to 1 MiB, rejects unknown fields/trailing values,
+fixes catalog and component generations to one, refuses a predecessor digest
+or existing signature, and requires every component expiry after catalog start
+and no later than catalog expiry. References must name the exact signed
+component sizes/digests and their separately pinned roots. Preparation checks
+grammar only; it does not verify the referenced bytes or grant their authority.
+The new exclusive synchronized output is `catalog.signing-input`, with the
+same output permissions and partial-output retention as evidence preparation.
+Signing this message under the separate disclosure key and ordinary inspection
+of the resulting full bundle remain mandatory.
+
 The four metadata files alone are not the complete bundle. Prepare the real
 current alpha-control and Network companions with their own maintained owners;
 keep authority roles separate. Supply exact signed descriptor/resources and
