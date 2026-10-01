@@ -2105,3 +2105,44 @@ allocation, alternate-stream coverage, Docker-log bytes, host-crash durability
 or complete disk-budget acceptance. File lengths/creation/write metadata are
 non-atomic observations, not stable open-handle file identities. No product
 permission or interception capability is added.
+
+### Retained log accounting and operator history limits (2026-10-01)
+
+Question: can an operator distinguish current retained payload, configured
+retention budgets and intentional expiry from failed delivery using the normal
+metrics path? Falsification: actual size/count rotation and reopening must
+preserve retained inventory; session expiry must reset independently, stale
+current quantities must disappear, impossible accounting must fail exposition.
+
+The monitor now exposes fresh log-storage observation availability, retained
+payload bytes and owned-file count, plus configured byte/file budgets. Existing
+intentional expiry remains a separate session counter. The native real-store
+test rotated three4byte records under8byte/3file budgets, observed8retained
+bytes/3files/4expired bytes/0lost bytes, reopened the same private directory and
+observed the same retained quantities with0session expiry. Stale observations
+omit gauges; above-budget accounting refuses exposition.
+
+Initial Docker test execution failed because its selected temporary filesystem
+was non-executable (test binary permission denied). This is an invalid test
+environment, not a passing skip. A corrected finite executable tmpfs, no network,
+no added capabilities, selected UID and read-only source ran the entire Linux
+diagnostics suite successfully in7.039seconds. make quick-check completed exit0.
+Native provisioning produced13unique dashboard panels, including3new retention
+panels with explicit scrape/heartbeat/storage-availability masks and spanNulls
+false. Private provisioning evidence: ardents-r171-retention-panels-a. Actual
+rendering and fresh dashboard deployment remain unverified by this component.
+
+Disposition: useful retention accounting reaches the standard monitoring path.
+This is not physical disk allocation, a filesystem quota, durable incident
+history or complete monitoring acceptance. Metrics include no paths, identities
+or raw log/profile content. Default-missing accounting is unavailable, not zero.
+
+The spec review found that supervisor heartbeat alone could hide blocked file
+accounting. An independent completed-accounting timestamp now gates storage
+availability within3seconds. The test separately holds a fresh heartbeat with
+4second-old accounting and verifies that current gauges disappear. No heartbeat
+or producer output advances this timestamp.
+Final Linux diagnostic suite after the independent accounting timestamp repair
+passed in7.017seconds. Both bounded review findings are closed. The dashboard
+provisioning is checked; browser rendering/redeployment remain outside this
+component's evidence.

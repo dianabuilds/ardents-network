@@ -640,3 +640,15 @@ sink health. No debug capture is enabled by scraping.
 These are monitor connection instructions, not a qualified ready-stack deployment
 or an installed Node acceptance claim. Build the updated diagnostic tool before
 using new flags; an older installed helper image does not contain this change.
+
+The `/metrics` catalogue also exposes `diagnostic_selected_log_retained_bytes`,
+`log_retained_files`, `log_retention_limit_bytes`, `log_retention_limit_files`
+(all prefixed `diagnostic_selected_`) and
+`diagnostic_selected_log_storage_observation_available`. These are fresh local
+payload-accounting observations/configuration; file count includes the lock.
+Stale or unconfigured storage has availability0 and no current quantities.
+The existing `diagnostic_selected_log_expired_bytes_total` is intentional
+retention expiry for the current session, separately from lost delivery.
+Reopening preserves retained file/byte inventory but resets session counters.
+Physical disk allocation and continuously enforced filesystem quotas are outside
+these metrics.

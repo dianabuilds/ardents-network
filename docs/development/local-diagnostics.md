@@ -627,3 +627,21 @@ an aggregate private receipt. It does not read payload/profile content. This
 snapshot neither enforces a continuous quota nor proves physical allocation;
 Docker logs and filesystem metadata remain separate coverage. Invocation and
 limits belong to the experiment's private artifact observation recipe.
+
+### Log retention accounting metrics
+
+The selected monitor exports fresh retained payload bytes/file counts and their
+configured limits, plus explicit log-storage observation availability. Values
+come from the admitted store's bounded in-memory accounting, not a filesystem
+walk. File count includes the empty ownership lock. Missing/stale accounting
+omits current quantities; impossible counts fail exposition. Configured payload
+limits are not filesystem quotas and exclude metadata/status files/Docker logs.
+The Node experiment dashboard plots these quantities and intentional expiry
+separately from delivery loss. Retained inventory survives reopening; expiry and
+loss counters remain session-local, not durable incident history.
+
+Accounting freshness is independent of the supervisor heartbeat: the file
+worker updates logs_observed_at only after a completed retained-inventory
+observation. Current storage gauges require both observations within three
+seconds. A blocked file worker cannot borrow freshness from a live supervisor;
+missing or pre-session accounting remains unavailable.

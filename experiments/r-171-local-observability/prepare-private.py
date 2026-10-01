@@ -119,6 +119,18 @@ if node_preview:
             'datasource':{'type':'prometheus','uid':'prometheus'},
             'targets':[{'refId':'A','expr':expr,'interval':'2s','legendFormat':title if index<3 or index>=6 else ('{{alertname}} · {{alertstate}}' if index==5 else '{{__name__}}')}],
             'fieldConfig':{'defaults':{'unit':unit,'custom':{'spanNulls':False}},'overrides':[]}})
+    storage_measured = ' and on(job,instance) (up{job="node"} == 1) and on(job,instance) (diagnostic_selected_monitor_fresh{job="node"} == 1) and on(job,instance) (diagnostic_selected_log_storage_observation_available{job="node"} == 1)'
+    storage_specs = [
+        (11, 'Журнал: сохранённые байты и лимит', 'bytes', [('log_retained_bytes', 'Сохранено'), ('log_retention_limit_bytes', 'Лимит')], 'Учёт содержимого локальных файлов. Метаданные файловой системы, status-файлы и журналы Docker сюда не входят. Лимит не является квотой диска.'),
+        (12, 'Журнал: файлы и лимит', 'short', [('log_retained_files', 'Файлов'), ('log_retention_limit_files', 'Лимит')], 'Включает пустой файл блокировки владельца. Отсутствующее или устаревшее наблюдение не заменяется нулём.'),
+        (13, 'Журнал: удалено по сроку или лимиту', 'bytes', [('log_expired_bytes_total', 'Удалено за сессию')], 'Плановая ротация, отдельно от потерь доставки. Счётчик сбрасывается при перезапуске монитора; удалённые сообщения не восстанавливаются.'),
+    ]
+    for index,(panel_id,title,unit,signals,description) in enumerate(storage_specs):
+        panels.append({'id':panel_id,'title':title,'type':'timeseries',
+            'gridPos':{'x':index*8,'y':40,'w':8,'h':8},'maxDataPoints':2000,
+            'datasource':{'type':'prometheus','uid':'prometheus'},
+            'targets':[{'refId':chr(65+offset),'expr':'diagnostic_selected_'+metric+'{job="node"}'+storage_measured,'interval':'2s','legendFormat':label} for offset,(metric,label) in enumerate(signals)],
+            'description':description,'fieldConfig':{'defaults':{'unit':unit,'custom':{'spanNulls':False}},'overrides':[]}})
     panels.append({'id':9,'title':'События настоящего Node','type':'logs',
         'gridPos':{'x':0,'y':28,'w':24,'h':12},'datasource':{'type':'loki','uid':'loki'},
         'targets':[{'refId':'A','expr':'{job="node"} | json | line_format "{{.entry_kind}} · {{.entry_state}}{{if .entry_failure}} · {{.entry_failure}}{{end}} · {{.stream}} #{{.sequence}}"'}],

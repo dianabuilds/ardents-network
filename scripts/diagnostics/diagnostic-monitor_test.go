@@ -754,3 +754,71 @@ func TestCollectorMetricsTLSClientPinAndRestrictedSurface(t *testing.T) {
 		t.Fatal("non-private diagnostic key accepted")
 	}
 }
+
+func TestMonitorRetentionMetricsFollowRealRotationAndRestart(t *testing.T) {
+	at := time.Now().UTC()
+	directory := filepath.Join(t.TempDir(), "logs")
+	policy := logRetentionPolicy{SegmentBytes: 4, MaxBytes: 8, MaxFiles: 3, SegmentAge: time.Minute, MaxAge: time.Hour}
+	store, err := openLogStore(directory, policy, at)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, body := range []string{"1111", "2222", "3333"} {
+		if _, err := store.Append("events", []byte(body), at); err != nil {
+			t.Fatal(err)
+		}
+	}
+	check := func(store *logStore, now time.Time, expired string) {
+		t.Helper()
+		state := monitorState{Schema: "ardents-monitor-v1", Started: at.Add(-time.Minute), Updated: now, Limits: policy, Logs: store.Stats(), LogsObservedAt: now}
+		body, err := monitorMetrics(state, now)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, expected := range []string{
+			"diagnostic_selected_log_storage_observation_available 1\n",
+			"diagnostic_selected_log_retained_bytes 8\n",
+			"diagnostic_selected_log_retained_files 3\n",
+			"diagnostic_selected_log_retention_limit_bytes 8\n",
+			"diagnostic_selected_log_retention_limit_files 3\n",
+			"diagnostic_selected_log_expired_bytes_total " + expired + "\n",
+			"diagnostic_selected_log_lost_bytes_total 0\n",
+		} {
+			if !strings.Contains(string(body), expected) {
+				t.Fatalf("missing rotation observation %q: %s", expected, body)
+			}
+		}
+		state.Updated = now.Add(-4 * time.Second)
+		body, err = monitorMetrics(state, now)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if strings.Contains(string(body), "# HELP diagnostic_selected_log_retained_bytes") || !strings.Contains(string(body), "diagnostic_selected_log_storage_observation_available 0\n") {
+			t.Fatal("stale payload accounting presented as current")
+		}
+		state.Updated = now // A fresh independent heartbeat cannot refresh blocked accounting.
+		state.LogsObservedAt = now.Add(-4 * time.Second)
+		body, err = monitorMetrics(state, now)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if strings.Contains(string(body), "# HELP diagnostic_selected_log_retained_bytes") || !strings.Contains(string(body), "diagnostic_selected_log_storage_observation_available 0\n") {
+			t.Fatal("heartbeat refreshed stale file accounting")
+		}
+		state.LogsObservedAt = now
+		state.Logs.RetainedBytes = policy.MaxBytes + 1
+		if _, err := monitorMetrics(state, now); err == nil {
+			t.Fatal("impossible accounting accepted")
+		}
+	}
+	check(store, at, "4")
+	if err := store.Close(); err != nil {
+		t.Fatal(err)
+	}
+	store, err = openLogStore(directory, policy, at.Add(time.Second))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	check(store, at.Add(time.Second), "0") // Retained inventory survives; session expiry counters reset.
+}

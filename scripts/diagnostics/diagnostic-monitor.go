@@ -64,6 +64,7 @@ type monitorState struct {
 	SnapshotFailed      bool               `json:"snapshot_failed"`
 	SinksJoined         bool               `json:"sinks_joined"`
 	CleanupFailed       bool               `json:"cleanup_failed"`
+	LogsObservedAt      time.Time          `json:"logs_observed_at,omitempty"`
 	Logs                logStoreStats      `json:"logs"`
 	Tail                []monitorLogRow    `json:"tail"`
 }
@@ -87,7 +88,7 @@ type monitorDelivery struct {
 // File I/O never runs in producer drains or while holding the state lock.
 func newMonitorDelivery(store *logStore, console *os.File, raw bool, at time.Time) *monitorDelivery {
 	d := &monitorDelivery{store: store, console: console, fileQueue: make(chan monitorRecord, 128), consoleQueue: make(chan []byte, 64), fileDone: make(chan error, 1), consoleDone: make(chan error, 1),
-		state: monitorState{Schema: "ardents-monitor-v1", Started: at, Updated: at, Raw: raw, SourceName: "selected-process", Limits: store.policy, Logs: store.Stats()}}
+		state: monitorState{Schema: "ardents-monitor-v1", Started: at, Updated: at, Raw: raw, SourceName: "selected-process", Limits: store.policy, Logs: store.Stats(), LogsObservedAt: at}}
 	go d.runFile()
 	go d.runConsole()
 	return d
@@ -222,6 +223,7 @@ func (d *monitorDelivery) runFile() {
 				err := d.store.Close()
 				d.mu.Lock()
 				d.state.Logs = d.store.Stats()
+				d.state.LogsObservedAt = time.Now().UTC()
 				d.state.FileFailed = d.state.FileFailed || err != nil
 				d.mu.Unlock()
 				d.fileDone <- err
@@ -231,6 +233,7 @@ func (d *monitorDelivery) runFile() {
 			stats := d.store.Stats()
 			d.mu.Lock()
 			d.state.Logs = stats
+			d.state.LogsObservedAt = time.Now().UTC()
 			d.state.FileFailed = d.state.FileFailed || err != nil
 			d.mu.Unlock()
 		case at := <-tick.C:
@@ -238,6 +241,7 @@ func (d *monitorDelivery) runFile() {
 			stats := d.store.Stats()
 			d.mu.Lock()
 			d.state.Logs = stats
+			d.state.LogsObservedAt = time.Now().UTC()
 			d.state.FileFailed = d.state.FileFailed || err != nil
 			d.mu.Unlock()
 		}
@@ -723,6 +727,7 @@ func maintainMonitorLogs(ctx context.Context, root *os.Root, delivery *monitorDe
 	delivery.state.RetentionActive = true
 	delivery.state.SinksJoined = false
 	delivery.state.Logs = store.Stats()
+	delivery.state.LogsObservedAt = time.Now().UTC()
 	delivery.mu.Unlock()
 	go delivery.runFile()
 	go delivery.runConsole()

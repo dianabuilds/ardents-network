@@ -260,6 +260,20 @@ func monitorMetrics(state monitorState, now time.Time) ([]byte, error) {
 			emit(signal.name, "counter", signal.help, float64(signal.value))
 		}
 	}
+	// Limits originate from the admitted log store, not producer resource fields.
+	// These are payload accounting gauges; they do not measure physical disk use.
+	storageFresh := !state.LogsObservedAt.IsZero() && !state.LogsObservedAt.After(now) && !state.LogsObservedAt.Before(state.Started) && now.Sub(state.LogsObservedAt) <= 3*time.Second
+	storageAvailable := fresh && storageFresh && state.Limits.SegmentBytes > 0 && state.Limits.MaxBytes >= state.Limits.SegmentBytes && state.Limits.MaxFiles >= 2
+	emit("log_storage_observation_available", "gauge", "Fresh admitted log payload accounting; not filesystem allocation.", boolean(storageAvailable))
+	if storageAvailable {
+		if state.Logs.RetainedBytes < 0 || state.Logs.RetainedBytes > state.Limits.MaxBytes || state.Logs.Files < 1 || state.Logs.Files > state.Limits.MaxFiles {
+			return nil, errors.New("invalid retained log accounting")
+		}
+		emit("log_retained_bytes", "gauge", "Observed retained log payload bytes; excludes filesystem metadata and status files.", float64(state.Logs.RetainedBytes))
+		emit("log_retained_files", "gauge", "Observed owned log-directory files including the empty ownership lock.", float64(state.Logs.Files))
+		emit("log_retention_limit_bytes", "gauge", "Configured retained payload budget; not filesystem quota.", float64(state.Limits.MaxBytes))
+		emit("log_retention_limit_files", "gauge", "Configured file budget including the empty ownership lock.", float64(state.Limits.MaxFiles))
+	}
 	available := false
 	row := state.LatestSample
 	if fresh && state.SourceAlive && state.MetricSampleMaxAge > 0 && row != nil &&
