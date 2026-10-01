@@ -65,14 +65,10 @@ func (generation *generation) releaseSigner() {
 }
 
 func openDurableRoot(config Config) (*durableRoot, error) {
-	return openDurableRootWithSync(config, syncPublicationDirectory)
+	return openDurableRootWithSync(config, acquireRootLease, syncPublicationDirectory)
 }
 
-func openDurableRootWithSync(config Config, syncDirectory func(string) error) (*durableRoot, error) {
-	return openDurableRootWithLease(config, acquireRootLease, syncDirectory)
-}
-
-func openDurableRootWithLease(config Config, acquire func(string) (rootLease, error), syncDirectory func(string) error) (_ *durableRoot, resultErr error) {
+func openDurableRootWithSync(config Config, acquire func(string) (rootLease, error), syncDirectory func(string) error) (_ *durableRoot, resultErr error) {
 	if config.Root == "" {
 		return nil, errors.New("publication root is required")
 	}

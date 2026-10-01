@@ -31,7 +31,7 @@ func TestOpenPublicationRootJoinsReleaseFailure(t *testing.T) {
 				}
 			}
 			calls := 0
-			root, err := openDurableRootWithLease(Config{Root: path}, func(path string) (rootLease, error) {
+			root, err := openDurableRootWithSync(Config{Root: path}, func(path string) (rootLease, error) {
 				calls++
 				lease, err := acquireRootLease(path)
 				if err != nil {
@@ -67,7 +67,7 @@ func TestOpenPublicationRootJoinsReleaseFailure(t *testing.T) {
 func TestOpenPublicationRootRetainsSyncAndReleaseCauses(t *testing.T) {
 	path := t.TempDir()
 	syncFailure := errors.New("injected publication directory sync refusal")
-	root, err := openDurableRootWithLease(Config{Root: path}, func(path string) (rootLease, error) {
+	root, err := openDurableRootWithSync(Config{Root: path}, func(path string) (rootLease, error) {
 		lease, err := acquireRootLease(path)
 		if err != nil {
 			return lease, err
