@@ -83,12 +83,18 @@ func DecodeSource(input []byte) (DecodedSource, error) {
 		return DecodedSource{}, err
 	}
 	for index, member := range plan.Sources {
+		if member.Family == "" {
+			return DecodedSource{}, errors.New("source operator family is required")
+		}
 		if err := decodeFixedHex(member.Identity, result.Identities[index][:]); err != nil {
 			return DecodedSource{}, err
 		}
 		if err := decodeFixedHex(member.LeafKeyDigest, result.LeafKeyDigests[index][:]); err != nil {
 			return DecodedSource{}, err
 		}
+	}
+	if plan.Sources[0].Family == plan.Sources[1].Family {
+		return DecodedSource{}, errors.New("source operator families must be distinct")
 	}
 	return result, nil
 }

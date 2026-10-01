@@ -118,6 +118,9 @@ independent pin; its absence never authorizes a first installation. Inline
 Source must match the headless Network, signer map, threshold, role root and
 clock observation file, with nonzero refresh. The input headless Source-plan
 path is empty; its rendered output selects only that generation's `source.json`.
+The two declared Direct Source operator families must be present and distinct;
+the installation request refuses a duplicate before creating an Endpoint account
+or selecting a generation. Distinct names do not establish independent operators.
 Every declared path is absolute/canonical and remains outside the bundle,
 immutable installation and Release floor roots. No private material is copied.
 

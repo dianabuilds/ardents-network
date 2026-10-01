@@ -94,6 +94,7 @@ func TestInstallationRequestRefusesMixedAuthorityAndOverlappingRoots(t *testing.
 		{"Source-network", func(r *Request) { r.Source.NetworkID = strings.Repeat("99", 32) }},
 		{"Source-clock", func(r *Request) { r.Source.ClockObservationFile += "-other" }},
 		{"Source-signers", func(r *Request) { r.Source.AuthorityPublic = []string{strings.Repeat("bb", 32)} }},
+		{"Source-same-operator-family", func(r *Request) { r.Source.Sources[1].Family = r.Source.Sources[0].Family }},
 		{"no-refresh", func(r *Request) { r.Source.RefreshIntervalMS = 0 }},
 		{"external-Source-plan", func(r *Request) {
 			r.Headless.NetworkSourcePlan = filepath.Join(filepath.Dir(r.InstallationRoot), "mutable-source.json")
