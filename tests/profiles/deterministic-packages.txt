@@ -66,6 +66,7 @@ github.com/dianabuilds/ardents-network/internal/application/streamqualification
 github.com/dianabuilds/ardents-network/cmd/ardents-qualification
 github.com/dianabuilds/ardents-network/tests/epochfixture/network
 github.com/dianabuilds/ardents-network/internal/successor/hosting
-github.com/dianabuilds/ardents-network/internal/successor/issuance
-github.com/dianabuilds/ardents-network/internal/successor/tokenissuance
+github.com/dianabuilds/ardents-network/internal/successor/admission/issuance
+github.com/dianabuilds/ardents-network/internal/successor/admission/issuer
 github.com/dianabuilds/ardents-network/internal/successor/nodeidentity
+github.com/dianabuilds/ardents-network/internal/successor/admission/issuerprofile

@@ -19,6 +19,7 @@ import (
 
 	"github.com/cloudflare/circl/blindsign/blindrsa"
 	"github.com/dianabuilds/ardents-network/internal/successor/admission"
+	"github.com/dianabuilds/ardents-network/internal/successor/admission/issuerprofile"
 )
 
 func resultFixture(t *testing.T, v Inventory, class uint8, count uint16, id byte) ([]byte, admission.Facts, admission.LedgerBinding, func([]byte)) {
@@ -29,7 +30,7 @@ func resultFixture(t *testing.T, v Inventory, class uint8, count uint16, id byte
 	holder := ed25519.NewKeyFromSeed(seed)
 	b := admission.LedgerBinding{Network: v.Binding.Network, Issuer: v.Binding.Issuer, Authority: [32]byte(authority.Public().(ed25519.PublicKey)), Profile: [32]byte{9}, Duty: 7, Start: v.Binding.Start, End: v.Binding.End}
 	for _, k := range v.Keys {
-		b.Keys = append(b.Keys, admission.TokenKey{Window: k.Window, Class: k.Class, SPKI: append([]byte(nil), k.SPKI...)})
+		b.Keys = append(b.Keys, issuerprofile.Key{Window: k.Window, Class: k.Class, SPKI: append([]byte(nil), k.SPKI...)})
 	}
 	f := admission.Facts{Network: b.Network, Issuer: b.Issuer, Authority: b.Authority, Holder: [32]byte(holder.Public().(ed25519.PublicKey)), Duty: b.Duty, DutyNotBefore: b.Start, DutyNotAfter: b.End, Now: b.Start, Class: class, Count: uint32(count)}
 	permission := make([]byte, 228)
@@ -45,7 +46,7 @@ func resultFixture(t *testing.T, v Inventory, class uint8, count uint16, id byte
 	}
 	copy(permission[164:], ed25519.Sign(authority, append([]byte("ardents-issuance-permission-v1\x00"), permission[:164]...)))
 	spki := v.Keys[class-1].SPKI
-	public, ok := tokenKey(spki)
+	public, ok := issuerprofile.ParseKey(spki)
 	if !ok {
 		t.Fatal("SPKI")
 	}

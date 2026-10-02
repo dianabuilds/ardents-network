@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"io"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/issuance"
-	"github.com/dianabuilds/ardents-network/internal/successor/tokenissuance"
+	"github.com/dianabuilds/ardents-network/internal/successor/admission/issuance"
+	"github.com/dianabuilds/ardents-network/internal/successor/admission/issuer"
 )
 
 func runIssuanceResults(ctx context.Context, args []string, out, diagnostic io.Writer) int {
@@ -70,15 +70,14 @@ func runIssuanceResults(ctx context.Context, args []string, out, diagnostic io.W
 	}
 	o, _ := newObservation(endpoint)
 	finish := o.beginIssuance(r.Operation)
-	plan := tokenissuance.Plan{AdmissionRoot: p.Admission.Root, AdmissionBinding: p.Admission.Binding, KeyRoot: p.Keys.Root, KeyBinding: p.Keys.Binding, ResultRoot: p.Root}
-	var result tokenissuance.Result
+	plan := issuer.Plan{AdmissionRoot: p.Admission.Root, AdmissionBinding: p.Admission.Binding, KeyRoot: p.Keys.Root, KeyBinding: p.Keys.Binding, ResultRoot: p.Root}
+	var result issuer.Result
 	if args[0] == "initialize-results" {
-		result = tokenissuance.Initialize(ctx, plan)
+		result = issuer.Initialize(ctx, plan)
 	} else {
-		result = tokenissuance.Issue(ctx, plan, batch, p.Admission.Facts, p.Admission.Kind)
+		result = issuer.Issue(ctx, plan, batch, p.Admission.Facts, p.Admission.Kind)
 	}
-	r.Phase = result.Phase
-	r.Outcome = result.Outcome
+	r.Phase, r.Outcome = result.Status()
 	if result.Response != nil {
 		r.Phase = "export"
 		if exportErr := exportIssuanceInventory(ctx, p.ResponseFile, result.Response); exportErr != nil {

@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/hex"
 	"encoding/json"
-	"github.com/dianabuilds/ardents-network/internal/successor/issuance"
+	"github.com/dianabuilds/ardents-network/internal/successor/admission/issuance"
 	"io"
 	"path/filepath"
 	"time"

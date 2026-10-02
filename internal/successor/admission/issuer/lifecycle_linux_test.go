@@ -1,6 +1,6 @@
 //go:build linux
 
-package tokenissuance
+package issuer
 
 import (
 	"os"
@@ -9,10 +9,11 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/successor/admission"
-	"github.com/dianabuilds/ardents-network/internal/successor/issuance"
+	"github.com/dianabuilds/ardents-network/internal/successor/admission/issuance"
 )
 
-func TestInitializeClosesOwnersAndRetainsResultRoot(t *testing.T) {
+func issuancePlan(t *testing.T) Plan {
+	t.Helper()
 	base := t.TempDir()
 	start := time.Unix(3600, 0).UTC()
 	keys := issuance.Binding{Network: [32]byte{1}, Issuer: [32]byte{2}, Signer: [32]byte{3}, Start: start, End: start.Add(time.Hour)}
@@ -29,15 +30,18 @@ func TestInitializeClosesOwnersAndRetainsResultRoot(t *testing.T) {
 		t.Fatal(err)
 	}
 	p.AdmissionBinding = admission.LedgerBinding{Network: keys.Network, Issuer: keys.Issuer, Authority: [32]byte{4}, Profile: [32]byte{5}, Duty: 1, Start: keys.Start, End: keys.End}
-	for _, k := range inventory.Keys {
-		p.AdmissionBinding.Keys = append(p.AdmissionBinding.Keys, admission.TokenKey{Window: k.Window, Class: k.Class, SPKI: k.SPKI})
-	}
+	p.AdmissionBinding.Keys = inventory.Keys
 	if err := store.Close(); err != nil {
 		t.Fatal(err)
 	}
 	if err := admission.Initialize(p.AdmissionRoot, p.AdmissionBinding); err != nil {
 		t.Fatal(err)
 	}
+	return p
+}
+
+func TestInitializeClosesOwnersAndRetainsResultRoot(t *testing.T) {
+	p := issuancePlan(t)
 	if got := Initialize(t.Context(), p); got.Outcome != "initialized-results" {
 		t.Fatal(got)
 	}
@@ -62,7 +66,7 @@ func TestInitializeClosesOwnersAndRetainsResultRoot(t *testing.T) {
 	if err = ledger.Close(); err != nil {
 		t.Fatal(err)
 	}
-	store, err = issuance.Open(t.Context(), p.KeyRoot, keys)
+	store, err := issuance.Open(t.Context(), p.KeyRoot, p.KeyBinding)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -8,6 +8,7 @@ import (
 	"encoding/asn1"
 	"encoding/binary"
 	"github.com/dianabuilds/ardents-network/internal/successor/admission"
+	"github.com/dianabuilds/ardents-network/internal/successor/admission/issuerprofile"
 	"math/big"
 	"testing"
 	"time"
@@ -24,7 +25,7 @@ func admissionCommandFixture(t *testing.T, class uint8, count uint16, max uint32
 	copy(f.Holder[:], holder.Public().(ed25519.PublicKey))
 	binding := admission.LedgerBinding{Network: f.Network, Issuer: f.Issuer, Authority: f.Authority, Profile: [32]byte{9}, Duty: f.Duty, Start: f.DutyNotBefore, End: f.DutyNotAfter}
 	for c := uint8(1); c <= 3; c++ {
-		binding.Keys = append(binding.Keys, admission.TokenKey{Window: 3600, Class: c, SPKI: admissionCommandSPKI(t, c)})
+		binding.Keys = append(binding.Keys, issuerprofile.Key{Window: 3600, Class: c, SPKI: admissionCommandSPKI(t, c)})
 	}
 	p := make([]byte, 228)
 	copy(p[:32], f.Network[:])

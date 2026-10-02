@@ -13,8 +13,11 @@ defensive copies of raw batch, exact ledger binding, kind and checked-at time;
 zero confirmation refuses. No public constructor or storage decoder mints one.
 Issuance admits only this type, validates exact key inventory and ledger binding,
 and validates explicit now within permission/duty, not before checked-at/floor.
-Admission stays stdlib-only; Issuance's exact additional imports are successor
-Admission and CIRCL blindsign/blindrsa v1.6.5. Hosting stays independent.
+Admission's public cohort/SPKI contract lives in `admission/issuerprofile` and
+uses only the standard library. The ledger imports that contract. The
+`admission/issuance` owner imports the ledger, public profile contract, purpose-
+bound Node Identity and reviewed CIRCL blindsign/blindrsa v1.6.5. Hosting stays
+independent; directory nesting creates no new import permission.
 
 InitializeResults(ctx,path,Store,LedgerBinding) creates an exclusive fresh root.
 OpenResults(ctx,path,Store,LedgerBinding) returns a shared-lifecycle ResultStore;
@@ -22,10 +25,9 @@ Issue(ctx,DebitConfirmation,now) returns defensive response bytes and category;
 Close retains the shared result. Store must remain open until ResultStore closes.
 Admission -> key Store -> ResultStore is the fixed command lease order, reverse
 cleanup with retained errors. The real operation owner is
-`internal/successor/tokenissuance`: `Initialize(ctx, Plan)` and
+`internal/successor/admission/issuer`: `Initialize(ctx, Plan)` and
 `Issue(ctx, Plan, raw, Facts, Kind)` open those owners before debit and close in
-reverse order. Its only non-standard imports are successor Admission and
-Issuance. The command handles strict configuration, response export and OTel;
+reverse order. Its only project imports are Admission, its Issuance child and Node Identity. The command handles strict configuration, response export and OTel;
 quota and signing rules remain within their respective domains. No arbitrary
 signing or private-key API is added.
 
@@ -61,6 +63,15 @@ partial tails never truncate. Exact retries revalidate time before returning
 saved bytes. Failure/expiry never refunds. Full rollback and power loss remain
 outside demonstrated guarantees.
 
+The operation `Result` retains its primary `Phase`/`Outcome` and a bounded
+three-slot `Cleanup`: results/profile, keys, admission/identity in retirement
+order. Only acquired owners produce completions. `Status()` preserves the
+existing command projection: a failed close produces `storage-uncertain`, with
+the last failing close phase taking precedence. Any close failure clears
+`Response` before export, without erasing primary or earlier cleanup results.
+The composition regression cancels after all three real leases are held and
+removes two pins; it checks retained outcomes and released leases under race.
+
 ## Command and evidence
 
 issuance initialize-results config fields: admission_root, admission_binding,
@@ -77,7 +88,7 @@ operation/phase/outcome and duration; no secret or binding metadata.
 | Durable debit/checked retry | successor/admission ledger and batch | confirmation only after commit, copies, expired retry |
 | Blind signer | route/credential/closed_token_issuer.go | real client blind/finalize, stdlib VerifyPSS, all classes |
 | Exact result bytes | route/credential/closed_token_outcome.go | grammar/status/count/zero-tail independent assertions |
-| Immutable key binding | successor/issuance Store | mismatched cohort/ledger/inventory refuses |
+| Immutable key binding | successor/admission/issuance Store | mismatched cohort/ledger/inventory refuses |
 | Shared lifecycle/durability | successor Admission/Issuance filesystem | faults, pending/partial, links/substitution, lease/crash |
 | Actual operation | ardents-next composition | compiled issue/retry/export/conflict/collector OTLP |
 

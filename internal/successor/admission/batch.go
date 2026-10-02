@@ -8,6 +8,8 @@ import (
 	"encoding/binary"
 	"math"
 	"math/big"
+
+	"github.com/dianabuilds/ardents-network/internal/successor/admission/issuerprofile"
 )
 
 type verifiedBatch struct {
@@ -47,7 +49,7 @@ func verifyBatch(ctx context.Context, raw []byte, facts Facts, binding LedgerBin
 		return b, Malformed
 	}
 	spki := raw[277:623]
-	public, ok := tokenKey(spki)
+	public, ok := issuerprofile.ParseKey(spki)
 	if !ok {
 		return b, Malformed
 	}

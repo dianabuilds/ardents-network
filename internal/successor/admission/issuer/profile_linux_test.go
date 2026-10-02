@@ -1,6 +1,6 @@
 //go:build linux
 
-package tokenissuance
+package issuer
 
 import (
 	"bytes"
@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/issuance"
+	"github.com/dianabuilds/ardents-network/internal/successor/admission/issuance"
 	"github.com/dianabuilds/ardents-network/internal/successor/nodeidentity"
 )
 

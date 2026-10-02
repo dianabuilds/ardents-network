@@ -24,7 +24,9 @@ profile digest, aligned one-to-six-hour interval and sorted unique class/hour
 SPKI inventory (all three classes per hour). Inputs are explicit offline
 assertions. Facts select holder, now, class and count independently of wire;
 all duty facts must match the immutable binding. No callback supplies authority.
-Inspection remains unchanged. Admission imports only standard library.
+Inspection remains unchanged. Admission imports the standard library and its
+public `admission/issuerprofile` contract for cohort/SPKI validation; the
+[profile owner](successor-issuer-profile.md) defines that authority-free boundary.
 The exported binding type is `LedgerBinding`, preserving the existing `Binding`
 inspection outcome name. Initialization returns `initialized-offline`; it does
 not report an issuance debit.

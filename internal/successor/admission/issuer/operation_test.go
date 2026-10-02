@@ -1,4 +1,4 @@
-package tokenissuance
+package issuer
 
 import (
 	"context"
@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/dianabuilds/ardents-network/internal/successor/admission"
-	"github.com/dianabuilds/ardents-network/internal/successor/issuance"
+	"github.com/dianabuilds/ardents-network/internal/successor/admission/issuance"
 )
 
 func TestOperationRefusesBeforeOpeningInvalidRoots(t *testing.T) {

@@ -12,7 +12,7 @@ import (
 	"path/filepath"
 	"sync"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/admission"
+	"github.com/dianabuilds/ardents-network/internal/successor/admission/issuerprofile"
 )
 
 var (
@@ -162,7 +162,7 @@ func (s Store) Public() (Binding, error) {
 	}
 	return v.binding, nil
 }
-func (s Store) SignIssuerProfile(ctx context.Context, request admission.IssuerProfileRequest) ([]byte, error) {
+func (s Store) SignIssuerProfile(ctx context.Context, request issuerprofile.Request) ([]byte, error) {
 	if s.state == nil || ctx == nil {
 		return nil, ErrInvalid
 	}

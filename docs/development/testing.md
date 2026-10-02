@@ -631,8 +631,8 @@ immutable command build. It requires proc/sys/loopback for the existing command
 tests. Windows cannot replace Linux acceptance; filesystem tests do not qualify
 power loss, full storage rollback or network security.
 
-`make admission-check` requires Linux and executes the standard-library
-successor Admission file, lease, crash/reopen and concurrency tests under race,
+`make admission-check` requires Linux and executes the successor Admission public-contract and
+ledger file, lease, crash/reopen and concurrency tests under race,
 plus the real compiled `ardents-next` cycle and actual OTLP checks. The checked
 profile is `admission-ledger-linux`; the Docker acceptance image is
 `golang:1.27.1-bookworm@sha256:69a7b9788769bec032d238959b61854e9ae87f57be9029ec04e9885fabf99195`.
@@ -642,15 +642,23 @@ result. These tests provide no live issuer/State, power-loss storage or whole
 Network qualification.
 
 The token-issuance-linux profile executes make token-issuance-check with all
-three successor owners and the compiled CLI under race in the same pinned image.
+Admission owners and the compiled CLI under race in the same pinned image.
 It includes real client blind/finalize and stdlib PSS verification, opaque debit
 confirmation, quota retention, journal pairs/floors, faults, crash/replay and OTLP.
 CIRCL uses the populated reviewed module cache. No power-loss/rollback claim.
 
 The active `issuer-profile-linux` profile uses `make issuer-profile-check` on the
-pinned Go 1.27.1 Linux image. It exercises Admission, Nodeidentity, Issuance,
-Tokenissuance and compiled ardents-next with real files, lease/crash processes,
+pinned Go 1.27.1 Linux image. It exercises Admission, its Issuerprofile/Issuance/Issuer children,
+Nodeidentity and compiled ardents-next with real files, lease/crash processes,
 race detection, actual OTLP and the prior durable token cycle. It also mutation-
 fuzzes FuzzIssuerProfile and FuzzNodeIdentityPEM for 30 seconds each, two workers
 and a 90-second per-target limit; caches and receipts remain outside Git. A
 missing Linux/fs/flock/compiler/image prerequisite is invalid, never a skip.
+
+Admission source boundaries are checked across all Go build profiles by
+`TestSuccessorImportIsolation` and exact-package negative policy cases. The
+public profile fixtures independently encode signed bytes and canonical SPKI;
+ledger binding tests separately preserve Authority/Profile/Duty. The Linux
+issuer regression retains a canceled debit plus simultaneous result/key close
+failures and verifies released leases. These checks cover the migrated offline
+cycle; they do not accept a holder stock, live issuer or token-spend engine.

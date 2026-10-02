@@ -11,9 +11,10 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/successor/admission"
-	"github.com/dianabuilds/ardents-network/internal/successor/issuance"
+	"github.com/dianabuilds/ardents-network/internal/successor/admission/issuance"
+	"github.com/dianabuilds/ardents-network/internal/successor/admission/issuer"
+	"github.com/dianabuilds/ardents-network/internal/successor/admission/issuerprofile"
 	"github.com/dianabuilds/ardents-network/internal/successor/nodeidentity"
-	"github.com/dianabuilds/ardents-network/internal/successor/tokenissuance"
 )
 
 func profileConfigObject(raw []byte, names ...string) (map[string]json.RawMessage, error) {
@@ -61,8 +62,8 @@ func decodeIdentityBinding(raw []byte) (nodeidentity.Binding, error) {
 	}
 	return b, nil
 }
-func decodeProfilePlan(raw []byte) (tokenissuance.ProfilePlan, string, error) {
-	var p tokenissuance.ProfilePlan
+func decodeProfilePlan(raw []byte) (issuer.ProfilePlan, string, error) {
+	var p issuer.ProfilePlan
 	fields, e := profileConfigObject(raw, "identity_root", "identity_binding", "key_root", "key_binding", "profile_root", "profile_file")
 	if e != nil {
 		return p, "", e
@@ -112,11 +113,11 @@ func prepareProfileBinding(ctxRaw []byte) (string, []byte, error) {
 	if e != nil {
 		return "", nil, e
 	}
-	raw, e := readBounded(source, admission.MaximumIssuerProfile)
+	raw, e := readBounded(source, issuerprofile.MaximumSize)
 	if e != nil {
 		return "", nil, issuance.ErrUnavailable
 	}
-	verified, e := admission.VerifyIssuerProfile(raw, admission.IssuerProfileBinding{Network: expected.Network, Issuer: expected.Issuer, Signer: expected.Signer, Start: expected.Start, End: expected.End})
+	verified, e := issuerprofile.Verify(raw, issuerprofile.Binding{Network: expected.Network, Issuer: expected.Issuer, Signer: expected.Signer, Start: expected.Start, End: expected.End})
 	if e != nil {
 		return "", nil, issuance.ErrInvalid
 	}

@@ -1,4 +1,4 @@
-package tokenissuance
+package issuer
 
 import (
 	"context"
@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/dianabuilds/ardents-network/internal/successor/admission"
-	"github.com/dianabuilds/ardents-network/internal/successor/issuance"
+	"github.com/dianabuilds/ardents-network/internal/successor/admission/issuance"
 	"github.com/dianabuilds/ardents-network/internal/successor/nodeidentity"
 )
 
@@ -20,10 +20,38 @@ type Plan struct {
 	ResultRoot       string
 }
 
-// Result exposes finite lifecycle categories and successful response bytes only.
+// Completion records one phase without retaining raw errors or private inputs.
+type Completion struct {
+	Phase, Outcome string
+}
+
+// Result retains the primary operation and each acquired owner's cleanup.
+// Cleanup slots follow results/profile, keys, admission/identity retirement order.
+// Status projects the existing command outcome; any cleanup failure suppresses
+// response export without erasing the operation or another owner's result.
 type Result struct {
 	Phase, Outcome string
 	Response       []byte
+	Cleanup        [3]Completion
+}
+
+func (r Result) Status() (phase, outcome string) {
+	phase, outcome = r.Phase, r.Outcome
+	for _, closed := range r.Cleanup {
+		if closed.Phase != "" && closed.Outcome != "closed" {
+			phase, outcome = closed.Phase, "storage-uncertain"
+		}
+	}
+	return phase, outcome
+}
+
+func (r *Result) closeOwner(slot int, phase string, close func() error) {
+	result := Completion{Phase: phase, Outcome: "closed"}
+	if err := close(); err != nil {
+		result.Outcome = category(err)
+		r.Response = nil
+	}
+	r.Cleanup[slot] = result
 }
 
 func category(err error) string {
@@ -91,26 +119,14 @@ func execute(ctx context.Context, p Plan, raw []byte, f admission.Facts, kind ad
 		r.Outcome = category(err)
 		return r
 	}
-	defer func() {
-		if e := ledger.Close(); e != nil {
-			r.Phase = "close-admission"
-			r.Outcome = "storage-uncertain"
-			r.Response = nil
-		}
-	}()
+	defer r.closeOwner(2, "close-admission", ledger.Close)
 	r.Phase = "open-keys"
 	store, err := issuance.Open(ctx, p.KeyRoot, p.KeyBinding)
 	if err != nil {
 		r.Outcome = category(err)
 		return r
 	}
-	defer func() {
-		if e := store.Close(); e != nil {
-			r.Phase = "close-keys"
-			r.Outcome = "storage-uncertain"
-			r.Response = nil
-		}
-	}()
+	defer r.closeOwner(1, "close-keys", store.Close)
 	r.Phase = "open-results"
 	if initialize {
 		err = issuance.InitializeResults(ctx, p.ResultRoot, store, p.AdmissionBinding)
@@ -125,13 +141,7 @@ func execute(ctx context.Context, p Plan, raw []byte, f admission.Facts, kind ad
 		r.Outcome = category(err)
 		return r
 	}
-	defer func() {
-		if e := results.Close(); e != nil {
-			r.Phase = "close-results"
-			r.Outcome = "storage-uncertain"
-			r.Response = nil
-		}
-	}()
+	defer r.closeOwner(0, "close-results", results.Close)
 	r.Phase = "debit"
 	outcome, confirmation := ledger.DebitVerified(ctx, raw, f, kind)
 	if outcome != admission.Debited && outcome != admission.AlreadyDebited {

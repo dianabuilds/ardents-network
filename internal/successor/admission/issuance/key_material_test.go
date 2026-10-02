@@ -7,6 +7,8 @@ import (
 	"encoding/binary"
 	"testing"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/successor/admission/issuerprofile"
 )
 
 func testBinding(hours int) Binding {
@@ -32,14 +34,14 @@ func TestRealKeyInventory(t *testing.T) {
 			if k.Window != uint64(b.Start.Unix()+int64(i/3)*3600) || k.Class != uint8(i%3+1) || len(k.SPKI) != 346 {
 				t.Fatal("cohort")
 			}
-			key, valid := tokenKey(k.SPKI)
+			key, valid := issuerprofile.ParseKey(k.SPKI)
 			if !valid || key.N.BitLen() != 2048 || key.E != 65537 || seen[string(k.SPKI)] {
 				t.Fatal("key grammar/reuse")
 			}
 			seen[string(k.SPKI)] = true
 			bad := append([]byte(nil), k.SPKI...)
 			bad[len(bad)-1] ^= 1
-			if _, ok := tokenKey(bad); ok {
+			if _, ok := issuerprofile.ParseKey(bad); ok {
 				t.Fatal("invalid exponent accepted")
 			}
 		}

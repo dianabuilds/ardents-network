@@ -6,21 +6,29 @@ Time Confidence, network admission or a replacement State-profile digest.
 
 ## Interfaces and ownership
 
-Admission owns the canonical profile grammar, opaque IssuerProfileRequest and
-VerifiedIssuerProfile. PrepareIssuerProfile validates all facts/cohorts before
-creating a signing request. VerifyIssuerProfile validates the exact external
-Network/Node/signer/interval binding and signature. PrepareLedgerBinding fills
-only keys in an explicitly supplied ledger binding; its State profile digest,
-authority and duty remain independently chosen facts. Snapshots are defensive;
-zero opaque values refuse. No dependency on identity or Issuance is allowed.
+`admission/issuerprofile` owns the canonical public grammar, opaque `Request`
+and `Verified`. `Prepare` validates public pins and complete class/hour cohorts
+before creating a signing request. `Verify` validates the exact external
+Network/Node/signer/interval binding and signature. `ValidateCohorts`, `ParseKey`
+and `EncodeKey` are shared by the ledger and private-material owner; no fake
+ledger or Authority/Profile/Duty is constructed to validate a public inventory.
+
+Admission's `PrepareLedgerBinding` fills only keys in an explicitly supplied
+ledger binding; its State profile digest, authority and duty remain independently
+chosen facts. Snapshots are defensive; zero opaque values refuse. The public
+contract uses only the standard library and knows neither ledger nor identity.
+Request and Verified have distinct private representations: explicit Go type
+conversion cannot promote an unsigned request into verified evidence. Only a
+successful signature check creates Verified.
 
 Nodeidentity owns Import/Open/Public/SignIssuerProfile/Close. It imports one
 bounded PKCS#8 Ed25519 PEM matching a separately supplied public pin; stores
 canonical DER; never returns a private key or signs arbitrary bytes. Its only
-non-standard import is successor Admission. Issuance constructs requests from
-its own open inventory and owns InitializeProfile/OpenProfile/Bytes/Close.
-Tokenissuance composes identity -> issuer keys -> profile; reverse cleanup
-retains errors. Command adapters own strict JSON, export and bounded OTel.
+project import is `admission/issuerprofile`. `admission/issuance` constructs
+requests from its open inventory and owns InitializeProfile/OpenProfile/Bytes/
+Close. `admission/issuer` composes identity -> issuer keys -> profile; reverse
+cleanup retains the primary result and each acquired owner's outcome. Command
+adapters own strict JSON, export and bounded OTel.
 
 ## Formats and durability
 
@@ -63,7 +71,8 @@ files refuse before writing, including binding exports. Export refusal retains
 committed roots. Inspection
 permits future/expired inventories; it grants no current authority. Diagnostics
 and OTel expose fixed operation/phase/outcome/duration only; collector failure
-cannot change storage decisions. Cleanup failures override success.
+cannot change storage decisions. Cleanup failures suppress response export and project storage-uncertain; the
+operation retains its primary result and every owner cleanup outcome.
 
 ## Rule/source/independent test mapping
 
@@ -71,11 +80,11 @@ cannot change storage decisions. Cleanup failures override success.
 |---|---|---|
 | Ed25519 PKCS#8 import | internal/node/identity.go | independently generated PEM, bad types/pin/framing, source links/permissions |
 | Profile grammar and signature domain | internal/admission/issuer_profile.go | separate fixture encoder, stdlib Verify, every cohort, malformed signed fixtures |
-| Cohort/SPKI uniqueness | successor Admission binding/token_key, Issuance inventory | missing/reordered/duplicate keys, wrapped seconds, exact 1/6-hour bytes |
+| Cohort/SPKI uniqueness | admission/issuerprofile public grammar and Issuance inventory | missing/reordered/duplicate keys, wrapped seconds, exact 1/6-hour bytes |
 | Opaque signing request | successor Admission confirmation pattern | zero refusal, defensive copies, mismatched identity refuses |
 | Identity/profile durable roots | successor Issuance storage | real fault files, pending, links/substitution, lifetime lease, crash/reopen |
 | Offline binding preparation | successor Admission ledger binding | State digest/duty/authority preserved, exact independently pinned keys |
-| Real composition | successor tokenissuance and ardents-next | compiled import/profile/binding/debit/issue/replay and OTLP |
+| Real composition | successor admission/issuer and ardents-next | compiled import/profile/binding/debit/issue/replay and OTLP |
 
 Acceptance requires host quick/full gates, pinned Go1.27.1 Linux behavior/race/
 process, bounded PEM/profile fuzzing, prior token-issuance regressions, all-attempt

@@ -301,18 +301,18 @@ hosting-check:
 
 .PHONY: admission-check
 admission-check:
-	$(if $(filter linux,$(shell go env GOOS)),go test -race ./internal/successor/admission ./cmd/ardents-next -count=1 -timeout=3m,$(error admission-check requires Linux))
+	$(if $(filter linux,$(shell go env GOOS)),go test -race ./internal/successor/admission ./internal/successor/admission/issuerprofile ./cmd/ardents-next -count=1 -timeout=3m,$(error admission-check requires Linux))
 
 .PHONY: issuance-check
 issuance-check:
-	$(if $(filter linux,$(shell go env GOOS)),go test -race ./internal/successor/issuance ./cmd/ardents-next -count=1 -timeout=3m,$(error issuance-check requires Linux))
+	$(if $(filter linux,$(shell go env GOOS)),go test -race ./internal/successor/admission/issuance ./cmd/ardents-next -count=1 -timeout=3m,$(error issuance-check requires Linux))
 
 .PHONY: token-issuance-check
 token-issuance-check:
-	$(if $(filter linux,$(shell go env GOOS)),go test -race ./internal/successor/admission ./internal/successor/issuance ./internal/successor/tokenissuance ./cmd/ardents-next -count=1 -timeout=3m,$(error token-issuance-check requires Linux))
+	$(if $(filter linux,$(shell go env GOOS)),go test -race ./internal/successor/admission ./internal/successor/admission/issuerprofile ./internal/successor/admission/issuance ./internal/successor/admission/issuer ./cmd/ardents-next -count=1 -timeout=3m,$(error token-issuance-check requires Linux))
 
 .PHONY: issuer-profile-check
 issuer-profile-check:
-	$(if $(filter linux,$(shell go env GOOS)),go test -race ./internal/successor/admission ./internal/successor/nodeidentity ./internal/successor/issuance ./internal/successor/tokenissuance ./cmd/ardents-next -count=1 -timeout=5m,$(error issuer-profile-check requires Linux))
-	go test ./internal/successor/admission -run '^$$' -fuzz '^FuzzIssuerProfile$$' -fuzztime=30s -parallel=2 -timeout=90s
+	$(if $(filter linux,$(shell go env GOOS)),go test -race ./internal/successor/admission ./internal/successor/admission/issuerprofile ./internal/successor/nodeidentity ./internal/successor/admission/issuance ./internal/successor/admission/issuer ./cmd/ardents-next -count=1 -timeout=5m,$(error issuer-profile-check requires Linux))
+	go test ./internal/successor/admission/issuerprofile -run '^$$' -fuzz '^FuzzIssuerProfile$$' -fuzztime=30s -parallel=2 -timeout=90s
 	go test ./internal/successor/nodeidentity -run '^$$' -fuzz '^FuzzNodeIdentityPEM$$' -fuzztime=30s -parallel=2 -timeout=90s

@@ -18,7 +18,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/admission"
+	"github.com/dianabuilds/ardents-network/internal/successor/admission/issuerprofile"
 	"github.com/dianabuilds/ardents-network/internal/successor/nodeidentity"
 )
 
@@ -66,7 +66,7 @@ func profileOwners(t *testing.T) (Store, nodeidentity.Store, string, Inventory, 
 }
 func TestProfileRealSigningCopyAndReopen(t *testing.T) {
 	keys, identity, root, v, _, _ := profileOwners(t)
-	if _, e := identity.SignIssuerProfile(t.Context(), admission.IssuerProfileRequest{}); !errors.Is(e, nodeidentity.ErrInvalid) {
+	if _, e := identity.SignIssuerProfile(t.Context(), issuerprofile.Request{}); !errors.Is(e, nodeidentity.ErrInvalid) {
 		t.Fatal(e)
 	}
 	if e := InitializeProfile(t.Context(), root, keys, identity); e != nil {
@@ -111,7 +111,7 @@ func TestProfileRealSigningCopyAndReopen(t *testing.T) {
 	if e != nil || !bytes.Equal(again, original) {
 		t.Fatal("reopen changed profile")
 	}
-	b, transcript, ok := func() (admission.IssuerProfileBinding, []byte, bool) {
+	b, transcript, ok := func() (issuerprofile.Binding, []byte, bool) {
 		r, e := profileRequest(v)
 		if e != nil {
 			t.Fatal(e)

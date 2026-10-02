@@ -9,24 +9,20 @@ import (
 	"path/filepath"
 	"sync"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/admission"
+	"github.com/dianabuilds/ardents-network/internal/successor/admission/issuerprofile"
 	"github.com/dianabuilds/ardents-network/internal/successor/nodeidentity"
 )
 
 var profileFiles = []string{"profile.pin", "profile.bytes", "profile.lock"}
 
-func profileBinding(v Inventory) admission.IssuerProfileBinding {
-	return admission.IssuerProfileBinding{Network: v.Binding.Network, Issuer: v.Binding.Issuer, Signer: v.Binding.Signer, Start: v.Binding.Start, End: v.Binding.End}
+func profileBinding(v Inventory) issuerprofile.Binding {
+	return issuerprofile.Binding{Network: v.Binding.Network, Issuer: v.Binding.Issuer, Signer: v.Binding.Signer, Start: v.Binding.Start, End: v.Binding.End}
 }
-func profileRequest(v Inventory) (admission.IssuerProfileRequest, error) {
-	keys := make([]admission.TokenKey, len(v.Keys))
-	for i, k := range v.Keys {
-		keys[i] = admission.TokenKey{Window: k.Window, Class: k.Class, SPKI: k.SPKI}
-	}
-	return admission.PrepareIssuerProfile(profileBinding(v), keys)
+func profileRequest(v Inventory) (issuerprofile.Request, error) {
+	return issuerprofile.Prepare(profileBinding(v), v.Keys)
 }
 func validateProfile(raw []byte, v Inventory) error {
-	verified, e := admission.VerifyIssuerProfile(raw, profileBinding(v))
+	verified, e := issuerprofile.Verify(raw, profileBinding(v))
 	if e != nil {
 		return ErrUnavailable
 	}

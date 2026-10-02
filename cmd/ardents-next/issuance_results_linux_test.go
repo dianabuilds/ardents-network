@@ -23,7 +23,8 @@ import (
 
 	"github.com/cloudflare/circl/blindsign/blindrsa"
 	"github.com/dianabuilds/ardents-network/internal/successor/admission"
-	"github.com/dianabuilds/ardents-network/internal/successor/issuance"
+	"github.com/dianabuilds/ardents-network/internal/successor/admission/issuance"
+	"github.com/dianabuilds/ardents-network/internal/successor/admission/issuerprofile"
 )
 
 func issuanceResultCommandPlan(t *testing.T) (issuancePlan, map[string]any, map[string]any, func([]byte)) {
@@ -53,7 +54,7 @@ func issuanceResultCommandPlanWithSigner(t *testing.T, signer [32]byte) (issuanc
 	raw, f, b := admissionCommandFixture(t, 2, 2, 2, 1)
 	b.Keys = nil
 	for _, key := range v.Keys {
-		b.Keys = append(b.Keys, admission.TokenKey{Window: key.Window, Class: key.Class, SPKI: key.SPKI})
+		b.Keys = append(b.Keys, issuerprofile.Key{Window: key.Window, Class: key.Class, SPKI: key.SPKI})
 	}
 	copy(raw[277:623], b.Keys[1].SPKI)
 	var subject struct {

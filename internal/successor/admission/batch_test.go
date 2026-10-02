@@ -13,6 +13,8 @@ import (
 	"math/big"
 	"testing"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/successor/admission/issuerprofile"
 )
 
 // Independent fixture encoding follows the documented grammar; no production
@@ -29,7 +31,7 @@ func batchFixture(t *testing.T, class uint8, count uint16, max uint32, id byte) 
 	copy(f.Holder[:], holder.Public().(ed25519.PublicKey))
 	binding := LedgerBinding{Network: f.Network, Issuer: f.Issuer, Authority: f.Authority, Profile: [32]byte{9}, Duty: f.Duty, Start: f.DutyNotBefore, End: f.DutyNotAfter}
 	for c := uint8(1); c <= 3; c++ {
-		binding.Keys = append(binding.Keys, TokenKey{3600, c, fixtureSPKI(t, c)})
+		binding.Keys = append(binding.Keys, issuerprofile.Key{Window: 3600, Class: c, SPKI: fixtureSPKI(t, c)})
 	}
 	p := make([]byte, 228)
 	copy(p[:32], f.Network[:])

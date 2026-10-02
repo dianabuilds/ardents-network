@@ -11,15 +11,20 @@ its contract, tests and non-test consumer are implemented together.
 
 ## Isolation
 
-All Go files here, including tests and platform-specific files, may import only
-the standard library and packages under this zone. There is currently no shared
-product dependency allowlist. The command's exact OTel imports and test-only
-OTLP decoding imports are enumerated in the isolation test and dependency
-register. Issuance alone may consume the reviewed CIRCL blindrsa package and
-Admission confirmations. New dependencies require explicit
-review and the existing dependency acceptance process.
-Admission and Hosting permit only standard-library imports. Issuance permits
-only its three explicit additions; reverse dependencies remain forbidden.
+All Go files here, including tests and platform-specific files, follow the exact
+package imports in [the package map](../../docs/development/package-map.md).
+Directory nesting grants no implicit dependency. There is no shared legacy
+product allowlist. The command's exact OTel imports and test-only OTLP decoding
+imports are enumerated in the isolation test and dependency register.
+`admission/issuance` alone may consume reviewed CIRCL blindrsa. New dependencies
+require explicit review and the existing dependency acceptance process.
+
+[Admission](admission/README.md) owns its public `issuerprofile` contract, quota
+ledger, `issuance` storage/signing owner and `issuer` operation composition.
+`issuerprofile` and Hosting use only the standard library. Node Identity depends
+only on `issuerprofile` to accept a purpose-bound signing request. Admission's
+ledger imports that public grammar; it cannot import identity, issuance or its
+operation coordinator.
 
 The reserved command path is cmd/ardents-next. It may compose successor packages,
 the standard library and its exact registered OTel imports, but no existing product packages. Existing product
@@ -43,11 +48,11 @@ internal/architecture/successor_isolation_test.go enforces import isolation
 across build profiles. It does not establish runtime confinement, correctness,
 secret separation or qualification. Dynamic execution and state access require
 their own contract checks.
-# Operation composition
+## Operation composition
 
-`tokenissuance` owns the ordered offline Admission/key/result lifecycle. It
+`admission/issuer` owns the ordered offline Admission/key/result lifecycle. It
 also composes pinned Nodeidentity/key/profile provisioning; its exact domain
-imports are Admission, Issuance and Nodeidentity. Command
+imports are Admission, its Issuance child and Node Identity. Command
 adapters own configuration, export and telemetry.
 
 Signed profile and existing Node key import contracts belong to

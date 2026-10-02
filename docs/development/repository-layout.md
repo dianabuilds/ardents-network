@@ -37,9 +37,12 @@ root Go package and creates no runtime, wire or domain identity. The reserved
 composition command path is `cmd/ardents-next`; it is added only with real
 behavior. Source and test imports are restricted to the standard library and
 the successor zone by the architecture gate. Existing product packages cannot
-import the zone. The sole third-party exception is the exact OpenTelemetry
-command-composition and test-decoding imports enumerated by the isolation gate
-and package map. Domain packages have no third-party or shared product imports.
+import the zone. Exact cross-package imports are registered in the package map;
+directory nesting grants no implicit permission. The reviewed third-party
+exceptions are the enumerated OpenTelemetry command/test imports and CIRCL
+blindrsa in `admission/issuance`. The public `admission/issuerprofile` grammar
+and Hosting use only the standard library. Node Identity depends only on that
+public profile contract; it cannot import Admission's ledger or issuance owner.
 Each real child package still requires the normal registration, behavior tests,
 non-test caller and permitted imports. Existing contracts and qualification
 obligations remain in force. See `internal/successor/README.md`.

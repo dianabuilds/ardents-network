@@ -1,4 +1,4 @@
-package admission
+package issuerprofile
 
 import (
 	"bytes"
@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-func independentIssuerProfile(b IssuerProfileBinding, keys []TokenKey, key ed25519.PrivateKey) []byte {
+func independentIssuerProfile(b Binding, keys []Key, key ed25519.PrivateKey) []byte {
 	raw := append([]byte("ARDCIP01"), b.Network[:]...)
 	raw = append(raw, b.Issuer[:]...)
 	raw = binary.BigEndian.AppendUint64(raw, uint64(b.Start.Unix()))
@@ -22,20 +22,20 @@ func independentIssuerProfile(b IssuerProfileBinding, keys []TokenKey, key ed255
 	}
 	return append(raw, ed25519.Sign(key, append([]byte("ardents-closed-issuer-keys-v1\x00"), raw...))...)
 }
-func profileFixture(t testing.TB, hours int) (IssuerProfileBinding, []TokenKey, ed25519.PrivateKey) {
+func profileFixture(t testing.TB, hours int) (Binding, []Key, ed25519.PrivateKey) {
 	key := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{8}, 32))
 	start := time.Unix(3600, 0).UTC()
-	b := IssuerProfileBinding{Network: [32]byte{1}, Issuer: [32]byte{2}, Signer: [32]byte(key.Public().(ed25519.PublicKey)), Start: start, End: start.Add(time.Duration(hours) * time.Hour)}
-	var keys []TokenKey
+	b := Binding{Network: [32]byte{1}, Issuer: [32]byte{2}, Signer: [32]byte(key.Public().(ed25519.PublicKey)), Start: start, End: start.Add(time.Duration(hours) * time.Hour)}
+	var keys []Key
 	for i := 0; i < hours*3; i++ {
-		keys = append(keys, TokenKey{Window: 3600 + uint64(i/3)*3600, Class: uint8(i%3 + 1), SPKI: fixtureSPKI(t, uint8(i+1))})
+		keys = append(keys, Key{Window: 3600 + uint64(i/3)*3600, Class: uint8(i%3 + 1), SPKI: fixtureSPKI(t, uint8(i+1))})
 	}
 	return b, keys, key
 }
 func TestIssuerProfileIndependentBytesAndCopies(t *testing.T) {
 	for _, hours := range []int{1, 6} {
 		b, keys, key := profileFixture(t, hours)
-		request, e := PrepareIssuerProfile(b, keys)
+		request, e := Prepare(b, keys)
 		if e != nil {
 			t.Fatal(e)
 		}
@@ -48,7 +48,7 @@ func TestIssuerProfileIndependentBytesAndCopies(t *testing.T) {
 		if e != nil || !bytes.Equal(raw, expected) || !ed25519.Verify(b.Signer[:], append([]byte("ardents-closed-issuer-keys-v1\x00"), raw[:len(raw)-64]...), raw[len(raw)-64:]) {
 			t.Fatal("independent profile", e)
 		}
-		verified, e := VerifyIssuerProfile(raw, b)
+		verified, e := Verify(raw, b)
 		if e != nil {
 			t.Fatal(e)
 		}
@@ -64,27 +64,18 @@ func TestIssuerProfileIndependentBytesAndCopies(t *testing.T) {
 		if owned2[0].SPKI[0] == owned[0].SPKI[0] {
 			t.Fatal("mutable keys")
 		}
-		base := LedgerBinding{Network: b.Network, Issuer: b.Issuer, Authority: [32]byte{4}, Profile: [32]byte{5}, Duty: 9, Start: b.Start, End: b.End}
-		bound, e := PrepareLedgerBinding(base, verified)
-		if e != nil || bound.Profile != base.Profile || bound.Authority != base.Authority || bound.Duty != base.Duty {
-			t.Fatal("State facts replaced", e)
-		}
-		if _, e = PrepareLedgerBinding(bound, verified); e == nil {
-			t.Fatal("preexisting keys replaced")
-		}
+
 	}
-	if _, e := (IssuerProfileRequest{}).Complete(make([]byte, 64)); e == nil {
+	if _, e := (Request{}).Complete(make([]byte, 64)); e == nil {
 		t.Fatal("zero request")
 	}
-	if _, e := PrepareLedgerBinding(LedgerBinding{}, VerifiedIssuerProfile{}); e == nil {
-		t.Fatal("zero verification")
-	}
+
 }
 func TestIssuerProfileRejectsIndependentlySignedInvalidBodies(t *testing.T) {
 	b, keys, key := profileFixture(t, 2)
 	for _, name := range []string{"missing", "reorder", "class", "reuse", "spki", "negative", "overflow", "zero-network", "window"} {
 		t.Run(name, func(t *testing.T) {
-			bad := cloneBinding(b.ledger(keys)).Keys
+			bad := cloneKeys(keys)
 			binding := b
 			switch name {
 			case "missing":
@@ -107,10 +98,10 @@ func TestIssuerProfileRejectsIndependentlySignedInvalidBodies(t *testing.T) {
 				bad[0].Window = 7200
 			}
 			raw := independentIssuerProfile(binding, bad, key)
-			if _, e := VerifyIssuerProfile(raw, binding); e == nil {
+			if _, e := Verify(raw, binding); e == nil {
 				t.Fatal("signed bad profile accepted")
 			}
-			if _, e := PrepareIssuerProfile(binding, bad); e == nil {
+			if _, e := Prepare(binding, bad); e == nil {
 				t.Fatal("bad encoder accepted")
 			}
 		})
@@ -122,16 +113,16 @@ func TestIssuerProfileRejectsIndependentlySignedInvalidBodies(t *testing.T) {
 	}} {
 		bad := append([]byte(nil), raw...)
 		change(bad)
-		if _, e := VerifyIssuerProfile(bad, b); e == nil {
+		if _, e := Verify(bad, b); e == nil {
 			t.Fatal("mutation accepted")
 		}
 	}
-	for _, bad := range []IssuerProfileBinding{{Network: b.Network, Issuer: b.Issuer, Signer: [32]byte{1}, Start: b.Start, End: b.End}, {Network: [32]byte{3}, Issuer: b.Issuer, Signer: b.Signer, Start: b.Start, End: b.End}, {Network: b.Network, Issuer: [32]byte{3}, Signer: b.Signer, Start: b.Start, End: b.End}} {
-		if _, e := VerifyIssuerProfile(raw, bad); e == nil {
+	for _, bad := range []Binding{{Network: b.Network, Issuer: b.Issuer, Signer: [32]byte{1}, Start: b.Start, End: b.End}, {Network: [32]byte{3}, Issuer: b.Issuer, Signer: b.Signer, Start: b.Start, End: b.End}, {Network: b.Network, Issuer: [32]byte{3}, Signer: b.Signer, Start: b.Start, End: b.End}} {
+		if _, e := Verify(raw, bad); e == nil {
 			t.Fatal("wrong pin accepted")
 		}
 	}
-	if _, e := VerifyIssuerProfile(append(raw, 0), b); e == nil {
+	if _, e := Verify(append(raw, 0), b); e == nil {
 		t.Fatal("extra bytes")
 	}
 }
@@ -141,13 +132,13 @@ func FuzzIssuerProfile(f *testing.F) {
 	f.Add([]byte("ARDCIP01"))
 	f.Add(make([]byte, 154))
 	f.Fuzz(func(t *testing.T, raw []byte) {
-		if len(raw) > MaximumIssuerProfile+1 {
+		if len(raw) > MaximumSize+1 {
 			return
 		}
-		v, e := VerifyIssuerProfile(raw, b)
+		v, e := Verify(raw, b)
 		if e == nil {
 			bound, keys, ok := v.Snapshot()
-			if !ok || !bound.matches(b) || !bound.ledger(keys).valid() {
+			if !ok || !bound.matches(b) || ValidateCohorts(bound.Start, bound.End, keys) != nil {
 				t.Fatal("invalid verified profile")
 			}
 		}

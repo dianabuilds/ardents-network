@@ -4,8 +4,9 @@
 
 Reviewed 2026-10-02 for issue 478. Select OpenTelemetry Go v1.47.0 API,
 trace/metric APIs, SDK and SDK metric plus official OTLP HTTP trace/metric
-exporters (Apache-2.0). Owner: cmd/ardents-next composition; admission imports
-only the standard library. Need: actual vendor-neutral traces and metrics with
+exporters (Apache-2.0). Owner: cmd/ardents-next composition; Admission's ledger
+imports only its public issuerprofile contract and the standard library.
+Need: actual vendor-neutral traces and metrics with
 one explicitly selected local Collector. No logs SDK, auto-instrumentation,
 global propagation or remote export is selected. Resource attributes are fixed;
 no host/environment resource detection. Instrument values have finite outcome
@@ -63,6 +64,26 @@ Select the fixing 1.83.2 patch before acceptance rather than waive the finding:
 [upstream release](https://github.com/grpc/grpc-go/releases/tag/v1.83.2), accessed
 2026-10-02. The module-only x/crypto OpenPGP finding GO-2026-5932 remains subject
 to the existing scoped non-applicability record; it is not introduced by OTel.
+
+Reassessment on 2026-10-03: the current Go advisory still reports gRPC v1.84.0
+under GO-2026-6443. Do not infer clearance from the earlier patch selection.
+`govulncheck -show verbose ./...` finds no reachable affected symbol; binary
+scans of canonical Windows/Linux amd64 `ardents-next` do retain
+`transport.http2Server.HandleStreams` and exit 3. Those failed scans are retained.
+The [advisory](https://pkg.go.dev/vuln/GO-2026-6443), accessed 2026-10-03, requires
+xDS server routing. The selected command has only outgoing OTLP HTTP exporters;
+`go list -deps -test ./cmd/ardents-next` under Windows/Linux amd64, each with
+CGO_ENABLED=0/1, includes neither gRPC xDS nor OpenPGP. No maintained first-party
+source imports gRPC or constructs a gRPC server. The exact command import gate
+and real HTTP exporter tests constrain this use. This is scoped non-applicability
+for those four command closures, not a clean artifact scan or a general gRPC
+safety claim. Reassess on an exporter, import, target, toolchain or module change.
+`go mod verify` passed; the selected `internal/transport/http2_server.go` also
+contains an early missing-authority rejection (SHA256
+`6ff2da17e276ba22a782dffe467ec32b664895d12faccfbb5fc1ec40d59dcf6c`).
+Reproduce with the closure command above, canonical `go build -trimpath
+-buildvcs=false`, and `govulncheck -mode=binary -show verbose` on each artifact;
+keep complete logs and artifact/source hashes outside Git.
 
 Updated closure releases were inspected on 2026-10-02:
 [OTLP schema v1.11.1](https://github.com/open-telemetry/opentelemetry-proto-go/releases/tag/v1.11.1),
@@ -970,7 +991,7 @@ Per-file deadline, process-group cancellation and discarded-output caps belong
 to the local diagnostics owner. Native/parser prerequisite failure blocks that
 profile instead of triggering implicit compilation or a passing skip.
 
-Successor Issuance now consumes the same reviewed CIRCL v1.6.5 Blind RSA signer
+Successor `admission/issuance` consumes the same reviewed CIRCL v1.6.5 Blind RSA signer
 through its sole additional import blindsign/blindrsa. Admission confirmations
 gate private use; journal reopen rechecks stored responses with that signer.
 No scheme, version, opaque blinding-state serialization or private fork changes.

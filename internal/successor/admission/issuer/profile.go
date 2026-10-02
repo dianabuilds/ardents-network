@@ -1,9 +1,9 @@
-package tokenissuance
+package issuer
 
 import (
 	"context"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/issuance"
+	"github.com/dianabuilds/ardents-network/internal/successor/admission/issuance"
 	"github.com/dianabuilds/ardents-network/internal/successor/nodeidentity"
 )
 
@@ -39,22 +39,14 @@ func executeProfile(ctx context.Context, p ProfilePlan, initialize bool) (r Resu
 		r.Outcome = category(err)
 		return r
 	}
-	defer func() {
-		if e := identity.Close(); e != nil {
-			r = Result{Phase: "close-identity", Outcome: "storage-uncertain"}
-		}
-	}()
+	defer r.closeOwner(2, "close-identity", identity.Close)
 	r.Phase = "open-keys"
 	keys, err := issuance.Open(ctx, p.KeyRoot, p.KeyBinding)
 	if err != nil {
 		r.Outcome = category(err)
 		return r
 	}
-	defer func() {
-		if e := keys.Close(); e != nil {
-			r = Result{Phase: "close-keys", Outcome: "storage-uncertain"}
-		}
-	}()
+	defer r.closeOwner(1, "close-keys", keys.Close)
 	public, err := identity.Public()
 	if err != nil {
 		r.Outcome = category(err)
@@ -81,11 +73,7 @@ func executeProfile(ctx context.Context, p ProfilePlan, initialize bool) (r Resu
 		r.Outcome = category(err)
 		return r
 	}
-	defer func() {
-		if e := profile.Close(); e != nil {
-			r = Result{Phase: "close-profile", Outcome: "storage-uncertain"}
-		}
-	}()
+	defer r.closeOwner(0, "close-profile", profile.Close)
 	r.Response, err = profile.Bytes()
 	if err != nil {
 		r.Outcome = category(err)

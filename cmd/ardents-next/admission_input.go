@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/successor/admission"
+	"github.com/dianabuilds/ardents-network/internal/successor/admission/issuerprofile"
 )
 
 type admissionBindingInput struct {
@@ -151,7 +152,7 @@ func decodeAdmissionPlan(raw []byte, operation string) (admissionPlan, error) {
 		if e != nil {
 			return p, bad
 		}
-		p.Binding.Keys = append(p.Binding.Keys, admission.TokenKey{Window: uint64(t.Unix()), Class: uint8(class), SPKI: spki})
+		p.Binding.Keys = append(p.Binding.Keys, issuerprofile.Key{Window: uint64(t.Unix()), Class: uint8(class), SPKI: spki})
 	}
 	if operation == "debit" {
 		if json.Unmarshal(fields["batch_file"], &p.BatchFile) != nil || !filepath.IsAbs(p.BatchFile) || filepath.Clean(p.BatchFile) != p.BatchFile {

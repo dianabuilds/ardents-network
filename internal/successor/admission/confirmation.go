@@ -5,6 +5,8 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/successor/admission/issuerprofile"
 )
 
 // DebitConfirmation cannot be constructed outside Admission. It confirms only
@@ -18,7 +20,7 @@ type confirmedDebit struct {
 }
 
 func cloneBinding(b LedgerBinding) LedgerBinding {
-	keys := make([]TokenKey, len(b.Keys))
+	keys := make([]issuerprofile.Key, len(b.Keys))
 	for i, k := range b.Keys {
 		keys[i] = k
 		keys[i].SPKI = append([]byte(nil), k.SPKI...)

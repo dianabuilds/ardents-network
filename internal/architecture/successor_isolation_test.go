@@ -42,28 +42,37 @@ func successorImportAllowed(source, dependency string) bool {
 	if !inZone {
 		return !zoneDependency
 	}
-	if strings.HasPrefix(source, "internal/successor/issuance/") {
-		if dependency == modulePath+"/internal/successor/admission" || dependency == modulePath+"/internal/successor/nodeidentity" || dependency == "github.com/cloudflare/circl/blindsign/blindrsa" {
-			return true
-		}
+	// Match exact Go packages. A parent folder grants no child/sibling imports.
+	owner := path.Dir(source)
+	permitted := map[string][]string{
+		"internal/successor/admission":               {"admission/issuerprofile"},
+		"internal/successor/admission/issuerprofile": {},
+		"internal/successor/admission/issuance":      {"admission", "admission/issuerprofile", "nodeidentity"},
+		"internal/successor/admission/issuer":        {"admission", "admission/issuance", "nodeidentity"},
+		"internal/successor/nodeidentity":            {"admission/issuerprofile"},
+		"internal/successor/hosting":                 {},
+		"cmd/ardents-next":                           {"admission", "admission/issuerprofile", "admission/issuance", "admission/issuer", "nodeidentity", "hosting"},
 	}
 	if zoneDependency {
-		if strings.HasPrefix(source, "internal/successor/nodeidentity/") {
-			return dependency == modulePath+"/internal/successor/admission"
+		// A registered package's external behavior tests may import that package.
+		// This grants neither another package nor nested tests its imports.
+		if _, registered := permitted[owner]; registered && strings.HasSuffix(source, "_test.go") && dependency == modulePath+"/"+owner {
+			return true
 		}
-		if strings.HasPrefix(source, "internal/successor/tokenissuance/") {
-			return dependency == modulePath+"/internal/successor/admission" || dependency == modulePath+"/internal/successor/issuance" || dependency == modulePath+"/internal/successor/nodeidentity"
+		for _, allowed := range permitted[owner] {
+			if dependency == modulePath+"/internal/successor/"+allowed {
+				return true
+			}
 		}
-		// These independent domain owners have exact standard-library-only
-		// import contracts. Directory grouping grants no cross-domain dependency.
-		if strings.HasPrefix(source, "internal/successor/admission/") || strings.HasPrefix(source, "internal/successor/hosting/") || strings.HasPrefix(source, "internal/successor/issuance/") {
-			return false
-		}
+		return false
+	}
+	if owner == "internal/successor/admission/issuance" && dependency == "github.com/cloudflare/circl/blindsign/blindrsa" {
 		return true
 	}
-	// OTel composition is confined to the command. Admission remains standard
-	// library only; no arbitrary third-party bridge is permitted.
-	if strings.HasPrefix(source, "cmd/ardents-next/") {
+
+	// OTel composition is confined to the exact command package.
+	// No arbitrary third-party bridge is permitted.
+	if owner == "cmd/ardents-next" {
 		for _, allowed := range []string{
 			"go.opentelemetry.io/otel/attribute",
 			"go.opentelemetry.io/otel/metric",
@@ -98,19 +107,31 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		name, source, dependency string
 		allowed                  bool
 	}{
+		{"external public-contract test", "internal/successor/admission/issuerprofile/provenance_test.go", modulePath + "/internal/successor/admission/issuerprofile", true},
+		{"no production self import", "internal/successor/admission/issuerprofile/profile.go", modulePath + "/internal/successor/admission/issuerprofile", false},
+		{"no unregistered test self import", "internal/successor/future/file_test.go", modulePath + "/internal/successor/future", false},
+		{"public profile is leaf", "internal/successor/admission/issuerprofile/profile.go", modulePath + "/internal/successor/admission", false},
+		{"profile cannot borrow identity", "internal/successor/admission/issuerprofile/profile.go", modulePath + "/internal/successor/nodeidentity", false},
+		{"identity cannot borrow ledger", "internal/successor/nodeidentity/store.go", modulePath + "/internal/successor/admission", false},
+		{"ledger public grammar", "internal/successor/admission/binding.go", modulePath + "/internal/successor/admission/issuerprofile", true},
+		{"issuance public grammar", "internal/successor/admission/issuance/profile.go", modulePath + "/internal/successor/admission/issuerprofile", true},
+		{"no inherited nested imports", "internal/successor/admission/issuance/nested/file.go", modulePath + "/internal/successor/admission", false},
+		{"no inherited nested third party", "internal/successor/admission/issuance/nested/file.go", "github.com/cloudflare/circl/blindsign/blindrsa", false},
+		{"unregistered caller", "internal/successor/future/file.go", modulePath + "/internal/successor/admission", false},
+		{"unregistered dependency", "cmd/ardents-next/main.go", modulePath + "/internal/successor/future", false},
 		{"standard", "internal/successor/admission/check.go", "context", true},
 		{"zone", "cmd/ardents-next/main.go", modulePath + "/internal/successor/admission", true},
 		{"hosting caller", "cmd/ardents-next/hosting.go", modulePath + "/internal/successor/hosting", true},
 		{"independent domains", "internal/successor/hosting/budget.go", modulePath + "/internal/successor/admission", false},
-		{"issuance confirmed debit", "internal/successor/issuance/store.go", modulePath + "/internal/successor/admission", true},
-		{"operation owners", "internal/successor/tokenissuance/operation.go", modulePath + "/internal/successor/issuance", true},
-		{"operation excludes hosting", "internal/successor/tokenissuance/operation.go", modulePath + "/internal/successor/hosting", false},
-		{"issuance excludes hosting", "internal/successor/issuance/store.go", modulePath + "/internal/successor/hosting", false},
-		{"identity purpose", "internal/successor/nodeidentity/store.go", modulePath + "/internal/successor/admission", true},
-		{"identity cannot borrow issuance", "internal/successor/nodeidentity/store.go", modulePath + "/internal/successor/issuance", false},
+		{"issuance confirmed debit", "internal/successor/admission/issuance/store.go", modulePath + "/internal/successor/admission", true},
+		{"operation owners", "internal/successor/admission/issuer/operation.go", modulePath + "/internal/successor/admission/issuance", true},
+		{"operation excludes hosting", "internal/successor/admission/issuer/operation.go", modulePath + "/internal/successor/hosting", false},
+		{"issuance excludes hosting", "internal/successor/admission/issuance/store.go", modulePath + "/internal/successor/hosting", false},
+		{"identity purpose", "internal/successor/nodeidentity/store.go", modulePath + "/internal/successor/admission/issuerprofile", true},
+		{"identity cannot borrow issuance", "internal/successor/nodeidentity/store.go", modulePath + "/internal/successor/admission/issuance", false},
 		{"admission cannot borrow identity", "internal/successor/admission/issuer_profile.go", modulePath + "/internal/successor/nodeidentity", false},
-		{"admission excludes composition", "internal/successor/admission/ledger.go", modulePath + "/internal/successor/tokenissuance", false},
-		{"admission cannot borrow keys", "internal/successor/admission/batch.go", modulePath + "/internal/successor/issuance", false},
+		{"admission excludes composition", "internal/successor/admission/ledger.go", modulePath + "/internal/successor/admission/issuer", false},
+		{"admission cannot borrow keys", "internal/successor/admission/batch.go", modulePath + "/internal/successor/admission/issuance", false},
 		{"admission cannot borrow budget", "internal/successor/admission/check.go", modulePath + "/internal/successor/hosting", false},
 		{"legacy", "internal/successor/admission/check.go", modulePath + "/internal/admission", false},
 		{"legacy test fixture", "internal/successor/admission/check_test.go", modulePath + "/tests/fixtures", false},

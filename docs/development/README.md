@@ -44,6 +44,15 @@ Read the affected owner for the task at hand. Completed experiments, obsolete
 inventory snapshots and retired Transit design instructions are preserved in
 Git history. Research and decision records link to their exact source revision.
 
+## Proposed domain transition
+
+The [DDD transition design](ddd-transition-design.md) maps the proposed contexts
+to current state owners, describes the first Admission restructuring and defines
+the migration and fault-verification method. Its first Admission slice is
+implemented; [the domain entry point](../../internal/successor/admission/README.md)
+shows the actual operation and invariants. The wider context map remains a
+proposal; the package map owns current import policy and Issues own execution.
+
 ## Working network-core proposal
 
 The [transition proposal](network-core-transition.md) and

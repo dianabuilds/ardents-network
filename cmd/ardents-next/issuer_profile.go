@@ -5,9 +5,9 @@ import (
 	"encoding/json"
 	"io"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/issuance"
+	"github.com/dianabuilds/ardents-network/internal/successor/admission/issuance"
+	"github.com/dianabuilds/ardents-network/internal/successor/admission/issuer"
 	"github.com/dianabuilds/ardents-network/internal/successor/nodeidentity"
-	"github.com/dianabuilds/ardents-network/internal/successor/tokenissuance"
 )
 
 func runIssuerProfile(ctx context.Context, operation string, args []string, out, diagnostic io.Writer) int {
@@ -75,17 +75,16 @@ func runIssuerProfile(ctx context.Context, operation string, args []string, out,
 			r.Outcome = "identity-imported"
 		}
 	case "issuance.initialize-profile", "issuance.inspect-profile":
-		var p tokenissuance.ProfilePlan
+		var p issuer.ProfilePlan
 		p, output, err = decodeProfilePlan(raw)
 		if err == nil {
-			var result tokenissuance.Result
+			var result issuer.Result
 			if operation == "issuance.initialize-profile" {
-				result = tokenissuance.InitializeProfile(ctx, p)
+				result = issuer.InitializeProfile(ctx, p)
 			} else {
-				result = tokenissuance.InspectProfile(ctx, p)
+				result = issuer.InspectProfile(ctx, p)
 			}
-			r.Phase = result.Phase
-			r.Outcome = result.Outcome
+			r.Phase, r.Outcome = result.Status()
 			bytes = result.Response
 		}
 	case "admission.prepare-binding":

@@ -7,7 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/admission"
+	"github.com/dianabuilds/ardents-network/internal/successor/admission/issuerprofile"
 )
 
 func initializeProfileStorage(ctx context.Context, path string, b Binding, raw []byte, digest [32]byte, fault func(string) error) (err error) {
@@ -51,7 +51,7 @@ func initializeProfileStorage(ctx context.Context, path string, b Binding, raw [
 	if err = root.Rename("profile.pending", "profile.bytes"); err != nil {
 		return err
 	}
-	saved, _, err := readOwned(root, "profile.bytes", admission.MaximumIssuerProfile)
+	saved, _, err := readOwned(root, "profile.bytes", issuerprofile.MaximumSize)
 	defer clear(saved)
 	if err != nil || !bytes.Equal(saved, raw) {
 		return ErrUnavailable
@@ -67,7 +67,7 @@ func initializeProfileStorage(ctx context.Context, path string, b Binding, raw [
 	}
 	checked := &storeState{root: root, path: path, identity: identity, files: map[string]os.FileInfo{}}
 	for _, name := range profileFiles {
-		saved, info, e := readOwned(root, name, admission.MaximumIssuerProfile)
+		saved, info, e := readOwned(root, name, issuerprofile.MaximumSize)
 		if e != nil {
 			clear(saved)
 			return e
@@ -113,7 +113,7 @@ func openProfileStorage(ctx context.Context, path string, keys Store, v Inventor
 	if err != nil {
 		return ProfileStore{}, err
 	}
-	raw, _, err := readOwned(root, "profile.bytes", admission.MaximumIssuerProfile)
+	raw, _, err := readOwned(root, "profile.bytes", issuerprofile.MaximumSize)
 	if err != nil {
 		return ProfileStore{}, err
 	}

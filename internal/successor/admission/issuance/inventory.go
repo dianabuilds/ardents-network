@@ -1,18 +1,15 @@
 package issuance
 
-import "encoding/binary"
+import (
+	"encoding/binary"
 
-// PublicKey identifies one hourly class cohort.
-type PublicKey struct {
-	Window uint64
-	Class  uint8
-	SPKI   []byte
-}
+	"github.com/dianabuilds/ardents-network/internal/successor/admission/issuerprofile"
+)
 
 // Inventory is local unsigned preparation evidence, never a signed profile.
 type Inventory struct {
 	Binding Binding
-	Keys    []PublicKey
+	Keys    []issuerprofile.Key
 	Digest  [32]byte
 }
 
@@ -28,7 +25,7 @@ func (v Inventory) canonical() []byte {
 }
 
 func (v Inventory) clone() Inventory {
-	keys := make([]PublicKey, len(v.Keys))
+	keys := make([]issuerprofile.Key, len(v.Keys))
 	for i, k := range v.Keys {
 		keys[i] = k
 		keys[i].SPKI = append([]byte(nil), k.SPKI...)

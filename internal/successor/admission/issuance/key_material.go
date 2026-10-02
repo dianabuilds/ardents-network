@@ -8,6 +8,8 @@ import (
 	"crypto/sha256"
 	"crypto/x509"
 	"encoding/binary"
+
+	"github.com/dianabuilds/ardents-network/internal/successor/admission/issuerprofile"
 )
 
 const materialMagic = "ARDIKM01"
@@ -73,11 +75,11 @@ func decodeMaterial(raw []byte, b Binding) (Inventory, error) {
 		if err != nil || key.Validate() != nil || len(key.Primes) != 2 || key.E != 65537 || key.N.BitLen() != 2048 || !bytes.Equal(der, x509.MarshalPKCS1PrivateKey(key)) {
 			return Inventory{}, ErrUnavailable
 		}
-		spki, err := tokenKeyEncoding(&key.PublicKey)
+		spki, err := issuerprofile.EncodeKey(&key.PublicKey)
 		if err != nil || len(spki) != 346 {
 			return Inventory{}, ErrUnavailable
 		}
-		if _, valid := tokenKey(spki); !valid {
+		if _, valid := issuerprofile.ParseKey(spki); !valid {
 			return Inventory{}, ErrUnavailable
 		}
 		digest := sha256.Sum256(spki)
@@ -85,7 +87,7 @@ func decodeMaterial(raw []byte, b Binding) (Inventory, error) {
 			return Inventory{}, ErrUnavailable
 		}
 		seen[digest] = true
-		inventory.Keys = append(inventory.Keys, PublicKey{Window: window, Class: class, SPKI: spki})
+		inventory.Keys = append(inventory.Keys, issuerprofile.Key{Window: window, Class: class, SPKI: spki})
 	}
 	if offset != len(raw) {
 		return Inventory{}, ErrUnavailable

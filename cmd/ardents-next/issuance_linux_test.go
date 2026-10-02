@@ -8,7 +8,8 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"github.com/dianabuilds/ardents-network/internal/successor/admission"
-	"github.com/dianabuilds/ardents-network/internal/successor/issuance"
+	"github.com/dianabuilds/ardents-network/internal/successor/admission/issuance"
+	"github.com/dianabuilds/ardents-network/internal/successor/admission/issuerprofile"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -100,7 +101,7 @@ func TestIssuanceCompiledCLI(t *testing.T) {
 		if err != nil || !bytes.Equal(spki, inventory.Keys[i].SPKI) {
 			t.Fatal("export SPKI mismatch")
 		}
-		binding.Keys = append(binding.Keys, admission.TokenKey{Window: inventory.Keys[i].Window, Class: k.Class, SPKI: spki})
+		binding.Keys = append(binding.Keys, issuerprofile.Key{Window: inventory.Keys[i].Window, Class: k.Class, SPKI: spki})
 	}
 	config := hostingConfig(t, map[string]any{"root": filepath.Join(filepath.Dir(p.Root), "admission"), "binding": admissionBindingConfig(binding)})
 	command := exec.CommandContext(t.Context(), compiledCommand(t), "admission", "initialize", "--config", config)
