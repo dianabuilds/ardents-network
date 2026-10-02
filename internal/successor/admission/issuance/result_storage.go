@@ -224,11 +224,20 @@ func openResults(ctx context.Context, path string, store Store, b admission.Ledg
 		}
 		checked := time.Unix(int64(checkedRaw), 0).UTC()
 		raw := request[9:]
-		if kind != admission.Bootstrap && kind != admission.Admitted || admission.ValidateBatch(ctx, raw, s.binding, checked) != admission.Accepted {
+		if kind != admission.Bootstrap && kind != admission.Admitted {
+			return ResultStore{}, ErrUnavailable
+		}
+		if outcome := admission.ValidateBatch(ctx, raw, s.binding, checked); outcome != admission.Accepted {
+			if outcome == admission.Canceled {
+				return ResultStore{}, ctx.Err()
+			}
 			return ResultStore{}, ErrUnavailable
 		}
 		expected, e := store.sign(ctx, raw)
-		if e != nil || !bytes.Equal(expected, response) {
+		if e != nil {
+			return ResultStore{}, e
+		}
+		if !bytes.Equal(expected, response) {
 			return ResultStore{}, ErrUnavailable
 		}
 		var id [32]byte

@@ -42,6 +42,11 @@ directory: exclusive new regular file, or byte-identical retry with sync. A
 different existing file refuses; export errors never reset the key root. Only
 finite operation/phase/outcome and duration reach diagnostics and OTel.
 
+The configured inventory destination must be outside the key root even before
+that root exists. The command checks the destination before generating keys or
+creating state. Inventory, profile and response exports share refusal of any
+recognized state directory and its descendants, with a second check at export.
+
 ## Transfer and acceptance map
 
 | Rule | Current dev provenance | Independent acceptance |

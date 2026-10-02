@@ -7,4 +7,5 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/successor/admission/issuance"
 )
 
-func exportIssuanceInventory(context.Context, string, []byte) error { return issuance.ErrUnsupported }
+func checkIssuanceOutput(context.Context, string) error          { return issuance.ErrUnsupported }
+func exportIssuanceOutput(context.Context, string, []byte) error { return issuance.ErrUnsupported }

@@ -96,6 +96,10 @@ func runIssuance(ctx context.Context, args []string, out, diagnostic io.Writer) 
 	if err != nil {
 		return write()
 	}
+	if err = checkIssuanceOutput(ctx, p.InventoryFile); err != nil {
+		r.Outcome = issuanceOutcome(err)
+		return write()
+	}
 	o, _ := newObservation(endpoint)
 	finish := o.beginIssuance(r.Operation)
 	r.Phase = "open"
@@ -116,7 +120,7 @@ func runIssuance(ctx context.Context, args []string, out, diagnostic io.Writer) 
 				public, err = issuanceInventoryJSON(inventory)
 				if err == nil {
 					r.Phase = "export"
-					err = exportIssuanceInventory(ctx, p.InventoryFile, public)
+					err = exportIssuanceOutput(ctx, p.InventoryFile, public)
 				}
 			}
 			closeErr := store.Close()

@@ -7,7 +7,6 @@ import (
 	"io"
 	"path/filepath"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/successor/admission"
@@ -86,13 +85,8 @@ func decodeProfilePlan(raw []byte) (issuer.ProfilePlan, string, error) {
 		return p, "", e
 	}
 	output, e := profilePath(fields["profile_file"])
-	if e == nil {
-		for _, root := range []string{p.IdentityRoot, p.KeyRoot, p.ProfileRoot} {
-			relative, err := filepath.Rel(root, output)
-			if err != nil || relative == "." || relative != ".." && !strings.HasPrefix(relative, ".."+string(filepath.Separator)) {
-				return p, "", issuance.ErrInvalid
-			}
-		}
+	if e == nil && !issuanceOutputOutsideRoots(output, p.IdentityRoot, p.KeyRoot, p.ProfileRoot) {
+		return p, "", issuance.ErrInvalid
 	}
 	return p, output, e
 }

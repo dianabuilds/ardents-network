@@ -77,6 +77,9 @@ func decodeIssuanceResultPlan(raw []byte, operation string) (issuanceResultPlan,
 		if json.Unmarshal(fields["response_file"], &p.ResponseFile) != nil || !filepath.IsAbs(p.ResponseFile) || filepath.Clean(p.ResponseFile) != p.ResponseFile {
 			return p, issuance.ErrInvalid
 		}
+		if !issuanceOutputOutsideRoots(p.ResponseFile, roots...) {
+			return p, issuance.ErrInvalid
+		}
 	}
 	return p, nil
 }

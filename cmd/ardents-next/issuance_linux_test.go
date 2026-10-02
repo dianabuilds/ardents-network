@@ -129,7 +129,7 @@ func TestIssuanceExportAndCancel(t *testing.T) {
 	raw := []byte("inventory")
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
-	if e := exportIssuanceInventory(ctx, p.InventoryFile, raw); e != context.Canceled {
+	if e := exportIssuanceOutput(ctx, p.InventoryFile, raw); e != context.Canceled {
 		t.Fatal(e)
 	}
 	var out, log bytes.Buffer
@@ -139,26 +139,26 @@ func TestIssuanceExportAndCancel(t *testing.T) {
 	if _, e := os.Lstat(p.Root); !os.IsNotExist(e) {
 		t.Fatal("canceled effect")
 	}
-	if e := exportIssuanceInventory(t.Context(), p.InventoryFile, raw); e != nil {
+	if e := exportIssuanceOutput(t.Context(), p.InventoryFile, raw); e != nil {
 		t.Fatal(e)
 	}
-	if e := exportIssuanceInventory(t.Context(), p.InventoryFile, raw); e != nil {
+	if e := exportIssuanceOutput(t.Context(), p.InventoryFile, raw); e != nil {
 		t.Fatal(e)
 	}
-	if e := exportIssuanceInventory(t.Context(), p.InventoryFile, []byte("different")); e == nil {
+	if e := exportIssuanceOutput(t.Context(), p.InventoryFile, []byte("different")); e == nil {
 		t.Fatal("conflict accepted")
 	}
 	link := filepath.Join(filepath.Dir(p.Root), "link")
 	if e := os.Symlink(p.InventoryFile, link); e != nil {
 		t.Fatal(e)
 	}
-	if e := exportIssuanceInventory(t.Context(), link, raw); e == nil {
+	if e := exportIssuanceOutput(t.Context(), link, raw); e == nil {
 		t.Fatal("symlink accepted")
 	}
 	if e := os.Link(p.InventoryFile, link+"hard"); e != nil {
 		t.Fatal(e)
 	}
-	if e := exportIssuanceInventory(t.Context(), p.InventoryFile, raw); e == nil {
+	if e := exportIssuanceOutput(t.Context(), p.InventoryFile, raw); e == nil {
 		t.Fatal("hardlink accepted")
 	}
 }

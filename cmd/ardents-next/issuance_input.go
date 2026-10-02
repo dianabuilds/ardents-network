@@ -7,6 +7,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/successor/admission/issuance"
 	"io"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -42,12 +43,26 @@ func decodeIssuancePlan(raw []byte) (issuancePlan, error) {
 		!filepath.IsAbs(p.Root) || filepath.Clean(p.Root) != p.Root || !filepath.IsAbs(p.InventoryFile) || filepath.Clean(p.InventoryFile) != p.InventoryFile {
 		return p, issuance.ErrInvalid
 	}
+	if !issuanceOutputOutsideRoots(p.InventoryFile, p.Root) {
+		return p, issuance.ErrInvalid
+	}
 	binding, err := decodeIssuanceBinding(fields["binding"])
 	if err != nil {
 		return p, err
 	}
 	p.Binding = binding
 	return p, nil
+}
+
+// Reject even not-yet-created state roots before initialization has effects.
+func issuanceOutputOutsideRoots(output string, roots ...string) bool {
+	for _, root := range roots {
+		relative, err := filepath.Rel(root, output)
+		if err != nil || relative == "." || relative != ".." && !strings.HasPrefix(relative, ".."+string(filepath.Separator)) {
+			return false
+		}
+	}
+	return true
 }
 
 func decodeIssuanceBinding(raw []byte) (issuance.Binding, error) {

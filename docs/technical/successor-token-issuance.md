@@ -63,6 +63,11 @@ partial tails never truncate. Exact retries revalidate time before returning
 saved bytes. Failure/expiry never refunds. Full rollback and power loss remain
 outside demonstrated guarantees.
 
+Cancellation observed during batch validation or retained-result verification
+remains cancellation, including a deadline error. It is not translated into an
+expired permission or corrupt storage result. A canceled reopen releases its
+lease; a later explicit reopen can verify and reuse the unchanged result.
+
 The operation `Result` retains its primary `Phase`/`Outcome` and a bounded
 three-slot `Cleanup`: results/profile, keys, admission/identity in retirement
 order. Only acquired owners produce completions. `Status()` preserves the
@@ -82,6 +87,12 @@ opens existing Admission and keys, creates only results. Issue debits only after
 all three owners open. Export uses exclusive/idempotent owner-only file adapter;
 export failure retains result. Finite diagnostics and bounded OTel contain only
 operation/phase/outcome and duration; no secret or binding metadata.
+
+Response destinations cannot be any configured state root or its descendant.
+Before opening owners or debiting, the command also refuses output directories
+inside another recognized state root. The shared output adapter repeats this
+check immediately before writing. Inventory and profile exports use the same
+rule; initialization checks destinations before creating persistent state.
 
 | Rule | Current dev source | New independent evidence |
 |---|---|---|

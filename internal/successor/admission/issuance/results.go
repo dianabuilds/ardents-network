@@ -113,7 +113,13 @@ func (r ResultStore) Issue(ctx context.Context, c admission.DebitConfirmation, n
 	if err != nil || digest != s.bindingDigest() {
 		return nil, false, ErrInvalid
 	}
-	if now.Nanosecond() != 0 || now.Unix() < 0 || now.Before(checked) || uint64(now.Unix()) < s.floor || admission.ValidateBatch(ctx, raw, b, now) != admission.Accepted {
+	if now.Nanosecond() != 0 || now.Unix() < 0 || now.Before(checked) || uint64(now.Unix()) < s.floor {
+		return nil, false, ErrValidity
+	}
+	if outcome := admission.ValidateBatch(ctx, raw, b, now); outcome != admission.Accepted {
+		if outcome == admission.Canceled {
+			return nil, false, ctx.Err()
+		}
 		return nil, false, ErrValidity
 	}
 	if err = s.check(); err != nil {

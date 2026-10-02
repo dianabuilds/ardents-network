@@ -23,9 +23,41 @@ func ownedIssuanceOutput(info os.FileInfo, dir bool) bool {
 	}
 	return info.Mode().IsRegular() && info.Mode().Perm() == 0600 && stat.Nlink == 1
 }
-func exportIssuanceInventory(ctx context.Context, path string, raw []byte) (err error) {
+
+// Check before domain effects, then again immediately before opening output.
+// All issuance outputs share this rule, including inventories and profiles.
+func checkIssuanceOutput(ctx context.Context, path string) error {
 	if ctx.Err() != nil {
 		return ctx.Err()
+	}
+	if !filepath.IsAbs(path) || filepath.Clean(path) != path {
+		return issuance.ErrInvalid
+	}
+	for directory := filepath.Dir(path); ; directory = filepath.Dir(directory) {
+		for _, marker := range []string{"identity.pin", "identity.key", "identity.lock", "identity.pending", "profile.pin", "profile.bytes", "profile.lock", "profile.pending", "issuer.pin", "issuer.keys", "issuer.lock", "issuer.pending", "admission.pin", "admission.lock", "admission.journal", "admission.floor", "admission.pending", "results.pin", "results.lock", "results.journal", "results.floor", "results.pending", "budget.pin", "budget.lock", "budget.json", "budget.pending"} {
+			if _, err := os.Lstat(filepath.Join(directory, marker)); !errors.Is(err, os.ErrNotExist) {
+				return issuance.ErrUnavailable
+			}
+		}
+		if filepath.Dir(directory) == directory {
+			break
+		}
+	}
+	parent := filepath.Dir(path)
+	resolved, err := filepath.EvalSymlinks(parent)
+	if err != nil || resolved != parent {
+		return issuance.ErrUnavailable
+	}
+	info, err := os.Lstat(parent)
+	if err != nil || !ownedIssuanceOutput(info, true) {
+		return issuance.ErrUnavailable
+	}
+	return ctx.Err()
+}
+
+func exportIssuanceOutput(ctx context.Context, path string, raw []byte) (err error) {
+	if err := checkIssuanceOutput(ctx, path); err != nil {
+		return err
 	}
 	parent := filepath.Dir(path)
 	resolved, e := filepath.EvalSymlinks(parent)

@@ -78,6 +78,9 @@ func runIssuerProfile(ctx context.Context, operation string, args []string, out,
 		var p issuer.ProfilePlan
 		p, output, err = decodeProfilePlan(raw)
 		if err == nil {
+			err = checkIssuanceOutput(ctx, output)
+		}
+		if err == nil {
 			var result issuer.Result
 			if operation == "issuance.initialize-profile" {
 				result = issuer.InitializeProfile(ctx, p)
@@ -101,7 +104,7 @@ func runIssuerProfile(ctx context.Context, operation string, args []string, out,
 	}
 	if err == nil && bytes != nil {
 		r.Phase = "export"
-		err = exportIssuerProfile(ctx, output, bytes)
+		err = exportIssuanceOutput(ctx, output, bytes)
 		if err != nil {
 			r.Outcome = issuanceOutcome(err)
 		}

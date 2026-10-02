@@ -71,6 +71,33 @@ shared by profile verification, ledger validation and private-key inventory.
 An unsigned profile request and a verified profile have different private
 representations; Go type conversion cannot bypass signature verification.
 
+The command checks export destinations before opening the issuance operation or
+initializing keys. Every output uses the same state-directory exclusion and
+exclusive/idempotent writer. Cancellation during verification retains its
+actual error; it does not imply expired authority or unavailable storage.
+
+## Whole domain and current callers
+
+The domain includes allocation, issuing, holder stock and spending. This tree
+currently contains the offline issuer portion; source relocation here has not
+switched the existing Endpoint or receiving Node consumers.
+
+| Responsibility | Implementation and actual consumer |
+| --- | --- |
+| Offline permission verification, quota debit, key/profile preparation and retained issuance response | This tree, called by `cmd/ardents-next` |
+| Permission allocation and purpose-bound signing | `internal/admission` grammar and `internal/custody/admission_authority.go`, consumed by the existing provisioning commands |
+| Pending blind batch, per-class stock and permission revocation | `internal/endpoint/tokens`, consumed by the existing Endpoint duty context |
+| Holder consumption journal | `internal/endpoint/tokenjournal`, consumed by that token owner |
+| Receiver spend and replay floors | `internal/route/replay`, consumed by existing receiving duties |
+| Live issuer request, bootstrap/admitted lane and response | `internal/route/credential`, composed by existing network consumers |
+
+These are distinct state owners within Admission, not interchangeable credentials
+or one shared store. Custody retains private authority keys; Network State
+retains live authority and time verification; Hosting retains provider budgets.
+Moving Admission must preserve these external responsibilities and switch real
+consumers. An offline command cannot stand in for the live issuance/spending
+cycle. The selected issue ledger owns the migration work and acceptance status.
+
 ## Invariants and evidence
 
 | Invariant | Owner | Behavior evidence |
