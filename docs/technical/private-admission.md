@@ -55,6 +55,14 @@ No amount of issued tokens grants voting weight or public network influence.
 
 ## Provisioning and key lifecycle
 
+The independent offline key-material consumer is documented in
+[successor issuer key material](successor-issuer-key-material.md). Its fresh
+root retains dedicated hourly RSA keys and exports an unsigned local inventory.
+Inspection verifies local identity, including future or expired intervals. The
+inventory cannot replace the Node-signed ARDCIP01 profile or authenticated State
+and grants no issuer duty. Legacy initialization refuses complete and partial
+successor roots before acquiring its file-creating lease.
+
 Use the existing closed-control, Custody, Instance and issuer command owners;
 add bounded commands there, not a general signer or a new provisioning daemon.
 The offline operator first supplies the independently authorized current Epoch,

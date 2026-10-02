@@ -623,6 +623,14 @@ no build-error-based filtering or passing platform skip supplies that membership
 
 ## Independent offline Admission profile
 
+The separate `issuer-key-material-linux` profile runs `make issuance-check`:
+real RSA keys, owner-only files, exclusive lifetime leases, fault/crash/reopen,
+compiled initialize/inspect/export commands, Admission SPKI compatibility and
+actual OTLP. It uses the same pinned Go 1.27.1 bookworm image and shares the
+immutable command build. It requires proc/sys/loopback for the existing command
+tests. Windows cannot replace Linux acceptance; filesystem tests do not qualify
+power loss, full storage rollback or network security.
+
 `make admission-check` requires Linux and executes the standard-library
 successor Admission file, lease, crash/reopen and concurrency tests under race,
 plus the real compiled `ardents-next` cycle and actual OTLP checks. The checked

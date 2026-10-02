@@ -17,7 +17,7 @@ product dependency allowlist. The command's exact OTel imports and test-only
 OTLP decoding imports are enumerated in the isolation test and dependency
 register; domain packages receive no third-party allowance. New dependencies require explicit
 review and the existing dependency acceptance process.
-Admission and Hosting each permit only standard-library imports; the import
+Admission, Hosting and Issuance each permit only standard-library imports; the import
 gate also rejects dependencies between these independent domain owners.
 
 The reserved command path is cmd/ardents-next. It may compose successor packages,
@@ -32,6 +32,8 @@ growth and extraction rules.
 Offline issuance-right accounting belongs to
 docs/technical/successor-admission-ledger.md; its debit never grants network
 permission or consumes/refunds Hosting capacity.
+Offline immutable issuer material and unsigned public inventory belong to
+docs/technical/successor-issuer-key-material.md. No private key leaves that API.
 No automatic reads, conversion or reuse of old state are authorized.
 
 internal/architecture/successor_isolation_test.go enforces import isolation

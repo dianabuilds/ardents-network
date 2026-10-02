@@ -302,3 +302,7 @@ hosting-check:
 .PHONY: admission-check
 admission-check:
 	$(if $(filter linux,$(shell go env GOOS)),go test -race ./internal/successor/admission ./cmd/ardents-next -count=1 -timeout=3m,$(error admission-check requires Linux))
+
+.PHONY: issuance-check
+issuance-check:
+	$(if $(filter linux,$(shell go env GOOS)),go test -race ./internal/successor/issuance ./cmd/ardents-next -count=1 -timeout=3m,$(error issuance-check requires Linux))

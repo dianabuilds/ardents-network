@@ -43,9 +43,9 @@ func successorImportAllowed(source, dependency string) bool {
 		return !zoneDependency
 	}
 	if zoneDependency {
-		// These two independent domain owners have exact standard-library-only
+		// These independent domain owners have exact standard-library-only
 		// import contracts. Directory grouping grants no cross-domain dependency.
-		if strings.HasPrefix(source, "internal/successor/admission/") || strings.HasPrefix(source, "internal/successor/hosting/") {
+		if strings.HasPrefix(source, "internal/successor/admission/") || strings.HasPrefix(source, "internal/successor/hosting/") || strings.HasPrefix(source, "internal/successor/issuance/") {
 			return false
 		}
 		return true
@@ -91,6 +91,8 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		{"zone", "cmd/ardents-next/main.go", modulePath + "/internal/successor/admission", true},
 		{"hosting caller", "cmd/ardents-next/hosting.go", modulePath + "/internal/successor/hosting", true},
 		{"independent domains", "internal/successor/hosting/budget.go", modulePath + "/internal/successor/admission", false},
+		{"issuance independent", "internal/successor/issuance/store.go", modulePath + "/internal/successor/admission", false},
+		{"admission cannot borrow keys", "internal/successor/admission/batch.go", modulePath + "/internal/successor/issuance", false},
 		{"admission cannot borrow budget", "internal/successor/admission/check.go", modulePath + "/internal/successor/hosting", false},
 		{"legacy", "internal/successor/admission/check.go", modulePath + "/internal/admission", false},
 		{"legacy test fixture", "internal/successor/admission/check_test.go", modulePath + "/tests/fixtures", false},

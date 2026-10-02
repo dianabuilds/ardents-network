@@ -179,3 +179,22 @@ func (o *observation) beginAdmission(operation string) func(string, string) {
 		}
 	}
 }
+func (o *observation) beginIssuance(operation string) func(string, string) {
+	if o == nil {
+		return func(string, string) {}
+	}
+	ctx, span := o.traces.Tracer("ardents.issuance").Start(context.Background(), operation)
+	start := time.Now()
+	return func(phase, outcome string) {
+		attrs := []attribute.KeyValue{attribute.String("operation", operation), attribute.String("phase", phase), attribute.String("outcome", outcome)}
+		span.SetAttributes(attrs...)
+		span.End()
+		meter := o.meters.Meter("ardents.issuance")
+		if count, err := meter.Int64Counter("ardents.issuance.operations"); err == nil {
+			count.Add(ctx, 1, metric.WithAttributes(attrs...))
+		}
+		if duration, err := meter.Float64Histogram("ardents.issuance.duration", metric.WithUnit("s")); err == nil {
+			duration.Record(ctx, time.Since(start).Seconds(), metric.WithAttributes(attrs...))
+		}
+	}
+}
