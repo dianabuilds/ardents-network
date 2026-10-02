@@ -278,45 +278,11 @@ func selectChecks(base, head string) ([]check, bool, error) {
 			}
 		}
 	}
-	for changed := true; changed; {
-		changed = false
-		for _, current := range owners {
-			for _, decl := range current.declarations {
-				if current.changed[decl.name] {
-					if decl.receiver != "" && !current.changed[decl.receiver] {
-						current.changed[decl.receiver] = true
-						changed = true
-					}
-					continue
-				}
-				affected := false
-				for name := range decl.refs {
-					if current.changed[name] {
-						affected = true
-						break
-					}
-				}
-				for imported, names := range decl.imported {
-					other := owners[imported]
-					if other == nil {
-						continue
-					}
-					for name := range names {
-						if other.changed[name] {
-							affected = true
-							current.race = current.race || other.race
-							current.reasons["consumer of "+imported+"."+name] = true
-						}
-					}
-				}
-				if affected {
-					current.changed[decl.name] = true
-					current.compile = true
-					changed = true
-				}
-			}
-		}
+	order := make([]*owner, 0, len(owners))
+	for _, current := range owners {
+		order = append(order, current)
 	}
+	propagateChanges(owners, order)
 	var checks []check
 	for _, current := range owners {
 		if !current.compile {
@@ -345,6 +311,52 @@ func selectChecks(base, head string) ([]check, bool, error) {
 		fmt.Println("No executable behavior changed; no runtime tests selected.")
 	}
 	return checks, powershell, nil
+}
+
+// propagateChanges computes both declaration selection and race requirements
+// monotonically. A selected declaration can acquire a race requirement later.
+func propagateChanges(owners map[string]*owner, order []*owner) {
+	for changed := true; changed; {
+		changed = false
+		for _, current := range order {
+			for _, decl := range current.declarations {
+				if current.changed[decl.name] {
+					if decl.receiver != "" && !current.changed[decl.receiver] {
+						current.changed[decl.receiver] = true
+						changed = true
+					}
+				}
+				affected := false
+				for name := range decl.refs {
+					if current.changed[name] {
+						affected = true
+						break
+					}
+				}
+				for imported, names := range decl.imported {
+					other := owners[imported]
+					if other == nil {
+						continue
+					}
+					for name := range names {
+						if other.changed[name] {
+							affected = true
+							if other.race && !current.race {
+								current.race = true
+								changed = true
+							}
+							current.reasons["consumer of "+imported+"."+name] = true
+						}
+					}
+				}
+				if affected && !current.changed[decl.name] {
+					current.changed[decl.name] = true
+					current.compile = true
+					changed = true
+				}
+			}
+		}
+	}
 }
 func parseDeclarations(name string, body []byte) ([]declaration, bool, error) {
 	file, err := parser.ParseFile(token.NewFileSet(), name, body, 0)

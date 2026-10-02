@@ -42,6 +42,8 @@ substitute for independent review.
   the pre-integration gate. Pull request CI uses `scripts/select-pr-checks.go`
   to run the changed Go owners,
   their imported consumers, and explicitly registered non-Go fixture owners;
+  declaration selection and transitive race requirements reach a monotone closure
+  independently of package visitation order, including already selected consumers.
   Package and dependency loading errors fail selection before a matrix is
   published. A deleted Go package without a current owner selects the repository
   architecture check; changed surviving consumers retain their narrow checks.
