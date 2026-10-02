@@ -29,8 +29,9 @@ Assignments belong to the active task, not to model names in repository policy.
 
 A component needed by another issue can be implemented earlier within the
 accepted contract. Record that dependency in the owning issue and dependency
-map. This does not waive the predecessor's acceptance obligations or permit
-implementations beyond the two explicitly selected tasks permitted by AGENTS.md.
+map. This does not waive the predecessor's acceptance obligations or authorize
+implementation beyond the selected issues and count under the
+[repository C0 work-in-progress policy](../../AGENTS.md#c0-work-in-progress-limit).
 Each implementer retains one active slice with separate ownership and a worktree
 or branch.
 
