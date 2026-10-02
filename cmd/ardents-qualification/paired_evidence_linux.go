@@ -15,6 +15,7 @@ import (
 
 type pairedWorkloadVerdict struct {
 	Kind                                string
+	Seed                                string
 	CandidateSHA256, EndpointUnitSHA256 string
 	Profile                             streamqualification.Profile
 	Condition                           streamqualification.NetworkCondition
@@ -173,7 +174,7 @@ func verifyPair(paths []string, output io.Writer) error {
 	cleanupCriteria, cleanupErr := readCleanupResults(paths[6])
 	criteria = append(criteria, cleanupCriteria...)
 	assurance := issue60Evidence(criteria)
-	verdict := pairedWorkloadVerdict{Kind: "paired-workload", CandidateSHA256: binaryIdentity, EndpointUnitSHA256: unitIdentity, Profile: profile, Condition: condition, ReaderNetwork: ownerNetworks[streamqualification.ReaderRole], PublisherNetwork: ownerNetworks[streamqualification.PublisherRole], Relay: relay, NodeOwners: nodeOwners, Criteria: criteria, Assurance: assurance}
+	verdict := pairedWorkloadVerdict{Kind: "paired-workload", Seed: seed, CandidateSHA256: binaryIdentity, EndpointUnitSHA256: unitIdentity, Profile: profile, Condition: condition, ReaderNetwork: ownerNetworks[streamqualification.ReaderRole], PublisherNetwork: ownerNetworks[streamqualification.PublisherRole], Relay: relay, NodeOwners: nodeOwners, Criteria: criteria, Assurance: assurance}
 	if err := json.NewEncoder(output).Encode(verdict); err != nil {
 		return err
 	}
