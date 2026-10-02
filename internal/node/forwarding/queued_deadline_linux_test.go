@@ -267,6 +267,9 @@ func testQueuedDeadlineActualCaller(t *testing.T, profile carrier.CarrierProfile
 		if err := a.forwardingError(); err == nil {
 			t.Fatal("started partial frame became success")
 		}
+		if err := sessions.joinedResult(); !errors.Is(err, closeFailure) {
+			t.Fatalf("joined physical cleanup lost first failure: %v", err)
+		}
 		if _, err := sibling.lease.Carrier(); err == nil {
 			t.Fatal("partial frame left healthy shared lease")
 		}
