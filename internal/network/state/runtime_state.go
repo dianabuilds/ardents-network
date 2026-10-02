@@ -52,6 +52,7 @@ type config struct {
 	now                    time.Time
 	clock                  func() time.Time
 	source                 *source.Plan
+	fetchSourceOperation   func(context.Context, int, source.Message) (source.Message, error)
 	sourceInfo             source.Details
 	observation            time.Time
 	observe                func() time.Time

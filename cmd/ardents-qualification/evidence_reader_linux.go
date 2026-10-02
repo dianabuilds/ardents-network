@@ -24,7 +24,13 @@ type evidenceTerminal struct {
 // and semantic defect in the stream instead of hiding later defects behind the
 // first one. Cancellation, missing cleanup and a truncated final line still
 // fail even when earlier participant results looked successful.
-func readCompletedEvidence(path string, accept func([]byte) error) (outcome error) {
+func readCompletedEvidence(path string, accept func([]byte) error) error {
+	return readRunnerEvidence(path, accept, false)
+}
+
+// Failed carrier accounting may retain a failed outcome, but must still prove
+// framing, exact checksum, participant results and joined cleanup.
+func readRunnerEvidence(path string, accept func([]byte) error, allowFailure bool) (outcome error) {
 	file, err := os.Open(path)
 	if err != nil {
 		return err
@@ -80,7 +86,7 @@ func readCompletedEvidence(path string, accept func([]byte) error) (outcome erro
 				if err := json.Unmarshal(raw, &ending); err != nil {
 					outcome = errors.Join(outcome, fmt.Errorf("runner terminal evidence: %w", err))
 				} else {
-					if ending.Failure != "" {
+					if ending.Failure != "" && !allowFailure {
 						outcome = errors.Join(outcome, errors.New("runner ended with failure: "+ending.Failure))
 					}
 					if ending.Records != count || ending.SHA256 != hex.EncodeToString(digest.Sum(nil)) {

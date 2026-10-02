@@ -26,7 +26,7 @@ func qualificationNET14VBitratePair(t *testing.T, rates map[string]uint64, burst
 	}
 	origin := time.Unix(10_000, 0).UTC()
 	identity := strings.Repeat("ab", 32)
-	pair := pairedWorkloadVerdict{Kind: "paired-workload", CandidateSHA256: identity, EndpointUnitSHA256: identity, Profile: streamqualification.ClientToPublisher, Condition: streamqualification.NormalNetwork,
+	pair := pairedWorkloadVerdict{Kind: "paired-workload", Seed: identity, CandidateSHA256: identity, EndpointUnitSHA256: identity, Profile: streamqualification.ClientToPublisher, Condition: streamqualification.NormalNetwork,
 		ReaderNetwork: ownerNetworkVerdict{Started: origin, Stopped: origin.Add(600 * time.Second), DirectionalUseful: 1}, PublisherNetwork: ownerNetworkVerdict{Started: origin, Stopped: origin.Add(600 * time.Second), DirectionalUseful: 1},
 		Relay: relayTrafficVerdict{BinarySHA256: identity}, NodeOwners: nodeOwnersVerdict{InventorySHA256: identity, BinarySHA256: identity}, Criteria: []streamqualification.Criterion{{Name: "fixture-prior-evidence", Passed: true}},
 	}
@@ -88,13 +88,13 @@ func qualificationNET14VCLI(t *testing.T, manifest, recovery qualificationNetwor
 	encoder := json.NewEncoder(&faults)
 	for _, failure := range recovery.Failures {
 		at := int64(10_000_000 + failure.AtMillis)
-		for _, record := range []recoveryFaultRecord{{Kind: "recovery-fault-start", Episode: failure.Episode, Segment: failure.SegmentID, ScheduledMillis: at, ActualMillis: at}, {Kind: "recovery-fault-stop", Episode: failure.Episode, Segment: failure.SegmentID, ScheduledMillis: at + int64(failure.DurationMillis), ActualMillis: at + int64(failure.DurationMillis)}} {
+		for _, record := range []recoveryFaultRecord{{Host: "reader", ManifestSHA256: episodeHash, RunStartedMillis: episode.ReaderNetwork.Started.UnixMilli(), Kind: "recovery-fault-start", Episode: failure.Episode, Segment: failure.SegmentID, ScheduledMillis: at, ActualMillis: at}, {Host: "reader", ManifestSHA256: episodeHash, RunStartedMillis: episode.ReaderNetwork.Started.UnixMilli(), Kind: "recovery-fault-stop", Episode: failure.Episode, Segment: failure.SegmentID, ScheduledMillis: at + int64(failure.DurationMillis), ActualMillis: at + int64(failure.DurationMillis)}} {
 			if err := encoder.Encode(record); err != nil {
 				t.Fatal(err)
 			}
 		}
 	}
-	if err := encoder.Encode(recoveryFaultRecord{Kind: "recovery-faults-complete", Host: "reader", Episodes: len(recovery.Failures)}); err != nil {
+	if err := encoder.Encode(recoveryFaultRecord{Kind: "recovery-faults-complete", Host: "reader", ManifestSHA256: episodeHash, RunStartedMillis: episode.ReaderNetwork.Started.UnixMilli(), ActualMillis: episode.ReaderNetwork.Started.Add(420 * time.Second).UnixMilli(), Episodes: len(recovery.Failures)}); err != nil {
 		t.Fatal(err)
 	}
 	faultPath := t.TempDir() + "/faults.jsonl"

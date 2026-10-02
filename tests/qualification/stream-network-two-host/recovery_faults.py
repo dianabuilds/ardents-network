@@ -2,6 +2,7 @@
 """Apply one verified NET-14 recovery manifest to live relay containers."""
 
 import argparse
+import hashlib
 import json
 import re
 import subprocess
@@ -36,7 +37,7 @@ def emit(value, lock):
         print(json.dumps(value, sort_keys=True, separators=(",", ":")), flush=True)
 
 
-def apply_failure(failure, relay, segment, parent, started_millis, output, failures):
+def apply_failure(failure, relay, segment, parent, started_millis, binding, output, failures):
     try:
         due = started_millis + int(failure["AtMillis"])
         remaining = (due - time.time_ns() // 1_000_000) / 1000
@@ -47,11 +48,11 @@ def apply_failure(failure, relay, segment, parent, started_millis, output, failu
         base = ["docker", "exec", relay["Container"], "/usr/sbin/tc", "qdisc", "replace", "dev", "eth0", "parent", parent, "handle", handle]
         command(base + ["netem", "loss", "100%"])
         actual_start = time.time_ns() // 1_000_000
-        emit({"kind": "recovery-fault-start", "episode": failure["Episode"], "segment": failure["SegmentID"], "scheduled_millis": due, "actual_millis": actual_start}, output)
+        emit({**binding, "kind": "recovery-fault-start", "episode": failure["Episode"], "segment": failure["SegmentID"], "scheduled_millis": due, "actual_millis": actual_start}, output)
         time.sleep(int(failure["DurationMillis"]) / 1000)
         command(base + netem(segment))
         actual_stop = time.time_ns() // 1_000_000
-        emit({"kind": "recovery-fault-stop", "episode": failure["Episode"], "segment": failure["SegmentID"], "scheduled_millis": due + int(failure["DurationMillis"]), "actual_millis": actual_stop}, output)
+        emit({**binding, "kind": "recovery-fault-stop", "episode": failure["Episode"], "segment": failure["SegmentID"], "scheduled_millis": due + int(failure["DurationMillis"]), "actual_millis": actual_stop}, output)
     except Exception as error:
         failures.append(str(error))
 
@@ -62,7 +63,9 @@ def main():
     parser.add_argument("host_role", choices=("reader", "publisher"))
     parser.add_argument("started_millis", type=int)
     arguments = parser.parse_args()
-    manifest = json.loads(arguments.manifest.read_text(encoding="utf-8"))
+    body = arguments.manifest.read_bytes()
+    manifest = json.loads(body)
+    binding = {"host": arguments.host_role, "manifest_sha256": hashlib.sha256(body).hexdigest(), "run_started_millis": arguments.started_millis}
     if manifest.get("Cell") != "net14-recovery" or arguments.started_millis <= 0:
         raise RuntimeError("recovery scheduler input is invalid")
     segments = {item["ID"]: item for path in manifest["Paths"] for item in path["Segments"]}
@@ -79,14 +82,14 @@ def main():
         relay, parent = relays[failure["SegmentID"]]
         if relay["Host"] != arguments.host_role:
             continue
-        worker = threading.Thread(target=apply_failure, args=(failure, relay, segments[failure["SegmentID"]], parent, arguments.started_millis, output, failures))
+        worker = threading.Thread(target=apply_failure, args=(failure, relay, segments[failure["SegmentID"]], parent, arguments.started_millis, binding, output, failures))
         worker.start()
         workers.append(worker)
     for worker in workers:
         worker.join()
     if failures:
         raise RuntimeError("; ".join(failures))
-    emit({"kind": "recovery-faults-complete", "host": arguments.host_role, "episodes": len(workers)}, output)
+    emit({**binding, "kind": "recovery-faults-complete", "actual_millis": time.time_ns() // 1_000_000, "episodes": len(workers)}, output)
 
 
 if __name__ == "__main__":
