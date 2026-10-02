@@ -60,23 +60,28 @@ func TestAlphaControlReadersDoNotExportFixtureWriters(t *testing.T) {
 		{"internal/alphacontrol", []string{"Sign", "SignV2", "SignComponent"}},
 		{"internal/alphacontrol/inspection", []string{"EncodeReleaseEvidence", "EncodeNetworkEvidence", "EncodeCompatibilityEvidence"}},
 	} {
-		packages, err := parser.ParseDir(token.NewFileSet(), filepath.Join(root, filepath.FromSlash(reader.path)), func(info os.FileInfo) bool {
-			return !strings.HasSuffix(info.Name(), "_test.go")
-		}, 0)
+		directory := filepath.Join(root, filepath.FromSlash(reader.path))
+		entries, err := os.ReadDir(directory)
 		if err != nil {
 			t.Fatal(err)
 		}
-		for _, pkg := range packages {
-			for _, file := range pkg.Files {
-				for _, decl := range file.Decls {
-					function, ok := decl.(*ast.FuncDecl)
-					if !ok {
-						continue
-					}
-					for _, forbidden := range reader.forbidden {
-						if function.Name.Name == forbidden {
-							t.Errorf("%s exports fixture-only writer %s", reader.path, forbidden)
-						}
+		// Inspect every platform source, independently of the current build tags.
+		for _, entry := range entries {
+			if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".go") || strings.HasSuffix(entry.Name(), "_test.go") {
+				continue
+			}
+			file, err := parser.ParseFile(token.NewFileSet(), filepath.Join(directory, entry.Name()), nil, 0)
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, decl := range file.Decls {
+				function, ok := decl.(*ast.FuncDecl)
+				if !ok {
+					continue
+				}
+				for _, forbidden := range reader.forbidden {
+					if function.Name.Name == forbidden {
+						t.Errorf("%s exports fixture-only writer %s", reader.path, forbidden)
 					}
 				}
 			}

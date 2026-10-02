@@ -19,9 +19,9 @@ type toolRequirement struct {
 }
 
 var requiredTools = []toolRequirement{
-	{name: "staticcheck", version: "2025.1.1", args: []string{"-version"}, goVersion: "go1.26.8"},
-	{name: "govulncheck", version: "govulncheck@v1.1.4", args: []string{"-version"}, goVersion: "go1.26.8"},
-	{name: "deadcode", version: "v0.48.0", module: "golang.org/x/tools", goVersion: "go1.26.8"},
+	{name: "staticcheck", version: "2026.2.1", args: []string{"-version"}, goVersion: "go1.27.1"},
+	{name: "govulncheck", version: "govulncheck@v1.8.0", args: []string{"-version"}, goVersion: "go1.27.1"},
+	{name: "deadcode", version: "v0.50.0", module: "golang.org/x/tools", goVersion: "go1.27.1"},
 }
 
 func main() {

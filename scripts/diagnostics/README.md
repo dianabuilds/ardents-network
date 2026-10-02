@@ -43,8 +43,8 @@ docker build -f scripts/diagnostics/Dockerfile -t ardents-diagnostics:local .
 
 Build explicitly installs reviewed Go tools through `make tools-install
 DIAGNOSTIC_TOOLS=1`. It downloads build dependencies; diagnostic runs never
-implicitly install/upgrade tools. The image contains Go 1.26.8, Staticcheck
-2025.1.1, govulncheck 1.1.4, deadcode 0.48.0, Delve 1.27.2, errcheck 1.20.0, strace, ss/tc,
+implicitly install/upgrade tools. The image contains Go 1.27.1, Staticcheck
+2026.2.1, govulncheck 1.8.0, deadcode 0.50.0, Delve 1.27.2, errcheck 1.20.0, strace, ss/tc,
 tcpdump and Graphviz. `/opt/ardents-diagnostics/inventory.txt` retains actual
 compiler, tool module and Debian package inventory. No product dependency is
 added to go.mod. Docker uses the file-specific `.dockerignore`; the ordinary
@@ -668,7 +668,7 @@ image from the current source before expecting its CLI to include `bundle`.
 
 ### Standard parser installation
 
-The Docker build includes prebuilt Go 1.26.8 `pprof` and `trace` binaries and
+The Docker build includes prebuilt Go 1.27.1 `pprof` and `trace` binaries and
 records their build metadata. Native Linux diagnostic tests and bundle parsing
 require an explicit preparation step:
 

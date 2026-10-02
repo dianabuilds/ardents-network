@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"fmt"
 	"net"
 	"os"
 	"path/filepath"
@@ -313,13 +312,20 @@ type writeCallResult struct {
 
 func shortClientSocketPath(t *testing.T) string {
 	t.Helper()
-	path := filepath.Join(os.TempDir(), fmt.Sprintf("aai-close-%d.sock", time.Now().UnixNano()))
+	directory, err := os.MkdirTemp(os.TempDir(), "aai-close-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(directory, "peer.sock")
 	t.Cleanup(func() {
 		if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
 			t.Errorf("remove Unix socket: %v", err)
 		}
 		if _, err := os.Lstat(path); !os.IsNotExist(err) {
 			t.Errorf("Unix socket residue: %v", err)
+		}
+		if err := os.Remove(directory); err != nil {
+			t.Errorf("remove Unix socket directory: %v", err)
 		}
 	})
 	return path

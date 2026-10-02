@@ -22,6 +22,8 @@ github.com/dianabuilds/ardents-network/internal/endpoint/portable
 github.com/dianabuilds/ardents-network/internal/endpoint/replacement
 github.com/dianabuilds/ardents-network/internal/endpoint/worker
 github.com/dianabuilds/ardents-network/internal/architecture
+github.com/dianabuilds/ardents-network/internal/successor/admission
+github.com/dianabuilds/ardents-network/cmd/ardents-next
 github.com/dianabuilds/ardents-network/internal/entry
 github.com/dianabuilds/ardents-network/internal/network/closedprofile
 github.com/dianabuilds/ardents-network/internal/network/duty

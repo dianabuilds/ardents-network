@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-FROM golang:1.26.8-bookworm@sha256:9fdc884aacc3bec89b20ffc69f4bb369c78210e3e4f600387b5128b12c199f81
+FROM golang:1.27.1-bookworm@sha256:69a7b9788769bec032d238959b61854e9ae87f57be9029ec04e9885fabf99195
 ENV GOENV=off GOTOOLCHAIN=local GOTELEMETRY=off GOFLAGS=-mod=readonly
 RUN apt-get update && apt-get install -y --no-install-recommends \
     make git ca-certificates gcc libc6-dev pkg-config dpkg util-linux \

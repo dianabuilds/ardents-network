@@ -29,6 +29,21 @@ co-location grants none of them access to another zone's authority material.
 
 ## Stable top-level zones
 
+### Temporary successor source isolation
+
+The Product Owner selected `internal/successor/` as a temporary grouping zone
+for independently developed replacement components on 2026-10-02. It has no
+root Go package and creates no runtime, wire or domain identity. The reserved
+composition command path is `cmd/ardents-next`; it is added only with real
+behavior. Source and test imports are restricted to the standard library and
+the successor zone by the architecture gate. Existing product packages cannot
+import the zone. The sole third-party exception is the exact OpenTelemetry
+command-composition and test-decoding imports enumerated by the isolation gate
+and package map. Domain packages have no third-party or shared product imports.
+Each real child package still requires the normal registration, behavior tests,
+non-test caller and permitted imports. Existing contracts and qualification
+obligations remain in force. See `internal/successor/README.md`.
+
 | Zone | Purpose |
 |---|---|
 | `cmd/<name>/` | One real supported executable. It contains only CLI/configuration adaptation, Module startup, result presentation, and exit-code translation. |

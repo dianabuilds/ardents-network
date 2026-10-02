@@ -1,5 +1,83 @@
 # Dependency register
 
+## Successor finite inspection OpenTelemetry selection
+
+Reviewed 2026-10-02 for issue 478. Select OpenTelemetry Go v1.47.0 API,
+trace/metric APIs, SDK and SDK metric plus official OTLP HTTP trace/metric
+exporters (Apache-2.0). Owner: cmd/ardents-next composition; admission imports
+only the standard library. Need: actual vendor-neutral traces and metrics with
+one explicitly selected local Collector. No logs SDK, auto-instrumentation,
+global propagation or remote export is selected. Resource attributes are fixed;
+no host/environment resource detection. Instrument values have finite outcome
+categories; permission/participant bytes never reach exporters.
+
+Primary evidence, accessed 2026-10-02:
+[v1.47.0 release](https://github.com/open-telemetry/opentelemetry-go/releases/tag/v1.47.0)
+and [upstream security policy](https://github.com/open-telemetry/opentelemetry-go/security/policy),
+plus [official Go exporters](https://opentelemetry.io/docs/languages/go/exporters/).
+Upstream supports only its latest minor version. v1.47.0 adds a maintained
+HTTP response-size option, fixes metric aggregation precision and a periodic
+reader race, and retains the Go 1.25 minimum compatible with this toolchain.
+No periodic reader is selected. Exact module checksums, source use, full transitive
+closure and vulnerability checks remain required before candidate acceptance.
+
+Alternative: a private telemetry encoding would create protocol maintenance;
+backend-specific instrumentation would couple the product to storage. Selected
+official SDK/exporters avoid both. Removal: command composition owns all OTel
+imports and can replace the exporter without changing permission verification.
+Export must be bounded and explicitly loopback-local; failure must not change
+inspection outcome. No network/privacy qualification follows from selection.
+
+Selected module inventory (Go module sums are pinned in go.sum):
+
+| Module | Version | Use |
+|---|---|---|
+| `go.opentelemetry.io/otel` | v1.47.0 | Attribute API and API foundation |
+| `go.opentelemetry.io/otel/metric` | v1.47.0 | Counter and histogram API |
+| `go.opentelemetry.io/otel/trace` | v1.47.0 | Trace API closure |
+| `go.opentelemetry.io/otel/log` | v1.47.0 | API foundation closure; no log SDK or log exporter selected |
+| `go.opentelemetry.io/otel/sdk` | v1.47.0 | Explicit resource and trace provider |
+| `go.opentelemetry.io/otel/sdk/metric` | v1.47.0 | Manual metric collection |
+| `go.opentelemetry.io/otel/exporters/otlp/otlptrace` | v1.47.0 | Trace export foundation |
+| `go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp` | v1.47.0 | Bounded HTTP trace export |
+| `go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp` | v1.47.0 | Bounded HTTP metric export |
+| `go.opentelemetry.io/proto/otlp` | v1.11.1 | OTLP schema and test packet decoding |
+| `go.opentelemetry.io/auto/sdk` | v1.2.1 | API transitive closure; no instrumentation selected |
+| `github.com/cenkalti/backoff/v5` | v5.0.3 | Exporter retry implementation; retry disabled |
+| `github.com/cespare/xxhash/v2` | v2.3.0 | SDK attribute grouping |
+| `github.com/go-logr/logr` | v1.4.4 | OTel diagnostic closure |
+| `github.com/go-logr/stdr` | v1.2.2 | OTel diagnostic adapter closure |
+| `github.com/google/uuid` | v1.6.0 | Resource SDK closure |
+| `github.com/grpc-ecosystem/grpc-gateway/v2` | v2.31.0 | Generated OTLP schema closure |
+| `google.golang.org/genproto/googleapis/rpc` | v0.0.0-20260928230214-8a89bd6388cc | Generated RPC messages |
+| `google.golang.org/grpc` | v1.84.0 | Generated OTLP service closure; no gRPC transport selected |
+
+This inventory does not replace source, license and advisory acceptance. The
+HTTP exporters' generated schema includes gRPC dependencies even though this
+command uses HTTP only; removing them requires changing the selected exporter,
+not pretending the transitive dependency is absent.
+
+The initial closure scan found package advisory GO-2026-6443 in gRPC 1.83.1.
+Select the fixing 1.83.2 patch before acceptance rather than waive the finding:
+[Go advisory](https://pkg.go.dev/vuln/GO-2026-6443) and
+[upstream release](https://github.com/grpc/grpc-go/releases/tag/v1.83.2), accessed
+2026-10-02. The module-only x/crypto OpenPGP finding GO-2026-5932 remains subject
+to the existing scoped non-applicability record; it is not introduced by OTel.
+
+Updated closure releases were inspected on 2026-10-02:
+[OTLP schema v1.11.1](https://github.com/open-telemetry/opentelemetry-proto-go/releases/tag/v1.11.1),
+[gRPC v1.84.0](https://github.com/grpc/grpc-go/releases/tag/v1.84.0),
+[gateway v2.31.0](https://github.com/grpc-ecosystem/grpc-gateway/releases/tag/v2.31.0).
+Downloaded immutable module source licenses identify OTel, auto/sdk, generated
+Google messages, gRPC and stdr as Apache-2.0; backoff and xxhash as MIT; UUID and
+grpc-gateway as BSD-3-Clause. Module integrity is checked with `go mod verify`;
+version and source sums belong to go.mod/go.sum. Quiet stable stdr, UUID and
+xxhash versions remain the latest available versions in `go list -m -u`; this
+does not assert a separately guaranteed support term. The composition owner
+rechecks upstream fixes and advisories at integration and replaces the exporter
+if this closure becomes unmaintained. None of these modules receives permission
+bytes, authority material or user-selected file paths through instrumentation.
+
 Every runtime dependency must be entered here before it is added to `go.mod`.
 The entry must name the need, owner, exact module, reviewed version, license,
 maintenance and security evidence, alternatives considered, and removal plan.
@@ -161,14 +239,63 @@ or serialize opaque blinding State. A changed use or upstream/support/advisory
 fact invalidates that evidence; update or replace within this owner, never
 maintain a private cryptographic fork.
 
-Go 1.26.8 is the required successor build baseline on the supported 1.26 line.
-`go.mod`, CI, active qualification containers and their declared prerequisites
-pin 1.26.8; historical component evidence retains its actual 1.26.6 identity.
+The Product Owner selected Go 1.27.1 on 2026-10-02 while updating Sigstore to
+v1.11.0, which requires Go 1.27. This supersedes the Go 1.26.8 successor build
+baseline. The [official release history](https://go.dev/doc/devel/release#go1.27.1),
+accessed 2026-10-02, identifies the supported patch and compiler/runtime/package
+fixes. `go.mod`, CI, active qualification containers and their prerequisites
+must use the selected patch; historical evidence keeps its actual compiler.
 Every changed candidate still runs fresh source, test, tool, advisory and
 artifact checks on that selected patch. Ubuntu/systemd package inventory and
 built-artifact inspection also remain candidate evidence. No documentation
 decision marks those checks already passed. Tools are installed only through
 make tools-install.
+
+The Go 1.27.1 tool baseline selects Staticcheck 2026.2.1 (`honnef.co/go/tools`
+v0.8.1), govulncheck v1.8.0 (`golang.org/x/vuln`) and deadcode v0.50.0
+(`golang.org/x/tools`), rebuilt using that compiler through `make tools-install`.
+The previous Staticcheck 2025.1.1 cannot decode Go 1.27 export data, and the
+previous govulncheck cannot analyze the new standard-library syntax.
+Primary [Staticcheck release](https://github.com/dominikh/go-tools/releases/tag/2026.2.1)
+and [govulncheck release](https://github.com/golang/vuln/releases/tag/v1.8.0),
+accessed 2026-10-02, identify the selected supported source revisions. Existing
+licenses and explicit integration checks apply; rebuilding does not waive the
+binary/source vulnerability closure review.
+
+The rebuilt Go 1.27.1 govulncheck v1.8.0 and deadcode v0.50.0 binaries reported
+no findings in `govulncheck -mode=binary -show verbose`. Staticcheck 2026.2.1
+reported module-only GO-2026-6180 and GO-2026-6179 in x/mod v0.35.0; neither
+affected package nor symbol is imported. `go list -deps -mod=readonly
+./cmd/staticcheck` in the immutable honnef.co/go/tools v0.8.1 source returned
+486 packages and zero x/mod/sumdb packages. `go tool nm` on the exact rebuilt
+binary also returned zero x/mod/sumdb symbols. Its go/packages subprocess uses
+the selected Go 1.27.1 toolchain instead. This scoped non-applicability fails
+on any changed tool source, imported closure, compiler, invocation or advisory.
+Keep the verbose binary scan and import/symbol evidence with the candidate;
+successful scanner exit alone is not the justification.
+
+The Product Owner's Sigstore renewal selects `github.com/sigstore/sigstore`
+v1.11.0, source integrity `h1:66TQEtd0aMw79qT9EiGnuOxgK6r8Kkpzszi3KUPGt7c=`.
+The [upstream release](https://github.com/sigstore/sigstore/releases/tag/v1.11.0),
+accessed 2026-10-02, explains its Go 1.27 requirement and maintained update path.
+The Release verification use and Apache-2.0 license remain unchanged; the new
+KMS/retry and ML-DSA surfaces are not selected by this renewal. Its current
+`github.com/google/go-containerregistry` closure is v0.22.1, integrity
+`h1:RZuuSYhTvlDvtsK+NkutoCZ//C0X2ebLK8X8l3ULs84=`; the
+[upstream release](https://github.com/google/go-containerregistry/releases/tag/v0.22.1)
+contains a canonical-IP SSRF guard fix. These immutable current selections
+supersede the old snapshot tables below without rewriting historical evidence.
+Current root module sums and source verification cover the complete selected
+closure; candidate gates still own behavior and vulnerability acceptance.
+
+On the Go 1.27.1 root closure, `go list -deps -test ./...` returned zero
+OpenPGP imports on Windows/amd64 (698 packages with CGO off or on) and
+Linux/amd64 (745 packages with CGO off, 746 with CGO on). The current x/crypto
+version is v0.57.0. The module-only GO-2026-5932 finding remains inapplicable
+to these normal-build production/test closures. This does not cover additional
+build tags or targets; changed imports, source versions, toolchain or advisory
+facts require a new assessment. Import enumeration does not constitute Linux
+runtime or installed Endpoint qualification.
 
 ### Go 1.26.8 successor-baseline admission evidence
 
@@ -733,10 +860,10 @@ artifact qualification runner. Any version or runtime use repeats this review.
 
 | Tool | Version | Purpose |
 |---|---:|---|
-| Go | 1.26.8 | compiler, formatter, tests, vet |
-| Staticcheck | 2025.1.1 | additional correctness analysis |
-| govulncheck | v1.1.4 | reachable Go vulnerability analysis |
-| deadcode | v0.48.0 (`golang.org/x/tools`) | reachability analysis for reviewed production code and test-only code |
+| Go | 1.27.1 | compiler, formatter, tests, vet |
+| Staticcheck | 2026.2.1 | additional correctness analysis |
+| govulncheck | v1.8.0 | reachable Go vulnerability analysis |
+| deadcode | v0.50.0 (`golang.org/x/tools`) | reachability analysis for reviewed production code and test-only code |
 
 `make tools-install` is the only documented installation command. Normal build
 and quick-check targets never install or upgrade tools implicitly.
@@ -744,8 +871,8 @@ and quick-check targets never install or upgrade tools implicitly.
 ## Local diagnostic tools
 
 The engineering diagnostics owner is [local-diagnostics.md](local-diagnostics.md).
-The image uses Go 1.26.8 and the digest-pinned official Debian Bookworm Go image
-`sha256:9fdc884aacc3bec89b20ffc69f4bb369c78210e3e4f600387b5128b12c199f81`.
+The image uses Go 1.27.1 and the digest-pinned official Debian Bookworm Go image
+`sha256:69a7b9788769bec032d238959b61854e9ae87f57be9029ec04e9885fabf99195`.
 The existing accepted quality tools retain their reviewed pins; normal gates do
 not install additional tools. Explicit `make tools-install DIAGNOSTIC_TOOLS=1`
 adds **Delve v1.27.2**, module `github.com/go-delve/delve/cmd/dlv`, MIT, solely
