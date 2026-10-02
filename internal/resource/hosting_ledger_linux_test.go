@@ -36,6 +36,20 @@ func openHostingFixture(t *testing.T, root string, reading *hostingReading, now 
 	return owner
 }
 
+func TestHostingFreshSampleRefusesBackwardWallObservation(t *testing.T) {
+	root, reading, now := hostingFixture(t)
+	owner := openHostingFixture(t, root, reading, now)
+	*now = now.Add(time.Second)
+	reading.Interfaces[0].Tx++
+	if _, err := owner.Sample(t.Context(), 0); err != nil {
+		t.Fatal(err)
+	}
+	*now = now.Add(-time.Second)
+	if _, err := owner.Sample(t.Context(), 0); err == nil {
+		t.Fatal("backward Hosting wall observation accepted")
+	}
+}
+
 func TestHostingReservationsShareOneDurablePeriod(t *testing.T) {
 	root, reading, now := hostingFixture(t)
 	first := openHostingFixture(t, root, reading, now)
