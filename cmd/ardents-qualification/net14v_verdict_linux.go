@@ -130,9 +130,7 @@ func evaluateNET14V(baselineManifest, episodeManifest qualificationNetworkManife
 		{Name: "net14v-added-route-bytes", Observed: float64(relayAdded), Relation: "<= recovery-set bound", Bound: float64(episodeCount * (8 << 20)), Passed: compatible && relayAdded <= episodeCount*(8<<20)},
 	}
 	criteria = append(criteria, relayEpisodeCriteria(baseline, episode, episodeManifest.Failures, compatible)...)
-	durationSeconds := episode.ReaderNetwork.Stopped.Sub(episode.ReaderNetwork.Started).Seconds()
-	criteria = append(criteria, relayDirectionalBitrateCriteria("reader", episode.Relay, userEndpoint, durationSeconds, 20_000_000, 100_000_000)...)
-	criteria = append(criteria, relayDirectionalBitrateCriteria("publisher", episode.Relay, publisherEndpoint, durationSeconds, 100_000_000, 100_000_000)...)
+	criteria = append(criteria, net14vDirectionalCriteria(episodeManifest, episode.Relay, episode.ReaderNetwork, episode.PublisherNetwork)...)
 	return criteria
 }
 
@@ -143,23 +141,6 @@ func combinedOwnerWire(verdict pairedWorkloadVerdict) (uint64, bool) {
 	return verdict.ReaderNetwork.DirectionalWire + verdict.PublisherNetwork.DirectionalWire, true
 }
 
-func relayDirectionalBitrateCriteria(name string, relay relayTrafficVerdict, id string, seconds float64, txCap, rxCap uint64) []streamqualification.Criterion {
-	var owner relayNodeTraffic
-	for _, candidate := range relay.Endpoints {
-		if candidate.ID == id {
-			owner = candidate
-		}
-	}
-	tx, rx := float64(0), float64(0)
-	complete := owner.ID != "" && seconds >= 600
-	if complete {
-		tx, rx = float64(owner.Tx)*8/seconds, float64(owner.Rx)*8/seconds
-	}
-	return []streamqualification.Criterion{
-		{Name: name + "-tx-directional-bitrate", Observed: tx, Relation: "<=", Bound: float64(txCap), Passed: complete && tx <= float64(txCap)},
-		{Name: name + "-rx-directional-bitrate", Observed: rx, Relation: "<=", Bound: float64(rxCap), Passed: complete && rx <= float64(rxCap)},
-	}
-}
 func boolNumber(value bool) float64 {
 	if value {
 		return 1

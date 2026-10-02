@@ -20,12 +20,14 @@ type relaySegmentTraffic struct {
 }
 
 type relaySegmentSample struct {
-	At    time.Time
-	Bytes uint64
+	At      time.Time
+	Elapsed time.Duration
+	Bytes   uint64
 }
 
 type relayCounterSample struct {
 	At                         time.Time
+	Elapsed                    time.Duration
 	UpstreamBytes, ClientBytes uint64
 }
 type relayNodeTraffic struct {
@@ -186,7 +188,7 @@ func relaySegmentSamples(samples []relayCounterSample, upstream bool) []relaySeg
 		if upstream {
 			value = sample.UpstreamBytes
 		}
-		result = append(result, relaySegmentSample{At: sample.At, Bytes: value})
+		result = append(result, relaySegmentSample{At: sample.At, Elapsed: sample.Elapsed, Bytes: value})
 	}
 	return result
 }

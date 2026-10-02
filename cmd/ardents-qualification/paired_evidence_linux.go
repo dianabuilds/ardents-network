@@ -157,6 +157,9 @@ func verifyPair(paths []string, output io.Writer) error {
 		relay, relayCriteria, relayErr = readRelayResults(paths[3], manifest, manifestHash)
 		criteria = append(criteria, evaluatePairedOwnerNetwork(paired, profile, condition, ownerNetworks, relay)...)
 		criteria = append(criteria, relayCriteria...)
+		if condition == streamqualification.ImpairedLiveNetwork || condition == streamqualification.RecoveryNetwork {
+			criteria = append(criteria, net14vDirectionalCriteria(manifest, relay, ownerNetworks[streamqualification.ReaderRole], ownerNetworks[streamqualification.PublisherRole])...)
+		}
 		criteria = append(criteria, relayWindowCriteria(relay, ownerNetworks[streamqualification.ReaderRole].Started, ownerNetworks[streamqualification.ReaderRole].Stopped)...)
 		var nodeCriteria []streamqualification.Criterion
 		nodeOwners, nodeCriteria, nodeErr = readNodeResults(paths[4], manifest, paths[5], ownerNetworks)

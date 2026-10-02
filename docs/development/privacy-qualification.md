@@ -74,7 +74,7 @@ production outcomes or authorization to exceed existing product budgets.
 | Publisher idle | Measure one available publication separately, with its finite readiness/refresh and declared owner hosting allowance; never charge it to the User-only idle figure |
 | Private control | 4 KiB Name/Descriptor requests; 16 KiB responses and issuer outcomes; all framing, TLS, refresh, rejection and retry bytes count |
 | Normal bulk | Existing NET-14J/K/L/M/N jobs and budgets remain: 16 client / 64 Publisher active Connections, aggregate 10 / 40 Mbit/s, normal carrier ratio <=1.5 |
-| Impairment/recovery | Existing NET-14V ratios, per-episode 8 MiB addition and per-direction bitrate bounds remain; no relaxed replacement is selected |
+| Impairment/recovery | Existing NET-14V ratios and per-episode 8 MiB addition remain. Each endpoint direction requires nearest-rank p95 unsmoothed one-second attributable carrier bitrate <= min(25 Mbit/s, 80% of its manifest access-link budget): Reader tx/rx 16/25 Mbit/s, Publisher tx/rx 25/25 Mbit/s. Both verify-pair impaired/recovery and verify-net14v recompute from complete direction-bound relay samples with monotonic intervals at nominal one-second cadence (at most 100 ms scheduling jitter); missing, regressing, uneven or shortened series refuse. Whole-run means and host aggregates cannot substitute |
 | Local resources | Existing whole-client 512 MiB and Publisher 1 GiB RSS gates, CPU and progress requirements; confinement helpers and ordinary network control are included in their applicable owner totals |
 
 Pace latency trials at no more than 300 cold/warm pairs per hour per User
@@ -88,6 +88,15 @@ ledger reset may manufacture enough successful samples. Failures count even
 when a later retry succeeds. Run each seed on both selected Carriers.
 
 For issue #60, NET-32 uses a declared ten-minute observation and conservative 24-hour projection; no 24-hour campaign is part of this issue. The receipt states both durations and cannot be treated as an observed-day result. Before effects, the idle runner reserves floor(window × 1,000,000,000 / 24 h) + 1 bytes per direction (6,944,445 for ten minutes), plus a separate 8 MiB termination reserve per direction. The shared Hosting owner applies the provider's tx, rx, or tx+rx accounting to both reserves.
+
+The installed NET-32 runner retains Hosting wall timestamps only for log
+correlation and continuity checks. Its projection denominator uses one host's
+monotonic interval from completion of the first fresh counter sampling call to
+the start of the final fresh call. This conservatively excludes boundary
+sampling time, provisioning and the final reporting callback. Actual elapsed
+time must still meet the ten-minute minimum, with the complete raw one-second
+resource series and interface/Hosting-ledger reconciliation; a wall-clock step
+cannot enlarge the denominator or replace missing observations.
 
 User-idle measurement starts after explicit enrollment/bootstrap, with no
 Application job or publication active, and includes required State/time refresh,
