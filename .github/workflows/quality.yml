@@ -157,6 +157,42 @@ jobs:
           mkdir -p "$ARDENTS_E2E_COMMAND_ROOT"
           go build -trimpath -buildvcs=false -o "$ARDENTS_E2E_COMMAND_ROOT/" ./cmd/ardents ./cmd/ardents-node ./cmd/ardents-control ./cmd/ardents-custody
           make check NODE_PROCESS_TEST_COMMAND="sudo --preserve-env=ARDENTS_E2E_COMMAND_ROOT,GOMODCACHE,GOTOOLCHAIN,GOFLAGS env ARDENTS_NODE_SCOPE_PROFILE=system GOCACHE=$RUNNER_TEMP/node-go-build $(command -v go)"
+  refill-diagnosis:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - name: Check out diagnostic source
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
+        with:
+          go-version: 1.26.8
+          cache: true
+      - name: Observe first transport owner failure in a disposable projection
+        run: |
+          mkdir -p "$RUNNER_TEMP/refill-diagnosis"
+          tar --exclude=.git -cf - . | tar -C "$RUNNER_TEMP/refill-diagnosis" -xf -
+          cd "$RUNNER_TEMP/refill-diagnosis"
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('internal/node/forwarding/listener.go')
+          text = path.read_text()
+          marker = 'func (server *forwardServer) serveDirect(ctx context.Context, connection net.Conn, first *ardp.Frame, incomingKey [32]byte, restriction route.ClosedChildRestriction, outerLane *route.ClosedOuterBridgeLane) (result error) {'
+          assert text.count(marker) == 1
+          text = text.replace(marker, marker + '\n defer func() { if result != nil { println("DEBUG-453 forwarding first result", result.Error()) } }()')
+          path.write_text(text)
+          path = Path('internal/node/outer/lifetime.go')
+          text = path.read_text()
+          marker = 'lane, err := bridge.Accept(frame)'
+          assert text.count(marker) == 1
+          text = text.replace(marker, marker + '\n if err != nil { println("DEBUG-453 outer Accept", err.Error()) }')
+          marker = 'frame, err := ardp.ReadFrame(connection)'
+          assert text.count(marker) == 1
+          text = text.replace(marker, marker + '\n if err != nil { println("DEBUG-453 outer Read", err.Error()) }')
+          path.write_text(text)
+          PY
+          go test -race -v -count=10 -timeout=9m -run '^TestAdmittedSourceQueuedRefillCancellation/ardents-carrier-quic-v2' ./internal/route/client
   go:
     if: always()
     needs: [select, qualification-scripts, affected, full]
