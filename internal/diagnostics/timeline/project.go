@@ -62,6 +62,25 @@ func diagnosticTimelineRow(raw []byte) (string, bool, error) {
 		}
 	}
 	schema := diagnosticString(fields, "schema")
+	var stringFields []string
+	switch schema {
+	case "ardents-node-event-v1":
+		stringFields = []string{"kind", "at", "assignment", "carrier_profile", "state", "reason"}
+	case "ardents-source-event-v1":
+		stringFields = []string{"kind", "at", "reason"}
+	case "ardents-headless-runtime-event-v1":
+		stringFields = []string{"kind", "at", "surface", "failure"}
+	default:
+		return "", false, nil
+	}
+	for _, name := range stringFields {
+		if raw, present := fields[name]; present {
+			var value *string
+			if json.Unmarshal(raw, &value) != nil || value == nil {
+				return "", false, errors.New("runtime diagnostic contains an invalid field type")
+			}
+		}
+	}
 	kind := diagnosticString(fields, "kind")
 	owner, role, carrier, state, reason := "", "", "", "", ""
 	switch schema {
@@ -127,7 +146,9 @@ func diagnosticTimelineRow(raw []byte) (string, bool, error) {
 
 func diagnosticString(fields map[string]json.RawMessage, name string) string {
 	var value string
-	_ = json.Unmarshal(fields[name], &value)
+	if json.Unmarshal(fields[name], &value) != nil {
+		return ""
+	}
 	return value
 }
 
