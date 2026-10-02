@@ -99,7 +99,7 @@ func (s *networkState) completeSourceWaveWithConflictCommit(started time.Time, b
 	if !sameGeneration(s.current, base) {
 		return Snapshot{}, errors.New("network state changed during the finite source wave")
 	}
-	summary := summarizeSourceWave(results)
+	summary := summarizeSourceWave(s.distribution, results)
 	if summary.collisionErr != nil {
 		if err := s.recordSourceConflictWithControl(started, summary.outcomes, summary.observedEpochs, summary.observedDigests, commit); err != nil {
 			return Snapshot{}, err
@@ -191,8 +191,11 @@ type sourceWaveSummary struct {
 	collisionErr    error
 }
 
-func summarizeSourceWave(results []sourceResult) sourceWaveSummary {
-	summary := sourceWaveSummary{valid: make([]epoch.Decision, 0, 2)}
+func summarizeSourceWave(state distributionState, results []sourceResult) sourceWaveSummary {
+	// Start from the same durable cycle: a consumed selector has no new result
+	// on resume, but its recorded outcome and evidence still belong to this wave.
+	summary := sourceWaveSummary{valid: make([]epoch.Decision, 0, 2), outcomes: state.outcomes,
+		observedEpochs: state.observedEpochs, observedDigests: state.observedDigests}
 	for _, result := range results {
 		for index, outcome := range result.observations {
 			if outcome != 0 {

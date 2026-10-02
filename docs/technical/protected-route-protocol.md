@@ -282,9 +282,14 @@ physical write. Incoming credit, a changed deadline and child close wake that
 lane's waiter. Temporary backpressure alone does not retire a live channel.
 
 A child's changed write deadline updates only that child's active physical
-frame. A queued writer reads the current deadline after obtaining write
-serialization. If that deadline has already expired, the writer returns the
-timeout before attempting physical output and preserves sibling lanes. Once
+frame. The receiving Node outer writer also observes each queued frame's live
+deadline and changes while a sibling remains active. Expiry removes unemitted
+work under the same lock that selects physical output, then returns timeout
+without changing the sibling's physical deadline. The writer rechecks the live
+deadline after obtaining serialization; canceled work cannot emit later or
+retain caller-owned frame memory. Queued deadline resets remain bounded by
+the child's current admission and parent authority; a terminal CLOSE retains
+its own fixed cleanup deadline. Once
 physical output starts, a failed frame still retires the Carrier, including a
 partially emitted CREDIT. Incoming child CLOSE can retire its state while a payload
 writer is blocked. A terminal CLOSE has its own one-second cleanup write
