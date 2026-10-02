@@ -35,6 +35,10 @@ const (
 // Inspect checks a fixed 228-byte permission. Accepted does not authenticate a
 // live holder or account for preceding requests. All inputs remain caller-owned.
 func Inspect(ctx context.Context, raw []byte, facts Facts) Outcome {
+	return inspectPermission(ctx, raw, facts)
+}
+
+func inspectPermission(ctx context.Context, raw []byte, facts Facts) Outcome {
 	if ctx == nil {
 		return InvalidInput
 	}

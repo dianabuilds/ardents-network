@@ -1,6 +1,7 @@
 {
   "schema": "ardents-test-profiles-v1",
   "profiles": [
+    {"id":"admission-ledger-linux","state":"active","make_target":"admission-check","surface":"independent offline Admission real-file and compiled CLI process behavior","prerequisites":["Linux with flock and durable local filesystem","Go 1.27.1 and C compiler for race","pinned golang:1.27.1-bookworm image for Docker acceptance"],"invalid_environment":"selected Admission Linux environment is unavailable","timeout":"3m"},
     {
       "id": "hosting-budget-linux",
       "state": "active",

@@ -29,6 +29,9 @@ The finite executable's grammar and lifecycle belong to
 docs/technical/successor-permission-inspection.md and
 docs/technical/successor-hosting-budget.md. The latter also defines command
 growth and extraction rules.
+Offline issuance-right accounting belongs to
+docs/technical/successor-admission-ledger.md; its debit never grants network
+permission or consumes/refunds Hosting capacity.
 No automatic reads, conversion or reuse of old state are authorized.
 
 internal/architecture/successor_isolation_test.go enforces import isolation

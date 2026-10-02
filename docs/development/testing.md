@@ -620,3 +620,15 @@ source, Service, token and publication owners whose files have Linux build
 constraints. Linux unit/race gates include it; Windows checks retain the common
 inventory. Architecture checks validate both inventories and Linux selection;
 no build-error-based filtering or passing platform skip supplies that membership.
+
+## Independent offline Admission profile
+
+`make admission-check` requires Linux and executes the standard-library
+successor Admission file, lease, crash/reopen and concurrency tests under race,
+plus the real compiled `ardents-next` cycle and actual OTLP checks. The checked
+profile is `admission-ledger-linux`; the Docker acceptance image is
+`golang:1.27.1-bookworm@sha256:69a7b9788769bec032d238959b61854e9ae87f57be9029ec04e9885fabf99195`.
+Command tests share one immutable compiled executable while keeping separate
+mutable roots. Linux prerequisites cannot be replaced by a Windows passing
+result. These tests provide no live issuer/State, power-loss storage or whole
+Network qualification.

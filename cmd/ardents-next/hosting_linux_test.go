@@ -42,11 +42,7 @@ func hostingInitializePlan(t *testing.T) hostingPlan {
 }
 
 func TestHostingCompiledCLISharedBudgetCancelAndCrash(t *testing.T) {
-	binary := filepath.Join(t.TempDir(), "ardents-next")
-	build := exec.CommandContext(t.Context(), "go", "build", "-o", binary, ".")
-	if raw, err := build.CombinedOutput(); err != nil {
-		t.Fatalf("build %v: %s", err, raw)
-	}
+	binary := compiledCommand(t)
 	command := func(operation, config string) (hostingResult, error) {
 		cmd := exec.CommandContext(t.Context(), binary, "hosting", operation, "--config", config)
 		var out bytes.Buffer

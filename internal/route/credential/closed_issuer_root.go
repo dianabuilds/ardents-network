@@ -161,6 +161,11 @@ func openClosedIssuerRootWithLease(root string, acquire func(string) (issuerRoot
 	if err != nil || !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
 		return "", issuerRootLease{}, errors.New("closed issuer key root is not an owned directory")
 	}
+	// A successor Admission root is a separate owner. Refuse before acquiring
+	// this issuer's lease, which would otherwise create a foreign lock file.
+	if _, err := os.Lstat(filepath.Join(absolute, "admission.pin")); err == nil || !errors.Is(err, os.ErrNotExist) {
+		return "", issuerRootLease{}, errors.New("refusing a foreign admission root")
+	}
 	lease, err := acquire(absolute)
 	if err != nil {
 		return "", issuerRootLease{}, err
