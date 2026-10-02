@@ -39,6 +39,7 @@ type refillWriteGate struct {
 	mu                            sync.Mutex
 	armed                         bool
 	entered, release, interrupted chan struct{}
+	firstReadError                error
 	once                          sync.Once
 	releaseOnce                   sync.Once
 }
@@ -51,6 +52,11 @@ func (gate *refillWriteGate) arm()     { gate.mu.Lock(); gate.armed = true; gate
 func (gate *refillWriteGate) Read(value []byte) (int, error) {
 	n, err := gate.Conn.Read(value)
 	if err != nil {
+		gate.mu.Lock()
+		if gate.firstReadError == nil {
+			gate.firstReadError = err
+		}
+		gate.mu.Unlock()
 		gate.once.Do(func() { close(gate.interrupted) })
 	}
 	return n, err
@@ -73,12 +79,12 @@ func (gate *refillWriteGate) Write(value []byte) (int, error) {
 	return gate.Conn.Write(value)
 }
 
-func admittedRefillNetwork(t *testing.T, transport carrier.CarrierProfile) (*ClosedSourcePrefix, ClosedTokenPresenter, []byte, [2]*refillWriteGate) {
+func admittedRefillNetwork(t *testing.T, transport carrier.CarrierProfile) (*ClosedSourcePrefix, ClosedTokenPresenter, func() []byte, [2]*refillWriteGate) {
 	t.Helper()
 	selected, source := sourceResolutionSelectionFixture(t)
 	profile := &source.view.Profile
 	now := time.Now().UTC().Truncate(time.Second)
-	profile.NotBefore, profile.NotAfter = now.Truncate(time.Hour), now.Truncate(time.Hour).Add(time.Hour)
+	profile.NotBefore, profile.NotAfter = now.Truncate(time.Hour), now.Truncate(time.Hour).Add(2*time.Hour)
 	source.snapshot.EpochValidFrom, source.snapshot.ValidUntil = profile.NotBefore, profile.NotAfter
 	certificates := [3]tls.Certificate{}
 	reserved := make([]func(), 3)
@@ -125,63 +131,70 @@ func admittedRefillNetwork(t *testing.T, transport carrier.CarrierProfile) (*Clo
 		profile.TokenKeys[index].Class = uint8(key.Class)
 		copy(profile.TokenKeys[index].SPKI[:], key.SPKI)
 	}
-	tokenIssuer, err := credential.OpenClosedTokenIssuer(credential.ClosedTokenIssuerConfig{Root: issuerRoot, NetworkID: profile.NetworkID, CurrentProfile: func() (state.ClosedProfileView, bool) { return *profile, true }, Clock: time.Now})
+	issuanceNow := now
+	tokenIssuer, err := credential.OpenClosedTokenIssuer(credential.ClosedTokenIssuerConfig{Root: issuerRoot, NetworkID: profile.NetworkID, CurrentProfile: func() (state.ClosedProfileView, bool) { return *profile, true }, Clock: func() time.Time { return issuanceNow }})
 	if err != nil {
 		t.Fatal(err)
 	}
-	stock := make(map[[33]byte][][]byte)
-	var savedRequest []byte
-	for batch := 0; batch < 9; batch++ {
-		_, holder, err := ed25519.GenerateKey(rand.Reader)
-		if err != nil {
-			t.Fatal(err)
-		}
-		permission := admission.Permission{NetworkID: profile.NetworkID, IssuerNodeID: profile.IssuerNodeID, DutyGeneration: profile.IssuerDutyGeneration, PermissionID: [32]byte{byte(100 + batch)}, NotBefore: profile.NotBefore, NotAfter: profile.NotAfter, Maxima: [3]uint32{32, 16, 0}, Signature: [64]byte{1}}
-		copy(permission.HolderKey[:], holder.Public().(ed25519.PublicKey))
-		raw, err := admission.EncodePermission(permission)
-		if err != nil {
-			t.Fatal(err)
-		}
-		transcript := append([]byte("ardents-issuance-permission-v1\x00"), raw[:len(raw)-ed25519.SignatureSize]...)
-		copy(permission.Signature[:], ed25519.Sign(signer, transcript))
-		var contexts []credential.ClosedTokenContext
-		if batch == 0 {
-			for index := 0; index < 2; index++ {
-				for range 8 {
-					contexts = append(contexts, credential.ClosedTokenContext{NetworkID: profile.NetworkID, ProfileDigest: profile.Digest, ReceiverNodeID: source.view.Nodes[index].NodeID, IssuerNodeID: profile.IssuerNodeID, ReceiverDutyGeneration: source.view.Nodes[index].DutyGeneration, Class: 2, WindowStart: profile.NotBefore})
+	stock := make(map[time.Time]map[[33]byte][][]byte)
+	savedRequests := make(map[time.Time][]byte)
+	// Offline authority issues real stock for each accepted hourly window.
+	// Runtime admission retains the real clock and selects only current stock.
+	for window := profile.NotBefore; window.Before(profile.NotAfter); window = window.Add(time.Hour) {
+		issuanceNow = window.Add(time.Second)
+		stock[window] = make(map[[33]byte][][]byte)
+		for batch := 0; batch < 9; batch++ {
+			_, holder, err := ed25519.GenerateKey(rand.Reader)
+			if err != nil {
+				t.Fatal(err)
+			}
+			permission := admission.Permission{NetworkID: profile.NetworkID, IssuerNodeID: profile.IssuerNodeID, DutyGeneration: profile.IssuerDutyGeneration, PermissionID: [32]byte{byte(100 + batch), byte(window.Unix() / 3600)}, NotBefore: window, NotAfter: window.Add(time.Hour), Maxima: [3]uint32{32, 16, 0}, Signature: [64]byte{1}}
+			copy(permission.HolderKey[:], holder.Public().(ed25519.PublicKey))
+			raw, err := admission.EncodePermission(permission)
+			if err != nil {
+				t.Fatal(err)
+			}
+			transcript := append([]byte("ardents-issuance-permission-v1\x00"), raw[:len(raw)-ed25519.SignatureSize]...)
+			copy(permission.Signature[:], ed25519.Sign(signer, transcript))
+			var contexts []credential.ClosedTokenContext
+			if batch == 0 {
+				for index := 0; index < 2; index++ {
+					for range 8 {
+						contexts = append(contexts, credential.ClosedTokenContext{NetworkID: profile.NetworkID, ProfileDigest: profile.Digest, ReceiverNodeID: source.view.Nodes[index].NodeID, IssuerNodeID: profile.IssuerNodeID, ReceiverDutyGeneration: source.view.Nodes[index].DutyGeneration, Class: 2, WindowStart: window})
+					}
+				}
+			} else {
+				for range 32 {
+					contexts = append(contexts, credential.ClosedTokenContext{NetworkID: profile.NetworkID, ProfileDigest: profile.Digest, ReceiverNodeID: profile.IssuerNodeID, IssuerNodeID: profile.IssuerNodeID, ReceiverDutyGeneration: profile.IssuerDutyGeneration, Class: 1, WindowStart: window})
 				}
 			}
-		} else {
-			for range 32 {
-				contexts = append(contexts, credential.ClosedTokenContext{NetworkID: profile.NetworkID, ProfileDigest: profile.Digest, ReceiverNodeID: profile.IssuerNodeID, IssuerNodeID: profile.IssuerNodeID, ReceiverDutyGeneration: profile.IssuerDutyGeneration, Class: 1, WindowStart: profile.NotBefore})
+			pending, err := credential.PrepareClosedTokenBatch(credential.ClosedTokenBatchConfig{Profile: *profile, Contexts: contexts, Permission: permission, HolderKey: holder, Now: issuanceNow})
+			if err != nil {
+				t.Fatal(err)
 			}
-		}
-		pending, err := credential.PrepareClosedTokenBatch(credential.ClosedTokenBatchConfig{Profile: *profile, Contexts: contexts, Permission: permission, HolderKey: holder, Now: time.Now().UTC()})
-		if err != nil {
-			t.Fatal(err)
-		}
-		request := pending.Request()
-		nonce := [32]byte{byte(batch + 1)}
-		operation, err := terminal.EncodeIssuanceRequest(nonce, request)
-		if err != nil {
-			t.Fatal(err)
-		}
-		result, err := tokenIssuer.IssueTerminalOperation(operation)
-		if err != nil {
-			t.Fatal(err)
-		}
-		tokens, err := pending.FinalizeTerminalOperation(nonce, result)
-		if err != nil {
-			t.Fatal(err)
-		}
-		for index, token := range tokens {
-			var key [33]byte
-			copy(key[:32], contexts[index].ReceiverNodeID[:])
-			key[32] = contexts[index].Class
-			stock[key] = append(stock[key], token)
-		}
-		if batch == 1 {
-			savedRequest = request
+			request := pending.Request()
+			nonce := [32]byte{byte(batch + 1)}
+			operation, err := terminal.EncodeIssuanceRequest(nonce, request)
+			if err != nil {
+				t.Fatal(err)
+			}
+			result, err := tokenIssuer.IssueTerminalOperation(operation)
+			if err != nil {
+				t.Fatal(err)
+			}
+			tokens, err := pending.FinalizeTerminalOperation(nonce, result)
+			if err != nil {
+				t.Fatal(err)
+			}
+			for index, token := range tokens {
+				var key [33]byte
+				copy(key[:32], contexts[index].ReceiverNodeID[:])
+				key[32] = contexts[index].Class
+				stock[window][key] = append(stock[window][key], token)
+			}
+			if batch == 1 {
+				savedRequests[window] = request
+			}
 		}
 	}
 	if err := tokenIssuer.Close(); err != nil {
@@ -194,11 +207,12 @@ func admittedRefillNetwork(t *testing.T, transport carrier.CarrierProfile) (*Clo
 		var key [33]byte
 		copy(key[:32], hello.RecipientNodeID[:])
 		key[32] = class
-		tokens := stock[key]
+		window := time.Now().UTC().Truncate(time.Hour)
+		tokens := stock[window][key]
 		if len(tokens) == 0 {
 			return nil, errors.New("fixture token stock exhausted")
 		}
-		stock[key] = tokens[1:]
+		stock[window][key] = tokens[1:]
 		return tokens[0], nil
 	}
 	facts := authority.Source{CurrentRoute: source.CurrentClosedRoute, CurrentProfile: func() (state.ClosedProfileView, bool) { return *profile, true }}
@@ -308,7 +322,7 @@ func admittedRefillNetwork(t *testing.T, transport carrier.CarrierProfile) (*Clo
 			t.Error(err)
 		}
 	})
-	return prefix, present, savedRequest, gates
+	return prefix, present, func() []byte { return savedRequests[time.Now().UTC().Truncate(time.Hour)] }, gates
 }
 
 func TestAdmittedSourceQueuedRefillCancellation(t *testing.T) {
@@ -349,8 +363,19 @@ func TestAdmittedSourceQueuedRefillCancellation(t *testing.T) {
 					// independently admitted children so a fast runner does not exhaust
 					// that unchanged governor before reaching the traffic threshold.
 					time.Sleep(30 * time.Millisecond)
-					if _, err := prefix.ExchangeIssuer(t.Context(), present, request); err != nil {
-						t.Fatalf("accounted issuance %d: %v", exchanges, err)
+					if _, err := prefix.ExchangeIssuer(t.Context(), present, request()); err != nil {
+						prefix.channels.mu.Lock()
+						outerFailure, outerBytes := prefix.channels.terminal, prefix.channels.transferred
+						prefix.channels.mu.Unlock()
+						prefix.child.mu.Lock()
+						innerFailure, innerBytes := prefix.child.terminal, prefix.child.transferred
+						prefix.child.mu.Unlock()
+						for index, observed := range gates {
+							observed.mu.Lock()
+							t.Logf("leg %d first read failure: %T %v", index, observed.firstReadError, observed.firstReadError)
+							observed.mu.Unlock()
+						}
+						t.Fatalf("accounted issuance %d: %v; outer=%d %v inner=%d %v", exchanges, err, outerBytes, outerFailure, innerBytes, innerFailure)
 					}
 					exchanges++
 				}
@@ -364,7 +389,7 @@ func TestAdmittedSourceQueuedRefillCancellation(t *testing.T) {
 				}
 				gate.arm()
 				sibling := make(chan error, 1)
-				go func() { _, err := prefix.ExchangeIssuer(t.Context(), present, request); sibling <- err }()
+				go func() { _, err := prefix.ExchangeIssuer(t.Context(), present, request()); sibling <- err }()
 				select {
 				case <-gate.entered:
 				case <-time.After(2 * time.Second):
