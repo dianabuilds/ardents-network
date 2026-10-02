@@ -4,6 +4,9 @@ import (
 	"context"
 	"encoding/binary"
 	"errors"
+	"fmt"
+	"os"
+	"runtime/debug"
 	"sync"
 	"time"
 
@@ -85,6 +88,7 @@ func (openings *openings) start(server *forwardServer, event route.ClosedForward
 	go func() {
 		link, err := server.openForwardingLink(child, event.Open, event.Restriction, event.Lane, channel, write, abort)
 		if err != nil && child.Err() == nil {
+			fmt.Fprintf(os.Stderr, "[DEBUG-449] opening lane %d purpose %d abort %v\n%s", event.Lane, event.Open.Purpose, err, debug.Stack())
 			abort()
 		}
 		openings.results <- openResult{lane: event.Lane, link: link, err: err}
@@ -433,6 +437,7 @@ func (link *forwardLink) copyReverse() {
 			if errors.Is(err, route.ErrClosedForwardingChildRetired) {
 				return
 			}
+			fmt.Fprintf(os.Stderr, "[DEBUG-449] copyReverse %p lane %d kind %d abort %v\n%s", link, link.localLane, frame.Kind, err, debug.Stack())
 			link.abort()
 			return
 		}
@@ -443,6 +448,7 @@ func (link *forwardLink) copyReverse() {
 	select {
 	case <-link.stopped:
 	default:
+		fmt.Fprintf(os.Stderr, "[DEBUG-449] copyReverse %p lane %d queue ended without stop terminal=%t\n%s", link, link.localLane, link.reverse.peerClosed(), debug.Stack())
 		link.abort()
 	}
 }

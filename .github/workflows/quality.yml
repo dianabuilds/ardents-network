@@ -169,8 +169,21 @@ jobs:
           group_status=$?
           go test -json -race ./internal/endpoint -run '^TestTextInitialPublicationLossBeforeAcknowledgement$/ardents-carrier-tcp-tls-v2/caller_cancel' -count=20 -timeout=3m
           narrow_status=$?
+          set -e
+          git diff ed2ce00286162c9062b8ae344b701f7b21d79c2d HEAD -- internal/endpoint/source/lifecycle.go internal/route/client/closed_source_channels.go internal/node/forwarding/listener.go internal/node/forwarding/link.go internal/node/outer/writer.go internal/node/outer/lifetime.go > "$RUNNER_TEMP/source-cause-probes.patch"
+          sha256sum "$RUNNER_TEMP/source-cause-probes.patch"
+          git clone --shared --no-checkout . "$RUNNER_TEMP/source-baseline"
+          git -C "$RUNNER_TEMP/source-baseline" checkout bd7036ab06147fc330ec11984c1cd4ba30ce0aae
+          git -C "$RUNNER_TEMP/source-baseline" apply "$RUNNER_TEMP/source-cause-probes.patch"
+          git -C "$RUNNER_TEMP/source-baseline" rev-parse HEAD HEAD^{tree}
+          git -C "$RUNNER_TEMP/source-baseline" diff --stat
+          cd "$RUNNER_TEMP/source-baseline"
+          set +e
+          go test -json -race ./internal/endpoint -run '^TestTextInitialPublicationLossBeforeAcknowledgement$/ardents-carrier-tcp-tls-v2/caller_cancel' -count=20 -timeout=3m
+          baseline_status=$?
           if (( group_status != 0 )); then exit "$group_status"; fi
-          exit "$narrow_status"
+          if (( narrow_status != 0 )); then exit "$narrow_status"; fi
+          exit "$baseline_status"
   full:
     needs: source-cancellation-diagnostic
     if: github.event_name != 'pull_request' && !cancelled()

@@ -1,8 +1,10 @@
 package outer
 
 import (
+	"fmt"
 	"net"
 	"os"
+	"runtime/debug"
 	"sync"
 	"time"
 
@@ -123,6 +125,7 @@ func (owner *writer) drain() {
 		owner.state.Unlock()
 		owner.writer.Unlock()
 		if err != nil {
+			fmt.Fprintf(os.Stderr, "[DEBUG-449] outer writer %p lane %d kind %d deadline %s physical failure %v\n%s", owner, request.frame.Lane, request.frame.Kind, end, err, debug.Stack())
 			if owner.closeConnection != nil {
 				_ = owner.closeConnection()
 			} else {
