@@ -55,8 +55,8 @@ func runStreamQualificationIdle(ctx context.Context, config StreamQualificationC
 	defer cancel()
 	// The proportional NET-32 ceiling is reserved in either direction because
 	// the provider may account tx, rx, or their sum. Termination remains separate.
-	proportional := uint64(window)*1_000_000_000/uint64(24*time.Hour) + 1
-	reservation, err := host.Reserve(lifetime, resource.HostingTraffic{Tx: proportional, Rx: proportional}, resource.HostingTraffic{Tx: 8 << 20, Rx: 8 << 20}, time.Now().Add(window+2*time.Minute))
+	work, termination := streamQualificationIdleTraffic(window)
+	reservation, err := host.Reserve(lifetime, work, termination, time.Now().Add(window+2*time.Minute))
 	if err != nil {
 		return report, err
 	}
@@ -141,4 +141,13 @@ func runStreamQualificationIdle(ctx context.Context, config StreamQualificationC
 		}
 	})
 	return report, outcome
+}
+
+// streamQualificationIdleTraffic receives the validated positive observation
+// window. Cancel the 1e9 scale against the day's nanoseconds before dividing:
+// this retains floor(window*1e9/day)+1, including its extra byte at exact
+// multiples, without overflow or loss of subsecond duration precision.
+func streamQualificationIdleTraffic(window time.Duration) (work, termination resource.HostingTraffic) {
+	proportional := uint64(window)/uint64(24*time.Hour/time.Second) + 1
+	return resource.HostingTraffic{Tx: proportional, Rx: proportional}, resource.HostingTraffic{Tx: 8 << 20, Rx: 8 << 20}
 }

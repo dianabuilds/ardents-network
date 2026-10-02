@@ -10,10 +10,16 @@ import (
 	"time"
 )
 
-// openAuthorizedAttachment keeps setup cancellation tied to the actual local
-// peer. Clients send no data until ACCEPT, so an early byte or disconnection
-// refuses setup rather than becoming an unbounded optimistic input queue.
-func (server *server) openAuthorizedAttachment(local *net.UnixConn, request Request) (Stream, context.CancelFunc, error) {
+// setupPeer is the deadline/read seam used during attachment admission.
+type setupPeer interface {
+	Read([]byte) (int, error)
+	SetReadDeadline(time.Time) error
+	Close() error
+}
+
+// openAuthorizedAttachment ties setup cancellation to the local peer. An early
+// byte or disconnect refuses setup before accepting Application input.
+func (server *server) openAuthorizedAttachment(local setupPeer, request Request) (Stream, context.CancelFunc, error) {
 	ctx, cancel := context.WithTimeout(server.ctx, 15*time.Second)
 	var mu sync.Mutex
 	finished := false
@@ -42,15 +48,34 @@ func (server *server) openAuthorizedAttachment(local *net.UnixConn, request Requ
 	if openErr != nil || stream == nil || ctx.Err() != nil {
 		contextErr := ctx.Err()
 		cancel()
-		if stream != nil {
-			_ = stream.Close()
-		}
-		return nil, nil, errors.Join(openErr, contextErr, errors.New("local Application setup did not complete"))
+		setupErr := errors.Join(openErr, contextErr, errors.New("local Application setup did not complete"))
+		return nil, nil, server.closeRefusedAttachment(stream, setupErr)
 	}
 	if err := local.SetReadDeadline(time.Time{}); err != nil {
 		cancel()
-		_ = stream.Close()
-		return nil, nil, err
+		return nil, nil, server.closeRefusedAttachment(stream, err)
 	}
 	return stream, cancel, nil
+}
+
+// setupCleanupError keeps the complete local cause while freezing the wire
+// classification before raw cleanup errors are joined.
+type setupCleanupError struct {
+	cause   error
+	outcome Outcome
+}
+
+func (failure setupCleanupError) Error() string { return failure.cause.Error() }
+func (failure setupCleanupError) Unwrap() error { return failure.cause }
+
+func (server *server) closeRefusedAttachment(stream Stream, setupErr error) error {
+	if stream == nil {
+		return setupErr
+	}
+	cleanupErr := stream.Close()
+	server.retainCleanupFailure(cleanupErr)
+	if cleanupErr == nil {
+		return setupErr
+	}
+	return setupCleanupError{cause: errors.Join(setupErr, cleanupErr), outcome: refusal(setupErr)}
 }

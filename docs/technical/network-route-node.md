@@ -656,6 +656,17 @@ For emergency resource pressure, Node emits resource `DRAIN` before stopping
 the duty and resource `EXIT` only after a successful withdrawal. A failed drain
 emits lifecycle `FAILED` without claiming that resource exit completed.
 
+Concurrent retained Node, forwarding, and JOIN duties share successful Hosting
+observations only while the actual observation timestamp satisfies each caller's
+requested age and the fixed one-second cap, and the provider period is current.
+A completed shared flight is rechecked for each waiter; a stricter caller
+refreshes through the Resource owner rather than re-aging another caller's
+measurement. Period expiry re-reads the owner's current pressure decision, so
+a cached pre-expiry observation cannot retain Drain=false. Successful
+reservations invalidate cached and in-flight reuse; release keeps conservative
+reserved-byte evidence until the next fresh observation. Invalid freshness and
+unavailable contexts retain the Resource owner's refusal boundary.
+
 Resource measurement is Linux-only until another native Adapter is selected
 and measured. Unsupported platforms refuse rather than silently reporting
 capacity. Resource has no authority over a consumer's lifecycle: Endpoint,
