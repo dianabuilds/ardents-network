@@ -304,7 +304,9 @@ run. An in-flight `BY_DIGEST` is recorded as interrupted before the resumed
 wave. A `BY_DIGEST` response can reach completed before its bundle is
 verified; wave closure records the final outcome. After a crash, a
 completed attempt without that outcome is recorded as interrupted and its
-spent selector is not replayed. At the deadline, every unresolved slot becomes
+spent selector is not replayed. Completing the resumed wave retains outcomes
+and observed Epoch/digest evidence of consumed slots; only new observations
+replace their corresponding slots. A new cycle clears this evidence. At the deadline, every unresolved slot becomes
 interrupted and the cycle enters durable backoff. The journal keeps the same purpose/status
 byte values and exact encoding across implementation refactors.
 

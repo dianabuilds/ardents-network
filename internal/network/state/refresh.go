@@ -163,7 +163,7 @@ func failedSourceResult(index, outcomeIndex int, observations [4]byte, err error
 }
 
 func (s *networkState) fetchSource(ctx context.Context, index int, request source.Message) (source.Message, error) {
-	response, err := s.config.source.Fetch(ctx, index, request)
+	response, err := s.config.fetchSourceOperation(ctx, index, request)
 	if err != nil {
 		return response, err
 	}
