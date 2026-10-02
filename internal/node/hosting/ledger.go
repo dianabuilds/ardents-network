@@ -17,7 +17,8 @@ type Handle interface {
 }
 
 // sharedHostingCacheMaxTTL caps the lifetime of a cached successful
-// Sample for concurrent retained duties on the same root. A successful Reserve
+// observation for concurrent retained duties on the same root, measured from its
+// At. A successful Reserve
 // invalidates the cache immediately so reserved-byte growth becomes visible
 // without waiting for the TTL; Release does not invalidate because shrinking
 // ReservedBytes never raises pressure on any reader of the shared cache, and
@@ -38,7 +39,6 @@ type sharedClosedHostingSampler struct {
 	refs          uint64
 	active        *closedHostingSample
 	cachedSample  *closedHostingSample
-	cachedAt      time.Time
 	invalidations uint64
 }
 
@@ -99,48 +99,70 @@ func (host *Ledger) Close() error {
 }
 
 func (host *Ledger) Sample(ctx context.Context, maximumAge time.Duration) (resource.HostingSample, error) {
-	if maximumAge <= 0 {
-		return host.owner.Sample(ctx, maximumAge)
+	return host.sampler.sample(ctx, maximumAge, time.Now, host.owner.Sample)
+}
+
+func (sampler *sharedClosedHostingSampler) sample(ctx context.Context, maximumAge time.Duration, clock func() time.Time, read func(context.Context, time.Duration) (resource.HostingSample, error)) (resource.HostingSample, error) {
+	// Invalid requests and unavailable contexts must reach the owner's refusal
+	// boundary even when a successful shared observation exists.
+	if maximumAge <= 0 || maximumAge > sharedHostingCacheMaxTTL || ctx == nil || ctx.Err() != nil {
+		return read(ctx, maximumAge)
 	}
-	host.sampler.mu.Lock()
-	now := time.Now()
-	if cached := host.sampler.cachedSample; cached != nil &&
-		now.Sub(host.sampler.cachedAt) <= maximumAge &&
-		now.Sub(host.sampler.cachedAt) <= sharedHostingCacheMaxTTL {
-		sample := cached.sample
-		err := cached.err
-		host.sampler.mu.Unlock()
+	for {
+		sampler.mu.Lock()
+		now := clock()
+		if cached := sampler.cachedSample; cached != nil && cached.reusable(now, maximumAge, sampler.invalidations) {
+			sample := cached.sample
+			sampler.mu.Unlock()
+			return sample, nil
+		}
+		if active := sampler.active; active != nil {
+			sampler.mu.Unlock()
+			select {
+			case <-ctx.Done():
+				return resource.HostingSample{}, ctx.Err()
+			case <-active.done:
+				sampler.mu.Lock()
+				reusable := active.reusable(clock(), maximumAge, sampler.invalidations)
+				sampler.mu.Unlock()
+				if ctx.Err() != nil {
+					return resource.HostingSample{}, ctx.Err()
+				}
+				if active.err != nil {
+					return active.sample, active.err
+				}
+				if reusable {
+					return active.sample, nil
+				}
+				// A flight elected by a looser caller cannot satisfy this caller's
+				// freshness or a reservation made during that flight. Elect/join again.
+				continue
+			}
+		}
+		active := &closedHostingSample{done: make(chan struct{}), startInvalidations: sampler.invalidations}
+		sampler.active = active
+		sampler.mu.Unlock()
+
+		sample, err := read(ctx, maximumAge)
+		sampler.mu.Lock()
+		active.sample, active.err = sample, err
+		if err == nil && active.reusable(clock(), maximumAge, sampler.invalidations) {
+			sampler.cachedSample = active
+		}
+		sampler.active = nil
+		close(active.done)
+		sampler.mu.Unlock()
+		// The elected reader retains the resource owner's current decision, including
+		// Drain after period expiry. Only reuse by other calls requires a live period.
 		return sample, err
 	}
-	if active := host.sampler.active; active != nil {
-		host.sampler.mu.Unlock()
-		select {
-		case <-ctx.Done():
-			return resource.HostingSample{}, ctx.Err()
-		case <-active.done:
-			return active.sample, active.err
-		}
-	}
-	active := &closedHostingSample{done: make(chan struct{})}
-	active.startInvalidations = host.sampler.invalidations
-	host.sampler.active = active
-	host.sampler.mu.Unlock()
+}
 
-	sample, err := host.owner.Sample(ctx, maximumAge)
-	host.sampler.mu.Lock()
-	active.sample = sample
-	active.err = err
-	// Cache only when no Reserve/Release happened during the flight; the
-	// observed ReservedBytes would otherwise still reflect the pre-reserve
-	// state and violate the invalidation contract on the next Sample.
-	if err == nil && host.sampler.invalidations == active.startInvalidations {
-		host.sampler.cachedSample = active
-		host.sampler.cachedAt = now
-	}
-	host.sampler.active = nil
-	close(active.done)
-	host.sampler.mu.Unlock()
-	return sample, err
+func (sample *closedHostingSample) reusable(now time.Time, maximumAge time.Duration, invalidations uint64) bool {
+	return sample.err == nil && sample.startInvalidations == invalidations &&
+		!sample.sample.At.IsZero() && !now.Before(sample.sample.At) &&
+		now.Sub(sample.sample.At) <= maximumAge && now.Sub(sample.sample.At) <= sharedHostingCacheMaxTTL &&
+		!now.Before(sample.sample.Policy.Start) && now.Before(sample.sample.Policy.End)
 }
 
 // invalidate drops the cached Sample and bumps the invalidation counter so an
