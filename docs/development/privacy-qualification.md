@@ -89,6 +89,15 @@ when a later retry succeeds. Run each seed on both selected Carriers.
 
 For issue #60, NET-32 uses a declared ten-minute observation and conservative 24-hour projection; no 24-hour campaign is part of this issue. The receipt states both durations and cannot be treated as an observed-day result. Before effects, the idle runner reserves floor(window × 1,000,000,000 / 24 h) + 1 bytes per direction (6,944,445 for ten minutes), plus a separate 8 MiB termination reserve per direction. The shared Hosting owner applies the provider's tx, rx, or tx+rx accounting to both reserves.
 
+The installed NET-32 runner retains Hosting wall timestamps only for log
+correlation and continuity checks. Its projection denominator uses one host's
+monotonic interval from completion of the first fresh counter sampling call to
+the start of the final fresh call. This conservatively excludes boundary
+sampling time, provisioning and the final reporting callback. Actual elapsed
+time must still meet the ten-minute minimum, with the complete raw one-second
+resource series and interface/Hosting-ledger reconciliation; a wall-clock step
+cannot enlarge the denominator or replace missing observations.
+
 User-idle measurement starts after explicit enrollment/bootstrap, with no
 Application job or publication active, and includes required State/time refresh,
 cleanup, failed refresh and any bounded preparation. Report startup separately.
