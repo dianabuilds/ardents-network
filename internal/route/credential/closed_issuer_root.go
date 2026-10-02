@@ -163,7 +163,7 @@ func openClosedIssuerRootWithLease(root string, acquire func(string) (issuerRoot
 	}
 	// Successor roots, including incomplete key initialization, are separate
 	// owners. Refuse before acquiring a lease that creates a foreign lock file.
-	for _, marker := range []string{"admission.pin", "issuer.pin", "issuer.keys", "issuer.lock", "issuer.pending", "results.pin", "results.lock", "results.journal", "results.floor", "results.pending"} {
+	for _, marker := range []string{"admission.pin", "issuer.pin", "issuer.keys", "issuer.lock", "issuer.pending", "results.pin", "results.lock", "results.journal", "results.floor", "results.pending", "identity.pin", "identity.key", "identity.lock", "identity.pending", "profile.pin", "profile.bytes", "profile.lock", "profile.pending"} {
 		if _, err := os.Lstat(filepath.Join(absolute, marker)); err == nil || !errors.Is(err, os.ErrNotExist) {
 			return "", issuerRootLease{}, errors.New("refusing a foreign domain root")
 		}

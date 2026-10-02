@@ -71,7 +71,7 @@ func batchFixture(t *testing.T, class uint8, count uint16, max uint32, id byte) 
 	return raw, f, binding
 }
 
-func fixtureSPKI(t *testing.T, id uint8) []byte {
+func fixtureSPKI(t testing.TB, id uint8) []byte {
 	t.Helper()
 	type algorithm struct {
 		OID    asn1.ObjectIdentifier

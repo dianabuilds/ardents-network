@@ -8,6 +8,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/successor/admission"
 	"github.com/dianabuilds/ardents-network/internal/successor/issuance"
+	"github.com/dianabuilds/ardents-network/internal/successor/nodeidentity"
 )
 
 // Plan fixes three independently owned non-nested roots and offline bindings.
@@ -27,15 +28,15 @@ type Result struct {
 
 func category(err error) string {
 	switch {
-	case errors.Is(err, issuance.ErrUncertain), errors.Is(err, admission.ErrUncertain):
+	case errors.Is(err, issuance.ErrUncertain), errors.Is(err, admission.ErrUncertain), errors.Is(err, nodeidentity.ErrUncertain):
 		return "storage-uncertain"
-	case errors.Is(err, issuance.ErrUnsupported), errors.Is(err, admission.ErrUnsupported):
+	case errors.Is(err, issuance.ErrUnsupported), errors.Is(err, admission.ErrUnsupported), errors.Is(err, nodeidentity.ErrUnsupported):
 		return "unsupported-platform"
-	case errors.Is(err, issuance.ErrBusy), errors.Is(err, admission.ErrBusy):
+	case errors.Is(err, issuance.ErrBusy), errors.Is(err, admission.ErrBusy), errors.Is(err, nodeidentity.ErrBusy):
 		return "busy"
 	case errors.Is(err, context.Canceled), errors.Is(err, context.DeadlineExceeded):
 		return "canceled"
-	case errors.Is(err, issuance.ErrInvalid), errors.Is(err, admission.ErrInvalid):
+	case errors.Is(err, issuance.ErrInvalid), errors.Is(err, admission.ErrInvalid), errors.Is(err, nodeidentity.ErrInvalid):
 		return "invalid-input"
 	case errors.Is(err, issuance.ErrValidity):
 		return "outside-validity"

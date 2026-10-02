@@ -42,12 +42,22 @@ func decodeIssuancePlan(raw []byte) (issuancePlan, error) {
 		!filepath.IsAbs(p.Root) || filepath.Clean(p.Root) != p.Root || !filepath.IsAbs(p.InventoryFile) || filepath.Clean(p.InventoryFile) != p.InventoryFile {
 		return p, issuance.ErrInvalid
 	}
-	if !requiredAdmissionObject(fields["binding"], "network", "issuer", "signer", "start", "end") {
-		return p, issuance.ErrInvalid
+	binding, err := decodeIssuanceBinding(fields["binding"])
+	if err != nil {
+		return p, err
+	}
+	p.Binding = binding
+	return p, nil
+}
+
+func decodeIssuanceBinding(raw []byte) (issuance.Binding, error) {
+	var p issuancePlan
+	if !requiredAdmissionObject(raw, "network", "issuer", "signer", "start", "end") {
+		return p.Binding, issuance.ErrInvalid
 	}
 	var b issuanceBindingInput
-	if json.Unmarshal(fields["binding"], &b) != nil {
-		return p, issuance.ErrInvalid
+	if json.Unmarshal(raw, &b) != nil {
+		return p.Binding, issuance.ErrInvalid
 	}
 	for _, item := range []struct {
 		value  string
@@ -55,20 +65,20 @@ func decodeIssuancePlan(raw []byte) (issuancePlan, error) {
 	}{{b.Network, &p.Binding.Network}, {b.Issuer, &p.Binding.Issuer}, {b.Signer, &p.Binding.Signer}} {
 		value, err := admissionHex(item.value, 32)
 		if err != nil {
-			return p, issuance.ErrInvalid
+			return p.Binding, issuance.ErrInvalid
 		}
 		copy(item.target[:], value)
 	}
 	var err error
 	p.Binding.Start, err = admissionTime(b.Start)
 	if err != nil {
-		return p, issuance.ErrInvalid
+		return p.Binding, issuance.ErrInvalid
 	}
 	p.Binding.End, err = admissionTime(b.End)
 	if err != nil {
-		return p, issuance.ErrInvalid
+		return p.Binding, issuance.ErrInvalid
 	}
-	return p, nil
+	return p.Binding, nil
 }
 
 type issuanceInventoryEntry struct {

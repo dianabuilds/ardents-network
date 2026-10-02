@@ -27,8 +27,13 @@ import (
 )
 
 func issuanceResultCommandPlan(t *testing.T) (issuancePlan, map[string]any, map[string]any, func([]byte)) {
+	return issuanceResultCommandPlanWithSigner(t, [32]byte{3})
+}
+
+func issuanceResultCommandPlanWithSigner(t *testing.T, signer [32]byte) (issuancePlan, map[string]any, map[string]any, func([]byte)) {
 	t.Helper()
 	p, _ := issuanceCommandPlan(t)
+	p.Binding.Signer = signer
 	p.Binding.Start = time.Unix(3600, 0).UTC()
 	p.Binding.End = time.Unix(7200, 0).UTC()
 	if e := issuance.Initialize(t.Context(), p.Root, p.Binding); e != nil {

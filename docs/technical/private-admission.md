@@ -555,3 +555,10 @@ than discard a potentially acknowledged Spend. A truncate or sync failure also
 refuses startup. Previously committed Spend remains unavailable after safe
 recovery. Keep the existing token and journal encodings; introduce no generic
 persistence engine, new root or authority to repair an ambiguous journal.
+
+The isolated successor imports an existing externally pinned Node identity and
+provisions exact Node-signed ARDCIP01 bytes under the
+[offline issuer-profile contract](successor-issuer-profile.md). Its separate
+binding preparation copies only verified token keys; it never replaces the
+independently supplied State profile digest, authority or duty. Existing legacy
+consumers and roots are not switched or migrated by that operation.

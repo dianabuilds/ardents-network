@@ -646,3 +646,11 @@ three successor owners and the compiled CLI under race in the same pinned image.
 It includes real client blind/finalize and stdlib PSS verification, opaque debit
 confirmation, quota retention, journal pairs/floors, faults, crash/replay and OTLP.
 CIRCL uses the populated reviewed module cache. No power-loss/rollback claim.
+
+The active `issuer-profile-linux` profile uses `make issuer-profile-check` on the
+pinned Go 1.27.1 Linux image. It exercises Admission, Nodeidentity, Issuance,
+Tokenissuance and compiled ardents-next with real files, lease/crash processes,
+race detection, actual OTLP and the prior durable token cycle. It also mutation-
+fuzzes FuzzIssuerProfile and FuzzNodeIdentityPEM for 30 seconds each, two workers
+and a 90-second per-target limit; caches and receipts remain outside Git. A
+missing Linux/fs/flock/compiler/image prerequisite is invalid, never a skip.

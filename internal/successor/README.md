@@ -19,7 +19,7 @@ register. Issuance alone may consume the reviewed CIRCL blindrsa package and
 Admission confirmations. New dependencies require explicit
 review and the existing dependency acceptance process.
 Admission and Hosting permit only standard-library imports. Issuance permits
-only its two explicit additions; reverse dependencies remain forbidden.
+only its three explicit additions; reverse dependencies remain forbidden.
 
 The reserved command path is cmd/ardents-next. It may compose successor packages,
 the standard library and its exact registered OTel imports, but no existing product packages. Existing product
@@ -46,5 +46,9 @@ their own contract checks.
 # Operation composition
 
 `tokenissuance` owns the ordered offline Admission/key/result lifecycle. It
-depends only on those two domain owners and the standard library; command
+also composes pinned Nodeidentity/key/profile provisioning; its exact domain
+imports are Admission, Issuance and Nodeidentity. Command
 adapters own configuration, export and telemetry.
+
+Signed profile and existing Node key import contracts belong to
+docs/technical/successor-issuer-profile.md.

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/dianabuilds/ardents-network/internal/successor/issuance"
+	"github.com/dianabuilds/ardents-network/internal/successor/nodeidentity"
 	"io"
 )
 
@@ -18,11 +19,11 @@ func issuanceOutcome(err error) string {
 	switch {
 	case err == nil:
 		return "completed"
-	case errors.Is(err, issuance.ErrUncertain):
+	case errors.Is(err, issuance.ErrUncertain), errors.Is(err, nodeidentity.ErrUncertain):
 		return "storage-uncertain"
-	case errors.Is(err, issuance.ErrUnsupported):
+	case errors.Is(err, issuance.ErrUnsupported), errors.Is(err, nodeidentity.ErrUnsupported):
 		return "unsupported-platform"
-	case errors.Is(err, issuance.ErrBusy):
+	case errors.Is(err, issuance.ErrBusy), errors.Is(err, nodeidentity.ErrBusy):
 		return "busy"
 	case errors.Is(err, issuance.ErrConflict):
 		return "request-conflict"
@@ -32,13 +33,16 @@ func issuanceOutcome(err error) string {
 		return "result-capacity"
 	case errors.Is(err, context.Canceled), errors.Is(err, context.DeadlineExceeded):
 		return "canceled"
-	case errors.Is(err, issuance.ErrInvalid):
+	case errors.Is(err, issuance.ErrInvalid), errors.Is(err, nodeidentity.ErrInvalid):
 		return "invalid-input"
 	default:
 		return "storage-unavailable"
 	}
 }
 func runIssuance(ctx context.Context, args []string, out, diagnostic io.Writer) int {
+	if len(args) > 0 && (args[0] == "initialize-profile" || args[0] == "inspect-profile") {
+		return runIssuerProfile(ctx, "issuance."+args[0], args[1:], out, diagnostic)
+	}
 	if len(args) > 0 && (args[0] == "issue" || args[0] == "initialize-results") {
 		return runIssuanceResults(ctx, args, out, diagnostic)
 	}

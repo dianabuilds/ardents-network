@@ -32,6 +32,9 @@ func admissionError(err error) admission.Outcome {
 	}
 }
 func runAdmission(ctx context.Context, args []string, out, diagnostic io.Writer) int {
+	if len(args) > 0 && args[0] == "prepare-binding" {
+		return runIssuerProfile(ctx, "admission.prepare-binding", args[1:], out, diagnostic)
+	}
 	r := admissionResult{"admission", "input", admission.InvalidInput}
 	write := func() int {
 		code := 1

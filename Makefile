@@ -310,3 +310,9 @@ issuance-check:
 .PHONY: token-issuance-check
 token-issuance-check:
 	$(if $(filter linux,$(shell go env GOOS)),go test -race ./internal/successor/admission ./internal/successor/issuance ./internal/successor/tokenissuance ./cmd/ardents-next -count=1 -timeout=3m,$(error token-issuance-check requires Linux))
+
+.PHONY: issuer-profile-check
+issuer-profile-check:
+	$(if $(filter linux,$(shell go env GOOS)),go test -race ./internal/successor/admission ./internal/successor/nodeidentity ./internal/successor/issuance ./internal/successor/tokenissuance ./cmd/ardents-next -count=1 -timeout=5m,$(error issuer-profile-check requires Linux))
+	go test ./internal/successor/admission -run '^$$' -fuzz '^FuzzIssuerProfile$$' -fuzztime=30s -parallel=2 -timeout=90s
+	go test ./internal/successor/nodeidentity -run '^$$' -fuzz '^FuzzNodeIdentityPEM$$' -fuzztime=30s -parallel=2 -timeout=90s

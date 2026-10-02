@@ -43,13 +43,16 @@ func successorImportAllowed(source, dependency string) bool {
 		return !zoneDependency
 	}
 	if strings.HasPrefix(source, "internal/successor/issuance/") {
-		if dependency == modulePath+"/internal/successor/admission" || dependency == "github.com/cloudflare/circl/blindsign/blindrsa" {
+		if dependency == modulePath+"/internal/successor/admission" || dependency == modulePath+"/internal/successor/nodeidentity" || dependency == "github.com/cloudflare/circl/blindsign/blindrsa" {
 			return true
 		}
 	}
 	if zoneDependency {
+		if strings.HasPrefix(source, "internal/successor/nodeidentity/") {
+			return dependency == modulePath+"/internal/successor/admission"
+		}
 		if strings.HasPrefix(source, "internal/successor/tokenissuance/") {
-			return dependency == modulePath+"/internal/successor/admission" || dependency == modulePath+"/internal/successor/issuance"
+			return dependency == modulePath+"/internal/successor/admission" || dependency == modulePath+"/internal/successor/issuance" || dependency == modulePath+"/internal/successor/nodeidentity"
 		}
 		// These independent domain owners have exact standard-library-only
 		// import contracts. Directory grouping grants no cross-domain dependency.
@@ -103,6 +106,9 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		{"operation owners", "internal/successor/tokenissuance/operation.go", modulePath + "/internal/successor/issuance", true},
 		{"operation excludes hosting", "internal/successor/tokenissuance/operation.go", modulePath + "/internal/successor/hosting", false},
 		{"issuance excludes hosting", "internal/successor/issuance/store.go", modulePath + "/internal/successor/hosting", false},
+		{"identity purpose", "internal/successor/nodeidentity/store.go", modulePath + "/internal/successor/admission", true},
+		{"identity cannot borrow issuance", "internal/successor/nodeidentity/store.go", modulePath + "/internal/successor/issuance", false},
+		{"admission cannot borrow identity", "internal/successor/admission/issuer_profile.go", modulePath + "/internal/successor/nodeidentity", false},
 		{"admission excludes composition", "internal/successor/admission/ledger.go", modulePath + "/internal/successor/tokenissuance", false},
 		{"admission cannot borrow keys", "internal/successor/admission/batch.go", modulePath + "/internal/successor/issuance", false},
 		{"admission cannot borrow budget", "internal/successor/admission/check.go", modulePath + "/internal/successor/hosting", false},
