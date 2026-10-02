@@ -162,6 +162,19 @@ func TestQualificationNET14VCLIInvalidSeries(t *testing.T) {
 		{"duplicate", func(s *relaySegmentTraffic) { s.Samples[20] = s.Samples[19] }},
 		{"regression", func(s *relaySegmentTraffic) { s.Samples[20].Bytes = 0 }},
 		{"uneven", func(s *relaySegmentTraffic) { s.Samples[20].Elapsed += 600 * time.Millisecond }},
+		{"uneven-within-old-tolerance", func(s *relaySegmentTraffic) {
+			elapsed := time.Duration(0)
+			for i := range s.Samples {
+				if i > 0 {
+					interval := 900 * time.Millisecond
+					if i%6 == 0 {
+						interval = 1500 * time.Millisecond
+					}
+					elapsed += interval
+				}
+				s.Samples[i].Elapsed = elapsed
+			}
+		}},
 		{"missing-monotonic", func(s *relaySegmentTraffic) {
 			for i := range s.Samples {
 				s.Samples[i].Elapsed = 0
@@ -195,5 +208,25 @@ func TestQualificationNET14VCLIInvalidSeries(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestQualificationNET14VCLICadenceSchedulingJitter(t *testing.T) {
+	manifest, recovery, baseline, episode := qualificationNET14VBitratePair(t, nil, 0)
+	for segment := range episode.Relay.Segments {
+		elapsed := time.Duration(0)
+		for index := range episode.Relay.Segments[segment].Samples {
+			if index > 0 {
+				interval := 950 * time.Millisecond
+				if index%2 == 0 {
+					interval = 1050 * time.Millisecond
+				}
+				elapsed += interval
+			}
+			episode.Relay.Segments[segment].Samples[index].Elapsed = elapsed
+		}
+	}
+	if verdict, err := qualificationNET14VCLI(t, manifest, recovery, baseline, episode); err != nil {
+		t.Fatalf("bounded scheduling jitter refused: %v / %+v", err, verdict.Criteria)
 	}
 }

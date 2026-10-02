@@ -64,6 +64,8 @@ func net14vDirectionalCriteria(manifest qualificationNetworkManifest, relay rela
 // Wall timestamps locate the workload window; only a single sampler's monotonic
 // elapsed values measure rate. Retain raw adjacent observations: never smooth,
 // resample, sort timestamps, or discard a bad interval to obtain a percentile.
+// The nominal one-second cadence permits only 100ms of scheduling jitter;
+// longer windows could dilute bursts and are not one-second evidence.
 func relayDirectionalP95(segment relaySegmentTraffic, started, stopped time.Time) (float64, int, bool) {
 	samples := segment.Samples
 	if started.IsZero() || stopped.Sub(started) < 600*time.Second || len(samples) < 2 {
@@ -77,7 +79,7 @@ func relayDirectionalP95(segment relaySegmentTraffic, started, stopped time.Time
 		if index > 0 {
 			prior := samples[index-1]
 			interval := sample.Elapsed - prior.Elapsed
-			if !sample.At.After(prior.At) || sample.Bytes < prior.Bytes || interval < 900*time.Millisecond || interval > 1500*time.Millisecond {
+			if !sample.At.After(prior.At) || sample.Bytes < prior.Bytes || interval < 900*time.Millisecond || interval > 1100*time.Millisecond {
 				return 0, 0, false
 			}
 		}
