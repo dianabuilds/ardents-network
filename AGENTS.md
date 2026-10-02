@@ -51,18 +51,18 @@
   alone is not an escalation reason. Review completed bounded changes rather
   than repeatedly reviewing unfinished implementation.
 - Follow [agent execution and handoff](docs/development/agent-execution.md).
-  Use one active implementation slice per implementer, with an observable
-  acceptance boundary; at most two C0 implementation slices may be active
-  across the project.
+  Select active slices under the [C0 work-in-progress policy](#c0-work-in-progress-limit).
+  Each implementer owns one active slice with an observable acceptance boundary.
   Record other prepared work as paused, locally verified, or awaiting integration.
 - Preserve the existing branch, staged changes and untracked implementation.
   A fresh agent session is not a reason to restart from main or discard work.
 - Keep GitHub Issues as the execution ledger and give the Product Owner concise
   progress in the active conversation. Distinguish component readiness, full
   issue acceptance and integration; no test-only reachability or gate waiver.
-- Two explicitly selected C0 implementation tasks may proceed in parallel,
-  with separate ownership and branches or worktrees. Do not start additional
-  implementation agents or branches beyond those selected tasks merely to
+- Explicitly selected C0 implementation tasks may proceed in parallel under the
+  [C0 work-in-progress policy](#c0-work-in-progress-limit), with separate ownership
+  and branches or worktrees. Do not start additional implementation agents or
+  branches beyond the selected issues and count merely to
   accelerate work. A skill-required review may use read-only reviewers of one
   bounded delta; it is not independent security validation or another implementation.
 - Do not turn an open research question or candidate brief into maintained
@@ -105,10 +105,24 @@ The one live C0 ledger is GitHub Issues in the
 [`C0 Closed Alpha` milestone](https://github.com/dianabuilds/ardents-network/milestones).
 Until that milestone exists and is accessible, do not begin a new C0
 implementation slice; only contract clarification, review, or a green-baseline
-repair may proceed. The milestone permits at most two in-progress C0
-implementation issues and at most one explicitly selected active research
-question. An open or deferred question is not active merely because its
-historical evidence remains in the repository.
+repair may proceed.
+
+By default, at most two explicitly selected C0 implementation issues may be
+in progress across the project. A larger selected count requires explicit
+Product Owner authorization; record that count and the selected issues in the
+execution ledger before starting additional slices. Each implementer owns one
+active implementation slice with an observable acceptance boundary and separate
+ownership and a branch or worktree.
+
+At most one explicitly selected research question may be active. An open or
+deferred question is not active merely because its historical evidence remains
+in the repository. Other prepared work remains paused, locally verified, or
+awaiting integration.
+
+A coordination limit on active chats is separate from the implementation WIP
+limit and does not itself select or authorize additional implementation slices.
+A larger selected count does not waive task admission, ownership, review,
+verification, or acceptance obligations.
 
 ## Research discipline
 
