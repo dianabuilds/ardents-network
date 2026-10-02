@@ -41,8 +41,9 @@ func verifyNET14V(arguments []string, output io.Writer) error {
 	if err != nil {
 		return err
 	}
-	recoveryErr := verifyRecoveryFaultEvidence(arguments[4:], episodeManifest)
+	faults, recoveryErr := verifyRecoveryFaultEvidence(arguments[4:], episodeManifest, episodeManifestHash, recoveryWindow{episode.ReaderNetwork.Started, episode.ReaderNetwork.Stopped}, recoveryWindow{episode.PublisherNetwork.Started, episode.PublisherNetwork.Stopped})
 	criteria := evaluateNET14V(baselineManifest, episodeManifest, baseline, episode)
+	criteria = append(criteria, relayEpisodeCriteria(baseline, episode, episodeManifest.Failures, recoveryErr == nil, faults)...)
 	binding := baseline.Relay.ManifestSHA256 == baselineManifestHash && episode.Relay.ManifestSHA256 == episodeManifestHash
 	criteria = append(criteria, streamqualification.Criterion{Name: "net14v-manifest-verdict-binding", Observed: boolNumber(binding), Relation: "=", Bound: 1, Passed: binding})
 	criteria = append(criteria, streamqualification.Criterion{Name: "net14v-recovery-schedule-evidence", Observed: boolNumber(recoveryErr == nil), Relation: "=", Bound: 1, Passed: recoveryErr == nil})
@@ -81,7 +82,7 @@ func readPairedVerdict(path string) (pairedWorkloadVerdict, error) {
 	if err := decodeExact(body, &verdict); err != nil {
 		return verdict, err
 	}
-	for _, identity := range []string{verdict.CandidateSHA256, verdict.EndpointUnitSHA256, verdict.Relay.ManifestSHA256, verdict.Relay.BinarySHA256, verdict.NodeOwners.InventorySHA256, verdict.NodeOwners.BinarySHA256} {
+	for _, identity := range []string{verdict.Seed, verdict.CandidateSHA256, verdict.EndpointUnitSHA256, verdict.Relay.ManifestSHA256, verdict.Relay.BinarySHA256, verdict.NodeOwners.InventorySHA256, verdict.NodeOwners.BinarySHA256} {
 		if _, identityErr := decodeIdentity(identity); identityErr != nil {
 			return verdict, errors.New("paired workload candidate binding is invalid")
 		}
@@ -100,7 +101,7 @@ func evaluateNET14V(baselineManifest, episodeManifest qualificationNetworkManife
 		baseline.CandidateSHA256 == episode.CandidateSHA256 && baseline.EndpointUnitSHA256 == episode.EndpointUnitSHA256 &&
 		baseline.Relay.BinarySHA256 == episode.Relay.BinarySHA256 && baseline.NodeOwners.BinarySHA256 == episode.NodeOwners.BinarySHA256 && sameNodeInputs(baseline.NodeOwners, episode.NodeOwners) &&
 		baselineManifest.Carrier == episodeManifest.Carrier &&
-		baseline.Profile == episode.Profile && baseline.Condition == streamqualification.NormalNetwork &&
+		baseline.Seed == episode.Seed && baseline.Profile == episode.Profile && baseline.Condition == streamqualification.NormalNetwork &&
 		episode.Condition == streamqualification.RecoveryNetwork && baselineManifest.Cell == "net14ad" &&
 		episodeManifest.Cell == "net14-recovery" &&
 		baseline.ReaderNetwork.DirectionalUseful == episode.ReaderNetwork.DirectionalUseful &&
@@ -129,7 +130,6 @@ func evaluateNET14V(baselineManifest, episodeManifest qualificationNetworkManife
 		{Name: "net14v-added-endpoint-carrier-bytes", Observed: float64(added), Relation: "<= per recovery set", Bound: float64(episodeCount * (8 << 20)), Passed: compatible && added <= episodeCount*(8<<20)},
 		{Name: "net14v-added-route-bytes", Observed: float64(relayAdded), Relation: "<= recovery-set bound", Bound: float64(episodeCount * (8 << 20)), Passed: compatible && relayAdded <= episodeCount*(8<<20)},
 	}
-	criteria = append(criteria, relayEpisodeCriteria(baseline, episode, episodeManifest.Failures, compatible)...)
 	criteria = append(criteria, net14vDirectionalCriteria(episodeManifest, episode.Relay, episode.ReaderNetwork, episode.PublisherNetwork)...)
 	return criteria
 }
@@ -171,7 +171,7 @@ func combinedRelayWire(verdict relayTrafficVerdict) (uint64, bool) {
 	return total, len(verdict.Segments) == 12
 }
 
-func relayEpisodeCriteria(baseline, episode pairedWorkloadVerdict, failures []networkFailure, compatible bool) []streamqualification.Criterion {
+func relayEpisodeCriteria(baseline, episode pairedWorkloadVerdict, failures []networkFailure, compatible bool, faults recoveryEvidence) []streamqualification.Criterion {
 	baselineSegments := make(map[string]relaySegmentTraffic, len(baseline.Relay.Segments))
 	episodeSegments := make(map[string]relaySegmentTraffic, len(episode.Relay.Segments))
 	for _, segment := range baseline.Relay.Segments {
@@ -182,15 +182,19 @@ func relayEpisodeCriteria(baseline, episode pairedWorkloadVerdict, failures []ne
 	}
 	criteria := make([]streamqualification.Criterion, 0, len(failures))
 	for _, failure := range failures {
-		windowStart := time.Duration(failure.AtMillis) * time.Millisecond
-		windowStop := windowStart + time.Duration(failure.DurationMillis)*time.Millisecond + 8*time.Second
+		start, startOK := faults.Starts[failure.Episode]
+		stop, stopOK := faults.Stops[failure.Episode]
+		// Pair identical offsets from the bound actual events, including scheduling
+		// deviation; an independent manifest-only window can conceal episode bytes.
+		windowStart := time.UnixMilli(start.ActualMillis).Sub(episode.ReaderNetwork.Started)
+		windowStop := time.UnixMilli(stop.ActualMillis).Add(8 * time.Second).Sub(episode.ReaderNetwork.Started)
 		baselineBytes, baselineOK := relayWindowBytes(baselineSegments[failure.SegmentID].Samples, baseline.ReaderNetwork.Started, windowStart, windowStop)
 		episodeBytes, episodeOK := relayWindowBytes(episodeSegments[failure.SegmentID].Samples, episode.ReaderNetwork.Started, windowStart, windowStop)
 		added, ordered := uint64(0), episodeBytes >= baselineBytes
 		if ordered {
 			added = episodeBytes - baselineBytes
 		}
-		passed := compatible && baselineOK && episodeOK && ordered && added <= 8<<20
+		passed := compatible && startOK && stopOK && baselineOK && episodeOK && ordered && added <= 8<<20
 		criteria = append(criteria, streamqualification.Criterion{Name: "net14v-episode-" + failure.Episode + "-added-route-bytes", Observed: float64(added), Relation: "<=", Bound: 8 << 20, Passed: passed})
 	}
 	return criteria

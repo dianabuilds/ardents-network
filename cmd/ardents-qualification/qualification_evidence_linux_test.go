@@ -109,7 +109,7 @@ func TestQualificationNET14VRejectsExpensiveIndividualEpisode(t *testing.T) {
 	failure := networkFailure{Episode: "relay-loss", SegmentID: "segment-1", AtMillis: 20_000, DurationMillis: 10_000}
 	baseline := pairedWorkloadVerdict{ReaderNetwork: ownerNetworkVerdict{Started: origin}, Relay: relayTrafficVerdict{Segments: []relaySegmentTraffic{{ID: failure.SegmentID, Samples: []relaySegmentSample{{At: origin.Add(20 * time.Second), Bytes: 100}, {At: origin.Add(38 * time.Second), Bytes: 1 << 20}}}}}}
 	episode := pairedWorkloadVerdict{ReaderNetwork: ownerNetworkVerdict{Started: origin}, Relay: relayTrafficVerdict{Segments: []relaySegmentTraffic{{ID: failure.SegmentID, Samples: []relaySegmentSample{{At: origin.Add(20 * time.Second), Bytes: 100}, {At: origin.Add(38 * time.Second), Bytes: 10 << 20}}}}}}
-	criteria := relayEpisodeCriteria(baseline, episode, []networkFailure{failure}, true)
+	criteria := relayEpisodeCriteria(baseline, episode, []networkFailure{failure}, true, recoveryEvidence{Starts: map[string]recoveryFaultRecord{failure.Episode: {ActualMillis: origin.Add(20 * time.Second).UnixMilli()}}, Stops: map[string]recoveryFaultRecord{failure.Episode: {ActualMillis: origin.Add(30 * time.Second).UnixMilli()}}})
 	if len(criteria) != 1 || criteria[0].Passed || criteria[0].Observed <= 8<<20 {
 		t.Fatalf("expensive recovery episode accepted: %+v", criteria)
 	}
