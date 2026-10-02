@@ -40,17 +40,21 @@ container = sys.argv[1]
 signal.signal(signal.SIGTERM, stop)
 signal.signal(signal.SIGINT, stop)
 previous = None
+origin = time.monotonic_ns()
+next_sample = origin
 for _ in range(1325):
     current = classes(container)
     if previous is not None and any(current[key] < previous[key] for key in current):
         raise SystemExit("relay class counter regressed")
     print(json.dumps({
         "At": datetime.datetime.now(datetime.timezone.utc).isoformat().replace("+00:00", "Z"),
+        "Elapsed": time.monotonic_ns() - origin,
         "UpstreamBytes": current["1:10"], "ClientBytes": current["1:20"],
     }, separators=(",", ":")), flush=True)
     previous = current
     if stopping:
         break
-    time.sleep(1)
+    next_sample += 1_000_000_000
+    time.sleep(max(0, (next_sample - time.monotonic_ns()) / 1_000_000_000))
 else:
     raise SystemExit("relay sampler exceeded its bound")

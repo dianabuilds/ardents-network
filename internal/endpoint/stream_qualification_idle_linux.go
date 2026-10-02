@@ -18,8 +18,11 @@ const streamQualificationIdleWindow = 10 * time.Minute
 // It is evidence for an explicitly labelled upper projection, not a claim that
 // the candidate remained idle for an observed 24-hour period.
 type StreamQualificationIdleReport struct {
-	Started          time.Time
-	Stopped          time.Time
+	// Started and Stopped are Hosting wall timestamps for log correlation only.
+	Started time.Time
+	Stopped time.Time
+	// MeasuredDuration conservatively bounds the actual counter interval with
+	// one host's monotonic clock; it excludes the boundary sampling calls.
 	MeasuredDuration time.Duration
 	Samples          uint32
 	Failure          string
@@ -65,27 +68,6 @@ func runStreamQualificationIdle(ctx context.Context, config StreamQualificationC
 		defer stop()
 		outcome = errors.Join(outcome, reservation.Release(release))
 	}()
-	sample := func(sampleCtx context.Context, elapsed time.Duration, fresh bool) (resource.HostingSample, error) {
-		var hostSample resource.HostingSample
-		var usage resource.Sample
-		var err error
-		if fresh {
-			hostSample, usage, err = config.Measurements.SampleFresh(sampleCtx, host)
-		} else {
-			hostSample, usage, err = config.Measurements.Sample(sampleCtx, host)
-		}
-		if err != nil {
-			return resource.HostingSample{}, err
-		}
-		if err := config.Observe(sampleCtx, StreamQualificationEvent{Kind: "resource-sample", Elapsed: elapsed, Host: &hostSample, Usage: &usage}); err != nil {
-			return resource.HostingSample{}, err
-		}
-		if hostSample.Observation.Drain {
-			return resource.HostingSample{}, errors.New("NET-32 hosting allowance requires drain")
-		}
-		report.Samples++
-		return hostSample, nil
-	}
 	outcome = withParticipant(lifetime, config.Participant, func(endpoint *endpoint) (operationErr error) {
 		principal := config.Participant.ConnectionPrincipal
 		capability, err := endpoint.Admit(principal, broker.Connection)
@@ -111,34 +93,13 @@ func runStreamQualificationIdle(ctx context.Context, config StreamQualificationC
 		if err := config.Observe(lifetime, StreamQualificationEvent{Kind: "idle-ready"}); err != nil {
 			return err
 		}
-		origin := time.Now()
-		first, err := sample(lifetime, 0, true)
-		if err != nil {
-			return err
-		}
-		report.Started = first.At
-		ticker := time.NewTicker(time.Second)
-		defer ticker.Stop()
-		timer := time.NewTimer(window)
-		defer timer.Stop()
-		for {
-			select {
-			case <-lifetime.Done():
-				return lifetime.Err()
-			case <-ticker.C:
-				if _, err := sample(lifetime, time.Since(origin), false); err != nil {
-					return err
+		return observeStreamQualificationIdle(lifetime, window, &report,
+			func(sampleCtx context.Context, fresh bool) (resource.HostingSample, resource.Sample, error) {
+				if fresh {
+					return config.Measurements.SampleFresh(sampleCtx, host)
 				}
-			case <-timer.C:
-				last, err := sample(lifetime, time.Since(origin), true)
-				if err != nil {
-					return err
-				}
-				report.Stopped = last.At
-				report.MeasuredDuration = report.Stopped.Sub(report.Started)
-				return nil
-			}
-		}
+				return config.Measurements.Sample(sampleCtx, host)
+			}, config.Observe, time.Now)
 	})
 	return report, outcome
 }
@@ -150,4 +111,65 @@ func runStreamQualificationIdle(ctx context.Context, config StreamQualificationC
 func streamQualificationIdleTraffic(window time.Duration) (work, termination resource.HostingTraffic) {
 	proportional := uint64(window)/uint64(24*time.Hour/time.Second) + 1
 	return resource.HostingTraffic{Tx: proportional, Rx: proportional}, resource.HostingTraffic{Tx: 8 << 20, Rx: 8 << 20}
+}
+
+// observeStreamQualificationIdle brackets fresh counter reads conservatively:
+// the first completion is after every first interface read, and the last start
+// is before every final interface read. Neither provisioning nor the final
+// observation callback can enlarge the denominator. The wall timestamps remain
+// the Hosting continuity owner's observations and grant no elapsed-time proof.
+func observeStreamQualificationIdle(ctx context.Context, window time.Duration, report *StreamQualificationIdleReport,
+	read func(context.Context, bool) (resource.HostingSample, resource.Sample, error),
+	observe func(context.Context, StreamQualificationEvent) error, now func() time.Time) error {
+	origin := now()
+	var firstFinished time.Time
+	sample := func(fresh bool, first bool) (resource.HostingSample, time.Time, error) {
+		began := now()
+		hostSample, usage, err := read(ctx, fresh)
+		finished := now()
+		if err != nil {
+			return resource.HostingSample{}, began, err
+		}
+		if first {
+			firstFinished = finished
+		}
+		if err := observe(ctx, StreamQualificationEvent{Kind: "resource-sample", Elapsed: began.Sub(origin), Host: &hostSample, Usage: &usage}); err != nil {
+			return resource.HostingSample{}, began, err
+		}
+		if hostSample.Observation.Drain {
+			return resource.HostingSample{}, began, errors.New("NET-32 hosting allowance requires drain")
+		}
+		report.Samples++
+		return hostSample, began, nil
+	}
+	first, _, err := sample(true, true)
+	if err != nil {
+		return err
+	}
+	report.Started = first.At
+	ticker := time.NewTicker(time.Second)
+	defer ticker.Stop()
+	timer := time.NewTimer(window)
+	defer timer.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-ticker.C:
+			if _, _, err := sample(false, false); err != nil {
+				return err
+			}
+		case <-timer.C:
+			last, lastBegan, err := sample(true, false)
+			if err != nil {
+				return err
+			}
+			report.Stopped = last.At
+			report.MeasuredDuration = lastBegan.Sub(firstFinished)
+			if report.MeasuredDuration <= 0 {
+				return errors.New("NET-32 monotonic counter interval unavailable")
+			}
+			return nil
+		}
+	}
 }
