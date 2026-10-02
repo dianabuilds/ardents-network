@@ -72,7 +72,7 @@ func evaluateOwnerSlices(inputs []ownerSliceResultInput, owners map[streamqualif
 
 func evaluateOwnerSliceWindow(input ownerSliceResultInput, started, stopped time.Time) (ownerSliceEvidence, bool) {
 	result := ownerSliceEvidence{Host: input.Host, Unit: input.Unit, CPUQuota: input.CPUQuota, CPUMax: input.CPUMax, MemoryMax: input.MemoryMax}
-	if len(input.Samples) == 0 || started.IsZero() || !started.Before(stopped) {
+	if len(input.Samples) == 0 || len(input.Samples) > 1325 || started.IsZero() || !started.Before(stopped) {
 		return result, false
 	}
 	first, last := -1, -1
@@ -93,8 +93,8 @@ func evaluateOwnerSliceWindow(input ownerSliceResultInput, started, stopped time
 	complete := len(window) >= 598
 	for index, sample := range window {
 		memory = append(memory, sample.MemoryCurrent)
-		if sample.At.IsZero() || sample.MemoryCurrent == 0 || index > 0 &&
-			(sample.At.Sub(window[index-1].At) <= 0 || sample.At.Sub(window[index-1].At) > 1500*time.Millisecond ||
+		if sample.At.IsZero() || sample.MonotonicNS == 0 || sample.MemoryCurrent == 0 || index > 0 &&
+			(!ownerSampleCadence(window[index-1], sample) ||
 				sample.CPUUsageNSec < window[index-1].CPUUsageNSec || sample.IPIngressBytes < window[index-1].IPIngressBytes ||
 				sample.IPEgressBytes < window[index-1].IPEgressBytes) {
 			complete = false
@@ -103,7 +103,7 @@ func evaluateOwnerSliceWindow(input ownerSliceResultInput, started, stopped time
 	sort.Slice(memory, func(i, j int) bool { return memory[i] < memory[j] })
 	result.P95MemoryBytes = memory[(95*len(memory)+99)/100-1]
 	begin, end := window[0], window[len(window)-1]
-	seconds := end.At.Sub(begin.At).Seconds()
+	seconds := ownerSampleSeconds(begin, end)
 	if seconds < 597 || end.CPUUsageNSec < begin.CPUUsageNSec ||
 		end.IPIngressBytes < begin.IPIngressBytes || end.IPEgressBytes < begin.IPEgressBytes {
 		return result, false
