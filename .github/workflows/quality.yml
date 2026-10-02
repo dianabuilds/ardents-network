@@ -151,7 +151,20 @@ jobs:
           cache: true
       - name: Install pinned quality tools
         run: make tools-install
+      - name: Diagnose repeated Source cancellation on fixed checkout
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          SOURCE_PROBE_RUN: '^(TestTextInitialPublicationLossBeforeAcknowledgement|TestTextInitialPublicationRefusesOldSourceAcknowledgement|TestTextInteriorSelectionIgnoresStateMemberOrder|TestTextIntroductionCancelledOpeningDoesNotRetireSourceOrPublishPrefix|TestTextIntroductionCapsuleBindsRealInstanceAndServiceStream|TestTextIntroductionDeliversFourConcurrentReaders|TestTextIntroductionExchangeCloseJoinsAndRetainsCleanupFailure|TestTextIntroductionOldOpeningCannotAcquireReplacementHandle|TestTextIntroductionOrphanRefusalOutlivesCanceledWaiter|TestTextIntroductionPreparationRetirementInterruptsBootstrap|TestTextIntroductionReopensJoinedSource|TestTextIntroductionRetryResumesExactIssuance|TestTextIssuanceRequiresPermissionBeforeSelectingAnyPeers|TestTextIssuanceRetainsExactPendingBatchAcrossFailedAttempts|TestTextIssuanceRevocationBeforeDelayedCompletionJoinsTransport|TestTextIssuanceStartsAfterIdleListeners)$'
+        run: |
+          set +e
+          go test -json -race ./internal/endpoint -run "$SOURCE_PROBE_RUN" -count=1 -timeout=5m
+          group_status=$?
+          go test -json -race ./internal/endpoint -run '^TestTextInitialPublicationLossBeforeAcknowledgement$/ardents-carrier-tcp-tls-v2/caller_cancel' -count=20 -timeout=3m
+          narrow_status=$?
+          if (( group_status != 0 )); then exit "$group_status"; fi
+          exit "$narrow_status"
       - name: Run the complete maintained gate
+        if: ${{ !cancelled() }}
         run: |
           export ARDENTS_E2E_COMMAND_ROOT="$RUNNER_TEMP/e2e-commands"
           mkdir -p "$ARDENTS_E2E_COMMAND_ROOT"
