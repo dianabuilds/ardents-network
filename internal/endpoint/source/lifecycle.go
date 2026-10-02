@@ -5,9 +5,6 @@ package source
 import (
 	"context"
 	"errors"
-	"fmt"
-	"os"
-	"runtime/debug"
 	"sync/atomic"
 	"time"
 
@@ -313,7 +310,6 @@ func (lifecycle *Lifecycle) RetireIdleLocked() error {
 	}
 	lifecycle.live = nil
 	handle.cancel()
-	fmt.Fprintf(os.Stderr, "[DEBUG-449] Source handle %p observed joined prefix Done\n%s", handle, debug.Stack())
 	handle.prefix.Store(nil)
 	return prefix.Close()
 }

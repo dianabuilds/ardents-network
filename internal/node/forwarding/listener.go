@@ -4,14 +4,11 @@ import (
 	"context"
 	"crypto/tls"
 	"errors"
-	"fmt"
 	nodeouter "github.com/dianabuilds/ardents-network/internal/node/outer"
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	routecarrier "github.com/dianabuilds/ardents-network/internal/route/carrier"
 	"net"
-	"os"
-	"runtime/debug"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -244,11 +241,6 @@ func (server *forwardServer) serveInner(ctx context.Context, lane *route.ClosedO
 }
 
 func (server *forwardServer) serveDirect(ctx context.Context, connection net.Conn, first *ardp.Frame, incomingKey [32]byte, restriction route.ClosedChildRestriction, outerLane *route.ClosedOuterBridgeLane) (result error) {
-	defer func() {
-		if result != nil {
-			fmt.Fprintf(os.Stderr, "[DEBUG-449] forwarding server %p direct exit %v\n%s", server, result, debug.Stack())
-		}
-	}()
 
 	initialDeadline := server.clock().UTC().Add(10 * time.Second)
 	if err := connection.SetDeadline(initialDeadline); err != nil {
@@ -397,6 +389,11 @@ func (server *forwardServer) serveDirect(ctx context.Context, connection net.Con
 		}
 		if acceptErr != nil {
 			return acceptErr
+		}
+		if frame.Kind == ardp.KindClose {
+			if link := links[frame.Lane]; link != nil {
+				link.reverse.markLocalClose()
+			}
 		}
 		if frame.Kind == 2 {
 			accepted, frameErr := ardp.AcceptFrame(0, 64<<10)

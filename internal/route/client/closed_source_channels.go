@@ -6,11 +6,9 @@ import (
 	"context"
 	"encoding/binary"
 	"errors"
-	"fmt"
 	"io"
 	"net"
 	"os"
-	"runtime/debug"
 	"sync"
 	"time"
 
@@ -85,7 +83,6 @@ func (owner *closedSourceChannels) signalLocked() {
 func (owner *closedSourceChannels) fail(err error) {
 	owner.mu.Lock()
 	if owner.terminal == nil {
-		fmt.Fprintf(os.Stderr, "[DEBUG-449] Source channels %p first failure %v\n%s", owner, err, debug.Stack())
 		owner.terminal = err
 		for _, queue := range [][]*closedSourceWrite{owner.terminals, owner.controls, owner.data} {
 			for _, request := range queue {

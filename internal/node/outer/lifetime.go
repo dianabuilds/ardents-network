@@ -2,10 +2,7 @@ package outer
 
 import (
 	"context"
-	"fmt"
 	"net"
-	"os"
-	"runtime/debug"
 	"sync"
 	"time"
 
@@ -54,12 +51,10 @@ func Serve(ctx context.Context, connection net.Conn, handshake *route.ClosedOute
 	for {
 		frame, err := ardp.ReadFrame(connection)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "[DEBUG-449] outer %p read ended %v\n%s", connection, err, debug.Stack())
 			return
 		}
 		lane, err := bridge.Accept(frame)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "[DEBUG-449] outer %p accepts kind %d lane %d failed %v\n%s", connection, frame.Kind, frame.Lane, err, debug.Stack())
 			return
 		}
 		if first {

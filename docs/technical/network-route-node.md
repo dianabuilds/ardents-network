@@ -91,9 +91,13 @@ subsequent HELLO/admission deadlines remain separate checks.
 An outgoing forwarding session reserves its physical writer within the exact
 accepted child deadline. Queued expiry returns a typed timeout, without changing
 an active sibling's write deadline, emitting a late frame or closing the shared
-Carrier. Local child teardown and authenticated next-peer CLOSE wake queued
-writers; only that complete CLOSE supplies benign terminal retirement. A failed
-physical frame still closes the Carrier and retains its original cleanup result.
+Carrier. Parent/link teardown cancels queued work. An accepted incoming child
+CLOSE cancels unemitted nonterminal frames; its required outbound CLOSE retains
+the existing authority until emission or parent/link teardown. A complete
+authenticated next-peer CLOSE makes that terminal obsolete. Joining late reverse
+output after local CLOSE does not cancel its still-pending outbound terminal.
+A failed physical frame still closes the Carrier and retains its original cleanup
+result.
 OPEN allocation uses the same cancellable reservation: an opener cancelled or
 expired before acquiring it emits nothing and allocates no lane. Lane IDs and
 complete OPEN emission remain ordered. The maintained caller carries a fixed

@@ -169,7 +169,7 @@ func TestClosedForwardingWriterReleaseAtDeadlineNeverEmits(t *testing.T) {
 		local, peer := net.Pipe()
 		session := &session{carrier: local}
 		end := time.Now().Add(10 * time.Millisecond)
-		acquired, err := session.acquireWriter(t.Context(), time.Now().Add(time.Second), nil)
+		acquired, err := session.acquireWriter(t.Context(), time.Now().Add(time.Second), nil, false)
 		if !acquired || err != nil {
 			t.Fatalf("active writer: %t %v", acquired, err)
 		}

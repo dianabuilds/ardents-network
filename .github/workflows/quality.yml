@@ -137,56 +137,8 @@ jobs:
             echo "::error title=${{ matrix.name }} failed::selected test failure category: $failure"
           fi
           exit "$status"
-  source-cancellation-diagnostic:
-    if: github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-24.04
-    timeout-minutes: 10
-    steps:
-      - name: Check out fixed diagnostic candidate
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
-        with:
-          fetch-depth: 0
-      - name: Set up pinned Go
-        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
-        with:
-          go-version: 1.26.8
-          cache: true
-      - name: Capture actual source and runtime identity
-        run: |
-          git rev-parse HEAD HEAD^{tree}
-          git merge-base HEAD bd7036ab06147fc330ec11984c1cd4ba30ce0aae
-          go version
-          id
-          lscpu
-          cat /etc/os-release
-      - name: Diagnose repeated Source cancellation on fixed checkout
-        if: github.event_name == 'workflow_dispatch'
-        env:
-          SOURCE_PROBE_RUN: '^(TestTextInitialPublicationLossBeforeAcknowledgement|TestTextInitialPublicationRefusesOldSourceAcknowledgement|TestTextInteriorSelectionIgnoresStateMemberOrder|TestTextIntroductionCancelledOpeningDoesNotRetireSourceOrPublishPrefix|TestTextIntroductionCapsuleBindsRealInstanceAndServiceStream|TestTextIntroductionDeliversFourConcurrentReaders|TestTextIntroductionExchangeCloseJoinsAndRetainsCleanupFailure|TestTextIntroductionOldOpeningCannotAcquireReplacementHandle|TestTextIntroductionOrphanRefusalOutlivesCanceledWaiter|TestTextIntroductionPreparationRetirementInterruptsBootstrap|TestTextIntroductionReopensJoinedSource|TestTextIntroductionRetryResumesExactIssuance|TestTextIssuanceRequiresPermissionBeforeSelectingAnyPeers|TestTextIssuanceRetainsExactPendingBatchAcrossFailedAttempts|TestTextIssuanceRevocationBeforeDelayedCompletionJoinsTransport|TestTextIssuanceStartsAfterIdleListeners)$'
-        run: |
-          set +e
-          go test -json -race ./internal/endpoint -run "$SOURCE_PROBE_RUN" -count=1 -timeout=5m
-          group_status=$?
-          go test -json -race ./internal/endpoint -run '^TestTextInitialPublicationLossBeforeAcknowledgement$/ardents-carrier-tcp-tls-v2/caller_cancel' -count=20 -timeout=3m
-          narrow_status=$?
-          set -e
-          git diff ed2ce00286162c9062b8ae344b701f7b21d79c2d HEAD -- internal/endpoint/source/lifecycle.go internal/route/client/closed_source_channels.go internal/node/forwarding/listener.go internal/node/forwarding/link.go internal/node/outer/writer.go internal/node/outer/lifetime.go > "$RUNNER_TEMP/source-cause-probes.patch"
-          sha256sum "$RUNNER_TEMP/source-cause-probes.patch"
-          git clone --shared --no-checkout . "$RUNNER_TEMP/source-baseline"
-          git -C "$RUNNER_TEMP/source-baseline" checkout bd7036ab06147fc330ec11984c1cd4ba30ce0aae
-          git -C "$RUNNER_TEMP/source-baseline" apply "$RUNNER_TEMP/source-cause-probes.patch"
-          git -C "$RUNNER_TEMP/source-baseline" rev-parse HEAD HEAD^{tree}
-          git -C "$RUNNER_TEMP/source-baseline" diff --stat
-          cd "$RUNNER_TEMP/source-baseline"
-          set +e
-          go test -json -race ./internal/endpoint -run '^TestTextInitialPublicationLossBeforeAcknowledgement$/ardents-carrier-tcp-tls-v2/caller_cancel' -count=20 -timeout=3m
-          baseline_status=$?
-          if (( group_status != 0 )); then exit "$group_status"; fi
-          if (( narrow_status != 0 )); then exit "$narrow_status"; fi
-          exit "$baseline_status"
   full:
-    needs: source-cancellation-diagnostic
-    if: github.event_name != 'pull_request' && !cancelled()
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:
@@ -200,7 +152,6 @@ jobs:
       - name: Install pinned quality tools
         run: make tools-install
       - name: Run the complete maintained gate
-        if: ${{ !cancelled() }}
         run: |
           export ARDENTS_E2E_COMMAND_ROOT="$RUNNER_TEMP/e2e-commands"
           mkdir -p "$ARDENTS_E2E_COMMAND_ROOT"
@@ -208,7 +159,7 @@ jobs:
           make check NODE_PROCESS_TEST_COMMAND="sudo --preserve-env=ARDENTS_E2E_COMMAND_ROOT,GOMODCACHE,GOTOOLCHAIN,GOFLAGS env ARDENTS_NODE_SCOPE_PROFILE=system GOCACHE=$RUNNER_TEMP/node-go-build $(command -v go)"
   go:
     if: always()
-    needs: [select, qualification-scripts, affected, full, source-cancellation-diagnostic]
+    needs: [select, qualification-scripts, affected, full]
     runs-on: ubuntu-24.04
     timeout-minutes: 1
     steps:
@@ -218,7 +169,6 @@ jobs:
           GROUP_RESULT: ${{ needs.affected.result }}
           POWERSHELL_RESULT: ${{ needs.qualification-scripts.result }}
           FULL_RESULT: ${{ needs.full.result }}
-          SOURCE_PROBE_RESULT: ${{ needs.source-cancellation-diagnostic.result }}
           EVENT: ${{ github.event_name }}
         run: |
           if [[ "$EVENT" == pull_request ]]; then
@@ -230,5 +180,4 @@ jobs:
             test "$SELECTION" = skipped
             test "$GROUP_RESULT" = skipped
             test "$FULL_RESULT" = success
-            if [[ "$EVENT" == workflow_dispatch ]]; then test "$SOURCE_PROBE_RESULT" = success; fi
           fi

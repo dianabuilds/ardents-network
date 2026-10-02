@@ -229,7 +229,7 @@ func (session *session) attach(ctx context.Context, open route.ClosedOpen, restr
 	if end, ok := ctx.Deadline(); ok && end.Before(deadline) {
 		deadline = end
 	}
-	acquired, err := session.acquireWriter(ctx, deadline, nil)
+	acquired, err := session.acquireWriter(ctx, deadline, nil, false)
 	if err != nil || !acquired {
 		return 0, nil, err
 	}
@@ -272,10 +272,12 @@ func (session *session) attach(ctx context.Context, open route.ClosedOpen, restr
 // A received child terminal retires queued upstream work even when its reverse
 // copier is blocked. Recheck under the reader's lock after writer acquisition:
 // it may receive CLOSE while this writer is waiting. Generic Carrier EOF never
-// supplies this evidence. Once physical emission starts, every error remains
+// supplies peer-terminal evidence. An accepted local CLOSE cancels unemitted
+// payload, but preserves its required outbound CLOSE. Full link retirement
+// still cancels both. Once physical emission starts, every error remains
 // an error and retires the Carrier: a partial frame cannot be reused by siblings.
 func (session *session) writeChildFrame(frame ardp.Frame, deadline time.Time, reverse *frameQueue) (bool, error) {
-	acquired, err := session.acquireWriter(context.Background(), deadline, reverse)
+	acquired, err := session.acquireWriter(context.Background(), deadline, reverse, frame.Kind == ardp.KindClose)
 	if err != nil || !acquired {
 		return false, err
 	}
@@ -294,7 +296,7 @@ func (session *session) writeChildFrame(frame ardp.Frame, deadline time.Time, re
 // active frame's physical deadline. No waiter owns a background writer: after
 // return it cannot emit a frame. Allocation and OPEN emission use the same
 // reservation so cancellation cannot reorder wire IDs or allocate unknown lanes.
-func (session *session) acquireWriter(ctx context.Context, deadline time.Time, reverse *frameQueue) (bool, error) {
+func (session *session) acquireWriter(ctx context.Context, deadline time.Time, reverse *frameQueue, closing bool) (bool, error) {
 	if reverse.peerClosed() {
 		return false, nil
 	}
@@ -315,9 +317,12 @@ func (session *session) acquireWriter(ctx context.Context, deadline time.Time, r
 	}
 	writer, done := session.writer, session.done
 	session.mu.Unlock()
-	var retired <-chan struct{}
+	var retired, localClose <-chan struct{}
 	if reverse != nil {
 		retired = reverse.retirement
+		if !closing {
+			localClose = reverse.localClose
+		}
 	}
 	// Recheck before and after the reservation. A ready writer, timer or local
 	// retirement can win the same select; none grants expired physical output.
@@ -340,9 +345,13 @@ func (session *session) acquireWriter(ctx context.Context, deadline time.Time, r
 		if reverse != nil {
 			reverse.mu.Lock()
 			closed = reverse.closed
+			locallyClosed := reverse.localTerminal
 			reverse.mu.Unlock()
 			if closed {
 				return false, context.Canceled
+			}
+			if locallyClosed && !closing {
+				return false, nil
 			}
 		}
 		return true, nil
@@ -362,6 +371,7 @@ func (session *session) acquireWriter(ctx context.Context, deadline time.Time, r
 	case <-timer.C:
 	case <-ctx.Done():
 	case <-retired:
+	case <-localClose:
 	case <-done:
 	}
 	if ready, err := check(); !ready {
@@ -522,11 +532,13 @@ type frameQueue struct {
 	bytes, maximum int
 	closed         bool
 	retirement     chan struct{}
+	localClose     chan struct{}
+	localTerminal  bool
 	terminal       bool // Complete, reserved peer CLOSE; transport EOF alone is not terminal.
 }
 
 func newFrameQueue(maximum int) *frameQueue {
-	queue := &frameQueue{maximum: maximum, retirement: make(chan struct{})}
+	queue := &frameQueue{maximum: maximum, retirement: make(chan struct{}), localClose: make(chan struct{})}
 	queue.changed = sync.NewCond(&queue.mu)
 	return queue
 }
@@ -593,4 +605,15 @@ func (queue *frameQueue) peerClosed() bool {
 	queue.mu.Lock()
 	defer queue.mu.Unlock()
 	return queue.terminal
+}
+
+// markLocalClose records a complete accepted incoming child CLOSE. It cancels
+// unemitted payload while preserving the required outbound terminal CLOSE.
+func (queue *frameQueue) markLocalClose() {
+	queue.mu.Lock()
+	if !queue.localTerminal {
+		queue.localTerminal = true
+		close(queue.localClose)
+	}
+	queue.mu.Unlock()
 }
