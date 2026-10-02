@@ -20,6 +20,8 @@ import (
 	"sort"
 	"strings"
 	"time"
+	"unicode"
+	"unicode/utf8"
 )
 
 type packageInfo struct {
@@ -390,7 +392,7 @@ func parseDeclarations(name string, body []byte) ([]declaration, bool, error) {
 	for _, node := range file.Decls {
 		switch decl := node.(type) {
 		case *ast.FuncDecl:
-			add(decl.Name.Name, decl, strings.HasSuffix(name, "_test.go") && strings.HasPrefix(decl.Name.Name, "Test") && decl.Recv == nil)
+			add(decl.Name.Name, decl, strings.HasSuffix(name, "_test.go") && (strings.HasPrefix(decl.Name.Name, "Test") || fuzzSeedDeclaration(decl)) && decl.Recv == nil)
 			if decl.Recv != nil && len(decl.Recv.List) == 1 {
 				receiver := decl.Recv.List[0].Type
 				if pointer, ok := receiver.(*ast.StarExpr); ok {
@@ -497,4 +499,37 @@ func expensiveEndpointPRCheck(pkg, name string) bool {
 	return strings.HasPrefix(name, "TestTextPublication") ||
 		strings.HasPrefix(name, "TestTextPublisher") ||
 		strings.HasPrefix(name, "TestTextRecovery")
+}
+
+// Match cmd/go entrypoint naming and parameter shape; compilation validates types.
+// Selected fuzz entrypoints run their seeds through ordinary go test -run.
+func fuzzSeedDeclaration(decl *ast.FuncDecl) bool {
+	name := decl.Name.Name
+	if !strings.HasPrefix(name, "Fuzz") || decl.Recv != nil || decl.Type.TypeParams != nil {
+		return false
+	}
+	if suffix := strings.TrimPrefix(name, "Fuzz"); suffix != "" {
+		r, _ := utf8.DecodeRuneInString(suffix)
+		if unicode.IsLower(r) {
+			return false
+		}
+	}
+	if decl.Type.Results != nil && len(decl.Type.Results.List) != 0 || decl.Type.Params == nil || len(decl.Type.Params.List) != 1 {
+		return false
+	}
+	param := decl.Type.Params.List[0]
+	if len(param.Names) > 1 {
+		return false
+	}
+	pointer, ok := param.Type.(*ast.StarExpr)
+	if !ok {
+		return false
+	}
+	switch typ := pointer.X.(type) {
+	case *ast.SelectorExpr:
+		return typ.Sel.Name == "F"
+	case *ast.Ident:
+		return typ.Name == "F"
+	}
+	return false
 }
