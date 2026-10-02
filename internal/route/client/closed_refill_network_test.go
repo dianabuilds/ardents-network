@@ -81,6 +81,11 @@ func (gate *refillWriteGate) Write(value []byte) (int, error) {
 
 func admittedRefillNetwork(t *testing.T, transport carrier.CarrierProfile) (*ClosedSourcePrefix, ClosedTokenPresenter, func() []byte, [2]*refillWriteGate) {
 	t.Helper()
+	return admittedRefillNetworkSetup(t, transport, "")
+}
+
+func admittedRefillNetworkSetup(t *testing.T, transport carrier.CarrierProfile, stopAfter string) (*ClosedSourcePrefix, ClosedTokenPresenter, func() []byte, [2]*refillWriteGate) {
+	t.Helper()
 	selected, source := sourceResolutionSelectionFixture(t)
 	profile := &source.view.Profile
 	now := time.Now().UTC().Truncate(time.Second)
@@ -136,6 +141,14 @@ func admittedRefillNetwork(t *testing.T, transport carrier.CarrierProfile) (*Clo
 	if err != nil {
 		t.Fatal(err)
 	}
+	// Setup owns the issuer until successful explicit close transfers ownership.
+	t.Cleanup(func() {
+		if tokenIssuer != nil {
+			if err := tokenIssuer.Close(); err != nil {
+				t.Error(err)
+			}
+		}
+	})
 	stock := make(map[time.Time]map[[33]byte][][]byte)
 	savedRequests := make(map[time.Time][]byte)
 	// Offline authority issues real stock for each accepted hourly window.
@@ -200,6 +213,7 @@ func admittedRefillNetwork(t *testing.T, transport carrier.CarrierProfile) (*Clo
 	if err := tokenIssuer.Close(); err != nil {
 		t.Fatal(err)
 	}
+	tokenIssuer = nil
 	var stockMu sync.Mutex
 	present := func(hello ardp.Hello, class uint8) ([]byte, error) {
 		stockMu.Lock()
@@ -236,6 +250,15 @@ func admittedRefillNetwork(t *testing.T, transport carrier.CarrierProfile) (*Clo
 		if err != nil {
 			t.Fatal(err)
 		}
+		// Setup owns Host until Forwarding Start consumes it, including refusal.
+		hostOwned := true
+		t.Cleanup(func() {
+			if hostOwned {
+				if err := host.Close(); err != nil {
+					t.Error(err)
+				}
+			}
+		})
 		reserved[index]()
 		current := func() (state.NodeDuty, error) { return duty, nil }
 		var stop func()
@@ -248,17 +271,13 @@ func admittedRefillNetwork(t *testing.T, transport carrier.CarrierProfile) (*Clo
 				t.Fatal(err)
 			}
 			stop, drain = handle.Stop, handle.Drain
-			t.Cleanup(func() {
-				if err := host.Close(); err != nil {
-					t.Error(err)
-				}
-			})
 		} else {
 			receiver, ok := facts.Receiver(duty, ardp.PurposeForwarding, time.Now())
 			if !ok {
 				t.Fatal("forwarding receiver unavailable")
 			}
 			work, termination := resource.HostingTraffic{Tx: 32 << 20, Rx: 32 << 20}, resource.HostingTraffic{Tx: 64 << 10, Rx: 64 << 10}
+			hostOwned = false
 			handle, err := forwarding.Start(forwarding.Config{Profile: forwarding.Profile{Root: t.TempDir(), Certificate: certificates[index], ConnectionLimit: 8, DrainTimeout: 2 * time.Second}, Snapshot: duty, Receiver: receiver, ListenAddress: candidate.Endpoint, Authority: facts, CurrentDuty: current, VerifyAdmission: func(receiver route.ClosedRoleReceiver) route.ClosedAdmissionVerifier {
 				return hosting.AdmissionVerifier(facts, time.Now, receiver, host, work, termination)
 			}, Replenish: func(receiver route.ClosedRoleReceiver, spends *replay.Ledger) route.ClosedForwardingReplenisher {
@@ -292,12 +311,36 @@ func admittedRefillNetwork(t *testing.T, transport carrier.CarrierProfile) (*Clo
 		retirement.transport = secured.NetConn()
 	}
 	gates := [2]*refillWriteGate{newRefillWriteGate(raw), nil}
-	prefix := &ClosedSourcePrefix{source: source, selection: selected.selection, plan: plan, connection: gates[0], retirement: retirement, stop: func() bool { return true }, interrupted: make(chan struct{}), done: make(chan struct{})}
+	prefix := &ClosedSourcePrefix{source: source, selection: selected.selection, plan: plan, connection: gates[0], retirement: retirement, stop: func() bool { return true }, interrupted: make(chan struct{}), done: nil}
+	// Prefix owns the physical Carrier immediately, including incomplete setup.
+	t.Cleanup(func() {
+		for _, gate := range gates {
+			if gate != nil {
+				gate.unblock()
+			}
+		}
+		closed := make(chan error, 1)
+		go func() { closed <- prefix.Close() }()
+		select {
+		case err := <-closed:
+			if err != nil {
+				t.Error(err)
+			}
+		case <-time.After(3 * time.Second):
+			t.Error("refill fixture cleanup did not join within bound")
+		}
+	})
+	if stopAfter == "physical" {
+		return prefix, present, nil, gates
+	}
 	if err := admitClosedSourceObserved(prefix.connection, plan, 0, "entry", present, &prefix.hellos[0]); err != nil {
 		t.Fatal(err)
 	}
 	if err := prefix.openChild(t.Context(), plan.peers[1], plan.deadline, time.Now().Add(10*time.Second)); err != nil {
 		t.Fatal(err)
+	}
+	if stopAfter == "child" {
+		return prefix, present, nil, gates
 	}
 	gates[1] = newRefillWriteGate(prefix.connection)
 	prefix.connection = gates[1]
@@ -314,14 +357,8 @@ func admittedRefillNetwork(t *testing.T, transport carrier.CarrierProfile) (*Clo
 	prefix.channels.transferred = route.ClosedAdmissionFrameBytes + ardp.HeaderSize + 5
 	prefix.channels.framing = prefix.child
 	prefix.channels.start()
+	prefix.done = make(chan struct{})
 	go prefix.finishAfterChannels()
-	t.Cleanup(func() {
-		gates[0].unblock()
-		gates[1].unblock()
-		if err := prefix.Close(); err != nil {
-			t.Error(err)
-		}
-	})
 	return prefix, present, func() []byte { return savedRequests[time.Now().UTC().Truncate(time.Hour)] }, gates
 }
 
@@ -453,6 +490,32 @@ func TestAdmittedSourceQueuedRefillCancellation(t *testing.T) {
 					t.Fatal("real ACCEPT did not advance refill accounting")
 				}
 			})
+		}
+	}
+}
+
+// Returning at these checkpoints models a setup failure before later owners
+// exist. Subtest cleanup must retire the Carrier and join any child reader.
+func TestAdmittedRefillSetupFailureCleanup(t *testing.T) {
+	for _, transport := range []carrier.CarrierProfile{carrier.ClosedCarrierTCP, carrier.ClosedCarrierQUIC} {
+		for _, stage := range []string{"physical", "child"} {
+			var prefix *ClosedSourcePrefix
+			t.Run(string(transport)+"/"+stage, func(t *testing.T) {
+				prefix, _, _, _ = admittedRefillNetworkSetup(t, transport, stage)
+			})
+			if prefix == nil {
+				continue
+			}
+			if prefix.child != nil {
+				select {
+				case <-prefix.child.done:
+				default:
+					t.Error("setup cleanup left child reader running")
+				}
+			}
+			if _, err := prefix.retirement.transport.Write([]byte{0}); err == nil {
+				t.Error("setup cleanup left physical Carrier open")
+			}
 		}
 	}
 }
