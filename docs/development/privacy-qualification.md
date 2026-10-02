@@ -77,6 +77,20 @@ production outcomes or authorization to exceed existing product budgets.
 | Impairment/recovery | Existing NET-14V ratios and per-episode 8 MiB addition remain. Each endpoint direction requires nearest-rank p95 unsmoothed one-second attributable carrier bitrate <= min(25 Mbit/s, 80% of its manifest access-link budget): Reader tx/rx 16/25 Mbit/s, Publisher tx/rx 25/25 Mbit/s. Both verify-pair impaired/recovery and verify-net14v recompute from complete direction-bound relay samples with monotonic intervals at nominal one-second cadence (at most 100 ms scheduling jitter); missing, regressing, uneven or shortened series refuse. Whole-run means and host aggregates cannot substitute |
 | Local resources | Existing whole-client 512 MiB and Publisher 1 GiB RSS gates, CPU and progress requirements; confinement helpers and ordinary network control are included in their applicable owner totals |
 
+Recovery fault evidence binds every start, stop and completion to the exact
+network-manifest digest, declared host role and observed Reader workload origin.
+Both endpoint workload intervals must cover the actual events and the measured
+stop-plus-eight-second carrier window; the existing 1,500 ms schedule/origin
+correlation tolerance is finite and cannot admit an event outside those windows.
+Successful and failed NET-14V consumers use these same checked actual events for
+paired byte windows. Wall timestamps only correlate observations across hosts;
+monotonic single-host evidence continues to own elapsed KPIs under NET-14AI.
+The failed-byte consumer additionally requires both retained endpoint journals
+with complete framing/checksum, installed candidate/unit and seed binding, final
+monotonic reports and joined cleanup. Missing observed workload completion
+refuses byte qualification. A passing failed-byte verdict does not qualify the
+failed workload or recovery outcome. Older unbound evidence cannot be reused.
+
 Pace latency trials at no more than 300 cold/warm pairs per hour per User
 installation, and lower if its actual token accounting requires it. Use the
 same context for each pair and preserve every durable authority, quota and
