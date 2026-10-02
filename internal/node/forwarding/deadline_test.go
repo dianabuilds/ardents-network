@@ -2,6 +2,7 @@ package forwarding
 
 import (
 	"context"
+	"errors"
 	"io"
 	"net"
 	"testing"
@@ -141,5 +142,24 @@ func TestClosedForwardingBlockedWriteRetiresPhysicalCarrier(t *testing.T) {
 	}
 	if _, err := peer.Read(make([]byte, 1)); err != io.EOF {
 		t.Fatalf("partial-frame Carrier remained open: %v", err)
+	}
+}
+
+func TestClosedForwardingExpiredWriteNeverEmits(t *testing.T) {
+	local, peer := net.Pipe()
+	defer local.Close()
+	defer peer.Close()
+	session := &session{carrier: local}
+	written, err := session.writeChildFrame(ardp.Frame{Kind: ardp.KindBytes, Lane: 1, Body: []byte("expired")}, time.Now().Add(-time.Second), newFrameQueue(64))
+	if written || !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("expired writer: %t %v", written, err)
+	}
+	if err := peer.SetReadDeadline(time.Now().Add(20 * time.Millisecond)); err != nil {
+		t.Fatal(err)
+	}
+	_, err = peer.Read(make([]byte, 1))
+	var timeout net.Error
+	if !errors.As(err, &timeout) || !timeout.Timeout() {
+		t.Fatalf("expired request emitted bytes or retired shared Carrier: %v", err)
 	}
 }

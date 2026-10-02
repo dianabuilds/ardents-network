@@ -385,7 +385,7 @@ func (server *forwardServer) openForwardingLink(ctx context.Context, open route.
 		_ = lease.Release()
 		return nil, err
 	}
-	remoteLane, reverse, err := session.attach(open, restriction, func(frame ardp.Frame) error { frame.Lane = lane; return channel.QueueReverse(frame) }, func() bool { return channel.ReverseRetired(lane) })
+	remoteLane, reverse, err := session.attach(handshakeCtx, open, restriction, func(frame ardp.Frame) error { frame.Lane = lane; return channel.QueueReverse(frame) }, func() bool { return channel.ReverseRetired(lane) })
 	if err != nil {
 		_ = lease.Release()
 		return nil, err
