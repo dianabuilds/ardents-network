@@ -362,7 +362,10 @@ Reject an unsupported generation/kind/flags/length before allocation.
 Lane zero carries the one HELLO and initial admission handshake. Under
 [ADR-0085](../adr/0085-bound-forwarding-replenishment.md), an already admitted
 forwarding parent may subsequently receive a class-2 replenishment ADMIT only
-on lane zero; it is parent control and creates no child. Endpoint-initiated
+on lane zero; it is parent control and creates no child.
+[ADR-0121](../adr/0121-acknowledge-bounded-join-replenishment.md) additionally
+permits this control on a live paired dedicated JOIN channel under the JOIN
+transition below. Endpoint-initiated
 child lanes use monotonically increasing odd IDs; role-initiated lanes use
 even IDs only for already authorized publication delivery. IDs are local to
 one TLS channel and never reused there. Exhaustion closes the channel. No lane
@@ -371,7 +374,7 @@ ID or nonce is copied into a different hop's identifier namespace.
 | Kind | Body and valid use |
 |---|---|
 | 1 HELLO | Network[32], State-generation[32], State-digest[32], profile-digest[32], recipient-Node[32], recipient-duty-generation u64, purpose u8, fresh channel-nonce[32], absolute-deadline u64. Exactly 209 bytes; lane zero, once after TLS. |
-| 2 ADMIT | class u8, token[354]. Exactly 355 bytes; lane zero once for initial admission. A later ADMIT is permitted only on lane zero of its already admitted forwarding parent, is class 2, and performs the finite replenishment selected by ADR-0085. It is forbidden on child lanes and every other channel type. |
+| 2 ADMIT | class u8, token[354]. Exactly 355 bytes; lane zero once for initial admission. A later ADMIT is permitted only on lane zero of its already admitted forwarding parent, is class 2, and performs the finite replenishment selected by ADR-0085. ADR-0121 additionally permits it on the live paired dedicated JOIN channel defined below. It is forbidden on child lanes and every other channel type. |
 | 3 BOOTSTRAP | operation u8: public evidence=1 or issuer=2. Exactly one byte; lane zero only, under the finite bootstrap contract. |
 | 4 OPEN | next-Node[32], next-duty-generation u64, next-purpose u8, deadline u64. Exactly 49 bytes on an Endpoint-role channel. On an authenticated Node Carrier append mandatory restriction u8 (0=no additional restriction, 1=issuer-bootstrap only), exactly 50 bytes. The authenticated channel state fixes the grammar; fresh child after the corresponding parent admission or bounded Node allocation below. |
 | 5 ACCEPT | status u8 (0 accepted, 1 unavailable, 2 exhausted, 3 stale/incompatible, 4 withdrawn), credit u32. Exactly 5 bytes; credit zero on refusal. No detailed path-conflict oracle. |
@@ -719,6 +722,24 @@ written directly on role TLS. JOIN bounds setup; paired data keeps its original
 HELLO/class-2 lifetime and byte reserve, already bounded by parent, State, duty
 and Work Safety. Pairing never extends a lease or truncates a permitted data
 workload to the capsule's ten-second setup deadline.
+
+Under [ADR-0121](../adr/0121-acknowledge-bounded-join-replenishment.md), only after
+both opposite sides are paired, RESULT-confirmed and live, this independently
+admitted dedicated channel permits later class-2 ADMIT on lane zero. Verify its
+original receiver, TLS exporter, HELLO, peer, purpose, context and absolute deadline;
+refill creates no child or second JOIN, changes no counterpart allowance and never
+revives terminal work. Charge the complete ADMIT to the old reserve. Actual installed
+Hosting work/termination reservation precedes fresh-token durable receiving spend.
+Only after spend and a live-side recheck, restore remaining reserve to exactly
+32 MiB and emit one matching lane-zero ACCEPT with status zero and credit 64 KiB.
+Charge the complete 21-byte ACCEPT from that new reserve before attempted output;
+concurrent traffic remains charged. It acknowledges refill without resetting lane-1
+windows. Matching uses the ordered channel and single pending refill, with no new
+wire nonce. Refused reservation/spend or terminal work supplies no successful ACK
+and no restored allowance. Failed output terminates and joins the pair, retaining
+actual failure. One per-side output owner serializes whole RESULT, ACCEPT and
+opposite-side BYTES/CREDIT/EOF/CLOSE frames without holding the shared pair lock
+across I/O. Refill reservations return only through the existing joined release.
 
 Accepted JOIN receive bytes remain readable before a subsequent transport EOF,
 within their original bounded reservation and lifetime. Without a verified inner

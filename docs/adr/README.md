@@ -10,6 +10,8 @@ current backlog. [ADR-0008](0008-stage-research-before-public-network.md) and
 
 Current decisions:
 
+- [0121 — Acknowledge bounded replenishment of a paired dedicated JOIN channel](0121-acknowledge-bounded-join-replenishment.md)
+
 - [0001 — Public carrier with application-controlled services](0001-public-carrier-private-services.md)
 - [0002 — Restart main as a greenfield research workspace](0002-greenfield-main.md)
 - [0003 — Delegate bounded credentials to online Service Instances](0003-bounded-service-instance-credentials.md)

@@ -4,7 +4,9 @@ package route
 
 import (
 	"bytes"
+	"context"
 	"errors"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -73,7 +75,7 @@ func TestClosedJoinReplenishmentKeepsOriginalAuthorityAndIndependentReserve(t *t
 	if side.used != before+ardp.HeaderSize+355 {
 		t.Fatal("ADMIT was not charged to the old reserve")
 	}
-	if err := side.replenish(frame); err != nil {
+	if err := side.replenish(t.Context(), frame); err != nil {
 		t.Fatal(err)
 	}
 	if side.byteLimit-side.used != 32<<20 || side.deadline != originalDeadline || side.wallDeadline != originalWall ||
@@ -81,7 +83,7 @@ func TestClosedJoinReplenishmentKeepsOriginalAuthorityAndIndependentReserve(t *t
 		t.Fatal("refill changed lifetime, counterpart, or released live hosting")
 	}
 	// A second successful refill resets the remainder; it does not add to it.
-	if err := side.replenish(frame); err != nil {
+	if err := side.replenish(t.Context(), frame); err != nil {
 		t.Fatal(err)
 	}
 	if side.byteLimit-side.used != 32<<20 || verifications != 2 {
@@ -122,7 +124,7 @@ func TestClosedJoinReplenishmentRejectsBeforeVerification(t *testing.T) {
 				return nil, nil
 			}
 			before := side.byteLimit
-			if side.replenish(frame) == nil {
+			if side.replenish(t.Context(), frame) == nil {
 				t.Fatal("invalid refill accepted")
 			}
 			if side.byteLimit != before {
@@ -158,7 +160,7 @@ func TestClosedJoinReplenishmentDoesNotBlockPairCancellation(t *testing.T) {
 	}
 	before := side.byteLimit
 	outcome := make(chan error, 1)
-	go func() { outcome <- side.replenish(joinRefillFrame()) }()
+	go func() { outcome <- side.replenish(t.Context(), joinRefillFrame()) }()
 	select {
 	case <-entered:
 	case <-time.After(time.Second):
@@ -188,18 +190,52 @@ func TestClosedJoinReplenishmentRetainsSpendFailureAndCleanupFailure(t *testing.
 	failedSpend := errors.New("durable spend refused")
 	f.pairs.replenish = func(ClosedAdmissionVerification) (func() error, error) { return nil, failedSpend }
 	before := side.byteLimit
-	if err := side.replenish(joinRefillFrame()); !errors.Is(err, failedSpend) || side.byteLimit != before {
+	if err := side.replenish(t.Context(), joinRefillFrame()); !errors.Is(err, failedSpend) || side.byteLimit != before {
 		t.Fatal("failed spend changed allowance or lost cause")
 	}
 	failedCleanup := errors.New("hosting release failed")
 	f.pairs.replenish = func(ClosedAdmissionVerification) (func() error, error) {
 		return func() error { return failedCleanup }, nil
 	}
-	if err := side.replenish(joinRefillFrame()); err != nil {
+	if err := side.replenish(t.Context(), joinRefillFrame()); err != nil {
 		t.Fatal(err)
 	}
 	side.Close()
 	if !errors.Is(side.cleanupErr, failedCleanup) {
 		t.Fatal("cleanup failure erased")
+	}
+}
+
+// The side stays live here: operation cancellation itself must bar commit,
+// independently of when the Serve cancellation worker marks the pair stopped.
+func TestClosedJoinRefillOperationCancellationBarsCommit(t *testing.T) {
+	f, side, _ := replenishableJoinFixture(t)
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	entered, resume := make(chan struct{}), make(chan struct{})
+	var once sync.Once
+	unblock := func() { once.Do(func() { close(resume) }) }
+	defer unblock()
+	var released atomic.Int32
+	f.pairs.replenish = func(ClosedAdmissionVerification) (func() error, error) {
+		close(entered)
+		<-resume
+		return func() error { released.Add(1); return nil }, nil
+	}
+	before := side.byteLimit
+	outcome := make(chan error, 1)
+	go func() { outcome <- side.replenish(ctx, joinRefillFrame()) }()
+	select {
+	case <-entered:
+	case <-time.After(time.Second):
+		t.Fatal("refill policy not reached")
+	}
+	cancel()
+	unblock()
+	if err := <-outcome; !errors.Is(err, context.Canceled) {
+		t.Fatalf("operation cancellation lost: %v", err)
+	}
+	if side.byteLimit != before || released.Load() != 1 {
+		t.Fatal("cancelled operation committed refill or retained host reservation")
 	}
 }

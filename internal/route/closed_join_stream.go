@@ -138,7 +138,17 @@ func (side *ClosedJoinSide) Serve(ctx context.Context, connection net.Conn) (out
 			return err
 		}
 		if frame.Kind == ardp.KindAdmit {
-			if err := side.replenish(frame); err != nil {
+			if err := side.replenish(ctx, frame); err != nil {
+				return err
+			}
+			if err := ctx.Err(); err != nil {
+				return err
+			}
+			ack, err := ardp.AcceptFrame(0, uint32(closedLaneCredit))
+			if err != nil {
+				return err
+			}
+			if err := side.writeFrame(connection, ack); err != nil {
 				return err
 			}
 			continue
@@ -216,6 +226,10 @@ func (side *ClosedJoinSide) readFrame(reader io.Reader) (ardp.Frame, error) {
 }
 
 func (side *ClosedJoinSide) writeFrame(writer io.Writer, frame ardp.Frame) error {
+	// Local refill ACK and the opposite side's forwarded traffic share one
+	// output owner. Liveness/accounting follow selection, before any bytes emit.
+	side.writeMu.Lock()
+	defer side.writeMu.Unlock()
 	if err := side.account(uint64(ardp.HeaderSize + len(frame.Body))); err != nil {
 		return err
 	}
