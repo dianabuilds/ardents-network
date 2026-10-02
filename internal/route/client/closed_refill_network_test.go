@@ -345,6 +345,10 @@ func TestAdmittedSourceQueuedRefillCancellation(t *testing.T) {
 				// children. Each child burns a fresh class-1 token; no counter is seeded.
 				exchanges := 0
 				for !enough() && exchanges < 250 {
+					// Real duty admission limits verification to 128 per second. Pace
+					// independently admitted children so a fast runner does not exhaust
+					// that unchanged governor before reaching the traffic threshold.
+					time.Sleep(30 * time.Millisecond)
 					if _, err := prefix.ExchangeIssuer(t.Context(), present, request); err != nil {
 						t.Fatalf("accounted issuance %d: %v", exchanges, err)
 					}
