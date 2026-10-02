@@ -211,20 +211,51 @@ func TestClosedJoinReplenishmentRetainsSpendFailureAndCleanupFailure(t *testing.
 func TestClosedJoinRefillOperationCancellationBarsCommit(t *testing.T) {
 	f, side, _ := replenishableJoinFixture(t)
 	ctx, cancel := context.WithCancel(t.Context())
-	defer cancel()
 	entered, resume := make(chan struct{}), make(chan struct{})
 	var once sync.Once
 	unblock := func() { once.Do(func() { close(resume) }) }
-	defer unblock()
-	var released atomic.Int32
+	var reserved, released atomic.Int32
 	f.pairs.replenish = func(ClosedAdmissionVerification) (func() error, error) {
+		reserved.Add(1)
 		close(entered)
 		<-resume
 		return func() error { released.Add(1); return nil }, nil
 	}
 	before := side.byteLimit
-	outcome := make(chan error, 1)
-	go func() { outcome <- side.replenish(ctx, joinRefillFrame()) }()
+	finished := make(chan struct{})
+	var outcome error
+	collect := func() bool {
+		select {
+		case <-finished:
+			return true
+		case <-time.After(time.Second):
+			t.Error("cancelled refill worker did not join")
+			return false
+		}
+	}
+	// Register before launch: even readiness failure must release the policy
+	// gate, cancel and join the worker before the fixture closes its owners.
+	t.Cleanup(func() {
+		cancel()
+		unblock()
+		if !collect() {
+			return
+		}
+		if !errors.Is(outcome, context.Canceled) {
+			t.Errorf("refill terminal cancellation lost: %v", outcome)
+		}
+		if side.byteLimit != before || released.Load() != reserved.Load() {
+			t.Error("cancelled refill cleanup changed allowance or retained host reservation")
+		}
+		side.Close()
+		if side.cleanupErr != nil {
+			t.Errorf("refill side cleanup: %v", side.cleanupErr)
+		}
+	})
+	go func() {
+		outcome = side.replenish(ctx, joinRefillFrame())
+		close(finished)
+	}()
 	select {
 	case <-entered:
 	case <-time.After(time.Second):
@@ -232,8 +263,11 @@ func TestClosedJoinRefillOperationCancellationBarsCommit(t *testing.T) {
 	}
 	cancel()
 	unblock()
-	if err := <-outcome; !errors.Is(err, context.Canceled) {
-		t.Fatalf("operation cancellation lost: %v", err)
+	if !collect() {
+		t.FailNow()
+	}
+	if !errors.Is(outcome, context.Canceled) {
+		t.Fatalf("operation cancellation lost: %v", outcome)
 	}
 	if side.byteLimit != before || released.Load() != 1 {
 		t.Fatal("cancelled operation committed refill or retained host reservation")
