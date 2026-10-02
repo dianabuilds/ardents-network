@@ -139,3 +139,23 @@ func (o *observation) close() bool {
 	}
 	return !o.failure.Load()
 }
+
+func (o *observation) beginHosting(operation string) func(string, string) {
+	if o == nil {
+		return func(string, string) {}
+	}
+	ctx, span := o.traces.Tracer("ardents.hosting").Start(context.Background(), operation)
+	start := time.Now()
+	return func(phase, outcome string) {
+		attrs := []attribute.KeyValue{attribute.String("operation", operation), attribute.String("phase", phase), attribute.String("outcome", outcome)}
+		span.SetAttributes(attrs...)
+		span.End()
+		meter := o.meters.Meter("ardents.hosting")
+		if count, err := meter.Int64Counter("ardents.hosting.operations"); err == nil {
+			count.Add(ctx, 1, metric.WithAttributes(attrs...))
+		}
+		if duration, err := meter.Float64Histogram("ardents.hosting.duration", metric.WithUnit("s")); err == nil {
+			duration.Record(ctx, time.Since(start).Seconds(), metric.WithAttributes(attrs...))
+		}
+	}
+}

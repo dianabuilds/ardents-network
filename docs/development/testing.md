@@ -316,6 +316,14 @@ authorization to begin its later security, concurrency, or wire tracks.
 
 ## Current profiles
 
+`hosting-budget-linux` runs `make hosting-check`: isolated durable Hosting and
+compiled command lifecycle with race checks on Linux amd64. The pinned Go 1.27.1
+bookworm image already selected for diagnostics can provide this component
+environment with read-only sources and caches outside Git. It requires actual
+proc/sys counters, loopback, flock, rename, fsync and a race-capable C compiler;
+non-Linux or missing prerequisites fail. This is not provider invoice,
+installed Endpoint, network-role or C0 qualification evidence.
+
 [`tests/profiles/profiles.json`](../../tests/profiles/profiles.json) is the
 checked registry. Every active profile has one real Make entrypoint and exact
 prerequisites. Missing Docker, binaries, privilege, platform, host input, or

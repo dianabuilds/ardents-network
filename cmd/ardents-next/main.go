@@ -19,6 +19,9 @@ func main() {
 }
 
 func run(ctx context.Context, args []string, out, diagnostic io.Writer) int {
+	if len(args) > 0 && args[0] == "hosting" {
+		return runHosting(ctx, args[1:], out, diagnostic)
+	}
 	if (len(args) != 3 && len(args) != 4) || args[0] != "inspect-permission" {
 		fmt.Fprintln(diagnostic, "usage: ardents-next inspect-permission <permission-file> <facts-file> [collector]")
 		return 2

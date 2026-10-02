@@ -2,6 +2,15 @@
   "schema": "ardents-test-profiles-v1",
   "profiles": [
     {
+      "id": "hosting-budget-linux",
+      "state": "active",
+      "make_target": "hosting-check",
+      "surface": "isolated durable Hosting accounting, native counters and compiled finite CLI lifecycle/race",
+      "prerequisites": ["Linux amd64 with readable proc/sys network counters and loopback", "Go 1.27.1 and C compiler for race", "writable temporary filesystem with flock, atomic rename and directory fsync"],
+      "invalid_environment": "the selected Linux Hosting profile is unavailable; non-Linux refuses without storage effects",
+      "timeout": "3m"
+    },
+    {
       "id": "text-worker-network",
       "state": "active",
       "make_target": "text-worker-network-check",

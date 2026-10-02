@@ -43,6 +43,11 @@ func successorImportAllowed(source, dependency string) bool {
 		return !zoneDependency
 	}
 	if zoneDependency {
+		// These two independent domain owners have exact standard-library-only
+		// import contracts. Directory grouping grants no cross-domain dependency.
+		if strings.HasPrefix(source, "internal/successor/admission/") || strings.HasPrefix(source, "internal/successor/hosting/") {
+			return false
+		}
 		return true
 	}
 	// OTel composition is confined to the command. Admission remains standard
@@ -84,6 +89,9 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 	}{
 		{"standard", "internal/successor/admission/check.go", "context", true},
 		{"zone", "cmd/ardents-next/main.go", modulePath + "/internal/successor/admission", true},
+		{"hosting caller", "cmd/ardents-next/hosting.go", modulePath + "/internal/successor/hosting", true},
+		{"independent domains", "internal/successor/hosting/budget.go", modulePath + "/internal/successor/admission", false},
+		{"admission cannot borrow budget", "internal/successor/admission/check.go", modulePath + "/internal/successor/hosting", false},
 		{"legacy", "internal/successor/admission/check.go", modulePath + "/internal/admission", false},
 		{"legacy test fixture", "internal/successor/admission/check_test.go", modulePath + "/tests/fixtures", false},
 		{"third party bridge", "internal/successor/admission/check.go", "example.org/bridge", false},

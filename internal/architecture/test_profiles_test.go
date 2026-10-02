@@ -152,6 +152,7 @@ func TestTestProfileRegistryIsFactualAndWired(t *testing.T) {
 	}
 	makefile := string(readProjectFile(t, root, "Makefile"))
 	required := map[string]bool{
+		"hosting-budget-linux":              false,
 		"developer":                         false,
 		"deterministic":                     false,
 		"endpoint-portable-ubuntu":          false,

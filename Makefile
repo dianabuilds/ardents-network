@@ -20,6 +20,10 @@ endif
 
 .PHONY: architecture artifact-representation-check build check deadcode e2e fixture-network-test format format-check fuzz headless-build headless-check headless-evidence heapdump-capture heapdump-role-map installed-tag-compile-check issue60-checks mod-check package-e2e package-ubuntu-deb qualification qualification-endpoint-portable-ubuntu qualification-endpoint-replacement-ubuntu qualification-service-credential-response-linux quick-check staticcheck test test-race text-role-durable-state-capture tools-check tools-install unit vet vuln
 
+.PHONY: hosting-check
+hosting-check:
+	$(if $(filter linux,$(shell go env GOOS)),go test -race ./internal/successor/hosting ./cmd/ardents-next -count=1 -timeout=3m,$(error hosting-check requires Linux))
+
 define newline
 
 
