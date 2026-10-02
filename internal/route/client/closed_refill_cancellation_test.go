@@ -189,7 +189,8 @@ func refillCancellationFrame() ardp.Frame {
 func TestClosedRoleActiveRefillCancellationJoinsFrame(t *testing.T) {
 	local, peer := net.Pipe()
 	end := time.Now().Add(time.Minute)
-	stream := newClosedRoleChildStream(local, end, local.Close, nil)
+	retirementFailure := errors.New("fixture physical retirement failed")
+	stream := newClosedRoleChildStream(local, end, func() error { return errors.Join(local.Close(), retirementFailure) }, nil)
 	t.Cleanup(func() { _ = stream.Close(); _ = peer.Close() })
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
@@ -203,7 +204,7 @@ func TestClosedRoleActiveRefillCancellationJoinsFrame(t *testing.T) {
 	cancel()
 	select {
 	case err := <-refill:
-		if !errors.Is(err, context.Canceled) {
+		if !errors.Is(err, context.Canceled) || !errors.Is(err, retirementFailure) {
 			t.Fatalf("active cancellation: %v", err)
 		}
 	case <-time.After(time.Second):
@@ -228,7 +229,12 @@ func TestClosedRoleActiveRefillCancellationJoinsFrame(t *testing.T) {
 }
 
 func TestClosedSourceActiveRefillCancellationJoinsFrame(t *testing.T) {
-	owner, peer, end := sourceChannelsFixture(t)
+	local, peer := net.Pipe()
+	end := time.Now().UTC().Add(time.Minute).Truncate(time.Second)
+	retirementFailure := errors.New("fixture physical retirement failed")
+	owner := newClosedSourceChannelOwner(local, end, func() error { return errors.Join(local.Close(), retirementFailure) })
+	owner.start()
+	t.Cleanup(func() { _ = owner.Close(); _ = peer.Close() })
 	// Traffic is already covered at the public threshold boundary above; this
 	// focused framing test isolates cancellation after a real ADMIT header.
 	owner.mu.Lock()
@@ -246,7 +252,7 @@ func TestClosedSourceActiveRefillCancellationJoinsFrame(t *testing.T) {
 	cancel()
 	select {
 	case err := <-refill:
-		if !errors.Is(err, context.Canceled) {
+		if !errors.Is(err, context.Canceled) || !errors.Is(err, retirementFailure) {
 			t.Fatalf("active outer cancellation: %v", err)
 		}
 	case <-time.After(time.Second):

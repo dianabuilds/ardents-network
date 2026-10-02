@@ -343,6 +343,7 @@ request may emit later, restore the byte reserve, refund a token or extend the
 original deadline. Only the matching successful ACCEPT advances the client's
 refill accounting base. This forwarding cancellation boundary does not qualify
 a whole installed workload or change the separately owned JOIN grammar.
+
 A forwarding-channel admission reserves its own aggregate byte/time budget
 and permits at most 256 simultaneous work lanes and two reserved control lanes
 within that reserve. Each
