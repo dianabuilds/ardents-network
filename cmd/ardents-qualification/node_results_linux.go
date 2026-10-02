@@ -18,6 +18,7 @@ import (
 
 type nodeOwnerSampleInput struct {
 	At                            time.Time
+	MonotonicNS                   uint64
 	MemoryCurrent, CPUUsageNSec   uint64
 	IPIngressBytes, IPEgressBytes uint64
 }
@@ -206,13 +207,13 @@ func evaluateNodeOwner(input nodeResultInput) (nodeOwnerEvidence, bool) {
 		sort.Slice(rss, func(i, j int) bool { return rss[i] < rss[j] })
 		owner.P95RSSBytes = rss[(95*len(rss)+99)/100-1]
 	}
-	if len(input.Samples) == 0 {
+	if len(input.Samples) == 0 || len(input.Samples) > 1325 {
 		return owner, false
 	}
 	memory := make([]uint64, 0, len(input.Samples))
 	for index, sample := range input.Samples {
 		memory = append(memory, sample.MemoryCurrent)
-		if sample.At.IsZero() || sample.MemoryCurrent == 0 || index > 0 && (sample.At.Sub(input.Samples[index-1].At) <= 0 || sample.At.Sub(input.Samples[index-1].At) > 1500*time.Millisecond || sample.CPUUsageNSec < input.Samples[index-1].CPUUsageNSec || sample.IPIngressBytes < input.Samples[index-1].IPIngressBytes || sample.IPEgressBytes < input.Samples[index-1].IPEgressBytes) {
+		if sample.At.IsZero() || sample.MonotonicNS == 0 || sample.MemoryCurrent == 0 || index > 0 && (!ownerSampleCadence(input.Samples[index-1], sample) || sample.CPUUsageNSec < input.Samples[index-1].CPUUsageNSec || sample.IPIngressBytes < input.Samples[index-1].IPIngressBytes || sample.IPEgressBytes < input.Samples[index-1].IPEgressBytes) {
 			complete = false
 		}
 	}
@@ -228,7 +229,7 @@ func evaluateNodeOwner(input nodeResultInput) (nodeOwnerEvidence, bool) {
 	if owner.TxBytes > math.MaxUint64-owner.RxBytes || owner.TxBytes+owner.RxBytes == 0 {
 		complete = false
 	}
-	seconds := last.At.Sub(first.At).Seconds()
+	seconds := ownerSampleSeconds(first, last)
 	if seconds < 597 || last.CPUUsageNSec < first.CPUUsageNSec {
 		complete = false
 	} else {
@@ -268,14 +269,14 @@ func evaluateSourceOwner(input nodeResultInput) (sourceOwnerEvidence, bool) {
 		sort.Slice(rss, func(i, j int) bool { return rss[i] < rss[j] })
 		owner.P95RSSBytes = rss[(95*len(rss)+99)/100-1]
 	}
-	if len(input.Samples) == 0 {
+	if len(input.Samples) == 0 || len(input.Samples) > 1325 {
 		return owner, false
 	}
 	memory := make([]uint64, 0, len(input.Samples))
 	for index, sample := range input.Samples {
 		memory = append(memory, sample.MemoryCurrent)
-		if sample.At.IsZero() || sample.MemoryCurrent == 0 || index > 0 &&
-			(sample.At.Sub(input.Samples[index-1].At) <= 0 || sample.At.Sub(input.Samples[index-1].At) > 1500*time.Millisecond ||
+		if sample.At.IsZero() || sample.MonotonicNS == 0 || sample.MemoryCurrent == 0 || index > 0 &&
+			(!ownerSampleCadence(input.Samples[index-1], sample) ||
 				sample.CPUUsageNSec < input.Samples[index-1].CPUUsageNSec || sample.IPIngressBytes < input.Samples[index-1].IPIngressBytes ||
 				sample.IPEgressBytes < input.Samples[index-1].IPEgressBytes) {
 			complete = false
@@ -284,7 +285,7 @@ func evaluateSourceOwner(input nodeResultInput) (sourceOwnerEvidence, bool) {
 	sort.Slice(memory, func(i, j int) bool { return memory[i] < memory[j] })
 	owner.P95MemoryBytes = memory[(95*len(memory)+99)/100-1]
 	first, last := input.Samples[0], input.Samples[len(input.Samples)-1]
-	seconds := last.At.Sub(first.At).Seconds()
+	seconds := ownerSampleSeconds(first, last)
 	if seconds < 597 || last.CPUUsageNSec < first.CPUUsageNSec ||
 		last.IPEgressBytes < first.IPEgressBytes || last.IPIngressBytes < first.IPIngressBytes {
 		return owner, false
@@ -353,7 +354,7 @@ func evaluateNodeHostResources(inputs, sources []nodeResultInput, owners map[str
 
 func nodeResourceWindow(input nodeResultInput, started, stopped time.Time) (uint64, float64, bool) {
 	samples := input.Samples
-	if len(samples) == 0 || started.IsZero() || !started.Before(stopped) {
+	if len(samples) == 0 || len(samples) > 1325 || started.IsZero() || !started.Before(stopped) {
 		return 0, 0, false
 	}
 	first, last := -1, -1
@@ -371,12 +372,12 @@ func nodeResourceWindow(input nodeResultInput, started, stopped time.Time) (uint
 	window := samples[first : last+1]
 	complete := true
 	for index, sample := range window {
-		if sample.At.IsZero() || sample.MemoryCurrent == 0 || index > 0 && (sample.At.Sub(window[index-1].At) <= 0 || sample.At.Sub(window[index-1].At) > 1500*time.Millisecond || sample.CPUUsageNSec < window[index-1].CPUUsageNSec) {
+		if sample.At.IsZero() || sample.MonotonicNS == 0 || sample.MemoryCurrent == 0 || index > 0 && (!ownerSampleCadence(window[index-1], sample) || sample.CPUUsageNSec < window[index-1].CPUUsageNSec) {
 			complete = false
 		}
 	}
 	p95, rssComplete := nodeRSSWindow(input.Journal, started, stopped)
-	seconds := window[len(window)-1].At.Sub(window[0].At).Seconds()
+	seconds := ownerSampleSeconds(window[0], window[len(window)-1])
 	if seconds < 597 || window[len(window)-1].CPUUsageNSec < window[0].CPUUsageNSec {
 		return p95, 0, false
 	}
@@ -419,4 +420,18 @@ func nodeRSSWindow(journal []string, started, stopped time.Time) (uint64, bool) 
 	}
 	sort.Slice(values, func(i, j int) bool { return values[i] < values[j] })
 	return values[(95*len(values)+99)/100-1], complete
+}
+
+// External samples use one host monotonic clock; At only selects/correlates
+// the window. Missing, reversed, or gapped positions cannot supply CPU evidence.
+func ownerSampleCadence(previous, current nodeOwnerSampleInput) bool {
+	return previous.MonotonicNS > 0 && current.MonotonicNS > previous.MonotonicNS &&
+		current.MonotonicNS-previous.MonotonicNS <= uint64(1500*time.Millisecond)
+}
+
+func ownerSampleSeconds(first, last nodeOwnerSampleInput) float64 {
+	if first.MonotonicNS == 0 || last.MonotonicNS <= first.MonotonicNS {
+		return 0
+	}
+	return float64(last.MonotonicNS-first.MonotonicNS) / float64(time.Second)
 }

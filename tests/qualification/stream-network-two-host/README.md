@@ -106,6 +106,17 @@ The pair verdict binds every Node's systemd counters and separately derives the 
 data-path Node totals from adjacent directional relay classes. It refuses an incomplete
 Node set.
 
+External Node, Source and whole-owner counter records retain raw
+one-second host `MonotonicNS` positions alongside UTC `At` and cumulative
+`CPUUsageNSec`. The result collector preserves these fields; UTC selects and
+correlates measurement windows, while CPU rates and sample-gap validation use
+only the same sampler's monotonic positions. Missing, repeated, regressing,
+gapped, truncated or over-bound monotonic evidence refuses the corresponding
+resource criterion. Existing CPU quotas, windows and role boundaries remain
+unchanged. The sampler accepts only its selected unit grammar; schema and
+consumer tests do not establish acceptance of an installed whole-owner unit.
+
+
 ```json
 {
   "Schema": "ardents-qualification-node-inventory-v2",
