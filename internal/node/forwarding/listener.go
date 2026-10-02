@@ -167,11 +167,11 @@ func (server *forwardServer) serveAccepted(ctx context.Context, accepted routeca
 	interrupted := make(chan struct{})
 	stop := context.AfterFunc(ctx, func() {
 		defer close(interrupted)
-		_ = accepted.Connection.SetDeadline(time.Now())
+		_ = accepted.Connection.SetReadDeadline(time.Now())
 		server.closeAcceptedCarrier(accepted.Connection)
 	})
 	defer func() {
-		_ = accepted.Connection.SetDeadline(time.Now())
+		_ = accepted.Connection.SetReadDeadline(time.Now())
 		server.closeAcceptedCarrier(accepted.Connection)
 		if !stop() {
 			<-interrupted
@@ -307,7 +307,7 @@ func (server *forwardServer) serveDirect(ctx context.Context, connection net.Con
 	}()
 	defer func() {
 		close(stopReader)
-		_ = connection.SetDeadline(time.Now())
+		_ = connection.SetReadDeadline(time.Now())
 		_ = connection.Close()
 		<-readerDone
 		for _, link := range links {

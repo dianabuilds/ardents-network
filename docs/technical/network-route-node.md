@@ -57,6 +57,10 @@ peer reset. Lane owners still join readers, writers and children before
 releasing their roots. This terminal abort is distinct from directional ARDP
 EOF and authenticated Service completion; direct role and inner TLS closure
 keep their existing semantics.
+Terminal forwarding cleanup expires the read deadline before closing an
+accepted Carrier or direct-role connection. The close operation owns write
+interruption; concurrent cancellation must not expire the write deadline while
+TLS sends its closure alert. Actual close failures remain retained for drain.
 On State loss or an accepted successor, the Node lifecycle stops the old
 forwarding duty, closes its listener and outgoing pool, and waits for every
 accepted handler before the outgoing-session owner performs the final wait for
