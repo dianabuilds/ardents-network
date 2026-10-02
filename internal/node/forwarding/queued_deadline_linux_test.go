@@ -96,18 +96,45 @@ func testQueuedDeadlineActualCaller(t *testing.T, profile carrier.CarrierProfile
 	peerResult := make(chan error, 1)
 	peerStop := make(chan struct{})
 	var peer net.Conn
+	var closePeer func() error
 	var peerMu sync.Mutex
+	peerCloseResult := make(chan error, 1)
+	acceptCtx, cancelAccept := context.WithCancel(t.Context())
+	defer func() {
+		cancelAccept()
+		close(peerStop)
+		if err := listener.Close(); err != nil && !errors.Is(err, net.ErrClosed) {
+			t.Errorf("listener cleanup: %v", err)
+		}
+		peerMu.Lock()
+		closeConnection := closePeer
+		peerMu.Unlock()
+		if closeConnection != nil {
+			_ = closeConnection() // The worker retains this same close result below.
+		}
+		select {
+		case <-peerResult:
+			if err := <-peerCloseResult; err != nil && !errors.Is(err, net.ErrClosed) {
+				t.Errorf("peer cleanup: %v", err)
+			}
+		case <-time.After(10 * time.Second):
+			t.Error("peer cleanup did not join")
+		}
+	}()
 	go func() {
-		accepted, err := listener.Accept(t.Context(), 10*time.Second)
+		accepted, err := listener.Accept(acceptCtx, 10*time.Second)
 		if err != nil {
+			peerCloseResult <- nil
 			peerResult <- err
 			return
 		}
 		connection := accepted.Connection
+		closeConnection := sync.OnceValue(connection.Close)
+		defer func() { peerCloseResult <- closeConnection() }()
 		peerMu.Lock()
 		peer = connection
+		closePeer = closeConnection
 		peerMu.Unlock()
-		defer connection.Close()
 		if accepted.Kind != carrier.ClosedSharedNode || accepted.NodeKey != clientKey {
 			peerResult <- errors.New("Node authentication lost")
 			return
@@ -141,9 +168,16 @@ func testQueuedDeadlineActualCaller(t *testing.T, profile carrier.CarrierProfile
 	}()
 	physical, err := carrier.OpenClosedNodeCarrier(t.Context(), carrier.ClosedNodeCarrierRequest{CarrierProfile: profile, Endpoint: endpoint, Certificate: clientCertificate, ExpectedPeerKey: peerKey, Deadline: end})
 	if err != nil {
-		_ = listener.Close()
 		t.Fatal(err)
 	}
+	physicalTransferred := false
+	defer func() {
+		if !physicalTransferred {
+			if err := physical.Close(); err != nil && !errors.Is(err, net.ErrClosed) {
+				t.Errorf("untransferred physical Carrier cleanup: %v", err)
+			}
+		}
+	}()
 	observed := &queuedWriteCarrier{Carrier: physical, entered: make(chan struct{}), release: make(chan struct{}), closed: make(chan struct{})}
 	var closeFailure error
 	if outcome == "partial-failure" {
@@ -160,17 +194,13 @@ func testQueuedDeadlineActualCaller(t *testing.T, profile carrier.CarrierProfile
 	var release sync.Once
 	defer func() {
 		release.Do(func() { close(observed.release) })
-		close(peerStop)
 		poolErr := pool.Close()
 		if closeFailure != nil && !errors.Is(poolErr, closeFailure) {
 			t.Errorf("pool lost original close failure: %v", poolErr)
 		}
-		peerMu.Lock()
-		if peer != nil {
-			_ = peer.Close()
+		if closeFailure == nil && poolErr != nil {
+			t.Errorf("pool cleanup: %v", poolErr)
 		}
-		peerMu.Unlock()
-		_ = listener.Close()
 		for _, link := range links {
 			if err := link.close(); err != nil {
 				t.Errorf("link cleanup: %v", err)
@@ -184,7 +214,6 @@ func testQueuedDeadlineActualCaller(t *testing.T, profile carrier.CarrierProfile
 		if err := sessions.joinedResult(); (closeFailure == nil && err != nil) || (closeFailure != nil && !errors.Is(err, closeFailure)) {
 			t.Errorf("session cleanup: %v", err)
 		}
-		<-peerResult
 	}()
 	key := carrier.ClosedCarrierKey{NetworkID: [32]byte{1}, ProfileDigest: [32]byte{2}, LocalNodeID: [32]byte{3}, PeerNodeID: [32]byte{4}, PeerKey: peerKey, CarrierProfile: profile}
 	hello := func() (ardp.Hello, error) {
@@ -195,6 +224,7 @@ func testQueuedDeadlineActualCaller(t *testing.T, profile carrier.CarrierProfile
 		if err != nil {
 			t.Fatal(err)
 		}
+		physicalTransferred = true
 		session, err := sessions.acquire(t.Context(), key, lease, end, hello)
 		if err != nil {
 			_ = lease.Release()
