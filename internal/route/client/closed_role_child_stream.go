@@ -251,7 +251,7 @@ func (stream *closedRoleChildStream) replenish(ctx context.Context, frame ardp.F
 	if frame.Kind != ardp.KindAdmit || frame.Lane != 0 {
 		return errors.New("closed bootstrap refill frame is unavailable")
 	}
-	if err := stream.acquireWriter(true); err != nil {
+	if err := stream.acquireWriterContext(ctx, true); err != nil {
 		return err
 	}
 	defer func() { <-stream.writer }()
@@ -264,13 +264,17 @@ func (stream *closedRoleChildStream) replenish(ctx context.Context, frame ardp.F
 	}
 	stream.refill = result
 	stream.mu.Unlock()
-	if err := stream.writeFrame(frame, true); err != nil {
+	attempted, err := stream.writeFrameContext(ctx, frame, true)
+	if err != nil {
+		if attempted {
+			stream.finish(err)
+			err = errors.Join(err, stream.Close())
+		}
 		stream.mu.Lock()
 		if stream.refill == result {
 			stream.refill = nil
 		}
 		stream.mu.Unlock()
-		stream.finish(err)
 		return err
 	}
 	select {
@@ -278,7 +282,7 @@ func (stream *closedRoleChildStream) replenish(ctx context.Context, frame ardp.F
 		return err
 	case <-ctx.Done():
 		stream.finish(ctx.Err())
-		return ctx.Err()
+		return errors.Join(ctx.Err(), stream.Close())
 	case <-stream.done:
 		stream.mu.Lock()
 		err := stream.terminal
@@ -333,12 +337,23 @@ func (stream *closedRoleChildStream) RemoteAddr() net.Addr { return stream.paren
 // the caller's exact deadline. Concurrent deadline updates still interrupt
 // an in-flight frame; no failed physical write is normalized into success.
 func (stream *closedRoleChildStream) writeFrame(frame ardp.Frame, credit bool) error {
+	_, err := stream.writeFrameContext(context.Background(), frame, credit)
+	return err
+}
+
+func (stream *closedRoleChildStream) writeFrameContext(ctx context.Context, frame ardp.Frame, credit bool) (bool, error) {
 	stream.mu.Lock()
 	deadline := stream.writeDeadline
 	if credit {
 		deadline = stream.deadline
 	}
 	err := stream.terminal
+	if err == nil {
+		err = ctx.Err()
+	}
+	if bound, ok := ctx.Deadline(); ok && bound.Before(deadline) {
+		deadline = bound
+	}
 	terminal := stream.terminalWriters != 0
 	attempted := err == nil
 	if attempted {
@@ -350,6 +365,19 @@ func (stream *closedRoleChildStream) writeFrame(frame ardp.Frame, credit bool) e
 		err = stream.parent.SetWriteDeadline(deadline)
 	}
 	stream.mu.Unlock()
+	var interrupted chan struct{}
+	var stop func() bool
+	if ctx.Done() != nil {
+		interrupted = make(chan struct{})
+		stop = context.AfterFunc(ctx, func() {
+			defer close(interrupted)
+			stream.mu.Lock()
+			defer stream.mu.Unlock()
+			if stream.physicalWriting {
+				_ = stream.parent.SetWriteDeadline(time.Now())
+			}
+		})
+	}
 	finishTerminal := func() {}
 	if err == nil && terminal {
 		finishTerminal = beginClosedTerminalWrite(stream.parent)
@@ -358,6 +386,10 @@ func (stream *closedRoleChildStream) writeFrame(frame ardp.Frame, credit bool) e
 		err = ardp.WriteFrame(stream.parent, frame)
 	}
 	finishTerminal()
+	if stop != nil && !stop() {
+		<-interrupted
+	}
+	err = errors.Join(err, ctx.Err())
 	stream.mu.Lock()
 	stream.physicalWriting = false
 	if attempted && err != nil {
@@ -365,7 +397,7 @@ func (stream *closedRoleChildStream) writeFrame(frame ardp.Frame, credit bool) e
 	}
 	stream.signalLocked()
 	stream.mu.Unlock()
-	return err
+	return attempted, err
 }
 
 func (stream *closedRoleChildStream) signalLocked() {
@@ -378,6 +410,10 @@ func (stream *closedRoleChildStream) signalLocked() {
 // write deadline too. A queued timeout emits no bytes and leaves the active
 // control frame with its own reservation and deadline.
 func (stream *closedRoleChildStream) acquireWriter(credit bool) error {
+	return stream.acquireWriterContext(context.Background(), credit)
+}
+
+func (stream *closedRoleChildStream) acquireWriterContext(ctx context.Context, credit bool) error {
 	for {
 		stream.mu.Lock()
 		deadline := stream.writeDeadline
@@ -385,6 +421,9 @@ func (stream *closedRoleChildStream) acquireWriter(credit bool) error {
 			deadline = stream.deadline
 		}
 		err := stream.terminal
+		if err == nil {
+			err = ctx.Err()
+		}
 		if err == nil && !time.Now().Before(deadline) {
 			err = os.ErrDeadlineExceeded
 		}
@@ -407,6 +446,9 @@ func (stream *closedRoleChildStream) acquireWriter(credit bool) error {
 				current = stream.deadline
 			}
 			err = stream.terminal
+			if err == nil {
+				err = ctx.Err()
+			}
 			if err == nil && !time.Now().Before(current) {
 				err = os.ErrDeadlineExceeded
 			}
@@ -419,6 +461,9 @@ func (stream *closedRoleChildStream) acquireWriter(credit bool) error {
 			if err != nil {
 				return err
 			}
+		case <-ctx.Done():
+			timer.Stop()
+			return ctx.Err()
 		case <-changed:
 			timer.Stop()
 		case <-timer.C:

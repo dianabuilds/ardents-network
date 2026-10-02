@@ -337,6 +337,18 @@ failed or cancelled opening cannot publish a usable prefix or close the sibling
 Introduction or borrowed Source. Publisher JOIN retains an acquisition for the
 exact admitted Responder handle and Source issuer until joined transport cleanup.
 
+A retained forwarding replenishment observes its operation context independently
+of the prefix's original authority lifetime, including waits for the prefix
+refill serializer, the inner frame writer and the outer output queue. A canceled
+queued ADMIT is removed before emission, releases only its queue reservation,
+and leaves a blocked sibling and usable parent intact. Once frame output starts,
+cancellation interrupts and joins that exact write and failed transport cleanup
+before returning; its pending receipt remains owned through that join. No canceled
+request may emit later, restore the byte reserve, refund a token or extend the
+original deadline. Only the matching successful ACCEPT advances the client's
+refill accounting base. This forwarding cancellation boundary does not qualify
+a whole installed workload or change the separately owned JOIN grammar.
+
 A forwarding-channel admission reserves its own aggregate byte/time budget
 and permits at most 256 simultaneous work lanes and two reserved control lanes
 within that reserve. Each

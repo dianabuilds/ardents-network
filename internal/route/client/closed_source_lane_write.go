@@ -3,6 +3,7 @@
 package client
 
 import (
+	"context"
 	"errors"
 	"net"
 	"os"
@@ -71,6 +72,10 @@ func (lane *closedSourceLane) send(frame ardp.Frame, cleanup time.Time) error {
 }
 
 func (owner *closedSourceChannels) awaitWrite(request *closedSourceWrite) error {
+	return owner.awaitWriteContext(context.Background(), request)
+}
+
+func (owner *closedSourceChannels) awaitWriteContext(ctx context.Context, request *closedSourceWrite) error {
 	for {
 		owner.mu.Lock()
 		select {
@@ -83,14 +88,20 @@ func (owner *closedSourceChannels) awaitWrite(request *closedSourceWrite) error 
 		if !request.end.IsZero() {
 			end = request.end
 		}
-		if !time.Now().Before(end) {
+		if cause := ctx.Err(); cause != nil || !time.Now().Before(end) {
+			if cause == nil {
+				cause = os.ErrDeadlineExceeded
+			}
 			if owner.active == request {
 				_ = owner.parent.SetWriteDeadline(time.Now())
 			} else {
-				owner.removeQueuedWriteLocked(request, os.ErrDeadlineExceeded)
+				owner.removeQueuedWriteLocked(request, cause)
 			}
 			owner.mu.Unlock()
 			<-request.done
+			if ctx.Err() != nil {
+				return errors.Join(ctx.Err(), request.err)
+			}
 			return request.err
 		}
 		changed := owner.changed
@@ -100,6 +111,7 @@ func (owner *closedSourceChannels) awaitWrite(request *closedSourceWrite) error 
 		case <-request.done:
 		case <-changed:
 		case <-timer.C:
+		case <-ctx.Done():
 		}
 		timer.Stop()
 	}

@@ -52,10 +52,11 @@ type closedSourceChannels struct {
 }
 
 type closedSourceWrite struct {
-	unwritten bool // A lower framing witness proves no physical frame began.
-	attempted bool // Guarded by owner.mu; physical frame emission began.
-	control   bool // Reservation class; encrypted terminal priority remains data.
-	terminal  bool // Scheduling class propagated through encrypted lower layers.
+	ctx       context.Context // Optional operation authority, checked before emission.
+	unwritten bool            // A lower framing witness proves no physical frame began.
+	attempted bool            // Guarded by owner.mu; physical frame emission began.
+	control   bool            // Reservation class; encrypted terminal priority remains data.
+	terminal  bool            // Scheduling class propagated through encrypted lower layers.
 	lane      *closedSourceLane
 	frame     ardp.Frame
 	end       time.Time // Nonzero only for terminal cleanup.
@@ -333,6 +334,9 @@ func (owner *closedSourceChannels) write() {
 			deadline = request.end
 		}
 		err := request.lane.writeErrorLocked(request.frame.Kind == ardp.KindClose)
+		if err == nil && request.ctx != nil {
+			err = request.ctx.Err()
+		}
 		if err == nil && !time.Now().Before(deadline) {
 			err = os.ErrDeadlineExceeded
 		}
