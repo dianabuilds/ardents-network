@@ -130,3 +130,60 @@ func diagnosticTestJSON(t *testing.T, value any) string {
 	}
 	return string(raw)
 }
+func TestDiagnosticTimelineRejectsWrongFieldTypes(t *testing.T) {
+	for _, event := range []struct {
+		schema string
+		kind   string
+		fields []string
+	}{
+		{"ardents-node-event-v1", "lifecycle", []string{"kind", "at", "assignment", "carrier_profile", "state", "reason"}},
+		{"ardents-source-event-v1", "source-ready", []string{"kind", "at", "reason"}},
+		{"ardents-headless-runtime-event-v1", "headless-runtime-failed", []string{"kind", "at", "surface", "failure"}},
+	} {
+		for _, field := range event.fields {
+			for _, value := range []any{42, false, map[string]any{"private": "private-token"}, []any{"private-token"}, nil} {
+				for _, journal := range []bool{false, true} {
+					t.Run(fmt.Sprintf("%s/%s/%T/journal=%t", event.schema, field, value, journal), func(t *testing.T) {
+						record := map[string]any{"schema": event.schema, "kind": event.kind, "at": "2026-10-02T10:00:00Z"}
+						record[field] = value
+						input := diagnosticTestJSON(t, record)
+						if journal {
+							input = diagnosticTestJSON(t, map[string]any{"MESSAGE": input, "__REALTIME_TIMESTAMP": "1790935200000000"})
+						}
+						var output bytes.Buffer
+						err := Project(t.Context(), io.NopCloser(strings.NewReader(input+"\n")), &output)
+						if err == nil || output.Len() != 0 || strings.Contains(err.Error(), "private-token") {
+							t.Fatalf("wrong field type: output=%q err=%v", output.String(), err)
+						}
+					})
+				}
+			}
+		}
+	}
+}
+
+func TestDiagnosticTimelinePreservesOptionalAbsenceAndFiltering(t *testing.T) {
+	for _, record := range []map[string]any{
+		{"schema": "ardents-node-event-v1", "kind": "lifecycle", "at": "2026-10-02T10:00:00Z"},
+		{"schema": "ardents-source-event-v1", "kind": "source-ready"},
+		{"schema": "ardents-headless-runtime-event-v1", "kind": "headless-runtime-ready", "at": "2026-10-02T10:00:00Z"},
+	} {
+		input := diagnosticTestJSON(t, map[string]any{"MESSAGE": diagnosticTestJSON(t, record), "__REALTIME_TIMESTAMP": "1790935200000000"})
+		var output bytes.Buffer
+		if err := Project(t.Context(), io.NopCloser(strings.NewReader(input+"\n")), &output); err != nil || output.Len() == 0 {
+			t.Fatalf("optional absence: output=%q err=%v", output.String(), err)
+		}
+		if record["schema"] == "ardents-source-event-v1" && !strings.Contains(output.String(), "\tjournal\tsource\t") {
+			t.Fatalf("old Source did not retain journal time: %q", output.String())
+		}
+	}
+	for _, input := range []string{
+		`{"schema":"unknown","kind":42,"state":false}`,
+		`{"MESSAGE":"unrelated journal text","_PID":false}`,
+	} {
+		var output bytes.Buffer
+		if err := Project(t.Context(), io.NopCloser(strings.NewReader(input+"\n")), &output); err != nil || output.Len() != 0 {
+			t.Fatalf("filtered input: output=%q err=%v", output.String(), err)
+		}
+	}
+}

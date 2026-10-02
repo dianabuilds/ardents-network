@@ -2,6 +2,8 @@
 // events, including Source terminal failure categories, into one operator-readable
 // timeline. It accepts app JSON lines or
 // journalctl JSON, drops unknown schemas, rejects corrupt input and unsafe
-// categories without echoing raw bytes, and never retains the raw input. The
+// categories without echoing raw bytes. Present projected string fields reject
+// null and other JSON types; absent optional fields remain unavailable.
+// It never retains the raw input. The
 // command adapter owns input selection and output.
 package timeline
