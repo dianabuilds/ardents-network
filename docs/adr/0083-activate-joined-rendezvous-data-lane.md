@@ -43,3 +43,4 @@ setup expiry, data beyond setup but within original admission, bounded credit
 and aggregate bytes, directional EOF, cancellation and joined shutdown.
 Selection does not prove these behaviors, installed confinement, latency or
 privacy qualification. Prior net.Pipe fixtures remain scoped component evidence.
+[ADR-0121](0121-acknowledge-bounded-join-replenishment.md) extends only the live paired dedicated channel with bounded, accounted replenishment; the original time reserve and lane windows remain unchanged.

@@ -39,3 +39,5 @@ the forwarding lifetime and expose no child replenishment path. The host
 reservation is part of accepted work, rather than a later accounting sample.
 This decision selects wire and accounting semantics only. It does not qualify
 an installed host or invent the provider policy required for that qualification.
+
+[ADR-0121](0121-acknowledge-bounded-join-replenishment.md) adds the dedicated live paired JOIN exception to this forwarding-only channel restriction, preserving reserve-before-spend and exact replacement arithmetic.

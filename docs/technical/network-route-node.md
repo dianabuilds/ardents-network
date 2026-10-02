@@ -48,6 +48,15 @@ endpoint callbacks before opening receiving resources. If those dependencies
 are incomplete, it closes the transferred Hosting handle and retains its
 close result. Issuer, Resolution, Introduction and JOIN likewise check their
 borrowed callbacks before opening their own roots or listeners.
+The dedicated paired JOIN channel replenishes only through its original
+admission owner under [ADR-0121](../adr/0121-acknowledge-bounded-join-replenishment.md):
+actual Hosting reserve precedes fresh-token durable spend, and a live-side
+recheck restores the remaining allowance before one charged lane-zero ACCEPT.
+The per-side output owner serializes that ACK with opposite-side frames; it
+grants no lane-1 credit or lifetime extension. The
+[protocol owner](protected-route-protocol.md#rendezvous-join-data-lane-transition)
+owns the exact grammar/accounting and failure bounds.
+
 The Node Hosting adapter supplies class-2 reservation policy without giving
 the role process pressure or the provider-period ledger's global ownership.
 For a generation-3 TCP Node Carrier, terminal retirement closes the owned

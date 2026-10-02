@@ -17,6 +17,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/node"
 	routecarrier "github.com/dianabuilds/ardents-network/internal/route/carrier"
+	"github.com/dianabuilds/ardents-network/internal/route/client"
 	servicepublication "github.com/dianabuilds/ardents-network/internal/service/publication"
 )
 
@@ -143,7 +144,7 @@ func runDataJoinIsolatedRoleObservation(t *testing.T, carrier routecarrier.Carri
 	if _, err := reader.openPrefix(t.Context()); err != nil {
 		t.Fatal(err)
 	}
-	exchangeRouteData(t, reader, owner, source.view.Nodes[15].NodeID, func() { observe("data") })
+	exchangeRouteData(t, reader, owner, source.view.Nodes[15].NodeID, func(_ []*client.ClosedJoinedStream, _ []*dutyContext) { observe("data") })
 	if err := reader.Close(); err != nil {
 		t.Fatal(err)
 	}

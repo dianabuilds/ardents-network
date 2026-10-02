@@ -53,11 +53,13 @@ func closedJoinTCP(t *testing.T) (net.Conn, net.Conn) {
 }
 
 type closedJoinStreamFixture struct {
-	pair    *closedJoinFixture
-	sides   [2]*ClosedJoinSide
-	clients [2]net.Conn
-	results [2]chan error
-	cancel  context.CancelFunc
+	pair     *closedJoinFixture
+	sides    [2]*ClosedJoinSide
+	clients  [2]net.Conn
+	results  [2]chan error
+	finished [2]chan struct{}
+	outcomes [2]error
+	cancel   context.CancelFunc
 }
 
 func newClosedJoinStreamFixture(t *testing.T) *closedJoinStreamFixture {
@@ -82,7 +84,23 @@ func newClosedJoinStreamWithConnection(t *testing.T, wrap func(net.Conn) net.Con
 		}
 		f.clients[i] = client
 		f.results[i] = make(chan error, 1)
-		go func() { f.results[i] <- f.sides[i].Serve(ctx, server) }()
+		f.finished[i] = make(chan struct{})
+		// Register ownership before launch, including partial fixture setup.
+		// Caller-held policy/write gates are released by their defers before
+		// these cleanups cancel, interrupt owned clients and collect both sides.
+		t.Cleanup(func() {
+			cancel()
+			if err := client.Close(); err != nil && !errors.Is(err, net.ErrClosed) {
+				t.Errorf("JOIN fixture client close: %v", err)
+			}
+			f.joined(t)
+		})
+		go func() {
+			outcome := f.sides[i].Serve(ctx, server)
+			f.outcomes[i] = outcome
+			f.results[i] <- outcome
+			close(f.finished[i])
+		}()
 	}
 	for i, client := range f.clients {
 		result, err := ardp.ReadFrame(client)
@@ -113,18 +131,35 @@ func (f *closedJoinStreamFixture) transfer(t *testing.T, from int, frame ardp.Fr
 	}
 }
 
-func (f *closedJoinStreamFixture) joined(t *testing.T) {
+func (f *closedJoinStreamFixture) joined(t *testing.T) [2]error {
 	t.Helper()
-	for _, result := range f.results {
+	var outcomes [2]error
+	complete := true
+	for i, finished := range f.finished {
+		if finished == nil {
+			continue
+		}
 		select {
-		case <-result:
+		case <-finished:
+			outcomes[i] = f.outcomes[i]
+			f.sides[i].Close()
+			if f.sides[i].cleanupErr != nil {
+				t.Errorf("JOIN side %d reservation cleanup: %v (Serve: %v)", i, f.sides[i].cleanupErr, outcomes[i])
+			}
 		case <-time.After(3 * time.Second):
-			t.Fatal("stream did not join")
+			complete = false
+			t.Errorf("JOIN side %d stream did not join", i)
 		}
 	}
-	if f.pair.limits.channels != 0 || f.pair.limits.children != 0 || f.pair.limits.queued != 0 {
-		t.Fatal("joined streams retained resource reservations")
+	if complete {
+		f.pair.limits.mu.Lock()
+		retained := f.pair.limits.channels != 0 || f.pair.limits.children != 0 || f.pair.limits.queued != 0
+		f.pair.limits.mu.Unlock()
+		if retained {
+			t.Error("joined streams retained resource reservations")
+		}
 	}
+	return outcomes
 }
 
 func TestClosedJoinStreamBidirectionalCreditAndEOF(t *testing.T) {

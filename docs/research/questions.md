@@ -139,3 +139,5 @@ The Product Owner approved the exact transition on 2026-09-09;
 [the record](records/r-154-join-data-lane-transition.md) preserves its comparison,
 and [ADR-0083](../adr/0083-activate-joined-rendezvous-data-lane.md) selects it.
 This question is decided; implementation and qualification remain in the C0 ledger.
+
+The decided R-154 question has a [bounded replenishment continuation](records/r-154-join-data-lane-transition.md#bounded-replenishment-continuation), selected by [ADR-0121](../adr/0121-acknowledge-bounded-join-replenishment.md). It creates no additional active research question.

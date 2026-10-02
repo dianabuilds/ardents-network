@@ -1,6 +1,7 @@
 package route
 
 import (
+	"context"
 	"errors"
 	"time"
 
@@ -21,9 +22,12 @@ func NewReplenishableClosedJoinPairs(receiver ClosedRoleReceiver, limits *Closed
 	return owner, nil
 }
 
-func (side *ClosedJoinSide) replenish(frame ardp.Frame) error {
-	if side == nil || side.owner == nil {
+func (side *ClosedJoinSide) replenish(ctx context.Context, frame ardp.Frame) error {
+	if side == nil || side.owner == nil || ctx == nil {
 		return errors.New("JOIN replenishment unavailable")
+	}
+	if err := ctx.Err(); err != nil {
+		return err
 	}
 	class, token, err := decodeClosedAdmit(frame.Body)
 	if err != nil || frame.Kind != ardp.KindAdmit || frame.Lane != 0 || class != 2 {
@@ -34,9 +38,9 @@ func (side *ClosedJoinSide) replenish(frame ardp.Frame) error {
 	owner := side.owner
 	owner.mu.Lock()
 	owner.expireLocked(side.pair, owner.limits.clock().UTC(), time.Now())
-	if !side.refillLiveLocked() || owner.replenish == nil || side.used > ^uint64(0)-(32<<20) {
+	if ctx.Err() != nil || !side.refillLiveLocked() || owner.replenish == nil || side.used > ^uint64(0)-(32<<20) {
 		owner.mu.Unlock()
-		return errors.New("JOIN replenishment unavailable")
+		return errors.Join(errors.New("JOIN replenishment unavailable"), ctx.Err())
 	}
 	input := ClosedAdmissionVerification{Hello: side.hello, Exporter: side.exporter, Class: 2, Token: token, Deadline: side.deadline}
 	owner.mu.Unlock()
@@ -49,7 +53,7 @@ func (side *ClosedJoinSide) replenish(frame ardp.Frame) error {
 	}
 	owner.mu.Lock()
 	owner.expireLocked(side.pair, owner.limits.clock().UTC(), time.Now())
-	live := side.refillLiveLocked() && side.used <= ^uint64(0)-(32<<20)
+	live := ctx.Err() == nil && side.refillLiveLocked() && side.used <= ^uint64(0)-(32<<20)
 	if live {
 		side.byteLimit = side.used + (32 << 20)
 		if release != nil {
@@ -61,7 +65,7 @@ func (side *ClosedJoinSide) replenish(frame ardp.Frame) error {
 		if release != nil {
 			err = release()
 		}
-		return errors.Join(errors.New("JOIN ended during replenishment"), err)
+		return errors.Join(errors.New("JOIN ended during replenishment"), ctx.Err(), err)
 	}
 	return nil
 }

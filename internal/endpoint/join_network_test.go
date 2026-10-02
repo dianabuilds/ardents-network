@@ -47,7 +47,7 @@ func TestTextRouteJoinConnectsSourceAndResponder(t *testing.T) {
 
 // exchangeRouteData verifies a real two-way DataJoin exchange. The optional
 // ready callback observes both joined streams before either direction writes.
-func exchangeRouteData(t *testing.T, reader, publisher *dutyContext, receiver [32]byte, ready func()) {
+func exchangeRouteData(t *testing.T, reader, publisher *dutyContext, receiver [32]byte, ready func([]*client.ClosedJoinedStream, []*dutyContext)) {
 	t.Helper()
 	if _, err := publisher.openResponderPrefix(t.Context()); err != nil {
 		t.Fatal(err)
@@ -63,6 +63,7 @@ func exchangeRouteData(t *testing.T, reader, publisher *dutyContext, receiver [3
 	type opened struct {
 		stream *client.ClosedJoinedStream
 		err    error
+		owner  *dutyContext
 	}
 	results := make(chan opened, 2)
 	reader.mu.Lock()
@@ -94,10 +95,11 @@ func exchangeRouteData(t *testing.T, reader, publisher *dutyContext, receiver [3
 				}
 				return owner.tokens.TakeTokenLocked(profile, now, hello, class, ctx)
 			}, intent)
-			results <- opened{stream, err}
+			results <- opened{stream, err, owner}
 		}()
 	}
 	var streams []*client.ClosedJoinedStream
+	var streamOwners []*dutyContext
 	for range 2 {
 		result := <-results
 		if result.err != nil {
@@ -114,6 +116,7 @@ func exchangeRouteData(t *testing.T, reader, publisher *dutyContext, receiver [3
 			t.Fatal(result.err)
 		}
 		streams = append(streams, result.stream)
+		streamOwners = append(streamOwners, result.owner)
 	}
 	t.Cleanup(func() {
 		cancel()
@@ -124,7 +127,7 @@ func exchangeRouteData(t *testing.T, reader, publisher *dutyContext, receiver [3
 		}
 	})
 	if ready != nil {
-		ready()
+		ready(streams, streamOwners)
 	}
 	payload := bytes.Repeat([]byte("framed opaque bytes "), 8192)
 	sent := make(chan error, 1)

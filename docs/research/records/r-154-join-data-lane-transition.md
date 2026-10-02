@@ -108,3 +108,48 @@ Decided through ADR-0083; the current protocol owns the full transition.
 Implementation and all acceptance remain in the existing C0 issue sequence.
 No experiment artifact was produced, no dependency was selected, and this
 completed clarification creates no additional active research or implementation.
+## Bounded replenishment continuation
+
+Reviewed 2026-10-02, against current owners at `db4014998`. This is a bounded
+continuation of the decided JOIN question, not another active research question.
+The Product Owner selected bounded refill in
+[issue #456's decision](https://github.com/dianabuilds/ardents-network/issues/456#issuecomment-5948490098)
+and later clarified the charged ACCEPT arithmetic. [ADR-0121](../../adr/0121-acknowledge-bounded-join-replenishment.md)
+records this amendment; the current protocol remains the requirement owner.
+
+**Decision and alternatives.** Retaining forwarding-only refill would require
+removing the dedicated JOIN client's live-work requests and reconciling the
+permitted workload to the original finite allowance. Select instead one bounded
+lane-zero refill on the paired, confirmed, live dedicated channel. It preserves
+the original lifetime/authority, independent per-side budgets and actual Hosting
+reserve-before-spend, and provides an accounted acknowledgement. Additive budget,
+extended lifetime and fixture-generated acknowledgement are rejected.
+
+**Criteria and falsification, before implementation trials.** Require unchanged
+receiver/exporter/HELLO/peer/purpose/context/deadline, complete old-allowance ADMIT
+debit, actual host reservation before fresh-token durable spend, exactly 32 MiB
+post-spend remainder followed by charged 21-byte ACCEPT, and unchanged lane-1
+credit. Falsify if replay accepts, refused reservation spends, terminal work is
+revived, a counterpart's allowance changes, output frames interleave, an ACK
+precedes acceptance, control traffic is free or reservations release before join.
+Real client/server threshold traffic must complete two refills on TCP/TLS and QUIC.
+Refusal, cancellation, expiry and partial output must retain honest terminal causes.
+
+**Sourced fact (repository primary sources accessed 2026-10-02).** The current
+kind-2 grammar forbids later ADMIT on non-forwarding channels; ADR-0085 selects
+forwarding refill and ADR-0083 retains original JOIN reserve. Maintained
+`ClosedJoinedStream.Replenish` sends ADMIT at actual transferred-traffic threshold
+and its channel reader waits for ACCEPT. `ClosedJoinSide.Serve` currently calls
+`replenish` then continues without output; its refill policy already invokes
+`node/hosting.Replenisher` for actual reservation before receiving-ledger spend.
+Component tests explicitly model activated streams and cannot prove server ACK.
+
+**Inference.** A charged ordered ACK and one output owner per side reconcile
+this bounded extension without changing identity, wire fields or child credit.
+**Assumption.** The real implementation can retain these invariants under
+opposite-side output and terminal races; the stated tests must establish it.
+**Measurement.** None in this contract comparison. Runtime RED/GREEN, throughput,
+installed qualification and anonymity are not claimed. No external operators,
+independent reviewers, new library or experiment artifact is required or selected.
+The threat model's protected information, adversaries, conditions and limitations
+remain unchanged; timing/volume still remain visible to Rendezvous.

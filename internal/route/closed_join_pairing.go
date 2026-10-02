@@ -39,6 +39,7 @@ type closedJoinPair struct {
 // RESULT; WaitData prevents forwarding until both sides confirm their writes.
 type ClosedJoinSide struct {
 	controlMu                      sync.Mutex
+	writeMu                        sync.Mutex
 	owner                          *ClosedJoinPairs
 	pair                           *closedJoinPair
 	duty                           *closedDutyChannel
