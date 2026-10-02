@@ -104,14 +104,7 @@ func (server *server) handle(local *net.UnixConn) {
 	defer cancel()
 	stop := context.AfterFunc(server.ctx, func() { _ = application.Close() })
 	defer stop()
-	defer func() {
-		err := application.Close()
-		server.mu.Lock()
-		if server.err == nil && err != nil {
-			server.err = err
-		}
-		server.mu.Unlock()
-	}()
+	defer func() { server.retainCleanupFailure(application.Close()) }()
 	if _, err := local.Write([]byte{1}); err != nil {
 		return
 	}
@@ -150,6 +143,15 @@ func (server *server) handle(local *net.UnixConn) {
 		outcome = Outcome{Class: IndeterminateFailure, Reason: "Application cleanup did not complete"}
 	}
 	_ = writeTerminal(local, outcome)
+}
+
+// retainCleanupFailure keeps one local failure across attachment turnover.
+func (server *server) retainCleanupFailure(err error) {
+	server.mu.Lock()
+	defer server.mu.Unlock()
+	if server.err == nil && err != nil {
+		server.err = err
+	}
 }
 
 // Close refuses new clients, cancels active streams, and removes only this
