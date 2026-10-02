@@ -103,7 +103,7 @@ func validateConfig(input Config) (config, error) {
 	resolved := config{
 		root: root, networkID: input.NetworkID, authorities: authorities,
 		threshold: input.Threshold, closedProfileAuthority: closedProfileAuthority, acceptedProfile: acceptedProfile, now: initial, clock: clock,
-		source: sourcePlan, sourceInfo: sourceInfo, observation: input.ClockObservation.UTC(), observe: observe,
+		source: sourcePlan, fetchSourceOperation: sourcePlan.Fetch, sourceInfo: sourceInfo, observation: input.ClockObservation.UTC(), observe: observe,
 		automatic: input.AutomaticRefreshInterval, profile: input.RuntimeProfile,
 		resources:  input.ObserveResources,
 		localRoles: localRoles,
