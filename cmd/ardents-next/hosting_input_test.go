@@ -19,11 +19,16 @@ func TestHostingPlanExactFields(t *testing.T) {
 	for _, raw := range []string{
 		`{"root":` + root + `,"root":` + root + `}`, `{"root":` + root + `,"extra":1}`, `{"root":null}`,
 		`{"root":` + root + `,"work":{"tx":1,"tx":2},"termination":{},"hold_ms":1}`,
+		`{"root":` + root + `,"work":{"tx":1,"Tx":2},"termination":{"rx":1},"hold_ms":1}`,
+		`{"root":` + root + `,"work":{"tx":1},"termination":{"rx":1,"RX":2},"hold_ms":1}`,
 		`{"root":` + root + `,"work":{},"termination":{},"hold_ms":60001}`, valid + ` {}`,
 	} {
 		if _, err := decodeHostingPlan([]byte(raw), "hold"); err == nil {
 			t.Fatalf("accepted %s", raw)
 		}
+	}
+	if _, err := decodeHostingPlan([]byte(`{"root":`+root+`,"policy":{"provider":"one","Provider":"two"}}`), "initialize"); err == nil {
+		t.Fatal("case alias in policy accepted")
 	}
 }
 

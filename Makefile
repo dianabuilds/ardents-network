@@ -20,10 +20,6 @@ endif
 
 .PHONY: architecture artifact-representation-check build check deadcode e2e fixture-network-test format format-check fuzz headless-build headless-check headless-evidence heapdump-capture heapdump-role-map installed-tag-compile-check issue60-checks mod-check package-e2e package-ubuntu-deb qualification qualification-endpoint-portable-ubuntu qualification-endpoint-replacement-ubuntu qualification-service-credential-response-linux quick-check staticcheck test test-race text-role-durable-state-capture tools-check tools-install unit vet vuln
 
-.PHONY: hosting-check
-hosting-check:
-	$(if $(filter linux,$(shell go env GOOS)),go test -race ./internal/successor/hosting ./cmd/ardents-next -count=1 -timeout=3m,$(error hosting-check requires Linux))
-
 define newline
 
 
@@ -298,3 +294,7 @@ text-role-durable-state-capture:
 diagnostics-check:
 	@test "$$(go env GOOS)" = linux || (echo "diagnostics-check requires Linux"; exit 2)
 	go test ./scripts/diagnostics/diagnostic-command.go ./scripts/diagnostics/diagnostic-capture.go ./scripts/diagnostics/diagnostic-view.go ./scripts/diagnostics/diagnostic-report.go ./scripts/diagnostics/diagnostic-monitor.go scripts/diagnostics/diagnostic-monitor-view.go scripts/diagnostics/diagnostic-monitor-collector.go scripts/diagnostics/diagnostic-monitor_test.go ./scripts/diagnostics/diagnostic-log-retention.go ./scripts/diagnostics/diagnostic-log-retention_test.go ./scripts/diagnostics/diagnostic-capture_test.go ./scripts/diagnostics/diagnostic-report_test.go ./scripts/diagnostics/diagnostic-evidence.go ./scripts/diagnostics/diagnostic-evidence_test.go -count=1 -timeout=1m
+
+.PHONY: hosting-check
+hosting-check:
+	$(if $(filter linux,$(shell go env GOOS)),go test -race ./internal/successor/hosting ./cmd/ardents-next -count=1 -timeout=3m,$(error hosting-check requires Linux))

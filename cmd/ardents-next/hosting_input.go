@@ -91,6 +91,14 @@ func decodeHostingPlan(raw []byte, operation string) (hostingPlan, error) {
 			return p, bad
 		}
 	}
+	// encoding/json otherwise matches struct field names case-insensitively,
+	// accepting aliases such as tx/Tx as two writes to the same semantic field.
+	if operation == "initialize" && !exactHostingObject(fields["policy"], "provider", "start", "end", "unit", "quantity", "directions", "interfaces", "initial_used_bytes", "low_watermark_bytes") {
+		return p, bad
+	}
+	if operation == "hold" && (!exactHostingObject(fields["work"], "tx", "rx") || !exactHostingObject(fields["termination"], "tx", "rx")) {
+		return p, bad
+	}
 	d = json.NewDecoder(bytes.NewReader(raw))
 	d.DisallowUnknownFields()
 	if d.Decode(&p) != nil || !filepath.IsAbs(p.Root) || filepath.Clean(p.Root) != p.Root {
@@ -100,4 +108,21 @@ func decodeHostingPlan(raw []byte, operation string) (hostingPlan, error) {
 		return p, bad
 	}
 	return p, nil
+}
+
+func exactHostingObject(raw []byte, allowed ...string) bool {
+	var fields map[string]json.RawMessage
+	if json.Unmarshal(raw, &fields) != nil || fields == nil {
+		return false
+	}
+	for name := range fields {
+		found := false
+		for _, key := range allowed {
+			found = found || name == key
+		}
+		if !found {
+			return false
+		}
+	}
+	return true
 }
