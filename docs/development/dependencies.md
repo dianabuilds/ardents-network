@@ -969,3 +969,9 @@ remote URL, HTTP parser service or artifact execution is enabled by this use.
 Per-file deadline, process-group cancellation and discarded-output caps belong
 to the local diagnostics owner. Native/parser prerequisite failure blocks that
 profile instead of triggering implicit compilation or a passing skip.
+
+Successor Issuance now consumes the same reviewed CIRCL v1.6.5 Blind RSA signer
+through its sole additional import blindsign/blindrsa. Admission confirmations
+gate private use; journal reopen rechecks stored responses with that signer.
+No scheme, version, opaque blinding-state serialization or private fork changes.
+Acceptance repeats client finalize/stdlib PSS verification and current gates.

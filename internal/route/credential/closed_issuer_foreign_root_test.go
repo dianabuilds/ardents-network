@@ -56,7 +56,7 @@ func TestClosedIssuerRefusesForeignMaterialBeforeLease(t *testing.T) {
 }
 
 func TestClosedIssuerRefusesForeignPartialMaterialBeforeLease(t *testing.T) {
-	for _, name := range []string{"issuer.keys", "issuer.lock", "issuer.pending"} {
+	for _, name := range []string{"issuer.keys", "issuer.lock", "issuer.pending", "results.pin", "results.lock", "results.journal", "results.floor", "results.pending"} {
 		t.Run(name, func(t *testing.T) {
 			root := t.TempDir()
 			path := filepath.Join(root, name)

@@ -42,7 +42,15 @@ func successorImportAllowed(source, dependency string) bool {
 	if !inZone {
 		return !zoneDependency
 	}
+	if strings.HasPrefix(source, "internal/successor/issuance/") {
+		if dependency == modulePath+"/internal/successor/admission" || dependency == "github.com/cloudflare/circl/blindsign/blindrsa" {
+			return true
+		}
+	}
 	if zoneDependency {
+		if strings.HasPrefix(source, "internal/successor/tokenissuance/") {
+			return dependency == modulePath+"/internal/successor/admission" || dependency == modulePath+"/internal/successor/issuance"
+		}
 		// These independent domain owners have exact standard-library-only
 		// import contracts. Directory grouping grants no cross-domain dependency.
 		if strings.HasPrefix(source, "internal/successor/admission/") || strings.HasPrefix(source, "internal/successor/hosting/") || strings.HasPrefix(source, "internal/successor/issuance/") {
@@ -69,7 +77,7 @@ func successorImportAllowed(source, dependency string) bool {
 			}
 		}
 		if strings.HasSuffix(source, "_test.go") {
-			for _, allowed := range []string{"go.opentelemetry.io/proto/otlp/collector/trace/v1", "go.opentelemetry.io/proto/otlp/collector/metrics/v1", "google.golang.org/protobuf/proto"} {
+			for _, allowed := range []string{"github.com/cloudflare/circl/blindsign/blindrsa", "go.opentelemetry.io/proto/otlp/collector/trace/v1", "go.opentelemetry.io/proto/otlp/collector/metrics/v1", "google.golang.org/protobuf/proto"} {
 				if dependency == allowed {
 					return true
 				}
@@ -91,7 +99,11 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		{"zone", "cmd/ardents-next/main.go", modulePath + "/internal/successor/admission", true},
 		{"hosting caller", "cmd/ardents-next/hosting.go", modulePath + "/internal/successor/hosting", true},
 		{"independent domains", "internal/successor/hosting/budget.go", modulePath + "/internal/successor/admission", false},
-		{"issuance independent", "internal/successor/issuance/store.go", modulePath + "/internal/successor/admission", false},
+		{"issuance confirmed debit", "internal/successor/issuance/store.go", modulePath + "/internal/successor/admission", true},
+		{"operation owners", "internal/successor/tokenissuance/operation.go", modulePath + "/internal/successor/issuance", true},
+		{"operation excludes hosting", "internal/successor/tokenissuance/operation.go", modulePath + "/internal/successor/hosting", false},
+		{"issuance excludes hosting", "internal/successor/issuance/store.go", modulePath + "/internal/successor/hosting", false},
+		{"admission excludes composition", "internal/successor/admission/ledger.go", modulePath + "/internal/successor/tokenissuance", false},
 		{"admission cannot borrow keys", "internal/successor/admission/batch.go", modulePath + "/internal/successor/issuance", false},
 		{"admission cannot borrow budget", "internal/successor/admission/check.go", modulePath + "/internal/successor/hosting", false},
 		{"legacy", "internal/successor/admission/check.go", modulePath + "/internal/admission", false},

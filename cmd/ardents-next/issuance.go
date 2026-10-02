@@ -24,6 +24,12 @@ func issuanceOutcome(err error) string {
 		return "unsupported-platform"
 	case errors.Is(err, issuance.ErrBusy):
 		return "busy"
+	case errors.Is(err, issuance.ErrConflict):
+		return "request-conflict"
+	case errors.Is(err, issuance.ErrValidity):
+		return "outside-validity"
+	case errors.Is(err, issuance.ErrCapacity):
+		return "result-capacity"
 	case errors.Is(err, context.Canceled), errors.Is(err, context.DeadlineExceeded):
 		return "canceled"
 	case errors.Is(err, issuance.ErrInvalid):
@@ -33,6 +39,9 @@ func issuanceOutcome(err error) string {
 	}
 }
 func runIssuance(ctx context.Context, args []string, out, diagnostic io.Writer) int {
+	if len(args) > 0 && (args[0] == "issue" || args[0] == "initialize-results") {
+		return runIssuanceResults(ctx, args, out, diagnostic)
+	}
 	r := issuanceResult{"issuance", "input", "invalid-input"}
 	write := func() int {
 		code := 1

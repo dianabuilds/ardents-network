@@ -55,6 +55,11 @@ No amount of issued tokens grants voting weight or public network influence.
 
 ## Provisioning and key lifecycle
 
+The [offline durable issuance consumer](successor-token-issuance.md) consumes
+opaque confirmations from the independent Admission ledger before private RSA
+use and retains exact ARDIOR01 results in its own fresh root. Its offline facts
+do not authenticate State, duty assignment, Time Confidence or an admitted lane.
+
 The independent offline key-material consumer is documented in
 [successor issuer key material](successor-issuer-key-material.md). Its fresh
 root retains dedicated hourly RSA keys and exports an unsigned local inventory.

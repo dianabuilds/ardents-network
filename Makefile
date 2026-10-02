@@ -306,3 +306,7 @@ admission-check:
 .PHONY: issuance-check
 issuance-check:
 	$(if $(filter linux,$(shell go env GOOS)),go test -race ./internal/successor/issuance ./cmd/ardents-next -count=1 -timeout=3m,$(error issuance-check requires Linux))
+
+.PHONY: token-issuance-check
+token-issuance-check:
+	$(if $(filter linux,$(shell go env GOOS)),go test -race ./internal/successor/admission ./internal/successor/issuance ./internal/successor/tokenissuance ./cmd/ardents-next -count=1 -timeout=3m,$(error token-issuance-check requires Linux))

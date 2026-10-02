@@ -11,18 +11,22 @@ import (
 	"testing"
 )
 
-func assertIssuanceOTLP(t *testing.T, seen map[string][]byte, p issuancePlan) {
+func assertIssuanceOTLP(t *testing.T, seen map[string][]byte, p issuancePlan, categories ...string) {
+	operation, phase, outcome := "issuance.initialize", "export", "completed"
+	if len(categories) == 3 {
+		operation, phase, outcome = categories[0], categories[1], categories[2]
+	}
 	var tr traces.ExportTraceServiceRequest
 	var mr metrics.ExportMetricsServiceRequest
 	if proto.Unmarshal(seen["/v1/traces"], &tr) != nil || len(tr.ResourceSpans) != 1 {
 		t.Fatal("missing trace")
 	}
 	span := tr.ResourceSpans[0].ScopeSpans[0].Spans[0]
-	if span.Name != "issuance.initialize" || len(span.Attributes) != 3 || len(span.Events) != 0 || len(span.ParentSpanId) != 0 {
+	if span.Name != operation || len(span.Attributes) != 3 || len(span.Events) != 0 || len(span.ParentSpanId) != 0 {
 		t.Fatal("unsafe span")
 	}
 	for _, attr := range span.Attributes {
-		want := map[string]string{"operation": "issuance.initialize", "phase": "export", "outcome": "completed"}
+		want := map[string]string{"operation": operation, "phase": phase, "outcome": outcome}
 		if want[attr.Key] != attr.Value.GetStringValue() {
 			t.Fatal("unexpected attribute", attr)
 		}

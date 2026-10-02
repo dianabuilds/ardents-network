@@ -640,3 +640,9 @@ Command tests share one immutable compiled executable while keeping separate
 mutable roots. Linux prerequisites cannot be replaced by a Windows passing
 result. These tests provide no live issuer/State, power-loss storage or whole
 Network qualification.
+
+The token-issuance-linux profile executes make token-issuance-check with all
+three successor owners and the compiled CLI under race in the same pinned image.
+It includes real client blind/finalize and stdlib PSS verification, opaque debit
+confirmation, quota retention, journal pairs/floors, faults, crash/replay and OTLP.
+CIRCL uses the populated reviewed module cache. No power-loss/rollback claim.

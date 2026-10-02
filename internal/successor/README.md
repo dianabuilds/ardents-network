@@ -15,10 +15,11 @@ All Go files here, including tests and platform-specific files, may import only
 the standard library and packages under this zone. There is currently no shared
 product dependency allowlist. The command's exact OTel imports and test-only
 OTLP decoding imports are enumerated in the isolation test and dependency
-register; domain packages receive no third-party allowance. New dependencies require explicit
+register. Issuance alone may consume the reviewed CIRCL blindrsa package and
+Admission confirmations. New dependencies require explicit
 review and the existing dependency acceptance process.
-Admission, Hosting and Issuance each permit only standard-library imports; the import
-gate also rejects dependencies between these independent domain owners.
+Admission and Hosting permit only standard-library imports. Issuance permits
+only its two explicit additions; reverse dependencies remain forbidden.
 
 The reserved command path is cmd/ardents-next. It may compose successor packages,
 the standard library and its exact registered OTel imports, but no existing product packages. Existing product
@@ -35,8 +36,15 @@ permission or consumes/refunds Hosting capacity.
 Offline immutable issuer material and unsigned public inventory belong to
 docs/technical/successor-issuer-key-material.md. No private key leaves that API.
 No automatic reads, conversion or reuse of old state are authorized.
+The confirmed offline issuance cycle and its result journal are owned by
+docs/technical/successor-token-issuance.md. No arbitrary signing API is exposed.
 
 internal/architecture/successor_isolation_test.go enforces import isolation
 across build profiles. It does not establish runtime confinement, correctness,
 secret separation or qualification. Dynamic execution and state access require
 their own contract checks.
+# Operation composition
+
+`tokenissuance` owns the ordered offline Admission/key/result lifecycle. It
+depends only on those two domain owners and the standard library; command
+adapters own configuration, export and telemetry.

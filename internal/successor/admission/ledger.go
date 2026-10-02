@@ -100,11 +100,15 @@ func Open(path string, binding LedgerBinding) (*Ledger, error) {
 	if !binding.valid() {
 		return nil, ErrInvalid
 	}
-	return openLedger(path, binding, nil)
+	return openLedger(path, cloneBinding(binding), nil)
 }
 
 // Debit durably consumes issuance right, never a refundable traffic reservation.
 func (l *Ledger) Debit(ctx context.Context, raw []byte, f Facts, kind Kind) Outcome {
+	return l.debit(ctx, raw, f, kind, nil)
+}
+
+func (l *Ledger) debit(ctx context.Context, raw []byte, f Facts, kind Kind, mint func(verifiedBatch)) Outcome {
 	if l == nil || l.state == nil || ctx == nil || kind != Bootstrap && kind != Admitted {
 		return InvalidInput
 	}
@@ -148,6 +152,9 @@ func (l *Ledger) Debit(ctx context.Context, raw []byte, f Facts, kind Kind) Outc
 		if prior.batch.digest != b.digest || prior.kind != kind {
 			return Conflict
 		}
+		if mint != nil {
+			mint(b)
+		}
 		return AlreadyDebited
 	}
 	if prior, ok := s.permissions[b.permission]; ok && prior.commitment != b.commitment {
@@ -162,6 +169,9 @@ func (l *Ledger) Debit(ctx context.Context, raw []byte, f Facts, kind Kind) Outc
 		return Uncertain
 	}
 	s.accept(record)
+	if mint != nil {
+		mint(b)
+	}
 	return Debited
 }
 

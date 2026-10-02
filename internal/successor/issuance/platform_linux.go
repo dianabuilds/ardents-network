@@ -19,12 +19,13 @@ func privateFile(info os.FileInfo, directory bool) bool {
 	}
 	return info.Mode().IsRegular() && info.Mode().Perm() == 0600 && stat.Nlink == 1
 }
-func acquireLock(root *os.Root) (*os.File, error) {
-	before, err := root.Lstat("issuer.lock")
+func acquireLock(root *os.Root) (*os.File, error) { return acquireNamedLock(root, "issuer.lock") }
+func acquireNamedLock(root *os.Root, name string) (*os.File, error) {
+	before, err := root.Lstat(name)
 	if err != nil || !privateFile(before, false) {
 		return nil, ErrUnavailable
 	}
-	f, err := root.OpenFile("issuer.lock", os.O_RDWR, 0)
+	f, err := root.OpenFile(name, os.O_RDWR, 0)
 	if err != nil {
 		return nil, ErrUnavailable
 	}
