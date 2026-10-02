@@ -114,3 +114,44 @@ func TestConcurrentCloseWaitsForCleanupAndRetainsFailure(t *testing.T) {
 		t.Fatalf("second Close() = %v, want %v", secondErr, terminalErr)
 	}
 }
+
+func TestCloseDoesNotTurnScheduledRefreshIntoTerminalFailure(t *testing.T) {
+	storage, err := openTestDurableRoot(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	ticks := make(chan time.Time)
+	joined := make(chan struct{})
+	owner := &networkState{storage: storage}
+	owner.work.Add(1)
+	go func() {
+		defer close(joined)
+		owner.runAutomaticRefresh(ctx, ticks, nil)
+	}()
+	// Close has already refused new work when cancellation is invoked.
+	// Deliver the selected tick in that exact interval, before cancel reaches
+	// the scheduler, rather than depending on wall-clock timing.
+	owner.workCancel = func() {
+		select {
+		case ticks <- time.Now():
+		case <-time.After(5 * time.Second):
+			cancel()
+			t.Fatal("scheduler did not receive the closing tick")
+		}
+		select {
+		case <-joined:
+		case <-time.After(5 * time.Second):
+			cancel()
+			t.Fatal("scheduler did not retire after the closing tick")
+		}
+		cancel()
+	}
+	if err := owner.Close(); err != nil {
+		t.Fatalf("orderly close reported scheduler failure: %v", err)
+	}
+	if err := owner.Close(); err != nil {
+		t.Fatalf("repeated close: %v", err)
+	}
+}

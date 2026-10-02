@@ -17,6 +17,8 @@ type sourceResult struct {
 	err          error
 }
 
+var errStateClosed = errors.New("network state is closed")
+
 var errSourceObjectMismatch = errors.New("source response object identity mismatch")
 
 // Refresh waits for the complete two-source wave and accepts its highest valid state.
@@ -29,7 +31,7 @@ func (s *networkState) Refresh(ctx context.Context) (Snapshot, error) {
 	s.mu.Lock()
 	if s.closed {
 		s.mu.Unlock()
-		return Snapshot{}, errors.New("network state is closed")
+		return Snapshot{}, errStateClosed
 	}
 	if s.refreshing {
 		s.mu.Unlock()

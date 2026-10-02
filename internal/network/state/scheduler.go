@@ -23,6 +23,11 @@ func (s *networkState) runAutomaticRefresh(ctx context.Context, ticks <-chan tim
 			return
 		case <-ticks:
 			_, err := s.Refresh(ctx)
+			// Close refuses new work before its cancellation reaches this loop.
+			// A tick selected in that interval is orderly owner retirement.
+			if errors.Is(err, errStateClosed) {
+				return
+			}
 			if results != nil {
 				select {
 				case results <- err:
