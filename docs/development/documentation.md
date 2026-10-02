@@ -71,9 +71,10 @@ not a documentation boundary by itself.
 The C0 delivery backlog and its live status belong in GitHub Issues under the
 [`C0 Closed Alpha` milestone](https://github.com/dianabuilds/ardents-network/milestones),
 not in an ADR, research record, experiment README, or product contract. Its
-absence blocks a new C0 implementation slice. At most one C0 implementation
-issue and one explicitly selected research question may be in progress. A
-current document may link to a tracker item for operational status, but it
+absence blocks a new C0 implementation slice. Active implementation slices and
+research selection follow the
+[repository C0 work-in-progress policy](../../AGENTS.md#c0-work-in-progress-limit).
+A current document may link to a tracker item for operational status, but it
 stays a stable contract rather than a second backlog.
 
 ## Research-to-implementation handoff
@@ -238,8 +239,9 @@ anonymity, independent operators or independent security review; those claims
 retain their separate evidence gates.
 
 The selected issue tracker owns execution and status. Keep the existing C0
-milestone and one-slice/one-active-question limits; the workstream does not
-activate all of its areas at once. Its framing is recorded by
+milestone prerequisite and follow the
+[repository C0 work-in-progress policy](../../AGENTS.md#c0-work-in-progress-limit);
+the workstream does not activate all of its areas at once. Its framing is recorded by
 [R-150](../research/records/r-150-common-protection-baseline.md), and the current
 R-149 subject remains separate design. Completed R-152/R-099 selections live
 in their current owners and ADR-0081; their former unanswered choices are not

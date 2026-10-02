@@ -138,11 +138,24 @@ inputs before upload.
 For `net14-recovery`, the runner starts the manifest's fixed failure schedule
 after measured stream progress begins. Faults run in bounded transient units,
 may overlap, restore the exact declared netem class, and retain actual start and
-stop times. A missing, late or unclean recovery scheduler fails the attempt.
+stop times. Each start, stop and host completion also retains the exact manifest
+digest, host role, Reader workload origin and actual event time. The verifier
+requires actual faults and their stop-plus-eight-second byte windows inside
+both endpoint workload intervals, with the finite 1,500 ms scheduling/origin
+correlation tolerance. These timestamps correlate evidence; they do not measure
+elapsed recovery KPIs. A missing, late or unclean recovery scheduler fails the attempt.
 If the workload fails after relays start, the runner captures their last sampled
 class counters and recovery journals before cleanup. The candidate verifier then
-requires a conservative eight-MiB absolute bound for every completed failure
-window; missing samples or an incomplete schedule remain a failed verdict.
+requires the paired eight-MiB addition bound for every completed failure window,
+and uploads both retained `reader.failed.jsonl` and `publisher.failed.jsonl` to
+`verify-failed-net14v` after the failed relay input and before the recovery
+journals. Complete candidate/unit/seed-bound final reports, checksummed framing
+and joined cleanup must prove the observed workload interval. Missing stop or
+monotonic evidence, missing samples, an incomplete schedule, or mixed host/run
+or manifest evidence refuses. This byte-only verdict cannot qualify a failed
+workload. Successful `verify-net14v` retains its existing argument list; both
+consumers derive byte windows from checked actual events. Older evidence without
+these bindings must be regenerated.
 This runner records an installed normal/impaired/recovery attempt. A controlled
 network manifest and its separately isolated relay are still required to claim
 NET-14AD or NET-14V; the script never changes a production host interface or

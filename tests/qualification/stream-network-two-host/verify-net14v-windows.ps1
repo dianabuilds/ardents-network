@@ -123,6 +123,14 @@ try {
         @($baseVerdict, "$remoteRoot/baseline-verdict.json"),
         @($eventVerdict, "$remoteRoot/episode-verdict.json")
     )) { Send-File $item[0] $item[1] 'upload NET-14V input' }
+    $remoteWorkloads = ''
+    if (-not $eventPassed) {
+        foreach ($role in @('reader', 'publisher')) {
+            $journal = Resolve-File (Join-Path $episode "$role.failed.jsonl") "failed $role workload"
+            Send-File $journal "$remoteRoot/$role.failed.jsonl" 'upload failed workload interval'
+            $remoteWorkloads += "'$remoteRoot/$role.failed.jsonl' "
+        }
+    }
     $remoteRecovery = @()
     for ($index = 0; $index -lt $recoveries.Count; $index++) {
         $remote = "$remoteRoot/recovery-$index.jsonl"
@@ -132,7 +140,7 @@ try {
     $verification = if ($eventPassed) { 'verify-net14v' } else { 'verify-failed-net14v' }
     $command = "'$remoteRoot/runner' $verification '$remoteRoot/baseline-manifest.json' " +
         "'$remoteRoot/episode-manifest.json' '$remoteRoot/baseline-verdict.json' " +
-        "'$remoteRoot/episode-verdict.json' " + ($remoteRecovery -join ' ')
+        "'$remoteRoot/episode-verdict.json' " + $remoteWorkloads + ($remoteRecovery -join ' ')
     $result = (Invoke-SSH "chmod 700 '$remoteRoot/runner'; $command" 'verify NET-14V pair') -join [Environment]::NewLine
     $verdictName = if ($eventPassed) { 'net14v-verdict.json' } else { 'failed-net14v-verdict.json' }
     Write-Utf8 (Join-Path $output $verdictName) ($result + [Environment]::NewLine)
