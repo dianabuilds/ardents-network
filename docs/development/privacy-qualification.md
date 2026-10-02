@@ -74,7 +74,7 @@ production outcomes or authorization to exceed existing product budgets.
 | Publisher idle | Measure one available publication separately, with its finite readiness/refresh and declared owner hosting allowance; never charge it to the User-only idle figure |
 | Private control | 4 KiB Name/Descriptor requests; 16 KiB responses and issuer outcomes; all framing, TLS, refresh, rejection and retry bytes count |
 | Normal bulk | Existing NET-14J/K/L/M/N jobs and budgets remain: 16 client / 64 Publisher active Connections, aggregate 10 / 40 Mbit/s, normal carrier ratio <=1.5 |
-| Impairment/recovery | Existing NET-14V ratios, per-episode 8 MiB addition and per-direction bitrate bounds remain; no relaxed replacement is selected |
+| Impairment/recovery | Existing NET-14V ratios and per-episode 8 MiB addition remain. Each endpoint direction requires nearest-rank p95 unsmoothed one-second attributable carrier bitrate <= min(25 Mbit/s, 80% of its manifest access-link budget): Reader tx/rx 16/25 Mbit/s, Publisher tx/rx 25/25 Mbit/s. Both verify-pair impaired/recovery and verify-net14v recompute from complete direction-bound relay samples with monotonic intervals; missing, regressing, uneven or shortened series refuse. Whole-run means and host aggregates cannot substitute |
 | Local resources | Existing whole-client 512 MiB and Publisher 1 GiB RSS gates, CPU and progress requirements; confinement helpers and ordinary network control are included in their applicable owner totals |
 
 Pace latency trials at no more than 300 cold/warm pairs per hour per User
