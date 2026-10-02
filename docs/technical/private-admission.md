@@ -286,12 +286,23 @@ acceptance is confined to the exact token window and receiver duty.
 
 These are work maxima, not bytes the implementation should generate.
 Under [ADR-0085](../adr/0085-bound-forwarding-replenishment.md), a fresh
-class-2 token can replenish only the already admitted forwarding parent on
-lane zero before exhaustion, within its original deadline and every aggregate
-parent/host limit. It restores that parent's *remaining* reserve to exactly
-32 MiB; it does not accumulate a second allowance, refund earlier debits,
-resurrect a closed lane, extend time or change its peer. Only actual work can
-request replenishment.
+class-2 token can replenish the already admitted forwarding parent on lane
+zero before exhaustion. [ADR-0121](../adr/0121-acknowledge-bounded-join-replenishment.md)
+adds one bounded exception: an independently admitted dedicated class-2 JOIN
+channel may replenish on its own lane zero after both opposite sides are
+paired, RESULT-confirmed and live. Both paths retain their original receiver,
+TLS exporter, HELLO, peer, purpose, context and absolute deadline bindings,
+and every aggregate parent/host limit. Only actual work can request replenishment.
+
+The complete ADMIT is charged from the old reserve. The installed Hosting
+owner reserves actual provider-period work and termination capacity before
+durable fresh-token spend. After acceptance and a live-side recheck, remaining
+reserve is set to exactly 32 MiB; it does not accumulate a second allowance,
+refund earlier debits, resurrect closed work or extend time. For the dedicated
+JOIN exception, the matching lane-zero ACCEPT's complete 21 bytes are charged
+from that new reserve before output. Its 64 KiB acknowledgement credit leaves
+the original lane-1 windows unchanged. Replenishment creates no child or second
+JOIN, changes no counterpart allowance and grants no additional lane authority.
 
 The token's hourly window bounds redemption, not an extension of a live lease.
 At successful redemption fix the lease end to the earliest of admission plus
