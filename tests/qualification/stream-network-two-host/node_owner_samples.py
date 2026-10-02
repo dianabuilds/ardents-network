@@ -25,6 +25,7 @@ for _ in range(1325):
     if previous is not None and any(current[index] < previous[index] for index in (1, 2, 3)):
         raise SystemExit("Node owner counter regressed")
     print(json.dumps({
+        "MonotonicNS": time.monotonic_ns(),
         "At": datetime.datetime.now(datetime.timezone.utc).isoformat().replace("+00:00", "Z"),
         "MemoryCurrent": current[0], "CPUUsageNSec": current[1],
         "IPIngressBytes": current[2], "IPEgressBytes": current[3],
