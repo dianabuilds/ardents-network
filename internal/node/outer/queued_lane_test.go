@@ -8,11 +8,14 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"errors"
+	"fmt"
 	"io"
 	"math/big"
 	"net"
 	"os"
+	"os/exec"
 	"runtime"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -59,6 +62,11 @@ func (peer *queuedLanePeer) Read(value []byte) (int, error) {
 
 func queuedAdmittedLanes(t *testing.T) (*writer, net.Conn, *route.ClosedOuterBridge, []*route.ClosedOuterBridgeLane) {
 	t.Helper()
+	return queuedAdmittedLanesSetup(t, "")
+}
+
+func queuedAdmittedLanesSetup(t *testing.T, failure string) (*writer, net.Conn, *route.ClosedOuterBridge, []*route.ClosedOuterBridgeLane) {
+	t.Helper()
 	now := time.Now().UTC().Truncate(time.Second)
 	receiver := route.ClosedOuterReceiver{NetworkID: [32]byte{1}, StateGeneration: [32]byte{2}, StateDigest: [32]byte{3}, ProfileDigest: [32]byte{4}, NodeID: [32]byte{5}, RecordDigest: [32]byte{6}, DutyGeneration: 7, RoleDomain: 1, Subrole: 2, Deadline: now.Add(time.Hour)}
 	limits, err := route.NewClosedDutyLimits(time.Now)
@@ -70,7 +78,18 @@ func queuedAdmittedLanes(t *testing.T) (*writer, net.Conn, *route.ClosedOuterBri
 		t.Fatal(err)
 	}
 	local, remote := net.Pipe()
-	t.Cleanup(func() { local.Close(); remote.Close(); handshake.Close() })
+	var setup sync.WaitGroup
+	// Success consumes each buffered result once. Retirement independently joins
+	// every started helper, including when Fatal bypasses those success receives.
+	t.Cleanup(func() {
+		local.Close()
+		remote.Close()
+		setup.Wait()
+		handshake.Close()
+		if failure != "" {
+			fmt.Fprintln(os.Stdout, "queued fixture setup helpers joined")
+		}
+	})
 	owner := &writer{connection: local}
 	bridge, err := route.NewClosedOuterBridge(handshake, owner.update, owner.write)
 	if err != nil {
@@ -82,7 +101,18 @@ func queuedAdmittedLanes(t *testing.T) (*writer, net.Conn, *route.ClosedOuterBri
 		t.Fatal(err)
 	}
 	accepted := make(chan error, 1)
-	go func() { _, err := ardp.ReadFrame(remote); accepted <- err }()
+	setup.Go(func() {
+		defer func() {
+			if failure != "" {
+				fmt.Fprintln(os.Stdout, "queued fixture ACCEPT helper retired")
+			}
+		}()
+		_, err := ardp.ReadFrame(remote)
+		accepted <- err
+	})
+	if failure == "accept" {
+		t.Fatal("injected outer ACCEPT setup failure")
+	}
 	if _, err := bridge.Accept(ardp.Frame{Kind: ardp.KindHello, Body: body}); err != nil {
 		t.Fatal(err)
 	}
@@ -121,7 +151,17 @@ func queuedAdmittedLanes(t *testing.T) (*writer, net.Conn, *route.ClosedOuterBri
 		secured := tls.Server(lane, &tls.Config{Certificates: []tls.Certificate{{Certificate: [][]byte{der}, PrivateKey: key}}, MinVersion: tls.VersionTLS13, NextProtos: []string{carrier.ClosedRouteProfile}})
 		client := tls.Client(&queuedLanePeer{Conn: remote, bridge: bridge, id: id}, &tls.Config{InsecureSkipVerify: true, MinVersion: tls.VersionTLS13, NextProtos: []string{carrier.ClosedRouteProfile}})
 		complete := make(chan error, 1)
-		go func() { complete <- client.HandshakeContext(t.Context()) }()
+		setup.Go(func() {
+			defer func() {
+				if failure != "" {
+					fmt.Fprintln(os.Stdout, "queued fixture TLS helper retired")
+				}
+			}()
+			complete <- client.HandshakeContext(t.Context())
+		})
+		if failure == "tls" {
+			t.Fatal("injected inner TLS setup failure")
+		}
 		if err := secured.HandshakeContext(t.Context()); err != nil {
 			t.Fatal(err)
 		}
@@ -176,6 +216,38 @@ func queuedAdmittedLanes(t *testing.T) (*writer, net.Conn, *route.ClosedOuterBri
 		t.Fatal(err)
 	}
 	return owner, remote, bridge, lanes
+}
+
+// Execute actual Fatal paths in child test processes so the parent can verify
+// cleanup completion rather than treating the intentionally failed setup as a
+// passing fixture. The child timeout exposes a missing interrupt or join.
+func TestClosedOuterQueuedFixtureJoinsFailedSetup(t *testing.T) {
+	executable, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, failure := range []string{"accept", "tls"} {
+		t.Run(failure, func(t *testing.T) {
+			command := exec.Command(executable, "-test.run=^TestClosedOuterQueuedFixtureFailureChild$", "-test.count=1", "-test.timeout=5s")
+			command.Env = append(os.Environ(), "ARDENTS_QUEUED_FIXTURE_FAILURE="+failure)
+			output, err := command.CombinedOutput()
+			text := string(output)
+			var exited *exec.ExitError
+			joined := strings.Index(text, "queued fixture setup helpers joined")
+			acceptRetired := strings.Index(text, "queued fixture ACCEPT helper retired")
+			tlsRetired := strings.Index(text, "queued fixture TLS helper retired")
+			if !errors.As(err, &exited) || exited.ExitCode() != 1 || !strings.Contains(text, "injected ") || acceptRetired < 0 || joined <= acceptRetired || (failure == "tls" && (tlsRetired < 0 || joined <= tlsRetired)) || strings.Contains(text, "panic:") || strings.Contains(text, "DATA RACE") || strings.Contains(text, "race detected") {
+				t.Fatalf("failed %s setup did not retire its helpers: %v\n%s", failure, err, output)
+			}
+			t.Log(text)
+		})
+	}
+}
+
+func TestClosedOuterQueuedFixtureFailureChild(t *testing.T) {
+	if failure := os.Getenv("ARDENTS_QUEUED_FIXTURE_FAILURE"); failure != "" {
+		queuedAdmittedLanesSetup(t, failure)
+	}
 }
 
 func waitQueuedLane(t *testing.T, owner *writer, id uint32) {
