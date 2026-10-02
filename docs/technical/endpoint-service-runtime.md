@@ -421,6 +421,14 @@ Administration socket and directs the operator to `ardents-text publish` with
 an explicit document file. The local bodyless protocol refusal remains intact.
 `Withdraw` cancels and joins the retained publication. The Connection Interface cannot invoke either operation.
 
+Before attachment handoff, the AAI3 server closes any Stream returned after
+setup cancellation or failure, including a deadline-reset failure. It joins
+that cleanup error with the local setup error and retains the first non-nil
+Stream cleanup failure across client turnover for its joined `Server.Close`
+result. Raw errors stay local; bounded refusal and cancellation precedence
+remain unchanged. Endpoint `readResult.Close` cancels and joins its Service/
+worker work before returning its retained result.
+
 The fixed text reader has these setup outcomes:
 
 | Observed condition | AAI3 caller result | Command presentation |

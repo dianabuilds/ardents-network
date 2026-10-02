@@ -16,6 +16,10 @@ func Refuse(outcome Outcome) error {
 }
 
 func refusal(cause error) Outcome {
+	var cleanup setupCleanupError
+	if errors.As(cause, &cleanup) {
+		return cleanup.outcome
+	}
 	if errors.Is(cause, context.DeadlineExceeded) {
 		return Outcome{Class: LocalTimeout, Reason: "local Application setup timed out"}
 	}
