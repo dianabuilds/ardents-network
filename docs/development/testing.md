@@ -45,6 +45,8 @@ substitute for independent review.
   affected valid Fuzz declarations execute their deterministic seed corpus through
   ordinary `go test -run` in direct execution and split matrix jobs. PR selection
   does not enable mutation fuzzing, and unrelated checks remain excluded.
+  declaration selection and transitive race requirements reach a monotone closure
+  independently of package visitation order, including already selected consumers.
   Package and dependency loading errors fail selection before a matrix is
   published. A deleted Go package without a current owner selects the repository
   architecture check; changed surviving consumers retain their narrow checks.
