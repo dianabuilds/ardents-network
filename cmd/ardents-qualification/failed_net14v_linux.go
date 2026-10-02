@@ -3,7 +3,6 @@
 package main
 
 import (
-	"bufio"
 	"encoding/json"
 	"errors"
 	"io"
@@ -28,10 +27,10 @@ type failedNET14VVerdict struct {
 }
 
 func verifyFailedNET14V(arguments []string, output io.Writer) error {
-	if len(arguments) < 5 || len(arguments) > 6 {
-		return errors.New("usage: ardents-qualification verify-failed-net14v <baseline-manifest.json> <episode-manifest.json> <baseline-verdict.json> <failed-relay-results.json> <recovery-evidence.jsonl> [recovery-evidence.jsonl]")
+	if len(arguments) < 7 || len(arguments) > 8 {
+		return errors.New("usage: ardents-qualification verify-failed-net14v <baseline-manifest.json> <episode-manifest.json> <baseline-verdict.json> <failed-relay-results.json> <reader-journal.jsonl> <publisher-journal.jsonl> <recovery-evidence.jsonl> [recovery-evidence.jsonl]")
 	}
-	baselineManifest, _, err := readNetworkManifest(arguments[0])
+	baselineManifest, baselineHash, err := readNetworkManifest(arguments[0])
 	if err != nil {
 		return err
 	}
@@ -43,7 +42,7 @@ func verifyFailedNET14V(arguments []string, output io.Writer) error {
 	if err != nil {
 		return err
 	}
-	if baselineManifest.Cell != "net14ad" || manifest.Cell != "net14-recovery" {
+	if baselineManifest.Cell != "net14ad" || manifest.Cell != "net14-recovery" || baseline.Relay.ManifestSHA256 != baselineHash {
 		return errors.New("failed NET-14V evidence requires a recovery manifest")
 	}
 	body, err := os.ReadFile(arguments[3])
@@ -54,50 +53,80 @@ func verifyFailedNET14V(arguments []string, output io.Writer) error {
 	if err := decodeExact(body, &relays); err != nil {
 		return err
 	}
-	starts, stops, parseErr := readRecoveryWindows(arguments[4:])
-	scheduleErr := verifyRecoveryFaultEvidence(arguments[4:], manifest)
-	criteria := evaluateFailedNET14V(baselineManifest, manifest, baseline, relays, starts, stops)
-	complete := parseErr == nil && scheduleErr == nil
+	reader, readerErr := readFailedRecoveryWorkload(arguments[4], streamqualification.ReaderRole, baseline)
+	publisher, publisherErr := readFailedRecoveryWorkload(arguments[5], streamqualification.PublisherRole, baseline)
+	faults, scheduleErr := verifyRecoveryFaultEvidence(arguments[6:], manifest, manifestHash, reader, publisher)
+	starts, stops := faults.Starts, faults.Stops
+	criteria := evaluateFailedNET14V(baselineManifest, manifest, baseline, relays, starts, stops, reader.Start)
+	complete := readerErr == nil && publisherErr == nil && scheduleErr == nil
 	criteria = append(criteria, streamqualification.Criterion{Name: "failed-net14v-recovery-evidence", Observed: boolNumber(complete), Relation: "=", Bound: 1, Passed: complete})
 	verdict := failedNET14VVerdict{Kind: "failed-net14v", ManifestSHA256: manifestHash, Criteria: criteria}
 	if err := json.NewEncoder(output).Encode(verdict); err != nil {
 		return err
 	}
 	if !streamqualification.CriteriaPassed(criteria) {
-		return errors.Join(errors.New("failed NET-14V byte evidence is incomplete or exceeds its bound"), parseErr, scheduleErr)
+		return errors.Join(errors.New("failed NET-14V byte evidence is incomplete or exceeds its bound"), readerErr, publisherErr, scheduleErr)
 	}
 	return nil
 }
 
-func readRecoveryWindows(paths []string) (map[string]recoveryFaultRecord, map[string]recoveryFaultRecord, error) {
-	starts, stops := make(map[string]recoveryFaultRecord), make(map[string]recoveryFaultRecord)
-	for _, path := range paths {
-		file, err := os.Open(path)
-		if err != nil {
-			return starts, stops, err
+// A failed workload is not a passed qualification. Retained final reports may
+// prove its observed interval, but missing stop/monotonic evidence refuses.
+func readFailedRecoveryWorkload(path string, role streamqualification.Role, baseline pairedWorkloadVerdict) (window recoveryWindow, outcome error) {
+	candidate, result := false, false
+	outcome = readRunnerEvidence(path, func(raw []byte) error {
+		var record struct {
+			Kind, BinarySHA256, Seed, PlanSHA256 string
+			Participants                         int
+			EndpointArtifact                     qualificationEndpointArtifact
+			Role                                 streamqualification.Role
+			Profile                              streamqualification.Profile
+			Condition                            streamqualification.NetworkCondition
+			Report                               streamqualification.Report
 		}
-		scanner := bufio.NewScanner(file)
-		for scanner.Scan() {
-			var record recoveryFaultRecord
-			if json.Unmarshal(scanner.Bytes(), &record) != nil {
-				continue
+		if err := json.Unmarshal(raw, &record); err != nil {
+			return err
+		}
+		if record.Kind == "candidate" {
+			expected := 4
+			if role == streamqualification.PublisherRole {
+				expected = 1
 			}
-			switch record.Kind {
-			case "recovery-fault-start":
-				starts[record.Episode] = record
-			case "recovery-fault-stop":
-				stops[record.Episode] = record
+			if candidate || record.Participants != expected || record.BinarySHA256 != baseline.CandidateSHA256 || record.EndpointArtifact.Files[qualificationUnitPath] != baseline.EndpointUnitSHA256 {
+				return errors.New("failed workload candidate differs")
 			}
+			if _, err := decodeIdentity(record.EndpointArtifact.ManifestSHA256); err != nil || len(record.EndpointArtifact.Files) != 3 || record.EndpointArtifact.Files[qualificationBinaryPath] != record.BinarySHA256 || record.EndpointArtifact.Files[qualificationPlanPath] != record.PlanSHA256 {
+				return errors.New("failed workload installed artifact differs")
+			}
+			candidate = true
 		}
-		err = errors.Join(scanner.Err(), file.Close())
-		if err != nil {
-			return starts, stops, err
+		if record.Kind != "result" {
+			return nil
 		}
+		report := record.Report
+		if !candidate || record.Role != role || record.Profile != baseline.Profile || record.Condition != streamqualification.RecoveryNetwork || report.Started.IsZero() || !report.Started.Before(report.Stopped) || report.StartedElapsed < 0 || report.StoppedElapsed <= report.StartedElapsed || report.MeasuredDuration != report.StoppedElapsed-report.StartedElapsed {
+			return errors.New("failed workload interval or role is missing")
+		}
+		if _, err := decodeIdentity(record.Seed); err != nil || record.Seed != baseline.Seed {
+			return errors.New("failed workload seed differs")
+		}
+		// The intersection retains only time when every reported participant ran.
+		if window.Start.IsZero() || report.Started.After(window.Start) {
+			window.Start = report.Started
+		}
+		if window.Stop.IsZero() || report.Stopped.Before(window.Stop) {
+			window.Stop = report.Stopped
+		}
+		result = true
+		return nil
+	}, true)
+	if !candidate || !result {
+		return window, errors.New("failed workload final evidence is missing")
 	}
-	return starts, stops, nil
+	return window, outcome
 }
 
-func evaluateFailedNET14V(baselineManifest, manifest qualificationNetworkManifest, baseline pairedWorkloadVerdict, inputs []failedRelayResult, starts, stops map[string]recoveryFaultRecord) []streamqualification.Criterion {
+func evaluateFailedNET14V(baselineManifest, manifest qualificationNetworkManifest, baseline pairedWorkloadVerdict, inputs []failedRelayResult, starts, stops map[string]recoveryFaultRecord, workloadStart time.Time) []streamqualification.Criterion {
 	bySegment := make(map[string][]relaySegmentSample)
 	manifestRelays := make(map[string]networkRelay, len(manifest.Relays))
 	for _, relay := range manifest.Relays {
@@ -154,8 +183,8 @@ func evaluateFailedNET14V(baselineManifest, manifest qualificationNetworkManifes
 				break
 			}
 		}
-		windowStart := time.Duration(failure.AtMillis) * time.Millisecond
-		windowStop := windowStart + time.Duration(failure.DurationMillis)*time.Millisecond + 8*time.Second
+		windowStart := startAt.Sub(workloadStart)
+		windowStop := stopAt.Sub(workloadStart)
 		baselineBytes, baselineMeasured := relayWindowBytes(baselineSamples, baseline.ReaderNetwork.Started, windowStart, windowStop)
 		added, ordered := uint64(0), episodeBytes >= baselineBytes
 		if ordered {
