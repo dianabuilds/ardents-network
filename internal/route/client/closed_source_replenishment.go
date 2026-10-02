@@ -15,11 +15,22 @@ const closedRefillThreshold = 8 << 20
 // Replenish refills only channels that consumed actual traffic. The original
 // HELLO, peer and deadline remain fixed; Endpoint supplies a fresh spent token.
 func (prefix *ClosedSourcePrefix) Replenish(ctx context.Context, present ClosedTokenPresenter) error {
-	if prefix == nil || ctx == nil || present == nil || ctx.Err() != nil {
+	if prefix == nil || ctx == nil || present == nil {
 		return errors.New("forwarding refill unavailable")
 	}
-	prefix.refillMu.Lock()
-	defer prefix.refillMu.Unlock()
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	prefix.refillOnce.Do(func() { prefix.refillGate = make(chan struct{}, 1) })
+	select {
+	case prefix.refillGate <- struct{}{}:
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+	defer func() { <-prefix.refillGate }()
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	if prefix.channels == nil {
 		return errors.New("forwarding refill channels unavailable")
 	}
@@ -72,6 +83,9 @@ func closedRefillFrame(hello ardp.Hello, present ClosedTokenPresenter) (ardp.Fra
 }
 
 func (owner *closedSourceChannels) replenish(ctx context.Context, hello ardp.Hello, present ClosedTokenPresenter) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	owner.mu.Lock()
 	used, base, terminal := owner.transferred, owner.refillBase, owner.terminal
 	owner.mu.Unlock()
@@ -99,7 +113,20 @@ func (owner *closedSourceChannels) replenish(ctx context.Context, hello ardp.Hel
 	owner.refill = result
 	owner.mu.Unlock()
 	control := &closedSourceLane{owner: owner, id: 0, end: owner.end, writeEnd: owner.end, opened: true, active: true}
-	if err := control.send(frame, time.Time{}); err != nil {
+	owner.mu.Lock()
+	request, sendErr := control.enqueueLocked(frame, time.Time{})
+	if sendErr == nil {
+		request.ctx = ctx
+	}
+	owner.mu.Unlock()
+	if sendErr == nil {
+		sendErr = owner.awaitWriteContext(ctx, request)
+	}
+	if err := sendErr; err != nil {
+		if request != nil && request.attempted {
+			owner.fail(err)
+			err = errors.Join(err, owner.Close())
+		}
 		owner.mu.Lock()
 		if owner.refill == result {
 			owner.refill = nil
@@ -114,7 +141,7 @@ func (owner *closedSourceChannels) replenish(ctx context.Context, hello ardp.Hel
 		}
 	case <-ctx.Done():
 		owner.fail(ctx.Err())
-		return ctx.Err()
+		return errors.Join(ctx.Err(), owner.Close())
 	case <-owner.done:
 		owner.mu.Lock()
 		err := owner.terminal

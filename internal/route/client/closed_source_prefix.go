@@ -24,7 +24,8 @@ type ClosedTokenPresenter func(ardp.Hello, uint8) ([]byte, error)
 // ClosedSourcePrefix owns a fresh admitted Entry/Interior tree. Its stream
 // carries the Interior role protocol, never a direct Application Connection.
 type ClosedSourcePrefix struct {
-	refillMu         sync.Mutex
+	refillOnce       sync.Once
+	refillGate       chan struct{}
 	hellos           [2]ardp.Hello
 	interruptMu      sync.Mutex
 	interruptedEarly bool
