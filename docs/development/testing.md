@@ -42,6 +42,9 @@ substitute for independent review.
   the pre-integration gate. Pull request CI uses `scripts/select-pr-checks.go`
   to run the changed Go owners,
   their imported consumers, and explicitly registered non-Go fixture owners;
+  affected valid Fuzz declarations execute their deterministic seed corpus through
+  ordinary `go test -run` in direct execution and split matrix jobs. PR selection
+  does not enable mutation fuzzing, and unrelated checks remain excluded.
   declaration selection and transitive race requirements reach a monotone closure
   independently of package visitation order, including already selected consumers.
   Package and dependency loading errors fail selection before a matrix is

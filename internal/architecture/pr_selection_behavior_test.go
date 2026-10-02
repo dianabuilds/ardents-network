@@ -402,3 +402,113 @@ func TestPRSelectionDeletedPackageAndDependencyErrors(t *testing.T) {
 		})
 	}
 }
+
+func TestPRSelectionExecutesAffectedFuzzSeeds(t *testing.T) {
+	root, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, change := range []string{"dependency", "declaration"} {
+		t.Run(change, func(t *testing.T) {
+			fixture := t.TempDir()
+			write := func(name, body string) {
+				t.Helper()
+				path := filepath.Join(fixture, filepath.FromSlash(name))
+				if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(path, []byte(body), 0600); err != nil {
+					t.Fatal(err)
+				}
+			}
+			run := func(name string, args ...string) []byte {
+				t.Helper()
+				c := exec.Command(name, args...)
+				c.Dir, c.Env = fixture, isolatedFixtureEnvironment()
+				out, err := c.CombinedOutput()
+				if err != nil {
+					t.Fatalf("%s: %v\n%s", name, err, out)
+				}
+				return out
+			}
+			write("go.mod", "module example.com/fuzzselection\n\ngo 1.26.8\n")
+			write("docs/development/ownership.json", "{\"pr_check_mappings\":[]}\n")
+			write("cmd/tool/main.go", "package main\nfunc main(){}\n")
+			write("tests/probe/probe_test.go", "package probe\nimport \"testing\"\nfunc TestUnrelated(t *testing.T){}\n")
+			write("internal/source/value.go", "package source\nfunc Value(v int) int {return v}\n")
+			write("internal/source/stable.go", "package source\nfunc Stable(v int) int {return v}\n")
+			write("internal/source/alias_test.go", "package source\nimport \"testing\"\ntype F = testing.F\n")
+			seeds := "package source\nimport \"testing\"\n"
+			for i := range 17 {
+				seeds += fmt.Sprintf("func FuzzValue%02d(f *F){f.Add(1); f.Fuzz(func(t *testing.T,v int){if Value(v)!=v {t.Fatal(\"seed mismatch\")}})}\n", i)
+			}
+			seeds += "type probe struct{}\nfunc (probe) FuzzMethod(f *testing.F){_=Value(1)}\n"
+			write("internal/source/value_test.go", seeds)
+			write("internal/source/stable_test.go", "package source\nimport \"testing\"\nfunc FuzzUnrelated(f *testing.F){f.Add(1); f.Fuzz(func(t *testing.T,v int){_=Stable(v)})}\nfunc TestUnrelated(t *testing.T){_=Stable(1)}\n")
+			run("git", "init", "-q")
+			commit := func() {
+				run("git", "add", ".")
+				run("git", "-c", "core.hooksPath="+filepath.Join(fixture, "absent-hooks"), "-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "commit", "-qm", "fixture")
+			}
+			commit()
+			base := strings.TrimSpace(string(run("git", "rev-parse", "HEAD")))
+			if change == "dependency" {
+				write("internal/source/value.go", "package source\nfunc Value(v int) int {return v+1}\n")
+			} else {
+				write("internal/source/value_test.go", strings.ReplaceAll(seeds, "Value(v)!=v", "Value(v)!=v+1"))
+			}
+			commit()
+			matrixPath := filepath.Join(fixture, "matrix.json")
+			args := []string{"run", filepath.Join(root, "scripts/select-pr-checks.go"), filepath.Join(root, "scripts/select-pr-check-registry.go"), "--base", base, "--head", "HEAD", "--matrix", matrixPath}
+			out := run("go", args...)
+			if !strings.Contains(string(out), "FuzzValue00") || strings.Contains(string(out), "FuzzUnrelated") || strings.Contains(string(out), "TestUnrelated") {
+				t.Fatalf("incorrect direct selection:\n%s", out)
+			}
+			body, err := os.ReadFile(matrixPath)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var matrix struct {
+				Include []struct{ Package, Run string }
+			}
+			if err := json.Unmarshal(body, &matrix); err != nil {
+				t.Fatal(err)
+			}
+			selected := map[string]int{}
+			groups := 0
+			for _, entry := range matrix.Include {
+				if !strings.HasSuffix(entry.Package, "/source") {
+					continue
+				}
+				groups++
+				names := strings.Split(strings.TrimSuffix(strings.TrimPrefix(entry.Run, "^("), ")$"), "|")
+				if len(names) > 16 {
+					t.Fatalf("unbounded group: %s", entry.Run)
+				}
+				for _, name := range names {
+					selected[name]++
+				}
+				c := exec.Command("go", "test", "-count=1", "-run", entry.Run, entry.Package)
+				c.Dir, c.Env = fixture, isolatedFixtureEnvironment()
+				out, err := c.CombinedOutput()
+				if err == nil || !strings.Contains(string(out), "seed mismatch") {
+					t.Fatalf("matrix did not execute failing seeds: %v\n%s", err, out)
+				}
+			}
+			if groups != 2 || len(selected) != 17 {
+				t.Fatalf("groups=%d selected=%v", groups, selected)
+			}
+			for i := range 17 {
+				if selected[fmt.Sprintf("FuzzValue%02d", i)] != 1 {
+					t.Fatalf("seed selected incorrectly: %v", selected)
+				}
+			}
+			c := exec.Command("go", append(args, "--execute")...)
+			c.Dir, c.Env = fixture, isolatedFixtureEnvironment()
+			out, err = c.CombinedOutput()
+			if err == nil || !strings.Contains(string(out), "seed mismatch") {
+				t.Fatalf("execute did not run failing seeds: %v\n%s", err, out)
+			}
+		})
+	}
+}
