@@ -137,20 +137,26 @@ jobs:
             echo "::error title=${{ matrix.name }} failed::selected test failure category: $failure"
           fi
           exit "$status"
-  full:
-    if: github.event_name != 'pull_request'
+  source-cancellation-diagnostic:
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-24.04
-    timeout-minutes: 60
+    timeout-minutes: 10
     steps:
-      - name: Check out repository
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - name: Set up Go
-        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+      - name: Check out fixed diagnostic candidate
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - name: Set up pinned Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
         with:
           go-version: 1.26.8
           cache: true
-      - name: Install pinned quality tools
-        run: make tools-install
+      - name: Capture actual source and runtime identity
+        run: |
+          git rev-parse HEAD HEAD^{tree}
+          git merge-base HEAD bd7036ab06147fc330ec11984c1cd4ba30ce0aae
+          go version
+          id
+          lscpu
+          cat /etc/os-release
       - name: Diagnose repeated Source cancellation on fixed checkout
         if: github.event_name == 'workflow_dispatch'
         env:
@@ -163,6 +169,21 @@ jobs:
           narrow_status=$?
           if (( group_status != 0 )); then exit "$group_status"; fi
           exit "$narrow_status"
+  full:
+    needs: source-cancellation-diagnostic
+    if: github.event_name != 'pull_request' && !cancelled()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: 1.26.8
+          cache: true
+      - name: Install pinned quality tools
+        run: make tools-install
       - name: Run the complete maintained gate
         if: ${{ !cancelled() }}
         run: |
@@ -172,7 +193,7 @@ jobs:
           make check NODE_PROCESS_TEST_COMMAND="sudo --preserve-env=ARDENTS_E2E_COMMAND_ROOT,GOMODCACHE,GOTOOLCHAIN,GOFLAGS env ARDENTS_NODE_SCOPE_PROFILE=system GOCACHE=$RUNNER_TEMP/node-go-build $(command -v go)"
   go:
     if: always()
-    needs: [select, qualification-scripts, affected, full]
+    needs: [select, qualification-scripts, affected, full, source-cancellation-diagnostic]
     runs-on: ubuntu-24.04
     timeout-minutes: 1
     steps:
@@ -182,6 +203,7 @@ jobs:
           GROUP_RESULT: ${{ needs.affected.result }}
           POWERSHELL_RESULT: ${{ needs.qualification-scripts.result }}
           FULL_RESULT: ${{ needs.full.result }}
+          SOURCE_PROBE_RESULT: ${{ needs.source-cancellation-diagnostic.result }}
           EVENT: ${{ github.event_name }}
         run: |
           if [[ "$EVENT" == pull_request ]]; then
@@ -193,4 +215,5 @@ jobs:
             test "$SELECTION" = skipped
             test "$GROUP_RESULT" = skipped
             test "$FULL_RESULT" = success
+            if [[ "$EVENT" == workflow_dispatch ]]; then test "$SOURCE_PROBE_RESULT" = success; fi
           fi
