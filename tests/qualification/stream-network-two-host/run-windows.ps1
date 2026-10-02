@@ -432,20 +432,23 @@ function Configure-OwnerSlices {
         [void](Invoke-SSH $hostName "chmod 700 '$remoteRoot/node_owner_samples.py'; systemd-run --unit '$samplerUnit' --property Type=exec --property NoNewPrivileges=yes --property MemoryMax=32M --property TasksMax=16 --property RuntimeMaxSec=22min python3 '$remoteRoot/node_owner_samples.py' '$unit'" "start $role whole-owner sampler")
     }
 }
+function Read-OwnerCounterSamples([object[]]$Lines) {
+    $samples = @()
+    foreach ($line in $Lines) {
+        try { $sample = $line | ConvertFrom-Json -ErrorAction Stop } catch { continue }
+        if ($sample.PSObject.Properties['At'] -or $sample.PSObject.Properties['MemoryCurrent'] -or
+            $sample.PSObject.Properties['CPUUsageNSec'] -or $sample.PSObject.Properties['MonotonicNS']) {
+            $samples += $sample
+        }
+    }
+    return $samples
+}
 function Stop-OwnerSlices {
     $records = @()
     foreach ($owner in $ownerSlices) {
         [void](Invoke-SSH ([string]$owner.Machine) "timeout 5s systemctl stop '$($owner.SamplerUnit)'" "stop $($owner.Host) whole-owner sampler")
         $sampleLines = @(Invoke-SSH ([string]$owner.Machine) "journalctl -u '$($owner.SamplerUnit)' --no-pager -o cat" "collect $($owner.Host) whole-owner samples")
-        $samples = @()
-        foreach ($line in $sampleLines) {
-            try {
-                $sample = $line | ConvertFrom-Json -ErrorAction Stop
-                if ($sample.PSObject.Properties['At'] -and $sample.PSObject.Properties['MemoryCurrent'] -and
-                    $sample.PSObject.Properties['CPUUsageNSec'] -and $sample.PSObject.Properties['IPIngressBytes'] -and
-                    $sample.PSObject.Properties['IPEgressBytes']) { $samples += $sample }
-            } catch {}
-        }
+        $samples = @(Read-OwnerCounterSamples $sampleLines)
         $records += [ordered]@{ Host=[string]$owner.Host; Unit=[string]$owner.Unit; CPUQuota=[string]$owner.CPUQuota; CPUMax=[string]$owner.CPUMax; MemoryMax=[uint64]$owner.MemoryMax; Receipt=@($owner.Receipt); Samples=@($samples) }
     }
     $script:ownerSliceRecords = @($records)
@@ -540,8 +543,7 @@ function Stop-StateSources {
         foreach ($line in $statusLines) { if ($line -match '^([^=]+)=(.*)$') { $status[$Matches[1]] = $Matches[2] } }
         $journal = @(Invoke-SSH ([string]$started.Machine) "journalctl _SYSTEMD_INVOCATION_ID=$($started.InvocationID) --no-pager -o cat" 'collect State Source journal')
         $sampleLines = @(Invoke-SSH ([string]$started.Machine) "journalctl -u '$($started.SamplerUnit)' --no-pager -o cat" 'collect State Source owner samples')
-        $samples = @()
-        foreach ($line in $sampleLines) { try { $sample = $line | ConvertFrom-Json -ErrorAction Stop; if ($sample.PSObject.Properties['At'] -and $sample.PSObject.Properties['MemoryCurrent'] -and $sample.PSObject.Properties['CPUUsageNSec'] -and $sample.PSObject.Properties['IPIngressBytes'] -and $sample.PSObject.Properties['IPEgressBytes']) { $samples += $sample } } catch {} }
+        $samples = @(Read-OwnerCounterSamples $sampleLines)
         $records += [ordered]@{ ID=[string]$started.ID; Host=[string]$started.Host; PlanSHA256=[string]$started.PlanSHA256; InvocationID=[string]$started.InvocationID; BinarySHA256=[string]$inputFiles.node; ActiveState=[string]$status.ActiveState; Result=[string]$status.Result; ExecMainStatus=[int]$status.ExecMainStatus; Slice=[string]$status.Slice; Journal=@($journal); Samples=@($samples) }
     }
     $script:sourceRecords = @($records)
@@ -638,8 +640,7 @@ function Stop-RouteNodes {
         foreach ($line in $statusLines) { if ($line -match '^([^=]+)=(.*)$') { $status[$Matches[1]] = $Matches[2] } }
         $journal = @(Invoke-SSH ([string]$started.Machine) "journalctl _SYSTEMD_INVOCATION_ID=$($started.InvocationID) --no-pager -o cat" 'collect Route Node journal')
         $sampleLines = @(Invoke-SSH ([string]$started.Machine) "journalctl -u '$($started.SamplerUnit)' --no-pager -o cat" 'collect Route Node owner samples')
-        $samples = @()
-        foreach ($line in $sampleLines) { try { $sample = $line | ConvertFrom-Json -ErrorAction Stop; if ($sample.PSObject.Properties['At'] -and $sample.PSObject.Properties['MemoryCurrent'] -and $sample.PSObject.Properties['CPUUsageNSec'] -and $sample.PSObject.Properties['IPIngressBytes'] -and $sample.PSObject.Properties['IPEgressBytes']) { $samples += $sample } } catch {} }
+        $samples = @(Read-OwnerCounterSamples $sampleLines)
         $records += [ordered]@{ ID=[string]$started.ID; Host=[string]$started.Host; PlanSHA256=[string]$started.PlanSHA256; InvocationID=[string]$started.InvocationID; BinarySHA256=[string]$inputFiles.node; ActiveState=[string]$status.ActiveState; Result=[string]$status.Result; ExecMainStatus=[int]$status.ExecMainStatus; Slice=[string]$status.Slice; Journal=@($journal); Samples=@($samples) }
     }
     $script:nodeRecords = @($records)

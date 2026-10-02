@@ -13,7 +13,7 @@ import (
 
 func sourceResourceWindow(input nodeResultInput, started, stopped time.Time) (uint64, float64, bool) {
 	samples := input.Samples
-	if len(samples) == 0 || started.IsZero() || !started.Before(stopped) {
+	if len(samples) == 0 || len(samples) > 1325 || started.IsZero() || !started.Before(stopped) {
 		return 0, 0, false
 	}
 	first, last := -1, -1
@@ -33,8 +33,8 @@ func sourceResourceWindow(input nodeResultInput, started, stopped time.Time) (ui
 	memory := make([]uint64, 0, len(window))
 	for index, sample := range window {
 		memory = append(memory, sample.MemoryCurrent)
-		if sample.At.IsZero() || sample.MemoryCurrent == 0 || index > 0 &&
-			(sample.At.Sub(window[index-1].At) <= 0 || sample.At.Sub(window[index-1].At) > 1500*time.Millisecond ||
+		if sample.At.IsZero() || sample.MonotonicNS == 0 || sample.MemoryCurrent == 0 || index > 0 &&
+			(!ownerSampleCadence(window[index-1], sample) ||
 				sample.CPUUsageNSec < window[index-1].CPUUsageNSec) {
 			complete = false
 		}
@@ -42,7 +42,7 @@ func sourceResourceWindow(input nodeResultInput, started, stopped time.Time) (ui
 	sort.Slice(memory, func(i, j int) bool { return memory[i] < memory[j] })
 	p95Memory := memory[(95*len(memory)+99)/100-1]
 	p95RSS, rssComplete := sourceRSSWindow(input.Journal, started, stopped)
-	seconds := window[len(window)-1].At.Sub(window[0].At).Seconds()
+	seconds := ownerSampleSeconds(window[0], window[len(window)-1])
 	if seconds < 597 || window[len(window)-1].CPUUsageNSec < window[0].CPUUsageNSec {
 		return max(p95Memory, p95RSS), 0, false
 	}

@@ -154,7 +154,7 @@ func qualificationOwnerSliceInputs() []ownerSliceResultInput {
 			Receipt: []string{"ActiveState=active", "ControlGroup=" + qualificationOwnerControlGroup, "CPU_MAX=" + cpuMax,
 				"MEMORY_MAX=" + strconv.FormatUint(memoryMax, 10), "IPAccounting=yes", "DropInPaths=/run/systemd/system.control/ardents-qualification-owner.slice.d/50-CPUQuota.conf"}}
 		for second := 0; second < 598; second++ {
-			input.Samples = append(input.Samples, nodeOwnerSampleInput{At: origin.Add(time.Duration(second) * time.Second),
+			input.Samples = append(input.Samples, nodeOwnerSampleInput{MonotonicNS: uint64(second+1) * uint64(time.Second), At: origin.Add(time.Duration(second) * time.Second),
 				MemoryCurrent: uint64(64+index*64) << 20, CPUUsageNSec: uint64(second) * cpuStep,
 				IPIngressBytes: uint64(second) * 10_000, IPEgressBytes: uint64(second) * 20_000})
 		}
@@ -182,7 +182,7 @@ func qualificationNodeInputs(t *testing.T, ids []string) []nodeResultInput {
 			hosting := resource.HostingSample{At: at, Policy: policy, Observation: resource.HostingObservation{UsedBytes: uint64(second)}}
 			event, _ := json.Marshal(node.Event{Schema: "ardents-node-event-v1", Kind: "resource-sample", State: "OBSERVED", At: at, Resource: &resource.Sample{MemoryBytes: memory, RSSBytes: memory}, Hosting: &hosting})
 			input.Journal = append(input.Journal, string(event))
-			input.Samples = append(input.Samples, nodeOwnerSampleInput{At: at, MemoryCurrent: memory, CPUUsageNSec: uint64(second) * 10_000_000, IPIngressBytes: uint64(second) * 1000, IPEgressBytes: uint64(second) * 2000})
+			input.Samples = append(input.Samples, nodeOwnerSampleInput{MonotonicNS: uint64(second+1) * uint64(time.Second), At: at, MemoryCurrent: memory, CPUUsageNSec: uint64(second) * 10_000_000, IPIngressBytes: uint64(second) * 1000, IPEgressBytes: uint64(second) * 2000})
 		}
 		withdrawn, _ := json.Marshal(node.Event{Schema: "ardents-node-event-v1", Kind: "lifecycle", State: "WITHDRAWN", At: origin.Add(598 * time.Second)})
 		input.Journal = append(input.Journal, string(withdrawn))
@@ -206,7 +206,7 @@ func qualificationSourceInputs(t *testing.T) []nodeResultInput {
 			event, _ := json.Marshal(map[string]any{"schema": "ardents-h3-resource-sample-v1", "kind": "resource-sample",
 				"at": at, "resource": resource.Sample{MemoryBytes: 4 << 20, RSSBytes: 4 << 20}})
 			input.Journal = append(input.Journal, string(event))
-			input.Samples = append(input.Samples, nodeOwnerSampleInput{At: at, MemoryCurrent: 4 << 20,
+			input.Samples = append(input.Samples, nodeOwnerSampleInput{MonotonicNS: uint64(second+1) * uint64(time.Second), At: at, MemoryCurrent: 4 << 20,
 				CPUUsageNSec: uint64(second) * 1_000_000, IPIngressBytes: uint64(second) * 100, IPEgressBytes: uint64(second) * 200})
 		}
 		inputs = append(inputs, input)
