@@ -319,15 +319,8 @@ func admittedRefillNetworkSetup(t *testing.T, transport carrier.CarrierProfile, 
 				gate.unblock()
 			}
 		}
-		closed := make(chan error, 1)
-		go func() { closed <- prefix.Close() }()
-		select {
-		case err := <-closed:
-			if err != nil {
-				t.Error(err)
-			}
-		case <-time.After(3 * time.Second):
-			t.Error("refill fixture cleanup did not join within bound")
+		if err := closeRefillFixture(prefix.Close, prefix.retirement.close, 3*time.Second); err != nil {
+			t.Error(err)
 		}
 	})
 	if stopAfter == "physical" {
@@ -517,5 +510,46 @@ func TestAdmittedRefillSetupFailureCleanup(t *testing.T) {
 				t.Error("setup cleanup left physical Carrier open")
 			}
 		}
+	}
+}
+
+var errRefillFixtureCleanupTimeout = errors.New("refill fixture cleanup did not join within bound")
+
+// A timeout is retained as failure evidence; it never abandons cleanup. Physical
+// retirement interrupts the owner before its final result is consumed.
+func closeRefillFixture(closeOwner func() error, interrupt func() error, limit time.Duration) error {
+	closed := make(chan error, 1)
+	go func() { closed <- closeOwner() }()
+	timer := time.NewTimer(limit)
+	defer timer.Stop()
+	select {
+	case err := <-closed:
+		return err
+	case <-timer.C:
+		interruption := interrupt()
+		return errors.Join(errRefillFixtureCleanupTimeout, interruption, <-closed)
+	}
+}
+
+func TestRefillFixtureCleanupTimeoutJoinsOwner(t *testing.T) {
+	release := make(chan struct{})
+	joined := make(chan struct{})
+	closeFailure := errors.New("delayed owner close failure")
+	interruptFailure := errors.New("physical interrupt failure")
+	err := closeRefillFixture(func() error {
+		<-release
+		close(joined)
+		return closeFailure
+	}, func() error {
+		close(release)
+		return interruptFailure
+	}, 0)
+	if !errors.Is(err, errRefillFixtureCleanupTimeout) || !errors.Is(err, closeFailure) || !errors.Is(err, interruptFailure) {
+		t.Fatalf("cleanup lost timeout or terminal causes: %v", err)
+	}
+	select {
+	case <-joined:
+	default:
+		t.Fatal("timeout cleanup returned before owner joined")
 	}
 }
