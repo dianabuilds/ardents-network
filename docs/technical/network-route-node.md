@@ -88,6 +88,21 @@ The shared successor listener gives each arriving connection its own bounded
 handshake/first-stream interval. Waiting without a peer does not consume that
 interval or make the next valid peer inherit an expired deadline. Issuer, forwarding and resolution consumers use this interface; current State classification and
 subsequent HELLO/admission deadlines remain separate checks.
+An outgoing forwarding session reserves its physical writer within the exact
+accepted child deadline. Queued expiry returns a typed timeout, without changing
+an active sibling's write deadline, emitting a late frame or closing the shared
+Carrier. Parent/link teardown cancels queued work. An accepted incoming child
+CLOSE cancels unemitted nonterminal frames; its required outbound CLOSE retains
+the existing authority until emission or parent/link teardown. A complete
+authenticated next-peer CLOSE makes that terminal obsolete. Joining late reverse
+output after local CLOSE does not cancel its still-pending outbound terminal.
+A failed physical frame still closes the Carrier and retains its original cleanup
+result.
+OPEN allocation uses the same cancellable reservation: an opener cancelled or
+expired before acquiring it emits nothing and allocates no lane. Lane IDs and
+complete OPEN emission remain ordered. The maintained caller carries a fixed
+accepted child deadline; this reservation introduces no deadline extension or
+mutable child lifetime.
 For a retained forwarding Carrier, one exact-key creator owns outer HELLO/ACCEPT
 I/O; same-key callers wait for that terminal result and receive the same live
 session only when their leases name the same incarnation. A blocked creator
