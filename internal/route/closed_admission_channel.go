@@ -3,20 +3,15 @@ package route
 import (
 	"crypto/sha256"
 	"errors"
+	"github.com/dianabuilds/ardents-network/internal/admission"
 	"sync"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/admission/receiving"
 	"github.com/dianabuilds/ardents-network/internal/admission/spending"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	"github.com/dianabuilds/ardents-network/internal/route/carrier"
 )
-
-// ClosedIntroductionRegistrationByteLimit is the complete bidirectional
-// protocol allowance of one admitted Publication registration. It covers the
-// registration exchange, retained delivery frames and reserved withdrawal.
-// Eight MiB admits the fixed 256-Connection closed-alpha Publisher workload
-// while keeping every registration finite and independently accounted.
-const ClosedIntroductionRegistrationByteLimit = uint64(8 << 20)
 
 const closedChannelExporterLabel = "EXPORTER-ardents-channel-v3"
 
@@ -48,7 +43,7 @@ type ClosedAdmissionVerification struct {
 }
 
 // ClosedAdmissionApproval contains the verified token hour plus an optional
-// release for capacity reserved before Route spends that token. Route calls
+// release for capacity reserved before Admission spends that token. Route calls
 // the release when it cannot transfer the admission to its resulting owner.
 type ClosedAdmissionApproval struct {
 	Window  time.Time
@@ -223,38 +218,31 @@ func (channel *ClosedAdmissionChannel) acceptInitialAdmit(body []byte) (ClosedAd
 	}
 	defer releaseVerification()
 	now := channel.clock().UTC()
-	deadline := now.Add(ClosedClassLifetime(class))
+	deadline := now.Add(admission.Class(class).Lifetime())
 	if channel.hello.Deadline.Before(deadline) {
 		deadline = channel.hello.Deadline
 	}
 	if channel.receiver.NotAfter.Before(deadline) {
 		deadline = channel.receiver.NotAfter
 	}
-	approval, err := channel.verify(ClosedAdmissionVerification{Hello: channel.hello, Class: class, Token: token, Exporter: channel.binding, Deadline: deadline})
-	if err != nil || !spending.ValidWindow(approval.Window) {
-		return ClosedAdmission{}, errors.New("closed admission token is unavailable")
-	}
-	releaseApproval := func() error {
-		if approval.Release == nil {
-			return nil
-		}
-		return approval.Release()
-	}
-	now = channel.clock().UTC()
-	reservation, err := channel.limits.reserveChannel()
+	var reservation *closedDutyChannel
+	approval, err := receiving.Redeem(receiving.Redemption{Class: admission.Class(class), Token: token, Deadline: deadline}, channel.spends, channel.clock,
+		func() (receiving.Approval, error) {
+			approval, err := channel.verify(ClosedAdmissionVerification{Hello: channel.hello, Class: class, Token: token, Exporter: channel.binding, Deadline: deadline})
+			return receiving.Approval{Window: approval.Window, Release: approval.Release}, err
+		}, func() (func(), error) {
+			var err error
+			reservation, err = channel.limits.reserveChannel()
+			if err != nil {
+				return nil, err
+			}
+			return reservation.release, nil
+		})
 	if err != nil {
-		return ClosedAdmission{}, errors.Join(errors.New("closed admission capacity is unavailable"), releaseApproval())
+		return ClosedAdmission{}, err
 	}
-	if err := channel.spends.Spend(token, approval.Window, now); err != nil {
-		reservation.release()
-		return ClosedAdmission{}, errors.Join(errors.New("closed admission token is unavailable"), releaseApproval())
-	}
-	lease := ClosedAdmission{hello: channel.hello, exporter: channel.binding, Class: class, Bytes: closedClassBytes(class), Deadline: deadline}
-	if !now.Before(lease.Deadline) {
-		reservation.release()
-		return ClosedAdmission{}, errors.Join(errors.New("closed admission lease is unavailable"), releaseApproval())
-	}
-	lease.claim = newClosedAdmissionClaim(reservation, releaseApproval)
+	lease := ClosedAdmission{hello: channel.hello, exporter: channel.binding, Class: class, Bytes: admission.Class(class).ByteLimit(), Deadline: deadline}
+	lease.claim = newClosedAdmissionClaim(reservation, approval.Release)
 	channel.admitted = true
 	return lease, nil
 }
@@ -276,31 +264,4 @@ func validClosedRoleReceiver(receiver ClosedRoleReceiver) bool {
 	return receiver.NetworkID != [32]byte{} && receiver.StateGeneration != [32]byte{} && receiver.StateDigest != [32]byte{} && receiver.ProfileDigest != [32]byte{} &&
 		receiver.NodeID != [32]byte{} && receiver.RecordDigest != [32]byte{} && receiver.DutyGeneration != 0 &&
 		ClosedPurposePermitsDuty(receiver.ExpectedPurpose, receiver.RoleDomain, receiver.Subrole) && !receiver.NotAfter.IsZero() && receiver.NotAfter == receiver.NotAfter.UTC().Truncate(time.Second)
-}
-
-func closedClassBytes(class uint8) uint64 {
-	switch class {
-	case 1:
-		return 64 << 10
-	case 2:
-		return 32 << 20
-	case 3:
-		return ClosedIntroductionRegistrationByteLimit
-	}
-	return 0
-}
-
-// ClosedClassLifetime maps one admitted scheduling class to its exact
-// lifetime. The client prefix derives its lane end from this single
-// definition.
-func ClosedClassLifetime(class uint8) time.Duration {
-	switch class {
-	case 1:
-		return 30 * time.Second
-	case 2:
-		return 1800 * time.Second
-	case 3:
-		return 600 * time.Second
-	}
-	return 0
 }

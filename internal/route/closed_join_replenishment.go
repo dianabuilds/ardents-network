@@ -4,6 +4,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/admission"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 )
 
@@ -34,7 +35,7 @@ func (side *ClosedJoinSide) replenish(frame ardp.Frame) error {
 	owner := side.owner
 	owner.mu.Lock()
 	owner.expireLocked(side.pair, owner.limits.clock().UTC(), time.Now())
-	if !side.refillLiveLocked() || owner.replenish == nil || side.used > ^uint64(0)-(32<<20) {
+	if !side.refillLiveLocked() || owner.replenish == nil || side.used > ^uint64(0)-admission.ForwardClass.ByteLimit() {
 		owner.mu.Unlock()
 		return errors.New("JOIN replenishment unavailable")
 	}
@@ -49,9 +50,9 @@ func (side *ClosedJoinSide) replenish(frame ardp.Frame) error {
 	}
 	owner.mu.Lock()
 	owner.expireLocked(side.pair, owner.limits.clock().UTC(), time.Now())
-	live := side.refillLiveLocked() && side.used <= ^uint64(0)-(32<<20)
+	live := side.refillLiveLocked() && side.used <= ^uint64(0)-admission.ForwardClass.ByteLimit()
 	if live {
-		side.byteLimit = side.used + (32 << 20)
+		side.byteLimit = side.used + admission.ForwardClass.ByteLimit()
 		if release != nil {
 			side.releases = append(side.releases, release)
 		}

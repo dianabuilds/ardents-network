@@ -5,9 +5,9 @@ package client
 import (
 	"context"
 	"errors"
+	"github.com/dianabuilds/ardents-network/internal/admission"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	introductioncapsule "github.com/dianabuilds/ardents-network/internal/route/capsule"
 	"github.com/dianabuilds/ardents-network/internal/route/terminal"
@@ -173,7 +173,7 @@ func (owner *ClosedIntroductionRegistration) receiveDelivery(frame ardp.Frame) e
 		return nil
 	}
 	if frame.Kind != ardp.KindOperation || frame.Lane == 0 || frame.Lane%2 != 0 || frame.Lane <= owner.lastDelivery ||
-		owner.withdraw != [32]byte{} || len(owner.pending) >= 16 || owner.used+closedIntroductionDeliveryCost > route.ClosedIntroductionRegistrationByteLimit {
+		owner.withdraw != [32]byte{} || len(owner.pending) >= 16 || owner.used+closedIntroductionDeliveryCost > admission.RegistrationClass.ByteLimit() {
 		return errors.New("closed Introduction delivery lane or budget invalid")
 	}
 	nonce, capsule, err := introductioncapsule.DecodeSubmission(frame.Body)

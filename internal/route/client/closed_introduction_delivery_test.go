@@ -5,12 +5,12 @@ package client
 import (
 	"context"
 	"errors"
+	"github.com/dianabuilds/ardents-network/internal/admission"
 	"net"
 	"sync"
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	introductioncapsule "github.com/dianabuilds/ardents-network/internal/route/capsule"
 	"github.com/dianabuilds/ardents-network/internal/route/terminal"
@@ -103,7 +103,7 @@ func TestClosedIntroductionDeliveryRejectsForeignReusedAndOverBudgetChildren(t *
 		t.Fatal("17th pending delivery accepted")
 	}
 	owner = newOwner()
-	owner.used = route.ClosedIntroductionRegistrationByteLimit - closedIntroductionDeliveryCost
+	owner.used = admission.RegistrationClass.ByteLimit() - closedIntroductionDeliveryCost
 	if err := owner.receiveDelivery(ardp.Frame{Kind: ardp.KindOperation, Lane: 2, Body: valid}); err != nil {
 		t.Fatal(err)
 	}
@@ -126,7 +126,7 @@ func TestClosedIntroductionDeliveryRejectsForeignReusedAndOverBudgetChildren(t *
 func TestClosedIntroductionRegistrationBudgetAdmitsRetainedPublisherSet(t *testing.T) {
 	owner := &ClosedIntroductionRegistration{request: terminal.RegistrationRequest{Slot: [32]byte{1}, Revision: 1, Expiry: time.Now().Add(time.Minute)},
 		deliveries: make(chan *ClosedIntroductionDelivery, 16), pending: make(map[uint32]*ClosedIntroductionDelivery)}
-	owner.used = route.ClosedIntroductionRegistrationByteLimit - 256*closedIntroductionDeliveryCost
+	owner.used = admission.RegistrationClass.ByteLimit() - 256*closedIntroductionDeliveryCost
 	end := time.Now().UTC().Add(8 * time.Second).Truncate(time.Second)
 	operation := func() []byte {
 		body, err := introductioncapsule.EncodeSubmission([32]byte{3}, introductioncapsule.Capsule{Slot: owner.request.Slot, Revision: 1,

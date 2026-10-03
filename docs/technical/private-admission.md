@@ -97,7 +97,13 @@ allocation. Neither that crash nor an unused permission refunds a signed
 allocation or an issuer debit.
 
 The [token owner](../../internal/admission/token/doc.go) owns canonical batches,
-volatile holder blind state and receiver verification. The
+volatile holder blind state and cryptographic token verification. The
+[receiving owner](../../internal/admission/receiving/doc.go) selects the exact
+current receiver/key/hour and owns both initial and refill redemption. Hosting
+and channel reservations precede durable spend; acceptance checks the deadline
+again after persistence. Failed admission releases acquired reservations and
+retains cleanup failures, while an already spent token remains spent. Route
+owns framing, TLS binding and the transferred physical channel lifetime. The
 [issuer owner](../../internal/admission/issuer/doc.go) owns live private keys,
 serialized durable reservations, exact retries and bounded issuance serving.
 Node supplies authenticated State and Hosting admission and joins children

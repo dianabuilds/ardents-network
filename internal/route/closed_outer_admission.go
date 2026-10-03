@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"crypto/tls"
 	"errors"
+	"github.com/dianabuilds/ardents-network/internal/admission"
 	"net"
 
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
@@ -56,7 +57,7 @@ func (handshake *ClosedOuterHandshake) admit(lane uint32, lease *ClosedAdmission
 	now := handshake.clock().UTC()
 	if handshake.duty == nil || !exists || !child.active || child.admitted || child.eof ||
 		child.restriction != ClosedChildOrdinary || !lease.claim.live() || lease.hello != child.hello ||
-		!closedOuterAdmissionClass(lease) || lease.Bytes != closedClassBytes(lease.Class) || !now.Before(child.pendingDeadline) ||
+		!closedOuterAdmissionClass(lease) || lease.Bytes != admission.Class(lease.Class).ByteLimit() || !now.Before(child.pendingDeadline) ||
 		!now.Before(lease.Deadline) || lease.Deadline.After(child.deadline) || lease.Deadline.After(handshake.receiver.Deadline) {
 		return errors.New("closed outer admission does not match live child")
 	}

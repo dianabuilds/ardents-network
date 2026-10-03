@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/binary"
 	"errors"
+	"github.com/dianabuilds/ardents-network/internal/admission"
 	"net"
 	"sync"
 	"testing"
@@ -296,7 +297,7 @@ func TestClosedJoinStreamOriginalByteBudgetIncludesControl(t *testing.T) {
 	credit := binary.BigEndian.AppendUint32(nil, uint32(len(block)))
 	// Each round consumes a data header/body and a returned CREDIT header/body
 	// on each role channel. Less than the nominal payload-only count must fit.
-	rounds := int(closedClassBytes(2) / uint64(ardp.HeaderSize+len(block)+ardp.HeaderSize+len(credit)))
+	rounds := int(admission.ForwardClass.ByteLimit() / uint64(ardp.HeaderSize+len(block)+ardp.HeaderSize+len(credit)))
 	for i := 0; i < rounds-1; i++ {
 		f.transfer(t, 0, ardp.Frame{Kind: ardp.KindBytes, Lane: 1, Body: block})
 		f.transfer(t, 1, ardp.Frame{Kind: ardp.KindCredit, Lane: 1, Body: credit})

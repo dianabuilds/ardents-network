@@ -12,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/admission"
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 )
@@ -208,7 +209,7 @@ func (owner *closedSourceChannels) receive(frame ardp.Frame) error {
 	}
 	// Receipt consumes the complete frame even when its lane is refused below.
 	owner.transferred += uint64(16 + len(frame.Body))
-	if owner.transferred-owner.refillBase > 32<<20 {
+	if owner.transferred-owner.refillBase > admission.ForwardClass.ByteLimit() {
 		return errors.New("closed source parent byte reserve exhausted")
 	}
 	if frame.Lane == 0 {
@@ -338,7 +339,7 @@ func (owner *closedSourceChannels) write() {
 		}
 		if err == nil {
 			owner.transferred += uint64(16 + len(request.frame.Body))
-			if owner.transferred-owner.refillBase > 32<<20 {
+			if owner.transferred-owner.refillBase > admission.ForwardClass.ByteLimit() {
 				err = errors.New("closed source parent byte reserve exhausted")
 			} else {
 				err = owner.parent.SetWriteDeadline(deadline)

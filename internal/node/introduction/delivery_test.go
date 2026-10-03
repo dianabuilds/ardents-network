@@ -3,8 +3,8 @@ package introduction
 import (
 	"bytes"
 	"errors"
+	"github.com/dianabuilds/ardents-network/internal/admission"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
-	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	introductioncapsule "github.com/dianabuilds/ardents-network/internal/route/capsule"
 	"github.com/dianabuilds/ardents-network/internal/route/terminal"
@@ -24,7 +24,7 @@ func TestClosedIntroductionDeliverySerializesIDsAndBoundsPending(t *testing.T) {
 	var clock atomic.Int64
 	clock.Store(now.Unix())
 	slot := &closedIntroductionSlot{request: terminal.RegistrationRequest{Slot: [32]byte{1}, Revision: 1, Expiry: now.Add(30 * time.Second)},
-		connection: local, writer: make(chan struct{}, 1), done: make(chan struct{}), active: true, maximum: route.ClosedIntroductionRegistrationByteLimit,
+		connection: local, writer: make(chan struct{}, 1), done: make(chan struct{}), active: true, maximum: admission.RegistrationClass.ByteLimit(),
 		pending: make(map[uint32]*closedIntroductionDelivery)}
 	server := &Server{config: Config{CurrentDuty: func() (state.NodeDuty, error) {
 		return state.NodeDuty{}, errors.New("State intentionally unavailable at final acknowledgement")

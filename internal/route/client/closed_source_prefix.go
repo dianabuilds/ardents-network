@@ -7,6 +7,7 @@ import (
 	"crypto/rand"
 	"crypto/tls"
 	"errors"
+	"github.com/dianabuilds/ardents-network/internal/admission"
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/carrier"
 	"net"
@@ -174,7 +175,7 @@ func openClosedPrefix(ctx context.Context, source ClosedBootstrapState, selectio
 }
 
 func closedSourcePrefixEnd(plan closedBootstrapPlan, snapshot state.Snapshot, now time.Time) time.Time {
-	end := now.Add(route.ClosedClassLifetime(2)).Truncate(time.Second)
+	end := now.Add(admission.ForwardClass.Lifetime()).Truncate(time.Second)
 	for _, limit := range []time.Time{plan.profile.NotAfter, snapshot.ValidUntil, plan.peers[0].notAfter, plan.peers[1].notAfter} {
 		if limit.Before(end) {
 			end = limit

@@ -3,7 +3,11 @@
 Status: **context-map proposal; first Admission slice selected by the Product
 Owner and implemented**, 2026-10-03. The current implemented boundary and real
 callers are documented in [Admission](../../internal/successor/admission/README.md).
-The wider migration remains a proposal.
+The wider migration remains a proposal. The Product Owner has additionally
+selected the complete maintained Admission context, not only its offline
+example. Its [responsibility map](../../internal/admission/README.md) distinguishes
+the implemented owners, their actual consumers and the shared-lock stock coordination. Unrelated Route
+repairs are not prerequisites for completing this domain migration.
 This document owns the proposed context map, source migration and verification
 method. It does not accept a new product/protocol contract, register future
 packages, select implementation issues, or change existing import permissions.
@@ -49,7 +53,7 @@ under another directory cannot establish that connection by itself.
 | `IssuerProfileBinding.ledger` in baseline `internal/successor/admission/issuer_profile.go` creates a ledger binding with dummy Authority, Profile and Duty values to validate a public profile | Confirmed model coupling, not evidence of an authority bypass: this temporary value is used for validation | Give public inventory/cohort validation its own value model; keep real ledger binding validation with the ledger |
 | baseline `internal/successor/admission/token_key.go` and `internal/successor/issuance/public_key.go` are identical after package-name/newline normalization | Confirmed duplicated canonical grammar; divergence risk, not a demonstrated mismatch today | One Admission-owned public issuer-profile/key grammar with independent byte vectors |
 | baseline `internal/successor/tokenissuance/operation.go` and `profile.go` in that package deferred closes overwrite the same Result | Confirmed static loss of primary/earlier cleanup causes when multiple phases fail; failure still overrides success | Retain the operation result and every bounded owner-close result before projecting one CLI category; add a failing multi-fault regression first |
-| [stock.Host](../../internal/admission/stock/host.go) requires Locked calls; [duty context](../../internal/endpoint/duty_context.go) passes its mutex into stock.Init | Extraction preserved shared synchronization, not independent aggregate ownership; no deadlock is claimed here | Enumerate protected invariants and linearization points before moving state or changing locks |
+| [stock.Host](../../internal/admission/stock/host.go) requires Locked calls; [duty context](../../internal/endpoint/duty_context.go) passes its mutex into stock.Init | Admission owns private permission, debit, stock and operation state; the shared lock atomically coordinates Endpoint authorization and revocation | Preserve this deliberate coordination; the Admission responsibility map records transition owners and linearization points |
 | [service.Binding](../../internal/endpoint/service/binding.go) exposes Job, publication, resources, time and recovery | A large Interface transfers parent coordination knowledge to the stream implementation | Connection receives immutable destination evidence and narrow live permits; execution and publication remain separate owners |
 | [Descriptor publication](../../internal/endpoint/descriptor_publication.go) commits ACK/readiness in Endpoint; [retirement](../../internal/endpoint/duty_context_retirement.go) orders many child lifetimes | Publication's complete transition authority is distributed | Move registration/ACK/refresh/withdrawal state together, retaining synchronous revoke and joined shutdown |
 | [Isolation gate](../../internal/architecture/successor_isolation_test.go) allows reviewed CIRCL only for Issuance; repository-layout's isolation paragraph mentions only OTel as an exception | Current summary documentation lags the more specific selected issuance contract and gate | Reconcile the engineering summary with the existing dependency selection in the bounded implementation change; do not relax the gate |
@@ -605,9 +609,9 @@ Do not replace an earlier failure receipt with a later pass.
 
 ### Live token and issuer ownership
 
-The maintained `route/credential` package combines public token values, holder
+The former `route/credential` package combined public token values, holder
 blind state, private issuer keys, durable quota and network serving. The live
-Admission transition separates two cohesive owners:
+Admission transition separates these cohesive owners:
 
 | Owner | Interface and private responsibility | Real consumers |
 | --- | --- | --- |

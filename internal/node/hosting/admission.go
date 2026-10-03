@@ -5,6 +5,8 @@ import (
 	"errors"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/admission"
+	"github.com/dianabuilds/ardents-network/internal/admission/receiving"
 	"github.com/dianabuilds/ardents-network/internal/admission/spending"
 	"github.com/dianabuilds/ardents-network/internal/node/authority"
 	"github.com/dianabuilds/ardents-network/internal/resource"
@@ -22,7 +24,7 @@ type Host interface {
 }
 
 // AdmissionVerifier reserves the declared interface envelope after token
-// verification and before Route burns the token.
+// verification and before Admission durably spends the token.
 func AdmissionVerifier(source authority.Source, now func() time.Time, receiver route.ClosedRoleReceiver, host Host, work, termination resource.HostingTraffic) route.ClosedAdmissionVerifier {
 	verify := source.TokenVerifier(receiver, now)
 	return func(input route.ClosedAdmissionVerification) (route.ClosedAdmissionApproval, error) {
@@ -42,20 +44,14 @@ func AdmissionVerifier(source authority.Source, now func() time.Time, receiver r
 // Replenisher commits the same envelope before burning a fresh token. The
 // parent supplies its original immutable deadline.
 func Replenisher(source authority.Source, now func() time.Time, receiver route.ClosedRoleReceiver, host Host, spends *spending.Ledger, work, termination resource.HostingTraffic) route.ClosedForwardingReplenisher {
-	verify := source.TokenVerifier(receiver, now)
+	verify := AdmissionVerifier(source, now, receiver, host, work, termination)
 	return func(input route.ClosedAdmissionVerification) (func() error, error) {
-		approval, err := verify(input)
-		if err != nil || input.Class != 2 {
-			return nil, errors.New("closed forwarding token is unavailable")
-		}
-		release, err := Reserve(host, work, termination, input.Deadline)
-		if err != nil {
-			return nil, err
-		}
-		if err := spends.Spend(input.Token, approval.Window, now().UTC()); err != nil {
-			return nil, errors.Join(err, release())
-		}
-		return release, nil
+		approval, err := receiving.Redeem(receiving.Redemption{Class: admission.Class(input.Class), Token: input.Token, Deadline: input.Deadline}, spends, now,
+			func() (receiving.Approval, error) {
+				approval, err := verify(input)
+				return receiving.Approval{Window: approval.Window, Release: approval.Release}, err
+			}, nil)
+		return approval.Release, err
 	}
 }
 

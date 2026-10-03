@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/admission"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 )
 
@@ -163,7 +164,7 @@ func NewReplenishableClosedForwardingChannel(lease *ClosedAdmission, authorize C
 }
 
 func newClosedForwardingChannel(lease *ClosedAdmission, authorize ClosedForwardingAuthorizer, replenish ClosedForwardingReplenisher, clock func() time.Time) (*ClosedForwardingChannel, error) {
-	if lease == nil || lease.Class != 2 || lease.Bytes != 32<<20 || lease.Deadline.IsZero() || !lease.claim.live() || authorize == nil || clock == nil || clock().IsZero() {
+	if lease == nil || lease.Class != 2 || lease.Bytes != admission.ForwardClass.ByteLimit() || lease.Deadline.IsZero() || !lease.claim.live() || authorize == nil || clock == nil || clock().IsZero() {
 		return nil, errors.New("closed forwarding channel is invalid")
 	}
 	duty, release, transferred := lease.claim.transfer()
@@ -231,15 +232,15 @@ func (channel *ClosedForwardingChannel) admit(frame ardp.Frame) (ClosedForwardin
 	}
 	release, err := channel.replenish(ClosedAdmissionVerification{Hello: channel.hello, Class: class, Token: token, Exporter: channel.exporter, Deadline: channel.deadline})
 	if err != nil {
-		return ClosedForwardingEvent{}, errors.New("closed forwarding replenishment is unavailable")
+		return ClosedForwardingEvent{}, errors.Join(errors.New("closed forwarding replenishment is unavailable"), err)
 	}
-	if channel.usedBytes > ^uint64(0)-(32<<20) {
+	if channel.usedBytes > ^uint64(0)-admission.ForwardClass.ByteLimit() {
 		if release != nil {
-			_ = release()
+			err = release()
 		}
-		return ClosedForwardingEvent{}, errors.New("closed forwarding replenishment is unavailable")
+		return ClosedForwardingEvent{}, errors.Join(errors.New("closed forwarding replenishment is unavailable"), err)
 	}
-	channel.byteLimit = channel.usedBytes + 32<<20
+	channel.byteLimit = channel.usedBytes + admission.ForwardClass.ByteLimit()
 	if release != nil {
 		channel.releases = append(channel.releases, release)
 	}

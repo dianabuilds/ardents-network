@@ -3,6 +3,7 @@ package route
 import (
 	"context"
 	"errors"
+	"github.com/dianabuilds/ardents-network/internal/admission"
 	"sync"
 	"time"
 
@@ -78,7 +79,7 @@ func (owner *ClosedJoinPairs) Reserve(lease *ClosedAdmission, frame ardp.Frame) 
 	defer owner.mu.Unlock()
 	now, wall := owner.limits.clock().UTC(), time.Now()
 	r, h := owner.receiver, lease.hello
-	if owner.closed || !lease.claim.live() || lease.Class != 2 || lease.Bytes != closedClassBytes(2) ||
+	if owner.closed || !lease.claim.live() || lease.Class != 2 || lease.Bytes != admission.ForwardClass.ByteLimit() ||
 		h.Purpose != ardp.PurposeDataJoin || h.NetworkID != r.NetworkID || h.StateGeneration != r.StateGeneration || h.StateDigest != r.StateDigest ||
 		h.ProfileDigest != r.ProfileDigest || h.RecipientNodeID != r.NodeID || h.RecipientDutyGeneration != r.DutyGeneration ||
 		!now.Before(lease.Deadline) || lease.Deadline.After(r.NotAfter) || !now.Before(request.Deadline) || request.Deadline.After(lease.Deadline) {

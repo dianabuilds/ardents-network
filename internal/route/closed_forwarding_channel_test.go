@@ -2,6 +2,7 @@ package route
 
 import (
 	"bytes"
+	"errors"
 	"sync"
 	"testing"
 	"time"
@@ -530,6 +531,50 @@ func TestClosedForwardingChannelRefillDebitsOldReserveAndRetainsHostRelease(t *t
 	}
 	if err := channel.Cancel(); err != nil || released != 1 {
 		t.Fatalf("parent release = %v / %d", err, released)
+	}
+}
+
+func TestClosedForwardingRefillRefusalRetainsCleanupCause(t *testing.T) {
+	for _, overflow := range []bool{false, true} {
+		t.Run(map[bool]string{false: "redemption", true: "allowance-overflow"}[overflow], func(t *testing.T) {
+			now := time.Unix(1_800_000_000, 0).UTC()
+			limits, err := NewClosedDutyLimits(func() time.Time { return now })
+			if err != nil {
+				t.Fatal(err)
+			}
+			reservation, err := limits.reserveChannel()
+			if err != nil {
+				t.Fatal(err)
+			}
+			lease := ClosedAdmission{Class: 2, Bytes: 32 << 20, Deadline: now.Add(time.Minute), claim: newClosedAdmissionClaim(reservation, nil)}
+			primary, cleanup := errors.New("durable spend refused"), errors.New("hosting release failed")
+			released := 0
+			channel, err := NewReplenishableClosedForwardingChannel(&lease, func(ClosedOpen) error { return nil }, func(ClosedAdmissionVerification) (func() error, error) {
+				if !overflow {
+					return nil, errors.Join(primary, cleanup)
+				}
+				return func() error { released++; return cleanup }, nil
+			}, func() time.Time { return now })
+			if err != nil {
+				t.Fatal(err)
+			}
+			if overflow {
+				// A retained accounting boundary near uint64 exhaustion. The
+				// actual Accept path must charge ADMIT before refusing new credit.
+				channel.usedBytes, channel.byteLimit = ^uint64(0)-1024, ^uint64(0)
+			}
+			before := channel.byteLimit
+			_, err = channel.Accept(ardp.Frame{Kind: ardp.KindAdmit, Body: append([]byte{2}, bytes.Repeat([]byte{7}, 354)...)})
+			if !errors.Is(err, cleanup) || (!overflow && !errors.Is(err, primary)) || channel.byteLimit != before {
+				t.Fatalf("refill refusal lost cause or granted credit: %v", err)
+			}
+			if overflow && released != 1 {
+				t.Fatalf("failed transfer releases = %d", released)
+			}
+			if err := channel.Cancel(); err != nil || (overflow && released != 1) {
+				t.Fatalf("cancel repeated failed refill release: %v/%d", err, released)
+			}
+		})
 	}
 }
 

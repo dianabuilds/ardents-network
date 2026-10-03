@@ -1,4 +1,4 @@
-// Package admission owns the signed offline closed-admission grammar: the
+// Package admission owns closed admission class policy and public values: the
 // sealed 228-byte holder permission allocation, the 269-byte holder-signed
 // allocation request, and the finite Node-signed closed issuer public key
 // inventory (ARDCIP01). Every codec here is exact-bytes canonical, offline

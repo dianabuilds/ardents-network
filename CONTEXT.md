@@ -340,6 +340,25 @@ on identity, account, payment, IP reputation, or stable cross-context state. It
 is not proof of one person or fair access.
 _Avoid_: Identity check, registration fee, token stake
 
+**Admission**:
+The bounded right to obtain and spend an allowance for work at a receiving duty.
+Admission does not establish a person's identity, voting weight, a Service
+Credential, or the availability of physical resources. Closed-network issuance
+permissions do not define public entitlement.
+_Avoid_: Login, payment, identity verification
+
+**Admission Permission**:
+A finite authorization for one holder to obtain tokens for an issuer duty,
+resource classes and time window. Issuance consumes its allocation; an unused
+token or a failed attempt does not restore that allocation.
+_Avoid_: Local Grant, Service Credential, reusable network identity
+
+**Admission Token**:
+A single-use allowance bound to a receiving duty, resource class and time
+window. Possession permits an admission attempt; acceptance also requires
+current authority and available capacity.
+_Avoid_: Currency, stake, identity token, guaranteed service
+
 **Protocol-reserved Name**:
 One of a finite transparent set of names or labels unavailable solely for
 versioned protocol safety. It is not a discretionary brand, content, or legal

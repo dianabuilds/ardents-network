@@ -2,6 +2,7 @@ package hosting
 
 import (
 	"errors"
+	"github.com/dianabuilds/ardents-network/internal/admission"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/node/authority"
@@ -23,9 +24,9 @@ func ControlAdmissionVerifier(source authority.Source, now func() time.Time, rec
 		var admitted uint64
 		switch input.Class {
 		case 1:
-			admitted = 64 << 10
+			admitted = admission.ControlClass.ByteLimit()
 		case 3:
-			admitted = route.ClosedIntroductionRegistrationByteLimit
+			admitted = admission.RegistrationClass.ByteLimit()
 		default:
 			return route.ClosedAdmissionApproval{}, errors.New("control duty cannot admit forwarding class")
 		}
