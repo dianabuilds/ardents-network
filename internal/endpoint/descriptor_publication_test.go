@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"crypto/ed25519"
 	"crypto/rand"
+	"strings"
 	"testing"
 	"time"
 
@@ -72,18 +73,21 @@ func TestTextPublisherCommitsInstanceSignedDescriptor(t *testing.T) {
 			// Even accidental reuse of trusted internal handles cannot transfer the
 			// selected Instance into another independently admitted local context.
 			foreign := permissionContextFixture(t, endpoint, fixtureID(211), broker.Administration)
+			// A separate holder request meets the non-nil permission preflight
+			// without transferring the original owner's authority or secret key.
+			if _, _, err := foreign.tokens.Request([3]uint32{1, 0, 0}); err != nil {
+				t.Fatal(err)
+			}
 			foreign.mu.Lock()
 			source.TransplantLive(&foreign.source, owner.source.CurrentLocked())
 			introduction.TransplantCurrent(&foreign.publication.pair, first)
-			foreign.tokens.Permission = owner.tokens.Permission
 			foreign.mu.Unlock()
 			_, foreignErr := foreign.publishDescriptor(t.Context())
 			foreign.mu.Lock()
 			source.TransplantLive(&foreign.source, nil)
 			introduction.TransplantCurrent(&foreign.publication.pair, nil)
-			foreign.tokens.Permission = nil
 			foreign.mu.Unlock()
-			if foreignErr == nil || endpoint.publisherOwner != owner {
+			if foreignErr == nil || !strings.Contains(foreignErr.Error(), "another Publisher context owns the publication") || endpoint.publisherOwner != owner {
 				t.Fatal("another context stole the Instance publication")
 			}
 			if err := foreign.Close(); err != nil {

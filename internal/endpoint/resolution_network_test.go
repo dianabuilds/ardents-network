@@ -82,13 +82,13 @@ func TestTextResolutionUsesIssuedControlThroughRetainedPrefix(t *testing.T) {
 				t.Fatal(err)
 			}
 			owner.mu.Lock()
-			reserved := owner.tokens.Permission.Reserved
+			reserved := reservedStockAllocation(owner.tokens.PermissionLocked())
 			owner.mu.Unlock()
 			if _, err := owner.lookupDescriptor(t.Context(), target); err != nil {
 				t.Fatalf("existing resolution token stock: %v", err)
 			}
 			owner.mu.Lock()
-			sameReservation := owner.tokens.Permission.Reserved == reserved
+			sameReservation := reservedStockAllocation(owner.tokens.PermissionLocked()) == reserved
 			owner.mu.Unlock()
 			if !sameReservation {
 				t.Fatal("resolution ignored existing token and consumed more allocation")
@@ -97,7 +97,7 @@ func TestTextResolutionUsesIssuedControlThroughRetainedPrefix(t *testing.T) {
 				t.Fatal("absent Target was accepted")
 			}
 			owner.mu.Lock()
-			retained := owner.source.CurrentLocked() == prefix && !owner.resolution.BusyLocked() && owner.tokens.Issuance == nil && owner.tokens.Permission.Batches == 2
+			retained := owner.source.CurrentLocked() == prefix && !owner.resolution.BusyLocked() && !owner.tokens.BusyLocked() && (2-owner.tokens.PermissionLocked().BootstrapAllowance()) == 2
 			owner.mu.Unlock()
 			if !retained {
 				t.Fatal("ordinary resolution replaced its prefix or minted more bootstrap allowance")

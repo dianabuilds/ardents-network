@@ -1,6 +1,6 @@
 //go:build linux
 
-package tokens
+package stock
 
 import (
 	"testing"
@@ -23,34 +23,34 @@ func fixtureID(value byte) [32]byte {
 func TestTextPermissionOwnsCurrentAuthorityAndRemainingAllocation(t *testing.T) {
 	window := time.Date(2026, time.September, 25, 10, 0, 0, 0, time.UTC)
 	profile := state.ClosedProfileView{NetworkID: fixtureID(1)}
-	subject := &Permission{Profile: profile, Accepted: admission.Permission{
+	subject := &permission{profile: profile, accepted: admission.Permission{
 		NotBefore: window, NotAfter: window.Add(time.Hour), Signature: [64]byte{1}, Maxima: [3]uint32{4, 2, 1},
-	}, Reserved: [3]uint32{3, 2, 2}}
+	}, reserved: [3]uint32{3, 2, 2}}
 	if !subject.CurrentFor(profile, window) || !subject.CurrentFor(profile, window.Add(time.Hour-time.Nanosecond)) ||
 		subject.CurrentFor(profile, window.Add(-time.Nanosecond)) || subject.CurrentFor(profile, window.Add(time.Hour)) {
 		t.Fatal("permission currentness did not respect its exact hour")
 	}
-	if subject.CurrentFor(state.ClosedProfileView{}, window) || (*Permission)(nil).CurrentFor(profile, window) {
+	if subject.CurrentFor(state.ClosedProfileView{}, window) || (*permission)(nil).CurrentFor(profile, window) {
 		t.Fatal("foreign or missing permission admitted")
 	}
-	subject.Accepted.Signature = [64]byte{}
+	subject.accepted.Signature = [64]byte{}
 	if subject.CurrentFor(profile, window) {
 		t.Fatal("unsigned permission admitted")
 	}
 	if subject.Remaining(1) != 1 || subject.Remaining(2) != 0 || subject.Remaining(3) != 0 ||
-		subject.Remaining(0) != 0 || subject.Remaining(4) != 0 || (*Permission)(nil).Remaining(1) != 0 {
+		subject.Remaining(0) != 0 || subject.Remaining(4) != 0 || (*permission)(nil).Remaining(1) != 0 {
 		t.Fatal("permission allocation underflowed or accepted an invalid class")
 	}
 }
 
 func TestTextPermissionRejectsEmptyOrInvalidClassBeforeBatchPreparation(t *testing.T) {
-	subject := &Permission{Accepted: admission.Permission{Maxima: [3]uint32{1, 1, 1}}}
+	subject := &permission{accepted: admission.Permission{Maxima: [3]uint32{1, 1, 1}}}
 	for _, challenges := range [][]credential.ClosedTokenContext{
 		nil,
 		{{Class: 0}},
 		{{Class: 4}},
 	} {
-		if batch, err := subject.ReserveBatch(state.ClosedProfileView{}, time.Now(), challenges,
+		if batch, err := subject.reserveBatch(state.ClosedProfileView{}, time.Now(), challenges,
 			client.ClosedBootstrapSelection{}, false, nil, false, nil); err == nil || batch != nil {
 			t.Fatalf("invalid batch admitted: batch=%v err=%v", batch, err)
 		}
@@ -60,8 +60,8 @@ func TestTextPermissionRejectsEmptyOrInvalidClassBeforeBatchPreparation(t *testi
 func TestTextPermissionStockPreflightSeparatesWindowClassAndKnownDuty(t *testing.T) {
 	window := time.Date(2026, time.September, 25, 10, 0, 0, 0, time.UTC)
 	profile, receiver := fixtureID(1), fixtureID(2)
-	stock := func(digest, node [32]byte, duty uint64, class uint8, at time.Time, count int) Stock {
-		return Stock{
+	stock := func(digest, node [32]byte, duty uint64, class uint8, at time.Time, count int) stockEntry {
+		return stockEntry{
 			Challenge: credential.ClosedTokenContext{
 				ProfileDigest: digest, ReceiverNodeID: node, ReceiverDutyGeneration: duty,
 				Class: class, WindowStart: at,
@@ -69,9 +69,9 @@ func TestTextPermissionStockPreflightSeparatesWindowClassAndKnownDuty(t *testing
 			Tokens: make([][]byte, count),
 		}
 	}
-	subject := &Permission{
-		Accepted: admission.Permission{NotBefore: window},
-		Stock: []Stock{
+	subject := &permission{
+		accepted: admission.Permission{NotBefore: window},
+		stock: []stockEntry{
 			stock(profile, receiver, 7, 2, window, 2),
 			stock(profile, receiver, 8, 2, window, 1),
 			stock(profile, receiver, 7, 1, window, 1),

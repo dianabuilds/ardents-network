@@ -154,7 +154,7 @@ func TestTextIntroductionCapsuleBindsRealInstanceAndServiceStream(t *testing.T) 
 			}
 			publisher.mu.Lock()
 			noResponder := publisher.responder.currentLocked() == nil && publisher.responder.set == nil
-			beforeForward := publisher.tokens.Permission.Reserved[1]
+			beforeForward := reservedStockAllocation(publisher.tokens.PermissionLocked())[1]
 			publisher.mu.Unlock()
 			if !noResponder {
 				t.Fatal("refused capsule created Responder work")
@@ -183,7 +183,7 @@ func TestTextIntroductionCapsuleBindsRealInstanceAndServiceStream(t *testing.T) 
 			introductionPrefix := publisher.introduction.prefix.currentLocked()
 			distinct := responder != nil && introductionPrefix != nil && responder.prefix.Load() != introductionPrefix.prefix.Load() &&
 				publisher.responder.set != nil && publisher.responder.set != publisher.sourceSet && publisher.responder.set != publisher.introduction.prefix.set &&
-				publisher.responder.set.interior[0].Domain == 3 && publisher.tokens.Permission.Reserved[1] > beforeForward && publisher.responder.opening == nil
+				publisher.responder.set.interior[0].Domain == 3 && reservedStockAllocation(publisher.tokens.PermissionLocked())[1] > beforeForward && publisher.responder.opening == nil
 			publisher.mu.Unlock()
 			if !distinct {
 				t.Fatal("accepted delivery did not establish independently issued Responder forwarding")

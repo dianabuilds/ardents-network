@@ -22,7 +22,7 @@ func (owner *dutyContext) lookupDescriptor(ctx context.Context, target [32]byte)
 	}
 	owner.mu.Lock()
 	profile, _, err := owner.permissionProfileLocked()
-	if err != nil || owner.surface != broker.Connection || owner.tokens.Permission == nil || owner.source.CurrentLocked() == nil || owner.resolution.BusyLocked() || owner.source.OpeningInProgressLocked() || owner.tokens.Issuance != nil {
+	if err != nil || owner.surface != broker.Connection || !owner.tokens.PermissionLocked().Present() || owner.source.CurrentLocked() == nil || owner.resolution.BusyLocked() || owner.source.OpeningInProgressLocked() || owner.tokens.BusyLocked() {
 		owner.mu.Unlock()
 		return reachability.Verified{}, errors.New("text resolution owner unavailable")
 	}
@@ -81,7 +81,7 @@ func (owner *dutyContext) presentResolutionToken(flight *resolutionFlight, hello
 	defer owner.mu.Unlock()
 	profile, now, err := owner.permissionProfileLocked()
 	if err != nil || flight == nil || !owner.resolution.CurrentSourceLocked(flight, &owner.source) || flight.context.Err() != nil ||
-		owner.tokens.Permission == nil || hello.Purpose != ardp.PurposeReachability || class != 1 || hello.RecipientNodeID != flight.receiver ||
+		!owner.tokens.PermissionLocked().Present() || hello.Purpose != ardp.PurposeReachability || class != 1 || hello.RecipientNodeID != flight.receiver ||
 		hello.NetworkID != profile.NetworkID || hello.StateGeneration != profile.StateGeneration || hello.StateDigest != profile.StateDigest ||
 		hello.ProfileDigest != profile.Digest || hello.ChannelNonce == [32]byte{} || !now.Before(hello.Deadline) || hello.Deadline.After(profile.NotAfter) {
 		return nil, errors.New("text resolution token authority unavailable")
@@ -98,11 +98,11 @@ func (owner *dutyContext) presentResolutionToken(flight *resolutionFlight, hello
 func (owner *dutyContext) ensureResolutionStock(flight *resolutionFlight) error {
 	owner.mu.Lock()
 	profile, _, err := owner.permissionProfileLocked()
-	if err != nil || !owner.resolution.CurrentSourceLocked(flight, &owner.source) || flight.context.Err() != nil || owner.tokens.Permission == nil {
+	if err != nil || !owner.resolution.CurrentSourceLocked(flight, &owner.source) || flight.context.Err() != nil || !owner.tokens.PermissionLocked().Present() {
 		owner.mu.Unlock()
 		return errors.New("text resolution stock owner changed")
 	}
-	if !owner.tokens.Permission.HasPending() && owner.tokens.Permission.StockCountFor(profile.Digest, flight.receiver, 1) != 0 {
+	if !owner.tokens.PermissionLocked().HasPending() && owner.tokens.PermissionLocked().StockCountFor(profile.Digest, flight.receiver, 1) != 0 {
 		owner.mu.Unlock()
 		return nil
 	}

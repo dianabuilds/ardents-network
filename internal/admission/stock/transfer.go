@@ -1,6 +1,6 @@
 //go:build linux
 
-package tokens
+package stock
 
 import "errors"
 

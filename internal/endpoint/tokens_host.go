@@ -9,9 +9,9 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/admission"
 	"github.com/dianabuilds/ardents-network/internal/admission/attempts"
+	"github.com/dianabuilds/ardents-network/internal/admission/stock"
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
 	"github.com/dianabuilds/ardents-network/internal/endpoint/source"
-	"github.com/dianabuilds/ardents-network/internal/endpoint/tokens"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/route/client"
 )
@@ -53,14 +53,14 @@ func (host dutyTokenHost) SelectBootstrapLocked() (client.ClosedBootstrapSelecti
 	return host.owner.selectBootstrapLocked()
 }
 
-func (host dutyTokenHost) PrefixCurrent(prefix tokens.Prefix) bool {
+func (host dutyTokenHost) PrefixCurrent(prefix stock.Prefix) bool {
 	handle, ok := prefix.(*source.Handle)
 	return ok && handle.CurrentLocked(&host.owner.source)
 }
 
 // prefixRef converts a Source handle to the token owner's Prefix seam. A nil
 // handle stays a nil interface so identity comparisons remain exact.
-func prefixRef(handle *source.Handle) tokens.Prefix {
+func prefixRef(handle *source.Handle) stock.Prefix {
 	if handle == nil {
 		return nil
 	}

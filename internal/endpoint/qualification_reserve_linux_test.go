@@ -29,28 +29,21 @@ func TestQualificationReopensRetiredSourcePrefixForIssuerReserve(t *testing.T) {
 	ready := func() int {
 		owner.mu.Lock()
 		defer owner.mu.Unlock()
-		count := 0
-		for _, stock := range owner.tokens.Permission.Stock {
-			if stock.Challenge.ReceiverNodeID == source.view.Profile.IssuerNodeID && stock.Challenge.Class == 1 {
-				count += len(stock.Tokens)
-			}
-		}
-		return count
+		profile := source.view.Profile
+		return owner.tokens.PermissionLocked().StockCountForDuty(profile.Digest, profile.IssuerNodeID, profile.IssuerDutyGeneration, 1)
 	}
 	if err := owner.ensureQualificationIssuerReserve(t.Context(), qualification.IssuerReserveMinimum); err != nil {
 		t.Fatal(err)
 	}
-	for ready() > 4 {
-		owner.mu.Lock()
-		for slot := range owner.tokens.Permission.Stock {
-			stock := &owner.tokens.Permission.Stock[slot]
-			if stock.Challenge.ReceiverNodeID == source.view.Profile.IssuerNodeID && stock.Challenge.Class == 1 && len(stock.Tokens) > 0 {
-				clear(stock.Tokens[0])
-				stock.Tokens = stock.Tokens[1:]
-				break
-			}
+	// Consume issuer Control stock through real admitted issuance; changing the
+	// owner's private stock would bypass both the journal and refill policy.
+	for attempts := 0; ready() > 4 && attempts < 64; attempts++ {
+		if err := owner.issueTokens(t.Context(), [][32]byte{selection.EntryNodeID}, 2); err != nil {
+			t.Fatal(err)
 		}
-		owner.mu.Unlock()
+	}
+	if remaining := ready(); remaining > 4 || remaining < 2 {
+		t.Fatalf("could not reach retained-prefix refill boundary: %d", remaining)
 	}
 	if err := closeSourceHandle(prefix); err != nil {
 		t.Fatal(err)
@@ -84,13 +77,8 @@ func TestQualificationRefillsPublisherIssuerReserveBetweenStreams(t *testing.T) 
 	ready := func() int {
 		owner.mu.Lock()
 		defer owner.mu.Unlock()
-		count := 0
-		for _, stock := range owner.tokens.Permission.Stock {
-			if stock.Challenge.ReceiverNodeID == source.view.Profile.IssuerNodeID && stock.Challenge.Class == 1 {
-				count += len(stock.Tokens)
-			}
-		}
-		return count
+		profile := source.view.Profile
+		return owner.tokens.PermissionLocked().StockCountForDuty(profile.Digest, profile.IssuerNodeID, profile.IssuerDutyGeneration, 1)
 	}
 	for attempts := 0; ready() >= qualification.IssuerReserveMinimum && attempts < 64; attempts++ {
 		if err := owner.issueTokens(t.Context(), [][32]byte{selection.EntryNodeID}, 2); err != nil {

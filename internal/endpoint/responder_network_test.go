@@ -43,14 +43,14 @@ func TestTextResponderRejectsKnownIntroductionFamiliesBeforeIssuance(t *testing.
 			}
 			source.mu.Unlock()
 			owner.mu.Lock()
-			before := owner.tokens.Permission.Reserved
+			before := reservedStockAllocation(owner.tokens.PermissionLocked())
 			owner.mu.Unlock()
 			opened, err := owner.openPublisherPrefix(t.Context(), &owner.responder, 3)
 			if err == nil || opened != nil {
 				t.Error("Responder admitted a known Introduction family")
 			}
 			owner.mu.Lock()
-			after := owner.tokens.Permission.Reserved
+			after := reservedStockAllocation(owner.tokens.PermissionLocked())
 			owner.mu.Unlock()
 			if before != after {
 				t.Error("forbidden role consumed issuance before refusal")

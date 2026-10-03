@@ -7,8 +7,8 @@ import (
 	"errors"
 
 	"github.com/dianabuilds/ardents-network/internal/admission/attempts"
+	"github.com/dianabuilds/ardents-network/internal/admission/stock"
 	"github.com/dianabuilds/ardents-network/internal/endpoint/source"
-	"github.com/dianabuilds/ardents-network/internal/endpoint/tokens"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	"github.com/dianabuilds/ardents-network/internal/route/client"
 )
@@ -21,7 +21,7 @@ func (owner *dutyContext) openPrefix(ctx context.Context) (*source.Handle, error
 	}
 	owner.mu.Lock()
 	_, _, err := owner.permissionProfileLocked()
-	if err != nil || !owner.tokens.Permission.HasAccepted() || owner.source.CurrentLocked() != nil || owner.source.OpeningInProgressLocked() || owner.tokens.Issuance != nil {
+	if err != nil || !owner.tokens.PermissionLocked().HasAccepted() || owner.source.CurrentLocked() != nil || owner.source.OpeningInProgressLocked() || owner.tokens.BusyLocked() {
 		owner.mu.Unlock()
 		return nil, source.PrefixFailureAt("authority", errors.Join(err, errors.New("text prefix owner unavailable")))
 	}
@@ -66,7 +66,7 @@ func (operation *operationFlight) presentToken(selection client.ClosedBootstrapS
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
 	profile, now, err := owner.permissionProfileLocked()
-	if err != nil || !owner.tokens.Permission.HasAccepted() || !operation.admittedLocked(owner) ||
+	if err != nil || !owner.tokens.PermissionLocked().HasAccepted() || !operation.admittedLocked(owner) ||
 		hello.NetworkID != profile.NetworkID || hello.StateGeneration != profile.StateGeneration || hello.StateDigest != profile.StateDigest ||
 		hello.ProfileDigest != profile.Digest || hello.Purpose != ardp.PurposeForwarding || class != 2 ||
 		hello.ChannelNonce == [32]byte{} || !now.Before(hello.Deadline) || hello.Deadline.After(profile.NotAfter) {
@@ -78,7 +78,7 @@ func (operation *operationFlight) presentToken(selection client.ClosedBootstrapS
 	}
 	token, err := owner.tokens.TakeTokenLocked(profile, now, hello, class, operation.context)
 	if err != nil {
-		return nil, source.TokenPresentationFailureAt("take-"+tokens.TransferFailureStage(err), err)
+		return nil, source.TokenPresentationFailureAt("take-"+stock.TransferFailureStage(err), err)
 	}
 	return token, nil
 }
@@ -102,8 +102,8 @@ func (endpoint *endpoint) tokenJournal() (*attempts.Journal, error) {
 func (owner *dutyContext) ensurePrefixStock(ctx context.Context, opening *operationFlight) (client.ClosedBootstrapSelection, error) {
 	owner.mu.Lock()
 	_, _, err := owner.permissionProfileLocked()
-	if err != nil || ctx.Err() != nil || !owner.tokens.Permission.HasAccepted() ||
-		owner.source.CurrentLocked() != nil || !opening.admittedLocked(owner) || owner.tokens.Issuance != nil {
+	if err != nil || ctx.Err() != nil || !owner.tokens.PermissionLocked().HasAccepted() ||
+		owner.source.CurrentLocked() != nil || !opening.admittedLocked(owner) || owner.tokens.BusyLocked() {
 		owner.mu.Unlock()
 		return client.ClosedBootstrapSelection{}, source.PrefixFailureAt("stock-authority", errors.Join(err, ctx.Err(), errors.New("text prefix stock owner unavailable")))
 	}
@@ -112,7 +112,7 @@ func (owner *dutyContext) ensurePrefixStock(ctx context.Context, opening *operat
 		owner.mu.Unlock()
 		return client.ClosedBootstrapSelection{}, source.PrefixFailureAt("stock-selection-"+interiorSelectionFailureStage(err), err)
 	}
-	missing := owner.tokens.Permission.MissingStockFor(selection.ProfileDigest, [][32]byte{selection.EntryNodeID, selection.InteriorNodeID}, 2)
+	missing := owner.tokens.PermissionLocked().MissingStockFor(selection.ProfileDigest, [][32]byte{selection.EntryNodeID, selection.InteriorNodeID}, 2)
 	owner.mu.Unlock()
 	if len(missing) != 0 {
 		// Independent receiver inputs share one common class/window key.

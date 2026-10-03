@@ -6,8 +6,8 @@ import (
 	"context"
 	"errors"
 
+	"github.com/dianabuilds/ardents-network/internal/admission/stock"
 	"github.com/dianabuilds/ardents-network/internal/endpoint/source"
-	"github.com/dianabuilds/ardents-network/internal/endpoint/tokens"
 	"github.com/dianabuilds/ardents-network/internal/route/client"
 	"github.com/dianabuilds/ardents-network/internal/route/credential"
 )
@@ -92,10 +92,10 @@ func (owner *dutyContext) issueTokensForOpeningWithCancellation(ctx context.Cont
 		owner.mu.Unlock()
 		return err
 	}
-	permission := owner.tokens.Permission
+	permission := owner.tokens.PermissionLocked()
 	bootstrapState, ok := owner.endpoint.closedState.(client.ClosedBootstrapState)
 	if !ok || !permission.CurrentFor(profile, now) ||
-		owner.tokens.Issuance != nil || !opening.admittedLocked(owner) || !joinIssuanceCurrentLocked(owner, acquisition, expected) {
+		owner.tokens.BusyLocked() || !opening.admittedLocked(owner) || !joinIssuanceCurrentLocked(owner, acquisition, expected) {
 		owner.mu.Unlock()
 		return errors.New("text issuance owner is unavailable")
 	}
@@ -112,7 +112,7 @@ func (owner *dutyContext) issueTokensForOpeningWithCancellation(ctx context.Cont
 	challenges := make([]credential.ClosedTokenContext, len(receivers))
 	for index, receiver := range receivers {
 		challenge := credential.ClosedTokenContext{NetworkID: profile.NetworkID, ProfileDigest: profile.Digest, IssuerNodeID: profile.IssuerNodeID,
-			ReceiverNodeID: receiver, Class: class, WindowStart: permission.Accepted.NotBefore}
+			ReceiverNodeID: receiver, Class: class, WindowStart: permission.Grant().NotBefore}
 		for _, node := range view.Nodes[:view.NodeCount] {
 			if node.NodeID == receiver {
 				if challenge.ReceiverDutyGeneration != 0 {
@@ -128,13 +128,14 @@ func (owner *dutyContext) issueTokensForOpeningWithCancellation(ctx context.Cont
 		}
 		challenges[index] = challenge
 	}
-	batch, err := permission.ReserveBatch(profile, now, challenges, selection, refill, prefixRef(owner.source.CurrentLocked()), acquisition != nil, prefixRef(expected))
+	operation, err := owner.tokens.BeginIssuanceLocked(stock.IssuanceIntent{
+		Challenges: challenges, Selection: selection, Refill: refill, Prefix: prefixRef(owner.source.CurrentLocked()),
+		Joined: acquisition != nil, ExpectedPrefix: prefixRef(expected), DiscardCanceled: discardCanceled,
+	})
 	if err != nil {
 		owner.mu.Unlock()
 		return err
 	}
-	operation := tokens.NewOperation(&owner.tokens, permission, profile, batch, discardCanceled)
-	owner.tokens.Issuance = operation
 	owner.mu.Unlock()
 	return operation.Run(ctx, bootstrapState, selection)
 }

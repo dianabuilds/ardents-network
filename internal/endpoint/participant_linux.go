@@ -155,7 +155,7 @@ func (endpoint *endpoint) runInterfaces(ctx context.Context, config ClosedPartic
 	for _, owner := range contexts {
 		owner.mu.Lock()
 		profile, now, err := owner.permissionProfileLocked()
-		current := err == nil && owner.tokens.Permission.CurrentFor(profile, now)
+		current := err == nil && owner.tokens.PermissionLocked().CurrentFor(profile, now)
 		owner.mu.Unlock()
 		if !current {
 			return errors.New("text participant permission expired before command exposure")

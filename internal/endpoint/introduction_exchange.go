@@ -195,7 +195,7 @@ func (owner *dutyContext) prepareSubmissionStockWithCancellation(ctx context.Con
 	}
 	owner.mu.Lock()
 	profile, _, err := owner.permissionProfileLocked()
-	stocked := err == nil && owner.tokens.Permission.StockCountFor(profile.Digest, receiver, 1) != 0
+	stocked := err == nil && owner.tokens.PermissionLocked().StockCountFor(profile.Digest, receiver, 1) != 0
 	owner.mu.Unlock()
 	if err != nil {
 		return [32]byte{}, state.ClosedProfileView{}, err

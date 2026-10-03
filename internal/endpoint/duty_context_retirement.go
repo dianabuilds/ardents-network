@@ -5,10 +5,10 @@ package endpoint
 import (
 	"errors"
 
+	"github.com/dianabuilds/ardents-network/internal/admission/stock"
 	"github.com/dianabuilds/ardents-network/internal/endpoint/introduction"
 	"github.com/dianabuilds/ardents-network/internal/endpoint/publication"
 	"github.com/dianabuilds/ardents-network/internal/endpoint/source"
-	"github.com/dianabuilds/ardents-network/internal/endpoint/tokens"
 )
 
 // dutyContextRetirement is one concrete snapshot of every child that was
@@ -22,7 +22,7 @@ type dutyContextRetirement struct {
 	introduction        *rolePrefixRetirement
 	responder           *rolePrefixRetirement
 	source              *source.Retirement
-	issuance            *tokens.Operation
+	issuance            stock.Operation
 	resolution          *resolutionFlight
 	withdrawal          introduction.FlightRef
 	exchanges           []*introduction.Exchange
@@ -53,9 +53,7 @@ func (owner *dutyContext) stopDutyContextChildrenLocked() *dutyContextRetirement
 	retirement.responder = owner.responder.stopLocked()
 	retirement.source = owner.source.StopLocked()
 	owner.sourceSet = nil
-	owner.tokens.ClearPermissionLocked()
-	retirement.issuance = owner.tokens.Issuance
-	retirement.issuance.Cancel()
+	retirement.issuance = owner.tokens.StopLocked()
 	retirement.resolution = owner.resolution.StopLocked()
 	retirement.job = owner.job.stopLocked(owner)
 	return retirement

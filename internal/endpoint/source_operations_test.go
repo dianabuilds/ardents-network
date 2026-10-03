@@ -8,9 +8,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/admission/stock"
 	"github.com/dianabuilds/ardents-network/internal/endpoint/introduction"
 	"github.com/dianabuilds/ardents-network/internal/endpoint/source"
-	"github.com/dianabuilds/ardents-network/internal/endpoint/tokens"
 	"github.com/dianabuilds/ardents-network/internal/network/duty"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	routecarrier "github.com/dianabuilds/ardents-network/internal/route/carrier"
@@ -27,8 +27,8 @@ func TestTextTokenPresentationFailureRetainsNestedStageAndCause(t *testing.T) {
 	if !errors.Is(failure, cause) {
 		t.Fatal("token presentation failure lost its cause")
 	}
-	transfer := tokens.TransferFailureAt("journal", cause)
-	if got := tokens.TransferFailureStage(transfer); got != "journal" || !errors.Is(transfer, cause) {
+	transfer := stock.TransferFailureAt("journal", cause)
+	if got := stock.TransferFailureStage(transfer); got != "journal" || !errors.Is(transfer, cause) {
 		t.Fatalf("token transfer failure = %q, %v", got, transfer)
 	}
 }
@@ -50,7 +50,7 @@ func TestTextTokenPresentationClassifiesConcurrentRoleCommit(t *testing.T) {
 		owner.mu.Unlock()
 		t.Fatal("Source lifecycle refused the planted opening")
 	}
-	profile := owner.tokens.Permission.Profile
+	profile := sourceState.view.Profile
 	owner.mu.Unlock()
 	defer func() {
 		owner.mu.Lock()
@@ -114,7 +114,7 @@ func TestTextRefreshWaitsForActualSourceUse(t *testing.T) {
 			})
 			owner.mu.Lock()
 			sourceOpsPrevious, _ := owner.publication.pair.PreviousLocked()
-			valid := sourceOpsPrevious == first && owner.publication.refresh.Outcome(refresh) == nil && owner.tokens.Permission.Batches == 2
+			valid := sourceOpsPrevious == first && owner.publication.refresh.Outcome(refresh) == nil && (2-owner.tokens.PermissionLocked().BootstrapAllowance()) == 2
 			owner.mu.Unlock()
 			if !valid {
 				t.Fatal("refresh lost original registration or repeated bootstrap")

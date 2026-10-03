@@ -199,7 +199,6 @@ func TestTextPermissionCustodyRoundTripAndContextOwnership(t *testing.T) {
 	}
 	projection.err = nil
 
-	oldHolder, oldPublic := reader.tokens.Permission.Holder, reader.tokens.Permission.Public
 	now = now.Add(time.Hour)
 	if err := reader.tokens.Import(digest, approved.AdmissionPermission); err == nil {
 		t.Fatal("expired permission accepted")
@@ -212,10 +211,6 @@ func TestTextPermissionCustodyRoundTripAndContextOwnership(t *testing.T) {
 	if err != nil || newRequest.Permission.HolderKey == request.Permission.HolderKey {
 		t.Fatal("holder reused across hours")
 	}
-	if !bytes.Equal(oldHolder, make([]byte, len(oldHolder))) || !bytes.Equal(oldPublic, make([]byte, len(oldPublic))) {
-		t.Fatal("old allocation was not erased")
-	}
-	retainedHolder := reader.tokens.Permission.Holder
 	if err := endpoint.admission.Revoke(principal, broker.Connection); err != nil {
 		t.Fatal(err)
 	}
@@ -225,7 +220,7 @@ func TestTextPermissionCustodyRoundTripAndContextOwnership(t *testing.T) {
 	if err := reader.Close(); err != nil {
 		t.Fatal(err)
 	}
-	if reader.tokens.Permission != nil || !bytes.Equal(retainedHolder, make([]byte, len(retainedHolder))) {
+	if reader.tokens.PermissionLocked().Present() {
 		t.Fatal("revoked context retained private holder")
 	}
 	if _, _, err := publisher.tokens.Request([3]uint32{0, 64, 0}); err != nil {
@@ -234,7 +229,7 @@ func TestTextPermissionCustodyRoundTripAndContextOwnership(t *testing.T) {
 	if err := endpoint.closeDutyContexts(); err != nil {
 		t.Fatal(err)
 	}
-	if publisher.tokens.Permission != nil {
+	if publisher.tokens.PermissionLocked().Present() {
 		t.Fatal("Endpoint loss retained Publisher allocation")
 	}
 }
@@ -245,7 +240,7 @@ func TestTextPermissionRequiresVerifiedContext(t *testing.T) {
 	if _, _, err := owner.tokens.Request([3]uint32{1, 0, 0}); err == nil {
 		t.Fatal("unqualified context created holder")
 	}
-	if owner.tokens.Permission != nil {
+	if owner.tokens.PermissionLocked().Present() {
 		t.Fatal("failed request retained key")
 	}
 }

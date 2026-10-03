@@ -22,8 +22,8 @@ func TestTextPublisherAcceptsIntroductionAfterSourceRetirement(t *testing.T) {
 			}
 			defer clear(prepared.operation)
 			publisher.mu.Lock()
-			prefix, registration, permission := publisher.source.CurrentLocked(), publisher.publication.pair.CurrentLocked(), publisher.tokens.Permission
-			reserved := permission.Reserved
+			prefix, registration, permission := publisher.source.CurrentLocked(), publisher.publication.pair.CurrentLocked(), publisher.tokens.PermissionLocked()
+			reserved := reservedStockAllocation(permission)
 			publisher.mu.Unlock()
 			if err := closeSourceHandle(prefix); err != nil {
 				t.Fatal(err)
@@ -61,7 +61,7 @@ func TestTextPublisherAcceptsIntroductionAfterSourceRetirement(t *testing.T) {
 					t.Fatal("idle Publisher accepted foreign recipient facts")
 				}
 				publisher.mu.Lock()
-				noWork := publisher.source.CurrentLocked() == nil && publisher.responder.currentLocked() == nil && permission.Reserved == reserved
+				noWork := publisher.source.CurrentLocked() == nil && publisher.responder.currentLocked() == nil && reservedStockAllocation(permission) == reserved
 				publisher.mu.Unlock()
 				if !noWork {
 					t.Fatal("refused capsule created Source work or consumed allocation")
@@ -72,7 +72,7 @@ func TestTextPublisherAcceptsIntroductionAfterSourceRetirement(t *testing.T) {
 				t.Fatalf("registered Publisher after Source retirement: %v", err)
 			}
 			publisher.mu.Lock()
-			unchanged := publisher.source.CurrentLocked() == nil && publisher.tokens.Permission == permission && permission.Reserved == reserved && publisher.responder.currentLocked() == nil
+			unchanged := publisher.source.CurrentLocked() == nil && publisher.tokens.PermissionLocked() == permission && reservedStockAllocation(permission) == reserved && publisher.responder.currentLocked() == nil
 			publisher.mu.Unlock()
 			if !unchanged {
 				t.Fatal("pre-dial acceptance created network work or changed allocation")
@@ -83,7 +83,7 @@ func TestTextPublisherAcceptsIntroductionAfterSourceRetirement(t *testing.T) {
 				}
 				publisher.mu.Lock()
 				sourcePrefix, dataPrefix := publisher.source.CurrentLocked(), publisher.responder.currentLocked()
-				same := publisher.tokens.Permission == permission && permission.Batches == 2
+				same := publisher.tokens.PermissionLocked() == permission && (2-permission.BootstrapAllowance()) == 2
 				publisher.mu.Unlock()
 				if sourcePrefix == nil || dataPrefix == nil || !same {
 					t.Fatal("responder lost retained permission or repeated bootstrap")

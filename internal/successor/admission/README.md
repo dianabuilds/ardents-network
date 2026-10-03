@@ -87,7 +87,7 @@ live issuance still use the owners listed below.
 | --- | --- |
 | Offline permission verification, quota debit, key/profile preparation and retained issuance response | This tree, called by `cmd/ardents-next` |
 | Permission allocation and purpose-bound signing | `internal/admission` grammar and `internal/custody/admission_authority.go`, consumed by the existing provisioning commands |
-| Pending blind batch, per-class stock and permission revocation | `internal/endpoint/tokens`, consumed by the existing Endpoint duty context |
+| Pending blind batch, per-class stock and permission revocation | `internal/admission/stock`, consumed by the existing Endpoint duty context |
 | Holder consumption journal | `internal/admission/attempts`, transferred with the Endpoint runtime, token owner and Source presentation callers |
 | Receiver spend and replay floors | `internal/admission/spending`, transferred with real Route and Node receiving duties; retained-root repair included |
 | Live issuer request, bootstrap/admitted lane and response | `internal/route/credential`, composed by existing network consumers |

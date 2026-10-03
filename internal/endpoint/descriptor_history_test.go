@@ -193,11 +193,8 @@ func TestTextResolutionNetworkCannotRollBackLocalDescriptorFloor(t *testing.T) {
 				}
 			}
 			_, err = owner.descriptorHistory.Accept(second, current.Credential.Target, profile.NetworkID, profile.Digest, now)
-			reserved, batches := owner.tokens.Permission.Reserved, owner.tokens.Permission.Batches
-			tokensBefore := 0
-			for _, stock := range owner.tokens.Permission.Stock {
-				tokensBefore += len(stock.Tokens)
-			}
+			reserved, batches := reservedStockAllocation(owner.tokens.PermissionLocked()), (2 - owner.tokens.PermissionLocked().BootstrapAllowance())
+			tokensBefore := usableStockCountLocked(t, owner)
 			owner.mu.Unlock()
 			if err != nil {
 				t.Fatalf("full cache rejected existing Target: %v", err)
@@ -206,13 +203,10 @@ func TestTextResolutionNetworkCannotRollBackLocalDescriptorFloor(t *testing.T) {
 				t.Fatal("full context accepted another Target")
 			}
 			owner.mu.Lock()
-			tokensAfter := 0
-			for _, stock := range owner.tokens.Permission.Stock {
-				tokensAfter += len(stock.Tokens)
-			}
+			tokensAfter := usableStockCountLocked(t, owner)
 			unchanged := !owner.descriptorHistory.CanAdmit(fixtureID(199)) &&
-				owner.descriptorHistory.Matches(current.Credential.Target, current.Digest, 2) && owner.tokens.Permission.Reserved == reserved &&
-				owner.tokens.Permission.Batches == batches && tokensBefore == tokensAfter && !owner.resolution.BusyLocked() && owner.tokens.Issuance == nil
+				owner.descriptorHistory.Matches(current.Credential.Target, current.Digest, 2) && reservedStockAllocation(owner.tokens.PermissionLocked()) == reserved &&
+				(2-owner.tokens.PermissionLocked().BootstrapAllowance()) == batches && tokensBefore == tokensAfter && !owner.resolution.BusyLocked() && !owner.tokens.BusyLocked()
 			owner.mu.Unlock()
 			if !unchanged {
 				t.Fatal("capacity refusal evicted floors or consumed network issuance/admission")

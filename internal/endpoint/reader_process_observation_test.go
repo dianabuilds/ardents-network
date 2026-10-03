@@ -219,14 +219,15 @@ func readerLookupObservation(t *testing.T, owner *dutyContext, input readerProce
 	}
 	responseDigest := sha256.Sum256(input.Expected)
 	owner.mu.Lock()
-	permission := owner.tokens.Permission
-	if permission == nil || permission.Accepted == (admission.Permission{}) || permission.Batches == 0 {
+	permission := owner.tokens.PermissionLocked()
+	if !permission.Present() || permission.Grant() == (admission.Permission{}) || (2-permission.BootstrapAllowance()) == 0 {
 		owner.mu.Unlock()
 		t.Fatal("reader lookup lost its actual permission allocation")
 	}
-	holderDigest, permissionIDDigest := sha256.Sum256(permission.Accepted.HolderKey[:]), sha256.Sum256(permission.Accepted.PermissionID[:])
-	batches := permission.Batches
-	reserved := permission.Reserved
+	grant := permission.Grant()
+	holderDigest, permissionIDDigest := sha256.Sum256(grant.HolderKey[:]), sha256.Sum256(grant.PermissionID[:])
+	batches := (2 - permission.BootstrapAllowance())
+	reserved := reservedStockAllocation(permission)
 	floorRetained := owner.descriptorHistory.Matches(input.Target, verified.Current.Digest, verified.Descriptor.Private.Revision)
 	owner.mu.Unlock()
 	if !floorRetained {

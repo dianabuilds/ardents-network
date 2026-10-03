@@ -54,12 +54,12 @@ internal/endpoint/worker/        installed worker mechanism ("mechanism, not
                                  activation, cgroup pinning and verified stop,
                                  socket attachment credentials (stdlib-only
                                  leaf)
-internal/endpoint/tokens/        pure token authority: Permission (holder
+internal/admission/stock/        pure token authority: Permission (holder
                                  request creation, approval acceptance,
                                  currentness/quota checks, exact retry
-                                 matching, batch reservation), Batch, Stock,
+                                 matching, batch reservation), private batch/stock,
                                  Operation (issuance slot), Owner over the
-                                 shared duty mutex; seam tokens.Host
+                                 shared duty mutex; seam stock.Host
                                  implemented by root dutyTokenHost
 internal/endpoint/publication/   pure refresh-scheduler mechanism:
                                  RefreshLifecycle/Refresh/RefreshRetirement,
@@ -84,7 +84,7 @@ internal/endpoint/service/       protected Service stream mechanism: checked
                                  root *serviceBinding
 internal/admission/attempts/     durable potential-spend receipts and private roots
 internal/endpoint/descriptorhistory/ per-Target verified publication floors
-internal/endpoint/permissionfile/    canonical permission handover files
+internal/admission/permissionfile/    canonical permission handover files
 internal/endpoint/portable/, replacement/  portable-run and replacement leaves
 internal/qualification/          per-invocation Run, Artifact, Attachment,
                                  Measurements, and the retained-run
@@ -251,7 +251,7 @@ hashes:
    renamed to domain names; `textContext` → `dutyContext`; files git-mv'd.
 5. **Subpackage extraction series**: `tokens/` → `publication/` → `source/`
    → `introduction/` → `service/`, each behind a consumer-side seam
-   (`tokens.Host`, injected rotation callback, `source` acquisition joins,
+   (`stock.Host`, injected rotation callback, `source` acquisition joins,
    `introduction.Host`+`RecoveryBinding`, `service.Binding`), error strings
    byte-identical, package-map rows added in the same commits.
 6. **Installed-tag cure + compile gate**: the `text_worker_installed` test
@@ -282,7 +282,7 @@ choices, and installed systemd/cgroup qualification.
   families; each proposed seam is evaluated by state, invariant, callers, and
   close owner, not by method or file counts.
 - **Interface**: an extracted subpackage uses a consumer-side interface
-  implemented by the root (`tokens.Host`, `introduction.Host`,
+  implemented by the root (`stock.Host`, `introduction.Host`,
   `service.Binding` precedents). A private in-package owner uses direct
   methods and needs no interface. Either seam must have a non-test caller
   and hide an invariant or lifecycle, not merely reduce root method count.

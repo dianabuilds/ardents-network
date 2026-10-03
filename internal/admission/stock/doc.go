@@ -1,6 +1,6 @@
 //go:build linux
 
-// Package tokens owns the duty context's token authority: the granted holder
+// Package stock owns the duty context's token authority: the granted holder
 // permission with its exact hour, approved request, per-class reservations,
 // exact pending blind batch and finalized stock, plus the single in-flight
 // issuance operation slot bound to that permission and the durable token
@@ -13,4 +13,4 @@
 // context lock. Blinding state and finalized stock never leave the owner;
 // revocation erases secrets under the same shared lock while cancellation
 // interrupts and joins the transport tree.
-package tokens
+package stock

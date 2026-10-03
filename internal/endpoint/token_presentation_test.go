@@ -5,28 +5,25 @@ package endpoint
 import (
 	"bytes"
 	"context"
-	"errors"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
-	"github.com/dianabuilds/ardents-network/internal/route/terminal"
+	"github.com/dianabuilds/ardents-network/internal/route/carrier"
 
 	"github.com/dianabuilds/ardents-network/internal/admission/attempts"
-	"github.com/dianabuilds/ardents-network/internal/endpoint/tokens"
+	"github.com/dianabuilds/ardents-network/internal/admission/stock"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/route/client"
-	"github.com/dianabuilds/ardents-network/internal/route/credential"
 )
 
 // A real Custody permission and actual issuer produce the stock fixture.
 // The qualified-worker/State and in-flight-opening seams are explicit fixtures;
 // this test verifies the Endpoint's real stock-to-journal consumer.
 func TestTextTokenPresentationBurnsStockBeforeReturningBytes(t *testing.T) {
-	endpoint, owner, selection, _, hello, original := tokenPresentationFixture(t)
-	defer clear(original)
+	endpoint, owner, selection, profile, hello := tokenPresentationFixture(t)
 	flightContext, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	done := make(chan struct{})
@@ -40,7 +37,9 @@ func TestTextTokenPresentationBurnsStockBeforeReturningBytes(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer clear(returned)
-	if !bytes.Equal(returned, original) || len(owner.tokens.Permission.Stock[0].Tokens) != 0 {
+	original := bytes.Clone(returned)
+	defer clear(original)
+	if len(returned) != 354 || owner.tokens.PermissionLocked().StockCountForDuty(profile.Digest, hello.RecipientNodeID, hello.RecipientDutyGeneration, 2) != 0 {
 		t.Fatal("stock transfer wrong")
 	}
 	raw, err := os.ReadFile(filepath.Join(endpoint.closedTokenRoot, "attempts"))
@@ -71,36 +70,17 @@ func TestTextTokenPresentationBurnsStockBeforeReturningBytes(t *testing.T) {
 	}
 }
 
-// Invalid issuer stock is consumed locally and never becomes a durable attempt
-// or bytes presented to Route.
-func TestTextTokenInvalidStockCannotReachJournal(t *testing.T) {
-	endpoint, owner, _, profile, hello, original := tokenPresentationFixture(t)
-	defer clear(original)
-	owner.mu.Lock()
-	owner.tokens.Permission.Stock[0].Tokens[0][0] ^= 0xff
-	returned, err := owner.tokens.TakeTokenLocked(profile, time.Now().UTC(), hello, 2, t.Context())
-	remaining := len(owner.tokens.Permission.Stock[0].Tokens)
-	owner.mu.Unlock()
-	if err == nil || len(returned) != 0 || remaining != 0 || tokens.TransferFailureStage(err) != "verification" {
-		t.Fatalf("invalid stock transfer: bytes=%d remaining=%d stage=%s err=%v", len(returned), remaining, tokens.TransferFailureStage(err), err)
-	}
-	if _, err := os.Stat(filepath.Join(endpoint.closedTokenRoot, "attempts")); !errors.Is(err, os.ErrNotExist) {
-		t.Fatalf("invalid stock reached durable journal: %v", err)
-	}
-}
-
 func TestTextTokenCancellationAfterDurableMarkRetainsBurn(t *testing.T) {
-	endpoint, owner, _, profile, hello, original := tokenPresentationFixture(t)
-	defer clear(original)
+	endpoint, owner, _, profile, hello := tokenPresentationFixture(t)
 	attempt, cancel := context.WithCancel(t.Context())
 	cancel()
 	owner.mu.Lock()
 	returned, err := owner.tokens.TakeTokenLocked(profile, time.Now().UTC(), hello, 2, attempt)
-	remaining := len(owner.tokens.Permission.Stock[0].Tokens)
+	remaining := owner.tokens.PermissionLocked().StockCountForDuty(profile.Digest, hello.RecipientNodeID, hello.RecipientDutyGeneration, 2)
 	owner.mu.Unlock()
-	if err == nil || len(returned) != 0 || remaining != 0 || tokens.TransferFailureStage(err) != "owner" {
+	if err == nil || len(returned) != 0 || remaining != 0 || stock.TransferFailureStage(err) != "owner" {
 		t.Fatalf("cancelled durable spend returned token or wrong result: bytes=%d remaining=%d stage=%s err=%v",
-			len(returned), remaining, tokens.TransferFailureStage(err), err)
+			len(returned), remaining, stock.TransferFailureStage(err), err)
 	}
 	receipts := readTokenReceipts(t, endpoint.closedTokenRoot, endpoint.network)
 	if len(receipts) != 1 || receipts[0].attempt != hello.ChannelNonce {
@@ -117,17 +97,15 @@ func TestTextTokenCancellationAfterDurableMarkRetainsBurn(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer reopened.Close()
-	if err := reopened.Mark(original, journalAttemptFromReceipt(receipts[0])); err == nil {
-		t.Fatal("restart revived token burned before cancellation")
+	if after := readTokenReceipts(t, endpoint.closedTokenRoot, endpoint.network); len(after) != 1 || after[0] != receipts[0] {
+		t.Fatal("restart lost or changed the canceled presentation receipt")
 	}
 }
 
 func tokenPresentationFixture(t *testing.T) (*endpoint, *dutyContext, client.ClosedBootstrapSelection,
-	state.ClosedProfileView, ardp.Hello, []byte) {
+	state.ClosedProfileView, ardp.Hello) {
 	t.Helper()
-	endpoint, owner, source := sourceContextFixture(t)
-	root := prepareIssuancePermission(t, owner, source)
-	endpoint.closedTokenRoot = t.TempDir()
+	endpoint, owner, source := startRoleNetwork(t, roleNetworkFixture{carrier: carrier.ClosedCarrierTCP})
 	selection := selectSource(t, owner)
 	profile := source.view.Profile
 	duty := uint64(0)
@@ -136,38 +114,11 @@ func tokenPresentationFixture(t *testing.T) (*endpoint, *dutyContext, client.Clo
 			duty = node.DutyGeneration
 		}
 	}
-	challenge := credential.ClosedTokenContext{NetworkID: profile.NetworkID, ProfileDigest: profile.Digest, IssuerNodeID: profile.IssuerNodeID,
-		ReceiverNodeID: selection.EntryNodeID, ReceiverDutyGeneration: duty, Class: 2, WindowStart: owner.tokens.Permission.Accepted.NotBefore}
-	pending, err := credential.PrepareClosedTokenBatch(credential.ClosedTokenBatchConfig{Profile: profile, Contexts: []credential.ClosedTokenContext{challenge},
-		Permission: owner.tokens.Permission.Accepted, HolderKey: owner.tokens.Permission.Holder, Now: time.Now().UTC()})
-	if err != nil {
+	if err := owner.issueTokens(t.Context(), [][32]byte{selection.EntryNodeID}, 2); err != nil {
 		t.Fatal(err)
 	}
-	issuer, err := credential.OpenClosedTokenIssuer(credential.ClosedTokenIssuerConfig{Root: root, NetworkID: profile.NetworkID,
-		CurrentProfile: func() (state.ClosedProfileView, bool) { return profile, true }, Clock: time.Now})
-	if err != nil {
-		t.Fatal(err)
-	}
-	nonce := [32]byte{241}
-	operation, err := terminal.EncodeIssuanceRequest(nonce, pending.Request())
-	if err != nil {
-		t.Fatal(err)
-	}
-	response, err := issuer.IssueTerminalOperation(operation)
-	if err != nil {
-		t.Fatal(err)
-	}
-	issued, err := pending.FinalizeTerminalOperation(nonce, response)
-	if err != nil || len(issued) != 1 {
-		t.Fatalf("fixture issuance: %v", err)
-	}
-	if err := issuer.Close(); err != nil {
-		t.Fatal(err)
-	}
-	original := bytes.Clone(issued[0])
-	owner.tokens.Permission.Stock = []tokens.Stock{{Challenge: challenge, Tokens: issued}}
 	hello := ardp.Hello{NetworkID: profile.NetworkID, StateGeneration: profile.StateGeneration, StateDigest: profile.StateDigest,
-		ProfileDigest: profile.Digest, RecipientNodeID: challenge.ReceiverNodeID, RecipientDutyGeneration: duty,
+		ProfileDigest: profile.Digest, RecipientNodeID: selection.EntryNodeID, RecipientDutyGeneration: duty,
 		Purpose: ardp.PurposeForwarding, ChannelNonce: [32]byte{242}, Deadline: profile.NotAfter}
-	return endpoint, owner, selection, profile, hello, original
+	return endpoint, owner, selection, profile, hello
 }

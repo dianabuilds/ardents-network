@@ -7,10 +7,10 @@ import (
 	"errors"
 	"sync"
 
+	"github.com/dianabuilds/ardents-network/internal/admission/stock"
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
 	"github.com/dianabuilds/ardents-network/internal/endpoint/descriptorhistory"
 	"github.com/dianabuilds/ardents-network/internal/endpoint/source"
-	"github.com/dianabuilds/ardents-network/internal/endpoint/tokens"
 )
 
 // dutyContextState owns platform-independent local authorization for a context.
@@ -27,7 +27,7 @@ type dutyContextState struct {
 	// Interior Set stays here because root admission and role selection use it.
 	source      source.Lifecycle
 	sourceSet   *interiorSet
-	tokens      tokens.Owner
+	tokens      stock.Owner
 	mu          sync.Mutex
 	endpoint    *endpoint
 	lease       *broker.ActiveSession

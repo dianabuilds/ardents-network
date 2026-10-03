@@ -24,7 +24,7 @@
 //     responder_prefix_lifecycle.go own the two Publisher prefixes. Root
 //     introduction_registration.go and introduction_receive.go coordinate
 //     registration and delivery with the other Context owners.
-//   - permission.go checks the live State profile. The tokens package owns
+//   - permission.go checks the live State profile. The Admission stock package owns
 //     holder permission, issued stock, and the admitted operation;
 //     issuance.go coordinates Source use and token issuance.
 //   - publication.go composes the registration pair and refresh scheduler
@@ -50,7 +50,7 @@
 // checks decoded facts against live participant and publication authority.
 //
 // Durable token attempts and their private root mechanisms belong to Admission's
-// attempts package. The permissionfile package owns the separate owner-private
+// attempts package. The Admission permissionfile package owns the separate owner-private
 // offline permission file handover. Tests follow their production
 // owner; the role-network fixture in issuance_network_test.go selects
 // the Carrier, network_node_fixture_test.go owns each fixture Node's

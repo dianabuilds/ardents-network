@@ -7,7 +7,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/endpoint/permissionfile"
+	"github.com/dianabuilds/ardents-network/internal/admission/permissionfile"
 )
 
 // provisionPermission is the participant's finite offline handover. The
@@ -47,12 +47,11 @@ func (owner *dutyContext) provisionPermission(ctx context.Context, requestPath, 
 		return err
 	}
 	owner.mu.Lock()
-	pending := owner.tokens.Permission
-	if pending == nil || pending.Digest != digest {
+	expiry, matched := owner.tokens.PermissionLocked().RequestExpiry(digest)
+	if !matched {
 		owner.mu.Unlock()
 		return errors.New("text permission request owner changed")
 	}
-	expiry := pending.Request.Permission.NotAfter
 	owner.mu.Unlock()
 	bounded, cancel := context.WithDeadline(ctx, expiry)
 	defer cancel()

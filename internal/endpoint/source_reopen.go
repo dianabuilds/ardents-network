@@ -26,7 +26,7 @@ func (owner *dutyContext) prepareSourceReopen(ctx context.Context, flight *resol
 func (owner *dutyContext) prepareSourceReopenOwned(ctx context.Context, flight *resolutionFlight) error {
 	owner.mu.Lock()
 	profile, _, err := owner.permissionProfileLocked()
-	if err != nil || ctx.Err() != nil || owner.source.CurrentLocked() == nil || flight != nil && !owner.resolution.CurrentSourceLocked(flight, &owner.source) || owner.tokens.Permission == nil {
+	if err != nil || ctx.Err() != nil || owner.source.CurrentLocked() == nil || flight != nil && !owner.resolution.CurrentSourceLocked(flight, &owner.source) || !owner.tokens.PermissionLocked().Present() {
 		owner.mu.Unlock()
 		return source.PreparationFailureAt("stock", errors.New("text Source reopen stock unavailable"))
 	}
@@ -35,7 +35,7 @@ func (owner *dutyContext) prepareSourceReopenOwned(ctx context.Context, flight *
 		owner.mu.Unlock()
 		return source.PreparationFailureAt("selection", err)
 	}
-	missing := owner.tokens.Permission.MissingStockFor(profile.Digest, [][32]byte{selection.EntryNodeID, selection.InteriorNodeID}, 2)
+	missing := owner.tokens.PermissionLocked().MissingStockFor(profile.Digest, [][32]byte{selection.EntryNodeID, selection.InteriorNodeID}, 2)
 	owner.mu.Unlock()
 	if len(missing) != 0 {
 		if err := owner.issueTokensForOpening(ctx, missing, 2, nil, false); err != nil {

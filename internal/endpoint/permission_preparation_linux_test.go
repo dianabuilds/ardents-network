@@ -79,10 +79,10 @@ func TestTextPermissionPreparationJoinsUnqualifiedLaunch(t *testing.T) {
 				}
 				helpers.Wait()
 				owner.mu.Lock()
-				retained, qualified, permission := owner.job, owner.verifiedJob, owner.tokens.Permission
+				retained, qualified, permission := owner.job, owner.verifiedJob, owner.tokens.PermissionLocked()
 				finished, cleanupErr := job.finished, job.cleanupErr
 				owner.mu.Unlock()
-				if retained != nil || qualified != nil || permission != nil || !finished || cleanupErr != nil {
+				if retained != nil || qualified != nil || permission.Present() || !finished || cleanupErr != nil {
 					t.Fatal("preparation returned without joining refused qualification")
 				}
 				if _, err := os.Lstat(requestPath); !errors.Is(err, os.ErrNotExist) {

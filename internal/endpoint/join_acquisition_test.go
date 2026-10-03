@@ -141,14 +141,14 @@ func TestTextJoinSourceReplacementBeforeStockIssuanceDoesNotReserveAllocation(t 
 		RendezvousNode: node.NodeID, RendezvousDutyGeneration: node.DutyGeneration, Deadline: deadline,
 	}}
 	owner.mu.Lock()
-	reserved := owner.tokens.Permission.Reserved
+	reserved := reservedStockAllocation(owner.tokens.PermissionLocked())
 	owner.mu.Unlock()
 	if err := owner.prepareJoinStock(t.Context(), attempt, acquisition); err == nil {
 		t.Fatal("retired JOIN acquisition prepared stock")
 	}
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
-	if owner.tokens.Permission.Reserved != reserved || owner.tokens.Permission.Pending != nil || owner.tokens.Issuance != nil {
+	if reservedStockAllocation(owner.tokens.PermissionLocked()) != reserved || owner.tokens.PermissionLocked().HasPending() || owner.tokens.BusyLocked() {
 		t.Fatal("retired JOIN acquisition reserved allocation or started issuance")
 	}
 }

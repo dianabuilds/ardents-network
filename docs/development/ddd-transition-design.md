@@ -49,7 +49,7 @@ under another directory cannot establish that connection by itself.
 | `IssuerProfileBinding.ledger` in baseline `internal/successor/admission/issuer_profile.go` creates a ledger binding with dummy Authority, Profile and Duty values to validate a public profile | Confirmed model coupling, not evidence of an authority bypass: this temporary value is used for validation | Give public inventory/cohort validation its own value model; keep real ledger binding validation with the ledger |
 | baseline `internal/successor/admission/token_key.go` and `internal/successor/issuance/public_key.go` are identical after package-name/newline normalization | Confirmed duplicated canonical grammar; divergence risk, not a demonstrated mismatch today | One Admission-owned public issuer-profile/key grammar with independent byte vectors |
 | baseline `internal/successor/tokenissuance/operation.go` and `profile.go` in that package deferred closes overwrite the same Result | Confirmed static loss of primary/earlier cleanup causes when multiple phases fail; failure still overrides success | Retain the operation result and every bounded owner-close result before projecting one CLI category; add a failing multi-fault regression first |
-| [tokens.Host](../../internal/endpoint/tokens/host.go) requires Locked calls; [duty context](../../internal/endpoint/duty_context.go) passes its mutex into tokens.Init | Extraction preserved shared synchronization, not independent aggregate ownership; no deadlock is claimed here | Enumerate protected invariants and linearization points before moving state or changing locks |
+| [stock.Host](../../internal/admission/stock/host.go) requires Locked calls; [duty context](../../internal/endpoint/duty_context.go) passes its mutex into stock.Init | Extraction preserved shared synchronization, not independent aggregate ownership; no deadlock is claimed here | Enumerate protected invariants and linearization points before moving state or changing locks |
 | [service.Binding](../../internal/endpoint/service/binding.go) exposes Job, publication, resources, time and recovery | A large Interface transfers parent coordination knowledge to the stream implementation | Connection receives immutable destination evidence and narrow live permits; execution and publication remain separate owners |
 | [Descriptor publication](../../internal/endpoint/descriptor_publication.go) commits ACK/readiness in Endpoint; [retirement](../../internal/endpoint/duty_context_retirement.go) orders many child lifetimes | Publication's complete transition authority is distributed | Move registration/ACK/refresh/withdrawal state together, retaining synchronous revoke and joined shutdown |
 | [Isolation gate](../../internal/architecture/successor_isolation_test.go) allows reviewed CIRCL only for Issuance; repository-layout's isolation paragraph mentions only OTel as an exception | Current summary documentation lags the more specific selected issuance contract and gate | Reconcile the engineering summary with the existing dependency selection in the bounded implementation change; do not relax the gate |
@@ -418,6 +418,49 @@ do not replace authority or token presentation. Run the Linux deterministic race
 profile for attempts and affected Endpoint/tokens/Source callers, required
 quick/full gates and bounded review. A diagnostic reproducer already confirmed
 the lost-lease overlap; these checks do not qualify an installed journey.
+
+### Holder stock and issuance admission
+
+The holder's permission, reserved allocation, exact pending blind batch and
+volatile token stock move together from `internal/endpoint/tokens` to
+`internal/admission/stock`. This is one owner at the holder principal, separate
+from issuer debit and receiver replay. The Linux permission-file handover moves
+to `internal/admission/permissionfile` with both real callers; it remains a
+public-byte transport, not permission authority. No successor import bridge or
+new wire/persisted identity is introduced.
+
+The stock owner uses the existing shared duty-context mutex. Endpoint still
+checks the exact opening, JOIN acquisition, live State and selected receiver
+duties. Admission atomically validates its current permission and vacant
+operation slot, reserves or resumes the exact batch, and publishes the admitted
+operation before that mutex is released. Endpoint cannot install an operation
+or invoke its terminal completion. Cancellation and join remain callable on the
+returned operation; terminal deposit and deferred secret erasure are private.
+Admission also decides whether issuer Control stock needs refill and returns
+copied receiver intent, preserving an exact retained refill before later work.
+
+The completed transfer must hide the writable permission, batch and stock
+representation. Public observations must not expose holder keys, token bytes or
+mutable retained slices; tests cannot justify setters or authority bypasses.
+Existing tests that inject stock or complete operations directly must exercise
+real issuance, or move the private invariant assertion to the stock owner's
+tests while retaining Endpoint integration coverage. The existing context lock
+and physical cancellation/join order stay unchanged.
+
+Reservation remains nonrefundable. Transport failure retains the exact request,
+selection and blinding state; an authorized canceled recovery discards only its
+batch, without refund. Revocation detaches permission immediately and erases an
+active batch only after transport joins. Finalized stock remains volatile and
+cannot be restored after process loss. Attempt marking still precedes token
+release and rechecks the surviving context; failed marking never returns bytes.
+
+Verification must cover actual permission handover and issuance consumers,
+failed exchange/retry, busy-slot rejection without debit, changed receiver or
+prefix refusal, refill resumption, cancellation, revoke during transport,
+invalid stock and mark failure, and process loss with previously issued stock.
+Use the Linux race profile for stock, permissionfile and Endpoint/Source, plus
+required quick/full gates and bounded review. Existing synthetic test setup is
+not evidence that the complete transferred owner works.
 
 ## Find defects during transfer
 

@@ -1,6 +1,6 @@
 //go:build linux
 
-package tokens
+package stock
 
 import (
 	"context"
@@ -10,7 +10,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/admission"
 	"github.com/dianabuilds/ardents-network/internal/admission/attempts"
-	"github.com/dianabuilds/ardents-network/internal/endpoint/permissionfile"
+	"github.com/dianabuilds/ardents-network/internal/admission/permissionfile"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 )
@@ -22,14 +22,18 @@ import (
 type Owner struct {
 	mu         *sync.Mutex
 	host       Host
-	Permission *Permission
-	Issuance   *Operation
+	permission *permission
+	issuance   *operation
 }
 
 func (owner *Owner) Init(mu *sync.Mutex, host Host) {
 	owner.mu = mu
 	owner.host = host
 }
+
+// PermissionLocked identifies the retained permission under the shared mutex.
+// Only Request, Import and retirement change which permission this owner holds.
+func (owner *Owner) PermissionLocked() Permission { return Permission{value: owner.permission} }
 
 // Request returns only the public holder-signed request and its
 // exact approval digest. A repeat in the same hour returns the existing request;
@@ -48,7 +52,7 @@ func (owner *Owner) Request(maxima [3]uint32) ([]byte, [32]byte, error) {
 	if err != nil {
 		return nil, [32]byte{}, err
 	}
-	if previous := owner.Permission; previous != nil {
+	if previous := owner.permission; previous != nil {
 		public, digest, active, err := previous.retainedRequest(scope)
 		if active {
 			return public, digest, err
@@ -59,7 +63,7 @@ func (owner *Owner) Request(maxima [3]uint32) ([]byte, [32]byte, error) {
 	if err != nil {
 		return nil, [32]byte{}, err
 	}
-	owner.Permission = prepared
+	owner.permission = prepared
 	return public, digest, nil
 }
 
@@ -81,26 +85,39 @@ func (owner *Owner) Import(digest [32]byte, raw []byte) error {
 	if err != nil {
 		return err
 	}
-	return owner.Permission.acceptResponse(profile, now, digest, permission)
+	return owner.permission.acceptResponse(profile, now, digest, permission)
 }
 
 func (owner *Owner) ClearPermissionLocked() {
-	permission := owner.Permission
+	permission := owner.permission
 	if permission == nil {
 		return
 	}
-	owner.Permission = nil
-	if owner.Issuance != nil && owner.Issuance.retirePermissionLocked(permission) {
+	owner.permission = nil
+	if owner.issuance != nil && owner.issuance.retirePermissionLocked(permission) {
 		return
 	}
 	clearPermission(permission)
+}
+
+// BusyLocked reports whether an admitted exchange still owns the operation
+// slot. A detached permission does not release that slot before transport joins.
+func (owner *Owner) BusyLocked() bool { return owner.issuance != nil }
+
+// StopLocked revokes permission and cancels the exact admitted operation. The
+// caller joins the returned handle only after releasing the shared mutex.
+func (owner *Owner) StopLocked() Operation {
+	owner.ClearPermissionLocked()
+	operation := owner.issuance
+	operation.Cancel()
+	return Operation{value: operation}
 }
 
 // TakeTokenLocked is shared only after the exact opening or issuance
 // flight has independently authorized its role. It durably marks consumed stock
 // and rechecks the surviving context before releasing bytes to Route.
 func (owner *Owner) TakeTokenLocked(profile state.ClosedProfileView, now time.Time, hello ardp.Hello, class uint8, attempt context.Context) ([]byte, error) {
-	permission := owner.Permission
+	permission := owner.permission
 	token, err := permission.consumeToken(profile, now, hello, class)
 	if err != nil {
 		return nil, err
@@ -108,7 +125,7 @@ func (owner *Owner) TakeTokenLocked(profile state.ClosedProfileView, now time.Ti
 	journal, err := owner.host.Journal()
 	if err == nil {
 		err = journal.Mark(token, attempts.Attempt{Profile: profile.Digest, Receiver: hello.RecipientNodeID, Duty: hello.RecipientDutyGeneration,
-			Window: permission.Accepted.NotBefore, Class: class, Nonce: hello.ChannelNonce})
+			Window: permission.accepted.NotBefore, Class: class, Nonce: hello.ChannelNonce})
 	}
 	if err != nil {
 		clear(token)
@@ -116,7 +133,7 @@ func (owner *Owner) TakeTokenLocked(profile state.ClosedProfileView, now time.Ti
 		return nil, TransferFailureAt("journal", err)
 	}
 	currentProfile, currentTime, currentErr := owner.host.ProfileLocked()
-	if currentErr != nil || currentProfile != profile || !currentTime.Before(permission.Accepted.NotAfter) || attempt.Err() != nil {
+	if currentErr != nil || currentProfile != profile || !currentTime.Before(permission.accepted.NotAfter) || attempt.Err() != nil {
 		clear(token)
 		return nil, TransferFailureAt("owner", errors.Join(currentErr, attempt.Err(), errors.New("text token owner changed after durable mark")))
 	}
@@ -150,9 +167,9 @@ func (owner *Owner) ExportFile(ctx context.Context, path string, maxima [3]uint3
 	}
 	owner.mu.Lock()
 	profile, now, err := owner.host.ProfileLocked()
-	pending := owner.Permission
-	current := pending != nil && pending.Digest == digest && pending.Profile == profile &&
-		!now.Before(pending.Request.Permission.NotBefore) && now.Before(pending.Request.Permission.NotAfter)
+	pending := owner.permission
+	current := pending != nil && pending.digest == digest && pending.profile == profile &&
+		!now.Before(pending.request.Permission.NotBefore) && now.Before(pending.request.Permission.NotAfter)
 	owner.mu.Unlock()
 	if err != nil || !current {
 		return [32]byte{}, errors.New("text permission export context changed")
@@ -169,7 +186,7 @@ func (owner *Owner) ImportFile(ctx context.Context, path string, digest [32]byte
 	}
 	owner.mu.Lock()
 	_, _, err := owner.host.ProfileLocked()
-	matches := owner.Permission.matchesRequest(digest)
+	matches := owner.permission.matchesRequest(digest)
 	owner.mu.Unlock()
 	if err != nil || !matches {
 		return errors.New("text permission import has no live request")

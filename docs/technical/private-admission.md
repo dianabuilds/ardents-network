@@ -134,7 +134,7 @@ Node Record digests, duty assignments and admission-authority key when
 preparing that plan. Inspection permits provisioning future hourly keys; it
 does not assert current Node duty or time validity and does not advance floors.
 
-The Endpoint permission owner consumes the participant's opened State owner
+The holder [Admission stock owner](../../internal/admission/stock/doc.go) consumes the participant's opened State owner
 and the retained local context established by a verified worker launch. The
 worker's Connection Grant does not confer its parent's Publisher authority.
 One context retains one holder and exact public request per aligned hour;
@@ -146,7 +146,7 @@ Endpoint shutdown erase its private holder. Expiry requires a fresh holder,
 never a refund or revival of the preceding allocation. These local ownership
 checks do not themselves authorize a network lane or establish Time Confidence.
 
-The Linux Endpoint permission-file adapter exports that exact public request
+The Linux [Admission permission-file adapter](../../internal/admission/permissionfile/doc.go) exports that exact public request
 and returns its commitment separately. It accepts only a canonical absolute
 path in an existing directory owned by the Endpoint account with mode 0700;
 regular request/response files require mode 0600, matching ownership and one

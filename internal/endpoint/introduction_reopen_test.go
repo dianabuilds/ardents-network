@@ -25,7 +25,7 @@ func TestTextIntroductionReopensJoinedSource(t *testing.T) {
 			}
 			clear(first.operation)
 			reader.mu.Lock()
-			prefix, permission := reader.source.CurrentLocked(), reader.tokens.Permission
+			prefix, permission := reader.source.CurrentLocked(), reader.tokens.PermissionLocked()
 			reader.mu.Unlock()
 			if err := closeSourceHandle(prefix); err != nil {
 				t.Fatal(err)
@@ -41,10 +41,10 @@ func TestTextIntroductionReopensJoinedSource(t *testing.T) {
 			}
 			clear(second.operation)
 			reader.mu.Lock()
-			valid := reader.source.CurrentLocked() != nil && reader.source.CurrentLocked() != prefix && reader.tokens.Permission == permission && permission.Batches == 2 &&
-				permission.Pending == nil && reader.tokens.Issuance == nil && !reader.resolution.BusyLocked() && !reader.source.OpeningInProgressLocked()
-			reserved := permission.Reserved
-			maxima := permission.Accepted.Maxima
+			valid := reader.source.CurrentLocked() != nil && reader.source.CurrentLocked() != prefix && reader.tokens.PermissionLocked() == permission && (2-permission.BootstrapAllowance()) == 2 &&
+				!permission.HasPending() && !reader.tokens.BusyLocked() && !reader.resolution.BusyLocked() && !reader.source.OpeningInProgressLocked()
+			reserved := reservedStockAllocation(permission)
+			maxima := permission.Grant().Maxima
 			reader.mu.Unlock()
 			if !valid {
 				t.Fatal("reopen replaced permission, repeated bootstrap or retained a flight")

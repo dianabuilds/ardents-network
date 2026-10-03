@@ -17,10 +17,10 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/admission"
 	"github.com/dianabuilds/ardents-network/internal/admission/attempts"
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
-	"github.com/dianabuilds/ardents-network/internal/custody"
 	"github.com/dianabuilds/ardents-network/internal/endpoint/introduction"
-	"github.com/dianabuilds/ardents-network/internal/endpoint/tokens"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
+	"github.com/dianabuilds/ardents-network/internal/route/carrier"
 )
 
 type endpointCrashBoundary struct {
@@ -36,6 +36,7 @@ type endpointCrashBoundary struct {
 	Nonce              [32]byte                `json:"nonce,omitzero"`
 	Duty               uint64                  `json:"duty"`
 	Window             time.Time               `json:"window"`
+	Observed           time.Time               `json:"observed"`
 	AdmissionActive    uint32                  `json:"admission_active"`
 	WorkerGrantActive  uint32                  `json:"worker_grant_active"`
 	JobLive            bool                    `json:"job_live"`
@@ -44,14 +45,15 @@ type endpointCrashBoundary struct {
 
 // SIGKILL leaves no deferred cleanup path. The successor process reuses the
 // same Endpoint identity and durable token root, so rejection cannot be
-// attributed to a changed Broker ID or an expired capability. Custody and the
-// qualified-worker precondition remain explicit fixtures; installed cgroup
+// attributed to a changed Broker ID or an expired capability. Custody, issuer and stock consumption remain real; accepted State and the
+// qualified-worker precondition are explicit fixtures. Installed cgroup
 // cleanup is covered by the separate worker lifecycle profile.
 func TestTextEndpointCrashDropsVolatileAuthorityAndRetainsSpend(t *testing.T) {
 	if root := os.Getenv("ARDENTS_TEXT_ENDPOINT_CRASH_ROOT"); root != "" {
 		runEndpointCrashChild(t, root)
 		return
 	}
+	waitNetworkFixtureStart(t)
 	root := t.TempDir()
 	if err := os.Chmod(root, 0o700); err != nil {
 		t.Fatal(err)
@@ -62,8 +64,8 @@ func TestTextEndpointCrashDropsVolatileAuthorityAndRetainsSpend(t *testing.T) {
 			boundary.AdmissionActive, boundary.WorkerGrantActive, boundary.JobLive, boundary.StockCount)
 	}
 
-	clock := func() time.Time { return endpointCrashTime() }
-	reopened, err := newEndpoint(setup{NetworkID: boundary.Profile.NetworkID, BrokerID: fixtureID(243),
+	clock := func() time.Time { return boundary.Observed }
+	reopened, err := newEndpoint(setup{NetworkID: boundary.Profile.NetworkID, BrokerID: fixtureID(212),
 		ConnectionPrincipal: boundary.Principal, Clock: clock})
 	if err != nil {
 		t.Fatal(err)
@@ -90,7 +92,7 @@ func TestTextEndpointCrashDropsVolatileAuthorityAndRetainsSpend(t *testing.T) {
 	defer owner.Close()
 	owner.mu.Lock()
 	crashPrevious, _ := owner.publication.pair.PreviousLocked()
-	fresh := owner.tokens.Permission == nil && owner.job == nil && owner.verifiedJob == nil && owner.sourceSet == nil &&
+	fresh := !owner.tokens.PermissionLocked().Present() && owner.job == nil && owner.verifiedJob == nil && owner.sourceSet == nil &&
 		owner.source.CurrentLocked() == nil && owner.publication.pair.CurrentLocked() == nil && crashPrevious == nil &&
 		introduction.ActiveExchangeCount(&owner.introduction.exchanges) == 0 && introduction.ReplayCount(&owner.introduction.admission) == 0 && owner.descriptorHistory.Cleared()
 	owner.mu.Unlock()
@@ -102,7 +104,7 @@ func TestTextEndpointCrashDropsVolatileAuthorityAndRetainsSpend(t *testing.T) {
 	if err := owner.finishJobCleanup(job, nil); err != nil {
 		t.Fatal(err)
 	}
-	requestRaw, digest, err := owner.tokens.Request([3]uint32{4, 4, 0})
+	requestRaw, digest, err := owner.tokens.Request([3]uint32{34, 34, 0})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -125,7 +127,7 @@ func TestTextEndpointCrashDropsVolatileAuthorityAndRetainsSpend(t *testing.T) {
 		t.Fatal("restart rebound the old response to the fresh holder")
 	}
 	owner.mu.Lock()
-	stock := len(owner.tokens.Permission.Stock)
+	stock := owner.tokens.PermissionLocked().StockCountForDuty(boundary.Profile.Digest, boundary.Receiver, boundary.Duty, 2)
 	owner.mu.Unlock()
 	if stock != 0 {
 		t.Fatal("restart resurrected token stock")
@@ -137,8 +139,8 @@ func TestTextEndpointCrashDropsVolatileAuthorityAndRetainsSpend(t *testing.T) {
 	}
 	record := attempts.Attempt{Profile: boundary.AttemptProfile, Receiver: boundary.Receiver, Duty: boundary.Duty,
 		Window: boundary.Window, Class: 2, Nonce: boundary.Nonce}
-	if err := journal.Mark(boundary.Token, record); err == nil {
-		t.Fatal("restart revived a token already durably marked before the crash")
+	if err := journal.Mark(boundary.Token, record); err == nil || err.Error() != "text token already potentially spent" {
+		t.Fatalf("restart must refuse the retained spend, not a changed clock or binding: %v", err)
 	}
 	receipts := readTokenReceipts(t, reopened.closedTokenRoot, reopened.network)
 	if len(receipts) != 1 {
@@ -212,80 +214,61 @@ func runAndKillEndpointCrashChild(t *testing.T, root string) endpointCrashBounda
 
 func runEndpointCrashChild(t *testing.T, root string) {
 	t.Helper()
-	for _, name := range []string{"custody", "tokens"} {
-		if err := os.Mkdir(filepath.Join(root, name), 0o700); err != nil {
-			t.Fatal(err)
-		}
-	}
-	now := endpointCrashTime()
-	clock := func() time.Time { return now }
-	vault, err := custody.Open(custody.VaultConfig{Root: filepath.Join(root, "custody"), Now: clock})
-	if err != nil {
+	if err := os.Mkdir(filepath.Join(root, "tokens"), 0o700); err != nil {
 		t.Fatal(err)
 	}
-	created, err := vault.Execute(t.Context(), custody.Operation{Kind: custody.OperationCreateAdmissionAuthority,
-		Authority: custody.AuthorityState{Binding: custody.AuthorityBinding{Environment: fixtureID(244), Network: fixtureID(245),
-			Root: fixtureID(246), Kind: custody.AuthorityAdmission}}}, permissionSecretFixture{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	profile := state.ClosedProfileView{NetworkID: fixtureID(245), StateGeneration: fixtureID(247), StateDigest: fixtureID(248),
-		Digest: fixtureID(249), IssuanceAuthorityKey: created.AdmissionAuthority.Public, IssuerNodeID: fixtureID(250),
-		IssuerDutyGeneration: 3, NotBefore: now.Truncate(time.Hour), NotAfter: now.Truncate(time.Hour).Add(2 * time.Hour)}
-	principal := fixtureID(251)
-	endpoint, err := newEndpoint(setup{NetworkID: profile.NetworkID, BrokerID: fixtureID(243),
-		ConnectionPrincipal: principal, Clock: clock})
-	if err != nil {
-		t.Fatal(err)
-	}
-	endpoint.closedState = &permissionStateFixture{profile: profile}
-	ownerCapability, err := endpoint.Admit(principal, broker.Connection)
-	if err != nil {
-		t.Fatal(err)
-	}
-	owner, err := endpoint.beginDutyContext(t.Context(), ownerCapability, principal, broker.Connection)
-	if err != nil {
-		t.Fatal(err)
-	}
+	// The parent reserves enough of the permission hour before launching us.
+	// Real Nodes, Custody, blind issuance and the stock consumer reach the crash
+	// boundary; only accepted State and worker qualification are fixture seams.
+	endpoint, owner, source := startRoleNetwork(t, roleNetworkFixture{
+		carrier: carrier.ClosedCarrierTCP, reservedWindow: true,
+	})
+	endpoint.closedTokenRoot = filepath.Join(root, "tokens")
+	profile := source.view.Profile
+	principal := fixtureID(211)
 	_, workerGrant := attachPermissionJob(t, owner, endpoint)
 	if _, err := workerGrant.Admit(fixtureID(240), broker.Connection); err != nil {
 		t.Fatal(err)
 	}
-	requestRaw, digest, err := owner.tokens.Request([3]uint32{4, 4, 0})
+	requestRaw, digest, err := owner.tokens.Request([3]uint32{34, 34, 0})
 	if err != nil {
 		t.Fatal(err)
 	}
-	issued, err := vault.Execute(t.Context(), custody.Operation{Kind: custody.OperationIssueAdmissionPermission,
-		RecordID: created.RecordID, Expected: created.Authority.Binding, AdmissionRequest: requestRaw,
-		AdmissionRequestCommitment: digest}, permissionSecretFixture{})
+	permissionRaw, err := admission.EncodePermission(owner.tokens.PermissionLocked().Grant())
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := owner.tokens.Import(digest, issued.AdmissionPermission); err != nil {
+	selection := selectSource(t, owner)
+	receiver := selection.EntryNodeID
+	if err := owner.issueTokens(t.Context(), [][32]byte{receiver, receiver}, 2); err != nil {
 		t.Fatal(err)
 	}
+	var duty uint64
+	for _, node := range source.view.Nodes[:source.view.NodeCount] {
+		if node.NodeID == receiver {
+			duty = node.DutyGeneration
+		}
+	}
+	hello := ardp.Hello{NetworkID: profile.NetworkID, StateGeneration: profile.StateGeneration, StateDigest: profile.StateDigest,
+		ProfileDigest: profile.Digest, RecipientNodeID: receiver, RecipientDutyGeneration: duty,
+		Purpose: ardp.PurposeForwarding, ChannelNonce: fixtureID(254), Deadline: profile.NotAfter}
 	owner.mu.Lock()
-	owner.tokens.Permission.Stock = []tokens.Stock{{Tokens: [][]byte{bytes.Repeat([]byte{0x5a}, 354)}}}
-	stockCount := len(owner.tokens.Permission.Stock)
+	token, err := owner.tokens.TakeTokenLocked(profile, time.Now(), hello, 2, t.Context())
+	stockCount := owner.tokens.PermissionLocked().StockCountForDuty(profile.Digest, receiver, duty, 2)
 	owner.mu.Unlock()
+	if err != nil {
+		t.Fatal(err)
+	}
 	oldCapability, err := endpoint.Admit(principal, broker.Connection)
 	if err != nil {
 		t.Fatal(err)
 	}
-	token := bytes.Repeat([]byte{0xa5}, 354)
-	record := attempts.Attempt{Profile: fixtureID(252), Receiver: fixtureID(253), Duty: 7,
-		Window: now.Truncate(time.Hour), Class: 2, Nonce: fixtureID(254)}
-	journal, err := attempts.Open(filepath.Join(root, "tokens"), profile.NetworkID, clock)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := journal.Mark(token, record); err != nil {
-		t.Fatal(err)
-	}
+	record := attempts.Attempt{Profile: profile.Digest, Receiver: receiver, Duty: duty,
+		Window: owner.tokens.PermissionLocked().Grant().NotBefore, Class: 2, Nonce: hello.ChannelNonce}
 	boundary := endpointCrashBoundary{Profile: profile, Principal: principal, Capability: oldCapability,
-		PermissionRequest: requestRaw, PermissionResponse: issued.AdmissionPermission, PermissionDigest: digest,
+		PermissionRequest: requestRaw, PermissionResponse: permissionRaw, PermissionDigest: digest,
 		Token: token, AttemptProfile: record.Profile, Receiver: record.Receiver, Nonce: record.Nonce,
-		Duty: record.Duty, Window: record.Window, AdmissionActive: endpoint.admission.Active(),
+		Duty: record.Duty, Window: record.Window, Observed: time.Now().UTC(), AdmissionActive: endpoint.admission.Active(),
 		WorkerGrantActive: workerGrant.Active(), JobLive: owner.job != nil, StockCount: stockCount}
 	raw, err := json.Marshal(boundary)
 	if err != nil {
@@ -325,8 +308,4 @@ func attachPermissionJob(t *testing.T, owner *dutyContext, endpoint *endpoint) (
 	owner.verifiedJob = job
 	owner.mu.Unlock()
 	return job, grant
-}
-
-func endpointCrashTime() time.Time {
-	return time.Date(2030, 8, 9, 10, 11, 12, 0, time.UTC)
 }

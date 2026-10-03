@@ -260,7 +260,7 @@ func (owner *dutyContext) prepareJoinStock(ctx context.Context, attempt *introdu
 	owner.mu.Lock()
 	profile, _, err := owner.permissionProfileLocked()
 	stocked := err == nil && prefix.CurrentLocked(owner) &&
-		owner.tokens.Permission.StockCountFor(profile.Digest, node, 2) != 0
+		owner.tokens.PermissionLocked().StockCountFor(profile.Digest, node, 2) != 0
 	owner.mu.Unlock()
 	if err == nil && !stocked {
 		err = owner.issueJoinTokens(bounded, [][32]byte{node}, 2, prefix,
