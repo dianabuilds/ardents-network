@@ -7,6 +7,7 @@ import (
 	"crypto/sha256"
 	"errors"
 	"github.com/dianabuilds/ardents-network/internal/admission"
+	"github.com/dianabuilds/ardents-network/internal/admission/allocation"
 	"testing"
 	"time"
 )
@@ -40,7 +41,7 @@ func TestIssueAdmissionPermissionRejectsWallClockRollback(t *testing.T) {
 			Expected: created.Authority.Binding, AdmissionRequest: raw, AdmissionRequestCommitment: sha256.Sum256(raw)}, &sequenceSecrets{values: [][]byte{password}})
 		return requestErr
 	}
-	if err := issue(now, [3]uint32{uint32(maximumUserAllocation), 0, 0}); err != nil {
+	if err := issue(now, [3]uint32{uint32(allocation.RoleLimit(admission.AllocationUser)), 0, 0}); err != nil {
 		t.Fatalf("consume current hourly allocation: %v", err)
 	}
 	now = now.Add(-time.Hour)
@@ -123,12 +124,6 @@ func TestIssueAdmissionPermissionAdvancesEncryptedAllocationLedger(t *testing.T)
 	if _, err := vault.Execute(t.Context(), secondIssue, &sequenceSecrets{values: [][]byte{password}}); err != nil {
 		t.Fatalf("advance admission ledger: %v", err)
 	}
-	if err := writeAtomicPrivate(ledgerPath, previousLedger); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := vault.Execute(t.Context(), secondIssue, &sequenceSecrets{values: [][]byte{password}}); err == nil {
-		t.Fatal("accepted restored allocation ledger behind durable floor")
-	}
 	changed := request
 	changed.Permission.Maxima[0]++
 	changed, err = admission.SealPermissionRequest(changed, holder)
@@ -144,4 +139,11 @@ func TestIssueAdmissionPermissionAdvancesEncryptedAllocationLedger(t *testing.T)
 		&sequenceSecrets{values: [][]byte{password}}); err == nil {
 		t.Fatal("accepted changed allocation for one permission ID")
 	}
+	if err := writeAtomicPrivate(ledgerPath, previousLedger); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := vault.Execute(t.Context(), secondIssue, &sequenceSecrets{values: [][]byte{password}}); err == nil {
+		t.Fatal("accepted restored allocation ledger behind durable floor")
+	}
+
 }

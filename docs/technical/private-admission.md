@@ -42,11 +42,14 @@ issuer. Provisioning is an explicit closed-network operation, not public signup.
 
 A User installation receives at most 4,096 token reservations per hour in
 total across its context-scoped permissions; a Publisher receives at most
-16,384 across its publication roles. The offline provisioning owner allocates
-these finite maxima before signing, records its issuance allocation durably,
+16,384 across its publication roles. The [Admission allocation owner](../../internal/admission/allocation/doc.go)
+decides these finite maxima before signing; Custody records its decision durably
 and refuses overlapping allocations that exceed them. Its private provisioning
 record can associate its own recipients: blindness does not hide that record
-from this authority. It is not transmitted to issuers or receivers.
+from this authority. It is not transmitted to issuers or receivers. The current
+provisioning ledger applies these bounds conservatively across each Authority
+record's role allocations; it does not encode independent per-installation
+counters.
 The issuer duty itself permits at most
 65,536 reservations per hour across all permissions. Counters and atomic
 debits are shared by all its listeners. Issuance right, rather than traffic
@@ -235,7 +238,8 @@ holds the current authority successor and exact request digests; its monotonic
 floor is flushed only after the envelope is verified. This retains the complete
 allowed hourly reservation set without turning the vault's bounded record count
 into a smaller quota. An interrupted replacement is recovered only when it is
-the exact next floor; a restored older envelope is refused. An identical retry
+the exact next floor, including after earlier completed allocations; a restored
+older envelope or a skipped successor is refused. An identical retry
 returns the same permission, while a changed body for that permission ID fails.
 This is a fixed allocation operation, never a raw-signing interface.
 

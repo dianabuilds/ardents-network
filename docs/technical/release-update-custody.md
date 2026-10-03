@@ -59,7 +59,9 @@ record for one closed Network. `issue-admission-permission` accepts only the
 exact holder-signed `ARDPAR01` request after the operator re-enters its
 independently transferred SHA-256 commitment. It returns a public digest
 receipt and writes the signed 228-byte permission only to the specified
-owner-only, same-directory no-replace output. The Vault record advances its
+owner-only, same-directory no-replace output. The [Admission allocation owner](../../internal/admission/allocation/doc.go)
+validates the current-hour request and journal transition. Custody retains the
+key, signing and serialized encrypted persistence. The Vault record advances its
 encrypted allocation successor before acknowledgement; neither command accepts
 a private key, permission body, or password in argv, environment, or public
 output. This authority cannot sign State, Name, Service, or Release inputs.

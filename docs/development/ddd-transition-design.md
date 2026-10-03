@@ -462,6 +462,76 @@ Use the Linux race profile for stock, permissionfile and Endpoint/Source, plus
 required quick/full gates and bounded review. Existing synthetic test setup is
 not evidence that the complete transferred owner works.
 
+### Allocation policy and permission signing
+
+The allocation transfer separates the decision to spend a finite hourly
+allowance from possession of its signing key. The
+`internal/admission/allocation` Module owns the existing allocation journal
+interpretation, hourly regression check, role budgets, permission-ID/request
+binding, exact retry and candidate successor. Custody retains the encrypted
+Authority record, password handling, key generation and signing, exclusive
+operation ordering, durable replacement, readback and monotonic floor. This is
+a transfer of maintained behavior, without a generic signing port or private
+key access from Admission.
+
+The Interface admits one exact public request against a copied current
+journal, independently pinned Network/authority key and current hour. It returns
+a refusal or an opaque decision with copied observations: the exact unsigned
+permission, whether its allocation is already committed, and the candidate
+journal bytes when a successor is required. Journal entries, counters and
+request identities stay private; no caller assembles an accepted decision or
+mutates a retained journal. Journal validation for Vault inspection uses this
+same Admission grammar rather than a second Custody decoder. A decision is a
+local policy result, not evidence of durable commitment or live State authority.
+
+Custody consumes the decision inside its existing serialized operation. It
+signs only that decision's permission with the matching purpose-specific key;
+no private key crosses into Admission. For a new allocation, Custody publishes
+and verifies the encrypted successor and advances its floor before exposing
+the signed response. A failure after publication must leave the reservation spent
+and recoverable by exact retry, including after earlier committed allocations. For a previously committed exact request,
+Custody verifies the current envelope/floor and returns the same signed bytes
+without another revision or debit. An expired response grants no renewed
+validity. Preserve the existing current-hour entry check and the fresh check
+immediately before the first durable successor write; recovery of an already
+written successor must not be confused with admitting a new allocation.
+
+Preserve `ARDPAR01`, `ARDALJ01`, the signed permission transcript, the existing
+encrypted envelope identity, journal bounds and allocation-sequence watermark.
+Custody's generation/revision/floor rules remain Custody-owned. Admission owns
+the sums and role limits; holder-side request planning should consume that
+policy instead of maintaining another numerical copy. The allocation Module
+must have a real Custody consumer, behavior tests, `doc.go`, explicit package-map
+imports and checked profiles in its implementing change; do not add a package
+or interface merely to record this proposal.
+
+The current persisted journal groups reservations by authority record and role,
+without an installation identifier. Its conservative aggregate bound cannot
+be presented as independent per-installation accounting. This transfer neither
+relaxes that bound nor invents a recipient identity, wire field or new quota.
+Any later change in allocation scope must be resolved against the
+[private admission contract](../technical/private-admission.md) before changing
+stored semantics. In particular, moving arithmetic is not authorization to
+multiply allowances across new records or recipient handles.
+
+Verification must separate causal failures. Start changed-request/same-ID,
+wrong authority, exhausted budget and clock-regression scenarios from a valid
+current ledger; a pre-existing rollback refusal cannot prove a changed-request
+check. Exercise exact retry before and after reopen with unchanged signed
+bytes/revision; mixed User/Publisher requests with independently calculated
+remaining totals; same-hour concurrent requests at the limit; new-hour advance
+followed by clock rollback; failure between encrypted publication, readback and
+floor advancement for both the first and a later successor; and output failure
+followed by exact retry without refund. Comparing the retained floor
+to the immutable base record would reject a valid later interrupted successor
+(base generation 1, floor 2, journal 3). Recovery instead compares the
+authenticated journal to the retained floor, preserving exact binding,
+next-generation/revision/watermark checks and refusal of older or skipped
+successors. The first-successor case alone cannot prove this invariant.
+Keep CLI commitment approval and owner-only no-replace output in the scenario.
+Tests at the Admission policy Interface complement, rather than replace, these
+real Custody consumers and encrypted persistence checks.
+
 ## Find defects during transfer
 
 Use three independent inputs: accepted behavior, current source/callers, and

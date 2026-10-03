@@ -29,7 +29,14 @@ func (s advancingIssuanceSecret) Confirm(context.Context, ConfirmationPrompt) (b
 
 func TestIssuanceRefusesTimeChangeBeforeDurableCommit(t *testing.T) {
 	for _, kind := range []AuthorityKind{AuthorityService, AuthorityAdmission} {
-		for _, stage := range []string{"unlock", "seal", "valid"} {
+		stages := []string{"unlock", "seal", "valid"}
+		sealRead := 3
+		if kind == AuthorityAdmission {
+			// Admission also rechecks the hour after the encrypted record is opened.
+			stages = []string{"unlock", "open", "seal", "valid"}
+			sealRead = 4
+		}
+		for _, stage := range stages {
 			t.Run(string(kind)+"/"+stage, func(t *testing.T) {
 				now := time.Date(2026, 10, 1, 10, 0, 0, 0, time.UTC)
 				clock := now
@@ -38,7 +45,7 @@ func TestIssuanceRefusesTimeChangeBeforeDurableCommit(t *testing.T) {
 				vault, err := Open(VaultConfig{Root: t.TempDir(), Now: func() time.Time {
 					if armed {
 						calls++
-						if stage == "seal" && calls == 3 {
+						if stage == "seal" && calls == sealRead || stage == "open" && calls == 3 {
 							clock = now.Add(time.Hour)
 						}
 					}
@@ -92,6 +99,16 @@ func TestIssuanceRefusesTimeChangeBeforeDurableCommit(t *testing.T) {
 						clock = now.Add(time.Hour)
 					}
 				}})
+				expectedReads := sealRead
+				if stage == "unlock" {
+					expectedReads = 2
+				}
+				if stage == "open" {
+					expectedReads = 3
+				}
+				if calls != expectedReads {
+					t.Fatalf("scenario did not reach its intended time boundary: calls=%d want=%d", calls, expectedReads)
+				}
 				if stage == "valid" {
 					if err != nil || receipt.State != RecordActive {
 						t.Fatalf("valid issuance: %+v / %v", receipt, err)

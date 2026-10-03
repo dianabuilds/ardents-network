@@ -1,38 +1,21 @@
 package custody
 
 import (
-	"bytes"
 	"context"
 	"crypto/ed25519"
 	"crypto/rand"
 	"crypto/sha256"
-	"encoding/binary"
 	"errors"
 	"math"
 	"os"
 	"path/filepath"
-	"sort"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/admission"
+	"github.com/dianabuilds/ardents-network/internal/admission/allocation"
 )
 
-const (
-	admissionAllocationWatermark = "admission-allocation-sequence"
-	maximumAdmissionJournalBytes = 3 << 20
-	maximumUserAllocation        = uint64(4096)
-	maximumPublisherAllocation   = uint64(16384)
-	maximumIssuerAllocation      = uint64(65536)
-	admissionJournalEntrySize    = 77
-)
-
-type admissionAllocation struct {
-	window uint64
-	role   admission.AllocationRole
-	tokens uint32
-	id     [32]byte
-	digest [32]byte
-}
+const admissionAllocationWatermark = "admission-allocation-sequence"
 
 func (vault *Vault) createAdmissionAuthority(ctx context.Context, operation Operation, secrets SecretInput) (Receipt, error) {
 	if secrets == nil || !validAdmissionAuthorityCreation(operation) {
@@ -69,12 +52,9 @@ func (vault *Vault) issueAdmissionPermission(ctx context.Context, operation Oper
 	if secrets == nil || !validAdmissionIssuance(operation) {
 		return Receipt{}, ErrInvalid
 	}
-	request, err := admission.DecodePermissionRequest(operation.AdmissionRequest)
-	if err != nil || request.Permission.NetworkID != operation.Expected.Network {
-		return Receipt{}, ErrInvalid
-	}
 	now := vault.now().UTC().Truncate(time.Hour)
-	if !request.Permission.NotBefore.Equal(now) || !request.Permission.NotAfter.Equal(now.Add(time.Hour)) {
+	request, err := allocation.Prepare(operation.AdmissionRequest, operation.Expected.Network, now)
+	if err != nil {
 		return Receipt{}, ErrInvalid
 	}
 	password, err := readPassword(ctx, secrets, SecretPromptVaultUnlock)
@@ -92,44 +72,27 @@ func (vault *Vault) issueAdmissionPermission(ctx context.Context, operation Oper
 	defer zero(source.RootMaterial)
 	defer zero(source.AdmissionJournal)
 	public := ed25519.PrivateKey(source.RootMaterial).Public().(ed25519.PublicKey)
-	if request.AuthorityKey != [ed25519.PublicKeySize]byte(public) {
-		return Receipt{}, ErrInvalid
-	}
-	allocations, err := decodeAdmissionJournal(source.AdmissionJournal)
+	decision, err := request.Decide(source.AdmissionJournal, [ed25519.PublicKeySize]byte(public), vault.now())
 	if err != nil {
-		return Receipt{}, err
-	}
-	window := uint64(now.Unix())
-	if admissionAllocationWindowRegressed(allocations, window) {
 		return Receipt{}, ErrInvalid
 	}
-	allocations = admissionAllocationsForWindow(allocations, window)
-	digest := sha256.Sum256(operation.AdmissionRequest)
-	for _, allocation := range allocations {
-		if allocation.id == request.Permission.PermissionID {
-			if allocation.digest != digest {
-				return Receipt{}, ErrInvalid
-			}
-			permission, signErr := signAdmissionPermission(ed25519.PrivateKey(source.RootMaterial), request.Permission)
-			if signErr != nil {
-				return Receipt{}, signErr
-			}
-			return Receipt{Operation: OperationIssueAdmissionPermission, RecordID: operation.RecordID,
-				Authority: authorityReceipt(source), AdmissionPermission: permission, State: RecordActive}, nil
+	if decision.Repeated() {
+		permission, signErr := signAdmissionPermission(ed25519.PrivateKey(source.RootMaterial), decision.Permission())
+		if signErr != nil {
+			return Receipt{}, signErr
 		}
+		return Receipt{Operation: OperationIssueAdmissionPermission, RecordID: operation.RecordID,
+			Authority: authorityReceipt(source), AdmissionPermission: permission, State: RecordActive}, nil
 	}
-	allocation := admissionAllocation{window: uint64(now.Unix()), role: request.Role, tokens: permissionTokens(request.Permission.Maxima),
-		id: request.Permission.PermissionID, digest: digest}
-	if allocation.tokens == 0 || !withinAdmissionBudget(append(allocations, allocation)) {
-		return Receipt{}, ErrInvalid
-	}
-	successor, err := admissionSuccessor(source, append(allocations, allocation))
+	journal := decision.Journal()
+	defer zero(journal)
+	successor, err := admissionSuccessor(source, journal)
 	if err != nil {
 		return Receipt{}, err
 	}
 	defer zero(successor.RootMaterial)
 	defer zero(successor.AdmissionJournal)
-	permission, err := signAdmissionPermission(ed25519.PrivateKey(source.RootMaterial), request.Permission)
+	permission, err := signAdmissionPermission(ed25519.PrivateKey(source.RootMaterial), decision.Permission())
 	if err != nil {
 		return Receipt{}, err
 	}
@@ -195,19 +158,17 @@ func validateAdmissionAuthorityState(state AuthorityState) error {
 	if !ok || sha256.Sum256(public) != state.Binding.IDCommitment {
 		return ErrInvalid
 	}
-	_, err := decodeAdmissionJournal(state.AdmissionJournal)
-	return err
+	if allocation.ValidateJournal(state.AdmissionJournal) != nil {
+		return ErrInvalid
+	}
+	return nil
 }
 
-func admissionSuccessor(source AuthorityState, allocations []admissionAllocation) (AuthorityState, error) {
+func admissionSuccessor(source AuthorityState, journal []byte) (AuthorityState, error) {
 	if source.Generation == math.MaxUint64 || source.Revision == math.MaxUint64 || source.Watermarks[0].Value == math.MaxUint64 {
 		return AuthorityState{}, ErrInvalid
 	}
-	journal, err := encodeAdmissionJournal(allocations)
-	if err != nil {
-		return AuthorityState{}, err
-	}
-	return AuthorityState{Binding: source.Binding, RootMaterial: append([]byte(nil), source.RootMaterial...), AdmissionJournal: journal,
+	return AuthorityState{Binding: source.Binding, RootMaterial: append([]byte(nil), source.RootMaterial...), AdmissionJournal: append([]byte(nil), journal...),
 		Generation: source.Generation + 1, Revision: source.Revision + 1,
 		Watermarks: []Watermark{{Domain: admissionAllocationWatermark, Value: source.Watermarks[0].Value + 1}}}, nil
 }
@@ -220,116 +181,6 @@ func signAdmissionPermission(private ed25519.PrivateKey, permission admission.Pe
 	// signs the exact transcript the authority verifies against.
 	copy(permission.Signature[:], ed25519.Sign(private, admission.PermissionTranscript(permission)))
 	return admission.EncodePermission(permission)
-}
-
-func permissionTokens(maxima [3]uint32) uint32 {
-	var total uint64
-	for _, maximum := range maxima {
-		total += uint64(maximum)
-	}
-	if total > math.MaxUint32 {
-		return 0
-	}
-	return uint32(total)
-}
-
-func withinAdmissionBudget(allocations []admissionAllocation) bool {
-	var user, publisher, issuer uint64
-	for _, allocation := range allocations {
-		if allocation.tokens == 0 || uint64(allocation.tokens) > maximumIssuerAllocation || allocation.window == 0 ||
-			allocation.role != admission.AllocationUser && allocation.role != admission.AllocationPublisher {
-			return false
-		}
-		issuer += uint64(allocation.tokens)
-		if allocation.role == admission.AllocationUser {
-			user += uint64(allocation.tokens)
-		} else {
-			publisher += uint64(allocation.tokens)
-		}
-	}
-	return user <= maximumUserAllocation && publisher <= maximumPublisherAllocation && issuer <= maximumIssuerAllocation
-}
-
-func admissionAllocationsForWindow(allocations []admissionAllocation, window uint64) []admissionAllocation {
-	current := make([]admissionAllocation, 0, len(allocations))
-	for _, allocation := range allocations {
-		if allocation.window == window {
-			current = append(current, allocation)
-		}
-	}
-	return current
-}
-
-// admissionAllocationWindowRegressed rejects an issuance request behind the
-// newest committed hourly reservation. Dropping that reservation on a wall
-// clock rollback would make its original hour allocatable again on recovery.
-func admissionAllocationWindowRegressed(allocations []admissionAllocation, window uint64) bool {
-	for _, allocation := range allocations {
-		if allocation.window > window {
-			return true
-		}
-	}
-	return false
-}
-
-func encodeAdmissionJournal(allocations []admissionAllocation) ([]byte, error) {
-	if len(allocations) > int(maximumUserAllocation+maximumPublisherAllocation) || !withinAdmissionBudget(allocations) {
-		return nil, ErrInvalid
-	}
-	ordered := append([]admissionAllocation(nil), allocations...)
-	sort.Slice(ordered, func(i, j int) bool { return bytes.Compare(ordered[i].id[:], ordered[j].id[:]) < 0 })
-	raw := make([]byte, 0, 12+len(ordered)*admissionJournalEntrySize)
-	raw = append(raw, "ARDALJ01"...)
-	raw = binary.BigEndian.AppendUint32(raw, uint32(len(ordered)))
-	for index, allocation := range ordered {
-		if index > 0 && bytes.Compare(ordered[index-1].id[:], allocation.id[:]) >= 0 {
-			return nil, ErrInvalid
-		}
-		raw = binary.BigEndian.AppendUint64(raw, allocation.window)
-		raw = append(raw, byte(allocation.role))
-		raw = binary.BigEndian.AppendUint32(raw, allocation.tokens)
-		raw = append(raw, allocation.id[:]...)
-		raw = append(raw, allocation.digest[:]...)
-	}
-	if len(raw) > maximumAdmissionJournalBytes {
-		return nil, ErrInvalid
-	}
-	return raw, nil
-}
-
-func decodeAdmissionJournal(raw []byte) ([]admissionAllocation, error) {
-	if len(raw) == 0 {
-		return nil, nil
-	}
-	if len(raw) < 12 || len(raw) > maximumAdmissionJournalBytes || string(raw[:8]) != "ARDALJ01" {
-		return nil, ErrInvalid
-	}
-	count := int(binary.BigEndian.Uint32(raw[8:12]))
-	if count > int(maximumUserAllocation+maximumPublisherAllocation) || len(raw) != 12+count*admissionJournalEntrySize {
-		return nil, ErrInvalid
-	}
-	allocations := make([]admissionAllocation, count)
-	offset := 12
-	for index := range allocations {
-		allocation := &allocations[index]
-		allocation.window = binary.BigEndian.Uint64(raw[offset : offset+8])
-		offset += 8
-		allocation.role = admission.AllocationRole(raw[offset])
-		offset++
-		allocation.tokens = binary.BigEndian.Uint32(raw[offset : offset+4])
-		offset += 4
-		copy(allocation.id[:], raw[offset:offset+32])
-		offset += 32
-		copy(allocation.digest[:], raw[offset:offset+32])
-		offset += 32
-		if allocation.id == [32]byte{} || allocation.digest == [32]byte{} || (index > 0 && bytes.Compare(allocations[index-1].id[:], allocation.id[:]) >= 0) {
-			return nil, ErrInvalid
-		}
-	}
-	if !withinAdmissionBudget(allocations) {
-		return nil, ErrInvalid
-	}
-	return allocations, nil
 }
 
 // Admission journal state is deliberately a single replaceable encrypted
@@ -397,7 +248,9 @@ func (vault *Vault) openCurrentAdmissionAuthority(recordID string, password []by
 		zero(base.AdmissionJournal)
 		return current, info, nil
 	}
-	if !floorEqualsState(floor, base) || !admissionLedgerFollowsFloor(current, floor) {
+	// The immutable base is older after the first committed allocation. Recovery
+	// must compare the authenticated successor to the retained floor, not the base.
+	if !admissionLedgerFollowsFloor(current, floor) {
 		zero(base.RootMaterial)
 		zero(base.AdmissionJournal)
 		zero(current.RootMaterial)

@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
+	"github.com/dianabuilds/ardents-network/internal/admission/allocation"
 	"sort"
 )
 
@@ -127,7 +128,7 @@ func decodeAuthorityState(raw []byte, expectedPurpose Purpose) (AuthorityState, 
 	state.RootMaterial = root
 	if encoded.Authority.AdmissionJournal != "" {
 		journal, journalErr := decodeRawURL(encoded.Authority.AdmissionJournal)
-		if journalErr != nil || len(journal) > maximumAdmissionJournalBytes {
+		if journalErr != nil || len(journal) > allocation.MaximumJournalBytes {
 			zero(root)
 			return AuthorityState{}, ErrInvalid
 		}

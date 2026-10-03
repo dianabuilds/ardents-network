@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/admission"
+	"github.com/dianabuilds/ardents-network/internal/admission/allocation"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 )
 
@@ -98,10 +99,7 @@ func newRequestScope(profile state.ClosedProfileView, now time.Time,
 	if window.Before(profile.NotBefore) || window.Add(time.Hour).After(profile.NotAfter) {
 		return requestScope{}, errors.New("text permission hour is outside current authority")
 	}
-	limit := uint64(4096)
-	if role == admission.AllocationPublisher {
-		limit = 16384
-	}
+	limit := allocation.RoleLimit(role)
 	total := uint64(maxima[0]) + uint64(maxima[1]) + uint64(maxima[2])
 	if total == 0 || total > limit {
 		return requestScope{}, errors.New("text permission allocation is invalid")
