@@ -1,5 +1,7 @@
 package issuance
 
+import "github.com/dianabuilds/ardents-network/internal/successor/admission/quota"
+
 import (
 	"bytes"
 	"context"
@@ -18,12 +20,12 @@ import (
 const resultMarker = "ardents-issuer-results-v1\n"
 
 type resultBinding struct {
-	Binding   admission.LedgerBinding
+	Binding   quota.LedgerBinding
 	Inventory [32]byte
 }
 
-func resultPin(b admission.LedgerBinding, digest [32]byte) ([]byte, error) {
-	if _, err := admission.BindingDigest(b); err != nil {
+func resultPin(b quota.LedgerBinding, digest [32]byte) ([]byte, error) {
+	if _, err := quota.BindingDigest(b); err != nil {
 		return nil, ErrInvalid
 	}
 	raw, err := json.Marshal(resultBinding{b, digest})
@@ -59,7 +61,7 @@ func resultFloor(header [32]byte, n uint64) []byte {
 	digest := sha256.Sum256(append(append([]byte(nil), header[:]...), raw...))
 	return append(raw, digest[:]...)
 }
-func initializeResults(ctx context.Context, path string, b admission.LedgerBinding, digest [32]byte, fault func(string) error) (err error) {
+func initializeResults(ctx context.Context, path string, b quota.LedgerBinding, digest [32]byte, fault func(string) error) (err error) {
 	if !filepath.IsAbs(path) || filepath.Clean(path) != path {
 		return ErrInvalid
 	}
@@ -158,7 +160,7 @@ func (s *resultState) check() error {
 	}
 	return nil
 }
-func openResults(ctx context.Context, path string, store Store, b admission.LedgerBinding, pin []byte, fault func(string) error) (_ ResultStore, err error) {
+func openResults(ctx context.Context, path string, store Store, b quota.LedgerBinding, pin []byte, fault func(string) error) (_ ResultStore, err error) {
 	root, identity, err := ownedRoot(path)
 	if err != nil {
 		return ResultStore{}, err
@@ -217,17 +219,17 @@ func openResults(ctx context.Context, path string, store Store, b admission.Ledg
 		if e != nil {
 			return ResultStore{}, ErrUnavailable
 		}
-		kind := admission.Kind(request[0])
+		kind := quota.Kind(request[0])
 		checkedRaw := binary.BigEndian.Uint64(request[1:9])
 		if checkedRaw > s.floor {
 			return ResultStore{}, ErrUnavailable
 		}
 		checked := time.Unix(int64(checkedRaw), 0).UTC()
 		raw := request[9:]
-		if kind != admission.Bootstrap && kind != admission.Admitted {
+		if kind != quota.Bootstrap && kind != quota.Admitted {
 			return ResultStore{}, ErrUnavailable
 		}
-		if outcome := admission.ValidateBatch(ctx, raw, s.binding, checked); outcome != admission.Accepted {
+		if outcome := quota.ValidateBatch(ctx, raw, s.binding, checked); outcome != admission.Accepted {
 			if outcome == admission.Canceled {
 				return ResultStore{}, ctx.Err()
 			}

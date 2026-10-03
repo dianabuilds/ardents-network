@@ -1,21 +1,23 @@
 package issuance
 
+import "github.com/dianabuilds/ardents-network/internal/successor/admission/quota"
+
 import (
 	"bytes"
 	"context"
 	"crypto/x509"
 	"encoding/binary"
+	"github.com/dianabuilds/ardents-network/internal/successor/admission"
 
 	"github.com/cloudflare/circl/blindsign/blindrsa"
-	"github.com/dianabuilds/ardents-network/internal/successor/admission"
 )
 
-func matchingInventory(store Store, b admission.LedgerBinding) (Inventory, error) {
+func matchingInventory(store Store, b quota.LedgerBinding) (Inventory, error) {
 	v, err := store.Inventory()
 	if err != nil {
 		return Inventory{}, err
 	}
-	if _, err = admission.BindingDigest(b); err != nil {
+	if _, err = quota.BindingDigest(b); err != nil {
 		return Inventory{}, ErrInvalid
 	}
 	if b.Network != v.Binding.Network || b.Issuer != v.Binding.Issuer || !b.Start.Equal(v.Binding.Start) || !b.End.Equal(v.Binding.End) || len(b.Keys) != len(v.Keys) {
@@ -33,7 +35,8 @@ func matchingInventory(store Store, b admission.LedgerBinding) (Inventory, error
 // The only callers are confirmed issuance and private retained-result checking.
 // No method exposes arbitrary blinded signing to a command or another package.
 func (store Store) sign(ctx context.Context, batch []byte) ([]byte, error) {
-	if store.state == nil || len(batch) < 625 {
+	request, err := admission.DecodeClosedTokenBatch(batch)
+	if store.state == nil || err != nil {
 		return nil, ErrInvalid
 	}
 	s := store.state
@@ -55,10 +58,10 @@ func (store Store) sign(ctx context.Context, batch []byte) ([]byte, error) {
 		return nil, ErrUnavailable
 	}
 	target := -1
-	window := binary.BigEndian.Uint64(batch[269:277])
-	class := batch[268]
+	window := uint64(request.WindowStart.Unix())
+	class := request.Class
 	for i, k := range v.Keys {
-		if k.Window == window && k.Class == class && bytes.Equal(k.SPKI, batch[277:623]) {
+		if k.Window == window && k.Class == class && bytes.Equal(k.SPKI, request.SPKI[:]) {
 			target = i
 		}
 	}
@@ -74,27 +77,20 @@ func (store Store) sign(ctx context.Context, batch []byte) ([]byte, error) {
 	if err != nil {
 		return nil, ErrUnavailable
 	}
-	count := int(binary.BigEndian.Uint16(batch[623:625]))
-	if count < 1 || count > 32 || len(batch) != 625+count*259+64 {
-		return nil, ErrInvalid
-	}
-	result := make([]byte, 16347)
-	copy(result, "ARDIOR01")
-	result[8] = 1
-	result[9] = byte(count)
+	result := admission.ClosedTokenBatchResult{Status: admission.ClosedTokenIssued}
 	signer := blindrsa.NewSigner(key)
-	for i := 0; i < count; i++ {
+	for _, blinded := range request.BlindedRequests {
 		if ctx.Err() != nil {
 			return nil, ctx.Err()
 		}
-		sig, err := signer.BlindSign(batch[628+i*259 : 884+i*259])
+		sig, err := signer.BlindSign(blinded[3:])
 		if err != nil || len(sig) != 256 {
 			return nil, ErrUnavailable
 		}
-		copy(result[10+i*256:], sig)
+		result.Signatures = append(result.Signatures, sig)
 	}
 	if err := s.checkIdentity(); err != nil {
 		return nil, err
 	}
-	return result, nil
+	return admission.EncodeClosedTokenBatchResult(result)
 }

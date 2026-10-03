@@ -2,6 +2,8 @@
 
 package main
 
+import "github.com/dianabuilds/ardents-network/internal/successor/admission/quota"
+
 import (
 	"bytes"
 	"encoding/json"
@@ -14,13 +16,12 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/admission"
 	metrics "go.opentelemetry.io/proto/otlp/collector/metrics/v1"
 	traces "go.opentelemetry.io/proto/otlp/collector/trace/v1"
 	"google.golang.org/protobuf/proto"
 )
 
-func admissionCommandPlans(t *testing.T) (string, map[string]any, map[string]any, admission.LedgerBinding) {
+func admissionCommandPlans(t *testing.T) (string, map[string]any, map[string]any, quota.LedgerBinding) {
 	t.Helper()
 	raw, f, b := admissionCommandFixture(t, 2, 1, 2, 1)
 	dir := t.TempDir()
@@ -56,41 +57,41 @@ func TestAdmissionCompiledCLI(t *testing.T) {
 		}
 		return result, err
 	}
-	if got, err := command("initialize", init, ""); err != nil || got.Outcome != admission.Initialized {
+	if got, err := command("initialize", init, ""); err != nil || got.Outcome != quota.Initialized {
 		t.Fatal(got, err)
 	}
-	l, err := admission.Open(root, b)
+	l, err := quota.Open(root, b)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got, err := command("debit", debit, ""); err == nil || got.Outcome != admission.Busy {
+	if got, err := command("debit", debit, ""); err == nil || got.Outcome != quota.Busy {
 		t.Fatal(got, err)
 	}
 	if err := l.Close(); err != nil {
 		t.Fatal(err)
 	}
-	if got, err := command("debit", debit, "http://127.0.0.1:1"); err != nil || got.Outcome != admission.Debited {
+	if got, err := command("debit", debit, "http://127.0.0.1:1"); err != nil || got.Outcome != quota.Debited {
 		t.Fatal(got, err)
 	}
-	if got, err := command("debit", debit, ""); err != nil || got.Outcome != admission.AlreadyDebited {
+	if got, err := command("debit", debit, ""); err != nil || got.Outcome != quota.AlreadyDebited {
 		t.Fatal(got, err)
 	}
 	raw, _, _ := admissionCommandFixture(t, 2, 1, 2, 2)
 	if err := os.WriteFile(debit["batch_file"].(string), raw, 0600); err != nil {
 		t.Fatal(err)
 	}
-	if got, err := command("debit", debit, ""); err != nil || got.Outcome != admission.Debited {
+	if got, err := command("debit", debit, ""); err != nil || got.Outcome != quota.Debited {
 		t.Fatal(got, err)
 	}
 	raw, _, _ = admissionCommandFixture(t, 2, 1, 2, 3)
 	_ = os.WriteFile(debit["batch_file"].(string), raw, 0600)
-	if got, err := command("debit", debit, ""); err == nil || got.Outcome != admission.Exhausted {
+	if got, err := command("debit", debit, ""); err == nil || got.Outcome != quota.Exhausted {
 		t.Fatal(got, err)
 	}
 	debit["kind"] = "admitted"
 	raw, _, _ = admissionCommandFixture(t, 2, 1, 2, 1)
 	_ = os.WriteFile(debit["batch_file"].(string), raw, 0600)
-	if got, err := command("debit", debit, ""); err == nil || got.Outcome != admission.Conflict {
+	if got, err := command("debit", debit, ""); err == nil || got.Outcome != quota.Conflict {
 		t.Fatal(got, err)
 	}
 	// Synchronize actual SIGINT/Kill after commit with the first OTLP request.
@@ -98,7 +99,7 @@ func TestAdmissionCompiledCLI(t *testing.T) {
 	for _, episode := range []string{"kill", "interrupt"} {
 		t.Run(episode, func(t *testing.T) {
 			_, fresh, request, _ := admissionCommandPlans(t)
-			if got, err := command("initialize", fresh, ""); err != nil || got.Outcome != admission.Initialized {
+			if got, err := command("initialize", fresh, ""); err != nil || got.Outcome != quota.Initialized {
 				t.Fatal(got, err)
 			}
 			entered := make(chan struct{}, 2)
@@ -136,11 +137,11 @@ func TestAdmissionCompiledCLI(t *testing.T) {
 			err := cmd.Wait()
 			if episode == "interrupt" {
 				var result admissionResult
-				if err != nil || json.Unmarshal(output.Bytes(), &result) != nil || result.Outcome != admission.Debited {
+				if err != nil || json.Unmarshal(output.Bytes(), &result) != nil || result.Outcome != quota.Debited {
 					t.Fatalf("committed cancellation %s %v", &output, err)
 				}
 			}
-			if got, err := command("debit", request, ""); err != nil || got.Outcome != admission.AlreadyDebited {
+			if got, err := command("debit", request, ""); err != nil || got.Outcome != quota.AlreadyDebited {
 				t.Fatal("process loss refunded", got, err)
 			}
 		})
@@ -159,7 +160,7 @@ func TestAdmissionOTLPContainsOnlyFiniteAttributes(t *testing.T) {
 	}))
 	defer server.Close()
 	root, init, debit, b := admissionCommandPlans(t)
-	if err := admission.Initialize(root, b); err != nil {
+	if err := quota.Initialize(root, b); err != nil {
 		t.Fatal(err)
 	}
 	var out, log bytes.Buffer

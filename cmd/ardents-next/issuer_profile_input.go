@@ -1,5 +1,7 @@
 package main
 
+import "github.com/dianabuilds/ardents-network/internal/successor/admission/quota"
+
 import (
 	"bytes"
 	"encoding/hex"
@@ -9,7 +11,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/admission"
 	"github.com/dianabuilds/ardents-network/internal/successor/admission/issuance"
 	"github.com/dianabuilds/ardents-network/internal/successor/admission/issuer"
 	"github.com/dianabuilds/ardents-network/internal/successor/admission/issuerprofile"
@@ -141,7 +142,7 @@ func prepareProfileBinding(ctxRaw []byte) (string, []byte, error) {
 		return "", nil, e
 	}
 	parsed.Binding.Keys = nil
-	bound, e := admission.PrepareLedgerBinding(parsed.Binding, verified)
+	bound, e := quota.PrepareLedgerBinding(parsed.Binding, verified)
 	if e != nil {
 		return "", nil, issuance.ErrInvalid
 	}

@@ -1,5 +1,7 @@
 package issuer
 
+import "github.com/dianabuilds/ardents-network/internal/successor/admission/quota"
+
 import (
 	"context"
 	"errors"
@@ -25,7 +27,7 @@ func TestOperationRefusesBeforeOpeningInvalidRoots(t *testing.T) {
 	}
 	p.KeyRoot = p.AdmissionRoot
 	p.ResultRoot = filepath.Join(p.AdmissionRoot, "nested")
-	r = Issue(t.Context(), p, nil, admission.Facts{}, admission.Bootstrap)
+	r = Issue(t.Context(), p, nil, admission.Facts{}, quota.Bootstrap)
 	want = "invalid-input"
 	if !issuance.Supported() {
 		want = "unsupported-platform"

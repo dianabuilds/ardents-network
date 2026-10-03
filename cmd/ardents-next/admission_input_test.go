@@ -1,5 +1,7 @@
 package main
 
+import "github.com/dianabuilds/ardents-network/internal/successor/admission/quota"
+
 import (
 	"bytes"
 	"context"
@@ -13,7 +15,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/successor/admission"
 )
 
-func admissionBindingConfig(b admission.LedgerBinding) admissionBindingInput {
+func admissionBindingConfig(b quota.LedgerBinding) admissionBindingInput {
 	input := admissionBindingInput{Network: hex.EncodeToString(b.Network[:]), Issuer: hex.EncodeToString(b.Issuer[:]), Authority: hex.EncodeToString(b.Authority[:]), Profile: hex.EncodeToString(b.Profile[:]), Duty: strconv.FormatUint(b.Duty, 10), Start: b.Start.Format(time.RFC3339), End: b.End.Format(time.RFC3339)}
 	for _, key := range b.Keys {
 		input.Keys = append(input.Keys, admissionKeyInput{time.Unix(int64(key.Window), 0).UTC().Format(time.RFC3339), strconv.Itoa(int(key.Class)), hex.EncodeToString(key.SPKI)})
@@ -77,7 +79,7 @@ func TestAdmissionUnsupportedOrCanceledBeforeFiles(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
 	code := run(ctx, []string{"admission", "initialize", "--config", "nonexistent"}, &out, &log)
-	if admission.Supported() {
+	if quota.Supported() {
 		if code != 130 || !bytes.Contains(out.Bytes(), []byte("canceled")) {
 			t.Fatal(code, &out)
 		}

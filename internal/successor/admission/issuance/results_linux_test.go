@@ -2,6 +2,8 @@
 
 package issuance
 
+import "github.com/dianabuilds/ardents-network/internal/successor/admission/quota"
+
 import (
 	"bytes"
 	"crypto"
@@ -22,13 +24,13 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/successor/admission/issuerprofile"
 )
 
-func resultFixture(t *testing.T, v Inventory, class uint8, count uint16, id byte) ([]byte, admission.Facts, admission.LedgerBinding, func([]byte)) {
+func resultFixture(t *testing.T, v Inventory, class uint8, count uint16, id byte) ([]byte, admission.Facts, quota.LedgerBinding, func([]byte)) {
 	t.Helper()
 	authority := ed25519.NewKeyFromSeed(make([]byte, 32))
 	seed := make([]byte, 32)
 	seed[0] = 1
 	holder := ed25519.NewKeyFromSeed(seed)
-	b := admission.LedgerBinding{Network: v.Binding.Network, Issuer: v.Binding.Issuer, Authority: [32]byte(authority.Public().(ed25519.PublicKey)), Profile: [32]byte{9}, Duty: 7, Start: v.Binding.Start, End: v.Binding.End}
+	b := quota.LedgerBinding{Network: v.Binding.Network, Issuer: v.Binding.Issuer, Authority: [32]byte(authority.Public().(ed25519.PublicKey)), Profile: [32]byte{9}, Duty: 7, Start: v.Binding.Start, End: v.Binding.End}
 	for _, k := range v.Keys {
 		b.Keys = append(b.Keys, issuerprofile.Key{Window: k.Window, Class: k.Class, SPKI: append([]byte(nil), k.SPKI...)})
 	}
@@ -131,10 +133,10 @@ func TestConfirmedIssuanceRoundTrip(t *testing.T) {
 	store, v, root := resultOwners(t)
 	_, _, binding, _ := resultFixture(t, v, 1, 1, 1)
 	ledgerRoot := filepath.Join(t.TempDir(), "admission")
-	if e := admission.Initialize(ledgerRoot, binding); e != nil {
+	if e := quota.Initialize(ledgerRoot, binding); e != nil {
 		t.Fatal(e)
 	}
-	l, e := admission.Open(ledgerRoot, binding)
+	l, e := quota.Open(ledgerRoot, binding)
 	if e != nil {
 		t.Fatal(e)
 	}
@@ -146,15 +148,15 @@ func TestConfirmedIssuanceRoundTrip(t *testing.T) {
 	if e != nil {
 		t.Fatal(e)
 	}
-	if _, _, e := r.Issue(t.Context(), admission.DebitConfirmation{}, binding.Start); !errors.Is(e, ErrInvalid) {
+	if _, _, e := r.Issue(t.Context(), quota.DebitConfirmation{}, binding.Start); !errors.Is(e, ErrInvalid) {
 		t.Fatal(e)
 	}
 	var last []byte
-	var grant admission.DebitConfirmation
+	var grant quota.DebitConfirmation
 	for class := uint8(1); class <= 3; class++ {
 		raw, f, _, verify := resultFixture(t, v, class, 32, class)
-		outcome, c := l.DebitVerified(t.Context(), raw, f, admission.Bootstrap)
-		if outcome != admission.Debited {
+		outcome, c := l.DebitVerified(t.Context(), raw, f, quota.Bootstrap)
+		if outcome != quota.Debited {
 			t.Fatal(outcome)
 		}
 		response, replay, e := r.Issue(t.Context(), c, f.Now)
@@ -193,16 +195,16 @@ func TestResultWriteFaultsAndReopen(t *testing.T) {
 	store, v, _ := resultOwners(t)
 	raw, f, b, _ := resultFixture(t, v, 1, 1, 1)
 	ledgerRoot := filepath.Join(t.TempDir(), "admission")
-	if e := admission.Initialize(ledgerRoot, b); e != nil {
+	if e := quota.Initialize(ledgerRoot, b); e != nil {
 		t.Fatal(e)
 	}
-	l, e := admission.Open(ledgerRoot, b)
+	l, e := quota.Open(ledgerRoot, b)
 	if e != nil {
 		t.Fatal(e)
 	}
 	defer l.Close()
-	outcome, c := l.DebitVerified(t.Context(), raw, f, admission.Bootstrap)
-	if outcome != admission.Debited {
+	outcome, c := l.DebitVerified(t.Context(), raw, f, quota.Bootstrap)
+	if outcome != quota.Debited {
 		t.Fatal(outcome)
 	}
 	for _, phase := range []string{"request-write", "response-write", "append-sync", "append-close", "floor-rename"} {
@@ -248,8 +250,8 @@ func TestResultWriteFaultsAndReopen(t *testing.T) {
 				}
 				_ = reopened.Close()
 			}
-			again, _ := l.DebitVerified(t.Context(), raw, f, admission.Bootstrap)
-			if again != admission.AlreadyDebited {
+			again, _ := l.DebitVerified(t.Context(), raw, f, quota.Bootstrap)
+			if again != quota.AlreadyDebited {
 				t.Fatal("refunded", again)
 			}
 		})

@@ -6,7 +6,7 @@ The selected implementation remains one local dev slice; no legacy migration.
 
 ## Completed interface design
 
-Admission retains Debit and adds DebitVerified, returning Outcome and an opaque
+Admission quota retains Debit and adds DebitVerified, returning Outcome and an opaque
 DebitConfirmation. Both use one locked transaction. Only successful durable debit
 or currently revalidated exact retry mints a confirmation. Snapshot returns
 defensive copies of raw batch, exact ledger binding, kind and checked-at time;
@@ -27,7 +27,7 @@ Admission -> key Store -> ResultStore is the fixed command lease order, reverse
 cleanup with retained errors. The real operation owner is
 `internal/successor/admission/issuer`: `Initialize(ctx, Plan)` and
 `Issue(ctx, Plan, raw, Facts, Kind)` open those owners before debit and close in
-reverse order. Its only project imports are Admission, its Issuance child and Node Identity. The command handles strict configuration, response export and OTel;
+reverse order. Its project imports are Admission contracts, quota, issuance and Node Identity. The current-authority operation IssueCurrent reuses the same debit/sign/result path with fresh authority and permission-time checks before and after durable work. The command handles strict configuration, response export and OTel;
 quota and signing rules remain within their respective domains. No arbitrary
 signing or private-key API is added.
 

@@ -2,6 +2,8 @@
 
 package issuance
 
+import "github.com/dianabuilds/ardents-network/internal/successor/admission/quota"
+
 import (
 	"bytes"
 	"context"
@@ -21,7 +23,7 @@ import (
 
 type resultProcessPlan struct {
 	Keys, Admission, Results, Batch string
-	Binding                         admission.LedgerBinding
+	Binding                         quota.LedgerBinding
 	Facts                           admission.Facts
 	AfterResponse                   bool
 }
@@ -37,7 +39,7 @@ func TestResultProcessCrash(t *testing.T) {
 			os.Exit(3)
 		}
 		ctx := context.Background()
-		ledger, e := admission.Open(p.Admission, p.Binding)
+		ledger, e := quota.Open(p.Admission, p.Binding)
 		if e != nil {
 			os.Exit(4)
 		}
@@ -53,8 +55,8 @@ func TestResultProcessCrash(t *testing.T) {
 		if e != nil {
 			os.Exit(7)
 		}
-		outcome, c := ledger.DebitVerified(ctx, raw, p.Facts, admission.Bootstrap)
-		if outcome != admission.Debited {
+		outcome, c := ledger.DebitVerified(ctx, raw, p.Facts, quota.Bootstrap)
+		if outcome != quota.Debited {
 			os.Exit(8)
 		}
 		if p.AfterResponse {
@@ -75,7 +77,7 @@ func TestResultProcessCrash(t *testing.T) {
 			store, v, root := resultOwners(t)
 			raw, f, b, verify := resultFixture(t, v, 2, 1, 1)
 			ledgerRoot := filepath.Join(t.TempDir(), "admission")
-			if e := admission.Initialize(ledgerRoot, b); e != nil {
+			if e := quota.Initialize(ledgerRoot, b); e != nil {
 				t.Fatal(e)
 			}
 			if e := InitializeResults(t.Context(), root, store, b); e != nil {
@@ -112,18 +114,18 @@ func TestResultProcessCrash(t *testing.T) {
 			if _, e = io.ReadFull(stdout, ready); e != nil || string(ready) != "ready\n" {
 				t.Fatal("child", e, string(ready))
 			}
-			if _, e := admission.Open(ledgerRoot, b); !errors.Is(e, admission.ErrBusy) {
+			if _, e := quota.Open(ledgerRoot, b); !errors.Is(e, quota.ErrBusy) {
 				t.Fatal(e)
 			}
 			_ = command.Process.Kill()
 			_ = command.Wait()
-			ledger, e := admission.Open(ledgerRoot, b)
+			ledger, e := quota.Open(ledgerRoot, b)
 			if e != nil {
 				t.Fatal(e)
 			}
 			defer ledger.Close()
-			outcome, c := ledger.DebitVerified(t.Context(), raw, f, admission.Bootstrap)
-			if outcome != admission.AlreadyDebited {
+			outcome, c := ledger.DebitVerified(t.Context(), raw, f, quota.Bootstrap)
+			if outcome != quota.AlreadyDebited {
 				t.Fatal("lost debit", outcome)
 			}
 			keys, e := Open(t.Context(), keyRoot, testBinding(1))
@@ -148,16 +150,16 @@ func TestResultConcurrentIssueAndCancellation(t *testing.T) {
 	store, v, root := resultOwners(t)
 	raw, f, b, _ := resultFixture(t, v, 1, 1, 1)
 	path := filepath.Join(t.TempDir(), "admission")
-	if e := admission.Initialize(path, b); e != nil {
+	if e := quota.Initialize(path, b); e != nil {
 		t.Fatal(e)
 	}
-	ledger, e := admission.Open(path, b)
+	ledger, e := quota.Open(path, b)
 	if e != nil {
 		t.Fatal(e)
 	}
 	defer ledger.Close()
-	outcome, c := ledger.DebitVerified(t.Context(), raw, f, admission.Bootstrap)
-	if outcome != admission.Debited {
+	outcome, c := ledger.DebitVerified(t.Context(), raw, f, quota.Bootstrap)
+	if outcome != quota.Debited {
 		t.Fatal(outcome)
 	}
 	if e := InitializeResults(t.Context(), root, store, b); e != nil {

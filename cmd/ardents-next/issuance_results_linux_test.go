@@ -2,6 +2,8 @@
 
 package main
 
+import "github.com/dianabuilds/ardents-network/internal/successor/admission/quota"
+
 import (
 	"bytes"
 	"crypto/ed25519"
@@ -22,7 +24,7 @@ import (
 	"time"
 
 	"github.com/cloudflare/circl/blindsign/blindrsa"
-	"github.com/dianabuilds/ardents-network/internal/successor/admission"
+
 	"github.com/dianabuilds/ardents-network/internal/successor/admission/issuance"
 	"github.com/dianabuilds/ardents-network/internal/successor/admission/issuerprofile"
 )
@@ -106,7 +108,7 @@ func issuanceResultCommandPlanWithSigner(t *testing.T, signer [32]byte) (issuanc
 	copy(raw[len(raw)-64:], ed25519.Sign(holder, transcript))
 	parent := filepath.Dir(p.Root)
 	ledgerRoot := filepath.Join(parent, "admission")
-	if e = admission.Initialize(ledgerRoot, b); e != nil {
+	if e = quota.Initialize(ledgerRoot, b); e != nil {
 		t.Fatal(e)
 	}
 	keyBinding := issuanceBindingInput{Network: admissionBindingConfig(b).Network, Issuer: admissionBindingConfig(b).Issuer, Signer: hex.EncodeToString(p.Binding.Signer[:]), Start: p.Binding.Start.Format(time.RFC3339), End: p.Binding.End.Format(time.RFC3339)}

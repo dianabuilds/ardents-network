@@ -2,6 +2,8 @@
 
 package issuer
 
+import "github.com/dianabuilds/ardents-network/internal/successor/admission/quota"
+
 import (
 	"context"
 	"errors"
@@ -70,7 +72,7 @@ func TestIssueRetainsPrimaryResultWhenMultipleOwnersFailClose(t *testing.T) {
 		locks: []string{filepath.Join(p.AdmissionRoot, "admission.lock"), filepath.Join(p.KeyRoot, "issuer.lock"), filepath.Join(p.ResultRoot, "results.lock")},
 		pins:  []string{filepath.Join(p.KeyRoot, "issuer.pin"), filepath.Join(p.ResultRoot, "results.pin")},
 	}
-	got := Issue(interrupted, p, nil, admission.Facts{}, admission.Bootstrap)
+	got := Issue(interrupted, p, nil, admission.Facts{}, quota.Bootstrap)
 	if ctx.Err() == nil {
 		t.Fatal("operation did not reach the acquired-root boundary")
 	}

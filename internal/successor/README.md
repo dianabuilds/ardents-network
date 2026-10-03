@@ -16,7 +16,7 @@ package imports in [the package map](../../docs/development/package-map.md).
 Directory nesting grants no implicit dependency. There is no shared legacy
 product allowlist. The command's exact OTel imports and test-only OTLP decoding
 imports are enumerated in the isolation test and dependency register.
-`admission/issuance` alone may consume reviewed CIRCL blindrsa. New dependencies
+`admission/issuance` and `admission/token` may consume reviewed CIRCL blindrsa for issuer signing and holder/receiver operations. New dependencies
 require explicit review and the existing dependency acceptance process.
 
 [Admission](admission/README.md) owns its public `issuerprofile` contract, quota
@@ -52,8 +52,12 @@ their own contract checks.
 
 `admission/issuer` owns the ordered offline Admission/key/result lifecycle. It
 also composes pinned Nodeidentity/key/profile provisioning; its exact domain
-imports are Admission, its Issuance child and Node Identity. Command
+imports are Admission, its quota, issuance and issuerprofile children, and Node Identity. Command
 adapters own configuration, export and telemetry.
 
 Signed profile and existing Node key import contracts belong to
 docs/technical/successor-issuer-profile.md.
+
+The independent holder/allocation/issuer/receiver command contract belongs to
+docs/technical/successor-admission-commands.md. Its local supplied authority facts
+do not qualify Network authenticity or encrypted Custody storage.

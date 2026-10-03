@@ -81,6 +81,17 @@ func TestInspection(t *testing.T) {
 	}
 }
 
+func TestMissingSignatureKeepsInspectionCategory(t *testing.T) {
+	raw, facts, _ := fixture()
+	clear(raw[164:])
+	if got := Inspect(context.Background(), raw, facts); got != Signature {
+		t.Fatalf("missing signature = %s, want %s", got, Signature)
+	}
+	if _, err := DecodePermission(raw); err == nil {
+		t.Fatal("signed permission decoder accepted an absent signature")
+	}
+}
+
 func TestSignedPermissionLimits(t *testing.T) {
 	for _, maximum := range []uint32{0, 65536, 65537} {
 		for class := uint8(1); class <= 3; class++ {

@@ -1,5 +1,7 @@
 package issuance
 
+import "github.com/dianabuilds/ardents-network/internal/successor/admission/quota"
+
 import (
 	"context"
 	"crypto/sha256"
@@ -25,7 +27,7 @@ var resultFiles = []string{"results.pin", "results.lock", "results.journal", "re
 
 type savedResult struct {
 	raw, response []byte
-	kind          admission.Kind
+	kind          quota.Kind
 	checked       time.Time
 }
 type resultState struct {
@@ -36,7 +38,7 @@ type resultState struct {
 	files             map[string]os.FileInfo
 	lock              *os.File
 	store             Store
-	binding           admission.LedgerBinding
+	binding           quota.LedgerBinding
 	header, tail      [32]byte
 	floor             uint64
 	size              int64
@@ -50,7 +52,7 @@ type resultState struct {
 // ResultStore copies share one transaction owner, lease and terminal lifecycle.
 type ResultStore struct{ state *resultState }
 
-func InitializeResults(ctx context.Context, path string, store Store, b admission.LedgerBinding) error {
+func InitializeResults(ctx context.Context, path string, store Store, b quota.LedgerBinding) error {
 	if err := platform(); err != nil {
 		return err
 	}
@@ -66,7 +68,7 @@ func InitializeResults(ctx context.Context, path string, store Store, b admissio
 	}
 	return initializeResults(ctx, path, b, v.Digest, nil)
 }
-func OpenResults(ctx context.Context, path string, store Store, b admission.LedgerBinding) (ResultStore, error) {
+func OpenResults(ctx context.Context, path string, store Store, b quota.LedgerBinding) (ResultStore, error) {
 	if err := platform(); err != nil {
 		return ResultStore{}, err
 	}
@@ -89,7 +91,7 @@ func OpenResults(ctx context.Context, path string, store Store, b admission.Ledg
 }
 
 // Issue signs only verified durable debits; its response is always defensive.
-func (r ResultStore) Issue(ctx context.Context, c admission.DebitConfirmation, now time.Time) ([]byte, bool, error) {
+func (r ResultStore) Issue(ctx context.Context, c quota.DebitConfirmation, now time.Time) ([]byte, bool, error) {
 	if r.state == nil || ctx == nil {
 		return nil, false, ErrInvalid
 	}
@@ -109,14 +111,14 @@ func (r ResultStore) Issue(ctx context.Context, c admission.DebitConfirmation, n
 	if !valid {
 		return nil, false, ErrInvalid
 	}
-	digest, err := admission.BindingDigest(b)
+	digest, err := quota.BindingDigest(b)
 	if err != nil || digest != s.bindingDigest() {
 		return nil, false, ErrInvalid
 	}
 	if now.Nanosecond() != 0 || now.Unix() < 0 || now.Before(checked) || uint64(now.Unix()) < s.floor {
 		return nil, false, ErrValidity
 	}
-	if outcome := admission.ValidateBatch(ctx, raw, b, now); outcome != admission.Accepted {
+	if outcome := quota.ValidateBatch(ctx, raw, b, now); outcome != admission.Accepted {
 		if outcome == admission.Canceled {
 			return nil, false, ctx.Err()
 		}
@@ -174,7 +176,7 @@ func (r ResultStore) Issue(ctx context.Context, c admission.DebitConfirmation, n
 	}
 	return append([]byte(nil), response...), exists, nil
 }
-func (s *resultState) bindingDigest() [32]byte { d, _ := admission.BindingDigest(s.binding); return d }
+func (s *resultState) bindingDigest() [32]byte { d, _ := quota.BindingDigest(s.binding); return d }
 func (r ResultStore) Close() error {
 	if r.state == nil {
 		return ErrClosed

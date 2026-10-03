@@ -631,9 +631,12 @@ immutable command build. It requires proc/sys/loopback for the existing command
 tests. Windows cannot replace Linux acceptance; filesystem tests do not qualify
 power loss, full storage rollback or network security.
 
-`make admission-check` requires Linux and executes the successor Admission public-contract and
-ledger file, lease, crash/reopen and concurrency tests under race,
-plus the real compiled `ardents-next` cycle and actual OTLP checks. The checked
+`make admission-check` requires Linux and executes all successor Admission packages
+under race with a five-minute package timeout: allocation, quota, issuance,
+holder stock, presentation and receiving/spend owners, including lease,
+crash/reopen and concurrency tests. Compiled `ardents-next` commands exercise
+holder/allocation/current-issuer/receiver operations, SIGINT with inherited stdin,
+exact replay and refill, plus actual Hosting budget and OTLP checks. The checked
 profile is `admission-ledger-linux`; the Docker acceptance image is
 `golang:1.27.1-bookworm@sha256:69a7b9788769bec032d238959b61854e9ae87f57be9029ec04e9885fabf99195`.
 Command tests share one immutable compiled executable while keeping separate
@@ -641,8 +644,8 @@ mutable roots. Linux prerequisites cannot be replaced by a Windows passing
 result. These tests provide no live issuer/State, power-loss storage or whole
 Network qualification.
 
-The token-issuance-linux profile executes make token-issuance-check with all
-Admission owners and the compiled CLI under race in the same pinned image.
+The token-issuance-linux profile executes make token-issuance-check with the
+issuance owners and the compiled CLI under race in the same pinned image.
 It includes real client blind/finalize and stdlib PSS verification, opaque debit
 confirmation, quota retention, journal pairs/floors, faults, crash/replay and OTLP.
 CIRCL uses the populated reviewed module cache. No power-loss/rollback claim.

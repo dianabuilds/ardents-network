@@ -71,3 +71,10 @@ github.com/dianabuilds/ardents-network/internal/successor/admission/issuance
 github.com/dianabuilds/ardents-network/internal/successor/admission/issuer
 github.com/dianabuilds/ardents-network/internal/successor/nodeidentity
 github.com/dianabuilds/ardents-network/internal/successor/admission/issuerprofile
+github.com/dianabuilds/ardents-network/internal/successor/admission/allocation
+github.com/dianabuilds/ardents-network/internal/successor/admission/spending
+github.com/dianabuilds/ardents-network/internal/successor/admission/token
+github.com/dianabuilds/ardents-network/internal/successor/admission/receiving
+github.com/dianabuilds/ardents-network/internal/successor/admission/quota
+github.com/dianabuilds/ardents-network/internal/successor/admission/attempts
+github.com/dianabuilds/ardents-network/internal/successor/admission/stock

@@ -1,7 +1,7 @@
 # Independent offline Admission accounting
 
 This completed slice design owns offline verification and durable issuance-right
-accounting in `internal/successor/admission`, consumed by `ardents-next`. It does
+accounting in `internal/successor/admission/quota`, consumed by `ardents-next`. It does
 not authorize network work, sign tokens, authenticate live State/time, provision
 permissions or migrate existing issuer roots. Hosting remains independent.
 
@@ -24,7 +24,7 @@ profile digest, aligned one-to-six-hour interval and sorted unique class/hour
 SPKI inventory (all three classes per hour). Inputs are explicit offline
 assertions. Facts select holder, now, class and count independently of wire;
 all duty facts must match the immutable binding. No callback supplies authority.
-Inspection remains unchanged. Admission imports the standard library and its
+Inspection remains in the Admission root. Quota imports that root and its
 public `admission/issuerprofile` contract for cohort/SPKI validation; the
 [profile owner](successor-issuer-profile.md) defines that authority-free boundary.
 The exported binding type is `LedgerBinding`, preserving the existing `Binding`

@@ -2,6 +2,8 @@
 
 package issuer
 
+import "github.com/dianabuilds/ardents-network/internal/successor/admission/quota"
+
 import (
 	"os"
 	"path/filepath"
@@ -29,12 +31,12 @@ func issuancePlan(t *testing.T) Plan {
 	if err != nil {
 		t.Fatal(err)
 	}
-	p.AdmissionBinding = admission.LedgerBinding{Network: keys.Network, Issuer: keys.Issuer, Authority: [32]byte{4}, Profile: [32]byte{5}, Duty: 1, Start: keys.Start, End: keys.End}
+	p.AdmissionBinding = quota.LedgerBinding{Network: keys.Network, Issuer: keys.Issuer, Authority: [32]byte{4}, Profile: [32]byte{5}, Duty: 1, Start: keys.Start, End: keys.End}
 	p.AdmissionBinding.Keys = inventory.Keys
 	if err := store.Close(); err != nil {
 		t.Fatal(err)
 	}
-	if err := admission.Initialize(p.AdmissionRoot, p.AdmissionBinding); err != nil {
+	if err := quota.Initialize(p.AdmissionRoot, p.AdmissionBinding); err != nil {
 		t.Fatal(err)
 	}
 	return p
@@ -56,10 +58,10 @@ func TestInitializeClosesOwnersAndRetainsResultRoot(t *testing.T) {
 	if err != nil || string(before) != string(after) {
 		t.Fatal("replacement", err)
 	}
-	if got := Issue(t.Context(), p, nil, admission.Facts{}, admission.Bootstrap); got.Outcome == "busy" || got.Response != nil {
+	if got := Issue(t.Context(), p, nil, admission.Facts{}, quota.Bootstrap); got.Outcome == "busy" || got.Response != nil {
 		t.Fatal(got)
 	}
-	ledger, err := admission.Open(p.AdmissionRoot, p.AdmissionBinding)
+	ledger, err := quota.Open(p.AdmissionRoot, p.AdmissionBinding)
 	if err != nil {
 		t.Fatal(err)
 	}

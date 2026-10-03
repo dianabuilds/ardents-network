@@ -1,5 +1,7 @@
 package main
 
+import "github.com/dianabuilds/ardents-network/internal/successor/admission/quota"
+
 import (
 	"crypto/ed25519"
 	"crypto/rsa"
@@ -14,7 +16,7 @@ import (
 	"time"
 )
 
-func admissionCommandFixture(t *testing.T, class uint8, count uint16, max uint32, id byte) ([]byte, admission.Facts, admission.LedgerBinding) {
+func admissionCommandFixture(t *testing.T, class uint8, count uint16, max uint32, id byte) ([]byte, admission.Facts, quota.LedgerBinding) {
 	t.Helper()
 	authority := ed25519.NewKeyFromSeed(make([]byte, 32))
 	seed := make([]byte, 32)
@@ -23,7 +25,7 @@ func admissionCommandFixture(t *testing.T, class uint8, count uint16, max uint32
 	f := admission.Facts{Network: [32]byte{1}, Issuer: [32]byte{2}, Duty: 7, DutyNotBefore: time.Unix(3600, 0).UTC(), DutyNotAfter: time.Unix(7200, 0).UTC(), Now: time.Unix(3600, 0).UTC(), Class: class, Count: uint32(count)}
 	copy(f.Authority[:], authority.Public().(ed25519.PublicKey))
 	copy(f.Holder[:], holder.Public().(ed25519.PublicKey))
-	binding := admission.LedgerBinding{Network: f.Network, Issuer: f.Issuer, Authority: f.Authority, Profile: [32]byte{9}, Duty: f.Duty, Start: f.DutyNotBefore, End: f.DutyNotAfter}
+	binding := quota.LedgerBinding{Network: f.Network, Issuer: f.Issuer, Authority: f.Authority, Profile: [32]byte{9}, Duty: f.Duty, Start: f.DutyNotBefore, End: f.DutyNotAfter}
 	for c := uint8(1); c <= 3; c++ {
 		binding.Keys = append(binding.Keys, issuerprofile.Key{Window: 3600, Class: c, SPKI: admissionCommandSPKI(t, c)})
 	}

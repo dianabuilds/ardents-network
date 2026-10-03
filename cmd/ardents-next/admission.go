@@ -1,5 +1,7 @@
 package main
 
+import "github.com/dianabuilds/ardents-network/internal/successor/admission/quota"
+
 import (
 	"context"
 	"encoding/json"
@@ -18,20 +20,26 @@ type admissionResult struct {
 func admissionError(err error) admission.Outcome {
 	switch {
 	case err == nil:
-		return admission.Debited
-	case errors.Is(err, admission.ErrUncertain):
-		return admission.Uncertain
-	case errors.Is(err, admission.ErrUnsupported):
-		return admission.Unsupported
-	case errors.Is(err, admission.ErrBusy):
-		return admission.Busy
-	case errors.Is(err, admission.ErrInvalid):
+		return quota.Debited
+	case errors.Is(err, quota.ErrUncertain):
+		return quota.Uncertain
+	case errors.Is(err, quota.ErrUnsupported):
+		return quota.Unsupported
+	case errors.Is(err, quota.ErrBusy):
+		return quota.Busy
+	case errors.Is(err, quota.ErrInvalid):
 		return admission.InvalidInput
 	default:
-		return admission.Unavailable
+		return quota.Unavailable
 	}
 }
 func runAdmission(ctx context.Context, args []string, out, diagnostic io.Writer) int {
+	if len(args) > 0 {
+		switch args[0] {
+		case "holder", "receiver", "allocate", "issue-current":
+			return runAdmissionLocal(ctx, args[0], args[1:], out, diagnostic)
+		}
+	}
 	if len(args) > 0 && args[0] == "prepare-binding" {
 		return runIssuerProfile(ctx, "admission.prepare-binding", args[1:], out, diagnostic)
 	}
@@ -39,7 +47,7 @@ func runAdmission(ctx context.Context, args []string, out, diagnostic io.Writer)
 	write := func() int {
 		code := 1
 		switch r.Outcome {
-		case admission.Initialized, admission.Debited, admission.AlreadyDebited:
+		case quota.Initialized, quota.Debited, quota.AlreadyDebited:
 			code = 0
 		case admission.InvalidInput:
 			code = 2
@@ -58,8 +66,8 @@ func runAdmission(ctx context.Context, args []string, out, diagnostic io.Writer)
 		return write()
 	}
 	r.Operation = "admission." + args[0]
-	if !admission.Supported() {
-		r.Outcome = admission.Unsupported
+	if !quota.Supported() {
+		r.Outcome = quota.Unsupported
 		return write()
 	}
 	if ctx == nil {
@@ -99,19 +107,19 @@ func runAdmission(ctx context.Context, args []string, out, diagnostic io.Writer)
 	if ctx.Err() != nil {
 		r.Outcome = admission.Canceled
 	} else if args[0] == "initialize" {
-		r.Outcome = admissionError(admission.Initialize(p.Root, p.Binding))
-		if r.Outcome == admission.Debited {
-			r.Outcome = admission.Initialized
+		r.Outcome = admissionError(quota.Initialize(p.Root, p.Binding))
+		if r.Outcome == quota.Debited {
+			r.Outcome = quota.Initialized
 		}
 	} else {
-		ledger, openErr := admission.Open(p.Root, p.Binding)
+		ledger, openErr := quota.Open(p.Root, p.Binding)
 		if openErr != nil {
 			r.Outcome = admissionError(openErr)
 		} else {
 			r.Outcome = ledger.Debit(ctx, batch, p.Facts, p.Kind)
 			if ledger.Close() != nil {
 				r.Phase = "close"
-				r.Outcome = admission.Uncertain
+				r.Outcome = quota.Uncertain
 			}
 		}
 	}

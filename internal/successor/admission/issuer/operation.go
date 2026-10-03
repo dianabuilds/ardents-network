@@ -1,10 +1,13 @@
 package issuer
 
+import "github.com/dianabuilds/ardents-network/internal/successor/admission/quota"
+
 import (
 	"context"
 	"errors"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/successor/admission"
 	"github.com/dianabuilds/ardents-network/internal/successor/admission/issuance"
@@ -14,7 +17,7 @@ import (
 // Plan fixes three independently owned non-nested roots and offline bindings.
 type Plan struct {
 	AdmissionRoot    string
-	AdmissionBinding admission.LedgerBinding
+	AdmissionBinding quota.LedgerBinding
 	KeyRoot          string
 	KeyBinding       issuance.Binding
 	ResultRoot       string
@@ -56,15 +59,15 @@ func (r *Result) closeOwner(slot int, phase string, close func() error) {
 
 func category(err error) string {
 	switch {
-	case errors.Is(err, issuance.ErrUncertain), errors.Is(err, admission.ErrUncertain), errors.Is(err, nodeidentity.ErrUncertain):
+	case errors.Is(err, issuance.ErrUncertain), errors.Is(err, quota.ErrUncertain), errors.Is(err, nodeidentity.ErrUncertain):
 		return "storage-uncertain"
-	case errors.Is(err, issuance.ErrUnsupported), errors.Is(err, admission.ErrUnsupported), errors.Is(err, nodeidentity.ErrUnsupported):
+	case errors.Is(err, issuance.ErrUnsupported), errors.Is(err, quota.ErrUnsupported), errors.Is(err, nodeidentity.ErrUnsupported):
 		return "unsupported-platform"
-	case errors.Is(err, issuance.ErrBusy), errors.Is(err, admission.ErrBusy), errors.Is(err, nodeidentity.ErrBusy):
+	case errors.Is(err, issuance.ErrBusy), errors.Is(err, quota.ErrBusy), errors.Is(err, nodeidentity.ErrBusy):
 		return "busy"
 	case errors.Is(err, context.Canceled), errors.Is(err, context.DeadlineExceeded):
 		return "canceled"
-	case errors.Is(err, issuance.ErrInvalid), errors.Is(err, admission.ErrInvalid), errors.Is(err, nodeidentity.ErrInvalid):
+	case errors.Is(err, issuance.ErrInvalid), errors.Is(err, quota.ErrInvalid), errors.Is(err, nodeidentity.ErrInvalid):
 		return "invalid-input"
 	case errors.Is(err, issuance.ErrValidity):
 		return "outside-validity"
@@ -97,10 +100,10 @@ func Initialize(ctx context.Context, p Plan) Result {
 }
 
 // Issue opens all owners before any debit and closes them in reverse order.
-func Issue(ctx context.Context, p Plan, raw []byte, f admission.Facts, kind admission.Kind) Result {
+func Issue(ctx context.Context, p Plan, raw []byte, f admission.Facts, kind quota.Kind) Result {
 	return execute(ctx, p, raw, f, kind, false)
 }
-func execute(ctx context.Context, p Plan, raw []byte, f admission.Facts, kind admission.Kind, initialize bool) (r Result) {
+func execute(ctx context.Context, p Plan, raw []byte, f admission.Facts, kind quota.Kind, initialize bool, checks ...func() (time.Time, error)) (r Result) {
 	r = Result{Phase: "input", Outcome: "invalid-input"}
 	if !issuance.Supported() {
 		r.Outcome = "unsupported-platform"
@@ -113,8 +116,21 @@ func execute(ctx context.Context, p Plan, raw []byte, f admission.Facts, kind ad
 		r.Outcome = "canceled"
 		return r
 	}
+	if len(checks) > 0 {
+		defer func() {
+			if r.Response == nil {
+				return
+			}
+			if _, err := checks[0](); err != nil {
+				clear(r.Response)
+				r.Response = nil
+				r.Phase = "authority"
+				r.Outcome = "authority-unavailable"
+			}
+		}()
+	}
 	r.Phase = "open-admission"
-	ledger, err := admission.Open(p.AdmissionRoot, p.AdmissionBinding)
+	ledger, err := quota.Open(p.AdmissionRoot, p.AdmissionBinding)
 	if err != nil {
 		r.Outcome = category(err)
 		return r
@@ -142,10 +158,31 @@ func execute(ctx context.Context, p Plan, raw []byte, f admission.Facts, kind ad
 		return r
 	}
 	defer r.closeOwner(0, "close-results", results.Close)
+	recheck := func() bool {
+		if len(checks) == 0 {
+			return true
+		}
+		now, err := checks[0]()
+		if err != nil {
+			r.Phase = "authority"
+			r.Outcome = "authority-unavailable"
+			clear(r.Response)
+			r.Response = nil
+			return false
+		}
+		f.Now = now
+		return true
+	}
+	if !recheck() {
+		return r
+	}
 	r.Phase = "debit"
 	outcome, confirmation := ledger.DebitVerified(ctx, raw, f, kind)
-	if outcome != admission.Debited && outcome != admission.AlreadyDebited {
+	if outcome != quota.Debited && outcome != quota.AlreadyDebited {
 		r.Outcome = string(outcome)
+		return r
+	}
+	if !recheck() {
 		return r
 	}
 	r.Phase = "issue"

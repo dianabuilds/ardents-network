@@ -1,5 +1,4 @@
-// Package admission verifies closed permissions and signed issuance batches
-// against explicit offline evidence, and owns durable nonrefundable quota
-// debits in isolated fresh roots. It creates no live State/time authority,
-// network permission, signing key or token.
+// Package admission defines permission and token request contracts and checks
+// externally selected facts. Quota, issuance, holder stock and receiver spending
+// own their separate state transitions in cohesive child packages.
 package admission

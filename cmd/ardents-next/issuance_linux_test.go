@@ -2,12 +2,14 @@
 
 package main
 
+import "github.com/dianabuilds/ardents-network/internal/successor/admission/quota"
+
 import (
 	"bytes"
 	"context"
 	"encoding/hex"
 	"encoding/json"
-	"github.com/dianabuilds/ardents-network/internal/successor/admission"
+
 	"github.com/dianabuilds/ardents-network/internal/successor/admission/issuance"
 	"github.com/dianabuilds/ardents-network/internal/successor/admission/issuerprofile"
 	"io"
@@ -95,7 +97,7 @@ func TestIssuanceCompiledCLI(t *testing.T) {
 	if e = json.Unmarshal(before, &exported); e != nil {
 		t.Fatal(e)
 	}
-	binding := admission.LedgerBinding{Network: p.Binding.Network, Issuer: p.Binding.Issuer, Authority: [32]byte{4}, Profile: [32]byte{5}, Duty: 1, Start: p.Binding.Start, End: p.Binding.End}
+	binding := quota.LedgerBinding{Network: p.Binding.Network, Issuer: p.Binding.Issuer, Authority: [32]byte{4}, Profile: [32]byte{5}, Duty: 1, Start: p.Binding.Start, End: p.Binding.End}
 	for i, k := range exported.Keys {
 		spki, err := hex.DecodeString(k.SPKI)
 		if err != nil || !bytes.Equal(spki, inventory.Keys[i].SPKI) {

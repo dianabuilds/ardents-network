@@ -1,5 +1,7 @@
 package main
 
+import "github.com/dianabuilds/ardents-network/internal/successor/admission/quota"
+
 import (
 	"bytes"
 	"encoding/hex"
@@ -31,10 +33,10 @@ type admissionKeyInput struct {
 }
 type admissionPlan struct {
 	Root      string
-	Binding   admission.LedgerBinding
+	Binding   quota.LedgerBinding
 	BatchFile string
 	Facts     admission.Facts
-	Kind      admission.Kind
+	Kind      quota.Kind
 }
 
 func requiredAdmissionObject(raw []byte, keys ...string) bool {
@@ -182,9 +184,9 @@ func decodeAdmissionPlan(raw []byte, operation string) (admissionPlan, error) {
 		}
 		switch kind {
 		case "bootstrap":
-			p.Kind = admission.Bootstrap
+			p.Kind = quota.Bootstrap
 		case "admitted":
-			p.Kind = admission.Admitted
+			p.Kind = quota.Admitted
 		default:
 			return p, bad
 		}

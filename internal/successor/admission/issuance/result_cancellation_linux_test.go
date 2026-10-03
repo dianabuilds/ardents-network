@@ -2,6 +2,8 @@
 
 package issuance
 
+import "github.com/dianabuilds/ardents-network/internal/successor/admission/quota"
+
 import (
 	"bytes"
 	"context"
@@ -10,8 +12,6 @@ import (
 	"path/filepath"
 	"sync/atomic"
 	"testing"
-
-	"github.com/dianabuilds/ardents-network/internal/successor/admission"
 )
 
 // Cancel the real context at one existing observation boundary, without sleeps.
@@ -34,16 +34,16 @@ func TestResultCancellationDuringValidationAndReopen(t *testing.T) {
 	store, inventory, root := resultOwners(t)
 	raw, facts, binding, verify := resultFixture(t, inventory, 1, 1, 1)
 	ledgerRoot := filepath.Join(t.TempDir(), "admission")
-	if err := admission.Initialize(ledgerRoot, binding); err != nil {
+	if err := quota.Initialize(ledgerRoot, binding); err != nil {
 		t.Fatal(err)
 	}
-	ledger, err := admission.Open(ledgerRoot, binding)
+	ledger, err := quota.Open(ledgerRoot, binding)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer ledger.Close()
-	outcome, confirmation := ledger.DebitVerified(t.Context(), raw, facts, admission.Bootstrap)
-	if outcome != admission.Debited {
+	outcome, confirmation := ledger.DebitVerified(t.Context(), raw, facts, quota.Bootstrap)
+	if outcome != quota.Debited {
 		t.Fatal(outcome)
 	}
 	if err := InitializeResults(t.Context(), root, store, binding); err != nil {

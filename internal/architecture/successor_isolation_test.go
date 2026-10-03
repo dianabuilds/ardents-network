@@ -47,13 +47,29 @@ func successorImportAllowed(source, dependency string) bool {
 	permitted := map[string][]string{
 		"internal/successor/admission":               {"admission/issuerprofile"},
 		"internal/successor/admission/issuerprofile": {},
-		"internal/successor/admission/issuance":      {"admission", "admission/issuerprofile", "nodeidentity"},
-		"internal/successor/admission/issuer":        {"admission", "admission/issuance", "nodeidentity"},
+		"internal/successor/admission/allocation":    {"admission"},
+		"internal/successor/admission/attempts":      {},
+		"internal/successor/admission/spending":      {},
+		"internal/successor/admission/token":         {"admission", "admission/issuerprofile"},
+		"internal/successor/admission/receiving":     {"admission", "admission/token", "admission/spending"},
+		"internal/successor/admission/stock":         {"admission", "admission/allocation", "admission/attempts", "admission/token"},
+		"internal/successor/admission/quota":         {"admission", "admission/issuerprofile"},
+		"internal/successor/admission/issuance":      {"admission", "admission/quota", "admission/issuerprofile", "nodeidentity"},
+		"internal/successor/admission/issuer":        {"admission", "admission/quota", "admission/issuance", "nodeidentity"},
 		"internal/successor/nodeidentity":            {"admission/issuerprofile"},
 		"internal/successor/hosting":                 {},
-		"cmd/ardents-next":                           {"admission", "admission/issuerprofile", "admission/issuance", "admission/issuer", "nodeidentity", "hosting"},
+		"cmd/ardents-next":                           {"admission/stock", "admission/receiving", "admission/allocation", "admission", "admission/quota", "admission/issuerprofile", "admission/issuance", "admission/issuer", "nodeidentity", "hosting"},
 	}
 	if zoneDependency {
+		if owner == "cmd/ardents-next" && strings.HasSuffix(source, "_test.go") && dependency == modulePath+"/internal/successor/admission/token" {
+			return true
+		}
+		if (source == "internal/successor/admission/stock/issuance_fixture_test.go" || source == "internal/successor/admission/stock/lifecycle_test.go" || source == "internal/successor/admission/stock/receiving_cycle_test.go") && (dependency == modulePath+"/internal/successor/admission/issuer" || dependency == modulePath+"/internal/successor/admission/issuance" || dependency == modulePath+"/internal/successor/admission/quota") {
+			return true
+		}
+		if (source == "internal/successor/admission/stock/cycle_test.go" || source == "internal/successor/admission/stock/receiving_cycle_test.go") && (dependency == modulePath+"/internal/successor/admission/receiving" || dependency == modulePath+"/internal/successor/admission/spending") {
+			return true
+		}
 		// A registered package's external behavior tests may import that package.
 		// This grants neither another package nor nested tests its imports.
 		if _, registered := permitted[owner]; registered && strings.HasSuffix(source, "_test.go") && dependency == modulePath+"/"+owner {
@@ -66,7 +82,10 @@ func successorImportAllowed(source, dependency string) bool {
 		}
 		return false
 	}
-	if owner == "internal/successor/admission/issuance" && dependency == "github.com/cloudflare/circl/blindsign/blindrsa" {
+	if (owner == "internal/successor/admission/issuance" || owner == "internal/successor/admission/token") && dependency == "github.com/cloudflare/circl/blindsign/blindrsa" {
+		return true
+	}
+	if owner == "internal/successor/admission/spending" && dependency == "golang.org/x/sys/windows" {
 		return true
 	}
 
