@@ -190,11 +190,7 @@ func (server *closedResolutionServer) accept(ctx context.Context) error {
 }
 
 func (server *closedResolutionServer) closeCarrier(connection net.Conn) {
-	err := connection.Close()
-	if errors.Is(err, net.ErrClosed) {
-		return
-	}
-	server.recordCleanup(err)
+	server.recordCarrierCleanup(connection.Close())
 }
 
 func (server *closedResolutionServer) recordCleanup(err error) {
@@ -202,6 +198,33 @@ func (server *closedResolutionServer) recordCleanup(err error) {
 		return
 	}
 	server.cleanupMu.Lock()
-	server.cleanupErr = errors.Join(server.cleanupErr, err)
+	if server.cleanupErr == nil {
+		server.cleanupErr = err
+	}
 	server.cleanupMu.Unlock()
+}
+
+// recordCarrierCleanup retains the first complete unexpected Carrier outcome.
+// Subsequent connections cannot grow the duty's retained error state.
+func (server *closedResolutionServer) recordCarrierCleanup(err error) {
+	server.recordCleanup(carrierCleanupError(err))
+}
+
+// carrierCleanupError removes benign closed leaves without discarding any
+// independent cause in the same complete cleanup result.
+func carrierCleanupError(err error) error {
+	if err == nil || err == net.ErrClosed {
+		return nil
+	}
+	if joined, ok := err.(interface{ Unwrap() []error }); ok {
+		var result error
+		for _, cause := range joined.Unwrap() {
+			result = errors.Join(result, carrierCleanupError(cause))
+		}
+		return result
+	}
+	if wrapped, ok := err.(interface{ Unwrap() error }); ok && errors.Is(err, net.ErrClosed) {
+		return carrierCleanupError(wrapped.Unwrap())
+	}
+	return err
 }

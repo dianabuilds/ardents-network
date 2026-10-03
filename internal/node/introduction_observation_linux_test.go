@@ -79,7 +79,7 @@ func TestClosedIntroductionRegistrationObservation(t *testing.T) {
 			if _, err := rand.Read(withdrawal.Nonce[:]); err != nil {
 				t.Fatal(err)
 			}
-			if sendRegistrationFixture(t, connection, withdrawal) != 0 {
+			if sendRegistrationFixture(t, fixture, connection, withdrawal) != 0 {
 				t.Fatal("withdrawal positive control refused")
 			}
 			closeCarrier()
@@ -276,6 +276,7 @@ func TestClosedIntroductionDeliveryObservation(t *testing.T) {
 				if err != nil || verdict != 0 || len(proof) != 0 {
 					t.Fatalf("submission nonce handback: %v", err)
 				}
+				finishRecipientTerminal(t, &submitter, connection, 0)
 				closeSubmission()
 				trace.mu.Lock()
 				sent, read := bytes.Clone(trace.sent), bytes.Clone(trace.received)
@@ -290,7 +291,7 @@ func TestClosedIntroductionDeliveryObservation(t *testing.T) {
 			if _, err := rand.Read(withdrawal.Nonce[:]); err != nil {
 				t.Fatal(err)
 			}
-			if sendRegistrationFixture(t, registration, withdrawal) != 0 {
+			if sendRegistrationFixture(t, fixture, registration, withdrawal) != 0 {
 				t.Fatal("owning withdrawal refused")
 			}
 			closeRegistration()

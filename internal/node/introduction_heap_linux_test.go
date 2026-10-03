@@ -206,9 +206,10 @@ func TestClosedIntroductionProcessHeapObservation(t *testing.T) {
 			if err != nil || verdict != 0 || len(proof) != 0 {
 				t.Fatalf("submission result: %v", err)
 			}
+			finishRecipientTerminal(t, fixture, submission, 0)
 			closeSubmission()
 			withdrawal := terminal.RegistrationRequest{Slot: request.Slot, Revision: 1, Withdraw: true, Nonce: [32]byte{99}}
-			if sendRegistrationFixture(t, registration, withdrawal) != 0 {
+			if sendRegistrationFixture(t, fixture, registration, withdrawal) != 0 {
 				t.Fatal("heap role withdrawal refused")
 			}
 			closeRegistration()

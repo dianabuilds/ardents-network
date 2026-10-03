@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"io"
+	"net"
 	"sync"
 	"testing"
 	"time"
@@ -98,6 +99,9 @@ func TestClosedOuterBridgeCarriesOpaqueInnerLaneWithCredit(t *testing.T) {
 	}
 	if closed := <-written; closed.Kind != ardp.KindClose || closed.Lane != 1 || !bytes.Equal(closed.Body, []byte{0}) {
 		t.Fatalf("local lane close = %+v", closed)
+	}
+	if n, err := lane.Write([]byte{8}); n != 0 || !errors.Is(err, net.ErrClosed) {
+		t.Fatalf("closed lane write = %d, %v; want net.ErrClosed", n, err)
 	}
 	if replacement, err := bridge.Accept(ardp.Frame{Kind: ardp.KindOpen, Lane: 3, Body: openBody}); err != nil || replacement == nil {
 		t.Fatalf("released child replacement = %v / %v", replacement, err)

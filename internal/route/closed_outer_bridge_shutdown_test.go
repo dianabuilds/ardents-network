@@ -1,7 +1,9 @@
 package route
 
 import (
+	"errors"
 	"io"
+	"net"
 	"testing"
 	"time"
 
@@ -74,8 +76,8 @@ func TestClosedOuterBridgeShutdownRetainsReservationsUntilHandlersJoin(t *testin
 	if _, err := lane.Read(make([]byte, 1)); err != io.EOF {
 		t.Fatalf("buffer remained readable after shutdown: %v", err)
 	}
-	if _, err := lane.Write([]byte{1}); err == nil {
-		t.Fatal("retired child wrote")
+	if n, err := lane.Write([]byte{1}); n != 0 || !errors.Is(err, net.ErrClosed) {
+		t.Fatalf("retired child write = %d, %v; want net.ErrClosed", n, err)
 	}
 	if _, err := bridge.Accept(ardp.Frame{Kind: ardp.KindOpen, Lane: 5, Body: body}); err == nil {
 		t.Fatal("closed bridge allocated a child")

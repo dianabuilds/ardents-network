@@ -12,8 +12,10 @@ import (
 	"fmt"
 	admissionissuer "github.com/dianabuilds/ardents-network/internal/admission/issuer"
 	admissiontoken "github.com/dianabuilds/ardents-network/internal/admission/token"
+	"io"
 	"net"
 	"path/filepath"
+	"sync"
 	"testing"
 	"time"
 
@@ -53,6 +55,7 @@ func privateRecipientFixtureStart(t *testing.T) (time.Time, time.Time) {
 // admission spend and Descriptor Store are real. This does not qualify private
 // Introduction registration or Endpoint Publisher readiness.
 type resolutionNetworkFixture struct {
+	terminals     *sync.Map
 	observe       func(net.Conn) net.Conn
 	admissionRoot string
 	profile       state.ClosedProfileView
@@ -149,7 +152,7 @@ func newPrivateRecipientNetworkFixtureWithStart(t *testing.T, carrier routecarri
 	if !ok || !nodeAuthority(resolved).PeerCurrent(snapshot, clientKey, time.Now()) {
 		t.Fatal("invalid resolution State fixture")
 	}
-	fixture := &resolutionNetworkFixture{profile: profile, carrier: carrier, endpoint: endpoint, certificate: clientCert, receiver: receiver, serverKey: serverKey, root: config.ClosedResolution.Root}
+	fixture := &resolutionNetworkFixture{terminals: new(sync.Map), profile: profile, carrier: carrier, endpoint: endpoint, certificate: clientCert, receiver: receiver, serverKey: serverKey, root: config.ClosedResolution.Root}
 	fixture.admissionRoot = config.ClosedIntroduction.AdmissionRoot
 	fixture.tokens = privateRecipientTokens(t, root, profile, authority, receiver, class)
 	fixture.supplementary = make(map[uint8][][]byte)
@@ -405,5 +408,40 @@ func (fixture *resolutionNetworkFixture) openTerminal(ctx context.Context, token
 	}
 
 	success = true
+	if fixture.terminals == nil {
+		fixture.terminals = new(sync.Map)
+	}
+	fixture.terminals.Store(inner, outer)
 	return inner, func() { _ = outer.Close() }, nil
+}
+
+// finishRecipientTerminal observes both terminal layers. The returned connection
+// retains its concrete TLS type; the ordinary close callback still models a crash.
+func finishRecipientTerminal(t *testing.T, fixture *resolutionNetworkFixture, connection net.Conn, status byte) {
+	t.Helper()
+	raw, ok := fixture.terminals.Load(connection)
+	if !ok {
+		t.Fatal("missing recipient terminal transport")
+	}
+	outer := raw.(routecarrier.Carrier)
+	if err := outer.SetDeadline(time.Now().Add(3 * time.Second)); err != nil {
+		t.Fatal(err)
+	}
+	var trailing [1]byte
+	if n, err := connection.Read(trailing[:]); n != 0 || err != io.EOF {
+		t.Fatalf("inner TLS termination: %d, %v", n, err)
+	}
+	for {
+		frame, err := ardp.ReadFrame(outer)
+		if err != nil {
+			t.Fatalf("Outer termination: %v", err)
+		}
+		if frame.Kind == ardp.KindCredit && frame.Lane == 1 {
+			continue
+		}
+		if frame.Kind != ardp.KindClose || frame.Lane != 1 || len(frame.Body) != 1 || frame.Body[0] != status {
+			t.Fatalf("Outer termination: kind=%d lane=%d body=%x", frame.Kind, frame.Lane, frame.Body)
+		}
+		return
+	}
 }

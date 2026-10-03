@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net"
+	"sync"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/node/authority"
@@ -36,14 +37,28 @@ func (server *closedResolutionServer) serveOuter(ctx context.Context, carrier ro
 	if err != nil {
 		return
 	}
-	if err := nodeouter.Serve(ctx, carrier.Connection, outer, server.serveInner); err != nil && !errors.Is(err, net.ErrClosed) {
-		server.recordCleanup(err)
-	}
+	// Bound retained child failures over this Carrier's lifetime. Publish the
+	// complete first child outcome together with the joined physical outcome;
+	// a secondary TLS failure must not hide its causal physical writer failure.
+	var childMu sync.Mutex
+	var childCleanup error
+	outerErr := nodeouter.Serve(ctx, carrier.Connection, outer, func(childContext context.Context, lane *route.ClosedOuterBridgeLane) {
+		err := server.serveInner(childContext, lane)
+		childMu.Lock()
+		if childCleanup == nil {
+			childCleanup = err
+		}
+		childMu.Unlock()
+	})
+	server.recordCleanup(errors.Join(carrierCleanupError(outerErr), childCleanup))
 }
 
-func (server *closedResolutionServer) serveInner(ctx context.Context, lane *route.ClosedOuterBridgeLane) {
+func (server *closedResolutionServer) serveInner(ctx context.Context, lane *route.ClosedOuterBridgeLane) (cleanupErr error) {
 	status := byte(1)
-	defer func() { _ = lane.CloseWithStatus(status) }()
+	var admission *route.ClosedAdmission
+	// The child retains its reservation through inner TLS and Outer termination.
+	defer func() { cleanupErr = errors.Join(cleanupErr, admission.Release()) }()
+	defer func() { cleanupErr = errors.Join(cleanupErr, carrierCleanupError(lane.CloseWithStatus(status))) }()
 	if lane.Restriction() != route.ClosedChildOrdinary || !server.current() {
 		return
 	}
@@ -52,7 +67,8 @@ func (server *closedResolutionServer) serveInner(ctx context.Context, lane *rout
 		return
 	}
 	defer func() {
-		if secured.CloseWrite() != nil {
+		if err := secured.CloseWrite(); err != nil {
+			cleanupErr = errors.Join(cleanupErr, carrierCleanupError(err))
 			status = 1
 		}
 	}()
@@ -67,67 +83,69 @@ func (server *closedResolutionServer) serveInner(ctx context.Context, lane *rout
 	if err != nil || hello.Purpose != ardp.PurposeReachability || lane.Activate(hello) != nil {
 		return
 	}
-	if server.serveAdmitted(ctx, secured, lane, frame) == nil {
+	var operationErr error
+	admission, operationErr = server.serveAdmitted(ctx, secured, lane, frame)
+	if operationErr == nil {
 		status = 0
 	}
+	return
 }
 
-func (server *closedResolutionServer) serveAdmitted(ctx context.Context, connection net.Conn, lane *route.ClosedOuterBridgeLane, hello ardp.Frame) error {
+func (server *closedResolutionServer) serveAdmitted(ctx context.Context, connection net.Conn, lane *route.ClosedOuterBridgeLane, hello ardp.Frame) (*route.ClosedAdmission, error) {
 	exporter, err := routecarrier.ClosedRoleTLSExporter(connection)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	channel, err := route.NewClosedAdmissionChannel(server.receiver, server.spends, server.limits, exporter,
 		server.config.VerifyAdmission(server.receiver), server.config.Now)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if _, err := channel.Accept(hello); err != nil {
-		return err
+		return nil, err
 	}
 	frame, err := ardp.ReadFrame(connection)
 	if err != nil || frame.Kind != 2 || frame.Lane != 0 || len(frame.Body) != 355 || frame.Body[0] != 1 {
-		return errors.New("closed resolution requires Control admission")
+		return nil, errors.New("closed resolution requires Control admission")
 	}
 	lease, err := channel.Accept(frame)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	defer func() { server.recordCleanup(lease.Release()) }()
 	if err := lane.Admit(&lease, connection); err != nil {
-		return err
+		return &lease, err
 	}
 	if err := connection.SetDeadline(lease.Deadline); err != nil {
-		return err
+		return &lease, err
 	}
 	accepted, err := ardp.AcceptFrame(0, 64<<10)
 	if err != nil {
-		return err
+		return &lease, err
 	}
 	used := uint64(16 + len(hello.Body) + 16 + len(frame.Body) + 16 + len(accepted.Body))
 	if err := ardp.WriteFrame(connection, accepted); err != nil {
-		return err
+		return &lease, err
 	}
 	operation, err := ardp.ReadFrame(connection)
 	if err != nil || operation.Kind != 10 || operation.Lane != 0 {
-		return errors.New("closed resolution operation is invalid")
+		return &lease, errors.New("closed resolution operation is invalid")
 	}
 	used += uint64(16 + len(operation.Body) + 16 + (16 << 10))
 	if used > lease.Bytes || ctx.Err() != nil || !server.config.Now().Before(lease.Deadline) || !server.current() {
-		return errors.New("closed resolution admission ended")
+		return &lease, errors.New("closed resolution admission ended")
 	}
 	request, err := terminal.DecodeDescriptorRequest(operation.Body)
 	if err != nil {
-		return err
+		return &lease, err
 	}
 	result, err := server.resolve(request, server.config.Now())
 	if err != nil {
-		return err
+		return &lease, err
 	}
 	if ctx.Err() != nil || !server.current() || !server.config.Now().Before(lease.Deadline) {
-		return errors.New("closed resolution ended before acknowledgement")
+		return &lease, errors.New("closed resolution ended before acknowledgement")
 	}
-	return ardp.WriteFrame(connection, ardp.Frame{Kind: 11, Body: result})
+	return &lease, ardp.WriteFrame(connection, ardp.Frame{Kind: 11, Body: result})
 }
 
 func (server *closedResolutionServer) resolve(request terminal.DescriptorRequest, now time.Time) ([]byte, error) {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net"
+	"sync"
 	"time"
 
 	nodeouter "github.com/dianabuilds/ardents-network/internal/node/outer"
@@ -34,14 +35,28 @@ func (server *Server) serveOuter(ctx context.Context, carrier routecarrier.Close
 	if err != nil {
 		return
 	}
-	if err := nodeouter.Serve(ctx, carrier.Connection, outer, server.serveInner); err != nil && !errors.Is(err, net.ErrClosed) {
-		server.recordCleanup(err)
-	}
+	// Bound retained child failures over this Carrier's lifetime. Publish the
+	// complete first child outcome together with the joined physical outcome;
+	// a secondary TLS failure must not hide its causal physical writer failure.
+	var childMu sync.Mutex
+	var childCleanup error
+	outerErr := nodeouter.Serve(ctx, carrier.Connection, outer, func(childContext context.Context, lane *route.ClosedOuterBridgeLane) {
+		err := server.serveInner(childContext, lane)
+		childMu.Lock()
+		if childCleanup == nil {
+			childCleanup = err
+		}
+		childMu.Unlock()
+	})
+	server.recordCleanup(errors.Join(carrierCleanupError(outerErr), childCleanup))
 }
 
-func (server *Server) serveInner(ctx context.Context, lane *route.ClosedOuterBridgeLane) {
+func (server *Server) serveInner(ctx context.Context, lane *route.ClosedOuterBridgeLane) (cleanupErr error) {
 	status := byte(1)
-	defer func() { _ = lane.CloseWithStatus(status) }()
+	var admission *route.ClosedAdmission
+	// The child retains its reservation through inner TLS and Outer termination.
+	defer func() { cleanupErr = errors.Join(cleanupErr, admission.Release()) }()
+	defer func() { cleanupErr = errors.Join(cleanupErr, carrierCleanupError(lane.CloseWithStatus(status))) }()
 	if lane.Restriction() != route.ClosedChildOrdinary || !server.current() {
 		return
 	}
@@ -50,7 +65,8 @@ func (server *Server) serveInner(ctx context.Context, lane *route.ClosedOuterBri
 		return
 	}
 	defer func() {
-		if secured.CloseWrite() != nil {
+		if err := secured.CloseWrite(); err != nil {
+			cleanupErr = errors.Join(cleanupErr, carrierCleanupError(err))
 			status = 1
 		}
 	}()
@@ -65,19 +81,22 @@ func (server *Server) serveInner(ctx context.Context, lane *route.ClosedOuterBri
 	if err != nil || (hello.Purpose != ardp.PurposeIntroduction && hello.Purpose != ardp.PurposeSubmission) || lane.Activate(hello) != nil {
 		return
 	}
-	if server.serveAdmitted(ctx, secured, lane, frame) == nil {
+	var operationErr error
+	admission, operationErr = server.serveAdmitted(ctx, secured, lane, frame)
+	if operationErr == nil {
 		status = 0
 	}
+	return
 }
 
-func (server *Server) serveAdmitted(ctx context.Context, connection net.Conn, lane *route.ClosedOuterBridgeLane, hello ardp.Frame) error {
+func (server *Server) serveAdmitted(ctx context.Context, connection net.Conn, lane *route.ClosedOuterBridgeLane, hello ardp.Frame) (*route.ClosedAdmission, error) {
 	exporter, err := routecarrier.ClosedRoleTLSExporter(connection)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	facts, err := ardp.DecodeHello(hello.Body)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	receiver := server.receiver
 	receiver.ExpectedPurpose = facts.Purpose
@@ -85,43 +104,42 @@ func (server *Server) serveAdmitted(ctx context.Context, connection net.Conn, la
 	if facts.Purpose == ardp.PurposeSubmission {
 		class = 1
 	} else if facts.Purpose != ardp.PurposeIntroduction {
-		return errors.New("closed Introduction purpose unavailable")
+		return nil, errors.New("closed Introduction purpose unavailable")
 	}
 	channel, err := route.NewClosedAdmissionChannel(receiver, server.spends, server.limits, exporter,
 		server.config.VerifyAdmission(receiver), server.config.Now)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if _, err := channel.Accept(hello); err != nil {
-		return err
+		return nil, err
 	}
 	frame, err := ardp.ReadFrame(connection)
 	if err != nil || frame.Kind != 2 || frame.Lane != 0 || len(frame.Body) != 355 || frame.Body[0] != class {
-		return errors.New("closed Introduction requires Publication admission")
+		return nil, errors.New("closed Introduction requires Publication admission")
 	}
 	lease, err := channel.Accept(frame)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	defer func() { server.recordCleanup(lease.Release()) }()
 	if err := lane.Admit(&lease, connection); err != nil {
-		return err
+		return &lease, err
 	}
 	if err := connection.SetDeadline(lease.Deadline); err != nil {
-		return err
+		return &lease, err
 	}
 	accepted, err := ardp.AcceptFrame(0, 64<<10)
 	if err != nil {
-		return err
+		return &lease, err
 	}
 	used := uint64(16 + len(hello.Body) + 16 + len(frame.Body) + 16 + len(accepted.Body))
 	if err := ardp.WriteFrame(connection, accepted); err != nil {
-		return err
+		return &lease, err
 	}
 	if class == 1 {
-		return server.submit(ctx, connection, lease, used)
+		return &lease, server.submit(ctx, connection, lease, used)
 	}
-	return server.register(ctx, connection, lease, used)
+	return &lease, server.register(ctx, connection, lease, used)
 }
 
 func (server *Server) register(ctx context.Context, connection net.Conn, lease route.ClosedAdmission, used uint64) error {

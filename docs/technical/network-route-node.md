@@ -122,6 +122,19 @@ reply; that failure is instead part of the joined duty cleanup result. If a
 bounded drain expires before the child joins, Node returns the failed cleanup
 outcome and transfers shared Hosting-handle closure to that eventual join, so a
 late release cannot run against a closed handle.
+Resolution and Introduction transfer each successful admission to the complete
+inner child owner, including later operation failures. That owner keeps the
+reservation through TLS close-notify, the Outer terminal write and any required
+failed-writer physical join before releasing it exactly once. A submission
+retains its own class-1 reservation independently of the owning registration's
+class-3 reservation. The registration first retires its slot, then joins its
+channel termination; its retained slot floor is not refunded by withdrawal.
+Each Carrier joins its physical outcome with its first complete child cleanup
+failure. The duty retains the first non-benign complete Carrier result, bounding
+error retention across successive connections; durable-root close failures are
+joined separately during drain. Independent causes inside that retained result
+survive even when joined or wrapped with an already-closed sentinel. Writing to an already retired Outer lane reports
+`net.ErrClosed`; an in-flight physical writer failure keeps its original cause.
 Short local-role transactions coordinate with concurrent Source exposure
 retention. `duty.OpenOperation` waits only for an occupied exclusive lease,
 for at most one second or the caller's earlier cancellation. It then verifies

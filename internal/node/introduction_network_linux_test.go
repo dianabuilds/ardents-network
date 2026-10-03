@@ -29,7 +29,7 @@ func TestClosedIntroductionRegistrationOwnsSlotUntilExpiry(t *testing.T) {
 				t.Fatal("duplicate slot replaced its owning channel")
 			}
 			withdraw := terminal.RegistrationRequest{Nonce: [32]byte{103}, Slot: request.Slot, Revision: request.Revision, Withdraw: true}
-			if status := sendRegistrationFixture(t, first, withdraw); status != 0 {
+			if status := sendRegistrationFixture(t, fixture, first, withdraw); status != 0 {
 				t.Fatal("owning withdrawal refused")
 			}
 			closeFirst()
@@ -90,10 +90,10 @@ func registerIntroductionFixture(t *testing.T, fixture *resolutionNetworkFixture
 		t.Fatal(err)
 	}
 	t.Cleanup(closeCarrier)
-	return connection, closeCarrier, sendRegistrationFixture(t, connection, request)
+	return connection, closeCarrier, sendRegistrationFixture(t, fixture, connection, request)
 }
 
-func sendRegistrationFixture(t *testing.T, connection net.Conn, request terminal.RegistrationRequest) uint8 {
+func sendRegistrationFixture(t *testing.T, fixture *resolutionNetworkFixture, connection net.Conn, request terminal.RegistrationRequest) uint8 {
 	t.Helper()
 	body, err := terminal.EncodeRegistrationRequest(request)
 	if err != nil {
@@ -109,6 +109,9 @@ func sendRegistrationFixture(t *testing.T, connection net.Conn, request terminal
 	status, proof, err := terminal.DecodeDescriptorResult(frame.Body, request.Nonce)
 	if err != nil || len(proof) != 0 {
 		t.Fatalf("registration result payload: %v", err)
+	}
+	if request.Withdraw || status != 0 {
+		finishRecipientTerminal(t, fixture, connection, 0)
 	}
 	return status
 }

@@ -234,6 +234,7 @@ func submitIntroductionCrashFixture(t *testing.T, fixture *resolutionNetworkFixt
 	if err != nil || len(proof) != 0 {
 		t.Fatalf("malformed submission result: %v", err)
 	}
+	finishRecipientTerminal(t, &submitter, connection, 0)
 	return result, nil
 }
 
@@ -247,7 +248,7 @@ func TestClosedIntroductionRestartDoesNotReviveWithdrawnSlot(t *testing.T) {
 				t.Fatal("initial registration refused")
 			}
 			withdraw := terminal.RegistrationRequest{Nonce: [32]byte{113}, Slot: request.Slot, Revision: request.Revision, Withdraw: true}
-			if sendRegistrationFixture(t, connection, withdraw) != 0 {
+			if sendRegistrationFixture(t, fixture, connection, withdraw) != 0 {
 				t.Fatal("withdrawal refused")
 			}
 			closeFirst()

@@ -48,15 +48,31 @@ func TestClosedResolutionDrainRetainsAcceptedCarrierCloseFailure(t *testing.T) {
 	}{
 		{name: "capacity refusal", capacity: true, kind: carrier.ClosedSharedNode},
 		{name: "direct refusal", kind: carrier.ClosedSharedDirect},
-		{name: "admitted Node child", kind: carrier.ClosedSharedNode},
+		{name: "accepted Node carrier", kind: carrier.ClosedSharedNode},
 	} {
-		t.Run(test.name, func(t *testing.T) { checkResolutionAcceptedCloseFailure(t, test.capacity, test.kind) })
+		t.Run(test.name, func(t *testing.T) {
+			first, second := errors.New("first physical close failure"), errors.New("second physical close failure")
+			for _, outcome := range []struct {
+				name   string
+				result error
+				want   []error
+			}{
+				{"plain failure", first, []error{first}},
+				{"already closed", net.ErrClosed, nil},
+				{"wrapped already closed", &net.OpError{Op: "close", Net: "test", Err: net.ErrClosed}, nil},
+				{"compound", errors.Join(net.ErrClosed, first, second), []error{first, second}},
+				{"wrapped compound", &net.OpError{Op: "close", Net: "test", Err: errors.Join(net.ErrClosed, first, second)}, []error{first, second}},
+			} {
+				t.Run(outcome.name, func(t *testing.T) {
+					checkResolutionAcceptedCloseFailure(t, test.capacity, test.kind, outcome.result, outcome.want)
+				})
+			}
+		})
 	}
 }
 
-func checkResolutionAcceptedCloseFailure(t *testing.T, capacity bool, kind carrier.ClosedSharedCarrierKind) {
+func checkResolutionAcceptedCloseFailure(t *testing.T, capacity bool, kind carrier.ClosedSharedCarrierKind, closeErr error, expected []error) {
 	t.Helper()
-	closeErr := errors.New("accepted resolution Carrier close failed")
 	local, peer := net.Pipe()
 	defer peer.Close()
 	connection := &acceptedCloseFailureConn{Conn: local, closed: make(chan struct{}), err: closeErr}
@@ -99,8 +115,13 @@ func checkResolutionAcceptedCloseFailure(t *testing.T, capacity bool, kind carri
 	case <-time.After(time.Second):
 		t.Fatal("resolution server did not drain")
 	}
-	if !errors.Is(server.drainErr, closeErr) {
-		t.Fatalf("Resolution drain lost accepted Carrier close failure: %v", server.drainErr)
+	if len(expected) == 0 && server.drainErr != nil {
+		t.Fatalf("benign close became drain failure: %v", server.drainErr)
+	}
+	for _, cause := range expected {
+		if !errors.Is(server.drainErr, cause) {
+			t.Errorf("joined drain lost %v: %v", cause, server.drainErr)
+		}
 	}
 }
 
@@ -142,3 +163,19 @@ func (listener *oneAcceptedCarrierListener) Accept(ctx context.Context, _ time.D
 }
 
 func (*oneAcceptedCarrierListener) Close() error { return nil }
+
+func TestCarrierCleanupRetainsOneCompleteFailure(t *testing.T) {
+	server := new(closedResolutionServer)
+	first, second, later := errors.New("first failure"), errors.New("independent first failure"), errors.New("later failure")
+	server.recordCarrierCleanup(errors.Join(net.ErrClosed, first, second))
+	retained := server.cleanupErr
+	for range 1000 {
+		server.recordCarrierCleanup(later)
+	}
+	if server.cleanupErr != retained {
+		t.Fatal("cleanup state grows with subsequent failed Carriers")
+	}
+	if !errors.Is(server.cleanupErr, first) || !errors.Is(server.cleanupErr, second) || errors.Is(server.cleanupErr, later) {
+		t.Fatal("first complete cleanup result changed")
+	}
+}

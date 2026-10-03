@@ -2,6 +2,7 @@ package route
 
 import (
 	"errors"
+	"net"
 	"os"
 	"time"
 
@@ -24,7 +25,7 @@ func (lane *ClosedOuterBridgeLane) Write(value []byte) (int, error) {
 		end := inner.currentWriteDeadline()
 		if inner.dead {
 			inner.mu.Unlock()
-			return written, errors.New("closed outer bridge retired during write")
+			return written, net.ErrClosed
 		}
 		if !time.Now().Before(end) {
 			inner.mu.Unlock()
