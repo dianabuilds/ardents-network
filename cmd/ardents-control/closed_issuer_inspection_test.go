@@ -6,19 +6,18 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	admissionissuer "github.com/dianabuilds/ardents-network/internal/admission/issuer"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
-
-	"github.com/dianabuilds/ardents-network/internal/route/credential"
 )
 
 func TestClosedIssuerInspectionRejectsUnverifiedInventoryWithoutOutput(t *testing.T) {
 	now := time.Unix(2_000_401_600, 0).UTC().Truncate(time.Hour)
 	network, node := [32]byte{1}, [32]byte{2}
 	private := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{4}, ed25519.SeedSize))
-	receipt, err := credential.InitializeClosedIssuerRoot(credential.ClosedIssuerRootConfig{Root: filepath.Join(t.TempDir(), "issuer"),
+	receipt, err := admissionissuer.InitializeClosedIssuerRoot(admissionissuer.ClosedIssuerRootConfig{Root: filepath.Join(t.TempDir(), "issuer"),
 		NetworkID: network, NodeID: node, IdentityKey: private, NotBefore: now, NotAfter: now.Add(time.Hour), Clock: func() time.Time { return now }})
 	if err != nil {
 		t.Fatal(err)

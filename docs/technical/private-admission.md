@@ -20,7 +20,7 @@ receiver/resource classes. There is no client-selected issuer URL or trust root.
 State, enrollment and time verification retain their existing byte formats and
 root/freshness/conflict checks. State verifies the
 [closed profile](protected-route-protocol.md#authenticated-closed-profile);
-the credential owner consumes only its authenticated admission projection.
+the Admission token and issuer owners consume its authenticated admission projection.
 The signature authority and complete profile grammar are defined there.
 Runtime admission and recipient projections require the State owner's live
 verified time observation and retained time floor, including when profile
@@ -80,7 +80,7 @@ authority is unavailable, provisioning is unavailable; generating another key
 cannot match or replace the enrollment pin.
 
 Custody owns a separate closed-admission authority record and signs only a
-sealed permission-allocation request prepared by the credential owner. This is
+sealed permission-allocation request prepared through Admission's grammar. This is
 an explicit new purpose under its existing encrypted, owner-controlled authority
 boundary, distinct from State, Name, Service and Release records. Bind the
 purpose, Network and authority public key in the protected record. The request
@@ -95,6 +95,22 @@ erase the surviving Endpoint's context; Endpoint loss does. After that loss,
 a new context needs a fresh permission within the operator's remaining hourly
 allocation. Neither that crash nor an unused permission refunds a signed
 allocation or an issuer debit.
+
+The [token owner](../../internal/admission/token/doc.go) owns canonical batches,
+volatile holder blind state and receiver verification. The
+[issuer owner](../../internal/admission/issuer/doc.go) owns live private keys,
+serialized durable reservations, exact retries and bounded issuance serving.
+Node supplies authenticated State and Hosting admission and joins children
+before closing the issuer root. An initialized root with a missing lease refuses
+reopening. A live issuer that observes loss or replacement of its lease/root
+identity latches failure; restoring the path cannot revive that owner. Its final
+close retains the observed failure. Reopening a retained issuer journal flushes
+its validated binding, journal and containing directory before admitting a
+usable owner: readable commit bytes after an uncertain write are not enough
+to authorize an exact retry. A failed durability barrier keeps issuance
+unavailable and does not refund existing reservations. These checks do not protect against an
+adversary controlling the operating system or arbitrary concurrent filesystem
+modification inside the private root.
 
 Closed issuer initialization generates dedicated class/window RSA keys in its
 fresh, exclusive owner-only issuer root and exports only exact public

@@ -6,6 +6,8 @@ import (
 	"context"
 	"crypto/ed25519"
 	"crypto/rand"
+	admissionissuer "github.com/dianabuilds/ardents-network/internal/admission/issuer"
+	admissiontoken "github.com/dianabuilds/ardents-network/internal/admission/token"
 	"os"
 	"path/filepath"
 	"testing"
@@ -17,7 +19,6 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	"github.com/dianabuilds/ardents-network/internal/route/carrier"
-	"github.com/dianabuilds/ardents-network/internal/route/credential"
 	"github.com/dianabuilds/ardents-network/internal/route/terminal"
 )
 
@@ -125,7 +126,7 @@ func closedRestrictionToken(t *testing.T, fixture *closedBootstrapFixture) []byt
 	profile.NotBefore, profile.NotAfter = window, window.Add(time.Hour)
 	fixture.snapshot.EpochValidFrom = window
 	root := filepath.Join(t.TempDir(), "issuer")
-	receipt, err := credential.InitializeClosedIssuerRoot(credential.ClosedIssuerRootConfig{Root: root, NetworkID: profile.NetworkID,
+	receipt, err := admissionissuer.InitializeClosedIssuerRoot(admissionissuer.ClosedIssuerRootConfig{Root: root, NetworkID: profile.NetworkID,
 		NodeID: profile.IssuerNodeID, IdentityKey: private, NotBefore: window, NotAfter: profile.NotAfter, Clock: func() time.Time { return fixture.now }})
 	if err != nil {
 		t.Fatal(err)
@@ -162,14 +163,14 @@ func closedRestrictionToken(t *testing.T, fixture *closedBootstrapFixture) []byt
 	if err := admissiongrammar.VerifyPermission(permission, authorityPublic, profile.NetworkID, profile.IssuerNodeID, profile.IssuerDutyGeneration, fixture.now); err != nil {
 		t.Fatal(err)
 	}
-	tokenContext := credential.ClosedTokenContext{NetworkID: profile.NetworkID, ProfileDigest: profile.Digest, ReceiverNodeID: fixture.receiver.NodeID,
+	tokenContext := admissiontoken.ClosedTokenContext{NetworkID: profile.NetworkID, ProfileDigest: profile.Digest, ReceiverNodeID: fixture.receiver.NodeID,
 		IssuerNodeID: profile.IssuerNodeID, ReceiverDutyGeneration: fixture.receiver.DutyGeneration, Class: 2, WindowStart: window}
-	pending, err := credential.PrepareClosedTokenBatch(credential.ClosedTokenBatchConfig{Profile: *profile, Contexts: []credential.ClosedTokenContext{tokenContext}, Permission: permission,
+	pending, err := admissiontoken.PrepareClosedTokenBatch(admissiontoken.ClosedTokenBatchConfig{Profile: *profile, Contexts: []admissiontoken.ClosedTokenContext{tokenContext}, Permission: permission,
 		HolderKey: holder, Now: fixture.now})
 	if err != nil {
 		t.Fatal(err)
 	}
-	issuer, err := credential.OpenClosedTokenIssuer(credential.ClosedTokenIssuerConfig{Root: root, NetworkID: profile.NetworkID,
+	issuer, err := admissionissuer.OpenClosedTokenIssuer(admissionissuer.ClosedTokenIssuerConfig{Root: root, NetworkID: profile.NetworkID,
 		CurrentProfile: func() (state.ClosedProfileView, bool) { return *profile, true }, Clock: func() time.Time { return fixture.now }})
 	if err != nil {
 		t.Fatal(err)
@@ -180,7 +181,7 @@ func closedRestrictionToken(t *testing.T, fixture *closedBootstrapFixture) []byt
 	if err != nil {
 		t.Fatal(err)
 	}
-	request, err := credential.DecodeClosedTokenBatch(pending.Request())
+	request, err := admissiontoken.DecodeClosedTokenBatch(pending.Request())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -192,7 +193,7 @@ func closedRestrictionToken(t *testing.T, fixture *closedBootstrapFixture) []byt
 	if err != nil || len(tokens) != 1 {
 		t.Fatalf("real issuance: %d %v", len(tokens), err)
 	}
-	if err := credential.VerifyClosedToken(tokenContext, request.SPKI[:], tokens[0]); err != nil {
+	if err := admissiontoken.VerifyClosedToken(tokenContext, request.SPKI[:], tokens[0]); err != nil {
 		t.Fatal(err)
 	}
 	return tokens[0]

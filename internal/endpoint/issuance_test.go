@@ -6,6 +6,8 @@ import (
 	"context"
 	"crypto/ed25519"
 	"crypto/rand"
+	admissionissuer "github.com/dianabuilds/ardents-network/internal/admission/issuer"
+	admissiontoken "github.com/dianabuilds/ardents-network/internal/admission/token"
 	"io"
 	"net"
 	"os"
@@ -17,7 +19,6 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/admission/stock"
 	"github.com/dianabuilds/ardents-network/internal/custody"
 	"github.com/dianabuilds/ardents-network/internal/route/client"
-	"github.com/dianabuilds/ardents-network/internal/route/credential"
 )
 
 func prepareIssuancePermission(t *testing.T, owner *dutyContext, source *sourceStateFixture) string {
@@ -56,7 +57,7 @@ func prepareIssuancePermissionWithIdentity(t *testing.T, owner *dutyContext, sou
 	if err := os.Chmod(issuerRoot, 0o700); err != nil {
 		t.Fatal(err)
 	}
-	receipt, err := credential.InitializeClosedIssuerRoot(credential.ClosedIssuerRootConfig{Root: issuerRoot, NetworkID: profile.NetworkID, NodeID: profile.IssuerNodeID,
+	receipt, err := admissionissuer.InitializeClosedIssuerRoot(admissionissuer.ClosedIssuerRootConfig{Root: issuerRoot, NetworkID: profile.NetworkID, NodeID: profile.IssuerNodeID,
 		IdentityKey: private, NotBefore: profile.NotBefore, NotAfter: profile.NotAfter, Clock: time.Now})
 	if err != nil {
 		t.Fatal(err)
@@ -157,7 +158,7 @@ func TestTextPermissionRevocationDefersActiveBatchDiscardUntilOperationCompletio
 		owner.mu.Unlock()
 		t.Fatal(err)
 	}
-	intent := stock.IssuanceIntent{Selection: selection, Challenges: []credential.ClosedTokenContext{{
+	intent := stock.IssuanceIntent{Selection: selection, Challenges: []admissiontoken.ClosedTokenContext{{
 		NetworkID: profile.NetworkID, ProfileDigest: profile.Digest, IssuerNodeID: profile.IssuerNodeID,
 		ReceiverNodeID: receiver, ReceiverDutyGeneration: source.view.Nodes[0].DutyGeneration,
 		Class: 2, WindowStart: permission.Grant().NotBefore,

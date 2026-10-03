@@ -255,7 +255,9 @@ use; ADR-0100 removed the last HPKE importer together with the uncomposed
 private-resolution package. The [R-152 assessment](../research/records/r-152-closed-scheme-contract.md)
 records dated source/support/license/advisory review, exact three-package plus
 standard-library closure, checksum verification, upstream tests and the composed
-probe. Its owner is internal/route/credential. Do not import other CIRCL schemes
+probe. Its live owners are `internal/admission/token` (holder and receiver)
+and `internal/admission/issuer` (private issuing). The separately admitted
+offline successor closure remains independent. Do not import other CIRCL schemes
 or serialize opaque blinding State. A changed use or upstream/support/advisory
 fact invalidates that evidence; update or replace within this owner, never
 maintain a private cryptographic fork.
@@ -428,9 +430,11 @@ At that prior revision, `cmd/ardents` paths included
 public issuer-profile decoder in `route/credential`; Custody reaches them
 through that package's offline permission grammar. Those were
 package-boundary overhead; ADR-0092 removed their OHTTP Transit source.
-Current Control/Custody still inherit QUIC through the live Route-facing
-issuer adapter in `route/credential` (F-28). This is not a reason to remove
-network dependencies from Endpoint or Node.
+That earlier projection also found Control/Custody inheriting QUIC through
+the then-live `route/credential` adapter (F-28). The current split uses the
+offline `internal/admission` grammar: a fresh Windows Go 1.27.1 `go list -deps`
+of both commands on 2026-10-03 contains no QUIC or CIRCL package. This does not
+remove the live network dependencies required by Endpoint and Node.
 
 To repeat the check, use the PowerShell environment assignments in the dated
 projection below, set `GOCACHE` to a writable directory outside the repository,

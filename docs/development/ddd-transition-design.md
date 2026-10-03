@@ -603,6 +603,54 @@ stderr and exit outcome outside Git. Distinguish source validation, local
 component readiness, integrated scenario acceptance and installed qualification.
 Do not replace an earlier failure receipt with a later pass.
 
+### Live token and issuer ownership
+
+The maintained `route/credential` package combines public token values, holder
+blind state, private issuer keys, durable quota and network serving. The live
+Admission transition separates two cohesive owners:
+
+| Owner | Interface and private responsibility | Real consumers |
+| --- | --- | --- |
+| `admission/token` | Canonical receiver challenge, signed batch and padded result grammar; holder blind preparation, exact pending request, finalization/discard; finalized token verification. No private issuer key, durable quota, listener or receiving spend. | Stock and Endpoint issuance, issuer request/result handling, Node receiver authority |
+| `admission/issuer` | Immutable finite key root, exclusive serialized quota journal, bootstrap/admitted debit distinction, private signing and exact retry; bounded issuer request serving over Route's existing channels. No independent State authority or new Hosting allocator. | Node issuer lifecycle and the existing issuer initialization command |
+
+Node still supplies authenticated current State and Hosting admission, owns
+the duty lifetime, joins physical children and closes the issuer root last.
+Route owns Carrier, frames, channel admission and physical lane behavior.
+Keeping the issuer operation with its serving adapters avoids exporting a raw
+signer or a mutable journal just to split files. Public token grammar is shared
+because holder, issuer and receiver genuinely consume it; these principals do
+not share holder secrets, private keys, stock or a database.
+
+The move must update real command, Node, Endpoint and Stock consumers together.
+Remove the old accepting package instead of maintaining forwarding aliases.
+Keep wire/storage identities and quota numbers byte-compatible; the offline
+successor remains isolated and cannot supply live State or time authority.
+Any newly exported grammar operation must have an actual production caller;
+do not export private counters or signing internals to preserve old tests.
+
+Exclusive issuer ownership includes continuity of the retained root and lease,
+not merely acquiring a lock once. Opening an initialized root must not silently
+create a missing lease. A live owner that loses its retained lease/root identity
+must refuse further issuance and retain the failure rather than resume when a
+path happens to reappear. Healthy close/reopen preserves committed reservations
+and exact retry. The existing lock filename is a persisted compatibility detail,
+not a new domain term.
+
+Verification crosses the actual Initialize/Open/Issue operation and the real
+serving callers. Check healthy issuance before disrupting a lease; independently
+cover a second owner, continuing old owner, close/reopen, replaced lock and root
+identity, cleanup errors, and unchanged quota. A local deletion scenario proves
+an ownership failure, not resistance to a compromised OS or a network exploit.
+Retained journal reopen barriers require separate causal evidence; merely
+reading valid bytes does not establish that uncertain writes were flushed.
+
+The existing issuer Hosting release-before-terminal-cleanup question remains a
+separate operation-lifetime obligation. Moving serving code does not prove it
+resolved: verify actual TLS/Outer termination and reservation release order,
+including cancellation and both selected Carriers, before claiming the whole
+Admission lifecycle complete.
+
 ## Observability, growth and continuity of the design
 
 OTel remains composition-owned and explicitly enabled under the existing local

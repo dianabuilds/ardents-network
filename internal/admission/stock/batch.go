@@ -3,8 +3,8 @@
 package stock
 
 import (
+	admissiontoken "github.com/dianabuilds/ardents-network/internal/admission/token"
 	"github.com/dianabuilds/ardents-network/internal/route/client"
-	"github.com/dianabuilds/ardents-network/internal/route/credential"
 )
 
 // batch is one admitted blind issuance batch. Blinding state and finalized
@@ -14,7 +14,7 @@ import (
 type batch struct {
 	Refill     bool // Retained internal stock work; never receiver admission authority.
 	Prefix     Prefix
-	Challenges []credential.ClosedTokenContext
+	Challenges []admissiontoken.ClosedTokenContext
 	Selection  client.ClosedBootstrapSelection
-	Pending    *credential.PendingClosedTokenBatch
+	Pending    *admissiontoken.PendingClosedTokenBatch
 }

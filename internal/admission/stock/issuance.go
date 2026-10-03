@@ -4,15 +4,15 @@ package stock
 
 import (
 	"errors"
+	admissiontoken "github.com/dianabuilds/ardents-network/internal/admission/token"
 
 	"github.com/dianabuilds/ardents-network/internal/route/client"
-	"github.com/dianabuilds/ardents-network/internal/route/credential"
 )
 
 // IssuanceIntent contains the receiving duties and Source selected by the
 // authorized Endpoint operation. It cannot grant a permission or install stock.
 type IssuanceIntent struct {
-	Challenges      []credential.ClosedTokenContext
+	Challenges      []admissiontoken.ClosedTokenContext
 	Selection       client.ClosedBootstrapSelection
 	Prefix          Prefix
 	Refill          bool

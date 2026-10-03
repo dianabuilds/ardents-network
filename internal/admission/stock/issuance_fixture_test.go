@@ -5,6 +5,8 @@ package stock
 import (
 	"crypto/ed25519"
 	"crypto/rand"
+	admissionissuer "github.com/dianabuilds/ardents-network/internal/admission/issuer"
+	admissiontoken "github.com/dianabuilds/ardents-network/internal/admission/token"
 	"os"
 	"sync"
 	"testing"
@@ -15,7 +17,6 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	"github.com/dianabuilds/ardents-network/internal/route/client"
-	"github.com/dianabuilds/ardents-network/internal/route/credential"
 	"github.com/dianabuilds/ardents-network/internal/route/terminal"
 )
 
@@ -60,7 +61,7 @@ func issuedStockFixture(t *testing.T) (*Owner, *spendHostFixture, ardp.Hello) {
 	if err := os.Chmod(root, 0o700); err != nil {
 		t.Fatal(err)
 	}
-	receipt, err := credential.InitializeClosedIssuerRoot(credential.ClosedIssuerRootConfig{
+	receipt, err := admissionissuer.InitializeClosedIssuerRoot(admissionissuer.ClosedIssuerRootConfig{
 		Root: root, NetworkID: profile.NetworkID, NodeID: profile.IssuerNodeID, IdentityKey: identity,
 		NotBefore: window, NotAfter: profile.NotAfter, Clock: func() time.Time { return now },
 	})
@@ -104,13 +105,13 @@ func issuedStockFixture(t *testing.T) (*Owner, *spendHostFixture, ardp.Hello) {
 	if err := owner.Import(digest, signed); err != nil {
 		t.Fatal(err)
 	}
-	challenge := credential.ClosedTokenContext{NetworkID: profile.NetworkID, ProfileDigest: profile.Digest, IssuerNodeID: profile.IssuerNodeID,
+	challenge := admissiontoken.ClosedTokenContext{NetworkID: profile.NetworkID, ProfileDigest: profile.Digest, IssuerNodeID: profile.IssuerNodeID,
 		ReceiverNodeID: fixtureID(6), ReceiverDutyGeneration: 8, Class: 2, WindowStart: window}
-	batch, err := owner.permission.reserveBatch(profile, now, []credential.ClosedTokenContext{challenge}, client.ClosedBootstrapSelection{}, false, nil, false, nil)
+	batch, err := owner.permission.reserveBatch(profile, now, []admissiontoken.ClosedTokenContext{challenge}, client.ClosedBootstrapSelection{}, false, nil, false, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	issuer, err := credential.OpenClosedTokenIssuer(credential.ClosedTokenIssuerConfig{Root: root, NetworkID: profile.NetworkID,
+	issuer, err := admissionissuer.OpenClosedTokenIssuer(admissionissuer.ClosedTokenIssuerConfig{Root: root, NetworkID: profile.NetworkID,
 		CurrentProfile: func() (state.ClosedProfileView, bool) { return profile, true }, Clock: func() time.Time { return now }})
 	if err != nil {
 		t.Fatal(err)

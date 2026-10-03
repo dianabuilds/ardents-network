@@ -5,6 +5,7 @@ package stock
 import (
 	"context"
 	"errors"
+	admissiontoken "github.com/dianabuilds/ardents-network/internal/admission/token"
 	"sync"
 	"testing"
 	"time"
@@ -13,7 +14,6 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/admission/attempts"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/route/client"
-	"github.com/dianabuilds/ardents-network/internal/route/credential"
 )
 
 // This fixture isolates planning over already accepted in-memory permission.
@@ -70,7 +70,7 @@ func TestRefillPlanPreservesControlAdmissionCostAndAllocation(t *testing.T) {
 			owner, host := refillOwnerFixture()
 			permission := owner.permission
 			permission.reserved[0] = 40 - test.remaining
-			permission.stock = []stockEntry{{Challenge: credential.ClosedTokenContext{
+			permission.stock = []stockEntry{{Challenge: admissiontoken.ClosedTokenContext{
 				ProfileDigest: host.profile.Digest, ReceiverNodeID: host.profile.IssuerNodeID,
 				ReceiverDutyGeneration: 7, Class: 1, WindowStart: permission.accepted.NotBefore,
 			}, Tokens: make([][]byte, test.ready)}}
@@ -90,7 +90,7 @@ func TestRefillPlanPreservesControlAdmissionCostAndAllocation(t *testing.T) {
 
 func TestRefillPlanResumesRetainedStageBeforeSelfRequest(t *testing.T) {
 	owner, host := refillOwnerFixture()
-	batch := &batch{Refill: true, Challenges: []credential.ClosedTokenContext{
+	batch := &batch{Refill: true, Challenges: []admissiontoken.ClosedTokenContext{
 		{ReceiverNodeID: host.profile.IssuerNodeID, Class: 1},
 		{ReceiverNodeID: host.profile.IssuerNodeID, Class: 1},
 	}}

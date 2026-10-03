@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"errors"
+	admissionissuer "github.com/dianabuilds/ardents-network/internal/admission/issuer"
 	"path/filepath"
 	"time"
 
@@ -13,7 +14,6 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	"github.com/dianabuilds/ardents-network/internal/route/carrier"
-	"github.com/dianabuilds/ardents-network/internal/route/credential"
 )
 
 // Profile contains only the issuer's local roots, certificate and limits.
@@ -60,7 +60,7 @@ func Start(config Config) (*Handle, error) {
 		}
 		return currentProfile(config.Authority, updated, config.Now())
 	}
-	issuer, err := credential.OpenClosedTokenIssuer(credential.ClosedTokenIssuerConfig{Root: local.Root, NetworkID: snapshot.NetworkID,
+	issuer, err := admissionissuer.OpenClosedTokenIssuer(admissionissuer.ClosedTokenIssuerConfig{Root: local.Root, NetworkID: snapshot.NetworkID,
 		CurrentProfile: current, Clock: config.Now})
 	if err != nil {
 		return nil, err
@@ -85,7 +85,7 @@ func Start(config Config) (*Handle, error) {
 	if err != nil {
 		return nil, errors.Join(err, spends.Close(), issuer.Close())
 	}
-	listener, err := credential.StartClosedTokenListener(context.Background(), credential.ClosedTokenListenerConfig{Issuer: issuer,
+	listener, err := admissionissuer.StartClosedTokenListener(context.Background(), admissionissuer.ClosedTokenListenerConfig{Issuer: issuer,
 		SharedListener: shared, NodeHandler: nodeHandler(config, local.Certificate, issuer, spends, limits, releases.record),
 		ConnectionLimit: local.ConnectionLimit, Clock: config.Now})
 	if err != nil {
@@ -106,9 +106,9 @@ func Start(config Config) (*Handle, error) {
 // supervision, then joins every accepted child without the caller's short
 // drain deadline and closes both roots only after the last borrower finished.
 type closedIssuerServer struct {
-	listener *credential.ClosedTokenListener
+	listener *admissionissuer.ClosedTokenListener
 	spends   *spending.Ledger
-	issuer   *credential.ClosedTokenIssuer
+	issuer   *admissionissuer.ClosedTokenIssuer
 	releases *releaseErrors
 	done     chan error
 	drained  chan struct{}

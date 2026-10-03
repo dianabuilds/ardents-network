@@ -4,12 +4,12 @@ package node
 
 import (
 	"errors"
+	admissiontoken "github.com/dianabuilds/ardents-network/internal/admission/token"
 	"testing"
 
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	routecarrier "github.com/dianabuilds/ardents-network/internal/route/carrier"
 	"github.com/dianabuilds/ardents-network/internal/route/client"
-	"github.com/dianabuilds/ardents-network/internal/route/credential"
 	"github.com/dianabuilds/ardents-network/internal/route/terminal"
 )
 
@@ -38,7 +38,7 @@ func TestClosedBootstrapClientIssuesThroughEntryInteriorAndIssuer(t *testing.T) 
 					t.Fatalf("finalize: %d %v", len(tokens), err)
 				}
 				for _, token := range tokens {
-					if err := credential.VerifyClosedToken(challenge, spki[:], token); err != nil {
+					if err := admissiontoken.VerifyClosedToken(challenge, spki[:], token); err != nil {
 						t.Fatal(err)
 					}
 				}
@@ -52,9 +52,9 @@ func TestClosedSourcePrefixConsumesGenuineForwardingTokens(t *testing.T) {
 		t.Run(string(carrier), func(t *testing.T) {
 			fixture := newClosedBootstrapNetwork(t, carrier)
 			profile := fixture.view.Profile
-			var challenges []credential.ClosedTokenContext
+			var challenges []admissiontoken.ClosedTokenContext
 			for index, receiver := range [][32]byte{fixture.selection.EntryNodeID, fixture.selection.InteriorNodeID} {
-				challenges = append(challenges, credential.ClosedTokenContext{NetworkID: profile.NetworkID, ProfileDigest: profile.Digest,
+				challenges = append(challenges, admissiontoken.ClosedTokenContext{NetworkID: profile.NetworkID, ProfileDigest: profile.Digest,
 					IssuerNodeID: profile.IssuerNodeID, ReceiverNodeID: receiver, ReceiverDutyGeneration: uint64(index + 1), Class: 2, WindowStart: profile.NotBefore})
 			}
 			// One permission and one genuine blind batch fund both forwarding
@@ -71,10 +71,10 @@ func TestClosedSourcePrefixConsumesGenuineForwardingTokens(t *testing.T) {
 			}
 			tokens := make(map[[32]byte][]byte)
 			for index, challenge := range challenges {
-				if err := credential.VerifyClosedToken(challenge, key[:], batch[index]); err != nil {
+				if err := admissiontoken.VerifyClosedToken(challenge, key[:], batch[index]); err != nil {
 					t.Fatal(err)
 				}
-				if err := credential.VerifyClosedToken(challenges[1-index], key[:], batch[index]); err == nil {
+				if err := admissiontoken.VerifyClosedToken(challenges[1-index], key[:], batch[index]); err == nil {
 					t.Fatal("token crossed receiving challenges")
 				}
 				tokens[challenge.ReceiverNodeID] = batch[index]

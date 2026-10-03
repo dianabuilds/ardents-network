@@ -3,10 +3,10 @@ package authority
 import (
 	"crypto/sha256"
 	"errors"
+	admissiontoken "github.com/dianabuilds/ardents-network/internal/admission/token"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/route"
-	"github.com/dianabuilds/ardents-network/internal/route/credential"
 )
 
 // TokenVerifier authenticates a selected-profile role token for
@@ -17,7 +17,7 @@ func (source Source) TokenVerifier(receiver route.ClosedRoleReceiver, clock func
 		if input.Class < 1 || input.Class > 3 || source.CurrentProfile == nil {
 			return route.ClosedAdmissionApproval{}, errors.New("closed forwarding token is unavailable")
 		}
-		keyID, framed := credential.ClosedTokenKeyID(input.Token)
+		keyID, framed := admissiontoken.ClosedTokenKeyID(input.Token)
 		if !framed {
 			return route.ClosedAdmissionApproval{}, errors.New("closed forwarding token is unavailable")
 		}
@@ -32,9 +32,9 @@ func (source Source) TokenVerifier(receiver route.ClosedRoleReceiver, clock func
 			if key.Class != input.Class || key.WindowStart != now.Truncate(time.Hour) || sha256.Sum256(key.SPKI[:]) != keyID {
 				continue
 			}
-			context := credential.ClosedTokenContext{NetworkID: receiver.NetworkID, ProfileDigest: receiver.ProfileDigest, ReceiverNodeID: receiver.NodeID,
+			context := admissiontoken.ClosedTokenContext{NetworkID: receiver.NetworkID, ProfileDigest: receiver.ProfileDigest, ReceiverNodeID: receiver.NodeID,
 				IssuerNodeID: profile.IssuerNodeID, ReceiverDutyGeneration: receiver.DutyGeneration, Class: input.Class, WindowStart: key.WindowStart}
-			if credential.VerifyClosedToken(context, key.SPKI[:], input.Token) == nil {
+			if admissiontoken.VerifyClosedToken(context, key.SPKI[:], input.Token) == nil {
 				return route.ClosedAdmissionApproval{Window: key.WindowStart}, nil
 			}
 		}

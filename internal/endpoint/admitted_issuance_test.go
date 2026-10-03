@@ -3,12 +3,12 @@
 package endpoint
 
 import (
+	admissiontoken "github.com/dianabuilds/ardents-network/internal/admission/token"
 	"testing"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	routecarrier "github.com/dianabuilds/ardents-network/internal/route/carrier"
-	"github.com/dianabuilds/ardents-network/internal/route/credential"
 )
 
 func TestTextIssuanceUsesRetainedPrefixAfterTwoBootstrapBatches(t *testing.T) {
@@ -66,7 +66,7 @@ func TestTextIssuanceUsesRetainedPrefixAfterTwoBootstrapBatches(t *testing.T) {
 					duty = node.DutyGeneration
 				}
 			}
-			challenge := credential.ClosedTokenContext{NetworkID: profile.NetworkID, ProfileDigest: profile.Digest,
+			challenge := admissiontoken.ClosedTokenContext{NetworkID: profile.NetworkID, ProfileDigest: profile.Digest,
 				IssuerNodeID: profile.IssuerNodeID, ReceiverNodeID: selection.EntryNodeID, ReceiverDutyGeneration: duty,
 				Class: 2, WindowStart: permission.Grant().NotBefore}
 			var spki []byte
@@ -83,7 +83,7 @@ func TestTextIssuanceUsesRetainedPrefixAfterTwoBootstrapBatches(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				verifyErr := credential.VerifyClosedToken(challenge, spki, token)
+				verifyErr := admissiontoken.VerifyClosedToken(challenge, spki, token)
 				clear(token)
 				if verifyErr != nil {
 					t.Fatal(verifyErr)

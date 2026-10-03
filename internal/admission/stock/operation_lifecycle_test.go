@@ -5,11 +5,11 @@ package stock
 import (
 	"context"
 	"errors"
+	admissiontoken "github.com/dianabuilds/ardents-network/internal/admission/token"
 	"sync/atomic"
 	"testing"
 
 	"github.com/dianabuilds/ardents-network/internal/route/client"
-	"github.com/dianabuilds/ardents-network/internal/route/credential"
 )
 
 type blockedIssuerExchange struct {
@@ -33,10 +33,10 @@ func (exchange *blockedIssuerExchange) ExchangeIssuer(ctx context.Context, _ cli
 func TestOperationCopiesPermitExactlyOneExchange(t *testing.T) {
 	owner, host, hello := issuedStockFixture(t)
 	permission := owner.permission
-	challenge := credential.ClosedTokenContext{NetworkID: host.profile.NetworkID, ProfileDigest: host.profile.Digest,
+	challenge := admissiontoken.ClosedTokenContext{NetworkID: host.profile.NetworkID, ProfileDigest: host.profile.Digest,
 		IssuerNodeID: host.profile.IssuerNodeID, ReceiverNodeID: hello.RecipientNodeID,
 		ReceiverDutyGeneration: hello.RecipientDutyGeneration, Class: 2, WindowStart: permission.Grant().NotBefore}
-	prepared, err := permission.reserveBatch(host.profile, host.now, []credential.ClosedTokenContext{challenge},
+	prepared, err := permission.reserveBatch(host.profile, host.now, []admissiontoken.ClosedTokenContext{challenge},
 		client.ClosedBootstrapSelection{}, false, nil, false, nil)
 	if err != nil {
 		t.Fatal(err)

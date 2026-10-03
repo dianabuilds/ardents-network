@@ -10,6 +10,8 @@ import (
 	"crypto/tls"
 	"encoding/hex"
 	"fmt"
+	admissionissuer "github.com/dianabuilds/ardents-network/internal/admission/issuer"
+	admissiontoken "github.com/dianabuilds/ardents-network/internal/admission/token"
 	"net"
 	"path/filepath"
 	"testing"
@@ -21,7 +23,6 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	routecarrier "github.com/dianabuilds/ardents-network/internal/route/carrier"
-	"github.com/dianabuilds/ardents-network/internal/route/credential"
 	"github.com/dianabuilds/ardents-network/internal/route/terminal"
 	"github.com/dianabuilds/ardents-network/internal/service/publication"
 	"github.com/dianabuilds/ardents-network/internal/service/reachability"
@@ -91,7 +92,7 @@ func newPrivateRecipientNetworkFixtureWithStart(t *testing.T, carrier routecarri
 	defer clear(authority)
 	network, nodeID, peerID, introID, issuerID := [32]byte{71}, [32]byte{72}, [32]byte{73}, [32]byte{74}, [32]byte{75}
 	root := filepath.Join(t.TempDir(), "issuer")
-	receipt, err := credential.InitializeClosedIssuerRoot(credential.ClosedIssuerRootConfig{Root: root, NetworkID: network, NodeID: issuerID,
+	receipt, err := admissionissuer.InitializeClosedIssuerRoot(admissionissuer.ClosedIssuerRootConfig{Root: root, NetworkID: network, NodeID: issuerID,
 		IdentityKey: serverCert.PrivateKey.(ed25519.PrivateKey), NotBefore: now.Truncate(time.Hour), NotAfter: until, Clock: time.Now})
 	if err != nil {
 		t.Fatal(err)
@@ -242,7 +243,7 @@ func newPrivateRecipientNetworkFixtureWithStart(t *testing.T, carrier routecarri
 
 func privateRecipientTokens(t *testing.T, root string, profile state.ClosedProfileView, authority ed25519.PrivateKey, receiver route.ClosedRoleReceiver, class uint8) [][]byte {
 	t.Helper()
-	issuer, err := credential.OpenClosedTokenIssuer(credential.ClosedTokenIssuerConfig{Root: root, NetworkID: profile.NetworkID, CurrentProfile: func() (state.ClosedProfileView, bool) { return profile, true }, Clock: time.Now})
+	issuer, err := admissionissuer.OpenClosedTokenIssuer(admissionissuer.ClosedTokenIssuerConfig{Root: root, NetworkID: profile.NetworkID, CurrentProfile: func() (state.ClosedProfileView, bool) { return profile, true }, Clock: time.Now})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -265,12 +266,12 @@ func privateRecipientTokens(t *testing.T, root string, profile state.ClosedProfi
 		t.Fatal(err)
 	}
 	copy(permission.Signature[:], ed25519.Sign(authority, append([]byte("ardents-issuance-permission-v1\x00"), raw[:len(raw)-64]...)))
-	contexts := make([]credential.ClosedTokenContext, 12)
+	contexts := make([]admissiontoken.ClosedTokenContext, 12)
 	for i := range contexts {
-		contexts[i] = credential.ClosedTokenContext{NetworkID: profile.NetworkID, ProfileDigest: profile.Digest, IssuerNodeID: profile.IssuerNodeID,
+		contexts[i] = admissiontoken.ClosedTokenContext{NetworkID: profile.NetworkID, ProfileDigest: profile.Digest, IssuerNodeID: profile.IssuerNodeID,
 			ReceiverNodeID: receiver.NodeID, ReceiverDutyGeneration: receiver.DutyGeneration, Class: class, WindowStart: profile.NotBefore}
 	}
-	pending, err := credential.PrepareClosedTokenBatch(credential.ClosedTokenBatchConfig{Profile: profile, Contexts: contexts, Permission: permission, HolderKey: holder, Now: time.Now().UTC()})
+	pending, err := admissiontoken.PrepareClosedTokenBatch(admissiontoken.ClosedTokenBatchConfig{Profile: profile, Contexts: contexts, Permission: permission, HolderKey: holder, Now: time.Now().UTC()})
 	if err != nil {
 		t.Fatal(err)
 	}

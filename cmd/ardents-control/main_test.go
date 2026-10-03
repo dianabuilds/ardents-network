@@ -7,13 +7,12 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"encoding/pem"
+	admissionissuer "github.com/dianabuilds/ardents-network/internal/admission/issuer"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 	"time"
-
-	"github.com/dianabuilds/ardents-network/internal/route/credential"
 )
 
 func TestRetiredPlanningCampaignRoutesAreNotCommandSurface(t *testing.T) {
@@ -70,7 +69,7 @@ func TestClosedProfileCommandsRoundTripWithoutKeyOutput(t *testing.T) {
 	network, issuerNode, otherNode := [32]byte{1}, [32]byte{2}, [32]byte{1}
 	statePrivate := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{3}, ed25519.SeedSize))
 	nodePrivate := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{4}, ed25519.SeedSize))
-	issuer, err := credential.InitializeClosedIssuerRoot(credential.ClosedIssuerRootConfig{Root: filepath.Join(t.TempDir(), "issuer"),
+	issuer, err := admissionissuer.InitializeClosedIssuerRoot(admissionissuer.ClosedIssuerRootConfig{Root: filepath.Join(t.TempDir(), "issuer"),
 		NetworkID: network, NodeID: issuerNode, IdentityKey: nodePrivate, NotBefore: now, NotAfter: now.Add(time.Hour), Clock: func() time.Time { return now }})
 	if err != nil {
 		t.Fatal(err)

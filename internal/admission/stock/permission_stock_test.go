@@ -3,13 +3,13 @@
 package stock
 
 import (
+	admissiontoken "github.com/dianabuilds/ardents-network/internal/admission/token"
 	"testing"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/admission"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/route/client"
-	"github.com/dianabuilds/ardents-network/internal/route/credential"
 )
 
 func fixtureID(value byte) [32]byte {
@@ -45,7 +45,7 @@ func TestTextPermissionOwnsCurrentAuthorityAndRemainingAllocation(t *testing.T) 
 
 func TestTextPermissionRejectsEmptyOrInvalidClassBeforeBatchPreparation(t *testing.T) {
 	subject := &permission{accepted: admission.Permission{Maxima: [3]uint32{1, 1, 1}}}
-	for _, challenges := range [][]credential.ClosedTokenContext{
+	for _, challenges := range [][]admissiontoken.ClosedTokenContext{
 		nil,
 		{{Class: 0}},
 		{{Class: 4}},
@@ -62,7 +62,7 @@ func TestTextPermissionStockPreflightSeparatesWindowClassAndKnownDuty(t *testing
 	profile, receiver := fixtureID(1), fixtureID(2)
 	stock := func(digest, node [32]byte, duty uint64, class uint8, at time.Time, count int) stockEntry {
 		return stockEntry{
-			Challenge: credential.ClosedTokenContext{
+			Challenge: admissiontoken.ClosedTokenContext{
 				ProfileDigest: digest, ReceiverNodeID: node, ReceiverDutyGeneration: duty,
 				Class: class, WindowStart: at,
 			},

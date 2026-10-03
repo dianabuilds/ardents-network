@@ -11,6 +11,8 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	admissionissuer "github.com/dianabuilds/ardents-network/internal/admission/issuer"
+	admissiontoken "github.com/dianabuilds/ardents-network/internal/admission/token"
 	"os"
 	"path/filepath"
 	"testing"
@@ -21,7 +23,6 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/resource"
 	routecarrier "github.com/dianabuilds/ardents-network/internal/route/carrier"
 	"github.com/dianabuilds/ardents-network/internal/route/client"
-	"github.com/dianabuilds/ardents-network/internal/route/credential"
 )
 
 // Explicit State-projection and offline-authority fixture. The client, three
@@ -61,7 +62,7 @@ func newClosedBootstrapNetwork(t *testing.T, carrier routecarrier.CarrierProfile
 		certificates[index], keys[index] = nodeCertificate(t, int64(161+index), fmt.Sprintf("bootstrap-%d", index))
 	}
 	issuerRoot := filepath.Join(t.TempDir(), "issuer")
-	receipt, err := credential.InitializeClosedIssuerRoot(credential.ClosedIssuerRootConfig{Root: issuerRoot, NetworkID: profile.NetworkID,
+	receipt, err := admissionissuer.InitializeClosedIssuerRoot(admissionissuer.ClosedIssuerRootConfig{Root: issuerRoot, NetworkID: profile.NetworkID,
 		NodeID: profile.IssuerNodeID, IdentityKey: certificates[2].PrivateKey.(ed25519.PrivateKey), NotBefore: profile.NotBefore, NotAfter: profile.NotAfter, Clock: time.Now})
 	if err != nil {
 		t.Fatal(err)
@@ -157,15 +158,15 @@ func newClosedBootstrapNetwork(t *testing.T, carrier routecarrier.CarrierProfile
 	return fixture
 }
 
-func (fixture *closedBootstrapNetwork) batch(t *testing.T, count uint16) (*credential.PendingClosedTokenBatch, credential.ClosedTokenContext, [346]byte) {
+func (fixture *closedBootstrapNetwork) batch(t *testing.T, count uint16) (*admissiontoken.PendingClosedTokenBatch, admissiontoken.ClosedTokenContext, [346]byte) {
 	return fixture.batchFor(t, count, fixture.selection.EntryNodeID, 1, 71)
 }
-func (fixture *closedBootstrapNetwork) batchFor(t *testing.T, count uint16, receiver [32]byte, duty uint64, permissionID byte) (*credential.PendingClosedTokenBatch, credential.ClosedTokenContext, [346]byte) {
+func (fixture *closedBootstrapNetwork) batchFor(t *testing.T, count uint16, receiver [32]byte, duty uint64, permissionID byte) (*admissiontoken.PendingClosedTokenBatch, admissiontoken.ClosedTokenContext, [346]byte) {
 	t.Helper()
 	profile := fixture.view.Profile
-	challenge := credential.ClosedTokenContext{NetworkID: profile.NetworkID, ProfileDigest: profile.Digest, IssuerNodeID: profile.IssuerNodeID,
+	challenge := admissiontoken.ClosedTokenContext{NetworkID: profile.NetworkID, ProfileDigest: profile.Digest, IssuerNodeID: profile.IssuerNodeID,
 		ReceiverNodeID: receiver, ReceiverDutyGeneration: duty, Class: 2, WindowStart: profile.NotBefore}
-	contexts := make([]credential.ClosedTokenContext, count)
+	contexts := make([]admissiontoken.ClosedTokenContext, count)
 	for index := range contexts {
 		contexts[index] = challenge
 	}
@@ -173,7 +174,7 @@ func (fixture *closedBootstrapNetwork) batchFor(t *testing.T, count uint16, rece
 	return pending, challenge, key
 }
 
-func (fixture *closedBootstrapNetwork) batchForChallenges(t *testing.T, contexts []credential.ClosedTokenContext, permissionID byte) (*credential.PendingClosedTokenBatch, [346]byte) {
+func (fixture *closedBootstrapNetwork) batchForChallenges(t *testing.T, contexts []admissiontoken.ClosedTokenContext, permissionID byte) (*admissiontoken.PendingClosedTokenBatch, [346]byte) {
 	t.Helper()
 	profile := fixture.view.Profile
 	public, holder, err := ed25519.GenerateKey(rand.Reader)
@@ -189,13 +190,13 @@ func (fixture *closedBootstrapNetwork) batchForChallenges(t *testing.T, contexts
 	}
 	transcript := append([]byte("ardents-issuance-permission-v1\x00"), raw[:len(raw)-64]...)
 	copy(permission.Signature[:], ed25519.Sign(fixture.authority, transcript))
-	pending, err := credential.PrepareClosedTokenBatch(credential.ClosedTokenBatchConfig{Profile: profile, Contexts: contexts,
+	pending, err := admissiontoken.PrepareClosedTokenBatch(admissiontoken.ClosedTokenBatchConfig{Profile: profile, Contexts: contexts,
 		Permission: permission, HolderKey: holder, Now: time.Now().UTC()})
 	clear(holder)
 	if err != nil {
 		t.Fatal(err)
 	}
-	request, err := credential.DecodeClosedTokenBatch(pending.Request())
+	request, err := admissiontoken.DecodeClosedTokenBatch(pending.Request())
 	if err != nil {
 		t.Fatal(err)
 	}

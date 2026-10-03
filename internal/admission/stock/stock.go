@@ -4,17 +4,17 @@ package stock
 
 import (
 	"errors"
+	admissiontoken "github.com/dianabuilds/ardents-network/internal/admission/token"
 	"slices"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	"github.com/dianabuilds/ardents-network/internal/route/client"
-	"github.com/dianabuilds/ardents-network/internal/route/credential"
 )
 
 type stockEntry struct {
-	Challenge credential.ClosedTokenContext
+	Challenge admissiontoken.ClosedTokenContext
 	Tokens    [][]byte
 }
 
@@ -72,7 +72,7 @@ func (permission *permission) Remaining(class uint8) uint32 {
 // Context holds its admission lock while selecting the live Route prefix and
 // State challenges; the permission alone changes its batch and quota state.
 func (permission *permission) reserveBatch(profile state.ClosedProfileView, now time.Time,
-	challenges []credential.ClosedTokenContext, selection client.ClosedBootstrapSelection, refill bool,
+	challenges []admissiontoken.ClosedTokenContext, selection client.ClosedBootstrapSelection, refill bool,
 	current Prefix, joined bool, expected Prefix) (*batch, error) {
 	if batch := permission.pending; batch != nil {
 		if batch.Refill != refill || !slices.Equal(batch.Challenges, challenges) || batch.Selection != selection ||
@@ -93,7 +93,7 @@ func (permission *permission) reserveBatch(profile state.ClosedProfileView, now 
 	if class < 1 || class > 3 || uint32(len(challenges)) > permission.Remaining(class) {
 		return nil, errors.New("text issuance allocation is exhausted")
 	}
-	pending, err := credential.PrepareClosedTokenBatch(credential.ClosedTokenBatchConfig{Profile: profile, Contexts: challenges,
+	pending, err := admissiontoken.PrepareClosedTokenBatch(admissiontoken.ClosedTokenBatchConfig{Profile: profile, Contexts: challenges,
 		Permission: permission.accepted, HolderKey: permission.holder, Now: now})
 	if err != nil {
 		return nil, err
@@ -152,7 +152,7 @@ func (permission *permission) consumeToken(profile state.ClosedProfileView, now 
 	if !permission.CurrentFor(profile, now) {
 		return nil, TransferFailureAt("permission", errors.New("text token permission expired"))
 	}
-	challenge := credential.ClosedTokenContext{NetworkID: profile.NetworkID, ProfileDigest: profile.Digest, IssuerNodeID: profile.IssuerNodeID,
+	challenge := admissiontoken.ClosedTokenContext{NetworkID: profile.NetworkID, ProfileDigest: profile.Digest, IssuerNodeID: profile.IssuerNodeID,
 		ReceiverNodeID: hello.RecipientNodeID, ReceiverDutyGeneration: hello.RecipientDutyGeneration, Class: class, WindowStart: permission.accepted.NotBefore}
 	if int(profile.TokenKeyCount) > len(profile.TokenKeys) {
 		return nil, TransferFailureAt("key-inventory", errors.New("text token key inventory unavailable"))
@@ -174,7 +174,7 @@ func (permission *permission) consumeToken(profile state.ClosedProfileView, now 
 		token := stock.Tokens[0]
 		stock.Tokens[0] = nil
 		stock.Tokens = stock.Tokens[1:]
-		if err := credential.VerifyClosedToken(challenge, spki, token); err != nil {
+		if err := admissiontoken.VerifyClosedToken(challenge, spki, token); err != nil {
 			clear(token)
 			return nil, TransferFailureAt("verification", err)
 		}

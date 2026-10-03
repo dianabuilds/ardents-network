@@ -10,6 +10,8 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
+	admissionissuer "github.com/dianabuilds/ardents-network/internal/admission/issuer"
+	admissiontoken "github.com/dianabuilds/ardents-network/internal/admission/token"
 	"strings"
 	"sync"
 	"testing"
@@ -20,7 +22,6 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	"github.com/dianabuilds/ardents-network/internal/route/carrier"
 	"github.com/dianabuilds/ardents-network/internal/route/client"
-	"github.com/dianabuilds/ardents-network/internal/route/credential"
 	"github.com/dianabuilds/ardents-network/internal/route/terminal"
 )
 
@@ -31,7 +32,7 @@ func TestRunServesClosedIssuerThenDrainsOnClosedProfileSuccessor(t *testing.T) {
 	network, issuerID := [32]byte{41}, [32]byte{42}
 	generation, digest := sha256.Sum256([]byte("closed node generation")), sha256.Sum256([]byte("closed node digest"))
 	root := closedIssuerFixtureRoot(t)
-	receipt, err := credential.InitializeClosedIssuerRoot(credential.ClosedIssuerRootConfig{Root: root, NetworkID: network, NodeID: issuerID,
+	receipt, err := admissionissuer.InitializeClosedIssuerRoot(admissionissuer.ClosedIssuerRootConfig{Root: root, NetworkID: network, NodeID: issuerID,
 		IdentityKey: certificate.PrivateKey.(ed25519.PrivateKey), NotBefore: now.Truncate(time.Hour), NotAfter: now.Truncate(time.Hour).Add(time.Hour), Clock: time.Now})
 	if err != nil {
 		t.Fatal(err)
@@ -116,15 +117,15 @@ func TestClosedIssuerAdmittedOperationAfterTwoBootstrapBatches(t *testing.T) {
 			}
 			transcript := append([]byte("ardents-issuance-permission-v1\x00"), raw[:len(raw)-64]...)
 			copy(permission.Signature[:], ed25519.Sign(fixture.authority, transcript))
-			challenge := func(index int, class uint8) credential.ClosedTokenContext {
+			challenge := func(index int, class uint8) admissiontoken.ClosedTokenContext {
 				receiver := fixture.view.Nodes[index]
-				return credential.ClosedTokenContext{NetworkID: profile.NetworkID, ProfileDigest: profile.Digest,
+				return admissiontoken.ClosedTokenContext{NetworkID: profile.NetworkID, ProfileDigest: profile.Digest,
 					IssuerNodeID: profile.IssuerNodeID, ReceiverNodeID: receiver.NodeID,
 					ReceiverDutyGeneration: receiver.DutyGeneration, Class: class, WindowStart: profile.NotBefore}
 			}
-			prepare := func(contexts ...credential.ClosedTokenContext) *credential.PendingClosedTokenBatch {
+			prepare := func(contexts ...admissiontoken.ClosedTokenContext) *admissiontoken.PendingClosedTokenBatch {
 				t.Helper()
-				pending, err := credential.PrepareClosedTokenBatch(credential.ClosedTokenBatchConfig{Profile: profile,
+				pending, err := admissiontoken.PrepareClosedTokenBatch(admissiontoken.ClosedTokenBatchConfig{Profile: profile,
 					Contexts: contexts, Permission: permission, HolderKey: holder, Now: time.Now().UTC()})
 				if err != nil {
 					t.Fatal(err)
@@ -132,7 +133,7 @@ func TestClosedIssuerAdmittedOperationAfterTwoBootstrapBatches(t *testing.T) {
 				t.Cleanup(pending.Discard)
 				return pending
 			}
-			bootstrap := func(pending *credential.PendingClosedTokenBatch) [][]byte {
+			bootstrap := func(pending *admissiontoken.PendingClosedTokenBatch) [][]byte {
 				t.Helper()
 				result, err := client.ExchangeClosedBootstrap(t.Context(), fixture, fixture.selection, pending.Request())
 				if err != nil {
@@ -211,7 +212,7 @@ func TestClosedIssuerAdmittedOperationAfterTwoBootstrapBatches(t *testing.T) {
 			}
 			for _, key := range profile.TokenKeys[:profile.TokenKeyCount] {
 				if key.Class == 2 && key.WindowStart == profile.NotBefore {
-					if err := credential.VerifyClosedToken(challenge(0, 2), key.SPKI[:], tokens[0]); err != nil {
+					if err := admissiontoken.VerifyClosedToken(challenge(0, 2), key.SPKI[:], tokens[0]); err != nil {
 						t.Fatal(err)
 					}
 					return

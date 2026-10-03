@@ -3,6 +3,7 @@ package issuer
 import (
 	"context"
 	"crypto/tls"
+	admissionissuer "github.com/dianabuilds/ardents-network/internal/admission/issuer"
 	"io"
 	"net"
 	"time"
@@ -12,12 +13,11 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	routecarrier "github.com/dianabuilds/ardents-network/internal/route/carrier"
-	"github.com/dianabuilds/ardents-network/internal/route/credential"
 )
 
 // nodeHandler owns one State-authenticated outer Carrier. It
 // creates no peer, route or fallback: every child terminates at this issuer.
-func nodeHandler(config Config, certificate tls.Certificate, issuer *credential.ClosedTokenIssuer, spends *spending.Ledger, limits *route.ClosedDutyLimits, recordRelease func(error)) credential.ClosedNodeBootstrapHandler {
+func nodeHandler(config Config, certificate tls.Certificate, issuer *admissionissuer.ClosedTokenIssuer, spends *spending.Ledger, limits *route.ClosedDutyLimits, recordRelease func(error)) admissionissuer.ClosedNodeBootstrapHandler {
 	return func(ctx context.Context, carrier routecarrier.ClosedSharedCarrier, serve func(context.Context, io.ReadWriter, [32]byte, ardp.Hello) error) {
 		defer func() { recordRelease(carrier.Connection.Close()) }()
 		updated, err := config.CurrentDuty()

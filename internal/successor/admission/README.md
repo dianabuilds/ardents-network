@@ -90,7 +90,7 @@ live issuance still use the owners listed below.
 | Pending blind batch, per-class stock and permission revocation | `internal/admission/stock`, consumed by the existing Endpoint duty context |
 | Holder consumption journal | `internal/admission/attempts`, transferred with the Endpoint runtime, token owner and Source presentation callers |
 | Receiver spend and replay floors | `internal/admission/spending`, transferred with real Route and Node receiving duties; retained-root repair included |
-| Live issuer request, bootstrap/admitted lane and response | `internal/route/credential`, composed by existing network consumers |
+| Live issuer request, bootstrap/admitted lane and response | `internal/admission/token` and `internal/admission/issuer`, composed by existing network consumers |
 
 These are distinct state owners within Admission, not interchangeable credentials
 or one shared store. Custody retains private authority keys; Network State

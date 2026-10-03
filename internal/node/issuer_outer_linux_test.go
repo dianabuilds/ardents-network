@@ -8,6 +8,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
+	admissionissuer "github.com/dianabuilds/ardents-network/internal/admission/issuer"
 	"net"
 	"path/filepath"
 	"sync"
@@ -19,7 +20,6 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	"github.com/dianabuilds/ardents-network/internal/route/carrier"
-	"github.com/dianabuilds/ardents-network/internal/route/credential"
 )
 
 func TestClosedIssuerServesBootstrapInsideStateAuthorizedNodeCarrier(t *testing.T) {
@@ -30,7 +30,7 @@ func TestClosedIssuerServesBootstrapInsideStateAuthorizedNodeCarrier(t *testing.
 	network, issuerID, peerID := [32]byte{61}, [32]byte{62}, [32]byte{63}
 	generation, digest := sha256.Sum256([]byte("outer issuer generation")), sha256.Sum256([]byte("outer issuer digest"))
 	root := filepath.Join(t.TempDir(), "issuer")
-	receipt, err := credential.InitializeClosedIssuerRoot(credential.ClosedIssuerRootConfig{Root: root, NetworkID: network, NodeID: issuerID,
+	receipt, err := admissionissuer.InitializeClosedIssuerRoot(admissionissuer.ClosedIssuerRootConfig{Root: root, NetworkID: network, NodeID: issuerID,
 		IdentityKey: serverCertificate.PrivateKey.(ed25519.PrivateKey), NotBefore: now.Truncate(time.Hour), NotAfter: until, Clock: time.Now})
 	if err != nil {
 		t.Fatal(err)

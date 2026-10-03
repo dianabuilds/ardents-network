@@ -5,19 +5,19 @@ package stock
 import (
 	"bytes"
 	"context"
+	admissiontoken "github.com/dianabuilds/ardents-network/internal/admission/token"
 	"testing"
 
 	"github.com/dianabuilds/ardents-network/internal/route/client"
-	"github.com/dianabuilds/ardents-network/internal/route/credential"
 )
 
 func TestPendingBatchOwnsExactRetryAndCallerIntent(t *testing.T) {
 	owner, host, hello := issuedStockFixture(t)
 	permission := owner.permission
-	challenge := credential.ClosedTokenContext{NetworkID: host.profile.NetworkID, ProfileDigest: host.profile.Digest,
+	challenge := admissiontoken.ClosedTokenContext{NetworkID: host.profile.NetworkID, ProfileDigest: host.profile.Digest,
 		IssuerNodeID: host.profile.IssuerNodeID, ReceiverNodeID: hello.RecipientNodeID,
 		ReceiverDutyGeneration: hello.RecipientDutyGeneration, Class: 2, WindowStart: permission.Grant().NotBefore}
-	intent := []credential.ClosedTokenContext{challenge, challenge}
+	intent := []admissiontoken.ClosedTokenContext{challenge, challenge}
 	selection := client.ClosedBootstrapSelection{ProfileDigest: host.profile.Digest}
 	prepared, err := permission.reserveBatch(host.profile, host.now, intent, selection, false, nil, false, nil)
 	if err != nil {
@@ -55,10 +55,10 @@ func TestPendingBatchOwnsExactRetryAndCallerIntent(t *testing.T) {
 func TestRevocationErasesPendingSecretsOnlyAfterCompletion(t *testing.T) {
 	owner, host, hello := issuedStockFixture(t)
 	permission := owner.permission
-	challenge := credential.ClosedTokenContext{NetworkID: host.profile.NetworkID, ProfileDigest: host.profile.Digest,
+	challenge := admissiontoken.ClosedTokenContext{NetworkID: host.profile.NetworkID, ProfileDigest: host.profile.Digest,
 		IssuerNodeID: host.profile.IssuerNodeID, ReceiverNodeID: hello.RecipientNodeID,
 		ReceiverDutyGeneration: hello.RecipientDutyGeneration, Class: 2, WindowStart: permission.Grant().NotBefore}
-	prepared, err := permission.reserveBatch(host.profile, host.now, []credential.ClosedTokenContext{challenge},
+	prepared, err := permission.reserveBatch(host.profile, host.now, []admissiontoken.ClosedTokenContext{challenge},
 		client.ClosedBootstrapSelection{}, false, nil, false, nil)
 	if err != nil {
 		t.Fatal(err)

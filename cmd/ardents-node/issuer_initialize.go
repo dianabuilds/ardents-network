@@ -5,12 +5,12 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	admissionissuer "github.com/dianabuilds/ardents-network/internal/admission/issuer"
 	"io"
 	"path/filepath"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/node"
-	"github.com/dianabuilds/ardents-network/internal/route/credential"
 )
 
 type issuerInitializationPlan struct {
@@ -58,7 +58,7 @@ func initializeClosedIssuer(ctx context.Context, plan issuerInitializationPlan, 
 		plan.NotBefore == "" || plan.NotAfter == "" {
 		return errors.New("closed issuer initialization plan is not canonical")
 	}
-	config := credential.ClosedIssuerRootConfig{Root: plan.Root, Clock: time.Now}
+	config := admissionissuer.ClosedIssuerRootConfig{Root: plan.Root, Clock: time.Now}
 	if err := decodeOperatorFixedHex(plan.NetworkID, config.NetworkID[:]); err != nil {
 		return err
 	}
@@ -83,7 +83,7 @@ func initializeClosedIssuer(ctx context.Context, plan issuerInitializationPlan, 
 		return ctx.Err()
 	default:
 	}
-	receipt, err := credential.InitializeClosedIssuerRoot(config)
+	receipt, err := admissionissuer.InitializeClosedIssuerRoot(config)
 	if err != nil {
 		return err
 	}

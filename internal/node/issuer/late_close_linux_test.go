@@ -8,6 +8,7 @@ import (
 	"crypto/ed25519"
 	"crypto/sha256"
 	"errors"
+	admissionissuer "github.com/dianabuilds/ardents-network/internal/admission/issuer"
 	"io"
 	"io/fs"
 	"net"
@@ -22,7 +23,6 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	"github.com/dianabuilds/ardents-network/internal/route/carrier"
-	"github.com/dianabuilds/ardents-network/internal/route/credential"
 )
 
 // lateIssuerChildListener serves exactly one delayed Node child and then
@@ -58,7 +58,7 @@ func TestClosedIssuerLateCloseRetainsRootsUntilDelayedChildJoins(t *testing.T) {
 	network, issuerID := [32]byte{51}, [32]byte{52}
 	generation, digest := sha256.Sum256([]byte("late close generation")), sha256.Sum256([]byte("late close digest"))
 	root := closedIssuerFixtureRoot(t)
-	receipt, err := credential.InitializeClosedIssuerRoot(credential.ClosedIssuerRootConfig{Root: root, NetworkID: network, NodeID: issuerID,
+	receipt, err := admissionissuer.InitializeClosedIssuerRoot(admissionissuer.ClosedIssuerRootConfig{Root: root, NetworkID: network, NodeID: issuerID,
 		IdentityKey: certificate.PrivateKey.(ed25519.PrivateKey), NotBefore: now.Truncate(time.Hour), NotAfter: now.Truncate(time.Hour).Add(time.Hour), Clock: time.Now})
 	if err != nil {
 		t.Fatal(err)
@@ -74,9 +74,9 @@ func TestClosedIssuerLateCloseRetainsRootsUntilDelayedChildJoins(t *testing.T) {
 		profile.TokenKeys[index].WindowStart, profile.TokenKeys[index].Class = key.WindowStart, uint8(key.Class)
 		copy(profile.TokenKeys[index].SPKI[:], key.SPKI)
 	}
-	issuerConfig := credential.ClosedTokenIssuerConfig{Root: root, NetworkID: network,
+	issuerConfig := admissionissuer.ClosedTokenIssuerConfig{Root: root, NetworkID: network,
 		CurrentProfile: func() (state.ClosedProfileView, bool) { return profile, true }, Clock: time.Now}
-	issuer, err := credential.OpenClosedTokenIssuer(issuerConfig)
+	issuer, err := admissionissuer.OpenClosedTokenIssuer(issuerConfig)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -91,11 +91,11 @@ func TestClosedIssuerLateCloseRetainsRootsUntilDelayedChildJoins(t *testing.T) {
 	handlerGate := make(chan struct{})
 	var releaseGate sync.Once
 	release := func() { releaseGate.Do(func() { close(handlerGate) }) }
-	handler := credential.ClosedNodeBootstrapHandler(func(context.Context, carrier.ClosedSharedCarrier, func(context.Context, io.ReadWriter, [32]byte, ardp.Hello) error) {
+	handler := admissionissuer.ClosedNodeBootstrapHandler(func(context.Context, carrier.ClosedSharedCarrier, func(context.Context, io.ReadWriter, [32]byte, ardp.Hello) error) {
 		<-handlerGate
 	})
 	shared := &lateIssuerChildListener{ready: make(chan struct{}), accepted: make(chan struct{}), connection: local, failure: acceptErr}
-	listener, err := credential.StartClosedTokenListener(context.Background(), credential.ClosedTokenListenerConfig{Issuer: issuer,
+	listener, err := admissionissuer.StartClosedTokenListener(context.Background(), admissionissuer.ClosedTokenListenerConfig{Issuer: issuer,
 		SharedListener: shared, NodeHandler: handler, ConnectionLimit: 1, Clock: time.Now})
 	if err != nil {
 		t.Fatal(err)
@@ -133,7 +133,7 @@ func TestClosedIssuerLateCloseRetainsRootsUntilDelayedChildJoins(t *testing.T) {
 	if err := server.drain(t.Context(), 50*time.Millisecond); !errors.Is(err, context.DeadlineExceeded) {
 		t.Fatalf("Drain completed while the accepted child still borrowed the roots: %v", err)
 	}
-	if reopened, err := credential.OpenClosedTokenIssuer(issuerConfig); err == nil {
+	if reopened, err := admissionissuer.OpenClosedTokenIssuer(issuerConfig); err == nil {
 		_ = reopened.Close()
 		t.Fatal("unjoined issuer child lost its key root lease")
 	}
@@ -183,7 +183,7 @@ func TestClosedIssuerLateCloseRetainsRootsUntilDelayedChildJoins(t *testing.T) {
 	if err := reopenedSpends.Close(); err != nil {
 		t.Fatal(err)
 	}
-	reopenedIssuer, err := credential.OpenClosedTokenIssuer(issuerConfig)
+	reopenedIssuer, err := admissionissuer.OpenClosedTokenIssuer(issuerConfig)
 	if err != nil {
 		t.Fatalf("joined issuer shutdown retained the key root: %v", err)
 	}

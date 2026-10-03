@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	admissiontoken "github.com/dianabuilds/ardents-network/internal/admission/token"
 	"path/filepath"
 	"testing"
 	"time"
@@ -13,7 +14,6 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/admission"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/route/client"
-	"github.com/dianabuilds/ardents-network/internal/route/credential"
 )
 
 // Custody provisioning and Node duties run through actual commands. The exchange uses
@@ -23,9 +23,9 @@ func prepareClosedProcessExchange(t *testing.T, network, issuer [32]byte, _ time
 	authority := createClosedCommandAuthority(t, network)
 	clock := filepath.Join(t.TempDir(), "exchange.clock")
 	t.Cleanup(startClockObserver(t, clock))
-	var pending *credential.PendingClosedTokenBatch
+	var pending *admissiontoken.PendingClosedTokenBatch
 	var retained []byte
-	var challenge credential.ClosedTokenContext
+	var challenge admissiontoken.ClosedTokenContext
 	t.Cleanup(func() {
 		if pending != nil {
 			pending.Discard()
@@ -50,7 +50,7 @@ func prepareClosedProcessExchange(t *testing.T, network, issuer [32]byte, _ time
 			t.Fatal(err)
 		}
 		if pending == nil {
-			challenge = credential.ClosedTokenContext{NetworkID: network, ProfileDigest: view.Profile.Digest, ReceiverNodeID: [32]byte{1},
+			challenge = admissiontoken.ClosedTokenContext{NetworkID: network, ProfileDigest: view.Profile.Digest, ReceiverNodeID: [32]byte{1},
 				IssuerNodeID: issuer, ReceiverDutyGeneration: 1, Class: 1, WindowStart: config.Now.Truncate(time.Hour)}
 			pending = closedProcessBatch(t, authority, view.Profile, challenge, config.Now)
 			retained = pending.Request()
@@ -90,7 +90,7 @@ func prepareClosedProcessExchange(t *testing.T, network, issuer [32]byte, _ time
 				spki = key.SPKI[:]
 			}
 		}
-		if err := credential.VerifyClosedToken(challenge, spki, tokens[0]); err != nil {
+		if err := admissiontoken.VerifyClosedToken(challenge, spki, tokens[0]); err != nil {
 			t.Fatal(err)
 		}
 		t.Log("verified issued token from command-owned Entry, Interior and issuer")
@@ -98,7 +98,7 @@ func prepareClosedProcessExchange(t *testing.T, network, issuer [32]byte, _ time
 }
 
 func closedProcessBatch(t *testing.T, authority closedCommandAuthority, profile state.ClosedProfileView,
-	challenge credential.ClosedTokenContext, now time.Time) *credential.PendingClosedTokenBatch {
+	challenge admissiontoken.ClosedTokenContext, now time.Time) *admissiontoken.PendingClosedTokenBatch {
 	t.Helper()
 	request, holder, err := admission.PreparePermissionRequest(authority.Public, challenge.NetworkID, challenge.IssuerNodeID,
 		profile.IssuerDutyGeneration, admission.AllocationUser, challenge.WindowStart, [3]uint32{1, 0, 0})
@@ -114,8 +114,8 @@ func closedProcessBatch(t *testing.T, authority closedCommandAuthority, profile 
 	if err != nil {
 		t.Fatal(err)
 	}
-	batch, err := credential.PrepareClosedTokenBatch(credential.ClosedTokenBatchConfig{Profile: profile,
-		Contexts: []credential.ClosedTokenContext{challenge}, Permission: permission, HolderKey: holder, Now: now})
+	batch, err := admissiontoken.PrepareClosedTokenBatch(admissiontoken.ClosedTokenBatchConfig{Profile: profile,
+		Contexts: []admissiontoken.ClosedTokenContext{challenge}, Permission: permission, HolderKey: holder, Now: now})
 	if err != nil {
 		t.Fatal(err)
 	}

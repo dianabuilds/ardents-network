@@ -5,11 +5,11 @@ package endpoint
 import (
 	"context"
 	"errors"
+	admissiontoken "github.com/dianabuilds/ardents-network/internal/admission/token"
 
 	"github.com/dianabuilds/ardents-network/internal/admission/stock"
 	"github.com/dianabuilds/ardents-network/internal/endpoint/source"
 	"github.com/dianabuilds/ardents-network/internal/route/client"
-	"github.com/dianabuilds/ardents-network/internal/route/credential"
 )
 
 // issueTokens is the trusted context owner's issuance operation. The
@@ -109,9 +109,9 @@ func (owner *dutyContext) issueTokensForOpeningWithCancellation(ctx context.Cont
 		owner.mu.Unlock()
 		return errors.New("text issuance recipients are unavailable")
 	}
-	challenges := make([]credential.ClosedTokenContext, len(receivers))
+	challenges := make([]admissiontoken.ClosedTokenContext, len(receivers))
 	for index, receiver := range receivers {
-		challenge := credential.ClosedTokenContext{NetworkID: profile.NetworkID, ProfileDigest: profile.Digest, IssuerNodeID: profile.IssuerNodeID,
+		challenge := admissiontoken.ClosedTokenContext{NetworkID: profile.NetworkID, ProfileDigest: profile.Digest, IssuerNodeID: profile.IssuerNodeID,
 			ReceiverNodeID: receiver, Class: class, WindowStart: permission.Grant().NotBefore}
 		for _, node := range view.Nodes[:view.NodeCount] {
 			if node.NodeID == receiver {
