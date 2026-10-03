@@ -14,6 +14,8 @@ type hostingResult struct {
 	Operation   string               `json:"operation"`
 	Phase       string               `json:"phase"`
 	Outcome     string               `json:"outcome"`
+	ObservedAt  *time.Time           `json:"observed_at,omitempty"`
+	ValidUntil  *time.Time           `json:"valid_until,omitempty"`
 	Observation *hosting.Observation `json:"observation,omitempty"`
 }
 
@@ -123,15 +125,16 @@ func executeHosting(ctx context.Context, operation string, p hostingPlan, r *hos
 		}
 	}()
 	if operation == "observe" {
-		view, e := b.Observe(ctx)
+		view, e := b.Sample(ctx, time.Second)
 		if e == nil {
-			r.Observation = &view
+			observation, at, until := view.Observation(), view.ObservedAt(), view.ValidUntil()
+			r.Observation, r.ObservedAt, r.ValidUntil = &observation, &at, &until
 		}
 		return e
 	}
 	interval := time.Duration(p.HoldMS) * time.Millisecond
 	holdUntil := time.Now().Add(interval)
-	reservation, err := b.Reserve(ctx, p.Work, p.Termination, holdUntil.Add(5*time.Second))
+	reservation, err := b.Reserve(ctx, hosting.ReservationRequest{Work: p.Work, Termination: p.Termination, WorkUntil: holdUntil, HoldUntil: holdUntil.Add(5 * time.Second)})
 	if err != nil {
 		return err
 	}

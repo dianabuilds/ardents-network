@@ -317,7 +317,9 @@ authorization to begin its later security, concurrency, or wire tracks.
 ## Current profiles
 
 `hosting-budget-linux` runs `make hosting-check`: isolated durable Hosting and
-compiled command lifecycle with race checks on Linux amd64. The pinned Go 1.27.1
+admitted local I/O and compiled command lifecycle with race checks on Linux amd64.
+It covers shared persisted samples, deadline/cancellation handoff, independent
+concurrent owners, join-before-release, genuine token spending and replay refusal. The pinned Go 1.27.1
 bookworm image already selected for diagnostics can provide this component
 environment with read-only sources and caches outside Git. It requires actual
 proc/sys counters, loopback, flock, rename, fsync and a race-capable C compiler;

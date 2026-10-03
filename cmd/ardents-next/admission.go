@@ -36,6 +36,8 @@ func admissionError(err error) admission.Outcome {
 func runAdmission(ctx context.Context, args []string, out, diagnostic io.Writer) int {
 	if len(args) > 0 {
 		switch args[0] {
+		case "work":
+			return runAdmittedWork(ctx, args[1:], out)
 		case "holder", "receiver", "allocate", "issue-current":
 			return runAdmissionLocal(ctx, args[0], args[1:], out, diagnostic)
 		}

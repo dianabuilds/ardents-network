@@ -23,6 +23,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/successor/admission/receiving"
 	"github.com/dianabuilds/ardents-network/internal/successor/admission/stock"
 	"github.com/dianabuilds/ardents-network/internal/successor/admission/token"
+	"github.com/dianabuilds/ardents-network/internal/successor/admittedwork"
 	"github.com/dianabuilds/ardents-network/internal/successor/hosting"
 )
 
@@ -154,7 +155,7 @@ func TestAdmissionStandaloneCommandsIssuePresentReceiveAndReopen(t *testing.T) {
 	holderRoot := t.TempDir()
 	holderConfig := map[string]any{"root": holderRoot, "profile": profile, "role": admission.AllocationUser}
 	holder, closeHolder := admissionLocalConsole(t, "holder", holderConfig)
-	request := holder(holderCommand{Operation: "request", Maxima: [3]uint32{0, 4, 0}})
+	request := holder(holderCommand{Operation: "request", Maxima: [3]uint32{0, 5, 0}})
 	if request.Outcome != "completed" {
 		t.Fatal(request)
 	}
@@ -205,6 +206,7 @@ func TestAdmissionStandaloneCommandsIssuePresentReceiveAndReopen(t *testing.T) {
 	if first.Outcome != "completed" || second.Outcome != "completed" {
 		t.Fatal(first.Outcome, second.Outcome)
 	}
+	intent.Challenges = append(intent.Challenges, challenge)
 	batch = holder(holderCommand{Operation: "begin", Intent: intent})
 	issueConfig["batch"] = batch.Request
 	issued = admissionLocalCommand(t, "issue-current", issueConfig)
@@ -215,6 +217,15 @@ func TestAdmissionStandaloneCommandsIssuePresentReceiveAndReopen(t *testing.T) {
 	if third.Outcome != "completed" {
 		t.Fatal(third)
 	}
+	fourth := holder(holderCommand{Operation: "take", Presentation: presentation, Class: 2})
+	if fourth.Outcome != "completed" {
+		t.Fatal(fourth)
+	}
+	fifth := holder(holderCommand{Operation: "take", Presentation: presentation, Class: 2})
+	if fifth.Outcome != "completed" {
+		t.Fatal(fifth)
+	}
+
 	closeHolder()
 	reopened, closeReopened := admissionLocalConsole(t, "holder", holderConfig)
 	if r := reopened(holderCommand{Operation: "take", Presentation: presentation, Class: 2}); r.Outcome != "refused" {
@@ -266,6 +277,8 @@ func TestAdmissionStandaloneCommandsIssuePresentReceiveAndReopen(t *testing.T) {
 	closeReopened()
 	receiver := receiving.Receiver{NetworkID: p.NetworkID, StateGeneration: p.StateGeneration, StateDigest: p.StateDigest, ProfileDigest: p.Digest, NodeID: challenge.ReceiverNodeID, DutyGeneration: challenge.ReceiverDutyGeneration}
 	checkAdmissionHostingReservation(t, p, receiver, third.Token)
+	checkAdmittedWorkProcess(t, p, receiver, profile, fourth.Token)
+	checkCanceledAdmittedWork(t, p, receiver, fifth.Token)
 	receiverConfig := map[string]any{"root": t.TempDir(), "profile": profile, "receiver": receiver, "not_after": p.NotAfter}
 	accept := map[string]any{"operation": "accept", "token": first.Token, "class": 2, "deadline": p.NotAfter}
 	wrong := receiver
@@ -323,7 +336,7 @@ func checkAdmissionHostingReservation(t *testing.T, p admission.AuthorityFacts, 
 		if tooLarge {
 			amount = plan.Policy.Quantity + 1
 		}
-		r, err := budget.Reserve(t.Context(), hosting.Traffic{Tx: amount}, hosting.Traffic{Rx: 20}, p.NotAfter)
+		r, err := budget.Reserve(t.Context(), hosting.ReservationRequest{Work: hosting.Traffic{Tx: amount}, Termination: hosting.Traffic{Rx: 20}, WorkUntil: p.NotAfter, HoldUntil: p.NotAfter})
 		if err != nil {
 			return nil, err
 		}
@@ -379,5 +392,95 @@ func TestAdmissionConsoleCancellationJoinsInput(t *testing.T) {
 	cancel()
 	if code := <-done; code != 130 {
 		t.Fatal(code)
+	}
+}
+
+func checkAdmittedWorkProcess(t *testing.T, p admission.AuthorityFacts, receiver receiving.Receiver, profile string, raw []byte) {
+	t.Helper()
+	plan := hostingInitializePlan(t)
+	if err := hosting.Initialize(plan.Root, plan.Policy); err != nil {
+		t.Fatal(err)
+	}
+	config := admittedWorkPlan{Root: t.TempDir(), Profile: profile, Budget: plan.Root, Receiver: receiver, NotAfter: p.NotAfter, Deadline: time.Now().Add(4 * time.Second), Token: raw, Bytes: 64 << 10}
+	result := admissionLocalCommand(t, "work", config)
+	if result.Outcome != "completed" {
+		t.Fatal("actual work failed", result)
+	}
+	budget, err := hosting.Open(plan.Root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer budget.Close()
+	view, err := budget.Observe(t.Context())
+	if err != nil || view.ReservedBytes != 0 || view.UsedBytes < config.Bytes {
+		t.Fatal("work did not charge/join/release", view, err)
+	}
+	// A second process with the same token must refuse, retaining no new reserve.
+	config.Deadline = time.Now().Add(4 * time.Second)
+	command := exec.CommandContext(t.Context(), compiledCommand(t), "admission", "work", "--config", hostingConfig(t, config))
+	if err := command.Run(); err == nil {
+		t.Fatal("replayed work token")
+	}
+	view, err = budget.Observe(t.Context())
+	if err != nil || view.ReservedBytes != 0 {
+		t.Fatal(view, err)
+	}
+}
+
+func checkCanceledAdmittedWork(t *testing.T, facts admission.AuthorityFacts, recipient receiving.Receiver, raw []byte) {
+	t.Helper()
+	plan := hostingInitializePlan(t)
+	if err := hosting.Initialize(plan.Root, plan.Policy); err != nil {
+		t.Fatal(err)
+	}
+	budget, err := hosting.Open(plan.Root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer budget.Close()
+	root := t.TempDir()
+	reached := make(chan struct{})
+	resume := make(chan struct{})
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	blocked := false
+	observe := func() (admission.AuthorityFacts, time.Time, error) {
+		// The durable spend is a semantic boundary, independent of observer call counts.
+		info, err := os.Stat(filepath.Join(root, "closed-token-spends"))
+		if !blocked && err == nil && info.Size() > 112 {
+			blocked = true
+			close(reached)
+			<-resume
+		}
+		return facts, time.Now().UTC(), nil
+	}
+	work := admittedwork.Plan{Root: root, Budget: plan.Root, Receiver: recipient, NotAfter: facts.NotAfter, Deadline: time.Now().Add(4 * time.Second), Token: raw, Bytes: 64 << 10, Observe: observe}
+	done := make(chan error, 1)
+	go func() { done <- admittedwork.Run(ctx, work) }()
+	select {
+	case <-reached:
+	case err := <-done:
+		t.Fatal("work failed before spend", err)
+	case <-t.Context().Done():
+		t.Fatal(t.Context().Err())
+	}
+	cancel()
+	view, err := budget.Observe(t.Context())
+	close(resume)
+	outcome := <-done
+	if err != nil || view.ReservedBytes == 0 {
+		t.Fatal("cancellation released still-running work", view, err)
+	}
+	if !errors.Is(outcome, context.Canceled) {
+		t.Fatal("lost cancellation", outcome)
+	}
+	view, err = budget.Observe(t.Context())
+	if err != nil || view.ReservedBytes != 0 {
+		t.Fatal("joined refusal retained reservation", view, err)
+	}
+	work.Observe = func() (admission.AuthorityFacts, time.Time, error) { return facts, time.Now().UTC(), nil }
+	work.Deadline = time.Now().Add(4 * time.Second)
+	if err := admittedwork.Run(t.Context(), work); err == nil {
+		t.Fatal("canceled spent token became reusable")
 	}
 }

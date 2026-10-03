@@ -54,14 +54,14 @@ func TestReservationsShareOneDurablePeriod(t *testing.T) {
 	root, reading, now := hostingFixture(t)
 	first := openHostingFixture(t, root, reading, now)
 	second := openHostingFixture(t, root, reading, now)
-	held, err := first.Reserve(t.Context(), Traffic{Tx: 100, Rx: 200}, Traffic{Tx: 10, Rx: 20}, now.Add(time.Minute))
+	held, err := first.Reserve(t.Context(), ReservationRequest{Work: Traffic{Tx: 100, Rx: 200}, Termination: Traffic{Tx: 10, Rx: 20}, WorkUntil: now.Add(time.Minute), HoldUntil: now.Add(time.Minute)})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := second.Reserve(t.Context(), Traffic{Tx: 600}, Traffic{Rx: 100}, now.Add(time.Minute)); err == nil {
+	if _, err := second.Reserve(t.Context(), ReservationRequest{Work: Traffic{Tx: 600}, Termination: Traffic{Rx: 100}, WorkUntil: now.Add(time.Minute), HoldUntil: now.Add(time.Minute)}); err == nil {
 		t.Fatal("another owner multiplied the host allowance")
 	}
-	other, err := second.Reserve(t.Context(), Traffic{Tx: 220}, Traffic{Rx: 30}, now.Add(time.Minute))
+	other, err := second.Reserve(t.Context(), ReservationRequest{Work: Traffic{Tx: 220}, Termination: Traffic{Rx: 30}, WorkUntil: now.Add(time.Minute), HoldUntil: now.Add(time.Minute)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -85,7 +85,7 @@ func TestReservationsShareOneDurablePeriod(t *testing.T) {
 func TestHostingReopenDoesNotRefundAbandonedWork(t *testing.T) {
 	root, reading, now := hostingFixture(t)
 	first := openHostingFixture(t, root, reading, now)
-	if _, err := first.Reserve(t.Context(), Traffic{Tx: 200}, Traffic{Rx: 100}, now.Add(time.Minute)); err != nil {
+	if _, err := first.Reserve(t.Context(), ReservationRequest{Work: Traffic{Tx: 200}, Termination: Traffic{Rx: 100}, WorkUntil: now.Add(time.Minute), HoldUntil: now.Add(time.Minute)}); err != nil {
 		t.Fatal(err)
 	}
 	if err := first.Close(); err != nil {
@@ -101,7 +101,7 @@ func TestHostingReopenDoesNotRefundAbandonedWork(t *testing.T) {
 	if err != nil || !got.Drain || got.ReservedBytes != 300 {
 		t.Fatalf("period expiry reset accounting: %+v / %v", got, err)
 	}
-	if _, err := reopened.Reserve(t.Context(), Traffic{Tx: 1}, Traffic{Rx: 1}, now.Add(time.Second)); err == nil {
+	if _, err := reopened.Reserve(t.Context(), ReservationRequest{Work: Traffic{Tx: 1}, Termination: Traffic{Rx: 1}, WorkUntil: now.Add(time.Second), HoldUntil: now.Add(time.Second)}); err == nil {
 		t.Fatal("expired period admitted new work")
 	}
 }
@@ -120,7 +120,7 @@ func TestHostingStartsAnAlreadyExhaustedPeriodOnlyToDrain(t *testing.T) {
 	if err != nil || !got.Protect || !got.Drain || got.RemainingBytes != 0 {
 		t.Fatalf("exhausted provider period must drain without a reset: %+v / %v", got, err)
 	}
-	if _, err := owner.Reserve(t.Context(), Traffic{Tx: 1}, Traffic{Rx: 1}, now.Add(time.Minute)); err == nil {
+	if _, err := owner.Reserve(t.Context(), ReservationRequest{Work: Traffic{Tx: 1}, Termination: Traffic{Rx: 1}, WorkUntil: now.Add(time.Minute), HoldUntil: now.Add(time.Minute)}); err == nil {
 		t.Fatal("exhausted provider period admitted new work")
 	}
 }
@@ -173,7 +173,7 @@ func TestHostingCancellationPreventsReservation(t *testing.T) {
 	owner := openHostingFixture(t, root, reading, now)
 	canceled, cancel := context.WithCancel(t.Context())
 	cancel()
-	if _, err := owner.Reserve(canceled, Traffic{Tx: 100}, Traffic{Rx: 20}, now.Add(time.Minute)); err == nil {
+	if _, err := owner.Reserve(canceled, ReservationRequest{Work: Traffic{Tx: 100}, Termination: Traffic{Rx: 20}, WorkUntil: now.Add(time.Minute), HoldUntil: now.Add(time.Minute)}); err == nil {
 		t.Fatal("canceled work admitted")
 	}
 	got, err := owner.Observe(t.Context())
@@ -185,11 +185,11 @@ func TestHostingCancellationPreventsReservation(t *testing.T) {
 func TestHostingCanceledReleaseRetriesOnlyBeforeMutation(t *testing.T) {
 	root, reading, now := hostingFixture(t)
 	owner := openHostingFixture(t, root, reading, now)
-	first, err := owner.Reserve(t.Context(), Traffic{Tx: 100}, Traffic{Rx: 20}, now.Add(time.Minute))
+	first, err := owner.Reserve(t.Context(), ReservationRequest{Work: Traffic{Tx: 100}, Termination: Traffic{Rx: 20}, WorkUntil: now.Add(time.Minute), HoldUntil: now.Add(time.Minute)})
 	if err != nil {
 		t.Fatal(err)
 	}
-	other, err := owner.Reserve(t.Context(), Traffic{Tx: 50}, Traffic{Rx: 10}, now.Add(time.Minute))
+	other, err := owner.Reserve(t.Context(), ReservationRequest{Work: Traffic{Tx: 50}, Termination: Traffic{Rx: 10}, WorkUntil: now.Add(time.Minute), HoldUntil: now.Add(time.Minute)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -233,11 +233,11 @@ func TestHostingCanceledReleaseRetriesOnlyBeforeMutation(t *testing.T) {
 func TestHostingReleaseAfterCallbackRefusalStaysUnresolved(t *testing.T) {
 	root, reading, now := hostingFixture(t)
 	owner := openHostingFixture(t, root, reading, now)
-	first, err := owner.Reserve(t.Context(), Traffic{Tx: 100}, Traffic{Rx: 20}, now.Add(time.Minute))
+	first, err := owner.Reserve(t.Context(), ReservationRequest{Work: Traffic{Tx: 100}, Termination: Traffic{Rx: 20}, WorkUntil: now.Add(time.Minute), HoldUntil: now.Add(time.Minute)})
 	if err != nil {
 		t.Fatal(err)
 	}
-	other, err := owner.Reserve(t.Context(), Traffic{Tx: 50}, Traffic{Rx: 10}, now.Add(time.Minute))
+	other, err := owner.Reserve(t.Context(), ReservationRequest{Work: Traffic{Tx: 50}, Termination: Traffic{Rx: 10}, WorkUntil: now.Add(time.Minute), HoldUntil: now.Add(time.Minute)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -278,11 +278,11 @@ func TestHostingReleaseAfterPersistenceFailureStaysUnresolved(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = owner.Close() })
-	first, err := owner.Reserve(t.Context(), Traffic{Tx: 100}, Traffic{Rx: 20}, now.Add(time.Minute))
+	first, err := owner.Reserve(t.Context(), ReservationRequest{Work: Traffic{Tx: 100}, Termination: Traffic{Rx: 20}, WorkUntil: now.Add(time.Minute), HoldUntil: now.Add(time.Minute)})
 	if err != nil {
 		t.Fatal(err)
 	}
-	other, err := owner.Reserve(t.Context(), Traffic{Tx: 50}, Traffic{Rx: 10}, now.Add(time.Minute))
+	other, err := owner.Reserve(t.Context(), ReservationRequest{Work: Traffic{Tx: 50}, Termination: Traffic{Rx: 10}, WorkUntil: now.Add(time.Minute), HoldUntil: now.Add(time.Minute)})
 	if err != nil {
 		t.Fatal(err)
 	}

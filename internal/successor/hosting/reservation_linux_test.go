@@ -14,11 +14,11 @@ import (
 func TestCopiedReservationCannotRefundAnotherHandle(t *testing.T) {
 	root, reading, now := hostingFixture(t)
 	b := openHostingFixture(t, root, reading, now)
-	first, err := b.Reserve(t.Context(), Traffic{Tx: 100}, Traffic{Rx: 20}, now.Add(time.Minute))
+	first, err := b.Reserve(t.Context(), ReservationRequest{Work: Traffic{Tx: 100}, Termination: Traffic{Rx: 20}, WorkUntil: now.Add(time.Minute), HoldUntil: now.Add(time.Minute)})
 	if err != nil {
 		t.Fatal(err)
 	}
-	other, err := b.Reserve(t.Context(), Traffic{Tx: 50}, Traffic{Rx: 10}, now.Add(time.Minute))
+	other, err := b.Reserve(t.Context(), ReservationRequest{Work: Traffic{Tx: 50}, Termination: Traffic{Rx: 10}, WorkUntil: now.Add(time.Minute), HoldUntil: now.Add(time.Minute)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -57,7 +57,7 @@ func TestReserveBoundaries(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			root, reading, now := hostingFixture(t)
 			b := openHostingFixture(t, root, reading, now)
-			held, err := b.Reserve(t.Context(), tc.work, tc.terminal, now.Add(tc.delta))
+			held, err := b.Reserve(t.Context(), ReservationRequest{Work: tc.work, Termination: tc.terminal, WorkUntil: now.Add(tc.delta), HoldUntil: now.Add(tc.delta)})
 			if (err == nil) != tc.ok {
 				t.Fatalf("reserve: %v", err)
 			}
@@ -92,7 +92,7 @@ func TestReserveUsesProviderDirections(t *testing.T) {
 				t.Fatal(err)
 			}
 			defer b.Close()
-			held, err := b.Reserve(t.Context(), Traffic{Tx: 100, Rx: 200}, Traffic{Tx: 10, Rx: 20}, now.Add(time.Minute))
+			held, err := b.Reserve(t.Context(), ReservationRequest{Work: Traffic{Tx: 100, Rx: 200}, Termination: Traffic{Tx: 10, Rx: 20}, WorkUntil: now.Add(time.Minute), HoldUntil: now.Add(time.Minute)})
 			if err != nil {
 				t.Fatal(err)
 			}

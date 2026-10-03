@@ -297,7 +297,7 @@ diagnostics-check:
 
 .PHONY: hosting-check
 hosting-check:
-	$(if $(filter linux,$(shell go env GOOS)),go test -race ./internal/successor/hosting ./cmd/ardents-next -count=1 -timeout=3m,$(error hosting-check requires Linux))
+	$(if $(filter linux,$(shell go env GOOS)),go test -race ./internal/successor/hosting ./internal/successor/admittedwork ./cmd/ardents-next -count=1 -timeout=3m,$(error hosting-check requires Linux))
 
 .PHONY: admission-check
 admission-check:
