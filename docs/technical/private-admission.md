@@ -400,6 +400,14 @@ exporter before extending the pending child lifetime. Its lease is capped at
 30 seconds and 64 KiB including admission frames. A bootstrap-restricted child
 continues only the bootstrap exchange and cannot use this admission path.
 
+After successful admission, the issuer returns the reservation to its Node
+child owner even when the operation fails. That owner retains it through TLS
+write closure and Outer termination, then releases it once. A failed physical
+frame joins Carrier retirement before its caller can finish cleanup. Node
+publishes the joined Carrier and child cleanup outcome together, so a later
+TLS error cannot hide the original physical write failure. A timed-out drain
+keeps the reservation and roots held until that actual join completes.
+
 Issuer responses have the same 16 KiB encrypted plaintext shape for issued,
 exhausted, withdrawn and unavailable results. The client verifies every
 finalized token before exposing it to admission. Failure ends the batch;

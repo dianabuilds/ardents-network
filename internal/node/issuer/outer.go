@@ -3,6 +3,7 @@ package issuer
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	admissionissuer "github.com/dianabuilds/ardents-network/internal/admission/issuer"
 	"io"
 	"net"
@@ -35,34 +36,40 @@ func nodeHandler(config Config, certificate tls.Certificate, issuer *admissionis
 		if err != nil {
 			return
 		}
-		recordRelease(nodeouter.Serve(ctx, carrier.Connection, outer, func(childContext context.Context, lane *route.ClosedOuterBridgeLane) {
-			admitted := func(connection net.Conn, hello ardp.Frame) error {
+		var childReleases releaseErrors
+		outerErr := nodeouter.Serve(ctx, carrier.Connection, outer, func(childContext context.Context, lane *route.ClosedOuterBridgeLane) {
+			admitted := func(connection net.Conn, hello ardp.Frame) (*route.ClosedAdmission, error) {
 				exporter, err := routecarrier.ClosedRoleTLSExporter(connection)
 				if err != nil {
-					return err
+					return nil, err
 				}
 				channel, err := route.NewClosedAdmissionChannel(receiver, spends, limits, exporter, config.VerifyAdmission(receiver), config.Now)
 				if err != nil {
-					return err
+					return nil, err
 				}
-				operationErr, releaseErr := issuer.ServeAdmittedAfterHello(childContext, connection, channel, hello, lane)
-				recordRelease(releaseErr)
-				return operationErr
+				return issuer.ServeAdmittedAfterHello(childContext, connection, channel, hello, lane)
 			}
-			serveClosedIssuerInner(childContext, lane, certificate, deadline, carrier.NodeKey, serve, admitted)
-		}))
+			childReleases.record(serveClosedIssuerInner(childContext, lane, certificate, deadline, carrier.NodeKey, serve, admitted))
+		})
+		// Publish one joined Carrier outcome. A secondary inner-TLS error must
+		// not win the listener's first-failure slot before its causal physical
+		// writer result has arrived from the joined outer owner.
+		recordRelease(errors.Join(outerErr, childReleases.result()))
 	}
 }
 
-func serveClosedIssuerInner(ctx context.Context, lane *route.ClosedOuterBridgeLane, certificate tls.Certificate, deadline time.Time, adjacency [32]byte, serve func(context.Context, io.ReadWriter, [32]byte, ardp.Hello) error, admitted func(net.Conn, ardp.Frame) error) {
+func serveClosedIssuerInner(ctx context.Context, lane *route.ClosedOuterBridgeLane, certificate tls.Certificate, deadline time.Time, adjacency [32]byte, serve func(context.Context, io.ReadWriter, [32]byte, ardp.Hello) error, admitted func(net.Conn, ardp.Frame) (*route.ClosedAdmission, error)) (cleanupErr error) {
 	status := byte(1)
-	defer func() { _ = lane.CloseWithStatus(status) }()
+	var admission *route.ClosedAdmission
+	defer func() { cleanupErr = errors.Join(cleanupErr, admission.Release()) }()
+	defer func() { cleanupErr = errors.Join(cleanupErr, lane.CloseWithStatus(status)) }()
 	secured, err := routecarrier.AcceptClosedRoleTLS(ctx, lane, certificate, deadline)
 	if err != nil {
 		return
 	}
 	defer func() {
-		if secured.CloseWrite() != nil {
+		if err := secured.CloseWrite(); err != nil {
+			cleanupErr = errors.Join(cleanupErr, err)
 			status = 1
 		}
 	}()
@@ -86,8 +93,11 @@ func serveClosedIssuerInner(ctx context.Context, lane *route.ClosedOuterBridgeLa
 			status = 0
 		}
 	case route.ClosedChildOrdinary:
-		if admitted(secured, helloFrame) == nil {
+		var operationErr error
+		admission, operationErr = admitted(secured, helloFrame)
+		if operationErr == nil {
 			status = 0
 		}
 	}
+	return
 }

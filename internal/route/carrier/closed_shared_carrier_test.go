@@ -79,6 +79,11 @@ func TestClosedSharedCarrierClassifiesDirectAndCurrentNode(t *testing.T) {
 				if err := acceptedCarrier.Connection.Close(); err != nil {
 					t.Fatal(err)
 				}
+				if profile == ClosedCarrierQUIC {
+					if n, err := acceptedCarrier.Connection.Write([]byte{9}); n != 0 || !errors.Is(err, net.ErrClosed) {
+						t.Errorf("write after owned QUIC retirement = %d / %v, want net.ErrClosed", n, err)
+					}
+				}
 			}
 			if err := direct.Close(); err != nil {
 				t.Fatal(err)

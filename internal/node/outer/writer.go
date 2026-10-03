@@ -1,6 +1,7 @@
 package outer
 
 import (
+	"errors"
 	"net"
 	"os"
 	"sync"
@@ -25,6 +26,7 @@ type writer struct {
 	dataDue         bool
 	terminalServed  bool
 	running         bool
+	failure         error
 }
 
 type writeRequest struct {
@@ -171,20 +173,34 @@ func (owner *writer) drain() {
 		if err == nil {
 			err = ardp.WriteFrame(owner.connection, request.frame)
 		}
+		// An attempted frame may have broken the shared framing boundary.
+		// Retain its caller until physical poisoning has joined, including its
+		// failure. The caller can then release the child's termination reserve.
+		// Do not hold state while Close runs: cancellation may update deadlines.
+		if err != nil {
+			if owner.closeConnection != nil {
+				err = errors.Join(err, owner.closeConnection())
+			} else {
+				err = errors.Join(err, owner.connection.Close())
+			}
+		}
 		owner.state.Lock()
 		owner.active = nil
+		owner.failure = errors.Join(owner.failure, err)
 		request.err = err
 		close(request.done)
 		owner.state.Unlock()
 		owner.writer.Unlock()
-		if err != nil {
-			if owner.closeConnection != nil {
-				_ = owner.closeConnection()
-			} else {
-				_ = owner.connection.Close()
-			}
-		}
 	}
+}
+
+// result is read by the Carrier owner after all admitted children joined.
+// A role may report an operation failure separately from cleanup, but a failed
+// physical frame must still survive in the Carrier's final cleanup result.
+func (owner *writer) result() error {
+	owner.state.Lock()
+	defer owner.state.Unlock()
+	return owner.failure
 }
 
 func (owner *writer) update(lane uint32, deadline time.Time) error {

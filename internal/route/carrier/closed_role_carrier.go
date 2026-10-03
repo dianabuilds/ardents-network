@@ -7,6 +7,7 @@ import (
 	"github.com/quic-go/quic-go"
 	"net"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -134,12 +135,19 @@ type closedRoleQUICCarrier struct {
 	connection *quic.Conn
 	once       sync.Once
 	closeErr   error
+	closed     atomic.Bool
 }
 
 func (carrier *closedRoleQUICCarrier) Read(value []byte) (int, error) {
 	return carrier.stream.Read(value)
 }
 func (carrier *closedRoleQUICCarrier) Write(value []byte) (int, error) {
+	// A late child must not attempt a new frame after this owner retired the
+	// physical stream. Preserve errors from writes already in flight; only a
+	// new call after local Close receives the standard closed sentinel.
+	if carrier.closed.Load() {
+		return 0, net.ErrClosed
+	}
 	return carrier.stream.Write(value)
 }
 func (carrier *closedRoleQUICCarrier) LocalAddr() net.Addr  { return carrier.connection.LocalAddr() }
@@ -155,6 +163,7 @@ func (carrier *closedRoleQUICCarrier) SetWriteDeadline(deadline time.Time) error
 }
 func (carrier *closedRoleQUICCarrier) Close() error {
 	carrier.once.Do(func() {
+		carrier.closed.Store(true)
 		carrier.closeErr = errors.Join(carrier.stream.Close(), carrier.connection.CloseWithError(0, "role-close"))
 	})
 	return carrier.closeErr

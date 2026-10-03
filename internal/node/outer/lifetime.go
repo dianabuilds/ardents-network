@@ -2,6 +2,7 @@ package outer
 
 import (
 	"context"
+	"errors"
 	"net"
 	"sync"
 	"time"
@@ -11,7 +12,7 @@ import (
 )
 
 // Serve owns an accepted outer channel and its inner handlers until their
-// cancellation and cleanup have joined. It returns its physical close result
+// cancellation and cleanup have joined. It returns physical write and close failures
 // to the receiving role, which retains the accepted connection's final result.
 func Serve(ctx context.Context, connection net.Conn, handshake *route.ClosedOuterHandshake, serve func(context.Context, *route.ClosedOuterBridgeLane)) (closeErr error) {
 	defer handshake.Close()
@@ -42,7 +43,7 @@ func Serve(ctx context.Context, connection net.Conn, handshake *route.ClosedOute
 		if !stop() {
 			<-interrupted
 		}
-		closeErr = physicalCloseErr
+		closeErr = errors.Join(physicalCloseErr, writer.result())
 	}()
 	if connection.SetReadDeadline(time.Now().Add(10*time.Second)) != nil {
 		return
