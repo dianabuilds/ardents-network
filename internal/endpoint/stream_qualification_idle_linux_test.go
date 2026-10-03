@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/resource"
+	hostingbudget "github.com/dianabuilds/ardents-network/internal/hosting"
 )
 
 func TestStreamQualificationIdleTraffic(t *testing.T) {
@@ -39,14 +39,14 @@ func TestStreamQualificationIdleHostingAdmission(t *testing.T) {
 			}
 			now := time.Now().UTC().Truncate(time.Second)
 			root := filepath.Join(t.TempDir(), "hosting")
-			policy := resource.HostingPolicy{
+			policy := hostingbudget.Policy{
 				Provider: "NET-32 admission fixture", Start: now.Add(-time.Hour), End: now.Add(time.Hour),
 				Unit: "B", Quantity: want + 1, Directions: direction, Interfaces: []string{"lo"}, LowWatermarkBytes: 1,
 			}
-			if err := resource.InitializeHosting(root, policy); err != nil {
+			if err := hostingbudget.Initialize(root, policy); err != nil {
 				t.Fatal(err)
 			}
-			host, err := resource.OpenHosting(root)
+			host, err := hostingbudget.Open(root)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -71,10 +71,10 @@ func TestStreamQualificationIdleHostingAdmission(t *testing.T) {
 			// corrected work: real admission must refuse this amount.
 			shortRoot := filepath.Join(t.TempDir(), "short-hosting")
 			policy.Quantity = want - 1
-			if err := resource.InitializeHosting(shortRoot, policy); err != nil {
+			if err := hostingbudget.Initialize(shortRoot, policy); err != nil {
 				t.Fatal(err)
 			}
-			shortHost, err := resource.OpenHosting(shortRoot)
+			shortHost, err := hostingbudget.Open(shortRoot)
 			if err != nil {
 				t.Fatal(err)
 			}

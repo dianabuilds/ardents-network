@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
+	hostingbudget "github.com/dianabuilds/ardents-network/internal/hosting"
 	"github.com/dianabuilds/ardents-network/internal/node/hosting"
-	"github.com/dianabuilds/ardents-network/internal/resource"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	"github.com/dianabuilds/ardents-network/internal/route/carrier"
 	"github.com/dianabuilds/ardents-network/internal/route/terminal"
@@ -91,13 +91,13 @@ type releaseFailureHost struct {
 	released atomic.Int32
 }
 
-func (*releaseFailureHost) Sample(context.Context, time.Duration) (resource.HostingSample, error) {
-	return resource.HostingSample{}, nil
+func (*releaseFailureHost) Sample(context.Context, time.Duration) (hostingbudget.Sample, error) {
+	return hostingbudget.Sample{}, nil
 }
 
 func (*releaseFailureHost) Close() error { return nil }
 
-func (host *releaseFailureHost) Reserve(context.Context, resource.HostingTraffic, resource.HostingTraffic, time.Time) (hosting.Reservation, error) {
+func (host *releaseFailureHost) Reserve(context.Context, hostingbudget.Traffic, hostingbudget.Traffic, time.Time) (hosting.Reservation, error) {
 	host.reserved.Add(1)
 	return releaseFailureReservation{host: host}, nil
 }

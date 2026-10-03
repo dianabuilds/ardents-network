@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
+	hostingbudget "github.com/dianabuilds/ardents-network/internal/hosting"
 	"github.com/dianabuilds/ardents-network/internal/node/authority"
-	"github.com/dianabuilds/ardents-network/internal/resource"
 	"github.com/dianabuilds/ardents-network/internal/route"
 )
 
@@ -16,15 +16,15 @@ type joinObservedHandle struct {
 	closed   int
 	closeErr error
 	age      time.Duration
-	sample   resource.HostingSample
+	sample   hostingbudget.Sample
 }
 
-func (host *joinObservedHandle) Sample(_ context.Context, age time.Duration) (resource.HostingSample, error) {
+func (host *joinObservedHandle) Sample(_ context.Context, age time.Duration) (hostingbudget.Sample, error) {
 	host.age = age
 	return host.sample, nil
 }
 
-func (host *joinObservedHandle) Reserve(context.Context, resource.HostingTraffic, resource.HostingTraffic, time.Time) (Reservation, error) {
+func (host *joinObservedHandle) Reserve(context.Context, hostingbudget.Traffic, hostingbudget.Traffic, time.Time) (Reservation, error) {
 	host.reserved++
 	return nil, errors.New("unexpected reservation")
 }
@@ -36,7 +36,7 @@ func (host *joinObservedHandle) Close() error {
 
 func TestJoinHandleDelegatesSampleAndOwnedClose(t *testing.T) {
 	closeErr := errors.New("host close failed")
-	host := &joinObservedHandle{sample: resource.HostingSample{Observation: resource.HostingObservation{Drain: true}}, closeErr: closeErr}
+	host := &joinObservedHandle{sample: hostingbudget.Sample{Observation: hostingbudget.Observation{Drain: true}}, closeErr: closeErr}
 	lease := NewJoinHandle(host, authority.Source{}, time.Now)
 	got, err := lease.Sample(context.Background(), 3*time.Second)
 	if err != nil || !got.Observation.Drain || host.age != 3*time.Second {

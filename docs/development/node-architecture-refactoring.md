@@ -73,7 +73,7 @@ separate files. File counts are navigation evidence, not an extraction target.
 | Owner | Inputs and state | Stop and final result |
 | --- | --- | --- |
 | Node root | Public process config, copied current duty, local role retention, event writer and process resource guard. | Stop selected duty, emit draining, await bounded joined Drain, close shared Hosting and remove the local-role record before publishing WITHDRAWN. Failed or unknown join is FAILED; an unjoined role retains its conflict record to authenticated expiry and delays Hosting close until join. |
-| `hosting` | Opened provider-period handle, shared sample cache, class-1/2/3 reservation policy and retained late-close lifetime. | Release reservations at their callers; close the concrete ledger only when joined borrowers can no longer use it. Node chooses when protection or drain is required. |
+| `hosting` | Adapted provider-period handle, class-1/2/3 role envelopes and retained late-close lifetime. | Release reservations at their callers; close the concrete ledger only when joined borrowers can no longer use it. Node chooses when protection or drain is required. |
 | `outer` | Authenticated outer handshake, accepted connection, callback for inner lanes; private writer queues and child set. | Cancel children, interrupt physical I/O, close bridge, join children and interruption callback, then close handshake. Return the first physical close result to the receiving role, including closure after a partial write; that role retains the final accepted-connection result. No admission or durable root moves here. |
 | Forwarding | Selected receiver/peer facts, certificate, spend ledger, duty limits, host reservations, pool, producers and retained Carrier readers. | Stop listener and producers; join producers before outgoing readers; retire pool and reservations, then close spend root. Retain terminal result across repeated Drain and timeout. |
 | `issuer` | Selected issuer profile/receiver, certificate, issuer key root, spend root, token listener, accepted children and their release-error accumulator. | Publish listener terminal cause, join children without releasing roots on caller timeout, record unexpected child release errors, close both roots once and retain close errors. Root Node supplies current State and Hosting reservation callbacks. |
@@ -86,9 +86,10 @@ The forwarding child now owns its listener, session set, receiving resources,
 pool, accepted handlers and joined shutdown. Node retains profile validation,
 address choice, process admission and
 role selection. It opens the Host handle and transfers its late close to the
-child. `internal/node/hosting` owns the common class-2 reserve-before-spend
-policy used by forwarding and JOIN; the distinct class-1/3 control envelopes
-also belong to Hosting.
+child. `internal/node/hosting` composes Admission redemption with class-2 Hosting
+reservations for forwarding and JOIN and supplies class-1/3 role envelopes.
+Admission owns reserve-before-spend ordering; `internal/hosting` owns the
+provider budget, durable reservations and shared observations.
 The child borrows current State, authority, token policy and endpoint validation
 through explicit dependencies, never `runtimeConfig`. It rechecks State at each
 existing admission point and cannot accept a plan-supplied peer or key.

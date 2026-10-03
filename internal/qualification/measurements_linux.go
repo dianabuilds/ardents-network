@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	hostingbudget "github.com/dianabuilds/ardents-network/internal/hosting"
 	"github.com/dianabuilds/ardents-network/internal/resource"
 )
 
@@ -38,7 +39,7 @@ type Measurements struct {
 	openingSlot        chan struct{}
 	setupSlots         chan struct{}
 	sampledAt          time.Time
-	hostSample         resource.HostingSample
+	hostSample         hostingbudget.Sample
 	usageSample        resource.Sample
 }
 
@@ -99,31 +100,31 @@ func (owner *Measurements) AcquireIntroductionOpening(ctx context.Context) (func
 	}, nil
 }
 
-func (owner *Measurements) Sample(ctx context.Context, host *resource.Hosting) (resource.HostingSample, resource.Sample, error) {
+func (owner *Measurements) Sample(ctx context.Context, host *hostingbudget.Ledger) (hostingbudget.Sample, resource.Sample, error) {
 	owner.sampleMu.Lock()
 	defer owner.sampleMu.Unlock()
 	if owner.sampledAt.IsZero() || time.Since(owner.sampledAt) >= 900*time.Millisecond {
 		if err := owner.sampleLocked(ctx, host); err != nil {
-			return resource.HostingSample{}, resource.Sample{}, err
+			return hostingbudget.Sample{}, resource.Sample{}, err
 		}
 	}
 	hostSample := owner.hostSample
-	hostSample.Interfaces = append([]resource.HostingInterfaceSample(nil), hostSample.Interfaces...)
+	hostSample.Interfaces = append([]hostingbudget.InterfaceSample(nil), hostSample.Interfaces...)
 	return hostSample, owner.usageSample, nil
 }
 
-func (owner *Measurements) SampleFresh(ctx context.Context, host *resource.Hosting) (resource.HostingSample, resource.Sample, error) {
+func (owner *Measurements) SampleFresh(ctx context.Context, host *hostingbudget.Ledger) (hostingbudget.Sample, resource.Sample, error) {
 	owner.sampleMu.Lock()
 	defer owner.sampleMu.Unlock()
 	if err := owner.sampleLocked(ctx, host); err != nil {
-		return resource.HostingSample{}, resource.Sample{}, err
+		return hostingbudget.Sample{}, resource.Sample{}, err
 	}
 	hostSample := owner.hostSample
-	hostSample.Interfaces = append([]resource.HostingInterfaceSample(nil), hostSample.Interfaces...)
+	hostSample.Interfaces = append([]hostingbudget.InterfaceSample(nil), hostSample.Interfaces...)
 	return hostSample, owner.usageSample, nil
 }
 
-func (owner *Measurements) sampleLocked(ctx context.Context, host *resource.Hosting) error {
+func (owner *Measurements) sampleLocked(ctx context.Context, host *hostingbudget.Ledger) error {
 	hostSample, hostErr := host.Sample(ctx, 0)
 	usageSample, usageErr := owner.measure()
 	if err := errors.Join(hostErr, usageErr); err != nil {

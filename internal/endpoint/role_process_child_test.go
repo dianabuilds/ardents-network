@@ -16,6 +16,7 @@ import (
 	"testing"
 	"time"
 
+	hostingbudget "github.com/dianabuilds/ardents-network/internal/hosting"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/node"
 	"github.com/dianabuilds/ardents-network/internal/resource"
@@ -53,7 +54,7 @@ func roleProcessConfig(input roleProcessInput) node.Config {
 	case "join":
 		config.ClosedDataJoin = node.ClosedDataJoinProfile{HostingRoot: input.HostingRoot, AdmissionRoot: input.AdmissionRoot, Certificate: certificate, ConnectionLimit: input.Limit, DrainTimeout: input.Drain}
 	case "forwarding":
-		config.ClosedForwarding = node.ClosedForwardingProfile{Root: input.Root, HostingRoot: input.HostingRoot, Certificate: certificate, ConnectionLimit: input.Limit, DrainTimeout: input.Drain, AdmissionTraffic: resource.HostingTraffic{Tx: 32 << 20, Rx: 32 << 20}, TerminationTraffic: resource.HostingTraffic{Tx: 64 << 10, Rx: 64 << 10}}
+		config.ClosedForwarding = node.ClosedForwardingProfile{Root: input.Root, HostingRoot: input.HostingRoot, Certificate: certificate, ConnectionLimit: input.Limit, DrainTimeout: input.Drain, AdmissionTraffic: hostingbudget.Traffic{Tx: 32 << 20, Rx: 32 << 20}, TerminationTraffic: hostingbudget.Traffic{Tx: 64 << 10, Rx: 64 << 10}}
 	}
 	return config
 }

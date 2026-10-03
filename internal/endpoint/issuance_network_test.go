@@ -15,10 +15,10 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
+	hostingbudget "github.com/dianabuilds/ardents-network/internal/hosting"
 	"github.com/dianabuilds/ardents-network/internal/network/duty"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/node"
-	"github.com/dianabuilds/ardents-network/internal/resource"
 	routecarrier "github.com/dianabuilds/ardents-network/internal/route/carrier"
 )
 
@@ -197,7 +197,7 @@ func startRoleNetwork(t *testing.T, fixture roleNetworkFixture) (*endpoint, *dut
 		} else {
 			config.ClosedForwarding = node.ClosedForwardingProfile{Root: networkPrivateRoot(t), HostingRoot: config.HostingRoot,
 				Certificate: certificates[index], ConnectionLimit: 8, DrainTimeout: 2 * time.Second,
-				AdmissionTraffic: resource.HostingTraffic{Tx: 32 << 20, Rx: 32 << 20}, TerminationTraffic: resource.HostingTraffic{Tx: 64 << 10, Rx: 64 << 10}}
+				AdmissionTraffic: hostingbudget.Traffic{Tx: 32 << 20, Rx: 32 << 20}, TerminationTraffic: hostingbudget.Traffic{Tx: 64 << 10, Rx: 64 << 10}}
 		}
 		for _, apply := range fixture.configure {
 			apply(index, &config)
@@ -223,9 +223,9 @@ func networkHostingRootWithQuantity(t *testing.T, quantity uint64) string {
 	t.Helper()
 	now := time.Now().UTC().Truncate(time.Second)
 	root := filepath.Join(t.TempDir(), "hosting")
-	policy := resource.HostingPolicy{Provider: "test fixture", Start: now.Add(-time.Hour), End: now.Add(time.Hour), Unit: "GiB", Quantity: quantity,
+	policy := hostingbudget.Policy{Provider: "test fixture", Start: now.Add(-time.Hour), End: now.Add(time.Hour), Unit: "GiB", Quantity: quantity,
 		Directions: "tx+rx", Interfaces: []string{"lo"}, LowWatermarkBytes: 1 << 20}
-	if err := resource.InitializeHosting(root, policy); err != nil {
+	if err := hostingbudget.Initialize(root, policy); err != nil {
 		t.Fatal(err)
 	}
 	return root

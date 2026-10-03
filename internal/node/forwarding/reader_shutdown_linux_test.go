@@ -11,8 +11,8 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/admission/spending"
+	hostingbudget "github.com/dianabuilds/ardents-network/internal/hosting"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
-	"github.com/dianabuilds/ardents-network/internal/resource"
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	"github.com/dianabuilds/ardents-network/internal/route/carrier"
@@ -88,7 +88,7 @@ func TestClosedForwardingDrainJoinsActualAcceptedProducerBeforeReader(t *testing
 	fixture.config.CurrentClosedProfile = func() (state.ClosedProfileView, bool) { return fixture.view.Profile, true }
 	host := &cleanupFailureHost{}
 	fixture.config.ClosedForwarding = ClosedForwardingProfile{Certificate: serverCertificate,
-		AdmissionTraffic: resource.HostingTraffic{Tx: 1}, TerminationTraffic: resource.HostingTraffic{Tx: 1}}
+		AdmissionTraffic: hostingbudget.Traffic{Tx: 1}, TerminationTraffic: hostingbudget.Traffic{Tx: 1}}
 	open := fixture.open
 	open.Deadline = now.Add(20 * time.Second)
 	candidate, err := closedForwardRecipient(fixture.config, fixture.snapshot, open, now)

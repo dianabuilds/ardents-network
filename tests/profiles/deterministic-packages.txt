@@ -41,6 +41,7 @@ github.com/dianabuilds/ardents-network/internal/node/probe
 github.com/dianabuilds/ardents-network/internal/node/resolution
 github.com/dianabuilds/ardents-network/internal/release
 github.com/dianabuilds/ardents-network/internal/qualification
+github.com/dianabuilds/ardents-network/internal/hosting
 github.com/dianabuilds/ardents-network/internal/resource
 github.com/dianabuilds/ardents-network/internal/route
 github.com/dianabuilds/ardents-network/internal/route/ardp

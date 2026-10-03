@@ -1,4 +1,4 @@
-package resource
+package hosting
 
 import (
 	"context"
@@ -6,16 +6,16 @@ import (
 	"time"
 )
 
-// HostingSample preserves the actual provider policy and separate counters.
+// Sample preserves the actual provider policy and separate counters.
 // It describes the shared host; it does not invent per-process attribution.
-type HostingSample struct {
+type Sample struct {
 	At          time.Time
-	Policy      HostingPolicy
+	Policy      Policy
 	Boot        string
-	Interfaces  []HostingInterfaceSample
-	Observation HostingObservation
+	Interfaces  []InterfaceSample
+	Observation Observation
 }
-type HostingInterfaceSample struct {
+type InterfaceSample struct {
 	Name  string
 	Index uint64
 	Tx    uint64
@@ -24,7 +24,7 @@ type HostingInterfaceSample struct {
 
 // Sample charges an unobserved delta, or shares a recent committed host
 // observation across local owners. Reservations never use this coalescing path.
-func (owner *Hosting) Sample(ctx context.Context, maximumAge time.Duration) (sample HostingSample, outcome error) {
+func (owner *Ledger) Sample(ctx context.Context, maximumAge time.Duration) (sample Sample, outcome error) {
 	if maximumAge < 0 || maximumAge > time.Second {
 		return sample, errors.New("hosting sample freshness is invalid")
 	}
@@ -43,9 +43,9 @@ func (owner *Hosting) Sample(ctx context.Context, maximumAge time.Duration) (sam
 	return hostingSample(state, observation), err
 }
 
-func (owner *Hosting) recentHostingState(ctx context.Context, maximumAge time.Duration) (hostingState, HostingObservation, bool, error) {
+func (owner *Ledger) recentHostingState(ctx context.Context, maximumAge time.Duration) (hostingState, Observation, bool, error) {
 	var empty hostingState
-	unavailable := HostingObservation{Protect: true, Drain: true}
+	unavailable := Observation{Protect: true, Drain: true}
 	if owner == nil || ctx == nil || ctx.Err() != nil {
 		return empty, unavailable, false, errors.New("hosting operation is unavailable")
 	}
@@ -102,9 +102,9 @@ func (owner *Hosting) recentHostingState(ctx context.Context, maximumAge time.Du
 // refreshHostingState elects at most one expired-sample writer. Contenders do
 // not queue as writers: they observe the active writer's atomically replaced
 // committed state and return as soon as it satisfies the requested freshness.
-func (owner *Hosting) refreshHostingState(ctx context.Context, maximumAge time.Duration) (hostingState, HostingObservation, error) {
+func (owner *Ledger) refreshHostingState(ctx context.Context, maximumAge time.Duration) (hostingState, Observation, error) {
 	var empty hostingState
-	unavailable := HostingObservation{Protect: true, Drain: true}
+	unavailable := Observation{Protect: true, Drain: true}
 	if err := owner.enter(ctx); err != nil {
 		return empty, unavailable, err
 	}
@@ -178,10 +178,10 @@ func (owner *Hosting) refreshHostingState(ctx context.Context, maximumAge time.D
 	}
 }
 
-func hostingSample(state hostingState, observation HostingObservation) (sample HostingSample) {
+func hostingSample(state hostingState, observation Observation) (sample Sample) {
 	sample.At, sample.Policy, sample.Boot = state.Observed, state.Policy, state.Reading.Boot
 	for _, counter := range state.Reading.Interfaces {
-		sample.Interfaces = append(sample.Interfaces, HostingInterfaceSample(counter))
+		sample.Interfaces = append(sample.Interfaces, InterfaceSample(counter))
 	}
 	sample.Observation = observation
 	return sample

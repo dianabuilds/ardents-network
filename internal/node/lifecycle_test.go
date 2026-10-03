@@ -11,6 +11,7 @@ import (
 	"encoding/binary"
 	"encoding/pem"
 	"errors"
+	hostingbudget "github.com/dianabuilds/ardents-network/internal/hosting"
 	localroles "github.com/dianabuilds/ardents-network/internal/network/duty"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/node/hosting"
@@ -486,11 +487,11 @@ type hostingLifetimeTestHost struct {
 	err    error
 }
 
-func (host *hostingLifetimeTestHost) Sample(context.Context, time.Duration) (resource.HostingSample, error) {
-	return resource.HostingSample{}, nil
+func (host *hostingLifetimeTestHost) Sample(context.Context, time.Duration) (hostingbudget.Sample, error) {
+	return hostingbudget.Sample{}, nil
 }
 
-func (host *hostingLifetimeTestHost) Reserve(context.Context, resource.HostingTraffic, resource.HostingTraffic, time.Time) (hosting.Reservation, error) {
+func (host *hostingLifetimeTestHost) Reserve(context.Context, hostingbudget.Traffic, hostingbudget.Traffic, time.Time) (hosting.Reservation, error) {
 	return nil, nil
 }
 

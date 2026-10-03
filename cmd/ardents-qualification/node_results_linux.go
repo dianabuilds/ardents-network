@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/application/streamqualification"
+	hostingbudget "github.com/dianabuilds/ardents-network/internal/hosting"
 	"github.com/dianabuilds/ardents-network/internal/node"
 	"github.com/dianabuilds/ardents-network/internal/resource"
 )
@@ -175,7 +176,7 @@ func evaluateNodeOwner(input nodeResultInput) (nodeOwnerEvidence, bool) {
 	owner := nodeOwnerEvidence{ID: input.ID, Host: input.Host, PlanSHA256: input.PlanSHA256, InvocationID: input.InvocationID, Samples: len(input.Samples)}
 	ready, withdrawn, failed := 0, 0, false
 	var rss []uint64
-	var hostingPolicy *resource.HostingPolicy
+	var hostingPolicy *hostingbudget.Policy
 	var hostingUsed uint64
 	for _, line := range input.Journal {
 		var event node.Event

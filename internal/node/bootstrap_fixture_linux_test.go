@@ -19,8 +19,8 @@ import (
 	"time"
 
 	admissiongrammar "github.com/dianabuilds/ardents-network/internal/admission"
+	hostingbudget "github.com/dianabuilds/ardents-network/internal/hosting"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
-	"github.com/dianabuilds/ardents-network/internal/resource"
 	routecarrier "github.com/dianabuilds/ardents-network/internal/route/carrier"
 	"github.com/dianabuilds/ardents-network/internal/route/client"
 )
@@ -132,7 +132,7 @@ func newClosedBootstrapNetwork(t *testing.T, carrier routecarrier.CarrierProfile
 			if err := os.MkdirAll(root, 0o700); err != nil {
 				t.Fatal(err)
 			}
-			config.ClosedForwarding = ClosedForwardingProfile{Root: root, Certificate: certificates[index], ConnectionLimit: 4, DrainTimeout: 2 * time.Second, AdmissionTraffic: resource.HostingTraffic{Tx: 1}, TerminationTraffic: resource.HostingTraffic{Tx: 1}, HostingRoot: hostingFixtureRoot(t)}
+			config.ClosedForwarding = ClosedForwardingProfile{Root: root, Certificate: certificates[index], ConnectionLimit: 4, DrainTimeout: 2 * time.Second, AdmissionTraffic: hostingbudget.Traffic{Tx: 1}, TerminationTraffic: hostingbudget.Traffic{Tx: 1}, HostingRoot: hostingFixtureRoot(t)}
 			server, err = startClosedForwarding(config.ClosedForwarding, projectRoleInputs(config), snapshot)
 		}
 		if err != nil {

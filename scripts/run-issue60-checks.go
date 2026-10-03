@@ -62,7 +62,8 @@ func issue60Groups() []issue60Group {
 			{Name: "worker-authority", Package: "./internal/endpoint", Pattern: "^(TestCompletedTextWorker|TestTextWorkerOperation|TestAlreadyCancelledTextLaunch|TestEndpointMainExit|TestTextLaunch|TestTextManager|TestTextWorkerUnit|TestTextWorkerExecutable|TestTextWorkerAttachment|TestTextWorkerControl|TestTextWorkerLifetime|TestTextWorkerInitialization|TestQualificationUbuntu)", Race: true},
 		}},
 		{Name: "resources", Jobs: []issue60Job{
-			{Name: "hosting-ledger", Package: "./internal/resource", Pattern: "^(TestHosting|TestOwnerResident)", Race: true},
+			{Name: "hosting-ledger", Package: "./internal/hosting", Pattern: "^Test", Race: true},
+			{Name: "resource-owner", Package: "./internal/resource", Pattern: "^TestOwnerResident", Race: true},
 			{Name: "route-bounds", Package: "./internal/route", Pattern: "^(TestClosedForwarding|TestForwarding|TestClosedDuty|TestClosedJoin|TestClosedJoined|TestClosedSource|TestClosedOuter|TestClosedBootstrapForwarding)", Race: true},
 			{Name: "node-bounds", Package: "./internal/node", Pattern: "^(TestClosedForwarding|TestDeclaredCapacity|TestEmergencyPressure|TestRendezvousPressure|TestClosedSourcePrefix)", Race: true},
 		}},

@@ -9,6 +9,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
 	"github.com/dianabuilds/ardents-network/internal/application/streamqualification"
+	hostingbudget "github.com/dianabuilds/ardents-network/internal/hosting"
 	"github.com/dianabuilds/ardents-network/internal/resource"
 )
 
@@ -49,7 +50,7 @@ func runStreamQualificationIdle(ctx context.Context, config StreamQualificationC
 	if err := config.Participant.validate(); err != nil {
 		return report, err
 	}
-	host, err := resource.OpenHosting(config.HostingRoot)
+	host, err := hostingbudget.Open(config.HostingRoot)
 	if err != nil {
 		return report, err
 	}
@@ -94,7 +95,7 @@ func runStreamQualificationIdle(ctx context.Context, config StreamQualificationC
 			return err
 		}
 		return observeStreamQualificationIdle(lifetime, window, &report,
-			func(sampleCtx context.Context, fresh bool) (resource.HostingSample, resource.Sample, error) {
+			func(sampleCtx context.Context, fresh bool) (hostingbudget.Sample, resource.Sample, error) {
 				if fresh {
 					return config.Measurements.SampleFresh(sampleCtx, host)
 				}
@@ -108,9 +109,9 @@ func runStreamQualificationIdle(ctx context.Context, config StreamQualificationC
 // window. Cancel the 1e9 scale against the day's nanoseconds before dividing:
 // this retains floor(window*1e9/day)+1, including its extra byte at exact
 // multiples, without overflow or loss of subsecond duration precision.
-func streamQualificationIdleTraffic(window time.Duration) (work, termination resource.HostingTraffic) {
+func streamQualificationIdleTraffic(window time.Duration) (work, termination hostingbudget.Traffic) {
 	proportional := uint64(window)/uint64(24*time.Hour/time.Second) + 1
-	return resource.HostingTraffic{Tx: proportional, Rx: proportional}, resource.HostingTraffic{Tx: 8 << 20, Rx: 8 << 20}
+	return hostingbudget.Traffic{Tx: proportional, Rx: proportional}, hostingbudget.Traffic{Tx: 8 << 20, Rx: 8 << 20}
 }
 
 // observeStreamQualificationIdle brackets fresh counter reads conservatively:
@@ -119,25 +120,25 @@ func streamQualificationIdleTraffic(window time.Duration) (work, termination res
 // observation callback can enlarge the denominator. The wall timestamps remain
 // the Hosting continuity owner's observations and grant no elapsed-time proof.
 func observeStreamQualificationIdle(ctx context.Context, window time.Duration, report *StreamQualificationIdleReport,
-	read func(context.Context, bool) (resource.HostingSample, resource.Sample, error),
+	read func(context.Context, bool) (hostingbudget.Sample, resource.Sample, error),
 	observe func(context.Context, StreamQualificationEvent) error, now func() time.Time) error {
 	origin := now()
 	var firstFinished time.Time
-	sample := func(fresh bool, first bool) (resource.HostingSample, time.Time, error) {
+	sample := func(fresh bool, first bool) (hostingbudget.Sample, time.Time, error) {
 		began := now()
 		hostSample, usage, err := read(ctx, fresh)
 		finished := now()
 		if err != nil {
-			return resource.HostingSample{}, began, err
+			return hostingbudget.Sample{}, began, err
 		}
 		if first {
 			firstFinished = finished
 		}
 		if err := observe(ctx, StreamQualificationEvent{Kind: "resource-sample", Elapsed: began.Sub(origin), Host: &hostSample, Usage: &usage}); err != nil {
-			return resource.HostingSample{}, began, err
+			return hostingbudget.Sample{}, began, err
 		}
 		if hostSample.Observation.Drain {
-			return resource.HostingSample{}, began, errors.New("NET-32 hosting allowance requires drain")
+			return hostingbudget.Sample{}, began, errors.New("NET-32 hosting allowance requires drain")
 		}
 		report.Samples++
 		return hostSample, began, nil

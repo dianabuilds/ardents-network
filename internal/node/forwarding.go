@@ -7,11 +7,11 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/admission/spending"
+	hostingbudget "github.com/dianabuilds/ardents-network/internal/hosting"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/node/authority"
 	nodeforwarding "github.com/dianabuilds/ardents-network/internal/node/forwarding"
 	"github.com/dianabuilds/ardents-network/internal/node/hosting"
-	"github.com/dianabuilds/ardents-network/internal/resource"
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	routecarrier "github.com/dianabuilds/ardents-network/internal/route/carrier"
@@ -31,8 +31,8 @@ type ClosedForwardingProfile struct {
 	// address for this forwarding Node's State-selected next Carrier. It cannot
 	// change the selected Node identity, key, duty, profile, or TLS verification.
 	CarrierRelayEndpoint string
-	AdmissionTraffic     resource.HostingTraffic
-	TerminationTraffic   resource.HostingTraffic
+	AdmissionTraffic     hostingbudget.Traffic
+	TerminationTraffic   hostingbudget.Traffic
 	host                 closedHostingHandle
 }
 

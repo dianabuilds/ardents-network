@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/application/streamqualification"
+	hostingbudget "github.com/dianabuilds/ardents-network/internal/hosting"
 	"github.com/dianabuilds/ardents-network/internal/resource"
 	"github.com/dianabuilds/ardents-network/internal/service/targetlink"
 )
@@ -18,7 +19,7 @@ import (
 type Event struct {
 	Artifact *Artifact
 	Elapsed  time.Duration
-	Host     *resource.HostingSample
+	Host     *hostingbudget.Sample
 	Usage    *resource.Sample
 	Kind     string
 	Link     string
@@ -90,7 +91,7 @@ func RunScenario(ctx context.Context, scenario Scenario) (report streamqualifica
 	} else if scenario.Link != "" {
 		return report, errors.New("qualification Publisher does not accept a destination")
 	}
-	host, err := resource.OpenHosting(scenario.HostingRoot)
+	host, err := hostingbudget.Open(scenario.HostingRoot)
 	if err != nil {
 		return report, err
 	}
@@ -101,7 +102,7 @@ func RunScenario(ctx context.Context, scenario Scenario) (report streamqualifica
 	// this whole owner before any qualification or network effect. The shared
 	// ledger charges all roles and processes against the same installed period.
 	work := uint64(schedule.OpenConnections) * (64 << 20) * 2
-	reservation, err := host.Reserve(lifetime, resource.HostingTraffic{Tx: work, Rx: work}, resource.HostingTraffic{Tx: 8 << 20, Rx: 8 << 20}, time.Now().Add(20*time.Minute))
+	reservation, err := host.Reserve(lifetime, hostingbudget.Traffic{Tx: work, Rx: work}, hostingbudget.Traffic{Tx: 8 << 20, Rx: 8 << 20}, time.Now().Add(20*time.Minute))
 	if err != nil {
 		return report, err
 	}

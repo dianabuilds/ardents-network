@@ -5,8 +5,6 @@ import (
 	"errors"
 	"testing"
 	"time"
-
-	"github.com/dianabuilds/ardents-network/internal/resource"
 )
 
 func TestSharedHostingObservationFreshness(t *testing.T) {
@@ -29,16 +27,16 @@ func TestSharedHostingObservationFreshness(t *testing.T) {
 			now := base.Add(900 * time.Millisecond)
 			reads := 0
 			sampler := &sharedClosedHostingSampler{}
-			read := func(_ context.Context, age time.Duration) (resource.HostingSample, error) {
+			read := func(_ context.Context, age time.Duration) (Sample, error) {
 				reads++
 				if age > time.Second {
-					return resource.HostingSample{}, errors.New("invalid freshness")
+					return Sample{}, errors.New("invalid freshness")
 				}
 				at := base
 				if reads > 1 {
 					at = now
 				}
-				return resource.HostingSample{At: at, Policy: resource.HostingPolicy{Start: base.Add(-time.Hour), End: base.Add(test.end)}, Observation: resource.HostingObservation{Drain: !now.Before(base.Add(test.end))}}, nil
+				return Sample{At: at, Policy: Policy{Start: base.Add(-time.Hour), End: base.Add(test.end)}, Observation: Observation{Drain: !now.Before(base.Add(test.end))}}, nil
 			}
 			if _, err := sampler.sample(t.Context(), time.Second, func() time.Time { return now }, read); err != nil {
 				t.Fatal(err)
@@ -83,13 +81,13 @@ func TestSharedHostingJoinedFlightRechecksCaller(t *testing.T) {
 			failure := errors.New("measurement unavailable")
 			clock := func() time.Time { return base.Add(900 * time.Millisecond) }
 			go func() {
-				_, err := sampler.sample(t.Context(), time.Second, clock, func(context.Context, time.Duration) (resource.HostingSample, error) {
+				_, err := sampler.sample(t.Context(), time.Second, clock, func(context.Context, time.Duration) (Sample, error) {
 					close(started)
 					<-finish
 					if test.fail {
-						return resource.HostingSample{}, failure
+						return Sample{}, failure
 					}
-					return resource.HostingSample{At: base, Policy: resource.HostingPolicy{Start: base.Add(-time.Hour), End: base.Add(test.end)}}, nil
+					return Sample{At: base, Policy: Policy{Start: base.Add(-time.Hour), End: base.Add(test.end)}}, nil
 				})
 				leaderDone <- err
 			}()
@@ -106,12 +104,12 @@ func TestSharedHostingJoinedFlightRechecksCaller(t *testing.T) {
 						signaled = true
 					}
 					return clock()
-				}, func(_ context.Context, age time.Duration) (resource.HostingSample, error) {
+				}, func(_ context.Context, age time.Duration) (Sample, error) {
 					reads++
 					if age != test.age {
-						return resource.HostingSample{}, errors.New("waiter freshness changed")
+						return Sample{}, errors.New("waiter freshness changed")
 					}
-					return resource.HostingSample{At: clock(), Policy: resource.HostingPolicy{Start: base.Add(-time.Hour), End: base.Add(time.Hour)}}, nil
+					return Sample{At: clock(), Policy: Policy{Start: base.Add(-time.Hour), End: base.Add(time.Hour)}}, nil
 				})
 				waiterDone <- err
 			}()

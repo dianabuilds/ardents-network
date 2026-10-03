@@ -5,8 +5,8 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/admission"
 	"time"
 
+	hostingbudget "github.com/dianabuilds/ardents-network/internal/hosting"
 	"github.com/dianabuilds/ardents-network/internal/node/authority"
-	"github.com/dianabuilds/ardents-network/internal/resource"
 	"github.com/dianabuilds/ardents-network/internal/route"
 )
 
@@ -30,8 +30,8 @@ func ControlAdmissionVerifier(source authority.Source, now func() time.Time, rec
 		default:
 			return route.ClosedAdmissionApproval{}, errors.New("control duty cannot admit forwarding class")
 		}
-		release, err := Reserve(host, resource.HostingTraffic{Tx: 2 * admitted, Rx: 2 * admitted},
-			resource.HostingTraffic{Tx: 16 << 10, Rx: 16 << 10}, input.Deadline)
+		release, err := Reserve(host, hostingbudget.Traffic{Tx: 2 * admitted, Rx: 2 * admitted},
+			hostingbudget.Traffic{Tx: 16 << 10, Rx: 16 << 10}, input.Deadline)
 		if err != nil {
 			return route.ClosedAdmissionApproval{}, err
 		}

@@ -1,11 +1,14 @@
 //go:build !linux
 
-package resource
+package hosting
 
 import (
 	"context"
+	"errors"
 	"os"
 )
+
+var errUnsupportedPlatform = errors.New("hosting is unsupported on this platform")
 
 type hostingLease struct{}
 

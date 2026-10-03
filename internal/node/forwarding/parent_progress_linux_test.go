@@ -16,8 +16,8 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/admission/spending"
+	hostingbudget "github.com/dianabuilds/ardents-network/internal/hosting"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
-	"github.com/dianabuilds/ardents-network/internal/resource"
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	"github.com/dianabuilds/ardents-network/internal/route/carrier"
@@ -56,7 +56,7 @@ func TestClosedForwardingParentReaderServesControlWhileOpenBlocks(t *testing.T) 
 	fixture.config.Current = func() (state.NodeDuty, error) { return fixture.snapshot, nil }
 	fixture.config.CurrentClosedProfile = func() (state.ClosedProfileView, bool) { return fixture.view.Profile, true }
 	host := &cleanupFailureHost{}
-	fixture.config.ClosedForwarding = ClosedForwardingProfile{Certificate: serverCertificate, AdmissionTraffic: resource.HostingTraffic{Tx: 1}, TerminationTraffic: resource.HostingTraffic{Tx: 1}}
+	fixture.config.ClosedForwarding = ClosedForwardingProfile{Certificate: serverCertificate, AdmissionTraffic: hostingbudget.Traffic{Tx: 1}, TerminationTraffic: hostingbudget.Traffic{Tx: 1}}
 	receiver, ok := closedRouteReceiver(fixture.config, fixture.snapshot, ardp.PurposeForwarding, now)
 	if !ok {
 		t.Fatal("receiver unavailable")
@@ -326,7 +326,7 @@ func testClosedForwardingParentReaderServesIndependentChildWhileWriteBlocks(t *t
 	fixture.config.Current = func() (state.NodeDuty, error) { return fixture.snapshot, nil }
 	fixture.config.CurrentClosedProfile = func() (state.ClosedProfileView, bool) { return fixture.view.Profile, true }
 	host := &cleanupFailureHost{}
-	fixture.config.ClosedForwarding = ClosedForwardingProfile{Certificate: serverCertificate, AdmissionTraffic: resource.HostingTraffic{Tx: 1}, TerminationTraffic: resource.HostingTraffic{Tx: 1}}
+	fixture.config.ClosedForwarding = ClosedForwardingProfile{Certificate: serverCertificate, AdmissionTraffic: hostingbudget.Traffic{Tx: 1}, TerminationTraffic: hostingbudget.Traffic{Tx: 1}}
 	receiver, ok := closedRouteReceiver(fixture.config, fixture.snapshot, ardp.PurposeForwarding, now)
 	if !ok {
 		t.Fatal("receiver unavailable")

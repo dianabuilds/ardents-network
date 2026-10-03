@@ -10,13 +10,13 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/application/streamqualification"
 	"github.com/dianabuilds/ardents-network/internal/endpoint"
-	"github.com/dianabuilds/ardents-network/internal/resource"
+	hostingbudget "github.com/dianabuilds/ardents-network/internal/hosting"
 )
 
 type resourceObservation struct {
 	at          time.Duration
 	memory, cpu uint64
-	host        resource.HostingSample
+	host        hostingbudget.Sample
 }
 type resourceMeasurements struct{ samples []resourceObservation }
 
@@ -42,14 +42,14 @@ type ownerNetworkVerdict struct {
 func (series *resourceMeasurements) observe(event endpoint.StreamQualificationEvent) {
 	if event.Kind == "resource-sample" && event.Host != nil && event.Usage != nil {
 		host := *event.Host
-		host.Interfaces = append([]resource.HostingInterfaceSample(nil), event.Host.Interfaces...)
+		host.Interfaces = append([]hostingbudget.InterfaceSample(nil), event.Host.Interfaces...)
 		series.samples = append(series.samples, resourceObservation{
 			at: event.Elapsed, memory: event.Usage.RSSBytes, cpu: event.Usage.CPUUsageUsec, host: host,
 		})
 	}
 }
 
-func sameHostingPolicy(left, right resource.HostingPolicy) bool {
+func sameHostingPolicy(left, right hostingbudget.Policy) bool {
 	return left.Provider == right.Provider && left.Start.Equal(right.Start) && left.End.Equal(right.End) &&
 		left.Unit == right.Unit && left.Quantity == right.Quantity && left.Directions == right.Directions &&
 		left.InitialUsedBytes == right.InitialUsedBytes && left.LowWatermarkBytes == right.LowWatermarkBytes &&
@@ -97,14 +97,14 @@ func evaluateOwnerNetwork(series []*resourceMeasurements, reports []streamqualif
 	}
 	verdict.Started, verdict.Stopped = started, stopped
 	verdict.UsefulTx, verdict.UsefulRx = usefulTx, usefulRx
-	var samples []resource.HostingSample
+	var samples []hostingbudget.Sample
 	for _, measurements := range series {
 		for _, sample := range measurements.samples {
 			samples = append(samples, sample.host)
 		}
 	}
 	sort.Slice(samples, func(i, j int) bool { return samples[i].At.Before(samples[j].At) })
-	var before, after *resource.HostingSample
+	var before, after *hostingbudget.Sample
 	for index := range samples {
 		sample := &samples[index]
 		if !sample.At.After(started) {
@@ -185,7 +185,7 @@ func evaluateOwnerNetwork(series []*resourceMeasurements, reports []streamqualif
 	return verdict, criteria
 }
 
-func directionalCarrierP95(samples []resource.HostingSample, before resource.HostingSample, started, stopped time.Time, sender bool) (float64, int, bool) {
+func directionalCarrierP95(samples []hostingbudget.Sample, before hostingbudget.Sample, started, stopped time.Time, sender bool) (float64, int, bool) {
 	prior, ok := directionalCounter(before, sender)
 	if !ok {
 		return 0, 0, false
@@ -216,7 +216,7 @@ func directionalCarrierP95(samples []resource.HostingSample, before resource.Hos
 	return rates[(95*len(rates)+99)/100-1], len(rates), complete
 }
 
-func directionalCounter(sample resource.HostingSample, sender bool) (uint64, bool) {
+func directionalCounter(sample hostingbudget.Sample, sender bool) (uint64, bool) {
 	var total uint64
 	for _, counter := range sample.Interfaces {
 		value := counter.Rx

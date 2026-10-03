@@ -14,8 +14,8 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/admission/spending"
+	hostingbudget "github.com/dianabuilds/ardents-network/internal/hosting"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
-	"github.com/dianabuilds/ardents-network/internal/resource"
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	routecarrier "github.com/dianabuilds/ardents-network/internal/route/carrier"
@@ -34,7 +34,7 @@ func TestClosedForwardingStopDrainsIdleAuthenticatedCarrier(t *testing.T) {
 	fixture.config.now = func() time.Time { return fixture.now }
 	fixture.config.Current = func() (state.NodeDuty, error) { return fixture.snapshot, nil }
 	fixture.config.CurrentClosedProfile = func() (state.ClosedProfileView, bool) { return fixture.view.Profile, true }
-	fixture.config.ClosedForwarding = ClosedForwardingProfile{Root: filepath.Join(t.TempDir(), "spends"), Certificate: certificate, ConnectionLimit: 2, DrainTimeout: 2 * time.Second, AdmissionTraffic: resource.HostingTraffic{Tx: 1}, TerminationTraffic: resource.HostingTraffic{Tx: 1}, HostingRoot: hostingFixtureRoot(t)}
+	fixture.config.ClosedForwarding = ClosedForwardingProfile{Root: filepath.Join(t.TempDir(), "spends"), Certificate: certificate, ConnectionLimit: 2, DrainTimeout: 2 * time.Second, AdmissionTraffic: hostingbudget.Traffic{Tx: 1}, TerminationTraffic: hostingbudget.Traffic{Tx: 1}, HostingRoot: hostingFixtureRoot(t)}
 	if err := os.MkdirAll(fixture.config.ClosedForwarding.Root, 0o700); err != nil {
 		t.Fatal(err)
 	}
@@ -112,7 +112,7 @@ func TestClosedForwardingStartRefusesAmbiguousSpendJournal(t *testing.T) {
 	fixture.config.CurrentClosedProfile = func() (state.ClosedProfileView, bool) { return fixture.view.Profile, true }
 	root := filepath.Join(t.TempDir(), "spends")
 	fixture.config.ClosedForwarding = ClosedForwardingProfile{Root: root, Certificate: certificate, ConnectionLimit: 2, DrainTimeout: time.Second,
-		AdmissionTraffic: resource.HostingTraffic{Tx: 1}, TerminationTraffic: resource.HostingTraffic{Tx: 1}, HostingRoot: hostingFixtureRoot(t)}
+		AdmissionTraffic: hostingbudget.Traffic{Tx: 1}, TerminationTraffic: hostingbudget.Traffic{Tx: 1}, HostingRoot: hostingFixtureRoot(t)}
 	if err := os.MkdirAll(root, 0o700); err != nil {
 		t.Fatal(err)
 	}
@@ -174,7 +174,7 @@ func TestClosedForwardingServerRefusesAfterJournalMutationFailure(t *testing.T) 
 	fixture.config.CurrentClosedProfile = func() (state.ClosedProfileView, bool) { return fixture.view.Profile, true }
 	root := filepath.Join(t.TempDir(), "spends")
 	fixture.config.ClosedForwarding = ClosedForwardingProfile{Root: root, Certificate: serverCertificate, ConnectionLimit: 2, DrainTimeout: time.Second,
-		AdmissionTraffic: resource.HostingTraffic{Tx: 1}, TerminationTraffic: resource.HostingTraffic{Tx: 1}, HostingRoot: hostingFixtureRoot(t)}
+		AdmissionTraffic: hostingbudget.Traffic{Tx: 1}, TerminationTraffic: hostingbudget.Traffic{Tx: 1}, HostingRoot: hostingFixtureRoot(t)}
 	if err := os.MkdirAll(root, 0o700); err != nil {
 		t.Fatal(err)
 	}

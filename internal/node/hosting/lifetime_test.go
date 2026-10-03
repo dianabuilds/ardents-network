@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/resource"
+	hostingbudget "github.com/dianabuilds/ardents-network/internal/hosting"
 )
 
 func TestLifetimeDefersCloseUntilJoined(t *testing.T) {
@@ -69,11 +69,11 @@ type lifetimeHost struct {
 	err    error
 }
 
-func (*lifetimeHost) Sample(context.Context, time.Duration) (resource.HostingSample, error) {
-	return resource.HostingSample{}, nil
+func (*lifetimeHost) Sample(context.Context, time.Duration) (hostingbudget.Sample, error) {
+	return hostingbudget.Sample{}, nil
 }
 
-func (*lifetimeHost) Reserve(context.Context, resource.HostingTraffic, resource.HostingTraffic, time.Time) (Reservation, error) {
+func (*lifetimeHost) Reserve(context.Context, hostingbudget.Traffic, hostingbudget.Traffic, time.Time) (Reservation, error) {
 	return nil, nil
 }
 

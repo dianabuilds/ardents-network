@@ -9,10 +9,10 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/admission/spending"
+	hostingbudget "github.com/dianabuilds/ardents-network/internal/hosting"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/node/authority"
 	"github.com/dianabuilds/ardents-network/internal/node/hosting"
-	"github.com/dianabuilds/ardents-network/internal/resource"
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	"github.com/dianabuilds/ardents-network/internal/route/carrier"
@@ -20,8 +20,8 @@ import (
 
 type ClosedForwardingProfile struct {
 	Certificate        tls.Certificate
-	AdmissionTraffic   resource.HostingTraffic
-	TerminationTraffic resource.HostingTraffic
+	AdmissionTraffic   hostingbudget.Traffic
+	TerminationTraffic hostingbudget.Traffic
 }
 
 type forwardingFixtureConfig struct {

@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/application/streamqualification"
-	"github.com/dianabuilds/ardents-network/internal/resource"
+	hostingbudget "github.com/dianabuilds/ardents-network/internal/hosting"
 )
 
 func TestResourceVerdictRequiresWholeMonotonicWindow(t *testing.T) {
@@ -54,7 +54,7 @@ func TestResourceVerdictRequiresWholeMonotonicWindow(t *testing.T) {
 
 func TestOwnerNetworkVerdictAggregatesParticipantsAndReconcilesLedger(t *testing.T) {
 	origin := time.Unix(100, 0)
-	policy := resource.HostingPolicy{
+	policy := hostingbudget.Policy{
 		Provider: "provider", Start: origin.Add(-time.Hour), End: origin.Add(time.Hour), Unit: "GiB", Quantity: 1,
 		Directions: "tx", Interfaces: []string{"eth0"}, LowWatermarkBytes: 1,
 	}
@@ -62,10 +62,10 @@ func TestOwnerNetworkVerdictAggregatesParticipantsAndReconcilesLedger(t *testing
 		{Started: origin, Stopped: origin.Add(10 * time.Minute), Streams: []streamqualification.StreamMeasurement{{ID: 1, Tx: 400}}},
 		{Started: origin.Add(time.Second), Stopped: origin.Add(10 * time.Minute), Streams: []streamqualification.StreamMeasurement{{ID: 3, Tx: 400}}},
 	}
-	host := func(at time.Time, tx, used uint64) resource.HostingSample {
-		return resource.HostingSample{
-			At: at, Policy: policy, Boot: "boot", Interfaces: []resource.HostingInterfaceSample{{Name: "eth0", Index: 2, Tx: tx}},
-			Observation: resource.HostingObservation{UsedBytes: used},
+	host := func(at time.Time, tx, used uint64) hostingbudget.Sample {
+		return hostingbudget.Sample{
+			At: at, Policy: policy, Boot: "boot", Interfaces: []hostingbudget.InterfaceSample{{Name: "eth0", Index: 2, Tx: tx}},
+			Observation: hostingbudget.Observation{UsedBytes: used},
 		}
 	}
 	series := []*resourceMeasurements{{}, {}}

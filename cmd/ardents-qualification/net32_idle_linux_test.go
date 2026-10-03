@@ -8,7 +8,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/application/streamqualification"
 	"github.com/dianabuilds/ardents-network/internal/endpoint"
-	"github.com/dianabuilds/ardents-network/internal/resource"
+	hostingbudget "github.com/dianabuilds/ardents-network/internal/hosting"
 )
 
 func TestNET32ProjectionCannotPassAfterForwardWallStep(t *testing.T) {
@@ -20,10 +20,10 @@ func TestNET32ProjectionCannotPassAfterForwardWallStep(t *testing.T) {
 			}
 			series := &resourceMeasurements{}
 			for second := 0; second <= 600; second++ {
-				host := resource.HostingSample{
+				host := hostingbudget.Sample{
 					At: started.Add(time.Duration(second) * time.Second), Boot: "same-boot",
-					Policy:     resource.HostingPolicy{Directions: "tx+rx"},
-					Interfaces: []resource.HostingInterfaceSample{{Name: "eth0", Index: 2}},
+					Policy:     hostingbudget.Policy{Directions: "tx+rx"},
+					Interfaces: []hostingbudget.InterfaceSample{{Name: "eth0", Index: 2}},
 				}
 				if second == 600 {
 					host.At = report.Stopped

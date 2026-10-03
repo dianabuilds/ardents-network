@@ -1,4 +1,4 @@
-package resource
+package hosting
 
 import (
 	"errors"
@@ -6,10 +6,10 @@ import (
 	"time"
 )
 
-// HostingPolicy is an operator-supplied billing period. Quantity and Unit retain
+// Policy is an operator-supplied billing period. Quantity and Unit retain
 // the provider's original denomination; InitialUsedBytes is its consumed floor
 // at initialization, not a new allowance for each Ardents process.
-type HostingPolicy struct {
+type Policy struct {
 	Provider          string    `json:"provider"`
 	Start             time.Time `json:"start"`
 	End               time.Time `json:"end"`
@@ -21,17 +21,17 @@ type HostingPolicy struct {
 	LowWatermarkBytes uint64    `json:"low_watermark_bytes"`
 }
 
-// HostingTraffic keeps ingress and egress separate until the actual provider's
+// Traffic keeps ingress and egress separate until the actual provider's
 // counted directions are applied. It describes an upper reservation, not a
 // measurement of useful Application bytes or an admission token's authority.
-type HostingTraffic struct {
+type Traffic struct {
 	Tx uint64 `json:"tx"`
 	Rx uint64 `json:"rx"`
 }
 
-// HostingObservation reports a shared host's durable period accounting.
-// Resource decides pressure; the consuming Node or Endpoint owns shutdown.
-type HostingObservation struct {
+// Observation reports a shared host's durable period accounting.
+// Hosting decides budget pressure; the consuming Node or Endpoint owns shutdown.
+type Observation struct {
 	UsedBytes      uint64
 	ReservedBytes  uint64
 	RemainingBytes uint64
@@ -39,7 +39,7 @@ type HostingObservation struct {
 	Drain          bool
 }
 
-func (policy HostingPolicy) limit() (uint64, error) {
+func (policy Policy) limit() (uint64, error) {
 	units := map[string]uint64{"B": 1, "MB": 1000000, "MiB": 1 << 20, "GB": 1000000000, "GiB": 1 << 30, "TB": 1000000000000, "TiB": 1 << 40}
 	unit, found := units[policy.Unit]
 	if !found || policy.Quantity == 0 || policy.Quantity > math.MaxUint64/unit {
@@ -69,7 +69,7 @@ func (policy HostingPolicy) limit() (uint64, error) {
 	return limit, nil
 }
 
-func (policy HostingPolicy) cost(traffic HostingTraffic) (uint64, error) {
+func (policy Policy) cost(traffic Traffic) (uint64, error) {
 	switch policy.Directions {
 	case "tx":
 		return traffic.Tx, nil
@@ -99,7 +99,7 @@ type hostingReading struct {
 // process has no reservation handle with which to refund an ambiguous old job.
 type hostingState struct {
 	Schema   string         `json:"schema"`
-	Policy   HostingPolicy  `json:"policy"`
+	Policy   Policy         `json:"policy"`
 	Used     uint64         `json:"used"`
 	Reserved uint64         `json:"reserved"`
 	Observed time.Time      `json:"observed"`
@@ -110,7 +110,7 @@ func (state *hostingState) observe(reading hostingReading, now time.Time) error 
 	if now.Before(state.Observed) || reading.Boot == "" || reading.Boot != state.Reading.Boot || len(reading.Interfaces) != len(state.Reading.Interfaces) {
 		return errors.New("hosting observation continuity is unavailable")
 	}
-	var total HostingTraffic
+	var total Traffic
 	for index, prior := range state.Reading.Interfaces {
 		current := reading.Interfaces[index]
 		if current.Name != prior.Name || current.Index != prior.Index || current.Tx < prior.Tx || current.Rx < prior.Rx ||
@@ -129,9 +129,9 @@ func (state *hostingState) observe(reading hostingReading, now time.Time) error 
 	return nil
 }
 
-func (state hostingState) observation(now time.Time) HostingObservation {
+func (state hostingState) observation(now time.Time) Observation {
 	limit, err := state.Policy.limit()
-	result := HostingObservation{UsedBytes: state.Used, ReservedBytes: state.Reserved, Protect: true, Drain: true}
+	result := Observation{UsedBytes: state.Used, ReservedBytes: state.Reserved, Protect: true, Drain: true}
 	if err != nil || now.Before(state.Policy.Start) || !now.Before(state.Policy.End) || state.Used > limit || state.Reserved > limit-state.Used {
 		return result
 	}

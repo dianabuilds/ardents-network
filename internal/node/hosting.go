@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"time"
 
+	hostingbudget "github.com/dianabuilds/ardents-network/internal/hosting"
 	"github.com/dianabuilds/ardents-network/internal/node/hosting"
 	"github.com/dianabuilds/ardents-network/internal/resource"
 )
@@ -51,7 +52,7 @@ func (config *runtimeConfig) hostingPressure() (pressureLevel, error) {
 	config.hostingNext = now.Add(time.Second)
 	ctx, stop := context.WithTimeout(context.Background(), time.Second)
 	defer stop()
-	var observation resource.HostingObservation
+	var observation hostingbudget.Observation
 	var err error
 	if installed, ok := config.host.(*hosting.Ledger); ok {
 		sample, sampleErr := installed.Sample(ctx, time.Second)

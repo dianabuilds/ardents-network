@@ -5,6 +5,7 @@ import (
 	"crypto/ed25519"
 	"time"
 
+	hostingbudget "github.com/dianabuilds/ardents-network/internal/hosting"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/node/probe"
 	"github.com/dianabuilds/ardents-network/internal/resource"
@@ -65,7 +66,7 @@ type Config struct {
 // for its current lifetime; role packages receive narrower Config values.
 type runtimeConfig struct {
 	measurementOrigin time.Time
-	hostingSample     *resource.HostingSample
+	hostingSample     *hostingbudget.Sample
 	hostingUsage      resource.Sample
 	host              closedHostingHandle
 	cleanup           *dutyCleanup

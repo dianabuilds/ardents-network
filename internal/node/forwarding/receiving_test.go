@@ -10,9 +10,9 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/admission/spending"
+	hostingbudget "github.com/dianabuilds/ardents-network/internal/hosting"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/node/authority"
-	"github.com/dianabuilds/ardents-network/internal/resource"
 	"github.com/dianabuilds/ardents-network/internal/route"
 )
 
@@ -21,8 +21,8 @@ type startupHost struct {
 	err    error
 }
 
-func (*startupHost) Sample(context.Context, time.Duration) (resource.HostingSample, error) {
-	return resource.HostingSample{}, nil
+func (*startupHost) Sample(context.Context, time.Duration) (hostingbudget.Sample, error) {
+	return hostingbudget.Sample{}, nil
 }
 
 func (host *startupHost) Close() error {

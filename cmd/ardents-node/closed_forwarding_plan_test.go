@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/resource"
+	hostingbudget "github.com/dianabuilds/ardents-network/internal/hosting"
 	"github.com/dianabuilds/ardents-network/internal/route/carrier"
 )
 
@@ -119,7 +119,7 @@ func forwardingNodePlan(t *testing.T) nodePlan {
 		},
 		ClosedProfileAuthority: strings.Repeat("12", 32),
 		ClosedListenOverride:   "172.17.0.1:49127",
-		ClosedForwarding:       &closedForwardingPlan{Root: t.TempDir(), ConnectionLimit: 2, DrainTimeoutMS: 2000, HostingRoot: t.TempDir(), CarrierRelayEndpoint: "198.51.100.7:49128", AdmissionTraffic: resource.HostingTraffic{Tx: 1}, TerminationTraffic: resource.HostingTraffic{Tx: 1}},
+		ClosedForwarding:       &closedForwardingPlan{Root: t.TempDir(), ConnectionLimit: 2, DrainTimeoutMS: 2000, HostingRoot: t.TempDir(), CarrierRelayEndpoint: "198.51.100.7:49128", AdmissionTraffic: hostingbudget.Traffic{Tx: 1}, TerminationTraffic: hostingbudget.Traffic{Tx: 1}},
 	}
 }
 func writeForwardingNodePlan(t *testing.T, plan nodePlan) string {

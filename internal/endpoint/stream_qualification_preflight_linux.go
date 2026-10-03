@@ -10,8 +10,8 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/application/streamqualification"
 	"github.com/dianabuilds/ardents-network/internal/endpoint/worker"
+	hostingbudget "github.com/dianabuilds/ardents-network/internal/hosting"
 	"github.com/dianabuilds/ardents-network/internal/network/duty"
-	"github.com/dianabuilds/ardents-network/internal/resource"
 )
 
 // StreamQualificationPreflight identifies the State-owned data path retained
@@ -63,7 +63,7 @@ func PreflightStreamQualification(ctx context.Context, config StreamQualificatio
 	if err := artifact.Verify(); err != nil {
 		return result, err
 	}
-	hosting, err := resource.OpenHosting(config.HostingRoot)
+	hosting, err := hostingbudget.Open(config.HostingRoot)
 	if err != nil {
 		return result, err
 	}

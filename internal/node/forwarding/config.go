@@ -7,9 +7,9 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/admission/spending"
+	hostingbudget "github.com/dianabuilds/ardents-network/internal/hosting"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/node/authority"
-	"github.com/dianabuilds/ardents-network/internal/resource"
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/carrier"
 )
@@ -27,7 +27,7 @@ type Profile struct {
 // Node opens it and supplies the class-2 reservation policy; forwarding closes
 // the lease after its workers and sessions have joined.
 type Host interface {
-	Sample(context.Context, time.Duration) (resource.HostingSample, error)
+	Sample(context.Context, time.Duration) (hostingbudget.Sample, error)
 	Close() error
 }
 

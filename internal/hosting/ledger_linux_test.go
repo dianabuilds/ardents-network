@@ -1,6 +1,6 @@
 //go:build linux
 
-package resource
+package hosting
 
 import (
 	"context"
@@ -18,7 +18,7 @@ func hostingFixture(t *testing.T) (string, *hostingReading, *time.Time) {
 	now := time.Date(2026, 9, 14, 0, 0, 0, 0, time.UTC)
 	reading := &hostingReading{Boot: "boot-one", Interfaces: []hostingInterface{{Name: "eth0", Index: 2, Tx: 500, Rx: 800}}}
 	root := filepath.Join(t.TempDir(), "hosting")
-	policy := HostingPolicy{Provider: "declared fixture provider", Start: now.Add(-time.Hour), End: now.Add(time.Hour),
+	policy := Policy{Provider: "declared fixture provider", Start: now.Add(-time.Hour), End: now.Add(time.Hour),
 		Unit: "B", Quantity: 1000, Directions: "tx+rx", Interfaces: []string{"eth0"}, InitialUsedBytes: 100, LowWatermarkBytes: 100}
 	if err := initializeHosting(root, policy, *reading, now); err != nil {
 		t.Fatal(err)
@@ -26,7 +26,7 @@ func hostingFixture(t *testing.T) (string, *hostingReading, *time.Time) {
 	return root, reading, &now
 }
 
-func openHostingFixture(t *testing.T, root string, reading *hostingReading, now *time.Time) *Hosting {
+func openHostingFixture(t *testing.T, root string, reading *hostingReading, now *time.Time) *Ledger {
 	t.Helper()
 	owner, err := openHosting(root, func([]string) (hostingReading, error) { return *reading, nil }, func() time.Time { return *now })
 	if err != nil {
@@ -46,7 +46,7 @@ func TestHostingFreshSampleRefusesBackwardWallObservation(t *testing.T) {
 	}
 	*now = now.Add(-time.Second)
 	if _, err := owner.Sample(t.Context(), 0); err == nil {
-		t.Fatal("backward Hosting wall observation accepted")
+		t.Fatal("backward Ledger wall observation accepted")
 	}
 }
 
@@ -54,14 +54,14 @@ func TestHostingReservationsShareOneDurablePeriod(t *testing.T) {
 	root, reading, now := hostingFixture(t)
 	first := openHostingFixture(t, root, reading, now)
 	second := openHostingFixture(t, root, reading, now)
-	held, err := first.Reserve(t.Context(), HostingTraffic{Tx: 100, Rx: 200}, HostingTraffic{Tx: 10, Rx: 20}, now.Add(time.Minute))
+	held, err := first.Reserve(t.Context(), Traffic{Tx: 100, Rx: 200}, Traffic{Tx: 10, Rx: 20}, now.Add(time.Minute))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := second.Reserve(t.Context(), HostingTraffic{Tx: 600}, HostingTraffic{Rx: 100}, now.Add(time.Minute)); err == nil {
+	if _, err := second.Reserve(t.Context(), Traffic{Tx: 600}, Traffic{Rx: 100}, now.Add(time.Minute)); err == nil {
 		t.Fatal("another owner multiplied the host allowance")
 	}
-	other, err := second.Reserve(t.Context(), HostingTraffic{Tx: 220}, HostingTraffic{Rx: 30}, now.Add(time.Minute))
+	other, err := second.Reserve(t.Context(), Traffic{Tx: 220}, Traffic{Rx: 30}, now.Add(time.Minute))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -245,7 +245,7 @@ func TestHostingSampleLocalGateHonorsContext(t *testing.T) {
 func TestHostingReopenDoesNotRefundAbandonedWork(t *testing.T) {
 	root, reading, now := hostingFixture(t)
 	first := openHostingFixture(t, root, reading, now)
-	if _, err := first.Reserve(t.Context(), HostingTraffic{Tx: 200}, HostingTraffic{Rx: 100}, now.Add(time.Minute)); err != nil {
+	if _, err := first.Reserve(t.Context(), Traffic{Tx: 200}, Traffic{Rx: 100}, now.Add(time.Minute)); err != nil {
 		t.Fatal(err)
 	}
 	if err := first.Close(); err != nil {
@@ -261,7 +261,7 @@ func TestHostingReopenDoesNotRefundAbandonedWork(t *testing.T) {
 	if err != nil || !got.Drain || got.ReservedBytes != 300 {
 		t.Fatalf("period expiry reset accounting: %+v / %v", got, err)
 	}
-	if _, err := reopened.Reserve(t.Context(), HostingTraffic{Tx: 1}, HostingTraffic{Rx: 1}, now.Add(time.Second)); err == nil {
+	if _, err := reopened.Reserve(t.Context(), Traffic{Tx: 1}, Traffic{Rx: 1}, now.Add(time.Second)); err == nil {
 		t.Fatal("expired period admitted new work")
 	}
 }
@@ -270,7 +270,7 @@ func TestHostingStartsAnAlreadyExhaustedPeriodOnlyToDrain(t *testing.T) {
 	now := time.Date(2026, 9, 14, 0, 0, 0, 0, time.UTC)
 	reading := hostingReading{Boot: "boot-one", Interfaces: []hostingInterface{{Name: "eth0", Index: 2, Tx: 500, Rx: 800}}}
 	root := filepath.Join(t.TempDir(), "hosting")
-	policy := HostingPolicy{Provider: "declared fixture provider", Start: now.Add(-time.Hour), End: now.Add(time.Hour),
+	policy := Policy{Provider: "declared fixture provider", Start: now.Add(-time.Hour), End: now.Add(time.Hour),
 		Unit: "B", Quantity: 1000, Directions: "tx+rx", Interfaces: []string{"eth0"}, InitialUsedBytes: 1000, LowWatermarkBytes: 100}
 	if err := initializeHosting(root, policy, reading, now); err != nil {
 		t.Fatalf("exhausted provider period must retain its drain floor: %v", err)
@@ -280,7 +280,7 @@ func TestHostingStartsAnAlreadyExhaustedPeriodOnlyToDrain(t *testing.T) {
 	if err != nil || !got.Protect || !got.Drain || got.RemainingBytes != 0 {
 		t.Fatalf("exhausted provider period must drain without a reset: %+v / %v", got, err)
 	}
-	if _, err := owner.Reserve(t.Context(), HostingTraffic{Tx: 1}, HostingTraffic{Rx: 1}, now.Add(time.Minute)); err == nil {
+	if _, err := owner.Reserve(t.Context(), Traffic{Tx: 1}, Traffic{Rx: 1}, now.Add(time.Minute)); err == nil {
 		t.Fatal("exhausted provider period admitted new work")
 	}
 }
@@ -321,7 +321,7 @@ func TestHostingCorruptStateIsNeverInitializedAgain(t *testing.T) {
 		_ = owner.Close()
 		t.Fatal("corrupt period reopened")
 	}
-	if err := initializeHosting(root, HostingPolicy{}, *reading, *now); err == nil {
+	if err := initializeHosting(root, Policy{}, *reading, *now); err == nil {
 		t.Fatal("existing corrupt period was reset")
 	}
 }
@@ -331,7 +331,7 @@ func TestHostingCancellationPreventsReservation(t *testing.T) {
 	owner := openHostingFixture(t, root, reading, now)
 	canceled, cancel := context.WithCancel(t.Context())
 	cancel()
-	if _, err := owner.Reserve(canceled, HostingTraffic{Tx: 100}, HostingTraffic{Rx: 20}, now.Add(time.Minute)); err == nil {
+	if _, err := owner.Reserve(canceled, Traffic{Tx: 100}, Traffic{Rx: 20}, now.Add(time.Minute)); err == nil {
 		t.Fatal("canceled work admitted")
 	}
 	got, err := owner.Observe(t.Context())
@@ -343,11 +343,11 @@ func TestHostingCancellationPreventsReservation(t *testing.T) {
 func TestHostingCanceledReleaseRetriesOnlyBeforeMutation(t *testing.T) {
 	root, reading, now := hostingFixture(t)
 	owner := openHostingFixture(t, root, reading, now)
-	first, err := owner.Reserve(t.Context(), HostingTraffic{Tx: 100}, HostingTraffic{Rx: 20}, now.Add(time.Minute))
+	first, err := owner.Reserve(t.Context(), Traffic{Tx: 100}, Traffic{Rx: 20}, now.Add(time.Minute))
 	if err != nil {
 		t.Fatal(err)
 	}
-	other, err := owner.Reserve(t.Context(), HostingTraffic{Tx: 50}, HostingTraffic{Rx: 10}, now.Add(time.Minute))
+	other, err := owner.Reserve(t.Context(), Traffic{Tx: 50}, Traffic{Rx: 10}, now.Add(time.Minute))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -391,15 +391,15 @@ func TestHostingCanceledReleaseRetriesOnlyBeforeMutation(t *testing.T) {
 func TestHostingReleaseAfterCallbackRefusalStaysUnresolved(t *testing.T) {
 	root, reading, now := hostingFixture(t)
 	owner := openHostingFixture(t, root, reading, now)
-	first, err := owner.Reserve(t.Context(), HostingTraffic{Tx: 100}, HostingTraffic{Rx: 20}, now.Add(time.Minute))
+	first, err := owner.Reserve(t.Context(), Traffic{Tx: 100}, Traffic{Rx: 20}, now.Add(time.Minute))
 	if err != nil {
 		t.Fatal(err)
 	}
-	other, err := owner.Reserve(t.Context(), HostingTraffic{Tx: 50}, HostingTraffic{Rx: 10}, now.Add(time.Minute))
+	other, err := owner.Reserve(t.Context(), Traffic{Tx: 50}, Traffic{Rx: 10}, now.Add(time.Minute))
 	if err != nil {
 		t.Fatal(err)
 	}
-	first.bytes = 1000
+	first.state.bytes = 1000
 	if err := first.Release(t.Context()); err == nil {
 		t.Fatal("callback refusal released a reservation")
 	}
@@ -436,11 +436,11 @@ func TestHostingReleaseAfterPersistenceFailureStaysUnresolved(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = owner.Close() })
-	first, err := owner.Reserve(t.Context(), HostingTraffic{Tx: 100}, HostingTraffic{Rx: 20}, now.Add(time.Minute))
+	first, err := owner.Reserve(t.Context(), Traffic{Tx: 100}, Traffic{Rx: 20}, now.Add(time.Minute))
 	if err != nil {
 		t.Fatal(err)
 	}
-	other, err := owner.Reserve(t.Context(), HostingTraffic{Tx: 50}, HostingTraffic{Rx: 10}, now.Add(time.Minute))
+	other, err := owner.Reserve(t.Context(), Traffic{Tx: 50}, Traffic{Rx: 10}, now.Add(time.Minute))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -449,7 +449,7 @@ func TestHostingReleaseAfterPersistenceFailureStaysUnresolved(t *testing.T) {
 		t.Fatal("post-callback persistence failure reported success")
 	}
 	firstErr := err
-	if !first.released {
+	if !first.state.released {
 		t.Fatal("post-callback persistence failure left the handle retryable")
 	}
 	if err = os.Remove(state); err != nil {
@@ -470,5 +470,98 @@ func TestHostingReleaseAfterPersistenceFailureStaysUnresolved(t *testing.T) {
 	}
 	if err = other.Release(t.Context()); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestHostingMeasurementCannotAdmitPastDeadline(t *testing.T) {
+	root, reading, now := hostingFixture(t)
+	owner := openHostingFixture(t, root, reading, now)
+	deadline := now.Add(time.Second)
+	owner.measure = func([]string) (hostingReading, error) { *now = deadline; return *reading, nil }
+	if reservation, err := owner.Reserve(t.Context(), Traffic{Tx: 10}, Traffic{Rx: 10}, deadline); err == nil || reservation != nil {
+		t.Fatal("measurement delay admitted expired reservation")
+	}
+	observation, err := owner.Observe(t.Context())
+	if err != nil || observation.ReservedBytes != 0 {
+		t.Fatalf("expired admission retained debit: %+v, %v", observation, err)
+	}
+}
+
+func TestHostingPostCommitExpiryReleasesOnlyItsReservation(t *testing.T) {
+	root, reading, now := hostingFixture(t)
+	owner := openHostingFixture(t, root, reading, now)
+	other, err := owner.Reserve(t.Context(), Traffic{Tx: 20}, Traffic{Rx: 10}, now.Add(time.Minute))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer other.Release(context.Background())
+	deadline := now.Add(time.Second)
+	reads := 0
+	owner.now = func() time.Time {
+		reads++
+		if reads >= 3 {
+			return deadline
+		}
+		return *now
+	}
+	if handle, err := owner.Reserve(t.Context(), Traffic{Tx: 10}, Traffic{Rx: 10}, deadline); err == nil || handle != nil {
+		t.Fatal("post-commit expiry transferred reservation")
+	}
+	observation, err := owner.Observe(t.Context())
+	if err != nil || observation.ReservedBytes != 30 {
+		t.Fatalf("expiry cleanup changed unrelated reservation: %+v, %v", observation, err)
+	}
+}
+
+func TestHostingConcurrentOwnersCannotOversubscribe(t *testing.T) {
+	root, reading, now := hostingFixture(t)
+	owners := make([]*Ledger, 12)
+	for i := range owners {
+		owners[i] = openHostingFixture(t, root, reading, now)
+	}
+	start := make(chan struct{})
+	results := make(chan *Reservation, len(owners))
+	var workers sync.WaitGroup
+	for _, owner := range owners {
+		workers.Go(func() {
+			<-start
+			reservation, _ := owner.Reserve(t.Context(), Traffic{Tx: 90}, Traffic{Rx: 10}, now.Add(time.Minute))
+			results <- reservation
+		})
+	}
+	close(start)
+	workers.Wait()
+	close(results)
+	var held []*Reservation
+	for reservation := range results {
+		if reservation != nil {
+			held = append(held, reservation)
+		}
+	}
+	// 1000 total minus 100 consumed minus 100 low watermark permits eight.
+	if len(held) != 8 {
+		t.Fatalf("accepted %d reservations; want eight", len(held))
+	}
+	observation, err := owners[0].Observe(t.Context())
+	if err != nil || observation.ReservedBytes != 800 || !observation.Protect {
+		t.Fatalf("concurrent boundary: %+v / %v", observation, err)
+	}
+	for _, handle := range held {
+		copy := *handle
+		workers.Go(func() {
+			if err := handle.Release(t.Context()); err != nil {
+				t.Error(err)
+			}
+		})
+		workers.Go(func() {
+			if err := copy.Release(t.Context()); err != nil {
+				t.Error(err)
+			}
+		})
+	}
+	workers.Wait()
+	observation, err = owners[0].Observe(t.Context())
+	if err != nil || observation.ReservedBytes != 0 || observation.UsedBytes != 100 {
+		t.Fatalf("concurrent releases: %+v / %v", observation, err)
 	}
 }

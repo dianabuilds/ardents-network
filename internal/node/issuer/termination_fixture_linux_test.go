@@ -22,10 +22,10 @@ import (
 	admissionissuer "github.com/dianabuilds/ardents-network/internal/admission/issuer"
 	"github.com/dianabuilds/ardents-network/internal/admission/spending"
 	"github.com/dianabuilds/ardents-network/internal/admission/token"
+	hostingbudget "github.com/dianabuilds/ardents-network/internal/hosting"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/node/authority"
 	"github.com/dianabuilds/ardents-network/internal/node/hosting"
-	"github.com/dianabuilds/ardents-network/internal/resource"
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	"github.com/dianabuilds/ardents-network/internal/route/carrier"
@@ -101,7 +101,7 @@ type terminationFixture struct {
 	result               []byte
 	server               *closedIssuerServer
 	gate                 *terminationGate
-	hosting              *resource.Hosting
+	hosting              *hostingbudget.Ledger
 	released             atomic.Uint32
 	releaseDone          chan struct{}
 	peer                 carrier.Carrier
@@ -224,7 +224,7 @@ func newTerminationFixture(t *testing.T, transport carrier.CarrierProfile, failu
 	source := authority.Source{CurrentRoute: func() (state.ClosedRouteView, error) { return view, nil }, CurrentProfile: func() (state.ClosedProfileView, bool) { return profile, true }}
 	snapshot := state.NodeDuty{Generation: hex.EncodeToString(profile.StateGeneration[:]), NetworkID: profile.NetworkID, Digest: profile.StateDigest, Epoch: 1, EpochValidFrom: window, ValidUntil: profile.NotAfter, RecordValidUntil: profile.NotAfter, Profile: carrier.ClosedRouteProfile, Fresh: true, NodeID: profile.IssuerNodeID, RecordGeneration: 1}
 	hostRoot := filepath.Join(t.TempDir(), "hosting")
-	err = resource.InitializeHosting(hostRoot, resource.HostingPolicy{Provider: "fixture", Start: window, End: window.Add(time.Hour), Unit: "GiB", Quantity: 1, Directions: "tx+rx", Interfaces: []string{"lo"}, LowWatermarkBytes: 1 << 20})
+	err = hostingbudget.Initialize(hostRoot, hostingbudget.Policy{Provider: "fixture", Start: window, End: window.Add(time.Hour), Unit: "GiB", Quantity: 1, Directions: "tx+rx", Interfaces: []string{"lo"}, LowWatermarkBytes: 1 << 20})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -237,7 +237,7 @@ func newTerminationFixture(t *testing.T, transport carrier.CarrierProfile, failu
 			t.Error(err)
 		}
 	})
-	fixture.hosting, err = resource.OpenHosting(hostRoot)
+	fixture.hosting, err = hostingbudget.Open(hostRoot)
 	if err != nil {
 		t.Fatal(err)
 	}

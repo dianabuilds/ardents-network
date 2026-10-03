@@ -13,8 +13,8 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/application/streamqualification"
 	"github.com/dianabuilds/ardents-network/internal/endpoint"
+	hostingbudget "github.com/dianabuilds/ardents-network/internal/hosting"
 	"github.com/dianabuilds/ardents-network/internal/qualification"
-	"github.com/dianabuilds/ardents-network/internal/resource"
 )
 
 type net32IdleVerdict struct {
@@ -141,7 +141,7 @@ func evaluateNET32Idle(report endpoint.StreamQualificationIdleReport, series *re
 	return verdict, criteria
 }
 
-func hostingCountedDelta(policy resource.HostingPolicy, tx, rx uint64) (uint64, bool) {
+func hostingCountedDelta(policy hostingbudget.Policy, tx, rx uint64) (uint64, bool) {
 	switch policy.Directions {
 	case "tx":
 		return tx, true

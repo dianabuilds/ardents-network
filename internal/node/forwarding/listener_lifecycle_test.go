@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/admission/spending"
-	"github.com/dianabuilds/ardents-network/internal/resource"
+	hostingbudget "github.com/dianabuilds/ardents-network/internal/hosting"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	routecarrier "github.com/dianabuilds/ardents-network/internal/route/carrier"
 )
@@ -295,9 +295,9 @@ type sharedHostingSampleFixture struct {
 	once    sync.Once
 }
 
-func (host *sharedHostingSampleFixture) Sample(context.Context, time.Duration) (resource.HostingSample, error) {
+func (host *sharedHostingSampleFixture) Sample(context.Context, time.Duration) (hostingbudget.Sample, error) {
 	host.once.Do(func() { close(host.sampled) })
-	return resource.HostingSample{}, nil
+	return hostingbudget.Sample{}, nil
 }
 
 func (*sharedHostingSampleFixture) Close() error { return nil }

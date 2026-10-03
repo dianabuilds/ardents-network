@@ -1,4 +1,4 @@
-package resource
+package hosting
 
 import (
 	"bytes"
@@ -33,7 +33,7 @@ func openHostingRoot(path string) (*os.Root, error) {
 	return root, nil
 }
 
-func initializeHosting(path string, policy HostingPolicy, reading hostingReading, now time.Time) error {
+func initializeHosting(path string, policy Policy, reading hostingReading, now time.Time) error {
 	if _, err := policy.limit(); err != nil {
 		return err
 	}

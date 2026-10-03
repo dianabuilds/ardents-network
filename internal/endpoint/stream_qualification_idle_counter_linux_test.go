@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	hostingbudget "github.com/dianabuilds/ardents-network/internal/hosting"
 	"github.com/dianabuilds/ardents-network/internal/resource"
 )
 
@@ -20,7 +21,7 @@ func TestIdleCounterIntervalUsesMonotonicBoundaries(t *testing.T) {
 			reads, observations := 0, 0
 			var report StreamQualificationIdleReport
 			err := observeStreamQualificationIdle(t.Context(), time.Millisecond, &report,
-				func(ctx context.Context, fresh bool) (resource.HostingSample, resource.Sample, error) {
+				func(ctx context.Context, fresh bool) (hostingbudget.Sample, resource.Sample, error) {
 					if !fresh {
 						t.Fatal("counter boundaries must be fresh")
 					}
@@ -32,7 +33,7 @@ func TestIdleCounterIntervalUsesMonotonicBoundaries(t *testing.T) {
 						at = wall.Add(wallElapsed)
 						monotonic = monotonic.Add(4 * time.Second)
 					}
-					return resource.HostingSample{At: at}, resource.Sample{}, nil
+					return hostingbudget.Sample{At: at}, resource.Sample{}, nil
 				},
 				func(ctx context.Context, event StreamQualificationEvent) error {
 					observations++
@@ -63,12 +64,12 @@ func TestIdleCounterObservationRetainsIncompleteOutcomes(t *testing.T) {
 			reads := 0
 			var report StreamQualificationIdleReport
 			err := observeStreamQualificationIdle(ctx, time.Millisecond, &report,
-				func(context.Context, bool) (resource.HostingSample, resource.Sample, error) {
+				func(context.Context, bool) (hostingbudget.Sample, resource.Sample, error) {
 					reads++
 					if reads == 2 && scenario == "counter" {
-						return resource.HostingSample{}, resource.Sample{}, failure
+						return hostingbudget.Sample{}, resource.Sample{}, failure
 					}
-					host := resource.HostingSample{At: now.UTC()}
+					host := hostingbudget.Sample{At: now.UTC()}
 					host.Observation.Drain = scenario == "drain"
 					return host, resource.Sample{}, nil
 				},

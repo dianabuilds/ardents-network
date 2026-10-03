@@ -12,9 +12,9 @@ import (
 	"testing"
 	"time"
 
+	hostingbudget "github.com/dianabuilds/ardents-network/internal/hosting"
 	localroles "github.com/dianabuilds/ardents-network/internal/network/duty"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
-	"github.com/dianabuilds/ardents-network/internal/resource"
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	routecarrier "github.com/dianabuilds/ardents-network/internal/route/carrier"
@@ -178,7 +178,7 @@ func TestClosedAdmissionUsesOneConsistentRouteProjection(t *testing.T) {
 	fixture.config.now = func() time.Time { return fixture.now }
 	fixture.config.ClosedForwarding = ClosedForwardingProfile{Root: t.TempDir(), HostingRoot: t.TempDir(),
 		Certificate: tlsCertificate(identity), ConnectionLimit: 1, DrainTimeout: time.Second,
-		AdmissionTraffic: resource.HostingTraffic{Tx: 1}, TerminationTraffic: resource.HostingTraffic{Tx: 1}}
+		AdmissionTraffic: hostingbudget.Traffic{Tx: 1}, TerminationTraffic: hostingbudget.Traffic{Tx: 1}}
 	calls := 0
 	fixture.config.CurrentClosedRoute = func() (state.ClosedRouteView, error) {
 		calls++

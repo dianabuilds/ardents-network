@@ -8,10 +8,10 @@ import (
 	"path/filepath"
 	"time"
 
+	hostingbudget "github.com/dianabuilds/ardents-network/internal/hosting"
 	"github.com/dianabuilds/ardents-network/internal/network/source"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/node"
-	"github.com/dianabuilds/ardents-network/internal/resource"
 	"github.com/dianabuilds/ardents-network/internal/route/carrier"
 )
 
@@ -114,13 +114,13 @@ type closedResolutionPlan struct {
 // closedForwardingPlan supplies only the local receiving spend root and finite
 // work bounds. State selects adjacent/interior duty, listener and next peers.
 type closedForwardingPlan struct {
-	Root                 string                  `json:"root"`
-	ConnectionLimit      uint16                  `json:"connection_limit"`
-	DrainTimeoutMS       uint32                  `json:"drain_timeout_ms"`
-	HostingRoot          string                  `json:"hosting_root"`
-	CarrierRelayEndpoint string                  `json:"carrier_relay_endpoint,omitempty"`
-	AdmissionTraffic     resource.HostingTraffic `json:"admission_traffic"`
-	TerminationTraffic   resource.HostingTraffic `json:"termination_traffic"`
+	Root                 string                `json:"root"`
+	ConnectionLimit      uint16                `json:"connection_limit"`
+	DrainTimeoutMS       uint32                `json:"drain_timeout_ms"`
+	HostingRoot          string                `json:"hosting_root"`
+	CarrierRelayEndpoint string                `json:"carrier_relay_endpoint,omitempty"`
+	AdmissionTraffic     hostingbudget.Traffic `json:"admission_traffic"`
+	TerminationTraffic   hostingbudget.Traffic `json:"termination_traffic"`
 }
 
 type nodeSource struct {

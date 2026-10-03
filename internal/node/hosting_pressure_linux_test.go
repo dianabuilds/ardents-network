@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	hostingbudget "github.com/dianabuilds/ardents-network/internal/hosting"
 	"github.com/dianabuilds/ardents-network/internal/node/hosting"
 	"github.com/dianabuilds/ardents-network/internal/resource"
 )
@@ -17,9 +18,9 @@ func TestHostingPressureUsesDeclaredOwnerMeasurement(t *testing.T) {
 		t.Run(map[bool]string{false: "sample", true: "failure"}[fail], func(t *testing.T) {
 			root := filepath.Join(t.TempDir(), "hosting")
 			now := time.Now().UTC().Truncate(time.Second)
-			policy := resource.HostingPolicy{Provider: "component fixture", Start: now.Add(-time.Hour), End: now.Add(time.Hour), Unit: "GiB", Quantity: 1,
+			policy := hostingbudget.Policy{Provider: "component fixture", Start: now.Add(-time.Hour), End: now.Add(time.Hour), Unit: "GiB", Quantity: 1,
 				Directions: "tx+rx", Interfaces: []string{"lo"}, LowWatermarkBytes: 1 << 20}
-			if err := resource.InitializeHosting(root, policy); err != nil {
+			if err := hostingbudget.Initialize(root, policy); err != nil {
 				t.Fatal(err)
 			}
 			host, err := hosting.Open(root)

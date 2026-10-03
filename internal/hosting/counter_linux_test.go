@@ -1,6 +1,6 @@
 //go:build linux
 
-package resource
+package hosting
 
 import (
 	"net"

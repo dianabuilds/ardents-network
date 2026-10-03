@@ -1,6 +1,6 @@
 //go:build linux
 
-package resource
+package hosting
 
 import (
 	"os"
@@ -18,7 +18,7 @@ func TestHostingRefusesIndependentBudgetRootWithoutEffects(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	if owner, err := OpenHosting(root); err == nil {
+	if owner, err := Open(root); err == nil {
 		owner.Close()
 		t.Fatal("legacy opened independent root")
 	}

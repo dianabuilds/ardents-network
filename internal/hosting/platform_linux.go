@@ -1,6 +1,6 @@
 //go:build linux
 
-package resource
+package hosting
 
 import (
 	"context"
@@ -130,4 +130,21 @@ func measureHosting(names []string) (hostingReading, error) {
 		reading.Interfaces = append(reading.Interfaces, hostingInterface{Name: name, Index: values[0], Tx: values[1], Rx: values[2]})
 	}
 	return reading, nil
+}
+
+func boundedFile(path string, maximum int) (string, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return "", err
+	}
+	buffer := make([]byte, maximum+1)
+	count, readErr := file.Read(buffer)
+	closeErr := file.Close()
+	if readErr != nil && count == 0 {
+		return "", errors.Join(readErr, closeErr)
+	}
+	if count > maximum {
+		return "", errors.New("resource counter exceeds its bound")
+	}
+	return string(buffer[:count]), closeErr
 }

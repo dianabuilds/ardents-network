@@ -231,13 +231,13 @@ already pinned authority retain their previous State and Source behavior.
 | internal/network/state/durable | Hold the exclusive State-root lease and preserve opaque generations, the distribution journal, and closed-profile bytes with bounded, synced physical transactions. | Epoch authority verification, Source selection, conflict decisions, or runtime View publication. |
 | internal/network/source | Obtain one finite selected Direct-Origin source input with its credential, TLS transport, network-scoped request digest and response-bundle framing, material selector, ordering, and exposure identity. | Verifying Epoch authority, accepting State, or selecting a peer protocol. |
 | internal/network/duty | Persist the Endpoint-local Role Domain generation, watermark, expiry, and current conflict Duties. Its root schema is version 2. The `SpendTransitGrant` operation was retired with the Route v2 execution closure (ADR-0093), and ADR-0107 then retired the persisted spend ledger itself (F-53): a strictly validated version-1 generation converts in place at load, dropping its spend records while preserving conflict duties, generation continuity, and the watermark; every committed generation is version 2. No current receiving-Node admission path exists. | Network State publication, assignment creation, Route ownership, issuer custody, or Node process lifecycle. |
-| internal/resource | Check selected process placement and measure process/cgroup pressure through a process-local Guard. Separately own the initialized durable shared Hosting period, interface-counter charging and work/termination reservations. | State or Node authority, admission, listener shutdown, forgiving an outstanding reservation on handle close, or a claim for unsupported platforms. |
+| internal/resource | Check selected process placement and measure process/cgroup pressure through a process-local Guard. Hosting accounting belongs to `internal/hosting`. | State or Node authority, admission, listener shutdown, forgiving an outstanding reservation on handle close, or a claim for unsupported platforms. |
 | internal/entry | Own the protected Endpoint's durable closed Entry sets: select exactly two State-current members per adjacent Role Domain before use, revalidate a selected member, retain the generation floor, and refuse legacy-root substitution. The Invite subsystem — the `entry recipient/import` operator commands and their older Invite root — is retired by ADR-0106; existing Invite roots stay on disk byte-for-byte with no reader, converter, or deleter. | Complete Route selection, receiving Entry admission, carrier choice, User identity, or any read, conversion, or deletion of a legacy Invite root. |
 | internal/route | Implement the closed v3 Node Carrier/wire used by `internal/node` through `OpenClosedNodeCarrier`. The former aggregate Interactive User Route v2 runtime and its whole v2 execution closure (Attachment, EndpointTransitBinding, EntryBinding, credential-relay, Introduction slot/outcome, LegBinding, and Transit Grant verifier files) are absent under ADR-0093. What remains is only the retired v2 `Profile` identity used for Node typed refusals; the sealed Introduction v1 grammar and the publication v1 Introduction instruction codecs are retired by ADR-0094, which supersedes ADR-0035. Nothing provides a second supported Route. The [package map](../development/package-map.md) records the current consumer boundary. | Reintroducing the removed User-route composition as a maintained product path or treating its removal as successor-network readiness; candidate ranking, carrier policy/fallback, H3 compatibility, peer runtime, Node profile, or durable State/Duty/credential-journal writing. |
 | internal/node | Run one bounded current closed Node duty from authenticated admission through listener readiness, pressure reaction, drain, withdrawal, and a bounded terminal cleanup outcome. All five old native duty engines are absent; their plan stanzas remain only at the command refusal boundary. | State-root authority, assignment creation, an old native duty listener, or a separate probe runtime. |
 | internal/node/authority | Borrow current authenticated closed State views and project one exact receiver or shared peer; verify selected-profile role tokens for the Node duties. The caller retains its duty admission and host/spend reservation. | State-root custody, role selection, process pressure, a receiving spend ledger, or an issuer key. |
 | internal/node/forwarding | Own the closed forwarding listener, receiving spend root, pool, sessions, child links and joined drain; check exact State-selected next hops and bootstrap adjacency before dial. | State-root custody, process pressure, unselected fallback, Route wire or Carrier TLS implementation. |
-| internal/node/hosting | Own the opened shared Hosting handle, sampler and late close; bound class-1/3 control envelopes and verify class-2 reserve-before-spend for forwarding and JOIN. | Durable provider-period ledger custody, process pressure decisions or receiving-role lifecycle. |
+| internal/node/hosting | Adapt the Hosting-domain handle and retain late close after child join; supply class-1/2/3 role envelopes and compose Admission with capacity for forwarding and JOIN. | Durable provider-period ledger custody, process pressure decisions or receiving-role lifecycle. |
 | internal/node/issuer | Own the closed issuer listener and both durable roots; forward terminal cause to Node supervision and join every accepted child before late root close. | Process admission and pressure, current State custody, or Credential token grammar. |
 | internal/node/introduction | Own the closed Introduction listener, registration slots, capsule deliveries, spend ledger and joined drain. | Process admission, State custody, Hosting pressure, or Route capsule grammar. |
 | internal/node/join | Own the closed data JOIN listener, pair set, spend ledger and leased Hosting handle through joined shutdown. Node opens the handle and supplies current State; `node/hosting` supplies its class-2 reservation policy. | Process admission, State custody, global Hosting pressure, or Route pair grammar. |
@@ -675,12 +675,11 @@ Concurrent retained Node, forwarding, and JOIN duties share successful Hosting
 observations only while the actual observation timestamp satisfies each caller's
 requested age and the fixed one-second cap, and the provider period is current.
 A completed shared flight is rechecked for each waiter; a stricter caller
-refreshes through the Resource owner rather than re-aging another caller's
+refreshes through the Hosting owner rather than re-aging another caller's
 measurement. Period expiry re-reads the owner's current pressure decision, so
-a cached pre-expiry observation cannot retain Drain=false. Successful
-reservations invalidate cached and in-flight reuse; release keeps conservative
+a cached pre-expiry observation cannot retain Drain=false. Every reservation attempt, including failure, invalidates cached and in-flight reuse; failed release also invalidates reuse, while successful release keeps conservative
 reserved-byte evidence until the next fresh observation. Invalid freshness and
-unavailable contexts retain the Resource owner's refusal boundary.
+unavailable contexts retain the Hosting owner's refusal boundary.
 
 Resource measurement is Linux-only until another native Adapter is selected
 and measured. Unsupported platforms refuse rather than silently reporting
@@ -856,3 +855,15 @@ Empty input creates no diagnostic resources; configured admission failures
 precede product dispatch and diagnostic cleanup is joined to command outcome.
 The diagnostic interface reports process observations; existing owner events
 remain the source of readiness and typed product failure.
+
+
+### Hosting domain boundary
+
+`internal/hosting` owns provider-period policy, interface-counter charging, durable
+work/termination reservations and shared observation freshness. `internal/node/hosting`
+only adapts the domain handle to receiving duties, supplies role envelopes and composes
+Admission with capacity reservation. It retains handles until child work joins.
+Reservation and shared-handle copies retain one private lifecycle state. Returned
+observations own their slice data; closing a shared handle refuses further observations
+even while another handle retains a cached observation for the same installed root.
+The existing period storage schema and conservative release-cache policy are unchanged.

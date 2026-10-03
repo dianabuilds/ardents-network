@@ -701,3 +701,123 @@ outside Git under the local quality directory's `ddd-transition-review` folder.
 No tool was installed and no product source was changed. Full behavior, race,
 network and installed qualification checks were not rerun for this document-only
 proposal; the implementation acceptance matrix above remains future work.
+
+
+## Hosting extraction: ownership and verification plan
+
+Hosting owns the installed provider period: policy validation, directional interface
+charging, low-watermark decisions, work and termination reservations, durable
+continuity, and bounded shared observations. It grants local capacity, not Admission
+authority. The execution ledger is GitHub issue #492.
+
+| Existing source | Destination / responsibility |
+|---|---|
+| `resource/hosting_allowance.go` | `hosting/policy.go`: period, allowance, counters and pressure rules |
+| `resource/hosting_ledger.go` | `hosting/ledger.go`: transactions and opaque reservation ownership |
+| `resource/hosting_storage.go` | `hosting/storage.go`: pin, canonical state, pending journal and commit |
+| `resource/hosting_sample.go` | `hosting/sample.go`: committed observation freshness |
+| `resource/hosting_platform_{linux,other}.go` | `hosting/platform_{linux,other}.go`: interface counters, process locks, platform refusal |
+| `resource/hosting_*_test.go` | Corresponding Hosting behavior and continuity tests |
+| `node/hosting/ledger.go` shared registry/cache | `hosting/shared.go`: coalescing, invalidation, independent handle lifetime; Node retains only its Handle adapter |
+| `node/hosting/ledger{,_linux}_test.go` | Hosting shared observation/lifetime tests |
+
+Paths in this table are relative to `internal`. Existing Resource process/cgroup
+measurement stays in Resource. Node keeps role-specific work/termination envelopes,
+Admission composition and joining children before release/close. Qualification and
+Endpoint only consume Hosting facts; their unrelated policies are outside this change.
+The isolated `internal/successor/hosting` remains independent under its accepted
+contract and architecture gate: its `ardents-hosting-budget-v1` storage is not the
+maintained `ardents-hosting-period-v1` storage. Neither format is renamed, reset,
+automatically migrated or accepted by the other owner.
+
+### Migration sequence
+
+1. Move all maintained budget rules and shared observation ownership into the real
+   `internal/hosting` package; keep standard-library-only dependencies and real callers.
+2. Replace every former Resource Hosting consumer and reduce Node Hosting to role
+   composition. Register exact imports, deterministic profile and current owner docs.
+3. Reproduce suspicious behavior before repair. Share reservation release state across
+   copied handles; verify cache result ownership and closed-handle refusal. Preserve
+   conservative accounting after uncertain persistence and after process loss.
+4. Exercise real Hosting with Admission tokens and receiving duties. Refusal must not
+   spend a token; successful work retains capacity until join; duplicate/expired/spend
+   failure releases only its own capacity and never refunds a durable token spend.
+5. Run behavioral Linux tests with race detection, current consumer scenarios on both
+   Carriers, quick-check and full check. Review the bounded final diff against this
+   plan and repository standards before integrating the verified change.
+
+### Scenario matrix and acceptance oracles
+
+| Scenario | Required observable result |
+|---|---|
+| Direction, interface identity, boot/counter rollback, overflow | Exact charge or fail closed; never reset usage |
+| Low watermark, exhausted/expired period, deadline | Refuse capacity without debit; successful reservation covers work and termination |
+| Concurrent owners and copied reservation handle | No oversubscription; release exactly once; another reservation remains intact |
+| Cancel before transaction / uncertain storage / reopen | No invented refund, retry only before mutation, retained debit and refusal on ambiguity |
+| Cache freshness, in-flight reservation, strict-age reader | Age and period bounds honored; reservation growth invalidates reuse |
+| Mutated returned sample / copied or closed shared handle | Caller cannot modify cached facts; one close cannot retire another owner; closed caller refuses |
+| Admission refusal, success, replay, expiry and cleanup | Token and local-capacity state checked together, including retained lifetime |
+| Existing installations and command adapters | Existing schema/root continuity; unsupported platforms refuse explicitly |
+
+Automated results accompany a source walkthrough of each ownership transition and
+failure path. Passing tests bound the demonstrated scenarios; they do not establish
+that every possible defect or external environment has been exhausted.
+
+### Existing consumer inventory
+
+The following files are the former Resource Hosting references identified at the
+baseline. Changes outside the owner are imports/types or necessary role integration:
+
+- `cmd/ardents-node/closed_forwarding_plan_test.go`
+- `cmd/ardents-node/hosting_mode.go`
+- `cmd/ardents-node/node_config.go`
+- `cmd/ardents-node/node_identity.go`
+- `cmd/ardents-qualification/net32_idle_linux.go`
+- `cmd/ardents-qualification/net32_idle_linux_test.go`
+- `cmd/ardents-qualification/node_results_linux.go`
+- `cmd/ardents-qualification/qualification_evidence_linux_test.go`
+- `cmd/ardents-qualification/resource_verdict_linux.go`
+- `cmd/ardents-qualification/resource_verdict_linux_test.go`
+- `internal/endpoint/issuance_network_test.go`
+- `internal/endpoint/role_process_child_test.go`
+- `internal/endpoint/stream_qualification_idle_counter_linux_test.go`
+- `internal/endpoint/stream_qualification_idle_linux.go`
+- `internal/endpoint/stream_qualification_idle_linux_test.go`
+- `internal/endpoint/stream_qualification_preflight_linux.go`
+- `internal/node/admission_refill_linux_test.go`
+- `internal/node/admission_test.go`
+- `internal/node/bootstrap_fixture_linux_test.go`
+- `internal/node/fixture_root_linux_test.go`
+- `internal/node/forwarding.go`
+- `internal/node/forwarding/admission_cleanup_linux_test.go`
+- `internal/node/forwarding/config.go`
+- `internal/node/forwarding/handoff_linux_test.go`
+- `internal/node/forwarding/listener_lifecycle_test.go`
+- `internal/node/forwarding/parent_progress_linux_test.go`
+- `internal/node/forwarding/reader_shutdown_linux_test.go`
+- `internal/node/forwarding/receiving_test.go`
+- `internal/node/forwarding/role_fixture_test.go`
+- `internal/node/forwarding_lifetime_linux_test.go`
+- `internal/node/forwarding_restriction_linux_test.go`
+- `internal/node/hosting.go`
+- `internal/node/hosting/admission.go`
+- `internal/node/hosting/admission_test.go`
+- `internal/node/hosting/control.go`
+- `internal/node/hosting/join.go`
+- `internal/node/hosting/join_test.go`
+- `internal/node/hosting/ledger.go`
+- `internal/node/hosting/ledger_linux_test.go`
+- `internal/node/hosting/ledger_test.go`
+- `internal/node/hosting/lifetime_test.go`
+- `internal/node/hosting_pressure_linux_test.go`
+- `internal/node/introduction/termination_fixture_linux_test.go`
+- `internal/node/issuer/termination_fixture_linux_test.go`
+- `internal/node/join/listener.go`
+- `internal/node/join/listener_test.go`
+- `internal/node/lifecycle_event.go`
+- `internal/node/lifecycle_test.go`
+- `internal/node/process_config.go`
+- `internal/node/resolution/termination_fixture_linux_test.go`
+- `internal/node/resolution_host_release_linux_test.go`
+- `internal/qualification/measurements_linux.go`
+- `internal/qualification/scenario_linux.go`

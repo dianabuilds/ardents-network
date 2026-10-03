@@ -4,15 +4,15 @@ import (
 	"errors"
 	"path/filepath"
 
-	"github.com/dianabuilds/ardents-network/internal/resource"
+	hostingbudget "github.com/dianabuilds/ardents-network/internal/hosting"
 )
 
 // hostingInitializationPlan is a one-time operator declaration for a single
 // provider period. Node plans reopen this root but cannot replace its policy.
 type hostingInitializationPlan struct {
-	Schema string                 `json:"schema"`
-	Root   string                 `json:"root"`
-	Policy resource.HostingPolicy `json:"policy"`
+	Schema string               `json:"schema"`
+	Root   string               `json:"root"`
+	Policy hostingbudget.Policy `json:"policy"`
 }
 
 func runHosting(arguments []string) error {
@@ -26,5 +26,5 @@ func runHosting(arguments []string) error {
 	if plan.Schema != "ardents-hosting-initialization-v1" || !filepath.IsAbs(plan.Root) || filepath.Clean(plan.Root) != plan.Root {
 		return errors.New("hosting initialization plan is invalid")
 	}
-	return resource.InitializeHosting(plan.Root, plan.Policy)
+	return hostingbudget.Initialize(plan.Root, plan.Policy)
 }

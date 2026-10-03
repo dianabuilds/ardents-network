@@ -9,19 +9,19 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/admission/spending"
+	hostingbudget "github.com/dianabuilds/ardents-network/internal/hosting"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/node/authority"
-	"github.com/dianabuilds/ardents-network/internal/resource"
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/carrier"
 )
 
 type monitoredHost struct {
-	sample func(context.Context) (resource.HostingSample, error)
+	sample func(context.Context) (hostingbudget.Sample, error)
 	closed chan struct{}
 }
 
-func (host *monitoredHost) Sample(ctx context.Context, _ time.Duration) (resource.HostingSample, error) {
+func (host *monitoredHost) Sample(ctx context.Context, _ time.Duration) (hostingbudget.Sample, error) {
 	return host.sample(ctx)
 }
 func (*monitoredHost) AdmissionVerifier(route.ClosedRoleReceiver) route.ClosedAdmissionVerifier {
@@ -55,10 +55,10 @@ func TestJoinHostMonitorIgnoresSampleCanceledByExplicitStop(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	started := make(chan struct{})
 	listener := &monitoredListener{closed: make(chan struct{})}
-	server := &closedDataJoinServer{host: &monitoredHost{sample: func(ctx context.Context) (resource.HostingSample, error) {
+	server := &closedDataJoinServer{host: &monitoredHost{sample: func(ctx context.Context) (hostingbudget.Sample, error) {
 		close(started)
 		<-ctx.Done()
-		return resource.HostingSample{Observation: resource.HostingObservation{Drain: true}}, errors.New("hosting operation is unavailable")
+		return hostingbudget.Sample{Observation: hostingbudget.Observation{Drain: true}}, errors.New("hosting operation is unavailable")
 	}}, listener: listener, cancel: cancel}
 	ticks := make(chan time.Time, 1)
 	ticks <- time.Now()
@@ -93,8 +93,8 @@ func TestJoinHostMonitorPreservesSampleFailureBeforeStop(t *testing.T) {
 	defer cancel()
 	sampleErr := errors.New("host sample failed")
 	listener := &monitoredListener{closed: make(chan struct{})}
-	server := &closedDataJoinServer{host: &monitoredHost{sample: func(context.Context) (resource.HostingSample, error) {
-		return resource.HostingSample{}, sampleErr
+	server := &closedDataJoinServer{host: &monitoredHost{sample: func(context.Context) (hostingbudget.Sample, error) {
+		return hostingbudget.Sample{}, sampleErr
 	}}, listener: listener, cancel: cancel}
 	ticks := make(chan time.Time, 1)
 	ticks <- time.Now()
@@ -112,8 +112,8 @@ func TestJoinHostMonitorPreservesObservedDrainBeforeStop(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	listener := &monitoredListener{closed: make(chan struct{})}
-	server := &closedDataJoinServer{host: &monitoredHost{sample: func(context.Context) (resource.HostingSample, error) {
-		return resource.HostingSample{Observation: resource.HostingObservation{Drain: true}}, nil
+	server := &closedDataJoinServer{host: &monitoredHost{sample: func(context.Context) (hostingbudget.Sample, error) {
+		return hostingbudget.Sample{Observation: hostingbudget.Observation{Drain: true}}, nil
 	}}, listener: listener, cancel: cancel}
 	ticks := make(chan time.Time, 1)
 	ticks <- time.Now()
@@ -130,10 +130,10 @@ func TestJoinHostMonitorPreservesObservedDrainBeforeStop(t *testing.T) {
 func TestJoinExplicitStopJoinsCanceledSampleAndOwnedResources(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	started := make(chan struct{})
-	host := &monitoredHost{closed: make(chan struct{}), sample: func(ctx context.Context) (resource.HostingSample, error) {
+	host := &monitoredHost{closed: make(chan struct{}), sample: func(ctx context.Context) (hostingbudget.Sample, error) {
 		close(started)
 		<-ctx.Done()
-		return resource.HostingSample{Observation: resource.HostingObservation{Drain: true}}, errors.New("hosting operation is unavailable")
+		return hostingbudget.Sample{Observation: hostingbudget.Observation{Drain: true}}, errors.New("hosting operation is unavailable")
 	}}
 	listener := &monitoredListener{closed: make(chan struct{})}
 	server := &closedDataJoinServer{host: host, listener: listener, cancel: cancel,

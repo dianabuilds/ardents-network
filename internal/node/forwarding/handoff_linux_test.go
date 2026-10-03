@@ -12,9 +12,9 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/admission/spending"
+	hostingbudget "github.com/dianabuilds/ardents-network/internal/hosting"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	nodeouter "github.com/dianabuilds/ardents-network/internal/node/outer"
-	"github.com/dianabuilds/ardents-network/internal/resource"
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	"github.com/dianabuilds/ardents-network/internal/route/carrier"
@@ -38,7 +38,7 @@ func testClosedForwardingServeDirectOuterAdmission(t *testing.T, cleanup error) 
 	fixture.config.Current = func() (state.NodeDuty, error) { return fixture.snapshot, nil }
 	fixture.config.CurrentClosedProfile = func() (state.ClosedProfileView, bool) { return fixture.view.Profile, true }
 	host := &cleanupFailureHost{release: cleanup}
-	fixture.config.ClosedForwarding = ClosedForwardingProfile{Certificate: certificate, AdmissionTraffic: resource.HostingTraffic{Tx: 1}, TerminationTraffic: resource.HostingTraffic{Tx: 1}}
+	fixture.config.ClosedForwarding = ClosedForwardingProfile{Certificate: certificate, AdmissionTraffic: hostingbudget.Traffic{Tx: 1}, TerminationTraffic: hostingbudget.Traffic{Tx: 1}}
 	receiver, ok := closedRouteReceiver(fixture.config, fixture.snapshot, ardp.PurposeForwarding, fixture.now)
 	if !ok {
 		t.Fatal("receiver unavailable")
@@ -151,7 +151,7 @@ func TestClosedForwardingServeDirectRetainsConstructorCleanupFailure(t *testing.
 	fixture.config.CurrentClosedProfile = func() (state.ClosedProfileView, bool) { return fixture.view.Profile, true }
 	cleanup := errors.New("host release failed")
 	host := &cleanupFailureHost{release: cleanup}
-	fixture.config.ClosedForwarding = ClosedForwardingProfile{Certificate: certificate, AdmissionTraffic: resource.HostingTraffic{Tx: 1}, TerminationTraffic: resource.HostingTraffic{Tx: 1}}
+	fixture.config.ClosedForwarding = ClosedForwardingProfile{Certificate: certificate, AdmissionTraffic: hostingbudget.Traffic{Tx: 1}, TerminationTraffic: hostingbudget.Traffic{Tx: 1}}
 	receiver, available := closedRouteReceiver(fixture.config, fixture.snapshot, ardp.PurposeForwarding, fixture.now)
 	if !available {
 		t.Fatal("fixture receiver unavailable")
@@ -165,16 +165,22 @@ func TestClosedForwardingServeDirectRetainsConstructorCleanupFailure(t *testing.
 	if err != nil {
 		t.Fatal(err)
 	}
-	var calls atomic.Int32
+	var constructing atomic.Bool
 	clock := func() time.Time {
-		// The first eight reads cover receiver/channel validation and the
-		// completed admission. The ninth is forwarding construction.
-		if calls.Add(1) > 8 {
+		if constructing.Load() {
 			return time.Time{}
 		}
 		return fixture.now
 	}
-	server := &forwardServer{dependencies: forwardingDependencies(fixture.config, host), certificate: certificate, receiving: &receivingResources{spends: spends, limits: limits}, host: host, clock: clock}
+	dependencies := forwardingDependencies(fixture.config, host)
+	replenish := dependencies.replenish
+	// This existing factory is evaluated after completed admission, immediately
+	// before construction. Clock read counts are not an ownership boundary.
+	dependencies.replenish = func(receiver route.ClosedRoleReceiver, ledger *spending.Ledger) route.ClosedForwardingReplenisher {
+		constructing.Store(true)
+		return replenish(receiver, ledger)
+	}
+	server := &forwardServer{dependencies: dependencies, certificate: certificate, receiving: &receivingResources{spends: spends, limits: limits}, host: host, clock: clock}
 	err = closedForwardingServeDirectAdmission(t, server, serverKey, receiver, closedRestrictionToken(t, fixture))
 	if !errors.Is(err, cleanup) || !strings.Contains(err.Error(), "channel is invalid") {
 		t.Fatalf("constructor refusal lost cleanup or primary: %v", err)
@@ -183,7 +189,7 @@ func TestClosedForwardingServeDirectRetainsConstructorCleanupFailure(t *testing.
 		t.Fatalf("constructor refusal ownership = reserved %d released %d", host.reserved.Load(), host.released.Load())
 	}
 	host.release = nil
-	calls.Store(0)
+	constructing.Store(false)
 	err = closedForwardingServeDirectAdmission(t, server, serverKey, receiver, closedRestrictionToken(t, fixture))
 	if err == nil || errors.Is(err, cleanup) || !strings.Contains(err.Error(), "channel is invalid") {
 		t.Fatalf("healthy constructor refusal = %v", err)
@@ -203,7 +209,7 @@ func TestClosedForwardingServeDirectSuccessfulHandoffLeavesCleanupToForwarding(t
 	fixture.config.CurrentClosedProfile = func() (state.ClosedProfileView, bool) { return fixture.view.Profile, true }
 	cleanup := errors.New("successor release failed")
 	host := &cleanupFailureHost{release: cleanup}
-	fixture.config.ClosedForwarding = ClosedForwardingProfile{Certificate: certificate, AdmissionTraffic: resource.HostingTraffic{Tx: 1}, TerminationTraffic: resource.HostingTraffic{Tx: 1}}
+	fixture.config.ClosedForwarding = ClosedForwardingProfile{Certificate: certificate, AdmissionTraffic: hostingbudget.Traffic{Tx: 1}, TerminationTraffic: hostingbudget.Traffic{Tx: 1}}
 	receiver, available := closedRouteReceiver(fixture.config, fixture.snapshot, ardp.PurposeForwarding, fixture.now)
 	if !available {
 		t.Fatal("fixture receiver unavailable")

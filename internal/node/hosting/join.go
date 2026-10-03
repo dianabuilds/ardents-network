@@ -5,8 +5,8 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/admission/spending"
+	hostingbudget "github.com/dianabuilds/ardents-network/internal/hosting"
 	"github.com/dianabuilds/ardents-network/internal/node/authority"
-	"github.com/dianabuilds/ardents-network/internal/resource"
 	"github.com/dianabuilds/ardents-network/internal/route"
 )
 
@@ -23,7 +23,7 @@ func NewJoinHandle(host Handle, source authority.Source, now func() time.Time) *
 	return &joinHandle{host: host, source: source, now: now}
 }
 
-func (hosting *joinHandle) Sample(ctx context.Context, age time.Duration) (resource.HostingSample, error) {
+func (hosting *joinHandle) Sample(ctx context.Context, age time.Duration) (hostingbudget.Sample, error) {
 	return hosting.host.Sample(ctx, age)
 }
 
@@ -41,6 +41,6 @@ func (hosting *joinHandle) Close() error { return hosting.host.Close() }
 
 // The envelope includes both directions and transport/control overhead; the
 // installed policy chooses which directions the actual provider charges.
-func joinEnvelope() (resource.HostingTraffic, resource.HostingTraffic) {
-	return resource.HostingTraffic{Tx: 64 << 20, Rx: 64 << 20}, resource.HostingTraffic{Tx: 1 << 20, Rx: 1 << 20}
+func joinEnvelope() (hostingbudget.Traffic, hostingbudget.Traffic) {
+	return hostingbudget.Traffic{Tx: 64 << 20, Rx: 64 << 20}, hostingbudget.Traffic{Tx: 1 << 20, Rx: 1 << 20}
 }

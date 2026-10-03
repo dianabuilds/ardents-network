@@ -11,9 +11,9 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/admission/spending"
+	hostingbudget "github.com/dianabuilds/ardents-network/internal/hosting"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/node/authority"
-	"github.com/dianabuilds/ardents-network/internal/resource"
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	routecarrier "github.com/dianabuilds/ardents-network/internal/route/carrier"
@@ -32,7 +32,7 @@ type Profile struct {
 // Host is the role's lease of the shared provider period. Node supplies the
 // class-2 Hosting policy while JOIN owns this handle and its late close.
 type Host interface {
-	Sample(context.Context, time.Duration) (resource.HostingSample, error)
+	Sample(context.Context, time.Duration) (hostingbudget.Sample, error)
 	AdmissionVerifier(route.ClosedRoleReceiver) route.ClosedAdmissionVerifier
 	Replenisher(route.ClosedRoleReceiver, *spending.Ledger) route.ClosedForwardingReplenisher
 	Close() error
