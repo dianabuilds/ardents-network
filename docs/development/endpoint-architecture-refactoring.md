@@ -82,10 +82,9 @@ internal/endpoint/service/       protected Service stream mechanism: checked
                                  native Connection lifecycle; seam
                                  service.Binding (14 methods) implemented by
                                  root *serviceBinding
-internal/endpoint/tokenjournal/  durable token-attempt journal
+internal/admission/attempts/     durable potential-spend receipts and private roots
 internal/endpoint/descriptorhistory/ per-Target verified publication floors
 internal/endpoint/permissionfile/    canonical permission handover files
-internal/endpoint/durableroot/       shared durable-root access/lease/sync
 internal/endpoint/portable/, replacement/  portable-run and replacement leaves
 internal/qualification/          per-invocation Run, Artifact, Attachment,
                                  Measurements, and the retained-run
@@ -176,7 +175,7 @@ binding, and the shared `mu`:
 | Publisher prefixes | `introductionPrefixLifecycle`, `responderPrefixLifecycle` over shared `rolePrefixCore` (root) | Separate Route handles and opening lifetimes; borrowed Source is not closed by either. |
 | Publication | `publicationOwner` (root) + `publication.RefreshLifecycle` (extracted scheduler) + `introduction.PairLifecycle`/`Registration` (extracted pair mechanism) | The pair owner retains the active registration opening and withdrawal flight through install or cancellation. Context still coordinates their stop/join order; Instance and Publication ownership spans Context and Endpoint locks. |
 | Permission and issuance | `tokens.Permission`, `tokens.Operation`, `tokens.Owner` (extracted; fields exported, error strings byte-identical) | The permission owner holds holder request creation, signed approval acceptance, currentness and remaining-quota checks, exact retry matching and batch quota reservation, candidate-stock inspection, pending-batch cancellation, issued-token deposit, then burns and verifies the exact challenge under the Context admission lock via `tokens.Owner` over the shared duty `mu`. Orchestration (`issueTokens*`, `prepareIssuerStock`, `provisionPermission`) stays at root. Context performs the durable token-attempt mark and surviving-owner check before presentation. |
-| Token attempt storage | `tokenjournal.Journal` | Own mutex, replay/time floors, and durable attempts; consumes the shared `durableroot` access, lease, and sync API. |
+| Token attempt storage | `attempts.Journal` in Admission | Own mutex, replay/time floors, durable attempts and private root access/lease/sync. Endpoint holds the lifetime; a missing retained lease refuses rather than creating another owner. |
 | Permission file handover | `permissionfile` | Own canonical owner-private request/response paths, exact retry, and request durability; Context retains currentness and offline approval authority. |
 | Transit Grant acquisition | retired per [ADR-0092](../adr/0092-retire-generic-publisher-transit-chain.md) | The acquisition journals, transit credential acquisition, and transit client certificates were removed; no maintained composition selects a transit acquisition root. |
 | Descriptor history | `descriptorhistory.History` | Own per-Target verified publication/revision floors, conflict memory, capacity and context-retirement erasure; Context checks live authority before acceptance and before using a retained proof. |
@@ -216,10 +215,10 @@ contract stays in `docs/technical/endpoint-service-runtime.md`.
    package is Linux-only; an untagged `doc.go` makes it Windows-visible and
    requires the profile registry to list it, as for `worker`), behavior tests,
    and a package-map entry in the same change.
-4. Keep the extracted `internal/endpoint/tokenjournal` as the durable
-   attempt owner. Endpoint supplies only the selected token and its binding;
-   the journal owns replay/time floors and persisted receipts through
-   `durableroot`. Its integration tests read durable bytes independently.
+4. Keep `internal/admission/attempts` as the durable potential-spend owner.
+   Endpoint supplies only the selected token and its binding; the journal owns
+   replay/time floors, persisted receipts and private root mechanisms.
+   Its integration tests read durable bytes independently.
 5. Keep the text workload name on code that really depends on the selected
    text Application. Production identifiers in the Endpoint root carry
    domain names after the in-package rename series; the remaining legitimate

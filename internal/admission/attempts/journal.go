@@ -1,6 +1,6 @@
 //go:build linux
 
-package tokenjournal
+package attempts
 
 import (
 	"crypto/sha256"
@@ -10,8 +10,6 @@ import (
 	"path/filepath"
 	"sync"
 	"time"
-
-	"github.com/dianabuilds/ardents-network/internal/endpoint/durableroot"
 )
 
 const (
@@ -40,7 +38,7 @@ type Journal struct {
 	root     string
 	identity os.FileInfo
 	network  [32]byte
-	lease    *durableroot.Lease
+	lease    *rootLease
 	clock    func() time.Time
 	floor    time.Time
 	records  map[[32]byte]Attempt
@@ -128,7 +126,7 @@ func (journal *Journal) Close() error {
 	defer journal.mu.Unlock()
 	if !journal.closed {
 		journal.closed = true
-		journal.failure = errors.Join(journal.failure, journal.lease.Release())
+		journal.failure = errors.Join(journal.failure, journal.lease.release())
 	}
 	return journal.failure
 }

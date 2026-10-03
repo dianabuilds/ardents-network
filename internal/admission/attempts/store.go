@@ -1,6 +1,6 @@
 //go:build linux
 
-package tokenjournal
+package attempts
 
 import (
 	"bytes"
@@ -12,14 +12,18 @@ import (
 	"sort"
 	"strings"
 	"time"
-
-	"github.com/dianabuilds/ardents-network/internal/endpoint/durableroot"
 )
 
 const journalMarker = "ardents-token-attempts-v1\n"
 
 // Open claims one existing private root and refuses ambiguous retained state.
 func Open(root string, network [32]byte, clock func() time.Time) (*Journal, error) {
+	return openJournal(root, network, clock, syncJournalRoot)
+}
+
+// Only persistence can be substituted by fault tests; validation, lease and
+// retained attempt handling follow the same production path.
+func openJournal(root string, network [32]byte, clock func() time.Time, syncRoot func(string) error) (*Journal, error) {
 	if !filepath.IsAbs(root) || filepath.Clean(root) != root || network == [32]byte{} || clock == nil || clock().IsZero() {
 		return nil, errors.New("text token journal configuration invalid")
 	}
@@ -45,15 +49,15 @@ func Open(root string, network [32]byte, clock func() time.Time) (*Journal, erro
 			return nil, errors.New("text token journal marker unavailable")
 		}
 	}
-	if err := durableroot.Secure(root); err != nil {
+	if err := secureRoot(root); err != nil {
 		return nil, err
 	}
-	lease, err := durableroot.Acquire(filepath.Join(root, "owner.lock"))
+	lease, err := acquireLease(filepath.Join(root, "owner.lock"), fresh)
 	if err != nil {
 		return nil, err
 	}
 	journal := &Journal{root: root, network: network, clock: clock, lease: lease, records: make(map[[32]byte]Attempt)}
-	fail := func(cause error) (*Journal, error) { return nil, errors.Join(cause, lease.Release()) }
+	fail := func(cause error) (*Journal, error) { return nil, errors.Join(cause, lease.release()) }
 	if fresh {
 		current, err := os.ReadDir(root)
 		if err != nil || len(current) != 1 || current[0].Name() != "owner.lock" {
@@ -64,9 +68,6 @@ func Open(root string, network [32]byte, clock func() time.Time) (*Journal, erro
 		}
 		journal.floor = clock().UTC().Truncate(time.Second)
 		if err := writeJournalFile(filepath.Join(root, "attempts"), journal.header(journal.floor)); err != nil {
-			return fail(err)
-		}
-		if err := durableroot.SyncDirectory(root); err != nil {
 			return fail(err)
 		}
 	} else if err := journal.load(); err != nil {
@@ -81,6 +82,11 @@ func Open(root string, network [32]byte, clock func() time.Time) (*Journal, erro
 	}
 	journal.identity, err = pinJournalFile(root)
 	if err != nil {
+		return fail(err)
+	}
+	// Complete bytes can survive an initialization whose final flush failed.
+	// Validated reopen must establish durability before acknowledging ownership.
+	if err := syncRoot(root); err != nil {
 		return fail(err)
 	}
 	return journal, nil
@@ -154,7 +160,7 @@ func (journal *Journal) replace(records map[[32]byte]Attempt, floor time.Time) e
 	if err := os.Rename(path, filepath.Join(journal.root, "attempts")); err != nil {
 		return err
 	}
-	if err := durableroot.SyncDirectory(journal.root); err != nil {
+	if err := syncDirectory(journal.root); err != nil {
 		return err
 	}
 	info, err := pinJournalFile(journal.root)
@@ -177,8 +183,8 @@ func writeJournalFile(path string, raw []byte) error {
 	return errors.Join(err, file.Close())
 }
 
-// File.Stat pins Windows file identity now; pathname Stat can resolve its
-// identity lazily only after the pathname has already been replaced.
+// Pin the opened file's identity; later appends check their actual descriptor
+// against this retained identity before changing the journal.
 func pinJournalFile(root string) (os.FileInfo, error) {
 	file, err := os.Open(filepath.Join(root, "attempts"))
 	if err != nil {

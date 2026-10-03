@@ -3,3 +3,4 @@ github.com/dianabuilds/ardents-network/internal/endpoint/source
 github.com/dianabuilds/ardents-network/internal/endpoint/service
 github.com/dianabuilds/ardents-network/internal/endpoint/tokens
 github.com/dianabuilds/ardents-network/internal/endpoint/publication
+github.com/dianabuilds/ardents-network/internal/admission/attempts

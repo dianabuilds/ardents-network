@@ -456,6 +456,11 @@ Each receipt remains until its hour plus sixty seconds has ended.
 The installed Ubuntu journal checks file identity through its opened descriptor; a
 pathname re-resolved after replacement cannot stand for the previous file.
 The format stores no reusable token, holder, permission, Target or document.
+The Admission attempts owner creates a lease only for an empty initial root;
+a retained root without its lease refuses, including while a previous owner is
+still live. Initial creation and validated reopen flush the root's retained
+files and directory before returning ownership. A failed initial flush cannot
+be bypassed by retrying Open against complete but unacknowledged files.
 
 A fresh source prefix consumes distinct genuine class-2 stock for Entry and
 Interior on new authenticated channels after bootstrap retirement. The local

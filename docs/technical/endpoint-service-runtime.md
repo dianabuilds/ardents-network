@@ -648,7 +648,7 @@ Local network tests exercise this result projection with explicit qualification
 fixtures. The installed profile uses the actual AAI3 owner and launcher, but
 that revised profile still requires execution on its qualified host.
 The protected `RunClosedParticipant` composition opens the accepted closed State,
-Entry sets and the `internal/endpoint/tokenjournal` durable attempt owner.
+Entry sets and the `internal/admission/attempts` durable potential-spend owner.
 The default composition also opens the existing Instance binding and provisions
 both retained text contexts before opening the AAI3 Connection and snapshot
 Administration transports. An explicit v2 `role: reader` selects only the

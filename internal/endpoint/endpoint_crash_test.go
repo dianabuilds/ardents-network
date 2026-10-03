@@ -15,11 +15,10 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/admission"
+	"github.com/dianabuilds/ardents-network/internal/admission/attempts"
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
 	"github.com/dianabuilds/ardents-network/internal/custody"
-	"github.com/dianabuilds/ardents-network/internal/endpoint/durableroot"
 	"github.com/dianabuilds/ardents-network/internal/endpoint/introduction"
-	"github.com/dianabuilds/ardents-network/internal/endpoint/tokenjournal"
 	"github.com/dianabuilds/ardents-network/internal/endpoint/tokens"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 )
@@ -136,7 +135,7 @@ func TestTextEndpointCrashDropsVolatileAuthorityAndRetainsSpend(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	record := tokenjournal.Attempt{Profile: boundary.AttemptProfile, Receiver: boundary.Receiver, Duty: boundary.Duty,
+	record := attempts.Attempt{Profile: boundary.AttemptProfile, Receiver: boundary.Receiver, Duty: boundary.Duty,
 		Window: boundary.Window, Class: 2, Nonce: boundary.Nonce}
 	if err := journal.Mark(boundary.Token, record); err == nil {
 		t.Fatal("restart revived a token already durably marked before the crash")
@@ -274,9 +273,9 @@ func runEndpointCrashChild(t *testing.T, root string) {
 		t.Fatal(err)
 	}
 	token := bytes.Repeat([]byte{0xa5}, 354)
-	record := tokenjournal.Attempt{Profile: fixtureID(252), Receiver: fixtureID(253), Duty: 7,
+	record := attempts.Attempt{Profile: fixtureID(252), Receiver: fixtureID(253), Duty: 7,
 		Window: now.Truncate(time.Hour), Class: 2, Nonce: fixtureID(254)}
-	journal, err := tokenjournal.Open(filepath.Join(root, "tokens"), profile.NetworkID, clock)
+	journal, err := attempts.Open(filepath.Join(root, "tokens"), profile.NetworkID, clock)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -299,7 +298,11 @@ func runEndpointCrashChild(t *testing.T, root string) {
 	if err := os.Rename(pending, filepath.Join(root, "boundary.json")); err != nil {
 		t.Fatal(err)
 	}
-	if err := durableroot.SyncDirectory(root); err != nil {
+	directory, err := os.Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := errors.Join(directory.Sync(), directory.Close()); err != nil {
 		t.Fatal(err)
 	}
 	<-time.After(time.Minute)

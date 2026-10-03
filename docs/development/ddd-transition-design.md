@@ -375,6 +375,50 @@ role consumers, followed by quick/full repository gates and bounded review.
 These are component and receiving-composition results, not installed topology
 or anonymity qualification.
 
+### Holder attempted-spend owner
+
+Transfer `internal/endpoint/tokenjournal` to `internal/admission/attempts` with
+the real Endpoint runtime, stock and Source presentation callers. The owner
+records a potential spend before bytes leave local stock; receiver acceptance
+never refunds it. Keep Open/Mark/Close and the existing Attempt value. It stores
+hashes and public attempt bindings, not reusable tokens or permission secrets.
+Stock, live State acceptance and transport presentation remain separate owners.
+
+Fold `endpoint/durableroot` into this owner's private Linux root mechanisms.
+Tokenjournal is its only production consumer; exporting a generic lease/sync
+package would leave the Admission owner dependent on Endpoint implementation.
+The Endpoint crash fixture can sync its own fixture directory directly. Remove
+the redundant package and its unused Windows implementation rather than claiming
+Windows holder-journal support. The new package imports only the standard
+library, has the same real callers, and belongs to the checked Linux
+deterministic profile. Successor isolation remains unchanged.
+
+Preserve the existing marker, ARDTPS01 header, 153-byte receipts, Network binding,
+131,072-record limit, observed-time and compaction floors, retention margin,
+owner-only root, descriptor identity checks and terminal ambiguous-write result.
+No conversion, reset, restored stock or new recovery authority is added.
+Normal close/reopen retains every unexpired potential spend. Missing or partial
+retained state refuses. Only an empty root may exclusively create its lease;
+an existing root must open its retained lease without creating a replacement.
+The old code was observed admitting a second live owner after loss of the first
+owner's lock pathname. The transfer must eliminate that accepting path.
+
+Both initialization and validated reopen establish journal/marker and directory
+durability before returning an owner, so retry after an initial sync failure
+cannot bypass persistence. Incomplete first creation refuses. Existing bounded
+temporary-file cleanup remains lease-held and cannot acknowledge pending bytes.
+Complete root replacement/rollback remains outside the surviving-state claim.
+
+Verification uses real journal operations and Endpoint consumers: concurrent
+owner refusal with intact and missing lock paths, repeated missing-lease refusal
+without recreation, exact retained burns after restart, partial/replaced state,
+pruning and process-crash floors, cleanup and cancellation before presentation.
+Inject only the persistence failure to exercise failed initial flush and retry;
+do not replace authority or token presentation. Run the Linux deterministic race
+profile for attempts and affected Endpoint/tokens/Source callers, required
+quick/full gates and bounded review. A diagnostic reproducer already confirmed
+the lost-lease overlap; these checks do not qualify an installed journey.
+
 ## Find defects during transfer
 
 Use three independent inputs: accepted behavior, current source/callers, and

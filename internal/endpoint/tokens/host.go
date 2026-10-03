@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/admission"
-	"github.com/dianabuilds/ardents-network/internal/endpoint/tokenjournal"
+	"github.com/dianabuilds/ardents-network/internal/admission/attempts"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/route/client"
 )
@@ -25,7 +25,7 @@ type Host interface {
 	// duty context of the Endpoint generation.
 	Fail(err error)
 	// Journal returns the exclusive bounded durable token journal.
-	Journal() (*tokenjournal.Journal, error)
+	Journal() (*attempts.Journal, error)
 	// LeaseContext is the authorization lease lifetime bounding issuance.
 	LeaseContext() context.Context
 	// SelectBootstrapLocked returns the exact current bootstrap selection.

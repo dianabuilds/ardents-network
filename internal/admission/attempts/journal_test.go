@@ -1,6 +1,6 @@
 //go:build linux
 
-package tokenjournal
+package attempts
 
 import (
 	"bytes"

@@ -14,7 +14,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	"github.com/dianabuilds/ardents-network/internal/route/terminal"
 
-	"github.com/dianabuilds/ardents-network/internal/endpoint/tokenjournal"
+	"github.com/dianabuilds/ardents-network/internal/admission/attempts"
 	"github.com/dianabuilds/ardents-network/internal/endpoint/tokens"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/route/client"
@@ -61,7 +61,7 @@ func TestTextTokenPresentationBurnsStockBeforeReturningBytes(t *testing.T) {
 	if err := endpoint.Close(); err != nil {
 		t.Fatal(err)
 	}
-	reopened, err := tokenjournal.Open(endpoint.closedTokenRoot, endpoint.network, time.Now)
+	reopened, err := attempts.Open(endpoint.closedTokenRoot, endpoint.network, time.Now)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -112,7 +112,7 @@ func TestTextTokenCancellationAfterDurableMarkRetainsBurn(t *testing.T) {
 	if err := endpoint.Close(); err != nil {
 		t.Fatal(err)
 	}
-	reopened, err := tokenjournal.Open(endpoint.closedTokenRoot, endpoint.network, time.Now)
+	reopened, err := attempts.Open(endpoint.closedTokenRoot, endpoint.network, time.Now)
 	if err != nil {
 		t.Fatal(err)
 	}

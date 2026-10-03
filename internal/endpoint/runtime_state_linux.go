@@ -3,7 +3,7 @@
 package endpoint
 
 import (
-	"github.com/dianabuilds/ardents-network/internal/endpoint/tokenjournal"
+	"github.com/dianabuilds/ardents-network/internal/admission/attempts"
 	"github.com/dianabuilds/ardents-network/internal/entry"
 )
 
@@ -13,7 +13,7 @@ type endpointDutyState struct {
 	publicationLive    bool
 	publisherOwner     *dutyContext
 	closedTokenRoot    string
-	closedTokenJournal *tokenjournal.Journal
+	closedTokenJournal *attempts.Journal
 	dutyMu             dutyContextGuard
 	dutyContexts       map[*dutyContext]struct{}
 	dutyClosed         bool

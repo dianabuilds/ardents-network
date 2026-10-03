@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/admission"
+	"github.com/dianabuilds/ardents-network/internal/admission/attempts"
 	"github.com/dianabuilds/ardents-network/internal/endpoint/permissionfile"
-	"github.com/dianabuilds/ardents-network/internal/endpoint/tokenjournal"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 )
@@ -107,7 +107,7 @@ func (owner *Owner) TakeTokenLocked(profile state.ClosedProfileView, now time.Ti
 	}
 	journal, err := owner.host.Journal()
 	if err == nil {
-		err = journal.Mark(token, tokenjournal.Attempt{Profile: profile.Digest, Receiver: hello.RecipientNodeID, Duty: hello.RecipientDutyGeneration,
+		err = journal.Mark(token, attempts.Attempt{Profile: profile.Digest, Receiver: hello.RecipientNodeID, Duty: hello.RecipientDutyGeneration,
 			Window: permission.Accepted.NotBefore, Class: class, Nonce: hello.ChannelNonce})
 	}
 	if err != nil {

@@ -49,9 +49,8 @@
 // The Route capsule package owns Introduction sealing and decoding; Endpoint
 // checks decoded facts against live participant and publication authority.
 //
-// Durable token attempts live in the child tokenjournal package. The
-// durableroot package owns its shared filesystem lease and atomic-write
-// primitives. The permissionfile package owns the separate owner-private
+// Durable token attempts and their private root mechanisms belong to Admission's
+// attempts package. The permissionfile package owns the separate owner-private
 // offline permission file handover. Tests follow their production
 // owner; the role-network fixture in issuance_network_test.go selects
 // the Carrier, network_node_fixture_test.go owns each fixture Node's

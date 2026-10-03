@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/endpoint/tokenjournal"
+	"github.com/dianabuilds/ardents-network/internal/admission/attempts"
 )
 
 // This test oracle reads the persisted receipt format independently of the
@@ -78,7 +78,7 @@ func snapshotTokenReceipts(t *testing.T, root string, network [32]byte) map[[32]
 	return snapshot
 }
 
-func journalAttemptFromReceipt(receipt tokenReceipt) tokenjournal.Attempt {
-	return tokenjournal.Attempt{Profile: receipt.profile, Receiver: receipt.receiver, Duty: receipt.duty,
+func journalAttemptFromReceipt(receipt tokenReceipt) attempts.Attempt {
+	return attempts.Attempt{Profile: receipt.profile, Receiver: receipt.receiver, Duty: receipt.duty,
 		Window: receipt.window, Class: receipt.class, Nonce: receipt.attempt}
 }

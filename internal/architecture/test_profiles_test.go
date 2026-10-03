@@ -82,7 +82,8 @@ func TestProfilePackageEntriesAreCurrent(t *testing.T) {
 // The Linux-only inventory is explicit, never inferred by dropping build errors.
 func TestLinuxOnlyProfileNamesActualPlatformPackages(t *testing.T) {
 	root := repositoryRoot(t)
-	command := exec.Command("go", "list", "./internal/endpoint/...")
+	// Linux-only owners can belong to any maintained domain, not just Endpoint.
+	command := exec.Command("go", "list", "./cmd/...", "./internal/...", "./tests/epochfixture/network")
 	command.Dir = root
 	command.Env = append(os.Environ(), "GOOS=linux", "GOARCH=amd64")
 	body, err := command.Output()

@@ -6,8 +6,8 @@ import (
 	"context"
 	"errors"
 
+	"github.com/dianabuilds/ardents-network/internal/admission/attempts"
 	"github.com/dianabuilds/ardents-network/internal/endpoint/source"
-	"github.com/dianabuilds/ardents-network/internal/endpoint/tokenjournal"
 	"github.com/dianabuilds/ardents-network/internal/endpoint/tokens"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	"github.com/dianabuilds/ardents-network/internal/route/client"
@@ -83,14 +83,14 @@ func (operation *operationFlight) presentToken(selection client.ClosedBootstrapS
 	return token, nil
 }
 
-func (endpoint *endpoint) tokenJournal() (*tokenjournal.Journal, error) {
+func (endpoint *endpoint) tokenJournal() (*attempts.Journal, error) {
 	endpoint.dutyMu.Lock()
 	defer endpoint.dutyMu.Unlock()
 	if endpoint.dutyClosed || endpoint.closedTokenRoot == "" {
 		return nil, errors.New("text token journal root unavailable")
 	}
 	if endpoint.closedTokenJournal == nil {
-		journal, err := tokenjournal.Open(endpoint.closedTokenRoot, endpoint.network, endpoint.clock)
+		journal, err := attempts.Open(endpoint.closedTokenRoot, endpoint.network, endpoint.clock)
 		if err != nil {
 			return nil, err
 		}

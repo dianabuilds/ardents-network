@@ -8,9 +8,9 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/admission"
+	"github.com/dianabuilds/ardents-network/internal/admission/attempts"
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
 	"github.com/dianabuilds/ardents-network/internal/endpoint/source"
-	"github.com/dianabuilds/ardents-network/internal/endpoint/tokenjournal"
 	"github.com/dianabuilds/ardents-network/internal/endpoint/tokens"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/route/client"
@@ -41,7 +41,7 @@ func (host dutyTokenHost) Fail(err error) {
 	owner.endpoint.failDutyContexts(err)
 }
 
-func (host dutyTokenHost) Journal() (*tokenjournal.Journal, error) {
+func (host dutyTokenHost) Journal() (*attempts.Journal, error) {
 	return host.owner.endpoint.tokenJournal()
 }
 
