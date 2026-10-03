@@ -330,6 +330,51 @@ with executable files. Once new irreversible state exists, failure means bounded
 unavailability/recovery unless the old program is independently authorized and
 demonstrably safe for that exact state.
 
+### Receiving spending owner
+
+The next bounded Admission transfer is the dependency-closed receiving owner
+`internal/route/replay` -> `internal/admission/spending`, including its real Route
+admission and Node role callers. It owns durable token burns and Introduction
+slot replay floors under one receiving-duty lease. Route still verifies the
+authenticated channel and selects no new authority through this transfer.
+The Interface remains Open/Spend/IntroductionSlots/Close with immutable Binding;
+transport, cryptographic verification, State acceptance and hosting remain with
+their current owners. No interface wrapper or second writer is introduced.
+
+This leaf has no project imports. Its existing standard-library and Windows
+`golang.org/x/sys/windows` dependencies remain exact permitted imports. It can
+move directly to its final domain path with all current callers in one change;
+no successor package calls it and the two-way successor isolation stays intact.
+This narrows the full-domain work without pretending the offline issuer has
+become a live issuer. Allocation, holder stock and live issuance remain separate
+transfers with their own complete consumers.
+
+The existing ARDSPN01 binding, marker-1 spends, marker-2 compaction floor,
+Introduction slot file and lock filename remain compatible. Capacity stays
+131,072 spends and 1,024 slots; the acceptance hour, 60-second spend retention
+margin and slot lifetime bounds remain unchanged. Normal restart retains burned
+tokens and floors. One final append crash tail keeps its existing recovery rule.
+Close joins the lease; uncertain append/prune failures terminalize the owner.
+
+Scenario inspection found that removing the journal while retaining the lease
+file allowed Open to initialize an empty journal and spend the same token again.
+The selected repair distinguishes a newly created lease from a retained one.
+Only an empty root can create a lease and journal; a retained lease without its
+journal, or journal/slot state without its lease, refuses without reconstruction.
+Interrupted initial creation with missing or partial state also refuses;
+this change adds no reset or duty-rebinding operation. Both initial creation and validated reopen flush the journal and directory
+before returning an owner, including retry after a failed initialization flush. Complete root replacement or
+rollback remains outside the surviving-boundary claim in the technical owner.
+
+Verification crosses the real owner and receiving-resource startup: initial
+spend, retained duplicate refusal, restart, partial-root refusal before receiving
+resources become usable, repeated refusal without mutation, release on failure,
+existing crash-tail recovery, pruning floors and slot persistence. The package
+keeps the deterministic profile; Linux race tests cover it, Route and all Node
+role consumers, followed by quick/full repository gates and bounded review.
+These are component and receiving-composition results, not installed topology
+or anonymity qualification.
+
 ## Find defects during transfer
 
 Use three independent inputs: accepted behavior, current source/callers, and

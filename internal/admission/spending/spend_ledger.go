@@ -1,4 +1,4 @@
-package replay
+package spending
 
 import (
 	"bytes"
@@ -56,6 +56,12 @@ type closedSpendAppendFile interface {
 
 // Open opens one exclusive receiving-duty spend journal.
 func Open(root string, binding Binding) (*Ledger, error) {
+	return openLedger(root, binding, syncClosedSpendRoot)
+}
+
+// The private persistence seam exercises unavailable durability on the same
+// initialization/reopen path without replacing authority or journal behavior.
+func openLedger(root string, binding Binding, syncRoot func(string) error) (*Ledger, error) {
 	if !filepath.IsAbs(root) || filepath.Clean(root) != root || !validBinding(binding) {
 		return nil, errors.New("closed spend ledger binding is invalid")
 	}
@@ -66,9 +72,12 @@ func Open(root string, binding Binding) (*Ledger, error) {
 	fail := func(cause error) (*Ledger, error) { return nil, errors.Join(cause, lease.release()) }
 	path := filepath.Join(root, closedSpendLedgerName)
 	raw, err := readClosedSpendFile(path, closedSpendLedgerHeaderSize+(maximumClosedSpends+1)*closedSpendRecordSize)
-	if errors.Is(err, os.ErrNotExist) {
+	if errors.Is(err, os.ErrNotExist) && lease.created {
 		ledger := &Ledger{path: path, binding: binding, spent: make(map[[32]byte]time.Time), lease: lease}
 		if err := writeClosedSpendExclusive(path, encodeClosedSpendHeader(binding)); err != nil {
+			return fail(err)
+		}
+		if err := syncRoot(path); err != nil {
 			return fail(err)
 		}
 		return ledger, nil
@@ -80,8 +89,25 @@ func Open(root string, binding Binding) (*Ledger, error) {
 	if err != nil {
 		return fail(err)
 	}
+	// A prior initialization can have left complete bytes but failed its sync.
+	// Reopen must establish durability before returning those bytes as an owner.
+	if err := syncRoot(path); err != nil {
+		return fail(err)
+	}
 	ledger.lease = lease
 	return ledger, nil
+}
+
+func syncClosedSpendRoot(path string) error {
+	file, err := os.OpenFile(path, os.O_RDWR, 0)
+	if err != nil {
+		return err
+	}
+	err = errors.Join(file.Sync(), file.Close())
+	if err != nil {
+		return err
+	}
+	return syncClosedSpendDirectory(filepath.Dir(path))
 }
 
 // Close releases the process-held journal lease. It does not erase spent

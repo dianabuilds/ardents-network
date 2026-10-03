@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/admission/spending"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/node/authority"
 	"github.com/dianabuilds/ardents-network/internal/node/hosting"
@@ -15,7 +16,6 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	"github.com/dianabuilds/ardents-network/internal/route/carrier"
-	"github.com/dianabuilds/ardents-network/internal/route/replay"
 )
 
 type ClosedForwardingProfile struct {
@@ -44,7 +44,7 @@ func forwardingDependencies(config forwardingFixtureConfig, host hosting.Host) d
 		verify: func(receiver route.ClosedRoleReceiver) route.ClosedAdmissionVerifier {
 			return hosting.AdmissionVerifier(source, config.now, receiver, host, config.ClosedForwarding.AdmissionTraffic, config.ClosedForwarding.TerminationTraffic)
 		},
-		replenish: func(receiver route.ClosedRoleReceiver, spends *replay.Ledger) route.ClosedForwardingReplenisher {
+		replenish: func(receiver route.ClosedRoleReceiver, spends *spending.Ledger) route.ClosedForwardingReplenisher {
 			return hosting.Replenisher(source, config.now, receiver, host, spends, config.ClosedForwarding.AdmissionTraffic, config.ClosedForwarding.TerminationTraffic)
 		},
 	}

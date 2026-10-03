@@ -9,10 +9,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/admission/spending"
 	"github.com/dianabuilds/ardents-network/internal/resource"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	routecarrier "github.com/dianabuilds/ardents-network/internal/route/carrier"
-	"github.com/dianabuilds/ardents-network/internal/route/replay"
 )
 
 type refusedForwardingCarrier struct {
@@ -79,7 +79,7 @@ func checkForwardingAcceptedCloseFailure(t *testing.T, capacity bool) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	spends, err := replay.Open(t.TempDir(), replay.Binding{NetworkID: [32]byte{1}, ProfileDigest: [32]byte{2}, ReceiverNodeID: [32]byte{3}, ReceiverDutyGeneration: 1})
+	spends, err := spending.Open(t.TempDir(), spending.Binding{NetworkID: [32]byte{1}, ProfileDigest: [32]byte{2}, ReceiverNodeID: [32]byte{3}, ReceiverDutyGeneration: 1})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -165,9 +165,9 @@ func checkForwardingReaderShutdown(t *testing.T, closeErr error) {
 		t.Fatal(err)
 	}
 	root := t.TempDir()
-	binding := replay.Binding{NetworkID: [32]byte{1}, ProfileDigest: [32]byte{2},
+	binding := spending.Binding{NetworkID: [32]byte{1}, ProfileDigest: [32]byte{2},
 		ReceiverNodeID: [32]byte{3}, ReceiverDutyGeneration: 1}
-	spends, err := replay.Open(root, binding)
+	spends, err := spending.Open(root, binding)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -253,7 +253,7 @@ func checkForwardingReaderShutdown(t *testing.T, closeErr error) {
 	default:
 		t.Fatal("Stop did not interrupt the outgoing Carrier")
 	}
-	if replacement, err := replay.Open(root, binding); err == nil {
+	if replacement, err := spending.Open(root, binding); err == nil {
 		_ = replacement.Close()
 		t.Fatal("unjoined reader lost its root lease")
 	}
@@ -268,7 +268,7 @@ func checkForwardingReaderShutdown(t *testing.T, closeErr error) {
 	if err := server.Drain(readerOnly); !errors.Is(err, context.DeadlineExceeded) {
 		t.Fatalf("Drain completed without the retained reader after producer join: %v", err)
 	}
-	if replacement, err := replay.Open(root, binding); err == nil {
+	if replacement, err := spending.Open(root, binding); err == nil {
 		_ = replacement.Close()
 		t.Fatal("unjoined reader lost its root lease after producer join")
 	}
@@ -281,7 +281,7 @@ func checkForwardingReaderShutdown(t *testing.T, closeErr error) {
 			t.Fatalf("joined cleanup changed its physical close result: %v", err)
 		}
 	}
-	reopened, err := replay.Open(root, binding)
+	reopened, err := spending.Open(root, binding)
 	if err != nil {
 		t.Fatalf("joined shutdown retained root: %v", err)
 	}

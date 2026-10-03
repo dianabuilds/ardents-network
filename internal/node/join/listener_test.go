@@ -8,12 +8,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/admission/spending"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/node/authority"
 	"github.com/dianabuilds/ardents-network/internal/resource"
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/carrier"
-	"github.com/dianabuilds/ardents-network/internal/route/replay"
 )
 
 type monitoredHost struct {
@@ -27,7 +27,7 @@ func (host *monitoredHost) Sample(ctx context.Context, _ time.Duration) (resourc
 func (*monitoredHost) AdmissionVerifier(route.ClosedRoleReceiver) route.ClosedAdmissionVerifier {
 	return nil
 }
-func (*monitoredHost) Replenisher(route.ClosedRoleReceiver, *replay.Ledger) route.ClosedForwardingReplenisher {
+func (*monitoredHost) Replenisher(route.ClosedRoleReceiver, *spending.Ledger) route.ClosedForwardingReplenisher {
 	return nil
 }
 func (host *monitoredHost) Close() error {

@@ -4,10 +4,10 @@ import (
 	"context"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/admission/spending"
 	"github.com/dianabuilds/ardents-network/internal/node/authority"
 	"github.com/dianabuilds/ardents-network/internal/resource"
 	"github.com/dianabuilds/ardents-network/internal/route"
-	"github.com/dianabuilds/ardents-network/internal/route/replay"
 )
 
 // joinHandle supplies the class-2 Hosting policy while JOIN owns the opened
@@ -32,7 +32,7 @@ func (hosting *joinHandle) AdmissionVerifier(receiver route.ClosedRoleReceiver) 
 	return AdmissionVerifier(hosting.source, hosting.now, receiver, hosting.host, work, termination)
 }
 
-func (hosting *joinHandle) Replenisher(receiver route.ClosedRoleReceiver, spends *replay.Ledger) route.ClosedForwardingReplenisher {
+func (hosting *joinHandle) Replenisher(receiver route.ClosedRoleReceiver, spends *spending.Ledger) route.ClosedForwardingReplenisher {
 	work, termination := joinEnvelope()
 	return Replenisher(hosting.source, hosting.now, receiver, hosting.host, spends, work, termination)
 }

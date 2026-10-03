@@ -7,13 +7,13 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/admission/spending"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/node/authority"
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	"github.com/dianabuilds/ardents-network/internal/route/carrier"
 	"github.com/dianabuilds/ardents-network/internal/route/credential"
-	"github.com/dianabuilds/ardents-network/internal/route/replay"
 )
 
 // Profile contains only the issuer's local roots, certificate and limits.
@@ -69,7 +69,7 @@ func Start(config Config) (*Handle, error) {
 	if !available {
 		return nil, errors.Join(errors.New("closed issuer receiver is unavailable"), issuer.Close())
 	}
-	spends, err := replay.Open(local.AdmissionRoot, replay.Binding{NetworkID: receiver.NetworkID,
+	spends, err := spending.Open(local.AdmissionRoot, spending.Binding{NetworkID: receiver.NetworkID,
 		ProfileDigest: receiver.ProfileDigest, ReceiverNodeID: receiver.NodeID, ReceiverDutyGeneration: receiver.DutyGeneration})
 	if err != nil {
 		return nil, errors.Join(err, issuer.Close())
@@ -107,7 +107,7 @@ func Start(config Config) (*Handle, error) {
 // drain deadline and closes both roots only after the last borrower finished.
 type closedIssuerServer struct {
 	listener *credential.ClosedTokenListener
-	spends   *replay.Ledger
+	spends   *spending.Ledger
 	issuer   *credential.ClosedTokenIssuer
 	releases *releaseErrors
 	done     chan error

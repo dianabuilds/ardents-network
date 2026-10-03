@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/admission/spending"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/node/authority"
 	nodeforwarding "github.com/dianabuilds/ardents-network/internal/node/forwarding"
@@ -14,7 +15,6 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	routecarrier "github.com/dianabuilds/ardents-network/internal/route/carrier"
-	"github.com/dianabuilds/ardents-network/internal/route/replay"
 )
 
 // ClosedForwardingProfile contains the local material for one closed Route
@@ -67,7 +67,7 @@ func startClosedForwarding(local ClosedForwardingProfile, inputs roleInputs, sna
 		VerifyAdmission: func(receiver route.ClosedRoleReceiver) route.ClosedAdmissionVerifier {
 			return hosting.AdmissionVerifier(source, inputs.now, receiver, host, local.AdmissionTraffic, local.TerminationTraffic)
 		},
-		Replenish: func(receiver route.ClosedRoleReceiver, spends *replay.Ledger) route.ClosedForwardingReplenisher {
+		Replenish: func(receiver route.ClosedRoleReceiver, spends *spending.Ledger) route.ClosedForwardingReplenisher {
 			return hosting.Replenisher(source, inputs.now, receiver, host, spends, local.AdmissionTraffic, local.TerminationTraffic)
 		},
 		LiteralEndpoint: literalNodeEndpoint, Host: host, Now: inputs.now,

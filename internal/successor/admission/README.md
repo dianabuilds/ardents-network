@@ -79,8 +79,9 @@ actual error; it does not imply expired authority or unavailable storage.
 ## Whole domain and current callers
 
 The domain includes allocation, issuing, holder stock and spending. This tree
-currently contains the offline issuer portion; source relocation here has not
-switched the existing Endpoint or receiving Node consumers.
+contains the offline issuer portion. Receiver spending has moved to its final
+Admission path with the existing Node and Route consumers; Endpoint stock and
+live issuance still use the owners listed below.
 
 | Responsibility | Implementation and actual consumer |
 | --- | --- |
@@ -88,7 +89,7 @@ switched the existing Endpoint or receiving Node consumers.
 | Permission allocation and purpose-bound signing | `internal/admission` grammar and `internal/custody/admission_authority.go`, consumed by the existing provisioning commands |
 | Pending blind batch, per-class stock and permission revocation | `internal/endpoint/tokens`, consumed by the existing Endpoint duty context |
 | Holder consumption journal | `internal/endpoint/tokenjournal`, consumed by that token owner |
-| Receiver spend and replay floors | `internal/route/replay`, consumed by existing receiving duties |
+| Receiver spend and replay floors | `internal/admission/spending`, transferred with real Route and Node receiving duties; retained-root repair included |
 | Live issuer request, bootstrap/admitted lane and response | `internal/route/credential`, composed by existing network consumers |
 
 These are distinct state owners within Admission, not interchangeable credentials

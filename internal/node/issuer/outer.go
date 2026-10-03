@@ -7,17 +7,17 @@ import (
 	"net"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/admission/spending"
 	nodeouter "github.com/dianabuilds/ardents-network/internal/node/outer"
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	routecarrier "github.com/dianabuilds/ardents-network/internal/route/carrier"
 	"github.com/dianabuilds/ardents-network/internal/route/credential"
-	"github.com/dianabuilds/ardents-network/internal/route/replay"
 )
 
 // nodeHandler owns one State-authenticated outer Carrier. It
 // creates no peer, route or fallback: every child terminates at this issuer.
-func nodeHandler(config Config, certificate tls.Certificate, issuer *credential.ClosedTokenIssuer, spends *replay.Ledger, limits *route.ClosedDutyLimits, recordRelease func(error)) credential.ClosedNodeBootstrapHandler {
+func nodeHandler(config Config, certificate tls.Certificate, issuer *credential.ClosedTokenIssuer, spends *spending.Ledger, limits *route.ClosedDutyLimits, recordRelease func(error)) credential.ClosedNodeBootstrapHandler {
 	return func(ctx context.Context, carrier routecarrier.ClosedSharedCarrier, serve func(context.Context, io.ReadWriter, [32]byte, ardp.Hello) error) {
 		defer func() { recordRelease(carrier.Connection.Close()) }()
 		updated, err := config.CurrentDuty()

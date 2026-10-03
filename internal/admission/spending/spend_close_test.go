@@ -1,6 +1,6 @@
 //go:build !windows
 
-package replay
+package spending
 
 import (
 	"errors"

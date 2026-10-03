@@ -8,11 +8,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/admission/spending"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/node/authority"
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/carrier"
-	"github.com/dianabuilds/ardents-network/internal/route/replay"
 )
 
 func TestStartRejectsMissingBorrowedDependencies(t *testing.T) {
@@ -60,7 +60,7 @@ func checkIntroductionAcceptedCloseFailure(t *testing.T, capacity bool, kind car
 	defer peer.Close()
 	connection := &acceptedCloseFailureConn{Conn: local, closed: make(chan struct{}), err: closeErr}
 	listener := &oneAcceptedCarrierListener{ready: make(chan struct{}), connection: connection, kind: kind}
-	spends, err := replay.Open(t.TempDir(), replay.Binding{NetworkID: [32]byte{1}, ProfileDigest: [32]byte{2}, ReceiverNodeID: [32]byte{3}, ReceiverDutyGeneration: 1})
+	spends, err := spending.Open(t.TempDir(), spending.Binding{NetworkID: [32]byte{1}, ProfileDigest: [32]byte{2}, ReceiverNodeID: [32]byte{3}, ReceiverDutyGeneration: 1})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -102,7 +102,7 @@ func TestIntroductionDrainTimeoutRetainsSpendRootUntilAcceptedWorkerJoins(t *tes
 	local, peer := net.Pipe()
 	defer peer.Close()
 	listener := &oneAcceptedCarrierListener{ready: make(chan struct{}), connection: local, kind: carrier.ClosedSharedNode}
-	spends, err := replay.Open(t.TempDir(), replay.Binding{NetworkID: [32]byte{1}, ProfileDigest: [32]byte{2}, ReceiverNodeID: [32]byte{3}, ReceiverDutyGeneration: 1})
+	spends, err := spending.Open(t.TempDir(), spending.Binding{NetworkID: [32]byte{1}, ProfileDigest: [32]byte{2}, ReceiverNodeID: [32]byte{3}, ReceiverDutyGeneration: 1})
 	if err != nil {
 		t.Fatal(err)
 	}

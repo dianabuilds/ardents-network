@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/admission/spending"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
-	"github.com/dianabuilds/ardents-network/internal/route/replay"
 )
 
 // Credential/exporter fixtures isolate real receiving admission, spend-ledger
@@ -78,7 +78,7 @@ func closedOuterAdmissionFixtureFor(t *testing.T, purpose ardp.Purpose, class ui
 	if err := lane.Activate(hello); err != nil {
 		t.Fatal(err)
 	}
-	spends, err := replay.Open(t.TempDir(), replay.Binding{NetworkID: receiver.NetworkID,
+	spends, err := spending.Open(t.TempDir(), spending.Binding{NetworkID: receiver.NetworkID,
 		ProfileDigest: receiver.ProfileDigest, ReceiverNodeID: receiver.NodeID, ReceiverDutyGeneration: receiver.DutyGeneration})
 	if err != nil {
 		t.Fatal(err)

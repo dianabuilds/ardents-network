@@ -6,9 +6,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/admission/spending"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	"github.com/dianabuilds/ardents-network/internal/route/carrier"
-	"github.com/dianabuilds/ardents-network/internal/route/replay"
 )
 
 // ClosedIntroductionRegistrationByteLimit is the complete bidirectional
@@ -150,7 +150,7 @@ func (admission *ClosedAdmission) Release() error {
 type ClosedAdmissionChannel struct {
 	mu       sync.Mutex
 	receiver ClosedRoleReceiver
-	spends   *replay.Ledger
+	spends   *spending.Ledger
 	limits   *ClosedDutyLimits
 	exporter carrier.ClosedTLSExporter
 	verify   ClosedAdmissionVerifier
@@ -163,7 +163,7 @@ type ClosedAdmissionChannel struct {
 // NewClosedAdmissionChannel creates one unauthenticated receiver state. The
 // caller must bind it to the just-handshaken TLS exporter; a zero or missing
 // exporter cannot fall back to an unauthenticated lane.
-func NewClosedAdmissionChannel(receiver ClosedRoleReceiver, spends *replay.Ledger, limits *ClosedDutyLimits, exporter carrier.ClosedTLSExporter, verify ClosedAdmissionVerifier, clock func() time.Time) (*ClosedAdmissionChannel, error) {
+func NewClosedAdmissionChannel(receiver ClosedRoleReceiver, spends *spending.Ledger, limits *ClosedDutyLimits, exporter carrier.ClosedTLSExporter, verify ClosedAdmissionVerifier, clock func() time.Time) (*ClosedAdmissionChannel, error) {
 	if !validClosedRoleReceiver(receiver) || spends == nil || limits == nil || exporter == nil || verify == nil || clock == nil || clock().IsZero() {
 		return nil, errors.New("closed admission channel is invalid")
 	}
@@ -231,7 +231,7 @@ func (channel *ClosedAdmissionChannel) acceptInitialAdmit(body []byte) (ClosedAd
 		deadline = channel.receiver.NotAfter
 	}
 	approval, err := channel.verify(ClosedAdmissionVerification{Hello: channel.hello, Class: class, Token: token, Exporter: channel.binding, Deadline: deadline})
-	if err != nil || !replay.ValidWindow(approval.Window) {
+	if err != nil || !spending.ValidWindow(approval.Window) {
 		return ClosedAdmission{}, errors.New("closed admission token is unavailable")
 	}
 	releaseApproval := func() error {

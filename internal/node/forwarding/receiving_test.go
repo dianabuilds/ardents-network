@@ -9,11 +9,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/admission/spending"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/node/authority"
 	"github.com/dianabuilds/ardents-network/internal/resource"
 	"github.com/dianabuilds/ardents-network/internal/route"
-	"github.com/dianabuilds/ardents-network/internal/route/replay"
 )
 
 type startupHost struct {
@@ -54,7 +54,7 @@ func TestClosedForwardingStartRejectsMissingDependenciesBeforeOpeningResources(t
 				},
 				CurrentDuty:     func() (state.NodeDuty, error) { return state.NodeDuty{}, nil },
 				VerifyAdmission: func(route.ClosedRoleReceiver) route.ClosedAdmissionVerifier { return nil },
-				Replenish:       func(route.ClosedRoleReceiver, *replay.Ledger) route.ClosedForwardingReplenisher { return nil },
+				Replenish:       func(route.ClosedRoleReceiver, *spending.Ledger) route.ClosedForwardingReplenisher { return nil },
 				LiteralEndpoint: func(string) bool { return true }, Now: time.Now}
 			test.omit(&config)
 			running, err := Start(config)
@@ -91,13 +91,13 @@ func TestClosedForwardingReceivingRollbackRetainsInitializationAndCleanupFailure
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			root := t.TempDir()
-			binding := replay.Binding{NetworkID: [32]byte{1}, ProfileDigest: [32]byte{2},
+			binding := spending.Binding{NetworkID: [32]byte{1}, ProfileDigest: [32]byte{2},
 				ReceiverNodeID: [32]byte{3}, ReceiverDutyGeneration: 4}
 			initial := errors.New("fixture initialization failed")
 			cleanup := errors.New("fixture spend cleanup failed")
 			closes := 0
 			openers := defaultReceivingOpeners()
-			openers.closeSpends = func(spends *replay.Ledger) error {
+			openers.closeSpends = func(spends *spending.Ledger) error {
 				closes++
 				return errors.Join(spends.Close(), cleanup)
 			}
@@ -113,7 +113,7 @@ func TestClosedForwardingReceivingRollbackRetainsInitializationAndCleanupFailure
 			if closes != 1 {
 				t.Fatalf("spend lease closed %d times", closes)
 			}
-			reopened, err := replay.Open(root, binding)
+			reopened, err := spending.Open(root, binding)
 			if err != nil {
 				t.Fatalf("rollback retained spend root: %v", err)
 			}
@@ -126,7 +126,7 @@ func TestClosedForwardingReceivingRollbackRetainsInitializationAndCleanupFailure
 
 func TestClosedForwardingReceivingTransfersOnlyCompleteResources(t *testing.T) {
 	root := t.TempDir()
-	binding := replay.Binding{NetworkID: [32]byte{1}, ProfileDigest: [32]byte{2},
+	binding := spending.Binding{NetworkID: [32]byte{1}, ProfileDigest: [32]byte{2},
 		ReceiverNodeID: [32]byte{3}, ReceiverDutyGeneration: 4}
 	resources, err := openReceivingResources(root, binding, time.Now)
 	if resources != nil {
@@ -143,7 +143,7 @@ func TestClosedForwardingReceivingTransfersOnlyCompleteResources(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	reopened, err := replay.Open(root, binding)
+	reopened, err := spending.Open(root, binding)
 	if err != nil {
 		t.Fatalf("closed owner retained spend root: %v", err)
 	}

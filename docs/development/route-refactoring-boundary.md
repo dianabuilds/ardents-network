@@ -148,11 +148,12 @@ They use the new types directly, with no retained `route.ClosedLaneFrame` or
 
 ## Receiving replay owner
 
-`internal/route/replay` owns the receiving duty's durable token-spend journal
-and Introduction-slot floor under one exclusive lease. It imports only the
-standard library. Route asks it to burn a token before admitted work; Node
-opens and joins the exact receiving root. Both callers use `replay.Open`,
-`replay.Ledger`, `replay.Binding`, and `replay.IntroductionSlots` directly,
+`internal/admission/spending` owns the receiving duty's durable token-spend journal
+and Introduction-slot floor under one exclusive lease. It imports the standard
+library and `golang.org/x/sys/windows` for the Windows lease. Route asks it to
+burn a token before admitted work; Node opens and joins the exact receiving root.
+Both callers use `spending.Open`, `spending.Ledger`, `spending.Binding`, and
+`spending.IntroductionSlots` directly,
 without retained `route.ClosedSpend*` wrappers. The fixed persisted file names,
 headers, crash-tail recovery, and slot time floor remain unchanged. Its owner
 tests move with the files; Route and Node retain admission and listener tests.
@@ -167,7 +168,7 @@ reserve-before-spend policy shared with JOIN. A role receives current State and
 admission callbacks, not the process `runtimeConfig`.
 
 Route owns the authenticated Carrier, outer bridge, ARDP grammar and receiving
-channel operations. `route/replay` owns the durable journal primitive, while a
+channel operations. `admission/spending` owns the durable journal primitive, while a
 Node role chooses its binding and closes its lease after children join.
 Credential owns token verification/issuance grammar and the issuer key engine;
 `node/issuer` owns the selected listener and the late close of its issuer and

@@ -1,6 +1,6 @@
 //go:build !windows
 
-package replay
+package spending
 
 import (
 	"errors"
@@ -8,10 +8,13 @@ import (
 	"syscall"
 )
 
-type closedSpendLease struct{ file *os.File }
+type closedSpendLease struct {
+	file    *os.File
+	created bool
+}
 
 func acquireClosedSpendLease(path string) (closedSpendLease, error) {
-	file, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR, 0o600)
+	file, created, err := openClosedSpendLeaseFile(path)
 	if err != nil {
 		return closedSpendLease{}, err
 	}
@@ -19,7 +22,7 @@ func acquireClosedSpendLease(path string) (closedSpendLease, error) {
 		_ = file.Close()
 		return closedSpendLease{}, errors.New("closed spend journal is already owned")
 	}
-	return closedSpendLease{file: file}, nil
+	return closedSpendLease{file: file, created: created}, nil
 }
 
 func (lease closedSpendLease) release() error {

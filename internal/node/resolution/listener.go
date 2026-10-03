@@ -10,12 +10,12 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/admission/spending"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/node/authority"
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	routecarrier "github.com/dianabuilds/ardents-network/internal/route/carrier"
-	"github.com/dianabuilds/ardents-network/internal/route/replay"
 	"github.com/dianabuilds/ardents-network/internal/service/reachability"
 )
 
@@ -75,7 +75,7 @@ func Start(config Config) (*Handle, error) {
 	if !available {
 		return nil, errors.New("closed resolution State changed before reservation")
 	}
-	spends, err := replay.Open(local.AdmissionRoot, replay.Binding{NetworkID: receiver.NetworkID,
+	spends, err := spending.Open(local.AdmissionRoot, spending.Binding{NetworkID: receiver.NetworkID,
 		ProfileDigest: receiver.ProfileDigest, ReceiverNodeID: receiver.NodeID, ReceiverDutyGeneration: receiver.DutyGeneration})
 	if err != nil {
 		return nil, err
@@ -123,7 +123,7 @@ type closedResolutionServer struct {
 	certificate tls.Certificate
 	listener    routecarrier.ClosedSharedCarrierListener
 	store       *reachability.Store
-	spends      *replay.Ledger
+	spends      *spending.Ledger
 	limits      *route.ClosedDutyLimits
 	capacity    chan struct{}
 	active      atomic.Uint32

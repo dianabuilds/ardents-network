@@ -5,10 +5,10 @@ import (
 	"errors"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/admission/spending"
 	"github.com/dianabuilds/ardents-network/internal/node/authority"
 	"github.com/dianabuilds/ardents-network/internal/resource"
 	"github.com/dianabuilds/ardents-network/internal/route"
-	"github.com/dianabuilds/ardents-network/internal/route/replay"
 )
 
 // Reservation belongs to one admitted operation until its lease releases it.
@@ -41,7 +41,7 @@ func AdmissionVerifier(source authority.Source, now func() time.Time, receiver r
 
 // Replenisher commits the same envelope before burning a fresh token. The
 // parent supplies its original immutable deadline.
-func Replenisher(source authority.Source, now func() time.Time, receiver route.ClosedRoleReceiver, host Host, spends *replay.Ledger, work, termination resource.HostingTraffic) route.ClosedForwardingReplenisher {
+func Replenisher(source authority.Source, now func() time.Time, receiver route.ClosedRoleReceiver, host Host, spends *spending.Ledger, work, termination resource.HostingTraffic) route.ClosedForwardingReplenisher {
 	verify := source.TokenVerifier(receiver, now)
 	return func(input route.ClosedAdmissionVerification) (func() error, error) {
 		approval, err := verify(input)

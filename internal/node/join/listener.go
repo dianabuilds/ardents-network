@@ -10,13 +10,13 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/admission/spending"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/node/authority"
 	"github.com/dianabuilds/ardents-network/internal/resource"
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	routecarrier "github.com/dianabuilds/ardents-network/internal/route/carrier"
-	"github.com/dianabuilds/ardents-network/internal/route/replay"
 )
 
 // Profile reserves the local spend and Hosting roots. Current State supplies
@@ -34,7 +34,7 @@ type Profile struct {
 type Host interface {
 	Sample(context.Context, time.Duration) (resource.HostingSample, error)
 	AdmissionVerifier(route.ClosedRoleReceiver) route.ClosedAdmissionVerifier
-	Replenisher(route.ClosedRoleReceiver, *replay.Ledger) route.ClosedForwardingReplenisher
+	Replenisher(route.ClosedRoleReceiver, *spending.Ledger) route.ClosedForwardingReplenisher
 	Close() error
 }
 
@@ -81,7 +81,7 @@ func Start(config Config) (*Handle, error) {
 	if !available {
 		return nil, errors.New("closed JOIN State changed before reservation")
 	}
-	spends, err := replay.Open(local.AdmissionRoot, replay.Binding{NetworkID: receiver.NetworkID,
+	spends, err := spending.Open(local.AdmissionRoot, spending.Binding{NetworkID: receiver.NetworkID,
 		ProfileDigest: receiver.ProfileDigest, ReceiverNodeID: receiver.NodeID, ReceiverDutyGeneration: receiver.DutyGeneration})
 	if err != nil {
 		return nil, err
@@ -134,7 +134,7 @@ type closedDataJoinServer struct {
 	receiver    route.ClosedRoleReceiver
 	certificate tls.Certificate
 	listener    routecarrier.ClosedSharedCarrierListener
-	spends      *replay.Ledger
+	spends      *spending.Ledger
 	limits      *route.ClosedDutyLimits
 	capacity    chan struct{}
 	active      atomic.Uint32

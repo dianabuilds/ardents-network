@@ -481,6 +481,13 @@ Unix-second deletion time and marker 2; it is committed by atomic replacement,
 never by the append crash-tail protocol. Older readers refuse this record.
 Uncompacted journals remain readable; their surviving spend records still burn
 tokens. No root reset, duty rebinding or storage rollback recovery is added.
+The Admission spending owner initializes only an empty receiving root. Its
+retained lease file without the spend journal, or retained journal/slot state
+without that lease file, refuses opening instead of recreating missing state.
+This also refuses incomplete first creation. Initial creation and validated
+reopen flush the journal and root directory before the owner becomes available,
+so complete initial bytes left by a failed flush cannot bypass that barrier. Complete loss or rollback
+of the entire root remains outside the surviving-boundary claim above.
 
 ## Bootstrap without a token cycle
 

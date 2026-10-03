@@ -10,12 +10,12 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/admission/spending"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/node/authority"
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	routecarrier "github.com/dianabuilds/ardents-network/internal/route/carrier"
-	"github.com/dianabuilds/ardents-network/internal/route/replay"
 )
 
 // Profile reserves the local durable spend root. Current State supplies the
@@ -63,7 +63,7 @@ func Start(config Config) (*Server, error) {
 	if !available {
 		return nil, errors.New("closed Introduction State changed before reservation")
 	}
-	spends, err := replay.Open(local.AdmissionRoot, replay.Binding{NetworkID: receiver.NetworkID,
+	spends, err := spending.Open(local.AdmissionRoot, spending.Binding{NetworkID: receiver.NetworkID,
 		ProfileDigest: receiver.ProfileDigest, ReceiverNodeID: receiver.NodeID, ReceiverDutyGeneration: receiver.DutyGeneration})
 	if err != nil {
 		return nil, err
@@ -94,14 +94,14 @@ func Start(config Config) (*Server, error) {
 
 // Server owns one selected Introduction role through joined shutdown.
 type Server struct {
-	slotFloor   *replay.IntroductionSlots
+	slotFloor   *spending.IntroductionSlots
 	config      Config
 	receiver    route.ClosedRoleReceiver
 	certificate tls.Certificate
 	listener    routecarrier.ClosedSharedCarrierListener
 	slotsMu     sync.Mutex
 	slots       map[[32]byte]*closedIntroductionSlot
-	spends      *replay.Ledger
+	spends      *spending.Ledger
 	limits      *route.ClosedDutyLimits
 	capacity    chan struct{}
 	active      atomic.Uint32

@@ -10,12 +10,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/admission/spending"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/resource"
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	"github.com/dianabuilds/ardents-network/internal/route/carrier"
-	"github.com/dianabuilds/ardents-network/internal/route/replay"
 )
 
 type queuedForwardingListener struct {
@@ -106,9 +106,9 @@ func TestClosedForwardingDrainJoinsActualAcceptedProducerBeforeReader(t *testing
 		t.Fatal(err)
 	}
 	root := t.TempDir()
-	binding := replay.Binding{NetworkID: receiver.NetworkID, ProfileDigest: receiver.ProfileDigest,
+	binding := spending.Binding{NetworkID: receiver.NetworkID, ProfileDigest: receiver.ProfileDigest,
 		ReceiverNodeID: receiver.NodeID, ReceiverDutyGeneration: receiver.DutyGeneration}
-	spends, err := replay.Open(root, binding)
+	spends, err := spending.Open(root, binding)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -282,7 +282,7 @@ func TestClosedForwardingDrainJoinsActualAcceptedProducerBeforeReader(t *testing
 			t.Fatalf("joined cleanup changed its physical close result: %v", err)
 		}
 	}
-	reopened, err := replay.Open(root, binding)
+	reopened, err := spending.Open(root, binding)
 	if err != nil {
 		t.Fatalf("joined shutdown retained root: %v", err)
 	}
@@ -291,9 +291,9 @@ func TestClosedForwardingDrainJoinsActualAcceptedProducerBeforeReader(t *testing
 	}
 }
 
-func assertClosedForwardingRootHeld(t *testing.T, root string, binding replay.Binding, owner string) {
+func assertClosedForwardingRootHeld(t *testing.T, root string, binding spending.Binding, owner string) {
 	t.Helper()
-	if replacement, err := replay.Open(root, binding); err == nil {
+	if replacement, err := spending.Open(root, binding); err == nil {
 		_ = replacement.Close()
 		t.Fatalf("%s lost its spend root", owner)
 	}

@@ -18,11 +18,11 @@ import (
 	"time"
 
 	admissiongrammar "github.com/dianabuilds/ardents-network/internal/admission"
+	"github.com/dianabuilds/ardents-network/internal/admission/spending"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	"github.com/dianabuilds/ardents-network/internal/route/carrier"
 	"github.com/dianabuilds/ardents-network/internal/route/credential"
-	"github.com/dianabuilds/ardents-network/internal/route/replay"
 )
 
 // lateIssuerChildListener serves exactly one delayed Node child and then
@@ -81,8 +81,8 @@ func TestClosedIssuerLateCloseRetainsRootsUntilDelayedChildJoins(t *testing.T) {
 		t.Fatal(err)
 	}
 	admissionRoot := t.TempDir()
-	binding := replay.Binding{NetworkID: network, ProfileDigest: profile.Digest, ReceiverNodeID: issuerID, ReceiverDutyGeneration: profile.IssuerDutyGeneration}
-	spends, err := replay.Open(admissionRoot, binding)
+	binding := spending.Binding{NetworkID: network, ProfileDigest: profile.Digest, ReceiverNodeID: issuerID, ReceiverDutyGeneration: profile.IssuerDutyGeneration}
+	spends, err := spending.Open(admissionRoot, binding)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -137,13 +137,14 @@ func TestClosedIssuerLateCloseRetainsRootsUntilDelayedChildJoins(t *testing.T) {
 		_ = reopened.Close()
 		t.Fatal("unjoined issuer child lost its key root lease")
 	}
-	if replacement, err := replay.Open(admissionRoot, binding); err == nil {
+	if replacement, err := spending.Open(admissionRoot, binding); err == nil {
 		_ = replacement.Close()
 		t.Fatal("unjoined issuer child lost its spend root lease")
 	}
 	// A lost journal file makes the eventual spend-root close fail; the late
 	// owner must retain that distinct root-close error in its final result.
-	if err := os.Remove(filepath.Join(admissionRoot, "closed-token-spends")); err != nil {
+	retainedJournal := filepath.Join(t.TempDir(), "closed-token-spends")
+	if err := os.Rename(filepath.Join(admissionRoot, "closed-token-spends"), retainedJournal); err != nil {
 		t.Fatal(err)
 	}
 	if err := spends.Spend(bytes.Repeat([]byte{7}, 354), time.Now().UTC().Truncate(time.Hour), time.Now().UTC()); err == nil {
@@ -166,7 +167,16 @@ func TestClosedIssuerLateCloseRetainsRootsUntilDelayedChildJoins(t *testing.T) {
 			t.Fatalf("joined issuer cleanup duplicated the forwarded terminal cause: %v", err)
 		}
 	}
-	reopenedSpends, err := replay.Open(admissionRoot, binding)
+	if reopened, err := spending.Open(admissionRoot, binding); err == nil {
+		_ = reopened.Close()
+		t.Fatal("joined shutdown recreated its missing spend journal")
+	}
+	// Restore the exact original journal to distinguish lease release from
+	// accepting a damaged root. This fixture action is not a recovery route.
+	if err := os.Rename(retainedJournal, filepath.Join(admissionRoot, "closed-token-spends")); err != nil {
+		t.Fatal(err)
+	}
+	reopenedSpends, err := spending.Open(admissionRoot, binding)
 	if err != nil {
 		t.Fatalf("joined issuer shutdown retained the spend root: %v", err)
 	}

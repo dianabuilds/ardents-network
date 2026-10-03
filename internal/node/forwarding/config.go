@@ -6,12 +6,12 @@ import (
 	"errors"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/admission/spending"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/node/authority"
 	"github.com/dianabuilds/ardents-network/internal/resource"
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/carrier"
-	"github.com/dianabuilds/ardents-network/internal/route/replay"
 )
 
 // Profile contains only the local resources and limits of a forwarding duty.
@@ -40,7 +40,7 @@ type Config struct {
 	Authority       authority.Source
 	CurrentDuty     func() (state.NodeDuty, error)
 	VerifyAdmission func(route.ClosedRoleReceiver) route.ClosedAdmissionVerifier
-	Replenish       func(route.ClosedRoleReceiver, *replay.Ledger) route.ClosedForwardingReplenisher
+	Replenish       func(route.ClosedRoleReceiver, *spending.Ledger) route.ClosedForwardingReplenisher
 	LiteralEndpoint func(string) bool
 	Host            Host
 	Now             func() time.Time
@@ -64,7 +64,7 @@ func Start(config Config) (*Handle, error) {
 		config.Replenish == nil || config.LiteralEndpoint == nil || config.Now == nil {
 		return nil, errors.Join(errors.New("closed forwarding dependencies are incomplete"), host.Close())
 	}
-	receiving, err := openReceivingResources(local.Root, replay.Binding{NetworkID: receiver.NetworkID, ProfileDigest: receiver.ProfileDigest,
+	receiving, err := openReceivingResources(local.Root, spending.Binding{NetworkID: receiver.NetworkID, ProfileDigest: receiver.ProfileDigest,
 		ReceiverNodeID: receiver.NodeID, ReceiverDutyGeneration: receiver.DutyGeneration}, config.Now)
 	if err != nil {
 		return nil, errors.Join(err, host.Close())
@@ -98,7 +98,7 @@ type dependencies struct {
 	current         func() (state.NodeDuty, error)
 	authority       authority.Source
 	verify          func(route.ClosedRoleReceiver) route.ClosedAdmissionVerifier
-	replenish       func(route.ClosedRoleReceiver, *replay.Ledger) route.ClosedForwardingReplenisher
+	replenish       func(route.ClosedRoleReceiver, *spending.Ledger) route.ClosedForwardingReplenisher
 	relayEndpoint   string
 	literalEndpoint func(string) bool
 }

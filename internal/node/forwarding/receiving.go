@@ -5,43 +5,43 @@ import (
 	"sync"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/admission/spending"
 	"github.com/dianabuilds/ardents-network/internal/route"
-	"github.com/dianabuilds/ardents-network/internal/route/replay"
 )
 
 // receivingResources is the concrete owner of the receiver
 // state that must be initialized as one group before a forwarding server can
 // accept work. Pool, listener and host policy remain with startup composition.
 type receivingResources struct {
-	spends       *replay.Ledger
+	spends       *spending.Ledger
 	limits       *route.ClosedDutyLimits
 	bootstrap    *route.ClosedBootstrapController
-	closeSpends  func(*replay.Ledger) error
+	closeSpends  func(*spending.Ledger) error
 	closeOnce    sync.Once
 	closeOutcome error
 }
 
 type receivingOpeners struct {
-	openSpends   func(string, replay.Binding) (*replay.Ledger, error)
-	closeSpends  func(*replay.Ledger) error
+	openSpends   func(string, spending.Binding) (*spending.Ledger, error)
+	closeSpends  func(*spending.Ledger) error
 	newLimits    func(func() time.Time) (*route.ClosedDutyLimits, error)
 	newBootstrap func(func() time.Time) (*route.ClosedBootstrapController, error)
 }
 
 func defaultReceivingOpeners() receivingOpeners {
 	return receivingOpeners{
-		openSpends:   replay.Open,
-		closeSpends:  func(spends *replay.Ledger) error { return spends.Close() },
+		openSpends:   spending.Open,
+		closeSpends:  func(spends *spending.Ledger) error { return spends.Close() },
 		newLimits:    route.NewClosedDutyLimits,
 		newBootstrap: route.NewClosedBootstrapController,
 	}
 }
 
-func openReceivingResources(root string, binding replay.Binding, clock func() time.Time) (*receivingResources, error) {
+func openReceivingResources(root string, binding spending.Binding, clock func() time.Time) (*receivingResources, error) {
 	return openReceivingResourcesWith(root, binding, clock, defaultReceivingOpeners())
 }
 
-func openReceivingResourcesWith(root string, binding replay.Binding, clock func() time.Time, openers receivingOpeners) (*receivingResources, error) {
+func openReceivingResourcesWith(root string, binding spending.Binding, clock func() time.Time, openers receivingOpeners) (*receivingResources, error) {
 	if openers.openSpends == nil || openers.closeSpends == nil || openers.newLimits == nil || openers.newBootstrap == nil {
 		return nil, errors.New("closed forwarding receiving resource initialization is unavailable")
 	}
