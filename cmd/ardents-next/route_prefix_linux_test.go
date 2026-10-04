@@ -5,6 +5,7 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net"
 	"path/filepath"
 	"sync/atomic"
@@ -76,7 +77,7 @@ func TestRouteGenuineRetainedPrefixBothCarriers(t *testing.T) {
 				}
 				defer func() {
 					for _, server := range receivers {
-						if err := server.Close(); err != nil && mode != "clock-loss" && mode != "profile-conflict" && mode != "successor" && !(mode == "expiry" && errors.Is(err, net.ErrClosed)) {
+						if err := server.Close(); err != nil && mode != "clock-loss" && mode != "profile-conflict" && mode != "successor" && !(mode == "expiry" && routeExpiryCloseOnly(err)) {
 							t.Error("receiving join", err)
 						}
 					}
@@ -278,7 +279,7 @@ func TestRouteGenuineRetainedPrefixBothCarriers(t *testing.T) {
 					err := server.Close()
 					// Expiry can interrupt a started physical terminal frame;
 					// preserve that closed-connection result through owner join.
-					if err != nil && mode != "clock-loss" && mode != "profile-conflict" && mode != "successor" && !(mode == "expiry" && errors.Is(err, net.ErrClosed)) {
+					if err != nil && mode != "clock-loss" && mode != "profile-conflict" && mode != "successor" && !(mode == "expiry" && routeExpiryCloseOnly(err)) {
 						t.Fatal(err)
 					}
 					if again := server.Close(); again != err {
@@ -295,6 +296,56 @@ func TestRouteGenuineRetainedPrefixBothCarriers(t *testing.T) {
 					}
 				}
 			})
+		}
+	}
+}
+
+func routeExpiryCloseOnly(err error) bool {
+	if err == nil {
+		return false
+	}
+	// Inspect wrappers before matching: errors.Is on an aggregate accepts
+	// one matching branch while concealing an unrelated sibling failure.
+	if joined, ok := err.(interface{ Unwrap() []error }); ok {
+		causes := joined.Unwrap()
+		if len(causes) == 0 {
+			return false
+		}
+		for _, cause := range causes {
+			if !routeExpiryCloseOnly(cause) {
+				return false
+			}
+		}
+		return true
+	}
+	if wrapped, ok := err.(interface{ Unwrap() error }); ok {
+		return routeExpiryCloseOnly(wrapped.Unwrap())
+	}
+	return errors.Is(err, net.ErrClosed)
+}
+
+func TestRouteExpiryRejectsAdditionalTerminalFailure(t *testing.T) {
+	unexpected := errors.New("unexpected physical or release failure")
+	for _, err := range []error{
+		nil,
+		unexpected,
+		errors.Join(net.ErrClosed, unexpected),
+		fmt.Errorf("close: %w; release: %w", net.ErrClosed, unexpected),
+		fmt.Errorf("receiving join: %w", errors.Join(net.ErrClosed, unexpected)),
+		errors.Join(fmt.Errorf("physical close: %w", net.ErrClosed), fmt.Errorf("release: %w", unexpected)),
+	} {
+		if routeExpiryCloseOnly(err) {
+			t.Fatalf("expiry assertion concealed an additional failure: %v", err)
+		}
+	}
+	for _, err := range []error{
+		net.ErrClosed,
+		fmt.Errorf("physical close: %w", net.ErrClosed),
+		&net.OpError{Op: "write", Net: "tcp", Err: net.ErrClosed},
+		errors.Join(net.ErrClosed, fmt.Errorf("child close: %w", net.ErrClosed)),
+	} {
+		if !routeExpiryCloseOnly(err) {
+			t.Fatalf("expiry assertion rejected a closed-connection-only result: %v", err)
 		}
 	}
 }
