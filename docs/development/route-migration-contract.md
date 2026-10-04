@@ -37,15 +37,22 @@ checkpoint as current, perform this sequence:
 Report the concrete slice and next result concisely. Routine implementation
 choices within the accepted scope do not require repeated permission.
 
-## Starting in another worktree
+## Workspace and sequential development
 
 The Product Owner explicitly directed this migration to continue in the existing
 project checkout on 2026-10-04: development is required; another worktree is not.
 Use `C:/Users/vitek/code/ardents-network`, preserve its existing branch and mixed
 work, and keep one implementation owner. Do not create or require another Route
-worktree. A committed predecessor is a source requirement, not permission to
-choose a different checkout. The conditional instructions below apply only if
-the Product Owner later explicitly chooses another checkout.
+worktree. Network completion and the dependent Route implementation are one
+sequential chain: commit and verify the predecessor, then develop the dependent
+domain in this checkout. They cannot be parallel implementations. A committed
+predecessor is a source requirement, not a reason to create another checkout.
+
+This is not a general ban on worktrees. Separately selected, genuinely independent
+tasks may use branches or worktrees under the repository's existing ownership,
+WIP and workspace rules. Available WIP capacity does not make dependent work
+independent. The conditional instructions below apply to an authorized change
+of execution arrangement, not to routine continuation of this domain chain.
 
 The Product Owner corrected the sequencing on 2026-10-04: first obtain the
 predecessor's scoped commit and verification of that exact revision. If another
@@ -176,10 +183,15 @@ are not accepted amendments. Do not silently select 8 MiB, change selection
 randomness, expand retries, rotate a retained set or weaken a refusal merely
 because the implementation is being moved.
 
-If a selected slice needs a consequential decision, verify its current owners,
-prepare the exact contradiction and concrete resolution, and obtain the needed
-Product Owner decision before the dependent behavior change. Continue unaffected
-authorized work. Difficulty or a failing test alone does not justify escalation.
+If a selected slice exposes a consequential gap, the orchestrator verifies its
+current owners and resolves the design from accepted contracts, named evidence
+and independent oracles before assigning dependent behavior. Record the exact
+contradiction, resolution and affected obligations with their owning design.
+Do not ask the Product Owner to perform this delegated design work, stop the
+development thread, or silently turn a migration into an unrelated product
+policy change. Preserve accepted protection and safety bounds, repair defects
+and continue useful authorized work. Difficulty or a failing test alone is not
+a reason to return the engineering assignment to the human.
 
 ### R07: Deliver real Route behavior without fake neighboring domains
 
@@ -228,9 +240,15 @@ authority contradictions must be surfaced, not silently worked around.
 ## Orchestration and domain integrity
 
 The Product Owner assigned the supervising agent an orchestration role after
-Network completion. This authorizes delegation of admitted work and corrective
-messages to its implementer; it does not select additional implementation
-issues, increase WIP, authorize a cutover, or accept open protocol decisions.
+Network completion and then delegated the complete project-wide DDD transition
+on 2026-10-04. Follow the [delegated transition cycle](agent-execution.md#delegated-project-wide-domain-transition):
+design and verify the whole domain, assign a concrete goal in a visible executor
+thread, implement and run full new-domain regression, commit and integrate into
+`dev`, reconcile the result, then design the next domain until the project is
+fully transferred. The orchestrator selects and records dependency-ready work
+within that mandate and the existing WIP policy. A completed slice does not end
+the domain assignment. The mandate does not weaken accepted protocol, authority,
+isolation or qualification requirements.
 The orchestrator owns task framing, boundary review and assessment of evidence.
 It also maintains the [domain ownership map](domain-map.md): complete inventory,
 exclusive owners, exclusions, inter-domain contracts and realized architectural
@@ -239,6 +257,118 @@ it with each completed slice. Keep future domains visible and GitHub as the
 execution ledger; no domain is silently dropped or broadened by a source move.
 The implementer owns one concrete slice, diagnosis, implementation and repair.
 They must not edit the same implementation concurrently.
+
+### Product Owner execution rules
+
+These rules record the Product Owner's corrections to orchestration. They apply
+after every restart, compaction and handoff. Delegation permission alone does
+not authorize changing the execution arrangement.
+
+1. **Keep the assigned role.** The orchestrator frames work, maintains domain
+   ownership, reviews completed boundaries and verifies evidence. The assigned
+   implementer owns code and repairs. The orchestrator does not take over
+   implementation or replace its owner without a direct Product Owner decision.
+2. **Keep the main task observable.** The domain migration and its active slice
+   remain owned in an ordinary visible Codex thread. The Product Owner can inspect
+   its assignment, progress, decisions, source changes, checks and acceptance.
+   Identify that thread explicitly when assigning or reporting the main work.
+   Internal agents are allowed for bounded subtasks such as investigating a
+   named owner, implementing a defined fragment, reviewing a completed delta or
+   running a specified scenario. Give each one a concrete result and explicit
+   file/lifecycle ownership; prevent concurrent edits to the same implementation.
+   Do not move the entire migration or active slice into an internal agent and
+   leave the visible thread as a status relay. Keep the overall plan, dependencies,
+   integration, evidence assessment and next action in the visible thread. Report
+   meaningful subtask results there with their verification limits. A subagent's
+   "started" event is not observable main-task progress. This rule introduces no
+   general subagent ban or extra approval gate for authorized bounded subtasks.
+   The delegated program authorizes a new ordinary implementation thread for each
+   next domain after its design is verified. Continue the existing visible owner
+   for the active domain; do not create a duplicate implementation.
+3. **Match the workspace to actual independence.** This domain migration is
+   sequential: the next owner starts after the predecessor is committed and
+   verified, in the existing project checkout and branch. Do not create a second
+   worktree or parallel implementation for this chain, switch branches or
+   relocate its work by initiative. Preserve unrelated files, staged work and
+   predecessor changes. Independently selected tasks may use worktrees under
+   the normal repository rules; this instruction introduces no general ban or
+   extra approval gate for them. Available tools or WIP capacity are not evidence
+   that two tasks can run independently.
+4. **Do not add unattended scheduling by initiative.** No recurring automation,
+   scheduler or monitoring task is created or reactivated without authorization.
+   Orchestration itself does not select scheduled work. Bounded internal agents
+   working on the current visible task follow rule 2; they are not a substitute
+   for visible ownership or a reason to introduce unattended scheduling.
+5. **Retain the existing selection.** Route was selected as the successor to
+   Network. Verify the selected slice and WIP in GitHub, preserving the human
+   instruction. Do not ask the Product Owner to select the same domain again
+   because of compaction, a tool choice or an orchestration mistake. A tracker
+   record documents selection; it cannot manufacture an additional assignment.
+6. **Verify the predecessor before dependent work.** Require its scoped commit,
+   actual new owners and consumers, and evidence matching the last source
+   change. Distinguish component readiness, full issue acceptance, repository
+   integration and installed qualification. Idle, issue closure or a dirty
+   passing snapshot alone does not establish that dependency.
+7. **Assign implemented domain behavior.** Give the executor the verified domain
+   design, complete release goal, current contracts, domain owners, real consumers,
+   success and causal refusal criteria, full regression and integration obligations
+   and explicit exclusions. Work through bounded use cases without treating one
+   slice as completion of the domain. A source move, plan or package skeleton is
+   not the goal. Preserve already prepared implementation.
+8. **Protect exclusive domain ownership.** Verify rules, authority, state,
+   resources and termination against the domain map and actual code. Apply
+   R01-R08, including old/new isolation, genuine new owners, immutable bounds,
+   irreversible spending and joined physical cleanup. Do not import old bugs
+   or accept unapproved quota, selection or retry changes as migration policy.
+9. **Correct through the same executor.** Return a confirmed deviation with its
+   precise source location, violated contract and required bounded correction.
+   Do not edit that implementation concurrently, start a second implementation
+   or require approval for each routine choice or individual failing test.
+10. **Keep development moving within authorization.** Do not summon the Product
+    Owner or stop the development thread at a slice boundary or ordinary failure.
+    Diagnose contract contradictions at their current owners, repair prerequisites
+    and defects, resolve ownership overlap, and repeat verification as often as
+    needed. Continue useful work within the accepted product and security contract.
+    Safely refusing or joining a failed physical operation does not stop its
+    development assignment. Keep real missing evidence explicit; organizational
+    errors and unavailable convenience tools do not require another human decision.
+11. **Accept only source-matched behavior.** Inspect code and real callers;
+    assess integration and regression of every affected new owner. Cover the
+    selected Carriers, authority loss during I/O, persistence/reopen, spend and
+    reservation ordering, cancellation/join/release and races as applicable.
+    Run required gates without weakening them. Preserve earlier failures and
+    invalid-environment receipts. No fake success or prior-revision acceptance.
+12. **Name the evidence level honestly.** A report from another thread is
+    reported evidence; reading its receipt is inspected evidence; independently
+    running the check on its exact source is reproduced evidence. Never label
+    one as another or imply wider integration or qualification from a narrow pass.
+13. **Complete scoped Git delivery and integration.** A ready domain includes its
+    owning documents, verification, scoped commits and confirmed integration/push
+    into `dev`. The Product Owner already authorized commits, pushes, merges into
+    `dev`, and GitHub tasks/results for the program; neither agent requests repeat
+    permission. Verify repository integration separately from component readiness
+    or installed qualification. Do not leave a predecessor uncommitted and build a
+    dependent copy to conceal it. Never collect unrelated mixed changes into a
+    commit or alter another owner's index to simplify delivery.
+14. **Maintain the complete map.** Keep implemented and future domains visible,
+    with exclusive owners and inter-domain contracts. After accepted work,
+    reconcile actual ownership, update both neighbors of any transfer and record
+    exact source, scenarios and evidence limits. GitHub alone owns unfinished
+    tasks and execution status; architecture documents are not another ledger.
+15. **Report plainly.** State who is working, in which existing directory, what
+    concrete behavior is being delivered, what is checked, what remains and the
+    next observable result. Issue numbers, file counts and "started" tool events
+    do not substitute for that explanation. Do not claim an active executor
+    without checking it or report a plan as implementation.
+16. **Resume from authoritative files.** Reread AGENTS.md, this entire contract
+    and domain-map.md; verify the current human instruction, executor, source,
+    index, process handles and selected issue. Update the external checkpoint
+    when the Product Owner corrects the arrangement. An old summary, scheduled
+    reminder or tool capability cannot restore a rejected arrangement. Preserve
+    the full program mandate: after verified domain release and `dev` integration,
+    design and verify the next domain and assign its visible executor without
+    waiting for another Product Owner prompt. The program ends only when the
+    whole maintained project has completed the transition.
 
 ### Confirm the predecessor and admit the task
 
@@ -255,10 +385,12 @@ Uncommitted code and receipts from a superseded snapshot do not satisfy this
 handoff, even if the earlier component checks passed.
 
 After that verification, refresh Admission/Hosting/Network contracts and the
-Route owner map. Verify a selected Route issue, its milestone, WIP, assigned
-worktree and lack of another active implementer before delegation. If the slice
-is not admitted, prepare its concrete objective and acceptance proposal; do not
-start implementation merely because the predecessor finished.
+Route owner map. Verify a selected Route issue, its milestone, WIP, existing
+checkout, visible assigned thread and lack of another active implementer before
+delegation. Under the delegated program, the orchestrator verifies the domain
+design, records the next concrete goal and issue admission in GitHub within WIP,
+and continues without repeat Product Owner selection. A finished predecessor
+alone still cannot replace verified design or an observable acceptance boundary.
 
 ### Give the implementer a bounded objective
 
