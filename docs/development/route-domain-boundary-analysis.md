@@ -230,7 +230,7 @@ Key existing bounds must retain their separate owners:
 | Bound | Owner and interpretation |
 |---|---|
 | Control: 64 KiB, 30 seconds; Forward: 32 MiB, 1,800 seconds | Admission class policy; Route accounts ingress plus egress and applies earlier caller/authority deadlines |
-| Registration: 600 seconds; selected 1 MiB versus implemented 8 MiB | Admission owns the numeric policy; the discrepancy below remains unresolved |
+| Registration: 1 MiB and 600 seconds | New Admission enforces the selected policy at `fd8f01971`; preserved predecessor 8 MiB is not an accepted amendment |
 | 256 concurrent forwarding work lanes plus two control lanes | One Route parent; children cannot acquire independent parent allowance |
 | 1,024 duty channels, 1,024 duty children, 64 MiB queued ciphertext | Shared Route duty governor; allocate on demand, with 16 KiB channel control reservation inside the aggregate ceiling |
 | 128 signature verifications/s and four concurrent checks per duty | Current Route source enforces this restriction; new Admission owns `receiving.VerificationGate`, while Route owns transport/role counters |
@@ -294,16 +294,15 @@ in the package map with the owning implementation change.
    included Rendezvous and omitted Introduction. The table now agrees with
    that contract and `ClosedPurposePermitsDuty`; no byte or code behavior changed.
 
-2. **Class-3 allowance: unresolved consequential gap.** The private Admission
-   table selects 1 MiB; `RegistrationClass.ByteLimit` and the implemented
-   Introduction receiver use 8 MiB. The maintained Admission class owner, not
-   Route, owns the eventual numeric policy. Current technical descriptions now
-   explicitly distinguish the selected and implemented values. Proposed
-   resolution: evaluate 8 MiB against the retained registration/delivery
-   workload, receiver and Hosting envelopes, then accept it explicitly in the
-   Admission contract if justified; otherwise restore 1 MiB with behavioral
-   evidence. Preserve the existing implementation during this documentation
-   preparation. Neither direction is an editorial correction alone.
+2. **Class-3 allowance: repaired in the new Admission owner.** The private
+   Admission table selects 1 MiB. Commit `fd8f01971e5ee2c3b35fed51e0172cc605f01719`
+   restores that maximum in new Admission with genuine signed-Network receiving,
+   Hosting, compiled-command and durable no-refund evidence. The unchanged
+   600-second lifetime and earlier bounds remain Admission policy; Route must
+   consume the returned allowance rather than enforce a second numeric quota.
+   The preserved predecessor still uses 8 MiB and is not integrated or rewritten
+   by this isolated change. The earlier 8 MiB suggestion below remains workload
+   analysis, not an accepted amendment or the new implementation direction.
 
 3. **Rendezvous selection: selected behavior exceeds the inspected client.**
    The protected protocol requires uniform choice among eligible data-join
@@ -342,8 +341,11 @@ The following is the engineering recommendation after checking the current
 byte accounting and retained workload. It is a proposal, not an accepted
 contract amendment or an implementation result.
 
-**Registration: explicitly select 8 MiB if the existing 256-Connection workload
-is retained.** [Delivery accounting](../../internal/node/introduction/delivery.go)
+**Registration: keep the selected 1 MiB; do not promise the predecessor's
+256-Connection workload per slot.** The original suggestion to consider 8 MiB
+did not amend the Admission contract. The new owner has restored 1 MiB; the
+accounting below describes a workload limit and any future policy investigation,
+not permission to enlarge it. [Delivery accounting](../../internal/node/introduction/delivery.go)
 reserves `16 + 4096 + 16 + 16384 + 16 + 1 = 20,529` bytes per dispatched
 capsule. The [registration owner](../../internal/node/introduction/registration.go)
 also accounts the REGISTER exchange and reserves withdrawal before deliveries.
@@ -356,13 +358,13 @@ expects 256 streams, and the Admission owner names that workload. Even dividing
 registration. This is static accounting, not measured network capacity or
 evidence that every scenario uses one slot.
 
-Keep 600 seconds, four starts/s, 16 pending deliveries and all Hosting/duty
-limits. Eight MiB is a lifetime maximum, not a promised sustained four/s for
-600 seconds and not eight MiB of preallocated memory. Failed dispatched work
-also consumes reserved bytes. Admission should own the explicit amendment;
-Route and Hosting then need quota-exhaustion, withdrawal-reserve and actual
-256-stream evidence on both Carriers. Raising the allowance can increase total
-permitted work, so existing counters alone do not qualify the changed contract.
+Keep 1 MiB/600 seconds, four starts/s, 16 pending deliveries and all Hosting/duty
+limits. These are maxima, not sustained-throughput promises or preallocated
+memory. Failed dispatched work also consumes reserved bytes. Route needs
+quota-exhaustion and withdrawal-reserve evidence on both Carriers under the
+selected allowance. A larger workload would require an explicit Admission-owned
+policy amendment and corresponding evidence; neither source reuse nor the
+earlier static estimate accepts that change.
 
 **Rendezvous: retain the accepted general selection contract.** Filter current
 data-join duties against all known Node/key/family conflicts before selection.
