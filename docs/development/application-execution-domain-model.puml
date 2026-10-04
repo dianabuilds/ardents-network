@@ -1,0 +1,122 @@
+@startuml application-execution-domain-model
+title Local Application Execution — consistency and lifetime ownership
+skinparam classAttributeIconSize 0
+skinparam shadowing false
+
+package "Local authority" {
+  class LocalAuthorityGeneration <<Aggregate Root>> {
+    -generation
+    -grants
+    -pendingCapabilities
+    -activeSessions
+    +admit(principal, surface)
+    +consume(capability)
+    +activate(capability)
+    +revoke(grant)
+    +drain(grant, finiteDeadline)
+    +close()
+  }
+  class LocalGrant <<Entity>>
+  class ApplicationPrincipal <<Value Object>>
+  class Surface <<Value Object>>
+  class AdmissionWindow <<Value Object>>
+}
+
+package "Local execution session" {
+  class ExecutionSession <<Aggregate Root>> {
+    -admittedLease
+    -cleanupReservation
+    -currentJob
+    -lastJob
+    +beginJob()
+    +claimLifetime(job)
+    +acceptBinding(job, verifiedBinding)
+    +acquireOperation(job)
+    +retire(job)
+    +completeCleanup(job, result)
+    +completedCurrent(job)
+    +closeAndJoin()
+  }
+  class Job <<Entity / Lifetime Owner>> {
+    -nonce
+    -claimed
+    -retired
+    -finished
+    -workerBinding
+    -cleanupResult
+  }
+  class JobNonce <<Value Object>>
+  class LaunchProvenance <<Opaque retained proof>>
+}
+
+class ExecutionSupervisor <<Generation Owner>> {
+  -retainedSessions
+  -admissionOpen
+  -firstCleanupFailure
+  +reserveSession()
+  +releaseExactSession()
+  +failGeneration()
+  +revokeAllThenJoin()
+}
+class LaunchApplication <<Application Service>> {
+  +launchExactJob()
+}
+class WorkerLifetime <<Resource Owner>> {
+  -originalAttachment
+  -pinnedCleanup
+  -initializationJoin
+  -operationJoin
+  -callbackJoin
+  -terminalResult
+  +interrupt()
+  +join()
+}
+class LinuxWorkerAdapter <<Infrastructure>>
+class PhysicalInvocation <<Value Object>> {
+  -unit
+  -invocationID
+  -pid
+  -uid
+  -cgroup
+}
+class PinnedCleanup <<Resource Handle>>
+class AuthorizedArtifact <<External proof>>
+class OperationComposition <<External application composition>>
+
+LocalAuthorityGeneration *-- LocalGrant
+LocalGrant --> ApplicationPrincipal
+LocalGrant --> Surface
+LocalAuthorityGeneration ..> AdmissionWindow
+ExecutionSession *-- Job : sole mutation boundary
+Job --> JobNonce
+ExecutionSession o-- LaunchProvenance : joined launch != live permit
+ExecutionSupervisor o-- ExecutionSession : bounded cleanup retention
+ExecutionSession ..> LocalAuthorityGeneration : live admitted lease
+LaunchApplication ..> ExecutionSession : exact claim/handoff
+LaunchApplication ..> LinuxWorkerAdapter : fixed inventory
+LaunchApplication ..> AuthorizedArtifact : no Release policy
+LaunchApplication --> WorkerLifetime : transfer physical ownership
+WorkerLifetime *-- PinnedCleanup
+LinuxWorkerAdapter ..> PhysicalInvocation : observe and recheck
+PinnedCleanup --> PhysicalInvocation : original invocation only
+OperationComposition ..> ExecutionSession : current permit/effect/handoff checks
+OperationComposition ..> WorkerLifetime : join before result/release
+
+note bottom of ExecutionSession
+  Synchronous revoke/start ordering; no eventual authorization.
+  No Network, token stock, Target, Publication or recovery state.
+  Job identity does not require an independent transaction/root.
+end note
+note bottom of ExecutionSupervisor
+  Revoked admission is not joined cleanup.
+  Failure closes this generation, with no per-session reset.
+end note
+note bottom of LinuxWorkerAdapter
+  Mechanism cannot mint authority or stop a replacement.
+  Software acceptance owns artifact authorization/installation.
+end note
+note bottom of LocalAuthorityGeneration
+  Volatile model; no database repository or event bus required.
+  Local Grant is distinct from network Admission rights.
+end note
+@enduml

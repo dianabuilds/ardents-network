@@ -463,30 +463,40 @@ Transit Grant fallback is selected for C0.
 
 The Broker has one volatile generation. A Grant is bound to one opaque local
 Principal and one of the closed surfaces connection or administration. Admit
-creates a fresh one-use capability. Administration consumes its capability
-before work and receives only its bounded receipt. Connection activation also
-consumes its capability, but returns an opaque active-session lease whose
-cancelable context is the ancestor of all Network work for that operation.
+creates a fresh one-use capability. Receipt-only Administration operations
+consume their capability before work and receive only its bounded receipt.
+The protected participant additionally activates a retained Administration
+Context lease before publication work. Connection activation also consumes its
+capability and returns an opaque active-session lease whose cancelable context
+is the ancestor of all Network work for that operation.
 The one-use capability expires after its finite admission window; successful
 activation does not transfer that pending TTL into the active Connection.
 The lease exposes neither the capability nor authority facts, counts against
 the Connection Grant's finite budget of 64 sessions, and is released exactly
 once after the terminal outcome. Administration has a separate finite budget
-of six capabilities and cannot consume the Connection floor.
+of six pending capabilities plus active Administration Context leases combined;
+it cannot consume the Connection floor. Receipt-only consumption and retained
+Context activation are different uses of the same surface, not two budgets.
+Endpoint also retains an independent bounded Context cleanup reservation after
+lease revocation, until its descendants report joined cleanup.
 
 Exact revoke and Broker or Endpoint close immediately cancel matching active
-Connection sessions as well as invalidating unconsumed capabilities. Drain
+Connection and Administration Context sessions as well as invalidating
+unconsumed capabilities. Drain
 refuses new admission and is allowed only when that exact Grant carried
 `PermitDrain` and the caller supplies a finite deadline. The first active-lease
 drain deadline may only be shortened by later calls; it cannot be extended.
 A missing or otherwise unprovable finite bound is denied or causes immediate
 cancellation.
 
-The only current isolation observation is generic/unqualified. It means the
-runtime deliberately makes no statement about sandboxing, hostile same-user
+The Broker mechanism's isolation observation remains generic/unqualified. Its
+receipt or lease makes no statement about sandboxing, hostile same-user
 applications, process-tree confinement, supported host platforms, or
-Application-level Endpoint Location Privacy. A qualified platform Adapter
-requires separate research and an ADR.
+Application-level Endpoint Location Privacy. The separately verified installed
+text-worker launch establishes its local binding under the selected
+[confinement profile](application-confinement.md); qualification still requires
+that profile's actual installed evidence. Broker admission alone cannot supply
+that proof or a wider privacy claim.
 
 ## Publication and connection lifecycle
 
