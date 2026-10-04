@@ -16,7 +16,7 @@ Registration is a rich state/lifetime responsibility within the Route domain,
 not a separate domain or a new Admission aggregate. Canonical byte codecs and
 exclusive durable storage are mechanisms under that semantic owner.
 
-The next bounded behavior is actual registration and owning-channel withdrawal
+The implemented bounded behavior is actual registration and owning-channel withdrawal
 through a retained Introduction prefix using new signed Network observations,
 genuine class-3 Stock/presentation/Receiving, Hosting and real TCP/TLS plus QUIC.
 It must not manufacture successful capsule acceptance, Publication readiness,
@@ -234,8 +234,12 @@ The orchestrator inspected accepted protocol terminal/JOIN sections, new
 Receiving/spending root and forwarding receiver/command composition, predecessor
 registration/floor and Endpoint delivery-validation boundaries. This is static
 source evidence, not rerun transport/persistence tests. A bounded read-only
-review checked the separate-root initialization design at `5f7467b30`;
-causal implementation controls remain required in its owning change. No implementation or package is
-created by this document.
+review checked the separate-root initialization design at `5f7467b30`.
+The subsequent implementation is `ca0767ebaa02513166d6bcb14cd55836a45ae661`;
+its real owners, consumers and invariant checks are documented in the
+[implemented registration owner](../technical/successor-route-introduction.md).
+The [domain map](domain-map.md) records source verification, inspected regression
+receipts and their limits separately from the earlier design inspection.
+This design alone establishes no runtime acceptance or complete Route result.
 
 

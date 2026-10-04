@@ -16,11 +16,16 @@ The original inventory checkout was `dev` at
 and untracked work. At that inspection, Network adapters were moving under
 `internal/successor/network`; a source location alone did not establish
 completed integration. Source links below preserve that inventory provenance.
-Subsequent new Network and retained Route prefix results are recorded in the
+Subsequent new Network, retained Route prefix and Introduction registration results are recorded in the
 [maintained domain map](domain-map.md) and
-[implemented prefix owner](../technical/successor-route-prefix.md).
+[implemented prefix owner](../technical/successor-route-prefix.md) and
+[registration owner](../technical/successor-route-introduction.md).
 The bounded prefix result at `69406f7c896aa45321b5556f2b63d0c99f2dba44`
-does not implement the remaining Introduction or JOIN responsibilities below.
+alone does not implement Introduction or JOIN. Registration is implemented at
+`ca0767ebaa02513166d6bcb14cd55836a45ae661`; opaque delivery, JOIN and
+forwarding-parent refill transport remain distinct obligations under the
+[remaining behavior design](route-delivery-join-boundary.md). Admission's refill
+component does not establish the missing Route ADMIT/ACCEPT exchange.
 The earlier [Route extraction record](route-refactoring-boundary.md) keeps its
 named baseline and is not the current owner map.
 
