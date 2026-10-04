@@ -105,7 +105,7 @@ func OpenPrefix(ctx context.Context, config PrefixConfig) (_ *Prefix, result err
 	}
 	h, err := freshHello(a, config.Deadline)
 	if err == nil {
-		err = presentChannel(childContext, conn, a, h, config.Present)
+		err = presentChannel(childContext, ctx, conn, a, h, config.Present)
 	}
 	if err != nil {
 		return nil, errors.Join(err, conn.Close())
@@ -133,7 +133,7 @@ func OpenPrefix(ctx context.Context, config PrefixConfig) (_ *Prefix, result err
 	}
 	h, err = freshHello(a, config.Deadline)
 	if err == nil {
-		err = presentChannel(childContext, secured, a, h, config.Present)
+		err = presentChannel(childContext, ctx, secured, a, h, config.Present)
 	}
 	if err != nil {
 		return nil, err

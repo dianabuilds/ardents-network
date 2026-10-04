@@ -114,14 +114,26 @@ func acceptedChannel(conn net.Conn) error {
 	return nil
 }
 
-func presentChannel(ctx context.Context, conn net.Conn, a Authority, h ardp.Hello, present Present) error {
-	if _, err := a.hello(h, false); err != nil {
-		return err
+func presentChannel(ctx, caller context.Context, conn net.Conn, a Authority, h ardp.Hello, present Present) error {
+	check := func() error {
+		if err := errors.Join(ctx.Err(), caller.Err()); err != nil {
+			return err
+		}
+		_, err := a.hello(h, false)
+		// Authority observation may itself perform I/O. Neither cancellation
+		// propagation nor an unscheduled callback authorizes a later effect.
+		return errors.Join(err, ctx.Err(), caller.Err())
 	}
 	if _, err := channelBinding(conn, h); err != nil {
 		return err
 	}
+	if err := check(); err != nil {
+		return err
+	}
 	if err := sendHello(conn, h); err != nil {
+		return err
+	}
+	if err := check(); err != nil {
 		return err
 	}
 	// Stock marks presentation durably before returning token bytes. Recheck
@@ -134,22 +146,22 @@ func presentChannel(ctx context.Context, conn net.Conn, a Authority, h ardp.Hell
 	if len(raw) != 354 {
 		return errors.New("route token length invalid")
 	}
-	if _, err := a.hello(h, false); err != nil {
-		return err
-	}
 	class, err := channelClass(h.Purpose)
 	if err != nil {
 		return err
 	}
 	body := append([]byte{byte(class)}, raw...)
+	defer clear(body)
+	if err := check(); err != nil {
+		return err
+	}
 	if err := ardp.WriteFrame(conn, ardp.Frame{Kind: ardp.KindAdmit, Body: body}); err != nil {
 		return err
 	}
 	if err := acceptedChannel(conn); err != nil {
 		return err
 	}
-	_, err = a.hello(h, false)
-	return err
+	return check()
 }
 
 func receiveChannel(ctx context.Context, conn net.Conn, a Authority, admit Admit, opened *ardpHello, capacity *admissionRetirement) (receiving.Grant, ardp.Hello, error) {

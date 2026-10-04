@@ -61,6 +61,11 @@ same retained outcome. Done signals retirement; it does not replace Close.
 The original caller context remains linked after REGISTER hands out its handle.
 Close stops or joins that exact cancellation callback before releasing resources;
 successful setup does not detach the registration from its caller's lifetime.
+Effect checks and final handle handoff also inspect the original caller's
+cancellation synchronously; an unscheduled callback cannot authorize success.
+The presentation channel rechecks both original caller and physical child after
+durable Stock presentation and before ADMIT emission. Refusal retains the burnt
+presentation without emitting token bytes or authorizing Receiving spend.
 
 After emitting the owning WITHDRAW result, the receiving channel remains held
 until the holder closes it or its original deadline/cancellation interrupts it.

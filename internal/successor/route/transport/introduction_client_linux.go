@@ -88,6 +88,11 @@ func (p *Prefix) Register(ctx context.Context, config RegistrationConfig) (_ *Re
 	}()
 	a := Authority{Current: p.config.Current, Duty: config.Duty, Profile: p.config.Leg.Profile}
 	check := func() error {
+		// Callback scheduling interrupts physical I/O, but cannot establish
+		// original caller currentness at effects or a successful handoff.
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		if err := p.ctx.Err(); err != nil {
 			return err
 		}
@@ -105,7 +110,12 @@ func (p *Prefix) Register(ctx context.Context, config RegistrationConfig) (_ *Re
 		if err != nil || member.RoleDomain != 4 || member.Subrole != 3 || p.config.Leg.EntryMember.RoleDomain != 4 || config.Deadline.After(p.config.Deadline) || config.Deadline.After(member.NotAfter()) || config.Deadline.After(a.Profile.NotAfter) || conflicting(member, p.config.Leg.EntryMember) || conflicting(member, p.config.Leg.InteriorMember) {
 			return errors.Join(errors.New("route registration duty differs"), err)
 		}
-		return nil
+		// Reobserve original bounds after Network's durable observation too;
+		// the caller may retire while that I/O is in progress.
+		if !time.Now().Before(config.Deadline) {
+			return errors.New("route registration expired")
+		}
+		return errors.Join(ctx.Err(), p.ctx.Err(), child.Err())
 	}
 	if err := check(); err != nil {
 		return nil, err
@@ -169,7 +179,7 @@ func (p *Prefix) Register(ctx context.Context, config RegistrationConfig) (_ *Re
 	}
 	hello, err := freshPurposeHello(a, config.Deadline, ardp.PurposeIntroduction, false)
 	if err == nil {
-		err = presentChannel(child, secured, a, hello, p.config.Present)
+		err = presentChannel(child, ctx, secured, a, hello, p.config.Present)
 	}
 	if err != nil {
 		return nil, err
@@ -205,7 +215,7 @@ func (p *Prefix) Register(ctx context.Context, config RegistrationConfig) (_ *Re
 	if err := check(); err != nil {
 		return nil, err
 	}
-	if err := child.Err(); err != nil {
+	if err := errors.Join(ctx.Err(), child.Err()); err != nil {
 		return nil, err
 	}
 	if !stop() {
@@ -236,7 +246,7 @@ func (p *Prefix) Register(ctx context.Context, config RegistrationConfig) (_ *Re
 	if closing {
 		return nil, errors.Join(net.ErrClosed, r.Close())
 	}
-	if err := child.Err(); err != nil {
+	if err := errors.Join(ctx.Err(), child.Err()); err != nil {
 		return nil, errors.Join(err, r.Close())
 	}
 	p.changedActivity()
