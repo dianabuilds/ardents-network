@@ -106,3 +106,39 @@ func TestNodePoolWithdrawalJoinsUnpublishableLateDial(t *testing.T) {
 		t.Fatal("late result reservation leaked")
 	}
 }
+
+func TestNodePoolRetainsLateWriterFailureAfterBorrowerJoin(t *testing.T) {
+	var p nodePool
+	late := errors.New("late pooled physical write failed")
+	physical := newLifecycleConn(true)
+	physical.writeIgnoresClose, physical.partial = true, late
+	var released atomic.Int32
+	c, err := p.borrow(t.Context(), Authority{}, func() error { return nil }, func(context.Context) (*session, func(), error) {
+		return newSession(context.Background(), physical, time.Now().Add(5*time.Second), 32<<20, nil, false, &queueBudget{maximum: 64 << 20}, nil), func() { released.Add(1) }, nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	l := lifecycleLane(t, c.session, 1)
+	written := make(chan error, 1)
+	go func() { _, err := l.Write([]byte("started")); written <- err }()
+	<-physical.writes
+	joined := make(chan error, 1)
+	go func() { joined <- c.release() }()
+	<-physical.closed
+	if released.Load() != 0 {
+		t.Fatal("released before writer joined")
+	}
+	close(physical.writeGate)
+	if err := lifecycleResult(t, written); !errors.Is(err, late) {
+		t.Fatal(err)
+	}
+	if err := lifecycleResult(t, joined); !errors.Is(err, late) {
+		t.Fatal(err)
+	}
+	for range 2 {
+		if err := p.Close(); !errors.Is(err, late) {
+			t.Fatal("pool discarded joined write failure", err)
+		}
+	}
+}

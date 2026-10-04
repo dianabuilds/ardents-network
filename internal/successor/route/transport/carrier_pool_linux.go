@@ -114,7 +114,7 @@ func (p *nodePool) borrow(ctx context.Context, a Authority, validate func() erro
 		}
 		p.mu.Lock()
 		if s != nil {
-			p.err = errors.Join(p.err, s.physicalErr)
+			p.err = errors.Join(p.err, s.joinedPhysicalFailure())
 		}
 		delete(p.entries, entry.peer)
 		close(entry.changed)
@@ -138,7 +138,7 @@ func (c *pooledCarrier) release() error {
 	err := c.session.Close()
 	c.releaseControl()
 	p.mu.Lock()
-	p.err = errors.Join(p.err, c.session.physicalErr)
+	p.err = errors.Join(p.err, c.session.joinedPhysicalFailure())
 	delete(p.entries, c.peer)
 	close(c.changed)
 	p.mu.Unlock()

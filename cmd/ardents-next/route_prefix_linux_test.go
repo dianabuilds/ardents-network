@@ -5,6 +5,7 @@ package main
 import (
 	"context"
 	"errors"
+	"net"
 	"path/filepath"
 	"sync/atomic"
 	"testing"
@@ -75,7 +76,7 @@ func TestRouteGenuineRetainedPrefixBothCarriers(t *testing.T) {
 				}
 				defer func() {
 					for _, server := range receivers {
-						if err := server.Close(); err != nil && mode != "clock-loss" && mode != "profile-conflict" && mode != "successor" {
+						if err := server.Close(); err != nil && mode != "clock-loss" && mode != "profile-conflict" && mode != "successor" && !(mode == "expiry" && errors.Is(err, net.ErrClosed)) {
 							t.Error("receiving join", err)
 						}
 					}
@@ -274,8 +275,14 @@ func TestRouteGenuineRetainedPrefixBothCarriers(t *testing.T) {
 				// Keep the genuine listeners live: refusal must come from burnt
 				// stock, rather than an unreachable socket masking token reuse.
 				for _, server := range receivers {
-					if err := server.Close(); err != nil && mode != "clock-loss" && mode != "profile-conflict" && mode != "successor" {
+					err := server.Close()
+					// Expiry can interrupt a started physical terminal frame;
+					// preserve that closed-connection result through owner join.
+					if err != nil && mode != "clock-loss" && mode != "profile-conflict" && mode != "successor" && !(mode == "expiry" && errors.Is(err, net.ErrClosed)) {
 						t.Fatal(err)
+					}
+					if again := server.Close(); again != err {
+						t.Fatal("receiver replaced retained terminal result", again)
 					}
 				}
 				for _, budget := range budgets {

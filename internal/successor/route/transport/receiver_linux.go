@@ -249,7 +249,13 @@ func (r *Receiver) serveOuter(ctx context.Context, accepted carrier.ClosedShared
 		return r.serveRole(ctx, &retiredConn{Conn: secured}, l, &opened)
 	})
 	<-s.readerDone
-	return s.Close()
+	return r.finishSession(s)
+}
+
+func (r *Receiver) finishSession(s *session) error {
+	err := s.Close()
+	r.record(s.joinedPhysicalFailure())
+	return err
 }
 
 func (r *Receiver) serveRole(ctx context.Context, conn net.Conn, outer *lane, opened *ardpHello) (result error) {
@@ -268,7 +274,7 @@ func (r *Receiver) serveRole(ctx context.Context, conn net.Conn, outer *lane, op
 		// Interrupt nested physical work, join every borrower, then return the
 		// finite reservation. A retained token spend is never refunded here.
 		if s != nil {
-			result = errors.Join(result, s.Close())
+			result = errors.Join(result, r.finishSession(s))
 		} else {
 			result = errors.Join(result, conn.Close())
 		}

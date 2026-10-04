@@ -68,8 +68,11 @@ the child's physical writer; retained input leaves its queue through actual
 consumption or joined owner cleanup. Withdrawal interrupts listeners, pending
 setup, readers, writers and children; owners join them before returning
 reservations or closing roots. Repeated Close returns one retained result,
-including late physical and release failures. `Prefix.Done` signals retired
-readiness; its caller must still Close to join and release. `Receiver.Done`
+including late physical and release failures.
+Physical session write/close failures survive Receiver and outgoing pool
+retirement; ordinary peer refusal and EOF remain local session outcomes.
+`Prefix.Done` signals retired readiness; its caller must still Close to join
+and release. `Receiver.Done`
 signals joined listener retirement, and Close retrieves its terminal result.
 This bounded operation carries no further useful work after opening, so its
 idle readiness expires after 120 seconds or its earlier immutable deadline.

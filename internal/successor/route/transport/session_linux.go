@@ -103,6 +103,13 @@ func (s *session) Close() error {
 	return s.closeErr
 }
 
+// joinedPhysicalFailure is read only after Close has joined all physical
+// writers. Peer protocol refusal, EOF and authority cancellation remain local
+// session outcomes; an owned physical write/close failure survives retirement.
+func (s *session) joinedPhysicalFailure() error {
+	return errors.Join(s.physicalErr, s.writeErr)
+}
+
 func (s *session) read() {
 	defer close(s.readerDone)
 	interruptDone := make(chan struct{})
