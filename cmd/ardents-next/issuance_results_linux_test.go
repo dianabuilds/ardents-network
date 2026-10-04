@@ -251,7 +251,7 @@ func TestConfirmedIssuanceCLIOTLPAndCrash(t *testing.T) {
 			}
 			err := command.Wait()
 			if episode != "kill" && err != nil {
-				t.Fatal(err, string(out.Bytes()))
+				t.Fatal(err, out.String())
 			}
 			saved, e := os.ReadFile(issue["response_file"].(string))
 			if e != nil {

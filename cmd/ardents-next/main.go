@@ -19,6 +19,9 @@ func main() {
 }
 
 func run(ctx context.Context, args []string, out, diagnostic io.Writer) int {
+	if len(args) > 0 && args[0] == "route" {
+		return runRoute(ctx, args[1:], out, diagnostic)
+	}
 	if len(args) > 0 && args[0] == "network" {
 		return runNetwork(ctx, args[1:], out)
 	}

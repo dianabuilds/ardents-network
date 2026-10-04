@@ -153,6 +153,7 @@ func TestTestProfileRegistryIsFactualAndWired(t *testing.T) {
 	}
 	makefile := string(readProjectFile(t, root, "Makefile"))
 	required := map[string]bool{
+		"route-prefix-linux":                false,
 		"admission-ledger-linux":            false,
 		"issuer-profile-linux":              false,
 		"token-issuance-linux":              false,

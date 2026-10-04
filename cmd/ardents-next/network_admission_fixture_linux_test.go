@@ -44,7 +44,7 @@ type networkAdmissionFixture struct {
 	reopen           func()
 }
 
-func newNetworkAdmissionFixture(t *testing.T) *networkAdmissionFixture {
+func newNetworkAdmissionFixture(t *testing.T, prepare ...func(*networkAdmissionFixture)) *networkAdmissionFixture {
 	t.Helper()
 	dir := t.TempDir()
 	start := time.Now().UTC().Truncate(time.Hour)
@@ -94,6 +94,9 @@ func newNetworkAdmissionFixture(t *testing.T) *networkAdmissionFixture {
 		}}
 	for _, key := range inventory.Keys {
 		f.spec.Keys = append(f.spec.Keys, networkfixture.ClosedTokenKey{WindowStart: time.Unix(int64(key.Window), 0).UTC(), Class: key.Class, SPKI: key.SPKI})
+	}
+	for _, option := range prepare {
+		option(f)
 	}
 	config := state.Config{Root: filepath.Join(dir, "network"), NetworkID: networkID,
 		Authorities: map[[32]byte]ed25519.PublicKey{sha256.Sum256(authorityKey.Public().(ed25519.PublicKey)): authorityKey.Public().(ed25519.PublicKey)}, Threshold: 1,

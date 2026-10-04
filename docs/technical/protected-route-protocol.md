@@ -9,6 +9,10 @@ claim that their combined installed C0 journey has been qualified. Retained
 generation-2 records and readers have separate retirement or migration
 obligations; they do not define a fallback Route.
 
+The isolated new-domain retained-prefix operation and its command composition
+are described in [the new Route owner](successor-route-prefix.md). Its bounded
+acceptance does not supply the future Service consumers of this full protocol.
+
 ## Carrier, cryptography and information flow
 
 Retain the two transport families selected by

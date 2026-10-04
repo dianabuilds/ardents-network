@@ -19,6 +19,15 @@ substitute for independent review.
 
 ## Ordinary checks
 
+- `make route-check` runs only the new Network, Admission, Hosting and Route
+  owners plus `ardents-next`, with Linux race execution, both selected real
+  Carriers, compiled prefix/receiver processes and causal lifecycle cases.
+  Focused architecture checks enforce isolation and registered profiles.
+  Missing Linux, counters, loopback, race compiler or durable filesystem
+  prerequisites invalidate the profile. Repository quick/full gates are
+  separate and remain required before integration. The bounded behavior and
+  evidence limits belong to the [new Route owner](../technical/successor-route-prefix.md).
+
 - `make unit` runs the positive deterministic package inventory, including the
   canonical Network epoch fixture, with one explicit 15-minute terminal timeout
   per package. The retained 256-stream
@@ -223,6 +232,16 @@ are a selected product path. A newly reported symbol fails the gate until its
 owner either removes it or reviews it with a concrete retirement condition.
 An absent listed symbol also fails the gate, so the registry cannot silently
 accumulate stale exemptions. `make check` includes this audit.
+
+The new Route prefix has a real Linux command caller. Its Carrier mechanism is
+Linux-only; portable Route rules and canonical framing remain covered by portable
+tests and exact Windows production allowances. The migration also records the
+predecessor Network's tested unsigned preparation, local participation and
+diagnostic/wait contracts as awaiting their genuine production composition,
+with individual retirement conditions. Those entries do not qualify Node or
+provisioning integration. The signed-State builder remains test composition.
+The uncalled standalone direct-role listener and bootstrap decoder were removed;
+the shared receiving listener is the actual Route caller.
 
 The dedicated Initiator closure audit removed the production-dead Entry
 admission engine, receiving relay grammar, and direct credential/reachability

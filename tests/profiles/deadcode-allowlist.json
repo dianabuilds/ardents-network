@@ -11,6 +11,38 @@
       "rationale": "The e2e fixture helpers are reached from the positive test inventory rather than from a maintained production executable.",
       "owner": "Product Owner and Codex",
       "retirement": "Remove them when the owning e2e profile is retired or replace them with an invoked fixture command path."
+    },
+    {
+      "symbols": [
+        "internal/successor/network.NodeParticipationFacts.Restriction",
+        "internal/successor/network/closedprofile.Prepare",
+        "internal/successor/network/duty.nodeParticipationRestriction",
+        "internal/successor/network/duty.Open",
+        "internal/successor/network/duty.ReadConflict",
+        "internal/successor/network/duty.store.RetainNode",
+        "internal/successor/network/epoch.appendInitialPreparationText",
+        "internal/successor/network/epoch.candidateCarrierEligible",
+        "internal/successor/network/epoch.encodeInitialClosedEpoch",
+        "internal/successor/network/epoch.initialPreparationInterval",
+        "internal/successor/network/epoch.PrepareInitialClosedEpoch",
+        "internal/successor/network/epoch.PrepareInitialClosedRecord",
+        "internal/successor/network/state.networkState.Current",
+        "internal/successor/network/state.networkState.Wait"
+      ],
+      "classification": "accepted new Network contracts with behavior evidence and pending production composition",
+      "rationale": "Unsigned Epoch/profile preparation, local Node participation journal, and State diagnostic/wait interfaces have genuine domain tests but no maintained command caller. CurrentRuntime supplies live authority; the bounded Route prefix does not substitute these APIs for authority or claim Node/provisioning composition. This records predecessor reachability separately from Route production acceptance.",
+      "owner": "Product Owner and Codex; new Network",
+      "retirement": "Remove each symbol when its accepted contract is retired, or remove its exact allowance when a selected genuine provisioning, Node, or State supervision caller reaches it."
+    },
+    {
+      "symbols": [
+        "tests/epochfixture/network.BuildClosed",
+        "tests/epochfixture/network.closedFixtureSPKI"
+      ],
+      "classification": "canonical signed-State test fixture",
+      "rationale": "BuildClosed and its SPKI helper construct real signed State for new Network and Route tests. They are test composition, never a maintained runtime authority or command.",
+      "owner": "Product Owner and Codex; test composition",
+      "retirement": "Remove the exact entries when the signed-State fixture is retired or a separately accepted fixture command consumes them."
     }
   ],
   "production": {
@@ -299,6 +331,35 @@
         "rationale": "The v1 cross-platform composition previously made this closure appear reachable on Windows. The selected v2 text participant is qualified only on Linux; its command adapter refuses on other platforms before runtime acquisition, while Linux production reaches these symbols. ADR-0106 retired the Windows-visible `entry import` caller of the duty conflict ledger, so only the Linux text runtime reaches ReadConflict and store.Conflict now.",
         "owner": "Product Owner and Codex",
         "retirement": "Remove this Windows allowance if a maintained Windows protected runtime is selected, or when the Linux-only runtime and its shared closure are retired or assigned narrower platform build ownership."
+      },
+      {
+        "symbols": [
+          "internal/successor/network.RuntimeView.MatchDuty",
+          "internal/successor/network.RuntimeView.MemberByKey",
+          "internal/successor/network.RuntimeView.Members",
+          "internal/successor/network.RuntimeView.RetainDuty",
+          "internal/successor/route.Conflict",
+          "internal/successor/route.InteriorSet.Check",
+          "internal/successor/route.PurposePermitsDuty",
+          "internal/successor/route.SelectInterior",
+          "internal/successor/route/ardp.AcceptFrame",
+          "internal/successor/route/ardp.DecodeAcceptFrame",
+          "internal/successor/route/ardp.DecodeHello",
+          "internal/successor/route/ardp.EncodeFrame",
+          "internal/successor/route/ardp.EncodeHello",
+          "internal/successor/route/ardp.ReadFrame",
+          "internal/successor/route/ardp.ValidFrame",
+          "internal/successor/route/ardp.ValidHeader",
+          "internal/successor/route/ardp.ValidHello",
+          "internal/successor/route/ardp.ValidPurpose",
+          "internal/successor/route/ardp.validShape",
+          "internal/successor/route/ardp.writeAll",
+          "internal/successor/route/ardp.WriteFrame"
+        ],
+        "classification": "selected Linux-only new Route prefix closure",
+        "rationale": "The actual retained selection and admitted TCP/TLS and QUIC prefix are Linux command operations. Unsupported platforms refuse before opening Route roots. Linux production reaches these exact Route rules/codecs and RuntimeView members/duties; portable rule and canonical-byte tests reach them on Windows without providing a product Route.",
+        "owner": "Product Owner and Codex; new Route",
+        "retirement": "Remove each Windows allowance if a maintained Windows Route consumer is selected, or if its Linux-only operation and portable rule are retired."
       }
     ]
   }

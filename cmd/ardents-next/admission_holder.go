@@ -29,8 +29,12 @@ func runAdmissionHolder(ctx context.Context, args []string, input io.ReadCloser,
 		Profile string                   `json:"profile"`
 		Network *networkAuthorityPlan    `json:"network,omitempty"`
 		Role    admission.AllocationRole `json:"role"`
+		Route   *routePrefixPlan         `json:"route,omitempty"`
 	}
 	if ctx == nil || admissionConfig(args, &config) != nil || !absoluteAdmissionPath(config.Root) || !validAdmissionAuthority(config.Profile, config.Network, config.Root) {
+		return 2
+	}
+	if config.Route != nil && (config.Network == nil || !independentRouteRoots(config.Network.Root, config.Root, config.Route.EntryRoot, config.Route.InteriorRoot, config.Route.HostingRoot)) {
 		return 2
 	}
 	if ctx.Err() != nil {
@@ -57,6 +61,12 @@ func runAdmissionHolder(ctx context.Context, args []string, input io.ReadCloser,
 	}()
 	var attempt stock.Attempt
 	var retainedIntent stock.IssuanceIntent
+	var prefix routeHandle
+	defer func() {
+		if prefix.close != nil && prefix.close() != nil {
+			code = 1
+		}
+	}()
 	return admissionConsole(ctx, input, out, func(ctx context.Context, raw []byte) (any, bool, error) {
 		var c holderCommand
 		if err := decodeAdmissionObject(raw, &c); err != nil {
@@ -65,6 +75,28 @@ func runAdmissionHolder(ctx context.Context, args []string, input io.ReadCloser,
 		var err error
 		result := map[string]any{"outcome": "completed"}
 		switch c.Operation {
+		case "prefix-open":
+			if prefix.close != nil {
+				select {
+				case <-prefix.done:
+					err = errors.New("route prefix retired; close to retrieve outcome")
+				default:
+					err = errors.New("route prefix already open")
+				}
+				break
+			}
+			if config.Route == nil || authority.current == nil {
+				err = errors.New("route prefix unavailable")
+				break
+			}
+			prefix, err = startRoutePrefix(ctx, *config.Route, authority, o)
+		case "prefix-close":
+			if prefix.close == nil {
+				err = errors.New("route prefix absent")
+				break
+			}
+			err = prefix.close()
+			prefix = routeHandle{}
 		case "request":
 			var wire []byte
 			var digest [32]byte

@@ -85,3 +85,8 @@ github.com/dianabuilds/ardents-network/internal/successor/network/epoch
 github.com/dianabuilds/ardents-network/internal/successor/network/source
 github.com/dianabuilds/ardents-network/internal/successor/network/state
 github.com/dianabuilds/ardents-network/internal/successor/network/state/durable
+github.com/dianabuilds/ardents-network/internal/successor/route
+github.com/dianabuilds/ardents-network/internal/successor/route/selection
+github.com/dianabuilds/ardents-network/internal/successor/route/ardp
+github.com/dianabuilds/ardents-network/internal/successor/route/carrier
+github.com/dianabuilds/ardents-network/internal/successor/route/transport

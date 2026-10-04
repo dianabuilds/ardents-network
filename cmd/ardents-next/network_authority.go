@@ -28,6 +28,7 @@ type networkAuthorityPlan struct {
 }
 
 type admissionAuthority struct {
+	current      func() (network.RuntimeView, error)
 	observe      func() (admission.AuthorityFacts, time.Time, error)
 	issuer       func([32]byte) (admission.AuthorityFacts, time.Time, error)
 	receiver     func(receiving.Receiver, time.Time) (receiving.Observation, error)
@@ -116,7 +117,7 @@ func networkAdmissionAuthority(current func() (network.RuntimeView, error), clos
 		}
 		return view, facts, now, nil
 	}
-	authority := admissionAuthority{close: closeOwner,
+	authority := admissionAuthority{close: closeOwner, current: current,
 		observe: func() (admission.AuthorityFacts, time.Time, error) {
 			_, facts, now, err := observe()
 			return facts, now, err

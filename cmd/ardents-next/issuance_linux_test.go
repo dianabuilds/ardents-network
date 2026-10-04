@@ -205,7 +205,7 @@ func TestIssuanceCLICrashReopen(t *testing.T) {
 			if episode == "interrupt" {
 				var r issuanceResult
 				if json.Unmarshal(out.Bytes(), &r) != nil || r.Outcome != "completed" {
-					t.Fatal("cancel after commit", string(out.Bytes()))
+					t.Fatal("cancel after commit", out.String())
 				}
 			}
 			if r, e := issuanceCommand(t, "inspect", input, ""); e != nil || r.Outcome != "completed" {
