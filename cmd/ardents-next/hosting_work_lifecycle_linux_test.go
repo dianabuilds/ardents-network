@@ -1,6 +1,6 @@
 //go:build linux
 
-package admittedwork
+package main
 
 import (
 	"context"
@@ -70,7 +70,7 @@ func TestCanceledSocketChildRetainsReservationUntilJoined(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer budget.Close()
-	plan := Plan{Root: t.TempDir(), Budget: budgetRoot, Receiver: recipient, NotAfter: facts.NotAfter, Deadline: time.Now().Add(4 * time.Second), Token: raw, Bytes: 64 << 10, Observe: func() (admission.AuthorityFacts, time.Time, error) { return facts, time.Now().UTC(), nil }}
+	plan := hostingWorkFixture{Root: t.TempDir(), Budget: budgetRoot, Receiver: recipient, NotAfter: facts.NotAfter, Deadline: time.Now().Add(4 * time.Second), Token: raw, Bytes: 64 << 10, Observe: func() (admission.AuthorityFacts, time.Time, error) { return facts, time.Now().UTC(), nil }}
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	childStarted := make(chan struct{})
@@ -87,7 +87,7 @@ func TestCanceledSocketChildRetainsReservationUntilJoined(t *testing.T) {
 		})
 	}
 	done := make(chan error, 1)
-	go func() { done <- run(ctx, plan, transfer) }()
+	go func() { done <- runHostingFixtureWithTransfer(ctx, plan, transfer) }()
 	select {
 	case <-childStarted:
 	case err := <-done:
@@ -111,7 +111,7 @@ func TestCanceledSocketChildRetainsReservationUntilJoined(t *testing.T) {
 		t.Fatal("joined socket child retained reservation", view, err)
 	}
 	plan.Deadline = time.Now().Add(4 * time.Second)
-	if err := Run(t.Context(), plan); err == nil {
+	if err := runHostingFixture(t.Context(), plan); err == nil {
 		t.Fatal("spent token was refunded after I/O cancellation")
 	}
 }

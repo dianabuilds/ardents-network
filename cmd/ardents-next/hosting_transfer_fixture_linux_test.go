@@ -1,4 +1,6 @@
-package admittedwork
+//go:build linux
+
+package main
 
 import (
 	"context"

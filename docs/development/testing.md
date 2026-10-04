@@ -317,7 +317,7 @@ authorization to begin its later security, concurrency, or wire tracks.
 ## Current profiles
 
 `hosting-budget-linux` runs `make hosting-check`: isolated durable Hosting and
-admitted local I/O and compiled command lifecycle with race checks on Linux amd64.
+test-only Admission/Hosting I/O composition and compiled command lifecycle with race checks on Linux amd64.
 It covers shared persisted samples, deadline/cancellation handoff, independent
 concurrent owners, join-before-release, genuine token spending and replay refusal. The pinned Go 1.27.1
 bookworm image already selected for diagnostics can provide this component

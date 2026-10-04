@@ -72,6 +72,23 @@
   with evidence and a concrete proposal. Preserve the current authority,
   ownership, dependency and work-in-progress rules.
 
+## Route migration
+
+- Before any Route migration edit, and after every context compaction or
+  handoff, read [the Route migration contract](docs/development/route-migration-contract.md)
+  from disk in full. Conversation summaries and checkpoints do not replace it.
+- New Route connects only to new domains and new command composition. No old
+  runtime imports, reverse consumers, delegating wrappers, callback bridges or
+  shared live roots are permitted, including in tests.
+- The contract owns the restart checklist and acceptance boundary. Do not
+  relax it or its architecture checks to make implementation pass. Report a
+  consequential contradiction with evidence and a concrete proposal; only a
+  direct Product Owner decision can authorize changing the migration boundary.
+- The orchestrator maintains [the domain ownership map](docs/development/domain-map.md),
+  rereads it after compaction/handoff, and reconciles owners, boundaries and
+  realized results with each accepted slice. Keep execution status in GitHub;
+  do not drop future domains or treat a source move as verified ownership.
+
 ## Order of authority
 
 When materials disagree, use this order:

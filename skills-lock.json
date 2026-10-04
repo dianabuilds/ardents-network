@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "ddd": {
+      "source": "aristorinjuang/ddd-agent-skill",
+      "sourceType": "github",
+      "skillPath": "SKILL.md",
+      "computedHash": "7ebe6b93bc8b52e27ffcb1c2d8d3f4562177ed2e9506fe29d35c294c58b755ee"
+    }
+  }
+}

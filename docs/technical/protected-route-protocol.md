@@ -13,7 +13,11 @@ obligations; they do not define a fallback Route.
 
 Retain the two transport families selected by
 [ADR-0048](../adr/0048-maintain-tcp-and-quic-carriers.md): TCP/TLS and QUIC v1
-using quic-go v0.62.0. ADR-0081 selects successor Carrier profiles
+using quic-go. The ADR records its selected dependency version; the
+[dependency register](../development/dependencies.md) owns subsequent version
+acceptance and `go.mod` records the candidate's actual version. Historical
+exact-version evidence does not qualify a changed candidate.
+ADR-0081 selects successor Carrier profiles
 `ardents-carrier-tcp-tls-v2` and `ardents-carrier-quic-v2` with ALPN
 `ardents-route-v3`. They carry the same protected lane and inner TLS
 composition. The old v1 identifiers retain their generation-2 meaning; a new
@@ -48,8 +52,10 @@ bounds the handshake. Listener idle time consumes no peer handshake allowance;
 no HELLO, admission, parent or authority deadline is extended.
 Use the exact Node/role key from authenticated State, not Web PKI or DNS.
 
-Select Go 1.26.8 for the successor build; earlier component evidence identifies
-its actual Go 1.26.6 environment. Fix TLS key exchange to X25519MLKEM768 and
+Use the Go 1.27.1 build baseline selected by the
+[dependency register](../development/dependencies.md), which supersedes the
+Go 1.26.8 successor baseline. Historical component evidence retains its actual
+compiler. Fix TLS key exchange to X25519MLKEM768 and
 X25519, in that order, for
 this closed profile. Both are part of one configured TLS profile; selection
 cannot cross an authentication or privacy generation. Go's TLS 1.3 cipher
@@ -159,6 +165,17 @@ request cannot force Publisher Entry/Interior resampling. The closed duty
 partition makes a Rendezvous candidate ineligible to be a Publisher Entry.
 A fresh Connection always has a new join secret and terminal channel.
 A Node may host other Connections; completed Rendezvous state is never reused.
+
+The inspected Endpoint client currently requires a unique current terminal
+duty and refuses multiple matching assignments; it does not implement the
+general Rendezvous choice and preselected-alternative lifecycle above. Its
+Interior pair is deterministically derived from the retained Entry pair and
+Role Domain, then retained by the local owner; independently owned contexts
+can therefore derive the same pair. The
+[Route boundary analysis](../development/route-domain-boundary-analysis.md#contract-and-implementation-gaps)
+distinguishes that implementation limitation from the unresolved interpretation
+of Interior selection independence. These observations do not narrow the
+selected contract or authorize resampling during a package move.
 
 One target-free Entry/Interior prefix may remain prepared per admitted local
 context for 120 seconds after actual work. A prefix belongs to one outbound
@@ -405,7 +422,7 @@ arbitrary route.
 | Introduction registration | Introduction / Introduction delivery |
 | Introduction submission | Introduction / Introduction delivery |
 | data join | Rendezvous / data join |
-| forwarding | one of Initiator, Rendezvous or Responder / endpoint adjacency or interior forwarding |
+| forwarding | one of Initiator, Responder or Introduction / endpoint adjacency or interior forwarding |
 
 The table is an interpretation rule for the existing signed Node-entry
 Role-Domain and subrole fields; it adds no field and does not change the

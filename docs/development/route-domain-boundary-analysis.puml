@@ -1,0 +1,31 @@
+@startuml
+title Route boundaries and neighboring owners
+left to right direction
+rectangle "Network\nCurrent authenticated facts" as Network
+rectangle "Admission\nFinite rights and irreversible spend" as Admission
+rectangle "Hosting\nPhysical reservations" as Hosting
+rectangle "Route\nSelection and protected transport" as Route
+rectangle "Endpoint\nLive authority and scenario composition" as Endpoint
+rectangle "Publication\nRegistration authority" as Publication
+rectangle "Reachability\nVerified Descriptor and history" as Reachability
+rectangle "Execution\nJob and Grant" as Execution
+rectangle "Service Connection\nInstance authentication and continuity" as Connection
+rectangle "Node\nDuty and process supervision" as Node
+Network --> Route
+Admission --> Route
+Hosting --> Route
+Endpoint --> Route
+Publication --> Endpoint
+Reachability --> Endpoint
+Execution --> Endpoint
+Route --> Connection
+Endpoint --> Connection
+Node --> Route
+note bottom of Route
+  Relationships describe evidence and operations,
+  not permitted Go imports or an event bus.
+  Route is not one cross-principal aggregate.
+  Endpoint, Node and Service neighbors denote
+  future new owners, not old runtime imports.
+end note
+@enduml

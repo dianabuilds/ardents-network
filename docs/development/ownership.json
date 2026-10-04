@@ -27,6 +27,9 @@
     {
       "id": "agent-skills",
       "owner": "network",
+      "include_paths": [
+        "skills-lock.json"
+      ],
       "include_prefixes": [
         ".agents/skills/"
       ]

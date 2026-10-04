@@ -23,7 +23,6 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/successor/admission/receiving"
 	"github.com/dianabuilds/ardents-network/internal/successor/admission/stock"
 	"github.com/dianabuilds/ardents-network/internal/successor/admission/token"
-	"github.com/dianabuilds/ardents-network/internal/successor/admittedwork"
 	"github.com/dianabuilds/ardents-network/internal/successor/hosting"
 )
 
@@ -277,7 +276,7 @@ func TestAdmissionStandaloneCommandsIssuePresentReceiveAndReopen(t *testing.T) {
 	closeReopened()
 	receiver := receiving.Receiver{NetworkID: p.NetworkID, StateGeneration: p.StateGeneration, StateDigest: p.StateDigest, ProfileDigest: p.Digest, NodeID: challenge.ReceiverNodeID, DutyGeneration: challenge.ReceiverDutyGeneration}
 	checkAdmissionHostingReservation(t, p, receiver, third.Token)
-	checkAdmittedWorkProcess(t, p, receiver, profile, fourth.Token)
+	checkHostingTransfer(t, p, receiver, profile, fourth.Token)
 	checkCanceledAdmittedWork(t, p, receiver, fifth.Token)
 	receiverConfig := map[string]any{"root": t.TempDir(), "profile": profile, "receiver": receiver, "not_after": p.NotAfter}
 	accept := map[string]any{"operation": "accept", "token": first.Token, "class": 2, "deadline": p.NotAfter}
@@ -395,16 +394,15 @@ func TestAdmissionConsoleCancellationJoinsInput(t *testing.T) {
 	}
 }
 
-func checkAdmittedWorkProcess(t *testing.T, p admission.AuthorityFacts, receiver receiving.Receiver, profile string, raw []byte) {
+func checkHostingTransfer(t *testing.T, p admission.AuthorityFacts, receiver receiving.Receiver, profile string, raw []byte) {
 	t.Helper()
 	plan := hostingInitializePlan(t)
 	if err := hosting.Initialize(plan.Root, plan.Policy); err != nil {
 		t.Fatal(err)
 	}
-	config := admittedWorkPlan{Root: t.TempDir(), Profile: profile, Budget: plan.Root, Receiver: receiver, NotAfter: p.NotAfter, Deadline: time.Now().Add(4 * time.Second), Token: raw, Bytes: 64 << 10}
-	result := admissionLocalCommand(t, "work", config)
-	if result.Outcome != "completed" {
-		t.Fatal("actual work failed", result)
+	config := hostingWorkFixture{Root: t.TempDir(), Observe: admissionObserver(profile), Budget: plan.Root, Receiver: receiver, NotAfter: p.NotAfter, Deadline: time.Now().Add(4 * time.Second), Token: raw, Bytes: 64 << 10}
+	if err := runHostingFixture(t.Context(), config); err != nil {
+		t.Fatal("actual work failed", err)
 	}
 	budget, err := hosting.Open(plan.Root)
 	if err != nil {
@@ -415,10 +413,9 @@ func checkAdmittedWorkProcess(t *testing.T, p admission.AuthorityFacts, receiver
 	if err != nil || view.ReservedBytes != 0 || view.UsedBytes < config.Bytes {
 		t.Fatal("work did not charge/join/release", view, err)
 	}
-	// A second process with the same token must refuse, retaining no new reserve.
+	// Reopening with the same token must refuse, retaining no new reserve.
 	config.Deadline = time.Now().Add(4 * time.Second)
-	command := exec.CommandContext(t.Context(), compiledCommand(t), "admission", "work", "--config", hostingConfig(t, config))
-	if err := command.Run(); err == nil {
+	if err := runHostingFixture(t.Context(), config); err == nil {
 		t.Fatal("replayed work token")
 	}
 	view, err = budget.Observe(t.Context())
@@ -454,9 +451,9 @@ func checkCanceledAdmittedWork(t *testing.T, facts admission.AuthorityFacts, rec
 		}
 		return facts, time.Now().UTC(), nil
 	}
-	work := admittedwork.Plan{Root: root, Budget: plan.Root, Receiver: recipient, NotAfter: facts.NotAfter, Deadline: time.Now().Add(4 * time.Second), Token: raw, Bytes: 64 << 10, Observe: observe}
+	work := hostingWorkFixture{Root: root, Budget: plan.Root, Receiver: recipient, NotAfter: facts.NotAfter, Deadline: time.Now().Add(4 * time.Second), Token: raw, Bytes: 64 << 10, Observe: observe}
 	done := make(chan error, 1)
-	go func() { done <- admittedwork.Run(ctx, work) }()
+	go func() { done <- runHostingFixture(ctx, work) }()
 	select {
 	case <-reached:
 	case err := <-done:
@@ -480,7 +477,7 @@ func checkCanceledAdmittedWork(t *testing.T, facts admission.AuthorityFacts, rec
 	}
 	work.Observe = func() (admission.AuthorityFacts, time.Time, error) { return facts, time.Now().UTC(), nil }
 	work.Deadline = time.Now().Add(4 * time.Second)
-	if err := admittedwork.Run(t.Context(), work); err == nil {
+	if err := runHostingFixture(t.Context(), work); err == nil {
 		t.Fatal("canceled spent token became reusable")
 	}
 }

@@ -89,6 +89,11 @@ at an inter-context Interface.
 
 ## Context map
 
+The [maintained domain ownership map](domain-map.md) records the current semantic
+inventory, exclusions, collaborations and realized architectural results. The
+orchestrator keeps it current with the owning change. The proposal below and
+its baseline source references remain design provenance, not a second ledger.
+
 Preserve the eight original contexts as the working strategic map. Add explicit
 supporting boundaries for Hosting and Authority Custody that the earlier tree
 already kept separate. This is not a requirement for ten packages or processes.
@@ -107,6 +112,16 @@ where they share a vault mechanism.
 | **Software acceptance:** which program/generation may be installed or run? | Enrollment pin, Release roots/floors, installation transition and recovery journals; separate owners | Fresh exact-artifact authorization and observed installation result; local files alone grant no authority | `enrollment`, `release`, `endpoint/installation`, `replacement` -> keep Release authorization separate from platform transition |
 | **Hosting and local capacity** (supporting) | One provider-period allowance; work/termination reservations; separate process pressure owner | Finite reservations and pressure observations; neither a token nor a duty assignment | `resource`, `node/hosting`, `successor/hosting` -> Hosting budget separate from Node's role adapter and process supervision |
 | **Authority Custody** (supporting boundary) | Purpose-specific roots, signing commitments, recovery floors | Narrow approved public result; never generic Sign or secret export to ordinary runtime | `custody`; runtime Instance and Node keys stay with their own owners -> shared storage does not merge Service, Name, admission or State authorities |
+
+The [Route boundary analysis](route-domain-boundary-analysis.md) provides the
+current Route/Entry inventory, Endpoint and Node owner map, integration seams
+and remaining contract/implementation gaps. Its proposed migration does not
+select an implementation issue or register future packages.
+The [Route migration contract](route-migration-contract.md) fixes the mandatory
+isolation and resume rules requested by the Product Owner. The Route plan uses
+only new Network, Admission and Hosting owners and a new command consumer.
+It proposes no connection from either side to the old Route/Endpoint/Node
+runtime, including through test imports or compatibility wrappers.
 
 These ownership directions are proposed; current acceptance rules remain in the
 [product scope](../product/scope.md), [threat model](../security/threat-model.md),

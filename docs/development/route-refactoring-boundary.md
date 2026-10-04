@@ -7,7 +7,11 @@ former v2 execution closure is retired by the ADR-0093/ADR-0094 chain, so this d
 boundary record, not a new Route contract or C0 execution ledger. The
 accepted Route, Carrier and client contracts govern behavior.
 
-## Current Linux owner graph
+For the current cross-domain owner map, use the
+[Route boundary analysis](route-domain-boundary-analysis.md). The source counts
+and extraction blockers below describe their named baseline, not today's tree.
+
+## Recorded Linux owner graph
 
 On the Linux amd64 candidate after the replay extraction, completed #252
 v1 Node Carrier listener retirement, and ADR-0092 Endpoint/credential cleanup,
@@ -68,13 +72,13 @@ delegating wrappers, and the pure Carrier behavior tests moved with their
 owner. The old Route v2 execution closure is retired; its typed refusal
 identity remains under the Route and Node owners.
 
-`internal/route/credential` imports parent `internal/route` in three current
-production files: `closed_token_listener.go`, `closed_token_bootstrap.go`, and
-`closed_token_admitted.go`. They serve the live closed issuer's listener,
-bootstrap and admitted exchange. ADR-0092 removed the old client and message
-imports. Any split must move these live consumers or provide a lower-level
-acyclic Carrier/channel contract. A temporary `route` wrapper importing a
-child that imports `route` would create a cycle (F-30).
+At that baseline, `internal/route/credential` imported parent `internal/route`
+in three production files: `closed_token_listener.go`,
+`closed_token_bootstrap.go`, and `closed_token_admitted.go`. That package is
+now absent. Admission owns token verification and issuance;
+`internal/node/issuer` composes the live listener, bootstrap and admitted
+exchange. The old cycle analysis does not require recreating the removed
+package. The package map owns current import directions.
 
 ## Retired v2 source closure versus the selected v3 path
 
@@ -116,8 +120,9 @@ production cohort came from
 `closed_registration_encoding_linux.go`. Their four matching operation test
 files contain the canonical size, nonce, padding, expiry, and byte-offset
 oracles.
-This owner imports only `internal/service/reachability` and the standard
-library; it does not import `internal/route`.
+This owner imports only the standard library in production; its Descriptor
+behavior test imports `internal/service/reachability` to compare the proof-size
+bound. It does not import `internal/route`.
 
 The owner exposes the four request types, the issuance result type, and their
 encode/decode operations without the redundant `Closed` prefix. Route lane
@@ -126,8 +131,8 @@ have one definition. The zero-padding rule belongs to this codec owner and
 remains identical for Descriptor, JOIN, and registration bodies.
 
 The pure body tests moved with the codec. Outer Descriptor and JOIN lane
-assertions remain in `internal/route`. Actual Route, Node, Endpoint, and
-`route/credential` callers use the new package directly, with no delegating
+assertions remain in `internal/route`. Route, Endpoint and receiving Node roles,
+including the issuer, use the new package directly, with no delegating
 `route.Closed*` wrappers. The exact imports and absence of command ownership
 are recorded in `package-map.md`. Recheck overlapping caller names and behavior
 when completed network-opening work is integrated; the network task retains
@@ -158,7 +163,7 @@ without retained `route.ClosedSpend*` wrappers. The fixed persisted file names,
 headers, crash-tail recovery, and slot time floor remain unchanged. Its owner
 tests move with the files; Route and Node retain admission and listener tests.
 
-## Node–Route–Credential owner boundary
+## Node–Route–Admission owner boundary
 
 The Node root admits and supervises one selected process duty, opens shared
 Hosting handles, and reacts to process pressure. `node/forwarding` owns its
@@ -170,18 +175,18 @@ admission callbacks, not the process `runtimeConfig`.
 Route owns the authenticated Carrier, outer bridge, ARDP grammar and receiving
 channel operations. `admission/spending` owns the durable journal primitive, while a
 Node role chooses its binding and closes its lease after children join.
-Credential owns token verification/issuance grammar and the issuer key engine;
+Admission owns token verification/issuance grammar and the issuer key engine;
 `node/issuer` owns the selected listener and the late close of its issuer and
-spend roots. This extraction changes no shared wire or Credential interface.
+spend roots. This extraction changes no shared wire or Admission interface.
 
 ## Intended seam
 
-`internal/route` remains the owner of the currently shared Carrier and native
-Entry/TLS primitives until their caller-facing contract is settled. A closed
+Carrier now belongs to `internal/route/carrier`; persistent Entry Set ownership
+is in `internal/entry`. A closed
 subpackage is justified only if it can own the selected closed Route lifecycle,
 wire grammar and tests with a small API and one import direction. The split
 must preserve exact persisted and wire identities, both selected Carriers,
-cleanup order, and the existing `route/credential` consumer. No bulk file move
+cleanup order, and the existing Admission/Node issuer consumers. No bulk file move
 or `Closed*` rename is accepted from the prefix count alone.
 
 Realized for the client path: the outgoing cohort — the retained Source prefix
@@ -202,7 +207,8 @@ the outer-bridge case. The receiver-side `ClosedBootstrapController`
 ownership-scale table required. Endpoint, Qualification and Node behavior
 tests import the leaf directly without delegating wrappers, and the 25
 behavior test files moved with their owner. What remains of the Route split
-is the v2 execution-closure retirement, which stays analysis.
+is described by the current Route boundary analysis. The v2 execution closure
+was retired by the ADR chain described above; it is not remaining implementation.
 
 Before a split, resolve each shared declaration above and map every public
 `route.Closed*` caller to its prospective owner. Move behavior tests with the

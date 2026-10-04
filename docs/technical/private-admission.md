@@ -323,6 +323,17 @@ acceptance is confined to the exact token window and receiver duty.
 | 2 Forward | One authenticated forwarding channel or data-join terminal lane, at most 32 MiB of receiver-accounted ingress plus egress and 1,800 seconds | A forwarding channel permits 256 concurrent work lanes plus two reserved control lanes; all child work remains charged to the same parent reserve |
 | 3 Publication | One Introduction registration for at most 600 seconds and 1 MiB of capsule/control traffic | One slot, at most 16 pending capsules, delivery rate at most 4/s |
 
+There is an unresolved class-3 contract/implementation discrepancy:
+[`admission.RegistrationClass.ByteLimit`](../../internal/admission/class.go)
+currently returns 8 MiB, and the
+[Introduction receiver description](network-route-node.md#closed-introduction-registration-receiver)
+records that implemented allowance. The selected table above remains 1 MiB;
+neither a domain relocation nor this source inventory accepts the increase.
+The owning change must reconcile the allowance and its workload evidence before
+claiming contract conformance. The
+[Route boundary analysis](../development/route-domain-boundary-analysis.md#contract-and-implementation-gaps)
+records the concrete reconciliation proposal.
+
 These are work maxima, not bytes the implementation should generate.
 Under [ADR-0085](../adr/0085-bound-forwarding-replenishment.md), a fresh
 class-2 token can replenish only the already admitted forwarding parent on

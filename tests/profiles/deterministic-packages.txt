@@ -78,7 +78,6 @@ github.com/dianabuilds/ardents-network/internal/successor/admission/receiving
 github.com/dianabuilds/ardents-network/internal/successor/admission/quota
 github.com/dianabuilds/ardents-network/internal/successor/admission/attempts
 github.com/dianabuilds/ardents-network/internal/successor/admission/stock
-github.com/dianabuilds/ardents-network/internal/successor/admittedwork
 github.com/dianabuilds/ardents-network/internal/successor/network
 github.com/dianabuilds/ardents-network/internal/successor/network/closedprofile
 github.com/dianabuilds/ardents-network/internal/successor/network/duty

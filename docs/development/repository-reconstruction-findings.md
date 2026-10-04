@@ -2457,3 +2457,656 @@ deciding whether an old Instance root is migrated or refused (F-42), but it
 must remain observable during that decision. A focused injected-release
 failure on a bad retained state and one post-open error is enough to pin down
 the terminal result; no package split or new runtime is needed.
+
+## Continued static audit on dev, 2026-10-02
+
+Source: `f3ec3d01ab075e480cc22678dd768209572856be`. Ordinary Windows `go vet ./...` and the maintained `make staticcheck` passed, including the newly integrated explicit standalone Linux script checks. Ten clean worktrees of confirmed merged fixes were removed after checking tracked, untracked and ignored state; their branches remain available. The unfinished platform-admission worktree is preserved. Current Product Owner instruction caps simultaneous active threads at five and requires completed merged worktree cleanup.
+
+### F84 — Affected Fuzz seed checks omitted by PR selector
+
+`parseDeclarations` in `scripts/select-pr-checks.go` recognizes only `Test*` executable checks. Affected `Fuzz*` declarations therefore never enter either the direct execution pattern or the job matrix. Ordinary deterministic seed checks are skipped by the explicit `-run` filter; this does not concern mutation fuzzing. Static fixture with changed `source.Value` and dependent `FuzzValue` produced `run="^$"` instead of the affected seed check. Evidence: `C:/Users/vitek/AppData/Local/Temp/ardents-static-audit-20261002-dev/fuzz-selection/selection.log` and `matrix.json`. The maintained Epoch `FuzzCanonicalParsers` is an actual repository consumer of this check category. Recorded as [#428](https://github.com/dianabuilds/ardents-network/issues/428) and delegated immediately for repair through merge into dev and managed worktree cleanup. No product runtime tests or security analysis were run for this finding.
+
+### F85 — PR race selection depends on map iteration order
+
+At the same dev source, `selectChecks` skips dependency processing once a declaration is marked changed. In a mixed dependency graph, selection through a changed plain dependency can occur before another changed concurrent dependency reaches its consumer; the skipped declaration never inherits that later race flag. Twelve static selector runs over identical commits selected `TestValue` with `race=true` nine times and `race=false` three times. A simple single-chain control returned true in all twelve runs. Evidence: `C:/Users/vitek/AppData/Local/Temp/ardents-static-audit-20261002-dev/race-selection/mixed-selection-N.log` and `mixed-matrix-N.json`; runs 3, 9 and 12 omit race. Recorded and immediately delegated as [#429](https://github.com/dianabuilds/ardents-network/issues/429), with monotone race/dependency closure and deterministic order-invariance regressions requested through merge into dev.
+
+Additional receipt: explicit diagnostic source/test bundle passed Linux vet and staticcheck; special qualification build tags passed staticcheck. An initial default-cache permission failure was an invalid execution environment, not a code finding; the corrected run selected the writable temporary staticcheck cache and passed. No product runtime tests or cybersecurity audit were performed.
+
+Static receipt, maintained script syntax and external-command calls: Python source compilation without executing modules passed for all seven current files under packaging/scripts/tests; `bash -n` passed for seventeen shell files; PowerShell AST parsing passed for nine scripts. Static inspection of the qualification installers found their selected subprocess operations use checked exit results; no new defect is asserted from these searches. Source remains `f3ec3d01ab075e480cc22678dd768209572856be`. The two selector repairs #428 and #429 were observed active through their specific thread handles; no additional implementation thread was started in this continuation.
+
+Static profile inventory receipt at `f3ec3d01ab075e480cc22678dd768209572856be`: compared platform-specific `go list ./cmd/... ./internal/... ./tests/epochfixture/network` with the deterministic base and selected Linux inventory for Windows/amd64 and Linux/amd64. Both comparisons had zero missing and zero stale package entries. Enumerated sixteen current files selected by `text_worker_installed`; all belong to `internal/endpoint` or `tests/e2e/node`, both explicitly included in `INSTALLED_TAG_COMPILE_PACKAGES`. This confirms the current inventory only; it does not prove the registry will detect future omissions or qualify installed execution. No new issue was inferred from these passing static checks.
+
+Static runner selection receipt at the same dev source: loaded the maintained `run-issue60-checks.go -list` inventory on the Windows host, then used Linux `go list -json` metadata and source declarations to check every job regexp without running product tests. Matching declarations by job: fixed-worker-protocol 18; worker-command 1; endpoint-stream-ownership 2; runner-evidence 15; worker-authority 7; hosting-ledger 15; route-bounds 64; node-bounds 7; joined-carriers 3; endpoint-real-service 4. None of these ten current job selections is empty. The initial attempt to execute a cross-built Linux inventory helper on Windows was invalid and did not inspect product behavior; corrected host execution supplied the inventory before cross-platform metadata loading. Static source review confirms the runner includes command wait, stdout/stderr read, reporter, sync and close errors in its final outcome. No new issue is claimed by this receipt.
+
+Integration receipt for F85: PR #432 merged into dev at `b2dd34df4194462f3b1e2a71b84007d23d92199b`. The repair thread reported deterministic regressions, quick/full gates and CI passing. Its managed worktree was archived; the root checkout's worktree inventory independently confirms its removal. F84 remains under integration verification and is not reported complete.
+
+### F86 — Diagnostic timeline silently drops wrong-typed recognized fields
+
+Static source analysis at the same dev HEAD: `diagnosticString` in `internal/diagnostics/timeline/project.go` ignores `json.Unmarshal` errors. A recognized Node lifecycle JSON event with valid time but `state:42`, `assignment:false`, or object-valued `reason` is converted into an accepted row with absent categories/reason, because empty optional strings bypass validation. A recognized Endpoint failure with object-valued `failure` similarly loses its cause. Current `docs/reference/commands.md` and `timeline/doc.go` promise errors for malformed recognized categories; optional absence and invalid presence must differ. Existing tests cover malformed JSON and invalid string categories, not wrong JSON types. Recorded as [#430](https://github.com/dianabuilds/ardents-network/issues/430) and delegated for bounded typed-field validation through merge in dev and worktree cleanup. This is a static control/data-flow finding; no runtime reproduction or cybersecurity claim is made.
+
+Static lifecycle review receipt: inspected textdocument worker, initialization, reader and Publisher attachment ownership against the current confinement owner. `ReadWorkerConnection` closes both its Service and worker attachments, joins transfer goroutines and the cancellation callback, and retains close errors. Publisher owns a once-retained attachment close result and joins owned stream/worker I/O. Ignored callback Close return values on those paths are followed by collection of the retained owner result; no independent lost-cleanup defect is established by the search alone. The inherited production worker attachment separately retains its first close result. No generic-interface-only hypothesis was filed as a confirmed product defect, and no product runtime tests were executed.
+
+Static diagnostic-report review: inspected `assessRunRoot`, event/sample completeness checks, comparison and `reportCommand` against the current local-diagnostics owner. Capture incompleteness, terminal count mismatches, dropped/truncated records and interrupted/timed-out outcomes are explicitly represented; successful report construction does not change a retained command-failed outcome. Comparison retains both outcomes and leaves full workload/environment equivalence unknown rather than deriving a speedup claim. The finite sampler does not append its failed process-group samples as valid observations. No new confirmed defect is established on these inspected paths. No runtime report reproduction or cybersecurity checks were performed.
+
+Static monitor bounds review: checked CLI timeout/sample freshness limits and `openLogStore` retention validation against the current log owner. Policy restricts retained bytes to 1 GiB and files to 2..128, with positive bounded ages; Append rechecks the active segment after pruning, preserves record writes and retains sink failures. No integer-bound or stale-active-segment defect was established by this review. Future extreme sequence exhaustion explicitly fails. This receipt does not claim live delivery, rotation execution or crash durability.
+
+Integration receipt for F86: PR #433 merged into dev at `de36a4fc402adefdc6b2738fe4e14120359deff7`, confirmed by GitHub's merged state and the root checkout fast-forward. The repair thread reported quick/full gates and CI passing. Its managed worktree was archived and is absent from the root's active worktree inventory.
+
+### F87 — AAI3 refused setup loses returned Stream cleanup failure
+
+Static control-flow analysis at the same dev HEAD: `openAuthorizedAttachment` in `internal/application/connection/server_admission.go` discards `stream.Close()` errors when setup cancellation/refusal wins after Open returned a Stream, and on failed deadline reset. The helper returns no attachment, so `server.handle` exits before its ordinary deferred cleanup collector is installed. Neither local setup errors nor the joined `Server.Close` result retain this failure. The maintained Endpoint `readResult.Close` returns its retained Service/worker failure after joining work; a cancellation racing handoff therefore has a real producer for the lost result. Existing public server cleanup regression covers successful handoff only. This differs from #72/#75's Route/Node reservation release. Recorded as [#434](https://github.com/dianabuilds/ardents-network/issues/434) and immediately delegated to repair thread `01a0fb50-fda5-7e21-a98d-f81f2ac2e639` through merge into dev and worktree archive. The root audit used source reasoning only; runtime regression remains repair acceptance, not an already claimed reproduction.
+
+Integration receipt for F84: GitHub confirms PR #431 merged into dev at `a2918a8c691522e903a2f4bb48917f355fb6554b`; the root checkout was fast-forwarded to that commit. The implementer reported quick/full gates, Ubuntu CI and merged-tree verification passing. Its managed worktree was archived and is absent from the active worktree inventory. The only newly dispatched repair in this continuation is #434; the audit plus that repair remain below the Product Owner's five-thread limit.
+
+### F88 — Shared Hosting cache extends observation freshness and period validity
+
+Static review at dev `a2918a8c691522e903a2f4bb48917f355fb6554b`: `internal/node/hosting/ledger.go` measures cache age from request `cachedAt`, not underlying `HostingSample.At`. Concrete `resource.Hosting.Sample` can reuse a committed observation already up to one second old. A cache miss at t0+900ms can therefore return At=t0, and a hit at t0+1800ms returns the same 1.8-second-old observation for a one-second request. Cached pressure also retains `Drain=false` across the provider period End until this outer TTL expires, whereas the resource owner reevaluates the period at the current time. Node, forwarding and JOIN are real one-second consumers of this adapter. Recorded as [#435](https://github.com/dianabuilds/ardents-network/issues/435) and immediately assigned to repair thread `01a0fb56-9874-7253-aa56-2d4763a140b7`. Required repair covers actual observation freshness, period crossing and each joined caller's age bound while retaining coalescing and reserve invalidation. Root and read-only reviewer performed source reasoning only; no runtime or cybersecurity reproduction is asserted.
+
+Read-only refresh receipt: inspected actual Publisher start, verified first ACK, PairLifecycle switch, scheduler and withdrawal/retirement ownership. Pending replacement does not become accepting before verified ACK, exact retries preserve the first ACK and cannot extend predecessor retention, and cancellation retains cleanup ownership of both current and pending registration through withdrawal and publisher owner Close. No separate lost-registration or lost-refresh-cleanup finding was established.
+
+Worktree cleanup receipt: verified that the completed monitoring worktree was clean including ignored and untracked paths, its checked commit `e272fd1ee0ca05cc075cbd528c5c09c5a4479ecd` is an ancestor of dev, and its earlier thread turn is terminal after PR #412 integration. Removed only that managed worktree; retained its branch/commits and all unrelated worktrees. The new AAI3 and Hosting repairs use separate worktrees and code owners.
+
+### F89 — NET-32 proportional work reservation overflows
+
+At dev `a2918a8c691522e903a2f4bb48917f355fb6554b`, `uint64(window)*1_000_000_000/uint64(24*time.Hour)+1` in the maintained idle runner overflows for its actual fixed ten-minute input. Independent exact BigInteger arithmetic yields 6,944,445 bytes per direction, whereas modulo-2^64 arithmetic yields 112,318. The real `net32-idle` path passes that underestimated work reservation to Hosting before admission; termination remains separately reserved. Registered as [#436](https://github.com/dianabuilds/ardents-network/issues/436), immediately assigned to thread `01a0fb5d-a826-7753-9f91-023ec6e8b4fc` for bounded arithmetic repair through merge and archive. Pure arithmetic/source evidence is not a runtime test claim.
+
+### F90 — NET-32 projection denominator uses wall time
+
+The same current idle runner computes MeasuredDuration from first/last durable UTC HostingSample.At, despite having a monotonic origin for event elapsed values. A forward wall step inflates the denominator: 7,000,000 aggregate bytes in actual 600 seconds should project to 1,008,000,000 bytes and fail, but a wall duration of 660 seconds yields 916,363,637 and passes. NET-14AI requires one host's monotonic elapsed boundaries, and the current qualification owner retains conservative short NET-32 projection. Registered as [#437](https://github.com/dianabuilds/ardents-network/issues/437), handed to thread `01a0fb5e-b67d-7bf3-bdde-92b4006e41ff`. Its first read-only preparation is complete; it has no worktree/branch/edits and explicitly awaits #436 integration before implementation to prevent simultaneous ownership of the same file. Runtime clock reproduction is not asserted by this static receipt.
+
+### F91 — NET-14V verdict replaces directional p95 with whole-run mean
+
+At the same dev source, evaluateNET14V calls relayDirectionalBitrateCriteria with raw link caps 20/100 Mbit/s for Reader and 100/100 for Publisher. The helper divides total attributable endpoint bytes by the whole run duration. The current NET-14V requires p95 one-second per-direction bitrate <= min(25 Mbit/s, 80% of declared usable budget), which is 16/25 and 25/25 under the current manifest. Constant 18 Mbit/s Reader tx therefore passes the implemented 20 Mbit/s mean test while violating the required 16 Mbit/s p95 test; sparse bursts can also be hidden by averaging. Real verify-net14v command dispatch reaches this calculator; one-second observations exist. Registered as [#438](https://github.com/dianabuilds/ardents-network/issues/438), immediately assigned to thread `01a0fb61-8d6c-7e73-9646-07eeb57e24df` for the actual verdict/observation repair. It owns NET-14V only, without simultaneous NET-32 file edits.
+
+Static State receipt: read-only review found no new confirmed defect in inspected Refresh ownership, exclusion of Accept while refresh owns completion, exact pending reuse/conflict, completion-time bounds, or automatic/background failure collection. Earlier F19/F20/F21/F45/F50 are not reopened as new issues. This does not claim complete State correctness or runtime qualification.
+
+Coordination receipt: #437 finished read-only preparation and is idle awaiting #436; no branch was created for it. Root plus active repairs #434, #435, #436 and #438 total five. Inspected current working diffs of #434 and #435 have no common file. Explicit messages separate #436's NET-32 documentation from #438's impairment/recovery documentation, and require current-dev overlap verification before integration. Both new read-only audits finished without edits before these repair slots were filled.
+
+### Coordination verification — 2026-10-02, repairs #434–#438
+
+Root verified live thread handles and current repository state; dev remains a2918a8c691522e903a2f4bb48917f355fb6554b. Four repair implementers are active; #437 is idle with no implementation/worktree and still depends on integrated #436. Root plus implementers occupies the authorized five active tasks.
+
+GitHub checks: PR #440 has 40 successful checks and two skipped checks; PR #441 has five successful checks and two skipped checks. Both remain open and require their implementers' complete local gate before integration. PR #439 has 37 successful, two failed and two skipped checks. Its implementer is comparing TestTextIntroductionDeliversFourConcurrentReaders against unchanged base; failure is retained, not waived by a retry. No integration or worktree removal is claimed from green CI alone.
+
+#438 requires two bounded read-only reviewers under its selected implementation workflow. Root instructed the implementer to finish gates and prepare the PR while waiting for capacity, then use reviewers sequentially after a repair completes. #437 remains prepared during that review scheduling window. Any independent baseline failure is to return with a precise trigger and owning source for a separate issue.
+
+### Follow-up static trace — qualification clock ownership
+
+Inspected current dev resource_verdict_linux.go: evaluateOwnerNetwork discards resourceObservation.at while building HostingSample series; directionalCarrierP95 uses HostingSample.At differences for rates. NET-14AI requires monotonic elapsed KPIs. Sent this trace to #438 implementer before filing any duplicate. Its current worktree net14v_bitrate_linux.go computes NET-14V bitrate independently from relay samples' monotonic Elapsed values, so the endpoint diagnostic percentile is not automatically the accepted NET-14V gate. Remaining source/node resource duration consumers require current caller/owner verification before a separate issue; no new confirmed defect is claimed here.
+
+#438 caller verification: current repair worktree net14v_verdict_linux.go:133 and paired_evidence_linux.go:161 both call net14vDirectionalCriteria. paired_evidence_linux.go:120 independently checks report monotonic elapsed span and exact MeasuredDuration reconciliation. The NET-14V gate does not use the old Hosting diagnostic TxP95/RxP95. This is source inspection, not proof of completed checks or integration.
+
+### Static candidate — first-participant-only resource verdict
+
+Current main.go:169 computes whole-owner resourceCriteria from completed[0].measurements and completed[0].report only, whereas evaluateOwnerNetwork encloses all participant reports. The User plan requires four Readers (plan_linux.go). Each RunScenario owns an independent origin and sampling loop; scenario_linux.go stops that loop and takes its final sample before Measurements.Finish waits for all participants. Finish preserves workers until completion, but does not extend the first participant's sampling window. Therefore the existing completion barrier alone does not prove full-window RSS/CPU coverage. Verify the accepted combined-workload window and real Reader start/end synchronization before promoting this candidate to an issue. No runtime reproduction or accepted defect claim yet.
+
+Resource-window candidate refinement: runReader has independent phase-shifted opening/setup, and RunConnections assigns Started locally after frameOpen emission. No cohort start barrier appears in the inspected caller path. However worker.go delays receiver EOF until its complete workload is ready and ten minutes elapse; this can synchronize completion indirectly. EvaluatePairedConditionWorkload validates per-reader work and peer counters but contains no explicit common-window resource check. Before issuing a repair, account for that EOF mechanism and demonstrate an admitted complete run where the first Reader's resource window differs materially from the required aggregate window. This prevents treating asynchronous setup alone as a proved failure.
+
+### Verified integration — #434 and #436
+
+GitHub PR #440 MERGED at 2026-10-02T07:08:22Z, merge 64e5caf39a6d462b837ddf248fe5f25109d8fc05; PR #441 MERGED at 07:08:48Z, merge d14436c23601cc8c464ec7f7d105ca0c90772f5b. Root fetched dev, verified both commits are ancestors of origin/dev and fast-forwarded its dev checkout to d14436c23. The local audit report was preserved. Attachment-close-errors worktree is absent from current git worktree inventory; NET32 worktree still present while its implementer completes cleanup. New unrelated untracked service-boundary-proposal.md was observed and preserved without edits. Reviewer slots are released only when the corresponding live repair turn becomes terminal, not solely on PR merge.
+
+### Static progress-verdict inspection
+
+Reviewed workload_verdict.go and bridge measurements at current dev d14436c23. Bridge records Tx/Rx last-event offsets and maximum gaps with local time.Now values retaining monotonic readings; verdict uses MeasuredDuration minus the matching direction's elapsed last-event offset. Actual source therefore does not substantiate a wall-clock gap defect in this path. Existing tests cover lost streams, duplicate IDs, short duration, stalled tail and counter truncation. No new issue from this inspection. #437 resumed after both preceding repair turns became terminal; one shared reviewer slot is reserved for sequential #438 reviews. #437 was explicitly told to coordinate its own review instead of competing for that slot.
+
+### F92 — NET-14V per-episode endpoint overhead checked on failed segment only
+
+Confirmed by static contract/caller trace at dev d14436c23. NET-14V limits combined endpoint additional carrier bytes separately for each recovery episode and forbids compensation by quiet episodes. evaluateNET14V checks endpoint bytes only at whole-set len(Failures)*8 MiB; relayEpisodeCriteria checks only failure.SegmentID per episode. Two episodes with +10 MiB endpoint traffic in the first, +0 in the second and zero extra on the failed internal segment pass those inequalities while violating the first episode's endpoint bound. evaluateFailedNET14V also uses only the failed segment. Registered as issue #442 https://github.com/dianabuilds/ardents-network/issues/442. Separate from #438 p95 gate; implementation awaits its integration because of shared net14v_verdict source ownership. Prepared brief outside Git: C:/Users/vitek/AppData/Local/Temp/ardents-net14v-episode-accounting-issue.md. Runtime regression belongs to assigned implementer, not this static receipt.
+
+F92 counterexample correction: the actual recovery manifest requires at least three failures, so the admitted example uses three sequential episodes: +10 MiB, +0, +0 endpoint traffic, with zero extra on the first failed internal segment. Total 10 MiB <=24 MiB and segment-local checks still pass. The earlier two-episode algebra illustrated the inequality but was not an admitted manifest. Issue #442 and its external brief were corrected to the three-episode trigger.
+
+Root independently verified PR #439 MERGED a3963544a4c305e14059c7b744b8e68cfbb41e5d, ancestor of fetched origin/dev, and fast-forwarded root dev to that commit. Hosting-freshness worktree is absent from git inventory; unrelated root report/proposal preserved.
+
+### Static candidate — fault schedule is not bound to workload origin
+
+At dev a3963544a, verifyRecoveryFaultEvidence compares ScheduledMillis-AtMillis origins only among fault records and checks positive origin, duration and <=1500ms schedule deviation. It receives no workload report/window. verifyNET14V invokes it without episode verdict binding, while relayEpisodeCriteria uses ReaderNetwork.Started+manifest offsets and ignores ActualMillis records. Shifting every scheduled and actual fault timestamp by one hour leaves that schedule validator's comparisons unchanged while byte-accounting windows stay fixed. recovery_faults.py accepts a positive started_millis argument; inspected script paths expose no additional validator binding. Asked #442 read-only preparer to check any remaining caller binding and report this separately rather than enlarge implementation silently. No runtime or complete CLI reproduction claimed; mathematical validator invariance is statically visible.
+
+F92 assigned to prepared repair thread 01a0fb78-1dc8-73a2-839b-c170110933de. Read-only preparation permitted; no branch/worktree/implementation before #438 integration. Current active slots remain root, #437, #438, its single reviewer, and #442 preparation (maximum five).
+
+### F93 — NET-14V fault schedule not bound to measured workload
+
+Confirmed static validator invariance on successful verify-net14v path at dev a3963544a. verifyRecoveryFaultEvidence derives origin only from ScheduledMillis-AtMillis across records; no workload window input exists. Translating all scheduled/actual fault records +3,600,000 ms leaves every schedule criterion and all other successful verifier inputs unchanged. relayEpisodeCriteria ignores actual fault records, so faults outside the run can supply accepted recovery evidence. NET-14T requires the failures during the measured run; NET-14AH binds declared scenarios. Registered issue #444 https://github.com/dianabuilds/ardents-network/issues/444. Failed verifier has a different ActualMillis byte-window consumer and is not claimed to share this complete counterexample. Prepared external brief C:/Users/vitek/AppData/Local/Temp/ardents-net14v-schedule-binding-issue.md. Coordinate serial ownership with #442 and predecessor #438 PR443; no additional active implementer at capacity.
+
+### Owner container cleanup instruction
+
+Product Owner explicitly requires agents to delete containers they no longer use. Sent to active #437, #438 and prepared #442; applies to future repair prompts. Retain logs/results/source/exit status outside the container, then remove the exact owned container after its process finishes; use --rm for disposable runs when evidence survives externally. No global prune, shared image/volume/cache deletion or interruption of another active gate. Current authenticated Docker inventory contains only three Ardents containers, all running: ardents-437-gates, ardents-net14v-final-linux-check, ardents-net14v-linux-check. Stopped Ardents containers shown in the earlier screenshot are already absent; unrelated stopped swarm-zulip containers preserved. #438 asked to verify whether its older linux-check still has a live required gate before removal.
+
+F93 assigned to read-only prepared thread 01a0fb7c-db38-7521-8231-5089c9970577. No implementation branch/worktree before explicit coordinator resume. Selected serial integration order: #438 directional p95/raw relay evidence -> #444 actual fault schedule/workload binding -> #442 per-episode combined endpoint byte accounting. This avoids concurrent edits of successful and failed recovery verifier owners. Both prepared agents retain separate acceptance boundaries and must remove their own unused containers after retaining evidence.
+
+#438 implementer reported both bounded reviews terminal: Standards no findings; Spec cadence finding corrected and rechecked, no remaining findings. The superseded Linux container's logs and explicit incomplete cancellation evidence were retained before its removal; the final Linux gate still runs. Sequential reviewer slot handed to #437 (Standards then Spec, one concurrently). #438 final source-bound native/Linux gates and final CI remain pending; no merge completion claimed.
+
+### First-participant resource candidate — narrowed by final verifier evidence
+
+Follow-up at dev a3963544a found mandatory final whole-owner slice checks: verifyPair -> readNodeResults -> evaluateOwnerSlices(inputSet.OwnerSlices, owners). evaluateOwnerSliceWindow receives owner.Started/Stopped from evaluateOwnerNetwork, which encloses every participant's report. Final paired criteria require whole-owner slice RSS/CPU and the exact owner set, and issue60Evidence P8 includes those gates. Consequently the first-participant-only local resource sampling does not by itself establish an accepted final resource escape; the previously recorded candidate is not promoted to a bug. These external slice calculations still use serialized wall timestamps and need separate NET-14AI clock verification, not a claim that the full resource implementation is correct.
+
+#444 read-only preparation is complete/idle. Its agent independently confirms successful verifier translation invariance, identifies missing host/run identity in start/stop producer records, and plans bounded producer/verifier repair after #438. No worktree/branch/runtime activity from the prepared thread.
+
+### F94 — external owner CPU qualification uses UTC duration
+
+Confirmed static trace: node_owner_samples.py and nodeOwnerSampleInput retain no monotonic elapsed position. evaluateOwnerSliceWindow and maintained Node/Source CPU window consumers divide cumulative CPUUsageNSec by serialized At duration, contrary to NET-14AI. 300e9 ns CPU over600 real seconds yields50%; wall span606s with601 samples spaced1.01s yields49.504950495%, while existing <=1.5s gap check passes. This is an incorrect KPI; no live quota escape or runtime reproduction is claimed. Brief retained outside Git as ardents-owner-cpu-monotonic-issue.md. Separate repair must cover real producer/collection and maintained consumers, without changing quotas or claiming memory percentile failure.
+
+### F95 — whole-owner sampler refuses real orchestrator argument
+
+At dev a3963544a, run-windows.ps1 Configure-OwnerSlices sets ardents-qualification-owner.slice and passes it to node_owner_samples.py. Its exact name validator accepts only the selected Node and Source service names, so this mandatory slice sampler exits before collecting counters. Final verifyPair requires complete both-host whole-owner slice evidence. Static caller/argument mismatch recorded as #446 https://github.com/dianabuilds/ardents-network/issues/446. Separate from #445 CPU arithmetic; serialize sampler admission repair after #445 integration. Brief outside Git ardents-owner-slice-sampler-issue.md. No live product run claimed.
+
+#445/#446 dependency clarification: merge the checked monotonic component #445 first while keeping issue #445 open for complete owner-slice producer acceptance. Resume #446 only after that verified integration; it repairs exact slice-name admission. Verify the integrated real slice producer/collector/consumer path after #446, then close #445 if all acceptance is proven. No gate waiver, selector repair folded into #445, or circular requirement to close #445 before #446 can begin. Component integration and full issue acceptance remain distinct.
+
+### Static sampler collection inspection
+
+PowerShell Parser.ParseFile accepted current run-windows.ps1 with no syntax errors. Inspected Stop-OwnerSlices, Stop-StateSources and Stop-RouteNodes: collectors parse full JSON sample objects after field-presence filters; they do not reconstruct a fixed record that would automatically drop an added Elapsed field. Malformed-line omission alone is not filed as a bug: final consumers require bounded complete sample windows and reject insufficient/gapped evidence. Sampler terminal status handling needs requirement-specific proof before an additional finding. #446 preparation terminal/idle independently confirms the real slice-selector mismatch. Sequential reviewer slot released by #437 and allocated to #445 when its completed delta is ready; prepared #442/#444/#446 do not implement concurrently.
+
+### Static candidate — Carrier retirement holds global pool mutex
+
+Current carrier/closed_carrier_pool.go Release (last unused lease) and Invalidate delete the exact entry and call Carrier.Close while retaining pool.mu. AcquireContext first checks ctx then waits for the same mutex; an unrelated ready pair cannot proceed until physical retirement returns. Current protected-route-protocol owner explicitly preserves unrelated-pair progress during pair operations. Reap and openForPair already represent retirement through per-pair operations outside the global mutex. Next required proof: trace maintained caller to these two paths and concrete Close implementation delay/join before filing; bounded generic slow-close fixture alone is insufficient to establish product impact.
+
+Carrier-pool candidate refinement: maintained forwarding/link.go acquires the pool lease and releases unused leases when session acquisition or attachment fails. Physical TCP retirement closes NetConn directly and does not perform TLS notification; that invalidates an assumption of a mandatory slow TLS close. QUIC CloseWithError in local quic-go v0.62.0 source signals local close and waits on its connection context; thus physical close can join asynchronous work, but a sustained product blockage remains unproven. Invalidate currently has no non-test caller. No new bug filed from global mutex placement alone.
+
+#437 reported a superseded invalid-environment gate still running alongside the corrected gate. Root instructed it to retain original failure/incomplete-cancellation evidence and stop only its exact obsolete owned process/container, preserving the correct selected 15-minute Endpoint gate. This avoids consuming resources for a run already unable to establish acceptance.
+
+#437 obsolete gate terminal receipt: agent reports session85036 exit1 (inner make2), exact owned obsolete test descendants terminated, failure/stdout and explicit superseded/incomplete-cancellation record retained. Correct private-cache gate still active under the unchanged selected 15-minute Endpoint timeout. Carrier bootstrap queue/control paths inspected; shared finite bootstrap quota alone is not filed as a separate reservation defect without a valid complete charging/termination trace. No speculative issue generated.
+
+### Static outer-lane lifecycle inspection
+
+Reviewed ClosedOuterBridgeLane Read/Write/CloseWithStatus/deadline updates and retiredFrame. Waiting for outbound credit releases lane.mu, waits on per-lane notification/deadline, and does not own shared writer; retirement signals outbound waiters and clears input. SetWriteDeadline releases deadlineMu before acquiring lane.mu, so the inspected Write lane.mu->deadlineMu sequence does not establish lock inversion. Late frames are restricted to valid BYTES/CREDIT/EOF/CLOSE of retained exact retired IDs. Existing source tests cover credit cancellation and sibling progress; root did not run runtime tests. No additional confirmed bug from this inspected lifecycle.
+
+### Static outer writer serialization candidate — pending localization
+
+Inspected internal/node/outer/writer.go write/drain/update and its real caller ClosedOuterBridgeLane.Write in internal/route/closed_outer_write.go. write enqueues then waits only on request.done. drain examines the live deadline only after acquiring physical serialization. update changes the physical deadline only for the active matching lane; SetWriteDeadline of a queued sibling signals its lane credit waiter but not request.done. Consequently, an already queued sibling whose deadline expires can remain blocked until the active different-lane physical frame completes. Existing TestClosedOuterExpiredQueuedWritePreservesSibling releases serialization manually before asserting timeout and does not test prompt return while a healthy sibling remains active. No runtime test was run by the static auditor. Before dispatch, locate the exact outer-lane deadline contract/current authority and distinguish the retained lower-writer requirement in protected-route-protocol from the outer writer, then check existing issues to avoid duplicating a prior repair. Preserve sibling framing and no-output cancellation in any proposed fix.
+
+## F-96: Outer writer queue does not observe a waiting lane deadline
+
+Static localization at dev a3963544a4c305e14059c7b744b8e68cfbb41e5d: node/outer.writer.write waits exclusively for request.done after enqueue; drain only checks current deadline after physical serialization, and update ignores non-active sibling requests. Real ClosedOuterBridgeLane.Write calls that writer with available credit, while SetWriteDeadline wakes only its credit notification and updates only active matching output. A short-deadline queued lane therefore does not return promptly while a different legitimately active lane retains its later deadline. The real lane is a net.Conn used by accepted inner TLS handlers; local Go net/net.go documents SetWriteDeadline applying to currently blocked Write. Existing expired-queued tests manually release serialization and cover absence of later physical emission, not prompt deadline completion while the sibling remains blocked. No runtime RED is claimed by root.
+
+Recorded as [#448](https://github.com/dianabuilds/ardents-network/issues/448), C0 Closed Alpha. Reviewed #77 and #372; downstream-reader progress and selected CREDIT peer-close retirement do not implement this outer queued Write deadline. Proposed bounded repair must remove/refuse unemitted work atomically, preserve healthy sibling deadlines/framing, current body ownership/accounting, and retain partial-frame poisoning. Repair-agent runtime acceptance requires the actual admitted lane path. Preparation dispatch waits for the current #445 Standards reviewer to terminate; no sixth active task or new implementation branch was started. Earlier pending candidate is superseded by this localization.
+
+#448 handed to prepared repair thread 01a0fb97-f388-7491-a07d-bebab2f08652 immediately after #445 Standards reviewer terminal released its slot. The new thread is read-only preparation only; no implementation branch/runtime checks authorized until a later selected slot. #445 Spec waits for preparation terminal. #438 reported corrected unprivileged full Docker make check terminal exit2: Endpoint cumulative900.065s timeout without preceding individual test failures; logs/stack/source/exit retained externally and owned container auto-removed. Existing full Ubuntu24.04 workflow dispatch on exactf97 source is authorized without changing selectors/timeouts/profile. #437 has retained a94.021s focused four-reader failure and is comparing exactd144 baseline in a fresh owned --rm runner; contention alone is not established. PR443/447 remain OPEN at f97/10db, no integration or gate waiver claimed.
+
+### Static accepted Carrier cleanup follow-up
+
+#448 preparation terminal confirmed independently from maintained source/callers, with no edits, branches or runtime tests. Fifth slot returned to #445 for one sequential Spec reviewer. Root inspected outer Serve, Resolution listener deferred close and accepted cleanup collection, JOIN/Forwarding classification, and actual shared QUIC Close producer. Some duty filters use errors.Is(err, net.ErrClosed), whereas probe has a recursive non-benign filter; that difference alone does not establish a current product bug. Actual closedRoleQUICCarrier retains errors.Join(stream.Close(), connection.CloseWithError()); inspected pinned quic-go SendStream.Close yields nil or its canceled-stream error, and no concrete mixed net.ErrClosed plus unexpected sibling close error was established. Resolution's early serveOuter refusals are covered by deferred server.closeCarrier at the real accepted worker; NewClosedOuterBridge rejection needs nil handshake/callbacks, not an admitted maintained call. No issue filed from these generic failure hypotheses.
+
+Verified workflow receipt: GitHub run36980673783 is in_progress with full job active at exact f97b83d46e00745a94db5ff3e6df7b861e6c7f5d. Local quality.yml workflow_dispatch selects the full Ubuntu24.04 job, pinned Go/tools installation and make check with separately privileged system-scope Node process command; it does not substitute affected PR groups. Docker inventory shows only current owned #437 comparator and #445 quick runner, with #438 container absent. Unrelated stopped Zulip containers preserved.
+
+## F-97: Expired queued outgoing Forwarding write retires shared Carrier
+
+At dev a3963544a, outgoing forwarding.session.writeChildFrame takes writer.Lock without deadline-aware waiting. After acquisition it rejects nil deadlines but not elapsed deadlines, installs the expired deadline and attempts WriteFrame; any resulting failure closes the physical Carrier. Real forwardLink.startForwarding passes the child lifetime and aborts its parent on error. Two admitted links sharing one outgoing session therefore permit B's short deadline to expire behind A's valid longer physical write; B cannot return during its wait and after A completes it can retire the healthy shared Carrier despite its own frame being unemitted before expiry. Existing physical-blocked-write regression deliberately starts emission; #372 handles actual peer CLOSE rather than local deadline. Static reasoning only; runtime reproduction remains implementer acceptance.
+
+Recorded independently as [#449](https://github.com/dianabuilds/ardents-network/issues/449) with external brief %TEMP%/ardents-forwarding-queued-deadline-issue.md. Distinct from #448 receiving outer writer; owner source is forwarding/session.go. Root informed #448 not to fold this different owner into its slice. New thread preparation awaits a free slot: #437/#438/#445/#448 plus root currently consume all five; no sixth active thread started. Repair must refuse unemitted expired output without physical poisoning while keeping real partial-frame failures terminal, and prove actual unrelated-prefix sibling survival on both Carriers.
+
+#448 selected implementation resumed after both #445 reviewers terminal released the fifth slot; no added reviewers/subagents permitted while count is full. #437 comparator outcome clarified by implementer: candidate146.715s failure was fixture Node6 role-cleanup deadline after retained setup completed, not prior JOIN/setup failure; baseline126.688s pass and all candidate failures preserved separately. Full Ubuntu workflow36981137465 operates exact10db candidate; root has not yet verified its terminal result or integration.
+
+### Static Forwarding reverse-queue retirement follow-up
+
+Reviewed session.deliverReverse, frameQueue.push/next/close, forwardLink.copyReverse/stop/close, and ClosedForwardingChannel.QueueReverse/ReleaseReverse. Complete reverse frames reserve before enqueue, next clears consumed references, and release keeps control/data accounting separate. Child retirement makes late ReleaseReverse a no-op rather than debiting sibling capacity. Real openForwardingLink only publishes a link on success, so a hypothetical cancelLane unrelated error result with nonnil orphan link is not established by maintained producer. No additional queue leak filed.
+
+Pending reverse-output deadline candidate: QueueReverse and ReverseRetired check child.deadline, but AccountOutput checks only channel.deadline and child existence. The real serialized parent writer in forwarding/listener.go calls AccountOutput after acquiring its mutex; already-queued reverse payload can wait past child expiry while the longer parent remains live. OPEN admits shorter child deadlines; inspected code has no per-child expiry removal timer. Before filing, verify current output/terminal expiry contract and actual caller transport deadline bounds, distinguish frames already physically started from queued work and terminal cleanup. Root source reasoning only, not a runtime reproduction; no backlog issue created yet from this candidate.
+
+## F-98: Reverse output can start after a nested child expires
+
+Confirmed statically at dev a3963544a: QueueReverse checks both deadlines, but AccountOutput checks only parent deadline and child presence. The maintained reverse copier calls the serialized parent write closure; parent TLS transport is assigned the parent lease deadline, and OPEN permits an earlier child deadline. Thus a complete reverse BYTES frame reserved before child expiry can wait behind another legitimate parent frame, then be charged/emitted after child expiry while the parent remains valid. There is no inspected per-child expiry removal timer. This differs from already-started physical output and terminal cleanup; no runtime reproduction claimed.
+
+Recorded as [#450](https://github.com/dianabuilds/ardents-network/issues/450), with %TEMP%/ardents-reverse-output-expiry-issue.md. #449 and #450 must be implemented serially or explicitly coordinated because both own Forwarding paths; #448 owns receiving outer writer and is not expanded. New repair thread dispatch awaits a slot; current root+437+438+445+448 remains five. Required fix acceptance includes actual reverse copier/writer path, no post-expiry payload emission, joined accounting/retirement and healthy sibling continuation, without generic physical failure suppression or invented terminal policy.
+
+### Static Forwarding terminal cleanup receipt
+
+Inspected ClosedForwardingChannel.close/Cancel, duty.release and real forwardLink shutdown. Cancel releases both queue classes and duty.release atomically retires outstanding child-capacity counts, so absence of per-child releaseChildCapacity in the Cancel loop does not itself leak capacity. Some serveDirect teardown calls ignore link.close return, but the physical lease Release result is retained in pool.closeErr; pool.Close joins it into the outgoing owner result. No independently lost physical cleanup failure established from the ignored expression alone.
+
+Corrected reachability detail for the earlier pool-retirement hypothesis: forwarding.session stores binding.Invalidate as method value and calls session.invalidate on failure; literal-call searches alone miss this maintained use. Thus Invalidate does have a real caller. Its close-under-global-mutex latency remains a candidate requiring evidence of actual concrete retirement duration, not proof supplied by an arbitrarily blocked fake Carrier. No duplicate issue filed from this correction.
+
+#448 implementer reports actual admitted-lane runtime RED in both queued-expiry variants, preserved outside Git: B remains queued beyond deadline while A remains actively writing. Root has not rerun these tests and makes no GREEN/integration claim. Verified GitHub full jobs for runs36980673783 and36981137465 still in_progress; no observation timeout treated as terminal. #445 quick gate exit2 retained and owned runner removed; exact baseline/candidate comparison runs sequentially.
+
+### Static Forwarding scheduling review
+
+Reviewed NextAvailable, pending EOF, ready-data rotation, control dequeue, eventAvailable and drainForwarding. dataDue enforces a data turn between eligible controls; unavailable consumers keep their bounded queue/EOF accounting. Consumed body references are cleared by child.frames removal, control slice deletion releases corresponding reservation, and CLOSE decrements a pending EOF only in the matching stored case. Synthetic stale OPEN-after-CLOSE can be constructed against raw Route scheduling calls, but the maintained Node caller treats OPEN as always available and drains after each accepted frame, starting its opener before accepting a following CLOSE. No admitted maintained stale-OPEN trace established, so no separate bug filed from that API-only ordering.
+
+Authoritative snapshot: PR451 is OPEN/draft at7f9d470f627010c4c36a02889a4ceb4bd34572fe. Full workflow runs36980673783/36981137465 remain in_progress, not terminal. #449/#450 dispatch still awaits capacity; their issues/briefs are preserved and the active count remains root+437+438+445+448. No gate or integration acceptance claimed.
+
+### Static byte/queue accounting inspection
+
+Inspected bootstrap forwarding transfer, queue/control rollback and actual compact forward-frame storage. reserveQueue/control reserve global capacity first and roll it back if bootstrap Queue refuses. transferred bootstrap lease invalidates its former handle without duplicating controller ownership. Nonempty ARDP BYTES is required by the real parser, so zero-body frames accumulating uncharged metadata through the public helper alone are not an admitted transport trace. Compact forward data stores payload and frame lengths; the explicit complete-frame traffic debit is performed independently in Accept/AccountOutput. The current contract explicitly charges complete control headers to control queues but describes lane queues as ciphertext; a header-only arithmetic mismatch alone is not filed as a separate data-queue defect without establishing the precise queue/heap owner requirement.
+
+Root verified PR451 all selected affected CI/script parser/go jobs terminalSUCCESS at7f9d470f6; full job is intentionally skipped for PR event and does not establish full make check. #445 authorized existing fullworkflow on that exact reviewed candidate after sequential comparator terminal, without waiting for independent #437/#438 integration; any changed merged owner still requires appropriate integration verification. #445 remains open through #446 acceptance.
+
+#449 read-only preparation terminal independently confirms outgoing session deadline defect and clarifies healthy sibling acceptance must use a different incoming prefix: abort B retires its own parent. Repair thread01a0fbac-d77b-7113-9808-ab673c9a2608 remains prepared/idle with no branch/runtime. Immediately assigned the temporary fifth slot to read-only #450 preparation thread01a0fbae-5ca5-7320-a3a4-3e995521b79b; no extra implementation started. #448 remains staged/locally focused-verified awaiting check window.
+
+### Replenishment static follow-up
+
+Accept debits the complete replenishment ADMIT before calling admit; success replaces byteLimit with usedBytes+32MiB and retains successful release callbacks until Cancel, preserving original deadline. Candidate cleanup path now localized for further audit: hosting.Replenisher returns errors.Join(spendErr, releaseErr) when Spend refuses after Hosting Reserve, but ClosedForwardingChannel.admit replaces that error with a generic replenishment error; no successful release callback is retained. HostingReservation.Release can return real context/persistence failure, and Hosting.Close only closes the root without reporting unresolved releases. Additionally the accepted Forwarding caller discards serveDirect return rather than collecting a separate cleanup result. Before filing, compare existing release findings/issues and trace final duty result to distinguish protocol refusal from a lost mandatory cleanup cause. No new issue or runtime reproduction claimed yet.
+
+## F-99: Forwarding loses actual Hosting cleanup failures before final Drain
+
+Static trace at dev a3963544a: Channel.Cancel returns initial/replenishment Release callback errors through serveDirect's named result, but accepted direct caller ignores that result and inner caller only chooses terminal status. finishShutdown collects physical/root/host Close, not Hosting reservation release failure. Refused replenishment similarly calls real hosting.Replenisher, which joins Spend refusal with failed rollback Release; channel.admit replaces that error with generic refusal and retains no rollback callback. HostingReservation.Release has concrete unresolved context/persistence outcomes, while Hosting.Close only closes its root and leaves unresolved durable reservations. Physical lease Release retention in pool.closeErr is separate and does not resolve this Hosting loss.
+
+Recorded [#452](https://github.com/dianabuilds/ardents-network/issues/452); external brief %TEMP%/ardents-forwarding-hosting-cleanup-issue.md. Runtime failure injection remains implementer acceptance; root ran no runtime tests. #450 preparation terminal confirms reverse expiry gap and notes simple output guard does not alone prove joined child/accounting retirement. Used its released temporary slot to dispatch read-only #452 preparation; no additional implementation branch, gate waiver or Endpoint causation claim.
+
+#452 read-only preparation terminal independently confirms both Hosting cleanup loss paths on current dev, with no runtime test/edits/branch. Returned temporary fifth slot to #448 to commit through normal hook and execute required quick/check in the correct selected environment. Root authenticated Docker inventory empty; #437/#438/#445 full profiles run remotely. No extra reviewer/subagent permitted while root+four implementers occupy five. Past canceled hook attempt remains explicit incomplete evidence; no bypass or deadline extension authorized.
+
+Verified ongoing remote run handles36980673783/36981137465/36982727685 remain in_progress. For #438 actual full job step Run complete maintained gate began07:51:07Z; its live handle, not elapsed observation or conversation status, controls terminal interpretation. Source replenishment wrappers inspected for actual caller reachability; cancellation during physical control send remains an unfiled candidate until lifecycle context/retirement proof is traced.
+
+### Source replenishment cancellation localization
+
+Traced actual callers: maintained ReplenishPrefixes is reached through qualification.ReplenishStreams and qualifiedWorker; Source/Introduction/Responder wrappers otherwise only delegate. closedSourceChannels.replenish checks ctx before control.send and during receipt wait, but control.send/awaitWrite observes lane.writeEnd/owner.changed rather than that operation ctx. Existing awaitWrite already removes expired unemitted requests safely and interrupts active physical output at its lane deadline, so this is not a duplicate generic queued-lane deadline bug like #448. Need qualification setup/network lifecycle cancellation ownership and exact operation deadline contract before claiming late operation cancellation as a defect. Kept candidate unfiled; no product-wide replenishment cancellation claim made.
+
+Root verified at08:22:47UTC that full CI run handles36980673783/36981137465/36982727685 remain in_progress; #438 full step started07:51:07UTC and remains within its original60min orchestration budget. #448 resumed active on selected checks window, no added reviewer. No slot freed by an observation timeout or intent alone.
+
+### Qualification refill join observation
+
+runQualifiedStreams starts one periodic ReplenishStreams goroutine under bounded context, then after RunConnections returns it cancels bounded and waits for that goroutine's stopped result. Source replenishment physical send precedes its ctx-select receipt wait; awaitWrite reacts to the retained lane deadline, not operation ctx. Prefix has an AfterFunc on its original creation context, so whether that independent lifetime closes on qualification cancellation is decisive; cannot assume absence of all cancellation ownership merely from replenish helper. Kept the candidate unfiled pending exact lifetime relation. Contrast with owner.open: it explicitly installs ctx AfterFunc to update the queued OPEN lane deadline before awaitWrite.
+
+### Prefix creation lifetime trace
+
+Resolved creation context: Endpoint openPrefix creates operationFlight from owner.lease.Context(), not the qualification refill operation context. During opening only, a caller ctx AfterFunc cancels that flight; it is stopped before successful completion. operation.complete transfers prefix and flight.cancel to Source.FinishOpeningLocked. The retained prefix's AfterFunc therefore follows duty lease/Source retirement after handoff, rather than every later bounded refill caller. This narrows the cancellation candidate: a later refill operation's ctx cannot be assumed to interrupt physical send through the original prefix callback. Still need exact qualification worker-attachment/job retirement effects and accepted prompt-cancellation requirement to finish localization; no runtime test or broad product claim made.
+
+## F-100: Qualification refill cancellation does not interrupt pending ADMIT send
+
+Resolved static lifetime trace: retained prefix is owned by Source/duty lease after successful opening; opening caller callback is stopped before handoff. Job cancellation cancels job, not duty lease or retained Source. Qualified worker attachment and supplied Service streams are the RunConnections cancellation targets. Replenishment send awaits owner.end/lane deadline before selecting operation ctx for ACCEPT; a later canceled qualification refill therefore cannot rely on prefix's original creation callback to interrupt that send. runQualifiedStreams cancels then joins its periodic refill worker, exposing the delayed completion at a real maintained caller. Recorded [#453](https://github.com/dianabuilds/ardents-network/issues/453) with %TEMP%/ardents-refill-send-cancellation-issue.md. Runtime RED remains implementer acceptance; no causation of current Endpoint failures claimed. New thread dispatch awaits a free slot; cap unchanged.
+
+#437 implementer reports exact10db full Ubuntu job passed and aggregator finishing; root checks authoritative run/PR before claiming integration. Earlier Docker failures remain source-bound, not replaced by a claim that they never occurred.
+
+### Integration checkpoint: NET14V percentile and NET32 monotonic measurement
+
+Root fast-forwarded dev from a3963544a to db4014998d31a6936d7e7a5634ef117025b04980, preserving the local audit report and both unrelated untracked documents. #438 PR443 merge3d2321b68cd3da77cac234f22edaf9fa2370ebc8 is integrated; full Ubuntu gate succeeded, issue closed, own worktree archived and containers removed, implementer terminal. #437 PR447 merged db4014998; implementer reports integrated regressions passed and ancestry confirmed, cleanup/issue closure remains to verify. Prior failed attempts remain evidence, not erased by successful CI. Released #438 slot explicitly assigned to #444 schedule-binding implementation from fresh origin/dev; root plus #437 finishing, #445, #448 and #444 remains at five. #453 dispatch still awaits a verified free slot.
+
+### Refill owner cross-check on integrated dev db4014998
+
+Static reinspection confirms #453 persists after #437/#438 integration: closedSourceChannels.replenish still sends lane-zero ADMIT against owner.end before selecting refill ctx, and closedRoleChildStream.replenish still acquires its writer and emits before observing ctx. ClosedJoinedStream.Replenish additionally serializes with refillMu; the maintained periodic worker is sequential, so mutex contention alone is not claimed as another reachable bug. JOIN receiver replenishment is distinct: closed_join_replenishment.go returns the actual replenish error; closed_join_accept.go defers side.Close and joins side.cleanupErr into its result. Its existing retained-error test cannot be used to claim Forwarding's separate lost Hosting cleanup paths in #452 are already repaired. Root performed source reads only, no runtime RED or new issue from these cross-checks.
+
+#437 terminal verified via thread poll: integrated regression passed, issue closed, worktree archived and containers removed. Assigned freed slot to #453 implementation thread01a0fbc5-f31a-78b0-bf2b-26e6ffb59d96 from fresh origin/dev, with real caller cancellation/framing acceptance and no extra reviewers until another slot is released. Root plus #444/#445/#448/#453 stays at five.
+
+### JOIN Hosting cleanup propagation candidate
+
+At integrated dev db4014998, ClosedJoinPairs.AcceptStream defers side.Close and joins side.cleanupErr into its returned outcome. However node/join serveInner only tests serveAdmitted result for terminal status, discarding that concrete error. node/outer.Serve's child callback returns no result and its deferred closeErr is only physicalCloseErr; JOIN final run collects server.cleanupErr/pairs.Close/spends.Close/host.Close. This is not a proof of end-to-end cleanup retention merely because the route test sees side.cleanupErr. Concrete Hosting failure production, current cleanup owner requirement and issue duplicate scope must still be checked before filing a distinct finding. Root source-only observation, no injected failure or causal claim about existing Endpoint failures.
+
+## F-101: JOIN discards actual Hosting cleanup failures before final Drain
+
+Confirmed source trace on dev db4014998: initial and successful replenishment releases enter ClosedJoinSide.releases; release retains callback causes in side.cleanupErr; AcceptStream returns them. node/join serveInner consumes that result only as status, node/outer.Serve void callback retains only physical close, final JOIN Drain cannot recover the side cause, and pairs.Close returns no result. Real Hosting.Release bounded-context/persistence failures stay unresolved; Hosting.Close does not report prior release errors. Distinct from #452 Forwarding ownership. Filed [#454](https://github.com/dianabuilds/ardents-network/issues/454) in accessible C0 Closed Alpha milestone1 with actual owner-boundary acceptance in external %TEMP%/ardents-join-hosting-cleanup-issue.md. Static finding only; runtime RED and full valid admitted path remain implementer acceptance. No implementation slot available, thread dispatch waits; root+#444+#445+#448+#453 remains five.
+
+#454 acceptance expanded by a same-owner static follow-up: node/join.serveAdmitted defers lease.Release without collecting its returned error. Before transfer into a JOIN side, refusal at lane.Admit/deadline/ACCEPT/State/AcceptStream therefore loses the real initial Hosting release even before the void outer callback. After successful transfer this deferred Release is correctly a no-op: claim.transfer clears the old claim, preventing duplicate refund. Recorded issue comment with separate pre-handoff failure-injection acceptance, not another bug/thread. Pair.Close waits entries and timers outside owner.mu; Serve closes its own ioDone before waiting peer.ioDone, so no generic mutual-wait deadlock claimed from that ordering. CI36982727685 authoritatively remains live full in_progress; no retry or acceptance shortcut.
+
+## F-102: JOIN refill contradicts current grammar and server omits client-required ACCEPT
+
+At dev db4014998, current protected-route-protocol Kind2 row explicitly forbids later ADMIT outside forwarding parent; linked accepted ADR0085 selects forwarding replenishment only. Maintained qualified caller ReplenishStreams loops snapshot.Joins, ClosedJoinedStream creates its dedicated role-TLS channels owner, sends lane-zero ADMIT after real threshold and awaits status0/64KiB ACCEPT. Actual ClosedJoinSide.Serve accepts ADMIT through replenisher, updates remaining to32MiB and continues without emitting ACCEPT. Recorded [#456](https://github.com/dianabuilds/ardents-network/issues/456), external %TEMP%/ardents-join-refill-contract-issue.md, with explicit two contract-resolution options and actual paired caller acceptance. No runtime RED or accepted new wire semantics claimed. Not #355 incremental Forwarding reserve, #453 cancel boundary or #454 cleanup loss. Informed active #453 implementer of independent gap and forbidden scope expansion/fake ACK acceptance. New issue remains prepared, no free sixth thread/research slot assumed.
+
+#456 Product Owner explicitly selects bounded JOIN refill in async response: original deadline/bindings, Hosting reserve before spend, remaining exactly32MiB and ACCEPT. Recorded the decision in issue comment; authoritative ADR/current grammar reconciliation and real paired caller acceptance still required, not asserted done by chat preference. Implementation awaits a slot; #453/#454 scopes remain separate. Root independently verified full CPU workflow36982727685 SUCCESS exact7f9d470f627010c4c36a02889a4ceb4bd34572fe with full+go successful; PR451 still draft/open at verification. #445 component merge/integration and #446 real producer acceptance remain outstanding.
+
+### JOIN expiry cross-check
+
+ClosedJoinPairs.expireLocked checks both authenticated clock deadlines and monotonic-backed setupWall/side.wallDeadline. Once paired, setup-only ten-second expiry is omitted while each original side deadline still retires the pair. stopLocked is idempotent, stops tracked timers and signals pair.done; wait rechecks context/expiry after ready. Thus paired data is not statically truncated to setup deadline, and generic wall-clock rollback extension is not claimed for this owner. #456 missing actual ACCEPT remains separate from timer behavior. #453 implementer informed of PO-selected refill semantics without authorizing scope expansion. #445 implementer explicitly checks combined latestdev db4014998 before merging reviewed CPU component; successful old-head gate alone does not establish final integration.
+
+### Initial admission/spend failure cross-check
+
+ClosedAdmissionChannel.acceptInitialAdmit refuses when Spend fails and joins failed Hosting release; it does not admit work or refund a spent token. Its generic protocol error does omit the raw Spend cause, but replay.Ledger retains first append/prune mutation failure in ledger.failure, bars subsequent Spend and joins failure into Close. Actual JOIN final run includes spends.Close, so loss of Spend cause from the immediate protocol result is not independently filed as lost final cleanup. Ledger validates the current hourly redemption window before spending; pruning writes a retained floor before forgetting earlier spends and rejects clock rollback below that floor. Existing failure/floor tests were read, not rerun or cited as fresh runtime proof. These mechanisms are separate from actual Hosting.Release loss in #454; do not equate journal-close retention with reservation-error retention.
+
+### JOIN initial budget comparison on dev db4014998
+
+Receiver Reserve seeds used with HELLO/ADMIT/ACCEPT including their three headers and the 4096-byte OPERATION/header; RESULT is then charged by side.writeFrame using fixed terminal.BodySize16384/header. Client newClosedJoinedStream seeds transferred with the same initial total including RESULT. Both account subsequent full frame headers/body before effects. No initial RESULT omission or double debit found in these actual owners; existing route budget test read only. #456 future matching ACCEPT must use the existing accounted physical output owner, not an uncharged direct write, and requires serialization with peer forwarding. Active #445 is synchronizing to integrated dev before final checks; original-head full success remains source-bound, not proof for the combined tree. #453 outer queued cancellation regression now reported green, inner and actual prefix acceptance still in progress; no completion claimed.
+
+### Active-owner conflict check
+
+Read current #444 worktree diff and #445 combinedhead efe2a946c0cfae83b0b89f5ea28a3ff02cf8ab8c through native Git. Common changed files are qualification_evidence_linux_test.go and stream-network-two-host/README.md; primary production files differ. Notified both implementers: #445 integration first, #444 reconcile fresh dev preserving CPU monotonic fixture fields and its own manifest/host/origin/actual-window behavior, no block replacement of shared README. No edits made to their worktrees or extra reviewers started. Native-read escalation used after sandbox foreign-worktree Git access failed; no destructive operation.
+
+### Endpoint opening handoff static check
+
+operationFlight.complete rechecks exact Source opening identity, caller cancellation and current authority under owner.mu before publishing prefix. A refused/current-owner-changed completion cancels its retained flight and closes the exact prefix; successful completion transfers prefix and flight.cancel into Source lifecycle and closes done only after completion. Lifecycle FinishOpeningLocked requires exact flight identity. operationGate persists across prefix replacement and checks both caller and independent lease after acquisition, so a ready slot does not allow a canceled caller. failDutyContexts snapshots owners under endpoint.dutyMu then releases leases after unlocking; it does not synchronously acquire each owner's mu at this callsite, so the suspected direct self-lock was not supported. Prefix cancellation callback invokes interrupt/retirement, not prefix.finish recursively. No new bug filed from these reads; runtime admission/cleanup acceptance still belongs to selected implementers.
+
+### Issuance cancellation/retry ownership follow-up
+
+tokens.Operation retains one exact permission/profile/batch and reserves its issuance slot before transport. Complete rechecks surviving owner, permission, profile and deadline; caller cancellation can discard only that operation's pending batch, while reserved grant counts remain consumed. Exchange failure preserves the original opaque pending batch/request identity for explicit retry, and ReserveBatch requires the same challenges/selection/prefix rather than refunding or re-sampling. finishLocked clears the operation's request copy and signals done after completion; Batch documents that network attempt owns copied request bytes. No replay/refund bug or new issue established by these static reads. #444 acknowledged preservation of #445 shared CPU fixtures/README; both remain active until their actual required checks and review/integration finish.
+
+### #444 bounded review preparation
+
+Pinned base db4014998 and exactcandidate ea6cd5164bf95b380e72d7e8bd9ccd07879cfc36 PR457: refs resolve, nonempty14file diff and one #444 commit. Retrieved original issue requirements and current standards sources. External review brief %TEMP%/ardents-444-review-checkpoint.md captures immutable commands/scope. Current GitHub ledger is explicit in repository/human instructions despite absence of optional docs/agents/issue-tracker.md; no setup flow or scope uncertainty inferred. #444 agrees to await terminal nativecheck then yield idle with remote handles; #445 requested same after combinedpush/dispatch. Two parallel read-only axes can start only after both verifiedidle, preserving root+448+453+two reviewers=5. No reviewer actually started yet; active gates not stopped or acceptance waived.
+
+### Exact remote CI ownership receipt before review
+
+Root native gh verifies #444 PR-run36986982630 SUCCESS exactea6cd516, fullworkflow36986920711 live in_progress. #445 PR-run36987025627 SUCCESS exactefe2a946; fullworkflow_dispatch36987021169 live fulljobin_progress. Native #444 makecheck exit0 and cleanworkspace reported by implementer; #445 local processes terminal and containers removed reported. Both still active in authoritative thread poll, so neither reviewer slot yet released merely by intent. Root retains these live run handles and does not restart them. Confirmed PendingClosedTokenBatch.Request defensively clones raw request bytes; operation.finish clear cannot corrupt the retained exact retry request.
+
+### #444 read-only review dispatched within cap
+
+Authoritative wait verified #445 idle completedturn cursor27 and #444 idle completedturn cursor15; all local processes terminal/receipts supplied, live remote runs remain rooted under coordinator. Spawned two independent read-only axes /root/review_444_standards and /root/review_444_spec on exactbase db4014998...ea6cd5164; no implementation/checkouts/tests/nested agents authorized. Root+448+453+these2=5 while444445 wait remotechecks/review. CPU integration first remains required; no returned slot yet. Refilling extra issue454456 implementation waits; this is bounded review, not another implementation slice or independent security validation.
+
+#444 read-only axes terminal: Standards0 and Spec0 on db4014998...ea6cd516. Report external %TEMP%/ardents-444-review-result.md and issuecomment, no tests run by reviewers, fullgate/integration unresolved. Corrected functional-map source path docs/product/functional-map.md (checkpoint typo docs/reference); both axes used current owner. Reused released slots for parallel read-only #448 Standards/Spec reviews exactbase a3963544a...fe584813ebddb8ab5efb5e276dae24e598049dbf, verified4file diff. Root+448implementer+453implementer+2reviewers=5; 444445 remain explicitlyidle with liveCI under root. No additional implementation or scope expansion.
+
+### #448 review result and next selected work
+
+#448 Standards P2 fixture missing failure-path joins for HELLO reader/TLS handshake helper goroutines at queued_lane_test.go85/124: success-only channel receives bypassed by t.Fatal, pipe cleanup does not wait. Root verified exactfe584hunk and returned implementer slot for bounded fixture cleanup fix; Spec0 on samecandidate, valid scheduling fixture scope explicit, no gate claim. #448 localfull terminalfailed Node6 Endpoint cleanup; preserved no causal attribution, remotefull continues. Read-onlyreviewers terminal, so root+448+453 leaves two slots. Dispatched selected #456 thread01a0fbe1-1706-7b10-ba5c-19b513830c9b for PO-chosen bounded JOIN refill authoritative reconciliation then actual serverACK acceptance, currentowner/ADR discipline mandatory. Dispatched #454 thread01a0fbe1-b070-7a11-9456-f4d4b996e07c: read-only prep, no branch/worktree/runtime/implementation; future JOINcleanup after456integration or explicit sharedownership. Root+448+453+456+454prep remains five; 444445 idle with live remoteCI under root. No extra reviewers/implementation authorized.
+
+#456 initial turn terminalfailed before actions due selected-model capacity; root retried same thread/settings once (no model override/new duplicate). Authoritative resumed thread nowactive cursor2, reading current owners; work did start. #454 read-only prep active cursor1. Full44436986920711 and full44536987021169 remain live exactpinnedheads. Forwarding refill cross-check: channel.admit updates budget and returns no event, but actual listener caller separately emits its ACCEPT, unlike JOIN Serve's continue-only path in456. Thus helper-level missingACK alone cannot be generalized across roles. No additional issue filed from Forwarding helper/no-event observation.
+
+### F103 — conflicting maintained C0 execution limits (#458)
+
+At dev db4014998, documentation.md:74-75 allows one implementation issue; AGENTS.md and agent-execution.md select two. The supplied PO policy permits explicitly authorized larger selections. Issue #458 records exact owners and acceptance; repair is queued, with read-only preparation only until an active-thread slot is released. No numeric session assignment belongs in permanent policy.
+
+Coordination receipt: #454 read-only preparation is terminal; #449 implementation resumed in its separate forwarding-queued-deadline worktree. #448 setup-helper cleanup recheck at 2d7e8452b59d30aeccb8ab18e8cc5381a1a0ea75 reports Standards hard findings 0 / heuristics 0; previous Spec result 0 applies to the unchanged product delta. Full gate and integration remain unproven.
+
+### F104 — Forwarding role reader retains unaccounted queued input (#459)
+
+Static trace at db4014998: listener.go reads channel retains one complete frame and its producer another, before ClosedForwardingChannel.Accept reserves either against the duty queue. OuterBridge Read has already released ciphertext reservation at ownership transfer. Protocol 493-511 requires complete Node queues within the receiving-duty 64 MiB ceiling with separate control capacity. #459 contains exact owner path, required actual-handler RED and transfer/cancellation acceptance; no runtime RED or measured aggregate exceedance claimed. Repair thread awaits a free active-thread slot; not silently started beyond five.
+
+#456 incorrectly stopped against stale local default-two policy. Explicit PO larger-count authorization and supplied current AGENTS text were reiterated; selected implementation resumed within five threads. #458 records the contradictory documents that caused this operational refusal.
+
+Static follow-up to F104: accepted Forwarding data does not release its receiving-duty reservation merely on NextAvailable. nextReadyDataLocked transfers its body into the delivered count while child.queued remains reserved; Credit releases that reservation only after actual downstream CREDIT. Reverse frames likewise remain Route-reserved after frameQueue.next removes their local queue slot, until copyReverse calls ReleaseReverse after its output returns. No additional early-release bug recorded for these paths. Pre-Accept reader retention in #459 remains distinct.
+
+Authoritative remote checks #445 run36987021169 and #444 run36986920711 remain in_progress specifically in Run the complete maintained gate. Neither component is claimed merged or fully accepted. #449 actual queued-expiry RED reported on both selected Carriers; #453 actual admitted-prefix fixture coverage is still being built, not a passing acceptance claim.
+
+### F105 — expired Forwarding child loses terminal retirement (#460)
+
+At db4014998, session.deliverReverse discards every frame when ReverseRetired detects child expiry, including authenticated CLOSE; frameQueue.next is not woken. forwardLink has no child expiry owner, so idle reverse copier, outgoing lease and Route child capacity remain until upstream CLOSE/parent cancellation. Listener Reap covers host/pool idle entries only, not an active child lease. #460 records actual-caller runtime RED requirements and preservation of healthy sibling/shared Carrier; no runtime RED yet. Implementation queued behind #449/#450 shared ownership and available active-thread slot.
+
+### F106 — reserved Forwarding control lanes unreachable (#461)
+
+At db4014998, ClosedForwardingChannel.open rejects all OPEN at children>=256 before control-purpose capacity admission. Source and closedDutyChannel correctly permit two reserved control lanes; tests bypass actual Accept. Downstream session.attach independently caps live+retired at256. #461 requires complete actual-caller control reserve acceptance on both Carriers, rejects extra work/third control and preserves duty ceiling; static evidence only so far. Queued behind #449 shared outgoing ownership and available thread slot.
+
+#445 component integrated by root: PR451 MERGED 2026-10-02T09:32:58Z, dev merge63929a55951bd4dd9418e5c8c07056436da9c0b3, reviewed unchanged CPU delta, exact candidate efe2a946 full36987021169 SUCCESS and affected36987025627 SUCCESS. Issue445 remains OPEN pending446 actual owner sampler acceptance. Agent own-worktree archival awaits a freed active-thread slot; no claim of completed cleanup. #444 full36986920711 SUCCESS on ea6cd5164; fresh-dev reconciliation still needed after CPU component merge.
+
+F106 follow-up: ClosedOuterHandshake.open uses duty.reserveChild() (control=false) at the downstream physical parent; #461 addendum requires authority-aware inspection and complete path acceptance, not blindly widening the last-256 retired-ID tombstone ring. Hosting period audit found no new period-reset defect: initialization refuses an existing root, storage checks immutable policy pin, normal Node composition enforces one exact root, and release affects the same retained ledger owner. Existing unresolved release-cause propagation remains #452/#454 rather than a duplicate issue.
+
+### F107 — benign accepted-close cause hides real sibling failure (#462)
+
+At63929a559, Resolution/Introduction closeCarrier and serveOuter plus JOIN/Forwarding accepted-close recording drop all errors matching net.ErrClosed. Joined/wrapped composite physical failures therefore disappear from final Drain. Issuer/probe already remove only benign sentinel leaves. #462 includes four real lifecycle owners, actual close seam RED and pure/wrapped/joined acceptance cases, coordinated against deferred Hosting-cleanup owners; no runtime RED claimed. New repair threads for459-462 await a freed slot rather than exceeding five.
+
+Introduction static check at63929a559: serveRegistration binds ACK to exact pending even lane and fresh nonce, rejects duplicate/expired ACK, and deliver rechecks State/capsule expiry before closing with outcome. Slot admission reserves fixed OPERATION/RESULT/CLOSE allowance and separately withdrawal capacity; expiry preventing child protocol completion retires registration as the current protocol requires. No new late-ACK/refund bug recorded for these paths.
+
+Workspace hygiene inventory: only live project containers ardents-453-gate and ardents-448-integrated-full are present; five stopped swarm-zulip containers belong to another workload and are not authorized task cleanup targets. Root has no managed attachments via list_artifacts, so it cannot use archive_worktree for445 from this chat; own agent cleanup must resume when a slot is free. Six selected repair worktrees remain (444/445/448/449/453/456); two non-selected user worktrees preserved. No deletion performed.
+
+Coordination: #449 verified idle terminal turn, source4130691f2f1812f12f19ece894a45ba6094452be, PR463, full36991120839/affected36991173777 handles handed to root, no local live commands/own containers. #445 resumed cleanup-only in the freed slot, no new tests/implementation. Prepared repair dispatch inventory459-462 saved outside repo at Temp/ardents-static-audit-prepared-issues-459-462.md; active cap five preserved.
+
+#445 cleanup independently observed: read_thread reports completed/idle, archived_worktree attachment01a0fc01-be01-71c1-908f-e8d589f326b8 and checkout absent, receipts retained. Root resumed444 integration in the freed slot; five active preserved. Root monitors449 remoteCI without reactivating449. Root obtained cleanup results by read_thread/receipt, so an agent's rejected unsolicited status message does not block authorized cleanup or coordination.
+
+State wave static follow-up: attempts are committed before contact, changed Source exposure plan is bounded before its first attempt, durable terminal failure/backoff retains per-slot outcomes, current/pending transition rechecks trusted completion time. No new backoff bypass proved. Mixed-valid-result/caller cancellation remains an unconfirmed semantics question: the current owner says complete wave selects highest valid State and per-source cancellation classification has precedence; that does not alone prove all authenticated observations must be discarded. No bug filed without stronger current contract/caller evidence.
+
+#456 implementer reports canceled-Serve vs delayed-policy-commit race RED, tracked in existing456 acceptance with exact caveat root not rerun. #453 cyclic test-import refusal not bypassed; requested maintained higher-owner/public API placement for actual qualification cancellation regression before concluding an external receipt replaces maintained coverage.
+
+### F108 — Control Hosting reserve ends before child termination (#464)
+
+Static exact ordering at63929a559: Resolution/Introduction serveAdmitted and credential ServeAdmittedAfterHello run deferred lease.Release before their outer serveInner performs TLS CloseWrite and Outer lane.CloseWithStatus. Admit only binds authority/deadline, with no retained Release transfer. The shared handle remains live but per-operation termination reservation is refunded while terminal output may remain blocked. #464 covers three actual control-role lifecycle owners, actual terminal-write gating and exact-once post-join release, normal checks/integration; no runtime RED yet. Distinct from462 filtering physical cleanup causes and452/454 lost Hosting release failures; queued within active cap.
+
+### F109 — Outer local Close retains buffer after refunding queue (#465)
+
+Static at63929a559: closeLocalOnce first handshake.Accept(CLOSE) refunds child.queued and releases child capacity; then waits terminal serialization, then closeInput clears unread buffer. Thus a post-innerHello unread ciphertext queue remains retained without receiving-duty reservation while terminal output waits. Existing active-CREDIT regression consumed its body before Close, and global bridge shutdown correctly holds reservations through join; neither disproves this per-lane gap. #465 requires actual queue/duty RED and transport caller acceptance without disturbing active-CREDIT serialization, distinct from459 role reader transfer and464 Hosting. No runtime RED claimed; queued behind448 ownership/cap.
+
+### F110 — Resumed State wave loses interrupted BY_DIGEST outcome
+
+Tracked in [#467](https://github.com/dianabuilds/ardents-network/issues/467).
+Static trace on dev `63929a559`: recovery durably records `interrupted` for a
+consumed BY_DIGEST slot; production Refresh assembles only its current results,
+then `finishWaveState` replaces all four outcomes with that partial array. The
+historical digest slot becomes zero (`not-attempted`) after terminal publication.
+Its consumed attempt remains retained, so replay permission is not claimed.
+The existing recovery test checks before wave completion and misses this loss.
+Required repair verifies durable reopen/resume/completion/reopen, preserves
+original slot cause and backoff, and keeps fresh-cycle reset and selector bounds.
+Runtime RED has not yet been run. Separate implementation awaits a free selected
+slot; the agent-ready evidence and acceptance brief is attached to the issue.
+
+F110 dispatch: #467 selected repair thread `01a0fc1a-6b23-7062-80e3-5b16aaf6b307`
+started after #444 completed its local work and yielded its active turn. Current
+selected active chats: root, #453, #456, #458, #467. #449 exact-head full Ubuntu
+CI 36991120839 independently reports success; its reviews and integration remain
+pending, so neither issue closure nor thread archival is claimed.
+
+Negative audit: State closed-profile runtime reads explicitly reject background
+owner failure, while their current owner comments distinguish offline profile
+acceptance from runtime use. Missing background-error checks on offline
+acceptance alone do not establish a contract defect; no issue filed from that
+observation. Reachability current-store review confirms conflict expiry retains
+the longest observed signed Credential lifetime and enforces the no-overlap
+successor boundary; no duplicate bug filed for the already covered path.
+
+### F111 — Interrupted Reachability staging blocks real resolution restart
+
+Tracked in [#470](https://github.com/dianabuilds/ardents-network/issues/470).
+Static trace on dev `63929a559`: `replaceStoreFile` creates `.record-*` in the
+canonical records directory, with removal deferred until orderly return.
+A terminated process leaves its owned staging file; `restore` counts every
+entry against 128 Targets and refuses names other than 64-character Target
+records. Existing initialization has no staging recovery. The actual resolution
+`Start` calls `OpenStore` before listener readiness, so intact previously
+committed proofs become unavailable until unsupported raw cleanup.
+No crash RED has yet run. Issue acceptance requires real production-write
+subprocess interruption, bounded lease-held staging disposition preserving all
+committed floors, 128-Target recovery, foreign/nonregular refusal and actual
+resolution startup. An uncommitted staged update must not be acknowledged or
+promoted. Repair awaits a free selected slot; the issue contains the full brief.
+
+Negative boundary checks at dev63929a559: Publisher ACK rechecks current profile,
+registration, exact resolution flight/Source, context, Instance binding and
+recipient before local pair publication. `openRegistration`/`rotatePublication`
+refuse a successor while a bounded predecessor remains, so merely seeing one
+previousRegistration field is not evidence of an overwritten live predecessor.
+PrivateRecipient.Close performs only owned key retirement and always returns nil;
+its ignored return is not an actionable cleanup-cause loss.
+Source readResponse refuses unknown status bytes, and production fetchFailure
+and successful response closure check the operation context before returning
+response evidence. No unknown-status or cancellation-precedence issue filed
+from helper-only speculation.
+
+### F112 — Forwarding CLOSE refunds retained outgoing payload
+
+Tracked in [#472](https://github.com/dianabuilds/ardents-network/issues/472).
+Static trace on dev 1cfe22e3a: Route close refunds child queued bytes and removes
+the child before Node's selected BYTES writer has returned. A body waiting for
+the shared outgoing writer remains owned by its goroutine; eventAvailable delays
+CLOSE until that worker ends, but does not retain the refunded reservation.
+The incoming reverse-output mutex does not join the outgoing writer. No runtime
+RED or measured queue overshoot is claimed. Acceptance requires real admitted
+child/governor reproduction on both Carriers, accounting until discard/join,
+exact-once late completion, sibling progress and bounded terminal behavior.
+Distinct from reader pre-Accept #459 and Outer unread-buffer #465. Prepared
+repair awaits selected slot and Forwarding writer integration #449.
+
+Integration receipt: #444 accepted and closed; PR457 merged dev
+bd7036ab06147fc330ec11984c1cd4ba30ce0aae, own worktree archived and checkout
+absent; coordinator archived its completed chat. #458 accepted/closed via PR469,
+dev1cfe22e3a, own worktree and chat archived. #449 independent bounded Standards
+and Spec reviews of 63929a559...4130691f2f both returned zero actionable findings;
+agent resumed for fresh-dev integration, not yet recorded as accepted/merged.
+
+Coordination: full Ubuntu36992523451 terminal SUCCESS exact448head1614fa30a;
+full36992977496 terminal SUCCESS exact456head3af1abeb, authenticated root gh.
+The failed local456 Endpoint attempts remain failures requiring distinct causal
+handling, not relabeled by remote success. #448 resumed integration. #467
+independent Standards0/Spec0 reviewed63929a559...9ceea9884; resumed own integration.
+Current selected active threads root/#448/#449/#453/#467; cap five maintained.
+Carrier-pool mutex candidate revisited: current production session.fail does call
+lease.Invalidate, correcting an earlier no-caller observation. Its normal ordering
+closes the same physical wrapper before Invalidate; that fact alone does not
+prove sustained unrelated-pair blocking. Last-unused Release still holds pool.mu
+through real Close; no new duplicate issue or runtime reproduction claim filed.
+
+### F113 — Unemitted Source BYTES consume send credit permanently
+
+Tracked in [#473](https://github.com/dianabuilds/ardents-network/issues/473).
+Static trace on dev1cfe22e3a: closedSourceLane.Write subtracts lane.credit before
+send/enqueue; queue refusal or inactive queued timeout returns without restoring
+credit. removeQueuedWriteLocked refunds queue bytes only. Incoming peer CREDIT
+is the only increment, but the peer never received those bodies. Repeated
+unemitted failures can exhaust the live lane's 64 KiB window after its write
+deadline is extended within admitted lifetime. No runtime RED claimed. Required
+acceptance distinguishes queue refusal/timeout from actual physical emission,
+checks exact-once credit return, retries and healthy siblings through actual
+Source queue/caller seams. Implementation coordinates with #453 queue ownership
+and waits for a selected active slot. Full external brief preserved.
+
+#449 new combined ed2ce002 affected36996553302 FAILED: Endpoint
+TestTextInitialPublicationLossBeforeAcknowledgement TCP caller_cancel reports
+text Source handle unavailable after cancellation. Root notified implementer;
+full36996546683 remains live. Failure not attributed to #453/#456 or waived.
+
+F113/#473 refinement: source writeLoop dequeues and marks active, then may fail
+an expired deadline before request.attempted. Completion refunds queue bytes but
+not send credit; attempted=false keeps the parent alive. Issue473 addendum now
+requires exact-once recovery at queue refusal, queued removal and selected-before-
+physical-attempt failure, never after actual partial emission.
+Negative comparison: receiving JOIN reserves two full maximum frames per side
+through both I/O joins; any forward write error terminates its pair, so the
+surviving-lane credit-loss claim does not apply to that implementation.
+
+Publication read-only diagnostic follow-up: permissionProfileLocked first retires
+ended role prefixes. Source RetireIdleLocked clears Handle.prefix only after
+prefix.Done, invalidating exact retained ResolutionAcquisition. Its routePrefix
+error matches #449's observed Source handle unavailable. Root passed the exact
+call chain to the active #449 diagnostician; prefix.Done causal origin and
+baseline remain unproven, no duplicate issue filed. finishResolution with nil
+caller merely returns its existing outcome while retaining cleanup under owner
+lifecycle; ignored return at lookup defer does not itself lose a new cleanup
+cause. Acquisitions release their own reference, not the shared live prefix.
+
+F113/#473 caller-boundary refinement: maintained joinedTransport is wrapped in
+Service TLS; no current same-lane Service retry reachability is proved after its
+write error. Root added this limitation to issue acceptance: reproduce a current
+caller or identify the exact bounded Source/net.Conn obligation, never claim a
+raw retry fixture establishes Service behavior. CloseWrite's unemitted EOF flag
+candidate has only inspected test callers and is not filed as a new product bug.
+#453's latest status turn ended idle with failed QUIC admission CI. Root resumed
+its existing selected slot for diagnosis, preserving five active threads; no
+new client-owner implementation was started concurrently.
+
+#467 integration verified by authenticated root: PR471 MERGED at2026-10-02
+10:51:17Z, dev369a9a760309034435747e39177732524ae01a5b; issue467 CLOSED10:52:22Z.
+Implementer receipt records reviewed9ceea9884 and tested29b6d2bea ancestry, merge
+same tree, unchanged patch identity, native full exit0 and composite CI36997108328
+SUCCESS. Own managed checkout state-resumed-outcomes is absent (root Test-Path
+False). Chat turn is still active in cleanup, so no new slot or chat archive yet.
+Automatic review rejected extensive acceptance publication for nonpublic test,
+review and advisory detail; exact payload/reason retained externally, not resent
+through a workaround. Public merge/issue metadata and local receipt remain.
+
+#467 final turn confirmed completed/idle cursorf4f3b2bd:9. Coordinator archived
+its chat (toolarchivedtrue), worktree absent, own resources terminal. Selected
+freed slot assigned to prepared #446 owner-slice sampler thread01a0fb83-a67e-
+7370-887e-2cc25ace23d5; #445 predecessor merged and current dev369a9a760 still
+contains the demonstrated real slice/parser mismatch. Active selected root,
+448,449,453,446 (five). No concurrent sampler implementer or additional reviewer.
+Root FF advanced dev1cfe22e3a to369a9a760, preserving audit modification and both
+unrelated untracked user documents. Feature branches467 remain after automatic
+review rejection; no unauthorized delete attempted by coordinator.
+
+### F114 — Real successful relay collector emits unsupported Logs field
+
+Tracked in [#474](https://github.com/dianabuilds/ardents-network/issues/474).
+Static actual-caller proof on dev369a9a760: Stop-NetworkRelays emits Logs in each
+successful relay record, writes relay-results.json and uploads it unchanged to
+verify-pair. readRelayResults decodes []relayResultInput lacking Logs through
+DisallowUnknownFields. Every nonempty successful real record therefore refuses
+before evaluation. No runtime RED claimed. Failed capture's failedRelayResult
+already contains Logs/Complete and is excluded from this allegation. Acceptance
+requires actual PowerShell collector-to-production Go decoder/CLI regression,
+strict unknown-field refusal, retained raw logs and existing terminal/counter/
+sample semantics. Separate implementation awaits a free selected slot and #446
+collector ownership coordination. Full brief retained externally.
+Negative identity comparison: relay and Node binaries are distinct executable
+artifacts from Endpoint binary; merely unequal SHA256 is not a candidate mismatch.
+Current net14v comparison binds each respective identity across paired runs.
+
+Follow-up schema audit on dev369a9a760: real Node/Source collector records match
+nodeResultInput, Write-NodeAndSourceResults matches nodeResultsInput including
+OwnerSlices, and installed cleanup record fields match cleanupOwnerInput. Owner
+counter collector retains malformed observed fields for strict decoder/verdict
+refusal rather than synthesizing missing monotonic evidence. No duplicate
+unknown-field issue filed for these schemas. Relay successful Logs mismatch474
+remains separate. #446 producer/collector and monotonic regressions reported PASS
+while full required gates/integration remain pending. Its unsolicited coordinator
+message was auto-review rejected for missing direct human messaging authorization;
+root obtains progress by reading the task, so this does not block its work and
+is not justification to send the rejected message via another route.
+
+Token ownership static comparison on dev369a9a760: Permission consumes selected
+stock before durable Journal.Mark; journal error clears outgoing bytes and fails
+the owning context, post-mark authority/context checks happen before Route
+presentation. Same-process pending blind batch retains exact challenges/selection;
+discard/finalization burns its reserved allocation. Journal compaction persists
+its new floor in the atomic replacement before later append; load derives the
+maximum observed floor. Partial retained append refusal and no stock refund are
+explicit current private-admission contract, not a newly inferred availability
+bug. Recognized .attempts staging is cleaned after canonical journal load under
+root lease, unlike Reachability470; no duplicate staging allegation filed.
+Remote448 combined ad347065 full36996969312 confirmed in_progress; PR
+36996973688 SUCCESS. #453 current first QUIC refusal is before refill after217-
+218 exchanges; active owner is collecting transport/prefix terminal diagnostics
+without changing accepted governor/Carrier/deadline limits.
+
+Continuation audit: current dev 369a9a760. Rechecked actual successful collector cleanup-results.json against readCleanupResults: Role/ActiveState/MainPID/Result/ExecMainStatus/ActiveWorkers/Passed and Schema/Owners agree. Normal campaign checks real success and exit status before serialization; smoke follows a separate verdict branch. No additional schema defect established. Whole-owner receipt fields match current consumer; #446 retains the selected actual sampler argument defect and #474 remains the confirmed successful relay Logs producer/consumer mismatch. Remote full runs 36996969312 (#448 ad347) and 36996546683 (#449 ed2ce) were authoritatively in_progress on this continuation. #453 turn was terminal with unresolved QUIC cause; explicitly resumed diagnosis, not treated as an active waiter. Four repair threads plus root remain within five-thread cap.
+
+Static continuation: verified campaign condition/manifest-cell and seed binding at the actual run-windows.ps1 preflight (175-177), shared participant profile/condition/seed at 168-173. verifyPair alone does not repeat all those preconditions, but a claim that the maintained orchestrator admits a mismatched seed/cell is contradicted by these current checks; no new bug filed from standalone-verifier omission. NET14V additionally requires normal/recovery conditions, cells and identical manifests after removing cell/failures, matching seed/profile and candidate identities. Further audit should distinguish a supported standalone verifier obligation from invented hostile evidence input.
+
+Continuation terminal audit: evidenceJournal.write latches serialization/write/short-write failure, prevents later terminal success; finish encodes the joined runner outcome after participant results. main.go 149/180/190-209 joins workload criteria and owner-network criteria into participantErr and final outcome. readRunnerEvidence refuses nonempty terminal Failure for readCompletedEvidence, missing/duplicate participant results, truncated newline, checksum/count mismatch and records after terminal. verifyCompletedRun intentionally establishes completed byte-stream evidence rather than recalculating a qualification claim; real NET32 caller additionally requires installed Endpoint inactive/MainPID0/Resultsuccess/ExecMainStatus0 before consuming that journal. No supported-path false successful completion established in this slice. Failed NET14V intentionally uses allowFailure=true for bounded failed-byte accounting, not successful qualification; separate acceptance semantics are explicit.
+
+#462 Service addendum: current initial Service protectedServiceTransport.Close suppresses entire composite result when errors.Is(net.ErrClosed), including any independent JOIN cleanup leaf. Actual endpoint admitted joinedTransport -> ClosedJoinedStream.Close aggregates multiple retirement owners. New caller coverage of existing F107/#462, not a separate issue. External brief ardents-462-service-close-addendum.md saved; GitHub publication attempted via gh issue comment --body-file and rejected by automatic approval review for detailed internal failure-path payload without exact external-publication authorization. No bypass/retry. Requested explicit PO choice for that precise file and issue; local evidence retained and audit continues independently. #446 candidate 723d833313778d31932939d49db0e278a0642ea6 reported ready for bounded review, corrected prerequisite quick/full still live; read-only reviewer needs freed slot, not extra concurrency.
+
+Authoritative terminal CI update: full36996969312 exactad347 #448 completed SUCCESS, full36996546683 exacted2ce #449 completed SUCCESS. Both independently checked via gh run view. #448 instructed to complete integration/acceptance/owned cleanup; #449 instructed to retain affected FAIL2/2 and continue planned actual-CI causal probes, not waive failures with a full PASS.
+
+New bounded candidate retained: failed replacement Service TLS setup discards raw Route Close result and disables openRecoveryAttachment deferred cleanup (ownedRaw=false), so no constructed Attachment can retain that result. Actual current recovery opener returns admitted joinedTransport; initial path has retained protectedServiceTransport and is not covered by this particular loss. Prepared ardents-service-recovery-tls-cleanup-candidate.md with exact owner/caller trace, independent distinction from #462/post-transfer F23, causal regression requirements and reachability caveat. Not yet tracker issue/assigned repair; no runtime proof claimed. Publication of #462's detailed addendum still awaits exact-payload authorization after actual auto-review rejection; do not use this candidate to bypass that refusal.
+
+Integrated baseline update: root fetched dev and fast-forwarded 369a9a760 -> 63e3b4239d9a803ea0af3d74f07c3f24d9ed7303 (#448 PR455). Local audit findings and unrelated untracked contract map/proposal preserved; changed upstream files limited package-map/protocol and outer writer/test. #448 issue still OPEN while implementer completes integrated checks/cleanup; live turn cursor47 reports integrated outer/Route/State race PASS, quick-check live. Rechecked queued #465 at current closed_outer_bridge.go330-359: child CLOSE Accept and removal still precede serialized terminal write and closeInput. Existing #465 retained unread-buffer accounting defect persists after #448; no new duplicate and no claim #448 fixed it. #465 needs separate slot after cleanup; #446 completed bounded candidate also needs allocated independent review, capacity remains five including root.
+
+Review preparation #446: exact723d83331 three-file delta inspected at freshdev369; producer adds only exact owner.slice alongside existing bounded Node/Source services. New regression extracts actual Configure-OwnerSlices/Read-OwnerCounterSamples/Stop-OwnerSlices AST functions, retains real producer argument and output shape, mocks only remote systemd/clock/SSH, evaluates both actual consumers, explicitly does not qualify installed campaign. Tests reject unsupported units before counter access. This root preparation is not either independent mandatory review verdict; reviewer allocation awaits a released slot. Updated external queue inventory with465470472473474 and caller/proof constraints to avoid losing prepared work while CI/integration occupy capacity.
+
+Service workload audit dev63e3b423: actual installed worker launch selects DocumentWorkloadBounds or StreamQualificationWorkloadBounds before beginJob. Current owner explicitly requires 512-byte Reader request /4MiB+13 response or fixed64MiB per qualification direction, shared opposite directions for Publisher and logical counters preserved across recovery. WorkloadBounds validates nonzero ceilings and rejects unknown surface; no changed cap or current contract contradiction established. Resource observer keys/counters are internal high-water diagnostics, not additional authority. #448 integrated quick-check and outer/Route/State race now reported PASS while final acceptance/worktree archive still executing; slot remains occupied until terminal proof.
+
+#448 final acceptance independently verified: issue CLOSED via authenticated gh, PR455 merged63e3b423, owning worktree path Test-Path=False. wait_threads cursor54 terminal completed/idle with final acceptance+all owned containers removed. Root archived completed chat tool archived=true. Freed fifth slot allocated read-only independent #446 Spec reviewer /root/review_446_spec exact base369a9a760 candidate723d83331; no implementation/reviewer overlap increase, Standards axis follows sequentially under PO cap. #449 temporary probe candidate20b8e2103 now in actual CI37000220260; source group numbering changed, implementer explicitly rejects falsely equating affected7 with original failing group. Full36996546683 PASS retained, original affected FAIL2/2 not waived; probes removed before final acceptance delta.
+
+Publication restart negative audit currentdev63e: prepareRoot under exclusive root lease invokes cleanupStaging for recognized .stage-/.current- entries before restore. Normal publish withdraws/drains/removes prior persisted generation before successor writes; restore bounds generations to2, not a supported128 canonical record set. Therefore Reachability #470 full128+one staging counterexample does not transfer to Publication. Root cleanup scan128 alone cannot establish naturally accumulated129 staging because each reopen cleans prior stages. No duplicate staging bug filed. Full actual power-loss qualification remains explicitly unclaimed in current owner.
+#446 independent Spec terminal0, Standards now independently active; exact review receipt external ardents-446-review-result.md. #449 controlled diagnostic plan acknowledges455 changed PR merge base confounds new PASS; additive dispatch-only probe must retain unchanged full gate and disappear from final delta.
+
+#446 independent Standards terminal2P2 delivered to implementer: exact checked profile prerequisites pwsh/python3 absent, subprocess lifecycle unbounded without descendant cleanup/join/residue. Spec0 preserved separately; changed test/profile delta requires re-review, no gate waiver. Freed review slot selected #465 implementation thread01a0fc5e-37d4-7d22-bb5d-8418a3c81d74 title Outer Close: учёт непрочитанного буфера (projectc47ff0dc). Brief/current63e source/actualbuffer-governor acceptance, preserved448fix, full unchanged gates, devmerge/acceptance/owncontainer/worktree cleanup all handed off. Thread link emitted once. Root+449453446465=five; no active reviewers. Exact #462 payload authorization remains pending, not inferred from automatic continuation.
+
+Qualification workload static audit dev63e: sendScheduledElapsed derives fixed offered workload from elapsed time (bounded600s), partitions target/remainder across declared active connections, uses available credit and one frame per turn; terminal requires delivered fixed offered load before EOF. Profile definitions16/64 active and10/40Mbit aggregate share exact47,343,750 offered bytes/active connection, below fixed64MiB Service bound, so aggregate750MB vs per-stream64MiB is not a contradiction. Actual worker validates deterministic offset-sensitive bytes; canaries challenge/echo match and pending completion, terminal cleanup joins reader. Current workload verifier rejects absent identity/active counts and failed completion; no new confirmed scheduling defect. Potential different recovery/canary timeout semantics need explicit current-owner requirement before filing; active workload recovery8s alone does not prove retained-canary2s policy is erroneous. No new issue from this ambiguity.
+
+### F115 — Failed-verifier general usage omits mandatory journals
+
+Confirmed static current dev63e3b423: main.go61 advertises verify-failed-net14v with5/6 arguments while failed_net14v_linux.go30-31 requires7/8 including reader-journal.jsonl and publisher-journal.jsonl after failed relay results. Actual maintained PowerShell caller and subcommand usage already pass both. Following general usage deterministically reaches argument-count refusal; no evidence or gate bypass needed. Registered GitHub #475 https://github.com/dianabuilds/ardents-network/issues/475 in C0 milestone. Bounded CLI text repair only; do not make journals optional or weaken failed evidence. External brief ardents-failed-verifier-usage-issue.md; no repair thread at current five-slot cap. Coordinate qualification main.go scope with queued442/474 or a later separate selected thread. Source-level documentation defect, no runtime/campaign qualification claim.
+
+Owner-resource failure path audited currentdev63e: /proc/PID/statm error originates ownerResidentBytes invoked by MeasureOwnerCgroups, not sampleProcess pressure counters. It explicitly invalidates a disappearing-process sample; node.hostingPressure converts incomplete measurement to drain. Qualification Measurements serializes worker registration/retirement with sampleMu and explicitly rejects retired owner. Therefore saved #446 QUIC test /proc failure is not itself proof of incorrect ordinary worker teardown: actual PID identity/cgroup ownership and sample timing are needed. No production bug or baseline exemption filed; trace delivered implementer as diagnosis evidence, current #446 scope unchanged.
+
+Resource ownership audit: actual Endpoint qualification Measurements sampleMu serializes sampling with add/retire worker; retirement clears cached sampledAt and marks owner invalid, so prior cached samples cannot silently outlive unregister. Sample clones interface slices. Resource owner measurement deduplicates process IDs across descendant inventories and excludes worker paths already inside prior cgroup. Actual accepted worker paths are sibling leaf units under fixed owner roots, so speculative ancestor reverse-order double-counting is not an established maintained caller bug. Qualification opening-slot channel serializes nextOpening updates through release and applies300ms after remote result; distinct setup concurrency slots do not bypass that pacing. No new confirmed numerical/accounting defect in this slice.
+
+#446 repeat-review preparation: resolved exact candidate688be41d1d9a61138f7b646e2203f751c8f95df2 parent723d83331 base369a9a760. Correction changes only owner_sampler_linux_test.go, testing.md, profiles.json: explicit Linux python3/pwsh prerequisites developer/deterministic/race;30s CommandContext isolatedpgid, group SIGKILL cancellation,1sWaitDelay, joined command result,3s bounded residue probe and independent cleanup error join. Actual pwsh->Python cancellation fixture plus injected cleanup error path added. Root source preparation does not replace independent Standards/Spec re-review or gates. Original two findings remain open for reviewer confirmation on changed delta; current active threads root449453446465=five, no extra reviewer spawned.
+
+#462 additional static caller coverage, current dev63e3b423
+
+The maintained Node Issuer starts credential.StartClosedTokenListener with a real shared Carrier in internal/node/issuer/listener.go:88. Accepted Node and direct connections, capacity refusal, cancellation and terminal worker cleanup all call ClosedTokenListener.closeCarrier (closed_token_listener.go:173-266). That function drops the entire Close result whenever errors.Is(err, net.ErrClosed), although quicNodeCarrier.Close (node_carrier_quic.go:32-34) joins stream.Close and connection.CloseWithError. Consequently a composite benign-closed plus independent cleanup failure is not retained in listener.closeErr or returned through listener.Drain to closedIssuerServer.run/drain. This is another caller of existing #462, not a separate defect.
+
+Existing TestClosedTokenListenerDrainRetainsAcceptedCarrierCloseFailure covers a standalone injected failure for Node/direct capacity refusal and admitted Node cleanup. It does not cover errors.Join(net.ErrClosed, independentFailure); mixed-error and benign-only coverage must be included in #462 acceptance, using the actual accepted-listener/Drain lifecycle and preserving completed join semantics. Static proof establishes the filter and real composition path; no new runtime RED or natural QUIC mixed-failure frequency is claimed.
+
+Keep this addendum local: the prior exact #462 publication approval remains pending. Do not retry a rejected external comment or create a duplicate issue as a workaround.
+
+Recovery TLS cleanup static follow-up, dev63e3b423: actual native Stream opener in internal/endpoint/service/stream.go:145 invokes openRecoveryAttachment; maintained serviceRouteRecoveryOpener returns openJoinedTransport result. joinedTransport.Close caches Conn.Close plus finish result and releases its exact acquisition. secureClient/securePublisher tls.go:55/65/72 discard raw.Close results on setup failure; openRecoveryAttachment attachment.go:129 disables its fallback ownership because TLS setup closed raw. No native Attachment is constructed, so its exactly-once retirement callback cannot retain this failure. This is pre-transfer cleanup, distinct from post-transfer F23 and #462 benign mixed-error filtering. The incomplete replacement path attachment.go:98 also discards Close, but maintained opener supplies a prepared nonzero digest, so natural reachability of that guard is not established.
+
+Before filing: demonstrate the actual recovery Binding/opener path with independent joined Route cleanup failure and failed TLS setup, for both roles; check whether a later successful proposal can erase the setup cleanup failure because stream_recovery.go retains only last opener error. Do not claim ordinary TLS handshake refusal itself is a bug, or infer installed recovery qualification from an injected lower transport fixture.
+
+Service recovery negative boundary dev63e: once a native Attachment exists, retireAttachment records its exactly-once callback failure in persistent stream.retirementErr; recovery success does not reset this field. Endpoint service.runNative consumes RetirementResult only after native Done, includes it in finishErr, and Stream.Close joins finishErr after the finished barrier. Existing retirement-result tests cover duplicate retirement, ordinary RunBounded completion, and terminal-tail teardown. Therefore do not broaden failed-TLS pre-Attachment candidate into a claim that successful recovery universally loses previous Attachment cleanup. The confirmed source-level gap remains before NewAttachment: TLS setup drops joinedTransport.Close result and no retirement callback exists for that failed proposal.
+Recovery TLS candidate now has a bounded actual-caller acceptance plan in external ardents-service-recovery-tls-cleanup-candidate.md: both roles, actual Binding/opener/TLS failure, exact acquisition cleanup, failed-then-successful proposal, preserve ordinary eligible retry and existing F23. Runtime RED remains outstanding; no additional repair thread selected at five-slot cap.
+#449 caller cancellation causal cross-check dev63e: regression explicitly allows bootstrap refusal on context revocation, but requires retained publication owner retry on caller cancellation. Nonzero nested CLOSE creates bootstrap refusal and prefix.observeChildTerminal forwards it to Source channels.fail; root sent exact boundary to implementer for Node reason/lifetime tracing. No evidence yet that Node refusal is incorrect, and neither retaining an ended Handle nor suppressing its terminal cause is an accepted fix.
+
+Additional recovery-cleanup boundary dev63e: stream_recovery.go immediately after opener checks finishRecoveryIfCompleteLocked and returns nil after retiring a returned Attachment, regardless of opener err. When opener returns nil,error after post-TLS authority recheck, openRecoveryAttachment already joins replacement.Close into that error (attachment.go:133-135), but there is no Attachment for retireAttachment to record. A concurrent completed Terminal exchange can therefore discard an already-returned proposal cleanup error, independently of tls.go dropping cleanup at setup. Later successful proposal also replaces last opener error. Ordinary obsolete proposal/opening errors may legitimately be superseded; physical cleanup errors require separate retained ownership/classification rather than treating all opener errors as fatal.
+
+Existing TestStreamRecoveryCancelsProposalAfterTerminalConfirmation deliberately covers concurrent Terminal completion with a successfully returned replacement and nil close result. It does not cover nil Attachment plus opener error carrying failed pre-transfer cleanup. Add this race to the same candidate acceptance matrix and prove actual Endpoint Binding authority/cancellation + joined transport cleanup before making a product bug claim. Do not duplicate #462 or F23; native successful Attachment retirement is correct.
+Recovery limits static audit dev63e: episode deadline derives from lastProgress+15s with10ms publication reserve; each attempt uses the same computed deadline and tighter original NoNewRecoveryAfter. authorizationTime advances from original authorized time using monotonic elapsed duration. commitAttachment resets proposals/episodeEnd after authenticated replacement but does not reset original authorization, Work Safety or lastProgress; absent further Application progress, another recovery computes the same original progress bound. Existing deadline unit checks explicitly pin that origin. Therefore reset of proposal count alone is not proof of indefinitely extended work. Local accepted Application read and successfully delivered receive bytes update lastProgress; no current-owner contradiction established for that definition. Generation non-advance is refused at commit, and actual Endpoint opens fresh capsule for request generation; generic arbitrary opener generation mismatch is not established maintained-caller defect.
+#446 revised full-check exact688 terminal exit2: Forwarding ParentReaderServesIndependentChildWith255QueuedLanes timed out before aWriteStarted; cmd qualification package passes are narrower evidence, not full acceptance. Root inspected helper: aOpen is after all255 actual downstream OPEN frames; aWriteStarted only after first16KiB BYTES. Timeout text differs from peerDone error branch. Sent implementer stage/deadline/Node terminal tracing guidance and required same-environment baseline comparison before baseline attribution; no timeout/gate waiver. Participant output negative audit: background error channel bounded/latches first failure; runInterfaces pendingFailure defer is registered before resource teardown defers, so it runs after teardown and retains late joined-owner delivery failure. Ordinary ready output failure returns directly; no new issue from cancellation-vs-channel select alone.
+# Candidate: Node lifecycle event writer panics on ordinary Linux backpressure
+
+Current dev63e3b423, internal/node/event_writer_other.go:28-29 adds syscall.Write count to written before classifying EAGAIN/EWOULDBLOCK/EINTR. Go1.26.8 syscall/zsyscall_linux_amd64.go:957 assigns n=int(r0) even when errno is nonzero; internal/runtime/syscall/linux/asm_linux_amd64.s:38-40 returns r1=-1 on error. Thus a full nonblocking pipe/journal socket yields written=-1 on its first failed write. If context remains live until next5ms tick, raw[written:] panics. On interrupted later write, position also regresses and can duplicate/truncate an event rather than preserve its offset. No malicious input or security condition required.
+
+Maintained caller: cmd/ardents-node/node_mode.go installs nodeEventEmitter(boundedOutput,...); that adapter calls node.EventEmitter -> writeEvent. Node emitState/resource uses explicit bounded context. Selected stdout pipe or systemd journal socket backpressure is a normal output failure condition and should wait within deadline then return error, preserving lifecycle joined shutdown; it must not panic. Existing journal socket test checks only a writable socket, not saturation. F33 ownership audit does not cover this error arithmetic.
+
+Acceptance: actual writeEvent on filled nonblocking pipe/socket with live short deadline must return deadline error without panic or negative count; a draining peer must receive exactly one complete bounded event with no duplicated prefix, partial offset correct; closed peer must retain its actual write error. Preserve selected platform behavior and deadline requirement. Add tests only through checked existing execution profile. Runtime actual-function reproduction remains outstanding; no thread at five-slot cap.
+
+Runtime reproduction 2026-10-02: Go1.26.8 linux/amd64 in approved image0ecc, UID10001, own --rm container. Unchanged writeEvent body copied from source SHA256 B27D9C70C58E1E070E17C3764351036FA774029194548A8B0FA0EEE62D0713BB; only package changed to main and bounded filled-pipe harness appended outside repo. Harness SHA256 FC653A24D94BD3A6542DB556F7141B5C5441CA4507CED8ED860A21C62A042E5C. Actual output: REPRODUCED writeEvent panic: runtime error: slice bounds out of range [-1:]. Live100ms context, no reader, ordinary nonblocking pipe saturation. Confirms writer arithmetic defect, not full Node process/systemd qualification. First container attempt used default diagnostic entrypoint and failed unknown diagnostic operation (invalid invocation, not test result); corrected explicit /bin/sh invocation reproduced. Both containers auto-removed. Maintained runtime unmodified.
+### F116 — Node event writer negative syscall count under backpressure. Actual Go1.26.8 Linux copied-body filled-pipe reproduction confirms panic slice bounds [-1:]. Registered GitHub #476 https://github.com/dianabuilds/ardents-network/issues/476 in C0 Closed Alpha after explicit Product Owner approval of the exact externally published defect payload. External complete brief ardents-node-event-negative-write-issue.md. No implementation thread admitted yet; active chat limit and implementation WIP selection/ledger are separate under updated AGENTS.md.
+New candidate from #453 failed-fixture diagnosis: orphaned queued CREDIT after child CLOSE may exhaust Forwarding control queue around212-223 real issuer exchanges before refill. Root source check closed_forwarding_channel.close queues CLOSE, deletes child and releases queued data/reverse controls, but does not itself remove existing forward controls for that lane. Consumer reachability and actual retirement/available predicate remain required before confirming leak; implementer preparing deterministic RED and separate bounded receipt. Coordinator explicitly prevents silently adding shared Forwarding implementation scope to453 cancellation slice. No new tracker/thread yet.
+#449 concrete candidate causal ordering independently source-checked: incoming CLOSE deletes Route child, late reverse CREDIT returns ErrClosedForwardingChildRetired, copyReverse deferred link.stop retires session lane/reverse queue, while drainForwarding still must emit the queued local CLOSE. Candidate449 acquireWriter treats reverse.closed without peer-CLOSE witness as cancellation; this can reject required terminal emission. Root relayed explicit local-vs-peer retirement distinction and retained parent/deadline/physical-failure acceptance. Runtime deterministic RED remains implementer work; symptom attribution still pending. Separate #453 orphaned-controls hypothesis shares retirement area but requires separate reservation/consumer proof.
+# Confirmed queued defect: child CLOSE leaks unreachable Forwarding CREDIT controls
+
+Current dev63e3b4239. Owner internal/route/closed_forwarding_channel.go close deletes child and refunds data/reverse controls, but leaves previously queued forward CREDIT controls. Node eventAvailable can no longer admit those controls after link retirement/deletion, so their controlBytes and shared governor reservations cannot be reclaimed by NextAvailable. Root inspected exact current close/queueControl/dequeueControl and actual Node availability code.
+
+Evidence inspected: ardents-453/orphaned-controls-defect-receipt.md. Deterministic baseline RED retains16 orphan controls/320 bytes and no live child, then refuses a supported live OPEN below the unchanged16KiB capacity. Actual Node availability observation confirms retired CREDIT=false and sibling CREDIT=true. Failed real issuer Control exchange fixture reproduces queue-unavailable firstcause before client failure in3/4 controlled QUIC cases,212-223 exchanges. Exact source/test hashes and raw logs are in original receipt. No installed workload qualification claimed.
+
+Bounded repair: release only retired child's superseded queued/unemitted CREDIT controls; preserve sibling work, undispatched OPEN cancellation/join responsibility, selected queue ceilings, actual physical writer accounting and terminal-close ownership. Acceptance: exact baseline RED->GREEN, correct governor refund once, sibling controls delivered, full248x66-byte OPEN boundary restored and249th refused; late/repeated retirement and cancellation, actual affected issuer exchange bothCarriers. Preserve previous gate failures; no timeout/queue increase.
+
+Coordination: this is distinct from453 Source caller cancellation and449 writer acquisition/terminal ownership. Route channel owner also intersects queued472; sequence after449 final delta or explicitly verify disjoint actual changes. Diagnostic experimental patch was exported outsideGit and removed from453; no new implementation slice selected/admitted, no implementation thread created. External publication of this new payload has not been approved by automatic review; do not reuse rejected453-comment route as workaround.
+
+Forwarding queued OPEN/CLOSE static negative boundary dev63e: OPEN event retains decoded destination/restriction independently of child map; drain starts tracked asynchronous opening, pending CLOSE is available via openings.pending, cancelLane cancels and collects its exact result before retiring that lane, while retaining preceding sibling successful results. Existing cancellation test covers earlier B result preceding canceled A result; physical cleanup errors remain retained. Thus deleting Route child before OPEN dispatch does not alone prove missing opening authority or a parent failure. Orphaned-CREDIT repair must preserve queued OPEN and its tracked cancellation/join path; simply deleting all lane controls at CLOSE would remove maintained opening ownership work. A natural opening failure racing local close can still need actual producer evidence before claiming independent additional bug.
+Integration queue coordination:446/465/453 instructed to finish already necessary gates, supply compact exact-HEAD handoff, and end status-only working turns if solely awaiting review/integration/publication; no live gate canceled.465 exact6607ac563/base63e clean four-file delta independently pinned/prepared, not reviewed. Actual docker inventory confirms four owned active task containers449/446/465/453; root476 reproduction absent, five stopped foreign swarm-zulip containers preserved. No extra implementation admission or gate waiver.
+465 pre-review source audit6607: exact ardp CLOSE validity gates incoming discard; local discard happens before reservation release; no transport deadline shortening in discardInput. Read drops lane mutex before handshake/physical CREDIT, avoiding newly introduced bridge/lane inverse-lock ordering. Original448 physical selected CREDIT vs terminal deadline remains governed by final closeInput after terminal write. No new defect established in examined hunk; independent axes/full gate outstanding.

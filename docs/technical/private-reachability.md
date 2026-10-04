@@ -162,7 +162,11 @@ The Source submits the capsule over a fresh class-1 Introduction Control channel
 Introduction generates a channel-local request nonce and sends the unchanged
 sealed capsule through the Publisher's actual class-3 registration. That owner
 bounds queued and active deliveries to 16, limits starts to four per second,
-and reserves operation/RESULT/CLOSE plus withdrawal against its original 1 MiB.
+and reserves operation/RESULT/CLOSE plus withdrawal against the registration's
+original allowance. The receiver currently implements 8 MiB; the
+[admission contract](private-admission.md#resource-classes-and-admission)
+retains 1 MiB and records the unresolved discrepancy. This composition is not
+evidence that the larger allowance was accepted.
 Publisher acknowledges after independent capsule acceptance and joins the
 terminal child CLOSE before handing over the binding. Both Endpoint exchanges
 are job-scoped operations that context retirement joins; failed Source cleanup

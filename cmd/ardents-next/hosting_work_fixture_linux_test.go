@@ -1,4 +1,6 @@
-package admittedwork
+//go:build linux
+
+package main
 
 import (
 	"context"
@@ -9,9 +11,9 @@ import (
 	"time"
 )
 
-// Plan supplies installation roots, a token and externally owned authority facts.
+// hostingWorkFixture supplies installation roots, a token and externally owned authority facts.
 // Observe must re-read current facts; this package does not authenticate Network.
-type Plan struct {
+type hostingWorkFixture struct {
 	Root, Budget       string
 	Receiver           receiving.Receiver
 	NotAfter, Deadline time.Time
@@ -20,12 +22,12 @@ type Plan struct {
 	Observe            func() (admission.AuthorityFacts, time.Time, error)
 }
 
-// Run admits one bounded local transfer and joins it before releasing capacity.
-func Run(ctx context.Context, p Plan) error {
-	return run(ctx, p, transferLoopback)
+// runHostingFixture composes domain owners only for integration tests.
+func runHostingFixture(ctx context.Context, p hostingWorkFixture) error {
+	return runHostingFixtureWithTransfer(ctx, p, transferLoopback)
 }
 
-func run(ctx context.Context, p Plan, transfer func(context.Context, uint64, time.Time, func() error) error) (outcome error) {
+func runHostingFixtureWithTransfer(ctx context.Context, p hostingWorkFixture, transfer func(context.Context, uint64, time.Time, func() error) error) (outcome error) {
 	if ctx == nil || p.Observe == nil || p.Bytes == 0 || p.Bytes > 64<<10 || !time.Now().Before(p.Deadline) || p.Deadline.After(time.Now().Add(5*time.Second)) {
 		return errors.New("invalid local work plan")
 	}

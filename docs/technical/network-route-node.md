@@ -816,9 +816,12 @@ A separate class-1 submission is admitted for the same Introduction duty.
 Its receiver forwards only the sealed capsule over the already owned class-3
 registration, using a fresh channel-local request nonce and ordered even child
 IDs. It reserves at most 16 pending deliveries, including writer waiters, and
-limits both admission and actual dispatch to four per second. The bounded
-8 MiB registration allowance includes delivery OPERATION, RESULT, CLOSE and
-reserved withdrawal; another submission token cannot enlarge it. Publisher
+limits both admission and actual dispatch to four per second. The implemented
+registration allowance is bounded to 8 MiB and includes delivery OPERATION, RESULT,
+CLOSE and reserved withdrawal; another submission token cannot enlarge it.
+This differs from the selected 1 MiB class-3 allowance in the
+[admission contract](private-admission.md#resource-classes-and-admission);
+the implementation description does not accept a quota increase. Publisher
 acknowledgement is bounded by the capsule and original registration expiry.
 Failure that cannot finish a child retires that registration without reclaiming
 its slot. Publisher refresh and complete command publication readiness remain

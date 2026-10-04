@@ -117,15 +117,10 @@ func successorImportAllowed(source, dependency string) bool {
 		"internal/successor/admission/issuance":      {"admission", "admission/quota", "admission/issuerprofile", "nodeidentity"},
 		"internal/successor/admission/issuer":        {"admission", "admission/quota", "admission/issuance", "nodeidentity"},
 		"internal/successor/nodeidentity":            {"admission/issuerprofile"},
-		"internal/successor/admittedwork":            {"admission", "admission/receiving", "hosting"},
 		"internal/successor/hosting":                 {},
-		"cmd/ardents-next":                           {"admittedwork", "network", "network/state", "admission/stock", "admission/receiving", "admission/allocation", "admission", "admission/quota", "admission/issuerprofile", "admission/issuance", "admission/issuer", "nodeidentity", "hosting"},
+		"cmd/ardents-next":                           {"network", "network/state", "admission/stock", "admission/receiving", "admission/allocation", "admission", "admission/quota", "admission/issuerprofile", "admission/issuance", "admission/issuer", "nodeidentity", "hosting"},
 	}
 	if zoneDependency {
-		if owner == "internal/successor/admittedwork" && strings.HasSuffix(source, "_test.go") && (dependency == modulePath+"/internal/successor/admission/token" || dependency == modulePath+"/internal/successor/admission/issuerprofile") {
-			return true
-		}
-
 		if source == "cmd/ardents-next/network_admission_fixture_linux_test.go" && dependency == modulePath+"/internal/successor/network/epoch" {
 			return true
 		}

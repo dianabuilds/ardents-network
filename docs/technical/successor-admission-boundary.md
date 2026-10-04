@@ -35,7 +35,7 @@ acceptance by a receiver must not be collapsed into one journal.
 | Node identity private key | Node Identity; issuer profile preparation uses its purpose-specific signing operation |
 | Physical memory, bandwidth reservations and host capacity | Hosting; a token never guarantees capacity |
 | TLS/QUIC, HELLO binding, OPEN/ADMIT framing, lane state, route selection and child lifetime | Route/Node/Endpoint composition; contextual checks stay at those boundaries |
-| Introduction registration IDs, slot replay and withdrawal | Introduction; a fresh token must not erase an earlier registration floor |
+| Introduction registration IDs, slot replay and withdrawal | Route's receiving Introduction owner; a fresh token must not erase an earlier registration floor |
 | Permission file paths, file publication/import, command output | Application adapters; Stock accepts and returns bytes and request commitments |
 | Context/Publisher creation, worker identity and shutdown tree | Endpoint; Admission only retains/revokes the holder's admission state |
 
@@ -63,8 +63,8 @@ There is no second live issuer implementation in this tree.
 | internal/route/closed_admission_channel.go | Class allowance and deadline bound represented by receiving.Allowance | Channel handshake and delivery of the accepted allowance |
 | internal/route/closed_forwarding_channel.go; internal/route/closed_join_replenishment.go | Refill replaces remaining allowance without extending its original deadline | Counting bytes and deciding when a live lane can request refill |
 | internal/route/closed_duty_limits.go | Verification admission bound represented by receiving.VerificationGate | Other transport/role counters and scheduling |
-| internal/network/closedprofile/token_spki.go and profile key fields | Canonical token key grammar represented by issuerprofile | Signed profile acceptance, membership and currentness |
-| internal/admission/spending/introduction_slots.go | None: slot replay is an Introduction rule | Whole slot history and registration lifetime |
+| internal/successor/network/closedprofile/token_spki.go and profile key fields | Canonical token key grammar represented by issuerprofile | Signed profile acceptance, membership and currentness |
+| internal/admission/spending/introduction_slots.go | None: slot replay belongs to Route's receiving Introduction owner | Whole slot history and registration lifetime |
 
 This is a responsibility review of the named current paths, not a claim that
 every line in the repository has been semantically classified. The old runtime
@@ -117,6 +117,16 @@ This scenario supplies authority facts at the boundary. It is not a test of
 Network authenticity or transport integration. Architecture checks enforce exact
 imports and disallow issuer
 composition from importing token signing or owning a second signer.
+
+The separate new Network-backed composition exercises actual signed intake,
+`CurrentRuntime`, blind issuance, durable presentation/spend and genuine
+Hosting reservations. Its command tests cover authority loss before effects,
+a signed successor after spend without refund, conflict/clock refusal, refill
+deadline retention and release after physical join. Network owns authenticated
+facts; Admission still owns quota, verification and irreversible spend. See
+[Network's consumer contract](successor-network-state.md#contracts-for-subsequent-domain-replacements)
+and the [domain map](../development/domain-map.md) for source/evidence identity.
+These tests do not qualify Route or either selected Carrier.
 
 
 ## Behavioral evidence map
