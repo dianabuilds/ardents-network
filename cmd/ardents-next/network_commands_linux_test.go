@@ -22,8 +22,28 @@ import (
 )
 
 func TestNetworkCommandsAndAdmissionUseAuthenticatedRoots(t *testing.T) {
+	for _, test := range []struct {
+		name  string
+		class admission.Class
+		bytes uint64
+	}{
+		{"Forward", admission.ForwardClass, 33554432},
+		{"Registration", admission.RegistrationClass, 1048576},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			testNetworkCommandsAdmissionClass(t, test.class, test.bytes)
+		})
+	}
+}
+
+func testNetworkCommandsAdmissionClass(t *testing.T, class admission.Class, selectedBytes uint64) {
+	t.Helper()
 	_ = compiledCommand(t)
-	f := newNetworkAdmissionFixture(t)
+	f := newNetworkAdmissionFixture(t, func(f *networkAdmissionFixture) {
+		if class == admission.RegistrationClass {
+			f.spec.Nodes[1].RoleDomain, f.spec.Nodes[1].Subrole = 4, 3
+		}
+	})
 	bundle, err := networkfixture.BuildClosed(f.spec)
 	if err != nil {
 		t.Fatal(err)
@@ -104,9 +124,15 @@ func TestNetworkCommandsAndAdmissionUseAuthenticatedRoots(t *testing.T) {
 	// Each simultaneously opened participant owns one installation-local State
 	// lease. They share authenticated public bytes, not a writable private root.
 	holderNetwork, issuerNetwork, receiverNetwork := seed(), seed(), seed()
-	holderConfig := map[string]any{"root": t.TempDir(), "profile": "", "network": holderNetwork, "role": admission.AllocationUser}
+	role := admission.AllocationUser
+	if class == admission.RegistrationClass {
+		role = admission.AllocationPublisher
+	}
+	holderConfig := map[string]any{"root": t.TempDir(), "profile": "", "network": holderNetwork, "role": role}
 	holder, closeHolder := admissionLocalConsole(t, "holder", holderConfig)
-	request := holder(holderCommand{Operation: "request", Maxima: [3]uint32{0, 1, 0}})
+	var maxima [3]uint32
+	maxima[class-1] = 1
+	request := holder(holderCommand{Operation: "request", Maxima: maxima})
 	if request.Outcome != "completed" {
 		t.Fatal(request)
 	}
@@ -135,7 +161,7 @@ func TestNetworkCommandsAndAdmissionUseAuthenticatedRoots(t *testing.T) {
 	if reply := holder(holderCommand{Operation: "import", Digest: request.Digest, Payload: signed}); reply.Outcome != "completed" {
 		t.Fatal(reply)
 	}
-	challenge := token.ClosedTokenContext{NetworkID: f.profile.NetworkID, ProfileDigest: f.profile.Digest, IssuerNodeID: f.profile.IssuerNodeID, ReceiverNodeID: f.receiver.NodeID, ReceiverDutyGeneration: f.receiver.DutyGeneration, Class: 2, WindowStart: time.Now().UTC().Truncate(time.Hour)}
+	challenge := token.ClosedTokenContext{NetworkID: f.profile.NetworkID, ProfileDigest: f.profile.Digest, IssuerNodeID: f.profile.IssuerNodeID, ReceiverNodeID: f.receiver.NodeID, ReceiverDutyGeneration: f.receiver.DutyGeneration, Class: uint8(class), WindowStart: time.Now().UTC().Truncate(time.Hour)}
 	intent := stock.IssuanceIntent{Challenges: []token.ClosedTokenContext{challenge}, Selection: stock.ExchangeBinding{ID: [32]byte{21}, ProfileDigest: f.profile.Digest}, Bootstrap: true, Deadline: f.profile.NotAfter}
 	badIntent := intent
 	badChallenge := challenge
@@ -158,18 +184,19 @@ func TestNetworkCommandsAndAdmissionUseAuthenticatedRoots(t *testing.T) {
 	presentation := stock.Presentation{NetworkID: f.profile.NetworkID, StateGeneration: f.profile.StateGeneration, StateDigest: f.profile.StateDigest, ProfileDigest: f.profile.Digest, RecipientNodeID: f.receiver.NodeID, RecipientDutyGeneration: f.receiver.DutyGeneration, ChannelNonce: [32]byte{22}, Deadline: f.profile.NotAfter}
 	wrong := presentation
 	wrong.RecipientDutyGeneration++
-	if reply := holder(holderCommand{Operation: "take", Presentation: wrong, Class: 2}); reply.Outcome != "refused" {
+	if reply := holder(holderCommand{Operation: "take", Presentation: wrong, Class: uint8(class)}); reply.Outcome != "refused" {
 		t.Fatal("unaccepted recipient consumed presentation", reply)
 	}
-	taken := holder(holderCommand{Operation: "take", Presentation: presentation, Class: 2})
+	taken := holder(holderCommand{Operation: "take", Presentation: presentation, Class: uint8(class)})
 	if taken.Outcome != "completed" {
 		t.Fatal(taken)
 	}
 	closeHolder()
 	receiverConfig := map[string]any{"root": t.TempDir(), "profile": "", "network": receiverNetwork, "receiver": f.receiver, "not_after": f.profile.NotAfter}
 	receiver, closeReceiver := admissionLocalConsole(t, "receiver", receiverConfig)
-	accept := map[string]any{"operation": "accept", "token": taken.Token, "class": 2, "deadline": time.Now().Add(time.Second)}
-	if reply := receiver(accept); reply.Outcome != "completed" {
+	deadline := time.Now().Add(time.Second)
+	accept := map[string]any{"operation": "accept", "token": taken.Token, "class": class, "deadline": deadline}
+	if reply := receiver(accept); reply.Outcome != "completed" || reply.Bytes != selectedBytes || !reply.Deadline.Equal(deadline) {
 		t.Fatal(reply)
 	}
 	closeReceiver()

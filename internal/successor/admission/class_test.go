@@ -11,7 +11,7 @@ func TestClosedClassContract(t *testing.T) {
 		bytes    uint64
 		lifetime time.Duration
 	}{
-		{1, 65536, 30 * time.Second}, {2, 33554432, 30 * time.Minute}, {3, 8388608, 10 * time.Minute},
+		{1, 65536, 30 * time.Second}, {2, 33554432, 30 * time.Minute}, {3, 1048576, 10 * time.Minute},
 	} {
 		if test.class.ByteLimit() != test.bytes || test.class.Lifetime() != test.lifetime {
 			t.Fatalf("class %d changed its closed contract: %d/%s", test.class, test.class.ByteLimit(), test.class.Lifetime())

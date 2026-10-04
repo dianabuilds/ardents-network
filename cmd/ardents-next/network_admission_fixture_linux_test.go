@@ -196,11 +196,20 @@ func (f *networkAdmissionFixture) profileConflict(t *testing.T) error {
 
 func (f *networkAdmissionFixture) tokens(t *testing.T, count int) (*stock.Owner, [][]byte) {
 	t.Helper()
+	return f.tokensForClass(t, admission.ForwardClass, count)
+}
+
+func (f *networkAdmissionFixture) tokensForClass(t *testing.T, class admission.Class, count int) (*stock.Owner, [][]byte) {
+	t.Helper()
 	root := t.TempDir()
 	if err := os.Chmod(root, 0700); err != nil {
 		t.Fatal(err)
 	}
-	holder, err := stock.Open(root, admission.AllocationUser, f.authority.observe)
+	role := admission.AllocationUser
+	if class == admission.RegistrationClass {
+		role = admission.AllocationPublisher
+	}
+	holder, err := stock.Open(root, role, f.authority.observe)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -209,7 +218,9 @@ func (f *networkAdmissionFixture) tokens(t *testing.T, count int) (*stock.Owner,
 			t.Error(err)
 		}
 	})
-	raw, digest, err := holder.Request([3]uint32{0, uint32(count), 0})
+	var maxima [3]uint32
+	maxima[class-1] = uint32(count)
+	raw, digest, err := holder.Request(maxima)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -241,7 +252,7 @@ func (f *networkAdmissionFixture) tokens(t *testing.T, count int) (*stock.Owner,
 		t.Fatal(err)
 	}
 	challenge := token.ClosedTokenContext{NetworkID: f.profile.NetworkID, ProfileDigest: f.profile.Digest, IssuerNodeID: f.profile.IssuerNodeID,
-		ReceiverNodeID: f.receiver.NodeID, ReceiverDutyGeneration: f.receiver.DutyGeneration, Class: 2, WindowStart: time.Now().UTC().Truncate(time.Hour)}
+		ReceiverNodeID: f.receiver.NodeID, ReceiverDutyGeneration: f.receiver.DutyGeneration, Class: uint8(class), WindowStart: time.Now().UTC().Truncate(time.Hour)}
 	challenges := make([]token.ClosedTokenContext, count)
 	for index := range challenges {
 		challenges[index] = challenge
@@ -272,7 +283,7 @@ func (f *networkAdmissionFixture) tokens(t *testing.T, count int) (*stock.Owner,
 	for index := range count {
 		presentation := stock.Presentation{NetworkID: f.profile.NetworkID, StateGeneration: f.profile.StateGeneration, StateDigest: f.profile.StateDigest, ProfileDigest: f.profile.Digest,
 			RecipientNodeID: f.receiver.NodeID, RecipientDutyGeneration: f.receiver.DutyGeneration, ChannelNonce: [32]byte{byte(index + 1)}, Deadline: f.profile.NotAfter}
-		raw, err := holder.Take(t.Context(), presentation, uint8(admission.ForwardClass))
+		raw, err := holder.Take(t.Context(), presentation, uint8(class))
 		if err != nil {
 			t.Fatal(err)
 		}

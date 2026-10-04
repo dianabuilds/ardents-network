@@ -323,16 +323,18 @@ acceptance is confined to the exact token window and receiver duty.
 | 2 Forward | One authenticated forwarding channel or data-join terminal lane, at most 32 MiB of receiver-accounted ingress plus egress and 1,800 seconds | A forwarding channel permits 256 concurrent work lanes plus two reserved control lanes; all child work remains charged to the same parent reserve |
 | 3 Publication | One Introduction registration for at most 600 seconds and 1 MiB of capsule/control traffic | One slot, at most 16 pending capsules, delivery rate at most 4/s |
 
-There is an unresolved class-3 contract/implementation discrepancy:
-[`admission.RegistrationClass.ByteLimit`](../../internal/admission/class.go)
-currently returns 8 MiB, and the
-[Introduction receiver description](network-route-node.md#closed-introduction-registration-receiver)
-records that implemented allowance. The selected table above remains 1 MiB;
-neither a domain relocation nor this source inventory accepts the increase.
-The owning change must reconcile the allowance and its workload evidence before
-claiming contract conformance. The
+The [new Admission class owner](../../internal/successor/admission/class.go)
+enforces the selected 1 MiB Registration allowance and unchanged 600-second
+maximum. Receiving returns this allowance after genuine verification and
+durable spend; Route consumes it without implementing another quota.
+The preserved [predecessor class owner](../../internal/admission/class.go) still
+returns 8 MiB, as recorded by the
+[predecessor Introduction receiver description](network-route-node.md#closed-introduction-registration-receiver).
+That increase is not an accepted policy, and the predecessor is not switched or
+rewritten by the isolated migration. The
 [Route boundary analysis](../development/route-domain-boundary-analysis.md#contract-and-implementation-gaps)
-records the concrete reconciliation proposal.
+records the workload limitation and proposed policy investigation; it does not
+authorize increasing the new allowance or promise 256 deliveries per slot.
 
 These are work maxima, not bytes the implementation should generate.
 Under [ADR-0085](../adr/0085-bound-forwarding-replenishment.md), a fresh

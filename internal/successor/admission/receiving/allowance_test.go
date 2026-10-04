@@ -25,6 +25,28 @@ func TestAllowancePreservesOriginalDeadlineAndReplacesRemaining(t *testing.T) {
 	}
 }
 
+func TestRegistrationAllowanceKeepsSelectedMaximumAndEarlierBounds(t *testing.T) {
+	now := time.Unix(1800000100, 0)
+	for _, test := range []struct {
+		name               string
+		caller, duty, want time.Duration
+	}{
+		{"selected lifetime", time.Hour, time.Hour, 600 * time.Second},
+		{"caller", 15 * time.Second, time.Hour, 15 * time.Second},
+		{"authority", time.Hour, 20 * time.Second, 20 * time.Second},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			a, err := receiving.NewAllowance(admission.RegistrationClass, now, now.Add(test.caller), now.Add(test.duty))
+			if err != nil || a.Bytes() != 1048576 || !a.Deadline().Equal(now.Add(test.want)) {
+				t.Fatalf("selected Registration contract: bytes=%d deadline=%s error=%v", a.Bytes(), a.Deadline(), err)
+			}
+			if _, err := a.Replenish(now, 1); err == nil {
+				t.Fatal("Registration acquired forwarding refill authority")
+			}
+		})
+	}
+}
+
 func TestVerificationGateBoundsConcurrencyRateAndClockRollback(t *testing.T) {
 	var gate receiving.VerificationGate
 	now := time.Unix(1800000100, 0)

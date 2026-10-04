@@ -89,6 +89,13 @@ The allowance is bounded by both profile and duty; refill retains the original
 deadline. A successful Grant transfers reservation release to the work owner.
 Closing Receiving does not release already accepted work.
 
+The selected class policy remains Control 64 KiB/30 seconds, Forward
+32 MiB/1,800 seconds and Registration 1 MiB/600 seconds. Registration includes
+bidirectional capsule/control traffic and has no forwarding refill right.
+The new owner restores the selected Registration maximum; the preserved
+predecessor's 8 MiB implementation is not a policy amendment. Class IDs,
+canonical token bytes, issuance counts and irreversible spend remain unchanged.
+
 The root contains contracts and validation. The quota child owns durable debit
 state and opaque confirmation; no compatibility facade remains at the root.
 
@@ -148,6 +155,8 @@ outside this evidence.
 | Authority disappears after spend | stock/receiving_cycle_test.go: TestReceivingAuthorityFailureAfterSpendRetainsBurnAndReleasesCapacity | No spend refund across reopen, no leaked reservation |
 | Refill and ownership transfer | stock/receiving_cycle_test.go: TestReceivingRefillPreservesDeadlineAndTransferredReservations | No deadline extension or premature release at receiver Close |
 | Real standalone consumers and durable reopen | cmd/ardents-next/admission_cycle_linux_test.go: TestAdmissionStandaloneCommandsIssuePresentReceiveAndReopen (repository-relative path) | No token revival after holder restart, no repeated receiver spend, no lease left after SIGINT while inherited stdin stays open |
+| Selected Registration allowance with genuine signed Network and Hosting | cmd/ardents-next/registration_allowance_linux_test.go: TestRegistrationSelectedAllowanceWithSignedNetworkAndDurableSpend (repository-relative path) | Receiving returns the independent 1 MiB oracle, retains earlier caller bound and work-owned reservation, returns capacity once and refuses spent tokens after reopen |
+| Selected class allowance through the compiled command consumer | cmd/ardents-next/network_commands_linux_test.go: TestNetworkCommandsAndAdmissionUseAuthenticatedRoots (repository-relative path) | Real class-2 and class-3 issuance/presentation/spend return selected bytes without extending the caller deadline; command restart cannot revive spend |
 | Real Hosting budget with genuine tokens | Same compiled-process scenario, Hosting phase | Authority/budget refusal cannot burn token or leak a reserve; receiver Close cannot free accepted work |
 
 The only batch request parser and result codec live in the Admission root.

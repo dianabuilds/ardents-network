@@ -22,7 +22,7 @@ func (class Class) ByteLimit() uint64 {
 	case ForwardClass:
 		return 32 << 20
 	case RegistrationClass:
-		return 8 << 20
+		return 1 << 20
 	}
 	return 0
 }

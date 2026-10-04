@@ -282,8 +282,12 @@ func TestCancellationAfterCommitAndCloseResult(t *testing.T) {
 		}
 		return nil
 	}
-	if !errors.Is(l.Close(), failure) || !errors.Is(l.Close(), failure) {
+	closed := l.Close()
+	if !errors.Is(closed, failure) {
 		t.Fatal("close lost result")
+	}
+	if again := l.Close(); again != closed {
+		t.Fatal("repeated close changed the retained result")
 	}
 	reopened, err := Open(root, b)
 	if err != nil {
