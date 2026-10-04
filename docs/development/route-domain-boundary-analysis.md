@@ -11,11 +11,16 @@ creates no package, and changes no accepted wire, persistence or product rule.
 The [package map](package-map.md) remains the current import registry; the
 [DDD transition design](ddd-transition-design.md) owns the wider proposal.
 
-The observed checkout is `dev` at
+The original inventory checkout was `dev` at
 `b989b39da389ece7414a27aec334340e1c040c20`, with pre-existing staged, modified
-and untracked work. In particular, live Network adapters are moving under
-`internal/successor/network`; that location does not establish completed
-integration. Source links below describe the working tree, not just HEAD.
+and untracked work. At that inspection, Network adapters were moving under
+`internal/successor/network`; a source location alone did not establish
+completed integration. Source links below preserve that inventory provenance.
+Subsequent new Network and retained Route prefix results are recorded in the
+[maintained domain map](domain-map.md) and
+[implemented prefix owner](../technical/successor-route-prefix.md).
+The bounded prefix result at `69406f7c896aa45321b5556f2b63d0c99f2dba44`
+does not implement the remaining Introduction or JOIN responsibilities below.
 The earlier [Route extraction record](route-refactoring-boundary.md) keeps its
 named baseline and is not the current owner map.
 
@@ -33,8 +38,10 @@ linked by those owners take precedence over source behavior.
 
 This is brownfield Go in one root module, with Endpoint and Node process
 composition and separate installation, context and receiving-duty roots.
-Route already contains behavior-rich state machines: spent admission claims,
-bounded forwarding children, registration slots and JOIN pairing. Its problem
+The current routing composition contains behavior-rich state machines:
+admission-gated bounded forwarding children, registration slots and JOIN
+pairing. Admission remains the exclusive owner of irreversible spend; calling
+its gate does not move that policy into Route. The routing problem
 is distributed ownership across Route, Entry, Endpoint and Node. Protected
 routing is a core domain worth explicit consistency boundaries; Carrier and
 byte codecs remain technical mechanisms. The proposed migration uses DDD for
