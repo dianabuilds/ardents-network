@@ -5,6 +5,7 @@ package transport
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 
 	"github.com/dianabuilds/ardents-network/internal/successor/network"
@@ -138,7 +139,9 @@ func (c *pooledCarrier) release() error {
 	err := c.session.Close()
 	c.releaseControl()
 	p.mu.Lock()
-	p.err = errors.Join(p.err, c.session.joinedPhysicalFailure())
+	if physical := c.session.joinedPhysicalFailure(); physical != nil {
+		p.err = errors.Join(p.err, fmt.Errorf("route outgoing carrier retirement: %w", physical))
+	}
 	delete(p.entries, c.peer)
 	close(c.changed)
 	p.mu.Unlock()

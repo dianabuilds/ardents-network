@@ -35,6 +35,7 @@ type session struct {
 	writer                  chan struct{}
 	opening                 chan struct{}
 	active                  *lane
+	activeKind              uint8
 	activeEnd               time.Time
 	pending                 bool
 	queues                  *queueBudget
@@ -227,11 +228,20 @@ func (s *session) read() {
 			}
 		case ardp.KindClose:
 			l.peerClosed = true
+			l.peerRefused = f.Body[0] != 0
 			cause := error(nil)
 			if f.Body[0] != 0 {
 				cause = errors.New("route peer refused lane")
 			}
 			l.stopLocked(cause)
+			if s.active == l {
+				// Only this lane's already-selected physical output is
+				// interrupted; a sibling keeps its original deadline.
+				if interrupt := s.conn.SetWriteDeadline(time.Now()); interrupt != nil {
+					s.writeErr = errors.Join(s.writeErr, interrupt)
+					err = interrupt
+				}
+			}
 		default:
 			err = errors.New("unexpected Route child frame")
 		}
@@ -293,15 +303,28 @@ func (s *session) write(l *lane, f ardp.Frame, terminal bool) error {
 	}
 	s.used += cost
 	s.active = l
+	s.activeKind = f.Kind
 	s.activeEnd = end
 	if f.Kind == ardp.KindOpen {
 		l.openEmitted = true
 	}
 	err = s.conn.SetWriteDeadline(end)
 	s.mu.Unlock()
+	lower := lowerFramingLane(s.conn)
+	before := lower.retirementWitness()
+	attempted := false
 	if err == nil {
 		for len(raw) > 0 {
 			var n int
+			if !attempted && lower == nil {
+				s.mu.Lock()
+				l.physicalAttempts++
+				if f.Kind != ardp.KindCredit {
+					l.payloadAttempts++
+				}
+				s.mu.Unlock()
+			}
+			attempted = true
 			n, err = s.conn.Write(raw)
 			if err != nil {
 				break
@@ -313,13 +336,37 @@ func (s *session) write(l *lane, f ardp.Frame, terminal bool) error {
 			raw = raw[n:]
 		}
 	}
+	after := lower.retirementWitness()
+	physicalAttempt := attempted && (lower == nil || after.payload != before.payload)
+	if lower != nil && physicalAttempt {
+		s.mu.Lock()
+		l.physicalAttempts++
+		if f.Kind != ardp.KindCredit {
+			l.payloadAttempts++
+		}
+		s.mu.Unlock()
+	}
+	if err == io.EOF && lower != nil && cleanUnemittedRetirement(f.Kind, before, after) {
+		err = nil
+	}
 	s.mu.Lock()
 	s.active = nil
 	s.mu.Unlock()
 	if err != nil {
 		s.mu.Lock()
-		s.writeErr = errors.Join(s.writeErr, err)
+		if physicalAttempt {
+			l.physicalWriteFailed = true
+			s.writeErr = errors.Join(s.writeErr, &physicalWriteFailure{kind: f.Kind, cause: err})
+		} else if !attempted {
+			// A physical deadline operation failed before Write; preserve
+			// that I/O failure without claiming a started frame.
+			l.physicalWriteFailed = true
+			s.writeErr = errors.Join(s.writeErr, err)
+		}
 		s.mu.Unlock()
+		// A lower refusal/local closure with no new lower output remains this
+		// channel's failed terminal result, not a fabricated physical failure
+		// of its receiving owner. Actual lower failures stay with that owner.
 		s.retire(err)
 	}
 	return err

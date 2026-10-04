@@ -30,15 +30,21 @@ type PrefixConfig struct {
 // fake terminal workload. Its accepted result means both exact roles admitted
 // fresh authenticated channels; Close retains one joined terminal result.
 type Prefix struct {
-	entry, interior *session
-	child           *lane
-	ctx             context.Context
-	cancel          context.CancelFunc
-	done            chan struct{}
-	closing         chan struct{}
-	once            sync.Once
-	err             error
-	release         func() error
+	entry, interior    *session
+	child              *lane
+	ctx                context.Context
+	cancel             context.CancelFunc
+	done               chan struct{}
+	closing            chan struct{}
+	once               sync.Once
+	err                error
+	release            func() error
+	config             PrefixConfig
+	registrationMu     sync.Mutex
+	registrations      map[*Registration]struct{}
+	registrationSetups map[*registrationOpening]struct{}
+	openings           sync.WaitGroup
+	activity           chan struct{}
 }
 
 func OpenPrefix(ctx context.Context, config PrefixConfig) (_ *Prefix, result error) {
@@ -57,7 +63,7 @@ func OpenPrefix(ctx context.Context, config PrefixConfig) (_ *Prefix, result err
 		return nil, err
 	}
 	childContext, cancel := context.WithDeadline(ctx, config.Deadline)
-	p := &Prefix{ctx: childContext, cancel: cancel, done: make(chan struct{}), closing: make(chan struct{}), release: config.Release}
+	p := &Prefix{ctx: childContext, cancel: cancel, done: make(chan struct{}), closing: make(chan struct{}), release: config.Release, config: config, registrations: make(map[*Registration]struct{}), registrationSetups: make(map[*registrationOpening]struct{}), activity: make(chan struct{}, 1)}
 	// The local reservation transfers at this point, including failed setup.
 	defer func() {
 		if result != nil {
@@ -148,17 +154,36 @@ func OpenPrefix(ctx context.Context, config PrefixConfig) (_ *Prefix, result err
 	if err := childContext.Err(); err != nil {
 		return nil, err
 	}
-	go func() { idle := time.NewTimer(120 * time.Second); defer idle.Stop(); p.watch(check, idle.C) }()
+	go p.watch(check, nil)
 	return p, nil
 }
 
-func (p *Prefix) watch(check func() error, idle <-chan time.Time) {
+func (p *Prefix) watch(check func() error, idleEvents <-chan time.Time) {
 	defer close(p.done)
+	idle := time.NewTimer(120 * time.Second)
+	defer idle.Stop()
+	if idleEvents == nil {
+		idleEvents = idle.C
+	}
 	ticker := time.NewTicker(100 * time.Millisecond)
 	defer ticker.Stop()
 	for {
 		select {
-		case <-idle:
+		case <-p.activity:
+			idle.Reset(120 * time.Second)
+		case <-idleEvents:
+			p.registrationMu.Lock()
+			busy := false
+			for registration := range p.registrations {
+				registration.mu.Lock()
+				busy = busy || !registration.stopped
+				registration.mu.Unlock()
+			}
+			p.registrationMu.Unlock()
+			if busy {
+				idle.Reset(120 * time.Second)
+				continue
+			}
 			err := errors.New("route prefix idle readiness expired")
 			p.interior.retire(err)
 			p.entry.retire(err)
@@ -190,6 +215,24 @@ func (p *Prefix) watch(check func() error, idle <-chan time.Time) {
 }
 
 func (p *Prefix) closeOpening() error {
+	p.registrationMu.Lock()
+	for opening := range p.registrationSetups {
+		opening.cancel()
+	}
+	registrations := make([]*Registration, 0, len(p.registrations))
+	for registration := range p.registrations {
+		registrations = append(registrations, registration)
+		registration.stop(nil)
+	}
+	p.registrationMu.Unlock()
+	// Terminal borrowers need their still-live framing parents to emit their
+	// bounded CLOSE and join. Seal/cancel every terminal acquisition first;
+	// only retire the parents after those original borrowers have joined.
+	p.openings.Wait()
+	var joined error
+	for _, registration := range registrations {
+		joined = errors.Join(joined, registration.Close())
+	}
 	// Retire the inner reader before interrupting its lower framing owner, so
 	// our own lower closure cannot become an unexplained inner transport EOF.
 	if p.interior != nil {
@@ -199,7 +242,6 @@ func (p *Prefix) closeOpening() error {
 		p.entry.retire(nil)
 	}
 	p.cancel()
-	var joined error
 	if p.interior != nil {
 		joined = errors.Join(joined, p.interior.Close())
 	}
@@ -220,7 +262,9 @@ func (p *Prefix) Close() error {
 		return nil
 	}
 	p.once.Do(func() {
+		p.registrationMu.Lock()
 		close(p.closing)
+		p.registrationMu.Unlock()
 		p.err = p.closeOpening()
 		<-p.done
 	})

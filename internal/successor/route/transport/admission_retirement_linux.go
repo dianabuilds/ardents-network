@@ -5,15 +5,20 @@ package transport
 import (
 	"errors"
 	"sync"
+	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/successor/route/introduction"
 )
 
 // admissionRetirement retains capacity even when receiving Admission refuses
 // after reservation or spend. Admission can request rollback synchronously;
 // the Route owner completes it only after its physical borrowers have joined.
 type admissionRetirement struct {
-	mu      sync.Mutex
-	joined  bool
-	returns []*reservationReturn
+	mu           sync.Mutex
+	joined       bool
+	returns      []*reservationReturn
+	registry     *introduction.Registry
+	registration *introduction.Capacity
 }
 type reservationReturn struct {
 	owner     *admissionRetirement
@@ -26,15 +31,26 @@ type reservationReturn struct {
 // HoldReservation gives receiving Admission an exactly-once release callback
 // while retaining its physical capacity with this authenticated Route channel.
 // Composition must use it for every Hosting reservation returned to Accept.
-func (c Channel) HoldReservation(release func() error) func() error {
+func (c Channel) HoldReservation(release func() error) (func() error, error) {
 	if c.capacity == nil || release == nil {
-		return func() error { return errors.New("route capacity lifetime absent") }
+		return release, errors.New("route capacity lifetime absent")
 	}
 	r := &reservationReturn{owner: c.capacity, release: release}
 	c.capacity.mu.Lock()
+	defer c.capacity.mu.Unlock()
 	c.capacity.returns = append(c.capacity.returns, r)
-	c.capacity.mu.Unlock()
-	return r.request
+	if c.capacity.registry != nil {
+		if c.capacity.registration != nil {
+			return r.request, errors.New("route registration capacity already held")
+		}
+		position, err := c.capacity.registry.Reserve(time.Now())
+		if err != nil {
+			return r.request, err
+		}
+		c.capacity.registration = position
+		r.release = func() error { position.Release(); return release() }
+	}
+	return r.request, nil
 }
 
 func (r *reservationReturn) request() error {

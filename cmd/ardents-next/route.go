@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"path/filepath"
 	"strings"
 	"time"
@@ -35,6 +36,14 @@ func independentRouteRoots(roots ...string) bool {
 }
 
 type routeHandle struct {
-	close func() error
-	done  <-chan struct{}
+	close    func() error
+	done     <-chan struct{}
+	register func(context.Context, uint64) (routeRegistration, error)
+}
+
+type routeRegistration struct {
+	close    func() error
+	withdraw func(context.Context) error
+	done     <-chan struct{}
+	slot     [32]byte
 }

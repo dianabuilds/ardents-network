@@ -71,24 +71,56 @@ func startRoutePrefix(ctx context.Context, plan routePrefixPlan, authority admis
 			if err := authority.presentation(presentation); err != nil {
 				return nil, err
 			}
-			return holder.Take(ctx, presentation, 2)
+			class := uint8(2)
+			if h.Purpose == ardp.PurposeIntroduction {
+				class = 3
+			}
+			return holder.Take(ctx, presentation, class)
 		}})
 	if err != nil {
 		return routeHandle{}, errors.Join(err, release())
 	}
-	return routeHandle{close: prefix.Close, done: prefix.Done()}, nil
+	return routeHandle{close: prefix.Close, done: prefix.Done(), register: func(ctx context.Context, revision uint64) (routeRegistration, error) {
+		view, err := authority.current()
+		if err != nil {
+			return routeRegistration{}, err
+		}
+		duty, err := leg.IntroductionDuty(view, plan.Exclusions)
+		if err != nil {
+			return routeRegistration{}, err
+		}
+		end := minRouteDeadline(plan.Deadline, view.Profile().NotAfter, duty.RecordValidUntil, duty.Epoch.ValidUntil, time.Now().Add(admission.RegistrationClass.Lifetime()).UTC().Truncate(time.Second))
+		if bound, exists := ctx.Deadline(); exists && bound.Before(end) {
+			end = bound.UTC().Truncate(time.Second)
+		}
+		registration, err := prefix.Register(ctx, transport.RegistrationConfig{Duty: duty, Revision: revision, Deadline: end})
+		if err != nil {
+			return routeRegistration{}, err
+		}
+		return routeRegistration{close: registration.Close, withdraw: registration.Withdraw, done: registration.Done(), slot: registration.Slot()}, nil
+	}}, nil
+}
+
+func minRouteDeadline(end time.Time, bounds ...time.Time) time.Time {
+	for _, bound := range bounds {
+		if bound.Before(end) {
+			end = bound
+		}
+	}
+	return end
 }
 
 func runRoute(ctx context.Context, args []string, out, diagnostic io.Writer) (code int) {
 	var plan struct {
-		Network     *networkAuthorityPlan `json:"network"`
-		NodeID      [32]byte              `json:"node_id"`
-		SpendRoot   string                `json:"spend_root"`
-		HostingRoot string                `json:"hosting_root"`
-		Certificate string                `json:"certificate"`
-		PrivateKey  string                `json:"private_key"`
-		Work        hosting.Traffic       `json:"work"`
-		Termination hosting.Traffic       `json:"termination"`
+		Network          *networkAuthorityPlan `json:"network"`
+		NodeID           [32]byte              `json:"node_id"`
+		SpendRoot        string                `json:"spend_root"`
+		IntroductionRoot string                `json:"introduction_root"`
+		HostingRoot      string                `json:"hosting_root"`
+		Certificate      string                `json:"certificate"`
+		PrivateKey       string                `json:"private_key"`
+		Work             hosting.Traffic       `json:"work"`
+		Termination      hosting.Traffic       `json:"termination"`
 	}
 	if ctx == nil || len(args) < 1 || args[0] != "receive" || admissionConfig(args[1:], &plan) != nil || plan.Network == nil ||
 		!validAdmissionAuthority("", plan.Network, plan.SpendRoot, plan.HostingRoot) || !independentRouteRoots(plan.Network.Root, plan.SpendRoot, plan.HostingRoot) {
@@ -116,9 +148,15 @@ func runRoute(ctx context.Context, args []string, out, diagnostic io.Writer) (co
 	if err != nil {
 		return 1
 	}
+	if plan.IntroductionRoot != "" && !independentRouteRoots(plan.Network.Root, plan.SpendRoot, plan.HostingRoot, plan.IntroductionRoot) {
+		return 2
+	}
 	duty, err := view.RetainDuty(plan.NodeID, view.ObservedAt())
 	if err != nil {
 		return 1
+	}
+	if m.RoleDomain == 4 && m.Subrole == 3 && plan.IntroductionRoot == "" {
+		return 2
 	}
 	certificate, err := readRouteCertificate(plan.Certificate, plan.PrivateKey)
 	if err != nil {
@@ -144,14 +182,22 @@ func runRoute(ctx context.Context, args []string, out, diagnostic io.Writer) (co
 			code = 1
 		}
 	}()
-	server, err := transport.Listen(ctx, transport.ReceiverConfig{Authority: transport.Authority{Current: networkOwner.CurrentRuntime, Duty: duty, Profile: p.ProfileBinding}, Certificate: certificate,
+	var initializationOwner *receiving.Owner
+	if m.RoleDomain == 4 && m.Subrole == 3 {
+		initializationOwner = admissionOwner
+	}
+	server, err := transport.Listen(ctx, transport.ReceiverConfig{Authority: transport.Authority{Current: networkOwner.CurrentRuntime, Duty: duty, Profile: p.ProfileBinding}, Certificate: certificate, IntroductionRoot: plan.IntroductionRoot, Receiving: initializationOwner,
 		Admit: func(ctx context.Context, c transport.Channel, raw []byte) (receiving.Grant, error) {
-			return admissionOwner.Accept(ctx, admission.ForwardClass, raw, c.Hello.Deadline, func() (func() error, error) {
+			class := admission.ForwardClass
+			if c.Hello.Purpose == ardp.PurposeIntroduction {
+				class = admission.RegistrationClass
+			}
+			return admissionOwner.Accept(ctx, class, raw, c.Hello.Deadline, func() (func() error, error) {
 				reservation, err := budget.Reserve(ctx, hosting.ReservationRequest{Work: plan.Work, Termination: plan.Termination, WorkUntil: c.Hello.Deadline, HoldUntil: c.Hello.Deadline.Add(5 * time.Second)})
 				if err != nil {
 					return nil, err
 				}
-				return c.HoldReservation(func() error { return releaseRouteReservation(reservation) }), nil
+				return c.HoldReservation(func() error { return releaseRouteReservation(reservation) })
 			})
 		}})
 	if err != nil {
@@ -167,6 +213,7 @@ func runRoute(ctx context.Context, args []string, out, diagnostic io.Writer) (co
 	}
 	err = server.Close()
 	if err != nil {
+		_ = json.NewEncoder(diagnostic).Encode(map[string]string{"operation": "route.receive", "phase": "joined", "outcome": "failed", "stage": transport.TerminalFailureStage(err)})
 		return 1
 	}
 	_ = json.NewEncoder(diagnostic).Encode(map[string]string{"operation": "route.receive", "phase": "joined", "outcome": "canceled"})

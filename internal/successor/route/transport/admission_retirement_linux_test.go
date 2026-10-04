@@ -17,7 +17,7 @@ func TestAdmissionRollbackRetainsCapacityUntilPhysicalJoin(t *testing.T) {
 	lifetime := &admissionRetirement{}
 	releaseFailure := errors.New("retained capacity release failed")
 	var releases atomic.Int32
-	rollback := (Channel{capacity: lifetime}).HoldReservation(func() error {
+	rollback, err := (Channel{capacity: lifetime}).HoldReservation(func() error {
 		select {
 		case <-s.readerDone:
 		default:
@@ -26,6 +26,9 @@ func TestAdmissionRollbackRetainsCapacityUntilPhysicalJoin(t *testing.T) {
 		releases.Add(1)
 		return releaseFailure
 	})
+	if err != nil {
+		t.Fatal(err)
+	}
 	// Receiving Admission has refused after acquiring capacity; no successful
 	// Grant is invented by this lifecycle oracle.
 	if err := rollback(); err != nil {

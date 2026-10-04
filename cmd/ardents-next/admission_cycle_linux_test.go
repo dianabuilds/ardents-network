@@ -30,6 +30,7 @@ type localAdmissionReply struct {
 	Outcome                           string
 	Request, Token, Response, Journal []byte
 	Digest                            [32]byte
+	Slot                              [32]byte
 	Permission                        admission.Permission
 	Repeated                          bool
 	Deadline                          time.Time

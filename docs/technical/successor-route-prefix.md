@@ -35,7 +35,7 @@ rollback after capacity or spend requests release; the channel retains it until
 physical retirement joins. Failed setup therefore follows the same lifetime
 rule as a successful Grant, without changing Admission's irreversible debit.
 
-An outer Node-authenticated Carrier grants no Endpoint admission. Every child
+An outer Node-authenticated Carrier grants no Endpoint admission. Every forwarding child
 opens fresh exact-recipient role TLS and validates its HELLO, Purpose and local
 TLS exporter before genuine class-2 receiving admission. Inner HELLO must match
 the exact OPEN before spending. Reobservation follows durable presentation and
@@ -74,8 +74,10 @@ retirement; ordinary peer refusal and EOF remain local session outcomes.
 `Prefix.Done` signals retired readiness; its caller must still Close to join
 and release. `Receiver.Done`
 signals joined listener retirement, and Close retrieves its terminal result.
-This bounded operation carries no further useful work after opening, so its
-idle readiness expires after 120 seconds or its earlier immutable deadline.
+A prefix without active terminal work expires after 120 seconds of idle
+readiness or its earlier immutable deadline. Introduction registration work
+remains bounded by its own original lifetime; its retirement resets idle
+readiness without renewing any admission or parent deadline.
 
 ## Real command composition
 
@@ -101,6 +103,10 @@ Physical envelopes are explicit bounded operator inputs; Hosting measures whole
 named interfaces. These component operations do not qualify carrier overhead,
 provider invoice attribution, anonymity or installed host protection.
 Unsupported platforms refuse without opening Route roots.
+
+The separately owned [Introduction registration](successor-route-introduction.md)
+uses purpose 4/class 3 through a retained Domain 4 prefix, independent durable
+slot history and actual holder registration-open/withdraw/close commands.
 
 ## Evidence boundary
 

@@ -102,12 +102,18 @@ func (o *Owner) Accept(ctx context.Context, class admission.Class, raw []byte, d
 
 // Refill requires a still-live original Grant and retains its deadline.
 func (o *Owner) Refill(ctx context.Context, prior Grant, remaining uint64, raw []byte, reserve func() (func() error, error)) (Grant, error) {
+	if o != nil {
+		o.ledger.InvalidateFreshRoot()
+	}
 	if prior.state == nil || prior.state.owner != o {
 		return Grant{}, errors.New("foreign admission grant")
 	}
 	return o.admit(ctx, admission.ForwardClass, raw, prior.state.allowance.Deadline(), prior, remaining, reserve)
 }
 func (o *Owner) admit(ctx context.Context, class admission.Class, raw []byte, deadline time.Time, prior Grant, remaining uint64, reserve func() (func() error, error)) (Grant, error) {
+	if o != nil {
+		o.ledger.InvalidateFreshRoot()
+	}
 	if o == nil || ctx == nil || reserve == nil {
 		return Grant{}, errors.New("receiver unavailable")
 	}
@@ -166,6 +172,21 @@ func (o *Owner) admit(ctx context.Context, class admission.Class, raw []byte, de
 		return Grant{}, err
 	}
 	return Grant{&grantState{owner: o, allowance: allowance, release: approval.Release}}, nil
+}
+
+// TakeFreshRoot transfers the opaque durable creation fact before receiving
+// attempts. It cannot be reconstructed from an empty retained spend journal.
+func (o *Owner) TakeFreshRoot() (*spending.FreshRoot, error) {
+	if o == nil || o.ledger == nil {
+		return nil, errors.New("receiver unavailable")
+	}
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	if _, err := o.current(); err != nil {
+		o.ledger.InvalidateFreshRoot()
+		return nil, err
+	}
+	return o.ledger.TakeFreshRoot()
 }
 
 func (o *Owner) Close() error {

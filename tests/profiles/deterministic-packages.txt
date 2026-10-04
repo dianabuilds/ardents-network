@@ -90,3 +90,4 @@ github.com/dianabuilds/ardents-network/internal/successor/route/selection
 github.com/dianabuilds/ardents-network/internal/successor/route/ardp
 github.com/dianabuilds/ardents-network/internal/successor/route/carrier
 github.com/dianabuilds/ardents-network/internal/successor/route/transport
+github.com/dianabuilds/ardents-network/internal/successor/route/introduction

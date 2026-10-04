@@ -10,6 +10,7 @@ import (
 	"net"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/successor/admission"
 	"github.com/dianabuilds/ardents-network/internal/successor/admission/receiving"
 	"github.com/dianabuilds/ardents-network/internal/successor/route/ardp"
 	"github.com/dianabuilds/ardents-network/internal/successor/route/carrier"
@@ -57,17 +58,21 @@ func channelBinding(conn net.Conn, h ardp.Hello) (Channel, error) {
 }
 
 func freshHello(a Authority, end time.Time) (ardp.Hello, error) {
+	return freshPurposeHello(a, end, ardp.PurposeForwarding, false)
+}
+
+func freshPurposeHello(a Authority, end time.Time, purpose ardp.Purpose, outer bool) (ardp.Hello, error) {
 	m, err := a.member()
 	if err != nil {
 		return ardp.Hello{}, err
 	}
 	p := a.Profile
 	h := ardp.Hello{NetworkID: p.Network, StateGeneration: p.Generation, StateDigest: p.EpochDigest, ProfileDigest: p.Digest,
-		RecipientNodeID: m.NodeID, RecipientDutyGeneration: m.DutyGeneration, Purpose: ardp.PurposeForwarding, Deadline: end}
+		RecipientNodeID: m.NodeID, RecipientDutyGeneration: m.DutyGeneration, Purpose: purpose, Deadline: end}
 	if _, err := rand.Read(h.ChannelNonce[:]); err != nil {
 		return ardp.Hello{}, err
 	}
-	if _, err := a.hello(h, false); err != nil {
+	if _, err := a.hello(h, outer); err != nil {
 		return ardp.Hello{}, err
 	}
 	return h, nil
@@ -132,7 +137,11 @@ func presentChannel(ctx context.Context, conn net.Conn, a Authority, h ardp.Hell
 	if _, err := a.hello(h, false); err != nil {
 		return err
 	}
-	body := append([]byte{2}, raw...)
+	class, err := channelClass(h.Purpose)
+	if err != nil {
+		return err
+	}
+	body := append([]byte{byte(class)}, raw...)
 	if err := ardp.WriteFrame(conn, ardp.Frame{Kind: ardp.KindAdmit, Body: body}); err != nil {
 		return err
 	}
@@ -163,8 +172,9 @@ func receiveChannel(ctx context.Context, conn net.Conn, a Authority, admit Admit
 	if err != nil {
 		return receiving.Grant{}, h, err
 	}
-	if f.Kind != ardp.KindAdmit || f.Lane != 0 || f.Body[0] != 2 {
-		return receiving.Grant{}, h, errors.New("route forwarding admission required")
+	class, classErr := channelClass(h.Purpose)
+	if classErr != nil || f.Kind != ardp.KindAdmit || f.Lane != 0 || f.Body[0] != byte(class) {
+		return receiving.Grant{}, h, errors.New("route purpose-bound admission required")
 	}
 	grant, err := admit(ctx, binding, f.Body[1:])
 	clear(f.Body)
@@ -178,4 +188,15 @@ func receiveChannel(ctx context.Context, conn net.Conn, a Authority, admit Admit
 	}
 	_, err = a.hello(h, false)
 	return grant, h, err
+}
+
+func channelClass(purpose ardp.Purpose) (admission.Class, error) {
+	switch purpose {
+	case ardp.PurposeForwarding:
+		return admission.ForwardClass, nil
+	case ardp.PurposeIntroduction:
+		return admission.RegistrationClass, nil
+	default:
+		return 0, errors.New("route terminal purpose unavailable")
+	}
 }

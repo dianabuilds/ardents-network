@@ -360,6 +360,33 @@
         "rationale": "The actual retained selection and admitted TCP/TLS and QUIC prefix are Linux command operations. Unsupported platforms refuse before opening Route roots. Linux production reaches these exact Route rules/codecs and RuntimeView members/duties; portable rule and canonical-byte tests reach them on Windows without providing a product Route.",
         "owner": "Product Owner and Codex; new Route",
         "retirement": "Remove each Windows allowance if a maintained Windows Route consumer is selected, or if its Linux-only operation and portable rule are retired."
+      },
+      {
+        "symbols": [
+          "internal/successor/admission/receiving.Owner.TakeFreshRoot",
+          "internal/successor/admission/spending.FreshRoot.Begin",
+          "internal/successor/admission/spending.Ledger.TakeFreshRoot",
+          "internal/successor/admission/spending.RootInitialization.Check",
+          "internal/successor/admission/spending.RootInitialization.Complete",
+          "internal/successor/admission/spending.RootInitialization.check"
+        ],
+        "classification": "Linux Route independent-root initialization closure",
+        "rationale": "The Linux receiving Introduction command consumes the genuine one-use Admission journal creation fact through Receiver and Route slot-history initialization. Windows refuses Route before root acquisition. Portable Admission behavior tests reach each fact operation without providing a Windows Route consumer; Linux production reaches the entire exact closure.",
+        "owner": "Product Owner and Codex; Admission storage lifecycle and Route initialization",
+        "retirement": "Remove each Windows allowance when a selected Windows Introduction consumer reaches it, or when the independent-root creation contract and its fact operation are retired."
+      },
+      {
+        "symbols": [
+          "internal/successor/route/introduction.DecodeRequest",
+          "internal/successor/route/introduction.DecodeResult",
+          "internal/successor/route/introduction.EncodeRequest",
+          "internal/successor/route/introduction.EncodeResult",
+          "internal/successor/route/introduction.zeroPadding"
+        ],
+        "classification": "Linux Introduction registration wire closure",
+        "rationale": "The Linux holder and receiving Introduction command paths encode and decode genuine REGISTER, WITHDRAW and RESULT traffic. Windows has no accepting Route runtime. Portable independent canonical-byte and malformed-padding tests reach these exact functions on Windows; Linux production reaches them through the actual registration transport.",
+        "owner": "Product Owner and Codex; Route Introduction",
+        "retirement": "Remove each Windows allowance when a selected Windows registration consumer reaches it, or when the registration wire operation and its shared codec are retired."
       }
     ]
   }

@@ -43,6 +43,7 @@ type Ledger struct {
 	pruningFloor   time.Time
 	lease          closedSpendLease
 	openAppendFile func(string) (closedSpendAppendFile, error)
+	freshRootPhase uint8
 }
 
 type closedSpendAppendFile interface {
@@ -79,6 +80,7 @@ func openLedger(root string, binding Binding, syncRoot func(string) error) (*Led
 		if err := syncRoot(path); err != nil {
 			return fail(err)
 		}
+		ledger.freshRootPhase = freshRootAvailable
 		return ledger, nil
 	}
 	if err != nil {
@@ -131,6 +133,7 @@ func (ledger *Ledger) Close() error {
 // duplicate or an ambiguous write is unavailable. Pruning atomically retains
 // its time floor, so a backward clock cannot revive deleted spends after reopen.
 func (ledger *Ledger) Spend(token []byte, window, now time.Time) error {
+	ledger.InvalidateFreshRoot()
 	if ledger == nil || len(token) != 354 || !ValidWindow(window) || now.IsZero() {
 		return errors.New("closed token spend is invalid")
 	}

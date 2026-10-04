@@ -36,11 +36,19 @@ func routeTestCertificate(t *testing.T, key ed25519.PrivateKey) tls.Certificate 
 }
 
 func newRouteFixture(t *testing.T, profile carrier.CarrierProfile) (*networkAdmissionFixture, map[[32]byte]func(), map[[32]byte]tls.Certificate) {
+	return newRoleRouteFixture(t, profile, 3, false)
+}
+
+func newRoleRouteFixture(t *testing.T, profile carrier.CarrierProfile, domain byte, introduction bool) (*networkAdmissionFixture, map[[32]byte]func(), map[[32]byte]tls.Certificate) {
 	t.Helper()
 	reservations := make(map[[32]byte]func())
 	certificates := make(map[[32]byte]tls.Certificate)
 	f := newNetworkAdmissionFixture(t, func(f *networkAdmissionFixture) {
-		for i := 0; i < 4; i++ {
+		count := 4
+		if introduction {
+			count++
+		}
+		for i := 0; i < count; i++ {
 			id := [32]byte{byte(12 + i)}
 			var key ed25519.PrivateKey
 			if i == 0 {
@@ -70,7 +78,10 @@ func newRouteFixture(t *testing.T, profile carrier.CarrierProfile) (*networkAdmi
 			if i >= 2 {
 				subrole = 2
 			}
-			node := networkfixture.ClosedNode{RecordSpec: networkfixture.RecordSpec{NodeID: id, Generation: 9, ValidFrom: f.spec.NotBefore, ValidUntil: f.spec.NotAfter, Endpoint: address, Carrier: string(profile), Capability: 2, Capacity: 1, PrivateKey: key}, RoleDomain: 3, Subrole: subrole}
+			if i == 4 {
+				subrole = 3
+			}
+			node := networkfixture.ClosedNode{RecordSpec: networkfixture.RecordSpec{NodeID: id, Generation: 9, ValidFrom: f.spec.NotBefore, ValidUntil: f.spec.NotAfter, Endpoint: address, Carrier: string(profile), Capability: 2, Capacity: 1, PrivateKey: key}, RoleDomain: domain, Subrole: subrole}
 			if i == 0 {
 				f.spec.Nodes[1] = node
 			} else {
@@ -85,12 +96,22 @@ func newRouteFixture(t *testing.T, profile carrier.CarrierProfile) (*networkAdmi
 // routeStock uses genuine allocation/signing, blind issuance and Stock. All
 // receiving choices are signed members, and no token is taken before TLS HELLO.
 func routeStock(t *testing.T, f *networkAdmissionFixture) *stock.Owner {
+	return routeRoleStock(t, f, false)
+}
+
+func routeRoleStock(t *testing.T, f *networkAdmissionFixture, introduction bool) *stock.Owner {
 	t.Helper()
 	root := t.TempDir()
 	if err := os.Chmod(root, 0700); err != nil {
 		t.Fatal(err)
 	}
-	holder, err := stock.Open(root, admission.AllocationUser, f.authority.observe)
+	role := admission.AllocationUser
+	maxima := [3]uint32{0, 4, 0}
+	if introduction {
+		role = admission.AllocationPublisher
+		maxima[2] = 1
+	}
+	holder, err := stock.Open(root, role, f.authority.observe)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -99,7 +120,7 @@ func routeStock(t *testing.T, f *networkAdmissionFixture) *stock.Owner {
 			t.Error(err)
 		}
 	})
-	raw, digest, err := holder.Request([3]uint32{0, 4, 0})
+	raw, digest, err := holder.Request(maxima)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -132,31 +153,41 @@ func routeStock(t *testing.T, f *networkAdmissionFixture) *stock.Owner {
 	for i := byte(12); i < 16; i++ {
 		challenges = append(challenges, token.ClosedTokenContext{NetworkID: f.profile.NetworkID, ProfileDigest: f.profile.Digest, IssuerNodeID: f.profile.IssuerNodeID, ReceiverNodeID: [32]byte{i}, ReceiverDutyGeneration: 9, Class: 2, WindowStart: time.Now().UTC().Truncate(time.Hour)})
 	}
-	attempt, err := holder.Begin(stock.IssuanceIntent{Challenges: challenges, Selection: stock.ExchangeBinding{ID: [32]byte{31}, ProfileDigest: f.profile.Digest}, Bootstrap: true, Deadline: f.profile.NotAfter})
-	if err != nil {
-		t.Fatal(err)
+	batches := [][]token.ClosedTokenContext{challenges}
+	if introduction {
+		batches = append(batches, []token.ClosedTokenContext{{NetworkID: f.profile.NetworkID, ProfileDigest: f.profile.Digest, IssuerNodeID: f.profile.IssuerNodeID, ReceiverNodeID: [32]byte{16}, ReceiverDutyGeneration: 9, Class: 3, WindowStart: time.Now().UTC().Truncate(time.Hour)}})
 	}
-	batch, _, err := attempt.Request()
-	if err != nil {
-		t.Fatal(err)
-	}
-	issued := issuer.IssueCurrent(t.Context(), f.plan, batch, quota.Bootstrap, func() (admission.AuthorityFacts, time.Time, error) {
-		return f.authority.issuer(f.plan.KeyBinding.Signer)
-	})
-	if issued.Outcome != "issued-offline" {
-		t.Fatal(issued)
-	}
-	if err := attempt.Complete(issued.Response, nil); err != nil {
-		t.Fatal(err)
+	for index, contexts := range batches {
+		attempt, err := holder.Begin(stock.IssuanceIntent{Challenges: contexts, Selection: stock.ExchangeBinding{ID: [32]byte{byte(31 + index)}, ProfileDigest: f.profile.Digest}, Bootstrap: true, Deadline: f.profile.NotAfter})
+		if err != nil {
+			t.Fatal(err)
+		}
+		batch, _, err := attempt.Request()
+		if err != nil {
+			t.Fatal(err)
+		}
+		issued := issuer.IssueCurrent(t.Context(), f.plan, batch, quota.Bootstrap, func() (admission.AuthorityFacts, time.Time, error) {
+			return f.authority.issuer(f.plan.KeyBinding.Signer)
+		})
+		if issued.Outcome != "issued-offline" {
+			t.Fatal(issued)
+		}
+		if err := attempt.Complete(issued.Response, nil); err != nil {
+			t.Fatal(err)
+		}
 	}
 	return holder
 }
 
 // Permission/stock are volatile and must be created inside the actual holder
 // process. Only its irreversible presentation history survives reopening.
-func routeConsoleStock(t *testing.T, f *networkAdmissionFixture, send func(any) localAdmissionReply) {
+func routeConsoleRoleStock(t *testing.T, f *networkAdmissionFixture, send func(any) localAdmissionReply, introduction bool) {
 	t.Helper()
-	request := send(holderCommand{Operation: "request", Maxima: [3]uint32{0, 4, 0}})
+	maxima := [3]uint32{0, 4, 0}
+	if introduction {
+		maxima[2] = 1
+	}
+	request := send(holderCommand{Operation: "request", Maxima: maxima})
 	if request.Outcome != "completed" {
 		t.Fatal("holder request", request.Outcome)
 	}
@@ -189,18 +220,24 @@ func routeConsoleStock(t *testing.T, f *networkAdmissionFixture, send func(any) 
 	for i := byte(12); i < 16; i++ {
 		challenges = append(challenges, token.ClosedTokenContext{NetworkID: f.profile.NetworkID, ProfileDigest: f.profile.Digest, IssuerNodeID: f.profile.IssuerNodeID, ReceiverNodeID: [32]byte{i}, ReceiverDutyGeneration: 9, Class: 2, WindowStart: time.Now().UTC().Truncate(time.Hour)})
 	}
-	intent := stock.IssuanceIntent{Challenges: challenges, Selection: stock.ExchangeBinding{ID: [32]byte{31}, ProfileDigest: f.profile.Digest}, Bootstrap: true, Deadline: f.profile.NotAfter}
-	batch := send(holderCommand{Operation: "begin", Intent: intent})
-	if batch.Outcome != "completed" {
-		t.Fatal("holder begin", batch.Outcome)
+	batches := [][]token.ClosedTokenContext{challenges}
+	if introduction {
+		batches = append(batches, []token.ClosedTokenContext{{NetworkID: f.profile.NetworkID, ProfileDigest: f.profile.Digest, IssuerNodeID: f.profile.IssuerNodeID, ReceiverNodeID: [32]byte{16}, ReceiverDutyGeneration: 9, Class: 3, WindowStart: time.Now().UTC().Truncate(time.Hour)}})
 	}
-	issued := issuer.IssueCurrent(t.Context(), f.plan, batch.Request, quota.Bootstrap, func() (admission.AuthorityFacts, time.Time, error) {
-		return f.authority.issuer(f.plan.KeyBinding.Signer)
-	})
-	if issued.Outcome != "issued-offline" {
-		t.Fatal(issued.Outcome)
-	}
-	if reply := send(holderCommand{Operation: "complete", Payload: issued.Response}); reply.Outcome != "completed" {
-		t.Fatal("holder complete", reply.Outcome)
+	for index, contexts := range batches {
+		intent := stock.IssuanceIntent{Challenges: contexts, Selection: stock.ExchangeBinding{ID: [32]byte{byte(31 + index)}, ProfileDigest: f.profile.Digest}, Bootstrap: true, Deadline: f.profile.NotAfter}
+		batch := send(holderCommand{Operation: "begin", Intent: intent})
+		if batch.Outcome != "completed" {
+			t.Fatal("holder begin", batch.Outcome)
+		}
+		issued := issuer.IssueCurrent(t.Context(), f.plan, batch.Request, quota.Bootstrap, func() (admission.AuthorityFacts, time.Time, error) {
+			return f.authority.issuer(f.plan.KeyBinding.Signer)
+		})
+		if issued.Outcome != "issued-offline" {
+			t.Fatal(issued.Outcome)
+		}
+		if reply := send(holderCommand{Operation: "complete", Payload: issued.Response}); reply.Outcome != "completed" {
+			t.Fatal("holder complete", reply.Outcome)
+		}
 	}
 }

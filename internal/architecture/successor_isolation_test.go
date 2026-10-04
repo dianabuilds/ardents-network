@@ -121,12 +121,13 @@ func successorImportAllowed(source, dependency string) bool {
 		"internal/successor/route":                   {},
 		"internal/successor/route/ardp":              {},
 		"internal/successor/route/carrier":           {},
+		"internal/successor/route/introduction":      {"admission/spending"},
 		"internal/successor/route/selection":         {"route", "network"},
-		"internal/successor/route/transport":         {"route", "route/selection", "route/carrier", "route/ardp", "network", "admission", "admission/receiving"},
+		"internal/successor/route/transport":         {"route", "route/selection", "route/carrier", "route/ardp", "route/introduction", "network", "admission", "admission/receiving"},
 		"cmd/ardents-next":                           {"network", "network/state", "admission/stock", "admission/receiving", "admission/allocation", "admission", "admission/quota", "admission/issuerprofile", "admission/issuance", "admission/issuer", "nodeidentity", "hosting", "route", "route/selection", "route/transport", "route/ardp"},
 	}
 	if zoneDependency {
-		if (source == "cmd/ardents-next/route_fixture_linux_test.go" || source == "cmd/ardents-next/route_prefix_linux_test.go" || source == "cmd/ardents-next/route_process_linux_test.go" || source == "cmd/ardents-next/route_refusal_linux_test.go") && dependency == modulePath+"/internal/successor/route/carrier" {
+		if (source == "cmd/ardents-next/route_fixture_linux_test.go" || source == "cmd/ardents-next/route_prefix_linux_test.go" || source == "cmd/ardents-next/route_process_linux_test.go" || source == "cmd/ardents-next/route_refusal_linux_test.go" || source == "cmd/ardents-next/route_registration_linux_test.go") && dependency == modulePath+"/internal/successor/route/carrier" {
 			return true
 		}
 		if source == "cmd/ardents-next/network_admission_fixture_linux_test.go" && dependency == modulePath+"/internal/successor/network/epoch" {

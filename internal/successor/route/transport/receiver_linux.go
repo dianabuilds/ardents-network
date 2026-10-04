@@ -8,22 +8,28 @@ import (
 	"crypto/tls"
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"io"
 	"net"
+	"os"
 	"sync"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/successor/admission/receiving"
 	"github.com/dianabuilds/ardents-network/internal/successor/network"
 	"github.com/dianabuilds/ardents-network/internal/successor/route/ardp"
 	"github.com/dianabuilds/ardents-network/internal/successor/route/carrier"
+	"github.com/dianabuilds/ardents-network/internal/successor/route/introduction"
 )
 
 // ReceiverConfig binds one actual new receiving forwarding duty. Admit must
 // call receiving.Owner.Accept with its genuine Hosting capacity callback.
 type ReceiverConfig struct {
-	Authority   Authority
-	Certificate tls.Certificate
-	Admit       Admit
+	Authority        Authority
+	Certificate      tls.Certificate
+	Admit            Admit
+	IntroductionRoot string
+	Receiving        *receiving.Owner
 }
 
 // Receiver owns its listener, in-flight handshakes, admitted parents and all
@@ -44,6 +50,7 @@ type Receiver struct {
 	queues        *queueBudget
 	pool          nodePool
 	err, closeErr error
+	registrations *introduction.Registry
 }
 
 func Listen(ctx context.Context, config ReceiverConfig) (*Receiver, error) {
@@ -56,18 +63,51 @@ func Listen(ctx context.Context, config ReceiverConfig) (*Receiver, error) {
 	}
 	key, ok := config.Certificate.PrivateKey.(ed25519.PrivateKey)
 	if !ok || len(key) != ed25519.PrivateKeySize || string(key.Public().(ed25519.PublicKey)) != string(m.PublicKey[:]) ||
-		(m.Subrole != 1 && m.Subrole != 2) || (m.RoleDomain != 1 && m.RoleDomain != 3 && m.RoleDomain != 4) {
+		(m.Subrole != 1 && m.Subrole != 2 && !(m.RoleDomain == 4 && m.Subrole == 3)) || (m.RoleDomain != 1 && m.RoleDomain != 3 && m.RoleDomain != 4) {
 		return nil, errors.New("route receiving duty or private key differs")
 	}
 	child, cancel := context.WithCancel(ctx)
 	r := &Receiver{config: config, ctx: child, cancel: cancel, connections: make(map[net.Conn]struct{}), done: make(chan struct{}), queues: &queueBudget{maximum: 64 << 20}}
+	if m.Subrole == 3 {
+		if config.IntroductionRoot == "" || config.Receiving == nil {
+			cancel()
+			return nil, errors.New("introduction independent roots absent")
+		}
+		binding := introduction.Binding{NetworkID: config.Authority.Profile.Network, ProfileDigest: config.Authority.Profile.Digest, ReceiverNodeID: m.NodeID, ReceiverDutyGeneration: m.DutyGeneration}
+		history, openErr := introduction.OpenHistory(config.IntroductionRoot, binding)
+		if openErr != nil {
+			names, readErr := os.ReadDir(config.IntroductionRoot)
+			if readErr != nil || len(names) != 0 {
+				cancel()
+				return nil, errors.Join(openErr, readErr)
+			}
+			fact, factErr := config.Receiving.TakeFreshRoot()
+			if factErr != nil {
+				cancel()
+				return nil, errors.Join(openErr, factErr)
+			}
+			history, openErr = introduction.InitializeHistory(config.IntroductionRoot, binding, fact)
+		}
+		if openErr != nil {
+			cancel()
+			return nil, openErr
+		}
+		r.registrations, err = introduction.NewRegistry(history)
+		if err != nil {
+			cancel()
+			return nil, errors.Join(err, history.Close())
+		}
+	} else if config.IntroductionRoot != "" || config.Receiving != nil {
+		cancel()
+		return nil, errors.New("introduction history supplied to another duty")
+	}
 	r.listener, err = carrier.ListenClosedSharedCarrier(carrier.CarrierProfile(m.CarrierProfile), m.Endpoint, config.Certificate, func(key [32]byte) bool {
 		_, err := r.peer(key)
 		return err == nil
 	}, 16)
 	if err != nil {
 		cancel()
-		return nil, err
+		return nil, errors.Join(err, r.registrations.Close())
 	}
 	go r.run()
 	return r, nil
@@ -83,7 +123,11 @@ func (r *Receiver) peer(key [32]byte) (network.Member, error) {
 		return network.Member{}, err
 	}
 	peer, err := v.MemberByKey(key, time.Now())
-	if err != nil || conflicting(m, peer) || peer.RoleDomain != m.RoleDomain || peer.Subrole != 1 {
+	expectedSubrole := uint8(1)
+	if m.Subrole == 3 {
+		expectedSubrole = 2
+	}
+	if err != nil || conflicting(m, peer) || peer.RoleDomain != m.RoleDomain || peer.Subrole != expectedSubrole {
 		return network.Member{}, errors.Join(errors.New("route adjacent Node peer unavailable"), err)
 	}
 	return peer, nil
@@ -109,7 +153,14 @@ func (r *Receiver) run() {
 			}
 		}
 	}()
-	defer func() { r.cancel(); r.interrupt(); r.workers.Wait(); r.record(r.pool.Close()); <-watchDone }()
+	defer func() {
+		r.cancel()
+		r.interrupt()
+		r.workers.Wait()
+		r.record(r.pool.Close())
+		<-watchDone
+		r.record(r.registrations.Close())
+	}()
 	for {
 		accepted, err := r.listener.Accept(r.ctx, 10*time.Second)
 		if err != nil {
@@ -229,14 +280,14 @@ func (r *Receiver) serveOuter(ctx context.Context, accepted carrier.ClosedShared
 		if err != nil {
 			return err
 		}
-		if opened.RecipientNodeID != h.RecipientNodeID || opened.RecipientDutyGeneration != h.RecipientDutyGeneration || opened.Purpose != 7 || opened.Deadline.After(h.Deadline) {
+		if opened.RecipientNodeID != h.RecipientNodeID || opened.RecipientDutyGeneration != h.RecipientDutyGeneration || opened.Deadline.After(h.Deadline) {
 			return errors.New("route Node child binding differs")
 		}
 		if err := l.bound(opened.Deadline); err != nil {
 			return err
 		}
 		m, err := r.config.Authority.member()
-		if err != nil || m.Subrole != 2 {
+		if err != nil || !((m.Subrole == 2 && opened.Purpose == 7) || (m.RoleDomain == 4 && m.Subrole == 3 && opened.Purpose == 4)) {
 			return errors.Join(errors.New("route Interior child unavailable"), err)
 		}
 		secured, err := carrier.AcceptClosedRoleTLS(ctx, l, r.config.Certificate, minDeadline(opened.Deadline, time.Now().Add(10*time.Second)))
@@ -254,7 +305,9 @@ func (r *Receiver) serveOuter(ctx context.Context, accepted carrier.ClosedShared
 
 func (r *Receiver) finishSession(s *session) error {
 	err := s.Close()
-	r.record(s.joinedPhysicalFailure())
+	if physical := s.joinedPhysicalFailure(); physical != nil {
+		r.record(fmt.Errorf("route receiving framing retirement: %w", physical))
+	}
 	return err
 }
 
@@ -267,7 +320,7 @@ func (r *Receiver) serveRole(ctx context.Context, conn net.Conn, outer *lane, op
 	if err := conn.SetDeadline(time.Now().Add(10 * time.Second)); err != nil {
 		return err
 	}
-	capacity := &admissionRetirement{}
+	capacity := &admissionRetirement{registry: r.registrations}
 	grant, h, err := receiveChannel(ctx, conn, r.config.Authority, r.config.Admit, opened, capacity)
 	var s *session
 	defer func() {
@@ -303,6 +356,9 @@ func (r *Receiver) serveRole(ctx context.Context, conn net.Conn, outer *lane, op
 	if err := check(); err != nil {
 		return err
 	}
+	if h.Purpose == ardp.PurposeIntroduction {
+		return r.serveRegistration(ctx, conn, grant, h, capacity.registration)
+	}
 	s = newSession(ctx, conn, h.Deadline, grant.Allowance().Bytes()-admissionWireBytes, check, false, r.queues, func(ctx context.Context, l *lane, body []byte) error {
 		return r.forward(ctx, l, h, body)
 	})
@@ -327,7 +383,7 @@ func decodeOpen(body []byte) (ardpHello, error) {
 	o.RecipientDutyGeneration = binary.BigEndian.Uint64(body[32:40])
 	o.Purpose = body[40]
 	o.Deadline = time.Unix(int64(binary.BigEndian.Uint64(body[41:])), 0).UTC()
-	if o.RecipientNodeID == [32]byte{} || o.RecipientDutyGeneration == 0 || o.Purpose != 7 || !time.Now().Before(o.Deadline) {
+	if o.RecipientNodeID == [32]byte{} || o.RecipientDutyGeneration == 0 || (o.Purpose != 7 && o.Purpose != 4) || !time.Now().Before(o.Deadline) {
 		return ardpHello{}, errors.New("route OPEN facts invalid")
 	}
 	return o, nil
@@ -358,7 +414,9 @@ func (r *Receiver) forward(ctx context.Context, source *lane, parent ardp.Hello,
 	if err != nil {
 		return err
 	}
-	if local.Subrole != 1 || opened.Deadline.After(parent.Deadline) {
+	forwarding := local.Subrole == 1 && opened.Purpose == 7
+	registration := local.RoleDomain == 4 && local.Subrole == 2 && opened.Purpose == 4
+	if (!forwarding && !registration) || opened.Deadline.After(parent.Deadline) {
 		return errors.New("route prefix next-hop unavailable")
 	}
 	if err := source.bound(opened.Deadline); err != nil {
@@ -369,7 +427,11 @@ func (r *Receiver) forward(ctx context.Context, source *lane, parent ardp.Hello,
 		return err
 	}
 	next, err := v.Member(opened.RecipientNodeID, time.Now())
-	if err != nil || next.Subrole != 2 || next.RoleDomain != local.RoleDomain || next.DutyGeneration != opened.RecipientDutyGeneration || conflicting(local, next) {
+	expectedSubrole := uint8(2)
+	if registration {
+		expectedSubrole = 3
+	}
+	if err != nil || next.Subrole != expectedSubrole || next.RoleDomain != local.RoleDomain || next.DutyGeneration != opened.RecipientDutyGeneration || conflicting(local, next) {
 		return errors.Join(errors.New("route next Interior unavailable"), err)
 	}
 	duty, err := v.RetainDuty(next.NodeID, time.Now())
@@ -465,7 +527,7 @@ func (r *Receiver) openNode(ctx context.Context, a Authority) (_ *session, relea
 			result = errors.Join(result, conn.Close())
 		}
 	}()
-	h, err := freshHello(a, end)
+	h, err := freshPurposeHello(a, end, ardp.PurposeForwarding, true)
 	if err != nil {
 		return nil, nil, err
 	}

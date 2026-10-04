@@ -57,7 +57,7 @@ func TestRoutePostSpendRefusalRetainsBurnAcrossReopen(t *testing.T) {
 					if err != nil {
 						return nil, err
 					}
-					return c.HoldReservation(func() error { releases.Add(1); return release() }), nil
+					return c.HoldReservation(func() error { releases.Add(1); return release() })
 				})
 				if err == nil {
 					spends.Add(1)
@@ -142,7 +142,7 @@ func TestRouteInvalidHELLORefusesBeforeAdmission(t *testing.T) {
 					if err != nil {
 						return nil, err
 					}
-					return c.HoldReservation(release), nil
+					return c.HoldReservation(release)
 				})
 			}})
 			if err != nil {

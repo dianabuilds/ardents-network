@@ -112,6 +112,16 @@ separate existing responsibilities; they do not authorize adding Network,
 Introduction, Endpoint, Hosting, file transport or route implementations here.
 A discovered new responsibility requires updating this boundary explicitly.
 
+Receiving also exposes `Owner.TakeFreshRoot`: an opaque one-use storage lifecycle
+fact originating only after exclusive creation and successful synchronization of
+a genuinely fresh spend journal. Retained opens (including header-only or pruned
+empty history) do not issue it. Any receiving/refill attempt, even one refused
+before verification, invalidates it; Close, foreign binding, repeated consumption
+and late completion refuse. The fact grants no token, Network or Service authority
+and exposes no private journal, spend inventory, mutex or root lease. Route uses
+it solely to initialize its own independent slot history before listener admission.
+Route retains slot policy and its own lease; Admission never stores new slots.
+
 ## Evidence scope
 
 The independent holder/issuer/receiver cycle uses real permission signatures,

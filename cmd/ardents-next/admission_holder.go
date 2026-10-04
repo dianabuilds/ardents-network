@@ -21,6 +21,7 @@ type holderCommand struct {
 	Failed        bool                 `json:"failed,omitzero"`
 	Receivers     [][32]byte           `json:"receivers,omitzero"`
 	RequiresToken bool                 `json:"requires_token,omitzero"`
+	Revision      uint64               `json:"revision,omitzero"`
 }
 
 func runAdmissionHolder(ctx context.Context, args []string, input io.ReadCloser, out, diagnostic io.Writer) (code int) {
@@ -62,8 +63,22 @@ func runAdmissionHolder(ctx context.Context, args []string, input io.ReadCloser,
 	var attempt stock.Attempt
 	var retainedIntent stock.IssuanceIntent
 	var prefix routeHandle
+	var registration routeRegistration
+	closeRoute := func() error {
+		var result error
+		// Prefix closure stops and joins all physical children before returning
+		// its reservations. Retrieve the child's retained result before Stock
+		// and Network roots may close, including an explicit console close.
+		if prefix.close != nil {
+			result = prefix.close()
+		}
+		if registration.close != nil {
+			result = errors.Join(result, registration.close())
+		}
+		return result
+	}
 	defer func() {
-		if prefix.close != nil && prefix.close() != nil {
+		if closeRoute() != nil {
 			code = 1
 		}
 	}()
@@ -75,6 +90,42 @@ func runAdmissionHolder(ctx context.Context, args []string, input io.ReadCloser,
 		var err error
 		result := map[string]any{"outcome": "completed"}
 		switch c.Operation {
+		case "registration-open":
+			if registration.close != nil {
+				select {
+				case <-registration.done:
+					err = errors.New("route registration retired; close to retrieve outcome")
+				default:
+					err = errors.New("route registration already open")
+				}
+				break
+			}
+			if prefix.register == nil || c.Revision == 0 {
+				err = errors.New("route registration unavailable")
+				break
+			}
+			registration, err = prefix.register(ctx, c.Revision)
+			if err == nil {
+				result["slot"] = registration.slot
+			}
+		case "registration-withdraw":
+			if registration.withdraw == nil {
+				err = errors.New("route registration absent")
+				break
+			}
+			err = registration.withdraw(ctx)
+			// Retain the same handle/result after failed withdrawal; no retry can
+			// reacquire its slot or silently replace its original lifetime.
+			if err == nil {
+				registration = routeRegistration{}
+			}
+		case "registration-close":
+			if registration.close == nil {
+				err = errors.New("route registration absent")
+				break
+			}
+			err = registration.close()
+			registration = routeRegistration{}
 		case "prefix-open":
 			if prefix.close != nil {
 				select {
@@ -147,7 +198,7 @@ func runAdmissionHolder(ctx context.Context, args []string, input io.ReadCloser,
 		case "status":
 			result["stock"] = o.Status()
 		case "close":
-			if err := o.Close(); err != nil {
+			if err := errors.Join(closeRoute(), o.Close()); err != nil {
 				return nil, true, err
 			}
 			return result, true, nil

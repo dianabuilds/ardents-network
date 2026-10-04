@@ -37,6 +37,9 @@ type lane struct {
 	openEmitted                        bool
 	outputEOF                          bool
 	finished                           bool
+	localClosed, peerRefused           bool
+	physicalAttempts, payloadAttempts  uint64
+	physicalWriteFailed                bool
 	ctx                                context.Context
 	cancel                             context.CancelFunc
 }
@@ -130,7 +133,11 @@ func (l *lane) Write(p []byte) (int, error) {
 	for len(p) > 0 {
 		l.s.mu.Lock()
 		if l.closed || l.outputEOF || l.s.stopped {
+			peerEOF := l.peerClosed && !l.peerRefused && !l.localClosed && !l.s.stopped && l.s.failure == nil && !l.physicalWriteFailed
 			l.s.mu.Unlock()
+			if peerEOF {
+				return n, io.EOF
+			}
 			return n, net.ErrClosed
 		}
 		if !time.Now().Before(l.writeEnd) {
@@ -162,6 +169,7 @@ func (l *lane) closeStatus(status byte) error {
 		l.s.mu.Lock()
 		l.cleanupEnd = time.Now().Add(time.Second)
 		peer, stopped := l.peerClosed, l.s.stopped
+		l.localClosed = true
 		emitted := l.openEmitted || l.s.open != nil
 		l.stopLocked(nil)
 		if l.s.active == l {

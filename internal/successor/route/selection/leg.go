@@ -40,6 +40,7 @@ type Leg struct {
 	EntryMember, InteriorMember network.Member
 	Profile                     network.ProfileBinding
 	NotAfter                    time.Time
+	known                       []route.Member
 }
 
 func Open(config Config) (_ *Owner, result error) {
@@ -157,7 +158,8 @@ func (o *Owner) Select() (Leg, error) {
 		return Leg{}, err
 	}
 	end := minTime(entries[0].NotAfter, set.NotAfter, view.Profile().NotAfter)
-	return Leg{Entry: entry, Interior: interior, EntryMember: entryMember, InteriorMember: interiorMember, Profile: view.Profile().ProfileBinding, NotAfter: end}, nil
+	known := []route.Member{route.Member(entries[0]), route.Member(entries[1]), set.Members[0], set.Members[1]}
+	return Leg{Entry: entry, Interior: interior, EntryMember: entryMember, InteriorMember: interiorMember, Profile: view.Profile().ProfileBinding, NotAfter: end, known: known}, nil
 }
 
 // Check reobserves current Network authority, never rebinds a retained leg,

@@ -33,10 +33,25 @@ func routeProcessBudget(t *testing.T) string {
 }
 
 func TestRouteCompiledCommandPrefixBothCarriers(t *testing.T) {
+	testRouteCompiledCommand(t, false)
+}
+
+func TestRouteCompiledCommandRegistrationBothCarriers(t *testing.T) {
+	testRouteCompiledCommand(t, true)
+}
+
+func testRouteCompiledCommand(t *testing.T, introduction bool) {
+	t.Helper()
 	_ = compiledCommand(t)
 	for _, profile := range []carrier.CarrierProfile{carrier.ClosedCarrierTCP, carrier.ClosedCarrierQUIC} {
 		t.Run(string(profile), func(t *testing.T) {
-			f, reservations, certificates := newRouteFixture(t, profile)
+			domain := byte(3)
+			role := admission.AllocationUser
+			last := byte(16)
+			if introduction {
+				domain, role, last = 4, admission.AllocationPublisher, 17
+			}
+			f, reservations, certificates := newRoleRouteFixture(t, profile, domain, introduction)
 			bundle, err := networkfixture.BuildClosed(f.spec)
 			if err != nil {
 				t.Fatal(err)
@@ -99,7 +114,7 @@ func TestRouteCompiledCommandPrefixBothCarriers(t *testing.T) {
 				}
 			}()
 			var budgets []string
-			for i := byte(12); i < 16; i++ {
+			for i := byte(12); i < last; i++ {
 				id := [32]byte{i}
 				certificate := certificates[id]
 				certPath, keyPath := filepath.Join(t.TempDir(), "cert"), filepath.Join(t.TempDir(), "key")
@@ -119,6 +134,13 @@ func TestRouteCompiledCommandPrefixBothCarriers(t *testing.T) {
 				budget := routeProcessBudget(t)
 				budgets = append(budgets, budget)
 				plan := map[string]any{"network": seed(), "node_id": id, "spend_root": t.TempDir(), "hosting_root": budget, "certificate": certPath, "private_key": keyPath, "work": hosting.Traffic{Tx: 2 << 20, Rx: 2 << 20}, "termination": hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}}
+				if i == 16 {
+					root := t.TempDir()
+					if err := os.Chmod(root, 0700); err != nil {
+						t.Fatal(err)
+					}
+					plan["introduction_root"] = root
+				}
 				reservations[id]()
 				cmd := exec.CommandContext(t.Context(), compiledCommand(t), "route", "receive", "--config", hostingConfig(t, plan))
 				out, err := cmd.StdoutPipe()
@@ -155,17 +177,41 @@ func TestRouteCompiledCommandPrefixBothCarriers(t *testing.T) {
 					closed = true
 					var exit *exec.ExitError
 					if !errors.As(err, &exit) || exit.ExitCode() != 130 {
+						if introduction && exit != nil && exit.ExitCode() == 1 {
+							var terminal map[string]string
+							for _, line := range bytes.Split(diagnostic.Bytes(), []byte{'\n'}) {
+								var event map[string]string
+								if json.Unmarshal(line, &event) == nil && event["operation"] == "route.receive" && event["phase"] == "joined" {
+									terminal = event
+								}
+							}
+							if terminal["outcome"] == "failed" && terminal["stage"] == "peer-retired-write" {
+								t.Log("receiver retained joined peer-retirement write failure", id)
+								return
+							}
+						}
 						t.Error("receiver failed joined cancellation", err, diagnostic.String())
 					}
 				})
 			}
 			holderRoot := t.TempDir()
-			plan := routePrefixPlan{EntryRoot: filepath.Join(t.TempDir(), "entry"), InteriorRoot: filepath.Join(t.TempDir(), "interior"), HostingRoot: routeProcessBudget(t), Domain: 3, Deadline: time.Now().Add(30 * time.Second).UTC().Truncate(time.Second), Work: hosting.Traffic{Tx: 2 << 20, Rx: 2 << 20}, Termination: hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}}
+			plan := routePrefixPlan{EntryRoot: filepath.Join(t.TempDir(), "entry"), InteriorRoot: filepath.Join(t.TempDir(), "interior"), HostingRoot: routeProcessBudget(t), Domain: domain, Deadline: time.Now().Add(30 * time.Second).UTC().Truncate(time.Second), Work: hosting.Traffic{Tx: 2 << 20, Rx: 2 << 20}, Termination: hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}}
 			holderNetwork := seed()
-			send, closeHolder := admissionLocalConsole(t, "holder", map[string]any{"root": holderRoot, "network": holderNetwork, "role": admission.AllocationUser, "route": plan})
-			routeConsoleStock(t, f, send)
+			send, closeHolder := admissionLocalConsole(t, "holder", map[string]any{"root": holderRoot, "network": holderNetwork, "role": role, "route": plan})
+			routeConsoleRoleStock(t, f, send, introduction)
 			if reply := send(holderCommand{Operation: "prefix-open"}); reply.Outcome != "completed" {
 				t.Fatal("compiled prefix not admitted", reply.Outcome)
+			}
+			if introduction {
+				if reply := send(holderCommand{Operation: "registration-open", Revision: 1}); reply.Outcome != "completed" || reply.Slot == [32]byte{} {
+					t.Fatal("compiled REGISTER", reply)
+				}
+				if reply := send(holderCommand{Operation: "registration-withdraw"}); reply.Outcome != "completed" {
+					t.Fatal("compiled owning WITHDRAW", reply)
+				}
+				if reply := send(holderCommand{Operation: "registration-open", Revision: 2}); reply.Outcome == "completed" {
+					t.Fatal("compiled Stock reused spent Registration token")
+				}
 			}
 			if reply := send(holderCommand{Operation: "prefix-close"}); reply.Outcome != "completed" {
 				t.Fatal("compiled prefix did not join", reply)

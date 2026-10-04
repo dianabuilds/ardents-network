@@ -63,7 +63,7 @@ func TestRouteGenuineRetainedPrefixBothCarriers(t *testing.T) {
 							if err != nil {
 								return nil, err
 							}
-							return c.HoldReservation(release), nil
+							return c.HoldReservation(release)
 						})
 						if err == nil {
 							accepted.Add(1)
