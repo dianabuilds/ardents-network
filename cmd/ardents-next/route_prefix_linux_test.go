@@ -145,7 +145,8 @@ func TestRouteGenuineRetainedPrefixBothCarriers(t *testing.T) {
 				if mode == "concurrent" {
 					wantedAdmissions = 6
 					legs := []selection.Leg{before}
-					handles := []routeHandle{prefix}
+					handles := []routeHandle{prefix, {}, {}}
+					var openings []func() (routeHandle, error)
 					for range 2 {
 						other := plan
 						other.EntryRoot = filepath.Join(t.TempDir(), "entry")
@@ -162,14 +163,33 @@ func TestRouteGenuineRetainedPrefixBothCarriers(t *testing.T) {
 						if err := selected.Close(); err != nil {
 							t.Fatal(err)
 						}
-						otherHandle, err := startRoutePrefix(t.Context(), other, f.authority, routeStock(t, f))
-						if err != nil {
-							t.Fatal("independent concurrent prefix", err)
-						}
-						handles = append(handles, otherHandle)
-						companions = append(companions, otherHandle)
-						defer otherHandle.close()
+						holder := routeStock(t, f)
+						openings = append(openings, func() (routeHandle, error) { return startRoutePrefix(t.Context(), other, f.authority, holder) })
 						legs = append(legs, leg)
+					}
+					start := make(chan struct{})
+					type openingResult struct {
+						index  int
+						handle routeHandle
+						err    error
+					}
+					results := make(chan openingResult, len(openings))
+					for index, open := range openings {
+						go func() { <-start; handle, err := open(); results <- openingResult{index, handle, err} }()
+					}
+					close(start)
+					var openingErr error
+					for range openings {
+						opened := <-results
+						openingErr = errors.Join(openingErr, opened.err)
+						if opened.err == nil {
+							handles[opened.index+1] = opened.handle
+							companions = append(companions, opened.handle)
+							defer opened.handle.close()
+						}
+					}
+					if openingErr != nil {
+						t.Fatal("independent concurrent prefix", openingErr)
 					}
 					if accepted.Load() != wantedAdmissions {
 						t.Fatal("concurrent prefixes did not independently admit", accepted.Load())

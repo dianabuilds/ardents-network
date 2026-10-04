@@ -380,7 +380,7 @@ func (r *Receiver) forward(ctx context.Context, source *lane, parent ardp.Hello,
 	}
 	defer func() { result = errors.Join(result, pooled.release()) }()
 	downstream := pooled.session
-	target, err := downstream.openLane(encodeOpen(opened, true))
+	target, err := downstream.openLane(ctx, encodeOpen(opened, true))
 	if err != nil {
 		return err
 	}

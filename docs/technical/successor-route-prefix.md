@@ -59,6 +59,9 @@ and selected Carrier outside the pool lock. Same-pair waiters use their own
 cancellation; dial and retirement remain counted operations. This operation
 retires the Carrier after its last joined borrower, without idle retention or
 speculative dialing. Every child retains its own original bounds and admission.
+OPEN allocation and complete emission are serialized together, with one
+immutable setup deadline no later than ten seconds or the original child/parent
+bound. Waiting for that operation is cancellable and grants no child authority.
 
 EOF preserves the reverse direction. CLOSE retires queued work and interrupts
 the child's physical writer; retained input leaves its queue through actual

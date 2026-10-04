@@ -112,7 +112,7 @@ func OpenPrefix(ctx context.Context, config PrefixConfig) (_ *Prefix, result err
 	}
 	p.entry = newSession(childContext, conn, config.Deadline, admission.ForwardClass.ByteLimit()-admissionWireBytes, check, false, queues, nil)
 	opened := ardpHello{RecipientNodeID: config.Leg.InteriorMember.NodeID, RecipientDutyGeneration: config.Leg.InteriorMember.DutyGeneration, Purpose: 7, Deadline: config.Deadline}
-	p.child, err = p.entry.openLane(encodeOpen(opened, false))
+	p.child, err = p.entry.openLane(childContext, encodeOpen(opened, false))
 	if err != nil {
 		return nil, err
 	}

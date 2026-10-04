@@ -21,6 +21,7 @@ type lane struct {
 	s                                  *session
 	id                                 uint32
 	end, readEnd, writeEnd, cleanupEnd time.Time
+	openEnd                            time.Time
 	buffer                             []byte
 	credit, receive                    uint32
 	eof, closed, peerClosed            bool
@@ -234,6 +235,9 @@ func (l *lane) frameDeadline(f ardp.Frame, terminal bool) time.Time {
 	}
 	if f.Kind == ardp.KindCredit {
 		return l.end
+	}
+	if f.Kind == ardp.KindOpen {
+		return minDeadline(l.openEnd, l.writeEnd)
 	}
 	return l.writeEnd
 }

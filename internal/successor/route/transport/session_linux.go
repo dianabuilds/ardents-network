@@ -33,6 +33,7 @@ type session struct {
 	stopped                 bool
 	failure                 error
 	writer                  chan struct{}
+	opening                 chan struct{}
 	active                  *lane
 	activeEnd               time.Time
 	pending                 bool
@@ -54,7 +55,7 @@ type session struct {
 func newSession(ctx context.Context, conn net.Conn, end time.Time, limit uint64, check func() error, pending bool, queues *queueBudget, open func(context.Context, *lane, []byte) error) *session {
 	child, cancel := context.WithDeadline(ctx, end)
 	s := &session{conn: conn, ctx: child, cancel: cancel, end: end, lanes: make(map[uint32]*lane), next: 1,
-		limit: limit, writer: make(chan struct{}, 1), readerDone: make(chan struct{}), check: check, pending: pending, queues: queues, open: open}
+		limit: limit, writer: make(chan struct{}, 1), opening: make(chan struct{}, 1), readerDone: make(chan struct{}), check: check, pending: pending, queues: queues, open: open}
 	go s.read()
 	return s
 }
@@ -286,6 +287,9 @@ func (s *session) write(l *lane, f ardp.Frame, terminal bool) error {
 	s.used += cost
 	s.active = l
 	s.activeEnd = end
+	if f.Kind == ardp.KindOpen {
+		l.openEmitted = true
+	}
 	err = s.conn.SetWriteDeadline(end)
 	s.mu.Unlock()
 	if err == nil {
@@ -329,13 +333,38 @@ func (s *session) newLaneLocked(id uint32) *lane {
 	return l
 }
 
-func (s *session) openLane(body []byte) (*lane, error) {
-	if len(body) != 49 && len(body) != 50 {
+func (s *session) openLane(ctx context.Context, body []byte) (*lane, error) {
+	if ctx == nil || len(body) != 49 && len(body) != 50 {
 		return nil, errors.New("route OPEN shape invalid")
 	}
 	opened, err := decodeOpen(body[:49])
 	if err != nil {
 		return nil, err
+	}
+	// Allocation and complete OPEN emission share one bounded operation. The
+	// peer enforces monotonically increasing IDs, so a later allocation must
+	// not enter physical scheduling ahead of an earlier caller.
+	openEnd := minDeadline(minDeadline(opened.Deadline, s.end), time.Now().Add(10*time.Second))
+	timer := time.NewTimer(time.Until(openEnd))
+	defer timer.Stop()
+	select {
+	case s.opening <- struct{}{}:
+		defer func() { <-s.opening }()
+	case <-s.ctx.Done():
+		return nil, s.ctx.Err()
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	case <-timer.C:
+		return nil, os.ErrDeadlineExceeded
+	}
+	if err := s.ctx.Err(); err != nil {
+		return nil, err
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	if !time.Now().Before(openEnd) {
+		return nil, os.ErrDeadlineExceeded
 	}
 	s.mu.Lock()
 	if s.stopped || s.live >= 256 || s.next == 0 || !s.queues.child() {
@@ -345,19 +374,32 @@ func (s *session) openLane(body []byte) (*lane, error) {
 	id := s.next
 	s.next += 2
 	l := s.newLaneLocked(id)
+	l.openEnd = openEnd
 	s.mu.Unlock()
+	interrupted := make(chan struct{})
+	stop := context.AfterFunc(ctx, func() { defer close(interrupted); _ = l.Close() })
+	defer func() {
+		if !stop() {
+			<-interrupted
+		}
+	}()
 	if err := l.bound(opened.Deadline); err != nil {
 		_ = l.Close()
 		l.finish()
 		return nil, err
 	}
-	if err := s.write(l, ardp.Frame{Kind: ardp.KindOpen, Lane: id, Body: body}, false); err != nil {
+	l.writeMu.Lock()
+	err = s.write(l, ardp.Frame{Kind: ardp.KindOpen, Lane: id, Body: body}, false)
+	l.writeMu.Unlock()
+	if err != nil {
 		_ = l.Close()
 		l.finish()
-		return nil, err
+		return nil, errors.Join(ctx.Err(), err)
 	}
-	s.mu.Lock()
-	l.openEmitted = true
-	s.mu.Unlock()
+	if err := ctx.Err(); err != nil {
+		closeErr := l.Close()
+		l.finish()
+		return nil, errors.Join(err, closeErr)
+	}
 	return l, nil
 }
