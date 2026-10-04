@@ -15,21 +15,29 @@ import (
 // opens no channel and reserves no physical work: a receipt is not a Hosting grant.
 func runAdmissionReceiver(ctx context.Context, args []string, input io.ReadCloser, out, diagnostic io.Writer) (code int) {
 	var config struct {
-		Root     string             `json:"root"`
-		Profile  string             `json:"profile"`
-		Receiver receiving.Receiver `json:"receiver"`
-		NotAfter time.Time          `json:"not_after"`
+		Root     string                `json:"root"`
+		Profile  string                `json:"profile"`
+		Network  *networkAuthorityPlan `json:"network,omitempty"`
+		Receiver receiving.Receiver    `json:"receiver"`
+		NotAfter time.Time             `json:"not_after"`
 	}
-	if ctx == nil || admissionConfig(args, &config) != nil || !absoluteAdmissionPath(config.Root) || !absoluteAdmissionPath(config.Profile) {
+	if ctx == nil || admissionConfig(args, &config) != nil || !absoluteAdmissionPath(config.Root) || !validAdmissionAuthority(config.Profile, config.Network, config.Root) {
 		return 2
 	}
 	if ctx.Err() != nil {
 		return 130
 	}
-	profile := admissionObserver(config.Profile)
+	authority, err := openAdmissionAuthority(config.Profile, config.Network)
+	if err != nil {
+		return 1
+	}
+	defer func() {
+		if authority.close() != nil {
+			code = 1
+		}
+	}()
 	o, err := receiving.Open(config.Root, config.Receiver, func() (receiving.Observation, error) {
-		p, now, err := profile()
-		return receiving.Observation{Profile: p, Receiver: config.Receiver, Now: now, NotAfter: config.NotAfter}, err
+		return authority.receiver(config.Receiver, config.NotAfter)
 	})
 	if err != nil {
 		return 1

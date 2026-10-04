@@ -36,15 +36,75 @@ func TestSuccessorImportIsolation(t *testing.T) {
 	})
 }
 
+// This check is independently runnable with the new-domain regression. It
+// checks actual implementation imports without executing legacy consumers.
+func TestNetworkIntegrationImportIsolation(t *testing.T) {
+	root := repositoryRoot(t)
+	walk(t, root, func(filename string, entry os.DirEntry) {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".go") {
+			return
+		}
+		relative := relativePath(t, root, filename)
+		if !strings.HasPrefix(relative, "internal/successor/") && !strings.HasPrefix(relative, "cmd/ardents-next/") {
+			return
+		}
+		file, err := parser.ParseFile(token.NewFileSet(), filename, nil, parser.ImportsOnly)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, imported := range file.Imports {
+			dependency, err := strconv.Unquote(imported.Path.Value)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !successorImportAllowed(relative, dependency) {
+				t.Errorf("new-domain isolation: %s imports forbidden dependency %s", relative, dependency)
+			}
+		}
+	})
+}
+
 func successorImportAllowed(source, dependency string) bool {
 	inZone := strings.HasPrefix(source, "internal/successor/") || strings.HasPrefix(source, "cmd/ardents-next/")
 	zoneDependency := dependency == modulePath+"/internal/successor" || strings.HasPrefix(dependency, modulePath+"/internal/successor/")
+	// Network's physical/application adapters consume domain policy through
+	// exact files. Directory nesting does not grant policy or Admission access.
+	if strings.HasPrefix(source, "internal/successor/network/") {
+		sourceAdapter := source
+		if sourceAdapter == "internal/successor/network/closedprofile/token_spki.go" && dependency == modulePath+"/internal/successor/admission/issuerprofile" {
+			return true
+		}
+		if sourceAdapter == "internal/successor/network/duty/participation_policy.go" && dependency == modulePath+"/internal/successor/network" {
+			return true
+		}
+		if dependency == modulePath+"/internal/successor/network" {
+			switch sourceAdapter {
+			case "internal/successor/network/state/accepted_observation.go":
+				return inZone
+			case "internal/successor/network/state/closed_profile_role_join_test.go", "internal/successor/network/state/closed_runtime_view_test.go":
+				return inZone
+			case "internal/successor/network/state/acquisition_history.go":
+				return true
+			case "internal/successor/network/epoch/candidate_evaluation.go", "internal/successor/network/epoch/assignment.go":
+				return true
+			case "internal/successor/network/state/epoch_history.go", "internal/successor/network/state/membership.go", "internal/successor/network/state/closed_member.go", "internal/successor/network/state/closed_runtime_view.go", "internal/successor/network/state/runtime_observation.go", "internal/successor/network/state/clock_observation.go", "internal/successor/network/state/closed_profile_view.go", "internal/successor/network/state/closed_duty_binding.go", "internal/successor/network/state/closed_profile_accept.go":
+				return true
+			}
+		}
+	}
 	if !inZone {
 		return !zoneDependency
 	}
 	// Match exact Go packages. A parent folder grants no child/sibling imports.
 	owner := path.Dir(source)
 	permitted := map[string][]string{
+		"internal/successor/network":                 {},
+		"internal/successor/network/closedprofile":   {},
+		"internal/successor/network/duty":            {},
+		"internal/successor/network/epoch":           {},
+		"internal/successor/network/source":          {"network/epoch"},
+		"internal/successor/network/state":           {"network/closedprofile", "network/duty", "network/epoch", "network/source", "network/state/durable"},
+		"internal/successor/network/state/durable":   {},
 		"internal/successor/admission":               {"admission/issuerprofile"},
 		"internal/successor/admission/issuerprofile": {},
 		"internal/successor/admission/allocation":    {"admission"},
@@ -59,13 +119,17 @@ func successorImportAllowed(source, dependency string) bool {
 		"internal/successor/nodeidentity":            {"admission/issuerprofile"},
 		"internal/successor/admittedwork":            {"admission", "admission/receiving", "hosting"},
 		"internal/successor/hosting":                 {},
-		"cmd/ardents-next":                           {"admittedwork", "admission/stock", "admission/receiving", "admission/allocation", "admission", "admission/quota", "admission/issuerprofile", "admission/issuance", "admission/issuer", "nodeidentity", "hosting"},
+		"cmd/ardents-next":                           {"admittedwork", "network", "network/state", "admission/stock", "admission/receiving", "admission/allocation", "admission", "admission/quota", "admission/issuerprofile", "admission/issuance", "admission/issuer", "nodeidentity", "hosting"},
 	}
 	if zoneDependency {
 		if owner == "internal/successor/admittedwork" && strings.HasSuffix(source, "_test.go") && (dependency == modulePath+"/internal/successor/admission/token" || dependency == modulePath+"/internal/successor/admission/issuerprofile") {
 			return true
 		}
-		if owner == "cmd/ardents-next" && strings.HasSuffix(source, "_test.go") && dependency == modulePath+"/internal/successor/admission/token" {
+
+		if source == "cmd/ardents-next/network_admission_fixture_linux_test.go" && dependency == modulePath+"/internal/successor/network/epoch" {
+			return true
+		}
+		if owner == "cmd/ardents-next" && strings.HasSuffix(source, "_test.go") && (dependency == modulePath+"/internal/successor/admission/token" || dependency == modulePath+"/internal/successor/admission/spending") {
 			return true
 		}
 		if (source == "internal/successor/admission/stock/issuance_fixture_test.go" || source == "internal/successor/admission/stock/lifecycle_test.go" || source == "internal/successor/admission/stock/receiving_cycle_test.go") && (dependency == modulePath+"/internal/successor/admission/issuer" || dependency == modulePath+"/internal/successor/admission/issuance" || dependency == modulePath+"/internal/successor/admission/quota") {
@@ -89,8 +153,16 @@ func successorImportAllowed(source, dependency string) bool {
 	if (owner == "internal/successor/admission/issuance" || owner == "internal/successor/admission/token") && dependency == "github.com/cloudflare/circl/blindsign/blindrsa" {
 		return true
 	}
-	if owner == "internal/successor/admission/spending" && dependency == "golang.org/x/sys/windows" {
+	if (owner == "internal/successor/admission/spending" || owner == "internal/successor/network/duty" || owner == "internal/successor/network/state/durable") && dependency == "golang.org/x/sys/windows" {
 		return true
+	}
+	if strings.HasSuffix(source, "_test.go") {
+		if (owner == "internal/successor/network/epoch" || owner == "internal/successor/network/state" || owner == "cmd/ardents-next") && dependency == modulePath+"/tests/epochfixture/network" {
+			return true
+		}
+		if owner == "internal/successor/network/epoch" && dependency == modulePath+"/tests/epochfixture/assignment" {
+			return true
+		}
 	}
 
 	// OTel composition is confined to the exact command package.
@@ -146,6 +218,33 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		{"zone", "cmd/ardents-next/main.go", modulePath + "/internal/successor/admission", true},
 		{"hosting caller", "cmd/ardents-next/hosting.go", modulePath + "/internal/successor/hosting", true},
 		{"independent domains", "internal/successor/hosting/budget.go", modulePath + "/internal/successor/admission", false},
+		{"network input adapter", "internal/successor/network/state/membership.go", modulePath + "/internal/successor/network", true},
+		{"network adapter is exact", "internal/successor/network/state/other.go", modulePath + "/internal/successor/network", false},
+		{"application observation", "internal/successor/network/state/runtime_observation.go", modulePath + "/internal/successor/network", true},
+		{"legacy consumer has no new State", "internal/endpoint/source_state.go", modulePath + "/internal/successor/network/state", false},
+		{"State consumer has no domain access", "internal/endpoint/source_state.go", modulePath + "/internal/successor/network", false},
+		{"State consumer has no physical root access", "internal/endpoint/source_state.go", modulePath + "/internal/successor/network/state/durable", false},
+		{"unregistered State consumer", "internal/service/publication/publication.go", modulePath + "/internal/successor/network/state", false},
+		{"State excludes debit", "internal/successor/network/state/open.go", modulePath + "/internal/successor/admission/quota", false},
+		{"State excludes old backend", "internal/successor/network/state/open.go", modulePath + "/internal/network/state", false},
+		{"legacy admission consumer isolated", "internal/node/authority/admission_observation.go", modulePath + "/internal/successor/admission/receiving", false},
+		{"legacy token consumer isolated", "internal/node/authority/token.go", modulePath + "/internal/successor/admission/receiving", false},
+		{"observation excludes spending root", "internal/node/authority/admission_observation.go", modulePath + "/internal/successor/admission/spending", false},
+		{"observation bridge is exact", "internal/node/authority/receiver.go", modulePath + "/internal/successor/admission/receiving", false},
+		{"acquisition policy adapter", "internal/successor/network/state/acquisition_history.go", modulePath + "/internal/successor/network", true},
+		{"acquisition adapter is exact", "internal/successor/network/state/attempts.go", modulePath + "/internal/successor/network", false},
+		{"participation policy adapter", "internal/successor/network/duty/participation_policy.go", modulePath + "/internal/successor/network", true},
+		{"participation adapter is exact", "internal/successor/network/duty/store.go", modulePath + "/internal/successor/network", false},
+		{"candidate policy adapter", "internal/successor/network/epoch/candidate_evaluation.go", modulePath + "/internal/successor/network", true},
+		{"assignment adapter", "internal/successor/network/epoch/assignment.go", modulePath + "/internal/successor/network", true},
+		{"candidate adapter is exact", "internal/successor/network/epoch/record.go", modulePath + "/internal/successor/network", false},
+		{"public token grammar adapter", "internal/successor/network/closedprofile/token_spki.go", modulePath + "/internal/successor/admission/issuerprofile", true},
+		{"public token adapter is exact", "internal/successor/network/closedprofile/profile.go", modulePath + "/internal/successor/admission/issuerprofile", false},
+		{"public token adapter excludes signing", "internal/successor/network/closedprofile/token_spki.go", modulePath + "/internal/successor/admission/issuance", false},
+		{"network excludes old state", "internal/successor/network/membership.go", modulePath + "/internal/network/state", false},
+		{"network excludes execution", "internal/successor/network/membership.go", modulePath + "/internal/node", false},
+		{"network excludes debit", "internal/successor/network/membership.go", modulePath + "/internal/successor/admission", false},
+		{"network excludes reservations", "internal/successor/network/membership.go", modulePath + "/internal/successor/hosting", false},
 		{"issuance confirmed debit", "internal/successor/admission/issuance/store.go", modulePath + "/internal/successor/admission", true},
 		{"operation owners", "internal/successor/admission/issuer/operation.go", modulePath + "/internal/successor/admission/issuance", true},
 		{"operation excludes hosting", "internal/successor/admission/issuer/operation.go", modulePath + "/internal/successor/hosting", false},

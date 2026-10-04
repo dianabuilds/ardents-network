@@ -19,6 +19,9 @@ func main() {
 }
 
 func run(ctx context.Context, args []string, out, diagnostic io.Writer) int {
+	if len(args) > 0 && args[0] == "network" {
+		return runNetwork(ctx, args[1:], out)
+	}
 	if len(args) > 1 && args[0] == "node-identity" && args[1] == "import" {
 		return runIssuerProfile(ctx, "node-identity.import", args[2:], out, diagnostic)
 	}

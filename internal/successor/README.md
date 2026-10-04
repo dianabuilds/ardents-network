@@ -9,6 +9,17 @@ after replacement and removal of the corresponding old implementation.
 No component packages or executable are created until a real bounded behavior,
 its contract, tests and non-test consumer are implemented together.
 
+The `network` package owns Candidate View, acquisition, local participation,
+Epoch/profile history, bound membership, time confidence and coherent
+accepted-state observations. Its `state` application orders authentication,
+durable decisions and publication. Epoch/profile authentication, Source TLS,
+the global root and the separate local restriction journal are registered
+adapters; retained byte mechanisms preserve their recovery contracts. The old
+`internal/network` tree remains until replacement is completed. New command
+composition calls the new application; its integration regression uses new
+Admission and Hosting. Exact adapters consume pure Network decisions. Imports
+are checked against the package map and import-isolation policy.
+
 ## Isolation
 
 All Go files here, including tests and platform-specific files, follow the exact
@@ -16,7 +27,8 @@ package imports in [the package map](../../docs/development/package-map.md).
 Directory nesting grants no implicit dependency. There is no shared legacy
 product allowlist. The command's exact OTel imports and test-only OTLP decoding
 imports are enumerated in the isolation test and dependency register.
-`admission/issuance` and `admission/token` may consume reviewed CIRCL blindrsa for issuer signing and holder/receiver operations. New dependencies
+`admission/issuance` and `admission/token` may consume reviewed CIRCL blindrsa
+for issuer signing and holder/receiver operations respectively. New dependencies
 require explicit review and the existing dependency acceptance process.
 
 [Admission](admission/README.md) owns its public `issuerprofile` contract, quota
@@ -27,8 +39,12 @@ ledger imports that public grammar; it cannot import identity, issuance or its
 operation coordinator.
 
 The reserved command path is cmd/ardents-next. It may compose successor packages,
-the standard library and its exact registered OTel imports, but no existing product packages. Existing product
-packages cannot import successor packages. The architecture test package may
+the standard library and its exact registered OTel imports, but no existing
+product packages. Future domain replacements use Network's explicit observations
+and retained-duty contracts. Moving old runtime consumers is not a prerequisite
+for the new-domain regression. Successor imports remain confined to registered
+consumers, with no implicit physical-root or private signing access.
+The architecture test package may
 inspect source files without importing successor code.
 
 The finite executable's grammar and lifecycle belong to

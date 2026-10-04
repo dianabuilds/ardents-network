@@ -1,0 +1,231 @@
+package source
+
+import (
+	"context"
+	"crypto/ed25519"
+	"crypto/sha256"
+	"crypto/tls"
+	"errors"
+	"fmt"
+	"io"
+	"net"
+	"sync"
+	"time"
+)
+
+var (
+	// ErrUnavailable marks failed contact or transport I/O.
+	ErrUnavailable = errors.New("distribution source unavailable")
+	// ErrAuthentication marks TLS peer verification or handshake protocol failure.
+	ErrAuthentication = errors.New("distribution source authentication failed")
+	// ErrFraming marks a malformed response or bundle.
+	ErrFraming = errors.New("distribution source framing failed")
+)
+
+func fetch(ctx context.Context, client client, request Message) (Message, error) {
+	dialTimeout := time.Second
+	handshakeTimeout := 2 * time.Second
+	exchangeTimeout := 5 * time.Second
+	totalContext, cancel := context.WithTimeout(ctx, exchangeTimeout)
+	defer cancel()
+	connection, err := (&net.Dialer{Timeout: dialTimeout}).DialContext(totalContext, "tcp", client.address)
+	if err != nil {
+		return fetchFailure(totalContext, Message{}, fmt.Errorf("%w: %w", ErrUnavailable, err))
+	}
+	defer connection.Close()
+	// DialContext and HandshakeContext stop at their own boundaries. Keep the
+	// established socket tied to the complete exchange and caller lifetime.
+	stopCancellation := context.AfterFunc(totalContext, func() { _ = connection.Close() })
+	defer stopCancellation()
+	if err := connection.SetDeadline(time.Now().Add(exchangeTimeout)); err != nil {
+		return fetchFailure(totalContext, Message{}, fmt.Errorf("%w: set exchange deadline: %w", ErrUnavailable, err))
+	}
+	tlsConnection := tls.Client(connection, clientTLSConfig(client))
+	handshakeContext, stopHandshake := context.WithTimeout(totalContext, handshakeTimeout)
+	err = tlsConnection.HandshakeContext(handshakeContext)
+	stopHandshake()
+	if err != nil {
+		cause := ErrAuthentication
+		if transportReadFailure(err) || errors.Is(err, io.ErrUnexpectedEOF) {
+			cause = ErrUnavailable
+		}
+		return fetchFailure(totalContext, Message{}, fmt.Errorf("%w: %w", cause, err))
+	}
+	if err := writeRequest(tlsConnection, request); err != nil {
+		return fetchFailure(totalContext, Message{}, fmt.Errorf("write distribution request: %w", err))
+	}
+	response, err := readResponse(tlsConnection)
+	if err != nil {
+		cause := ErrFraming
+		if transportReadFailure(err) {
+			cause = ErrUnavailable
+		}
+		return fetchFailure(totalContext, response, fmt.Errorf("%w: read distribution response: %w", cause, err))
+	}
+	var trailing [1]byte
+	count, trailingErr := tlsConnection.Read(trailing[:])
+	if count != 0 {
+		return fetchFailure(totalContext, Message{}, fmt.Errorf("%w: distribution response has trailing bytes", ErrFraming))
+	}
+	if trailingErr != nil && !errors.Is(trailingErr, io.EOF) {
+		cause := ErrFraming
+		if transportReadFailure(trailingErr) || errors.Is(trailingErr, io.ErrUnexpectedEOF) {
+			cause = ErrUnavailable
+		}
+		return fetchFailure(totalContext, Message{}, fmt.Errorf("%w: read distribution response closure: %w", cause, trailingErr))
+	}
+	if contextErr := totalContext.Err(); contextErr != nil {
+		return Message{}, contextErr
+	}
+	return response, nil
+}
+
+// A socket failure is distinct from a peer that answered with malformed wire
+// bytes. io.ErrUnexpectedEOF during response decoding means a partial frame.
+func transportReadFailure(err error) bool {
+	var operationError *net.OpError
+	return errors.Is(err, io.EOF) || errors.Is(err, net.ErrClosed) || errors.As(err, &operationError)
+}
+
+// fetchFailure retains a partial response only for a live exchange, where its
+// transport-observed object digest may justify State's one bounded BY_DIGEST retry.
+func fetchFailure(ctx context.Context, response Message, err error) (Message, error) {
+	if contextErr := ctx.Err(); contextErr != nil {
+		return Message{}, contextErr
+	}
+	return response, err
+}
+
+// Serve owns the configured bounded TLS listener until cancellation or
+// terminal failure. The callbacks belong to one server owner and may be called
+// concurrently until Serve returns; resolve must return a bounded Message.
+func (p *Plan) Serve(ctx context.Context, ready chan<- error, protected func() bool,
+	active func(int), resolve func(context.Context, Message) Message) error {
+	if p == nil || !p.details.Serving {
+		return errors.New("source server is not configured")
+	}
+	return serve(ctx, p.server, ready, protected, active, resolve)
+}
+
+func serve(ctx context.Context, server server, ready chan<- error, protected func() bool,
+	active func(int), resolve func(context.Context, Message) Message) error {
+	listener, err := net.Listen("tcp", server.address)
+	if err != nil {
+		wrapped := fmt.Errorf("listen for Network State distribution: %w", err)
+		ready <- wrapped
+		return wrapped
+	}
+	tlsListener := tls.NewListener(listener, serverTLSConfig(server))
+	ready <- nil
+	stop := make(chan struct{})
+	go func() {
+		select {
+		case <-ctx.Done():
+			_ = tlsListener.Close()
+		case <-stop:
+		}
+	}()
+	defer close(stop)
+	defer tlsListener.Close()
+	credits := make(chan struct{}, 8)
+	var connections sync.WaitGroup
+	defer connections.Wait()
+	for {
+		credits <- struct{}{}
+		connection, acceptErr := tlsListener.Accept()
+		if acceptErr != nil {
+			<-credits
+			if ctx.Err() != nil {
+				return ctx.Err()
+			}
+			return fmt.Errorf("accept distribution connection: %w", acceptErr)
+		}
+		if protected != nil && protected() {
+			<-credits
+			_ = connection.Close()
+			continue
+		}
+		connections.Add(1)
+		go func() {
+			defer connections.Done()
+			defer func() { <-credits }()
+			// A peer controls its connection lifetime, so a response-write failure
+			// terminates only this connection and cannot stop the shared listener.
+			_ = handleConnection(ctx, server, active, connection, resolve)
+		}()
+	}
+}
+
+func handleConnection(ctx context.Context, server server, active func(int), connection net.Conn,
+	resolve func(context.Context, Message) Message) error {
+	if active != nil {
+		active(1)
+		defer active(-1)
+	}
+	defer connection.Close()
+	started := time.Now()
+	if err := connection.SetDeadline(started.Add(server.headerTimeout)); err != nil {
+		return fmt.Errorf("set distribution request deadline: %w", err)
+	}
+	request, err := readRequest(connection)
+	if err != nil {
+		if writeErr := writeResponse(connection, Message{Status: "bad-request"}); writeErr != nil {
+			return fmt.Errorf("write distribution rejection: %w", writeErr)
+		}
+		return nil
+	}
+	if err := connection.SetDeadline(started.Add(5 * time.Second)); err != nil {
+		return fmt.Errorf("set distribution response deadline: %w", err)
+	}
+	if err := writeResponse(connection, resolve(ctx, request)); err != nil {
+		return fmt.Errorf("write distribution response: %w", err)
+	}
+	return nil
+}
+
+func clientTLSConfig(client client) *tls.Config {
+	return &tls.Config{
+		MinVersion: tls.VersionTLS13, MaxVersion: tls.VersionTLS13,
+		RootCAs: client.roots, ServerName: client.serverName,
+		Certificates:       []tls.Certificate{client.certificate},
+		ClientSessionCache: nil, SessionTicketsDisabled: true,
+		Time: client.clock,
+		VerifyConnection: func(state tls.ConnectionState) error {
+			if len(state.PeerCertificates) == 0 {
+				return errors.New("distribution source certificate is missing")
+			}
+			digest, err := keyDigest(state.PeerCertificates[0].PublicKey)
+			if err != nil || digest != client.leafKeyDigest {
+				return errors.New("distribution source leaf key pin does not match")
+			}
+			return nil
+		},
+	}
+}
+
+func serverTLSConfig(server server) *tls.Config {
+	return &tls.Config{
+		MinVersion: tls.VersionTLS13, MaxVersion: tls.VersionTLS13,
+		Certificates: []tls.Certificate{server.certificate},
+		ClientAuth:   tls.RequireAndVerifyClientCert, ClientCAs: server.clientRoots,
+		SessionTicketsDisabled: true, Time: server.clock,
+		VerifyConnection: func(state tls.ConnectionState) error {
+			if len(state.PeerCertificates) == 0 {
+				return errors.New("distribution client certificate is missing")
+			}
+			digest, err := keyDigest(state.PeerCertificates[0].PublicKey)
+			if err != nil || !server.clientDigests[digest] {
+				return errors.New("distribution client leaf key pin is not authorized")
+			}
+			return nil
+		},
+	}
+}
+
+func keyDigest(public any) ([32]byte, error) {
+	key, ok := public.(ed25519.PublicKey)
+	if !ok || len(key) != ed25519.PublicKeySize {
+		return [32]byte{}, errors.New("distribution transport key is not Ed25519")
+	}
+	return sha256.Sum256(append([]byte("ardents-h3-source-transport-key-v1\x00"), key...)), nil
+}

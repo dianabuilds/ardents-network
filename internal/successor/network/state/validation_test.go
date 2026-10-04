@@ -1,0 +1,163 @@
+package state_test
+
+import (
+	"context"
+	"crypto/ed25519"
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+	"time"
+
+	state2 "github.com/dianabuilds/ardents-network/internal/successor/network/state"
+)
+
+func TestOfflineValidationFailsClosed(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name   string
+		change func(*fixture, *state2.Config)
+	}{
+		{"epoch trailing bytes", func(value *fixture, _ *state2.Config) { value.epoch = append(value.epoch, 0) }},
+		{"epoch signature", func(value *fixture, _ *state2.Config) { value.epoch[len(value.epoch)-1] ^= 0xff }},
+		{"wrong network", func(_ *fixture, config *state2.Config) { config.NetworkID[0] ^= 0xff }},
+		{"stale epoch", func(value *fixture, config *state2.Config) { config.Now = time.Unix(value.now+3600, 0) }},
+		{"missing materialization", func(value *fixture, _ *state2.Config) { value.materializations = nil }},
+	}
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			value := newFixture(t)
+			root := t.TempDir()
+			config := state2.Config{
+				Root: root, NetworkID: value.networkID,
+				Authorities:            map[[32]byte]ed25519.PublicKey{value.authorityID: value.authorityPublic},
+				ClosedProfileAuthority: value.authorityPublic,
+				Threshold:              1, Now: time.Unix(value.now, 0),
+			}
+			test.change(&value, &config)
+			store, err := state2.Open(config)
+			if err != nil {
+				t.Fatalf("open state: %v", err)
+			}
+			defer store.Close()
+			if _, err := store.Accept(context.Background(), value.epoch, value.inputs, value.materializations); err == nil {
+				t.Fatal("invalid offline state was accepted")
+			}
+			if _, err := os.Stat(filepath.Join(root, "current")); !os.IsNotExist(err) {
+				t.Fatalf("failed validation published current: %v", err)
+			}
+		})
+	}
+}
+
+func TestOpenFailsOnCorruptCurrentGeneration(t *testing.T) {
+	t.Parallel()
+	value := newFixture(t)
+	root := t.TempDir()
+	config := state2.Config{
+		Root: root, NetworkID: value.networkID,
+		Authorities:            map[[32]byte]ed25519.PublicKey{value.authorityID: value.authorityPublic},
+		ClosedProfileAuthority: value.authorityPublic,
+		Threshold:              1, Now: time.Unix(value.now, 0),
+	}
+	store, err := state2.Open(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	snapshot, err := store.Accept(context.Background(), value.epoch, value.inputs, value.materializations)
+	if err != nil {
+		t.Fatal(err)
+	}
+	epochPath := filepath.Join(root, "generations", snapshot.Generation, "epoch.bin")
+	epoch, err := os.ReadFile(epochPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	epoch[0] ^= 0xff
+	if err := os.WriteFile(epochPath, epoch, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := state2.Open(config); err == nil {
+		t.Fatal("corrupt current generation was recovered")
+	}
+}
+
+func TestConfigRejectsUnboundedAutomaticAcquisition(t *testing.T) {
+	t.Parallel()
+	value := newFixture(t)
+	base := state2.Config{Root: t.TempDir(), NetworkID: value.networkID,
+		Authorities: map[[32]byte]ed25519.PublicKey{value.authorityID: value.authorityPublic}, ClosedProfileAuthority: value.authorityPublic, Threshold: 1,
+		Now: time.Unix(value.now, 0)}
+	tests := []struct {
+		name string
+		edit func(*state2.Config)
+	}{
+		{"materialization index", func(config *state2.Config) { config.Source.MaterialIndex = 64 }},
+		{"hot refresh", func(config *state2.Config) { config.AutomaticRefreshInterval = time.Nanosecond }},
+		{"static observation", func(config *state2.Config) { config.AutomaticRefreshInterval = time.Second }},
+		{"multiple clocks", func(config *state2.Config) { config.Clock = time.Now }},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			config := base
+			config.Root = t.TempDir()
+			test.edit(&config)
+			if store, err := state2.Open(config); err == nil {
+				_ = store.Close()
+				t.Fatal("invalid acquisition config was accepted")
+			}
+		})
+	}
+}
+
+func TestClosedRouteProfileRequiresPinnedProfileAuthority(t *testing.T) {
+	value := newFixture(t)
+	base := state2.Config{Root: t.TempDir(), NetworkID: value.networkID,
+		Authorities: map[[32]byte]ed25519.PublicKey{value.authorityID: value.authorityPublic}, ClosedProfileAuthority: value.authorityPublic, Threshold: 1,
+		Now: time.Unix(value.now, 0), AcceptedProfile: "ardents-route-v3"}
+	base.ClosedProfileAuthority = nil
+	if store, err := state2.Open(base); err == nil {
+		_ = store.Close()
+		t.Fatal("closed route state accepted no profile authority")
+	}
+	base.ClosedProfileAuthority = ed25519.NewKeyFromSeed(make([]byte, ed25519.SeedSize)).Public().(ed25519.PublicKey)
+	if store, err := state2.Open(base); err == nil {
+		_ = store.Close()
+		t.Fatal("closed route state accepted an unpinned profile authority")
+	}
+	base.ClosedProfileAuthority = value.authorityPublic
+	store, err := state2.Open(base)
+	if err != nil {
+		t.Fatalf("open closed route state with pinned authority: %v", err)
+	}
+	if err := store.Close(); err != nil {
+		t.Fatalf("close closed route state: %v", err)
+	}
+}
+
+func TestStateOwnsSourceTLSVerificationClock(t *testing.T) {
+	t.Parallel()
+	value := newFixture(t)
+	root := filepath.Join(t.TempDir(), "state-root")
+	now := time.Unix(value.now, 0).UTC()
+	config := state2.Config{Root: root, NetworkID: value.networkID,
+		Authorities:            map[[32]byte]ed25519.PublicKey{value.authorityID: value.authorityPublic},
+		ClosedProfileAuthority: value.authorityPublic,
+		Threshold:              1, Now: now}
+	config.Source.VerificationClock = func() time.Time { return now.Add(-time.Hour) }
+	store, err := state2.Open(config)
+	if store != nil {
+		_ = store.Close()
+	}
+	if err == nil || !strings.Contains(err.Error(), "source verification clock") {
+		t.Fatalf("State accepted an independent Source TLS clock: %v", err)
+	}
+	if _, statErr := os.Stat(root); !os.IsNotExist(statErr) {
+		t.Fatalf("invalid Source clock created State root: %v", statErr)
+	}
+}

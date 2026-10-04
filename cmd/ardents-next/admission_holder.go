@@ -27,15 +27,25 @@ func runAdmissionHolder(ctx context.Context, args []string, input io.ReadCloser,
 	var config struct {
 		Root    string                   `json:"root"`
 		Profile string                   `json:"profile"`
+		Network *networkAuthorityPlan    `json:"network,omitempty"`
 		Role    admission.AllocationRole `json:"role"`
 	}
-	if ctx == nil || admissionConfig(args, &config) != nil || !absoluteAdmissionPath(config.Root) || !absoluteAdmissionPath(config.Profile) {
+	if ctx == nil || admissionConfig(args, &config) != nil || !absoluteAdmissionPath(config.Root) || !validAdmissionAuthority(config.Profile, config.Network, config.Root) {
 		return 2
 	}
 	if ctx.Err() != nil {
 		return 130
 	}
-	o, err := stock.Open(config.Root, config.Role, admissionObserver(config.Profile))
+	authority, err := openAdmissionAuthority(config.Profile, config.Network)
+	if err != nil {
+		return 1
+	}
+	defer func() {
+		if authority.close() != nil {
+			code = 1
+		}
+	}()
+	o, err := stock.Open(config.Root, config.Role, authority.observe)
 	if err != nil {
 		return 1
 	}
@@ -46,6 +56,7 @@ func runAdmissionHolder(ctx context.Context, args []string, input io.ReadCloser,
 		_ = json.NewEncoder(diagnostic).Encode(map[string]any{"operation": "admission.holder", "phase": "closed", "exit_code": code})
 	}()
 	var attempt stock.Attempt
+	var retainedIntent stock.IssuanceIntent
 	return admissionConsole(ctx, input, out, func(ctx context.Context, raw []byte) (any, bool, error) {
 		var c holderCommand
 		if err := decodeAdmissionObject(raw, &c); err != nil {
@@ -62,13 +73,24 @@ func runAdmissionHolder(ctx context.Context, args []string, input io.ReadCloser,
 		case "import":
 			err = o.Import(c.Digest, c.Payload)
 		case "begin":
+			if authority.intent != nil {
+				if err = authority.intent(c.Intent); err != nil {
+					break
+				}
+			}
 			var next stock.Attempt
 			next, err = o.Begin(c.Intent)
 			if err == nil {
 				attempt = next
+				retainedIntent = c.Intent
 				result["request"], result["deadline"], err = attempt.Request()
 			}
 		case "complete":
+			if authority.intent != nil {
+				if err = authority.intent(retainedIntent); err != nil {
+					break
+				}
+			}
 			var exchangeErr error
 			if c.Failed {
 				exchangeErr = errors.New("exchange failed")
@@ -77,7 +99,17 @@ func runAdmissionHolder(ctx context.Context, args []string, input io.ReadCloser,
 		case "discard":
 			attempt.Discard()
 		case "take":
+			if authority.presentation != nil {
+				if err = authority.presentation(c.Presentation); err != nil {
+					break
+				}
+			}
 			result["token"], err = o.Take(ctx, c.Presentation, c.Class)
+			if err == nil && authority.presentation != nil {
+				if err = authority.presentation(c.Presentation); err != nil {
+					delete(result, "token")
+				}
+			}
 		case "refill-plan":
 			result["receivers"], err = o.RefillPlan(c.Receivers, c.Class, c.RequiresToken)
 		case "status":
