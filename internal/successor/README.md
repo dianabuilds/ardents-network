@@ -9,6 +9,48 @@ after replacement and removal of the corresponding old implementation.
 No component packages or executable are created until a real bounded behavior,
 its contract, tests and non-test consumer are implemented together.
 
+## Каркас доменов
+
+По поручению Product Owner подготовлены каталоги будущих владельцев с README.
+Это каркас исходного дерева: без Go-пакетов, API, заглушек, переноса поведения
+и запуска задач реализации. Каталог не означает, что домен реализован или принят.
+Полный архитектурный инвентарь, включая вспомогательные обязанности, ведётся в
+[карте доменов](../../docs/development/domain-map.md). Точные импорты появятся
+в package map вместе с реализацией и реальным потребителем.
+
+| Каталог | Назначение | Содержимое |
+|---|---|---|
+| `network/` | Аутентифицированные факты сети и их актуальность | Существующая реализация |
+| `admission/` | Выдача, хранение, предъявление и необратимое расходование прав | Существующая реализация |
+| `hosting/` | Физический бюджет провайдера и резервирование | Существующая реализация |
+| `route/` | Защищённые маршруты, ролевые каналы и завершение транспорта | Существующая частичная реализация |
+| [execution/](execution/README.md) | Локальные полномочия Application, сессия, Job и завершение worker | Только каркас |
+| [publication/](publication/README.md) | Жизненный цикл публикации Service Instance | Только каркас |
+| [reachability/](reachability/README.md) | Descriptor Store и проверка достижимости точного Target | Только каркас |
+| [connection/](connection/README.md) | Аутентифицированный логический Service Connection | Только каркас |
+| [enrollment/](enrollment/README.md) | Первичное закрепление доверенного комплекта | Только каркас |
+| [release/](release/README.md) | Разрешение на точные программные артефакты | Только каркас |
+| [installation/](installation/README.md) | Установка, замена и восстановление поколения | Только каркас |
+| [custody/](custody/README.md) | Хранение корневых полномочий и подпись по назначению | Только каркас |
+| `nodeidentity/` | Узкое назначение импортированного материала Node | Существующий вспомогательный владелец |
+
+Enrollment, Release и Installation составляют семейство Software acceptance,
+но сохраняют разные полномочия и транзакции. Для общего `software`-агрегата
+или универсального `identity`-домена каталог не создаётся.
+
+Внутри будущих доменов пока нет каталогов слоёв, репозиториев, DTO или событий.
+Состав реальных пакетов определяется конкретными инвариантами и потребителями.
+Существующие Text Application, IPC, наблюдение ресурсов, диагностика,
+Qualification и композиция Endpoint/Node сохраняют места и обязанности,
+указанные в карте. Naming остаётся будущей границей вне выбранного перехода;
+каркас не возвращает удалённый Namespace и не выбирает публичное хранилище,
+consensus, blockchain или governance.
+
+Каждый последующий перенос должен принести поведение, реальные новые
+потребители, проверки границ и регресс в среде новых доменов. Только тогда
+добавляются `doc.go`, регистрация пакетов и разрешённые импорты. Старый код
+служит инвентарём для разбора обязанностей, но не подключается к новым владельцам.
+
 The `network` package owns Candidate View, acquisition, local participation,
 Epoch/profile history, bound membership, time confidence and coherent
 accepted-state observations. Its `state` application orders authentication,
