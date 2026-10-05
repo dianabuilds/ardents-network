@@ -5,6 +5,7 @@ package main
 import (
 	"context"
 	"errors"
+	routejoin "github.com/dianabuilds/ardents-network/internal/successor/route/join"
 	"net"
 	"sync"
 	"time"
@@ -12,8 +13,8 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/successor/admission/stock"
 	"github.com/dianabuilds/ardents-network/internal/successor/hosting"
 	"github.com/dianabuilds/ardents-network/internal/successor/route/ardp"
+
 	"github.com/dianabuilds/ardents-network/internal/successor/route/selection"
-	"github.com/dianabuilds/ardents-network/internal/successor/route/transport"
 )
 
 // One holder console retains one fixed local Route context independently of
@@ -36,7 +37,7 @@ func newRouteJoinContext(ctx context.Context, plan routePrefixPlan, authority ad
 		return routeJoinContext{}, errors.Join(err, installation.Close())
 	}
 	var source, responder *selection.Owner
-	var owner *transport.JoinContext
+	var owner *routejoin.JoinContext
 	var once sync.Once
 	var terminal error
 	closeAll := func() error {
@@ -73,7 +74,7 @@ func newRouteJoinContext(ctx context.Context, plan routePrefixPlan, authority ad
 	if end, ok := ctx.Deadline(); ok && end.Before(deadline) {
 		deadline = end.UTC().Truncate(time.Second)
 	}
-	owner, err = transport.NewJoinContext(ctx, transport.JoinContextConfig{
+	owner, err = routejoin.NewJoinContext(ctx, routejoin.JoinContextConfig{
 		Source: source, Responder: responder, Current: authority.current, Deadline: deadline, Exclusions: plan.Exclusions,
 		Reserve: func(caller context.Context) (func() error, error) {
 			reservation, err := budget.Reserve(caller, hosting.ReservationRequest{Work: plan.Work, Termination: plan.Termination, WorkUntil: deadline, HoldUntil: deadline.Add(5 * time.Second)})
@@ -115,7 +116,7 @@ func newRouteJoinContext(ctx context.Context, plan routePrefixPlan, authority ad
 			}
 			// Route verifies the exact current duty against the original
 			// roles and retained choice before stock presentation or I/O.
-			stream, err := opening.Join(caller, transport.JoinConfig{Duty: duty, Secret: intent.Secret, Context: intent.Context, Deadline: intent.Deadline, SetupDeadline: intent.SetupDeadline}, intent.Choice)
+			stream, err := opening.Join(caller, routejoin.JoinConfig{Duty: duty, Secret: intent.Secret, Context: intent.Context, Deadline: intent.Deadline, SetupDeadline: intent.SetupDeadline}, intent.Choice)
 			if err != nil {
 				return nil, err
 			}

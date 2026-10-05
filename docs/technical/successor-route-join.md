@@ -24,7 +24,7 @@ the new actual leg against those retained choices; conflict or expiry refuses
 without redraw. Only the initiating Source selects. A Publisher verifies the
 exact incoming public duty rather than choosing a substitute.
 
-`transport.JoinContext` owns one explicit local Route role/configuration, its
+`join.JoinContext` owns one explicit local Route role/configuration, its
 role selections, retained Rendezvous and physical generations. Construction
 grants no readiness. `Open` publishes a `JoinOpening` only after genuine admitted
 Source and, for Publisher, original-Source-bound Responder are ready.
@@ -40,6 +40,21 @@ synchronous sealing. Original caller cancellation is checked directly after
 lock waits and observations, without relying on delayed cancellation callbacks.
 Stocked tokens do not bypass these checks.
 
+The actual `prefix.JoinBorrow` retains both exact physical identities, their
+original currentness, retirement signals and terminal-channel opener. JOIN
+acquisition retains its caller, one attempt, stream and physical result; it
+does not read Prefix fields or resolve a new parent. Its joined notification
+captures the exact original Context generation and runs only after both borrows
+return, outside the parent locks. Acquisition, client exchange and joined stream
+use portable mechanisms and execute the same local lifetime controls on Windows
+and Linux. Context composition still uses the concrete native selection owner;
+its durable-root dependency and Context tests remain Linux-specific. Holder
+acquisition, attempt and stream live directly in `join`; `receiver` owns the
+listener and dispatch. The intermediate operation package is removed.
+Prefix is the actual physical-generation owner. Its pair-lock tests
+remain there; acquisition tests retain caller and opening-join ordering without
+accessing Prefix private fields.
+
 A successful JOIN transfers stream and exact acquisition together. Retirement
 seals all borrowers before waiting, joins them with original framing parents
 still live for bounded terminal output, then retires the parents and returns
@@ -51,6 +66,25 @@ its callback before publication and preserves deadline-operation and Close
 failures. Actual cleanup failure seals context admission and prevents reopen.
 
 ## Receiving pair and framed stream
+
+`join.Pairing` owns the receiving pair directly. The actual Receiver calls
+`Serve` with its original admitted channel, allowance and currentness check.
+`ReserveCapacity` holds frame memory and a child position from the same receiving
+principal budget before spend. Receiving composition returns this opaque capacity
+only after physical join, alongside the original Hosting return; JOIN owns no
+Grant, listener or durable root. Physical failures are retained through the
+Receiver's bound recording callback before pair completion.
+
+`pair.go` keeps capacity, matching, setup and the two-RESULT barrier together;
+`relay.go` owns activated frame accounting, credit and terminal joining. Their
+tests are grouped by these lifetimes in `pair_test.go` and `relay_test.go`,
+including original attachment cancellation and late opposite refusals. All
+these sources run unchanged on Windows and Linux: they need ordered I/O,
+context, time and synchronization, with no native storage mechanism. Controls
+that also assert the actual Receiver's retained failure stay with receiving
+composition; its concrete Admission/root dependencies still select Linux.
+Holder acquisitions and Context now belong directly to `join`;
+their real Prefix borrowing interface and consumer cutover are complete.
 
 Each side authenticates fresh exact-recipient terminal TLS through its original
 prefix and presents genuine class-2 stock. Admission durably marks holder
@@ -78,7 +112,12 @@ selected CREDIT may finish within the earlier original deadline and one second.
 No new read starts after that write joins a sealed pair. A timed-out or failed
 physical CREDIT remains failure and cannot produce later successful terminals.
 The client waits for the authenticated inner terminal before closing its lower
-parent. Previously accepted bytes survive raw EOF within their original bounds,
+parent. The original Prefix terminal retains that lower lane and its control
+capacity return; Joined holds the terminal rather than separate raw parent and
+release fields. It asks for lower retirement only after the inner framing
+reader/writer and terminal wait join. The real nested-pipe close tests execute
+unchanged on Windows and Linux, including verified CLOSE, raw EOF, cleanup
+timeout and the earlier original deadline. Previously accepted bytes survive raw EOF within their original bounds,
 then end with unexpected closure when no inner CLOSE was verified.
 
 ## Command consumer

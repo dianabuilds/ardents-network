@@ -1,6 +1,7 @@
 package architecture
 
 import (
+	"go/build"
 	"go/parser"
 	"go/token"
 	"os"
@@ -9,6 +10,186 @@ import (
 	"strings"
 	"testing"
 )
+
+// The shared channel has no native mechanism. Check actual Go file selection,
+// including tests: a passing suite must not silently omit an inherited OS file.
+func TestSuccessorRouteChannelRunsSameSourcesOnWindowsAndLinux(t *testing.T) {
+	directory := path.Join(repositoryRoot(t), "internal/successor/route/channel")
+	entries, err := os.ReadDir(directory)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".go") {
+			continue
+		}
+		for _, target := range []string{"windows", "linux"} {
+			profile := build.Default
+			profile.GOOS, profile.GOARCH, profile.CgoEnabled = target, "amd64", false
+			selected, err := profile.MatchFile(directory, entry.Name())
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !selected {
+				t.Errorf("portable channel source %s excluded on %s", entry.Name(), target)
+			}
+		}
+	}
+}
+
+func TestSuccessorRouteRoleRulesRunOnWindowsAndLinux(t *testing.T) {
+	directory := path.Join(repositoryRoot(t), "internal/successor/route/role")
+	for _, filename := range []string{"authority.go", "authority_test.go", "presentation.go", "presentation_test.go", "doc.go"} {
+		for _, target := range []string{"windows", "linux"} {
+			profile := build.Default
+			profile.GOOS, profile.GOARCH, profile.CgoEnabled = target, "amd64", false
+			selected, err := profile.MatchFile(directory, filename)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !selected {
+				t.Errorf("portable role rule %s excluded on %s", filename, target)
+			}
+		}
+	}
+}
+
+// Prefix consumes retained facts and actual portable adapters. Durable roots
+// belong to selection/Admission, not to its physical generation or borrowers.
+func TestSuccessorRoutePrefixRunsSameSourcesOnWindowsAndLinux(t *testing.T) {
+	directory := path.Join(repositoryRoot(t), "internal/successor/route/prefix")
+	entries, err := os.ReadDir(directory)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, entry := range entries {
+		name := entry.Name()
+		if entry.IsDir() || !strings.HasSuffix(name, ".go") {
+			continue
+		}
+		for _, target := range []string{"windows", "linux"} {
+			profile := build.Default
+			profile.GOOS, profile.GOARCH, profile.CgoEnabled = target, "amd64", false
+			selected, err := profile.MatchFile(directory, name)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !selected {
+				t.Errorf("portable Prefix source %s excluded on %s", name, target)
+			}
+		}
+	}
+}
+
+// Receiving pairing/relay opens no durable root and owns no native mechanism.
+func TestSuccessorRouteReceivingJoinRunsOnWindowsAndLinux(t *testing.T) {
+	directory := path.Join(repositoryRoot(t), "internal/successor/route/join")
+	for _, filename := range []string{"pair.go", "relay.go", "pair_test.go", "relay_test.go", "doc.go"} {
+		for _, target := range []string{"windows", "linux"} {
+			profile := build.Default
+			profile.GOOS, profile.GOARCH, profile.CgoEnabled = target, "amd64", false
+			selected, err := profile.MatchFile(directory, filename)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !selected {
+				t.Errorf("portable receiving JOIN source %s excluded on %s", filename, target)
+			}
+		}
+	}
+}
+
+// Holder exchange and inner/lower retirement use ordered I/O and exact
+// borrowed generations. Native Context selection is a separate owner.
+func TestSuccessorRouteHolderJoinRunsOnWindowsAndLinux(t *testing.T) {
+	directory := path.Join(repositoryRoot(t), "internal/successor/route/join")
+	for _, filename := range []string{"acquisition.go", "acquisition_test.go", "client.go", "stream.go", "stream_test.go"} {
+		for _, target := range []string{"windows", "linux"} {
+			profile := build.Default
+			profile.GOOS, profile.GOARCH, profile.CgoEnabled = target, "amd64", false
+			selected, err := profile.MatchFile(directory, filename)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !selected {
+				t.Errorf("portable holder JOIN source %s excluded on %s", filename, target)
+			}
+		}
+	}
+}
+
+// Directed-pair pool owns no native root or receiving Grant. Its actual
+// physical retirement tests must execute on both platforms.
+func TestSuccessorRouteReceiverPoolRunsOnWindowsAndLinux(t *testing.T) {
+	directory := path.Join(repositoryRoot(t), "internal/successor/route/receiver")
+	for _, filename := range []string{"carrier_pool.go", "carrier_pool_test.go", "physical_fixture_test.go"} {
+		for _, target := range []string{"windows", "linux"} {
+			profile := build.Default
+			profile.GOOS, profile.GOARCH, profile.CgoEnabled = target, "amd64", false
+			selected, err := profile.MatchFile(directory, filename)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !selected {
+				t.Errorf("portable pool source %s excluded on %s", filename, target)
+			}
+		}
+	}
+}
+
+// Holder registration consumes a retained Prefix, not a native storage owner.
+func TestSuccessorRouteRegistrationRunsOnWindowsAndLinux(t *testing.T) {
+	directory := path.Join(repositoryRoot(t), "internal/successor/route/introduction")
+	for _, filename := range []string{"registration.go", "registration_test.go"} {
+		for _, target := range []string{"windows", "linux"} {
+			profile := build.Default
+			profile.GOOS, profile.GOARCH, profile.CgoEnabled = target, "amd64", false
+			selected, err := profile.MatchFile(directory, filename)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !selected {
+				t.Errorf("portable registration source %s excluded on %s", filename, target)
+			}
+		}
+	}
+}
+
+// Durable selection owns native root leases, but retained authority checks and
+// recipient choices must execute, including their tests, on both platforms.
+func TestSuccessorRouteSelectionRulesRunOnWindowsAndLinux(t *testing.T) {
+	directory := path.Join(repositoryRoot(t), "internal/successor/route/selection")
+	for _, filename := range []string{"leg.go", "leg_test.go", "entry_set.go", "entry_set_test.go", "introduction_recipient.go", "rendezvous.go", "rendezvous_test.go"} {
+		for _, target := range []string{"windows", "linux"} {
+			profile := build.Default
+			profile.GOOS, profile.GOARCH, profile.CgoEnabled = target, "amd64", false
+			selected, err := profile.MatchFile(directory, filename)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !selected {
+				t.Errorf("portable selection rule %s excluded on %s", filename, target)
+			}
+		}
+	}
+}
+
+func TestSuccessorRouteIntroductionSnapshotRunsOnWindowsAndLinux(t *testing.T) {
+	directory := path.Join(repositoryRoot(t), "internal/successor/route/introduction")
+	for _, filename := range []string{"slot_snapshot.go", "slot_snapshot_test.go", "slot_history.go", "slot_history_test.go", "registry.go", "receiving.go", "receiving_test.go"} {
+		for _, target := range []string{"windows", "linux"} {
+			profile := build.Default
+			profile.GOOS, profile.GOARCH, profile.CgoEnabled = target, "amd64", false
+			selected, err := profile.MatchFile(directory, filename)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !selected {
+				t.Errorf("portable Introduction snapshot %s excluded on %s", filename, target)
+			}
+		}
+	}
+}
 
 func TestSuccessorImportIsolation(t *testing.T) {
 	root := repositoryRoot(t)
@@ -120,14 +301,23 @@ func successorImportAllowed(source, dependency string) bool {
 		"internal/successor/hosting":                 {},
 		"internal/successor/route":                   {},
 		"internal/successor/route/ardp":              {},
-		"internal/successor/route/carrier":           {},
-		"internal/successor/route/introduction":      {"admission/spending"},
+		"internal/successor/route/transport":         {},
+		"internal/successor/route/channel":           {"route/ardp", "route/transport"},
+		"internal/successor/route/transport/tls":     {"route/transport"},
+		"internal/successor/route/transport/quic":    {"route/transport"},
+		"internal/successor/route/introduction":      {"admission/spending", "route/ardp", "route/role", "route/prefix", "network", "admission"},
 		"internal/successor/route/selection":         {"route", "network"},
-		"internal/successor/route/transport":         {"route", "route/selection", "route/carrier", "route/ardp", "route/introduction", "network", "admission", "admission/receiving"},
-		"cmd/ardents-next":                           {"network", "network/state", "admission/stock", "admission/receiving", "admission/allocation", "admission", "admission/quota", "admission/issuerprofile", "admission/issuance", "admission/issuer", "nodeidentity", "hosting", "route", "route/selection", "route/transport", "route/ardp"},
+		"internal/successor/route/role":              {"route", "route/ardp", "route/channel", "route/transport", "network", "admission"},
+		"internal/successor/route/join":              {"route/prefix", "route", "route/selection", "route/ardp", "route/channel", "route/role", "route/transport", "network", "admission"},
+		"internal/successor/route/prefix":            {"route", "route/selection", "route/ardp", "route/channel", "route/role", "route/transport", "route/transport/tls", "route/transport/quic", "network", "admission"},
+		"internal/successor/route/receiver":          {"route/join", "route", "route/role", "route/transport", "route/transport/tls", "route/transport/quic", "route/channel", "route/ardp", "route/introduction", "network", "admission", "admission/receiving"},
+		"cmd/ardents-next":                           {"route/introduction", "route/prefix", "network", "network/state", "admission/stock", "admission/receiving", "admission/allocation", "admission", "admission/quota", "admission/issuerprofile", "admission/issuance", "admission/issuer", "nodeidentity", "hosting", "route", "route/role", "route/selection", "route/join", "route/receiver", "route/channel", "route/ardp"},
 	}
 	if zoneDependency {
-		if dependency == modulePath+"/internal/successor/route/carrier" {
+		if source == "cmd/ardents-next/route_fixture_linux_test.go" && (dependency == modulePath+"/internal/successor/route/transport/tls" || dependency == modulePath+"/internal/successor/route/transport/quic") {
+			return true
+		}
+		if dependency == modulePath+"/internal/successor/route/transport" {
 			switch source {
 			case "cmd/ardents-next/route_refill_linux_test.go", "cmd/ardents-next/route_fixture_linux_test.go", "cmd/ardents-next/route_prefix_linux_test.go", "cmd/ardents-next/route_prefix_caller_linux_test.go", "cmd/ardents-next/route_process_linux_test.go", "cmd/ardents-next/route_refusal_linux_test.go", "cmd/ardents-next/route_registration_linux_test.go", "cmd/ardents-next/route_join_fixture_linux_test.go", "cmd/ardents-next/route_join_linux_test.go", "cmd/ardents-next/route_join_process_linux_test.go", "cmd/ardents-next/route_close_failure_linux_test.go", "cmd/ardents-next/route_join_lifecycle_linux_test.go":
 				return true
@@ -160,7 +350,7 @@ func successorImportAllowed(source, dependency string) bool {
 	if (owner == "internal/successor/admission/issuance" || owner == "internal/successor/admission/token") && dependency == "github.com/cloudflare/circl/blindsign/blindrsa" {
 		return true
 	}
-	if owner == "internal/successor/route/carrier" && dependency == "github.com/quic-go/quic-go" {
+	if owner == "internal/successor/route/transport/quic" && dependency == "github.com/quic-go/quic-go" {
 		return true
 	}
 	if (owner == "internal/successor/admission/spending" || owner == "internal/successor/network/duty" || owner == "internal/successor/network/state/durable") && dependency == "golang.org/x/sys/windows" {
@@ -212,10 +402,52 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		name, source, dependency string
 		allowed                  bool
 	}{
-		{"original caller Carrier behavior test", "cmd/ardents-next/route_prefix_caller_linux_test.go", modulePath + "/internal/successor/route/carrier", true},
+		{"physical implementation uses shared contract", "internal/successor/route/transport/tls/node.go", modulePath + "/internal/successor/route/transport", true},
+		{"Prefix uses shared contract", "internal/successor/route/prefix/prefix.go", modulePath + "/internal/successor/route/transport", true},
+		{"Prefix uses portable framing", "internal/successor/route/prefix/prefix.go", modulePath + "/internal/successor/route/channel", true},
+		{"channel uses grammar", "internal/successor/route/channel/session.go", modulePath + "/internal/successor/route/ardp", true},
+		{"channel uses ordered transport", "internal/successor/route/channel/session.go", modulePath + "/internal/successor/route/transport", true},
+		{"channel cannot import TLS adapter", "internal/successor/route/channel/session.go", modulePath + "/internal/successor/route/transport/tls", false},
+		{"channel cannot import QUIC adapter", "internal/successor/route/channel/session_test.go", modulePath + "/internal/successor/route/transport/quic", false},
+		{"holder JOIN cannot import Receiver", "internal/successor/route/join/acquisition.go", modulePath + "/internal/successor/route/receiver", false},
+		{"Receiver cannot import holder Prefix", "internal/successor/route/receiver/receiver_linux.go", modulePath + "/internal/successor/route/prefix", false},
+		{"actual receiver dispatches JOIN", "internal/successor/route/receiver/receiver_linux.go", modulePath + "/internal/successor/route/join", true},
+		{"holder JOIN consumes Prefix", "internal/successor/route/join/acquisition.go", modulePath + "/internal/successor/route/prefix", true},
+		{"former operation cannot return", "cmd/ardents-next/route_linux.go", modulePath + "/internal/successor/route/operation", false},
+		{"Prefix cannot import JOIN consumer", "internal/successor/route/prefix/borrowing.go", modulePath + "/internal/successor/route/join", false},
+		{"Prefix cannot import Introduction consumer", "internal/successor/route/prefix/introduction_channel.go", modulePath + "/internal/successor/route/introduction", false},
+		{"Prefix cannot import receiving composition", "internal/successor/route/prefix/prefix.go", modulePath + "/internal/successor/route/receiver", false},
+		{"Prefix calls actual role owner", "internal/successor/route/prefix/prefix.go", modulePath + "/internal/successor/route/role", true},
+		{"holder consumes actual Prefix", "cmd/ardents-next/route_linux.go", modulePath + "/internal/successor/route/prefix", true},
+		{"channel cannot import receiving composition", "internal/successor/route/channel/session.go", modulePath + "/internal/successor/route/receiver", false},
+		{"channel cannot import Network", "internal/successor/route/channel/session_test.go", modulePath + "/internal/successor/network", false},
+		{"channel cannot import role authority", "internal/successor/route/channel/session.go", modulePath + "/internal/successor/route/role", false},
+		{"role cannot import receiving composition", "internal/successor/route/role/authority.go", modulePath + "/internal/successor/route/receiver", false},
+		{"role cannot spend Admission", "internal/successor/route/role/authority.go", modulePath + "/internal/successor/admission/receiving", false},
+		{"role consumes Network observations", "internal/successor/route/role/authority.go", modulePath + "/internal/successor/network", true},
+		{"Introduction exchange uses role binding", "internal/successor/route/introduction/receiving.go", modulePath + "/internal/successor/route/role", true},
+		{"Introduction cannot own receiving Grant", "internal/successor/route/introduction/receiving.go", modulePath + "/internal/successor/admission/receiving", false},
+		{"Introduction cannot call listener composition", "internal/successor/route/introduction/receiving.go", modulePath + "/internal/successor/route/receiver", false},
+		{"channel cannot import Admission", "internal/successor/route/channel/session.go", modulePath + "/internal/successor/admission", false},
+		{"channel cannot import Hosting", "internal/successor/route/channel/session.go", modulePath + "/internal/successor/hosting", false},
+		{"transport cannot import framing", "internal/successor/route/transport/stream.go", modulePath + "/internal/successor/route/channel", false},
+		{"transport cannot import concrete implementation", "internal/successor/route/transport/stream.go", modulePath + "/internal/successor/route/carrier", false},
+		{"transport cannot import receiving composition", "internal/successor/route/transport/stream.go", modulePath + "/internal/successor/route/receiver", false},
+		{"transport cannot import QUIC library", "internal/successor/route/transport/stream.go", "github.com/quic-go/quic-go", false},
+		{"TLS implementation consumes shared authentication", "internal/successor/route/transport/tls/client.go", modulePath + "/internal/successor/route/transport", true},
+		{"TLS cannot import QUIC implementation", "internal/successor/route/transport/tls/client.go", modulePath + "/internal/successor/route/transport/quic", false},
+		{"TLS cannot import former carrier", "internal/successor/route/transport/tls/server.go", modulePath + "/internal/successor/route/carrier", false},
+		{"transport cannot import its TLS adapter", "internal/successor/route/transport/role_authentication.go", modulePath + "/internal/successor/route/transport/tls", false},
+		{"QUIC implementation consumes shared authentication", "internal/successor/route/transport/quic/role.go", modulePath + "/internal/successor/route/transport", true},
+		{"former selector cannot import QUIC library", "internal/successor/route/carrier/closed_node_carrier.go", "github.com/quic-go/quic-go", false},
+		{"QUIC owns its native library", "internal/successor/route/transport/quic/node.go", "github.com/quic-go/quic-go", true},
+		{"QUIC cannot import TLS implementation", "internal/successor/route/transport/quic/role.go", modulePath + "/internal/successor/route/transport/tls", false},
+		{"transport exporter cannot import QUIC adapter", "internal/successor/route/transport/role_exporter.go", modulePath + "/internal/successor/route/transport/quic", false},
+		{"production command excludes lower contract", "cmd/ardents-next/route_linux.go", modulePath + "/internal/successor/route/transport", false},
+		{"former selector cannot return in caller test", "cmd/ardents-next/route_prefix_caller_linux_test.go", modulePath + "/internal/successor/route/carrier", false},
 		{"no production Carrier allowance", "cmd/ardents-next/route_prefix_caller_linux.go", modulePath + "/internal/successor/route/carrier", false},
 		{"caller test cannot reach old Carrier", "cmd/ardents-next/route_prefix_caller_linux_test.go", modulePath + "/internal/route/carrier", false},
-		{"JOIN Carrier scenario", "cmd/ardents-next/route_join_linux_test.go", modulePath + "/internal/successor/route/carrier", true},
+		{"JOIN cannot retain former selector", "cmd/ardents-next/route_join_linux_test.go", modulePath + "/internal/successor/route/carrier", false},
 		{"JOIN production excludes Carrier adapter", "cmd/ardents-next/route_join_linux.go", modulePath + "/internal/successor/route/carrier", false},
 		{"JOIN test excludes old Carrier", "cmd/ardents-next/route_join_linux_test.go", modulePath + "/internal/route/carrier", false},
 		{"external public-contract test", "internal/successor/admission/issuerprofile/provenance_test.go", modulePath + "/internal/successor/admission/issuerprofile", true},

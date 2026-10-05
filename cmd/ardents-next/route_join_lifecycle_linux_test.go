@@ -9,6 +9,9 @@ import (
 	"crypto/rand"
 	"errors"
 	"fmt"
+	routejoin "github.com/dianabuilds/ardents-network/internal/successor/route/join"
+	routeprefix "github.com/dianabuilds/ardents-network/internal/successor/route/prefix"
+	"github.com/dianabuilds/ardents-network/internal/successor/route/transport"
 	"os"
 	"path/filepath"
 	"sync"
@@ -24,9 +27,8 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/successor/admission/token"
 	"github.com/dianabuilds/ardents-network/internal/successor/hosting"
 	"github.com/dianabuilds/ardents-network/internal/successor/route/ardp"
-	"github.com/dianabuilds/ardents-network/internal/successor/route/carrier"
+
 	"github.com/dianabuilds/ardents-network/internal/successor/route/selection"
-	"github.com/dianabuilds/ardents-network/internal/successor/route/transport"
 )
 
 // One permission supplies two genuine tokens per receiver: a replacement Source
@@ -117,7 +119,7 @@ func joinLifecycleStock(t *testing.T, f *networkAdmissionFixture) *stock.Owner {
 
 // Test composition exposes original handles while retaining genuine signed
 // Network, Stock, physical reservations and actual role admission at every hop.
-func openJoinFixtureRole(t *testing.T, f *networkAdmissionFixture, installation *selection.Installation, holder *stock.Owner, budget *hosting.Budget, domain uint8, interior string, source *transport.Prefix, afterTake func(context.Context, stock.Presentation)) (*transport.Prefix, selection.Leg, error) {
+func openJoinFixtureRole(t *testing.T, f *networkAdmissionFixture, installation *selection.Installation, holder *stock.Owner, budget *hosting.Budget, domain uint8, interior string, source *routeprefix.Prefix, afterTake func(context.Context, stock.Presentation)) (*routeprefix.Prefix, selection.Leg, error) {
 	t.Helper()
 	selected, err := installation.Borrow(selection.RoleConfig{InteriorRoot: interior, Domain: domain})
 	if err != nil {
@@ -138,7 +140,7 @@ func openJoinFixtureRole(t *testing.T, f *networkAdmissionFixture, installation 
 		once.Do(func() { terminal = errors.Join(releaseRouteReservation(reservation), selected.Close()) })
 		return terminal
 	}
-	config := transport.PrefixConfig{Leg: leg, Current: f.current, Deadline: end, Release: release, Present: func(ctx context.Context, hello ardp.Hello) ([]byte, error) {
+	config := routeprefix.Config{Leg: leg, Current: f.current, Deadline: end, Release: release, Present: func(ctx context.Context, hello ardp.Hello) ([]byte, error) {
 		presentation := stock.Presentation{NetworkID: hello.NetworkID, StateGeneration: hello.StateGeneration, StateDigest: hello.StateDigest, ProfileDigest: hello.ProfileDigest, RecipientNodeID: hello.RecipientNodeID, RecipientDutyGeneration: hello.RecipientDutyGeneration, ChannelNonce: hello.ChannelNonce, Deadline: hello.Deadline}
 		if err := f.authority.presentation(presentation); err != nil {
 			return nil, err
@@ -149,11 +151,11 @@ func openJoinFixtureRole(t *testing.T, f *networkAdmissionFixture, installation 
 		}
 		return raw, err
 	}}
-	var prefix *transport.Prefix
+	var prefix *routeprefix.Prefix
 	if domain == 3 {
-		prefix, err = transport.OpenResponderPrefix(t.Context(), source, config)
+		prefix, err = routeprefix.OpenResponder(t.Context(), source, config)
 	} else {
-		prefix, err = transport.OpenPrefix(t.Context(), config)
+		prefix, err = routeprefix.Open(t.Context(), config)
 	}
 	if err != nil {
 		return nil, leg, errors.Join(err, release())
@@ -162,7 +164,7 @@ func openJoinFixtureRole(t *testing.T, f *networkAdmissionFixture, installation 
 }
 
 func TestRouteStockedResponderCannotAdoptReplacementSource(t *testing.T) {
-	for _, profile := range []carrier.CarrierProfile{carrier.ClosedCarrierTCP, carrier.ClosedCarrierQUIC} {
+	for _, profile := range []transport.CarrierProfile{transport.ClosedCarrierTCP, transport.ClosedCarrierQUIC} {
 		t.Run(string(profile), func(t *testing.T) {
 			f, sockets, certificates := newJoinRouteFixture(t, profile)
 			holder := joinLifecycleStock(t, f)
@@ -186,7 +188,7 @@ func TestRouteStockedResponderCannotAdoptReplacementSource(t *testing.T) {
 				t.Fatal(err)
 			}
 			defer responder.Close()
-			acquisition, err := responder.AcquireResponderJoin(t.Context())
+			acquisition, err := routejoin.AcquireResponderJoin(t.Context(), responder)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -211,10 +213,10 @@ func TestRouteStockedResponderCannotAdoptReplacementSource(t *testing.T) {
 			if before != 6 {
 				t.Fatal("three genuine prefixes did not present exactly six tokens", before)
 			}
-			if next, err := responder.AcquireResponderJoin(t.Context()); err == nil || next != nil {
+			if next, err := routejoin.AcquireResponderJoin(t.Context(), responder); err == nil || next != nil {
 				t.Fatal("Responder adopted replacement instead of sealed original", err)
 			}
-			intent := transport.JoinConfig{Duty: duty, Deadline: time.Now().Add(10 * time.Second).UTC().Truncate(time.Second), SetupDeadline: time.Now().Add(5 * time.Second).UTC().Truncate(time.Second)}
+			intent := routejoin.JoinConfig{Duty: duty, Deadline: time.Now().Add(10 * time.Second).UTC().Truncate(time.Second), SetupDeadline: time.Now().Add(5 * time.Second).UTC().Truncate(time.Second)}
 			if _, err := rand.Read(intent.Secret[:]); err != nil {
 				t.Fatal(err)
 			}
@@ -235,7 +237,7 @@ func TestRouteStockedResponderCannotAdoptReplacementSource(t *testing.T) {
 				t.Fatal("original close retired replacement Source")
 			default:
 			}
-			live, err := replacement.AcquireSourceJoin(t.Context())
+			live, err := routejoin.AcquireSourceJoin(t.Context(), replacement)
 			if err != nil {
 				t.Fatal("replacement affected by original cleanup", err)
 			}
@@ -251,7 +253,7 @@ func TestRouteStockedResponderCannotAdoptReplacementSource(t *testing.T) {
 }
 
 func TestRouteResponderOpeningLosesOriginalSourceDuringPresentation(t *testing.T) {
-	for _, profile := range []carrier.CarrierProfile{carrier.ClosedCarrierTCP, carrier.ClosedCarrierQUIC} {
+	for _, profile := range []transport.CarrierProfile{transport.ClosedCarrierTCP, transport.ClosedCarrierQUIC} {
 		for _, checkpoint := range []int32{1, 2} {
 			t.Run(fmt.Sprintf("%s/presentation-%d", profile, checkpoint), func(t *testing.T) {
 				f, sockets, certificates := newJoinRouteFixture(t, profile)
@@ -274,7 +276,7 @@ func TestRouteResponderOpeningLosesOriginalSourceDuringPresentation(t *testing.T
 					t.Fatal("original Source lacks real reservation", before.ReservedBytes, err)
 				}
 				type openingResult struct {
-					prefix *transport.Prefix
+					prefix *routeprefix.Prefix
 					err    error
 				}
 				entered := make(chan context.Context, 1)
@@ -365,7 +367,7 @@ func TestRouteResponderOpeningLosesOriginalSourceDuringPresentation(t *testing.T
 }
 
 func TestRouteContextReopenRetainsChoiceAndOriginalHandles(t *testing.T) {
-	for _, profile := range []carrier.CarrierProfile{carrier.ClosedCarrierTCP, carrier.ClosedCarrierQUIC} {
+	for _, profile := range []transport.CarrierProfile{transport.ClosedCarrierTCP, transport.ClosedCarrierQUIC} {
 		t.Run(string(profile), func(t *testing.T) {
 			f, sockets, certificates := newJoinRouteFixture(t, profile)
 			holder := joinLifecycleStock(t, f)

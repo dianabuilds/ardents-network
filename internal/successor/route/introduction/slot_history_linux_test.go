@@ -2,6 +2,11 @@
 
 package introduction
 
+// These durable controls exercise History with actual exclusive flock leases,
+// POSIX root permissions and synced directory replacement, including reopen
+// and uncertain writes. They require the selected Linux persistence mechanism;
+// an in-memory or portable codec fixture cannot prove retained non-reclaim floors.
+
 import (
 	"bytes"
 	"crypto/sha256"
@@ -181,7 +186,7 @@ func TestHistoryUncertainReplaceTerminalizesWithoutErasingClaim(t *testing.T) {
 	history, _, root, binding := newHistoryFixture(t)
 	now := time.Unix(1_800_000_000, 0).UTC()
 	failure := errors.New("directory sync unavailable after rename")
-	history.replace = func(path string, raw []byte) error {
+	history.store.(*historyFiles).replace = func(path string, raw []byte) error {
 		if err := replaceHistory(path, raw); err != nil {
 			return err
 		}

@@ -2,6 +2,10 @@
 
 package introduction
 
+// These controls use the actual independently leased History, its fresh-root
+// handoff and retained bytes across claim/withdraw/reopen. Their Linux profile
+// follows that native durable mechanism, not Registry's portable state rules.
+
 import (
 	"bytes"
 	"os"
@@ -9,6 +13,43 @@ import (
 	"testing"
 	"time"
 )
+
+func TestRegistryHistoryCannotAcquireSecondPendingCapacityOwner(t *testing.T) {
+	history, _, root, _ := newHistoryFixture(t)
+	first, err := NewRegistry(history)
+	if err != nil {
+		t.Fatal(err)
+	}
+	now := time.Unix(1_800_000_000, 0).UTC()
+	before, err := os.ReadFile(filepath.Join(root, slotHistoryName))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for range 1024 {
+		capacity, err := first.Reserve(now)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer capacity.Release()
+	}
+	second, err := NewRegistry(history)
+	if err == nil || second != nil {
+		t.Error("same durable History acquired another live Registry")
+		if second != nil {
+			if capacity, err := second.Reserve(now); err == nil {
+				capacity.Release()
+				t.Error("second Registry exceeded the duty's pending capacity before spend")
+			}
+		}
+	}
+	if _, err := first.Reserve(now); err == nil {
+		t.Fatal("original full owner unexpectedly acquired another position")
+	}
+	after, err := os.ReadFile(filepath.Join(root, slotHistoryName))
+	if err != nil || !bytes.Equal(before, after) {
+		t.Fatal("capacity owner refusal changed durable history", err)
+	}
+}
 
 func TestRegistrationCapacityAccountsPendingBeforeAnyClaim(t *testing.T) {
 	history, _, root, _ := newHistoryFixture(t)

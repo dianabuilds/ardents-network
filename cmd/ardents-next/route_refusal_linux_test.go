@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	routereceiver "github.com/dianabuilds/ardents-network/internal/successor/route/receiver"
 	"os"
 	"path/filepath"
 	"sync/atomic"
@@ -16,13 +17,14 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/successor/admission/receiving"
 	"github.com/dianabuilds/ardents-network/internal/successor/hosting"
 	"github.com/dianabuilds/ardents-network/internal/successor/route/ardp"
-	"github.com/dianabuilds/ardents-network/internal/successor/route/carrier"
+
+	"github.com/dianabuilds/ardents-network/internal/successor/route/role"
 	"github.com/dianabuilds/ardents-network/internal/successor/route/selection"
 	"github.com/dianabuilds/ardents-network/internal/successor/route/transport"
 )
 
 func TestRoutePostSpendRefusalRetainsBurnAcrossReopen(t *testing.T) {
-	for _, profile := range []carrier.CarrierProfile{carrier.ClosedCarrierTCP, carrier.ClosedCarrierQUIC} {
+	for _, profile := range []transport.CarrierProfile{transport.ClosedCarrierTCP, transport.ClosedCarrierQUIC} {
 		t.Run(string(profile), func(t *testing.T) {
 			f, reservations, certificates := newRouteFixture(t, profile)
 			holder := routeStock(t, f)
@@ -51,7 +53,7 @@ func TestRoutePostSpendRefusalRetainsBurnAcrossReopen(t *testing.T) {
 			var releases, spends atomic.Int32
 			burnt := make(chan []byte, 1)
 			reservations[m.NodeID]()
-			server, err := transport.Listen(t.Context(), transport.ReceiverConfig{Authority: transport.Authority{Current: f.current, Duty: leg.Entry, Profile: leg.Profile}, Certificate: certificates[m.NodeID], Admit: func(ctx context.Context, c transport.Channel, raw []byte) (receiving.Grant, error) {
+			server, err := routereceiver.Listen(t.Context(), routereceiver.ReceiverConfig{Authority: role.Authority{Current: f.current, Duty: leg.Entry, Profile: leg.Profile}, Certificate: certificates[m.NodeID], Admit: func(ctx context.Context, c routereceiver.Channel, raw []byte) (receiving.Grant, error) {
 				grant, err := owner.Accept(ctx, admission.ForwardClass, raw, c.Hello.Deadline, func() (func() error, error) {
 					release, err := networkTestReservation(t, budget, c.Hello.Deadline)
 					if err != nil {
@@ -111,7 +113,7 @@ func TestRoutePostSpendRefusalRetainsBurnAcrossReopen(t *testing.T) {
 }
 
 func TestRouteInvalidHELLORefusesBeforeAdmission(t *testing.T) {
-	for _, profile := range []carrier.CarrierProfile{carrier.ClosedCarrierTCP, carrier.ClosedCarrierQUIC} {
+	for _, profile := range []transport.CarrierProfile{transport.ClosedCarrierTCP, transport.ClosedCarrierQUIC} {
 		t.Run(string(profile), func(t *testing.T) {
 			f, reservations, certificates := newRouteFixture(t, profile)
 			view, err := f.current()
@@ -135,7 +137,7 @@ func TestRouteInvalidHELLORefusesBeforeAdmission(t *testing.T) {
 			budget := networkTestBudget(t)
 			var admissionCalls atomic.Int32
 			reservations[m.NodeID]()
-			server, err := transport.Listen(t.Context(), transport.ReceiverConfig{Authority: transport.Authority{Current: f.current, Duty: duty, Profile: view.Profile().ProfileBinding}, Certificate: certificates[m.NodeID], Admit: func(ctx context.Context, c transport.Channel, raw []byte) (receiving.Grant, error) {
+			server, err := routereceiver.Listen(t.Context(), routereceiver.ReceiverConfig{Authority: role.Authority{Current: f.current, Duty: duty, Profile: view.Profile().ProfileBinding}, Certificate: certificates[m.NodeID], Admit: func(ctx context.Context, c routereceiver.Channel, raw []byte) (receiving.Grant, error) {
 				admissionCalls.Add(1)
 				return owner.Accept(ctx, admission.ForwardClass, raw, c.Hello.Deadline, func() (func() error, error) {
 					release, err := networkTestReservation(t, budget, c.Hello.Deadline)
@@ -155,7 +157,7 @@ func TestRouteInvalidHELLORefusesBeforeAdmission(t *testing.T) {
 			}()
 			for _, fault := range []string{"recipient", "duty", "purpose", "state", "profile", "deadline"} {
 				t.Run(fault, func(t *testing.T) {
-					conn, err := carrier.OpenClosedRoleCarrier(t.Context(), carrier.ClosedRoleCarrierRequest{CarrierProfile: profile, Endpoint: m.Endpoint, ExpectedServer: m.PublicKey, Deadline: time.Now().Add(3 * time.Second)})
+					conn, err := routeTestOpenEndpoint(t.Context(), transport.ClosedRoleCarrierRequest{CarrierProfile: profile, Endpoint: m.Endpoint, ExpectedServer: m.PublicKey, Deadline: time.Now().Add(3 * time.Second)})
 					if err != nil {
 						t.Fatal(err)
 					}

@@ -4,10 +4,15 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"crypto/ed25519"
 	"crypto/rand"
 	"crypto/tls"
 	"crypto/x509"
+	"errors"
+	"github.com/dianabuilds/ardents-network/internal/successor/route/transport"
+	rolequic "github.com/dianabuilds/ardents-network/internal/successor/route/transport/quic"
+	roletls "github.com/dianabuilds/ardents-network/internal/successor/route/transport/tls"
 	"math/big"
 	"net"
 	"os"
@@ -21,7 +26,6 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/successor/admission/quota"
 	"github.com/dianabuilds/ardents-network/internal/successor/admission/stock"
 	"github.com/dianabuilds/ardents-network/internal/successor/admission/token"
-	"github.com/dianabuilds/ardents-network/internal/successor/route/carrier"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 )
 
@@ -35,11 +39,11 @@ func routeTestCertificate(t *testing.T, key ed25519.PrivateKey) tls.Certificate 
 	return tls.Certificate{Certificate: [][]byte{raw}, PrivateKey: key}
 }
 
-func newRouteFixture(t *testing.T, profile carrier.CarrierProfile) (*networkAdmissionFixture, map[[32]byte]func(), map[[32]byte]tls.Certificate) {
+func newRouteFixture(t *testing.T, profile transport.CarrierProfile) (*networkAdmissionFixture, map[[32]byte]func(), map[[32]byte]tls.Certificate) {
 	return newRoleRouteFixture(t, profile, 3, false)
 }
 
-func newRoleRouteFixture(t *testing.T, profile carrier.CarrierProfile, domain byte, introduction bool) (*networkAdmissionFixture, map[[32]byte]func(), map[[32]byte]tls.Certificate) {
+func newRoleRouteFixture(t *testing.T, profile transport.CarrierProfile, domain byte, introduction bool) (*networkAdmissionFixture, map[[32]byte]func(), map[[32]byte]tls.Certificate) {
 	t.Helper()
 	reservations := make(map[[32]byte]func())
 	certificates := make(map[[32]byte]tls.Certificate)
@@ -58,7 +62,7 @@ func newRoleRouteFixture(t *testing.T, profile carrier.CarrierProfile, domain by
 				t.Cleanup(func() { clear(key) })
 			}
 			var address string
-			if profile == carrier.ClosedCarrierTCP {
+			if profile == transport.ClosedCarrierTCP {
 				listener, err := net.Listen("tcp", "127.0.0.1:0")
 				if err != nil {
 					t.Fatal(err)
@@ -251,5 +255,20 @@ func routeConsoleRoleStock(t *testing.T, f *networkAdmissionFixture, send func(a
 		if reply := send(holderCommand{Operation: "complete", Payload: issued.Response}); reply.Outcome != "completed" {
 			t.Fatal("holder complete", reply.Outcome)
 		}
+	}
+}
+
+// routeTestOpenEndpoint selects exactly the authenticated profile's actual adapter, without fallback.
+func routeTestOpenEndpoint(ctx context.Context, input transport.ClosedRoleCarrierRequest) (net.Conn, error) {
+	if err := transport.ValidateRoleRequest(ctx, input); err != nil {
+		return nil, err
+	}
+	switch input.CarrierProfile {
+	case transport.ClosedCarrierTCP:
+		return roletls.OpenEndpoint(ctx, input)
+	case transport.ClosedCarrierQUIC:
+		return rolequic.OpenEndpoint(ctx, input)
+	default:
+		return nil, errors.New("closed role carrier profile is unsupported")
 	}
 }

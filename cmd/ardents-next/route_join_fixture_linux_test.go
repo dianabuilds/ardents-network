@@ -8,6 +8,7 @@ import (
 	"crypto/ed25519"
 	"crypto/rand"
 	"crypto/tls"
+	routereceiver "github.com/dianabuilds/ardents-network/internal/successor/route/receiver"
 	"net"
 	"os"
 	"path/filepath"
@@ -22,16 +23,17 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/successor/admission/stock"
 	"github.com/dianabuilds/ardents-network/internal/successor/admission/token"
 	"github.com/dianabuilds/ardents-network/internal/successor/hosting"
-	"github.com/dianabuilds/ardents-network/internal/successor/route/carrier"
+
+	"github.com/dianabuilds/ardents-network/internal/successor/route/role"
 	"github.com/dianabuilds/ardents-network/internal/successor/route/transport"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 )
 
 // newJoinRouteFixture supplies signed records and profiles through real new
 // State acceptance. The fixture owns no successful authority substitute.
-func newJoinRouteFixture(t *testing.T, profile carrier.CarrierProfile) (*networkAdmissionFixture, map[[32]byte]func(), map[[32]byte]tls.Certificate) {
+func newJoinRouteFixture(t *testing.T, profile transport.CarrierProfile) (*networkAdmissionFixture, map[[32]byte]func(), map[[32]byte]tls.Certificate) {
 	t.Helper()
-	if profile != carrier.ClosedCarrierTCP && profile != carrier.ClosedCarrierQUIC {
+	if profile != transport.ClosedCarrierTCP && profile != transport.ClosedCarrierQUIC {
 		t.Fatal("unselected JOIN Carrier")
 	}
 	reservations := make(map[[32]byte]func())
@@ -48,7 +50,7 @@ func newJoinRouteFixture(t *testing.T, profile carrier.CarrierProfile) (*network
 			}
 			t.Cleanup(func() { clear(key) })
 			var address string
-			if profile == carrier.ClosedCarrierTCP {
+			if profile == transport.ClosedCarrierTCP {
 				listener, err := net.Listen("tcp", "127.0.0.1:0")
 				if err != nil {
 					t.Fatal(err)
@@ -183,9 +185,9 @@ func joinRouteStock(t *testing.T, f *networkAdmissionFixture, role admission.All
 
 // startJoinRouteReceivers owns distinct receiving histories and Hosting budgets.
 // Each accepted Channel retains its real reservation until physical join.
-func startJoinRouteReceivers(t *testing.T, f *networkAdmissionFixture, reservations map[[32]byte]func(), certificates map[[32]byte]tls.Certificate) ([]*transport.Receiver, []*hosting.Budget) {
+func startJoinRouteReceivers(t *testing.T, f *networkAdmissionFixture, reservations map[[32]byte]func(), certificates map[[32]byte]tls.Certificate) ([]*routereceiver.Receiver, []*hosting.Budget) {
 	t.Helper()
-	var receivers []*transport.Receiver
+	var receivers []*routereceiver.Receiver
 	var budgets []*hosting.Budget
 	for idByte := byte(12); idByte <= 21; idByte++ {
 		id := [32]byte{idByte}
@@ -222,7 +224,7 @@ func startJoinRouteReceivers(t *testing.T, f *networkAdmissionFixture, reservati
 		if !ok {
 			t.Fatal("JOIN exact certificate absent")
 		}
-		receiver, err := transport.Listen(t.Context(), transport.ReceiverConfig{Authority: transport.Authority{Current: f.current, Duty: duty, Profile: view.Profile().ProfileBinding}, Certificate: certificate, Admit: func(ctx context.Context, channel transport.Channel, raw []byte) (receiving.Grant, error) {
+		receiver, err := routereceiver.Listen(t.Context(), routereceiver.ReceiverConfig{Authority: role.Authority{Current: f.current, Duty: duty, Profile: view.Profile().ProfileBinding}, Certificate: certificate, Admit: func(ctx context.Context, channel routereceiver.Channel, raw []byte) (receiving.Grant, error) {
 			return owner.Accept(ctx, admission.ForwardClass, raw, channel.Hello.Deadline, func() (func() error, error) {
 				release, err := networkTestReservation(t, budget, channel.Hello.Deadline)
 				if err != nil {
@@ -245,7 +247,7 @@ func startJoinRouteReceivers(t *testing.T, f *networkAdmissionFixture, reservati
 }
 
 func TestJoinRouteFixtureCurrentDutiesAndStock(t *testing.T) {
-	for _, profile := range []carrier.CarrierProfile{carrier.ClosedCarrierTCP, carrier.ClosedCarrierQUIC} {
+	for _, profile := range []transport.CarrierProfile{transport.ClosedCarrierTCP, transport.ClosedCarrierQUIC} {
 		t.Run(string(profile), func(t *testing.T) {
 			f, reservations, certificates := newJoinRouteFixture(t, profile)
 			view, err := f.current()

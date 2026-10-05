@@ -6,6 +6,7 @@ import (
 	"context"
 	"crypto/rand"
 	"errors"
+	routereceiver "github.com/dianabuilds/ardents-network/internal/successor/route/receiver"
 	"net"
 	"strings"
 	"sync"
@@ -18,7 +19,8 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/successor/hosting"
 	"github.com/dianabuilds/ardents-network/internal/successor/network"
 	"github.com/dianabuilds/ardents-network/internal/successor/route/ardp"
-	"github.com/dianabuilds/ardents-network/internal/successor/route/carrier"
+
+	"github.com/dianabuilds/ardents-network/internal/successor/route/role"
 	"github.com/dianabuilds/ardents-network/internal/successor/route/transport"
 )
 
@@ -27,7 +29,7 @@ import (
 // verification, additional Hosting reservation and durable spend. Compiled
 // prefix/child consumers are covered separately by the process scenario.
 func TestRouteReceivingRefillFailureAndReopenBothCarriers(t *testing.T) {
-	for _, profile := range []carrier.CarrierProfile{carrier.ClosedCarrierTCP, carrier.ClosedCarrierQUIC} {
+	for _, profile := range []transport.CarrierProfile{transport.ClosedCarrierTCP, transport.ClosedCarrierQUIC} {
 		t.Run(string(profile), func(t *testing.T) {
 			f, reservations, certificates := newRouteFixture(t, profile)
 			view, err := f.current()
@@ -91,8 +93,8 @@ func TestRouteReceivingRefillFailureAndReopenBothCarriers(t *testing.T) {
 						return observed, err
 					}
 					joinedFailure := func(err error) bool { return err == nil || registrationAuthorityRetirementOnly(err, lossErr) }
-					server, err := transport.Listen(t.Context(), transport.ReceiverConfig{Authority: transport.Authority{Current: current, Duty: duty, Profile: view.Profile().ProfileBinding}, Certificate: certificates[member.NodeID],
-						Admit: func(ctx context.Context, channel transport.Channel, raw []byte) (receiving.Grant, error) {
+					server, err := routereceiver.Listen(t.Context(), routereceiver.ReceiverConfig{Authority: role.Authority{Current: current, Duty: duty, Profile: view.Profile().ProfileBinding}, Certificate: certificates[member.NodeID],
+						Admit: func(ctx context.Context, channel routereceiver.Channel, raw []byte) (receiving.Grant, error) {
 							return owner.Accept(ctx, admission.ForwardClass, raw, channel.Hello.Deadline, func() (func() error, error) {
 								var err error
 								original, err = budget.Reserve(ctx, request)
@@ -102,7 +104,7 @@ func TestRouteReceivingRefillFailureAndReopenBothCarriers(t *testing.T) {
 								return channel.HoldReservation(func() error { return releaseRouteReservation(original) })
 							})
 						},
-						Refill: func(ctx context.Context, channel transport.Channel, prior receiving.Grant, remaining uint64, raw []byte) (receiving.Grant, error) {
+						Refill: func(ctx context.Context, channel routereceiver.Channel, prior receiving.Grant, remaining uint64, raw []byte) (receiving.Grant, error) {
 							next, err := owner.Refill(ctx, prior, remaining, raw, func() (func() error, error) {
 								limit := admission.ForwardClass.ByteLimit()
 								if err := budget.CoversJoint(ctx, original, hosting.JointTraffic{Tx: limit, Rx: limit, Total: limit}); err != nil {
@@ -147,7 +149,7 @@ func TestRouteReceivingRefillFailureAndReopenBothCarriers(t *testing.T) {
 							}
 						}
 					})
-					conn, err = carrier.OpenClosedRoleCarrier(t.Context(), carrier.ClosedRoleCarrierRequest{CarrierProfile: profile, Endpoint: member.Endpoint, ExpectedServer: member.PublicKey, Deadline: end})
+					conn, err = routeTestOpenEndpoint(t.Context(), transport.ClosedRoleCarrierRequest{CarrierProfile: profile, Endpoint: member.Endpoint, ExpectedServer: member.PublicKey, Deadline: end})
 					if err != nil {
 						t.Fatal(err)
 					}

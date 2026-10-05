@@ -9,6 +9,7 @@ import (
 	"crypto/rand"
 	"crypto/tls"
 	"errors"
+	"github.com/dianabuilds/ardents-network/internal/successor/route/transport"
 	"io"
 	"net"
 	"path/filepath"
@@ -17,11 +18,10 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/successor/admission"
 	"github.com/dianabuilds/ardents-network/internal/successor/hosting"
-	"github.com/dianabuilds/ardents-network/internal/successor/route/carrier"
 )
 
 func TestRouteGenuinePairedJoinBothCarriers(t *testing.T) {
-	for _, profile := range []carrier.CarrierProfile{carrier.ClosedCarrierTCP, carrier.ClosedCarrierQUIC} {
+	for _, profile := range []transport.CarrierProfile{transport.ClosedCarrierTCP, transport.ClosedCarrierQUIC} {
 		t.Run(string(profile), func(t *testing.T) {
 			f, sockets, certificates := newJoinRouteFixture(t, profile)
 			userStock := joinRouteStock(t, f, admission.AllocationUser)

@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	routereceiver "github.com/dianabuilds/ardents-network/internal/successor/route/receiver"
 	"net"
 	"path/filepath"
 	"sync/atomic"
@@ -16,19 +17,20 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/successor/admission/receiving"
 	"github.com/dianabuilds/ardents-network/internal/successor/hosting"
 	"github.com/dianabuilds/ardents-network/internal/successor/route"
-	"github.com/dianabuilds/ardents-network/internal/successor/route/carrier"
+
+	"github.com/dianabuilds/ardents-network/internal/successor/route/role"
 	"github.com/dianabuilds/ardents-network/internal/successor/route/selection"
 	"github.com/dianabuilds/ardents-network/internal/successor/route/transport"
 )
 
 func TestRouteGenuineRetainedPrefixBothCarriers(t *testing.T) {
-	for _, profile := range []carrier.CarrierProfile{carrier.ClosedCarrierTCP, carrier.ClosedCarrierQUIC} {
+	for _, profile := range []transport.CarrierProfile{transport.ClosedCarrierTCP, transport.ClosedCarrierQUIC} {
 		for _, mode := range []string{"close", "concurrent", "cancel", "clock-loss", "profile-conflict", "successor", "expiry"} {
 			t.Run(string(profile)+"/"+mode, func(t *testing.T) {
 				f, reservations, certificates := newRouteFixture(t, profile)
 				holder := routeStock(t, f)
 				var accepted atomic.Int32
-				var receivers []*transport.Receiver
+				var receivers []*routereceiver.Receiver
 				var budgets []*hosting.Budget
 				for i := byte(12); i < 16; i++ {
 					id := [32]byte{i}
@@ -57,7 +59,7 @@ func TestRouteGenuineRetainedPrefixBothCarriers(t *testing.T) {
 					budget := networkTestBudget(t)
 					budgets = append(budgets, budget)
 					reservations[id]()
-					server, err := transport.Listen(t.Context(), transport.ReceiverConfig{Authority: transport.Authority{Current: f.current, Duty: duty, Profile: view.Profile().ProfileBinding}, Certificate: certificates[id], Admit: func(ctx context.Context, c transport.Channel, raw []byte) (receiving.Grant, error) {
+					server, err := routereceiver.Listen(t.Context(), routereceiver.ReceiverConfig{Authority: role.Authority{Current: f.current, Duty: duty, Profile: view.Profile().ProfileBinding}, Certificate: certificates[id], Admit: func(ctx context.Context, c routereceiver.Channel, raw []byte) (receiving.Grant, error) {
 						grant, err := receivingOwner.Accept(ctx, admission.ForwardClass, raw, c.Hello.Deadline, func() (func() error, error) {
 							release, err := networkTestReservation(t, budget, c.Hello.Deadline)
 							if err != nil {

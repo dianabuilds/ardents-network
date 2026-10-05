@@ -17,11 +17,51 @@ fresh `CurrentRuntime`/`MatchDuty`; transport failure does not redraw a pair.
 Known locally controlled identities and families enter selection as exclusions.
 
 `ardp` owns canonical generation-three frames and HELLO. It rejects invalid
-header kind/lane/length before body allocation or reads. `carrier` owns exact-key
-TCP/TLS and one-stream QUIC, direct/Node classification and finite handshakes.
-`transport` owns authenticated role channels, parent/child framing, finite
-credit and queues, directed Node Carrier reuse and joined physical termination.
+header kind/lane/length before body allocation or reads. The lower `transport`
+owns the portable stream/exporter contract, exact accepted profile identities,
+literal endpoint validation and shared authentication/error classification.
+`transport/tls` and `transport/quic` own the actual exact-key TCP/TLS and
+one-stream QUIC implementations, direct/Node classification and finite
+handshakes. Prefix and receiving composition select the actual adapter directly
+from the already selected profile, without fallback. The former `carrier`
+package is removed; shared actual-adapter behavior tests belong to the actual opening/composition
+owner and exercise both implementations of the lower contract. Lower transport
+imports neither adapter, including in tests.
+`channel` owns portable parent/child framing, finite credit/queues, serialized
+physical output and joined retirement. `prefix` owns its exact generations and
+terminal openings; `join` and `introduction` own their holder operations.
+`receiver` owns listener/dispatch, directed Node Carrier reuse and receiving
+Grant retirement. The intermediate `operation` package is removed.
+`role` owns the shared portable original-duty/profile reobservation and exact
+HELLO purpose/recipient/deadline checks, including fresh nonce construction.
+It also owns the shared holder handshake and negotiated exporter binding;
+the supplying Stock owner durably presents bytes, and original-caller checks
+surround HELLO, presentation I/O, ADMIT and ACCEPT. The receiving Grant and
+its physical retirement remain with the receiving operation.
+Prefix, JOIN and receiving call this owner directly at their effect boundaries;
+it grants no transport, token, reservation or replacement authority.
+Prefix also owns pair publication with the original Source-before-Responder
+lock order. Context opening, final JOIN Context handoff and acquisition stream
+publication use the same local transition. JOIN Context owns its context state;
+it does not acquire another owner's generation mutex. The handoff performs no
+Network observation, physical I/O or join while either Prefix lock is held.
+The actual `prefix` package owns these physical generations and exposes opaque
+Borrow, JoinBorrow and terminal channel lifetimes. It imports neither
+Introduction nor JOIN consumers. `introduction.HolderRegistration` and holder JOIN keep operation bytes,
+readers/writers and their retained terminal result; they cannot access Prefix
+configuration, generation locks or lower lane/control-return callbacks. Native
+JOIN Context binds its concrete original Prefix objects once; its private
+lifetime seam preserves absent/partial-opening cleanup without exposing a
+successful test factory. Pair identity/lock-order tests stay in Prefix;
+acquisition and nested-stream tests exercise consumer retirement separately.
+
 Exact package/import directions are in the [package map](../development/package-map.md).
+
+One independently leased Introduction History transfers to one receiving
+Registry. Its pending positions and durable non-reclaim claims share that
+exclusive owner; constructing another Registry over the same live History
+refuses before capacity or spend. A retained reopen obtains a new exclusive
+History after the original owner has joined and released it, preserving floors.
 
 Network owns signed State/profile acceptance, conflict/time history and current
 membership. Admission Stock durably marks presentation before returning token
@@ -44,6 +84,50 @@ Neither a supplied profile nor a diagnostic snapshot authorizes this operation.
 
 ## Physical ownership
 
+Each original Prefix generation retains setup claims and published physical
+borrows. A setup claim keeps cancellation and completion through refusal or
+handoff. A published borrow binds interruption, joined result and activity to
+that exact generation; no callback is rebound to a replacement. Registration
+and JOIN keep their own operation rules, readers/writers and terminal result.
+Prefix seals every setup/borrow, joins them without holding its lifetime lock,
+and only then retires parent framing and returns generation resources.
+After a local seal, the watcher leaves ordered parent retirement to Close:
+joining the Interior reader cannot cancel Entry before its clean retirement.
+Unexpected parent failure before a local seal still cancels dependent work;
+the joined result retains the original physical failure. Portable pipe tests
+force both orders and verify capacity returns only after both readers join.
+Terminal setup checks the original Prefix caller before acquiring a claim or
+observing Network, independently of the terminal operation's caller. Original
+physical observations check that Prefix caller before and after the actual read,
+including failed reads, and retain cancellation together with the original read
+failure. Registration/JOIN role admission and recipient checks use this same
+observation seam. Delayed derived cancellation cannot permit new presentation;
+a local seal still permits bounded terminal cleanup under the original physical
+caller and deadline. Portable real-pipe refusal controls isolate delayed callback
+propagation without supplying successful Network, Stock or ACK.
+Original-generation checks and Source/Responder pair commit sit alongside
+their borrowers in `prefix/borrowing.go`; setup deadline bounds sit with setup
+claims in `prefix/opening.go`. These small methods have no separate file owner.
+Prefix also owns atomic Source/Responder borrow admission and the role locks
+at JOIN publication. The stream owner locks its own state inside that commit;
+fresh observations and physical I/O run outside all generation locks. A foreign
+Source cannot borrow a Responder bound to another original generation.
+Pending terminal setup belongs to the same Prefix generation. Its publication
+checks synchronous seal, original caller/child and the still-held claim under
+the owner lock, then transfers to one exact borrow. Repeated setup completion
+does not decrement another claim or return a published physical borrower.
+Prefix's runtime, setup, borrows, readiness and refill are portable; native
+selection and Admission roots remain with those owners. Identical mechanical
+tests execute on Windows and Linux without qualifying Windows durable owners
+or an installed journey.
+
+Activity and physical retention differ. A stopped Registration may cease to
+keep a Prefix active for idle policy while its original physical work is still
+retained for join. Its late failure remains part of Prefix retirement. Source
+and Responder acquisition/handoff retain their original lock order and observe
+the real caller after waiting for those locks; changing the retained record
+does not permit a sealed generation or a delayed caller to publish new work.
+
 Each channel reserves separate 16 KiB control capacity within its principal's
 aggregate ceiling. Data queues fit 4 MiB per prefix/session and 64 MiB per
 receiving Node, with 64 KiB lane receive windows and at most 16 KiB frames.
@@ -53,7 +137,10 @@ physical writer. Queue cancellation consumes no emitted bytes or credit and
 cannot alter a sibling's active deadline. A failed started physical frame
 poisons its shared framing boundary and retains its failure.
 
-The local directed-pair pool contains at most 32 ready/opening/retiring entries,
+The portable `receiver/carrier_pool.go` and its physical retirement tests execute
+on Windows and Linux; listener and receiving Grant composition retain their
+native root dependencies separately. The local directed-pair pool contains at
+most 32 ready/opening/retiring entries,
 with at most one Carrier per peer. It validates exact profile, retained duties
 and selected Carrier outside the pool lock. Same-pair waiters use their own
 cancellation; dial and retirement remain counted operations. This operation
@@ -140,6 +227,12 @@ only for the missing capacity. This does not hold the physical writer during
 storage. Original operation cancellation is checked again after currentness
 observation, before reservation/debit/output, even if derived cancellation is
 delayed. Started physical failures keep their existing framing provenance.
+The refill request's original caller is distinct from the caller that created
+the prefix. Both lifetimes remain checked: request cancellation is observed
+synchronously after currentness and at presentation, capacity, selected output,
+ACK and final handoff, while prefix lifetime and Network checks remain in force.
+The derived request context supplies seal interruption without concealing the
+original request's already terminal state from durable owner callbacks.
 
 Every returned Grant and capacity addition remains owned until the parent and
 physical children join. Additions return in reverse order before the original
@@ -150,6 +243,28 @@ certify Carrier overhead or installed billing.
 Once the parent retires its physical connection, child close joins the original
 writer without changing the closed socket's deadline. The joined result still
 retains the original authority cause and any actual late write/close failure.
+Original parent context cancellation also denies new child deadline effects
+synchronously, before its reader's retirement callback marks the framing owner
+stopped. Callback scheduling cannot reopen that effect window.
+Retained Rendezvous checks use the original Prefix leg, observer and immutable
+deadline through Prefix-owned operations. JOIN Context retains the selected
+choices and exclusions and commits its result against the same original pair;
+it does not read Prefix configuration or generation locks. Network observation
+still runs outside those locks and an exact incoming recipient is never replaced.
+Prefix also owns the original terminal JOIN channel's control reservation,
+OPEN, exact role TLS and holder presentation. JOIN owns its operation and RESULT;
+only after verifying RESULT does it request framing preparation under the same
+parent budget and original lifetime. Failed setup returns its partial physical
+owner for joined retirement, whose result is retained before the acquisition
+opening completes. No spent right is refunded and no replacement parent is used.
+Stopping and joining its setup interruption is one retained transition. A false
+second AfterFunc stop result cannot be interpreted as a running callback after
+the first stop already prevented it; a genuinely running callback still joins
+before physical cleanup or return of control capacity.
+Physical Prefix opening, terminal Registration and terminal JOIN use this same
+Prefix-owned stop/join mechanism; their requests, acknowledgements and published
+operation lifetimes remain with their respective owners.
+
 An unemitted upper frame's lower deadline refusal remains a failed operation;
 it cannot mint an upper physical failure. Actual lower deadline I/O failures
 are retained by the lower framing owner until joined return.
@@ -210,6 +325,15 @@ roots distinguishes unspent refusal from burned rights and checks complete
 return without lowering measured-use floors. This receiving fault harness is
 separate from the compiled prefix/refill/subsequent-child consumer scenario;
 its injected ACK loss supplies no successful neighboring authority.
+
+`TestRouteRefillPublicOriginalCallerBothCarriers` calls actual public
+`Prefix.Replenish` with independent prefix and request callers and delayed
+cancellation propagation. Genuine signed Network, Stock and physical admission
+exercise observation, presentation, additional capacity and receiving spend
+boundaries. Before emission, cancellation starts no receiving refill; after
+durable presentation/spend, rights remain consumed and reservations return only
+after joined retirement. These controls supplement the successful compiled
+consumer and the transport-local scheduling/failure controls.
 
 The prefix boundary itself establishes no Service publication, Descriptor ACK,
 Introduction delivery, Instance authentication, Local Grant or Connection recovery.

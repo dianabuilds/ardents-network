@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"errors"
+	"github.com/dianabuilds/ardents-network/internal/successor/route/transport"
 	"io"
 	"os"
 	"os/exec"
@@ -27,7 +28,6 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/successor/admission/token"
 	"github.com/dianabuilds/ardents-network/internal/successor/hosting"
 	"github.com/dianabuilds/ardents-network/internal/successor/network/state"
-	"github.com/dianabuilds/ardents-network/internal/successor/route/carrier"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 )
 
@@ -36,7 +36,7 @@ import (
 // workload. Actual encrypted traffic has its independent in-process oracle.
 func TestRouteCompiledCommandJoinBothCarriers(t *testing.T) {
 	binary := compiledCommand(t)
-	for _, profile := range []carrier.CarrierProfile{carrier.ClosedCarrierTCP, carrier.ClosedCarrierQUIC} {
+	for _, profile := range []transport.CarrierProfile{transport.ClosedCarrierTCP, transport.ClosedCarrierQUIC} {
 		t.Run(string(profile), func(t *testing.T) {
 			ctx, cancel := context.WithTimeout(t.Context(), 2*time.Minute)
 			defer cancel()

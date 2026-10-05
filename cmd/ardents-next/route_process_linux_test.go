@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"errors"
+	"github.com/dianabuilds/ardents-network/internal/successor/route/transport"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -18,7 +19,6 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/successor/admission"
 	"github.com/dianabuilds/ardents-network/internal/successor/hosting"
 	"github.com/dianabuilds/ardents-network/internal/successor/network/state"
-	"github.com/dianabuilds/ardents-network/internal/successor/route/carrier"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 )
 
@@ -47,7 +47,7 @@ func TestRouteCompiledCommandReplenishmentBothCarriers(t *testing.T) {
 func testRouteCompiledCommand(t *testing.T, introduction bool, refill ...bool) {
 	t.Helper()
 	_ = compiledCommand(t)
-	for _, profile := range []carrier.CarrierProfile{carrier.ClosedCarrierTCP, carrier.ClosedCarrierQUIC} {
+	for _, profile := range []transport.CarrierProfile{transport.ClosedCarrierTCP, transport.ClosedCarrierQUIC} {
 		t.Run(string(profile), func(t *testing.T) {
 			domain := byte(3)
 			role := admission.AllocationUser

@@ -233,9 +233,10 @@ owner either removes it or reviews it with a concrete retirement condition.
 An absent listed symbol also fails the gate, so the registry cannot silently
 accumulate stale exemptions. `make check` includes this audit.
 
-The new Route prefix has a real Linux command caller. Its Carrier mechanism is
-Linux-only; portable Route rules and canonical framing remain covered by portable
-tests and exact Windows production allowances. The migration also records the
+The new Route prefix has a real Linux command caller. Its TCP/TLS and QUIC
+mechanisms and common Carrier behavior tests are portable; actual adapter
+execution on Windows does not qualify durable Route roots or an installation.
+Portable Route rules and canonical framing retain their portable tests. The migration also records the
 predecessor Network's tested unsigned preparation, local participation and
 diagnostic/wait contracts as awaiting their genuine production composition,
 with individual retirement conditions. Those entries do not qualify Node or
@@ -490,7 +491,100 @@ no automatic retry, permanent quarantine, skip allowlist, or flake budget. A
 timeout must leave enough observed state to distinguish product, harness, and
 environment.
 
+## Route mechanism and composition tests
+
+Route tests state which guarantee they establish. Mechanism tests control
+physical I/O, scheduling or completion; they supply no successful Network,
+Admission, Hosting or Service authority. Genuine composition tests call those
+new owners through the real command composition and both selected Carriers.
+Neither category substitutes for the other.
+
+| Rule owner and causal guarantee | Current tests and execution scope |
+|---|---|
+| Channel framing lifecycle: queued cancellation preserves siblings, partial output retires its physical owner, original deadlines deny later output, readers/writers join before capacity return | `internal/successor/route/channel/session_lifecycle_test.go`; portable controlled physical I/O. The mechanics move with the channel owner; current location grants no Linux dependency |
+| Nested framing retirement: only the exact lower lane's unchanged output witness and clean peer CLOSE can establish an unnecessary unemitted control; partial output and raw EOF retain failure | `internal/successor/route/channel/framing_retirement_test.go`, `credit_retirement_test.go` and dedicated JOIN relay controls. Session and relay use the same portable physical-output mechanism; the nested TLS oracle uses standard TLS with the lower transport authentication configuration, without importing a concrete adapter |
+| Scheduler fairness: control alternates with ready data and data proceeds by lane order | `internal/successor/route/channel/frame_schedule_test.go`; portable, independently inspected output order |
+| Principal memory: failed memory claims consume no child slot, exact 1024-child ceiling, shared control/child memory and concurrent exactly-once return; stale returns cannot release a replacement | `internal/successor/route/channel/budget_test.go`; portable actual Budget interface, with no successful authority or reservation fixture |
+| OPEN: immutable setup/original caller bounds, monotonic IDs and cancelled waiter isolation | `internal/successor/route/channel/open_lane_test.go`; portable framing checks, no receiving authority |
+| Parent allowance: complete ADMIT/ACCEPT debits, replacement preserving concurrent usage, causal pre-effect refusal | `internal/successor/route/channel/parent_allowance_test.go`; portable channel checks, no successful spend fixture |
+| Parent exchange: original caller refusal, exact wire debits and replacement, capacity refusal before output, concurrent child progress and invalid/missing ACK retirement | `internal/successor/route/channel/parent_exchange_test.go`; portable real pipe and controlled I/O. `prefix/presentation_test.go` separately checks the actual upper presentation composition refuses malformed token length or forbidden purpose before output on Windows and Linux; it supplies no successful authority |
+| Dedicated input: prepared refusal starts no reader, accepted bytes survive retirement, raw EOF cannot replace inner CLOSE and peer refusal remains visible | `internal/successor/route/channel/join_input_test.go`; portable framing. Actual paired RESULT-before-data ordering remains with the upper JOIN pair tests |
+| CREDIT retirement: queued controls remain unemitted; started controls retain original cleanup bounds, late failures and capacity until join | `internal/successor/route/channel/credit_close_test.go` and `credit_retirement_test.go`; portable actual pipe output and controlled completion, without authority substitutes |
+| Dedicated framing termination: local CLOSE still requires the peer's inner CLOSE; incoming CLOSE interrupts payload output and joins its result before release | `internal/successor/route/channel/dedicated_close_test.go` and `peer_close_writer_test.go`; portable physical I/O, including raw EOF and refusal controls |
+| Paired JOIN terminal race: an opposite seal preserves an already started valid CLOSE and its refusal status, while denying payload and new input | `internal/successor/route/join/relay_test.go`, `TestJoinRelaySealKeepsAlreadyStartedOppositeTerminal`; actual pipe header barrier. The same receiving pairing and relay sources execute on Windows and Linux without native dependencies |
+| Retained selection rules: exact original profile/duties, observation expiry floor, context-local choice retention and conflict exclusions | `internal/successor/route/selection/entry_set_test.go`, `leg_test.go` and `rendezvous_test.go`; actual execution on Windows and Linux. Supplied-fact Network models test local rules, not authenticated intake or durable-root qualification. Native durable owners have separate Linux tests |
+| Network observations consumed by Route: profile/member expiry during durable reads, older caller time cannot revive a duty, and concurrently published Epoch/profile/member facts cannot mix generations | `internal/successor/network/state/closed_runtime_view_test.go` and `membership_transition_test.go`; actual new State storage and signed-generation controls. These scenarios verify particular input guarantees; migrated source and earlier acceptance do not establish general absence of Network defects. Route's genuine command tests separately reobserve authority around transport and irreversible effects |
+| Introduction snapshot format: independently specified canonical bytes, exact binding/generation, sorted distinct hashes, original expiry/time floor and damaged/rebound refusal | `internal/successor/route/introduction/slot_snapshot_test.go`; portable format tests. Actual durable History consumes this same codec; its Linux lease/sync/reopen controls remain in `slot_history_linux_test.go`. Codec success supplies no durable ACK or registration authority |
+| Role channel binding: reobserve original duty/profile without cached approval or replacement; refuse changed HELLO identities, purpose and absolute bounds, preserve observation errors and known Node/key/family exclusions | `internal/successor/route/role/authority_test.go`, same source on Windows and Linux. Supplied-fact observations qualify the binding rule only; actual signed intake, admitted REGISTER and paired JOIN remain genuine command scenarios |
+| Shared holder handshake: negotiated exporter required before presentation; original caller cancellation after presentation refuses ADMIT even while derived physical context remains live; refused bytes are cleared and original initial-frame accounting is retained | `internal/successor/route/role/presentation_test.go`, same actual TLS refusal oracle on Windows and Linux, without an accepting Stock/Grant substitute. Genuine Stock, receiving spend and reservation transfer remain separate command tests |
+| Portable directed-pair pool: canceled waiters do not cancel the original dial; Close joins late dial and preserves late physical failures/returns | `internal/successor/route/receiver/carrier_pool_test.go`; same actual physical lifecycle tests execute Windows/Linux. Receiver listen/admission composition still depends on native roots |
+| Prefix pending setup: Seal interrupts original setup and refuses late handoff; still-held setup transfers once to an exact-generation borrow; repeated completion does not return published physical work before join | `internal/successor/route/prefix/setup_test.go`, deterministic scheduling with actual pipe parents. Explicit Close joins readers before resource return; separate `prefix/retirement_test.go` retains its stronger autonomous idle Done ordering. The same portable tests execute on Windows and Linux and grant no Network/Admission/registration authority |
+| Exact Source/Responder pair handoff: either original Seal refuses; both generation locks remain held through the bounded local transition | `internal/successor/route/prefix/borrowing_test.go`, portable pipe parents and an explicit held-lock barrier. Mutex waits cannot use `synctest.Wait`. The same Prefix owner tests pin parent-before-stream locking and original-caller refusal after role-lock waits; acquisition tests separately pin their original caller and opening join; genuine context/paired JOIN remains command composition |
+| Prefix terminal setup: an already stopped AfterFunc cannot block later JOIN or Registration physical retirement; a running callback must join before physical cleanup and capacity return, preserving the late Close failure | `internal/successor/route/prefix/join_channel_test.go` and `prefix/introduction_channel_test.go`; real context callbacks with controlled physical completion on Windows and Linux, without successful authority or RESULT. Both terminals and physical Prefix opening use the same once-owned stop/join. Acquisition cleanup tests in `join/context_linux_test.go` retain late failure before opening completion with the concrete native Context owner; actual admitted REGISTER/WITHDRAW, paired JOIN and compiled consumers remain separate both-Carrier scenarios |
+| Joined inner/lower retirement: authenticated terminal precedes original lower-lane retirement and control return; raw EOF and original/cleanup expiry retain failure, with idempotent joined return | `internal/successor/route/join/stream_test.go`; actual nested framing over pipes on Windows and Linux. Prefix terminal owns the lower lane/control hold; Joined owns the inner session and terminal wait. Native Context selection is not part of this mechanical fixture; genuine admitted paired consumers remain separate both-Carrier scenarios |
+| Exact JOIN acquisition: original Source binding, Source-before-Responder-before-stream locking, original caller refusal after lock waits, and physical opening joined before returning either borrow | `internal/successor/route/prefix/borrowing_test.go` pins exact binding and locking; `internal/successor/route/join/acquisition_test.go` pins caller and join/return lifetime; identical local lifetime controls on Windows and Linux, without successful Network/admission/RESULT substitutes. Client exchange and joined stream are portable. Genuine stocked Responder replacement refusal and two-sided compiled JOIN exercise the same free acquisition operations through real Linux command composition |
+| Receiving Introduction exchange: original canceled caller refuses before channel processing, and plain stream without negotiated exporter cannot read REGISTER or write RESULT | `internal/successor/route/introduction/receiving_test.go`, portable refusal-only owners on Windows/Linux. Genuine REGISTER/WITHDRAW and compiled consumers invoke the same Registry exchange with signed Network, real stock/spend/Hosting and independent durable History on both Carriers; receiving composition joins connection before Grant/capacity return |
+| Original Prefix caller at terminal setup/observation: actual cancellation with delayed derived propagation refuses before a new setup/Network read; cancellation during a failed read preserves both errors and retains parent capacity until physical join | `internal/successor/route/prefix/introduction_channel_test.go`, `TestRegistrationRetiredPrefixCallerRefusesBeforeEffects`, and `prefix/borrowing_test.go`, `TestPrefixOriginalObservationRechecksCallerAfterRead`; portable real pipe parents and refusal-only observations on Windows/Linux. Registration caller and original Prefix caller are independent. The unchanged successful signed-authority/presentation/receiving scenarios remain genuine command composition |
+| Prefix Introduction opening refuses an already retired original caller before Network observation or Stock presentation; a failed original observation completes its pending setup without retiring live parents, which return capacity only after physical join | `internal/successor/route/prefix/introduction_channel_test.go`; portable actual pipe parents and failure-only callbacks. Successful authority, irreversible spend and REGISTER/WITHDRAW ACK remain genuine both-Carrier command scenarios |
+| Introduction capacity ownership: one independently leased History transfers to one Registry; a duplicate cannot acquire a second pending counter, exceed 1024 positions before spend or change retained bytes | `internal/successor/route/introduction/registry_linux_test.go`, `TestRegistryHistoryCannotAcquireSecondPendingCapacityOwner`; actual durable root and pending claims without Admission spend. The ownership rule is independent of the native file mechanism |
+| Portable History terminal rules: absent retained storage cannot publish a Registry or claim; an original verification failure prevents further capacity/commit and joined Close preserves original verification/release errors exactly once | `internal/successor/route/introduction/slot_history_test.go`; failure-only private storage controls never acknowledge a root or commit bytes. Positive durable and uncertain-write scenarios remain on the actual native file adapter |
+| Terminal error provenance: every aggregate leaf remains visible and a physical close may use only its own owner's actual write witness | `internal/successor/route/channel/credit_retirement_test.go`; portable tests of `terminal_outcome.go`, including nested physical owners. Common classification imports only transport; native QUIC recognition belongs to its adapter |
+| Original parent cancellation denies new child deadline effects before the framing retirement callback runs; physical join still retains the exact late writer failure | `internal/successor/route/channel/session_lifecycle_test.go`, `TestSessionLifecycleOriginalCancellationDeniesDeadlineBeforeRetirementCallback`; prepared physical reading isolates the unscheduled callback, an actual started writer remains gated through socket close, and deadline/child-close controls execute on Windows and Linux. Live Registration expiry tests qualify the admitted composition separately |
+| Inner role TLS: exact server key/certificate times, TLS 1.3 and accepted ALPN, absence of client identity, matching authenticated exporters and actual ordered bytes; invalid original bounds refuse before output | `internal/successor/route/transport/tls/role_test.go`; portable real TLS over pipes. Shared authentication also serves the QUIC handshake; this test establishes no successful Network observation or Admission right |
+| TCP transport ownership: shared listener classifies direct and mutual Node identities before payload, both carry actual ordered bytes, and a wrong selected profile refuses before dial | `internal/successor/route/transport/tls/listener_test.go`; portable real TCP/TLS, using the same production listener and dial as Route. Certificate fixtures establish only the stated transport mechanics |
+| Handshake failure category: a refused peer cannot hide an unrelated listener or cleanup failure in a joined error | `internal/successor/route/transport/handshake_failure_test.go`; portable complete-tree classification, with original error causes retained. Receiving composition uses this category to decide whether its listener remains usable |
+| QUIC mechanisms: native absolute deadlines retain the local monotonic clock; accepted queued connections cannot replace their arrival bound; connection close interrupts a real partial writer without concurrent stream FIN | `internal/successor/route/transport/quic/deadline_test.go`, `handshake_test.go` and `interruption_test.go`; portable real UDP/TLS/QUIC and bounded flow-control output, with no substitute for Route joined cleanup |
+| Principal separation at exporter access: real direct QUIC roles share the same exporter transcript, while neither side of a mutual Node transport exposes that role capability | `internal/successor/route/transport/quic/exporter_test.go`; actual handshakes and consumed stream bytes before the check. Common exporter access imports no concrete adapter or private QUIC state |
+| Native retirement categories preserve causal identity: real partial writers distinguish local interruption from exact remote close on both QUIC principals; unknown codes/messages and mixed errors refuse the category | `internal/successor/route/transport/quic/interruption_test.go` and `peer_retirement_test.go`, with `errors.As` retaining the original ApplicationError. Common `transport/peer_retirement_test.go` prevents a marker hiding an aggregate; `socket_retirement_windows_test.go` checks actual Winsock errno recognition |
+| Shared actual-adapter contract: both TLS and QUIC classify direct/Node arrivals, exchange ordered bytes, bound handshake capacity and join readers interrupted by physical Close | `internal/successor/route/prefix/adapter_contract_test.go` and `adapter_retirement_test.go`, external tests on Windows/Linux. The actual opening/composition owner hosts this external contract matrix and imports both real adapters; lower transport imports neither, including in its tests. Prefix and receiver select the exact profile at their real opening/listening operations; the former carrier package has no runtime or test facade |
+| Actual public refill and paired JOIN: signed/current Network, durable Stock/spend, real Hosting and both Carriers | `cmd/ardents-next/route_prefix_caller_linux_test.go`, `route_refill_linux_test.go`, `route_join_linux_test.go` and their real command fixtures; Linux durable composition prerequisites remain explicit |
+| Prefix original-generation retention: idle retirement of a stopped terminal borrower waits for its physical join before parent readers and resource return, preserves its late failure and repeated result | `internal/successor/route/prefix/borrowing_test.go`; controlled borrower completion with actual parent pipe readers. No successful authority or Registration is supplied. The actual Prefix mechanics and these tests are portable on Windows and Linux; Prefix is the actual generation owner |
+
+These are behavior-owner links, not a second task ledger or an installed
+qualification claim. Test filenames follow their rule owner when extraction
+changes its package. A mechanically injected failure establishes the named
+ordering guarantee; it cannot establish successful authenticated admission,
+publication readiness or recipient acknowledgement.
+Receiving JOIN matching, setup/HELLO bounds, the two actual RESULT writes before
+data, capacity retention, cancellation and both-side interruption live in
+`internal/successor/route/join/pair_test.go`. Relay credit, forbidden refill,
+full header/setup debits and selected CREDIT cleanup live in `relay_test.go`.
+Both groups execute on Windows and Linux. They isolate physical post-admission
+mechanics and supply no accepting Network/Admission/Hosting authority.
+`receiver/join_failure_linux_test.go` additionally checks that the real
+Receiver retains deadline and partial-terminal failures through JOIN's public
+interface; its native receiving dependencies justify Linux composition.
+Genuine both-Carrier admitted and compiled JOIN scenarios remain in
+`cmd/ardents-next` and the full new-domain profile.
+
+Original WITHDRAW caller cancellation has two genuine both-Carrier controls in
+`cmd/ardents-next/route_registration_linux_test.go`: cancellation just after a
+live caller observation with its callback delayed, and cancellation while its
+callback stop completes after the real Registry ACK. Both require canceled
+operation and retained Close results, exactly one callback stop, joined cleanup
+and unchanged genuine registration/spend counts. The ordinary successful
+WITHDRAW remains a separate positive control. These cases use signed State,
+real Stock/spend/Hosting roots and receiving Registry; their native dependencies
+justify Linux execution. They do not supply successful authority or ACK.
+
 ## Test design and retirement
+
+Platform-specific tests require a concrete mechanism justification in their
+owning source or technical owner: name the native operation or guarantee, the
+behavior being checked, and why the common test cannot exercise it. A filename,
+an inherited build tag, or the current platform of an enclosing package is not
+that justification. Common framing, queues, credit, byte accounting,
+cancellation and joined lifecycle use the same behavioral oracles on Windows
+and Linux. A test isolated only because these mechanisms are coupled to a
+platform adapter must move with their portable owner rather than retain that
+coupling as an accepted platform requirement.
+
+Native socket-error controls may distinguish Winsock from POSIX errno values.
+Durable integration tests may require the selected exclusive file lease,
+permission checks and directory-sync/rename guarantees. Keep such mechanisms
+with their actual owners and do not replace unavailable guarantees with a
+successful in-memory fixture. Portable component execution, cross-compilation,
+full new-domain integration and installed qualification remain separate evidence.
 
 Stateful Modules own injectable wall-clock, monotonic duration, entropy, and
 private fault seams at the smallest real owner. Fixed sleeps are not readiness
@@ -686,3 +780,25 @@ ledger binding tests separately preserve Authority/Profile/Duty. The Linux
 issuer regression retains a canceled debit plus simultaneous result/key close
 failures and verifies released leases. These checks cover the migrated offline
 cycle; they do not accept a holder stock, live issuer or token-spend engine.
+
+### Portable Route public-boundary controls
+
+The same Windows/Linux owner suites exercise public Prefix opening refusal
+for a canceled caller and a sealed original Source before observation,
+presentation or caller-owned reservation return. Public JOIN acquisition
+refuses missing originals and consumes a failed attempt without an implicit
+retry. Joined methods refuse original cancellation before lane I/O; actual
+framing pipes retain metadata and demonstrate deadline interruption. A canceled
+receiving registration leaves pre-handoff capacity with its original caller,
+whose repeated Release returns it once. None of these controls supplies an
+accepting authority, durable claim or recipient ACK. Genuine admitted consumers
+remain the separate native both-Carrier profile.
+
+Native Context physical-output fixtures live with `context_linux_test.go`;
+Receiver retained-budget/physical-write oracles live with
+`join_failure_linux_test.go`. Portable pool/Joined mechanics remain portable.
+The exact Windows production deadcode closure documents portable functions
+behind the actual native selection/receiving-root composition. Every symbol
+remains reachable in Linux production, while test analysis on both platforms
+requires an empty unreachable-function set. This does not qualify Windows
+durable composition; the checker and its exact comparison are unchanged.

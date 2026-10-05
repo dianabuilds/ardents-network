@@ -10,7 +10,30 @@ registration transport, not Publication readiness or complete Route acceptance.
 
 `internal/successor/route/introduction` owns the slot registry, original-channel
 registration state, canonical requests/results and independent durable slot
-history. The actual transport and joined lifetime belong to `route/transport`.
+history. `introduction.HolderRegistration` separately owns the portable holder
+REGISTER/WITHDRAW implementation and its joined lifetime over the actual
+`prefix.IntroductionChannel`. The holder opens no durable root and shares no
+receiving Registry/History state. Prefix owns OPEN, inner TLS and role admission;
+Registration owns its operation bytes, ACK checks and terminal result.
+Receiving composition retains its native Admission/root dependency separately.
+The receiving REGISTER/RESULT/owning WITHDRAW exchange now belongs directly to
+`introduction.Registry.ServeRegistration`. It consumes the original HELLO,
+exact role authority, already reserved position and original accepted byte/time
+bounds. It derives binding from the actual negotiated exporter, reobserves at
+effects, and keeps the durable claim after lost acknowledgement. It does not
+own the listener, Admission Grant or physical return: receiving composition
+interrupts and joins its connection before releasing those resources. This
+exchange is portable; genuine successful claims still require the independently
+leased durable History and genuine Admission/Hosting command composition.
+Holder and receiving principals have independent state and lifetimes in this
+package; actual `receiver` composition dispatches the admitted channel. The
+intermediate operation owner is removed.
+Prefix owns retained leg/recipient checks and physical OPEN/TLS/role admission;
+`prefix.IntroductionChannel` retains that setup, its lower lane/control hold and
+original callback completion. Registration consumes its opened stream and
+interprets its own operation ACK.
+It does not read the Prefix's configuration, context or framing parent. A failed
+observation completes the child setup claim without retiring its live parent.
 Network authenticates current retained duties; Admission owns presentation,
 class-3 verification and irreversible spend; Hosting owns actual reservations.
 No owner shares Admission's private journal, lease or mutex with Route.
@@ -56,8 +79,13 @@ mechanism's detection and authorization.
 The prefix seals acquisition, cancels every pending original terminal setup and
 stops active registration handles. It joins those borrowers before retiring
 their framing parents and returning reservations. Registration Close joins its
-reader, watcher, physical interrupt and owning withdrawal writer and returns the
+reader, watcher, physical interrupt and entire owning withdrawal attempt and returns the
 same retained outcome. Done signals retirement; it does not replace Close.
+The original Prefix terminal keeps its lower lane, control-capacity return and
+original cancellation callback. Registration retains that terminal rather than
+copying those resources into separate fields. It joins the callback before its
+reader/writer completion and requests lower return only after physical join and
+the whole withdrawal attempt, preserving the same release ordering.
 The original caller context remains linked after REGISTER hands out its handle.
 Close stops or joins that exact cancellation callback before releasing resources;
 successful setup does not detach the registration from its caller's lifetime.
@@ -66,6 +94,15 @@ cancellation synchronously; an unscheduled callback cannot authorize success.
 The presentation channel rechecks both original caller and physical child after
 durable Stock presentation and before ADMIT emission. Refusal retains the burnt
 presentation without emitting token bytes or authorizing Receiving spend.
+
+WITHDRAW also retains its own original operation caller, distinct from the
+registration lifetime. It checks that caller after currentness observation,
+before and after physical request output, and after stopping or joining its
+cancellation callback at completion. A genuine successful ACK cannot discharge
+an already canceled caller. The whole attempt remains held through ACK and
+that final check; concurrent Close cannot return its Prefix borrow or publish a
+terminal result before the withdrawal's retained error is recorded. These
+checks change no wire bytes, slot floor, deadline, retry or spent right.
 
 After emitting the owning WITHDRAW result, the receiving channel remains held
 until the holder closes it or its original deadline/cancellation interrupts it.

@@ -7,6 +7,7 @@ import (
 	"crypto/ed25519"
 	"crypto/rand"
 	"errors"
+	"github.com/dianabuilds/ardents-network/internal/successor/route/transport"
 	"os/exec"
 	"path/filepath"
 	"testing"
@@ -15,7 +16,6 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/successor/admission"
 	"github.com/dianabuilds/ardents-network/internal/successor/hosting"
 	"github.com/dianabuilds/ardents-network/internal/successor/network/state"
-	"github.com/dianabuilds/ardents-network/internal/successor/route/carrier"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 )
 
@@ -26,7 +26,7 @@ func TestRouteCompiledHolderRetainsFailedPrefixClose(t *testing.T) {
 	binary := compiledCommand(t)
 	ctx, cancel := context.WithTimeout(t.Context(), time.Minute)
 	defer cancel()
-	f, sockets, certificates := newJoinRouteFixture(t, carrier.ClosedCarrierTCP)
+	f, sockets, certificates := newJoinRouteFixture(t, transport.ClosedCarrierTCP)
 	receivers, receiverBudgets := startJoinRouteReceivers(t, f, sockets, certificates)
 	bundle, err := networkfixture.BuildClosed(f.spec)
 	if err != nil {

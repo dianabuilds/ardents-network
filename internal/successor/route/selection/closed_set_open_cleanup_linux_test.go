@@ -2,6 +2,10 @@
 
 package selection
 
+// This control corrupts the actual flock lease's file descriptor and observes
+// Linux EBADF from joined release. A portable mock close failure would not
+// exercise the native lease or prove that its retained floor was untouched.
+
 import (
 	"errors"
 	"os"

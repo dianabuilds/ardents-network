@@ -7,6 +7,8 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"errors"
+	routeprefix "github.com/dianabuilds/ardents-network/internal/successor/route/prefix"
+	routereceiver "github.com/dianabuilds/ardents-network/internal/successor/route/receiver"
 	"io"
 	"os"
 	"sync"
@@ -19,8 +21,11 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/successor/hosting"
 	"github.com/dianabuilds/ardents-network/internal/successor/network/state"
 	"github.com/dianabuilds/ardents-network/internal/successor/route/ardp"
+	framing "github.com/dianabuilds/ardents-network/internal/successor/route/channel"
+	"github.com/dianabuilds/ardents-network/internal/successor/route/introduction"
+
+	"github.com/dianabuilds/ardents-network/internal/successor/route/role"
 	"github.com/dianabuilds/ardents-network/internal/successor/route/selection"
-	"github.com/dianabuilds/ardents-network/internal/successor/route/transport"
 )
 
 func releaseRouteReservation(reservation *hosting.Reservation) error {
@@ -65,7 +70,7 @@ func startRoutePrefix(ctx context.Context, plan routePrefixPlan, authority admis
 		})
 		return releaseErr
 	}
-	prefix, err := transport.OpenPrefix(ctx, transport.PrefixConfig{Leg: leg, Current: authority.current, Deadline: plan.Deadline, Release: release,
+	prefix, err := routeprefix.Open(ctx, routeprefix.Config{Leg: leg, Current: authority.current, Deadline: plan.Deadline, Release: release,
 		HoldRefill: func(ctx context.Context, additional uint64) (func() error, error) {
 			limit := admission.ForwardClass.ByteLimit()
 			if err := budget.CoversJoint(ctx, reservation, hosting.JointTraffic{Tx: limit, Rx: limit, Total: limit}); err != nil {
@@ -104,7 +109,7 @@ func startRoutePrefix(ctx context.Context, plan routePrefixPlan, authority admis
 		if bound, exists := ctx.Deadline(); exists && bound.Before(end) {
 			end = bound.UTC().Truncate(time.Second)
 		}
-		registration, err := prefix.Register(ctx, transport.RegistrationConfig{Duty: duty, Revision: revision, Deadline: end})
+		registration, err := introduction.Register(ctx, prefix, introduction.RegistrationConfig{Duty: duty, Revision: revision, Deadline: end})
 		if err != nil {
 			return routeRegistration{}, err
 		}
@@ -195,12 +200,12 @@ func runRoute(ctx context.Context, args []string, out, diagnostic io.Writer) (co
 	}()
 	var initializationOwner *receiving.Owner
 	var reservationMu sync.Mutex
-	reservations := make(map[transport.Channel]*hosting.Reservation)
+	reservations := make(map[routereceiver.Channel]*hosting.Reservation)
 	if m.RoleDomain == 4 && m.Subrole == 3 {
 		initializationOwner = admissionOwner
 	}
-	server, err := transport.Listen(ctx, transport.ReceiverConfig{Authority: transport.Authority{Current: networkOwner.CurrentRuntime, Duty: duty, Profile: p.ProfileBinding}, Certificate: certificate, IntroductionRoot: plan.IntroductionRoot, Receiving: initializationOwner,
-		Admit: func(ctx context.Context, c transport.Channel, raw []byte) (receiving.Grant, error) {
+	server, err := routereceiver.Listen(ctx, routereceiver.ReceiverConfig{Authority: role.Authority{Current: networkOwner.CurrentRuntime, Duty: duty, Profile: p.ProfileBinding}, Certificate: certificate, IntroductionRoot: plan.IntroductionRoot, Receiving: initializationOwner,
+		Admit: func(ctx context.Context, c routereceiver.Channel, raw []byte) (receiving.Grant, error) {
 			class := admission.ForwardClass
 			if c.Hello.Purpose == ardp.PurposeIntroduction {
 				class = admission.RegistrationClass
@@ -221,7 +226,7 @@ func runRoute(ctx context.Context, args []string, out, diagnostic io.Writer) (co
 				})
 			})
 		},
-		Refill: func(ctx context.Context, c transport.Channel, original receiving.Grant, remaining uint64, raw []byte) (receiving.Grant, error) {
+		Refill: func(ctx context.Context, c routereceiver.Channel, original receiving.Grant, remaining uint64, raw []byte) (receiving.Grant, error) {
 			limit := admission.ForwardClass.ByteLimit()
 			if c.Hello.Purpose != ardp.PurposeForwarding || remaining == 0 || remaining >= limit {
 				return receiving.Grant{}, errors.New("route refill allowance unavailable")
@@ -254,7 +259,7 @@ func runRoute(ctx context.Context, args []string, out, diagnostic io.Writer) (co
 	}
 	err = server.Close()
 	if err != nil {
-		_ = json.NewEncoder(diagnostic).Encode(map[string]string{"operation": "route.receive", "phase": "joined", "outcome": "failed", "stage": transport.TerminalFailureStage(err)})
+		_ = json.NewEncoder(diagnostic).Encode(map[string]string{"operation": "route.receive", "phase": "joined", "outcome": "failed", "stage": framing.TerminalFailureStage(err)})
 		return 1
 	}
 	_ = json.NewEncoder(diagnostic).Encode(map[string]string{"operation": "route.receive", "phase": "joined", "outcome": "canceled"})

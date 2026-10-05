@@ -6,6 +6,8 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	routeprefix "github.com/dianabuilds/ardents-network/internal/successor/route/prefix"
+	routereceiver "github.com/dianabuilds/ardents-network/internal/successor/route/receiver"
 	"os"
 	"path/filepath"
 	"sync"
@@ -18,7 +20,10 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/successor/admission/stock"
 	"github.com/dianabuilds/ardents-network/internal/successor/hosting"
 	"github.com/dianabuilds/ardents-network/internal/successor/route/ardp"
-	"github.com/dianabuilds/ardents-network/internal/successor/route/carrier"
+	framing "github.com/dianabuilds/ardents-network/internal/successor/route/channel"
+	"github.com/dianabuilds/ardents-network/internal/successor/route/introduction"
+
+	"github.com/dianabuilds/ardents-network/internal/successor/route/role"
 	"github.com/dianabuilds/ardents-network/internal/successor/route/selection"
 	"github.com/dianabuilds/ardents-network/internal/successor/route/transport"
 )
@@ -27,8 +32,8 @@ import (
 // durable Receiving and physical Hosting. No successful authority or ACK is
 // substituted. Compiled command acceptance is a separate scenario.
 func TestRouteGenuineRegistrationBothCarriers(t *testing.T) {
-	for _, profile := range []carrier.CarrierProfile{carrier.ClosedCarrierTCP, carrier.ClosedCarrierQUIC} {
-		for _, mode := range []string{"withdraw", "prefix-close", "caller-cancel", "caller-deferred-spend", "caller-deferred-presentation", "expiry", "clock-loss", "post-spend-clock-loss", "lost-floor"} {
+	for _, profile := range []transport.CarrierProfile{transport.ClosedCarrierTCP, transport.ClosedCarrierQUIC} {
+		for _, mode := range []string{"withdraw", "withdraw-deferred-caller", "withdraw-deferred-stop", "prefix-close", "caller-cancel", "caller-deferred-spend", "caller-deferred-presentation", "expiry", "clock-loss", "post-spend-clock-loss", "lost-floor"} {
 			t.Run(string(profile)+"/"+mode, func(t *testing.T) {
 				f, reservations, certificates := newRoleRouteFixture(t, profile, 4, true)
 				holder := routeRoleStock(t, f, true)
@@ -46,8 +51,8 @@ func TestRouteGenuineRegistrationBothCarriers(t *testing.T) {
 				var registrationSpendRoot string
 				var registrationReceiving *receiving.Owner
 				var registrationBinding receiving.Receiver
-				var registrationReceiverConfig transport.ReceiverConfig
-				var servers []*transport.Receiver
+				var registrationReceiverConfig routereceiver.ReceiverConfig
+				var servers []*routereceiver.Receiver
 				var budgets []*hosting.Budget
 				for i := byte(12); i <= 16; i++ {
 					id := [32]byte{i}
@@ -76,7 +81,7 @@ func TestRouteGenuineRegistrationBothCarriers(t *testing.T) {
 					})
 					budget := networkTestBudget(t)
 					budgets = append(budgets, budget)
-					config := transport.ReceiverConfig{Authority: transport.Authority{Current: f.current, Duty: duty, Profile: view.Profile().ProfileBinding}, Certificate: certificates[id]}
+					config := routereceiver.ReceiverConfig{Authority: role.Authority{Current: f.current, Duty: duty, Profile: view.Profile().ProfileBinding}, Certificate: certificates[id]}
 					if i == 16 {
 						registrationSpendRoot, registrationReceiving, registrationBinding = spendRoot, owner, binding
 						config.IntroductionRoot = t.TempDir()
@@ -85,7 +90,7 @@ func TestRouteGenuineRegistrationBothCarriers(t *testing.T) {
 						}
 						config.Receiving = owner
 					}
-					config.Admit = func(ctx context.Context, channel transport.Channel, raw []byte) (receiving.Grant, error) {
+					config.Admit = func(ctx context.Context, channel routereceiver.Channel, raw []byte) (receiving.Grant, error) {
 						class := admission.ForwardClass
 						if channel.Hello.Purpose == ardp.PurposeIntroduction {
 							class = admission.RegistrationClass
@@ -118,7 +123,7 @@ func TestRouteGenuineRegistrationBothCarriers(t *testing.T) {
 					if i == 16 {
 						registrationReceiverConfig = config
 					}
-					server, err := transport.Listen(t.Context(), config)
+					server, err := routereceiver.Listen(t.Context(), config)
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -126,7 +131,7 @@ func TestRouteGenuineRegistrationBothCarriers(t *testing.T) {
 				}
 				defer func() {
 					for _, server := range servers {
-						if err := server.Close(); err != nil && transport.TerminalFailureStage(err) != "peer-retired-write" && !registrationAuthorityRetirementOnly(err, authorityFailure) {
+						if err := server.Close(); err != nil && framing.TerminalFailureStage(err) != "peer-retired-write" && !registrationAuthorityRetirementOnly(err, authorityFailure) {
 							t.Error("receiving join", err)
 						}
 					}
@@ -180,7 +185,7 @@ func TestRouteGenuineRegistrationBothCarriers(t *testing.T) {
 						t.Fatal("prefix join after canceled caller", err)
 					}
 					for _, server := range servers {
-						if err := server.Close(); err != nil && transport.TerminalFailureStage(err) != "peer-retired-write" {
+						if err := server.Close(); err != nil && framing.TerminalFailureStage(err) != "peer-retired-write" {
 							t.Fatal("receiver join after canceled caller", err)
 						}
 					}
@@ -290,6 +295,19 @@ func TestRouteGenuineRegistrationBothCarriers(t *testing.T) {
 					if terminal == nil {
 						t.Fatal("interrupted original registration reported graceful completion")
 					}
+				} else if mode == "withdraw-deferred-caller" || mode == "withdraw-deferred-stop" {
+					withdrawContext, cancelWithdraw := context.WithCancel(t.Context())
+					defer cancelWithdraw()
+					delayed := &registrationDeferredCaller{Context: withdrawContext}
+					var caller context.Context = &withdrawCancelAfterObservation{registrationDeferredCaller: delayed, cancel: cancelWithdraw}
+					if mode == "withdraw-deferred-stop" {
+						caller = &withdrawCancelAtStop{registrationDeferredCaller: delayed, cancel: cancelWithdraw}
+					}
+					err := registration.withdraw(caller)
+					terminal = registration.close()
+					if !errors.Is(err, context.Canceled) || !errors.Is(terminal, context.Canceled) || delayed.stopped.Load() != 1 {
+						t.Fatalf("WITHDRAW lost original caller cancellation before delayed callback: operation=%v retained=%v stopped=%d", err, terminal, delayed.stopped.Load())
+					}
 				} else if mode == "withdraw" || mode == "lost-floor" {
 					if err := registration.withdraw(t.Context()); err != nil {
 						t.Fatal("WITHDRAW", err)
@@ -329,7 +347,7 @@ func TestRouteGenuineRegistrationBothCarriers(t *testing.T) {
 						t.Fatal("receiving terminal result changed")
 					}
 					if first != nil {
-						if transport.TerminalFailureStage(first) != "peer-retired-write" && !registrationAuthorityRetirementOnly(first, authorityFailure) {
+						if framing.TerminalFailureStage(first) != "peer-retired-write" && !registrationAuthorityRetirementOnly(first, authorityFailure) {
 							t.Fatalf("receiver %d close: %v", index+12, first)
 						}
 						t.Logf("receiver %d retained failed outcome: %v", index+12, first)
@@ -370,7 +388,7 @@ func TestRouteGenuineRegistrationBothCarriers(t *testing.T) {
 					}
 					defer reopened.Close()
 					registrationReceiverConfig.Receiving = reopened
-					registrationReceiverConfig.Admit = func(ctx context.Context, channel transport.Channel, raw []byte) (receiving.Grant, error) {
+					registrationReceiverConfig.Admit = func(ctx context.Context, channel routereceiver.Channel, raw []byte) (receiving.Grant, error) {
 						return reopened.Accept(ctx, admission.RegistrationClass, raw, channel.Hello.Deadline, func() (func() error, error) {
 							release, err := networkTestReservation(t, budgets[len(budgets)-1], channel.Hello.Deadline)
 							if err != nil {
@@ -379,7 +397,7 @@ func TestRouteGenuineRegistrationBothCarriers(t *testing.T) {
 							return channel.HoldReservation(release)
 						})
 					}
-					if server, err := transport.Listen(t.Context(), registrationReceiverConfig); err == nil {
+					if server, err := routereceiver.Listen(t.Context(), registrationReceiverConfig); err == nil {
 						_ = server.Close()
 						t.Fatal("lost entire slot floor after genuine spend restarted receiving")
 					}
@@ -395,10 +413,44 @@ func TestRouteGenuineRegistrationBothCarriers(t *testing.T) {
 
 // The underlying genuine caller cancels normally; only its registered callback
 // is deliberately left unscheduled. This isolates the effect-boundary gap,
-// without replacing signed authority, token verification, spending or transport.
+// without replacing signed authority, token verification, spending or operation.
 type registrationDeferredCaller struct {
 	context.Context
 	stopped atomic.Int32
+}
+
+// Capture one genuine live observation, then cancel its original context before
+// the next effect. Only callback scheduling is delayed; this supplies no ACK,
+// signed State, token, spend or successful registration substitute.
+type withdrawCancelAfterObservation struct {
+	*registrationDeferredCaller
+	cancel   context.CancelFunc
+	observed atomic.Bool
+}
+
+func (c *withdrawCancelAfterObservation) Err() error {
+	err := c.Context.Err()
+	if err == nil && c.observed.CompareAndSwap(false, true) {
+		c.cancel()
+	}
+	return err
+}
+
+// The original caller is canceled during completion of its callback stop,
+// after the genuine request/ACK exchange. Return must observe that caller
+// before publishing success; successful ACK is supplied by the real Registry.
+type withdrawCancelAtStop struct {
+	*registrationDeferredCaller
+	cancel context.CancelFunc
+}
+
+func (c *withdrawCancelAtStop) AfterFunc(func()) func() bool {
+	var once sync.Once
+	return func() bool {
+		stopped := false
+		once.Do(func() { c.stopped.Add(1); c.cancel(); stopped = true })
+		return stopped
+	}
 }
 
 // This harness uses the same real selection, Stock, transport and Hosting
@@ -427,7 +479,7 @@ func registrationPresentationPrefix(ctx context.Context, plan routePrefixPlan, f
 		once.Do(func() { releaseErr = errors.Join(releaseRouteReservation(held), selected.Close(), budget.Close()) })
 		return releaseErr
 	}
-	prefix, err := transport.OpenPrefix(ctx, transport.PrefixConfig{Leg: leg, Current: f.current, Deadline: plan.Deadline, Release: release,
+	prefix, err := routeprefix.Open(ctx, routeprefix.Config{Leg: leg, Current: f.current, Deadline: plan.Deadline, Release: release,
 		Present: func(ctx context.Context, hello ardp.Hello) ([]byte, error) {
 			presentation := stock.Presentation{NetworkID: hello.NetworkID, StateGeneration: hello.StateGeneration, StateDigest: hello.StateDigest, ProfileDigest: hello.ProfileDigest, RecipientNodeID: hello.RecipientNodeID, RecipientDutyGeneration: hello.RecipientDutyGeneration, ChannelNonce: hello.ChannelNonce, Deadline: hello.Deadline}
 			if err := f.authority.presentation(presentation); err != nil {
@@ -455,7 +507,7 @@ func registrationPresentationPrefix(ctx context.Context, plan routePrefixPlan, f
 		if err != nil {
 			return routeRegistration{}, err
 		}
-		registration, err := prefix.Register(ctx, transport.RegistrationConfig{Duty: duty, Revision: revision, Deadline: plan.Deadline})
+		registration, err := introduction.Register(ctx, prefix, introduction.RegistrationConfig{Duty: duty, Revision: revision, Deadline: plan.Deadline})
 		if err != nil {
 			return routeRegistration{}, err
 		}
@@ -480,7 +532,7 @@ func registrationAuthorityRetirementOnly(err, authorityFailure error) bool {
 	if err == nil || authorityFailure == nil {
 		return false
 	}
-	if err == authorityFailure || transport.TerminalFailureStage(err) == "peer-retired-write" {
+	if err == authorityFailure || framing.TerminalFailureStage(err) == "peer-retired-write" {
 		return true
 	}
 	if joined, ok := err.(interface{ Unwrap() []error }); ok {
