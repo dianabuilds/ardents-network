@@ -239,6 +239,16 @@ authority contradictions must be surfaced, not silently worked around.
 
 ## Orchestration and domain integrity
 
+On 2026-10-06 the Product Owner directly instructed the current visible Route
+executor to continue without the separate orchestrator. For that arrangement,
+the executor also owns task framing, completed-slice review, evidence assessment
+and domain-map reconciliation in the existing checkout. Review of its own work
+must be identified as such; it is not independent validation. No message to, or
+approval from, the inactive orchestrator is a prerequisite for this continuation.
+The complete Route goal, selected-issue/WIP admission, source-matched acceptance,
+scoped Git delivery and R01-R08 remain mandatory. This instruction changes the
+execution arrangement, not protocol, authority, domain or qualification bounds.
+
 The Product Owner assigned the supervising agent an orchestration role after
 Network completion and then delegated the complete project-wide DDD transition
 on 2026-10-04. Follow the [delegated transition cycle](agent-execution.md#delegated-project-wide-domain-transition):

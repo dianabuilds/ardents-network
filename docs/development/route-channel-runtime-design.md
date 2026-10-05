@@ -122,9 +122,9 @@ WITHDRAW остаются вместе; refill остаётся действие
 отдельным subsystem. Общий transport и channel не получают зависимости от
 этих высокоуровневых владельцев.
 
-Нынешние `Prefix.Register`, `Prefix.AcquireSourceJoin` и private доступ из
-Registration/JoinAcquisition к Prefix показывают взаимную связанность, которую
-нельзя перенести в циклические imports. Prefix должен владеть допуском,
+В исходной смешанной реализации `Prefix.Register`, `Prefix.AcquireSourceJoin`
+и private доступ Registration/JoinAcquisition к Prefix показывали связанность,
+которую нельзя перенести в циклические imports. Prefix владеет допуском,
 заимствованием и join своей исходной generation. Registration/JOIN владеют
 собственной операцией и возвращают заимствование после своего завершения.
 Договор передачи должен удерживать те же синхронные currentness, seal и
@@ -137,8 +137,10 @@ mutex только внутри этого commit, проверяет исход
 публикует результат после проверки обоих original prefixes. Наблюдение Network,
 физический I/O и join выполняются вне generation locks. Private pair claim
 возвращается после JOIN physical cleanup; новая пара не может привязать чужой
-Source к retained Responder. Этот переход пока реализован внутри промежуточного
-operation; он не является завершением выделения пакетов или публичным mutex API.
+Source к retained Responder. Этот переход реализован через
+`prefix.JoinBorrow.Publish`/`Prefix.CommitPair` и
+`join.JoinAcquisition.publish`. Пакет `operation` удалён; приватные mutex
+и поля generation не становятся публичным API.
 Pending terminal setup также удерживается владельцем Prefix. Только still-held
 claim может один раз передать физическую работу borrower той же generation;
 публикация проверяет исходного caller, child и synchronous Seal под owner lock.
@@ -274,7 +276,8 @@ Portable component tests на Windows не квалифицируют Windows in
 | `introduction/slot_snapshot.go` | Платформенных механизмов нет: канонические binding, hashes и original-expiry/time-floor bytes | Переносимые independent-byte и повреждение/rebinding проверки; тот же codec использует настоящий durable History. Кодировка не выдаёт ACK или live registration authority |
 | `introduction/slot_history.go`, `registry.go` | Платформенных механизмов нет: floors/claim/terminal state и live capacity/ACK/owning withdrawal | Portable отказ без retained storage и сохранение оригинальных ошибок/Close; genuine успешные claims/reopen/uncertain-write проверяются отдельно на настоящем Linux file adapter. Приватная storage seam не является публичной возможностью подставить ACK |
 | Holder REGISTER/WITHDRAW | Переносимые Prefix, role, TLS/channel и Introduction bytes; собственный durable root не открывает | Prefix владеет retained leg/recipient checks, control claim и OPEN/TLS/role admission; Registration не читает его config/context/physical parent, а владеет operation bytes/ACK и своим reader/writer join. Клиентская реализация и causal pre-effect refusal выполняются Windows/Linux. Успешные Stock/spend/ACK по обоим Carrier остаются genuine command scenarios с native roots |
-| Остальные JOIN/receiving операции | Ограничение унаследовано от связанных concrete owners; само правило не требует Linux | Отделить правила от открытия/удержания root внутри их владельцев; это долг компоновки, а не достаточное обоснование постоянного Linux tag |
+| JOIN acquisition/client/pair/relay/stream | Переносимые Prefix, role/channel, context и ordered I/O | Клиентские, pairing, framing и joined retirement правила и их механические проверки выполняются на Windows/Linux. Genuine signed State/spend/Carrier сценарии проверяются отдельно в native command composition |
+| JOIN Context и receiving composition | Context использует concrete selection.Owner с leased durable roots; Receiver соединяет реальные native Admission/Hosting/selection owners | Linux integration и root/lease/reopen проверки остаются у этих конкретных владельцев. Ограничение композиции не переносится на отдельные переносимые JOIN правила |
 | Сквозная `cmd/ardents-next` композиция | Настоящие Network/Admission/Hosting и Route roots используют выбранные Linux механизмы | Linux integration tests с genuine authority/spend/persistence; portable mechanism pass не считается их выполнением |
 
 Тест остаётся у владельца проверяемого перехода. Физический fixture явно
