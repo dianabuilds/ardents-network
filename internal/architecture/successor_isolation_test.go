@@ -127,8 +127,11 @@ func successorImportAllowed(source, dependency string) bool {
 		"cmd/ardents-next":                           {"network", "network/state", "admission/stock", "admission/receiving", "admission/allocation", "admission", "admission/quota", "admission/issuerprofile", "admission/issuance", "admission/issuer", "nodeidentity", "hosting", "route", "route/selection", "route/transport", "route/ardp"},
 	}
 	if zoneDependency {
-		if (source == "cmd/ardents-next/route_fixture_linux_test.go" || source == "cmd/ardents-next/route_prefix_linux_test.go" || source == "cmd/ardents-next/route_process_linux_test.go" || source == "cmd/ardents-next/route_refusal_linux_test.go" || source == "cmd/ardents-next/route_registration_linux_test.go") && dependency == modulePath+"/internal/successor/route/carrier" {
-			return true
+		if dependency == modulePath+"/internal/successor/route/carrier" {
+			switch source {
+			case "cmd/ardents-next/route_fixture_linux_test.go", "cmd/ardents-next/route_prefix_linux_test.go", "cmd/ardents-next/route_prefix_caller_linux_test.go", "cmd/ardents-next/route_process_linux_test.go", "cmd/ardents-next/route_refusal_linux_test.go", "cmd/ardents-next/route_registration_linux_test.go", "cmd/ardents-next/route_join_fixture_linux_test.go", "cmd/ardents-next/route_join_linux_test.go", "cmd/ardents-next/route_join_process_linux_test.go", "cmd/ardents-next/route_close_failure_linux_test.go", "cmd/ardents-next/route_join_lifecycle_linux_test.go":
+				return true
+			}
 		}
 		if source == "cmd/ardents-next/network_admission_fixture_linux_test.go" && dependency == modulePath+"/internal/successor/network/epoch" {
 			return true
@@ -209,6 +212,12 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		name, source, dependency string
 		allowed                  bool
 	}{
+		{"original caller Carrier behavior test", "cmd/ardents-next/route_prefix_caller_linux_test.go", modulePath + "/internal/successor/route/carrier", true},
+		{"no production Carrier allowance", "cmd/ardents-next/route_prefix_caller_linux.go", modulePath + "/internal/successor/route/carrier", false},
+		{"caller test cannot reach old Carrier", "cmd/ardents-next/route_prefix_caller_linux_test.go", modulePath + "/internal/route/carrier", false},
+		{"JOIN Carrier scenario", "cmd/ardents-next/route_join_linux_test.go", modulePath + "/internal/successor/route/carrier", true},
+		{"JOIN production excludes Carrier adapter", "cmd/ardents-next/route_join_linux.go", modulePath + "/internal/successor/route/carrier", false},
+		{"JOIN test excludes old Carrier", "cmd/ardents-next/route_join_linux_test.go", modulePath + "/internal/route/carrier", false},
 		{"external public-contract test", "internal/successor/admission/issuerprofile/provenance_test.go", modulePath + "/internal/successor/admission/issuerprofile", true},
 		{"no production self import", "internal/successor/admission/issuerprofile/profile.go", modulePath + "/internal/successor/admission/issuerprofile", false},
 		{"no unregistered test self import", "internal/successor/future/file_test.go", modulePath + "/internal/successor/future", false},

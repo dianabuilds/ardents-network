@@ -21,6 +21,13 @@ type frameTurn struct {
 	ready             chan struct{}
 }
 
+// frameExpiry records a deadline refusal before physical output starts. It
+// cannot be constructed from a Carrier error or a failed started write.
+type frameExpiry struct{ end time.Time }
+
+func (e *frameExpiry) Error() string { return os.ErrDeadlineExceeded.Error() }
+func (e *frameExpiry) Unwrap() error { return os.ErrDeadlineExceeded }
+
 // scheduleLocked serves new control first, then one round-robin data frame
 // before another control. A credit waiter never enters this queue.
 func (s *session) scheduleLocked() {
@@ -70,9 +77,10 @@ func (s *session) turn(l *lane, f ardp.Frame, terminal bool, bytes uint64) (func
 		s.mu.Unlock()
 		return nil, net.ErrClosed
 	}
-	if !time.Now().Before(l.frameDeadline(f, terminal)) {
+	end := l.frameDeadline(f, terminal)
+	if !time.Now().Before(end) {
 		s.mu.Unlock()
-		return nil, os.ErrDeadlineExceeded
+		return nil, &frameExpiry{end: end}
 	}
 	if t.control {
 		if bytes > (16<<10)-s.controlQueued {
@@ -89,6 +97,7 @@ func (s *session) turn(l *lane, f ardp.Frame, terminal bool, bytes uint64) (func
 	}
 	s.output = append(s.output, t)
 	s.writes.Add(1)
+	l.writes.Add(1)
 	s.scheduleLocked()
 	s.mu.Unlock()
 	finish := func() {
@@ -111,6 +120,7 @@ func (s *session) turn(l *lane, f ardp.Frame, terminal bool, bytes uint64) (func
 		}
 		s.scheduleLocked()
 		s.mu.Unlock()
+		l.writes.Done()
 		s.writes.Done()
 	}
 	for {
@@ -128,7 +138,7 @@ func (s *session) turn(l *lane, f ardp.Frame, terminal bool, bytes uint64) (func
 		}
 		if !time.Now().Before(end) {
 			finish()
-			return nil, os.ErrDeadlineExceeded
+			return nil, &frameExpiry{end: end}
 		}
 		timer := time.NewTimer(time.Until(end))
 		select {

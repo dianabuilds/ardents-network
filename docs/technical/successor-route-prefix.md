@@ -59,6 +59,9 @@ and selected Carrier outside the pool lock. Same-pair waiters use their own
 cancellation; dial and retirement remain counted operations. This operation
 retires the Carrier after its last joined borrower, without idle retention or
 speculative dialing. Every child retains its own original bounds and admission.
+QUIC physical deadlines attach the current local monotonic clock to the exact
+supplied absolute instant. A wall-clock adjustment since library startup must
+not shift physical expiry; this conversion changes no wire or authority bound.
 OPEN allocation and complete emission are serialized together, with one
 immutable setup deadline no later than ten seconds or the original child/parent
 bound. Waiting for that operation is cancellable and grants no child authority.
@@ -69,8 +72,36 @@ consumption or joined owner cleanup. Withdrawal interrupts listeners, pending
 setup, readers, writers and children; owners join them before returning
 reservations or closing roots. Repeated Close returns one retained result,
 including late physical and release failures.
+An already expired child starts no new terminal frame. Its original operation
+remains refused, while a completed local child join alone does not retire its
+still-live framing parent or siblings. Output already in progress still joins
+and retains every physical failure; expiry grants no additional write time.
+After that join, CLOSE rechecks peer and parent retirement under the session
+lock. An earlier live snapshot cannot authorize another frame on a parent that
+retired while its writer was completing; that parent's retained failure remains
+its own joined result.
+After writers join, this check includes the original opening caller's elapsed
+deadline and the parent session's elapsed deadline. A later wall reading cannot
+restore output authority after either original timer has fired.
+If the original child bound expires while CLOSE waits for its writer turn,
+the explicit pre-output deadline refusal completes without a new frame and
+does not retire a healthy sibling. A shorter cleanup deadline still fails.
+An error after entering TLS.Write remains that TLS generation's failure even
+when the lower lane emitted no payload; zero lower progress cannot establish
+that the TLS writer is reusable.
 Physical session write/close failures survive Receiver and outgoing pool
 retirement; ordinary peer refusal and EOF remain local session outcomes.
+Command reporting identifies peer retirement only from the complete retained
+error tree. An owned physical Close error may accompany a started write failure
+only when both belong to the same session and every cause is a recognized peer
+retirement. Close alone, another session's write, a deadline error or an unknown
+cleanup cause remains a terminal failure. Classification retains the error and
+the command's unsuccessful outcome; it does not establish clean termination.
+A nested channel's Close can emit its parent lane's terminal frame. If that
+physical write fails, the nested result retains the parent's same write witness
+and cause; closing a borrowed lane does not mint a socket-close witness for the
+nested session. An unrelated physical close or release failure still prevents
+peer-retirement classification.
 `Prefix.Done` signals retired readiness; its caller must still Close to join
 and release. `Receiver.Done`
 signals joined listener retirement, and Close retrieves its terminal result.
@@ -78,6 +109,10 @@ A prefix without active terminal work expires after 120 seconds of idle
 readiness or its earlier immutable deadline. Introduction registration work
 remains bounded by its own original lifetime; its retirement resets idle
 readiness without renewing any admission or parent deadline.
+Autonomous idle expiration uses the same joined retirement path before its
+notification. Close still retrieves its retained terminal result. A Source
+joins original bound Responder openings and prefixes before retiring its own
+framing parents, keeping bounded terminal authority alive during that join.
 
 ## Real command composition
 
@@ -107,6 +142,9 @@ Unsupported platforms refuse without opening Route roots.
 The separately owned [Introduction registration](successor-route-introduction.md)
 uses purpose 4/class 3 through a retained Domain 4 prefix, independent durable
 slot history and actual holder registration-open/withdraw/close commands.
+The separately owned [Rendezvous JOIN transport](successor-route-join.md)
+composes one installation with original Source/Responder openings, retained
+context selection, genuine paired admission and protected framed streams.
 
 ## Evidence boundary
 
@@ -124,8 +162,8 @@ physical failure, independent pool waiter cancellation, late dial/write results
 and release-after-join; they supply no successful neighboring authority.
 Exact candidate receipts and failures belong to the selected execution issue.
 
-This slice has no Service publication, Descriptor ACK, Introduction delivery,
-JOIN workload, Instance authentication, Local Grant or Connection recovery.
+The prefix boundary itself establishes no Service publication, Descriptor ACK,
+Introduction delivery, Instance authentication, Local Grant or Connection recovery.
 Those responsibilities stay with their named owners in the
 [domain map](../development/domain-map.md); no old runtime consumer, callback,
 process bridge, shared live root or migration of persisted authority is used.

@@ -117,6 +117,58 @@ func lifecycleWriterEntered(t *testing.T, l *lane) {
 	t.Fatal("lane did not enter its queued write")
 }
 
+func TestSessionLifecycleCloseRechecksParentAfterWriterJoin(t *testing.T) {
+	physical := newLifecycleConn(true)
+	physical.writeIgnoresClose = true
+	s := newSession(t.Context(), physical, time.Now().Add(time.Minute), 32<<20, nil, false, &queueBudget{maximum: 64 << 20}, nil)
+	defer s.Close()
+	var gateOnce sync.Once
+	releaseWriter := func() { gateOnce.Do(func() { close(physical.writeGate) }) }
+	defer releaseWriter()
+	l := lifecycleLane(t, s, 1)
+	l.openEmitted = true
+	written := make(chan error, 1)
+	go func() { _, err := l.Write([]byte("accepted writer")); written <- err }()
+	select {
+	case <-physical.writes:
+	case <-time.After(2 * time.Second):
+		t.Fatal("accepted physical writer did not start")
+	}
+	closed := make(chan error, 1)
+	go func() { closed <- l.Close() }()
+	closing := false
+	until := time.Now().Add(2 * time.Second)
+	for time.Now().Before(until) {
+		s.mu.Lock()
+		closing = l.localClosed
+		s.mu.Unlock()
+		if closing {
+			break
+		}
+		runtime.Gosched()
+	}
+	if !closing {
+		t.Fatal("Close did not begin joining the accepted writer")
+	}
+	parentFailure := errors.New("original parent retired during writer join")
+	s.retire(parentFailure)
+	releaseWriter()
+	if err := lifecycleResult(t, written); err != nil {
+		t.Fatal("accepted late writer result changed", err)
+	}
+	if err := lifecycleResult(t, closed); err != nil {
+		t.Fatal("joined local Close attempted another frame on retired parent", err)
+	}
+	if err := s.Close(); !errors.Is(err, parentFailure) {
+		t.Fatal("local join erased original parent failure", err)
+	}
+	select {
+	case frame := <-physical.writes:
+		t.Fatal("retired parent received a new terminal frame", frame)
+	default:
+	}
+}
+
 func TestSessionLifecycleQueuedRetirementPreservesSibling(t *testing.T) {
 	for _, mode := range []string{"deadline", "cancel"} {
 		t.Run(mode, func(t *testing.T) {
@@ -280,6 +332,153 @@ func TestSessionLifecycleCreditIgnoresCompletedPayloadDeadline(t *testing.T) {
 	}
 	if err := lifecycleResult(t, result); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestSessionLifecycleExpiredChildCloseDoesNotRetireParent(t *testing.T) {
+	local, peer := net.Pipe()
+	defer peer.Close()
+	s := newSession(context.Background(), local, time.Now().Add(time.Minute), 32<<20, nil, false, &queueBudget{maximum: 64 << 20}, nil)
+	defer s.Close()
+	expired := lifecycleLane(t, s, 1)
+	live := lifecycleLane(t, s, 3)
+	s.mu.Lock()
+	expired.end = time.Now().Add(-time.Second)
+	expired.readEnd, expired.writeEnd = expired.end, expired.end
+	expired.openEmitted = true
+	s.mu.Unlock()
+	if err := expired.Close(); err != nil {
+		t.Fatal("expired child attempted terminal output beyond its original bound", err)
+	}
+	if _, err := expired.Read(make([]byte, 1)); !errors.Is(err, os.ErrDeadlineExceeded) {
+		t.Fatal("expired child lost its refusal", err)
+	}
+	written := make(chan error, 1)
+	go func() { _, err := live.Write([]byte("sibling")); written <- err }()
+	frame, err := ardp.ReadFrame(peer)
+	if err != nil || frame.Kind != ardp.KindBytes || frame.Lane != 3 || string(frame.Body) != "sibling" {
+		t.Fatal("expired child poisoned original live sibling", frame, err)
+	}
+	if err := lifecycleResult(t, written); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestSessionLifecycleCallerDeadlineDeniesNewTerminalOutput(t *testing.T) {
+	physical := newLifecycleConn(false)
+	s := newSession(context.Background(), physical, time.Now().Add(time.Minute), 32<<20, nil, false, &queueBudget{maximum: 64 << 20}, nil)
+	defer s.Close()
+	l := lifecycleLane(t, s, 1)
+	caller, cancel := context.WithDeadline(context.Background(), time.Now().Add(-time.Second))
+	defer cancel()
+	l.caller, l.openEmitted = caller, true
+	// The original timer has expired. A still-future wall reading cannot
+	// resurrect its output authority or manufacture an extra CLOSE attempt.
+	if err := l.Close(); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case frame := <-physical.writes:
+		t.Fatal("expired original caller emitted new terminal traffic", frame)
+	default:
+	}
+}
+
+func TestSessionLifecycleOriginalReadExpiryRetainsDeadlineCause(t *testing.T) {
+	physical := newLifecycleConn(false)
+	s := newSession(t.Context(), physical, time.Now().Add(time.Minute), 32<<20, nil, false, &queueBudget{maximum: 64 << 20}, nil)
+	defer s.Close()
+	l := lifecycleLane(t, s, 1)
+	l.openEmitted = true
+	l.end = time.Now().Add(20 * time.Millisecond)
+	l.readEnd, l.writeEnd = l.end, l.end
+	if _, err := l.Read(make([]byte, 1)); !errors.Is(err, os.ErrDeadlineExceeded) {
+		t.Fatal("original read did not expire", err)
+	}
+	if context.Cause(l.ctx) != os.ErrDeadlineExceeded {
+		t.Fatal("original expiry lost its cause before downstream cancellation", context.Cause(l.ctx))
+	}
+	if err := l.Close(); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case frame := <-physical.writes:
+		t.Fatal("expired read initiated terminal output", frame)
+	default:
+	}
+}
+
+func TestSessionLifecycleShortReadDeadlineDoesNotExpireOriginalLane(t *testing.T) {
+	physical := newLifecycleConn(false)
+	s := newSession(t.Context(), physical, time.Now().Add(time.Minute), 32<<20, nil, false, &queueBudget{maximum: 64 << 20}, nil)
+	defer s.Close()
+	l := lifecycleLane(t, s, 1)
+	l.openEmitted = true
+	if err := l.SetReadDeadline(time.Now().Add(-time.Second)); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := l.Read(make([]byte, 1)); !errors.Is(err, os.ErrDeadlineExceeded) {
+		t.Fatal("selected short read did not expire", err)
+	}
+	if context.Cause(l.ctx) != nil {
+		t.Fatal("short local read deadline expired original lane", context.Cause(l.ctx))
+	}
+	if err := l.Close(); err != nil {
+		t.Fatal(err)
+	}
+	frame, err := ardp.ReadFrame(bytes.NewReader(<-physical.writes))
+	if err != nil || frame.Kind != ardp.KindClose || frame.Lane != l.id {
+		t.Fatal("short read suppressed still-permitted terminal cleanup", frame, err)
+	}
+}
+
+func TestSessionLifecycleQueuedCloseExpiryPreservesParentWriter(t *testing.T) {
+	physical := newLifecycleConn(true)
+	s := newSession(context.Background(), physical, time.Now().Add(time.Minute), 32<<20, nil, false, &queueBudget{maximum: 64 << 20}, nil)
+	defer s.Close()
+	active := lifecycleLane(t, s, 1)
+	expiring := lifecycleLane(t, s, 3)
+	expiring.openEmitted = true
+	if err := expiring.bound(time.Now().Add(150 * time.Millisecond)); err != nil {
+		t.Fatal(err)
+	}
+	written := make(chan error, 1)
+	go func() { _, err := active.Write([]byte("live sibling")); written <- err }()
+	<-physical.writes
+	closed := make(chan error, 1)
+	go func() { closed <- expiring.Close() }()
+	closeErr := lifecycleResult(t, closed)
+	close(physical.writeGate)
+	if closeErr != nil {
+		t.Fatal("unemitted expired CLOSE became parent failure", closeErr)
+	}
+	if err := lifecycleResult(t, written); err != nil {
+		t.Fatal("expiry interrupted live sibling writer", err)
+	}
+	s.mu.Lock()
+	stopped := s.stopped
+	s.mu.Unlock()
+	if stopped {
+		t.Fatal("queued expiry retired framing parent")
+	}
+	select {
+	case frame := <-physical.writes:
+		t.Fatal("queued CLOSE emitted after its original expiry", frame)
+	default:
+	}
+}
+
+func TestSessionLifecyclePhysicalCloseTimeoutIsNotQueueExpiry(t *testing.T) {
+	physical := newLifecycleConn(false)
+	physical.partial = os.ErrDeadlineExceeded
+	s := newSession(context.Background(), physical, time.Now().Add(time.Minute), 32<<20, nil, false, &queueBudget{maximum: 64 << 20}, nil)
+	l := lifecycleLane(t, s, 1)
+	l.openEmitted = true
+	if err := l.Close(); !errors.Is(err, os.ErrDeadlineExceeded) {
+		t.Fatal("started physical timeout was discarded", err)
+	}
+	if err := s.Close(); !errors.Is(err, os.ErrDeadlineExceeded) {
+		t.Fatal("parent lost physical terminal failure", err)
 	}
 }
 

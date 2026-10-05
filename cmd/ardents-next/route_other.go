@@ -12,4 +12,7 @@ import (
 func startRoutePrefix(context.Context, routePrefixPlan, admissionAuthority, *stock.Owner) (routeHandle, error) {
 	return routeHandle{}, errors.New("route requires Linux")
 }
+func newRouteJoinContext(context.Context, routePrefixPlan, admissionAuthority, *stock.Owner) (routeJoinContext, error) {
+	return routeJoinContext{}, errors.New("route requires Linux")
+}
 func runRoute(context.Context, []string, io.Writer, io.Writer) int { return 1 }

@@ -29,7 +29,7 @@ func (carrier *quicNodeCarrier) Write(buffer []byte) (int, error) {
 }
 
 func (carrier *quicNodeCarrier) SetDeadline(deadline time.Time) error {
-	return carrier.stream.SetDeadline(deadline)
+	return carrier.stream.SetDeadline(quicDeadline(deadline))
 }
 
 func (carrier *quicNodeCarrier) Close() error {
@@ -45,9 +45,9 @@ var _ net.Conn = (*quicNodeCarrier)(nil)
 func (carrier *quicNodeCarrier) LocalAddr() net.Addr  { return carrier.connection.LocalAddr() }
 func (carrier *quicNodeCarrier) RemoteAddr() net.Addr { return carrier.connection.RemoteAddr() }
 func (carrier *quicNodeCarrier) SetReadDeadline(deadline time.Time) error {
-	return carrier.stream.SetReadDeadline(deadline)
+	return carrier.stream.SetReadDeadline(quicDeadline(deadline))
 }
 
 func (carrier *quicNodeCarrier) SetWriteDeadline(deadline time.Time) error {
-	return carrier.stream.SetWriteDeadline(deadline)
+	return carrier.stream.SetWriteDeadline(quicDeadline(deadline))
 }

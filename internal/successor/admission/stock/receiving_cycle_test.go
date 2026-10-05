@@ -46,7 +46,9 @@ func TestReceivingAllowanceCannotOutliveProfile(t *testing.T) {
 func TestReceivingShrinkingBoundRefusesBeforeAndAfterSpend(t *testing.T) {
 	for _, afterSpend := range []bool{false, true} {
 		t.Run(map[bool]string{false: "reservation", true: "spend"}[afterSpend], func(t *testing.T) {
-			stock, h, p := issuedStockFixture(t)
+			// Keep the initial bound beyond Now+1s even in the final second
+			// of a token hour, so this observation always shortens it.
+			stock, h, p := issuedStockFixtureHours(t, 2)
 			raw, err := stock.Take(context.Background(), p, 2)
 			if err != nil {
 				t.Fatal(err)

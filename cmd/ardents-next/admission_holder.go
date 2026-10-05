@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"net"
 
 	"github.com/dianabuilds/ardents-network/internal/successor/admission"
 	"github.com/dianabuilds/ardents-network/internal/successor/admission/stock"
@@ -22,6 +23,8 @@ type holderCommand struct {
 	Receivers     [][32]byte           `json:"receivers,omitzero"`
 	RequiresToken bool                 `json:"requires_token,omitzero"`
 	Revision      uint64               `json:"revision,omitzero"`
+	Choice        uint8                `json:"choice,omitzero"`
+	Join          routeJoinIntent      `json:"join,omitzero"`
 }
 
 func runAdmissionHolder(ctx context.Context, args []string, input io.ReadCloser, out, diagnostic io.Writer) (code int) {
@@ -36,6 +39,9 @@ func runAdmissionHolder(ctx context.Context, args []string, input io.ReadCloser,
 		return 2
 	}
 	if config.Route != nil && (config.Network == nil || !independentRouteRoots(config.Network.Root, config.Root, config.Route.EntryRoot, config.Route.InteriorRoot, config.Route.HostingRoot)) {
+		return 2
+	}
+	if config.Route != nil && config.Route.SourceInteriorRoot != "" && !independentRouteRoots(config.Network.Root, config.Root, config.Route.EntryRoot, config.Route.InteriorRoot, config.Route.HostingRoot, config.Route.SourceInteriorRoot) {
 		return 2
 	}
 	if ctx.Err() != nil {
@@ -63,17 +69,25 @@ func runAdmissionHolder(ctx context.Context, args []string, input io.ReadCloser,
 	var attempt stock.Attempt
 	var retainedIntent stock.IssuanceIntent
 	var prefix routeHandle
+	var routeContext routeJoinContext
 	var registration routeRegistration
+	var joined net.Conn
 	closeRoute := func() error {
 		var result error
+		if joined != nil {
+			result = joined.Close()
+		}
 		// Prefix closure stops and joins all physical children before returning
 		// its reservations. Retrieve the child's retained result before Stock
 		// and Network roots may close, including an explicit console close.
 		if prefix.close != nil {
-			result = prefix.close()
+			result = errors.Join(result, prefix.close())
 		}
 		if registration.close != nil {
 			result = errors.Join(result, registration.close())
+		}
+		if routeContext.close != nil {
+			result = errors.Join(result, routeContext.close())
 		}
 		return result
 	}
@@ -90,6 +104,27 @@ func runAdmissionHolder(ctx context.Context, args []string, input io.ReadCloser,
 		var err error
 		result := map[string]any{"outcome": "completed"}
 		switch c.Operation {
+		case "rendezvous":
+			if prefix.recipient == nil {
+				err = errors.New("route Rendezvous selection unavailable")
+				break
+			}
+			result["recipient"], err = prefix.recipient(c.Choice)
+		case "join-open":
+			if prefix.join == nil || joined != nil {
+				err = errors.New("route JOIN unavailable")
+				break
+			}
+			joined, err = prefix.join(ctx, c.Join)
+		case "join-close":
+			if joined == nil {
+				err = errors.New("route JOIN absent")
+				break
+			}
+			err = joined.Close()
+			if err == nil {
+				joined = nil
+			}
 		case "registration-open":
 			if registration.close != nil {
 				select {
@@ -125,8 +160,10 @@ func runAdmissionHolder(ctx context.Context, args []string, input io.ReadCloser,
 				break
 			}
 			err = registration.close()
-			registration = routeRegistration{}
-		case "prefix-open":
+			if err == nil {
+				registration = routeRegistration{}
+			}
+		case "prefix-open", "join-prefix-open":
 			if prefix.close != nil {
 				select {
 				case <-prefix.done:
@@ -140,14 +177,29 @@ func runAdmissionHolder(ctx context.Context, args []string, input io.ReadCloser,
 				err = errors.New("route prefix unavailable")
 				break
 			}
-			prefix, err = startRoutePrefix(ctx, *config.Route, authority, o)
+			if c.Operation == "join-prefix-open" {
+				if routeContext.open == nil {
+					routeContext, err = newRouteJoinContext(ctx, *config.Route, authority, o)
+				}
+				if err == nil {
+					prefix, err = routeContext.open(ctx)
+				}
+			} else {
+				if routeContext.close != nil {
+					err = errors.New("holder console retains its JOIN context")
+				} else {
+					prefix, err = startRoutePrefix(ctx, *config.Route, authority, o)
+				}
+			}
 		case "prefix-close":
 			if prefix.close == nil {
 				err = errors.New("route prefix absent")
 				break
 			}
 			err = prefix.close()
-			prefix = routeHandle{}
+			if err == nil {
+				prefix = routeHandle{}
+			}
 		case "request":
 			var wire []byte
 			var digest [32]byte

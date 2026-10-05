@@ -38,8 +38,10 @@ type session struct {
 	activeKind              uint8
 	activeEnd               time.Time
 	pending                 bool
+	dedicated               bool
 	queues                  *queueBudget
 	readerDone              chan struct{}
+	readerOnce              sync.Once
 	children                sync.WaitGroup
 	writes                  sync.WaitGroup
 	physicalOnce, closeOnce sync.Once
@@ -54,15 +56,47 @@ type session struct {
 }
 
 func newSession(ctx context.Context, conn net.Conn, end time.Time, limit uint64, check func() error, pending bool, queues *queueBudget, open func(context.Context, *lane, []byte) error) *session {
+	s := prepareSession(ctx, conn, end, limit, check, pending, queues, open)
+	s.startReading()
+	return s
+}
+
+// startReading transfers the sole reader only after its owning handshake has
+// committed. A refused preparation joins without starting physical input.
+func (s *session) startReading() {
+	s.readerOnce.Do(func() {
+		s.mu.Lock()
+		stopped := s.stopped
+		s.mu.Unlock()
+		if stopped {
+			close(s.readerDone)
+			return
+		}
+		go s.read()
+	})
+}
+
+// prepareSession leaves reading stopped so a dedicated accepted lane can be
+// installed atomically before any peer data arrives at the framing owner.
+func prepareSession(ctx context.Context, conn net.Conn, end time.Time, limit uint64, check func() error, pending bool, queues *queueBudget, open func(context.Context, *lane, []byte) error) *session {
 	child, cancel := context.WithDeadline(ctx, end)
 	s := &session{conn: conn, ctx: child, cancel: cancel, end: end, lanes: make(map[uint32]*lane), next: 1,
 		limit: limit, writer: make(chan struct{}, 1), opening: make(chan struct{}, 1), readerDone: make(chan struct{}), check: check, pending: pending, queues: queues, open: open}
-	go s.read()
 	return s
 }
 
 func (s *session) physicalClose() error {
-	s.physicalOnce.Do(func() { s.physicalErr = s.conn.Close() })
+	s.physicalOnce.Do(func() {
+		if err := s.conn.Close(); err != nil {
+			if lowerFramingLane(s.conn) != nil {
+				// Closing this borrower can emit its lower lane's CLOSE. The
+				// lower framing owner retains the actual physical provenance.
+				s.physicalErr = err
+			} else {
+				s.physicalErr = &physicalCloseFailure{owner: s, cause: err}
+			}
+		}
+	})
 	return s.physicalErr
 }
 
@@ -83,6 +117,7 @@ func (s *session) retire(cause error) {
 func (s *session) Close() error {
 	s.closeOnce.Do(func() {
 		s.retire(nil)
+		s.startReading()
 		<-s.readerDone
 		s.children.Wait()
 		// Every selected physical write has relinquished serialization before
@@ -123,6 +158,11 @@ func (s *session) read() {
 	for {
 		f, err := ardp.ReadFrame(s.conn)
 		if err != nil {
+			if s.dedicated && err == io.EOF {
+				// A raw TLS/Carrier EOF is not the inner JOIN terminal. Keep
+				// already accepted bytes and their reservation until consumed.
+				err = io.ErrUnexpectedEOF
+			}
 			s.mu.Lock()
 			stopped := s.stopped
 			s.mu.Unlock()
@@ -149,6 +189,11 @@ func (s *session) read() {
 			return
 		}
 		s.used += cost
+		if s.dedicated && f.Lane != 1 {
+			s.mu.Unlock()
+			s.retire(errors.New("unexpected dedicated JOIN lane"))
+			return
+		}
 		if f.Lane == 0 {
 			s.mu.Unlock()
 			s.retire(errors.New("unexpected Route parent control"))
@@ -191,7 +236,7 @@ func (s *session) read() {
 		}
 		// A retired lane retains its identifier. Late input cannot acquire a
 		// queue reservation or poison live siblings.
-		if l.closed || !time.Now().Before(l.end) {
+		if (l.closed || !time.Now().Before(l.end)) && !(s.dedicated && f.Kind == ardp.KindClose) {
 			l.stopLocked(os.ErrDeadlineExceeded)
 			s.mu.Unlock()
 			continue
@@ -232,15 +277,15 @@ func (s *session) read() {
 			cause := error(nil)
 			if f.Body[0] != 0 {
 				cause = errors.New("route peer refused lane")
+				if s.dedicated {
+					// This sole lane is the whole JOIN channel, so its refusal
+					// also remains the channel's joined terminal outcome.
+					err = cause
+				}
 			}
 			l.stopLocked(cause)
-			if s.active == l {
-				// Only this lane's already-selected physical output is
-				// interrupted; a sibling keeps its original deadline.
-				if interrupt := s.conn.SetWriteDeadline(time.Now()); interrupt != nil {
-					s.writeErr = errors.Join(s.writeErr, interrupt)
-					err = interrupt
-				}
+			if interrupt := l.interruptOutputLocked(); interrupt != nil {
+				err = interrupt
 			}
 		default:
 			err = errors.New("unexpected Route child frame")
@@ -248,6 +293,11 @@ func (s *session) read() {
 		s.mu.Unlock()
 		if err != nil {
 			s.retire(err)
+			return
+		}
+		if s.dedicated && f.Kind == ardp.KindClose {
+			// The authenticated inner terminal ends this reader. The stream
+			// owner still joins writers and drains or releases retained input.
 			return
 		}
 	}
@@ -280,7 +330,7 @@ func (s *session) write(l *lane, f ardp.Frame, terminal bool) error {
 	}
 	if !time.Now().Before(end) {
 		s.mu.Unlock()
-		return os.ErrDeadlineExceeded
+		return &frameExpiry{end: end}
 	}
 	cost := uint64(len(raw))
 	if cost > s.limit-s.used {
@@ -356,7 +406,8 @@ func (s *session) write(l *lane, f ardp.Frame, terminal bool) error {
 		s.mu.Lock()
 		if physicalAttempt {
 			l.physicalWriteFailed = true
-			s.writeErr = errors.Join(s.writeErr, &physicalWriteFailure{kind: f.Kind, cause: err})
+			err = &physicalWriteFailure{owner: s, kind: f.Kind, cause: err}
+			s.writeErr = errors.Join(s.writeErr, err)
 		} else if !attempted {
 			// A physical deadline operation failed before Write; preserve
 			// that I/O failure without claiming a started frame.
@@ -374,7 +425,7 @@ func (s *session) write(l *lane, f ardp.Frame, terminal bool) error {
 
 func (s *session) newLaneLocked(id uint32) *lane {
 	l := &lane{s: s, id: id, end: s.end, readEnd: s.end, writeEnd: s.end, changed: make(chan struct{}), credit: window, receive: window}
-	l.ctx, l.cancel = context.WithCancel(s.ctx)
+	l.ctx, l.cancel = context.WithCancelCause(s.ctx)
 	l.hardEnd = s.end
 	l.handshake = s.pending
 	if s.pending {
@@ -387,8 +438,8 @@ func (s *session) newLaneLocked(id uint32) *lane {
 	return l
 }
 
-func (s *session) openLane(ctx context.Context, body []byte) (*lane, error) {
-	if ctx == nil || len(body) != 49 && len(body) != 50 {
+func (s *session) openLane(ctx, caller context.Context, body []byte) (*lane, error) {
+	if ctx == nil || caller == nil || len(body) != 49 && len(body) != 50 {
 		return nil, errors.New("route OPEN shape invalid")
 	}
 	opened, err := decodeOpen(body[:49])
@@ -408,6 +459,8 @@ func (s *session) openLane(ctx context.Context, body []byte) (*lane, error) {
 		return nil, s.ctx.Err()
 	case <-ctx.Done():
 		return nil, ctx.Err()
+	case <-caller.Done():
+		return nil, caller.Err()
 	case <-timer.C:
 		return nil, os.ErrDeadlineExceeded
 	}
@@ -415,6 +468,9 @@ func (s *session) openLane(ctx context.Context, body []byte) (*lane, error) {
 		return nil, err
 	}
 	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	if err := caller.Err(); err != nil {
 		return nil, err
 	}
 	if !time.Now().Before(openEnd) {
@@ -428,6 +484,9 @@ func (s *session) openLane(ctx context.Context, body []byte) (*lane, error) {
 	id := s.next
 	s.next += 2
 	l := s.newLaneLocked(id)
+	// Cancellation of the physical child may lose the original deadline reason.
+	// Retain the actual caller so retirement cannot resurrect expired output.
+	l.caller = caller
 	l.openEnd = openEnd
 	s.mu.Unlock()
 	interrupted := make(chan struct{})
@@ -448,9 +507,9 @@ func (s *session) openLane(ctx context.Context, body []byte) (*lane, error) {
 	if err != nil {
 		_ = l.Close()
 		l.finish()
-		return nil, errors.Join(ctx.Err(), err)
+		return nil, errors.Join(ctx.Err(), caller.Err(), err)
 	}
-	if err := ctx.Err(); err != nil {
+	if err := errors.Join(ctx.Err(), caller.Err()); err != nil {
 		closeErr := l.Close()
 		l.finish()
 		return nil, errors.Join(err, closeErr)

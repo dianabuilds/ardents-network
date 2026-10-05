@@ -68,13 +68,13 @@ func (carrier *closedRoleQUICCarrier) Write(value []byte) (int, error) {
 func (carrier *closedRoleQUICCarrier) LocalAddr() net.Addr  { return carrier.connection.LocalAddr() }
 func (carrier *closedRoleQUICCarrier) RemoteAddr() net.Addr { return carrier.connection.RemoteAddr() }
 func (carrier *closedRoleQUICCarrier) SetDeadline(deadline time.Time) error {
-	return carrier.stream.SetDeadline(deadline)
+	return carrier.stream.SetDeadline(quicDeadline(deadline))
 }
 func (carrier *closedRoleQUICCarrier) SetReadDeadline(deadline time.Time) error {
-	return carrier.stream.SetReadDeadline(deadline)
+	return carrier.stream.SetReadDeadline(quicDeadline(deadline))
 }
 func (carrier *closedRoleQUICCarrier) SetWriteDeadline(deadline time.Time) error {
-	return carrier.stream.SetWriteDeadline(deadline)
+	return carrier.stream.SetWriteDeadline(quicDeadline(deadline))
 }
 func (carrier *closedRoleQUICCarrier) Close() error {
 	carrier.once.Do(func() {

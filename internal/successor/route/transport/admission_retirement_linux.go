@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/successor/route/ardp"
 	"github.com/dianabuilds/ardents-network/internal/successor/route/introduction"
 )
 
@@ -19,6 +20,8 @@ type admissionRetirement struct {
 	returns      []*reservationReturn
 	registry     *introduction.Registry
 	registration *introduction.Capacity
+	joinQueues   *queueBudget
+	join         *joinCapacity
 }
 type reservationReturn struct {
 	owner     *admissionRetirement
@@ -39,6 +42,17 @@ func (c Channel) HoldReservation(release func() error) (func() error, error) {
 	c.capacity.mu.Lock()
 	defer c.capacity.mu.Unlock()
 	c.capacity.returns = append(c.capacity.returns, r)
+	if c.Hello.Purpose == ardp.PurposeDataJoin {
+		if c.capacity.join != nil {
+			return r.request, errors.New("route JOIN capacity already held")
+		}
+		position, err := reserveJoinCapacity(c.capacity.joinQueues)
+		if err != nil {
+			return r.request, err
+		}
+		c.capacity.join = position
+		r.release = func() error { position.release(); return release() }
+	}
 	if c.capacity.registry != nil {
 		if c.capacity.registration != nil {
 			return r.request, errors.New("route registration capacity already held")

@@ -28,6 +28,7 @@ type lane struct {
 	cause                              error
 	changed                            chan struct{}
 	writeMu                            sync.Mutex
+	writes                             sync.WaitGroup
 	closeOnce                          sync.Once
 	closeErr                           error
 	hardEnd                            time.Time
@@ -41,14 +42,15 @@ type lane struct {
 	physicalAttempts, payloadAttempts  uint64
 	physicalWriteFailed                bool
 	ctx                                context.Context
-	cancel                             context.CancelFunc
+	caller                             context.Context
+	cancel                             context.CancelCauseFunc
 }
 
 func (l *lane) signalLocked() { close(l.changed); l.changed = make(chan struct{}) }
 func (l *lane) stopLocked(cause error) {
 	if !l.closed {
 		l.closed = true
-		l.cancel()
+		l.cancel(cause)
 		l.cause = cause
 		l.signalLocked()
 	}
@@ -74,6 +76,9 @@ func (l *lane) Read(p []byte) (int, error) {
 	for {
 		l.s.mu.Lock()
 		if !time.Now().Before(l.readEnd) {
+			if l.readEnd.Equal(l.end) {
+				l.stopLocked(os.ErrDeadlineExceeded)
+			}
 			l.s.mu.Unlock()
 			return 0, os.ErrDeadlineExceeded
 		}
@@ -121,6 +126,14 @@ func (l *lane) Read(p []byte) (int, error) {
 		changed, end := l.changed, l.readEnd
 		l.s.mu.Unlock()
 		if err := waitLane(changed, end); err != nil {
+			// The selected original read timer has elapsed even if a later
+			// wall reading moves backwards. Retain that exact cause for
+			// downstream borrowers; a shorter caller read deadline is local.
+			l.s.mu.Lock()
+			if end.Equal(l.end) && end.Equal(l.readEnd) {
+				l.stopLocked(os.ErrDeadlineExceeded)
+			}
+			l.s.mu.Unlock()
 			return 0, err
 		}
 	}
@@ -167,27 +180,76 @@ func (l *lane) Write(p []byte) (int, error) {
 func (l *lane) closeStatus(status byte) error {
 	l.closeOnce.Do(func() {
 		l.s.mu.Lock()
-		l.cleanupEnd = time.Now().Add(time.Second)
-		peer, stopped := l.peerClosed, l.s.stopped
 		l.localClosed = true
-		emitted := l.openEmitted || l.s.open != nil
+		emitted := l.openEmitted || l.s.open != nil || l.s.dedicated
 		l.stopLocked(nil)
-		if l.s.active == l {
-			_ = l.s.conn.SetWriteDeadline(time.Now())
-		}
+		interrupt := l.interruptOutputLocked()
 		l.s.mu.Unlock()
+		if interrupt != nil {
+			// A failed deadline operation cannot leave an original writer alive
+			// until its old bound or disappear from the joined physical result.
+			l.s.retire(interrupt)
+			l.closeErr = interrupt
+		}
 		// Joining the lane writer precedes its terminal frame. A write already
 		// in physical output retains its failure through parent retirement.
 		l.writeMu.Lock()
 		defer l.writeMu.Unlock()
-		if emitted && !peer && !stopped {
+		// Consumption CREDIT does not hold writeMu. All accepted lane output,
+		// including queued credit, must relinquish its turn before close returns.
+		l.writes.Wait()
+		callerExpired := l.caller != nil && (l.caller.Err() == context.DeadlineExceeded || context.Cause(l.caller) == os.ErrDeadlineExceeded)
+		sessionExpired := l.s.ctx.Err() == context.DeadlineExceeded
+		l.s.mu.Lock()
+		// The parent or peer can retire while this Close joins an accepted
+		// writer. Its original snapshot cannot authorize another frame.
+		peer, stopped := l.peerClosed, l.s.stopped
+		originalEnd := l.end
+		expired := l.cause == os.ErrDeadlineExceeded || !time.Now().Before(l.end) || callerExpired || sessionExpired
+		if expired && l.cause == nil {
+			l.cause = os.ErrDeadlineExceeded
+		}
+		l.s.mu.Unlock()
+		// Expiry already denies this exact lane at both peers. No new frame
+		// may start beyond its immutable bound; absence of a terminal write
+		// is not a physical failure of the still-live framing parent.
+		if emitted && !peer && !stopped && !expired {
 			l.closeErr = l.s.write(l, ardp.Frame{Kind: ardp.KindClose, Lane: l.id, Body: []byte{status}}, true)
+			// The original bound may expire while CLOSE waits for its turn.
+			// This explicit pre-output refusal is the same no-frame retirement
+			// as expiry above. A shorter cleanup limit or actual I/O failure
+			// remains a failed close and is never classified here.
+			if refusal, ok := l.closeErr.(*frameExpiry); ok && refusal.end.Equal(originalEnd) {
+				l.closeErr = nil
+			}
 		}
 		if l.closeErr != nil {
 			l.s.retire(l.closeErr)
 		}
 	})
 	return l.closeErr
+}
+
+// The first retirement fixes one cleanup bound. Already emitted CREDIT can
+// finish within that bound and its original deadline; CLOSE already carries
+// the same finite bound. Payload is interrupted immediately. Called under mu.
+func (l *lane) interruptOutputLocked() error {
+	if l.cleanupEnd.IsZero() {
+		l.cleanupEnd = minDeadline(l.end, time.Now().Add(time.Second))
+	}
+	if l.s.active != l || l.s.activeKind == ardp.KindClose {
+		return nil
+	}
+	end := time.Now()
+	if l.s.activeKind == ardp.KindCredit {
+		l.s.activeEnd = minDeadline(l.s.activeEnd, l.cleanupEnd)
+		end = l.s.activeEnd
+	}
+	err := l.s.conn.SetWriteDeadline(end)
+	if err != nil {
+		l.s.writeErr = errors.Join(l.s.writeErr, err)
+	}
+	return err
 }
 func (l *lane) Close() error         { return l.closeStatus(0) }
 func (l *lane) LocalAddr() net.Addr  { return l.s.conn.LocalAddr() }

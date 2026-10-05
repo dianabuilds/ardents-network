@@ -51,6 +51,7 @@ type Receiver struct {
 	pool          nodePool
 	err, closeErr error
 	registrations *introduction.Registry
+	joins         joinPairs
 }
 
 func Listen(ctx context.Context, config ReceiverConfig) (*Receiver, error) {
@@ -62,12 +63,15 @@ func Listen(ctx context.Context, config ReceiverConfig) (*Receiver, error) {
 		return nil, err
 	}
 	key, ok := config.Certificate.PrivateKey.(ed25519.PrivateKey)
-	if !ok || len(key) != ed25519.PrivateKeySize || string(key.Public().(ed25519.PublicKey)) != string(m.PublicKey[:]) ||
-		(m.Subrole != 1 && m.Subrole != 2 && !(m.RoleDomain == 4 && m.Subrole == 3)) || (m.RoleDomain != 1 && m.RoleDomain != 3 && m.RoleDomain != 4) {
+	forwarding := (m.RoleDomain == 1 || m.RoleDomain == 3 || m.RoleDomain == 4) && (m.Subrole == 1 || m.Subrole == 2)
+	introductionDuty := m.RoleDomain == 4 && m.Subrole == 3
+	joinDuty := m.RoleDomain == 2 && m.Subrole == 4
+	if !ok || len(key) != ed25519.PrivateKeySize || string(key.Public().(ed25519.PublicKey)) != string(m.PublicKey[:]) || (!forwarding && !introductionDuty && !joinDuty) {
 		return nil, errors.New("route receiving duty or private key differs")
 	}
 	child, cancel := context.WithCancel(ctx)
 	r := &Receiver{config: config, ctx: child, cancel: cancel, connections: make(map[net.Conn]struct{}), done: make(chan struct{}), queues: &queueBudget{maximum: 64 << 20}}
+	r.joins.record = r.record
 	if m.Subrole == 3 {
 		if config.IntroductionRoot == "" || config.Receiving == nil {
 			cancel()
@@ -124,10 +128,15 @@ func (r *Receiver) peer(key [32]byte) (network.Member, error) {
 	}
 	peer, err := v.MemberByKey(key, time.Now())
 	expectedSubrole := uint8(1)
+	allowedDomain := peer.RoleDomain == m.RoleDomain
 	if m.Subrole == 3 {
 		expectedSubrole = 2
 	}
-	if err != nil || conflicting(m, peer) || peer.RoleDomain != m.RoleDomain || peer.Subrole != expectedSubrole {
+	if m.RoleDomain == 2 && m.Subrole == 4 {
+		expectedSubrole = 2
+		allowedDomain = peer.RoleDomain == 1 || peer.RoleDomain == 3
+	}
+	if err != nil || conflicting(m, peer) || !allowedDomain || peer.Subrole != expectedSubrole {
 		return network.Member{}, errors.Join(errors.New("route adjacent Node peer unavailable"), err)
 	}
 	return peer, nil
@@ -287,7 +296,7 @@ func (r *Receiver) serveOuter(ctx context.Context, accepted carrier.ClosedShared
 			return err
 		}
 		m, err := r.config.Authority.member()
-		if err != nil || !((m.Subrole == 2 && opened.Purpose == 7) || (m.RoleDomain == 4 && m.Subrole == 3 && opened.Purpose == 4)) {
+		if err != nil || !((m.Subrole == 2 && opened.Purpose == 7) || (m.RoleDomain == 4 && m.Subrole == 3 && opened.Purpose == 4) || (m.RoleDomain == 2 && m.Subrole == 4 && opened.Purpose == 6)) {
 			return errors.Join(errors.New("route Interior child unavailable"), err)
 		}
 		secured, err := carrier.AcceptClosedRoleTLS(ctx, l, r.config.Certificate, minDeadline(opened.Deadline, time.Now().Add(10*time.Second)))
@@ -320,7 +329,7 @@ func (r *Receiver) serveRole(ctx context.Context, conn net.Conn, outer *lane, op
 	if err := conn.SetDeadline(time.Now().Add(10 * time.Second)); err != nil {
 		return err
 	}
-	capacity := &admissionRetirement{registry: r.registrations}
+	capacity := &admissionRetirement{registry: r.registrations, joinQueues: r.queues}
 	grant, h, err := receiveChannel(ctx, conn, r.config.Authority, r.config.Admit, opened, capacity)
 	var s *session
 	defer func() {
@@ -359,6 +368,9 @@ func (r *Receiver) serveRole(ctx context.Context, conn net.Conn, outer *lane, op
 	if h.Purpose == ardp.PurposeIntroduction {
 		return r.serveRegistration(ctx, conn, grant, h, capacity.registration)
 	}
+	if h.Purpose == ardp.PurposeDataJoin {
+		return r.joins.serve(ctx, conn, h, grant.Allowance().Bytes(), check, capacity.join)
+	}
 	s = newSession(ctx, conn, h.Deadline, grant.Allowance().Bytes()-admissionWireBytes, check, false, r.queues, func(ctx context.Context, l *lane, body []byte) error {
 		return r.forward(ctx, l, h, body)
 	})
@@ -383,7 +395,7 @@ func decodeOpen(body []byte) (ardpHello, error) {
 	o.RecipientDutyGeneration = binary.BigEndian.Uint64(body[32:40])
 	o.Purpose = body[40]
 	o.Deadline = time.Unix(int64(binary.BigEndian.Uint64(body[41:])), 0).UTC()
-	if o.RecipientNodeID == [32]byte{} || o.RecipientDutyGeneration == 0 || (o.Purpose != 7 && o.Purpose != 4) || !time.Now().Before(o.Deadline) {
+	if o.RecipientNodeID == [32]byte{} || o.RecipientDutyGeneration == 0 || (o.Purpose != 7 && o.Purpose != 4 && o.Purpose != 6) || !time.Now().Before(o.Deadline) {
 		return ardpHello{}, errors.New("route OPEN facts invalid")
 	}
 	return o, nil
@@ -416,7 +428,8 @@ func (r *Receiver) forward(ctx context.Context, source *lane, parent ardp.Hello,
 	}
 	forwarding := local.Subrole == 1 && opened.Purpose == 7
 	registration := local.RoleDomain == 4 && local.Subrole == 2 && opened.Purpose == 4
-	if (!forwarding && !registration) || opened.Deadline.After(parent.Deadline) {
+	join := (local.RoleDomain == 1 || local.RoleDomain == 3) && local.Subrole == 2 && opened.Purpose == 6
+	if (!forwarding && !registration && !join) || opened.Deadline.After(parent.Deadline) {
 		return errors.New("route prefix next-hop unavailable")
 	}
 	if err := source.bound(opened.Deadline); err != nil {
@@ -428,10 +441,14 @@ func (r *Receiver) forward(ctx context.Context, source *lane, parent ardp.Hello,
 	}
 	next, err := v.Member(opened.RecipientNodeID, time.Now())
 	expectedSubrole := uint8(2)
+	expectedDomain := local.RoleDomain
 	if registration {
 		expectedSubrole = 3
 	}
-	if err != nil || next.Subrole != expectedSubrole || next.RoleDomain != local.RoleDomain || next.DutyGeneration != opened.RecipientDutyGeneration || conflicting(local, next) {
+	if join {
+		expectedSubrole, expectedDomain = 4, 2
+	}
+	if err != nil || next.Subrole != expectedSubrole || next.RoleDomain != expectedDomain || next.DutyGeneration != opened.RecipientDutyGeneration || conflicting(local, next) {
 		return errors.Join(errors.New("route next Interior unavailable"), err)
 	}
 	duty, err := v.RetainDuty(next.NodeID, time.Now())
@@ -448,7 +465,7 @@ func (r *Receiver) forward(ctx context.Context, source *lane, parent ardp.Hello,
 	}
 	defer func() { result = errors.Join(result, pooled.release()) }()
 	downstream := pooled.session
-	target, err := downstream.openLane(ctx, encodeOpen(opened, true))
+	target, err := downstream.openLane(ctx, ctx, encodeOpen(opened, true))
 	if err != nil {
 		return err
 	}

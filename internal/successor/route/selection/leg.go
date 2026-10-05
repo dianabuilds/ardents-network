@@ -23,14 +23,18 @@ type Config struct {
 
 // Owner serializes retained choices. Transport never runs while it is locked.
 type Owner struct {
-	mu         sync.Mutex
-	entries    *ClosedSets
-	interior   *interiorStore
-	current    func() (network.RuntimeView, error)
-	domain     uint8
-	exclusions []route.Member
-	closed     bool
-	failure    error
+	mu                  sync.Mutex
+	entries             *ClosedSets
+	interior            *interiorStore
+	current             func() (network.RuntimeView, error)
+	domain              uint8
+	exclusions          []route.Member
+	installation        *Installation
+	root                string
+	privateInstallation bool
+	closeDone           chan struct{}
+	closed              bool
+	failure             error
 }
 
 // Leg binds a selected initial pair to this exact authenticated observation.
@@ -43,39 +47,37 @@ type Leg struct {
 	known                       []route.Member
 }
 
-func Open(config Config) (_ *Owner, result error) {
-	if config.Current == nil || config.EntryRoot == config.InteriorRoot || config.EntryRoot == "" || config.InteriorRoot == "" || closedAdjacentIndex(config.Domain) < 0 {
+func Open(config Config) (*Owner, error) {
+	if config.Current == nil || config.EntryRoot == "" || config.InteriorRoot == "" || closedAdjacentIndex(config.Domain) < 0 {
 		return nil, errors.New("route selection setup unavailable")
 	}
-	o := &Owner{current: config.Current, domain: config.Domain, exclusions: append([]route.Member(nil), config.Exclusions...)}
-	initial, err := config.Current()
+	entryRoot, err := selectionRoot(config.EntryRoot)
 	if err != nil {
 		return nil, err
 	}
-	profile := initial.Profile()
-	o.entries, err = openClosedSets(ClosedSetConfig{Root: config.EntryRoot, NetworkID: profile.Network, Current: func() (ClosedSetView, error) {
-		view, err := o.current()
-		if err != nil {
-			return ClosedSetView{}, err
-		}
-		return ClosedSetView{NetworkID: view.Profile().Network, Now: view.ObservedAt(), Candidates: o.candidates(view, 1)}, nil
-	}})
+	interiorRoot, err := selectionRoot(config.InteriorRoot)
 	if err != nil {
 		return nil, err
 	}
-	defer func() {
-		if result != nil {
-			result = errors.Join(result, o.entries.Close())
-		}
-	}()
-	o.interior, err = openInteriorStore(config.InteriorRoot, profile.Network, config.Domain)
+	if rootsOverlap(entryRoot, interiorRoot) {
+		return nil, errors.New("route selection roots overlap")
+	}
+	installation, err := OpenInstallation(InstallationConfig{EntryRoot: config.EntryRoot, Current: config.Current, Exclusions: config.Exclusions})
 	if err != nil {
 		return nil, err
 	}
-	return o, nil
+	owner, err := installation.Borrow(RoleConfig{InteriorRoot: config.InteriorRoot, Domain: config.Domain})
+	if err != nil {
+		return nil, errors.Join(err, installation.Close())
+	}
+	owner.privateInstallation = true
+	return owner, nil
+}
+func (o *Owner) candidates(view network.RuntimeView, subrole uint8) []ClosedSetMember {
+	return selectionCandidates(view, subrole, o.exclusions)
 }
 
-func (o *Owner) candidates(view network.RuntimeView, subrole uint8) []ClosedSetMember {
+func selectionCandidates(view network.RuntimeView, subrole uint8, exclusions []route.Member) []ClosedSetMember {
 	var candidates []ClosedSetMember
 	now := view.ObservedAt()
 	for _, member := range view.Members() {
@@ -84,7 +86,7 @@ func (o *Owner) candidates(view network.RuntimeView, subrole uint8) []ClosedSetM
 		}
 		candidate := ClosedSetMember{NodeID: member.NodeID, PublicKey: member.PublicKey, FamilyID: member.FamilyID, RecordDigest: member.RecordDigest, DutyGeneration: member.DutyGeneration, Domain: member.RoleDomain, NotAfter: member.NotAfter()}
 		excluded := false
-		for _, known := range o.exclusions {
+		for _, known := range exclusions {
 			if route.Conflict(route.Member(candidate), known) {
 				excluded = true
 				break
@@ -118,6 +120,16 @@ func (o *Owner) Select() (Leg, error) {
 		peers[index] = route.Member(member)
 	}
 	pair := [2]route.Member{route.Member(entries[0]), route.Member(entries[1])}
+	for _, entry := range pair {
+		for _, excluded := range o.exclusions {
+			if route.Conflict(entry, excluded) {
+				return Leg{}, errors.New("selected Entry excluded by role")
+			}
+		}
+	}
+	if err := o.installation.available(); err != nil {
+		return Leg{}, err
+	}
 	set, err := o.interior.selectPair(peers, pair, now)
 	if err != nil {
 		return Leg{}, err
@@ -159,6 +171,10 @@ func (o *Owner) Select() (Leg, error) {
 	}
 	end := minTime(entries[0].NotAfter, set.NotAfter, view.Profile().NotAfter)
 	known := []route.Member{route.Member(entries[0]), route.Member(entries[1]), set.Members[0], set.Members[1]}
+	known = append(known, o.exclusions...)
+	if err := o.installation.available(); err != nil {
+		return Leg{}, err
+	}
 	return Leg{Entry: entry, Interior: interior, EntryMember: entryMember, InteriorMember: interiorMember, Profile: view.Profile().ProfileBinding, NotAfter: end, known: known}, nil
 }
 
@@ -192,12 +208,28 @@ func (o *Owner) Close() error {
 		return nil
 	}
 	o.mu.Lock()
-	defer o.mu.Unlock()
-	if !o.closed {
-		o.closed = true
-		o.failure = errors.Join(o.failure, o.interior.close(), o.entries.Close())
+	if o.closed {
+		done := o.closeDone
+		o.mu.Unlock()
+		<-done
+		o.mu.Lock()
+		result := o.failure
+		o.mu.Unlock()
+		return result
 	}
-	return o.failure
+	o.closed = true
+	o.mu.Unlock()
+	result := errors.Join(o.failure, o.interior.close())
+	o.installation.returnBorrow(o.root, result)
+	if o.privateInstallation {
+		result = errors.Join(result, o.installation.Close())
+	}
+	o.mu.Lock()
+	o.failure = result
+	close(o.closeDone)
+	result = o.failure
+	o.mu.Unlock()
+	return result
 }
 func minTime(first time.Time, rest ...time.Time) time.Time {
 	for _, value := range rest {

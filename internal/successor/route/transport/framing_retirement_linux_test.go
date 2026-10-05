@@ -8,8 +8,10 @@ import (
 	"crypto/rand"
 	"crypto/tls"
 	"crypto/x509"
+	"errors"
 	"math/big"
 	"net"
+	"os"
 	"runtime"
 	"testing"
 	"time"
@@ -70,6 +72,47 @@ func waitFramingState(t *testing.T, l *lane, want func() bool) {
 	t.Fatal("framing state did not reach its causal boundary")
 }
 
+func TestNestedTLSDeadlineRefusalRetainsTLSFailureAndHealthyAncestor(t *testing.T) {
+	lower, peer, secured := nestedRetirementTLS(t)
+	before := lower.retirementWitness()
+	if err := lower.SetWriteDeadline(time.Now().Add(-time.Second)); err != nil {
+		t.Fatal(err)
+	}
+	n, first := secured.Write([]byte("refused TLS record"))
+	if n != 0 || !errors.Is(first, os.ErrDeadlineExceeded) {
+		t.Fatal("TLS write did not encounter the local deadline", n, first)
+	}
+	if err := lower.SetWriteDeadline(lower.end); err != nil {
+		t.Fatal(err)
+	}
+	n, second := secured.Write([]byte("same TLS generation"))
+	if n != 0 || second != first {
+		t.Fatal("damaged TLS writer lost its retained failure", n, first, second)
+	}
+	after := lower.retirementWitness()
+	if after.payload != before.payload || after.attempts != before.attempts {
+		t.Fatal("local TLS refusal produced lower physical output")
+	}
+	// Another lane on the actual unaffected framing ancestor remains usable.
+	sibling := lifecycleLane(t, lower.s, 3)
+	peerSibling := lifecycleLane(t, peer.s, 3)
+	read := make(chan error, 1)
+	go func() {
+		buffer := make([]byte, len("healthy sibling"))
+		n, err := peerSibling.Read(buffer)
+		if err == nil && (n != len(buffer) || string(buffer) != "healthy sibling") {
+			err = errors.New("sibling bytes differ")
+		}
+		read <- err
+	}()
+	if _, err := sibling.Write([]byte("healthy sibling")); err != nil {
+		t.Fatal("local TLS failure retired healthy ancestor", err)
+	}
+	if err := lifecycleResult(t, read); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestNestedTLSUnemittedControlRequiresActualPeerCLOSE(t *testing.T) {
 	for _, kind := range []uint8{ardp.KindCredit, ardp.KindClose} {
 		for _, mode := range []string{"clean", "refused", "raw-eof", "local-close"} {
@@ -78,7 +121,7 @@ func TestNestedTLSUnemittedControlRequiresActualPeerCLOSE(t *testing.T) {
 				ctx, cancel := context.WithCancel(t.Context())
 				// Write-only upper owner: there is no fabricated successful reader.
 				upper := &session{conn: &retiredConn{Conn: secured}, ctx: ctx, cancel: cancel, end: time.Now().Add(5 * time.Second), lanes: make(map[uint32]*lane), next: 1, limit: 32 << 20, writer: make(chan struct{}, 1), opening: make(chan struct{}, 1), queues: &queueBudget{maximum: 64 << 20}, readerDone: make(chan struct{})}
-				close(upper.readerDone)
+				upper.readerOnce.Do(func() { close(upper.readerDone) })
 				defer upper.Close()
 				child := lifecycleLane(t, upper, 1)
 				child.cleanupEnd = time.Now().Add(time.Second)

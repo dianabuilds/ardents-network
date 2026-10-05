@@ -164,7 +164,7 @@ func (p *Prefix) Register(ctx context.Context, config RegistrationConfig) (_ *Re
 	if err != nil {
 		return nil, err
 	}
-	raw, err = p.interior.openLane(child, encodeOpen(ardpHello{RecipientNodeID: member.NodeID, RecipientDutyGeneration: member.DutyGeneration, Purpose: 4, Deadline: config.Deadline}, false))
+	raw, err = p.interior.openLane(child, ctx, encodeOpen(ardpHello{RecipientNodeID: member.NodeID, RecipientDutyGeneration: member.DutyGeneration, Purpose: 4, Deadline: config.Deadline}, false))
 	if err != nil {
 		return nil, err
 	}

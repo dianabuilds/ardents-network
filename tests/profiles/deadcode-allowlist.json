@@ -387,6 +387,19 @@
         "rationale": "The Linux holder and receiving Introduction command paths encode and decode genuine REGISTER, WITHDRAW and RESULT traffic. Windows has no accepting Route runtime. Portable independent canonical-byte and malformed-padding tests reach these exact functions on Windows; Linux production reaches them through the actual registration transport.",
         "owner": "Product Owner and Codex; Route Introduction",
         "retirement": "Remove each Windows allowance when a selected Windows registration consumer reaches it, or when the registration wire operation and its shared codec are retired."
+      },
+      {
+        "symbols": [
+          "internal/successor/route/ardp.DecodeJoinRequest",
+          "internal/successor/route/ardp.DecodeJoinResult",
+          "internal/successor/route/ardp.EncodeJoinRequest",
+          "internal/successor/route/ardp.EncodeJoinResult",
+          "internal/successor/route/ardp.validJoinRequest"
+        ],
+        "classification": "Linux JOIN wire closure",
+        "rationale": "Linux holder and receiving commands encode and decode genuine paired JOIN traffic through join_client_linux.go and join_pair_linux.go. Windows refuses Route before runtime acquisition. Portable independent canonical-byte and malformed-input tests exercise these exact codecs on Windows; they do not establish a Windows Route consumer.",
+        "owner": "Product Owner and Codex; Route JOIN",
+        "retirement": "Remove each Windows allowance when a selected Windows JOIN consumer reaches it, or when the JOIN wire operation and its shared codec are retired."
       }
     ]
   }

@@ -15,6 +15,34 @@ import (
 
 // These are physical framing oracles, not successful authority or admission
 // fixtures. Concurrent forwarding callers share this same session operation.
+func TestOPENRetainsOriginalCallerDeadlineAfterDerivedCancellation(t *testing.T) {
+	physical := newLifecycleConn(false)
+	s := newSession(context.Background(), physical, time.Now().Add(time.Minute), 32<<20, nil, false, &queueBudget{maximum: 64 << 20}, nil)
+	defer s.Close()
+	caller, cancelCaller := context.WithTimeout(t.Context(), 100*time.Millisecond)
+	defer cancelCaller()
+	child, cancelChild := context.WithCancel(t.Context())
+	defer cancelChild()
+	l, err := s.openLane(child, caller, encodeOpen(ardpHello{RecipientNodeID: [32]byte{1}, RecipientDutyGeneration: 1, Purpose: 7, Deadline: time.Now().Add(40 * time.Second).UTC().Truncate(time.Second)}, true))
+	if err != nil {
+		t.Fatal(err)
+	}
+	<-physical.writes // The original OPEN is permitted before expiry.
+	<-caller.Done()
+	cancelChild()
+	if child.Err() != context.Canceled || caller.Err() != context.DeadlineExceeded {
+		t.Fatal("fixture did not preserve distinct cancellation reasons")
+	}
+	if err := l.Close(); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case frame := <-physical.writes:
+		t.Fatal("derived cancellation lost original expiry and emitted terminal traffic", frame)
+	default:
+	}
+}
+
 func TestConcurrentOPENEmitsMonotonicLaneIDs(t *testing.T) {
 	for range 16 {
 		physical := newLifecycleConn(false)
@@ -29,7 +57,7 @@ func TestConcurrentOPENEmitsMonotonicLaneIDs(t *testing.T) {
 			go func() {
 				defer callers.Done()
 				<-start
-				_, err := s.openLane(t.Context(), body)
+				_, err := s.openLane(t.Context(), t.Context(), body)
 				results <- err
 			}()
 		}
@@ -69,7 +97,7 @@ func TestOPENSetupDeadlineDoesNotUseWholeChildLease(t *testing.T) {
 	defer s.Close()
 	childEnd := time.Now().Add(40 * time.Second).UTC().Truncate(time.Second)
 	before := time.Now()
-	l, err := s.openLane(t.Context(), encodeOpen(ardpHello{RecipientNodeID: [32]byte{1}, RecipientDutyGeneration: 1, Purpose: 7, Deadline: childEnd}, true))
+	l, err := s.openLane(t.Context(), t.Context(), encodeOpen(ardpHello{RecipientNodeID: [32]byte{1}, RecipientDutyGeneration: 1, Purpose: 7, Deadline: childEnd}, true))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -90,7 +118,7 @@ func TestOPENWaiterCancellationPreservesActiveWriter(t *testing.T) {
 	defer s.Close()
 	body := encodeOpen(ardpHello{RecipientNodeID: [32]byte{1}, RecipientDutyGeneration: 1, Purpose: 7, Deadline: time.Now().Add(20 * time.Second).UTC().Truncate(time.Second)}, true)
 	first := make(chan error, 1)
-	go func() { _, err := s.openLane(t.Context(), body); first <- err }()
+	go func() { _, err := s.openLane(t.Context(), t.Context(), body); first <- err }()
 	select {
 	case <-physical.writes:
 	case <-time.After(time.Second):
@@ -101,7 +129,7 @@ func TestOPENWaiterCancellationPreservesActiveWriter(t *testing.T) {
 	physical.mu.Unlock()
 	ctx, cancel := context.WithCancel(t.Context())
 	second := make(chan error, 1)
-	go func() { _, err := s.openLane(ctx, body); second <- err }()
+	go func() { _, err := s.openLane(ctx, ctx, body); second <- err }()
 	cancel()
 	if err := lifecycleResult(t, second); !errors.Is(err, context.Canceled) {
 		t.Fatal("OPEN waiter cancellation lost", err)

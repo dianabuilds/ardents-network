@@ -62,7 +62,9 @@ func TestHostingCompiledCLISharedBudgetCancelAndCrash(t *testing.T) {
 			}
 			hold := map[string]any{"root": p.Root, "work": hosting.Traffic{Tx: 700000000}, "termination": hosting.Traffic{Rx: 100000000}, "hold_ms": uint64(5000)}
 			if episode == "complete" {
-				hold["hold_ms"] = uint64(20)
+				// This is a successful lifecycle oracle, not a 20ms storage
+				// latency promise. Reserve still enforces the original deadline.
+				hold["hold_ms"] = uint64(1000)
 				result, err := command("hold", hostingConfig(t, hold))
 				if err != nil || result.Outcome != "completed" {
 					t.Fatalf("complete %+v %v", result, err)

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"net"
 	"path/filepath"
 	"strings"
 	"time"
@@ -11,14 +12,15 @@ import (
 )
 
 type routePrefixPlan struct {
-	EntryRoot    string          `json:"entry_root"`
-	InteriorRoot string          `json:"interior_root"`
-	HostingRoot  string          `json:"hosting_root"`
-	Domain       uint8           `json:"domain"`
-	Deadline     time.Time       `json:"deadline"`
-	Work         hosting.Traffic `json:"work"`
-	Termination  hosting.Traffic `json:"termination"`
-	Exclusions   []route.Member  `json:"exclusions,omitempty"`
+	EntryRoot          string          `json:"entry_root"`
+	InteriorRoot       string          `json:"interior_root"`
+	SourceInteriorRoot string          `json:"source_interior_root,omitempty"`
+	HostingRoot        string          `json:"hosting_root"`
+	Domain             uint8           `json:"domain"`
+	Deadline           time.Time       `json:"deadline"`
+	Work               hosting.Traffic `json:"work"`
+	Termination        hosting.Traffic `json:"termination"`
+	Exclusions         []route.Member  `json:"exclusions,omitempty"`
 }
 
 func independentRouteRoots(roots ...string) bool {
@@ -36,9 +38,32 @@ func independentRouteRoots(roots ...string) bool {
 }
 
 type routeHandle struct {
-	close    func() error
-	done     <-chan struct{}
-	register func(context.Context, uint64) (routeRegistration, error)
+	close     func() error
+	done      <-chan struct{}
+	register  func(context.Context, uint64) (routeRegistration, error)
+	recipient func(uint8) (routeRecipient, error)
+	join      func(context.Context, routeJoinIntent) (net.Conn, error)
+}
+
+type routeJoinContext struct {
+	open  func(context.Context) (routeHandle, error)
+	close func() error
+}
+
+type routeRecipient struct {
+	Node       [32]byte  `json:"node"`
+	Generation uint64    `json:"generation"`
+	NotAfter   time.Time `json:"not_after"`
+}
+
+type routeJoinIntent struct {
+	Choice        uint8     `json:"choice,omitzero"`
+	Node          [32]byte  `json:"node"`
+	Generation    uint64    `json:"generation"`
+	Secret        [32]byte  `json:"secret"`
+	Context       [32]byte  `json:"context"`
+	Deadline      time.Time `json:"deadline"`
+	SetupDeadline time.Time `json:"setup_deadline"`
 }
 
 type routeRegistration struct {

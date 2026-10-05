@@ -5,6 +5,7 @@ package transport
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net"
 	"sync"
 	"time"
@@ -33,10 +34,12 @@ type Prefix struct {
 	entry, interior    *session
 	child              *lane
 	ctx                context.Context
+	caller             context.Context
 	cancel             context.CancelFunc
 	done               chan struct{}
 	closing            chan struct{}
 	once               sync.Once
+	sealOnce           sync.Once
 	err                error
 	release            func() error
 	config             PrefixConfig
@@ -45,29 +48,93 @@ type Prefix struct {
 	registrationSetups map[*registrationOpening]struct{}
 	openings           sync.WaitGroup
 	activity           chan struct{}
+	joins              map[*JoinAcquisition]struct{}
+	source             *Prefix
+	responderSetups    map[*responderOpening]struct{}
+	responders         map[*Prefix]struct{}
+	stopSource         func() bool
+	sourceStopped      chan struct{}
+	openingConn        net.Conn
+	openingErr         error
 }
 
+// A failed opening can be retried only if its original physical retirement was
+// clean. Preserve that provenance without changing either error's identity.
+type prefixOpeningFailure struct {
+	operation, retirement error
+}
+
+func (e *prefixOpeningFailure) Error() string   { return errors.Join(e.operation, e.retirement).Error() }
+func (e *prefixOpeningFailure) Unwrap() []error { return []error{e.operation, e.retirement} }
+
 func OpenPrefix(ctx context.Context, config PrefixConfig) (_ *Prefix, result error) {
+	return openPrefix(ctx, config, nil)
+}
+
+// OpenResponderPrefix retains the actual Source generation before any physical
+// opening. The resulting Responder cannot acquire JOIN using another Source.
+func OpenResponderPrefix(ctx context.Context, source *Prefix, config PrefixConfig) (*Prefix, error) {
+	if source == nil || source.config.Leg.EntryMember.RoleDomain != 1 || config.Leg.EntryMember.RoleDomain != 3 {
+		return nil, errors.New("route Responder original Source unavailable")
+	}
+	return openPrefix(ctx, config, source)
+}
+
+func openPrefix(ctx context.Context, config PrefixConfig, source *Prefix) (_ *Prefix, result error) {
 	if ctx == nil || config.Current == nil || config.Present == nil || config.Release == nil || config.Deadline.IsZero() || config.Deadline != config.Deadline.UTC().Truncate(time.Second) ||
 		!time.Now().Before(config.Deadline) || config.Deadline.After(config.Leg.NotAfter) || config.Deadline.After(time.Now().Add(admission.ForwardClass.Lifetime())) {
 		return nil, errors.New("route prefix composition or deadline invalid")
 	}
+	childContext, cancel := context.WithDeadline(ctx, config.Deadline)
+	if source != nil {
+		opening, err := source.beginResponder(cancel)
+		if err != nil {
+			cancel()
+			return nil, err
+		}
+		defer opening.finish()
+		observe := config.Current
+		config.Current = func() (network.RuntimeView, error) {
+			if err := source.originalCurrent(); err != nil {
+				return network.RuntimeView{}, err
+			}
+			view, err := observe()
+			if err != nil {
+				return network.RuntimeView{}, err
+			}
+			if err := source.originalCurrent(); err != nil {
+				return network.RuntimeView{}, err
+			}
+			return view, nil
+		}
+	}
 	check := func() error {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		v, err := config.Current()
 		if err != nil {
 			return err
 		}
-		return config.Leg.Check(v, time.Now())
+		// An observation may finish after the original caller was revoked.
+		// Derived cancellation callbacks need not have run at this boundary.
+		return errors.Join(config.Leg.Check(v, time.Now()), ctx.Err())
 	}
 	if err := check(); err != nil {
+		cancel()
 		return nil, err
 	}
-	childContext, cancel := context.WithDeadline(ctx, config.Deadline)
-	p := &Prefix{ctx: childContext, cancel: cancel, done: make(chan struct{}), closing: make(chan struct{}), release: config.Release, config: config, registrations: make(map[*Registration]struct{}), registrationSetups: make(map[*registrationOpening]struct{}), activity: make(chan struct{}, 1)}
+	p := &Prefix{ctx: childContext, caller: ctx, cancel: cancel, done: make(chan struct{}), closing: make(chan struct{}), release: config.Release, config: config, registrations: make(map[*Registration]struct{}), registrationSetups: make(map[*registrationOpening]struct{}), activity: make(chan struct{}, 1), joins: make(map[*JoinAcquisition]struct{}), source: source}
+	if source != nil {
+		p.sourceStopped = make(chan struct{})
+		p.stopSource = context.AfterFunc(source.ctx, func() { defer close(p.sourceStopped); cancel() })
+	}
 	// The local reservation transfers at this point, including failed setup.
 	defer func() {
 		if result != nil {
-			result = errors.Join(result, p.closeOpening())
+			if retirement := p.closeOpening(); retirement != nil {
+				result = &prefixOpeningFailure{operation: result, retirement: retirement}
+			}
 		}
 	}()
 	queues := &queueBudget{maximum: 4 << 20}
@@ -91,14 +158,10 @@ func OpenPrefix(ctx context.Context, config PrefixConfig) (_ *Prefix, result err
 		return nil, err
 	}
 	conn = &retiredConn{Conn: conn}
+	p.openingConn = conn
 	// Cancellation interrupts setup even before a session reader exists.
-	interrupted := make(chan struct{})
-	stop := context.AfterFunc(childContext, func() { defer close(interrupted); _ = conn.SetDeadline(time.Now()); _ = conn.Close() })
-	defer func() {
-		if !stop() {
-			<-interrupted
-		}
-	}()
+	stopSetup := interruptPrefixOpening(childContext, conn)
+	defer func() { p.openingErr = stopSetup() }()
 	if err := conn.SetDeadline(minDeadline(config.Deadline, time.Now().Add(10*time.Second))); err != nil {
 		_ = conn.Close()
 		return nil, err
@@ -117,8 +180,9 @@ func OpenPrefix(ctx context.Context, config PrefixConfig) (_ *Prefix, result err
 		return nil, errors.Join(err, conn.Close())
 	}
 	p.entry = newSession(childContext, conn, config.Deadline, admission.ForwardClass.ByteLimit()-admissionWireBytes, check, false, queues, nil)
+	p.openingConn = nil
 	opened := ardpHello{RecipientNodeID: config.Leg.InteriorMember.NodeID, RecipientDutyGeneration: config.Leg.InteriorMember.DutyGeneration, Purpose: 7, Deadline: config.Deadline}
-	p.child, err = p.entry.openLane(childContext, encodeOpen(opened, false))
+	p.child, err = p.entry.openLane(childContext, ctx, encodeOpen(opened, false))
 	if err != nil {
 		return nil, err
 	}
@@ -154,6 +218,22 @@ func OpenPrefix(ctx context.Context, config PrefixConfig) (_ *Prefix, result err
 	if err := childContext.Err(); err != nil {
 		return nil, err
 	}
+	// The setup callback must relinquish this connection before publication;
+	// a late setup cancellation cannot close an already transferred prefix.
+	if err := errors.Join(stopSetup(), ctx.Err(), childContext.Err()); err != nil {
+		return nil, err
+	}
+	if source != nil {
+		source.registrationMu.Lock()
+		defer source.registrationMu.Unlock()
+		if err := errors.Join(source.localCurrent(), ctx.Err(), childContext.Err()); err != nil {
+			return nil, err
+		}
+		if source.responders == nil {
+			source.responders = make(map[*Prefix]struct{})
+		}
+		source.responders[p] = struct{}{}
+	}
 	go p.watch(check, nil)
 	return p, nil
 }
@@ -173,21 +253,24 @@ func (p *Prefix) watch(check func() error, idleEvents <-chan time.Time) {
 			idle.Reset(120 * time.Second)
 		case <-idleEvents:
 			p.registrationMu.Lock()
-			busy := false
+			busy := len(p.joins) != 0 || len(p.responderSetups) != 0 || len(p.registrationSetups) != 0
 			for registration := range p.registrations {
 				registration.mu.Lock()
 				busy = busy || !registration.stopped
 				registration.mu.Unlock()
 			}
-			p.registrationMu.Unlock()
 			if busy {
+				p.registrationMu.Unlock()
 				idle.Reset(120 * time.Second)
 				continue
 			}
-			err := errors.New("route prefix idle readiness expired")
-			p.interior.retire(err)
-			p.entry.retire(err)
-			p.cancel()
+			// Idle expiration revokes readiness; the composing owner then
+			// joins this generation, including its dependent Responder,
+			// before returning capacity. Keep original parents live for
+			// bounded terminal output and retain actual cleanup failures.
+			p.sealLocked()
+			p.registrationMu.Unlock()
+			p.once.Do(func() { p.err = p.closeOpening() })
 			return
 		case <-p.ctx.Done():
 			select {
@@ -216,7 +299,20 @@ func (p *Prefix) watch(check func() error, idleEvents <-chan time.Time) {
 
 func (p *Prefix) closeOpening() error {
 	p.registrationMu.Lock()
+	responders := make([]*Prefix, 0, len(p.responders))
+	for responder := range p.responders {
+		responders = append(responders, responder)
+		responder.Seal()
+	}
+	joins := make([]*JoinAcquisition, 0, len(p.joins))
+	for acquisition := range p.joins {
+		joins = append(joins, acquisition)
+		acquisition.stop()
+	}
 	for opening := range p.registrationSetups {
+		opening.cancel()
+	}
+	for opening := range p.responderSetups {
 		opening.cancel()
 	}
 	registrations := make([]*Registration, 0, len(p.registrations))
@@ -229,7 +325,18 @@ func (p *Prefix) closeOpening() error {
 	// bounded CLOSE and join. Seal/cancel every terminal acquisition first;
 	// only retire the parents after those original borrowers have joined.
 	p.openings.Wait()
-	var joined error
+	joined := p.openingErr
+	// A Source retains its published dependents as well as setup reservations.
+	// Their original authority remains live until their terminal I/O joins.
+	for _, responder := range responders {
+		joined = errors.Join(joined, responder.Close())
+	}
+	if p.openingConn != nil {
+		joined = errors.Join(joined, p.openingConn.Close())
+	}
+	for _, acquisition := range joins {
+		joined = errors.Join(joined, acquisition.Close())
+	}
 	for _, registration := range registrations {
 		joined = errors.Join(joined, registration.Close())
 	}
@@ -242,14 +349,26 @@ func (p *Prefix) closeOpening() error {
 		p.entry.retire(nil)
 	}
 	p.cancel()
+	if p.stopSource != nil && !p.stopSource() {
+		<-p.sourceStopped
+	}
 	if p.interior != nil {
-		joined = errors.Join(joined, p.interior.Close())
+		if err := p.interior.Close(); err != nil {
+			joined = errors.Join(joined, fmt.Errorf("prefix Interior: %w", err))
+		}
 	}
 	if p.entry != nil {
-		joined = errors.Join(joined, p.entry.Close())
+		if err := p.entry.Close(); err != nil {
+			joined = errors.Join(joined, fmt.Errorf("prefix Entry: %w", err))
+		}
 	}
 	if p.release != nil {
 		joined = errors.Join(joined, p.release())
+	}
+	if p.source != nil {
+		p.source.registrationMu.Lock()
+		delete(p.source.responders, p)
+		p.source.registrationMu.Unlock()
 	}
 	return joined
 }
@@ -257,17 +376,45 @@ func (p *Prefix) closeOpening() error {
 // Done closes when retained readiness retires. It is not a completed physical
 // join: the work owner must call Close before releasing its other roots.
 func (p *Prefix) Done() <-chan struct{} { return p.done }
+
+// Seal synchronously denies new children and signals every current terminal
+// borrower before a composing owner starts joining any sibling prefix.
+func (p *Prefix) Seal() {
+	if p == nil {
+		return
+	}
+	p.registrationMu.Lock()
+	defer p.registrationMu.Unlock()
+	p.sealLocked()
+}
+
+func (p *Prefix) sealLocked() {
+	p.sealOnce.Do(func() {
+		close(p.closing)
+		for opening := range p.registrationSetups {
+			opening.cancel()
+		}
+		for opening := range p.responderSetups {
+			opening.cancel()
+		}
+		for registration := range p.registrations {
+			registration.stop(nil)
+		}
+		for acquisition := range p.joins {
+			acquisition.stop()
+		}
+	})
+}
+
 func (p *Prefix) Close() error {
 	if p == nil {
 		return nil
 	}
 	p.once.Do(func() {
-		p.registrationMu.Lock()
-		close(p.closing)
-		p.registrationMu.Unlock()
+		p.Seal()
 		p.err = p.closeOpening()
-		<-p.done
 	})
+	<-p.done
 	return p.err
 }
 

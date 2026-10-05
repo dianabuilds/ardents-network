@@ -204,7 +204,7 @@ func receiveChannel(ctx context.Context, conn net.Conn, a Authority, admit Admit
 
 func channelClass(purpose ardp.Purpose) (admission.Class, error) {
 	switch purpose {
-	case ardp.PurposeForwarding:
+	case ardp.PurposeForwarding, ardp.PurposeDataJoin:
 		return admission.ForwardClass, nil
 	case ardp.PurposeIntroduction:
 		return admission.RegistrationClass, nil

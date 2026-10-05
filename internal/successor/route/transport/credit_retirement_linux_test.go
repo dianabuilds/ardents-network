@@ -176,3 +176,93 @@ func TestTerminalFailureStageRejectsEveryUnrelatedLeaf(t *testing.T) {
 		t.Fatal("unproved phase minted from a native error")
 	}
 }
+
+func TestTerminalFailureStageRetainsPeerWriteAndOwnedClose(t *testing.T) {
+	physical := newLifecycleConn(false)
+	physical.partial, physical.closeFailure = syscall.EPIPE, syscall.EPIPE
+	s := newSession(t.Context(), physical, time.Now().Add(time.Minute), 32<<20, nil, false, &queueBudget{maximum: 64 << 20}, nil)
+	l := lifecycleLane(t, s, 1)
+	l.openEmitted = true
+	if err := l.Close(); !errors.Is(err, syscall.EPIPE) {
+		t.Fatal("actual peer write failure was lost", err)
+	}
+	first := s.Close()
+	if !errors.Is(first, syscall.EPIPE) || TerminalFailureStage(s.joinedPhysicalFailure()) != "peer-retired-write" {
+		t.Fatal("owned peer close vetoed exact physical write provenance", first)
+	}
+	if s.Close() != first {
+		t.Fatal("classification changed retained terminal result")
+	}
+}
+
+func TestTerminalFailureStageCloseProvenanceCannotBorrowAnotherWrite(t *testing.T) {
+	failed := func(closeCause error, write bool) *session {
+		physical := newLifecycleConn(false)
+		physical.closeFailure = closeCause
+		s := newSession(t.Context(), physical, time.Now().Add(time.Minute), 32<<20, nil, false, &queueBudget{maximum: 64 << 20}, nil)
+		if write {
+			physical.partial = syscall.EPIPE
+			l := lifecycleLane(t, s, 1)
+			l.openEmitted = true
+			if err := l.Close(); !errors.Is(err, syscall.EPIPE) {
+				t.Fatal(err)
+			}
+		}
+		first := s.Close()
+		if first == nil || s.Close() != first {
+			t.Fatal("physical result was discarded or replaced", first)
+		}
+		return s
+	}
+	closeOnly := failed(syscall.EPIPE, false)
+	if TerminalFailureStage(closeOnly.joinedPhysicalFailure()) != "terminal" {
+		t.Fatal("close-only failure invented actual write provenance")
+	}
+	foreign := errors.New("unrelated physical close failed")
+	mixed := failed(foreign, true)
+	if err := mixed.joinedPhysicalFailure(); TerminalFailureStage(err) != "terminal" || !errors.Is(err, foreign) {
+		t.Fatal("foreign close hidden behind peer write", err)
+	}
+	other := failed(nil, true)
+	if err := errors.Join(other.joinedPhysicalFailure(), closeOnly.joinedPhysicalFailure()); TerminalFailureStage(err) != "terminal" {
+		t.Fatal("another owner supplied close's write witness", err)
+	}
+	valid := failed(syscall.EPIPE, true)
+	nested := fmt.Errorf("receiving: %w", errors.Join(valid.joinedPhysicalFailure(), fmt.Errorf("release: %w", foreign)))
+	if TerminalFailureStage(nested) != "terminal" || !errors.Is(nested, foreign) {
+		t.Fatal("nested foreign leaf was discarded", nested)
+	}
+}
+
+func TestNestedCloseRetainsActualLowerWriteOwner(t *testing.T) {
+	physical := newLifecycleConn(false)
+	physical.partial = syscall.EPIPE
+	parent := newSession(t.Context(), physical, time.Now().Add(time.Minute), 32<<20, nil, false, &queueBudget{maximum: 64 << 20}, nil)
+	defer parent.Close()
+	lower := lifecycleLane(t, parent, 1)
+	lower.openEmitted = true
+	child := newSession(t.Context(), &retiredConn{Conn: lower}, lower.end, 32<<20, nil, false, &queueBudget{maximum: 64 << 20}, nil)
+	first := child.Close()
+	if !errors.Is(first, syscall.EPIPE) || child.Close() != first {
+		t.Fatal("nested Close lost or replaced actual lower write failure", first)
+	}
+	var write *physicalWriteFailure
+	if !errors.As(child.joinedPhysicalFailure(), &write) || write.owner != parent {
+		t.Fatal("nested Close did not retain actual lower write owner", child.joinedPhysicalFailure())
+	}
+	parent.Close()
+	var retained *physicalWriteFailure
+	if !errors.As(parent.joinedPhysicalFailure(), &retained) || retained != write {
+		t.Fatal("nested Close replaced the lower owner's actual witness")
+	}
+	var upperClose *physicalCloseFailure
+	if errors.As(child.joinedPhysicalFailure(), &upperClose) {
+		t.Fatal("borrower Close minted a physical socket-close witness", upperClose)
+	}
+	if TerminalFailureStage(child.joinedPhysicalFailure()) != "peer-retired-write" {
+		t.Fatal("nested borrower close invented another physical owner", child.joinedPhysicalFailure())
+	}
+	if len(physical.output) != 3 {
+		t.Fatal("control did not enter actual partial physical output", len(physical.output))
+	}
+}
