@@ -99,7 +99,7 @@ func routeStock(t *testing.T, f *networkAdmissionFixture) *stock.Owner {
 	return routeRoleStock(t, f, false)
 }
 
-func routeRoleStock(t *testing.T, f *networkAdmissionFixture, introduction bool) *stock.Owner {
+func routeRoleStock(t *testing.T, f *networkAdmissionFixture, introduction bool, refill ...bool) *stock.Owner {
 	t.Helper()
 	root := t.TempDir()
 	if err := os.Chmod(root, 0700); err != nil {
@@ -107,6 +107,9 @@ func routeRoleStock(t *testing.T, f *networkAdmissionFixture, introduction bool)
 	}
 	role := admission.AllocationUser
 	maxima := [3]uint32{0, 4, 0}
+	if len(refill) != 0 && refill[0] {
+		maxima[1] = 8
+	}
 	if introduction {
 		role = admission.AllocationPublisher
 		maxima[2] = 1
@@ -152,6 +155,9 @@ func routeRoleStock(t *testing.T, f *networkAdmissionFixture, introduction bool)
 	var challenges []token.ClosedTokenContext
 	for i := byte(12); i < 16; i++ {
 		challenges = append(challenges, token.ClosedTokenContext{NetworkID: f.profile.NetworkID, ProfileDigest: f.profile.Digest, IssuerNodeID: f.profile.IssuerNodeID, ReceiverNodeID: [32]byte{i}, ReceiverDutyGeneration: 9, Class: 2, WindowStart: time.Now().UTC().Truncate(time.Hour)})
+		if len(refill) != 0 && refill[0] {
+			challenges = append(challenges, challenges[len(challenges)-1])
+		}
 	}
 	batches := [][]token.ClosedTokenContext{challenges}
 	if introduction {
@@ -181,9 +187,12 @@ func routeRoleStock(t *testing.T, f *networkAdmissionFixture, introduction bool)
 
 // Permission/stock are volatile and must be created inside the actual holder
 // process. Only its irreversible presentation history survives reopening.
-func routeConsoleRoleStock(t *testing.T, f *networkAdmissionFixture, send func(any) localAdmissionReply, introduction bool) {
+func routeConsoleRoleStock(t *testing.T, f *networkAdmissionFixture, send func(any) localAdmissionReply, introduction bool, refill ...bool) {
 	t.Helper()
 	maxima := [3]uint32{0, 4, 0}
+	if len(refill) != 0 && refill[0] {
+		maxima[1] = 8
+	}
 	if introduction {
 		maxima[2] = 1
 	}
@@ -219,6 +228,9 @@ func routeConsoleRoleStock(t *testing.T, f *networkAdmissionFixture, send func(a
 	var challenges []token.ClosedTokenContext
 	for i := byte(12); i < 16; i++ {
 		challenges = append(challenges, token.ClosedTokenContext{NetworkID: f.profile.NetworkID, ProfileDigest: f.profile.Digest, IssuerNodeID: f.profile.IssuerNodeID, ReceiverNodeID: [32]byte{i}, ReceiverDutyGeneration: 9, Class: 2, WindowStart: time.Now().UTC().Truncate(time.Hour)})
+		if len(refill) != 0 && refill[0] {
+			challenges = append(challenges, challenges[len(challenges)-1])
+		}
 	}
 	batches := [][]token.ClosedTokenContext{challenges}
 	if introduction {

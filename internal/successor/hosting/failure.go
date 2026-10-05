@@ -9,6 +9,7 @@ var (
 	ErrUnavailable         = errors.New("budget-unavailable")
 	ErrCapacity            = errors.New("budget-exhausted")
 	ErrUncertain           = errors.New("storage-uncertain")
+	ErrReservationInUse    = errors.New("reservation-in-use")
 )
 
 // Supported reports the platform prerequisite without reading inputs or storage.

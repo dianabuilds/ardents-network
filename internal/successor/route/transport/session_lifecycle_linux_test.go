@@ -85,6 +85,64 @@ func (c *lifecycleConn) SetWriteDeadline(t time.Time) error {
 	return nil
 }
 
+// A closed socket rejects deadline changes even while an original physical
+// writer has not yet returned. This matches the TCP retirement boundary.
+type retiredDeadlineConn struct{ *lifecycleConn }
+
+func (c *retiredDeadlineConn) SetWriteDeadline(end time.Time) error {
+	select {
+	case <-c.closed:
+		return net.ErrClosed
+	default:
+		return c.lifecycleConn.SetWriteDeadline(end)
+	}
+}
+
+func TestSessionLifecycleLaneCloseAfterParentRetirementDoesNotResetDeadline(t *testing.T) {
+	physical := &retiredDeadlineConn{newLifecycleConn(true)}
+	physical.writeIgnoresClose = true
+	late := errors.New("original writer late physical failure")
+	physical.partial = late
+	s := newSession(t.Context(), physical, time.Now().Add(5*time.Second), 32<<20, nil, false, &queueBudget{maximum: 64 << 20}, nil)
+	defer s.Close()
+	l := lifecycleLane(t, s, 1)
+	written := make(chan error, 1)
+	go func() { _, err := l.Write([]byte("original output")); written <- err }()
+	select {
+	case <-physical.writes:
+	case <-time.After(time.Second):
+		t.Fatal("original writer did not start")
+	}
+	authority := errors.New("original authority retired")
+	s.retire(authority)
+	closed := make(chan error, 1)
+	go func() { closed <- l.Close() }()
+	// Close takes the lane lock before joining its already selected writer.
+	deadline := time.Now().Add(time.Second)
+	for {
+		s.mu.Lock()
+		closing := l.localClosed
+		s.mu.Unlock()
+		if closing {
+			break
+		}
+		if !time.Now().Before(deadline) {
+			t.Fatal("lane close did not start")
+		}
+		runtime.Gosched()
+	}
+	close(physical.writeGate)
+	if err := lifecycleResult(t, written); !errors.Is(err, late) {
+		t.Fatal("original physical error lost", err)
+	}
+	if err := lifecycleResult(t, closed); err != nil {
+		t.Fatal("retired parent caused a new deadline operation", err)
+	}
+	if err := s.Close(); !errors.Is(err, authority) || !errors.Is(err, late) || errors.Is(err, net.ErrClosed) {
+		t.Fatal("joined result lost original provenance or added closed-socket deadline failure", err)
+	}
+}
+
 func lifecycleLane(t *testing.T, s *session, id uint32) *lane {
 	t.Helper()
 	if !s.queues.child() {

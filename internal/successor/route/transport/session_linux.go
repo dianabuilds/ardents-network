@@ -7,15 +7,31 @@ import (
 	"encoding/binary"
 	"errors"
 	"io"
+	"math"
 	"net"
 	"os"
 	"sync"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/successor/admission"
 	"github.com/dianabuilds/ardents-network/internal/successor/route/ardp"
 )
 
 const window = uint32(64 << 10)
+
+// replaceRemaining commits a verified refill against the usage witnessed after
+// its ADMIT debit. Traffic charged during verification remains charged against
+// the replacement reserve; cumulative usage and child credit never reset.
+func (s *session) replaceRemaining(witness, remaining uint64) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.stopped || s.dedicated || !time.Now().Before(s.end) || remaining == 0 ||
+		witness > s.used || s.used > s.limit || witness > math.MaxUint64-remaining || s.used-witness > remaining {
+		return errors.New("route replenishment transition unavailable")
+	}
+	s.limit = witness + remaining
+	return nil
+}
 
 // session owns one physical framing boundary and all of its borrowers. The
 // owner cancels admission before interrupting I/O; Close waits for the reader
@@ -53,6 +69,12 @@ type session struct {
 	lastControl             bool
 	open                    func(context.Context, *lane, []byte) error
 	check                   func() error
+	parentControl           func(context.Context, ardp.Frame, uint64, uint64) error
+	parentBusy              bool
+	parentReply             chan ardp.Frame
+	parentAdmitCharged      bool
+	parentWitness           uint64
+	parentCaller            context.Context
 }
 
 func newSession(ctx context.Context, conn net.Conn, end time.Time, limit uint64, check func() error, pending bool, queues *queueBudget, open func(context.Context, *lane, []byte) error) *session {
@@ -183,6 +205,18 @@ func (s *session) read() {
 			return
 		}
 		cost := uint64(ardp.HeaderSize + len(f.Body))
+		if f.Lane == 0 && f.Kind == ardp.KindAccept && s.parentReply != nil && s.parentAdmitCharged {
+			status, credit, acceptErr := ardp.DecodeAcceptFrame(f)
+			refillBytes := admission.ForwardClass.ByteLimit()
+			if acceptErr != nil || status != 0 || credit != window || s.parentCaller == nil || s.parentCaller.Err() != nil ||
+				s.parentWitness > s.used || s.parentWitness > math.MaxUint64-refillBytes {
+				s.mu.Unlock()
+				s.retire(errors.Join(errors.New("route refill acknowledgement refused"), acceptErr))
+				return
+			}
+			// Replacement precedes the ACK debit; concurrent debits remain used.
+			s.limit = s.parentWitness + refillBytes
+		}
 		if cost > s.limit-s.used {
 			s.mu.Unlock()
 			s.retire(errors.New("route byte allowance exhausted"))
@@ -195,6 +229,32 @@ func (s *session) read() {
 			return
 		}
 		if f.Lane == 0 {
+			if s.parentReply != nil && s.parentAdmitCharged && f.Kind == ardp.KindAccept {
+				reply := s.parentReply
+				s.parentReply = nil
+				reply <- f
+				s.mu.Unlock()
+				continue
+			}
+			remaining := s.limit - s.used
+			if s.parentControl != nil && !s.parentBusy && f.Kind == ardp.KindAdmit && len(f.Body) == 355 && f.Body[0] == 2 && remaining != 0 {
+				s.parentBusy = true
+				witness := s.used
+				s.children.Add(1)
+				s.mu.Unlock()
+				go func() {
+					defer s.children.Done()
+					defer clear(f.Body)
+					err := s.parentControl(s.ctx, f, witness, remaining)
+					if err != nil {
+						s.retire(err)
+					}
+					s.mu.Lock()
+					s.parentBusy = false
+					s.mu.Unlock()
+				}()
+				continue
+			}
 			s.mu.Unlock()
 			s.retire(errors.New("unexpected Route parent control"))
 			return
@@ -332,10 +392,30 @@ func (s *session) write(l *lane, f ardp.Frame, terminal bool) error {
 		s.mu.Unlock()
 		return &frameExpiry{end: end}
 	}
+	if f.Kind == ardp.KindAdmit && f.Lane == 0 && l.caller != nil {
+		// Currentness observation can finish after the original operation is
+		// canceled, before its cancellation callback closes the control lane.
+		// Refuse synchronously before capacity, debit or physical output.
+		if err := l.caller.Err(); err != nil {
+			s.mu.Unlock()
+			return err
+		}
+	}
 	cost := uint64(len(raw))
 	if cost > s.limit-s.used {
 		s.mu.Unlock()
 		return errors.New("route byte allowance exhausted")
+	}
+	if f.Kind == ardp.KindAdmit && f.Lane == 0 && cost == s.limit-s.used {
+		s.mu.Unlock()
+		return errors.New("route refill requires positive original reserve")
+	}
+	if f.Kind == ardp.KindAdmit && f.Lane == 0 && l.refillRequiresHold {
+		needed := admission.ForwardClass.ByteLimit() - (s.limit - s.used - cost)
+		if needed > l.refillHeld {
+			s.mu.Unlock()
+			return &refillCapacityDelta{additional: needed - l.refillHeld}
+		}
 	}
 	if f.Kind == ardp.KindBytes {
 		if l.handshake && uint32(len(f.Body)) > 4096-l.handshakeOutput-l.handshakeBytes {
@@ -352,6 +432,12 @@ func (s *session) write(l *lane, f ardp.Frame, terminal bool) error {
 		}
 	}
 	s.used += cost
+	if f.Kind == ardp.KindAdmit && f.Lane == 0 {
+		l.refillWitness = s.used
+		s.parentWitness = s.used
+		l.refillRemaining = s.limit - s.used
+		s.parentAdmitCharged = true
+	}
 	s.active = l
 	s.activeKind = f.Kind
 	s.activeEnd = end
@@ -408,9 +494,10 @@ func (s *session) write(l *lane, f ardp.Frame, terminal bool) error {
 			l.physicalWriteFailed = true
 			err = &physicalWriteFailure{owner: s, kind: f.Kind, cause: err}
 			s.writeErr = errors.Join(s.writeErr, err)
-		} else if !attempted {
+		} else if !attempted && lower == nil {
 			// A physical deadline operation failed before Write; preserve
-			// that I/O failure without claiming a started frame.
+			// that owned I/O failure without claiming a started frame. A nested
+			// lower deadline refusal belongs to its lower framing owner.
 			l.physicalWriteFailed = true
 			s.writeErr = errors.Join(s.writeErr, err)
 		}

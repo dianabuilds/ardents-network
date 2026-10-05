@@ -27,6 +27,10 @@ type Channel struct {
 // Admit is application composition over the actual receiving Admission owner.
 // A successful Grant transfers its reservation to this physical work owner.
 type Admit func(context.Context, Channel, []byte) (receiving.Grant, error)
+
+// Refill composes genuine receiving Admission with additional Hosting capacity
+// for the exact original admitted forwarding parent. remaining excludes ADMIT.
+type Refill func(context.Context, Channel, receiving.Grant, uint64, []byte) (receiving.Grant, error)
 type Present func(context.Context, ardp.Hello) ([]byte, error)
 
 const admissionWireBytes = 3*ardp.HeaderSize + 209 + 355 + 5

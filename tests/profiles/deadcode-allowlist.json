@@ -400,6 +400,15 @@
         "rationale": "Linux holder and receiving commands encode and decode genuine paired JOIN traffic through join_client_linux.go and join_pair_linux.go. Windows refuses Route before runtime acquisition. Portable independent canonical-byte and malformed-input tests exercise these exact codecs on Windows; they do not establish a Windows Route consumer.",
         "owner": "Product Owner and Codex; Route JOIN",
         "retirement": "Remove each Windows allowance when a selected Windows JOIN consumer reaches it, or when the JOIN wire operation and its shared codec are retired."
+      },
+      {
+        "symbols": [
+          "internal/successor/hosting.JointTraffic.cost"
+        ],
+        "classification": "Portable shared-work arithmetic with Linux physical consumer",
+        "rationale": "The Linux holder and receiving Route compositions in cmd/ardents-next/route_linux.go call Linux-only CoversJoint and ReserveAdditionalJoint, which consume this portable provider-direction arithmetic. Windows refuses physical Hosting and Route before acquisition; independent portable arithmetic tests exercise the exact cost function there. No Windows physical-work method or test-only additional-reservation API is retained.",
+        "owner": "Product Owner and Codex; Hosting reservation lifecycle",
+        "retirement": "Remove each Windows allowance when a selected Windows physical-work consumer reaches it, or when the additional-work contract and its exact operation are retired."
       }
     ]
   }

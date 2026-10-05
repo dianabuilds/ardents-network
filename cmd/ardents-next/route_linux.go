@@ -66,6 +66,17 @@ func startRoutePrefix(ctx context.Context, plan routePrefixPlan, authority admis
 		return releaseErr
 	}
 	prefix, err := transport.OpenPrefix(ctx, transport.PrefixConfig{Leg: leg, Current: authority.current, Deadline: plan.Deadline, Release: release,
+		HoldRefill: func(ctx context.Context, additional uint64) (func() error, error) {
+			limit := admission.ForwardClass.ByteLimit()
+			if err := budget.CoversJoint(ctx, reservation, hosting.JointTraffic{Tx: limit, Rx: limit, Total: limit}); err != nil {
+				return nil, err
+			}
+			held, err := budget.ReserveAdditionalJoint(ctx, reservation, hosting.JointTraffic{Tx: additional, Rx: additional, Total: additional})
+			if err != nil {
+				return nil, err
+			}
+			return func() error { return releaseRouteReservation(held) }, nil
+		},
 		Present: func(ctx context.Context, h ardp.Hello) ([]byte, error) {
 			presentation := stock.Presentation{NetworkID: h.NetworkID, StateGeneration: h.StateGeneration, StateDigest: h.StateDigest, ProfileDigest: h.ProfileDigest, RecipientNodeID: h.RecipientNodeID, RecipientDutyGeneration: h.RecipientDutyGeneration, ChannelNonce: h.ChannelNonce, Deadline: h.Deadline}
 			if err := authority.presentation(presentation); err != nil {
@@ -80,7 +91,7 @@ func startRoutePrefix(ctx context.Context, plan routePrefixPlan, authority admis
 	if err != nil {
 		return routeHandle{}, errors.Join(err, release())
 	}
-	return routeHandle{close: prefix.Close, done: prefix.Done(), register: func(ctx context.Context, revision uint64) (routeRegistration, error) {
+	return routeHandle{close: prefix.Close, done: prefix.Done(), replenish: prefix.Replenish, register: func(ctx context.Context, revision uint64) (routeRegistration, error) {
 		view, err := authority.current()
 		if err != nil {
 			return routeRegistration{}, err
@@ -183,6 +194,8 @@ func runRoute(ctx context.Context, args []string, out, diagnostic io.Writer) (co
 		}
 	}()
 	var initializationOwner *receiving.Owner
+	var reservationMu sync.Mutex
+	reservations := make(map[transport.Channel]*hosting.Reservation)
 	if m.RoleDomain == 4 && m.Subrole == 3 {
 		initializationOwner = admissionOwner
 	}
@@ -197,7 +210,35 @@ func runRoute(ctx context.Context, args []string, out, diagnostic io.Writer) (co
 				if err != nil {
 					return nil, err
 				}
-				return c.HoldReservation(func() error { return releaseRouteReservation(reservation) })
+				reservationMu.Lock()
+				reservations[c] = reservation
+				reservationMu.Unlock()
+				return c.HoldReservation(func() error {
+					reservationMu.Lock()
+					delete(reservations, c)
+					reservationMu.Unlock()
+					return releaseRouteReservation(reservation)
+				})
+			})
+		},
+		Refill: func(ctx context.Context, c transport.Channel, original receiving.Grant, remaining uint64, raw []byte) (receiving.Grant, error) {
+			limit := admission.ForwardClass.ByteLimit()
+			if c.Hello.Purpose != ardp.PurposeForwarding || remaining == 0 || remaining >= limit {
+				return receiving.Grant{}, errors.New("route refill allowance unavailable")
+			}
+			reservationMu.Lock()
+			held := reservations[c]
+			reservationMu.Unlock()
+			return admissionOwner.Refill(ctx, original, remaining, raw, func() (func() error, error) {
+				if err := budget.CoversJoint(ctx, held, hosting.JointTraffic{Tx: limit, Rx: limit, Total: limit}); err != nil {
+					return nil, err
+				}
+				delta := limit - remaining
+				addition, err := budget.ReserveAdditionalJoint(ctx, held, hosting.JointTraffic{Tx: delta, Rx: delta, Total: delta})
+				if err != nil {
+					return nil, err
+				}
+				return c.HoldReservation(func() error { return releaseRouteReservation(addition) })
 			})
 		}})
 	if err != nil {

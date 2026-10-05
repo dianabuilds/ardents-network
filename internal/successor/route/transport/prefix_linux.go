@@ -12,6 +12,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/successor/admission"
 	"github.com/dianabuilds/ardents-network/internal/successor/network"
+	"github.com/dianabuilds/ardents-network/internal/successor/route/ardp"
 	"github.com/dianabuilds/ardents-network/internal/successor/route/carrier"
 	"github.com/dianabuilds/ardents-network/internal/successor/route/selection"
 )
@@ -20,42 +21,46 @@ import (
 // genuine Stock presentation. Release returns the local Hosting reservation
 // only after this owner has joined the complete physical tree.
 type PrefixConfig struct {
-	Leg      selection.Leg
-	Current  func() (network.RuntimeView, error)
-	Present  Present
-	Deadline time.Time
-	Release  func() error
+	Leg        selection.Leg
+	Current    func() (network.RuntimeView, error)
+	Present    Present
+	Deadline   time.Time
+	Release    func() error
+	HoldRefill func(context.Context, uint64) (func() error, error)
 }
 
 // Prefix is a bounded Entry/Interior transport. It carries no Service data or
 // fake terminal workload. Its accepted result means both exact roles admitted
 // fresh authenticated channels; Close retains one joined terminal result.
 type Prefix struct {
-	entry, interior    *session
-	child              *lane
-	ctx                context.Context
-	caller             context.Context
-	cancel             context.CancelFunc
-	done               chan struct{}
-	closing            chan struct{}
-	once               sync.Once
-	sealOnce           sync.Once
-	err                error
-	release            func() error
-	config             PrefixConfig
-	registrationMu     sync.Mutex
-	registrations      map[*Registration]struct{}
-	registrationSetups map[*registrationOpening]struct{}
-	openings           sync.WaitGroup
-	activity           chan struct{}
-	joins              map[*JoinAcquisition]struct{}
-	source             *Prefix
-	responderSetups    map[*responderOpening]struct{}
-	responders         map[*Prefix]struct{}
-	stopSource         func() bool
-	sourceStopped      chan struct{}
-	openingConn        net.Conn
-	openingErr         error
+	entry, interior           *session
+	entryHello, interiorHello ardp.Hello
+	refills                   map[*prefixRefill]struct{}
+	refillReturns             []func() error
+	child                     *lane
+	ctx                       context.Context
+	caller                    context.Context
+	cancel                    context.CancelFunc
+	done                      chan struct{}
+	closing                   chan struct{}
+	once                      sync.Once
+	sealOnce                  sync.Once
+	err                       error
+	release                   func() error
+	config                    PrefixConfig
+	registrationMu            sync.Mutex
+	registrations             map[*Registration]struct{}
+	registrationSetups        map[*registrationOpening]struct{}
+	openings                  sync.WaitGroup
+	activity                  chan struct{}
+	joins                     map[*JoinAcquisition]struct{}
+	source                    *Prefix
+	responderSetups           map[*responderOpening]struct{}
+	responders                map[*Prefix]struct{}
+	stopSource                func() bool
+	sourceStopped             chan struct{}
+	openingConn               net.Conn
+	openingErr                error
 }
 
 // A failed opening can be retried only if its original physical retirement was
@@ -180,6 +185,7 @@ func openPrefix(ctx context.Context, config PrefixConfig, source *Prefix) (_ *Pr
 		return nil, errors.Join(err, conn.Close())
 	}
 	p.entry = newSession(childContext, conn, config.Deadline, admission.ForwardClass.ByteLimit()-admissionWireBytes, check, false, queues, nil)
+	p.entryHello = h
 	p.openingConn = nil
 	opened := ardpHello{RecipientNodeID: config.Leg.InteriorMember.NodeID, RecipientDutyGeneration: config.Leg.InteriorMember.DutyGeneration, Purpose: 7, Deadline: config.Deadline}
 	p.child, err = p.entry.openLane(childContext, ctx, encodeOpen(opened, false))
@@ -212,6 +218,7 @@ func openPrefix(ctx context.Context, config PrefixConfig, source *Prefix) (_ *Pr
 		return nil, err
 	}
 	p.interior = newSession(childContext, &retiredConn{Conn: secured}, config.Deadline, admission.ForwardClass.ByteLimit()-admissionWireBytes, check, false, queues, nil)
+	p.interiorHello = h
 	if err := check(); err != nil {
 		return nil, err
 	}
@@ -253,7 +260,7 @@ func (p *Prefix) watch(check func() error, idleEvents <-chan time.Time) {
 			idle.Reset(120 * time.Second)
 		case <-idleEvents:
 			p.registrationMu.Lock()
-			busy := len(p.joins) != 0 || len(p.responderSetups) != 0 || len(p.registrationSetups) != 0
+			busy := len(p.joins) != 0 || len(p.responderSetups) != 0 || len(p.registrationSetups) != 0 || len(p.refills) != 0
 			for registration := range p.registrations {
 				registration.mu.Lock()
 				busy = busy || !registration.stopped
@@ -299,6 +306,9 @@ func (p *Prefix) watch(check func() error, idleEvents <-chan time.Time) {
 
 func (p *Prefix) closeOpening() error {
 	p.registrationMu.Lock()
+	for refill := range p.refills {
+		refill.cancel()
+	}
 	responders := make([]*Prefix, 0, len(p.responders))
 	for responder := range p.responders {
 		responders = append(responders, responder)
@@ -363,6 +373,9 @@ func (p *Prefix) closeOpening() error {
 		}
 	}
 	if p.release != nil {
+		for i := len(p.refillReturns) - 1; i >= 0; i-- {
+			joined = errors.Join(joined, p.refillReturns[i]())
+		}
 		joined = errors.Join(joined, p.release())
 	}
 	if p.source != nil {
@@ -391,6 +404,9 @@ func (p *Prefix) Seal() {
 func (p *Prefix) sealLocked() {
 	p.sealOnce.Do(func() {
 		close(p.closing)
+		for refill := range p.refills {
+			refill.cancel()
+		}
 		for opening := range p.registrationSetups {
 			opening.cancel()
 		}

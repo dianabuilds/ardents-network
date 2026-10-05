@@ -51,3 +51,37 @@ func TestAdmissionRollbackRetainsCapacityUntilPhysicalJoin(t *testing.T) {
 		t.Fatal("repeated release changed result or retried mutation", err)
 	}
 }
+
+func TestAdmissionRetirementReturnsAdditionsBeforeOriginal(t *testing.T) {
+	lifetime := &admissionRetirement{}
+	channel := Channel{capacity: lifetime}
+	var order []int
+	var releases []func() error
+	for i := range 3 {
+		release, err := channel.HoldReservation(func() error {
+			order = append(order, i)
+			return nil
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		releases = append(releases, release)
+	}
+	for _, release := range releases {
+		if err := release(); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if len(order) != 0 {
+		t.Fatal("capacity returned before join", order)
+	}
+	if err := lifetime.finish(); err != nil {
+		t.Fatal(err)
+	}
+	if len(order) != 3 || order[0] != 2 || order[1] != 1 || order[2] != 0 {
+		t.Fatal("original termination returned before additions", order)
+	}
+	if err := lifetime.finish(); err != nil || len(order) != 3 {
+		t.Fatal("repeat join returned capacity twice", order, err)
+	}
+}

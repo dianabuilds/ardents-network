@@ -40,7 +40,11 @@ func TestRouteCompiledCommandRegistrationBothCarriers(t *testing.T) {
 	testRouteCompiledCommand(t, true)
 }
 
-func testRouteCompiledCommand(t *testing.T, introduction bool) {
+func TestRouteCompiledCommandReplenishmentBothCarriers(t *testing.T) {
+	testRouteCompiledCommand(t, true, true)
+}
+
+func testRouteCompiledCommand(t *testing.T, introduction bool, refill ...bool) {
 	t.Helper()
 	_ = compiledCommand(t)
 	for _, profile := range []carrier.CarrierProfile{carrier.ClosedCarrierTCP, carrier.ClosedCarrierQUIC} {
@@ -134,6 +138,9 @@ func testRouteCompiledCommand(t *testing.T, introduction bool) {
 				budget := routeProcessBudget(t)
 				budgets = append(budgets, budget)
 				plan := map[string]any{"network": seed(), "node_id": id, "spend_root": t.TempDir(), "hosting_root": budget, "certificate": certPath, "private_key": keyPath, "work": hosting.Traffic{Tx: 2 << 20, Rx: 2 << 20}, "termination": hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}}
+				if len(refill) != 0 && refill[0] && i != 16 {
+					plan["work"] = hosting.Traffic{Tx: 32 << 20, Rx: 32 << 20}
+				}
 				if i == 16 {
 					root := t.TempDir()
 					if err := os.Chmod(root, 0700); err != nil {
@@ -196,13 +203,21 @@ func testRouteCompiledCommand(t *testing.T, introduction bool) {
 			}
 			holderRoot := t.TempDir()
 			plan := routePrefixPlan{EntryRoot: filepath.Join(t.TempDir(), "entry"), InteriorRoot: filepath.Join(t.TempDir(), "interior"), HostingRoot: routeProcessBudget(t), Domain: domain, Deadline: time.Now().Add(30 * time.Second).UTC().Truncate(time.Second), Work: hosting.Traffic{Tx: 2 << 20, Rx: 2 << 20}, Termination: hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}}
+			if len(refill) != 0 && refill[0] {
+				plan.Work = hosting.Traffic{Tx: 32 << 20, Rx: 32 << 20}
+			}
 			holderNetwork := seed()
 			send, closeHolder := admissionLocalConsole(t, "holder", map[string]any{"root": holderRoot, "network": holderNetwork, "role": role, "route": plan})
-			routeConsoleRoleStock(t, f, send, introduction)
+			routeConsoleRoleStock(t, f, send, introduction, refill...)
 			if reply := send(holderCommand{Operation: "prefix-open"}); reply.Outcome != "completed" {
 				t.Fatal("compiled prefix not admitted", reply.Outcome)
 			}
 			if introduction {
+				if len(refill) != 0 && refill[0] {
+					if reply := send(holderCommand{Operation: "prefix-replenish"}); reply.Outcome != "completed" {
+						t.Fatal("compiled genuine refill refused", reply)
+					}
+				}
 				if reply := send(holderCommand{Operation: "registration-open", Revision: 1}); reply.Outcome != "completed" || reply.Slot == [32]byte{} {
 					t.Fatal("compiled REGISTER", reply)
 				}

@@ -193,6 +193,99 @@ func TestNestedTLSUnemittedControlRequiresActualPeerCLOSE(t *testing.T) {
 	}
 }
 
+type physicalDeadlineFailureConn struct {
+	*lifecycleConn
+	failure error
+}
+
+func (c *physicalDeadlineFailureConn) SetWriteDeadline(end time.Time) error {
+	c.mu.Lock()
+	err := c.failure
+	c.mu.Unlock()
+	if err != nil {
+		return err
+	}
+	return c.lifecycleConn.SetWriteDeadline(end)
+}
+
+func TestLowerPhysicalDeadlineFailureRemainsWithItsOwner(t *testing.T) {
+	physical := &physicalDeadlineFailureConn{lifecycleConn: newLifecycleConn(true)}
+	physical.writeIgnoresClose = true
+	end := time.Now().Add(5 * time.Second)
+	s := newSession(t.Context(), physical, end, 32<<20, nil, false, &queueBudget{maximum: 64 << 20}, nil)
+	defer s.Close()
+	l := lifecycleLane(t, s, 1)
+	written := make(chan error, 1)
+	go func() { _, err := l.Write([]byte("original lower output")); written <- err }()
+	select {
+	case <-physical.writes:
+	case <-time.After(time.Second):
+		t.Fatal("lower physical writer did not start")
+	}
+	failure := errors.New("actual lower deadline operation failed")
+	physical.mu.Lock()
+	physical.failure = failure
+	physical.mu.Unlock()
+	if err := l.SetWriteDeadline(end); err != failure {
+		t.Fatal("physical deadline refusal changed", err)
+	}
+	s.retire(failure)
+	close(physical.writeGate)
+	_ = lifecycleResult(t, written)
+	if err := s.Close(); !errors.Is(err, failure) {
+		t.Fatal("joined lower failure lost", err)
+	}
+	if err := s.joinedPhysicalFailure(); !errors.Is(err, failure) {
+		t.Fatal("actual lower deadline failure was treated as an unemitted upper refusal", err)
+	}
+}
+
+func TestNestedDeadlineRefusalAfterLowerRetirementIsNotUpperPhysicalFailure(t *testing.T) {
+	physical := &retiredDeadlineConn{newLifecycleConn(true)}
+	physical.writeIgnoresClose = true
+	late := errors.New("lower original writer failed late")
+	physical.partial = late
+	end := time.Now().Add(5 * time.Second)
+	lowerOwner := newSession(t.Context(), physical, end, 32<<20, nil, false, &queueBudget{maximum: 64 << 20}, nil)
+	defer lowerOwner.Close()
+	lower := lifecycleLane(t, lowerOwner, 1)
+	lowerWritten := make(chan error, 1)
+	go func() { _, err := lower.Write([]byte("original lower frame")); lowerWritten <- err }()
+	select {
+	case <-physical.writes:
+	case <-time.After(time.Second):
+		t.Fatal("original lower writer did not start")
+	}
+	authority := errors.New("original lower owner retired")
+	lowerOwner.retire(authority)
+	ctx, cancel := context.WithCancel(t.Context())
+	upper := &session{conn: &retiredConn{Conn: lower}, ctx: ctx, cancel: cancel, end: end, lanes: make(map[uint32]*lane), next: 1, limit: 32 << 20, writer: make(chan struct{}, 1), opening: make(chan struct{}, 1), queues: &queueBudget{maximum: 64 << 20}, readerDone: make(chan struct{})}
+	upper.readerOnce.Do(func() { close(upper.readerDone) })
+	defer upper.Close()
+	child := lifecycleLane(t, upper, 1)
+	upperWritten := make(chan error, 1)
+	go func() {
+		upperWritten <- upper.write(child, ardp.Frame{Kind: ardp.KindCredit, Lane: 1, Body: []byte{0, 0, 0, 1}}, false)
+	}()
+	waitFramingState(t, child, func() bool { return upper.stopped })
+	close(physical.writeGate)
+	if err := lifecycleResult(t, lowerWritten); !errors.Is(err, late) {
+		t.Fatal("lower physical failure lost", err)
+	}
+	if err := lifecycleResult(t, upperWritten); !errors.Is(err, net.ErrClosed) {
+		t.Fatal("upper control did not retain the lower refusal", err)
+	}
+	if err := upper.Close(); err == nil {
+		t.Fatal("unemitted upper refusal became success")
+	}
+	if err := upper.joinedPhysicalFailure(); err != nil {
+		t.Fatal("lower deadline refusal fabricated upper physical output failure", err)
+	}
+	if err := lowerOwner.Close(); !errors.Is(err, authority) || !errors.Is(err, late) || errors.Is(err, net.ErrClosed) {
+		t.Fatal("lower original joined provenance changed", err)
+	}
+}
+
 func TestFramingRetirementWitnessVetoesActualProgressAndFailures(t *testing.T) {
 	before := framingWitness{attempts: 4, payload: 3}
 	clean := framingWitness{attempts: 4, payload: 3, clean: true}

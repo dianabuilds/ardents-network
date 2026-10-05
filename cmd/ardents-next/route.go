@@ -39,6 +39,7 @@ func independentRouteRoots(roots ...string) bool {
 
 type routeHandle struct {
 	close     func() error
+	replenish func(context.Context) error
 	done      <-chan struct{}
 	register  func(context.Context, uint64) (routeRegistration, error)
 	recipient func(uint8) (routeRecipient, error)

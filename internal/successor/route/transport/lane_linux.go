@@ -41,6 +41,10 @@ type lane struct {
 	localClosed, peerRefused           bool
 	physicalAttempts, payloadAttempts  uint64
 	physicalWriteFailed                bool
+	refillWitness                      uint64
+	refillRemaining                    uint64
+	refillHeld                         uint64
+	refillRequiresHold                 bool
 	ctx                                context.Context
 	caller                             context.Context
 	cancel                             context.CancelCauseFunc
@@ -237,7 +241,10 @@ func (l *lane) interruptOutputLocked() error {
 	if l.cleanupEnd.IsZero() {
 		l.cleanupEnd = minDeadline(l.end, time.Now().Add(time.Second))
 	}
-	if l.s.active != l || l.s.activeKind == ardp.KindClose {
+	if l.s.stopped || l.s.active != l || l.s.activeKind == ardp.KindClose {
+		// Parent retirement already interrupts its physical connection. Do not
+		// reset a closed socket's deadline while joining the original writer;
+		// its actual late write/close failure remains with the framing owner.
 		return nil
 	}
 	end := time.Now()
@@ -270,13 +277,24 @@ func (l *lane) SetReadDeadline(t time.Time) error {
 func (l *lane) SetWriteDeadline(t time.Time) error {
 	l.s.mu.Lock()
 	defer l.s.mu.Unlock()
+	if l.s.stopped {
+		return net.ErrClosed
+	}
 	if t.IsZero() || t.After(l.end) {
 		t = l.end
 	}
 	l.writeEnd = t
 	l.signalLocked()
 	if l.s.active == l {
-		return l.s.conn.SetWriteDeadline(minDeadline(t, l.s.activeEnd))
+		err := l.s.conn.SetWriteDeadline(minDeadline(t, l.s.activeEnd))
+		if err != nil {
+			// This exact lower owner performed the physical deadline operation.
+			// Its joined result retains the failure even if an upper borrower
+			// refuses before producing any lower payload.
+			l.physicalWriteFailed = true
+			l.s.writeErr = errors.Join(l.s.writeErr, err)
+		}
+		return err
 	}
 	return nil
 }

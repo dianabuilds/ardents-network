@@ -129,7 +129,7 @@ func successorImportAllowed(source, dependency string) bool {
 	if zoneDependency {
 		if dependency == modulePath+"/internal/successor/route/carrier" {
 			switch source {
-			case "cmd/ardents-next/route_fixture_linux_test.go", "cmd/ardents-next/route_prefix_linux_test.go", "cmd/ardents-next/route_prefix_caller_linux_test.go", "cmd/ardents-next/route_process_linux_test.go", "cmd/ardents-next/route_refusal_linux_test.go", "cmd/ardents-next/route_registration_linux_test.go", "cmd/ardents-next/route_join_fixture_linux_test.go", "cmd/ardents-next/route_join_linux_test.go", "cmd/ardents-next/route_join_process_linux_test.go", "cmd/ardents-next/route_close_failure_linux_test.go", "cmd/ardents-next/route_join_lifecycle_linux_test.go":
+			case "cmd/ardents-next/route_refill_linux_test.go", "cmd/ardents-next/route_fixture_linux_test.go", "cmd/ardents-next/route_prefix_linux_test.go", "cmd/ardents-next/route_prefix_caller_linux_test.go", "cmd/ardents-next/route_process_linux_test.go", "cmd/ardents-next/route_refusal_linux_test.go", "cmd/ardents-next/route_registration_linux_test.go", "cmd/ardents-next/route_join_fixture_linux_test.go", "cmd/ardents-next/route_join_linux_test.go", "cmd/ardents-next/route_join_process_linux_test.go", "cmd/ardents-next/route_close_failure_linux_test.go", "cmd/ardents-next/route_join_lifecycle_linux_test.go":
 				return true
 			}
 		}

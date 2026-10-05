@@ -191,6 +191,12 @@ func runAdmissionHolder(ctx context.Context, args []string, input io.ReadCloser,
 					prefix, err = startRoutePrefix(ctx, *config.Route, authority, o)
 				}
 			}
+		case "prefix-replenish":
+			if prefix.replenish == nil {
+				err = errors.New("route replenishment absent")
+				break
+			}
+			err = prefix.replenish(ctx)
 		case "prefix-close":
 			if prefix.close == nil {
 				err = errors.New("route prefix absent")

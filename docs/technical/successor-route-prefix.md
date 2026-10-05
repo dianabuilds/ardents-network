@@ -116,11 +116,49 @@ framing parents, keeping bounded terminal authority alive during that join.
 
 ## Real command composition
 
+### Requested forwarding-parent replenishment
+
+`Prefix.Replenish` carries a fresh class-2 presentation on lane zero of the
+retained Entry and Interior forwarding parents. It keeps their original HELLO,
+exporter, peer, purpose, child credit and absolute deadline. Dedicated JOIN and
+terminal channels refuse replenishment. There is one active parent control
+exchange and one reader; child control continues during durable reservation.
+No timer, automatic replay, new channel or selection accompanies this request.
+
+The complete ADMIT costs 371 old bytes and must leave positive old remaining
+capacity. Successful receiving verification/reservation/spend replaces remaining
+capacity with the Admission class's 32 MiB; the matching ACCEPT costs another
+21 bytes from that replacement. A cumulative usage witness preserves intervening
+child debits instead of resetting history or adding another allowance. A refused,
+invalid or missing acknowledgement cannot authorize replacement or token replay.
+
+Command composition reserves the positive additional shared ingress/egress
+envelope through the same Hosting owner and exact original reservation before
+spend. Holder reservation occurs before emission; if child traffic changes the
+required delta while storage runs, the writer returns without output and asks
+only for the missing capacity. This does not hold the physical writer during
+storage. Original operation cancellation is checked again after currentness
+observation, before reservation/debit/output, even if derived cancellation is
+delayed. Started physical failures keep their existing framing provenance.
+
+Every returned Grant and capacity addition remains owned until the parent and
+physical children join. Additions return in reverse order before the original
+reservation, preserving its termination dependency. Lost acknowledgement after
+emission retires uncertainty without refund. These operator envelopes do not
+certify Carrier overhead or installed billing.
+
+Once the parent retires its physical connection, child close joins the original
+writer without changing the closed socket's deadline. The joined result still
+retains the original authority cause and any actual late write/close failure.
+An unemitted upper frame's lower deadline refusal remains a failed operation;
+it cannot mint an upper physical failure. Actual lower deadline I/O failures
+are retained by the lower framing owner until joined return.
+
 `ardents-next admission holder --config PATH` accepts optional `route` with
 `entry_root`, `interior_root`, `hosting_root`, `domain`, whole-second absolute
 `deadline`, `work`, `termination` and optional `exclusions`. With genuine
-`network` configured, console operations `prefix-open` and `prefix-close`
-open the retained protected prefix and retrieve its joined result. Holder,
+`network` configured, console operations `prefix-open`, `prefix-replenish` and
+`prefix-close` open, replenish and join the retained protected prefix. Holder,
 selection, Hosting and Network roots must be distinct and unnested. Local
 Hosting capacity transfers exactly once, including failed setup; uncertain
 release is retained rather than automatically retried.
@@ -161,6 +199,17 @@ distinct scenarios. Transport-local tests isolate bounded scheduling, partial
 physical failure, independent pool waiter cancellation, late dial/write results
 and release-after-join; they supply no successful neighboring authority.
 Exact candidate receipts and failures belong to the selected execution issue.
+
+`TestRouteReceivingRefillFailureAndReopenBothCarriers` exercises a genuine
+receiving forwarding parent with signed Network, durably presented Stock and
+independent spend/Hosting roots. Actual competing capacity and authority loss
+after reservation refuse before spend; loss of acknowledgement or authority
+after spend cannot refund the token. The blocked post-spend worker keeps both
+reservations until joined retirement. Reopening the same receiving and Hosting
+roots distinguishes unspent refusal from burned rights and checks complete
+return without lowering measured-use floors. This receiving fault harness is
+separate from the compiled prefix/refill/subsequent-child consumer scenario;
+its injected ACK loss supplies no successful neighboring authority.
 
 The prefix boundary itself establishes no Service publication, Descriptor ACK,
 Introduction delivery, Instance authentication, Local Grant or Connection recovery.

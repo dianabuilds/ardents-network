@@ -98,14 +98,35 @@ func newNetworkAdmissionFixture(t *testing.T, prepare ...func(*networkAdmissionF
 	for _, option := range prepare {
 		option(f)
 	}
+	var lastClock atomic.Value
+	var largestObservationGap atomic.Int64
+	clock := func() time.Time {
+		now := time.Now()
+		lastClock.Store(now)
+		return now
+	}
+	t.Cleanup(func() {
+		if t.Failed() {
+			t.Log("maximum fixture wall-to-independent observation elapsed gap", time.Duration(largestObservationGap.Load()))
+		}
+	})
 	config := state.Config{Root: filepath.Join(dir, "network"), NetworkID: networkID,
 		Authorities: map[[32]byte]ed25519.PublicKey{sha256.Sum256(authorityKey.Public().(ed25519.PublicKey)): authorityKey.Public().(ed25519.PublicKey)}, Threshold: 1,
-		ClosedProfileAuthority: authorityKey.Public().(ed25519.PublicKey), AcceptedProfile: epoch.ProfileClosedRoute, Clock: time.Now,
+		ClosedProfileAuthority: authorityKey.Public().(ed25519.PublicKey), AcceptedProfile: epoch.ProfileClosedRoute, Clock: clock,
 		ObserveClock: func() time.Time {
 			if f.clockUnavailable.Load() {
 				return time.Time{}
 			}
-			return time.Now()
+			now := time.Now()
+			if prior, ok := lastClock.Load().(time.Time); ok {
+				gap := now.Sub(prior).Nanoseconds()
+				for before := largestObservationGap.Load(); gap > before; before = largestObservationGap.Load() {
+					if largestObservationGap.CompareAndSwap(before, gap) {
+						break
+					}
+				}
+			}
+			return now
 		}}
 	owner, err := state.Open(config)
 	if err != nil {

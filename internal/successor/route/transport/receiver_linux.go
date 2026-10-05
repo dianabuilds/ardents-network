@@ -28,6 +28,7 @@ type ReceiverConfig struct {
 	Authority        Authority
 	Certificate      tls.Certificate
 	Admit            Admit
+	Refill           Refill
 	IntroductionRoot string
 	Receiving        *receiving.Owner
 }
@@ -332,6 +333,7 @@ func (r *Receiver) serveRole(ctx context.Context, conn net.Conn, outer *lane, op
 	capacity := &admissionRetirement{registry: r.registrations, joinQueues: r.queues}
 	grant, h, err := receiveChannel(ctx, conn, r.config.Authority, r.config.Admit, opened, capacity)
 	var s *session
+	var additions []receiving.Grant
 	defer func() {
 		// Interrupt nested physical work, join every borrower, then return the
 		// finite reservation. A retained token spend is never refunded here.
@@ -340,7 +342,11 @@ func (r *Receiver) serveRole(ctx context.Context, conn net.Conn, outer *lane, op
 		} else {
 			result = errors.Join(result, conn.Close())
 		}
-		releaseErr := errors.Join(capacity.finish(), grant.Release())
+		var additionalErr error
+		for i := len(additions) - 1; i >= 0; i-- {
+			additionalErr = errors.Join(additionalErr, additions[i].Release())
+		}
+		releaseErr := errors.Join(additionalErr, capacity.finish(), grant.Release())
 		r.record(releaseErr)
 		result = errors.Join(result, releaseErr)
 	}()
@@ -371,9 +377,43 @@ func (r *Receiver) serveRole(ctx context.Context, conn net.Conn, outer *lane, op
 	if h.Purpose == ardp.PurposeDataJoin {
 		return r.joins.serve(ctx, conn, h, grant.Allowance().Bytes(), check, capacity.join)
 	}
-	s = newSession(ctx, conn, h.Deadline, grant.Allowance().Bytes()-admissionWireBytes, check, false, r.queues, func(ctx context.Context, l *lane, body []byte) error {
+	s = prepareSession(ctx, conn, h.Deadline, grant.Allowance().Bytes()-admissionWireBytes, check, false, r.queues, func(ctx context.Context, l *lane, body []byte) error {
 		return r.forward(ctx, l, h, body)
 	})
+	if r.config.Refill != nil && h.Purpose == ardp.PurposeForwarding {
+		binding, err := channelBinding(conn, h)
+		if err != nil {
+			return err
+		}
+		binding.capacity = capacity
+		s.parentControl = func(ctx context.Context, f ardp.Frame, witness, remaining uint64) error {
+			if err := errors.Join(ctx.Err(), check()); err != nil {
+				return err
+			}
+			next, err := r.config.Refill(ctx, binding, grant, remaining, f.Body[1:])
+			// Even a post-spend failure must retain a returned Grant until join.
+			additions = append(additions, next)
+			if err = errors.Join(err, ctx.Err(), check()); err != nil {
+				return err
+			}
+			if next.Allowance().Deadline() != h.Deadline {
+				return errors.New("route refill horizon differs")
+			}
+			if err := s.replaceRemaining(witness, next.Allowance().Bytes()); err != nil {
+				return err
+			}
+			control := &lane{s: s, end: h.Deadline, writeEnd: h.Deadline, changed: make(chan struct{}), ctx: ctx}
+			accepted, err := ardp.AcceptFrame(0, window)
+			if err != nil {
+				return err
+			}
+			if err := s.write(control, accepted, false); err != nil {
+				return err
+			}
+			return errors.Join(ctx.Err(), check())
+		}
+	}
+	s.startReading()
 	<-s.readerDone
 	return nil
 }

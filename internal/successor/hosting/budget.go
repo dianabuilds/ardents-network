@@ -29,11 +29,16 @@ type budgetState struct {
 type Reservation struct{ *reservationState }
 
 type reservationState struct {
-	mu       sync.Mutex
-	owner    *Budget
-	bytes    uint64
-	released bool
-	err      error
+	mu          sync.Mutex
+	owner       *Budget
+	bytes       uint64
+	released    bool
+	err         error
+	request     ReservationRequest
+	parent      *reservationState
+	borrowers   uint64
+	sealed      bool
+	additionErr error
 }
 
 // Initialize explicitly creates a new local period from operator inputs.
@@ -126,7 +131,7 @@ func (owner *Budget) Reserve(ctx context.Context, request ReservationRequest) (*
 	if err != nil {
 		return nil, err
 	}
-	held := &Reservation{reservationState: &reservationState{owner: owner, bytes: reserved}}
+	held := &Reservation{reservationState: &reservationState{owner: owner, bytes: reserved, request: request}}
 	transferredAt := owner.now()
 	if ctx.Err() != nil || transferredAt.Before(state.Observed) || !transferredAt.Before(request.WorkUntil) {
 		cleanup, cancel := context.WithTimeout(context.Background(), time.Second)
@@ -143,10 +148,21 @@ func (reservation *Reservation) Release(ctx context.Context) error {
 	if reservation == nil || reservation.reservationState == nil {
 		return nil
 	}
+	if reservation.parent != nil {
+		reservation.parent.mu.Lock()
+		defer reservation.parent.mu.Unlock()
+	}
 	reservation.mu.Lock()
 	defer reservation.mu.Unlock()
 	if reservation.released {
 		return reservation.err
+	}
+	reservation.sealed = true
+	if reservation.borrowers != 0 {
+		return errors.Join(ErrReservationInUse, reservation.additionErr)
+	}
+	if reservation.additionErr != nil {
+		return reservation.additionErr
 	}
 	mutating := false
 	_, _, reservation.err = reservation.owner.transact(ctx, 0, func(state *hostingState, _ time.Time) error {
@@ -161,6 +177,13 @@ func (reservation *Reservation) Release(ctx context.Context) error {
 	// leaves this handle retryable. Once the callback starts, a later storage
 	// failure may follow a committed refund, so the handle remains unresolved.
 	reservation.released = mutating
+	if reservation.parent != nil && mutating && reservation.err == nil {
+		reservation.parent.borrowers--
+	}
+	if reservation.parent != nil && mutating && reservation.err != nil {
+		reservation.parent.sealed = true
+		reservation.parent.additionErr = errors.Join(reservation.parent.additionErr, ErrUncertain, reservation.err)
+	}
 	return reservation.err
 }
 

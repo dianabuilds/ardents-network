@@ -83,7 +83,10 @@ func (o *admissionRetirement) finish() error {
 	o.mu.Lock()
 	o.joined = true
 	var pending []*reservationReturn
-	for _, r := range o.returns {
+	// Additional reservations borrow the original termination coverage.
+	// Return them first, after physical join, before their original owner.
+	for i := len(o.returns) - 1; i >= 0; i-- {
+		r := o.returns[i]
 		if r.requested {
 			pending = append(pending, r)
 		}

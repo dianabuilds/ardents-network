@@ -111,6 +111,42 @@ cleanup; an uncertain refund remains unavailable. Expiry does not automatically
 release admitted work. Its consumer must stop and join children before Release.
 Used traffic remains spent after release, cancel, reopen or exhausted periods.
 
+### Additional work under original termination coverage
+
+Additional physical reservation operations are Linux-only, matching the current
+Hosting measurement/storage platform and actual Route consumers. Shared envelope
+arithmetic remains portable and has independent directional tests.
+
+`ReserveAdditionalJoint` reserves positive additional
+work through the same Budget and exact original Reservation. It retains its
+WorkUntil/HoldUntil and termination dependency; it adds no new period, deadline
+or cleanup allowance. Foreign, released, sealed or chained handles refuse.
+Consumers join physical work and return additions before the original. Early
+original Release seals further additions and returns ErrReservationInUse without
+returning capacity. Copies share the same lifecycle. Uncertain addition/refund
+retains the original dependency and terminal failure rather than retrying a
+possibly committed return.
+
+`JointTraffic` declares maximum Tx, Rx and their shared Total: both component
+maxima fit Total and together cover it. Provider `tx` costs Tx, `rx` costs Rx,
+and `tx+rx` costs Total. This accounts a shared bidirectional workload without
+charging both directional maxima as independent traffic. `CoversJoint` checks
+that its provider-counted capacity fits the original Work reservation, excluding
+Termination; it neither certifies directional workload behavior nor attributes
+interface measurements or Carrier overhead. Role envelope construction remains
+with the caller, not Hosting.
+
+For a deterministic tx+rx example, suppose total capacity is 100 MiB, measured
+use is 10 MiB, watermark is 1 MiB and original Work/Termination reserve is
+32/1 MiB. With unchanged counters, remaining provider capacity is 57 MiB.
+If a caller's old shared work allowance leaves 1 MiB after its control debit,
+replacing it with 32 MiB requires a 31 MiB addition. Reserved capacity becomes
+64 MiB, provider remaining becomes 26 MiB and measured use stays 10 MiB.
+Termination remains reserved once. The same request refuses if its measured
+remaining capacity cannot cover 31 MiB while retaining the 1 MiB watermark.
+Returning the addition restores the original reservation only; measured use
+is never refunded. Wire debit and token spend remain outside Hosting.
+
 | Existing source | Final owner and disposition | Behavioral evidence |
 | --- | --- | --- |
 | internal/hosting policy/ledger | Hosting Policy, allowance and durable Budget; checked directions, overflow, floors and watermark | TestDirectionalCostAndOverflow; TestReserveUsesProviderDirections; TestIndependentOwnersCannotOversubscribe |
@@ -128,9 +164,13 @@ part of this domain.
 
 ## Integration regression tests
 
-Admission and Hosting are composed only in Linux integration tests under
-cmd/ardents-next. No additional product package or workload command is exposed.
-The real non-test Hosting consumers remain hosting initialize/observe/hold.
+Cross-domain regression composes Admission and Hosting in Linux tests under
+cmd/ardents-next. The genuine Route command also composes these owners; no
+additional regression package or workload command is exposed.
+The non-test consumers include hosting initialize/observe/hold and the genuine
+Linux Route holder/receiver. Route composition constructs role envelopes and
+keeps physical borrowers joined; Hosting owns provider accounting and the exact
+original reservation dependency. Neither owner acquires the other's policy.
 
 The test fixture accepts a genuine token, reserves work and termination capacity,
 transfers bounded local data, joins its socket reader and releases the reserve.
