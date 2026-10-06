@@ -17,8 +17,10 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/successor/admission/receiving"
 	"github.com/dianabuilds/ardents-network/internal/successor/network"
 	"github.com/dianabuilds/ardents-network/internal/successor/route/ardp"
+	"github.com/dianabuilds/ardents-network/internal/successor/route/bootstrap"
 	framing "github.com/dianabuilds/ardents-network/internal/successor/route/channel"
 	"github.com/dianabuilds/ardents-network/internal/successor/route/introduction"
+	issuertransport "github.com/dianabuilds/ardents-network/internal/successor/route/issuer"
 	"github.com/dianabuilds/ardents-network/internal/successor/route/join"
 	"github.com/dianabuilds/ardents-network/internal/successor/route/role"
 	"github.com/dianabuilds/ardents-network/internal/successor/route/transport"
@@ -29,10 +31,17 @@ import (
 // ReceiverConfig binds one actual new receiving forwarding duty. Admit must
 // call receiving.Owner.Accept with its genuine Hosting capacity callback.
 type ReceiverConfig struct {
-	Authority        role.Authority
-	Certificate      tls.Certificate
-	Admit            Admit
-	Refill           Refill
+	Authority   role.Authority
+	Certificate tls.Certificate
+	Admit       Admit
+	Refill      Refill
+	// ReserveBootstrap reserves actual Hosting work and termination before
+	// pending child TLS. Its return is retained through physical lane finish.
+	// It supplies resources only, never Admission or issuer authority.
+	ReserveBootstrap func(context.Context, time.Time) (func() error, error)
+	// Issue calls the genuine issuing owner with the exact canonical batch.
+	// The transport derives bootstrap from its immutable incoming claim.
+	Issue            func(context.Context, []byte, bool) ([]byte, error)
 	IntroductionRoot string
 	Receiving        *receiving.Owner
 }
@@ -53,10 +62,12 @@ type Receiver struct {
 	listenerOnce  sync.Once
 	listenerErr   error
 	queues        *framing.Budget
+	bootstrap     *bootstrap.Budget
 	pool          nodePool
 	err, closeErr error
 	registrations *introduction.Registry
 	joins         *join.Pairing
+	issuerWork    chan struct{}
 }
 
 func Listen(ctx context.Context, config ReceiverConfig) (*Receiver, error) {
@@ -71,12 +82,16 @@ func Listen(ctx context.Context, config ReceiverConfig) (*Receiver, error) {
 	forwarding := (m.RoleDomain == 1 || m.RoleDomain == 3 || m.RoleDomain == 4) && (m.Subrole == 1 || m.Subrole == 2)
 	introductionDuty := m.RoleDomain == 4 && m.Subrole == 3
 	joinDuty := m.RoleDomain == 2 && m.Subrole == 4
-	if !ok || len(key) != ed25519.PrivateKeySize || string(key.Public().(ed25519.PublicKey)) != string(m.PublicKey[:]) || (!forwarding && !introductionDuty && !joinDuty) {
+	issuerDuty := m.RoleDomain == 2 && m.Subrole == 6
+	if !ok || len(key) != ed25519.PrivateKeySize || string(key.Public().(ed25519.PublicKey)) != string(m.PublicKey[:]) || (!forwarding && !introductionDuty && !joinDuty && !issuerDuty) || (issuerDuty && config.Issue == nil) {
 		return nil, errors.New("route receiving duty or private key differs")
 	}
 	child, cancel := context.WithCancel(ctx)
-	r := &Receiver{config: config, ctx: child, cancel: cancel, connections: make(map[net.Conn]struct{}), done: make(chan struct{}), queues: framing.NewBudget(64 << 20)}
+	r := &Receiver{config: config, ctx: child, cancel: cancel, connections: make(map[net.Conn]struct{}), done: make(chan struct{}), queues: framing.NewBudget(64 << 20), bootstrap: bootstrap.NewBudget()}
 	r.joins = join.NewPairing(r.record)
+	if issuerDuty {
+		r.issuerWork = make(chan struct{}, 1)
+	}
 	if m.Subrole == 3 {
 		if config.IntroductionRoot == "" || config.Receiving == nil {
 			cancel()
@@ -152,6 +167,10 @@ func (r *Receiver) peer(key [32]byte) (network.Member, error) {
 		expectedSubrole = 2
 		allowedDomain = peer.RoleDomain == 1 || peer.RoleDomain == 3
 	}
+	if m.RoleDomain == 2 && m.Subrole == 6 {
+		expectedSubrole = 2
+		allowedDomain = peer.RoleDomain == 1
+	}
 	if err != nil || role.Conflicting(m, peer) || !allowedDomain || peer.Subrole != expectedSubrole {
 		return network.Member{}, errors.Join(errors.New("route adjacent Node peer unavailable"), err)
 	}
@@ -214,7 +233,7 @@ func (r *Receiver) run() {
 			if accepted.Kind == transport.ClosedSharedDirect {
 				m, err := r.config.Authority.Member()
 				if err == nil && m.Subrole == 1 {
-					_ = r.serveRole(r.ctx, conn, nil, nil)
+					_ = r.serveRole(r.ctx, conn, nil, nil, nil)
 				}
 			} else {
 				_ = r.serveOuter(r.ctx, accepted)
@@ -231,9 +250,10 @@ func (r *Receiver) record(err error) {
 	}
 }
 func (r *Receiver) interrupt() {
-	// Listener close must interrupt even a handshake waiting for bytes. Owned
-	// accepted sockets are separately interrupted; each worker joins below.
-	_ = r.closeListener()
+	// The generation is already canceled, so run cannot publish another accepted
+	// borrower. Interrupt accepted connections while the shared transport still
+	// exists: QUIC Transport.Close otherwise destroys them without sending their
+	// connection-close packet, leaving peers to discover retirement by timeout.
 	r.pool.interrupt()
 	r.mu.Lock()
 	for conn := range r.connections {
@@ -241,6 +261,9 @@ func (r *Receiver) interrupt() {
 		_ = conn.Close()
 	}
 	r.mu.Unlock()
+	// Listener close now interrupts unaccepted handshakes and releases its shared
+	// socket. Worker/resource join remains the responsibility of run and Close.
+	_ = r.closeListener()
 }
 
 // Done signals joined listener retirement. Close retains the terminal result.
@@ -274,7 +297,8 @@ func (r *Receiver) serveOuter(ctx context.Context, accepted transport.ClosedShar
 	if err != nil {
 		return err
 	}
-	if _, err := r.config.Authority.Hello(h, true); err != nil {
+	member, err := r.config.Authority.Hello(h, true)
+	if err != nil {
 		return err
 	}
 	peer, err := r.peer(accepted.NodeKey)
@@ -297,13 +321,63 @@ func (r *Receiver) serveOuter(ctx context.Context, accepted transport.ClosedShar
 		}
 		return nil
 	}
-	s := framing.New(ctx, conn, h.Deadline, 32<<20, check, true, r.queues, func(ctx context.Context, l *framing.Lane, body []byte) error {
-		if len(body) != 50 || body[49] != 0 {
+	adjacency := r.bootstrap.Adjacency()
+	defer adjacency.Seal()
+	// Preparation is synchronous; Open owns the later physical work. A
+	// handler's Finish and parent Close join that work before returning its
+	// reservation. The map transfers only that exact lane's resource lifetime.
+	type bootstrapWork struct {
+		claim    *bootstrap.Claim
+		terminal *bootstrap.Termination
+		release  func() error
+	}
+	var bootstrapChildren sync.Map
+	s := framing.Prepare(ctx, conn, h.Deadline, 32<<20, check, true, r.queues, framing.Handlers{PrepareOpen: func(l *framing.Lane, body []byte) error {
+		nodeOpen, err := ardp.DecodeNodeOpen(body)
+		if err != nil {
 			return errors.New("route Node OPEN restriction unavailable")
 		}
-		opened, err := decodeOpen(body[:49])
-		if err != nil {
-			return err
+		var claim *bootstrap.Claim
+		var bootstrapState *bootstrapWork
+		if nodeOpen.Restriction == ardp.IssuerBootstrapChild {
+			terminal, terminalErr := r.bootstrap.HoldTermination(l.Deadline())
+			work := &bootstrapWork{terminal: terminal}
+			bootstrapState = work
+			if terminal != nil {
+				if err := l.RetainUntilFinish(func() {
+					bootstrapChildren.Delete(l)
+					if work.release != nil {
+						r.record(work.release())
+					}
+					work.terminal.ReleaseAfterJoin()
+					claim.ReleaseAfterJoin()
+				}); err != nil {
+					terminal.ReleaseAfterJoin()
+					return err
+				}
+			}
+			if err := l.ConstrainTraffic(bootstrap.LaneBytes, func(cost uint64, closing bool) error {
+				if closing {
+					if cost != ardp.HeaderSize+1 || terminal == nil {
+						return errors.Join(errors.New("bootstrap terminal output unavailable"), terminalErr)
+					}
+					return terminal.Emit()
+				}
+				return claim.ChargeOutput(cost)
+			}); err != nil {
+				return err
+			}
+			if terminalErr != nil {
+				return terminalErr
+			}
+			if err := l.ConstrainQueues(r.bootstrap.Queues()); err != nil {
+				return err
+			}
+			bootstrapChildren.Store(l, work)
+		}
+		opened := nodeOpen.Recipient
+		if !time.Now().Before(opened.Deadline) {
+			return errors.New("route OPEN facts invalid")
 		}
 		if opened.RecipientNodeID != h.RecipientNodeID || opened.RecipientDutyGeneration != h.RecipientDutyGeneration || opened.Deadline.After(h.Deadline) {
 			return errors.New("route Node child binding differs")
@@ -311,19 +385,69 @@ func (r *Receiver) serveOuter(ctx context.Context, accepted transport.ClosedShar
 		if err := l.Bound(opened.Deadline); err != nil {
 			return err
 		}
-		m, err := r.config.Authority.Member()
-		if err != nil || !((m.Subrole == 2 && opened.Purpose == 7) || (m.RoleDomain == 4 && m.Subrole == 3 && opened.Purpose == 4) || (m.RoleDomain == 2 && m.Subrole == 4 && opened.Purpose == 6)) {
-			return errors.Join(errors.New("route Interior child unavailable"), err)
+		// The frame check reobserves this same immutable outer binding.
+		// Capacity preparation adds no storage observation to the sole reader.
+		m := member
+		if !((m.Subrole == 2 && opened.Purpose == 7) || (m.RoleDomain == 4 && m.Subrole == 3 && opened.Purpose == 4) || (m.RoleDomain == 2 && m.Subrole == 4 && opened.Purpose == 6) || (m.RoleDomain == 2 && m.Subrole == 6 && opened.Purpose == 1)) {
+			return errors.New("route Interior child unavailable")
 		}
-		secured, err := roletls.AcceptRole(ctx, l, r.config.Certificate, minDeadline(opened.Deadline, time.Now().Add(10*time.Second)))
+		if nodeOpen.Restriction == ardp.IssuerBootstrapChild {
+			if !(m.RoleDomain == 1 && m.Subrole == 2 && opened.Purpose == uint8(ardp.PurposeForwarding)) && !(m.RoleDomain == 2 && m.Subrole == 6 && opened.Purpose == uint8(ardp.PurposeIssuer)) {
+				return errors.New("bootstrap child duty unavailable")
+			}
+			claim, err = adjacency.Reserve(opened.Deadline)
+			if err != nil {
+				return err
+			}
+			bootstrapState.claim = claim
+			if restriction, err := claim.Restriction(); err != nil || restriction != nodeOpen.Restriction {
+				return errors.Join(errors.New("bootstrap child reservation unavailable"), err)
+			}
+			opened.Deadline = claim.Deadline()
+			if err := l.Bound(opened.Deadline); err != nil {
+				return err
+			}
+		}
+		return nil
+	}, Open: func(ctx context.Context, l *framing.Lane, body []byte) error {
+		nodeOpen, err := ardp.DecodeNodeOpen(body)
+		if err != nil {
+			return err
+		}
+		opened := nodeOpen.Recipient
+		_, err = r.config.Authority.Hello(h, true)
+		if err = errors.Join(err, ctx.Err()); err != nil {
+			return err
+		}
+		var bootstrapClaim *bootstrap.Claim
+		if nodeOpen.Restriction == ardp.IssuerBootstrapChild {
+			value, ok := bootstrapChildren.Load(l)
+			if !ok || r.config.ReserveBootstrap == nil {
+				return errors.New("bootstrap physical reservation unavailable")
+			}
+			work := value.(*bootstrapWork)
+			bootstrapClaim = work.claim
+			// No storage I/O runs on the sole framing reader. Even a late or
+			// refused reservation return remains owned until this handler joins.
+			work.release, err = r.config.ReserveBootstrap(ctx, l.Deadline())
+			if err != nil || work.release == nil {
+				return errors.Join(errors.New("bootstrap physical capacity unavailable"), err)
+			}
+			_, err = r.config.Authority.Hello(h, true)
+			if err = errors.Join(err, ctx.Err()); err != nil {
+				return err
+			}
+		}
+		secured, err := roletls.AcceptRole(ctx, l, r.config.Certificate, l.Deadline())
 		if err != nil {
 			return err
 		}
 		if err := l.BeginRole(); err != nil {
-			return err
+			return errors.Join(err, secured.Close())
 		}
-		return r.serveRole(ctx, transport.Retain(secured), l, &opened)
-	})
+		return r.serveRole(ctx, transport.Retain(secured), l, &opened, bootstrapClaim)
+	}})
+	s.Start()
 	<-s.Done()
 	return r.finishSession(s)
 }
@@ -336,7 +460,7 @@ func (r *Receiver) finishSession(s *framing.Session) error {
 	return err
 }
 
-func (r *Receiver) serveRole(ctx context.Context, conn net.Conn, outer *framing.Lane, opened *ardp.Open) (result error) {
+func (r *Receiver) serveRole(ctx context.Context, conn net.Conn, outer *framing.Lane, opened *ardp.Open, bootstrapClaim *bootstrap.Claim) (result error) {
 	releaseControl, err := r.queues.HoldControl()
 	if err != nil {
 		return err
@@ -346,9 +470,12 @@ func (r *Receiver) serveRole(ctx context.Context, conn net.Conn, outer *framing.
 		return err
 	}
 	capacity := &admissionRetirement{registry: r.registrations, joinQueues: r.queues}
-	grant, h, err := receiveChannel(ctx, conn, r.config.Authority, r.config.Admit, opened, capacity)
+	start, first, err := readChannelStart(ctx, conn, r.config.Authority, opened, capacity)
+	h := start.Hello
+	var grant receiving.Grant
 	var s *framing.Session
 	var additions []receiving.Grant
+	var releaseIssuer func()
 	defer func() {
 		// Interrupt nested physical work, join every borrower, then return the
 		// finite reservation. A retained token spend is never refunded here.
@@ -364,7 +491,32 @@ func (r *Receiver) serveRole(ctx context.Context, conn net.Conn, outer *framing.
 		releaseErr := errors.Join(additionalErr, capacity.finish(), grant.Release())
 		r.record(releaseErr)
 		result = errors.Join(result, releaseErr)
+		if releaseIssuer != nil {
+			releaseIssuer()
+		}
 	}()
+	if err != nil {
+		return err
+	}
+	if h.Purpose == ardp.PurposeIssuer {
+		releaseIssuer, err = r.holdIssuer(bootstrapClaim != nil)
+		if err != nil {
+			clear(first.Body)
+			return err
+		}
+	}
+	if first.Kind == ardp.KindBootstrap {
+		defer clear(first.Body)
+		if first.Body[0] != 2 {
+			return errors.New("public evidence bootstrap unavailable")
+		}
+		return r.serveBootstrap(ctx, conn, outer, h, bootstrapClaim)
+	}
+	if bootstrapClaim != nil {
+		clear(first.Body)
+		return errors.New("restricted child refuses private Admission")
+	}
+	grant, err = receiveAdmission(ctx, r.config.Authority, r.config.Admit, start, first)
 	if err != nil {
 		return err
 	}
@@ -386,6 +538,9 @@ func (r *Receiver) serveRole(ctx context.Context, conn net.Conn, outer *framing.
 	if err := check(); err != nil {
 		return err
 	}
+	if h.Purpose == ardp.PurposeIssuer {
+		return issuertransport.Serve(ctx, conn, h, grant.Allowance().Bytes()-role.AdmissionWireBytes, check, func(ctx context.Context, request []byte) ([]byte, error) { return r.config.Issue(ctx, request, false) })
+	}
 	if h.Purpose == ardp.PurposeIntroduction {
 		return r.registrations.ServeRegistration(ctx, conn, capacity.registration, introduction.RegistrationChannel{
 			Hello: h, Authority: r.config.Authority, Bytes: grant.Allowance().Bytes(),
@@ -396,7 +551,7 @@ func (r *Receiver) serveRole(ctx context.Context, conn net.Conn, outer *framing.
 		return r.joins.Serve(ctx, conn, h, grant.Allowance().Bytes(), check, capacity.join)
 	}
 	handlers := framing.Handlers{Open: func(ctx context.Context, l *framing.Lane, body []byte) error {
-		return r.forward(ctx, l, h, body)
+		return r.forward(ctx, l, h, body, ardp.OrdinaryChild)
 	}}
 	if r.config.Refill != nil && h.Purpose == ardp.PurposeForwarding {
 		hash, err := role.Binding(conn, h)
@@ -440,7 +595,7 @@ func decodeOpen(body []byte) (ardp.Open, error) {
 	return o, nil
 }
 
-func (r *Receiver) forward(ctx context.Context, source *framing.Lane, parent ardp.Hello, body []byte) (result error) {
+func (r *Receiver) forward(ctx context.Context, source *framing.Lane, parent ardp.Hello, body []byte, restriction ardp.ChildRestriction) (result error) {
 	local, err := r.config.Authority.Hello(parent, false)
 	if err != nil {
 		return err
@@ -452,7 +607,11 @@ func (r *Receiver) forward(ctx context.Context, source *framing.Lane, parent ard
 	forwarding := local.Subrole == 1 && opened.Purpose == 7
 	registration := local.RoleDomain == 4 && local.Subrole == 2 && opened.Purpose == 4
 	join := (local.RoleDomain == 1 || local.RoleDomain == 3) && local.Subrole == 2 && opened.Purpose == 6
-	if (!forwarding && !registration && !join) || opened.Deadline.After(parent.Deadline) {
+	issuance := local.RoleDomain == 1 && local.Subrole == 2 && opened.Purpose == uint8(ardp.PurposeIssuer)
+	if restriction == ardp.IssuerBootstrapChild && (local.RoleDomain != 1 || (!forwarding && !issuance)) {
+		return errors.New("restricted forwarding destination unavailable")
+	}
+	if (!forwarding && !registration && !join && !issuance) || opened.Deadline.After(parent.Deadline) {
 		return errors.New("route prefix next-hop unavailable")
 	}
 	if err := source.Bound(opened.Deadline); err != nil {
@@ -471,6 +630,12 @@ func (r *Receiver) forward(ctx context.Context, source *framing.Lane, parent ard
 	if join {
 		expectedSubrole, expectedDomain = 4, 2
 	}
+	if issuance {
+		expectedSubrole, expectedDomain = 6, 2
+		if next.NodeID != v.Profile().IssuerNodeID {
+			return errors.New("route exact current issuer unavailable")
+		}
+	}
 	if err != nil || next.Subrole != expectedSubrole || next.RoleDomain != expectedDomain || next.DutyGeneration != opened.RecipientDutyGeneration || role.Conflicting(local, next) {
 		return errors.Join(errors.New("route next Interior unavailable"), err)
 	}
@@ -488,7 +653,11 @@ func (r *Receiver) forward(ctx context.Context, source *framing.Lane, parent ard
 	}
 	defer func() { result = errors.Join(result, pooled.release()) }()
 	downstream := pooled.session
-	target, err := downstream.Open(ctx, ctx, ardp.EncodeOpen(opened, true))
+	forwarded, err := ardp.EncodeNodeOpen(ardp.NodeOpen{Recipient: opened, Restriction: restriction})
+	if err != nil {
+		return err
+	}
+	target, err := downstream.Open(ctx, ctx, forwarded)
 	if err != nil {
 		return err
 	}

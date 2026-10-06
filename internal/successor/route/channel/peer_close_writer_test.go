@@ -12,6 +12,32 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/successor/route/ardp"
 )
 
+func TestDirectionalEOFIsDischargedOnlyByCleanPeerCLOSE(t *testing.T) {
+	for _, status := range []byte{0, 1} {
+		t.Run(string(rune('0'+status)), func(t *testing.T) {
+			local, peer := net.Pipe()
+			s, l, err := newJoinedSession(t.Context(), local, time.Now().Add(3*time.Second), 1<<20, nil, NewBudget(4<<20))
+			if err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(func() { _ = peer.Close(); _ = s.Close() })
+			if err := ardp.WriteFrame(peer, ardp.Frame{Kind: ardp.KindClose, Lane: 1, Body: []byte{status}}); err != nil {
+				t.Fatal(err)
+			}
+			<-s.Done()
+			if err := l.CloseWrite(); (err == nil) != (status == 0) {
+				t.Fatal("peer terminal incorrectly discharged directional EOF", status, err)
+			}
+			if err := l.Close(); err != nil {
+				t.Fatal(err)
+			}
+			if err := l.CloseWrite(); err == nil {
+				t.Fatal("local close became clean peer completion")
+			}
+		})
+	}
+}
+
 // Hold only completion of real net.Pipe output. No successful authority or
 // admission is substituted; the exact timeout comes from interrupted I/O.
 type peerCloseWriterConn struct {

@@ -574,13 +574,22 @@ func TestJoinPairWaitsForBothActualResultsBeforeReadingData(t *testing.T) {
 // claiming any authority, Admission or genuine Carrier evidence.
 type joinLateInput struct {
 	net.Conn
-	input  *bytes.Reader
-	late   chan struct{}
-	once   sync.Once
-	writes int
+	input    *bytes.Reader
+	late     chan struct{}
+	started  chan struct{}
+	waitRead <-chan struct{}
+	readOnce sync.Once
+	once     sync.Once
+	writes   int
 }
 
 func (c *joinLateInput) Read(p []byte) (int, error) {
+	if c.waitRead != nil {
+		<-c.waitRead
+	}
+	if c.started != nil {
+		c.readOnce.Do(func() { close(c.started) })
+	}
 	if c.late != nil {
 		<-c.late
 	}
@@ -604,6 +613,7 @@ func TestJoinCleanTerminalCannotEraseLateOppositeRefusal(t *testing.T) {
 		synctest.Test(t, func(t *testing.T) {
 			owner := &Pairing{}
 			p := &joinPair{owner: owner, stopped: make(chan struct{})}
+			started := make(chan struct{})
 			for i, frame := range []ardp.Frame{{Kind: ardp.KindClose, Lane: 1, Body: []byte{0}}, late} {
 				raw, err := ardp.EncodeFrame(frame)
 				if err != nil {
@@ -612,6 +622,11 @@ func TestJoinCleanTerminalCannotEraseLateOppositeRefusal(t *testing.T) {
 				c := &joinLateInput{input: bytes.NewReader(raw)}
 				if i == 1 {
 					c.late = make(chan struct{})
+					c.started = started
+				} else {
+					// The opposite physical read, rather than goroutine launch,
+					// must precede the first terminal in this late-result control.
+					c.waitRead = started
 				}
 				p.sides[i] = &joinSide{ctx: context.Background(), conn: c, hello: ardp.Hello{Deadline: time.Now().Add(time.Minute)}, pair: p, limit: 1 << 20, credit: framing.Window}
 			}

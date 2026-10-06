@@ -301,23 +301,31 @@ func successorImportAllowed(source, dependency string) bool {
 		"internal/successor/hosting":                 {},
 		"internal/successor/route":                   {},
 		"internal/successor/route/ardp":              {},
+		"internal/successor/route/issuer":            {"route/ardp", "admission"},
 		"internal/successor/route/transport":         {},
 		"internal/successor/route/channel":           {"route/ardp", "route/transport"},
+		"internal/successor/route/bootstrap":         {"route/ardp", "route/channel"},
 		"internal/successor/route/transport/tls":     {"route/transport"},
 		"internal/successor/route/transport/quic":    {"route/transport"},
 		"internal/successor/route/introduction":      {"admission/spending", "route/ardp", "route/role", "route/prefix", "network", "admission"},
 		"internal/successor/route/selection":         {"route", "network"},
 		"internal/successor/route/role":              {"route", "route/ardp", "route/channel", "route/transport", "network", "admission"},
 		"internal/successor/route/join":              {"route/prefix", "route", "route/selection", "route/ardp", "route/channel", "route/role", "route/transport", "network", "admission"},
-		"internal/successor/route/prefix":            {"route", "route/selection", "route/ardp", "route/channel", "route/role", "route/transport", "route/transport/tls", "route/transport/quic", "network", "admission"},
-		"internal/successor/route/receiver":          {"route/join", "route", "route/role", "route/transport", "route/transport/tls", "route/transport/quic", "route/channel", "route/ardp", "route/introduction", "network", "admission", "admission/receiving"},
+		"internal/successor/route/prefix":            {"route/issuer", "route", "route/selection", "route/ardp", "route/bootstrap", "route/channel", "route/role", "route/transport", "route/transport/tls", "route/transport/quic", "network", "admission"},
+		"internal/successor/route/receiver":          {"route/issuer", "route/join", "route", "route/role", "route/transport", "route/transport/tls", "route/transport/quic", "route/channel", "route/bootstrap", "route/ardp", "route/introduction", "network", "admission", "admission/receiving"},
 		"cmd/ardents-next":                           {"route/introduction", "route/prefix", "network", "network/state", "admission/stock", "admission/receiving", "admission/allocation", "admission", "admission/quota", "admission/issuerprofile", "admission/issuance", "admission/issuer", "nodeidentity", "hosting", "route", "route/role", "route/selection", "route/join", "route/receiver", "route/channel", "route/ardp"},
 	}
 	if zoneDependency {
+		if source == "cmd/ardents-next/route_bootstrap_linux_test.go" && (dependency == modulePath+"/internal/successor/route/issuer" || dependency == modulePath+"/internal/successor/route/bootstrap") {
+			return true
+		}
 		if source == "cmd/ardents-next/route_fixture_linux_test.go" && (dependency == modulePath+"/internal/successor/route/transport/tls" || dependency == modulePath+"/internal/successor/route/transport/quic") {
 			return true
 		}
 		if dependency == modulePath+"/internal/successor/route/transport" {
+			if source == "cmd/ardents-next/route_bootstrap_linux_test.go" {
+				return true
+			}
 			switch source {
 			case "cmd/ardents-next/route_refill_linux_test.go", "cmd/ardents-next/route_fixture_linux_test.go", "cmd/ardents-next/route_prefix_linux_test.go", "cmd/ardents-next/route_prefix_caller_linux_test.go", "cmd/ardents-next/route_process_linux_test.go", "cmd/ardents-next/route_refusal_linux_test.go", "cmd/ardents-next/route_registration_linux_test.go", "cmd/ardents-next/route_join_fixture_linux_test.go", "cmd/ardents-next/route_join_linux_test.go", "cmd/ardents-next/route_join_process_linux_test.go", "cmd/ardents-next/route_close_failure_linux_test.go", "cmd/ardents-next/route_join_lifecycle_linux_test.go":
 				return true
@@ -327,6 +335,9 @@ func successorImportAllowed(source, dependency string) bool {
 			return true
 		}
 		if owner == "cmd/ardents-next" && strings.HasSuffix(source, "_test.go") && (dependency == modulePath+"/internal/successor/admission/token" || dependency == modulePath+"/internal/successor/admission/spending") {
+			return true
+		}
+		if source == "cmd/ardents-next/route_issuer_linux.go" && (dependency == modulePath+"/internal/successor/admission/token" || dependency == modulePath+"/internal/successor/route/bootstrap") {
 			return true
 		}
 		if (source == "internal/successor/admission/stock/issuance_fixture_test.go" || source == "internal/successor/admission/stock/lifecycle_test.go" || source == "internal/successor/admission/stock/receiving_cycle_test.go") && (dependency == modulePath+"/internal/successor/admission/issuer" || dependency == modulePath+"/internal/successor/admission/issuance" || dependency == modulePath+"/internal/successor/admission/quota") {
@@ -406,6 +417,13 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		{"Prefix uses shared contract", "internal/successor/route/prefix/prefix.go", modulePath + "/internal/successor/route/transport", true},
 		{"Prefix uses portable framing", "internal/successor/route/prefix/prefix.go", modulePath + "/internal/successor/route/channel", true},
 		{"channel uses grammar", "internal/successor/route/channel/session.go", modulePath + "/internal/successor/route/ardp", true},
+		{"bootstrap consumes framing capacity", "internal/successor/route/bootstrap/budget.go", modulePath + "/internal/successor/route/channel", true},
+		{"bootstrap describes canonical restriction", "internal/successor/route/bootstrap/budget.go", modulePath + "/internal/successor/route/ardp", true},
+		{"receiver reserves bootstrap capacity", "internal/successor/route/receiver/receiver_linux.go", modulePath + "/internal/successor/route/bootstrap", true},
+		{"channel cannot acquire bootstrap policy", "internal/successor/route/channel/session.go", modulePath + "/internal/successor/route/bootstrap", false},
+		{"bootstrap cannot spend Admission", "internal/successor/route/bootstrap/budget.go", modulePath + "/internal/successor/admission/receiving", false},
+		{"bootstrap cannot import receiving composition", "internal/successor/route/bootstrap/budget.go", modulePath + "/internal/successor/route/receiver", false},
+		{"old receiver cannot import new bootstrap", "internal/node/forwarding/link.go", modulePath + "/internal/successor/route/bootstrap", false},
 		{"channel uses ordered transport", "internal/successor/route/channel/session.go", modulePath + "/internal/successor/route/transport", true},
 		{"channel cannot import TLS adapter", "internal/successor/route/channel/session.go", modulePath + "/internal/successor/route/transport/tls", false},
 		{"channel cannot import QUIC adapter", "internal/successor/route/channel/session_test.go", modulePath + "/internal/successor/route/transport/quic", false},
@@ -444,6 +462,11 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		{"QUIC cannot import TLS implementation", "internal/successor/route/transport/quic/role.go", modulePath + "/internal/successor/route/transport/tls", false},
 		{"transport exporter cannot import QUIC adapter", "internal/successor/route/transport/role_exporter.go", modulePath + "/internal/successor/route/transport/quic", false},
 		{"production command excludes lower contract", "cmd/ardents-next/route_linux.go", modulePath + "/internal/successor/route/transport", false},
+		{"bootstrap scenario uses shared contract", "cmd/ardents-next/route_bootstrap_linux_test.go", modulePath + "/internal/successor/route/transport", true},
+		{"bootstrap scenario excludes TLS construction", "cmd/ardents-next/route_bootstrap_linux_test.go", modulePath + "/internal/successor/route/transport/tls", false},
+		{"bootstrap scenario excludes QUIC construction", "cmd/ardents-next/route_bootstrap_linux_test.go", modulePath + "/internal/successor/route/transport/quic", false},
+		{"unregistered scenario excludes lower contract", "cmd/ardents-next/route_other_linux_test.go", modulePath + "/internal/successor/route/transport", false},
+		{"production bootstrap excludes TLS construction", "cmd/ardents-next/route_bootstrap_linux.go", modulePath + "/internal/successor/route/transport/tls", false},
 		{"former selector cannot return in caller test", "cmd/ardents-next/route_prefix_caller_linux_test.go", modulePath + "/internal/successor/route/carrier", false},
 		{"no production Carrier allowance", "cmd/ardents-next/route_prefix_caller_linux.go", modulePath + "/internal/successor/route/carrier", false},
 		{"caller test cannot reach old Carrier", "cmd/ardents-next/route_prefix_caller_linux_test.go", modulePath + "/internal/route/carrier", false},

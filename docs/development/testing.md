@@ -19,6 +19,78 @@ substitute for independent review.
 
 ## Ordinary checks
 
+Issuer transport scenarios in `cmd/ardents-next/route_bootstrap_linux_test.go`
+and `route_process_linux_test.go` start with genuine permission but no offline
+token stock. Actual holder commands obtain two bootstrap batches, refuse a third,
+join bootstrap and establish fresh admitted channels before ordinary issuance on
+TCP/TLS and QUIC. Compiled receiving processes retain genuine new Network,
+Admission and Hosting roots; their joined termination and zero outstanding
+Hosting reservations are asserted. Linux is required by those durable owners,
+not by bootstrap, selection rules, role framing or issuer exchange mechanics.
+Portable `route/issuer` tests reject malformed operations before issuing and
+contradictory envelope/payload outcomes and padding. Its shared Exchange and
+Serve are used by the maintained Prefix and Receiver; generic role presentation
+does not own the purpose-specific issuer protocol.
+Prefix refusal tests check original cancellation before any authority or Stock
+effect through both ordinary and typed BootstrapPrefix lifetimes: a refused
+request leaves parent readiness intact, and Close joins physical work and
+returns capacity. Done reports readiness retirement, not a physical join.
+Native Stock tests use genuine blind issuance with explicitly supplied
+authority facts to isolate final lifetime and post-verification observation loss.
+They do not establish Network authenticity. A causal guard-removal trial must
+fail these controls; retained failures are evidence, not passing skips.
+
+`TestRouteIssuerSignedOutputBlocksPhysicalTLSUntilCancellation` uses genuine
+signed Network, permission Stock, issuing Admission and Hosting with real role
+TLS over an unbuffered pipe. The peer leaves RESULT unread after actual signing;
+original cancellation must join that blocked write with both its physical timeout
+and cancellation cause, while Hosting remains held until physical cleanup.
+Independent Stock signature verification under the canceled completion guard
+refuses deposit. This is an inner TLS output control, not a complete outer
+TCP/TLS or QUIC operation or successful network Stock delivery. The genuine
+both-Carrier holder and receiver scenarios establish the maintained consumers.
+
+`TestRouteSingleBootstrapIssuerJoinsBothCarriers` isolates one genuine issuance
+followed immediately by bootstrap retirement. It reuses the same genuine roots
+and receiving owners as the full holder sequence, asserts one issuer operation
+without private receiving Admission, joins every receiver and checks all three
+bootstrap reservations return. No ordinary prefix or additional batch is needed
+for its late-CREDIT failure oracle. The scenario has no timing delay or tolerated
+physical write failure; a green setup or verified Stock result alone cannot pass
+its retirement assertions.
+
+Portable channel retirement controls send canonical lower EOF/CLOSE over a
+pipe and gate real CREDIT completion. They distinguish clean peer termination
+from raw closure, refusal, original cancellation and a missing terminal; EOF
+alone cannot pass. A deliberate removal of the peer-terminal wait must fail
+those controls. Shortening the actual lane horizon also interrupts an already
+partially emitted CREDIT within that bound and retains its physical failure.
+These mechanical tests grant no successful TLS, Network or Admission authority;
+the genuine holder and compiled consumers above supply that integrated evidence.
+
+`TestReadCreditRetirementPreservesConsumedBytesOnlyForCleanPeer` holds an actual
+sibling frame in physical output while a consumed byte queues CREDIT. Exact
+peer CLOSE(0) cancels that unstarted credit without turning the consumed byte
+into a read failure; CLOSE(1) still refuses. Independent accounting charges
+the incoming CLOSE and no canceled CREDIT. The sibling stays usable. This
+portable framing control grants no TLS or Admission authority, and existing
+started-write controls still require every physical CREDIT failure to survive.
+
+`TestRoutePendingBootstrapLimitLeavesOrdinaryChildUsableOnSameCarrier` also
+sends raw Node OPEN frames over actual authenticated TCP/TLS and QUIC Carriers.
+Missing and unknown restrictions produce peer CLOSE before TLS/bootstrap
+reservation; the normal outgoing API cannot emit the unknown restriction.
+The subsequent mixed Carrier holds four pending restricted children and refuses
+a fifth. A genuinely issued, durably presented token on one restricted child
+is refused before receiving Admission; a distinct token admits its ordinary
+sibling. The refused operation retains its actual peer lane terminal and local
+TLS shutdown EOF rather than being counted as a completed exchange. Both
+Carrier and receiving owners join before all physical reservations return.
+Removing only the restricted-child guard must admit and spend the forbidden
+token and fail this control on both Carriers. This test provisions genuine stock
+offline to isolate receiving restrictions; network stock acquisition remains
+the separate permission-only holder/compiled issuer scenario above.
+
 - `make route-check` runs only the new Network, Admission, Hosting and Route
   owners plus `ardents-next`, with Linux race execution, both selected real
   Carriers, compiled prefix/receiver processes and causal lifecycle cases.
@@ -793,6 +865,68 @@ receiving registration leaves pre-handoff capacity with its original caller,
 whose repeated Release returns it once. None of these controls supplies an
 accepting authority, durable claim or recipient ACK. Genuine admitted consumers
 remain the separate native both-Carrier profile.
+
+Portable `channel/child_queue_test.go` checks synchronous child preparation before
+pipelined input, shared input/output/control accounting, header costs, retained
+unread data, reserved CLOSE space and ordinary sibling progress. Its negative
+control disables secondary input accounting and must fail on uncharged handshake
+bytes. `channel/open_lane_test.go` also checks reservation return by a joined
+parent and waiting for a return already started by Lane Finish. These are
+physical ownership controls, not accepting authority or Admission substitutes.
+
+Portable `channel/child_limits_test.go` checks complete OPEN/data/control costs,
+prepaid termination, retained input, refusal before output and ordinary sibling
+progress. Its session-output control independently counts OPEN, BYTES, CREDIT,
+EOF and CLOSE, and proves refused frames reach neither the physical connection
+nor the channel debit. A started partial write still retires its physical owner and retains
+the original failure. `bootstrap/budget_test.go` separately checks that a held
+terminal cannot accumulate another full burst, emission and joined disposal
+never refund its debit, fractional refill survives, and copied handles cannot
+multiply the actual adjacency or return another claim.
+
+`cmd/ardents-next/route_bootstrap_linux_test.go` uses genuine signed Network,
+Stock, receiving spend and Hosting on TCP/TLS and QUIC: four pending restricted
+children retain their actual Hosting work/termination and Route allocations,
+the fifth refuses before TLS/admission and
+a fresh ordinary child on that same Node Carrier completes actual admission.
+The consumer waits for peer TLS shutdown and the child terminal before closing
+the shared Carrier. The test observes held provider capacity during pending TLS
+and zero reserved capacity with four once-only bootstrap returns after join.
+A causal early-return control must fail while TLS is still pending. This is
+not successful bootstrap issuance. Native roots
+justify this Linux test; the corresponding framing/capacity rules remain in
+portable owner tests.
+
+The same native test owner exercises direct issuer bootstrap at the genuine
+Entry and its restricted inner channel at the genuine Interior on both Carriers.
+Both retain actual Hosting reservations until joined TLS/channel termination;
+neither invokes private receiving Admission. Replacing the propagated bootstrap
+restriction with the ordinary value makes the Interior refuse bootstrap.
+This proves Entry-to-Interior transport only: it supplies no issuer response,
+verified token stock or holder retained-selection acceptance.
+
+`TestRouteBootstrapObtainsStockFromActualIssuer` uses genuine retained
+Domain-1 selection, permission-only Stock and the real receiving issuer
+composition on both Carriers. Both bootstrap batches travel through the same
+Entry/Interior lifetime; genuine `IssueCurrent` produces the result verified
+by Stock. The test waits for both TLS directions and the child terminal,
+then observes once-only Hosting returns. Native durable owners justify its
+Linux profile. This is a network component scenario, not the complete compiled
+holder bootstrap-to-ordinary acceptance sequence.
+
+Portable transport tests preserve optional half-close, genuine negotiated TLS
+exporter bytes, once-only physical Close and the original close failure.
+The half-close control failed before the wrapper correction. The portable
+CREDIT control separately failed when a DATA-only write deadline interrupted
+an already started CREDIT; it requires original CREDIT bounds and refusal of
+subsequent DATA after the correction. Earlier native issuer shutdown failures
+remain in the execution ledger; these passes do not qualify the whole Route.
+
+The shared native Route fixture selects a usable real Permission hour before
+creating owners: when less than one minute remains, it waits for the next hour
+with the original test context. A longer signed profile cannot extend hourly
+Permission validity. This is test preparation, without a clock override, skip,
+operation retry or change to the operation's original bounds.
 
 Native Context physical-output fixtures live with `context_linux_test.go`;
 Receiver retained-budget/physical-write oracles live with

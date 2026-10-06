@@ -16,6 +16,7 @@ type frameTurn struct {
 	lane              *Lane
 	control, selected bool
 	bytes             uint64
+	bounded           bool
 	ready             chan struct{}
 }
 
@@ -71,7 +72,7 @@ func (s *Session) scheduleLocked() {
 func (s *Session) turn(l *Lane, f ardp.Frame, terminal bool, bytes uint64) (func(), error) {
 	t := &frameTurn{lane: l, control: f.Kind != ardp.KindBytes, bytes: bytes, ready: make(chan struct{})}
 	s.mu.Lock()
-	if s.stopped || (!terminal && l.closed) {
+	if s.stopped || s.finishingRole || (!terminal && l.closed) {
 		s.mu.Unlock()
 		return nil, net.ErrClosed
 	}
@@ -80,19 +81,33 @@ func (s *Session) turn(l *Lane, f ardp.Frame, terminal bool, bytes uint64) (func
 		s.mu.Unlock()
 		return nil, &frameExpiry{end: end}
 	}
+	if l.queueBound != nil && !(terminal && f.Kind == ardp.KindClose && l.queueTermination) {
+		if !l.queueBound.reserve(bytes) {
+			s.mu.Unlock()
+			return nil, errors.New("route child output queue exhausted")
+		}
+		t.bounded = true
+	}
 	if t.control {
 		if bytes > (16<<10)-s.controlQueued {
+			if t.bounded {
+				l.queueBound.release(bytes)
+			}
 			s.mu.Unlock()
 			return nil, errors.New("route control queue exhausted")
 		}
 		s.controlQueued += bytes
 	} else {
 		if bytes > (4<<20)-s.queued-s.outbound || !s.queues.reserve(bytes) {
+			if t.bounded {
+				l.queueBound.release(bytes)
+			}
 			s.mu.Unlock()
 			return nil, errors.New("route output queue exhausted")
 		}
 		s.outbound += bytes
 	}
+	l.queuedOutput += bytes
 	s.output = append(s.output, t)
 	s.writes.Add(1)
 	l.writes.Add(1)
@@ -100,6 +115,10 @@ func (s *Session) turn(l *Lane, f ardp.Frame, terminal bool, bytes uint64) (func
 	s.mu.Unlock()
 	finish := func() {
 		s.mu.Lock()
+		l.queuedOutput -= bytes
+		if t.bounded {
+			l.queueBound.release(bytes)
+		}
 		if t.selected {
 			<-s.writer
 		} else {

@@ -11,6 +11,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/successor/admission"
 	"github.com/dianabuilds/ardents-network/internal/successor/network"
 	"github.com/dianabuilds/ardents-network/internal/successor/route/ardp"
+	"github.com/dianabuilds/ardents-network/internal/successor/route/bootstrap"
 	framing "github.com/dianabuilds/ardents-network/internal/successor/route/channel"
 	"github.com/dianabuilds/ardents-network/internal/successor/route/role"
 	"github.com/dianabuilds/ardents-network/internal/successor/route/selection"
@@ -35,6 +36,8 @@ type Config struct {
 // fake terminal workload. Its accepted result means both exact roles admitted
 // fresh authenticated channels; Close retains one joined terminal result.
 type Prefix struct {
+	bootstrap                 bool
+	queues                    *framing.Budget
 	entry, interior           *framing.Session
 	entryHello, interiorHello ardp.Hello
 	refills                   map[*prefixRefill]struct{}
@@ -73,21 +76,25 @@ func (e *prefixOpeningFailure) Error() string   { return errors.Join(e.operation
 func (e *prefixOpeningFailure) Unwrap() []error { return []error{e.operation, e.retirement} }
 
 func Open(ctx context.Context, config Config) (_ *Prefix, result error) {
-	return openPrefix(ctx, config, nil)
+	return openPrefix(ctx, config, nil, false)
 }
 
 // OpenResponder retains the actual Source generation before any physical
 // opening. The resulting Responder cannot acquire JOIN using another Source.
 func OpenResponder(ctx context.Context, source *Prefix, config Config) (*Prefix, error) {
-	if source == nil || source.config.Leg.EntryMember.RoleDomain != 1 || config.Leg.EntryMember.RoleDomain != 3 {
+	if source == nil || source.bootstrap || source.config.Leg.EntryMember.RoleDomain != 1 || config.Leg.EntryMember.RoleDomain != 3 {
 		return nil, errors.New("route Responder original Source unavailable")
 	}
-	return openPrefix(ctx, config, source)
+	return openPrefix(ctx, config, source, false)
 }
 
-func openPrefix(ctx context.Context, config Config, source *Prefix) (_ *Prefix, result error) {
-	if ctx == nil || config.Current == nil || config.Present == nil || config.Release == nil || config.Deadline.IsZero() || config.Deadline != config.Deadline.UTC().Truncate(time.Second) ||
-		!time.Now().Before(config.Deadline) || config.Deadline.After(config.Leg.NotAfter) || config.Deadline.After(time.Now().Add(admission.ForwardClass.Lifetime())) {
+func openPrefix(ctx context.Context, config Config, source *Prefix, bootstrapMode bool) (_ *Prefix, result error) {
+	lifetime := admission.ForwardClass.Lifetime()
+	if bootstrapMode {
+		lifetime = bootstrap.Lifetime
+	}
+	if ctx == nil || config.Current == nil || !bootstrapMode && config.Present == nil || config.Release == nil || config.Deadline.IsZero() || config.Deadline != config.Deadline.UTC().Truncate(time.Second) ||
+		!time.Now().Before(config.Deadline) || config.Deadline.After(config.Leg.NotAfter) || config.Deadline.After(time.Now().Add(lifetime)) || bootstrapMode && (source != nil || config.Leg.EntryMember.RoleDomain != 1 || config.Present != nil) {
 		return nil, errors.New("route prefix composition or deadline invalid")
 	}
 	childContext, cancel := context.WithDeadline(ctx, config.Deadline)
@@ -129,7 +136,7 @@ func openPrefix(ctx context.Context, config Config, source *Prefix) (_ *Prefix, 
 		cancel()
 		return nil, err
 	}
-	p := &Prefix{ctx: childContext, caller: ctx, cancel: cancel, done: make(chan struct{}), closing: make(chan struct{}), release: config.Release, config: config, activity: make(chan struct{}, 1), source: source}
+	p := &Prefix{bootstrap: bootstrapMode, ctx: childContext, caller: ctx, cancel: cancel, done: make(chan struct{}), closing: make(chan struct{}), release: config.Release, config: config, activity: make(chan struct{}, 1), source: source}
 	if source != nil {
 		p.sourceStopped = make(chan struct{})
 		p.stopSource = context.AfterFunc(source.ctx, func() { defer close(p.sourceStopped); cancel() })
@@ -142,7 +149,12 @@ func openPrefix(ctx context.Context, config Config, source *Prefix) (_ *Prefix, 
 			}
 		}
 	}()
-	queues := framing.NewBudget(4 << 20)
+	queueBytes, allowance := uint64(4<<20), admission.ForwardClass.ByteLimit()-role.AdmissionWireBytes
+	if bootstrapMode {
+		queueBytes, allowance = 256<<10, bootstrap.LaneBytes-(3*ardp.HeaderSize+209+1+5)
+	}
+	queues := framing.NewBudget(queueBytes)
+	p.queues = queues
 	entryControl, err := queues.HoldControl()
 	if err != nil {
 		return nil, err
@@ -185,7 +197,7 @@ func openPrefix(ctx context.Context, config Config, source *Prefix) (_ *Prefix, 
 	}
 	h, err := a.FreshHello(config.Deadline, ardp.PurposeForwarding, false)
 	if err == nil {
-		err = role.Present(childContext, ctx, conn, a, h, config.Present)
+		err = presentPrefixRole(childContext, ctx, conn, a, h, config.Present, bootstrapMode)
 	}
 	if err != nil {
 		return nil, errors.Join(err, conn.Close())
@@ -196,7 +208,7 @@ func openPrefix(ctx context.Context, config Config, source *Prefix) (_ *Prefix, 
 	if err := conn.SetDeadline(config.Deadline); err != nil {
 		return nil, errors.Join(err, conn.Close())
 	}
-	p.entry = framing.New(childContext, conn, config.Deadline, admission.ForwardClass.ByteLimit()-role.AdmissionWireBytes, check, false, queues, nil)
+	p.entry = framing.New(childContext, conn, config.Deadline, allowance, check, false, queues, nil)
 	p.entryHello = h
 	p.openingConn = nil
 	opened := ardp.Open{RecipientNodeID: config.Leg.InteriorMember.NodeID, RecipientDutyGeneration: config.Leg.InteriorMember.DutyGeneration, Purpose: 7, Deadline: config.Deadline}
@@ -215,7 +227,7 @@ func openPrefix(ctx context.Context, config Config, source *Prefix) (_ *Prefix, 
 	}
 	h, err = a.FreshHello(config.Deadline, ardp.PurposeForwarding, false)
 	if err == nil {
-		err = role.Present(childContext, ctx, secured, a, h, config.Present)
+		err = presentPrefixRole(childContext, ctx, secured, a, h, config.Present, bootstrapMode)
 	}
 	if err != nil {
 		return nil, err
@@ -229,7 +241,7 @@ func openPrefix(ctx context.Context, config Config, source *Prefix) (_ *Prefix, 
 	if err := secured.SetDeadline(config.Deadline); err != nil {
 		return nil, err
 	}
-	p.interior = framing.New(childContext, transport.Retain(secured), config.Deadline, admission.ForwardClass.ByteLimit()-role.AdmissionWireBytes, check, false, queues, nil)
+	p.interior = framing.New(childContext, transport.Retain(secured), config.Deadline, allowance, check, false, queues, nil)
 	p.interiorHello = h
 	if err := check(); err != nil {
 		return nil, err
@@ -365,6 +377,12 @@ func (p *Prefix) closeOpening() error {
 	// Retire the inner reader before interrupting its lower framing owner, so
 	// our own lower closure cannot become an unexplained inner transport EOF.
 	if p.interior != nil {
+		if p.interiorHello != (ardp.Hello{}) && p.interior.Live() && p.ctx.Err() == nil && p.caller.Err() == nil {
+			// A healthy explicit/idle close completes the original inner role
+			// before its lower Carrier is interrupted. Revocation retains the
+			// immediate physical retirement path below.
+			joined = errors.Join(joined, p.interior.FinishRole())
+		}
 		p.interior.Retire(nil)
 	}
 	if p.entry != nil {

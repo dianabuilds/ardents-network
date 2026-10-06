@@ -6,14 +6,97 @@ import (
 	"errors"
 	"fmt"
 	"github.com/dianabuilds/ardents-network/internal/successor/route/transport"
+	"io"
 	"net"
 	"runtime"
 	"syscall"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/successor/route/ardp"
 )
+
+// Actual sibling output holds serialization while a received byte queues its
+// CREDIT. Canonical peer CLOSE then retires that lane before CREDIT starts.
+// This framing control supplies no successful TLS or Admission authority.
+func TestReadCreditRetirementPreservesConsumedBytesOnlyForCleanPeer(t *testing.T) {
+	for _, status := range []byte{0, 1} {
+		t.Run(fmt.Sprintf("status-%d", status), func(t *testing.T) {
+			synctest.Test(t, func(t *testing.T) {
+				ctx := t.Context()
+				local, peer := net.Pipe()
+				end := time.Now().Add(10 * time.Second).UTC().Truncate(time.Second)
+				s := New(ctx, local, end, 1<<20, nil, false, NewBudget(4<<20), nil)
+				t.Cleanup(func() { _ = peer.Close(); _ = s.Close() })
+				type opening struct {
+					lane *Lane
+					err  error
+				}
+				open := func() *Lane {
+					finished := make(chan opening, 1)
+					body := ardp.EncodeOpen(ardp.Open{RecipientNodeID: [32]byte{1}, RecipientDutyGeneration: 1, Purpose: 7, Deadline: end}, false)
+					go func() { l, err := s.Open(ctx, ctx, body); finished <- opening{l, err} }()
+					frame, err := ardp.ReadFrame(peer)
+					if err != nil || frame.Kind != ardp.KindOpen {
+						t.Fatal("actual OPEN not emitted", err, frame.Kind)
+					}
+					result := <-finished
+					if result.err != nil {
+						t.Fatal(result.err)
+					}
+					return result.lane
+				}
+				lane, sibling := open(), open()
+				if err := ardp.WriteFrame(peer, ardp.Frame{Kind: ardp.KindBytes, Lane: lane.id, Body: []byte{7}}); err != nil {
+					t.Fatal(err)
+				}
+				synctest.Wait()
+				written := make(chan error, 1)
+				go func() { _, err := sibling.Write([]byte{9}); written <- err }()
+				header := make([]byte, ardp.HeaderSize)
+				if _, err := io.ReadFull(peer, header); err != nil || header[6] != ardp.KindBytes {
+					t.Fatal("sibling physical output not started", err)
+				}
+				s.mu.Lock()
+				used := s.used
+				s.mu.Unlock()
+				type consumption struct {
+					n   int
+					err error
+					b   byte
+				}
+				consumed := make(chan consumption, 1)
+				go func() { var raw [1]byte; n, err := lane.Read(raw[:]); consumed <- consumption{n, err, raw[0]} }()
+				synctest.Wait()
+				select {
+				case result := <-consumed:
+					t.Fatal("read did not wait for queued CREDIT", result)
+				default:
+				}
+				if err := ardp.WriteFrame(peer, ardp.Frame{Kind: ardp.KindClose, Lane: lane.id, Body: []byte{status}}); err != nil {
+					t.Fatal(err)
+				}
+				result := <-consumed
+				if result.n != 1 || result.b != 7 || (result.err == nil) != (status == 0) {
+					t.Fatal("consumed bytes acquired unnecessary CREDIT failure or hid refusal", result)
+				}
+				var body [1]byte
+				if _, err := io.ReadFull(peer, body[:]); err != nil || body[0] != 9 || <-written != nil {
+					t.Fatal("retired child disturbed sibling physical output", err)
+				}
+				s.mu.Lock()
+				// Peer CLOSE is genuine input and consumes its full frame cost.
+				// The canceled, unstarted CREDIT consumes no output allowance.
+				uncharged := s.used == used+uint64(ardp.HeaderSize+1) && s.controlQueued == 0 && lane.physicalAttempts == 1
+				s.mu.Unlock()
+				if !uncharged || !s.Live() {
+					t.Fatal("unemitted CREDIT debited or retired the parent")
+				}
+			})
+		})
+	}
+}
 
 // Mechanical failure controls seed one already-received byte under its owner.
 // They mint no Network authority, token, Grant, successful ACK or spend result.

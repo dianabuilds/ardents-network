@@ -36,6 +36,12 @@ type Lane struct {
 	openEmitted                        bool
 	outputEOF                          bool
 	finished                           bool
+	afterFinish                        func()
+	queueBound                         *Budget
+	queuedOutput                       uint64
+	queueTermination                   bool
+	trafficLimit, trafficUsed          uint64
+	chargeOutput                       func(uint64, bool) error
 	localClosed, peerRefused           bool
 	physicalAttempts, payloadAttempts  uint64
 	physicalWriteFailed                bool
@@ -96,6 +102,9 @@ func (l *Lane) Read(p []byte) (int, error) {
 			l.buffer = l.buffer[n:]
 			l.s.queued -= uint64(n)
 			l.s.queues.release(uint64(n))
+			if l.queueBound != nil {
+				l.queueBound.release(uint64(n))
+			}
 			if len(l.buffer) == 0 && l.finished {
 				delete(l.s.lanes, l.id)
 			}
@@ -114,7 +123,15 @@ func (l *Lane) Read(p []byte) (int, error) {
 			l.s.mu.Unlock()
 			if !closed && credited != 0 {
 				body := binary.BigEndian.AppendUint32(nil, credited)
+				before := l.retirementWitness()
 				if err := l.s.write(l, ardp.Frame{Kind: ardp.KindCredit, Lane: l.id, Body: body}, false); err != nil {
+					// The peer can send CLOSE(0) while CREDIT waits behind a
+					// sibling. Already consumed bytes remain valid when this
+					// unnecessary credit never started. Refusal, local retirement,
+					// expiry and every physical failure still reach the reader.
+					if errors.Is(err, net.ErrClosed) && cleanUnemittedRetirement(ardp.KindCredit, before, l.retirementWitness()) {
+						return n, nil
+					}
 					return n, err
 				}
 			}
@@ -232,7 +249,7 @@ func (l *Lane) closeStatus(status byte) error {
 				l.closeErr = nil
 			}
 		}
-		if l.closeErr != nil {
+		if l.closeErr != nil && !localCapacityRefusal(l.closeErr) {
 			l.s.Retire(l.closeErr)
 		}
 	})
@@ -292,7 +309,10 @@ func (l *Lane) SetWriteDeadline(t time.Time) error {
 	}
 	l.writeEnd = t
 	l.signalLocked()
-	if l.s.active == l {
+	// Receive-credit output follows the original lane/control lifetime, rather
+	// than this data-write deadline. TLS half-close must not interrupt its
+	// already started frame. Actual lane/parent retirement still bounds it.
+	if l.s.active == l && l.s.activeKind != ardp.KindCredit {
 		err := l.s.conn.SetWriteDeadline(minDeadline(t, l.s.activeEnd))
 		if err != nil {
 			// This exact lower owner performed the physical deadline operation.
@@ -308,19 +328,50 @@ func (l *Lane) SetWriteDeadline(t time.Time) error {
 
 var _ net.Conn = (*Lane)(nil)
 
+// RetainUntilFinish transfers one physical reservation's return to this lane.
+// The work owner must join its readers/writers before calling Finish; receiving
+// handlers finish after their terminal write. Refusal leaves return ownership
+// with the caller. The callback runs outside the framing lock.
+func (l *Lane) RetainUntilFinish(release func()) error {
+	if release == nil {
+		return errors.New("route physical return absent")
+	}
+	l.s.mu.Lock()
+	defer l.s.mu.Unlock()
+	if l.finished || l.afterFinish != nil {
+		return errors.New("route physical return unavailable")
+	}
+	l.afterFinish = release
+	return nil
+}
+
 // finish belongs to the work owner after its readers/writers have joined.
 // Identifier floors stay in the session; retained input keeps its accounting.
 func (l *Lane) Finish() {
 	l.s.mu.Lock()
-	defer l.s.mu.Unlock()
 	if l.finished {
+		l.s.mu.Unlock()
 		return
 	}
 	l.finished = true
+	if l.queueTermination {
+		l.queueBound.release(ardp.HeaderSize + 1)
+		l.queueTermination = false
+	}
 	l.s.live--
 	l.s.queues.releaseChild()
 	if len(l.buffer) == 0 {
 		delete(l.s.lanes, l.id)
+	}
+	release := l.afterFinish
+	l.afterFinish = nil
+	if release != nil {
+		l.s.finishes.Add(1)
+	}
+	l.s.mu.Unlock()
+	if release != nil {
+		defer l.s.finishes.Done()
+		release()
 	}
 }
 
@@ -337,6 +388,14 @@ func (l *Lane) frameDeadline(f ardp.Frame, terminal bool) time.Time {
 	return l.writeEnd
 }
 
+// Deadline returns the current physical bound, including pending-handshake and
+// child-group shortening. It supplies no Network or admission authority.
+func (l *Lane) Deadline() time.Time {
+	l.s.mu.Lock()
+	defer l.s.mu.Unlock()
+	return l.end
+}
+
 func (l *Lane) Bound(end time.Time) error {
 	l.s.mu.Lock()
 	defer l.s.mu.Unlock()
@@ -348,6 +407,17 @@ func (l *Lane) Bound(end time.Time) error {
 	l.readEnd = minDeadline(l.readEnd, l.end)
 	l.writeEnd = minDeadline(l.writeEnd, l.end)
 	l.signalLocked()
+	if l.s.active == l && l.s.activeEnd.After(l.end) && !l.s.stopped && l.s.ctx.Err() == nil {
+		// This shortens the original lane horizon, unlike a temporary payload
+		// write deadline. An already started CREDIT must obey the new original
+		// bound too, while retaining its physical result until joined Close.
+		l.s.activeEnd = l.end
+		if err := l.s.conn.SetWriteDeadline(l.end); err != nil {
+			l.physicalWriteFailed = true
+			l.s.writeErr = errors.Join(l.s.writeErr, err)
+			return err
+		}
+	}
 	return nil
 }
 
@@ -379,6 +449,13 @@ func (l *Lane) CloseWrite() error {
 	l.writeMu.Lock()
 	defer l.writeMu.Unlock()
 	l.s.mu.Lock()
+	if l.peerClosed && !l.peerRefused && !l.localClosed && !l.s.stopped && l.s.failure == nil && l.s.ctx.Err() == nil && !l.physicalWriteFailed {
+		// The exact peer has terminated both directions. No further EOF may
+		// be emitted on that lane; this discharges only directional cleanup,
+		// while Close still joins and retains any late physical failure.
+		l.s.mu.Unlock()
+		return nil
+	}
 	if l.closed || l.outputEOF {
 		l.s.mu.Unlock()
 		return net.ErrClosed

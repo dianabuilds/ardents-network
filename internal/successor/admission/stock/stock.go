@@ -88,7 +88,7 @@ func (permission *permission) discardPendingBatch(batch *batch) {
 
 // acceptIssuedBatch finalizes the exact retained batch and deposits its tokens
 // in the permission-owned stock. A failed finalization consumes the batch.
-func (permission *permission) acceptIssuedBatch(batch *batch, body []byte) error {
+func (permission *permission) acceptIssuedBatch(batch *batch, body []byte, check func() error) error {
 	if permission == nil || batch == nil || permission.pending != batch {
 		return errors.New("text issuance batch owner changed")
 	}
@@ -96,6 +96,14 @@ func (permission *permission) acceptIssuedBatch(batch *batch, body []byte) error
 	permission.pending = nil
 	if err != nil {
 		return err
+	}
+	if check != nil {
+		if err := check(); err != nil {
+			for _, raw := range tokens {
+				clear(raw)
+			}
+			return err
+		}
 	}
 	for index, token := range tokens {
 		challenge := batch.Challenges[index]

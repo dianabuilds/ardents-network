@@ -67,6 +67,36 @@ func DecodeClosedTokenBatch(raw []byte) (ClosedTokenBatchRequest, error) {
 	return request, nil
 }
 
+// UnpadClosedTokenBatch returns the exact batch prefix of a bounded padded
+// transport payload. The returned bytes borrow raw. This checks framing and
+// zero padding only; the issuer must still verify permission, holder proof and
+// current authority through DecodeClosedTokenBatch and its quota owner.
+func UnpadClosedTokenBatch(raw []byte) ([]byte, error) {
+	size, err := closedTokenBatchSize(raw)
+	if err != nil || size > len(raw) {
+		return nil, errors.New("closed token padded batch framing is invalid")
+	}
+	for _, value := range raw[size:] {
+		if value != 0 {
+			return nil, errors.New("closed token batch padding is invalid")
+		}
+	}
+	return raw[:size], nil
+}
+
+func closedTokenBatchSize(raw []byte) (int, error) {
+	base := TokenBatchBaseSize()
+	if len(raw) < base+closedTokenRequestSize || len(raw) > maximumClosedTokenBatchSize || string(raw[:8]) != closedTokenBatchMagic {
+		return 0, errors.New("closed token batch framing is invalid")
+	}
+	countOffset := base - ed25519.SignatureSize - 2
+	count := int(binary.BigEndian.Uint16(raw[countOffset : countOffset+2]))
+	if count < 1 || count > MaximumBatchTokens {
+		return 0, errors.New("closed token batch count is invalid")
+	}
+	return base + count*closedTokenRequestSize, nil
+}
+
 // InspectClosedTokenBatch preserves permission refusal categories while sharing
 // the canonical parser and holder-proof validation with holder and issuer code.
 func InspectClosedTokenBatch(ctx context.Context, raw []byte, facts Facts) (ClosedTokenBatchRequest, Outcome) {
@@ -90,7 +120,8 @@ func InspectClosedTokenBatch(ctx context.Context, raw []byte, facts Facts) (Clos
 }
 
 func decodeBatch(raw []byte) (ClosedTokenBatchRequest, error) {
-	if len(raw) < TokenBatchBaseSize()+closedTokenRequestSize || len(raw) > maximumClosedTokenBatchSize || string(raw[:8]) != closedTokenBatchMagic {
+	size, err := closedTokenBatchSize(raw)
+	if err != nil || size != len(raw) {
 		return ClosedTokenBatchRequest{}, errors.New("closed token batch framing is invalid")
 	}
 	offset := 8

@@ -30,7 +30,7 @@ func (s *Session) replaceRemaining(witness, remaining uint64) error {
 	return nil
 }
 
-// session owns one physical framing boundary and all of its borrowers. The
+// Session owns one physical framing boundary and all of its borrowers. The
 // owner cancels admission before interrupting I/O; Close waits for the reader
 // and every child handler, retaining physical and protocol cleanup failures.
 type Session struct {
@@ -44,6 +44,7 @@ type Session struct {
 	live                    uint32
 	queued, used, limit     uint64
 	stopped                 bool
+	finishingRole           bool
 	failure                 error
 	writer                  chan struct{}
 	opening                 chan struct{}
@@ -57,6 +58,7 @@ type Session struct {
 	readerOnce              sync.Once
 	children                sync.WaitGroup
 	writes                  sync.WaitGroup
+	finishes                sync.WaitGroup
 	physicalOnce, closeOnce sync.Once
 	physicalErr, closeErr   error
 	writeErr                error
@@ -65,8 +67,10 @@ type Session struct {
 	lastData                uint32
 	lastControl             bool
 	open                    func(context.Context, *Lane, []byte) error
+	prepareOpen             func(*Lane, []byte) error
 	check                   func() error
 	parentControl           func(context.Context, ardp.Frame, uint64, uint64) error
+	chargeOutput            func(uint64) error
 	exchange                *parentExchange
 }
 
@@ -94,16 +98,23 @@ func (s *Session) Start() {
 // sessionHandlers are fixed before the reader is transferred. Composition
 // supplies decisions; the framing owner supplies the accounted input witness.
 type Handlers struct {
+	// PrepareOpen reserves finite child capacity before the sole reader can
+	// retain pipelined handshake bytes. It runs outside the framing lock and
+	// must not perform transport or wait for the child handler.
+	PrepareOpen   func(*Lane, []byte) error
 	Open          func(context.Context, *Lane, []byte) error
 	ParentControl func(context.Context, ardp.Frame, uint64, uint64) error
+	// Output admits each complete physical frame before debit or emission.
+	// It runs under the framing lock and must perform no I/O or reenter it.
+	Output func(uint64) error
 }
 
-// prepareSession leaves reading stopped so a dedicated accepted lane can be
+// Prepare leaves reading stopped so a dedicated accepted lane can be
 // installed atomically before any peer data arrives at the framing owner.
 func Prepare(ctx context.Context, conn net.Conn, end time.Time, limit uint64, check func() error, pending bool, queues *Budget, handlers Handlers) *Session {
 	child, cancel := context.WithDeadline(ctx, end)
 	s := &Session{conn: conn, ctx: child, cancel: cancel, end: end, lanes: make(map[uint32]*Lane), next: 1,
-		limit: limit, writer: make(chan struct{}, 1), opening: make(chan struct{}, 1), readerDone: make(chan struct{}), check: check, pending: pending, queues: queues, open: handlers.Open, parentControl: handlers.ParentControl}
+		limit: limit, writer: make(chan struct{}, 1), opening: make(chan struct{}, 1), readerDone: make(chan struct{}), check: check, pending: pending, queues: queues, open: handlers.Open, prepareOpen: handlers.PrepareOpen, parentControl: handlers.ParentControl, chargeOutput: handlers.Output}
 	return s
 }
 
@@ -149,34 +160,53 @@ func (s *Session) Close() error {
 		s.closeErr = errors.Join(s.failure, s.physicalErr, s.writeErr)
 		s.queues.release(s.queued)
 		s.queued = 0
+		var returns []func()
 		for _, l := range s.lanes {
+			if l.queueBound != nil {
+				l.queueBound.release(uint64(len(l.buffer)))
+				if l.queueTermination {
+					l.queueBound.release(ardp.HeaderSize + 1)
+					l.queueTermination = false
+				}
+			}
 			l.buffer = nil
 			if !l.finished {
 				s.queues.releaseChild()
 				l.finished = true
 			}
+			if l.afterFinish != nil {
+				returns = append(returns, l.afterFinish)
+				l.afterFinish = nil
+			}
 		}
 		s.mu.Unlock()
+		for _, release := range returns {
+			release()
+		}
+		// A borrower can have detached its empty lane just before parent
+		// retirement. Its already started physical return must still join.
+		// Every retained lane is now finished, so no later Finish can add work.
+		s.finishes.Wait()
 	})
 	return s.closeErr
 }
 
-// joinedPhysicalFailure is read only after Close has joined all physical
+// PhysicalFailure is read only after Close has joined all physical
 // writers. Peer protocol refusal, EOF and authority cancellation remain local
 // session outcomes; an owned physical write/close failure survives retirement.
 func (s *Session) PhysicalFailure() error {
 	return errors.Join(s.physicalErr, s.writeErr)
 }
 
-// live is the framing owner's admission fact. Borrowers do not inspect its
+// Live is the framing owner's admission fact. Borrowers do not inspect its
 // mutex or retirement state to decide whether an existing channel is usable.
 func (s *Session) Live() bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	return !s.stopped
+	return !s.stopped && !s.finishingRole
 }
 
-// awaitTerminal joins the sole dedicated reader within the original channel
+// WaitTerminal joins the sole dedicated reader within the original channel
 // horizon. Its caller still joins the writer and physical owner through Close.
 func (s *Session) WaitTerminal(bound time.Time) error {
 	if err := s.conn.SetReadDeadline(minDeadline(s.end, bound)); err != nil {
@@ -207,6 +237,14 @@ func (s *Session) read() {
 			}
 			s.mu.Lock()
 			stopped := s.stopped
+			if !stopped && s.finishingRole && err == io.EOF {
+				// Orderly local role completion still needs the exact lower
+				// peer CLOSE. Keep that reader alive rather than aborting its
+				// Carrier as soon as the reverse direction reaches EOF.
+				s.failure = err
+				s.mu.Unlock()
+				return
+			}
 			s.mu.Unlock()
 			if !stopped {
 				s.Retire(err)
@@ -288,18 +326,29 @@ func (s *Session) read() {
 			}
 			s.last = f.Lane
 			l = s.newLaneLocked(f.Lane)
+			l.trafficUsed = cost
 			body := append([]byte(nil), f.Body...)
 			s.children.Add(1)
 			s.mu.Unlock()
+			var prepared error
+			if s.prepareOpen != nil {
+				prepared = s.prepareOpen(l, body)
+				if prepared != nil {
+					l.Seal()
+				}
+			}
 			go func() {
 				defer s.children.Done()
 				defer l.Finish()
-				err := s.open(l.ctx, l, body)
+				err := prepared
+				if err == nil {
+					err = s.open(l.ctx, l, body)
+				}
 				status := byte(0)
 				if err != nil {
 					status = 1
 				}
-				if closeErr := l.closeStatus(status); closeErr != nil {
+				if closeErr := l.closeStatus(status); closeErr != nil && !localCapacityRefusal(closeErr) {
 					s.Retire(errors.Join(err, closeErr))
 				}
 			}()
@@ -321,11 +370,28 @@ func (s *Session) read() {
 			s.mu.Unlock()
 			continue
 		}
+		if l.trafficLimit != 0 && f.Kind != ardp.KindClose {
+			if cost > l.trafficLimit-l.trafficUsed {
+				l.stopLocked(errors.New("route child byte allowance exhausted"))
+				s.mu.Unlock()
+				continue
+			}
+			l.trafficUsed += cost
+		}
 		switch f.Kind {
 		case ardp.KindBytes:
 			if l.handshake && l.handshakeBytes+l.handshakeOutput+uint32(len(f.Body)) > 4096 {
 				err = errors.New("route pending TLS allowance exhausted")
-			} else if l.eof || uint32(len(f.Body)) > l.receive || len(l.buffer)+len(f.Body) > int(Window) || s.queued+s.outbound+uint64(len(f.Body)) > 4<<20 || !s.queues.reserve(uint64(len(f.Body))) {
+			} else if l.eof || uint32(len(f.Body)) > l.receive || len(l.buffer)+len(f.Body) > int(Window) || s.queued+s.outbound+uint64(len(f.Body)) > 4<<20 {
+				err = errors.New("route receive credit exhausted")
+			} else if l.queueBound != nil && !l.queueBound.reserve(uint64(len(f.Body))) {
+				// Exhausting this child group's smaller queue denies only this
+				// child. Its reserved terminal capacity still permits CLOSE.
+				l.stopLocked(errors.New("route child queue exhausted"))
+			} else if !s.queues.reserve(uint64(len(f.Body))) {
+				if l.queueBound != nil {
+					l.queueBound.release(uint64(len(f.Body)))
+				}
 				err = errors.New("route receive credit exhausted")
 			} else {
 				l.receive -= uint32(len(f.Body))
@@ -404,7 +470,7 @@ func (s *Session) write(l *Lane, f ardp.Frame, terminal bool) error {
 	}
 	s.mu.Lock()
 	end := l.frameDeadline(f, terminal)
-	if s.stopped || s.ctx.Err() != nil || (!terminal && l.closed) {
+	if s.stopped || s.finishingRole || s.ctx.Err() != nil || (!terminal && l.closed) {
 		s.mu.Unlock()
 		return net.ErrClosed
 	}
@@ -446,6 +512,31 @@ func (s *Session) write(l *Lane, f ardp.Frame, terminal bool) error {
 			s.mu.Unlock()
 			return errors.New("route credit changed")
 		}
+	}
+	if l.trafficLimit != 0 && !(terminal && f.Kind == ardp.KindClose) && cost > l.trafficLimit-l.trafficUsed {
+		cause := errors.New("route child byte allowance exhausted")
+		l.stopLocked(cause)
+		s.mu.Unlock()
+		return &frameCapacityRefusal{cause: cause}
+	}
+	if s.chargeOutput != nil {
+		if err := s.chargeOutput(cost); err != nil {
+			l.stopLocked(err)
+			s.mu.Unlock()
+			return &frameCapacityRefusal{cause: err}
+		}
+	}
+	if l.chargeOutput != nil {
+		if err := l.chargeOutput(cost, terminal && f.Kind == ardp.KindClose); err != nil {
+			l.stopLocked(err)
+			s.mu.Unlock()
+			return &frameCapacityRefusal{cause: err}
+		}
+	}
+	if l.trafficLimit != 0 && !(terminal && f.Kind == ardp.KindClose) {
+		l.trafficUsed += cost
+	}
+	if f.Kind == ardp.KindBytes {
 		l.credit -= uint32(len(f.Body))
 		if l.handshake {
 			l.handshakeOutput += uint32(len(f.Body))
@@ -527,7 +618,15 @@ func (s *Session) Open(ctx, caller context.Context, body []byte) (*Lane, error) 
 	if ctx == nil || caller == nil || len(body) != 49 && len(body) != 50 {
 		return nil, errors.New("route OPEN shape invalid")
 	}
-	opened, err := ardp.DecodeOpen(body[:49])
+	var opened ardp.Open
+	var err error
+	if len(body) == 50 {
+		var envelope ardp.NodeOpen
+		envelope, err = ardp.DecodeNodeOpen(body)
+		opened = envelope.Recipient
+	} else {
+		opened, err = ardp.DecodeOpen(body)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -565,7 +664,7 @@ func (s *Session) Open(ctx, caller context.Context, body []byte) (*Lane, error) 
 		return nil, os.ErrDeadlineExceeded
 	}
 	s.mu.Lock()
-	if s.stopped || s.live >= 256 || s.next == 0 || !s.queues.child() {
+	if s.stopped || s.finishingRole || s.live >= 256 || s.next == 0 || !s.queues.child() {
 		s.mu.Unlock()
 		return nil, errors.New("route child capacity unavailable")
 	}
@@ -612,5 +711,5 @@ func minDeadline(a, b time.Time) time.Time {
 	return a
 }
 
-// done signals sole-reader retirement. Close still joins every writer and child.
+// Done signals sole-reader retirement. Close still joins every writer and child.
 func (s *Session) Done() <-chan struct{} { return s.readerDone }

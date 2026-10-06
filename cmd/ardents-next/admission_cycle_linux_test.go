@@ -27,7 +27,7 @@ import (
 )
 
 type localAdmissionReply struct {
-	Outcome                           string
+	Outcome, Stage                    string
 	Request, Token, Response, Journal []byte
 	Digest                            [32]byte
 	Slot                              [32]byte
@@ -75,6 +75,9 @@ func admissionLocalConsole(t *testing.T, operation string, config any) (func(any
 			_ = in.Close()
 			_ = cmd.Process.Kill()
 			_ = cmd.Wait()
+		}
+		if t.Failed() && log.Len() != 0 {
+			t.Log("joined console diagnostics:", log.String())
 		}
 	})
 	encode, decode := json.NewEncoder(in), json.NewDecoder(out)

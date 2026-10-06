@@ -239,7 +239,7 @@ func ValidFrame(frame Frame) bool {
 		return frame.Lane == 0 && len(frame.Body) == 355
 	}
 	if frame.Kind == KindBootstrap {
-		return frame.Lane == 0 && len(frame.Body) == 1
+		return frame.Lane == 0 && len(frame.Body) == 1 && (frame.Body[0] == 1 || frame.Body[0] == 2)
 	}
 	if frame.Kind == KindOpen {
 		return frame.Lane != 0 && (len(frame.Body) == 49 || len(frame.Body) == 50)

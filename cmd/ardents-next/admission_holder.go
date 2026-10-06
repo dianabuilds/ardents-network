@@ -9,6 +9,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/successor/admission"
 	"github.com/dianabuilds/ardents-network/internal/successor/admission/stock"
+	framing "github.com/dianabuilds/ardents-network/internal/successor/route/channel"
 )
 
 type holderCommand struct {
@@ -104,6 +105,12 @@ func runAdmissionHolder(ctx context.Context, args []string, input io.ReadCloser,
 		var err error
 		result := map[string]any{"outcome": "completed"}
 		switch c.Operation {
+		case "issuer-issue":
+			if prefix.issue == nil {
+				err = errors.New("route issuer exchange unavailable")
+				break
+			}
+			err = prefix.issue(ctx, c.Class, c.Receivers)
 		case "rendezvous":
 			if prefix.recipient == nil {
 				err = errors.New("route Rendezvous selection unavailable")
@@ -163,7 +170,7 @@ func runAdmissionHolder(ctx context.Context, args []string, input io.ReadCloser,
 			if err == nil {
 				registration = routeRegistration{}
 			}
-		case "prefix-open", "join-prefix-open":
+		case "prefix-open", "join-prefix-open", "bootstrap-open":
 			if prefix.close != nil {
 				select {
 				case <-prefix.done:
@@ -184,6 +191,12 @@ func runAdmissionHolder(ctx context.Context, args []string, input io.ReadCloser,
 				if err == nil {
 					prefix, err = routeContext.open(ctx)
 				}
+			} else if c.Operation == "bootstrap-open" {
+				if routeContext.close != nil {
+					err = errors.New("holder console retains its JOIN context")
+				} else {
+					prefix, err = startRouteBootstrap(ctx, *config.Route, authority, o)
+				}
 			} else {
 				if routeContext.close != nil {
 					err = errors.New("holder console retains its JOIN context")
@@ -197,7 +210,11 @@ func runAdmissionHolder(ctx context.Context, args []string, input io.ReadCloser,
 				break
 			}
 			err = prefix.replenish(ctx)
-		case "prefix-close":
+		case "prefix-close", "bootstrap-close":
+			if c.Operation == "bootstrap-close" && !prefix.bootstrap {
+				err = errors.New("route bootstrap absent")
+				break
+			}
 			if prefix.close == nil {
 				err = errors.New("route prefix absent")
 				break
@@ -232,11 +249,15 @@ func runAdmissionHolder(ctx context.Context, args []string, input io.ReadCloser,
 					break
 				}
 			}
-			var exchangeErr error
 			if c.Failed {
-				exchangeErr = errors.New("exchange failed")
+				// A failed exchange preserves pending bytes without verification
+				// or deposit. Its normal terminal transition needs no deposit guard.
+				err = attempt.Complete(c.Payload, errors.New("exchange failed"))
+			} else {
+				// The console caller may retire during signature verification. Keep
+				// that original lifetime at the same final deposit boundary as Route.
+				err = attempt.CompleteBound(c.Payload, nil, ctx.Err)
 			}
-			err = attempt.Complete(c.Payload, exchangeErr)
 		case "discard":
 			attempt.Discard()
 		case "take":
@@ -264,7 +285,12 @@ func runAdmissionHolder(ctx context.Context, args []string, input io.ReadCloser,
 			err = errors.New("unknown holder operation")
 		}
 		if err != nil {
-			return map[string]string{"outcome": "refused", "stage": stock.TransferFailureStage(err)}, false, err
+			stage := stock.TransferFailureStage(err)
+			switch c.Operation {
+			case "prefix-close", "bootstrap-close", "join-close", "registration-close":
+				stage = framing.TerminalFailureStage(err)
+			}
+			return map[string]string{"outcome": "refused", "stage": stage}, false, err
 		}
 		return result, false, nil
 	})

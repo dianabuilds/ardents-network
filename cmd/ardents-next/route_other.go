@@ -12,6 +12,9 @@ import (
 func startRoutePrefix(context.Context, routePrefixPlan, admissionAuthority, *stock.Owner) (routeHandle, error) {
 	return routeHandle{}, errors.New("route requires Linux")
 }
+func startRouteBootstrap(context.Context, routePrefixPlan, admissionAuthority, *stock.Owner) (routeHandle, error) {
+	return routeHandle{}, errors.New("route selection and durable roots require Linux")
+}
 func newRouteJoinContext(context.Context, routePrefixPlan, admissionAuthority, *stock.Owner) (routeJoinContext, error) {
 	return routeJoinContext{}, errors.New("route requires Linux")
 }

@@ -188,6 +188,86 @@ tests и non-test consumers регистрируются с реализован
 не заменяет package-map и не регистрирует отсутствующие пакеты.
 ## Общий интерфейс и различия Carrier
 
+Принимающий channel вызывает `Handlers.PrepareOpen` синхронно вне своего mutex,
+до чтения следующих pipelined handshake bytes. Receiver проверяет точный Node
+OPEN, duty/purpose и первоначальный deadline; для issuer-bootstrap он берёт
+настоящий claim и связывает общий 256 KiB queue owner до TLS. Обычные дети
+сохраняют principal queue, а ограниченные дети одновременно учитываются в ней
+и в отдельной общей bootstrap-очереди. В этой очереди считаются retained input
+и полные queued output frames, включая header и control. Место для одного
+CLOSE удерживается с начала до physical finish: полный queue не запрещает
+termination и не отбирает обычного соседа на том же Carrier. Joined parent
+возвращает оставшийся input и ждёт уже начавшихся callbacks возврата.
+
+Receiver также связывает `ConstrainTraffic`: полный OPEN, входящие и исходящие
+кадры с заголовками укладываются в исходные 128 KiB; оба CLOSE имеют заранее
+удержанный byte reserve. Один actual duty оплачивает весь bootstrap output,
+включая CREDIT, EOF и CLOSE. Кредит CLOSE резервируется до TLS даже для ребёнка,
+которому не хватило live claim. Удержанный output уменьшает доступный burst;
+перед emission или joined disposal refill считается со старым потолком. Возврат
+места не возвращает debit и не создаёт второй burst. Копии непрозрачных handles
+сохраняют тот же once-only state.
+
+Отказ ограниченного ребёнка до физической записи сохраняет его local cause и
+обычных соседей. Если duty не смог удержать даже terminal output, этот ребёнок
+отказывает до TLS без нового кадра и остаётся ограничен исходным deadline;
+успешного bootstrap или private ADMIT нет. Начатая частичная запись или ошибка
+Carrier сохраняют физическую provenance и joined failure, а не этот локальный
+отказ. Общий механизм не получает bootstrap policy или authority.
+
+Подготовка claim и queue не выполняет storage I/O на единственном reader.
+Перед TLS отдельный child handler вызывает `ReserveBootstrap`: настоящая
+command composition резервирует Work и Termination у своего Hosting Budget.
+После reserve повторяются current authority и отмена исходного child; даже
+поздний возврат release вместе с ошибкой удерживается до physical Finish.
+Возврат Hosting идёт после joined handler и terminal output, перед возвратом
+claim; parent Close также ждёт начавшийся callback. Ошибка возврата остаётся
+в retained результате Receiver. Callback передаёт только физическую ёмкость,
+а его отсутствие отказывает до TLS. Эти резервы не дают private ADMIT или
+результат issuer.
+
+Эта механика не заменяет private ADMIT или результат issuer.
+Успешный bootstrap-обмен требует своих настоящих владельцев и проверки.
+
+Receiving разделяет чтение и проверку HELLO/первого control frame и обычный
+Admission. Конечный срок HELLO устанавливается до чтения первого control frame.
+BOOTSTRAP issuer у Entry удерживает собственный finite claim и Hosting reserve;
+Interior использует исходный claim, выделенный restricted Node OPEN до TLS.
+Ограниченный child отказывает private ADMIT до вызова receiving Admission.
+Entry передаёт restriction из claim при OPEN к Interior. Его session output
+проверяется через общий `Handlers.Output` до debit и физической записи каждого
+полного кадра; Interior уже учитывается своим outer claim без повторного debit.
+Оба используют общий channel и shared bootstrap queue. Получение результата
+issuer и принятого Stock требуют отдельного настоящего terminal consumer.
+
+Purpose-1 terminal у issuer передаёт один фиксированный OPERATION и RESULT
+настоящей Admission composition. Один transport slot ограничивает конкурентную
+работу, а shared queue учитывает все transport copies до joined retirement.
+После RESULT оба TLS направления завершаются внутри исходного deadline;
+peer terminal предшествует закрытию его lower lane. `transport.Retain`
+сохраняет optional `CloseWrite` только у соединений, которые действительно
+его поддерживают, вместе с исходным TLS exporter и once-only physical Close.
+Отмена по-прежнему прерывает физический канал без новой TLS записи.
+
+При штатном закрытии Prefix после join terminal borrowers общий channel
+завершает исходный Interior role до прерывания Entry Carrier: inner TLS
+half-close, lower EOF после последних TLS-байтов, join reverse reader и
+аутентифицированный lower CLOSE(0). EOF сам по себе не доказывает завершения.
+Lower reader остаётся жив до этого CLOSE; начавшийся CREDIT тоже присоединяется,
+и его физическая ошибка не исчезает. Все действия ограничены исходным сроком
+и прежней одной секундой cleanup. Укороченный исходный lane bound прерывает
+также уже начавшийся CREDIT; временный data-write deadline этого не делает.
+После peer CLOSE(0) directional EOF не отправляется повторно; refusal,
+local close и прежние физические ошибки не дают такого свидетельства.
+Cancel, потеря исходной authority и expiry сохраняют немедленный abort через
+Retire, без новой TLS записи. Ни квота, ни wire grammar, ни право на payload
+успех от этого не меняются.
+
+Локальный data-write deadline не сокращает исходный срок уже начавшегося
+CREDIT: потребление входящих байтов независимо от запрета новых DATA.
+Истечение исходного lane/parent срока и retirement прерывают CREDIT и
+сохраняют позднюю физическую ошибку до join.
+
 Отправная точка — уже используемый `net.Conn` для role channels и узкий
 `Carrier` для outer lanes. Требуемые операции выводятся из действующих callers:
 ordered read/write, независимые deadlines там, где ими пользуется scheduler,

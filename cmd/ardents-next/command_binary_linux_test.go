@@ -12,7 +12,9 @@ import (
 )
 
 // Tests share only an immutable executable, never mutable domain roots. Build
-// once: repeated Go package scans on the Docker source bind mount are costly.
+// once using the repository's canonical build flags: neither checkout paths
+// nor VCS metadata belong to the compiled consumer tested here. Repeated Go
+// package and Git scans on the Docker source bind mount are costly.
 var commandBuild struct {
 	once      sync.Once
 	directory string
@@ -39,7 +41,7 @@ func compiledCommand(t *testing.T) string {
 			return
 		}
 		commandBuild.path = filepath.Join(commandBuild.directory, "ardents-next")
-		cmd := exec.CommandContext(t.Context(), "go", "build", "-o", commandBuild.path, ".")
+		cmd := exec.CommandContext(t.Context(), "go", "build", "-trimpath", "-buildvcs=false", "-o", commandBuild.path, ".")
 		commandBuild.output, commandBuild.err = cmd.CombinedOutput()
 	})
 	if commandBuild.err != nil {

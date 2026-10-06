@@ -38,6 +38,8 @@ func independentRouteRoots(roots ...string) bool {
 }
 
 type routeHandle struct {
+	bootstrap bool
+	issue     func(context.Context, uint8, [][32]byte) error
 	close     func() error
 	replenish func(context.Context) error
 	done      <-chan struct{}

@@ -13,6 +13,9 @@ func ClosedRoleTLSExporter(connection net.Conn) (ClosedTLSExporter, error) {
 	if retained, ok := connection.(*retainedConn); ok {
 		return ClosedRoleTLSExporter(retained.Conn)
 	}
+	if retained, ok := connection.(*retainedHalfClose); ok {
+		return ClosedRoleTLSExporter(retained.Conn)
+	}
 	if secured, ok := connection.(*tls.Conn); ok {
 		if secured != nil {
 			return RoleExporter(secured.ConnectionState())

@@ -84,6 +84,20 @@ func TestRoleTLSAuthenticatesExactPeerAndCarriesBytes(t *testing.T) {
 	if err != nil || !bytes.Equal(clientExport, serverExport) {
 		t.Fatal("authenticated exporters differ", err)
 	}
+	for _, secured := range []*stdtls.Conn{client, server.connection} {
+		retained := transport.Retain(secured)
+		exporter, err := transport.ClosedRoleTLSExporter(retained)
+		if err != nil {
+			t.Fatal("retention lost authenticated TLS exporter", err)
+		}
+		got, err := exporter("EXPORTER-route-adapter-test", nil, 32)
+		if err != nil || !bytes.Equal(got, clientExport) {
+			t.Fatal("retention changed actual exporter bytes", err)
+		}
+		if _, ok := retained.(interface{ CloseWrite() error }); !ok {
+			t.Fatal("retention lost actual TLS half-close")
+		}
+	}
 	if err := client.SetDeadline(end); err != nil {
 		t.Fatal(err)
 	}

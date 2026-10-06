@@ -16,6 +16,8 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/successor/admission"
+	"github.com/dianabuilds/ardents-network/internal/successor/admission/issuer"
+	"github.com/dianabuilds/ardents-network/internal/successor/admission/quota"
 	"github.com/dianabuilds/ardents-network/internal/successor/admission/receiving"
 	"github.com/dianabuilds/ardents-network/internal/successor/admission/stock"
 	"github.com/dianabuilds/ardents-network/internal/successor/hosting"
@@ -87,16 +89,19 @@ func startRoutePrefix(ctx context.Context, plan routePrefixPlan, authority admis
 			if err := authority.presentation(presentation); err != nil {
 				return nil, err
 			}
-			class := uint8(2)
-			if h.Purpose == ardp.PurposeIntroduction {
-				class = 3
+			class, err := role.AdmissionClass(h.Purpose)
+			if err != nil {
+				return nil, err
 			}
-			return holder.Take(ctx, presentation, class)
+			return holder.Take(ctx, presentation, uint8(class))
 		}})
 	if err != nil {
 		return routeHandle{}, errors.Join(err, release())
 	}
-	return routeHandle{close: prefix.Close, done: prefix.Done(), replenish: prefix.Replenish, register: func(ctx context.Context, revision uint64) (routeRegistration, error) {
+	return routeHandle{close: prefix.Close, done: prefix.Done(), replenish: prefix.Replenish, issue: func(ctx context.Context, class uint8, receivers [][32]byte) error {
+		end := minRouteDeadline(plan.Deadline, time.Now().Add(admission.ControlClass.Lifetime()).UTC().Truncate(time.Second))
+		return prefix.Issue(ctx, end, routeIssuerPreparation(ctx, authority, holder, leg, class, receivers))
+	}, register: func(ctx context.Context, revision uint64) (routeRegistration, error) {
 		view, err := authority.current()
 		if err != nil {
 			return routeRegistration{}, err
@@ -126,6 +131,31 @@ func minRouteDeadline(end time.Time, bounds ...time.Time) time.Time {
 	return end
 }
 
+func issueRouteBatch(ctx context.Context, authority admissionAuthority, plan issuer.Plan, batch []byte, bootstrap bool) ([]byte, error) {
+	kind := quota.Admitted
+	if bootstrap {
+		kind = quota.Bootstrap
+	}
+	result := issuer.IssueCurrent(ctx, plan, batch, kind, func() (admission.AuthorityFacts, time.Time, error) { return authority.issuer(plan.KeyBinding.Signer) })
+	if err := ctx.Err(); err != nil {
+		clear(result.Response)
+		return nil, err
+	}
+	_, outcome := result.Status()
+	if outcome == "storage-uncertain" {
+		clear(result.Response)
+		return nil, errors.New("route issuer retirement uncertain")
+	}
+	if result.Response != nil {
+		return result.Response, nil
+	}
+	status := admission.ClosedTokenUnavailable
+	if outcome == string(quota.Exhausted) {
+		status = admission.ClosedTokenExhausted
+	}
+	return admission.EncodeClosedTokenBatchResult(admission.ClosedTokenBatchResult{Status: status})
+}
+
 func runRoute(ctx context.Context, args []string, out, diagnostic io.Writer) (code int) {
 	var plan struct {
 		Network          *networkAuthorityPlan `json:"network"`
@@ -137,6 +167,7 @@ func runRoute(ctx context.Context, args []string, out, diagnostic io.Writer) (co
 		PrivateKey       string                `json:"private_key"`
 		Work             hosting.Traffic       `json:"work"`
 		Termination      hosting.Traffic       `json:"termination"`
+		Issuer           *issuer.Plan          `json:"issuer,omitempty"`
 	}
 	if ctx == nil || len(args) < 1 || args[0] != "receive" || admissionConfig(args[1:], &plan) != nil || plan.Network == nil ||
 		!validAdmissionAuthority("", plan.Network, plan.SpendRoot, plan.HostingRoot) || !independentRouteRoots(plan.Network.Root, plan.SpendRoot, plan.HostingRoot) {
@@ -174,6 +205,19 @@ func runRoute(ctx context.Context, args []string, out, diagnostic io.Writer) (co
 	if m.RoleDomain == 4 && m.Subrole == 3 && plan.IntroductionRoot == "" {
 		return 2
 	}
+	issuerDuty := m.RoleDomain == 2 && m.Subrole == 6
+	if issuerDuty != (plan.Issuer != nil) {
+		return 2
+	}
+	var issue func(context.Context, []byte, bool) ([]byte, error)
+	if plan.Issuer != nil {
+		if plan.Issuer.KeyBinding.Issuer != m.NodeID || !independentRouteRoots(plan.Network.Root, plan.SpendRoot, plan.HostingRoot, plan.Issuer.AdmissionRoot, plan.Issuer.KeyRoot, plan.Issuer.ResultRoot) {
+			return 2
+		}
+		issue = func(ctx context.Context, batch []byte, bootstrap bool) ([]byte, error) {
+			return issueRouteBatch(ctx, authority, *plan.Issuer, batch, bootstrap)
+		}
+	}
 	certificate, err := readRouteCertificate(plan.Certificate, plan.PrivateKey)
 	if err != nil {
 		return 2
@@ -204,11 +248,18 @@ func runRoute(ctx context.Context, args []string, out, diagnostic io.Writer) (co
 	if m.RoleDomain == 4 && m.Subrole == 3 {
 		initializationOwner = admissionOwner
 	}
-	server, err := routereceiver.Listen(ctx, routereceiver.ReceiverConfig{Authority: role.Authority{Current: networkOwner.CurrentRuntime, Duty: duty, Profile: p.ProfileBinding}, Certificate: certificate, IntroductionRoot: plan.IntroductionRoot, Receiving: initializationOwner,
+	server, err := routereceiver.Listen(ctx, routereceiver.ReceiverConfig{Authority: role.Authority{Current: networkOwner.CurrentRuntime, Duty: duty, Profile: p.ProfileBinding}, Certificate: certificate, IntroductionRoot: plan.IntroductionRoot, Receiving: initializationOwner, Issue: issue,
+		ReserveBootstrap: func(ctx context.Context, end time.Time) (func() error, error) {
+			reservation, err := budget.Reserve(ctx, hosting.ReservationRequest{Work: plan.Work, Termination: plan.Termination, WorkUntil: end, HoldUntil: end.Add(5 * time.Second)})
+			if err != nil {
+				return nil, err
+			}
+			return func() error { return releaseRouteReservation(reservation) }, nil
+		},
 		Admit: func(ctx context.Context, c routereceiver.Channel, raw []byte) (receiving.Grant, error) {
-			class := admission.ForwardClass
-			if c.Hello.Purpose == ardp.PurposeIntroduction {
-				class = admission.RegistrationClass
+			class, err := role.AdmissionClass(c.Hello.Purpose)
+			if err != nil {
+				return receiving.Grant{}, err
 			}
 			return admissionOwner.Accept(ctx, class, raw, c.Hello.Deadline, func() (func() error, error) {
 				reservation, err := budget.Reserve(ctx, hosting.ReservationRequest{Work: plan.Work, Termination: plan.Termination, WorkUntil: c.Hello.Deadline, HoldUntil: c.Hello.Deadline.Add(5 * time.Second)})

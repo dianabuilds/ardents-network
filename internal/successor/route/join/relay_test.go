@@ -1,10 +1,12 @@
 package join
 
 import (
+	"context"
 	"encoding/binary"
 	"errors"
 	"github.com/dianabuilds/ardents-network/internal/successor/route/ardp"
 	framing "github.com/dianabuilds/ardents-network/internal/successor/route/channel"
+	"io"
 	"net"
 	"os"
 	"sync"
@@ -30,6 +32,101 @@ func (c *joinRelayHeaderGate) Read(body []byte) (int, error) {
 		})
 	}
 	return n, err
+}
+
+// Hold a real incoming control at either completed-header or completed-body
+// observation. Sealing cannot turn joined CREDIT into payload or grant credit.
+type joinRelayInputGate struct {
+	net.Conn
+	reads, hold      int
+	observed, resume chan struct{}
+}
+
+func (c *joinRelayInputGate) Read(body []byte) (int, error) {
+	n, err := c.Conn.Read(body)
+	c.reads++
+	if c.reads == c.hold && n != 0 {
+		close(c.observed)
+		<-c.resume
+	}
+	return n, err
+}
+
+func TestJoinRelaySealJoinsStartedCreditWithoutGrantOrOutput(t *testing.T) {
+	for _, phase := range []struct {
+		name string
+		read int
+	}{{"header", 1}, {"body", 2}} {
+		for _, name := range []string{"valid", "zero", "overflow", "payload", "currentness-loss", "cancellation"} {
+			t.Run(phase.name+"/"+name, func(t *testing.T) {
+				local, remote := net.Pipe()
+				defer local.Close()
+				defer remote.Close()
+				gate := &joinRelayInputGate{Conn: local, hold: phase.read, observed: make(chan struct{}), resume: make(chan struct{})}
+				ctx, cancel := context.WithCancel(t.Context())
+				defer cancel()
+				pair := &joinPair{owner: &Pairing{}}
+				end := time.Now().Add(time.Minute)
+				side := &joinSide{ctx: ctx, conn: gate, pair: pair, hello: ardp.Hello{Deadline: end}, limit: 65536, credit: framing.Window}
+				peer := &joinSide{ctx: t.Context(), pair: pair, hello: ardp.Hello{Deadline: end}, limit: 65536, credit: framing.Window - 1}
+				lost := errors.New("original incoming CREDIT observation lost")
+				side.check = func() error {
+					pair.owner.mu.Lock()
+					sealed := pair.sealed
+					pair.owner.mu.Unlock()
+					if sealed && name == "currentness-loss" {
+						return lost
+					}
+					return nil
+				}
+				frame := ardp.Frame{Kind: ardp.KindCredit, Lane: 1, Body: []byte{0, 0, 0, 1}}
+				if name == "overflow" {
+					frame.Body[3] = 2
+				}
+				if name == "payload" {
+					frame.Kind = ardp.KindBytes
+				}
+				raw, err := ardp.EncodeFrame(frame)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if name == "zero" {
+					raw[len(raw)-1] = 0
+				} // deliberately invalid incoming bytes
+				result := make(chan joinPumpResult, 1)
+				go func() { result <- side.pump(peer) }()
+				written := make(chan error, 1)
+				go func() { _, err := remote.Write(raw); written <- err }()
+				<-gate.observed
+				pair.owner.mu.Lock()
+				pair.sealed = true
+				pair.owner.mu.Unlock()
+				if name == "cancellation" {
+					cancel()
+				}
+				close(gate.resume)
+				got := <-result
+				if name == "valid" {
+					if got.err != nil || got.terminal || got.write {
+						t.Errorf("joined started CREDIT failed retirement: %+v", got)
+					}
+				} else if got.err == nil {
+					t.Error("invalid or revoked input became clean retirement", got)
+				}
+				if name == "currentness-loss" && !errors.Is(got.err, lost) {
+					t.Error("original observation failure erased", got.err)
+				}
+				if name == "cancellation" && !errors.Is(got.err, context.Canceled) {
+					t.Error("original cancellation erased", got.err)
+				}
+				if peer.credit != framing.Window-1 || peer.used != 0 || peer.physicalErr != nil {
+					t.Error("sealed input granted credit or started output")
+				}
+				local.Close()
+				<-written
+			})
+		}
+	}
 }
 
 func TestJoinRelaySealKeepsAlreadyStartedOppositeTerminal(t *testing.T) {
@@ -68,6 +165,193 @@ func TestJoinRelaySealKeepsAlreadyStartedOppositeTerminal(t *testing.T) {
 			}
 			local.Close()
 			<-written
+		})
+	}
+}
+
+// Pause the opposite pump's actual pre-header currentness observation. A peer
+// CLOSE can seal the pair before that observation returns, so no new input may
+// start. These real pipes isolate relay ordering, not successful authority or
+// Admission. A separate currentness failure must still prevent clean output.
+func TestJoinRelaySealBeforeOppositeHeaderStillEmitsTerminals(t *testing.T) {
+	for _, name := range []string{"clean", "refused", "opposite-currentness-loss"} {
+		t.Run(name, func(t *testing.T) {
+			synctest.Test(t, func(t *testing.T) {
+				first, firstPeer := net.Pipe()
+				second, secondPeer := net.Pipe()
+				defer firstPeer.Close()
+				defer secondPeer.Close()
+				defer first.Close()
+				defer second.Close()
+				pair := &joinPair{owner: &Pairing{}, stopped: make(chan struct{})}
+				end := time.Now().Add(time.Minute)
+				observing, resume := make(chan struct{}), make(chan struct{})
+				var once sync.Once
+				lost := errors.New("original opposite currentness lost")
+				sides := [2]*joinSide{
+					{ctx: t.Context(), conn: first, pair: pair, hello: ardp.Hello{Purpose: ardp.PurposeDataJoin, Deadline: end}, limit: 1 << 20, credit: framing.Window},
+					{ctx: t.Context(), conn: second, pair: pair, hello: ardp.Hello{Purpose: ardp.PurposeDataJoin, Deadline: end}, limit: 1 << 20, credit: framing.Window},
+				}
+				sides[1].check = func() error {
+					once.Do(func() { close(observing); <-resume })
+					if name == "opposite-currentness-loss" {
+						return lost
+					}
+					return nil
+				}
+				joined := make(chan struct{})
+				go func() {
+					pair.relay(sides)
+					_ = first.Close()
+					_ = second.Close()
+					close(joined)
+				}()
+				<-observing
+				status := byte(0)
+				if name == "refused" {
+					status = 1
+				}
+				if err := ardp.WriteFrame(firstPeer, ardp.Frame{Kind: ardp.KindClose, Lane: 1, Body: []byte{status}}); err != nil {
+					t.Fatal(err)
+				}
+				<-pair.stopped
+				synctest.Wait()
+				type terminal struct {
+					frame ardp.Frame
+					err   error
+				}
+				terminals := make(chan terminal, 2)
+				for _, peer := range []net.Conn{firstPeer, secondPeer} {
+					go func() { frame, err := ardp.ReadFrame(peer); terminals <- terminal{frame, err} }()
+				}
+				close(resume)
+				for range 2 {
+					got := <-terminals
+					if name == "opposite-currentness-loss" {
+						if got.err == nil {
+							t.Error("currentness loss produced terminal output", got.frame)
+						}
+					} else if got.err != nil || got.frame.Kind != ardp.KindClose || got.frame.Lane != 1 || len(got.frame.Body) != 1 || got.frame.Body[0] != status {
+						t.Errorf("sealed pre-header pump prevented matching terminal: %+v / %v", got.frame, got.err)
+					}
+				}
+				<-joined
+				switch name {
+				case "clean":
+					if pair.err != nil {
+						t.Fatal("ordinary seal became a failed pair", pair.err)
+					}
+				case "refused":
+					if pair.err == nil {
+						t.Fatal("peer refusal was erased")
+					}
+				case "opposite-currentness-loss":
+					if !errors.Is(pair.err, lost) {
+						t.Fatal("original currentness failure was erased", pair.err)
+					}
+				}
+			})
+		})
+	}
+}
+
+// A genuine input CREDIT is fully read and validated while live. Pause only
+// its recipient's pre-output observation, then consume the opposite CLOSE.
+// The pair must join this unemitted control and still send both terminals.
+// Pipe framing supplies no successful Network, Admission or Service authority.
+func TestJoinRelaySealAfterCreditValidationJoinsUnstartedOutput(t *testing.T) {
+	for _, name := range []string{"clean", "late-check-failure", "original-cancellation"} {
+		t.Run(name, func(t *testing.T) {
+			synctest.Test(t, func(t *testing.T) {
+				first, firstPeer := net.Pipe()
+				second, secondPeer := net.Pipe()
+				defer first.Close()
+				defer second.Close()
+				defer firstPeer.Close()
+				defer secondPeer.Close()
+				ctx, cancel := context.WithCancel(context.Background())
+				defer cancel()
+				pair := &joinPair{owner: &Pairing{}, stopped: make(chan struct{})}
+				end := time.Now().Add(time.Minute)
+				sides := [2]*joinSide{
+					{ctx: ctx, conn: first, pair: pair, hello: ardp.Hello{Purpose: ardp.PurposeDataJoin, Deadline: end}, limit: 1 << 20, credit: framing.Window - 1},
+					{ctx: context.Background(), conn: second, pair: pair, hello: ardp.Hello{Purpose: ardp.PurposeDataJoin, Deadline: end}, limit: 1 << 20, credit: framing.Window},
+				}
+				initial, observing, resume := make(chan struct{}), make(chan struct{}), make(chan struct{})
+				lost := errors.New("original pre-output observation failed")
+				var checkMu sync.Mutex
+				checks := 0
+				sides[0].check = func() error {
+					checkMu.Lock()
+					checks++
+					n := checks
+					checkMu.Unlock()
+					if n == 1 {
+						close(initial) // original input header; no frame sent yet
+					}
+					if n == 2 {
+						close(observing) // already validated CREDIT, before output
+						<-resume
+						if name == "late-check-failure" {
+							return lost
+						}
+					}
+					return nil
+				}
+				joined := make(chan struct{})
+				go func() {
+					pair.relay(sides)
+					_ = first.Close()
+					_ = second.Close()
+					close(joined)
+				}()
+				<-initial
+				if err := ardp.WriteFrame(secondPeer, ardp.Frame{Kind: ardp.KindCredit, Lane: 1, Body: []byte{0, 0, 0, 1}}); err != nil {
+					t.Fatal(err)
+				}
+				<-observing
+				if err := ardp.WriteFrame(firstPeer, ardp.Frame{Kind: ardp.KindClose, Lane: 1, Body: []byte{0}}); err != nil {
+					t.Fatal(err)
+				}
+				<-pair.stopped
+				if name == "original-cancellation" {
+					cancel()
+				}
+				type terminal struct {
+					frame ardp.Frame
+					err   error
+				}
+				terminals := make(chan terminal, 2)
+				for _, peer := range []net.Conn{firstPeer, secondPeer} {
+					go func() { f, err := ardp.ReadFrame(peer); terminals <- terminal{f, err} }()
+				}
+				close(resume)
+				for range 2 {
+					got := <-terminals
+					if name == "clean" {
+						if got.err != nil || got.frame.Kind != ardp.KindClose || got.frame.Lane != 1 || len(got.frame.Body) != 1 || got.frame.Body[0] != 0 {
+							t.Errorf("unstarted CREDIT prevented clean terminal: %+v / %v", got.frame, got.err)
+						}
+					} else if got.err != io.EOF {
+						t.Errorf("failed original emitted terminal or partial output: %+v / %v", got.frame, got.err)
+					}
+				}
+				<-joined
+				switch name {
+				case "clean":
+					if pair.err != nil || sides[0].physicalErr != nil || sides[1].physicalErr != nil {
+						t.Fatal("unemitted control became failed physical retirement", pair.err)
+					}
+				case "late-check-failure":
+					if !errors.Is(pair.err, lost) {
+						t.Fatal("late original failure was erased", pair.err)
+					}
+				case "original-cancellation":
+					if !errors.Is(pair.err, context.Canceled) {
+						t.Fatal("original cancellation was erased", pair.err)
+					}
+				}
+			})
 		})
 	}
 }

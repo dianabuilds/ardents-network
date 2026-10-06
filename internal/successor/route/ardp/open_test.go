@@ -28,7 +28,7 @@ func TestOpenIndependentCanonicalRecipientBytes(t *testing.T) {
 	}
 	// The vector is intentionally expired. Codec success grants no current
 	// authority and cannot depend on the execution host's wall clock.
-	for _, purpose := range []uint8{4, 6} {
+	for _, purpose := range []uint8{1, 4, 6} {
 		body := append([]byte(nil), want...)
 		body[40] = purpose
 		decoded, err := DecodeOpen(body)
@@ -53,10 +53,39 @@ func TestOpenRejectsWrongShapeAndUnusableFields(t *testing.T) {
 		case "duty":
 			clear(body[32:40])
 		case "purpose":
-			body[40] = 1
+			body[40] = 2
 		}
 		if _, err := DecodeOpen(body); err == nil {
 			t.Fatal("unusable recipient description accepted", field)
 		}
+	}
+}
+
+func TestNodeOpenIndependentRestrictionEnvelopes(t *testing.T) {
+	recipient, err := hex.DecodeString("0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f200102030405060708010000000001020304")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, restriction := range []ChildRestriction{OrdinaryChild, IssuerBootstrapChild} {
+		body := append(append([]byte(nil), recipient...), byte(restriction))
+		opened, err := DecodeNodeOpen(body)
+		if err != nil || opened.Restriction != restriction || opened.Recipient.Purpose != 1 {
+			t.Fatalf("Node envelope: %+v / %v", opened, err)
+		}
+		encoded, err := EncodeNodeOpen(opened)
+		if err != nil || !bytes.Equal(encoded, body) {
+			t.Fatalf("restriction bytes changed: %x / %v", encoded, err)
+		}
+		if _, err := DecodeOpen(body); err == nil {
+			t.Fatal("Endpoint accepted an injected Node restriction")
+		}
+	}
+	for _, body := range [][]byte{nil, recipient, append(append([]byte(nil), recipient...), 2), append(append([]byte(nil), recipient...), 255)} {
+		if _, err := DecodeNodeOpen(body); err == nil {
+			t.Fatal("retired or unknown Node envelope accepted", len(body))
+		}
+	}
+	if raw, err := EncodeNodeOpen(NodeOpen{Restriction: ChildRestriction(2)}); err == nil || raw != nil {
+		t.Fatal("unknown restriction emitted")
 	}
 }

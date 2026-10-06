@@ -28,6 +28,15 @@ func (c *retainedConn) Close() error {
 
 func (c *retainedConn) NetConn() net.Conn { return c.Conn }
 
+// Half-close completes an orderly exchange without returning physical ownership.
+// Preserve this optional capability only when the underlying connection has it.
+type retainedHalfClose struct {
+	*retainedConn
+	writer interface{ CloseWrite() error }
+}
+
+func (c *retainedHalfClose) CloseWrite() error { return c.writer.CloseWrite() }
+
 // Retain owns one physical interruption result across independent cancellation
 // and joined borrower cleanup. It neither authenticates nor changes a principal.
 func Retain(conn net.Conn) net.Conn {
@@ -37,5 +46,12 @@ func Retain(conn net.Conn) net.Conn {
 	if _, ok := conn.(*retainedConn); ok {
 		return conn
 	}
-	return &retainedConn{Conn: conn}
+	if _, ok := conn.(*retainedHalfClose); ok {
+		return conn
+	}
+	retained := &retainedConn{Conn: conn}
+	if writer, ok := conn.(interface{ CloseWrite() error }); ok {
+		return &retainedHalfClose{retainedConn: retained, writer: writer}
+	}
+	return retained
 }

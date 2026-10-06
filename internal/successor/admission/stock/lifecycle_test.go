@@ -20,6 +20,110 @@ func nextIntent(h *spendHostFixture) IssuanceIntent {
 	return IssuanceIntent{Challenges: []token.ClosedTokenContext{{NetworkID: p.NetworkID, ProfileDigest: p.Digest, IssuerNodeID: p.IssuerNodeID, ReceiverNodeID: fixtureID(6), ReceiverDutyGeneration: 8, Class: 2, WindowStart: h.now.Truncate(time.Hour)}},
 		Selection: ExchangeBinding{ID: fixtureID(11), ProfileDigest: p.Digest}, Bootstrap: true, Deadline: h.now.Add(time.Minute)}
 }
+
+func TestHolderBoundCompletionRefusesVerifiedTokensAfterOriginalLifetimeRetires(t *testing.T) {
+	for _, retired := range []bool{false, true} {
+		t.Run(map[bool]string{false: "live", true: "retired"}[retired], func(t *testing.T) {
+			o, h, presentation := issuedStockFixture(t)
+			original, err := o.Take(t.Context(), presentation, 2)
+			if err != nil {
+				t.Fatal(err)
+			}
+			clear(original)
+			a, err := o.Begin(nextIntent(h))
+			if err != nil {
+				t.Fatal(err)
+			}
+			raw, _, err := a.Request()
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer clear(raw)
+			issued := issuer.IssueCurrent(t.Context(), h.plan, raw, quota.Bootstrap, h.ProfileLocked)
+			if issued.Outcome != "issued-offline" {
+				t.Fatal(issued.Outcome)
+			}
+			defer clear(issued.Response)
+			before := o.Status().Remaining
+			cause := errors.New("original opening retired")
+			checked := 0
+			err = a.CompleteBound(issued.Response, nil, func() error {
+				checked++
+				if retired {
+					return cause
+				}
+				return nil
+			})
+			if checked != 1 || retired && !errors.Is(err, cause) || !retired && err != nil {
+				t.Fatal("original finalization guard lost", checked, err)
+			}
+			if o.Status().Remaining != before || o.Status().Pending {
+				t.Fatal("failed completion refunded or retained batch")
+			}
+			got, takeErr := o.Take(t.Context(), presentation, 2)
+			defer clear(got)
+			if retired && takeErr == nil || !retired && takeErr != nil {
+				t.Fatal("verified stock crossed original lifetime", retired, takeErr)
+			}
+			if err := a.CompleteBound(issued.Response, nil, func() error { return nil }); err == nil {
+				t.Fatal("replacement guard revived completed batch")
+			}
+		})
+	}
+}
+
+// Genuine blind issuance is retained; only the final observation failure is
+// injected. Supplied fixture authority facts do not establish Network authenticity.
+func TestHolderBoundCompletionRechecksAuthorityAfterVerification(t *testing.T) {
+	o, h, presentation := issuedStockFixture(t)
+	original, err := o.Take(t.Context(), presentation, 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	clear(original)
+	a, err := o.Begin(nextIntent(h))
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw, _, err := a.Request()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer clear(raw)
+	issued := issuer.IssueCurrent(t.Context(), h.plan, raw, quota.Bootstrap, h.ProfileLocked)
+	if issued.Outcome != "issued-offline" {
+		t.Fatal(issued.Outcome)
+	}
+	defer clear(issued.Response)
+	before := o.Status().Remaining
+	cause := errors.New("State lost after signature verification")
+	observe := o.observe
+	observations, guards := 0, 0
+	o.observe = func() (admission.AuthorityFacts, time.Time, error) {
+		observations++
+		if observations == 2 {
+			return admission.AuthorityFacts{}, time.Time{}, cause
+		}
+		return observe()
+	}
+	err = a.CompleteBound(issued.Response, nil, func() error { guards++; return nil })
+	o.observe = observe
+	if !errors.Is(err, cause) || observations != 2 || guards != 0 {
+		t.Fatal("final State observation lost", err, observations, guards)
+	}
+	if o.Status().Pending || o.Status().Remaining != before {
+		t.Fatal("failed finalization retained or refunded batch")
+	}
+	got, err := o.Take(t.Context(), presentation, 2)
+	clear(got)
+	if err == nil {
+		t.Fatal("obsolete verified tokens deposited")
+	}
+	if err := a.CompleteBound(issued.Response, nil, func() error { return nil }); err == nil {
+		t.Fatal("replacement revived obsolete completion")
+	}
+}
+
 func TestHolderRetryRevocationAndSingleCompletion(t *testing.T) {
 	o, h, _ := issuedStockFixture(t)
 	intent := nextIntent(h)

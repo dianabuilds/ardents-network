@@ -159,6 +159,12 @@ consumption or joined owner cleanup. Withdrawal interrupts listeners, pending
 setup, readers, writers and children; owners join them before returning
 reservations or closing roots. Repeated Close returns one retained result,
 including late physical and release failures.
+Receiver cancellation first denies new accepting work and interrupts its
+accepted connections, then closes the shared listener and transport. QUIC's
+shared UDP transport must remain available while connection-close packets are
+sent; destroying it first leaves remote retirement to idle timeout. Closing
+the listener still interrupts unaccepted handshakes, and physical workers join
+before reservations and roots return.
 An already expired child starts no new terminal frame. Its original operation
 remains refused, while a completed local child join alone does not retire its
 still-live framing parent or siblings. Output already in progress still joins
@@ -189,6 +195,15 @@ physical write fails, the nested result retains the parent's same write witness
 and cause; closing a borrowed lane does not mint a socket-close witness for the
 nested session. An unrelated physical close or release failure still prevents
 peer-retirement classification.
+Healthy explicit or idle retirement joins terminal borrowers, completes the
+original Interior TLS direction and sends lower EOF after its last bytes. The
+lower framing reader stays alive until the exact peer CLOSE(0), including join
+of any started CREDIT, before the Entry Carrier is interrupted. Reverse EOF
+alone, refusal or a late physical failure cannot discharge that retirement.
+This uses the earlier of the original bound and the existing one-second cleanup
+horizon. Original cancellation, authority loss or expiry keeps immediate
+physical interruption; no terminal write creates a renewed payload allowance.
+
 `Prefix.Done` signals retired readiness; its caller must still Close to join
 and release. `Receiver.Done`
 signals joined listener retirement, and Close retrieves its terminal result.
@@ -286,6 +301,100 @@ State-selected Carrier/address. Configuration is bounded by the existing
 strict command decoder. Private key input is bounded and owner-private.
 Cancellation or authority withdrawal joins Route before Admission, Hosting and
 Network roots close. Output exposes fixed operation/phase/outcome only.
+
+An exact Domain-2 issuance duty additionally requires the `issuer` plan, bound
+to that same Node and independent quota, key and result roots. Its purpose-1
+terminal carries one fixed 16,384-byte OPERATION and matching RESULT, using
+Admission's canonical enclosed batch and padded result. Restricted children
+derive the bootstrap quota kind from their original incoming claim; ordinary
+children require genuine class-1 receiving Admission. The command composition
+calls the existing `issuer.IssueCurrent`, without implementing quota or signing
+inside Route. Issuer transport retains one operation slot and finite buffers
+until joined retirement.
+Portable `route/issuer` owns the single OPERATION/RESULT exchange, canonical
+nonce/outcome agreement and termination of both role TLS directions. Prefix
+calls its holder exchange and joins the lower channel before Stock completion;
+Receiver dispatches its receiving exchange only after exact role authentication
+and genuine ordinary admission or an immutable bootstrap claim. Receiver derives
+the issuance kind and retains exclusive work, queues and Hosting until join.
+The exchange opens no roots, signs nothing and releases no physical capacity.
+
+The holder uses a separate typed `BootstrapPrefix`, exposing only issuance and
+joined retirement. It retains the original Domain-1 selection, ten-second bound,
+128 KiB lane allowance and shared 256 KiB queue. It shares actual channel and
+Carrier mechanisms with admitted Prefix, without a successful presentation
+substitute or an upgrade to ordinary work. Selection chooses only the exact
+current profile issuer and rejects every known Node/key/family conflict.
+
+`bootstrap-open`, `issuer-issue` and `bootstrap-close` drive genuine Stock and
+issuer owners through the maintained holder console. The holder joins bootstrap
+before `prefix-open` creates fresh admitted channels; ordinary `issuer-issue`
+uses a fresh Control token. Request preparation, exchange, physical join and
+`Stock.Attempt.CompleteBound` retain one original opening. Canonical result
+padding, matching nonce and agreement between envelope and Admission outcome
+precede cryptographic finalization. Stock reobserves its authority after signature
+verification and applies the original local lifetime guard before token deposit.
+Failure cannot refund the allocation or transfer a response to a replacement.
+Failed issuer I/O also retains the original caller/generation cause before
+Stock completion. A cancellation that interrupts reading as EOF remains
+`context.Canceled`; it cannot deposit a delayed valid result.
+Receiving issuer retirement likewise retains the original interruption cause
+alongside a failed physical read/write. A real blocked-pipe refusal control
+checks that cancellation remains observable and exclusive work stays held until
+the writer joins. This mechanical control issues only Unavailable; it does not
+establish successful blocked RESULT output through a complete admitted Carrier.
+
+Receiving issuer work is exclusive before private Admission and is retained
+through physical retirement and reservation return. A busy peer cannot spend
+another Control token at the receiver or start another signing operation.
+Its holder presentation and pending allocation are nevertheless irreversible;
+an explicit same-prefix retry retains the original batch and delivery binding.
+Local Hosting return failure belongs to the receiving owner's retained terminal
+result. It occurs after physical joining and cannot be sent through an already
+closed peer channel or revoke an earlier verified token signature.
+
+The actual holder and compiled-process scenarios exercise both bootstrap batches,
+refusal of a third, fresh admitted channels, ordinary issuance and joined Hosting
+return on both Carriers. Two independent genuine holders also exercise busy
+refusal before receiving spend, sibling progress after joining, cancellation
+after actual issuer signing with Hosting still held, and retained late return
+failure. A lost signed result is explicitly retried on the same original Prefix:
+actual `IssueCurrent` reopens its durable owners and returns identical committed
+bytes, while Stock retains its pending request and reserves allocation only once.
+Signed successor State intake and cancellation of the actual receiving listener
+are separately exercised before receiving Admission, after reservation but
+before spend, after actual spend, before and after durable issuer debit, and
+after a genuinely signed committed result. The holder caller remains live in
+these cases; receiving cancellation is not replaced by caller cancellation.
+The real quota and result journals
+independently distinguish the debit and signing effects; obsolete completion
+cannot append another result or erase an existing debit.
+Each case refuses obsolete completion, retains the original allocation,
+preserves repeated terminal Close results, and joins actual Hosting borrowers.
+While the gated physical borrower has not joined, the fixture checks the exact
+sum of its configured Hosting work and termination reservations in both
+directions. After joined retirement, each actual return occurs once and the
+reserved total is zero. This checks reservation ownership, not physical Carrier
+overhead or provider billing.
+Public Prefix/Stock composition also cancels the original issuer caller after
+actual signature verification and before deposit on both Carriers. Finalization
+has already erased blinding state; this refusal preserves spent allocation,
+leaves no pending batch to reconstruct, and makes the verified tokens unavailable
+to a fresh Stock presentation. Ignoring that guard's refusal causes the genuine
+Stock probe to detect available tokens on both Carriers.
+The lost-result scenario also joins the original Prefix and reopens the same
+holder presentation root. The issuer retains identical signed bytes and refuses
+a changed kind; the reopened holder has neither accepted permission nor pending
+blinders. A fresh public permission request uses a new holder key and cannot
+adopt the old permission or issuer response. Public bytes do not reconstruct
+the lost volatile state.
+Separate genuine Network/allocation/issuer composition verifies two valid
+holder-signed requests with one Request ID and different blinded payloads.
+The changed digest refuses at quota/debit, before signing, and leaves both
+journals and the original retry result unchanged. This owner-bound conflict
+control does not claim another full Carrier or holder-Stock exchange.
+These controls do not establish the complete State-loss/cancellation matrix,
+blocked physical output, every retry/refusal obligation or complete Route acceptance.
 
 Physical envelopes are explicit bounded operator inputs; Hosting measures whole
 named interfaces. These component operations do not qualify carrier overhead,

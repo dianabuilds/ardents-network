@@ -80,6 +80,21 @@ func (a Attempt) Request() ([]byte, time.Time, error) {
 // Complete is one terminal transition. A failed external exchange preserves
 // the exact pending blind batch for retry, without refunding its reservation.
 func (a Attempt) Complete(payload []byte, exchangeErr error) error {
+	return a.complete(payload, exchangeErr, nil)
+}
+
+// CompleteBound additionally checks the original external delivery lifetime
+// after token verification and immediately before deposit. The check may only
+// restrict completion; it grants no Admission authority. It runs under the
+// Stock lock and must perform no I/O or call back into Stock.
+func (a Attempt) CompleteBound(payload []byte, exchangeErr error, check func() error) error {
+	if check == nil {
+		return errors.New("issuance completion lifetime absent")
+	}
+	return a.complete(payload, exchangeErr, check)
+}
+
+func (a Attempt) complete(payload []byte, exchangeErr error, check func() error) error {
 	if a.state == nil {
 		return errors.New("attempt absent")
 	}
@@ -103,7 +118,17 @@ func (a Attempt) Complete(payload []byte, exchangeErr error) error {
 	if exchangeErr != nil {
 		return exchangeErr
 	}
-	return s.permission.acceptIssuedBatch(s.batch, payload)
+	var finalCheck func() error
+	if check != nil {
+		finalCheck = func() error {
+			p, now, err := o.current()
+			if err != nil || p != s.profile || !now.Before(s.deadline) || !s.permission.CurrentFor(p, now) {
+				return errors.Join(errors.New("issuance authority changed during verification"), err)
+			}
+			return check()
+		}
+	}
+	return s.permission.acceptIssuedBatch(s.batch, payload, finalCheck)
 }
 
 // Discard retires the exact pending request without restoring quota.

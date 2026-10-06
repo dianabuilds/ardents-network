@@ -19,6 +19,17 @@ type joinReadFailure struct{ cause error }
 func (e *joinReadFailure) Error() string { return e.cause.Error() }
 func (e *joinReadFailure) Unwrap() error { return e.cause }
 
+// These outcomes are minted by this pair's accounting lock. Only a refusal
+// before the next header starts is ordinary pump retirement. A started frame
+// must still join its bounded body and validate it; retirement grants no data.
+type joinPairSealed struct{}
+
+func (*joinPairSealed) Error() string { return "route JOIN ended" }
+
+type joinHeaderRetirement struct{}
+
+func (*joinHeaderRetirement) Error() string { return "route JOIN read sealed before header" }
+
 func joinReadDeadlineOnly(err error) bool {
 	if joined, ok := err.(interface{ Unwrap() []error }); ok {
 		children := joined.Unwrap()
@@ -47,7 +58,7 @@ func (s *joinSide) account(n uint64, terminal bool) error {
 		p.owner.mu.Lock()
 		defer p.owner.mu.Unlock()
 		if p.sealed && !terminal {
-			return errors.New("route JOIN ended")
+			return &joinPairSealed{}
 		}
 	}
 	if s.used > s.limit || n > s.limit-s.used {
@@ -93,6 +104,9 @@ func (s *joinSide) refuse() error {
 func (s *joinSide) readFrame() (ardp.Frame, error) {
 	var header [ardp.HeaderSize]byte
 	if err := s.account(ardp.HeaderSize, false); err != nil {
+		if _, sealed := err.(*joinPairSealed); sealed {
+			return ardp.Frame{}, &joinHeaderRetirement{}
+		}
 		return ardp.Frame{}, err
 	}
 	if _, err := io.ReadFull(s.conn, header[:]); err != nil {
@@ -105,10 +119,10 @@ func (s *joinSide) readFrame() (ardp.Frame, error) {
 		return ardp.Frame{}, errors.New("route JOIN frame header invalid")
 	}
 	length := binary.BigEndian.Uint32(header[12:16])
-	// The original header reservation preceded sealing. Its valid CLOSE body
-	// may finish after the opposite terminal; sealing denies new headers and
-	// payload, not joining this already started authenticated terminal read.
-	if err := s.account(uint64(length), header[6] == ardp.KindClose); err != nil {
+	// The original header reservation preceded sealing. CLOSE and CREDIT may
+	// join their bounded control bodies; pump still validates the whole frame
+	// and refuses new credit effects after seal. Payload cannot continue.
+	if err := s.account(uint64(length), header[6] == ardp.KindClose || header[6] == ardp.KindCredit); err != nil {
 		return ardp.Frame{}, err
 	}
 	f := ardp.Frame{Kind: header[6], Lane: 1, Body: make([]byte, length)}
@@ -154,11 +168,21 @@ func (s *joinSide) pump(peer *joinSide) joinPumpResult {
 	for {
 		f, err := s.readFrame()
 		if err != nil {
+			if _, sealed := err.(*joinHeaderRetirement); sealed {
+				return joinPumpResult{}
+			}
 			return joinPumpResult{err: err}
 		}
 		p := s.pair
+		if f.Kind == ardp.KindCredit {
+			// The actual body read can overlap revocation. A joined control
+			// cannot discharge its original caller or authority failure.
+			if err := s.current(); err != nil {
+				return joinPumpResult{err: err}
+			}
+		}
 		p.owner.mu.Lock()
-		if p.sealed && f.Kind != ardp.KindClose {
+		if p.sealed && f.Kind != ardp.KindClose && f.Kind != ardp.KindCredit {
 			p.owner.mu.Unlock()
 			return joinPumpResult{err: errors.New("route JOIN ended")}
 		}
@@ -173,6 +197,11 @@ func (s *joinSide) pump(peer *joinSide) joinPumpResult {
 			n := binary.BigEndian.Uint32(f.Body)
 			if n == 0 || n > framing.Window-peer.credit {
 				err = errors.New("route JOIN credit exceeds consumption")
+			} else if p.sealed {
+				// The header started while live, but this validated control
+				// now belongs only to joining. Grant and forward nothing.
+				p.owner.mu.Unlock()
+				return joinPumpResult{}
 			} else {
 				peer.credit += n
 			}
@@ -193,6 +222,14 @@ func (s *joinSide) pump(peer *joinSide) joinPumpResult {
 			return joinPumpResult{err: err}
 		}
 		if err := peer.writeFrame(f); err != nil {
+			// The original input was validated while live, but opposite CLOSE
+			// can seal its recipient before output accounting. Only this exact
+			// lock-minted refusal proves that CREDIT never entered TLS/Carrier
+			// output. Join it without suppressing the pair's terminal frames;
+			// authority loss and failed started writes retain their errors.
+			if _, sealed := err.(*joinPairSealed); sealed && f.Kind == ardp.KindCredit {
+				return joinPumpResult{}
+			}
 			return joinPumpResult{err: err, write: true}
 		}
 		// A selected write may finish during terminal retirement. Do not

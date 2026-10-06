@@ -27,6 +27,36 @@ func TestCanonicalFrameBytes(t *testing.T) {
 	}
 }
 
+func TestBootstrapOperationVocabulary(t *testing.T) {
+	// Independent complete wire oracle: generation 3, BOOTSTRAP, lane zero,
+	// exactly one operation byte. Parsing grants no bootstrap authority.
+	header, err := hex.DecodeString("41524450000303000000000000000001")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for operation := 0; operation <= 255; operation++ {
+		body := []byte{byte(operation)}
+		wire := append(append([]byte(nil), header...), body...)
+		allowed := operation == 1 || operation == 2
+		decoded, readErr := ReadFrame(bytes.NewReader(wire))
+		if allowed {
+			if readErr != nil || decoded.Kind != KindBootstrap || decoded.Lane != 0 || !bytes.Equal(decoded.Body, body) {
+				t.Fatalf("operation %d decode: %+v, %v", operation, decoded, readErr)
+			}
+		} else if readErr == nil {
+			t.Fatalf("unknown operation %d decoded", operation)
+		}
+		encoded, encodeErr := EncodeFrame(Frame{Kind: KindBootstrap, Body: body})
+		if allowed {
+			if encodeErr != nil || !bytes.Equal(encoded, wire) {
+				t.Fatalf("operation %d encode: %x, %v", operation, encoded, encodeErr)
+			}
+		} else if encodeErr == nil {
+			t.Fatalf("unknown operation %d encoded", operation)
+		}
+	}
+}
+
 func TestCanonicalHelloAndAcceptBytes(t *testing.T) {
 	// Independent fixed layout: five identities, duty 1, forwarding Purpose,
 	// nonce, and Unix second 1. No production encoder constructs this oracle.

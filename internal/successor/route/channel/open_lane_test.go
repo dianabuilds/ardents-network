@@ -13,6 +13,138 @@ import (
 
 // These are physical framing oracles, not successful authority or admission
 // fixtures. Concurrent forwarding callers share this same session operation.
+func TestParentJoinsAlreadyStartedLaneReservationReturn(t *testing.T) {
+	physical := newLifecycleConn(false)
+	s := New(t.Context(), physical, time.Now().Add(time.Minute), 32<<20, nil, false, NewBudget(64<<20), nil)
+	defer s.Close()
+	returning := make(chan struct{})
+	finishReturn := make(chan struct{})
+	var once sync.Once
+	completeReturn := func() { once.Do(func() { close(finishReturn) }) }
+	defer completeReturn()
+	l, err := s.Open(t.Context(), t.Context(), ardp.EncodeOpen(ardp.Open{RecipientNodeID: [32]byte{1}, RecipientDutyGeneration: 1, Purpose: 7, Deadline: time.Now().Add(20 * time.Second).UTC().Truncate(time.Second)}, true))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := l.RetainUntilFinish(func() { close(returning); <-finishReturn }); err != nil {
+		t.Fatal(err)
+	}
+	finished := make(chan struct{})
+	go func() { l.Finish(); close(finished) }()
+	<-returning
+	closed := make(chan error, 1)
+	go func() { closed <- s.Close() }()
+	<-s.Done() // Parent retirement has actually joined its physical reader.
+	select {
+	case err := <-closed:
+		t.Fatal("parent published completion before physical return joined", err)
+	case <-time.After(25 * time.Millisecond):
+	}
+	completeReturn()
+	<-finished
+	if err := <-closed; err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestJoinedParentReturnsUnfinishedLaneReservationOutsideLock(t *testing.T) {
+	physical := newLifecycleConn(false)
+	s := New(t.Context(), physical, time.Now().Add(time.Minute), 32<<20, nil, false, NewBudget(64<<20), nil)
+	defer s.Close()
+	l, err := s.Open(t.Context(), t.Context(), ardp.EncodeOpen(ardp.Open{RecipientNodeID: [32]byte{1}, RecipientDutyGeneration: 1, Purpose: 7, Deadline: time.Now().Add(20 * time.Second).UTC().Truncate(time.Second)}, true))
+	if err != nil {
+		t.Fatal(err)
+	}
+	returned := make(chan error, 2)
+	if err := l.RetainUntilFinish(func() { returned <- l.SetReadDeadline(time.Now()) }); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Close(); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case err := <-returned:
+		if err != nil {
+			t.Fatal(err)
+		}
+	default:
+		t.Fatal("joined parent lost lane reservation return")
+	}
+	l.Finish()
+	_ = s.Close()
+	select {
+	case <-returned:
+		t.Fatal("parent and lane returned the same reservation twice")
+	default:
+	}
+}
+
+func TestOPENRejectsUnknownNodeRestrictionBeforeAllocationOrOutput(t *testing.T) {
+	physical := newLifecycleConn(false)
+	s := New(t.Context(), physical, time.Now().Add(time.Minute), 32<<20, nil, false, NewBudget(64<<20), nil)
+	defer s.Close()
+	recipient := ardp.EncodeOpen(ardp.Open{RecipientNodeID: [32]byte{1}, RecipientDutyGeneration: 1, Purpose: 7, Deadline: time.Now().Add(20 * time.Second).UTC().Truncate(time.Second)}, false)
+	for _, restriction := range []byte{2, 255} {
+		body := append(append([]byte(nil), recipient...), restriction)
+		lane, err := s.Open(t.Context(), t.Context(), body)
+		if lane != nil {
+			_ = lane.Close()
+			lane.Finish()
+		}
+		if err == nil || lane != nil {
+			t.Fatal("unknown Node restriction reached lane allocation", restriction)
+		}
+	}
+	select {
+	case raw := <-physical.writes:
+		t.Fatalf("invalid OPEN reached physical output: %x", raw)
+	default:
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.next != 1 || s.live != 0 || s.used != 0 || len(s.lanes) != 0 {
+		t.Fatal("invalid OPEN consumed lane identity or allowance")
+	}
+}
+
+func TestLanePhysicalReturnWaitsForFinishAndRunsOutsideLock(t *testing.T) {
+	physical := newLifecycleConn(false)
+	s := New(t.Context(), physical, time.Now().Add(time.Minute), 32<<20, nil, false, NewBudget(64<<20), nil)
+	defer s.Close()
+	l, err := s.Open(t.Context(), t.Context(), ardp.EncodeOpen(ardp.Open{RecipientNodeID: [32]byte{1}, RecipientDutyGeneration: 1, Purpose: 7, Deadline: time.Now().Add(20 * time.Second).UTC().Truncate(time.Second)}, true))
+	if err != nil {
+		t.Fatal(err)
+	}
+	returned := make(chan error, 2)
+	if err := l.RetainUntilFinish(func() { returned <- l.SetReadDeadline(time.Now()) }); err != nil {
+		t.Fatal(err)
+	}
+	if err := l.RetainUntilFinish(func() { t.Error("second reservation taken") }); err == nil {
+		t.Fatal("second physical return accepted")
+	}
+	if err := l.Close(); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case <-returned:
+		t.Fatal("reservation returned before owner finish")
+	default:
+	}
+	l.Finish()
+	if err := <-returned; err != nil {
+		t.Fatal(err)
+	}
+	l.Finish()
+	select {
+	case <-returned:
+		t.Fatal("reservation returned twice")
+	default:
+	}
+	if err := l.RetainUntilFinish(func() { t.Error("finished lane took reservation") }); err == nil {
+		t.Fatal("finished lane accepted physical return")
+	}
+}
+
 func TestOPENRetainsOriginalCallerDeadlineAfterDerivedCancellation(t *testing.T) {
 	physical := newLifecycleConn(false)
 	s := New(context.Background(), physical, time.Now().Add(time.Minute), 32<<20, nil, false, &Budget{maximum: 64 << 20}, nil)
@@ -107,6 +239,16 @@ func TestOPENSetupDeadlineDoesNotUseWholeChildLease(t *testing.T) {
 	}
 	if l.hardEnd != childEnd || l.end != childEnd {
 		t.Fatal("setup bound changed original child authority", l.hardEnd, l.end)
+	}
+	shorter := before.Add(5 * time.Second)
+	if err := l.Bound(shorter); err != nil {
+		t.Fatal(err)
+	}
+	if l.Deadline() != shorter {
+		t.Fatal("physical deadline accessor lost shortened bound", l.Deadline())
+	}
+	if err := l.Bound(childEnd); err == nil || l.Deadline() != shorter {
+		t.Fatal("physical deadline was renewed")
 	}
 }
 

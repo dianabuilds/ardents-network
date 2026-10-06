@@ -80,6 +80,17 @@ The former Host and exchange-operation implementation are removed. Failed
 exchange keeps the exact pending batch and its original deadline; Close erases
 the holder and invalidates outstanding attempts.
 
+`Attempt.CompleteBound` restricts deposit to the retained external delivery
+lifetime after blind-signature verification. Stock reobserves its original
+profile, permission and deadline at that boundary, then calls a bounded local
+guard under its own lock. The guard performs no I/O or callbacks into Stock and
+cannot grant authority. A refused verified result is erased; its consumed batch
+cannot be revived or refunded. Stock imports no Route owner.
+The maintained holder console uses this same boundary with its original caller
+context when completing a supplied result. An explicitly failed exchange uses
+normal terminal completion without verification or deposit and retains pending
+bytes for an exact retry; it cannot bypass the successful-result guard.
+
 issuer.IssueCurrent reuses the same quota/key/result operation as offline Issue.
 It observes authority before debit, after debit and after result storage/owner
 cleanup. A refused response never refunds a committed debit.
@@ -171,6 +182,10 @@ outside this evidence.
 | Real Hosting budget with genuine tokens | Same compiled-process scenario, Hosting phase | Authority/budget refusal cannot burn token or leak a reserve; receiver Close cannot free accepted work |
 
 The only batch request parser and result codec live in the Admission root.
+`UnpadClosedTokenBatch` locates the canonical batch within a fixed transport
+body and refuses nonzero trailing padding. It returns a borrowed byte slice;
+framing validation conveys no permission or holder-proof authority. The issuer
+still performs genuine canonical decoding and permission verification.
 Quota and issuer signing consume parsed requests; signing and holder finalization
 consume the same result codec. Root file count is not a reason to merge these
 contracts with the independently owned durable quota journal.

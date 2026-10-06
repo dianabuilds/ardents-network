@@ -103,7 +103,7 @@ func TestBindingRequiresNegotiatedRoleExporter(t *testing.T) {
 }
 
 func TestPurposeAdmissionClassKeepsExistingBounds(t *testing.T) {
-	for _, purpose := range []ardp.Purpose{ardp.PurposeForwarding, ardp.PurposeDataJoin, ardp.PurposeIntroduction} {
+	for _, purpose := range []ardp.Purpose{ardp.PurposeForwarding, ardp.PurposeDataJoin, ardp.PurposeIntroduction, ardp.PurposeIssuer} {
 		class, err := AdmissionClass(purpose)
 		if err != nil {
 			t.Fatal(err)
@@ -112,11 +112,17 @@ func TestPurposeAdmissionClassKeepsExistingBounds(t *testing.T) {
 		if purpose == ardp.PurposeIntroduction {
 			want, limit = admission.RegistrationClass, 1048576
 		}
+		if purpose == ardp.PurposeIssuer {
+			want, limit = admission.ControlClass, 65536
+			if class.Lifetime() != 30*time.Second {
+				t.Fatal("issuer Control horizon changed", class.Lifetime())
+			}
+		}
 		if class != want || class.ByteLimit() != limit {
 			t.Fatal("role changed Admission class or byte bound", purpose, class)
 		}
 	}
-	for _, purpose := range []ardp.Purpose{0, 1, 2, 3, 5, 8, 255} {
+	for _, purpose := range []ardp.Purpose{0, 2, 3, 5, 8, 255} {
 		if _, err := AdmissionClass(purpose); err == nil {
 			t.Fatal("unimplemented terminal accepted", purpose)
 		}

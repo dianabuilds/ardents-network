@@ -111,6 +111,29 @@ directions. A receiving CLOSE interrupts payload and input immediately; a
 selected CREDIT may finish within the earlier original deadline and one second.
 No new read starts after that write joins a sealed pair. A timed-out or failed
 physical CREDIT remains failure and cannot produce later successful terminals.
+Sealing before the opposite pump reserves its next header is ordinary local
+retirement: no input has started, so it must not suppress the pair's terminal
+frames. This private accounting outcome is distinct from currentness loss or
+sealing after an actual payload header has been consumed. Payload failures,
+malformed input and raw EOF still prohibit clean terminal output. Portable pipe controls
+gate the pre-header observation to exercise this ordering without timing delays,
+and retain opposite currentness loss and peer refusal separately.
+An input CREDIT can also be fully validated before opposite CLOSE, then reach
+its recipient's output accounting after the pair seals. Only the private
+pair-lock refusal before physical output discharges that unemitted control.
+It grants no new credit or payload effect after retirement. A delayed original
+check failure, cancellation, or a started physical write is not that refusal.
+The causal relay control gates this pre-output observation while an actual
+opposite CLOSE is consumed and checks both terminal frames and zero CREDIT
+output; its negative cases retain the original failure without terminal output.
+An already started CREDIT also joins its bounded body when sealing occurs
+between header accounting, physical reading and dispatch. The complete frame
+must still be canonical, within its original allowance and earned receive
+window; original caller and currentness are rechecked after body I/O. A valid
+control observed after seal is discarded without increasing credit or starting
+output. Zero/overflow controls, payload, cancellation and currentness loss
+remain failures. Portable tests gate both actual header and body reads and
+assert unchanged credit and zero output accounting on the retired recipient.
 The client waits for the authenticated inner terminal before closing its lower
 parent. The original Prefix terminal retains that lower lane and its control
 capacity return; Joined holds the terminal rather than separate raw parent and

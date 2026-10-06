@@ -3,5 +3,11 @@
 // Actual Admission grants and transferred Hosting reservations remain held until
 // all physical borrowers join. Introduction and JOIN own their handler state;
 // receiver owns no token quota, spend policy, selection or holder generation.
+// Restricted pending children reserve actual Hosting work before TLS through
+// composition and retain its return until their handler and terminal output
+// join. A physical reservation grants no accepting bootstrap or issuer result.
+// Issuer dispatch carries one bounded opaque exchange to the genuine issuing
+// composition, retains its exclusive transport capacity and joins both TLS
+// directions before releasing it. Admission owns batch validation and issuance.
 // Native receiving and Introduction root adapters currently require Linux.
 package receiver

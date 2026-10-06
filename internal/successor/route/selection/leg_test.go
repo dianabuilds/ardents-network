@@ -5,7 +5,39 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/successor/network"
+	"github.com/dianabuilds/ardents-network/internal/successor/route"
 )
+
+func TestIssuerSelectionRetainsExactProfileAndAllKnownExclusions(t *testing.T) {
+	now := time.Unix(1900000000, 0).UTC()
+	view, leg, responder := rendezvousModel(t, now, nil)
+	duty, err := leg.IssuerDuty(view)
+	if err != nil || duty.NodeID != [32]byte{12} {
+		t.Fatal("exact current issuer differs", err, duty.NodeID)
+	}
+	member, err := view.Member(duty.NodeID, now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, known := range []route.Member{{NodeID: member.NodeID}, {PublicKey: member.PublicKey}, {FamilyID: member.FamilyID}} {
+		changed := leg
+		changed.known = append(append([]route.Member(nil), leg.known...), known)
+		if _, err := changed.IssuerDuty(view); err == nil {
+			t.Fatal("issuer ignored retained conflict", known)
+		}
+	}
+	if _, err := responder.IssuerDuty(view); err == nil {
+		t.Fatal("Responder became issuer Source")
+	}
+	expired := leg
+	expired.NotAfter = now
+	if _, err := expired.IssuerDuty(view); err == nil {
+		t.Fatal("expired leg accepted issuer")
+	}
+	if again, err := leg.IssuerDuty(view); err != nil || again != duty {
+		t.Fatal("refusals changed original issuer", err)
+	}
+}
 
 // These local rules use the supplied-fact Network model. They do not qualify
 // authenticated intake, durable selection or an integrated Route operation.

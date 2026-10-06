@@ -127,6 +127,34 @@ func (f *creditCloseFixture) readCredit(t *testing.T) {
 
 func (f *creditCloseFixture) close() { _ = f.peer.Close(); _ = f.s.Close(); f.release() }
 
+func TestCREDITStartedKeepsOriginalBoundWhenDataWriteDeadlineExpires(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		f := newCreditCloseFixture(t, 5*time.Second, nil)
+		defer f.close()
+		// TLS CloseWrite sets its underlying data-write deadline to now. The
+		// already started receive-credit frame has its own original lane bound.
+		if err := f.l.SetWriteDeadline(time.Now()); err != nil {
+			t.Fatal(err)
+		}
+		f.physical.mu.Lock()
+		deadlines := append([]time.Time(nil), f.physical.deadlines...)
+		f.physical.mu.Unlock()
+		if len(deadlines) != 0 {
+			t.Fatal("data-only deadline interrupted physical CREDIT", deadlines)
+		}
+		f.readCredit(t)
+		if err := <-f.consumed; err != nil {
+			t.Fatal("receive credit failed after data half-close", err)
+		}
+		if n, err := f.l.Write([]byte{1}); n != 0 || !errors.Is(err, os.ErrDeadlineExceeded) {
+			t.Fatal("expired data output was renewed", n, err)
+		}
+		if !f.s.Live() || f.s.PhysicalFailure() != nil {
+			t.Fatal("data half-close poisoned its framing owner")
+		}
+	})
+}
+
 func TestCREDITEmittedCloseGraceAllowsPhysicalCompletion(t *testing.T) {
 	for _, mode := range []string{"local", "peer"} {
 		t.Run(mode, func(t *testing.T) {
