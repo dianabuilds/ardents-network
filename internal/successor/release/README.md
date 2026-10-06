@@ -2,8 +2,8 @@
 
 Самостоятельный владелец внутри семейства Software acceptance. Новый Go Module
 содержит offline verification pipeline, private authorization и отдельную
-history/operation lifecycle; настоящий consumer находится в
-`cmd/ardents-next/release.go`. Приёмка всей реализации ведётся в
+history/operation lifecycle; настоящие consumers находятся в
+`cmd/ardents-next/release.go` и новом Installation. Приёмка всей реализации ведётся в
 [задаче Release](https://github.com/dianabuilds/ardents-network/issues/505).
 
 **Вопрос домена:** разрешены ли именно эти программные байты для этого назначения?
@@ -50,6 +50,11 @@ Enrollment подтверждает независимое происхожде�
 в закрытый offline metadata input. Release не принимает manifest pin как
 право обновления. При последующих проверках исходный доверенный Root и floors
 определяются собственной сохранённой историей; новый bundle не сбрасывает их.
+`OpenRetained` открывает только полную сохранённую историю: отсутствие корня,
+marker или floors любой верхней роли не создаёт initial trust. Он использует
+ту же exclusive lease, recovery и durability confirmation, что обычный `Open`.
+Новый Installation аутентифицирует пару через реальные последовательные
+`Evaluate`; отказ второй оценки не возвращает floors первой.
 Installation сохраняет свою транзакцию и проверяет соответствие конкретных
 устанавливаемых ресурсов; Execution проверяет реальный квалифицированный запуск.
 Ни один из этих владельцев не получает Release storage или signing key.

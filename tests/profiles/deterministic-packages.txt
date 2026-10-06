@@ -103,3 +103,4 @@ github.com/dianabuilds/ardents-network/internal/successor/route/introduction
 github.com/dianabuilds/ardents-network/internal/successor/route/join
 github.com/dianabuilds/ardents-network/internal/successor/route/prefix
 github.com/dianabuilds/ardents-network/internal/successor/release
+github.com/dianabuilds/ardents-network/internal/successor/installation

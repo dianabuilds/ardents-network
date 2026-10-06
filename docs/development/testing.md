@@ -92,7 +92,7 @@ offline to isolate receiving restrictions; network stock acquisition remains
 the separate permission-only holder/compiled issuer scenario above.
 
 - `make route-check` runs only the new Network, Admission, Hosting,
-  Publication public-proof, Reachability, Enrollment and Route
+  Publication public-proof, Reachability, Enrollment, Release, Installation and Route
   owners plus `ardents-next`, with Linux race execution, both selected real
   Carriers, compiled prefix/receiver processes and causal lifecycle cases.
   Focused architecture checks enforce isolation and registered profiles.
@@ -947,3 +947,22 @@ behind the actual native selection/receiving-root composition. Every symbol
 remains reachable in Linux production, while test analysis on both platforms
 requires an empty unreachable-function set. This does not qualify Windows
 durable composition; the checker and its exact comparison are unchanged.
+
+### New Installation generation authentication
+
+Portable Installation checks consume genuine pinned Enrollment Bundle or
+untrusted Candidate snapshots and actual Release authorizations. Command
+integration tests independently assemble signed program/generation targets,
+authenticate both exact byte sets, exercise retained no-update evaluations,
+refuse cold candidate trust and compare private proof facts. Root, program,
+metadata substitution and duplicate metadata names must refuse before floor
+effects. Refusal of the second target, incoherent target facts and original
+cancellation at final handoff retain real already committed Release floors.
+
+`cmd/ardents-next/installation_test.go` runs these owner-backed cases under
+Windows/Linux race; the compiled selected Linux consumer also exercises initial
+and retained candidate authentication. Other hosts execute actual foreign-platform
+refusal before history creation. `internal/successor/release/retained_history_test.go`
+covers absent/empty history, genuinely committed Root-only history and complete
+reopen. These are byte authentication and native history checks, not installed
+journal, predecessor join, manager start or installed/privacy qualification.

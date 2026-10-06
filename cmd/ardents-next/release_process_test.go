@@ -34,6 +34,10 @@ func signedConsumerProfile(t *testing.T, protected bool) (string, string, string
 }
 
 func signedConsumerPlatform(t *testing.T, platform string, protected bool) (string, string, string) {
+	return signedConsumerTargets(t, platform, protected, false, 1)
+}
+
+func signedConsumerTargets(t *testing.T, platform string, protected, generation bool, generationVersion int64) (string, string, string) {
 	t.Helper()
 	binary, err := os.ReadFile(compiledCommand(t))
 	if err != nil {
@@ -91,6 +95,27 @@ func signedConsumerPlatform(t *testing.T, platform string, protected bool) (stri
 	if err != nil {
 		t.Fatal(err)
 	}
+	protectedFiles := map[string][]byte{program: binary}
+	if protected {
+		protectedFiles["ardents-node-linux-amd64"] = []byte("independent Node companion")
+		protectedFiles["ardents-custody-linux-amd64"] = []byte("independent Custody companion")
+		// Exact ADR-0119 names, independently spelled rather than projected
+		// from the consumer's exclusion list.
+		names := []string{"ardents-linux-amd64", "ardents-text-linux-amd64", "ardents-text-reader@.service", "ardents-text-publisher@.service", "ardents-text-reader.socket", "ardents-text-publisher.socket", "50-ardents-text.rules", "ardents-text.conf", "ardents-endpoint.service"}
+		digests := make(map[string]string)
+		for _, name := range names {
+			if name != program {
+				protectedFiles[name] = []byte("independent protected resource " + name)
+			}
+			digest := sha256.Sum256(protectedFiles[name])
+			digests[name] = hex.EncodeToString(digest[:])
+		}
+		encoded, err := json.Marshal(digests)
+		if err != nil {
+			t.Fatal(err)
+		}
+		protectedFiles["protected-endpoint.json"] = []byte("{\"schema\":\"ardents-protected-endpoint-artifact-v1\",\"platform\":\"linux-amd64\",\"release_identity\":\"new-release-fixture\",\"release_version\":1,\"files\":" + string(encoded) + "}\n")
+	}
 	digest := sha256.Sum256(binary)
 	hexDigest := hex.EncodeToString(digest[:])
 	customFields := map[string]any{"schema_version": 1, "profile": "ardents-h3-release-v1", "platform": platform, "architecture": runtime.GOARCH, "environment": "h3-test", "network": "new-release-test", "release_identity": "new-release-fixture", "release_version": int64(1), "source_revision": "test-source", "build_input_commitment": "test-inputs", "build_identity": "test-build", "dependency_identity": "test-dependencies", "sbom_identity": "test-sbom", "attestation_policy": "two-builder", "qualification": "qualified", "build_state": "current", "protocol_phase": "announced", "build_safety_no_new_work_after": ref.Add(30 * 24 * time.Hour), "build_safety_terminate_after": ref.Add(180 * 24 * time.Hour)}
@@ -107,6 +132,27 @@ func signedConsumerPlatform(t *testing.T, platform string, protected bool) (stri
 	target := metadata.Targets(expires)
 	targetPath := "ardents/" + platform + "/endpoint"
 	target.Signed.Targets[targetPath] = &metadata.TargetFiles{Length: int64(len(binary)), Hashes: metadata.Hashes{"sha256": digest[:]}, Path: targetPath, Custom: &raw}
+	if generation {
+		generationPath := "ardents/linux-amd64/protected-endpoint"
+		generationBytes := protectedFiles["protected-endpoint.json"]
+		generationDigest := sha256.Sum256(generationBytes)
+		generationFields := make(map[string]any, len(customFields))
+		for name, value := range customFields {
+			generationFields[name] = value
+		}
+		generationFields["release_version"] = generationVersion
+		var generationAttestations []map[string]string
+		for _, id := range []string{"test-builder-one", "test-builder-two"} {
+			generationAttestations = append(generationAttestations, map[string]string{"builder_identity": id, "build_identity": "test-build", "source_revision": "test-source", "build_input_commitment": "test-inputs", "target_sha256": hex.EncodeToString(generationDigest[:])})
+		}
+		generationFields["builder_attestations"] = generationAttestations
+		encoded, err := json.Marshal(generationFields)
+		if err != nil {
+			t.Fatal(err)
+		}
+		generationRaw := json.RawMessage(encoded)
+		target.Signed.Targets[generationPath] = &metadata.TargetFiles{Length: int64(len(generationBytes)), Hashes: metadata.Hashes{"sha256": generationDigest[:]}, Path: generationPath, Custom: &generationRaw}
+	}
 	sign(target)
 	targetBytes, err := target.ToBytes(false)
 	if err != nil {
@@ -130,25 +176,8 @@ func signedConsumerPlatform(t *testing.T, platform string, protected bool) (stri
 	}
 	descriptor := fmt.Sprintf("schema=ardents-closed-alpha-enrollment-v3\ncohort=release-test\nrelease=new-release-fixture\nplatform=%s\nenvironment=h3-test\nnetwork=new-release-test\ntarget_path=%s\nartifact=%s\ntrusted_root=1.root.json\ncontrol_catalog=catalog.ac1\ndisclosure_root=catalog.pub\ncontrol_release=release.ac1\ncontrol_network=network.ac1\ncontrol_compatibility=compatibility.ac1\ncontrol_release_root=release.pub\ncontrol_network_root=network.pub\ncontrol_compatibility_root=compatibility.pub\ncorpus_authority=corpus.pub\ncontrol_artifact=%s\n", platform, targetPath, program, control)
 	files := map[string][]byte{"RELEASE": []byte(descriptor), program: binary, "1.root.json": rootBytes, "timestamp.json": timestampBytes, "1.snapshot.json": snapshotBytes, "1.targets.json": targetBytes}
-	if protected {
-		files["ardents-node-linux-amd64"] = []byte("independent Node companion")
-		files["ardents-custody-linux-amd64"] = []byte("independent Custody companion")
-		// Exact ADR-0119 names, independently spelled rather than projected
-		// from the consumer's exclusion list.
-		names := []string{"ardents-linux-amd64", "ardents-text-linux-amd64", "ardents-text-reader@.service", "ardents-text-publisher@.service", "ardents-text-reader.socket", "ardents-text-publisher.socket", "50-ardents-text.rules", "ardents-text.conf", "ardents-endpoint.service"}
-		digests := make(map[string]string)
-		for _, name := range names {
-			if name != program {
-				files[name] = []byte("independent protected resource " + name)
-			}
-			digest := sha256.Sum256(files[name])
-			digests[name] = hex.EncodeToString(digest[:])
-		}
-		encoded, err := json.Marshal(digests)
-		if err != nil {
-			t.Fatal(err)
-		}
-		files["protected-endpoint.json"] = []byte("{\"schema\":\"ardents-protected-endpoint-artifact-v1\",\"platform\":\"linux-amd64\",\"release_identity\":\"new-release-fixture\",\"release_version\":1,\"files\":" + string(encoded) + "}\n")
+	for name, data := range protectedFiles {
+		files[name] = data
 	}
 	for _, name := range []string{"catalog.ac1", "catalog.pub", "release.ac1", "network.ac1", "compatibility.ac1", "release.pub", "network.pub", "compatibility.pub", "corpus.pub", control} {
 		files[name] = []byte("independent static companion " + name)

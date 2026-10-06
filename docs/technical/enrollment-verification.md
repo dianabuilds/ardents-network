@@ -159,9 +159,15 @@ metadata/static inventory classification. Enrollment retains its existing
 companion grammar, including platform suffixes and the protected resources;
 composition owns fixed metadata URLs and Release inputs. This read-only
 projection grants no signature authority and preserves all companion bytes for
-separately owned consumers. A new successor candidate loader remains absent;
-the [Installation design](../../internal/successor/installation/README.md)
-requires a distinct result without first-pin or running-program provenance.
+separately owned consumers. `ReadCandidate` separately loads an opaque,
+self-consistent immutable `Candidate` with the same bounded physical inventory
+checks. Its declarations and observed manifest checksum are untrusted; it has
+no independent-pin or running-program provenance and cannot become a `Bundle`.
+The [Installation design](../../internal/successor/installation/README.md)
+has a genuine consumer establishing two fresh Release authorizations against
+complete retained Release history. Snapshot loading itself establishes neither
+proof. Installed predecessor binding, forward generation continuity and actual
+transition remain separate unimplemented obligations before successor effects.
 
 ### Predecessor owner
 

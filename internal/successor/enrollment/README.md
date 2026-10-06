@@ -63,11 +63,17 @@ companion bytes. General, headless Linux/Windows и protected inventory имею
 независимые portable проверки, включая копирование возвращённых имён.
 
 Для [нового Installation](../installation/README.md) требуется отдельный
-successor candidate snapshot без primary pin provenance. Этот seam ещё не
-реализован: `Bundle` нельзя получить из самостоятельно вычисленного pin или
-использовать как successor authority. Его будущая read-only загрузка должна
-сохранить bounded inventory/identity/cancellation правила и общую классификацию
-файлов, а новый Release — самостоятельно установить свежую авторизацию.
+successor candidate snapshot без primary pin provenance. `ReadCandidate`
+загружает distinct opaque `Candidate`: самосогласованные declarations и копии
+байтов, без independent pin и утверждения running-program identity. Его
+наблюдаемый manifest checksum не является доверием; `Candidate` нельзя
+преобразовать в `Bundle`. Bounded physical reads, inventory, final identity и
+cancellation принадлежат той же private Implementation, а классификация
+metadata/static files едина для обоих результатов. Подключение candidate к
+реальной свежей паре Release-разрешений принадлежит новому Installation и
+использует его настоящий command consumer. Проверка пары требует сохранённую
+полную историю Release; эти механизмы сами по себе не дают installed successor
+authority или права перехода поколения.
 
 ## Этапы и точки отказа
 

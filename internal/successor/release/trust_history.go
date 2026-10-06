@@ -33,6 +33,10 @@ type floorStore struct {
 }
 
 func openFloorStore(path string) (result *floorStore, resultErr error) {
+	return openFloorStoreMode(path, false)
+}
+
+func openFloorStoreMode(path string, retained bool) (result *floorStore, resultErr error) {
 	if !historyPlatformSupported {
 		return nil, errors.New("release: native history unavailable")
 	}
@@ -40,11 +44,16 @@ func openFloorStore(path string) (result *floorStore, resultErr error) {
 	if err != nil {
 		return nil, err
 	}
-	if err = os.MkdirAll(root, 0700); err != nil {
-		return nil, err
+	if !retained {
+		if err = os.MkdirAll(root, 0700); err != nil {
+			return nil, err
+		}
 	}
 	info, err := os.Lstat(root)
 	if err != nil {
+		if retained && errors.Is(err, os.ErrNotExist) {
+			return nil, ErrTrustUnavailable
+		}
 		return nil, err
 	}
 	if !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
@@ -69,6 +78,9 @@ func openFloorStore(path string) (result *floorStore, resultErr error) {
 				return nil, errors.New("release: foreign history entry")
 			}
 		}
+	}
+	if retained && !hasMarker {
+		return nil, ErrTrustUnavailable
 	}
 	if !hasMarker && (len(entries) > 1 || len(entries) == 1 && entries[0].Name() != floorStoreLockName) {
 		return nil, errors.New("release: nonempty unowned history")
@@ -114,8 +126,12 @@ func openFloorStore(path string) (result *floorStore, resultErr error) {
 			return nil, err
 		}
 	}
-	if _, err = s.ReadFloors(); err != nil {
+	floors, err := s.ReadFloors()
+	if err != nil {
 		return nil, err
+	}
+	if retained && !completeFloors(floors) {
+		return nil, ErrTrustUnavailable
 	}
 	if err = s.recoverWriterResidue(); err != nil {
 		return nil, err
@@ -124,6 +140,13 @@ func openFloorStore(path string) (result *floorStore, resultErr error) {
 		return nil, err
 	}
 	return s, nil
+}
+
+func completeFloors(f FloorSet) bool {
+	return f.RootVersion > 0 && len(f.RootDigest) == sha256.Size &&
+		f.TimestampVersion > 0 && len(f.TimestampDigest) == sha256.Size &&
+		f.SnapshotVersion > 0 && len(f.SnapshotDigest) == sha256.Size &&
+		f.TargetsVersion > 0 && len(f.TargetsDigest) == sha256.Size
 }
 
 func (s *floorStore) ReadFloors() (FloorSet, error) {

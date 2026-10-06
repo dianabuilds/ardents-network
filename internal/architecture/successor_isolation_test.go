@@ -334,6 +334,7 @@ func successorImportAllowed(source, dependency string) bool {
 		"internal/successor/reachability":            {"publication"},
 		"internal/successor/enrollment":              {},
 		"internal/successor/release":                 {},
+		"internal/successor/installation":            {"enrollment", "release"},
 		"internal/successor/route":                   {},
 		"internal/successor/route/ardp":              {},
 		"internal/successor/route/issuer":            {"route/ardp", "admission"},
@@ -351,6 +352,9 @@ func successorImportAllowed(source, dependency string) bool {
 		"cmd/ardents-next":                           {"route/introduction", "route/prefix", "network", "network/state", "admission/stock", "admission/receiving", "admission/allocation", "admission", "admission/quota", "admission/issuerprofile", "admission/issuance", "admission/issuer", "nodeidentity", "hosting", "route", "route/role", "route/selection", "route/join", "route/receiver", "route/channel", "route/ardp"},
 	}
 	if zoneDependency {
+		if (source == "cmd/ardents-next/installation.go" || source == "cmd/ardents-next/installation_test.go") && (dependency == modulePath+"/internal/successor/installation" || dependency == modulePath+"/internal/successor/enrollment" || dependency == modulePath+"/internal/successor/release") {
+			return true
+		}
 		if source == "cmd/ardents-next/release_process_test.go" && (dependency == modulePath+"/internal/successor/enrollment" || dependency == modulePath+"/internal/successor/release") {
 			return true
 		}

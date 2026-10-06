@@ -59,19 +59,27 @@ func (b Bundle) Facts() (Facts, bool) {
 }
 
 func (b Bundle) File(name string) ([]byte, bool) {
-	if b.accepted == nil {
+	return b.accepted.file(name)
+}
+
+func (s *snapshot) file(name string) ([]byte, bool) {
+	if s == nil {
 		return nil, false
 	}
-	data, ok := b.accepted.files[name]
+	data, ok := s.files[name]
 	return append([]byte(nil), data...), ok
 }
 
 func (b Bundle) Names() []string {
-	if b.accepted == nil {
+	return b.accepted.names()
+}
+
+func (s *snapshot) names() []string {
+	if s == nil {
 		return nil
 	}
-	names := make([]string, 0, len(b.accepted.files))
-	for name := range b.accepted.files {
+	names := make([]string, 0, len(s.files))
+	for name := range s.files {
 		names = append(names, name)
 	}
 	sort.Strings(names)
@@ -82,10 +90,14 @@ func (b Bundle) Names() []string {
 // root and static companions. It classifies frozen bytes only: the consumer
 // constructs metadata URLs and Release independently authenticates them.
 func (b Bundle) MetadataNames() []string {
-	if b.accepted == nil {
+	return b.accepted.metadataNames()
+}
+
+func (s *snapshot) metadataNames() []string {
+	if s == nil {
 		return nil
 	}
-	f := b.accepted.facts
+	f := s.facts
 	static := map[string]bool{
 		"RELEASE": true, f.Artifact: true, f.TrustedRoot: true,
 		f.ControlCatalog: true, f.DisclosureRoot: true, f.ControlArtifact: true,
@@ -103,7 +115,7 @@ func (b Bundle) MetadataNames() []string {
 		}
 	}
 	var names []string
-	for name := range b.accepted.files {
+	for name := range s.files {
 		if !static[name] {
 			names = append(names, name)
 		}
@@ -114,56 +126,69 @@ func (b Bundle) MetadataNames() []string {
 
 // Verify completes all stages and closes every file before publishing a
 // snapshot. It never writes state, interprets Release signatures or executes.
-func Verify(ctx context.Context, request Request) (result Bundle, err error) {
+func Verify(ctx context.Context, request Request) (Bundle, error) {
 	if ctx == nil || request.BundleRoot == "" || request.ExecutablePath == "" ||
 		(request.Scope != General && request.Scope != Headless) || !canonicalDigest(request.ManifestSHA256) {
 		return Bundle{}, ErrInput
 	}
-	if err := ctx.Err(); err != nil {
-		return Bundle{}, err
-	}
-	rootInfo, err := os.Lstat(request.BundleRoot)
+	accepted, err := loadSnapshot(ctx, request.BundleRoot, request.Scope, &request)
 	if err != nil {
 		return Bundle{}, err
+	}
+	return Bundle{accepted: accepted}, nil
+}
+
+// loadSnapshot owns bounded physical reads, complete inventory and final
+// identity checks for both entry points. Only Verify supplies initial pin and
+// running-program provenance; a candidate never manufactures those checks.
+func loadSnapshot(ctx context.Context, rootPath string, scope Scope, initial *Request) (result *snapshot, err error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	rootInfo, err := os.Lstat(rootPath)
+	if err != nil {
+		return nil, err
 	}
 	if !rootInfo.IsDir() || rootInfo.Mode()&os.ModeSymlink != 0 {
-		return Bundle{}, ErrInventory
+		return nil, ErrInventory
 	}
-	root, err := os.OpenRoot(request.BundleRoot)
+	root, err := os.OpenRoot(rootPath)
 	if err != nil {
-		return Bundle{}, err
+		return nil, err
 	}
 	defer func() {
 		err = errors.Join(err, root.Close())
 		err = errors.Join(err, ctx.Err())
 		if err != nil {
-			result = Bundle{}
+			result = nil
 		}
 	}()
 	manifest, manifestInfo, err := readBundleFile(ctx, root, "SHA256SUMS", maximumFiles*80)
 	if err != nil {
-		return Bundle{}, err
+		return nil, err
 	}
-	if sum := sha256.Sum256(manifest); hex.EncodeToString(sum[:]) != request.ManifestSHA256 {
-		return Bundle{}, ErrPin
+	sum := sha256.Sum256(manifest)
+	manifestDigest := hex.EncodeToString(sum[:])
+	if initial != nil && manifestDigest != initial.ManifestSHA256 {
+		return nil, ErrPin
 	}
 	entries, err := parseManifest(manifest)
 	if err != nil {
-		return Bundle{}, err
+		return nil, err
 	}
 	raw, descriptorInfo, err := readBundleFile(ctx, root, "RELEASE", maximumFileLen)
 	if err != nil {
-		return Bundle{}, err
+		return nil, err
 	}
 	if !matchesDigest(raw, entries["RELEASE"]) {
-		return Bundle{}, ErrBinding
+		return nil, ErrBinding
 	}
 	descriptor, err := parseDescriptor(raw)
 	if err != nil {
-		return Bundle{}, err
+		return nil, err
 	}
 	if err := checkInventory(root, entries); err != nil {
-		return Bundle{}, err
+		return nil, err
 	}
 	files := map[string][]byte{"RELEASE": raw}
 	identities := map[string]os.FileInfo{"SHA256SUMS": manifestInfo, "RELEASE": descriptorInfo}
@@ -177,57 +202,62 @@ func Verify(ctx context.Context, request Request) (result Bundle, err error) {
 		}
 		data, info, err := readBundleFile(ctx, root, name, limit)
 		if err != nil {
-			return Bundle{}, fmt.Errorf("read %s: %w", name, err)
+			return nil, fmt.Errorf("read %s: %w", name, err)
 		}
 		if !matchesDigest(data, entries[name]) {
-			return Bundle{}, ErrBinding
+			return nil, ErrBinding
 		}
 		files[name], identities[name] = data, info
 	}
-	facts, err := descriptor.bind(files, request.Scope)
+	facts, err := descriptor.bind(files, scope)
 	if err != nil {
-		return Bundle{}, err
+		return nil, err
 	}
-	actual, err := os.Lstat(request.ExecutablePath)
-	if err != nil {
-		return Bundle{}, err
-	}
-	if !actual.Mode().IsRegular() || !sameFileState(actual, identities[facts.Artifact]) {
-		return Bundle{}, ErrBinding
+	var actual os.FileInfo
+	if initial != nil {
+		actual, err = os.Lstat(initial.ExecutablePath)
+		if err != nil {
+			return nil, err
+		}
+		if !actual.Mode().IsRegular() || !sameFileState(actual, identities[facts.Artifact]) {
+			return nil, ErrBinding
+		}
 	}
 	// Check every original path after all I/O. Returned bytes are never reread.
 	if err := checkInventory(root, entries); err != nil {
-		return Bundle{}, err
+		return nil, err
 	}
 	for name, original := range identities {
 		current, err := root.Lstat(name)
 		if err != nil {
-			return Bundle{}, err
+			return nil, err
 		}
 		if !sameFileState(original, current) {
-			return Bundle{}, ErrBinding
+			return nil, ErrBinding
 		}
 		if err := verifyOwnedFile(current); err != nil {
-			return Bundle{}, err
+			return nil, err
 		}
 	}
-	currentRoot, err := os.Lstat(request.BundleRoot)
+	currentRoot, err := os.Lstat(rootPath)
 	if err != nil {
-		return Bundle{}, err
+		return nil, err
 	}
 	if !os.SameFile(rootInfo, currentRoot) || currentRoot.Mode()&os.ModeSymlink != 0 {
-		return Bundle{}, ErrBinding
+		return nil, ErrBinding
 	}
-	currentProgram, err := os.Lstat(request.ExecutablePath)
-	if err != nil {
-		return Bundle{}, err
-	}
-	if !sameFileState(actual, currentProgram) {
-		return Bundle{}, ErrBinding
+	if initial != nil {
+		currentProgram, err := os.Lstat(initial.ExecutablePath)
+		if err != nil {
+			return nil, err
+		}
+		if !sameFileState(actual, currentProgram) {
+			return nil, ErrBinding
+		}
 	}
 	if err := ctx.Err(); err != nil {
-		return Bundle{}, err
+		return nil, err
 	}
-	facts.ManifestSHA256 = request.ManifestSHA256
-	return Bundle{accepted: &snapshot{facts: facts, files: files}}, nil
+	facts.ManifestSHA256 = manifestDigest
+	return &snapshot{facts: facts, files: files}, nil
 }

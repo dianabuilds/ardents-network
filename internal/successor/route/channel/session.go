@@ -80,7 +80,7 @@ func New(ctx context.Context, conn net.Conn, end time.Time, limit uint64, check 
 	return s
 }
 
-// startReading transfers the sole reader only after its owning handshake has
+// Start transfers the sole reader only after its owning handshake has
 // committed. A refused preparation joins without starting physical input.
 func (s *Session) Start() {
 	s.readerOnce.Do(func() {
@@ -95,7 +95,7 @@ func (s *Session) Start() {
 	})
 }
 
-// sessionHandlers are fixed before the reader is transferred. Composition
+// Handlers are fixed before the reader is transferred. Composition
 // supplies decisions; the framing owner supplies the accounted input witness.
 type Handlers struct {
 	// PrepareOpen reserves finite child capacity before the sole reader can
@@ -114,7 +114,18 @@ type Handlers struct {
 func Prepare(ctx context.Context, conn net.Conn, end time.Time, limit uint64, check func() error, pending bool, queues *Budget, handlers Handlers) *Session {
 	child, cancel := context.WithDeadline(ctx, end)
 	s := &Session{conn: conn, ctx: child, cancel: cancel, end: end, lanes: make(map[uint32]*Lane), next: 1,
-		limit: limit, writer: make(chan struct{}, 1), opening: make(chan struct{}, 1), readerDone: make(chan struct{}), check: check, pending: pending, queues: queues, open: handlers.Open, prepareOpen: handlers.PrepareOpen, parentControl: handlers.ParentControl, chargeOutput: handlers.Output}
+		limit:         limit,
+		writer:        make(chan struct{}, 1),
+		opening:       make(chan struct{}, 1),
+		readerDone:    make(chan struct{}),
+		check:         check,
+		pending:       pending,
+		queues:        queues,
+		open:          handlers.Open,
+		prepareOpen:   handlers.PrepareOpen,
+		parentControl: handlers.ParentControl,
+		chargeOutput:  handlers.Output,
+	}
 	return s
 }
 

@@ -7,8 +7,9 @@ import (
 )
 
 var (
-	ErrClosed       = errors.New("release: verifier closed")
-	ErrIncompatible = errors.New("release: incompatible local binding")
+	ErrClosed           = errors.New("release: verifier closed")
+	ErrIncompatible     = errors.New("release: incompatible local binding")
+	ErrTrustUnavailable = errors.New("release: established complete trust history unavailable")
 )
 
 const h3EvidenceNotice = "threshold and rebuild identities are project-controlled; no independent custody or builder claim"
@@ -34,9 +35,23 @@ func Open(path string) (*Verifier, error) {
 	if err != nil {
 		return nil, err
 	}
+	return verifierForStore(s), nil
+}
+
+// OpenRetained requires an existing owned history with every metadata floor.
+// It never creates a history root or bootstraps trust from candidate bytes.
+func OpenRetained(path string) (*Verifier, error) {
+	s, err := openFloorStoreMode(path, true)
+	if err != nil {
+		return nil, err
+	}
+	return verifierForStore(s), nil
+}
+
+func verifierForStore(s *floorStore) *Verifier {
 	v := &Verifier{gate: make(chan struct{}, 1), stop: make(chan struct{}), done: make(chan struct{}), store: s}
 	v.gate <- struct{}{}
-	return v, nil
+	return v
 }
 
 func (v *Verifier) enter(ctx context.Context) (context.Context, func(), error) {

@@ -173,7 +173,13 @@ its own history and the genuine `ardents-next release verify-initial` consumer.
 It consumes new Enrollment's authenticated facts and frozen bytes, not the
 predecessor verifier or installed roots. The new owner serializes evaluations,
 checks original cancellation at publication/handoff and joins admitted work
-before returning its native lease. Portable metadata/target/safety rules remain
+before returning its native lease. New Installation additionally consumes two
+fresh exact-target authorizations from this owner. Its successor byte consumer
+uses `OpenRetained`, which requires complete persisted floors for all four
+top-level roles and cannot create cold trust. These pair checks grant no
+installed predecessor continuity or runtime readiness; the installed transaction
+remains separately owned and unimplemented in the new domain.
+Portable metadata/target/safety rules remain
 distinct from native history mechanisms. The new-domain
 [design](../../internal/successor/release/README.md) preserves the accepted
 metadata and durable identities; source presence and component checks do not

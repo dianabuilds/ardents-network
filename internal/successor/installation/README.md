@@ -1,8 +1,9 @@
 # Installation and Replacement — проект нового владельца
 
 Проект по действующим контрактам, проверенный по исходникам на
-`dev@edaa76ce9db8afa04d5983980b2ea86f74279e11`. Go-пакета и реализации
-здесь пока нет. Этот документ не выбирает implementation slice и не доказывает
+`dev@edaa76ce9db8afa04d5983980b2ea86f74279e11`. Первый Go Module реализует
+только свежую связную авторизацию программы/поколения; native installation,
+journal, predecessor join, start и recovery ещё не реализованы. Этот документ не выбирает implementation slice и не доказывает
 установленную работоспособность. GitHub остаётся журналом выполнения.
 Installation — самостоятельный владелец внутри семейства Software acceptance.
 
@@ -138,12 +139,22 @@ Read-only `installation-check` не открывает Release history, не р�
 
 ## Недостающие seams до реализации
 
-Новый Enrollment сейчас экспортирует только `Verify` и opaque `Bundle` с
-первичной provenance; новый Release уже имеет `Evaluate`, `CurrentFloors(ctx)`
-и immutable `Authorization.AcceptedDecision`. До successor consumer требуется
-отдельный opaque candidate snapshot у Enrollment с теми же bounded reads и
-inventory проверками, но без independent-pin или running-executable claim.
-Он не должен возвращать `Bundle` либо принимать искусственно вычисленный
+Новый Enrollment экспортирует `Verify` и opaque `Bundle` с первичной provenance,
+а также отдельный `ReadCandidate` и opaque `Candidate` с теми же bounded reads
+и inventory проверками, но без independent-pin или running-executable claim.
+Новый Release имеет `Evaluate`, `CurrentFloors(ctx)` и immutable
+`Authorization.AcceptedDecision` и `OpenRetained`, который не создаёт пустую
+историю доверия и требует сохранённые floors всех metadata roles. Новый
+`installation.AuthenticateInitial` потребляет настоящий pinned Bundle, а
+`AuthenticateCandidate` — отдельный Candidate и уже полные Release floors.
+Обе операции замораживают те же metadata/local/reference inputs, проверяют
+private proofs и удерживают exact generation bytes; отказ второй оценки
+не возвращает floors. Настоящие `ardents-next installation authenticate-initial`
+и `authenticate-candidate` выполняют эти операции, закрывают Release owner и
+возвращают только `authenticated-generation`. Это не `installed` и не readiness.
+До successor transition ещё требуется собственная installed binding/history
+continuity и actual native transaction; одна полная Release history их не заменяет.
+Candidate не возвращает `Bundle` и не принимает искусственно вычисленный
 «первичный pin». Read-only классификация inventory на metadata и static files
 остаётся у Enrollment, а fixed metadata URLs и Release inputs собирает
 application composition. Это не импорт Release в Enrollment. Command и
