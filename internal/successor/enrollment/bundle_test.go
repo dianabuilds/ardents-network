@@ -8,6 +8,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"reflect"
 	"sort"
 	"strings"
 	"testing"
@@ -82,6 +83,58 @@ func TestBundleRetainsOnlyCompleteImmutableInitialProvenance(t *testing.T) {
 	}
 	if _, ok := (Bundle{}).Facts(); ok {
 		t.Fatal("zero value attests provenance")
+	}
+}
+
+func TestBundleMetadataProjectionKeepsStaticInventoryWithItsOwner(t *testing.T) {
+	for _, profile := range []string{"general", "headless-linux", "headless-windows", "protected"} {
+		t.Run(profile, func(t *testing.T) {
+			r, files := fixture(t)
+			if profile == "protected" {
+				r, files = protectedFixture(t)
+			} else if profile != "general" {
+				files["ardents-node-linux-amd64"] = []byte("node")
+				files["ardents-custody-linux-amd64"] = []byte("custody")
+				r.Scope = Headless
+			}
+			if profile == "headless-windows" {
+				files["RELEASE"] = []byte(strings.ReplaceAll(string(files["RELEASE"]), "linux-amd64", "windows-amd64"))
+				for _, command := range []string{"ardents", "ardents-control", "ardents-node", "ardents-custody"} {
+					old := command + "-linux-amd64"
+					name := command + "-windows-amd64.exe"
+					files[name] = files[old]
+					delete(files, old)
+					files["RELEASE"] = bytes.ReplaceAll(files["RELEASE"], []byte(command+"-windows-amd64\n"), []byte(name+"\n"))
+				}
+				r.ExecutablePath = filepath.Join(r.BundleRoot, "ardents-windows-amd64.exe")
+			}
+			files["2.snapshot.json"], files["3.targets.json"] = []byte("snapshot"), []byte("targets")
+			writeFixture(t, &r, files)
+			bundle, err := Verify(context.Background(), r)
+			if err != nil {
+				t.Fatal(err)
+			}
+			want := []string{"2.snapshot.json", "3.targets.json", "timestamp.json"}
+			names := bundle.MetadataNames()
+			if !reflect.DeepEqual(names, want) {
+				t.Fatalf("metadata projection: %v, want %v", names, want)
+			}
+			names[0] = "forged"
+			if !reflect.DeepEqual(bundle.MetadataNames(), want) {
+				t.Fatal("projection aliases returned names")
+			}
+			// Projection must not discard the actual companion bytes needed by
+			// another consumer's independent authorization.
+			for name, body := range files {
+				retained, ok := bundle.File(name)
+				if !ok || !bytes.Equal(retained, body) {
+					t.Fatalf("projection discarded inventory member %s", name)
+				}
+			}
+		})
+	}
+	if names := (Bundle{}).MetadataNames(); len(names) != 0 {
+		t.Fatal("zero bundle exposes metadata")
 	}
 }
 

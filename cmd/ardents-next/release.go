@@ -7,7 +7,6 @@ import (
 	"io"
 	"os"
 	"runtime"
-	"strings"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/successor/enrollment"
@@ -86,26 +85,8 @@ func initialReleaseInputs(bundle enrollment.Bundle, ref time.Time) (release.Inpu
 	if !ok {
 		return release.Inputs{}, false
 	}
-	excluded := map[string]bool{"RELEASE": true, f.Artifact: true, f.TrustedRoot: true, f.ControlCatalog: true, f.DisclosureRoot: true, f.ControlArtifact: true, "release.ac1": true, "network.ac1": true, "compatibility.ac1": true, "release.pub": true, "network.pub": true, "compatibility.pub": true, "corpus.pub": true}
-	if f.Headless {
-		for _, command := range []string{"ardents-node", "ardents-custody"} {
-			name := command + "-" + f.Platform
-			if strings.HasPrefix(f.Platform, "windows-") {
-				name += ".exe"
-			}
-			excluded[name] = true
-		}
-	}
-	if f.Protected {
-		for _, name := range []string{"protected-endpoint.json", "ardents-linux-amd64", "ardents-text-linux-amd64", "ardents-text-reader@.service", "ardents-text-publisher@.service", "ardents-text-reader.socket", "ardents-text-publisher.socket", "50-ardents-text.rules", "ardents-text.conf", "ardents-endpoint.service"} {
-			excluded[name] = true
-		}
-	}
 	files := make(map[string][]byte)
-	for _, name := range bundle.Names() {
-		if excluded[name] {
-			continue
-		}
+	for _, name := range bundle.MetadataNames() {
 		files["https://release.invalid/metadata/"+name], _ = bundle.File(name)
 	}
 	return release.Inputs{RootBytes: root, Files: files, TargetPath: f.TargetPath, Artifact: artifact, Local: release.LocalEnvironment{Environment: f.Environment, Network: f.Network, Platform: f.Platform, Architecture: runtime.GOARCH, RefTime: ref.UTC()}}, true

@@ -156,6 +156,17 @@ The GitHub ledger alone selects the next executable slice and records progress.
 
 ## Collaborations to review
 
+The [new Installation design](../../internal/successor/installation/README.md)
+separates a portable fresh authorization pair and canonical generation/journal
+rules from actual native ownership, predecessor join and manager start barrier.
+New Enrollment owns metadata/static classification through its immutable
+inventory; command composition maps those names to Release inputs. Installation
+does not inherit first-pin provenance for successor bytes, mint Release proofs
+from stored bindings, consume old runtime parsers/workers or reset installed
+floors. The new candidate loader, declaration owner and actual transition remain
+unimplemented. A portable rule does not establish a native installation profile;
+the unresolved capability-admission repair remains distinct from this design.
+
 The full Route transport inventory also includes confidential issuer bootstrap
 and ordinary issuer Control (purpose 1, operation 1), and Descriptor Control
 (purpose 3, lookup operation 2 and publication operation 6). Route owns exact

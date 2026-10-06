@@ -78,6 +78,40 @@ func (b Bundle) Names() []string {
 	return names
 }
 
+// MetadataNames returns the sorted inventory projection excluding the trusted
+// root and static companions. It classifies frozen bytes only: the consumer
+// constructs metadata URLs and Release independently authenticates them.
+func (b Bundle) MetadataNames() []string {
+	if b.accepted == nil {
+		return nil
+	}
+	f := b.accepted.facts
+	static := map[string]bool{
+		"RELEASE": true, f.Artifact: true, f.TrustedRoot: true,
+		f.ControlCatalog: true, f.DisclosureRoot: true, f.ControlArtifact: true,
+		"release.ac1": true, "network.ac1": true, "compatibility.ac1": true,
+		"release.pub": true, "network.pub": true, "compatibility.pub": true, "corpus.pub": true,
+	}
+	if f.Headless {
+		static[artifactName("ardents-node", f.Platform)] = true
+		static[artifactName("ardents-custody", f.Platform)] = true
+	}
+	if f.Protected {
+		static["protected-endpoint.json"] = true
+		for _, name := range protectedNames() {
+			static[name] = true
+		}
+	}
+	var names []string
+	for name := range b.accepted.files {
+		if !static[name] {
+			names = append(names, name)
+		}
+	}
+	sort.Strings(names)
+	return names
+}
+
 // Verify completes all stages and closes every file before publishing a
 // snapshot. It never writes state, interprets Release signatures or executes.
 func Verify(ctx context.Context, request Request) (result Bundle, err error) {

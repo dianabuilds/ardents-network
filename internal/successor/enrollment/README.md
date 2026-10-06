@@ -54,6 +54,21 @@ Enrollment не импортирует Release, Installation, Execution или �
 принадлежит composition с новым Release. Имена и байты существующего формата
 сохраняются; историческое имя companion не даёт ему runtime полномочий.
 
+`Bundle.MetadataNames` проецирует отсортированные имена metadata из private
+inventory, исключая trusted root и static companions через их существующие
+grammar identities. Настоящий `ardents-next` Release consumer использует эту
+проекцию вместо собственного списка исключений; URL и Release inputs по-прежнему
+принадлежат composition. Проекция не проверяет подписи и не удаляет исходные
+companion bytes. General, headless Linux/Windows и protected inventory имеют
+независимые portable проверки, включая копирование возвращённых имён.
+
+Для [нового Installation](../installation/README.md) требуется отдельный
+successor candidate snapshot без primary pin provenance. Этот seam ещё не
+реализован: `Bundle` нельзя получить из самостоятельно вычисленного pin или
+использовать как successor authority. Его будущая read-only загрузка должна
+сохранить bounded inventory/identity/cancellation правила и общую классификацию
+файлов, а новый Release — самостоятельно установить свежую авторизацию.
+
 ## Этапы и точки отказа
 
 1. **Вход.** Проверить независимый SHA-256 pin, Bundle Root, исходный context

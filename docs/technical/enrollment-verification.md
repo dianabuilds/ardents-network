@@ -154,6 +154,15 @@ group rules remain those above, with no first-pin successor authority. The
 stages and refusal obligations; the selected GitHub issue owns verification
 and acceptance status.
 
+The real new Release consumer now uses `Bundle.MetadataNames` for the frozen
+metadata/static inventory classification. Enrollment retains its existing
+companion grammar, including platform suffixes and the protected resources;
+composition owns fixed metadata URLs and Release inputs. This read-only
+projection grants no signature authority and preserves all companion bytes for
+separately owned consumers. A new successor candidate loader remains absent;
+the [Installation design](../../internal/successor/installation/README.md)
+requires a distinct result without first-pin or running-program provenance.
+
 ### Predecessor owner
 
 `internal/enrollment` behavior tests cover pin-before-parse,
