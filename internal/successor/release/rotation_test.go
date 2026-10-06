@@ -261,6 +261,43 @@ func TestRootRoleCannotCountDuplicateKeysAsFive(t *testing.T) {
 		t.Fatal("invalid key set established Root", err)
 	}
 }
+
+func TestRootRoleNeedsFiveDistinctPublicKeys(t *testing.T) {
+	h := freshSignedHistory(t)
+	ids := h.root.Signed.Roles["root"].KeyIDs
+	aliased := append([]string(nil), ids[:3]...)
+	// Canonical key IDs include auxiliary fields. They cannot be counted as
+	// distinct signing keys when the actual normalized public material repeats.
+	for i := range 2 {
+		original := h.root.Signed.Keys[ids[i]]
+		key := &metadata.Key{Type: original.Type, Scheme: original.Scheme, Value: original.Value, UnrecognizedFields: map[string]any{"alias_probe": i}}
+		id, err := key.ID()
+		if err != nil {
+			t.Fatal(err)
+		}
+		h.root.Signed.Keys[id] = key
+		aliased = append(aliased, id)
+	}
+	for _, role := range h.root.Signed.Roles {
+		role.KeyIDs = append([]string(nil), aliased...)
+	}
+	h.root.Signatures = nil
+	historySign(t, h.root, h.keys[:3])
+	h.input.RootBytes = historyBytes(t, h.root)
+	v, err := Open(filepath.Join(t.TempDir(), "history"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = v.Close() })
+	d := v.Evaluate(context.Background(), h.input)
+	if _, ok := d.Authorization(); ok {
+		t.Fatal("three public keys disguised as five identities authorized")
+	}
+	floors, err := v.CurrentFloors(context.Background())
+	if err != nil || floors.RootVersion != 0 {
+		t.Fatal("invalid key material set established Root", err)
+	}
+}
 func (h *signedHistory) rotate(t *testing.T, version int64, oldCount int) {
 	t.Helper()
 	next, err := metadata.Root().FromBytes(historyBytes(t, h.root))

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/sha256"
+	"crypto/x509"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -579,6 +580,7 @@ func validateRootPolicy(root *metadata.Metadata[metadata.RootType], local LocalE
 			return rootPolicy{}, fmt.Errorf("trusted root role %s has an invalid threshold", name)
 		}
 		seen := make(map[string]struct{}, totalTopLevelKeys)
+		publicKeys := make(map[string]struct{}, totalTopLevelKeys)
 		for _, keyID := range role.KeyIDs {
 			key := root.Signed.Keys[keyID]
 			if key == nil {
@@ -591,6 +593,18 @@ func validateRootPolicy(root *metadata.Metadata[metadata.RootType], local LocalE
 			if err != nil || canonicalID != keyID {
 				return rootPolicy{}, errors.New("trusted root key identity differs from its public material")
 			}
+			publicKey, err := key.ToPublicKey()
+			if err != nil {
+				return rootPolicy{}, errors.New("trusted root has an invalid public key")
+			}
+			encoded, err := x509.MarshalPKIXPublicKey(publicKey)
+			if err != nil {
+				return rootPolicy{}, errors.New("trusted root public key cannot be normalized")
+			}
+			if _, duplicate := publicKeys[string(encoded)]; duplicate {
+				return rootPolicy{}, errors.New("trusted root role repeats public key material")
+			}
+			publicKeys[string(encoded)] = struct{}{}
 			seen[keyID] = struct{}{}
 		}
 	}

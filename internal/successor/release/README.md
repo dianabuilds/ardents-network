@@ -67,8 +67,9 @@ Installation сохраняет свою транзакцию и проверя�
    Потерянный pointer при retained generation не означает initial enrollment.
    Foreign, malformed, partial и uncertain state не разрешают новый target.
 3. **Root.** Проверить текущий Root и последовательную цепь вращения.
-   Набор роли содержит пять различных canonical key identities; повторение
-   записи не увеличивает число ключей. Duplicate JSON fields не принимаются.
+   Набор роли содержит пять различных canonical key identities с различным
+   нормализованным public key material; дополнительные поля и другое кодирование
+   того же ключа не увеличивают их число. Duplicate JSON fields не принимаются.
    Каждый проверенный successor Root публикуется durably до использования
    для следующего Root или metadata. Последующий отказ не откатывает
    уже подтверждённый Root. Не добавлять delegated targets, ambient cache,
