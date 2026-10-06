@@ -1,5 +1,3 @@
-//go:build linux
-
 package main
 
 import (
@@ -7,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"sync"
 	"testing"
 )
@@ -40,7 +39,11 @@ func compiledCommand(t *testing.T) string {
 		if commandBuild.err != nil {
 			return
 		}
-		commandBuild.path = filepath.Join(commandBuild.directory, "ardents-next")
+		name := "ardents-next"
+		if runtime.GOOS == "windows" {
+			name += ".exe"
+		}
+		commandBuild.path = filepath.Join(commandBuild.directory, name)
 		cmd := exec.CommandContext(t.Context(), "go", "build", "-trimpath", "-buildvcs=false", "-o", commandBuild.path, ".")
 		commandBuild.output, commandBuild.err = cmd.CombinedOutput()
 	})

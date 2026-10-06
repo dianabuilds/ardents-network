@@ -19,6 +19,9 @@ func main() {
 }
 
 func run(ctx context.Context, args []string, out, diagnostic io.Writer) int {
+	if len(args) > 0 && args[0] == "enrollment" {
+		return runEnrollment(ctx, args[1:], out)
+	}
 	if len(args) > 0 && args[0] == "route" {
 		return runRoute(ctx, args[1:], out, diagnostic)
 	}

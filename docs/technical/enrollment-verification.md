@@ -128,6 +128,34 @@ on both entry points.
 
 ## Verification owner
 
+### Isolated new owner
+
+`internal/successor/enrollment` owns a separately implemented initial portable
+verification flow consumed by `ardents-next enrollment verify` and
+`verify-headless`, each taking only Bundle Root and independent manifest pin.
+The command obtains its own original executable path from the OS. This is a
+read-only initial verification consumer, not a new supported distribution or
+installed runtime. The predecessor commands and roots remain independent.
+
+The new owner authenticates pin before parsing, reads each file once into an
+owned snapshot with actual byte bounds, limits directory enumeration, verifies
+original file identity before/after I/O and at final handoff, and refuses
+observed original cancellation without a partial result. Unix ownership and
+no-follow/nonblocking open are separate native mechanisms; Windows portable
+verification attests regular-file identity and bytes, not Unix ownership or
+installed ACL qualification. Common grammar and behavior tests are portable.
+
+The result has private construction and returns copied authenticated initial
+facts/bytes. No Release inputs, metadata URLs, permission or durable floor is
+created here. Future new Release composition must consume these exact bytes
+and establish its own authorization. General/headless companion and protected
+group rules remain those above, with no first-pin successor authority. The
+[new owner design](../../internal/successor/enrollment/README.md) records the
+stages and refusal obligations; the selected GitHub issue owns verification
+and acceptance status.
+
+### Predecessor owner
+
 `internal/enrollment` behavior tests cover pin-before-parse,
 inventory rejection, executable substitution, the typed refusal of retired
 v1/v2 descriptors and the generic refusal of unknown schemas, v3 companion

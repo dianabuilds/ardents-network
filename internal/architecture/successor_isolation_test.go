@@ -11,6 +11,37 @@ import (
 	"testing"
 )
 
+// Enrollment grammar and all portable behavior controls must be selected on
+// both platforms. Only concrete file ownership/open adapters have native tags.
+func TestSuccessorEnrollmentRunsPortableRulesOnWindowsAndLinux(t *testing.T) {
+	directory := path.Join(repositoryRoot(t), "internal/successor/enrollment")
+	entries, err := os.ReadDir(directory)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, entry := range entries {
+		name := entry.Name()
+		if entry.IsDir() || !strings.HasSuffix(name, ".go") {
+			continue
+		}
+		switch name {
+		case "file_unix.go", "file_unix_test.go", "file_windows.go", "file_unsupported.go":
+			continue
+		}
+		for _, target := range []string{"windows", "linux"} {
+			profile := build.Default
+			profile.GOOS, profile.GOARCH, profile.CgoEnabled = target, "amd64", false
+			selected, err := profile.MatchFile(directory, name)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !selected {
+				t.Errorf("portable Enrollment source %s excluded on %s", name, target)
+			}
+		}
+	}
+}
+
 // The shared channel has no native mechanism. Check actual Go file selection,
 // including tests: a passing suite must not silently omit an inherited OS file.
 func TestSuccessorRouteChannelRunsSameSourcesOnWindowsAndLinux(t *testing.T) {
@@ -301,6 +332,7 @@ func successorImportAllowed(source, dependency string) bool {
 		"internal/successor/hosting":                 {},
 		"internal/successor/publication":             {},
 		"internal/successor/reachability":            {"publication"},
+		"internal/successor/enrollment":              {},
 		"internal/successor/route":                   {},
 		"internal/successor/route/ardp":              {},
 		"internal/successor/route/issuer":            {"route/ardp", "admission"},
@@ -318,6 +350,9 @@ func successorImportAllowed(source, dependency string) bool {
 		"cmd/ardents-next":                           {"route/introduction", "route/prefix", "network", "network/state", "admission/stock", "admission/receiving", "admission/allocation", "admission", "admission/quota", "admission/issuerprofile", "admission/issuance", "admission/issuer", "nodeidentity", "hosting", "route", "route/role", "route/selection", "route/join", "route/receiver", "route/channel", "route/ardp"},
 	}
 	if zoneDependency {
+		if dependency == modulePath+"/internal/successor/enrollment" && source == "cmd/ardents-next/enrollment.go" {
+			return true
+		}
 		if source == "cmd/ardents-next/route_bootstrap_linux_test.go" && (dependency == modulePath+"/internal/successor/route/issuer" || dependency == modulePath+"/internal/successor/route/bootstrap") {
 			return true
 		}

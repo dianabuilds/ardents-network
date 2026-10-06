@@ -28,7 +28,7 @@ its contract, tests and non-test consumer are implemented together.
 | [publication/](publication/README.md) | Жизненный цикл публикации Service Instance | Публичная проверка подписанных proofs; живой Instance и readiness ещё отсутствуют |
 | [reachability/](reachability/README.md) | Descriptor Store и проверка достижимости точного Target | Проверка private Descriptor, отдельные долговечный Store и локальная история поиска; реальные receiving и holder потребители через Route |
 | [connection/](connection/README.md) | Аутентифицированный логический Service Connection | Только каркас |
-| [enrollment/](enrollment/README.md) | Первичное закрепление доверенного комплекта | Только каркас |
+| [enrollment/](enrollment/README.md) | Первичное закрепление доверенного комплекта | Отдельная проверка portable v3 комплекта по независимому pin, закрытый snapshot и реальный read-only consumer; не разрешение Release или запуска |
 | [release/](release/README.md) | Разрешение на точные программные артефакты | Только каркас |
 | [installation/](installation/README.md) | Установка, замена и восстановление поколения | Только каркас |
 | [custody/](custody/README.md) | Хранение корневых полномочий и подпись по назначению | Только каркас |

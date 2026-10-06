@@ -32,51 +32,6 @@ func TestRouteGenuineRetainedPrefixBothCarriers(t *testing.T) {
 				var accepted atomic.Int32
 				var receivers []*routereceiver.Receiver
 				var budgets []*hosting.Budget
-				for i := byte(12); i < 16; i++ {
-					id := [32]byte{i}
-					view, err := f.current()
-					if err != nil {
-						t.Fatal(err)
-					}
-					m, err := view.Member(id, view.ObservedAt())
-					if err != nil {
-						t.Fatal(err)
-					}
-					duty, err := view.RetainDuty(id, view.ObservedAt())
-					if err != nil {
-						t.Fatal(err)
-					}
-					binding := receiving.Receiver{NetworkID: f.profile.NetworkID, StateGeneration: f.profile.StateGeneration, StateDigest: f.profile.StateDigest, ProfileDigest: f.profile.Digest, NodeID: id, DutyGeneration: 9}
-					receivingOwner, err := receiving.Open(t.TempDir(), binding, func() (receiving.Observation, error) { return f.authority.receiver(binding, m.NotAfter()) })
-					if err != nil {
-						t.Fatal(err)
-					}
-					t.Cleanup(func() {
-						if err := receivingOwner.Close(); err != nil {
-							t.Error(err)
-						}
-					})
-					budget := networkTestBudget(t)
-					budgets = append(budgets, budget)
-					reservations[id]()
-					server, err := routereceiver.Listen(t.Context(), routereceiver.ReceiverConfig{Authority: role.Authority{Current: f.current, Duty: duty, Profile: view.Profile().ProfileBinding}, Certificate: certificates[id], Admit: func(ctx context.Context, c routereceiver.Channel, raw []byte) (receiving.Grant, error) {
-						grant, err := receivingOwner.Accept(ctx, admission.ForwardClass, raw, c.Hello.Deadline, func() (func() error, error) {
-							release, err := networkTestReservation(t, budget, c.Hello.Deadline)
-							if err != nil {
-								return nil, err
-							}
-							return c.HoldReservation(release)
-						})
-						if err == nil {
-							accepted.Add(1)
-						}
-						return grant, err
-					}})
-					if err != nil {
-						t.Fatal(err)
-					}
-					receivers = append(receivers, server)
-				}
 				defer func() {
 					for _, server := range receivers {
 						if err := server.Close(); err != nil && mode != "clock-loss" && mode != "profile-conflict" && mode != "successor" && !(mode == "expiry" && routeExpiryCloseOnly(err)) {
@@ -124,8 +79,12 @@ func TestRouteGenuineRetainedPrefixBothCarriers(t *testing.T) {
 				// Genuine clock-confidence loss must refuse before physical budget
 				// or Stock presentation. Recovery permits the same retained tokens.
 				f.clockUnavailable.Store(true)
-				if _, err := startRoutePrefix(t.Context(), plan, f.authority, holder); err == nil || accepted.Load() != 0 {
-					t.Fatal("pre-admission loss reached receiving effects", err)
+				_, unavailable := f.current()
+				if unavailable == nil {
+					t.Fatal("genuine Network remained available without clock confidence")
+				}
+				if _, err := startRoutePrefix(t.Context(), plan, f.authority, holder); !errors.Is(err, unavailable) || accepted.Load() != 0 {
+					t.Fatal("pre-admission loss did not retain its Network refusal before effects", err)
 				}
 				f.clockUnavailable.Store(false)
 				for _, excluded := range []route.Member{{NodeID: before.Entry.NodeID}, {PublicKey: before.Entry.PublicKey}, {FamilyID: before.Entry.FamilyID}} {
@@ -134,6 +93,54 @@ func TestRouteGenuineRetainedPrefixBothCarriers(t *testing.T) {
 					if _, err := startRoutePrefix(t.Context(), refused, f.authority, holder); err == nil || accepted.Load() != 0 {
 						t.Fatal("known controlled identity/key/family reached transport effects", err)
 					}
+				}
+				// Start listeners only after the pre-admission clock-loss probe.
+				// Live receivers must retire on that same loss; toggling shared
+				// authority after Listen races their retained-duty watchers.
+				for i := byte(12); i < 16; i++ {
+					id := [32]byte{i}
+					view, err := f.current()
+					if err != nil {
+						t.Fatal(err)
+					}
+					m, err := view.Member(id, view.ObservedAt())
+					if err != nil {
+						t.Fatal(err)
+					}
+					duty, err := view.RetainDuty(id, view.ObservedAt())
+					if err != nil {
+						t.Fatal(err)
+					}
+					binding := receiving.Receiver{NetworkID: f.profile.NetworkID, StateGeneration: f.profile.StateGeneration, StateDigest: f.profile.StateDigest, ProfileDigest: f.profile.Digest, NodeID: id, DutyGeneration: 9}
+					receivingOwner, err := receiving.Open(t.TempDir(), binding, func() (receiving.Observation, error) { return f.authority.receiver(binding, m.NotAfter()) })
+					if err != nil {
+						t.Fatal(err)
+					}
+					t.Cleanup(func() {
+						if err := receivingOwner.Close(); err != nil {
+							t.Error(err)
+						}
+					})
+					budget := networkTestBudget(t)
+					budgets = append(budgets, budget)
+					reservations[id]()
+					server, err := routereceiver.Listen(t.Context(), routereceiver.ReceiverConfig{Authority: role.Authority{Current: f.current, Duty: duty, Profile: view.Profile().ProfileBinding}, Certificate: certificates[id], Admit: func(ctx context.Context, c routereceiver.Channel, raw []byte) (receiving.Grant, error) {
+						grant, err := receivingOwner.Accept(ctx, admission.ForwardClass, raw, c.Hello.Deadline, func() (func() error, error) {
+							release, err := networkTestReservation(t, budget, c.Hello.Deadline)
+							if err != nil {
+								return nil, err
+							}
+							return c.HoldReservation(release)
+						})
+						if err == nil {
+							accepted.Add(1)
+						}
+						return grant, err
+					}})
+					if err != nil {
+						t.Fatal(err)
+					}
+					receivers = append(receivers, server)
 				}
 				prefixContext, cancelPrefix := context.WithCancel(t.Context())
 				defer cancelPrefix()

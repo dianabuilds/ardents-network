@@ -92,7 +92,7 @@ offline to isolate receiving restrictions; network stock acquisition remains
 the separate permission-only holder/compiled issuer scenario above.
 
 - `make route-check` runs only the new Network, Admission, Hosting,
-  Publication public-proof, Reachability and Route
+  Publication public-proof, Reachability, Enrollment and Route
   owners plus `ardents-next`, with Linux race execution, both selected real
   Carriers, compiled prefix/receiver processes and causal lifecycle cases.
   Focused architecture checks enforce isolation and registered profiles.

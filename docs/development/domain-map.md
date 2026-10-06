@@ -116,9 +116,17 @@ real consumer before package or implementation admission.
 ## Realization and design limits
 
 The [source-tree scaffold](../../internal/successor/README.md#каркас-доменов)
-provides README-only destinations for Execution, Connection, Enrollment,
+provides README-only destinations for Execution, Connection,
 Release, Installation and Custody. These directories grant no Go import or
-runtime authority. New Publication currently has only portable public
+runtime authority. New Enrollment has its own portable first-pin verification
+Module, bounded root-contained physical reads, native ownership/open adapters
+and private frozen inventory consumed by the real read-only `ardents-next`
+command. It constructs no Release inputs or metadata URLs, establishes no
+Release floor and grants no installed or Execution authority. Its ordinary
+initial result and optional protected group remain scoped data; Release,
+Installation and qualified Execution are separate necessary owners. These
+source responsibilities do not establish completed acceptance or installed
+qualification. New Publication currently has only portable public
 Credential/Publication proof verification, with a real Reachability verifier
 caller. New Reachability currently verifies exact-Target private Descriptors;
 its separate receiving Store implements durable signed conflict floors and
