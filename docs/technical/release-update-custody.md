@@ -168,6 +168,19 @@ opaque authorization. It does not download artifacts, run a repository,
 maintain an ambient cache, sign metadata, select a mirror, or expose its floor
 storage.
 
+The isolated new-domain composition uses `internal/successor/release` with
+its own history and the genuine `ardents-next release verify-initial` consumer.
+It consumes new Enrollment's authenticated facts and frozen bytes, not the
+predecessor verifier or installed roots. The new owner serializes evaluations,
+checks original cancellation at publication/handoff and joins admitted work
+before returning its native lease. Portable metadata/target/safety rules remain
+distinct from native history mechanisms. The new-domain
+[design](../../internal/successor/release/README.md) preserves the accepted
+metadata and durable identities; source presence and component checks do not
+establish complete Release acceptance, installed replacement or qualification.
+The predecessor remains an independent owner for its unchanged old consumers;
+no shared live root or automatic installed-history adoption is authorized.
+
 ADR-0050 through ADR-0052 historically assigned the first closed-alpha release
 seeds and fixed RC1/RC2 assembly to a separate Product Owner boundary. ADR-0059
 retired assembly after the completed ceremonies, and ADR-0067 retires the

@@ -333,6 +333,7 @@ func successorImportAllowed(source, dependency string) bool {
 		"internal/successor/publication":             {},
 		"internal/successor/reachability":            {"publication"},
 		"internal/successor/enrollment":              {},
+		"internal/successor/release":                 {},
 		"internal/successor/route":                   {},
 		"internal/successor/route/ardp":              {},
 		"internal/successor/route/issuer":            {"route/ardp", "admission"},
@@ -350,7 +351,10 @@ func successorImportAllowed(source, dependency string) bool {
 		"cmd/ardents-next":                           {"route/introduction", "route/prefix", "network", "network/state", "admission/stock", "admission/receiving", "admission/allocation", "admission", "admission/quota", "admission/issuerprofile", "admission/issuance", "admission/issuer", "nodeidentity", "hosting", "route", "route/role", "route/selection", "route/join", "route/receiver", "route/channel", "route/ardp"},
 	}
 	if zoneDependency {
-		if dependency == modulePath+"/internal/successor/enrollment" && source == "cmd/ardents-next/enrollment.go" {
+		if dependency == modulePath+"/internal/successor/enrollment" && (source == "cmd/ardents-next/enrollment.go" || source == "cmd/ardents-next/release.go") {
+			return true
+		}
+		if dependency == modulePath+"/internal/successor/release" && source == "cmd/ardents-next/release.go" {
 			return true
 		}
 		if source == "cmd/ardents-next/route_bootstrap_linux_test.go" && (dependency == modulePath+"/internal/successor/route/issuer" || dependency == modulePath+"/internal/successor/route/bootstrap") {
@@ -413,7 +417,28 @@ func successorImportAllowed(source, dependency string) bool {
 	if source == "internal/successor/reachability/store_platform_windows.go" && dependency == "golang.org/x/sys/windows" {
 		return true
 	}
+	if source == "internal/successor/release/history_native_windows.go" && dependency == "golang.org/x/sys/windows" {
+		return true
+	}
+	if owner == "internal/successor/release" && dependency == "github.com/theupdateframework/go-tuf/v2/metadata" {
+		switch source {
+		case "internal/successor/release/metadata_authentication.go", "internal/successor/release/target_identity.go", "internal/successor/release/safety_policy.go", "internal/successor/release/floor_encoding.go":
+			return true
+		}
+	}
+	if source == "internal/successor/release/metadata_authentication.go" && dependency == "github.com/theupdateframework/go-tuf/v2/metadata/trustedmetadata" {
+		return true
+	}
 	if strings.HasSuffix(source, "_test.go") {
+		if source == "internal/successor/release/generation_authorization_test.go" && dependency == "github.com/theupdateframework/go-tuf/v2/metadata" {
+			return true
+		}
+		if source == "internal/successor/release/rotation_test.go" && (dependency == "github.com/sigstore/sigstore/pkg/signature" || dependency == "github.com/theupdateframework/go-tuf/v2/metadata") {
+			return true
+		}
+		if source == "cmd/ardents-next/release_process_test.go" && (dependency == "github.com/sigstore/sigstore/pkg/signature" || dependency == "github.com/theupdateframework/go-tuf/v2/metadata") {
+			return true
+		}
 		if (owner == "internal/successor/network/epoch" || owner == "internal/successor/network/state" || owner == "cmd/ardents-next") && dependency == modulePath+"/tests/epochfixture/network" {
 			return true
 		}

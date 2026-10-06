@@ -1,7 +1,10 @@
-# Release verification — каркас
+# Release verification
 
-Только описание будущего владельца; Go-пакета и реализации здесь пока нет.
-Самостоятельный владелец внутри семейства Software acceptance.
+Самостоятельный владелец внутри семейства Software acceptance. Новый Go Module
+содержит offline verification pipeline, private authorization и отдельную
+history/operation lifecycle; настоящий consumer находится в
+`cmd/ardents-next/release.go`. Приёмка всей реализации ведётся в
+[задаче Release](https://github.com/dianabuilds/ardents-network/issues/505).
 
 **Вопрос домена:** разрешены ли именно эти программные байты для этого назначения?
 
@@ -27,7 +30,7 @@
 
 ## Проект до реализации
 
-Это подготовленный проект, не Go-пакет и не принятая реализация. Он сохраняет
+Этот проект предшествовал реализации и сам не доказывает её приёмку. Он сохраняет
 текущий профиль Release и ADR-0119. Его задача — определить authority,
 consistency и termination до переноса механизмов. Старый runtime не становится
 зависимостью нового владельца. Конкретная реализация допускается только через
@@ -64,6 +67,8 @@ Installation сохраняет свою транзакцию и проверя�
    Потерянный pointer при retained generation не означает initial enrollment.
    Foreign, malformed, partial и uncertain state не разрешают новый target.
 3. **Root.** Проверить текущий Root и последовательную цепь вращения.
+   Набор роли содержит пять различных canonical key identities; повторение
+   записи не увеличивает число ключей. Duplicate JSON fields не принимаются.
    Каждый проверенный successor Root публикуется durably до использования
    для следующего Root или metadata. Последующий отказ не откатывает
    уже подтверждённый Root. Не добавлять delegated targets, ambient cache,
@@ -115,6 +120,12 @@ exclusive locking, открытия файлов, atomic publication и durable 
 компиляция или переносимый parser не квалифицируют filesystem и installed ACL.
 Не использовать пустой успешный flush как доказательство одинаковой durability
 на разных ОС. Отсутствие выбранного механизма означает явный отказ.
+
+Reopen под native lease повторно flush-ит точные файлы current generation и
+их directory chain, затем перепроверяет floors. Чтение filesystem cache не
+устраняет uncertainty прежнего владельца. Процессные проверки прерывают запись
+до rename stage, после публикации generation, после current и после его flush;
+это доказательство process recovery, не потери питания или storage hardware.
 
 Начать с одного cohesive package; разделять файлы по verification pipeline,
 metadata authentication, target/policy, authorization, history и native store

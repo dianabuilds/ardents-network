@@ -69,5 +69,5 @@ func (d descriptor) bind(files map[string][]byte, scope Scope) (Facts, error) {
 	}
 	return Facts{Cohort: d.values["cohort"], Release: d.values["release"], Platform: d.values["platform"],
 		Environment: d.values["environment"], Network: d.values["network"], TargetPath: d.values["target_path"],
-		Artifact: d.values["artifact"], TrustedRoot: d.values["trusted_root"], Headless: node, Protected: protected}, nil
+		Artifact: d.values["artifact"], TrustedRoot: d.values["trusted_root"], ControlCatalog: d.values["control_catalog"], DisclosureRoot: d.values["disclosure_root"], ControlArtifact: d.values["control_artifact"], Headless: node, Protected: protected}, nil
 }

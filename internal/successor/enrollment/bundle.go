@@ -37,6 +37,7 @@ type Request struct {
 type Facts struct {
 	Cohort, Release, Platform, Environment, Network, TargetPath string
 	Artifact, TrustedRoot                                       string
+	ControlCatalog, DisclosureRoot, ControlArtifact             string
 	ManifestSHA256                                              string
 	Headless, Protected                                         bool
 }
