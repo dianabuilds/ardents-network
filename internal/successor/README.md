@@ -12,8 +12,8 @@ its contract, tests and non-test consumer are implemented together.
 ## Каркас доменов
 
 По поручению Product Owner подготовлены каталоги будущих владельцев с README.
-Это каркас исходного дерева: без Go-пакетов, API, заглушек, переноса поведения
-и запуска задач реализации. Каталог не означает, что домен реализован или принят.
+Оставшиеся README-only каталоги — каркас без Go-пакетов, API и заглушек.
+Наличие каталога или отдельного proof-кодека не означает приёмку всего домена.
 Полный архитектурный инвентарь, включая вспомогательные обязанности, ведётся в
 [карте доменов](../../docs/development/domain-map.md). Точные импорты появятся
 в package map вместе с реализацией и реальным потребителем.
@@ -25,8 +25,8 @@ its contract, tests and non-test consumer are implemented together.
 | `hosting/` | Физический бюджет провайдера и резервирование | Существующая реализация |
 | `route/` | Защищённые маршруты, ролевые каналы и завершение транспорта | Существующая частичная реализация |
 | [execution/](execution/README.md) | Локальные полномочия Application, сессия, Job и завершение worker | Только каркас |
-| [publication/](publication/README.md) | Жизненный цикл публикации Service Instance | Только каркас |
-| [reachability/](reachability/README.md) | Descriptor Store и проверка достижимости точного Target | Только каркас |
+| [publication/](publication/README.md) | Жизненный цикл публикации Service Instance | Публичная проверка подписанных proofs; живой Instance и readiness ещё отсутствуют |
+| [reachability/](reachability/README.md) | Descriptor Store и проверка достижимости точного Target | Проверка private Descriptor, отдельные долговечный Store и локальная история поиска; реальные receiving и holder потребители через Route |
 | [connection/](connection/README.md) | Аутентифицированный логический Service Connection | Только каркас |
 | [enrollment/](enrollment/README.md) | Первичное закрепление доверенного комплекта | Только каркас |
 | [release/](release/README.md) | Разрешение на точные программные артефакты | Только каркас |

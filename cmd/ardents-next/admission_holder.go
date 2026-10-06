@@ -9,6 +9,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/successor/admission"
 	"github.com/dianabuilds/ardents-network/internal/successor/admission/stock"
+	"github.com/dianabuilds/ardents-network/internal/successor/reachability"
 	framing "github.com/dianabuilds/ardents-network/internal/successor/route/channel"
 )
 
@@ -26,6 +27,7 @@ type holderCommand struct {
 	Revision      uint64               `json:"revision,omitzero"`
 	Choice        uint8                `json:"choice,omitzero"`
 	Join          routeJoinIntent      `json:"join,omitzero"`
+	Target        [32]byte             `json:"target,omitzero"`
 }
 
 func runAdmissionHolder(ctx context.Context, args []string, input io.ReadCloser, out, diagnostic io.Writer) (code int) {
@@ -73,6 +75,9 @@ func runAdmissionHolder(ctx context.Context, args []string, input io.ReadCloser,
 	var routeContext routeJoinContext
 	var registration routeRegistration
 	var joined net.Conn
+	// This console session is the exact local context. Prefix/worker retirement
+	// does not clear its private lookup facts; final context closure does.
+	lookupHistory := &reachability.History{}
 	closeRoute := func() error {
 		var result error
 		if joined != nil {
@@ -90,6 +95,7 @@ func runAdmissionHolder(ctx context.Context, args []string, input io.ReadCloser,
 		if routeContext.close != nil {
 			result = errors.Join(result, routeContext.close())
 		}
+		result = errors.Join(result, lookupHistory.Close())
 		return result
 	}
 	defer func() {
@@ -105,6 +111,18 @@ func runAdmissionHolder(ctx context.Context, args []string, input io.ReadCloser,
 		var err error
 		result := map[string]any{"outcome": "completed"}
 		switch c.Operation {
+		case "descriptor-publish":
+			if prefix.publishDescriptor == nil {
+				err = errors.New("route Descriptor publication unavailable")
+				break
+			}
+			err = prefix.publishDescriptor(ctx, c.Payload)
+		case "descriptor-lookup":
+			if prefix.lookupDescriptor == nil {
+				err = errors.New("route Descriptor lookup unavailable")
+				break
+			}
+			result["proof"], err = prefix.lookupDescriptor(ctx, c.Target, lookupHistory)
 		case "issuer-issue":
 			if prefix.issue == nil {
 				err = errors.New("route issuer exchange unavailable")

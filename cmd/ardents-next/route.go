@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/successor/hosting"
+	"github.com/dianabuilds/ardents-network/internal/successor/reachability"
 	"github.com/dianabuilds/ardents-network/internal/successor/route"
 )
 
@@ -38,14 +39,16 @@ func independentRouteRoots(roots ...string) bool {
 }
 
 type routeHandle struct {
-	bootstrap bool
-	issue     func(context.Context, uint8, [][32]byte) error
-	close     func() error
-	replenish func(context.Context) error
-	done      <-chan struct{}
-	register  func(context.Context, uint64) (routeRegistration, error)
-	recipient func(uint8) (routeRecipient, error)
-	join      func(context.Context, routeJoinIntent) (net.Conn, error)
+	bootstrap         bool
+	issue             func(context.Context, uint8, [][32]byte) error
+	close             func() error
+	replenish         func(context.Context) error
+	done              <-chan struct{}
+	register          func(context.Context, uint64) (routeRegistration, error)
+	recipient         func(uint8) (routeRecipient, error)
+	join              func(context.Context, routeJoinIntent) (net.Conn, error)
+	publishDescriptor func(context.Context, []byte) error
+	lookupDescriptor  func(context.Context, [32]byte, *reachability.History) ([]byte, error)
 }
 
 type routeJoinContext struct {

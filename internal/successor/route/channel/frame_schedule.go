@@ -27,6 +27,16 @@ type frameExpiry struct{ end time.Time }
 func (e *frameExpiry) Error() string { return os.ErrDeadlineExceeded.Error() }
 func (e *frameExpiry) Unwrap() error { return os.ErrDeadlineExceeded }
 
+// frameRetirement records refusal before physical output by this exact lane's
+// scheduler. An equal Carrier error or a started write cannot mint it.
+type frameRetirement struct {
+	lane *Lane
+	kind uint8
+}
+
+func (e *frameRetirement) Error() string { return net.ErrClosed.Error() }
+func (e *frameRetirement) Unwrap() error { return net.ErrClosed }
+
 // scheduleLocked serves new control first, then one round-robin data frame
 // before another control. A credit waiter never enters this queue.
 func (s *Session) scheduleLocked() {
@@ -74,7 +84,7 @@ func (s *Session) turn(l *Lane, f ardp.Frame, terminal bool, bytes uint64) (func
 	s.mu.Lock()
 	if s.stopped || s.finishingRole || (!terminal && l.closed) {
 		s.mu.Unlock()
-		return nil, net.ErrClosed
+		return nil, &frameRetirement{lane: l, kind: f.Kind}
 	}
 	end := l.frameDeadline(f, terminal)
 	if !time.Now().Before(end) {
@@ -151,7 +161,7 @@ func (s *Session) turn(l *Lane, f ardp.Frame, terminal bool, bytes uint64) (func
 		s.mu.Unlock()
 		if stopped {
 			finish()
-			return nil, net.ErrClosed
+			return nil, &frameRetirement{lane: l, kind: f.Kind}
 		}
 		if !time.Now().Before(end) {
 			finish()

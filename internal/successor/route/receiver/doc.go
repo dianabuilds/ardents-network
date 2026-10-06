@@ -9,5 +9,8 @@
 // Issuer dispatch carries one bounded opaque exchange to the genuine issuing
 // composition, retains its exclusive transport capacity and joins both TLS
 // directions before releasing it. Admission owns batch validation and issuance.
+// Descriptor dispatch carries one admitted purpose-3 exchange to the genuine
+// Reachability Store. Reachability owns validation, durable floors and commit;
+// receiver retains original duty/currentness checks through RESULT and join.
 // Native receiving and Introduction root adapters currently require Linux.
 package receiver

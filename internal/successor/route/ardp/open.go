@@ -65,7 +65,7 @@ func DecodeOpen(body []byte) (Open, error) {
 	o.RecipientDutyGeneration = binary.BigEndian.Uint64(body[32:40])
 	o.Purpose = body[40]
 	o.Deadline = time.Unix(int64(binary.BigEndian.Uint64(body[41:])), 0).UTC()
-	if o.RecipientNodeID == [32]byte{} || o.RecipientDutyGeneration == 0 || (o.Purpose != 1 && o.Purpose != 7 && o.Purpose != 4 && o.Purpose != 6) {
+	if o.RecipientNodeID == [32]byte{} || o.RecipientDutyGeneration == 0 || (o.Purpose != 1 && o.Purpose != 3 && o.Purpose != 7 && o.Purpose != 4 && o.Purpose != 6) {
 		return Open{}, errors.New("route OPEN facts invalid")
 	}
 	return o, nil

@@ -1,6 +1,9 @@
-# Service Publication — каркас
+# Service Publication
 
-Только описание будущего владельца; Go-пакета и реализации здесь пока нет.
+Go-пакет проверяет публичные Credential и Publication v3: подписи Authority и
+Instance, точный Target/Network, validity и отдельные права чтения и публикации.
+Это проверка подписанного входа, а не живой Publisher: private Instance,
+регистрация, refresh/withdraw и accepting readiness здесь ещё не реализованы.
 
 **Вопрос домена:** какой авторизованный Service Instance сейчас принимает работу?
 

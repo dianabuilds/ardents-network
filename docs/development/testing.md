@@ -91,7 +91,8 @@ token and fail this control on both Carriers. This test provisions genuine stock
 offline to isolate receiving restrictions; network stock acquisition remains
 the separate permission-only holder/compiled issuer scenario above.
 
-- `make route-check` runs only the new Network, Admission, Hosting and Route
+- `make route-check` runs only the new Network, Admission, Hosting,
+  Publication public-proof, Reachability and Route
   owners plus `ardents-next`, with Linux race execution, both selected real
   Carriers, compiled prefix/receiver processes and causal lifecycle cases.
   Focused architecture checks enforce isolation and registered profiles.
@@ -99,6 +100,16 @@ the separate permission-only holder/compiled issuer scenario above.
   prerequisites invalidate the profile. Repository quick/full gates are
   separate and remain required before integration. The bounded behavior and
   evidence limits belong to the [new Route owner](../technical/successor-route-prefix.md).
+
+`TestNestedCloseParentRetirementBeforeOutput` queues a lower CLOSE or holds its
+selected observation before physical output, then retires the original parent.
+Nested cleanup must preserve the parent's original failure without inventing
+a physical write failure, new output or debit. The same portable oracle runs
+on Windows and Linux. `TestNestedCloseStartedPhysicalClosedErrorRetained`
+requires the equal native closed-connection error from a partially written CLOSE
+to retain its exact lower physical owner. These are framing controls; actual
+Descriptor State/caller retirement uses genuine command composition on both
+selected Carriers.
 
 - `make unit` runs the positive deterministic package inventory, including the
   canonical Network epoch fixture, with one explicit 15-minute terminal timeout

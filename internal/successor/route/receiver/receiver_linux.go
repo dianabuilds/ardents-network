@@ -16,6 +16,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/successor/admission/receiving"
 	"github.com/dianabuilds/ardents-network/internal/successor/network"
+	"github.com/dianabuilds/ardents-network/internal/successor/reachability"
 	"github.com/dianabuilds/ardents-network/internal/successor/route/ardp"
 	"github.com/dianabuilds/ardents-network/internal/successor/route/bootstrap"
 	framing "github.com/dianabuilds/ardents-network/internal/successor/route/channel"
@@ -44,6 +45,9 @@ type ReceiverConfig struct {
 	Issue            func(context.Context, []byte, bool) ([]byte, error)
 	IntroductionRoot string
 	Receiving        *receiving.Owner
+	// DescriptorStore is the genuine separately owned receiving Store. Command
+	// composition closes its root only after this Receiver has physically joined.
+	DescriptorStore *reachability.Store
 }
 
 // Receiver owns its listener, in-flight handshakes, admitted parents and all
@@ -83,7 +87,8 @@ func Listen(ctx context.Context, config ReceiverConfig) (*Receiver, error) {
 	introductionDuty := m.RoleDomain == 4 && m.Subrole == 3
 	joinDuty := m.RoleDomain == 2 && m.Subrole == 4
 	issuerDuty := m.RoleDomain == 2 && m.Subrole == 6
-	if !ok || len(key) != ed25519.PrivateKeySize || string(key.Public().(ed25519.PublicKey)) != string(m.PublicKey[:]) || (!forwarding && !introductionDuty && !joinDuty && !issuerDuty) || (issuerDuty && config.Issue == nil) {
+	resolutionDuty := m.RoleDomain == 2 && m.Subrole == 5
+	if !ok || len(key) != ed25519.PrivateKeySize || string(key.Public().(ed25519.PublicKey)) != string(m.PublicKey[:]) || (!forwarding && !introductionDuty && !joinDuty && !issuerDuty && !resolutionDuty) || (issuerDuty && config.Issue == nil) || (resolutionDuty != (config.DescriptorStore != nil)) {
 		return nil, errors.New("route receiving duty or private key differs")
 	}
 	child, cancel := context.WithCancel(ctx)
@@ -167,7 +172,7 @@ func (r *Receiver) peer(key [32]byte) (network.Member, error) {
 		expectedSubrole = 2
 		allowedDomain = peer.RoleDomain == 1 || peer.RoleDomain == 3
 	}
-	if m.RoleDomain == 2 && m.Subrole == 6 {
+	if m.RoleDomain == 2 && (m.Subrole == 5 || m.Subrole == 6) {
 		expectedSubrole = 2
 		allowedDomain = peer.RoleDomain == 1
 	}
@@ -388,7 +393,7 @@ func (r *Receiver) serveOuter(ctx context.Context, accepted transport.ClosedShar
 		// The frame check reobserves this same immutable outer binding.
 		// Capacity preparation adds no storage observation to the sole reader.
 		m := member
-		if !((m.Subrole == 2 && opened.Purpose == 7) || (m.RoleDomain == 4 && m.Subrole == 3 && opened.Purpose == 4) || (m.RoleDomain == 2 && m.Subrole == 4 && opened.Purpose == 6) || (m.RoleDomain == 2 && m.Subrole == 6 && opened.Purpose == 1)) {
+		if !((m.Subrole == 2 && opened.Purpose == 7) || (m.RoleDomain == 4 && m.Subrole == 3 && opened.Purpose == 4) || (m.RoleDomain == 2 && m.Subrole == 4 && opened.Purpose == 6) || (m.RoleDomain == 2 && m.Subrole == 5 && opened.Purpose == 3) || (m.RoleDomain == 2 && m.Subrole == 6 && opened.Purpose == 1)) {
 			return errors.New("route Interior child unavailable")
 		}
 		if nodeOpen.Restriction == ardp.IssuerBootstrapChild {
@@ -476,6 +481,7 @@ func (r *Receiver) serveRole(ctx context.Context, conn net.Conn, outer *framing.
 	var s *framing.Session
 	var additions []receiving.Grant
 	var releaseIssuer func()
+	var releaseDescriptor func()
 	defer func() {
 		// Interrupt nested physical work, join every borrower, then return the
 		// finite reservation. A retained token spend is never refunded here.
@@ -494,12 +500,22 @@ func (r *Receiver) serveRole(ctx context.Context, conn net.Conn, outer *framing.
 		if releaseIssuer != nil {
 			releaseIssuer()
 		}
+		if releaseDescriptor != nil {
+			releaseDescriptor()
+		}
 	}()
 	if err != nil {
 		return err
 	}
 	if h.Purpose == ardp.PurposeIssuer {
 		releaseIssuer, err = r.holdIssuer(bootstrapClaim != nil)
+		if err != nil {
+			clear(first.Body)
+			return err
+		}
+	}
+	if h.Purpose == ardp.PurposeReachability {
+		releaseDescriptor, err = r.queues.HoldChild(6 * (ardp.HeaderSize + ardp.DescriptorResultBodySize))
 		if err != nil {
 			clear(first.Body)
 			return err
@@ -540,6 +556,9 @@ func (r *Receiver) serveRole(ctx context.Context, conn net.Conn, outer *framing.
 	}
 	if h.Purpose == ardp.PurposeIssuer {
 		return issuertransport.Serve(ctx, conn, h, grant.Allowance().Bytes()-role.AdmissionWireBytes, check, func(ctx context.Context, request []byte) ([]byte, error) { return r.config.Issue(ctx, request, false) })
+	}
+	if h.Purpose == ardp.PurposeReachability {
+		return r.serveDescriptor(ctx, conn, h, grant.Allowance().Bytes()-role.AdmissionWireBytes, check)
 	}
 	if h.Purpose == ardp.PurposeIntroduction {
 		return r.registrations.ServeRegistration(ctx, conn, capacity.registration, introduction.RegistrationChannel{
@@ -608,10 +627,11 @@ func (r *Receiver) forward(ctx context.Context, source *framing.Lane, parent ard
 	registration := local.RoleDomain == 4 && local.Subrole == 2 && opened.Purpose == 4
 	join := (local.RoleDomain == 1 || local.RoleDomain == 3) && local.Subrole == 2 && opened.Purpose == 6
 	issuance := local.RoleDomain == 1 && local.Subrole == 2 && opened.Purpose == uint8(ardp.PurposeIssuer)
+	resolution := local.RoleDomain == 1 && local.Subrole == 2 && opened.Purpose == uint8(ardp.PurposeReachability)
 	if restriction == ardp.IssuerBootstrapChild && (local.RoleDomain != 1 || (!forwarding && !issuance)) {
 		return errors.New("restricted forwarding destination unavailable")
 	}
-	if (!forwarding && !registration && !join && !issuance) || opened.Deadline.After(parent.Deadline) {
+	if (!forwarding && !registration && !join && !issuance && !resolution) || opened.Deadline.After(parent.Deadline) {
 		return errors.New("route prefix next-hop unavailable")
 	}
 	if err := source.Bound(opened.Deadline); err != nil {
@@ -635,6 +655,9 @@ func (r *Receiver) forward(ctx context.Context, source *framing.Lane, parent ard
 		if next.NodeID != v.Profile().IssuerNodeID {
 			return errors.New("route exact current issuer unavailable")
 		}
+	}
+	if resolution {
+		expectedSubrole, expectedDomain = 5, 2
 	}
 	if err != nil || next.Subrole != expectedSubrole || next.RoleDomain != expectedDomain || next.DutyGeneration != opened.RecipientDutyGeneration || role.Conflicting(local, next) {
 		return errors.Join(errors.New("route next Interior unavailable"), err)

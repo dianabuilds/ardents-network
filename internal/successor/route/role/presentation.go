@@ -101,7 +101,7 @@ func Present(ctx, caller context.Context, conn net.Conn, a Authority, h ardp.Hel
 // classes. It creates no class and authorizes no receiving verification.
 func AdmissionClass(purpose ardp.Purpose) (admission.Class, error) {
 	switch purpose {
-	case ardp.PurposeIssuer:
+	case ardp.PurposeIssuer, ardp.PurposeReachability:
 		return admission.ControlClass, nil
 	case ardp.PurposeForwarding, ardp.PurposeDataJoin:
 		return admission.ForwardClass, nil

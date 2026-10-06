@@ -22,6 +22,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/successor/admission/stock"
 	"github.com/dianabuilds/ardents-network/internal/successor/hosting"
 	"github.com/dianabuilds/ardents-network/internal/successor/network/state"
+	"github.com/dianabuilds/ardents-network/internal/successor/reachability"
 	"github.com/dianabuilds/ardents-network/internal/successor/route/ardp"
 	framing "github.com/dianabuilds/ardents-network/internal/successor/route/channel"
 	"github.com/dianabuilds/ardents-network/internal/successor/route/introduction"
@@ -98,28 +99,40 @@ func startRoutePrefix(ctx context.Context, plan routePrefixPlan, authority admis
 	if err != nil {
 		return routeHandle{}, errors.Join(err, release())
 	}
-	return routeHandle{close: prefix.Close, done: prefix.Done(), replenish: prefix.Replenish, issue: func(ctx context.Context, class uint8, receivers [][32]byte) error {
-		end := minRouteDeadline(plan.Deadline, time.Now().Add(admission.ControlClass.Lifetime()).UTC().Truncate(time.Second))
-		return prefix.Issue(ctx, end, routeIssuerPreparation(ctx, authority, holder, leg, class, receivers))
-	}, register: func(ctx context.Context, revision uint64) (routeRegistration, error) {
-		view, err := authority.current()
-		if err != nil {
-			return routeRegistration{}, err
-		}
-		duty, err := leg.IntroductionDuty(view, plan.Exclusions)
-		if err != nil {
-			return routeRegistration{}, err
-		}
-		end := minRouteDeadline(plan.Deadline, view.Profile().NotAfter, duty.RecordValidUntil, duty.Epoch.ValidUntil, time.Now().Add(admission.RegistrationClass.Lifetime()).UTC().Truncate(time.Second))
-		if bound, exists := ctx.Deadline(); exists && bound.Before(end) {
-			end = bound.UTC().Truncate(time.Second)
-		}
-		registration, err := introduction.Register(ctx, prefix, introduction.RegistrationConfig{Duty: duty, Revision: revision, Deadline: end})
-		if err != nil {
-			return routeRegistration{}, err
-		}
-		return routeRegistration{close: registration.Close, withdraw: registration.Withdraw, done: registration.Done(), slot: registration.Slot()}, nil
-	}}, nil
+	return routeHandle{close: prefix.Close, done: prefix.Done(), replenish: prefix.Replenish,
+		publishDescriptor: func(ctx context.Context, raw []byte) error {
+			end := minRouteDeadline(plan.Deadline, time.Now().Add(admission.ControlClass.Lifetime()).UTC().Truncate(time.Second))
+			return prefix.PublishDescriptor(ctx, end, raw, plan.Exclusions)
+		},
+		lookupDescriptor: func(ctx context.Context, target [32]byte, history *reachability.History) ([]byte, error) {
+			end := minRouteDeadline(plan.Deadline, time.Now().Add(admission.ControlClass.Lifetime()).UTC().Truncate(time.Second))
+			proof, err := prefix.LookupDescriptor(ctx, end, target, history, plan.Exclusions)
+			if err != nil {
+				return nil, err
+			}
+			return proof.Bytes(), nil
+		}, issue: func(ctx context.Context, class uint8, receivers [][32]byte) error {
+			end := minRouteDeadline(plan.Deadline, time.Now().Add(admission.ControlClass.Lifetime()).UTC().Truncate(time.Second))
+			return prefix.Issue(ctx, end, routeIssuerPreparation(ctx, authority, holder, leg, class, receivers))
+		}, register: func(ctx context.Context, revision uint64) (routeRegistration, error) {
+			view, err := authority.current()
+			if err != nil {
+				return routeRegistration{}, err
+			}
+			duty, err := leg.IntroductionDuty(view, plan.Exclusions)
+			if err != nil {
+				return routeRegistration{}, err
+			}
+			end := minRouteDeadline(plan.Deadline, view.Profile().NotAfter, duty.RecordValidUntil, duty.Epoch.ValidUntil, time.Now().Add(admission.RegistrationClass.Lifetime()).UTC().Truncate(time.Second))
+			if bound, exists := ctx.Deadline(); exists && bound.Before(end) {
+				end = bound.UTC().Truncate(time.Second)
+			}
+			registration, err := introduction.Register(ctx, prefix, introduction.RegistrationConfig{Duty: duty, Revision: revision, Deadline: end})
+			if err != nil {
+				return routeRegistration{}, err
+			}
+			return routeRegistration{close: registration.Close, withdraw: registration.Withdraw, done: registration.Done(), slot: registration.Slot()}, nil
+		}}, nil
 }
 
 func minRouteDeadline(end time.Time, bounds ...time.Time) time.Time {
@@ -162,6 +175,7 @@ func runRoute(ctx context.Context, args []string, out, diagnostic io.Writer) (co
 		NodeID           [32]byte              `json:"node_id"`
 		SpendRoot        string                `json:"spend_root"`
 		IntroductionRoot string                `json:"introduction_root"`
+		DescriptorRoot   string                `json:"descriptor_root"`
 		HostingRoot      string                `json:"hosting_root"`
 		Certificate      string                `json:"certificate"`
 		PrivateKey       string                `json:"private_key"`
@@ -203,6 +217,10 @@ func runRoute(ctx context.Context, args []string, out, diagnostic io.Writer) (co
 		return 1
 	}
 	if m.RoleDomain == 4 && m.Subrole == 3 && plan.IntroductionRoot == "" {
+		return 2
+	}
+	resolutionDuty := m.RoleDomain == 2 && m.Subrole == 5
+	if resolutionDuty != (plan.DescriptorRoot != "") || plan.DescriptorRoot != "" && !independentRouteRoots(plan.Network.Root, plan.SpendRoot, plan.HostingRoot, plan.DescriptorRoot) {
 		return 2
 	}
 	issuerDuty := m.RoleDomain == 2 && m.Subrole == 6
@@ -248,7 +266,19 @@ func runRoute(ctx context.Context, args []string, out, diagnostic io.Writer) (co
 	if m.RoleDomain == 4 && m.Subrole == 3 {
 		initializationOwner = admissionOwner
 	}
-	server, err := routereceiver.Listen(ctx, routereceiver.ReceiverConfig{Authority: role.Authority{Current: networkOwner.CurrentRuntime, Duty: duty, Profile: p.ProfileBinding}, Certificate: certificate, IntroductionRoot: plan.IntroductionRoot, Receiving: initializationOwner, Issue: issue,
+	var descriptorStore *reachability.Store
+	if resolutionDuty {
+		descriptorStore, err = reachability.OpenStore(reachability.StoreConfig{Root: plan.DescriptorRoot, Network: p.Network})
+		if err != nil {
+			return 1
+		}
+		defer func() {
+			if descriptorStore.Close() != nil {
+				code = 1
+			}
+		}()
+	}
+	server, err := routereceiver.Listen(ctx, routereceiver.ReceiverConfig{Authority: role.Authority{Current: networkOwner.CurrentRuntime, Duty: duty, Profile: p.ProfileBinding}, Certificate: certificate, IntroductionRoot: plan.IntroductionRoot, Receiving: initializationOwner, Issue: issue, DescriptorStore: descriptorStore,
 		ReserveBootstrap: func(ctx context.Context, end time.Time) (func() error, error) {
 			reservation, err := budget.Reserve(ctx, hosting.ReservationRequest{Work: plan.Work, Termination: plan.Termination, WorkUntil: end, HoldUntil: end.Add(5 * time.Second)})
 			if err != nil {

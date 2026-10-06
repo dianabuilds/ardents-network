@@ -71,6 +71,10 @@ func newRouteFixture(t *testing.T, profile transport.CarrierProfile) (*networkAd
 }
 
 func newRoleRouteFixture(t *testing.T, profile transport.CarrierProfile, domain byte, introduction bool, issuerNetwork ...bool) (*networkAdmissionFixture, map[[32]byte]func(), map[[32]byte]tls.Certificate) {
+	return newRoleRouteFixtureConfigured(t, profile, domain, introduction, len(issuerNetwork) != 0 && issuerNetwork[0], nil)
+}
+
+func newRoleRouteFixtureConfigured(t *testing.T, profile transport.CarrierProfile, domain byte, introduction, issuerNetwork bool, configure func(*networkAdmissionFixture, map[[32]byte]func(), map[[32]byte]tls.Certificate)) (*networkAdmissionFixture, map[[32]byte]func(), map[[32]byte]tls.Certificate) {
 	t.Helper()
 	// Select a usable real permission hour before constructing any owner or
 	// operation. Extending the signed profile does not extend an hourly token.
@@ -133,7 +137,7 @@ func newRoleRouteFixture(t *testing.T, profile transport.CarrierProfile, domain 
 			}
 			certificates[id] = routeTestCertificate(t, key)
 		}
-		if len(issuerNetwork) != 0 && issuerNetwork[0] {
+		if issuerNetwork {
 			node := &f.spec.Nodes[0]
 			var address string
 			if profile == transport.ClosedCarrierTCP {
@@ -154,6 +158,9 @@ func newRoleRouteFixture(t *testing.T, profile transport.CarrierProfile, domain 
 			t.Cleanup(reservations[node.NodeID])
 			node.Endpoint, node.Carrier = address, string(profile)
 			certificates[node.NodeID] = routeTestCertificate(t, node.PrivateKey)
+		}
+		if configure != nil {
+			configure(f, reservations, certificates)
 		}
 	})
 	return f, reservations, certificates

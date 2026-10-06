@@ -27,14 +27,14 @@ import (
 )
 
 type localAdmissionReply struct {
-	Outcome, Stage                    string
-	Request, Token, Response, Journal []byte
-	Digest                            [32]byte
-	Slot                              [32]byte
-	Permission                        admission.Permission
-	Repeated                          bool
-	Deadline                          time.Time
-	Bytes                             uint64
+	Outcome, Stage                           string
+	Request, Token, Response, Journal, Proof []byte
+	Digest                                   [32]byte
+	Slot                                     [32]byte
+	Permission                               admission.Permission
+	Repeated                                 bool
+	Deadline                                 time.Time
+	Bytes                                    uint64
 }
 
 func admissionLocalCommand(t *testing.T, operation string, config any) localAdmissionReply {

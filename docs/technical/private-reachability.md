@@ -15,6 +15,38 @@ preserves proof/currentness and conflict floors with a generation-3 private
 Descriptor. The retired generation-2 evidence below does not define the
 current transport or exposed join fields.
 
+## New-domain composition and ownership
+
+The isolated new composition uses `internal/successor/publication` for public
+Credential/Publication verification and `internal/successor/reachability` for
+Descriptor verification, receiving Store and separate context-private lookup
+History. Route `selection` derives the sole eligible resolution duty from the
+current authenticated Network observation. Prefix and Receiver own the fresh
+purpose-3 role channel and its physical termination; Admission retains Control
+presentation/spend, and Hosting retains the physical reservation. The exact
+imports and real callers are registered in the
+[package map](../development/package-map.md).
+
+`ardents-next admission holder` carries externally supplied untrusted public
+signed input with `descriptor-publish` and an independently selected Target
+with `descriptor-lookup`. The receiving `route receive` composition opens its
+own `descriptor_root`, independent of Network, receiving-spend and Hosting
+roots. Store acknowledgement follows record and directory synchronization.
+Lookup History completion follows physical channel join under the original
+Source opening; original caller, retained duty and signed Descriptor expiry
+are checked again before the proof is returned. History stores monotonic facts,
+never proof bytes, and survives worker loss until its exact context retires.
+
+Proof verification, conflict rules, History and the Prefix exchange are
+portable. Store lease and durable publication use explicit Linux/Windows
+adapters; unsupported native targets refuse before filesystem effects. The
+current receiving command composition requires its native Linux owners. This
+boundary establishes neither installed Windows support nor a live Publisher,
+registered slot, qualified Execution Job or Instance-authenticated Connection.
+It connects only new owners and does not adopt predecessor runtime roots.
+The Endpoint producer/readiness and Connection obligations described below
+remain distinct; signed-input Store acceptance cannot stand in for them.
+
 ## Private Descriptor recipient
 
 The generation-3 codec binds the complete existing Publication to the current

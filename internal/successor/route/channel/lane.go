@@ -241,6 +241,12 @@ func (l *Lane) closeStatus(status byte) error {
 		// is not a physical failure of the still-live framing parent.
 		if emitted && !peer && !stopped && !expired {
 			l.closeErr = l.s.write(l, ardp.Frame{Kind: ardp.KindClose, Lane: l.id, Body: []byte{status}}, true)
+			// Parent retirement can win after the snapshot or while CLOSE is
+			// queued. Only this exact unemitted CLOSE refusal is unnecessary
+			// cleanup; the parent retains its original and physical failures.
+			if refusal, ok := l.closeErr.(*frameRetirement); ok && refusal.lane == l && refusal.kind == ardp.KindClose {
+				l.closeErr = nil
+			}
 			// The original bound may expire while CLOSE waits for its turn.
 			// This explicit pre-output refusal is the same no-frame retirement
 			// as expiry above. A shorter cleanup limit or actual I/O failure

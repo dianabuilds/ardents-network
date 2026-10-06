@@ -299,6 +299,8 @@ func successorImportAllowed(source, dependency string) bool {
 		"internal/successor/admission/issuer":        {"admission", "admission/quota", "admission/issuance", "nodeidentity"},
 		"internal/successor/nodeidentity":            {"admission/issuerprofile"},
 		"internal/successor/hosting":                 {},
+		"internal/successor/publication":             {},
+		"internal/successor/reachability":            {"publication"},
 		"internal/successor/route":                   {},
 		"internal/successor/route/ardp":              {},
 		"internal/successor/route/issuer":            {"route/ardp", "admission"},
@@ -323,6 +325,9 @@ func successorImportAllowed(source, dependency string) bool {
 			return true
 		}
 		if dependency == modulePath+"/internal/successor/route/transport" {
+			if source == "cmd/ardents-next/route_descriptor_linux_test.go" {
+				return true
+			}
 			if source == "cmd/ardents-next/route_bootstrap_linux_test.go" {
 				return true
 			}
@@ -338,6 +343,9 @@ func successorImportAllowed(source, dependency string) bool {
 			return true
 		}
 		if source == "cmd/ardents-next/route_issuer_linux.go" && (dependency == modulePath+"/internal/successor/admission/token" || dependency == modulePath+"/internal/successor/route/bootstrap") {
+			return true
+		}
+		if dependency == modulePath+"/internal/successor/reachability" && (source == "internal/successor/route/prefix/descriptor_exchange.go" || source == "internal/successor/route/receiver/receiver_linux.go" || source == "internal/successor/route/receiver/descriptor_linux.go" || source == "cmd/ardents-next/route_linux.go" || source == "cmd/ardents-next/route.go" || source == "cmd/ardents-next/admission_holder.go" || source == "cmd/ardents-next/route_descriptor_linux_test.go") {
 			return true
 		}
 		if (source == "internal/successor/admission/stock/issuance_fixture_test.go" || source == "internal/successor/admission/stock/lifecycle_test.go" || source == "internal/successor/admission/stock/receiving_cycle_test.go") && (dependency == modulePath+"/internal/successor/admission/issuer" || dependency == modulePath+"/internal/successor/admission/issuance" || dependency == modulePath+"/internal/successor/admission/quota") {
@@ -365,6 +373,9 @@ func successorImportAllowed(source, dependency string) bool {
 		return true
 	}
 	if (owner == "internal/successor/admission/spending" || owner == "internal/successor/network/duty" || owner == "internal/successor/network/state/durable") && dependency == "golang.org/x/sys/windows" {
+		return true
+	}
+	if source == "internal/successor/reachability/store_platform_windows.go" && dependency == "golang.org/x/sys/windows" {
 		return true
 	}
 	if strings.HasSuffix(source, "_test.go") {
@@ -413,6 +424,18 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		name, source, dependency string
 		allowed                  bool
 	}{
+		{"Reachability verifies public delegation", "internal/successor/reachability/descriptor.go", modulePath + "/internal/successor/publication", true},
+		{"Prefix completes genuine private lookup", "internal/successor/route/prefix/descriptor_exchange.go", modulePath + "/internal/successor/reachability", true},
+		{"Receiver uses genuine Descriptor Store", "internal/successor/route/receiver/descriptor_linux.go", modulePath + "/internal/successor/reachability", true},
+		{"Carrier cannot acquire Descriptor authority", "internal/successor/route/transport/tls/node.go", modulePath + "/internal/successor/reachability", false},
+		{"Reachability cannot own physical Prefix", "internal/successor/reachability/lookup_history.go", modulePath + "/internal/successor/route/prefix", false},
+		{"Store native Windows lease and sync", "internal/successor/reachability/store_platform_windows.go", "golang.org/x/sys/windows", true},
+		{"Descriptor rules cannot use native Windows mechanisms", "internal/successor/reachability/descriptor.go", "golang.org/x/sys/windows", false},
+		{"Store rules cannot use native Windows mechanisms", "internal/successor/reachability/store.go", "golang.org/x/sys/windows", false},
+		{"public proof cannot acquire Route transport", "internal/successor/publication/public_proof.go", modulePath + "/internal/successor/route/ardp", false},
+		{"public proof cannot acquire Store", "internal/successor/publication/public_proof.go", modulePath + "/internal/successor/reachability", false},
+		{"Reachability cannot delegate to old verifier", "internal/successor/reachability/descriptor.go", modulePath + "/internal/service/reachability", false},
+		{"public proof cannot delegate to old Publication", "internal/successor/publication/public_proof.go", modulePath + "/internal/service/publication", false},
 		{"physical implementation uses shared contract", "internal/successor/route/transport/tls/node.go", modulePath + "/internal/successor/route/transport", true},
 		{"Prefix uses shared contract", "internal/successor/route/prefix/prefix.go", modulePath + "/internal/successor/route/transport", true},
 		{"Prefix uses portable framing", "internal/successor/route/prefix/prefix.go", modulePath + "/internal/successor/route/channel", true},

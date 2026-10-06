@@ -472,7 +472,7 @@ func (s *Session) write(l *Lane, f ardp.Frame, terminal bool) error {
 	end := l.frameDeadline(f, terminal)
 	if s.stopped || s.finishingRole || s.ctx.Err() != nil || (!terminal && l.closed) {
 		s.mu.Unlock()
-		return net.ErrClosed
+		return &frameRetirement{lane: l, kind: f.Kind}
 	}
 	if !time.Now().Before(end) {
 		s.mu.Unlock()

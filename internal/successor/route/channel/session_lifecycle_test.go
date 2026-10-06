@@ -15,6 +15,94 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/successor/route/ardp"
 )
 
+// Nested Close uses actual lower scheduling. The held turn and observation
+// gate establish only I/O ordering, never successful domain authority.
+func TestNestedCloseParentRetirementBeforeOutput(t *testing.T) {
+	for _, phase := range []string{"queued", "selected"} {
+		t.Run(phase, func(t *testing.T) {
+			physical := newLifecycleConn(false)
+			end := time.Now().Add(5 * time.Second)
+			entered, resume := make(chan struct{}), make(chan struct{})
+			var check func() error
+			if phase == "selected" {
+				check = func() error { close(entered); <-resume; return nil }
+			}
+			lower := Prepare(t.Context(), physical, end, 32<<20, check, false, &Budget{maximum: 64 << 20}, Handlers{})
+			lane := lifecycleLane(t, lower, 1)
+			lane.openEmitted = true
+			upper := Prepare(t.Context(), lane, end, 32<<20, nil, false, &Budget{maximum: 64 << 20}, Handlers{})
+			release := func() {}
+			if phase == "queued" {
+				sibling := lifecycleLane(t, lower, 3)
+				var err error
+				release, err = lower.turn(sibling, ardp.Frame{Kind: ardp.KindCredit, Lane: 3, Body: []byte{0, 0, 0, 1}}, false, ardp.HeaderSize+4)
+				if err != nil {
+					t.Fatal(err)
+				}
+			}
+			var releaseOnce, resumeOnce sync.Once
+			finishTurn := func() { releaseOnce.Do(release) }
+			unblock := func() { resumeOnce.Do(func() { close(resume) }) }
+			t.Cleanup(func() { unblock(); finishTurn(); _ = upper.Close(); _ = lower.Close() })
+			joined := make(chan error, 1)
+			go func() { joined <- upper.Close() }()
+			if phase == "queued" {
+				waitFramingState(t, lane, func() bool { return len(lower.output) == 1 })
+			} else {
+				select {
+				case <-entered:
+				case <-time.After(time.Second):
+					t.Fatal("selected CLOSE did not reach observation")
+				}
+			}
+			original := errors.New("original parent authority retired")
+			lower.Retire(original)
+			unblock()
+			if result := lifecycleResult(t, joined); result != nil || upper.PhysicalFailure() != nil || upper.Close() != result {
+				t.Fatal("unemitted CLOSE fabricated nested physical failure", result, upper.PhysicalFailure())
+			}
+			select {
+			case <-physical.writes:
+				t.Fatal("retired CLOSE emitted physical output")
+			default:
+			}
+			finishTurn()
+			first := lower.Close()
+			if !errors.Is(first, original) || errors.Is(first, net.ErrClosed) || lower.Close() != first {
+				t.Fatal("original parent retirement replaced", first)
+			}
+			lower.mu.Lock()
+			queued, turns, used := lower.controlQueued, len(lower.output), lower.used
+			lower.mu.Unlock()
+			if queued != 0 || turns != 0 || used != 0 {
+				t.Fatal("unemitted cleanup retained output or debit", queued, turns, used)
+			}
+		})
+	}
+}
+
+func TestNestedCloseStartedPhysicalClosedErrorRetained(t *testing.T) {
+	physical := newLifecycleConn(false)
+	physical.partial = net.ErrClosed
+	end := time.Now().Add(5 * time.Second)
+	lower := Prepare(t.Context(), physical, end, 32<<20, nil, false, &Budget{maximum: 64 << 20}, Handlers{})
+	lane := lifecycleLane(t, lower, 1)
+	lane.openEmitted = true
+	upper := Prepare(t.Context(), lane, end, 32<<20, nil, false, &Budget{maximum: 64 << 20}, Handlers{})
+	t.Cleanup(func() { _ = upper.Close(); _ = lower.Close() })
+	result := upper.Close()
+	var failure *physicalWriteFailure
+	if !errors.Is(result, net.ErrClosed) || !errors.As(upper.PhysicalFailure(), &failure) || failure.owner != lower || failure.kind != ardp.KindClose || upper.Close() != result {
+		t.Fatal("started CLOSE physical provenance lost", result, upper.PhysicalFailure())
+	}
+	if len(physical.output) != 3 {
+		t.Fatal("actual partial frame absent", len(physical.output))
+	}
+	if !errors.Is(lower.Close(), net.ErrClosed) {
+		t.Fatal("parent lost started physical failure")
+	}
+}
+
 // lifecycleConn gates actual physical output and completion independently.
 // It supplies no successful authority, Admission, or resource-transfer result.
 type lifecycleConn struct {
