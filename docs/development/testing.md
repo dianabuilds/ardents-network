@@ -19,6 +19,16 @@ substitute for independent review.
 
 ## Ordinary checks
 
+The genuine issuer exclusive-work, signed-State-loss and receiver-cancellation
+scenarios in `cmd/ardents-next/route_bootstrap_linux_test.go` and receiving
+Registration in `route_registration_linux_test.go` run in parallel.
+Each constructs its own authenticated State, Admission/Hosting histories, holder
+and reserved listeners; they share no live authority, roots or transport. Their
+subcases remain sequential within each scenario, with unchanged operation bounds,
+join assertions and the command package's five-minute terminal timeout. This
+schedule avoids adding their independent complete matrices serially to that
+package's elapsed time; it neither filters checks nor qualifies installed work.
+
 Issuer transport scenarios in `cmd/ardents-next/route_bootstrap_linux_test.go`
 and `route_process_linux_test.go` start with genuine permission but no offline
 token stock. Actual holder commands obtain two bootstrap batches, refuse a third,

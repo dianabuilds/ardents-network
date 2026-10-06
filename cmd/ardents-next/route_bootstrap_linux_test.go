@@ -466,6 +466,7 @@ func testRouteHolderIssuerRetirement(t *testing.T, profile transport.CarrierProf
 // prefixes. The gate delays delivery after real durable debit/signing; it is
 // neither a simulated signing success nor an artificial receiving Grant.
 func TestRouteIssuerExclusiveWorkJoinsBeforeReturnBothCarriers(t *testing.T) {
+	t.Parallel()
 	for _, profile := range []transport.CarrierProfile{transport.ClosedCarrierTCP, transport.ClosedCarrierQUIC} {
 		for _, mode := range []string{"joined-result", "original-cancellation", "lost-result-retry", "late-release-failure"} {
 			t.Run(string(profile)+"/"+mode, func(t *testing.T) {
@@ -633,10 +634,12 @@ func TestRouteIssuerExclusiveWorkJoinsBeforeReturnBothCarriers(t *testing.T) {
 // surround actual receiving Accept or actual committed issuer output, not a
 // supplied authority boolean. Every original binding remains unchanged.
 func TestRouteIssuerStateLossAtRealBoundariesBothCarriers(t *testing.T) {
+	t.Parallel()
 	routeIssuerRetirementCases(t, false)
 }
 
 func TestRouteIssuerReceiverCancellationAtRealBoundariesBothCarriers(t *testing.T) {
+	t.Parallel()
 	routeIssuerRetirementCases(t, true)
 }
 

@@ -20,6 +20,16 @@ opens no State or mutable root, contacts no manager and grants no Release,
 holder or runtime authority. Source credential loading, runtime composition and installation transitions
 remain separate owners; this parser extraction does not implement provisioning.
 
+The isolated new Installation owner separately validates the same canonical
+installation-request and nested declaration identities. It uses the selected
+Linux POSIX path grammar on all checking hosts, refuses duplicate normalized
+authority keys and inconsistent thresholds, and checks immutable and mutable
+root separation before byte authentication. Its real `ardents-next installation`
+authentication consumers accept `--request <file>`; they grant only the exact
+fresh program/generation proof pair. They neither load Source credentials nor
+create declared runtime roots, prepare an installed binding or establish
+runtime readiness. The predecessor parser and runtime remain independent.
+
 `internal/endpoint/installation` composes the two fresh Release evaluations from
 one frozen set of enrolled metadata and the same local/reference facts. It
 checks complete resource bytes and coherent authenticated target identities and

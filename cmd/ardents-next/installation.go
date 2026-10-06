@@ -18,6 +18,28 @@ import (
 // These commands authenticate generation bytes only. They do not provision,
 // change installed selection, start a worker or establish Service readiness.
 func runInstallation(ctx context.Context, args []string, out io.Writer) int {
+	// A canonical Installation request supplies the same byte-authentication
+	// inputs after its declarations have passed their own portable admission.
+	// This branch does not provision the declared roots or load credentials.
+	if len(args) == 3 && (args[0] == "authenticate-initial" || args[0] == "authenticate-candidate") && args[1] == "--request" {
+		if err := ctx.Err(); err != nil {
+			return installationFailure(ctx, out, err)
+		}
+		raw, err := readBounded(args[2], 64<<10)
+		if err != nil {
+			return installationFailure(ctx, out, err)
+		}
+		request, err := installation.DecodeRequest(ctx, raw, args[0] == "authenticate-initial")
+		if err != nil {
+			return installationFailure(ctx, out, err)
+		}
+		parameters := []string{args[0], request.BundleRoot()}
+		if args[0] == "authenticate-initial" {
+			parameters = append(parameters, request.ManifestSHA256())
+		}
+		parameters = append(parameters, request.ReleaseHistoryRoot(), request.ReferenceTime().Format(time.RFC3339Nano))
+		return runInstallation(ctx, parameters, out)
+	}
 	if len(args) < 1 || (args[0] != "authenticate-initial" && args[0] != "authenticate-candidate") ||
 		(args[0] == "authenticate-initial" && len(args) != 5) ||
 		(args[0] == "authenticate-candidate" && len(args) != 4) {

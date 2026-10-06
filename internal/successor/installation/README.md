@@ -2,7 +2,7 @@
 
 Проект по действующим контрактам, проверенный по исходникам на
 `dev@edaa76ce9db8afa04d5983980b2ea86f74279e11`. Первый Go Module реализует
-только свежую связную авторизацию программы/поколения; native installation,
+portable admission canonical request и свежую связную авторизацию программы/поколения; native installation,
 journal, predecessor join, start и recovery ещё не реализованы. Этот документ не выбирает implementation slice и не доказывает
 установленную работоспособность. GitHub остаётся журналом выполнения.
 Installation — самостоятельный владелец внутри семейства Software acceptance.
@@ -160,12 +160,21 @@ Candidate не возвращает `Bundle` и не принимает иску
 application composition. Это не импорт Release в Enrollment. Command и
 Installation не должны поддерживать разные списки исключений.
 
-Headless/Source declarations сейчас принадлежат старому
-`internal/endpoint/runtimeplan`; импорт этого parser в новый consumer нарушает
-Route isolation. Новый pure declaration Module должен иметь проверенную точную
-грамматику и real consumers Installation и новой runtime composition. Его
-декодирование не открывает State, Source credentials или grants. Пакет и imports
-будут зарегистрированы с реализацией, не заранее пустым каталогом.
+Новый Installation проверяет canonical request и вложенные Headless/Source
+declarations через `DecodeRequest`, сохраняя текущие schemas, порядок полей
+и ограничения байтов. Эти declarations приватны внутри текущего Module:
+отдельный пакет без самостоятельного runtime consumer не создаётся.
+Root declarations выбранного Linux-профиля используют одну POSIX grammar
+на всех hosts; это не native filesystem проверка или Windows installation.
+Нормализованные дубликаты public keys, invalid threshold и перекрывающиеся
+mutable roots отказывают до эффектов. `authenticate-initial --request <file>`
+и `authenticate-candidate --request <file>` потребляют проверенные
+bundle/pin/history/reference inputs через настоящие Enrollment/Release.
+Декодирование не открывает State, Source credentials или grants; bounded
+command-file reading не доказывает root-owned custody. Новая runtime
+composition и actual generation preparation пока отсутствуют.
+Старый `internal/endpoint/runtimeplan` остаётся независимым владельцем
+predecessor consumers; его импорт в новый путь запрещён.
 
 Есть отдельное противоречие platform admission: current confinement owner
 указывает Ubuntu24/systemd255, installation owner — пары 22/249 и 24/255;

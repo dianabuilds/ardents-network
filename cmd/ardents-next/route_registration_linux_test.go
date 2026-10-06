@@ -32,6 +32,7 @@ import (
 // durable Receiving and physical Hosting. No successful authority or ACK is
 // substituted. Compiled command acceptance is a separate scenario.
 func TestRouteGenuineRegistrationBothCarriers(t *testing.T) {
+	t.Parallel()
 	for _, profile := range []transport.CarrierProfile{transport.ClosedCarrierTCP, transport.ClosedCarrierQUIC} {
 		for _, mode := range []string{"withdraw", "withdraw-deferred-caller", "withdraw-deferred-stop", "prefix-close", "caller-cancel", "caller-deferred-spend", "caller-deferred-presentation", "expiry", "clock-loss", "post-spend-clock-loss", "lost-floor"} {
 			t.Run(string(profile)+"/"+mode, func(t *testing.T) {
